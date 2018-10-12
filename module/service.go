@@ -49,10 +49,10 @@ type ServiceManager interface {
 	//	Returned Transition always passes validation.
 	ProposeTransition(parent Transition) (Transition, error)
 	//	CreateTransition creates a Transition following parent Transition.
-	CreateTransition(parent Transition, txs [][]byte, patch []byte) (Transition, error)
-	GetPatch(parent Transition) []byte
+	CreateTransition(parent Transition, txs [][]byte, patches [][]byte) (Transition, error)
+	GetPatches(parent Transition) [][]byte
 	//	PatchTransition creates a Transition by adding patch on a transition.
-	PatchTransition(transtion Transition, patch []byte) Transition
+	PatchTransition(transtion Transition, patches [][]byte) Transition
 	Commit(Transition, id []byte) error
 	Finalize(Transition)
 }
