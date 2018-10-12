@@ -18,7 +18,7 @@ type Block interface {
 }
 
 type BlockManager interface {
-	//	Propose let this BlockManager proposes a Block following the parent Block.
+	//	Propose proposes a Block following the parent Block.
 	//	The result is asynchronously notified by cb. canceler cancels the
 	//	operation. canceler returns true and cb is not called if the
 	//	cancellation was successful.

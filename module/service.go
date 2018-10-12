@@ -45,7 +45,7 @@ type State interface {
 
 type ServiceManager interface {
 	GetTransition(id []byte) Transition
-	//	ProposeTransition let this ServiceManager proposes a Transition following the parent Transition.
+	//	ProposeTransition proposes a Transition following the parent Transition.
 	//	Returned Transition always passes validation.
 	ProposeTransition(parent Transition) (Transition, error)
 	//	CreateTransition creates a Transition following parent Transition.
