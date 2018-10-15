@@ -4,17 +4,21 @@ GOTOOLS = \
 PACKAGES=$(shell go list ./...)
 INCLUDE = -I=. -I=${GOPATH}/src 
 BUILD_TAGS =
-BUILD_FLAGS = 
+BUILD_FLAGS =
 
 init: get_tools get_vendor_deps
 
-all: check build test 
+all: check build test install
 
 check: ensure_deps
 
 build:
 	@echo "--> Building"
-	CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/ $(PACKAGES)
+	CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' $(PACKAGES)
+
+install:
+	@echo "--> Installing"
+	CGO_ENABLED=0 go install $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' $(PACKAGES)
 
 test:
 	@echo "--> Running go test"
