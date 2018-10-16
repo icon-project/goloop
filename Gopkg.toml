@@ -28,12 +28,11 @@
 # NOTE: All packages should be pinned to specific versions.
 # Packages without releases must pint to a commit.
 
-# TODO Find an appropriate version
-[[constraint]]
-  branch = "master"
-  name = "golang.org/x/crypto"
-
 [prune]
   go-tests = true
   unused-packages = true
 
+# TODO Find an appropriate version
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/crypto"
