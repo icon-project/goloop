@@ -1,0 +1,167 @@
+package service
+
+import (
+	"bytes"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"log"
+
+	"github.com/icon-project/goloop/common/crypto"
+
+	"github.com/icon-project/goloop/common"
+)
+
+type TransactionV3 struct {
+	Version   common.HexInt16  `json:"version"`
+	NID       common.HexInt16  `json:"nid"`
+	From      common.Address   `json:"from"`
+	To        common.Address   `json:"to"`
+	Value     common.HexInt    `json:"value"`
+	TimeStamp common.HexInt64  `json:"timestamp"`
+	Nonce     common.HexInt64  `json:"nonce"`
+	StepLimit common.HexInt    `json:"stepLimit"`
+	Fee       common.HexInt    `json:"fee"`
+	TxHash    common.HexBytes  `json:"txHash"`
+	Tx_Hash   common.HexBytes  `json:"tx_hash"`
+	Signature common.Signature `json:"signature"`
+	params    []byte
+}
+
+func (t *TransactionV3) GetID() []byte {
+	if t.TxHash != nil {
+		return t.TxHash
+	} else {
+		return t.Tx_Hash
+	}
+}
+
+func (t *TransactionV3) GetHash() []byte {
+	if t.TxHash != nil {
+		return t.TxHash
+	} else {
+		return t.Tx_Hash
+	}
+}
+
+func (t *TransactionV3) GetVersion() int {
+	return int(t.Version.Value)
+}
+
+// var version2_inclusion = map[string]bool{
+// 	"from":      true,
+// 	"to":        true,
+// 	"value":     true,
+// 	"timestamp": true,
+// 	"nonce":     true,
+// 	"fee":       true,
+// }
+// var version2_exclusion = map[string]bool(nil)
+var version2_inclusion = map[string]bool(nil)
+var version2_exclusion = map[string]bool{
+	"method":    true,
+	"signature": true,
+	"tx_hash":   true,
+}
+
+// var version3_inclusion = map[string]bool{
+// 	"from":      true,
+// 	"to":        true,
+// 	"value":     true,
+// 	"timestamp": true,
+// 	"nonce":     true,
+// 	"stepLimit": true,
+// 	"nid":       true,
+// 	"version":   true,
+// 	"data": true,
+// }
+// var version3_exclusion = map[string]bool(nil)
+
+var version3_inclusion = map[string]bool(nil)
+var version3_exclusion = map[string]bool{
+	"signature": true,
+	"txHash":    true,
+}
+
+func (t *TransactionV3) Verify() error {
+	var data map[string]interface{}
+	var err error
+	if err = json.Unmarshal(t.params, &data); err != nil {
+		log.Println("JSON Parse FAILS")
+		log.Println("JSON", string(t.params))
+		return err
+	}
+	var bs []byte
+	var txHash []byte
+	if t.Version.Value == 2 {
+		bs, err = SerializeMap(data,
+			version2_inclusion, version2_exclusion)
+		if err == nil {
+			bs = append([]byte("icx_sendTransaction."), bs...)
+		}
+		txHash = t.Tx_Hash
+	} else {
+		bs, err = SerializeMap(data,
+			version3_inclusion, version3_exclusion)
+		if err == nil {
+			bs = append([]byte("icx_sendTransaction."), bs...)
+		}
+		txHash = t.TxHash
+	}
+	if err != nil {
+		log.Println("Serialize FAILs")
+		log.Println("JSON", string(t.params))
+		return err
+	}
+	//fmt.Println("JSON      :", string(t.params))
+	//fmt.Println("Serialized:", string(bs))
+	h := crypto.SHA3Sum256(bs)
+	if bytes.Compare(h, txHash) != 0 {
+		log.Println("Hashes are different")
+		log.Println("JSON.TxHash", hex.EncodeToString(txHash))
+		log.Println("Calc.TxHash", hex.EncodeToString(h))
+		log.Println("TxPhrase", string(bs))
+		return errors.New("txHash value is different from real")
+	}
+
+	if pk, err := crypto.RecoverPublicKey(h, t.Signature); err != nil {
+		log.Println("FAIL Recovering public key")
+		log.Println("Signature", len(t.Signature), t.Signature)
+		return err
+	} else {
+		// crypto.VerifySignature(h, t.Signature, pk)
+		/*
+			if !crypto.VerifySignature(h, t.Signature, pk) {
+				// log.Println("FAIL Verifying signature")
+				// log.Println("Signature", len(t.Signature), t.Signature)
+				// return errors.New("signature verification fails")
+				fmt.Println("FAIL VERIFYING SIGNATURE")
+				fmt.Println("Transaction", string(t.params))
+			}
+		*/
+		addr, err := crypto.PublicKeyToUserAddr(pk)
+		if err != nil {
+			log.Println("FAIL to recovering address from public key")
+			return err
+		}
+		if addr != t.From.String() {
+			log.Println("FROM is different from signer")
+			log.Println("SIGNER", addr)
+			log.Println("FROM", t.From)
+			return errors.New("FROM is different from signer")
+		}
+	}
+	return nil
+}
+
+func NewTransactionV3(b []byte) (Transaction, error) {
+	t := &TransactionV3{Version: common.HexInt16{2}, params: b[:]}
+	if err := json.Unmarshal(b, t); err != nil {
+		return nil, err
+	}
+	return t, nil
+}
+
+func (t *TransactionV3) String() string {
+	return string(t.params)
+}
