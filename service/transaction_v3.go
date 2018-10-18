@@ -8,11 +8,12 @@ import (
 	"log"
 
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/module"
 
 	"github.com/icon-project/goloop/common"
 )
 
-type TransactionV3 struct {
+type transactionV3 struct {
 	Version   common.HexInt16  `json:"version"`
 	NID       common.HexInt16  `json:"nid"`
 	From      common.Address   `json:"from"`
@@ -28,7 +29,7 @@ type TransactionV3 struct {
 	params    []byte
 }
 
-func (t *TransactionV3) GetID() []byte {
+func (t *transactionV3) GetID() []byte {
 	if t.TxHash != nil {
 		return t.TxHash
 	} else {
@@ -36,19 +37,11 @@ func (t *TransactionV3) GetID() []byte {
 	}
 }
 
-func (t *TransactionV3) GetHash() []byte {
-	if t.TxHash != nil {
-		return t.TxHash
-	} else {
-		return t.Tx_Hash
-	}
-}
-
-func (t *TransactionV3) GetVersion() int {
+func (t *transactionV3) GetVersion() int {
 	return int(t.Version.Value)
 }
 
-// var version2_inclusion = map[string]bool{
+// var version2FieldInclusion = map[string]bool{
 // 	"from":      true,
 // 	"to":        true,
 // 	"value":     true,
@@ -56,15 +49,17 @@ func (t *TransactionV3) GetVersion() int {
 // 	"nonce":     true,
 // 	"fee":       true,
 // }
-// var version2_exclusion = map[string]bool(nil)
-var version2_inclusion = map[string]bool(nil)
-var version2_exclusion = map[string]bool{
-	"method":    true,
-	"signature": true,
-	"tx_hash":   true,
-}
+// var version2FieldExclusion = map[string]bool(nil)
+var (
+	version2FieldInclusion = map[string]bool(nil)
+	version2FieldExclusion = map[string]bool{
+		"method":    true,
+		"signature": true,
+		"tx_hash":   true,
+	}
+)
 
-// var version3_inclusion = map[string]bool{
+// var version3FieldInclusion = map[string]bool{
 // 	"from":      true,
 // 	"to":        true,
 // 	"value":     true,
@@ -75,15 +70,17 @@ var version2_exclusion = map[string]bool{
 // 	"version":   true,
 // 	"data": true,
 // }
-// var version3_exclusion = map[string]bool(nil)
+// var version3FieldExclusion = map[string]bool(nil)
 
-var version3_inclusion = map[string]bool(nil)
-var version3_exclusion = map[string]bool{
-	"signature": true,
-	"txHash":    true,
-}
+var (
+	version3FieldInclusion = map[string]bool(nil)
+	version3FieldExclusion = map[string]bool{
+		"signature": true,
+		"txHash":    true,
+	}
+)
 
-func (t *TransactionV3) Verify() error {
+func (t *transactionV3) Verify() error {
 	var data map[string]interface{}
 	var err error
 	if err = json.Unmarshal(t.params, &data); err != nil {
@@ -95,14 +92,14 @@ func (t *TransactionV3) Verify() error {
 	var txHash []byte
 	if t.Version.Value == 2 {
 		bs, err = SerializeMap(data,
-			version2_inclusion, version2_exclusion)
+			version2FieldInclusion, version2FieldExclusion)
 		if err == nil {
 			bs = append([]byte("icx_sendTransaction."), bs...)
 		}
 		txHash = t.Tx_Hash
 	} else {
 		bs, err = SerializeMap(data,
-			version3_inclusion, version3_exclusion)
+			version3FieldInclusion, version3FieldExclusion)
 		if err == nil {
 			bs = append([]byte("icx_sendTransaction."), bs...)
 		}
@@ -154,14 +151,30 @@ func (t *TransactionV3) Verify() error {
 	return nil
 }
 
-func NewTransactionV3(b []byte) (Transaction, error) {
-	t := &TransactionV3{Version: common.HexInt16{2}, params: b[:]}
+func (t *transactionV3) String() string {
+	return string(t.params)
+}
+
+func (t *transactionV3) Bytes() ([]byte, error) {
+	return t.params, nil
+}
+
+type TransactionV3 struct {
+	*transactionV3
+}
+
+func (t *TransactionV3) ID() []byte {
+	return t.GetID()
+}
+
+func (t *TransactionV3) Version() int {
+	return int(t.transactionV3.Version.Value)
+}
+
+func NewTransactionV3(b []byte) (module.Transaction, error) {
+	t := &transactionV3{Version: common.HexInt16{2}, params: b[:]}
 	if err := json.Unmarshal(b, t); err != nil {
 		return nil, err
 	}
-	return t, nil
-}
-
-func (t *TransactionV3) String() string {
-	return string(t.params)
+	return &TransactionV3{t}, nil
 }

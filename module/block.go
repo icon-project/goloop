@@ -1,20 +1,23 @@
 package module
 
-type Address []byte
+type Address interface {
+	String() string
+	Bytes() []byte
+}
 
-type Vote struct {
-	Hight int64
-	Round int
-	Type byte
-	BlockID []byte
-	Signature []byte
+type Vote interface {
+	Voter() Address
+	Bytes() []byte
 }
 
 type Block interface {
-	Height() int
 	ID() []byte
+	Height() int64
+	PrevRound() int
+	PrevID() []byte
 	Votes() []Vote
 	NextValidators() []Address
+	Verify() error
 }
 
 type BlockManager interface {
@@ -22,13 +25,13 @@ type BlockManager interface {
 	//	The result is asynchronously notified by cb. canceler cancels the
 	//	operation. canceler returns true and cb is not called if the
 	//	cancellation was successful.
-	Propose(parent Block, votes []Vote, cb func(Block, error)) (canceler func()bool, err error)
+	Propose(parent Block, votes []Vote, cb func(Block, error)) (canceler func() bool, err error)
 
 	//	Import creates a Block from blockBytes.
 	//	The result is asynchronously notified by cb. canceler cancels the
 	//	operation. canceler returns true and cb is not called if the
 	//	cancellation was successful.
-	Import(blockBytes []byte, cb func(Block, error)) (canceler func()bool, err error)
+	Import(blockBytes []byte, cb func(Block, error)) (canceler func() bool, err error)
 	Commit(Block) error
 	Finalize(Block) error
 }

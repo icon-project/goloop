@@ -22,7 +22,7 @@ type Wallet struct {
 }
 
 var wallet = Wallet{
-	url: "https://wallet.icon.foundation/api/v3",
+	url: "https://testwallet.icon.foundation/api/v3",
 }
 
 func (w *Wallet) Call(method string, params map[string]interface{}) ([]byte, error) {
@@ -92,7 +92,7 @@ func (w *Wallet) GetTransactionResultByHash(txHash string) ([]byte, error) {
 }
 
 func VerifyBlock(b []byte) error {
-	blk, err := block.NewBlock(b)
+	blk, err := block.NewBlockV1(b)
 	if err != nil {
 		return err
 	}
@@ -103,40 +103,50 @@ func GetBlocksFromHeight(from int) {
 		//for i := 1; ; i++ {
 		b, err := wallet.GetBlockByHeight(i)
 		if err != nil {
-			fmt.Println("GetBlock ERROR", err)
+			log.Println("GetBlock ERROR", err)
 			break
 		}
 		err = VerifyBlock(b)
 		if err != nil {
-			fmt.Println("VerifyBlock ERROR", err)
-			fmt.Println("Block", string(b))
+			log.Println("VerifyBlock ERROR", err)
+			log.Println("Block", string(b))
 			break
 		}
 	}
 }
 
 func main() {
-	height := flag.Int("height", 0, "Height of block")
+	height := flag.Int("height", -1, "Height of block")
 	flag.Parse()
 	for _, a := range flag.Args() {
 		switch a {
 		case "verify":
 			GetBlocksFromHeight(*height)
 		case "get":
-			b, err := wallet.GetBlockByHeight(*height)
-			if err != nil {
-				log.Printf("GetBlockByHeight(%d) FAILs error=%v\n",
-					*height, err)
-				break
+			var b []byte
+			var err error
+			if *height < 0 {
+				b, err = wallet.GetLastBlock()
+				if err != nil {
+					log.Printf("GetLastBlock() FAILs error=%v\n", err)
+					break
+				}
+			} else {
+				b, err = wallet.GetBlockByHeight(*height)
+				if err != nil {
+					log.Printf("GetBlockByHeight(%d) FAILs error=%v\n",
+						*height, err)
+					break
+				}
 			}
-			fmt.Println("<> BLOCK", *height)
-			fmt.Println("RAW DATA", string(b))
-			blk, err := block.NewBlock(b)
+			log.Println("<> BLOCK", *height)
+			fmt.Println(string(b))
+			blk, err := block.NewBlockV1(b)
 			if err != nil {
 				log.Println("PARSE FAILs", err)
 				break
 			}
-			fmt.Printf("PARSED %+v\n", blk)
+			log.Printf("PARSED %+v\n", blk)
 		}
 	}
 	return

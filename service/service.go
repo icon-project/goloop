@@ -1,12 +1,7 @@
 package service
 
-type Transaction interface {
-	GetID() []byte
-	GetHash() []byte
-	GetVersion() int
-	Verify() error
-}
+import "github.com/icon-project/goloop/module"
 
-func NewTransaction(b []byte) (Transaction, error) {
+func NewTransaction(b []byte) (module.Transaction, error) {
 	return NewTransactionV3(b)
 }

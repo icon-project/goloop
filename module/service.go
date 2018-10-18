@@ -11,25 +11,49 @@ type TransitionCallback interface {
 	OnExecute(Transition)
 }
 
+type Transaction interface {
+	ID() []byte
+	Version() int
+	Bytes() ([]byte, error)
+	Verify() error
+}
+
+type TransactionList interface {
+	Get(int) (Transaction, error)
+	Size() int
+	Hash() []byte
+}
+type Receipt interface {
+	Bytes() ([]byte, error)
+}
+
+type ReceiptList interface {
+	Get(int) (Receipt, error)
+	Size() int
+	Hash() []byte
+}
+
 type Transition interface {
 	Parent() Transition
-	//	NextValidators returns the addresses of next validators. 
+	//	NextValidators returns the addresses of next validators.
 	//	The function returns nil if the transition is not created by
 	//	ServiceManager.ProposeTransition and is not validated yet.
 	NextValidators() []Address
-	Txs() [][]byte
+	PatchTransactions() TransactionList
+	NormalTransactions() TransactionList
 
 	//	Execute executes this transition.
 	//	The result is asynchronously notified by cb. canceler cancels the
 	//	operation. canceler returns true and cb is not called if the
 	//	cancellation was successful.
-	Execute(cb TransitionCallback) (canceler func()bool, err error)
+	Execute(cb TransitionCallback) (canceler func() bool, err error)
 
-	GetState() State
+	State() State
 
 	//	GetResult returns execution result.
 	//	The function returns nil if the transition execution is not completed.
-	GetResult() []byte
+	PatchReceipts() ReceiptList
+	NormalReceipts() ReceiptList
 
 	//	LogBloom returns log bloom filter for this transition.
 	//	The function returns nil if the transition execution is not completed.
@@ -41,6 +65,8 @@ type Transition interface {
 }
 
 type State interface {
+	Verify([]byte) bool
+	Bytes() ([]byte, error)
 }
 
 type ServiceManager interface {
@@ -49,10 +75,10 @@ type ServiceManager interface {
 	//	Returned Transition always passes validation.
 	ProposeTransition(parent Transition) (Transition, error)
 	//	CreateTransition creates a Transition following parent Transition.
-	CreateTransition(parent Transition, txs [][]byte, patches [][]byte) (Transition, error)
-	GetPatches(parent Transition) [][]byte
+	CreateTransition(parent Transition, txs []Transaction, patches []Transaction) (Transition, error)
+	GetPatches(parent Transition) []Transaction
 	//	PatchTransition creates a Transition by adding patch on a transition.
-	PatchTransition(transtion Transition, patches [][]byte) Transition
+	PatchTransition(transtion Transition, patches []Transaction) Transition
 	Commit(Transition, id []byte) error
 	Finalize(Transition)
 }
