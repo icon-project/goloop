@@ -81,6 +81,7 @@ func (br *branch) serialize() []byte {
 	br.dirty = false
 	br.serializedValue = make([]byte, len(serialized))
 	copy(br.serializedValue, serialized)
+	//	fmt.Println("branch : serialized : ", serialized)
 	return serialized
 }
 
@@ -135,6 +136,7 @@ func (ex *extension) serialize() []byte {
 	serialized := encodeList(encodeByte(keyArray), encodeByte(ex.next.hash()))
 	ex.serializedValue = make([]byte, len(serialized))
 	copy(ex.serializedValue, serialized)
+	//	fmt.Println("extension : serialized : ", serialized)
 	return serialized
 }
 
@@ -187,6 +189,7 @@ func (l *leaf) hash() []byte {
 		return l.hashedValue
 	}
 	serialized := l.serialize()
+	//	fmt.Println("leaf hash : ", serialized)
 	// TODO: have to change below sha function.
 	sha := sha3.NewLegacyKeccak256()
 	sha.Write(serialized)
@@ -196,6 +199,7 @@ func (l *leaf) hash() []byte {
 	l.serializedValue = serialized
 	l.dirty = false
 
+	//	fmt.Printf("leaf hash : <%x>", digest)
 	return digest
 }
 

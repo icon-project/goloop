@@ -93,6 +93,33 @@ func TestInsert(t *testing.T) {
 	}
 }
 
+func TestDelete(t *testing.T) {
+	trie := mpt.NewMutable(nil)
+
+	updateString(trie, "doe", "reindeer")
+	solution1 := fmt.Sprintf("%x", trie.RootHash())
+	updateString(trie, "dog", "puppy")
+	solution2 := fmt.Sprintf("%x", trie.RootHash())
+	updateString(trie, "dogglesworth", "cat")
+
+	hashHex := "8aad789dff2f538bca5d8ea56e8abe10f4c7ba3a5dea95fea4cd6e7c3a1168d3"
+	strRoot := fmt.Sprintf("%x", trie.RootHash())
+	if strings.Compare(strRoot, hashHex) != 0 {
+		t.Errorf("exp %s got %s", hashHex, strRoot)
+	}
+
+	trie.Delete([]byte("dogglesworth"))
+	resultRoot := fmt.Sprintf("%x", trie.RootHash())
+	if strings.Compare(solution2, resultRoot) != 0 {
+		t.Errorf("solution %s, result %s", solution2, resultRoot)
+	}
+	trie.Delete([]byte("dog"))
+	resultRoot = fmt.Sprintf("%x", trie.RootHash())
+	if strings.Compare(solution1, resultRoot) != 0 {
+		t.Errorf("solution %s, result %s", solution1, resultRoot)
+	}
+}
+
 /*
 func TestSet(t *testing.T) {
 	mutable := mpt.NewMutable(nil)

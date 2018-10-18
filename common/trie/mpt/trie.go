@@ -186,7 +186,7 @@ func (m *mpt) set(n node, k, v []byte) (node, bool) {
 		// return new leaf
 		return &leaf{keyEnd: k[:], val: v}, true
 	}
-	return n, false
+	return n, true
 }
 
 /*
@@ -206,70 +206,88 @@ func (m *mpt) Set(k, v []byte) error {
 	return nil
 }
 
-// TODO: implement delete
-func del(n node, k []byte) (node, error) {
+// return node, dirty, error
+func (m *mpt) del(n node, k []byte) (node, bool, error) {
 	var nextNode node
 	switch n := n.(type) {
 	case *branch:
-		nextNode, _ = del(n.nibbles[k[0]], k[1:])
+		nextNode, n.dirty, _ = m.del(n.nibbles[k[0]], k[1:])
 		n.nibbles[k[0]] = nextNode
 		// check remaining nibbles on n(current node)
-		// if n has only 1 remaining node, node must be changed to extension.
-		// if n has only value with no remaining node, node must be changed to leaf
-		index := -1
+		// 1. if n has only 1 remaining node after deleting, n will be removed and the remaining node will be changed to extension.
+		// 2. if n has only value with no remaining node after deleting, node must be changed to leaf
+		// Branch has least 2 nibbles before deleting so branch cannot be empty after deleting
+		remainingNibble := -1
 		for i, nn := range n.nibbles {
 			if nn != nil {
-				if index != -1 {
-					index = i
+				if remainingNibble != -1 { // already met another nibble
+					remainingNibble = -1
 					break
 				}
-				index = i
+				remainingNibble = i
 			}
 		}
 
-		if index != -1 {
-			if index == 16 { // above nextNode would be nil
-				return n.nibbles[16], nil
+		//If remainingNibble is -1, branch has 2 more nibbles.
+		if remainingNibble != -1 {
+			if remainingNibble == 16 {
+				return n.nibbles[16], true, nil
 			} else {
 				// check nextNode.
-				// if nextNode is short or branch, n must be short
-				switch nn := n.nibbles[index].(type) {
+				// if nextNode is extension or branch, n must be extension
+				switch nn := n.nibbles[remainingNibble].(type) {
 				case *extension:
-					return &extension{sharedNibbles: append([]byte{byte(index)}, nn.sharedNibbles...), next: nn.next}, nil
+					return &extension{sharedNibbles: append([]byte{byte(remainingNibble)}, nn.sharedNibbles...), next: nn.next}, true, nil
 				case *branch:
-					return &extension{sharedNibbles: []byte{byte(index)}, next: nn}, nil
+					return &extension{sharedNibbles: []byte{byte(remainingNibble)}, next: nn}, true, nil
 				case *leaf:
-					return &leaf{keyEnd: append([]byte{byte(index)}, nn.keyEnd...), val: nn.val}, nil
+					return &leaf{keyEnd: append([]byte{byte(remainingNibble)}, nn.keyEnd...), val: nn.val}, true, nil
 				}
 			}
 		}
-		n.nibbles[k[0]] = nextNode
 
 	case *extension:
+		nextNode, n.dirty, _ = m.del(n.next, k[len(n.sharedNibbles):])
+		switch nn := nextNode.(type) {
 		// if child node is extension node, merge current node.
 		// It can not be possible to link extension from extension directly.
 		// extension has only branch as next node.
-
-		// if child node is leaf after deleting, this extension must merge child node and be changed to leaf.
-		// if child node is leaf, new leaf(keyEnd = extension.key + child.keyEnd, val = child.val)
-		switch nn := nextNode.(type) {
 		case *extension:
-			n.sharedNibbles = k[:len(nn.sharedNibbles)+1]
+			n.sharedNibbles = append(n.sharedNibbles, nn.sharedNibbles...)
 			n.next = nn.next
+		// if child node is leaf after deleting, this extension must merge next node and be changed to leaf.
+		// if child node is leaf, new leaf(keyEnd = extension.key + child.keyEnd, val = child.val)
 		case *leaf: // make new leaf and return it
-			return &leaf{keyEnd: k, val: nn.val}, nil
+			return &leaf{keyEnd: append(n.sharedNibbles, nn.keyEnd...), val: nn.val}, true, nil
 		}
 
 	case *leaf:
-		return nil, nil
+		return nil, true, nil
+
+	case hash:
+		if m.db == nil {
+			return n, true, nil // TODO: proper error
+		}
+		serializedValue, err := m.db.Get(n)
+		if err != nil {
+			return n, true, err
+		}
+		deserializedNode := deserialize(serializedValue)
+		deserializedNode, _, err = m.del(deserializedNode, k)
+		if err != nil {
+			return deserializedNode, true, err
+		}
+		return deserializedNode, true, nil
 	}
-	return n, nil
+
+	return n, true, nil
 }
 
 func (m *mpt) Delete(k []byte) error {
 	var err error
 	k = bytesToNibbles(k)
-	m.root, err = del(m.root, k)
+	// TODO: firstly remove from pool
+	m.root, _, err = m.del(m.root, k)
 	return err
 }
 
