@@ -67,7 +67,6 @@ func (i *HexInt16) UnmarshalJSON(b []byte) error {
 	} else {
 		return err
 	}
-	return nil
 }
 
 type HexInt32 struct {
@@ -89,7 +88,6 @@ func (i *HexInt32) UnmarshalJSON(b []byte) error {
 	} else {
 		return err
 	}
-	return nil
 }
 
 type HexInt64 struct {
@@ -111,5 +109,4 @@ func (i *HexInt64) UnmarshalJSON(b []byte) error {
 	} else {
 		return err
 	}
-	return nil
 }
