@@ -9,6 +9,9 @@ func NewImmutable(rootHash []byte) trie.Immutable {
 	return newMpt(rootHash)
 }
 
+func NewCache(rootHash []byte) trie.Cache {
+	return newMpt(rootHash)
+}
 func NewMutable(rootHash []byte) trie.Mutable {
 	return newMpt(rootHash)
 }

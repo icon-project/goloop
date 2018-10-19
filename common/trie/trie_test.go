@@ -1,6 +1,7 @@
 package trie_test
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"testing"
@@ -120,32 +121,36 @@ func TestDelete(t *testing.T) {
 	}
 }
 
-/*
-func TestSet(t *testing.T) {
+func TestCache(t *testing.T) {
 	mutable := mpt.NewMutable(nil)
-	mutable.Set([]byte{10, 11, 12}, []byte{1, 2, 3, 4, 5})
-	mutable.Set([]byte{10, 21, 22}, []byte{21, 22, 23, 24, 25})
-	mutable.Set([]byte{20, 21, 22}, []byte{11, 12, 13, 14, 15})
 
-	v := mutable.Get([]byte{10, 11, 12})
-	fmt.Println("v : ", v)
+	updateString(mutable, "doe", "reindeer")
+	updateString(mutable, "dog", "puppy")
+	updateString(mutable, "dogglesworth", "cat")
 
-	mutable.RootHash()
+	hashHex := "8aad789dff2f538bca5d8ea56e8abe10f4c7ba3a5dea95fea4cd6e7c3a1168d3"
+	root := mutable.RootHash()
+	strRoot := fmt.Sprintf("%x", root)
+	if strings.Compare(strRoot, hashHex) != 0 {
+		t.Errorf("exp %s got %s", hashHex, strRoot)
+	}
 
-	snapShot := mutable.GetSnapshot()
+	snapshot := mutable.GetSnapshot()
+	db := newDB()
+	snapshot.Flush(db)
 
-	db := &testDB{pool: make(map[string][]byte)}
-	snapShot.Flush(db)
-	fmt.Println("db : ", db.pool)
+	// check : Does db in Snapshot have to be passed to Mutable?
+	cacheTrie := mpt.NewCache(nil)
+	cacheTrie.Load(db, root)
+	for k, v := range testPool {
+		fmt.Printf("k [%s], v [%s]\n", k, v)
+		value1, _ := cacheTrie.Get([]byte(k))
+		if bytes.Compare(value1, []byte(v)) != 0 {
+			t.Errorf("Wrong value. expected [%x] but [%x]", v, value1)
+		}
+	}
 
-	mutable2 := mpt.NewMutable(nil)
-	mutable2.Reset(snapShot)
-	fmt.Println("new mutable object & set snapshot & get something")
-	v2 := mutable2.Get([]byte{10, 11, 12})
-	v3 := mutable2.Get([]byte{20, 21, 22})
-	fmt.Println("result of getting . : ", v2, ", v3 : ", v3)
 }
-*/
 
 func updateString(trie trie.Mutable, k, v string) {
 	trie.Set([]byte(k), []byte(v))

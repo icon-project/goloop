@@ -37,3 +37,7 @@ type (
 		NewMutable(rootHash []byte) Mutable
 	}
 )
+
+func Verify(proofs [][]byte, db db.DB) bool {
+	return true
+}

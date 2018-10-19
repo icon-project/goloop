@@ -43,7 +43,14 @@ func (m *mpt) get(n node, k []byte) (node, []byte, error) {
 	var err error
 	switch n := n.(type) {
 	case *branch:
-		return m.get(n.nibbles[k[0]], k[1:])
+		nibbleIndex := 16
+		var nextKey []byte
+
+		if len(k) != 0 {
+			nibbleIndex = int(k[0])
+			nextKey = k[1:]
+		}
+		n.nibbles[nibbleIndex], result, err = m.get(n.nibbles[nibbleIndex], nextKey)
 	case *extension:
 		match := compareHex(n.sharedNibbles, k)
 		n.next, result, err = m.get(n.next, k[match:])
@@ -52,7 +59,7 @@ func (m *mpt) get(n node, k []byte) (node, []byte, error) {
 		}
 	case *leaf:
 		return n, n.val, nil
-	// if node is hash get serialized value with hash from db then deserialize it.
+	// if node is hash, get serialized value with hash from db then deserialize it.
 	case hash:
 		serializedValue, err := m.db.Get(n)
 		if err != nil {
@@ -62,7 +69,7 @@ func (m *mpt) get(n node, k []byte) (node, []byte, error) {
 		_, result, err = m.get(deserializedNode, k)
 		return deserializedNode, result, err
 	}
-	return nil, result, err
+	return n, result, err
 }
 
 func (m *mpt) Get(k []byte) ([]byte, error) {
@@ -200,18 +207,20 @@ func (m *mpt) Set(k, v []byte) error {
 	}
 	k = bytesToNibbles(k)
 	m.mutex.Lock()
-	m.requestPool[string(k)] = v
+	copied := make([]byte, len(v))
+	copy(copied, v)
+	m.requestPool[string(k)] = copied
 	m.mutex.Unlock()
 	//tr.root, _ = set(tr.root, k, v)
 	return nil
 }
 
 // return node, dirty, error
-func (m *mpt) del(n node, k []byte) (node, bool, error) {
+func (m *mpt) delete(n node, k []byte) (node, bool, error) {
 	var nextNode node
 	switch n := n.(type) {
 	case *branch:
-		nextNode, n.dirty, _ = m.del(n.nibbles[k[0]], k[1:])
+		nextNode, n.dirty, _ = m.delete(n.nibbles[k[0]], k[1:])
 		n.nibbles[k[0]] = nextNode
 		// check remaining nibbles on n(current node)
 		// 1. if n has only 1 remaining node after deleting, n will be removed and the remaining node will be changed to extension.
@@ -247,7 +256,7 @@ func (m *mpt) del(n node, k []byte) (node, bool, error) {
 		}
 
 	case *extension:
-		nextNode, n.dirty, _ = m.del(n.next, k[len(n.sharedNibbles):])
+		nextNode, n.dirty, _ = m.delete(n.next, k[len(n.sharedNibbles):])
 		switch nn := nextNode.(type) {
 		// if child node is extension node, merge current node.
 		// It can not be possible to link extension from extension directly.
@@ -273,7 +282,7 @@ func (m *mpt) del(n node, k []byte) (node, bool, error) {
 			return n, true, err
 		}
 		deserializedNode := deserialize(serializedValue)
-		deserializedNode, _, err = m.del(deserializedNode, k)
+		deserializedNode, _, err = m.delete(deserializedNode, k)
 		if err != nil {
 			return deserializedNode, true, err
 		}
@@ -286,8 +295,9 @@ func (m *mpt) del(n node, k []byte) (node, bool, error) {
 func (m *mpt) Delete(k []byte) error {
 	var err error
 	k = bytesToNibbles(k)
-	// TODO: firstly remove from pool
-	m.root, _, err = m.del(m.root, k)
+	delete(m.requestPool, string(k))
+	delete(m.appliedPool, string(k))
+	m.root, _, err = m.delete(m.root, k)
 	return err
 }
 
@@ -305,22 +315,22 @@ func (m *mpt) GetSnapshot() trie.Snapshot {
 	return mpt
 }
 
-func traversalCommit(n node, db db.DB) error {
+func traversalCommit(db db.DB, n node) error {
 	switch n := n.(type) {
 	case *branch:
 		for _, v := range n.nibbles {
-			if err := traversalCommit(v, db); err != nil {
+			if err := traversalCommit(db, v); err != nil {
 				return err
 			}
 		}
 	case *extension:
-		if err := traversalCommit(n.next, db); err != nil {
+		if err := traversalCommit(db, n.next); err != nil {
 			return err
 		}
 	default:
 		return nil
 	}
-	return n.commit(db)
+	return db.Set(n.hash(), n.serialize())
 }
 
 /*
@@ -331,8 +341,15 @@ func (m *mpt) Flush(db db.DB) error {
 		delete(m.requestPool, string(k))
 	}
 
-	if err := traversalCommit(m.root, db); err != nil {
-		return err
+	switch n := m.root.(type) {
+	case *leaf:
+		if err := db.Set(n.hash(), n.serialize()); err != nil {
+			return err
+		}
+	default:
+		if err := traversalCommit(db, m.root); err != nil {
+			return err
+		}
 	}
 	m.committedHash = m.root.hash()
 	m.db = db
@@ -384,6 +401,18 @@ func (m *mpt) Proof(k []byte) [][]byte {
 	return buf
 }
 
+func (m *mpt) Load(db db.DB, root []byte) error {
+	// use db to check validation
+	if _, err := db.Get(root); err != nil {
+		return err
+	}
+
+	m.committedHash = root
+	m.root = hash(root)
+	m.db = db
+	return nil
+}
+
 // TODO: proper error
 func (m *mpt) Reset(immutable trie.Immutable) error {
 	in, ok := immutable.(*mpt)
@@ -391,15 +420,15 @@ func (m *mpt) Reset(immutable trie.Immutable) error {
 		return nil
 	}
 
-	kv := make(map[string][]byte)
+	requestPool := make(map[string][]byte)
 	for k, v := range in.requestPool {
-		kv[k] = v
+		requestPool[k] = v
 	}
 	for k, v := range in.appliedPool {
-		kv[k] = v
+		requestPool[k] = v
 	}
 
-	m.requestPool = kv
+	m.requestPool = requestPool
 	m.committedHash = make([]byte, len(in.committedHash))
 	copy(m.committedHash, in.committedHash)
 	rootHash := make([]byte, len(in.committedHash))

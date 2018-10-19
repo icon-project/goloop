@@ -44,7 +44,7 @@ func encodeByte(d []byte) []byte {
 func encodeList(data ...[]byte) []byte {
 	r := make([]byte, 0)
 	for _, d := range data {
-		r = append(r, d...)
+		r = append(r, encodeByte(d)...)
 	}
 	return append(makePrefix(len(r), 0xc0), r...)
 }
