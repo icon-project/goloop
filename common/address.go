@@ -51,14 +51,33 @@ func (a *Address) SetString(s string) error {
 	if bytes, err := hex.DecodeString(s); err != nil {
 		return err
 	} else {
-		if err := a.SetBytes(isContract, bytes); err != nil {
+		if err := a.SetTypeAndBytes(isContract, bytes); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
+func (a *Address) Bytes() []byte {
+	return (*a)[:]
+}
+
+func (a *Address) SetBytes(b []byte) error {
+	if b == nil {
+		return ErrorIllegalArgument
+	}
+	switch b[0] {
+	case 0:
+		return a.SetTypeAndBytes(false, b[1:])
+	case 1:
+		return a.SetTypeAndBytes(true, b[1:])
+	default:
+		return ErrorIllegalArgument
+	}
+}
+
 func (a *Address) SetBytes(ic bool, b []byte) error {
+func (a *Address) SetTypeAndBytes(ic bool, b []byte) error {
 	if b == nil {
 		return ErrorIllegalArgument
 	}
@@ -78,13 +97,13 @@ func (a *Address) SetBytes(ic bool, b []byte) error {
 
 func NewAccountAddress(b []byte) *Address {
 	a := new(Address)
-	a.SetBytes(false, b)
+	a.SetTypeAndBytes(false, b)
 	return a
 }
 
 func NewContractAddress(b []byte) *Address {
 	a := new(Address)
-	a.SetBytes(true, b)
+	a.SetTypeAndBytes(true, b)
 	return a
 }
 
