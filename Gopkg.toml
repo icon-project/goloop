@@ -32,10 +32,9 @@
   go-tests = true
   unused-packages = true
 
-# TODO Find an appropriate version
 [[constraint]]
-  branch = "master"
   name = "golang.org/x/crypto"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/dgraph-io/badger"
@@ -49,7 +48,10 @@
   name = "go.etcd.io/bbolt"
   version = "v1.3.1-etcd.8"
 
-
 [[constraint]]
   name = "github.com/stretchr/testify"
   version = "v1.2.2"
+
+[[constraint]]
+  name = "github.com/haltingstate/secp256k1-go"
+  revision = "572209b26df66a638573023571b5ce80983214eb" 

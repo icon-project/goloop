@@ -1,105 +1,268 @@
 package crypto
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"fmt"
+	"crypto/sha256"
+	"errors"
 	"math/big"
+	"reflect"
 
-	"github.com/icon-project/goloop/common/crypto/btcec"
+	"github.com/haltingstate/secp256k1-go"
 	"golang.org/x/crypto/sha3"
 )
 
-// TODO Review some codes from ethereum for license issue.
-var (
-	secp256k1N, _  = new(big.Int).SetString("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16)
-	secp256k1halfN = new(big.Int).Div(secp256k1N, big.NewInt(2))
+//////////////////////////////////////////////////////////////////////
+// privatekey.go
+//////////////////////////////////////////////////////////////////////
+const (
+	PrivateKeyLen = 32
 )
 
-// GenerateKey generates a public and private key pair.
-func GenerateKey() (*ecdsa.PrivateKey, error) {
-	return ecdsa.GenerateKey(btcec.S256(), rand.Reader)
+// PrivateKey is a type representing a private key.
+// TODO private key always includes public key? or create KeyPair struct
+// for both private key and public key
+type PrivateKey struct {
+	bytes []byte // 32-byte
 }
 
-// PubKeyToAddrBytes extracts bytes of the public key for the account address
-func PubKeyToAddrBytes(pub ecdsa.PublicKey) []byte {
-	pubBytes := GetPubKeyBytes(&pub)
-	if pubBytes == nil || len(pubBytes) != 65 {
-		return nil
-	}
-	digest := sha3.Sum256(pubBytes[1:])
-	return digest[len(digest)-20:]
+// TODO add 'func ToECDSA() ecdsa.PrivateKey' if needed
+
+//////////////////////////////////////////////////////////////////////
+// publickey.go
+//////////////////////////////////////////////////////////////////////
+const (
+	PublicKeyLenCompressed   = 33
+	PublicKeyLenUncompressed = 65
+
+	publicKeyCompressed   byte = 0x2 // y_bit + x coord
+	publicKeyUncompressed byte = 0x4 // x coord + y coord
+)
+
+// PublicKey is a type representing a public key, which can be serialized to
+// or deserialized from compressed or uncompressed formats.
+type PublicKey struct {
+	bytes []byte // 33-byte compressed format to use halting state library efficiently
 }
 
-// GetPubKeyBytes returns the byte format of the public key
-func GetPubKeyBytes(pub *ecdsa.PublicKey) []byte {
-	if pub == nil || pub.X == nil || pub.Y == nil {
-		return nil
+// ParsePublicKey parses the public key into a PublicKey instance. It supports
+// uncompressed and compressed formats.
+// NOTE: For the efficiency, it may use the slice directly. So don't change any
+// internal value of the public key
+func ParsePublicKey(pubKey []byte) (*PublicKey, error) {
+	new(big.Int).Bytes()
+	switch len(pubKey) {
+	case 0:
+		return nil, errors.New("public key bytes are empty")
+	case PublicKeyLenCompressed:
+		return &PublicKey{pubKey}, nil
+	case PublicKeyLenUncompressed:
+		return &PublicKey{uncompToCompPublicKey(pubKey)}, nil
+	default:
+		return nil, errors.New("wrong format")
 	}
-	return elliptic.Marshal(btcec.S256(), pub.X, pub.Y)
 }
 
-// Hash256 returns the 256-byte digest of the data.
-// TODO Consider how to provide API for SHA256 hashing partially used in current impl.
-func Hash256(raw []byte) (hash [32]byte) {
-	return sha3.Sum256(raw)
+// uncompToCompPublicKey changes the uncompressed formatted public key to
+// the compressed formatted. It assumes the uncompressed key is valid.
+func uncompToCompPublicKey(uncomp []byte) (comp []byte) {
+	comp = make([]byte, PublicKeyLenCompressed)
+	// skip to check the validity of uncompressed key
+	format := publicKeyCompressed
+	if uncomp[64]&0x1 == 0x1 {
+		format |= 0x1
+	}
+	comp[0] = format
+	copy(comp[1:], uncomp[1:33])
+	return
 }
 
-// Sign calculates an ECDSA signature.
-//
-// This function is susceptible to chosen plaintext attacks that can leak
-// information about the private key that is used for signing. Callers must
-// be aware that the given hash cannot be chosen by an adversery. Common
-// solution is to hash any input before calculating the signature.
-//
-// The produced signature is in the [R || S || V] format where V is 0 or 1.
-// TODO Consider malleability
-func Sign(hash []byte, prv *ecdsa.PrivateKey) ([]byte, error) {
-	if len(hash) != 32 {
-		return nil, fmt.Errorf("hash is required to be exactly 32 bytes (%d)", len(hash))
+// SerializeCompressed serializes the public key in a 33-byte compressed format.
+// For the efficiency, it returns the slice internally used, so don't change
+// any internal value in the returned slice.
+func (key *PublicKey) SerializeCompressed() []byte {
+	return key.bytes
+}
+
+// SerializeUncompressed serializes the public key in a 65-byte uncompressed format.
+func (key *PublicKey) SerializeUncompressed() []byte {
+	return secp256k1.UncompressPubkey(key.bytes)
+}
+
+// IsEqual returns true if the given public key is same as this instance
+// semantically
+func (key *PublicKey) IsEqual(pubKey *PublicKey) bool {
+	return reflect.DeepEqual(key.bytes, pubKey.bytes)
+}
+
+// TODO add 'func ToECDSA() ecdsa.PublicKey' if needed
+
+//////////////////////////////////////////////////////////////////////
+// ecc.go
+//////////////////////////////////////////////////////////////////////
+const (
+	// SignatureLen is the bytes length of signature
+	SignatureLenRawWithV = 65
+	SignatureLenRaw      = 64
+	invalidV             = 0xff
+	// HashLen is the bytes length of hash for signature
+	HashLen = 32
+)
+
+// GenerateKeyPair generates a private and public key pair.
+func GenerateKeyPair() (privKey *PrivateKey, pubKey *PublicKey) {
+	pub, priv := secp256k1.GenerateKeyPair()
+	privKey = &PrivateKey{priv}
+	pubKey, _ = ParsePublicKey(pub)
+	return
+}
+
+// Signature is a type representing an ECDSA signature with or without V.
+type Signature struct {
+	bytes []byte // 65 bytes of [R|S|V]
+	hasV  bool
+}
+
+// NewSignature calculates an ECDSA signature including V, which is 0 or 1.
+func NewSignature(hash []byte, privKey *PrivateKey) (*Signature, error) {
+	if len(hash) == 0 || len(hash) > HashLen || privKey == nil {
+		return nil, errors.New("Invalid arguments")
 	}
-	if prv.Curve != btcec.S256() {
-		return nil, fmt.Errorf("private key curve is not secp256k1")
+	return ParseSignature(secp256k1.Sign(hash, privKey.bytes))
+}
+
+// ParseSignature parses a signature from the raw byte array of 64([R|S]) or
+// 65([R|S|V]) bytes long. If a source signature is formatted as [V|R|S],
+// call ParseSignatureVRS instead.
+// NOTE: For the efficiency, it may use the slice directly. So don't change any
+// internal value of the signature.
+func ParseSignature(sig []byte) (*Signature, error) {
+	var s Signature
+	switch len(sig) {
+	case 0:
+		return nil, errors.New("sigature bytes are empty")
+	case SignatureLenRawWithV:
+		s.bytes = sig
+		s.hasV = true
+	case SignatureLenRaw:
+		s.bytes = append(s.bytes, sig...)
+		s.bytes[64] = 0x00 // no meaning
+		s.hasV = false
+	default:
+		return nil, errors.New("wrong raw signature format")
 	}
-	sig, err := btcec.SignCompact(btcec.S256(), (*btcec.PrivateKey)(prv), hash, false)
+	return &s, nil
+}
+
+// ParseSignatureVRS parses a signature from the [V|R|S] formatted signature.
+// If the format of a source signature is different,
+// call ParseSignature instead.
+func ParseSignatureVRS(sig []byte) (*Signature, error) {
+	if len(sig) != 65 {
+		return nil, errors.New("wrong raw signature format")
+	}
+
+	var s Signature
+	s.bytes = append(s.bytes, sig[1:33]...)
+	s.bytes = append(s.bytes, sig[33:]...)
+	s.bytes[64] = sig[0]
+	return &s, nil
+}
+
+// HasV returns whether the signature has V value.
+func (sig *Signature) HasV() bool {
+	return sig.hasV
+}
+
+// SerializeRS returns the 64-byte data formatted as [R|S] from the signature.
+// For the efficiency, it returns the slice internally used, so don't change
+// any internal value in the returned slice.
+func (sig *Signature) SerializeRS() ([]byte, error) {
+	if len(sig.bytes) < 64 {
+		return nil, errors.New("not a valid signature")
+	}
+	return sig.bytes[:64], nil
+}
+
+// SerializeVRS returns the 65-byte data formatted as [V|R|S] from the signature.
+// Make sure that it has a valid V value. If it doesn't have V value, then it
+// will throw error.
+// For the efficiency, it returns the slice internally used, so don't change
+// any internal value in the returned slice.
+func (sig *Signature) SerializeVRS() ([]byte, error) {
+	if !sig.HasV() {
+		return nil, errors.New("no V value")
+	}
+
+	s := make([]byte, SignatureLenRawWithV)
+	s[0] = sig.bytes[64]
+	copy(s[1:33], sig.bytes[:32])
+	copy(s[33:], sig.bytes[32:64])
+	return s, nil
+}
+
+// SerializeRSV returns the 65-byte data formatted as [R|S|V] from the signature.
+// Make sure that it has a valid V value. If it doesn't have V value, then it
+// will throw error.
+// For the efficiency, it returns the slice internally used, so don't change
+// any internal value in the returned slice.
+func (sig *Signature) SerializeRSV() ([]byte, error) {
+	if !sig.HasV() {
+		return nil, errors.New("no V value")
+	}
+
+	return sig.bytes, nil
+}
+
+// RecoverPublicKey recovers a public key from the hash of message and its signature.
+func (sig *Signature) RecoverPublicKey(hash []byte) (*PublicKey, error) {
+	if !sig.HasV() {
+		return nil, errors.New("signature has no V value")
+	}
+	if len(hash) == 0 || len(hash) > HashLen {
+		return nil, errors.New("message hash is illegal")
+	}
+	s, err := sig.SerializeRSV()
 	if err != nil {
 		return nil, err
 	}
-	// Convert to signature format with 'recovery id' v at the end.
-	v := sig[0] - 27
-	copy(sig, sig[1:])
-	sig[64] = v
-	return sig, nil
+	return ParsePublicKey(secp256k1.RecoverPubkey(hash[:], s))
 }
 
-// VerifySig checks that the given public key created signature over hash.
-// The public key should be in compressed (33 bytes) or uncompressed (65 bytes) format.
-// The signature should have the 64 byte [R || S] format.
-func VerifySig(pubkey, hash, signature []byte) bool {
-	if len(signature) != 64 {
+// Verify verifies the signature of hash using the public key.
+func (sig *Signature) Verify(msg []byte, pubKey *PublicKey) bool {
+	if len(msg) == 0 || len(msg) > HashLen || pubKey == nil {
 		return false
 	}
-	sig := &btcec.Signature{R: new(big.Int).SetBytes(signature[:32]), S: new(big.Int).SetBytes(signature[32:])}
-	key, err := btcec.ParsePubKey(pubkey, btcec.S256())
+	s, err := sig.SerializeRSV()
 	if err != nil {
 		return false
 	}
-
-	// Reject malleable signatures. libsecp256k1 does this check but btcec doesn't.
-	// if sig.S.Cmp(secp256k1halfN) > 0 {
-	// return false
+	ret := secp256k1.VerifySignature(msg, s, pubKey.bytes)
+	// TODO disable malleability check?
+	// if ret == 0 {
+	// 	// TODO why?
+	// 	if (s[32] >> 7) == 1 {
+	// 		log.Println("VALID SIG but fails malleability")
+	// 	}
+	// 	// TODO why?
+	// 	if s[64] >= 4 {
+	// 		log.Println("RECOVER BYTE INVALID")
+	// 	}
 	// }
-	return sig.Verify(hash, key)
+	return ret != 0
 }
 
-// SigToPubKey returns the public key that created the given signature.
-func SigToPubKey(hash, sig []byte) (*ecdsa.PublicKey, error) {
-	// Convert to btcec input format with 'recovery id' v at the beginning.
-	btcsig := make([]byte, 65)
-	btcsig[0] = sig[64] + 27
-	copy(btcsig[1:], sig)
+//////////////////////////////////////////////////////////////////////
+// hash.go
+//////////////////////////////////////////////////////////////////////
 
-	pub, _, err := btcec.RecoverCompact(btcec.S256(), btcsig, hash)
-	return (*ecdsa.PublicKey)(pub), err
+// SHA3Sum256 returns the SHA3-256 digest of the data
+func SHA3Sum256(m []byte) []byte {
+	d := sha3.Sum256(m)
+	return d[:]
+}
+
+// SHASum256 returns the SHA256 digest of the data
+func SHASum256(m []byte) []byte {
+	d := sha256.Sum256(m)
+	return d[:]
 }

@@ -121,7 +121,11 @@ func (t *transactionV3) Verify() error {
 		return errors.New("txHash value is different from real")
 	}
 
-	if pk, err := crypto.RecoverPublicKey(h, t.Signature); err != nil {
+	sig, err := crypto.ParseSignature(t.Signature)
+	if err != nil {
+		return err
+	}
+	if pk, err := sig.RecoverPublicKey(h); err != nil {
 		log.Println("FAIL Recovering public key")
 		log.Println("Signature", len(t.Signature), t.Signature)
 		return err
@@ -136,7 +140,7 @@ func (t *transactionV3) Verify() error {
 				fmt.Println("Transaction", string(t.params))
 			}
 		*/
-		addr, err := crypto.PublicKeyToUserAddr(pk)
+		addr, err := crypto.PublicKeyToUserAddr(pk.SerializeUncompressed())
 		if err != nil {
 			log.Println("FAIL to recovering address from public key")
 			return err
