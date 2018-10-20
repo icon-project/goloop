@@ -1,10 +1,10 @@
 package crypto
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"errors"
 	"math/big"
-	"reflect"
 
 	"github.com/haltingstate/secp256k1-go"
 	"golang.org/x/crypto/sha3"
@@ -87,10 +87,10 @@ func (key *PublicKey) SerializeUncompressed() []byte {
 	return secp256k1.UncompressPubkey(key.bytes)
 }
 
-// IsEqual returns true if the given public key is same as this instance
+// Equal returns true if the given public key is same as this instance
 // semantically
-func (key *PublicKey) IsEqual(pubKey *PublicKey) bool {
-	return reflect.DeepEqual(key.bytes, pubKey.bytes)
+func (key *PublicKey) Equal(key2 *PublicKey) bool {
+	return bytes.Equal(key.bytes, key2.bytes)
 }
 
 // TODO add 'func ToECDSA() ecdsa.PublicKey' if needed
