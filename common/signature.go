@@ -33,16 +33,12 @@ func (sig Signature) String() string {
 	return "0x" + hex.EncodeToString(sig)
 }
 
-func (sig *Signature) RecoverPublicKeyWithHash(h []byte) ([]byte, error) {
+func (sig *Signature) RecoverPublicKeyWithHash(h []byte) (*crypto.PublicKey, error) {
 	s, err := crypto.ParseSignature(*sig)
 	if err != nil {
 		return nil, err
 	}
-	pub, err := s.RecoverPublicKey(h)
-	if err != nil {
-		return nil, err
-	}
-	return pub.SerializeUncompressed(), nil
+	return s.RecoverPublicKey(h)
 }
 
 func (sig *Signature) RecoverAddressWithHash(h []byte) (string, error) {
@@ -50,5 +46,5 @@ func (sig *Signature) RecoverAddressWithHash(h []byte) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return crypto.PublicKeyToUserAddr(p)
+	return NewAccountAddressFromPublicKey(p).String(), nil
 }

@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"log"
+
+	"github.com/icon-project/goloop/common/crypto"
 )
 
 const (
@@ -111,6 +113,17 @@ func NewAddressFromString(s string) *Address {
 	if err := a.SetString(s); err != nil {
 		log.Panicln("FAIL to Address.SetString() for", s, err)
 	}
+	return a
+}
+
+func NewAccountAddressFromPublicKey(pubKey *crypto.PublicKey) *Address {
+	a := new(Address)
+	pk := pubKey.SerializeUncompressed()
+	if pk == nil {
+		log.Panicln("FAIL invalid public key:", pubKey)
+	}
+	digest := crypto.SHA3Sum256(pk[1:])
+	a.SetTypeAndBytes(false, digest[len(digest)-20:])
 	return a
 }
 

@@ -140,7 +140,7 @@ func (t *transactionV3) Verify() error {
 				fmt.Println("Transaction", string(t.params))
 			}
 		*/
-		addr, err := crypto.PublicKeyToUserAddr(pk.SerializeUncompressed())
+		addr := common.NewAccountAddressFromPublicKey(pk).String()
 		if err != nil {
 			log.Println("FAIL to recovering address from public key")
 			return err
