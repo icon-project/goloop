@@ -76,7 +76,6 @@ func (a *Address) SetBytes(b []byte) error {
 	}
 }
 
-func (a *Address) SetBytes(ic bool, b []byte) error {
 func (a *Address) SetTypeAndBytes(ic bool, b []byte) error {
 	if b == nil {
 		return ErrorIllegalArgument
