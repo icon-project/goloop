@@ -2,6 +2,7 @@ package crypto
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"math/big"
 
@@ -9,6 +10,7 @@ import (
 )
 
 const (
+	// PrivateKeyLen is the byte length of a private key
 	PrivateKeyLen = 32
 )
 
@@ -19,10 +21,17 @@ type PrivateKey struct {
 	bytes []byte // 32-byte
 }
 
+// String returns the string representation.
+func (key *PrivateKey) String() string {
+	return "0x" + hex.EncodeToString(key.bytes)
+}
+
 // TODO add 'func ToECDSA() ecdsa.PrivateKey' if needed
 
 const (
-	PublicKeyLenCompressed   = 33
+	// PublicKeyLenCompressed is the byte length of a compressed public key
+	PublicKeyLenCompressed = 33
+	// PublicKeyLenUncompressed is the byte length of an uncompressed public key
 	PublicKeyLenUncompressed = 65
 
 	publicKeyCompressed   byte = 0x2 // y_bit + x coord
@@ -83,6 +92,11 @@ func (key *PublicKey) SerializeUncompressed() []byte {
 // semantically
 func (key *PublicKey) Equal(key2 *PublicKey) bool {
 	return bytes.Equal(key.bytes, key2.bytes)
+}
+
+// String returns the string representation.
+func (key *PublicKey) String() string {
+	return "0x" + hex.EncodeToString(key.bytes)
 }
 
 // TODO add 'func ToECDSA() ecdsa.PublicKey' if needed
