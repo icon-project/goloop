@@ -13,20 +13,19 @@ type (
 	}
 )
 
+// TODO: optimize serialize
 func (br *branch) serialize() []byte {
 	var serializedNodes []byte
 	listLen := 0
 	var serialized []byte
 	for i := 0; i < 16; i++ {
-		if br.nibbles[i] != nil {
-			switch br.nibbles[i].(type) {
-			case *leaf:
-				serialized = br.nibbles[i].serialize()
-			default:
-				serialized = encodeByte(br.nibbles[i].hash())
-			}
-		} else {
-			serialized = []byte{0x80}
+		switch br.nibbles[i].(type) {
+		case *leaf:
+			serialized = br.nibbles[i].serialize()
+		case nil:
+			serialized = encodeByte(nil)
+		default:
+			serialized = encodeByte(br.nibbles[i].hash())
 		}
 		listLen += len(serialized)
 		serializedNodes = append(serializedNodes, serialized...)
@@ -34,7 +33,7 @@ func (br *branch) serialize() []byte {
 
 	if br.nibbles[16] != nil {
 		v := br.nibbles[16].(*leaf)
-		encodedLeaf := encodeByte(v.val)
+		encodedLeaf := encodeByte(v.value)
 		listLen += len(encodedLeaf)
 		serializedNodes = append(serializedNodes, encodedLeaf...)
 	} else {

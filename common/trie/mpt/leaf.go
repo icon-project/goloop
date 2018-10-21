@@ -7,7 +7,7 @@ import (
 type (
 	leaf struct {
 		keyEnd          []byte
-		val             []byte
+		value           []byte
 		hashedValue     []byte
 		serializedValue []byte
 		dirty           bool
@@ -48,5 +48,5 @@ func (l *leaf) serialize() []byte {
 		keyArray[i+1] = l.keyEnd[i*2+keyIndex]<<4 | l.keyEnd[i*2+1+keyIndex]
 	}
 
-	return encodeList(keyArray, l.val)
+	return encodeList(keyArray, l.value)
 }

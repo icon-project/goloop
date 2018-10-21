@@ -63,9 +63,9 @@ var testPool = map[string]string{
 func TestInsert(t *testing.T) {
 	trie := mpt.NewMutable(nil)
 
-	updateString(trie, "doe", "reindeer")
-	updateString(trie, "dog", "puppy")
-	updateString(trie, "dogglesworth", "cat")
+	for k, v := range testPool {
+		updateString(trie, k, v)
+	}
 
 	hashHex := "8aad789dff2f538bca5d8ea56e8abe10f4c7ba3a5dea95fea4cd6e7c3a1168d3"
 	strRoot := fmt.Sprintf("%x", trie.RootHash())
@@ -124,9 +124,9 @@ func TestDelete(t *testing.T) {
 func TestCache(t *testing.T) {
 	mutable := mpt.NewMutable(nil)
 
-	updateString(mutable, "doe", "reindeer")
-	updateString(mutable, "dog", "puppy")
-	updateString(mutable, "dogglesworth", "cat")
+	for k, v := range testPool {
+		updateString(mutable, k, v)
+	}
 
 	hashHex := "8aad789dff2f538bca5d8ea56e8abe10f4c7ba3a5dea95fea4cd6e7c3a1168d3"
 	root := mutable.RootHash()
@@ -143,10 +143,9 @@ func TestCache(t *testing.T) {
 	cacheTrie := mpt.NewCache(nil)
 	cacheTrie.Load(db, root)
 	for k, v := range testPool {
-		fmt.Printf("k [%s], v [%s]\n", k, v)
-		value1, _ := cacheTrie.Get([]byte(k))
-		if bytes.Compare(value1, []byte(v)) != 0 {
-			t.Errorf("Wrong value. expected [%x] but [%x]", v, value1)
+		value, _ := cacheTrie.Get([]byte(k))
+		if bytes.Compare(value, []byte(v)) != 0 {
+			t.Errorf("Wrong value. expected [%x] but [%x]", v, value)
 		}
 	}
 

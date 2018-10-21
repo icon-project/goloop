@@ -57,7 +57,7 @@ func decodeBranch(buf []byte) node {
 			tagSize, contentSize, _ := getContentSize(buf[i:])
 			buf := buf[i:]
 			if valueIndex == 16 {
-				newBranch.nibbles[valueIndex] = &leaf{val: buf[tagSize : tagSize+contentSize]}
+				newBranch.nibbles[valueIndex] = &leaf{value: buf[tagSize : tagSize+contentSize]}
 			} else {
 				// hash node
 				newBranch.nibbles[valueIndex] = hash(buf[tagSize : tagSize+contentSize])
@@ -102,7 +102,7 @@ func decodeLeaf(buf []byte) node {
 	offset := tagSize + keyTagSize + keyContentSize
 	valTagSize, valContentSize, _ := getContentSize(buf[offset:])
 	valBuf := buf[offset+valTagSize : offset+valTagSize+valContentSize]
-	return &leaf{keyEnd: keyBuf, val: valBuf}
+	return &leaf{keyEnd: keyBuf, value: valBuf}
 }
 
 // TODO: have to modify. ethereum code

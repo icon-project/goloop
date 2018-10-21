@@ -58,7 +58,7 @@ func (m *mpt) get(n node, k []byte) (node, []byte, error) {
 			return nil, nil, err
 		}
 	case *leaf:
-		return n, n.val, nil
+		return n, n.value, nil
 	// if node is hash, get serialized value with hash from db then deserialize it.
 	case hash:
 		serializedValue, err := m.db.Get(n)
@@ -77,14 +77,14 @@ func (m *mpt) Get(k []byte) ([]byte, error) {
 	if v, ok := m.requestPool[string(k)]; ok {
 		return v, nil
 	}
-	var val []byte
+	var value []byte
 	var err error
-	m.root, val, err = m.get(m.root, k)
+	m.root, value, err = m.get(m.root, k)
 	if err != nil {
 		fmt.Println("Get error : ", err)
 		return nil, err
 	}
-	return val, nil
+	return value, nil
 }
 
 func (m *mpt) RootHash() []byte {
@@ -97,6 +97,7 @@ func (m *mpt) RootHash() []byte {
 	return h
 }
 
+// TODO: check set() code.
 // return true if current node or child node is changed
 func (m *mpt) set(n node, k, v []byte) (node, bool) {
 	switch n := n.(type) {
@@ -133,14 +134,14 @@ func (m *mpt) set(n node, k, v []byte) (node, bool) {
 		//case match == len(n.sharedNibbles):
 		default:
 			nextBranch := n.next.(*branch)
-			nextBranch.nibbles[16] = &leaf{keyEnd: v, val: v}
+			nextBranch.nibbles[16] = &leaf{keyEnd: v, value: v}
 		}
 	case *leaf:
 		match := compareHex(k, n.keyEnd)
 		// case 1 : match = 0 -> new branch
 		switch {
 		case match == 0:
-			if bytes.Compare(v, n.val) == 0 { // same key, same value
+			if bytes.Compare(v, n.value) == 0 { // same key, same value
 				return n, false
 			}
 			newBranch := &branch{}
@@ -151,13 +152,13 @@ func (m *mpt) set(n node, k, v []byte) (node, bool) {
 			}
 
 			if len(n.keyEnd) == 0 {
-				newBranch.nibbles[16], _ = m.set(nil, nil, n.val)
+				newBranch.nibbles[16], _ = m.set(nil, nil, n.value)
 			} else {
-				newBranch.nibbles[n.keyEnd[0]], _ = m.set(nil, n.keyEnd[1:], n.val)
+				newBranch.nibbles[n.keyEnd[0]], _ = m.set(nil, n.keyEnd[1:], n.value)
 			}
 
 			return newBranch, true
-		// case 2 : 0 < match < len(n,val) -> new extension
+		// case 2 : 0 < match < len(n,value) -> new extension
 		case match < len(n.keyEnd):
 			newExt := &extension{}
 			newExt.sharedNibbles = k[:match]
@@ -168,7 +169,7 @@ func (m *mpt) set(n node, k, v []byte) (node, bool) {
 			} else {
 				newBranch.nibbles[k[match]], _ = m.set(nil, k[match+1:], v)
 			}
-			newBranch.nibbles[n.keyEnd[match]], _ = m.set(nil, n.keyEnd[match+1:], n.val)
+			newBranch.nibbles[n.keyEnd[match]], _ = m.set(nil, n.keyEnd[match+1:], n.value)
 			return newExt, true
 		// case match == len(n.keyEnd)
 		case match < len(k):
@@ -176,12 +177,12 @@ func (m *mpt) set(n node, k, v []byte) (node, bool) {
 			newExt.sharedNibbles = k[:match]
 			newBranch := &branch{}
 			newExt.next = newBranch
-			newBranch.nibbles[16], _ = m.set(nil, nil, n.val)
+			newBranch.nibbles[16], _ = m.set(nil, nil, n.value)
 			newBranch.nibbles[k[match]], _ = m.set(nil, k[match+1:], v)
 			return newExt, true
-		// case 3 : match == len(n.val) -> update value
+		// case 3 : match == len(n.value) -> update value
 		default:
-			n.val = v
+			n.value = v
 		}
 	case hash:
 		// TODO: have to check error.
@@ -191,7 +192,7 @@ func (m *mpt) set(n node, k, v []byte) (node, bool) {
 
 	default:
 		// return new leaf
-		return &leaf{keyEnd: k[:], val: v}, true
+		return &leaf{keyEnd: k[:], value: v}, true
 	}
 	return n, true
 }
@@ -215,6 +216,7 @@ func (m *mpt) Set(k, v []byte) error {
 	return nil
 }
 
+// TODO: check delete code
 // return node, dirty, error
 func (m *mpt) delete(n node, k []byte) (node, bool, error) {
 	var nextNode node
@@ -250,7 +252,7 @@ func (m *mpt) delete(n node, k []byte) (node, bool, error) {
 				case *branch:
 					return &extension{sharedNibbles: []byte{byte(remainingNibble)}, next: nn}, true, nil
 				case *leaf:
-					return &leaf{keyEnd: append([]byte{byte(remainingNibble)}, nn.keyEnd...), val: nn.val}, true, nil
+					return &leaf{keyEnd: append([]byte{byte(remainingNibble)}, nn.keyEnd...), value: nn.value}, true, nil
 				}
 			}
 		}
@@ -267,7 +269,7 @@ func (m *mpt) delete(n node, k []byte) (node, bool, error) {
 		// if child node is leaf after deleting, this extension must merge next node and be changed to leaf.
 		// if child node is leaf, new leaf(keyEnd = extension.key + child.keyEnd, val = child.val)
 		case *leaf: // make new leaf and return it
-			return &leaf{keyEnd: append(n.sharedNibbles, nn.keyEnd...), val: nn.val}, true, nil
+			return &leaf{keyEnd: append(n.sharedNibbles, nn.keyEnd...), value: nn.value}, true, nil
 		}
 
 	case *leaf:
@@ -281,12 +283,7 @@ func (m *mpt) delete(n node, k []byte) (node, bool, error) {
 		if err != nil {
 			return n, true, err
 		}
-		deserializedNode := deserialize(serializedValue)
-		deserializedNode, _, err = m.delete(deserializedNode, k)
-		if err != nil {
-			return deserializedNode, true, err
-		}
-		return deserializedNode, true, nil
+		return m.delete(deserialize(serializedValue), k)
 	}
 
 	return n, true, nil

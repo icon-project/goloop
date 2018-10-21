@@ -35,6 +35,9 @@ func makePrefix(l, prefix int) []byte {
 
 func encodeByte(d []byte) []byte {
 	l := len(d)
+	if l == 0 {
+		return []byte{0x80}
+	}
 	if l == 1 && d[0] < 0x80 {
 		return d
 	}
