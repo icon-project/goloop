@@ -1,6 +1,7 @@
 package crypto
 
 import (
+	"encoding/hex"
 	"errors"
 
 	"github.com/haltingstate/secp256k1-go"
@@ -45,7 +46,7 @@ func ParseSignature(sig []byte) (*Signature, error) {
 		s.hasV = true
 	case SignatureLenRaw:
 		s.bytes = append(s.bytes, sig...)
-		s.bytes[64] = 0x00 // no meaning
+		s.bytes = append(s.bytes, 0x00) // no meaning
 		s.hasV = false
 	default:
 		return nil, errors.New("wrong raw signature format")
@@ -150,4 +151,15 @@ func (sig *Signature) Verify(msg []byte, pubKey *PublicKey) bool {
 	// 	}
 	// }
 	return ret != 0
+}
+
+// String returns the string representation.
+func (sig *Signature) String() string {
+	if sig == nil || len(sig.bytes) == 0 {
+		return "[empty]"
+	}
+	if sig.hasV {
+		return "0x" + hex.EncodeToString(sig.bytes)
+	}
+	return "0x" + hex.EncodeToString(sig.bytes[:SignatureLenRaw]) + "[no V]"
 }

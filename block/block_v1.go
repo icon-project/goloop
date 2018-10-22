@@ -129,7 +129,7 @@ func (blk *blockV1) Verify() error {
 
 	var txs = map[int]int{}
 	for _, t := range blk.Transactions {
-		txs[t.Version()] += 1
+		txs[t.Version()]++
 	}
 	fmt.Printf("<> BLOCK %8d %s tx=%v\n",
 		blk.Height, hex.EncodeToString(blk.BlockHash), txs)
@@ -140,16 +140,17 @@ func (blk *blockV1) Verify() error {
 		return errors.New("HASH is incorrect")
 	}
 
-	addr, err := blk.Signature.RecoverAddressWithHash(bhash)
-	if err != nil {
+	log.Println(blk.Signature)
+	if pk, err := blk.Signature.RecoverPublicKey(bhash); err == nil {
+		addr := common.NewAccountAddressFromPublicKey(pk).String()
+		if addr != blk.PeerID {
+			log.Println("PEERID    ", blk.PeerID)
+			log.Println("SIGNER    ", addr)
+			return errors.New("SIGNER is different from PEERID")
+		}
+	} else {
 		log.Println("FAIL to recover address from signature")
 		return err
-	}
-
-	if addr != blk.PeerID {
-		log.Println("PEERID    ", blk.PeerID)
-		log.Println("SIGNER    ", addr)
-		return errors.New("SIGNER is different from PEERID")
 	}
 
 	merkle := make([][]byte, len(blk.Transactions))

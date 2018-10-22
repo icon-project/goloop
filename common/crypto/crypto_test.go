@@ -2,6 +2,7 @@ package crypto
 
 import (
 	"encoding/hex"
+	"strings"
 	"testing"
 )
 
@@ -53,7 +54,27 @@ func TestRecoverPublicKey(t *testing.T) {
 		return
 	}
 
-	if !pub.IsEqual(pub1) {
+	if !pub.Equal(pub1) {
 		t.Errorf("recoverd public key is not same")
+	}
+}
+
+func TestPrintSignature(t *testing.T) {
+	sig, _ := ParseSignature(testSignature)
+	str := "0x" + hex.EncodeToString(testSignature)
+	if strings.Compare(sig.String(), str) != 0 {
+		t.Errorf("fail to print signature")
+	}
+
+	sig, _ = ParseSignature(testSignature[:64])
+	str = "0x" + hex.EncodeToString(testSignature[:64]) + "[no V]"
+	if strings.Compare(sig.String(), str) != 0 {
+		t.Errorf("fail to print signaure(no V)")
+	}
+
+	sig, _ = ParseSignature([]byte("invalid"))
+	str = "[empty]"
+	if strings.Compare(sig.String(), str) != 0 {
+		t.Errorf("fail to print signaure(no V)")
 	}
 }
