@@ -147,20 +147,12 @@ func (blk *blockV1) Verify() error {
 	binary.LittleEndian.PutUint64(b[128:], blk.TimeStamp)
 	bhash := crypto.SHA3Sum256(b)
 
-	var txs = map[int]int{}
-	for _, t := range blk.Transactions {
-		txs[t.Version()]++
-	}
-	fmt.Printf("<> BLOCK %8d %s tx=%v\n",
-		blk.Height, hex.EncodeToString(blk.BlockHash), txs)
-
 	if bytes.Compare(bhash, blk.BlockHash) != 0 {
 		log.Println("RECORDED  ", blk.BlockHash)
 		log.Println("CALCULATED", hex.EncodeToString(bhash))
 		return errors.New("HASH is incorrect")
 	}
 
-	log.Println(blk.Signature)
 	if pk, err := blk.Signature.RecoverPublicKey(bhash); err == nil {
 		addr := common.NewAccountAddressFromPublicKey(pk).String()
 		if addr != blk.PeerID {
