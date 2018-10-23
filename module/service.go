@@ -3,8 +3,8 @@ package module
 import "io"
 
 type TransitionCallback interface {
-	//	Called if error is ocurred.
-	OnError(error)
+	//	Called if error is occured.
+	OnError(tr Transition, error)
 
 	//	Called if validation is done.
 	OnValidate(Transition)
@@ -52,8 +52,6 @@ type Transition interface {
 
 	State() State
 
-	//	GetResult returns execution result.
-	//	The function returns nil if the transition execution is not completed.
 	PatchReceipts() ReceiptList
 	NormalReceipts() ReceiptList
 
@@ -75,7 +73,7 @@ type ServiceManager interface {
 	CreateTransition(parent Transition, txs TransactionList) (Transition, error)
 	GetPatches(parent Transition) TransactionList
 	//	PatchTransition creates a Transition by adding patch on a transition.
-	PatchTransition(transtion Transition, patches TransactionList) Transition
+	PatchTransition(transition Transition, patches TransactionList) Transition
 
 	Commit(Transition)
 	Finalize(Transition)
