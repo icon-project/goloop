@@ -60,10 +60,6 @@ type Transition interface {
 	//	LogBloom returns log bloom filter for this transition.
 	//	The function returns nil if the transition execution is not completed.
 	LogBloom() []byte
-
-	//	ID returns ID of this transition.
-	//	This function returns nil if ID is not set yet.
-	ID() []byte
 }
 
 type State interface {
