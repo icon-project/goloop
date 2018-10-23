@@ -43,14 +43,11 @@ func (m *mpt) get(n node, k []byte) (node, []byte, error) {
 	var err error
 	switch n := n.(type) {
 	case *branch:
-		nibbleIndex := 16
-		var nextKey []byte
-
 		if len(k) != 0 {
-			nibbleIndex = int(k[0])
-			nextKey = k[1:]
+			n.nibbles[k[0]], result, err = m.get(n.nibbles[k[0]], k[1:])
+		} else {
+			result = n.value
 		}
-		n.nibbles[nibbleIndex], result, err = m.get(n.nibbles[nibbleIndex], nextKey)
 	case *extension:
 		match := compareHex(n.sharedNibbles, k)
 		n.next, result, err = m.get(n.next, k[match:])
@@ -65,9 +62,7 @@ func (m *mpt) get(n node, k []byte) (node, []byte, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		deserializedNode := deserialize(serializedValue)
-		_, result, err = m.get(deserializedNode, k)
-		return deserializedNode, result, err
+		return m.get(deserialize(serializedValue), k)
 	}
 	return n, result, err
 }
@@ -110,8 +105,12 @@ func (m *mpt) set(n node, k, v []byte) (node, bool) {
 		case match == 0:
 			newBranch := &branch{}
 			newBranch.nibbles[k[0]], _ = m.set(nil, k[1:], v)
-			newBranch.nibbles[n.sharedNibbles[0]] = n
-			n.sharedNibbles = n.sharedNibbles[1:]
+			if len(n.sharedNibbles) == 1 {
+				newBranch.nibbles[n.sharedNibbles[0]] = n.next
+			} else {
+				newBranch.nibbles[n.sharedNibbles[0]] = n
+				n.sharedNibbles = n.sharedNibbles[1:]
+			}
 			return newBranch, true
 
 		// case 2 : 0 < match < len(sharedNibbles) -> new extension
@@ -126,7 +125,11 @@ func (m *mpt) set(n node, k, v []byte) (node, bool) {
 				newBranch.nibbles[n.sharedNibbles[match]] = n
 				n.sharedNibbles = n.sharedNibbles[match+1:]
 			}
-			newBranch.nibbles[k[match]], _ = m.set(nil, k[match+1:], v)
+			if match == len(k) {
+				newBranch.value = v
+			} else {
+				newBranch.nibbles[k[match]], _ = m.set(nil, k[match+1:], v)
+			}
 			return newExt, true
 		// case 3 : match == len(sharedNibbles) -> go to next
 		case match < len(k):
@@ -134,7 +137,7 @@ func (m *mpt) set(n node, k, v []byte) (node, bool) {
 		//case match == len(n.sharedNibbles):
 		default:
 			nextBranch := n.next.(*branch)
-			nextBranch.nibbles[16] = &leaf{keyEnd: v, value: v}
+			nextBranch.value = v
 		}
 	case *leaf:
 		match := compareHex(k, n.keyEnd)
@@ -146,13 +149,13 @@ func (m *mpt) set(n node, k, v []byte) (node, bool) {
 			}
 			newBranch := &branch{}
 			if len(k) == 0 {
-				newBranch.nibbles[16], _ = m.set(nil, nil, v)
+				newBranch.value = v
 			} else {
 				newBranch.nibbles[k[0]], _ = m.set(nil, k[1:], v)
 			}
 
 			if len(n.keyEnd) == 0 {
-				newBranch.nibbles[16], _ = m.set(nil, nil, n.value)
+				newBranch.value = n.value
 			} else {
 				newBranch.nibbles[n.keyEnd[0]], _ = m.set(nil, n.keyEnd[1:], n.value)
 			}
@@ -165,7 +168,7 @@ func (m *mpt) set(n node, k, v []byte) (node, bool) {
 			newBranch := &branch{}
 			newExt.next = newBranch
 			if match == len(k) {
-				newBranch.nibbles[16], _ = m.set(nil, nil, v)
+				newBranch.value = v
 			} else {
 				newBranch.nibbles[k[match]], _ = m.set(nil, k[match+1:], v)
 			}
@@ -177,7 +180,7 @@ func (m *mpt) set(n node, k, v []byte) (node, bool) {
 			newExt.sharedNibbles = k[:match]
 			newBranch := &branch{}
 			newExt.next = newBranch
-			newBranch.nibbles[16], _ = m.set(nil, nil, n.value)
+			newBranch.value = n.value
 			newBranch.nibbles[k[match]], _ = m.set(nil, k[match+1:], v)
 			return newExt, true
 		// case 3 : match == len(n.value) -> update value
@@ -224,14 +227,15 @@ func (m *mpt) delete(n node, k []byte) (node, bool, error) {
 	case *branch:
 		nextNode, n.dirty, _ = m.delete(n.nibbles[k[0]], k[1:])
 		n.nibbles[k[0]] = nextNode
+
 		// check remaining nibbles on n(current node)
 		// 1. if n has only 1 remaining node after deleting, n will be removed and the remaining node will be changed to extension.
 		// 2. if n has only value with no remaining node after deleting, node must be changed to leaf
 		// Branch has least 2 nibbles before deleting so branch cannot be empty after deleting
-		remainingNibble := -1
+		remainingNibble := 16
 		for i, nn := range n.nibbles {
 			if nn != nil {
-				if remainingNibble != -1 { // already met another nibble
+				if remainingNibble != 16 { // already met another nibble
 					remainingNibble = -1
 					break
 				}
@@ -242,7 +246,7 @@ func (m *mpt) delete(n node, k []byte) (node, bool, error) {
 		//If remainingNibble is -1, branch has 2 more nibbles.
 		if remainingNibble != -1 {
 			if remainingNibble == 16 {
-				return n.nibbles[16], true, nil
+				return &leaf{value: n.value}, true, nil
 			} else {
 				// check nextNode.
 				// if nextNode is extension or branch, n must be extension

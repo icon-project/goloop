@@ -1,39 +1,29 @@
 package mpt
 
 import (
+	"fmt"
 	"golang.org/x/crypto/sha3"
 )
 
 type (
 	leaf struct {
-		keyEnd          []byte
-		value           []byte
+		keyEnd []byte
+		value  []byte
+
 		hashedValue     []byte
 		serializedValue []byte
-		dirty           bool
+		dirty           bool // if dirty is true, must retry getting hashedValue & serializedValue
 	}
 )
 
-func (l *leaf) hash() []byte {
-	if l.dirty == false && l.hashedValue != nil {
-		return l.hashedValue
-	}
-	serialized := l.serialize()
-	//	fmt.Println("leaf hash : ", serialized)
-	// TODO: have to change below sha function.
-	sha := sha3.NewLegacyKeccak256()
-	sha.Write(serialized)
-	digest := sha.Sum(serialized[:0])
-
-	l.hashedValue = digest
-	l.serializedValue = serialized
-	l.dirty = false
-
-	//	fmt.Printf("leaf hash : <%x>", digest)
-	return digest
-}
-
 func (l *leaf) serialize() []byte {
+	if l.dirty == true {
+		l.serializedValue = nil
+		l.hashedValue = nil
+	} else if l.serializedValue != nil {
+		return l.serializedValue
+	}
+
 	keyLen := len(l.keyEnd)
 	keyArray := make([]byte, keyLen/2+1)
 	keyIndex := 0
@@ -48,5 +38,33 @@ func (l *leaf) serialize() []byte {
 		keyArray[i+1] = l.keyEnd[i*2+keyIndex]<<4 | l.keyEnd[i*2+1+keyIndex]
 	}
 
-	return encodeList(keyArray, l.value)
+	result := encodeList(encodeByte(keyArray), encodeByte(l.value))
+
+	if printSerializedValue {
+		fmt.Println("serialize leaf : ", result)
+	}
+	return result
+}
+
+func (l *leaf) hash() []byte {
+	if l.dirty == true {
+		l.serializedValue = nil
+		l.hashedValue = nil
+	} else if l.hashedValue != nil {
+		return l.hashedValue
+	}
+
+	serialized := l.serialize()
+	// TODO: have to change below sha function.
+	sha := sha3.NewLegacyKeccak256()
+	sha.Write(serialized)
+	digest := sha.Sum(serialized[:0])
+
+	l.hashedValue = digest
+	l.serializedValue = serialized
+
+	if printHash {
+		fmt.Printf("hash leaf : <%x>\n", digest)
+	}
+	return digest
 }

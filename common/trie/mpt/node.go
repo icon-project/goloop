@@ -18,8 +18,12 @@ type (
 	hash []byte
 )
 
+const printHash = false
+const printSerializedValue = false
+
 func (h hash) serialize() []byte {
-	return h
+	// Not valid
+	return nil
 }
 
 func (h hash) hash() []byte {
@@ -57,7 +61,7 @@ func decodeBranch(buf []byte) node {
 			tagSize, contentSize, _ := getContentSize(buf[i:])
 			buf := buf[i:]
 			if valueIndex == 16 {
-				newBranch.nibbles[valueIndex] = &leaf{value: buf[tagSize : tagSize+contentSize]}
+				newBranch.value = buf[tagSize : tagSize+contentSize]
 			} else {
 				// hash node
 				newBranch.nibbles[valueIndex] = hash(buf[tagSize : tagSize+contentSize])

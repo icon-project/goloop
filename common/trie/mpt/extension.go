@@ -1,20 +1,29 @@
 package mpt
 
 import (
+	"fmt"
 	"golang.org/x/crypto/sha3"
 )
 
 type (
 	extension struct {
-		sharedNibbles   []byte
-		next            node
+		sharedNibbles []byte
+		next          node
+
 		hashedValue     []byte
 		serializedValue []byte
-		dirty           bool
+		dirty           bool // if dirty is true, must retry getting hashedValue & serializedValue
 	}
 )
 
 func (ex *extension) serialize() []byte {
+	if ex.dirty == true {
+		ex.serializedValue = nil
+		ex.hashedValue = nil
+	} else if ex.serializedValue != nil { // not dirty & has serialized value
+		return ex.serializedValue
+	}
+
 	keyLen := len(ex.sharedNibbles)
 	keyArray := make([]byte, keyLen/2+1)
 	keyIndex := 0
@@ -28,17 +37,30 @@ func (ex *extension) serialize() []byte {
 	for i := 0; i < keyLen/2; i++ {
 		keyArray[i+1] = ex.sharedNibbles[i*2+keyIndex]<<4 | ex.sharedNibbles[i*2+1+keyIndex]
 	}
-	serialized := encodeList(keyArray, ex.next.hash())
+
+	var serialized []byte
+	if serialized = ex.next.serialize(); 32 <= len(serialized) {
+		serialized = encodeByte(ex.next.hash())
+	}
+	serialized = encodeList(encodeByte(keyArray), serialized)
 	ex.serializedValue = make([]byte, len(serialized))
 	copy(ex.serializedValue, serialized)
-	//	fmt.Println("extension : serialized : ", serialized)
+	ex.hashedValue = nil
+	ex.dirty = false
+	if printSerializedValue {
+		fmt.Println("serialize extension : ", serialized)
+	}
 	return serialized
 }
 
 func (ex *extension) hash() []byte {
-	if ex.dirty == false && ex.hashedValue != nil {
+	if ex.dirty == true {
+		ex.serializedValue = nil
+		ex.hashedValue = nil
+	} else if ex.hashedValue != nil { // not diry & has hashed value
 		return ex.hashedValue
 	}
+
 	serialized := ex.serialize()
 	// TODO: have to change below sha function.
 	sha := sha3.NewLegacyKeccak256()
@@ -47,7 +69,9 @@ func (ex *extension) hash() []byte {
 
 	ex.hashedValue = make([]byte, len(digest))
 	copy(ex.hashedValue, digest)
-	ex.dirty = false
 
+	if printHash {
+		fmt.Printf("hash extension <%x>\n", digest)
+	}
 	return digest
 }

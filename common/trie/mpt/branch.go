@@ -1,20 +1,28 @@
 package mpt
 
 import (
+	"fmt"
 	"golang.org/x/crypto/sha3"
 )
 
 type (
 	branch struct {
-		nibbles         [17]node
+		nibbles         [16]node
+		value           []byte
 		hashedValue     []byte
 		serializedValue []byte
-		dirty           bool
+		dirty           bool // if dirty is true, must retry getting hashedValue & serializedValue
 	}
 )
 
-// TODO: optimize serialize
 func (br *branch) serialize() []byte {
+	if br.dirty == true {
+		br.serializedValue = nil
+		br.hashedValue = nil
+	} else if br.serializedValue != nil { // not dirty & has serialized value
+		return br.serializedValue
+	}
+
 	var serializedNodes []byte
 	listLen := 0
 	var serialized []byte
@@ -25,33 +33,34 @@ func (br *branch) serialize() []byte {
 		case nil:
 			serialized = encodeByte(nil)
 		default:
-			serialized = encodeByte(br.nibbles[i].hash())
+			serialized = br.nibbles[i].serialize()
+			if 32 <= len(serialized) {
+				serialized = encodeByte(br.nibbles[i].hash())
+			}
 		}
 		listLen += len(serialized)
 		serializedNodes = append(serializedNodes, serialized...)
 	}
 
-	if br.nibbles[16] != nil {
-		v := br.nibbles[16].(*leaf)
-		encodedLeaf := encodeByte(v.value)
-		listLen += len(encodedLeaf)
-		serializedNodes = append(serializedNodes, encodedLeaf...)
-	} else {
-		serializedNodes = append(serializedNodes, encodeByte(nil)...)
-		listLen++
-	}
-	serialized = append(makePrefix(listLen, 0xc0), serializedNodes...)
-	br.dirty = false
+	serialized = encodeList(serializedNodes, encodeByte(br.value))
 	br.serializedValue = make([]byte, len(serialized))
 	copy(br.serializedValue, serialized)
-	//	fmt.Println("branch : serialized : ", serialized)
+	br.hashedValue = nil
+	br.dirty = false
+	if printSerializedValue {
+		fmt.Println("serialize branch : ", serialized)
+	}
 	return serialized
 }
 
 func (br *branch) hash() []byte {
-	if br.dirty == false && br.hashedValue != nil {
+	if br.dirty == true {
+		br.serializedValue = nil
+		br.hashedValue = nil
+	} else if br.hashedValue != nil { // not diry & has hashed value
 		return br.hashedValue
 	}
+
 	serialized := br.serialize()
 	// TODO: have to change below sha function.
 	sha := sha3.NewLegacyKeccak256()
@@ -61,7 +70,9 @@ func (br *branch) hash() []byte {
 	br.hashedValue = make([]byte, len(digest))
 	copy(br.hashedValue, digest)
 
-	br.dirty = false
+	if printHash {
+		fmt.Printf("hash branch : <%x>\n", digest)
+	}
 
 	return digest
 }
