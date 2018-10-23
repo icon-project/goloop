@@ -3,7 +3,6 @@ package common
 import (
 	"encoding/base64"
 	"encoding/json"
-	"log"
 
 	"github.com/icon-project/goloop/common/crypto"
 )
@@ -30,7 +29,6 @@ func (sig *Signature) UnmarshalJSON(s []byte) error {
 	if b, err := base64.StdEncoding.DecodeString(str); err == nil {
 		if sig0, err := crypto.ParseSignature(b); err == nil {
 			*sig = Signature{*sig0}
-			log.Println("unmarshal", sig)
 			return nil
 		} else {
 			return err

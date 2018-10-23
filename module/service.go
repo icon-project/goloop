@@ -3,8 +3,8 @@ package module
 import "io"
 
 type TransitionCallback interface {
-	//	Called if error is ocurred.
-	OnError(error)
+	//	Called if error is occured.
+	OnError(tr Transition, error)
 
 	//	Called if validation is done.
 	OnValidate(Transition)
@@ -52,18 +52,12 @@ type Transition interface {
 
 	State() State
 
-	//	GetResult returns execution result.
-	//	The function returns nil if the transition execution is not completed.
 	PatchReceipts() ReceiptList
 	NormalReceipts() ReceiptList
 
 	//	LogBloom returns log bloom filter for this transition.
 	//	The function returns nil if the transition execution is not completed.
 	LogBloom() []byte
-
-	//	ID returns ID of this transition.
-	//	This function returns nil if ID is not set yet.
-	ID() []byte
 }
 
 type State interface {
@@ -76,10 +70,10 @@ type ServiceManager interface {
 	//	Returned Transition always passes validation.
 	ProposeTransition(parent Transition) (Transition, error)
 	//	CreateTransition creates a Transition following parent Transition.
-	CreateTransition(parent Transition, txs TransactionList, patches TransactionList) (Transition, error)
+	CreateTransition(parent Transition, txs TransactionList) (Transition, error)
 	GetPatches(parent Transition) TransactionList
 	//	PatchTransition creates a Transition by adding patch on a transition.
-	PatchTransition(transtion Transition, patches TransactionList) Transition
+	PatchTransition(transition Transition, patches TransactionList) Transition
 
 	Commit(Transition)
 	Finalize(Transition)
