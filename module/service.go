@@ -1,5 +1,7 @@
 package module
 
+import "io"
+
 type TransitionCallback interface {
 	//	Called if error is ocurred.
 	OnError(error)
@@ -70,15 +72,17 @@ type State interface {
 }
 
 type ServiceManager interface {
-	GetTransition(id []byte) Transition
 	//	ProposeTransition proposes a Transition following the parent Transition.
 	//	Returned Transition always passes validation.
 	ProposeTransition(parent Transition) (Transition, error)
 	//	CreateTransition creates a Transition following parent Transition.
-	CreateTransition(parent Transition, txs []Transaction, patches []Transaction) (Transition, error)
-	GetPatches(parent Transition) []Transaction
+	CreateTransition(parent Transition, txs TransactionList, patches TransactionList) (Transition, error)
+	GetPatches(parent Transition) TransactionList
 	//	PatchTransition creates a Transition by adding patch on a transition.
-	PatchTransition(transtion Transition, patches []Transaction) Transition
-	Commit(Transition, id []byte) error
+	PatchTransition(transtion Transition, patches TransactionList) Transition
+
+	Commit(Transition)
 	Finalize(Transition)
+	FinalizeTransactions(txs TransactionList)
+	TransactionFromReader(r io.Reader) Transaction
 }

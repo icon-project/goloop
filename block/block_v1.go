@@ -52,6 +52,10 @@ type BlockV1 struct {
 	*blockV1
 }
 
+func (b *BlockV1) Version() int {
+	return 1
+}
+
 func (b *BlockV1) ID() []byte {
 	return b.blockV1.BlockHash.ToBytes()
 }
@@ -72,7 +76,7 @@ func (b *BlockV1) Votes() []module.Vote {
 	return nil
 }
 
-func (b *BlockV1) NextValidators() []module.Address {
+func (b *BlockV1) NextValidators() []module.Validator {
 	return nil
 }
 
@@ -82,6 +86,22 @@ func (b *BlockV1) Verify() error {
 
 func (b *BlockV1) String() string {
 	return fmt.Sprint(b.blockV1)
+}
+
+func (b *BlockV1) NormalTransactions() module.TransactionList {
+	return nil
+}
+
+func (b *BlockV1) PatchTransactions() module.TransactionList {
+	return nil
+}
+
+func (b *BlockV1) Timestamp() int64 {
+	return 0
+}
+
+func (b *BlockV1) Proposer() module.Validator {
+	return nil
 }
 
 func NewBlockV1(b []byte) (module.Block, error) {
