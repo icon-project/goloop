@@ -51,10 +51,10 @@ type Transition interface {
 	// It may return nil before cb.OnExecute is called back by Execute.
 	State() State
 
-	// Validators returns the addresses of validators as a result of transaction
-	// processing.
+	// NextValidators returns the addresses of validators as a result of
+	// transaction processing.
 	// It may return nil before cb.OnExecute is called back by Execute.
-	Validators() []Address
+	NextValidators() []Validator
 
 	// PatchReceipts returns patch receipts.
 	// It may return nil before cb.OnExecute is called back by Execute.
@@ -97,6 +97,8 @@ type ServiceManager interface {
 	// ProposeTransition proposes a Transition following the parent Transition.
 	// Returned Transition always passes validation.
 	ProposeTransition(parent Transition) (Transition, error)
+	// CreateInitialTransition creates an initial Transition
+	CreateInitialTransition(state []byte, validators []Validator) (Transition, error)
 	// CreateTransition creates a Transition following parent Transition.
 	CreateTransition(parent Transition, txs TransactionList) (Transition, error)
 	// GetPatches returns all patch transactions based on the parent transition.
