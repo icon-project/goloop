@@ -2,14 +2,16 @@ package module
 
 import "io"
 
+// TransitionCallback provides transition change notifications. All functions
+// are called back with the same Transition instance for the convenience.
 type TransitionCallback interface {
-	//	Called if error is occured.
-	OnError(tr Transition, error)
+	// Called if error is occured.
+	OnError(Transition, error)
 
-	//	Called if validation is done.
+	// Called if validation is done.
 	OnValidate(Transition)
 
-	//	Called if execution is done.
+	// Called if execution is done.
 	OnExecute(Transition)
 }
 
@@ -37,46 +39,79 @@ type ReceiptList interface {
 
 type Transition interface {
 	Parent() Transition
-	//	NextValidators returns the addresses of next validators.
-	//	The function returns nil if the transition is not created by
-	//	ServiceManager.ProposeTransition and is not validated yet.
-	NextValidators() []Address
 	PatchTransactions() TransactionList
 	NormalTransactions() TransactionList
 
-	//	Execute executes this transition.
-	//	The result is asynchronously notified by cb. canceler cancels the
-	//	operation. canceler returns true and cb is not called if the
-	//	cancellation was successful.
+	// Execute executes this transition.
+	// The result is asynchronously notified by cb. canceler can be used
+	// to cancel it after calling Execute. After canceler returns true,
+	// all succeeding cb functions may not be called back.
 	Execute(cb TransitionCallback) (canceler func() bool, err error)
 
+	// State returns the state instance.
+	// It may return nil before cb.OnExecute is called back by Execute.
 	State() State
 
+	// Validators returns the addresses of validators as a result of transaction
+	// processing.
+	// It may return nil before cb.OnExecute is called back by Execute.
+	Validators() []Address
+
+	// PatchReceipts returns patch receipts.
+	// It may return nil before cb.OnExecute is called back by Execute.
 	PatchReceipts() ReceiptList
+	// NormalReceipts returns receipts.
+	// It may return nil before cb.OnExecute is called back by Execute.
 	NormalReceipts() ReceiptList
 
-	//	LogBloom returns log bloom filter for this transition.
-	//	The function returns nil if the transition execution is not completed.
+	// LogBloom returns log bloom filter for this transition.
+	// It may return nil before cb.OnExecute is called back by Execute.
 	LogBloom() []byte
 }
 
 type State interface {
-	Verify([]byte) bool
 	Bytes() ([]byte, error)
 }
 
+const (
+	BitMaskNormalTransaction = 0x1
+	BitMaskPatchTransaction  = 0x2
+	BitMaskResult            = 0x4
+)
+
+// ServiceManager provides Service APIs.
+// For a block proposal, it is usually called as follows:
+// 		1. GetPatches
+//		2. if any changes of patches exist from GetPatches
+//			2.1 PatchTransaction
+//			2.2 Transition.Execute
+// 		3. ProposeTransition
+//		4. Transition.Execute
+// For a block validation,
+//		1. if any changes of patches are detected from a new block
+//			1.1 PatchTransition
+//			1.2 Transition.Execute
+//		2. create Transaction instances by TransactionFromReader
+//		3. CreateTransition with TransactionList
+//		4. Transition.Execute
 type ServiceManager interface {
-	//	ProposeTransition proposes a Transition following the parent Transition.
-	//	Returned Transition always passes validation.
+	// ProposeTransition proposes a Transition following the parent Transition.
+	// Returned Transition always passes validation.
 	ProposeTransition(parent Transition) (Transition, error)
-	//	CreateTransition creates a Transition following parent Transition.
+	// CreateTransition creates a Transition following parent Transition.
 	CreateTransition(parent Transition, txs TransactionList) (Transition, error)
+	// GetPatches returns all patch transactions based on the parent transition.
 	GetPatches(parent Transition) TransactionList
-	//	PatchTransition creates a Transition by adding patch on a transition.
+	// PatchTransition creates a Transition by overwriting patches on the transition.
 	PatchTransition(transition Transition, patches TransactionList) Transition
 
-	Commit(Transition)
-	Finalize(Transition)
-	FinalizeTransactions(txs TransactionList)
+	// Finalize finalizes data related to the transition. It usually stores
+	// data to a persistent storage. dataBitMask indicates which data are
+	// finalized.
+	// It should be called for every transition.
+	Finalize(transition Transition, dataBitMask int)
+
+	// TransactionFromReader returns a Transaction instance from bytes
+	// read by Reader.
 	TransactionFromReader(r io.Reader) Transaction
 }
