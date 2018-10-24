@@ -38,7 +38,6 @@ type ReceiptList interface {
 }
 
 type Transition interface {
-	Parent() Transition
 	PatchTransactions() TransactionList
 	NormalTransactions() TransactionList
 
