@@ -24,7 +24,6 @@ func (br *branch) serialize() []byte {
 	}
 
 	var serializedNodes []byte
-	listLen := 0
 	var serialized []byte
 	for i := 0; i < 16; i++ {
 		switch br.nibbles[i].(type) {
@@ -33,12 +32,10 @@ func (br *branch) serialize() []byte {
 		case nil:
 			serialized = encodeByte(nil)
 		default:
-			serialized = br.nibbles[i].serialize()
-			if 32 <= len(serialized) {
+			if serialized = br.nibbles[i].serialize(); hashableSize <= len(serialized) {
 				serialized = encodeByte(br.nibbles[i].hash())
 			}
 		}
-		listLen += len(serialized)
 		serializedNodes = append(serializedNodes, serialized...)
 	}
 
@@ -47,6 +44,7 @@ func (br *branch) serialize() []byte {
 	copy(br.serializedValue, serialized)
 	br.hashedValue = nil
 	br.dirty = false
+
 	if printSerializedValue {
 		fmt.Println("serialize branch : ", serialized)
 	}
@@ -69,6 +67,7 @@ func (br *branch) hash() []byte {
 
 	br.hashedValue = make([]byte, len(digest))
 	copy(br.hashedValue, digest)
+	br.dirty = false
 
 	if printHash {
 		fmt.Printf("hash branch : <%x>\n", digest)

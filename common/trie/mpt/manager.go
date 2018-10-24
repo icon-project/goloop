@@ -1,17 +1,32 @@
 package mpt
 
 import (
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 )
 
 // TODO: DB should be passed as parameter.
-func NewImmutable(rootHash []byte) trie.Immutable {
-	return newMpt(rootHash)
+//func NewImmutable(rootHash []byte) trie.Immutable {
+//	return newMpt(rootHash)
+//}
+
+//func NewCache(rootHash []byte) trie.Cache {
+//	return newMpt(rootHash)
+//}
+
+type manager struct {
+	db db.DB
 }
 
-func NewCache(rootHash []byte) trie.Cache {
-	return newMpt(rootHash)
+func NewManager(db db.DB) trie.Manager {
+	return &manager{db: db}
 }
-func NewMutable(rootHash []byte) trie.Mutable {
-	return newMpt(rootHash)
+
+func (m *manager) NewImmutable(rootHash []byte) trie.Immutable {
+	mpt := newMpt(m.db, rootHash)
+	return mpt
+}
+
+func (m *manager) NewMutable(rootHash []byte) trie.Mutable {
+	return newMpt(m.db, rootHash)
 }

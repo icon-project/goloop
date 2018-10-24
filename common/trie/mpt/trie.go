@@ -2,7 +2,6 @@ package mpt
 
 import (
 	"bytes"
-	"fmt"
 	"sync"
 
 	"github.com/icon-project/goloop/common/db"
@@ -25,8 +24,8 @@ type (
 
 /*
  */
-func newMpt(initialHash hash) *mpt {
-	return &mpt{committedHash: initialHash, requestPool: make(map[string][]byte), appliedPool: make(map[string][]byte)}
+func newMpt(db db.DB, initialHash hash) *mpt {
+	return &mpt{root: initialHash, committedHash: initialHash, requestPool: make(map[string][]byte), appliedPool: make(map[string][]byte), db: db}
 }
 
 func bytesToNibbles(k []byte) []byte {
@@ -76,7 +75,6 @@ func (m *mpt) Get(k []byte) ([]byte, error) {
 	var err error
 	m.root, value, err = m.get(m.root, k)
 	if err != nil {
-		fmt.Println("Get error : ", err)
 		return nil, err
 	}
 	return value, nil
@@ -189,9 +187,8 @@ func (m *mpt) set(n node, k, v []byte) (node, bool) {
 		}
 	case hash:
 		// TODO: have to check error.
-		serializedValue, _ := m.db.Get(k)
-		decodeingNode := deserialize(serializedValue)
-		return m.set(decodeingNode, k, v)
+		serializedValue, _ := m.db.Get(n)
+		return m.set(deserialize(serializedValue), k, v)
 
 	default:
 		// return new leaf
@@ -303,7 +300,7 @@ func (m *mpt) Delete(k []byte) error {
 }
 
 func (m *mpt) GetSnapshot() trie.Snapshot {
-	mpt := newMpt(m.committedHash)
+	mpt := newMpt(m.db, m.committedHash)
 	m.mutex.Lock()
 	for k, v := range m.requestPool {
 		mpt.requestPool[k] = v
@@ -336,7 +333,7 @@ func traversalCommit(db db.DB, n node) error {
 
 /*
  */
-func (m *mpt) Flush(db db.DB) error {
+func (m *mpt) Flush() error {
 	for k, v := range m.requestPool {
 		m.root, _ = m.set(m.root, []byte(k), v)
 		delete(m.requestPool, string(k))
@@ -344,16 +341,15 @@ func (m *mpt) Flush(db db.DB) error {
 
 	switch n := m.root.(type) {
 	case *leaf:
-		if err := db.Set(n.hash(), n.serialize()); err != nil {
+		if err := m.db.Set(n.hash(), n.serialize()); err != nil {
 			return err
 		}
 	default:
-		if err := traversalCommit(db, m.root); err != nil {
+		if err := traversalCommit(m.db, m.root); err != nil {
 			return err
 		}
 	}
 	m.committedHash = m.root.hash()
-	m.db = db
 	return nil
 }
 

@@ -10,15 +10,16 @@ type (
 		Get(k []byte) ([]byte, error)
 		RootHash() []byte        // return nil if this Tree is empty
 		Proof(k []byte) [][]byte // return nill of this Tree is empty
-		// TODO: have to implement prove function with returning value from Proof()
+		// TODO: have to implement prove function with returned value from Proof()
 		// 			but the prove funcion don't have to be interface
 	}
 
 	Snapshot interface {
 		Immutable
-		Flush(db db.DB) error
+		Flush() error
 	}
 
+	// TODO : need Cache??
 	Cache interface {
 		Immutable
 		Load(db db.DB, root []byte) error

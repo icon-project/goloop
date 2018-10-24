@@ -10,10 +10,14 @@ package mpt
 	and hash node.
 	hash node is just byte array having hash of the node.
 */
+const hashableSize = 32
+
 type (
 	node interface {
 		hash() []byte
 		serialize() []byte
+		// TODO: test hashable // if seriazlied data size is bigger than 32, serialize() returns hash(serialize)
+		//serialize(hashable bool) []byte
 	}
 	hash []byte
 )
@@ -64,7 +68,11 @@ func decodeBranch(buf []byte) node {
 				newBranch.value = buf[tagSize : tagSize+contentSize]
 			} else {
 				// hash node
-				newBranch.nibbles[valueIndex] = hash(buf[tagSize : tagSize+contentSize])
+				if contentSize == 0 {
+					newBranch.nibbles[valueIndex] = nil
+				} else {
+					newBranch.nibbles[valueIndex] = hash(buf[tagSize : tagSize+contentSize])
+				}
 			}
 
 			i += tagSize + contentSize

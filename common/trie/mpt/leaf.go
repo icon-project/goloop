@@ -39,8 +39,16 @@ func (l *leaf) serialize() []byte {
 	}
 
 	result := encodeList(encodeByte(keyArray), encodeByte(l.value))
+	l.serializedValue = make([]byte, len(result))
+	copy(l.serializedValue, result)
+	// if this node is reserealized, hashed value has to be reset
+	if l.hashedValue != nil {
+		l.hashedValue = nil
+	}
+	l.dirty = false
 
 	if printSerializedValue {
+		fmt.Println("leaf val = ", string(l.value))
 		fmt.Println("serialize leaf : ", result)
 	}
 	return result
@@ -60,8 +68,9 @@ func (l *leaf) hash() []byte {
 	sha.Write(serialized)
 	digest := sha.Sum(serialized[:0])
 
-	l.hashedValue = digest
-	l.serializedValue = serialized
+	l.hashedValue = make([]byte, len(digest))
+	copy(l.hashedValue, digest)
+	l.dirty = false
 
 	if printHash {
 		fmt.Printf("hash leaf : <%x>\n", digest)

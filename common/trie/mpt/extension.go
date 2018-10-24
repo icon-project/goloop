@@ -39,7 +39,7 @@ func (ex *extension) serialize() []byte {
 	}
 
 	var serialized []byte
-	if serialized = ex.next.serialize(); 32 <= len(serialized) {
+	if serialized = ex.next.serialize(); hashableSize <= len(serialized) {
 		serialized = encodeByte(ex.next.hash())
 	}
 	serialized = encodeList(encodeByte(keyArray), serialized)
@@ -69,6 +69,7 @@ func (ex *extension) hash() []byte {
 
 	ex.hashedValue = make([]byte, len(digest))
 	copy(ex.hashedValue, digest)
+	ex.dirty = false
 
 	if printHash {
 		fmt.Printf("hash extension <%x>\n", digest)
