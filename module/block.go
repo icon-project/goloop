@@ -2,18 +2,6 @@ package module
 
 import "io"
 
-type Address interface {
-	String() string
-	Bytes() []byte
-}
-
-type Vote interface {
-	Voter() Address
-	Bytes() []byte
-}
-
-type Validator Address
-
 type Block interface {
 	Version() int
 	ID() []byte
