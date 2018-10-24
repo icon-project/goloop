@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
-	"math/big"
 
 	"github.com/haltingstate/secp256k1-go"
 )
@@ -49,7 +48,6 @@ type PublicKey struct {
 // NOTE: For the efficiency, it may use the slice directly. So don't change any
 // internal value of the public key
 func ParsePublicKey(pubKey []byte) (*PublicKey, error) {
-	new(big.Int).Bytes()
 	switch len(pubKey) {
 	case 0:
 		return nil, errors.New("public key bytes are empty")
