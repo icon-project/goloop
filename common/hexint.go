@@ -13,7 +13,7 @@ func DecodeHexNumber(s string) ([]byte, error) {
 	if ok {
 		return i.Bytes(), nil
 	} else {
-		return nil, ErrorIllegalArgument
+		return nil, ErrIllegalArgument
 	}
 }
 
@@ -45,7 +45,7 @@ func (i *HexInt) UnmarshalJSON(b []byte) error {
 	if ok {
 		return nil
 	}
-	return ErrorIllegalArgument
+	return ErrIllegalArgument
 }
 
 type HexInt16 struct {

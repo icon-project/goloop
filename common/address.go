@@ -66,7 +66,7 @@ func (a *Address) Bytes() []byte {
 
 func (a *Address) SetBytes(b []byte) error {
 	if b == nil {
-		return ErrorIllegalArgument
+		return ErrIllegalArgument
 	}
 	switch b[0] {
 	case 0:
@@ -74,13 +74,13 @@ func (a *Address) SetBytes(b []byte) error {
 	case 1:
 		return a.SetTypeAndBytes(true, b[1:])
 	default:
-		return ErrorIllegalArgument
+		return ErrIllegalArgument
 	}
 }
 
 func (a *Address) SetTypeAndBytes(ic bool, b []byte) error {
 	if b == nil {
-		return ErrorIllegalArgument
+		return ErrIllegalArgument
 	}
 	switch {
 	case len(b) < AddressBytes:
