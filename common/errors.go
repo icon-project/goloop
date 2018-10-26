@@ -7,4 +7,5 @@ var (
 	ErrorIllegalArgument = errors.New("Illegal argument")
 	ErrorInvalidState    = errors.New("Invalid state")
 	ErrorUnsupported     = errors.New("Unsupported")
+	ErrorNotFound        = errors.New("Not found")
 )
