@@ -21,6 +21,9 @@ func (l *leaf) serialize() []byte {
 		l.serializedValue = nil
 		l.hashedValue = nil
 	} else if l.serializedValue != nil {
+		if printSerializedValue {
+			fmt.Println("leaf serialize cached. serialized = ", l.serializedValue)
+		}
 		return l.serializedValue
 	}
 

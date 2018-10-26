@@ -80,12 +80,25 @@ func (m *mpt) Get(k []byte) ([]byte, error) {
 	return value, nil
 }
 
-func (m *mpt) RootHash() []byte {
+func (m *mpt) evaluateTrie() {
 	for k, v := range m.requestPool {
-		m.root, _ = m.set(m.root, []byte(k), v)
+		if v == nil {
+			m.root, _, _ = m.delete(m.root, []byte(k))
+		} else {
+			m.root, _ = m.set(m.root, []byte(k), v)
+		}
 		delete(m.requestPool, k)
 		m.appliedPool[k] = v
 	}
+}
+
+func (m *mpt) RootHash() []byte {
+	//for k, v := range m.requestPool {
+	//	m.root, _ = m.set(m.root, []byte(k), v)
+	//	delete(m.requestPool, k)
+	//	m.appliedPool[k] = v
+	//}
+	m.evaluateTrie()
 	h := m.root.hash()
 	return h
 }
@@ -272,6 +285,7 @@ func (m *mpt) delete(n node, k []byte) (node, bool, error) {
 		case *leaf: // make new leaf and return it
 			return &leaf{keyEnd: append(n.sharedNibbles, nn.keyEnd...), value: nn.value}, true, nil
 		}
+		n.next = nextNode
 
 	case *leaf:
 		return nil, true, nil
@@ -293,19 +307,20 @@ func (m *mpt) delete(n node, k []byte) (node, bool, error) {
 func (m *mpt) Delete(k []byte) error {
 	var err error
 	k = bytesToNibbles(k)
-	delete(m.requestPool, string(k))
-	delete(m.appliedPool, string(k))
-	m.root, _, err = m.delete(m.root, k)
+	m.requestPool[string(k)] = nil
+	//delete(m.requestPool, string(k))
+	//delete(m.appliedPool, string(k))
+	//m.root, _, err = m.delete(m.root, k)
 	return err
 }
 
 func (m *mpt) GetSnapshot() trie.Snapshot {
 	mpt := newMpt(m.db, m.committedHash)
 	m.mutex.Lock()
-	for k, v := range m.requestPool {
+	for k, v := range m.appliedPool {
 		mpt.requestPool[k] = v
 	}
-	for k, v := range m.appliedPool {
+	for k, v := range m.requestPool {
 		mpt.requestPool[k] = v
 	}
 	m.mutex.Unlock()
@@ -335,7 +350,11 @@ func traversalCommit(db db.DB, n node) error {
  */
 func (m *mpt) Flush() error {
 	for k, v := range m.requestPool {
-		m.root, _ = m.set(m.root, []byte(k), v)
+		if v == nil {
+			m.root, _, _ = m.delete(m.root, []byte(k))
+		} else {
+			m.root, _ = m.set(m.root, []byte(k), v)
+		}
 		delete(m.requestPool, string(k))
 	}
 

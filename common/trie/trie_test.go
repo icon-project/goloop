@@ -202,31 +202,34 @@ func TestDeleteSnapshot(t *testing.T) {
 		t.Errorf("exp %s got %s", hashHex, strRoot)
 	}
 
-	trie.Delete([]byte("dogglesworth"))
-	resultRoot := fmt.Sprintf("%x", trie.RootHash())
-	if strings.Compare(solution2, resultRoot) != 0 {
-		t.Errorf("solution %s, result %s", solution2, resultRoot)
-	}
-
-	snapshot := trie.GetSnapshot()
+	snapshot := trie.GetSnapshot() //have doe, dog, dogglesworth
 	snapshot.Flush()
 	trie2 := manager.NewMutable(nil)
+	trie2.Reset(snapshot) // have doe, dog, dogglesworth
+	strRoot = fmt.Sprintf("%x", trie2.RootHash())
+	if strings.Compare(strRoot, hashHex) != 0 {
+		t.Errorf("exp %s got %s", hashHex, strRoot)
+	}
+
+	deleteString(trie2, "dogglesworth")
+
+	strRoot = fmt.Sprintf("%x", trie2.RootHash()) // have doe, dog
+	if strings.Compare(strRoot, solution2) != 0 {
+		t.Errorf("exp %s got %s", solution2, strRoot)
+	}
+
+	// Get snapshot after delete dogglesworth
+	snapshot = trie2.GetSnapshot()
+	snapshot.Flush()
+
+	hashAfterDelete := fmt.Sprintf("%x", snapshot.RootHash())
 	trie2.Reset(snapshot)
-	updateString(trie, "dogglesworth", "cat")
-	updateString(trie2, "dogglesworth", "cat")
 	strRoot = fmt.Sprintf("%x", trie2.RootHash())
-	if strings.Compare(strRoot, hashHex) != 0 {
+	if strings.Compare(strRoot, hashAfterDelete) != 0 {
 		t.Errorf("exp %s got %s", hashHex, strRoot)
 	}
-	trie2.Delete([]byte("dogglesworth"))
-	solution3 := fmt.Sprintf("%x", trie2.RootHash())
-	if strings.Compare(solution3, resultRoot) != 0 {
-		t.Errorf("solution %s, result %s", solution3, resultRoot)
-	}
-	updateString(trie2, "dogglesworth", "cat")
-	strRoot = fmt.Sprintf("%x", trie2.RootHash())
-	if strings.Compare(strRoot, hashHex) != 0 {
-		t.Errorf("exp %s got %s", hashHex, strRoot)
+	if strings.Compare(solution2, hashAfterDelete) != 0 {
+		t.Errorf("exp %s got %s", solution2, strRoot)
 	}
 }
 
