@@ -47,9 +47,8 @@ type Transition interface {
 	// all succeeding cb functions may not be called back.
 	Execute(cb TransitionCallback) (canceler func() bool, err error)
 
-	// State returns the state instance.
-	// It may return nil before cb.OnExecute is called back by Execute.
-	State() State
+	// Result returns service manager defined result bytes.
+	Result() []byte
 
 	// NextValidators returns the addresses of validators as a result of
 	// transaction processing.
@@ -68,14 +67,11 @@ type Transition interface {
 	LogBloom() []byte
 }
 
-type State interface {
-	Bytes() ([]byte, error)
-}
-
+// Options for finalize
 const (
-	BitMaskNormalTransaction = 0x1
-	BitMaskPatchTransaction  = 0x2
-	BitMaskResult            = 0x4
+	FinalizeNormalTransaction = 1 << iota
+	FinalizePatchTransaction
+	FinalizeResult
 )
 
 // ServiceManager provides Service APIs.
@@ -98,7 +94,7 @@ type ServiceManager interface {
 	// Returned Transition always passes validation.
 	ProposeTransition(parent Transition) (Transition, error)
 	// CreateInitialTransition creates an initial Transition
-	CreateInitialTransition(state []byte, validators []Validator) (Transition, error)
+	CreateInitialTransition(result []byte, nextValidators []Validator) (Transition, error)
 	// CreateTransition creates a Transition following parent Transition.
 	CreateTransition(parent Transition, txs TransactionList) (Transition, error)
 	// GetPatches returns all patch transactions based on the parent transition.
@@ -110,7 +106,7 @@ type ServiceManager interface {
 	// data to a persistent storage. dataBitMask indicates which data are
 	// finalized.
 	// It should be called for every transition.
-	Finalize(transition Transition, dataBitMask int)
+	Finalize(transition Transition, opt int)
 
 	// TransactionFromReader returns a Transaction instance from bytes
 	// read by Reader.
