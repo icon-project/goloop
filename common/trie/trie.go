@@ -1,6 +1,8 @@
 package trie
 
-import "github.com/icon-project/goloop/common/db"
+import (
+	"github.com/icon-project/goloop/common/db"
+)
 
 type (
 	/*
@@ -36,6 +38,31 @@ type (
 	Manager interface {
 		NewImmutable(rootHash []byte) Immutable
 		NewMutable(rootHash []byte) Mutable
+	}
+
+	Object interface {
+		Bytes() []byte
+		Reset(s db.Store, k []byte) error
+		Flush() error
+		Equal(Object) bool
+	}
+
+	ImmutableForObject interface {
+		Get(k []byte) (Object, error)
+		GetBytes(k []byte) ([]byte, error)
+		Hash() []byte
+	}
+
+	SnapshotForObject interface {
+		ImmutableForObject
+		Flush() error
+	}
+
+	MutableForObject interface {
+		Set(k []byte, o Object) error
+		Delete(k []byte) error
+		GetSnapshot() SnapshotForObject
+		Reset(s ImmutableForObject)
 	}
 )
 
