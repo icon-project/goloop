@@ -45,6 +45,8 @@ type Transition interface {
 	// The result is asynchronously notified by cb. canceler can be used
 	// to cancel it after calling Execute. After canceler returns true,
 	// all succeeding cb functions may not be called back.
+	// REMARK: It is assumed to be called once. Any additional call returns
+	// error.
 	Execute(cb TransitionCallback) (canceler func() bool, err error)
 
 	// Result returns service manager defined result bytes.
