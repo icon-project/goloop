@@ -32,6 +32,8 @@ const (
 	BlockV1ByHash = "B"
 	// BlockV1ByHash maps receipt V1 from tx V3 hash.
 	ReceiptV1ByHash = "R"
+	// ChainProperty is general key value map for chain property.
+	ChainProperty = "C"
 )
 
 type Store interface {
