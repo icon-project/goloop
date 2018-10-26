@@ -16,6 +16,8 @@ type Block interface {
 	PatchTransactions() TransactionList
 	Timestamp() int64
 	Proposer() Validator
+	LogBloom() []byte
+	Result() []byte
 }
 
 type BlockManager interface {
