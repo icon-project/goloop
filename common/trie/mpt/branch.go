@@ -27,8 +27,6 @@ func (br *branch) serialize() []byte {
 	var serialized []byte
 	for i := 0; i < 16; i++ {
 		switch br.nibbles[i].(type) {
-		case *leaf:
-			serialized = br.nibbles[i].serialize()
 		case nil:
 			serialized = encodeByte(nil)
 		default:
@@ -60,10 +58,12 @@ func (br *branch) hash() []byte {
 	}
 
 	serialized := br.serialize()
+	serializedCopy := make([]byte, len(serialized))
+	copy(serializedCopy, serialized)
 	// TODO: have to change below sha function.
 	sha := sha3.NewLegacyKeccak256()
-	sha.Write(serialized)
-	digest := sha.Sum(serialized[:0])
+	sha.Write(serializedCopy)
+	digest := sha.Sum(serializedCopy[:0])
 
 	br.hashedValue = make([]byte, len(digest))
 	copy(br.hashedValue, digest)

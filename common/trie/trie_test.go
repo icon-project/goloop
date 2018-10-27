@@ -11,16 +11,28 @@ import (
 	"github.com/icon-project/goloop/common/trie/mpt"
 )
 
+var printDb = false
+
 type testDB struct {
 	pool map[string][]byte
 }
 
 func (db *testDB) Get(k []byte) ([]byte, error) {
-	return db.pool[string(k)], nil
+	v := db.pool[string(k)]
+	if printDb == true {
+		fmt.Println("Get k : ", k)
+		fmt.Println("Get v : ", v)
+	}
+	return v, nil
 }
 
 func (db *testDB) Set(k, v []byte) error {
 	db.pool[string(k)] = v
+	if printDb == true {
+		fmt.Println("Set k : ", k)
+		fmt.Println("Set v : ", v)
+		fmt.Println("SET & GET v : ", db.pool[string(k)])
+	}
 	return nil
 }
 
@@ -70,17 +82,14 @@ func TestInsert(t *testing.T) {
 	}
 
 	hashHex := "8aad789dff2f538bca5d8ea56e8abe10f4c7ba3a5dea95fea4cd6e7c3a1168d3"
-	strRoot := fmt.Sprintf("%x", trie.RootHash())
+	immutable := trie.GetSnapshot()
+	strRoot := fmt.Sprintf("%x", immutable.RootHash())
 	if strings.Compare(strRoot, hashHex) != 0 {
 		t.Errorf("exp %s got %s", hashHex, strRoot)
 	}
-
-	immutable := trie.GetSnapshot()
 	immutable.Flush()
 
-	mutable := manager.NewMutable(nil)
-	mutable.Reset(immutable)
-	doeV, _ := mutable.Get([]byte("doe"))
+	doeV, _ := immutable.Get([]byte("doe"))
 	if strings.Compare(testPool["doe"], string(doeV)) != 0 {
 		t.Errorf("%s vs %s", testPool["doe"], string(doeV))
 	}
@@ -88,8 +97,9 @@ func TestInsert(t *testing.T) {
 	trie = manager.NewMutable(nil)
 	updateString(trie, "A", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
 
+	immutable = trie.GetSnapshot()
 	hashHex = "d23786fb4a010da3ce639d66d5e904a11dbc02746d1ce25029e53290cabf28ab"
-	strRoot = fmt.Sprintf("%x", trie.RootHash())
+	strRoot = fmt.Sprintf("%x", immutable.RootHash())
 	if strings.Compare(strRoot, hashHex) != 0 {
 		t.Errorf("exp %s got %s", hashHex, strRoot)
 	}
@@ -101,24 +111,29 @@ func TestDelete1(t *testing.T) {
 	trie := manager.NewMutable(nil)
 
 	updateString(trie, "doe", "reindeer")
-	solution1 := fmt.Sprintf("%x", trie.RootHash())
+	immutable := trie.GetSnapshot() // SNAPSHOT 1 - doe
+	solution1 := fmt.Sprintf("%x", immutable.RootHash())
 	updateString(trie, "dog", "puppy")
-	solution2 := fmt.Sprintf("%x", trie.RootHash())
+	immutable = trie.GetSnapshot() // SNAPSHOT 2 - doe, dog
+	solution2 := fmt.Sprintf("%x", immutable.RootHash())
 	updateString(trie, "dogglesworth", "cat")
 
 	hashHex := "8aad789dff2f538bca5d8ea56e8abe10f4c7ba3a5dea95fea4cd6e7c3a1168d3"
-	strRoot := fmt.Sprintf("%x", trie.RootHash())
+	immutable = trie.GetSnapshot() // SNAPSHOT 3 - doe, dog, dogglesworth
+	strRoot := fmt.Sprintf("%x", immutable.RootHash())
 	if strings.Compare(strRoot, hashHex) != 0 {
 		t.Errorf("exp %s got %s", hashHex, strRoot)
 	}
 
 	trie.Delete([]byte("dogglesworth"))
-	resultRoot := fmt.Sprintf("%x", trie.RootHash())
+	immutable = trie.GetSnapshot() // SNAPSHOT 4 - doe, dog
+	resultRoot := fmt.Sprintf("%x", immutable.RootHash())
 	if strings.Compare(solution2, resultRoot) != 0 {
 		t.Errorf("solution %s, result %s", solution2, resultRoot)
 	}
 	trie.Delete([]byte("dog"))
-	resultRoot = fmt.Sprintf("%x", trie.RootHash())
+	immutable = trie.GetSnapshot() // SNAPSHOT 4 - doe
+	resultRoot = fmt.Sprintf("%x", immutable.RootHash())
 	if strings.Compare(solution1, resultRoot) != 0 {
 		t.Errorf("solution %s, result %s", solution1, resultRoot)
 	}
@@ -146,7 +161,8 @@ func TestDelete2(t *testing.T) {
 		}
 	}
 
-	strRoot := fmt.Sprintf("%x", trie.RootHash())
+	snapshot := trie.GetSnapshot()
+	strRoot := fmt.Sprintf("%x", snapshot.RootHash())
 	hashHex := "5991bb8c6514148a29db676a14ac506cd2cd5775ace63c30a4fe457715e9ac84"
 	if strings.Compare(strRoot, hashHex) != 0 {
 		t.Errorf("exp %s got %s", hashHex, strRoot)
@@ -163,15 +179,14 @@ func TestCache(t *testing.T) {
 	}
 
 	hashHex := "8aad789dff2f538bca5d8ea56e8abe10f4c7ba3a5dea95fea4cd6e7c3a1168d3"
-	root := mutable.RootHash()
+	snapshot := mutable.GetSnapshot()
+	root := snapshot.RootHash()
 	strRoot := fmt.Sprintf("%x", root)
 	if strings.Compare(strRoot, hashHex) != 0 {
 		t.Errorf("exp %s got %s", hashHex, strRoot)
 	}
 
-	snapshot := mutable.GetSnapshot()
 	snapshot.Flush()
-
 	// check : Does db in Snapshot have to be passed to Mutable?
 	//cacheTrie := mpt.NewCache(nil)
 	//cacheTrie.Load(db, root)
@@ -193,27 +208,30 @@ func TestDeleteSnapshot(t *testing.T) {
 
 	updateString(trie, "doe", "reindeer")
 	updateString(trie, "dog", "puppy")
-	solution2 := fmt.Sprintf("%x", trie.RootHash())
+	snapshot := trie.GetSnapshot() // SNAPSHOT - doe, dog
+	solution2 := fmt.Sprintf("%x", snapshot.RootHash())
 	updateString(trie, "dogglesworth", "cat")
 
+	snapshot = trie.GetSnapshot() // SNAPSHOT - doe, dog, dogglesworth
 	hashHex := "8aad789dff2f538bca5d8ea56e8abe10f4c7ba3a5dea95fea4cd6e7c3a1168d3"
-	strRoot := fmt.Sprintf("%x", trie.RootHash())
+	strRoot := fmt.Sprintf("%x", snapshot.RootHash())
 	if strings.Compare(strRoot, hashHex) != 0 {
 		t.Errorf("exp %s got %s", hashHex, strRoot)
 	}
 
-	snapshot := trie.GetSnapshot() //have doe, dog, dogglesworth
 	snapshot.Flush()
 	trie2 := manager.NewMutable(nil)
 	trie2.Reset(snapshot) // have doe, dog, dogglesworth
-	strRoot = fmt.Sprintf("%x", trie2.RootHash())
+	snapshot2 := trie2.GetSnapshot()
+	strRoot = fmt.Sprintf("%x", snapshot2.RootHash())
 	if strings.Compare(strRoot, hashHex) != 0 {
 		t.Errorf("exp %s got %s", hashHex, strRoot)
 	}
 
 	deleteString(trie2, "dogglesworth")
 
-	strRoot = fmt.Sprintf("%x", trie2.RootHash()) // have doe, dog
+	snapshot2 = trie2.GetSnapshot()                   // SNAPSHOT = doe, dog
+	strRoot = fmt.Sprintf("%x", snapshot2.RootHash()) // have doe, dog
 	if strings.Compare(strRoot, solution2) != 0 {
 		t.Errorf("exp %s got %s", solution2, strRoot)
 	}
@@ -224,7 +242,8 @@ func TestDeleteSnapshot(t *testing.T) {
 
 	hashAfterDelete := fmt.Sprintf("%x", snapshot.RootHash())
 	trie2.Reset(snapshot)
-	strRoot = fmt.Sprintf("%x", trie2.RootHash())
+	snapshot = trie2.GetSnapshot()
+	strRoot = fmt.Sprintf("%x", snapshot.RootHash())
 	if strings.Compare(strRoot, hashAfterDelete) != 0 {
 		t.Errorf("exp %s got %s", hashHex, strRoot)
 	}

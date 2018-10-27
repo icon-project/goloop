@@ -14,18 +14,17 @@ type (
 		// committedHash is root hash in database
 		committedHash hash
 		// Set() inserts key & value into requestPool
-		requestPool map[string][]byte
-		// keys and values in requestPool are inserted into trie then they move to appliedPool
-		appliedPool map[string][]byte
-		mutex       sync.Mutex
-		db          db.DB
+		requestPool  map[string][]byte
+		prevSnapshot *mpt
+		mutex        sync.Mutex
+		db           db.DB
 	}
 )
 
 /*
  */
 func newMpt(db db.DB, initialHash hash) *mpt {
-	return &mpt{root: initialHash, committedHash: initialHash, requestPool: make(map[string][]byte), appliedPool: make(map[string][]byte), db: db}
+	return &mpt{root: initialHash, committedHash: initialHash, requestPool: make(map[string][]byte), db: db}
 }
 
 func bytesToNibbles(k []byte) []byte {
@@ -80,25 +79,24 @@ func (m *mpt) Get(k []byte) ([]byte, error) {
 	return value, nil
 }
 
-func (m *mpt) evaluateTrie() {
-	for k, v := range m.requestPool {
+func (m *mpt) evaluateTrie(requestPool map[string][]byte) {
+	for k, v := range requestPool {
 		if v == nil {
 			m.root, _, _ = m.delete(m.root, []byte(k))
 		} else {
 			m.root, _ = m.set(m.root, []byte(k), v)
 		}
-		delete(m.requestPool, k)
-		m.appliedPool[k] = v
 	}
 }
 
 func (m *mpt) RootHash() []byte {
-	//for k, v := range m.requestPool {
-	//	m.root, _ = m.set(m.root, []byte(k), v)
-	//	delete(m.requestPool, k)
-	//	m.appliedPool[k] = v
-	//}
-	m.evaluateTrie()
+	// TODO: have to check hash is already exist
+	pool, lastCommitedHash := m.mergeSnapshot()
+	m.committedHash = lastCommitedHash
+	if len(m.committedHash) != 0 {
+		m.root = m.committedHash
+	}
+	m.evaluateTrie(pool)
 	h := m.root.hash()
 	return h
 }
@@ -106,8 +104,13 @@ func (m *mpt) RootHash() []byte {
 // TODO: check set() code.
 // return true if current node or child node is changed
 func (m *mpt) set(n node, k, v []byte) (node, bool) {
+	//fmt.Println("set n ", n,", k ", k, ", v : ", string(v))
 	switch n := n.(type) {
 	case *branch:
+		if len(k) == 0 {
+			n.value = v
+			return n, true
+		}
 		n.nibbles[k[0]], n.dirty = m.set(n.nibbles[k[0]], k[1:], v)
 	case *extension:
 		match := compareHex(k, n.sharedNibbles)
@@ -164,7 +167,6 @@ func (m *mpt) set(n node, k, v []byte) (node, bool) {
 			} else {
 				newBranch.nibbles[k[0]], _ = m.set(nil, k[1:], v)
 			}
-
 			if len(n.keyEnd) == 0 {
 				newBranch.value = n.value
 			} else {
@@ -200,6 +202,9 @@ func (m *mpt) set(n node, k, v []byte) (node, bool) {
 		}
 	case hash:
 		// TODO: have to check error.
+		if len(n) == 0 {
+			return &leaf{keyEnd: k[:], value: v}, true
+		}
 		serializedValue, _ := m.db.Get(n)
 		return m.set(deserialize(serializedValue), k, v)
 
@@ -235,7 +240,9 @@ func (m *mpt) delete(n node, k []byte) (node, bool, error) {
 	var nextNode node
 	switch n := n.(type) {
 	case *branch:
-		nextNode, n.dirty, _ = m.delete(n.nibbles[k[0]], k[1:])
+		if nextNode, n.dirty, _ = m.delete(n.nibbles[k[0]], k[1:]); n.dirty == false {
+			return n, false, nil
+		}
 		n.nibbles[k[0]] = nextNode
 
 		// check remaining nibbles on n(current node)
@@ -272,7 +279,10 @@ func (m *mpt) delete(n node, k []byte) (node, bool, error) {
 		}
 
 	case *extension:
-		nextNode, n.dirty, _ = m.delete(n.next, k[len(n.sharedNibbles):])
+		// cannot find data. Not exist
+		if nextNode, n.dirty, _ = m.delete(n.next, k[len(n.sharedNibbles):]); n.dirty == false {
+			return n, false, nil
+		}
 		switch nn := nextNode.(type) {
 		// if child node is extension node, merge current node.
 		// It can not be possible to link extension from extension directly.
@@ -288,6 +298,9 @@ func (m *mpt) delete(n node, k []byte) (node, bool, error) {
 		n.next = nextNode
 
 	case *leaf:
+		if bytes.Compare(n.keyEnd, k) != 0 {
+			return n, false, nil
+		}
 		return nil, true, nil
 
 	case hash:
@@ -299,6 +312,9 @@ func (m *mpt) delete(n node, k []byte) (node, bool, error) {
 			return n, true, err
 		}
 		return m.delete(deserialize(serializedValue), k)
+
+	default:
+		return n, false, nil
 	}
 
 	return n, true, nil
@@ -308,24 +324,34 @@ func (m *mpt) Delete(k []byte) error {
 	var err error
 	k = bytesToNibbles(k)
 	m.requestPool[string(k)] = nil
-	//delete(m.requestPool, string(k))
-	//delete(m.appliedPool, string(k))
-	//m.root, _, err = m.delete(m.root, k)
 	return err
 }
 
 func (m *mpt) GetSnapshot() trie.Snapshot {
 	mpt := newMpt(m.db, m.committedHash)
 	m.mutex.Lock()
-	for k, v := range m.appliedPool {
-		mpt.requestPool[k] = v
-	}
-	for k, v := range m.requestPool {
-		mpt.requestPool[k] = v
-	}
+	mpt.requestPool = m.requestPool
+	mpt.prevSnapshot = m.prevSnapshot
+	m.prevSnapshot = mpt
+	m.requestPool = make(map[string][]byte)
 	m.mutex.Unlock()
 
 	return mpt
+}
+
+func (m *mpt) mergeSnapshot() (map[string][]byte, hash) {
+	mergePool := make(map[string][]byte)
+	var committedHash hash
+	for snapshot := m; snapshot != nil; snapshot = snapshot.prevSnapshot {
+		for k, v := range snapshot.requestPool {
+			// add only not existing key
+			if _, ok := mergePool[k]; ok == false {
+				mergePool[k] = v
+			}
+		}
+		committedHash = snapshot.committedHash
+	}
+	return mergePool, committedHash
 }
 
 func traversalCommit(db db.DB, n node) error {
@@ -340,6 +366,12 @@ func traversalCommit(db db.DB, n node) error {
 		if err := traversalCommit(db, n.next); err != nil {
 			return err
 		}
+	case *leaf:
+		serialized := n.serialize()
+		// if length of serialized leaf is smaller hashable(32), parent node (branch) must have serialized data of this
+		if len(serialized) < hashableSize {
+			return nil
+		}
 	default:
 		return nil
 	}
@@ -349,16 +381,15 @@ func traversalCommit(db db.DB, n node) error {
 /*
  */
 func (m *mpt) Flush() error {
-	for k, v := range m.requestPool {
-		if v == nil {
-			m.root, _, _ = m.delete(m.root, []byte(k))
-		} else {
-			m.root, _ = m.set(m.root, []byte(k), v)
-		}
-		delete(m.requestPool, string(k))
-	}
+	pool, lastCommitedHash := m.mergeSnapshot()
+	m.committedHash = lastCommitedHash
+
+	m.requestPool = pool
+	m.evaluateTrie(pool)
 
 	switch n := m.root.(type) {
+	// if length of serialized leaf is bigger than 32, it is hashed.
+	// But it'not, not hashed. but if roo node is leaf,
 	case *leaf:
 		if err := m.db.Set(n.hash(), n.serialize()); err != nil {
 			return err
@@ -369,6 +400,7 @@ func (m *mpt) Flush() error {
 		}
 	}
 	m.committedHash = m.root.hash()
+	m.requestPool = nil
 	return nil
 }
 
@@ -431,25 +463,28 @@ func (m *mpt) Load(db db.DB, root []byte) error {
 
 // TODO: proper error
 func (m *mpt) Reset(immutable trie.Immutable) error {
-	in, ok := immutable.(*mpt)
+	immutableTrie, ok := immutable.(*mpt)
 	if ok == false {
 		return nil
 	}
 
 	requestPool := make(map[string][]byte)
-	for k, v := range in.requestPool {
-		requestPool[k] = v
-	}
-	for k, v := range in.appliedPool {
-		requestPool[k] = v
+	// This immutableTrie is reused to another mutable trie.
+	// So data in requestPool has to be copied to mutable trie's request pool
+	for snapshot := immutableTrie; snapshot != nil; snapshot = snapshot.prevSnapshot {
+		for k, v := range snapshot.requestPool {
+			if requestPool[k] == nil {
+				copy(requestPool[k], v)
+			}
+		}
 	}
 
 	m.requestPool = requestPool
-	m.committedHash = make([]byte, len(in.committedHash))
-	copy(m.committedHash, in.committedHash)
-	rootHash := make([]byte, len(in.committedHash))
-	copy(rootHash, in.committedHash)
+	m.committedHash = make([]byte, len(immutableTrie.committedHash))
+	copy(m.committedHash, immutableTrie.committedHash)
+	rootHash := make([]byte, len(immutableTrie.committedHash))
+	copy(rootHash, immutableTrie.committedHash)
 	m.root = hash(rootHash)
-	m.db = in.db
+	m.db = immutableTrie.db
 	return nil
 }

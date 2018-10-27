@@ -28,7 +28,6 @@ type (
 	}
 
 	Mutable interface {
-		Immutable
 		Set(k, v []byte) error
 		Delete(k []byte) error
 		GetSnapshot() Snapshot
