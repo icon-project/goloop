@@ -12,7 +12,10 @@ type (
 	mpt struct {
 		root node
 		// committedHash is root hash in database
+		// committedHash is updated by Flush()
 		committedHash hash
+
+		rootHashed bool
 		// Set() inserts key & value into requestPool
 		requestPool  map[string][]byte
 		prevSnapshot *mpt
@@ -24,7 +27,15 @@ type (
 /*
  */
 func newMpt(db db.DB, initialHash hash) *mpt {
-	return &mpt{root: initialHash, committedHash: initialHash, requestPool: make(map[string][]byte), db: db}
+	return &mpt{root: hash(append([]byte(nil), []byte(initialHash)...)),
+		committedHash: hash(append([]byte(nil), []byte(initialHash)...)),
+		requestPool:   make(map[string][]byte), db: db}
+}
+
+func newImmutable(db db.DB, committedHash hash) *mpt {
+	return &mpt{root: nil,
+		committedHash: hash(append([]byte(nil), []byte(committedHash)...)),
+		requestPool:   make(map[string][]byte), db: db}
 }
 
 func bytesToNibbles(k []byte) []byte {
@@ -60,7 +71,16 @@ func (m *mpt) get(n node, k []byte) (node, []byte, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		return m.get(deserialize(serializedValue), k)
+		deserializedNode := deserialize(serializedValue)
+		switch m := deserializedNode.(type) {
+		case *branch:
+			m.hashedValue = n
+		case *extension:
+			m.hashedValue = n
+		case *leaf:
+			m.hashedValue = n
+		}
+		return m.get(deserializedNode, k)
 	}
 	return n, result, err
 }
@@ -89,15 +109,28 @@ func (m *mpt) evaluateTrie(requestPool map[string][]byte) {
 	}
 }
 
+/*
+	RootHash
+*/
 func (m *mpt) RootHash() []byte {
-	// TODO: have to check hash is already exist
+	if m.rootHashed == true {
+		return m.root.hash()
+	}
 	pool, lastCommitedHash := m.mergeSnapshot()
-	m.committedHash = lastCommitedHash
-	if len(m.committedHash) != 0 {
-		m.root = m.committedHash
+	committedHash := lastCommitedHash
+	if len(committedHash) != 0 {
+		m.root = committedHash
+	}
+	// That length of pool is zero means that this trie is already calculated
+	if len(pool) == 0 {
+		return m.root.hash()
 	}
 	m.evaluateTrie(pool)
 	h := m.root.hash()
+	m.rootHashed = true
+	// Do not set nil to requestPool and prevSnapshot because next snapshot want data in previous snapshot
+	//m.requestPool = nil
+	//m.prevSnapshot = nil
 	return h
 }
 
@@ -209,7 +242,6 @@ func (m *mpt) set(n node, k, v []byte) (node, bool) {
 		return m.set(deserialize(serializedValue), k, v)
 
 	default:
-		// return new leaf
 		return &leaf{keyEnd: k[:], value: v}, true
 	}
 	return n, true
@@ -237,6 +269,7 @@ func (m *mpt) Set(k, v []byte) error {
 // TODO: check delete code
 // return node, dirty, error
 func (m *mpt) delete(n node, k []byte) (node, bool, error) {
+	//fmt.Println("delete n = ", n, ", k = ", k)
 	var nextNode node
 	switch n := n.(type) {
 	case *branch:
@@ -328,7 +361,7 @@ func (m *mpt) Delete(k []byte) error {
 }
 
 func (m *mpt) GetSnapshot() trie.Snapshot {
-	mpt := newMpt(m.db, m.committedHash)
+	mpt := newImmutable(m.db, m.committedHash)
 	m.mutex.Lock()
 	mpt.requestPool = m.requestPool
 	mpt.prevSnapshot = m.prevSnapshot
@@ -379,28 +412,42 @@ func traversalCommit(db db.DB, n node) error {
 }
 
 /*
- */
+	Flush saves all updated nodes to db.
+	Requested data are inserted to db so the requested data in pool are cleared
+	And preve
+*/
 func (m *mpt) Flush() error {
 	pool, lastCommitedHash := m.mergeSnapshot()
 	m.committedHash = lastCommitedHash
 
 	m.requestPool = pool
-	m.evaluateTrie(pool)
-
-	switch n := m.root.(type) {
-	// if length of serialized leaf is bigger than 32, it is hashed.
-	// But it'not, not hashed. but if roo node is leaf,
-	case *leaf:
-		if err := m.db.Set(n.hash(), n.serialize()); err != nil {
-			return err
+	if len(pool) != 0 {
+		if m.rootHashed == false {
+			if len(lastCommitedHash) != 0 {
+				m.root = lastCommitedHash
+			}
+			m.evaluateTrie(pool)
+			m.rootHashed = true
 		}
-	default:
-		if err := traversalCommit(m.db, m.root); err != nil {
-			return err
+		switch n := m.root.(type) {
+		// if length of serialized leaf is bigger than 32, it is hashed.
+		// But it'not, not hashed. but if roo node is leaf,
+		case *leaf:
+			if err := m.db.Set(n.hash(), n.serialize()); err != nil {
+				return err
+			}
+		default:
+			if err := traversalCommit(m.db, m.root); err != nil {
+				return err
+			}
 		}
+		m.committedHash = m.root.hash()
+	} else {
+		m.root = m.committedHash
 	}
-	m.committedHash = m.root.hash()
+
 	m.requestPool = nil
+	m.prevSnapshot = nil
 	return nil
 }
 

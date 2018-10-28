@@ -31,7 +31,6 @@ func (db *testDB) Set(k, v []byte) error {
 	if printDb == true {
 		fmt.Println("Set k : ", k)
 		fmt.Println("Set v : ", v)
-		fmt.Println("SET & GET v : ", db.pool[string(k)])
 	}
 	return nil
 }
@@ -70,6 +69,38 @@ var testPool = map[string]string{
 	"doe":          "reindeer",
 	"dog":          "puppy",
 	"dogglesworth": "cat",
+}
+
+func TestCommit(t *testing.T) {
+	db := newDB()
+	manager := mpt.NewManager(db)
+	trie := manager.NewMutable(nil)
+	rootHash := make([]string, 3)
+	i := 0
+
+	poolKey := []string{
+		"doe", "dog", "dogglesworth",
+	}
+	for i, k := range poolKey {
+		updateString(trie, k, testPool[k])
+		snapshot := trie.GetSnapshot()
+		snapshot.Flush()
+		rootHash[i] = fmt.Sprintf("%x", snapshot.RootHash())
+		i++
+	}
+
+	for i > 0 {
+		i--
+		snapshot := trie.GetSnapshot()
+		root := fmt.Sprintf("%x", snapshot.RootHash())
+		if strings.Compare(root, rootHash[i]) != 0 {
+			t.Errorf("%s vs %s", root, rootHash[i])
+		}
+		trie.Delete([]byte(poolKey[i]))
+
+		fmt.Printf("%s , %s\n", root, rootHash[i])
+
+	}
 }
 
 func TestInsert(t *testing.T) {
