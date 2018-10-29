@@ -1,19 +1,21 @@
 package mpt
 
 import (
+	"bytes"
 	"reflect"
 	"sync"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 )
 
 type (
-	trieInfo struct {
+	source struct {
 		// prevTrie is nil after Flush()
-		prevTrie      *trieInfo
+		prevTrie      *source
 		committedHash hash
-		requestPool   map[string]trieValue
+		requestPool   map[string]trie.Object
 	}
 
 	mpt struct {
@@ -21,7 +23,7 @@ type (
 		objType reflect.Type
 
 		rootHashed bool
-		curTrie    *trieInfo
+		curTrie    *source
 		mutex      sync.Mutex
 		db         db.DB
 	}
@@ -31,13 +33,7 @@ type (
  */
 func newMpt(db db.DB, initialHash hash) *mpt {
 	return &mpt{root: hash(append([]byte(nil), []byte(initialHash)...)),
-		curTrie: &trieInfo{requestPool: make(map[string]trieValue), committedHash: hash(append([]byte(nil), []byte(initialHash)...))},
-		db:      db, objType: reflect.TypeOf([]byte{})}
-}
-
-func newImmutable(db db.DB, committedHash hash) *mpt {
-	return &mpt{root: hash(append([]byte(nil), []byte(committedHash)...)),
-		curTrie: &trieInfo{requestPool: make(map[string]trieValue), committedHash: hash(append([]byte(nil), []byte(committedHash)...))},
+		curTrie: &source{requestPool: make(map[string]trie.Object), committedHash: hash(append([]byte(nil), []byte(initialHash)...))},
 		db:      db, objType: reflect.TypeOf([]byte{})}
 }
 
@@ -50,8 +46,8 @@ func bytesToNibbles(k []byte) []byte {
 	return nibbles
 }
 
-func (m *mpt) get(n node, k []byte) (node, trieValue, error) {
-	var result trieValue
+func (m *mpt) get(n node, k []byte) (node, trie.Object, error) {
+	var result trie.Object
 	var err error
 	switch n := n.(type) {
 	case *branch:
@@ -93,7 +89,7 @@ func (m *mpt) Get(k []byte) ([]byte, error) {
 	if v, ok := m.curTrie.requestPool[string(k)]; ok {
 		return v.(byteValue), nil
 	}
-	var value trieValue
+	var value trie.Object
 	var err error
 	m.root, value, err = m.get(m.root, k)
 	if err != nil {
@@ -102,7 +98,7 @@ func (m *mpt) Get(k []byte) ([]byte, error) {
 	return value.Bytes(), nil
 }
 
-func (m *mpt) evaluateTrie(requestPool map[string]trieValue) {
+func (m *mpt) evaluateTrie(requestPool map[string]trie.Object) {
 	for k, v := range requestPool {
 		if v == nil {
 			m.root, _, _ = m.delete(m.root, []byte(k))
@@ -137,9 +133,8 @@ func (m *mpt) RootHash() []byte {
 	return h
 }
 
-// TODO: check set() code.
 // return true if current node or child node is changed
-func (m *mpt) set(n node, k []byte, v trieValue) (node, bool) {
+func (m *mpt) set(n node, k []byte, v trie.Object) (node, bool) {
 	//fmt.Println("set n ", n,", k ", k, ", v : ", string(v.(byteValue)))
 	if n == nil {
 		return &leaf{keyEnd: k[:], value: v}, true
@@ -153,9 +148,8 @@ Set inserts key and value into requestPool.
 RootHash, Proof, Flush insert keys and values in requestPool into trie
 */
 func (m *mpt) Set(k, v []byte) error {
-	// TODO: if k or v is nil, return error for invalid param
 	if k == nil || v == nil {
-		return nil // TODO: proper error
+		return common.ErrIllegalArgument
 	}
 	k = bytesToNibbles(k)
 	m.mutex.Lock()
@@ -163,12 +157,9 @@ func (m *mpt) Set(k, v []byte) error {
 	copy(copied, v)
 	m.curTrie.requestPool[string(k)] = byteValue(append([]byte(nil), v...))
 	m.mutex.Unlock()
-	//tr.root, _ = set(tr.root, k, v)
 	return nil
 }
 
-// TODO: check delete code
-// return node, dirty, error
 func (m *mpt) delete(n node, k []byte) (node, bool, error) {
 	//fmt.Println("delete n = ", n, ", k = ", k)
 	if n == nil {
@@ -181,24 +172,29 @@ func (m *mpt) delete(n node, k []byte) (node, bool, error) {
 func (m *mpt) Delete(k []byte) error {
 	var err error
 	k = bytesToNibbles(k)
+	m.mutex.Lock()
 	m.curTrie.requestPool[string(k)] = nil
+	m.mutex.Unlock()
 	return err
 }
 
-// TODO: have to check previous commitHash in TrieInfo
-// TODO: if committedHash is different, have to be updated.
 func (m *mpt) GetSnapshot() trie.Snapshot {
 	mpt := newMpt(m.db, m.curTrie.committedHash)
 	m.mutex.Lock()
 	mpt.curTrie = m.curTrie
-	m.curTrie = &trieInfo{committedHash: mpt.curTrie.committedHash, prevTrie: mpt.curTrie, requestPool: make(map[string]trieValue)}
+	// Below means s1.Flush() was called after calling m.Reset(s1)
+	if bytes.Compare(m.curTrie.committedHash, m.curTrie.prevTrie.committedHash) != 0 {
+		m.curTrie.committedHash = hash(append([]byte(nil), []byte(m.curTrie.prevTrie.committedHash)...))
+	}
+	//fmt.Println("GetSnapshot. committedHash = ", m.curTrie.committedHash)
+	m.curTrie = &source{committedHash: mpt.curTrie.committedHash, prevTrie: mpt.curTrie, requestPool: make(map[string]trie.Object)}
 	m.mutex.Unlock()
 
 	return mpt
 }
 
-func (m *mpt) mergeSnapshot() (map[string]trieValue, hash) {
-	mergePool := make(map[string]trieValue)
+func (m *mpt) mergeSnapshot() (map[string]trie.Object, hash) {
+	mergePool := make(map[string]trie.Object)
 	var committedHash hash
 	for snapshot := m.curTrie; snapshot != nil; snapshot = snapshot.prevTrie {
 		for k, v := range snapshot.requestPool {
@@ -212,6 +208,7 @@ func (m *mpt) mergeSnapshot() (map[string]trieValue, hash) {
 	return mergePool, committedHash
 }
 
+// TODO: check whether this node is stored or not
 func traversalCommit(db db.DB, n node) error {
 	switch n := n.(type) {
 	case *branch:
@@ -324,18 +321,16 @@ func (m *mpt) Load(db db.DB, root []byte) error {
 	return nil
 }
 
-// TODO: proper error
 func (m *mpt) Reset(immutable trie.Immutable) error {
 	immutableTrie, ok := immutable.(*mpt)
 	if ok == false {
-		return nil
+		return common.ErrIllegalArgument
 	}
 
-	// TODO:
-	// do not use reference. If use reference, after setting data immutable is effected
+	// Do not use reference.
 	committedHash := make(hash, len(immutableTrie.curTrie.committedHash))
 	copy(committedHash, immutableTrie.curTrie.committedHash)
-	m.curTrie = &trieInfo{prevTrie: immutableTrie.curTrie, requestPool: make(map[string]trieValue), committedHash: committedHash}
+	m.curTrie = &source{prevTrie: immutableTrie.curTrie, requestPool: make(map[string]trie.Object), committedHash: committedHash}
 	rootHash := make(hash, len(committedHash))
 	copy(rootHash, committedHash)
 	m.root = hash(rootHash)

@@ -2,13 +2,15 @@ package mpt
 
 import (
 	"fmt"
+	"github.com/icon-project/goloop/common/trie"
 	"golang.org/x/crypto/sha3"
 )
 
 type (
 	branch struct {
-		nibbles         [16]node
-		value           trieValue
+		nibbles [16]node
+		value   trie.Object
+
 		hashedValue     []byte
 		serializedValue []byte
 		dirty           bool // if dirty is true, must retry getting hashedValue & serializedValue
@@ -80,7 +82,7 @@ func (br *branch) hash() []byte {
 	return digest
 }
 
-func (br *branch) addChild(m *mpt, k []byte, v trieValue) (node, bool) {
+func (br *branch) addChild(m *mpt, k []byte, v trie.Object) (node, bool) {
 	if len(k) == 0 {
 		br.value = v
 		return br, true

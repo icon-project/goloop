@@ -2,6 +2,7 @@ package mpt
 
 import (
 	"fmt"
+	"github.com/icon-project/goloop/common/trie"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -79,7 +80,7 @@ func (ex *extension) hash() []byte {
 	return digest
 }
 
-func (ex *extension) addChild(m *mpt, k []byte, v trieValue) (node, bool) {
+func (ex *extension) addChild(m *mpt, k []byte, v trie.Object) (node, bool) {
 	match := compareHex(k, ex.sharedNibbles)
 	switch {
 	case match == 0:

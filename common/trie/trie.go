@@ -28,6 +28,8 @@ type (
 	}
 
 	Mutable interface {
+		Proof(k []byte) [][]byte // return nill of this Tree is empty
+		Get(k []byte) ([]byte, error)
 		Set(k, v []byte) error
 		Delete(k []byte) error
 		GetSnapshot() Snapshot

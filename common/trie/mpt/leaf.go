@@ -3,13 +3,14 @@ package mpt
 import (
 	"bytes"
 	"fmt"
+	"github.com/icon-project/goloop/common/trie"
 	"golang.org/x/crypto/sha3"
 )
 
 type (
 	leaf struct {
 		keyEnd []byte
-		value  trieValue
+		value  trie.Object
 
 		hashedValue     []byte
 		serializedValue []byte
@@ -82,12 +83,12 @@ func (l *leaf) hash() []byte {
 	return digest
 }
 
-func (l *leaf) addChild(m *mpt, k []byte, v trieValue) (node, bool) {
+func (l *leaf) addChild(m *mpt, k []byte, v trie.Object) (node, bool) {
 	match := compareHex(k, l.keyEnd)
 	// case 1 : match = 0 -> new branch
 	switch {
 	case match == 0:
-		if v.Compare(l.value) == true {
+		if v.Equal(l.value) == true {
 			return l, false
 		}
 		newBranch := &branch{}
