@@ -102,8 +102,7 @@ type ServiceManager interface {
 	PatchTransition(transition Transition, patches TransactionList) Transition
 
 	// Finalize finalizes data related to the transition. It usually stores
-	// data to a persistent storage. dataBitMask indicates which data are
-	// finalized.
+	// data to a persistent storage. opt indicates which data are finalized.
 	// It should be called for every transition.
 	Finalize(transition Transition, opt int)
 
