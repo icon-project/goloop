@@ -1,5 +1,10 @@
 package mpt
 
+import (
+	"bytes"
+	"reflect"
+)
+
 /*
 	A node in a Merkle Patricia trie is one of the following:
 	1. NULL (represented as the empty string)
@@ -13,13 +18,21 @@ package mpt
 const hashableSize = 32
 
 type (
+	trieValue interface {
+		Bytes() []byte
+		// Serialize() byte
+		Compare(v trieValue) bool
+		//Clone() bool
+		//Flush() bool
+	}
 	node interface {
 		hash() []byte
 		serialize() []byte
 		// TODO: test hashable // if seriazlied data size is bigger than 32, serialize() returns hash(serialize)
 		//serialize(hashable bool) []byte
 	}
-	hash []byte
+	byteValue []byte
+	hash      []byte
 )
 
 const printHash = false
@@ -34,17 +47,28 @@ func (h hash) hash() []byte {
 	return h
 }
 
-func decodeLeaf(buf []byte) node {
-	tagSize, _, _ := getContentSize(buf)
-	// get key
-	keyTagSize, keyContentSize, _ := getContentSize(buf[tagSize:])
-	keyBuf := buf[tagSize+keyTagSize : tagSize+keyTagSize+keyContentSize]
-	keyBuf, _, _ = decodeKey(keyBuf)
-	offset := tagSize + keyTagSize + keyContentSize
-	valTagSize, valContentSize, _ := getContentSize(buf[offset:])
-	valBuf := buf[offset+valTagSize : offset+valTagSize+valContentSize]
-	return &leaf{keyEnd: keyBuf, value: valBuf}
+func (v byteValue) Bytes() []byte {
+	return v
 }
+func (v byteValue) Compare(t trieValue) bool {
+	if b, ok := t.(byteValue); ok {
+		return bytes.Compare(b, v) == 0
+	}
+	return false
+
+}
+
+//func decodeLeaf(buf []byte) node {
+//	tagSize, _, _ := getContentSize(buf)
+//	// get key
+//	keyTagSize, keyContentSize, _ := getContentSize(buf[tagSize:])
+//	keyBuf := buf[tagSize+keyTagSize : tagSize+keyTagSize+keyContentSize]
+//	keyBuf, _, _ = decodeKey(keyBuf)
+//	offset := tagSize + keyTagSize + keyContentSize
+//	valTagSize, valContentSize, _ := getContentSize(buf[offset:])
+//	valBuf := buf[offset+valTagSize : offset+valTagSize+valContentSize]
+//	return &leaf{keyEnd: keyBuf, value: valBuf}
+//}
 
 func decodeExtension(buf []byte) node {
 	// serialized extension has sharedNibbles & hash of branch
@@ -63,7 +87,19 @@ func decodeExtension(buf []byte) node {
 	return &extension{sharedNibbles: key, next: hash(buf[valOffset : valOffset+valContentSize]), serializedValue: buf}
 }
 
-func decodeLeafExt(buf []byte) node {
+func decodeValue(buf []byte, t reflect.Type) trieValue {
+	var result trieValue
+	// TODO: check how to compare type
+	if t == nil {
+		panic("PANIC")
+	}
+	if t == reflect.TypeOf([]byte{}) {
+		result = byteValue(buf)
+	}
+	return result
+}
+
+func decodeLeafExt(buf []byte, t reflect.Type) node {
 	tagSize, _, _ := getContentSize(buf)
 	keyTagSize, keyContentSize, _ := getContentSize(buf[tagSize:])
 	// get value tag size and value length
@@ -75,10 +111,11 @@ func decodeLeafExt(buf []byte) node {
 	if nodeType == 0 { //extension
 		return &extension{sharedNibbles: key, next: hash(buf[valOffset : valOffset+valContentSize]), serializedValue: buf}
 	}
-	return &leaf{keyEnd: key, value: buf[valOffset : valOffset+valContentSize], serializedValue: buf}
+	l := &leaf{keyEnd: key, value: decodeValue(buf[valOffset:valOffset+valContentSize], t), serializedValue: buf}
+	return l
 
 }
-func decodeBranch(buf []byte) node {
+func decodeBranch(buf []byte, t reflect.Type) node {
 	// serialized branch can have list which is another branch(sharednibbles/value) or a leaf(keyEnd/value) or  hexa(serialized(rlp))
 	tagSize, contentSize, _ := getContentSize(buf)
 	// child is leaf, hash or nil(128)
@@ -94,7 +131,7 @@ func decodeBranch(buf []byte) node {
 			tagSize, contentSize, _ := getContentSize(buf[i:])
 			buf := buf[i:]
 			if valueIndex == 16 {
-				newBranch.value = buf[tagSize : tagSize+contentSize]
+				newBranch.value = decodeValue(buf[tagSize:tagSize+contentSize], t)
 			} else {
 				// hash node
 				if contentSize == 0 {
@@ -107,7 +144,7 @@ func decodeBranch(buf []byte) node {
 			i += tagSize + contentSize
 		} else if 0xC0 < b && b < 0xf7 {
 			tagSize, contentSize, _ := getContentSize(buf[i:])
-			newBranch.nibbles[valueIndex] = decodeLeafExt(buf[i : i+tagSize+contentSize])
+			newBranch.nibbles[valueIndex] = decodeLeafExt(buf[i:i+tagSize+contentSize], t)
 			i += tagSize + contentSize
 		}
 	}
@@ -149,14 +186,13 @@ func decodeKey(buf []byte) (keyBuf []byte, nodeType int, err error) {
 	return keyBuf, nodeType, nil
 }
 
-// TODO: have to modify. ethereum code
-func deserialize(buf []byte) node {
+func deserialize(buf []byte, t reflect.Type) node {
 	switch c, _ := countListMember(buf); c {
 	case 2:
-		n := decodeLeafExt(buf)
+		n := decodeLeafExt(buf, t)
 		return n
 	case 17:
-		n := decodeBranch(buf)
+		n := decodeBranch(buf, t)
 		return n
 	default:
 		return nil

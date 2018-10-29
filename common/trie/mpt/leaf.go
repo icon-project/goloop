@@ -8,7 +8,8 @@ import (
 type (
 	leaf struct {
 		keyEnd []byte
-		value  []byte
+		//value  []byte
+		value trieValue
 
 		hashedValue     []byte
 		serializedValue []byte
@@ -41,7 +42,7 @@ func (l *leaf) serialize() []byte {
 		keyArray[i+1] = l.keyEnd[i*2+keyIndex]<<4 | l.keyEnd[i*2+1+keyIndex]
 	}
 
-	result := encodeList(encodeByte(keyArray), encodeByte(l.value))
+	result := encodeList(encodeByte(keyArray), encodeByte(l.value.Bytes()))
 	l.serializedValue = make([]byte, len(result))
 	copy(l.serializedValue, result)
 	// if this node is reserealized, hashed value has to be reset
@@ -51,7 +52,7 @@ func (l *leaf) serialize() []byte {
 	l.dirty = false
 
 	if printSerializedValue {
-		fmt.Println("leaf val = ", string(l.value))
+		fmt.Println("leaf val = ", string(l.value.Bytes()))
 		fmt.Println("serialize leaf : ", result)
 	}
 	return result

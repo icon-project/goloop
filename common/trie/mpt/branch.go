@@ -7,8 +7,9 @@ import (
 
 type (
 	branch struct {
-		nibbles         [16]node
-		value           []byte
+		nibbles [16]node
+		//value           []byte
+		value           trieValue
 		hashedValue     []byte
 		serializedValue []byte
 		dirty           bool // if dirty is true, must retry getting hashedValue & serializedValue
@@ -37,7 +38,11 @@ func (br *branch) serialize() []byte {
 		serializedNodes = append(serializedNodes, serialized...)
 	}
 
-	serialized = encodeList(serializedNodes, encodeByte(br.value))
+	if br.value == nil {
+		serialized = encodeList(serializedNodes, encodeByte(nil))
+	} else {
+		serialized = encodeList(serializedNodes, encodeByte(br.value.Bytes()))
+	}
 	br.serializedValue = make([]byte, len(serialized))
 	copy(br.serializedValue, serialized)
 	br.hashedValue = nil

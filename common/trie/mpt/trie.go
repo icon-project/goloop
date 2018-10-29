@@ -2,6 +2,7 @@ package mpt
 
 import (
 	"bytes"
+	"reflect"
 	"sync"
 
 	"github.com/icon-project/goloop/common/db"
@@ -10,14 +11,15 @@ import (
 
 type (
 	mpt struct {
-		root node
+		root    node
+		objType reflect.Type
 		// committedHash is root hash in database
 		// committedHash is updated by Flush()
 		committedHash hash
 
 		rootHashed bool
 		// Set() inserts key & value into requestPool
-		requestPool  map[string][]byte
+		requestPool  map[string]trieValue
 		prevSnapshot *mpt
 		mutex        sync.Mutex
 		db           db.DB
@@ -29,13 +31,13 @@ type (
 func newMpt(db db.DB, initialHash hash) *mpt {
 	return &mpt{root: hash(append([]byte(nil), []byte(initialHash)...)),
 		committedHash: hash(append([]byte(nil), []byte(initialHash)...)),
-		requestPool:   make(map[string][]byte), db: db}
+		requestPool:   make(map[string]trieValue), db: db, objType: reflect.TypeOf([]byte{})}
 }
 
 func newImmutable(db db.DB, committedHash hash) *mpt {
 	return &mpt{root: nil,
 		committedHash: hash(append([]byte(nil), []byte(committedHash)...)),
-		requestPool:   make(map[string][]byte), db: db}
+		requestPool:   make(map[string]trieValue), db: db, objType: reflect.TypeOf([]byte{})}
 }
 
 func bytesToNibbles(k []byte) []byte {
@@ -47,8 +49,8 @@ func bytesToNibbles(k []byte) []byte {
 	return nibbles
 }
 
-func (m *mpt) get(n node, k []byte) (node, []byte, error) {
-	var result []byte
+func (m *mpt) get(n node, k []byte) (node, trieValue, error) {
+	var result trieValue
 	var err error
 	switch n := n.(type) {
 	case *branch:
@@ -71,7 +73,7 @@ func (m *mpt) get(n node, k []byte) (node, []byte, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		deserializedNode := deserialize(serializedValue)
+		deserializedNode := deserialize(serializedValue, m.objType)
 		switch m := deserializedNode.(type) {
 		case *branch:
 			m.hashedValue = n
@@ -88,18 +90,18 @@ func (m *mpt) get(n node, k []byte) (node, []byte, error) {
 func (m *mpt) Get(k []byte) ([]byte, error) {
 	k = bytesToNibbles(k)
 	if v, ok := m.requestPool[string(k)]; ok {
-		return v, nil
+		return v.(byteValue), nil
 	}
-	var value []byte
+	var value trieValue
 	var err error
 	m.root, value, err = m.get(m.root, k)
 	if err != nil {
 		return nil, err
 	}
-	return value, nil
+	return value.Bytes(), nil
 }
 
-func (m *mpt) evaluateTrie(requestPool map[string][]byte) {
+func (m *mpt) evaluateTrie(requestPool map[string]trieValue) {
 	for k, v := range requestPool {
 		if v == nil {
 			m.root, _, _ = m.delete(m.root, []byte(k))
@@ -136,8 +138,8 @@ func (m *mpt) RootHash() []byte {
 
 // TODO: check set() code.
 // return true if current node or child node is changed
-func (m *mpt) set(n node, k, v []byte) (node, bool) {
-	//fmt.Println("set n ", n,", k ", k, ", v : ", string(v))
+func (m *mpt) set(n node, k []byte, v trieValue) (node, bool) {
+	//fmt.Println("set n ", n,", k ", k, ", v : ", string(v.(byteValue)))
 	switch n := n.(type) {
 	case *branch:
 		if len(k) == 0 {
@@ -191,7 +193,7 @@ func (m *mpt) set(n node, k, v []byte) (node, bool) {
 		// case 1 : match = 0 -> new branch
 		switch {
 		case match == 0:
-			if bytes.Compare(v, n.value) == 0 { // same key, same value
+			if v.Compare(n.value) == true {
 				return n, false
 			}
 			newBranch := &branch{}
@@ -239,7 +241,7 @@ func (m *mpt) set(n node, k, v []byte) (node, bool) {
 			return &leaf{keyEnd: k[:], value: v}, true
 		}
 		serializedValue, _ := m.db.Get(n)
-		return m.set(deserialize(serializedValue), k, v)
+		return m.set(deserialize(serializedValue, m.objType), k, v)
 
 	default:
 		return &leaf{keyEnd: k[:], value: v}, true
@@ -260,7 +262,7 @@ func (m *mpt) Set(k, v []byte) error {
 	m.mutex.Lock()
 	copied := make([]byte, len(v))
 	copy(copied, v)
-	m.requestPool[string(k)] = copied
+	m.requestPool[string(k)] = byteValue(append([]byte(nil), v...))
 	m.mutex.Unlock()
 	//tr.root, _ = set(tr.root, k, v)
 	return nil
@@ -344,7 +346,7 @@ func (m *mpt) delete(n node, k []byte) (node, bool, error) {
 		if err != nil {
 			return n, true, err
 		}
-		return m.delete(deserialize(serializedValue), k)
+		return m.delete(deserialize(serializedValue, m.objType), k)
 
 	default:
 		return n, false, nil
@@ -366,14 +368,14 @@ func (m *mpt) GetSnapshot() trie.Snapshot {
 	mpt.requestPool = m.requestPool
 	mpt.prevSnapshot = m.prevSnapshot
 	m.prevSnapshot = mpt
-	m.requestPool = make(map[string][]byte)
+	m.requestPool = make(map[string]trieValue)
 	m.mutex.Unlock()
 
 	return mpt
 }
 
-func (m *mpt) mergeSnapshot() (map[string][]byte, hash) {
-	mergePool := make(map[string][]byte)
+func (m *mpt) mergeSnapshot() (map[string]trieValue, hash) {
+	mergePool := make(map[string]trieValue)
 	var committedHash hash
 	for snapshot := m; snapshot != nil; snapshot = snapshot.prevSnapshot {
 		for k, v := range snapshot.requestPool {
@@ -429,17 +431,8 @@ func (m *mpt) Flush() error {
 			m.evaluateTrie(pool)
 			m.rootHashed = true
 		}
-		switch n := m.root.(type) {
-		// if length of serialized leaf is bigger than 32, it is hashed.
-		// But it'not, not hashed. but if roo node is leaf,
-		case *leaf:
-			if err := m.db.Set(n.hash(), n.serialize()); err != nil {
-				return err
-			}
-		default:
-			if err := traversalCommit(m.db, m.root); err != nil {
-				return err
-			}
+		if err := traversalCommit(m.db, m.root); err != nil {
+			return err
 		}
 		m.committedHash = m.root.hash()
 	} else {
@@ -482,7 +475,7 @@ func (m *mpt) proof(n node, k []byte) ([][]byte, int) {
 	case hash:
 		// TODO: have to check error
 		serializedValued, _ := m.db.Get(k)
-		decodeingNode := deserialize(serializedValued)
+		decodeingNode := deserialize(serializedValued, m.objType)
 		return m.proof(decodeingNode, k)
 	}
 	return buf, i + 1
@@ -515,13 +508,13 @@ func (m *mpt) Reset(immutable trie.Immutable) error {
 		return nil
 	}
 
-	requestPool := make(map[string][]byte)
+	requestPool := make(map[string]trieValue)
 	// This immutableTrie is reused to another mutable trie.
 	// So data in requestPool has to be copied to mutable trie's request pool
 	for snapshot := immutableTrie; snapshot != nil; snapshot = snapshot.prevSnapshot {
 		for k, v := range snapshot.requestPool {
 			if requestPool[k] == nil {
-				copy(requestPool[k], v)
+				requestPool[k] = v
 			}
 		}
 	}
