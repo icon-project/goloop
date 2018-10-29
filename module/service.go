@@ -5,14 +5,11 @@ import "io"
 // TransitionCallback provides transition change notifications. All functions
 // are called back with the same Transition instance for the convenience.
 type TransitionCallback interface {
-	// Called if error is occured.
-	OnError(Transition, error)
-
 	// Called if validation is done.
-	OnValidate(Transition)
+	OnValidate(Transition, error)
 
 	// Called if execution is done.
-	OnExecute(Transition)
+	OnExecute(Transition, error)
 }
 
 type Transaction interface {
