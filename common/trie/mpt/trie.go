@@ -12,8 +12,8 @@ import (
 
 type (
 	source struct {
-		// prevTrie is nil after Flush()
-		prevTrie      *source
+		// prevSource is nil after Flush()
+		prevSource    *source
 		committedHash hash
 		requestPool   map[string]trie.Object
 	}
@@ -23,7 +23,7 @@ type (
 		objType reflect.Type
 
 		rootHashed bool
-		curTrie    *source
+		curSource  *source
 		mutex      sync.Mutex
 		db         db.DB
 	}
@@ -33,8 +33,8 @@ type (
  */
 func newMpt(db db.DB, initialHash hash) *mpt {
 	return &mpt{root: hash(append([]byte(nil), []byte(initialHash)...)),
-		curTrie: &source{requestPool: make(map[string]trie.Object), committedHash: hash(append([]byte(nil), []byte(initialHash)...))},
-		db:      db, objType: reflect.TypeOf([]byte{})}
+		curSource: &source{requestPool: make(map[string]trie.Object), committedHash: hash(append([]byte(nil), []byte(initialHash)...))},
+		db:        db, objType: reflect.TypeOf([]byte{})}
 }
 
 func bytesToNibbles(k []byte) []byte {
@@ -84,9 +84,11 @@ func (m *mpt) get(n node, k []byte) (node, trie.Object, error) {
 	return n, result, err
 }
 
+// TODO: check committed hash in previous source
+// TODO: If not same between previous and current committed hash, update current committed hash
 func (m *mpt) Get(k []byte) ([]byte, error) {
 	k = bytesToNibbles(k)
-	if v, ok := m.curTrie.requestPool[string(k)]; ok {
+	if v, ok := m.curSource.requestPool[string(k)]; ok {
 		return v.(byteValue), nil
 	}
 	var value trie.Object
@@ -155,7 +157,7 @@ func (m *mpt) Set(k, v []byte) error {
 	m.mutex.Lock()
 	copied := make([]byte, len(v))
 	copy(copied, v)
-	m.curTrie.requestPool[string(k)] = byteValue(append([]byte(nil), v...))
+	m.curSource.requestPool[string(k)] = byteValue(append([]byte(nil), v...))
 	m.mutex.Unlock()
 	return nil
 }
@@ -173,21 +175,20 @@ func (m *mpt) Delete(k []byte) error {
 	var err error
 	k = bytesToNibbles(k)
 	m.mutex.Lock()
-	m.curTrie.requestPool[string(k)] = nil
+	m.curSource.requestPool[string(k)] = nil
 	m.mutex.Unlock()
 	return err
 }
 
 func (m *mpt) GetSnapshot() trie.Snapshot {
-	mpt := newMpt(m.db, m.curTrie.committedHash)
+	mpt := newMpt(m.db, m.curSource.committedHash)
 	m.mutex.Lock()
-	mpt.curTrie = m.curTrie
+	mpt.curSource = m.curSource
 	// Below means s1.Flush() was called after calling m.Reset(s1)
-	if bytes.Compare(m.curTrie.committedHash, m.curTrie.prevTrie.committedHash) != 0 {
-		m.curTrie.committedHash = hash(append([]byte(nil), []byte(m.curTrie.prevTrie.committedHash)...))
+	if m.curSource.prevSource != nil && bytes.Compare(m.curSource.committedHash, m.curSource.prevSource.committedHash) != 0 {
+		m.curSource.committedHash = hash(append([]byte(nil), []byte(m.curSource.prevSource.committedHash)...))
 	}
-	//fmt.Println("GetSnapshot. committedHash = ", m.curTrie.committedHash)
-	m.curTrie = &source{committedHash: mpt.curTrie.committedHash, prevTrie: mpt.curTrie, requestPool: make(map[string]trie.Object)}
+	m.curSource = &source{committedHash: mpt.curSource.committedHash, prevSource: mpt.curSource, requestPool: make(map[string]trie.Object)}
 	m.mutex.Unlock()
 
 	return mpt
@@ -196,7 +197,7 @@ func (m *mpt) GetSnapshot() trie.Snapshot {
 func (m *mpt) mergeSnapshot() (map[string]trie.Object, hash) {
 	mergePool := make(map[string]trie.Object)
 	var committedHash hash
-	for snapshot := m.curTrie; snapshot != nil; snapshot = snapshot.prevTrie {
+	for snapshot := m.curSource; snapshot != nil; snapshot = snapshot.prevSource {
 		for k, v := range snapshot.requestPool {
 			// add only not existing key
 			if _, ok := mergePool[k]; ok == false {
@@ -240,9 +241,9 @@ func traversalCommit(db db.DB, n node) error {
 */
 func (m *mpt) Flush() error {
 	pool, lastCommitedHash := m.mergeSnapshot()
-	m.curTrie.committedHash = lastCommitedHash
+	m.curSource.committedHash = lastCommitedHash
 
-	m.curTrie.requestPool = pool
+	m.curSource.requestPool = pool
 	if len(pool) != 0 {
 		if m.rootHashed == false {
 			if len(lastCommitedHash) != 0 {
@@ -254,13 +255,13 @@ func (m *mpt) Flush() error {
 		if err := traversalCommit(m.db, m.root); err != nil {
 			return err
 		}
-		m.curTrie.committedHash = m.root.hash()
+		m.curSource.committedHash = m.root.hash()
 	} else {
-		m.root = m.curTrie.committedHash
+		m.root = m.curSource.committedHash
 	}
 
-	m.curTrie.requestPool = nil
-	m.curTrie.prevTrie = nil
+	m.curSource.requestPool = nil
+	m.curSource.prevSource = nil
 	return nil
 }
 
@@ -315,7 +316,7 @@ func (m *mpt) Load(db db.DB, root []byte) error {
 		return err
 	}
 
-	m.curTrie.committedHash = root
+	m.curSource.committedHash = root
 	m.root = hash(root)
 	m.db = db
 	return nil
@@ -328,9 +329,9 @@ func (m *mpt) Reset(immutable trie.Immutable) error {
 	}
 
 	// Do not use reference.
-	committedHash := make(hash, len(immutableTrie.curTrie.committedHash))
-	copy(committedHash, immutableTrie.curTrie.committedHash)
-	m.curTrie = &source{prevTrie: immutableTrie.curTrie, requestPool: make(map[string]trie.Object), committedHash: committedHash}
+	committedHash := make(hash, len(immutableTrie.curSource.committedHash))
+	copy(committedHash, immutableTrie.curSource.committedHash)
+	m.curSource = &source{prevSource: immutableTrie.curSource, requestPool: make(map[string]trie.Object), committedHash: committedHash}
 	rootHash := make(hash, len(committedHash))
 	copy(rootHash, committedHash)
 	m.root = hash(rootHash)
