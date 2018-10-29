@@ -283,6 +283,34 @@ func TestDeleteSnapshot(t *testing.T) {
 	}
 }
 
+func TestLateFlush(t *testing.T) {
+	db := newDB()
+	manager := mpt.NewManager(db)
+	tr := manager.NewMutable(nil)
+	poolList := []string{
+		"doe",
+		"dog",
+		"dogglesworth",
+	}
+
+	var ssList [3]trie.Snapshot
+	var hashList [3]string
+
+	for i, k := range poolList {
+		updateString(tr, k, testPool[k])
+		ssList[i] = tr.GetSnapshot()
+		hashList[i] = fmt.Sprintf("%x", ssList[i].RootHash())
+	}
+
+	for i, _ := range poolList {
+		ssList[i].Flush()
+		rootHash := fmt.Sprintf("%x", ssList[i].RootHash())
+		if strings.Compare(hashList[i], rootHash) != 0 {
+			t.Errorf("exp %s got %s", hashList[i], rootHash)
+		}
+	}
+}
+
 func updateString(trie trie.Mutable, k, v string) {
 	trie.Set([]byte(k), []byte(v))
 }
