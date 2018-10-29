@@ -5,7 +5,6 @@ import (
 	"github.com/icon-project/goloop/common/trie"
 )
 
-// TODO: DB should be passed as parameter.
 //func NewImmutable(rootHash []byte) trie.Immutable {
 //	return newMpt(rootHash)
 //}

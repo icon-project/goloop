@@ -28,8 +28,8 @@ type (
 	node interface {
 		hash() []byte
 		serialize() []byte
-		// TODO: test hashable // if seriazlied data size is bigger than 32, serialize() returns hash(serialize)
-		//serialize(hashable bool) []byte
+		addChild(m *mpt, k []byte, v trieValue) (node, bool)
+		deleteChild(m *mpt, k []byte) (node, bool, error)
 	}
 	byteValue []byte
 	hash      []byte
@@ -47,9 +47,29 @@ func (h hash) hash() []byte {
 	return h
 }
 
+func (h hash) addChild(m *mpt, k []byte, v trieValue) (node, bool) {
+	if len(h) == 0 {
+		return &leaf{keyEnd: k[:], value: v}, true
+	}
+	serializedValue, _ := m.db.Get(h)
+	return m.set(deserialize(serializedValue, m.objType), k, v)
+}
+
+func (h hash) deleteChild(m *mpt, k []byte) (node, bool, error) {
+	if m.db == nil {
+		return h, true, nil // TODO: proper error
+	}
+	serializedValue, err := m.db.Get(h)
+	if err != nil {
+		return h, true, err
+	}
+	return m.delete(deserialize(serializedValue, m.objType), k)
+}
+
 func (v byteValue) Bytes() []byte {
 	return v
 }
+
 func (v byteValue) Compare(t trieValue) bool {
 	if b, ok := t.(byteValue); ok {
 		return bytes.Compare(b, v) == 0
@@ -83,7 +103,7 @@ func decodeExtension(buf []byte) node {
 	key := buf[tagSize+keyTagSize : tagSize+keyTagSize+keyContentSize]
 	key, _, _ = decodeKey(key)
 	// TODO: if length of decodded data is bigger than hashable, the data is set to hash
-	// but shorter than hashable, the data is set to seriazlie
+
 	return &extension{sharedNibbles: key, next: hash(buf[valOffset : valOffset+valContentSize]), serializedValue: buf}
 }
 
@@ -116,12 +136,12 @@ func decodeLeafExt(buf []byte, t reflect.Type) node {
 
 }
 func decodeBranch(buf []byte, t reflect.Type) node {
-	// serialized branch can have list which is another branch(sharednibbles/value) or a leaf(keyEnd/value) or  hexa(serialized(rlp))
+	// serialized branch can have list which is another branch(sharedNibbles/value) or a leaf(keyEnd/value) or  hexa(serialized(rlp))
 	tagSize, contentSize, _ := getContentSize(buf)
 	// child is leaf, hash or nil(128)
 	newBranch := &branch{}
 	for i, valueIndex := tagSize, 0; i < tagSize+contentSize; valueIndex++ {
-		// if list, call decoderLear
+		// if list, call decoderLeaf
 		// if single byte
 		b := buf[i]
 		if b < 0x80 { // hash or value if valueIndex is 16

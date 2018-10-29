@@ -7,8 +7,7 @@ import (
 
 type (
 	branch struct {
-		nibbles [16]node
-		//value           []byte
+		nibbles         [16]node
 		value           trieValue
 		hashedValue     []byte
 		serializedValue []byte
@@ -79,4 +78,55 @@ func (br *branch) hash() []byte {
 	}
 
 	return digest
+}
+
+func (br *branch) addChild(m *mpt, k []byte, v trieValue) (node, bool) {
+	if len(k) == 0 {
+		br.value = v
+		return br, true
+	}
+	br.nibbles[k[0]], br.dirty = m.set(br.nibbles[k[0]], k[1:], v)
+	return br, true
+}
+
+func (br *branch) deleteChild(m *mpt, k []byte) (node, bool, error) {
+	var nextNode node
+	if nextNode, br.dirty, _ = m.delete(br.nibbles[k[0]], k[1:]); br.dirty == false {
+		return br, false, nil
+	}
+	br.nibbles[k[0]] = nextNode
+
+	// check remaining nibbles on n(current node)
+	// 1. if n has only 1 remaining node after deleting, n will be removed and the remaining node will be changed to extension.
+	// 2. if n has only value with no remaining node after deleting, node must be changed to leaf
+	// Branch has least 2 nibbles before deleting so branch cannot be empty after deleting
+	remainingNibble := 16
+	for i, nn := range br.nibbles {
+		if nn != nil {
+			if remainingNibble != 16 { // already met another nibble
+				remainingNibble = -1
+				break
+			}
+			remainingNibble = i
+		}
+	}
+
+	//If remainingNibble is -1, branch has 2 more nibbles.
+	if remainingNibble != -1 {
+		if remainingNibble == 16 {
+			return &leaf{value: br.value}, true, nil
+		} else {
+			// check nextNode.
+			// if nextNode is extension or branch, n must be extension
+			switch nn := br.nibbles[remainingNibble].(type) {
+			case *extension:
+				return &extension{sharedNibbles: append([]byte{byte(remainingNibble)}, nn.sharedNibbles...), next: nn.next}, true, nil
+			case *branch:
+				return &extension{sharedNibbles: []byte{byte(remainingNibble)}, next: nn}, true, nil
+			case *leaf:
+				return &leaf{keyEnd: append([]byte{byte(remainingNibble)}, nn.keyEnd...), value: nn.value}, true, nil
+			}
+		}
+	}
+	return br, true, nil
 }

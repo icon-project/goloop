@@ -1,6 +1,7 @@
 package mpt
 
 import (
+	"bytes"
 	"fmt"
 	"golang.org/x/crypto/sha3"
 )
@@ -8,8 +9,7 @@ import (
 type (
 	leaf struct {
 		keyEnd []byte
-		//value  []byte
-		value trieValue
+		value  trieValue
 
 		hashedValue     []byte
 		serializedValue []byte
@@ -80,4 +80,61 @@ func (l *leaf) hash() []byte {
 		fmt.Printf("hash leaf : <%x>\n", digest)
 	}
 	return digest
+}
+
+func (l *leaf) addChild(m *mpt, k []byte, v trieValue) (node, bool) {
+	match := compareHex(k, l.keyEnd)
+	// case 1 : match = 0 -> new branch
+	switch {
+	case match == 0:
+		if v.Compare(l.value) == true {
+			return l, false
+		}
+		newBranch := &branch{}
+		if len(k) == 0 {
+			newBranch.value = v
+		} else {
+			newBranch.nibbles[k[0]], _ = m.set(nil, k[1:], v)
+		}
+		if len(l.keyEnd) == 0 {
+			newBranch.value = l.value
+		} else {
+			newBranch.nibbles[l.keyEnd[0]], _ = m.set(nil, l.keyEnd[1:], l.value)
+		}
+
+		return newBranch, true
+	// case 2 : 0 < match < len(n,value) -> new extension
+	case match < len(l.keyEnd):
+		newExt := &extension{}
+		newExt.sharedNibbles = k[:match]
+		newBranch := &branch{}
+		newExt.next = newBranch
+		if match == len(k) {
+			newBranch.value = v
+		} else {
+			newBranch.nibbles[k[match]], _ = m.set(nil, k[match+1:], v)
+		}
+		newBranch.nibbles[l.keyEnd[match]], _ = m.set(nil, l.keyEnd[match+1:], l.value)
+		return newExt, true
+	// case match == len(n.keyEnd)
+	case match < len(k):
+		newExt := &extension{}
+		newExt.sharedNibbles = k[:match]
+		newBranch := &branch{}
+		newExt.next = newBranch
+		newBranch.value = l.value
+		newBranch.nibbles[k[match]], _ = m.set(nil, k[match+1:], v)
+		return newExt, true
+	// case 3 : match == len(n.value) -> update value
+	default:
+		l.value = v
+	}
+	return l, true
+}
+
+func (l *leaf) deleteChild(m *mpt, k []byte) (node, bool, error) {
+	if bytes.Compare(l.keyEnd, k) != 0 {
+		return l, false, nil
+	}
+	return nil, true, nil
 }
