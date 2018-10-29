@@ -104,6 +104,14 @@ func (b *BlockV1) Proposer() module.Validator {
 	return nil
 }
 
+func (b *BlockV1) LogBloom() []byte {
+	return nil
+}
+
+func (b *BlockV1) Result() []byte {
+	return nil
+}
+
 func NewBlockV1(b []byte) (module.Block, error) {
 	var blk = new(blockV1)
 	err := json.Unmarshal(b, blk)
