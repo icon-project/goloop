@@ -1,44 +1,61 @@
 package db
 
-// DB
-type DB interface {
-	Get(key []byte) ([]byte, error)
-	Has(key []byte) bool
-	Set(key []byte, value []byte) error
-	Delete(key []byte) error
-	Transaction() (Transaction, error)
-	Batch() Batch
-	Iterator() Iterator
+import (
+	"fmt"
+	"strings"
+)
+
+type Database interface {
+	GetBucket(name string) (Bucket, error)
 	Close() error
 }
 
-// Transaction
-type Transaction interface {
-	Get(key []byte) ([]byte, error)
-	Set(key []byte, value []byte) error
-	Delete(key []byte) error
-	Commit() error
-	Discard()
+type BackendType string
+
+const (
+	BadgerDBBackend  BackendType = "badgerdb"
+	GoLevelDBBackend BackendType = "goleveldb"
+	BoltDBBackend    BackendType = "boltdb"
+)
+
+type dbCreator func(name string, dir string) (Database, error)
+
+var backends = map[BackendType]dbCreator{}
+
+func registerDBCreator(backend BackendType, creator dbCreator, force bool) {
+	_, ok := backends[backend]
+	if !force && ok {
+		return
+	}
+	backends[backend] = creator
 }
 
-// Batch
-type Batch interface {
-	Set(key []byte, value []byte) error
-	Delete(key []byte) error
-	Write() error
+func Open(name string) Database {
+	// TODO : configure Database options
+	defaultBackend := BadgerDBBackend
+	dir := "./data"
+	return openDatabase(defaultBackend, name, dir)
 }
 
-// Iterator
-type Iterator interface {
-	Seek(key []byte)
-	Next()
-	Valid() bool
-	Key() (key []byte)
-	Value() (value []byte)
-	Close()
+func openDatabase(backend BackendType, name string, dir string) Database {
+	dbCreator, ok := backends[backend]
+	if !ok {
+		keys := make([]string, len(backends))
+		i := 0
+		for k := range backends {
+			keys[i] = string(k)
+			i++
+		}
+		panic(fmt.Sprintf("Unknown db_backend %s, expected either %s", backend, strings.Join(keys, " or ")))
+	}
+
+	db, err := dbCreator(name, dir)
+	if err != nil {
+		panic(fmt.Sprintf("Error initializing Database: %v", err))
+	}
+	return db
 }
 
-// We defensively turn nil keys or values into []byte{} for most operations.
 func nonNilBytes(bz []byte) []byte {
 	if bz == nil {
 		return []byte{}

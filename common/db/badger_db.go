@@ -1,13 +1,17 @@
 package db
 
 import (
+	"encoding/binary"
+	"encoding/json"
+	"fmt"
 	"path/filepath"
+	"sync"
 
 	"github.com/dgraph-io/badger"
 )
 
 func init() {
-	dbCreator := func(name string, dir string) (DB, error) {
+	dbCreator := func(name string, dir string) (Database, error) {
 		return NewBadgerDB(name, dir)
 	}
 	registerDBCreator(BadgerDBBackend, dbCreator, false)
@@ -20,8 +24,9 @@ func NewBadgerDB(name string, dir string) (*BadgerDB, error) {
 	opts.Dir = dbPath
 	opts.ValueDir = dbPath
 
-	// TODO : badger.Open() use os.Mkdir(). parent dirs must be created
+	// TODO : badger.openDatabase() use os.Mkdir(). parent dirs must be created
 	db, err := badger.Open(opts)
+
 	if err != nil {
 		return nil, err
 	}
@@ -30,187 +35,182 @@ func NewBadgerDB(name string, dir string) (*BadgerDB, error) {
 		db: db,
 	}
 
+	err = database.readMeta(nil)
+	if err == badger.ErrKeyNotFound {
+		database.buckets = bucketMeta{
+			buckets: make(map[string]bucketId),
+		}
+		err = database.writeMeta(nil)
+		if err != nil {
+			return nil, err
+		}
+	} else if err != nil {
+		return nil, err
+	}
+
+	database.bucketSequence, err = database.db.GetSequence(bucketIdSequence, 1e3)
+	if err != nil {
+		return nil, err
+	}
+
 	return database, nil
 }
 
 //----------------------------------------
 // DB
 
-var _ DB = (*BadgerDB)(nil)
+var _ Database = (*BadgerDB)(nil)
 
 type BadgerDB struct {
 	db *badger.DB
+	buckets bucketMeta
+	bucketMutex sync.RWMutex
+	bucketSequence *badger.Sequence
 }
 
-func (db *BadgerDB) DB() *badger.DB {
-	return db.db
+func (db *BadgerDB) GetBucket(name string) (Bucket, error) {
+	bucket, ok := db.bucket(name)
+	if !ok {
+		var err error
+		bucket, err = db.createBucket(nil, name)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return bucket, nil
 }
 
-func (db *BadgerDB) Get(key []byte) ([]byte, error) {
-	key = nonNilBytes(key)
+func (db *BadgerDB) Close() error {
+	err := db.db.Close()
+	return err
+}
+
+func (db *BadgerDB) bucket(name string) (Bucket, bool) {
+	db.bucketMutex.RLock()
+	meta, ok := db.buckets.buckets[name]
+	db.bucketMutex.RUnlock()
+	if !ok {
+		return nil, false
+	}
+	bucket := &badgerBucket{
+		id: meta,
+		db: db.db,
+	}
+	return bucket, true
+}
+
+func (db *BadgerDB) createBucket(txn *badger.Txn, name string) (Bucket, error) {
+	db.bucketMutex.Lock()
+	defer db.bucketMutex.Unlock()
+
+	meta, ok := db.buckets.buckets[name]
+	if ok {
+		return &badgerBucket{id: meta, db: db.db}, nil
+	}
+
+	nextId, err := db.bucketSequence.Next()
+	if err != nil {
+		return nil, err
+	}
+	// This increments the first byte of the bucket id by 8. The bucket id
+	// prefixes records in the database, and since values 0 to 8 of the
+	// first byte of keys are reserved for internal use, bucket ids can't
+	// have their first byte between 0 and 8.
+	nextId += 8 * 256
+	if nextId > MaxBuckets {
+		return nil, fmt.Errorf("bow.createBucket: reached maximum amount of buckets limit (%d)", MaxBuckets)
+	}
+
+	var id bucketId
+	binary.BigEndian.PutUint16(id[:], uint16(nextId))
+	db.buckets.buckets[name] = id
+	err = db.writeMeta(txn)
+	if err != nil {
+		return nil, err
+	}
+
+	return &badgerBucket{id: id, db: db.db}, err
+}
+
+func (db *BadgerDB) readMeta(txn *badger.Txn) error {
+	if txn == nil {
+		txn = db.db.NewTransaction(false)
+		defer func() {
+			txn.Discard()
+		}()
+	}
+	item, err := txn.Get(metaKey)
+	if err != nil {
+		return err
+	}
+	b, err := item.Value()
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(b, &db.buckets)
+}
+
+func (db *BadgerDB) writeMeta(txn *badger.Txn) (err error) {
+	if txn == nil {
+		txn = db.db.NewTransaction(true)
+		defer func() {
+			err = txn.Commit(nil)
+		}()
+	}
+	b, err := json.Marshal(db.buckets)
+
+	if err != nil {
+		return err
+	}
+	err = txn.Set(metaKey, b)
+	return
+}
+
+//----------------------------------------
+// Bucket
+
+var _ Bucket = (*badgerBucket)(nil)
+
+type badgerBucket struct {
+	id bucketId
+	db *badger.DB
+}
+
+func (bucket *badgerBucket) Get(key []byte) ([]byte, error) {
+	ikey := internalKey(bucket.id, key)
 	var value []byte
-	err := db.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(key)
+	err := bucket.db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(ikey)
 		if err != nil {
 			if err == badger.ErrKeyNotFound {
 				return nil
 			}
 		}
-		value, err = item.ValueCopy(nil)
+		value, err = item.Value()
 		return  err
 	})
 	return value, err
 }
 
-func (db *BadgerDB) Has(key []byte) bool {
-	value, err := db.Get(key)
+func (bucket *badgerBucket) Has(key []byte) bool {
+	value, err := bucket.Get(key)
 	if !(value != nil && err == nil) {
 		return false
 	}
 	return true
 }
 
-func (db *BadgerDB) Set(key []byte, value []byte) error {
-	key = nonNilBytes(key)
-	value = nonNilBytes(value)
-	return db.db.Update(func(txn *badger.Txn) error {
-		err := txn.Set(key, value)
+func (bucket *badgerBucket) Set(key []byte, value []byte) error {
+	ikey := internalKey(bucket.id, key)
+	return bucket.db.Update(func(txn *badger.Txn) error {
+		err := txn.Set(ikey, value)
 		return err
 	})
 }
 
-func (db *BadgerDB) Delete(key []byte) error {
-	key = nonNilBytes(key)
-	return db.db.Update(func(txn *badger.Txn) error {
-		return txn.Delete(key)
+func (bucket *badgerBucket) Delete(key []byte) error {
+	ikey := internalKey(bucket.id, key)
+	return bucket.db.Update(func(txn *badger.Txn) error {
+		return txn.Delete(ikey)
 	})
 }
-
-func (db *BadgerDB) Transaction() (Transaction, error) {
-	txn := db.db.NewTransaction(true)
-	return &badgerDBTx{ txn: txn }, nil
-}
-
-func (db *BadgerDB) Batch() (Batch) {
-	wBatch := db.db.NewWriteBatch()
-	return &badgerDBBatch{ batch: wBatch}
-}
-
-func (db *BadgerDB) Iterator() (Iterator) {
-	txn := db.db.NewTransaction(false)
-	itr := txn.NewIterator(badger.DefaultIteratorOptions)
-	return &badgerDBIterator{
-		txn: txn,
-		iterator: itr,
-	}
-}
-
-func (db *BadgerDB) Close() error {
-	return db.db.Close()
-}
-
-//----------------------------------------
-// Transaction
-
-var _ Transaction = (*badgerDBTx)(nil)
-
-type badgerDBTx struct {
-	txn *badger.Txn
-}
-
-func (tx *badgerDBTx) Get(key []byte) ([]byte, error) {
-	key = nonNilBytes(key)
-	item, err := tx.txn.Get(key)
-	if err != nil {
-		if err == badger.ErrKeyNotFound {
-			return nil, nil
-		}
-	}
-	return item.ValueCopy(nil)
-}
-
-func (tx *badgerDBTx) Set(key []byte, value []byte) error {
-	key = nonNilBytes(key)
-	value = nonNilBytes(value)
-	return tx.txn.Set(key, value)
-}
-
-func (tx *badgerDBTx) Delete(key []byte) error {
-	key = nonNilBytes(key)
-	return tx.txn.Delete(key)
-}
-
-func (tx *badgerDBTx) Commit() error {
-	return tx.txn.Commit()
-}
-
-func (tx *badgerDBTx) Discard() {
-	tx.txn.Discard()
-}
-
-//----------------------------------------
-// Batch
-
-var _ Batch = (*badgerDBBatch)(nil)
-
-type badgerDBBatch struct {
-	batch *badger.WriteBatch
-}
-
-func (batch *badgerDBBatch) Set(key []byte, value []byte) error {
-	key = nonNilBytes(key)
-	value = nonNilBytes(value)
-	return batch.batch.Set(key, value, 0)
-}
-
-func (batch *badgerDBBatch) Delete(key []byte) error {
-	key = nonNilBytes(key)
-	return batch.batch.Delete(key)
-}
-
-func (batch *badgerDBBatch) Write() error {
-	return batch.batch.Flush()
-}
-
-//----------------------------------------
-// Iterator
-
-var _ Iterator = (*badgerDBIterator)(nil)
-
-type badgerDBIterator struct {
-	txn *badger.Txn
-	iterator *badger.Iterator
-}
-
-func (itr *badgerDBIterator) Seek(key []byte) {
-	key = nonNilBytes(key)
-	itr.iterator.Seek(key)
-}
-
-func (itr *badgerDBIterator) Next() {
-	itr.iterator.Next()
-}
-
-func (itr *badgerDBIterator) Valid() bool {
-	return itr.iterator.Valid()
-}
-
-func (itr *badgerDBIterator) Key() (key []byte) {
-	item := itr.iterator.Item()
-	return item.KeyCopy(nil)
-}
-
-func (itr *badgerDBIterator) Value() (value []byte) {
-	item := itr.iterator.Item()
-	val, err := item.ValueCopy(nil)
-	if err != nil {
-		panic(err)
-	}
-	return val
-}
-
-func (itr *badgerDBIterator) Close() {
-	itr.iterator.Close()
-	itr.txn.Discard()
-}
-

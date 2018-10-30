@@ -14,10 +14,10 @@ import (
 //}
 
 type manager struct {
-	db db.DB
+	db db.Bucket
 }
 
-func NewManager(db db.DB) trie.Manager {
+func NewManager(db db.Bucket) trie.Manager {
 	return &manager{db: db}
 }
 

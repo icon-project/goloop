@@ -8,15 +8,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBadgerDB_Database(t *testing.T) {
+func TestBoltDB_Database(t *testing.T) {
 
-	dir, err := ioutil.TempDir("", "badgerdb")
+	dir, err := ioutil.TempDir("", "boltdb")
 	if err != nil {
 		panic(err)
 	}
 	defer os.RemoveAll(dir)
 
-	testDB := openDatabase(BadgerDBBackend,"test", dir)
+	testDB := openDatabase(BoltDBBackend,"test", dir)
 	defer testDB.Close()
 
 	key := []byte("hello")

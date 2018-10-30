@@ -38,15 +38,15 @@
 
 [[constraint]]
   name = "github.com/dgraph-io/badger"
-  branch = "master"
-
-[[constraint]]
-  name = "github.com/syndtr/goleveldb"
-  revision = "c4c61651e9e37fa117f53c5a906d3b63090d8445"
+  version = "v1.5.3"
 
 [[constraint]]
   name = "go.etcd.io/bbolt"
   version = "v1.3.1-etcd.8"
+
+[[constraint]]
+  name = "github.com/syndtr/goleveldb"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/stretchr/testify"

@@ -25,13 +25,13 @@ type (
 		rootHashed bool
 		curSource  *source
 		mutex      sync.Mutex
-		db         db.DB
+		db         db.Bucket
 	}
 )
 
 /*
  */
-func newMpt(db db.DB, initialHash hash) *mpt {
+func newMpt(db db.Bucket, initialHash hash) *mpt {
 	return &mpt{root: hash(append([]byte(nil), []byte(initialHash)...)),
 		curSource: &source{requestPool: make(map[string]trie.Object), committedHash: hash(append([]byte(nil), []byte(initialHash)...))},
 		db:        db, objType: reflect.TypeOf([]byte{})}
@@ -210,7 +210,7 @@ func (m *mpt) mergeSnapshot() (map[string]trie.Object, hash) {
 }
 
 // TODO: check whether this node is stored or not
-func traversalCommit(db db.DB, n node) error {
+func traversalCommit(db db.Bucket, n node) error {
 	switch n := n.(type) {
 	case *branch:
 		for _, v := range n.nibbles {
@@ -310,7 +310,7 @@ func (m *mpt) Proof(k []byte) [][]byte {
 	return buf
 }
 
-func (m *mpt) Load(db db.DB, root []byte) error {
+func (m *mpt) Load(db db.Bucket, root []byte) error {
 	// use db to check validation
 	if _, err := db.Get(root); err != nil {
 		return err

@@ -24,7 +24,7 @@ type (
 	// TODO : need Cache??
 	Cache interface {
 		Immutable
-		Load(db db.DB, root []byte) error
+		Load(db db.Bucket, root []byte) error
 	}
 
 	Mutable interface {
@@ -43,7 +43,7 @@ type (
 
 	Object interface {
 		Bytes() []byte
-		Reset(s db.Store, k []byte) error
+		Reset(s db.Database, k []byte) error
 		Flush() error
 		Equal(Object) bool
 	}
@@ -67,6 +67,6 @@ type (
 	}
 )
 
-func Verify(proofs [][]byte, db db.DB) bool {
+func Verify(proofs [][]byte, db db.Bucket) bool {
 	return true
 }

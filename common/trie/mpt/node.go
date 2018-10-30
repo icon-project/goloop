@@ -64,7 +64,7 @@ func (v byteValue) Bytes() []byte {
 	return v
 }
 
-func (v byteValue) Reset(s db.Store, k []byte) error {
+func (v byteValue) Reset(s db.Database, k []byte) error {
 	return nil
 }
 

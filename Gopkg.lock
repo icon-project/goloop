@@ -18,8 +18,7 @@
   version = "v1.1.1"
 
 [[projects]]
-  branch = "master"
-  digest = "1:d23c49c0130b5c7f91861e2a79f92e91b8ae3c62296ac5e9ae4940305d8c553c"
+  digest = "1:5f5090f05382959db941fa45acbeb7f4c5241aa8ac0f8f4393dec696e5953f53"
   name = "github.com/dgraph-io/badger"
   packages = [
     ".",
@@ -30,7 +29,8 @@
     "y",
   ]
   pruneopts = "UT"
-  revision = "42bf5956793c51d2476520fe707cb584d58b2311"
+  revision = "99233d725dbdd26d156c61b2f42ae1671b794656"
+  version = "v1.5.4"
 
 [[projects]]
   branch = "master"
@@ -57,7 +57,6 @@
   revision = "2e65f85255dbc3072edf28d6b5b8efc472979f5a"
 
 [[projects]]
-  branch = "master"
   digest = "1:65a3104ed11ab8453591c4d7bdf3bbf9838ead7f61ab25b04966e8b36d969e89"
   name = "github.com/haltingstate/secp256k1-go"
   packages = [
@@ -92,7 +91,8 @@
   version = "v1.2.2"
 
 [[projects]]
-  digest = "1:b3cfb8d82b1601a846417c3f31c03a7961862cb2c98dcf0959c473843e6d9a2b"
+  branch = "master"
+  digest = "1:59483b8e8183f10ab21a85ba1f4cbb4a2335d48891801f79ed7b9499f44d383c"
   name = "github.com/syndtr/goleveldb"
   packages = [
     "leveldb",
@@ -109,7 +109,7 @@
     "leveldb/util",
   ]
   pruneopts = "UT"
-  revision = "c4c61651e9e37fa117f53c5a906d3b63090d8445"
+  revision = "6b91fda63f2e36186f1c9d0e48578defb69c5d43"
 
 [[projects]]
   digest = "1:3762d59edaa6e5c71d5e594c020c8391f274ff283e9c30fb43c518ec59a3f9b3"
@@ -121,11 +121,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e7a1ce56dc2fd57e2e1fe88c984583e8345d24a27068a47b134a2f2fd0e095a2"
+  digest = "1:07bed7db52308c8338e0848cde9b26ec6fdab68c6c79ab1098dc728b6a899e45"
   name = "golang.org/x/crypto"
   packages = ["sha3"]
   pruneopts = "UT"
-  revision = "7c1a557ab941a71c619514f229f0b27ccb0c27cf"
+  revision = "bc7917b19d8f099105de72dc62898400be07c984"
 
 [[projects]]
   branch = "master"
@@ -137,15 +137,15 @@
     "trace",
   ]
   pruneopts = "UT"
-  revision = "04a2e542c03f1d053ab3e4d6e5abcd4b66e2be8e"
+  revision = "c44066c5c816ec500d459a2a324a753f78531ae0"
 
 [[projects]]
   branch = "master"
-  digest = "1:0a40b0bdd57a93e741d8557465be3a2edeec408e9b6399586ad65bbe8e355796"
+  digest = "1:fbacfb57e3d052810813bca2d48c22fbde916ecfc4a2bac08df30ed6e9e59759"
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "UT"
-  revision = "fa43e7bc11baaae89f3f902b2b4d832b68234844"
+  revision = "d69651ed3497faee15a5363a89578e9991f6d5e2"
 
 [solve-meta]
   analyzer-name = "dep"
@@ -155,8 +155,6 @@
     "github.com/haltingstate/secp256k1-go",
     "github.com/stretchr/testify/assert",
     "github.com/syndtr/goleveldb/leveldb",
-    "github.com/syndtr/goleveldb/leveldb/errors",
-    "github.com/syndtr/goleveldb/leveldb/iterator",
     "github.com/syndtr/goleveldb/leveldb/opt",
     "go.etcd.io/bbolt",
     "golang.org/x/crypto/sha3",

@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/mpt"
 )
@@ -35,28 +34,11 @@ func (db *testDB) Set(k, v []byte) error {
 	return nil
 }
 
-func (db *testDB) Batch() db.Batch {
-
-	return nil
-}
 func (db *testDB) Has(key []byte) bool {
 	return false
 }
 
 func (db *testDB) Delete(key []byte) error {
-
-	return nil
-}
-
-func (db *testDB) Transaction() (db.Transaction, error) {
-	return nil, nil
-}
-
-func (db *testDB) Iterator() db.Iterator {
-	return nil
-}
-
-func (db *testDB) Close() error {
 	return nil
 }
 
