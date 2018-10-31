@@ -34,7 +34,7 @@
 
 [[constraint]]
   name = "golang.org/x/crypto"
-  branch = "master"
+  revision = "bc7917b19d8f099105de72dc62898400be07c984"
 
 [[constraint]]
   name = "github.com/dgraph-io/badger"
@@ -44,17 +44,18 @@
   name = "go.etcd.io/bbolt"
   version = "v1.3.1-etcd.8"
 
+# TODO change it to version or revision later before official release
 [[constraint]]
   name = "github.com/syndtr/goleveldb"
   branch = "master"
 
-[[constraint]]
-  name = "github.com/ugorji/go"
-  version = "v1.1.1"
+#[[constraint]]
+#  name = "github.com/ugorji/go"
+#  version = "v1.1.1"
 
 [[constraint]]
   name = "github.com/go-errors/errors"
-  branch = "master"
+  revision = "d98b870cc4e05f1545532a80e9909be8216095b6"
 
 [[constraint]]
   name = "github.com/stretchr/testify"

@@ -120,14 +120,6 @@
   revision = "6b91fda63f2e36186f1c9d0e48578defb69c5d43"
 
 [[projects]]
-  digest = "1:03aa6e485e528acb119fb32901cf99582c380225fc7d5a02758e08b180cb56c3"
-  name = "github.com/ugorji/go"
-  packages = ["codec"]
-  pruneopts = "UT"
-  revision = "b4c50a2b199d93b13dc15e78929cfb23bfdf21ab"
-  version = "v1.1.1"
-
-[[projects]]
   digest = "1:3762d59edaa6e5c71d5e594c020c8391f274ff283e9c30fb43c518ec59a3f9b3"
   name = "go.etcd.io/bbolt"
   packages = ["."]
@@ -173,7 +165,6 @@
     "github.com/stretchr/testify/assert",
     "github.com/syndtr/goleveldb/leveldb",
     "github.com/syndtr/goleveldb/leveldb/opt",
-    "github.com/ugorji/go/codec",
     "go.etcd.io/bbolt",
     "golang.org/x/crypto/sha3",
   ]
