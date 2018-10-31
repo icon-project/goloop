@@ -7,13 +7,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"time"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
 )
+
+var blockV1Codec = codec.JSON
 
 type transactionV3 struct {
 	module.Transaction
@@ -36,7 +41,7 @@ func (t transactionV3) String() string {
 	return fmt.Sprint(t.Transaction)
 }
 
-type blockV1 struct {
+type blockV1Impl struct {
 	Version            string             `json:"version"`
 	PrevBlockHash      common.RawHexBytes `json:"prev_block_hash"`
 	MerkleTreeRootHash common.RawHexBytes `json:"merkle_tree_root_hash"`
@@ -48,77 +53,83 @@ type blockV1 struct {
 	Signature          common.Signature   `json:"signature"`
 }
 
-type BlockV1 struct {
-	*blockV1
+type blockV1 struct {
+	*blockV1Impl
 }
 
-func (b *BlockV1) Version() int {
+func (b *blockV1) Version() int {
 	return 1
 }
 
-func (b *BlockV1) ID() []byte {
-	return b.blockV1.BlockHash.ToBytes()
+func (b *blockV1) ID() []byte {
+	return b.blockV1Impl.BlockHash.ToBytes()
 }
 
-func (b *BlockV1) Height() int64 {
-	return b.blockV1.Height
+func (b *blockV1) Height() int64 {
+	return b.blockV1Impl.Height
 }
 
-func (b *BlockV1) PrevRound() int {
+func (b *blockV1) PrevRound() int {
 	return 0
 }
 
-func (b *BlockV1) PrevID() []byte {
-	return b.blockV1.PrevBlockHash.ToBytes()
+func (b *blockV1) PrevID() []byte {
+	return b.blockV1Impl.PrevBlockHash.ToBytes()
 }
 
-func (b *BlockV1) Votes() []module.Vote {
+func (b *blockV1) Votes() module.VoteList {
 	return nil
 }
 
-func (b *BlockV1) NextValidators() []module.Validator {
+func (b *blockV1) NextValidators() []module.Validator {
 	return nil
 }
 
-func (b *BlockV1) Verify() error {
-	return b.blockV1.Verify()
+func (b *blockV1) Verify() error {
+	return b.blockV1Impl.Verify()
 }
 
-func (b *BlockV1) String() string {
-	return fmt.Sprint(b.blockV1)
+func (b *blockV1) String() string {
+	return fmt.Sprint(b.blockV1Impl)
 }
 
-func (b *BlockV1) NormalTransactions() module.TransactionList {
+func (b *blockV1) NormalTransactions() module.TransactionList {
 	return nil
 }
 
-func (b *BlockV1) PatchTransactions() module.TransactionList {
+func (b *blockV1) PatchTransactions() module.TransactionList {
 	return nil
 }
 
-func (b *BlockV1) Timestamp() int64 {
-	return 0
+func (b *blockV1) Timestamp() time.Time {
+	return time.Time{}
 }
 
-func (b *BlockV1) Proposer() module.Validator {
+func (b *blockV1) Proposer() module.Address {
 	return nil
 }
 
-func (b *BlockV1) LogBloom() []byte {
+func (b *blockV1) LogBloom() []byte {
 	return nil
 }
 
-func (b *BlockV1) Result() []byte {
+func (b *blockV1) Result() []byte {
 	return nil
+}
+
+func (b *blockV1) MarshalHeader(w io.Writer) {
+}
+
+func (b *blockV1) MarshalBody(w io.Writer) {
 }
 
 func NewBlockV1(b []byte) (module.Block, error) {
-	var blk = new(blockV1)
+	var blk = new(blockV1Impl)
 	err := json.Unmarshal(b, blk)
 	if err != nil {
 		return nil, err
 	}
-	return &BlockV1{blk}, nil
+	return &blockV1{blk}, nil
 }
 
 func calcMergedHash(h1, h2 []byte) []byte {
@@ -148,7 +159,7 @@ func calcMerkleTreeRoot(m [][]byte) []byte {
 	return ml[0]
 }
 
-func (blk *blockV1) Verify() error {
+func (blk *blockV1Impl) Verify() error {
 	b := make([]byte, 128+8)
 	copy(b[0:], []byte(blk.PrevBlockHash.String()))
 	copy(b[64:], []byte(blk.MerkleTreeRootHash.String()))

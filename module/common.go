@@ -12,3 +12,13 @@ type Vote interface {
 
 type Validator Address
 
+func GetID() Validator {
+	return nil
+}
+
+type VoteList interface {
+	Verify(block Block, validators []Validator) bool
+	Bytes() []byte
+}
+
+type VoteListDecoder func([]byte) VoteList
