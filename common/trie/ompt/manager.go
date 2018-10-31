@@ -12,19 +12,19 @@ type manager struct {
 }
 
 func (m *manager) NewImmutableForObject(h []byte, t reflect.Type) trie.ImmutableForObject {
-	return NewImmutableForObject(m.db, h, t)
+	return NewMPT(m.db, h, t)
 }
 
 func (m *manager) NewMutableForObject(h []byte, t reflect.Type) trie.MutableForObject {
-	return NewMutableForObject(m.db, h, t)
+	return NewMPT(m.db, h, t)
 }
 
 func (m *manager) NewImmutable(h []byte) trie.Immutable {
-	return nil
+	return NewMPTForBytes(m.db, h)
 }
 
 func (m *manager) NewMutable(h []byte) trie.Mutable {
-	return nil
+	return NewMPTForBytes(m.db, h)
 }
 
 func NewManager(db db.Database) trie.Manager {

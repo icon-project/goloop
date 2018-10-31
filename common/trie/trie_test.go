@@ -6,46 +6,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/mpt"
 )
-
-var printDb = false
-
-type testDB struct {
-	pool map[string][]byte
-}
-
-func (db *testDB) Get(k []byte) ([]byte, error) {
-	v := db.pool[string(k)]
-	if printDb == true {
-		fmt.Println("Get k : ", k)
-		fmt.Println("Get v : ", v)
-	}
-	return v, nil
-}
-
-func (db *testDB) Set(k, v []byte) error {
-	db.pool[string(k)] = v
-	if printDb == true {
-		fmt.Println("Set k : ", k)
-		fmt.Println("Set v : ", v)
-	}
-	return nil
-}
-
-func (db *testDB) Has(key []byte) bool {
-	return false
-}
-
-func (db *testDB) Delete(key []byte) error {
-	return nil
-}
-
-func newDB() *testDB {
-	return &testDB{pool: make(map[string][]byte)}
-
-}
 
 var testPool = map[string]string{
 	"doe":          "reindeer",
@@ -54,8 +18,7 @@ var testPool = map[string]string{
 }
 
 func TestCommit(t *testing.T) {
-	db := newDB()
-	manager := mpt.NewManager(db)
+	manager := mpt.NewManager(db.NewMapDB())
 	trie := manager.NewMutable(nil)
 	rootHash := make([]string, 3)
 	i := 0
@@ -86,8 +49,7 @@ func TestCommit(t *testing.T) {
 }
 
 func TestInsert(t *testing.T) {
-	db := newDB()
-	manager := mpt.NewManager(db)
+	manager := mpt.NewManager(db.NewMapDB())
 	trie := manager.NewMutable(nil)
 
 	for k, v := range testPool {
@@ -119,8 +81,7 @@ func TestInsert(t *testing.T) {
 }
 
 func TestDelete1(t *testing.T) {
-	db := newDB()
-	manager := mpt.NewManager(db)
+	manager := mpt.NewManager(db.NewMapDB())
 	trie := manager.NewMutable(nil)
 
 	updateString(trie, "doe", "reindeer")
@@ -153,8 +114,7 @@ func TestDelete1(t *testing.T) {
 }
 
 func TestDelete2(t *testing.T) {
-	db := newDB()
-	manager := mpt.NewManager(db)
+	manager := mpt.NewManager(db.NewMapDB())
 	trie := manager.NewMutable(nil)
 	vals := []struct{ k, v string }{
 		{"do", "verb"},
@@ -183,8 +143,7 @@ func TestDelete2(t *testing.T) {
 }
 
 func TestCache(t *testing.T) {
-	db := newDB()
-	manager := mpt.NewManager(db)
+	manager := mpt.NewManager(db.NewMapDB())
 	mutable := manager.NewMutable(nil)
 
 	for k, v := range testPool {
@@ -215,8 +174,7 @@ func TestCache(t *testing.T) {
 
 func TestDeleteSnapshot(t *testing.T) {
 	// delete, snapshot, write
-	db := newDB()
-	manager := mpt.NewManager(db)
+	manager := mpt.NewManager(db.NewMapDB())
 	trie := manager.NewMutable(nil)
 
 	updateString(trie, "doe", "reindeer")
@@ -266,8 +224,7 @@ func TestDeleteSnapshot(t *testing.T) {
 }
 
 func TestLateFlush(t *testing.T) {
-	db := newDB()
-	manager := mpt.NewManager(db)
+	manager := mpt.NewManager(db.NewMapDB())
 	tr := manager.NewMutable(nil)
 	poolList := []string{
 		"doe",

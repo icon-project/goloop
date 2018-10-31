@@ -10,7 +10,7 @@ type Bucket interface {
 	Delete(key []byte) error
 }
 
-const bucketIdSize  = 2
+const bucketIdSize = 2
 const reserved byte = 0x00
 const MaxBuckets = math.MaxUint16 - (8 * 256)
 
@@ -20,7 +20,7 @@ var metaKey = []byte{reserved, 0x01}
 type bucketId [bucketIdSize]byte
 
 type bucketMeta struct {
-	buckets map[string] bucketId
+	buckets map[string]bucketId
 }
 
 // internalKey returns key prefixed with the bucket's id.
@@ -33,23 +33,11 @@ func internalKey(id bucketId, key []byte) []byte {
 
 //	Bucket ID
 const (
-	// StateTrie maps account from sha3(address)
-	StateTrie = ""
+	// MerkleTrie maps RLP encoded data from sha3(data)
+	MerkleTrie = ""
 
-	// StorageTrie maps storage value from storage key
-	StorageTrie = ""
-
-	// NormalTransactionTrie maps transaction from index
-	NormalTransactionTrie = ""
-
-	// PatchTransactionTrie maps transaction from index
-	PatchTranscationTrie = ""
-
-	// NormalReceiptTrie maps receipt from index
-	NormalReceiptTrie = ""
-
-	// PatchReceiptTrie maps receipt from index
-	PatchReceiptTrie = ""
+	// BytesByHash maps data except merkle trie nodes from sha3(data)
+	BytesByHash = "S"
 
 	// BlockHeaderByHash maps block header from hash of encoded block header.
 	BlockHeaderByHash = "S"
@@ -77,5 +65,3 @@ const (
 	// ChainProperty is general key value map for chain property.
 	ChainProperty = "C"
 )
-
-

@@ -69,7 +69,7 @@ func (m *mpt) getObject(o trie.Object) (trie.Object, bool, error) {
 func (m *mpt) Get(k []byte) (trie.Object, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	root, obj, err := m.get(m.root, k)
+	root, obj, err := m.get(m.root, bytesToKeys(k))
 	m.root = root
 	return obj, err
 }
@@ -107,7 +107,7 @@ func (m *mpt) GetSnapshot() trie.SnapshotForObject {
 func (m *mpt) Set(k []byte, o trie.Object) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	root, dirty, err := m.set(m.root, k, o)
+	root, dirty, err := m.set(m.root, bytesToKeys(k), o)
 	if dirty {
 		m.root = root
 	}
@@ -117,7 +117,7 @@ func (m *mpt) Set(k []byte, o trie.Object) error {
 func (m *mpt) Delete(k []byte) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	root, dirty, err := m.delete(m.root, k)
+	root, dirty, err := m.delete(m.root, bytesToKeys(k))
 	if dirty {
 		m.root = root
 	}
@@ -128,29 +128,14 @@ func (m *mpt) Reset(s trie.ImmutableForObject) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	m2, ok := s.(*mpt)
-	if (!ok) || m2.mptBase != m.mptBase {
+	if (!ok) || !reflect.DeepEqual(m2.mptBase, m.mptBase) {
 		log.Panicln("Supplied ImmutableForObject isn't usable in here", s)
 	}
 	m.root = m2.root
 }
 
-func NewMutableForObject(d db.Database, h []byte, t reflect.Type) trie.MutableForObject {
-	bk, err := d.GetBucket(db.StateTrie)
-	if err != nil {
-		log.Panicln("NewImmutable fail to get bucket")
-	}
-	return &mpt{
-		mptBase: mptBase{
-			db:         d,
-			bucket:     bk,
-			objectType: t,
-		},
-		root: nodeFromHash(h),
-	}
-}
-
-func NewImmutableForObject(d db.Database, h []byte, t reflect.Type) trie.ImmutableForObject {
-	bk, err := d.GetBucket(db.StateTrie)
+func NewMPT(d db.Database, h []byte, t reflect.Type) *mpt {
+	bk, err := d.GetBucket(db.MerkleTrie)
 	if err != nil {
 		log.Panicln("NewImmutable fail to get bucket")
 	}

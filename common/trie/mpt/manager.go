@@ -1,6 +1,7 @@
 package mpt
 
 import (
+	"log"
 	"reflect"
 
 	"github.com/icon-project/goloop/common/db"
@@ -16,22 +17,29 @@ import (
 //}
 
 type manager struct {
-	db db.Bucket
+	db db.Database
 }
 
-func NewManager(db db.Bucket) trie.Manager {
+func NewManager(db db.Database) trie.Manager {
 	return &manager{db: db}
 }
 
 func (m *manager) NewImmutable(rootHash []byte) trie.Immutable {
-	mpt := newMpt(m.db, rootHash)
+	bk, err := m.db.GetBucket(db.MerkleTrie)
+	if err != nil {
+		log.Panicln("FAIL to get Bucket", err)
+	}
+	mpt := newMpt(bk, rootHash)
 	return mpt
 }
 
 func (m *manager) NewMutable(rootHash []byte) trie.Mutable {
-	return newMpt(m.db, rootHash)
+	bk, err := m.db.GetBucket(db.MerkleTrie)
+	if err != nil {
+		log.Panicln("FAIL to get Bucket", err)
+	}
+	return newMpt(bk, rootHash)
 }
-
 func (m *manager) NewImmutableForObject(h []byte, t reflect.Type) trie.ImmutableForObject {
 	// TODO Implement
 	return nil

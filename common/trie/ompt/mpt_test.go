@@ -3,7 +3,6 @@ package ompt
 import (
 	"bytes"
 	"encoding/hex"
-	"fmt"
 	"log"
 	"reflect"
 	"testing"
@@ -12,52 +11,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 )
 
-type TestBucket map[string]string
-
-func (t TestBucket) Get(k []byte) ([]byte, error) {
-	log.Printf("TestBucket.Get(%s)", hex.EncodeToString(k))
-	v, ok := t[string(k)]
-	if ok {
-		return []byte(v), nil
-	}
-	return nil, nil
-}
-
-func (t TestBucket) Delete(k []byte) error {
-	log.Panicf("TestBucket.Delete(%s)", hex.EncodeToString(k))
-	delete(t, string(k))
-	return nil
-}
-
-func (t TestBucket) Set(k, v []byte) error {
-	fmt.Printf("TestBucket.Set(%s,%s)",
-		hex.EncodeToString(k), hex.EncodeToString(v))
-	t[string(k)] = string(v)
-	return nil
-}
-
-func (t TestBucket) Has(k []byte) bool {
-	_, ok := t[string(k)]
-	return ok
-}
-
-type TestDatabase map[string]TestBucket
-
-func (t TestDatabase) GetBucket(s string) (db.Bucket, error) {
-	if bk, ok := t[s]; ok {
-		return bk, nil
-	} else {
-		bk := make(TestBucket)
-		t[s] = bk
-		return bk, nil
-	}
-}
-
-func (t TestDatabase) Close() error {
-	return nil
-}
-
-func TestNewMutableForObject(t *testing.T) {
+func TestNewMPT(t *testing.T) {
 	type entry struct {
 		k, v []byte
 	}
@@ -79,7 +33,7 @@ func TestNewMutableForObject(t *testing.T) {
 		{
 			name: "AddRemove1",
 			args: args{
-				make(TestDatabase),
+				db.NewMapDB(),
 				nil,
 				reflect.TypeOf(BytesObject(nil)),
 				[]entry{
@@ -104,7 +58,7 @@ func TestNewMutableForObject(t *testing.T) {
 		{
 			name: "AddRemove2",
 			args: args{
-				make(TestDatabase),
+				db.NewMapDB(),
 				nil,
 				reflect.TypeOf(BytesObject(nil)),
 				[]entry{
@@ -130,9 +84,9 @@ func TestNewMutableForObject(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewMutableForObject(tt.args.d, tt.args.h, tt.args.t)
+			got := NewMPT(tt.args.d, tt.args.h, tt.args.t)
 			if got == nil {
-				t.Errorf("NewMutableForObject() = %v, want non nil", got)
+				t.Errorf("NewMPT() = %v, want non nil", got)
 				return
 			}
 			for _, e := range tt.args.e {
@@ -155,7 +109,7 @@ func TestNewMutableForObject(t *testing.T) {
 			// }
 			s.Flush()
 
-			s2 := NewImmutableForObject(tt.args.d, h, tt.args.t)
+			s2 := NewMPT(tt.args.d, h, tt.args.t)
 			for _, e := range tt.want.e {
 				obj, err := s2.Get(e.k)
 				if err != nil {
@@ -174,7 +128,7 @@ func TestNewMutableForObject(t *testing.T) {
 					}
 				}
 				if !bytes.Equal(obj.Bytes(), e.v) {
-					s2.(*mpt).Dump()
+					s2.Dump()
 					t.Errorf("Key(%s) expected %s result %s",
 						hex.EncodeToString(e.k), hex.EncodeToString(e.v),
 						hex.EncodeToString(obj.Bytes()))
