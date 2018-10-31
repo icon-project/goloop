@@ -55,7 +55,7 @@
 
 [[constraint]]
   name = "github.com/go-errors/errors"
-  revision = "d98b870cc4e05f1545532a80e9909be8216095b6"
+  version = "v1.0.1"
 
 [[constraint]]
   name = "github.com/stretchr/testify"
