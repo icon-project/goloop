@@ -16,6 +16,7 @@ const (
 	BadgerDBBackend  BackendType = "badgerdb"
 	GoLevelDBBackend BackendType = "goleveldb"
 	BoltDBBackend    BackendType = "boltdb"
+	MapDBBackend     BackendType = "mapdb"
 )
 
 type dbCreator func(name string, dir string) (Database, error)
