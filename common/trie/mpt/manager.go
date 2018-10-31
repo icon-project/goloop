@@ -1,6 +1,8 @@
 package mpt
 
 import (
+	"reflect"
+
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 )
@@ -28,4 +30,13 @@ func (m *manager) NewImmutable(rootHash []byte) trie.Immutable {
 
 func (m *manager) NewMutable(rootHash []byte) trie.Mutable {
 	return newMpt(m.db, rootHash)
+}
+
+func (m *manager) NewImmutableForObject(h []byte, t reflect.Type) trie.ImmutableForObject {
+	// TODO Implement
+	return nil
+}
+func (m *manager) NewMutableForObject(h []byte, t reflect.Type) trie.MutableForObject {
+	// TODO Implement
+	return nil
 }

@@ -1,6 +1,8 @@
 package trie
 
 import (
+	"reflect"
+
 	"github.com/icon-project/goloop/common/db"
 )
 
@@ -36,11 +38,6 @@ type (
 		Reset(d Immutable) error
 	}
 
-	Manager interface {
-		NewImmutable(rootHash []byte) Immutable
-		NewMutable(rootHash []byte) Mutable
-	}
-
 	Object interface {
 		Bytes() []byte
 		Reset(s db.Database, k []byte) error
@@ -50,7 +47,6 @@ type (
 
 	ImmutableForObject interface {
 		Get(k []byte) (Object, error)
-		GetBytes(k []byte) ([]byte, error)
 		Hash() []byte
 	}
 
@@ -60,10 +56,23 @@ type (
 	}
 
 	MutableForObject interface {
+		Get(k []byte) (Object, error)
 		Set(k []byte, o Object) error
 		Delete(k []byte) error
 		GetSnapshot() SnapshotForObject
 		Reset(s ImmutableForObject)
+	}
+
+	ManagerForObject interface {
+		NewImmutable(h []byte) ImmutableForObject
+		NewMutable(h []byte) MutableForObject
+	}
+
+	Manager interface {
+		NewImmutable(rootHash []byte) Immutable
+		NewMutable(rootHash []byte) Mutable
+		NewImmutableForObject(h []byte, t reflect.Type) ImmutableForObject
+		NewMutableForObject(h []byte, t reflect.Type) MutableForObject
 	}
 )
 

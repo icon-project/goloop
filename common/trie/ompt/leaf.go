@@ -2,72 +2,169 @@ package ompt
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/icon-project/goloop/common/trie"
-	"golang.org/x/crypto/sha3"
 )
 
-type (
-	leaf struct {
-		keyEnd []byte
-		// value  []byte
-		value trie.Object
-
-		hashedValue     []byte
-		serializedValue []byte
-		dirty           bool // if dirty is true, must retry getting hashedValue & serializedValue
-	}
-)
-
-func (l *leaf) serialize() []byte {
-	if l.dirty == true {
-		l.serializedValue = nil
-		l.hashedValue = nil
-	} else if l.serializedValue != nil {
-		return l.serializedValue
-	}
-
-	keyLen := len(l.keyEnd)
-	keyArray := make([]byte, keyLen/2+1)
-	keyIndex := 0
-	if keyLen%2 == 1 {
-		keyArray[0] = 0x3<<4 | l.keyEnd[0]
-		keyIndex++
-	} else {
-		keyArray[0] = 0x20
-	}
-
-	for i := 0; i < keyLen/2; i++ {
-		keyArray[i+1] = l.keyEnd[i*2+keyIndex]<<4 | l.keyEnd[i*2+1+keyIndex]
-	}
-
-	result := encodeList(encodeByte(keyArray), encodeByte(l.value.Bytes()))
-
-	if printSerializedValue {
-		fmt.Println("serialize leaf : ", result)
-	}
-	return result
+type leaf struct {
+	nodeBase
+	keys  []byte
+	value trie.Object
 }
 
-func (l *leaf) hash() []byte {
-	if l.dirty == true {
-		l.serializedValue = nil
-		l.hashedValue = nil
-	} else if l.hashedValue != nil {
-		return l.hashedValue
+func newLeaf(hash, serialized []byte, blist [][]byte) (node, error) {
+	kbytes, err := rlpParseBytes(blist[0])
+	if err != nil {
+		return nil, err
 	}
+	keys := decodeKeys(kbytes)
 
-	serialized := l.serialize()
-	// TODO: have to change below sha function.
-	sha := sha3.NewLegacyKeccak256()
-	sha.Write(serialized)
-	digest := sha.Sum(serialized[:0])
-
-	l.hashedValue = digest
-	l.serializedValue = serialized
-
-	if printHash {
-		fmt.Printf("hash leaf : <%x>\n", digest)
+	vbytes, err := rlpParseBytes(blist[1])
+	if err != nil {
+		return nil, err
 	}
-	return digest
+	value := BytesObject(vbytes)
+
+	return &leaf{
+		nodeBase: nodeBase{
+			hashValue:  hash,
+			serialized: serialized,
+			state:      stateFlushed,
+		},
+		keys:  keys,
+		value: value,
+	}, nil
+}
+
+func (n *leaf) getLink(fh bool) []byte {
+	return n.nodeBase.getLink(n, fh)
+}
+
+func (n *leaf) toString() string {
+	return fmt.Sprintf("LEAF[%p](%x,%x)", n, n.keys, n.value.Bytes())
+}
+
+func (n *leaf) dump() {
+	log.Println(n.toString())
+}
+
+func (n *leaf) freeze() {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+	if n.state != stateDirty {
+		return
+	}
+	n.state = stateFreezed
+}
+
+func (n *leaf) flush(m *mpt) error {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
+	if n.value == nil {
+		return nil
+	}
+	if err := n.value.Flush(); err != nil {
+		return err
+	}
+	if err := n.nodeBase.flushBaseInLock(m); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (n *leaf) RLPListSize() int {
+	return 2
+}
+
+func (n *leaf) RLPListEncode(e RLPEncoder) error {
+	e.RLPEncode(encodeKeys(0x20, n.keys))
+	e.RLPEncode(n.value.Bytes())
+	return nil
+}
+
+func (n *leaf) getChanged(keys []byte, o trie.Object) *leaf {
+	if n.state == stateDirty {
+		n.keys = keys
+		n.value = o
+		return n
+	}
+	return &leaf{keys: keys, value: o}
+}
+
+func (n *leaf) set(m *mpt, keys []byte, o trie.Object) (node, bool, error) {
+	cnt, match := compareKeys(keys, n.keys)
+	// If it matches, no need to break leaf nodes.
+	// Buf if
+	switch {
+	case cnt == 0 && !match:
+		br := &branch{}
+		if len(keys) == 0 {
+			br.value = o
+		} else {
+			br.children[keys[0]] = &leaf{
+				keys:  keys[1:],
+				value: o,
+			}
+		}
+		if len(n.keys) == 0 {
+			br.value = n.value
+		} else {
+			idx := n.keys[0]
+			br.children[idx] = n.getChanged(n.keys[1:], o)
+		}
+		return br, true, nil
+	case cnt < len(n.keys):
+		br := &branch{}
+		ext := &extension{keys: keys[:cnt], next: br}
+		if cnt == len(keys) {
+			br.value = o
+		} else {
+			br.children[keys[cnt]] = &leaf{keys: keys[cnt+1:], value: o}
+		}
+		idx := n.keys[cnt]
+		br.children[idx] = n.getChanged(n.keys[cnt+1:], n.value)
+		return ext, true, nil
+	case cnt < len(keys):
+		br := &branch{}
+		ext := &extension{keys: n.keys, next: br}
+		br.value = n.value
+		br.children[keys[cnt]] = &leaf{keys: keys[cnt+1:], value: o}
+		return ext, true, nil
+	default:
+		if n.value.Equal(o) {
+			return n, false, nil
+		}
+		return n.getChanged(n.keys, o), true, nil
+	}
+}
+
+func (n *leaf) getKeyPrepended(k []byte) *leaf {
+	nk := make([]byte, len(k)+len(n.keys))
+	copy(nk, k)
+	copy(nk[len(k):], n.keys)
+	return n.getChanged(nk, n.value)
+}
+
+func (n *leaf) delete(m *mpt, keys []byte) (node, bool, error) {
+	_, match := compareKeys(keys, n.keys)
+	if match {
+		return nil, true, nil
+	}
+	return n, false, nil
+}
+
+func (n *leaf) get(m *mpt, keys []byte) (node, trie.Object, error) {
+	_, match := compareKeys(keys, n.keys)
+	if !match {
+		return n, nil, nil
+	}
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+	nv, changed, err := m.getObject(n.value)
+	if changed {
+		n.value = nv
+	}
+	return n, nv, err
 }

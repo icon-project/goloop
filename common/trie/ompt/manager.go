@@ -7,11 +7,26 @@ import (
 	"github.com/icon-project/goloop/common/trie"
 )
 
-// TODO: DB should be passed as parameter.
-func NewImmutable(s db.Store, t reflect.Type, rootHash []byte) trie.ImmutableForObject {
-	return newMpt(s, t, rootHash)
+type manager struct {
+	db db.Database
 }
 
-func NewMutable(s db.Store, t reflect.Type, rootHash []byte) trie.MutableForObject {
-	return newMpt(s, t, rootHash)
+func (m *manager) NewImmutableForObject(h []byte, t reflect.Type) trie.ImmutableForObject {
+	return NewImmutableForObject(m.db, h, t)
+}
+
+func (m *manager) NewMutableForObject(h []byte, t reflect.Type) trie.MutableForObject {
+	return NewMutableForObject(m.db, h, t)
+}
+
+func (m *manager) NewImmutable(h []byte) trie.Immutable {
+	return nil
+}
+
+func (m *manager) NewMutable(h []byte) trie.Mutable {
+	return nil
+}
+
+func NewManager(db db.Database) trie.Manager {
+	return &manager{db}
 }

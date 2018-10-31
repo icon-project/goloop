@@ -1,128 +1,193 @@
 package ompt
 
-/*
-	A node in a Merkle Patricia trie is one of the following:
-	1. NULL (represented as the empty string)
-	2. branch A 17-item node [ v0 ... v15, vt ]
-	3. leaf A 2-item node [ encodedPath, value ]
-	4. extension A 2-item node [ encodedPath, key ]
+import (
+	"log"
+	"sync"
 
-	and hash node.
-	hash node is just byte array having hash of the node.
-*/
-type (
-	node interface {
-		hash() []byte
-		serialize() []byte
-	}
-	hash []byte
+	"github.com/icon-project/goloop/common/trie"
+	"golang.org/x/crypto/sha3"
 )
 
-const printHash = false
-const printSerializedValue = false
+const (
+	stateDirty   = 0
+	stateFreezed = 1
+	stateFlushed = 2
+	hashSize     = 32
+)
 
-func (h hash) serialize() []byte {
-	// Not valid
-	return nil
+type (
+	node interface {
+		getLink(forceHash bool) []byte
+		freeze()
+		flush(m *mpt) error
+		toString() string
+		dump()
+		set(m *mpt, keys []byte, o trie.Object) (node, bool, error)
+		delete(m *mpt, keys []byte) (node, bool, error)
+		get(m *mpt, keys []byte) (node, trie.Object, error)
+	}
+)
+
+type nodeBase struct {
+	hashValue  []byte
+	serialized []byte
+	state      int
+	mutex      sync.Mutex
 }
 
-func (h hash) hash() []byte {
-	return h
+func (n *nodeBase) getLink(n2 node, forceHash bool) []byte {
+	s := n.serialize(n2)
+	if len(s) <= hashSize && !forceHash {
+		return s
+	}
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+	if n.hashValue == nil {
+		n.hashValue = calcHash(s)
+	}
+	if forceHash {
+		return n.hashValue
+	} else {
+		return rlpEncodeBytes(n.hashValue)
+	}
 }
 
-func decodeExtension(buf []byte) node {
-	// serialized extension has sharedNibbles & hash of branch
-	// get list tagSize and content size
-	// tagSize, contentSize, _ := getContentSize(buf)
-	tagSize, _, _ := getContentSize(buf)
-	// get key tag size and key length
-	keyTagSize, keyContentSize, _ := getContentSize(buf[tagSize:])
-	// get value tag size and value length
-	valTagSize, valContentSize, _ := getContentSize(buf[tagSize+keyTagSize+keyContentSize:])
-	valOffset := tagSize + keyTagSize + keyContentSize + valTagSize
-	key := buf[tagSize+keyTagSize : tagSize+keyTagSize+keyContentSize]
-	key, _ = decodeKey(key)
-	return &extension{sharedNibbles: key, next: hash(buf[valOffset : valOffset+valContentSize])}
-}
-
-func decodeBranch(buf []byte) node {
-	// serialized branch can have list which is another branch(sharednibbles/value) or a leaf(keyEnd/value) or  hexa(serialized(rlp))
-	tagSize, contentSize, _ := getContentSize(buf)
-	// child is leaf, hash or nil(128)
-	newBranch := &branch{}
-	for i, valueIndex := tagSize, 0; i < tagSize+contentSize; valueIndex++ {
-		// if list, call decoderLear
-		// if single byte
-		b := buf[i]
-		if b < 0x80 { // hash or value if valueIndex is 16
-			newBranch.nibbles[valueIndex] = nil
-			i++
-		} else if b < 0xb8 {
-			tagSize, contentSize, _ := getContentSize(buf[i:])
-			buf := buf[i:]
-			if valueIndex == 16 {
-				o := byteObject(buf[tagSize : tagSize+contentSize])
-				newBranch.value = o
-			} else {
-				// hash node
-				newBranch.nibbles[valueIndex] = hash(buf[tagSize : tagSize+contentSize])
-			}
-
-			i += tagSize + contentSize
-		} else if 0xC0 < b && b < 0xf7 {
-			tagSize, contentSize, _ := getContentSize(buf[i:])
-			newBranch.nibbles[valueIndex] = decodeLeaf(buf[i : i+tagSize+contentSize])
-			i += tagSize + contentSize
+func (n *nodeBase) flushBaseInLock(m *mpt) error {
+	if n.hashValue != nil {
+		if err := m.bucket.Set(n.hashValue, n.serialized); err != nil {
+			return err
 		}
 	}
-	return newBranch
-}
-
-func decodeKey(buf []byte) ([]byte, error) {
-	firstNib := buf[0] >> 4
-	var newBuf []byte
-	index := 0
-	if firstNib%2 == 0 { // even. first byte is just padding byte
-		newBuf = make([]byte, (len(buf)-1)*2)
-	} else { // odd
-		newBuf = make([]byte, (len(buf)*2 - 1))
-		newBuf[0] = buf[0] & 0x0F
-		index = 1
-	}
-
-	buf = buf[1:]
-	for i := 0; i < len(buf); i++ {
-		newBuf[i*2+index] = buf[i] >> 4
-		newBuf[i*2+1+index] = buf[i] & 0x0F
-	}
-	return newBuf, nil
-}
-
-func decodeLeaf(buf []byte) node {
-	tagSize, _, _ := getContentSize(buf)
-	// get key
-	keyTagSize, keyContentSize, _ := getContentSize(buf[tagSize:])
-	keyBuf := buf[tagSize+keyTagSize : tagSize+keyTagSize+keyContentSize]
-	keyBuf, _ = decodeKey(keyBuf)
-	offset := tagSize + keyTagSize + keyContentSize
-	valTagSize, valContentSize, _ := getContentSize(buf[offset:])
-	valBuf := buf[offset+valTagSize : offset+valTagSize+valContentSize]
-	o := new(byteObject)
-	o.Reset(nil, valBuf)
-	return &leaf{keyEnd: keyBuf, value: o}
-}
-
-// TODO: have to modify. ethereum code
-func deserialize(buf []byte) node {
-	switch c, _ := countListMember(buf); c {
-	case 2:
-		n := decodeExtension(buf)
-		return n
-	case 17:
-		n := decodeBranch(buf)
-		return n
-	default:
-		return nil
-	}
 	return nil
+}
+
+func (n *nodeBase) serialize(n2 node) []byte {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+	if n.serialized == nil {
+		bytes, err := rlpEncode(n2)
+		if err != nil {
+			log.Panicln("FAIL to serialize", n, err)
+		}
+		if n.state == stateDirty {
+			n.state = stateFreezed
+		}
+		n.serialized = bytes
+	}
+	return n.serialized
+}
+
+func bytesToKeys(b []byte) []byte {
+	nibbles := make([]byte, len(b)*2)
+	for i, v := range b {
+		nibbles[i*2] = v >> 4 & 0x0F
+		nibbles[i*2+1] = v & 0x0F
+	}
+	return nibbles
+}
+
+func encodeKeys(tag byte, k []byte) []byte {
+	keyLen := len(k)
+	buf := make([]byte, keyLen/2+1)
+	keyIdx := 0
+	if keyLen%2 == 1 {
+		buf[0] = tag | 0x10 | k[0]
+		keyIdx++
+	} else {
+		buf[0] = tag
+	}
+	for i := 1; keyIdx < len(k); keyIdx, i = keyIdx+2, i+1 {
+		buf[i] = (k[keyIdx] << 4) | (k[keyIdx+1])
+	}
+	return buf
+}
+
+func decodeKeys(bytes []byte) []byte {
+	var keys []byte
+	kidx := 0
+	if (bytes[0] & 0x10) != 0 {
+		keys = make([]byte, (len(bytes)-1)*2+1)
+		keys[0] = bytes[0] & 0x0f
+		kidx++
+	} else {
+		keys = make([]byte, (len(bytes)-1)*2)
+	}
+	for _, b := range bytes[1:] {
+		keys[kidx] = b >> 4
+		kidx++
+		keys[kidx] = b & 0xf
+		kidx++
+	}
+	return keys
+}
+
+func compareKeys(k1, k2 []byte) (int, bool) {
+	klen := len(k1)
+	if klen > len(k2) {
+		klen = len(k2)
+	}
+	for i := 0; i < klen; i++ {
+		if k1[i] != k2[i] {
+			return i, false
+		}
+	}
+	return klen, len(k1) == len(k2)
+}
+
+func calcHash(data ...[]byte) []byte {
+	sha := sha3.NewLegacyKeccak256()
+	for _, d := range data {
+		sha.Write(d)
+	}
+	sum := sha.Sum([]byte{})
+	return sum[:]
+}
+
+func nodeFromLink(b []byte) (node, error) {
+	if b[0] >= 0xC0 {
+		node, err := deserialize(nil, b)
+		if err != nil {
+			return nil, err
+		}
+		return node, nil
+	}
+	v, err := rlpParseBytes(b)
+	if err != nil {
+		return nil, err
+	}
+	return nodeFromHash(v), nil
+}
+
+func nodeFromHash(h []byte) node {
+	if len(h) == 0 {
+		return nil
+	} else {
+		return hash(h)
+	}
+}
+
+func deserialize(h, serialized []byte) (node, error) {
+	blist, err := rlpParseList(serialized)
+	if err != nil {
+		log.Panicln("FAIL to parse bytes from hash", err)
+	}
+	switch len(blist) {
+	case 2:
+		keyheader, err := rlpParseBytes(blist[0])
+		if err != nil {
+			log.Panicln("Illegal data to decode")
+		}
+		if (keyheader[0] & 0x20) == 0 {
+			// extension
+			return newExtension(h, serialized, blist)
+		}
+		// leaf
+		return newLeaf(h, serialized, blist)
+	case 17:
+		// branch
+		return newBranch(h, serialized, blist)
+	default:
+		log.Panicln("FAIL to parse bytes from hash for MPT")
+		return nil, nil
+	}
 }

@@ -2,6 +2,7 @@ package mpt
 
 import (
 	"fmt"
+
 	"github.com/icon-project/goloop/common/trie"
 	"golang.org/x/crypto/sha3"
 )
