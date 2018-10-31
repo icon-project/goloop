@@ -43,8 +43,6 @@ func TestCommit(t *testing.T) {
 		}
 		trie.Delete([]byte(poolKey[i]))
 
-		fmt.Printf("%s , %s\n", root, rootHash[i])
-
 	}
 }
 
@@ -107,6 +105,7 @@ func TestDelete1(t *testing.T) {
 	}
 	trie.Delete([]byte("dog"))
 	immutable = trie.GetSnapshot() // SNAPSHOT 4 - doe
+
 	resultRoot = fmt.Sprintf("%x", immutable.RootHash())
 	if strings.Compare(solution1, resultRoot) != 0 {
 		t.Errorf("solution %s, result %s", solution1, resultRoot)
@@ -250,6 +249,60 @@ func TestLateFlush(t *testing.T) {
 	}
 }
 
+func TestNoHashed(t *testing.T) {
+	manager := mpt.NewManager(db.NewMapDB())
+	tr := manager.NewMutable(nil)
+
+	unchanged := byte(0xFD)
+	tr.Set([]byte{0x00}, []byte{0xFF})
+	tr.Set([]byte{0x00, 0x01}, []byte{0xFE})
+	tr.Set([]byte{0x00, 0x01, 0x00}, []byte{unchanged})
+
+	immutalble := tr.GetSnapshot()
+	immutalble.RootHash()
+	immutalble.Flush()
+	v, _ := immutalble.Get([]byte{0x0, 0x01, 0x00})
+	if v[0] != unchanged {
+		t.Errorf("%d : %d", v[0], unchanged)
+	}
+	changed := byte(0xFA)
+	tr.Set([]byte{0x00, 0x01, 0x00}, []byte{changed})
+	immutalble = tr.GetSnapshot()
+	immutalble.RootHash()
+	immutalble.Flush()
+	v, _ = immutalble.Get([]byte{0x0, 0x01, 0x00})
+
+	if v[0] != changed {
+		t.Errorf("%d : %d", v[0], changed)
+	}
+}
+
+func TestNull(t *testing.T) {
+	manager := mpt.NewManager(db.NewMapDB())
+	tr := manager.NewMutable(nil)
+
+	key := make([]byte, 32)
+	value := []byte("test")
+	tr.Set(key, value)
+	v, _ := tr.Get(key)
+	if !bytes.Equal(v, value) {
+		t.Fatal("wrong value")
+	}
+}
+
+func TestProof(t *testing.T) {
+	manager := mpt.NewManager(db.NewMapDB())
+	tr := manager.NewMutable(nil)
+
+	key := make([]byte, 32)
+	value := []byte("test")
+	tr.Set(key, value)
+	v, _ := tr.Get(key)
+	if !bytes.Equal(v, value) {
+		t.Fatal("wrong value")
+	}
+	fmt.Println(tr.Proof(key))
+}
 func updateString(trie trie.Mutable, k, v string) {
 	trie.Set([]byte(k), []byte(v))
 }

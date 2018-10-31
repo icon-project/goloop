@@ -42,6 +42,7 @@ func (br *branch) serialize() []byte {
 	if br.value == nil {
 		serialized = encodeList(serializedNodes, encodeByte(nil))
 	} else {
+		// value of branch does not use hash
 		serialized = encodeList(serializedNodes, encodeByte(br.value.Bytes()))
 	}
 	br.serializedValue = make([]byte, len(serialized))
@@ -122,11 +123,12 @@ func (br *branch) deleteChild(m *mpt, k []byte) (node, bool, error) {
 			// if nextNode is extension or branch, n must be extension
 			switch nn := br.nibbles[remainingNibble].(type) {
 			case *extension:
-				return &extension{sharedNibbles: append([]byte{byte(remainingNibble)}, nn.sharedNibbles...), next: nn.next}, true, nil
+				return &extension{sharedNibbles: append([]byte{byte(remainingNibble)}, nn.sharedNibbles...),
+					next: nn.next, dirty: true}, true, nil
 			case *branch:
-				return &extension{sharedNibbles: []byte{byte(remainingNibble)}, next: nn}, true, nil
+				return &extension{sharedNibbles: []byte{byte(remainingNibble)}, next: nn, dirty: true}, true, nil
 			case *leaf:
-				return &leaf{keyEnd: append([]byte{byte(remainingNibble)}, nn.keyEnd...), value: nn.value}, true, nil
+				return &leaf{keyEnd: append([]byte{byte(remainingNibble)}, nn.keyEnd...), value: nn.value, dirty: true}, true, nil
 			}
 		}
 	}

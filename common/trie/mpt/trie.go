@@ -2,6 +2,7 @@ package mpt
 
 import (
 	"bytes"
+	"fmt"
 	"reflect"
 	"sync"
 
@@ -57,12 +58,18 @@ func (m *mpt) get(n node, k []byte) (node, trie.Object, error) {
 			result = n.value
 		}
 	case *extension:
-		match := compareHex(n.sharedNibbles, k)
+		match, same := compareHex(n.sharedNibbles, k[:len(n.sharedNibbles)])
+		if same == false {
+			return nil, nil, err
+		}
 		n.next, result, err = m.get(n.next, k[match:])
 		if err != nil {
 			return nil, nil, err
 		}
 	case *leaf:
+		if bytes.Compare(k, n.keyEnd) != 0 {
+			return n, nil, nil
+		}
 		return n, n.value, nil
 	// if node is hash, get serialized value with hash from db then deserialize it.
 	case hash:
@@ -97,6 +104,9 @@ func (m *mpt) Get(k []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if value == nil {
+		return nil, nil
+	}
 	return value.Bytes(), nil
 }
 
@@ -118,9 +128,8 @@ func (m *mpt) RootHash() []byte {
 		return m.root.hash()
 	}
 	pool, lastCommitedHash := m.mergeSnapshot()
-	committedHash := lastCommitedHash
-	if len(committedHash) != 0 {
-		m.root = committedHash
+	if len(lastCommitedHash) != 0 {
+		m.root = lastCommitedHash
 	}
 	// That length of pool is zero means that this trie is already calculated
 	if len(pool) == 0 {
@@ -137,7 +146,8 @@ func (m *mpt) RootHash() []byte {
 
 // return true if current node or child node is changed
 func (m *mpt) set(n node, k []byte, v trie.Object) (node, bool) {
-	//fmt.Println("set n ", n,", k ", k, ", v : ", string(v.(byteValue)))
+	//fmt.Println("set n ", n,", k ", k, ", v : ", v)
+
 	if n == nil {
 		return &leaf{keyEnd: k[:], value: v}, true
 	}
@@ -163,7 +173,7 @@ func (m *mpt) Set(k, v []byte) error {
 }
 
 func (m *mpt) delete(n node, k []byte) (node, bool, error) {
-	//fmt.Println("delete n = ", n, ", k = ", k)
+	//fmt.Println("delete n ", n,", k ", k, ", v : ", string(k))
 	if n == nil {
 		return n, false, nil
 	}
@@ -210,25 +220,29 @@ func (m *mpt) mergeSnapshot() (map[string]trie.Object, hash) {
 }
 
 // TODO: check whether this node is stored or not
-func traversalCommit(db db.Bucket, n node) error {
+func traversalCommit(db db.Bucket, n node, cnt int) error {
 	switch n := n.(type) {
 	case *branch:
 		for _, v := range n.nibbles {
-			if err := traversalCommit(db, v); err != nil {
+			if err := traversalCommit(db, v, cnt+1); err != nil {
 				return err
 			}
 		}
 	case *extension:
-		if err := traversalCommit(db, n.next); err != nil {
+		if err := traversalCommit(db, n.next, cnt+1); err != nil {
 			return err
 		}
+
 	case *leaf:
-		serialized := n.serialize()
-		// if length of serialized leaf is smaller hashable(32), parent node (branch) must have serialized data of this
-		if len(serialized) < hashableSize {
-			return nil
-		}
+		//serialized := n.serialize()
+		//// if length of serialized leaf is smaller hashable(32), parent node (branch) must have serialized data of this
+		//if len(serialized) < hashableSize {
+		//	return nil
+		//}
 	default:
+		return nil
+	}
+	if len(n.serialize()) < hashableSize && cnt != 0 { // root hash has to save hash
 		return nil
 	}
 	return db.Set(n.hash(), n.serialize())
@@ -252,7 +266,8 @@ func (m *mpt) Flush() error {
 			m.evaluateTrie(pool)
 			m.rootHashed = true
 		}
-		if err := traversalCommit(m.db, m.root); err != nil {
+		//fmt.Printf("Flush : m.root.hash() : %x\n", m.root.hash())
+		if err := traversalCommit(m.db, m.root, 0); err != nil {
 			return err
 		}
 		m.curSource.committedHash = m.root.hash()
@@ -272,55 +287,151 @@ func addProof(buf [][]byte, index int, hash []byte) {
 	copy(buf[index], hash)
 }
 
-func (m *mpt) proof(n node, k []byte) ([][]byte, int) {
-	var buf [][]byte
-	var i int
+// bool : if find k, true else false
+// [][]byte : stored seiazlied child. If child is smaller than hashableSize, this is nil
+// depth starts 0
+func (m *mpt) proof(n node, k []byte, depth int) (node, [][]byte, bool) {
+	var proofBuf [][]byte
+	var result bool
 	switch n := n.(type) {
 	case *branch:
-		buf, i = m.proof(n.nibbles[k[0]], k[1:])
-		if n.hashedValue == nil {
-			addProof(buf, i, n.serialize())
+		if len(k) != 0 {
+			n.nibbles[k[0]], proofBuf, result = m.proof(n.nibbles[k[0]], k[1:], depth+1)
+			if result == false {
+				return n, nil, false
+			}
+			buf := n.serialize()
+			if len(buf) < hashableSize && depth != 0 {
+				return n, nil, true
+			}
+
+			if proofBuf == nil {
+				proofBuf = make([][]byte, depth+1)
+			}
+			proofBuf[depth] = buf
 		} else {
-			addProof(buf, i, n.hashedValue)
+			// find k
+			buf := n.serialize()
+			if len(buf) < hashableSize && depth != 0 {
+				return n, nil, true
+			}
+			proofBuf = make([][]byte, depth+1)
+			proofBuf[depth] = buf
+			return n, proofBuf, result
 		}
 	case *extension:
-		match := compareHex(n.sharedNibbles, k)
-		buf, i = m.proof(n.next, k[match:])
-		if n.hashedValue == nil {
-			addProof(buf, i, n.serialize())
-		} else {
-			addProof(buf, i, n.hashedValue)
+		match, same := compareHex(n.sharedNibbles, k[:len(n.sharedNibbles)])
+		if same == false {
+			return n, nil, false
 		}
+		n.next, proofBuf, result = m.proof(n.next, k[match:], depth+1)
+		if result == false {
+			return n, nil, false
+		}
+		buf := n.serialize()
+		if len(buf) < hashableSize && depth != 0 {
+			return n, nil, true
+		}
+		if proofBuf == nil {
+			proofBuf = make([][]byte, depth+1)
+		}
+		proofBuf[depth] = buf
 	case *leaf:
-		return nil, 0
+		if bytes.Compare(k, n.keyEnd) != 0 {
+			return n, nil, false
+		}
+		buf := n.serialize()
+		if len(buf) < hashableSize && depth != 0 {
+			return n, nil, true
+		}
+		proofBuf = make([][]byte, depth+1)
+		proofBuf[depth] = buf
+	// if node is hash, get serialized value with hash from db then deserialize it.
 	case hash:
-		// TODO: have to check error
-		serializedValued, _ := m.db.Get(k)
-		decodeingNode := deserialize(serializedValued, m.objType)
-		return m.proof(decodeingNode, k)
+		serializedValue, err := m.db.Get(n)
+		if err != nil {
+			return nil, nil, false
+		}
+		deserializedNode := deserialize(serializedValue, m.objType)
+		switch m := deserializedNode.(type) {
+		case *branch:
+			m.hashedValue = n
+		case *extension:
+			m.hashedValue = n
+		case *leaf:
+			m.hashedValue = n
+		}
+		return m.proof(deserializedNode, k, depth+1)
 	}
-	return buf, i + 1
+	return n, proofBuf, result
 }
 
-// TODO: Implement Proof
+//func (m *mpt) proof1(n node, k []byte) ([][]byte, int) {
+//	var buf [][]byte
+//	var i int
+//	switch n := n.(type) {
+//	case *branch:
+//		buf, i = m.proof(n.nibbles[k[0]], k[1:])
+//		if n.hashedValue == nil {
+//			addProof(buf, i, n.serialize())
+//		} else {
+//			addProof(buf, i, n.hashedValue)
+//		}
+//	case *extension:
+//		match, _ := compareHex(n.sharedNibbles, k)
+//		buf, i = m.proof(n.next, k[match:])
+//		if n.hashedValue == nil {
+//			addProof(buf, i, n.serialize())
+//		} else {
+//			addProof(buf, i, n.hashedValue)
+//		}
+//	case *leaf:
+//		return nil, 0
+//	case hash:
+//		// TODO: have to check error
+//		if len(n) == 0 {
+//			return nil, 0
+//		}
+//		serializedValued, _ := m.db.Get(k)
+//		decodeingNode := deserialize(serializedValued, m.objType)
+//		return m.proof(decodeingNode, k)
+//	}
+//	return buf, i + 1
+//}
+
+// ethereum uses k, v DB as parameter to Prove()
+// Key / Value = hash(encoding node) / encoding
+// then verify key with roothash and DB passed to Prove()
+// TODO: Implement Verify function and verify Proof
 func (m *mpt) Proof(k []byte) [][]byte {
-	m.root.serialize()
-	k = bytesToNibbles(k)
-	buf, _ := m.proof(m.root, k)
-	return buf
-}
-
-func (m *mpt) Load(db db.Bucket, root []byte) error {
-	// use db to check validation
-	if _, err := db.Get(root); err != nil {
-		return err
+	pool, lastCommitedHash := m.mergeSnapshot()
+	if len(lastCommitedHash) != 0 {
+		m.root = lastCommitedHash
 	}
-
-	m.curSource.committedHash = root
-	m.root = hash(root)
-	m.db = db
-	return nil
+	// That length of pool is zero means that this trie is already calculated
+	if len(pool) != 0 {
+		fmt.Println("pool : ", pool)
+		m.evaluateTrie(pool)
+	}
+	k = bytesToNibbles(k)
+	var proofBuf [][]byte
+	fmt.Println("Proof ", m.root)
+	m.root, proofBuf, _ = m.proof(m.root, k, 0)
+	return proofBuf
 }
+
+// Not used
+//func (m *mpt) Load(db db.Bucket, root []byte) error {
+//	// use db to check validation
+//	if _, err := db.Get(root); err != nil {
+//		return err
+//	}
+//
+//	m.curSource.committedHash = root
+//	m.root = hash(root)
+//	m.db = db
+//	return nil
+//}
 
 func (m *mpt) Reset(immutable trie.Immutable) error {
 	immutableTrie, ok := immutable.(*mpt)

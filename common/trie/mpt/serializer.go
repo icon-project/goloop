@@ -124,20 +124,6 @@ func getContentSize(buf []byte) (uint64, uint64, error) {
 	return tagsize, contentsize, err
 }
 
-func countListMember(b []byte) (int, error) {
-	i := 0
-	listTagsize, _, _ := getContentSize(b) // length of list
-	list := b[listTagsize:]
-	for ; len(list) > 0; i++ {
-		tagsize, size, err := getContentSize(list) // length of byte
-		if err != nil {
-			return 0, err
-		}
-		list = list[tagsize+size:]
-	}
-	return i, nil
-}
-
 func decodeValue(buf []byte, t reflect.Type) trie.Object {
 	var result trie.Object
 	if t == nil {
@@ -182,20 +168,25 @@ func decodeBranch(buf []byte, t reflect.Type) node {
 			tagSize, contentSize, _ := getContentSize(buf[i:])
 			buf := buf[i:]
 			if valueIndex == 16 {
+				// value of branch is not hashed
 				newBranch.value = decodeValue(buf[tagSize:tagSize+contentSize], t)
 			} else {
 				// hash node
 				if contentSize == 0 {
 					newBranch.nibbles[valueIndex] = nil
 				} else {
-					newBranch.nibbles[valueIndex] = hash(buf[tagSize : tagSize+contentSize])
+					if hashableSize == contentSize {
+						newBranch.nibbles[valueIndex] = hash(buf[tagSize : tagSize+contentSize])
+					} else {
+						newBranch.nibbles[valueIndex] = deserialize(buf[tagSize:tagSize+contentSize], t)
+					}
 				}
 			}
 
 			i += tagSize + contentSize
 		} else if 0xC0 < b && b < 0xf7 {
 			tagSize, contentSize, _ := getContentSize(buf[i:])
-			newBranch.nibbles[valueIndex] = decodeLeafExt(buf[i:i+tagSize+contentSize], t)
+			newBranch.nibbles[valueIndex] = deserialize(buf[i:i+tagSize+contentSize], t)
 			i += tagSize + contentSize
 		}
 	}
@@ -237,16 +228,49 @@ func decodeKey(buf []byte) (keyBuf []byte, nodeType int, err error) {
 	return keyBuf, nodeType, nil
 }
 
-func deserialize(buf []byte, t reflect.Type) node {
-	switch c, _ := countListMember(buf); c {
-	case 2:
-		n := decodeLeafExt(buf, t)
-		return n
-	case 17:
-		n := decodeBranch(buf, t)
-		return n
-	default:
-		return nil
+func deserialize(b []byte, t reflect.Type) node {
+	listTagsize, _, _ := getContentSize(b) // length of list tag
+	list := b[listTagsize:]
+	var keyBuf []byte
+	var valBuf []byte
+
+	//noHashedBranch := false
+	for i := 0; len(list) > 0; i++ {
+		// 1. list(0xC0) exists
+		// 2. loop count is bigger than 2
+		// then it's branch
+		if 2 <= i {
+			return decodeBranch(b, t)
+		}
+
+		tagsize, size, err := getContentSize(list) // length of byte
+		if err != nil {
+			return nil
+		}
+		if len(keyBuf) == 0 {
+			keyBuf = list[tagsize : tagsize+size]
+		} else {
+			if 0xC0 <= list[0] {
+				valBuf = list[:tagsize+size]
+				//noHashedBranch = true
+			} else {
+				valBuf = list[tagsize : tagsize+size]
+			}
+		}
+		list = list[tagsize+size:]
 	}
-	return nil
+
+	nodeType := 0
+	keyBuf, nodeType, _ = decodeKey(keyBuf)
+	if nodeType == 0 { //extension
+		//if noHashedBranch { // not hashed branch
+		//	return &extension{sharedNibbles: keyBuf, next: decodeBranch(valBuf, t), serializedValue: b}
+		//}
+		//return &extension{sharedNibbles: keyBuf, next: hash(valBuf), serializedValue: b}
+		if hashableSize > len(valBuf) {
+			return &extension{sharedNibbles: keyBuf, next: decodeBranch(valBuf, t), serializedValue: b}
+		}
+		return &extension{sharedNibbles: keyBuf, next: hash(valBuf), serializedValue: b}
+	}
+	return &leaf{keyEnd: keyBuf, value: decodeValue(valBuf, t), serializedValue: b}
 }

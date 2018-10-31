@@ -25,6 +25,7 @@ func (l *leaf) serialize() []byte {
 	} else if l.serializedValue != nil {
 		if printSerializedValue {
 			fmt.Println("leaf serialize cached. serialized = ", l.serializedValue)
+			fmt.Println("leaf serialize cached. val = ", string(l.value.Bytes()))
 		}
 		return l.serializedValue
 	}
@@ -68,10 +69,12 @@ func (l *leaf) hash() []byte {
 	}
 
 	serialized := l.serialize()
+	serializeCopied := make([]byte, len(serialized))
+	copy(serializeCopied, serialized)
 	// TODO: have to change below sha function.
 	sha := sha3.NewLegacyKeccak256()
-	sha.Write(serialized)
-	digest := sha.Sum(serialized[:0])
+	sha.Write(serializeCopied)
+	digest := sha.Sum(serializeCopied[:0])
 
 	l.hashedValue = make([]byte, len(digest))
 	copy(l.hashedValue, digest)
@@ -84,56 +87,32 @@ func (l *leaf) hash() []byte {
 }
 
 func (l *leaf) addChild(m *mpt, k []byte, v trie.Object) (node, bool) {
-	match := compareHex(k, l.keyEnd)
+	match, same := compareHex(k, l.keyEnd)
 	// case 1 : match = 0 -> new branch
 	switch {
-	case match == 0:
-		if v.Equal(l.value) == true {
+	case same == true:
+		if l.value.Equal(v) {
 			return l, false
 		}
+		l.value = v
+	case match == 0:
 		newBranch := &branch{}
-		if len(k) == 0 {
-			newBranch.value = v
-		} else {
-			newBranch.nibbles[k[0]], _ = m.set(nil, k[1:], v)
-		}
-		if len(l.keyEnd) == 0 {
-			newBranch.value = l.value
-		} else {
-			newBranch.nibbles[l.keyEnd[0]], _ = m.set(nil, l.keyEnd[1:], l.value)
-		}
-
+		newBranch.addChild(m, k, v)
+		newBranch.addChild(m, l.keyEnd, l.value)
 		return newBranch, true
 	// case 2 : 0 < match < len(n,value) -> new extension
-	case match < len(l.keyEnd):
-		newExt := &extension{}
-		newExt.sharedNibbles = k[:match]
-		newBranch := &branch{}
-		newExt.next = newBranch
-		if match == len(k) {
-			newBranch.value = v
-		} else {
-			newBranch.nibbles[k[match]], _ = m.set(nil, k[match+1:], v)
-		}
-		newBranch.nibbles[l.keyEnd[match]], _ = m.set(nil, l.keyEnd[match+1:], l.value)
-		return newExt, true
-	// case match == len(n.keyEnd)
-	case match < len(k):
-		newExt := &extension{}
-		newExt.sharedNibbles = k[:match]
-		newBranch := &branch{}
-		newExt.next = newBranch
-		newBranch.value = l.value
-		newBranch.nibbles[k[match]], _ = m.set(nil, k[match+1:], v)
-		return newExt, true
-	// case 3 : match == len(n.value) -> update value
 	default:
-		l.value = v
+		newBranch := &branch{}
+		newExt := &extension{sharedNibbles: k[:match], next: newBranch}
+		newBranch.addChild(m, k[match:], v)
+		newBranch.addChild(m, l.keyEnd[match:], l.value)
+		return newExt, true
 	}
 	return l, true
 }
 
 func (l *leaf) deleteChild(m *mpt, k []byte) (node, bool, error) {
+	// not same key
 	if bytes.Compare(l.keyEnd, k) != 0 {
 		return l, false, nil
 	}

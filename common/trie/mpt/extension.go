@@ -23,6 +23,9 @@ func (ex *extension) serialize() []byte {
 		ex.serializedValue = nil
 		ex.hashedValue = nil
 	} else if ex.serializedValue != nil { // not dirty & has serialized value
+		if printSerializedValue {
+			fmt.Println("cached serialize extension : ", ex.serializedValue)
+		}
 		return ex.serializedValue
 	}
 
@@ -60,6 +63,9 @@ func (ex *extension) hash() []byte {
 		ex.serializedValue = nil
 		ex.hashedValue = nil
 	} else if ex.hashedValue != nil { // not diry & has hashed value
+		if printHash {
+			fmt.Printf("cached hash extension <%x>\n", ex.hashedValue)
+		}
 		return ex.hashedValue
 	}
 
@@ -82,11 +88,15 @@ func (ex *extension) hash() []byte {
 }
 
 func (ex *extension) addChild(m *mpt, k []byte, v trie.Object) (node, bool) {
-	match := compareHex(k, ex.sharedNibbles)
+	match, same := compareHex(k, ex.sharedNibbles)
 	switch {
+	case same == true:
+		ex.next, ex.dirty = ex.next.addChild(m, k[match:], v)
+		return ex, ex.dirty
 	case match == 0:
-		newBranch := &branch{}
-		newBranch.nibbles[k[0]], _ = m.set(nil, k[1:], v)
+		newBranch := &branch{dirty: true}
+		//newBranch.nibbles[k[0]], _ = m.set(nil, k[1:], v)
+		newBranch.addChild(m, k, v)
 		if len(ex.sharedNibbles) == 1 {
 			newBranch.nibbles[ex.sharedNibbles[0]] = ex.next
 		} else {
@@ -97,29 +107,22 @@ func (ex *extension) addChild(m *mpt, k []byte, v trie.Object) (node, bool) {
 
 	// case 2 : 0 < match < len(sharedNibbles) -> new extension
 	case match < len(ex.sharedNibbles):
-		newBranch := &branch{}
-		newExt := &extension{}
-		newExt.sharedNibbles = k[:match]
-		newExt.next = newBranch
+		newBranch := &branch{dirty: true}
+		newExt := &extension{sharedNibbles: k[:match], next: newBranch, dirty: true}
 		if match+1 == len(ex.sharedNibbles) {
 			newBranch.nibbles[ex.sharedNibbles[match]] = ex.next
 		} else {
 			newBranch.nibbles[ex.sharedNibbles[match]] = ex
 			ex.sharedNibbles = ex.sharedNibbles[match+1:]
 		}
-		if match == len(k) {
-			newBranch.value = v
-		} else {
-			newBranch.nibbles[k[match]], _ = m.set(nil, k[match+1:], v)
-		}
+		newBranch.addChild(m, k[match:], v)
 		return newExt, true
-	// case 3 : match == len(sharedNibbles) -> go to next
+	// case 3 : match < len(k) && len(ex.sharedNibbles) < len(k) -> go to next
 	case match < len(k):
-		ex.next, ex.dirty = m.set(ex.next, k[match:], v)
-	//case match == len(n.sharedNibbles):
+		ex.next, ex.dirty = ex.next.addChild(m, k[match:], v)
+		return ex, ex.dirty
 	default:
-		nextBranch := ex.next.(*branch)
-		nextBranch.value = v
+		panic("Not consider")
 	}
 	return ex, true
 }

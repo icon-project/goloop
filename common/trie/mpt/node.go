@@ -50,7 +50,7 @@ func (h hash) addChild(m *mpt, k []byte, v trie.Object) (node, bool) {
 }
 
 func (h hash) deleteChild(m *mpt, k []byte) (node, bool, error) {
-	if m.db == nil {
+	if m.db == nil || len(h) == 0 {
 		return h, true, nil // TODO: proper error
 	}
 	serializedValue, err := m.db.Get(h)

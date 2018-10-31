@@ -14,19 +14,11 @@ type (
 		Get(k []byte) ([]byte, error)
 		RootHash() []byte        // return nil if this Tree is empty
 		Proof(k []byte) [][]byte // return nill of this Tree is empty
-		// TODO: have to implement prove function with returned value from Proof()
-		// 			but the prove funcion don't have to be interface
 	}
 
 	Snapshot interface {
 		Immutable
 		Flush() error
-	}
-
-	// TODO : need Cache??
-	Cache interface {
-		Immutable
-		Load(db db.Bucket, root []byte) error
 	}
 
 	Mutable interface {
@@ -76,6 +68,7 @@ type (
 	}
 )
 
-func Verify(proofs [][]byte, db db.Bucket) bool {
-	return true
-}
+// Verify proofs,
+//func Verify(key []byte, proofs [][]byte, rootHash []byte ) bool {
+//	return true
+//}
