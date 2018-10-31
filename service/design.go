@@ -24,11 +24,11 @@ type manager struct {
 	patchTxPool  *txPool
 	normalTxPool *txPool
 
-	db db.DB
+	db db.Database
 }
 
 // TODO 아래 function이 interface로 정의되는 게 맞는데, chain manager를 통해서 제공될 수도 있기 때문에 일단 여기에 두자.
-func NewManager(db db.DB) module.ServiceManager {
+func NewManager(db db.Database) module.ServiceManager {
 	// TODO 제대로 초기화해야 함.
 	return &manager{patchTxPool: new(txPool), normalTxPool: new(txPool)}
 }
@@ -141,7 +141,7 @@ func (t *transition) NormalTransactions() module.TransactionList {
 // error.
 func (t *transition) Execute(cb module.TransitionCallback) (canceler func() bool, err error) {
 	// TODO lock을 잡아라.
-	if step > stepInit {
+	if t.step > stepInit {
 		return nil, common.ErrInvalidState
 	}
 	// TODO thread를 만들고 executeSync()를 호출해라.
@@ -169,6 +169,7 @@ func (t *transition) NormalReceipts() module.ReceiptList { return t.normalReceip
 func (t *transition) LogBloom() []byte { return t.logBloom }
 
 func (t *transition) validate() error {
+	return nil
 }
 
 func (t *transition) executeSync() {
