@@ -20,12 +20,12 @@ func (m *mptForBytes) Get(k []byte) ([]byte, error) {
 }
 
 func (m *mptForBytes) Set(k, v []byte) error {
-	obj := BytesObject(v)
+	obj := bytesObject(v)
 	return m.mpt.Set(k, obj)
 }
 
 func (m *mptForBytes) Proof(k []byte) [][]byte {
-	// TODO
+	// TODO Implement Proof.
 	return nil
 }
 
@@ -51,6 +51,6 @@ func (m *mptForBytes) Dump() {
 
 func NewMPTForBytes(db db.Database, h []byte) *mptForBytes {
 	return &mptForBytes{
-		NewMPT(db, h, reflect.TypeOf(BytesObject(nil))),
+		NewMPT(db, h, reflect.TypeOf(bytesObject(nil))),
 	}
 }

@@ -93,6 +93,9 @@ func (m *mpt) Flush() error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	if m.root != nil {
+		// Before flush node data to Database, We need to make sure that it
+		// builds required  data for dumping data.
+		m.root.getLink(true)
 		return m.root.flush(m)
 	}
 	return nil

@@ -36,7 +36,7 @@ func Test_rlpEncode(t *testing.T) {
 		{
 			name: "mpt.leaf1",
 			args: args{
-				&leaf{keys: []byte{9, 2}, value: BytesObject([]byte{2, 3, 0xFF})},
+				&leaf{keys: []byte{9, 2}, value: bytesObject([]byte{2, 3, 0xFF})},
 			},
 			want:    []byte{0xC7, 0x82, 0x20, 0x92, 0x83, 0x02, 0x03, 0xff},
 			wantErr: false,
@@ -46,7 +46,7 @@ func Test_rlpEncode(t *testing.T) {
 			args: args{
 				&extension{
 					keys: []byte{2, 3},
-					next: &leaf{keys: []byte{9, 2}, value: BytesObject([]byte{2, 3, 0xFF})},
+					next: &leaf{keys: []byte{9, 2}, value: bytesObject([]byte{2, 3, 0xFF})},
 				},
 			},
 			want:    []byte{0xCB, 0x82, 0x00, 0x23, 0xC7, 0x82, 0x20, 0x92, 0x83, 0x02, 0x03, 0xFF},

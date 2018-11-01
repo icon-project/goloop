@@ -11,6 +11,7 @@ import (
 
 type (
 	nodeState int
+	nodeVisit func(node)
 	node      interface {
 		getLink(forceHash bool) []byte
 		freeze()
@@ -25,7 +26,7 @@ type (
 
 const (
 	stateDirty   nodeState = 0
-	stateFreezed nodeState = 1
+	stateFrozen  nodeState = 1
 	stateFlushed nodeState = 2
 
 	hashSize = 32
@@ -34,11 +35,11 @@ const (
 func (s nodeState) String() string {
 	switch s {
 	case stateDirty:
-		return "D"
-	case stateFreezed:
-		return "Z"
+		return "Dirty"
+	case stateFrozen:
+		return "Frozen"
 	case stateFlushed:
-		return "-"
+		return "Flushed"
 	default:
 		return strconv.Itoa(int(s))
 	}
@@ -86,7 +87,7 @@ func (n *nodeBase) serialize(n2 node) []byte {
 			log.Panicln("FAIL to serialize", n, err)
 		}
 		if n.state == stateDirty {
-			n.state = stateFreezed
+			n.state = stateFrozen
 		}
 		n.serialized = bytes
 	}

@@ -34,7 +34,7 @@ func newBranch(h, s []byte, blist [][]byte) (node, error) {
 				return nil, err
 			}
 			if len(v) > 0 {
-				br.value = BytesObject(v)
+				br.value = bytesObject(v)
 			}
 		}
 	}
@@ -89,7 +89,7 @@ func (n *branch) freeze() {
 			child.freeze()
 		}
 	}
-	n.state = stateFreezed
+	n.state = stateFrozen
 }
 
 func (n *branch) flush(m *mpt) error {
@@ -133,11 +133,16 @@ func (n *branch) set(m *mpt, keys []byte, o trie.Object) (node, bool, error) {
 		}
 		return n, false, nil
 	}
-	child, dirty, err := m.set(n.children[keys[0]], keys[1:], o)
+	idx := keys[0]
+	child := n.children[idx]
+	nchild, dirty, err := m.set(child, keys[1:], o)
 	if dirty {
 		br := n.getChangable()
-		br.children[keys[0]] = child
+		br.children[idx] = nchild
 		return br, true, err
+	}
+	if child != nchild {
+		n.children[idx] = nchild
 	}
 	return n, false, err
 }
@@ -154,17 +159,20 @@ func (n *branch) delete(m *mpt, keys []byte) (node, bool, error) {
 		br = n.getChangable()
 		br.value = nil
 	} else {
-		child := n.children[keys[0]]
+		idx := keys[0]
+		child := n.children[idx]
 		if child == nil {
 			return n, false, nil
 		}
 		nchild, dirty, err := child.delete(m, keys[1:])
 		if !dirty {
-			n.children[keys[0]] = nchild
+			if nchild != child {
+				n.children[idx] = nchild
+			}
 			return n, false, err
 		}
 		br = n.getChangable()
-		br.children[keys[0]] = nchild
+		br.children[idx] = nchild
 	}
 
 	var idx = 16
@@ -211,11 +219,14 @@ func (n *branch) get(m *mpt, keys []byte) (node, trie.Object, error) {
 		return n, nv, err
 	}
 
-	child := n.children[keys[0]]
+	idx := keys[0]
+	child := n.children[idx]
 	if child == nil {
 		return n, nil, nil
 	}
 	nchild, o, err := child.get(m, keys[1:])
-	n.children[keys[0]] = nchild
+	if nchild!=child {
+		n.children[idx] = nchild
+	}
 	return n, o, err
 }

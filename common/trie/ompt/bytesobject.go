@@ -9,28 +9,28 @@ import (
 	"github.com/icon-project/goloop/common/trie"
 )
 
-type BytesObject []byte
+type bytesObject []byte
 
-func (o BytesObject) Bytes() []byte {
+func (o bytesObject) Bytes() []byte {
 	return o
 }
 
-func (o BytesObject) Reset(db db.Database, k []byte) error {
+func (o bytesObject) Reset(db db.Database, k []byte) error {
 	log.Panicln("Bytes object can't RESET!!")
 	return nil
 }
 
-func (o BytesObject) Flush() error {
+func (o bytesObject) Flush() error {
 	// Nothing to do because it comes from database itself.
 	return nil
 }
 
-func (o BytesObject) String() string {
+func (o bytesObject) String() string {
 	return fmt.Sprintf("[%x]", []byte(o))
 }
 
-func (o BytesObject) Equal(n trie.Object) bool {
-	if bo, ok := n.(BytesObject); ok {
+func (o bytesObject) Equal(n trie.Object) bool {
+	if bo, ok := n.(bytesObject); ok {
 		return bytes.Equal(o, bo)
 	}
 	return false

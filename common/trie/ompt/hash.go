@@ -43,7 +43,7 @@ func (h hash) realize(m *mpt) (node, error) {
 		return nil, err
 	}
 	if serialized == nil {
-		return nil, nil
+		return nil, fmt.Errorf("ErrorKeyNotFound(key=%x)", []byte(h))
 	}
 	return deserialize([]byte(h), serialized)
 }
@@ -58,7 +58,7 @@ func (h hash) get(m *mpt, keys []byte) (node, trie.Object, error) {
 
 func (h hash) set(m *mpt, keys []byte, o trie.Object) (node, bool, error) {
 	n, err := h.realize(m)
-	if err != nil {
+	if err != nil || n == nil {
 		return nil, false, err
 	}
 	return m.set(n, keys, o)

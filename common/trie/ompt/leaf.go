@@ -24,7 +24,7 @@ func newLeaf(hash, serialized []byte, blist [][]byte) (node, error) {
 	if err != nil {
 		return nil, err
 	}
-	value := BytesObject(vbytes)
+	value := bytesObject(vbytes)
 
 	return &leaf{
 		nodeBase: nodeBase{
@@ -55,7 +55,7 @@ func (n *leaf) freeze() {
 	if n.state != stateDirty {
 		return
 	}
-	n.state = stateFreezed
+	n.state = stateFrozen
 }
 
 func (n *leaf) flush(m *mpt) error {

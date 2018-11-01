@@ -21,31 +21,54 @@ var testPool = map[string]string{
 }
 
 func TestCommit(t *testing.T) {
-	manager := mpt.NewManager(db.NewMapDB())
-	trie := manager.NewMutable(nil)
-	rootHash := make([]string, 3)
-	i := 0
-
-	poolKey := []string{
-		"doe", "dog", "dogglesworth",
+	type args struct {
+		m trie.Manager
 	}
-	for i, k := range poolKey {
-		updateString(trie, k, testPool[k])
-		snapshot := trie.GetSnapshot()
-		snapshot.Flush()
-		rootHash[i] = fmt.Sprintf("%x", snapshot.RootHash())
-		i++
+	tests := []struct {
+		name string
+		args args
+	}{
+		{
+			"mpt",
+			args{
+				mpt.NewManager(db.NewMapDB()),
+			},
+		},
+		{
+			"ompt",
+			args{
+				ompt.NewManager(db.NewMapDB()),
+			},
+		},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			manager := tt.args.m
+			trie := manager.NewMutable(nil)
+			rootHash := make([]string, 3)
+			i := 0
 
-	for i > 0 {
-		i--
-		snapshot := trie.GetSnapshot()
-		root := fmt.Sprintf("%x", snapshot.RootHash())
-		if strings.Compare(root, rootHash[i]) != 0 {
-			t.Errorf("%s vs %s", root, rootHash[i])
-		}
-		trie.Delete([]byte(poolKey[i]))
+			poolKey := []string{
+				"doe", "dog", "dogglesworth",
+			}
+			for i, k := range poolKey {
+				updateString(trie, k, testPool[k])
+				snapshot := trie.GetSnapshot()
+				snapshot.Flush()
+				rootHash[i] = fmt.Sprintf("%x", snapshot.RootHash())
+				i++
+			}
 
+			for i > 0 {
+				i--
+				snapshot := trie.GetSnapshot()
+				root := fmt.Sprintf("%x", snapshot.RootHash())
+				if strings.Compare(root, rootHash[i]) != 0 {
+					t.Errorf("%s vs %s", root, rootHash[i])
+				}
+				trie.Delete([]byte(poolKey[i]))
+			}
+		})
 	}
 }
 
@@ -162,8 +185,8 @@ func TestCache(t *testing.T) {
 
 	snapshot.Flush()
 	// check : Does db in Snapshot have to be passed to Mutable?
-	//cacheTrie := mpt.NewCache(nil)
-	//cacheTrie.Load(db, root)
+	// cacheTrie := mpt.NewCache(nil)
+	// cacheTrie.Load(db, root)
 	immutable := manager.NewImmutable(root)
 	for k, v := range testPool {
 		value, _ := immutable.Get([]byte(k))
@@ -356,13 +379,13 @@ func TestMissingNode(t *testing.T) {
 	rootHash := snapshot.RootHash()
 	fmt.Printf("%x\n", rootHash)
 
-	//hash := common.HexToHash("0xe1d943cc8f061a0c0b98162830b970395ac9315654824bf21b73b891365262f9")
+	// hash := common.HexToHash("0xe1d943cc8f061a0c0b98162830b970395ac9315654824bf21b73b891365262f9")
 
-	//if memonly {
-	//	delete(triedb.nodes, hash)
-	//} else {
-	//	diskdb.Delete(hash[:])
-	//}
+	// if memonly {
+	// 	delete(triedb.nodes, hash)
+	// } else {
+	// 	diskdb.Delete(hash[:])
+	// }
 
 	/*
 		trie, _ = New(root, triedb)
@@ -587,6 +610,135 @@ func Test_NewMutable(t *testing.T) {
 					log.Printf("FAIL verification with DB[%d] Manager[%d]", i%2, i/2)
 				} else {
 					log.Printf("OKAY verification with DB[%d] Manager[%d]", i%2, i/2)
+				}
+			}
+		})
+	}
+}
+
+func Test_Snapshot(t *testing.T) {
+	type entry struct {
+		k, v []byte
+	}
+	type snapshot struct {
+		tx []entry
+		r  []entry
+	}
+	tests := []struct {
+		name      string
+		snapshots []snapshot
+	}{
+		{"Scenario1", []snapshot{
+			{
+				[]entry{
+					{[]byte{0x01, 0x23, 0x45, 0x67}, []byte{0x01, 0x23, 0x45, 0x67}},
+					{[]byte{0x01, 0x23, 0x54, 0x68}, []byte{0x01, 0x23, 0x54, 0x68}},
+				},
+				[]entry{
+					{[]byte{0x01, 0x23, 0x45, 0x67}, []byte{0x01, 0x23, 0x45, 0x67}},
+					{[]byte{0x01, 0x23, 0x54, 0x68}, []byte{0x01, 0x23, 0x54, 0x68}},
+				},
+			},
+			{
+				[]entry{
+					{[]byte{0x01, 0x23, 0x45, 0x67}, nil},
+					{[]byte{0x01, 0x23, 0x44}, []byte{0x01, 0x23, 0x44}},
+					{[]byte{0x01, 0x23, 0x44, 0x55}, []byte{0x01, 0x23, 0x44, 0x55}},
+				},
+				[]entry{
+					{[]byte{0x01, 0x23, 0x45, 0x67}, nil},
+					{[]byte{0x01, 0x23, 0x54, 0x68}, []byte{0x01, 0x23, 0x54, 0x68}},
+					{[]byte{0x01, 0x23, 0x44}, []byte{0x01, 0x23, 0x44}},
+					{[]byte{0x01, 0x23, 0x44, 0x55}, []byte{0x01, 0x23, 0x44, 0x55}},
+				},
+			},
+			{
+				[]entry{
+					{[]byte{0x01, 0x23, 0x44}, nil},
+					{[]byte{0x01}, []byte{0x01}},
+				},
+				[]entry{
+					{[]byte{0x01, 0x23, 0x45, 0x67}, nil},
+					{[]byte{0x01, 0x23, 0x54, 0x68}, []byte{0x01, 0x23, 0x54, 0x68}},
+					{[]byte{0x01, 0x23, 0x44, 0x55}, []byte{0x01, 0x23, 0x44, 0x55}},
+					{[]byte{0x01, 0x23, 0x44}, nil},
+					{[]byte{0x01}, []byte{0x01}},
+				},
+			},
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mgrs := []trie.Manager{
+				ompt.NewManager(db.NewMapDB()),
+				mpt.NewManager(db.NewMapDB()),
+			}
+			ms := []trie.Mutable{
+				mgrs[0].NewMutable(nil),
+				mgrs[1].NewMutable(nil),
+			}
+			ss := make([][2]trie.Snapshot, len(tt.snapshots))
+			for midx, m := range ms {
+				for sidx, s := range tt.snapshots {
+					log.Printf("Mutable(%d) apply Snapshot(%d) and check", midx, sidx)
+					for _, tx := range s.tx {
+						if tx.v != nil {
+							m.Set(tx.k, tx.v)
+						} else {
+							m.Delete(tx.k)
+						}
+					}
+
+					ss[sidx][midx] = m.GetSnapshot()
+
+					func(midx, sidx int){
+						log.Printf("Snapshot(~%d) Verify START", sidx)
+						for i := 0; i <= sidx; i++ {
+							s := tt.snapshots[i]
+							sx := ss[i][midx]
+							for _, r := range s.r {
+								v, err := sx.Get(r.k)
+								if err != nil {
+									t.Errorf("Mutable(%d) Snapshot(%d/%d) Key=%x Expected=%x ERROR %v", midx, i, sidx, r.k, r.v, err)
+								} else {
+									if !bytes.Equal(v, r.v) {
+										t.Errorf("Mutable(%d) Snapshot(%d/%d) Key=%x Expected=%x Returned=%x", midx, i, sidx, r.k, r.v, v)
+									}
+								}
+							}
+						}
+						log.Printf("Snapshot(~%d) Verify DONE", sidx)
+					}(midx, sidx)
+				}
+			}
+			log.Println("Verifying Hashes & Flush")
+			for sidx := 0; sidx < len(tt.snapshots); sidx++ {
+				h1, h2 := ss[sidx][0].RootHash(), ss[sidx][1].RootHash()
+				if !bytes.Equal(h1, h2) {
+					t.Errorf("Snapshot(%d) Hash %x != %x", sidx, h1, h2)
+				}
+			}
+			log.Println("Verifying Snapshot from Hashes")
+			for midx, m := range mgrs {
+				log.Printf("Manager(%d) Verify Snapshots", midx)
+				for sidx := len(tt.snapshots)-1; sidx >=0; sidx-- {
+					log.Printf("Manager(%d) Snapshot(%d) Verify", midx, sidx)
+					ss[sidx][midx].Flush()
+					h := ss[sidx][midx].RootHash()
+					sx := m.NewImmutable(h)
+					s := tt.snapshots[sidx]
+					for _, r := range s.r {
+						v, err := sx.Get(r.k)
+						if err != nil {
+							t.Errorf("Manager(%d).Snapshot(%d) from Hash(%x) Key=%x Expected=%x makes error %v", midx, sidx, h, r.k, r.v, err)
+							log.Printf("Manager(%d).Snapshot(%d) from Hash(%x) Key=%x Expected=%x makes error %v", midx, sidx, h, r.k, r.v, err)
+						} else {
+							if !bytes.Equal(v, r.v) {
+								t.Errorf("Manager(%d).Snapshot(%d) from Hash(%x) Key=%x Expected=%x Returned=%x", midx, sidx, h, r.k, r.v, v)
+								log.Printf("Manager(%d).Snapshot(%d) from Hash(%x) Key=%x Expected=%x Returned=%x", midx, sidx, h, r.k, r.v, v)
+							}
+						}
+					}
 				}
 			}
 		})

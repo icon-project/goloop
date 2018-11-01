@@ -66,7 +66,7 @@ func (n *extension) freeze() {
 	if n.next != nil {
 		n.next.freeze()
 	}
-	n.state = stateFreezed
+	n.state = stateFrozen
 }
 
 func (n *extension) flush(m *mpt) error {
@@ -112,11 +112,11 @@ func (n *extension) set(m *mpt, keys []byte, o trie.Object) (node, bool, error) 
 		return nb, true, nil
 	case cnt < len(n.keys):
 		br := &branch{}
-		br.children[keys[cnt]] = &leaf{keys: keys[cnt+1:], value: o}
+		idx := n.keys[cnt]
 		if cnt+1 == len(n.keys) {
-			br.children[n.keys[cnt]] = n.next
+			br.children[idx] = n.next
 		} else {
-			br.children[n.keys[cnt]] = &extension{keys: n.keys[cnt+1:], next: n.next}
+			br.children[idx] = &extension{keys: n.keys[cnt+1:], next: n.next}
 		}
 		if cnt == len(keys) {
 			br.value = o
@@ -163,6 +163,10 @@ func (n *extension) delete(m *mpt, keys []byte) (node, bool, error) {
 			return &leaf{keys: nkeys, value: nn.value}, true, err
 		}
 		return n.getChanged(n.keys, next), true, err
+	} else {
+		if n.next != next {
+			n.next = next
+		}
 	}
 	return n, false, nil
 }

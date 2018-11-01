@@ -35,7 +35,7 @@ func TestNewMPT(t *testing.T) {
 			args: args{
 				db.NewMapDB(),
 				nil,
-				reflect.TypeOf(BytesObject(nil)),
+				reflect.TypeOf(bytesObject(nil)),
 				[]entry{
 					{[]byte{1, 2, 3}, []byte{1}},
 					{[]byte{1, 2, 3}, []byte{2}},
@@ -60,7 +60,7 @@ func TestNewMPT(t *testing.T) {
 			args: args{
 				db.NewMapDB(),
 				nil,
-				reflect.TypeOf(BytesObject(nil)),
+				reflect.TypeOf(bytesObject(nil)),
 				[]entry{
 					{[]byte{0x01}, []byte{0x01}},
 					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
@@ -90,7 +90,7 @@ func TestNewMPT(t *testing.T) {
 			args: args{
 				db.NewMapDB(),
 				nil,
-				reflect.TypeOf(BytesObject(nil)),
+				reflect.TypeOf(bytesObject(nil)),
 				[]entry{
 					{[]byte{0x01}, []byte{0x01}},
 					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
@@ -123,7 +123,7 @@ func TestNewMPT(t *testing.T) {
 				var err error
 				if e.v != nil {
 					log.Printf("Set(%x,%x)", e.k, e.v)
-					err = got.Set(e.k, BytesObject(e.v))
+					err = got.Set(e.k, bytesObject(e.v))
 				} else {
 					log.Printf("Delete(%x)", e.k)
 					err = got.Delete(e.k)
