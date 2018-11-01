@@ -10,6 +10,11 @@ import (
 	"github.com/icon-project/goloop/common/trie"
 )
 
+const (
+	debugPrint = false
+	debugDump  = false
+)
+
 type (
 	mptBase struct {
 		db         db.Database
@@ -77,27 +82,39 @@ func (m *mpt) Get(k []byte) (trie.Object, error) {
 func (m *mpt) Hash() []byte {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	return m.root.getLink(true)
+	if m.root != nil {
+		return m.root.getLink(true)
+	} else {
+		return nil
+	}
 }
 
 func (m *mpt) Flush() error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	return m.root.flush(m)
+	if m.root != nil {
+		return m.root.flush(m)
+	}
+	return nil
 }
 
 func (m *mpt) Dump() {
-	log.Printf("mpt[%p] DUMP>>>>>>>>>>>>>>>>>>>>>", m)
+	log.Printf("MPT[%p]-------------------------->>", m)
 	if m.root != nil {
 		m.root.dump()
 	}
-	log.Printf("mpt[%p] DUMP<<<<<<<<<<<<<<<<<<<<<", m)
+	log.Printf("<<--------------------------MPT[%p]", m)
 }
 
 func (m *mpt) GetSnapshot() trie.SnapshotForObject {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	m.root.freeze()
+	if debugPrint {
+		log.Printf("mpt%p.GetSnapshot()", m)
+	}
+	if m.root != nil {
+		m.root.freeze()
+	}
 	return &mpt{
 		mptBase: m.mptBase,
 		root:    m.root,
@@ -107,9 +124,15 @@ func (m *mpt) GetSnapshot() trie.SnapshotForObject {
 func (m *mpt) Set(k []byte, o trie.Object) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
+	if debugPrint {
+		log.Printf("mpt%p.Set(%x,%v)", m, k, o)
+	}
 	root, dirty, err := m.set(m.root, bytesToKeys(k), o)
 	if dirty {
 		m.root = root
+		if debugDump && root != nil {
+			root.dump()
+		}
 	}
 	return err
 }
@@ -117,9 +140,19 @@ func (m *mpt) Set(k []byte, o trie.Object) error {
 func (m *mpt) Delete(k []byte) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
+	if debugPrint {
+		log.Printf("mpt%p.Delete(%x)", m, k)
+	}
 	root, dirty, err := m.delete(m.root, bytesToKeys(k))
 	if dirty {
 		m.root = root
+		if debugDump && root != nil {
+			root.dump()
+		}
+	} else {
+		if debugPrint {
+			log.Printf("mpt%p.Delete(%x) FAILs", m, k)
+		}
 	}
 	return err
 }

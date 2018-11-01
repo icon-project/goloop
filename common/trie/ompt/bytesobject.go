@@ -2,6 +2,7 @@ package ompt
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 
 	"github.com/icon-project/goloop/common/db"
@@ -22,6 +23,10 @@ func (o BytesObject) Reset(db db.Database, k []byte) error {
 func (o BytesObject) Flush() error {
 	// Nothing to do because it comes from database itself.
 	return nil
+}
+
+func (o BytesObject) String() string {
+	return fmt.Sprintf("[%x]", []byte(o))
 }
 
 func (o BytesObject) Equal(n trie.Object) bool {

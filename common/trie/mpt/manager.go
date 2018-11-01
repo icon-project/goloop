@@ -29,8 +29,8 @@ func (m *manager) NewImmutable(rootHash []byte) trie.Immutable {
 	if err != nil {
 		log.Panicln("FAIL to get Bucket", err)
 	}
-	mpt := newMpt(bk, rootHash)
-	return mpt
+
+	return newMpt(bk, rootHash, reflect.TypeOf([]byte{}))
 }
 
 func (m *manager) NewMutable(rootHash []byte) trie.Mutable {
@@ -38,13 +38,27 @@ func (m *manager) NewMutable(rootHash []byte) trie.Mutable {
 	if err != nil {
 		log.Panicln("FAIL to get Bucket", err)
 	}
-	return newMpt(bk, rootHash)
+	return newMpt(bk, rootHash, reflect.TypeOf([]byte{}))
 }
+
+// TODO: implement
 func (m *manager) NewImmutableForObject(h []byte, t reflect.Type) trie.ImmutableForObject {
-	// TODO Implement
-	return nil
+	//bk, err := m.db.GetBucket(db.MerkleTrie)
+	//if err != nil {
+	//	log.Panicln("FAIL to get Bucket", err)
+	//}
+	// cannot use method override
+	return nil //return newMpt(bk, h, t)
+
 }
+
+// TODO: implement
 func (m *manager) NewMutableForObject(h []byte, t reflect.Type) trie.MutableForObject {
-	// TODO Implement
+	//bk, err := m.db.GetBucket(db.MerkleTrie)
+	//if err != nil {
+	//	log.Panicln("FAIL to get Bucket", err)
+	//}
+	// cannot use method override
 	return nil
+	//	return newMpt(bk, h, t)
 }

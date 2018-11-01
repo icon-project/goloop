@@ -2,21 +2,16 @@ package ompt
 
 import (
 	"log"
+	"strconv"
 	"sync"
 
 	"github.com/icon-project/goloop/common/trie"
 	"golang.org/x/crypto/sha3"
 )
 
-const (
-	stateDirty   = 0
-	stateFreezed = 1
-	stateFlushed = 2
-	hashSize     = 32
-)
-
 type (
-	node interface {
+	nodeState int
+	node      interface {
 		getLink(forceHash bool) []byte
 		freeze()
 		flush(m *mpt) error
@@ -28,10 +23,31 @@ type (
 	}
 )
 
+const (
+	stateDirty   nodeState = 0
+	stateFreezed nodeState = 1
+	stateFlushed nodeState = 2
+
+	hashSize = 32
+)
+
+func (s nodeState) String() string {
+	switch s {
+	case stateDirty:
+		return "D"
+	case stateFreezed:
+		return "Z"
+	case stateFlushed:
+		return "-"
+	default:
+		return strconv.Itoa(int(s))
+	}
+}
+
 type nodeBase struct {
 	hashValue  []byte
 	serialized []byte
-	state      int
+	state      nodeState
 	mutex      sync.Mutex
 }
 
@@ -80,7 +96,7 @@ func (n *nodeBase) serialize(n2 node) []byte {
 func bytesToKeys(b []byte) []byte {
 	nibbles := make([]byte, len(b)*2)
 	for i, v := range b {
-		nibbles[i*2] = v >> 4 & 0x0F
+		nibbles[i*2] = (v >> 4) & 0x0F
 		nibbles[i*2+1] = v & 0x0F
 	}
 	return nibbles

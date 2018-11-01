@@ -37,7 +37,7 @@ func (n *extension) getLink(fh bool) []byte {
 }
 
 func (n *extension) toString() string {
-	return fmt.Sprintf("EXTN[%p](%x,%p)", n, n.keys, n.next)
+	return fmt.Sprintf("E[%p](%v,[%x],%p)", n, n.state, n.keys, n.next)
 }
 
 func (n *extension) dump() {
@@ -146,10 +146,8 @@ func (n *extension) delete(m *mpt, keys []byte) (node, bool, error) {
 		return n, false, nil
 	}
 	next, dirty, err := n.next.delete(m, keys[cnt:])
-	log.Println("extension next.delete() returns", next, dirty, err)
 	if dirty {
 		if next == nil {
-			log.Println("branch next =", next)
 			return nil, true, err
 		}
 		switch nn := next.(type) {
@@ -162,7 +160,6 @@ func (n *extension) delete(m *mpt, keys []byte) (node, bool, error) {
 			nkeys := make([]byte, len(n.keys)+len(nn.keys))
 			copy(nkeys, n.keys)
 			copy(nkeys[len(n.keys):], nn.keys)
-			log.Println("nkeys", nkeys, "value", nn.value)
 			return &leaf{keys: nkeys, value: nn.value}, true, err
 		}
 		return n.getChanged(n.keys, next), true, err

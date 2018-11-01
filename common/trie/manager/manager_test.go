@@ -1,14 +1,17 @@
-package trie_test
+package manager
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
+	"log"
 	"strings"
 	"testing"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/mpt"
+	"github.com/icon-project/goloop/common/trie/ompt"
 )
 
 var testPool = map[string]string{
@@ -303,10 +306,289 @@ func TestProof(t *testing.T) {
 	}
 	fmt.Println(tr.Proof(key))
 }
+
+func TestMissingNode(t *testing.T) {
+	manager := mpt.NewManager(db.NewMapDB())
+	trie := manager.NewMutable(nil)
+
+	testMap := map[string][]byte{
+		"120000": []byte("qwerqwerqwerqwerqwerqwerqwerqwer"),
+		"123456": []byte("asdfasdfasdfasdfasdfasdfasdfasdf"),
+	}
+
+	updateString(trie, "120000", "qwerqwerqwerqwerqwerqwerqwerqwer")
+	updateString(trie, "123456", "asdfasdfasdfasdfasdfasdfasdfasdf")
+	snapshot := trie.GetSnapshot()
+	snapshot.Flush()
+	root := snapshot.RootHash()
+
+	trie = manager.NewMutable(root)
+	v, _ := trie.Get([]byte("120000"))
+	if bytes.Equal(v, testMap["120000"]) == false {
+		t.Errorf("Wrong value. v = %x", v)
+	}
+
+	trie = manager.NewMutable(root)
+	v, _ = trie.Get([]byte("120099"))
+	if bytes.Equal(v, testMap["120099"]) == false {
+		t.Errorf("Wrong value. v = %x", v)
+	}
+
+	trie = manager.NewMutable(root)
+	v, _ = trie.Get([]byte("123456"))
+	if bytes.Equal(v, testMap["123456"]) == false {
+		t.Errorf("Wrong value. v = %x", v)
+	}
+
+	trie = manager.NewMutable(root)
+	err := trie.Set([]byte("120099"), []byte("zxcvzxcvzxcvzxcvzxcvzxcvzxcvzxcv"))
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	trie = manager.NewMutable(root)
+	err = trie.Delete([]byte("123456"))
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	snapshot = trie.GetSnapshot()
+	rootHash := snapshot.RootHash()
+	fmt.Printf("%x\n", rootHash)
+
+	//hash := common.HexToHash("0xe1d943cc8f061a0c0b98162830b970395ac9315654824bf21b73b891365262f9")
+
+	//if memonly {
+	//	delete(triedb.nodes, hash)
+	//} else {
+	//	diskdb.Delete(hash[:])
+	//}
+
+	/*
+		trie, _ = New(root, triedb)
+		_, err = trie.TryGet([]byte("120000"))
+		if _, ok := err.(*MissingNodeError); !ok {
+			t.Errorf("Wrong error: %v", err)
+		}
+		trie, _ = New(root, triedb)
+		_, err = trie.TryGet([]byte("120099"))
+		if _, ok := err.(*MissingNodeError); !ok {
+			t.Errorf("Wrong error: %v", err)
+		}
+		trie, _ = New(root, triedb)
+		_, err = trie.TryGet([]byte("123456"))
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+		}
+		trie, _ = New(root, triedb)
+		err = trie.TryUpdate([]byte("120099"), []byte("zxcv"))
+		if _, ok := err.(*MissingNodeError); !ok {
+			t.Errorf("Wrong error: %v", err)
+		}
+		trie, _ = New(root, triedb)
+		err = trie.TryDelete([]byte("123456"))
+		if _, ok := err.(*MissingNodeError); !ok {
+			t.Errorf("Wrong error: %v", err)
+		}
+	*/
+}
+
 func updateString(trie trie.Mutable, k, v string) {
 	trie.Set([]byte(k), []byte(v))
 }
 
 func deleteString(trie trie.Mutable, k string) {
 	trie.Delete([]byte(k))
+}
+
+func Test_NewMutable(t *testing.T) {
+	type entry struct {
+		k, v []byte
+	}
+	type args struct {
+		h []byte
+		e []entry
+	}
+	type result struct {
+		e []entry
+		h []byte
+	}
+	tests := []struct {
+		name string
+		args args
+		want result
+	}{
+		{
+			name: "Small1",
+			args: args{
+				nil,
+				[]entry{
+					{[]byte{0x01, 0x23, 0x45}, []byte{0x01, 0x23, 0x45}},
+				},
+			},
+			want: result{
+				[]entry{
+					{[]byte{0x01, 0x23, 0x45}, []byte{0x01, 0x23, 0x45}},
+				},
+				[]byte{},
+			},
+		},
+		{
+			name: "AddRemove1",
+			args: args{
+				nil,
+				[]entry{
+					{[]byte{1, 2, 3}, []byte{1}},
+					{[]byte{1, 2, 3}, []byte{2}},
+					{[]byte{1, 2, 3}, []byte{0x11, 0x22, 0x33}},
+					{[]byte{1, 2, 4}, []byte{0x11, 0x22, 0x44}},
+					{[]byte{1, 2, 3, 4}, []byte{0x11, 0x22, 0x33, 0x44}},
+					{[]byte{1, 2, 4}, nil},
+					{[]byte{1, 2, 3, 4}, nil},
+				},
+			},
+			want: result{
+				[]entry{
+					{[]byte{1, 2, 3}, []byte{0x11, 0x22, 0x33}},
+					{[]byte{1, 2, 3, 4}, nil},
+					{[]byte{1, 2, 4}, nil},
+				},
+				[]byte{},
+			},
+		},
+		{
+			name: "AddRemove2",
+			args: args{
+				nil,
+				[]entry{
+					{[]byte{0x01}, []byte{0x01}},
+					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
+					{[]byte{0x01, 0x23}, []byte{0x01, 0x23}},
+					{[]byte{0x01, 0x23, 0x44}, []byte{0x01, 0x23, 0x44}},
+					{[]byte{0x01, 0x23, 0x45}, []byte{0x01, 0x23, 0x45}},
+					{[]byte{0x01, 0x23}, nil},
+					{[]byte{0x01}, nil},
+					{[]byte{0x01, 0x23}, nil},
+					{[]byte{0x01, 0x23, 0x44}, nil},
+				},
+			},
+			want: result{
+				[]entry{
+					{[]byte{0x01}, nil},
+					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
+					{[]byte{0x01, 0x23}, nil},
+					{[]byte{0x01, 0x23, 0x44}, nil},
+					{[]byte{0x01, 0x23, 0x45}, []byte{0x01, 0x23, 0x45}},
+					{[]byte{0x01, 0x23, 0x46}, nil},
+				},
+				[]byte{},
+			},
+		},
+		{
+			name: "AddRemove3",
+			args: args{
+				nil,
+				[]entry{
+					{[]byte{0x01}, []byte{0x01}},
+					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
+					{[]byte{0x01, 0x23}, []byte{0x01, 0x23}},
+					{[]byte{0x01, 0x23, 0x44}, []byte{0x01, 0x23, 0x44}},
+					{[]byte{0x01, 0x23, 0x45}, []byte{0x01, 0x23, 0x45}},
+				},
+			},
+			want: result{
+				[]entry{
+					{[]byte{0x01}, []byte{0x01}},
+					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
+					{[]byte{0x01, 0x23}, []byte{0x01, 0x23}},
+					{[]byte{0x01, 0x23, 0x44}, []byte{0x01, 0x23, 0x44}},
+					{[]byte{0x01, 0x23, 0x45}, []byte{0x01, 0x23, 0x45}},
+				},
+				[]byte{},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tdbs := []db.Database{
+				db.NewMapDB(),
+				db.NewMapDB(),
+			}
+			mgrs := []trie.Manager{
+				ompt.NewManager(tdbs[0]),
+				mpt.NewManager(tdbs[1]),
+			}
+			hashes := [][]byte{nil, nil}
+
+			for i, mgr := range mgrs {
+				log.Printf("Makes new MPT with Manager[%d]", i)
+				got := mgr.NewMutable(tt.args.h)
+				if got == nil {
+					t.Errorf("NewMutable() = %v, want non nil", got)
+					return
+				}
+				for _, e := range tt.args.e {
+					var err error
+					if e.v != nil {
+						log.Printf("Set(%x,%x)", e.k, e.v)
+						err = got.Set(e.k, e.v)
+					} else {
+						log.Printf("Delete(%x)", e.k)
+						err = got.Delete(e.k)
+					}
+					if err != nil {
+						t.Errorf("FAIL to set key to value")
+						return
+					}
+				}
+				s := got.GetSnapshot()
+				h := s.RootHash()
+				log.Printf("Snapshot Hash:%x", h)
+				log.Println("Flush")
+				s.Flush()
+				hashes[i] = h
+			}
+
+			mgrsToCheck := []trie.Manager{
+				ompt.NewManager(tdbs[0]),
+				ompt.NewManager(tdbs[1]),
+				mpt.NewManager(tdbs[0]),
+				mpt.NewManager(tdbs[1]),
+			}
+
+			for i, mgr := range mgrsToCheck {
+				log.Printf("Verify results DB[%d] Manager[%d]", i%2, i/2)
+				failed := false
+				s2 := mgr.NewImmutable(hashes[i/2])
+				for _, e := range tt.want.e {
+					obj, err := s2.Get(e.k)
+					if err != nil {
+						t.Errorf("Key(%s) return error=%v",
+							hex.EncodeToString(e.k), err)
+						continue
+					}
+					if obj == nil {
+						if e.v == nil {
+							continue
+						} else {
+							t.Errorf("Key(%x) expected %x result is nil", e.k, e.v)
+							failed = true
+							break
+						}
+					}
+					if !bytes.Equal(obj, e.v) {
+						t.Errorf("Key(%x) expected %x result %x", e.k, e.v, obj)
+						failed = true
+						break
+					}
+				}
+
+				if failed {
+					log.Printf("FAIL verification with DB[%d] Manager[%d]", i%2, i/2)
+				} else {
+					log.Printf("OKAY verification with DB[%d] Manager[%d]", i%2, i/2)
+				}
+			}
+		})
+	}
 }

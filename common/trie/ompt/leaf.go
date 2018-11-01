@@ -42,7 +42,7 @@ func (n *leaf) getLink(fh bool) []byte {
 }
 
 func (n *leaf) toString() string {
-	return fmt.Sprintf("LEAF[%p](%x,%x)", n, n.keys, n.value.Bytes())
+	return fmt.Sprintf("L[%p](%v,[%x],%v)", n, n.state, n.keys, n.value)
 }
 
 func (n *leaf) dump() {
@@ -112,7 +112,7 @@ func (n *leaf) set(m *mpt, keys []byte, o trie.Object) (node, bool, error) {
 			br.value = n.value
 		} else {
 			idx := n.keys[0]
-			br.children[idx] = n.getChanged(n.keys[1:], o)
+			br.children[idx] = n.getChanged(n.keys[1:], n.value)
 		}
 		return br, true, nil
 	case cnt < len(n.keys):

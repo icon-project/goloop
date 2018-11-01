@@ -130,6 +130,10 @@ func (ex *extension) addChild(m *mpt, k []byte, v trie.Object) (node, bool) {
 func (ex *extension) deleteChild(m *mpt, k []byte) (node, bool, error) {
 	var nextNode node
 	// cannot find data. Not exist
+	match, _ := compareHex(ex.sharedNibbles, k)
+	if len(ex.sharedNibbles) != match {
+		return ex, false, nil
+	}
 	if nextNode, ex.dirty, _ = m.delete(ex.next, k[len(ex.sharedNibbles):]); ex.dirty == false {
 		return ex, false, nil
 	}
