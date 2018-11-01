@@ -65,6 +65,9 @@ func (h hash) set(m *mpt, keys []byte, o trie.Object) (node, bool, error) {
 }
 
 func (h hash) delete(m *mpt, keys []byte) (node, bool, error) {
-	log.Panicln("hash class doesn't implement set")
-	return nil, false, nil
+	n, err := h.realize(m)
+	if err != nil || n == nil {
+		return nil, false, err
+	}
+	return m.delete(n, keys)
 }
