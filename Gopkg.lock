@@ -10,6 +10,22 @@
   revision = "343706a395b76e5ca5c7dca46a5d937b48febc74"
 
 [[projects]]
+  branch = "master"
+  digest = "1:c312c313bb8040fcfb5698f38b51ec279e4635c7619773e6f018c908586c64b1"
+  name = "github.com/alecthomas/jsonschema"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "f2c93856175a7dd6abe88c5c3900b67ad054adcc"
+
+[[projects]]
+  digest = "1:14a0043ce3fe6a179c16a7fae2d7aa096cbc203f1589706538125e26186d63d5"
+  name = "github.com/asaskevich/govalidator"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "521b25f4b05fd26bec69d9dedeb8f9c9a83939a8"
+  version = "v8"
+
+[[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -65,6 +81,22 @@
   revision = "2e65f85255dbc3072edf28d6b5b8efc472979f5a"
 
 [[projects]]
+  digest = "1:c79fb010be38a59d657c48c6ba1d003a8aa651fa56b579d959d74573b7dff8e1"
+  name = "github.com/gorilla/context"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "08b5f424b9271eedf6f9f0ce86cb9396ed337a42"
+  version = "v1.1.1"
+
+[[projects]]
+  digest = "1:e73f5b0152105f18bc131fba127d9949305c8693f8a762588a82a48f61756f5f"
+  name = "github.com/gorilla/mux"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "e3702bed27f0d39777b0b37b664b6280e8ef8fbf"
+  version = "v1.6.2"
+
+[[projects]]
   digest = "1:65a3104ed11ab8453591c4d7bdf3bbf9838ead7f61ab25b04966e8b36d969e89"
   name = "github.com/haltingstate/secp256k1-go"
   packages = [
@@ -73,6 +105,22 @@
   ]
   pruneopts = "UT"
   revision = "572209b26df66a638573023571b5ce80983214eb"
+
+[[projects]]
+  branch = "master"
+  digest = "1:c1dd060cad9abcf334c6bc7f9d71688d526722f505d947f965d38a010a349336"
+  name = "github.com/intel-go/fastjson"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "f846ae58a1ab4a99d9480ce565601aebd84e333a"
+
+[[projects]]
+  digest = "1:f9544e040a914c2de663031150db1fe0d592841ba039b01d27ac216dea061d5a"
+  name = "github.com/osamingo/jsonrpc"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "92d51847b98f375bd5db9fd00f8b36dbc279c384"
+  version = "v2.1"
 
 [[projects]]
   digest = "1:40e195917a951a8bf867cd05de2a46aaf1806c50cf92eebf4c16f78cd196f747"
@@ -158,9 +206,13 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/asaskevich/govalidator",
     "github.com/dgraph-io/badger",
     "github.com/go-errors/errors",
+    "github.com/gorilla/mux",
     "github.com/haltingstate/secp256k1-go",
+    "github.com/intel-go/fastjson",
+    "github.com/osamingo/jsonrpc",
     "github.com/stretchr/testify/assert",
     "github.com/syndtr/goleveldb/leveldb",
     "github.com/syndtr/goleveldb/leveldb/opt",
