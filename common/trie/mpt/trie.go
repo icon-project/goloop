@@ -32,10 +32,10 @@ type (
 
 /*
  */
-func newMpt(db db.Bucket, initialHash hash) *mpt {
+func newMpt(db db.Bucket, initialHash hash, t reflect.Type) *mpt {
 	return &mpt{root: hash(append([]byte(nil), []byte(initialHash)...)),
 		curSource: &source{requestPool: make(map[string]trie.Object), committedHash: hash(append([]byte(nil), []byte(initialHash)...))},
-		db:        db, objType: reflect.TypeOf([]byte{})}
+		db:        db, objType: t}
 }
 
 func bytesToNibbles(k []byte) []byte {
@@ -58,13 +58,13 @@ func (m *mpt) get(n node, k []byte) (node, trie.Object, error) {
 			result = n.value
 		}
 	case *extension:
-		match, same := compareHex(n.sharedNibbles, k[:len(n.sharedNibbles)])
-		if same == false {
-			return nil, nil, err
+		match, _ := compareHex(n.sharedNibbles, k)
+		if len(n.sharedNibbles) != match {
+			return n, nil, err
 		}
 		n.next, result, err = m.get(n.next, k[match:])
 		if err != nil {
-			return nil, nil, err
+			return n, nil, err
 		}
 	case *leaf:
 		if bytes.Compare(k, n.keyEnd) != 0 {
@@ -75,7 +75,7 @@ func (m *mpt) get(n node, k []byte) (node, trie.Object, error) {
 	case hash:
 		serializedValue, err := m.db.Get(n)
 		if err != nil {
-			return nil, nil, err
+			return n, nil, err
 		}
 		deserializedNode := deserialize(serializedValue, m.objType)
 		switch m := deserializedNode.(type) {
@@ -191,7 +191,7 @@ func (m *mpt) Delete(k []byte) error {
 }
 
 func (m *mpt) GetSnapshot() trie.Snapshot {
-	mpt := newMpt(m.db, m.curSource.committedHash)
+	mpt := newMpt(m.db, m.curSource.committedHash, m.objType)
 	m.mutex.Lock()
 	mpt.curSource = m.curSource
 	// Below means s1.Flush() was called after calling m.Reset(s1)
@@ -448,4 +448,13 @@ func (m *mpt) Reset(immutable trie.Immutable) error {
 	m.root = hash(rootHash)
 	m.db = immutableTrie.db
 	return nil
+}
+
+type mptO struct {
+	mpt
+}
+
+func (m *mptO) Get(k []byte) (trie.Object, error) {
+	m.get(m.root, k)
+	return nil, nil
 }

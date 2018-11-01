@@ -94,10 +94,14 @@ func (br *branch) addChild(m *mpt, k []byte, v trie.Object) (node, bool) {
 
 func (br *branch) deleteChild(m *mpt, k []byte) (node, bool, error) {
 	var nextNode node
-	if nextNode, br.dirty, _ = m.delete(br.nibbles[k[0]], k[1:]); br.dirty == false {
-		return br, false, nil
+	if len(k) == 0 {
+		br.value = nil
+	} else {
+		if nextNode, br.dirty, _ = m.delete(br.nibbles[k[0]], k[1:]); br.dirty == false {
+			return br, false, nil
+		}
+		br.nibbles[k[0]] = nextNode
 	}
-	br.nibbles[k[0]] = nextNode
 
 	// check remaining nibbles on n(current node)
 	// 1. if n has only 1 remaining node after deleting, n will be removed and the remaining node will be changed to extension.

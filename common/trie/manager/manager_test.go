@@ -306,6 +306,93 @@ func TestProof(t *testing.T) {
 	}
 	fmt.Println(tr.Proof(key))
 }
+
+func TestMissingNode(t *testing.T) {
+	manager := mpt.NewManager(db.NewMapDB())
+	trie := manager.NewMutable(nil)
+
+	testMap := map[string][]byte{
+		"120000": []byte("qwerqwerqwerqwerqwerqwerqwerqwer"),
+		"123456": []byte("asdfasdfasdfasdfasdfasdfasdfasdf"),
+	}
+
+	updateString(trie, "120000", "qwerqwerqwerqwerqwerqwerqwerqwer")
+	updateString(trie, "123456", "asdfasdfasdfasdfasdfasdfasdfasdf")
+	snapshot := trie.GetSnapshot()
+	snapshot.Flush()
+	root := snapshot.RootHash()
+
+	trie = manager.NewMutable(root)
+	v, _ := trie.Get([]byte("120000"))
+	if bytes.Equal(v, testMap["120000"]) == false {
+		t.Errorf("Wrong value. v = %x", v)
+	}
+
+	trie = manager.NewMutable(root)
+	v, _ = trie.Get([]byte("120099"))
+	if bytes.Equal(v, testMap["120099"]) == false {
+		t.Errorf("Wrong value. v = %x", v)
+	}
+
+	trie = manager.NewMutable(root)
+	v, _ = trie.Get([]byte("123456"))
+	if bytes.Equal(v, testMap["123456"]) == false {
+		t.Errorf("Wrong value. v = %x", v)
+	}
+
+	trie = manager.NewMutable(root)
+	err := trie.Set([]byte("120099"), []byte("zxcvzxcvzxcvzxcvzxcvzxcvzxcvzxcv"))
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	trie = manager.NewMutable(root)
+	err = trie.Delete([]byte("123456"))
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	snapshot = trie.GetSnapshot()
+	rootHash := snapshot.RootHash()
+	fmt.Printf("%x\n", rootHash)
+
+	//hash := common.HexToHash("0xe1d943cc8f061a0c0b98162830b970395ac9315654824bf21b73b891365262f9")
+
+	//if memonly {
+	//	delete(triedb.nodes, hash)
+	//} else {
+	//	diskdb.Delete(hash[:])
+	//}
+
+	/*
+		trie, _ = New(root, triedb)
+		_, err = trie.TryGet([]byte("120000"))
+		if _, ok := err.(*MissingNodeError); !ok {
+			t.Errorf("Wrong error: %v", err)
+		}
+		trie, _ = New(root, triedb)
+		_, err = trie.TryGet([]byte("120099"))
+		if _, ok := err.(*MissingNodeError); !ok {
+			t.Errorf("Wrong error: %v", err)
+		}
+		trie, _ = New(root, triedb)
+		_, err = trie.TryGet([]byte("123456"))
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+		}
+		trie, _ = New(root, triedb)
+		err = trie.TryUpdate([]byte("120099"), []byte("zxcv"))
+		if _, ok := err.(*MissingNodeError); !ok {
+			t.Errorf("Wrong error: %v", err)
+		}
+		trie, _ = New(root, triedb)
+		err = trie.TryDelete([]byte("123456"))
+		if _, ok := err.(*MissingNodeError); !ok {
+			t.Errorf("Wrong error: %v", err)
+		}
+	*/
+}
+
 func updateString(trie trie.Mutable, k, v string) {
 	trie.Set([]byte(k), []byte(v))
 }

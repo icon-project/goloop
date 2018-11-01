@@ -162,7 +162,11 @@ func decodeBranch(buf []byte, t reflect.Type) node {
 		// if single byte
 		b := buf[i]
 		if b < 0x80 { // hash or value if valueIndex is 16
-			newBranch.nibbles[valueIndex] = nil
+			if valueIndex == 16 {
+				newBranch.value = decodeValue(buf[i:], t)
+			} else {
+				newBranch.nibbles[valueIndex] = nil
+			}
 			i++
 		} else if b < 0xb8 {
 			tagSize, contentSize, _ := getContentSize(buf[i:])
