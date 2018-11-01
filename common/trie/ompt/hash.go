@@ -21,7 +21,7 @@ func (h hash) freeze() {
 }
 
 func (h hash) toString() string {
-	return fmt.Sprintf("HASH[%p](0x%x)", h, h)
+	return fmt.Sprintf("H[%p](0x%[1]x)", []byte(h))
 }
 
 func (h hash) dump() {

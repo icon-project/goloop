@@ -101,7 +101,7 @@ func (m *mpt) Get(k []byte) ([]byte, error) {
 	var value trie.Object
 	var err error
 	m.root, value, err = m.get(m.root, k)
-	if err != nil {
+	if err != nil || value == nil {
 		return nil, err
 	}
 	if value == nil {

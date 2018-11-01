@@ -62,21 +62,50 @@ func TestNewMPT(t *testing.T) {
 				nil,
 				reflect.TypeOf(BytesObject(nil)),
 				[]entry{
-					{[]byte{1}, []byte{0x11}},
-					{[]byte{1, 2}, []byte{0x11, 0x22, 0x44}},
-					{[]byte{1, 2, 3}, []byte{0x11, 0x22, 0x33}},
-					{[]byte{1, 2, 3, 4}, []byte{0x11, 0x22, 0x33, 0x44}},
-					{[]byte{1, 2}, nil},
-					{[]byte{1, 2, 3}, nil},
-					{[]byte{1}, nil},
+					{[]byte{0x01}, []byte{0x01}},
+					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
+					{[]byte{0x01, 0x23}, []byte{0x01, 0x23}},
+					{[]byte{0x01, 0x23, 0x44}, []byte{0x01, 0x23, 0x44}},
+					{[]byte{0x01, 0x23, 0x45}, []byte{0x01, 0x23, 0x45}},
+					{[]byte{0x01, 0x23}, nil},
+					{[]byte{0x01}, nil},
+					{[]byte{0x01, 0x23}, nil},
+					{[]byte{0x01, 0x23, 0x44}, nil},
 				},
 			},
 			want: result{
 				[]entry{
-					{[]byte{1}, nil},
-					{[]byte{1, 2}, nil},
-					{[]byte{1, 2, 3}, nil},
-					{[]byte{1, 2, 3, 4}, []byte{0x11, 0x22, 0x33, 0x44}},
+					{[]byte{0x01}, nil},
+					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
+					{[]byte{0x01, 0x23}, nil},
+					{[]byte{0x01, 0x23, 0x44}, nil},
+					{[]byte{0x01, 0x23, 0x45}, []byte{0x01, 0x23, 0x45}},
+					{[]byte{0x01, 0x23, 0x46}, nil},
+				},
+				[]byte{},
+			},
+		},
+		{
+			name: "AddRemove3",
+			args: args{
+				db.NewMapDB(),
+				nil,
+				reflect.TypeOf(BytesObject(nil)),
+				[]entry{
+					{[]byte{0x01}, []byte{0x01}},
+					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
+					{[]byte{0x01, 0x23}, []byte{0x01, 0x23}},
+					{[]byte{0x01, 0x23, 0x44}, []byte{0x01, 0x23, 0x44}},
+					{[]byte{0x01, 0x23, 0x45}, []byte{0x01, 0x23, 0x45}},
+				},
+			},
+			want: result{
+				[]entry{
+					{[]byte{0x01}, []byte{0x01}},
+					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
+					{[]byte{0x01, 0x23}, []byte{0x01, 0x23}},
+					{[]byte{0x01, 0x23, 0x44}, []byte{0x01, 0x23, 0x44}},
+					{[]byte{0x01, 0x23, 0x45}, []byte{0x01, 0x23, 0x45}},
 				},
 				[]byte{},
 			},
@@ -84,6 +113,7 @@ func TestNewMPT(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			log.Println("Makes new MPT")
 			got := NewMPT(tt.args.d, tt.args.h, tt.args.t)
 			if got == nil {
 				t.Errorf("NewMPT() = %v, want non nil", got)
@@ -92,8 +122,10 @@ func TestNewMPT(t *testing.T) {
 			for _, e := range tt.args.e {
 				var err error
 				if e.v != nil {
+					log.Printf("Set(%x,%x)", e.k, e.v)
 					err = got.Set(e.k, BytesObject(e.v))
 				} else {
+					log.Printf("Delete(%x)", e.k)
 					err = got.Delete(e.k)
 				}
 				if err != nil {
@@ -105,11 +137,15 @@ func TestNewMPT(t *testing.T) {
 			h := s.Hash()
 			// if !bytes.Equal(h, tt.want.h) {
 			// 	s.(*mpt).Dump()
-			// 	t.Errorf("Hash() = %v, want %v", h, tt.want.h)
+			// 	t.Errorf("Hash() = %#x, want %#x", h, tt.want.h)
 			// }
+			log.Println("Flush")
 			s.Flush()
 
 			s2 := NewMPT(tt.args.d, h, tt.args.t)
+			log.Printf("Dump current snapshot from hash")
+			s2.Dump()
+			log.Printf("Verify results")
 			for _, e := range tt.want.e {
 				obj, err := s2.Get(e.k)
 				if err != nil {
@@ -122,16 +158,13 @@ func TestNewMPT(t *testing.T) {
 					if e.v == nil {
 						continue
 					} else {
-						t.Errorf("Key(%s) expected %s result is nil",
-							hex.EncodeToString(e.k), hex.EncodeToString(e.v))
+						t.Errorf("Key(%x) expected %x result is nil", e.k, e.v)
 						continue
 					}
 				}
 				if !bytes.Equal(obj.Bytes(), e.v) {
+					t.Errorf("Key(%x) expected %x result %x", e.k, e.v, obj.Bytes())
 					s2.Dump()
-					t.Errorf("Key(%s) expected %s result %s",
-						hex.EncodeToString(e.k), hex.EncodeToString(e.v),
-						hex.EncodeToString(obj.Bytes()))
 					break
 				}
 			}

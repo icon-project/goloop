@@ -42,7 +42,7 @@ func newBranch(h, s []byte, blist [][]byte) (node, error) {
 }
 
 func (n *branch) toString() string {
-	return fmt.Sprintf("BRAN[%p](%v,%p)", n, n.children, n.value)
+	return fmt.Sprintf("B[%p](%v,%v,%v)", n, n.state, n.children, n.value)
 }
 
 func (n *branch) dump() {
@@ -143,55 +143,60 @@ func (n *branch) set(m *mpt, keys []byte, o trie.Object) (node, bool, error) {
 }
 
 func (n *branch) delete(m *mpt, keys []byte) (node, bool, error) {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
+	var br *branch
 	if len(keys) == 0 {
 		if n.value == nil {
 			return n, false, nil
 		}
-		br := n.getChangable()
+		br = n.getChangable()
 		br.value = nil
-		return br, true, nil
-	}
-	child := n.children[keys[0]]
-	if child == nil {
-		return n, false, nil
-	}
-	nchild, dirty, err := child.delete(m, keys[1:])
-	if !dirty {
-		return n, false, nil
-	}
-	if nchild == nil {
-		var idx = 16
-		for i, c := range n.children {
-			if c != nil && c != child {
-				if idx != 16 {
-					idx = -1
-					break
-				}
-				idx = i
-			}
+	} else {
+		child := n.children[keys[0]]
+		if child == nil {
+			return n, false, nil
 		}
-		log.Println("idx", idx)
-		if idx != -1 {
-			if idx == 16 {
-				return &leaf{value: n.value}, true, err
+		nchild, dirty, err := child.delete(m, keys[1:])
+		if !dirty {
+			n.children[keys[0]] = nchild
+			return n, false, err
+		}
+		br = n.getChangable()
+		br.children[keys[0]] = nchild
+	}
+
+	var idx = 16
+	for i, c := range br.children {
+		if c != nil {
+			if idx != 16 {
+				idx = -1
+				break
 			}
+			idx = i
+		}
+	}
+	if idx != -1 {
+		if idx == 16 {
+			return &leaf{value: n.value}, true, nil
+		}
+		if n.value == nil {
 			alive := n.children[idx]
 			switch nn := alive.(type) {
 			case *extension:
-				return nn.getKeyPrepended([]byte{byte(idx)}), true, err
+				return nn.getKeyPrepended([]byte{byte(idx)}), true, nil
 			case *branch:
 				return &extension{
 					keys: []byte{byte(idx)},
 					next: alive,
-				}, true, err
+				}, true, nil
 			case *leaf:
-				return nn.getKeyPrepended([]byte{byte(idx)}), true, err
+				return nn.getKeyPrepended([]byte{byte(idx)}), true, nil
 			}
 		}
 	}
-	br := n.getChangable()
-	br.children[keys[0]] = nchild
-	return br, true, err
+	return br, true, nil
 }
 
 func (n *branch) get(m *mpt, keys []byte) (node, trie.Object, error) {
@@ -205,7 +210,12 @@ func (n *branch) get(m *mpt, keys []byte) (node, trie.Object, error) {
 		}
 		return n, nv, err
 	}
-	child, o, err := n.children[keys[0]].get(m, keys[1:])
-	n.children[keys[0]] = child
+
+	child := n.children[keys[0]]
+	if child == nil {
+		return n, nil, nil
+	}
+	nchild, o, err := child.get(m, keys[1:])
+	n.children[keys[0]] = nchild
 	return n, o, err
 }
