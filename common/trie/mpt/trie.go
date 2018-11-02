@@ -80,6 +80,9 @@ func (m *mpt) get(n node, k []byte) (node, trie.Object, error) {
 		if err != nil {
 			return n, nil, err
 		}
+		if serializedValue == nil {
+			return n, nil, fmt.Errorf("KeyNotFoundError(%x)", n)
+		}
 		deserializedNode := deserialize(serializedValue, m.objType)
 		switch m := deserializedNode.(type) {
 		case *branch:
@@ -111,6 +114,9 @@ func (m *mpt) Get(k []byte) ([]byte, error) {
 
 	var value trie.Object
 	var err error
+	if m.root == nil {
+		return nil, nil
+	}
 	m.root, value, err = m.get(m.root, k)
 	if err != nil || value == nil {
 		return nil, err

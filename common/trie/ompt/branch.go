@@ -187,10 +187,13 @@ func (n *branch) delete(m *mpt, keys []byte) (node, bool, error) {
 	}
 	if idx != -1 {
 		if idx == 16 {
-			return &leaf{value: n.value}, true, nil
+			if br.value == nil {
+				log.Panicln("Value is nil")
+			}
+			return &leaf{value: br.value}, true, nil
 		}
-		if n.value == nil {
-			alive := n.children[idx]
+		if br.value == nil {
+			alive := br.children[idx]
 			switch nn := alive.(type) {
 			case *extension:
 				return nn.getKeyPrepended([]byte{byte(idx)}), true, nil
@@ -225,7 +228,7 @@ func (n *branch) get(m *mpt, keys []byte) (node, trie.Object, error) {
 		return n, nil, nil
 	}
 	nchild, o, err := child.get(m, keys[1:])
-	if nchild!=child {
+	if nchild != child {
 		n.children[idx] = nchild
 	}
 	return n, o, err
