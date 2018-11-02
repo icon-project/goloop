@@ -20,7 +20,7 @@ func (a *Address) IsContract() bool {
 	return a[0] == 1
 }
 
-func (a Address) String() string {
+func (a *Address) String() string {
 	if a[0] == 1 {
 		return "cx" + hex.EncodeToString(a[1:])
 	} else {
@@ -62,6 +62,11 @@ func (a *Address) SetString(s string) error {
 
 func (a *Address) Bytes() []byte {
 	return (*a)[:]
+}
+
+// BytesPart returns part of address without type prefix.
+func (a *Address) BytesPart() []byte {
+	return (*a)[1:]
 }
 
 func (a *Address) SetBytes(b []byte) error {
