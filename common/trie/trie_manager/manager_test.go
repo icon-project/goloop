@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -775,5 +776,49 @@ func Test_Snapshot(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+type Obj struct {
+	value []byte
+}
+
+func (o *Obj) Bytes() []byte {
+	return o.value
+}
+
+func (o *Obj) Equal(trie.Object) bool {
+	return false
+}
+
+func (o *Obj) Flush() error {
+	return nil
+}
+
+func (o *Obj) Reset(s db.Database, k []byte) error {
+	return nil
+}
+
+func TestObject(t *testing.T) {
+	manager := mpt.NewManager(db.NewMapDB())
+	mutable := manager.NewMutable(nil)
+	mutableObj := manager.NewMutableForObject(nil, reflect.TypeOf(Obj{}))
+	mutableSnaps := make([]trie.Snapshot, 3)
+	mutableObjSnaps := make([]trie.SnapshotForObject, 3)
+	i := 0
+	for k, v := range testPool {
+		mutable.Set([]byte(k), []byte(v))
+		mutableSnaps[i] = mutable.GetSnapshot()
+		mutableObj.Set([]byte(k), &Obj{value: []byte(v)})
+		mutableObjSnaps[i] = mutableObj.GetSnapshot()
+		i++
+	}
+
+	for i, v := range mutableSnaps {
+		hash1 := v.RootHash()
+		hash2 := mutableObjSnaps[i].Hash()
+		if bytes.Compare(hash1, hash2) != 0 {
+			t.Errorf("expected %x but got %x", hash1, hash2)
+		}
 	}
 }

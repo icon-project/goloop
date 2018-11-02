@@ -147,7 +147,7 @@ func (ex *extension) deleteChild(m *mpt, k []byte) (node, bool, error) {
 	// if child node is leaf after deleting, this extension must merge next node and be changed to leaf.
 	// if child node is leaf, new leaf(keyEnd = extension.key + child.keyEnd, val = child.val)
 	case *leaf: // make new leaf and return it
-		return &leaf{keyEnd: append(ex.sharedNibbles, nn.keyEnd...), value: nn.value}, true, nil
+		return &leaf{keyEnd: append(ex.sharedNibbles, nn.keyEnd...), value: nn.value, dirty: true}, true, nil
 	}
 	ex.next = nextNode
 	return ex, true, nil

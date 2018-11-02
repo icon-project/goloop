@@ -46,22 +46,19 @@ func (m *manager) NewMutable(rootHash []byte) trie.Mutable {
 
 // TODO: implement
 func (m *manager) NewImmutableForObject(h []byte, t reflect.Type) trie.ImmutableForObject {
-	//bk, err := m.db.GetBucket(db.MerkleTrie)
-	//if err != nil {
-	//	log.Panicln("FAIL to get Bucket", err)
-	//}
-	// cannot use method override
-	return nil //return newMpt(bk, h, t)
+	bk, err := m.db.GetBucket(db.MerkleTrie)
+	if err != nil {
+		log.Panicln("FAIL to get Bucket", err)
+	}
+	return newMptForObj(bk, h, t)
 
 }
 
 // TODO: implement
 func (m *manager) NewMutableForObject(h []byte, t reflect.Type) trie.MutableForObject {
-	//bk, err := m.db.GetBucket(db.MerkleTrie)
-	//if err != nil {
-	//	log.Panicln("FAIL to get Bucket", err)
-	//}
-	// cannot use method override
-	return nil
-	//	return newMpt(bk, h, t)
+	bk, err := m.db.GetBucket(db.MerkleTrie)
+	if err != nil {
+		log.Panicln("FAIL to get Bucket", err)
+	}
+	return newMptForObj(bk, h, t)
 }
