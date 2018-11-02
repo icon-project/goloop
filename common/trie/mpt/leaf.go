@@ -95,14 +95,15 @@ func (l *leaf) addChild(m *mpt, k []byte, v trie.Object) (node, bool) {
 			return l, false
 		}
 		l.value = v
+		l.dirty = true
 	case match == 0:
-		newBranch := &branch{}
+		newBranch := &branch{dirty: true}
 		newBranch.addChild(m, k, v)
 		newBranch.addChild(m, l.keyEnd, l.value)
 		return newBranch, true
 	// case 2 : 0 < match < len(n,value) -> new extension
 	default:
-		newBranch := &branch{}
+		newBranch := &branch{dirty: true}
 		newExt := &extension{sharedNibbles: k[:match], next: newBranch}
 		newBranch.addChild(m, k[match:], v)
 		newBranch.addChild(m, l.keyEnd[match:], l.value)

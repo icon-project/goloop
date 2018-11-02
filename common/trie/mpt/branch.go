@@ -89,7 +89,7 @@ func (br *branch) addChild(m *mpt, k []byte, v trie.Object) (node, bool) {
 		return br, true
 	}
 	br.nibbles[k[0]], br.dirty = m.set(br.nibbles[k[0]], k[1:], v)
-	return br, true
+	return br, br.dirty
 }
 
 func (br *branch) deleteChild(m *mpt, k []byte) (node, bool, error) {

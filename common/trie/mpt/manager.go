@@ -21,6 +21,9 @@ type manager struct {
 }
 
 func NewManager(db db.Database) trie.Manager {
+	if db == nil {
+		log.Panic("Db is nil")
+	}
 	return &manager{db: db}
 }
 
