@@ -691,7 +691,7 @@ func Test_Snapshot(t *testing.T) {
 
 					ss[sidx][midx] = m.GetSnapshot()
 
-					func(midx, sidx int){
+					func(midx, sidx int) {
 						log.Printf("Snapshot(~%d) Verify START", sidx)
 						for i := 0; i <= sidx; i++ {
 							s := tt.snapshots[i]
@@ -721,7 +721,7 @@ func Test_Snapshot(t *testing.T) {
 			log.Println("Verifying Snapshot from Hashes")
 			for midx, m := range mgrs {
 				log.Printf("Manager(%d) Verify Snapshots", midx)
-				for sidx := len(tt.snapshots)-1; sidx >=0; sidx-- {
+				for sidx := len(tt.snapshots) - 1; sidx >= 0; sidx-- {
 					log.Printf("Manager(%d) Snapshot(%d) Verify", midx, sidx)
 					ss[sidx][midx].Flush()
 					h := ss[sidx][midx].RootHash()
@@ -736,6 +736,39 @@ func Test_Snapshot(t *testing.T) {
 							if !bytes.Equal(v, r.v) {
 								t.Errorf("Manager(%d).Snapshot(%d) from Hash(%x) Key=%x Expected=%x Returned=%x", midx, sidx, h, r.k, r.v, v)
 								log.Printf("Manager(%d).Snapshot(%d) from Hash(%x) Key=%x Expected=%x Returned=%x", midx, sidx, h, r.k, r.v, v)
+							}
+						}
+					}
+
+					if sidx < len(tt.snapshots)-1 {
+						sidx := sidx + 1
+						h := ss[sidx-1][midx].RootHash()
+						s := tt.snapshots[sidx]
+						log.Printf("Manager(%d) Snapshot(%d) Verify from Snapshot(%x)", midx, sidx, h)
+						mutable := m.NewMutable(h)
+						for _, tx := range s.tx {
+							var err error
+							if tx.v != nil {
+								err = mutable.Set(tx.k, tx.v)
+							} else {
+								err = mutable.Delete(tx.k)
+							}
+							if err != nil {
+								t.Errorf("Manager(%d).Snapshot(%d,%x).Set(%x,%x) error %v", midx, sidx, h, tx.k, tx.v, err)
+								log.Printf("Manager(%d).Snapshot(%d,%x).Set(%x,%x) error %v", midx, sidx, h, tx.k, tx.v, err)
+							}
+						}
+						sx := mutable.GetSnapshot()
+						for _, r := range s.r {
+							v, err := sx.Get(r.k)
+							if err != nil {
+								t.Errorf("Manager(%d).Snapshot(%d,%x) Key=%x Expected=%x makes error %v", midx, sidx, h, r.k, r.v, err)
+								log.Printf("Manager(%d).Snapshot(%d,%x) Key=%x Expected=%x makes error %v", midx, sidx, h, r.k, r.v, err)
+							} else {
+								if !bytes.Equal(v, r.v) {
+									t.Errorf("Manager(%d).Snapshot(%d,%x) Key=%x Expected=%x Returned=%x", midx, sidx, h, r.k, r.v, v)
+									log.Printf("Manager(%d).Snapshot(%d,%x) Key=%x Expected=%x Returned=%x", midx, sidx, h, r.k, r.v, v)
+								}
 							}
 						}
 					}
