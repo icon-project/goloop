@@ -1,4 +1,4 @@
-package manager
+package trie_manager
 
 import (
 	"bytes"
@@ -73,7 +73,7 @@ func TestCommit(t *testing.T) {
 }
 
 func TestInsert(t *testing.T) {
-	manager := mpt.NewManager(db.NewMapDB())
+	manager := New(db.NewMapDB())
 	trie := manager.NewMutable(nil)
 
 	for k, v := range testPool {
@@ -276,7 +276,7 @@ func TestLateFlush(t *testing.T) {
 }
 
 func TestNoHashed(t *testing.T) {
-	manager := mpt.NewManager(db.NewMapDB())
+	manager := New(db.NewMapDB())
 	tr := manager.NewMutable(nil)
 
 	unchanged := byte(0xFD)
@@ -304,7 +304,7 @@ func TestNoHashed(t *testing.T) {
 }
 
 func TestNull(t *testing.T) {
-	manager := mpt.NewManager(db.NewMapDB())
+	manager := New(db.NewMapDB())
 	tr := manager.NewMutable(nil)
 
 	key := make([]byte, 32)
@@ -317,7 +317,7 @@ func TestNull(t *testing.T) {
 }
 
 func TestProof(t *testing.T) {
-	manager := mpt.NewManager(db.NewMapDB())
+	manager := New(db.NewMapDB())
 	tr := manager.NewMutable(nil)
 
 	key := make([]byte, 32)
@@ -331,7 +331,7 @@ func TestProof(t *testing.T) {
 }
 
 func TestMissingNode(t *testing.T) {
-	manager := mpt.NewManager(db.NewMapDB())
+	manager := New(db.NewMapDB())
 	trie := manager.NewMutable(nil)
 
 	testMap := map[string][]byte{
