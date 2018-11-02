@@ -73,6 +73,9 @@ func (m *mpt) get(n node, k []byte) (node, trie.Object, error) {
 		return n, n.value, nil
 	// if node is hash, get serialized value with hash from db then deserialize it.
 	case hash:
+		if len(n) == 0 {
+			return n, nil, err
+		}
 		serializedValue, err := m.db.Get(n)
 		if err != nil {
 			return n, nil, err
@@ -95,9 +98,17 @@ func (m *mpt) get(n node, k []byte) (node, trie.Object, error) {
 // TODO: If not same between previous and current committed hash, update current committed hash
 func (m *mpt) Get(k []byte) ([]byte, error) {
 	k = bytesToNibbles(k)
-	if v, ok := m.curSource.requestPool[string(k)]; ok {
+	pool, lastCommitedHash := m.mergeSnapshot()
+	if len(lastCommitedHash) != 0 {
+		m.root = lastCommitedHash
+	}
+	if v, ok := pool[string(k)]; ok {
+		if v == nil {
+			return nil, nil
+		}
 		return v.(byteValue), nil
 	}
+
 	var value trie.Object
 	var err error
 	m.root, value, err = m.get(m.root, k)
@@ -124,6 +135,8 @@ func (m *mpt) evaluateTrie(requestPool map[string]trie.Object) {
 	RootHash
 */
 func (m *mpt) RootHash() []byte {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 	if m.rootHashed == true {
 		return m.root.hash()
 	}
@@ -138,6 +151,7 @@ func (m *mpt) RootHash() []byte {
 	m.evaluateTrie(pool)
 	h := m.root.hash()
 	m.rootHashed = true
+	fmt.Printf("RootHash : %x\n", h)
 	// Do not set nil to requestPool and prevSnapshot because next snapshot want data in previous snapshot
 	//m.requestPool = nil
 	//m.prevSnapshot = nil
@@ -165,10 +179,10 @@ func (m *mpt) Set(k, v []byte) error {
 	}
 	k = bytesToNibbles(k)
 	m.mutex.Lock()
+	defer m.mutex.Unlock()
 	copied := make([]byte, len(v))
 	copy(copied, v)
 	m.curSource.requestPool[string(k)] = byteValue(append([]byte(nil), v...))
-	m.mutex.Unlock()
 	return nil
 }
 
@@ -185,21 +199,21 @@ func (m *mpt) Delete(k []byte) error {
 	var err error
 	k = bytesToNibbles(k)
 	m.mutex.Lock()
+	defer m.mutex.Unlock()
 	m.curSource.requestPool[string(k)] = nil
-	m.mutex.Unlock()
 	return err
 }
 
 func (m *mpt) GetSnapshot() trie.Snapshot {
 	mpt := newMpt(m.db, m.curSource.committedHash, m.objType)
 	m.mutex.Lock()
+	defer m.mutex.Unlock()
 	mpt.curSource = m.curSource
 	// Below means s1.Flush() was called after calling m.Reset(s1)
 	if m.curSource.prevSource != nil && bytes.Compare(m.curSource.committedHash, m.curSource.prevSource.committedHash) != 0 {
 		m.curSource.committedHash = hash(append([]byte(nil), []byte(m.curSource.prevSource.committedHash)...))
 	}
 	m.curSource = &source{committedHash: mpt.curSource.committedHash, prevSource: mpt.curSource, requestPool: make(map[string]trie.Object)}
-	m.mutex.Unlock()
 
 	return mpt
 }
@@ -254,6 +268,8 @@ func traversalCommit(db db.Bucket, n node, cnt int) error {
 	And preve
 */
 func (m *mpt) Flush() error {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 	pool, lastCommitedHash := m.mergeSnapshot()
 	m.curSource.committedHash = lastCommitedHash
 
@@ -404,6 +420,8 @@ func (m *mpt) proof(n node, k []byte, depth int) (node, [][]byte, bool) {
 // then verify key with roothash and DB passed to Prove()
 // TODO: Implement Verify function and verify Proof
 func (m *mpt) Proof(k []byte) [][]byte {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 	pool, lastCommitedHash := m.mergeSnapshot()
 	if len(lastCommitedHash) != 0 {
 		m.root = lastCommitedHash
@@ -450,11 +468,61 @@ func (m *mpt) Reset(immutable trie.Immutable) error {
 	return nil
 }
 
-type mptO struct {
-	mpt
+type mptForObj struct {
+	*mpt
 }
 
-func (m *mptO) Get(k []byte) (trie.Object, error) {
-	m.get(m.root, k)
-	return nil, nil
+func newMptForObj(db db.Bucket, initialHash hash, t reflect.Type) *mptForObj {
+	return &mptForObj{
+		mpt: &mpt{root: hash(append([]byte(nil), []byte(initialHash)...)),
+			curSource: &source{requestPool: make(map[string]trie.Object), committedHash: hash(append([]byte(nil), []byte(initialHash)...))},
+			db:        db, objType: t},
+	}
+}
+
+// TODO: refactorying
+func (m *mptForObj) Get(k []byte) (trie.Object, error) {
+	k = bytesToNibbles(k)
+	if v, ok := m.curSource.requestPool[string(k)]; ok {
+		return v.(byteValue), nil
+	}
+	var value trie.Object
+	var err error
+	m.root, value, err = m.get(m.root, k)
+	if err != nil || value == nil {
+		return nil, err
+	}
+	return value, nil
+}
+
+// TODO: check v is immutable???
+func (m *mptForObj) Set(k []byte, v trie.Object) error {
+	if k == nil || v == nil {
+		return common.ErrIllegalArgument
+	}
+	k = bytesToNibbles(k)
+	m.mutex.Lock()
+	//copied := make(reflect.TypeOf(v), len(v))
+	//copy(copied, v)
+	//m.curSource.requestPool[string(k)] = byteValue(append([]byte(nil), v...))
+	// have to check v is guaranteed as immutable
+	m.curSource.requestPool[string(k)] = v
+	m.mutex.Unlock()
+	return nil
+}
+
+func (m *mptForObj) GetSnapshot() trie.SnapshotForObject {
+	mptSnapshot := m.mpt.GetSnapshot()
+	mpt, ok := mptSnapshot.(*mpt)
+	if ok == false {
+		panic("illegal vairable")
+	}
+	return &mptForObj{mpt: mpt}
+}
+
+func (m *mptForObj) Reset(s trie.ImmutableForObject) {
+}
+
+func (m *mptForObj) Hash() []byte {
+	return nil
 }
