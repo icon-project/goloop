@@ -11,8 +11,12 @@ import (
 
 type (
 	nodeState int
-	nodeVisit func(node)
-	node      interface {
+
+	// When it traverses nodes, it can push more nodes for next visit.
+	// It will visit nodes from last to first.
+	nodeScheduler func(node)
+
+	node interface {
 		getLink(forceHash bool) []byte
 		freeze()
 		flush(m *mpt) error
@@ -21,13 +25,19 @@ type (
 		set(m *mpt, keys []byte, o trie.Object) (node, bool, error)
 		delete(m *mpt, keys []byte) (node, bool, error)
 		get(m *mpt, keys []byte) (node, trie.Object, error)
+		realize(m *mpt) (node, error)
+		traverse(m *mpt, v nodeScheduler) (trie.Object, error)
+		getProof(m *mpt, keys []byte, proofs [][]byte) (node, [][]byte, error)
+		prove(m *mpt, keys []byte, proofs [][]byte) (node, trie.Object, error)
 	}
 )
 
 const (
 	stateDirty   nodeState = 0
 	stateFrozen  nodeState = 1
-	stateFlushed nodeState = 2
+	stateHashed  nodeState = 2
+	stateWritten nodeState = 3
+	stateFlushed nodeState = 4
 
 	hashSize = 32
 )
@@ -38,6 +48,10 @@ func (s nodeState) String() string {
 		return "Dirty"
 	case stateFrozen:
 		return "Frozen"
+	case stateHashed:
+		return "Hashed"
+	case stateWritten:
+		return "Written"
 	case stateFlushed:
 		return "Flushed"
 	default:
@@ -53,45 +67,41 @@ type nodeBase struct {
 }
 
 func (n *nodeBase) getLink(n2 node, forceHash bool) []byte {
-	s := n.serialize(n2)
-	if len(s) <= hashSize && !forceHash {
-		return s
-	}
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
-	if n.hashValue == nil {
-		n.hashValue = calcHash(s)
-	}
-	if forceHash {
-		return n.hashValue
-	} else {
-		return rlpEncodeBytes(n.hashValue)
-	}
-}
 
-func (n *nodeBase) flushBaseInLock(m *mpt) error {
-	if n.hashValue != nil {
-		if err := m.bucket.Set(n.hashValue, n.serialized); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (n *nodeBase) serialize(n2 node) []byte {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
-	if n.serialized == nil {
+	if n.state < stateHashed {
 		bytes, err := rlpEncode(n2)
 		if err != nil {
 			log.Panicln("FAIL to serialize", n, err)
 		}
-		if n.state == stateDirty {
-			n.state = stateFrozen
-		}
 		n.serialized = bytes
+		if len(n.serialized) > hashSize || forceHash {
+			n.hashValue = calcHash(n.serialized)
+		}
+		n.state = stateHashed
 	}
-	return n.serialized
+	if n.hashValue != nil {
+		if forceHash {
+			return n.hashValue
+		}
+		return rlpEncodeBytes(n.hashValue)
+	} else {
+		return n.serialized
+	}
+}
+
+func (n *nodeBase) flushBaseInLock(m *mpt) error {
+	if n.state < stateHashed {
+		panic("It's not hashed yet.")
+	}
+	if n.hashValue != nil && n.state < stateWritten {
+		if err := m.bucket.Set(n.hashValue, n.serialized); err != nil {
+			return err
+		}
+	}
+	n.state = stateFlushed
+	return nil
 }
 
 func bytesToKeys(b []byte) []byte {
@@ -160,9 +170,9 @@ func calcHash(data ...[]byte) []byte {
 	return sum[:]
 }
 
-func nodeFromLink(b []byte) (node, error) {
+func nodeFromLink(b []byte, state nodeState) (node, error) {
 	if b[0] >= 0xC0 {
-		node, err := deserialize(nil, b)
+		node, err := deserialize(nil, b, state)
 		if err != nil {
 			return nil, err
 		}
@@ -183,7 +193,7 @@ func nodeFromHash(h []byte) node {
 	}
 }
 
-func deserialize(h, serialized []byte) (node, error) {
+func deserialize(h, serialized []byte, state nodeState) (node, error) {
 	blist, err := rlpParseList(serialized)
 	if err != nil {
 		log.Panicln("FAIL to parse bytes from hash", err)
@@ -196,13 +206,13 @@ func deserialize(h, serialized []byte) (node, error) {
 		}
 		if (keyheader[0] & 0x20) == 0 {
 			// extension
-			return newExtension(h, serialized, blist)
+			return newExtension(h, serialized, blist, state)
 		}
 		// leaf
-		return newLeaf(h, serialized, blist)
+		return newLeaf(h, serialized, blist, state)
 	case 17:
 		// branch
-		return newBranch(h, serialized, blist)
+		return newBranch(h, serialized, blist, state)
 	default:
 		log.Panicln("FAIL to parse bytes from hash for MPT")
 		return nil, nil

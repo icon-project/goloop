@@ -1,7 +1,9 @@
 package ompt
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/icon-project/goloop/common"
 	"log"
 
 	"github.com/icon-project/goloop/common/trie"
@@ -45,7 +47,7 @@ func (h hash) realize(m *mpt) (node, error) {
 	if serialized == nil {
 		return nil, fmt.Errorf("ErrorKeyNotFound(key=%x)", []byte(h))
 	}
-	return deserialize([]byte(h), serialized)
+	return deserialize([]byte(h), serialized, stateFlushed)
 }
 
 func (h hash) get(m *mpt, keys []byte) (node, trie.Object, error) {
@@ -70,4 +72,33 @@ func (h hash) delete(m *mpt, keys []byte) (node, bool, error) {
 		return nil, false, err
 	}
 	return m.delete(n, keys)
+}
+
+func (h hash) traverse(m *mpt, v nodeScheduler) (trie.Object, error) {
+	n, err := h.realize(m)
+	if err != nil {
+		return nil, err
+	}
+	return n.traverse(m, v)
+}
+
+func (h hash) getProof(m *mpt, keys []byte, proofs [][]byte) (node, [][]byte, error) {
+	n, err := h.realize(m)
+	if err != nil {
+		return h, nil, err
+	}
+	return n.getProof(m, keys, proofs)
+}
+
+func (h hash) prove(m *mpt, kb []byte, items [][]byte) (node, trie.Object, error) {
+	b := items[0]
+	h2 := calcHash(b)
+	if !bytes.Equal(h, h2) {
+		return h, nil, common.ErrIllegalArgument
+	}
+	n, err := deserialize(h2, b, stateHashed)
+	if err != nil {
+		return h, nil, err
+	}
+	return n.prove(m, kb, items)
 }

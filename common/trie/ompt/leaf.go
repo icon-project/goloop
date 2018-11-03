@@ -1,7 +1,9 @@
 package ompt
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/icon-project/goloop/common"
 	"log"
 
 	"github.com/icon-project/goloop/common/trie"
@@ -13,7 +15,7 @@ type leaf struct {
 	value trie.Object
 }
 
-func newLeaf(hash, serialized []byte, blist [][]byte) (node, error) {
+func newLeaf(hash, serialized []byte, blist [][]byte, state nodeState) (node, error) {
 	kbytes, err := rlpParseBytes(blist[0])
 	if err != nil {
 		return nil, err
@@ -30,7 +32,7 @@ func newLeaf(hash, serialized []byte, blist [][]byte) (node, error) {
 		nodeBase: nodeBase{
 			hashValue:  hash,
 			serialized: serialized,
-			state:      stateFlushed,
+			state:      state,
 		},
 		keys:  keys,
 		value: value,
@@ -61,7 +63,9 @@ func (n *leaf) freeze() {
 func (n *leaf) flush(m *mpt) error {
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
-
+	if n.state == stateFlushed {
+		return nil
+	}
 	if n.value == nil {
 		return nil
 	}
@@ -167,4 +171,54 @@ func (n *leaf) get(m *mpt, keys []byte) (node, trie.Object, error) {
 		n.value = nv
 	}
 	return n, nv, err
+}
+
+func (n *leaf) realize(m *mpt) (node, error) {
+	return n, nil
+}
+
+func (n *leaf) traverse(m *mpt, v nodeScheduler) (trie.Object, error) {
+	return n.value, nil
+}
+
+func (n *leaf) getProof(m *mpt, keys []byte, items [][]byte) (node, [][]byte, error) {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
+	if n.state < stateHashed {
+		return n, nil, fmt.Errorf("IllegaState %s", n.toString())
+	}
+	if _, match := compareKeys(n.keys, keys); !match {
+		return n, nil, nil
+	}
+	if n.hashValue != nil {
+		items = append(items, n.serialized)
+	}
+	return n, items, nil
+}
+
+func (n *leaf) prove(m *mpt, keys []byte, proof [][]byte) (node, trie.Object, error) {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
+	if n.hashValue != nil {
+		if !bytes.Equal(proof[0], n.serialized) {
+			return n, nil, common.ErrIllegalArgument
+		}
+		proof = proof[1:]
+	}
+
+	_, match := compareKeys(n.keys, keys)
+	if match {
+		value, changed, err := m.getObject(n.value)
+		if err != nil {
+			return n, nil, err
+		}
+		if changed {
+			n.value = value
+		}
+		return n, n.value, nil
+	}
+	return n, nil, common.ErrNotFound
+
 }

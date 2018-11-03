@@ -1,7 +1,9 @@
 package ompt
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/icon-project/goloop/common"
 	"log"
 
 	"github.com/icon-project/goloop/common/trie"
@@ -13,12 +15,12 @@ type extension struct {
 	next node
 }
 
-func newExtension(h, s []byte, blist [][]byte) (node, error) {
+func newExtension(h, s []byte, blist [][]byte, state nodeState) (node, error) {
 	kb, err := rlpParseBytes(blist[0])
 	if err != nil {
 		return nil, err
 	}
-	node, err := nodeFromLink(blist[1])
+	node, err := nodeFromLink(blist[1], state)
 	if err != nil {
 		return nil, err
 	}
@@ -26,6 +28,7 @@ func newExtension(h, s []byte, blist [][]byte) (node, error) {
 		nodeBase: nodeBase{
 			hashValue:  h,
 			serialized: s,
+			state:      state,
 		},
 		keys: decodeKeys(kb),
 		next: node,
@@ -180,5 +183,73 @@ func (n *extension) get(m *mpt, keys []byte) (node, trie.Object, error) {
 	defer n.mutex.Unlock()
 	next, obj, err := n.next.get(m, keys[cnt:])
 	n.next = next
+	return n, obj, err
+}
+
+func (n *extension) realize(m *mpt) (node, error) {
+	return n, nil
+}
+
+func (n *extension) traverse(m *mpt, v nodeScheduler) (trie.Object, error) {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
+	next, err := n.next.realize(m)
+	if err != nil {
+		return nil, err
+	}
+	if next != n.next {
+		n.next = next
+	}
+	v(n.next)
+	return nil, nil
+}
+
+func (n *extension) getProof(m *mpt, keys []byte, proofs [][]byte) (node, [][]byte, error) {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
+	if n.state < stateHashed {
+		return n, nil, fmt.Errorf("IllegaState %s", n.toString())
+	}
+
+	cnt, _ := compareKeys(n.keys, keys)
+	if cnt < len(n.keys) {
+		return n, nil, nil
+	}
+	if n.hashValue != nil {
+		proofs = append(proofs, n.serialized)
+	}
+	next, proofs, err := n.next.getProof(m, keys[cnt:], proofs)
+	if next != n.next {
+		n.next = next
+	}
+	return n, proofs, err
+}
+
+func (n *extension) prove(m *mpt, keys []byte, proof [][]byte) (nn node, obj trie.Object, err error) {
+	n.mutex.Lock()
+	defer func() {
+		if err == nil && n.state == stateFlushed {
+			n.state = stateWritten
+		}
+		n.mutex.Unlock()
+	}()
+
+	if n.hashValue != nil {
+		if !bytes.Equal(proof[0], n.serialized) {
+			return n, nil, common.ErrIllegalArgument
+		}
+		proof = proof[1:]
+	}
+
+	cnt, _ := compareKeys(n.keys, keys)
+	if cnt < len(n.keys) {
+		return n, nil, common.ErrNotFound
+	}
+	next, obj, err := n.next.prove(m, keys[cnt:], proof)
+	if next != n.next {
+		n.next = next
+	}
 	return n, obj, err
 }

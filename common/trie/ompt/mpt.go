@@ -2,6 +2,7 @@ package ompt
 
 import (
 	"errors"
+	"github.com/icon-project/goloop/common"
 	"log"
 	"reflect"
 	"sync"
@@ -168,6 +169,103 @@ func (m *mpt) Reset(s trie.ImmutableForObject) {
 		log.Panicln("Supplied ImmutableForObject isn't usable in here", s)
 	}
 	m.root = m2.root
+}
+
+type iterator struct {
+	m     *mpt
+	stack []node
+	value trie.Object
+	error error
+}
+
+func (i *iterator) get() (trie.Object, error) {
+	return i.value, i.error
+}
+
+func (i *iterator) next() (bool, error) {
+	for len(i.stack) > 0 {
+		l := len(i.stack)
+		n := i.stack[l-1]
+		i.stack = i.stack[0 : l-1]
+
+		i.value, i.error = n.traverse(i.m, func(n node) {
+			i.stack = append(i.stack, n)
+		})
+
+		if i.value != nil || i.error != nil {
+			return i.value != nil, i.error
+		}
+	}
+	i.value = nil
+	i.error = nil
+	return false, nil
+}
+
+func (i *iterator) has() bool {
+	return i.value != nil
+}
+
+func (m *mpt) Iterator() *iterator {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	root := m.root
+	if root != nil {
+		if n, err := root.realize(m); err == nil {
+			root = n
+			m.root = n
+		}
+	}
+	if root == nil {
+		return &iterator{
+			m:     m,
+			stack: []node{},
+		}
+	}
+	i := &iterator{
+		m:     m,
+		stack: []node{root},
+	}
+	i.next()
+	return i
+}
+
+func (m *mpt) Proof(k []byte) [][]byte {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	if m.root == nil {
+		return nil
+	}
+	nibbles := bytesToKeys(k)
+	proofs := [][]byte(nil)
+
+	root, proofs, err := m.root.getProof(m, nibbles, proofs)
+	if root != m.root {
+		m.root = root
+	}
+	if err != nil {
+		if debugPrint {
+			log.Printf("Fail to get proof for [%x]", k)
+		}
+		return nil
+	}
+	return proofs
+}
+
+func (m *mpt) Prove(k []byte, proofs [][]byte) (trie.Object, error) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	if m.root == nil {
+		return nil, common.ErrIllegalArgument
+	}
+	nibbles := bytesToKeys(k)
+	root, obj, err := m.root.prove(m, nibbles, proofs)
+	if root != m.root {
+		m.root = root
+	}
+	return obj, err
 }
 
 func NewMPT(d db.Database, h []byte, t reflect.Type) *mpt {

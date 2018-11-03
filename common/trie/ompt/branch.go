@@ -1,7 +1,9 @@
 package ompt
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/icon-project/goloop/common"
 	"log"
 
 	"github.com/icon-project/goloop/common/trie"
@@ -13,17 +15,17 @@ type branch struct {
 	value    trie.Object
 }
 
-func newBranch(h, s []byte, blist [][]byte) (node, error) {
+func newBranch(h, s []byte, blist [][]byte, state nodeState) (node, error) {
 	br := &branch{
 		nodeBase: nodeBase{
 			hashValue:  h,
 			serialized: s,
-			state:      stateFlushed,
+			state:      state,
 		},
 	}
 	for i, b := range blist {
 		if i < 16 {
-			child, err := nodeFromLink(b)
+			child, err := nodeFromLink(b, state)
 			if err != nil {
 				return nil, err
 			}
@@ -232,4 +234,93 @@ func (n *branch) get(m *mpt, keys []byte) (node, trie.Object, error) {
 		n.children[idx] = nchild
 	}
 	return n, o, err
+}
+
+func (n *branch) realize(m *mpt) (node, error) {
+	return n, nil
+}
+
+func (n *branch) traverse(m *mpt, v nodeScheduler) (trie.Object, error) {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
+	for i := 15; i >= 0; i-- {
+		child := n.children[i]
+		if child == nil {
+			continue
+		}
+		nchild, err := child.realize(m)
+		if err != nil {
+			return nil, err
+		}
+		if child != nchild {
+			n.children[i] = nchild
+		}
+		v(nchild)
+	}
+	return n.value, nil
+}
+
+func (n *branch) getProof(m *mpt, keys []byte, proofs [][]byte) (nn node, proof [][]byte, err error) {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
+	if n.state < stateHashed {
+		return n, nil, fmt.Errorf("IllegaState %s", n.toString())
+	}
+	if n.hashValue != nil {
+		proofs = append(proofs, n.serialized)
+	}
+	if len(keys) == 0 {
+		return n, proofs, nil
+	}
+	child := n.children[keys[0]]
+	if child == nil {
+		return n, nil, nil
+	}
+	nchild, proofs, err := child.getProof(m, keys[1:], proofs)
+	if nchild != child {
+		n.children[keys[0]] = nchild
+	}
+	return n, proofs, err
+}
+
+func (n *branch) prove(m *mpt, keys []byte, proof [][]byte) (nn node, obj trie.Object, err error) {
+	n.mutex.Lock()
+	defer func() {
+		if err == nil && n.state == stateFlushed {
+			n.state = stateWritten
+		}
+		n.mutex.Unlock()
+	}()
+
+	if n.hashValue != nil {
+		if !bytes.Equal(proof[0], n.serialized) {
+			return n, nil, common.ErrIllegalArgument
+		}
+		proof = proof[1:]
+	}
+
+	if len(keys) == 0 {
+		if n.value != nil {
+			value, changed, err := m.getObject(n.value)
+			if err != nil {
+				return n, nil, err
+			}
+			if changed {
+				n.value = value
+			}
+		}
+		return n, n.value, nil
+	}
+
+	child := n.children[keys[0]]
+	if child == nil {
+		return n, nil, common.ErrNotFound
+	}
+	nchild, obj, err := child.prove(m, keys[1:], proof)
+	if nchild != child {
+		n.children[keys[0]] = nchild
+	}
+	return n, obj, err
 }

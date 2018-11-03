@@ -171,3 +171,64 @@ func TestNewMPT(t *testing.T) {
 		})
 	}
 }
+
+func TestPoofs(t *testing.T) {
+	type entry struct {
+		k, v []byte
+	}
+	type args struct {
+		e []entry
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		{
+			name: "Case1",
+			args: args{
+				[]entry{
+					{[]byte{0x01}, []byte{0x01}},
+					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
+					{[]byte{0x01, 0x23}, []byte{0x01, 0x23}},
+					{[]byte{0x01, 0x23, 0x44}, []byte{0x01, 0x23, 0x44}},
+					{[]byte{0x01, 0x23, 0x45}, []byte{0x01, 0x23, 0x45}},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d1 := db.NewMapDB()
+			m1 := NewMPTForBytes(d1, nil)
+			for _, e := range tt.args.e {
+				m1.Set(e.k, e.v)
+			}
+			s1 := m1.GetSnapshot()
+			h := s1.RootHash()
+
+			d2 := db.NewMapDB()
+			s2 := NewMPTForBytes(d2, h)
+			for _, e := range tt.args.e {
+				log.Printf("Take Proof for [%x]", e.k)
+				proofs := s1.Proof(e.k)
+
+				log.Printf("Prove for [%x] proof=%v", e.k, proofs)
+				obj, err := s2.Prove(e.k, proofs)
+				if err != nil {
+					t.Errorf("Fail to prove key [%x] err=%v", e.k, err)
+				} else {
+					log.Printf("Proved value [%x] expected [%x]", obj, e.v)
+					if !bytes.Equal(obj, e.v) {
+						t.Errorf("Fail to prove key [%x] exptected=[%x] returned=[%x]", e.k, e.v, obj)
+					}
+					s2.Flush()
+				}
+			}
+
+			log.Println("Flush snapshot 1")
+			s1.Flush()
+			log.Println("Flush snapshot 2")
+			s2.Flush()
+		})
+	}
+}

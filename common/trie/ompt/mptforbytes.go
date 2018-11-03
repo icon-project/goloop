@@ -25,8 +25,7 @@ func (m *mptForBytes) Set(k, v []byte) error {
 }
 
 func (m *mptForBytes) Proof(k []byte) [][]byte {
-	// TODO Implement Proof.
-	return nil
+	return m.mpt.Proof(k)
 }
 
 func (m *mptForBytes) RootHash() []byte {
@@ -47,6 +46,14 @@ func (m *mptForBytes) Reset(s trie.Immutable) error {
 
 func (m *mptForBytes) Dump() {
 	m.mpt.Dump()
+}
+
+func (m *mptForBytes) Prove(k []byte, proof [][]byte) ([]byte, error) {
+	obj, err := m.mpt.Prove(k, proof)
+	if err != nil {
+		return nil, err
+	}
+	return obj.Bytes(), nil
 }
 
 func NewMPTForBytes(db db.Database, h []byte) *mptForBytes {
