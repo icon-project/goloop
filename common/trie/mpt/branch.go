@@ -8,17 +8,21 @@ import (
 
 type (
 	branch struct {
+		nodeBase
 		nibbles [16]node
 		value   trie.Object
-
-		hashedValue     []byte
-		serializedValue []byte
-		dirty           bool // if dirty is true, must retry getting hashedValue & serializedValue
 	}
 )
 
+// changeState change state from passed state which is returned state by nibbles
+func (br *branch) changeState(s nodeState) {
+	if s == dirtyNode && br.state != dirtyNode {
+		br.state = dirtyNode
+	}
+}
+
 func (br *branch) serialize() []byte {
-	if br.dirty == true {
+	if br.state == dirtyNode {
 		br.serializedValue = nil
 		br.hashedValue = nil
 	} else if br.serializedValue != nil { // not dirty & has serialized value
@@ -48,7 +52,7 @@ func (br *branch) serialize() []byte {
 	br.serializedValue = make([]byte, len(serialized))
 	copy(br.serializedValue, serialized)
 	br.hashedValue = nil
-	br.dirty = false
+	br.state = serializedNode
 
 	if printSerializedValue {
 		fmt.Println("serialize branch : ", serialized)
@@ -57,7 +61,7 @@ func (br *branch) serialize() []byte {
 }
 
 func (br *branch) hash() []byte {
-	if br.dirty == true {
+	if br.state == dirtyNode {
 		br.serializedValue = nil
 		br.hashedValue = nil
 	} else if br.hashedValue != nil { // not diry & has hashed value
@@ -74,7 +78,7 @@ func (br *branch) hash() []byte {
 
 	br.hashedValue = make([]byte, len(digest))
 	copy(br.hashedValue, digest)
-	br.dirty = false
+	br.state = serializedNode
 
 	if printHash {
 		fmt.Printf("hash branch : <%x>\n", digest)
@@ -83,24 +87,43 @@ func (br *branch) hash() []byte {
 	return digest
 }
 
-func (br *branch) addChild(m *mpt, k []byte, v trie.Object) (node, bool) {
+func (br *branch) addChild(m *mpt, k []byte, v trie.Object) (node, nodeState) {
+	//fmt.Println("branch addChild : k ", k, ", v : ", v)
 	if len(k) == 0 {
+		if v.Equal(br.value) == true {
+			return br, br.state
+		}
 		br.value = v
-		return br, true
+		br.state = dirtyNode
+		return br, dirtyNode
 	}
-	br.nibbles[k[0]], br.dirty = m.set(br.nibbles[k[0]], k[1:], v)
-	return br, br.dirty
+	dirty := dirtyNode
+	if br.nibbles[k[0]] == nil {
+		br.nibbles[k[0]], dirty = m.set(br.nibbles[k[0]], k[1:], v)
+	} else {
+		br.nibbles[k[0]], dirty = br.nibbles[k[0]].addChild(m, k[1:], v)
+	}
+	br.changeState(dirty)
+	return br, br.state
 }
 
-func (br *branch) deleteChild(m *mpt, k []byte) (node, bool, error) {
+func (br *branch) deleteChild(m *mpt, k []byte) (node, nodeState, error) {
+	//fmt.Println("branch deleteChild : k ", k)
 	var nextNode node
 	if len(k) == 0 {
 		br.value = nil
+		br.state = dirtyNode
 	} else {
-		if nextNode, br.dirty, _ = m.delete(br.nibbles[k[0]], k[1:]); br.dirty == false {
-			return br, false, nil
+		dirty := dirtyNode
+		if br.nibbles[k[0]] == nil {
+			return br, br.state, nil
+		}
+
+		if nextNode, dirty, _ = br.nibbles[k[0]].deleteChild(m, k[1:]); dirty != dirtyNode {
+			return br, br.state, nil
 		}
 		br.nibbles[k[0]] = nextNode
+		br.changeState(dirty)
 	}
 
 	// check remaining nibbles on n(current node)
@@ -120,21 +143,23 @@ func (br *branch) deleteChild(m *mpt, k []byte) (node, bool, error) {
 
 	//If remainingNibble is -1, branch has 2 more nibbles.
 	if remainingNibble != -1 {
-		if remainingNibble == 16 {
-			return &leaf{value: br.value, dirty: true}, true, nil
-		} else {
+		if br.value == nil {
 			// check nextNode.
 			// if nextNode is extension or branch, n must be extension
 			switch nn := br.nibbles[remainingNibble].(type) {
 			case *extension:
 				return &extension{sharedNibbles: append([]byte{byte(remainingNibble)}, nn.sharedNibbles...),
-					next: nn.next, dirty: true}, true, nil
+					next: nn.next, nodeBase: nodeBase{state: dirtyNode}}, dirtyNode, nil
 			case *branch:
-				return &extension{sharedNibbles: []byte{byte(remainingNibble)}, next: nn, dirty: true}, true, nil
+				return &extension{sharedNibbles: []byte{byte(remainingNibble)}, next: nn,
+					nodeBase: nodeBase{state: dirtyNode}}, dirtyNode, nil
 			case *leaf:
-				return &leaf{keyEnd: append([]byte{byte(remainingNibble)}, nn.keyEnd...), value: nn.value, dirty: true}, true, nil
+				return &leaf{keyEnd: append([]byte{byte(remainingNibble)}, nn.keyEnd...), value: nn.value,
+					nodeBase: nodeBase{state: dirtyNode}}, dirtyNode, nil
 			}
+		} else if remainingNibble == 16 {
+			return &leaf{value: br.value, nodeBase: nodeBase{state: dirtyNode}}, dirtyNode, nil
 		}
 	}
-	return br, true, nil
+	return br, dirtyNode, nil
 }

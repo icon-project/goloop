@@ -9,21 +9,26 @@ import (
 
 type (
 	extension struct {
+		nodeBase
 		sharedNibbles []byte
 		next          node
-
-		hashedValue     []byte
-		serializedValue []byte
-		dirty           bool // if dirty is true, must retry getting hashedValue & serializedValue
 	}
 )
 
+// changeState change state from passed state which is returned state by nibbles
+func (ex *extension) changeState(s nodeState) {
+	if s == dirtyNode && ex.state != dirtyNode {
+		ex.state = dirtyNode
+	}
+}
+
 func (ex *extension) serialize() []byte {
-	if ex.dirty == true {
+	if ex.state == dirtyNode {
 		ex.serializedValue = nil
 		ex.hashedValue = nil
 	} else if ex.serializedValue != nil { // not dirty & has serialized value
 		if printSerializedValue {
+			fmt.Println("extension : serialized : ", ex.state)
 			fmt.Println("cached serialize extension : ", ex.serializedValue)
 		}
 		return ex.serializedValue
@@ -51,7 +56,7 @@ func (ex *extension) serialize() []byte {
 	ex.serializedValue = make([]byte, len(serialized))
 	copy(ex.serializedValue, serialized)
 	ex.hashedValue = nil
-	ex.dirty = false
+	ex.state = serializedNode
 	if printSerializedValue {
 		fmt.Println("serialize extension : ", serialized)
 	}
@@ -59,7 +64,7 @@ func (ex *extension) serialize() []byte {
 }
 
 func (ex *extension) hash() []byte {
-	if ex.dirty == true {
+	if ex.state == dirtyNode {
 		ex.serializedValue = nil
 		ex.hashedValue = nil
 	} else if ex.hashedValue != nil { // not diry & has hashed value
@@ -79,7 +84,7 @@ func (ex *extension) hash() []byte {
 
 	ex.hashedValue = make([]byte, len(digest))
 	copy(ex.hashedValue, digest)
-	ex.dirty = false
+	ex.state = serializedNode
 
 	if printHash {
 		fmt.Printf("hash extension <%x>\n", digest)
@@ -87,14 +92,17 @@ func (ex *extension) hash() []byte {
 	return digest
 }
 
-func (ex *extension) addChild(m *mpt, k []byte, v trie.Object) (node, bool) {
+func (ex *extension) addChild(m *mpt, k []byte, v trie.Object) (node, nodeState) {
+	//fmt.Println("extension addChild : k ", k, ", v : ", v)
 	match, same := compareHex(k, ex.sharedNibbles)
 	switch {
 	case same == true:
-		ex.next, ex.dirty = ex.next.addChild(m, k[match:], v)
-		return ex, ex.dirty
+		dirty := dirtyNode
+		ex.next, dirty = ex.next.addChild(m, k[match:], v)
+		ex.changeState(dirty)
+		return ex, dirty
 	case match == 0:
-		newBranch := &branch{dirty: true}
+		newBranch := &branch{nodeBase: nodeBase{state: dirtyNode}}
 		//newBranch.nibbles[k[0]], _ = m.set(nil, k[1:], v)
 		newBranch.addChild(m, k, v)
 		if len(ex.sharedNibbles) == 1 {
@@ -103,12 +111,12 @@ func (ex *extension) addChild(m *mpt, k []byte, v trie.Object) (node, bool) {
 			newBranch.nibbles[ex.sharedNibbles[0]] = ex
 			ex.sharedNibbles = ex.sharedNibbles[1:]
 		}
-		return newBranch, true
+		return newBranch, dirtyNode
 
 	// case 2 : 0 < match < len(sharedNibbles) -> new extension
 	case match < len(ex.sharedNibbles):
-		newBranch := &branch{dirty: true}
-		newExt := &extension{sharedNibbles: k[:match], next: newBranch, dirty: true}
+		newBranch := &branch{nodeBase: nodeBase{state: dirtyNode}}
+		newExt := &extension{sharedNibbles: k[:match], next: newBranch, nodeBase: nodeBase{state: dirtyNode}}
 		if match+1 == len(ex.sharedNibbles) {
 			newBranch.nibbles[ex.sharedNibbles[match]] = ex.next
 		} else {
@@ -116,27 +124,34 @@ func (ex *extension) addChild(m *mpt, k []byte, v trie.Object) (node, bool) {
 			ex.sharedNibbles = ex.sharedNibbles[match+1:]
 		}
 		newBranch.addChild(m, k[match:], v)
-		return newExt, true
+		return newExt, dirtyNode
 	// case 3 : match < len(k) && len(ex.sharedNibbles) < len(k) -> go to next
 	case match < len(k):
-		ex.next, ex.dirty = ex.next.addChild(m, k[match:], v)
-		return ex, ex.dirty
+		dirty := dirtyNode
+		ex.next, dirty = ex.next.addChild(m, k[match:], v)
+		ex.changeState(dirty)
+		return ex, ex.state
 	default:
 		panic("Not consider")
 	}
-	return ex, true
+	return ex, dirtyNode
 }
 
-func (ex *extension) deleteChild(m *mpt, k []byte) (node, bool, error) {
+func (ex *extension) deleteChild(m *mpt, k []byte) (node, nodeState, error) {
 	var nextNode node
 	// cannot find data. Not exist
 	match, _ := compareHex(ex.sharedNibbles, k)
 	if len(ex.sharedNibbles) != match {
-		return ex, false, nil
+		return ex, noneNode, nil
 	}
-	if nextNode, ex.dirty, _ = m.delete(ex.next, k[len(ex.sharedNibbles):]); ex.dirty == false {
-		return ex, false, nil
+	dirty := dirtyNode
+	if ex.next == nil {
+		return ex, ex.state, nil
 	}
+	if nextNode, dirty, _ = ex.next.deleteChild(m, k[len(ex.sharedNibbles):]); dirty != dirtyNode {
+		return ex, ex.state, nil
+	}
+	ex.changeState(dirty)
 	switch nn := nextNode.(type) {
 	// if child node is extension node, merge current node.
 	// It can not be possible to link extension from extension directly.
@@ -147,8 +162,9 @@ func (ex *extension) deleteChild(m *mpt, k []byte) (node, bool, error) {
 	// if child node is leaf after deleting, this extension must merge next node and be changed to leaf.
 	// if child node is leaf, new leaf(keyEnd = extension.key + child.keyEnd, val = child.val)
 	case *leaf: // make new leaf and return it
-		return &leaf{keyEnd: append(ex.sharedNibbles, nn.keyEnd...), value: nn.value, dirty: true}, true, nil
+		return &leaf{keyEnd: append(ex.sharedNibbles, nn.keyEnd...), value: nn.value,
+			nodeBase: nodeBase{state: dirtyNode}}, dirtyNode, nil
 	}
 	ex.next = nextNode
-	return ex, true, nil
+	return ex, dirtyNode, nil
 }
