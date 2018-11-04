@@ -74,12 +74,12 @@ func (h hash) delete(m *mpt, keys []byte) (node, bool, error) {
 	return m.delete(n, keys)
 }
 
-func (h hash) traverse(m *mpt, v nodeScheduler) (trie.Object, error) {
+func (h hash) traverse(m *mpt, k string, v nodeScheduler) (string, trie.Object, error) {
 	n, err := h.realize(m)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
-	return n.traverse(m, v)
+	return n.traverse(m, k, v)
 }
 
 func (h hash) getProof(m *mpt, keys []byte, proofs [][]byte) (node, [][]byte, error) {

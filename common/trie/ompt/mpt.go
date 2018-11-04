@@ -2,11 +2,11 @@ package ompt
 
 import (
 	"errors"
-	"github.com/icon-project/goloop/common"
 	"log"
 	"reflect"
 	"sync"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 )
@@ -171,31 +171,39 @@ func (m *mpt) Reset(s trie.ImmutableForObject) {
 	m.root = m2.root
 }
 
+type iteratorItem struct {
+	k string
+	n node
+}
+
 type iterator struct {
 	m     *mpt
-	stack []node
+	stack []iteratorItem
+	key   string
 	value trie.Object
 	error error
 }
 
-func (i *iterator) get() (trie.Object, error) {
-	return i.value, i.error
+func (i *iterator) get() (string, trie.Object, error) {
+	return i.key, i.value, i.error
 }
 
 func (i *iterator) next() (bool, error) {
 	for len(i.stack) > 0 {
 		l := len(i.stack)
-		n := i.stack[l-1]
+		ii := i.stack[l-1]
 		i.stack = i.stack[0 : l-1]
 
-		i.value, i.error = n.traverse(i.m, func(n node) {
-			i.stack = append(i.stack, n)
+		i.key, i.value, i.error = ii.n.traverse(i.m, ii.k, func(k string, n node) {
+			i.stack = append(i.stack, iteratorItem{k: k, n: n})
 		})
 
 		if i.value != nil || i.error != nil {
+			i.key = string(keysToBytes(i.key))
 			return i.value != nil, i.error
 		}
 	}
+	i.key = ""
 	i.value = nil
 	i.error = nil
 	return false, nil
@@ -205,7 +213,7 @@ func (i *iterator) has() bool {
 	return i.value != nil
 }
 
-func (m *mpt) Iterator() *iterator {
+func (m *mpt) iterator() *iterator {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -219,12 +227,12 @@ func (m *mpt) Iterator() *iterator {
 	if root == nil {
 		return &iterator{
 			m:     m,
-			stack: []node{},
+			stack: []iteratorItem{},
 		}
 	}
 	i := &iterator{
 		m:     m,
-		stack: []node{root},
+		stack: []iteratorItem{{k: "", n: root}},
 	}
 	i.next()
 	return i

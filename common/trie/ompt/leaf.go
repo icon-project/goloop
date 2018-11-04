@@ -177,8 +177,8 @@ func (n *leaf) realize(m *mpt) (node, error) {
 	return n, nil
 }
 
-func (n *leaf) traverse(m *mpt, v nodeScheduler) (trie.Object, error) {
-	return n.value, nil
+func (n *leaf) traverse(m *mpt, k string, v nodeScheduler) (string, trie.Object, error) {
+	return k+string(n.keys), n.value, nil
 }
 
 func (n *leaf) getProof(m *mpt, keys []byte, items [][]byte) (node, [][]byte, error) {

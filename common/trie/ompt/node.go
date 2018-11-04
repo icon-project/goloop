@@ -14,7 +14,7 @@ type (
 
 	// When it traverses nodes, it can push more nodes for next visit.
 	// It will visit nodes from last to first.
-	nodeScheduler func(node)
+	nodeScheduler func(string,node)
 
 	node interface {
 		getLink(forceHash bool) []byte
@@ -26,7 +26,7 @@ type (
 		delete(m *mpt, keys []byte) (node, bool, error)
 		get(m *mpt, keys []byte) (node, trie.Object, error)
 		realize(m *mpt) (node, error)
-		traverse(m *mpt, v nodeScheduler) (trie.Object, error)
+		traverse(m *mpt, nibs string, v nodeScheduler) (string, trie.Object, error)
 		getProof(m *mpt, keys []byte, proofs [][]byte) (node, [][]byte, error)
 		prove(m *mpt, keys []byte, proofs [][]byte) (node, trie.Object, error)
 	}
@@ -111,6 +111,14 @@ func bytesToKeys(b []byte) []byte {
 		nibbles[i*2+1] = v & 0x0F
 	}
 	return nibbles
+}
+
+func keysToBytes(s string) []byte {
+	k := make([]byte, len(s)/2)
+	for i:=0 ; i<len(k) ; i++ {
+		k[i] = s[i*2]<<4 | s[i*2+1]
+	}
+	return k
 }
 
 func encodeKeys(tag byte, k []byte) []byte {

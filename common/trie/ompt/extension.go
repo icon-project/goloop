@@ -190,19 +190,19 @@ func (n *extension) realize(m *mpt) (node, error) {
 	return n, nil
 }
 
-func (n *extension) traverse(m *mpt, v nodeScheduler) (trie.Object, error) {
+func (n *extension) traverse(m *mpt, k string, v nodeScheduler) (string, trie.Object, error) {
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
 
 	next, err := n.next.realize(m)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	if next != n.next {
 		n.next = next
 	}
-	v(n.next)
-	return nil, nil
+	v(k+string(n.keys),n.next)
+	return "", nil, nil
 }
 
 func (n *extension) getProof(m *mpt, keys []byte, proofs [][]byte) (node, [][]byte, error) {

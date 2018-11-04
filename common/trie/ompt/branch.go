@@ -240,7 +240,7 @@ func (n *branch) realize(m *mpt) (node, error) {
 	return n, nil
 }
 
-func (n *branch) traverse(m *mpt, v nodeScheduler) (trie.Object, error) {
+func (n *branch) traverse(m *mpt, k string, v nodeScheduler) (string, trie.Object, error) {
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
 
@@ -251,14 +251,14 @@ func (n *branch) traverse(m *mpt, v nodeScheduler) (trie.Object, error) {
 		}
 		nchild, err := child.realize(m)
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 		if child != nchild {
 			n.children[i] = nchild
 		}
-		v(nchild)
+		v(k+string([]byte{byte(i)}), nchild)
 	}
-	return n.value, nil
+	return k, n.value, nil
 }
 
 func (n *branch) getProof(m *mpt, keys []byte, proofs [][]byte) (nn node, proof [][]byte, err error) {
