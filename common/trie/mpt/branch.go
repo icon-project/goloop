@@ -121,7 +121,7 @@ func (br *branch) deleteChild(m *mpt, k []byte) (node, bool, error) {
 	//If remainingNibble is -1, branch has 2 more nibbles.
 	if remainingNibble != -1 {
 		if remainingNibble == 16 {
-			return &leaf{value: br.value}, true, nil
+			return &leaf{value: br.value, dirty: true}, true, nil
 		} else {
 			// check nextNode.
 			// if nextNode is extension or branch, n must be extension

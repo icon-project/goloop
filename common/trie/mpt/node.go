@@ -45,17 +45,20 @@ func (h hash) addChild(m *mpt, k []byte, v trie.Object) (node, bool) {
 	if len(h) == 0 {
 		return &leaf{keyEnd: k[:], value: v}, true
 	}
-	serializedValue, _ := m.db.Get(h)
+	serializedValue, err := m.db.Get(h)
+	if serializedValue == nil || err != nil {
+		return h, false
+	}
 	return m.set(deserialize(serializedValue, m.objType), k, v)
 }
 
 func (h hash) deleteChild(m *mpt, k []byte) (node, bool, error) {
 	if m.db == nil || len(h) == 0 {
-		return h, true, nil // TODO: proper error
+		return h, false, nil // TODO: proper error
 	}
 	serializedValue, err := m.db.Get(h)
-	if err != nil {
-		return h, true, err
+	if serializedValue == nil || err != nil {
+		return h, false, err
 	}
 	return m.delete(deserialize(serializedValue, m.objType), k)
 }
