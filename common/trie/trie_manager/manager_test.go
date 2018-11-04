@@ -2,7 +2,6 @@ package trie_manager
 
 import (
 	"bytes"
-	"encoding/hex"
 	"fmt"
 	"log"
 	"strings"
@@ -424,16 +423,59 @@ func deleteString(trie trie.Mutable, k string) {
 	trie.Delete([]byte(k))
 }
 
-func Test_NewMutable(t *testing.T) {
-	type entry struct {
-		k, v []byte
+type testEntry struct {
+	k, v []byte
+}
+
+type testSetter interface {
+	Set([]byte, []byte) error
+	Delete([]byte) error
+}
+
+type testGetter interface {
+	Get([]byte) ([]byte, error)
+}
+
+func applyTestEntries(m testSetter, entries []testEntry, t *testing.T) bool {
+	ret := true
+	for _, e := range entries {
+		var err error
+		if e.v != nil {
+			err = m.Set(e.k, e.v)
+		} else {
+			err = m.Delete(e.k)
+		}
+		if err != nil {
+			ret = false
+			t.Errorf("Fail to Set(%x,%x)", e.k, e.v)
+		}
 	}
+	return ret
+}
+
+func checkTestEntries(m testGetter, entries []testEntry, t *testing.T) bool {
+	ret := true
+	for _, e := range entries {
+		v, err := m.Get(e.k)
+		if err != nil {
+			ret = false
+			t.Errorf("Fail to Get(%x)", e.k)
+		}
+		if !bytes.Equal(v, e.v) {
+			ret = false
+			t.Errorf("Invalid data from Get(%x) exp=(%x) ret=(%x)", e.k, e.v, v)
+		}
+	}
+	return ret
+}
+
+func Test_NewMutable(t *testing.T) {
 	type args struct {
 		h []byte
-		e []entry
+		e []testEntry
 	}
 	type result struct {
-		e []entry
+		e []testEntry
 		h []byte
 	}
 	tests := []struct {
@@ -445,12 +487,12 @@ func Test_NewMutable(t *testing.T) {
 			name: "Small1",
 			args: args{
 				nil,
-				[]entry{
+				[]testEntry{
 					{[]byte{0x01, 0x23, 0x45}, []byte{0x01, 0x23, 0x45}},
 				},
 			},
 			want: result{
-				[]entry{
+				[]testEntry{
 					{[]byte{0x01, 0x23, 0x45}, []byte{0x01, 0x23, 0x45}},
 				},
 				[]byte{},
@@ -460,7 +502,7 @@ func Test_NewMutable(t *testing.T) {
 			name: "AddRemove1",
 			args: args{
 				nil,
-				[]entry{
+				[]testEntry{
 					{[]byte{1, 2, 3}, []byte{1}},
 					{[]byte{1, 2, 3}, []byte{2}},
 					{[]byte{1, 2, 3}, []byte{0x11, 0x22, 0x33}},
@@ -471,7 +513,7 @@ func Test_NewMutable(t *testing.T) {
 				},
 			},
 			want: result{
-				[]entry{
+				[]testEntry{
 					{[]byte{1, 2, 3}, []byte{0x11, 0x22, 0x33}},
 					{[]byte{1, 2, 3, 4}, nil},
 					{[]byte{1, 2, 4}, nil},
@@ -483,7 +525,7 @@ func Test_NewMutable(t *testing.T) {
 			name: "AddRemove2",
 			args: args{
 				nil,
-				[]entry{
+				[]testEntry{
 					{[]byte{0x01}, []byte{0x01}},
 					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
 					{[]byte{0x01, 0x23}, []byte{0x01, 0x23}},
@@ -496,7 +538,7 @@ func Test_NewMutable(t *testing.T) {
 				},
 			},
 			want: result{
-				[]entry{
+				[]testEntry{
 					{[]byte{0x01}, nil},
 					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
 					{[]byte{0x01, 0x23}, nil},
@@ -511,7 +553,7 @@ func Test_NewMutable(t *testing.T) {
 			name: "AddRemove3",
 			args: args{
 				nil,
-				[]entry{
+				[]testEntry{
 					{[]byte{0x01}, []byte{0x01}},
 					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
 					{[]byte{0x01, 0x23}, []byte{0x01, 0x23}},
@@ -520,7 +562,7 @@ func Test_NewMutable(t *testing.T) {
 				},
 			},
 			want: result{
-				[]entry{
+				[]testEntry{
 					{[]byte{0x01}, []byte{0x01}},
 					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
 					{[]byte{0x01, 0x23}, []byte{0x01, 0x23}},
@@ -550,20 +592,7 @@ func Test_NewMutable(t *testing.T) {
 					t.Errorf("NewMutable() = %v, want non nil", got)
 					return
 				}
-				for _, e := range tt.args.e {
-					var err error
-					if e.v != nil {
-						log.Printf("Set(%x,%x)", e.k, e.v)
-						err = got.Set(e.k, e.v)
-					} else {
-						log.Printf("Delete(%x)", e.k)
-						err = got.Delete(e.k)
-					}
-					if err != nil {
-						t.Errorf("FAIL to set key to value")
-						return
-					}
-				}
+				applyTestEntries(got, tt.args.e, t)
 				s := got.GetSnapshot()
 				h := s.RootHash()
 				log.Printf("Snapshot Hash:%x", h)
@@ -581,32 +610,8 @@ func Test_NewMutable(t *testing.T) {
 
 			for i, mgr := range mgrsToCheck {
 				log.Printf("Verify results DB[%d] Manager[%d]", i%2, i/2)
-				failed := false
 				s2 := mgr.NewImmutable(hashes[i/2])
-				for _, e := range tt.want.e {
-					obj, err := s2.Get(e.k)
-					if err != nil {
-						t.Errorf("Key(%s) return error=%v",
-							hex.EncodeToString(e.k), err)
-						continue
-					}
-					if obj == nil {
-						if e.v == nil {
-							continue
-						} else {
-							t.Errorf("Key(%x) expected %x result is nil", e.k, e.v)
-							failed = true
-							break
-						}
-					}
-					if !bytes.Equal(obj, e.v) {
-						t.Errorf("Key(%x) expected %x result %x", e.k, e.v, obj)
-						failed = true
-						break
-					}
-				}
-
-				if failed {
+				if !checkTestEntries(s2, tt.want.e, t) {
 					log.Printf("FAIL verification with DB[%d] Manager[%d]", i%2, i/2)
 				} else {
 					log.Printf("OKAY verification with DB[%d] Manager[%d]", i%2, i/2)
@@ -617,12 +622,9 @@ func Test_NewMutable(t *testing.T) {
 }
 
 func Test_Snapshot(t *testing.T) {
-	type entry struct {
-		k, v []byte
-	}
 	type snapshot struct {
-		tx []entry
-		r  []entry
+		tx []testEntry
+		r  []testEntry
 	}
 	tests := []struct {
 		name      string
@@ -630,22 +632,22 @@ func Test_Snapshot(t *testing.T) {
 	}{
 		{"Scenario1", []snapshot{
 			{
-				[]entry{
+				[]testEntry{
 					{[]byte{0x01, 0x23, 0x45, 0x67}, []byte{0x01, 0x23, 0x45, 0x67}},
 					{[]byte{0x01, 0x23, 0x54, 0x68}, []byte{0x01, 0x23, 0x54, 0x68}},
 				},
-				[]entry{
+				[]testEntry{
 					{[]byte{0x01, 0x23, 0x45, 0x67}, []byte{0x01, 0x23, 0x45, 0x67}},
 					{[]byte{0x01, 0x23, 0x54, 0x68}, []byte{0x01, 0x23, 0x54, 0x68}},
 				},
 			},
 			{
-				[]entry{
+				[]testEntry{
 					{[]byte{0x01, 0x23, 0x45, 0x67}, nil},
 					{[]byte{0x01, 0x23, 0x44}, []byte{0x01, 0x23, 0x44}},
 					{[]byte{0x01, 0x23, 0x44, 0x55}, []byte{0x01, 0x23, 0x44, 0x55}},
 				},
-				[]entry{
+				[]testEntry{
 					{[]byte{0x01, 0x23, 0x45, 0x67}, nil},
 					{[]byte{0x01, 0x23, 0x54, 0x68}, []byte{0x01, 0x23, 0x54, 0x68}},
 					{[]byte{0x01, 0x23, 0x44}, []byte{0x01, 0x23, 0x44}},
@@ -653,11 +655,12 @@ func Test_Snapshot(t *testing.T) {
 				},
 			},
 			{
-				[]entry{
+				[]testEntry{
+					{[]byte{0x01, 0x23, 0x44, 0x67}, nil},
 					{[]byte{0x01, 0x23, 0x44}, nil},
 					{[]byte{0x01}, []byte{0x01}},
 				},
-				[]entry{
+				[]testEntry{
 					{[]byte{0x01, 0x23, 0x45, 0x67}, nil},
 					{[]byte{0x01, 0x23, 0x54, 0x68}, []byte{0x01, 0x23, 0x54, 0x68}},
 					{[]byte{0x01, 0x23, 0x44, 0x55}, []byte{0x01, 0x23, 0x44, 0x55}},
@@ -681,14 +684,9 @@ func Test_Snapshot(t *testing.T) {
 			for midx, m := range ms {
 				for sidx, s := range tt.snapshots {
 					log.Printf("Mutable(%d) apply Snapshot(%d) and check", midx, sidx)
-					for _, tx := range s.tx {
-						if tx.v != nil {
-							m.Set(tx.k, tx.v)
-						} else {
-							m.Delete(tx.k)
-						}
-					}
-
+					t.Run(fmt.Sprintf("Mutable(%d)_Apply_Snapshot(%d)", midx, sidx), func(t *testing.T) {
+						applyTestEntries(m, s.tx, t)
+					})
 					ss[sidx][midx] = m.GetSnapshot()
 
 					func(midx, sidx int) {
@@ -696,29 +694,23 @@ func Test_Snapshot(t *testing.T) {
 						for i := 0; i <= sidx; i++ {
 							s := tt.snapshots[i]
 							sx := ss[i][midx]
-							for _, r := range s.r {
-								v, err := sx.Get(r.k)
-								if err != nil {
-									t.Errorf("Mutable(%d) Snapshot(%d/%d) Key=%x Expected=%x ERROR %v", midx, i, sidx, r.k, r.v, err)
-								} else {
-									if !bytes.Equal(v, r.v) {
-										t.Errorf("Mutable(%d) Snapshot(%d/%d) Key=%x Expected=%x Returned=%x", midx, i, sidx, r.k, r.v, v)
-									}
-								}
-							}
+							t.Run(fmt.Sprintf("Mutable(%d)_Check_Snapshot(%d/%d)", midx, i, sidx), func(t *testing.T) {
+								checkTestEntries(sx, s.r, t)
+							})
 						}
 						log.Printf("Snapshot(~%d) Verify DONE", sidx)
 					}(midx, sidx)
 				}
 			}
-			log.Println("Verifying Hashes & Flush")
-			for sidx := 0; sidx < len(tt.snapshots); sidx++ {
-				h1, h2 := ss[sidx][0].RootHash(), ss[sidx][1].RootHash()
-				if !bytes.Equal(h1, h2) {
-					t.Errorf("Snapshot(%d) Hash %x != %x", sidx, h1, h2)
+			t.Run("HashCompare", func(t *testing.T) {
+				for sidx := 0; sidx < len(tt.snapshots); sidx++ {
+					h1, h2 := ss[sidx][0].RootHash(), ss[sidx][1].RootHash()
+					if !bytes.Equal(h1, h2) {
+						t.Errorf("Snapshot(%d) Hash %x != %x", sidx, h1, h2)
+					}
 				}
-			}
-			log.Println("Verifying Snapshot from Hashes")
+			})
+			log.Println("Verifying Snapshot from Hashes after Flush in reverse")
 			for midx, m := range mgrs {
 				log.Printf("Manager(%d) Verify Snapshots", midx)
 				for sidx := len(tt.snapshots) - 1; sidx >= 0; sidx-- {
@@ -727,18 +719,9 @@ func Test_Snapshot(t *testing.T) {
 					h := ss[sidx][midx].RootHash()
 					sx := m.NewImmutable(h)
 					s := tt.snapshots[sidx]
-					for _, r := range s.r {
-						v, err := sx.Get(r.k)
-						if err != nil {
-							t.Errorf("Manager(%d).Snapshot(%d) from Hash(%x) Key=%x Expected=%x makes error %v", midx, sidx, h, r.k, r.v, err)
-							log.Printf("Manager(%d).Snapshot(%d) from Hash(%x) Key=%x Expected=%x makes error %v", midx, sidx, h, r.k, r.v, err)
-						} else {
-							if !bytes.Equal(v, r.v) {
-								t.Errorf("Manager(%d).Snapshot(%d) from Hash(%x) Key=%x Expected=%x Returned=%x", midx, sidx, h, r.k, r.v, v)
-								log.Printf("Manager(%d).Snapshot(%d) from Hash(%x) Key=%x Expected=%x Returned=%x", midx, sidx, h, r.k, r.v, v)
-							}
-						}
-					}
+					t.Run(fmt.Sprintf("Manager(%d)_Verify_Snapshot(%d/%x)", midx, sidx, h), func(t *testing.T) {
+						checkTestEntries(sx, s.r, t)
+					})
 
 					if sidx < len(tt.snapshots)-1 {
 						sidx := sidx + 1
@@ -746,31 +729,13 @@ func Test_Snapshot(t *testing.T) {
 						s := tt.snapshots[sidx]
 						log.Printf("Manager(%d) Snapshot(%d) Verify from Snapshot(%x)", midx, sidx, h)
 						mutable := m.NewMutable(h)
-						for _, tx := range s.tx {
-							var err error
-							if tx.v != nil {
-								err = mutable.Set(tx.k, tx.v)
-							} else {
-								err = mutable.Delete(tx.k)
-							}
-							if err != nil {
-								t.Errorf("Manager(%d).Snapshot(%d,%x).Set(%x,%x) error %v", midx, sidx, h, tx.k, tx.v, err)
-								log.Printf("Manager(%d).Snapshot(%d,%x).Set(%x,%x) error %v", midx, sidx, h, tx.k, tx.v, err)
-							}
-						}
+						t.Run(fmt.Sprintf("Manager(%d) Apply Snapshot(%d) from Snapshot(%x)", midx, sidx, h), func(t *testing.T) {
+							applyTestEntries(mutable, s.tx, t)
+						})
 						sx := mutable.GetSnapshot()
-						for _, r := range s.r {
-							v, err := sx.Get(r.k)
-							if err != nil {
-								t.Errorf("Manager(%d).Snapshot(%d,%x) Key=%x Expected=%x makes error %v", midx, sidx, h, r.k, r.v, err)
-								log.Printf("Manager(%d).Snapshot(%d,%x) Key=%x Expected=%x makes error %v", midx, sidx, h, r.k, r.v, err)
-							} else {
-								if !bytes.Equal(v, r.v) {
-									t.Errorf("Manager(%d).Snapshot(%d,%x) Key=%x Expected=%x Returned=%x", midx, sidx, h, r.k, r.v, v)
-									log.Printf("Manager(%d).Snapshot(%d,%x) Key=%x Expected=%x Returned=%x", midx, sidx, h, r.k, r.v, v)
-								}
-							}
-						}
+						t.Run(fmt.Sprintf("Manager(%d) Verify Snapshot(%d) from Snapshot(%x)", midx, sidx, h), func(t *testing.T) {
+							checkTestEntries(sx, s.r, t)
+						})
 					}
 				}
 			}
