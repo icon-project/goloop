@@ -146,9 +146,11 @@ func decodeLeafExt(buf []byte, t reflect.Type) node {
 	var nodeType int
 	key, nodeType, _ = decodeKey(key)
 	if nodeType == 0 { //extension
-		return &extension{sharedNibbles: key, next: hash(buf[valOffset : valOffset+valContentSize]), serializedValue: buf}
+		return &extension{sharedNibbles: key, next: hash(buf[valOffset : valOffset+valContentSize]),
+			nodeBase: nodeBase{serializedValue: buf}}
 	}
-	l := &leaf{keyEnd: key, value: decodeValue(buf[valOffset:valOffset+valContentSize], t), serializedValue: buf}
+	l := &leaf{keyEnd: key, value: decodeValue(buf[valOffset:valOffset+valContentSize], t),
+		nodeBase: nodeBase{serializedValue: buf}}
 	return l
 }
 
@@ -156,7 +158,7 @@ func decodeBranch(buf []byte, t reflect.Type) node {
 	// serialized branch can have list which is another branch(sharedNibbles/value) or a leaf(keyEnd/value) or  hexa(serialized(rlp))
 	tagSize, contentSize, _ := getContentSize(buf)
 	// child is leaf, hash or nil(128)
-	newBranch := &branch{}
+	newBranch := &branch{nodeBase: nodeBase{state: committedNode, hashedValue: buf}}
 	for i, valueIndex := tagSize, 0; i < tagSize+contentSize; valueIndex++ {
 		// if list, call decoderLeaf
 		// if single byte
@@ -272,9 +274,12 @@ func deserialize(b []byte, t reflect.Type) node {
 		//}
 		//return &extension{sharedNibbles: keyBuf, next: hash(valBuf), serializedValue: b}
 		if hashableSize > len(valBuf) {
-			return &extension{sharedNibbles: keyBuf, next: decodeBranch(valBuf, t), serializedValue: b}
+			return &extension{sharedNibbles: keyBuf, next: decodeBranch(valBuf, t),
+				nodeBase: nodeBase{serializedValue: b, state: committedNode}}
 		}
-		return &extension{sharedNibbles: keyBuf, next: hash(valBuf), serializedValue: b}
+		return &extension{sharedNibbles: keyBuf, next: hash(valBuf),
+			nodeBase: nodeBase{serializedValue: b, state: committedNode}}
 	}
-	return &leaf{keyEnd: keyBuf, value: decodeValue(valBuf, t), serializedValue: b}
+	return &leaf{keyEnd: keyBuf, value: decodeValue(valBuf, t),
+		nodeBase: nodeBase{serializedValue: b, state: committedNode}}
 }

@@ -9,17 +9,14 @@ import (
 
 type (
 	leaf struct {
+		nodeBase
 		keyEnd []byte
 		value  trie.Object
-
-		hashedValue     []byte
-		serializedValue []byte
-		dirty           bool // if dirty is true, must retry getting hashedValue & serializedValue
 	}
 )
 
 func (l *leaf) serialize() []byte {
-	if l.dirty == true {
+	if l.state == dirtyNode {
 		l.serializedValue = nil
 		l.hashedValue = nil
 	} else if l.serializedValue != nil {
@@ -51,7 +48,7 @@ func (l *leaf) serialize() []byte {
 	if l.hashedValue != nil {
 		l.hashedValue = nil
 	}
-	l.dirty = false
+	l.state = serializedNode
 
 	if printSerializedValue {
 		fmt.Println("leaf val = ", string(l.value.Bytes()))
@@ -61,7 +58,7 @@ func (l *leaf) serialize() []byte {
 }
 
 func (l *leaf) hash() []byte {
-	if l.dirty == true {
+	if l.state == dirtyNode {
 		l.serializedValue = nil
 		l.hashedValue = nil
 	} else if l.hashedValue != nil {
@@ -78,7 +75,7 @@ func (l *leaf) hash() []byte {
 
 	l.hashedValue = make([]byte, len(digest))
 	copy(l.hashedValue, digest)
-	l.dirty = false
+	l.state = serializedNode
 
 	if printHash {
 		fmt.Printf("hash leaf : <%x>\n", digest)
@@ -86,36 +83,38 @@ func (l *leaf) hash() []byte {
 	return digest
 }
 
-func (l *leaf) addChild(m *mpt, k []byte, v trie.Object) (node, bool) {
+func (l *leaf) addChild(m *mpt, k []byte, v trie.Object) (node, nodeState) {
+	//fmt.Println("leaf addChild : k ", k, ", v : ", v)
 	match, same := compareHex(k, l.keyEnd)
 	// case 1 : match = 0 -> new branch
 	switch {
 	case same == true:
 		if l.value.Equal(v) {
-			return l, false
+			return l, l.state
 		}
 		l.value = v
-		l.dirty = true
+		l.state = dirtyNode
 	case match == 0:
-		newBranch := &branch{dirty: true}
+		newBranch := &branch{nodeBase: nodeBase{state: dirtyNode}}
 		newBranch.addChild(m, k, v)
 		newBranch.addChild(m, l.keyEnd, l.value)
-		return newBranch, true
+		return newBranch, newBranch.state
 	// case 2 : 0 < match < len(n,value) -> new extension
 	default:
-		newBranch := &branch{dirty: true}
-		newExt := &extension{sharedNibbles: k[:match], next: newBranch}
+		newBranch := &branch{nodeBase: nodeBase{state: dirtyNode}}
+		newExt := &extension{sharedNibbles: k[:match], next: newBranch, nodeBase: nodeBase{state: dirtyNode}}
 		newBranch.addChild(m, k[match:], v)
 		newBranch.addChild(m, l.keyEnd[match:], l.value)
-		return newExt, true
+		return newExt, newExt.state
 	}
-	return l, true
+	return l, l.state
 }
 
-func (l *leaf) deleteChild(m *mpt, k []byte) (node, bool, error) {
+func (l *leaf) deleteChild(m *mpt, k []byte) (node, nodeState, error) {
+	//fmt.Println("leaf deleteChild : k ", k)
 	// not same key
 	if bytes.Compare(l.keyEnd, k) != 0 {
-		return l, false, nil
+		return l, l.state, nil
 	}
-	return nil, true, nil
+	return nil, dirtyNode, nil
 }

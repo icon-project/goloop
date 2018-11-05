@@ -18,12 +18,26 @@ import (
 */
 const hashableSize = 32
 
+type nodeState int
+
+const (
+	noneNode nodeState = iota
+	dirtyNode
+	serializedNode
+	committedNode
+)
+
 type (
+	nodeBase struct {
+		hashedValue     []byte
+		serializedValue []byte
+		state           nodeState
+	}
 	node interface {
 		hash() []byte
 		serialize() []byte
-		addChild(m *mpt, k []byte, v trie.Object) (node, bool)
-		deleteChild(m *mpt, k []byte) (node, bool, error)
+		addChild(m *mpt, k []byte, v trie.Object) (node, nodeState)
+		deleteChild(m *mpt, k []byte) (node, nodeState, error)
 	}
 	byteValue []byte
 	hash      []byte
@@ -41,24 +55,24 @@ func (h hash) hash() []byte {
 	return h
 }
 
-func (h hash) addChild(m *mpt, k []byte, v trie.Object) (node, bool) {
+func (h hash) addChild(m *mpt, k []byte, v trie.Object) (node, nodeState) {
 	if len(h) == 0 {
-		return &leaf{keyEnd: k[:], value: v}, true
+		return &leaf{keyEnd: k[:], value: v}, dirtyNode
 	}
 	serializedValue, err := m.db.Get(h)
 	if serializedValue == nil || err != nil {
-		return h, false
+		return h, dirtyNode
 	}
 	return m.set(deserialize(serializedValue, m.objType), k, v)
 }
 
-func (h hash) deleteChild(m *mpt, k []byte) (node, bool, error) {
-	if m.db == nil || len(h) == 0 {
-		return h, false, nil // TODO: proper error
+func (h hash) deleteChild(m *mpt, k []byte) (node, nodeState, error) {
+	if len(h) == 0 {
+		return h, noneNode, nil // TODO: proper error
 	}
 	serializedValue, err := m.db.Get(h)
 	if serializedValue == nil || err != nil {
-		return h, false, err
+		return h, noneNode, err
 	}
 	return m.delete(deserialize(serializedValue, m.objType), k)
 }

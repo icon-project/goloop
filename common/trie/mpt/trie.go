@@ -176,11 +176,11 @@ func (m *mpt) RootHash() []byte {
 }
 
 // return true if current node or child node is changed
-func (m *mpt) set(n node, k []byte, v trie.Object) (node, bool) {
+func (m *mpt) set(n node, k []byte, v trie.Object) (node, nodeState) {
 	//fmt.Println("set n ", n,", k ", k, ", v : ", v)
 
 	if n == nil {
-		return &leaf{keyEnd: k[:], value: v, dirty: true}, true
+		return &leaf{keyEnd: k[:], value: v, nodeBase: nodeBase{state: dirtyNode}}, dirtyNode
 	}
 
 	return n.addChild(m, k, v)
@@ -203,10 +203,10 @@ func (m *mpt) Set(k, v []byte) error {
 	return nil
 }
 
-func (m *mpt) delete(n node, k []byte) (node, bool, error) {
+func (m *mpt) delete(n node, k []byte) (node, nodeState, error) {
 	//fmt.Println("delete n ", n,", k ", k, ", v : ", string(k))
 	if n == nil {
-		return n, false, nil
+		return n, noneNode, nil
 	}
 
 	return n.deleteChild(m, k)
@@ -257,22 +257,34 @@ func (m *mpt) mergeSnapshot() (map[string]trie.Object, hash) {
 func traversalCommit(db db.Bucket, n node, cnt int) error {
 	switch n := n.(type) {
 	case *branch:
+		if n.state == committedNode {
+			return nil
+		}
 		for _, v := range n.nibbles {
 			if err := traversalCommit(db, v, cnt+1); err != nil {
 				return err
 			}
 		}
+
 	case *extension:
+		if n.state == committedNode {
+			return nil
+		}
+
 		if err := traversalCommit(db, n.next, cnt+1); err != nil {
 			return err
 		}
 
 	case *leaf:
-		//serialized := n.serialize()
-		//// if length of serialized leaf is smaller hashable(32), parent node (branch) must have serialized data of this
-		//if len(serialized) < hashableSize {
-		//	return nil
-		//}
+		if n.state == committedNode {
+			return nil
+		}
+		if len(n.serialize()) < hashableSize && cnt != 0 { // root hash has to save hash
+			return nil
+		}
+		err := db.Set(n.hash(), n.serialize())
+		n.state = committedNode
+		return err
 	default:
 		return nil
 	}
@@ -303,6 +315,7 @@ func (m *mpt) Flush() error {
 			m.evaluateTrie(pool)
 			m.evaluated = true
 		}
+		//fmt.Println("FLUSH ROOTHASH : ", m.root.hash())
 		if err := traversalCommit(m.db, m.root, 0); err != nil {
 			return err
 		}
