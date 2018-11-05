@@ -10,7 +10,7 @@ type Block interface {
 	ID() []byte
 	Height() int64
 	PrevID() []byte
-	NextValidators() []Validator
+	NextValidators() ValidatorList
 	//	TODO remove
 	Verify() error
 	Votes() VoteList
@@ -20,6 +20,8 @@ type Block interface {
 	Proposer() Address
 	LogBloom() []byte
 	Result() []byte
+	PatchReceipts() ReceiptList
+	NormalReceipts() ReceiptList
 
 	MarshalHeader(w io.Writer)
 	MarshalBody(w io.Writer)

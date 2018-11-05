@@ -28,6 +28,8 @@ type TransactionIterator interface {
 type TransactionList interface {
 	Get(int) (Transaction, error)
 	Iterator() TransactionIterator
+	Hash() []byte
+	Equal(TransactionList) bool
 }
 
 type Receipt interface {
@@ -58,7 +60,7 @@ type Transition interface {
 	// NextValidators returns the addresses of validators as a result of
 	// transaction processing.
 	// It may return nil before cb.OnExecute is called back by Execute.
-	NextValidators() []Validator
+	NextValidators() ValidatorList
 
 	// PatchReceipts returns patch receipts.
 	// It may return nil before cb.OnExecute is called back by Execute.

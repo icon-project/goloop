@@ -16,9 +16,14 @@ func GetID() Validator {
 	return nil
 }
 
+type ValidatorList interface {
+	Hash() []byte
+}
+
 type VoteList interface {
 	Verify(block Block, validators []Validator) bool
 	Bytes() []byte
+	Hash() []byte
 }
 
 type VoteListDecoder func([]byte) VoteList

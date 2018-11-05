@@ -81,7 +81,7 @@ func (b *blockV1) Votes() module.VoteList {
 	return nil
 }
 
-func (b *blockV1) NextValidators() []module.Validator {
+func (b *blockV1) NextValidators() module.ValidatorList {
 	return nil
 }
 
@@ -114,6 +114,14 @@ func (b *blockV1) LogBloom() []byte {
 }
 
 func (b *blockV1) Result() []byte {
+	return nil
+}
+
+func (b *blockV1) NormalReceipts() module.ReceiptList {
+	return nil
+}
+
+func (b *blockV1) PatchReceipts() module.ReceiptList {
 	return nil
 }
 
