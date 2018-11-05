@@ -8,6 +8,40 @@ import (
 	"github.com/icon-project/goloop/common/trie"
 )
 
+func NewImmutable(database db.Database, rootHash []byte) trie.Immutable {
+	bk, err := database.GetBucket(db.MerkleTrie)
+	if err != nil {
+		log.Panicln("FAIL to get Bucket", err)
+	}
+
+	return newMpt(bk, rootHash, reflect.TypeOf([]byte{}))
+}
+
+func NewMutable(database db.Database, rootHash []byte) trie.Mutable {
+	bk, err := database.GetBucket(db.MerkleTrie)
+	if err != nil {
+		log.Panicln("FAIL to get Bucket", err)
+	}
+	return newMpt(bk, rootHash, reflect.TypeOf([]byte{}))
+}
+
+func NewImmutableForObject(database db.Database, h []byte, t reflect.Type) trie.ImmutableForObject {
+	bk, err := database.GetBucket(db.MerkleTrie)
+	if err != nil {
+		log.Panicln("FAIL to get Bucket", err)
+	}
+	return newMptForObj(bk, h, t)
+
+}
+
+func NewMutableForObject(database db.Database, h []byte, t reflect.Type) trie.MutableForObject {
+	bk, err := database.GetBucket(db.MerkleTrie)
+	if err != nil {
+		log.Panicln("FAIL to get Bucket", err)
+	}
+	return newMptForObj(bk, h, t)
+}
+
 //func NewImmutable(rootHash []byte) trie.Immutable {
 //	return newMpt(rootHash)
 //}
@@ -28,37 +62,17 @@ func NewManager(db db.Database) trie.Manager {
 }
 
 func (m *manager) NewImmutable(rootHash []byte) trie.Immutable {
-	bk, err := m.db.GetBucket(db.MerkleTrie)
-	if err != nil {
-		log.Panicln("FAIL to get Bucket", err)
-	}
-
-	return newMpt(bk, rootHash, reflect.TypeOf([]byte{}))
+	return NewImmutable(m.db, rootHash)
 }
 
 func (m *manager) NewMutable(rootHash []byte) trie.Mutable {
-	bk, err := m.db.GetBucket(db.MerkleTrie)
-	if err != nil {
-		log.Panicln("FAIL to get Bucket", err)
-	}
-	return newMpt(bk, rootHash, reflect.TypeOf([]byte{}))
+	return NewMutable(m.db, rootHash)
 }
 
-// TODO: implement
 func (m *manager) NewImmutableForObject(h []byte, t reflect.Type) trie.ImmutableForObject {
-	bk, err := m.db.GetBucket(db.MerkleTrie)
-	if err != nil {
-		log.Panicln("FAIL to get Bucket", err)
-	}
-	return newMptForObj(bk, h, t)
-
+	return NewImmutableForObject(m.db, h, t)
 }
 
-// TODO: implement
 func (m *manager) NewMutableForObject(h []byte, t reflect.Type) trie.MutableForObject {
-	bk, err := m.db.GetBucket(db.MerkleTrie)
-	if err != nil {
-		log.Panicln("FAIL to get Bucket", err)
-	}
-	return newMptForObj(bk, h, t)
+	return NewMutableForObject(m.db, h, t)
 }
