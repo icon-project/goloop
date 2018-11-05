@@ -21,7 +21,7 @@ type ValidatorList interface {
 }
 
 type VoteList interface {
-	Verify(block Block, validators []Validator) bool
+	Verify(block Block, validators ValidatorList) bool
 	Bytes() []byte
 	Hash() []byte
 }

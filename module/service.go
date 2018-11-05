@@ -101,7 +101,7 @@ type ServiceManager interface {
 	// Returned Transition always passes validation.
 	ProposeTransition(parent Transition) (Transition, error)
 	// CreateInitialTransition creates an initial Transition
-	CreateInitialTransition(result []byte, nextValidators []Validator) (Transition, error)
+	CreateInitialTransition(result []byte, nextValidators ValidatorList) (Transition, error)
 	// CreateTransition creates a Transition following parent Transition.
 	CreateTransition(parent Transition, txs TransactionList) (Transition, error)
 	// GetPatches returns all patch transactions based on the parent transition.
