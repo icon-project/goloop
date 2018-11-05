@@ -19,6 +19,7 @@ import (
 // TODO garbage를 정리하는 방법 필요. 간단하게는 removeList()에 넣어두면 되긴 한데...
 // add()할 때 개수 체크 및 candidate()에서 정리
 // TODO GC 방법은 정리 필요
+// TODO tx 시간 순으로 정렬 필요
 type txPool struct {
 }
 
@@ -52,6 +53,7 @@ func (pool *txPool) addList(tx []tx) {
 
 // finalize할 때 호출됨.
 func (pool *txPool) removeList(tx []tx) {
+	// TODO 효과적으로 제거하는 방안 필요
 }
 
 ////////////////////
