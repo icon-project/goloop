@@ -19,11 +19,17 @@ type Transaction interface {
 	Verify() error
 }
 
+type TransactionIterator interface {
+	Has() bool
+	Next() error
+	Get() (Transaction, int, error)
+}
+
 type TransactionList interface {
 	Get(int) (Transaction, error)
-	Size() int
-	Hash() []byte
+	Iterator() TransactionIterator
 }
+
 type Receipt interface {
 	Bytes() ([]byte, error)
 }
