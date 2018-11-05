@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/trie"
@@ -53,6 +54,14 @@ func (l *transactionList) Iterator() module.TransactionIterator {
 	return &transactionIterator{l.trie.Iterator()}
 }
 
+func (l *transactionList) Hash() []byte {
+	return nil
+}
+
+func (l *transactionList) Equal(module.TransactionList) bool {
+	return false
+}
+
 func NewTransactionListFromTrie(t trie.ImmutableForObject) module.TransactionList {
 	return &transactionList{t}
 }
@@ -98,6 +107,14 @@ func (l *transactionSlice) Iterator() module.TransactionIterator {
 		list: l.list,
 		idx:  0,
 	}
+}
+
+func (l *transactionSlice) Hash() []byte {
+	return nil
+}
+
+func (l *transactionSlice) Equal(module.TransactionList) bool {
+	return false
 }
 
 func NewTransactionListFromSlice(list []module.Transaction) module.TransactionList {
