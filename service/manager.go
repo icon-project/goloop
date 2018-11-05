@@ -22,6 +22,8 @@ const (
 ////////////////////
 
 type manager struct {
+	// tx pool should be connected to transition for more than one branches.
+	// Currently, it doesn't allow another branch, so add tx pool here.
 	patchTxPool  *txPool
 	normalTxPool *txPool
 
@@ -71,7 +73,8 @@ func (m *manager) CreateInitialTransition(result []byte, vs []module.Validator) 
 		return nil, errors.New("Invalid result")
 	}
 	// TODO check if result is valid. Who's responsible?
-	return newInitTransition(m.trieManager, resultBytes, vs), nil
+	// TODO set validatorList correctly
+	return newInitTransition(m.trieManager, resultBytes, nil), nil
 }
 
 // CreateTransition creates a Transition following parent Transition with txs
@@ -125,7 +128,7 @@ func (m *manager) PatchTransition(t module.Transition, patches module.Transactio
 
 	// prepare patch transaction list
 	var txs *txList
-	if patches == nil || patches.Size() == 0 {
+	if patches == nil {
 		txs = &txList{txs: make([]tx, 0)}
 	} else {
 		txs, ok = patches.(*txList)

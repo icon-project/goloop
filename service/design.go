@@ -117,6 +117,11 @@ type scoreCallTx struct {
 	tx
 }
 
+func (t *scoreCallTx) execute(state *transitionState) error {
+	// TODO rollback될 것을 생각해서 항상 처음에 snapshot을 찍어줘야 한다.
+	return nil
+}
+
 type scoreDeployTx struct {
 	tx
 }
@@ -135,13 +140,21 @@ func (l *txList) Get(n int) (module.Transaction, error) {
 	}
 	return &l.txs[n], nil
 }
-func (l *txList) Size() int {
-	return len(l.txs)
+
+func (l *txList) Iterator() module.TransactionIterator {
+	return nil
 }
 
 // TODO 구현
 func (l *txList) Hash() []byte {
 	return nil
+}
+
+func (l *txList) Equal(txList module.TransactionList) bool {
+	return true
+}
+
+type txIterator struct {
 }
 
 ////////////////////

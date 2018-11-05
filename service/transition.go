@@ -29,7 +29,7 @@ type transitionState struct {
 	// without copying.
 	state trie.Mutable
 
-	nextValidators []module.Validator
+	nextValidators module.ValidatorList
 	normalReceipts *receiptList
 	patchReceipts  *receiptList
 }
@@ -74,7 +74,7 @@ func newTransition(parent *transition, patchTxs *txList, normalTxs *txList, stat
 }
 
 // all parameters should be valid.
-func newInitTransition(tm trie.Manager, result []byte, validators []module.Validator) *transition {
+func newInitTransition(tm trie.Manager, result []byte, validators module.ValidatorList) *transition {
 	return &transition{
 		trieManager: tm,
 		result:      result,
@@ -129,10 +129,14 @@ func (t *transition) Result() []byte {
 // NextValidators returns the addresses of validators as a result of
 // transaction processing.
 // It may return nil before cb.OnExecute is called back by Execute.
-func (t *transition) NextValidators() []module.Validator {
-	vals := make([]module.Validator, len(t.nextValidators))
-	copy(vals, t.nextValidators)
-	return vals
+func (t *transition) NextValidators() module.ValidatorList {
+	// TODO fix it based on ValidatorList
+	return nil
+	/*
+		vals := make([]module.Validator, len(t.nextValidators))
+		copy(vals, t.nextValidators)
+		return vals
+	*/
 }
 
 // PatchReceipts returns patch receipts.
