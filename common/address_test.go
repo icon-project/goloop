@@ -1,6 +1,10 @@
 package common
 
 import (
+	"bytes"
+	"encoding/hex"
+	"github.com/icon-project/goloop/common/codec"
+	"log"
 	"reflect"
 	"testing"
 )
@@ -79,6 +83,64 @@ func TestNewAddressFromString(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := NewAddressFromString(tt.args.s); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewAddressFromString() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAddressEncodingDecoding(t *testing.T) {
+	type args struct {
+		s string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			"Case1",
+			args{"hx0000000000000000000000000000000000000000"},
+			"b5000000000000000000000000000000000000000000",
+		},
+		{
+			"Case2",
+			args{"cx1908581ed9f09c45810405897123badefcbfefa0"},
+			"b5011908581ed9f09c45810405897123badefcbfefa0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			want, err := hex.DecodeString(tt.want)
+			if err != nil {
+				log.Printf("Test(%s) want=%s illegal", tt.name, tt.want)
+				return
+			}
+
+			a := NewAddressFromString(tt.args.s)
+			b, err := codec.MP.MarshalToBytes(a)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			log.Printf("Encoded:[%x]", b)
+			log.Printf("Expect :[%x]", want)
+			if !bytes.Equal(b, want) {
+				t.Errorf("Encoded bytes are different exp=[%x] result=[%x]", want, b)
+			}
+
+			var a2 Address
+			_, err = codec.MP.UnmarshalFromBytes(b, &a2)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+
+			log.Printf("Recovered:[%v]", &a2)
+
+			if a2.String() != tt.args.s {
+				t.Errorf("Fail to recover expected=%s recovered=%s",
+					tt.args.s, a2.String())
 			}
 		})
 	}
