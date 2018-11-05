@@ -17,9 +17,10 @@ import (
 // Transaction Pool
 ////////////////////
 // TODO garbage를 정리하는 방법 필요. 간단하게는 removeList()에 넣어두면 되긴 한데...
-// add()할 때 개수 체크 및 candidate()에서 정리
-// TODO GC 방법은 정리 필요
+// add()할 때 개수 체크 및 candidate()에서 정리.
+// TODO tx를 버리는 기준 확인 필요
 // TODO tx 시간 순으로 정렬 필요
+// TODO 당연하지만, lock 잘 잡고...
 type txPool struct {
 }
 
