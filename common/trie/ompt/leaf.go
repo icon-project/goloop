@@ -178,7 +178,17 @@ func (n *leaf) realize(m *mpt) (node, error) {
 }
 
 func (n *leaf) traverse(m *mpt, k string, v nodeScheduler) (string, trie.Object, error) {
-	return k+string(n.keys), n.value, nil
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
+	value, changed, err := m.getObject(n.value)
+	if changed {
+		n.value = value
+	}
+	if err != nil {
+		return "", nil, err
+	}
+	return k + string(n.keys), n.value, nil
 }
 
 func (n *leaf) getProof(m *mpt, keys []byte, items [][]byte) (node, [][]byte, error) {

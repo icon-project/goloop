@@ -327,7 +327,8 @@ func TestProof(t *testing.T) {
 	if !bytes.Equal(v, value) {
 		t.Fatal("wrong value")
 	}
-	fmt.Println(tr.Proof(key))
+	s := tr.GetSnapshot()
+	fmt.Println(s.GetProof(key))
 }
 
 func TestMissingNode(t *testing.T) {
@@ -784,6 +785,158 @@ func TestObject(t *testing.T) {
 		hash2 := mutableObjSnaps[i].Hash()
 		if bytes.Compare(hash1, hash2) != 0 {
 			t.Errorf("expected %x but got %x", hash1, hash2)
+		}
+	}
+}
+
+type testObject struct {
+	s          string
+	flushCount int
+}
+
+func (e *testObject) Bytes() []byte {
+	return []byte(e.s)
+}
+func (e *testObject) Reset(d db.Database, b []byte) error {
+	e.s = string(b)
+	return nil
+}
+func (e *testObject) Flush() error {
+	e.flushCount++
+	return nil
+}
+func (e *testObject) Equal(o trie.Object) bool {
+	e2, ok := o.(*testObject)
+	return ok && e.s == e2.s
+}
+
+func TestObjectFlush(t *testing.T) {
+	tests := [][]string{
+		[]string{"test", "hello", "puha"},
+		[]string{"apple", "pear", "strawberry"},
+		[]string{"black", "blue", "red"},
+	}
+
+	db := db.NewMapDB()
+	mgr := New(db)
+	m1 := mgr.NewMutableForObject(nil, reflect.TypeOf((*testObject)(nil)))
+
+	objs := []*testObject{}
+	snapshots := make([]trie.SnapshotForObject, len(tests))
+	for i, tt := range tests {
+		for _, s := range tt {
+			to := &testObject{s, 0}
+			m1.Set([]byte(s), to)
+			objs = append(objs, to)
+		}
+		snapshots[i] = m1.GetSnapshot()
+	}
+
+	for _, to := range objs {
+		if to.flushCount != 0 {
+			t.Errorf("Flush count is not zero, s='%s' count=%d", to.s, to.flushCount)
+		}
+	}
+
+	for _, s := range snapshots {
+		s.Flush()
+	}
+
+	for _, to := range objs {
+		if to.flushCount == 0 {
+			t.Errorf("Flush count is zero, s='%s' count=%d", to.s, to.flushCount)
+		}
+	}
+
+	for i, tt := range tests {
+		m2 := mgr.NewImmutableForObject(snapshots[i].Hash(), reflect.TypeOf((*testObject)(nil)))
+		for _, s := range tt {
+			o, err := m2.Get([]byte(s))
+			if err != nil {
+				t.Errorf("Fail to get '%s'", s)
+			}
+			if o == nil {
+				t.Errorf("Fail to get proper object for '%s'", s)
+				continue
+			}
+			to, ok := o.(*testObject)
+			if !ok {
+				t.Errorf("Type of object is different type = %T", o)
+				continue
+			}
+			if to.s != s {
+				t.Errorf("Returned object is invalid exp = '%s', ret = '%s'", s, to.s)
+				continue
+			}
+		}
+	}
+}
+
+func TestObjectIterate(t *testing.T) {
+	tests := [][]string{
+		[]string{"test", "hello", "puha"},
+		[]string{"apple", "pear", "strawberry"},
+		[]string{"black", "blue", "red"},
+	}
+
+	db := db.NewMapDB()
+	mgr := New(db)
+	m1 := mgr.NewMutableForObject(nil, reflect.TypeOf((*testObject)(nil)))
+
+	snapshots := make([]trie.SnapshotForObject, len(tests))
+	for i, tt := range tests {
+		for _, s := range tt {
+			to := &testObject{s, 0}
+			m1.Set([]byte(s), to)
+		}
+		snapshots[i] = m1.GetSnapshot()
+	}
+	for _, s := range snapshots {
+		s.Flush()
+	}
+
+	visited := map[string]bool{}
+
+	for i, tt := range tests {
+		m2 := mgr.NewImmutableForObject(snapshots[i].Hash(), reflect.TypeOf((*testObject)(nil)))
+
+		for _, s := range tt {
+			visited[s] = false
+		}
+
+		for itr := m2.Iterator(); itr.Has(); itr.Next() {
+			o, k, err := itr.Get()
+			if err != nil {
+				t.Errorf("Fail to get item")
+				continue
+			}
+			to, ok := o.(*testObject)
+			if !ok {
+				t.Errorf("Invalid object is retreived type=%T", o)
+				continue
+			}
+			if to.s != string(k) {
+				t.Errorf("Returned object(%s) is different from (%s)", to.s, string(k))
+				continue
+			}
+			if yn, ok := visited[to.s]; ok {
+				if yn {
+					t.Errorf("Visit multiple for %s", to.s)
+				} else {
+					visited[to.s] = true
+				}
+			} else {
+				t.Errorf("Should not exist %s", to.s)
+			}
+		}
+
+		for s, yn := range visited {
+			if !yn {
+				t.Errorf("Missing element %s", s)
+			}
+		}
+		for s, _ := range visited {
+			visited[s] = false
 		}
 	}
 }

@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"testing"
 
-	ge "github.com/go-errors/errors"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/trie"
 )
 
 func TestNewMPT(t *testing.T) {
@@ -64,22 +64,22 @@ func TestNewMPT(t *testing.T) {
 				[]entry{
 					{[]byte{0x01}, []byte{0x01}},
 					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
-					{[]byte{0x01, 0x23}, []byte{0x01, 0x23}},
+					{[]byte{0x01, 0x33}, []byte{0x01, 0x33}},
 					{[]byte{0x01, 0x23, 0x44}, []byte{0x01, 0x23, 0x44}},
 					{[]byte{0x01, 0x23, 0x45}, []byte{0x01, 0x23, 0x45}},
-					{[]byte{0x01, 0x23}, nil},
 					{[]byte{0x01}, nil},
-					{[]byte{0x01, 0x23}, nil},
+					{[]byte{0x01}, nil},
+					{[]byte{0x01, 0x33}, nil},
 					{[]byte{0x01, 0x23, 0x44}, nil},
 				},
 			},
 			want: result{
 				[]entry{
-					{[]byte{0x01}, nil},
 					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
-					{[]byte{0x01, 0x23}, nil},
-					{[]byte{0x01, 0x23, 0x44}, nil},
 					{[]byte{0x01, 0x23, 0x45}, []byte{0x01, 0x23, 0x45}},
+					{[]byte{0x01}, nil},
+					{[]byte{0x01, 0x33}, nil},
+					{[]byte{0x01, 0x23, 0x44}, nil},
 					{[]byte{0x01, 0x23, 0x46}, nil},
 				},
 				[]byte{},
@@ -94,16 +94,17 @@ func TestNewMPT(t *testing.T) {
 				[]entry{
 					{[]byte{0x01}, []byte{0x01}},
 					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
-					{[]byte{0x01, 0x23}, []byte{0x01, 0x23}},
+					{[]byte{0x01, 0x33}, []byte{0x01, 0x33}},
+					{[]byte{0x01}, []byte{0x03}},
 					{[]byte{0x01, 0x23, 0x44}, []byte{0x01, 0x23, 0x44}},
 					{[]byte{0x01, 0x23, 0x45}, []byte{0x01, 0x23, 0x45}},
 				},
 			},
 			want: result{
 				[]entry{
-					{[]byte{0x01}, []byte{0x01}},
+					{[]byte{0x01}, []byte{0x03}},
 					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
-					{[]byte{0x01, 0x23}, []byte{0x01, 0x23}},
+					{[]byte{0x01, 0x33}, []byte{0x01, 0x33}},
 					{[]byte{0x01, 0x23, 0x44}, []byte{0x01, 0x23, 0x44}},
 					{[]byte{0x01, 0x23, 0x45}, []byte{0x01, 0x23, 0x45}},
 				},
@@ -149,7 +150,6 @@ func TestNewMPT(t *testing.T) {
 			for _, e := range tt.want.e {
 				obj, err := s2.Get(e.k)
 				if err != nil {
-					log.Println(err.(*ge.Error).ErrorStack())
 					t.Errorf("Key(%s) return error=%v",
 						hex.EncodeToString(e.k), err)
 					continue
@@ -172,7 +172,7 @@ func TestNewMPT(t *testing.T) {
 	}
 }
 
-func TestPoofs(t *testing.T) {
+func Test_GetPoof(t *testing.T) {
 	type entry struct {
 		k, v []byte
 	}
@@ -190,6 +190,7 @@ func TestPoofs(t *testing.T) {
 					{[]byte{0x01}, []byte{0x01}},
 					{[]byte{0x01, 0x22}, []byte{0x01, 0x22}},
 					{[]byte{0x01, 0x23}, []byte{0x01, 0x23}},
+					{[]byte{0x01, 0x23, 0x66}, nil},
 					{[]byte{0x01, 0x23, 0x44}, []byte{0x01, 0x23, 0x44}},
 					{[]byte{0x01, 0x23, 0x45}, []byte{0x01, 0x23, 0x45}},
 				},
@@ -201,19 +202,33 @@ func TestPoofs(t *testing.T) {
 			d1 := db.NewMapDB()
 			m1 := NewMPTForBytes(d1, nil)
 			for _, e := range tt.args.e {
-				m1.Set(e.k, e.v)
+				if e.v != nil {
+					m1.Set(e.k, e.v)
+				}
 			}
 			s1 := m1.GetSnapshot()
 			h := s1.RootHash()
+			log.Println("Flush snapshot 1")
+			s1.Flush()
+			s1r := NewMPTForBytes(d1, h)
 
 			d2 := db.NewMapDB()
 			s2 := NewMPTForBytes(d2, h)
 			for _, e := range tt.args.e {
 				log.Printf("Take Proof for [%x]", e.k)
-				proofs := s1.Proof(e.k)
-
-				log.Printf("Prove for [%x] proof=%v", e.k, proofs)
-				obj, err := s2.Prove(e.k, proofs)
+				proof1 := s1r.GetProof(e.k)
+				proof2 := s1.GetProof(e.k)
+				if proof1 == nil {
+					if e.v != nil {
+						t.Errorf("Get proof for [%x] returns nil", e.k)
+					}
+					continue
+				}
+				if !reflect.DeepEqual(proof1, proof2) {
+					t.Errorf("Proofs from snapshot and snapshot from hash are different")
+				}
+				log.Printf("Prove for [%x] proof=%v", e.k, proof1)
+				obj, err := s2.Prove(e.k, proof1)
 				if err != nil {
 					t.Errorf("Fail to prove key [%x] err=%v", e.k, err)
 				} else {
@@ -225,10 +240,214 @@ func TestPoofs(t *testing.T) {
 				}
 			}
 
-			log.Println("Flush snapshot 1")
-			s1.Flush()
 			log.Println("Flush snapshot 2")
 			s2.Flush()
 		})
+	}
+}
+
+// func TestIterateInOrder(t *testing.T) {
+// 	mp := new(codec.MsgpackHandle)
+// 	mp.Canonical = true
+// 	mp.StructToArray = true
+//
+// 	db1 := db.NewMapDB()
+//
+// 	m := NewMPTForBytes(db1, nil)
+// 	for i := int(0); i < 5000; i++ {
+// 		var b []byte
+// 		e := codec.NewEncoderBytes(&b, mp)
+// 		e.Encode(i)
+// 		m.Set(b, b)
+// 	}
+// 	m.Flush()
+//
+// 	m2 := NewMPTForBytes(db1, m.Hash())
+//
+// 	var idx int = 0
+// 	for itr := m2.Iterator(); itr.Has(); itr.Next() {
+// 		k, v, err := itr.Get()
+// 		if err != nil {
+// 			t.Errorf("it fails to get value from iterator")
+// 			break
+// 		}
+// 		// log.printf("iter[%x] key[%x] value %v\n", idx, k, v)
+//
+// 		var k2, v2 int
+// 		d := codec.NewDecoderBytes([]byte(k), mp)
+// 		d.Decode(&k2)
+// 		d = codec.NewDecoderBytes(v.Bytes(), mp)
+// 		d.Decode(&v2)
+//
+// 		if k2 != v2 {
+// 			t.Errorf("key(%d) and value(%d) are different", k2, v2)
+// 		}
+// 		if k2 != idx {
+// 			t.Errorf("expected (%d) but key is (%d)", idx, k2)
+// 		}
+// 		idx++
+// 	}
+// }
+
+func TestNullHash(t *testing.T) {
+	m := NewMPTForBytes(db.NewMapDB(), nil)
+	if m.Hash() != nil {
+		t.Errorf("NewMPTForBytes(nil).Hash() should return nil")
+	}
+
+	m2 := NewMPT(db.NewMapDB(), nil, reflect.TypeOf(bytesObject(nil)))
+	if m2.Hash() != nil {
+		t.Errorf("NewMPT(nil).Hash() should return nil")
+	}
+}
+
+type testObject struct {
+	s          string
+	flushCount int
+}
+
+func (e *testObject) Bytes() []byte {
+	return []byte(e.s)
+}
+func (e *testObject) Reset(d db.Database, b []byte) error {
+	e.s = string(b)
+	return nil
+}
+func (e *testObject) Flush() error {
+	e.flushCount++
+	return nil
+}
+func (e *testObject) Equal(o trie.Object) bool {
+	e2, ok := o.(*testObject)
+	return ok && e.s == e2.s
+}
+
+func TestObjectTest(t *testing.T) {
+	tests := [][]string{
+		{"test", "hello", "puha"},
+		{"apple", "pear", "strawberry"},
+		{"black", "blue", "red"},
+	}
+
+	db := db.NewMapDB()
+	mgr := NewManager(db)
+	m1 := mgr.NewMutableForObject(nil, reflect.TypeOf((*testObject)(nil)))
+
+	objs := []*testObject{}
+	snapshots := make([]trie.SnapshotForObject, len(tests))
+	for i, tt := range tests {
+		for _, s := range tt {
+			to := &testObject{s, 0}
+			m1.Set([]byte(s), to)
+			objs = append(objs, to)
+		}
+		snapshots[i] = m1.GetSnapshot()
+	}
+	for _, to := range objs {
+		if to.flushCount != 0 {
+			t.Errorf("Flush count is not zero, s='%s' count=%d", to.s, to.flushCount)
+		}
+	}
+
+	for _, s := range snapshots {
+		s.Flush()
+	}
+
+	for _, to := range objs {
+		if to.flushCount == 0 {
+			t.Errorf("Flush count is zero, s='%s' count=%d", to.s, to.flushCount)
+		}
+	}
+
+	for i, tt := range tests {
+		m2 := NewMPT(db, snapshots[i].Hash(), reflect.TypeOf((*testObject)(nil)))
+		for _, s := range tt {
+			o, err := m2.Get([]byte(s))
+			if err != nil {
+				t.Errorf("Fail to get '%s'", s)
+			}
+			if o == nil {
+				t.Errorf("Fail to get proper object for '%s'", s)
+				continue
+			}
+			to, ok := o.(*testObject)
+			if !ok {
+				t.Errorf("Type of object is different type = %T", o)
+				continue
+			}
+			if to.s != s {
+				t.Errorf("Returned object is invalid exp = '%s', ret = '%s'", s, to.s)
+				continue
+			}
+		}
+	}
+}
+
+func TestObjectIterate(t *testing.T) {
+	tests := [][]string{
+		[]string{"test", "hello", "puha"},
+		[]string{"apple", "pear", "strawberry"},
+		[]string{"black", "blue", "red", "re", "reb"},
+	}
+
+	db := db.NewMapDB()
+	mgr := NewManager(db)
+	m1 := mgr.NewMutableForObject(nil, reflect.TypeOf((*testObject)(nil)))
+
+	snapshots := make([]trie.SnapshotForObject, len(tests))
+	for i, tt := range tests {
+		for _, s := range tt {
+			to := &testObject{s, 0}
+			m1.Set([]byte(s), to)
+		}
+		snapshots[i] = m1.GetSnapshot()
+	}
+	for _, s := range snapshots {
+		s.Flush()
+	}
+
+	visited := map[string]bool{}
+
+	for i, tt := range tests {
+		m2 := mgr.NewImmutableForObject(snapshots[i].Hash(), reflect.TypeOf((*testObject)(nil)))
+
+		for _, s := range tt {
+			visited[s] = false
+		}
+
+		for itr := m2.Iterator(); itr.Has(); itr.Next() {
+			o, k, err := itr.Get()
+			if err != nil {
+				t.Errorf("Fail to get item")
+				continue
+			}
+			to, ok := o.(*testObject)
+			if !ok {
+				t.Errorf("Invalid object is retreived type=%T", o)
+				continue
+			}
+			if to.s != string(k) {
+				t.Errorf("Returned object(%s) is different from (%s)", to.s, string(k))
+				continue
+			}
+			if yn, ok := visited[to.s]; ok {
+				if yn {
+					t.Errorf("Visit multiple for %s", to.s)
+				} else {
+					visited[to.s] = true
+				}
+			} else {
+				t.Errorf("Should not exist %s", to.s)
+			}
+		}
+
+		for s, yn := range visited {
+			if !yn {
+				t.Errorf("Missing element %s", s)
+			}
+		}
+		for s, _ := range visited {
+			visited[s] = false
+		}
 	}
 }
