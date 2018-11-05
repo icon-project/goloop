@@ -67,13 +67,12 @@ func (m *manager) ProposeTransition(parent module.Transition) (module.Transition
 
 // CreateInitialTransition creates an initial Transition with result and
 // vs validators.
-func (m *manager) CreateInitialTransition(result []byte, vs []module.Validator) (module.Transition, error) {
+func (m *manager) CreateInitialTransition(result []byte, vs module.ValidatorList) (module.Transition, error) {
 	resultBytes, err := newResultBytes(result)
 	if err != nil {
 		return nil, errors.New("Invalid result")
 	}
 	// TODO check if result is valid. Who's responsible?
-	// TODO set validatorList correctly
 	return newInitTransition(m.trieManager, resultBytes, nil), nil
 }
 
