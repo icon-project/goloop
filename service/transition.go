@@ -29,17 +29,17 @@ type transitionState struct {
 	// without copying.
 	state trie.Mutable
 
-	nextValidators module.ValidatorList
-	normalReceipts *receiptList
-	patchReceipts  *receiptList
+	nextValidatorList module.ValidatorList
+	normalReceipts    *receiptList
+	patchReceipts     *receiptList
 }
 
 type transition struct {
 	trieManager trie.Manager
 	parent      *transition
 
-	patchTransactions  *txList
-	normalTransactions *txList
+	patchTransactions  *transactionlist
+	normalTransactions *transactionlist
 
 	result resultBytes
 	*transitionState
@@ -55,7 +55,7 @@ type transition struct {
 }
 
 // all parameters should be valid
-func newTransition(parent *transition, patchTxs *txList, normalTxs *txList, state trie.Mutable, alreadyValidated bool) *transition {
+func newTransition(parent *transition, patchTxList *transactionlist, normalTxList *transactionlist, state trie.Mutable, alreadyValidated bool) *transition {
 	var step int
 	if alreadyValidated {
 		step = stepValidated
@@ -64,8 +64,8 @@ func newTransition(parent *transition, patchTxs *txList, normalTxs *txList, stat
 	}
 	return &transition{
 		parent:             parent,
-		patchTransactions:  patchTxs,
-		normalTransactions: normalTxs,
+		patchTransactions:  patchTxList,
+		normalTransactions: normalTxList,
 		transitionState: &transitionState{
 			state: state,
 		},
@@ -74,12 +74,12 @@ func newTransition(parent *transition, patchTxs *txList, normalTxs *txList, stat
 }
 
 // all parameters should be valid.
-func newInitTransition(tm trie.Manager, result []byte, validators module.ValidatorList) *transition {
+func newInitTransition(tm trie.Manager, result []byte, validatorList module.ValidatorList) *transition {
 	return &transition{
 		trieManager: tm,
 		result:      result,
 		transitionState: &transitionState{
-			nextValidators: validators,
+			nextValidatorList: validatorList,
 		},
 		step: stepComplete,
 	}
@@ -185,7 +185,7 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	t.cb.OnExecute(t, nil)
 }
 
-func (t *transition) validateTxs(txList *txList) bool {
+func (t *transition) validateTxs(txList *transactionlist) bool {
 	canceled := false
 	for _, tx := range txList.txs {
 		if t.step == stepCanceled {
@@ -204,7 +204,7 @@ func (t *transition) validateTxs(txList *txList) bool {
 	return !canceled
 }
 
-func (t *transition) executeTxs(txList *txList) bool {
+func (t *transition) executeTxs(txList *transactionlist) bool {
 	canceled := false
 	for _, tx := range txList.txs {
 		if t.step == stepCanceled {
@@ -239,7 +239,7 @@ func (t *transition) finalize(opt int) {
 }
 
 func (t *transition) hasValidResult() bool {
-	if t.result != nil && t.nextValidators != nil {
+	if t.result != nil && t.nextValidatorList != nil {
 		return true
 	}
 	return false
@@ -285,14 +285,14 @@ func newResultBytes(result []byte) (resultBytes, error) {
 	return resultBytes(bytes), nil
 }
 
-func newResultBytesFromData(state trie.Mutable, patch *receiptList, normal *receiptList) resultBytes {
-	hasPatch := len(patch.receipts) > 0
+func newResultBytesFromData(state trie.Mutable, patchRcList *receiptList, normalRcList *receiptList) resultBytes {
+	hasPatch := len(patchRcList.receipts) > 0
 	bytes := make([]byte, 0, 96)
 	bytes = append(bytes, state.GetSnapshot().RootHash()...)
 	if hasPatch {
-		bytes = append(bytes, patch.Hash()...)
+		bytes = append(bytes, patchRcList.Hash()...)
 	}
-	bytes = append(bytes, normal.Hash()...)
+	bytes = append(bytes, normalRcList.Hash()...)
 	return resultBytes(bytes)
 }
 
