@@ -1,6 +1,7 @@
 package mpt
 
 import (
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 	"io"
 	"reflect"
@@ -124,37 +125,63 @@ func getContentSize(buf []byte) (uint64, uint64, error) {
 	return tagsize, contentsize, err
 }
 
-func decodeValue(buf []byte, t reflect.Type) trie.Object {
-	var result trie.Object
+type testObject struct {
+	s          string
+	flushCount int
+}
+
+func (e *testObject) Bytes() []byte {
+	return []byte(e.s)
+}
+func (e *testObject) Reset(d db.Database, b []byte) error {
+	e.s = string(b)
+	return nil
+}
+func (e *testObject) Flush() error {
+	e.flushCount++
+	return nil
+}
+func (e *testObject) Equal(o trie.Object) bool {
+	e2, ok := o.(*testObject)
+	return ok && e.s == e2.s
+}
+
+//func decodeValue(buf []byte, t reflect.Type) trie.Object {
+//	var result trie.Object
+//	if t == nil {
+//		panic("PANIC")
+//	}
+//	// TODO: check below code
+//	if t == reflect.TypeOf([]byte{}) {
+//		result = byteValue(buf)
+//	} else {
+//		result = &testObject{s:string(buf)}
+//	}
+//	return result
+//}
+
+func decodeValue(buf []byte, t reflect.Type, db db.Database) trie.Object {
 	if t == nil {
-		panic("PANIC")
+		return nil
 	}
-	// TODO: check below code
+
 	if t == reflect.TypeOf([]byte{}) {
-		result = byteValue(buf)
+		return byteValue(buf)
 	}
-	return result
+	vobj := reflect.New(t.Elem())
+	nobj, ok := vobj.Interface().(trie.Object)
+	if !ok {
+		panic("Failed to decode")
+		return nil
+	}
+	if err := nobj.Reset(db, buf); err != nil {
+		panic("Failed to decode")
+		return nil
+	}
+	return nobj
 }
 
-func decodeLeafExt(buf []byte, t reflect.Type) node {
-	tagSize, _, _ := getContentSize(buf)
-	keyTagSize, keyContentSize, _ := getContentSize(buf[tagSize:])
-	// get value tag size and value length
-	valTagSize, valContentSize, _ := getContentSize(buf[tagSize+keyTagSize+keyContentSize:])
-	valOffset := tagSize + keyTagSize + keyContentSize + valTagSize
-	key := buf[tagSize+keyTagSize : tagSize+keyTagSize+keyContentSize]
-	var nodeType int
-	key, nodeType, _ = decodeKey(key)
-	if nodeType == 0 { //extension
-		return &extension{sharedNibbles: key, next: hash(buf[valOffset : valOffset+valContentSize]),
-			nodeBase: nodeBase{serializedValue: buf}}
-	}
-	l := &leaf{keyEnd: key, value: decodeValue(buf[valOffset:valOffset+valContentSize], t),
-		nodeBase: nodeBase{serializedValue: buf}}
-	return l
-}
-
-func decodeBranch(buf []byte, t reflect.Type) node {
+func decodeBranch(buf []byte, t reflect.Type, db db.Database) node {
 	// serialized branch can have list which is another branch(sharedNibbles/value) or a leaf(keyEnd/value) or  hexa(serialized(rlp))
 	tagSize, contentSize, _ := getContentSize(buf)
 	// child is leaf, hash or nil(128)
@@ -165,7 +192,7 @@ func decodeBranch(buf []byte, t reflect.Type) node {
 		b := buf[i]
 		if b < 0x80 { // hash or value if valueIndex is 16
 			if valueIndex == 16 {
-				newBranch.value = decodeValue(buf[i:], t)
+				newBranch.value = decodeValue(buf[i:], t, db)
 			} else {
 				newBranch.nibbles[valueIndex] = nil
 			}
@@ -175,7 +202,7 @@ func decodeBranch(buf []byte, t reflect.Type) node {
 			buf := buf[i:]
 			if valueIndex == 16 {
 				// value of branch is not hashed
-				newBranch.value = decodeValue(buf[tagSize:tagSize+contentSize], t)
+				newBranch.value = decodeValue(buf[tagSize:tagSize+contentSize], t, db)
 			} else {
 				// hash node
 				if contentSize == 0 {
@@ -184,15 +211,20 @@ func decodeBranch(buf []byte, t reflect.Type) node {
 					if hashableSize == contentSize {
 						newBranch.nibbles[valueIndex] = hash(buf[tagSize : tagSize+contentSize])
 					} else {
-						newBranch.nibbles[valueIndex] = deserialize(buf[tagSize:tagSize+contentSize], t)
+						newBranch.nibbles[valueIndex] = deserialize(buf[tagSize:tagSize+contentSize], t, db)
 					}
 				}
 			}
 
 			i += tagSize + contentSize
-		} else if 0xC0 < b && b < 0xf7 {
+		} else if b < 0xf8 {
 			tagSize, contentSize, _ := getContentSize(buf[i:])
-			newBranch.nibbles[valueIndex] = deserialize(buf[i:i+tagSize+contentSize], t)
+			newBranch.nibbles[valueIndex] = deserialize(buf[i:i+tagSize+contentSize], t, db)
+			i += tagSize + contentSize
+		} else {
+			tagSize = uint64(b-0xF7) + 1
+			tagSize, contentSize, _ = getContentSize(buf[i:])
+			newBranch.nibbles[valueIndex] = deserialize(buf[i:i+tagSize+contentSize], t, db)
 			i += tagSize + contentSize
 		}
 	}
@@ -234,7 +266,7 @@ func decodeKey(buf []byte) (keyBuf []byte, nodeType int, err error) {
 	return keyBuf, nodeType, nil
 }
 
-func deserialize(b []byte, t reflect.Type) node {
+func deserialize(b []byte, t reflect.Type, db db.Database) node {
 	listTagsize, _, _ := getContentSize(b) // length of list tag
 	list := b[listTagsize:]
 	var keyBuf []byte
@@ -246,7 +278,7 @@ func deserialize(b []byte, t reflect.Type) node {
 		// 2. loop count is bigger than 2
 		// then it's branch
 		if 2 <= i {
-			return decodeBranch(b, t)
+			return decodeBranch(b, t, db)
 		}
 
 		tagsize, size, err := getContentSize(list) // length of byte
@@ -274,12 +306,12 @@ func deserialize(b []byte, t reflect.Type) node {
 		//}
 		//return &extension{sharedNibbles: keyBuf, next: hash(valBuf), serializedValue: b}
 		if hashableSize > len(valBuf) {
-			return &extension{sharedNibbles: keyBuf, next: decodeBranch(valBuf, t),
+			return &extension{sharedNibbles: keyBuf, next: decodeBranch(valBuf, t, db),
 				nodeBase: nodeBase{serializedValue: b, state: committedNode}}
 		}
 		return &extension{sharedNibbles: keyBuf, next: hash(valBuf),
 			nodeBase: nodeBase{serializedValue: b, state: committedNode}}
 	}
-	return &leaf{keyEnd: keyBuf, value: decodeValue(valBuf, t),
+	return &leaf{keyEnd: keyBuf, value: decodeValue(valBuf, t, db),
 		nodeBase: nodeBase{serializedValue: b, state: committedNode}}
 }

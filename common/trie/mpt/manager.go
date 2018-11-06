@@ -14,7 +14,7 @@ func NewImmutable(database db.Database, rootHash []byte) trie.Immutable {
 		log.Panicln("FAIL to get Bucket", err)
 	}
 
-	return newMpt(bk, rootHash, reflect.TypeOf([]byte{}))
+	return newMpt(database, bk, rootHash, reflect.TypeOf([]byte{}))
 }
 
 func NewMutable(database db.Database, rootHash []byte) trie.Mutable {
@@ -22,7 +22,7 @@ func NewMutable(database db.Database, rootHash []byte) trie.Mutable {
 	if err != nil {
 		log.Panicln("FAIL to get Bucket", err)
 	}
-	return newMpt(bk, rootHash, reflect.TypeOf([]byte{}))
+	return newMpt(database, bk, rootHash, reflect.TypeOf([]byte{}))
 }
 
 func NewImmutableForObject(database db.Database, h []byte, t reflect.Type) trie.ImmutableForObject {
@@ -30,7 +30,7 @@ func NewImmutableForObject(database db.Database, h []byte, t reflect.Type) trie.
 	if err != nil {
 		log.Panicln("FAIL to get Bucket", err)
 	}
-	return newMptForObj(bk, h, t)
+	return newMptForObj(database, bk, h, t)
 
 }
 
@@ -39,7 +39,7 @@ func NewMutableForObject(database db.Database, h []byte, t reflect.Type) trie.Mu
 	if err != nil {
 		log.Panicln("FAIL to get Bucket", err)
 	}
-	return newMptForObj(bk, h, t)
+	return newMptForObj(database, bk, h, t)
 }
 
 //func NewImmutable(rootHash []byte) trie.Immutable {

@@ -288,7 +288,7 @@ func newResultBytes(result []byte) (resultBytes, error) {
 func newResultBytesFromData(state trie.Mutable, patchRcList *receiptList, normalRcList *receiptList) resultBytes {
 	hasPatch := len(patchRcList.receipts) > 0
 	bytes := make([]byte, 0, 96)
-	bytes = append(bytes, state.GetSnapshot().RootHash()...)
+	bytes = append(bytes, state.GetSnapshot().Hash()...)
 	if hasPatch {
 		bytes = append(bytes, patchRcList.Hash()...)
 	}

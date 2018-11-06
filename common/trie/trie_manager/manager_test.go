@@ -55,14 +55,14 @@ func TestCommit(t *testing.T) {
 				updateString(trie, k, testPool[k])
 				snapshot := trie.GetSnapshot()
 				snapshot.Flush()
-				rootHash[i] = fmt.Sprintf("%x", snapshot.RootHash())
+				rootHash[i] = fmt.Sprintf("%x", snapshot.Hash())
 				i++
 			}
 
 			for i > 0 {
 				i--
 				snapshot := trie.GetSnapshot()
-				root := fmt.Sprintf("%x", snapshot.RootHash())
+				root := fmt.Sprintf("%x", snapshot.Hash())
 				if strings.Compare(root, rootHash[i]) != 0 {
 					t.Errorf("%s vs %s", root, rootHash[i])
 				}
@@ -82,7 +82,7 @@ func TestInsert(t *testing.T) {
 
 	hashHex := "8aad789dff2f538bca5d8ea56e8abe10f4c7ba3a5dea95fea4cd6e7c3a1168d3"
 	immutable := trie.GetSnapshot()
-	strRoot := fmt.Sprintf("%x", immutable.RootHash())
+	strRoot := fmt.Sprintf("%x", immutable.Hash())
 	if strings.Compare(strRoot, hashHex) != 0 {
 		t.Errorf("exp %s got %s", hashHex, strRoot)
 	}
@@ -98,7 +98,7 @@ func TestInsert(t *testing.T) {
 
 	immutable = trie.GetSnapshot()
 	hashHex = "d23786fb4a010da3ce639d66d5e904a11dbc02746d1ce25029e53290cabf28ab"
-	strRoot = fmt.Sprintf("%x", immutable.RootHash())
+	strRoot = fmt.Sprintf("%x", immutable.Hash())
 	if strings.Compare(strRoot, hashHex) != 0 {
 		t.Errorf("exp %s got %s", hashHex, strRoot)
 	}
@@ -110,29 +110,29 @@ func TestDelete1(t *testing.T) {
 
 	updateString(trie, "doe", "reindeer")
 	immutable := trie.GetSnapshot() // SNAPSHOT 1 - doe
-	solution1 := fmt.Sprintf("%x", immutable.RootHash())
+	solution1 := fmt.Sprintf("%x", immutable.Hash())
 	updateString(trie, "dog", "puppy")
 	immutable = trie.GetSnapshot() // SNAPSHOT 2 - doe, dog
-	solution2 := fmt.Sprintf("%x", immutable.RootHash())
+	solution2 := fmt.Sprintf("%x", immutable.Hash())
 	updateString(trie, "dogglesworth", "cat")
 
 	hashHex := "8aad789dff2f538bca5d8ea56e8abe10f4c7ba3a5dea95fea4cd6e7c3a1168d3"
 	immutable = trie.GetSnapshot() // SNAPSHOT 3 - doe, dog, dogglesworth
-	strRoot := fmt.Sprintf("%x", immutable.RootHash())
+	strRoot := fmt.Sprintf("%x", immutable.Hash())
 	if strings.Compare(strRoot, hashHex) != 0 {
 		t.Errorf("exp %s got %s", hashHex, strRoot)
 	}
 
 	trie.Delete([]byte("dogglesworth"))
 	immutable = trie.GetSnapshot() // SNAPSHOT 4 - doe, dog
-	resultRoot := fmt.Sprintf("%x", immutable.RootHash())
+	resultRoot := fmt.Sprintf("%x", immutable.Hash())
 	if strings.Compare(solution2, resultRoot) != 0 {
 		t.Errorf("solution %s, result %s", solution2, resultRoot)
 	}
 	trie.Delete([]byte("dog"))
 	immutable = trie.GetSnapshot() // SNAPSHOT 4 - doe
 
-	resultRoot = fmt.Sprintf("%x", immutable.RootHash())
+	resultRoot = fmt.Sprintf("%x", immutable.Hash())
 	if strings.Compare(solution1, resultRoot) != 0 {
 		t.Errorf("solution %s, result %s", solution1, resultRoot)
 	}
@@ -160,7 +160,7 @@ func TestDelete2(t *testing.T) {
 	}
 
 	snapshot := trie.GetSnapshot()
-	strRoot := fmt.Sprintf("%x", snapshot.RootHash())
+	strRoot := fmt.Sprintf("%x", snapshot.Hash())
 	hashHex := "5991bb8c6514148a29db676a14ac506cd2cd5775ace63c30a4fe457715e9ac84"
 	if strings.Compare(strRoot, hashHex) != 0 {
 		t.Errorf("exp %s got %s", hashHex, strRoot)
@@ -177,7 +177,7 @@ func TestCache(t *testing.T) {
 
 	hashHex := "8aad789dff2f538bca5d8ea56e8abe10f4c7ba3a5dea95fea4cd6e7c3a1168d3"
 	snapshot := mutable.GetSnapshot()
-	root := snapshot.RootHash()
+	root := snapshot.Hash()
 	strRoot := fmt.Sprintf("%x", root)
 	if strings.Compare(strRoot, hashHex) != 0 {
 		t.Errorf("exp %s got %s", hashHex, strRoot)
@@ -205,12 +205,12 @@ func TestDeleteSnapshot(t *testing.T) {
 	updateString(trie, "doe", "reindeer")
 	updateString(trie, "dog", "puppy")
 	snapshot := trie.GetSnapshot() // SNAPSHOT - doe, dog
-	solution2 := fmt.Sprintf("%x", snapshot.RootHash())
+	solution2 := fmt.Sprintf("%x", snapshot.Hash())
 	updateString(trie, "dogglesworth", "cat")
 
 	snapshot = trie.GetSnapshot() // SNAPSHOT - doe, dog, dogglesworth
 	hashHex := "8aad789dff2f538bca5d8ea56e8abe10f4c7ba3a5dea95fea4cd6e7c3a1168d3"
-	strRoot := fmt.Sprintf("%x", snapshot.RootHash())
+	strRoot := fmt.Sprintf("%x", snapshot.Hash())
 	if strings.Compare(strRoot, hashHex) != 0 {
 		t.Errorf("exp %s got %s", hashHex, strRoot)
 	}
@@ -219,15 +219,15 @@ func TestDeleteSnapshot(t *testing.T) {
 	trie2 := manager.NewMutable(nil)
 	trie2.Reset(snapshot) // have doe, dog, dogglesworth
 	snapshot2 := trie2.GetSnapshot()
-	strRoot = fmt.Sprintf("%x", snapshot2.RootHash())
+	strRoot = fmt.Sprintf("%x", snapshot2.Hash())
 	if strings.Compare(strRoot, hashHex) != 0 {
 		t.Errorf("exp %s got %s", hashHex, strRoot)
 	}
 
 	deleteString(trie2, "dogglesworth")
 
-	snapshot2 = trie2.GetSnapshot()                   // SNAPSHOT = doe, dog
-	strRoot = fmt.Sprintf("%x", snapshot2.RootHash()) // have doe, dog
+	snapshot2 = trie2.GetSnapshot()               // SNAPSHOT = doe, dog
+	strRoot = fmt.Sprintf("%x", snapshot2.Hash()) // have doe, dog
 	if strings.Compare(strRoot, solution2) != 0 {
 		t.Errorf("exp %s got %s", solution2, strRoot)
 	}
@@ -236,10 +236,10 @@ func TestDeleteSnapshot(t *testing.T) {
 	snapshot = trie2.GetSnapshot()
 	snapshot.Flush()
 
-	hashAfterDelete := fmt.Sprintf("%x", snapshot.RootHash())
+	hashAfterDelete := fmt.Sprintf("%x", snapshot.Hash())
 	trie2.Reset(snapshot)
 	snapshot = trie2.GetSnapshot()
-	strRoot = fmt.Sprintf("%x", snapshot.RootHash())
+	strRoot = fmt.Sprintf("%x", snapshot.Hash())
 	if strings.Compare(strRoot, hashAfterDelete) != 0 {
 		t.Errorf("exp %s got %s", hashHex, strRoot)
 	}
@@ -263,12 +263,12 @@ func TestLateFlush(t *testing.T) {
 	for i, k := range poolList {
 		updateString(tr, k, testPool[k])
 		ssList[i] = tr.GetSnapshot()
-		hashList[i] = fmt.Sprintf("%x", ssList[i].RootHash())
+		hashList[i] = fmt.Sprintf("%x", ssList[i].Hash())
 	}
 
 	for i, _ := range poolList {
 		ssList[i].Flush()
-		rootHash := fmt.Sprintf("%x", ssList[i].RootHash())
+		rootHash := fmt.Sprintf("%x", ssList[i].Hash())
 		if strings.Compare(hashList[i], rootHash) != 0 {
 			t.Errorf("exp %s got %s", hashList[i], rootHash)
 		}
@@ -285,7 +285,7 @@ func TestNoHashed(t *testing.T) {
 	tr.Set([]byte{0x00, 0x01, 0x00}, []byte{unchanged})
 
 	immutalble := tr.GetSnapshot()
-	immutalble.RootHash()
+	immutalble.Hash()
 	immutalble.Flush()
 	v, _ := immutalble.Get([]byte{0x0, 0x01, 0x00})
 	if v[0] != unchanged {
@@ -294,7 +294,7 @@ func TestNoHashed(t *testing.T) {
 	changed := byte(0xFA)
 	tr.Set([]byte{0x00, 0x01, 0x00}, []byte{changed})
 	immutalble = tr.GetSnapshot()
-	immutalble.RootHash()
+	immutalble.Hash()
 	immutalble.Flush()
 	v, _ = immutalble.Get([]byte{0x0, 0x01, 0x00})
 
@@ -344,7 +344,7 @@ func TestMissingNode(t *testing.T) {
 	updateString(trie, "123456", "asdfasdfasdfasdfasdfasdfasdfasdf")
 	snapshot := trie.GetSnapshot()
 	snapshot.Flush()
-	root := snapshot.RootHash()
+	root := snapshot.Hash()
 
 	trie = manager.NewMutable(root)
 	v, _ := trie.Get([]byte("120000"))
@@ -377,7 +377,7 @@ func TestMissingNode(t *testing.T) {
 	}
 
 	snapshot = trie.GetSnapshot()
-	rootHash := snapshot.RootHash()
+	rootHash := snapshot.Hash()
 	fmt.Printf("%x\n", rootHash)
 
 	// hash := common.HexToHash("0xe1d943cc8f061a0c0b98162830b970395ac9315654824bf21b73b891365262f9")
@@ -596,7 +596,7 @@ func Test_NewMutable(t *testing.T) {
 				}
 				applyTestEntries(got, tt.args.e, t)
 				s := got.GetSnapshot()
-				h := s.RootHash()
+				h := s.Hash()
 				log.Printf("Snapshot Hash:%x", h)
 				log.Println("Flush")
 				s.Flush()
@@ -706,7 +706,7 @@ func Test_Snapshot(t *testing.T) {
 			}
 			t.Run("HashCompare", func(t *testing.T) {
 				for sidx := 0; sidx < len(tt.snapshots); sidx++ {
-					h1, h2 := ss[sidx][0].RootHash(), ss[sidx][1].RootHash()
+					h1, h2 := ss[sidx][0].Hash(), ss[sidx][1].Hash()
 					if !bytes.Equal(h1, h2) {
 						t.Errorf("Snapshot(%d) Hash %x != %x", sidx, h1, h2)
 					}
@@ -718,7 +718,7 @@ func Test_Snapshot(t *testing.T) {
 				for sidx := len(tt.snapshots) - 1; sidx >= 0; sidx-- {
 					log.Printf("Manager(%d) Snapshot(%d) Verify", midx, sidx)
 					ss[sidx][midx].Flush()
-					h := ss[sidx][midx].RootHash()
+					h := ss[sidx][midx].Hash()
 					sx := m.NewImmutable(h)
 					s := tt.snapshots[sidx]
 					t.Run(fmt.Sprintf("Manager(%d)_Verify_Snapshot(%d/%x)", midx, sidx, h), func(t *testing.T) {
@@ -727,7 +727,7 @@ func Test_Snapshot(t *testing.T) {
 
 					if sidx < len(tt.snapshots)-1 {
 						sidx := sidx + 1
-						h := ss[sidx-1][midx].RootHash()
+						h := ss[sidx-1][midx].Hash()
 						s := tt.snapshots[sidx]
 						log.Printf("Manager(%d) Snapshot(%d) Verify from Snapshot(%x)", midx, sidx, h)
 						mutable := m.NewMutable(h)
@@ -781,7 +781,7 @@ func TestObject(t *testing.T) {
 	}
 
 	for i, v := range mutableSnaps {
-		hash1 := v.RootHash()
+		hash1 := v.Hash()
 		hash2 := mutableObjSnaps[i].Hash()
 		if bytes.Compare(hash1, hash2) != 0 {
 			t.Errorf("expected %x but got %x", hash1, hash2)

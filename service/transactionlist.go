@@ -114,11 +114,11 @@ func (l *transactionSlice) Iterator() module.TransactionIterator {
 }
 
 func (l *transactionSlice) Hash() []byte {
-	return l.trie.RootHash()
+	return l.trie.Hash()
 }
 
 func (l *transactionSlice) Equal(t module.TransactionList) bool {
-	return bytes.Equal(l.trie.RootHash(), t.Hash())
+	return bytes.Equal(l.trie.Hash(), t.Hash())
 }
 
 func NewTransactionListFromSlice(list []module.Transaction) module.TransactionList {
@@ -133,7 +133,7 @@ func NewTransactionListFromSlice(list []module.Transaction) module.TransactionLi
 		}
 		err = mt.Set(k, v)
 		if err != nil {
-			log.Fatalf("NewTransanctionListFromSlice FAILs", err)
+			//log.Fatalf("NewTransanctionListFromSlice FAILs", err)
 			return nil
 		}
 	}

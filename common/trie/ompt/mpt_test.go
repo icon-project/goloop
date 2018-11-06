@@ -207,7 +207,7 @@ func Test_GetPoof(t *testing.T) {
 				}
 			}
 			s1 := m1.GetSnapshot()
-			h := s1.RootHash()
+			h := s1.Hash()
 			log.Println("Flush snapshot 1")
 			s1.Flush()
 			s1r := NewMPTForBytes(d1, h)

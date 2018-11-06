@@ -26,17 +26,18 @@ type (
 		evaluated bool
 		source    *source
 		mutex     sync.Mutex
-		db        db.Bucket
+		bk        db.Bucket
+		db        db.Database
 	}
 )
 
 /*
  */
-func newMpt(db db.Bucket, initialHash hash, t reflect.Type) *mpt {
+func newMpt(db db.Database, bk db.Bucket, initialHash hash, t reflect.Type) *mpt {
 	return &mpt{root: nil,
 		source: &source{requestPool: make(map[string]trie.Object),
 			committedHash: hash(append([]byte(nil), []byte(initialHash)...))},
-		db: db, objType: t}
+		bk: bk, objType: t, db: db}
 }
 
 func bytesToNibbles(k []byte) []byte {
@@ -49,6 +50,7 @@ func bytesToNibbles(k []byte) []byte {
 }
 
 func (m *mpt) get(n node, k []byte) (node, trie.Object, error) {
+	//fmt.Println("get : n = ", n, ", k = ", k)
 	var result trie.Object
 	var err error
 	switch n := n.(type) {
@@ -74,14 +76,14 @@ func (m *mpt) get(n node, k []byte) (node, trie.Object, error) {
 		return n, n.value, nil
 	// if node is hash, get serialized value with hash from db then deserialize it.
 	case hash:
-		serializedValue, err := m.db.Get(n)
+		serializedValue, err := m.bk.Get(n)
 		if err != nil {
 			return n, nil, err
 		}
 		if serializedValue == nil {
 			return n, nil, fmt.Errorf("KeyNotFoundError(%x)", n)
 		}
-		deserializedNode := deserialize(serializedValue, m.objType)
+		deserializedNode := deserialize(serializedValue, m.objType, m.db)
 		switch m := deserializedNode.(type) {
 		case *branch:
 			m.hashedValue = n
@@ -144,9 +146,9 @@ func (m *mpt) evaluateTrie(requestPool map[string]trie.Object) error {
 }
 
 /*
-	RootHash
+	Hash
 */
-func (m *mpt) RootHash() []byte {
+func (m *mpt) Hash() []byte {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	if m.evaluated == true {
@@ -188,7 +190,7 @@ func (m *mpt) set(n node, k []byte, v trie.Object) (node, nodeState) {
 
 /*
 Set inserts key and value into requestPool.
-RootHash, GetProof, Flush insert keys and values in requestPool into trie
+Hash, GetProof, Flush insert keys and values in requestPool into trie
 */
 func (m *mpt) Set(k, v []byte) error {
 	if k == nil || v == nil {
@@ -222,7 +224,7 @@ func (m *mpt) Delete(k []byte) error {
 }
 
 func (m *mpt) GetSnapshot() trie.Snapshot {
-	mpt := newMpt(m.db, m.source.committedHash, m.objType)
+	mpt := newMpt(m.db, m.bk, m.source.committedHash, m.objType)
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	mpt.source = m.source
@@ -265,6 +267,7 @@ func traversalCommit(db db.Bucket, n node, cnt int) error {
 				return err
 			}
 		}
+		n.flush()
 
 	case *extension:
 		if n.state == committedNode {
@@ -279,6 +282,9 @@ func traversalCommit(db db.Bucket, n node, cnt int) error {
 		if n.state == committedNode {
 			return nil
 		}
+
+		n.flush()
+
 		if len(n.serialize()) < hashableSize && cnt != 0 { // root hash has to save hash
 			return nil
 		}
@@ -291,6 +297,7 @@ func traversalCommit(db db.Bucket, n node, cnt int) error {
 	if len(n.serialize()) < hashableSize && cnt != 0 { // root hash has to save hash
 		return nil
 	}
+
 	return db.Set(n.hash(), n.serialize())
 }
 
@@ -315,8 +322,7 @@ func (m *mpt) Flush() error {
 			m.evaluateTrie(pool)
 			m.evaluated = true
 		}
-		//fmt.Println("FLUSH ROOTHASH : ", m.root.hash())
-		if err := traversalCommit(m.db, m.root, 0); err != nil {
+		if err := traversalCommit(m.bk, m.root, 0); err != nil {
 			return err
 		}
 		m.source.committedHash = m.root.hash()
@@ -397,11 +403,11 @@ func (m *mpt) proof(n node, k []byte, depth int) (node, [][]byte, bool) {
 		proofBuf[depth] = buf
 	// if node is hash, get serialized value with hash from db then deserialize it.
 	case hash:
-		serializedValue, err := m.db.Get(n)
+		serializedValue, err := m.bk.Get(n)
 		if err != nil || serializedValue == nil {
 			return n, nil, false
 		}
-		deserializedNode := deserialize(serializedValue, m.objType)
+		deserializedNode := deserialize(serializedValue, m.objType, m.db)
 		switch m := deserializedNode.(type) {
 		case *branch:
 			m.hashedValue = n
@@ -518,11 +524,11 @@ type mptForObj struct {
 	*mpt
 }
 
-func newMptForObj(db db.Bucket, initialHash hash, t reflect.Type) *mptForObj {
+func newMptForObj(db db.Database, bk db.Bucket, initialHash hash, t reflect.Type) *mptForObj {
 	return &mptForObj{
 		mpt: &mpt{root: hash(append([]byte(nil), []byte(initialHash)...)),
 			source: &source{requestPool: make(map[string]trie.Object), committedHash: hash(append([]byte(nil), []byte(initialHash)...))},
-			db:     db, objType: t},
+			bk:     bk, db: db, objType: t},
 	}
 }
 
@@ -568,10 +574,6 @@ func (m *mptForObj) GetSnapshot() trie.SnapshotForObject {
 func (m *mptForObj) Reset(s trie.ImmutableForObject) {
 	// TODO Implement
 	panic("It's not implemented")
-}
-
-func (m *mptForObj) Hash() []byte {
-	return m.RootHash()
 }
 
 func (m *mptForObj) Iterator() trie.IteratorForObject {

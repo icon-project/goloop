@@ -21,6 +21,12 @@ func (br *branch) changeState(s nodeState) {
 	}
 }
 
+func (br *branch) flush() {
+	if br.value != nil {
+		br.value.Flush()
+	}
+}
+
 func (br *branch) serialize() []byte {
 	if br.state == dirtyNode {
 		br.serializedValue = nil
@@ -88,7 +94,6 @@ func (br *branch) hash() []byte {
 }
 
 func (br *branch) addChild(m *mpt, k []byte, v trie.Object) (node, nodeState) {
-	//fmt.Println("branch addChild : k ", k, ", v : ", v)
 	if len(k) == 0 {
 		if v.Equal(br.value) == true {
 			return br, br.state
@@ -99,7 +104,7 @@ func (br *branch) addChild(m *mpt, k []byte, v trie.Object) (node, nodeState) {
 	}
 	dirty := dirtyNode
 	if br.nibbles[k[0]] == nil {
-		br.nibbles[k[0]], dirty = m.set(br.nibbles[k[0]], k[1:], v)
+		br.nibbles[k[0]], dirty = m.set(nil, k[1:], v)
 	} else {
 		br.nibbles[k[0]], dirty = br.nibbles[k[0]].addChild(m, k[1:], v)
 	}

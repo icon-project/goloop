@@ -48,7 +48,7 @@ const printSerializedValue = false
 
 func (h hash) serialize() []byte {
 	// Not valid
-	return nil
+	return h
 }
 
 func (h hash) hash() []byte {
@@ -59,22 +59,22 @@ func (h hash) addChild(m *mpt, k []byte, v trie.Object) (node, nodeState) {
 	if len(h) == 0 {
 		return &leaf{keyEnd: k[:], value: v}, dirtyNode
 	}
-	serializedValue, err := m.db.Get(h)
+	serializedValue, err := m.bk.Get(h)
 	if serializedValue == nil || err != nil {
 		return h, dirtyNode
 	}
-	return m.set(deserialize(serializedValue, m.objType), k, v)
+	return m.set(deserialize(serializedValue, m.objType, m.db), k, v)
 }
 
 func (h hash) deleteChild(m *mpt, k []byte) (node, nodeState, error) {
 	if len(h) == 0 {
 		return h, noneNode, nil // TODO: proper error
 	}
-	serializedValue, err := m.db.Get(h)
+	serializedValue, err := m.bk.Get(h)
 	if serializedValue == nil || err != nil {
 		return h, noneNode, err
 	}
-	return m.delete(deserialize(serializedValue, m.objType), k)
+	return m.delete(deserialize(serializedValue, m.objType, m.db), k)
 }
 
 func (v byteValue) Bytes() []byte {

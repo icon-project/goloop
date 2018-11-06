@@ -118,3 +118,7 @@ func (l *leaf) deleteChild(m *mpt, k []byte) (node, nodeState, error) {
 	}
 	return nil, dirtyNode, nil
 }
+
+func (l *leaf) flush() {
+	l.value.Flush()
+}
