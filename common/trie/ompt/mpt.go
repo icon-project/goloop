@@ -318,6 +318,10 @@ func (m *mpt) Equal(object trie.ImmutableForObject, exact bool) bool {
 	return false
 }
 
+func (m *mpt) Empty() bool {
+	return m.root == nil
+}
+
 func NewMPT(d db.Database, h []byte, t reflect.Type) *mpt {
 	bk, err := d.GetBucket(db.MerkleTrie)
 	if err != nil {

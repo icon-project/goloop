@@ -526,6 +526,11 @@ func (m *mpt) Reset(immutable trie.Immutable) error {
 	return nil
 }
 
+func (m *mpt) Empty() bool {
+	// TODO Implement
+	return false
+}
+
 // struct for object trie
 type mptForObj struct {
 	*mpt
@@ -594,4 +599,8 @@ func (m *mptForObj) Equal(object trie.ImmutableForObject, exact bool) bool {
 	// We can trust the result if it returns true or it returns false with
 	// exact is true.
 	return false
+}
+
+func (m *mptForObj) Empty() bool {
+	return m.mpt.Empty()
 }
