@@ -10,6 +10,7 @@ type (
 	/*
 	 */
 	Immutable interface {
+		Empty() bool
 		// Returns the value to which the specified key is mapped, or nil if this Tree has no mapping for the key
 		Get(k []byte) ([]byte, error)
 		Hash() []byte               // return nil if this Tree is empty
@@ -51,6 +52,7 @@ type (
 	}
 
 	ImmutableForObject interface {
+		Empty() bool
 		Get(k []byte) (Object, error)
 		Hash() []byte
 		GetProof(k []byte) [][]byte // return nill of this Tree is empty
