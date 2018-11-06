@@ -1,4 +1,4 @@
-// build ompt
+// +build ompt
 
 package trie_manager
 
