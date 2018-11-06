@@ -168,6 +168,14 @@
   revision = "6b91fda63f2e36186f1c9d0e48578defb69c5d43"
 
 [[projects]]
+  digest = "1:564b31f09a21367ada5b019d8413afe99cf770775606f94c7bef42b2ef79dfdf"
+  name = "github.com/ybbus/jsonrpc"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "dd866631e904a5df2067d934985c5def68f391ac"
+  version = "v2.1.2"
+
+[[projects]]
   digest = "1:3762d59edaa6e5c71d5e594c020c8391f274ff283e9c30fb43c518ec59a3f9b3"
   name = "go.etcd.io/bbolt"
   packages = ["."]
@@ -216,6 +224,7 @@
     "github.com/stretchr/testify/assert",
     "github.com/syndtr/goleveldb/leveldb",
     "github.com/syndtr/goleveldb/leveldb/opt",
+    "github.com/ybbus/jsonrpc",
     "go.etcd.io/bbolt",
     "golang.org/x/crypto/sha3",
   ]

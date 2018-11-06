@@ -1,9 +1,3 @@
-package v2
-
-import (
-	"github.com/osamingo/jsonrpc"
-)
-
 /*
 	SCHEMA_V2: dict =
 		"icx_sendTransaction": icx_sendTransaction_v2,
@@ -13,19 +7,24 @@ import (
 		"icx_getLastBlock": icx_getLastBlock,
 		"icx_getBlockByHash": icx_getBlockByHash_v2,
 		"icx_getBlockByHeight": icx_getBlockByHeight_v2,
+		// Deprecated
 		"icx_getTransactionByAddress": icx_getTransactionByAddress_v2
 	}
 */
+package v2
+
+import (
+	"github.com/osamingo/jsonrpc"
+)
 
 const (
-	SendTransaction         string = "icx_sendTransaction"
-	GetTransactionResult    string = "icx_getTransactionResult"
-	GetBalance              string = "icx_getBalance"
-	GetTotalSupply          string = "icx_getTotalSupply"
-	GetLastBlock            string = "icx_getLastBlock"
-	GetBlockByHash          string = "icx_getBlockByHash"
-	GetBlockByHeight        string = "icx_getBlockByHeight"
-	GetTransactionByAddress string = "icx_getTransactionByAddress"
+	sendTransaction         string = "icx_sendTransaction"
+	getTransactionResult    string = "icx_getTransactionResult"
+	getBalance              string = "icx_getBalance"
+	getTotalSupply          string = "icx_getTotalSupply"
+	getLastBlock            string = "icx_getLastBlock"
+	getBlockByHash          string = "icx_getBlockByHash"
+	getBlockByHeight        string = "icx_getBlockByHeight"
 )
 
 func MethodRepository() *jsonrpc.MethodRepository {
@@ -33,14 +32,13 @@ func MethodRepository() *jsonrpc.MethodRepository {
 	v2 := jsonrpc.NewMethodRepository()
 
 	// api v2
-	v2.RegisterMethod(SendTransaction, SendTransactionHandler{}, nil, EchoResult{})
-	v2.RegisterMethod(GetTransactionResult, GetTransactionResultHandler{}, GetTransactionResultParam{}, EchoResult{})
-	v2.RegisterMethod(GetBalance, GetBalanceHandler{}, GetBalanceParam{}, nil)
-	v2.RegisterMethod(GetTotalSupply, GetTotalSupplyeHandler{}, nil, nil)
-	v2.RegisterMethod(GetLastBlock, GetLastBlockHandler{}, nil, EchoResult{})
-	v2.RegisterMethod(GetBlockByHash, GetBlockByHashHandler{}, GetBlockByHashParam{}, EchoResult{})
-	v2.RegisterMethod(GetBlockByHeight, GetBlockByHeightHandler{}, GetBlockByHeightParam{}, EchoResult{})
-	v2.RegisterMethod(GetTransactionByAddress, GetTransactionByAddressHandler{}, GetTransactionByAddressParam{}, EchoResult{})
+	v2.RegisterMethod(sendTransaction, sendTransactionHandler{}, nil, nil)
+	v2.RegisterMethod(getTransactionResult, getTransactionResultHandler{}, getTransactionResultParam{}, getTransactionResultResult{})
+	v2.RegisterMethod(getBalance, getBalanceHandler{}, getBalanceParam{}, getBalanceResult{})
+	v2.RegisterMethod(getTotalSupply, getTotalSupplyeHandler{}, nil, getTotalSupplyResult{})
+	v2.RegisterMethod(getLastBlock, getLastBlockHandler{}, nil, blockResult{})
+	v2.RegisterMethod(getBlockByHash, getBlockByHashHandler{}, getBlockByHashParam{}, blockResult{})
+	v2.RegisterMethod(getBlockByHeight, getBlockByHeightHandler{}, getBlockByHeightParam{}, blockResult{})
 
 	return v2
 }
