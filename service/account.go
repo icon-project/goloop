@@ -18,8 +18,10 @@ type accountSnapshot struct {
 	database    db.Database
 }
 
-func (s *accountSnapshot) getBalance(v *big.Int) {
+func (s *accountSnapshot) getBalance() *big.Int {
+	v := new(big.Int)
 	v.Set(&s.balance.Int)
+	return v
 }
 
 func (s *accountSnapshot) isContract() bool {
@@ -101,6 +103,10 @@ func (s *accountSnapshot) Equal(object trie.Object) bool {
 	return false
 }
 
+func (s *accountSnapshot) getValue(k []byte) ([]byte, error) {
+	return s.store.Get(k)
+}
+
 type accountState struct {
 	database    db.Database
 	balance     common.HexInt
@@ -108,8 +114,10 @@ type accountState struct {
 	store       trie.Mutable
 }
 
-func (s *accountState) getBalance(v *big.Int) {
+func (s *accountState) getBalance() *big.Int {
+	v := new(big.Int)
 	v.Set(&s.balance.Int)
+	return v
 }
 
 func (s *accountState) setBalance(v *big.Int) {
@@ -124,6 +132,9 @@ func (s *accountState) getSnapshot() *accountSnapshot {
 	var store trie.Immutable
 	if s.store != nil {
 		store = s.store.GetSnapshot()
+		if store.Empty() {
+			store = nil
+		}
 	}
 	return &accountSnapshot{
 		balance:     s.balance,
@@ -149,6 +160,27 @@ func (s *accountState) reset(snapshot *accountSnapshot) error {
 		}
 	}
 	return nil
+}
+
+func (s *accountState) getValue(k []byte) ([]byte, error) {
+	if s.store == nil {
+		return nil, nil
+	}
+	return s.store.Get(k)
+}
+
+func (s *accountState) setValue(k, v []byte) error {
+	if s.store == nil {
+		s.store = trie_manager.NewMutable(s.database, nil)
+	}
+	return s.store.Set(k, v)
+}
+
+func (s *accountState) deleteValue(k []byte) error {
+	if s.store == nil {
+		return nil
+	}
+	return s.store.Delete(k)
 }
 
 func newAccountState(database db.Database, snapshot *accountSnapshot) *accountState {
