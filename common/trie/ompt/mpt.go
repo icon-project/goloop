@@ -253,6 +253,10 @@ func (m *mpt) GetProof(k []byte) [][]byte {
 	if m.root == nil {
 		return nil
 	}
+
+	// make sure that it's hashed.
+	m.root.getLink(true)
+
 	nibbles := bytesToKeys(k)
 	proofs := [][]byte(nil)
 
