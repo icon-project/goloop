@@ -68,6 +68,15 @@ func (m *mptForBytes) Iterator() trie.Iterator {
 	return &iteratorForBytes{i}
 }
 
+func (m *mptForBytes) Equal(object trie.Immutable, exact bool) bool {
+	if m2, ok := object.(*mptForBytes); ok {
+		return m.mpt.Equal(m2.mpt, exact)
+	} else {
+		panic("Equal with invalid object")
+	}
+	return false
+}
+
 func NewMPTForBytes(db db.Database, h []byte) *mptForBytes {
 	return &mptForBytes{
 		NewMPT(db, h, reflect.TypeOf(bytesObject(nil))),

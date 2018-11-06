@@ -14,9 +14,10 @@ type (
 
 	// When it traverses nodes, it can push more nodes for next visit.
 	// It will visit nodes from last to first.
-	nodeScheduler func(string,node)
+	nodeScheduler func(string, node)
 
 	node interface {
+		hash() []byte
 		getLink(forceHash bool) []byte
 		freeze()
 		flush(m *mpt) error
@@ -64,6 +65,10 @@ type nodeBase struct {
 	serialized []byte
 	state      nodeState
 	mutex      sync.Mutex
+}
+
+func (n *nodeBase) hash() []byte {
+	return n.hashValue
 }
 
 func (n *nodeBase) getLink(n2 node, forceHash bool) []byte {
@@ -115,7 +120,7 @@ func bytesToKeys(b []byte) []byte {
 
 func keysToBytes(s string) []byte {
 	k := make([]byte, len(s)/2)
-	for i:=0 ; i<len(k) ; i++ {
+	for i := 0; i < len(k); i++ {
 		k[i] = s[i*2]<<4 | s[i*2+1]
 	}
 	return k

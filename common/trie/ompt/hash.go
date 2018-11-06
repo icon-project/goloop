@@ -18,6 +18,10 @@ func (h hash) getLink(fh bool) []byte {
 	return rlpEncodeBytes(h)
 }
 
+func (h hash) hash() []byte {
+	return []byte(h)
+}
+
 func (h hash) freeze() {
 	return
 }

@@ -1,6 +1,7 @@
 package ompt
 
 import (
+	"bytes"
 	"errors"
 	"log"
 	"reflect"
@@ -286,6 +287,35 @@ func (m *mpt) Prove(k []byte, proofs [][]byte) (trie.Object, error) {
 		m.root = root
 	}
 	return obj, err
+}
+
+func (m *mpt) Equal(object trie.ImmutableForObject, exact bool) bool {
+	if m2, ok := object.(*mpt); ok {
+		if m == m2 {
+			return true
+		}
+		m.mutex.Lock()
+		defer m.mutex.Unlock()
+		m2.mutex.Lock()
+		defer m2.mutex.Unlock()
+
+		if m2.root == m.root {
+			return true
+		}
+		if m2.root == nil || m.root == nil {
+			return false
+		}
+		if bytes.Equal(m2.root.hash(), m.root.hash()) {
+			return true
+		}
+		if exact {
+			return bytes.Equal(m.root.getLink(true),
+				m2.root.getLink(true))
+		}
+	} else {
+		panic("Equal with invalid object")
+	}
+	return false
 }
 
 func NewMPT(d db.Database, h []byte, t reflect.Type) *mpt {

@@ -205,6 +205,13 @@ func (m *mpt) Set(k, v []byte) error {
 	return nil
 }
 
+func (m *mpt) Equal(immutable trie.Immutable, exact bool) bool {
+	// TODO: Implement
+	// Compare without hash. if exact is true, then it may hash to
+	// check equality.
+	return false
+}
+
 func (m *mpt) delete(n node, k []byte) (node, nodeState, error) {
 	//fmt.Println("delete n ", n,", k ", k, ", v : ", string(k))
 	if n == nil {
@@ -579,4 +586,12 @@ func (m *mptForObj) Reset(s trie.ImmutableForObject) {
 func (m *mptForObj) Iterator() trie.IteratorForObject {
 	// TODO Implement Iterator().
 	return nil
+}
+
+func (m *mptForObj) Equal(object trie.ImmutableForObject, exact bool) bool {
+	// TODO implement Equal()
+	// It compare without hash. If exact is true, then it may try compare
+	// We can trust the result if it returns true or it returns false with
+	// exact is true.
+	return false
 }

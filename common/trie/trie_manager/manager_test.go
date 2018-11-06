@@ -320,7 +320,7 @@ func TestProof(t *testing.T) {
 	manager := New(db.NewMapDB())
 	tr := manager.NewMutable(nil)
 
-	key := make([]byte, 32)
+	key := []byte("test")
 	value := []byte("test")
 	tr.Set(key, value)
 	v, _ := tr.Get(key)
@@ -938,5 +938,19 @@ func TestObjectIterate(t *testing.T) {
 		for s, _ := range visited {
 			visited[s] = false
 		}
+	}
+}
+
+func TestImmutableEqual(t *testing.T) {
+	m := New(db.NewMapDB())
+	mutable := m.NewMutable(nil)
+	mutable.Set([]byte("test"), []byte("value"))
+	s1 := mutable.GetSnapshot()
+	s2 := mutable.GetSnapshot()
+	if !s1.Equal(s1, false) {
+		t.Errorf("Not same with same snapshot")
+	}
+	if !s1.Equal(s2, false) {
+		t.Errorf("Not same with another snapshot after no change")
 	}
 }
