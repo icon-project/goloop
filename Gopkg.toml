@@ -74,5 +74,9 @@
   version = "v2.1"
 
 [[constraint]]
+  name = "github.com/ybbus/jsonrpc"
+  version = "v2.1.2"
+
+[[constraint]]
   name = "github.com/asaskevich/govalidator"
   version = "v8"

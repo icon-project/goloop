@@ -9,7 +9,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func JsonRpcService() http.Handler {
+func JsonRpcHandler() http.Handler {
 
 	router := mux.NewRouter()
 

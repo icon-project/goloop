@@ -2,129 +2,165 @@ package v2
 
 import (
 	"context"
+	"log"
 
-	"github.com/asaskevich/govalidator"
 	"github.com/intel-go/fastjson"
 	"github.com/osamingo/jsonrpc"
+	client "github.com/ybbus/jsonrpc"
 )
 
-// SendTransaction
-type SendTransactionHandler struct{}
+// ICON TestNet v2
+const apiEndPoint string = "https://testwallet.icon.foundation/api/v2"
 
-func (h SendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+var rpcClient = client.NewClient(apiEndPoint)
 
-	return EchoResult{
-		Method: "Call : " + SendTransaction,
-	}, nil
-}
+// sendTransaction
+type sendTransactionHandler struct{}
 
-// GetTransactionResult
-type GetTransactionResultHandler struct{}
+func (h sendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
-func (h GetTransactionResultHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
-
-	var p GetTransactionResultParam
-	if err := jsonrpc.Unmarshal(params, &p); err != nil {
+	var param sendTransactionParam
+	if err := jsonrpc.Unmarshal(params, &param); err != nil {
+		return nil, err
+	}
+	if err := validateParam(param); err != nil {
 		return nil, err
 	}
 
-	return EchoResult{
-		Method: "Call : " + GetTransactionResult + " (" + p.TransactionHash + ")",
-	}, nil
+	// sendTransaction Call
+
+	result := &sendTranscationResult{
+		ResponseCode:    0,
+		TransactionHash: "4bf74e6aeeb43bde5dc8d5b62537a33ac8eb7605ebbdb51b015c1881b45b3aed",
+	}
+
+	return result, nil
 }
 
-// GetBalance
-type GetBalanceHandler struct{}
+// getTransactionResult
+type getTransactionResultHandler struct{}
 
-func (h GetBalanceHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+func (h getTransactionResultHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
-	var p GetBalanceParam
-	if err := jsonrpc.Unmarshal(params, &p); err != nil {
+	var param getTransactionResultParam
+	if err := jsonrpc.Unmarshal(params, &param); err != nil {
+		return nil, err
+	}
+	if err := validateParam(param); err != nil {
 		return nil, err
 	}
 
-	_, err := govalidator.ValidateStruct(p)
+	var result getTransactionResultResult
+
+	err := rpcClient.CallFor(&result, getTransactionResult, param)
 	if err != nil {
-		e := jsonrpc.ErrInvalidParams()
-		e.Data = err.Error()
-		return nil, e
+		log.Println(err.Error())
+		return nil, jsonrpc.ErrInternal()
 	}
 
-	return "Call : " + GetBalance + "(" + p.Address + ")", nil
+	return result, nil
 }
 
-// GetTotalSupply
-type GetTotalSupplyeHandler struct{}
+// getBalance
+type getBalanceHandler struct{}
 
-func (h GetTotalSupplyeHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+func (h getBalanceHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
-	return "Call : " + GetTotalSupply, nil
-}
-
-// GetLastBlock
-type GetLastBlockHandler struct{}
-
-func (h GetLastBlockHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
-	return EchoResult{
-		Method: "Call : " + GetLastBlock,
-	}, nil
-}
-
-// GetBlockByHash
-type GetBlockByHashHandler struct{}
-
-func (h GetBlockByHashHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
-
-	var p GetBlockByHashParam
-	if err := jsonrpc.Unmarshal(params, &p); err != nil {
+	var param getBalanceParam
+	if err := jsonrpc.Unmarshal(params, &param); err != nil {
+		return nil, err
+	}
+	if err := validateParam(param); err != nil {
 		return nil, err
 	}
 
-	_, err := govalidator.ValidateStruct(p)
+	var result getBalanceResult
+
+	err := rpcClient.CallFor(&result, getBalance, param)
 	if err != nil {
-		e := jsonrpc.ErrInvalidParams()
-		e.Data = err.Error()
-		return nil, e
+		log.Println(err.Error())
+		return nil, jsonrpc.ErrInternal()
 	}
 
-	return EchoResult{
-		Method: "Call : " + GetBlockByHash + " (" + p.BlockHash + ")",
-	}, nil
+	return result, nil
 }
 
-// GetBlockByHeight
-type GetBlockByHeightHandler struct{}
+// getTotalSupply
+type getTotalSupplyeHandler struct{}
 
-func (h GetBlockByHeightHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+func (h getTotalSupplyeHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
-	var p GetBlockByHeightParam
-	if err := jsonrpc.Unmarshal(params, &p); err != nil {
-		return nil, err
-	}
+	var result getTotalSupplyResult
 
-	_, err := validator(p)
+	err := rpcClient.CallFor(&result, getTotalSupply)
 	if err != nil {
-		e := jsonrpc.ErrInvalidParams()
-		e.Data = err.Error()
-		return nil, e
+		log.Println(err.Error())
+		return nil, jsonrpc.ErrInternal()
 	}
 
-	return EchoResult{
-		Method: "Call : " + GetBlockByHeight + " (" + p.BlockHeight + ")",
-	}, nil
+	return result, nil
 }
 
-// GetTransactionByAddress
-type GetTransactionByAddressHandler struct{}
+// getLastBlock
+type getLastBlockHandler struct{}
 
-func (h GetTransactionByAddressHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+func (h getLastBlockHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
-	var p GetTransactionByAddressParam
-	if err := jsonrpc.Unmarshal(params, &p); err != nil {
+	var result blockResult
+
+	err := rpcClient.CallFor(&result, getLastBlock)
+	if err != nil {
+		log.Println(err.Error())
+		return nil, jsonrpc.ErrInternal()
+	}
+
+	return result, nil
+}
+
+// getBlockByHash
+type getBlockByHashHandler struct{}
+
+func (h getBlockByHashHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+
+	var param getBlockByHashParam
+	if err := jsonrpc.Unmarshal(params, &param); err != nil {
+		return nil, err
+	}
+	if err := validateParam(param); err != nil {
 		return nil, err
 	}
 
-	return EchoResult{
-		Method: "Call : " + GetTransactionByAddress,
-	}, nil
+	var result blockResult
+
+	err := rpcClient.CallFor(&result, getBlockByHash, param)
+	if err != nil {
+		log.Println(err.Error())
+		return nil, jsonrpc.ErrInternal()
+	}
+
+	return result, nil
+}
+
+// getBlockByHeight
+type getBlockByHeightHandler struct{}
+
+func (h getBlockByHeightHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+
+	var param getBlockByHeightParam
+	if err := jsonrpc.Unmarshal(params, &param); err != nil {
+		return nil, err
+	}
+	if err := validateParam(param); err != nil {
+		return nil, err
+	}
+
+	var result blockResult
+
+	err := rpcClient.CallFor(&result, getBlockByHeight, param)
+	if err != nil {
+		log.Println(err.Error())
+		return nil, jsonrpc.ErrInternal()
+	}
+
+	return result, nil
 }
