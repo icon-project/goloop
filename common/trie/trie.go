@@ -12,8 +12,9 @@ type (
 	Immutable interface {
 		// Returns the value to which the specified key is mapped, or nil if this Tree has no mapping for the key
 		Get(k []byte) ([]byte, error)
-		RootHash() []byte        // return nil if this Tree is empty
-		Proof(k []byte) [][]byte // return nill of this Tree is empty
+		RootHash() []byte           // return nil if this Tree is empty
+		GetProof(k []byte) [][]byte // return nill of this Tree is empty
+		Iterator() Iterator
 	}
 
 	Snapshot interface {
@@ -21,8 +22,13 @@ type (
 		Flush() error
 	}
 
+	Iterator interface {
+		Next() error
+		Has() bool
+		Get() (value []byte, key []byte, err error)
+	}
+
 	Mutable interface {
-		Proof(k []byte) [][]byte // return nill of this Tree is empty
 		Get(k []byte) ([]byte, error)
 		Set(k, v []byte) error
 		Delete(k []byte) error
@@ -37,9 +43,17 @@ type (
 		Equal(Object) bool
 	}
 
+	IteratorForObject interface {
+		Next() error
+		Has() bool
+		Get() (Object, []byte, error)
+	}
+
 	ImmutableForObject interface {
 		Get(k []byte) (Object, error)
 		Hash() []byte
+		GetProof(k []byte) [][]byte // return nill of this Tree is empty
+		Iterator() IteratorForObject
 	}
 
 	SnapshotForObject interface {
@@ -53,11 +67,6 @@ type (
 		Delete(k []byte) error
 		GetSnapshot() SnapshotForObject
 		Reset(s ImmutableForObject)
-	}
-
-	ManagerForObject interface {
-		NewImmutable(h []byte) ImmutableForObject
-		NewMutable(h []byte) MutableForObject
 	}
 
 	Manager interface {

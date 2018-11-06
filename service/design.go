@@ -17,19 +17,21 @@ import (
 // Transaction Pool
 ////////////////////
 // TODO garbage를 정리하는 방법 필요. 간단하게는 removeList()에 넣어두면 되긴 한데...
-// add()할 때 개수 체크 및 candidate()에서 정리
-// TODO GC 방법은 정리 필요
-type txPool struct {
+// add()할 때 개수 체크 및 candidate()에서 정리.
+// TODO tx를 버리는 기준 확인 필요
+// TODO tx 시간 순으로 정렬 필요
+// TODO 당연하지만, lock 잘 잡고...
+type transactionPool struct {
 }
 
 // transaction에 넣을 때 간단한 검증이 필요하다면, 검증은 외부에서 해야 함.
-func (pool *txPool) add(tx tx) error {
+func (pool *transactionPool) add(tx transaction) error {
 	return nil
 }
 
 // 없다면, len()이 0인 TransactionList를 리턴한다. (nil 아님)
 // It returns all candidates for a negative integer n.
-func (pool *txPool) candidate(state trie.Mutable, max int) []tx {
+func (pool *transactionPool) candidate(state trie.Mutable, max int) []transaction {
 	// TODO state를 전달받더라도 실제 account info는 address를 통해서 바로 찾는 것이
 	// 유리할텐데... trie를 통해서 Get하면 비효율적임.
 	// TODO max가 음수이면 모든 transaction을 리턴한다. patch pool에 대해서 필요할 것
@@ -42,28 +44,29 @@ func (pool *txPool) candidate(state trie.Mutable, max int) []tx {
 }
 
 // 이것을 사용할 경우 없음.
-func (pool *txPool) remove(tx tx) {
+func (pool *transactionPool) remove(tx transaction) {
 }
 
 // 사용할 경우 없음. 이것도 간단한 검증은 외부에서 수행
-func (pool *txPool) addList(tx []tx) {
+func (pool *transactionPool) addList(tx []transaction) {
 
 }
 
 // finalize할 때 호출됨.
-func (pool *txPool) removeList(tx []tx) {
+func (pool *transactionPool) removeList(tx []transaction) {
+	// TODO 효과적으로 제거하는 방안 필요
 }
 
 ////////////////////
 // Transaction
 ////////////////////
-// TODO normal과 patch를 구분해야 하는가? 또한 naming에서 tx vs patch로 정리할까?
-type tx struct {
+// TODO normal과 patch를 구분해야 하는가? 또한 naming에서 transaction vs patch로 정리할까?
+type transaction struct {
 	// TODO 아래는 type integer로 하거나, 혹은 struct를 분리하는 방식도 있음.
 	isPatch bool // patch: true, normal: false
 }
 
-func newTx(r io.Reader) (*tx, error) {
+func newTransaction(r io.Reader) (*transaction, error) {
 	if r == nil {
 		return nil, common.ErrIllegalArgument
 	}
@@ -71,74 +74,88 @@ func newTx(r io.Reader) (*tx, error) {
 	return nil, nil
 }
 
-func (tx *tx) ID() []byte {
+func (tx *transaction) ID() []byte {
 	return nil
 }
-func (tx *tx) Version() int {
+func (tx *transaction) Version() int {
 	return 0
 }
-func (tx *tx) Bytes() ([]byte, error) {
+func (tx *transaction) Bytes() ([]byte, error) {
 	return nil, nil
 }
 
 // TODO check()인지 validate()인지 확인 필요.
-func (tx *tx) Verify() error {
+func (tx *transaction) Verify() error {
 	return nil
 }
 
 // tx pool에 들어가기 전에 체크
 // TODO 뭘 해야 하는지 확인 필요
 // TODO 이건 안 하는 게 좋지 않을까 생각. 일단 GC 방법이 결정되면 검토 필요
-func (tx *tx) check() error {
+func (tx *transaction) check() error {
 	return nil
 }
 
 // TODO 뭘 해야 하는지 확인 필요
-func (tx *tx) validate(state trie.Mutable) error {
+func (tx *transaction) validate(state trie.Mutable) error {
 	return nil
 }
 
-func (tx *tx) execute(state *transitionState) error {
+func (tx *transaction) execute(state *transitionState) error {
 	// TODO 지정된 시간 이내에 결과가 나와야 한다.
 	return nil
 }
 
-func (tx *tx) cancel() {
+func (tx *transaction) cancel() {
 }
 
 type transferTx struct {
-	tx
+	transaction
 }
 
 type scoreCallTx struct {
-	tx
+	transaction
+}
+
+func (t *scoreCallTx) execute(state *transitionState) error {
+	// TODO rollback될 것을 생각해서 항상 처음에 snapshot을 찍어줘야 한다.
+	return nil
 }
 
 type scoreDeployTx struct {
-	tx
+	transaction
 }
 
 ////////////////////
 // Transaction List
 ////////////////////
-type txList struct {
-	txs  []tx
+// TODO to avoid name conflict, temporarily take 'list' instead of 'List'
+type transactionlist struct {
+	txs  []transaction
 	hash []byte
 }
 
-func (l *txList) Get(n int) (module.Transaction, error) {
+func (l *transactionlist) Get(n int) (module.Transaction, error) {
 	if n < 0 || n >= len(l.txs) {
 		return nil, common.ErrIllegalArgument
 	}
 	return &l.txs[n], nil
 }
-func (l *txList) Size() int {
-	return len(l.txs)
+
+func (l *transactionlist) Iterator() module.TransactionIterator {
+	return nil
 }
 
 // TODO 구현
-func (l *txList) Hash() []byte {
+func (l *transactionlist) Hash() []byte {
 	return nil
+}
+
+func (l *transactionlist) Equal(txList module.TransactionList) bool {
+	return true
+}
+
+type txIterator struct {
 }
 
 ////////////////////

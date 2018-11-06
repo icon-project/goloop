@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/ugorji/go/codec"
 	"log"
 
 	"github.com/icon-project/goloop/common/crypto"
@@ -134,4 +135,15 @@ func NewAccountAddressFromPublicKey(pubKey *crypto.PublicKey) *Address {
 
 func (a *Address) Equal(a2 *Address) bool {
 	return bytes.Equal(a[:], a2[:])
+}
+
+func (a *Address) CodecEncodeSelf(e *codec.Encoder) {
+	e.Encode([]byte(a[:]))
+}
+
+func (a *Address) CodecDecodeSelf(d *codec.Decoder) {
+	var b []byte
+	if err := d.Decode(&b); err == nil {
+		a.SetBytes(b)
+	}
 }

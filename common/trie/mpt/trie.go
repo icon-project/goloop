@@ -188,7 +188,7 @@ func (m *mpt) set(n node, k []byte, v trie.Object) (node, nodeState) {
 
 /*
 Set inserts key and value into requestPool.
-RootHash, Proof, Flush insert keys and values in requestPool into trie
+RootHash, GetProof, Flush insert keys and values in requestPool into trie
 */
 func (m *mpt) Set(k, v []byte) error {
 	if k == nil || v == nil {
@@ -452,7 +452,7 @@ func (m *mpt) proof(n node, k []byte, depth int) (node, [][]byte, bool) {
 // Key / Value = hash(encoding node) / encoding
 // then verify key with roothash and DB passed to Prove()
 // TODO: Implement Verify function and verify Proof
-func (m *mpt) Proof(k []byte) [][]byte {
+func (m *mpt) GetProof(k []byte) [][]byte {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -476,6 +476,11 @@ func (m *mpt) Proof(k []byte) [][]byte {
 	fmt.Println("Proof ", m.root)
 	m.root, proofBuf, _ = m.proof(m.root, k, 0)
 	return proofBuf
+}
+
+func (m *mpt) Iterator() trie.Iterator {
+	// TODO: Implement iterator class.
+	return nil
 }
 
 // Not used
@@ -561,8 +566,15 @@ func (m *mptForObj) GetSnapshot() trie.SnapshotForObject {
 }
 
 func (m *mptForObj) Reset(s trie.ImmutableForObject) {
+	// TODO Implement
+	panic("It's not implemented")
 }
 
 func (m *mptForObj) Hash() []byte {
 	return m.RootHash()
+}
+
+func (m *mptForObj) Iterator() trie.IteratorForObject {
+	// TODO Implement Iterator().
+	return nil
 }

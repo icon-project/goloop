@@ -19,11 +19,19 @@ type Transaction interface {
 	Verify() error
 }
 
+type TransactionIterator interface {
+	Has() bool
+	Next() error
+	Get() (Transaction, int, error)
+}
+
 type TransactionList interface {
 	Get(int) (Transaction, error)
-	Size() int
+	Iterator() TransactionIterator
 	Hash() []byte
+	Equal(TransactionList) bool
 }
+
 type Receipt interface {
 	Bytes() ([]byte, error)
 }
@@ -52,7 +60,7 @@ type Transition interface {
 	// NextValidators returns the addresses of validators as a result of
 	// transaction processing.
 	// It may return nil before cb.OnExecute is called back by Execute.
-	NextValidators() []Validator
+	NextValidators() ValidatorList
 
 	// PatchReceipts returns patch receipts.
 	// It may return nil before cb.OnExecute is called back by Execute.
@@ -93,7 +101,7 @@ type ServiceManager interface {
 	// Returned Transition always passes validation.
 	ProposeTransition(parent Transition) (Transition, error)
 	// CreateInitialTransition creates an initial Transition
-	CreateInitialTransition(result []byte, nextValidators []Validator) (Transition, error)
+	CreateInitialTransition(result []byte, nextValidators ValidatorList) (Transition, error)
 	// CreateTransition creates a Transition following parent Transition.
 	CreateTransition(parent Transition, txs TransactionList) (Transition, error)
 	// GetPatches returns all patch transactions based on the parent transition.

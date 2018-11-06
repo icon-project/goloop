@@ -258,7 +258,16 @@ func (n *branch) traverse(m *mpt, k string, v nodeScheduler) (string, trie.Objec
 		}
 		v(k+string([]byte{byte(i)}), nchild)
 	}
-	return k, n.value, nil
+	if n.value != nil {
+		value, changed, err := m.getObject(n.value)
+		if changed {
+			n.value = value
+		}
+		if err == nil {
+			return k, n.value, nil
+		}
+	}
+	return "", nil, nil
 }
 
 func (n *branch) getProof(m *mpt, keys []byte, proofs [][]byte) (nn node, proof [][]byte, err error) {

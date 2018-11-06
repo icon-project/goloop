@@ -184,11 +184,14 @@ type iterator struct {
 	error error
 }
 
-func (i *iterator) get() (string, trie.Object, error) {
-	return i.key, i.value, i.error
+func (i *iterator) Get() (trie.Object, []byte, error) {
+	return i.value, []byte(i.key), i.error
 }
 
-func (i *iterator) next() (bool, error) {
+func (i *iterator) Next() error {
+	if i.error != nil {
+		return i.error
+	}
 	for len(i.stack) > 0 {
 		l := len(i.stack)
 		ii := i.stack[l-1]
@@ -198,22 +201,27 @@ func (i *iterator) next() (bool, error) {
 			i.stack = append(i.stack, iteratorItem{k: k, n: n})
 		})
 
-		if i.value != nil || i.error != nil {
+		if i.error != nil {
+			i.key = ""
+			i.value = nil
+			return i.error
+		}
+		if i.value != nil {
 			i.key = string(keysToBytes(i.key))
-			return i.value != nil, i.error
+			return nil
 		}
 	}
 	i.key = ""
 	i.value = nil
 	i.error = nil
-	return false, nil
+	return errors.New("NoMoreItem")
 }
 
-func (i *iterator) has() bool {
+func (i *iterator) Has() bool {
 	return i.value != nil
 }
 
-func (m *mpt) iterator() *iterator {
+func (m *mpt) Iterator() trie.IteratorForObject {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -234,17 +242,21 @@ func (m *mpt) iterator() *iterator {
 		m:     m,
 		stack: []iteratorItem{{k: "", n: root}},
 	}
-	i.next()
+	i.Next()
 	return i
 }
 
-func (m *mpt) Proof(k []byte) [][]byte {
+func (m *mpt) GetProof(k []byte) [][]byte {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
 	if m.root == nil {
 		return nil
 	}
+
+	// make sure that it's hashed.
+	m.root.getLink(true)
+
 	nibbles := bytesToKeys(k)
 	proofs := [][]byte(nil)
 

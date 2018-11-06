@@ -24,10 +24,6 @@ func (m *mptForBytes) Set(k, v []byte) error {
 	return m.mpt.Set(k, obj)
 }
 
-func (m *mptForBytes) Proof(k []byte) [][]byte {
-	return m.mpt.Proof(k)
-}
-
 func (m *mptForBytes) RootHash() []byte {
 	return m.mpt.Hash()
 }
@@ -44,16 +40,32 @@ func (m *mptForBytes) Reset(s trie.Immutable) error {
 	return nil
 }
 
-func (m *mptForBytes) Dump() {
-	m.mpt.Dump()
-}
-
 func (m *mptForBytes) Prove(k []byte, proof [][]byte) ([]byte, error) {
 	obj, err := m.mpt.Prove(k, proof)
 	if err != nil {
 		return nil, err
 	}
 	return obj.Bytes(), nil
+}
+
+type iteratorForBytes struct {
+	trie.IteratorForObject
+}
+
+func (i *iteratorForBytes) Get() ([]byte, []byte, error) {
+	o, k, err := i.IteratorForObject.Get()
+	if o != nil {
+		return o.Bytes(), k, err
+	}
+	return nil, nil, err
+}
+
+func (m *mptForBytes) Iterator() trie.Iterator {
+	i := m.mpt.Iterator()
+	if i == nil {
+		return nil
+	}
+	return &iteratorForBytes{i}
 }
 
 func NewMPTForBytes(db db.Database, h []byte) *mptForBytes {
