@@ -194,7 +194,7 @@ func (l *receiptList) Hash() []byte {
 			bytes, _ := r.Bytes()
 			l.trie.Set([]byte{byte(i)}, bytes)
 		}
-		l.hash = l.trie.GetSnapshot().RootHash()
+		l.hash = l.trie.GetSnapshot().Hash()
 	}
 	return l.hash
 }
