@@ -21,17 +21,17 @@ import (
 */
 
 const (
-	GetLastBlock         string = "icx_getLastBlock"
-	GetBlockByHeight     string = "icx_getBlockByHeight"
-	GetBlockByHash       string = "icx_getBlockByHash"
-	Call                 string = "icx_call"
-	GetBalance           string = "icx_getBalance"
-	GetScoreApi          string = "icx_getScoreApi"
-	GetTotalSupply       string = "icx_getTotalSupply"
-	GetTransactionResult string = "icx_getTransactionResult"
-	GetTransactionByHash string = "icx_getTransactionByHash"
-	SendTransaction      string = "icx_sendTransaction"
-	GetStatus            string = "ise_getStatus"
+	getLastBlock         string = "icx_getLastBlock"
+	getBlockByHeight     string = "icx_getBlockByHeight"
+	getBlockByHash       string = "icx_getBlockByHash"
+	call                 string = "icx_call"
+	getBalance           string = "icx_getBalance"
+	getScoreApi          string = "icx_getScoreApi"
+	getTotalSupply       string = "icx_getTotalSupply"
+	getTransactionResult string = "icx_getTransactionResult"
+	getTransactionByHash string = "icx_getTransactionByHash"
+	sendTransaction      string = "icx_sendTransaction"
+	getStatus            string = "ise_getStatus"
 )
 
 func MethodRepository() *jsonrpc.MethodRepository {
@@ -39,17 +39,17 @@ func MethodRepository() *jsonrpc.MethodRepository {
 	v3 := jsonrpc.NewMethodRepository()
 
 	// api v3
-	v3.RegisterMethod(GetLastBlock, GetLastBlockHandler{}, nil, EchoResult{})
-	v3.RegisterMethod(GetBlockByHeight, GetBlockByHeightHandler{}, GetBlockByHeightParam{}, EchoResult{})
-	v3.RegisterMethod(GetBlockByHash, GetBlockByHashHandler{}, GetBlockByHashParam{}, EchoResult{})
-	v3.RegisterMethod(Call, CallHandler{}, nil, EchoResult{})
-	v3.RegisterMethod(GetBalance, GetBalanceHandler{}, GetBalanceParam{}, nil)
-	v3.RegisterMethod(GetScoreApi, GetScoreApiHandler{}, GetScoreApiParam{}, EchoResult{})
-	v3.RegisterMethod(GetTotalSupply, GetTotalSupplyeHandler{}, nil, nil)
-	v3.RegisterMethod(GetTransactionResult, GetTransactionResultHandler{}, TransactionHashParam{}, EchoResult{})
-	v3.RegisterMethod(GetTransactionByHash, GetTransactionByHashHandler{}, TransactionHashParam{}, EchoResult{})
-	v3.RegisterMethod(SendTransaction, SendTransactionHandler{}, nil, EchoResult{})
-	v3.RegisterMethod(GetStatus, GetStatusHandler{}, GetStatusParam{}, EchoResult{})
+	v3.RegisterMethod(getLastBlock, getLastBlockHandler{}, nil, blockV2{})
+	v3.RegisterMethod(getBlockByHeight, getBlockByHeightHandler{}, getBlockByHeightParam{}, blockV2{})
+	v3.RegisterMethod(getBlockByHash, getBlockByHashHandler{}, getBlockByHashParam{}, blockV2{})
+	v3.RegisterMethod(call, callHandler{}, callParam{}, nil)
+	v3.RegisterMethod(getBalance, getBalanceHandler{}, getBalanceParam{}, nil)
+	v3.RegisterMethod(getScoreApi, getScoreApiHandler{}, getScoreApiParam{}, getScoreApiResult{})
+	v3.RegisterMethod(getTotalSupply, getTotalSupplyeHandler{}, nil, nil)
+	v3.RegisterMethod(getTransactionResult, getTransactionResultHandler{}, transactionHashParam{}, transactionResult{})
+	v3.RegisterMethod(getTransactionByHash, getTransactionByHashHandler{}, transactionHashParam{}, transactionV3{})
+	v3.RegisterMethod(sendTransaction, sendTransactionHandler{}, sendTransactionParam{}, nil)
+	v3.RegisterMethod(getStatus, getStatusHandler{}, getStatusParam{}, nil)
 
 	return v3
 }

@@ -2,6 +2,7 @@ package v2
 
 import (
 	"context"
+	"log"
 
 	"github.com/intel-go/fastjson"
 	"github.com/osamingo/jsonrpc"
@@ -50,10 +51,13 @@ func (h getTransactionResultHandler) ServeJSONRPC(c context.Context, params *fas
 	}
 
 	var result getTransactionResultResult
+
 	err := rpcClient.CallFor(&result, getTransactionResult, param)
 	if err != nil {
-
+		log.Println(err.Error())
+		return nil, jsonrpc.ErrInternal()
 	}
+
 	return result, nil
 }
 
@@ -71,10 +75,13 @@ func (h getBalanceHandler) ServeJSONRPC(c context.Context, params *fastjson.RawM
 	}
 
 	var result getBalanceResult
+
 	err := rpcClient.CallFor(&result, getBalance, param)
 	if err != nil {
-
+		log.Println(err.Error())
+		return nil, jsonrpc.ErrInternal()
 	}
+
 	return result, nil
 }
 
@@ -83,11 +90,14 @@ type getTotalSupplyeHandler struct{}
 
 func (h getTotalSupplyeHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
-	var result *getTotalSupplyResult
+	var result getTotalSupplyResult
+
 	err := rpcClient.CallFor(&result, getTotalSupply)
 	if err != nil {
-
+		log.Println(err.Error())
+		return nil, jsonrpc.ErrInternal()
 	}
+
 	return result, nil
 }
 
@@ -96,11 +106,14 @@ type getLastBlockHandler struct{}
 
 func (h getLastBlockHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
-	var result *blockResult
+	var result blockResult
+
 	err := rpcClient.CallFor(&result, getLastBlock)
 	if err != nil {
-
+		log.Println(err.Error())
+		return nil, jsonrpc.ErrInternal()
 	}
+
 	return result, nil
 }
 
@@ -118,10 +131,13 @@ func (h getBlockByHashHandler) ServeJSONRPC(c context.Context, params *fastjson.
 	}
 
 	var result blockResult
+
 	err := rpcClient.CallFor(&result, getBlockByHash, param)
 	if err != nil {
-
+		log.Println(err.Error())
+		return nil, jsonrpc.ErrInternal()
 	}
+
 	return result, nil
 }
 
@@ -139,9 +155,12 @@ func (h getBlockByHeightHandler) ServeJSONRPC(c context.Context, params *fastjso
 	}
 
 	var result blockResult
+
 	err := rpcClient.CallFor(&result, getBlockByHeight, param)
 	if err != nil {
-
+		log.Println(err.Error())
+		return nil, jsonrpc.ErrInternal()
 	}
+
 	return result, nil
 }

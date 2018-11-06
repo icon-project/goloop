@@ -18,13 +18,13 @@ import (
 )
 
 const (
-	sendTransaction         string = "icx_sendTransaction"
-	getTransactionResult    string = "icx_getTransactionResult"
-	getBalance              string = "icx_getBalance"
-	getTotalSupply          string = "icx_getTotalSupply"
-	getLastBlock            string = "icx_getLastBlock"
-	getBlockByHash          string = "icx_getBlockByHash"
-	getBlockByHeight        string = "icx_getBlockByHeight"
+	sendTransaction      string = "icx_sendTransaction"
+	getTransactionResult string = "icx_getTransactionResult"
+	getBalance           string = "icx_getBalance"
+	getTotalSupply       string = "icx_getTotalSupply"
+	getLastBlock         string = "icx_getLastBlock"
+	getBlockByHash       string = "icx_getBlockByHash"
+	getBlockByHeight     string = "icx_getBlockByHeight"
 )
 
 func MethodRepository() *jsonrpc.MethodRepository {
@@ -32,7 +32,7 @@ func MethodRepository() *jsonrpc.MethodRepository {
 	v2 := jsonrpc.NewMethodRepository()
 
 	// api v2
-	v2.RegisterMethod(sendTransaction, sendTransactionHandler{}, nil, nil)
+	v2.RegisterMethod(sendTransaction, sendTransactionHandler{}, sendTransactionParam{}, sendTranscationResult{})
 	v2.RegisterMethod(getTransactionResult, getTransactionResultHandler{}, getTransactionResultParam{}, getTransactionResultResult{})
 	v2.RegisterMethod(getBalance, getBalanceHandler{}, getBalanceParam{}, getBalanceResult{})
 	v2.RegisterMethod(getTotalSupply, getTotalSupplyeHandler{}, nil, getTotalSupplyResult{})

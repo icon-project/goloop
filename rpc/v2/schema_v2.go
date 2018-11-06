@@ -81,7 +81,7 @@ type getBalanceResult struct {
 }
 
 type getTransactionResultResult struct {
-	ResponseCode int64                        `json:"response_code"`
+	ResponseCode string                       `json:"response_code"`
 	Response     getTransactionResultResponse `json:"response,omitempty"`
 	Message      string                       `json:"message,omitempty"`
 }
