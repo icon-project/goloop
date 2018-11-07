@@ -94,7 +94,11 @@ func (b *blockV1) String() string {
 }
 
 func (b *blockV1) NormalTransactions() module.TransactionList {
-	return nil
+	trs := make([]module.Transaction, len(b.blockV1Impl.Transactions))
+	for i, tx := range b.blockV1Impl.Transactions {
+		trs[i] = tx
+	}
+	return service.NewTransactionListFromSlice(trs)
 }
 
 func (b *blockV1) PatchTransactions() module.TransactionList {

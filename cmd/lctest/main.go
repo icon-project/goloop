@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -19,10 +20,6 @@ type JSONRPCResponse struct {
 
 type Wallet struct {
 	url string
-}
-
-var wallet = Wallet{
-	url: "https://testwallet.icon.foundation/api/v3",
 }
 
 func (w *Wallet) Call(method string, params map[string]interface{}) ([]byte, error) {
@@ -96,9 +93,24 @@ func VerifyBlock(b []byte) error {
 	if err != nil {
 		return err
 	}
+	if blk == nil {
+		log.Printf("Parsing failure:%s", string(b))
+		return errors.New("Parse Fail")
+	}
+	var info = map[int]int{}
+	txs := blk.NormalTransactions()
+	if txs != nil {
+		for i := txs.Iterator(); i.Has(); i.Next() {
+			if t, _, err := i.Get(); err == nil {
+				info[t.Version()] += 1
+			}
+		}
+	}
+	fmt.Printf("<> BLOCK %8d %s tx=%v\n",
+		blk.Height(), hex.EncodeToString(blk.ID()), info)
 	return blk.Verify()
 }
-func GetBlocksFromHeight(from int) {
+func VerifyBlocksFromHeight(wallet Wallet, from int) {
 	for i := from; ; i++ {
 		//for i := 1; ; i++ {
 		b, err := wallet.GetBlockByHeight(i)
@@ -108,7 +120,7 @@ func GetBlocksFromHeight(from int) {
 		}
 		err = VerifyBlock(b)
 		if err != nil {
-			log.Println("VerifyBlock ERROR", err)
+			log.Printf("VerifyBlock ERROR %+v", err)
 			log.Println("Block", string(b))
 			break
 		}
@@ -117,11 +129,17 @@ func GetBlocksFromHeight(from int) {
 
 func main() {
 	height := flag.Int("height", -1, "Height of block")
+	network := flag.String("network", "main", "Name of network to use")
 	flag.Parse()
+
+	wallet := Wallet{"https://wallet.icon.foundation/api/v3"}
+	if *network == "test" {
+		wallet = Wallet{"https://testwallet.icon.foundation/api/v3"}
+	}
 	for _, a := range flag.Args() {
 		switch a {
 		case "verify":
-			GetBlocksFromHeight(*height)
+			VerifyBlocksFromHeight(wallet, *height)
 		case "get":
 			var b []byte
 			var err error
@@ -146,7 +164,11 @@ func main() {
 				log.Println("PARSE FAILs", err)
 				break
 			}
-			log.Printf("PARSED %+v\n", blk)
+			if err := blk.Verify(); err != nil {
+				log.Println("VERIFY FAILs", err)
+				break
+			}
+			fmt.Println("Proposer", blk.Proposer())
 		}
 	}
 	return
