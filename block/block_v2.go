@@ -20,8 +20,8 @@ type blockV2HeaderForCodec struct {
 	PrevID                 []byte
 	VotesHash              []byte
 	NextValidatorsHash     []byte
-	PatchTransactionsRoot  []byte
-	NormalTransactionsRoot []byte
+	PatchTransactionsHash  []byte
+	NormalTransactionsHash []byte
 	LogBloom               []byte
 	Result                 []byte
 }
@@ -44,8 +44,8 @@ type blockV2Header struct {
 	PrevID                 []byte
 	VotesHash              []byte
 	NextValidatorsHash     []byte
-	PatchTransactionsRoot  []byte
-	NormalTransactionsRoot []byte
+	PatchTransactionsHash  []byte
+	NormalTransactionsHash []byte
 	LogBloom               []byte
 	Result                 []byte
 	id                     []byte
@@ -157,8 +157,8 @@ func newBlockV2FromParam(param *blockV2Param) module.Block {
 				PrevID:                 param.parent.ID(),
 				VotesHash:              param.votes.Hash(),
 				NextValidatorsHash:     param.nextValidators.Hash(),
-				PatchTransactionsRoot:  param.patchTransactions.Hash(),
-				NormalTransactionsRoot: param.normalTransactions.Hash(),
+				PatchTransactionsHash:  param.patchTransactions.Hash(),
+				NormalTransactionsHash: param.normalTransactions.Hash(),
 				LogBloom:               param.logBloom,
 				Result:                 param.result,
 			},
