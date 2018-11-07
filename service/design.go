@@ -1,8 +1,6 @@
 package service
 
 import (
-	"io"
-
 	"github.com/icon-project/goloop/common"
 
 	"github.com/icon-project/goloop/common/trie"
@@ -55,75 +53,6 @@ func (pool *transactionPool) addList(tx []transaction) {
 // finalize할 때 호출됨.
 func (pool *transactionPool) removeList(tx []transaction) {
 	// TODO 효과적으로 제거하는 방안 필요
-}
-
-////////////////////
-// Transaction
-////////////////////
-// TODO normal과 patch를 구분해야 하는가? 또한 naming에서 transaction vs patch로 정리할까?
-type transaction struct {
-	// TODO 아래는 type integer로 하거나, 혹은 struct를 분리하는 방식도 있음.
-	isPatch bool // patch: true, normal: false
-}
-
-func newTransaction(r io.Reader) (*transaction, error) {
-	if r == nil {
-		return nil, common.ErrIllegalArgument
-	}
-	// TODO impl
-	return nil, nil
-}
-
-func (tx *transaction) ID() []byte {
-	return nil
-}
-func (tx *transaction) Version() int {
-	return 0
-}
-func (tx *transaction) Bytes() ([]byte, error) {
-	return nil, nil
-}
-
-// TODO check()인지 validate()인지 확인 필요.
-func (tx *transaction) Verify() error {
-	return nil
-}
-
-// tx pool에 들어가기 전에 체크
-// TODO 뭘 해야 하는지 확인 필요
-// TODO 이건 안 하는 게 좋지 않을까 생각. 일단 GC 방법이 결정되면 검토 필요
-func (tx *transaction) check() error {
-	return nil
-}
-
-// TODO 뭘 해야 하는지 확인 필요
-func (tx *transaction) validate(state trie.Mutable) error {
-	return nil
-}
-
-func (tx *transaction) execute(state *transitionState) error {
-	// TODO 지정된 시간 이내에 결과가 나와야 한다.
-	return nil
-}
-
-func (tx *transaction) cancel() {
-}
-
-type transferTx struct {
-	transaction
-}
-
-type scoreCallTx struct {
-	transaction
-}
-
-func (t *scoreCallTx) execute(state *transitionState) error {
-	// TODO rollback될 것을 생각해서 항상 처음에 snapshot을 찍어줘야 한다.
-	return nil
-}
-
-type scoreDeployTx struct {
-	transaction
 }
 
 ////////////////////
@@ -190,9 +119,11 @@ func (l *receiptList) Hash() []byte {
 	if l.hash == nil {
 		for i, r := range l.receipts {
 			// TODO trie 내부에서 key hash를 안 하는지 확인 필요
-			// TODO i가 256를 넘을 경우를 감안한 byte encoding 수정
 			bytes, _ := r.Bytes()
-			l.trie.Set([]byte{byte(i)}, bytes)
+			if len(bytes) > 0 {
+				// TODO i가 256를 넘을 경우를 감안한 byte encoding 수정
+				l.trie.Set([]byte{byte(i)}, bytes)
+			}
 		}
 		l.hash = l.trie.GetSnapshot().Hash()
 	}

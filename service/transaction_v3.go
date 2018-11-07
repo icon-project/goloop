@@ -171,6 +171,43 @@ func (t *TransactionV3) Version() int {
 	return int(t.transactionV3.Version.Value)
 }
 
+// TODO dummy just for compile
+func (tx *TransactionV3) From() module.Address {
+	return nil
+}
+
+func (tx *TransactionV3) To() module.Address {
+	return nil
+}
+
+func (tx *TransactionV3) Value() int {
+	return -1
+}
+
+func (tx *TransactionV3) StepLimit() int {
+	return -1
+}
+
+func (tx *TransactionV3) TimeStamp() int64 {
+	return -1
+}
+
+func (tx *TransactionV3) NID() int {
+	return -1
+}
+
+func (tx *TransactionV3) Nonce() int64 {
+	return -1
+}
+
+func (tx *TransactionV3) Hash() []byte {
+	return nil
+}
+
+func (tx *TransactionV3) Signature() []byte {
+	return nil
+}
+
 func NewTransactionV3(b []byte) (module.Transaction, error) {
 	t := &transactionV3{Version: common.HexInt16{2}, params: b[:]}
 	if err := json.Unmarshal(b, t); err != nil {

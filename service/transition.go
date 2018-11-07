@@ -130,27 +130,9 @@ func (t *transition) Result() []byte {
 // transaction processing.
 // It may return nil before cb.OnExecute is called back by Execute.
 func (t *transition) NextValidators() module.ValidatorList {
-	// TODO fix it based on ValidatorList
-	return nil
-	/*
-		vals := make([]module.Validator, len(t.nextValidators))
-		copy(vals, t.nextValidators)
-		return vals
-	*/
+	// TODO copy validator list after defining validator struct
+	return t.nextValidatorList
 }
-
-// PatchReceipts returns patch receipts.
-// It may return nil before cb.OnExecute is called back by Execute.
-func (t *transition) PatchReceipts() module.ReceiptList {
-	if t.patchReceipts == nil {
-		return nil
-	}
-	return t.patchReceipts
-}
-
-// NormalReceipts returns receipts.
-// It may return nil before cb.OnExecute is called back by Execute.
-func (t *transition) NormalReceipts() module.ReceiptList { return t.normalReceipts }
 
 // LogBloom returns log bloom filter for this transition.
 // It may return nil before cb.OnExecute is called back by Execute.
@@ -273,7 +255,7 @@ func (t *transition) stepString() string {
 	}
 }
 
-// TODO confirm result byte format depending on the existence of patch
+// TODO store a serialized form to []byte
 type resultBytes []byte
 
 func newResultBytes(result []byte) (resultBytes, error) {

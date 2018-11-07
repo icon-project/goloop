@@ -2,7 +2,6 @@ package service
 
 import (
 	"errors"
-	"io"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
@@ -151,11 +150,21 @@ func (m *manager) Finalize(t module.Transition, opt int) {
 	}
 }
 
-// TransactionFromReader returns a Transaction instance from bytes
-// read by Reader.
-func (m *manager) TransactionFromReader(r io.Reader) module.Transaction {
-	tx, _ := newTransaction(r)
-	return tx
+// TransactionFromBytes returns a Transaction instance from bytes.
+func (m *manager) TransactionFromBytes(b []byte) module.Transaction {
+	// TODO impl
+	/*
+		tx, _ := newTransaction(b)
+		return tx
+	*/
+	return nil
+}
+
+// TransactionListFromHash returns a TransactionList instance from
+// the hash of transactions
+func (m *manager) TransactionListFromHash(hash []byte) module.TransactionList {
+	// TODO impl
+	return nil
 }
 
 func (m *manager) checkTransitionResult(t module.Transition) (*transition, trie.Mutable, error) {

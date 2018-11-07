@@ -1,7 +1,5 @@
 package module
 
-import "io"
-
 // TransitionCallback provides transition change notifications. All functions
 // are called back with the same Transition instance for the convenience.
 type TransitionCallback interface {
@@ -17,6 +15,15 @@ type Transaction interface {
 	Version() int
 	Bytes() ([]byte, error)
 	Verify() error
+	From() Address
+	To() Address
+	Value() int
+	StepLimit() int
+	TimeStamp() int64
+	NID() int
+	Nonce() int64
+	Hash() []byte
+	Signature() []byte
 }
 
 type TransactionIterator interface {
@@ -55,19 +62,13 @@ type Transition interface {
 	Execute(cb TransitionCallback) (canceler func() bool, err error)
 
 	// Result returns service manager defined result bytes.
+	// For example, it can be "[world_state_hash][patch_tx_hash][normal_tx_hash]".
 	Result() []byte
 
 	// NextValidators returns the addresses of validators as a result of
 	// transaction processing.
 	// It may return nil before cb.OnExecute is called back by Execute.
 	NextValidators() ValidatorList
-
-	// PatchReceipts returns patch receipts.
-	// It may return nil before cb.OnExecute is called back by Execute.
-	PatchReceipts() ReceiptList
-	// NormalReceipts returns receipts.
-	// It may return nil before cb.OnExecute is called back by Execute.
-	NormalReceipts() ReceiptList
 
 	// LogBloom returns log bloom filter for this transition.
 	// It may return nil before cb.OnExecute is called back by Execute.
@@ -114,7 +115,10 @@ type ServiceManager interface {
 	// It should be called for every transition.
 	Finalize(transition Transition, opt int)
 
-	// TransactionFromReader returns a Transaction instance from bytes
-	// read by Reader.
-	TransactionFromReader(r io.Reader) Transaction
+	// TransactionFromBytes returns a Transaction instance from bytes.
+	TransactionFromBytes(b []byte) Transaction
+
+	// TransactionListFromHash returns a TransactionList instance from
+	// the hash of transactions
+	TransactionListFromHash(hash []byte) TransactionList
 }
