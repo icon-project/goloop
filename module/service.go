@@ -1,5 +1,7 @@
 package module
 
+import "io"
+
 // TransitionCallback provides transition change notifications. All functions
 // are called back with the same Transition instance for the convenience.
 type TransitionCallback interface {
@@ -39,8 +41,29 @@ type TransactionList interface {
 	Equal(TransactionList) bool
 }
 
+type EventLogs interface {
+	ScoreAddress() []byte
+	// TODO: indexed 정의 필요. 데이터들의 속성 필요
+	//"indexed": [
+	//"Transfer(Address,Address,int)",
+	//"hx4873b94352c8c1f3b2f09aaeccea31ce9e90bd31",
+	//"hx0000000000000000000000000000000000000000",
+	//"0x8ac7230489e80000"
+}
+
 type Receipt interface {
 	Bytes() ([]byte, error)
+	Status() bool // success - 0x1, fail - 0x0
+	To() []byte
+	//Hash() []byte
+	Index() int
+	CumulativeStepUsed() int
+	StepUsed() int
+	StepPrice() int
+	ScoreAddress() []byte
+	EventLogs() EventLogs
+	Data() []byte
+	LogsBloom() []byte
 }
 
 type ReceiptList interface {
@@ -62,13 +85,19 @@ type Transition interface {
 	Execute(cb TransitionCallback) (canceler func() bool, err error)
 
 	// Result returns service manager defined result bytes.
-	// For example, it can be "[world_state_hash][patch_tx_hash][normal_tx_hash]".
 	Result() []byte
 
 	// NextValidators returns the addresses of validators as a result of
 	// transaction processing.
 	// It may return nil before cb.OnExecute is called back by Execute.
 	NextValidators() ValidatorList
+
+	// PatchReceipts returns patch receipts.
+	// It may return nil before cb.OnExecute is called back by Execute.
+	PatchReceipts() ReceiptList
+	// NormalReceipts returns receipts.
+	// It may return nil before cb.OnExecute is called back by Execute.
+	NormalReceipts() ReceiptList
 
 	// LogBloom returns log bloom filter for this transition.
 	// It may return nil before cb.OnExecute is called back by Execute.
@@ -97,6 +126,12 @@ const (
 //		2. create Transaction instances by TransactionFromReader
 //		3. CreateTransition with TransactionList
 //		4. Transition.Execute
+type ReceiptType int
+const (
+	state ReceiptType = iota
+	patch
+	normal
+)
 type ServiceManager interface {
 	// ProposeTransition proposes a Transition following the parent Transition.
 	// Returned Transition always passes validation.

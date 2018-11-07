@@ -342,13 +342,6 @@ func (m *mpt) Flush() error {
 	return nil
 }
 
-func addProof(buf [][]byte, index int, hash []byte) {
-	if len(buf) == index {
-		buf = make([][]byte, len(buf)+10)
-	}
-	copy(buf[index], hash)
-}
-
 // bool : if find k, true else false
 // [][]byte : stored seiazlied child. If child is smaller than hashableSize, this is nil
 // depth starts 0
@@ -527,8 +520,18 @@ func (m *mpt) Reset(immutable trie.Immutable) error {
 }
 
 func (m *mpt) Empty() bool {
-	// TODO Implement
-	return false
+	var pool map[string]trie.Object
+	var commitedHash hash
+	if pool, commitedHash = m.mergeSnapshot(); commitedHash == nil {
+		nilCnt := 0
+		for _, v := range pool {
+			if v == nil {
+				nilCnt++
+			}
+		}
+		return nilCnt == len(pool)
+	}
+	return len(pool) == 0 && m.root == nil
 }
 
 // struct for object trie
