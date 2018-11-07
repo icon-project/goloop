@@ -60,7 +60,7 @@ func TestAccountSnapshot_Bytes(t *testing.T) {
 	serialized := s1.Bytes()
 	s1.Flush()
 
-	s2 := new(accountSnapshot)
+	s2 := new(accountSnapshotImpl)
 	s2.Reset(database, serialized)
 
 	v2 := s2.getBalance()
