@@ -20,8 +20,6 @@ type Block interface {
 	Proposer() Address
 	LogBloom() []byte
 	Result() []byte
-	PatchReceipts() ReceiptList
-	NormalReceipts() ReceiptList
 
 	MarshalHeader(w io.Writer)
 	MarshalBody(w io.Writer)

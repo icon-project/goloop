@@ -3,7 +3,6 @@ package block
 import (
 	"bytes"
 	"errors"
-	"sync"
 
 	"github.com/icon-project/goloop/module"
 )
@@ -22,8 +21,8 @@ type transitionCallback interface {
 }
 
 type setting struct {
-	mutex *sync.Mutex
-	sm    module.ServiceManager
+	syncer *syncer
+	sm     module.ServiceManager
 }
 
 type transitionImpl struct {
@@ -36,6 +35,13 @@ type transitionImpl struct {
 	_nRef        int             // count only transactions
 	_parent      *transitionImpl // nil if parent is not accessible
 	_children    []*transitionImpl
+}
+
+type transition struct {
+	_ti *transitionImpl // nil iff disposed
+
+	// nil iff cb was called, tr was canceled or original cb was nil
+	_cb transitionCallback
 }
 
 func (ti *transitionImpl) running() bool {
@@ -63,17 +69,18 @@ func (ti *transitionImpl) exeState() exeState {
 }
 
 func (ti *transitionImpl) newTransition(cb transitionCallback) *transition {
+	tr := &transition{ti, cb}
+	ti._nRef++
 	if ti._valErr != nil {
-		cb.onValidate(*(ti._valErr))
+		tr.onValidate(*(ti._valErr))
 	}
 	if ti._exeErr != nil {
-		cb.onValidate(*(ti._exeErr))
+		tr.onValidate(*(ti._exeErr))
 	}
 	if ti.running() {
-		ti._cbs = append(ti._cbs, cb)
+		ti._cbs = append(ti._cbs, tr)
 	}
-	ti._nRef++
-	return &transition{ti, cb}
+	return tr
 }
 
 func (ti *transitionImpl) cancel(tncb transitionCallback) bool {
@@ -117,8 +124,8 @@ func (ti *transitionImpl) unref() {
 }
 
 func (ti *transitionImpl) OnValidate(tr module.Transition, err error) {
-	ti._setting.mutex.Lock()
-	defer ti._setting.mutex.Unlock()
+	ti._setting.syncer.begin()
+	defer ti._setting.syncer.end()
 	if !ti.running() {
 		return
 	}
@@ -132,8 +139,8 @@ func (ti *transitionImpl) OnValidate(tr module.Transition, err error) {
 }
 
 func (ti *transitionImpl) OnExecute(tr module.Transition, err error) {
-	ti._setting.mutex.Lock()
-	defer ti._setting.mutex.Unlock()
+	ti._setting.syncer.begin()
+	defer ti._setting.syncer.end()
 	if !ti.running() {
 		return
 	}
@@ -202,18 +209,25 @@ func (ti *transitionImpl) verifyResult(block module.Block) error {
 	if !bytes.Equal(mtr.NextValidators().Hash(), block.NextValidators().Hash()) {
 		return errors.New("bad next validators")
 	}
-	if !bytes.Equal(mtr.PatchReceipts().Hash(), block.PatchReceipts().Hash()) {
-		return errors.New("bad patch receipts")
-	}
-	if !bytes.Equal(mtr.NormalReceipts().Hash(), block.NormalReceipts().Hash()) {
-		return errors.New("bad normal receipts")
-	}
 	return nil
 }
 
-type transition struct {
-	_ti *transitionImpl
-	_cb transitionCallback
+func (tr *transition) onValidate(err error) {
+	cb := tr._cb
+	if err != nil {
+		tr._cb = nil
+	}
+	if cb != nil {
+		cb.onValidate(err)
+	}
+}
+
+func (tr *transition) onExecute(err error) {
+	cb := tr._cb
+	tr._cb = nil
+	if cb != nil {
+		cb.onExecute(err)
+	}
 }
 
 func (tr *transition) dispose() {
@@ -230,7 +244,7 @@ func (tr *transition) cancel() bool {
 	if tr._ti == nil {
 		return false
 	}
-	res := tr._ti.cancel(tr._cb)
+	res := tr._ti.cancel(tr)
 	tr._cb = nil
 	return res
 }
@@ -257,9 +271,7 @@ func (tr *transition) transit(
 	return ti.newTransition(cb)
 }
 
-func (tr *transition) propose(
-	cb transitionCallback,
-) *transition {
+func (tr *transition) propose(cb transitionCallback) *transition {
 	if tr._ti == nil {
 		return nil
 	}
@@ -267,20 +279,37 @@ func (tr *transition) propose(
 	return ti.newTransition(cb)
 }
 
+func (tr *transition) newTransition(cb transitionCallback) *transition {
+	if tr._ti == nil {
+		return nil
+	}
+	return tr._ti.newTransition(cb)
+}
+
 func (tr *transition) verifyResult(block module.Block) error {
+	if tr._ti == nil {
+		return nil
+	}
 	return tr._ti.verifyResult(block)
+}
+
+func (tr *transition) mtransition() module.Transition {
+	if tr._ti == nil {
+		return nil
+	}
+	return tr._ti._mtransition
 }
 
 func newInitialTransition(
 	mtransition module.Transition,
-	mutex *sync.Mutex,
+	syncer *syncer,
 	sm module.ServiceManager,
 ) *transition {
 	var nilErr error
 	ti := &transitionImpl{
 		_setting: &setting{
-			mutex: mutex,
-			sm:    sm,
+			syncer: syncer,
+			sm:     sm,
 		},
 		_mtransition: mtransition,
 		_valErr:      &nilErr,
