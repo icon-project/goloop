@@ -51,13 +51,13 @@ func (m *manager) ProposeTransition(parent module.Transition) (module.Transition
 	// find validated transactions
 	patchTxs := m.patchTxPool.candidate(state, -1) // try to add all patches in the block
 	maxTxNum := txMaxNumInBlock - len(patchTxs)
-	var normalTxs []transaction
+	var normalTxs []*transaction
 	if maxTxNum > 0 {
 		normalTxs = m.normalTxPool.candidate(state, txMaxNumInBlock-len(patchTxs))
 	} else {
 		// what if patches already exceed the limit of transactions? It usually
 		// doesn't happen but...
-		normalTxs = make([]transaction, 0)
+		normalTxs = make([]*transaction, 0)
 	}
 
 	// create transition instance and return it
@@ -91,7 +91,7 @@ func (m *manager) CreateTransition(parent module.Transition, txList module.Trans
 		return nil, common.ErrIllegalArgument
 	}
 
-	return newTransition(pt, &transactionlist{txs: make([]transaction, 0)}, txlist, state, false), nil
+	return newTransition(pt, &transactionlist{txs: make([]*transaction, 0)}, txlist, state, false), nil
 }
 
 // GetPatches returns all patch transactions based on the parent transition.
@@ -127,7 +127,7 @@ func (m *manager) PatchTransition(t module.Transition, patchTxList module.Transa
 	// prepare patch transaction list
 	var txList *transactionlist
 	if patchTxList == nil {
-		txList = &transactionlist{txs: make([]transaction, 0)}
+		txList = &transactionlist{txs: make([]*transaction, 0)}
 	} else {
 		txList, ok = patchTxList.(*transactionlist)
 		if !ok {

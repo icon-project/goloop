@@ -21,6 +21,9 @@ type transactionV2V3 struct {
 }
 
 type transaction struct {
+	// added by KN.KIM for transactionPool test
+	timestamp int64
+	data      []byte
 }
 
 // TODO define
@@ -81,7 +84,8 @@ func newTransaction(r io.Reader) (*transaction, error) {
 }
 
 func (tx *transaction) ID() []byte {
-	return nil
+	// added by KN.KIM for transactionPool test
+	return tx.data
 }
 func (tx *transaction) Version() int {
 	return 0
@@ -117,7 +121,8 @@ func (tx *transaction) StepLimit() int {
 
 // TODO
 func (tx *transaction) TimeStamp() int64 {
-	return -1
+	// added by KN.KIM for transactionPool test
+	return tx.timestamp
 }
 
 // TODO

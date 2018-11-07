@@ -19,48 +19,48 @@ import (
 // TODO tx를 버리는 기준 확인 필요
 // TODO tx 시간 순으로 정렬 필요
 // TODO 당연하지만, lock 잘 잡고...
-type transactionPool struct {
-}
-
-// transaction에 넣을 때 간단한 검증이 필요하다면, 검증은 외부에서 해야 함.
-func (pool *transactionPool) add(tx transaction) error {
-	return nil
-}
-
-// 없다면, len()이 0인 TransactionList를 리턴한다. (nil 아님)
-// It returns all candidates for a negative integer n.
-func (pool *transactionPool) candidate(state trie.Mutable, max int) []transaction {
-	// TODO state를 전달받더라도 실제 account info는 address를 통해서 바로 찾는 것이
-	// 유리할텐데... trie를 통해서 Get하면 비효율적임.
-	// TODO max가 음수이면 모든 transaction을 리턴한다. patch pool에 대해서 필요할 것
-	// 같음.
-	// TODO validate 작업도 필요.
-	// TODO ServiceManager에 하나의 pool을 관리하고 candidate를 구할 때 transition
-	// 기반으로 사용된 적이 있는 것을 제외하는 방식으로 구현하려고 하는데, unfinalized
-	// branch가 긴 것을 감안하면 좀 더 효과적인 구현이 있을지 고민 필요
-	return nil
-}
-
-// 이것을 사용할 경우 없음.
-func (pool *transactionPool) remove(tx transaction) {
-}
-
-// 사용할 경우 없음. 이것도 간단한 검증은 외부에서 수행
-func (pool *transactionPool) addList(tx []transaction) {
-
-}
-
-// finalize할 때 호출됨.
-func (pool *transactionPool) removeList(tx []transaction) {
-	// TODO 효과적으로 제거하는 방안 필요
-}
+//type transactionPool struct {
+//}
+//
+//// transaction에 넣을 때 간단한 검증이 필요하다면, 검증은 외부에서 해야 함.
+//func (pool *transactionPool) add(tx transaction) error {
+//	return nil
+//}
+//
+//// 없다면, len()이 0인 TransactionList를 리턴한다. (nil 아님)
+//// It returns all candidates for a negative integer n.
+//func (pool *transactionPool) candidate(state trie.Mutable, max int) []transaction {
+//	// TODO state를 전달받더라도 실제 account info는 address를 통해서 바로 찾는 것이
+//	// 유리할텐데... trie를 통해서 Get하면 비효율적임.
+//	// TODO max가 음수이면 모든 transaction을 리턴한다. patch pool에 대해서 필요할 것
+//	// 같음.
+//	// TODO validate 작업도 필요.
+//	// TODO ServiceManager에 하나의 pool을 관리하고 candidate를 구할 때 transition
+//	// 기반으로 사용된 적이 있는 것을 제외하는 방식으로 구현하려고 하는데, unfinalized
+//	// branch가 긴 것을 감안하면 좀 더 효과적인 구현이 있을지 고민 필요
+//	return nil
+//}
+//
+//// 이것을 사용할 경우 없음.
+//func (pool *transactionPool) remove(tx transaction) {
+//}
+//
+//// 사용할 경우 없음. 이것도 간단한 검증은 외부에서 수행
+//func (pool *transactionPool) addList(tx []transaction) {
+//
+//}
+//
+//// finalize할 때 호출됨.
+//func (pool *transactionPool) removeList(tx []transaction) {
+//	// TODO 효과적으로 제거하는 방안 필요
+//}
 
 ////////////////////
 // Transaction List
 ////////////////////
 // TODO to avoid name conflict, temporarily take 'list' instead of 'List'
 type transactionlist struct {
-	txs  []transaction
+	txs  []*transaction
 	hash []byte
 }
 
@@ -68,7 +68,7 @@ func (l *transactionlist) Get(n int) (module.Transaction, error) {
 	if n < 0 || n >= len(l.txs) {
 		return nil, common.ErrIllegalArgument
 	}
-	return &l.txs[n], nil
+	return l.txs[n], nil
 }
 
 func (l *transactionlist) Iterator() module.TransactionIterator {
