@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"fmt"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"log"
 
@@ -122,7 +123,7 @@ func (l *transactionSlice) Equal(t module.TransactionList) bool {
 }
 
 func NewTransactionListFromSlice(list []module.Transaction) module.TransactionList {
-	tm := trie_manager.New(nil)
+	tm := trie_manager.New(db.NewMapDB())
 	mt := tm.NewMutable(nil)
 	for idx, tr := range list {
 		k, _ := codec.MP.MarshalToBytes(uint(idx))
