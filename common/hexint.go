@@ -2,9 +2,11 @@ package common
 
 import (
 	"encoding/json"
-	"github.com/ugorji/go/codec"
 	"math/big"
 	"strconv"
+
+	"github.com/pkg/errors"
+	"github.com/ugorji/go/codec"
 )
 
 type HexInt struct {
@@ -19,12 +21,19 @@ func (i *HexInt) UnmarshalJSON(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
 		s = string(b)
+		if _, ok := i.SetString(s, 0); ok {
+			return nil
+		}
+		return err
+	} else {
+		if len(s) >= 2 && s[0:2] == "0x" {
+			s = s[2:]
+		}
+		if _, ok := i.SetString(s, 16); ok {
+			return nil
+		}
 	}
-	_, ok := i.SetString(s, 0)
-	if ok {
-		return nil
-	}
-	return ErrIllegalArgument
+	return errors.Errorf("FailToParse(%s) for HexInt", s)
 }
 
 func (i *HexInt) CodecEncodeSelf(e *codec.Encoder) {
