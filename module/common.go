@@ -3,17 +3,22 @@ package module
 type Address interface {
 	String() string
 	Bytes() []byte
+	ID() []byte
 }
 
 type Vote interface {
-	Voter() Address
+	Voter() Validator
 	Bytes() []byte
 }
 
-type Validator Address
+type Validator interface {
+	Address() Address
 
-func GetID() Validator {
-	return nil
+	// PublicKey returns public key of the validator.
+	// If it doesn't have, then it return nil
+	PublicKey() []byte
+
+	Bytes() []byte
 }
 
 type ValidatorList interface {

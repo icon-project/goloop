@@ -54,7 +54,7 @@ func (a *Address) SetString(s string) error {
 	if bytes, err := hex.DecodeString(s); err != nil {
 		return err
 	} else {
-		if err := a.SetTypeAndBytes(isContract, bytes); err != nil {
+		if err := a.SetTypeAndID(isContract, bytes); err != nil {
 			return err
 		}
 	}
@@ -66,7 +66,7 @@ func (a *Address) Bytes() []byte {
 }
 
 // BytesPart returns part of address without type prefix.
-func (a *Address) BytesPart() []byte {
+func (a *Address) ID() []byte {
 	return (*a)[1:]
 }
 
@@ -76,23 +76,23 @@ func (a *Address) SetBytes(b []byte) error {
 	}
 	switch b[0] {
 	case 0:
-		return a.SetTypeAndBytes(false, b[1:])
+		return a.SetTypeAndID(false, b[1:])
 	case 1:
-		return a.SetTypeAndBytes(true, b[1:])
+		return a.SetTypeAndID(true, b[1:])
 	default:
 		return ErrIllegalArgument
 	}
 }
 
-func (a *Address) SetTypeAndBytes(ic bool, b []byte) error {
-	if b == nil {
+func (a *Address) SetTypeAndID(ic bool, id []byte) error {
+	if id == nil {
 		return ErrIllegalArgument
 	}
 	switch {
-	case len(b) < AddressBytes:
-		copy(a[AddressBytes-len(b)+1:], b)
+	case len(id) < AddressBytes:
+		copy(a[AddressBytes-len(id)+1:], id)
 	default:
-		copy(a[1:], b)
+		copy(a[1:], id)
 	}
 	if ic {
 		a[0] = 1
@@ -104,13 +104,13 @@ func (a *Address) SetTypeAndBytes(ic bool, b []byte) error {
 
 func NewAccountAddress(b []byte) *Address {
 	a := new(Address)
-	a.SetTypeAndBytes(false, b)
+	a.SetTypeAndID(false, b)
 	return a
 }
 
 func NewContractAddress(b []byte) *Address {
 	a := new(Address)
-	a.SetTypeAndBytes(true, b)
+	a.SetTypeAndID(true, b)
 	return a
 }
 
@@ -129,7 +129,7 @@ func NewAccountAddressFromPublicKey(pubKey *crypto.PublicKey) *Address {
 		log.Panicln("FAIL invalid public key:", pubKey)
 	}
 	digest := crypto.SHA3Sum256(pk[1:])
-	a.SetTypeAndBytes(false, digest[len(digest)-20:])
+	a.SetTypeAndID(false, digest[len(digest)-20:])
 	return a
 }
 
