@@ -137,7 +137,7 @@ func (s *accountState) getSnapshot() *accountSnapshot {
 		}
 	}
 	return &accountSnapshot{
-		balance:     s.balance,
+		balance:     s.balance.Clone(),
 		fIsContract: s.fIsContract,
 		store:       store,
 	}
