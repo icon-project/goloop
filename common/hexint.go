@@ -39,6 +39,12 @@ func (i *HexInt) CodecDecodeSelf(d *codec.Decoder) {
 	}
 }
 
+func (i *HexInt) Clone() HexInt {
+	var v HexInt
+	v.Set(&i.Int)
+	return v
+}
+
 type HexInt16 struct {
 	Value int16
 }
