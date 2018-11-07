@@ -119,6 +119,9 @@ func (m *mpt) GetSnapshot() trie.SnapshotForObject {
 	}
 	if m.root != nil {
 		m.root.freeze()
+		if debugDump {
+			m.root.dump()
+		}
 	}
 	return &mpt{
 		mptBase: m.mptBase,
@@ -132,12 +135,10 @@ func (m *mpt) Set(k []byte, o trie.Object) error {
 	if debugPrint {
 		log.Printf("mpt%p.Set(%x,%v)", m, k, o)
 	}
-	root, dirty, err := m.set(m.root, bytesToKeys(k), o)
-	if dirty {
-		m.root = root
-		if debugDump && root != nil {
-			root.dump()
-		}
+	root, _, err := m.set(m.root, bytesToKeys(k), o)
+	m.root = root
+	if debugDump && root != nil {
+		root.dump()
 	}
 	return err
 }
@@ -165,11 +166,19 @@ func (m *mpt) Delete(k []byte) error {
 func (m *mpt) Reset(s trie.ImmutableForObject) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
+
+	if debugPrint {
+		log.Printf("mpt%p.Reset(%p)\n", m, s)
+	}
+
 	m2, ok := s.(*mpt)
 	if (!ok) || !reflect.DeepEqual(m2.mptBase, m.mptBase) {
 		log.Panicln("Supplied ImmutableForObject isn't usable in here", s)
 	}
 	m.root = m2.root
+	if debugDump && m.root != nil {
+		m.root.dump()
+	}
 }
 
 type iteratorItem struct {
