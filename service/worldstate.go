@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
@@ -31,8 +32,8 @@ func (ws *worldSnapshot) flush() error {
 	return ws.accounts.Flush()
 }
 
-func (ws *worldSnapshot) getAccountSnapshot(name string) *accountSnapshot {
-	key := accountNameToKey(name)
+func (ws *worldSnapshot) getAccountSnapshot(id []byte) *accountSnapshot {
+	key := addressIDToKey(id)
 	obj, err := ws.accounts.Get(key)
 	if err != nil {
 		log.Panicf("Fail to get acount for %x err=%v", key, err)
@@ -49,15 +50,16 @@ func (ws *worldSnapshot) getAccountSnapshot(name string) *accountSnapshot {
 	}
 }
 
-func accountNameToKey(s string) []byte {
-	return []byte(s)
+func addressIDToKey(id []byte) []byte {
+	return crypto.SHA3Sum256(id)
 }
 
-func (ws *worldState) getAccountState(name string) *accountState {
-	if a, ok := ws.mutableAccounts[name]; ok {
+func (ws *worldState) getAccountState(id []byte) *accountState {
+	ids := string(id)
+	if a, ok := ws.mutableAccounts[ids]; ok {
 		return a
 	}
-	key := accountNameToKey(name)
+	key := addressIDToKey(id)
 	obj, err := ws.accounts.Get(key)
 	if err != nil {
 		log.Panicf("Fail to get acount for %x err=%+v", key, err)
@@ -68,13 +70,13 @@ func (ws *worldState) getAccountState(name string) *accountState {
 		as = obj.(*accountSnapshot)
 	}
 	ac := newAccountState(ws.database, as)
-	ws.mutableAccounts[name] = ac
+	ws.mutableAccounts[ids] = ac
 	return ac
 }
 
 func (ws *worldState) getSnapshot() *worldSnapshot {
-	for name, as := range ws.mutableAccounts {
-		key := accountNameToKey(name)
+	for id, as := range ws.mutableAccounts {
+		key := addressIDToKey([]byte(id))
 		s := as.getSnapshot()
 		if s.isEmpty() {
 			if err := ws.accounts.Delete(key); err != nil {
