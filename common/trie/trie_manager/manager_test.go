@@ -872,7 +872,7 @@ func TestObjectFlush(t *testing.T) {
 	}
 }
 
-func ObjectIterate(t *testing.T) {
+func TestObjectIterate(t *testing.T) {
 	tests := [][]string{
 		[]string{"test", "hello", "puha"},
 		[]string{"apple", "pear", "strawberry"},
