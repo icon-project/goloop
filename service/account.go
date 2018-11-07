@@ -6,7 +6,6 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
-	"github.com/pkg/errors"
 	mp "github.com/ugorji/go/codec"
 	"log"
 	"math/big"
@@ -16,15 +15,15 @@ type accountSnapshot interface {
 	trie.Object
 	getBalance() *big.Int
 	isContract() bool
-	isEmpty() bool
+	empty() bool
 	getValue(k []byte) ([]byte, error)
 }
 
 type accountState interface {
 	getBalance() *big.Int
-	setBalance(v *big.Int)
 	isContract() bool
 	getValue(k []byte) ([]byte, error)
+	setBalance(v *big.Int)
 	setValue(k, v []byte) error
 	deleteValue(k []byte) error
 	getSnapshot() accountSnapshot
@@ -44,13 +43,12 @@ func (s *accountSnapshotImpl) getBalance() *big.Int {
 	return v
 }
 
-func (s *accountSnapshotImpl) setBalance(*big.Int) {
-	log.Printf("setBalance with readonly snapshot err=%+v",
-		errors.New("PermissionDenied"))
-}
-
 func (s *accountSnapshotImpl) isContract() bool {
 	return s.fIsContract
+}
+
+func (s *accountSnapshotImpl) empty() bool {
+	return s.balance.BitLen() == 0 && s.store == nil
 }
 
 func (s *accountSnapshotImpl) Bytes() []byte {
@@ -97,10 +95,6 @@ func (s *accountSnapshotImpl) Flush() error {
 		return sp.Flush()
 	}
 	return nil
-}
-
-func (s *accountSnapshotImpl) isEmpty() bool {
-	return s.balance.BitLen() == 0 && s.store == nil
 }
 
 func (s *accountSnapshotImpl) Equal(object trie.Object) bool {

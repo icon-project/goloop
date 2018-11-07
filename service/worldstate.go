@@ -96,7 +96,7 @@ func (ws *worldStateImpl) getSnapshot() worldSnapshot {
 	for id, as := range ws.mutableAccounts {
 		key := addressIDToKey([]byte(id))
 		s := as.getSnapshot()
-		if s.isEmpty() {
+		if s.empty() {
 			if err := ws.accounts.Delete(key); err != nil {
 				log.Panicf("Fail to delete account key = %x", key)
 			}
