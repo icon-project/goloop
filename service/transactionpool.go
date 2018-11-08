@@ -150,7 +150,11 @@ func (txPool *transactionPool) candidate(state trie.Mutable, max int) []*transac
 	txs := make([]*transaction, txsLen)
 	txsIndex := 0
 	for iter := txPool.txList.Front(); iter != nil; iter = iter.Next() {
+		// 현재 validate에 실패한 tx에 대해서 삭제함.
 		if iter.Value.(*transaction).validate(state) != nil {
+			tmp := iter.Prev()
+			txPool.txList.Remove(iter)
+			iter = tmp
 			continue
 		}
 		txs[txsIndex] = iter.Value.(*transaction)
