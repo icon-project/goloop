@@ -38,6 +38,21 @@ func NewManager(db db.Database) module.ServiceManager {
 		trieManager:  mpt.NewManager(db)}
 }
 
+func (m *manager) ReceiptFromTransactionID(id []byte) module.Receipt {
+	// TODO Implement ReceiptFromTransactionID
+	panic("implement me")
+}
+
+func (m *manager) ReceiptListFromResult(result []byte, g module.TransactionGroup) module.ReceiptList {
+	// TODO Implement ReceiptListFromResult
+	panic("implement me")
+}
+
+func (m *manager) TransactionListFromSlice(txs []module.Transaction, version int) module.TransactionList {
+	// TODO Implement TransactionListFromSlice
+	panic("implement me")
+}
+
 // ProposeTransition proposes a Transition following the parent Transition.
 // parent transition should have a valid result.
 // Returned Transition always passes validation.
