@@ -19,8 +19,8 @@ type Transaction interface {
 	Verify() error
 	From() Address
 	To() Address
-	Value() big.Int
-	StepLimit() big.Int
+	Value() *big.Int
+	StepLimit() *big.Int
 	Timestamp() int64
 	NID() int
 	Nonce() int64

@@ -56,8 +56,8 @@ func newTransactionLegacy(b []byte) (*transaction, error) {
 				version:   2,
 				from:      t3.From,
 				to:        t3.To,
-				value:     t3.Value.Int,
-				stepLimit: t3.Fee.Int,
+				value:     &t3.Value.Int,
+				stepLimit: &t3.Fee.Int,
 				timestamp: t3.TimeStamp.Value,
 				nid:       0,
 				nonce:     t3.Nonce.Value,
@@ -76,8 +76,8 @@ func newTransactionLegacy(b []byte) (*transaction, error) {
 				version:   3,
 				from:      t3.From,
 				to:        t3.To,
-				value:     t3.Value.Int,
-				stepLimit: t3.StepLimit.Int,
+				value:     &t3.Value.Int,
+				stepLimit: &t3.StepLimit.Int,
 				timestamp: t3.TimeStamp.Value,
 				nid:       int(t3.NID.Value),
 				nonce:     t3.Nonce.Value,
@@ -179,6 +179,7 @@ func (t *transactionV3) verify() error {
 			return errors.New("FROM is different from signer")
 		}
 	}
+	log.Println("TX verified")
 	return nil
 }
 

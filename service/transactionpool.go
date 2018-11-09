@@ -207,9 +207,6 @@ func (txPool *transactionPool) addList(txs []*transaction) {
 			//fmt.Println("drop ID = ", addTx.ID(), ", timestamp = ", addTx.TimeStamp())
 			continue
 		}
-		if addTx.check() != nil {
-			continue
-		}
 		if addTx.Timestamp() < expired {
 			continue
 		}

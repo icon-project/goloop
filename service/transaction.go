@@ -10,7 +10,7 @@ import (
 
 // TODO consider how to provide a convenient way of JSON string conversion
 // for JSON-RPC (But still it's optional)
-// TODO refactoring
+// TODO refactoring for the variation of serialization format and TX API version
 func newTransaction(b []byte) (module.Transaction, error) {
 	if len(b) < 1 {
 		return nil, common.ErrIllegalArgument
@@ -22,9 +22,7 @@ func newTransaction(b []byte) (module.Transaction, error) {
 	// from external modules.
 	if b[0] == '{' {
 		return newTransactionLegacy(b)
-
 	} else {
-		// TODO deserialize to the new format
 		return nil, nil
 	}
 }
@@ -44,8 +42,8 @@ type transaction struct {
 	// TODO type check
 	from      common.Address
 	to        common.Address
-	value     big.Int
-	stepLimit big.Int
+	value     *big.Int
+	stepLimit *big.Int
 	timestamp int64
 	nid       int
 	nonce     int64
@@ -69,8 +67,10 @@ func (tx *transaction) Bytes() ([]byte, error) {
 	return tx.bytes, nil
 }
 
-// TODO check when it is called
 func (tx *transaction) Verify() error {
+	// TODO handler별로 check할 게 있을까? 예를 들어 tx format?
+	// TODO JSON RPC에서도 이것을 호출하면 그 때는 balance check를 해야 할 수 있다.
+	// 현재는 block에서 호출한다.
 	return tx.source.verify()
 }
 
@@ -82,11 +82,11 @@ func (tx *transaction) To() module.Address {
 	return module.Address(&tx.to)
 }
 
-func (tx *transaction) Value() big.Int {
+func (tx *transaction) Value() *big.Int {
 	return tx.value
 }
 
-func (tx *transaction) StepLimit() big.Int {
+func (tx *transaction) StepLimit() *big.Int {
 	return tx.stepLimit
 }
 
@@ -113,16 +113,6 @@ func (tx *transaction) Signature() []byte {
 	return tx.signature
 }
 
-// tx pool에 들어가기 전에 체크
-// TODO 뭘 해야 하는지 확인 필요
-// TODO 이건 안 하는 게 좋지 않을까 생각. 일단 GC 방법이 결정되면 검토 필요
-func (tx *transaction) check() error {
-	// TODO TX syntax check
-	// TODO signature check
-	// TODO balance가 충분한지 확인
-	return nil
-}
-
 func (tx *transaction) validate(state trie.Mutable) error {
 	// TODO TX index DB를 확인하여 이미 block에 들어가 있는 것인지 확인
 	// TODO signature check
@@ -142,13 +132,6 @@ func (tx *transaction) execute(state *transitionState) error {
 
 type scoreCallTx struct {
 	transaction
-}
-
-// tx pool에 들어가기 전에 체크
-// TODO 뭘 해야 하는지 확인 필요
-// TODO 이건 안 하는 게 좋지 않을까 생각. 일단 GC 방법이 결정되면 검토 필요
-func (tx *scoreCallTx) check() error {
-	return nil
 }
 
 // TODO 뭘 해야 하는지 확인 필요
