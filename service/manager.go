@@ -38,21 +38,6 @@ func NewManager(db db.Database) module.ServiceManager {
 		trieManager:  mpt.NewManager(db)}
 }
 
-func (m *manager) ReceiptFromTransactionID(id []byte) module.Receipt {
-	// TODO Implement ReceiptFromTransactionID
-	panic("implement me")
-}
-
-func (m *manager) ReceiptListFromResult(result []byte, g module.TransactionGroup) module.ReceiptList {
-	// TODO Implement ReceiptListFromResult
-	panic("implement me")
-}
-
-func (m *manager) TransactionListFromSlice(txs []module.Transaction, version int) module.TransactionList {
-	// TODO Implement TransactionListFromSlice
-	panic("implement me")
-}
-
 // ProposeTransition proposes a Transition following the parent Transition.
 // parent transition should have a valid result.
 // Returned Transition always passes validation.
@@ -175,6 +160,21 @@ func (m *manager) TransactionFromBytes(b []byte) module.Transaction {
 // the hash of transactions
 func (m *manager) TransactionListFromHash(hash []byte) module.TransactionList {
 	// TODO impl
+	return nil
+}
+
+// ReceiptFromTransactionID returns receipt from legacy receipt bucket.
+func (m *manager) ReceiptFromTransactionID(id []byte) module.Receipt {
+	return nil
+}
+
+// ReceiptListFromResult returns list of receipts from result.
+func (m *manager) ReceiptListFromResult(result []byte, g module.TransactionGroup) module.ReceiptList {
+	return nil
+}
+
+// TransactionListFromSlice returns list of transactions.
+func (m *manager) TransactionListFromSlice(txs []module.Transaction, version int) module.TransactionList {
 	return nil
 }
 

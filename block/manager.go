@@ -356,3 +356,8 @@ func (m *manager) Finalize(block module.Block) error {
 	m.finalized.parent = nil
 	return nil
 }
+
+// TODO dummy
+func (m *manager) GetTransactionInfo(id []byte) module.TransactionInfo {
+	return nil
+}
