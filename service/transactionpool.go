@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"container/list"
 	"fmt"
-	"github.com/icon-project/goloop/common/trie"
 	"math/rand"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/icon-project/goloop/common/trie"
 )
 
 const (
@@ -46,7 +47,7 @@ func (txPool *transactionPool) runGc(expired int64) error {
 	txList := txPool.txList
 
 	for iter := txList.Front(); iter != nil; {
-		if iter.Value.(*transaction).TimeStamp() >= expired {
+		if iter.Value.(*transaction).Timestamp() >= expired {
 			break
 		}
 		tmp := iter.Next()
@@ -183,13 +184,13 @@ func (txPool *transactionPool) addList(txs []*transaction) {
 
 	addTxs := append([]*transaction{}, txs...)
 	sort.Slice(addTxs, func(i, j int) bool {
-		return addTxs[i].TimeStamp() > addTxs[j].TimeStamp()
+		return addTxs[i].Timestamp() > addTxs[j].Timestamp()
 	})
 
 	txList := txPool.txList
 
 	if iter := txList.Front(); iter != nil {
-		if iter.Value.(*transaction).TimeStamp() < expired {
+		if iter.Value.(*transaction).Timestamp() < expired {
 			txPool.runGc(expired)
 		}
 	}
@@ -209,14 +210,14 @@ func (txPool *transactionPool) addList(txs []*transaction) {
 		if addTx.check() != nil {
 			continue
 		}
-		if addTx.TimeStamp() < expired {
+		if addTx.Timestamp() < expired {
 			continue
 		}
 
 		inserted := false
 		for revIter != nil {
 			tx := revIter.Value.(*transaction)
-			if tx.TimeStamp() <= addTx.TimeStamp() {
+			if tx.Timestamp() <= addTx.Timestamp() {
 				revIter = txList.InsertAfter(addTx, revIter)
 				txPool.txHashMap[string(addTx.ID())] = addTx
 				inserted = true
@@ -242,14 +243,14 @@ func (txPool *transactionPool) removeList(txs []*transaction) {
 	i := 0
 	rmTxs := append([]*transaction{}, txs...)
 	sort.Slice(rmTxs, func(i, j int) bool {
-		return rmTxs[i].TimeStamp() < rmTxs[j].TimeStamp()
+		return rmTxs[i].Timestamp() < rmTxs[j].Timestamp()
 	})
 
 	t := txPool.txList.Front()
 	rmTxsLen := len(rmTxs)
 	for i < rmTxsLen && t != nil {
 		v := t.Value.(*transaction)
-		if v.TimeStamp() == rmTxs[i].TimeStamp() {
+		if v.Timestamp() == rmTxs[i].Timestamp() {
 			if bytes.Compare(v.ID(), rmTxs[i].ID()) == 0 {
 				tmp := t.Next()
 				txPool.txList.Remove(t)
@@ -258,7 +259,7 @@ func (txPool *transactionPool) removeList(txs []*transaction) {
 				delete(txPool.txHashMap, string(v.ID()))
 				continue
 			}
-		} else if v.TimeStamp() > rmTxs[i].TimeStamp() {
+		} else if v.Timestamp() > rmTxs[i].Timestamp() {
 			// rmTxs[i].TimeStamp()보다 v가 큰 구간에서 i에 해당하는 tx가 pool에 없다고 판단하고 이전 tx부터 시작한다.
 			if t.Prev() != nil {
 				t = t.Prev()
@@ -275,7 +276,7 @@ func (txPool *transactionPool) removeList(txs []*transaction) {
 func makeTransaction(forList bool, valid bool, time int64, validMap map[byte]*transaction) *transaction {
 	tx := &transaction{}
 	id := byte(rand.Int() % 10)
-	tx.data = []byte{id}
+	tx.hash = []byte{id}
 	if valid {
 		// valid 하도록 만든다. 기존에 없는 ID, time 등을 이용하도록.
 		// insert transaction to valid transaction (expected txPool).
@@ -284,7 +285,7 @@ func makeTransaction(forList bool, valid bool, time int64, validMap map[byte]*tr
 		tx.timestamp = time + 10 + int64(rand.Int()%100)
 		if forList {
 			if v, ok := validMap[id]; ok == true {
-				if v.TimeStamp() < tx.timestamp {
+				if v.Timestamp() < tx.timestamp {
 					validMap[id] = tx
 					//fmt.Println("duplicate [", id, "] v = ", v.TimeStamp(), ", tx = ", tx.TimeStamp())
 				}

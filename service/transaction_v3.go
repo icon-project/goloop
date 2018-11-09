@@ -6,100 +6,143 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
-
-	"github.com/icon-project/goloop/common/crypto"
-	"github.com/icon-project/goloop/module"
+	"strconv"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/module"
 )
 
-type transactionV3 struct {
-	Version   common.HexInt16  `json:"version"`
-	NID       common.HexInt16  `json:"nid"`
-	From      common.Address   `json:"from"`
-	To        common.Address   `json:"to"`
-	Value     common.HexInt    `json:"value"`
-	TimeStamp common.HexInt64  `json:"timestamp"`
-	Nonce     common.HexInt64  `json:"nonce"`
-	StepLimit common.HexInt    `json:"stepLimit"`
-	Fee       common.HexInt    `json:"fee"`
-	TxHash    common.HexBytes  `json:"txHash"`
-	Tx_Hash   common.HexBytes  `json:"tx_hash"`
-	Signature common.Signature `json:"signature"`
-	params    []byte
+type (
+	transactionV3 struct {
+		Version   common.HexInt16  `json:"version"` // V3 only
+		From      common.Address   `json:"from"`
+		To        common.Address   `json:"to"`
+		Value     common.HexInt    `json:"value"`
+		StepLimit common.HexInt    `json:"stepLimit"` // V3 only
+		Fee       common.HexInt    `json:"fee"`       // V2 only
+		TimeStamp common.HexInt64  `json:"timestamp"`
+		NID       common.HexInt16  `json:"nid"` // V3 only
+		Nonce     common.HexInt64  `json:"nonce"`
+		TxHash    common.HexBytes  `json:"txHash"`  // V3 only
+		Tx_Hash   common.HexBytes  `json:"tx_hash"` // V2 only
+		Signature common.Signature `json:"signature"`
+		// TODO data?
+
+		raw []byte
+	}
+
+	// TODO check
+	TransactionData struct {
+		Method string `json:"method"`
+		// TODO 이건 어떻게 할 건가?
+		Params map[string]interface{} `json:"params"`
+	}
+)
+
+func newTransactionLegacy(b []byte) (*transaction, error) {
+	t3 := &transactionV3{Version: common.HexInt16{2}, raw: b[:]}
+	if err := json.Unmarshal(b, t3); err != nil {
+		return nil, err
+	}
+
+	var t *transaction
+	switch t3.Version.Value {
+	case 2:
+		if sig, err := t3.Signature.SerializeRSV(); err == nil {
+			t = &transaction{
+				source:    t3,
+				isPatch:   false,
+				version:   2,
+				from:      t3.From,
+				to:        t3.To,
+				value:     t3.Value.Int,
+				stepLimit: t3.Fee.Int,
+				timestamp: t3.TimeStamp.Value,
+				nid:       0,
+				nonce:     t3.Nonce.Value,
+				signature: sig,
+				hash:      t3.Tx_Hash.ToBytes(),
+				bytes:     t3.raw,
+			}
+		} else {
+			return nil, err
+		}
+	case 3:
+		if sig, err := t3.Signature.SerializeRSV(); err == nil {
+			t = &transaction{
+				source:    t3,
+				isPatch:   false,
+				version:   3,
+				from:      t3.From,
+				to:        t3.To,
+				value:     t3.Value.Int,
+				stepLimit: t3.StepLimit.Int,
+				timestamp: t3.TimeStamp.Value,
+				nid:       int(t3.NID.Value),
+				nonce:     t3.Nonce.Value,
+				signature: sig,
+				hash:      t3.Tx_Hash.ToBytes(),
+				bytes:     t3.raw,
+			}
+		} else {
+			return nil, err
+		}
+	default:
+		return nil, errors.New("Wrong transaction version: " + strconv.Itoa(int(t3.Version.Value)))
+	}
+	return t, nil
 }
 
-func (t *transactionV3) GetID() []byte {
-	if t.TxHash != nil {
-		return t.TxHash
-	} else {
-		return t.Tx_Hash
+func (t *transactionV3) bytes() []byte {
+	// TODO
+	return nil
+}
+
+func (t *transactionV3) hash() []byte {
+	// TODO calculate when hash is nil
+	switch t.Version.Value {
+	case 2:
+		return t.Tx_Hash.ToBytes()
+	case 3:
+		return t.TxHash.ToBytes()
+	default:
+		return nil
 	}
 }
 
-func (t *transactionV3) GetVersion() int {
-	return int(t.Version.Value)
-}
-
-// var version2FieldInclusion = map[string]bool{
-// 	"from":      true,
-// 	"to":        true,
-// 	"value":     true,
-// 	"timestamp": true,
-// 	"nonce":     true,
-// 	"fee":       true,
-// }
-// var version2FieldExclusion = map[string]bool(nil)
 var (
-	version2FieldInclusion = map[string]bool(nil)
-	version2FieldExclusion = map[string]bool{
+	v2FieldInclusion = map[string]bool(nil)
+	v2FieldExclusion = map[string]bool{
 		"method":    true,
 		"signature": true,
 		"tx_hash":   true,
 	}
-)
-
-// var version3FieldInclusion = map[string]bool{
-// 	"from":      true,
-// 	"to":        true,
-// 	"value":     true,
-// 	"timestamp": true,
-// 	"nonce":     true,
-// 	"stepLimit": true,
-// 	"nid":       true,
-// 	"version":   true,
-// 	"data": true,
-// }
-// var version3FieldExclusion = map[string]bool(nil)
-
-var (
-	version3FieldInclusion = map[string]bool(nil)
-	version3FieldExclusion = map[string]bool{
+	v3FieldInclusion = map[string]bool(nil)
+	v3FieldExclusion = map[string]bool{
 		"signature": true,
 		"txHash":    true,
 	}
 )
 
-func (t *transactionV3) Verify() error {
+func (t *transactionV3) verify() error {
 	var data map[string]interface{}
 	var err error
-	if err = json.Unmarshal(t.params, &data); err != nil {
+	if err = json.Unmarshal(t.raw, &data); err != nil {
 		log.Println("JSON Parse FAILS")
-		log.Println("JSON", string(t.params))
+		log.Println("JSON", string(t.raw))
 		return err
 	}
 	var bs []byte
 	var txHash []byte
 	if t.Version.Value == 2 {
-		bs, err = SerializeMap(data,
-			version2FieldInclusion, version2FieldExclusion)
+		bs, err = SerializeMap(data, v2FieldInclusion, v2FieldExclusion)
 		if err == nil {
 			bs = append([]byte("icx_sendTransaction."), bs...)
 		}
 		txHash = t.Tx_Hash
 	} else {
-		bs, err = SerializeMap(data,
-			version3FieldInclusion, version3FieldExclusion)
+		bs, err = SerializeMap(data, v3FieldInclusion, v3FieldExclusion)
 		if err == nil {
 			bs = append([]byte("icx_sendTransaction."), bs...)
 		}
@@ -107,11 +150,9 @@ func (t *transactionV3) Verify() error {
 	}
 	if err != nil {
 		log.Println("Serialize FAILs")
-		log.Println("JSON", string(t.params))
+		log.Println("JSON", string(t.raw))
 		return err
 	}
-	//fmt.Println("JSON      :", string(t.params))
-	//fmt.Println("Serialized:", string(bs))
 	h := crypto.SHA3Sum256(bs)
 	if bytes.Compare(h, txHash) != 0 {
 		log.Println("Hashes are different")
@@ -126,16 +167,6 @@ func (t *transactionV3) Verify() error {
 		log.Println("Signature", t.Signature)
 		return err
 	} else {
-		// crypto.VerifySignature(h, t.Signature, pk)
-		/*
-			if !crypto.VerifySignature(h, t.Signature, pk) {
-				// log.Println("FAIL Verifying signature")
-				// log.Println("Signature", len(t.Signature), t.Signature)
-				// return errors.New("signature verification fails")
-				fmt.Println("FAIL VERIFYING SIGNATURE")
-				fmt.Println("Transaction", string(t.params))
-			}
-		*/
 		addr := common.NewAccountAddressFromPublicKey(pk).String()
 		if err != nil {
 			log.Println("FAIL to recovering address from public key")
@@ -151,67 +182,7 @@ func (t *transactionV3) Verify() error {
 	return nil
 }
 
-func (t *transactionV3) String() string {
-	return string(t.params)
-}
-
-func (t *transactionV3) Bytes() ([]byte, error) {
-	return t.params, nil
-}
-
-type TransactionV3 struct {
-	*transactionV3
-}
-
-func (t *TransactionV3) ID() []byte {
-	return t.GetID()
-}
-
-func (t *TransactionV3) Version() int {
-	return int(t.transactionV3.Version.Value)
-}
-
-// TODO dummy just for compile
-func (tx *TransactionV3) From() module.Address {
-	return nil
-}
-
-func (tx *TransactionV3) To() module.Address {
-	return nil
-}
-
-func (tx *TransactionV3) Value() int {
-	return -1
-}
-
-func (tx *TransactionV3) StepLimit() int {
-	return -1
-}
-
-func (tx *TransactionV3) TimeStamp() int64 {
-	return -1
-}
-
-func (tx *TransactionV3) NID() int {
-	return -1
-}
-
-func (tx *TransactionV3) Nonce() int64 {
-	return -1
-}
-
-func (tx *TransactionV3) Hash() []byte {
-	return nil
-}
-
-func (tx *TransactionV3) Signature() []byte {
-	return nil
-}
-
+// TODO temporary for compile with block_V1.go
 func NewTransactionV3(b []byte) (module.Transaction, error) {
-	t := &transactionV3{Version: common.HexInt16{2}, params: b[:]}
-	if err := json.Unmarshal(b, t); err != nil {
-		return nil, err
-	}
-	return &TransactionV3{t}, nil
+	return newTransactionLegacy(b)
 }

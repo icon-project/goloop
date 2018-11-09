@@ -152,12 +152,8 @@ func (m *manager) Finalize(t module.Transition, opt int) {
 
 // TransactionFromBytes returns a Transaction instance from bytes.
 func (m *manager) TransactionFromBytes(b []byte) module.Transaction {
-	// TODO impl
-	/*
-		tx, _ := newTransaction(b)
-		return tx
-	*/
-	return nil
+	tx, _ := newTransaction(b)
+	return tx
 }
 
 // TransactionListFromHash returns a TransactionList instance from

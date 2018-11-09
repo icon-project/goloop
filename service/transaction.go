@@ -1,172 +1,143 @@
 package service
 
 import (
-	"bytes"
-	"io"
+	"math/big"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
 )
 
-func newTransactionFromBytes(b []byte) (module.Transaction, error) {
-	// TODO It assumes JSON string for transaction. When new transaction
-	// serialized format is defined, this should be changed by determining
-	// version of serialized format.
-	return newTransaction(io.Reader(bytes.NewReader(b)))
+// TODO consider how to provide a convenient way of JSON string conversion
+// for JSON-RPC (But still it's optional)
+// TODO refactoring
+func newTransaction(b []byte) (module.Transaction, error) {
+	if len(b) < 1 {
+		return nil, common.ErrIllegalArgument
+	}
+
+	// Check serialization format
+	// We assumes the legacy JSON format starts with '{'
+	// Conceptually, serialization format version must be specified
+	// from external modules.
+	if b[0] == '{' {
+		return newTransactionLegacy(b)
+
+	} else {
+		// TODO deserialize to the new format
+		return nil, nil
+	}
 }
 
-// TODO module.Transaction의 return type 검토 필요
-type transactionV2V3 struct {
+type source interface {
+	bytes() []byte
+	hash() []byte
+	verify() error
 }
 
 type transaction struct {
-	// added by KN.KIM for transactionPool test
+	source
+
+	isPatch bool
+
+	version int
+	// TODO type check
+	from      common.Address
+	to        common.Address
+	value     big.Int
+	stepLimit big.Int
 	timestamp int64
-	data      []byte
-}
+	nid       int
+	nonce     int64
+	signature []byte
 
-// TODO define
-type TransactionV4 struct {
-	isPatch bool // patch: true, normal: false
-}
-
-// TODO 효과적으로 JSON-RPC가 serialization을 할 수 있는 방법을 고민해 보자.
-// 당장은 아래와 같이 struct를 외부에 바로 노출할 수 있는 workaround를 제공해 줄 것으로
-// 고려해 본다. 그렇게 하기 위해서 public하게 대문자로 변수를 선언했다.
-// TODO data type을 어떻게 해야 하는지 정리 필요
-// TODO change it to TransactionV3. Just avoid collision.
-type Transaction3 struct {
-	*transaction
-
-	isPatch bool // patch: true, normal: false
-
-	Version   common.HexInt16  `json:"version"`
-	From      common.Address   `json:"from"`
-	To        common.Address   `json:"to"`
-	Value     common.HexInt    `json:"value"`
-	StepLimit common.HexInt    `json:"stepLimit"`
-	TimeStamp common.HexInt64  `json:"timestamp"`
-	NID       common.HexInt16  `json:"nid"`
-	Nonce     common.HexInt64  `json:"nonce"`
-	Hash      common.HexBytes  `json:"txHash"`
-	Signature common.Signature `json:"signature"`
-	Data      TransactionData  `json:"data"`
-}
-
-type TransactionData struct {
-	Method string `json:"method"`
-	// TODO 이건 어떻게 할 건가?
-	Params map[string]interface{} `json:"params"`
-}
-
-// TODO change it to TransactionV2. Just avoid collision.
-type Transaction2 struct {
-	isPatch bool // patch: true, normal: false
-
-	From      common.Address   `json:"from"`
-	To        common.Address   `json:"to"`
-	Value     common.HexInt    `json:"value"`
-	Fee       common.HexInt    `json:"fee"`
-	TimeStamp common.HexInt64  `json:"timestamp"`
-	Nonce     common.HexInt64  `json:"nonce"`
-	Hash      common.HexBytes  `json:"tx_hash"`
-	Signature common.Signature `json:"signature"`
-	Params    []byte
-}
-
-func newTransaction(r io.Reader) (*transaction, error) {
-	if r == nil {
-		return nil, common.ErrIllegalArgument
-	}
-	// TODO impl
-	return nil, nil
+	hash  []byte
+	bytes []byte
 }
 
 func (tx *transaction) ID() []byte {
-	// added by KN.KIM for transactionPool test
-	return tx.data
+	return tx.hash
 }
 func (tx *transaction) Version() int {
-	return 0
+	return tx.version
 }
+
 func (tx *transaction) Bytes() ([]byte, error) {
-	return nil, nil
+	if tx.bytes == nil {
+		tx.bytes = tx.source.bytes()
+	}
+	return tx.bytes, nil
 }
 
-// TODO check()인지 validate()인지 확인 필요.
+// TODO check when it is called
 func (tx *transaction) Verify() error {
-	return nil
+	return tx.source.verify()
 }
 
-// TODO
 func (tx *transaction) From() module.Address {
-	return nil
+	return module.Address(&tx.from)
 }
 
-// TODO
 func (tx *transaction) To() module.Address {
-	return nil
+	return module.Address(&tx.to)
 }
 
-// TODO
-func (tx *transaction) Value() int {
-	return -1
+func (tx *transaction) Value() big.Int {
+	return tx.value
 }
 
-// TODO
-func (tx *transaction) StepLimit() int {
-	return -1
+func (tx *transaction) StepLimit() big.Int {
+	return tx.stepLimit
 }
 
-// TODO
-func (tx *transaction) TimeStamp() int64 {
-	// added by KN.KIM for transactionPool test
+func (tx *transaction) Timestamp() int64 {
 	return tx.timestamp
 }
 
-// TODO
 func (tx *transaction) NID() int {
-	return -1
+	return tx.nid
 }
 
-// TODO
 func (tx *transaction) Nonce() int64 {
-	return -1
+	return tx.nonce
 }
 
-// TODO
 func (tx *transaction) Hash() []byte {
-	return nil
+	if tx.hash == nil {
+		tx.hash = tx.source.hash()
+	}
+	return tx.hash
 }
 
-// TODO
 func (tx *transaction) Signature() []byte {
-	return nil
+	return tx.signature
 }
 
 // tx pool에 들어가기 전에 체크
 // TODO 뭘 해야 하는지 확인 필요
 // TODO 이건 안 하는 게 좋지 않을까 생각. 일단 GC 방법이 결정되면 검토 필요
 func (tx *transaction) check() error {
+	// TODO TX syntax check
+	// TODO signature check
+	// TODO balance가 충분한지 확인
 	return nil
 }
 
-// TODO 뭘 해야 하는지 확인 필요
 func (tx *transaction) validate(state trie.Mutable) error {
+	// TODO TX index DB를 확인하여 이미 block에 들어가 있는 것인지 확인
+	// TODO signature check
+	// TODO balance가 충분한지 확인. 그런데 여기에서는 이전 tx의 처리 결과를 감안하여
+	// 아직 balance가 충분한지 확인해야 함.
 	return nil
+}
+
+type transferTx struct {
+	transaction
 }
 
 func (tx *transaction) execute(state *transitionState) error {
 	// TODO 지정된 시간 이내에 결과가 나와야 한다.
 	return nil
-}
-
-func (tx *transaction) cancel() {
-}
-
-type transferTx struct {
-	transaction
 }
 
 type scoreCallTx struct {
@@ -186,11 +157,9 @@ func (tx *scoreCallTx) validate(state trie.Mutable) error {
 }
 
 func (tx *scoreCallTx) execute(state *transitionState) error {
-	// TODO 지정된 시간 이내에 결과가 나와야 한다.
+	// TODO 지정된 시간 이내에 결과가 나와야 한다. 만약 지정된 시간을 초과하게 되면
+	// 중간에 score engine에게 멈추도록 요청해야 한다.
 	return nil
-}
-
-func (tx *scoreCallTx) cancel() {
 }
 
 type scoreDeployTx struct {

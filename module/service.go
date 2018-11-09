@@ -1,5 +1,7 @@
 package module
 
+import "math/big"
+
 // TransitionCallback provides transition change notifications. All functions
 // are called back with the same Transition instance for the convenience.
 type TransitionCallback interface {
@@ -17,9 +19,9 @@ type Transaction interface {
 	Verify() error
 	From() Address
 	To() Address
-	Value() int
-	StepLimit() int
-	TimeStamp() int64
+	Value() big.Int
+	StepLimit() big.Int
+	Timestamp() int64
 	NID() int
 	Nonce() int64
 	Hash() []byte
