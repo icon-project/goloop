@@ -32,3 +32,10 @@ type VoteList interface {
 }
 
 type VoteListDecoder func([]byte) VoteList
+
+type TransactionGroup int
+
+const (
+	TransactionGroupPatch TransactionGroup = iota
+	TransactionGroupNormal
+)
