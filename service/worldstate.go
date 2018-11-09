@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"log"
 	"reflect"
+	"sync"
 )
 
 type worldSnapshot interface {
@@ -18,28 +19,13 @@ type worldSnapshot interface {
 
 type worldState interface {
 	getAccountState(id []byte) accountState
+	getAccountSnapshot(id []byte) accountSnapshot
 	getSnapshot() worldSnapshot
 	reset(snapshot worldSnapshot) error
 }
 
 type worldSnapshotImpl struct {
 	accounts trie.SnapshotForObject
-}
-
-type worldStateImpl struct {
-	database        db.Database
-	accounts        trie.MutableForObject
-	mutableAccounts map[string]accountState
-}
-
-func (ws *worldStateImpl) reset(isnapshot worldSnapshot) error {
-	snapshot, ok := isnapshot.(*worldSnapshotImpl)
-	if !ok {
-		return errors.New("InvalidSnapshotType")
-	}
-	ws.accounts.Reset(snapshot.accounts)
-	ws.mutableAccounts = make(map[string]accountState)
-	return nil
 }
 
 func (ws *worldSnapshotImpl) stateHash() []byte {
@@ -68,11 +54,35 @@ func (ws *worldSnapshotImpl) getAccountSnapshot(id []byte) accountSnapshot {
 	}
 }
 
+type worldStateImpl struct {
+	mutex sync.Mutex
+
+	database        db.Database
+	accounts        trie.MutableForObject
+	mutableAccounts map[string]accountState
+}
+
+func (ws *worldStateImpl) reset(isnapshot worldSnapshot) error {
+	ws.mutex.Lock()
+	defer ws.mutex.Unlock()
+
+	snapshot, ok := isnapshot.(*worldSnapshotImpl)
+	if !ok {
+		return errors.New("InvalidSnapshotType")
+	}
+	ws.accounts.Reset(snapshot.accounts)
+	ws.mutableAccounts = make(map[string]accountState)
+	return nil
+}
+
 func addressIDToKey(id []byte) []byte {
 	return crypto.SHA3Sum256(id)
 }
 
 func (ws *worldStateImpl) getAccountState(id []byte) accountState {
+	ws.mutex.Lock()
+	defer ws.mutex.Unlock()
+
 	ids := string(id)
 	if a, ok := ws.mutableAccounts[ids]; ok {
 		return a
@@ -92,7 +102,41 @@ func (ws *worldStateImpl) getAccountState(id []byte) accountState {
 	return ac
 }
 
+func (ws *worldStateImpl) getAccountSnapshot(id []byte) accountSnapshot {
+	ws.mutex.Lock()
+	defer ws.mutex.Unlock()
+
+	if a, ok := ws.mutableAccounts[string(id)]; ok {
+		return a.getSnapshot()
+	}
+
+	key := addressIDToKey(id)
+	obj, err := ws.accounts.Get(key)
+	if err != nil {
+		log.Panicf("Fail to get acount for %x err=%+v", key, err)
+		return nil
+	}
+	if obj != nil {
+		return obj.(*accountSnapshotImpl)
+	}
+	log.Printf("accountFor(%x) is nil", key)
+
+	ass := new(accountSnapshotImpl)
+	ass.database = ws.database
+	return ass
+}
+
+func (ws *worldStateImpl) getAccountROState(id []byte) accountState {
+	ws.mutex.Lock()
+	defer ws.mutex.Unlock()
+
+	return newAccountROState(ws.getAccountSnapshot(id))
+}
+
 func (ws *worldStateImpl) getSnapshot() worldSnapshot {
+	ws.mutex.Lock()
+	defer ws.mutex.Unlock()
+
 	for id, as := range ws.mutableAccounts {
 		key := addressIDToKey([]byte(id))
 		s := as.getSnapshot()
@@ -111,7 +155,7 @@ func (ws *worldStateImpl) getSnapshot() worldSnapshot {
 	}
 }
 
-func NewWorldState(database db.Database, stateHash []byte) worldState {
+func newWorldState(database db.Database, stateHash []byte) worldState {
 	ws := new(worldStateImpl)
 	ws.accounts = trie_manager.NewMutableForObject(database, stateHash, reflect.TypeOf((*accountSnapshotImpl)(nil)))
 	ws.mutableAccounts = make(map[string]accountState)
