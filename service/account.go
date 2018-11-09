@@ -6,7 +6,8 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
-	mp "github.com/ugorji/go/codec"
+	"github.com/pkg/errors"
+	ugorji "github.com/ugorji/go/codec"
 	"log"
 	"math/big"
 )
@@ -47,6 +48,10 @@ func (s *accountSnapshotImpl) isContract() bool {
 	return s.fIsContract
 }
 
+func (s *accountSnapshotImpl) getValue(k []byte) ([]byte, error) {
+	return s.store.Get(k)
+}
+
 func (s *accountSnapshotImpl) empty() bool {
 	return s.balance.BitLen() == 0 && s.store == nil
 }
@@ -57,31 +62,6 @@ func (s *accountSnapshotImpl) Bytes() []byte {
 		panic(err)
 	}
 	return b
-}
-
-func (s *accountSnapshotImpl) CodecEncodeSelf(e *mp.Encoder) {
-	e.Encode(s.balance)
-	e.Encode(s.fIsContract)
-	e.Encode(s.store.Hash())
-}
-
-func (s *accountSnapshotImpl) CodecDecodeSelf(d *mp.Decoder) {
-	if err := d.Decode(&s.balance); err != nil {
-		log.Fatalf("Fail to decode balance in account")
-	}
-	if err := d.Decode(&s.fIsContract); err != nil {
-		log.Fatalf("Fail to decode isContract in account")
-	}
-	var hash []byte
-	if err := d.Decode(&hash); err != nil {
-		log.Fatalf("Fail to decode hash in account")
-	} else {
-		if len(hash) == 0 {
-			s.store = nil
-		} else {
-			s.store = trie_manager.NewImmutable(s.database, hash)
-		}
-	}
 }
 
 func (s *accountSnapshotImpl) Reset(database db.Database, data []byte) error {
@@ -122,8 +102,33 @@ func (s *accountSnapshotImpl) Equal(object trie.Object) bool {
 	return false
 }
 
-func (s *accountSnapshotImpl) getValue(k []byte) ([]byte, error) {
-	return s.store.Get(k)
+func (s *accountSnapshotImpl) CodecEncodeSelf(e *ugorji.Encoder) {
+	e.Encode(&s.balance)
+	e.Encode(s.fIsContract)
+	if s.store != nil {
+		e.Encode(s.store.Hash())
+	} else {
+		e.Encode(nil)
+	}
+}
+
+func (s *accountSnapshotImpl) CodecDecodeSelf(d *ugorji.Decoder) {
+	if err := d.Decode(&s.balance); err != nil {
+		log.Fatalf("Fail to decode balance in account")
+	}
+	if err := d.Decode(&s.fIsContract); err != nil {
+		log.Fatalf("Fail to decode isContract in account")
+	}
+	var hash []byte
+	if err := d.Decode(&hash); err != nil {
+		log.Fatalf("Fail to decode hash in account")
+	} else {
+		if len(hash) == 0 {
+			s.store = nil
+		} else {
+			s.store = trie_manager.NewImmutable(s.database, hash)
+		}
+	}
 }
 
 type accountStateImpl struct {
@@ -214,4 +219,32 @@ func newAccountState(database db.Database, snapshot *accountSnapshotImpl) accoun
 		s.reset(snapshot)
 	}
 	return s
+}
+
+type accountROState struct {
+	accountSnapshot
+}
+
+func (a *accountROState) setBalance(v *big.Int) {
+	log.Panicf("accountROState().setBalance() is invoked")
+}
+
+func (a *accountROState) setValue(k, v []byte) error {
+	return errors.New("ReadOnlyState")
+}
+
+func (a *accountROState) deleteValue(k []byte) error {
+	return errors.New("ReadOnlyState")
+}
+
+func (a *accountROState) getSnapshot() accountSnapshot {
+	return a.accountSnapshot
+}
+
+func (a *accountROState) reset(snapshot accountSnapshot) error {
+	return errors.New("ReadOnlyState")
+}
+
+func newAccountROState(snapshot accountSnapshot) accountState {
+	return &accountROState{snapshot}
 }
