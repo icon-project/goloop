@@ -82,6 +82,8 @@ const (
 	FinalizeNormalTransaction = 1 << iota
 	FinalizePatchTransaction
 	FinalizeResult
+
+	FinalizeWriteReceiptIndex
 )
 
 // ServiceManager provides Service APIs.
@@ -123,4 +125,6 @@ type ServiceManager interface {
 	// TransactionListFromHash returns a TransactionList instance from
 	// the hash of transactions
 	TransactionListFromHash(hash []byte) TransactionList
+
+	TransactionListFromSlice([]Transaction, version int) TransactionList
 }
