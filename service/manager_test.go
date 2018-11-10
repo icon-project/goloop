@@ -5,6 +5,6 @@ import (
 	"testing"
 )
 
-func TestTxPool(t *testing.T) {
-	service.TestTxPool()
+func TestSendTx(t *testing.T) {
+	service.TxTest()
 }

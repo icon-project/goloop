@@ -3,8 +3,6 @@ package service
 import (
 	"bytes"
 	"container/list"
-	"fmt"
-	"math/rand"
 	"sort"
 	"sync"
 	"time"
@@ -265,94 +263,5 @@ func (txPool *transactionPool) removeList(txs []*transaction) {
 			continue
 		}
 		t = t.Next()
-	}
-}
-
-// KN.KIM : Internal test code below. It will be removed later
-
-func makeTransaction(forList bool, valid bool, time int64, validMap map[byte]*transaction) *transaction {
-	tx := &transaction{}
-	id := byte(rand.Int() % 10)
-	tx.hash = []byte{id}
-	if valid {
-		// valid 하도록 만든다. 기존에 없는 ID, time 등을 이용하도록.
-		// insert transaction to valid transaction (expected txPool).
-		// ID map, time map 사용.
-		// 중복될 경우 새로운 ID, time을 생성한다.
-		tx.timestamp = time + 10 + int64(rand.Int()%100)
-		if forList {
-			if v, ok := validMap[id]; ok == true {
-				if v.Timestamp() < tx.timestamp {
-					validMap[id] = tx
-					//fmt.Println("duplicate [", id, "] v = ", v.TimeStamp(), ", tx = ", tx.TimeStamp())
-				}
-			} else {
-				validMap[id] = tx
-			}
-			//fmt.Println("valid ID = ", id, ", timestamp = ", tx.timestamp)
-		} else {
-			if _, ok := validMap[id]; ok == false {
-				//fmt.Println("valid ID = ", id, ", timestamp = ", tx.timestamp)
-				validMap[id] = tx
-			}
-		}
-		return tx
-	}
-	// invalid하도록 만든다.
-	// ID를 map에서 가져다가 쓰거나 전달받은 시간보다 작은 시간을 설정한다.
-	// 처음에 진입하여 ID가 없을 경우 time을 설정한다.
-	// sleep을 줄까...
-	tx.timestamp = time - txLiveDuration - 1 - int64(rand.Int()%10)
-	return tx
-}
-
-func TestTxPool() {
-	txRequests := make([]*transaction, 50)
-	for k := 0; k < 100; k++ {
-		validMap := make(map[byte]*transaction)
-		curTime := makeTimestamp()
-		forList := rand.Int()%2 == 0
-		for i, _ := range txRequests {
-			tx := makeTransaction(forList, rand.Int()%2 == 0, curTime, validMap)
-			txRequests[i] = tx
-		}
-
-		txPool := NewtransactionPool()
-		if forList {
-			txPool.addList(txRequests)
-		} else {
-			for _, v := range txRequests {
-				txPool.add(v)
-			}
-		}
-
-		candidateList := txPool.candidate(nil, 50)
-
-		fmt.Println("length of candidateList : ", len(candidateList), ", length of map : ", len(validMap))
-		for _, v := range candidateList {
-			var result *transaction
-			ok := true
-			if result, ok = validMap[v.ID()[0]]; !ok {
-				fmt.Println("Not exist ", v.ID())
-				panic("Failed. ")
-			}
-
-			if result.timestamp != v.timestamp {
-				fmt.Println("result = ", result, ", v = ", v)
-				panic("result is not v")
-			}
-		}
-
-		if rand.Int()%2 == 0 {
-			for _, v := range candidateList {
-				txPool.remove(v)
-			}
-		} else {
-			txPool.removeList(candidateList)
-		}
-		if txPool.txList.Len() != 0 {
-			fmt.Println("remainedLen = ", txPool.txList.Len())
-			panic("Failed to remove")
-		}
 	}
 }

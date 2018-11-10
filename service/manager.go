@@ -2,6 +2,12 @@ package service
 
 import (
 	"errors"
+	"fmt"
+	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/trie/trie_manager"
+	"math/big"
+	"math/rand"
+	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
@@ -187,4 +193,212 @@ func (m *manager) checkTransitionResult(t module.Transition) (*transition, trie.
 	state := m.trieManager.NewMutable(tst.result.stateHash())
 
 	return tst, state, nil
+}
+
+func (m *manager) SendTransaction(tx module.Transaction) error {
+	txImplement := &transaction{
+		// TODO: patch?
+		from:      common.Address{},
+		to:        common.Address{},
+		version:   tx.Version(),
+		timestamp: tx.Timestamp(),
+		nid:       tx.NID(),
+		nonce:     tx.Nonce(),
+	}
+
+	txImplement.value = new(big.Int)
+	txImplement.value.Set(tx.Value())
+	txImplement.stepLimit = new(big.Int)
+	txImplement.stepLimit.Set(tx.StepLimit())
+	txImplement.from.SetBytes(tx.From().Bytes())
+	txImplement.to.SetBytes(tx.To().Bytes())
+	txImplement.bytes = append([]byte{}, txImplement.bytes...)
+	txImplement.bytes, _ = tx.Bytes()
+	txImplement.hash = append([]byte{}, tx.Hash()...)
+	txImplement.signature = append([]byte{}, tx.Signature()...)
+
+	var txPool *transactionPool
+	//if patch == {
+	//	txPool = m.patchTxPool
+	//} else {
+	//	txPool = m.normalTxPool
+	//}
+	txPool = m.normalTxPool
+	// TODO: add go routine for request transaction
+	// passed parameter type to SendTransaction is interface but parameter of txPool.add() is structure
+	go txPool.add(txImplement)
+	return nil
+}
+
+// test case
+var resultMap = make(map[string]*big.Int)
+var nameNum = 10
+var nameList = []string{
+	"KANG DONG WON",
+	"JANG DONG GUN",
+	"LEE HYO RI",
+	"KELVIN DURANT",
+	"STEPHEN CURRY",
+	"LEBRON JAMES",
+	"MICHEAL JORDAN",
+	"PATRICK EWING",
+	"HAKIM OLAJUWON",
+	"CHARLES BARKLEY",
+}
+
+var toNum = 17
+var toList = []string{
+	"KANG DONG WON",
+	"JANG DONG GUN",
+	"LEE HYO RI",
+	"KELVIN DURANT",
+	"STEPHEN CURRY",
+	"LEBRON JAMES",
+	"MICHEAL JORDAN",
+	"PATRICK EWING",
+	"HAKIM OLAJUWON",
+	"CHARLES BARKLEY",
+	"NO MARRY",
+	"NO TOM",
+	"NO JERRY",
+	"NO COOLER",
+	"NO MACHINE",
+	"NO ANGEL",
+	"NO DEVIL",
+}
+var addresses [10]common.Address
+var deposit = int64(1000000)
+
+func TxTest() {
+	// sendTx.
+	target := 100
+
+	database := db.NewMapDB()
+	trieManager := trie_manager.New(database)
+	mutableTrie := trieManager.NewMutable(nil)
+
+	for i, name := range nameList {
+		resultMap[name] = big.NewInt(deposit)
+		serializedAccount, _ := codec.MP.MarshalToBytes(accountInfo{contract: false, balance: &common.HexInt{*big.NewInt(deposit)}})
+		addresses[i] = *common.NewAccountAddress([]byte(name))
+		mutableTrie.Set(addresses[i].Bytes(), serializedAccount)
+	}
+	manager := &manager{
+		patchTxPool:  NewtransactionPool(),
+		normalTxPool: NewtransactionPool(),
+		trieManager:  mpt.NewManager(database)}
+	requestDone := make(chan bool)
+	exeDone := make(chan bool)
+	go txRequest(target, manager, requestDone)
+
+	go txExecute(manager, target, exeDone, mutableTrie)
+	<-requestDone
+	<-exeDone
+	// execute
+	// waiting for end of execute and request
+	totalBalance := big.NewInt(int64(nameNum) * deposit)
+	calcTotalBal := big.NewInt(0)
+	for _, name := range toList {
+		serializedAccount, _ := mutableTrie.Get(common.NewAccountAddress([]byte(name)).Bytes())
+		var accInfo accountInfo
+		codec.MP.UnmarshalFromBytes(serializedAccount, &accInfo)
+		fmt.Println("[", name, "] has ", accInfo.balance)
+		calcTotalBal.Add(calcTotalBal, &accInfo.balance.Int)
+	}
+	if totalBalance.Cmp(calcTotalBal) == 0 {
+		fmt.Println("same total balance : ", totalBalance, ", ", calcTotalBal)
+
+	} else {
+		panic("different")
+	}
+}
+
+// true if valid transaction
+func makeTransaction(valid bool, time int64, validNum int) *transaction {
+	tx := &transaction{
+		stepLimit: big.NewInt(10),
+	}
+	id := rand.Int() % 10
+	//tx.hash = []byte{id}
+	// valid 하도록 만든다. 기존에 없는 ID, time 등을 이용하도록.
+	// insert transaction to valid transaction (expected txPool).
+	// ID map, time map 사용.
+	// 중복될 경우 새로운 ID, time을 생성한다.
+	tx.from = addresses[id]
+	toId := rand.Int() % toNum
+	for toId == id {
+		toId = rand.Int() % toNum
+	}
+	//tx.to = addresses[toId]
+	tx.to = *common.NewAccountAddress([]byte(toList[toId]))
+	tx.value = big.NewInt(int64(rand.Int() % 300000))
+	tx.bytes = tx.to.Bytes()
+	tx.hash = tx.value.Bytes()
+
+	if valid {
+		// TODO: 먼저 from에서 이체 가능금액 확인 & 이체
+		balance := resultMap[nameList[id]]
+		if balance.Cmp(tx.value) > 0 {
+			resultMap[nameList[id]] = balance.Mul(balance, tx.value)
+			if _, ok := resultMap[toList[toId]]; ok == false {
+				resultMap[toList[toId]] = big.NewInt(0)
+			}
+			resultMap[toList[toId]].Add(resultMap[toList[toId]], tx.value)
+		}
+
+		tx.timestamp = time + 1000 + int64(rand.Int()%100)
+		// TODO: ADD verify
+		return tx
+	}
+	// invalid하도록 만든다.
+	// ID를 map에서 가져다가 쓰거나 전달받은 시간보다 작은 시간을 설정한다.
+	// 처음에 진입하여 ID가 없을 경우 time을 설정한다.
+	// sleep을 줄까...
+	// TODO: ADD verify
+	tx.timestamp = time - txLiveDuration - 1000 - int64(rand.Int()%10)
+	return tx
+}
+
+func txRequest(validTxNum int, manager module.ServiceManager, done chan bool) {
+	txMap := map[bool]int{}
+	for validTxNum > 0 {
+		curTime := makeTimestamp()
+		validTx := rand.Int()%2 == 0
+		tx := makeTransaction(validTx, curTime, validTxNum)
+
+		txMap[validTx]++
+		if validTx {
+			validTxNum--
+		}
+
+		manager.SendTransaction(tx)
+		time.Sleep(time.Millisecond * 3) // 0.003 seconds
+	}
+	fmt.Println("invalid tx Num : ", txMap[false], ", valid tx Num : ", txMap[true])
+	done <- true
+
+	// TODO: send signal for end of request
+}
+
+func txExecute(manager *manager, txNum int, done chan bool, mutableTrie trie.Mutable) error {
+	txPool := manager.normalTxPool
+	for txNum > 0 {
+		maxNum := 10
+		candidateList := txPool.candidate(nil, maxNum)
+
+		if listLen := len(candidateList); listLen > maxNum {
+			return errors.New("candidateList is longer than MaxNum:w")
+		} else if listLen == 0 {
+			// sleep
+			time.Sleep(time.Millisecond * 1) // 0.001 seconds
+		}
+		for _, v := range candidateList {
+			state := &transitionState{state: mutableTrie}
+			v.execute(state)
+		}
+		txPool.removeList(candidateList)
+		txNum -= len(candidateList)
+	}
+	done <- true
+	return nil
 }

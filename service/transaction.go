@@ -1,11 +1,17 @@
 package service
 
 import (
+	"fmt"
+	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/trie/trie_manager"
+	"log"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
+	mp "github.com/ugorji/go/codec"
 )
 
 // TODO consider how to provide a convenient way of JSON string conversion
@@ -125,9 +131,109 @@ type transferTx struct {
 	transaction
 }
 
+type accountInfo struct {
+	contract bool // true if this account is contract
+	balance  *common.HexInt
+	// storageRoot 	trie.Mutable
+	// contractHash	[]byte
+}
+
+func (s *accountInfo) CodecEncodeSelf(e *mp.Encoder) {
+	e.Encode(s.balance)
+	e.Encode(s.contract)
+}
+
+func (s *accountInfo) CodecDecodeSelf(d *mp.Decoder) {
+	if err := d.Decode(&s.balance); err != nil {
+		log.Fatalf("Fail to decode balance in account")
+	}
+	if err := d.Decode(&s.contract); err != nil {
+		log.Fatalf("Fail to decode isContract in account")
+	}
+}
+
 func (tx *transaction) execute(state *transitionState) error {
 	// TODO 지정된 시간 이내에 결과가 나와야 한다.
+	// TODO: Change accountInfo to accountState
+	stateTrie := state.state
+	var account [2]accountInfo // 0 is from, 1 is to
+	var addr [2][]byte
+
+	addr[0] = tx.From().Bytes()
+	if serializedAccount, err := stateTrie.Get(addr[0]); err == nil {
+		if _, err := codec.MP.UnmarshalFromBytes(serializedAccount, &account[0]); err != nil {
+			fmt.Println("Failed to unmarshal")
+			return err
+		}
+	} else {
+		fmt.Println("Failed to get address")
+		return err
+	}
+
+	txValue := tx.Value()
+
+	if account[0].balance.Cmp(txValue) < 0 {
+		//return NotEnoughBalance
+		fmt.Println("Not enough balance. ", account[0].balance, ", value ", txValue)
+		return nil
+	}
+
+	addr[1] = tx.To().Bytes()
+	if serializedAccount, err := stateTrie.Get(addr[1]); err == nil {
+		if serializedAccount != nil {
+			if _, err := codec.MP.UnmarshalFromBytes(serializedAccount, &account[1]); err != nil {
+				return err
+			}
+		} else {
+			account[1] = accountInfo{balance: &common.HexInt{*big.NewInt(0)}}
+		}
+	}
+
+	account[0].balance.Sub(&account[0].balance.Int, txValue)
+	account[1].balance.Add(&account[1].balance.Int, txValue)
+
+	snapshot := stateTrie.GetSnapshot()
+	for i, account := range account {
+		if serializedAccount, err := codec.MP.MarshalToBytes(account); err == nil {
+			if err = stateTrie.Set(addr[i], serializedAccount); err != nil {
+				stateTrie.Reset(snapshot)
+				return err
+			}
+		} else {
+			stateTrie.Reset(snapshot)
+			return err
+		}
+	}
+
 	return nil
+}
+
+func TestExecute() {
+	address := [2]common.Address{
+		*common.NewAccountAddress([]byte("HELLO")),
+		*common.NewAccountAddress([]byte("HI")),
+	}
+	account := newAccountState(nil, nil)
+	account.setBalance(big.NewInt(900000))
+	serializedAccount, _ := codec.MP.MarshalToBytes(account)
+
+	tx := transaction{from: address[0], to: address[1], value: big.NewInt(100000)}
+	db := db.NewMapDB()
+	mgr := trie_manager.New(db)
+	trie := mgr.NewMutable(nil)
+	trie.Set(address[0].Bytes(), serializedAccount)
+	transitionState := &transitionState{state: trie}
+	tx.execute(transitionState)
+
+	var result accountInfo
+	for _, v := range address {
+		serializedAccount, _ = trie.Get(v.Bytes())
+		if _, err := codec.MP.UnmarshalFromBytes(serializedAccount, &result); err != nil {
+			fmt.Println("ERROR!!!!!")
+			return
+		}
+		fmt.Println("result.balance : ", result.balance)
+	}
 }
 
 type scoreCallTx struct {

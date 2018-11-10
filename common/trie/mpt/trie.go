@@ -81,7 +81,7 @@ func (m *mpt) get(n node, k []byte) (node, trie.Object, error) {
 			return n, nil, err
 		}
 		if serializedValue == nil {
-			return n, nil, fmt.Errorf("KeyNotFoundError(%x)", n)
+			return n, nil, nil
 		}
 		deserializedNode := deserialize(serializedValue, m.objType, m.db)
 		switch m := deserializedNode.(type) {
@@ -119,10 +119,13 @@ func (m *mpt) Get(k []byte) ([]byte, error) {
 	var value trie.Object
 	var err error
 	if m.root == nil {
+		if m.source.committedHash == nil {
+			return nil, nil
+		}
 		m.root = m.source.committedHash
 	}
 	m.root, value, err = m.get(m.root, k)
-	if err != nil || value == nil {
+	if err != nil {
 		return nil, err
 	}
 	if value == nil {
@@ -553,7 +556,7 @@ func (m *mptForObj) Get(k []byte) (trie.Object, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	if v, ok := m.source.requestPool[string(k)]; ok {
-		return v.(byteValue), nil
+		return v, nil
 	}
 	var value trie.Object
 	var err error
@@ -588,7 +591,20 @@ func (m *mptForObj) GetSnapshot() trie.SnapshotForObject {
 
 func (m *mptForObj) Reset(s trie.ImmutableForObject) {
 	// TODO Implement
-	panic("It's not implemented")
+	immutableTrie, ok := s.(*mptForObj)
+	if ok == false {
+		return
+	}
+
+	// Do not use reference.
+	committedHash := make(hash, len(immutableTrie.source.committedHash))
+	copy(committedHash, immutableTrie.source.committedHash)
+	m.source = &source{prev: immutableTrie.source, requestPool: make(map[string]trie.Object), committedHash: committedHash}
+	rootHash := make(hash, len(committedHash))
+	copy(rootHash, committedHash)
+	m.root = hash(rootHash)
+	m.db = immutableTrie.db
+	return
 }
 
 func (m *mptForObj) Iterator() trie.IteratorForObject {
