@@ -201,7 +201,8 @@ func (t *transition) executeTxs(txList *transactionlist) bool {
 			break
 		}
 
-		if err := tx.execute(t.transitionState); err != nil {
+		// TODO: 아래 db 추가에 대한 추후 검토 필요. KN.KIM. execute내에서 account를 생성하기 위해 db가 필요.
+		if err := tx.execute(t.transitionState, t.db); err != nil {
 			t.mutex.Lock()
 			t.step = stepError
 			t.mutex.Unlock()

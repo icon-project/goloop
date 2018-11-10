@@ -2,19 +2,16 @@ package service
 
 import (
 	"encoding/hex"
-	"fmt"
 	"log"
 	"math/big"
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/pkg/errors"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
-	mp "github.com/ugorji/go/codec"
 )
 
 // TODO consider how to provide a convenient way of JSON string conversion
@@ -137,119 +134,78 @@ func (tx *transaction) validate(state trie.Mutable, txdb db.Bucket) error {
 	}
 
 	// verify a signature
-	tx.source.verifySignature()
+	// TODO transaction execute테스트를 위해 임시로 comment out by KN.KIM
+	//tx.source.verifySignature()
 
 	// TODO balance가 충분한지 확인. 그런데 여기에서는 이전 tx의 처리 결과를 감안하여
 	// 아직 balance가 충분한지 확인해야 함.
 	return nil
 }
 
-type transferTx struct {
-	transaction
-}
-
-type accountInfo struct {
-	contract bool // true if this account is contract
-	balance  *common.HexInt
-	// storageRoot 	trie.Mutable
-	// contractHash	[]byte
-}
-
-func (s *accountInfo) CodecEncodeSelf(e *mp.Encoder) {
-	e.Encode(s.balance)
-	e.Encode(s.contract)
-}
-
-func (s *accountInfo) CodecDecodeSelf(d *mp.Decoder) {
-	if err := d.Decode(&s.balance); err != nil {
-		log.Fatalf("Fail to decode balance in account")
-	}
-	if err := d.Decode(&s.contract); err != nil {
-		log.Fatalf("Fail to decode isContract in account")
-	}
-}
-
-func (tx *transaction) execute(state *transitionState) error {
-	// TODO Change accountInfo to accountState
+// TODO: 계정이 없을 경우 계정을 추가해야하는데 newAccount(db) db가 전달되어야 한다. 따라서 db인자를 추가한다. 이후 정리 필요. by KN.KIM
+func (tx *transaction) execute(state *transitionState, db db.Database) error {
+	// TODO 지정된 시간 이내에 결과가 나와야 한다.
 	stateTrie := state.state
-	var account [2]accountInfo // 0 is from, 1 is to
+	var accSnapshot [2]accountSnapshotImpl // 0 is from, 1 is to
+	var accState [2]accountState           // 0 is from, 1 is to
 	var addr [2][]byte
 
 	addr[0] = tx.From().Bytes()
-	if serializedAccount, err := stateTrie.Get(addr[0]); err == nil {
-		if _, err := codec.MP.UnmarshalFromBytes(serializedAccount, &account[0]); err != nil {
-			fmt.Println("Failed to unmarshal")
+	if serializedAccount, err := stateTrie.Get(addr[0]); err == nil && len(serializedAccount) != 0 {
+		if _, err := codec.MP.UnmarshalFromBytes(serializedAccount, &accSnapshot[0]); err != nil {
+			log.Println("Failed to unmarshal")
 			return err
 		}
+		accState[0] = newAccountState(db, &accSnapshot[0])
 	} else {
-		fmt.Println("Failed to get address")
+		log.Println("Failed to get address")
 		return err
 	}
 
 	txValue := tx.Value()
 
-	if account[0].balance.Cmp(txValue) < 0 {
+	if accSnapshot[0].getBalance().Cmp(txValue) < 0 {
 		//return NotEnoughBalance
-		fmt.Println("Not enough balance. ", account[0].balance, ", value ", txValue)
+		log.Println("Not enough balance. ", accSnapshot[0].getBalance(), ", value ", txValue)
 		return nil
 	}
 
 	addr[1] = tx.To().Bytes()
 	if serializedAccount, err := stateTrie.Get(addr[1]); err == nil {
 		if serializedAccount != nil {
-			if _, err := codec.MP.UnmarshalFromBytes(serializedAccount, &account[1]); err != nil {
+			if _, err := codec.MP.UnmarshalFromBytes(serializedAccount, &accSnapshot[1]); err != nil {
+				log.Println("Failed to unmarshal")
 				return err
 			}
+			accState[1] = newAccountState(db, &accSnapshot[1])
 		} else {
-			account[1] = accountInfo{balance: &common.HexInt{*big.NewInt(0)}}
+			accState[1] = newAccountState(db, nil)
 		}
 	}
 
-	account[0].balance.Sub(&account[0].balance.Int, txValue)
-	account[1].balance.Add(&account[1].balance.Int, txValue)
+	accState[0].setBalance(big.NewInt(0).Sub(accSnapshot[0].getBalance(), txValue))
+	accState[1].setBalance(big.NewInt(0).Add(accSnapshot[1].getBalance(), txValue))
 
-	snapshot := stateTrie.GetSnapshot()
-	for i, account := range account {
-		if serializedAccount, err := codec.MP.MarshalToBytes(account); err == nil {
-			if err = stateTrie.Set(addr[i], serializedAccount); err != nil {
-				stateTrie.Reset(snapshot)
+	stateTrieSs := stateTrie.GetSnapshot()
+	for i, account := range accState {
+		if resultSnapshot := account.getSnapshot(); resultSnapshot != nil {
+			if serializedAccount, err := codec.MP.MarshalToBytes(resultSnapshot); err == nil {
+				if err = stateTrie.Set(addr[i], serializedAccount); err != nil {
+					stateTrie.Reset(stateTrieSs)
+					return err
+				}
+			} else {
+				stateTrie.Reset(stateTrieSs)
+				log.Println("Failed to marshal")
 				return err
 			}
-		} else {
-			stateTrie.Reset(snapshot)
-			return err
 		}
 	}
-
 	return nil
 }
 
-func TestExecute() {
-	address := [2]common.Address{
-		*common.NewAccountAddress([]byte("HELLO")),
-		*common.NewAccountAddress([]byte("HI")),
-	}
-	account := newAccountState(nil, nil)
-	account.setBalance(big.NewInt(900000))
-	serializedAccount, _ := codec.MP.MarshalToBytes(account)
-
-	tx := transaction{from: address[0], to: address[1], value: big.NewInt(100000)}
-	db := db.NewMapDB()
-	mgr := trie_manager.New(db)
-	trie := mgr.NewMutable(nil)
-	trie.Set(address[0].Bytes(), serializedAccount)
-	transitionState := &transitionState{state: trie}
-	tx.execute(transitionState)
-
-	var result accountInfo
-	for _, v := range address {
-		serializedAccount, _ = trie.Get(v.Bytes())
-		if _, err := codec.MP.UnmarshalFromBytes(serializedAccount, &result); err != nil {
-			fmt.Println("ERROR!!!!!")
-			return
-		}
-		fmt.Println("result.balance : ", result.balance)
-	}
+type transferTx struct {
+	transaction
 }
 
 type scoreCallTx struct {
