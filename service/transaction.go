@@ -147,7 +147,7 @@ func (tx *transaction) execute(state *transitionState, db db.Database) error {
 	// TODO 지정된 시간 이내에 결과가 나와야 한다.
 	stateTrie := state.state
 	var accSnapshot [2]accountSnapshotImpl // 0 is from, 1 is to
-	var accState [2]accountState           // 0 is from, 1 is to
+	var accState [2]AccountState           // 0 is from, 1 is to
 	var addr [2][]byte
 
 	addr[0] = tx.From().Bytes()
@@ -164,9 +164,9 @@ func (tx *transaction) execute(state *transitionState, db db.Database) error {
 
 	txValue := tx.Value()
 
-	if accSnapshot[0].getBalance().Cmp(txValue) < 0 {
+	if accSnapshot[0].GetBalance().Cmp(txValue) < 0 {
 		//return NotEnoughBalance
-		log.Println("Not enough balance. ", accSnapshot[0].getBalance(), ", value ", txValue)
+		log.Println("Not enough balance. ", accSnapshot[0].GetBalance(), ", value ", txValue)
 		return nil
 	}
 
@@ -183,12 +183,12 @@ func (tx *transaction) execute(state *transitionState, db db.Database) error {
 		}
 	}
 
-	accState[0].setBalance(big.NewInt(0).Sub(accSnapshot[0].getBalance(), txValue))
-	accState[1].setBalance(big.NewInt(0).Add(accSnapshot[1].getBalance(), txValue))
+	accState[0].SetBalance(big.NewInt(0).Sub(accSnapshot[0].GetBalance(), txValue))
+	accState[1].SetBalance(big.NewInt(0).Add(accSnapshot[1].GetBalance(), txValue))
 
 	stateTrieSs := stateTrie.GetSnapshot()
 	for i, account := range accState {
-		if resultSnapshot := account.getSnapshot(); resultSnapshot != nil {
+		if resultSnapshot := account.GetSnapshot(); resultSnapshot != nil {
 			if serializedAccount, err := codec.MP.MarshalToBytes(resultSnapshot); err == nil {
 				if err = stateTrie.Set(addr[i], serializedAccount); err != nil {
 					stateTrie.Reset(stateTrieSs)

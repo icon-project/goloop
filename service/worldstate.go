@@ -11,32 +11,32 @@ import (
 	"sync"
 )
 
-type worldSnapshot interface {
-	getAccountSnapshot(id []byte) accountSnapshot
-	flush() error
-	stateHash() []byte
+type WorldSnapshot interface {
+	GetAccountSnapshot(id []byte) AccountSnapshot
+	Flush() error
+	StateHash() []byte
 }
 
-type worldState interface {
-	getAccountState(id []byte) accountState
-	getAccountSnapshot(id []byte) accountSnapshot
-	getSnapshot() worldSnapshot
-	reset(snapshot worldSnapshot) error
+type WorldState interface {
+	GetAccountState(id []byte) AccountState
+	GetAccountSnapshot(id []byte) AccountSnapshot
+	GetSnapshot() WorldSnapshot
+	Reset(snapshot WorldSnapshot) error
 }
 
 type worldSnapshotImpl struct {
 	accounts trie.SnapshotForObject
 }
 
-func (ws *worldSnapshotImpl) stateHash() []byte {
+func (ws *worldSnapshotImpl) StateHash() []byte {
 	return ws.accounts.Hash()
 }
 
-func (ws *worldSnapshotImpl) flush() error {
+func (ws *worldSnapshotImpl) Flush() error {
 	return ws.accounts.Flush()
 }
 
-func (ws *worldSnapshotImpl) getAccountSnapshot(id []byte) accountSnapshot {
+func (ws *worldSnapshotImpl) GetAccountSnapshot(id []byte) AccountSnapshot {
 	key := addressIDToKey(id)
 	obj, err := ws.accounts.Get(key)
 	if err != nil {
@@ -59,10 +59,10 @@ type worldStateImpl struct {
 
 	database        db.Database
 	accounts        trie.MutableForObject
-	mutableAccounts map[string]accountState
+	mutableAccounts map[string]AccountState
 }
 
-func (ws *worldStateImpl) reset(isnapshot worldSnapshot) error {
+func (ws *worldStateImpl) Reset(isnapshot WorldSnapshot) error {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
 
@@ -71,15 +71,18 @@ func (ws *worldStateImpl) reset(isnapshot worldSnapshot) error {
 		return errors.New("InvalidSnapshotType")
 	}
 	ws.accounts.Reset(snapshot.accounts)
-	ws.mutableAccounts = make(map[string]accountState)
+	ws.mutableAccounts = make(map[string]AccountState)
 	return nil
 }
 
 func addressIDToKey(id []byte) []byte {
+	if id == nil {
+		return []byte("Genesis")
+	}
 	return crypto.SHA3Sum256(id)
 }
 
-func (ws *worldStateImpl) getAccountState(id []byte) accountState {
+func (ws *worldStateImpl) GetAccountState(id []byte) AccountState {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
 
@@ -102,12 +105,12 @@ func (ws *worldStateImpl) getAccountState(id []byte) accountState {
 	return ac
 }
 
-func (ws *worldStateImpl) getAccountSnapshot(id []byte) accountSnapshot {
+func (ws *worldStateImpl) GetAccountSnapshot(id []byte) AccountSnapshot {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
 
 	if a, ok := ws.mutableAccounts[string(id)]; ok {
-		return a.getSnapshot()
+		return a.GetSnapshot()
 	}
 
 	key := addressIDToKey(id)
@@ -126,21 +129,14 @@ func (ws *worldStateImpl) getAccountSnapshot(id []byte) accountSnapshot {
 	return ass
 }
 
-func (ws *worldStateImpl) getAccountROState(id []byte) accountState {
-	ws.mutex.Lock()
-	defer ws.mutex.Unlock()
-
-	return newAccountROState(ws.getAccountSnapshot(id))
-}
-
-func (ws *worldStateImpl) getSnapshot() worldSnapshot {
+func (ws *worldStateImpl) GetSnapshot() WorldSnapshot {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
 
 	for id, as := range ws.mutableAccounts {
 		key := addressIDToKey([]byte(id))
-		s := as.getSnapshot()
-		if s.empty() {
+		s := as.GetSnapshot()
+		if s.Empty() {
 			if err := ws.accounts.Delete(key); err != nil {
 				log.Panicf("Fail to delete account key = %x", key)
 			}
@@ -155,9 +151,9 @@ func (ws *worldStateImpl) getSnapshot() worldSnapshot {
 	}
 }
 
-func newWorldState(database db.Database, stateHash []byte) worldState {
+func NewWorldState(database db.Database, stateHash []byte) WorldState {
 	ws := new(worldStateImpl)
 	ws.accounts = trie_manager.NewMutableForObject(database, stateHash, reflect.TypeOf((*accountSnapshotImpl)(nil)))
-	ws.mutableAccounts = make(map[string]accountState)
+	ws.mutableAccounts = make(map[string]AccountState)
 	return ws
 }

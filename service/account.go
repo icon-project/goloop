@@ -12,23 +12,23 @@ import (
 	"math/big"
 )
 
-type accountSnapshot interface {
+type AccountSnapshot interface {
 	trie.Object
-	getBalance() *big.Int
-	isContract() bool
-	empty() bool
-	getValue(k []byte) ([]byte, error)
+	GetBalance() *big.Int
+	IsContract() bool
+	Empty() bool
+	GetValue(k []byte) ([]byte, error)
 }
 
-type accountState interface {
-	getBalance() *big.Int
-	isContract() bool
-	getValue(k []byte) ([]byte, error)
-	setBalance(v *big.Int)
-	setValue(k, v []byte) error
-	deleteValue(k []byte) error
-	getSnapshot() accountSnapshot
-	reset(snapshot accountSnapshot) error
+type AccountState interface {
+	GetBalance() *big.Int
+	IsContract() bool
+	GetValue(k []byte) ([]byte, error)
+	SetBalance(v *big.Int)
+	SetValue(k, v []byte) error
+	DeleteValue(k []byte) error
+	GetSnapshot() AccountSnapshot
+	Reset(snapshot AccountSnapshot) error
 }
 
 type accountSnapshotImpl struct {
@@ -38,21 +38,21 @@ type accountSnapshotImpl struct {
 	database    db.Database
 }
 
-func (s *accountSnapshotImpl) getBalance() *big.Int {
+func (s *accountSnapshotImpl) GetBalance() *big.Int {
 	v := new(big.Int)
 	v.Set(&s.balance.Int)
 	return v
 }
 
-func (s *accountSnapshotImpl) isContract() bool {
+func (s *accountSnapshotImpl) IsContract() bool {
 	return s.fIsContract
 }
 
-func (s *accountSnapshotImpl) getValue(k []byte) ([]byte, error) {
+func (s *accountSnapshotImpl) GetValue(k []byte) ([]byte, error) {
 	return s.store.Get(k)
 }
 
-func (s *accountSnapshotImpl) empty() bool {
+func (s *accountSnapshotImpl) Empty() bool {
 	return s.balance.BitLen() == 0 && s.store == nil
 }
 
@@ -103,7 +103,7 @@ func (s *accountSnapshotImpl) Equal(object trie.Object) bool {
 }
 
 func (s *accountSnapshotImpl) CodecEncodeSelf(e *ugorji.Encoder) {
-	e.Encode(&s.balance)
+	e.Encode(s.balance)
 	e.Encode(s.fIsContract)
 	if s.store != nil {
 		e.Encode(s.store.Hash())
@@ -132,27 +132,27 @@ func (s *accountSnapshotImpl) CodecDecodeSelf(d *ugorji.Decoder) {
 }
 
 type accountStateImpl struct {
-	database    db.Database
-	balance     common.HexInt
-	fIsContract bool
-	store       trie.Mutable
+	database   db.Database
+	balance    common.HexInt
+	isContract bool
+	store      trie.Mutable
 }
 
-func (s *accountStateImpl) getBalance() *big.Int {
+func (s *accountStateImpl) GetBalance() *big.Int {
 	v := new(big.Int)
 	v.Set(&s.balance.Int)
 	return v
 }
 
-func (s *accountStateImpl) setBalance(v *big.Int) {
+func (s *accountStateImpl) SetBalance(v *big.Int) {
 	s.balance.Set(v)
 }
 
-func (s *accountStateImpl) isContract() bool {
-	return s.fIsContract
+func (s *accountStateImpl) IsContract() bool {
+	return s.isContract
 }
 
-func (s *accountStateImpl) getSnapshot() accountSnapshot {
+func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
 	var store trie.Immutable
 	if s.store != nil {
 		store = s.store.GetSnapshot()
@@ -162,19 +162,19 @@ func (s *accountStateImpl) getSnapshot() accountSnapshot {
 	}
 	return &accountSnapshotImpl{
 		balance:     s.balance.Clone(),
-		fIsContract: s.fIsContract,
+		fIsContract: s.isContract,
 		store:       store,
 	}
 }
 
-func (s *accountStateImpl) reset(isnapshot accountSnapshot) error {
+func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 	snapshot, ok := isnapshot.(*accountSnapshotImpl)
 	if !ok {
-		log.Panicf("It tries to reset with invalid snapshot type=%T", s)
+		log.Panicf("It tries to Reset with invalid snapshot type=%T", s)
 	}
 
 	s.balance.Set(&snapshot.balance.Int)
-	s.fIsContract = snapshot.fIsContract
+	s.isContract = snapshot.fIsContract
 	if s.store == nil && snapshot.store == nil {
 		return nil
 	}
@@ -191,60 +191,60 @@ func (s *accountStateImpl) reset(isnapshot accountSnapshot) error {
 	return nil
 }
 
-func (s *accountStateImpl) getValue(k []byte) ([]byte, error) {
+func (s *accountStateImpl) GetValue(k []byte) ([]byte, error) {
 	if s.store == nil {
 		return nil, nil
 	}
 	return s.store.Get(k)
 }
 
-func (s *accountStateImpl) setValue(k, v []byte) error {
+func (s *accountStateImpl) SetValue(k, v []byte) error {
 	if s.store == nil {
 		s.store = trie_manager.NewMutable(s.database, nil)
 	}
 	return s.store.Set(k, v)
 }
 
-func (s *accountStateImpl) deleteValue(k []byte) error {
+func (s *accountStateImpl) DeleteValue(k []byte) error {
 	if s.store == nil {
 		return nil
 	}
 	return s.store.Delete(k)
 }
 
-func newAccountState(database db.Database, snapshot *accountSnapshotImpl) accountState {
+func newAccountState(database db.Database, snapshot *accountSnapshotImpl) AccountState {
 	s := new(accountStateImpl)
 	s.database = database
 	if snapshot != nil {
-		s.reset(snapshot)
+		s.Reset(snapshot)
 	}
 	return s
 }
 
 type accountROState struct {
-	accountSnapshot
+	AccountSnapshot
 }
 
-func (a *accountROState) setBalance(v *big.Int) {
-	log.Panicf("accountROState().setBalance() is invoked")
+func (a *accountROState) SetBalance(v *big.Int) {
+	log.Panicf("accountROState().SetBalance() is invoked")
 }
 
-func (a *accountROState) setValue(k, v []byte) error {
+func (a *accountROState) SetValue(k, v []byte) error {
 	return errors.New("ReadOnlyState")
 }
 
-func (a *accountROState) deleteValue(k []byte) error {
+func (a *accountROState) DeleteValue(k []byte) error {
 	return errors.New("ReadOnlyState")
 }
 
-func (a *accountROState) getSnapshot() accountSnapshot {
-	return a.accountSnapshot
+func (a *accountROState) GetSnapshot() AccountSnapshot {
+	return a.AccountSnapshot
 }
 
-func (a *accountROState) reset(snapshot accountSnapshot) error {
+func (a *accountROState) Reset(snapshot AccountSnapshot) error {
 	return errors.New("ReadOnlyState")
 }
 
-func newAccountROState(snapshot accountSnapshot) accountState {
+func newAccountROState(snapshot AccountSnapshot) AccountState {
 	return &accountROState{snapshot}
 }

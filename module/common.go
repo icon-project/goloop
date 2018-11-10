@@ -4,6 +4,7 @@ type Address interface {
 	String() string
 	Bytes() []byte
 	ID() []byte
+	IsContract() bool
 }
 
 type Vote interface {
@@ -38,4 +39,9 @@ type TransactionGroup int
 const (
 	TransactionGroupPatch TransactionGroup = iota
 	TransactionGroupNormal
+)
+
+const (
+	TransactionVersion2 = 2
+	TransactionVersion3 = 3
 )

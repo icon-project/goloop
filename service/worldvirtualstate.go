@@ -7,20 +7,28 @@ import (
 )
 
 const (
-	accountNoLock      = 0
-	accountReadLock    = 1
-	accountWriteLock   = 2
-	accountWriteUnlock = 3
+	AccountNoLock      = 0
+	AccountReadLock    = 1
+	AccountWriteLock   = 2
+	AccountWriteUnlock = 3
 )
 
-type lockRequest struct {
-	id   string
-	lock int
+type LockRequest struct {
+	ID   string
+	Lock int
+}
+
+type WorldVirtualState interface {
+	WorldState
+	GetFuture(reqs []LockRequest) WorldVirtualState
+	WaitCommit()
+	Commit()
+	Realize()
 }
 
 type lockedAccountState struct {
 	lock   int
-	state  accountState
+	state  AccountState
 	depend *worldVirtualState
 }
 
@@ -29,64 +37,72 @@ type worldVirtualState struct {
 	waitor *sync.Cond
 
 	parent    *worldVirtualState
-	real      worldState
-	base      worldSnapshot
-	committed worldSnapshot
+	real      WorldState
+	base      WorldSnapshot
+	committed WorldSnapshot
 
 	accountStates map[string]*lockedAccountState
 	worldLock     int
 }
 
-func (wvs *worldVirtualState) getAccountState(id []byte) accountState {
+func (wvs *worldVirtualState) GetAccountSnapshot(id []byte) AccountSnapshot {
+	as := wvs.GetAccountState(id)
+	if as == nil {
+		return nil
+	}
+	return as.GetSnapshot()
+}
+
+func (wvs *worldVirtualState) GetAccountState(id []byte) AccountState {
 	wvs.mutex.Lock()
 	defer wvs.mutex.Unlock()
 
 	las, ok := wvs.accountStates[string(id)]
 	if ok {
 		if las.depend != nil {
-			las.depend.waitCommit()
-			if las.lock == accountWriteLock {
-				las.state = wvs.real.getAccountState(id)
+			las.depend.WaitCommit()
+			if las.lock == AccountWriteLock {
+				las.state = wvs.real.GetAccountState(id)
 			} else {
-				las.state = las.depend.getAccountROState(id)
+				las.state = las.depend.GetAccountROState(id)
 			}
 			las.depend = nil
 		}
 		return las.state
 	}
 
-	if wvs.worldLock != accountNoLock {
+	if wvs.worldLock != AccountNoLock {
 		if wvs.base == nil {
-			wvs.parent.realize()
+			wvs.parent.Realize()
 			wvs.base = wvs.parent.committed
 		}
-		if wvs.worldLock == accountWriteLock {
-			return wvs.real.getAccountState(id)
+		if wvs.worldLock == AccountWriteLock {
+			return wvs.real.GetAccountState(id)
 		} else {
-			return newAccountROState(wvs.base.getAccountSnapshot(id))
+			return newAccountROState(wvs.base.GetAccountSnapshot(id))
 		}
 	}
 	return nil
 }
 
-func (wvs *worldVirtualState) getAccountROState(id []byte) accountState {
-	as := wvs.getAccountState(id)
-	return newAccountROState(as.getSnapshot())
+func (wvs *worldVirtualState) GetAccountROState(id []byte) AccountState {
+	as := wvs.GetAccountState(id)
+	return newAccountROState(as.GetSnapshot())
 }
 
-func (wvs *worldVirtualState) getSnapshot() worldSnapshot {
+func (wvs *worldVirtualState) GetSnapshot() WorldSnapshot {
 	wvs.mutex.Lock()
 	defer wvs.mutex.Unlock()
 
 	wvss := new(worldVirtualSnapshot)
-	wvss.parent = wvs
+	wvss.origin = wvs
 	switch wvs.worldLock {
-	case accountWriteUnlock:
+	case AccountWriteUnlock:
 		wvss.base = wvs.committed
-	case accountWriteLock:
+	case AccountWriteLock:
 		wvs.realizeBaseInLock()
-		wvss.base = wvs.real.getSnapshot()
-	case accountReadLock:
+		wvss.base = wvs.real.GetSnapshot()
+	case AccountReadLock:
 		wvs.realizeBaseInLock()
 		fallthrough
 	default:
@@ -94,10 +110,10 @@ func (wvs *worldVirtualState) getSnapshot() worldSnapshot {
 			wvss.base = wvs.committed
 		} else {
 			wvss.base = wvs.base
-			wvss.accountSnapshots = map[string]accountSnapshot{}
+			wvss.accountSnapshots = map[string]AccountSnapshot{}
 			for id, las := range wvs.accountStates {
-				if las.lock == accountWriteLock && las.depend == nil {
-					wvss.accountSnapshots[id] = las.state.getSnapshot()
+				if las.lock == AccountWriteLock && las.depend == nil {
+					wvss.accountSnapshots[id] = las.state.GetSnapshot()
 				}
 			}
 		}
@@ -105,25 +121,24 @@ func (wvs *worldVirtualState) getSnapshot() worldSnapshot {
 	return wvss
 }
 
-func (wvs *worldVirtualState) reset(snapshot worldSnapshot) error {
+func (wvs *worldVirtualState) Reset(snapshot WorldSnapshot) error {
 	s, ok := snapshot.(*worldVirtualSnapshot)
 	if !ok {
 		return errors.New("InvalidSnapshot")
 	}
-	if wvs != s.parent {
+	if wvs != s.origin {
 		return errors.New("InvalidSnapshot")
 	}
-	// TODO check implementation
-	// if wvs.accounts != nil && s.real != nil {
-	// 	if wvs.accounts.lock == accountWriteLock {
-	// 		err := wvs.real.reset(s.real)
-	// 		if err != nil {
-	// 			log.Panic(err)
-	// 		}
-	// 	}
-	// }
+
+	wvs.mutex.Lock()
+	defer wvs.mutex.Unlock()
+
+	if wvs.waitor != nil {
+		return errors.New("AlreadyCommitted")
+	}
+
 	for id, ass := range s.accountSnapshots {
-		err := wvs.accountStates[id].state.reset(ass)
+		err := wvs.accountStates[id].state.Reset(ass)
 		if err != nil {
 			log.Panic(err)
 		}
@@ -140,20 +155,16 @@ func (wvs *worldVirtualState) checkDepend(id string) (*worldVirtualState, bool) 
 	if wvs.committed != nil {
 		return nil, true
 	}
-
 	if as, ok := wvs.accountStates[id]; ok {
-		if as.lock == accountWriteLock {
-			wvs.mutex.Unlock()
+		if as.lock == AccountWriteLock {
 			return wvs, true
 		}
-		depend := as.depend
-		wvs.mutex.Unlock()
-		return depend, true
+		return as.depend, true
 	}
 	switch wvs.worldLock {
-	case accountWriteLock:
+	case AccountWriteLock:
 		return wvs, true
-	case accountReadLock:
+	case AccountReadLock:
 		if wvs.base != nil {
 			return nil, true
 		}
@@ -170,7 +181,7 @@ func (wvs *worldVirtualState) getDepend(id string) *worldVirtualState {
 	return nil
 }
 
-func (wvs *worldVirtualState) waitCommit() {
+func (wvs *worldVirtualState) WaitCommit() {
 	wvs.mutex.Lock()
 	defer wvs.mutex.Unlock()
 
@@ -184,7 +195,7 @@ func (wvs *worldVirtualState) waitCommitInLock() {
 	}
 }
 
-func (wvs *worldVirtualState) realize() {
+func (wvs *worldVirtualState) Realize() {
 	wsList := make([]*worldVirtualState, 0)
 	for ws := wvs; ws != nil; ws = ws.parent {
 		ws.mutex.Lock()
@@ -204,7 +215,7 @@ func (wvs *worldVirtualState) realize() {
 		ws := wsList[idx]
 		ws.waitCommitInLock()
 		if idx == 0 && ws.committed == nil {
-			ws.committed = ws.real.getSnapshot()
+			ws.committed = ws.real.GetSnapshot()
 		}
 		ws.mutex.Unlock()
 	}
@@ -214,11 +225,11 @@ func (wvs *worldVirtualState) realizeBaseInLock() {
 	if wvs.base != nil {
 		return
 	}
-	wvs.parent.realize()
+	wvs.parent.Realize()
 	wvs.base = wvs.committed
 }
 
-func (wvs *worldVirtualState) getFuture(reqs []lockRequest) *worldVirtualState {
+func (wvs *worldVirtualState) GetFuture(reqs []LockRequest) WorldVirtualState {
 	nwvs := new(worldVirtualState)
 	nwvs.real = wvs.real
 	nwvs.waitor = sync.NewCond(&nwvs.mutex)
@@ -229,30 +240,30 @@ func (wvs *worldVirtualState) getFuture(reqs []lockRequest) *worldVirtualState {
 	return nwvs
 }
 
-func applyLockRequests(wvs *worldVirtualState, reqs []lockRequest) {
+func applyLockRequests(wvs *worldVirtualState, reqs []LockRequest) {
 	wvs.accountStates = make(map[string]*lockedAccountState, len(reqs))
 	for _, req := range reqs {
-		if req.id == "" {
-			wvs.worldLock = req.lock
+		if req.ID == "" {
+			wvs.worldLock = req.Lock
 		} else {
 			var depend *worldVirtualState
 			if wvs.parent != nil {
-				depend = wvs.parent.getDepend(req.id)
+				depend = wvs.parent.getDepend(req.ID)
 			}
 
 			las := new(lockedAccountState)
-			las.lock = req.lock
+			las.lock = req.Lock
 			if depend != nil {
 				las.depend = depend
 			} else {
-				las.state = wvs.real.getAccountState([]byte(req.id))
+				las.state = wvs.real.GetAccountState([]byte(req.ID))
 			}
-			wvs.accountStates[req.id] = las
+			wvs.accountStates[req.ID] = las
 		}
 	}
 }
 
-func (wvs *worldVirtualState) commit() {
+func (wvs *worldVirtualState) Commit() {
 	wvs.mutex.Lock()
 	defer wvs.mutex.Unlock()
 
@@ -261,16 +272,16 @@ func (wvs *worldVirtualState) commit() {
 	}
 
 	for _, las := range wvs.accountStates {
-		if las.lock == accountWriteLock {
-			las.lock = accountWriteUnlock
-			ass := las.state.getSnapshot()
+		if las.lock == AccountWriteLock {
+			las.lock = AccountWriteUnlock
+			ass := las.state.GetSnapshot()
 			las.state = newAccountROState(ass)
 		}
 	}
 
-	if wvs.worldLock == accountWriteLock {
-		wvs.worldLock = accountWriteUnlock
-		wvs.committed = wvs.real.getSnapshot()
+	if wvs.worldLock == AccountWriteLock {
+		wvs.worldLock = AccountWriteUnlock
+		wvs.committed = wvs.real.GetSnapshot()
 	}
 
 	wvs.waitor.Broadcast()
@@ -278,10 +289,10 @@ func (wvs *worldVirtualState) commit() {
 	return
 }
 
-func newWorldVirtualState(ws worldState, reqs []lockRequest) *worldVirtualState {
+func NewWorldVirtualState(ws WorldState, reqs []LockRequest) WorldVirtualState {
 	nwvs := new(worldVirtualState)
 	nwvs.real = ws
-	nwvs.base = ws.getSnapshot()
+	nwvs.base = ws.GetSnapshot()
 	if len(reqs) == 0 {
 		nwvs.committed = nwvs.base
 	} else {
@@ -292,12 +303,12 @@ func newWorldVirtualState(ws worldState, reqs []lockRequest) *worldVirtualState 
 }
 
 type worldVirtualSnapshot struct {
-	parent           *worldVirtualState
-	base             worldSnapshot
-	accountSnapshots map[string]accountSnapshot
+	origin           *worldVirtualState
+	base             WorldSnapshot
+	accountSnapshots map[string]AccountSnapshot
 }
 
-func (wvss *worldVirtualSnapshot) getAccountSnapshot(id []byte) accountSnapshot {
+func (wvss *worldVirtualSnapshot) GetAccountSnapshot(id []byte) AccountSnapshot {
 	if len(wvss.accountSnapshots) > 0 {
 		ass, ok := wvss.accountSnapshots[string(id)]
 		if ok {
@@ -305,27 +316,27 @@ func (wvss *worldVirtualSnapshot) getAccountSnapshot(id []byte) accountSnapshot 
 		}
 	}
 	if wvss.base != nil {
-		return wvss.base.getAccountSnapshot(id)
+		return wvss.base.GetAccountSnapshot(id)
 	}
 	return nil
 }
 
-func (wvss *worldVirtualSnapshot) realize() {
+func (wvss *worldVirtualSnapshot) Realize() {
 	// TODO Implement realize
 }
 
-func (wvss *worldVirtualSnapshot) flush() error {
+func (wvss *worldVirtualSnapshot) Flush() error {
 	// TODO realize itself, then flush
 	if wvss.base != nil && len(wvss.accountSnapshots) == 0 {
-		return wvss.base.flush()
+		return wvss.base.Flush()
 	}
 	return errors.New("NotAllowed")
 }
 
-func (wvss *worldVirtualSnapshot) stateHash() []byte {
+func (wvss *worldVirtualSnapshot) StateHash() []byte {
 	// TODO realize itself, then get stateHash
 	if wvss.base != nil && len(wvss.accountSnapshots) == 0 {
-		return wvss.base.stateHash()
+		return wvss.base.StateHash()
 	}
 	return nil
 }
