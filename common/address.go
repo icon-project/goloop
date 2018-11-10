@@ -38,15 +38,17 @@ func (a *Address) UnmarshalJSON(b []byte) error {
 }
 
 func (a *Address) SetString(s string) error {
-	var isContract bool = false
-	switch {
-	case s[0:2] == "cx":
-		isContract = true
-		s = s[2:]
-	case s[0:2] == "hx":
-		s = s[2:]
-	case s[0:2] == "0x":
-		s = s[2:]
+	var isContract = false
+	if len(s) >= 2 {
+		switch {
+		case s[0:2] == "cx":
+			isContract = true
+			s = s[2:]
+		case s[0:2] == "hx":
+			s = s[2:]
+		case s[0:2] == "0x":
+			s = s[2:]
+		}
 	}
 	if len(s)%2 == 1 {
 		s = "0" + s
