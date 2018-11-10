@@ -40,13 +40,15 @@ type GoLevelDB struct {
 }
 
 func (db *GoLevelDB) GetBucket(name string) (Bucket, error) {
-	panic("implement me")
+	return &goLevelBucket{
+		id: name,
+		db: db.db,
+	}, nil
 }
 
 func (db *GoLevelDB) Close() error {
-	panic("implement me")
+	return db.db.Close()
 }
-
 
 //----------------------------------------
 // GetBucket
@@ -58,18 +60,34 @@ type goLevelBucket struct {
 	db *leveldb.DB
 }
 
+func makeKey(id string, key []byte) []byte {
+	nkey := make([]byte, len(id)+len(key))
+	copy(nkey, id)
+	copy(nkey[len(id):], key)
+	return nkey
+}
+
 func (bucket *goLevelBucket) Get(key []byte) ([]byte, error) {
-	panic("implement me")
+	value, err := bucket.db.Get(makeKey(bucket.id, key), nil)
+	if err == leveldb.ErrNotFound {
+		return nil, nil
+	} else {
+		return value, err
+	}
 }
 
 func (bucket *goLevelBucket) Has(key []byte) bool {
-	panic("implement me")
+	ret, err := bucket.db.Has(makeKey(bucket.id, key), nil)
+	if err != nil {
+		return false
+	}
+	return ret
 }
 
 func (bucket *goLevelBucket) Set(key []byte, value []byte) error {
-	panic("implement me")
+	return bucket.db.Put(makeKey(bucket.id, key), value, nil)
 }
 
 func (bucket *goLevelBucket) Delete(key []byte) error {
-	panic("implement me")
+	return bucket.db.Delete(makeKey(bucket.id, key), nil)
 }
