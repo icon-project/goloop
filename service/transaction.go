@@ -1,12 +1,15 @@
 package service
 
 import (
+	"encoding/hex"
 	"fmt"
+	"log"
+	"math/big"
+
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
-	"log"
-	"math/big"
+	"github.com/pkg/errors"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/trie"
@@ -36,16 +39,15 @@ func newTransaction(b []byte) (module.Transaction, error) {
 type source interface {
 	bytes() []byte
 	hash() []byte
-	verify() error
+	verifySignature() error
 }
 
 type transaction struct {
 	source
 
-	isPatch bool
+	group module.TransactionGroup
 
-	version int
-	// TODO type check
+	version   int
 	from      common.Address
 	to        common.Address
 	value     *big.Int
@@ -57,6 +59,10 @@ type transaction struct {
 
 	hash  []byte
 	bytes []byte
+}
+
+func (tx *transaction) Group() module.TransactionGroup {
+	return tx.group
 }
 
 func (tx *transaction) ID() []byte {
@@ -73,11 +79,13 @@ func (tx *transaction) Bytes() ([]byte, error) {
 	return tx.bytes, nil
 }
 
+// Verify conducts TX syntax check, signature verification, and balance check.
+// It is called when JSON-RPC server pre-validates.
 func (tx *transaction) Verify() error {
-	// TODO handler별로 check할 게 있을까? 예를 들어 tx format?
-	// TODO JSON RPC에서도 이것을 호출하면 그 때는 balance check를 해야 할 수 있다.
-	// 현재는 block에서 호출한다.
-	return tx.source.verify()
+	// TODO What about checking parameters for each tx types? If right,
+	// move it to the transferTx, scoreCallTx, and scoreDeployTx.
+	// TODO check balance
+	return tx.source.verifySignature()
 }
 
 func (tx *transaction) From() module.Address {
@@ -119,9 +127,18 @@ func (tx *transaction) Signature() []byte {
 	return tx.signature
 }
 
-func (tx *transaction) validate(state trie.Mutable) error {
-	// TODO TX index DB를 확인하여 이미 block에 들어가 있는 것인지 확인
-	// TODO signature check
+func (tx *transaction) validate(state trie.Mutable, txdb db.Bucket) error {
+	// check if it's already handled in a block
+	if loc, err := txdb.Get(tx.ID()); loc != nil || err != nil {
+		if err != nil {
+			return errors.New("TX validation failed due to Transaction Index DB failure")
+		}
+		errors.New("Already handled TX: " + hex.EncodeToString(tx.ID()))
+	}
+
+	// verify a signature
+	tx.source.verifySignature()
+
 	// TODO balance가 충분한지 확인. 그런데 여기에서는 이전 tx의 처리 결과를 감안하여
 	// 아직 balance가 충분한지 확인해야 함.
 	return nil
@@ -153,8 +170,7 @@ func (s *accountInfo) CodecDecodeSelf(d *mp.Decoder) {
 }
 
 func (tx *transaction) execute(state *transitionState) error {
-	// TODO 지정된 시간 이내에 결과가 나와야 한다.
-	// TODO: Change accountInfo to accountState
+	// TODO Change accountInfo to accountState
 	stateTrie := state.state
 	var account [2]accountInfo // 0 is from, 1 is to
 	var addr [2][]byte

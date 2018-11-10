@@ -5,7 +5,9 @@ import (
 	"sync"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
+	"github.com/icon-project/goloop/common/trie/mpt"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -35,11 +37,12 @@ type transitionState struct {
 }
 
 type transition struct {
-	trieManager trie.Manager
-	parent      *transition
+	parent *transition
 
 	patchTransactions  *transactionlist
 	normalTransactions *transactionlist
+
+	db db.Database
 
 	result resultBytes
 	*transitionState
@@ -74,10 +77,10 @@ func newTransition(parent *transition, patchTxList *transactionlist, normalTxLis
 }
 
 // all parameters should be valid.
-func newInitTransition(tm trie.Manager, result []byte, validatorList module.ValidatorList) *transition {
+func newInitTransition(db db.Database, result []byte, validatorList module.ValidatorList) *transition {
 	return &transition{
-		trieManager: tm,
-		result:      result,
+		db:     db,
+		result: result,
 		transitionState: &transitionState{
 			nextValidatorList: validatorList,
 		},
@@ -103,8 +106,8 @@ func (t *transition) Execute(cb module.TransitionCallback) (canceler func() bool
 
 	switch t.step {
 	case stepInited:
-		t.trieManager = t.parent.trieManager
-		t.state = t.trieManager.NewMutable(t.result.stateHash())
+		// TODO not to use mpt directly
+		t.state = mpt.NewManager(t.db).NewMutable(t.result.stateHash())
 		t.step = stepValidating
 	case stepValidated:
 		// when this transition created by this node
@@ -144,7 +147,11 @@ func (t *transition) LogBloom() []byte {
 
 func (t *transition) executeSync(alreadyValidated bool) {
 	if !alreadyValidated {
-		if !t.validateTxs(t.patchTransactions) || !t.validateTxs(t.normalTransactions) {
+		txdb, err := t.db.GetBucket(db.TransactionLocatorByHash)
+		if err != nil {
+			panic("can't get bucket TransactionLocatorByHash")
+		}
+		if !t.validateTxs(t.patchTransactions, txdb) || !t.validateTxs(t.normalTransactions, txdb) {
 			return
 		}
 		t.cb.OnValidate(t, nil)
@@ -167,7 +174,7 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	t.cb.OnExecute(t, nil)
 }
 
-func (t *transition) validateTxs(txList *transactionlist) bool {
+func (t *transition) validateTxs(txList *transactionlist, txDB db.Bucket) bool {
 	canceled := false
 	for _, tx := range txList.txs {
 		if t.step == stepCanceled {
@@ -175,7 +182,7 @@ func (t *transition) validateTxs(txList *transactionlist) bool {
 			break
 		}
 
-		if err := tx.validate(t.state); err != nil {
+		if err := tx.validate(t.state, txDB); err != nil {
 			t.mutex.Lock()
 			t.step = stepError
 			t.mutex.Unlock()

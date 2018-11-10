@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 )
 
@@ -24,6 +25,7 @@ const (
 // TODO transaction 시간 순으로 정렬 필요
 // KN.KIM - transactionPool내에서 TX관리는 linek list로 관리를 해야 삽입삭제가 용이할 것으로 보임.( 삽입삭제가 빈번할 수 있을 것으로 보임)
 type transactionPool struct {
+	txdb   db.Bucket
 	txList *list.List
 	//txList.Len() int
 	// transactionPool내에 입력하려 하는 txHash가 존재하는지 확인하기 위한 map.
@@ -32,8 +34,8 @@ type transactionPool struct {
 	mutex     sync.Mutex
 }
 
-func NewtransactionPool() *transactionPool {
-	return &transactionPool{txList: list.New(), txHashMap: make(map[string]*transaction)}
+func NewtransactionPool(txdb db.Bucket) *transactionPool {
+	return &transactionPool{txdb: txdb, txList: list.New(), txHashMap: make(map[string]*transaction)}
 }
 
 func makeTimestamp() int64 {
@@ -150,7 +152,7 @@ func (txPool *transactionPool) candidate(state trie.Mutable, max int) []*transac
 	txsIndex := 0
 	for iter := txPool.txList.Front(); iter != nil; iter = iter.Next() {
 		// 현재 validate에 실패한 tx에 대해서 삭제함.
-		if iter.Value.(*transaction).validate(state) != nil {
+		if iter.Value.(*transaction).validate(state, txPool.txdb) != nil {
 			tmp := iter.Prev()
 			txPool.txList.Remove(iter)
 			iter = tmp

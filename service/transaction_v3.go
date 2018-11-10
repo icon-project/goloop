@@ -52,7 +52,7 @@ func newTransactionLegacy(b []byte) (*transaction, error) {
 		if sig, err := t3.Signature.SerializeRSV(); err == nil {
 			t = &transaction{
 				source:    t3,
-				isPatch:   false,
+				group:     module.TransactionGroupNormal,
 				version:   2,
 				from:      t3.From,
 				to:        t3.To,
@@ -72,7 +72,7 @@ func newTransactionLegacy(b []byte) (*transaction, error) {
 		if sig, err := t3.Signature.SerializeRSV(); err == nil {
 			t = &transaction{
 				source:    t3,
-				isPatch:   false,
+				group:     module.TransactionGroupNormal,
 				version:   3,
 				from:      t3.From,
 				to:        t3.To,
@@ -125,7 +125,7 @@ var (
 	}
 )
 
-func (t *transactionV3) verify() error {
+func (t *transactionV3) verifySignature() error {
 	var data map[string]interface{}
 	var err error
 	if err = json.Unmarshal(t.raw, &data); err != nil {

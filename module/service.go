@@ -1,6 +1,8 @@
 package module
 
-import "math/big"
+import (
+	"math/big"
+)
 
 // TransitionCallback provides transition change notifications. All functions
 // are called back with the same Transition instance for the convenience.
@@ -13,6 +15,7 @@ type TransitionCallback interface {
 }
 
 type Transaction interface {
+	Group() TransactionGroup
 	ID() []byte
 	Version() int
 	Bytes() ([]byte, error)
@@ -134,4 +137,7 @@ type ServiceManager interface {
 
 	// TransactionListFromSlice returns list of transactions.
 	TransactionListFromSlice(txs []Transaction, version int) TransactionList
+
+	// SendTransaction adds transaction to a transaction pool.
+	SendTransaction(tx Transaction) error
 }

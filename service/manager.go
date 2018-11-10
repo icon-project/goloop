@@ -3,11 +3,12 @@ package service
 import (
 	"errors"
 	"fmt"
-	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"math/big"
 	"math/rand"
 	"time"
+
+	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/trie/trie_manager"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
@@ -32,6 +33,7 @@ type manager struct {
 	patchTxPool  *transactionPool
 	normalTxPool *transactionPool
 
+	db          db.Database
 	trieManager trie.Manager
 }
 
@@ -41,7 +43,9 @@ func NewManager(db db.Database) module.ServiceManager {
 	return &manager{
 		patchTxPool:  new(transactionPool),
 		normalTxPool: new(transactionPool),
-		trieManager:  mpt.NewManager(db)}
+		db:           db,
+		trieManager:  mpt.NewManager(db),
+	}
 }
 
 // ProposeTransition proposes a Transition following the parent Transition.
@@ -78,7 +82,7 @@ func (m *manager) CreateInitialTransition(result []byte, valList module.Validato
 		return nil, errors.New("Invalid result")
 	}
 	// TODO check if result is valid. Who's responsible?
-	return newInitTransition(m.trieManager, resultBytes, valList), nil
+	return newInitTransition(m.db, resultBytes, valList), nil
 }
 
 // CreateTransition creates a Transition following parent Transition with txs
@@ -283,9 +287,11 @@ func TxTest() {
 		addresses[i] = *common.NewAccountAddress([]byte(name))
 		mutableTrie.Set(addresses[i].Bytes(), serializedAccount)
 	}
+	txdb, _ := database.GetBucket(db.TransactionLocatorByHash)
 	manager := &manager{
-		patchTxPool:  NewtransactionPool(),
-		normalTxPool: NewtransactionPool(),
+		patchTxPool:  NewtransactionPool(txdb),
+		normalTxPool: NewtransactionPool(txdb),
+		db:           database,
 		trieManager:  mpt.NewManager(database)}
 	requestDone := make(chan bool)
 	exeDone := make(chan bool)
