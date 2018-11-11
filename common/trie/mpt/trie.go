@@ -11,6 +11,8 @@ import (
 	"github.com/icon-project/goloop/common/trie"
 )
 
+const maxNodeHeight = 65 // nibbles of 32bytes key(64) + root (1)
+
 type (
 	source struct {
 		// prev is nil after Flush()
@@ -28,6 +30,21 @@ type (
 		mutex     sync.Mutex
 		bk        db.Bucket
 		db        db.Database
+	}
+
+	iteratorStack struct {
+		n   node
+		key []byte
+	}
+
+	iteratorImpl struct {
+		key   []byte
+		value trie.Object
+		stack [maxNodeHeight]iteratorStack
+		top   int
+		end   bool
+
+		m *mpt
 	}
 )
 
@@ -47,54 +64,6 @@ func bytesToNibbles(k []byte) []byte {
 		nibbles[i*2+1] = v & 0x0F
 	}
 	return nibbles
-}
-
-func (m *mpt) get(n node, k []byte) (node, trie.Object, error) {
-	//fmt.Println("get : n = ", n, ", k = ", k)
-	var result trie.Object
-	var err error
-	switch n := n.(type) {
-	case *branch:
-		if len(k) != 0 {
-			n.nibbles[k[0]], result, err = m.get(n.nibbles[k[0]], k[1:])
-		} else {
-			result = n.value
-		}
-	case *extension:
-		match, _ := compareHex(n.sharedNibbles, k)
-		if len(n.sharedNibbles) != match {
-			return n, nil, err
-		}
-		n.next, result, err = m.get(n.next, k[match:])
-		if err != nil {
-			return n, nil, err
-		}
-	case *leaf:
-		if bytes.Compare(k, n.keyEnd) != 0 {
-			return n, nil, nil
-		}
-		return n, n.value, nil
-	// if node is hash, get serialized value with hash from db then deserialize it.
-	case hash:
-		serializedValue, err := m.bk.Get(n)
-		if err != nil {
-			return n, nil, err
-		}
-		if serializedValue == nil {
-			return n, nil, nil
-		}
-		deserializedNode := deserialize(serializedValue, m.objType, m.db)
-		switch m := deserializedNode.(type) {
-		case *branch:
-			m.hashedValue = n
-		case *extension:
-			m.hashedValue = n
-		case *leaf:
-			m.hashedValue = n
-		}
-		return m.get(deserializedNode, k)
-	}
-	return n, result, err
 }
 
 // TODO: check committed hash in previous source
@@ -124,7 +93,7 @@ func (m *mpt) Get(k []byte) ([]byte, error) {
 		}
 		m.root = m.source.committedHash
 	}
-	m.root, value, err = m.get(m.root, k)
+	m.root, value, err = m.root.get(m, k)
 	if err != nil {
 		return nil, err
 	} else if value == nil {
@@ -446,39 +415,6 @@ func (m *mpt) proof(n node, k []byte, depth int) (node, [][]byte, bool) {
 	return n, proofBuf, result
 }
 
-//func (m *mpt) proof1(n node, k []byte) ([][]byte, int) {
-//	var buf [][]byte
-//	var i int
-//	switch n := n.(type) {
-//	case *branch:
-//		buf, i = m.proof(n.nibbles[k[0]], k[1:])
-//		if n.hashedValue == nil {
-//			addProof(buf, i, n.serialize())
-//		} else {
-//			addProof(buf, i, n.hashedValue)
-//		}
-//	case *extension:
-//		match, _ := compareHex(n.sharedNibbles, k)
-//		buf, i = m.proof(n.next, k[match:])
-//		if n.hashedValue == nil {
-//			addProof(buf, i, n.serialize())
-//		} else {
-//			addProof(buf, i, n.hashedValue)
-//		}
-//	case *leaf:
-//		return nil, 0
-//	case hash:
-//		// TODO: have to check error
-//		if len(n) == 0 {
-//			return nil, 0
-//		}
-//		serializedValued, _ := m.db.Get(k)
-//		decodeingNode := deserialize(serializedValued, m.objType)
-//		return m.proof(decodeingNode, k)
-//	}
-//	return buf, i + 1
-//}
-
 // ethereum uses k, v DB as parameter to Prove()
 // Key / Value = hash(encoding node) / encoding
 // then verify key with roothash and DB passed to Prove()
@@ -509,42 +445,134 @@ func (m *mpt) GetProof(k []byte) [][]byte {
 	return proofBuf
 }
 
-const maxNodeHeight = 65 // nibbles of 32bytes key(64) + root (1)
-
-type stack struct {
-	n   node
-	key []byte
+func (m *mpt) Iterator() trie.Iterator {
+	return newIterator(m)
 }
 
-type iteratorImpl struct {
-	key   []byte
-	value trie.Object
-	//stack []node
-	stack [maxNodeHeight]stack
-	top   int
-	end   bool
+func (m *mpt) Reset(immutable trie.Immutable) error {
+	immutableTrie, ok := immutable.(*mpt)
+	if ok == false {
+		return common.ErrIllegalArgument
+	}
 
-	m *mpt
+	// Do not use reference.
+	committedHash := make(hash, len(immutableTrie.source.committedHash))
+	copy(committedHash, immutableTrie.source.committedHash)
+	m.source = &source{prev: immutableTrie.source, requestPool: make(map[string]trie.Object), committedHash: committedHash}
+	rootHash := make(hash, len(committedHash))
+	copy(rootHash, committedHash)
+	m.root = hash(rootHash)
+	m.db = immutableTrie.db
+	return nil
+}
+
+func (m *mpt) Empty() bool {
+	var pool map[string]trie.Object
+	var commitedHash hash
+	if pool, commitedHash = m.mergeSnapshot(); commitedHash == nil {
+		nilCnt := 0
+		for _, v := range pool {
+			if v == nil {
+				nilCnt++
+			}
+		}
+		return nilCnt == len(pool)
+	}
+	return len(pool) == 0 && m.root == nil
+}
+
+// struct for object trie
+type mptForObj struct {
+	*mpt
+}
+
+func newMptForObj(db db.Database, bk db.Bucket, initialHash hash, t reflect.Type) *mptForObj {
+	return &mptForObj{
+		mpt: &mpt{root: hash(append([]byte(nil), []byte(initialHash)...)),
+			source: &source{requestPool: make(map[string]trie.Object), committedHash: hash(append([]byte(nil), []byte(initialHash)...))},
+			bk:     bk, db: db, objType: t},
+	}
+}
+
+func (m *mptForObj) Get(k []byte) (trie.Object, error) {
+	k = bytesToNibbles(k)
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	if v, ok := m.source.requestPool[string(k)]; ok {
+		return v, nil
+	}
+
+	var value trie.Object
+	var err error
+	m.root, value, err = m.root.get(m.mpt, k)
+	if err != nil {
+		return nil, err
+	}
+	return value, nil
+}
+
+// TODO: check v is immutable???
+func (m *mptForObj) Set(k []byte, v trie.Object) error {
+	if k == nil || v == nil {
+		return common.ErrIllegalArgument
+	}
+	k = bytesToNibbles(k)
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	// have to check v is guaranteed as immutable
+	m.source.requestPool[string(k)] = v
+	return nil
+}
+
+func (m *mptForObj) GetSnapshot() trie.SnapshotForObject {
+	mptSnapshot := m.mpt.GetSnapshot()
+	mpt, ok := mptSnapshot.(*mpt)
+	if ok == false {
+		panic("illegal vairable")
+	}
+	return &mptForObj{mpt: mpt}
+}
+
+func (m *mptForObj) Reset(s trie.ImmutableForObject) {
+	// TODO Implement
+	immutableTrie, ok := s.(*mptForObj)
+	if ok == false {
+		return
+	}
+
+	// Do not use reference.
+	committedHash := make(hash, len(immutableTrie.source.committedHash))
+	copy(committedHash, immutableTrie.source.committedHash)
+	m.source = &source{prev: immutableTrie.source, requestPool: make(map[string]trie.Object), committedHash: committedHash}
+	rootHash := make(hash, len(committedHash))
+	copy(rootHash, committedHash)
+	m.root = hash(rootHash)
+	m.db = immutableTrie.db
+	return
+}
+
+func (m *mptForObj) Iterator() trie.IteratorForObject {
+	iter := newIteratorObj(m)
+	iter.Next()
+	return iter
+}
+
+func (m *mptForObj) Equal(object trie.ImmutableForObject, exact bool) bool {
+	immutableTrie, ok := object.(*mptForObj)
+	if ok == false {
+		return false
+	}
+	m.mpt.Equal(immutableTrie.mpt, exact)
+	return false
+}
+
+func (m *mptForObj) Empty() bool {
+	return m.mpt.Empty()
 }
 
 func newIterator(m *mpt) *iteratorImpl {
 	return &iteratorImpl{key: nil, value: nil, top: -1, m: m}
 }
-
-/*
-	Next에서 하는일.
-	stack의 top이 1이면 root를 의미. root를 deserialize한다.
-	1. branch일 경우
-		1-1. value를 확인하여 value가 있을 경우 반환.
-		1-2. value가 없을 경우 nil이 아닌 nible로 이동.
-	2. extension일 경우 다음으로 이동.
-	3. leaf일 경우 stack에 leaf를 push한다.
-	함수 호출 시
-	현재 노드는 함수를 벗어나기 전에 stack에 push되어야 한다.
-	현재 key값도 append되어야 한다. 그래야 최종에 어떤 key로 trie에 Set되었던 것인지 확인이 가능.
-
-	stack에 deserialized 된 상태로 저장된다.
-*/
 
 func (iter *iteratorImpl) nextChildNode(m *mpt, n node, key []byte) ([]byte, trie.Object) {
 	switch nn := n.(type) {
@@ -598,7 +626,6 @@ func (iter *iteratorImpl) nextChildNode(m *mpt, n node, key []byte) ([]byte, tri
 }
 
 func (iter *iteratorImpl) Next() error {
-	// 현재 stack에서 최상위 node의 타입을 확인한다.
 	if iter.end == true {
 		return nil
 	}
@@ -615,23 +642,20 @@ func (iter *iteratorImpl) Next() error {
 			}
 		case *leaf:
 			findNext := false
-			lastKey := n.key
+			prevKey := n.key
 			for iter.top != 0 && findNext == false {
 				iter.top--
 				stackNode := iter.stack[iter.top]
 				startNibble := byte(0)
 				keyIndex := len(stackNode.key)
-				startNibble = lastKey[keyIndex] + 1
-				//if len(stackNode.key) > 0 {
-				//	startNibble = lastKey[len(stackNode.key)] + 1
-				//}
-				lastKey = stackNode.key
+				startNibble = prevKey[keyIndex] + 1
+				prevKey = stackNode.key
 				branchNode := stackNode.n.(*branch)
 				for i := startNibble; i < 16; i++ {
 					if branchNode.nibbles[i] != nil {
 						findNext = true
 						newKey := make([]byte, len(stackNode.key)+1)
-						copy(newKey, lastKey)
+						copy(newKey, prevKey)
 						newKey[len(stackNode.key)] = i
 						iter.key, iter.value = iter.nextChildNode(iter.m, branchNode.nibbles[i], newKey)
 						break
@@ -645,12 +669,6 @@ func (iter *iteratorImpl) Next() error {
 			}
 		}
 	}
-	//fmt.Println("key : ", iter.key, ", value : ", iter.value)
-	// 현재 node가 leaf일 경우 stack의 상위노드를 검색.
-	// 해당 branch에 key 이후 것이 있는지 시작.
-	// 각 node정보에는 node하고 key정보가 같이 있어야 겠네.
-	// 현재 node가 branch일 경우 nextChild호출
-
 	return nil
 }
 
@@ -663,143 +681,17 @@ func (iter *iteratorImpl) Has() bool {
 
 func (iter *iteratorImpl) Get() (value []byte, key []byte, err error) {
 	k := iter.key
-	odd := len(k) % 2
-	returnKey := make([]byte, len(k)/2+odd)
-	for i := 0; i < len(k); i++ {
-		returnKey[i] = k[i*2]<<1 | k[i*2+1]
+	remainder := len(k) % 2
+	returnKey := make([]byte, len(k)/2+remainder)
+	if remainder > 0 {
+		returnKey[0] = k[0]
+	}
+	for i := remainder; i < len(k)/2+remainder; i++ {
+		returnKey[i] = k[i*2-remainder]<<4 | k[i*2+1-remainder]
 	}
 	return iter.value.Bytes(), returnKey, nil
 }
 
-func (m *mpt) Iterator() trie.Iterator {
-	return newIterator(m)
-}
-
-// Not used
-//func (m *mpt) Load(db db.Bucket, root []byte) error {
-//	// use db to check validation
-//	if _, err := db.Get(root); err != nil {
-//		return err
-//	}
-//
-//	m.source.committedHash = root
-//	m.root = hash(root)
-//	m.db = db
-//	return nil
-//}
-
-func (m *mpt) Reset(immutable trie.Immutable) error {
-	immutableTrie, ok := immutable.(*mpt)
-	if ok == false {
-		return common.ErrIllegalArgument
-	}
-
-	// Do not use reference.
-	committedHash := make(hash, len(immutableTrie.source.committedHash))
-	copy(committedHash, immutableTrie.source.committedHash)
-	m.source = &source{prev: immutableTrie.source, requestPool: make(map[string]trie.Object), committedHash: committedHash}
-	rootHash := make(hash, len(committedHash))
-	copy(rootHash, committedHash)
-	m.root = hash(rootHash)
-	m.db = immutableTrie.db
-	return nil
-}
-
-func (m *mpt) Empty() bool {
-	var pool map[string]trie.Object
-	var commitedHash hash
-	if pool, commitedHash = m.mergeSnapshot(); commitedHash == nil {
-		nilCnt := 0
-		for _, v := range pool {
-			if v == nil {
-				nilCnt++
-			}
-		}
-		return nilCnt == len(pool)
-	}
-	return len(pool) == 0 && m.root == nil
-}
-
-// struct for object trie
-type mptForObj struct {
-	*mpt
-}
-
-func newMptForObj(db db.Database, bk db.Bucket, initialHash hash, t reflect.Type) *mptForObj {
-	return &mptForObj{
-		mpt: &mpt{root: hash(append([]byte(nil), []byte(initialHash)...)),
-			source: &source{requestPool: make(map[string]trie.Object), committedHash: hash(append([]byte(nil), []byte(initialHash)...))},
-			bk:     bk, db: db, objType: t},
-	}
-}
-
-// TODO: refactoring
-func (m *mptForObj) Get(k []byte) (trie.Object, error) {
-	k = bytesToNibbles(k)
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-	if v, ok := m.source.requestPool[string(k)]; ok {
-		return v, nil
-	}
-	var value trie.Object
-	var err error
-	m.root, value, err = m.get(m.root, k)
-	if err != nil {
-		return nil, err
-	} else if value == nil {
-		return nil, nil
-	}
-	return value, nil
-}
-
-// TODO: check v is immutable???
-func (m *mptForObj) Set(k []byte, v trie.Object) error {
-	if k == nil || v == nil {
-		return common.ErrIllegalArgument
-	}
-	k = bytesToNibbles(k)
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-	// have to check v is guaranteed as immutable
-	m.source.requestPool[string(k)] = v
-	return nil
-}
-
-func (m *mptForObj) GetSnapshot() trie.SnapshotForObject {
-	mptSnapshot := m.mpt.GetSnapshot()
-	mpt, ok := mptSnapshot.(*mpt)
-	if ok == false {
-		panic("illegal vairable")
-	}
-	return &mptForObj{mpt: mpt}
-}
-
-func (m *mptForObj) Reset(s trie.ImmutableForObject) {
-	// TODO Implement
-	immutableTrie, ok := s.(*mptForObj)
-	if ok == false {
-		return
-	}
-
-	// Do not use reference.
-	committedHash := make(hash, len(immutableTrie.source.committedHash))
-	copy(committedHash, immutableTrie.source.committedHash)
-	m.source = &source{prev: immutableTrie.source, requestPool: make(map[string]trie.Object), committedHash: committedHash}
-	rootHash := make(hash, len(committedHash))
-	copy(rootHash, committedHash)
-	m.root = hash(rootHash)
-	m.db = immutableTrie.db
-	return
-}
-
-//func (m *trie.IteratorForObject) Next() error {
-//	m.mpt.
-//}
-//
-//func (m *mptForObj) Has() bool {
-//
-//}
-//
 type iteratorObjImpl struct {
 	*iteratorImpl
 }
@@ -828,37 +720,13 @@ func newIteratorObj(m *mptForObj) *iteratorObjImpl {
 
 func (iter *iteratorObjImpl) Get() (trie.Object, []byte, error) {
 	k := iter.key
-	odd := len(k) % 2
-	returnKey := make([]byte, len(k)/2+odd)
-	if odd == 1 {
+	remainder := len(k) % 2
+	returnKey := make([]byte, len(k)/2+remainder)
+	if remainder > 0 {
 		returnKey[0] = k[0]
-		for i := 1; i <= len(k); i += 2 {
-			returnKey[i] = k[i*2-1]<<4 | k[i*2+1-1]
-		}
-	} else {
-		for i := 0; i < len(k)/2; i++ {
-			returnKey[i] = k[i*2]<<4 | k[i*2+1]
-		}
 	}
-
+	for i := remainder; i < len(k)/2+remainder; i++ {
+		returnKey[i] = k[i*2-remainder]<<4 | k[i*2+1-remainder]
+	}
 	return iter.value, returnKey, nil
-}
-
-func (m *mptForObj) Iterator() trie.IteratorForObject {
-	iter := newIteratorObj(m)
-	iter.Next()
-	return iter
-}
-
-func (m *mptForObj) Equal(object trie.ImmutableForObject, exact bool) bool {
-	immutableTrie, ok := object.(*mptForObj)
-	if ok == false {
-		return false
-	}
-	m.mpt.Equal(immutableTrie.mpt, exact)
-	return false
-}
-
-func (m *mptForObj) Empty() bool {
-	return m.mpt.Empty()
 }

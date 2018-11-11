@@ -111,7 +111,6 @@ func (l *leaf) addChild(m *mpt, k []byte, v trie.Object) (node, nodeState) {
 }
 
 func (l *leaf) deleteChild(m *mpt, k []byte) (node, nodeState, error) {
-	//fmt.Println("leaf deleteChild : k ", k)
 	// not same key
 	if bytes.Compare(l.keyEnd, k) != 0 {
 		return l, l.state, nil
@@ -121,4 +120,11 @@ func (l *leaf) deleteChild(m *mpt, k []byte) (node, nodeState, error) {
 
 func (l *leaf) flush() {
 	l.value.Flush()
+}
+
+func (l *leaf) get(m *mpt, k []byte) (node, trie.Object, error) {
+	if bytes.Compare(k, l.keyEnd) != 0 {
+		return l, nil, nil
+	}
+	return l, l.value, nil
 }

@@ -168,3 +168,18 @@ func (br *branch) deleteChild(m *mpt, k []byte) (node, nodeState, error) {
 	}
 	return br, dirtyNode, nil
 }
+
+func (br *branch) get(m *mpt, k []byte) (node, trie.Object, error) {
+	var result trie.Object
+	var err error
+	if len(k) != 0 {
+		if br.nibbles[k[0]] == nil {
+			return br, nil, nil
+		}
+		br.nibbles[k[0]], result, err = br.nibbles[k[0]].get(m, k[1:])
+	} else {
+		result = br.value
+	}
+
+	return br, result, err
+}

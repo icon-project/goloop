@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
+	"github.com/kubernetes/kubernetes/pkg/kubelet/kubeletconfig/util/log"
 )
 
 /*
@@ -38,6 +39,7 @@ type (
 		serialize() []byte
 		addChild(m *mpt, k []byte, v trie.Object) (node, nodeState)
 		deleteChild(m *mpt, k []byte) (node, nodeState, error)
+		get(m *mpt, k []byte) (node, trie.Object, error)
 	}
 	byteValue []byte
 	hash      []byte
@@ -75,6 +77,27 @@ func (h hash) deleteChild(m *mpt, k []byte) (node, nodeState, error) {
 		return h, noneNode, err
 	}
 	return m.delete(deserialize(serializedValue, m.objType, m.db), k)
+}
+
+func (h hash) get(m *mpt, k []byte) (node, trie.Object, error) {
+	serializedValue, err := m.bk.Get(h)
+	if err != nil || serializedValue == nil {
+		return h, nil, err
+	}
+	deserializedNode := deserialize(serializedValue, m.objType, m.db)
+	switch m := deserializedNode.(type) {
+	case *branch:
+		m.hashedValue = h
+	case *extension:
+		m.hashedValue = h
+	case *leaf:
+		m.hashedValue = h
+	default:
+		log.Errorf("serializedValue : %x, deserializedValue : %x, key : %x\n",
+			serializedValue, deserializedNode, h)
+		panic("Not considered case")
+	}
+	return deserializedNode.get(m, k)
 }
 
 func (v byteValue) Bytes() []byte {

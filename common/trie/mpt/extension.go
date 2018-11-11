@@ -168,3 +168,20 @@ func (ex *extension) deleteChild(m *mpt, k []byte) (node, nodeState, error) {
 	ex.next = nextNode
 	return ex, dirtyNode, nil
 }
+
+func (ex *extension) get(m *mpt, k []byte) (node, trie.Object, error) {
+	var err error
+	var result trie.Object
+	match, _ := compareHex(ex.sharedNibbles, k)
+	if len(ex.sharedNibbles) != match {
+		return ex, nil, err
+	}
+	if ex.next == nil {
+		return ex, nil, err
+	}
+	ex.next, result, err = ex.next.get(m, k[match:])
+	if err != nil {
+		return ex, nil, err
+	}
+	return ex, result, err
+}
