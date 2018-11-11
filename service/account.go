@@ -12,6 +12,8 @@ import (
 	"math/big"
 )
 
+// AccountSnapshot represents immutable account state
+// It can be get from AccountState or WorldSnapshot.
 type AccountSnapshot interface {
 	trie.Object
 	GetBalance() *big.Int
@@ -20,6 +22,10 @@ type AccountSnapshot interface {
 	GetValue(k []byte) ([]byte, error)
 }
 
+// AccountState represents mutable account state.
+// You may change account state with this object. It can be get from
+// WorldState. Changes in this object will be retrieved by WorldState.
+// Of course, it also can be changed by WorldState.
 type AccountState interface {
 	GetBalance() *big.Int
 	IsContract() bool

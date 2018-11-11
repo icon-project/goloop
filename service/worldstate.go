@@ -11,12 +11,16 @@ import (
 	"sync"
 )
 
+// WorldSnapshot represents snapshot of WorldState.
+// It can be use to WorldState recover state of WorldState to at some point.
 type WorldSnapshot interface {
 	GetAccountSnapshot(id []byte) AccountSnapshot
 	Flush() error
 	StateHash() []byte
 }
 
+// WorldState represents world state.
+// You may change
 type WorldState interface {
 	GetAccountState(id []byte) AccountState
 	GetAccountSnapshot(id []byte) AccountSnapshot
