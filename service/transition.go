@@ -36,6 +36,14 @@ type transitionState struct {
 	patchReceipts     *receiptList
 }
 
+func newInitialTransitionState(state trie.Mutable) *transitionState {
+	return &transitionState{state: state}
+}
+
+func newFinalTransitionState(validatorList module.ValidatorList) *transitionState {
+	return &transitionState{nextValidatorList: validatorList}
+}
+
 type transition struct {
 	parent *transition
 
@@ -69,22 +77,18 @@ func newTransition(parent *transition, patchTxList *transactionlist, normalTxLis
 		parent:             parent,
 		patchTransactions:  patchTxList,
 		normalTransactions: normalTxList,
-		transitionState: &transitionState{
-			state: state,
-		},
-		step: step,
+		transitionState:    newInitialTransitionState(state),
+		step:               step,
 	}
 }
 
 // all parameters should be valid.
 func newInitTransition(db db.Database, result []byte, validatorList module.ValidatorList) *transition {
 	return &transition{
-		db:     db,
-		result: result,
-		transitionState: &transitionState{
-			nextValidatorList: validatorList,
-		},
-		step: stepComplete,
+		db:              db,
+		result:          result,
+		transitionState: newFinalTransitionState(validatorList),
+		step:            stepComplete,
 	}
 }
 
@@ -149,7 +153,7 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	if !alreadyValidated {
 		txdb, err := t.db.GetBucket(db.TransactionLocatorByHash)
 		if err != nil {
-			panic("can't get bucket TransactionLocatorByHash")
+			panic("FAIL to get bucket TransactionLocatorByHash")
 		}
 		if !t.validateTxs(t.patchTransactions, txdb) || !t.validateTxs(t.normalTransactions, txdb) {
 			return
