@@ -11,7 +11,7 @@ type (
 	 */
 	Immutable interface {
 		Empty() bool
-		// Returns the value to which the specified key is mapped, or nil if this Tree has no mapping for the key
+		// Get returns the value stored under the specified key, or nil if the key doesn't exist.
 		Get(k []byte) ([]byte, error)
 		Hash() []byte               // return nil if this Tree is empty
 		GetProof(k []byte) [][]byte // return nill of this Tree is empty

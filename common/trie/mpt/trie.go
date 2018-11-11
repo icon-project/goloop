@@ -127,8 +127,7 @@ func (m *mpt) Get(k []byte) ([]byte, error) {
 	m.root, value, err = m.get(m.root, k)
 	if err != nil {
 		return nil, err
-	}
-	if value == nil {
+	} else if value == nil {
 		return nil, nil
 	}
 	return value.Bytes(), nil
@@ -209,10 +208,33 @@ func (m *mpt) Set(k, v []byte) error {
 }
 
 func (m *mpt) Equal(immutable trie.Immutable, exact bool) bool {
-	// TODO: Implement
-	// Compare without hash. if exact is true, then it may hash to
-	// check equality.
-	return false
+	immutableTrie, ok := immutable.(*mpt)
+	if ok == false {
+		return false
+	}
+	passedMergedPool, passedCommittedHash := immutableTrie.mergeSnapshot()
+	selfMergedPool, selfCommittedHash := m.mergeSnapshot()
+
+	result := true
+	if exact == false {
+		if bytes.Compare(passedCommittedHash, selfCommittedHash) == 0 {
+			if len(passedMergedPool) == len(selfMergedPool) {
+				for k, v := range passedMergedPool {
+					if selfMergedPool[k].Equal(v) == false {
+						result = false
+						break
+					}
+				}
+			} else {
+				result = false
+			}
+		}
+	} else {
+		if bytes.Compare(m.Hash(), immutable.Hash()) == 0 {
+			result = true
+		}
+	}
+	return result
 }
 
 func (m *mpt) delete(n node, k []byte) (node, nodeState, error) {
@@ -487,9 +509,170 @@ func (m *mpt) GetProof(k []byte) [][]byte {
 	return proofBuf
 }
 
-func (m *mpt) Iterator() trie.Iterator {
-	// TODO: Implement iterator class.
+const maxNodeHeight = 65 // nibbles of 32bytes key(64) + root (1)
+
+type stack struct {
+	n   node
+	key []byte
+}
+
+type iteratorImpl struct {
+	key   []byte
+	value trie.Object
+	//stack []node
+	stack [maxNodeHeight]stack
+	top   int
+	end   bool
+
+	m *mpt
+}
+
+func newIterator(m *mpt) *iteratorImpl {
+	return &iteratorImpl{key: nil, value: nil, top: -1, m: m}
+}
+
+/*
+	Next에서 하는일.
+	stack의 top이 1이면 root를 의미. root를 deserialize한다.
+	1. branch일 경우
+		1-1. value를 확인하여 value가 있을 경우 반환.
+		1-2. value가 없을 경우 nil이 아닌 nible로 이동.
+	2. extension일 경우 다음으로 이동.
+	3. leaf일 경우 stack에 leaf를 push한다.
+	함수 호출 시
+	현재 노드는 함수를 벗어나기 전에 stack에 push되어야 한다.
+	현재 key값도 append되어야 한다. 그래야 최종에 어떤 key로 trie에 Set되었던 것인지 확인이 가능.
+
+	stack에 deserialized 된 상태로 저장된다.
+*/
+
+func (iter *iteratorImpl) nextChildNode(m *mpt, n node, key []byte) ([]byte, trie.Object) {
+	switch nn := n.(type) {
+	case *branch:
+		iter.top++
+		iter.stack[iter.top].n = n
+		iter.stack[iter.top].key = key
+		if len(nn.value.Bytes()) != 0 {
+			return key, nn.value
+		}
+		for i, nibbleNode := range nn.nibbles {
+			if nibbleNode != nil {
+				newKey := make([]byte, len(key)+1)
+				if len(key) > 0 {
+					copy(newKey, key)
+				}
+				newKey[len(key)] = byte(i)
+				return iter.nextChildNode(m, nibbleNode, newKey)
+			}
+		}
+	case *extension:
+		newKey := make([]byte, len(key)+len(nn.sharedNibbles))
+		if len(key) > 0 {
+			copy(newKey, key)
+		}
+		copy(newKey[len(key):], nn.sharedNibbles)
+		return iter.nextChildNode(m, nn.next, newKey)
+	case *leaf:
+		newKey := make([]byte, len(key)+len(nn.keyEnd))
+		if len(key) > 0 {
+			copy(newKey, key)
+		}
+		if len(nn.keyEnd) > 0 {
+			copy(newKey[len(key):], nn.keyEnd)
+		}
+		iter.top++
+		iter.stack[iter.top].key = newKey
+		iter.stack[iter.top].n = n
+		return newKey, nn.value
+	case hash:
+		serializedValue, err := m.bk.Get(nn)
+		if err != nil {
+			return nil, nil
+		}
+		if serializedValue == nil {
+			return nil, nil
+		}
+		return iter.nextChildNode(m, deserialize(serializedValue, m.objType, m.db), key)
+	}
+	panic("Not considered!!!")
+}
+
+func (iter *iteratorImpl) Next() error {
+	// 현재 stack에서 최상위 node의 타입을 확인한다.
+	if iter.end == true {
+		return nil
+	}
+	if iter.top == -1 && len(iter.key) == 0 {
+		iter.key, iter.value = iter.nextChildNode(iter.m, iter.stack[0].n, nil)
+	} else {
+		n := iter.stack[iter.top]
+		switch nn := n.n.(type) {
+		case *branch:
+			for _, nibbleNode := range nn.nibbles {
+				if nibbleNode != nil {
+					iter.key, iter.value = iter.nextChildNode(iter.m, nibbleNode, iter.key)
+				}
+			}
+		case *leaf:
+			findNext := false
+			lastKey := n.key
+			for iter.top != 0 && findNext == false {
+				iter.top--
+				stackNode := iter.stack[iter.top]
+				startNibble := byte(0)
+				keyIndex := len(stackNode.key)
+				startNibble = lastKey[keyIndex] + 1
+				//if len(stackNode.key) > 0 {
+				//	startNibble = lastKey[len(stackNode.key)] + 1
+				//}
+				lastKey = stackNode.key
+				branchNode := stackNode.n.(*branch)
+				for i := startNibble; i < 16; i++ {
+					if branchNode.nibbles[i] != nil {
+						findNext = true
+						newKey := make([]byte, len(stackNode.key)+1)
+						copy(newKey, lastKey)
+						newKey[len(stackNode.key)] = i
+						iter.key, iter.value = iter.nextChildNode(iter.m, branchNode.nibbles[i], newKey)
+						break
+					}
+				}
+			}
+			if findNext == false {
+				iter.key = nil
+				iter.value = nil
+				iter.end = true
+			}
+		}
+	}
+	//fmt.Println("key : ", iter.key, ", value : ", iter.value)
+	// 현재 node가 leaf일 경우 stack의 상위노드를 검색.
+	// 해당 branch에 key 이후 것이 있는지 시작.
+	// 각 node정보에는 node하고 key정보가 같이 있어야 겠네.
+	// 현재 node가 branch일 경우 nextChild호출
+
 	return nil
+}
+
+func (iter *iteratorImpl) Has() bool {
+	if iter.end {
+		return false
+	}
+	return iter.value != nil
+}
+
+func (iter *iteratorImpl) Get() (value []byte, key []byte, err error) {
+	k := iter.key
+	odd := len(k) % 2
+	returnKey := make([]byte, len(k)/2+odd)
+	for i := 0; i < len(k); i++ {
+		returnKey[i] = k[i*2]<<1 | k[i*2+1]
+	}
+	return iter.value.Bytes(), returnKey, nil
+}
+
+func (m *mpt) Iterator() trie.Iterator {
+	return newIterator(m)
 }
 
 // Not used
@@ -561,8 +744,10 @@ func (m *mptForObj) Get(k []byte) (trie.Object, error) {
 	var value trie.Object
 	var err error
 	m.root, value, err = m.get(m.root, k)
-	if err != nil || value == nil {
+	if err != nil {
 		return nil, err
+	} else if value == nil {
+		return nil, nil
 	}
 	return value, nil
 }
@@ -607,16 +792,70 @@ func (m *mptForObj) Reset(s trie.ImmutableForObject) {
 	return
 }
 
+//func (m *trie.IteratorForObject) Next() error {
+//	m.mpt.
+//}
+//
+//func (m *mptForObj) Has() bool {
+//
+//}
+//
+type iteratorObjImpl struct {
+	*iteratorImpl
+}
+
+func newIteratorObj(m *mptForObj) *iteratorObjImpl {
+	iter := &iteratorObjImpl{&iteratorImpl{key: nil, value: nil, top: -1, m: m.mpt}}
+	m.Hash()
+
+	var data []byte
+	if n, ok := m.root.(hash); ok {
+		var err error
+		data, err = m.bk.Get(n)
+		if err != nil {
+			panic("Failed to get ")
+			return nil
+		} else if len(data) == 0 {
+			panic("Failed!!!")
+			return nil
+		}
+		iter.stack[0].n = deserialize(data, m.objType, m.db)
+	} else {
+		iter.stack[0].n = m.root
+	}
+	return iter
+}
+
+func (iter *iteratorObjImpl) Get() (trie.Object, []byte, error) {
+	k := iter.key
+	odd := len(k) % 2
+	returnKey := make([]byte, len(k)/2+odd)
+	if odd == 1 {
+		returnKey[0] = k[0]
+		for i := 1; i <= len(k); i += 2 {
+			returnKey[i] = k[i*2-1]<<4 | k[i*2+1-1]
+		}
+	} else {
+		for i := 0; i < len(k)/2; i++ {
+			returnKey[i] = k[i*2]<<4 | k[i*2+1]
+		}
+	}
+
+	return iter.value, returnKey, nil
+}
+
 func (m *mptForObj) Iterator() trie.IteratorForObject {
-	// TODO Implement Iterator().
-	return nil
+	iter := newIteratorObj(m)
+	iter.Next()
+	return iter
 }
 
 func (m *mptForObj) Equal(object trie.ImmutableForObject, exact bool) bool {
-	// TODO implement Equal()
-	// It compare without hash. If exact is true, then it may try compare
-	// We can trust the result if it returns true or it returns false with
-	// exact is true.
+	immutableTrie, ok := object.(*mptForObj)
+	if ok == false {
+		return false
+	}
+	m.mpt.Equal(immutableTrie.mpt, exact)
 	return false
 }
 
