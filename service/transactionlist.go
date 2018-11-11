@@ -3,9 +3,9 @@ package service
 import (
 	"bytes"
 	"fmt"
+
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
-	"log"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -127,12 +127,8 @@ func NewTransactionListFromSlice(list []module.Transaction) module.TransactionLi
 	mt := tm.NewMutable(nil)
 	for idx, tr := range list {
 		k, _ := codec.MP.MarshalToBytes(uint(idx))
-		v, err := tr.Bytes()
-		if err != nil {
-			log.Fatal("NewTrasactionListFromSlice FAILs", err)
-			return nil
-		}
-		err = mt.Set(k, v)
+		v := tr.Bytes()
+		err := mt.Set(k, v)
 		if err != nil {
 			//log.Fatalf("NewTransanctionListFromSlice FAILs", err)
 			return nil

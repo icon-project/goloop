@@ -1,15 +1,16 @@
 package service
 
 import (
+	"bytes"
+
 	"github.com/icon-project/goloop/common"
 
+	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
+	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/module"
 )
-
-// TODO State manager와 Service manager를 분리할 것인지 합칠 것인지 고민
-// 즉 외부에서 특정 정보를 얻으려고 할 때 그냥 State manager를 통해서 바로 얻어가는 게
-// 맞는가?
 
 ////////////////////
 // Transaction Pool
@@ -59,32 +60,80 @@ import (
 // Transaction List
 ////////////////////
 // TODO to avoid name conflict, temporarily take 'list' instead of 'List'
-type transactionlist struct {
-	txs  []*transaction
-	hash []byte
+// TODO to avoid name conflict, temporarily take 'interator' instead of 'Iterator'
+type (
+	transactionlist struct {
+		txs  []*transaction // can be nil at the beginning
+		trie trie.Immutable
+	}
+
+	transactioniterator struct {
+		list []*transaction
+		idx  int
+	}
+)
+
+func newTransactionList(db db.Database, txs []*transaction) *transactionlist {
+	trie := trie_manager.NewMutable(db, nil)
+	for i, tx := range txs {
+		k, _ := codec.MP.MarshalToBytes(uint(i))
+		err := trie.Set(k, tx.Bytes())
+		if err != nil {
+			return nil
+		}
+	}
+	return &transactionlist{txs: txs, trie: trie.GetSnapshot()}
+}
+
+func newTransactionListFromHash(db db.Database, hash []byte) *transactionlist {
+	trie := trie_manager.NewImmutable(db, hash)
+	return &transactionlist{txs: nil, trie: trie}
 }
 
 func (l *transactionlist) Get(n int) (module.Transaction, error) {
-	if n < 0 || n >= len(l.txs) {
+	if n < 0 {
 		return nil, common.ErrIllegalArgument
 	}
-	return l.txs[n], nil
+	// TODO handle with trie when txs is nil
+	if n < len(l.txs) {
+		return l.txs[n], nil
+	}
+	return nil, common.ErrNotFound
 }
 
 func (l *transactionlist) Iterator() module.TransactionIterator {
-	return nil
+	return &transactioniterator{list: l.txs, idx: 0}
 }
 
-// TODO 구현
 func (l *transactionlist) Hash() []byte {
-	return nil
+	return l.trie.Hash()
 }
 
 func (l *transactionlist) Equal(txList module.TransactionList) bool {
-	return true
+	if txList == nil {
+		return false
+	}
+
+	return bytes.Equal(l.Hash(), txList.Hash())
 }
 
-type txIterator struct {
+func (i *transactioniterator) Get() (module.Transaction, int, error) {
+	if i.idx >= len(i.list) {
+		return nil, 0, common.ErrInvalidState
+	}
+	return i.list[i.idx], i.idx, nil
+}
+
+func (i *transactioniterator) Has() bool {
+	return i.idx < len(i.list)
+}
+
+func (i *transactioniterator) Next() error {
+	if i.idx < len(i.list) {
+		i.idx++
+		return nil
+	}
+	return common.ErrInvalidState
 }
 
 ////////////////////

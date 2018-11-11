@@ -3,17 +3,17 @@ package service
 import (
 	"errors"
 	"fmt"
-	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"log"
 	"math/big"
 	"math/rand"
 	"time"
 
+	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/trie/trie_manager"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
-	"github.com/icon-project/goloop/common/trie/mpt"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -33,18 +33,15 @@ type manager struct {
 	patchTxPool  *transactionPool
 	normalTxPool *transactionPool
 
-	db          db.Database
-	trieManager trie.Manager
+	db db.Database
 }
 
 // TODO It should be declared in module package.
 func NewManager(db db.Database) module.ServiceManager {
-	// TODO change not to use mpt package directly
 	return &manager{
 		patchTxPool:  new(transactionPool),
 		normalTxPool: new(transactionPool),
 		db:           db,
-		trieManager:  mpt.NewManager(db),
 	}
 }
 
@@ -71,7 +68,12 @@ func (m *manager) ProposeTransition(parent module.Transition) (module.Transition
 	}
 
 	// create transition instance and return it
-	return newTransition(pt, &transactionlist{txs: patchTxs}, &transactionlist{txs: normalTxs}, state, true), nil
+	return newTransition(pt,
+			newTransactionList(m.db, patchTxs),
+			newTransactionList(m.db, normalTxs),
+			state,
+			true),
+		nil
 }
 
 // CreateInitialTransition creates an initial Transition with result and
@@ -81,7 +83,7 @@ func (m *manager) CreateInitialTransition(result []byte, valList module.Validato
 	if err != nil {
 		return nil, errors.New("Invalid result")
 	}
-	// TODO check if result is valid. Who's responsible?
+	// TODO check if result isn't valid. Who's responsible?
 	return newInitTransition(m.db, resultBytes, valList), nil
 }
 
@@ -101,7 +103,12 @@ func (m *manager) CreateTransition(parent module.Transition, txList module.Trans
 		return nil, common.ErrIllegalArgument
 	}
 
-	return newTransition(pt, &transactionlist{txs: make([]*transaction, 0)}, txlist, state, false), nil
+	return newTransition(pt,
+			newTransactionList(m.db, make([]*transaction, 0)),
+			txlist,
+			state,
+			false),
+		nil
 }
 
 // GetPatches returns all patch transactions based on the parent transition.
@@ -118,7 +125,7 @@ func (m *manager) GetPatches(parent module.Transition) module.TransactionList {
 		return nil
 	}
 
-	return &transactionlist{txs: m.patchTxPool.candidate(state, -1)}
+	return newTransactionList(m.db, m.patchTxPool.candidate(state, -1))
 }
 
 // PatchTransition creates a Transition by overwriting patches on the transition.
@@ -137,7 +144,7 @@ func (m *manager) PatchTransition(t module.Transition, patchTxList module.Transa
 	// prepare patch transaction list
 	var txList *transactionlist
 	if patchTxList == nil {
-		txList = &transactionlist{txs: make([]*transaction, 0)}
+		txList = newTransactionList(m.db, make([]*transaction, 0))
 	} else {
 		txList, ok = patchTxList.(*transactionlist)
 		if !ok {
@@ -167,9 +174,14 @@ func (m *manager) TransactionFromBytes(b []byte) module.Transaction {
 }
 
 // TransactionListFromHash returns a TransactionList instance from
-// the hash of transactions
+// the hash of transactions or nil when no transactions exist.
 func (m *manager) TransactionListFromHash(hash []byte) module.TransactionList {
 	// TODO impl
+	return nil
+}
+
+// TransactionListFromSlice returns list of transactions.
+func (m *manager) TransactionListFromSlice(txs []module.Transaction, version int) module.TransactionList {
 	return nil
 }
 
@@ -183,18 +195,13 @@ func (m *manager) ReceiptListFromResult(result []byte, g module.TransactionGroup
 	return nil
 }
 
-// TransactionListFromSlice returns list of transactions.
-func (m *manager) TransactionListFromSlice(txs []module.Transaction, version int) module.TransactionList {
-	return nil
-}
-
 func (m *manager) checkTransitionResult(t module.Transition) (*transition, trie.Mutable, error) {
 	// check validity of transition
 	tst, ok := t.(*transition)
 	if !ok || tst.step != stepComplete {
 		return nil, nil, common.ErrIllegalArgument
 	}
-	state := m.trieManager.NewMutable(tst.result.stateHash())
+	state := trie_manager.NewMutable(m.db, tst.result.stateHash())
 
 	return tst, state, nil
 }
@@ -217,7 +224,7 @@ func (m *manager) SendTransaction(tx module.Transaction) error {
 	txImplement.from.SetBytes(tx.From().Bytes())
 	txImplement.to.SetBytes(tx.To().Bytes())
 	txImplement.bytes = append([]byte{}, txImplement.bytes...)
-	txImplement.bytes, _ = tx.Bytes()
+	txImplement.bytes = tx.Bytes()
 	txImplement.hash = append([]byte{}, tx.Hash()...)
 	txImplement.signature = append([]byte{}, tx.Signature()...)
 
@@ -301,8 +308,7 @@ func TxTest() {
 	manager := &manager{
 		patchTxPool:  NewtransactionPool(txdb),
 		normalTxPool: NewtransactionPool(txdb),
-		db:           database,
-		trieManager:  mpt.NewManager(database)}
+		db:           database}
 	requestDone := make(chan bool)
 	exeDone := make(chan bool)
 	go txRequest(target, manager, requestDone)

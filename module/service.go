@@ -16,10 +16,9 @@ type TransitionCallback interface {
 
 type Transaction interface {
 	Group() TransactionGroup
+
 	ID() []byte
 	Version() int
-	Bytes() ([]byte, error)
-	Verify() error
 	From() Address
 	To() Address
 	Value() *big.Int
@@ -27,8 +26,11 @@ type Transaction interface {
 	Timestamp() int64
 	NID() int
 	Nonce() int64
+
+	Bytes() []byte
 	Hash() []byte
 	Signature() []byte
+	Verify() error
 }
 
 type TransactionIterator interface {
@@ -126,7 +128,7 @@ type ServiceManager interface {
 	TransactionFromBytes(b []byte) Transaction
 
 	// TransactionListFromHash returns a TransactionList instance from
-	// the hash of transactions
+	// the hash of transactions or nil when no transactions exist.
 	TransactionListFromHash(hash []byte) TransactionList
 
 	// TransactionListFromSlice returns list of transactions.

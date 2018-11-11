@@ -69,22 +69,6 @@ func (tx *transaction) Version() int {
 	return tx.version
 }
 
-func (tx *transaction) Bytes() ([]byte, error) {
-	if tx.bytes == nil {
-		tx.bytes = tx.source.bytes()
-	}
-	return tx.bytes, nil
-}
-
-// Verify conducts TX syntax check, signature verification, and balance check.
-// It is called when JSON-RPC server pre-validates.
-func (tx *transaction) Verify() error {
-	// TODO What about checking parameters for each tx types? If right,
-	// move it to the transferTx, scoreCallTx, and scoreDeployTx.
-	// TODO check balance
-	return tx.source.verifySignature()
-}
-
 func (tx *transaction) From() module.Address {
 	return module.Address(&tx.from)
 }
@@ -113,6 +97,13 @@ func (tx *transaction) Nonce() int64 {
 	return tx.nonce
 }
 
+func (tx *transaction) Bytes() []byte {
+	if tx.bytes == nil {
+		tx.bytes = tx.source.bytes()
+	}
+	return tx.bytes
+}
+
 func (tx *transaction) Hash() []byte {
 	if tx.hash == nil {
 		tx.hash = tx.source.hash()
@@ -122,6 +113,15 @@ func (tx *transaction) Hash() []byte {
 
 func (tx *transaction) Signature() []byte {
 	return tx.signature
+}
+
+// Verify conducts TX syntax check, signature verification, and balance check.
+// It is called when JSON-RPC server pre-validates.
+func (tx *transaction) Verify() error {
+	// TODO What about checking parameters for each tx types? If right,
+	// move it to the transferTx, scoreCallTx, and scoreDeployTx.
+	// TODO check balance
+	return tx.source.verifySignature()
 }
 
 func (tx *transaction) validate(state trie.Mutable, txdb db.Bucket) error {
