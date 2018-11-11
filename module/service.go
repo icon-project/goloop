@@ -129,14 +129,14 @@ type ServiceManager interface {
 	// the hash of transactions
 	TransactionListFromHash(hash []byte) TransactionList
 
+	// TransactionListFromSlice returns list of transactions.
+	TransactionListFromSlice(txs []Transaction, version int) TransactionList
+
 	// ReceiptFromTransactionID returns receipt from legacy receipt bucket.
 	ReceiptFromTransactionID(id []byte) Receipt
 
 	// ReceiptListFromResult returns list of receipts from result.
 	ReceiptListFromResult(result []byte, g TransactionGroup) ReceiptList
-
-	// TransactionListFromSlice returns list of transactions.
-	TransactionListFromSlice(txs []Transaction, version int) TransactionList
 
 	// SendTransaction adds transaction to a transaction pool.
 	SendTransaction(tx Transaction) error
