@@ -286,8 +286,8 @@ func TxTest() {
 	for i, name := range nameList {
 		resultMap[name] = big.NewInt(deposit)
 		accountState := newAccountState(database, nil)
-		accountState.setBalance(big.NewInt(deposit))
-		serializedAccount, _ := codec.MP.MarshalToBytes(accountState.getSnapshot())
+		accountState.SetBalance(big.NewInt(deposit))
+		serializedAccount, _ := codec.MP.MarshalToBytes(accountState.GetSnapshot())
 
 		var accInfo accountSnapshotImpl
 		if _, err := codec.MP.UnmarshalFromBytes(serializedAccount, &accInfo); err != nil {
@@ -319,8 +319,8 @@ func TxTest() {
 		var accInfo accountSnapshotImpl
 		//var accInfo accountInfo
 		codec.MP.UnmarshalFromBytes(serializedAccount, &accInfo)
-		fmt.Println("[", name, "] has ", accInfo.getBalance())
-		calcTotalBal.Add(calcTotalBal, accInfo.getBalance())
+		fmt.Println("[", name, "] has ", accInfo.GetBalance())
+		calcTotalBal.Add(calcTotalBal, accInfo.GetBalance())
 	}
 	if totalBalance.Cmp(calcTotalBal) == 0 {
 		fmt.Println("same total balance : ", totalBalance, ", ", calcTotalBal)
