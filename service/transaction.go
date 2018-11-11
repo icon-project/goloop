@@ -137,9 +137,28 @@ func (tx *transaction) validate(state trie.Mutable, txdb db.Bucket) error {
 	// TODO transaction execute테스트를 위해 임시로 comment out by KN.KIM
 	//tx.source.verifySignature()
 
-	// TODO balance가 충분한지 확인. 그런데 여기에서는 이전 tx의 처리 결과를 감안하여
-	// 아직 balance가 충분한지 확인해야 함.
-	return nil
+	// check if balance is enough
+	return tx.checkBalance(state)
+}
+
+func (tx *transaction) checkBalance(state trie.Mutable) error {
+	addr := tx.From().Bytes()
+	if serializedAccount, err := state.Get(addr); err == nil {
+		if len(serializedAccount) != 0 {
+			var account accountSnapshotImpl
+			if _, err = codec.MP.UnmarshalFromBytes(serializedAccount, &account); err == nil {
+				var expense big.Int
+				expense.Add(tx.value, tx.stepLimit)
+				if account.GetBalance().Cmp(&expense) >= 0 {
+					return nil
+				}
+			} else {
+				return errors.New("Account info unmarshaling error")
+			}
+		}
+		return errors.New("Not enough balance")
+	}
+	return errors.New("Account info access error")
 }
 
 // TODO: 계정이 없을 경우 계정을 추가해야하는데 newAccount(db) db가 전달되어야 한다. 따라서 db인자를 추가한다. 이후 정리 필요. by KN.KIM
