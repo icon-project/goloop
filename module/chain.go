@@ -12,4 +12,5 @@ type Chain interface {
 	GetDatabase() db.Database
 	GetWallet() Wallet
 	GetNID() int
+	VoteListDecoder() VoteListDecoder
 }

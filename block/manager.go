@@ -5,11 +5,24 @@ import (
 	"io"
 	"time"
 
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/module"
 )
+
+// TODO H validatorList
+// TODO overall error handling log? return error?
+// TODO import, finalize V1?
+
+var dbCodec = codec.MP
+
+type transactionLocator struct {
+	BlockHeight      int64
+	TransactionGroup module.TransactionGroup
+	IndexInGroup     int
+}
 
 type bnode struct {
 	parent   *bnode
@@ -20,11 +33,12 @@ type bnode struct {
 }
 
 type manager struct {
+	syncer syncer
+
 	chain     module.Chain
 	sm        module.ServiceManager
-	syncer    *syncer
-	finalized *bnode
 	nmap      map[string]*bnode
+	finalized *bnode
 }
 
 func (m *manager) db() db.Database {
@@ -83,9 +97,7 @@ func (m *manager) _import(
 	r io.Reader,
 	cb func(module.Block, error),
 ) (*importTask, error) {
-	var blockV2ForCodec blockV2ForCodec
-	v2codec.Unmarshal(r, &blockV2ForCodec)
-	block := newBlockV2(&blockV2ForCodec)
+	block := m.newBlockFromReader(r)
 	bn := m.nmap[string(block.PrevID())]
 	if bn == nil {
 		return nil, common.ErrIllegalArgument
@@ -241,10 +253,11 @@ func (pt *proposeTask) onExecute(err error) {
 	}
 	pmtr := pt.in.mtransition()
 	mtr := tr.mtransition()
-	bparam := &blockV2Param{
-		parent:             pt.parentBlock,
+	block := &blockV2{
+		height:             pt.parentBlock.Height() + 1,
 		timestamp:          time.Now(),
 		proposer:           pt.manager.chain.GetWallet().GetAddress(),
+		prevID:             pt.parentBlock.ID(),
 		logBloom:           pmtr.LogBloom(),
 		result:             pmtr.Result(),
 		patchTransactions:  mtr.PatchTransactions(),
@@ -252,7 +265,6 @@ func (pt *proposeTask) onExecute(err error) {
 		nextValidators:     pmtr.NextValidators(),
 		votes:              pt.votes,
 	}
-	block := newBlockV2FromParam(bparam)
 	bn := &bnode{
 		block:  block,
 		in:     pt.in.newTransition(nil),
@@ -270,31 +282,57 @@ func NewManager(
 	chain module.Chain,
 	sm module.ServiceManager,
 ) module.BlockManager {
-	return &manager{
+	// TODO if last block is v1 block
+	m := &manager{
 		chain: chain,
 		sm:    sm,
 	}
+	chainPropBucket := m.bucketFor(db.ChainProperty)
+	if chainPropBucket == nil {
+		return nil
+	}
+	var height int64
+	err := chainPropBucket.get(raw("block.height"), &height)
+	if err == common.ErrNotFound {
+		chainPropBucket.set(raw("block.height"), 0)
+		height = 0
+		//	TODO H handle genesis block
+	} else if err != nil {
+		return nil
+	}
+	hashByHeightBucket := m.bucketFor(db.BlockHeaderHashByHeight)
+	hash, err := hashByHeightBucket.getBytes(&height)
+	if err != nil {
+		return nil
+	}
+	lastFinalized := m.GetBlock(hash)
+	mtr, _ := m.sm.CreateInitialTransition(lastFinalized.Result(), lastFinalized.NextValidators())
+	if mtr == nil {
+		return nil
+	}
+	tr := newInitialTransition(mtr, &m.syncer, sm)
+	bn := &bnode{
+		block: lastFinalized,
+		in:    tr,
+	}
+	bn.preexe = tr.transit(lastFinalized.NormalTransactions(), nil)
+	m.finalized = bn
+	m.nmap[string(lastFinalized.ID())] = bn
+	return m
 }
 
 func (m *manager) GetBlock(id []byte) module.Block {
-	bucket, err := m.db().GetBucket(db.BlockHeaderByHash)
-	if err != nil {
-		panic("cannot get bucket BlockHeaderByHash")
+	// TODO handle v1
+	hb := m.bucketFor(db.BytesByHash)
+	if hb == nil {
+		panic("cannot get bucket BytesByHash")
 	}
-	headerBytes, err := bucket.Get(id)
+	headerBytes, err := hb.getBytes(raw(id))
 	if err != nil {
 		return nil
 	}
 	if headerBytes != nil {
-		var blockV2HeaderForCodec blockV2HeaderForCodec
-		err = v2codec.Unmarshal(
-			bytes.NewReader(headerBytes),
-			blockV2HeaderForCodec,
-		)
-		if err != nil {
-			return nil
-		}
-		return newBlockV2FromHeaderForCodec(&blockV2HeaderForCodec)
+		return m.newBlockFromHeaderReader(bytes.NewReader(headerBytes))
 	}
 	return nil
 }
@@ -340,24 +378,174 @@ func (m *manager) Commit(block module.Block) error {
 	return nil
 }
 
+func (m *manager) bucketFor(id string) *bucket {
+	b, err := m.db().GetBucket(id)
+	if err != nil {
+		return nil
+	}
+	return &bucket{
+		dbBucket: b,
+		codec:    dbCodec,
+	}
+}
+
 func (m *manager) Finalize(block module.Block) error {
 	// TODO notify import/propose error due to finalization
 	bn := m.nmap[string(block.ID())]
 	if bn == nil || bn.parent != m.finalized {
 		return common.ErrIllegalArgument
 	}
+
 	for _, c := range m.finalized.children {
 		if c != bn {
 			c.dispose()
 		}
 	}
 	m.finalized.dispose()
+
 	m.finalized = bn
 	m.finalized.parent = nil
+
+	m.sm.Finalize(
+		bn.in.mtransition(),
+		module.FinalizePatchTransaction|module.FinalizeResult,
+	)
+	m.sm.Finalize(bn.preexe.mtransition(), module.FinalizeNormalTransaction)
+
+	if blockV2, ok := block.(*blockV2); ok {
+		hb := m.bucketFor(db.BytesByHash)
+		if hb == nil {
+			return common.ErrUnknown
+		}
+		hb.put(blockV2._headerFormat())
+		hb.set(raw(block.Votes().Hash()), raw(block.Votes().Bytes()))
+		validators := block.NextValidators()
+		hb.set(raw(validators.Hash()), raw(validators.Bytes()))
+		lb := m.bucketFor(db.TransactionLocatorByHash)
+		for it := block.PatchTransactions().Iterator(); it.Has(); it.Next() {
+			tr, i, _ := it.Get()
+			trLoc := transactionLocator{
+				BlockHeight:      block.Height(),
+				TransactionGroup: module.TransactionGroupPatch,
+				IndexInGroup:     i,
+			}
+			lb.set(raw(tr.Hash()), trLoc)
+		}
+		for it := block.NormalTransactions().Iterator(); it.Has(); it.Next() {
+			tr, i, _ := it.Get()
+			trLoc := transactionLocator{
+				BlockHeight:      block.Height(),
+				TransactionGroup: module.TransactionGroupNormal,
+				IndexInGroup:     i,
+			}
+			lb.set(raw(tr.Hash()), trLoc)
+		}
+		b := m.bucketFor(db.BlockHeaderHashByHeight)
+		if b == nil {
+			return common.ErrUnknown
+		}
+		b.set(block.Height(), raw(block.ID()))
+	}
+	// TODO update DB for v1 : blockV1, trLocatorByHash
 	return nil
 }
 
-// TODO dummy
+func (m *manager) voteListFromHash(hash []byte) module.VoteList {
+	hb := m.bucketFor(db.BytesByHash)
+	if hb == nil {
+		return nil
+	}
+	bs, err := hb.getBytes(hash)
+	if err != nil {
+		return nil
+	}
+	dec := m.chain.VoteListDecoder()
+	return dec(bs)
+}
+
+func (m *manager) validatorListFromHash(hash []byte) module.ValidatorList {
+	// TODO H validatorListFromHash
+	return nil
+}
+
+func (m *manager) newBlockFromHeaderReader(r io.Reader) module.Block {
+	var header blockV2HeaderFormat
+	v2codec.Unmarshal(r, &header)
+	patches := m.sm.TransactionListFromHash(header.PatchTransactionsHash)
+	normalTxs := m.sm.TransactionListFromHash(header.NormalTransactionsHash)
+	nextValidators := m.validatorListFromHash(header.NextValidatorsHash)
+	votes := m.voteListFromHash(header.VotesHash)
+	if patches == nil || normalTxs == nil || nextValidators == nil ||
+		votes == nil {
+		return nil
+	}
+	return &blockV2{
+		height:             header.Height,
+		timestamp:          timeFromUnixMicro(header.Timestamp),
+		proposer:           common.NewAccountAddress(header.Proposer),
+		prevID:             header.PrevID,
+		logBloom:           header.LogBloom,
+		result:             header.Result,
+		patchTransactions:  patches,
+		normalTransactions: normalTxs,
+		nextValidators:     nextValidators,
+		votes:              votes,
+	}
+}
+
+func (m *manager) newTransactionListFromBSS(
+	bss [][]byte,
+	version int,
+) module.TransactionList {
+	ts := make([]module.Transaction, len(bss))
+	for i, bs := range bss {
+		ts[i] = m.sm.TransactionFromBytes(bs, version)
+	}
+	return m.sm.TransactionListFromSlice(ts, version)
+}
+
+func (m *manager) newBlockFromReader(r io.Reader) module.Block {
+	// TODO return error? log error?
+	// TODO handle v1
+	var blockFormat blockV2Format
+	v2codec.Unmarshal(r, &blockFormat)
+	patches := m.newTransactionListFromBSS(
+		blockFormat.PatchTransactions,
+		common.BlockVersion2,
+	)
+	if bytes.Equal(patches.Hash(), blockFormat.PatchTransactionsHash) {
+		return nil
+	}
+	normalTxs := m.newTransactionListFromBSS(
+		blockFormat.NormalTransactions,
+		common.BlockVersion2,
+	)
+	if bytes.Equal(normalTxs.Hash(), blockFormat.NormalTransactionsHash) {
+		return nil
+	}
+	nextValidators := m.validatorListFromHash(blockFormat.NextValidatorsHash)
+	if bytes.Equal(nextValidators.Hash(), blockFormat.NextValidatorsHash) {
+		return nil
+	}
+	votes := m.chain.VoteListDecoder()(blockFormat.Votes)
+	if bytes.Equal(votes.Hash(), blockFormat.VotesHash) {
+		return nil
+	}
+	return &blockV2{
+		height:             blockFormat.Height,
+		timestamp:          timeFromUnixMicro(blockFormat.Timestamp),
+		proposer:           common.NewAccountAddress(blockFormat.Proposer),
+		prevID:             blockFormat.PrevID,
+		logBloom:           blockFormat.LogBloom,
+		result:             blockFormat.Result,
+		patchTransactions:  patches,
+		normalTransactions: normalTxs,
+		nextValidators:     nextValidators,
+		votes:              votes,
+	}
+}
+
+// TODO GetTransactionInfo
 func (m *manager) GetTransactionInfo(id []byte) module.TransactionInfo {
 	return nil
 }

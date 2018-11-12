@@ -33,6 +33,14 @@ func (c *singleChain) GetNID() int {
 	return c.nid
 }
 
+func voteListDecoder([]byte) module.VoteList {
+	return nil
+}
+
+func (c *singleChain) VoteListDecoder() module.VoteListDecoder {
+	return module.VoteListDecoder(voteListDecoder)
+}
+
 func (c *singleChain) start() {
 	c.database = db.NewMapDB()
 	c.sm = service.NewManager(c.database)

@@ -39,17 +39,6 @@ const (
 	// BytesByHash maps data except merkle trie nodes from sha3(data)
 	BytesByHash = "S"
 
-	// BlockHeaderByHash maps block header from hash of encoded block header.
-	BlockHeaderByHash = "S"
-
-	// SignaturesByHash maps signature array from hash of encoded signature array.
-	SignaturesByHash = "S"
-
-	// ValidatorsByHash maps validator array from hash of encoded validator array.
-	ValidatorsByHash = "S"
-	// CodeByHash maps code from hash of code
-	CodeByHash = "S"
-
 	// TransactionLocatorByHash maps transaction locator from transaction hash.
 	TransactionLocatorByHash = "T"
 

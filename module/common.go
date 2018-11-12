@@ -24,10 +24,11 @@ type Validator interface {
 
 type ValidatorList interface {
 	Hash() []byte
+	Bytes() []byte
 }
 
 type VoteList interface {
-	Verify(block Block, validators ValidatorList) bool
+	Verify(block Block, validators ValidatorList) error
 	Bytes() []byte
 	Hash() []byte
 }

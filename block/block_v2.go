@@ -5,6 +5,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
@@ -12,7 +13,7 @@ import (
 
 var v2codec = codec.MP
 
-type blockV2HeaderForCodec struct {
+type blockV2HeaderFormat struct {
 	Version                int
 	Height                 int64
 	Timestamp              int64
@@ -26,70 +27,68 @@ type blockV2HeaderForCodec struct {
 	Result                 []byte
 }
 
-type blockV2BodyForCodec struct {
+type blockV2BodyFormat struct {
 	PatchTransactions  [][]byte
 	NormalTransactions [][]byte
 	Votes              []byte
 }
 
-type blockV2ForCodec struct {
-	blockV2HeaderForCodec
-	blockV2BodyForCodec
-}
-
-type blockV2Header struct {
-	Height                 int64
-	Timestamp              time.Time
-	Proposer               module.Address
-	PrevID                 []byte
-	VotesHash              []byte
-	NextValidatorsHash     []byte
-	PatchTransactionsHash  []byte
-	NormalTransactionsHash []byte
-	LogBloom               []byte
-	Result                 []byte
-	id                     []byte
-	nextValidators         []module.Validator
-}
-
-type blockV2Impl struct {
-	blockV2Header
-	PatchTransactions  module.TransactionList
-	NormalTransactions module.TransactionList
-	Votes              module.VoteList
+type blockV2Format struct {
+	blockV2HeaderFormat
+	blockV2BodyFormat
 }
 
 type blockV2 struct {
-	blockV2Impl
+	height             int64
+	timestamp          time.Time
+	proposer           module.Address
+	prevID             []byte
+	logBloom           []byte
+	result             []byte
+	patchTransactions  module.TransactionList
+	normalTransactions module.TransactionList
+	nextValidators     module.ValidatorList
+	votes              module.VoteList
+	_id                []byte
+}
+
+func unixMicroFromTime(t time.Time) int64 {
+	return int64(time.Microsecond) * t.UnixNano() / int64(time.Nanosecond)
+}
+
+func timeFromUnixMicro(usec int64) time.Time {
+	sec := usec / (1000 * 1000)
+	nsec := usec % (1000 * 1000)
+	return time.Unix(sec, nsec)
 }
 
 func (b *blockV2) Version() int {
-	return 2
+	return common.BlockVersion2
 }
 
 func (b *blockV2) ID() []byte {
-	if b.id == nil {
+	if b._id == nil {
 		buf := bytes.NewBuffer(nil)
-		v2codec.Marshal(buf, b.blockV2Header)
-		b.id = crypto.SHA3Sum256(buf.Bytes())
+		v2codec.Marshal(buf, b._headerFormat())
+		b._id = crypto.SHA3Sum256(buf.Bytes())
 	}
-	return b.id
+	return b._id
 }
 
 func (b *blockV2) Height() int64 {
-	return b.blockV2Header.Height
+	return b.height
 }
 
 func (b *blockV2) PrevID() []byte {
-	return b.blockV2Header.PrevID
+	return b.prevID
 }
 
 func (b *blockV2) Votes() module.VoteList {
-	return nil
+	return b.votes
 }
 
 func (b *blockV2) NextValidators() module.ValidatorList {
-	return nil
+	return b.nextValidators
 }
 
 func (b *blockV2) Verify() error {
@@ -97,75 +96,67 @@ func (b *blockV2) Verify() error {
 }
 
 func (b *blockV2) NormalTransactions() module.TransactionList {
-	return b.blockV2Impl.NormalTransactions
+	return b.normalTransactions
 }
 
 func (b *blockV2) PatchTransactions() module.TransactionList {
-	return b.blockV2Impl.PatchTransactions
+	return b.patchTransactions
 }
 
 func (b *blockV2) Timestamp() time.Time {
-	return b.blockV2Impl.Timestamp
+	return b.timestamp
 }
 
 func (b *blockV2) Proposer() module.Address {
-	return b.blockV2Impl.Proposer
+	return b.proposer
 }
 
 func (b *blockV2) LogBloom() []byte {
-	return b.blockV2Impl.LogBloom
+	return b.logBloom
 }
 
 func (b *blockV2) Result() []byte {
-	return b.blockV2Impl.Result
+	return b.result
 }
 
 func (b *blockV2) MarshalHeader(w io.Writer) {
+	v2codec.Marshal(w, b._headerFormat())
 }
 
 func (b *blockV2) MarshalBody(w io.Writer) {
+	v2codec.Marshal(w, b._bodyFormat())
 }
 
-type blockV2Param struct {
-	parent             module.Block
-	timestamp          time.Time
-	proposer           module.Address
-	logBloom           []byte
-	result             []byte
-	patchTransactions  module.TransactionList
-	normalTransactions module.TransactionList
-	nextValidators     module.ValidatorList
-	votes              module.VoteList
-}
-
-// TODO rename
-func newBlockV2(blockv2 *blockV2ForCodec) module.Block {
-	return nil
-}
-
-func newBlockV2FromHeaderForCodec(*blockV2HeaderForCodec) module.Block {
-	return nil
-}
-
-func newBlockV2FromParam(param *blockV2Param) module.Block {
-	block := blockV2{
-		blockV2Impl: blockV2Impl{
-			blockV2Header: blockV2Header{
-				Height:                 param.parent.Height() + 1,
-				Timestamp:              param.timestamp,
-				Proposer:               param.proposer,
-				PrevID:                 param.parent.ID(),
-				VotesHash:              param.votes.Hash(),
-				NextValidatorsHash:     param.nextValidators.Hash(),
-				PatchTransactionsHash:  param.patchTransactions.Hash(),
-				NormalTransactionsHash: param.normalTransactions.Hash(),
-				LogBloom:               param.logBloom,
-				Result:                 param.result,
-			},
-			PatchTransactions:  param.patchTransactions,
-			NormalTransactions: param.normalTransactions,
-			Votes:              param.votes,
-		},
+func (b *blockV2) _headerFormat() *blockV2HeaderFormat {
+	return &blockV2HeaderFormat{
+		Version:                b.Version(),
+		Height:                 b.height,
+		Timestamp:              unixMicroFromTime(b.timestamp),
+		Proposer:               b.proposer.Bytes(),
+		PrevID:                 b.prevID,
+		VotesHash:              b.votes.Hash(),
+		NextValidatorsHash:     b.nextValidators.Hash(),
+		PatchTransactionsHash:  b.patchTransactions.Hash(),
+		NormalTransactionsHash: b.normalTransactions.Hash(),
+		LogBloom:               b.logBloom,
+		Result:                 b.result,
 	}
-	return &block
+}
+
+func bssFromTransactionList(l module.TransactionList) [][]byte {
+	var res [][]byte
+	for it := l.Iterator(); it.Has(); it.Next() {
+		tr, _, _ := it.Get()
+		bs := tr.Bytes()
+		res = append(res, bs)
+	}
+	return res
+}
+
+func (b *blockV2) _bodyFormat() *blockV2BodyFormat {
+	return &blockV2BodyFormat{
+		PatchTransactions:  bssFromTransactionList(b.patchTransactions),
+		NormalTransactions: bssFromTransactionList(b.normalTransactions),
+		Votes:              b.votes.Bytes(),
+	}
 }

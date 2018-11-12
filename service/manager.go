@@ -168,7 +168,7 @@ func (m *manager) Finalize(t module.Transition, opt int) {
 }
 
 // TransactionFromBytes returns a Transaction instance from bytes.
-func (m *manager) TransactionFromBytes(b []byte) module.Transaction {
+func (m *manager) TransactionFromBytes(b []byte, blockVersion int) module.Transaction {
 	tx, _ := newTransaction(b)
 	return tx
 }
