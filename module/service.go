@@ -111,7 +111,10 @@ type ServiceManager interface {
 	// Returned Transition always passes validation.
 	ProposeTransition(parent Transition) (Transition, error)
 	// CreateInitialTransition creates an initial Transition
-	CreateInitialTransition(result []byte, nextValidators ValidatorList) (Transition, error)
+	// Height is the Height of the previous block of the block which has Result
+	// and NextValidator. e.g. If the initial transition is initial state for
+	// block n, height is n-1.
+	CreateInitialTransition(result []byte, nextValidators ValidatorList, height int64) (Transition, error)
 	// CreateTransition creates a Transition following parent Transition.
 	CreateTransition(parent Transition, txs TransactionList) (Transition, error)
 	// GetPatches returns all patch transactions based on the parent transition.
@@ -142,4 +145,7 @@ type ServiceManager interface {
 
 	// SendTransaction adds transaction to a transaction pool.
 	SendTransaction(tx Transaction) error
+
+	// ValidatorListFromHash returns ValidatorList from hash.
+	ValidatorListFromHash(hash []byte) ValidatorList
 }

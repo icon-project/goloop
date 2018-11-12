@@ -78,7 +78,7 @@ func (m *manager) ProposeTransition(parent module.Transition) (module.Transition
 
 // CreateInitialTransition creates an initial Transition with result and
 // vs validators.
-func (m *manager) CreateInitialTransition(result []byte, valList module.ValidatorList) (module.Transition, error) {
+func (m *manager) CreateInitialTransition(result []byte, valList module.ValidatorList, height int64) (module.Transition, error) {
 	resultBytes, err := newResultBytes(result)
 	if err != nil {
 		return nil, errors.New("Invalid result")
@@ -240,6 +240,10 @@ func (m *manager) SendTransaction(tx module.Transaction) error {
 	}
 	// TODO: add go routine for request transaction
 	go txPool.add(txImplement)
+	return nil
+}
+
+func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {
 	return nil
 }
 

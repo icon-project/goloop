@@ -306,7 +306,7 @@ func NewManager(
 		return nil
 	}
 	lastFinalized := m.GetBlock(hash)
-	mtr, _ := m.sm.CreateInitialTransition(lastFinalized.Result(), lastFinalized.NextValidators())
+	mtr, _ := m.sm.CreateInitialTransition(lastFinalized.Result(), lastFinalized.NextValidators(), lastFinalized.Height()-1)
 	if mtr == nil {
 		return nil
 	}
