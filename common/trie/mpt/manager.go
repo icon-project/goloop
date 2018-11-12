@@ -25,6 +25,11 @@ func NewMutable(database db.Database, rootHash []byte) trie.Mutable {
 	return newMpt(database, bk, rootHash, reflect.TypeOf([]byte{}))
 }
 
+func NewMutableFromImmutable(immutable trie.Immutable) trie.Mutable {
+	// TODO make new mutable object from immutable.
+	return nil
+}
+
 func NewImmutableForObject(database db.Database, h []byte, t reflect.Type) trie.ImmutableForObject {
 	bk, err := database.GetBucket(db.MerkleTrie)
 	if err != nil {
@@ -40,6 +45,11 @@ func NewMutableForObject(database db.Database, h []byte, t reflect.Type) trie.Mu
 		log.Panicln("FAIL to get Bucket", err)
 	}
 	return newMptForObj(database, bk, h, t)
+}
+
+func NewMutableFromImmutableForObject(object trie.ImmutableForObject) trie.MutableForObject {
+	// TODO make new mutable object from immutable.
+	return nil
 }
 
 //func NewImmutable(rootHash []byte) trie.Immutable {

@@ -82,3 +82,12 @@ func NewMPTForBytes(db db.Database, h []byte) *mptForBytes {
 		NewMPT(db, h, reflect.TypeOf(bytesObject(nil))),
 	}
 }
+
+func MPTFromImmutableForBytes(immutable trie.Immutable) *mptForBytes {
+	if m, ok := immutable.(*mptForBytes); ok {
+		if m2 := MPTFromImmutable(m.mpt); m2 != nil {
+			return &mptForBytes{m2}
+		}
+	}
+	return nil
+}

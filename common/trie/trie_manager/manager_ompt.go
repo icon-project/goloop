@@ -17,10 +17,18 @@ func NewMutableForObject(db db.Database, h []byte, t reflect.Type) trie.MutableF
 	return ompt.NewMutableForObject(db, h, t)
 }
 
+func NewMutableFromImmutableForObject(object trie.ImmutableForObject) trie.MutableForObject {
+	return ompt.NewMutableFromImmutableForObject(object)
+}
+
 func NewImmutable(db db.Database, h []byte) trie.Immutable {
 	return ompt.NewImmutable(db, h)
 }
 
 func NewMutable(database db.Database, h []byte) trie.Mutable {
 	return ompt.NewMutable(database, h)
+}
+
+func MutableFromImmutable(object trie.Immutable) trie.Mutable {
+	return ompt.MutableFromImmutable(object)
 }

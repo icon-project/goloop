@@ -15,12 +15,20 @@ func NewMutableForObject(db db.Database, h []byte, t reflect.Type) trie.MutableF
 	return NewMPT(db, h, t)
 }
 
+func NewMutableFromImmutableForObject(immutable trie.ImmutableForObject) trie.MutableForObject {
+	return MPTFromImmutable(immutable)
+}
+
 func NewImmutable(db db.Database, h []byte) trie.Immutable {
 	return NewMPTForBytes(db, h)
 }
 
 func NewMutable(database db.Database, h []byte) trie.Mutable {
 	return NewMPTForBytes(database, h)
+}
+
+func MutableFromImmutable(immutable trie.Immutable) trie.Mutable {
+	return MPTFromImmutableForBytes(immutable)
 }
 
 type manager struct {
