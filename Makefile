@@ -3,7 +3,7 @@ GOTOOLS = \
 	gopkg.in/alecthomas/gometalinter.v2
 PACKAGES=$(shell go list ./...)
 INCLUDE = -I=. -I=${GOPATH}/src 
-BUILD_TAGS =
+BUILD_TAGS = ompt
 BUILD_FLAGS =
 
 init: get_tools get_vendor_deps
