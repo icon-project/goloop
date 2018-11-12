@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
@@ -160,4 +161,14 @@ func NewWorldState(database db.Database, stateHash []byte) WorldState {
 	ws.accounts = trie_manager.NewMutableForObject(database, stateHash, reflect.TypeOf((*accountSnapshotImpl)(nil)))
 	ws.mutableAccounts = make(map[string]AccountState)
 	return ws
+}
+
+func WorldStateFromSnapshot(wss WorldSnapshot) (WorldState, error) {
+	if wss, ok := wss.(*worldSnapshotImpl); ok {
+		ws := new(worldStateImpl)
+		ws.accounts = trie_manager.NewMutableFromImmutableForObject(wss.accounts)
+		ws.mutableAccounts = make(map[string]AccountState)
+		return ws, nil
+	}
+	return nil, common.ErrIllegalArgument
 }

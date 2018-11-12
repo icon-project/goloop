@@ -381,22 +381,35 @@ func (wvss *worldVirtualSnapshot) GetAccountSnapshot(id []byte) AccountSnapshot 
 	return nil
 }
 
-func (wvss *worldVirtualSnapshot) Realize() {
-	// TODO Implement realize
+func (wvss *worldVirtualSnapshot) realize() error {
+	if wvss.base == nil {
+		wvss.base = wvss.origin.getRealizedBase()
+	}
+	if len(wvss.accountSnapshots) > 0 {
+		ws, err := WorldStateFromSnapshot(wvss.base)
+		if err != nil {
+			return err
+		}
+		for id, ass := range wvss.accountSnapshots {
+			as := ws.GetAccountState([]byte(id))
+			as.Reset(ass)
+		}
+		wvss.accountSnapshots = nil
+		wvss.base = ws.GetSnapshot()
+	}
+	return nil
 }
 
 func (wvss *worldVirtualSnapshot) Flush() error {
-	// TODO realize itself, then flush
-	if wvss.base != nil && len(wvss.accountSnapshots) == 0 {
-		return wvss.base.Flush()
+	if err := wvss.realize(); err != nil {
+		return err
 	}
-	return errors.New("NotAllowed")
+	return wvss.base.Flush()
 }
 
 func (wvss *worldVirtualSnapshot) StateHash() []byte {
-	// TODO realize itself, then get stateHash
-	if wvss.base != nil && len(wvss.accountSnapshots) == 0 {
-		return wvss.base.StateHash()
+	if err := wvss.realize(); err != nil {
+		return nil
 	}
-	return nil
+	return wvss.base.StateHash()
 }
