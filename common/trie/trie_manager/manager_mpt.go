@@ -30,5 +30,5 @@ func NewMutable(database db.Database, h []byte) trie.Mutable {
 }
 
 func MutableFromImmutable(object trie.Immutable) trie.Mutable {
-	return mpt.MutableFromImmutable(object)
+	return mpt.NewMutableFromImmutable(object)
 }
