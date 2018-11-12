@@ -176,13 +176,14 @@ func (m *manager) TransactionFromBytes(b []byte) module.Transaction {
 // TransactionListFromHash returns a TransactionList instance from
 // the hash of transactions or nil when no transactions exist.
 func (m *manager) TransactionListFromHash(hash []byte) module.TransactionList {
-	// TODO impl
-	return nil
+	// TODO nil if hash is invalid?
+	return newTransactionListFromHash(m.db, hash)
 }
 
 // TransactionListFromSlice returns list of transactions.
 func (m *manager) TransactionListFromSlice(txs []module.Transaction, version int) module.TransactionList {
-	return nil
+	// TODO What if transaction objects are created outside?
+	panic("not implemented")
 }
 
 // ReceiptFromTransactionID returns receipt from legacy receipt bucket.

@@ -73,6 +73,7 @@ type (
 	}
 )
 
+// TODO Is db is good for parameter?
 func newTransactionList(db db.Database, txs []*transaction) *transactionlist {
 	trie := trie_manager.NewMutable(db, nil)
 	for i, tx := range txs {
@@ -86,6 +87,7 @@ func newTransactionList(db db.Database, txs []*transaction) *transactionlist {
 }
 
 func newTransactionListFromHash(db db.Database, hash []byte) *transactionlist {
+	// TODO Fill txs or not? If it doesn't fill txs, then fix all using txs directly.
 	trie := trie_manager.NewImmutable(db, hash)
 	return &transactionlist{txs: nil, trie: trie}
 }
