@@ -65,6 +65,14 @@
   version = "v1.0.1"
 
 [[projects]]
+  branch = "master"
+  digest = "1:1ba1d79f2810270045c328ae5d674321db34e3aae468eb4233883b473c5c0467"
+  name = "github.com/golang/glog"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "23def4e6c14b4da8ac2ed8007337bc5eb5007998"
+
+[[projects]]
   digest = "1:97df918963298c287643883209a2c3f642e6593379f97ab400c2a2e219ab647d"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
@@ -113,6 +121,14 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "f846ae58a1ab4a99d9480ce565601aebd84e333a"
+
+[[projects]]
+  digest = "1:417c731112ab784fdf8bca32ceec291146ce174cf4c24c88c794c0d8169ac5eb"
+  name = "github.com/kubernetes/kubernetes"
+  packages = ["pkg/kubelet/kubeletconfig/util/log"]
+  pruneopts = "UT"
+  revision = "17c77c7898218073f14c8d573582e8d2313dc740"
+  version = "v1.12.2"
 
 [[projects]]
   digest = "1:f9544e040a914c2de663031150db1fe0d592841ba039b01d27ac216dea061d5a"
@@ -228,6 +244,7 @@
     "github.com/gorilla/mux",
     "github.com/haltingstate/secp256k1-go",
     "github.com/intel-go/fastjson",
+    "github.com/kubernetes/kubernetes/pkg/kubelet/kubeletconfig/util/log",
     "github.com/osamingo/jsonrpc",
     "github.com/pkg/errors",
     "github.com/stretchr/testify/assert",
