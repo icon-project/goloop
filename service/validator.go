@@ -5,6 +5,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
+	"github.com/pkg/errors"
 	ugorji "github.com/ugorji/go/codec"
 	"log"
 )
@@ -15,8 +16,8 @@ type validator struct {
 }
 
 func (v *validator) CodecEncodeSelf(e *ugorji.Encoder) {
-	if v.pub == nil {
-		e.Encode(nil)
+	if len(v.pub) == 0 {
+		e.Encode([]byte{})
 		e.Encode(v.addr)
 	} else {
 		e.Encode(v.pub)
@@ -26,7 +27,7 @@ func (v *validator) CodecEncodeSelf(e *ugorji.Encoder) {
 func (v *validator) CodecDecodeSelf(d *ugorji.Decoder) {
 	var pubkey []byte
 	d.Decode(&pubkey)
-	if len(v.pub) == 0 {
+	if len(pubkey) == 0 {
 		d.Decode(&v.addr)
 	} else {
 		v.setPublicKey(pubkey)
@@ -38,7 +39,7 @@ func (v *validator) setPublicKey(bytes []byte) error {
 	if err != nil {
 		return err
 	}
-	v.pub = bytes
+	v.pub = pk.SerializeCompressed()
 	v.addr = common.NewAccountAddressFromPublicKey(pk)
 	return nil
 }
@@ -61,6 +62,9 @@ func (v *validator) Bytes() []byte {
 }
 
 func ValidatorFromAddress(a module.Address) (module.Validator, error) {
+	if a == nil {
+		return nil, errors.New("IllegalArgument")
+	}
 	v := &validator{
 		pub:  nil,
 		addr: new(common.Address),
