@@ -2,16 +2,14 @@ package service
 
 import (
 	"encoding/binary"
-	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/module"
 	"log"
 	"math/big"
 	"testing"
 	"time"
 )
 
-func Test_newWorldVirtualState(t *testing.T) {
+func Test_NewWorldVirtualState(t *testing.T) {
 	database := db.NewMapDB()
 	ws := NewWorldState(database, nil)
 	v1 := big.NewInt(1000)
@@ -116,102 +114,159 @@ func TestParallelExecution(t *testing.T) {
 	}
 }
 
-type LoopChainDB struct {
-	blockbk, scorebk db.Bucket
+func intToBytes(v uint32) []byte {
+	var buf [4]byte
+	binary.BigEndian.PutUint32(buf[:], v)
+	return buf[:]
 }
 
-func (lc *LoopChainDB) getBlockByHeight(height int) ([]byte, error) {
-	prefix := "block_height_key"
-	key := make([]byte, len(prefix)+12)
-	copy(key, prefix)
-	binary.BigEndian.PutUint64(key[len(prefix)+4:], uint64(height))
-	bid, err := lc.blockbk.Get(key)
-	if err != nil || bid == nil {
-		return bid, err
+func TestSequentialExecutionChainedAccount(t *testing.T) {
+	database := db.NewMapDB()
+
+	ws := NewWorldState(database, nil)
+	as := ws.GetAccountState(intToBytes(0))
+	as.SetBalance(big.NewInt(100))
+
+	wvs := NewWorldVirtualState(ws, nil)
+
+	execute := func(wvs WorldVirtualState, idx int, balance int64) WorldVirtualState {
+		v1 := big.NewInt(balance)
+		id1 := intToBytes(uint32(idx))
+		id2 := intToBytes(uint32(idx + 1))
+
+		req := []LockRequest{
+			{string(id1), AccountWriteLock},
+			{string(id2), AccountWriteLock},
+		}
+		nwvs := wvs.GetFuture(req)
+		go func(wvs WorldVirtualState, idx int, id1, id2 []byte, v *big.Int) {
+			as1 := wvs.GetAccountState(id1)
+			as2 := wvs.GetAccountState(id2)
+			balance1 := as1.GetBalance()
+			balance2 := as2.GetBalance()
+			balance1 = balance1.Sub(balance1, v)
+			balance2 = balance2.Add(balance2, v)
+			as1.SetBalance(balance1)
+			as2.SetBalance(balance2)
+
+			wvs.Commit()
+		}(nwvs, idx, id1, id2, v1)
+		return nwvs
 	}
 
-	return lc.blockbk.Get(bid)
+	count := 1000
+	for idx := 0; idx < count; idx++ {
+		wvs = execute(wvs, idx, 100)
+	}
+	wvs.Realize()
+
+	wvss := wvs.GetSnapshot()
+	if err := wvss.Flush(); err != nil {
+		t.Errorf("Fail to flush err=%+v", err)
+	}
+
+	v1 := big.NewInt(0)
+	v2 := big.NewInt(100)
+	ws2 := NewWorldState(database, wvss.StateHash())
+	for idx := 1; idx < count; idx++ {
+		ass := ws2.GetAccountSnapshot(intToBytes(uint32(idx)))
+		if ass == nil {
+			t.Errorf("Fail to get account idx=%d", idx)
+			continue
+		}
+		balance := ass.GetBalance()
+		if balance.Cmp(v1) != 0 {
+			t.Errorf("Balance is different idx=%d exp=%s ret=%s",
+				idx, v1.String(), balance.String())
+		}
+	}
+
+	ass := ws2.GetAccountSnapshot(intToBytes(uint32(count)))
+	balance2 := ass.GetBalance()
+	if balance2.Cmp(v2) != 0 {
+		t.Errorf("Final balance is different exp=%s ret=%s",
+			v2.String(), balance2.String())
+	}
 }
 
-func Test_LoopChainTransactionExecution(t *testing.T) {
-	var (
-		directory = "data/testnet"
-		blockname = "block"
-		scorename = "score"
-	)
+func TestSequentialExecutionDistributeWithRollbacks(t *testing.T) {
+	database := db.NewMapDB()
 
-	blockdb, err := db.NewGoLevelDB(blockname, directory)
-	if err != nil {
-		log.Panicf("Fail to open database err=%+v", err)
-	}
+	ws := NewWorldState(database, nil)
+	as := ws.GetAccountState(intToBytes(0))
+	as.SetBalance(big.NewInt(1000))
 
-	blockbk, err := blockdb.GetBucket("")
-	if err != nil {
-		log.Panicf("Fail to get bucket err=%+v", err)
-	}
+	wvs := NewWorldVirtualState(ws, nil)
 
-	scoredb, err := db.NewGoLevelDB(scorename, directory)
-	if err != nil {
-		log.Panicf("Fail to open database err=%+v", err)
-	}
+	execute := func(wvs WorldVirtualState, idx int, from, to uint32, balance int64) WorldVirtualState {
+		v1 := big.NewInt(balance)
+		id1 := intToBytes(from)
+		id2 := intToBytes(to)
 
-	scorebk, err := scoredb.GetBucket("")
-	if err != nil {
-		log.Panicf("Fail to get bucket err=%+v", err)
-	}
-
-	lc := &LoopChainDB{blockbk, scorebk}
-
-	c2db, err := db.NewGoLevelDB("goloop", directory)
-	if err != nil {
-		log.Panicf("Fail to make database err=%+v", err)
-	}
-
-	ws := NewWorldState(c2db, nil)
-	for i := 1; i < 20000; i++ {
-		blkJSON, err := lc.getBlockByHeight(i)
-		if err != nil {
-			log.Println("Fail to get block err=%v", err)
-			continue
+		req := []LockRequest{
+			{string(id1), AccountWriteLock},
+			{string(id2), AccountWriteLock},
 		}
-		if blkJSON == nil {
-			log.Println("Fail to get block (not exist)")
-			continue
-		}
-		blk, err := block.NewBlockV1(blkJSON)
-		if err != nil {
-			log.Printf("Fail to convert block err=%+v", blkJSON)
-			continue
-		}
-		wvs := NewWorldVirtualState(ws, nil)
-		txList := blk.NormalTransactions()
-		for itr := txList.Iterator(); itr.Has(); itr.Next() {
-			tx, _, _ := itr.Get()
-			reqs := []LockRequest{
-				{string(tx.From().Bytes()), AccountWriteLock},
-				{string(tx.To().Bytes()), AccountWriteLock},
-			}
-			wvs = wvs.GetFuture(reqs)
+		nwvs := wvs.GetFuture(req)
+		go func(wvs WorldVirtualState, idx int, id1, id2 []byte, v *big.Int) {
+			wvss := wvs.GetSnapshot()
 
-			go func(ws WorldVirtualState, tx module.Transaction) {
-				from := ws.GetAccountState(tx.From().Bytes())
-				to := ws.GetAccountState(tx.To().Bytes())
-				value := tx.Value()
-				fromBalance := from.GetBalance()
-				if fromBalance.Cmp(value) >= 0 {
-					fromBalance.Sub(fromBalance, value)
-					toBalance := to.GetBalance()
-					toBalance.Add(toBalance, value)
+			as1 := wvs.GetAccountState(id1)
+			as2 := wvs.GetAccountState(id2)
+			balance1 := as1.GetBalance()
+			balance2 := as2.GetBalance()
+			balance1 = balance1.Sub(balance1, v)
+			balance2 = balance2.Add(balance2, v)
+			as1.SetBalance(balance1)
+			as2.SetBalance(balance2)
 
-					from.SetBalance(fromBalance)
-					to.SetBalance(toBalance)
+			if (idx % 2) == 1 {
+				if err := wvs.Reset(wvss); err != nil {
+					t.Errorf("Fail to reset snapshot err=%+v", err)
 				}
-				ws.Commit()
-			}(wvs, tx)
-		}
+			}
+			wvs.Commit()
+		}(nwvs, idx, id1, id2, v1)
+		return nwvs
+	}
 
-		wvs.Realize()
-		wvss := wvs.GetSnapshot()
-		wvss.Flush()
+	count := 1000
+	for idx := 0; idx < count; idx++ {
+		wvs = execute(wvs, idx, 0, uint32(idx+1), 1)
+	}
+	wvs.Realize()
+
+	wvss := wvs.GetSnapshot()
+	if err := wvss.Flush(); err != nil {
+		t.Errorf("Fail to flush err=%+v", err)
+	}
+
+	v1 := big.NewInt(1)
+	v2 := big.NewInt(0)
+	remain := big.NewInt(int64(count / 2))
+	ws2 := NewWorldState(database, wvss.StateHash())
+	for idx := 1; idx <= count; idx++ {
+		ass := ws2.GetAccountSnapshot(intToBytes(uint32(idx)))
+		if ass == nil {
+			t.Errorf("Fail to get account idx=%d", idx)
+			continue
+		}
+		balance := ass.GetBalance()
+
+		exp := v1
+		if (idx % 2) == 0 {
+			exp = v2
+		}
+		if balance.Cmp(exp) != 0 {
+			t.Errorf("Balance is different idx=%d exp=%s ret=%s",
+				idx, exp.String(), balance.String())
+		}
+	}
+
+	ass := ws2.GetAccountSnapshot(intToBytes(uint32(0)))
+	balance2 := ass.GetBalance()
+	if balance2.Cmp(remain) != 0 {
+		t.Errorf("Final balance is different exp=%s ret=%s",
+			v2.String(), balance2.String())
 	}
 }
