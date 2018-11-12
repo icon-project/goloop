@@ -2,10 +2,10 @@ package service
 
 import (
 	"github.com/icon-project/goloop/common"
-	codec2 "github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
-	"github.com/ugorji/go/codec"
+	ugorji "github.com/ugorji/go/codec"
 	"log"
 )
 
@@ -14,8 +14,7 @@ type validator struct {
 	addr *common.Address
 }
 
-func (v *validator) CodecEncodeSelf(e *codec.Encoder) {
-	panic("implement me")
+func (v *validator) CodecEncodeSelf(e *ugorji.Encoder) {
 	if v.pub == nil {
 		e.Encode(nil)
 		e.Encode(v.addr)
@@ -24,7 +23,7 @@ func (v *validator) CodecEncodeSelf(e *codec.Encoder) {
 	}
 }
 
-func (v *validator) CodecDecodeSelf(d *codec.Decoder) {
+func (v *validator) CodecDecodeSelf(d *ugorji.Decoder) {
 	var pubkey []byte
 	d.Decode(&pubkey)
 	if len(v.pub) == 0 {
@@ -53,7 +52,7 @@ func (v *validator) PublicKey() []byte {
 }
 
 func (v *validator) Bytes() []byte {
-	bytes, err := codec2.MP.MarshalToBytes(v)
+	bytes, err := codec.MP.MarshalToBytes(v)
 	if err != nil {
 		log.Panicf("Fail to convert validator to bytes")
 		return nil
