@@ -1,7 +1,6 @@
 package service
 
 import (
-	"bytes"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
@@ -79,19 +78,11 @@ func (vl *validatorList) Get(i int) (module.Validator, bool) {
 func (vl *validatorList) IndexOf(addr module.Address) int {
 	vl.lock.Lock()
 	defer vl.lock.Unlock()
-	if vl.dirty {
-		for i, v := range vl.validators {
-			if bytes.Equal(v.Address().Bytes(), addr.Bytes()) {
-				return i
-			}
-		}
-		return -1
-	}
 
 	if vl.addrMap == nil {
 		vl.addrMap = make(map[string]int)
 		for i, v := range vl.validators {
-			vl.addrMap[string(v.Bytes())] = i
+			vl.addrMap[string(v.Address().Bytes())] = i
 		}
 	}
 	if idx, ok := vl.addrMap[string(addr.Bytes())]; ok {
