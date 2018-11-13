@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-
-	"github.com/icon-project/goloop/block"
 )
 
 type JSONRPCResponse struct {
@@ -89,7 +87,7 @@ func (w *Wallet) GetTransactionResultByHash(txHash string) ([]byte, error) {
 }
 
 func VerifyBlock(b []byte) error {
-	blk, err := block.NewBlockV1(b)
+	blk, err := NewBlockV1(b)
 	if err != nil {
 		return err
 	}
@@ -159,7 +157,7 @@ func main() {
 			}
 			log.Println("<> BLOCK", *height)
 			fmt.Println(string(b))
-			blk, err := block.NewBlockV1(b)
+			blk, err := NewBlockV1(b)
 			if err != nil {
 				log.Println("PARSE FAILs", err)
 				break

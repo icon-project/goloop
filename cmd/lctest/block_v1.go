@@ -1,4 +1,4 @@
-package block
+package main
 
 import (
 	"bytes"
@@ -12,13 +12,10 @@ import (
 	"time"
 
 	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
 )
-
-var blockV1Codec = codec.JSON
 
 type transactionV3 struct {
 	module.Transaction
