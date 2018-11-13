@@ -25,6 +25,11 @@ type Validator interface {
 
 type ValidatorList interface {
 	Hash() []byte
+	Bytes() []byte
+	Flush() error
+	IndexOf(Address) int
+	Len() int
+	Get(i int) (Validator, bool)
 }
 
 type VoteList interface {

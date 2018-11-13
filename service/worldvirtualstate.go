@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
 	"log"
 	"sync"
@@ -46,6 +47,35 @@ type worldVirtualState struct {
 	worldLock     int
 }
 
+func (wvs *worldVirtualState) GetValidators() module.ValidatorList {
+	wvs.mutex.Lock()
+	defer wvs.mutex.Unlock()
+
+	if wvs.worldLock != AccountNoLock {
+		wvs.realizeBaseInLock()
+
+		if wvs.committed != nil {
+			return wvs.committed.GetValidators()
+		}
+		if wvs.worldLock == AccountWriteLock {
+			return wvs.real.GetValidators()
+		} else {
+			return wvs.base.GetValidators()
+		}
+	}
+	return nil
+}
+
+func (wvs *worldVirtualState) SetValidators(vl []module.Validator) error {
+	wvs.mutex.Lock()
+	defer wvs.mutex.Unlock()
+
+	if wvs.worldLock == AccountWriteLock {
+		return wvs.real.SetValidators(vl)
+	}
+	return errors.New("ValidatorListIsNotLocked")
+}
+
 func (wvs *worldVirtualState) GetAccountSnapshot(id []byte) AccountSnapshot {
 	as := wvs.GetAccountState(id)
 	if as == nil {
@@ -75,6 +105,9 @@ func (wvs *worldVirtualState) GetAccountState(id []byte) AccountState {
 
 	if wvs.worldLock != AccountNoLock {
 		wvs.realizeBaseInLock()
+		if wvs.committed != nil {
+			return newAccountROState(wvs.committed.GetAccountSnapshot(id))
+		}
 		if wvs.worldLock == AccountWriteLock {
 			return wvs.real.GetAccountState(id)
 		} else {
@@ -412,4 +445,18 @@ func (wvss *worldVirtualSnapshot) StateHash() []byte {
 		return nil
 	}
 	return wvss.base.StateHash()
+}
+
+func (wvss *worldVirtualSnapshot) GetValidators() module.ValidatorList {
+	if wvss.base != nil {
+		return wvss.base.GetValidators()
+	}
+	return nil
+}
+
+func (wvss *worldVirtualSnapshot) ValidatorHash() []byte {
+	if wvss.base != nil {
+		return wvss.base.ValidatorHash()
+	}
+	return nil
 }

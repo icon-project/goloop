@@ -11,7 +11,7 @@ import (
 
 func Test_NewWorldVirtualState(t *testing.T) {
 	database := db.NewMapDB()
-	ws := NewWorldState(database, nil)
+	ws := NewWorldState(database, nil, nil)
 	v1 := big.NewInt(1000)
 	v2 := big.NewInt(2000)
 
@@ -69,7 +69,7 @@ func Test_NewWorldVirtualState(t *testing.T) {
 
 func TestParallelExecution(t *testing.T) {
 	database := db.NewMapDB()
-	ws := NewWorldState(database, nil)
+	ws := NewWorldState(database, nil, nil)
 	wvs := NewWorldVirtualState(ws, nil)
 
 	execute := func(wvs WorldVirtualState, idx int, balance int64) WorldVirtualState {
@@ -97,7 +97,7 @@ func TestParallelExecution(t *testing.T) {
 		t.Errorf("Fail to flush err=%+v", err)
 	}
 
-	ws2 := NewWorldState(database, wvss.StateHash())
+	ws2 := NewWorldState(database, wvss.StateHash(), wvss.ValidatorHash())
 	for idx := 1; idx <= count; idx++ {
 		v1 := big.NewInt(int64(idx * 10))
 		id := v1.Bytes()
@@ -120,10 +120,85 @@ func intToBytes(v uint32) []byte {
 	return buf[:]
 }
 
+const (
+	NumberOfAccounts = 1000
+)
+
+func executeTransfer(ws WorldState, id1, id2 []byte, value *big.Int) {
+	ws.GetSnapshot()
+	as1 := ws.GetAccountState(id1)
+	as2 := ws.GetAccountState(id2)
+	balance1 := as1.GetBalance()
+	balance2 := as2.GetBalance()
+	if balance1.Cmp(value) >= 0 {
+		balance1.Sub(balance1, value)
+		balance2.Add(balance2, value)
+	}
+}
+
+func executeTransferInVirtual(wvs WorldVirtualState, id1, id2 []byte, value *big.Int) WorldVirtualState {
+	reqs := []LockRequest{
+		{string(id1), AccountWriteLock},
+		{string(id2), AccountWriteLock},
+	}
+	wvs = wvs.GetFuture(reqs)
+	go func(wvs WorldVirtualState, id1, id2 []byte, value *big.Int) {
+		executeTransfer(wvs, id1, id2, value)
+		wvs.Commit()
+	}(wvs, id1, id2, value)
+	return wvs
+}
+
+func TestIndependentTrasferInSequential(t *testing.T) {
+	database := db.NewMapDB()
+	ws := NewWorldState(database, nil, nil)
+	startBalance := big.NewInt(1000)
+	for i := uint32(0); i < NumberOfAccounts; i += 2 {
+		as := ws.GetAccountState(intToBytes(i))
+		as.SetBalance(startBalance)
+	}
+	ws.GetSnapshot()
+
+	transfer := big.NewInt(10)
+	for i := uint32(0); i < NumberOfAccounts; i += 2 {
+		executeTransfer(ws, intToBytes(i), intToBytes(i+1), transfer)
+	}
+	for i := uint32(0); i < NumberOfAccounts; i += 2 {
+		executeTransfer(ws, intToBytes(i+1), intToBytes(i), transfer)
+	}
+
+	wss := ws.GetSnapshot()
+	log.Printf("Resuling Hash:[%x]", wss.StateHash())
+}
+
+func TestIndependentTrasferInPanrallel(t *testing.T) {
+	database := db.NewMapDB()
+	ws := NewWorldState(database, nil, nil)
+	startBalance := big.NewInt(1000)
+	for i := uint32(0); i < NumberOfAccounts; i += 2 {
+		as := ws.GetAccountState(intToBytes(i))
+		as.SetBalance(startBalance)
+	}
+	ws.GetSnapshot()
+
+	wvs := NewWorldVirtualState(ws, nil)
+
+	transfer := big.NewInt(10)
+	for i := uint32(0); i < NumberOfAccounts; i += 2 {
+		wvs = executeTransferInVirtual(wvs, intToBytes(i), intToBytes(i+1), transfer)
+	}
+	for i := uint32(0); i < NumberOfAccounts; i += 2 {
+		wvs = executeTransferInVirtual(wvs, intToBytes(i+1), intToBytes(i), transfer)
+	}
+	wvs.Realize()
+	wvss := wvs.GetSnapshot()
+	log.Printf("Resuling Hash:[%x]", wvss.StateHash())
+}
+
 func TestSequentialExecutionChainedAccount(t *testing.T) {
 	database := db.NewMapDB()
 
-	ws := NewWorldState(database, nil)
+	ws := NewWorldState(database, nil, nil)
 	as := ws.GetAccountState(intToBytes(0))
 	as.SetBalance(big.NewInt(100))
 
@@ -167,7 +242,7 @@ func TestSequentialExecutionChainedAccount(t *testing.T) {
 
 	v1 := big.NewInt(0)
 	v2 := big.NewInt(100)
-	ws2 := NewWorldState(database, wvss.StateHash())
+	ws2 := NewWorldState(database, wvss.StateHash(), wvss.ValidatorHash())
 	for idx := 1; idx < count; idx++ {
 		ass := ws2.GetAccountSnapshot(intToBytes(uint32(idx)))
 		if ass == nil {
@@ -192,7 +267,7 @@ func TestSequentialExecutionChainedAccount(t *testing.T) {
 func TestSequentialExecutionDistributeWithRollbacks(t *testing.T) {
 	database := db.NewMapDB()
 
-	ws := NewWorldState(database, nil)
+	ws := NewWorldState(database, nil, nil)
 	as := ws.GetAccountState(intToBytes(0))
 	as.SetBalance(big.NewInt(1000))
 
@@ -244,7 +319,7 @@ func TestSequentialExecutionDistributeWithRollbacks(t *testing.T) {
 	v1 := big.NewInt(1)
 	v2 := big.NewInt(0)
 	remain := big.NewInt(int64(count / 2))
-	ws2 := NewWorldState(database, wvss.StateHash())
+	ws2 := NewWorldState(database, wvss.StateHash(), wvss.ValidatorHash())
 	for idx := 1; idx <= count; idx++ {
 		ass := ws2.GetAccountSnapshot(intToBytes(uint32(idx)))
 		if ass == nil {

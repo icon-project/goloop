@@ -13,7 +13,7 @@ func TestNewWorldState(t *testing.T) {
 	testid := []byte("test")
 
 	database := db.NewMapDB()
-	ws := NewWorldState(database, nil)
+	ws := NewWorldState(database, nil, nil)
 	as := ws.GetAccountState(testid)
 
 	as.SetBalance(balance1)

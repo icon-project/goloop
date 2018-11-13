@@ -6,6 +6,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
+	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
 	"log"
 	"reflect"
@@ -16,8 +17,10 @@ import (
 // It can be use to WorldState recover state of WorldState to at some point.
 type WorldSnapshot interface {
 	GetAccountSnapshot(id []byte) AccountSnapshot
+	GetValidators() module.ValidatorList
 	Flush() error
 	StateHash() []byte
+	ValidatorHash() []byte
 }
 
 // WorldState represents world state.
@@ -26,11 +29,22 @@ type WorldState interface {
 	GetAccountState(id []byte) AccountState
 	GetAccountSnapshot(id []byte) AccountSnapshot
 	GetSnapshot() WorldSnapshot
+	GetValidators() module.ValidatorList
+	SetValidators(vl []module.Validator) error
 	Reset(snapshot WorldSnapshot) error
 }
 
 type worldSnapshotImpl struct {
-	accounts trie.SnapshotForObject
+	accounts   trie.SnapshotForObject
+	validators module.ValidatorList
+}
+
+func (ws *worldSnapshotImpl) GetValidators() module.ValidatorList {
+	return ws.validators
+}
+
+func (ws *worldSnapshotImpl) ValidatorHash() []byte {
+	return ws.validators.Hash()
 }
 
 func (ws *worldSnapshotImpl) StateHash() []byte {
@@ -38,7 +52,10 @@ func (ws *worldSnapshotImpl) StateHash() []byte {
 }
 
 func (ws *worldSnapshotImpl) Flush() error {
-	return ws.accounts.Flush()
+	if err := ws.accounts.Flush(); err != nil {
+		return err
+	}
+	return ws.validators.Flush()
 }
 
 func (ws *worldSnapshotImpl) GetAccountSnapshot(id []byte) AccountSnapshot {
@@ -65,6 +82,20 @@ type worldStateImpl struct {
 	database        db.Database
 	accounts        trie.MutableForObject
 	mutableAccounts map[string]AccountState
+	validators      module.ValidatorList
+}
+
+func (ws *worldStateImpl) GetValidators() module.ValidatorList {
+	return ws.validators
+}
+
+func (ws *worldStateImpl) SetValidators(vl []module.Validator) error {
+	validators, err := ValidatorListFromSlice(ws.database, vl)
+	if err != nil {
+		return err
+	}
+	ws.validators = validators
+	return nil
 }
 
 func (ws *worldStateImpl) Reset(isnapshot WorldSnapshot) error {
@@ -82,7 +113,7 @@ func (ws *worldStateImpl) Reset(isnapshot WorldSnapshot) error {
 
 func addressIDToKey(id []byte) []byte {
 	if id == nil {
-		return []byte("Genesis")
+		return []byte("genesis")
 	}
 	return crypto.SHA3Sum256(id)
 }
@@ -152,14 +183,20 @@ func (ws *worldStateImpl) GetSnapshot() WorldSnapshot {
 		}
 	}
 	return &worldSnapshotImpl{
-		accounts: ws.accounts.GetSnapshot(),
+		accounts:   ws.accounts.GetSnapshot(),
+		validators: ws.validators,
 	}
 }
 
-func NewWorldState(database db.Database, stateHash []byte) WorldState {
+func NewWorldState(database db.Database, stateHash []byte, validatorHash []byte) WorldState {
 	ws := new(worldStateImpl)
 	ws.accounts = trie_manager.NewMutableForObject(database, stateHash, reflect.TypeOf((*accountSnapshotImpl)(nil)))
 	ws.mutableAccounts = make(map[string]AccountState)
+	if validators, err := ValidatorListFromHash(database, validatorHash); err != nil {
+		log.Panicf("Fail to make ValidatorListFromHash() hash=%x", validatorHash)
+	} else {
+		ws.validators = validators
+	}
 	return ws
 }
 
@@ -168,6 +205,7 @@ func WorldStateFromSnapshot(wss WorldSnapshot) (WorldState, error) {
 		ws := new(worldStateImpl)
 		ws.accounts = trie_manager.NewMutableFromImmutableForObject(wss.accounts)
 		ws.mutableAccounts = make(map[string]AccountState)
+		ws.validators = wss.validators
 		return ws, nil
 	}
 	return nil, common.ErrIllegalArgument
