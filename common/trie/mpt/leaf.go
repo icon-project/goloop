@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/icon-project/goloop/common/trie"
-	"golang.org/x/crypto/sha3"
 )
 
 type (
@@ -68,10 +67,7 @@ func (l *leaf) hash() []byte {
 	serialized := l.serialize()
 	serializeCopied := make([]byte, len(serialized))
 	copy(serializeCopied, serialized)
-	// TODO: have to change below sha function.
-	sha := sha3.NewLegacyKeccak256()
-	sha.Write(serializeCopied)
-	digest := sha.Sum(serializeCopied[:0])
+	digest := calcHash(serializeCopied)
 
 	l.hashedValue = make([]byte, len(digest))
 	copy(l.hashedValue, digest)

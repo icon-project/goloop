@@ -3,7 +3,6 @@ package mpt
 import (
 	"fmt"
 	"github.com/icon-project/goloop/common/trie"
-	"golang.org/x/crypto/sha3"
 )
 
 type (
@@ -77,10 +76,7 @@ func (br *branch) hash() []byte {
 	serialized := br.serialize()
 	serializedCopy := make([]byte, len(serialized))
 	copy(serializedCopy, serialized)
-	// TODO: have to change below sha function.
-	sha := sha3.NewLegacyKeccak256()
-	sha.Write(serializedCopy)
-	digest := sha.Sum(serializedCopy[:0])
+	digest := calcHash(serializedCopy)
 
 	br.hashedValue = make([]byte, len(digest))
 	copy(br.hashedValue, digest)

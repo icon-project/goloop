@@ -5,6 +5,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/kubernetes/kubernetes/pkg/kubelet/kubeletconfig/util/log"
+	"golang.org/x/crypto/sha3"
 )
 
 /*
@@ -20,6 +21,8 @@ import (
 const hashableSize = 32
 
 type nodeState int
+
+const configUseKeccak = true
 
 const (
 	noneNode nodeState = iota
@@ -118,4 +121,22 @@ func (v byteValue) Equal(o trie.Object) bool {
 	}
 	return false
 
+}
+
+func calcHash(data ...[]byte) []byte {
+	if configUseKeccak {
+		sha := sha3.NewLegacyKeccak256()
+		for _, d := range data {
+			sha.Write(d)
+		}
+		sum := sha.Sum([]byte{})
+		return sum[:]
+	} else {
+		sha := sha3.New256()
+		for _, d := range data {
+			sha.Write(d)
+		}
+		sum := sha.Sum([]byte{})
+		return sum[:]
+	}
 }
