@@ -111,9 +111,10 @@ type ServiceManager interface {
 	// Returned Transition always passes validation.
 	ProposeTransition(parent Transition) (Transition, error)
 	// CreateInitialTransition creates an initial Transition
-	// Height is the Height of the previous block of the block which has Result
-	// and NextValidator. e.g. If the initial transition is initial state for
-	// block n, height is n-1.
+	// Height is the height of the block which includes transactions.
+	// e.g. If the transactions are included in block n and results are in
+	// block n+1, Height is n. It can be -1 if it is the initial state for
+	// a genesis block.
 	CreateInitialTransition(result []byte, nextValidators ValidatorList, height int64) (Transition, error)
 	// CreateTransition creates a Transition following parent Transition.
 	CreateTransition(parent Transition, txs TransactionList) (Transition, error)
