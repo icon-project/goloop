@@ -21,8 +21,8 @@ type Block interface {
 	LogBloom() []byte
 	Result() []byte
 
-	MarshalHeader(w io.Writer)
-	MarshalBody(w io.Writer)
+	MarshalHeader(w io.Writer) error
+	MarshalBody(w io.Writer) error
 }
 
 type BlockManager interface {

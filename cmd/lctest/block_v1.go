@@ -126,10 +126,12 @@ func (b *blockV1) PatchReceipts() module.ReceiptList {
 	return nil
 }
 
-func (b *blockV1) MarshalHeader(w io.Writer) {
+func (b *blockV1) MarshalHeader(w io.Writer) error {
+	return nil
 }
 
-func (b *blockV1) MarshalBody(w io.Writer) {
+func (b *blockV1) MarshalBody(w io.Writer) error {
+	return nil
 }
 
 func NewBlockV1(b []byte) (module.Block, error) {

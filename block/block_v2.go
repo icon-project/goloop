@@ -119,12 +119,12 @@ func (b *blockV2) Result() []byte {
 	return b.result
 }
 
-func (b *blockV2) MarshalHeader(w io.Writer) {
-	v2codec.Marshal(w, b._headerFormat())
+func (b *blockV2) MarshalHeader(w io.Writer) error {
+	return v2codec.Marshal(w, b._headerFormat())
 }
 
-func (b *blockV2) MarshalBody(w io.Writer) {
-	v2codec.Marshal(w, b._bodyFormat())
+func (b *blockV2) MarshalBody(w io.Writer) error {
+	return v2codec.Marshal(w, b._bodyFormat())
 }
 
 func (b *blockV2) _headerFormat() *blockV2HeaderFormat {
