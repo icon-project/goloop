@@ -79,7 +79,11 @@ func (h hash) deleteChild(m *mpt, k []byte) (node, nodeState, error) {
 	if serializedValue == nil || err != nil {
 		return h, noneNode, err
 	}
-	return m.delete(deserialize(serializedValue, m.objType, m.db), k)
+	deserializedNode := deserialize(serializedValue, m.objType, m.db)
+	if deserializedNode == nil {
+		return h, noneNode, nil
+	}
+	return deserializedNode.deleteChild(m, k)
 }
 
 func (h hash) get(m *mpt, k []byte) (node, trie.Object, error) {

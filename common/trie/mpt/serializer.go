@@ -161,7 +161,7 @@ func (e *testObject) Equal(o trie.Object) bool {
 //}
 
 func decodeValue(buf []byte, t reflect.Type, db db.Database) trie.Object {
-	if t == nil {
+	if t == nil || len(buf) == 0 {
 		return nil
 	}
 
@@ -301,10 +301,6 @@ func deserialize(b []byte, t reflect.Type, db db.Database) node {
 	nodeType := 0
 	keyBuf, nodeType, _ = decodeKey(keyBuf)
 	if nodeType == 0 { //extension
-		//if noHashedBranch { // not hashed branch
-		//	return &extension{sharedNibbles: keyBuf, next: decodeBranch(valBuf, t), serializedValue: b}
-		//}
-		//return &extension{sharedNibbles: keyBuf, next: hash(valBuf), serializedValue: b}
 		if hashableSize > len(valBuf) {
 			return &extension{sharedNibbles: keyBuf, next: decodeBranch(valBuf, t, db),
 				nodeBase: nodeBase{serializedValue: b, state: committedNode}}

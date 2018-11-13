@@ -2,13 +2,13 @@ package mpt
 
 import (
 	"bytes"
-	"fmt"
-	"reflect"
-	"sync"
-
+	"errors"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
+	"log"
+	"reflect"
+	"sync"
 )
 
 const maxNodeHeight = 65 // nibbles of 32bytes key(64) + root (1)
@@ -66,27 +66,37 @@ func bytesToNibbles(k []byte) []byte {
 	return nibbles
 }
 
-// TODO: check committed hash in previous source
-// TODO: If not same between previous and current committed hash, update current committed hash
-func (m *mpt) Get(k []byte) ([]byte, error) {
+func (m *mpt) get(k []byte) (trie.Object, error) {
 	k = bytesToNibbles(k)
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	pool, lastCommittedHash := m.mergeSnapshot()
-	if bytes.Compare(m.source.committedHash, lastCommittedHash) != 0 {
+
+	if m.evaluated == true {
+		var value trie.Object
+		var err error
+		_, value, err = m.root.get(m, k)
+		if err != nil || value == nil {
+			return nil, err
+		}
+		return value, nil
+	}
+	if v, ok, lastCommittedHash := m.getFromSnapshot(k); ok {
+		if v == nil {
+			return nil, nil
+		}
+		return v, nil
+	} else if bytes.Compare(m.source.committedHash, lastCommittedHash) != 0 {
 		m.source.committedHash = lastCommittedHash
 		m.root = lastCommittedHash
 	}
 
-	if v, ok := pool[string(k)]; ok {
-		if v == nil {
-			return nil, nil
-		}
-		return v.(byteValue), nil
-	}
-
 	var value trie.Object
 	var err error
+	if v, ok := m.root.(hash); ok {
+		if len(v) == 0 {
+			m.root = nil
+		}
+	}
 	if m.root == nil {
 		if m.source.committedHash == nil {
 			return nil, nil
@@ -99,14 +109,23 @@ func (m *mpt) Get(k []byte) ([]byte, error) {
 	} else if value == nil {
 		return nil, nil
 	}
-	return value.Bytes(), nil
+	return value, nil
+}
+
+func (m *mpt) Get(k []byte) ([]byte, error) {
+	v, err := m.get(k)
+	if err != nil || v == nil {
+		return nil, err
+	}
+	return v.Bytes(), nil
 }
 
 func (m *mpt) evaluateTrie(requestPool map[string]trie.Object) error {
 	var err error
 	for k, v := range requestPool {
 		if v == nil {
-			if m.root, _, err = m.delete(m.root, []byte(k)); err != nil {
+			// TODO : check if m.root is nil
+			if m.root, _, err = m.root.deleteChild(m, []byte(k)); err != nil {
 				return err
 			}
 		} else {
@@ -130,6 +149,9 @@ func (m *mpt) Hash() []byte {
 		m.source.committedHash = lastCommittedHash
 		m.root = lastCommittedHash
 	}
+
+	m.source.prev = nil
+	m.source.requestPool = pool
 
 	if m.root == nil {
 		m.root = m.source.committedHash
@@ -206,15 +228,6 @@ func (m *mpt) Equal(immutable trie.Immutable, exact bool) bool {
 	return result
 }
 
-func (m *mpt) delete(n node, k []byte) (node, nodeState, error) {
-	//fmt.Println("delete n ", n,", k ", k, ", v : ", string(k))
-	if n == nil {
-		return n, noneNode, nil
-	}
-
-	return n.deleteChild(m, k)
-}
-
 func (m *mpt) Delete(k []byte) error {
 	var err error
 	k = bytesToNibbles(k)
@@ -238,6 +251,18 @@ func (m *mpt) GetSnapshot() trie.Snapshot {
 	return mpt
 }
 
+func (m *mpt) getFromSnapshot(key []byte) (trie.Object, bool, hash) {
+	var committedHash hash
+	for snapshot := m.source; snapshot != nil; snapshot = snapshot.prev {
+		if v, ok := snapshot.requestPool[string(key)]; ok {
+			return v, true, snapshot.committedHash
+		}
+		committedHash = snapshot.committedHash
+	}
+
+	return nil, false, committedHash
+}
+
 func (m *mpt) mergeSnapshot() (map[string]trie.Object, hash) {
 	if m.source.prev == nil {
 		return m.source.requestPool, m.source.committedHash
@@ -256,7 +281,7 @@ func (m *mpt) mergeSnapshot() (map[string]trie.Object, hash) {
 	return mergePool, committedHash
 }
 
-// TODO: check whether this node is stored or not
+// TODO: Optimize
 func traversalCommit(db db.Bucket, n node, cnt int) error {
 	switch n := n.(type) {
 	case *branch:
@@ -264,8 +289,10 @@ func traversalCommit(db db.Bucket, n node, cnt int) error {
 			return nil
 		}
 		for _, v := range n.nibbles {
-			if err := traversalCommit(db, v, cnt+1); err != nil {
-				return err
+			if v != nil {
+				if err := traversalCommit(db, v, cnt+1); err != nil {
+					return err
+				}
 			}
 		}
 		n.flush()
@@ -302,11 +329,6 @@ func traversalCommit(db db.Bucket, n node, cnt int) error {
 	return db.Set(n.hash(), n.serialize())
 }
 
-/*
-	Flush saves all updated nodes to db.
-	Requested data are inserted to db so the requested data in pool are cleared
-	And preve
-*/
 func (m *mpt) Flush() error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -435,18 +457,18 @@ func (m *mpt) GetProof(k []byte) [][]byte {
 
 	// That length of pool is zero means that this trie is already calculated
 	if len(pool) != 0 {
-		fmt.Println("pool : ", pool)
 		m.evaluateTrie(pool)
 	}
 	k = bytesToNibbles(k)
 	var proofBuf [][]byte
-	fmt.Println("Proof ", m.root)
 	m.root, proofBuf, _ = m.proof(m.root, k, 0)
 	return proofBuf
 }
 
 func (m *mpt) Iterator() trie.Iterator {
-	return newIterator(m)
+	iter := newIterator(m)
+	iter.Next()
+	return iter
 }
 
 func (m *mpt) Reset(immutable trie.Immutable) error {
@@ -481,97 +503,44 @@ func (m *mpt) Empty() bool {
 	return len(pool) == 0 && m.root == nil
 }
 
-// struct for object trie
-type mptForObj struct {
-	*mpt
-}
-
-func newMptForObj(db db.Database, bk db.Bucket, initialHash hash, t reflect.Type) *mptForObj {
-	return &mptForObj{
-		mpt: &mpt{root: hash(append([]byte(nil), []byte(initialHash)...)),
-			source: &source{requestPool: make(map[string]trie.Object), committedHash: hash(append([]byte(nil), []byte(initialHash)...))},
-			bk:     bk, db: db, objType: t},
-	}
-}
-
-func (m *mptForObj) Get(k []byte) (trie.Object, error) {
-	k = bytesToNibbles(k)
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-	if v, ok := m.source.requestPool[string(k)]; ok {
-		return v, nil
+func newMpFromImmutable(immutable trie.Immutable) *mpt {
+	if m, ok := immutable.(*mpt); ok {
+		mpt := newMpt(m.db, m.bk, m.source.committedHash, m.objType)
+		mpt.source = m.source
+		// Below means s1.Flush() was called after calling m.Reset(s1)
+		if m.source.prev != nil && bytes.Compare(m.source.committedHash, m.source.prev.committedHash) != 0 {
+			m.source.committedHash = hash(append([]byte(nil), []byte(m.source.prev.committedHash)...))
+		}
+		mpt.source = &source{committedHash: m.source.committedHash, prev: m.source, requestPool: make(map[string]trie.Object)}
+		return m
 	}
 
-	var value trie.Object
-	var err error
-	m.root, value, err = m.root.get(m.mpt, k)
-	if err != nil {
-		return nil, err
-	}
-	return value, nil
-}
-
-// TODO: check v is immutable???
-func (m *mptForObj) Set(k []byte, v trie.Object) error {
-	if k == nil || v == nil {
-		return common.ErrIllegalArgument
-	}
-	k = bytesToNibbles(k)
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-	// have to check v is guaranteed as immutable
-	m.source.requestPool[string(k)] = v
 	return nil
 }
 
-func (m *mptForObj) GetSnapshot() trie.SnapshotForObject {
-	mptSnapshot := m.mpt.GetSnapshot()
-	mpt, ok := mptSnapshot.(*mpt)
-	if ok == false {
-		panic("illegal vairable")
+func (m *mpt) initIterator(iter *iteratorImpl) {
+	var data []byte
+	if n, ok := m.root.(hash); ok {
+		var err error
+		data, err = m.bk.Get(n)
+		if err != nil {
+			log.Fatalln("Failed to get value. key : %x", n)
+			return
+		} else if len(data) == 0 {
+			return
+		}
+		iter.stack[0].n = deserialize(data, m.objType, m.db)
+	} else {
+		iter.stack[0].n = m.root
 	}
-	return &mptForObj{mpt: mpt}
-}
-
-func (m *mptForObj) Reset(s trie.ImmutableForObject) {
-	// TODO Implement
-	immutableTrie, ok := s.(*mptForObj)
-	if ok == false {
-		return
-	}
-
-	// Do not use reference.
-	committedHash := make(hash, len(immutableTrie.source.committedHash))
-	copy(committedHash, immutableTrie.source.committedHash)
-	m.source = &source{prev: immutableTrie.source, requestPool: make(map[string]trie.Object), committedHash: committedHash}
-	rootHash := make(hash, len(committedHash))
-	copy(rootHash, committedHash)
-	m.root = hash(rootHash)
-	m.db = immutableTrie.db
-	return
-}
-
-func (m *mptForObj) Iterator() trie.IteratorForObject {
-	iter := newIteratorObj(m)
-	iter.Next()
-	return iter
-}
-
-func (m *mptForObj) Equal(object trie.ImmutableForObject, exact bool) bool {
-	immutableTrie, ok := object.(*mptForObj)
-	if ok == false {
-		return false
-	}
-	m.mpt.Equal(immutableTrie.mpt, exact)
-	return false
-}
-
-func (m *mptForObj) Empty() bool {
-	return m.mpt.Empty()
 }
 
 func newIterator(m *mpt) *iteratorImpl {
-	return &iteratorImpl{key: nil, value: nil, top: -1, m: m}
+	iter := &iteratorImpl{key: nil, value: nil, top: -1, m: m}
+	m.Hash()
+	m.initIterator(iter)
+
+	return iter
 }
 
 func (iter *iteratorImpl) nextChildNode(m *mpt, n node, key []byte) ([]byte, trie.Object) {
@@ -580,7 +549,7 @@ func (iter *iteratorImpl) nextChildNode(m *mpt, n node, key []byte) ([]byte, tri
 		iter.top++
 		iter.stack[iter.top].n = n
 		iter.stack[iter.top].key = key
-		if len(nn.value.Bytes()) != 0 {
+		if nn.value != nil {
 			return key, nn.value
 		}
 		for i, nibbleNode := range nn.nibbles {
@@ -627,7 +596,7 @@ func (iter *iteratorImpl) nextChildNode(m *mpt, n node, key []byte) ([]byte, tri
 
 func (iter *iteratorImpl) Next() error {
 	if iter.end == true {
-		return nil
+		return errors.New("NoMoreItem")
 	}
 	if iter.top == -1 && len(iter.key) == 0 {
 		iter.key, iter.value = iter.nextChildNode(iter.m, iter.stack[0].n, nil)
@@ -649,8 +618,9 @@ func (iter *iteratorImpl) Next() error {
 				startNibble := byte(0)
 				keyIndex := len(stackNode.key)
 				startNibble = prevKey[keyIndex] + 1
-				prevKey = stackNode.key
 				branchNode := stackNode.n.(*branch)
+				branchNode.nibbles[prevKey[keyIndex]] = nil
+				prevKey = stackNode.key
 				for i := startNibble; i < 16; i++ {
 					if branchNode.nibbles[i] != nil {
 						findNext = true
@@ -679,46 +649,7 @@ func (iter *iteratorImpl) Has() bool {
 	return iter.value != nil
 }
 
-func (iter *iteratorImpl) Get() (value []byte, key []byte, err error) {
-	k := iter.key
-	remainder := len(k) % 2
-	returnKey := make([]byte, len(k)/2+remainder)
-	if remainder > 0 {
-		returnKey[0] = k[0]
-	}
-	for i := remainder; i < len(k)/2+remainder; i++ {
-		returnKey[i] = k[i*2-remainder]<<4 | k[i*2+1-remainder]
-	}
-	return iter.value.Bytes(), returnKey, nil
-}
-
-type iteratorObjImpl struct {
-	*iteratorImpl
-}
-
-func newIteratorObj(m *mptForObj) *iteratorObjImpl {
-	iter := &iteratorObjImpl{&iteratorImpl{key: nil, value: nil, top: -1, m: m.mpt}}
-	m.Hash()
-
-	var data []byte
-	if n, ok := m.root.(hash); ok {
-		var err error
-		data, err = m.bk.Get(n)
-		if err != nil {
-			panic("Failed to get ")
-			return nil
-		} else if len(data) == 0 {
-			panic("Failed!!!")
-			return nil
-		}
-		iter.stack[0].n = deserialize(data, m.objType, m.db)
-	} else {
-		iter.stack[0].n = m.root
-	}
-	return iter
-}
-
-func (iter *iteratorObjImpl) Get() (trie.Object, []byte, error) {
+func (iter *iteratorImpl) get() (value trie.Object, key []byte, err error) {
 	k := iter.key
 	remainder := len(k) % 2
 	returnKey := make([]byte, len(k)/2+remainder)
@@ -729,4 +660,12 @@ func (iter *iteratorObjImpl) Get() (trie.Object, []byte, error) {
 		returnKey[i] = k[i*2-remainder]<<4 | k[i*2+1-remainder]
 	}
 	return iter.value, returnKey, nil
+}
+
+func (iter *iteratorImpl) Get() (value []byte, key []byte, err error) {
+	v, k, err := iter.get()
+	if err != nil && v == nil {
+		return nil, nil, err
+	}
+	return v.Bytes(), k, nil
 }
