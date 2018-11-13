@@ -103,7 +103,7 @@ const (
 //		1. if any changes of patches are detected from a new block
 //			1.1 PatchTransition
 //			1.2 Transition.Execute
-//		2. create Transaction instances by TransactionFromReader
+//		2. create Transaction instances by TransactionFromBytes
 //		3. CreateTransition with TransactionList
 //		4. Transition.Execute
 type ServiceManager interface {
