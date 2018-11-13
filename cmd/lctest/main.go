@@ -128,11 +128,12 @@ func VerifyBlocksFromHeight(wallet Wallet, from int) {
 func main() {
 	height := flag.Int("height", -1, "Height of block")
 	network := flag.String("network", "main", "Name of network to use")
+	api := flag.String("api", "v3", "JSON RPC API Version")
 	flag.Parse()
 
-	wallet := Wallet{"https://wallet.icon.foundation/api/v3"}
+	wallet := Wallet{"https://wallet.icon.foundation/api/"+ *api}
 	if *network == "test" {
-		wallet = Wallet{"https://testwallet.icon.foundation/api/v3"}
+		wallet = Wallet{"https://testwallet.icon.foundation/api/" + *api}
 	}
 	for _, a := range flag.Args() {
 		switch a {
