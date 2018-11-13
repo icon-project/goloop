@@ -12,9 +12,9 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-// TODO H validatorList
 // TODO overall error handling log? return error?
-// TODO import, finalize V1?
+// TODO import, finalize V1
+// TODO refactor code using bucketFor
 
 var dbCodec = codec.MP
 
@@ -419,8 +419,6 @@ func (m *manager) Finalize(block module.Block) error {
 		}
 		hb.put(blockV2._headerFormat())
 		hb.set(raw(block.Votes().Hash()), raw(block.Votes().Bytes()))
-		validators := block.NextValidators()
-		hb.set(raw(validators.Hash()), raw(validators.Bytes()))
 		lb := m.bucketFor(db.TransactionLocatorByHash)
 		for it := block.PatchTransactions().Iterator(); it.Has(); it.Next() {
 			tr, i, _ := it.Get()
@@ -463,17 +461,12 @@ func (m *manager) voteListFromHash(hash []byte) module.VoteList {
 	return dec(bs)
 }
 
-func (m *manager) validatorListFromHash(hash []byte) module.ValidatorList {
-	// TODO H validatorListFromHash
-	return nil
-}
-
 func (m *manager) newBlockFromHeaderReader(r io.Reader) module.Block {
 	var header blockV2HeaderFormat
 	v2codec.Unmarshal(r, &header)
 	patches := m.sm.TransactionListFromHash(header.PatchTransactionsHash)
 	normalTxs := m.sm.TransactionListFromHash(header.NormalTransactionsHash)
-	nextValidators := m.validatorListFromHash(header.NextValidatorsHash)
+	nextValidators := m.sm.ValidatorListFromHash(header.NextValidatorsHash)
 	votes := m.voteListFromHash(header.VotesHash)
 	if patches == nil || normalTxs == nil || nextValidators == nil ||
 		votes == nil {
@@ -523,7 +516,7 @@ func (m *manager) newBlockFromReader(r io.Reader) module.Block {
 	if bytes.Equal(normalTxs.Hash(), blockFormat.NormalTransactionsHash) {
 		return nil
 	}
-	nextValidators := m.validatorListFromHash(blockFormat.NextValidatorsHash)
+	nextValidators := m.sm.ValidatorListFromHash(blockFormat.NextValidatorsHash)
 	if bytes.Equal(nextValidators.Hash(), blockFormat.NextValidatorsHash) {
 		return nil
 	}
