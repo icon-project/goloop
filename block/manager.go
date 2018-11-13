@@ -378,7 +378,7 @@ func (m *manager) Commit(block module.Block) error {
 	return nil
 }
 
-func (m *manager) bucketFor(id string) *bucket {
+func (m *manager) bucketFor(id db.BucketID) *bucket {
 	b, err := m.db().GetBucket(id)
 	if err != nil {
 		return nil

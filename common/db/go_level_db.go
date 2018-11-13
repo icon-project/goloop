@@ -39,9 +39,9 @@ type GoLevelDB struct {
 	db *leveldb.DB
 }
 
-func (db *GoLevelDB) GetBucket(name string) (Bucket, error) {
+func (db *GoLevelDB) GetBucket(id BucketID) (Bucket, error) {
 	return &goLevelBucket{
-		id: name,
+		id: id,
 		db: db.db,
 	}, nil
 }
@@ -56,19 +56,12 @@ func (db *GoLevelDB) Close() error {
 var _ Bucket = (*goLevelBucket)(nil)
 
 type goLevelBucket struct {
-	id string
+	id BucketID
 	db *leveldb.DB
 }
 
-func makeKey(id string, key []byte) []byte {
-	nkey := make([]byte, len(id)+len(key))
-	copy(nkey, id)
-	copy(nkey[len(id):], key)
-	return nkey
-}
-
 func (bucket *goLevelBucket) Get(key []byte) ([]byte, error) {
-	value, err := bucket.db.Get(makeKey(bucket.id, key), nil)
+	value, err := bucket.db.Get(internalKey(bucket.id, key), nil)
 	if err == leveldb.ErrNotFound {
 		return nil, nil
 	} else {
@@ -77,7 +70,7 @@ func (bucket *goLevelBucket) Get(key []byte) ([]byte, error) {
 }
 
 func (bucket *goLevelBucket) Has(key []byte) bool {
-	ret, err := bucket.db.Has(makeKey(bucket.id, key), nil)
+	ret, err := bucket.db.Has(internalKey(bucket.id, key), nil)
 	if err != nil {
 		return false
 	}
@@ -85,9 +78,9 @@ func (bucket *goLevelBucket) Has(key []byte) bool {
 }
 
 func (bucket *goLevelBucket) Set(key []byte, value []byte) error {
-	return bucket.db.Put(makeKey(bucket.id, key), value, nil)
+	return bucket.db.Put(internalKey(bucket.id, key), value, nil)
 }
 
 func (bucket *goLevelBucket) Delete(key []byte) error {
-	return bucket.db.Delete(makeKey(bucket.id, key), nil)
+	return bucket.db.Delete(internalKey(bucket.id, key), nil)
 }

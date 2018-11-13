@@ -1,7 +1,5 @@
 package db
 
-import "math"
-
 // Bucket
 type Bucket interface {
 	Get(key []byte) ([]byte, error)
@@ -10,47 +8,44 @@ type Bucket interface {
 	Delete(key []byte) error
 }
 
-const bucketIdSize = 2
-const reserved byte = 0x00
-const MaxBuckets = math.MaxUint16 - (8 * 256)
-
-var bucketIdSequence = []byte{reserved, 0x00}
-var metaKey = []byte{reserved, 0x01}
-
-type bucketId [bucketIdSize]byte
-
-type bucketMeta struct {
-	buckets map[string]bucketId
-}
-
-// internalKey returns key prefixed with the bucket's id.
-func internalKey(id bucketId, key []byte) []byte {
-	buf := make([]byte, len(key)+bucketIdSize)
-	copy(buf, id[:])
-	copy(buf[bucketIdSize:], key)
-	return buf
-}
+type BucketID string
 
 //	Bucket ID
 const (
 	// MerkleTrie maps RLP encoded data from sha3(data)
-	MerkleTrie = ""
+	MerkleTrie BucketID = ""
 
 	// BytesByHash maps data except merkle trie nodes from sha3(data)
-	BytesByHash = "S"
+	BytesByHash BucketID = "S"
 
 	// TransactionLocatorByHash maps transaction locator from transaction hash.
-	TransactionLocatorByHash = "T"
+	TransactionLocatorByHash BucketID = "T"
 
 	// BlockHeaderHashByHeight maps hash of encoded block header from height.
-	BlockHeaderHashByHeight = "H"
+	BlockHeaderHashByHeight BucketID = "H"
 
 	// BlockV1ByHash maps block V1 from block V1 hash.
-	BlockV1ByHash = "B"
+	BlockV1ByHash BucketID = "B"
 
 	// ReceiptV1ByHash maps receipt V1 from tx V3 hash.
-	ReceiptV1ByHash = "R"
+	ReceiptV1ByHash BucketID = "R"
 
 	// ChainProperty is general key value map for chain property.
-	ChainProperty = "C"
+	ChainProperty BucketID = "C"
 )
+
+// internalKey returns key prefixed with the bucket's id.
+func internalKey(id BucketID, key []byte) []byte {
+	buf := make([]byte, len(key)+len(id))
+	copy(buf, id)
+	copy(buf[len(id):], key)
+	return buf
+}
+
+// nonNilBytes returns empty []byte if bz is nil
+func nonNilBytes(bz []byte) []byte {
+	if bz == nil {
+		return []byte{}
+	}
+	return bz
+}

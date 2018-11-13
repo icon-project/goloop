@@ -6,7 +6,7 @@ import (
 )
 
 type Database interface {
-	GetBucket(name string) (Bucket, error)
+	GetBucket(id BucketID) (Bucket, error)
 	Close() error
 }
 
@@ -55,11 +55,4 @@ func openDatabase(backend BackendType, name string, dir string) Database {
 		panic(fmt.Sprintf("Error initializing Database: %v", err))
 	}
 	return db
-}
-
-func nonNilBytes(bz []byte) []byte {
-	if bz == nil {
-		return []byte{}
-	}
-	return bz
 }

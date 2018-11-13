@@ -1,22 +1,14 @@
 package db
 
 import (
-	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBoltDB_Database(t *testing.T) {
+func TestMapDB_Database(t *testing.T) {
 
-	dir, err := ioutil.TempDir("", "boltdb")
-	if err != nil {
-		panic(err)
-	}
-	defer os.RemoveAll(dir)
-
-	testDB := openDatabase(BoltDBBackend, "test", dir)
+	testDB := openDatabase(MapDBBackend, "", "")
 	defer testDB.Close()
 
 	key := []byte("hello")

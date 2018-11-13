@@ -38,13 +38,13 @@ type BoltDB struct {
 	db *bolt.DB
 }
 
-func (db *BoltDB) GetBucket(name string) (Bucket, error) {
+func (db *BoltDB) GetBucket(id BucketID) (Bucket, error) {
 	// create bucket
 	err := db.db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte(name))
+		_, err := tx.CreateBucketIfNotExists([]byte(id))
 		return err
 	})
-	return &boltBucket{db: db.db, id: name}, err
+	return &boltBucket{db: db.db, id: id}, err
 }
 
 func (db *BoltDB) Close() error {
@@ -58,7 +58,7 @@ func (db *BoltDB) Close() error {
 var _ Bucket = (*boltBucket)(nil)
 
 type boltBucket struct {
-	id string
+	id BucketID
 	db *bolt.DB
 }
 
@@ -66,10 +66,6 @@ func (bucket *boltBucket) Get(key []byte) ([]byte, error) {
 	var value []byte
 	err := bucket.db.View(func(tx *bolt.Tx) error {
 		value = tx.Bucket([]byte(bucket.id)).Get(key)
-		if value == nil {
-			// TODO : return ErrNotFound
-			return nil
-		}
 		return nil
 	})
 	return value, err
