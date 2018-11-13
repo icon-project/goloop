@@ -305,7 +305,10 @@ func NewManager(
 	if err != nil {
 		return nil
 	}
-	lastFinalized := m.GetBlock(hash)
+	lastFinalized, err := m.GetBlock(hash)
+	if err != nil {
+		return nil
+	}
 	mtr, _ := m.sm.CreateInitialTransition(lastFinalized.Result(), lastFinalized.NextValidators(), lastFinalized.Height()-1)
 	if mtr == nil {
 		return nil
@@ -321,7 +324,7 @@ func NewManager(
 	return m
 }
 
-func (m *manager) GetBlock(id []byte) module.Block {
+func (m *manager) GetBlock(id []byte) (module.Block, error) {
 	// TODO handle v1
 	hb := m.bucketFor(db.BytesByHash)
 	if hb == nil {
@@ -329,12 +332,12 @@ func (m *manager) GetBlock(id []byte) module.Block {
 	}
 	headerBytes, err := hb.getBytes(raw(id))
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	if headerBytes != nil {
-		return m.newBlockFromHeaderReader(bytes.NewReader(headerBytes))
+		return m.newBlockFromHeaderReader(bytes.NewReader(headerBytes)), nil
 	}
-	return nil
+	return nil, common.ErrUnknown
 }
 
 func (m *manager) Import(
@@ -541,4 +544,12 @@ func (m *manager) newBlockFromReader(r io.Reader) module.Block {
 // TODO GetTransactionInfo
 func (m *manager) GetTransactionInfo(id []byte) module.TransactionInfo {
 	return nil
+}
+
+func (m *manager) GetBlockByHeight(height int64) (module.Block, error) {
+	return nil, nil
+}
+
+func (m *manager) GetLastBlock() (module.Block, error) {
+	return nil, nil
 }

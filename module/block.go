@@ -26,7 +26,9 @@ type Block interface {
 }
 
 type BlockManager interface {
-	GetBlock(id []byte) Block
+	GetBlockByHeight(height int64) (Block, error)
+	GetLastBlock() (Block, error)
+	GetBlock(id []byte) (Block, error)
 
 	//	Propose proposes a Block following the parent Block.
 	//	The result is asynchronously notified by cb. canceler cancels the
