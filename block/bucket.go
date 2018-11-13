@@ -27,14 +27,10 @@ func (b *bucket) _marshal(obj interface{}) ([]byte, error) {
 
 func (b *bucket) get(key interface{}, value interface{}) error {
 	bs, err := b.getBytes(key)
-	if bs == nil {
-		return common.ErrIllegalArgument
-	}
-	err = b.codec.Unmarshal(bytes.NewBuffer(bs), value)
 	if err != nil {
 		return err
 	}
-	return nil
+	return b.codec.Unmarshal(bytes.NewBuffer(bs), value)
 }
 
 func (b *bucket) getBytes(key interface{}) ([]byte, error) {
