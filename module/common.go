@@ -5,6 +5,7 @@ type Address interface {
 	Bytes() []byte
 	ID() []byte
 	IsContract() bool
+	Equal(Address) bool
 }
 
 type Vote interface {

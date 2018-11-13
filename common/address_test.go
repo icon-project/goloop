@@ -3,10 +3,12 @@ package common
 import (
 	"bytes"
 	"encoding/hex"
-	"github.com/icon-project/goloop/common/codec"
 	"log"
 	"reflect"
 	"testing"
+
+	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/module"
 )
 
 var (
@@ -141,6 +143,68 @@ func TestAddressEncodingDecoding(t *testing.T) {
 			if a2.String() != tt.args.s {
 				t.Errorf("Fail to recover expected=%s recovered=%s",
 					tt.args.s, a2.String())
+			}
+		})
+	}
+}
+
+func TestAddress_Equal(t *testing.T) {
+	type args struct {
+		a2 module.Address
+	}
+	tests := []struct {
+		name string
+		a    *Address
+		args args
+		want bool
+	}{
+		{
+			name: "NilAndNil",
+			a:    nil,
+			args: args{nil},
+			want: true,
+		},
+		{
+			name: "NilvsNonNil",
+			a:    nil,
+			args: args{NewAddressFromString("hx8888888888888888888888888888888888888888")},
+			want: false,
+		},
+		{
+			name: "NonNilvsNil",
+			a:    NewAddressFromString("hx8888888888888888888888888888888888888888"),
+			args: args{nil},
+			want: false,
+		},
+		{
+			name: "Same1",
+			a:    NewAddressFromString("hx8888888888888888888888888888888888888888"),
+			args: args{NewAddressFromString("hx8888888888888888888888888888888888888888")},
+			want: true,
+		},
+		{
+			name: "Same2",
+			a:    NewAddressFromString("cx8888888888888888888888888888888888888888"),
+			args: args{NewAddressFromString("cx8888888888888888888888888888888888888888")},
+			want: true,
+		},
+		{
+			name: "Diff1",
+			a:    NewAddressFromString("hx8888888888888888888888888888888888888888"),
+			args: args{NewAddressFromString("cx8888888888888888888888888888888888888888")},
+			want: false,
+		},
+		{
+			name: "Diff2",
+			a:    NewAddressFromString("hx8888888888888888888888888888888888888888"),
+			args: args{NewAddressFromString("hx9888888888888888888888888888888888888888")},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.a.Equal(tt.args.a2); got != tt.want {
+				t.Errorf("Address.Equal() = %v, want %v", got, tt.want)
 			}
 		})
 	}
