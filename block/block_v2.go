@@ -11,7 +11,7 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-var v2codec = codec.MP
+var v2Codec = codec.MP
 
 type blockV2HeaderFormat struct {
 	Version                int
@@ -69,7 +69,7 @@ func (b *blockV2) Version() int {
 func (b *blockV2) ID() []byte {
 	if b._id == nil {
 		buf := bytes.NewBuffer(nil)
-		v2codec.Marshal(buf, b._headerFormat())
+		v2Codec.Marshal(buf, b._headerFormat())
 		b._id = crypto.SHA3Sum256(buf.Bytes())
 	}
 	return b._id
@@ -120,11 +120,11 @@ func (b *blockV2) Result() []byte {
 }
 
 func (b *blockV2) MarshalHeader(w io.Writer) error {
-	return v2codec.Marshal(w, b._headerFormat())
+	return v2Codec.Marshal(w, b._headerFormat())
 }
 
 func (b *blockV2) MarshalBody(w io.Writer) error {
-	return v2codec.Marshal(w, b._bodyFormat())
+	return v2Codec.Marshal(w, b._bodyFormat())
 }
 
 func (b *blockV2) _headerFormat() *blockV2HeaderFormat {

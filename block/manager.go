@@ -463,7 +463,7 @@ func (m *manager) voteListFromHash(hash []byte) module.VoteList {
 
 func (m *manager) newBlockFromHeaderReader(r io.Reader) module.Block {
 	var header blockV2HeaderFormat
-	v2codec.Unmarshal(r, &header)
+	v2Codec.Unmarshal(r, &header)
 	patches := m.sm.TransactionListFromHash(header.PatchTransactionsHash)
 	normalTxs := m.sm.TransactionListFromHash(header.NormalTransactionsHash)
 	nextValidators := m.sm.ValidatorListFromHash(header.NextValidatorsHash)
@@ -501,7 +501,7 @@ func (m *manager) newBlockFromReader(r io.Reader) module.Block {
 	// TODO return error? log error?
 	// TODO handle v1
 	var blockFormat blockV2Format
-	v2codec.Unmarshal(r, &blockFormat)
+	v2Codec.Unmarshal(r, &blockFormat)
 	patches := m.newTransactionListFromBSS(
 		blockFormat.PatchTransactions,
 		common.BlockVersion2,
