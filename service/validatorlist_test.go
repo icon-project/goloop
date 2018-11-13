@@ -84,3 +84,48 @@ func TestValidatorListBasic(t *testing.T) {
 		}
 	}
 }
+
+func checkEmpty(t *testing.T, vl module.ValidatorList) {
+	addr := common.NewAddressFromString("cx7777777777777777777777777777777777777777")
+	if idx := vl.IndexOf(addr); idx != -1 {
+		t.Errorf("Invalid result on IndexOf() for empty list")
+		return
+	}
+
+	if _, ok := vl.Get(0); ok {
+		t.Errorf("Invalid result on Get(0) for empty list")
+		return
+	}
+
+	if l := vl.Len(); l != 0 {
+		t.Errorf("Invalid result on Len() ret=%d", l)
+		return
+	}
+
+	if hash := vl.Hash(); hash != nil {
+		t.Errorf("Invalid result on Hash() ret=%x", hash)
+	}
+}
+
+func TestEmptyValidatorList(t *testing.T) {
+	dbase := db.NewMapDB()
+	if vl, err := ValidatorListFromHash(dbase, nil); vl == nil || err != nil {
+		t.Errorf("Fail to make ValidatorList from nil hash err=%+v", err)
+		return
+	} else {
+		checkEmpty(t, vl)
+	}
+	if vl, err := ValidatorListFromSlice(dbase, nil); vl == nil || err != nil {
+		t.Errorf("Fail to make ValidatorList from nil slice err=%+v", err)
+		return
+	} else {
+		checkEmpty(t, vl)
+	}
+
+	if vl, err := ValidatorListFromSlice(dbase, []module.Validator{}); vl == nil || err != nil {
+		t.Errorf("Fail to make ValidatorList from nil slice err=%+v", err)
+		return
+	} else {
+		checkEmpty(t, vl)
+	}
+}

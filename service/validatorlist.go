@@ -20,14 +20,14 @@ type validatorList struct {
 }
 
 func (vl *validatorList) serializeInLock() []byte {
-	if vl.serialized == nil {
+	if vl.serialized == nil && len(vl.validators) > 0 {
 		vl.serialized, _ = codec.MP.MarshalToBytes(vl.validators)
 	}
 	return vl.serialized
 }
 
 func (vl *validatorList) hashInLock() []byte {
-	if vl.hash == nil {
+	if vl.hash == nil && len(vl.validators) > 0 {
 		s := vl.serializeInLock()
 		vl.hash = crypto.SHA3Sum256(s)
 	}
@@ -104,6 +104,9 @@ func ValidatorListFromHash(database db.Database, h []byte) (module.ValidatorList
 		value, err := bk.Get(h)
 		if err != nil {
 			return nil, err
+		}
+		if len(value) == 0 {
+			return nil, errors.New("InvalidHashValue")
 		}
 		_, err = codec.MP.UnmarshalFromBytes(value, &vl.validators)
 		if err != nil {
