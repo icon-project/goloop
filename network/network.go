@@ -89,21 +89,23 @@ func (pi *peerID) Copy(b []byte) {
 func (pi *peerID) Equal(a module.Address) bool {
 	return a.Equal(pi.Address)
 }
-func (pi *peerID) IsNil() bool {
-	return pi.Address == nil
-}
+
+// func (pi *peerID) IsNil() bool {
+// 	return pi.Address == nil
+// }
 func (pi *peerID) String() string {
-	if pi.IsNil() {
-		return ""
-	} else {
-		return pi.Address.String()
-	}
+	return pi.Address.String()
+	// if pi.IsNil() {
+	// 	return ""
+	// } else {
+	// 	return pi.Address.String()
+	// }
 }
 
 //////////////////if using marshall/unmarshall of membership
 type MessageMembership interface {
 	//set marshaller each message type << extends
-	UnicastMessage(message struct{}, peerId module.PeerID) error
+	UnicastMessage(message struct{}, id module.PeerID) error
 	MulticastMessage(message struct{}, authority module.Authority) error
 	BroadcastMessage(message struct{}, broadcastType module.BroadcastType) error
 
@@ -115,7 +117,7 @@ type MessageMembership interface {
 }
 
 type PacketReactor interface {
-	OnPacket(packet Packet, peerId module.PeerID)
+	OnPacket(packet Packet, id module.PeerID)
 }
 
 type MessageReactor interface {
@@ -129,5 +131,5 @@ type MessageReactor interface {
 	OnUnmarshall(subProtocol module.ProtocolInfo, bytes []byte) (interface{}, error)
 
 	//goRoutine by Membership.onPacket() like worker pattern
-	OnMessage(message interface{}, peerId module.PeerID)
+	OnMessage(message interface{}, id module.PeerID)
 }

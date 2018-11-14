@@ -255,7 +255,7 @@ func (p2p *PeerToPeer) sendGoRoutine() {
 	case pkt := <-p2p.ch:
 		log.Println("PeerToPeer.sendGoRoutine", pkt)
 
-		if pkt.src.IsNil() {
+		if pkt.src == nil {
 			pkt.src = p2p.self.id
 		}
 		p2p.packetRw.WritePacket(pkt)

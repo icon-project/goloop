@@ -122,7 +122,7 @@ type PeerHandler interface {
 	onPeer(p *Peer)
 	onPacket(pkt *Packet, p *Peer)
 	setNext(ph PeerHandler)
-	setSelfPeerId(peerId module.PeerID)
+	setSelfPeerId(id module.PeerID)
 }
 
 type peerHandler struct {
@@ -145,13 +145,13 @@ func (ph *peerHandler) setNext(next PeerHandler) {
 	ph.next = next
 }
 
-func (ph *peerHandler) setSelfPeerId(peerId module.PeerID) {
-	ph.self = peerId
+func (ph *peerHandler) setSelfPeerId(id module.PeerID) {
+	ph.self = id
 }
 
 func (ph *peerHandler) sendPacket(pkt *Packet, p *Peer) error {
 	log.Println("peerHandler.sendPacket", pkt)
-	if pkt.src.IsNil() {
+	if pkt.src == nil {
 		pkt.src = ph.self
 	}
 	return p.sendPacket(pkt)

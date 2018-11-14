@@ -125,7 +125,7 @@ func (a *Authenticator) onPacket(pkt *Packet, p *Peer) {
 			p.pubKey, _ = crypto.ParsePublicKey(pkt.payload)
 			p.id = NewPeerIdFromPublicKey(p.pubKey)
 			if !p.id.Equal(pkt.src) {
-				log.Println("Warnning peerId doesnt match[pkt:", pkt.src, ",expected:", p.id)
+				log.Println("Warnning id doesnt match[pkt:", pkt.src, ",expected:", p.id)
 			}
 			a.sendPacket(NewPacket(PROTO_AUTH_HS2, a.pubKey.SerializeCompressed()), p)
 		case PROTO_AUTH_HS2:

@@ -18,7 +18,7 @@ type membership struct {
 	cbFuncs     map[module.ProtocolInfo]receiveCbFunc
 }
 
-type receiveCbFunc func(pi module.ProtocolInfo, bytes []byte, peerId module.PeerID) (bool, error)
+type receiveCbFunc func(pi module.ProtocolInfo, bytes []byte, id module.PeerID) (bool, error)
 
 func newMembership(name string, pi module.ProtocolInfo, p2p *PeerToPeer) module.Membership {
 	m := &membership{
@@ -71,7 +71,7 @@ func (m *membership) RegistReactor(name string, reactor module.Reactor, subProto
 	return nil
 }
 
-func (m *membership) Unicast(subProtocol module.ProtocolInfo, bytes []byte, peerId module.PeerID) error {
+func (m *membership) Unicast(subProtocol module.ProtocolInfo, bytes []byte, id module.PeerID) error {
 	pkt := NewPacket(subProtocol, bytes)
 	pkt.protocol = PROTO_DEF_MEMBER
 	return nil
@@ -104,28 +104,28 @@ func (m *membership) getRolePeerIdList(role module.Role) *PeerIdList {
 	return l
 }
 
-func (m *membership) AddRole(role module.Role, peerId module.PeerID) error {
+func (m *membership) AddRole(role module.Role, id module.PeerID) error {
 	l := m.getRolePeerIdList(role)
-	l.PushBack(peerId)
+	l.PushBack(id)
 	return nil
 }
 
-func (m *membership) RemoveRole(role module.Role, peerId module.PeerID) error {
+func (m *membership) RemoveRole(role module.Role, id module.PeerID) error {
 	l := m.getRolePeerIdList(role)
-	l.Remove(peerId)
+	l.Remove(id)
 	return nil
 }
 
-func (m *membership) HasRole(role module.Role, peerId module.PeerID) bool {
+func (m *membership) HasRole(role module.Role, id module.PeerID) bool {
 	l := m.getRolePeerIdList(role)
-	return l.Has(peerId)
+	return l.Has(id)
 }
 
-func (m *membership) Roles(peerId module.PeerID) []module.Role {
+func (m *membership) Roles(id module.PeerID) []module.Role {
 	var i int
 	s := make([]module.Role, 0, len(m.roles))
 	for k, v := range m.roles {
-		if v.Has(peerId) {
+		if v.Has(id) {
 			s = append(s, k)
 			i++
 		}

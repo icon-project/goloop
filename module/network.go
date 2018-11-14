@@ -27,7 +27,7 @@ type Membership interface {
 	Unicast(subProtocol ProtocolInfo, bytes []byte, id PeerID) error
 
 	//for Authority management
-	//권한,peerId 매핑정보는 다른 경로를 통해 공유되는 것을 전제로 한다.
+	//Role,PeerID 매핑정보는 다른 경로를 통해 공유되는 것을 전제로 한다.
 	//TODO naming {authority, permission, privilege}
 	//TODO naming {grant<>deny,allow<>disallow,add<>remove}
 	AddRole(role Role, id PeerID) error
@@ -56,7 +56,7 @@ const (
 type PeerID interface {
 	Address
 	Copy(b []byte)
-	IsNil() bool
+	//IsNil() bool
 }
 
 type ProtocolInfo uint16
