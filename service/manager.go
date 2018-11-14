@@ -266,6 +266,11 @@ func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {
 	return nil
 }
 
+// For test
+func TestNewAccountState(db db.Database) AccountState {
+	return newAccountState(db, nil)
+}
+
 // test case
 // TODO: below test case has to be moved to manager_test.go
 var resultMap = make(map[string]*big.Int)

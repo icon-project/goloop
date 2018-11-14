@@ -3,6 +3,7 @@ package service_test
 import (
 	"fmt"
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
@@ -89,6 +90,7 @@ func (tx *txTest) Signature() []byte {
 }
 
 type transitionCb struct {
+	exeDone chan bool
 }
 
 func (ts *transitionCb) OnValidate(module.Transition, error) {
@@ -97,6 +99,7 @@ func (ts *transitionCb) OnValidate(module.Transition, error) {
 
 func (ts *transitionCb) OnExecute(module.Transition, error) {
 	log.Printf("OnExecute")
+	ts.exeDone <- true
 }
 
 // test case
@@ -139,21 +142,22 @@ var toList = []string{
 //var addresses [10]common.Address
 var deposit = int64(1000000)
 
-var testAddresses []byte
+var testAddresses [][]byte
 
 const (
 	TEST_ACCOUNTS             = 10
 	TEST_VALID_REQUEST_TX_NUM = 100
 )
 
-type keyPairs struct {
-	pbKey []byte
-	prKey []byte
+type testWallet struct {
+	pbKey   []byte
+	prKey   []byte
+	address []byte
 }
 
 // will be implemented by cw.Kwak
-func createKeyPairs(pairsNum int) []keyPairs {
-	return []keyPairs{}
+func createWallet(walletNum int) []testWallet {
+	return []testWallet{}
 }
 
 // will be implemented by cw.Kwak
@@ -175,19 +179,21 @@ func createRandTx(valid bool, time int64, validNum int) module.Transaction {
 		toId = rand.Int() % toNum
 	}
 	//tx.to = addresses[toId]
-	from := *common.NewAccountAddress([]byte(toList[id]))
+	fromString := string(testAddresses[id])
+	toString := string(testAddresses[toId])
+	from := *common.NewAccountAddress([]byte(testAddresses[id]))
 	to := *common.NewAccountAddress([]byte(toList[toId]))
 	value := big.NewInt(int64(rand.Int() % 300000))
 
 	if valid {
 		// TODO: 먼저 from에서 이체 가능금액 확인 & 이체
-		balance := resultMap[toList[id]]
+		balance := resultMap[fromString]
 		if balance != nil && balance.Cmp(value) > 0 {
-			resultMap[toList[id]] = balance.Mul(balance, value)
-			if _, ok := resultMap[toList[toId]]; ok == false {
-				resultMap[toList[toId]] = big.NewInt(0)
+			resultMap[fromString] = balance.Mul(balance, value)
+			if _, ok := resultMap[toString]; ok == false {
+				resultMap[toString] = big.NewInt(0)
 			}
-			resultMap[toList[toId]].Add(resultMap[toList[toId]], value)
+			resultMap[toString].Add(resultMap[toString], value)
 		}
 
 		timestamp := time + 1000 + int64(rand.Int()%100)
@@ -228,13 +234,18 @@ func requestTx(validTxNum int, manager module.ServiceManager, done chan bool) {
 	// TODO: send signal for end of request
 }
 
-func initTestAccounts(mpt trie.Mutable) {
-	//keys := createKeyPairs(TEST_ACCOUNTS)
-	//for i := 0; i < TEST_ACCOUNTS; i++ {
-	//accState := newAccountState(db, &accSnapshot[1])
-	//account := *common.NewAccountAddress([]byte(toList[id]))
-	//mpt.Set()
-	//}
+// create wallet(private/public keys & address) and set ballance
+// then set addresses and accounts to trie
+func initTestWallet(db db.Database, mpt trie.Mutable) {
+	wallet := createWallet(TEST_ACCOUNTS)
+	for i := 0; i < TEST_ACCOUNTS; i++ {
+		testAddresses[i] = wallet[i].address
+		accountState := service.TestNewAccountState(db)
+		accountState.SetBalance(big.NewInt(deposit))
+		serializedAccount, _ := codec.MP.MarshalToBytes(accountState.GetSnapshot())
+		addr := *common.NewAccountAddress(testAddresses[i])
+		mpt.Set(addr.Bytes(), serializedAccount)
+	}
 }
 
 func TestServiceManager(t *testing.T) {
@@ -243,16 +254,16 @@ func TestServiceManager(t *testing.T) {
 	result := make([]byte, 64)
 	mgr := trie_manager.New(pDb)
 	mpt := mgr.NewMutable(nil)
-	initTestAccounts(mpt)
-	// TODO: add accounts to mpt
+	initTestWallet(pDb, mpt)
+
 	// request transactions
 	requestCh := make(chan bool)
-	requestTx(TEST_VALID_REQUEST_TX_NUM, pSm, requestCh)
+	go requestTx(TEST_VALID_REQUEST_TX_NUM, pSm, requestCh)
 
 	//Run service manager for propose
-	copy(result, mpt.GetSnapshot().Hash())
-	// TODO: validator, height확인필요
-	// TODO: 최초 result는 어떻게 처리할거???
+	snapshot := mpt.GetSnapshot()
+	snapshot.Flush()
+	copy(result, snapshot.Hash())
 	initTrs, err := pSm.CreateInitialTransition(result, nil, 0)
 	if err != nil {
 		log.Panicf("Faile to create initial transition. result = %x, err = %s\n", result, err)
@@ -260,16 +271,17 @@ func TestServiceManager(t *testing.T) {
 	parentTrs := initTrs
 	// propose transition
 	for {
-		cb := &transitionCb{}
 		trs, err := pSm.ProposeTransition(parentTrs)
 		if err != nil {
 			log.Panicf("Failed to propose transition!, err = %s\n", err)
 		}
+		cb := &transitionCb{exeDone: make(chan bool)}
 		trs.Execute(cb)
 		// get result then run below
+		<-cb.exeDone
 		trs = parentTrs
 	}
-
+	<-requestCh
 	//
 	// verify
 	//vDb := db.NewMapDB()
