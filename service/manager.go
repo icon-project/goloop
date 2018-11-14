@@ -2,7 +2,6 @@ package service
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"math/big"
 	"math/rand"
@@ -233,43 +232,33 @@ func (m *manager) checkTransitionResult(t module.Transition) (*transition, trie.
 }
 
 func (m *manager) SendTransaction(tx module.Transaction) ([]byte, error) {
-	// TODO: newTransactionFromObject
-	// TODO: tx.Verify()
-
-	txImplement := &transaction{
-		// TODO: patch?
-		from:      common.Address{},
-		to:        common.Address{},
-		version:   tx.Version(),
-		timestamp: tx.Timestamp(),
-		nid:       tx.NID(),
-		nonce:     tx.Nonce(),
+	newTx, err := newTransactionFromObject(tx)
+	if err != nil {
+		log.Printf("Failed to create new transaction from object!. tx : %x\n", newTx.Bytes())
+		return nil, err
+	}
+	if err = newTx.Verify(); err != nil {
+		log.Printf("Failed to verify transaction. tx : %x\n", newTx.Bytes())
+		return nil, err
+	}
+	hash := newTx.Hash()
+	if hash == nil {
+		log.Println("Failed to get hash from tx : %x\n", newTx.Bytes())
+		return nil, errors.New("Invalid Transaction. Failed to get hash")
 	}
 
-	txImplement.value = new(big.Int)
-	txImplement.value.Set(tx.Value())
-	txImplement.stepLimit = new(big.Int)
-	txImplement.stepLimit.Set(tx.StepLimit())
-	txImplement.from.SetBytes(tx.From().Bytes())
-	txImplement.to.SetBytes(tx.To().Bytes())
-	txImplement.bytes = append([]byte{}, txImplement.bytes...)
-	txImplement.bytes = tx.Bytes()
-	txImplement.hash = append([]byte{}, tx.Hash()...)
-	txImplement.signature = append([]byte{}, tx.Signature()...)
-
 	var txPool *transactionPool
-	switch tx.Group() {
+	switch newTx.Group() {
 	case module.TransactionGroupNormal:
 		txPool = m.normalTxPool
 	case module.TransactionGroupPatch:
 		txPool = m.patchTxPool
 	default:
-		log.Panicf("Wrong TransactionGroup. %v", tx.Group())
+		log.Panicf("Wrong TransactionGroup. %v", newTx.Group())
 	}
-	// TODO: add go routine for request transaction
-	go txPool.add(txImplement)
-	// TODO returns hash
-	return nil, nil
+
+	go txPool.add(newTx)
+	return hash, nil
 }
 
 func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {
@@ -359,11 +348,11 @@ func TxTest() {
 		var accInfo accountSnapshotImpl
 		//var accInfo accountInfo
 		codec.MP.UnmarshalFromBytes(serializedAccount, &accInfo)
-		fmt.Println("[", name, "] has ", accInfo.GetBalance())
+		log.Println("[", name, "] has ", accInfo.GetBalance())
 		calcTotalBal.Add(calcTotalBal, accInfo.GetBalance())
 	}
 	if totalBalance.Cmp(calcTotalBal) == 0 {
-		fmt.Println("same total balance : ", totalBalance, ", ", calcTotalBal)
+		log.Println("same total balance : ", totalBalance, ", ", calcTotalBal)
 
 	} else {
 		panic("different")
@@ -432,7 +421,7 @@ func txRequest(validTxNum int, manager module.ServiceManager, done chan bool) {
 		manager.SendTransaction(tx)
 		time.Sleep(time.Millisecond * 3) // 0.003 seconds
 	}
-	fmt.Println("invalid tx Num : ", txMap[false], ", valid tx Num : ", txMap[true])
+	log.Println("invalid tx Num : ", txMap[false], ", valid tx Num : ", txMap[true])
 	done <- true
 
 	// TODO: send signal for end of request
