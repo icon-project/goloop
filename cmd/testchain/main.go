@@ -108,6 +108,10 @@ func (c *consensus) Start() {
 			panic(err)
 		}
 		blk = <-c.ch
+		err = c.bm.Finalize(blk)
+		if err != nil {
+			panic(err)
+		}
 		height++
 	}
 }
