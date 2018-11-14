@@ -1,10 +1,15 @@
 package module
 
-type NetworkManager interface {
-	Start()
-	Stop()
+import (
+	"fmt"
 
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/crypto"
+)
+
+type NetworkManager interface {
 	//CreateIfNotExists and return Membership
+	//if name == nil then return DefaultMembership with fixed PROTO_ID
 	GetMembership(name string) Membership
 }
 
@@ -21,7 +26,7 @@ type Membership interface {
 
 	//for Messaging, send packet to PeerToPeer.ch
 	Broadcast(subProtocol ProtocolInfo, bytes []byte, broadcastType BroadcastType) error
-	Multicast(subProtocol ProtocolInfo, bytes []byte, authority Authority) error
+	Multicast(subProtocol ProtocolInfo, bytes []byte, role Role) error
 	Unicast(subProtocol ProtocolInfo, bytes []byte, peerId PeerId) error
 
 	//for Authority management
@@ -38,20 +43,63 @@ type Membership interface {
 	Authorities(role Role) []Authority
 }
 
-type BroadcastType string
+type BroadcastType byte
 type Role string
 type Authority string
 
 const (
-	BROADCAST_ALL       BroadcastType = "all"
-	BROADCAST_NEIGHBOR  BroadcastType = "neighbor"
+	BROADCAST_ALL       BroadcastType = 0
+	BROADCAST_NEIGHBOR  BroadcastType = 1
 	ROLE_VALIDATOR      Role          = "validator"
+	ROLE_SEED           Role          = "seed"
 	AUTHORITY_BROADCAST Authority     = "broadcast"
 )
 
-type PeerId string
+const (
+	PeerIdSize = common.AddressBytes
+)
 
-type ProtocolInfo interface {
-	Id() byte
-	Version() byte
+//TODO refer to github.com/icon-project/goloop/common.NewAccountAddressFromPublicKey(pubKey)
+type PeerId struct {
+	*common.Address
+}
+
+func NewPeerId(b []byte) PeerId {
+	return PeerId{common.NewAccountAddress(b)}
+}
+
+func NewPeerIdFromPublicKey(k *crypto.PublicKey) PeerId {
+	return PeerId{common.NewAccountAddressFromPublicKey(k)}
+}
+
+func (pi PeerId) Copy(b []byte) {
+	copy(b[:PeerIdSize], pi.ID())
+}
+func (pi PeerId) Equal(o PeerId) bool {
+	return pi.Address.Equal(o.Address)
+}
+func (pi PeerId) IsNil() bool {
+	return pi.Address == nil
+}
+func (pi PeerId) String() string {
+	if pi.IsNil() {
+		return ""
+	} else {
+		return pi.Address.String()
+	}
+}
+
+type ProtocolInfo uint16
+
+func NewProtocolInfo(id byte, version byte) ProtocolInfo {
+	return ProtocolInfo(int(id)<<8 | int(version))
+}
+func (pi *ProtocolInfo) Id() byte {
+	return byte(*pi >> 8)
+}
+func (pi *ProtocolInfo) Version() byte {
+	return byte(*pi)
+}
+func (pi *ProtocolInfo) String() string {
+	return fmt.Sprintf("{ID:%#02x,Ver:%#02x}", pi.Id(), pi.Version())
 }

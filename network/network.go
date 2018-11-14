@@ -4,30 +4,64 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+var (
+	managers = make(map[string]module.NetworkManager)
+)
+
 type manager struct {
 	channel     string
-	memberships []module.Membership
+	memberships map[string]module.Membership
 	peerToPeer  *PeerToPeer
 }
 
+const (
+	DEF_MEMBERSHIP_NAME = ""
+)
+
+const (
+	PROTO_CONTOL     = 0x0000
+	PROTO_DEF_MEMBER = 0x0100
+)
+
 //can be created each channel
-func NewNetworkManager(channel string) module.NetworkManager {
-	return &manager{
-		channel:    channel,
-		peerToPeer: NewPeerToPeer(channel),
+func GetNetworkManager(channel string) module.NetworkManager {
+	mgr, ok := managers[channel]
+	if !ok {
+		m := &manager{
+			channel:     channel,
+			memberships: make(map[string]module.Membership),
+			peerToPeer:  newPeerToPeer(channel),
+		}
+		//Create default membership for P2P topology management
+		dms := m.GetMembership(DEF_MEMBERSHIP_NAME).(*membership)
+		dms.roles[module.ROLE_VALIDATOR] = m.peerToPeer.allowedRoots
+		dms.roles[module.ROLE_SEED] = m.peerToPeer.allowedSeeds
+
+		mgr = m
+		managers[channel] = m
+
 	}
+	return mgr
 }
 
-func (m *manager) Start() {
-	m.peerToPeer.Start()
-}
-
-func (m *manager) Stop() {
-	m.peerToPeer.Stop()
-}
-
+//TODO Multiple membership version
 func (m *manager) GetMembership(name string) module.Membership {
-	return nil
+	ms, ok := m.memberships[name]
+	if !ok {
+		pi := m.getProtocolInfo(name)
+		ms = newMembership(name, pi, m.peerToPeer)
+		m.memberships[name] = ms
+	}
+	return ms
+}
+
+func (m *manager) getProtocolInfo(name string) module.ProtocolInfo {
+	pi := module.ProtocolInfo(PROTO_DEF_MEMBER)
+	if name == DEF_MEMBERSHIP_NAME {
+		return pi
+	} else {
+		return module.NewProtocolInfo(pi.Id()+byte(len(m.memberships)), 0)
+	}
 }
 
 //////////////////if using marshall/unmarshall of membership
