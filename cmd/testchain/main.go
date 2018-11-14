@@ -13,6 +13,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/rpc"
 	"github.com/icon-project/goloop/service"
 )
 
@@ -23,6 +24,7 @@ type singleChain struct {
 	sm       module.ServiceManager
 	bm       module.BlockManager
 	cs       module.Consensus
+	sv       rpc.JsonRpcServer
 }
 
 func (c *singleChain) GetDatabase() db.Database {
@@ -122,8 +124,10 @@ func (c *singleChain) start() {
 	c.bm = block.NewManager(c, c.sm)
 	c.cs = newConsensus(c, c.bm, c.sm)
 	sm = c.sm
+	c.sv = rpc.NewJsonRpcServer(c.bm, c.sm)
 
 	c.cs.Start()
+	//c.sv.Start()
 }
 
 type JSONRPCResponse struct {
@@ -213,6 +217,4 @@ func main() {
 	flag.Parse()
 
 	c.start()
-
-	//http.ListenAndServe(":8080", rpc.JsonRpcHandler())
 }
