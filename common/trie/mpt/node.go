@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
-	"github.com/kubernetes/kubernetes/pkg/kubelet/kubeletconfig/util/log"
 	"golang.org/x/crypto/sha3"
+	"log"
 )
 
 /*
@@ -100,9 +100,8 @@ func (h hash) get(m *mpt, k []byte) (node, trie.Object, error) {
 	case *leaf:
 		m.hashedValue = h
 	default:
-		log.Errorf("serializedValue : %x, deserializedValue : %x, key : %x\n",
+		log.Panicf("Not considered!! serializedValue : %x, deserializedValue : %x, key : %x\n",
 			serializedValue, deserializedNode, h)
-		panic("Not considered case")
 	}
 	return deserializedNode.get(m, k)
 }
