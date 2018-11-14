@@ -13,10 +13,9 @@ import (
 )
 
 const (
-	PacketHeaderSize = 8 + PeerIdSize
-	PacketFooterSize = 8
-	PacketHashSize   = 8
-	PacketBufferSize = 4096 //bufio.defaultBufSize=4096
+	packetHeaderSize = 8 + peerIDSize
+	packetHashSize   = 8
+	packetFooterSize = packetHashSize
 )
 
 //srcPeerId, castType, destInfo, TTL(0:unlimited)
@@ -40,10 +39,10 @@ func NewPacket(subProtocol module.ProtocolInfo, payload []byte) *Packet {
 }
 
 func (p *Packet) String() string {
-	return fmt.Sprintf("{pi:%#04x,subPi:%#04x,src:%s,dest:%#x,ttl:%d,len:%v,payload:[%X],hash:%#x}",
+	return fmt.Sprintf("{pi:%#04x,subPi:%#04x,src:%v,dest:%#x,ttl:%d,len:%v,payload:[%X],hash:%#x}",
 		p.protocol,
 		p.subProtocol,
-		p.src.String(),
+		p.src,
 		p.dest,
 		p.ttl,
 		p.lengthOfpayload,
@@ -60,7 +59,7 @@ type PacketReader struct {
 
 // NewReader returns a new Reader whose buffer has the default size.
 func NewPacketReader(rd io.Reader) *PacketReader {
-	return &PacketReader{Reader: bufio.NewReaderSize(rd, PacketBufferSize), rd: rd}
+	return &PacketReader{Reader: bufio.NewReaderSize(rd, DefaultPacketBufferSize), rd: rd}
 }
 
 func (pr *PacketReader) Reset() {
@@ -70,7 +69,7 @@ func (pr *PacketReader) Reset() {
 func (pr *PacketReader) ReadPacket() (pkt *Packet, h hash.Hash64, e error) {
 	for {
 		if pr.pkt == nil {
-			hb := make([]byte, PacketHeaderSize)
+			hb := make([]byte, packetHeaderSize)
 			_, err := pr.Read(hb)
 			if err != nil {
 				e = err
@@ -81,13 +80,13 @@ func (pr *PacketReader) ReadPacket() (pkt *Packet, h hash.Hash64, e error) {
 			tb = tb[2:]
 			spi := module.ProtocolInfo(binary.BigEndian.Uint16(tb[:2]))
 			tb = tb[2:]
-			src := NewPeerId(tb[:PeerIdSize])
-			tb = tb[PeerIdSize:]
+			src := NewPeerId(tb[:peerIDSize])
+			tb = tb[peerIDSize:]
 			lop := binary.BigEndian.Uint32(tb[:4])
 			tb = tb[4:]
 			pr.pkt = &Packet{protocol: pi, subProtocol: spi, src: src, lengthOfpayload: lop}
 			h = fnv.New64a()
-			h.Sum(hb)
+			h.Write(hb)
 		}
 
 		if pr.pkt.payload == nil {
@@ -101,14 +100,14 @@ func (pr *PacketReader) ReadPacket() (pkt *Packet, h hash.Hash64, e error) {
 				e = err
 				return
 			}
-			h.Sum(pr.pkt.payload)
+			h.Write(pr.pkt.payload)
 		}
 
 		if pr.pkt.hashOfPacket == nil {
-			if PacketFooterSize > pr.Buffered() {
+			if packetFooterSize > pr.Buffered() {
 				continue
 			}
-			pr.pkt.hashOfPacket = make([]byte, PacketHashSize)
+			pr.pkt.hashOfPacket = make([]byte, packetHashSize)
 			_, err := pr.Read(pr.pkt.hashOfPacket)
 			if err != nil {
 				e = err
@@ -128,7 +127,7 @@ type PacketWriter struct {
 }
 
 func NewPacketWriter(w io.Writer) *PacketWriter {
-	return &PacketWriter{Writer: bufio.NewWriterSize(w, PacketBufferSize), wr: w}
+	return &PacketWriter{Writer: bufio.NewWriterSize(w, DefaultPacketBufferSize), wr: w}
 }
 
 func (pw *PacketWriter) Reset() {
@@ -136,30 +135,32 @@ func (pw *PacketWriter) Reset() {
 }
 
 func (pw *PacketWriter) WritePacket(pkt *Packet) error {
-	hb := make([]byte, PacketHeaderSize)
+	hb := make([]byte, packetHeaderSize)
 	tb := hb[:]
 	binary.BigEndian.PutUint16(tb[:2], uint16(pkt.protocol))
 	tb = tb[2:]
 	binary.BigEndian.PutUint16(tb[:2], uint16(pkt.subProtocol))
 	tb = tb[2:]
-	pkt.src.Copy(tb[:PeerIdSize])
-	tb = tb[PeerIdSize:]
+	pkt.src.Copy(tb[:peerIDSize])
+	tb = tb[peerIDSize:]
 	binary.BigEndian.PutUint32(tb[:4], pkt.lengthOfpayload)
 	tb = tb[4:]
 	_, err := pw.Write(hb)
 	if err != nil {
 		return err
 	}
+	//
 	payload := pkt.payload[:pkt.lengthOfpayload]
 	_, err = pw.Write(payload)
 	if err != nil {
 		return err
 	}
+	//
 	if pkt.hashOfPacket == nil {
 		h := fnv.New64a()
-		h.Sum(hb)
-		h.Sum(payload)
-		pkt.hashOfPacket = make([]byte, PacketHashSize)
+		h.Write(hb)
+		h.Write(payload)
+		pkt.hashOfPacket = make([]byte, packetHashSize)
 		binary.BigEndian.PutUint64(pkt.hashOfPacket, h.Sum64())
 	}
 	_, err = pw.Write(pkt.hashOfPacket)
@@ -171,6 +172,7 @@ type PacketReadWriter struct {
 	*PacketWriter
 }
 
-func NewPacketReadWriter(buf *bytes.Buffer) *PacketReadWriter {
+func NewPacketReadWriter() *PacketReadWriter {
+	buf := bytes.NewBuffer(make([]byte, DefaultPacketBufferSize))
 	return &PacketReadWriter{NewPacketReader(buf), NewPacketWriter(buf)}
 }

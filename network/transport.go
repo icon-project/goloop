@@ -2,7 +2,6 @@ package network
 
 import (
 	"container/list"
-	"errors"
 	"log"
 	"net"
 	"sync"
@@ -10,40 +9,20 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-const (
-	TRANSPORT_NET = "tcp4"
-)
-
-var (
-	ErrAlreadyListened = errors.New("Already listened")
-	ErrAlreadyClosed   = errors.New("Already closed")
-	l                  *Listener
-	pd                 *PeerDispatcher
-)
-
 type Listener struct {
-	address     string
-	ln          net.Listener
-	mtx         sync.Mutex
-	closeCh     chan bool
-	peerToPeers []*PeerToPeer
-	onAccept    acceptCbFunc
+	address  string
+	ln       net.Listener
+	mtx      sync.Mutex
+	closeCh  chan bool
+	onAccept acceptCbFunc
 }
 
 type acceptCbFunc func(conn net.Conn)
 
-func GetListener() *Listener {
-	if l == nil {
-		c := GetConfig()
-		l = newListener(c.ListenAddress)
-	}
-	return l
-}
-
-func newListener(address string) *Listener {
+func newListener(address string, cbFunc acceptCbFunc) *Listener {
 	return &Listener{
 		address:  address,
-		onAccept: GetPeerDispatcher().onAccept,
+		onAccept: cbFunc,
 	}
 }
 
@@ -53,7 +32,7 @@ func (l *Listener) Listen() error {
 	if l.ln != nil {
 		return ErrAlreadyListened
 	}
-	ln, err := net.Listen(TRANSPORT_NET, l.address)
+	ln, err := net.Listen(DefaultTransportNet, l.address)
 	if err != nil {
 		return err
 	}
@@ -99,22 +78,22 @@ type Dialer struct {
 	conn      net.Conn
 }
 
-type connectCbFunc func(conn net.Conn, d *Dialer)
+type connectCbFunc func(conn net.Conn, addr string, d *Dialer)
 
-func NewDialer(channel string) *Dialer {
+func newDialer(channel string, cbFunc connectCbFunc) *Dialer {
 	return &Dialer{
-		onConnect: GetPeerDispatcher().onConnect,
+		onConnect: cbFunc,
 		channel:   channel,
 	}
 }
 
-func (d *Dialer) Dial(address string) error {
-	conn, err := net.Dial(TRANSPORT_NET, address)
+func (d *Dialer) Dial(addr string) error {
+	conn, err := net.Dial(DefaultTransportNet, addr)
 	if err != nil {
 		return err
 	}
 	d.conn = conn
-	d.onConnect(conn, d)
+	d.onConnect(conn, addr, d)
 	return nil
 }
 
@@ -150,10 +129,10 @@ func (ph *peerHandler) setSelfPeerId(id module.PeerID) {
 }
 
 func (ph *peerHandler) sendPacket(pkt *Packet, p *Peer) error {
-	log.Println("peerHandler.sendPacket", pkt)
 	if pkt.src == nil {
 		pkt.src = ph.self
 	}
+	//log.Println("peerHandler.sendPacket", pkt)
 	return p.sendPacket(pkt)
 }
 
@@ -161,17 +140,6 @@ type PeerDispatcher struct {
 	peerHandler
 	peerHandlers *list.List
 	peerToPeers  map[string]*PeerToPeer
-}
-
-func GetPeerDispatcher() *PeerDispatcher {
-	if pd == nil {
-		c := GetConfig()
-		pd = newPeerDispatcher(
-			NewPeerIdFromPublicKey(c.PublicKey),
-			GetChannelNegotiator(),
-			GetAuthenticator())
-	}
-	return pd
 }
 
 func newPeerDispatcher(selfPeerId module.PeerID, peerHandlers ...PeerHandler) *PeerDispatcher {
@@ -209,10 +177,11 @@ func (pd *PeerDispatcher) onAccept(conn net.Conn) {
 }
 
 //callback from Dialer.Connect
-func (pd *PeerDispatcher) onConnect(conn net.Conn, d *Dialer) {
+func (pd *PeerDispatcher) onConnect(conn net.Conn, addr string, d *Dialer) {
 	log.Println("PeerDispatcher.onConnect", conn.RemoteAddr())
 	p := newPeer(conn, nil, false)
 	p.channel = d.channel
+	p.netAddress = NetAddress(addr)
 	pd.dispatchPeer(p)
 }
 

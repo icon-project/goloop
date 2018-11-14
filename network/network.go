@@ -1,13 +1,9 @@
 package network
 
 import (
-	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/crypto"
-	"github.com/icon-project/goloop/module"
-)
+	"container/list"
 
-var (
-	managers = make(map[string]module.NetworkManager)
+	"github.com/icon-project/goloop/module"
 )
 
 type manager struct {
@@ -16,34 +12,18 @@ type manager struct {
 	peerToPeer  *PeerToPeer
 }
 
-const (
-	DEF_MEMBERSHIP_NAME = ""
-)
-
-const (
-	PROTO_CONTOL     = 0x0000
-	PROTO_DEF_MEMBER = 0x0100
-)
-
-//can be created each channel
-func GetNetworkManager(channel string) module.NetworkManager {
-	mgr, ok := managers[channel]
-	if !ok {
-		m := &manager{
-			channel:     channel,
-			memberships: make(map[string]module.Membership),
-			peerToPeer:  newPeerToPeer(channel),
-		}
-		//Create default membership for P2P topology management
-		dms := m.GetMembership(DEF_MEMBERSHIP_NAME).(*membership)
-		dms.roles[module.ROLE_VALIDATOR] = m.peerToPeer.allowedRoots
-		dms.roles[module.ROLE_SEED] = m.peerToPeer.allowedSeeds
-
-		mgr = m
-		managers[channel] = m
-
+func newManager(channel string, id module.PeerID, addr NetAddress) *manager {
+	m := &manager{
+		channel:     channel,
+		memberships: make(map[string]module.Membership),
+		peerToPeer:  newPeerToPeer(channel, id, addr),
 	}
-	return mgr
+
+	//Create default membership for P2P topology management
+	dms := m.GetMembership(DefaultMembershipName).(*membership)
+	dms.roles[module.ROLE_VALIDATOR] = m.peerToPeer.allowedRoots
+	dms.roles[module.ROLE_SEED] = m.peerToPeer.allowedSeeds
+	return m
 }
 
 //TODO Multiple membership version
@@ -57,49 +37,14 @@ func (m *manager) GetMembership(name string) module.Membership {
 	return ms
 }
 
+//TODO protocolInfo management
 func (m *manager) getProtocolInfo(name string) module.ProtocolInfo {
 	pi := module.ProtocolInfo(PROTO_DEF_MEMBER)
-	if name == DEF_MEMBERSHIP_NAME {
+	if name == DefaultMembershipName {
 		return pi
 	} else {
 		return module.NewProtocolInfo(pi.Id()+byte(len(m.memberships)), 0)
 	}
-}
-
-//Implement
-const (
-	PeerIdSize = 20 //common.AddressBytes
-)
-
-type peerID struct {
-	*common.Address
-}
-
-func NewPeerId(b []byte) module.PeerID {
-	return &peerID{common.NewAccountAddress(b)}
-}
-
-func NewPeerIdFromPublicKey(k *crypto.PublicKey) module.PeerID {
-	return &peerID{common.NewAccountAddressFromPublicKey(k)}
-}
-
-func (pi *peerID) Copy(b []byte) {
-	copy(b[:PeerIdSize], pi.ID())
-}
-func (pi *peerID) Equal(a module.Address) bool {
-	return a.Equal(pi.Address)
-}
-
-// func (pi *peerID) IsNil() bool {
-// 	return pi.Address == nil
-// }
-func (pi *peerID) String() string {
-	return pi.Address.String()
-	// if pi.IsNil() {
-	// 	return ""
-	// } else {
-	// 	return pi.Address.String()
-	// }
 }
 
 //////////////////if using marshall/unmarshall of membership
@@ -132,4 +77,34 @@ type MessageReactor interface {
 
 	//goRoutine by Membership.onPacket() like worker pattern
 	OnMessage(message interface{}, id module.PeerID)
+}
+
+////////////util classes
+type StringList struct {
+	*list.List
+}
+
+func NewStringList() *StringList {
+	return &StringList{list.New()}
+}
+
+func (l *StringList) get(v string) *list.Element {
+	for e := l.Front(); e != nil; e = e.Next() {
+		if s := e.Value.(string); s == v {
+			return e
+		}
+	}
+	return nil
+}
+
+func (l *StringList) Remove(v string) bool {
+	if e := l.get(v); e != nil {
+		l.List.Remove(e)
+		return true
+	}
+	return false
+}
+
+func (l *StringList) Has(v string) bool {
+	return l.get(v) != nil
 }

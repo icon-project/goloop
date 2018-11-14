@@ -7,26 +7,11 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-const (
-	PROTO_CHAN_JOIN_REQ  = 0x0501
-	PROTO_CHAN_JOIN_RESP = 0x0601
-)
-
-var (
-	cn *ChannelNegotiator
-)
-
 //channel, rtt measure,
 type ChannelNegotiator struct {
 	peerHandler
 }
 
-func GetChannelNegotiator() *ChannelNegotiator {
-	if cn == nil {
-		cn = newChannelNegotiator()
-	}
-	return cn
-}
 func newChannelNegotiator() *ChannelNegotiator {
 	return &ChannelNegotiator{}
 }
@@ -54,17 +39,6 @@ func (cn *ChannelNegotiator) onPacket(pkt *Packet, p *Peer) {
 	}
 }
 
-const (
-	PROTO_AUTH_HS1 = 0x0101
-	PROTO_AUTH_HS2 = 0x0201
-	PROTO_AUTH_HS3 = 0x0301
-	PROTO_AUTH_HS4 = 0x0401
-)
-
-var (
-	a *Authenticator
-)
-
 type Authenticator struct {
 	peerHandler
 	peers  map[module.PeerID]*Peer
@@ -81,14 +55,6 @@ type AuthRequest struct {
 type AuthKeyRequest struct {
 	PubKey []byte
 	Cheap  string
-}
-
-func GetAuthenticator() *Authenticator {
-	if a == nil {
-		c := GetConfig()
-		a = newAuthenticator(c.PrivateKey, c.PublicKey)
-	}
-	return a
 }
 
 func newAuthenticator(priK *crypto.PrivateKey, pubK *crypto.PublicKey) *Authenticator {
@@ -163,15 +129,15 @@ func (a *Authenticator) onPacket(pkt *Packet, p *Peer) {
 				a.sendPacket(NewPacket(PROTO_AUTH_HS4, sb), p)
 				a.nextOnPeer(p)
 			} else {
-				log.Println("PeerId Invalid signature")
+				log.Println("Incomming PeerId Invalid signature")
 				p.conn.Close()
 			}
 		case PROTO_AUTH_HS4:
 			s, _ := crypto.ParseSignature(pkt.payload)
-			if s.Verify(crypto.SHA3Sum256(a.pubKey.SerializeUncompressed()), p.pubKey) {
+			if s.Verify(crypto.SHA3Sum256(p.pubKey.SerializeUncompressed()), p.pubKey) {
 				a.nextOnPeer(p)
 			} else {
-				log.Println("PeerId Invalid signature")
+				log.Println("Outgoing PeerId Invalid signature")
 				p.conn.Close()
 			}
 		}

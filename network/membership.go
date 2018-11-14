@@ -2,6 +2,7 @@ package network
 
 import (
 	"container/list"
+	"fmt"
 	"log"
 
 	"github.com/icon-project/goloop/common"
@@ -20,7 +21,7 @@ type membership struct {
 
 type receiveCbFunc func(pi module.ProtocolInfo, bytes []byte, id module.PeerID) (bool, error)
 
-func newMembership(name string, pi module.ProtocolInfo, p2p *PeerToPeer) module.Membership {
+func newMembership(name string, pi module.ProtocolInfo, p2p *PeerToPeer) *membership {
 	m := &membership{
 		name:        name,
 		protocol:    pi,
@@ -41,6 +42,7 @@ func (m *membership) workerRoutine() {
 
 //callback from PeerToPeer.onPacket() in Peer.onReceiveRoutine
 func (m *membership) onPacket(pkt *Packet, p *Peer) {
+	log.Println("Membership.onPacket", pkt)
 	//Check authority
 	//roles := Roles(pkt.src)
 	//auth := Authority(pkt.cast)
@@ -48,7 +50,7 @@ func (m *membership) onPacket(pkt *Packet, p *Peer) {
 	//if r == true
 
 	if cbFunc := m.cbFuncs[pkt.subProtocol]; cbFunc != nil {
-		r, err := cbFunc(pkt.subProtocol, pkt.payload, p.Id())
+		r, err := cbFunc(pkt.subProtocol, pkt.payload, p.ID())
 		if err != nil {
 			log.Println(err)
 		}
@@ -104,16 +106,20 @@ func (m *membership) getRolePeerIdList(role module.Role) *PeerIdList {
 	return l
 }
 
-func (m *membership) AddRole(role module.Role, id module.PeerID) error {
+func (m *membership) AddRole(role module.Role, peers ...module.PeerID) {
 	l := m.getRolePeerIdList(role)
-	l.PushBack(id)
-	return nil
+	for _, p := range peers {
+		if !l.Has(p) {
+			l.PushBack(p)
+		}
+	}
 }
 
-func (m *membership) RemoveRole(role module.Role, id module.PeerID) error {
+func (m *membership) RemoveRole(role module.Role, peers ...module.PeerID) {
 	l := m.getRolePeerIdList(role)
-	l.Remove(id)
-	return nil
+	for _, p := range peers {
+		l.Remove(p)
+	}
 }
 
 func (m *membership) HasRole(role module.Role, id module.PeerID) bool {
@@ -142,16 +148,20 @@ func (m *membership) getAuthorityRoleList(authority module.Authority) *RoleList 
 	return l
 }
 
-func (m *membership) GrantAuthority(authority module.Authority, role module.Role) error {
+func (m *membership) GrantAuthority(authority module.Authority, roles ...module.Role) {
 	l := m.getAuthorityRoleList(authority)
-	l.PushBack(role)
-	return nil
+	for _, r := range roles {
+		if !l.Has(r) {
+			l.PushBack(r)
+		}
+	}
 }
 
-func (m *membership) DenyAuthority(authority module.Authority, role module.Role) error {
+func (m *membership) DenyAuthority(authority module.Authority, roles ...module.Role) {
 	l := m.getAuthorityRoleList(authority)
-	l.Remove(role)
-	return nil
+	for _, r := range roles {
+		l.Remove(r)
+	}
 }
 
 func (m *membership) HasAuthority(authority module.Authority, role module.Role) bool {
@@ -171,36 +181,6 @@ func (m *membership) Authorities(role module.Role) []module.Authority {
 	return s[:i]
 }
 
-///////
-type StringList struct {
-	*list.List
-}
-
-func NewStringList() *StringList {
-	return &StringList{list.New()}
-}
-
-func (l *StringList) get(v string) *list.Element {
-	for e := l.Front(); e != nil; e = e.Next() {
-		if s := e.Value.(string); s == v {
-			return e
-		}
-	}
-	return nil
-}
-
-func (l *StringList) Remove(v string) bool {
-	if e := l.get(v); e != nil {
-		l.List.Remove(e)
-		return true
-	}
-	return false
-}
-
-func (l *StringList) Has(v string) bool {
-	return l.get(v) != nil
-}
-
 type PeerIdList struct {
 	*list.List
 }
@@ -211,7 +191,7 @@ func NewPeerIdList() *PeerIdList {
 
 func (l *PeerIdList) get(v module.PeerID) *list.Element {
 	for e := l.Front(); e != nil; e = e.Next() {
-		if s := e.Value.(module.PeerID); s == v {
+		if s := e.Value.(module.PeerID); s.Equal(v) {
 			return e
 		}
 	}
@@ -232,6 +212,14 @@ func (l *PeerIdList) Has(v module.PeerID) bool {
 
 func (l *PeerIdList) IsEmpty() bool {
 	return l.Len() == 0
+}
+
+func (l *PeerIdList) String() string {
+	s := make([]string, 0, l.Len())
+	for e := l.Front(); e != nil; e = e.Next() {
+		s = append(s, e.Value.(module.PeerID).String())
+	}
+	return fmt.Sprintf("%v", s)
 }
 
 type RoleList struct {

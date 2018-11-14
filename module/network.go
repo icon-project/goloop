@@ -6,22 +6,23 @@ import (
 
 type NetworkManager interface {
 	//CreateIfNotExists and return Membership
-	//if name == nil then return DefaultMembership with fixed PROTO_ID
+	//if name == "" then return DefaultMembership with fixed PROTO_ID
 	GetMembership(name string) Membership
 }
 
 type Reactor interface {
-	//goRoutine by Membership.receiveGoRoutine() like worker pattern
+	//TODO call from Membership.workerRoutine
+	//current direct call by Membership.onPacket from Peer.ReceiveRoutine
 	//case broadcast, if return (true,nil) then rebroadcast when receiving
 	OnReceive(subProtocol ProtocolInfo, bytes []byte, id PeerID) (bool, error)
-	//call from Membership.onError() while message delivering
+	//TODO call from Membership.onError() while message delivering
 	OnError()
 }
 
 type Membership interface {
 	RegistReactor(name string, reactor Reactor, subProtocols []ProtocolInfo) error
 
-	//for Messaging, send packet to PeerToPeer.ch
+	//for Messaging
 	Broadcast(subProtocol ProtocolInfo, bytes []byte, broadcastType BroadcastType) error
 	Multicast(subProtocol ProtocolInfo, bytes []byte, role Role) error
 	Unicast(subProtocol ProtocolInfo, bytes []byte, id PeerID) error
@@ -30,12 +31,12 @@ type Membership interface {
 	//Role,PeerID 매핑정보는 다른 경로를 통해 공유되는 것을 전제로 한다.
 	//TODO naming {authority, permission, privilege}
 	//TODO naming {grant<>deny,allow<>disallow,add<>remove}
-	AddRole(role Role, id PeerID) error
-	RemoveRole(role Role, id PeerID) error
+	AddRole(role Role, peers ...PeerID)
+	RemoveRole(role Role, peers ...PeerID)
 	HasRole(role Role, id PeerID) bool
 	Roles(id PeerID) []Role
-	GrantAuthority(authority Authority, role Role) error
-	DenyAuthority(authority Authority, role Role) error
+	GrantAuthority(authority Authority, roles ...Role)
+	DenyAuthority(authority Authority, roles ...Role)
 	HasAuthority(authority Authority, role Role) bool
 	Authorities(role Role) []Authority
 }
@@ -52,11 +53,9 @@ const (
 	AUTHORITY_BROADCAST Authority     = "broadcast"
 )
 
-//TODO refer to github.com/icon-project/goloop/common.NewAccountAddressFromPublicKey(pubKey)
 type PeerID interface {
 	Address
 	Copy(b []byte)
-	//IsNil() bool
 }
 
 type ProtocolInfo uint16
