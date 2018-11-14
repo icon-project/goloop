@@ -63,6 +63,9 @@ func (c *consensus) Start() {
 	}
 	for {
 		_, err := c.bm.Propose(blk.ID(), nil, func(b module.Block, e error) {
+			if e != nil {
+				panic(e)
+			}
 			c.ch <- b
 		})
 		if err != nil {
@@ -73,6 +76,9 @@ func (c *consensus) Start() {
 		blk.MarshalHeader(buf)
 		blk.MarshalBody(buf)
 		_, err = c.bm.Import(buf, func(b module.Block, e error) {
+			if e != nil {
+				panic(e)
+			}
 			c.ch <- b
 		})
 		if err != nil {
