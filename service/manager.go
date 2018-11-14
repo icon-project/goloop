@@ -207,7 +207,7 @@ func (m *manager) checkTransitionResult(t module.Transition) (*transition, trie.
 	return tst, state, nil
 }
 
-func (m *manager) SendTransaction(tx module.Transaction) error {
+func (m *manager) SendTransaction(tx module.Transaction) ([]byte, error) {
 	txImplement := &transaction{
 		// TODO: patch?
 		from:      common.Address{},
@@ -240,7 +240,8 @@ func (m *manager) SendTransaction(tx module.Transaction) error {
 	}
 	// TODO: add go routine for request transaction
 	go txPool.add(txImplement)
-	return nil
+	// TODO returns hash
+	return nil, nil
 }
 
 func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {
