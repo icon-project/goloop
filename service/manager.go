@@ -244,7 +244,7 @@ func (m *manager) SendTransaction(tx module.Transaction) ([]byte, error) {
 	}
 	hash := newTx.Hash()
 	if hash == nil {
-		log.Println("Failed to get hash from tx : %x\n", newTx.Bytes())
+		log.Printf("Failed to get hash from tx : %x\n", newTx.Bytes())
 		return nil, errors.New("Invalid Transaction. Failed to get hash")
 	}
 
