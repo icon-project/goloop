@@ -291,34 +291,44 @@ func NewManager(
 	if chainPropBucket == nil {
 		return nil
 	}
+
+	var lastFinalized module.Block
 	var height int64
+	var mtr module.Transition
+	var bn *bnode
 	err := chainPropBucket.get(raw("block.height"), &height)
-	if err == common.ErrNotFound {
-		chainPropBucket.set(raw("block.height"), 0)
+	if err == nil {
+		hashByHeightBucket := m.bucketFor(db.BlockHeaderHashByHeight)
+		hash, err := hashByHeightBucket.getBytes(&height)
+		if err != nil {
+			return nil
+		}
+		lastFinalized, err = m.GetBlock(hash)
+		mtr, _ = m.sm.CreateInitialTransition(lastFinalized.Result(), lastFinalized.NextValidators(), lastFinalized.Height()-1)
+		if mtr == nil {
+			return nil
+		}
+		tr := newInitialTransition(mtr, &m.syncer, sm)
+		bn = &bnode{
+			block: lastFinalized,
+			in:    tr,
+		}
+		bn.preexe = tr.transit(lastFinalized.NormalTransactions(), nil)
+	} else if err == common.ErrNotFound {
 		height = 0
-		//	TODO H handle genesis block
-	} else if err != nil {
+		mtr, _ = m.sm.CreateInitialTransition(nil, nil, -1)
+		if mtr == nil {
+			return nil
+		}
+		tr := newInitialTransition(mtr, &m.syncer, sm)
+		bn = &bnode{
+			block: lastFinalized,
+			in:    tr,
+		}
+		bn.preexe = tr.proposeGenesis(nil)
+	} else {
 		return nil
 	}
-	hashByHeightBucket := m.bucketFor(db.BlockHeaderHashByHeight)
-	hash, err := hashByHeightBucket.getBytes(&height)
-	if err != nil {
-		return nil
-	}
-	lastFinalized, err := m.GetBlock(hash)
-	if err != nil {
-		return nil
-	}
-	mtr, _ := m.sm.CreateInitialTransition(lastFinalized.Result(), lastFinalized.NextValidators(), lastFinalized.Height()-1)
-	if mtr == nil {
-		return nil
-	}
-	tr := newInitialTransition(mtr, &m.syncer, sm)
-	bn := &bnode{
-		block: lastFinalized,
-		in:    tr,
-	}
-	bn.preexe = tr.transit(lastFinalized.NormalTransactions(), nil)
 	m.finalized = bn
 	m.nmap[string(lastFinalized.ID())] = bn
 	return m

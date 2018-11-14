@@ -198,6 +198,14 @@ func (ti *transitionImpl) propose() *transitionImpl {
 	return ti._addChild(cmtr)
 }
 
+func (ti *transitionImpl) proposeGenesis() *transitionImpl {
+	cmtr, err := ti._setting.sm.ProposeGenesisTransition(ti._mtransition)
+	if err != nil {
+		return nil
+	}
+	return ti._addChild(cmtr)
+}
+
 func (ti *transitionImpl) verifyResult(block module.Block) error {
 	mtr := ti._mtransition
 	if !bytes.Equal(mtr.Result(), block.Result()) {
@@ -276,6 +284,14 @@ func (tr *transition) propose(cb transitionCallback) *transition {
 		return nil
 	}
 	ti := tr._ti.propose()
+	return ti.newTransition(cb)
+}
+
+func (tr *transition) proposeGenesis(cb transitionCallback) *transition {
+	if tr._ti == nil {
+		return nil
+	}
+	ti := tr._ti.proposeGenesis()
 	return ti.newTransition(cb)
 }
 
