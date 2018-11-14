@@ -54,5 +54,6 @@ type TransactionInfo interface {
 	Block() Block
 	Index() int
 	Group() TransactionGroup
+	Transaction() Transaction
 	GetReceipt() Receipt
 }
