@@ -76,6 +76,24 @@ func (m *manager) ProposeTransition(parent module.Transition) (module.Transition
 		nil
 }
 
+// ProposeGenesisTransition proposes a Transition for Genesis
+// with transactions of Genesis.
+func (m *manager) ProposeGenesisTransition(parent module.Transition) (module.Transition, error) {
+	// check validity of transition
+	pt, state, err := m.checkTransitionResult(parent)
+	if err != nil {
+		return nil, err
+	}
+
+	// create transition instance and return it
+	return newTransition(pt,
+			newTransactionList(m.db, nil),
+			newTransactionList(m.db, nil),
+			state,
+			true),
+		nil
+}
+
 // CreateInitialTransition creates an initial Transition with result and
 // vs validators.
 func (m *manager) CreateInitialTransition(result []byte, valList module.ValidatorList, height int64) (module.Transition, error) {
@@ -436,8 +454,4 @@ func txExecute(manager *manager, txNum int, done chan bool, mutableTrie trie.Mut
 	}
 	done <- true
 	return nil
-}
-
-func (m *manager) ProposeGenesisTransition(parent module.Transition) (module.Transition, error) {
-	return nil, nil
 }
