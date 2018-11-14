@@ -183,7 +183,9 @@ func (m *manager) TransactionListFromHash(hash []byte) module.TransactionList {
 // TransactionListFromSlice returns list of transactions.
 func (m *manager) TransactionListFromSlice(txs []module.Transaction, version int) module.TransactionList {
 	// TODO What if transaction objects are created outside?
-	panic("not implemented")
+	// TODO: db should be passed as parameter for flush()
+	//panic("not implemented")
+	return newTransactionListFromList(m.db, txs)
 }
 
 // ReceiptFromTransactionID returns receipt from legacy receipt bucket.
@@ -208,6 +210,9 @@ func (m *manager) checkTransitionResult(t module.Transition) (*transition, trie.
 }
 
 func (m *manager) SendTransaction(tx module.Transaction) ([]byte, error) {
+	// TODO: newTransactionFromObject
+	// TODO: tx.Verify()
+
 	txImplement := &transaction{
 		// TODO: patch?
 		from:      common.Address{},
@@ -236,7 +241,7 @@ func (m *manager) SendTransaction(tx module.Transaction) ([]byte, error) {
 	case module.TransactionGroupPatch:
 		txPool = m.patchTxPool
 	default:
-		log.Fatalln("Wrong TransactionGroup. ", tx.Group())
+		log.Panicf("Wrong TransactionGroup. %v", tx.Group())
 	}
 	// TODO: add go routine for request transaction
 	go txPool.add(txImplement)

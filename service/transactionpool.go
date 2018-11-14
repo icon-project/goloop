@@ -129,6 +129,10 @@ func (txPool *transactionPool) candidate(state trie.Mutable, max int) []*transac
 	txPool.mutex.Lock()
 	defer txPool.mutex.Unlock()
 
+	if txPool.txList.Len() == 0 {
+		return []*transaction{}
+	}
+
 	if max < 0 {
 		txList := txPool.txList
 		resultTxs := make([]*transaction, txList.Len())
@@ -142,10 +146,6 @@ func (txPool *transactionPool) candidate(state trie.Mutable, max int) []*transac
 	txsLen := max
 	if txPool.txList.Len() < txsLen {
 		txsLen = txPool.txList.Len()
-	}
-
-	if txsLen == 0 {
-		return []*transaction{}
 	}
 
 	txs := make([]*transaction, txsLen)
@@ -266,4 +266,8 @@ func (txPool *transactionPool) removeList(txs []*transaction) {
 		}
 		t = t.Next()
 	}
+}
+
+func TestTxLiveDuration() int64 {
+	return txLiveDuration
 }

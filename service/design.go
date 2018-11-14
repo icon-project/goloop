@@ -2,14 +2,13 @@ package service
 
 import (
 	"bytes"
-
 	"github.com/icon-project/goloop/common"
-
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/module"
+	"log"
 )
 
 ////////////////////
@@ -61,19 +60,154 @@ import (
 ////////////////////
 // TODO to avoid name conflict, temporarily take 'list' instead of 'List'
 // TODO to avoid name conflict, temporarily take 'interator' instead of 'Iterator'
-type (
-	transactionlist struct {
-		txs  []*transaction // can be nil at the beginning
-		trie trie.Immutable
+type transactionlist struct {
+	txs      []*transaction
+	snapshot trie.Snapshot
+}
+
+type transactionlistIterator struct {
+	list []*transaction
+	iter trie.Iterator
+	idx  int
+}
+
+func (l *transactionlist) Get(i int) (module.Transaction, error) {
+	//	// TODO handle with trie when txs is nil
+	if len(l.txs) > 0 {
+		if i >= 0 && i < len(l.txs) {
+			return l.txs[i], nil
+		} else {
+			return nil, common.ErrNotFound
+		}
+	}
+	b, err := codec.MP.MarshalToBytes(uint(i))
+	if err != nil {
+		return nil, err
+	}
+	txBytes, err := l.snapshot.Get(b)
+	if err != nil || txBytes == nil {
+		return nil, err
+	}
+	var tx module.Transaction
+	tx, err = newTransaction(txBytes)
+	if err != nil {
+		log.Panicf("Failed to create transaction from %x\n", txBytes)
+		return nil, err
+	}
+	return tx, nil
+}
+
+func (l *transactionlist) Iterator() module.TransactionIterator {
+	return &transactionlistIterator{
+		list: l.txs,
+		idx:  0,
+		iter: l.snapshot.Iterator(),
+	}
+}
+
+func (l *transactionlist) Hash() []byte {
+	return l.snapshot.Hash()
+}
+
+func (l *transactionlist) Equal(t module.TransactionList) bool {
+	return bytes.Equal(l.snapshot.Hash(), t.Hash())
+}
+
+// Add Flush interface in transactionList
+func (l *transactionlist) flush() error {
+	return l.snapshot.Flush()
+}
+
+func (i *transactionlistIterator) Get() (module.Transaction, int, error) {
+	if len(i.list) > 0 {
+		if i.idx >= len(i.list) {
+			return nil, 0, common.ErrInvalidState
+		}
+		return i.list[i.idx], i.idx, nil
 	}
 
-	transactioniterator struct {
-		list []*transaction
-		idx  int
+	txBytes, txKey, err := i.iter.Get()
+	if txBytes == nil || err != nil {
+		log.Printf("Failed to get through iterator. txBytes = %x, err = %s\n", txKey, err)
+		return nil, 0, err
 	}
-)
 
-// TODO Is db is good for parameter?
+	var idx uint
+	if _, err := codec.MP.UnmarshalFromBytes(txKey, &idx); err != nil {
+		log.Panicf("Failed to unmarshar from bytes. %x\n", txKey)
+		return nil, 0, err
+	}
+
+	var tx module.Transaction
+	tx, err = newTransaction(txBytes)
+	if err != nil {
+		log.Panicf("Failed to create transaction from %x\n", txBytes)
+		return nil, 0, err
+	}
+	return tx, int(idx), nil
+}
+
+func (i *transactionlistIterator) Has() bool {
+	if len(i.list) > 0 {
+		return i.idx < len(i.list)
+	}
+	return i.iter.Has()
+}
+
+func (i *transactionlistIterator) Next() error {
+	if len(i.list) > 0 {
+		if i.idx < len(i.list) {
+			i.idx++
+			return nil
+		} else {
+			return common.ErrInvalidState
+		}
+	}
+
+	if i.iter.Next() != nil {
+		return common.ErrInvalidState
+	}
+
+	return nil
+}
+
+func TestFlush(txs module.TransactionList) error {
+	txsImpl := txs.(*transactionlist)
+	txsImpl.flush()
+	return nil
+}
+
+func newTransactionListFromList(db db.Database, list []module.Transaction) module.TransactionList {
+	txs := make([]*transaction, len(list))
+	ok := false
+	for i, tx := range list {
+		if txs[i], ok = tx.(*transaction); ok == false {
+			log.Fatalf("Failed to assertion.")
+			return nil
+		}
+	}
+	tm := trie_manager.New(db)
+	mt := tm.NewMutable(nil)
+	for idx, tr := range list {
+		k, _ := codec.MP.MarshalToBytes(uint(idx))
+		v := tr.Bytes()
+		err := mt.Set(k, v)
+		if err != nil {
+			log.Fatalf("NewTransanctionListFromSlice FAILs")
+			return nil
+		}
+	}
+	return &transactionlist{txs: txs, snapshot: mt.GetSnapshot()}
+}
+
+func newTransactionListFromHash(db db.Database, hash []byte) module.TransactionList {
+	//	// TODO Fill txs or not? If it doesn't fill txs, then fix all using txs directly.
+	tm := trie_manager.New(db)
+	trie := tm.NewMutable(hash)
+	return &transactionlist{snapshot: trie.GetSnapshot()}
+}
+
+//// TODO Is db is good for parameter?
 func newTransactionList(db db.Database, txs []*transaction) *transactionlist {
 	trie := trie_manager.NewMutable(db, nil)
 	for i, tx := range txs {
@@ -83,59 +217,7 @@ func newTransactionList(db db.Database, txs []*transaction) *transactionlist {
 			return nil
 		}
 	}
-	return &transactionlist{txs: txs, trie: trie.GetSnapshot()}
-}
-
-func newTransactionListFromHash(db db.Database, hash []byte) *transactionlist {
-	// TODO Fill txs or not? If it doesn't fill txs, then fix all using txs directly.
-	trie := trie_manager.NewImmutable(db, hash)
-	return &transactionlist{txs: nil, trie: trie}
-}
-
-func (l *transactionlist) Get(n int) (module.Transaction, error) {
-	if n < 0 {
-		return nil, common.ErrIllegalArgument
-	}
-	// TODO handle with trie when txs is nil
-	if n < len(l.txs) {
-		return l.txs[n], nil
-	}
-	return nil, common.ErrNotFound
-}
-
-func (l *transactionlist) Iterator() module.TransactionIterator {
-	return &transactioniterator{list: l.txs, idx: 0}
-}
-
-func (l *transactionlist) Hash() []byte {
-	return l.trie.Hash()
-}
-
-func (l *transactionlist) Equal(txList module.TransactionList) bool {
-	if txList == nil {
-		return false
-	}
-
-	return bytes.Equal(l.Hash(), txList.Hash())
-}
-
-func (i *transactioniterator) Get() (module.Transaction, int, error) {
-	if i.idx >= len(i.list) {
-		return nil, 0, common.ErrInvalidState
-	}
-	return i.list[i.idx], i.idx, nil
-}
-
-func (i *transactioniterator) Has() bool {
-	return i.idx < len(i.list)
-}
-
-func (i *transactioniterator) Next() error {
-	if i.idx < len(i.list) {
-		i.idx++
-		return nil
-	}
-	return common.ErrInvalidState
+	return &transactionlist{txs: txs, snapshot: trie.GetSnapshot()}
 }
 
 ////////////////////
