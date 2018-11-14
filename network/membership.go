@@ -18,7 +18,7 @@ type membership struct {
 	cbFuncs     map[module.ProtocolInfo]receiveCbFunc
 }
 
-type receiveCbFunc func(pi module.ProtocolInfo, bytes []byte, peerId module.PeerId) (bool, error)
+type receiveCbFunc func(pi module.ProtocolInfo, bytes []byte, peerId module.PeerID) (bool, error)
 
 func newMembership(name string, pi module.ProtocolInfo, p2p *PeerToPeer) module.Membership {
 	m := &membership{
@@ -71,7 +71,7 @@ func (m *membership) RegistReactor(name string, reactor module.Reactor, subProto
 	return nil
 }
 
-func (m *membership) Unicast(subProtocol module.ProtocolInfo, bytes []byte, peerId module.PeerId) error {
+func (m *membership) Unicast(subProtocol module.ProtocolInfo, bytes []byte, peerId module.PeerID) error {
 	pkt := NewPacket(subProtocol, bytes)
 	pkt.protocol = PROTO_DEF_MEMBER
 	return nil
@@ -104,24 +104,24 @@ func (m *membership) getRolePeerIdList(role module.Role) *PeerIdList {
 	return l
 }
 
-func (m *membership) AddRole(role module.Role, peerId module.PeerId) error {
+func (m *membership) AddRole(role module.Role, peerId module.PeerID) error {
 	l := m.getRolePeerIdList(role)
 	l.PushBack(peerId)
 	return nil
 }
 
-func (m *membership) RemoveRole(role module.Role, peerId module.PeerId) error {
+func (m *membership) RemoveRole(role module.Role, peerId module.PeerID) error {
 	l := m.getRolePeerIdList(role)
 	l.Remove(peerId)
 	return nil
 }
 
-func (m *membership) HasRole(role module.Role, peerId module.PeerId) bool {
+func (m *membership) HasRole(role module.Role, peerId module.PeerID) bool {
 	l := m.getRolePeerIdList(role)
 	return l.Has(peerId)
 }
 
-func (m *membership) Roles(peerId module.PeerId) []module.Role {
+func (m *membership) Roles(peerId module.PeerID) []module.Role {
 	var i int
 	s := make([]module.Role, 0, len(m.roles))
 	for k, v := range m.roles {
@@ -209,16 +209,16 @@ func NewPeerIdList() *PeerIdList {
 	return &PeerIdList{list.New()}
 }
 
-func (l *PeerIdList) get(v module.PeerId) *list.Element {
+func (l *PeerIdList) get(v module.PeerID) *list.Element {
 	for e := l.Front(); e != nil; e = e.Next() {
-		if s := e.Value.(module.PeerId); s == v {
+		if s := e.Value.(module.PeerID); s == v {
 			return e
 		}
 	}
 	return nil
 }
 
-func (l *PeerIdList) Remove(v module.PeerId) bool {
+func (l *PeerIdList) Remove(v module.PeerID) bool {
 	if e := l.get(v); e != nil {
 		l.List.Remove(e)
 		return true
@@ -226,7 +226,7 @@ func (l *PeerIdList) Remove(v module.PeerId) bool {
 	return false
 }
 
-func (l *PeerIdList) Has(v module.PeerId) bool {
+func (l *PeerIdList) Has(v module.PeerID) bool {
 	return l.get(v) != nil
 }
 

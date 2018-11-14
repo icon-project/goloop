@@ -67,7 +67,7 @@ var (
 
 type Authenticator struct {
 	peerHandler
-	peers  map[module.PeerId]*Peer
+	peers  map[module.PeerID]*Peer
 	seq    int
 	priKey *crypto.PrivateKey
 	pubKey *crypto.PublicKey
@@ -123,7 +123,7 @@ func (a *Authenticator) onPacket(pkt *Packet, p *Peer) {
 			// p.sendPacket(NewPacket(PROTO_AUTH_HS2, marshall(resp)))
 
 			p.pubKey, _ = crypto.ParsePublicKey(pkt.payload)
-			p.id = module.NewPeerIdFromPublicKey(p.pubKey)
+			p.id = NewPeerIdFromPublicKey(p.pubKey)
 			if !p.id.Equal(pkt.src) {
 				log.Println("Warnning peerId doesnt match[pkt:", pkt.src, ",expected:", p.id)
 			}
@@ -143,7 +143,7 @@ func (a *Authenticator) onPacket(pkt *Packet, p *Peer) {
 			// 	 p.conn.Close()
 			// }
 			p.pubKey, _ = crypto.ParsePublicKey(pkt.payload)
-			p.id = module.NewPeerIdFromPublicKey(p.pubKey)
+			p.id = NewPeerIdFromPublicKey(p.pubKey)
 			s, _ := crypto.NewSignature(crypto.SHA3Sum256(a.pubKey.SerializeUncompressed()), a.priKey)
 			sb, _ := s.SerializeRSV()
 			a.sendPacket(NewPacket(PROTO_AUTH_HS3, sb), p)

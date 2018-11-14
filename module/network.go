@@ -2,9 +2,6 @@ package module
 
 import (
 	"fmt"
-
-	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/crypto"
 )
 
 type NetworkManager interface {
@@ -16,7 +13,7 @@ type NetworkManager interface {
 type Reactor interface {
 	//goRoutine by Membership.receiveGoRoutine() like worker pattern
 	//case broadcast, if return (true,nil) then rebroadcast when receiving
-	OnReceive(subProtocol ProtocolInfo, bytes []byte, peerId PeerId) (bool, error)
+	OnReceive(subProtocol ProtocolInfo, bytes []byte, id PeerID) (bool, error)
 	//call from Membership.onError() while message delivering
 	OnError()
 }
@@ -27,16 +24,16 @@ type Membership interface {
 	//for Messaging, send packet to PeerToPeer.ch
 	Broadcast(subProtocol ProtocolInfo, bytes []byte, broadcastType BroadcastType) error
 	Multicast(subProtocol ProtocolInfo, bytes []byte, role Role) error
-	Unicast(subProtocol ProtocolInfo, bytes []byte, peerId PeerId) error
+	Unicast(subProtocol ProtocolInfo, bytes []byte, id PeerID) error
 
 	//for Authority management
 	//권한,peerId 매핑정보는 다른 경로를 통해 공유되는 것을 전제로 한다.
 	//TODO naming {authority, permission, privilege}
 	//TODO naming {grant<>deny,allow<>disallow,add<>remove}
-	AddRole(role Role, peerId PeerId) error
-	RemoveRole(role Role, peerId PeerId) error
-	HasRole(role Role, peerId PeerId) bool
-	Roles(peerId PeerId) []Role
+	AddRole(role Role, id PeerID) error
+	RemoveRole(role Role, id PeerID) error
+	HasRole(role Role, id PeerID) bool
+	Roles(id PeerID) []Role
 	GrantAuthority(authority Authority, role Role) error
 	DenyAuthority(authority Authority, role Role) error
 	HasAuthority(authority Authority, role Role) bool
@@ -55,38 +52,11 @@ const (
 	AUTHORITY_BROADCAST Authority     = "broadcast"
 )
 
-const (
-	PeerIdSize = common.AddressBytes
-)
-
 //TODO refer to github.com/icon-project/goloop/common.NewAccountAddressFromPublicKey(pubKey)
-type PeerId struct {
-	*common.Address
-}
-
-func NewPeerId(b []byte) PeerId {
-	return PeerId{common.NewAccountAddress(b)}
-}
-
-func NewPeerIdFromPublicKey(k *crypto.PublicKey) PeerId {
-	return PeerId{common.NewAccountAddressFromPublicKey(k)}
-}
-
-func (pi PeerId) Copy(b []byte) {
-	copy(b[:PeerIdSize], pi.ID())
-}
-func (pi PeerId) Equal(o PeerId) bool {
-	return pi.Address.Equal(o.Address)
-}
-func (pi PeerId) IsNil() bool {
-	return pi.Address == nil
-}
-func (pi PeerId) String() string {
-	if pi.IsNil() {
-		return ""
-	} else {
-		return pi.Address.String()
-	}
+type PeerID interface {
+	Address
+	Copy(b []byte)
+	IsNil() bool
 }
 
 type ProtocolInfo uint16

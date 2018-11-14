@@ -1,6 +1,8 @@
 package network
 
 import (
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -64,10 +66,44 @@ func (m *manager) getProtocolInfo(name string) module.ProtocolInfo {
 	}
 }
 
+//Implement
+const (
+	PeerIdSize = 20 //common.AddressBytes
+)
+
+type peerID struct {
+	*common.Address
+}
+
+func NewPeerId(b []byte) module.PeerID {
+	return &peerID{common.NewAccountAddress(b)}
+}
+
+func NewPeerIdFromPublicKey(k *crypto.PublicKey) module.PeerID {
+	return &peerID{common.NewAccountAddressFromPublicKey(k)}
+}
+
+func (pi *peerID) Copy(b []byte) {
+	copy(b[:PeerIdSize], pi.ID())
+}
+func (pi *peerID) Equal(a module.Address) bool {
+	return a.Equal(pi.Address)
+}
+func (pi *peerID) IsNil() bool {
+	return pi.Address == nil
+}
+func (pi *peerID) String() string {
+	if pi.IsNil() {
+		return ""
+	} else {
+		return pi.Address.String()
+	}
+}
+
 //////////////////if using marshall/unmarshall of membership
 type MessageMembership interface {
 	//set marshaller each message type << extends
-	UnicastMessage(message struct{}, peerId module.PeerId) error
+	UnicastMessage(message struct{}, peerId module.PeerID) error
 	MulticastMessage(message struct{}, authority module.Authority) error
 	BroadcastMessage(message struct{}, broadcastType module.BroadcastType) error
 
@@ -79,7 +115,7 @@ type MessageMembership interface {
 }
 
 type PacketReactor interface {
-	OnPacket(packet Packet, peerId module.PeerId)
+	OnPacket(packet Packet, peerId module.PeerID)
 }
 
 type MessageReactor interface {
@@ -93,5 +129,5 @@ type MessageReactor interface {
 	OnUnmarshall(subProtocol module.ProtocolInfo, bytes []byte) (interface{}, error)
 
 	//goRoutine by Membership.onPacket() like worker pattern
-	OnMessage(message interface{}, peerId module.PeerId)
+	OnMessage(message interface{}, peerId module.PeerID)
 }

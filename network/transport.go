@@ -122,12 +122,12 @@ type PeerHandler interface {
 	onPeer(p *Peer)
 	onPacket(pkt *Packet, p *Peer)
 	setNext(ph PeerHandler)
-	setSelfPeerId(peerId module.PeerId)
+	setSelfPeerId(peerId module.PeerID)
 }
 
 type peerHandler struct {
 	next PeerHandler
-	self module.PeerId
+	self module.PeerID
 }
 
 func (ph *peerHandler) onPeer(p *Peer) {
@@ -145,7 +145,7 @@ func (ph *peerHandler) setNext(next PeerHandler) {
 	ph.next = next
 }
 
-func (ph *peerHandler) setSelfPeerId(peerId module.PeerId) {
+func (ph *peerHandler) setSelfPeerId(peerId module.PeerID) {
 	ph.self = peerId
 }
 
@@ -167,14 +167,14 @@ func GetPeerDispatcher() *PeerDispatcher {
 	if pd == nil {
 		c := GetConfig()
 		pd = newPeerDispatcher(
-			module.NewPeerIdFromPublicKey(c.PublicKey),
+			NewPeerIdFromPublicKey(c.PublicKey),
 			GetChannelNegotiator(),
 			GetAuthenticator())
 	}
 	return pd
 }
 
-func newPeerDispatcher(selfPeerId module.PeerId, peerHandlers ...PeerHandler) *PeerDispatcher {
+func newPeerDispatcher(selfPeerId module.PeerID, peerHandlers ...PeerHandler) *PeerDispatcher {
 	pd := &PeerDispatcher{
 		peerHandlers: list.New(),
 		peerToPeers:  make(map[string]*PeerToPeer),

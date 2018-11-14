@@ -56,7 +56,7 @@ func newPeerToPeer(channel string) *PeerToPeer {
 		packetRw:        NewPacketReadWriter(bytes.NewBuffer(make([]byte, PacketBufferSize))),
 		dialer:          NewDialer(channel),
 		//
-		self:     &Peer{id: module.NewPeerIdFromPublicKey(c.PublicKey)},
+		self:     &Peer{id: NewPeerIdFromPublicKey(c.PublicKey)},
 		children: NewPeerList(),
 		uncles:   NewPeerList(),
 		nephews:  NewPeerList(),
@@ -294,7 +294,7 @@ func (p2p *PeerToPeer) isAllowedRole(role PeerRoleFlag, p *Peer) bool {
 }
 
 type Peer struct {
-	id         module.PeerId
+	id         module.PeerID
 	netAddress NetAddress
 	pubKey     *crypto.PublicKey
 	//
@@ -361,7 +361,7 @@ func (p *Peer) String() string {
 		p.id, p.netAddress, p.incomming, p.channel, p.rtt)
 }
 
-func (p *Peer) Id() module.PeerId {
+func (p *Peer) Id() module.PeerID {
 	return p.id
 }
 

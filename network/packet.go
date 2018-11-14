@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	PacketHeaderSize = 8 + module.PeerIdSize
+	PacketHeaderSize = 8 + PeerIdSize
 	PacketFooterSize = 8
 	PacketHashSize   = 8
 	PacketBufferSize = 4096 //bufio.defaultBufSize=4096
@@ -23,7 +23,7 @@ const (
 type Packet struct {
 	protocol        module.ProtocolInfo //2byte
 	subProtocol     module.ProtocolInfo //2byte
-	src             module.PeerId       //20byte
+	src             module.PeerID       //20byte
 	dest            byte                //1byte
 	ttl             byte                //1byte
 	lengthOfpayload uint32              //4byte
@@ -81,8 +81,8 @@ func (pr *PacketReader) ReadPacket() (pkt *Packet, h hash.Hash64, e error) {
 			tb = tb[2:]
 			spi := module.ProtocolInfo(binary.BigEndian.Uint16(tb[:2]))
 			tb = tb[2:]
-			src := module.NewPeerId(tb[:module.PeerIdSize])
-			tb = tb[module.PeerIdSize:]
+			src := NewPeerId(tb[:PeerIdSize])
+			tb = tb[PeerIdSize:]
 			lop := binary.BigEndian.Uint32(tb[:4])
 			tb = tb[4:]
 			pr.pkt = &Packet{protocol: pi, subProtocol: spi, src: src, lengthOfpayload: lop}
@@ -142,8 +142,8 @@ func (pw *PacketWriter) WritePacket(pkt *Packet) error {
 	tb = tb[2:]
 	binary.BigEndian.PutUint16(tb[:2], uint16(pkt.subProtocol))
 	tb = tb[2:]
-	pkt.src.Copy(tb[:module.PeerIdSize])
-	tb = tb[module.PeerIdSize:]
+	pkt.src.Copy(tb[:PeerIdSize])
+	tb = tb[PeerIdSize:]
 	binary.BigEndian.PutUint32(tb[:4], pkt.lengthOfpayload)
 	tb = tb[4:]
 	_, err := pw.Write(hb)
