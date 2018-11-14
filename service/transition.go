@@ -271,7 +271,8 @@ func (t *transition) stepString() string {
 type resultBytes []byte
 
 func newResultBytes(result []byte) (resultBytes, error) {
-	if len(result) != 96 && len(result) != 64 {
+	// nil result is allowed
+	if result != nil && len(result) != 96 && len(result) != 64 {
 		return nil, common.ErrIllegalArgument
 	}
 	bytes := make([]byte, len(result))

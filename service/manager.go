@@ -97,6 +97,11 @@ func (m *manager) ProposeGenesisTransition(parent module.Transition) (module.Tra
 // CreateInitialTransition creates an initial Transition with result and
 // vs validators.
 func (m *manager) CreateInitialTransition(result []byte, valList module.ValidatorList, height int64) (module.Transition, error) {
+	if result == nil && height >= 0 {
+		// nil result is allowed only at height -1 (prior to Genesis)
+		return nil, common.ErrIllegalArgument
+	}
+
 	resultBytes, err := newResultBytes(result)
 	if err != nil {
 		return nil, errors.New("Invalid result")
