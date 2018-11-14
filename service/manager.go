@@ -431,3 +431,7 @@ func txExecute(manager *manager, txNum int, done chan bool, mutableTrie trie.Mut
 	done <- true
 	return nil
 }
+
+func (m *manager) ProposeGenesisTransition(parent module.Transition) (module.Transition, error) {
+	return nil, nil
+}

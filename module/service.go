@@ -110,6 +110,7 @@ type ServiceManager interface {
 	// ProposeTransition proposes a Transition following the parent Transition.
 	// Returned Transition always passes validation.
 	ProposeTransition(parent Transition) (Transition, error)
+	ProposeGenesisTransition(parent Transition) (Transition, error)
 	// CreateInitialTransition creates an initial Transition
 	// Height is the height of the block which includes transactions.
 	// e.g. If the transactions are included in block n and results are in
