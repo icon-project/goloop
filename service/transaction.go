@@ -14,10 +14,37 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+type (
+	source interface {
+		bytes() []byte
+		hash() []byte
+		verifySignature() error
+	}
+
+	transaction struct {
+		source
+
+		group module.TransactionGroup
+
+		version   int
+		from      common.Address
+		to        common.Address
+		value     *big.Int
+		stepLimit *big.Int
+		timestamp int64
+		nid       int
+		nonce     int64
+		signature []byte
+
+		hash  []byte
+		bytes []byte
+	}
+)
+
 // TODO consider how to provide a convenient way of JSON string conversion
 // for JSON-RPC (But still it's optional)
 // TODO refactoring for the variation of serialization format and TX API version
-func newTransaction(b []byte) (module.Transaction, error) {
+func newTransaction(b []byte) (*transaction, error) {
 	if len(b) < 1 {
 		return nil, common.ErrIllegalArgument
 	}
@@ -33,29 +60,16 @@ func newTransaction(b []byte) (module.Transaction, error) {
 	}
 }
 
-type source interface {
-	bytes() []byte
-	hash() []byte
-	verifySignature() error
-}
+// TODO redesign
+// newTransactionFromObject copies or creates transaction instance.
+func newTransactionFromObject(tx module.Transaction) (*transaction, error) {
+	t, ok := tx.(*transaction)
+	if ok {
+		// TODO deep copy or shallow copy?
+		return t, nil
+	}
 
-type transaction struct {
-	source
-
-	group module.TransactionGroup
-
-	version   int
-	from      common.Address
-	to        common.Address
-	value     *big.Int
-	stepLimit *big.Int
-	timestamp int64
-	nid       int
-	nonce     int64
-	signature []byte
-
-	hash  []byte
-	bytes []byte
+	panic("not implemented yet")
 }
 
 func (tx *transaction) Group() module.TransactionGroup {
@@ -141,6 +155,7 @@ func (tx *transaction) validate(state trie.Mutable, txdb db.Bucket) error {
 	return tx.checkBalance(state)
 }
 
+// TODO checkBalance should subtract from balance
 func (tx *transaction) checkBalance(state trie.Mutable) error {
 	addr := tx.From().Bytes()
 	if serializedAccount, err := state.Get(addr); err == nil {
