@@ -207,8 +207,11 @@ func newTransactionListFromHash(db db.Database, hash []byte) module.TransactionL
 	return &transactionlist{snapshot: trie.GetSnapshot()}
 }
 
-//// TODO Is db is good for parameter?
+// TODO Is db is good for parameter?
 func newTransactionList(db db.Database, txs []*transaction) *transactionlist {
+	if txs == nil {
+		txs = make([]*transaction, 0)
+	}
 	trie := trie_manager.NewMutable(db, nil)
 	for i, tx := range txs {
 		k, _ := codec.MP.MarshalToBytes(uint(i))
