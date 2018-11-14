@@ -18,6 +18,8 @@ import (
 
 var dbCodec = codec.MP
 
+const keyLastBlockHeight = "block.lastHeight"
+
 type transactionLocator struct {
 	BlockHeight      int64
 	TransactionGroup module.TransactionGroup
@@ -296,7 +298,7 @@ func NewManager(
 	var height int64
 	var mtr module.Transition
 	var bn *bnode
-	err := chainPropBucket.get(raw("block.height"), &height)
+	err := chainPropBucket.get(raw(keyLastBlockHeight), &height)
 	if err == nil {
 		hashByHeightBucket := m.bucketFor(db.BlockHeaderHashByHeight)
 		hash, err := hashByHeightBucket.getBytes(&height)
@@ -551,15 +553,82 @@ func (m *manager) newBlockFromReader(r io.Reader) module.Block {
 	}
 }
 
-// TODO GetTransactionInfo
+type transactionInfo struct {
+	_sm           module.ServiceManager
+	_txID         []byte
+	_txBlock      module.Block
+	_receiptBlock module.Block
+	_index        int
+	_group        module.TransactionGroup
+	_mtr          module.Transaction
+}
+
+func (txInfo *transactionInfo) Block() module.Block {
+	return txInfo._txBlock
+}
+
+func (txInfo *transactionInfo) Index() int {
+	return txInfo._index
+}
+
+func (txInfo *transactionInfo) Group() module.TransactionGroup {
+	return txInfo._group
+}
+
+func (txInfo *transactionInfo) Transaction() module.Transaction {
+	return txInfo._mtr
+}
+
+func (txInfo *transactionInfo) GetReceipt() module.Receipt {
+	return txInfo._sm.ReceiptFromTransactionID(txInfo._txID)
+}
+
 func (m *manager) GetTransactionInfo(id []byte) module.TransactionInfo {
-	return nil
+	// TODO handle V1 in GetTransactionInfo
+	tlb := m.bucketFor(db.TransactionLocatorByHash)
+	var loc transactionLocator
+	err := tlb.get(raw(id), &loc)
+	if err != nil {
+		return nil
+	}
+	block, err := m.GetBlockByHeight(loc.BlockHeight)
+	if err != nil {
+		return nil
+	}
+	rblock, err := m.GetBlockByHeight(loc.BlockHeight + 1)
+	if err != nil {
+		return nil
+	}
+	mtr, err := block.NormalTransactions().Get(loc.IndexInGroup)
+	if err != nil {
+		return nil
+	}
+	return &transactionInfo{
+		_sm:           m.sm,
+		_txID:         id,
+		_txBlock:      block,
+		_receiptBlock: rblock,
+		_index:        loc.IndexInGroup,
+		_group:        loc.TransactionGroup,
+		_mtr:          mtr,
+	}
 }
 
 func (m *manager) GetBlockByHeight(height int64) (module.Block, error) {
-	return nil, nil
+	headerHashByHeight := m.bucketFor(db.BlockHeaderHashByHeight)
+	hash, err := headerHashByHeight.getBytes(height)
+	if err != nil {
+		return nil, err
+	}
+	return m.GetBlock(hash)
 }
 
 func (m *manager) GetLastBlock() (module.Block, error) {
-	return nil, nil
+	chainProp := m.bucketFor(db.ChainProperty)
+	var height int64
+	err := chainProp.get(raw(keyLastBlockHeight), &height)
+	if err != nil {
+		return nil, err
+	}
+	return m.GetBlockByHeight(height)
 }
