@@ -88,6 +88,9 @@ const (
 	FinalizePatchTransaction
 	FinalizeResult
 
+	// TODO It's only necessary if storing receipt index is determined by
+	// block manager. The current service manager determines by itself according
+	// to version, so it doesn't use it.
 	FinalizeWriteReceiptIndex
 )
 
@@ -110,6 +113,8 @@ type ServiceManager interface {
 	// ProposeTransition proposes a Transition following the parent Transition.
 	// Returned Transition always passes validation.
 	ProposeTransition(parent Transition) (Transition, error)
+	// ProposeGenesisTransition proposes a Transition for Genesis
+	// with transactions of Genesis.
 	ProposeGenesisTransition(parent Transition) (Transition, error)
 	// CreateInitialTransition creates an initial Transition
 	// Height is the height of the block which includes transactions.
