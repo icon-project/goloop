@@ -74,10 +74,10 @@ func newTransition(parent *transition, patchTxList *transactionlist, normalTxLis
 		step = stepInited
 	}
 	return &transition{
-		db:                 parent.db,
 		parent:             parent,
 		patchTransactions:  patchTxList,
 		normalTransactions: normalTxList,
+		db:                 parent.db,
 		transitionState:    newInitialTransitionState(state),
 		step:               step,
 	}
@@ -111,7 +111,6 @@ func (t *transition) Execute(cb module.TransitionCallback) (canceler func() bool
 
 	switch t.step {
 	case stepInited:
-		t.state = trie_manager.NewMutable(t.db, t.parent.result.stateHash())
 		t.step = stepValidating
 	case stepValidated:
 		// when this transition created by this node
@@ -151,11 +150,21 @@ func (t *transition) LogBloom() []byte {
 }
 
 func (t *transition) executeSync(alreadyValidated bool) {
+	// TODO check better way for nil result in the parent transition
+	var stateHash []byte
+	if t.parent.result != nil {
+		stateHash = t.parent.result.stateHash()
+	} else {
+		stateHash = nil
+	}
+
 	if !alreadyValidated {
 		txdb, err := t.db.GetBucket(db.TransactionLocatorByHash)
 		if err != nil {
 			panic("FAIL to get bucket TransactionLocatorByHash")
 		}
+
+		t.state = trie_manager.NewMutable(t.db, stateHash)
 		if !t.validateTxs(t.patchTransactions, txdb) || !t.validateTxs(t.normalTransactions, txdb) {
 			return
 		}
@@ -173,6 +182,9 @@ func (t *transition) executeSync(alreadyValidated bool) {
 
 	}
 
+	t.state = trie_manager.NewMutable(t.db, stateHash)
+	t.patchReceipts = &receiptList{}
+	t.normalReceipts = &receiptList{}
 	if !t.executeTxs(t.patchTransactions) || !t.executeTxs(t.normalTransactions) {
 		return
 	}
