@@ -1,7 +1,10 @@
 package service
 
 import (
+	"bytes"
 	"encoding/hex"
+	"encoding/json"
+	"github.com/icon-project/goloop/common/crypto"
 	"log"
 	"math/big"
 
@@ -17,8 +20,6 @@ import (
 type (
 	source interface {
 		bytes() []byte
-		hash() []byte
-		verifySignature() error
 	}
 
 	transaction struct {
@@ -27,17 +28,17 @@ type (
 		group module.TransactionGroup
 
 		version   int
-		from      common.Address
-		to        common.Address
+		from      *common.Address
+		to        *common.Address
 		value     *big.Int
 		stepLimit *big.Int
 		timestamp int64
 		nid       int
 		nonce     int64
-		signature []byte
+		signature *common.Signature
 
-		hash  []byte
 		bytes []byte
+		hash  []byte
 	}
 )
 
@@ -63,13 +64,53 @@ func newTransaction(b []byte) (*transaction, error) {
 // TODO redesign
 // newTransactionFromObject copies or creates transaction instance.
 func newTransactionFromObject(tx module.Transaction) (*transaction, error) {
-	t, ok := tx.(*transaction)
-	if ok {
+	if t, ok := tx.(*transaction); ok {
 		// TODO deep copy or shallow copy?
 		return t, nil
 	}
 
-	panic("not implemented yet")
+	var t transaction
+	if tx.Group() != module.TransactionGroupNormal &&
+		tx.Group() != module.TransactionGroupPatch {
+		return nil, common.ErrIllegalArgument
+	}
+	t.group = tx.Group()
+	t.version = tx.Version()
+	if t.version != 3 {
+		t.version = 2
+	}
+	if tx.From() == nil {
+		return nil, common.ErrIllegalArgument
+	}
+	t.from = common.NewAddressFromString(tx.From().String())
+	if tx.To() == nil {
+		return nil, common.ErrIllegalArgument
+	}
+	t.to = common.NewAddressFromString(tx.To().String())
+	t.value = new(big.Int)
+	t.value.Set(tx.Value())
+	t.stepLimit = new(big.Int)
+	t.stepLimit.Set(tx.StepLimit())
+	t.timestamp = tx.Timestamp()
+	t.nid = tx.NID()
+	t.nonce = tx.Nonce()
+	sig, err := crypto.ParseSignature(tx.Signature())
+	if err != nil {
+		return nil, err
+	}
+	t.signature = &common.Signature{sig}
+	t.hash = make([]byte, 0)
+	if tx.Hash() == nil {
+		t.hash = nil
+	} else {
+		t.hash = append(t.hash, tx.Hash()...)
+	}
+	if tx.Bytes() == nil {
+		t.bytes = nil
+	} else {
+		t.bytes = append(t.bytes, tx.Bytes()...)
+	}
+	return &t, nil
 }
 
 func (tx *transaction) Group() module.TransactionGroup {
@@ -84,11 +125,11 @@ func (tx *transaction) Version() int {
 }
 
 func (tx *transaction) From() module.Address {
-	return module.Address(&tx.from)
+	return module.Address(tx.from)
 }
 
 func (tx *transaction) To() module.Address {
-	return module.Address(&tx.to)
+	return module.Address(tx.to)
 }
 
 func (tx *transaction) Value() *big.Int {
@@ -120,13 +161,19 @@ func (tx *transaction) Bytes() []byte {
 
 func (tx *transaction) Hash() []byte {
 	if tx.hash == nil {
-		tx.hash = tx.source.hash()
+		tx.hash = crypto.SHA3Sum256(tx.Bytes())
 	}
 	return tx.hash
 }
 
 func (tx *transaction) Signature() []byte {
-	return tx.signature
+	if tx.signature != nil {
+		sig, err := tx.signature.SerializeRSV()
+		if err == nil {
+			return sig
+		}
+	}
+	return nil
 }
 
 // Verify conducts TX syntax check, signature verification, and balance check.
@@ -135,7 +182,7 @@ func (tx *transaction) Verify() error {
 	// TODO What about checking parameters for each tx types? If right,
 	// move it to the transferTx, scoreCallTx, and scoreDeployTx.
 	// TODO check balance
-	return tx.source.verifySignature()
+	return tx.verifySignature()
 }
 
 func (tx *transaction) validate(state trie.Mutable, txdb db.Bucket) error {
@@ -235,6 +282,78 @@ func (tx *transaction) execute(state *transitionState, db db.Database) error {
 			}
 		}
 	}
+	return nil
+}
+
+var (
+	v2FieldInclusion = map[string]bool(nil)
+	v2FieldExclusion = map[string]bool{
+		"method":    true,
+		"signature": true,
+		"tx_hash":   true,
+	}
+	v3FieldInclusion = map[string]bool(nil)
+	v3FieldExclusion = map[string]bool{
+		"signature": true,
+		"txHash":    true,
+	}
+)
+
+func (tx *transaction) verifySignature() error {
+	raw := tx.Bytes()
+
+	var data map[string]interface{}
+	var err error
+	if err = json.Unmarshal(raw, &data); err != nil {
+		log.Println("JSON Parse FAILS")
+		log.Println("JSON", string(raw))
+		return err
+	}
+	var bs []byte
+	var txHash []byte
+	if tx.version == 2 {
+		bs, err = SerializeMap(data, v2FieldInclusion, v2FieldExclusion)
+	} else {
+		bs, err = SerializeMap(data, v3FieldInclusion, v3FieldExclusion)
+	}
+	txHash = tx.Hash()
+	if err != nil {
+		log.Println("Serialize FAILs")
+		log.Println("JSON", string(raw))
+		return err
+	}
+	h := crypto.SHA3Sum256(bs)
+
+	bs = append([]byte("icx_sendTransaction."), bs...)
+	if bytes.Compare(h, txHash) != 0 {
+		log.Println("Hashes are different")
+		log.Println("JSON.TxHash", hex.EncodeToString(txHash))
+		log.Println("Calc.TxHash", hex.EncodeToString(h))
+		log.Println("TxPhrase", string(bs))
+		return errors.New("txHash value is different from real")
+	}
+
+	if err != nil {
+
+	}
+	if pk, err := tx.signature.RecoverPublicKey(h); err != nil {
+		log.Println("FAIL Recovering public key")
+		log.Println("Signature", tx.signature)
+		return err
+	} else {
+		addr := common.NewAccountAddressFromPublicKey(pk).String()
+		if err != nil {
+			log.Println("FAIL to recovering address from public key")
+			return err
+		}
+		if addr != tx.from.String() {
+			log.Println("FROM is different from signer")
+			log.Println("SIGNER", addr)
+			log.Println("FROM", tx.from)
+			return errors.New("FROM is different from signer")
+		}
+	}
+	log.Println("TX verified")
 	return nil
 }
 

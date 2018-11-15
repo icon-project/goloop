@@ -8,7 +8,7 @@ import (
 )
 
 type Signature struct {
-	crypto.Signature
+	*crypto.Signature
 }
 
 func (sig *Signature) MarshalJSON() ([]byte, error) {
@@ -28,7 +28,7 @@ func (sig *Signature) UnmarshalJSON(s []byte) error {
 	}
 	if b, err := base64.StdEncoding.DecodeString(str); err == nil {
 		if sig0, err := crypto.ParseSignature(b); err == nil {
-			*sig = Signature{*sig0}
+			*sig = Signature{sig0}
 			return nil
 		} else {
 			return err

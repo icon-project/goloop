@@ -381,8 +381,8 @@ func makeTransaction(valid bool, time int64, validNum int) *transaction {
 		toId = rand.Int() % toNum
 	}
 	//tx.to = addresses[toId]
-	tx.from = *common.NewAccountAddress([]byte(toList[id]))
-	tx.to = *common.NewAccountAddress([]byte(toList[toId]))
+	tx.from = common.NewAccountAddress([]byte(toList[id]))
+	tx.to = common.NewAccountAddress([]byte(toList[toId]))
 	tx.value = big.NewInt(int64(rand.Int() % 300000))
 	tx.bytes = tx.to.Bytes()
 	tx.hash = tx.value.Bytes()
