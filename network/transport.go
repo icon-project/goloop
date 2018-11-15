@@ -100,8 +100,9 @@ func (d *Dialer) Dial(addr string) error {
 type PeerHandler interface {
 	onPeer(p *Peer)
 	onPacket(pkt *Packet, p *Peer)
+	onError(err error, p *Peer)
 	setNext(ph PeerHandler)
-	setSelfPeerId(id module.PeerID)
+	setSelfPeerID(id module.PeerID)
 }
 
 type peerHandler struct {
@@ -116,6 +117,7 @@ func (ph *peerHandler) onPeer(p *Peer) {
 func (ph *peerHandler) nextOnPeer(p *Peer) {
 	if ph.next != nil {
 		p.setPacketCbFunc(ph.next.onPacket)
+		p.setErrorCbFunc(ph.next.onError)
 		ph.next.onPeer(p)
 	}
 }
@@ -124,7 +126,7 @@ func (ph *peerHandler) setNext(next PeerHandler) {
 	ph.next = next
 }
 
-func (ph *peerHandler) setSelfPeerId(id module.PeerID) {
+func (ph *peerHandler) setSelfPeerID(id module.PeerID) {
 	ph.self = id
 }
 
@@ -165,7 +167,7 @@ func (pd *PeerDispatcher) registPeerHandler(ph PeerHandler) {
 	elm := pd.peerHandlers.PushBack(ph)
 	if prev := elm.Prev(); prev != nil {
 		ph.setNext(prev.Value.(PeerHandler))
-		ph.setSelfPeerId(pd.self)
+		ph.setSelfPeerID(pd.self)
 	}
 }
 
@@ -189,14 +191,16 @@ func (pd *PeerDispatcher) dispatchPeer(p *Peer) {
 	elm := pd.peerHandlers.Back()
 	ph := elm.Value.(PeerHandler)
 	p.setPacketCbFunc(ph.onPacket)
+	p.setErrorCbFunc(ph.onError)
 	ph.onPeer(p)
 }
 
-//call PeerHandler.nextOnPeer, peerHandlers.
+//callback from PeerHandler.nextOnPeer
 func (pd *PeerDispatcher) onPeer(p *Peer) {
 	log.Println("PeerDispatcher.onPeer", p)
 	if p2p, ok := pd.peerToPeers[p.channel]; ok {
 		p.setPacketCbFunc(p2p.onPacket)
+		p.setErrorCbFunc(p2p.onError)
 		p2p.onPeer(p)
 	} else {
 		log.Println("Not exists PeerToPeer[", p.channel, "], try close")
@@ -204,6 +208,12 @@ func (pd *PeerDispatcher) onPeer(p *Peer) {
 	}
 }
 
+//TODO callback from Peer.sendRoutine or Peer.receiveRoutine
+func (pd *PeerDispatcher) onError(err error, p *Peer) {
+	log.Println("PeerDispatcher.onError", err)
+}
+
+//callback from Peer.receiveRoutine
 func (pd *PeerDispatcher) onPacket(pkt *Packet, p *Peer) {
 	log.Println("PeerDispatcher.onPacket", pkt)
 }

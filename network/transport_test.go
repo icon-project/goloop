@@ -1,18 +1,25 @@
 package network
 
 import (
+	"log"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/module"
 )
 
 const (
 	testListenAddress = "127.0.0.1:8081"
 	testChannel       = "testchannel"
-	PROTO_TEST_REQ    = 0x0001
-	PROTO_TEST_RESP   = 0x0002
+	// PROTO_TEST_REQ    = 0x0001
+	// PROTO_TEST_RESP   = 0x0002
+)
+
+var (
+	ProtoTestTransportRequest  module.ProtocolInfo = protocolInfo(0x0300)
+	ProtoTestTransportResponse module.ProtocolInfo = protocolInfo(0x0400)
 )
 
 type TestPeerHandler struct {
@@ -26,8 +33,13 @@ func (ph *TestPeerHandler) onPeer(p *Peer) {
 	p.setPacketCbFunc(ph.onPacket)
 	if !p.incomming {
 		ph.wg.Add(1)
-		ph.sendPacket(NewPacket(0x0001, []byte("hello")), p)
+		ph.sendPacket(NewPacket(ProtoTestTransportRequest, []byte("hello")), p)
 	}
+}
+
+//TODO callback from Peer.sendRoutine or Peer.receiveRoutine
+func (ph *TestPeerHandler) onError(err error, p *Peer) {
+	log.Println("TestPeerHandler.onError", err)
 }
 
 func (ph *TestPeerHandler) onPacket(pkt *Packet, p *Peer) {
@@ -35,10 +47,10 @@ func (ph *TestPeerHandler) onPacket(pkt *Packet, p *Peer) {
 	switch pkt.protocol {
 	case PROTO_CONTOL:
 		switch pkt.subProtocol {
-		case PROTO_TEST_REQ:
-			ph.sendPacket(NewPacket(PROTO_TEST_RESP, pkt.payload), p)
+		case ProtoTestTransportRequest:
+			ph.sendPacket(NewPacket(ProtoTestTransportResponse, pkt.payload), p)
 			ph.nextOnPeer(p)
-		case PROTO_TEST_RESP:
+		case ProtoTestTransportResponse:
 			ph.nextOnPeer(p)
 			ph.wg.Done()
 		}
@@ -47,7 +59,7 @@ func (ph *TestPeerHandler) onPacket(pkt *Packet, p *Peer) {
 
 func newTestTransport(channel string, address string) (*PeerDispatcher, *Listener, *Dialer) {
 	priK, pubK := crypto.GenerateKeyPair()
-	pd := newPeerDispatcher(NewPeerIdFromPublicKey(pubK),
+	pd := newPeerDispatcher(NewPeerIDFromPublicKey(pubK),
 		newChannelNegotiator(),
 		newAuthenticator(priK, pubK))
 	l := newListener(address, pd.onAccept)
@@ -66,10 +78,8 @@ func Test_transport(t *testing.T) {
 	tph := &TestPeerHandler{t: t, wg: &wg}
 
 	pd, l, d := getTransport(testChannel)
-	tpd, tl, _ := newTestTransport(testChannel, testListenAddress)
 
 	pd.registPeerHandler(tph)
-	tpd.registPeerHandler(tph)
 
 	err := l.Listen()
 	if err != nil {
@@ -78,18 +88,10 @@ func Test_transport(t *testing.T) {
 		t.Logf("Listener.Listen success")
 	}
 
-	err = tl.Listen()
-	if err != nil {
-		t.Fatalf("TestListener.Listen fail")
-	} else {
-		t.Logf("TestListener.Listen success")
-	}
-
 	go d.Dial(l.address)
 
 	wg.Wait()
 	time.Sleep(5 * time.Second)
 
 	l.Close()
-	tl.Close()
 }

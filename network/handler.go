@@ -7,7 +7,7 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-//channel, rtt measure,
+//Negotiation map<channel, map<membership.name, {protocol, []subProtocol}>>
 type ChannelNegotiator struct {
 	peerHandler
 }
@@ -16,11 +16,17 @@ func newChannelNegotiator() *ChannelNegotiator {
 	return &ChannelNegotiator{}
 }
 
+//callback from PeerHandler.nextOnPeer
 func (cn *ChannelNegotiator) onPeer(p *Peer) {
 	log.Println("ChannelNegotiator.onPeer", p)
 	if !p.incomming {
 		cn.sendPacket(NewPacket(PROTO_CHAN_JOIN_REQ, []byte(p.channel)), p)
 	}
+}
+
+//TODO callback from Peer.sendRoutine or Peer.receiveRoutine
+func (cn *ChannelNegotiator) onError(err error, p *Peer) {
+	log.Println("ChannelNegotiator.onError", err)
 }
 
 //callback from Peer.receiveRoutine
@@ -61,12 +67,17 @@ func newAuthenticator(priK *crypto.PrivateKey, pubK *crypto.PublicKey) *Authenti
 	return &Authenticator{priKey: priK, pubKey: pubK}
 }
 
-//callback from PeerHandler.onPeer
+//callback from PeerHandler.nextOnPeer
 func (a *Authenticator) onPeer(p *Peer) {
 	log.Println("Authenticator.onPeer", p)
 	if !p.incomming {
 		a.sendPacket(NewPacket(PROTO_AUTH_HS1, a.pubKey.SerializeCompressed()), p)
 	}
+}
+
+//TODO callback from Peer.sendRoutine or Peer.receiveRoutine
+func (a *Authenticator) onError(err error, p *Peer) {
+	log.Println("Authenticator.onError", err)
 }
 
 //callback from Peer.receiveRoutine
@@ -89,7 +100,7 @@ func (a *Authenticator) onPacket(pkt *Packet, p *Peer) {
 			// p.sendPacket(NewPacket(PROTO_AUTH_HS2, marshall(resp)))
 
 			p.pubKey, _ = crypto.ParsePublicKey(pkt.payload)
-			p.id = NewPeerIdFromPublicKey(p.pubKey)
+			p.id = NewPeerIDFromPublicKey(p.pubKey)
 			if !p.id.Equal(pkt.src) {
 				log.Println("Warnning id doesnt match[pkt:", pkt.src, ",expected:", p.id)
 			}
@@ -109,7 +120,7 @@ func (a *Authenticator) onPacket(pkt *Packet, p *Peer) {
 			// 	 p.conn.Close()
 			// }
 			p.pubKey, _ = crypto.ParsePublicKey(pkt.payload)
-			p.id = NewPeerIdFromPublicKey(p.pubKey)
+			p.id = NewPeerIDFromPublicKey(p.pubKey)
 			s, _ := crypto.NewSignature(crypto.SHA3Sum256(a.pubKey.SerializeUncompressed()), a.priKey)
 			sb, _ := s.SerializeRSV()
 			a.sendPacket(NewPacket(PROTO_AUTH_HS3, sb), p)

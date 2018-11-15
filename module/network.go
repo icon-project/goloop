@@ -1,9 +1,5 @@
 package module
 
-import (
-	"fmt"
-)
-
 type NetworkManager interface {
 	//CreateIfNotExists and return Membership
 	//if name == "" then return DefaultMembership with fixed PROTO_ID
@@ -29,8 +25,6 @@ type Membership interface {
 
 	//for Authority management
 	//Role,PeerID 매핑정보는 다른 경로를 통해 공유되는 것을 전제로 한다.
-	//TODO naming {authority, permission, privilege}
-	//TODO naming {grant<>deny,allow<>disallow,add<>remove}
 	AddRole(role Role, peers ...PeerID)
 	RemoveRole(role Role, peers ...PeerID)
 	HasRole(role Role, id PeerID) bool
@@ -58,17 +52,10 @@ type PeerID interface {
 	Copy(b []byte)
 }
 
-type ProtocolInfo uint16
-
-func NewProtocolInfo(id byte, version byte) ProtocolInfo {
-	return ProtocolInfo(int(id)<<8 | int(version))
-}
-func (pi *ProtocolInfo) Id() byte {
-	return byte(*pi >> 8)
-}
-func (pi *ProtocolInfo) Version() byte {
-	return byte(*pi)
-}
-func (pi *ProtocolInfo) String() string {
-	return fmt.Sprintf("{ID:%#02x,Ver:%#02x}", pi.Id(), pi.Version())
+type ProtocolInfo interface {
+	ID() byte
+	Version() byte
+	String() string
+	Copy(b []byte)
+	Uint16() uint16
 }

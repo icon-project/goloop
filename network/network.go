@@ -2,6 +2,8 @@ package network
 
 import (
 	"container/list"
+	"encoding/binary"
+	"fmt"
 
 	"github.com/icon-project/goloop/module"
 )
@@ -21,8 +23,10 @@ func newManager(channel string, id module.PeerID, addr NetAddress) *manager {
 
 	//Create default membership for P2P topology management
 	dms := m.GetMembership(DefaultMembershipName).(*membership)
-	dms.roles[module.ROLE_VALIDATOR] = m.peerToPeer.allowedRoots
 	dms.roles[module.ROLE_SEED] = m.peerToPeer.allowedSeeds
+	dms.roles[module.ROLE_VALIDATOR] = m.peerToPeer.allowedRoots
+	dms.destByRole[module.ROLE_SEED] = p2pRoleSeed
+	dms.destByRole[module.ROLE_VALIDATOR] = p2pRoleRoot
 	return m
 }
 
@@ -43,8 +47,32 @@ func (m *manager) getProtocolInfo(name string) module.ProtocolInfo {
 	if name == DefaultMembershipName {
 		return pi
 	} else {
-		return module.NewProtocolInfo(pi.Id()+byte(len(m.memberships)), 0)
+		return NewProtocolInfoWithIdVersion(pi.ID()+byte(len(m.memberships)), 0)
 	}
+}
+
+type protocolInfo uint16
+
+func NewProtocolInfo(b []byte) module.ProtocolInfo {
+	return protocolInfo(binary.BigEndian.Uint16(b[:2]))
+}
+func NewProtocolInfoWithIdVersion(id byte, version byte) module.ProtocolInfo {
+	return protocolInfo(int(id)<<8 | int(version))
+}
+func (pi protocolInfo) ID() byte {
+	return byte(pi >> 8)
+}
+func (pi protocolInfo) Version() byte {
+	return byte(pi)
+}
+func (pi protocolInfo) Copy(b []byte) {
+	binary.BigEndian.PutUint16(b[:2], uint16(pi))
+}
+func (pi protocolInfo) String() string {
+	return fmt.Sprintf("{ID:%#02x,Ver:%#02x}", pi.ID(), pi.Version())
+}
+func (pi protocolInfo) Uint16() uint16 {
+	return uint16(pi)
 }
 
 //////////////////if using marshall/unmarshall of membership
@@ -57,7 +85,7 @@ type MessageMembership interface {
 	//callback from PeerToPeer.onPacket()
 	//using worker pattern {pool or each packet or none} for reactor
 	onPacket(packet Packet, peer Peer)
-	//from Peer.sendGoRoutine()
+	//from Peer.sendRoutine()
 	onError()
 }
 

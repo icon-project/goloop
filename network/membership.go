@@ -12,36 +12,38 @@ import (
 type membership struct {
 	name        string
 	protocol    module.ProtocolInfo
-	peerToPeer  *PeerToPeer
+	p2p         *PeerToPeer
 	roles       map[module.Role]*PeerIdList
 	authorities map[module.Authority]*RoleList
 	reactors    map[string]module.Reactor
 	cbFuncs     map[module.ProtocolInfo]receiveCbFunc
+	destByRole  map[module.Role]byte
 }
 
 type receiveCbFunc func(pi module.ProtocolInfo, bytes []byte, id module.PeerID) (bool, error)
 
 func newMembership(name string, pi module.ProtocolInfo, p2p *PeerToPeer) *membership {
-	m := &membership{
+	ms := &membership{
 		name:        name,
 		protocol:    pi,
-		peerToPeer:  p2p,
+		p2p:         p2p,
 		roles:       make(map[module.Role]*PeerIdList),
 		authorities: make(map[module.Authority]*RoleList),
 		reactors:    make(map[string]module.Reactor),
 		cbFuncs:     make(map[module.ProtocolInfo]receiveCbFunc),
+		destByRole:  make(map[module.Role]byte),
 	}
-	p2p.setPacketCbFunc(pi, m.onPacket)
-	return m
+	p2p.setPacketCbFunc(pi, ms.onPacket)
+	return ms
 }
 
 //TODO using worker pattern {pool or each packet or none} for reactor
-func (m *membership) workerRoutine() {
+func (ms *membership) workerRoutine() {
 
 }
 
 //callback from PeerToPeer.onPacket() in Peer.onReceiveRoutine
-func (m *membership) onPacket(pkt *Packet, p *Peer) {
+func (ms *membership) onPacket(pkt *Packet, p *Peer) {
 	log.Println("Membership.onPacket", pkt)
 	//Check authority
 	//roles := Roles(pkt.src)
@@ -49,65 +51,75 @@ func (m *membership) onPacket(pkt *Packet, p *Peer) {
 	//r := HasAuthority(auth, role) range roles
 	//if r == true
 
-	if cbFunc := m.cbFuncs[pkt.subProtocol]; cbFunc != nil {
+	if cbFunc := ms.cbFuncs[pkt.subProtocol]; cbFunc != nil {
 		r, err := cbFunc(pkt.subProtocol, pkt.payload, p.ID())
 		if err != nil {
 			log.Println(err)
 		}
 		if r {
-			m.peerToPeer.ch <- pkt
+			log.Println("Membership.onPacket rebroadcast", pkt)
+			ms.p2p.ch <- pkt
 		}
 	}
 }
 
-func (m *membership) RegistReactor(name string, reactor module.Reactor, subProtocols []module.ProtocolInfo) error {
-	if _, ok := m.reactors[name]; ok {
+func (ms *membership) RegistReactor(name string, reactor module.Reactor, subProtocols []module.ProtocolInfo) error {
+	if _, ok := ms.reactors[name]; ok {
 		return common.ErrIllegalArgument
 	}
 	for _, sp := range subProtocols {
-		if _, ok := m.cbFuncs[sp]; ok {
+		if _, ok := ms.cbFuncs[sp]; ok {
 			return common.ErrIllegalArgument
 		}
-		m.cbFuncs[sp] = reactor.OnReceive
+		ms.cbFuncs[sp] = reactor.OnReceive
+		log.Printf("Membership.RegistReactor.cbFuncs %#x %s", sp, name)
 	}
 	return nil
 }
 
-func (m *membership) Unicast(subProtocol module.ProtocolInfo, bytes []byte, id module.PeerID) error {
+func (ms *membership) Unicast(subProtocol module.ProtocolInfo, bytes []byte, id module.PeerID) error {
 	pkt := NewPacket(subProtocol, bytes)
-	pkt.protocol = PROTO_DEF_MEMBER
+	pkt.protocol = ms.protocol
+	pkt.dest = p2pDestPeer
+	ms.p2p.sendToPeer(pkt, id)
 	return nil
 }
 
 //TxMessage,VoteMessage, Send to Validators
-func (m *membership) Multicast(subProtocol module.ProtocolInfo, bytes []byte, role module.Role) error {
+func (ms *membership) Multicast(subProtocol module.ProtocolInfo, bytes []byte, role module.Role) error {
+	if _, ok := ms.roles[role]; !ok {
+		return common.ErrIllegalArgument
+	}
+
 	pkt := NewPacket(subProtocol, bytes)
-	pkt.protocol = PROTO_DEF_MEMBER
-	m.peerToPeer.sendToUpside(pkt)
+	pkt.protocol = ms.protocol
+	pkt.dest = ms.destByRole[role]
+	ms.p2p.ch <- pkt
 	return nil
 }
 
 //ProposeMessage,BlockMessage, Send to Citizen
-func (m *membership) Broadcast(subProtocol module.ProtocolInfo, bytes []byte, broadcastType module.BroadcastType) error {
+func (ms *membership) Broadcast(subProtocol module.ProtocolInfo, bytes []byte, broadcastType module.BroadcastType) error {
 	pkt := NewPacket(subProtocol, bytes)
-	pkt.protocol = PROTO_DEF_MEMBER
+	pkt.protocol = ms.protocol
+	pkt.dest = p2pDestAny
 	pkt.ttl = byte(broadcastType)
-	m.peerToPeer.sendToFriends(pkt)
-	m.peerToPeer.sendToDownside(pkt)
+	ms.p2p.ch <- pkt
 	return nil
 }
 
-func (m *membership) getRolePeerIdList(role module.Role) *PeerIdList {
-	l, ok := m.roles[role]
+func (ms *membership) getRolePeerIDList(role module.Role) *PeerIdList {
+	l, ok := ms.roles[role]
 	if !ok {
 		l := NewPeerIdList()
-		m.roles[role] = l
+		ms.roles[role] = l
+		ms.destByRole[role] = byte(len(ms.roles) + p2pDestPeerGroup)
 	}
 	return l
 }
 
-func (m *membership) AddRole(role module.Role, peers ...module.PeerID) {
-	l := m.getRolePeerIdList(role)
+func (ms *membership) AddRole(role module.Role, peers ...module.PeerID) {
+	l := ms.getRolePeerIDList(role)
 	for _, p := range peers {
 		if !l.Has(p) {
 			l.PushBack(p)
@@ -115,22 +127,22 @@ func (m *membership) AddRole(role module.Role, peers ...module.PeerID) {
 	}
 }
 
-func (m *membership) RemoveRole(role module.Role, peers ...module.PeerID) {
-	l := m.getRolePeerIdList(role)
+func (ms *membership) RemoveRole(role module.Role, peers ...module.PeerID) {
+	l := ms.getRolePeerIDList(role)
 	for _, p := range peers {
 		l.Remove(p)
 	}
 }
 
-func (m *membership) HasRole(role module.Role, id module.PeerID) bool {
-	l := m.getRolePeerIdList(role)
+func (ms *membership) HasRole(role module.Role, id module.PeerID) bool {
+	l := ms.getRolePeerIDList(role)
 	return l.Has(id)
 }
 
-func (m *membership) Roles(id module.PeerID) []module.Role {
+func (ms *membership) Roles(id module.PeerID) []module.Role {
 	var i int
-	s := make([]module.Role, 0, len(m.roles))
-	for k, v := range m.roles {
+	s := make([]module.Role, 0, len(ms.roles))
+	for k, v := range ms.roles {
 		if v.Has(id) {
 			s = append(s, k)
 			i++
@@ -139,17 +151,17 @@ func (m *membership) Roles(id module.PeerID) []module.Role {
 	return s[:i]
 }
 
-func (m *membership) getAuthorityRoleList(authority module.Authority) *RoleList {
-	l, ok := m.authorities[authority]
+func (ms *membership) getAuthorityRoleList(authority module.Authority) *RoleList {
+	l, ok := ms.authorities[authority]
 	if !ok {
 		l := NewRoleList()
-		m.authorities[authority] = l
+		ms.authorities[authority] = l
 	}
 	return l
 }
 
-func (m *membership) GrantAuthority(authority module.Authority, roles ...module.Role) {
-	l := m.getAuthorityRoleList(authority)
+func (ms *membership) GrantAuthority(authority module.Authority, roles ...module.Role) {
+	l := ms.getAuthorityRoleList(authority)
 	for _, r := range roles {
 		if !l.Has(r) {
 			l.PushBack(r)
@@ -157,22 +169,22 @@ func (m *membership) GrantAuthority(authority module.Authority, roles ...module.
 	}
 }
 
-func (m *membership) DenyAuthority(authority module.Authority, roles ...module.Role) {
-	l := m.getAuthorityRoleList(authority)
+func (ms *membership) DenyAuthority(authority module.Authority, roles ...module.Role) {
+	l := ms.getAuthorityRoleList(authority)
 	for _, r := range roles {
 		l.Remove(r)
 	}
 }
 
-func (m *membership) HasAuthority(authority module.Authority, role module.Role) bool {
-	l := m.getAuthorityRoleList(authority)
+func (ms *membership) HasAuthority(authority module.Authority, role module.Role) bool {
+	l := ms.getAuthorityRoleList(authority)
 	return l.Has(role)
 }
 
-func (m *membership) Authorities(role module.Role) []module.Authority {
+func (ms *membership) Authorities(role module.Role) []module.Authority {
 	var i int
-	s := make([]module.Authority, len(m.authorities))
-	for k, v := range m.authorities {
+	s := make([]module.Authority, len(ms.authorities))
+	for k, v := range ms.authorities {
 		if v.Has(role) {
 			s = append(s, k)
 			i++

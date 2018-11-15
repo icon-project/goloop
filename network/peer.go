@@ -1,7 +1,6 @@
 package network
 
 import (
-	"encoding/binary"
 	"fmt"
 	"log"
 	"net"
@@ -20,6 +19,7 @@ type Peer struct {
 	reader   *PacketReader
 	writer   *PacketWriter
 	onPacket packetCbFunc
+	onError  errorCbFunc
 	//
 	incomming bool
 	channel   string
@@ -28,7 +28,8 @@ type Peer struct {
 	role      PeerRoleFlag
 }
 
-type packetCbFunc func(packet *Packet, peer *Peer)
+type packetCbFunc func(pkt *Packet, p *Peer)
+type errorCbFunc func(err error, p *Peer)
 
 //TODO define netAddress as IP:Port
 type NetAddress string
@@ -37,18 +38,19 @@ type NetAddress string
 type PeerRTT uint32
 
 const (
-	p2pDestAny  = 0x00
-	p2pDestPeer = 0xFF
-)
-
-const (
 	p2pRoleNone     = 0x00
 	p2pRoleSeed     = 0x01
 	p2pRoleRoot     = 0x02
 	p2pRoleRootSeed = 0x03
 )
 
+//PeerRoleFlag as BitFlag MSB[_,_,_,_,_,_,Root,Seed]LSB
+//TODO remove p2pRoleRootSeed
 type PeerRoleFlag byte
+
+func (pr *PeerRoleFlag) Has(o PeerRoleFlag) bool {
+	return (*pr)&o == o
+}
 
 const (
 	p2pConnTypeNone = iota
@@ -90,6 +92,10 @@ func (p *Peer) setPacketCbFunc(cbFunc packetCbFunc) {
 	p.onPacket = cbFunc
 }
 
+func (p *Peer) setErrorCbFunc(cbFunc errorCbFunc) {
+	p.onError = cbFunc
+}
+
 //receive from bufio.Reader, unmarshalling and peerToPeer.onPacket
 func (p *Peer) receiveRoutine() {
 	defer p.conn.Close()
@@ -99,10 +105,11 @@ func (p *Peer) receiveRoutine() {
 			//TODO
 			// p.reader.Reset()
 			log.Println(pkt, h, err)
+			p.onError(err, p)
 			return
 		}
-		if rh := binary.BigEndian.Uint64(pkt.hashOfPacket); rh != h.Sum64() {
-			log.Println("Invalid hashOfPacket :", rh, ",expected:", h.Sum64())
+		if pkt.hashOfPacket != h.Sum64() {
+			log.Println("Invalid hashOfPacket :", pkt.hashOfPacket, ",expected:", h.Sum64())
 		}
 		if p.onPacket != nil {
 			p.onPacket(pkt, p)
@@ -126,6 +133,7 @@ func (p *Peer) sendPacket(pkt *Packet) error {
 	if err != nil {
 		//TODO
 		log.Println(err)
+		p.onError(err, p)
 		return err
 	}
 	return p.writer.Flush()
@@ -139,11 +147,11 @@ type peerID struct {
 	*common.Address
 }
 
-func NewPeerId(b []byte) module.PeerID {
+func NewPeerID(b []byte) module.PeerID {
 	return &peerID{common.NewAccountAddress(b)}
 }
 
-func NewPeerIdFromPublicKey(k *crypto.PublicKey) module.PeerID {
+func NewPeerIDFromPublicKey(k *crypto.PublicKey) module.PeerID {
 	return &peerID{common.NewAccountAddressFromPublicKey(k)}
 }
 
