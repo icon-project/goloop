@@ -2,6 +2,7 @@ package block
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"time"
 
@@ -106,7 +107,10 @@ func (m *manager) _import(
 	r io.Reader,
 	cb func(module.Block, error),
 ) (*importTask, error) {
-	block := m.newBlockFromReader(r)
+	block, err := m.newBlockFromReader(r)
+	if err != nil {
+		return nil, err
+	}
 	bn := m.nmap[string(block.PrevID())]
 	if bn == nil {
 		return nil, common.ErrIllegalArgument
@@ -542,8 +546,7 @@ func (m *manager) newTransactionListFromBSS(
 	return m.sm.TransactionListFromSlice(ts, version)
 }
 
-func (m *manager) newBlockFromReader(r io.Reader) module.Block {
-	// TODO return error? log error?
+func (m *manager) newBlockFromReader(r io.Reader) (module.Block, error) {
 	// TODO handle v1
 	var blockFormat blockV2Format
 	v2Codec.Unmarshal(r, &blockFormat)
@@ -551,23 +554,23 @@ func (m *manager) newBlockFromReader(r io.Reader) module.Block {
 		blockFormat.PatchTransactions,
 		common.BlockVersion2,
 	)
-	if bytes.Equal(patches.Hash(), blockFormat.PatchTransactionsHash) {
-		return nil
+	if !bytes.Equal(patches.Hash(), blockFormat.PatchTransactionsHash) {
+		return nil, errors.New("bad patch transactions hash")
 	}
 	normalTxs := m.newTransactionListFromBSS(
 		blockFormat.NormalTransactions,
 		common.BlockVersion2,
 	)
-	if bytes.Equal(normalTxs.Hash(), blockFormat.NormalTransactionsHash) {
-		return nil
+	if !bytes.Equal(normalTxs.Hash(), blockFormat.NormalTransactionsHash) {
+		return nil, errors.New("bad normal transactions hash")
 	}
 	nextValidators := m.sm.ValidatorListFromHash(blockFormat.NextValidatorsHash)
-	if bytes.Equal(nextValidators.Hash(), blockFormat.NextValidatorsHash) {
-		return nil
+	if !bytes.Equal(nextValidators.Hash(), blockFormat.NextValidatorsHash) {
+		return nil, errors.New("bad validator list hash")
 	}
 	votes := m.chain.VoteListDecoder()(blockFormat.Votes)
-	if bytes.Equal(votes.Hash(), blockFormat.VotesHash) {
-		return nil
+	if !bytes.Equal(votes.Hash(), blockFormat.VotesHash) {
+		return nil, errors.New("bad vote list hash")
 	}
 	return &blockV2{
 		height:             blockFormat.Height,
@@ -580,7 +583,7 @@ func (m *manager) newBlockFromReader(r io.Reader) module.Block {
 		normalTransactions: normalTxs,
 		nextValidators:     nextValidators,
 		votes:              votes,
-	}
+	}, nil
 }
 
 type transactionInfo struct {
