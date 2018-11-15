@@ -96,11 +96,17 @@ func (m *manager) ProposeGenesisTransition(parent module.Transition) (module.Tra
 func (m *manager) CreateInitialTransition(result []byte, valList module.ValidatorList, height int64) (module.Transition, error) {
 	if result == nil {
 		if height < 0 {
+			if valList == nil {
+				valList, _ = ValidatorListFromSlice(m.db, nil)
+			}
 			// nil result is allowed only at height -1 (prior to Genesis)
 			return newInitTransition(m.db, nil, valList), nil
 		} else {
 			return nil, common.ErrIllegalArgument
 		}
+	}
+	if valList == nil {
+		return nil, common.ErrIllegalArgument
 	}
 
 	resultBytes, err := newResultBytes(result)
