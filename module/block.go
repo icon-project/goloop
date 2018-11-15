@@ -36,6 +36,8 @@ type BlockManager interface {
 	//	cancellation was successful.
 	Propose(parentID []byte, votes VoteList, cb func(Block, error)) (canceler func() bool, err error)
 
+	ProposeGenesis(proposer Address, timestamp time.Time, votes VoteList) (block Block, err error)
+
 	//	Import creates a Block from blockBytes.
 	//	The result is asynchronously notified by cb. canceler cancels the
 	//	operation. canceler returns true and cb is not called if the

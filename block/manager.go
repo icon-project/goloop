@@ -15,10 +15,17 @@ import (
 // TODO overall error handling log? return error?
 // TODO import, finalize V1
 // TODO refactor code using bucketFor
+// TODO VoteList verify
 
 var dbCodec = codec.MP
 
-const keyLastBlockHeight = "block.lastHeight"
+const (
+	keyLastBlockHeight = "block.lastHeight"
+	genesisHeight      = 0
+	hashNumBytes       = 32
+)
+
+var zeroHash = make([]byte, hashNumBytes)
 
 type transactionLocator struct {
 	BlockHeight      int64
@@ -288,51 +295,40 @@ func NewManager(
 	m := &manager{
 		chain: chain,
 		sm:    sm,
+		nmap:  make(map[string]*bnode),
 	}
 	chainPropBucket := m.bucketFor(db.ChainProperty)
 	if chainPropBucket == nil {
 		return nil
 	}
 
-	var lastFinalized module.Block
 	var height int64
-	var mtr module.Transition
-	var bn *bnode
 	err := chainPropBucket.get(raw(keyLastBlockHeight), &height)
-	if err == nil {
-		hashByHeightBucket := m.bucketFor(db.BlockHeaderHashByHeight)
-		hash, err := hashByHeightBucket.getBytes(&height)
-		if err != nil {
-			return nil
-		}
-		lastFinalized, err = m.GetBlock(hash)
-		mtr, _ = m.sm.CreateInitialTransition(lastFinalized.Result(), lastFinalized.NextValidators(), lastFinalized.Height()-1)
-		if mtr == nil {
-			return nil
-		}
-		tr := newInitialTransition(mtr, &m.syncer, sm)
-		bn = &bnode{
-			block: lastFinalized,
-			in:    tr,
-		}
-		bn.preexe = tr.transit(lastFinalized.NormalTransactions(), nil)
-	} else if err == common.ErrNotFound {
-		height = 0
-		mtr, _ = m.sm.CreateInitialTransition(nil, nil, -1)
-		if mtr == nil {
-			return nil
-		}
-		tr := newInitialTransition(mtr, &m.syncer, sm)
-		bn = &bnode{
-			block: lastFinalized,
-			in:    tr,
-		}
-		bn.preexe = tr.proposeGenesis(nil)
-	} else {
+	if err == common.ErrNotFound {
+		return m
+	} else if err != nil {
 		return nil
 	}
+	hashByHeightBucket := m.bucketFor(db.BlockHeaderHashByHeight)
+	hash, err := hashByHeightBucket.getBytes(&height)
+	if err != nil {
+		return nil
+	}
+	lastFinalized, err := m.GetBlock(hash)
+	mtr, _ := m.sm.CreateInitialTransition(lastFinalized.Result(), lastFinalized.NextValidators(), lastFinalized.Height()-1)
+	if mtr == nil {
+		return nil
+	}
+	tr := newInitialTransition(mtr, &m.syncer, sm)
+	bn := &bnode{
+		block: lastFinalized,
+		in:    tr,
+	}
+	bn.preexe = tr.transit(lastFinalized.NormalTransactions(), nil)
 	m.finalized = bn
-	m.nmap[string(lastFinalized.ID())] = bn
+	if bn != nil {
+		m.nmap[string(lastFinalized.ID())] = bn
+	}
 	return m
 }
 
@@ -368,6 +364,40 @@ func (m *manager) Import(
 		defer m.syncer.end()
 		return it.cancel()
 	}, nil
+}
+
+func (m *manager) ProposeGenesis(
+	proposer module.Address,
+	timestamp time.Time,
+	votes module.VoteList,
+) (block module.Block, err error) {
+	m.syncer.begin()
+	defer m.syncer.end()
+
+	if m.finalized != nil {
+		return nil, common.ErrInvalidState
+	}
+	bn := &bnode{}
+	mtr, err := m.sm.CreateInitialTransition(nil, nil, genesisHeight-1)
+	if err != nil {
+		return nil, err
+	}
+	bn.in = newInitialTransition(mtr, &m.syncer, m.sm)
+	gmtr := bn.in.proposeGenesis(nil)
+	bn.preexe = gmtr
+	bn.block = &blockV2{
+		height:             genesisHeight,
+		timestamp:          timestamp,
+		proposer:           proposer,
+		prevID:             zeroHash,
+		logBloom:           mtr.LogBloom(),
+		result:             mtr.Result(),
+		patchTransactions:  gmtr.mtransition().PatchTransactions(),
+		normalTransactions: gmtr.mtransition().NormalTransactions(),
+		nextValidators:     mtr.NextValidators(),
+		votes:              votes,
+	}
+	return bn.block, nil
 }
 
 func (m *manager) Propose(
@@ -615,6 +645,12 @@ func (m *manager) GetTransactionInfo(id []byte) module.TransactionInfo {
 }
 
 func (m *manager) GetBlockByHeight(height int64) (module.Block, error) {
+	// TODO handle genesis correctly
+	if height == genesisHeight {
+		return &blockV2{
+			_id: zeroHash,
+		}, nil
+	}
 	headerHashByHeight := m.bucketFor(db.BlockHeaderHashByHeight)
 	hash, err := headerHashByHeight.getBytes(height)
 	if err != nil {
