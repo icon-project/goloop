@@ -1,6 +1,7 @@
 package service_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/icon-project/goloop/common"
@@ -118,60 +119,22 @@ type transitionCb struct {
 }
 
 func (ts *transitionCb) OnValidate(module.Transition, error) {
-	log.Printf("OnValidate")
 }
 
 func (ts *transitionCb) OnExecute(module.Transition, error) {
-	log.Printf("OnExecute")
 	ts.exeDone <- true
 }
 
 // test case
-var resultMap = make(map[string]*big.Int)
-var nameNum = 10
-var nameList = []string{
-	"KANG DONG WON",
-	"JANG DONG GUN",
-	"LEE HYO RI",
-	"KELVIN DURANT",
-	"STEPHEN CURRY",
-	"LEBRON JAMES",
-	"MICHEAL JORDAN",
-	"PATRICK EWING",
-	"HAKIM OLAJUWON",
-	"CHARLES BARKLEY",
-}
-
-var toNum = 17
-var toList = []string{
-	"KANG DONG WON",
-	"JANG DONG GUN",
-	"LEE HYO RI",
-	"KELVIN DURANT",
-	"STEPHEN CURRY",
-	"LEBRON JAMES",
-	"MICHEAL JORDAN",
-	"PATRICK EWING",
-	"HAKIM OLAJUWON",
-	"CHARLES BARKLEY",
-	"NO MARRY",
-	"NO TOM",
-	"NO JERRY",
-	"NO COOLER",
-	"NO MACHINE",
-	"NO ANGEL",
-	"NO DEVIL",
-}
-
-//var addresses [10]common.Address
-var deposit = int64(1000000)
-
-var testWallets []testWallet
-
 const (
-	TEST_ACCOUNTS             = 17
+	TEST_ACCOUNTS_NUM         = 10
 	TEST_VALID_REQUEST_TX_NUM = 100
 )
+
+var resultMap = make(map[string]*big.Int)
+var deposit = int64(1000000)
+var testAddresses [TEST_ACCOUNTS_NUM]*common.Address
+var testWallets []testWallet
 
 type testWallet struct {
 	pbKey   *crypto.PublicKey
@@ -277,45 +240,42 @@ func marshalTx(tx *txTest) []byte {
 //const txLiveDuration = int64(60 * time.Second / time.Millisecond) // 60 seconds in millisecond
 //// true if valid transaction
 func createRandTx(valid bool, time int64, validNum int) module.Transaction {
-	idFrom := rand.Int() % toNum
+	idFrom := rand.Int() % TEST_ACCOUNTS_NUM
 	//tx.hash = []byte{id}
 	// valid 하도록 만든다. 기존에 없는 ID, time 등을 이용하도록.
 	// insert transaction to valid transaction (expected txPool).
 	// ID map, time map 사용.
 	// 중복될 경우 새로운 ID, time을 생성한다.
-	idTo := rand.Int() % toNum
+	idTo := rand.Int() % TEST_ACCOUNTS_NUM
 	for idTo == idFrom {
-		idTo = rand.Int() % toNum
+		idTo = rand.Int() % TEST_ACCOUNTS_NUM
 	}
 	//tx.to = addresses[toId]
-	fromString := testWallets[idFrom].address.String()
-	toString := testWallets[idTo].address.String()
-	walletFrom := testWallets[idTo]
-	addrTo := testWallets[idTo].address
+	stringFrom := string(testAddresses[idFrom].Bytes())
+	stringTo := string(testAddresses[idTo].Bytes())
+	walletFrom := testWallets[idFrom]
+	to := testAddresses[idTo]
 	value := big.NewInt(int64(rand.Int() % 300000))
 
+	var timestamp int64
 	if valid {
 		// TODO: 먼저 from에서 이체 가능금액 확인 & 이체
-		balance := resultMap[fromString]
+		balance := resultMap[stringFrom]
 		if balance != nil && balance.Cmp(value) > 0 {
-			resultMap[fromString] = balance.Mul(balance, value)
-			if _, ok := resultMap[toString]; ok == false {
-				resultMap[toString] = big.NewInt(0)
+			resultMap[stringFrom] = balance.Mul(balance, value)
+			if _, ok := resultMap[stringTo]; ok == false {
+				resultMap[stringTo] = big.NewInt(0)
 			}
-			resultMap[toString].Add(resultMap[toString], value)
+			resultMap[stringTo].Add(resultMap[stringTo], value)
 		}
 
-		timestamp := time + 1000 + int64(rand.Int()%100)
+		timestamp = time + 1000 + int64(rand.Int()%100)
 		// TODO: check value type. no
-		return createTxInst(&walletFrom, addrTo, value, timestamp)
+	} else {
+		timestamp = time - service.TestTxLiveDuration() - 1000 - int64(rand.Int()%10)
 	}
-	//invalid하도록 만든다.
-	// ID를 map에서 가져다가 쓰거나 전달받은 시간보다 작은 시간을 설정한다.
-	// 처음에 진입하여 ID가 없을 경우 time을 설정한다.
-	// sleep을 줄까...
-	// TODO: ADD verify
-	timestamp := time - service.TestTxLiveDuration() - 1000 - int64(rand.Int()%10)
-	return createTxInst(&walletFrom, addrTo, value, timestamp)
+
+	return createTxInst(&walletFrom, to, value, timestamp)
 }
 
 func makeTimestamp() int64 {
@@ -343,62 +303,117 @@ func requestTx(validTxNum int, manager module.ServiceManager, done chan bool) {
 	// TODO: send signal for end of request
 }
 
-// create wallet(private/public keys & address) and set ballance
+// create wallet(private/public keys & address) and set balance
 // then set addresses and accounts to trie
-func initTestWallet(db db.Database, mpt trie.Mutable) {
-	testWallets = createWallet(TEST_ACCOUNTS)
-	for i := 0; i < TEST_ACCOUNTS; i++ {
-		accountState := service.TestNewAccountState(db)
+func initTestWallets(testWalletNum int, db db.Database, mpts ...trie.Mutable) {
+	wallet := createWallet(testWalletNum)
+	//testAddresses = make([][]byte, testWalletNum)
+	for i := 0; i < testWalletNum; i++ {
+		testAddresses[i] = wallet[i].address
+		accountState := service.T_NewAccountState(db)
 		accountState.SetBalance(big.NewInt(deposit))
 		serializedAccount, _ := codec.MP.MarshalToBytes(accountState.GetSnapshot())
-		addr := testWallets[i].address
-		mpt.Set(addr.Bytes(), serializedAccount)
+		for _, mpt := range mpts {
+			mpt.Set(testAddresses[i].Bytes(), serializedAccount)
+		}
 	}
+	testWallets = wallet
 }
 
 func TestServiceManager(t *testing.T) {
-	pDb := db.NewMapDB()
-	pSm := service.NewManager(pDb)
-	result := make([]byte, 64)
-	mgr := trie_manager.New(pDb)
-	mpt := mgr.NewMutable(nil)
-	initTestWallet(pDb, mpt)
+	// initialize leader trie
+	leaderDB := db.NewMapDB()
+	leaderTrie := trie_manager.NewMutable(leaderDB, nil)
+
+	// initialize validator trie
+	validatorDB := db.NewMapDB()
+	validatorTrie := trie_manager.NewMutable(validatorDB, nil)
+
+	// initialize wallets for test and set default balance and apply it to trie
+	initTestWallets(TEST_ACCOUNTS_NUM, leaderDB, leaderTrie, validatorTrie)
 
 	// request transactions
 	requestCh := make(chan bool)
-	go requestTx(TEST_VALID_REQUEST_TX_NUM, pSm, requestCh)
+	leaderServiceManager := service.NewManager(leaderDB)
+	go requestTx(TEST_VALID_REQUEST_TX_NUM, leaderServiceManager, requestCh)
 
-	//Run service manager for propose
-	snapshot := mpt.GetSnapshot()
+	//run service manager for leader
+	snapshot := leaderTrie.GetSnapshot()
 	snapshot.Flush()
-	copy(result, snapshot.Hash())
-	initTrs, err := pSm.CreateInitialTransition(result, nil, 0)
+	leaderResult := make([]byte, 64)
+	copy(leaderResult, snapshot.Hash())
+	initTrs, err := leaderServiceManager.CreateInitialTransition(leaderResult, nil, 0)
 	if err != nil {
-		log.Panicf("Faile to create initial transition. result = %x, err = %s\n", result, err)
+		log.Panicf("Faile to create initial transition. result = %x, err = %s\n", leaderResult, err)
 	}
 	parentTrs := initTrs
+	txListChan := make(chan module.TransactionList)
 	// propose transition
-	for {
-		trs, err := pSm.ProposeTransition(parentTrs)
-		if err != nil {
-			log.Panicf("Failed to propose transition!, err = %s\n", err)
+	go func() {
+		for {
+			transition, err := leaderServiceManager.ProposeTransition(parentTrs)
+			if err != nil {
+				log.Panicf("Failed to propose transition!, err = %s\n", err)
+			}
+			txListChan <- transition.NormalTransactions()
+			<-txListChan
+			cb := &transitionCb{exeDone: make(chan bool)}
+			transition.Execute(cb)
+			leaderServiceManager.Finalize(transition, module.FinalizeNormalTransaction)
+			leaderServiceManager.Finalize(transition, module.FinalizeResult)
+			// get result then run below
+			<-cb.exeDone
+			transition = parentTrs
+			// TODO when is done?
 		}
-		cb := &transitionCb{exeDone: make(chan bool)}
-		trs.Execute(cb)
-		// get result then run below
-		<-cb.exeDone
-		trs = parentTrs
-	}
-	<-requestCh
-	//
-	// verify
-	//vDb := db.NewMapDB()
-	//vSm := service.NewManager(db)
-	//vSm.CreateTransition(parent, txs)
-	//vSm.Finalize()
-	//vSm.Finalize()
+	}()
 
-	// 결과 확인
+	// validator
+	validatorSnapshot := validatorTrie.GetSnapshot()
+	validatorSnapshot.Flush()
+	validatorResult := make([]byte, 64)
+	copy(validatorResult, validatorSnapshot.Hash())
+	validatorServiceManager := service.NewManager(validatorDB)
+	initVTrs, err := validatorServiceManager.CreateInitialTransition(validatorResult, nil, 0)
+	if err != nil {
+		log.Panicf("Faile to create initial transition. result = %x, err = %s\n", validatorResult, err)
+	}
+	parentVTransition := initVTrs
+	executedTxNum := 0
+	endChan := make(chan bool)
+	go func() {
+		for {
+			txList := <-txListChan
+			for iter := txList.Iterator(); iter.Has(); iter.Next() {
+				executedTxNum += 1
+			}
+			vTransition, err := validatorServiceManager.CreateTransition(parentVTransition, txList)
+			if err != nil {
+				log.Panicf("Failed to create transition for validator")
+			}
+			cb := &transitionCb{exeDone: make(chan bool)}
+			vTransition.Execute(cb)
+			<-cb.exeDone
+			validatorServiceManager.Finalize(vTransition, module.FinalizeNormalTransaction)
+			validatorServiceManager.Finalize(vTransition, module.FinalizeResult)
+			parentVTransition = vTransition
+			if executedTxNum >= TEST_VALID_REQUEST_TX_NUM {
+				endChan <- true
+			}
+			txListChan <- nil
+		}
+	}()
+
+	<-requestCh
+	<-endChan
+	leaderSanpshot := leaderTrie.GetSnapshot()
+	validatorSnapdhot := validatorTrie.GetSnapshot()
+
+	if bytes.Compare(leaderSanpshot.Hash(), validatorSnapdhot.Hash()) != 0 {
+		log.Panicf("Failed to compare hashes. leadHash : %x, validatorHash : %x\n", leaderSanpshot.Hash(), validatorSnapdhot.Hash())
+	}
+
+	service.T_Result(resultMap, leaderSanpshot)
 }
 
 func TestTransaction(t *testing.T) {

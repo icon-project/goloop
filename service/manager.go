@@ -36,11 +36,12 @@ type manager struct {
 }
 
 // TODO It should be declared in module package.
-func NewManager(db db.Database) module.ServiceManager {
+func NewManager(database db.Database) module.ServiceManager {
+	bk, _ := database.GetBucket(db.MerkleTrie)
 	return &manager{
-		patchTxPool:  new(transactionPool),
-		normalTxPool: new(transactionPool),
-		db:           db,
+		patchTxPool:  NewtransactionPool(bk),
+		normalTxPool: NewtransactionPool(bk),
+		db:           database,
 	}
 }
 
@@ -186,7 +187,19 @@ func (m *manager) PatchTransition(t module.Transition, patchTxList module.Transa
 // It should be called for every transition.
 func (m *manager) Finalize(t module.Transition, opt int) {
 	if tst, ok := t.(*transition); ok {
-		tst.finalize(opt)
+		if opt&module.FinalizeNormalTransaction == module.FinalizeNormalTransaction {
+			tst.finalizeNormalTransaction()
+			// Because transactionlist for transition is made only through peer and SendTransaction() call
+			// transactionlist has slice of transactions in case that finalize() is called
+			m.normalTxPool.removeList(tst.normalTransactions.txs)
+		}
+		if opt&module.FinalizePatchTransaction == module.FinalizePatchTransaction {
+			tst.finalizePatchTransaction()
+			m.normalTxPool.removeList(tst.patchTransactions.txs)
+		}
+		if opt&module.FinalizeResult == module.FinalizeResult {
+			tst.finalizeResult()
+		}
 	}
 }
 
@@ -267,8 +280,23 @@ func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {
 }
 
 // For test
-func TestNewAccountState(db db.Database) AccountState {
+func T_NewAccountState(db db.Database) AccountState {
 	return newAccountState(db, nil)
+}
+
+func T_Result(resultMap map[string]*big.Int, resultTrie trie.Snapshot) {
+	for k, v := range resultMap {
+		resultTrie.Get([]byte(k))
+		if serializedAccount, err := resultTrie.Get([]byte(k)); err == nil && len(serializedAccount) != 0 {
+			var accInfo accountSnapshotImpl
+			if _, err := codec.MP.UnmarshalFromBytes(serializedAccount, &accInfo); err != nil {
+				log.Panicf("Failed to unmarshal")
+			}
+			if accInfo.GetBalance().Cmp(v) != 0 {
+				log.Panicf("Not same value for %x, trie %v, map %v \n", []byte(k), accInfo.GetBalance(), v)
+			}
+		}
+	}
 }
 
 // test case

@@ -258,25 +258,20 @@ func (tx *transaction) execute(state *transitionState, db db.Database) error {
 				log.Println("Failed to unmarshal")
 				return err
 			}
-			accState[1] = newAccountState(db, &accSnapshot[1])
-		} else {
-			accState[1] = newAccountState(db, nil)
 		}
 	}
+	accState[1] = newAccountState(db, &accSnapshot[1])
 
 	accState[0].SetBalance(big.NewInt(0).Sub(accSnapshot[0].GetBalance(), txValue))
 	accState[1].SetBalance(big.NewInt(0).Add(accSnapshot[1].GetBalance(), txValue))
 
-	stateTrieSs := stateTrie.GetSnapshot()
 	for i, account := range accState {
 		if resultSnapshot := account.GetSnapshot(); resultSnapshot != nil {
 			if serializedAccount, err := codec.MP.MarshalToBytes(resultSnapshot); err == nil {
 				if err = stateTrie.Set(addr[i], serializedAccount); err != nil {
-					stateTrie.Reset(stateTrieSs)
 					return err
 				}
 			} else {
-				stateTrie.Reset(stateTrieSs)
 				log.Println("Failed to marshal")
 				return err
 			}

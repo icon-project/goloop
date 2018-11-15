@@ -590,6 +590,8 @@ func (iter *iteratorImpl) nextChildNode(m *mpt, n node, key []byte) ([]byte, tri
 			return nil, nil
 		}
 		return iter.nextChildNode(m, deserialize(serializedValue, m.objType, m.db), key)
+	case nil:
+		return nil, nil
 	}
 	panic("Not considered!!!")
 }

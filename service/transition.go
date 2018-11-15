@@ -2,12 +2,12 @@ package service
 
 import (
 	"errors"
+	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"sync"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
-	"github.com/icon-project/goloop/common/trie/mpt"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -74,6 +74,7 @@ func newTransition(parent *transition, patchTxList *transactionlist, normalTxLis
 		step = stepInited
 	}
 	return &transition{
+		db:                 parent.db,
 		parent:             parent,
 		patchTransactions:  patchTxList,
 		normalTransactions: normalTxList,
@@ -110,8 +111,7 @@ func (t *transition) Execute(cb module.TransitionCallback) (canceler func() bool
 
 	switch t.step {
 	case stepInited:
-		// TODO not to use mpt directly
-		t.state = mpt.NewManager(t.db).NewMutable(t.result.stateHash())
+		t.state = trie_manager.NewMutable(t.db, t.parent.result.stateHash())
 		t.step = stepValidating
 	case stepValidated:
 		// when this transition created by this node
@@ -119,6 +119,7 @@ func (t *transition) Execute(cb module.TransitionCallback) (canceler func() bool
 	default:
 		return nil, errors.New("Invalid transition state: " + t.stepString())
 	}
+	t.cb = cb
 	go t.executeSync(t.step == stepExecuting)
 
 	t.mutex.Unlock()
@@ -158,13 +159,18 @@ func (t *transition) executeSync(alreadyValidated bool) {
 		if !t.validateTxs(t.patchTransactions, txdb) || !t.validateTxs(t.normalTransactions, txdb) {
 			return
 		}
-		t.cb.OnValidate(t, nil)
+		if t.cb != nil {
+			t.cb.OnValidate(t, nil)
+		}
 
 		t.mutex.Lock()
 		t.step = stepExecuting
 		t.mutex.Unlock()
 	} else {
-		t.cb.OnValidate(t, nil)
+		if t.cb != nil {
+			t.cb.OnValidate(t, nil)
+		}
+
 	}
 
 	if !t.executeTxs(t.patchTransactions) || !t.executeTxs(t.normalTransactions) {
@@ -175,7 +181,9 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	t.mutex.Lock()
 	t.step = stepComplete
 	t.mutex.Unlock()
-	t.cb.OnExecute(t, nil)
+	if t.cb != nil {
+		t.cb.OnExecute(t, nil)
+	}
 }
 
 func (t *transition) validateTxs(txList *transactionlist, txDB db.Bucket) bool {
@@ -217,19 +225,18 @@ func (t *transition) executeTxs(txList *transactionlist) bool {
 	return !canceled
 }
 
-func (t *transition) finalize(opt int) {
-	if opt&module.FinalizeNormalTransaction == module.FinalizeNormalTransaction {
-		// TODO store DB
-	}
-	if opt&module.FinalizePatchTransaction == module.FinalizePatchTransaction {
-		// TODO store DB
-	}
-	if opt&module.FinalizeResult == module.FinalizeResult {
-		t.state.GetSnapshot().Flush()
-		// TODO store index DB
-		// Disconnect the useless parent transition
-		t.parent = nil
-	}
+func (t *transition) finalizeNormalTransaction() {
+	t.normalTransactions.flush()
+}
+
+func (t *transition) finalizePatchTransaction() {
+	t.patchTransactions.flush()
+}
+
+func (t *transition) finalizeResult() {
+	t.state.GetSnapshot().Flush()
+	// Disconnect the useless parent transition
+	t.parent = nil
 }
 
 func (t *transition) hasValidResult() bool {
@@ -280,13 +287,18 @@ func newResultBytes(result []byte) (resultBytes, error) {
 }
 
 func newResultBytesFromData(state trie.Mutable, patchRcList *receiptList, normalRcList *receiptList) resultBytes {
-	hasPatch := len(patchRcList.receipts) > 0
+	hasPatch := false
+	if patchRcList != nil {
+		hasPatch = len(patchRcList.receipts) > 0
+	}
 	bytes := make([]byte, 0, 96)
 	bytes = append(bytes, state.GetSnapshot().Hash()...)
 	if hasPatch {
 		bytes = append(bytes, patchRcList.Hash()...)
 	}
-	bytes = append(bytes, normalRcList.Hash()...)
+	if normalRcList != nil {
+		bytes = append(bytes, normalRcList.Hash()...)
+	}
 	return resultBytes(bytes)
 }
 
