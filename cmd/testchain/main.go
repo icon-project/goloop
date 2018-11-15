@@ -4,39 +4,37 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/rpc"
 	"github.com/icon-project/goloop/service"
 )
 
-type singleChain struct {
+type chain struct {
 	nid int
 
 	database db.Database
 	sm       module.ServiceManager
 	bm       module.BlockManager
 	cs       module.Consensus
-	sv       rpc.JsonRpcServer
 }
 
-func (c *singleChain) GetDatabase() db.Database {
+func (c *chain) GetDatabase() db.Database {
 	return c.database
 }
 
-func (c *singleChain) GetWallet() module.Wallet {
+func (c *chain) GetWallet() module.Wallet {
 	// TODO Implement wallet.
 	return nil
 }
 
-func (c *singleChain) GetNID() int {
+func (c *chain) GetNID() int {
 	return c.nid
 }
 
@@ -44,34 +42,43 @@ func voteListDecoder([]byte) module.VoteList {
 	return nil
 }
 
-func (c *singleChain) VoteListDecoder() module.VoteListDecoder {
+func (c *chain) VoteListDecoder() module.VoteListDecoder {
 	return module.VoteListDecoder(voteListDecoder)
 }
 
-type consensus struct {
-	c  module.Chain
-	bm module.BlockManager
+type emptyVoteList struct {
+}
+
+func (vl *emptyVoteList) Verify(block module.Block, validators module.ValidatorList) error {
+	return common.ErrInvalidState
+}
+
+func (vl *emptyVoteList) Bytes() []byte {
+	return nil
+}
+
+func (vl *emptyVoteList) Hash() []byte {
+	return make([]byte, 32)
+}
+
+type proposeOnlyConsensus struct {
 	sm module.ServiceManager
-	ch chan module.Block
+	bm module.BlockManager
+	ch chan<- []byte
 }
 
-func newConsensus(c module.Chain,
-	bm module.BlockManager,
-	sm module.ServiceManager,
-) *consensus {
-	return &consensus{
-		c:  c,
-		bm: bm,
-		sm: sm,
-		ch: make(chan module.Block),
-	}
-}
-
-func (c *consensus) Start() {
-	blk, err := c.bm.GetLastBlock()
+func (c *proposeOnlyConsensus) Start() {
+	blk, err := c.bm.ProposeGenesis(
+		common.NewAccountAddress(make([]byte, common.AddressBytes)),
+		time.Unix(0, 0),
+		&emptyVoteList{},
+	)
 	if err != nil {
 		panic(err)
 	}
+	c.bm.Finalize(blk)
+	ch := make(chan module.Block)
+
 	height := 1
 	wallet := Wallet{"https://testwallet.icon.foundation/api/v3"}
 	for {
@@ -91,43 +98,78 @@ func (c *consensus) Start() {
 			if e != nil {
 				panic(e)
 			}
-			c.ch <- b
+			ch <- b
 		})
 		if err != nil {
 			panic(err)
 		}
-		blk := <-c.ch
-		buf := bytes.NewBuffer(nil)
-		blk.MarshalHeader(buf)
-		blk.MarshalBody(buf)
-		_, err = c.bm.Import(buf, func(b module.Block, e error) {
-			if e != nil {
-				panic(e)
-			}
-			c.ch <- b
-		})
-		if err != nil {
-			panic(err)
-		}
-		blk = <-c.ch
+		blk = <-ch
 		err = c.bm.Finalize(blk)
 		if err != nil {
 			panic(err)
 		}
+		buf := bytes.NewBuffer(nil)
+		blk.MarshalHeader(buf)
+		blk.MarshalBody(buf)
+		c.ch <- buf.Bytes()
 		height++
 	}
 }
 
-func (c *singleChain) start() {
+type importOnlyConsensus struct {
+	bm module.BlockManager
+	sm module.ServiceManager
+	ch <-chan []byte
+}
+
+func (c *importOnlyConsensus) Start() {
+	ch := make(chan module.Block)
+	for {
+		bs := <-c.ch
+		buf := bytes.NewBuffer(bs)
+		_, err := c.bm.Import(buf, func(b module.Block, e error) {
+			if e != nil {
+				panic(e)
+			}
+			ch <- b
+		})
+		if err != nil {
+			panic(err)
+		}
+		blk := <-ch
+		err = c.bm.Finalize(blk)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
+func (c *chain) startAsProposer(ch chan<- []byte) {
 	c.database = db.NewMapDB()
 	c.sm = service.NewManager(c.database)
 	c.bm = block.NewManager(c, c.sm)
-	c.cs = newConsensus(c, c.bm, c.sm)
+	c.cs = &proposeOnlyConsensus{
+		sm: c.sm,
+		bm: c.bm,
+		ch: ch,
+	}
 	sm = c.sm
-	c.sv = rpc.NewJsonRpcServer(c.bm, c.sm)
 
 	c.cs.Start()
-	//c.sv.Start()
+}
+
+func (c *chain) startAsImporter(ch <-chan []byte) {
+	c.database = db.NewMapDB()
+	c.sm = service.NewManager(c.database)
+	c.bm = block.NewManager(c, c.sm)
+	c.cs = &importOnlyConsensus{
+		sm: c.sm,
+		bm: c.bm,
+		ch: ch,
+	}
+	sm = c.sm
+
+	c.cs.Start()
 }
 
 type JSONRPCResponse struct {
@@ -211,10 +253,10 @@ func (t transaction) String() string {
 }
 
 func main() {
-	c := new(singleChain)
+	proposer := new(chain)
+	importer := new(chain)
 
-	flag.IntVar(&c.nid, "nid", 1, "Chain Network ID")
-	flag.Parse()
-
-	c.start()
+	ch := make(chan []byte)
+	go proposer.startAsProposer(ch)
+	importer.startAsImporter(ch)
 }
