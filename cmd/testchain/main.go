@@ -49,7 +49,7 @@ func (c *chain) VoteListDecoder() module.VoteListDecoder {
 type emptyVoteList struct {
 }
 
-func (vl *emptyVoteList) Verify(block module.Block, validators module.ValidatorList) error {
+func (vl *emptyVoteList) Verify(block module.Block) error {
 	return common.ErrInvalidState
 }
 
