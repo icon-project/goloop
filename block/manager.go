@@ -113,7 +113,10 @@ func (m *manager) _import(
 	}
 	bn := m.nmap[string(block.PrevID())]
 	if bn == nil {
-		return nil, common.ErrIllegalArgument
+		return nil, errors.New("bad prev ID")
+	}
+	if err := verifyBlock(block, bn.block); err != nil {
+		return nil, err
 	}
 	it := &importTask{
 		block: block,
