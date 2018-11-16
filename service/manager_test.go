@@ -4,6 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
+	"math/big"
+	"math/rand"
+	"testing"
+	"time"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
@@ -12,11 +18,6 @@ import (
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
-	"log"
-	"math/big"
-	"math/rand"
-	"testing"
-	"time"
 )
 
 type txTest struct {
@@ -168,22 +169,25 @@ func createTxInst(wallet *testWallet, to *common.Address, value *big.Int, timest
 	tx.nid = 0
 	tx.nonce = r
 
+	// TODO find a better way to JSON serialization
 	// create a signature
 	m := make(map[string]interface{})
 	switch tx.version {
 	case 2:
-		m["from"] = *tx.from
-		m["to"] = *tx.to
-		m["value"] = common.HexInt{*tx.value}
-		m["fee"] = common.HexInt{*tx.stepLimit}
-		m["nonce"] = common.HexInt64{tx.nonce}
+		m["from"] = tx.from.String()
+		m["to"] = tx.to.String()
+		m["value"] = common.HexInt{*tx.value}.String()
+		m["fee"] = common.HexInt{*tx.stepLimit}.String()
+		m["timestamp"] = common.HexInt64{tx.timestamp}.String()
+		m["nonce"] = common.HexInt64{tx.nonce}.String()
 	case 3:
-		m["version"] = common.HexInt16{int16(tx.version)}
-		m["from"] = *tx.from
-		m["to"] = *tx.to
-		m["value"] = common.HexInt{*tx.value}
-		m["stepLimit"] = common.HexInt{*tx.stepLimit}
-		m["nonce"] = common.HexInt64{tx.nonce}
+		m["version"] = common.HexInt16{int16(tx.version)}.String()
+		m["from"] = tx.from.String()
+		m["to"] = tx.to.String()
+		m["value"] = common.HexInt{*tx.value}.String()
+		m["stepLimit"] = common.HexInt{*tx.stepLimit}.String()
+		m["timestamp"] = common.HexInt64{tx.timestamp}.String()
+		m["nonce"] = common.HexInt64{tx.nonce}.String()
 	default:
 		log.Fatalln("unknown transaction version:", tx.version)
 	}
