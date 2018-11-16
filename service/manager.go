@@ -143,7 +143,7 @@ func (m *manager) GetPatches(parent module.Transition) module.TransactionList {
 	if !ok {
 		return nil
 	}
-	_, state, err := m.checkTransitionResult(pt.parent)
+	_, state, err := m.checkTransitionResult(pt)
 	if err != nil {
 		return nil
 	}
