@@ -53,7 +53,7 @@ func (c *chain) GetNID() int {
 }
 
 func voteListDecoder([]byte) module.VoteList {
-	return nil
+	return &emptyVoteList{}
 }
 
 func (c *chain) VoteListDecoder() module.VoteListDecoder {
@@ -64,7 +64,7 @@ type emptyVoteList struct {
 }
 
 func (vl *emptyVoteList) Verify(block module.Block) error {
-	return common.ErrInvalidState
+	return nil
 }
 
 func (vl *emptyVoteList) Bytes() []byte {
@@ -126,7 +126,7 @@ func (c *proposeOnlyConsensus) Start() {
 		buf := bytes.NewBuffer(nil)
 		blk.MarshalHeader(buf)
 		blk.MarshalBody(buf)
-		fmt.Println("Proposer: Finalized Proposed Block ", blk.Height())
+		fmt.Println("Proposer: Finalized Proposed Block ", blk.Height(), blk.ID())
 		c.ch <- buf.Bytes()
 		height++
 	}
@@ -167,7 +167,7 @@ func (c *importOnlyConsensus) Start() {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Proposer: Finalized Proposed Block ", blk.Height())
+		fmt.Println("Importer : Finalized Imported Block ", blk.Height(), blk.ID())
 	}
 }
 
