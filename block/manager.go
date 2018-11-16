@@ -92,6 +92,16 @@ func (bn *bnode) dispose() {
 	bn.preexe.dispose()
 }
 
+func (bn *bnode) disposeExcept(e *bnode) {
+	for _, c := range bn.children {
+		if c != e {
+			c.dispose()
+		}
+	}
+	bn.in.dispose()
+	bn.preexe.dispose()
+}
+
 func (t *task) cb(block module.Block, err error) {
 	cb := t._cb
 	t.manager.syncer.callLater(func() {
@@ -153,6 +163,12 @@ func (it *importTask) cancel() bool {
 }
 
 func (it *importTask) onValidate(err error) {
+	it.manager.syncer.callLaterInLock(func() {
+		it._onValidate(err)
+	})
+}
+
+func (it *importTask) _onValidate(err error) {
 	if it.state == executingIn {
 		if err != nil {
 			it.stop()
@@ -171,6 +187,7 @@ func (it *importTask) onValidate(err error) {
 			preexe: it.out.newTransition(nil),
 		}
 		it.manager.nmap[string(bn.block.ID())] = bn
+		it.manager.nmap[string(bn.block.PrevID())].addChild(bn)
 		it.stop()
 		it.state = validatedOut
 		it.cb(it.block, err)
@@ -178,6 +195,12 @@ func (it *importTask) onValidate(err error) {
 }
 
 func (it *importTask) onExecute(err error) {
+	it.manager.syncer.callLaterInLock(func() {
+		it._onExecute(err)
+	})
+}
+
+func (it *importTask) _onExecute(err error) {
 	if it.state == executingIn {
 		if err != nil {
 			it.stop()
@@ -245,6 +268,12 @@ func (pt *proposeTask) cancel() bool {
 }
 
 func (pt *proposeTask) onValidate(err error) {
+	pt.manager.syncer.callLaterInLock(func() {
+		pt._onValidate(err)
+	})
+}
+
+func (pt *proposeTask) _onValidate(err error) {
 	if err != nil {
 		pt.stop()
 		pt.cb(nil, err)
@@ -253,6 +282,12 @@ func (pt *proposeTask) onValidate(err error) {
 }
 
 func (pt *proposeTask) onExecute(err error) {
+	pt.manager.syncer.callLaterInLock(func() {
+		pt._onExecute(err)
+	})
+}
+
+func (pt *proposeTask) _onExecute(err error) {
 	if err != nil {
 		pt.stop()
 		pt.cb(nil, err)
@@ -283,6 +318,8 @@ func (pt *proposeTask) onExecute(err error) {
 		preexe: tr,
 	}
 	pt.manager.nmap[string(bn.block.ID())] = bn
+	// TODO refactor
+	pt.manager.nmap[string(bn.block.PrevID())].addChild(bn)
 	pt.stop()
 	pt.state = validatedOut
 	pt.cb(block, nil)
@@ -455,6 +492,7 @@ func (m *manager) FinalizeGenesisBlocks(
 		votes:              votes,
 	}
 	m.nmap[string(bn.block.ID())] = bn
+	pbn.addChild(bn)
 	err = m.finalize(bn)
 	if err != nil {
 		return nil, err
@@ -512,12 +550,7 @@ func (m *manager) finalize(bn *bnode) error {
 	block := bn.block
 
 	if m.finalized != nil {
-		for _, c := range m.finalized.children {
-			if c != bn {
-				c.dispose()
-			}
-		}
-		m.finalized.dispose()
+		m.finalized.disposeExcept(bn)
 		m.sm.Finalize(
 			bn.in.mtransition(),
 			module.FinalizePatchTransaction|module.FinalizeResult,

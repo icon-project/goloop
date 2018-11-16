@@ -76,7 +76,7 @@ func (ti *transitionImpl) _newTransition(cb transitionCallback) *transition {
 		tr.onValidate(*(ti._valErr))
 	}
 	if ti._exeErr != nil {
-		tr.onValidate(*(ti._exeErr))
+		tr.onExecute(*(ti._exeErr))
 	}
 	if ti.running() {
 		ti._cbs = append(ti._cbs, tr)
