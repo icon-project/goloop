@@ -25,8 +25,6 @@ const (
 	hashNumBytes       = 32
 )
 
-var zeroHash = common.Zero32
-
 type transactionLocator struct {
 	BlockHeight      int64
 	TransactionGroup module.TransactionGroup
@@ -415,7 +413,7 @@ func (m *manager) FinalizeGenesisBlocks(
 		height:             genesisHeight,
 		timestamp:          timestamp,
 		proposer:           proposer,
-		prevID:             zeroHash,
+		prevID:             nil,
 		logBloom:           mtr.LogBloom(),
 		result:             mtr.Result(),
 		patchTransactions:  gmtr.mtransition().PatchTransactions(),
