@@ -162,7 +162,11 @@ func (tx *transaction) Bytes() []byte {
 
 func (tx *transaction) Hash() []byte {
 	if tx.hash == nil {
-		tx.hash = crypto.SHA3Sum256(tx.Bytes())
+		if hash, err := tx.calcHash(); err == nil {
+			tx.hash = hash
+		} else {
+			log.Println("fail to calculate hash", err)
+		}
 	}
 	return tx.hash
 }
@@ -295,7 +299,7 @@ var (
 	}
 )
 
-func (tx *transaction) verifySignature() error {
+func (tx *transaction) calcHash() ([]byte, error) {
 	raw := tx.Bytes()
 
 	var data map[string]interface{}
@@ -303,29 +307,34 @@ func (tx *transaction) verifySignature() error {
 	if err = json.Unmarshal(raw, &data); err != nil {
 		log.Println("JSON Parse FAILS")
 		log.Println("JSON", string(raw))
-		return err
+		return nil, err
 	}
 	var bs []byte
-	var txHash []byte
 	if tx.version == 2 {
 		bs, err = SerializeMap(data, v2FieldInclusion, v2FieldExclusion)
 	} else {
 		bs, err = SerializeMap(data, v3FieldInclusion, v3FieldExclusion)
 	}
-	txHash = tx.Hash()
 	if err != nil {
 		log.Println("Serialize FAILs")
 		log.Println("JSON", string(raw))
-		return err
+		return nil, err
 	}
 	bs = append([]byte("icx_sendTransaction."), bs...)
 
-	h := crypto.SHA3Sum256(bs)
+	return crypto.SHA3Sum256(bs), nil
+}
+
+func (tx *transaction) verifySignature() error {
+	h, err := tx.calcHash()
+	if err != nil {
+		return err
+	}
+	txHash := tx.Hash()
 	if bytes.Compare(h, txHash) != 0 {
 		log.Println("Hashes are different")
 		log.Println("JSON.TxHash", hex.EncodeToString(txHash))
 		log.Println("Calc.TxHash", hex.EncodeToString(h))
-		log.Println("TxPhrase", string(bs))
 		return errors.New("txHash value is different from real")
 	}
 
