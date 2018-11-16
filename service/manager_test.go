@@ -135,33 +135,16 @@ const (
 var resultMap = make(map[string]*big.Int)
 var deposit = int64(1000000)
 var testAddresses [TEST_ACCOUNTS_NUM]*common.Address
-var testWallets []testWallet
+var testWallets []common.Wallet
 
-type testWallet struct {
-	pbKey   *crypto.PublicKey
-	prKey   *crypto.PrivateKey
-	address *common.Address
-}
-
-func createWallet(walletNum int) []testWallet {
-	ws := make([]testWallet, walletNum)
-	for i := 0; i < walletNum; i++ {
-		w := testWallet{}
-		w.prKey, w.pbKey = crypto.GenerateKeyPair()
-		w.address = common.NewAccountAddressFromPublicKey(w.pbKey)
-		ws[i] = w
-	}
-	return ws
-}
-
-func createTxInst(wallet *testWallet, to *common.Address, value *big.Int, timestamp int64) module.Transaction {
+func createTxInst(wallet *common.Wallet, to *common.Address, value *big.Int, timestamp int64) module.Transaction {
 	r := rand.Int63()
 	ver := int((r % 2) + 2)
 
 	tx := txTest{}
 	tx.group = module.TransactionGroupNormal
 	tx.version = ver
-	tx.from = wallet.address
+	tx.from = wallet.Address
 	tx.to = to
 	tx.value = value
 	tx.stepLimit = new(big.Int).SetInt64(r % 0xffff)
@@ -197,7 +180,7 @@ func createTxInst(wallet *testWallet, to *common.Address, value *big.Int, timest
 	}
 	bs = append([]byte("icx_sendTransaction."), bs...)
 	h := crypto.SHA3Sum256(bs)
-	sig, err := crypto.NewSignature(h, wallet.prKey)
+	sig, err := crypto.NewSignature(h, wallet.PrKey)
 	if err != nil {
 		log.Fatalln("fail to create a signature")
 	}
@@ -310,10 +293,10 @@ func requestTx(validTxNum int, manager module.ServiceManager, done chan bool) {
 // create wallet(private/public keys & address) and set balance
 // then set addresses and accounts to trie
 func initTestWallets(testWalletNum int, db db.Database, mpts ...trie.Mutable) {
-	wallet := createWallet(testWalletNum)
+	wallet := common.CreateWallet(testWalletNum)
 	//testAddresses = make([][]byte, testWalletNum)
 	for i := 0; i < testWalletNum; i++ {
-		testAddresses[i] = wallet[i].address
+		testAddresses[i] = wallet[i].Address
 		accountState := service.T_NewAccountState(db)
 		accountState.SetBalance(big.NewInt(deposit))
 		serializedAccount, _ := codec.MP.MarshalToBytes(accountState.GetSnapshot())
@@ -349,7 +332,7 @@ func TestServiceManager(t *testing.T) {
 	leaderValidator, _ := service.ValidatorListFromSlice(leaderDB, nil)
 	initTrs, err := leaderServiceManager.CreateInitialTransition(leaderResult, leaderValidator, 0)
 	if err != nil {
-		log.Panicf("Faile to create initial transition. result = %x, err = %s\n", leaderResult, err)
+		log.Panicf("Failed to create initial transition. result = %x, err = %s\n", leaderResult, err)
 	}
 	parentTrs := initTrs
 	txListChan := make(chan module.TransactionList)
@@ -382,7 +365,7 @@ func TestServiceManager(t *testing.T) {
 	validatorValidator, _ := service.ValidatorListFromSlice(leaderDB, nil)
 	initVTrs, err := validatorServiceManager.CreateInitialTransition(validatorResult, validatorValidator, 0)
 	if err != nil {
-		log.Panicf("Faile to create initial transition. result = %x, err = %s\n", validatorResult, err)
+		log.Panicf("Failed to create initial transition. result = %x, err = %s\n", validatorResult, err)
 	}
 	parentVTransition := initVTrs
 	executedTxNum := 0
