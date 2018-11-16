@@ -403,7 +403,8 @@ func (m *manager) FinalizeGenesisBlocks(
 		return nil, err
 	}
 	pbn.in = newInitialTransition(mtr, &m.syncer, m.sm)
-	gmtr := pbn.in.proposeGenesis(nil)
+	ch := make(chan error)
+	gmtr := pbn.in.proposeGenesis(&channelingCB{ch: ch})
 	pbn.preexe = gmtr
 	pbn.block = &blockV2{
 		height:             genesisHeight,
@@ -423,10 +424,6 @@ func (m *manager) FinalizeGenesisBlocks(
 	if err != nil {
 		return nil, err
 	}
-
-	emptyTxs := m.sm.TransactionListFromSlice(nil, common.BlockVersion2)
-	ch := make(chan error)
-	in := gmtr.transit(emptyTxs, &channelingCB{ch: ch})
 	m.syncer.end()
 
 	// wait for genesis transition execution
@@ -438,12 +435,12 @@ func (m *manager) FinalizeGenesisBlocks(
 		return nil, err
 	}
 	m.syncer.begin()
+	emptyTxs := m.sm.TransactionListFromSlice(nil, common.BlockVersion2)
 	bn := &bnode{}
-	bn.in = in
-	pmtr := in.mtransition()
-	preexe := in.propose(nil)
-	bn.preexe = preexe
-	mtr = preexe.mtransition()
+	bn.in = pbn.preexe.newTransition(nil)
+	pmtr := bn.in.mtransition()
+	bn.preexe = gmtr.transit(emptyTxs, nil)
+	mtr = bn.preexe.mtransition()
 	bn.block = &blockV2{
 		height:             genesisHeight + 1,
 		timestamp:          timestamp,

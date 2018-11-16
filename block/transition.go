@@ -68,7 +68,7 @@ func (ti *transitionImpl) exeState() exeState {
 	return executed
 }
 
-func (ti *transitionImpl) newTransition(cb transitionCallback) *transition {
+func (ti *transitionImpl) _newTransition(cb transitionCallback) *transition {
 	tr := &transition{ti, cb}
 	ti._nRef++
 	if ti._valErr != nil {
@@ -151,12 +151,18 @@ func (ti *transitionImpl) OnExecute(tr module.Transition, err error) {
 	}
 }
 
-func (ti *transitionImpl) _addChild(mtr module.Transition) *transitionImpl {
+func (ti *transitionImpl) _addChild(
+	mtr module.Transition,
+	cb transitionCallback,
+) *transition {
 	cti := &transitionImpl{
 		_setting:     ti._setting,
 		_mtransition: mtr,
 		_parent:      ti,
+		_nRef:        1,
 	}
+	tr := &transition{ti, cb}
+	cti._cbs = append(ti._cbs, &transition{ti, cb})
 	var err error
 	cti._canceler, err = mtr.Execute(cti)
 	if err != nil {
@@ -164,46 +170,48 @@ func (ti *transitionImpl) _addChild(mtr module.Transition) *transitionImpl {
 		return nil
 	}
 	ti._children = append(ti._children, cti)
-	return cti
+	return tr
 }
 
 func (ti *transitionImpl) patch(
 	patches module.TransactionList,
-) *transitionImpl {
+	cb transitionCallback,
+) *transition {
 	for _, c := range ti._parent._children {
 		if c._mtransition.PatchTransactions().Equal(patches) {
-			return c
+			return c._newTransition(cb)
 		}
 	}
 	c := ti._children[len(ti._children)-1]
 	pmtr := ti._setting.sm.PatchTransition(c._mtransition, patches)
-	return ti._parent._addChild(pmtr)
+	return ti._parent._addChild(pmtr, cb)
 }
 
 func (ti *transitionImpl) transit(
 	txs module.TransactionList,
-) *transitionImpl {
+	cb transitionCallback,
+) *transition {
 	cmtr, err := ti._setting.sm.CreateTransition(ti._mtransition, txs)
 	if err != nil {
 		return nil
 	}
-	return ti._addChild(cmtr)
+	return ti._addChild(cmtr, cb)
 }
 
-func (ti *transitionImpl) propose() *transitionImpl {
+func (ti *transitionImpl) propose(cb transitionCallback) *transition {
 	cmtr, err := ti._setting.sm.ProposeTransition(ti._mtransition)
 	if err != nil {
 		return nil
 	}
-	return ti._addChild(cmtr)
+	return ti._addChild(cmtr, cb)
 }
 
-func (ti *transitionImpl) proposeGenesis() *transitionImpl {
+func (ti *transitionImpl) proposeGenesis(cb transitionCallback) *transition {
 	cmtr, err := ti._setting.sm.ProposeGenesisTransition(ti._mtransition)
 	if err != nil {
 		return nil
 	}
-	return ti._addChild(cmtr)
+	return ti._addChild(cmtr, cb)
 }
 
 func (ti *transitionImpl) verifyResult(block module.Block) error {
@@ -264,8 +272,7 @@ func (tr *transition) patch(
 	if tr._ti == nil {
 		return nil
 	}
-	ti := tr._ti.patch(patches)
-	return ti.newTransition(cb)
+	return tr._ti.patch(patches, cb)
 }
 
 func (tr *transition) transit(
@@ -275,31 +282,28 @@ func (tr *transition) transit(
 	if tr._ti == nil {
 		return nil
 	}
-	ti := tr._ti.transit(txs)
-	return ti.newTransition(cb)
+	return tr._ti.transit(txs, cb)
 }
 
 func (tr *transition) propose(cb transitionCallback) *transition {
 	if tr._ti == nil {
 		return nil
 	}
-	ti := tr._ti.propose()
-	return ti.newTransition(cb)
+	return tr._ti.propose(cb)
 }
 
 func (tr *transition) proposeGenesis(cb transitionCallback) *transition {
 	if tr._ti == nil {
 		return nil
 	}
-	ti := tr._ti.proposeGenesis()
-	return ti.newTransition(cb)
+	return tr._ti.proposeGenesis(cb)
 }
 
 func (tr *transition) newTransition(cb transitionCallback) *transition {
 	if tr._ti == nil {
 		return nil
 	}
-	return tr._ti.newTransition(cb)
+	return tr._ti._newTransition(cb)
 }
 
 func (tr *transition) verifyResult(block module.Block) error {
