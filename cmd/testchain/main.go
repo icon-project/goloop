@@ -29,9 +29,23 @@ func (c *chain) GetDatabase() db.Database {
 	return c.database
 }
 
+type testWallet struct {
+}
+
+func (w *testWallet) GetAddress() module.Address {
+	return common.NewAccountAddress(make([]byte, common.AddressBytes))
+}
+
+func (w *testWallet) Sign(data []byte) []byte {
+	panic("not implemented")
+}
+
+func (w *testWallet) PublicKey() []byte {
+	panic("not implemented")
+}
+
 func (c *chain) GetWallet() module.Wallet {
-	// TODO Implement wallet.
-	return nil
+	return &testWallet{}
 }
 
 func (c *chain) GetNID() int {
@@ -95,7 +109,7 @@ func (c *proposeOnlyConsensus) Start() {
 		for _, t := range wblkv1.Transactions {
 			c.sm.SendTransaction(t)
 		}
-		_, err = c.bm.Propose(blk.ID(), nil, func(b module.Block, e error) {
+		_, err = c.bm.Propose(blk.ID(), &emptyVoteList{}, func(b module.Block, e error) {
 			if e != nil {
 				panic(e)
 			}
