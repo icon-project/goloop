@@ -271,8 +271,8 @@ func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
 }
 
 func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {
-	// TODO impl
-	return nil
+	valList, _ := ValidatorListFromHash(m.db, hash)
+	return valList
 }
 
 // For test
