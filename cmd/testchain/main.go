@@ -58,7 +58,7 @@ func (vl *emptyVoteList) Bytes() []byte {
 }
 
 func (vl *emptyVoteList) Hash() []byte {
-	return make([]byte, 32)
+	return common.Zero32
 }
 
 type proposeOnlyConsensus struct {

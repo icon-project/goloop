@@ -27,7 +27,7 @@ const (
 	hashNumBytes       = 32
 )
 
-var zeroHash = make([]byte, hashNumBytes)
+var zeroHash = common.Zero32
 
 type transactionLocator struct {
 	BlockHeight      int64
