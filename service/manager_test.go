@@ -1,4 +1,4 @@
-package service_test
+package service
 
 import (
 	"bytes"
@@ -8,7 +8,6 @@ import (
 	"math/big"
 	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -17,7 +16,6 @@ import (
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service"
 )
 
 type txTest struct {
@@ -174,7 +172,7 @@ func createTxInst(wallet *common.Wallet, to *common.Address, value *big.Int, tim
 	default:
 		log.Fatalln("unknown transaction version:", tx.version)
 	}
-	bs, err := service.SerializeMap(m, map[string]bool(nil), map[string]bool(nil))
+	bs, err := SerializeMap(m, map[string]bool(nil), map[string]bool(nil))
 	if err != nil {
 		log.Fatalln("fail to create transaction bytes")
 	}
@@ -259,14 +257,10 @@ func createRandTx(valid bool, time int64, validNum int) module.Transaction {
 		timestamp = time + 1000 + int64(rand.Int()%100)
 		// TODO: check value type. no
 	} else {
-		timestamp = time - service.TestTxLiveDuration() - 1000 - int64(rand.Int()%10)
+		timestamp = time - TestTxLiveDuration() - 1000 - int64(rand.Int()%10)
 	}
 
 	return createTxInst(&walletFrom, to, value, timestamp)
-}
-
-func makeTimestamp() int64 {
-	return time.Now().UnixNano() / int64(time.Millisecond)
 }
 
 func requestTx(validTxNum int, manager module.ServiceManager, done chan bool) {
@@ -297,7 +291,7 @@ func initTestWallets(testWalletNum int, db db.Database, mpts ...trie.Mutable) {
 	//testAddresses = make([][]byte, testWalletNum)
 	for i := 0; i < testWalletNum; i++ {
 		testAddresses[i] = wallet[i].Address
-		accountState := service.T_NewAccountState(db)
+		accountState := newAccountState(db, nil)
 		accountState.SetBalance(big.NewInt(deposit))
 		serializedAccount, _ := codec.MP.MarshalToBytes(accountState.GetSnapshot())
 		for _, mpt := range mpts {
@@ -321,7 +315,7 @@ func TestServiceManager(t *testing.T) {
 
 	// request transactions
 	requestCh := make(chan bool)
-	leaderServiceManager := service.NewManager(leaderDB)
+	leaderServiceManager := NewManager(leaderDB)
 	go requestTx(TEST_VALID_REQUEST_TX_NUM, leaderServiceManager, requestCh)
 
 	//run service manager for leader
@@ -329,7 +323,7 @@ func TestServiceManager(t *testing.T) {
 	snapshot.Flush()
 	leaderResult := make([]byte, 96)
 	copy(leaderResult, snapshot.Hash())
-	leaderValidator, _ := service.ValidatorListFromSlice(leaderDB, nil)
+	leaderValidator, _ := ValidatorListFromSlice(leaderDB, nil)
 	initTrs, err := leaderServiceManager.CreateInitialTransition(leaderResult, leaderValidator, 0)
 	if err != nil {
 		log.Panicf("Failed to create initial transition. result = %x, err = %s\n", leaderResult, err)
@@ -339,11 +333,17 @@ func TestServiceManager(t *testing.T) {
 	// propose transition
 	go func() {
 		for {
+			executedTxNum := 0
+
 			transition, err := leaderServiceManager.ProposeTransition(parentTrs)
 			if err != nil {
 				log.Panicf("Failed to propose transition!, err = %s\n", err)
 			}
-			txListChan <- transition.NormalTransactions()
+			txList := transition.NormalTransactions()
+			for iter := txList.Iterator(); iter.Has(); iter.Next() {
+				executedTxNum += 1
+			}
+			txListChan <- txList
 			<-txListChan
 			cb := &transitionCb{exeDone: make(chan bool)}
 			transition.Execute(cb)
@@ -352,7 +352,10 @@ func TestServiceManager(t *testing.T) {
 			leaderServiceManager.Finalize(transition, module.FinalizeResult)
 			// get result then run below
 			transition = parentTrs
-			// TODO when is done?
+			if executedTxNum >= TEST_VALID_REQUEST_TX_NUM {
+				log.Printf("Proposed transactions %d\n", executedTxNum)
+				return
+			}
 		}
 	}()
 
@@ -361,16 +364,16 @@ func TestServiceManager(t *testing.T) {
 	validatorSnapshot.Flush()
 	validatorResult := make([]byte, 96)
 	copy(validatorResult, validatorSnapshot.Hash())
-	validatorServiceManager := service.NewManager(validatorDB)
-	validatorValidator, _ := service.ValidatorListFromSlice(leaderDB, nil)
+	validatorServiceManager := NewManager(validatorDB)
+	validatorValidator, _ := ValidatorListFromSlice(leaderDB, nil)
 	initVTrs, err := validatorServiceManager.CreateInitialTransition(validatorResult, validatorValidator, 0)
 	if err != nil {
 		log.Panicf("Failed to create initial transition. result = %x, err = %s\n", validatorResult, err)
 	}
 	parentVTransition := initVTrs
-	executedTxNum := 0
 	endChan := make(chan bool)
 	go func() {
+		executedTxNum := 0
 		for {
 			txList := <-txListChan
 			for iter := txList.Iterator(); iter.Has(); iter.Next() {
@@ -399,31 +402,21 @@ func TestServiceManager(t *testing.T) {
 	validatorSnapdhot := validatorTrie.GetSnapshot()
 
 	if bytes.Compare(leaderSanpshot.Hash(), validatorSnapdhot.Hash()) != 0 {
-		log.Panicf("Failed to compare hashes. leadHash : %x, validatorHash : %x\n", leaderSanpshot.Hash(), validatorSnapdhot.Hash())
+		log.Panicf("Failed to compare hashes. leadHash : %x, validatorHash : %x\n",
+			leaderSanpshot.Hash(), validatorSnapdhot.Hash())
 	}
 
-	service.T_Result(resultMap, leaderSanpshot)
-}
-
-func TestTransaction(t *testing.T) {
-	db := db.NewMapDB()
-	sm := service.NewManager(db)
-
-	var transition module.Transition
-	var err error
-	transition, err = sm.ProposeTransition(transition)
-	if err != nil {
-		panic("Failed propose transition")
-		return
+	for k, v := range resultMap {
+		leaderSanpshot.Get([]byte(k))
+		if serializedAccount, err := leaderSanpshot.Get([]byte(k)); err == nil && len(serializedAccount) != 0 {
+			var accInfo accountSnapshotImpl
+			if _, err := codec.MP.UnmarshalFromBytes(serializedAccount, &accInfo); err != nil {
+				log.Panicf("Failed to unmarshal")
+			}
+			if accInfo.GetBalance().Cmp(v) != 0 {
+				log.Panicf("Not same value for %x, trie %v, map %v \n",
+					[]byte(k), accInfo.GetBalance(), v)
+			}
+		}
 	}
-	//cb := &transitionCb{}
-	//transition.Execute(cb)
-	sm.Finalize(transition, module.FinalizeNormalTransaction|module.FinalizeResult)
-	//service.TestExecute()
-}
-
-func TestSendTx(t *testing.T) {
-	service.TxTest()
-	//service.SendTx.../
-	// candidate.k
 }
