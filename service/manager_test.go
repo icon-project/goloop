@@ -327,7 +327,7 @@ func TestServiceManager(t *testing.T) {
 	//run service manager for leader
 	snapshot := leaderTrie.GetSnapshot()
 	snapshot.Flush()
-	leaderResult := make([]byte, 64)
+	leaderResult := make([]byte, 96)
 	copy(leaderResult, snapshot.Hash())
 	leaderValidator, _ := service.ValidatorListFromSlice(leaderDB, nil)
 	initTrs, err := leaderServiceManager.CreateInitialTransition(leaderResult, leaderValidator, 0)
@@ -359,7 +359,7 @@ func TestServiceManager(t *testing.T) {
 	// validator
 	validatorSnapshot := validatorTrie.GetSnapshot()
 	validatorSnapshot.Flush()
-	validatorResult := make([]byte, 64)
+	validatorResult := make([]byte, 96)
 	copy(validatorResult, validatorSnapshot.Hash())
 	validatorServiceManager := service.NewManager(validatorDB)
 	validatorValidator, _ := service.ValidatorListFromSlice(leaderDB, nil)
