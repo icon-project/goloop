@@ -251,34 +251,36 @@ func (m *manager) checkTransitionResult(t module.Transition) (*transition, trie.
 	return tst, state, nil
 }
 
-func (m *manager) SendTransaction(tx module.Transaction) ([]byte, error) {
-	newTx, err := newTransactionFromObject(tx)
-	if err != nil {
-		log.Printf("Failed to create new transaction from object!. tx : %x\n", newTx.Bytes())
-		return nil, err
-	}
-	if err = newTx.Verify(); err != nil {
-		log.Printf("Failed to verify transaction. tx : %x\n", newTx.Bytes())
-		return nil, err
-	}
-	hash := newTx.Hash()
-	if hash == nil {
-		log.Printf("Failed to get hash from tx : %x\n", newTx.Bytes())
-		return nil, errors.New("Invalid Transaction. Failed to get hash")
-	}
-
-	var txPool *transactionPool
-	switch newTx.Group() {
-	case module.TransactionGroupNormal:
-		txPool = m.normalTxPool
-	case module.TransactionGroupPatch:
-		txPool = m.patchTxPool
-	default:
-		log.Panicf("Wrong TransactionGroup. %v", newTx.Group())
-	}
-
-	go txPool.add(newTx)
-	return hash, nil
+func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
+	// TODO: apply changed API
+	//newTx, err := newTransactionFromObject(tx)
+	//if err != nil {
+	//	log.Printf("Failed to create new transaction from object!. tx : %x\n", newTx.Bytes())
+	//	return nil, err
+	//}
+	//if err = newTx.Verify(); err != nil {
+	//	log.Printf("Failed to verify transaction. tx : %x\n", newTx.Bytes())
+	//	return nil, err
+	//}
+	//hash := newTx.Hash()
+	//if hash == nil {
+	//	log.Printf("Failed to get hash from tx : %x\n", newTx.Bytes())
+	//	return nil, errors.New("Invalid Transaction. Failed to get hash")
+	//}
+	//
+	//var txPool *transactionPool
+	//switch newTx.Group() {
+	//case module.TransactionGroupNormal:
+	//	txPool = m.normalTxPool
+	//case module.TransactionGroupPatch:
+	//	txPool = m.patchTxPool
+	//default:
+	//	log.Panicf("Wrong TransactionGroup. %v", newTx.Group())
+	//}
+	//
+	//go txPool.add(newTx)
+	//return hash, nil
+	return nil, nil
 }
 
 func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {

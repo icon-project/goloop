@@ -35,7 +35,7 @@ type transactionHashParam struct {
 	TransactionHash string `json:"txHash" valid:"t_hash,required"`
 }
 
-type sendTransactionParam struct {
+type SendTransactionParam struct {
 	Version     string      `json:"version" valid:"t_int,required"`
 	FromAddress string      `json:"from" valid:"t_addr_eoa,required"`
 	ToAddress   string      `json:"to" valid:"t_addr,optional"`

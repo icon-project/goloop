@@ -151,7 +151,7 @@ type ServiceManager interface {
 	ReceiptListFromResult(result []byte, g TransactionGroup) ReceiptList
 
 	// SendTransaction adds transaction to a transaction pool.
-	SendTransaction(tx Transaction) ([]byte, error)
+	SendTransaction(tx interface{}) ([]byte, error)
 
 	// ValidatorListFromHash returns ValidatorList from hash.
 	ValidatorListFromHash(hash []byte) ValidatorList

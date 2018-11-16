@@ -8,7 +8,7 @@ import (
 )
 
 // JSON-RPC Request Params
-type sendTransactionParam struct {
+type SendTransactionParam struct {
 	FromAddress     string `json:"from" valid:"t_addr_eoa,required"`
 	ToAddress       string `json:"to" valid:"t_addr_eoa,required"`
 	Value           string `json:"value" valid:"t_int,required"`
