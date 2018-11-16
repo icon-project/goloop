@@ -111,13 +111,15 @@ func (ti *transitionImpl) unref() {
 		}
 		ti._children = nil
 		parent := ti._parent
-		for i, c := range parent._children {
-			if c == ti {
-				last := len(parent._children) - 1
-				parent._children[i] = parent._children[last]
-				parent._children[last] = nil
-				parent._children = parent._children[:last]
-				break
+		if parent != nil {
+			for i, c := range parent._children {
+				if c == ti {
+					last := len(parent._children) - 1
+					parent._children[i] = parent._children[last]
+					parent._children[last] = nil
+					parent._children = parent._children[:last]
+					break
+				}
 			}
 		}
 		ti._mtransition = nil
