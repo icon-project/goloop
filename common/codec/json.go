@@ -6,6 +6,7 @@ import (
 )
 
 var jsonCodecObject jsonCodec
+var JSON = bytesWrapper{&jsonCodecObject}
 
 type jsonCodec struct {
 }

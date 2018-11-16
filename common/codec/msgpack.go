@@ -1,28 +1,29 @@
 package codec
 
 import (
-	"github.com/ugorji/go/codec"
+	ugorji "github.com/ugorji/go/codec"
 	"io"
 )
 
 var mpCodecObject mpCodec
+var MP = bytesWrapper{&mpCodecObject}
 
 type mpCodec struct {
-	handle *codec.MsgpackHandle
+	handle *ugorji.MsgpackHandle
 }
 
 func (c *mpCodec) Marshal(w io.Writer, v interface{}) error {
-	e := codec.NewEncoder(w, c.handle)
+	e := ugorji.NewEncoder(w, c.handle)
 	return e.Encode(v)
 }
 
 func (c *mpCodec) Unmarshal(r io.Reader, v interface{}) error {
-	e := codec.NewDecoder(r, c.handle)
+	e := ugorji.NewDecoder(r, c.handle)
 	return e.Decode(v)
 }
 
 func init() {
-	mh := new(codec.MsgpackHandle)
+	mh := new(ugorji.MsgpackHandle)
 	mh.StructToArray = true
 	mh.Canonical = true
 	mpCodecObject.handle = mh

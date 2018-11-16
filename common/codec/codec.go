@@ -11,9 +11,24 @@ type Codec interface {
 }
 
 var (
-	JSON = bytesWrapper{&jsonCodecObject}
-	MP   = bytesWrapper{&mpCodecObject}
+	codec = MP
 )
+
+func Marshal(w io.Writer, v interface{}) error {
+	return codec.Marshal(w, v)
+}
+
+func Unmarshal(r io.Reader, v interface{}) error {
+	return codec.Unmarshal(r, v)
+}
+
+func MarshalToBytes(v interface{}) ([]byte, error) {
+	return codec.MarshalToBytes(v)
+}
+
+func UnmarshalFromBytes(b []byte, v interface{}) ([]byte, error) {
+	return codec.UnmarshalFromBytes(b, v)
+}
 
 type bytesWrapper struct {
 	Codec
