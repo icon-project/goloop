@@ -1,9 +1,11 @@
 package service
 
 import (
+	"bytes"
 	"errors"
-	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"sync"
+
+	"github.com/icon-project/goloop/common/trie/trie_manager"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
@@ -20,6 +22,9 @@ const (
 	stepError    // fails validation or execution
 	stepCanceled // canceled. requested to cancel after complete executione, just remain stepFinished
 )
+
+// TODO temporary; remove
+var Zero32 = make([]byte, 32)
 
 // TODO Need to define Validator struct
 type transitionState struct {
@@ -144,6 +149,9 @@ func (t *transition) NextValidators() module.ValidatorList {
 // LogBloom returns log bloom filter for this transition.
 // It may return nil before cb.OnExecute is called back by Execute.
 func (t *transition) LogBloom() []byte {
+	if t.step != stepComplete {
+		return nil
+	}
 	b := make([]byte, len(t.logBloom))
 	copy(b, t.logBloom)
 	return t.logBloom
@@ -185,10 +193,13 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	t.state = trie_manager.NewMutable(t.db, stateHash)
 	t.patchReceipts = &receiptList{}
 	t.normalReceipts = &receiptList{}
+	t.logBloom = make([]byte, 0)
 	if !t.executeTxs(t.patchTransactions) || !t.executeTxs(t.normalTransactions) {
 		return
 	}
 	t.result = newResultBytesFromData(t.state, t.patchReceipts, t.normalReceipts)
+	// TODO update validators; it just copied the previous one.
+	t.nextValidatorList = t.parent.nextValidatorList
 
 	t.mutex.Lock()
 	t.step = stepComplete
@@ -286,11 +297,15 @@ func (t *transition) stepString() string {
 	}
 }
 
-// TODO store a serialized form to []byte
+// TODO store a serialized form to []byte and remove the concept of zero bytes
 type resultBytes []byte
 
+func newEmptyResultBytes() resultBytes {
+	b := make([]byte, 96)
+	return resultBytes(b)
+}
 func newResultBytes(result []byte) (resultBytes, error) {
-	if len(result) != 96 && len(result) != 64 {
+	if len(result) != 96 {
 		return nil, common.ErrIllegalArgument
 	}
 	bytes := make([]byte, len(result))
@@ -299,36 +314,51 @@ func newResultBytes(result []byte) (resultBytes, error) {
 }
 
 func newResultBytesFromData(state trie.Mutable, patchRcList *receiptList, normalRcList *receiptList) resultBytes {
-	hasPatch := false
-	if patchRcList != nil {
-		hasPatch = len(patchRcList.receipts) > 0
-	}
 	bytes := make([]byte, 0, 96)
-	bytes = append(bytes, state.GetSnapshot().Hash()...)
-	if hasPatch {
-		bytes = append(bytes, patchRcList.Hash()...)
+	var h []byte
+	if state != nil {
+		h = state.GetSnapshot().Hash()
 	}
-	if normalRcList != nil {
-		bytes = append(bytes, normalRcList.Hash()...)
+	if h == nil {
+		h = Zero32
 	}
+	bytes = append(bytes, h...)
+	if patchRcList == nil || patchRcList.Hash() == nil {
+		h = Zero32
+	} else {
+		h = patchRcList.Hash()
+	}
+	bytes = append(bytes, h...)
+	if normalRcList == nil || normalRcList.Hash() == nil {
+		h = Zero32
+	} else {
+		h = normalRcList.Hash()
+	}
+	bytes = append(bytes, h...)
 	return resultBytes(bytes)
 }
 
 func (r resultBytes) stateHash() []byte {
 	// assumes bytes are already valid
+	if bytes.Equal(r[0:32], Zero32) {
+		return nil
+	}
 	return r[0:32]
 }
 
 // It returns nil for no patch receipt
 func (r resultBytes) patchReceiptHash() []byte {
-	if len(r) == 64 {
+	// assumes bytes are already valid
+	if bytes.Equal(r[32:64], Zero32) {
 		return nil
 	}
-	// assumes bytes are already valid
-	return r[64:96]
+	return r[32:64]
 }
 
 func (r resultBytes) normalReceiptHash() []byte {
 	// assumes bytes are already valid
-	return r[32:64]
+	if bytes.Equal(r[64:96], Zero32) {
+		return nil
+	}
+	return r[64:96]
 }

@@ -94,24 +94,17 @@ func (m *manager) ProposeGenesisTransition(parent module.Transition) (module.Tra
 // CreateInitialTransition creates an initial Transition with result and
 // vs validators.
 func (m *manager) CreateInitialTransition(result []byte, valList module.ValidatorList, height int64) (module.Transition, error) {
-	if result == nil {
-		if height < 0 {
-			if valList == nil {
-				valList, _ = ValidatorListFromSlice(m.db, nil)
-			}
-			// nil result is allowed only at height -1 (prior to Genesis)
-			return newInitTransition(m.db, nil, valList), nil
-		} else {
-			return nil, common.ErrIllegalArgument
+	var err error
+	var resultBytes resultBytes
+	if len(result) == 0 {
+		resultBytes = newEmptyResultBytes()
+	} else {
+		if resultBytes, err = newResultBytes(result); err != nil {
+			return nil, errors.New("invalid result")
 		}
 	}
 	if valList == nil {
-		return nil, common.ErrIllegalArgument
-	}
-
-	resultBytes, err := newResultBytes(result)
-	if err != nil {
-		return nil, errors.New("Invalid result")
+		valList, _ = ValidatorListFromSlice(m.db, nil)
 	}
 	// TODO check if result isn't valid. Who's responsible?
 	return newInitTransition(m.db, resultBytes, valList), nil
@@ -284,6 +277,7 @@ func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
 }
 
 func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {
+	// TODO impl
 	return nil
 }
 
