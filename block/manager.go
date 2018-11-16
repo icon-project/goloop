@@ -404,6 +404,7 @@ func (m *manager) ProposeGenesis(
 		nextValidators:     mtr.NextValidators(),
 		votes:              votes,
 	}
+	m.nmap[string(bn.block.ID())] = bn
 	return bn.block, nil
 }
 
@@ -448,12 +449,14 @@ func (m *manager) Finalize(block module.Block) error {
 		return common.ErrIllegalArgument
 	}
 
-	for _, c := range m.finalized.children {
-		if c != bn {
-			c.dispose()
+	if m.finalized != nil {
+		for _, c := range m.finalized.children {
+			if c != bn {
+				c.dispose()
+			}
 		}
+		m.finalized.dispose()
 	}
-	m.finalized.dispose()
 
 	m.finalized = bn
 	m.finalized.parent = nil
