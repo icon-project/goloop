@@ -76,7 +76,10 @@ func (c *proposeOnlyConsensus) Start() {
 	if err != nil {
 		panic(err)
 	}
-	c.bm.Finalize(blk)
+	err = c.bm.Finalize(blk)
+	if err != nil {
+		panic(err)
+	}
 	ch := make(chan module.Block)
 
 	height := 1
