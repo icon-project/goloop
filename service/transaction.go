@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/icon-project/goloop/common/crypto"
 	"log"
 	"math/big"
+
+	"github.com/icon-project/goloop/common/crypto"
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
@@ -317,9 +318,9 @@ func (tx *transaction) verifySignature() error {
 		log.Println("JSON", string(raw))
 		return err
 	}
-	h := crypto.SHA3Sum256(bs)
-
 	bs = append([]byte("icx_sendTransaction."), bs...)
+
+	h := crypto.SHA3Sum256(bs)
 	if bytes.Compare(h, txHash) != 0 {
 		log.Println("Hashes are different")
 		log.Println("JSON.TxHash", hex.EncodeToString(txHash))
