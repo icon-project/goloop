@@ -512,16 +512,15 @@ func (m *manager) Finalize(block module.Block) error {
 			}
 		}
 		m.finalized.dispose()
+		m.sm.Finalize(
+			bn.in.mtransition(),
+			module.FinalizePatchTransaction|module.FinalizeResult,
+		)
 	}
+	m.sm.Finalize(bn.preexe.mtransition(), module.FinalizeNormalTransaction)
 
 	m.finalized = bn
 	m.finalized.parent = nil
-
-	m.sm.Finalize(
-		bn.in.mtransition(),
-		module.FinalizePatchTransaction|module.FinalizeResult,
-	)
-	m.sm.Finalize(bn.preexe.mtransition(), module.FinalizeNormalTransaction)
 
 	if blockV2, ok := block.(*blockV2); ok {
 		hb := m.bucketFor(db.BytesByHash)
