@@ -55,7 +55,18 @@ func TestRecoverPublicKey(t *testing.T) {
 	}
 
 	if !pub.Equal(pub1) {
-		t.Errorf("recoverd public key is not same")
+		t.Errorf("recovered public key is not same")
+	}
+
+	sig.bytes[0] = sig.bytes[0] ^ 0x0f
+	pub2, err := sig.RecoverPublicKey(testHash)
+	if err != nil {
+		t.Errorf("error recover public key:%s", err)
+		return
+	}
+
+	if pub.Equal(pub2) {
+		t.Errorf("Public key recovery always works!")
 	}
 }
 
