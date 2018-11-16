@@ -38,25 +38,25 @@ type txTest struct {
 }
 
 type txTestV2 struct {
-	from      common.Address  `json:"from"`
-	to        common.Address  `json:"to"`
-	value     common.HexInt   `json:"value"`
-	fee       common.HexInt   `json:"fee"`
-	timestamp common.HexInt64 `json:"timestamp"`
-	nonce     common.HexInt64 `json:"nonce"`
-	signature common.HexBytes `json:"signature"`
+	From      common.Address  `json:"from"`
+	To        common.Address  `json:"to"`
+	Value     common.HexInt   `json:"value"`
+	Fee       common.HexInt   `json:"fee"`
+	Timestamp common.HexInt64 `json:"timestamp"`
+	Nonce     common.HexInt64 `json:"nonce"`
+	Signature common.HexBytes `json:"signature"`
 }
 
 type txTestV3 struct {
-	version   common.HexInt16 `json:"version"`
-	from      common.Address  `json:"from"`
-	to        common.Address  `json:"to"`
-	value     common.HexInt   `json:"value"`
-	stepLimit common.HexInt   `json:"stepLimit"`
-	timestamp common.HexInt64 `json:"timestamp"`
-	nid       common.HexInt16 `json:"nid"`
-	nonce     common.HexInt64 `json:"nonce"`
-	signature common.HexBytes `json:"signature"`
+	Version   common.HexInt16 `json:"version"`
+	From      common.Address  `json:"from"`
+	To        common.Address  `json:"to"`
+	Value     common.HexInt   `json:"value"`
+	StepLimit common.HexInt   `json:"stepLimit"`
+	Timestamp common.HexInt64 `json:"timestamp"`
+	Nid       common.HexInt16 `json:"nid"`
+	Nonce     common.HexInt64 `json:"nonce"`
+	Signature common.HexBytes `json:"signature"`
 }
 
 func (tx *txTest) Group() module.TransactionGroup {
@@ -174,20 +174,20 @@ func createTxInst(wallet *testWallet, to *common.Address, value *big.Int, timest
 	m := make(map[string]interface{})
 	switch tx.version {
 	case 2:
-		m["from"] = tx.from.String()
-		m["to"] = tx.to.String()
-		m["value"] = common.HexInt{*tx.value}.String()
-		m["fee"] = common.HexInt{*tx.stepLimit}.String()
-		m["timestamp"] = common.HexInt64{tx.timestamp}.String()
-		m["nonce"] = common.HexInt64{tx.nonce}.String()
+		m["From"] = tx.from.String()
+		m["To"] = tx.to.String()
+		m["Value"] = common.HexInt{*tx.value}.String()
+		m["Fee"] = common.HexInt{*tx.stepLimit}.String()
+		m["Timestamp"] = common.HexInt64{tx.timestamp}.String()
+		m["Nonce"] = common.HexInt64{tx.nonce}.String()
 	case 3:
-		m["version"] = common.HexInt16{int16(tx.version)}.String()
-		m["from"] = tx.from.String()
-		m["to"] = tx.to.String()
-		m["value"] = common.HexInt{*tx.value}.String()
-		m["stepLimit"] = common.HexInt{*tx.stepLimit}.String()
-		m["timestamp"] = common.HexInt64{tx.timestamp}.String()
-		m["nonce"] = common.HexInt64{tx.nonce}.String()
+		m["Version"] = common.HexInt16{int16(tx.version)}.String()
+		m["From"] = tx.from.String()
+		m["To"] = tx.to.String()
+		m["Value"] = common.HexInt{*tx.value}.String()
+		m["StepLimit"] = common.HexInt{*tx.stepLimit}.String()
+		m["Timestamp"] = common.HexInt64{tx.timestamp}.String()
+		m["Nonce"] = common.HexInt64{tx.nonce}.String()
 	default:
 		log.Fatalln("unknown transaction version:", tx.version)
 	}
@@ -214,26 +214,26 @@ func marshalTx(tx *txTest) []byte {
 	switch tx.version {
 	case 2:
 		ti := &txTestV2{
-			from:      *tx.from,
-			to:        *tx.to,
-			value:     common.HexInt{*tx.value},
-			fee:       common.HexInt{*tx.stepLimit},
-			timestamp: common.HexInt64{tx.timestamp},
-			nonce:     common.HexInt64{tx.nonce},
-			signature: tx.signature,
+			From:      *tx.from,
+			To:        *tx.to,
+			Value:     common.HexInt{*tx.value},
+			Fee:       common.HexInt{*tx.stepLimit},
+			Timestamp: common.HexInt64{tx.timestamp},
+			Nonce:     common.HexInt64{tx.nonce},
+			Signature: tx.signature,
 		}
 		i = ti
 	case 3:
 		ti := &txTestV3{
-			version:   common.HexInt16{int16(tx.version)},
-			from:      *tx.from,
-			to:        *tx.to,
-			value:     common.HexInt{*tx.value},
-			stepLimit: common.HexInt{*tx.stepLimit},
-			timestamp: common.HexInt64{tx.timestamp},
-			nid:       common.HexInt16{int16(tx.nid)},
-			nonce:     common.HexInt64{tx.nonce},
-			signature: tx.signature,
+			Version:   common.HexInt16{int16(tx.version)},
+			From:      *tx.from,
+			To:        *tx.to,
+			Value:     common.HexInt{*tx.value},
+			StepLimit: common.HexInt{*tx.stepLimit},
+			Timestamp: common.HexInt64{tx.timestamp},
+			Nid:       common.HexInt16{int16(tx.nid)},
+			Nonce:     common.HexInt64{tx.nonce},
+			Signature: tx.signature,
 		}
 		i = ti
 	}
@@ -346,7 +346,8 @@ func TestServiceManager(t *testing.T) {
 	snapshot.Flush()
 	leaderResult := make([]byte, 64)
 	copy(leaderResult, snapshot.Hash())
-	initTrs, err := leaderServiceManager.CreateInitialTransition(leaderResult, nil, 0)
+	leaderValidator, _ := service.ValidatorListFromSlice(leaderDB, nil)
+	initTrs, err := leaderServiceManager.CreateInitialTransition(leaderResult, leaderValidator, 0)
 	if err != nil {
 		log.Panicf("Faile to create initial transition. result = %x, err = %s\n", leaderResult, err)
 	}
@@ -363,10 +364,10 @@ func TestServiceManager(t *testing.T) {
 			<-txListChan
 			cb := &transitionCb{exeDone: make(chan bool)}
 			transition.Execute(cb)
+			<-cb.exeDone
 			leaderServiceManager.Finalize(transition, module.FinalizeNormalTransaction)
 			leaderServiceManager.Finalize(transition, module.FinalizeResult)
 			// get result then run below
-			<-cb.exeDone
 			transition = parentTrs
 			// TODO when is done?
 		}
@@ -378,7 +379,8 @@ func TestServiceManager(t *testing.T) {
 	validatorResult := make([]byte, 64)
 	copy(validatorResult, validatorSnapshot.Hash())
 	validatorServiceManager := service.NewManager(validatorDB)
-	initVTrs, err := validatorServiceManager.CreateInitialTransition(validatorResult, nil, 0)
+	validatorValidator, _ := service.ValidatorListFromSlice(leaderDB, nil)
+	initVTrs, err := validatorServiceManager.CreateInitialTransition(validatorResult, validatorValidator, 0)
 	if err != nil {
 		log.Panicf("Faile to create initial transition. result = %x, err = %s\n", validatorResult, err)
 	}
