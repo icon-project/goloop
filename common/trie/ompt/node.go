@@ -34,6 +34,10 @@ type (
 )
 
 const (
+	configUseKeccak = true
+)
+
+const (
 	stateDirty   nodeState = 0
 	stateFrozen  nodeState = 1
 	stateHashed  nodeState = 2
@@ -175,12 +179,21 @@ func compareKeys(k1, k2 []byte) (int, bool) {
 }
 
 func calcHash(data ...[]byte) []byte {
-	sha := sha3.NewLegacyKeccak256()
-	for _, d := range data {
-		sha.Write(d)
+	if configUseKeccak {
+		sha := sha3.NewLegacyKeccak256()
+		for _, d := range data {
+			sha.Write(d)
+		}
+		sum := sha.Sum([]byte{})
+		return sum[:]
+	} else {
+		sha := sha3.New256()
+		for _, d := range data {
+			sha.Write(d)
+		}
+		sum := sha.Sum([]byte{})
+		return sum[:]
 	}
-	sum := sha.Sum([]byte{})
-	return sum[:]
 }
 
 func nodeFromLink(b []byte, state nodeState) (node, error) {
