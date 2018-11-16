@@ -22,7 +22,6 @@ var dbCodec = codec.MP
 const (
 	keyLastBlockHeight = "block.lastHeight"
 	genesisHeight      = 0
-	hashNumBytes       = 32
 )
 
 type transactionLocator struct {
