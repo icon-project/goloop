@@ -19,7 +19,7 @@ type sendTransactionHandler struct{}
 
 func (h sendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
-	var param sendTransactionParam
+	var param SendTransactionParam
 	if err := jsonrpc.Unmarshal(params, &param); err != nil {
 		return nil, err
 	}

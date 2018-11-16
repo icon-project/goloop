@@ -48,7 +48,7 @@ func MethodRepository() *jsonrpc.MethodRepository {
 	v3.RegisterMethod(getTotalSupply, getTotalSupplyeHandler{}, nil, nil)
 	v3.RegisterMethod(getTransactionResult, getTransactionResultHandler{}, transactionHashParam{}, transactionResult{})
 	v3.RegisterMethod(getTransactionByHash, getTransactionByHashHandler{}, transactionHashParam{}, transactionV3{})
-	v3.RegisterMethod(sendTransaction, sendTransactionHandler{}, sendTransactionParam{}, nil)
+	v3.RegisterMethod(sendTransaction, sendTransactionHandler{}, SendTransactionParam{}, nil)
 	v3.RegisterMethod(getStatus, getStatusHandler{}, getStatusParam{}, nil)
 
 	return v3

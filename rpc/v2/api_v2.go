@@ -32,7 +32,7 @@ func MethodRepository() *jsonrpc.MethodRepository {
 	v2 := jsonrpc.NewMethodRepository()
 
 	// api v2
-	v2.RegisterMethod(sendTransaction, sendTransactionHandler{}, sendTransactionParam{}, sendTranscationResult{})
+	v2.RegisterMethod(sendTransaction, sendTransactionHandler{}, SendTransactionParam{}, sendTranscationResult{})
 	v2.RegisterMethod(getTransactionResult, getTransactionResultHandler{}, getTransactionResultParam{}, getTransactionResultResult{})
 	v2.RegisterMethod(getBalance, getBalanceHandler{}, getBalanceParam{}, getBalanceResult{})
 	v2.RegisterMethod(getTotalSupply, getTotalSupplyeHandler{}, nil, getTotalSupplyResult{})
