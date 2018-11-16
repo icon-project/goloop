@@ -17,6 +17,7 @@ import (
 // TODO import, finalize V1
 // TODO refactor code using bucketFor
 // TODO VoteList verify
+// TODO sync
 
 var dbCodec = codec.MP
 
@@ -373,26 +374,38 @@ func (m *manager) Import(
 	}, nil
 }
 
-func (m *manager) ProposeGenesis(
+type channelingCB struct {
+	ch chan<- error
+}
+
+func (cb *channelingCB) onValidate(err error) {
+	cb.ch <- err
+}
+
+func (cb *channelingCB) onExecute(err error) {
+	cb.ch <- err
+}
+
+func (m *manager) FinalizeGenesisBlocks(
 	proposer module.Address,
 	timestamp time.Time,
 	votes module.VoteList,
-) (block module.Block, err error) {
+) (block []module.Block, err error) {
 	m.syncer.begin()
 	defer m.syncer.end()
 
 	if m.finalized != nil {
 		return nil, common.ErrInvalidState
 	}
-	bn := &bnode{}
+	pbn := &bnode{}
 	mtr, err := m.sm.CreateInitialTransition(nil, nil, genesisHeight-1)
 	if err != nil {
 		return nil, err
 	}
-	bn.in = newInitialTransition(mtr, &m.syncer, m.sm)
-	gmtr := bn.in.proposeGenesis(nil)
-	bn.preexe = gmtr
-	bn.block = &blockV2{
+	pbn.in = newInitialTransition(mtr, &m.syncer, m.sm)
+	gmtr := pbn.in.proposeGenesis(nil)
+	pbn.preexe = gmtr
+	pbn.block = &blockV2{
 		height:             genesisHeight,
 		timestamp:          timestamp,
 		proposer:           proposer,
@@ -404,8 +417,51 @@ func (m *manager) ProposeGenesis(
 		nextValidators:     mtr.NextValidators(),
 		votes:              votes,
 	}
+	m.nmap[string(pbn.block.ID())] = pbn
+	// TODO refactor to pass pbn
+	err = m.Finalize(pbn.block)
+	if err != nil {
+		return nil, err
+	}
+
+	emptyTxs := m.sm.TransactionListFromSlice(nil, common.BlockVersion2)
+	ch := make(chan error)
+	in := gmtr.transit(emptyTxs, &channelingCB{ch: ch})
+	m.syncer.end()
+
+	// wait for genesis transition execution
+	// TODO rollback
+	if err = <-ch; err != nil {
+		return nil, err
+	}
+	if err = <-ch; err != nil {
+		return nil, err
+	}
+	m.syncer.begin()
+	bn := &bnode{}
+	bn.in = in
+	pmtr := in.mtransition()
+	preexe := in.propose(nil)
+	bn.preexe = preexe
+	mtr = preexe.mtransition()
+	bn.block = &blockV2{
+		height:             genesisHeight + 1,
+		timestamp:          timestamp,
+		proposer:           proposer,
+		prevID:             pbn.block.ID(),
+		logBloom:           pmtr.LogBloom(),
+		result:             pmtr.Result(),
+		patchTransactions:  mtr.PatchTransactions(),
+		normalTransactions: mtr.NormalTransactions(),
+		nextValidators:     pmtr.NextValidators(),
+		votes:              votes,
+	}
 	m.nmap[string(bn.block.ID())] = bn
-	return bn.block, nil
+	err = m.Finalize(bn.block)
+	if err != nil {
+		return nil, err
+	}
+	return []module.Block{pbn.block, bn.block}, nil
 }
 
 func (m *manager) Propose(

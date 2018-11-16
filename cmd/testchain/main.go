@@ -68,7 +68,7 @@ type proposeOnlyConsensus struct {
 }
 
 func (c *proposeOnlyConsensus) Start() {
-	blk, err := c.bm.ProposeGenesis(
+	blks, err := c.bm.FinalizeGenesisBlocks(
 		common.NewAccountAddress(make([]byte, common.AddressBytes)),
 		time.Unix(0, 0),
 		&emptyVoteList{},
@@ -76,12 +76,9 @@ func (c *proposeOnlyConsensus) Start() {
 	if err != nil {
 		panic(err)
 	}
-	err = c.bm.Finalize(blk)
-	if err != nil {
-		panic(err)
-	}
-	ch := make(chan module.Block)
+	blk := blks[len(blks)-1]
 
+	ch := make(chan module.Block)
 	height := 1
 	wallet := Wallet{"https://testwallet.icon.foundation/api/v3"}
 	for {
@@ -126,6 +123,15 @@ type importOnlyConsensus struct {
 }
 
 func (c *importOnlyConsensus) Start() {
+	_, err := c.bm.FinalizeGenesisBlocks(
+		common.NewAccountAddress(make([]byte, common.AddressBytes)),
+		time.Unix(0, 0),
+		&emptyVoteList{},
+	)
+	if err != nil {
+		panic(err)
+	}
+
 	ch := make(chan module.Block)
 	for {
 		bs := <-c.ch
