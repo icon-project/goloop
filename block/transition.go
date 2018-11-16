@@ -3,6 +3,7 @@ package block
 import (
 	"bytes"
 	"errors"
+	"log"
 
 	"github.com/icon-project/goloop/module"
 )
@@ -166,7 +167,7 @@ func (ti *transitionImpl) _addChild(
 	var err error
 	cti._canceler, err = mtr.Execute(cti)
 	if err != nil {
-		// TODO log
+		log.Println("Transition.Execute failed : ", err)
 		return nil
 	}
 	ti._children = append(ti._children, cti)
@@ -193,6 +194,7 @@ func (ti *transitionImpl) transit(
 ) *transition {
 	cmtr, err := ti._setting.sm.CreateTransition(ti._mtransition, txs)
 	if err != nil {
+		log.Println("ServiceManager.CreateTransition failed : ", err)
 		return nil
 	}
 	return ti._addChild(cmtr, cb)
@@ -201,6 +203,7 @@ func (ti *transitionImpl) transit(
 func (ti *transitionImpl) propose(cb transitionCallback) *transition {
 	cmtr, err := ti._setting.sm.ProposeTransition(ti._mtransition)
 	if err != nil {
+		log.Println("ServiceManager.ProposeTransition failed : ", err)
 		return nil
 	}
 	return ti._addChild(cmtr, cb)
@@ -209,6 +212,7 @@ func (ti *transitionImpl) propose(cb transitionCallback) *transition {
 func (ti *transitionImpl) proposeGenesis(cb transitionCallback) *transition {
 	cmtr, err := ti._setting.sm.ProposeGenesisTransition(ti._mtransition)
 	if err != nil {
+		log.Println("ServiceManager.ProposeGenesisTransition failed : ", err)
 		return nil
 	}
 	return ti._addChild(cmtr, cb)
