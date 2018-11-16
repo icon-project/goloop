@@ -732,12 +732,6 @@ func (m *manager) GetBlockByHeight(height int64) (module.Block, error) {
 }
 
 func (m *manager) getBlockByHeight(height int64) (module.Block, error) {
-	// TODO handle genesis correctly
-	if height == genesisHeight {
-		return &blockV2{
-			_id: zeroHash,
-		}, nil
-	}
 	headerHashByHeight := m.bucketFor(db.BlockHeaderHashByHeight)
 	hash, err := headerHashByHeight.getBytes(height)
 	if err != nil {
