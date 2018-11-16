@@ -146,8 +146,9 @@ func (ti *transitionImpl) OnExecute(tr module.Transition, err error) {
 		return
 	}
 	ti._exeErr = &err
+	cbs := ti._cbs
 	ti._cbs = nil
-	for _, cb := range ti._cbs {
+	for _, cb := range cbs {
 		cb.onExecute(err)
 	}
 }
@@ -162,7 +163,7 @@ func (ti *transitionImpl) _addChild(
 		_parent:      ti,
 		_nRef:        1,
 	}
-	tr := &transition{ti, cb}
+	tr := &transition{cti, cb}
 	cti._cbs = append(ti._cbs, &transition{ti, cb})
 	var err error
 	cti._canceler, err = mtr.Execute(cti)
