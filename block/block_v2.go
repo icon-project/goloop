@@ -53,13 +53,11 @@ type blockV2 struct {
 }
 
 func unixMicroFromTime(t time.Time) int64 {
-	return int64(time.Microsecond) * t.UnixNano() / int64(time.Nanosecond)
+	return t.UnixNano() / 1000
 }
 
 func timeFromUnixMicro(usec int64) time.Time {
-	sec := usec / (1000 * 1000)
-	nsec := usec % (1000 * 1000)
-	return time.Unix(sec, nsec)
+	return time.Unix(0, usec*1000)
 }
 
 func (b *blockV2) Version() int {
