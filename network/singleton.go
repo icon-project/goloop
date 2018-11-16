@@ -25,7 +25,8 @@ const (
 	DefaultTransportNet       = "tcp4"
 	DefaultMembershipName     = ""
 	DefaultPacketBufferSize   = 4096 //bufio.defaultBufSize=4096
-	DefaultDiscoveryPeriodSec = 3
+	DefaultDiscoveryPeriodSec = 1
+	DefaultSeedPeriodSec      = 1
 )
 
 // const (
@@ -118,7 +119,7 @@ func GetNetworkManager(channel string) module.NetworkManager {
 	if !ok {
 		l := GetListener()
 		pd := GetPeerDispatcher()
-		m := newManager(channel, pd.self, NetAddress(l.address))
+		m := newManager(channel, pd.self, NetAddress(l.address), GetDialer(channel))
 		pd.registPeerToPeer(m.peerToPeer)
 		nm = m
 		networkManagers[channel] = nm

@@ -122,6 +122,14 @@ func (ph *peerHandler) nextOnPeer(p *Peer) {
 	}
 }
 
+func (ph *peerHandler) onError(err error, p *Peer) {
+	log.Println("peerHandler.onError", err, p)
+	err = p.conn.Close()
+	if err != nil {
+		log.Println("peerHandler.onError p.conn.Close()", err)
+	}
+}
+
 func (ph *peerHandler) setNext(next PeerHandler) {
 	ph.next = next
 }
@@ -204,13 +212,20 @@ func (pd *PeerDispatcher) onPeer(p *Peer) {
 		p2p.onPeer(p)
 	} else {
 		log.Println("Not exists PeerToPeer[", p.channel, "], try close")
-		p.conn.Close()
+		err := p.conn.Close()
+		if err != nil {
+			log.Println("PeerDispatcher.onPeer p.conn.Close()", err)
+		}
 	}
 }
 
 //TODO callback from Peer.sendRoutine or Peer.receiveRoutine
 func (pd *PeerDispatcher) onError(err error, p *Peer) {
-	log.Println("PeerDispatcher.onError", err)
+	log.Println("PeerDispatcher.onError", err, p)
+	err = p.conn.Close()
+	if err != nil {
+		log.Println("PeerDispatcher.onError p.conn.Close()", err)
+	}
 }
 
 //callback from Peer.receiveRoutine

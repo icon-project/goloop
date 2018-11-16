@@ -72,7 +72,7 @@ func (ms *membership) RegistReactor(name string, reactor module.Reactor, subProt
 			return common.ErrIllegalArgument
 		}
 		ms.cbFuncs[sp] = reactor.OnReceive
-		log.Printf("Membership.RegistReactor.cbFuncs %#x %s", sp, name)
+		log.Printf("Membership.RegistReactor.cbFuncs %#x %s", sp.Uint16(), name)
 	}
 	return nil
 }

@@ -44,7 +44,7 @@ type TestReactor struct {
 
 func (r *TestReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) (re bool, err error) {
 	s := string(b)
-	r.t.Logf("%s.OnReceive pi:%v, payload:%v, id:%v", r.name, pi, string(b), id)
+	r.t.Logf("%s.OnReceive pi:%v, payload:%v, id:%v", r.name, pi, b, id)
 	switch pi {
 	case ProtoTestNetworkBroadcast:
 		r.t.Logf("%s.OnReceive ProtoTestNetworkBroadcast %s", r.name, s)
@@ -69,22 +69,26 @@ func (r *TestReactor) OnError() {
 
 func (r *TestReactor) Broadcast() {
 	r.ms.Broadcast(ProtoTestNetworkBroadcast, []byte(r.name+PayloadTestNetworkBroadcast), module.BROADCAST_ALL)
+	r.t.Logf("%s.Broadcast ProtoTestNetworkBroadcast %s", r.name, r.name+PayloadTestNetworkBroadcast)
 }
 
 func (r *TestReactor) Multicast() {
 	r.ms.Multicast(ProtoTestNetworkMulticast, []byte(r.name+PayloadTestNetworkMulticast), module.ROLE_VALIDATOR)
+	r.t.Logf("%s.Multicast ProtoTestNetworkMulticast %s", r.name, r.name+PayloadTestNetworkMulticast)
 }
 
 func (r *TestReactor) Request(id module.PeerID) {
 	r.ms.Unicast(ProtoTestNetworkRequest, []byte(r.name+PayloadTestNetworkRequest), id)
+	r.t.Logf("%s.Request ProtoTestNetworkRequest %s", r.name, r.name+PayloadTestNetworkRequest)
 }
 
 func (r *TestReactor) Response(id module.PeerID) {
 	r.ms.Unicast(ProtoTestNetworkResponse, []byte(r.name+PayloadTestNetworkResponse), id)
+	r.t.Logf("%s.Response ProtoTestNetworkResponse %s", r.name, r.name+PayloadTestNetworkResponse)
 }
 
-func newTestNetwork(channel string, pd *PeerDispatcher, addr string) (module.NetworkManager, module.Membership) {
-	nm := newManager(channel, pd.self, NetAddress(addr))
+func newTestNetwork(channel string, pd *PeerDispatcher, addr string, d *Dialer) (*manager, module.Membership) {
+	nm := newManager(channel, pd.self, NetAddress(addr), d)
 	pd.registPeerToPeer(nm.peerToPeer)
 	ms := nm.GetMembership(DefaultMembershipName)
 	return nm, ms
@@ -101,9 +105,11 @@ func Test_network(t *testing.T) {
 	spd, sl, sd := newTestTransport(testChannel, testSeedAddress)
 	cpd, cl, cd := newTestTransport(testChannel, testCitizenAddress)
 
+	//t.Logf("pd:%v,spd:%v,cpd:%v", pd.self, spd.self, cpd.self)
+
 	_, ms := getNetwork(testChannel)
-	_, sms := newTestNetwork(testChannel, spd, sl.address)
-	_, cms := newTestNetwork(testChannel, cpd, cl.address)
+	_, sms := newTestNetwork(testChannel, spd, sl.address, sd)
+	_, cms := newTestNetwork(testChannel, cpd, cl.address, cd)
 
 	vr := &TestReactor{"TestValidator", ms, t}
 	sr := &TestReactor{"TestSeed", sms, t}
@@ -112,23 +118,36 @@ func Test_network(t *testing.T) {
 	sms.RegistReactor(sr.name, sr, testSubProtocols)
 	cms.RegistReactor(cr.name, cr, testSubProtocols)
 
-	ms.AddRole(module.ROLE_VALIDATOR, pd.self)
-	ms.AddRole(module.ROLE_SEED, pd.self, spd.self)
-	sms.AddRole(module.ROLE_VALIDATOR, pd.self)
-	sms.AddRole(module.ROLE_SEED, pd.self, spd.self)
-	cms.AddRole(module.ROLE_VALIDATOR, pd.self)
-	cms.AddRole(module.ROLE_SEED, pd.self, spd.self)
+	vrp := []module.PeerID{pd.self}
+	srp := []module.PeerID{pd.self, spd.self}
+	ms.AddRole(module.ROLE_VALIDATOR, vrp...)
+	ms.AddRole(module.ROLE_SEED, srp...)
+	sms.AddRole(module.ROLE_VALIDATOR, vrp...)
+	sms.AddRole(module.ROLE_SEED, srp...)
+	cms.AddRole(module.ROLE_VALIDATOR, vrp...)
+	cms.AddRole(module.ROLE_SEED, srp...)
 
 	l.Listen()
 	sl.Listen()
 	cl.Listen()
 
+	sna := NewNetAddressList()
+	sna.PushBack(NetAddress(sl.address))
+	pd.peerToPeers[testChannel].seeds.PushBackList(sna.List)
+	spd.peerToPeers[testChannel].seeds.PushBackList(sna.List)
+	cpd.peerToPeers[testChannel].seeds.PushBackList(sna.List)
 	//TODO connect each other, config p2p.self.role
-	sd.Dial(l.address)
-	cd.Dial(sl.address)
+
+	// sd.Dial(l.address)
+	// cd.Dial(sl.address)
 	time.Sleep(5 * time.Second)
 	vr.Broadcast()
 	sr.Multicast()
+	// sp := cnm.peerToPeer.getPeer(spd.self)
+	// err := sp.conn.Close()
+	// if err != nil {
+	// 	t.Logf("sp.conn.Close error:%v", err)
+	// }
 	cr.Multicast()
 	cr.Request(spd.self)
 	time.Sleep(5 * time.Second)

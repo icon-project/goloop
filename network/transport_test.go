@@ -1,7 +1,6 @@
 package network
 
 import (
-	"log"
 	"sync"
 	"testing"
 	"time"
@@ -11,8 +10,9 @@ import (
 )
 
 const (
-	testListenAddress = "127.0.0.1:8081"
-	testChannel       = "testchannel"
+	testChannel                  = "testchannel"
+	PayloadTestTransportRequest  = "Hello"
+	PayloadTestTransportResponse = "World"
 	// PROTO_TEST_REQ    = 0x0001
 	// PROTO_TEST_RESP   = 0x0002
 )
@@ -29,28 +29,33 @@ type TestPeerHandler struct {
 }
 
 func (ph *TestPeerHandler) onPeer(p *Peer) {
-	ph.t.Logf("TestPeerHandler.onPeer in:%v", p.incomming)
+	ph.t.Logf("TestPeerHandler.onPeer %v", p)
 	p.setPacketCbFunc(ph.onPacket)
 	if !p.incomming {
 		ph.wg.Add(1)
-		ph.sendPacket(NewPacket(ProtoTestTransportRequest, []byte("hello")), p)
+		ph.sendPacket(NewPacket(ProtoTestTransportRequest, []byte(PayloadTestTransportRequest)), p)
+		ph.t.Logf("TestPeerHandler.sendPacket ProtoTestTransportRequest %s", PayloadTestTransportRequest)
 	}
 }
 
 //TODO callback from Peer.sendRoutine or Peer.receiveRoutine
 func (ph *TestPeerHandler) onError(err error, p *Peer) {
-	log.Println("TestPeerHandler.onError", err)
+	ph.t.Logf("TestPeerHandler.onError %v", err)
 }
 
 func (ph *TestPeerHandler) onPacket(pkt *Packet, p *Peer) {
-	ph.t.Logf("TestPeerHandler.onPacket %v", pkt)
+	s := string(pkt.payload)
+	ph.t.Logf("TestPeerHandler.onPacket %v %v", pkt, p)
 	switch pkt.protocol {
 	case PROTO_CONTOL:
 		switch pkt.subProtocol {
 		case ProtoTestTransportRequest:
-			ph.sendPacket(NewPacket(ProtoTestTransportResponse, pkt.payload), p)
+			ph.t.Logf("TestPeerHandler.onPacket ProtoTestTransportRequest %s", s)
+			ph.sendPacket(NewPacket(ProtoTestTransportResponse, []byte(PayloadTestTransportResponse)), p)
+			ph.t.Logf("TestPeerHandler.sendPacket ProtoTestTransportResponse %s", PayloadTestTransportResponse)
 			ph.nextOnPeer(p)
 		case ProtoTestTransportResponse:
+			ph.t.Logf("TestPeerHandler.onPacket ProtoTestTransportResponse %s", s)
 			ph.nextOnPeer(p)
 			ph.wg.Done()
 		}

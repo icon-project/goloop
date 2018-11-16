@@ -76,7 +76,7 @@ func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool) *Peer {
 }
 
 func (p *Peer) String() string {
-	return fmt.Sprintf("{id:%v, addr:%v, in:%v, chan:%v, rtt:%v}",
+	return fmt.Sprintf("{id:%v, addr:%v, in:%v, channel:%v, rtt:%v}",
 		p.id, p.netAddress, p.incomming, p.channel, p.rtt)
 }
 
@@ -104,12 +104,13 @@ func (p *Peer) receiveRoutine() {
 		if err != nil {
 			//TODO
 			// p.reader.Reset()
-			log.Println(pkt, h, err)
+			log.Println("Peer.receiveRoutine", pkt, h, err)
 			p.onError(err, p)
 			return
 		}
 		if pkt.hashOfPacket != h.Sum64() {
-			log.Println("Invalid hashOfPacket :", pkt.hashOfPacket, ",expected:", h.Sum64())
+			log.Println("Peer.receiveRoutine Invalid hashOfPacket :", pkt.hashOfPacket, ",expected:", h.Sum64())
+			continue
 		}
 		if p.onPacket != nil {
 			p.onPacket(pkt, p)

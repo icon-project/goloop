@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"encoding/binary"
 	"fmt"
+	"log"
 
 	"github.com/icon-project/goloop/module"
 )
@@ -14,11 +15,11 @@ type manager struct {
 	peerToPeer  *PeerToPeer
 }
 
-func newManager(channel string, id module.PeerID, addr NetAddress) *manager {
+func newManager(channel string, id module.PeerID, addr NetAddress, d *Dialer) *manager {
 	m := &manager{
 		channel:     channel,
 		memberships: make(map[string]module.Membership),
-		peerToPeer:  newPeerToPeer(channel, id, addr),
+		peerToPeer:  newPeerToPeer(channel, id, addr, d),
 	}
 
 	//Create default membership for P2P topology management
@@ -27,6 +28,8 @@ func newManager(channel string, id module.PeerID, addr NetAddress) *manager {
 	dms.roles[module.ROLE_VALIDATOR] = m.peerToPeer.allowedRoots
 	dms.destByRole[module.ROLE_SEED] = p2pRoleSeed
 	dms.destByRole[module.ROLE_VALIDATOR] = p2pRoleRoot
+
+	log.Println("network.newManager", channel, id, addr)
 	return m
 }
 
