@@ -252,16 +252,20 @@ func (l *receiptList) Size() int {
 }
 
 func (l *receiptList) Hash() []byte {
-	if l.hash == nil {
-		for i, r := range l.receipts {
-			// TODO trie 내부에서 key hash를 안 하는지 확인 필요
-			bytes, _ := r.Bytes()
-			if len(bytes) > 0 {
-				// TODO i가 256를 넘을 경우를 감안한 byte encoding 수정
-				l.trie.Set([]byte{byte(i)}, bytes)
+	// TODO impl
+	/*
+		if l.hash == nil {
+			for i, r := range l.receipts {
+				// TODO trie 내부에서 key hash를 안 하는지 확인 필요
+				bytes, _ := r.Bytes()
+				if len(bytes) > 0 {
+					// TODO i가 256를 넘을 경우를 감안한 byte encoding 수정
+					l.trie.Set([]byte{byte(i)}, bytes)
+				}
 			}
+			l.hash = l.trie.GetSnapshot().Hash()
 		}
-		l.hash = l.trie.GetSnapshot().Hash()
-	}
-	return l.hash
+		return l.hash
+	*/
+	return nil
 }
