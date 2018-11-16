@@ -16,8 +16,6 @@ import (
 // TODO overall error handling log? return error?
 // TODO import, finalize V1
 // TODO refactor code using bucketFor
-// TODO VoteList verify
-// TODO sync
 
 var dbCodec = codec.MP
 
@@ -322,7 +320,7 @@ func NewManager(
 	if err != nil {
 		return nil
 	}
-	lastFinalized, err := m.GetBlock(hash)
+	lastFinalized, err := m.getBlock(hash)
 	mtr, _ := m.sm.CreateInitialTransition(lastFinalized.Result(), lastFinalized.NextValidators(), lastFinalized.Height()-1)
 	if mtr == nil {
 		return nil
@@ -341,6 +339,13 @@ func NewManager(
 }
 
 func (m *manager) GetBlock(id []byte) (module.Block, error) {
+	m.syncer.begin()
+	defer m.syncer.end()
+
+	return m.getBlock(id)
+}
+
+func (m *manager) getBlock(id []byte) (module.Block, error) {
 	// TODO handle v1
 	hb := m.bucketFor(db.BytesByHash)
 	if hb == nil {
@@ -419,8 +424,7 @@ func (m *manager) FinalizeGenesisBlocks(
 		votes:              votes,
 	}
 	m.nmap[string(pbn.block.ID())] = pbn
-	// TODO refactor to pass pbn
-	err = m.Finalize(pbn.block)
+	err = m.finalize(pbn)
 	if err != nil {
 		return nil, err
 	}
@@ -454,7 +458,7 @@ func (m *manager) FinalizeGenesisBlocks(
 		votes:              votes,
 	}
 	m.nmap[string(bn.block.ID())] = bn
-	err = m.Finalize(bn.block)
+	err = m.finalize(bn)
 	if err != nil {
 		return nil, err
 	}
@@ -496,11 +500,19 @@ func (m *manager) bucketFor(id db.BucketID) *bucket {
 }
 
 func (m *manager) Finalize(block module.Block) error {
-	// TODO notify import/propose error due to finalization
+	m.syncer.begin()
+	defer m.syncer.end()
+
 	bn := m.nmap[string(block.ID())]
 	if bn == nil || bn.parent != m.finalized {
 		return common.ErrIllegalArgument
 	}
+	return m.finalize(bn)
+}
+
+func (m *manager) finalize(bn *bnode) error {
+	// TODO notify import/propose error due to finalization
+	block := bn.block
 
 	if m.finalized != nil {
 		for _, c := range m.finalized.children {
@@ -675,6 +687,13 @@ func (txInfo *transactionInfo) GetReceipt() module.Receipt {
 }
 
 func (m *manager) GetTransactionInfo(id []byte) module.TransactionInfo {
+	m.syncer.begin()
+	defer m.syncer.end()
+
+	return m.getTransactionInfo(id)
+}
+
+func (m *manager) getTransactionInfo(id []byte) module.TransactionInfo {
 	// TODO handle V1 in GetTransactionInfo
 	tlb := m.bucketFor(db.TransactionLocatorByHash)
 	var loc transactionLocator
@@ -682,11 +701,11 @@ func (m *manager) GetTransactionInfo(id []byte) module.TransactionInfo {
 	if err != nil {
 		return nil
 	}
-	block, err := m.GetBlockByHeight(loc.BlockHeight)
+	block, err := m.getBlockByHeight(loc.BlockHeight)
 	if err != nil {
 		return nil
 	}
-	rblock, err := m.GetBlockByHeight(loc.BlockHeight + 1)
+	rblock, err := m.getBlockByHeight(loc.BlockHeight + 1)
 	if err != nil {
 		return nil
 	}
@@ -706,6 +725,13 @@ func (m *manager) GetTransactionInfo(id []byte) module.TransactionInfo {
 }
 
 func (m *manager) GetBlockByHeight(height int64) (module.Block, error) {
+	m.syncer.begin()
+	defer m.syncer.end()
+
+	return m.getBlockByHeight(height)
+}
+
+func (m *manager) getBlockByHeight(height int64) (module.Block, error) {
 	// TODO handle genesis correctly
 	if height == genesisHeight {
 		return &blockV2{
@@ -717,15 +743,22 @@ func (m *manager) GetBlockByHeight(height int64) (module.Block, error) {
 	if err != nil {
 		return nil, err
 	}
-	return m.GetBlock(hash)
+	return m.getBlock(hash)
 }
 
 func (m *manager) GetLastBlock() (module.Block, error) {
+	m.syncer.begin()
+	defer m.syncer.end()
+
+	return m.getLastBlock()
+}
+
+func (m *manager) getLastBlock() (module.Block, error) {
 	chainProp := m.bucketFor(db.ChainProperty)
 	var height int64
 	err := chainProp.get(raw(keyLastBlockHeight), &height)
 	if err != nil {
 		return nil, err
 	}
-	return m.GetBlockByHeight(height)
+	return m.getBlockByHeight(height)
 }
