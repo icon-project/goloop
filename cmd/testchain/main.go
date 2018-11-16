@@ -76,6 +76,7 @@ func (c *proposeOnlyConsensus) Start() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("Proposer: FinalizedGenesisBlocks")
 	blk := blks[len(blks)-1]
 
 	ch := make(chan module.Block)
@@ -111,6 +112,7 @@ func (c *proposeOnlyConsensus) Start() {
 		buf := bytes.NewBuffer(nil)
 		blk.MarshalHeader(buf)
 		blk.MarshalBody(buf)
+		fmt.Println("Proposer: Finalized Proposed Block ", blk.Height())
 		c.ch <- buf.Bytes()
 		height++
 	}
@@ -131,6 +133,7 @@ func (c *importOnlyConsensus) Start() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("Importer : FinalizedGenesisBlocks")
 
 	ch := make(chan module.Block)
 	for {
@@ -150,6 +153,7 @@ func (c *importOnlyConsensus) Start() {
 		if err != nil {
 			panic(err)
 		}
+		fmt.Println("Proposer: Finalized Proposed Block ", blk.Height())
 	}
 }
 
