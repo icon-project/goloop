@@ -25,6 +25,16 @@ func (key *PrivateKey) String() string {
 	return "0x" + hex.EncodeToString(key.bytes)
 }
 
+// PublicKey generates a public key paired with itself.
+func (key *PrivateKey) PublicKey() *PublicKey {
+	pkBytes := secp256k1.PubkeyFromSeckey(key.bytes)
+	pk, err := ParsePublicKey(pkBytes)
+	if err != nil {
+		panic(err)
+	}
+	return pk
+}
+
 // TODO add 'func ToECDSA() ecdsa.PrivateKey' if needed
 
 const (
