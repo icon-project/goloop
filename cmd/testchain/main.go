@@ -17,7 +17,8 @@ import (
 )
 
 type chain struct {
-	nid int
+	wallet module.Wallet
+	nid    int
 
 	database db.Database
 	sm       module.ServiceManager
@@ -29,23 +30,8 @@ func (c *chain) GetDatabase() db.Database {
 	return c.database
 }
 
-type testWallet struct {
-}
-
-func (w *testWallet) GetAddress() module.Address {
-	return common.NewAccountAddress(make([]byte, common.AddressBytes))
-}
-
-func (w *testWallet) Sign(data []byte) []byte {
-	panic("not implemented")
-}
-
-func (w *testWallet) PublicKey() []byte {
-	panic("not implemented")
-}
-
 func (c *chain) GetWallet() module.Wallet {
-	return &testWallet{}
+	return c.wallet
 }
 
 func (c *chain) GetNID() int {
@@ -172,6 +158,7 @@ func (c *importOnlyConsensus) Start() {
 }
 
 func (c *chain) startAsProposer(ch chan<- []byte) {
+	c.wallet = common.NewWallet()
 	c.database = db.NewMapDB()
 	c.sm = service.NewManager(c.database)
 	c.bm = block.NewManager(c, c.sm)
@@ -186,6 +173,7 @@ func (c *chain) startAsProposer(ch chan<- []byte) {
 }
 
 func (c *chain) startAsImporter(ch <-chan []byte) {
+	c.wallet = common.NewWallet()
 	c.database = db.NewMapDB()
 	c.sm = service.NewManager(c.database)
 	c.bm = block.NewManager(c, c.sm)

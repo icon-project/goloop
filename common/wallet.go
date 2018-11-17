@@ -2,32 +2,42 @@ package common
 
 import (
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/module"
 )
 
-type Wallet struct {
-	PbKey   *crypto.PublicKey
-	PrKey   *crypto.PrivateKey
-	Address *Address
+type softwareWallet struct {
+	skey *crypto.PrivateKey
+	pkey *crypto.PublicKey
 }
 
-func CreateWallet(walletNum int) []Wallet {
-	ws := make([]Wallet, walletNum)
-	for i := 0; i < walletNum; i++ {
-		w := Wallet{}
-		w.PrKey, w.PbKey = crypto.GenerateKeyPair()
-		w.Address = NewAccountAddressFromPublicKey(w.PbKey)
-		ws[i] = w
+func (w *softwareWallet) Address() module.Address {
+	return NewAccountAddressFromPublicKey(w.pkey)
+}
+
+func (w *softwareWallet) Sign(data []byte) ([]byte, error) {
+	sig, err := crypto.NewSignature(data, w.skey)
+	if err != nil {
+		return nil, err
 	}
-	return ws
+	return sig.SerializeRSV()
 }
 
-//
-func SignTransaction(tx interface{}) (signature []byte) {
-	signature = nil
-	return
+func (w *softwareWallet) PublicKey() []byte {
+	return w.pkey.SerializeCompressed()
 }
 
-func HashTransaction(tx interface{}) (hash []byte) {
-	hash = nil
-	return
+func NewWallet() module.Wallet {
+	sk, pk := crypto.GenerateKeyPair()
+	return &softwareWallet{
+		skey: sk,
+		pkey: pk,
+	}
+}
+
+func WalletFromPrivateKey(sk *crypto.PrivateKey) (module.Wallet, error) {
+	pk := sk.PublicKey()
+	return &softwareWallet{
+		skey: sk,
+		pkey: pk,
+	}, nil
 }

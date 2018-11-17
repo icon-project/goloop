@@ -303,7 +303,7 @@ func (pt *proposeTask) _onExecute(err error) {
 	block := &blockV2{
 		height:             pt.parentBlock.Height() + 1,
 		timestamp:          time.Now(),
-		proposer:           pt.manager.chain.GetWallet().GetAddress(),
+		proposer:           pt.manager.chain.GetWallet().Address(),
 		prevID:             pt.parentBlock.ID(),
 		logBloom:           pmtr.LogBloom(),
 		result:             pmtr.Result(),

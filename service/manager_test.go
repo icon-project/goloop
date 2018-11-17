@@ -132,18 +132,18 @@ const (
 
 var resultMap = make(map[string]*big.Int)
 var deposit = int64(1000000)
-var testAddresses [TEST_ACCOUNTS_NUM]*common.Address
-var testWallets []common.Wallet
+var testAddresses [TEST_ACCOUNTS_NUM]module.Address
+var testWallets [TEST_ACCOUNTS_NUM]module.Wallet
 
-func createTxInst(wallet *common.Wallet, to *common.Address, value *big.Int, timestamp int64) module.Transaction {
+func createTxInst(wallet module.Wallet, to module.Address, value *big.Int, timestamp int64) module.Transaction {
 	r := rand.Int63()
 	ver := int((r % 2) + 2)
 
 	tx := txTest{}
 	tx.group = module.TransactionGroupNormal
 	tx.version = ver
-	tx.from = wallet.Address
-	tx.to = to
+	tx.from = wallet.Address().(*common.Address)
+	tx.to = to.(*common.Address)
 	tx.value = value
 	tx.stepLimit = new(big.Int).SetInt64(r % 0xffff)
 	tx.timestamp = timestamp
@@ -178,11 +178,11 @@ func createTxInst(wallet *common.Wallet, to *common.Address, value *big.Int, tim
 	}
 	bs = append([]byte("icx_sendTransaction."), bs...)
 	h := crypto.SHA3Sum256(bs)
-	sig, err := crypto.NewSignature(h, wallet.PrKey)
+	sig, err := wallet.Sign(h)
 	if err != nil {
 		log.Fatalln("fail to create a signature")
 	}
-	tx.signature, _ = sig.SerializeRSV()
+	tx.signature = sig
 
 	// create bytes
 	tx.bytes = marshalTx(&tx)
@@ -260,7 +260,7 @@ func createRandTx(valid bool, time int64, validNum int) module.Transaction {
 		timestamp = time - TestTxLiveDuration() - 1000 - int64(rand.Int()%10)
 	}
 
-	return createTxInst(&walletFrom, to, value, timestamp)
+	return createTxInst(walletFrom, to, value, timestamp)
 }
 
 func requestTx(validTxNum int, manager module.ServiceManager, done chan bool) {
@@ -287,10 +287,9 @@ func requestTx(validTxNum int, manager module.ServiceManager, done chan bool) {
 // create wallet(private/public keys & address) and set balance
 // then set addresses and accounts to trie
 func initTestWallets(testWalletNum int, db db.Database, mpts ...trie.Mutable) {
-	wallet := common.CreateWallet(testWalletNum)
-	//testAddresses = make([][]byte, testWalletNum)
 	for i := 0; i < testWalletNum; i++ {
-		testAddresses[i] = wallet[i].Address
+		testWallets[i] = common.NewWallet()
+		testAddresses[i] = testWallets[i].Address()
 		accountState := newAccountState(db, nil)
 		accountState.SetBalance(big.NewInt(deposit))
 		serializedAccount, _ := codec.MP.MarshalToBytes(accountState.GetSnapshot())
@@ -298,7 +297,6 @@ func initTestWallets(testWalletNum int, db db.Database, mpts ...trie.Mutable) {
 			mpt.Set(testAddresses[i].Bytes(), serializedAccount)
 		}
 	}
-	testWallets = wallet
 }
 
 func TestServiceManager(t *testing.T) {

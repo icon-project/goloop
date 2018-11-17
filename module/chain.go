@@ -3,8 +3,8 @@ package module
 import "github.com/icon-project/goloop/common/db"
 
 type Wallet interface {
-	GetAddress() Address
-	Sign(data []byte) []byte
+	Address() Address
+	Sign(data []byte) ([]byte, error)
 	PublicKey() []byte
 }
 
