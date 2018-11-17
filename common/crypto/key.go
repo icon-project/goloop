@@ -116,3 +116,13 @@ func GenerateKeyPair() (privKey *PrivateKey, pubKey *PublicKey) {
 	pubKey, _ = ParsePublicKey(pub)
 	return
 }
+
+// ParsePublicKey parse private key and return private key object.
+func ParsePrivateKey(b []byte) (*PrivateKey, error) {
+	if len(b) != PrivateKeyLen {
+		return nil, errors.New("InvalidKeyLength")
+	}
+	b2 := make([]byte, len(b))
+	copy(b2, b)
+	return &PrivateKey{b2}, nil
+}
