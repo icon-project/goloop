@@ -2,7 +2,7 @@ package block
 
 import (
 	"bytes"
-	"errors"
+	"github.com/pkg/errors"
 	"io"
 	"time"
 
@@ -119,7 +119,7 @@ func (m *manager) _import(
 	}
 	bn := m.nmap[string(block.PrevID())]
 	if bn == nil {
-		return nil, errors.New("bad prev ID")
+		return nil, errors.Errorf("InvalidPreviousID(%x)", block.PrevID())
 	}
 	if err := verifyBlock(block, bn.block); err != nil {
 		return nil, err
@@ -134,7 +134,7 @@ func (m *manager) _import(
 	it.state = executingIn
 	it.in = bn.preexe.patch(it.block.PatchTransactions(), it)
 	if it.in == nil {
-		return nil, common.ErrUnknown
+		return nil, errors.New("FailToPatch")
 	}
 	return it, nil
 }
@@ -675,7 +675,7 @@ func (m *manager) newBlockFromReader(r io.Reader) (module.Block, error) {
 	return &blockV2{
 		height:             blockFormat.Height,
 		timestamp:          timeFromUnixMicro(blockFormat.Timestamp),
-		proposer:           common.NewAccountAddress(blockFormat.Proposer),
+		proposer:           common.NewAddress(blockFormat.Proposer),
 		prevID:             blockFormat.PrevID,
 		logBloom:           blockFormat.LogBloom,
 		result:             blockFormat.Result,
