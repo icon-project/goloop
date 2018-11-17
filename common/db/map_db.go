@@ -6,6 +6,10 @@ import (
 	"log"
 )
 
+const (
+	configLogMapDB = true
+)
+
 func init() {
 	dbCreator := func(name string, dir string) (Database, error) {
 		return make(mapDatabase), nil
@@ -54,16 +58,22 @@ func (t *mapBucket) Get(k []byte) ([]byte, error) {
 	v, ok := t.real[string(k)]
 	if ok {
 		bytes := []byte(v)
-		log.Printf("mapBucket[%s].Get(%x) -> [%x]", t.id, k, bytes)
+		if configLogMapDB {
+			log.Printf("mapBucket[%s].Get(%x) -> [%x]", t.id, k, bytes)
+		}
 		return bytes, nil
 	}
-	log.Printf("mapBucket[%s].Get(%x) -> FAIL", t.id, k)
+	if configLogMapDB {
+		log.Printf("mapBucket[%s].Get(%x) -> FAIL", t.id, k)
+	}
 	return nil, nil
 }
 
 func (t *mapBucket) Has(k []byte) bool {
 	_, ok := t.real[string(k)]
-	log.Printf("mapBucket[%s].Has(%x) -> %v", t.id, k, ok)
+	if configLogMapDB {
+		log.Printf("mapBucket[%s].Has(%x) -> %v", t.id, k, ok)
+	}
 	return ok
 }
 
@@ -71,13 +81,17 @@ func (t *mapBucket) Set(k, v []byte) error {
 	if len(k) == 0 {
 		return errors.Errorf("Illegal Key:%x", k)
 	}
-	log.Printf("mapBucket[%s].Set(%x,%x)", t.id, k, v)
+	if configLogMapDB {
+		log.Printf("mapBucket[%s].Set(%x,%x)", t.id, k, v)
+	}
 	t.real[string(k)] = string(v)
 	return nil
 }
 
 func (t *mapBucket) Delete(k []byte) error {
-	log.Printf("mapBucket[%s].Delete(%x)", t.id, k)
+	if configLogMapDB {
+		log.Printf("mapBucket[%s].Delete(%x)", t.id, k)
+	}
 	delete(t.real, string(k))
 	return nil
 }
