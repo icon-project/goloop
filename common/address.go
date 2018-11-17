@@ -111,6 +111,12 @@ func NewAccountAddress(b []byte) *Address {
 	return a
 }
 
+func NewAddress(b []byte) *Address {
+	a := new(Address)
+	a.SetBytes(b)
+	return a
+}
+
 func NewContractAddress(b []byte) *Address {
 	a := new(Address)
 	a.SetTypeAndID(true, b)
