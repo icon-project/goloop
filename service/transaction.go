@@ -338,9 +338,6 @@ func (tx *transaction) verifySignature() error {
 		return errors.New("txHash value is different from real")
 	}
 
-	if err != nil {
-
-	}
 	if pk, err := tx.signature.RecoverPublicKey(h); err != nil {
 		log.Println("FAIL Recovering public key")
 		log.Println("Signature", tx.signature)
