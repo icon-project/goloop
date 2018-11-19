@@ -112,7 +112,7 @@ func (c *proposeOnlyConsensus) Start() {
 		buf := bytes.NewBuffer(nil)
 		blk.MarshalHeader(buf)
 		blk.MarshalBody(buf)
-		fmt.Println("Proposer: Finalized Proposed Block ", blk.Height(), blk.ID())
+		fmt.Printf("Proposer: Finalized Block(%d) %x\n", blk.Height(), blk.ID())
 		c.ch <- buf.Bytes()
 		height++
 	}
@@ -153,7 +153,7 @@ func (c *importOnlyConsensus) Start() {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("Importer : Finalized Imported Block ", blk.Height(), blk.ID())
+		fmt.Printf("Importer: Finalized Block(%d) %x\n", blk.Height(), blk.ID())
 	}
 }
 
