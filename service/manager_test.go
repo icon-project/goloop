@@ -155,20 +155,21 @@ func createTxInst(wallet module.Wallet, to module.Address, value *big.Int, times
 	m := make(map[string]interface{})
 	switch tx.version {
 	case 2:
-		m["From"] = tx.from.String()
-		m["To"] = tx.to.String()
-		m["Value"] = common.HexInt{*tx.value}.String()
-		m["Fee"] = common.HexInt{*tx.stepLimit}.String()
-		m["Timestamp"] = common.HexInt64{tx.timestamp}.String()
-		m["Nonce"] = common.HexInt64{tx.nonce}.String()
+		m["from"] = tx.from.String()
+		m["to"] = tx.to.String()
+		m["value"] = common.HexInt{*tx.value}.String()
+		m["fee"] = common.HexInt{*tx.stepLimit}.String()
+		m["timestamp"] = common.HexInt64{tx.timestamp}.String()
+		m["nonce"] = common.HexInt64{tx.nonce}.String()
 	case 3:
-		m["Version"] = common.HexInt16{int16(tx.version)}.String()
-		m["From"] = tx.from.String()
-		m["To"] = tx.to.String()
-		m["Value"] = common.HexInt{*tx.value}.String()
-		m["StepLimit"] = common.HexInt{*tx.stepLimit}.String()
-		m["Timestamp"] = common.HexInt64{tx.timestamp}.String()
-		m["Nonce"] = common.HexInt64{tx.nonce}.String()
+		m["version"] = common.HexInt16{int16(tx.version)}.String()
+		m["from"] = tx.from.String()
+		m["to"] = tx.to.String()
+		m["value"] = common.HexInt{*tx.value}.String()
+		m["stepLimit"] = common.HexInt{*tx.stepLimit}.String()
+		m["timestamp"] = common.HexInt64{tx.timestamp}.String()
+		m["nid"] = common.HexInt16{int16(tx.nid)}.String()
+		m["nonce"] = common.HexInt64{tx.nonce}.String()
 	default:
 		log.Fatalln("unknown transaction version:", tx.version)
 	}
@@ -186,7 +187,6 @@ func createTxInst(wallet module.Wallet, to module.Address, value *big.Int, times
 
 	// create bytes
 	tx.bytes = marshalTx(&tx)
-
 	return &tx
 }
 
@@ -194,7 +194,7 @@ func marshalTx(tx *txTest) []byte {
 	var i interface{}
 	switch tx.version {
 	case 2:
-		ti := &txTestV2{
+		ti := txTestV2{
 			From:      *tx.from,
 			To:        *tx.to,
 			Value:     common.HexInt{*tx.value},
@@ -205,7 +205,7 @@ func marshalTx(tx *txTest) []byte {
 		}
 		i = ti
 	case 3:
-		ti := &txTestV3{
+		ti := txTestV3{
 			Version:   common.HexInt16{int16(tx.version)},
 			From:      *tx.from,
 			To:        *tx.to,
@@ -218,7 +218,7 @@ func marshalTx(tx *txTest) []byte {
 		}
 		i = ti
 	}
-	b, _ := json.Marshal(i)
+	b, _ := json.Marshal(&i)
 	return b
 }
 
