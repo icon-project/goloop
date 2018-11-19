@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"log"
+
 	"github.com/icon-project/goloop/module"
 	"github.com/ugorji/go/codec"
-	"log"
 
 	"github.com/icon-project/goloop/common/crypto"
 )
@@ -28,6 +29,10 @@ func (a *Address) String() string {
 	} else {
 		return "hx" + hex.EncodeToString(a[1:])
 	}
+}
+
+func (a Address) MarshalJSON() ([]byte, error) {
+	return json.Marshal(a.String())
 }
 
 func (a *Address) UnmarshalJSON(b []byte) error {

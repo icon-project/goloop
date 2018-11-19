@@ -17,6 +17,10 @@ func (i HexInt) String() string {
 	return "0x" + i.Text(16)
 }
 
+func (i HexInt) MarshalJSON() ([]byte, error) {
+	return json.Marshal(i.String())
+}
+
 func (i *HexInt) UnmarshalJSON(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
@@ -62,6 +66,10 @@ func (i HexInt16) String() string {
 	return "0x" + strconv.FormatInt(int64(i.Value), 16)
 }
 
+func (i HexInt16) MarshalJSON() ([]byte, error) {
+	return json.Marshal(i.String())
+}
+
 func (i *HexInt16) UnmarshalJSON(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
@@ -89,6 +97,10 @@ type HexUint16 struct {
 
 func (i HexUint16) String() string {
 	return "0x" + strconv.FormatUint(uint64(i.Value), 16)
+}
+
+func (i HexUint16) MarshalJSON() ([]byte, error) {
+	return json.Marshal(i.String())
 }
 
 func (i *HexUint16) UnmarshalJSON(b []byte) error {
@@ -120,6 +132,10 @@ func (i HexInt32) String() string {
 	return "0x" + strconv.FormatInt(int64(i.Value), 16)
 }
 
+func (i HexInt32) MarshalJSON() ([]byte, error) {
+	return json.Marshal(i.String())
+}
+
 func (i *HexInt32) UnmarshalJSON(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
@@ -147,6 +163,10 @@ type HexUint32 struct {
 
 func (i HexUint32) String() string {
 	return "0x" + strconv.FormatUint(uint64(i.Value), 16)
+}
+
+func (i HexUint32) MarshalJSON() ([]byte, error) {
+	return json.Marshal(i.String())
 }
 
 func (i *HexUint32) UnmarshalJSON(b []byte) error {
@@ -178,6 +198,10 @@ func (i HexInt64) String() string {
 	return "0x" + strconv.FormatInt(i.Value, 16)
 }
 
+func (i HexInt64) MarshalJSON() ([]byte, error) {
+	return json.Marshal(i.String())
+}
+
 func (i *HexInt64) UnmarshalJSON(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
@@ -205,6 +229,10 @@ type HexUint64 struct {
 
 func (i HexUint64) String() string {
 	return "0x" + strconv.FormatUint(uint64(i.Value), 16)
+}
+
+func (i HexUint64) MarshalJSON() ([]byte, error) {
+	return json.Marshal(i.String())
 }
 
 func (i *HexUint64) UnmarshalJSON(b []byte) error {
