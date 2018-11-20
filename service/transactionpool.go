@@ -3,12 +3,12 @@ package service
 import (
 	"bytes"
 	"container/list"
+	"github.com/icon-project/goloop/module"
 	"sort"
 	"sync"
 	"time"
 
 	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/common/trie"
 )
 
 const (
@@ -115,7 +115,7 @@ func (txPool *transactionPool) add(tx *transaction) error {
 
 // 없다면, len()이 0인 TransactionList를 리턴한다. (nil 아님)
 // It returns all candidates for a negative integer n.
-func (txPool *transactionPool) candidate(state trie.Mutable, max int) []*transaction {
+func (txPool *transactionPool) candidate(wc WorldContext, max int) []module.Transaction {
 	// TODO state를 전달받더라도 실제 account info는 address를 통해서 바로 찾는 것이
 	// 유리할텐데... trie를 통해서 Get하면 비효율적임.
 	// TODO max가 음수이면 모든 transaction을 리턴한다. patch pool에 대해서 필요할 것
@@ -130,15 +130,15 @@ func (txPool *transactionPool) candidate(state trie.Mutable, max int) []*transac
 	defer txPool.mutex.Unlock()
 
 	if txPool.txList.Len() == 0 {
-		return []*transaction{}
+		return []module.Transaction{}
 	}
 
 	if max < 0 {
 		txList := txPool.txList
-		resultTxs := make([]*transaction, txList.Len())
+		resultTxs := make([]module.Transaction, txList.Len())
 		i := 0
 		for iter := txList.Front(); iter != nil; iter = iter.Next() {
-			resultTxs[i] = iter.Value.(*transaction)
+			resultTxs[i] = iter.Value.(module.Transaction)
 			i++
 		}
 		return resultTxs
@@ -148,16 +148,16 @@ func (txPool *transactionPool) candidate(state trie.Mutable, max int) []*transac
 		txsLen = txPool.txList.Len()
 	}
 
-	txs := make([]*transaction, txsLen)
+	txs := make([]module.Transaction, txsLen)
 	txsIndex := 0
 	for iter := txPool.txList.Front(); iter != nil; {
-		if iter.Value.(*transaction).validate(state, txPool.txdb) != nil {
+		if iter.Value.(Transaction).PreValidate(wc, true) != nil {
 			tmp := iter.Next()
 			txPool.txList.Remove(iter)
 			iter = tmp
 			continue
 		}
-		txs[txsIndex] = iter.Value.(*transaction)
+		txs[txsIndex] = iter.Value.(module.Transaction)
 		txsIndex++
 		if txsIndex == max {
 			break
@@ -166,11 +166,6 @@ func (txPool *transactionPool) candidate(state trie.Mutable, max int) []*transac
 	}
 
 	return txs[:txsIndex]
-}
-
-// 이것을 사용할 경우 없음.
-func (txPool *transactionPool) remove(tx *transaction) {
-	txPool.removeList([]*transaction{tx})
 }
 
 // 사용할 경우 없음. 이것도 간단한 검증은 외부에서 수행
@@ -233,14 +228,17 @@ func (txPool *transactionPool) addList(txs []*transaction) {
 }
 
 // finalize할 때 호출됨.
-func (txPool *transactionPool) removeList(txs []*transaction) {
-	rmTxsLen := len(txs)
-	if rmTxsLen == 0 {
-		return
-	}
+func (txPool *transactionPool) removeList(txs module.TransactionList) {
 	txPool.mutex.Lock()
 	defer txPool.mutex.Unlock()
-	rmTxs := append([]*transaction{}, txs...)
+	var rmTxs []*transaction
+	for i := txs.Iterator(); i.Has(); i.Next() {
+		t, _, _ := i.Get()
+		if tx, ok := t.(*transaction); ok {
+			rmTxs = append(rmTxs, tx)
+		}
+	}
+	rmTxsLen := len(rmTxs)
 	sort.Slice(rmTxs, func(i, j int) bool {
 		return rmTxs[i].Timestamp() < rmTxs[j].Timestamp()
 	})

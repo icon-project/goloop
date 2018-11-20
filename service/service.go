@@ -27,6 +27,7 @@ type WorldContext interface {
 	StepPrice() *big.Int
 	TimeStamp() int64
 	BlockHeight() uint64
+	Treasury() module.Address
 	WorldStateChanged(ws WorldState) WorldContext
 }
 

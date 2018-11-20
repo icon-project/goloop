@@ -41,16 +41,24 @@ type TransactionList interface {
 	Iterator() TransactionIterator
 	Hash() []byte
 	Equal(TransactionList) bool
+	Flush() error
 }
 
 type Receipt interface {
-	Bytes() ([]byte, error)
+	Bytes() []byte
+}
+
+type ReceiptIterator interface {
+	Has() bool
+	Next() error
+	Get() (Receipt, error)
 }
 
 type ReceiptList interface {
 	Get(int) (Receipt, error)
-	Size() int
+	Iterator() ReceiptIterator
 	Hash() []byte
+	Flush() error
 }
 
 type Transition interface {
@@ -148,8 +156,8 @@ type ServiceManager interface {
 	ReceiptListFromResult(result []byte, g TransactionGroup) ReceiptList
 
 	// SendTransaction adds transaction to a transaction pool.
-	//SendTransaction(tx interface{}) ([]byte, error)
-	SendTransaction(tx Transaction) ([]byte, error)
+	SendTransaction(tx interface{}) ([]byte, error)
+	// SendTransaction(tx Transaction) ([]byte, error)
 
 	// ValidatorListFromHash returns ValidatorList from hash.
 	ValidatorListFromHash(hash []byte) ValidatorList

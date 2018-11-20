@@ -3,8 +3,11 @@ package service
 import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
 	ugorji "github.com/ugorji/go/codec"
+	"log"
 	"math/big"
 )
 
@@ -21,6 +24,32 @@ type receipt struct {
 	logBloom           LogBloom
 	eventLogs          []eventLog
 	success            bool
+}
+
+func (r *receipt) Bytes() []byte {
+	bs, err := codec.MarshalToBytes(r)
+	if err != nil {
+		log.Panicf("Fail to marshal object err=%+v", err)
+	}
+	return bs
+}
+
+func (r *receipt) Reset(s db.Database, k []byte) error {
+	_, err := codec.UnmarshalFromBytes(k, r)
+	return err
+}
+
+func (r *receipt) Flush() error {
+	return nil
+}
+
+func (r *receipt) Equal(o trie.Object) bool {
+	if rct, ok := o.(*receipt); ok {
+		if rct == r {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *receipt) CodecEncodeSelf(e *ugorji.Encoder) {
@@ -43,10 +72,6 @@ func (r *receipt) CodecDecodeSelf(d *ugorji.Decoder) {
 	r.stepPrice.SetBytes(bs)
 	d.Decode(&r.eventLogs)
 	d.Decode(&r.logBloom)
-}
-
-func (r *receipt) Bytes() ([]byte, error) {
-	return codec.MarshalToBytes(r)
 }
 
 type receiptJSON struct {

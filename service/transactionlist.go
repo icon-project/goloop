@@ -67,6 +67,10 @@ func (l *transactionList) Equal(t module.TransactionList) bool {
 	return bytes.Equal(l.trie.Hash(), t.Hash())
 }
 
+func (l *transactionList) Flush() error {
+	return nil
+}
+
 func NewTransactionListFromTrie(t trie.ImmutableForObject) module.TransactionList {
 	return &transactionList{t}
 }
@@ -74,6 +78,13 @@ func NewTransactionListFromTrie(t trie.ImmutableForObject) module.TransactionLis
 type transactionSlice struct {
 	list []module.Transaction
 	trie trie.Immutable
+}
+
+func (l *transactionSlice) Flush() error {
+	if s, ok := l.trie.(trie.Snapshot); ok {
+		return s.Flush()
+	}
+	return nil
 }
 
 func (l *transactionSlice) Get(i int) (module.Transaction, error) {
@@ -123,8 +134,7 @@ func (l *transactionSlice) Equal(t module.TransactionList) bool {
 	return bytes.Equal(l.trie.Hash(), t.Hash())
 }
 
-func NewTransactionListFromSlice(list []module.Transaction) module.TransactionList {
-	dbase := db.NewProxyDB()
+func NewTransactionListFromSlice(dbase db.Database, list []module.Transaction) module.TransactionList {
 	mt := trie_manager.NewMutable(dbase, nil)
 	for idx, tr := range list {
 		k, _ := codec.MP.MarshalToBytes(uint(idx))

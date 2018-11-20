@@ -36,17 +36,6 @@ func (t *transaction) Bytes() []byte {
 	return t.Transaction.Bytes()
 }
 
-func (t *transaction) execute(state *transitionState, database db.Database) error {
-	// TODO: remove reference to here
-	panic("Need to be removed")
-	return nil
-}
-func (t *transaction) validate(mutable trie.Mutable, bucket db.Bucket) error {
-	// TODO: remove reference to here.
-	panic("Need to removed")
-	return nil
-}
-
 func NewTransaction(b []byte) (module.Transaction, error) {
 	if tx, err := newTransaction(b); err != nil {
 		return nil, err

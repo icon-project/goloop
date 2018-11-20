@@ -4,11 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/common/trie"
-	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -42,28 +41,31 @@ func NewManager(database db.Database) module.ServiceManager {
 // Returned Transition always passes validation.
 func (m *manager) ProposeTransition(parent module.Transition) (module.Transition, error) {
 	// check validity of transition
-	pt, state, err := m.checkTransitionResult(parent)
+	pt, err := m.checkTransitionResult(parent)
 	if err != nil {
 		return nil, err
 	}
 
-	// find validated transactions
-	patchTxs := m.patchTxPool.candidate(state, -1) // try to add all patches in the block
+	var timestamp int64 = time.Now().UnixNano() / 1000
+
+	ws, _ := WorldStateFromSnapshot(pt.worldSnapshot)
+	wc := NewWorldContext(ws, timestamp, pt.height+1)
+
+	patchTxs := m.patchTxPool.candidate(wc, -1) // try to add all patches in the block
 	maxTxNum := txMaxNumInBlock - len(patchTxs)
-	var normalTxs []*transaction
+	var normalTxs []module.Transaction
 	if maxTxNum > 0 {
-		normalTxs = m.normalTxPool.candidate(state, txMaxNumInBlock-len(patchTxs))
+		normalTxs = m.normalTxPool.candidate(wc, txMaxNumInBlock-len(patchTxs))
 	} else {
 		// what if patches already exceed the limit of transactions? It usually
 		// doesn't happen but...
-		normalTxs = make([]*transaction, 0)
+		normalTxs = make([]module.Transaction, 0)
 	}
 
 	// create transition instance and return it
 	return newTransition(pt,
-			newTransactionList(m.db, patchTxs),
-			newTransactionList(m.db, normalTxs),
-			state,
+			NewTransactionListFromSlice(m.db, patchTxs),
+			NewTransactionListFromSlice(m.db, normalTxs),
 			true),
 		nil
 }
@@ -74,9 +76,8 @@ func (m *manager) ProposeGenesisTransition(parent module.Transition) (module.Tra
 	if pt, ok := parent.(*transition); ok {
 		// create transition instance and return it
 		return newTransition(pt,
-				newTransactionList(m.db, nil),
-				newTransactionList(m.db, nil),
-				trie_manager.NewMutable(m.db, nil),
+				NewTransactionListFromSlice(m.db, nil),
+				NewTransactionListFromSlice(m.db, nil),
 				true),
 			nil
 	}
@@ -86,20 +87,7 @@ func (m *manager) ProposeGenesisTransition(parent module.Transition) (module.Tra
 // CreateInitialTransition creates an initial Transition with result and
 // vs validators.
 func (m *manager) CreateInitialTransition(result []byte, valList module.ValidatorList, height int64) (module.Transition, error) {
-	var err error
-	var resultBytes resultBytes
-	if len(result) == 0 {
-		resultBytes = newEmptyResultBytes()
-	} else {
-		if resultBytes, err = newResultBytes(result); err != nil {
-			return nil, errors.New("invalid result")
-		}
-	}
-	if valList == nil {
-		valList, _ = ValidatorListFromSlice(m.db, nil)
-	}
-	// TODO check if result isn't valid. Who's responsible?
-	return newInitTransition(m.db, resultBytes, valList), nil
+	return newInitTransition(m.db, result, valList)
 }
 
 // CreateTransition creates a Transition following parent Transition with txs
@@ -107,23 +95,11 @@ func (m *manager) CreateInitialTransition(result []byte, valList module.Validato
 // parent transition should have a valid result.
 func (m *manager) CreateTransition(parent module.Transition, txList module.TransactionList) (module.Transition, error) {
 	// check validity of transition
-	pt, state, err := m.checkTransitionResult(parent)
+	pt, err := m.checkTransitionResult(parent)
 	if err != nil {
 		return nil, err
 	}
-
-	// check transaction type
-	txlist, ok := txList.(*transactionlist)
-	if !ok {
-		return nil, common.ErrIllegalArgument
-	}
-
-	return newTransition(pt,
-			newTransactionList(m.db, make([]*transaction, 0)),
-			txlist,
-			state,
-			false),
-		nil
+	return newTransition(pt, nil, txList, false), nil
 }
 
 // GetPatches returns all patch transactions based on the parent transition.
@@ -133,44 +109,33 @@ func (m *manager) GetPatches(parent module.Transition) module.TransactionList {
 	// but add the following same as that of normal transaction.
 	pt, ok := parent.(*transition)
 	if !ok {
-		return nil
-	}
-	_, state, err := m.checkTransitionResult(pt)
-	if err != nil {
+		log.Panicf("Illegal transition for GetPatches type=%T", parent)
 		return nil
 	}
 
-	return newTransactionList(m.db, m.patchTxPool.candidate(state, -1))
+	ws, err := WorldStateFromSnapshot(pt.worldSnapshot)
+	if err != nil {
+		log.Panicf("Fail to creating world state from snapshot")
+	}
+
+	// TODO we need to get proper time stamp value and height.
+	wc := NewWorldContext(ws, 0, 0)
+	return NewTransactionListFromSlice(m.db, m.patchTxPool.candidate(wc, -1))
 }
 
 // PatchTransition creates a Transition by overwriting patches on the transition.
 // It doesn't return same instance as transition, but new Transition instance.
 func (m *manager) PatchTransition(t module.Transition, patchTxList module.TransactionList) module.Transition {
-	// type checking
 	pt, ok := t.(*transition)
 	if !ok {
+		log.Panicf("Illegal transition for GetPatches type=%T", t)
 		return nil
-	}
-	tst, state, err := m.checkTransitionResult(pt.parent)
-	if err != nil {
-		return nil
-	}
-
-	// prepare patch transaction list
-	var txList *transactionlist
-	if patchTxList == nil {
-		txList = newTransactionList(m.db, make([]*transaction, 0))
-	} else {
-		txList, ok = patchTxList.(*transactionlist)
-		if !ok {
-			return nil
-		}
 	}
 
 	// If there is no way to validate patches, then set 'alreadyValidated' to
 	// true. It'll skip unnecessary validation for already validated normal
 	// transactions.
-	return newTransition(tst.parent, txList, tst.normalTransactions, state, false)
+	return newTransition(pt.parent, patchTxList, pt.normalTransactions, false)
 }
 
 // Finalize finalizes data related to the transition. It usually stores
@@ -182,11 +147,11 @@ func (m *manager) Finalize(t module.Transition, opt int) {
 			tst.finalizeNormalTransaction()
 			// Because transactionlist for transition is made only through peer and SendTransaction() call
 			// transactionlist has slice of transactions in case that finalize() is called
-			m.normalTxPool.removeList(tst.normalTransactions.txs)
+			m.normalTxPool.removeList(tst.normalTransactions)
 		}
 		if opt&module.FinalizePatchTransaction == module.FinalizePatchTransaction {
 			tst.finalizePatchTransaction()
-			m.normalTxPool.removeList(tst.patchTransactions.txs)
+			m.normalTxPool.removeList(tst.patchTransactions)
 		}
 		if opt&module.FinalizeResult == module.FinalizeResult {
 			tst.finalizeResult()
@@ -225,25 +190,37 @@ func (m *manager) ReceiptListFromResult(result []byte, g module.TransactionGroup
 	return nil
 }
 
-func (m *manager) checkTransitionResult(t module.Transition) (*transition, trie.Mutable, error) {
+func (m *manager) checkTransitionResult(t module.Transition) (*transition, error) {
 	// check validity of transition
 	tst, ok := t.(*transition)
 	if !ok || tst.step != stepComplete {
-		return nil, nil, common.ErrIllegalArgument
+		return nil, common.ErrIllegalArgument
 	}
-	state := trie_manager.NewMutable(m.db, tst.result.stateHash())
-
-	return tst, state, nil
+	return tst, nil
 }
 
-func (m *manager) SendTransaction(tx module.Transaction) ([]byte, error) {
-	//func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
-	// TODO: apply changed API
-	newTx, ok := tx.(*transaction)
-	if !ok {
-		log.Printf("Failed to create new transaction from object!. tx : %x type:%T\n", tx.Bytes(), tx)
-		return nil, fmt.Errorf("IllegalTransactionType:%T", tx)
+func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
+
+	var newTx *transaction
+	switch txo := tx.(type) {
+	case []byte:
+		ntx, err := NewTransactionFromJSON(txo)
+		if err != nil {
+			return nil, err
+		}
+		newTx = ntx.(*transaction)
+	case string:
+		ntx, err := NewTransactionFromJSON([]byte(txo))
+		if err != nil {
+			return nil, err
+		}
+		newTx = ntx.(*transaction)
+	case *transaction:
+		newTx = txo
+	default:
+		return nil, fmt.Errorf("IllegalTransactoinType:%T", tx)
 	}
+
 	if err := newTx.Verify(); err != nil {
 		log.Printf("Failed to verify transaction. tx : %x\n", newTx.Bytes())
 		return nil, err
@@ -266,7 +243,6 @@ func (m *manager) SendTransaction(tx module.Transaction) ([]byte, error) {
 
 	go txPool.add(newTx)
 	return hash, nil
-	//	return nil, nil
 }
 
 func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {
