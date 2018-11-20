@@ -123,8 +123,6 @@ func (c *proposeOnlyConsensus) Start() {
 			panic(err)
 		}
 		height++
-
-		time.Sleep(15 * time.Second)
 	}
 }
 
