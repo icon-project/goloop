@@ -150,10 +150,9 @@ func (txPool *transactionPool) candidate(state trie.Mutable, max int) []*transac
 
 	txs := make([]*transaction, txsLen)
 	txsIndex := 0
-	for iter := txPool.txList.Front(); iter != nil; iter = iter.Next() {
-		// 현재 validate에 실패한 tx에 대해서 삭제함.
+	for iter := txPool.txList.Front(); iter != nil; {
 		if iter.Value.(*transaction).validate(state, txPool.txdb) != nil {
-			tmp := iter.Prev()
+			tmp := iter.Next()
 			txPool.txList.Remove(iter)
 			iter = tmp
 			continue
@@ -163,6 +162,7 @@ func (txPool *transactionPool) candidate(state trie.Mutable, max int) []*transac
 		if txsIndex == max {
 			break
 		}
+		iter = iter.Next()
 	}
 
 	return txs[:txsIndex]
@@ -234,18 +234,19 @@ func (txPool *transactionPool) addList(txs []*transaction) {
 
 // finalize할 때 호출됨.
 func (txPool *transactionPool) removeList(txs []*transaction) {
-	// TODO 효과적으로 제거하는 방안 필요
+	rmTxsLen := len(txs)
+	if rmTxsLen == 0 {
+		return
+	}
 	txPool.mutex.Lock()
 	defer txPool.mutex.Unlock()
-	i := 0
 	rmTxs := append([]*transaction{}, txs...)
 	sort.Slice(rmTxs, func(i, j int) bool {
 		return rmTxs[i].Timestamp() < rmTxs[j].Timestamp()
 	})
 
 	t := txPool.txList.Front()
-	rmTxsLen := len(rmTxs)
-	for i < rmTxsLen && t != nil {
+	for i := 0; i < rmTxsLen && t != nil; {
 		v := t.Value.(*transaction)
 		if v.Timestamp() == rmTxs[i].Timestamp() {
 			if bytes.Compare(v.ID(), rmTxs[i].ID()) == 0 {
