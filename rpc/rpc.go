@@ -25,11 +25,15 @@ func NewJsonRpcServer(bm module.BlockManager, sm module.ServiceManager) JsonRpcS
 
 func (s *JsonRpcServer) Start() error {
 
-	err := http.ListenAndServe(":8080", s.jsonRpcHandler())
-	if err != nil {
-		log.Fatal(err)
-		return err
-	}
+	log.Println("RPC - JsonRpcServer Start()")
+
+	go func() {
+		err := http.ListenAndServe(":8080", s.jsonRpcHandler())
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
 	return nil
 }
 
