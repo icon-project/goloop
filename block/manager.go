@@ -475,7 +475,7 @@ func (m *manager) FinalizeGenesisBlocks(
 		return nil, err
 	}
 	m.syncer.begin()
-	emptyTxs := m.sm.TransactionListFromSlice(nil, common.BlockVersion2)
+	emptyTxs := m.sm.TransactionListFromSlice(nil, module.BlockVersion2)
 	bn := &bnode{}
 	bn.in = pbn.preexe.newTransition(nil)
 	pmtr := bn.in.mtransition()
@@ -666,14 +666,14 @@ func (m *manager) newBlockFromReader(r io.Reader) (module.Block, error) {
 	v2Codec.Unmarshal(r, &blockFormat)
 	patches := m.newTransactionListFromBSS(
 		blockFormat.PatchTransactions,
-		common.BlockVersion2,
+		module.BlockVersion2,
 	)
 	if !bytes.Equal(patches.Hash(), blockFormat.PatchTransactionsHash) {
 		return nil, errors.New("bad patch transactions hash")
 	}
 	normalTxs := m.newTransactionListFromBSS(
 		blockFormat.NormalTransactions,
-		common.BlockVersion2,
+		module.BlockVersion2,
 	)
 	if !bytes.Equal(normalTxs.Hash(), blockFormat.NormalTransactionsHash) {
 		return nil, errors.New("bad normal transactions hash")

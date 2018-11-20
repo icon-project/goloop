@@ -7,7 +7,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
@@ -65,7 +64,7 @@ func timeFromUnixMicro(usec int64) time.Time {
 }
 
 func (b *blockV2) Version() int {
-	return common.BlockVersion2
+	return module.BlockVersion2
 }
 
 func (b *blockV2) ID() []byte {

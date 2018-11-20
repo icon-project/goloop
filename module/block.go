@@ -5,6 +5,11 @@ import (
 	"time"
 )
 
+const (
+	BlockVersion1 = iota + 1
+	BlockVersion2
+)
+
 type Block interface {
 	Version() int
 	ID() []byte

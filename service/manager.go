@@ -174,10 +174,14 @@ func (m *manager) TransactionListFromHash(hash []byte) module.TransactionList {
 
 // TransactionListFromSlice returns list of transactions.
 func (m *manager) TransactionListFromSlice(txs []module.Transaction, version int) module.TransactionList {
-	// TODO What if transaction objects are created outside?
-	// TODO: db should be passed as parameter for flush()
-	//panic("not implemented")
-	return newTransactionListFromList(m.db, txs)
+	switch version {
+	case module.BlockVersion1:
+		return NewTransactionListV1FromSlice(txs)
+	case module.BlockVersion2:
+		return NewTransactionListFromSlice(m.db, txs)
+	default:
+		return nil
+	}
 }
 
 // ReceiptFromTransactionID returns receipt from legacy receipt bucket.
@@ -191,7 +195,9 @@ func (m *manager) ReceiptListFromResult(result []byte, g module.TransactionGroup
 }
 
 func (m *manager) checkTransitionResult(t module.Transition) (*transition, error) {
-	// check validity of transition
+	if t == nil {
+		return nil, nil
+	}
 	tst, ok := t.(*transition)
 	if !ok || tst.step != stepComplete {
 		return nil, common.ErrIllegalArgument

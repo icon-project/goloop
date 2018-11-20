@@ -266,7 +266,7 @@ func (t *transaction) MarshalJSON() ([]byte, error) {
 }
 
 func (t *transaction) UnmarshalJSON(b []byte) error {
-	tr := sm.TransactionFromBytes(b, common.BlockVersion1)
+	tr := sm.TransactionFromBytes(b, module.BlockVersion1)
 	if tr == nil {
 		return common.ErrUnknown
 	}
