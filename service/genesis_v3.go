@@ -71,7 +71,7 @@ func (g *genesisV3) Verify() error {
 	return nil
 }
 
-func (g *genesisV3) PreValidate(ws WorldState, ts int64, update bool) error {
+func (g *genesisV3) PreValidate(wc WorldContext, update bool) error {
 	// TODO Implement PreValidate
 	panic("implement me")
 }
@@ -81,7 +81,7 @@ func (g *genesisV3) Prepare(wvs WorldVirtualState) (WorldVirtualState, error) {
 	panic("implement me")
 }
 
-func (g *genesisV3) Execute(wvs WorldVirtualState) (Receipt, error) {
+func (g *genesisV3) Execute(wc WorldContext) (Receipt, error) {
 	// TODO Implement PreValidate
 	panic("implement me")
 }

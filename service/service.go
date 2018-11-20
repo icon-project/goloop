@@ -22,11 +22,19 @@ var (
 	ErrInvalidHashValue   = errors.New("InvalidHashValue")
 )
 
+type WorldContext interface {
+	WorldState
+	StepPrice() *big.Int
+	TimeStamp() int64
+	BlockHeight() uint64
+	WorldStateChanged(ws WorldState) WorldContext
+}
+
 type Transaction interface {
 	module.Transaction
-	PreValidate(ws WorldState, ts int64, update bool) error
+	PreValidate(wc WorldContext, update bool) error
 	Prepare(wvs WorldVirtualState) (WorldVirtualState, error)
-	Execute(wvs WorldVirtualState) (Receipt, error)
+	Execute(wc WorldContext) (Receipt, error)
 	Timestamp() int64
 }
 

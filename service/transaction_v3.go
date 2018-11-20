@@ -106,7 +106,6 @@ type transactionV3 struct {
 	hash []byte
 }
 
-var stepPrice = big.NewInt(10 * GIGA)
 var stepsForTransfer = big.NewInt(100000)
 
 func (tx *transactionV3) Version() int {
@@ -139,25 +138,27 @@ func (tx *transactionV3) Verify() error {
 	return nil
 }
 
-func (tx *transactionV3) PreValidate(ws WorldState, ts int64, update bool) error {
+func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
+	stepPrice := wc.StepPrice()
+
 	trans := new(big.Int)
 	trans.Set(&tx.StepLimit.Int)
 	trans.Mul(trans, stepPrice)
 	trans.Add(trans, &tx.Value.Int)
 
-	as1 := ws.GetAccountState(tx.From.ID())
+	as1 := wc.GetAccountState(tx.From.ID())
 	balance1 := as1.GetBalance()
 	if balance1.Cmp(trans) < 0 {
 		return ErrNotEnoughBalance
 	}
 
-	tsdiff := ts - tx.TimeStamp.Value
+	tsdiff := wc.TimeStamp() - tx.TimeStamp.Value
 	if tsdiff < -5*60*1000*1000 || tsdiff > 5*60*1000*1000 {
 		return ErrTimeOut
 	}
 
 	if update {
-		as2 := ws.GetAccountState(tx.To.ID())
+		as2 := wc.GetAccountState(tx.To.ID())
 		balance2 := as2.GetBalance()
 		balance2.Add(balance2, &tx.Value.Int)
 		balance1.Sub(balance1, trans)
@@ -183,42 +184,43 @@ func (tx *transactionV3) Prepare(wvs WorldVirtualState) (WorldVirtualState, erro
 }
 
 var version3TransferStep = big.NewInt(100000)
-var version3StepPrice = big.NewInt(10 * GIGA)
 
-func (tx *transactionV3) Execute(wvs WorldVirtualState) (Receipt, error) {
+func (tx *transactionV3) Execute(wc WorldContext) (Receipt, error) {
 	r := new(receipt)
 	fee := new(big.Int)
-	fee.Set(version3StepPrice)
+	stepPrice := wc.StepPrice()
+	fee.Set(stepPrice)
 	fee.Mul(fee, version3TransferStep)
 
 	trans := new(big.Int)
 	trans.Set(&tx.Value.Int)
 	trans.Add(trans, fee)
 
-	as1 := wvs.GetAccountState(tx.From.ID())
+	as1 := wc.GetAccountState(tx.From.ID())
 	bal1 := as1.GetBalance()
 	if bal1.Cmp(trans) < 0 {
 		trans.Set(fee)
 		if bal1.Cmp(trans) < 0 {
 			log.Printf("TransactionV2 not enough balance for fee: %s balance=%s < fee=%s",
 				tx.From.String(), bal1.Text(10), fee.Text(10))
-			r.SetResult(false, big.NewInt(0), version3StepPrice)
+			r.SetResult(false, big.NewInt(0), stepPrice)
 			return r, nil
 		}
 		bal1.Sub(bal1, trans)
-		r.SetResult(false, version3TransferStep, version3StepPrice)
+		as1.SetBalance(bal1)
+		r.SetResult(false, version3TransferStep, stepPrice)
 		return r, nil
 	}
 
 	bal1.Sub(bal1, trans)
 	as1.SetBalance(bal1)
 
-	as2 := wvs.GetAccountState(tx.To.ID())
+	as2 := wc.GetAccountState(tx.To.ID())
 	bal2 := as2.GetBalance()
 	bal2.Add(bal2, &tx.Value.Int)
 	as2.SetBalance(bal2)
 
-	r.SetResult(true, version3TransferStep, version3StepPrice)
+	r.SetResult(true, version3TransferStep, stepPrice)
 	return r, nil
 }
 

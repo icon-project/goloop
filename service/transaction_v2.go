@@ -44,24 +44,24 @@ func (tx *transactionV2) Verify() error {
 	return nil
 }
 
-func (tx *transactionV2) PreValidate(ws WorldState, ts int64, update bool) error {
+func (tx *transactionV2) PreValidate(wc WorldContext, update bool) error {
 	trans := new(big.Int)
 	trans.Set(&tx.Value.Int)
 	trans.Add(trans, &tx.Fee.Int)
 
-	as1 := ws.GetAccountState(tx.From.ID())
+	as1 := wc.GetAccountState(tx.From.ID())
 	balance1 := as1.GetBalance()
 	if balance1.Cmp(trans) < 0 {
 		return ErrNotEnoughBalance
 	}
 
-	tsdiff := ts - tx.TimeStamp.Value
+	tsdiff := wc.TimeStamp() - tx.TimeStamp.Value
 	if tsdiff < -5*60*1000*1000 || tsdiff > 5*60*1000*1000 {
 		return ErrTimeOut
 	}
 
 	if update {
-		as2 := ws.GetAccountState(tx.To.ID())
+		as2 := wc.GetAccountState(tx.To.ID())
 		balance2 := as2.GetBalance()
 		balance2.Add(balance2, &tx.Value.Int)
 		balance1.Sub(balance1, trans)
@@ -79,13 +79,13 @@ func (tx *transactionV2) Prepare(wvs WorldVirtualState) (WorldVirtualState, erro
 	return wvs.GetFuture(lq), nil
 }
 
-func (tx *transactionV2) Execute(wvs WorldVirtualState) (Receipt, error) {
+func (tx *transactionV2) Execute(wc WorldContext) (Receipt, error) {
 	r := new(receipt)
 	trans := new(big.Int)
 	trans.Set(&tx.Value.Int)
 	trans.Add(trans, &tx.Fee.Int)
 
-	as1 := wvs.GetAccountState(tx.From.ID())
+	as1 := wc.GetAccountState(tx.From.ID())
 	bal1 := as1.GetBalance()
 	if bal1.Cmp(trans) < 0 {
 		trans.Set(version2FixedFee)
@@ -103,7 +103,7 @@ func (tx *transactionV2) Execute(wvs WorldVirtualState) (Receipt, error) {
 	bal1.Sub(bal1, trans)
 	as1.SetBalance(bal1)
 
-	as2 := wvs.GetAccountState(tx.To.ID())
+	as2 := wc.GetAccountState(tx.To.ID())
 	bal2 := as2.GetBalance()
 	bal2.Add(bal2, &tx.Value.Int)
 	as2.SetBalance(bal2)
