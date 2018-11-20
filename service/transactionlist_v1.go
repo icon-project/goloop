@@ -87,6 +87,10 @@ func (l *TransactionListV1) Equal(t module.TransactionList) bool {
 	return bytes.Equal(l.Hash(), t.Hash())
 }
 
+func (l *TransactionListV1) Flush() error {
+	return nil
+}
+
 func NewTransactionListV1FromSlice(list []module.Transaction) module.TransactionList {
 	ml := make([][]byte, len(list))
 	for i, t := range list {

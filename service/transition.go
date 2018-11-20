@@ -3,9 +3,11 @@ package service
 import (
 	"bytes"
 	"errors"
+	"github.com/icon-project/goloop/common/codec"
+	"log"
+	"math/big"
 	"sync"
-
-	"github.com/icon-project/goloop/common/trie/trie_manager"
+	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
@@ -26,76 +28,72 @@ const (
 // TODO temporary; remove
 var Zero32 = make([]byte, 32)
 
-// TODO Need to define Validator struct
-type transitionState struct {
-	// state always stores the initial state at the beginning and changes
-	// according to transaction executions of this transition.
-	// It will be initiated from parent transition at the top of Execute()
-	// to set the base of transaction execution.
-	// It can't be modified out of this package, so use the pointer directly
-	// without copying.
-	state trie.Mutable
-
-	nextValidatorList module.ValidatorList
-	normalReceipts    *receiptList
-	patchReceipts     *receiptList
-}
-
-func newInitialTransitionState(state trie.Mutable) *transitionState {
-	return &transitionState{state: state}
-}
-
-func newFinalTransitionState(validatorList module.ValidatorList) *transitionState {
-	return &transitionState{nextValidatorList: validatorList}
-}
-
 type transition struct {
-	parent *transition
+	parent    *transition
+	height    uint64
+	timestamp int64
 
-	patchTransactions  *transactionlist
-	normalTransactions *transactionlist
+	patchTransactions  module.TransactionList
+	normalTransactions module.TransactionList
 
 	db db.Database
-
-	result resultBytes
-	*transitionState
-	// TODO logBloom은 개별 handler가 제공해 주는 게 맞는가? 아니면 여기서 일괄적으로
-	// 계산하는 게 맞는가?
-	logBloom []byte
 
 	cb module.TransitionCallback
 
 	// internal processing state
 	step  int
 	mutex sync.Mutex
+
+	result        resultBytes
+	worldSnapshot WorldSnapshot
+	logBloom      LogBloom
+
+	patchReceipts []Receipt
 }
 
-// all parameters should be valid
-func newTransition(parent *transition, patchTxList *transactionlist, normalTxList *transactionlist, state trie.Mutable, alreadyValidated bool) *transition {
+func newTransition(parent *transition, patchtxs module.TransactionList, normaltxs module.TransactionList, alreadyValidated bool) *transition {
 	var step int
 	if alreadyValidated {
 		step = stepValidated
 	} else {
 		step = stepInited
 	}
+	if patchtxs == nil {
+		patchtxs = newTransactionListFromList(parent.db, nil)
+	}
+	if normaltxs == nil {
+		normaltxs = newTransactionListFromList(parent.db, nil)
+	}
 	return &transition{
 		parent:             parent,
-		patchTransactions:  patchTxList,
-		normalTransactions: normalTxList,
+		height:             parent.height + 1,
+		timestamp:          time.Now().UnixNano() / 1000,
+		patchTransactions:  patchtxs,
+		normalTransactions: normaltxs,
 		db:                 parent.db,
-		transitionState:    newInitialTransitionState(state),
 		step:               step,
 	}
 }
 
 // all parameters should be valid.
-func newInitTransition(db db.Database, result []byte, validatorList module.ValidatorList) *transition {
-	return &transition{
-		db:              db,
-		result:          result,
-		transitionState: newFinalTransitionState(validatorList),
-		step:            stepComplete,
+func newInitTransition(db db.Database, result []byte, validatorList module.ValidatorList) (*transition, error) {
+	hashes := [][]byte{nil, nil, nil}
+	if len(result) > 0 {
+		if _, err := codec.UnmarshalFromBytes(result, &hashes); err != nil {
+			return nil, err
+		}
 	}
+	ws := NewWorldState(db, hashes[0], validatorList)
+
+	// TODO also need to recover receipts.
+
+	return &transition{
+		db:                 db,
+		patchTransactions:  newTransactionListFromList(db, nil),
+		normalTransactions: newTransactionListFromList(db, nil),
+		worldSnapshot:      ws.GetSnapshot(),
+		step:               stepComplete,
+	}, nil
 }
 
 func (t *transition) PatchTransactions() module.TransactionList {
@@ -142,8 +140,11 @@ func (t *transition) Result() []byte {
 // transaction processing.
 // It may return nil before cb.OnExecute is called back by Execute.
 func (t *transition) NextValidators() module.ValidatorList {
-	// TODO copy validator list after defining validator struct
-	return t.nextValidatorList
+	if t.worldSnapshot != nil {
+		return t.worldSnapshot.GetValidators()
+	}
+	log.Printf("Fail to get valid Validators")
+	return nil
 }
 
 // LogBloom returns log bloom filter for this transition.
@@ -152,54 +153,94 @@ func (t *transition) LogBloom() []byte {
 	if t.step != stepComplete {
 		return nil
 	}
-	b := make([]byte, len(t.logBloom))
-	copy(b, t.logBloom)
-	return t.logBloom
+	return t.logBloom.Bytes()
 }
 
 func (t *transition) executeSync(alreadyValidated bool) {
-	// TODO check better way for nil result in the parent transition
-	var stateHash []byte
-	if t.parent.result != nil {
-		stateHash = t.parent.result.stateHash()
-	} else {
-		stateHash = nil
-	}
-
+	var normalCount, patchCount int
 	if !alreadyValidated {
-		txdb, err := t.db.GetBucket(db.TransactionLocatorByHash)
+		var ok bool
+		ws, err := WorldStateFromSnapshot(t.parent.worldSnapshot)
 		if err != nil {
-			panic("FAIL to get bucket TransactionLocatorByHash")
+			log.Panicf("Fail to build world state from snapshot err=%+v", err)
 		}
-
-		t.state = trie_manager.NewMutable(t.db, stateHash)
-		if !t.validateTxs(t.patchTransactions, txdb) || !t.validateTxs(t.normalTransactions, txdb) {
+		wc := NewWorldContext(ws, t.timestamp, t.height)
+		ok, patchCount = t.validateTxs(t.patchTransactions, wc)
+		if !ok {
+			return
+		}
+		ok, normalCount = t.validateTxs(t.normalTransactions, wc)
+		if !ok {
 			return
 		}
 		if t.cb != nil {
 			t.cb.OnValidate(t, nil)
 		}
-
-		t.mutex.Lock()
-		t.step = stepExecuting
-		t.mutex.Unlock()
 	} else {
+		for i := t.patchTransactions.Iterator(); i.Has(); i.Next() {
+			patchCount++
+		}
+		for i := t.normalTransactions.Iterator(); i.Has(); i.Next() {
+			normalCount++
+		}
 		if t.cb != nil {
 			t.cb.OnValidate(t, nil)
 		}
-
 	}
 
-	t.state = trie_manager.NewMutable(t.db, stateHash)
-	t.patchReceipts = &receiptList{}
-	t.normalReceipts = &receiptList{}
-	t.logBloom = make([]byte, 0)
-	if !t.executeTxs(t.patchTransactions) || !t.executeTxs(t.normalTransactions) {
-		return
+	t.mutex.Lock()
+	t.step = stepExecuting
+	t.mutex.Unlock()
+
+	ws, err := WorldStateFromSnapshot(t.parent.worldSnapshot)
+	if err != nil {
+		log.Panicf("Fail to make WorldState from snapshot err=%+v", err)
 	}
-	t.result = newResultBytesFromData(t.state, t.patchReceipts, t.normalReceipts)
-	// TODO update validators; it just copied the previous one.
-	t.nextValidatorList = t.parent.nextValidatorList
+	wc := NewWorldContext(ws, t.timestamp, t.height)
+	patchReceipts := make([]Receipt, patchCount)
+	t.executeTxs(t.patchTransactions, wc, patchReceipts)
+	normalReceipts := make([]Receipt, normalCount)
+	t.executeTxs(t.normalTransactions, wc, normalReceipts)
+
+	cumulativeSteps := big.NewInt(0)
+	gatheredFee := big.NewInt(0)
+	fee := big.NewInt(0)
+
+	// TODO we need to use ReceiptList implementation to store it.
+	for _, r := range patchReceipts {
+		used := r.StepUsed()
+		cumulativeSteps.Add(cumulativeSteps, used)
+		r.SetCumulativeStepUsed(cumulativeSteps)
+
+		fee.Set(r.StepPrice())
+		fee.Mul(fee, used)
+		gatheredFee.Add(gatheredFee, fee)
+	}
+
+	// TODO we need to use ReceiptList implementation to store it.
+	for _, r := range patchReceipts {
+		used := r.StepUsed()
+		cumulativeSteps.Add(cumulativeSteps, used)
+		r.SetCumulativeStepUsed(cumulativeSteps)
+
+		fee.Set(r.StepPrice())
+		fee.Mul(fee, used)
+		gatheredFee.Add(gatheredFee, fee)
+	}
+
+	// save gathered fee to treasury
+	tr := wc.GetAccountState(wc.Treasury().ID())
+	trbal := tr.GetBalance()
+	trbal.Add(trbal, gatheredFee)
+	tr.SetBalance(trbal)
+
+	t.worldSnapshot = wc.GetSnapshot()
+
+	t.result, _ = codec.MarshalToBytes([][]byte{
+		t.worldSnapshot.StateHash(),
+		nil,
+		nil,
+	})
 
 	t.mutex.Lock()
 	t.step = stepComplete
@@ -209,61 +250,74 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	}
 }
 
-func (t *transition) validateTxs(txList *transactionlist, txDB db.Bucket) bool {
-	canceled := false
-	for _, tx := range txList.txs {
+func (t *transition) validateTxs(l module.TransactionList, wc WorldContext) (bool, int) {
+	if l == nil {
+		return true, 0
+	}
+	cnt := 0
+	for i := l.Iterator(); i.Has(); i.Next() {
 		if t.step == stepCanceled {
-			canceled = true
-			break
+			return false, 0
 		}
 
-		if err := tx.validate(t.state, txDB); err != nil {
+		tx, _, err := i.Get()
+		if err != nil {
+			log.Panicf("Fail to iterate transaction list err=%+v", err)
+		}
+
+		if err := tx.(Transaction).PreValidate(wc, true); err != nil {
 			t.mutex.Lock()
 			t.step = stepError
 			t.mutex.Unlock()
 			t.cb.OnValidate(t, err)
-			return false
+			return false, 0
 		}
+		cnt += 1
 	}
-	return !canceled
+	return true, cnt
 }
 
-func (t *transition) executeTxs(txList *transactionlist) bool {
-	canceled := false
-	for _, tx := range txList.txs {
+func (t *transition) executeTxs(l module.TransactionList, wc WorldContext, rctBuf []Receipt) (bool, int) {
+	if l == nil {
+		return true, 0
+	}
+	cnt := 0
+	for i := l.Iterator(); i.Has(); i.Next() {
 		if t.step == stepCanceled {
-			canceled = true
-			break
+			return false, 0
 		}
-
-		// TODO: 아래 db 추가에 대한 추후 검토 필요. KN.KIM. execute내에서 account를 생성하기 위해 db가 필요.
-		if err := tx.execute(t.transitionState, t.db); err != nil {
+		tx, _, err := i.Get()
+		if err != nil {
+			log.Panicf("Fail to iterate transaction list err=%+v", err)
+		}
+		if rct, err := tx.(Transaction).Execute(wc); err != nil {
 			t.mutex.Lock()
 			t.step = stepError
 			t.mutex.Unlock()
 			t.cb.OnExecute(t, err)
-			return false
+			return false, 0
+		} else {
+			rctBuf[cnt] = rct
 		}
 	}
-	return !canceled
+	return true, cnt
 }
 
 func (t *transition) finalizeNormalTransaction() {
-	t.normalTransactions.flush()
+	t.normalTransactions.Flush()
 }
 
 func (t *transition) finalizePatchTransaction() {
-	t.patchTransactions.flush()
+	t.patchTransactions.Flush()
 }
 
 func (t *transition) finalizeResult() {
-	t.state.GetSnapshot().Flush()
-	// Disconnect the useless parent transition
+	t.worldSnapshot.Flush()
 	t.parent = nil
 }
 
 func (t *transition) hasValidResult() bool {
-	if t.result != nil && t.nextValidatorList != nil {
+	if t.result != nil && t.worldSnapshot != nil {
 		return true
 	}
 	return false
@@ -313,7 +367,7 @@ func newResultBytes(result []byte) (resultBytes, error) {
 	return resultBytes(bytes), nil
 }
 
-func newResultBytesFromData(state trie.Mutable, patchRcList *receiptList, normalRcList *receiptList) resultBytes {
+func newResultBytesFromHashes(state trie.Mutable, patchRcList *receiptList, normalRcList *receiptList) resultBytes {
 	bytes := make([]byte, 0, 96)
 	var h []byte
 	if state != nil {

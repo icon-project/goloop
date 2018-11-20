@@ -57,6 +57,10 @@ type txTestV3 struct {
 	Signature common.HexBytes `json:"signature"`
 }
 
+func (tx *txTest) ToJSON(version int) (interface{}, error) {
+	panic("implement me")
+}
+
 func (tx *txTest) Group() module.TransactionGroup {
 	return tx.group
 }

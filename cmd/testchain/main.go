@@ -93,10 +93,11 @@ func (c *proposeOnlyConsensus) Start() {
 		if err != nil {
 			panic(err)
 		}
-		wblkv1 := wblk.(*blockV1)
-		for _, t := range wblkv1.Transactions {
+		for itr := wblk.NormalTransactions().Iterator(); itr.Has(); itr.Next() {
+			t, _, _ := itr.Get()
 			c.sm.SendTransaction(t)
 		}
+
 		_, err = c.bm.Propose(blk.ID(), &emptyVoteList{}, func(b module.Block, e error) {
 			if e != nil {
 				panic(e)

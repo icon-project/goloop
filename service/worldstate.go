@@ -20,7 +20,6 @@ type WorldSnapshot interface {
 	GetValidators() module.ValidatorList
 	Flush() error
 	StateHash() []byte
-	ValidatorHash() []byte
 }
 
 // WorldState represents world state.
@@ -41,10 +40,6 @@ type worldSnapshotImpl struct {
 
 func (ws *worldSnapshotImpl) GetValidators() module.ValidatorList {
 	return ws.validators
-}
-
-func (ws *worldSnapshotImpl) ValidatorHash() []byte {
-	return ws.validators.Hash()
 }
 
 func (ws *worldSnapshotImpl) StateHash() []byte {
@@ -188,15 +183,14 @@ func (ws *worldStateImpl) GetSnapshot() WorldSnapshot {
 	}
 }
 
-func NewWorldState(database db.Database, stateHash []byte, validatorHash []byte) WorldState {
+func NewWorldState(database db.Database, stateHash []byte, vl module.ValidatorList) WorldState {
 	ws := new(worldStateImpl)
 	ws.accounts = trie_manager.NewMutableForObject(database, stateHash, reflect.TypeOf((*accountSnapshotImpl)(nil)))
 	ws.mutableAccounts = make(map[string]AccountState)
-	if validators, err := ValidatorListFromHash(database, validatorHash); err != nil {
-		log.Panicf("Fail to make ValidatorListFromHash() hash=%x", validatorHash)
-	} else {
-		ws.validators = validators
+	if vl == nil {
+		vl, _ = ValidatorListFromHash(database, nil)
 	}
+	ws.validators = vl
 	return ws
 }
 

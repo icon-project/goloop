@@ -80,7 +80,7 @@ func getTransport(channel string) (*PeerDispatcher, *Listener, *Dialer) {
 }
 func Test_transport(t *testing.T) {
 	var wg sync.WaitGroup
-	tph := &TestPeerHandler{t: t, wg: &wg}
+	tph := &TestPeerHandler{t: t, wg: &wg, peerHandler: peerHandler{log: &logger{"TestPeerHandler", ""}}}
 
 	pd, l, d := getTransport(testChannel)
 

@@ -1,9 +1,7 @@
 package network
 
 import (
-	"container/list"
 	"fmt"
-	"log"
 	"reflect"
 	"sync"
 	"time"
@@ -25,31 +23,34 @@ type PeerToPeer struct {
 	//Topology with Connected Peers
 	self      *Peer
 	parent    *Peer
-	preParent *PeerList
-	children  *PeerList
-	uncles    *PeerList
-	nephews   *PeerList
+	preParent *PeerSet
+	children  *PeerSet
+	uncles    *PeerSet
+	nephews   *PeerSet
 	//Only for root, parent is nil, uncles is empty
-	friends *PeerList
+	friends *PeerSet
 	//Discovery
-	orphanages      *PeerList
+	orphanages      *PeerSet
 	discoveryTicker *time.Ticker
 	seedTicker      *time.Ticker
 
 	//Addresses
-	seeds *NetAddressList
+	seeds *NetAddressSet
 	//Only for seed
-	roots *NetAddressList
+	roots *NetAddressSet
 	//[TBD] 2hop peers of current tree for status change
 	grandParent   NetAddress
-	grandChildren *NetAddressList
+	grandChildren *NetAddressSet
 
 	//managed PeerId
-	allowedRoots *PeerIdList
-	allowedSeeds *PeerIdList
+	allowedRoots *PeerIdSet
+	allowedSeeds *PeerIdSet
 
 	//codec
 	mph *codec.MsgpackHandle
+
+	//log
+	log *logger
 }
 
 //can be created each channel
@@ -63,23 +64,25 @@ func newPeerToPeer(channel string, id module.PeerID, addr NetAddress, d *Dialer)
 		dialer:          d,
 		//
 		self:            &Peer{id: id, netAddress: addr},
-		preParent:       NewPeerList(),
-		children:        NewPeerList(),
-		uncles:          NewPeerList(),
-		nephews:         NewPeerList(),
-		friends:         NewPeerList(),
-		orphanages:      NewPeerList(),
+		preParent:       NewPeerSet(),
+		children:        NewPeerSet(),
+		uncles:          NewPeerSet(),
+		nephews:         NewPeerSet(),
+		friends:         NewPeerSet(),
+		orphanages:      NewPeerSet(),
 		discoveryTicker: time.NewTicker(time.Duration(DefaultDiscoveryPeriodSec) * time.Second),
 		seedTicker:      time.NewTicker(time.Duration(DefaultSeedPeriodSec) * time.Second),
 		//
-		seeds:         NewNetAddressList(),
-		roots:         NewNetAddressList(),
-		grandChildren: NewNetAddressList(),
+		seeds:         NewNetAddressSet(),
+		roots:         NewNetAddressSet(),
+		grandChildren: NewNetAddressSet(),
 		//
-		allowedRoots: NewPeerIdList(),
-		allowedSeeds: NewPeerIdList(),
+		allowedRoots: NewPeerIdSet(),
+		allowedSeeds: NewPeerIdSet(),
 		//
 		mph: &codec.MsgpackHandle{},
+		//
+		log: &logger{"PeerToPeer", fmt.Sprintf("%s.%s", channel, id)},
 	}
 	p2p.mph.MapType = reflect.TypeOf(map[string]interface{}(nil))
 	go p2p.sendRoutine()
@@ -89,15 +92,15 @@ func newPeerToPeer(channel string, id module.PeerID, addr NetAddress, d *Dialer)
 
 func (p2p *PeerToPeer) setPacketCbFunc(pi module.ProtocolInfo, cbFunc packetCbFunc) {
 	if _, ok := p2p.onPacketCbFuncs[pi]; ok {
-		log.Println("Warnning overwrite packetCbFunc", pi)
+		p2p.log.Println("Warnning overwrite packetCbFunc", pi)
 	}
 	p2p.onPacketCbFuncs[pi] = cbFunc
 }
 
 //callback from PeerDispatcher.onPeer
 func (p2p *PeerToPeer) onPeer(p *Peer) {
-	log.Println("PeerToPeer.onPeer", p)
-	p2p.orphanages.PushBack(p)
+	p2p.log.Println("onPeer", p)
+	p2p.orphanages.Add(p)
 	if !p.incomming {
 		p2p.sendQuery(p)
 	} else {
@@ -108,11 +111,20 @@ func (p2p *PeerToPeer) onPeer(p *Peer) {
 
 //TODO callback from Peer.sendRoutine or Peer.receiveRoutine
 func (p2p *PeerToPeer) onError(err error, p *Peer) {
-	log.Println("PeerToPeer.onError", err)
+	p2p.log.Println("onError", err, p)
 	err = p.conn.Close()
 	if err != nil {
-		log.Println("PeerToPeer.onError close", err)
+		p2p.log.Println("onError p.conn.Close", err)
 	}
+	p2p.removePeer(p)
+}
+
+func (p2p *PeerToPeer) onClose(p *Peer) {
+	p2p.log.Println("onClose", p)
+	p2p.removePeer(p)
+}
+
+func (p2p *PeerToPeer) removePeer(p *Peer) {
 	switch p.connType {
 	case p2pConnTypeNone:
 		p2p.orphanages.Remove(p)
@@ -133,7 +145,7 @@ func (p2p *PeerToPeer) onError(err error, p *Peer) {
 //callback from Peer.receiveRoutine
 func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 	if pkt.protocol == PROTO_CONTOL {
-		log.Println("PeerToPeer.onPacket", pkt)
+		p2p.log.Println("onPacket", pkt, p)
 		switch pkt.protocol {
 		case PROTO_CONTOL:
 			switch pkt.subProtocol {
@@ -149,13 +161,13 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 		}
 	} else {
 		if p.connType == p2pConnTypeNone {
-			log.Println("Ignoring packet, because undetermined PeerConnectionType is not allowed to handle")
+			p2p.log.Println("onPacket Ignore, undetermined PeerConnectionType")
 		} else if cbFunc := p2p.onPacketCbFuncs[pkt.protocol]; cbFunc != nil {
 			if !p2p.hasPacket(pkt) {
 				p2p.putPacketPool(pkt)
 				cbFunc(pkt, p)
 			} else {
-				log.Println("Duplicated packet, ignore", pkt.hashOfPacket)
+				p2p.log.Println("onPacket Ignore, duplicated", pkt.hashOfPacket)
 			}
 		}
 	}
@@ -200,10 +212,10 @@ type QueryResultMessage struct {
 
 func (p2p *PeerToPeer) getSelfRole() PeerRoleFlag {
 	role := p2pRoleNone
-	if p2p.allowedRoots.Has(p2p.self.id) {
+	if p2p.allowedRoots.Contains(p2p.self.id) {
 		role |= p2pRoleRoot
 	}
-	if p2p.allowedSeeds.Has(p2p.self.id) {
+	if p2p.allowedSeeds.Contains(p2p.self.id) {
 		role |= p2pRoleSeed
 	}
 	prf := PeerRoleFlag(role)
@@ -213,14 +225,14 @@ func (p2p *PeerToPeer) getSelfRole() PeerRoleFlag {
 			p2p.roots.Remove(p2p.self.netAddress)
 			p2p.seeds.Remove(p2p.self.netAddress)
 		case p2pRoleSeed:
-			p2p.seeds.Merge([]NetAddress{p2p.self.netAddress})
+			p2p.seeds.Merge(p2p.self.netAddress)
 			p2p.roots.Remove(p2p.self.netAddress)
 		case p2pRoleRoot:
-			p2p.roots.Merge([]NetAddress{p2p.self.netAddress})
+			p2p.roots.Merge(p2p.self.netAddress)
 			p2p.seeds.Remove(p2p.self.netAddress)
 		case p2pRoleRootSeed:
-			p2p.roots.Merge([]NetAddress{p2p.self.netAddress})
-			p2p.seeds.Merge([]NetAddress{p2p.self.netAddress})
+			p2p.roots.Merge(p2p.self.netAddress)
+			p2p.seeds.Merge(p2p.self.netAddress)
 		}
 	}
 	return prf
@@ -231,17 +243,17 @@ func (p2p *PeerToPeer) sendQuery(p *Peer) {
 	pkt := NewPacket(PROTO_P2P_QUERY, p2p.encodeMsgpack(m))
 	pkt.src = p2p.self.id
 	p.sendPacket(pkt)
-	log.Println("PeerToPeer.sendQuery", m)
+	p2p.log.Println("sendQuery", m, p)
 }
 
 func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 	qm := &QueryMessage{}
 	err := p2p.decodeMsgpack(pkt.payload, qm)
 	if err != nil {
-		log.Println(err)
+		p2p.log.Println("handleQuery", err)
 		return
 	}
-	log.Println("PeerToPeer.handleQuery", qm)
+	p2p.log.Println("handleQuery", qm, p)
 	m := &QueryResultMessage{}
 	m.Role = p2p.getSelfRole()
 	if p2p.isAllowedRole(qm.Role, p) {
@@ -257,22 +269,20 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 				m.Seeds = p2p.seeds.Array()
 				m.Children = p2p.children.NetAddresses()
 			}
-		case p2pRoleSeed:
+		default: //between p2pRoleSeed, p2pRoleRoot, p2pRoleRootSeed
 			m.Seeds = p2p.seeds.Array()
 			m.Roots = p2p.roots.Array()
-			p2p.seeds.Merge([]NetAddress{qm.Addr})
-		case p2pRoleRoot:
-			m.Seeds = p2p.seeds.Array()
-			m.Roots = p2p.roots.Array()
-			p2p.roots.Merge([]NetAddress{qm.Addr})
-		case p2pRoleRootSeed:
-			m.Seeds = p2p.seeds.Array()
-			m.Roots = p2p.roots.Array()
-			p2p.seeds.Merge([]NetAddress{qm.Addr})
-			p2p.roots.Merge([]NetAddress{qm.Addr})
-		default:
+			if qm.Role.Has(p2pRoleSeed) {
+				p2p.seeds.Merge(qm.Addr)
+			}
+			if qm.Role.Has(p2pRoleRoot) {
+				p2p.roots.Merge(qm.Addr)
+			}
+			if m.Role == p2pRoleSeed {
+				//p.conn will be disconnected
+			}
 		}
-		p.role = qm.Role
+		p.role.Set(qm.Role)
 		if p.netAddress == "" {
 			p.netAddress = qm.Addr
 		}
@@ -289,30 +299,31 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 	qrm := &QueryResultMessage{}
 	err := p2p.decodeMsgpack(pkt.payload, qrm)
 	if err != nil {
-		log.Println(err)
+		p2p.log.Println("handleQueryResult", err)
 		return
 	}
-	log.Println("PeerToPeer.handleQueryResult", qrm)
-	p.role = qrm.Role
+	p2p.log.Println("handleQueryResult", qrm)
+	p.role.Set(qrm.Role)
 	switch p2p.getSelfRole() {
 	case p2pRoleNone:
 		switch p.role {
 		case p2pRoleNone:
 			//TODO p2p.preParent.Merge(qrm.Children)
 		case p2pRoleSeed:
-			p2p.seeds.Merge(qrm.Seeds)
+			p2p.seeds.Merge(qrm.Seeds...)
 		case p2pRoleRoot:
-			log.Println("Wrong situation")
+			p2p.log.Println("handleQueryResult p2pRoleNone cannot query to p2pRoleRoot")
 		case p2pRoleRootSeed:
-			p2p.seeds.Merge(qrm.Seeds)
+			p2p.seeds.Merge(qrm.Seeds...)
 		default:
 			//TODO p2p.preParent.Merge(qrm.Children)
 		}
 	default: //between p2pRoleSeed, p2pRoleRoot, p2pRoleRootSeed
-		p2p.seeds.Merge(qrm.Seeds)
-		p2p.roots.Merge(qrm.Roots)
+		p2p.seeds.Merge(qrm.Seeds...)
+		p2p.roots.Merge(qrm.Roots...)
 		//disconn root->seed , seed->seed,
 		if !p.incomming && p.role == p2pRoleSeed {
+			p2p.log.Println("handleQueryResult p2pRoleRoot no need outgoing connection with p2pRoleSeed ")
 			p.conn.Close()
 		}
 	}
@@ -336,12 +347,11 @@ func (p2p *PeerToPeer) sendToDownside(pkt *Packet) {
 	//p2p.sendToPeers(pkt, p2p.nephews)
 }
 
-func (p2p *PeerToPeer) sendToPeers(pkt *Packet, peers *PeerList) {
-	for e := peers.Front(); e != nil; e = e.Next() {
-		p := e.Value.(*Peer)
+func (p2p *PeerToPeer) sendToPeers(pkt *Packet, peers *PeerSet) {
+	for _, p := range peers.Array() {
 		//p2p.packetRw.WriteTo(p.writer)
 		p.sendPacket(pkt)
-		log.Println("PeerToPeer.sendToPeers", p.id, pkt)
+		p2p.log.Println("sendToPeers", pkt, p)
 		//p2p.sendToPeer(pkt, p)
 	}
 }
@@ -351,13 +361,13 @@ func (p2p *PeerToPeer) sendRoutine() {
 	for {
 		select {
 		case pkt := <-p2p.ch:
-			log.Println("PeerToPeer.sendRoutine", pkt)
+			p2p.log.Println("sendRoutine", pkt)
 
 			if pkt.src == nil {
 				pkt.src = p2p.self.id
 			}
-			p2p.packetRw.WritePacket(pkt)
-			p2p.packetRw.Flush()
+			// p2p.packetRw.WritePacket(pkt)
+			// p2p.packetRw.Flush()
 
 			switch pkt.dest {
 			case p2pDestAny: //broadcast
@@ -408,9 +418,9 @@ func (p2p *PeerToPeer) sendToPeer(pkt *Packet, id module.PeerID) {
 			pkt.src = p2p.self.id
 		}
 		p.sendPacket(pkt)
-		log.Println("PeerToPeer.sendToPeer", p.id, pkt)
+		p2p.log.Println("sendToPeer", pkt, id)
 	} else {
-		log.Println("PeerToPeer.sendToPeer not found", id)
+		p2p.log.Println("sendToPeer not exists", pkt, id)
 	}
 
 }
@@ -418,11 +428,11 @@ func (p2p *PeerToPeer) sendToPeer(pkt *Packet, id module.PeerID) {
 func (p2p *PeerToPeer) isAllowedRole(role PeerRoleFlag, p *Peer) bool {
 	switch role {
 	case p2pRoleSeed:
-		log.Println("PeerToPeer.allowedSeeds", p2p.allowedRoots)
-		return p2p.allowedSeeds.IsEmpty() || p2p.allowedSeeds.Has(p.id)
+		p2p.log.Println("isAllowedRole p2pRoleSeed", p2p.allowedSeeds)
+		return p2p.allowedSeeds.IsEmpty() || p2p.allowedSeeds.Contains(p.id)
 	case p2pRoleRoot:
-		log.Println("PeerToPeer.isAllowedRoots", p2p.allowedRoots)
-		return p2p.allowedRoots.IsEmpty() || p2p.allowedRoots.Has(p.id)
+		p2p.log.Println("isAllowedRole p2pRoleRoot", p2p.allowedRoots)
+		return p2p.allowedRoots.IsEmpty() || p2p.allowedRoots.Contains(p.id)
 	case p2pRoleRootSeed:
 		return p2p.isAllowedRole(p2pRoleRoot, p) && p2p.isAllowedRole(p2pRoleSeed, p)
 	default:
@@ -436,20 +446,20 @@ func (p2p *PeerToPeer) discoveryRoutine() {
 	for {
 		select {
 		case t := <-p2p.seedTicker.C:
-			log.Println("PeerToPeer.discoveryRoutine seedTicker", t)
+			p2p.log.Println("discoveryRoutine seedTicker", t)
 			p2p.syncSeeds()
 		case t := <-p2p.discoveryTicker.C:
-			log.Println("PeerToPeer.discoveryRoutine discoveryTicker", t)
-			if p2p.self.role.Has(p2pRoleRoot) {
-				roots := p2p.orphanages.PopByRole(p2pRoleRoot)
+			p2p.log.Println("discoveryRoutine discoveryTicker", t)
+			if r := p2p.getSelfRole(); r.Has(p2pRoleRoot) {
+				roots := p2p.orphanages.RemoveByRole(p2pRoleRoot)
 				for _, p := range roots {
-					log.Println("PeerToPeer.discoveryRoutine p2pConnTypeFriend", p.id)
+					p2p.log.Println("discoveryRoutine p2pConnTypeFriend", p.id)
 					p.connType = p2pConnTypeFriend
-					p2p.friends.PushBack(p)
+					p2p.friends.Add(p)
 				}
 				for _, s := range p2p.roots.Array() {
 					if s != p2p.self.netAddress && !p2p.friends.HasNetAddresse(s) {
-						log.Println("PeerToPeer.discoveryRoutine p2pRoleRoot", p2p.self, "dial to p2pRoleRoot", s)
+						p2p.log.Println("discoveryRoutine p2pRoleRoot", p2p.self, "dial to p2pRoleRoot", s)
 						p2p.dialer.Dial(string(s))
 					}
 				}
@@ -474,8 +484,7 @@ func (p2p *PeerToPeer) syncSeeds() {
 		if p2p.parent != nil {
 			p2p.sendQuery(p2p.parent)
 		}
-		for e := p2p.uncles.Front(); e != nil; e = e.Next() {
-			p := e.Value.(*Peer)
+		for _, p := range p2p.uncles.Array() {
 			if !p.incomming {
 				p2p.sendQuery(p)
 			}
@@ -486,12 +495,11 @@ func (p2p *PeerToPeer) syncSeeds() {
 				!p2p.friends.HasNetAddresse(s) &&
 				!p2p.children.HasNetAddresse(s) &&
 				!p2p.orphanages.HasNetAddresse(s) {
-				log.Println("PeerToPeer.discoveryRoutine seedTicker", p2p.self, "dial to p2pRoleSeed", s)
+				p2p.log.Println("discoveryRoutine syncSeeds", p2p.self, "dial to p2pRoleSeed", s)
 				p2p.dialer.Dial(string(s))
 			}
 		}
-		for e := p2p.friends.Front(); e != nil; e = e.Next() {
-			p := e.Value.(*Peer)
+		for _, p := range p2p.friends.Array() {
 			if !p.incomming {
 				p2p.sendQuery(p)
 			}
@@ -510,14 +518,14 @@ func (p2p *PeerToPeer) discoverParent() {
 		p := p2p.orphanages.GetByRoleAndIncomming(parentRole, false)
 		if p != nil {
 			p2p.orphanages.Remove(p)
-			p2p.preParent.PushBack(p)
-			p2p.sendConnectionRequest(p2pConnTypeParent, p)
-			log.Println("PeerToPeer.discoverParent try p2pConnTypeParent", p)
+			p2p.preParent.Add(p)
+			p2p.sendP2PConnectionRequest(p2pConnTypeParent, p)
+			p2p.log.Println("discoverParent try p2pConnTypeParent", p)
 		} else {
 			//TODO upgrade p2pConnTypeUncle to p2pConnTypeParent
 			for _, s := range p2p.seeds.Array() {
 				if s != p2p.self.netAddress && !p2p.uncles.HasNetAddresse(s) {
-					log.Println("PeerToPeer.discoverParent", p2p.self, "dial to", s)
+					p2p.log.Println("discoverParent", p2p.self, "dial to p2pRoleSeed", s)
 					p2p.dialer.Dial(string(s))
 				}
 			}
@@ -533,8 +541,8 @@ func (p2p *PeerToPeer) discoverUncle() {
 	}
 	p := p2p.orphanages.GetByRoleAndIncomming(uncleRole, false)
 	if p != nil {
-		p2p.sendConnectionRequest(p2pConnTypeUncle, p)
-		log.Println("PeerToPeer.discoverUncle try p2pConnTypeUncle", p)
+		p2p.sendP2PConnectionRequest(p2pConnTypeUncle, p)
+		p2p.log.Println("discoverUncle try p2pConnTypeUncle", p)
 	}
 }
 
@@ -547,40 +555,40 @@ type P2PConnectionResponse struct {
 	ConnType    PeerConnectionType
 }
 
-func (p2p *PeerToPeer) sendConnectionRequest(connType PeerConnectionType, p *Peer) {
+func (p2p *PeerToPeer) sendP2PConnectionRequest(connType PeerConnectionType, p *Peer) {
 	m := &P2PConnectionRequest{ConnType: connType}
 	pkt := NewPacket(PROTO_P2P_CONN_REQ, p2p.encodeMsgpack(m))
 	pkt.src = p2p.self.id
 	p.sendPacket(pkt)
-	log.Println("PeerToPeer.sendConnectionRequest", m)
+	p2p.log.Println("sendP2PConnectionRequest", m)
 }
 func (p2p *PeerToPeer) handleP2PConnectionRequest(pkt *Packet, p *Peer) {
 	req := &P2PConnectionRequest{}
 	err := p2p.decodeMsgpack(pkt.payload, req)
 	if err != nil {
-		log.Println(err)
+		p2p.log.Println(err)
 		return
 	}
-	log.Println("PeerToPeer.handleP2PConnectionRequest", req)
+	p2p.log.Println("handleP2PConnectionRequest", req)
 	m := &P2PConnectionResponse{ConnType: p2pConnTypeNone}
 	if p.connType == p2pConnTypeNone {
 		switch req.ConnType {
 		case p2pConnTypeParent:
 			p2p.orphanages.Remove(p)
-			p2p.children.PushBack(p)
+			p2p.children.Add(p)
 			p.connType = p2pConnTypeChildren
 			m.ReqConnType = req.ConnType
 			m.ConnType = p.connType
 			//TODO p2p.children condition
 		case p2pConnTypeUncle:
 			p2p.orphanages.Remove(p)
-			p2p.nephews.PushBack(p)
+			p2p.nephews.Add(p)
 			p.connType = p2pConnTypeNephew
 			m.ReqConnType = req.ConnType
 			m.ConnType = p.connType
 			//TODO p2p.nephews condition
 		default:
-			log.Println("PeerToPeer.handleP2PConnectionRequest ignore", req.ConnType)
+			p2p.log.Println("handleP2PConnectionRequest ignore", req.ConnType)
 		}
 	}
 
@@ -592,10 +600,10 @@ func (p2p *PeerToPeer) handleP2PConnectionResponse(pkt *Packet, p *Peer) {
 	resp := &P2PConnectionResponse{}
 	err := p2p.decodeMsgpack(pkt.payload, resp)
 	if err != nil {
-		log.Println(err)
+		p2p.log.Println(err)
 		return
 	}
-	log.Println("PeerToPeer.handleP2PConnectionResponse", resp)
+	p2p.log.Println("handleP2PConnectionResponse", resp)
 	if p.connType == p2pConnTypeNone {
 		switch resp.ReqConnType {
 		case p2pConnTypeParent:
@@ -606,176 +614,22 @@ func (p2p *PeerToPeer) handleP2PConnectionResponse(pkt *Packet, p *Peer) {
 					p2p.preParent.Remove(p)
 				} else {
 					//TODO handle to reject p2pConnTypeParent
-					log.Println("PeerToPeer.handleP2PConnectionResponse reject", resp.ReqConnType)
+					p2p.log.Println("handleP2PConnectionResponse reject", resp.ReqConnType)
 				}
 			} else {
-				log.Println("PeerToPeer.handleP2PConnectionResponse wrong", resp.ReqConnType)
+				p2p.log.Println("handleP2PConnectionResponse wrong", resp.ReqConnType)
 			}
 		case p2pConnTypeUncle:
 			if resp.ConnType == p2pConnTypeNephew {
 				p2p.orphanages.Remove(p)
-				p2p.uncles.PushBack(p)
+				p2p.uncles.Add(p)
 				p.connType = resp.ReqConnType
 			} else {
 				//TODO handle to reject p2pConnTypeUncle
-				log.Println("PeerToPeer.handleP2PConnectionResponse reject", resp.ReqConnType)
+				p2p.log.Println("handleP2PConnectionResponse reject", resp.ReqConnType)
 			}
 		default:
-			log.Println("PeerToPeer.handleP2PConnectionResponse ignore", resp.ReqConnType)
+			p2p.log.Println("handleP2PConnectionResponse ignore", resp.ReqConnType)
 		}
 	}
-}
-
-type PeerList struct {
-	*list.List
-	addrs []NetAddress
-}
-
-func NewPeerList() *PeerList {
-	return &PeerList{List: list.New(), addrs: make([]NetAddress, 0, 64)}
-}
-
-func (l *PeerList) get(v *Peer) *list.Element {
-	for e := l.Front(); e != nil; e = e.Next() {
-		if s := e.Value.(*Peer); s == v {
-			return e
-		}
-	}
-	return nil
-}
-
-func (l *PeerList) Remove(v *Peer) bool {
-	defer l.cache()
-	if e := l.get(v); e != nil {
-		l.List.Remove(e)
-		return true
-	}
-	return false
-}
-
-func (l *PeerList) Has(v *Peer) bool {
-	return l.get(v) != nil
-}
-
-func (l *PeerList) cache() {
-	l.addrs = l.addrs[:0]
-	for e := l.Front(); e != nil; e = e.Next() {
-		s := e.Value.(*Peer)
-		l.addrs = append(l.addrs, s.netAddress)
-	}
-}
-
-func (l *PeerList) NetAddresses() []NetAddress {
-	if len(l.addrs) != l.Len() {
-		l.cache()
-	}
-	return l.addrs[:]
-}
-
-func (l *PeerList) HasNetAddresse(o NetAddress) bool {
-	if len(l.addrs) != l.Len() {
-		l.cache()
-	}
-	for _, na := range l.addrs {
-		if na == o {
-			return true
-		}
-	}
-	return false
-}
-
-func (l *PeerList) GetByID(id module.PeerID) *Peer {
-	for e := l.Front(); e != nil; e = e.Next() {
-		if p := e.Value.(*Peer); p.id.Equal(id) {
-			return p
-		}
-	}
-	return nil
-}
-func (l *PeerList) GetByRoleAndIncomming(role PeerRoleFlag, in bool) *Peer {
-	for e := l.Front(); e != nil; e = e.Next() {
-		if p := e.Value.(*Peer); p.incomming == in && p.role.Has(role) {
-			return p
-		}
-	}
-	return nil
-}
-func (l *PeerList) PopByRole(role PeerRoleFlag) []*Peer {
-	tl := make([]*list.Element, 0, l.Len())
-	for e := l.Front(); e != nil; e = e.Next() {
-		if p := e.Value.(*Peer); p.role.Has(role) {
-			tl = append(tl, e)
-		}
-	}
-	ps := make([]*Peer, len(tl))
-	for i, t := range tl {
-		ps[i] = t.Value.(*Peer)
-		l.List.Remove(t)
-	}
-	return ps
-}
-
-type NetAddressList struct {
-	*list.List
-	arr []NetAddress
-}
-
-func NewNetAddressList() *NetAddressList {
-	return &NetAddressList{List: list.New()}
-}
-
-func (l *NetAddressList) get(v NetAddress) *list.Element {
-	for e := l.Front(); e != nil; e = e.Next() {
-		if s := e.Value.(NetAddress); s == v {
-			return e
-		}
-	}
-	return nil
-}
-
-func (l *NetAddressList) Remove(v NetAddress) bool {
-	defer l.cache()
-	if e := l.get(v); e != nil {
-		l.List.Remove(e)
-		return true
-	}
-	return false
-}
-
-func (l *NetAddressList) Has(v NetAddress) bool {
-	return l.get(v) != nil
-}
-
-func (l *NetAddressList) cache() {
-	l.arr = l.arr[:0]
-	for e := l.Front(); e != nil; e = e.Next() {
-		l.arr = append(l.arr, e.Value.(NetAddress))
-	}
-}
-
-func (l *NetAddressList) Array() []NetAddress {
-	if len(l.arr) != l.Len() {
-		l.cache()
-	}
-	return l.arr[:]
-}
-
-func (l *NetAddressList) Merge(arr []NetAddress) {
-	for _, na := range arr {
-		if !l.Has(na) {
-			l.PushBack(na)
-			log.Println("NetAddressList.Merge", na)
-		}
-	}
-	if len(l.arr) != l.Len() {
-		l.cache()
-	}
-}
-
-func (l *NetAddressList) String() string {
-	s := make([]string, 0, l.Len())
-	for e := l.Front(); e != nil; e = e.Next() {
-		s = append(s, string(e.Value.(NetAddress)))
-	}
-	return fmt.Sprintf("%v", s)
 }

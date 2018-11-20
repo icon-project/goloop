@@ -114,7 +114,7 @@ func (l *transactionlist) Equal(t module.TransactionList) bool {
 }
 
 // Add Flush interface in transactionList
-func (l *transactionlist) flush() error {
+func (l *transactionlist) Flush() error {
 	return l.snapshot.Flush()
 }
 
@@ -173,7 +173,7 @@ func (i *transactionlistIterator) Next() error {
 
 func TestFlush(txs module.TransactionList) error {
 	txsImpl := txs.(*transactionlist)
-	txsImpl.flush()
+	txsImpl.Flush()
 	return nil
 }
 
@@ -221,51 +221,4 @@ func newTransactionList(db db.Database, txs []*transaction) *transactionlist {
 		}
 	}
 	return &transactionlist{txs: txs, snapshot: trie.GetSnapshot()}
-}
-
-////////////////////
-// Receipt / Receipt List
-////////////////////
-type receipt struct {
-	// TODO 정의
-}
-
-func (r *receipt) Bytes() ([]byte, error) {
-	return nil, nil
-}
-
-type receiptList struct {
-	receipts []receipt
-	hash     []byte
-
-	trie trie.Mutable
-}
-
-func (l *receiptList) Get(n int) (module.Receipt, error) {
-	if n < 0 || n >= len(l.receipts) {
-		return nil, common.ErrIllegalArgument
-	}
-	return &l.receipts[n], nil
-}
-func (l *receiptList) Size() int {
-	return len(l.receipts)
-}
-
-func (l *receiptList) Hash() []byte {
-	// TODO impl
-	/*
-		if l.hash == nil {
-			for i, r := range l.receipts {
-				// TODO trie 내부에서 key hash를 안 하는지 확인 필요
-				bytes, _ := r.Bytes()
-				if len(bytes) > 0 {
-					// TODO i가 256를 넘을 경우를 감안한 byte encoding 수정
-					l.trie.Set([]byte{byte(i)}, bytes)
-				}
-			}
-			l.hash = l.trie.GetSnapshot().Hash()
-		}
-		return l.hash
-	*/
-	return nil
 }

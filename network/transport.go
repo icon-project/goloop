@@ -2,6 +2,7 @@ package network
 
 import (
 	"container/list"
+	"fmt"
 	"log"
 	"net"
 	"sync"
@@ -65,7 +66,7 @@ func (l *Listener) acceptRoutine() {
 	for {
 		conn, err := l.ln.Accept()
 		if err != nil {
-			log.Println("acceptRoutine", err)
+			log.Println("Listener acceptRoutine", err)
 			return
 		}
 		l.onAccept(conn)
@@ -90,6 +91,7 @@ func newDialer(channel string, cbFunc connectCbFunc) *Dialer {
 func (d *Dialer) Dial(addr string) error {
 	conn, err := net.Dial(DefaultTransportNet, addr)
 	if err != nil {
+		log.Println("Dialer Dial", err)
 		return err
 	}
 	d.conn = conn
@@ -101,6 +103,7 @@ type PeerHandler interface {
 	onPeer(p *Peer)
 	onPacket(pkt *Packet, p *Peer)
 	onError(err error, p *Peer)
+	onClose(p *Peer)
 	setNext(ph PeerHandler)
 	setSelfPeerID(id module.PeerID)
 }
@@ -108,6 +111,7 @@ type PeerHandler interface {
 type peerHandler struct {
 	next PeerHandler
 	self module.PeerID
+	log  *logger
 }
 
 func (ph *peerHandler) onPeer(p *Peer) {
@@ -118,16 +122,21 @@ func (ph *peerHandler) nextOnPeer(p *Peer) {
 	if ph.next != nil {
 		p.setPacketCbFunc(ph.next.onPacket)
 		p.setErrorCbFunc(ph.next.onError)
+		p.setCloseCbFunc(ph.next.onClose)
 		ph.next.onPeer(p)
 	}
 }
 
 func (ph *peerHandler) onError(err error, p *Peer) {
-	log.Println("peerHandler.onError", err, p)
+	ph.log.Println("onError", err, p)
 	err = p.conn.Close()
 	if err != nil {
-		log.Println("peerHandler.onError p.conn.Close()", err)
+		ph.log.Println("onError p.conn.Close", err)
 	}
+}
+
+func (ph *peerHandler) onClose(p *Peer) {
+	ph.log.Println("onClose", p)
 }
 
 func (ph *peerHandler) setNext(next PeerHandler) {
@@ -136,14 +145,14 @@ func (ph *peerHandler) setNext(next PeerHandler) {
 
 func (ph *peerHandler) setSelfPeerID(id module.PeerID) {
 	ph.self = id
+	ph.log.prefix = fmt.Sprintf("%s", ph.self)
 }
 
-func (ph *peerHandler) sendPacket(pkt *Packet, p *Peer) error {
+func (ph *peerHandler) sendPacket(pkt *Packet, p *Peer) {
 	if pkt.src == nil {
 		pkt.src = ph.self
 	}
-	//log.Println("peerHandler.sendPacket", pkt)
-	return p.sendPacket(pkt)
+	p.sendPacket(pkt)
 }
 
 type PeerDispatcher struct {
@@ -156,11 +165,11 @@ func newPeerDispatcher(selfPeerId module.PeerID, peerHandlers ...PeerHandler) *P
 	pd := &PeerDispatcher{
 		peerHandlers: list.New(),
 		peerToPeers:  make(map[string]*PeerToPeer),
+		peerHandler:  peerHandler{log: &logger{"PeerDispatcher", ""}},
 	}
-	pd.self = selfPeerId
-	log.Println("PeerDispatcher.self", selfPeerId)
-	pd.registPeerHandler(pd)
+	pd.setSelfPeerID(selfPeerId)
 
+	pd.registPeerHandler(pd)
 	for _, ph := range peerHandlers {
 		pd.registPeerHandler(ph)
 	}
@@ -172,6 +181,7 @@ func (pd *PeerDispatcher) registPeerToPeer(p2p *PeerToPeer) {
 }
 
 func (pd *PeerDispatcher) registPeerHandler(ph PeerHandler) {
+	pd.log.Println("registPeerHandler", ph)
 	elm := pd.peerHandlers.PushBack(ph)
 	if prev := elm.Prev(); prev != nil {
 		ph.setNext(prev.Value.(PeerHandler))
@@ -181,14 +191,14 @@ func (pd *PeerDispatcher) registPeerHandler(ph PeerHandler) {
 
 //callback from Listener.acceptRoutine
 func (pd *PeerDispatcher) onAccept(conn net.Conn) {
-	log.Println("PeerDispatcher.onAccept", conn.RemoteAddr())
+	pd.log.Println("onAccept", conn.LocalAddr(), "->", conn.RemoteAddr())
 	p := newPeer(conn, nil, true)
 	pd.dispatchPeer(p)
 }
 
 //callback from Dialer.Connect
 func (pd *PeerDispatcher) onConnect(conn net.Conn, addr string, d *Dialer) {
-	log.Println("PeerDispatcher.onConnect", conn.RemoteAddr())
+	pd.log.Println("onConnect", conn.LocalAddr(), "->", conn.RemoteAddr())
 	p := newPeer(conn, nil, false)
 	p.channel = d.channel
 	p.netAddress = NetAddress(addr)
@@ -200,35 +210,35 @@ func (pd *PeerDispatcher) dispatchPeer(p *Peer) {
 	ph := elm.Value.(PeerHandler)
 	p.setPacketCbFunc(ph.onPacket)
 	p.setErrorCbFunc(ph.onError)
+	p.setCloseCbFunc(ph.onClose)
 	ph.onPeer(p)
 }
 
 //callback from PeerHandler.nextOnPeer
 func (pd *PeerDispatcher) onPeer(p *Peer) {
-	log.Println("PeerDispatcher.onPeer", p)
+	pd.log.Println("onPeer", p)
 	if p2p, ok := pd.peerToPeers[p.channel]; ok {
 		p.setPacketCbFunc(p2p.onPacket)
 		p.setErrorCbFunc(p2p.onError)
+		p.setCloseCbFunc(p2p.onClose)
 		p2p.onPeer(p)
 	} else {
-		log.Println("Not exists PeerToPeer[", p.channel, "], try close")
-		err := p.conn.Close()
-		if err != nil {
-			log.Println("PeerDispatcher.onPeer p.conn.Close()", err)
-		}
+		//TODO error
+		err := fmt.Errorf("not exists PeerToPeer[%s]", p.channel)
+		pd.onError(err, p)
 	}
 }
 
 //TODO callback from Peer.sendRoutine or Peer.receiveRoutine
 func (pd *PeerDispatcher) onError(err error, p *Peer) {
-	log.Println("PeerDispatcher.onError", err, p)
-	err = p.conn.Close()
-	if err != nil {
-		log.Println("PeerDispatcher.onError p.conn.Close()", err)
-	}
+	pd.peerHandler.onError(err, p)
 }
 
 //callback from Peer.receiveRoutine
 func (pd *PeerDispatcher) onPacket(pkt *Packet, p *Peer) {
-	log.Println("PeerDispatcher.onPacket", pkt)
+	pd.log.Println("PeerDispatcher.onPacket", pkt)
+}
+
+func (pd *PeerDispatcher) onClose(p *Peer) {
+	pd.peerHandler.onClose(p)
 }

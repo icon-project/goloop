@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"fmt"
+	"log"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
@@ -66,6 +67,10 @@ func (l *transactionList) Equal(t module.TransactionList) bool {
 	return bytes.Equal(l.trie.Hash(), t.Hash())
 }
 
+func (l *transactionList) Flush() error {
+	return nil
+}
+
 func NewTransactionListFromTrie(t trie.ImmutableForObject) module.TransactionList {
 	return &transactionList{t}
 }
@@ -73,6 +78,13 @@ func NewTransactionListFromTrie(t trie.ImmutableForObject) module.TransactionLis
 type transactionSlice struct {
 	list []module.Transaction
 	trie trie.Immutable
+}
+
+func (l *transactionSlice) Flush() error {
+	if s, ok := l.trie.(trie.Snapshot); ok {
+		return s.Flush()
+	}
+	return nil
 }
 
 func (l *transactionSlice) Get(i int) (module.Transaction, error) {
@@ -122,15 +134,14 @@ func (l *transactionSlice) Equal(t module.TransactionList) bool {
 	return bytes.Equal(l.trie.Hash(), t.Hash())
 }
 
-func NewTransactionListFromSlice(list []module.Transaction) module.TransactionList {
-	tm := trie_manager.New(db.NewMapDB())
-	mt := tm.NewMutable(nil)
+func NewTransactionListFromSlice(dbase db.Database, list []module.Transaction) module.TransactionList {
+	mt := trie_manager.NewMutable(dbase, nil)
 	for idx, tr := range list {
 		k, _ := codec.MP.MarshalToBytes(uint(idx))
 		v := tr.Bytes()
 		err := mt.Set(k, v)
 		if err != nil {
-			//log.Fatalf("NewTransanctionListFromSlice FAILs", err)
+			log.Fatalf("NewTransanctionListFromSlice FAILs err=%+v", err)
 			return nil
 		}
 	}

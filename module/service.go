@@ -1,9 +1,5 @@
 package module
 
-import (
-	"math/big"
-)
-
 // TransitionCallback provides transition change notifications. All functions
 // are called back with the same Transition instance for the convenience.
 type TransitionCallback interface {
@@ -16,21 +12,22 @@ type TransitionCallback interface {
 
 type Transaction interface {
 	Group() TransactionGroup
-
 	ID() []byte
-	Version() int
-	From() Address
-	To() Address
-	Value() *big.Int
-	StepLimit() *big.Int
-	Timestamp() int64
-	NID() int
-	Nonce() int64
-
 	Bytes() []byte
 	Hash() []byte
-	Signature() []byte
 	Verify() error
+	Version() int
+	ToJSON(version int) (interface{}, error)
+
+	// Version() int
+	// From() Address
+	// To() Address
+	// Value() *big.Int
+	// StepLimit() *big.Int
+	// Timestamp() int64
+	// NID() int
+	// Nonce() int64
+	// Signature() []byte
 }
 
 type TransactionIterator interface {
@@ -44,16 +41,24 @@ type TransactionList interface {
 	Iterator() TransactionIterator
 	Hash() []byte
 	Equal(TransactionList) bool
+	Flush() error
 }
 
 type Receipt interface {
-	Bytes() ([]byte, error)
+	Bytes() []byte
+}
+
+type ReceiptIterator interface {
+	Has() bool
+	Next() error
+	Get() (Receipt, error)
 }
 
 type ReceiptList interface {
 	Get(int) (Receipt, error)
-	Size() int
+	Iterator() ReceiptIterator
 	Hash() []byte
+	Flush() error
 }
 
 type Transition interface {
@@ -151,8 +156,8 @@ type ServiceManager interface {
 	ReceiptListFromResult(result []byte, g TransactionGroup) ReceiptList
 
 	// SendTransaction adds transaction to a transaction pool.
-	//SendTransaction(tx interface{}) ([]byte, error)
-	SendTransaction(tx Transaction) ([]byte, error)
+	SendTransaction(tx interface{}) ([]byte, error)
+	// SendTransaction(tx Transaction) ([]byte, error)
 
 	// ValidatorListFromHash returns ValidatorList from hash.
 	ValidatorListFromHash(hash []byte) ValidatorList

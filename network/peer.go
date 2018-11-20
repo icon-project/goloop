@@ -2,8 +2,11 @@ package network
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net"
+	"strings"
+	"sync"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
@@ -20,16 +23,21 @@ type Peer struct {
 	writer   *PacketWriter
 	onPacket packetCbFunc
 	onError  errorCbFunc
+	onClose  closeCbFunc
+	mtx      sync.Mutex
 	//
 	incomming bool
 	channel   string
 	rtt       PeerRTT
 	connType  PeerConnectionType
 	role      PeerRoleFlag
+	//
+	log *logger
 }
 
 type packetCbFunc func(pkt *Packet, p *Peer)
 type errorCbFunc func(err error, p *Peer)
+type closeCbFunc func(p *Peer)
 
 //TODO define netAddress as IP:Port
 type NetAddress string
@@ -52,6 +60,10 @@ func (pr *PeerRoleFlag) Has(o PeerRoleFlag) bool {
 	return (*pr)&o == o
 }
 
+func (pr *PeerRoleFlag) Set(o PeerRoleFlag) {
+	*pr = o
+}
+
 const (
 	p2pConnTypeNone = iota
 	p2pConnTypeParent
@@ -71,13 +83,19 @@ func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool) *Peer {
 		incomming: incomming,
 	}
 	p.setPacketCbFunc(cbFunc)
+	p.setErrorCbFunc(func(err error, p *Peer) {
+		p.conn.Close()
+	})
+	p.setCloseCbFunc(func(p *Peer) {
+		//ignore
+	})
 	go p.receiveRoutine()
 	return p
 }
 
 func (p *Peer) String() string {
-	return fmt.Sprintf("{id:%v, addr:%v, in:%v, channel:%v, rtt:%v}",
-		p.id, p.netAddress, p.incomming, p.channel, p.rtt)
+	return fmt.Sprintf("{id:%v, addr:%v, in:%v, channel:%v, role:%v, rtt:%v}",
+		p.id, p.netAddress, p.incomming, p.channel, p.role, p.rtt)
 }
 
 func (p *Peer) ID() module.PeerID {
@@ -96,23 +114,38 @@ func (p *Peer) setErrorCbFunc(cbFunc errorCbFunc) {
 	p.onError = cbFunc
 }
 
+func (p *Peer) setCloseCbFunc(cbFunc closeCbFunc) {
+	p.onClose = cbFunc
+}
+
+func (p *Peer) setRole(role PeerRoleFlag) {
+	p.role.Set(role)
+}
+
 //receive from bufio.Reader, unmarshalling and peerToPeer.onPacket
 func (p *Peer) receiveRoutine() {
 	defer p.conn.Close()
 	for {
 		pkt, h, err := p.reader.ReadPacket()
 		if err != nil {
-			//TODO
-			// p.reader.Reset()
-			log.Println("Peer.receiveRoutine", pkt, h, err)
-			p.onError(err, p)
+			if oe, ok := err.(*net.OpError); ok { //after p.conn.Close()
+				//referenced from golang.org/x/net/http2/server.go isClosedConnError
+				if strings.Contains(oe.Err.Error(), "use of closed network connection") {
+					p.onClose(p)
+				}
+			} else if err == io.EOF || err == io.ErrUnexpectedEOF { //half Close (recieved tcp close)
+				p.onClose(p)
+			} else {
+				//TODO
+				// p.reader.Reset()
+				p.onError(err, p)
+			}
 			return
 		}
 		if pkt.hashOfPacket != h.Sum64() {
 			log.Println("Peer.receiveRoutine Invalid hashOfPacket :", pkt.hashOfPacket, ",expected:", h.Sum64())
 			continue
-		}
-		if p.onPacket != nil {
+		} else {
 			p.onPacket(pkt, p)
 		}
 	}
@@ -123,21 +156,23 @@ func (p *Peer) receiveRoutine() {
 // 	n, err := p.writer.ReadFrom(rd)
 // 	if err != nil {
 // 		//TODO
-// 		log.Println(n, err)
 // 		return err
 // 	}
 // 	return p.writer.Flush()
 // }
 
-func (p *Peer) sendPacket(pkt *Packet) error {
-	err := p.writer.WritePacket(pkt)
-	if err != nil {
+func (p *Peer) sendPacket(pkt *Packet) {
+	defer p.mtx.Unlock()
+	p.mtx.Lock()
+	if err := p.writer.WritePacket(pkt); err != nil {
+		log.Printf("Peer.sendPacket WritePacket onError %T %#v %s", err, err, p.String())
 		//TODO
-		log.Println(err)
 		p.onError(err, p)
-		return err
+	} else if err := p.writer.Flush(); err != nil {
+		log.Printf("Peer.sendPacket Flush onError %T %#v %s", err, err, p.String())
+		//TODO
+		p.onError(err, p)
 	}
-	return p.writer.Flush()
 }
 
 const (
