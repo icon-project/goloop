@@ -34,11 +34,11 @@ type transitionState struct {
 	// to set the base of transaction execution.
 	// It can't be modified out of this package, so use the pointer directly
 	// without copying.
-	state trie.Mutable
-
+	state             trie.Mutable
 	nextValidatorList module.ValidatorList
-	normalReceipts    *receiptList
-	patchReceipts     *receiptList
+
+	normalReceipts *receiptList
+	patchReceipts  *receiptList
 }
 
 func newInitialTransitionState(state trie.Mutable) *transitionState {

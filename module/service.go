@@ -1,9 +1,5 @@
 package module
 
-import (
-	"math/big"
-)
-
 // TransitionCallback provides transition change notifications. All functions
 // are called back with the same Transition instance for the convenience.
 type TransitionCallback interface {
@@ -16,21 +12,22 @@ type TransitionCallback interface {
 
 type Transaction interface {
 	Group() TransactionGroup
-
 	ID() []byte
-	Version() int
-	From() Address
-	To() Address
-	Value() *big.Int
-	StepLimit() *big.Int
-	Timestamp() int64
-	NID() int
-	Nonce() int64
-
 	Bytes() []byte
 	Hash() []byte
-	Signature() []byte
 	Verify() error
+	Version() int
+	ToJSON(version int) (interface{}, error)
+
+	// Version() int
+	// From() Address
+	// To() Address
+	// Value() *big.Int
+	// StepLimit() *big.Int
+	// Timestamp() int64
+	// NID() int
+	// Nonce() int64
+	// Signature() []byte
 }
 
 type TransactionIterator interface {

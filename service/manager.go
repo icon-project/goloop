@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/icon-project/goloop/common"
@@ -238,12 +239,12 @@ func (m *manager) checkTransitionResult(t module.Transition) (*transition, trie.
 func (m *manager) SendTransaction(tx module.Transaction) ([]byte, error) {
 	//func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
 	// TODO: apply changed API
-	newTx, err := newTransactionFromObject(tx)
-	if err != nil {
-		log.Printf("Failed to create new transaction from object!. tx : %x\n", newTx.Bytes())
-		return nil, err
+	newTx, ok := tx.(*transaction)
+	if !ok {
+		log.Printf("Failed to create new transaction from object!. tx : %x type:%T\n", tx.Bytes(), tx)
+		return nil, fmt.Errorf("IllegalTransactionType:%T", tx)
 	}
-	if err = newTx.Verify(); err != nil {
+	if err := newTx.Verify(); err != nil {
 		log.Printf("Failed to verify transaction. tx : %x\n", newTx.Bytes())
 		return nil, err
 	}

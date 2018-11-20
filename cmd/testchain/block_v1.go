@@ -26,7 +26,7 @@ func (t *transactionV3) MarshalJSON() ([]byte, error) {
 }
 
 func (t *transactionV3) UnmarshalJSON(b []byte) error {
-	if tr, err := service.NewTransactionV3(b); err != nil {
+	if tr, err := service.NewTransactionFromJSON(b); err != nil {
 		return err
 	} else {
 		t.Transaction = tr
@@ -173,7 +173,7 @@ func NewBlockV1(b []byte) (module.Block, error) {
 	}
 	trs := make([]module.Transaction, len(blk.Transactions))
 	for i, tx := range blk.Transactions {
-		trs[i] = tx
+		trs[i] = tx.Transaction
 	}
 	transactionList := service.NewTransactionListV1FromSlice(trs)
 	return &blockV1{blk, transactionList}, nil

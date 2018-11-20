@@ -97,7 +97,7 @@ func TestParallelExecution(t *testing.T) {
 		t.Errorf("Fail to flush err=%+v", err)
 	}
 
-	ws2 := NewWorldState(database, wvss.StateHash(), wvss.ValidatorHash())
+	ws2 := NewWorldState(database, wvss.StateHash(), wvss.GetValidators())
 	for idx := 1; idx <= count; idx++ {
 		v1 := big.NewInt(int64(idx * 10))
 		id := v1.Bytes()
@@ -242,7 +242,7 @@ func TestSequentialExecutionChainedAccount(t *testing.T) {
 
 	v1 := big.NewInt(0)
 	v2 := big.NewInt(100)
-	ws2 := NewWorldState(database, wvss.StateHash(), wvss.ValidatorHash())
+	ws2 := NewWorldState(database, wvss.StateHash(), wvss.GetValidators())
 	for idx := 1; idx < count; idx++ {
 		ass := ws2.GetAccountSnapshot(intToBytes(uint32(idx)))
 		if ass == nil {
@@ -319,7 +319,7 @@ func TestSequentialExecutionDistributeWithRollbacks(t *testing.T) {
 	v1 := big.NewInt(1)
 	v2 := big.NewInt(0)
 	remain := big.NewInt(int64(count / 2))
-	ws2 := NewWorldState(database, wvss.StateHash(), wvss.ValidatorHash())
+	ws2 := NewWorldState(database, wvss.StateHash(), wvss.GetValidators())
 	for idx := 1; idx <= count; idx++ {
 		ass := ws2.GetAccountSnapshot(intToBytes(uint32(idx)))
 		if ass == nil {

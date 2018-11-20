@@ -453,10 +453,3 @@ func (wvss *worldVirtualSnapshot) GetValidators() module.ValidatorList {
 	}
 	return nil
 }
-
-func (wvss *worldVirtualSnapshot) ValidatorHash() []byte {
-	if wvss.base != nil {
-		return wvss.base.ValidatorHash()
-	}
-	return nil
-}

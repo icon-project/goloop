@@ -223,17 +223,6 @@ func newTransactionList(db db.Database, txs []*transaction) *transactionlist {
 	return &transactionlist{txs: txs, snapshot: trie.GetSnapshot()}
 }
 
-////////////////////
-// Receipt / Receipt List
-////////////////////
-type receipt struct {
-	// TODO 정의
-}
-
-func (r *receipt) Bytes() ([]byte, error) {
-	return nil, nil
-}
-
 type receiptList struct {
 	receipts []receipt
 	hash     []byte
