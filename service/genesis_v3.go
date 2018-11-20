@@ -8,6 +8,7 @@ import (
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
 	"io"
+	"math/big"
 	"sort"
 )
 
@@ -127,18 +128,28 @@ func (g *genesisV3) Verify() error {
 }
 
 func (g *genesisV3) PreValidate(wc WorldContext, update bool) error {
-	// TODO Implement PreValidate
-	panic("implement me")
+	if wc.BlockHeight() != 0 {
+		return common.ErrInvalidState
+	}
+	return nil
 }
 
 func (g *genesisV3) Prepare(wvs WorldVirtualState) (WorldVirtualState, error) {
-	// TODO Implement PrePare
-	panic("implement me")
+	lq := []LockRequest{
+		{"", AccountWriteLock},
+	}
+	wvs = wvs.GetFuture(lq)
+	return wvs, nil
 }
 
 func (g *genesisV3) Execute(wc WorldContext) (Receipt, error) {
-	// TODO Implement PreValidate
-	panic("implement me")
+	for _, info := range g.Accounts {
+		ac := wc.GetAccountState(info.Address.ID())
+		ac.SetBalance(&info.Balance.Int)
+	}
+	rct := new(receipt)
+	rct.SetResult(true, big.NewInt(0), wc.StepPrice())
+	return rct, nil
 }
 
 func (g *genesisV3) Timestamp() int64 {
