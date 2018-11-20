@@ -11,6 +11,7 @@ import (
 
 	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/rpc"
@@ -60,7 +61,7 @@ func (vl *emptyVoteList) Bytes() []byte {
 }
 
 func (vl *emptyVoteList) Hash() []byte {
-	return nil
+	return crypto.SHA3Sum256(vl.Bytes())
 }
 
 type proposeOnlyConsensus struct {
@@ -117,6 +118,10 @@ func (c *proposeOnlyConsensus) Start() {
 		blk.MarshalBody(buf)
 		fmt.Printf("Proposer: Finalized Block(%d) %x\n", blk.Height(), blk.ID())
 		c.ch <- buf.Bytes()
+		_, err = c.bm.GetBlockByHeight(int64(height) + 1)
+		if err != nil {
+			panic(err)
+		}
 		height++
 
 		time.Sleep(15 * time.Second)

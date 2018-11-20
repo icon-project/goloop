@@ -17,6 +17,7 @@ import (
 // TODO overall error handling log? return error?
 // TODO import, finalize V1
 // TODO refactor code using bucketFor
+// TODO wait for transaction available
 
 var dbCodec = codec.MP
 
@@ -604,7 +605,7 @@ func (m *manager) voteListFromHash(hash []byte) module.VoteList {
 	if hb == nil {
 		return nil
 	}
-	bs, err := hb.getBytes(hash)
+	bs, err := hb.getBytes(raw(hash))
 	if err != nil {
 		return nil
 	}
