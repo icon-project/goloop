@@ -14,6 +14,7 @@
 package v2
 
 import (
+	"github.com/icon-project/goloop/module"
 	"github.com/osamingo/jsonrpc"
 )
 
@@ -27,12 +28,12 @@ const (
 	getBlockByHeight     string = "icx_getBlockByHeight"
 )
 
-func MethodRepository() *jsonrpc.MethodRepository {
+func MethodRepository(bm module.BlockManager, sm module.ServiceManager) *jsonrpc.MethodRepository {
 
 	v2 := jsonrpc.NewMethodRepository()
 
 	// api v2
-	v2.RegisterMethod(sendTransaction, sendTransactionHandler{}, SendTransactionParam{}, sendTranscationResult{})
+	v2.RegisterMethod(sendTransaction, sendTransactionHandler{sm}, sendTransactionParam{}, sendTranscationResult{})
 	v2.RegisterMethod(getTransactionResult, getTransactionResultHandler{}, getTransactionResultParam{}, getTransactionResultResult{})
 	v2.RegisterMethod(getBalance, getBalanceHandler{}, getBalanceParam{}, getBalanceResult{})
 	v2.RegisterMethod(getTotalSupply, getTotalSupplyeHandler{}, nil, getTotalSupplyResult{})

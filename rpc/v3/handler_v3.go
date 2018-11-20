@@ -4,6 +4,8 @@ import (
 	"context"
 	"log"
 
+	"github.com/icon-project/goloop/module"
+
 	"github.com/intel-go/fastjson"
 	"github.com/osamingo/jsonrpc"
 	client "github.com/ybbus/jsonrpc"
@@ -15,7 +17,9 @@ const apiEndPoint string = "https://testwallet.icon.foundation/api/v3"
 var rpcClient = client.NewClient(apiEndPoint)
 
 // getLastBlock
-type getLastBlockHandler struct{}
+type getLastBlockHandler struct {
+	bm module.BlockManager
+}
 
 func (h getLastBlockHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
@@ -215,7 +219,7 @@ type sendTransactionHandler struct{}
 
 func (h sendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
-	var param SendTransactionParam
+	var param sendTransactionParam
 	if err := jsonrpc.Unmarshal(params, &param); err != nil {
 		return nil, err
 	}

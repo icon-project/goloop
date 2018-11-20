@@ -4,6 +4,9 @@ import (
 	"context"
 	"log"
 
+	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service"
+
 	"github.com/intel-go/fastjson"
 	"github.com/osamingo/jsonrpc"
 	client "github.com/ybbus/jsonrpc"
@@ -15,11 +18,13 @@ const apiEndPoint string = "https://testwallet.icon.foundation/api/v2"
 var rpcClient = client.NewClient(apiEndPoint)
 
 // sendTransaction
-type sendTransactionHandler struct{}
+type sendTransactionHandler struct {
+	sm module.ServiceManager
+}
 
 func (h sendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
-	var param SendTransactionParam
+	var param sendTransactionParam
 	if err := jsonrpc.Unmarshal(params, &param); err != nil {
 		return nil, err
 	}
@@ -27,11 +32,18 @@ func (h sendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjson
 		return nil, err
 	}
 
-	// sendTransaction Call
+	p, _ := params.MarshalJSON()
+	log.Printf("params : %s", p)
+	tx, err := service.NewTransaction(p)
+	log.Printf("tx : %x", tx.Hash())
+	txHash, err := h.sm.SendTransaction(tx)
+	if err != nil {
+
+	}
 
 	result := &sendTranscationResult{
 		ResponseCode:    0,
-		TransactionHash: "4bf74e6aeeb43bde5dc8d5b62537a33ac8eb7605ebbdb51b015c1881b45b3aed",
+		TransactionHash: string(txHash[:]),
 	}
 
 	return result, nil

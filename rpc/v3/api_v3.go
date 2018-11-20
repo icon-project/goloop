@@ -1,6 +1,7 @@
 package v3
 
 import (
+	"github.com/icon-project/goloop/module"
 	"github.com/osamingo/jsonrpc"
 )
 
@@ -34,12 +35,12 @@ const (
 	getStatus            string = "ise_getStatus"
 )
 
-func MethodRepository() *jsonrpc.MethodRepository {
+func MethodRepository(bm module.BlockManager, sm module.ServiceManager) *jsonrpc.MethodRepository {
 
 	v3 := jsonrpc.NewMethodRepository()
 
 	// api v3
-	v3.RegisterMethod(getLastBlock, getLastBlockHandler{}, nil, blockV2{})
+	v3.RegisterMethod(getLastBlock, getLastBlockHandler{bm: bm}, nil, blockV2{})
 	v3.RegisterMethod(getBlockByHeight, getBlockByHeightHandler{}, getBlockByHeightParam{}, blockV2{})
 	v3.RegisterMethod(getBlockByHash, getBlockByHashHandler{}, getBlockByHashParam{}, blockV2{})
 	v3.RegisterMethod(call, callHandler{}, callParam{}, nil)
@@ -48,7 +49,7 @@ func MethodRepository() *jsonrpc.MethodRepository {
 	v3.RegisterMethod(getTotalSupply, getTotalSupplyeHandler{}, nil, nil)
 	v3.RegisterMethod(getTransactionResult, getTransactionResultHandler{}, transactionHashParam{}, transactionResult{})
 	v3.RegisterMethod(getTransactionByHash, getTransactionByHashHandler{}, transactionHashParam{}, transactionV3{})
-	v3.RegisterMethod(sendTransaction, sendTransactionHandler{}, SendTransactionParam{}, nil)
+	v3.RegisterMethod(sendTransaction, sendTransactionHandler{}, sendTransactionParam{}, nil)
 	v3.RegisterMethod(getStatus, getStatusHandler{}, getStatusParam{}, nil)
 
 	return v3

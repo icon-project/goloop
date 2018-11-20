@@ -35,7 +35,7 @@ type transactionHashParam struct {
 	TransactionHash string `json:"txHash" valid:"t_hash,required"`
 }
 
-type SendTransactionParam struct {
+type sendTransactionParam struct {
 	Version     string      `json:"version" valid:"t_int,required"`
 	FromAddress string      `json:"from" valid:"t_addr_eoa,required"`
 	ToAddress   string      `json:"to" valid:"t_addr,optional"`
@@ -55,15 +55,26 @@ type getStatusParam struct {
 
 // JSON-RPC Response Result
 type blockV2 struct {
-	Version            string          `json:"version"`
-	PrevBlockHash      string          `json:"prev_block_hash"`
-	MerkleTreeRootHash string          `json:"merkle_tree_root_hash"`
-	Timestamp          uint64          `json:"time_stamp"`
-	Transactions       []transactionV3 `json:"confirmed_transaction_list"`
-	BlockHash          string          `json:"block_hash"`
-	Height             int64           `json:"height"`
-	PeerID             string          `json:"peer_id"`
-	Signature          string          `json:"signature"`
+	Version            string      `json:"version"`
+	PrevBlockHash      string      `json:"prev_block_hash"`
+	MerkleTreeRootHash string      `json:"merkle_tree_root_hash"`
+	Timestamp          uint64      `json:"time_stamp"`
+	Transactions       interface{} `json:"confirmed_transaction_list"`
+	BlockHash          string      `json:"block_hash"`
+	Height             int64       `json:"height"`
+	PeerID             string      `json:"peer_id"`
+	Signature          string      `json:"signature"`
+}
+
+type transactionV2 struct {
+	FromAddress     string `json:"from"`
+	ToAddress       string `json:"to"`
+	Value           string `json:"value,omitempty"`
+	Fee             string `json:"fee"`
+	Timestamp       string `json:"timestamp"`
+	TransactionHash string `json:"tx_hash"`
+	Signature       string `json:"signature"`
+	Method          string `json:"method"`
 }
 
 type transactionV3 struct {
