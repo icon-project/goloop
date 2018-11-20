@@ -141,6 +141,12 @@ func (b *blockV2) _headerFormat() *blockV2HeaderFormat {
 	}
 }
 
+func (b *blockV2) ToJSON(rpcVersion int) (interface{}, error) {
+	res := make(map[string]string)
+	// TODO implement ToJSON
+	return res, nil
+}
+
 func bssFromTransactionList(l module.TransactionList) [][]byte {
 	var res [][]byte
 	for it := l.Iterator(); it.Has(); it.Next() {

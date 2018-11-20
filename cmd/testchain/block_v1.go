@@ -161,6 +161,10 @@ func (b *blockV1) MarshalBody(w io.Writer) error {
 	return nil
 }
 
+func (b *blockV1) ToJSON(rcpVersion int) (interface{}, error) {
+	return nil, nil
+}
+
 func NewBlockV1(b []byte) (module.Block, error) {
 	var blk = new(blockV1Impl)
 	err := json.Unmarshal(b, blk)

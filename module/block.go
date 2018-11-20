@@ -23,6 +23,8 @@ type Block interface {
 
 	MarshalHeader(w io.Writer) error
 	MarshalBody(w io.Writer) error
+
+	ToJSON(rcpVersion int) (interface{}, error)
 }
 
 type BlockManager interface {

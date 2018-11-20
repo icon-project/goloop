@@ -2,9 +2,10 @@ package block
 
 import (
 	"bytes"
-	"github.com/pkg/errors"
 	"io"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
@@ -547,6 +548,7 @@ func (m *manager) Finalize(block module.Block) error {
 
 func (m *manager) finalize(bn *bnode) error {
 	// TODO notify import/propose error due to finalization
+	// TODO update nmap
 	block := bn.block
 
 	if m.finalized != nil {
