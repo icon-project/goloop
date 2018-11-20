@@ -1,11 +1,14 @@
 package service
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
+	"io"
+	"sort"
 )
 
 type accountInfo struct {
@@ -18,11 +21,63 @@ type genesisV3JSON struct {
 	Accounts []accountInfo `json:"accounts"`
 	Message  string        `json:"message"`
 	raw      []byte
+	txHash   []byte
+}
+
+func serialize(o map[string]interface{}) []byte {
+	var buf = bytes.NewBuffer(nil)
+	serializePart(buf, o)
+	return buf.Bytes()[1:]
+}
+
+func serializePart(w io.Writer, o interface{}) {
+	switch obj := o.(type) {
+	case string:
+		w.Write([]byte("."))
+		w.Write([]byte(obj))
+	case []interface{}:
+		for _, v := range obj {
+			serializePart(w, v)
+		}
+	case map[string]interface{}:
+		keys := make([]string, 0, len(obj))
+		for k := range obj {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			if v, ok := obj[k]; ok {
+				w.Write([]byte("."))
+				w.Write([]byte(k))
+				serializePart(w, v)
+			}
+		}
+	}
+}
+
+func (g *genesisV3JSON) calcHash() ([]byte, error) {
+	var data map[string]interface{}
+	if err := json.Unmarshal(g.raw, &data); err != nil {
+		return nil, err
+	}
+	bs := append([]byte("genesis_tx."), serialize(data)...)
+	return crypto.SHA3Sum256(bs), nil
+}
+
+func (g *genesisV3JSON) updateTxHash() error {
+	if g.txHash == nil {
+		h, err := g.calcHash()
+		if err != nil {
+			return err
+		}
+		g.txHash = h
+	}
+	return nil
 }
 
 type genesisV3 struct {
 	*genesisV3JSON
-	id, hash []byte
+	hash []byte
 }
 
 func (g *genesisV3) Version() int {
@@ -45,8 +100,8 @@ func (g *genesisV3) Hash() []byte {
 }
 
 func (g *genesisV3) ID() []byte {
-	// TODO need to follow loopchain implementation.
-	panic("implement me")
+	g.updateTxHash()
+	return g.txHash
 }
 
 func (g *genesisV3) ToJSON(version int) (interface{}, error) {

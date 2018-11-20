@@ -84,10 +84,12 @@ func (b *blockV1) NextValidators() module.ValidatorList {
 }
 
 func (b *blockV1) Verify() error {
-	bs := make([]byte, 128+8)
-	copy(bs[0:], []byte(b.PrevBlockHash.String()))
-	copy(bs[64:], []byte(b.MerkleTreeRootHash.String()))
-	binary.LittleEndian.PutUint64(bs[128:], b.TimeStamp)
+	bs := make([]byte, 0, 128+8)
+	bs = append(bs, []byte(b.PrevBlockHash.String())...)
+	bs = append(bs, []byte(b.MerkleTreeRootHash.String())...)
+	ts := make([]byte, 8)
+	binary.LittleEndian.PutUint64(ts, b.TimeStamp)
+	bs = append(bs, ts...)
 	bhash := crypto.SHA3Sum256(bs)
 
 	if bytes.Compare(bhash, b.BlockHash) != 0 {
@@ -96,16 +98,18 @@ func (b *blockV1) Verify() error {
 		return errors.New("HASH is incorrect")
 	}
 
-	if pk, err := b.Signature.RecoverPublicKey(bhash); err == nil {
-		addr := common.NewAccountAddressFromPublicKey(pk).String()
-		if addr != b.PeerID {
-			log.Println("PEERID    ", b.PeerID)
-			log.Println("SIGNER    ", addr)
-			return errors.New("SIGNER is different from PEERID")
+	if b.Height() > 0 {
+		if pk, err := b.Signature.RecoverPublicKey(bhash); err == nil {
+			addr := common.NewAccountAddressFromPublicKey(pk).String()
+			if addr != b.PeerID {
+				log.Println("PEERID    ", b.PeerID)
+				log.Println("SIGNER    ", addr)
+				return errors.New("SIGNER is different from PEERID")
+			}
+		} else {
+			log.Println("FAIL to recover address from signature")
+			return err
 		}
-	} else {
-		log.Println("FAIL to recover address from signature")
-		return err
 	}
 
 	mrh := b.NormalTransactions().Hash()
