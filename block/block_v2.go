@@ -2,6 +2,8 @@ package block
 
 import (
 	"bytes"
+	"encoding/hex"
+	"fmt"
 	"io"
 	"time"
 
@@ -12,6 +14,8 @@ import (
 )
 
 var v2Codec = codec.MP
+
+const blockV2String = "2.0"
 
 type blockV2HeaderFormat struct {
 	Version                int
@@ -142,8 +146,18 @@ func (b *blockV2) _headerFormat() *blockV2HeaderFormat {
 }
 
 func (b *blockV2) ToJSON(rpcVersion int) (interface{}, error) {
-	res := make(map[string]string)
-	// TODO implement ToJSON
+	res := make(map[string]interface{})
+	res["version"] = blockV2String
+	res["prev_block_hash"] = hex.EncodeToString(b.ID())
+	// TODO calc merkle_tree_root_hash
+	res["merkle_tree_root_hash"] = hex.EncodeToString(b.NormalTransactions().Hash())
+	res["time_stamp"] = unixMicroFromTime(b.Timestamp())
+	res["confirmed_transaction_list"] = b.NormalTransactions()
+	res["block_hash"] = hex.EncodeToString(b.ID())
+	res["height"] = b.Height()
+	res["peer_id"] = fmt.Sprintf("hx%x", b.Proposer().ID())
+	// TODO add signautre?
+	res["signature"] = ""
 	return res, nil
 }
 
