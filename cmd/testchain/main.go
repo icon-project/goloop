@@ -13,6 +13,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/rpc"
 	"github.com/icon-project/goloop/service"
 )
 
@@ -24,6 +25,7 @@ type chain struct {
 	sm       module.ServiceManager
 	bm       module.BlockManager
 	cs       module.Consensus
+	sv       rpc.JsonRpcServer
 }
 
 func (c *chain) GetDatabase() db.Database {
@@ -115,6 +117,8 @@ func (c *proposeOnlyConsensus) Start() {
 		fmt.Printf("Proposer: Finalized Block(%d) %x\n", blk.Height(), blk.ID())
 		c.ch <- buf.Bytes()
 		height++
+
+		time.Sleep(15 * time.Second)
 	}
 }
 
@@ -168,6 +172,9 @@ func (c *chain) startAsProposer(ch chan<- []byte) {
 		ch: ch,
 	}
 	sm = c.sm
+
+	c.sv = rpc.NewJsonRpcServer(c.bm, c.sm)
+	c.sv.Start()
 
 	c.cs.Start()
 }
