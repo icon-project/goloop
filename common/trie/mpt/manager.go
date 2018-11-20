@@ -26,7 +26,7 @@ func NewMutable(database db.Database, rootHash []byte) trie.Mutable {
 }
 
 func NewMutableFromImmutable(immutable trie.Immutable) trie.Mutable {
-	return newMpFromImmutable(immutable)
+	return newMptFromImmutable(immutable)
 }
 
 func NewImmutableForObject(database db.Database, h []byte, t reflect.Type) trie.ImmutableForObject {
@@ -47,8 +47,7 @@ func NewMutableForObject(database db.Database, h []byte, t reflect.Type) trie.Mu
 }
 
 func NewMutableFromImmutableForObject(object trie.ImmutableForObject) trie.MutableForObject {
-	// TODO make new mutable object from immutable.
-	return nil
+	return newMptForObjFromImmutableForObject(object)
 }
 
 //func NewImmutable(rootHash []byte) trie.Immutable {

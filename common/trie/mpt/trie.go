@@ -3,12 +3,13 @@ package mpt
 import (
 	"bytes"
 	"errors"
-	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/common/trie"
 	"log"
 	"reflect"
 	"sync"
+
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/trie"
 )
 
 const maxNodeHeight = 65 // nibbles of 32bytes key(64) + root (1)
@@ -503,7 +504,7 @@ func (m *mpt) Empty() bool {
 	return len(pool) == 0 && m.root == nil
 }
 
-func newMpFromImmutable(immutable trie.Immutable) *mpt {
+func newMptFromImmutable(immutable trie.Immutable) *mpt {
 	if m, ok := immutable.(*mpt); ok {
 		mpt := newMpt(m.db, m.bk, m.source.committedHash, m.objType)
 		mpt.source = m.source
@@ -512,7 +513,7 @@ func newMpFromImmutable(immutable trie.Immutable) *mpt {
 			m.source.committedHash = hash(append([]byte(nil), []byte(m.source.prev.committedHash)...))
 		}
 		mpt.source = &source{committedHash: m.source.committedHash, prev: m.source, requestPool: make(map[string]trie.Object)}
-		return m
+		return mpt
 	}
 
 	return nil

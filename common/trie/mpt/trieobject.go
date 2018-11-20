@@ -1,11 +1,13 @@
 package mpt
 
 import (
+	"bytes"
+	"log"
+	"reflect"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
-	"log"
-	"reflect"
 )
 
 // struct for object trie
@@ -19,6 +21,21 @@ func newMptForObj(db db.Database, bk db.Bucket, initialHash hash, t reflect.Type
 			source: &source{requestPool: make(map[string]trie.Object), committedHash: hash(append([]byte(nil), []byte(initialHash)...))},
 			bk:     bk, db: db, objType: t},
 	}
+}
+
+func newMptForObjFromImmutableForObject(immutable trie.ImmutableForObject) *mptForObj {
+	if m, ok := immutable.(*mptForObj); ok {
+		mpt := newMptForObj(m.db, m.bk, m.source.committedHash, m.objType)
+		mpt.source = m.source
+		// Below means s1.Flush() was called after calling m.Reset(s1)
+		if m.source.prev != nil && bytes.Compare(m.source.committedHash, m.source.prev.committedHash) != 0 {
+			m.source.committedHash = hash(append([]byte(nil), []byte(m.source.prev.committedHash)...))
+		}
+		mpt.source = &source{committedHash: m.source.committedHash, prev: m.source, requestPool: make(map[string]trie.Object)}
+		return mpt
+	}
+
+	return nil
 }
 
 func (m *mptForObj) Get(k []byte) (trie.Object, error) {
