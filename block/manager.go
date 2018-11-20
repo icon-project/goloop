@@ -391,7 +391,7 @@ func (m *manager) getBlock(id []byte) (module.Block, error) {
 		return nil, err
 	}
 	if headerBytes != nil {
-		return m.newBlockFromHeaderReader(bytes.NewReader(headerBytes)), nil
+		return m.newBlockFromHeaderReader(bytes.NewReader(headerBytes))
 	}
 	return nil, common.ErrUnknown
 }
@@ -612,16 +612,27 @@ func (m *manager) voteListFromHash(hash []byte) module.VoteList {
 	return dec(bs)
 }
 
-func (m *manager) newBlockFromHeaderReader(r io.Reader) module.Block {
+func (m *manager) newBlockFromHeaderReader(r io.Reader) (module.Block, error) {
 	var header blockV2HeaderFormat
-	v2Codec.Unmarshal(r, &header)
+	err := v2Codec.Unmarshal(r, &header)
+	if err != nil {
+		return nil, err
+	}
 	patches := m.sm.TransactionListFromHash(header.PatchTransactionsHash)
+	if patches == nil {
+		return nil, errors.Errorf("TranscationListFromHash(%x) failed", header.PatchTransactionsHash)
+	}
 	normalTxs := m.sm.TransactionListFromHash(header.NormalTransactionsHash)
+	if normalTxs == nil {
+		return nil, errors.Errorf("TransactionListFromHash(%x) failed", header.NormalTransactionsHash)
+	}
 	nextValidators := m.sm.ValidatorListFromHash(header.NextValidatorsHash)
+	if nextValidators == nil {
+		return nil, errors.Errorf("ValidatorListFromHas(%x)", header.NextValidatorsHash)
+	}
 	votes := m.voteListFromHash(header.VotesHash)
-	if patches == nil || normalTxs == nil || nextValidators == nil ||
-		votes == nil {
-		return nil
+	if votes == nil {
+		return nil, errors.Errorf("voteListFromHash(%x) failed", header.VotesHash)
 	}
 	return &blockV2{
 		height:             header.Height,
@@ -634,7 +645,7 @@ func (m *manager) newBlockFromHeaderReader(r io.Reader) module.Block {
 		normalTransactions: normalTxs,
 		nextValidators:     nextValidators,
 		votes:              votes,
-	}
+	}, nil
 }
 
 func (m *manager) newTransactionListFromBSS(
