@@ -8,6 +8,8 @@ import (
 	"hash"
 	"hash/fnv"
 	"io"
+	"log"
+	"time"
 
 	"github.com/icon-project/goloop/module"
 )
@@ -170,12 +172,14 @@ func (pw *PacketWriter) WritePacket(pkt *Packet) error {
 	tb = tb[4:]
 	_, err := pw.Write(hb)
 	if err != nil {
+		log.Printf("PacketWriter.WritePacket hb %T %#v %s", err, err, err)
 		return err
 	}
 	//
 	payload := pkt.payload[:pkt.lengthOfpayload]
 	_, err = pw.Write(payload)
 	if err != nil {
+		log.Printf("PacketWriter.WritePacket payload %T %#v %s", err, err, err)
 		return err
 	}
 	//
@@ -190,7 +194,39 @@ func (pw *PacketWriter) WritePacket(pkt *Packet) error {
 	binary.BigEndian.PutUint64(tb[:8], pkt.hashOfPacket)
 	tb = tb[8:]
 	_, err = pw.Write(fb)
-	return err
+	if err != nil {
+		log.Printf("PacketWriter.WritePacket fb %T %#v %s", err, err, err)
+		return err
+	}
+	return nil
+}
+
+func (pw *PacketWriter) Write(b []byte) (int, error) {
+	wn := 0
+	for {
+		n, err := pw.Writer.Write(b[wn:])
+		wn += n
+		if err != nil && err == io.ErrShortWrite {
+			log.Println("PacketWriter.Write io.ErrShortWrite", err)
+			time.Sleep(1 * time.Second)
+			continue
+		} else {
+			return wn, err
+		}
+	}
+}
+
+func (pw *PacketWriter) Flush() error {
+	for {
+		err := pw.Writer.Flush()
+		if err != nil && err == io.ErrShortWrite {
+			log.Println("PacketWriter.Flush io.ErrShortWrite", err)
+			time.Sleep(1 * time.Second)
+			continue
+		} else {
+			return err
+		}
+	}
 }
 
 type PacketReadWriter struct {

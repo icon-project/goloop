@@ -1,7 +1,6 @@
 package network
 
 import (
-	"container/list"
 	"encoding/binary"
 	"fmt"
 	"log"
@@ -13,6 +12,7 @@ type manager struct {
 	channel     string
 	memberships map[string]module.Membership
 	peerToPeer  *PeerToPeer
+	log         *logger
 }
 
 func newManager(channel string, id module.PeerID, addr NetAddress, d *Dialer) *manager {
@@ -20,6 +20,7 @@ func newManager(channel string, id module.PeerID, addr NetAddress, d *Dialer) *m
 		channel:     channel,
 		memberships: make(map[string]module.Membership),
 		peerToPeer:  newPeerToPeer(channel, id, addr, d),
+		log:         &logger{"NetworkManager", fmt.Sprintf("%s", channel)},
 	}
 
 	//Create default membership for P2P topology management
@@ -29,7 +30,7 @@ func newManager(channel string, id module.PeerID, addr NetAddress, d *Dialer) *m
 	dms.destByRole[module.ROLE_SEED] = p2pRoleSeed
 	dms.destByRole[module.ROLE_VALIDATOR] = p2pRoleRoot
 
-	log.Println("network.newManager", channel, id, addr)
+	m.log.Println("newManager", id, addr)
 	return m
 }
 
@@ -52,6 +53,25 @@ func (m *manager) getProtocolInfo(name string) module.ProtocolInfo {
 	} else {
 		return NewProtocolInfoWithIdVersion(pi.ID()+byte(len(m.memberships)), 0)
 	}
+}
+
+type logger struct {
+	name   string
+	prefix string
+}
+
+func (l *logger) Println(v ...interface{}) {
+	//%T : type //%#v
+	s := fmt.Sprintf("[%s] %s", l.prefix, l.name)
+	w := make([]interface{}, len(v)+1)
+	copy(w[1:], v)
+	w[0] = s
+	log.Println(w...)
+}
+
+func (l *logger) Printf(format string, v ...interface{}) {
+	s := fmt.Sprintf(format, v...)
+	l.Println(s)
 }
 
 type protocolInfo uint16
@@ -111,31 +131,3 @@ type MessageReactor interface {
 }
 
 ////////////util classes
-type StringList struct {
-	*list.List
-}
-
-func NewStringList() *StringList {
-	return &StringList{list.New()}
-}
-
-func (l *StringList) get(v string) *list.Element {
-	for e := l.Front(); e != nil; e = e.Next() {
-		if s := e.Value.(string); s == v {
-			return e
-		}
-	}
-	return nil
-}
-
-func (l *StringList) Remove(v string) bool {
-	if e := l.get(v); e != nil {
-		l.List.Remove(e)
-		return true
-	}
-	return false
-}
-
-func (l *StringList) Has(v string) bool {
-	return l.get(v) != nil
-}

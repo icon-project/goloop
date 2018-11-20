@@ -1,8 +1,6 @@
 package network
 
 import (
-	"log"
-
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
 )
@@ -13,12 +11,13 @@ type ChannelNegotiator struct {
 }
 
 func newChannelNegotiator() *ChannelNegotiator {
-	return &ChannelNegotiator{}
+	cn := &ChannelNegotiator{peerHandler{log: &logger{"ChannelNegotiator", ""}}}
+	return cn
 }
 
 //callback from PeerHandler.nextOnPeer
 func (cn *ChannelNegotiator) onPeer(p *Peer) {
-	log.Println("ChannelNegotiator.onPeer", p)
+	cn.log.Println("onPeer", p)
 	if !p.incomming {
 		cn.sendPacket(NewPacket(PROTO_CHAN_JOIN_REQ, []byte(p.channel)), p)
 	}
@@ -26,13 +25,13 @@ func (cn *ChannelNegotiator) onPeer(p *Peer) {
 
 //TODO callback from Peer.sendRoutine or Peer.receiveRoutine
 func (cn *ChannelNegotiator) onError(err error, p *Peer) {
-	log.Println("ChannelNegotiator.onError", err, p)
+	cn.log.Println("onError", err, p)
 	cn.peerHandler.onError(err, p)
 }
 
 //callback from Peer.receiveRoutine
 func (cn *ChannelNegotiator) onPacket(pkt *Packet, p *Peer) {
-	log.Println("ChannelNegotiator.onPacket", pkt)
+	cn.log.Println("onPacket", pkt)
 	switch pkt.protocol {
 	case PROTO_CONTOL:
 		switch pkt.subProtocol {
@@ -65,12 +64,13 @@ type AuthKeyRequest struct {
 }
 
 func newAuthenticator(priK *crypto.PrivateKey, pubK *crypto.PublicKey) *Authenticator {
-	return &Authenticator{priKey: priK, pubKey: pubK}
+	a := &Authenticator{priKey: priK, pubKey: pubK, peerHandler: peerHandler{log: &logger{"Authenticator", ""}}}
+	return a
 }
 
 //callback from PeerHandler.nextOnPeer
 func (a *Authenticator) onPeer(p *Peer) {
-	log.Println("Authenticator.onPeer", p)
+	a.log.Println("onPeer", p)
 	if !p.incomming {
 		a.sendPacket(NewPacket(PROTO_AUTH_HS1, a.pubKey.SerializeCompressed()), p)
 	}
@@ -78,13 +78,13 @@ func (a *Authenticator) onPeer(p *Peer) {
 
 //TODO callback from Peer.sendRoutine or Peer.receiveRoutine
 func (a *Authenticator) onError(err error, p *Peer) {
-	log.Println("Authenticator.onError", err, p)
+	a.log.Println("onError", err, p)
 	a.peerHandler.onError(err, p)
 }
 
 //callback from Peer.receiveRoutine
 func (a *Authenticator) onPacket(pkt *Packet, p *Peer) {
-	log.Println("Authenticator.onPacket", pkt)
+	a.log.Println("onPacket", pkt)
 	switch pkt.protocol {
 	case PROTO_CONTOL:
 		switch pkt.subProtocol {
@@ -104,7 +104,7 @@ func (a *Authenticator) onPacket(pkt *Packet, p *Peer) {
 			p.pubKey, _ = crypto.ParsePublicKey(pkt.payload)
 			p.id = NewPeerIDFromPublicKey(p.pubKey)
 			if !p.id.Equal(pkt.src) {
-				log.Println("Authenticator.onPacket PROTO_AUTH_HS1 Warnning id doesnt match[pkt:", pkt.src, ",expected:", p.id)
+				a.log.Println("onPacket PROTO_AUTH_HS1 Warnning id doesnt match[pkt:", pkt.src, ",expected:", p.id)
 			}
 			a.sendPacket(NewPacket(PROTO_AUTH_HS2, a.pubKey.SerializeCompressed()), p)
 		case PROTO_AUTH_HS2:
@@ -124,7 +124,7 @@ func (a *Authenticator) onPacket(pkt *Packet, p *Peer) {
 			p.pubKey, _ = crypto.ParsePublicKey(pkt.payload)
 			p.id = NewPeerIDFromPublicKey(p.pubKey)
 			if !p.id.Equal(pkt.src) {
-				log.Println("Authenticator.onPacket PROTO_AUTH_HS2 Warnning id doesnt match[pkt:", pkt.src, ",expected:", p.id)
+				a.log.Println("onPacket PROTO_AUTH_HS2 Warnning id doesnt match[pkt:", pkt.src, ",expected:", p.id)
 			}
 			s, _ := crypto.NewSignature(crypto.SHA3Sum256(a.pubKey.SerializeUncompressed()), a.priKey)
 			sb, _ := s.SerializeRSV()
@@ -145,10 +145,10 @@ func (a *Authenticator) onPacket(pkt *Packet, p *Peer) {
 				a.sendPacket(NewPacket(PROTO_AUTH_HS4, sb), p)
 				a.nextOnPeer(p)
 			} else {
-				log.Println("Authenticator.onPacket PROTO_AUTH_HS3 Incomming PeerId Invalid signature, try close")
+				a.log.Println("onPacket PROTO_AUTH_HS3 Incomming PeerId Invalid signature, try close")
 				err := p.conn.Close()
 				if err != nil {
-					log.Println("Authenticator.onPacket PROTO_AUTH_HS3 p.conn.Close()", err)
+					a.log.Println("onPacket PROTO_AUTH_HS3 p.conn.Close()", err)
 				}
 			}
 		case PROTO_AUTH_HS4:
@@ -156,10 +156,10 @@ func (a *Authenticator) onPacket(pkt *Packet, p *Peer) {
 			if s.Verify(crypto.SHA3Sum256(p.pubKey.SerializeUncompressed()), p.pubKey) {
 				a.nextOnPeer(p)
 			} else {
-				log.Println("Authenticator.onPacket PROTO_AUTH_HS4 Outgoing PeerId Invalid signature, try close")
+				a.log.Println("onPacket PROTO_AUTH_HS4 Outgoing PeerId Invalid signature, try close")
 				err := p.conn.Close()
 				if err != nil {
-					log.Println("Authenticator.onPacket PROTO_AUTH_HS4 p.conn.Close()", err)
+					a.log.Println("onPacket PROTO_AUTH_HS4 p.conn.Close()", err)
 				}
 			}
 		}

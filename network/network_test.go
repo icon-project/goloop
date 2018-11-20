@@ -131,15 +131,13 @@ func Test_network(t *testing.T) {
 	sl.Listen()
 	cl.Listen()
 
-	sna := NewNetAddressList()
-	sna.PushBack(NetAddress(sl.address))
-	pd.peerToPeers[testChannel].seeds.PushBackList(sna.List)
-	spd.peerToPeers[testChannel].seeds.PushBackList(sna.List)
-	cpd.peerToPeers[testChannel].seeds.PushBackList(sna.List)
-	//TODO connect each other, config p2p.self.role
-
-	// sd.Dial(l.address)
+	snal := []NetAddress{NetAddress(sl.address)}
+	pd.peerToPeers[testChannel].seeds.Merge(snal...)
+	spd.peerToPeers[testChannel].seeds.Merge(snal...)
+	cpd.peerToPeers[testChannel].seeds.Merge(snal...)
+	// d.Dial(sl.address)
 	// cd.Dial(sl.address)
+
 	time.Sleep(5 * time.Second)
 	vr.Broadcast()
 	sr.Multicast()
