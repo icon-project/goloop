@@ -49,3 +49,7 @@ func (s *JsonRpcServer) jsonRpcHandler() http.Handler {
 
 	return router
 }
+
+func (s *JsonRpcServer) ListenAndServe(addr string) error {
+	return http.ListenAndServe(addr, s.jsonRpcHandler())
+}
