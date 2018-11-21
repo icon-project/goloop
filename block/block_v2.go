@@ -147,7 +147,7 @@ func (b *blockV2) _headerFormat() *blockV2HeaderFormat {
 func (b *blockV2) ToJSON(rpcVersion int) (interface{}, error) {
 	res := make(map[string]interface{})
 	res["version"] = blockV2String
-	res["prev_block_hash"] = hex.EncodeToString(b.ID())
+	res["prev_block_hash"] = hex.EncodeToString(b.PrevID())
 	// TODO calc merkle_tree_root_hash
 	res["merkle_tree_root_hash"] = hex.EncodeToString(b.NormalTransactions().Hash())
 	res["time_stamp"] = unixMicroFromTime(b.Timestamp())
