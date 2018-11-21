@@ -101,7 +101,7 @@ func getNetwork(channel string) (module.NetworkManager, module.Membership) {
 }
 
 func Test_network(t *testing.T) {
-	pd, l, _ := getTransport(testChannel)
+	pd, l, d := getTransport(testChannel)
 	spd, sl, sd := newTestTransport(testChannel, testSeedAddress)
 	cpd, cl, cd := newTestTransport(testChannel, testCitizenAddress)
 
@@ -131,12 +131,12 @@ func Test_network(t *testing.T) {
 	sl.Listen()
 	cl.Listen()
 
-	snal := []NetAddress{NetAddress(sl.address)}
-	pd.peerToPeers[testChannel].seeds.Merge(snal...)
-	spd.peerToPeers[testChannel].seeds.Merge(snal...)
-	cpd.peerToPeers[testChannel].seeds.Merge(snal...)
-	// d.Dial(sl.address)
-	// cd.Dial(sl.address)
+	// snal := []NetAddress{NetAddress(sl.address)}
+	// pd.peerToPeers[testChannel].seeds.Merge(snal...)
+	// spd.peerToPeers[testChannel].seeds.Merge(snal...)
+	// cpd.peerToPeers[testChannel].seeds.Merge(snal...)
+	d.Dial(sl.address)
+	cd.Dial(sl.address)
 
 	time.Sleep(5 * time.Second)
 	vr.Broadcast()
