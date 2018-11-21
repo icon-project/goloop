@@ -638,7 +638,7 @@ func (m *manager) newBlockFromHeaderReader(r io.Reader) (module.Block, error) {
 	return &blockV2{
 		height:             header.Height,
 		timestamp:          timeFromUnixMicro(header.Timestamp),
-		proposer:           common.NewAccountAddress(header.Proposer),
+		proposer:           common.NewAddress(header.Proposer),
 		prevID:             header.PrevID,
 		logBloom:           header.LogBloom,
 		result:             header.Result,
