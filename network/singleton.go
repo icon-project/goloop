@@ -68,6 +68,7 @@ var (
 
 type Config struct {
 	ListenAddress string
+	SeedAddress   string
 	PrivateKey    *crypto.PrivateKey
 	PublicKey     *crypto.PublicKey
 }
@@ -117,10 +118,14 @@ func GetPeerDispatcher() *PeerDispatcher {
 func GetNetworkManager(channel string) module.NetworkManager {
 	nm, ok := networkManagers[channel]
 	if !ok {
+		c := GetConfig()
 		l := GetListener()
 		pd := GetPeerDispatcher()
 		m := newManager(channel, pd.self, NetAddress(l.address), GetDialer(channel))
 		pd.registPeerToPeer(m.peerToPeer)
+		if c.SeedAddress != "" {
+			m.peerToPeer.seeds.Add(NetAddress(c.SeedAddress))
+		}
 		nm = m
 		networkManagers[channel] = nm
 	}
@@ -129,7 +134,8 @@ func GetNetworkManager(channel string) module.NetworkManager {
 
 func GetChannelNegotiator() *ChannelNegotiator {
 	if handlerChannelNegotiator == nil {
-		handlerChannelNegotiator = newChannelNegotiator()
+		c := GetConfig()
+		handlerChannelNegotiator = newChannelNegotiator(NetAddress(c.ListenAddress))
 	}
 	return handlerChannelNegotiator
 }
@@ -137,7 +143,7 @@ func GetChannelNegotiator() *ChannelNegotiator {
 func GetAuthenticator() *Authenticator {
 	if handlerAuthenticator == nil {
 		c := GetConfig()
-		handlerAuthenticator = newAuthenticator(c.PrivateKey, c.PublicKey)
+		handlerAuthenticator = newAuthenticator(c.PrivateKey)
 	}
 	return handlerAuthenticator
 }

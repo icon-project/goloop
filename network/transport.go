@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/icon-project/goloop/module"
+	"github.com/ugorji/go/codec"
 )
 
 type Listener struct {
@@ -111,7 +112,14 @@ type PeerHandler interface {
 type peerHandler struct {
 	next PeerHandler
 	self module.PeerID
-	log  *logger
+	//codec
+	codecHandle codec.Handle
+	//log
+	log *logger
+}
+
+func newPeerHandler(log *logger) *peerHandler {
+	return &peerHandler{log: log, codecHandle: &codec.MsgpackHandle{}}
 }
 
 func (ph *peerHandler) onPeer(p *Peer) {
@@ -148,15 +156,26 @@ func (ph *peerHandler) setSelfPeerID(id module.PeerID) {
 	ph.log.prefix = fmt.Sprintf("%s", ph.self)
 }
 
-func (ph *peerHandler) sendPacket(pkt *Packet, p *Peer) {
-	if pkt.src == nil {
-		pkt.src = ph.self
-	}
+func (ph *peerHandler) sendPacket(pi module.ProtocolInfo, m interface{}, p *Peer) {
+	pkt := NewPacket(pi, ph.encode(m))
+	pkt.src = ph.self
 	p.sendPacket(pkt)
 }
 
+func (ph *peerHandler) encode(v interface{}) []byte {
+	b := make([]byte, DefaultPacketBufferSize)
+	enc := codec.NewEncoderBytes(&b, ph.codecHandle)
+	enc.MustEncode(v)
+	return b
+}
+
+func (ph *peerHandler) decode(b []byte, v interface{}) {
+	dec := codec.NewDecoderBytes(b, ph.codecHandle)
+	dec.MustDecode(v)
+}
+
 type PeerDispatcher struct {
-	peerHandler
+	*peerHandler
 	peerHandlers *list.List
 	peerToPeers  map[string]*PeerToPeer
 }
@@ -165,8 +184,9 @@ func newPeerDispatcher(selfPeerId module.PeerID, peerHandlers ...PeerHandler) *P
 	pd := &PeerDispatcher{
 		peerHandlers: list.New(),
 		peerToPeers:  make(map[string]*PeerToPeer),
-		peerHandler:  peerHandler{log: &logger{"PeerDispatcher", ""}},
+		peerHandler:  newPeerHandler(newLogger("PeerDispatcher", "")),
 	}
+	// pd.peerHandler.codecHandle.MapType = reflect.TypeOf(map[string]interface{}(nil))
 	pd.setSelfPeerID(selfPeerId)
 
 	pd.registPeerHandler(pd)
@@ -191,7 +211,7 @@ func (pd *PeerDispatcher) registPeerHandler(ph PeerHandler) {
 
 //callback from Listener.acceptRoutine
 func (pd *PeerDispatcher) onAccept(conn net.Conn) {
-	pd.log.Println("onAccept", conn.LocalAddr(), "->", conn.RemoteAddr())
+	pd.log.Println("onAccept", conn.LocalAddr(), "<-", conn.RemoteAddr())
 	p := newPeer(conn, nil, true)
 	pd.dispatchPeer(p)
 }

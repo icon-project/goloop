@@ -4,16 +4,19 @@ import (
 	"sync"
 
 	"github.com/icon-project/goloop/common/crypto"
-	"github.com/icon-project/goloop/module"
 )
 
 //Negotiation map<channel, map<membership.name, {protocol, []subProtocol}>>
 type ChannelNegotiator struct {
-	peerHandler
+	*peerHandler
+	netAddress NetAddress
 }
 
-func newChannelNegotiator() *ChannelNegotiator {
-	cn := &ChannelNegotiator{peerHandler{log: &logger{"ChannelNegotiator", ""}}}
+func newChannelNegotiator(netAddress NetAddress) *ChannelNegotiator {
+	cn := &ChannelNegotiator{
+		netAddress:  netAddress,
+		peerHandler: newPeerHandler(newLogger("ChannelNegotiator", "")),
+	}
 	return cn
 }
 
@@ -21,7 +24,8 @@ func newChannelNegotiator() *ChannelNegotiator {
 func (cn *ChannelNegotiator) onPeer(p *Peer) {
 	cn.log.Println("onPeer", p)
 	if !p.incomming {
-		cn.sendPacket(NewPacket(PROTO_CHAN_JOIN_REQ, []byte(p.channel)), p)
+		cn.sendJoinRequest(p)
+
 	}
 }
 
@@ -38,36 +42,65 @@ func (cn *ChannelNegotiator) onPacket(pkt *Packet, p *Peer) {
 	case PROTO_CONTOL:
 		switch pkt.subProtocol {
 		case PROTO_CHAN_JOIN_REQ:
-			p.channel = string(pkt.payload)
-			cn.sendPacket(NewPacket(PROTO_CHAN_JOIN_RESP, []byte(p.channel)), p)
-			cn.nextOnPeer(p)
+			cn.handleJoinRequest(pkt, p)
 		case PROTO_CHAN_JOIN_RESP:
-			cn.nextOnPeer(p)
+			cn.handleJoinResponse(pkt, p)
 		}
 	}
 }
 
+type JoinRequest struct {
+	Channel string
+	Addr    NetAddress
+}
+
+type JoinResponse struct {
+	Channel string
+	Addr    NetAddress
+}
+
+func (cn *ChannelNegotiator) sendJoinRequest(p *Peer) {
+	m := &JoinRequest{Channel: p.channel, Addr: cn.netAddress}
+	cn.sendPacket(PROTO_CHAN_JOIN_REQ, m, p)
+	cn.log.Println("sendJoinRequest", m, p)
+}
+
+func (cn *ChannelNegotiator) handleJoinRequest(pkt *Packet, p *Peer) {
+	rm := &JoinRequest{}
+	cn.decode(pkt.payload, rm)
+	cn.log.Println("handleJoinRequest", rm, p)
+	p.channel = rm.Channel
+	p.netAddress = rm.Addr
+
+	m := &JoinResponse{Channel: p.channel, Addr: cn.netAddress}
+	cn.sendPacket(PROTO_CHAN_JOIN_RESP, m, p)
+
+	cn.nextOnPeer(p)
+}
+
+func (cn *ChannelNegotiator) handleJoinResponse(pkt *Packet, p *Peer) {
+	rm := &JoinResponse{}
+	cn.decode(pkt.payload, rm)
+	cn.log.Println("handleJoinResponse", rm, p)
+	p.channel = rm.Channel
+	p.netAddress = rm.Addr
+
+	cn.nextOnPeer(p)
+}
+
 type Authenticator struct {
-	peerHandler
-	peers  map[module.PeerID]*Peer
-	seq    int
+	*peerHandler
 	priKey *crypto.PrivateKey
 	pubKey *crypto.PublicKey
 	mtx    sync.Mutex
 }
 
-type AuthRequest struct {
-	PubKey    []byte
-	Encrypted []byte
-}
-
-type AuthKeyRequest struct {
-	PubKey []byte
-	Cheap  string
-}
-
-func newAuthenticator(priK *crypto.PrivateKey, pubK *crypto.PublicKey) *Authenticator {
-	a := &Authenticator{priKey: priK, pubKey: pubK, peerHandler: peerHandler{log: &logger{"Authenticator", ""}}}
+func newAuthenticator(priK *crypto.PrivateKey) *Authenticator {
+	a := &Authenticator{
+		priKey:      priK,
+		pubKey:      priK.PublicKey(),
+		peerHandler: newPeerHandler(newLogger("Authenticator", "")),
+	}
 	return a
 }
 
@@ -121,40 +154,61 @@ func (a *Authenticator) VerifySignature(s *crypto.Signature, p *Peer) bool {
 	return s.Verify(h, p.pubKey)
 }
 
+type PublicKeyRequest struct {
+	PublicKey []byte
+}
+type PublicKeyResponse struct {
+	PublicKey []byte
+}
+type SignatureRequest struct {
+	Signature []byte
+}
+type SignatureResponse struct {
+	Signature []byte
+}
+
 func (a *Authenticator) sendPublicKeyRequest(p *Peer) {
-	pkt := NewPacket(PROTO_AUTH_KEY_REQ, a.pubKey.SerializeCompressed())
-	a.sendPacket(pkt, p)
-	a.log.Println("sendPublicKeyRequest", pkt)
+	m := &PublicKeyRequest{PublicKey: a.pubKey.SerializeCompressed()}
+	a.sendPacket(PROTO_AUTH_KEY_REQ, m, p)
+	a.log.Println("sendPublicKeyRequest", m, p)
 }
 
 func (a *Authenticator) handlePublicKeyRequest(pkt *Packet, p *Peer) {
-	p.pubKey, _ = crypto.ParsePublicKey(pkt.payload)
+	rm := &PublicKeyRequest{}
+	a.decode(pkt.payload, rm)
+	a.log.Println("handlePublicKeyRequest", rm, p)
+	p.pubKey, _ = crypto.ParsePublicKey(rm.PublicKey)
 	p.id = NewPeerIDFromPublicKey(p.pubKey)
-	a.log.Println("handlePublicKeyRequest", p.pubKey, p.id)
 	if !p.id.Equal(pkt.src) {
 		a.log.Println("handlePublicKeyRequest Warnning id doesnt match pkt:", pkt.src, ",expected:", p.id)
 	}
-	a.sendPacket(NewPacket(PROTO_AUTH_KEY_RESP, a.pubKey.SerializeCompressed()), p)
+
+	m := &PublicKeyResponse{PublicKey: a.pubKey.SerializeCompressed()}
+	a.sendPacket(PROTO_AUTH_KEY_RESP, m, p)
 }
 
 func (a *Authenticator) handlePublicKeyResponse(pkt *Packet, p *Peer) {
-	p.pubKey, _ = crypto.ParsePublicKey(pkt.payload)
+	rm := &PublicKeyResponse{}
+	a.decode(pkt.payload, rm)
+	a.log.Println("handlePublicKeyResponse", rm, p)
+	p.pubKey, _ = crypto.ParsePublicKey(rm.PublicKey)
 	p.id = NewPeerIDFromPublicKey(p.pubKey)
-	a.log.Println("handlePublicKeyResponse", p.pubKey, p.id)
 	if !p.id.Equal(pkt.src) {
 		a.log.Println("handlePublicKeyResponse Warnning id doesnt match pkt:", pkt.src, ",expected:", p.id)
 	}
 
-	rpkt := NewPacket(PROTO_AUTH_SIGN_REQ, a.Signature())
-	a.sendPacket(rpkt, p)
+	m := &SignatureRequest{Signature: a.Signature()}
+	a.sendPacket(PROTO_AUTH_SIGN_REQ, m, p)
 }
 
 func (a *Authenticator) handleSignatureRequest(pkt *Packet, p *Peer) {
-	s, _ := crypto.ParseSignature(pkt.payload)
-	a.log.Println("handleSignatureRequest", s.String(), p.id)
+	rm := &SignatureRequest{}
+	a.decode(pkt.payload, rm)
+	a.log.Println("handleSignatureRequest", rm, p)
+	s, _ := crypto.ParseSignature(rm.Signature)
 	if a.VerifySignature(s, p) {
-		rpkt := NewPacket(PROTO_AUTH_SIGN_RESP, a.Signature())
-		a.sendPacket(rpkt, p)
+		m := &SignatureResponse{Signature: a.Signature()}
+		a.sendPacket(PROTO_AUTH_SIGN_RESP, m, p)
 
 		a.nextOnPeer(p)
 	} else {
@@ -167,8 +221,10 @@ func (a *Authenticator) handleSignatureRequest(pkt *Packet, p *Peer) {
 }
 
 func (a *Authenticator) handleSignatureResponse(pkt *Packet, p *Peer) {
-	s, _ := crypto.ParseSignature(pkt.payload)
-	a.log.Println("handleSignatureResponse", s.String(), p.id)
+	rm := &SignatureResponse{}
+	a.decode(pkt.payload, rm)
+	a.log.Println("handleSignatureResponse", rm, p)
+	s, _ := crypto.ParseSignature(rm.Signature)
 	if a.VerifySignature(s, p) {
 		a.nextOnPeer(p)
 	} else {

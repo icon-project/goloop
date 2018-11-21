@@ -31,8 +31,6 @@ type Peer struct {
 	rtt       PeerRTT
 	connType  PeerConnectionType
 	role      PeerRoleFlag
-	//
-	log *logger
 }
 
 type packetCbFunc func(pkt *Packet, p *Peer)
@@ -124,7 +122,13 @@ func (p *Peer) setRole(role PeerRoleFlag) {
 
 //receive from bufio.Reader, unmarshalling and peerToPeer.onPacket
 func (p *Peer) receiveRoutine() {
-	defer p.conn.Close()
+	defer func() {
+		if err := recover(); err != nil {
+			//TODO recover()
+			log.Fatal(err)
+		}
+		p.conn.Close()
+	}()
 	for {
 		pkt, h, err := p.reader.ReadPacket()
 		if err != nil {

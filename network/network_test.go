@@ -8,12 +8,8 @@ import (
 )
 
 const (
-	testSeedAddress    = "127.0.0.1:8081"
-	testCitizenAddress = "127.0.0.1:8082"
-	// ProtoTestNetworkBroadcast   = 0x0101
-	// ProtoTestNetworkMulticast   = 0x0201
-	// ProtoTestNetworkRequest     = 0x0301
-	// ProtoTestNetworkResponse    = 0x0401
+	testSeedAddress             = "127.0.0.1:8081"
+	testCitizenAddress          = "127.0.0.1:8082"
 	PayloadTestNetworkBroadcast = "TestBroasdcast"
 	PayloadTestNetworkMulticast = "TestMulticast"
 	PayloadTestNetworkRequest   = "Hello"
@@ -101,7 +97,7 @@ func getNetwork(channel string) (module.NetworkManager, module.Membership) {
 }
 
 func Test_network(t *testing.T) {
-	pd, l, d := getTransport(testChannel)
+	_, l, d := getTransport(testChannel)
 	spd, sl, sd := newTestTransport(testChannel, testSeedAddress)
 	cpd, cl, cd := newTestTransport(testChannel, testCitizenAddress)
 
@@ -118,14 +114,14 @@ func Test_network(t *testing.T) {
 	sms.RegistReactor(sr.name, sr, testSubProtocols)
 	cms.RegistReactor(cr.name, cr, testSubProtocols)
 
-	vrp := []module.PeerID{pd.self}
-	srp := []module.PeerID{pd.self, spd.self}
-	ms.AddRole(module.ROLE_VALIDATOR, vrp...)
-	ms.AddRole(module.ROLE_SEED, srp...)
-	sms.AddRole(module.ROLE_VALIDATOR, vrp...)
-	sms.AddRole(module.ROLE_SEED, srp...)
-	cms.AddRole(module.ROLE_VALIDATOR, vrp...)
-	cms.AddRole(module.ROLE_SEED, srp...)
+	// vrp := []module.PeerID{pd.self}
+	// srp := []module.PeerID{pd.self, spd.self}
+	// ms.AddRole(module.ROLE_VALIDATOR, vrp...)
+	// ms.AddRole(module.ROLE_SEED, srp...)
+	// sms.AddRole(module.ROLE_VALIDATOR, vrp...)
+	// sms.AddRole(module.ROLE_SEED, srp...)
+	// cms.AddRole(module.ROLE_VALIDATOR, vrp...)
+	// cms.AddRole(module.ROLE_SEED, srp...)
 
 	l.Listen()
 	sl.Listen()

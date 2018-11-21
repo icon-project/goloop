@@ -59,6 +59,8 @@ func (s *Set) Merge(args ...interface{}) {
 		s.Add(v)
 	}
 }
+
+//Not ordered array
 func (s *Set) Array() interface{} {
 	defer s.mtx.RUnlock()
 	s.mtx.RLock()
@@ -73,28 +75,65 @@ func (s *Set) String() string {
 	return fmt.Sprintf("%v", arr)
 }
 
+//TODO peer.Equal
 type PeerSet struct {
 	*Set
-	addrs *NetAddressSet
+	incomming *PeerIdSet
+	outgoing  *PeerIdSet
+	addrs     *NetAddressSet
 }
 
 func NewPeerSet() *PeerSet {
-	return &PeerSet{Set: NewSet(), addrs: NewNetAddressSet()}
+	return &PeerSet{Set: NewSet(), incomming: NewPeerIdSet(), outgoing: NewPeerIdSet(), addrs: NewNetAddressSet()}
+}
+
+func (s *PeerSet) _contains(p *Peer) bool {
+	if p.incomming {
+		return s.incomming.Contains(p.id)
+	} else {
+		return s.outgoing.Contains(p.id)
+	}
 }
 
 func (s *PeerSet) Add(p *Peer) bool {
-	s.addrs.Add(p.netAddress)
-	return s.Set.Add(p)
+	defer s.Set.mtx.Unlock()
+	s.Set.mtx.Lock()
+
+	if !s._contains(p) {
+		if p.incomming {
+			s.incomming.Add(p.id)
+		} else {
+			s.outgoing.Add(p.id)
+		}
+		s.addrs.Add(p.netAddress)
+		s.Set.m[p] = 1
+		return true
+	}
+	return false
 }
 
 func (s *PeerSet) Remove(p *Peer) bool {
-	s.addrs.Remove(p.netAddress)
-	return s.Set.Remove(p)
+	defer s.Set.mtx.Unlock()
+	s.Set.mtx.Lock()
+
+	if s._contains(p) {
+		if p.incomming {
+			s.incomming.Remove(p.id)
+		} else {
+			s.outgoing.Remove(p.id)
+		}
+		s.addrs.Remove(p.netAddress)
+		delete(s.Set.m, p)
+		return true
+	}
+	return false
+}
+func (s *PeerSet) Contains(p *Peer) bool {
+	return s._contains(p)
 }
 func (s *PeerSet) Merge(args ...*Peer) {
 	for _, p := range args {
-		s.addrs.Add(p.netAddress)
-		s.Set.Add(p)
+		s.Add(p)
 	}
 }
 func (s *PeerSet) Array() []*Peer {
@@ -160,12 +199,20 @@ type NetAddressSet struct {
 func NewNetAddressSet() *NetAddressSet {
 	return &NetAddressSet{Set: NewSet()}
 }
+func (s *NetAddressSet) Add(a NetAddress) bool {
+	return s.Set.Add(a)
+}
+func (s *NetAddressSet) Remove(a NetAddress) bool {
+	return s.Set.Remove(a)
+}
+func (s *NetAddressSet) Contains(a NetAddress) bool {
+	return s.Set.Contains(a)
+}
 func (s *NetAddressSet) Merge(args ...NetAddress) {
 	for _, a := range args {
 		s.Set.Add(a)
 	}
 }
-
 func (s *NetAddressSet) Array() []NetAddress {
 	defer s.Set.mtx.RUnlock()
 	s.Set.mtx.RLock()

@@ -13,8 +13,6 @@ const (
 	testChannel                  = "testchannel"
 	PayloadTestTransportRequest  = "Hello"
 	PayloadTestTransportResponse = "World"
-	// PROTO_TEST_REQ    = 0x0001
-	// PROTO_TEST_RESP   = 0x0002
 )
 
 var (
@@ -23,9 +21,17 @@ var (
 )
 
 type TestPeerHandler struct {
-	peerHandler
+	*peerHandler
 	t  *testing.T
 	wg *sync.WaitGroup
+}
+
+type TestTransportRequest struct {
+	Message string
+}
+
+type TestTransportResponse struct {
+	Message string
 }
 
 func (ph *TestPeerHandler) onPeer(p *Peer) {
@@ -33,8 +39,9 @@ func (ph *TestPeerHandler) onPeer(p *Peer) {
 	p.setPacketCbFunc(ph.onPacket)
 	if !p.incomming {
 		ph.wg.Add(1)
-		ph.sendPacket(NewPacket(ProtoTestTransportRequest, []byte(PayloadTestTransportRequest)), p)
-		ph.t.Logf("TestPeerHandler.sendPacket ProtoTestTransportRequest %s", PayloadTestTransportRequest)
+		m := &TestTransportRequest{Message: "Hello"}
+		ph.sendPacket(ProtoTestTransportRequest, m, p)
+		ph.t.Logf("TestPeerHandler.sendPacket ProtoTestTransportRequest %v", m)
 	}
 }
 
@@ -44,18 +51,24 @@ func (ph *TestPeerHandler) onError(err error, p *Peer) {
 }
 
 func (ph *TestPeerHandler) onPacket(pkt *Packet, p *Peer) {
-	s := string(pkt.payload)
 	ph.t.Logf("TestPeerHandler.onPacket %v %v", pkt, p)
 	switch pkt.protocol {
 	case PROTO_CONTOL:
 		switch pkt.subProtocol {
 		case ProtoTestTransportRequest:
-			ph.t.Logf("TestPeerHandler.onPacket ProtoTestTransportRequest %s", s)
-			ph.sendPacket(NewPacket(ProtoTestTransportResponse, []byte(PayloadTestTransportResponse)), p)
-			ph.t.Logf("TestPeerHandler.sendPacket ProtoTestTransportResponse %s", PayloadTestTransportResponse)
+			rm := &TestTransportRequest{}
+			ph.decode(pkt.payload, rm)
+			ph.t.Logf("TestPeerHandler.onPacket ProtoTestTransportRequest %v", rm)
+
+			m := &TestTransportResponse{Message: "World"}
+			ph.sendPacket(ProtoTestTransportResponse, m, p)
+			ph.t.Logf("TestPeerHandler.sendPacket ProtoTestTransportResponse %v", m)
 			ph.nextOnPeer(p)
 		case ProtoTestTransportResponse:
-			ph.t.Logf("TestPeerHandler.onPacket ProtoTestTransportResponse %s", s)
+			rm := &TestTransportResponse{}
+			ph.decode(pkt.payload, rm)
+			ph.t.Logf("TestPeerHandler.onPacket ProtoTestTransportResponse %v", rm)
+
 			ph.nextOnPeer(p)
 			ph.wg.Done()
 		}
@@ -65,8 +78,8 @@ func (ph *TestPeerHandler) onPacket(pkt *Packet, p *Peer) {
 func newTestTransport(channel string, address string) (*PeerDispatcher, *Listener, *Dialer) {
 	priK, pubK := crypto.GenerateKeyPair()
 	pd := newPeerDispatcher(NewPeerIDFromPublicKey(pubK),
-		newChannelNegotiator(),
-		newAuthenticator(priK, pubK))
+		newChannelNegotiator(NetAddress(address)),
+		newAuthenticator(priK))
 	l := newListener(address, pd.onAccept)
 	d := newDialer(channel, pd.onConnect)
 	return pd, l, d
@@ -80,7 +93,11 @@ func getTransport(channel string) (*PeerDispatcher, *Listener, *Dialer) {
 }
 func Test_transport(t *testing.T) {
 	var wg sync.WaitGroup
-	tph := &TestPeerHandler{t: t, wg: &wg, peerHandler: peerHandler{log: &logger{"TestPeerHandler", ""}}}
+	tph := &TestPeerHandler{
+		t:           t,
+		wg:          &wg,
+		peerHandler: newPeerHandler(newLogger("TestPeerHandler", "")),
+	}
 
 	pd, l, d := getTransport(testChannel)
 

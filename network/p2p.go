@@ -163,7 +163,7 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 		if p.connType == p2pConnTypeNone {
 			p2p.log.Println("onPacket Ignore, undetermined PeerConnectionType")
 		} else if cbFunc := p2p.onPacketCbFuncs[pkt.protocol]; cbFunc != nil {
-			if !p2p.hasPacket(pkt) {
+			if !p2p.hasPacket(pkt) && !p2p.self.id.Equal(pkt.src) {
 				p2p.putPacketPool(pkt)
 				cbFunc(pkt, p)
 			} else {
@@ -212,10 +212,10 @@ type QueryResultMessage struct {
 
 func (p2p *PeerToPeer) getSelfRole() PeerRoleFlag {
 	role := p2pRoleNone
-	if p2p.allowedRoots.Contains(p2p.self.id) {
+	if p2p.isAllowedRole(p2pRoleRoot, p2p.self) {
 		role |= p2pRoleRoot
 	}
-	if p2p.allowedSeeds.Contains(p2p.self.id) {
+	if p2p.isAllowedRole(p2pRoleSeed, p2p.self) {
 		role |= p2pRoleSeed
 	}
 	prf := PeerRoleFlag(role)
@@ -428,10 +428,10 @@ func (p2p *PeerToPeer) sendToPeer(pkt *Packet, id module.PeerID) {
 func (p2p *PeerToPeer) isAllowedRole(role PeerRoleFlag, p *Peer) bool {
 	switch role {
 	case p2pRoleSeed:
-		p2p.log.Println("isAllowedRole p2pRoleSeed", p2p.allowedSeeds)
+		//p2p.log.Println("isAllowedRole p2pRoleSeed", p2p.allowedSeeds)
 		return p2p.allowedSeeds.IsEmpty() || p2p.allowedSeeds.Contains(p.id)
 	case p2pRoleRoot:
-		p2p.log.Println("isAllowedRole p2pRoleRoot", p2p.allowedRoots)
+		//p2p.log.Println("isAllowedRole p2pRoleRoot", p2p.allowedRoots)
 		return p2p.allowedRoots.IsEmpty() || p2p.allowedRoots.Contains(p.id)
 	case p2pRoleRootSeed:
 		return p2p.isAllowedRole(p2pRoleRoot, p) && p2p.isAllowedRole(p2pRoleSeed, p)
@@ -445,11 +445,13 @@ func (p2p *PeerToPeer) discoveryRoutine() {
 	//TODO goroutine exit
 	for {
 		select {
-		case t := <-p2p.seedTicker.C:
-			p2p.log.Println("discoveryRoutine seedTicker", t)
+		// case t := <-p2p.seedTicker.C:
+		// p2p.log.Println("discoveryRoutine seedTicker", t)
+		case <-p2p.seedTicker.C:
 			p2p.syncSeeds()
-		case t := <-p2p.discoveryTicker.C:
-			p2p.log.Println("discoveryRoutine discoveryTicker", t)
+		// case t := <-p2p.discoveryTicker.C:
+		// p2p.log.Println("discoveryRoutine discoveryTicker", t)
+		case <-p2p.discoveryTicker.C:
 			if r := p2p.getSelfRole(); r.Has(p2pRoleRoot) {
 				roots := p2p.orphanages.RemoveByRole(p2pRoleRoot)
 				for _, p := range roots {

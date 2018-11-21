@@ -60,6 +60,10 @@ type logger struct {
 	prefix string
 }
 
+func newLogger(name string, prefix string) *logger {
+	return &logger{name, prefix}
+}
+
 func (l *logger) Println(v ...interface{}) {
 	//%T : type //%#v
 	s := fmt.Sprintf("[%s] %s", l.prefix, l.name)
