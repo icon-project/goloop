@@ -87,7 +87,7 @@ func (m *manager) ProposeGenesisTransition(parent module.Transition) (module.Tra
 		if err != nil {
 			log.Panicf("Fail to make WorldState from snapshot err=%+v", err)
 		}
-		wc := NewWorldContext(ws, t.timestamp, t.height)
+		wc := NewWorldContext(ws, t.timestamp, uint64(t.height))
 
 		// GOD Account
 		as := wc.GetAccountState([]byte{90, 5, 181, 138, 37, 161, 229, 234, 15, 29, 87, 21, 225, 246, 85, 223, 252, 31, 179, 10})
