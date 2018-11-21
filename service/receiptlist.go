@@ -65,25 +65,22 @@ func (l *receiptList) Flush() error {
 	return nil
 }
 
+var receiptType = reflect.TypeOf((*receipt)(nil))
+
 func NewReceiptListFromSlice(database db.Database, list []Receipt) module.ReceiptList {
-	mt := trie_manager.NewMutableForObject(database, nil, reflect.TypeOf(&receipt{}))
+	mt := trie_manager.NewMutableForObject(database, nil, receiptType)
 	for idx, r := range list {
 		k, _ := codec.MP.MarshalToBytes(uint(idx))
-		if rp, ok := r.(*receipt); ok {
-			err := mt.Set(k, rp)
-			if err != nil {
-				log.Fatalf("NewTransanctionListFromSlice FAILs err=%+v", err)
-				return nil
-			}
-		} else {
-			log.Panicf("Failed to assert receipt")
+		err := mt.Set(k, r)
+		if err != nil {
+			log.Fatalf("NewTransanctionListFromSlice FAILs err=%+v", err)
+			return nil
 		}
-
 	}
 	return &receiptList{mt.GetSnapshot()}
 }
 
 func NewReceiptListFromHash(database db.Database, h []byte) module.ReceiptList {
-	immutable := trie_manager.NewImmutableForObject(database, h, reflect.TypeOf(&receipt{}))
+	immutable := trie_manager.NewImmutableForObject(database, h, receiptType)
 	return &receiptList{immutable}
 }
