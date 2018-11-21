@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/crypto"
-	"github.com/icon-project/goloop/module"
 	"log"
 	"math/big"
 	"strconv"
+
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/module"
 )
 
 type transactionV3JSON struct {
@@ -201,7 +202,7 @@ func (tx *transactionV3) Execute(wc WorldContext) (Receipt, error) {
 	if bal1.Cmp(trans) < 0 {
 		trans.Set(fee)
 		if bal1.Cmp(trans) < 0 {
-			log.Printf("TransactionV2 not enough balance for fee: %s balance=%s < fee=%s",
+			log.Printf("TransactionV3 not enough balance for fee: %s balance=%s < fee=%s",
 				tx.From.String(), bal1.Text(10), fee.Text(10))
 			r.SetResult(false, big.NewInt(0), stepPrice)
 			return r, nil
