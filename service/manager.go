@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/big"
 	"time"
 
 	"github.com/icon-project/goloop/common"
@@ -74,12 +75,27 @@ func (m *manager) ProposeTransition(parent module.Transition) (module.Transition
 // with transactions of Genesis.
 func (m *manager) ProposeGenesisTransition(parent module.Transition) (module.Transition, error) {
 	if pt, ok := parent.(*transition); ok {
+		t := newTransition(pt,
+			NewTransactionListFromSlice(m.db, nil),
+			NewTransactionListFromSlice(m.db, nil),
+			true)
+
 		// create transition instance and return it
-		return newTransition(pt,
-				NewTransactionListFromSlice(m.db, nil),
-				NewTransactionListFromSlice(m.db, nil),
-				true),
-			nil
+		// add god account and coin to WorldContext
+		// TODO: remove below late, temp code for test
+		ws, err := WorldStateFromSnapshot(pt.worldSnapshot)
+		if err != nil {
+			log.Panicf("Fail to make WorldState from snapshot err=%+v", err)
+		}
+		wc := NewWorldContext(ws, t.timestamp, t.height)
+
+		// GOD Account
+		as := wc.GetAccountState([]byte{90, 5, 181, 138, 37, 161, 229, 234, 15, 29, 87, 21, 225, 246, 85, 223, 252, 31, 179, 10})
+		balance := new(big.Int)
+		balance.SetString("800460000000000000000000000", 10)
+		as.SetBalance(balance)
+		pt.worldSnapshot = wc.GetSnapshot()
+		return t, nil
 	}
 	return nil, common.ErrIllegalArgument
 }

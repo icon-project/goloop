@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"github.com/icon-project/goloop/common/crypto"
-	"github.com/icon-project/goloop/module"
 	"log"
 	"math/big"
 	"strconv"
+
+	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/module"
 )
 
 var version2FixedFee = big.NewInt(10 * PETA)
@@ -56,8 +57,10 @@ func (tx *transactionV2) PreValidate(wc WorldContext, update bool) error {
 	}
 
 	tsdiff := wc.TimeStamp() - tx.TimeStamp.Value
-	if tsdiff < -5*60*1000*1000 || tsdiff > 5*60*1000*1000 {
-		return ErrTimeOut
+	if configOnCheckingTimestamp == true {
+		if tsdiff < -5*60*1000*1000 || tsdiff > 5*60*1000*1000 {
+			return ErrTimeOut
+		}
 	}
 
 	if update {

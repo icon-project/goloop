@@ -3,17 +3,19 @@ package service
 import (
 	"bytes"
 	"container/list"
-	"github.com/icon-project/goloop/module"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/icon-project/goloop/module"
 
 	"github.com/icon-project/goloop/common/db"
 )
 
 const (
-	txPoolSize     = 100
-	txLiveDuration = int64(60 * time.Second / time.Millisecond) // 60 seconds in millisecond
+	configOnCheckingTimestamp = false // set true if you want check timestamp in txpool
+	txPoolSize                = 100
+	txLiveDuration            = int64(60 * time.Second / time.Microsecond) // 60 seconds in microsecond
 )
 
 ////////////////////
@@ -39,7 +41,7 @@ func NewtransactionPool(txdb db.Bucket) *transactionPool {
 }
 
 func makeTimestamp() int64 {
-	return time.Now().UnixNano() / int64(time.Millisecond)
+	return time.Now().UnixNano() / int64(time.Microsecond)
 }
 
 // TODO: check thread safe below
@@ -184,9 +186,11 @@ func (txPool *transactionPool) addList(txs []*transaction) {
 
 	txList := txPool.txList
 
-	if iter := txList.Front(); iter != nil {
-		if iter.Value.(*transaction).Timestamp() < expired {
-			txPool.runGc(expired)
+	if configOnCheckingTimestamp {
+		if iter := txList.Front(); iter != nil {
+			if iter.Value.(*transaction).Timestamp() < expired {
+				txPool.runGc(expired)
+			}
 		}
 	}
 
@@ -202,8 +206,10 @@ func (txPool *transactionPool) addList(txs []*transaction) {
 			//fmt.Println("drop ID = ", addTx.ID(), ", timestamp = ", addTx.TimeStamp())
 			continue
 		}
-		if addTx.Timestamp() < expired {
-			continue
+		if configOnCheckingTimestamp {
+			if addTx.Timestamp() < expired {
+				continue
+			}
 		}
 
 		inserted := false
