@@ -2,12 +2,13 @@ package db
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"log"
+
+	"github.com/pkg/errors"
 )
 
 const (
-	configLogMapDB = true
+	configLogMapDB = false
 )
 
 func init() {

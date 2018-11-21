@@ -2,8 +2,11 @@ package service
 
 import (
 	"errors"
-	"github.com/icon-project/goloop/module"
 	"math/big"
+
+	"github.com/icon-project/goloop/common/trie"
+
+	"github.com/icon-project/goloop/module"
 )
 
 const (
@@ -40,7 +43,8 @@ type Transaction interface {
 }
 
 type Receipt interface {
-	module.Receipt
+	//module.Receipt
+	trie.Object
 	AddLog(addr module.Address, indexed, data []string)
 	SetCumulativeStepUsed(cumulativeUsed *big.Int)
 	SetResult(success bool, used, price *big.Int)

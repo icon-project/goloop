@@ -622,7 +622,8 @@ func (iter *iteratorImpl) Next() error {
 				keyIndex := len(stackNode.key)
 				startNibble = prevKey[keyIndex] + 1
 				branchNode := stackNode.n.(*branch)
-				branchNode.nibbles[prevKey[keyIndex]] = nil
+				// do not set nil when trie is not flushed yet
+				//branchNode.nibbles[prevKey[keyIndex]] = nil
 				prevKey = stackNode.key
 				for i := startNibble; i < 16; i++ {
 					if branchNode.nibbles[i] != nil {
