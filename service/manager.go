@@ -50,7 +50,7 @@ func (m *manager) ProposeTransition(parent module.Transition) (module.Transition
 	var timestamp int64 = time.Now().UnixNano() / 1000
 
 	ws, _ := WorldStateFromSnapshot(pt.worldSnapshot)
-	wc := NewWorldContext(ws, timestamp, pt.height+1)
+	wc := NewWorldContext(ws, timestamp, uint64(pt.height+1))
 
 	patchTxs := m.patchTxPool.candidate(wc, -1) // try to add all patches in the block
 	maxTxNum := txMaxNumInBlock - len(patchTxs)
@@ -103,12 +103,13 @@ func (m *manager) ProposeGenesisTransition(parent module.Transition) (module.Tra
 // CreateInitialTransition creates an initial Transition with result and
 // vs validators.
 func (m *manager) CreateInitialTransition(result []byte, valList module.ValidatorList, height int64) (module.Transition, error) {
-	return newInitTransition(m.db, result, valList)
+	return newInitTransition(m.db, result, valList, height)
 }
 
 // CreateTransition creates a Transition following parent Transition with txs
 // transactions.
 // parent transition should have a valid result.
+// TODO It has to receive timestamp
 func (m *manager) CreateTransition(parent module.Transition, txList module.TransactionList) (module.Transition, error) {
 	// check validity of transition
 	pt, err := m.checkTransitionResult(parent)

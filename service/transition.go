@@ -3,11 +3,12 @@ package service
 import (
 	"bytes"
 	"errors"
-	"github.com/icon-project/goloop/common/codec"
 	"log"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/icon-project/goloop/common/codec"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
@@ -30,7 +31,7 @@ var Zero32 = make([]byte, 32)
 
 type transition struct {
 	parent    *transition
-	height    uint64
+	height    int64
 	timestamp int64
 
 	patchTransactions  module.TransactionList
@@ -44,6 +45,7 @@ type transition struct {
 	step  int
 	mutex sync.Mutex
 
+	// TODO add receipt list
 	result        resultBytes
 	worldSnapshot WorldSnapshot
 	logBloom      LogBloom
@@ -76,7 +78,7 @@ func newTransition(parent *transition, patchtxs module.TransactionList, normaltx
 }
 
 // all parameters should be valid.
-func newInitTransition(db db.Database, result []byte, validatorList module.ValidatorList) (*transition, error) {
+func newInitTransition(db db.Database, result []byte, validatorList module.ValidatorList, height int64) (*transition, error) {
 	hashes := [][]byte{nil, nil, nil}
 	if len(result) > 0 {
 		if _, err := codec.UnmarshalFromBytes(result, &hashes); err != nil {
@@ -88,6 +90,7 @@ func newInitTransition(db db.Database, result []byte, validatorList module.Valid
 	// TODO also need to recover receipts.
 
 	return &transition{
+		height:             height,
 		db:                 db,
 		patchTransactions:  newTransactionListFromList(db, nil),
 		normalTransactions: newTransactionListFromList(db, nil),
@@ -164,7 +167,7 @@ func (t *transition) executeSync(alreadyValidated bool) {
 		if err != nil {
 			log.Panicf("Fail to build world state from snapshot err=%+v", err)
 		}
-		wc := NewWorldContext(ws, t.timestamp, t.height)
+		wc := NewWorldContext(ws, t.timestamp, uint64(t.height))
 		ok, patchCount = t.validateTxs(t.patchTransactions, wc)
 		if !ok {
 			return
@@ -196,7 +199,7 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	if err != nil {
 		log.Panicf("Fail to make WorldState from snapshot err=%+v", err)
 	}
-	wc := NewWorldContext(ws, t.timestamp, t.height)
+	wc := NewWorldContext(ws, t.timestamp, uint64(t.height))
 	patchReceipts := make([]Receipt, patchCount)
 	t.executeTxs(t.patchTransactions, wc, patchReceipts)
 	normalReceipts := make([]Receipt, normalCount)
