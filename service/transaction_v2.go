@@ -86,6 +86,8 @@ func (tx *transactionV2) Execute(wc WorldContext) (Receipt, error) {
 	r := new(receipt)
 	trans := new(big.Int)
 	trans.Set(&tx.Value.Int)
+	// Legacy ICON service checks if Fee is same as FixedFee, so actually
+	// tx.Fee and version2FixedFee are same here
 	trans.Add(trans, &tx.Fee.Int)
 
 	as1 := wc.GetAccountState(tx.From.ID())
@@ -99,6 +101,7 @@ func (tx *transactionV2) Execute(wc WorldContext) (Receipt, error) {
 			return r, nil
 		}
 		bal1.Sub(bal1, trans)
+		as1.SetBalance(bal1)
 		r.SetResult(false, version2StepUsed, version2StepPrice)
 		return r, nil
 	}
