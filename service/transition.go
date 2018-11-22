@@ -1,7 +1,6 @@
 package service
 
 import (
-	"bytes"
 	"errors"
 	"log"
 	"math/big"
@@ -10,9 +9,7 @@ import (
 
 	"github.com/icon-project/goloop/common/codec"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -25,9 +22,6 @@ const (
 	stepError    // fails validation or execution
 	stepCanceled // canceled. requested to cancel after complete executione, just remain stepFinished
 )
-
-// TODO temporary; remove
-var Zero32 = make([]byte, 32)
 
 type transition struct {
 	parent    *transition
@@ -45,12 +39,11 @@ type transition struct {
 	step  int
 	mutex sync.Mutex
 
-	// TODO add receipt list
-	result        resultBytes
-	worldSnapshot WorldSnapshot
-	logBloom      LogBloom
-
-	patchReceipts []Receipt
+	result         []byte
+	worldSnapshot  WorldSnapshot
+	patchReceipts  module.ReceiptList
+	normalReceipts module.ReceiptList
+	logBloom       LogBloom
 }
 
 func newTransition(parent *transition, patchtxs module.TransactionList, normaltxs module.TransactionList, alreadyValidated bool) *transition {
@@ -67,8 +60,9 @@ func newTransition(parent *transition, patchtxs module.TransactionList, normaltx
 		normaltxs = newTransactionListFromList(parent.db, nil)
 	}
 	return &transition{
-		parent:             parent,
-		height:             parent.height + 1,
+		parent: parent,
+		height: parent.height + 1,
+		// TODO set a correct timestamp
 		timestamp:          time.Now().UnixNano() / 1000,
 		patchTransactions:  patchtxs,
 		normalTransactions: normaltxs,
@@ -87,15 +81,13 @@ func newInitTransition(db db.Database, result []byte, validatorList module.Valid
 	}
 	ws := NewWorldState(db, hashes[0], validatorList)
 
-	// TODO also need to recover receipts.
-
 	return &transition{
 		height:             height,
-		db:                 db,
 		patchTransactions:  newTransactionListFromList(db, nil),
 		normalTransactions: newTransactionListFromList(db, nil),
-		worldSnapshot:      ws.GetSnapshot(),
+		db:                 db,
 		step:               stepComplete,
+		worldSnapshot:      ws.GetSnapshot(),
 	}, nil
 }
 
@@ -134,9 +126,10 @@ func (t *transition) Execute(cb module.TransitionCallback) (canceler func() bool
 
 // Result returns service manager defined result bytes.
 func (t *transition) Result() []byte {
-	r := make([]byte, len(t.result))
-	copy(r, t.result)
-	return r
+	if t.step != stepComplete {
+		return nil
+	}
+	return t.result
 }
 
 // NextValidators returns the addresses of validators as a result of
@@ -209,27 +202,19 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	gatheredFee := big.NewInt(0)
 	fee := big.NewInt(0)
 
-	// TODO we need to use ReceiptList implementation to store it.
-	for _, r := range patchReceipts {
-		used := r.StepUsed()
-		cumulativeSteps.Add(cumulativeSteps, used)
-		r.SetCumulativeStepUsed(cumulativeSteps)
+	for _, receipts := range [][]Receipt{patchReceipts, normalReceipts} {
+		for _, r := range receipts {
+			used := r.StepUsed()
+			cumulativeSteps.Add(cumulativeSteps, used)
+			r.SetCumulativeStepUsed(cumulativeSteps)
 
-		fee.Set(r.StepPrice())
-		fee.Mul(fee, used)
-		gatheredFee.Add(gatheredFee, fee)
+			fee.Set(r.StepPrice())
+			fee.Mul(fee, used)
+			gatheredFee.Add(gatheredFee, fee)
+		}
 	}
-
-	// TODO we need to use ReceiptList implementation to store it.
-	for _, r := range patchReceipts {
-		used := r.StepUsed()
-		cumulativeSteps.Add(cumulativeSteps, used)
-		r.SetCumulativeStepUsed(cumulativeSteps)
-
-		fee.Set(r.StepPrice())
-		fee.Mul(fee, used)
-		gatheredFee.Add(gatheredFee, fee)
-	}
+	t.patchReceipts = NewReceiptListFromSlice(t.db, patchReceipts)
+	t.normalReceipts = NewReceiptListFromSlice(t.db, normalReceipts)
 
 	// save gathered fee to treasury
 	tr := wc.GetAccountState(wc.Treasury().ID())
@@ -241,8 +226,8 @@ func (t *transition) executeSync(alreadyValidated bool) {
 
 	t.result, _ = codec.MarshalToBytes([][]byte{
 		t.worldSnapshot.StateHash(),
-		nil,
-		nil,
+		t.patchReceipts.Hash(),
+		t.normalReceipts.Hash(),
 	})
 
 	t.mutex.Lock()
@@ -316,14 +301,9 @@ func (t *transition) finalizePatchTransaction() {
 
 func (t *transition) finalizeResult() {
 	t.worldSnapshot.Flush()
+	t.patchReceipts.Flush()
+	t.normalReceipts.Flush()
 	t.parent = nil
-}
-
-func (t *transition) hasValidResult() bool {
-	if t.result != nil && t.worldSnapshot != nil {
-		return true
-	}
-	return false
 }
 
 func (t *transition) cancelExecution() bool {
@@ -352,70 +332,4 @@ func (t *transition) stepString() string {
 	default:
 		return ""
 	}
-}
-
-// TODO store a serialized form to []byte and remove the concept of zero bytes
-type resultBytes []byte
-
-func newEmptyResultBytes() resultBytes {
-	b := make([]byte, 96)
-	return resultBytes(b)
-}
-func newResultBytes(result []byte) (resultBytes, error) {
-	if len(result) != 96 {
-		return nil, common.ErrIllegalArgument
-	}
-	bytes := make([]byte, len(result))
-	copy(bytes, result)
-	return resultBytes(bytes), nil
-}
-
-func newResultBytesFromHashes(state trie.Mutable, patchRcList *receiptList, normalRcList *receiptList) resultBytes {
-	bytes := make([]byte, 0, 96)
-	var h []byte
-	if state != nil {
-		h = state.GetSnapshot().Hash()
-	}
-	if h == nil {
-		h = Zero32
-	}
-	bytes = append(bytes, h...)
-	if patchRcList == nil || patchRcList.Hash() == nil {
-		h = Zero32
-	} else {
-		h = patchRcList.Hash()
-	}
-	bytes = append(bytes, h...)
-	if normalRcList == nil || normalRcList.Hash() == nil {
-		h = Zero32
-	} else {
-		h = normalRcList.Hash()
-	}
-	bytes = append(bytes, h...)
-	return resultBytes(bytes)
-}
-
-func (r resultBytes) stateHash() []byte {
-	// assumes bytes are already valid
-	if bytes.Equal(r[0:32], Zero32) {
-		return nil
-	}
-	return r[0:32]
-}
-
-// It returns nil for no patch receipt
-func (r resultBytes) patchReceiptHash() []byte {
-	// assumes bytes are already valid
-	if bytes.Equal(r[32:64], Zero32) {
-		return nil
-	}
-	return r[32:64]
-}
-
-func (r resultBytes) normalReceiptHash() []byte {
-	// assumes bytes are already valid
-	if bytes.Equal(r[64:96], Zero32) {
-		return nil
-	}
-	return r[64:96]
 }
