@@ -225,10 +225,11 @@ func (s *NetAddressSet) Array() []NetAddress {
 
 type PeerIdSet struct {
 	*Set
+	onUpdate func()
 }
 
 func NewPeerIdSet() *PeerIdSet {
-	s := &PeerIdSet{Set: NewSet()}
+	s := &PeerIdSet{Set: NewSet(), onUpdate: func() {}}
 	return s
 }
 
@@ -241,25 +242,37 @@ func (s *PeerIdSet) _contains(v interface{}) bool {
 	return false
 }
 
-func (s *PeerIdSet) Add(id module.PeerID) bool {
-	defer s.Set.mtx.Unlock()
+func (s *PeerIdSet) Add(id module.PeerID) (r bool) {
+	defer func() {
+		s.Set.mtx.Unlock()
+		if r {
+			s.onUpdate()
+		}
+	}()
 	s.Set.mtx.Lock()
 	if !s._contains(id) {
 		s.Set.m[id] = 1
-		return true
+		r = true
 	}
-	return false
+	return
 }
-func (s *PeerIdSet) Remove(id module.PeerID) bool {
-	defer s.Set.mtx.Unlock()
+func (s *PeerIdSet) Remove(id module.PeerID) (r bool) {
+	defer func() {
+		s.Set.mtx.Unlock()
+		if r {
+			s.onUpdate()
+		}
+	}()
 	s.Set.mtx.Lock()
 	if s._contains(id) {
 		delete(s.Set.m, id)
-		return true
+		r = true
 	}
-	return false
+	return
 }
 func (s *PeerIdSet) Contains(id module.PeerID) bool {
+	defer s.mtx.RUnlock()
+	s.mtx.RLock()
 	return s._contains(id)
 }
 func (s *PeerIdSet) Merge(args ...module.PeerID) {

@@ -62,6 +62,13 @@ func (pr *PeerRoleFlag) Set(o PeerRoleFlag) {
 	*pr = o
 }
 
+func (pr *PeerRoleFlag) SetFlag(o PeerRoleFlag) {
+	*pr |= o
+}
+func (pr *PeerRoleFlag) UnSetFlag(o PeerRoleFlag) {
+	*pr &= (^o)
+}
+
 const (
 	p2pConnTypeNone = iota
 	p2pConnTypeParent

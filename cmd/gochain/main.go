@@ -71,9 +71,11 @@ func main() {
 	config := network.GetConfig()
 
 	flag.IntVar(&c.nid, "nid", 1, "Chain Network ID")
-	flag.StringVar(&config.ListenAddress, "listen", "127.0.0.1:8080", "Network address")
-	flag.StringVar(&config.SeedAddress, "seed", "127.0.0.1:8080", "Seed address")
-	flag.StringVar(&c.rpc, "rpc", ":9080", "JSON RPC address")
+	flag.StringVar(&config.ListenAddress, "p2p", "127.0.0.1:8080", "Listen ip-port of P2P")
+	flag.StringVar(&config.SeedAddress, "seed", "127.0.0.1:8080", "Ip-port of Seed")
+	flag.BoolVar(&config.RoleSeed, "rseed", false, "Running as Seed")
+	flag.BoolVar(&config.RoleRoot, "rval", false, "Running as Validator")
+	flag.StringVar(&c.rpc, "rpc", ":9080", "Listen ip-port of JSON-RPC")
 	flag.Parse()
 
 	c.wallet, _ = common.WalletFromPrivateKey(config.PrivateKey)

@@ -85,6 +85,12 @@ func newPeerToPeer(channel string, id module.PeerID, addr NetAddress, d *Dialer)
 		log: &logger{"PeerToPeer", fmt.Sprintf("%s.%s", channel, id)},
 	}
 	p2p.mph.MapType = reflect.TypeOf(map[string]interface{}(nil))
+	p2p.allowedRoots.onUpdate = func() {
+		p2p.setRoleByAllowedSet()
+	}
+	p2p.allowedSeeds.onUpdate = func() {
+		p2p.setRoleByAllowedSet()
+	}
 	go p2p.sendRoutine()
 	go p2p.discoveryRoutine()
 	return p2p
@@ -210,17 +216,10 @@ type QueryResultMessage struct {
 	Message  string
 }
 
-func (p2p *PeerToPeer) getSelfRole() PeerRoleFlag {
-	role := p2pRoleNone
-	if p2p.isAllowedRole(p2pRoleRoot, p2p.self) {
-		role |= p2pRoleRoot
-	}
-	if p2p.isAllowedRole(p2pRoleSeed, p2p.self) {
-		role |= p2pRoleSeed
-	}
-	prf := PeerRoleFlag(role)
-	if p2p.self.role != prf {
-		switch prf {
+func (p2p *PeerToPeer) setRole(r PeerRoleFlag) {
+	if p2p.self.role != r {
+		p2p.self.role.Set(r)
+		switch r {
 		case p2pRoleNone:
 			p2p.roots.Remove(p2p.self.netAddress)
 			p2p.seeds.Remove(p2p.self.netAddress)
@@ -235,11 +234,26 @@ func (p2p *PeerToPeer) getSelfRole() PeerRoleFlag {
 			p2p.seeds.Merge(p2p.self.netAddress)
 		}
 	}
-	return prf
+}
+
+func (p2p *PeerToPeer) setRoleByAllowedSet() PeerRoleFlag {
+	role := p2pRoleNone
+	if p2p.isAllowedRole(p2pRoleRoot, p2p.self) {
+		role |= p2pRoleRoot
+	}
+	if p2p.isAllowedRole(p2pRoleSeed, p2p.self) {
+		role |= p2pRoleSeed
+	}
+	p2p.setRole(PeerRoleFlag(role))
+	return p2p.self.role
+}
+
+func (p2p *PeerToPeer) getRole() PeerRoleFlag {
+	return p2p.self.role
 }
 
 func (p2p *PeerToPeer) sendQuery(p *Peer) {
-	m := &QueryMessage{Role: p2p.getSelfRole(), Addr: p2p.self.netAddress}
+	m := &QueryMessage{Role: p2p.getRole(), Addr: p2p.self.netAddress}
 	pkt := NewPacket(PROTO_P2P_QUERY, p2p.encodeMsgpack(m))
 	pkt.src = p2p.self.id
 	p.sendPacket(pkt)
@@ -255,7 +269,7 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 	}
 	p2p.log.Println("handleQuery", qm, p)
 	m := &QueryResultMessage{}
-	m.Role = p2p.getSelfRole()
+	m.Role = p2p.getRole()
 	if p2p.isAllowedRole(qm.Role, p) {
 		switch qm.Role {
 		case p2pRoleNone:
@@ -304,7 +318,7 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 	}
 	p2p.log.Println("handleQueryResult", qrm)
 	p.role.Set(qrm.Role)
-	switch p2p.getSelfRole() {
+	switch p2p.getRole() {
 	case p2pRoleNone:
 		switch p.role {
 		case p2pRoleNone:
@@ -371,14 +385,14 @@ func (p2p *PeerToPeer) sendRoutine() {
 
 			switch pkt.dest {
 			case p2pDestAny: //broadcast
-				if p2p.getSelfRole() >= p2pRoleRoot {
+				if p2p.getRole() >= p2pRoleRoot {
 					p2p.sendToFriends(pkt)
 					p2p.sendToDownside(pkt)
 				} else {
 					p2p.sendToDownside(pkt)
 				}
 			case p2pRoleRoot:
-				if p2p.getSelfRole() >= p2pRoleRoot {
+				if p2p.getRole() >= p2pRoleRoot {
 					p2p.sendToFriends(pkt)
 				} else {
 					p2p.sendToUpside(pkt)
@@ -452,7 +466,7 @@ func (p2p *PeerToPeer) discoveryRoutine() {
 		// case t := <-p2p.discoveryTicker.C:
 		// p2p.log.Println("discoveryRoutine discoveryTicker", t)
 		case <-p2p.discoveryTicker.C:
-			if r := p2p.getSelfRole(); r.Has(p2pRoleRoot) {
+			if r := p2p.getRole(); r.Has(p2pRoleRoot) {
 				roots := p2p.orphanages.RemoveByRole(p2pRoleRoot)
 				for _, p := range roots {
 					p2p.log.Println("discoveryRoutine p2pConnTypeFriend", p.id)
@@ -477,7 +491,7 @@ func (p2p *PeerToPeer) discoveryRoutine() {
 }
 
 func (p2p *PeerToPeer) syncSeeds() {
-	switch p2p.getSelfRole() {
+	switch p2p.getRole() {
 	case p2pRoleNone:
 		if p2p.parent != nil {
 			p2p.sendQuery(p2p.parent)

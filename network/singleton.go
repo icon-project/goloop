@@ -69,6 +69,8 @@ var (
 type Config struct {
 	ListenAddress string
 	SeedAddress   string
+	RoleSeed      bool
+	RoleRoot      bool
 	PrivateKey    *crypto.PrivateKey
 	PublicKey     *crypto.PublicKey
 }
@@ -123,6 +125,14 @@ func GetNetworkManager(channel string) module.NetworkManager {
 		pd := GetPeerDispatcher()
 		m := newManager(channel, pd.self, NetAddress(l.address), GetDialer(channel))
 		pd.registPeerToPeer(m.peerToPeer)
+		r := PeerRoleFlag(p2pRoleNone)
+		if c.RoleSeed {
+			r.SetFlag(p2pRoleSeed)
+		}
+		if c.RoleRoot {
+			r.SetFlag(p2pRoleRoot)
+		}
+		m.peerToPeer.setRole(r)
 		if c.SeedAddress != "" {
 			m.peerToPeer.seeds.Add(NetAddress(c.SeedAddress))
 		}
