@@ -663,7 +663,14 @@ func (m *manager) newTransactionListFromBSS(
 func (m *manager) newBlockFromReader(r io.Reader) (module.Block, error) {
 	// TODO handle v1
 	var blockFormat blockV2Format
-	v2Codec.Unmarshal(r, &blockFormat)
+	err := v2Codec.Unmarshal(r, &blockFormat.blockV2HeaderFormat)
+	if err != nil {
+		panic(err)
+	}
+	err = v2Codec.Unmarshal(r, &blockFormat.blockV2BodyFormat)
+	if err != nil {
+		panic(err)
+	}
 	patches := m.newTransactionListFromBSS(
 		blockFormat.PatchTransactions,
 		module.BlockVersion2,
