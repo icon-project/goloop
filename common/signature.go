@@ -49,7 +49,9 @@ func (sig *Signature) MarshalBinary() ([]byte, error) {
 }
 
 func (sig *Signature) UnmarshalBinary(s []byte) error {
-	var err error
-	sig.Signature, err = crypto.ParseSignature(s)
+	sig0, err := crypto.ParseSignature(s)
+	if err == nil {
+		sig.Signature = sig0
+	}
 	return err
 }
