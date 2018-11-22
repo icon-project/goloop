@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -81,21 +80,22 @@ var genesisTx = "{\"accounts\": " +
 	"\"message\": \"A rhizome has no beginning or end; " +
 	"it is always in the middle, between things, interbeing, intermezzo. " +
 	"The tree is filiation, but the rhizome is alliance, uniquely alliance. " +
-	"The tree imposes the verb to be but the fabric of the rhizome is the conjunction, and ... and ...and...This conjunction carries enough force to shake and uproot the verb to be. Where are you going? Where are you coming from? What are you heading for? These are totally useless questions.- Mille Plateaux, Gilles Deleuze & Felix GuattariHyperconnect the world\"}"
+	"The tree imposes the verb to be but the fabric of the rhizome is the conjunction, and ... and ...and...This conjunction carries enough force to shake and uproot the verb to be. Where are you going? Where are you coming from? What are you heading for? These are totally useless questions.- Mille Plateaux, Gilles Deleuze & Felix GuattariHyperconnect the world\"," +
+	"\"validatorlist\": [\"01234\", \"12335\"]}"
 
 func (m *manager) ProposeGenesisTransition(parent module.Transition) (module.Transition, error) {
 	if pt, ok := parent.(*transition); ok {
 		// TODO: temp code below to create genesis transaction. remove later
-		genjs := new(genesisV3JSON)
-		if err := json.Unmarshal([]byte(genesisTx), genjs); err != nil {
+		ntx, err := NewTransactionFromJSON([]byte(genesisTx))
+		if err != nil {
+			log.Panicf("Failed to load genesis transaction")
 			return nil, err
 		}
-		genjs.raw = make([]byte, len([]byte(genesisTx)))
-		copy(genjs.raw, []byte(genesisTx))
 		t := newTransition(pt,
 			NewTransactionListFromSlice(m.db, nil),
-			NewTransactionListFromSlice(pt.db, []module.Transaction{&genesisV3{genesisV3JSON: genjs}}),
+			NewTransactionListFromSlice(pt.db, []module.Transaction{ntx}),
 			true)
+
 		return t, nil
 	}
 	return nil, common.ErrIllegalArgument

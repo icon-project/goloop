@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/crypto"
-	"github.com/icon-project/goloop/module"
 	"io"
 	"math/big"
 	"sort"
+
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/module"
 )
 
 type accountInfo struct {
@@ -19,10 +20,11 @@ type accountInfo struct {
 }
 
 type genesisV3JSON struct {
-	Accounts []accountInfo `json:"accounts"`
-	Message  string        `json:"message"`
-	raw      []byte
-	txHash   []byte
+	Accounts      []accountInfo     `json:"accounts"`
+	Message       string            `json:"message"`
+	Validatorlist []*common.Address `json:"validatorlist"`
+	raw           []byte
+	txHash        []byte
 }
 
 func serialize(o map[string]interface{}) []byte {
@@ -149,6 +151,11 @@ func (g *genesisV3) Execute(wc WorldContext) (Receipt, error) {
 	}
 	rct := new(receipt)
 	rct.SetResult(true, big.NewInt(0), wc.StepPrice())
+	validators := make([]module.Validator, len(g.Validatorlist))
+	for i, validator := range g.Validatorlist {
+		validators[i], _ = ValidatorFromAddress(validator)
+	}
+	//wc.SetValidators(g., validators)
 	return rct, nil
 }
 
