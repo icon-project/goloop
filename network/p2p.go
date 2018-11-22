@@ -82,7 +82,7 @@ func newPeerToPeer(channel string, id module.PeerID, addr NetAddress, d *Dialer)
 		//
 		mph: &codec.MsgpackHandle{},
 		//
-		log: &logger{"PeerToPeer", fmt.Sprintf("%s.%s", channel, id)},
+		log: newLogger("PeerToPeer", fmt.Sprintf("%s.%s", channel, id)),
 	}
 	p2p.mph.MapType = reflect.TypeOf(map[string]interface{}(nil))
 	p2p.allowedRoots.onUpdate = func() {

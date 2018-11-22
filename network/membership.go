@@ -33,7 +33,7 @@ func newMembership(name string, pi module.ProtocolInfo, p2p *PeerToPeer) *member
 		cbFuncs:     make(map[module.ProtocolInfo]receiveCbFunc),
 		destByRole:  make(map[module.Role]byte),
 		//
-		log: &logger{"Membership", fmt.Sprintf("%s.%s", p2p.self.id, name)},
+		log: newLogger("Membership", fmt.Sprintf("%s.%s.%s", p2p.channel, p2p.self.id, name)),
 	}
 	p2p.setPacketCbFunc(pi, ms.onPacket)
 	return ms

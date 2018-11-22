@@ -37,7 +37,7 @@ func (cn *ChannelNegotiator) onError(err error, p *Peer) {
 
 //callback from Peer.receiveRoutine
 func (cn *ChannelNegotiator) onPacket(pkt *Packet, p *Peer) {
-	cn.log.Println("onPacket", pkt)
+	cn.log.Println("onPacket", pkt, p)
 	switch pkt.protocol {
 	case PROTO_CONTOL:
 		switch pkt.subProtocol {
@@ -120,7 +120,7 @@ func (a *Authenticator) onError(err error, p *Peer) {
 
 //callback from Peer.receiveRoutine
 func (a *Authenticator) onPacket(pkt *Packet, p *Peer) {
-	a.log.Println("onPacket", pkt)
+	a.log.Println("onPacket", pkt, p)
 	switch pkt.protocol {
 	case PROTO_CONTOL:
 		switch pkt.subProtocol {

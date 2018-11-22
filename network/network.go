@@ -20,7 +20,7 @@ func newManager(channel string, id module.PeerID, addr NetAddress, d *Dialer) *m
 		channel:     channel,
 		memberships: make(map[string]module.Membership),
 		peerToPeer:  newPeerToPeer(channel, id, addr, d),
-		log:         &logger{"NetworkManager", fmt.Sprintf("%s", channel)},
+		log:         newLogger("NetworkManager", channel),
 	}
 
 	//Create default membership for P2P topology management

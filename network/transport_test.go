@@ -5,12 +5,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
 )
 
 const (
 	testChannel                  = "testchannel"
+	testTransportAddress         = "127.0.0.1:8081"
 	PayloadTestTransportRequest  = "Hello"
 	PayloadTestTransportResponse = "World"
 )
@@ -35,39 +38,41 @@ type TestTransportResponse struct {
 }
 
 func (ph *TestPeerHandler) onPeer(p *Peer) {
-	ph.t.Logf("TestPeerHandler.onPeer %v", p)
+	ph.log.Println("onPeer", p)
 	p.setPacketCbFunc(ph.onPacket)
 	if !p.incomming {
 		ph.wg.Add(1)
 		m := &TestTransportRequest{Message: "Hello"}
 		ph.sendPacket(ProtoTestTransportRequest, m, p)
-		ph.t.Logf("TestPeerHandler.sendPacket ProtoTestTransportRequest %v", m)
+		ph.log.Println("sendProtoTestTransportRequest", m, p)
 	}
 }
 
 //TODO callback from Peer.sendRoutine or Peer.receiveRoutine
 func (ph *TestPeerHandler) onError(err error, p *Peer) {
-	ph.t.Logf("TestPeerHandler.onError %v", err)
+	ph.log.Println("onError", err, p)
+	ph.peerHandler.onError(err, p)
+	assert.Fail(ph.t, "TestPeerHandler.onError", err, p)
 }
 
 func (ph *TestPeerHandler) onPacket(pkt *Packet, p *Peer) {
-	ph.t.Logf("TestPeerHandler.onPacket %v %v", pkt, p)
+	ph.log.Println("onPacket", pkt, p)
 	switch pkt.protocol {
 	case PROTO_CONTOL:
 		switch pkt.subProtocol {
 		case ProtoTestTransportRequest:
 			rm := &TestTransportRequest{}
 			ph.decode(pkt.payload, rm)
-			ph.t.Logf("TestPeerHandler.onPacket ProtoTestTransportRequest %v", rm)
+			ph.log.Println("handleProtoTestTransportRequest", rm, p)
 
 			m := &TestTransportResponse{Message: "World"}
 			ph.sendPacket(ProtoTestTransportResponse, m, p)
-			ph.t.Logf("TestPeerHandler.sendPacket ProtoTestTransportResponse %v", m)
+
 			ph.nextOnPeer(p)
 		case ProtoTestTransportResponse:
 			rm := &TestTransportResponse{}
 			ph.decode(pkt.payload, rm)
-			ph.t.Logf("TestPeerHandler.onPacket ProtoTestTransportResponse %v", rm)
+			ph.log.Println("handleProtoTestTransportResponse", rm, p)
 
 			ph.nextOnPeer(p)
 			ph.wg.Done()
@@ -93,27 +98,20 @@ func getTransport(channel string) (*PeerDispatcher, *Listener, *Dialer) {
 }
 func Test_transport(t *testing.T) {
 	var wg sync.WaitGroup
-	tph := &TestPeerHandler{
-		t:           t,
-		wg:          &wg,
-		peerHandler: newPeerHandler(newLogger("TestPeerHandler", "")),
-	}
+	pd, l, _ := getTransport(testChannel)
+	tpd, tl, td := newTestTransport(testChannel, testTransportAddress)
 
-	pd, l, d := getTransport(testChannel)
+	tph1 := &TestPeerHandler{newPeerHandler(newLogger("TestPeerHandler1", "")), t, &wg}
+	tph2 := &TestPeerHandler{newPeerHandler(newLogger("TestPeerHandler2", "")), t, &wg}
+	pd.registPeerHandler(tph1)
+	tpd.registPeerHandler(tph2)
 
-	pd.registPeerHandler(tph)
+	assert.Nil(t, l.Listen(), "Listener.Listen fail")
+	assert.Nil(t, tl.Listen(), "Listener.Listen fail")
 
-	err := l.Listen()
-	if err != nil {
-		t.Fatalf("Listener.Listen fail")
-	} else {
-		t.Logf("Listener.Listen success")
-	}
-
-	go d.Dial(l.address)
+	assert.Nil(t, td.Dial(l.address), "Dialer.Dial fail")
 
 	wg.Wait()
-	time.Sleep(5 * time.Second)
-
+	time.Sleep(1 * time.Second)
 	l.Close()
 }
