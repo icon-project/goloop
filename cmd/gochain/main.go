@@ -6,6 +6,7 @@ import (
 
 	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
@@ -17,13 +18,13 @@ import (
 type singleChain struct {
 	nid    int
 	wallet module.Wallet
-	rpc    string
 
 	database db.Database
 	sm       module.ServiceManager
 	bm       module.BlockManager
 	cs       module.Consensus
 	sv       rpc.JsonRpcServer
+	nt       module.NetworkTransport
 	nm       module.NetworkManager
 }
 
@@ -54,31 +55,55 @@ func (c *singleChain) start() {
 	c.bm = block.NewManager(c, c.sm)
 	c.cs = consensus.NewConsensus(c.bm)
 	c.sv = rpc.NewJsonRpcServer(c.bm, c.sm)
-	//
 	channel := fmt.Sprintf("%x", c.nid)
-	c.nm = network.GetNetworkManager(channel)
-	l := network.GetListener()
-	l.Listen()
-	defer l.Close()
+
+	c.nm = network.NewManager(channel, c.nt, toRoles(role)...)
+	if seedAddr != "" {
+		c.nt.Dial(seedAddr, channel)
+	}
 
 	go c.cs.Start()
-	c.sv.ListenAndServe(c.rpc)
+	c.sv.ListenAndServe(rpcAddr)
 }
+
+func toRoles(r uint) []module.Role {
+	roles := make([]module.Role, 0)
+	switch r {
+	case 1:
+		roles = append(roles, module.ROLE_SEED)
+	case 2:
+		roles = append(roles, module.ROLE_VALIDATOR)
+	case 3:
+		roles = append(roles, module.ROLE_VALIDATOR)
+		roles = append(roles, module.ROLE_SEED)
+	}
+	return roles
+}
+
+var (
+	rpcAddr     string
+	p2pAddr     string
+	seedAddr    string
+	role        uint
+	asValidator bool
+	asSeed      bool
+)
 
 func main() {
 	c := new(singleChain)
 
-	config := network.GetConfig()
-
 	flag.IntVar(&c.nid, "nid", 1, "Chain Network ID")
-	flag.StringVar(&config.ListenAddress, "p2p", "127.0.0.1:8080", "Listen ip-port of P2P")
-	flag.StringVar(&config.SeedAddress, "seed", "127.0.0.1:8080", "Ip-port of Seed")
-	flag.BoolVar(&config.RoleSeed, "rseed", false, "Running as Seed")
-	flag.BoolVar(&config.RoleRoot, "rval", false, "Running as Validator")
-	flag.StringVar(&c.rpc, "rpc", ":9080", "Listen ip-port of JSON-RPC")
+	flag.StringVar(&rpcAddr, "rpc", ":9080", "Listen ip-port of JSON-RPC")
+	flag.StringVar(&p2pAddr, "p2p", "127.0.0.1:8080", "Listen ip-port of P2P")
+	flag.StringVar(&seedAddr, "seed", "", "Ip-port of Seed")
+	flag.UintVar(&role, "role", 0, "[0:None, 1:Seed, 2:Validator, 3:Both]")
 	flag.Parse()
 
-	c.wallet, _ = common.WalletFromPrivateKey(config.PrivateKey)
+	priK, _ := crypto.GenerateKeyPair()
+	c.wallet, _ = common.WalletFromPrivateKey(priK)
+	c.nt = network.NewTransport(p2pAddr, priK)
+	c.nt.Listen()
+	defer c.nt.Close()
 
 	c.start()
 }

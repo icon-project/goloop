@@ -59,3 +59,11 @@ type ProtocolInfo interface {
 	Copy(b []byte)
 	Uint16() uint16
 }
+
+type NetworkTransport interface {
+	Listen() error
+	Close() error
+	Dial(address string, channel string) error
+	PeerID() PeerID
+	Address() string
+}

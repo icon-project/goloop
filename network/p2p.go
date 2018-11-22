@@ -18,7 +18,7 @@ type PeerToPeer struct {
 	packetPool    map[uint64]*Packet
 	mtxPacketPool sync.Mutex
 	packetRw      *PacketReadWriter
-	dialer        *Dialer
+	transport     module.NetworkTransport
 
 	//Topology with Connected Peers
 	self      *Peer
@@ -54,16 +54,18 @@ type PeerToPeer struct {
 }
 
 //can be created each channel
-func newPeerToPeer(channel string, id module.PeerID, addr NetAddress, d *Dialer) *PeerToPeer {
+func newPeerToPeer(channel string, t module.NetworkTransport) *PeerToPeer {
+	id := t.PeerID()
+	netAddress := NetAddress(t.Address())
 	p2p := &PeerToPeer{
 		channel:         channel,
 		ch:              make(chan *Packet),
 		onPacketCbFuncs: make(map[module.ProtocolInfo]packetCbFunc),
 		packetPool:      make(map[uint64]*Packet),
 		packetRw:        NewPacketReadWriter(),
-		dialer:          d,
+		transport:       t,
 		//
-		self:            &Peer{id: id, netAddress: addr},
+		self:            &Peer{id: id, netAddress: netAddress},
 		preParent:       NewPeerSet(),
 		children:        NewPeerSet(),
 		uncles:          NewPeerSet(),
@@ -91,9 +93,19 @@ func newPeerToPeer(channel string, id module.PeerID, addr NetAddress, d *Dialer)
 	p2p.allowedSeeds.onUpdate = func() {
 		p2p.setRoleByAllowedSet()
 	}
+	t.(*transport).pd.registPeerToPeer(p2p)
+
 	go p2p.sendRoutine()
 	go p2p.discoveryRoutine()
 	return p2p
+}
+
+func (p2p *PeerToPeer) dial(na NetAddress) error {
+	if err := p2p.transport.Dial(string(na), p2p.channel); err != nil {
+		p2p.log.Println("Dial fail", na, err)
+		return err
+	}
+	return nil
 }
 
 func (p2p *PeerToPeer) setPacketCbFunc(pi module.ProtocolInfo, cbFunc packetCbFunc) {
@@ -287,9 +299,11 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 			m.Seeds = p2p.seeds.Array()
 			m.Roots = p2p.roots.Array()
 			if qm.Role.Has(p2pRoleSeed) {
+				p2p.log.Println("handleQuery seeds.Merge", qm.Addr)
 				p2p.seeds.Merge(qm.Addr)
 			}
 			if qm.Role.Has(p2pRoleRoot) {
+				p2p.log.Println("handleQuery roots.Merge", qm.Addr)
 				p2p.roots.Merge(qm.Addr)
 			}
 			if m.Role == p2pRoleSeed {
@@ -476,7 +490,7 @@ func (p2p *PeerToPeer) discoveryRoutine() {
 				for _, s := range p2p.roots.Array() {
 					if s != p2p.self.netAddress && !p2p.friends.HasNetAddresse(s) {
 						p2p.log.Println("discoveryRoutine p2pRoleRoot", p2p.self, "dial to p2pRoleRoot", s)
-						p2p.dialer.Dial(string(s))
+						p2p.dial(s)
 					}
 				}
 			} else {
@@ -512,7 +526,7 @@ func (p2p *PeerToPeer) syncSeeds() {
 				!p2p.children.HasNetAddresse(s) &&
 				!p2p.orphanages.HasNetAddresse(s) {
 				p2p.log.Println("discoveryRoutine syncSeeds", p2p.self, "dial to p2pRoleSeed", s)
-				p2p.dialer.Dial(string(s))
+				p2p.dial(s)
 			}
 		}
 		for _, p := range p2p.friends.Array() {
@@ -539,12 +553,22 @@ func (p2p *PeerToPeer) discoverParent() {
 			p2p.log.Println("discoverParent try p2pConnTypeParent", p)
 		} else {
 			//TODO upgrade p2pConnTypeUncle to p2pConnTypeParent
-			for _, s := range p2p.seeds.Array() {
-				if s != p2p.self.netAddress && !p2p.uncles.HasNetAddresse(s) {
-					p2p.log.Println("discoverParent", p2p.self, "dial to p2pRoleSeed", s)
-					p2p.dialer.Dial(string(s))
+			if p2p.self.role == p2pRoleSeed {
+				for _, s := range p2p.roots.Array() {
+					if s != p2p.self.netAddress && !p2p.uncles.HasNetAddresse(s) {
+						p2p.log.Println("discoverParent", p2p.self, "dial to p2pRoleRoot", s)
+						p2p.dial(s)
+					}
+				}
+			} else {
+				for _, s := range p2p.seeds.Array() {
+					if s != p2p.self.netAddress && !p2p.uncles.HasNetAddresse(s) {
+						p2p.log.Println("discoverParent", p2p.self, "dial to p2pRoleSeed", s)
+						p2p.dial(s)
+					}
 				}
 			}
+
 		}
 	}
 }

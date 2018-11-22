@@ -7,9 +7,55 @@ import (
 	"net"
 	"sync"
 
+	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
 	"github.com/ugorji/go/codec"
 )
+
+type transport struct {
+	l    *Listener
+	pd   *PeerDispatcher
+	dMap map[string]*Dialer
+	log  *logger
+}
+
+func NewTransport(address string, k *crypto.PrivateKey) module.NetworkTransport {
+	cn := newChannelNegotiator(NetAddress(address))
+	a := newAuthenticator(k)
+	id := NewPeerIDFromPublicKey(a.pubKey)
+	pd := newPeerDispatcher(id, cn, a)
+	l := newListener(address, pd.onAccept)
+	t := &transport{l: l, pd: pd, dMap: make(map[string]*Dialer), log: newLogger("Transport", address)}
+	return t
+}
+
+func (t *transport) Listen() error {
+	return t.l.Listen()
+}
+func (t *transport) Close() error {
+	return t.l.Close()
+}
+func (t *transport) Dial(address string, channel string) error {
+	d := t.GetDialer(channel)
+	return d.Dial(address)
+}
+
+func (t *transport) PeerID() module.PeerID {
+	return t.pd.self
+}
+
+func (t *transport) Address() string {
+	return t.l.address
+}
+
+func (t *transport) GetDialer(channel string) *Dialer {
+	d, ok := t.dMap[channel]
+	if !ok {
+		d = newDialer(channel, t.pd.onConnect)
+		t.dMap[channel] = d
+	}
+	return d
+}
 
 type Listener struct {
 	address  string
@@ -177,13 +223,13 @@ func (ph *peerHandler) decode(b []byte, v interface{}) {
 type PeerDispatcher struct {
 	*peerHandler
 	peerHandlers *list.List
-	peerToPeers  map[string]*PeerToPeer
+	p2pMap       map[string]*PeerToPeer
 }
 
 func newPeerDispatcher(selfPeerId module.PeerID, peerHandlers ...PeerHandler) *PeerDispatcher {
 	pd := &PeerDispatcher{
 		peerHandlers: list.New(),
-		peerToPeers:  make(map[string]*PeerToPeer),
+		p2pMap:       make(map[string]*PeerToPeer),
 		peerHandler:  newPeerHandler(newLogger("PeerDispatcher", "")),
 	}
 	// pd.peerHandler.codecHandle.MapType = reflect.TypeOf(map[string]interface{}(nil))
@@ -197,7 +243,7 @@ func newPeerDispatcher(selfPeerId module.PeerID, peerHandlers ...PeerHandler) *P
 }
 
 func (pd *PeerDispatcher) registPeerToPeer(p2p *PeerToPeer) {
-	pd.peerToPeers[p2p.channel] = p2p
+	pd.p2pMap[p2p.channel] = p2p
 }
 
 func (pd *PeerDispatcher) registPeerHandler(ph PeerHandler) {
@@ -237,7 +283,7 @@ func (pd *PeerDispatcher) dispatchPeer(p *Peer) {
 //callback from PeerHandler.nextOnPeer
 func (pd *PeerDispatcher) onPeer(p *Peer) {
 	pd.log.Println("onPeer", p)
-	if p2p, ok := pd.peerToPeers[p.channel]; ok {
+	if p2p, ok := pd.p2pMap[p.channel]; ok {
 		p.setPacketCbFunc(p2p.onPacket)
 		p.setErrorCbFunc(p2p.onError)
 		p.setCloseCbFunc(p2p.onClose)

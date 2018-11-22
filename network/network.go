@@ -10,27 +10,40 @@ import (
 
 type manager struct {
 	channel     string
-	memberships map[string]module.Membership
-	peerToPeer  *PeerToPeer
+	memberships map[string]*membership
+	p2p         *PeerToPeer
 	log         *logger
 }
 
-func newManager(channel string, id module.PeerID, addr NetAddress, d *Dialer) *manager {
+func NewManager(channel string, t module.NetworkTransport, roles ...module.Role) module.NetworkManager {
 	m := &manager{
 		channel:     channel,
-		memberships: make(map[string]module.Membership),
-		peerToPeer:  newPeerToPeer(channel, id, addr, d),
+		memberships: make(map[string]*membership),
+		p2p:         newPeerToPeer(channel, t),
 		log:         newLogger("NetworkManager", channel),
 	}
 
 	//Create default membership for P2P topology management
 	dms := m.GetMembership(DefaultMembershipName).(*membership)
-	dms.roles[module.ROLE_SEED] = m.peerToPeer.allowedSeeds
-	dms.roles[module.ROLE_VALIDATOR] = m.peerToPeer.allowedRoots
+	dms.roles[module.ROLE_SEED] = m.p2p.allowedSeeds
+	dms.roles[module.ROLE_VALIDATOR] = m.p2p.allowedRoots
 	dms.destByRole[module.ROLE_SEED] = p2pRoleSeed
 	dms.destByRole[module.ROLE_VALIDATOR] = p2pRoleRoot
 
-	m.log.Println("newManager", id, addr)
+	role := PeerRoleFlag(p2pRoleNone)
+	for _, r := range roles {
+		switch r {
+		case module.ROLE_SEED:
+			role.SetFlag(p2pRoleSeed)
+		case module.ROLE_VALIDATOR:
+			role.SetFlag(p2pRoleRoot)
+		default:
+			m.log.Println("Ignore role", r)
+		}
+	}
+	m.p2p.setRole(role)
+
+	m.log.Println("NewManager", channel)
 	return m
 }
 
@@ -39,7 +52,7 @@ func (m *manager) GetMembership(name string) module.Membership {
 	ms, ok := m.memberships[name]
 	if !ok {
 		pi := m.getProtocolInfo(name)
-		ms = newMembership(name, pi, m.peerToPeer)
+		ms = newMembership(name, pi, m.p2p)
 		m.memberships[name] = ms
 	}
 	return ms

@@ -4,16 +4,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ugorji/go/codec"
+
 	"github.com/icon-project/goloop/module"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
-	testSeedAddress             = "127.0.0.1:8081"
-	testCitizenAddress          = "127.0.0.1:8082"
-	PayloadTestNetworkBroadcast = "TestBroasdcast"
-	PayloadTestNetworkMulticast = "TestMulticast"
-	PayloadTestNetworkRequest   = "Hello"
-	PayloadTestNetworkResponse  = "World"
+	testSeedAddress    = "127.0.0.1:8081"
+	testCitizenAddress = "127.0.0.1:8082"
 )
 
 var (
@@ -32,107 +31,145 @@ var (
 	}
 )
 
-type TestReactor struct {
-	name string
-	ms   module.Membership
-	t    *testing.T
+type testReactor struct {
+	name        string
+	ms          module.Membership
+	codecHandle codec.Handle
+	log         *logger
+	t           *testing.T
 }
 
-func (r *TestReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) (re bool, err error) {
-	s := string(b)
-	r.t.Logf("%s.OnReceive pi:%v, payload:%v, id:%v", r.name, pi, b, id)
+func newTestReactor(name string, ms module.Membership, t *testing.T) *testReactor {
+	r := &testReactor{name, ms, &codec.MsgpackHandle{}, newLogger("TestReactor", name), t}
+	ms.RegistReactor(name, r, testSubProtocols)
+	return r
+}
+
+type testNetworkBroadcast struct {
+	Message string
+}
+
+type testNetworkMulticast struct {
+	Message string
+}
+
+type testNetworkRequest struct {
+	Message string
+}
+
+type testNetworkResponse struct {
+	Message string
+}
+
+func (r *testReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) (re bool, err error) {
+	r.log.Println("OnReceive", pi, b, id)
 	switch pi {
 	case ProtoTestNetworkBroadcast:
-		r.t.Logf("%s.OnReceive ProtoTestNetworkBroadcast %s", r.name, s)
+		rm := &testNetworkBroadcast{}
+		r.decode(b, rm)
+		r.log.Println("handleProtoTestNetworkBroadcast", rm, id)
+
 		re = true
 	case ProtoTestNetworkMulticast:
-		r.t.Logf("%s.OnReceive ProtoTestNetworkMulticast %s", r.name, s)
+		rm := &testNetworkMulticast{}
+		r.decode(b, rm)
+		r.log.Println("handleProtoTestNetworkMulticast", rm, id)
+
 		re = true
 	case ProtoTestNetworkRequest:
-		r.t.Logf("%s.OnReceive ProtoTestNetworkRequest %s", r.name, s)
+		rm := &testNetworkRequest{}
+		r.decode(b, rm)
+		r.log.Println("handleProtoTestNetworkRequest", rm, id)
+
 		r.Response(id)
 	case ProtoTestNetworkResponse:
-		r.t.Logf("%s.OnReceive ProtoTestNetworkResponse %s", r.name, s)
+		rm := &testNetworkResponse{}
+		r.decode(b, rm)
+		r.log.Println("handleProtoTestNetworkResponse", rm, id)
 	default:
 		re = false
 	}
 	return
 }
 
-func (r *TestReactor) OnError() {
-
+func (r *testReactor) OnError() {
+	assert.Fail(r.t, "TestReactor.onError")
 }
 
-func (r *TestReactor) Broadcast() {
-	r.ms.Broadcast(ProtoTestNetworkBroadcast, []byte(r.name+PayloadTestNetworkBroadcast), module.BROADCAST_ALL)
-	r.t.Logf("%s.Broadcast ProtoTestNetworkBroadcast %s", r.name, r.name+PayloadTestNetworkBroadcast)
+func (r *testReactor) encode(v interface{}) []byte {
+	b := make([]byte, DefaultPacketBufferSize)
+	enc := codec.NewEncoderBytes(&b, r.codecHandle)
+	enc.MustEncode(v)
+	return b
 }
 
-func (r *TestReactor) Multicast() {
-	r.ms.Multicast(ProtoTestNetworkMulticast, []byte(r.name+PayloadTestNetworkMulticast), module.ROLE_VALIDATOR)
-	r.t.Logf("%s.Multicast ProtoTestNetworkMulticast %s", r.name, r.name+PayloadTestNetworkMulticast)
+func (r *testReactor) decode(b []byte, v interface{}) {
+	dec := codec.NewDecoderBytes(b, r.codecHandle)
+	dec.MustDecode(v)
 }
 
-func (r *TestReactor) Request(id module.PeerID) {
-	r.ms.Unicast(ProtoTestNetworkRequest, []byte(r.name+PayloadTestNetworkRequest), id)
-	r.t.Logf("%s.Request ProtoTestNetworkRequest %s", r.name, r.name+PayloadTestNetworkRequest)
+func (r *testReactor) Broadcast() {
+	m := &testNetworkBroadcast{Message: "TestBroasdcast"}
+	r.ms.Broadcast(ProtoTestNetworkBroadcast, r.encode(m), module.BROADCAST_ALL)
+	r.log.Println("Broadcast", m)
 }
 
-func (r *TestReactor) Response(id module.PeerID) {
-	r.ms.Unicast(ProtoTestNetworkResponse, []byte(r.name+PayloadTestNetworkResponse), id)
-	r.t.Logf("%s.Response ProtoTestNetworkResponse %s", r.name, r.name+PayloadTestNetworkResponse)
+func (r *testReactor) Multicast() {
+	m := &testNetworkMulticast{Message: "TestMulticast"}
+	r.ms.Multicast(ProtoTestNetworkMulticast, r.encode(m), module.ROLE_VALIDATOR)
+	r.log.Println("Multicast", m)
 }
 
-func newTestNetwork(channel string, pd *PeerDispatcher, addr string, d *Dialer) (*manager, module.Membership) {
-	nm := newManager(channel, pd.self, NetAddress(addr), d)
-	pd.registPeerToPeer(nm.peerToPeer)
-	ms := nm.GetMembership(DefaultMembershipName)
-	return nm, ms
+func (r *testReactor) Request(id module.PeerID) {
+	m := &testNetworkRequest{Message: "Hello"}
+	r.ms.Unicast(ProtoTestNetworkRequest, r.encode(m), id)
+	r.log.Println("Request", m, id)
 }
 
-func getNetwork(channel string) (module.NetworkManager, module.Membership) {
-	nm := GetNetworkManager(channel)
-	ms := nm.GetMembership(DefaultMembershipName)
-	return nm, ms
+func (r *testReactor) Response(id module.PeerID) {
+	m := &testNetworkResponse{Message: "World"}
+	r.ms.Unicast(ProtoTestNetworkRequest, r.encode(m), id)
+	r.log.Println("Response", m, id)
 }
 
 func Test_network(t *testing.T) {
-	pd, l, d := getTransport(testChannel)
-	spd, sl, sd := newTestTransport(testChannel, testSeedAddress)
-	cpd, cl, cd := newTestTransport(testChannel, testCitizenAddress)
+	cnt := GetTransport()
+	snt := NewTransport(testSeedAddress, generatePrivateKey())
+	vnt := NewTransport(testCitizenAddress, generatePrivateKey())
 
-	//t.Logf("pd:%v,spd:%v,cpd:%v", pd.self, spd.self, cpd.self)
+	t.Logf("c:%v,s:%v,v:%v", cnt.PeerID(), snt.PeerID(), vnt.PeerID())
 
-	_, ms := getNetwork(testChannel)
-	_, sms := newTestNetwork(testChannel, spd, sl.address, sd)
-	_, cms := newTestNetwork(testChannel, cpd, cl.address, cd)
+	cnm := GetManager(testChannel)
+	snm := NewManager(testChannel, snt, module.ROLE_SEED)
+	vnm := NewManager(testChannel, vnt, module.ROLE_SEED, module.ROLE_VALIDATOR)
 
-	vr := &TestReactor{"TestValidator", ms, t}
-	sr := &TestReactor{"TestSeed", sms, t}
-	cr := &TestReactor{"TestCitizen", cms, t}
-	ms.RegistReactor(vr.name, vr, testSubProtocols)
-	sms.RegistReactor(sr.name, sr, testSubProtocols)
-	cms.RegistReactor(cr.name, cr, testSubProtocols)
+	cms := cnm.GetMembership(DefaultMembershipName)
+	sms := snm.GetMembership(DefaultMembershipName)
+	vms := vnm.GetMembership(DefaultMembershipName)
 
-	vrp := []module.PeerID{pd.self}
-	srp := []module.PeerID{pd.self, spd.self}
-	ms.AddRole(module.ROLE_VALIDATOR, vrp...)
-	ms.AddRole(module.ROLE_SEED, srp...)
-	sms.AddRole(module.ROLE_VALIDATOR, vrp...)
-	sms.AddRole(module.ROLE_SEED, srp...)
+	cr := newTestReactor("TestCitizen", cms, t)
+	sr := newTestReactor("TestSeed", sms, t)
+	vr := newTestReactor("TestValidator", vms, t)
+
+	srp := []module.PeerID{snt.PeerID(), vnt.PeerID()}
+	vrp := []module.PeerID{vnt.PeerID()}
 	cms.AddRole(module.ROLE_VALIDATOR, vrp...)
 	cms.AddRole(module.ROLE_SEED, srp...)
+	sms.AddRole(module.ROLE_VALIDATOR, vrp...)
+	sms.AddRole(module.ROLE_SEED, srp...)
+	vms.AddRole(module.ROLE_VALIDATOR, vrp...)
+	vms.AddRole(module.ROLE_SEED, srp...)
 
-	l.Listen()
-	sl.Listen()
-	cl.Listen()
+	cnt.Start()
+	snt.Start()
+	vnt.Start()
 
 	// snal := []NetAddress{NetAddress(sl.address)}
 	// pd.peerToPeers[testChannel].seeds.Merge(snal...)
 	// spd.peerToPeers[testChannel].seeds.Merge(snal...)
 	// cpd.peerToPeers[testChannel].seeds.Merge(snal...)
-	d.Dial(sl.address)
-	cd.Dial(sl.address)
+	cnt.Dial(snt.Address(), testChannel)
+	vnt.Dial(snt.Address(), testChannel)
 
 	time.Sleep(5 * time.Second)
 	vr.Broadcast()
@@ -143,9 +180,6 @@ func Test_network(t *testing.T) {
 	// 	t.Logf("sp.conn.Close error:%v", err)
 	// }
 	cr.Multicast()
-	cr.Request(spd.self)
+	cr.Request(snt.PeerID())
 	time.Sleep(5 * time.Second)
-	l.Close()
-	sl.Close()
-	cl.Close()
 }

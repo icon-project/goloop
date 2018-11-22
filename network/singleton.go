@@ -12,13 +12,9 @@ var (
 	ErrAlreadyClosed   = errors.New("Already closed")
 )
 var (
-	transportListener        *Listener
-	transportPeerDispatcher  *PeerDispatcher
-	transportDialers         = make(map[string]*Dialer)
-	networkManagers          = make(map[string]module.NetworkManager)
-	handlerChannelNegotiator *ChannelNegotiator
-	handlerAuthenticator     *Authenticator
-	singletonConfig          *Config
+	singletonTransport module.NetworkTransport
+	singletonManagers  = make(map[string]module.NetworkManager)
+	singletonConfig    *Config
 )
 
 const (
@@ -72,59 +68,36 @@ type Config struct {
 	RoleSeed      bool
 	RoleRoot      bool
 	PrivateKey    *crypto.PrivateKey
-	PublicKey     *crypto.PublicKey
 }
 
 func GetConfig() *Config {
 	if singletonConfig == nil {
 		//TODO Read from file or DB
-		priK, pubK := crypto.GenerateKeyPair()
+		priK, _ := crypto.GenerateKeyPair()
 		singletonConfig = &Config{
 			ListenAddress: "127.0.0.1:8080",
 			PrivateKey:    priK,
-			PublicKey:     pubK,
 		}
 
 	}
 	return singletonConfig
 }
 
-func GetListener() *Listener {
-	if transportListener == nil {
+func GetTransport() module.NetworkTransport {
+	if singletonTransport == nil {
 		c := GetConfig()
-		transportListener = newListener(c.ListenAddress, GetPeerDispatcher().onAccept)
+		singletonTransport = NewTransport(c.ListenAddress, c.PrivateKey)
 	}
-	return transportListener
+	return singletonTransport
 }
 
-func GetDialer(channel string) *Dialer {
-	d, ok := transportDialers[channel]
-	if !ok {
-		d = newDialer(channel, GetPeerDispatcher().onConnect)
-		transportDialers[channel] = d
-	}
-	return d
-}
-
-func GetPeerDispatcher() *PeerDispatcher {
-	if transportPeerDispatcher == nil {
-		c := GetConfig()
-		transportPeerDispatcher = newPeerDispatcher(
-			NewPeerIDFromPublicKey(c.PublicKey),
-			GetChannelNegotiator(),
-			GetAuthenticator())
-	}
-	return transportPeerDispatcher
-}
-
-func GetNetworkManager(channel string) module.NetworkManager {
-	nm, ok := networkManagers[channel]
+func GetManager(channel string) module.NetworkManager {
+	nm, ok := singletonManagers[channel]
 	if !ok {
 		c := GetConfig()
-		l := GetListener()
-		pd := GetPeerDispatcher()
-		m := newManager(channel, pd.self, NetAddress(l.address), GetDialer(channel))
-		pd.registPeerToPeer(m.peerToPeer)
+		t := GetTransport()
+		m := NewManager(channel, t)
+
 		r := PeerRoleFlag(p2pRoleNone)
 		if c.RoleSeed {
 			r.SetFlag(p2pRoleSeed)
@@ -132,28 +105,12 @@ func GetNetworkManager(channel string) module.NetworkManager {
 		if c.RoleRoot {
 			r.SetFlag(p2pRoleRoot)
 		}
-		m.peerToPeer.setRole(r)
+		m.(*manager).p2p.setRole(r)
 		if c.SeedAddress != "" {
-			m.peerToPeer.seeds.Add(NetAddress(c.SeedAddress))
+			m.(*manager).p2p.seeds.Add(NetAddress(c.SeedAddress))
 		}
 		nm = m
-		networkManagers[channel] = nm
+		singletonManagers[channel] = m
 	}
 	return nm
-}
-
-func GetChannelNegotiator() *ChannelNegotiator {
-	if handlerChannelNegotiator == nil {
-		c := GetConfig()
-		handlerChannelNegotiator = newChannelNegotiator(NetAddress(c.ListenAddress))
-	}
-	return handlerChannelNegotiator
-}
-
-func GetAuthenticator() *Authenticator {
-	if handlerAuthenticator == nil {
-		c := GetConfig()
-		handlerAuthenticator = newAuthenticator(c.PrivateKey)
-	}
-	return handlerAuthenticator
 }
