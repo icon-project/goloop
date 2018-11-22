@@ -2,6 +2,7 @@ package v2
 
 import (
 	"log"
+	"reflect"
 
 	"github.com/asaskevich/govalidator"
 	"github.com/osamingo/jsonrpc"
@@ -51,8 +52,8 @@ type blockV2 struct {
 	Version            string          `json:"version"`
 	PrevBlockHash      string          `json:"prev_block_hash"`
 	MerkleTreeRootHash string          `json:"merkle_tree_root_hash"`
-	Timestamp          uint64          `json:"time_stamp"`
-	Transactions       []transactionV2 `json:"confirmed_transaction_list"`
+	Timestamp          int64          `json:"time_stamp"`
+	Transactions       []transactionV2 `json:"confirmed_transaction_list,omitempty"`
 	BlockHash          string          `json:"block_hash"`
 	Height             int64           `json:"height"`
 	PeerID             string          `json:"peer_id"`
@@ -97,5 +98,30 @@ func validateParam(s interface{}) *jsonrpc.Error {
 		log.Println(err.Error())
 		return jsonrpc.ErrInvalidParams()
 	}
+	return nil
+}
+
+func convertToResult(source interface{}, result interface{}, target reflect.Type) error {
+	jsonMap := source.(map[string]interface{})
+
+	// t := reflect.TypeOf(target)
+	log.Printf("convert : [%s]", target.Name())
+	v := reflect.ValueOf(result).Elem()
+
+	for i := 0; i < target.NumField(); i++ {
+		field := target.Field(i)
+		tag := field.Tag.Get("json")
+		value := jsonMap[tag]
+		vf := v.FieldByName(field.Name)
+		switch vt := value.(type) {
+		case string:
+			log.Printf("%s : %s", field.Name, vt)
+			vf.SetString(vt)
+		case int64:
+			log.Printf("%s : %d", field.Name, vt)
+			vf.SetInt(value.(int64))
+		}
+	}
+
 	return nil
 }

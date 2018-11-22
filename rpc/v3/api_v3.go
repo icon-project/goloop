@@ -41,15 +41,15 @@ func MethodRepository(bm module.BlockManager, sm module.ServiceManager) *jsonrpc
 
 	// api v3
 	v3.RegisterMethod(getLastBlock, getLastBlockHandler{bm: bm}, nil, blockV2{})
-	v3.RegisterMethod(getBlockByHeight, getBlockByHeightHandler{}, getBlockByHeightParam{}, blockV2{})
-	v3.RegisterMethod(getBlockByHash, getBlockByHashHandler{}, getBlockByHashParam{}, blockV2{})
+	v3.RegisterMethod(getBlockByHeight, getBlockByHeightHandler{bm: bm}, getBlockByHeightParam{}, blockV2{})
+	v3.RegisterMethod(getBlockByHash, getBlockByHashHandler{bm: bm}, getBlockByHashParam{}, blockV2{})
 	v3.RegisterMethod(call, callHandler{}, callParam{}, nil)
 	v3.RegisterMethod(getBalance, getBalanceHandler{}, getBalanceParam{}, nil)
 	v3.RegisterMethod(getScoreApi, getScoreApiHandler{}, getScoreApiParam{}, getScoreApiResult{})
 	v3.RegisterMethod(getTotalSupply, getTotalSupplyeHandler{}, nil, nil)
 	v3.RegisterMethod(getTransactionResult, getTransactionResultHandler{}, transactionHashParam{}, transactionResult{})
 	v3.RegisterMethod(getTransactionByHash, getTransactionByHashHandler{}, transactionHashParam{}, transactionV3{})
-	v3.RegisterMethod(sendTransaction, sendTransactionHandler{}, sendTransactionParam{}, nil)
+	v3.RegisterMethod(sendTransaction, sendTransactionHandler{sm: sm}, sendTransactionParam{}, nil)
 	v3.RegisterMethod(getStatus, getStatusHandler{}, getStatusParam{}, nil)
 
 	return v3

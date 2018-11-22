@@ -2,14 +2,19 @@ package v3
 
 import (
 	"context"
+	"encoding/hex"
 	"log"
+	"reflect"
+	"strconv"
 
 	"github.com/icon-project/goloop/module"
-
 	"github.com/intel-go/fastjson"
 	"github.com/osamingo/jsonrpc"
 	client "github.com/ybbus/jsonrpc"
 )
+
+// JSON RPC api v3
+const jsonRpcV3 int = 3
 
 // ICON TestNet v3
 const apiEndPoint string = "https://testwallet.icon.foundation/api/v3"
@@ -23,19 +28,41 @@ type getLastBlockHandler struct {
 
 func (h getLastBlockHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
-	var result blockV2
+	//var result blockV2
+	result := blockV2{}
 
-	err := rpcClient.CallFor(&result, getLastBlock)
-	if err != nil {
-		log.Println(err.Error())
-		return nil, jsonrpc.ErrInternal()
+	if jsonRpcV3 == 0 {
+		err := rpcClient.CallFor(&result, getLastBlock)
+		if err != nil {
+			log.Println(err.Error())
+			return nil, jsonrpc.ErrInternal()
+		}
+	} else {
+		block, err := h.bm.GetLastBlock()
+		if err != nil {
+			log.Println(err.Error())
+			return nil, jsonrpc.ErrInternal()
+		}
+		if block != nil {
+			jsonMap, err := block.ToJSON(jsonRpcV3)
+			err = convertToResult(jsonMap, &result, reflect.TypeOf(result))
+			if err != nil {
+				log.Println(err.Error())
+				return nil, jsonrpc.ErrInternal()
+			}
+		} else {
+			log.Println("Block is nil")
+			return nil, jsonrpc.ErrInternal()
+		}
 	}
 
 	return result, nil
 }
 
 // getBlockByHeight
-type getBlockByHeightHandler struct{}
+type getBlockByHeightHandler struct {
+	bm module.BlockManager
+}
 
 func (h getBlockByHeightHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
@@ -47,19 +74,43 @@ func (h getBlockByHeightHandler) ServeJSONRPC(c context.Context, params *fastjso
 		return nil, err
 	}
 
-	var result blockV2
+	//var result blockV2
+	result := blockV2{}
 
-	err := rpcClient.CallFor(&result, getBlockByHeight, param)
-	if err != nil {
-		log.Println(err.Error())
-		return nil, jsonrpc.ErrInternal()
+	if jsonRpcV3 == 0 {
+		err := rpcClient.CallFor(&result, getBlockByHeight, param)
+		if err != nil {
+			log.Println(err.Error())
+			return nil, jsonrpc.ErrInternal()
+		}
+	} else {
+		height, err := strconv.ParseInt(param.BlockHeight, 0, 64)
+		log.Printf("GetBlockByHeight(%d)", height)
+		block, err := h.bm.GetBlockByHeight(height)
+		if err != nil {
+			log.Println(err.Error())
+			return nil, jsonrpc.ErrInternal()
+		}
+		if block != nil {
+			jsonMap, err := block.ToJSON(jsonRpcV3)
+			err = convertToResult(jsonMap, &result, reflect.TypeOf(result))
+			if err != nil {
+				log.Println(err.Error())
+				return nil, jsonrpc.ErrInternal()
+			}
+		} else {
+			log.Println("Block is nil")
+			return nil, jsonrpc.ErrInternal()
+		}
 	}
 
 	return result, nil
 }
 
 // getBlockByHash
-type getBlockByHashHandler struct{}
+type getBlockByHashHandler struct {
+	bm module.BlockManager
+}
 
 func (h getBlockByHashHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
@@ -71,12 +122,33 @@ func (h getBlockByHashHandler) ServeJSONRPC(c context.Context, params *fastjson.
 		return nil, err
 	}
 
-	var result blockV2
+	//var result blockV2
+	result := blockV2{}
 
-	err := rpcClient.CallFor(&result, getBlockByHash, param)
-	if err != nil {
-		log.Println(err.Error())
-		return nil, jsonrpc.ErrInternal()
+	if jsonRpcV3 == 0 {
+		err := rpcClient.CallFor(&result, getBlockByHash, param)
+		if err != nil {
+			log.Println(err.Error())
+			return nil, jsonrpc.ErrInternal()
+		}
+	} else {
+		hash, err := hex.DecodeString(param.BlockHash[2:])
+		block, err := h.bm.GetBlock(hash)
+		if err != nil {
+			log.Println(err.Error())
+			return nil, jsonrpc.ErrInternal()
+		}
+		if block != nil {
+			jsonMap, err := block.ToJSON(jsonRpcV3)
+			err = convertToResult(jsonMap, &result, reflect.TypeOf(result))
+			if err != nil {
+				log.Println(err.Error())
+				return nil, jsonrpc.ErrInternal()
+			}
+		} else {
+			log.Println("Block is nil")
+			return nil, jsonrpc.ErrInternal()
+		}
 	}
 
 	return result, nil
@@ -215,7 +287,9 @@ func (h getTransactionByHashHandler) ServeJSONRPC(c context.Context, params *fas
 }
 
 // sendTransaction
-type sendTransactionHandler struct{}
+type sendTransactionHandler struct {
+	sm module.ServiceManager
+}
 
 func (h sendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
@@ -228,8 +302,14 @@ func (h sendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjson
 	}
 
 	// sendTransaction Call
-
+	tx, _ := params.MarshalJSON()
+	txHash, err := h.sm.SendTransaction(tx)
+	if err != nil {
+		log.Println(err.Error())
+		return nil, jsonrpc.ErrInternal()
+	}
 	// txHash
+	log.Printf("txHash : %x", txHash)
 	result := "0x4bf74e6aeeb43bde5dc8d5b62537a33ac8eb7605ebbdb51b015c1881b45b3aed"
 
 	return result, nil

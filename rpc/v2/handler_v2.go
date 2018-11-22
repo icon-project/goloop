@@ -2,7 +2,10 @@ package v2
 
 import (
 	"context"
+	"encoding/hex"
 	"log"
+	"reflect"
+	"strconv"
 
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
@@ -11,6 +14,9 @@ import (
 	"github.com/osamingo/jsonrpc"
 	client "github.com/ybbus/jsonrpc"
 )
+
+// JSON RPC api v2
+const jsonRpcV2 int = 2
 
 // ICON TestNet v2
 const apiEndPoint string = "https://testwallet.icon.foundation/api/v2"
@@ -114,23 +120,50 @@ func (h getTotalSupplyeHandler) ServeJSONRPC(c context.Context, params *fastjson
 }
 
 // getLastBlock
-type getLastBlockHandler struct{}
+type getLastBlockHandler struct {
+	bm module.BlockManager
+}
 
 func (h getLastBlockHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
-	var result blockResult
+	//var result blockV2
+	result := blockV2{}
 
-	err := rpcClient.CallFor(&result, getLastBlock)
-	if err != nil {
-		log.Println(err.Error())
-		return nil, jsonrpc.ErrInternal()
+	if jsonRpcV2 == 0 {
+		var blockResult blockResult
+		err := rpcClient.CallFor(&blockResult, getLastBlock)
+		if err != nil {
+			log.Println(err.Error())
+			return nil, jsonrpc.ErrInternal()
+		}
+		return blockResult, nil
+	} else {
+		block, err := h.bm.GetLastBlock()
+		if err != nil {
+			log.Println(err.Error())
+			return nil, jsonrpc.ErrInternal()
+		}
+		if block != nil {
+			jsonMap, err := block.ToJSON(jsonRpcV2)
+			err = convertToResult(jsonMap, &result, reflect.TypeOf(result))
+			if err != nil {
+				log.Println(err.Error())
+				return nil, jsonrpc.ErrInternal()
+			}
+		} else {
+			log.Println("Block is nil")
+			return nil, jsonrpc.ErrInternal()
+		}
 	}
 
-	return result, nil
+	// ResponseCode ??
+	return &blockResult{ResponseCode: 0, Block: result}, nil
 }
 
 // getBlockByHash
-type getBlockByHashHandler struct{}
+type getBlockByHashHandler struct {
+	bm module.BlockManager
+}
 
 func (h getBlockByHashHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
@@ -142,19 +175,45 @@ func (h getBlockByHashHandler) ServeJSONRPC(c context.Context, params *fastjson.
 		return nil, err
 	}
 
-	var result blockResult
+	//var result blockV2
+	result := blockV2{}
 
-	err := rpcClient.CallFor(&result, getBlockByHash, param)
-	if err != nil {
-		log.Println(err.Error())
-		return nil, jsonrpc.ErrInternal()
+	if jsonRpcV2 == 0 {
+		var blockResult blockResult
+		err := rpcClient.CallFor(&blockResult, getBlockByHash, param)
+		if err != nil {
+			log.Println(err.Error())
+			return nil, jsonrpc.ErrInternal()
+		}
+		return blockResult, nil
+	} else {
+		hash, err := hex.DecodeString(param.BlockHash[:])
+		block, err := h.bm.GetBlock(hash)
+		if err != nil {
+			log.Println(err.Error())
+			return nil, jsonrpc.ErrInternal()
+		}
+		if block != nil {
+			jsonMap, err := block.ToJSON(jsonRpcV2)
+			err = convertToResult(jsonMap, &result, reflect.TypeOf(result))
+			if err != nil {
+				log.Println(err.Error())
+				return nil, jsonrpc.ErrInternal()
+			}
+		} else {
+			log.Println("Block is nil")
+			return nil, jsonrpc.ErrInternal()
+		}
 	}
 
-	return result, nil
+	// ResponseCode ??
+	return &blockResult{ResponseCode: 0, Block: result}, nil
 }
 
 // getBlockByHeight
-type getBlockByHeightHandler struct{}
+type getBlockByHeightHandler struct {
+	bm module.BlockManager
+}
 
 func (h getBlockByHeightHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
@@ -166,13 +225,38 @@ func (h getBlockByHeightHandler) ServeJSONRPC(c context.Context, params *fastjso
 		return nil, err
 	}
 
-	var result blockResult
+	//var result blockV2
+	result := blockV2{}
 
-	err := rpcClient.CallFor(&result, getBlockByHeight, param)
-	if err != nil {
-		log.Println(err.Error())
-		return nil, jsonrpc.ErrInternal()
+	if jsonRpcV2 == 0 {
+		var blockResult blockResult
+		err := rpcClient.CallFor(&blockResult, getBlockByHeight, param)
+		if err != nil {
+			log.Println(err.Error())
+			return nil, jsonrpc.ErrInternal()
+		}
+		return blockResult, nil
+	} else {
+		height, err := strconv.ParseInt(param.BlockHeight, 10, 64)
+		log.Printf("GetBlockByHeight(%d)", height)
+		block, err := h.bm.GetBlockByHeight(height)
+		if err != nil {
+			log.Println(err.Error())
+			return nil, jsonrpc.ErrInternal()
+		}
+		if block != nil {
+			jsonMap, err := block.ToJSON(jsonRpcV2)
+			err = convertToResult(jsonMap, &result, reflect.TypeOf(result))
+			if err != nil {
+				log.Println(err.Error())
+				return nil, jsonrpc.ErrInternal()
+			}
+		} else {
+			log.Println("Block is nil")
+			return nil, jsonrpc.ErrInternal()
+		}
 	}
 
-	return result, nil
+	// ResponseCode ??
+	return &blockResult{ResponseCode: 0, Block: result}, nil
 }

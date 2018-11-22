@@ -127,6 +127,7 @@ func (c *proposeOnlyConsensus) Start() {
 		}
 
 		height++
+		time.Sleep(1 * time.Second)
 	}
 }
 
@@ -166,6 +167,14 @@ func (c *importOnlyConsensus) Start() {
 			panic(err)
 		}
 		fmt.Printf("Importer: Finalized Block(%d) %x\n", blk.Height(), blk.ID())
+
+		b, err := c.bm.GetBlockByHeight(blk.Height())
+		if err != nil {
+			panic(err)
+		}
+		jsonMap, _ := b.ToJSON(0)
+		result := jsonMap.(map[string]interface{})
+		fmt.Printf("Importer: GetBlock  Block(%d) %s\n", result["height"], result["block_hash"])
 	}
 }
 
@@ -180,10 +189,6 @@ func (c *chain) startAsProposer(ch chan<- []byte) {
 		ch: ch,
 	}
 	sm = c.sm
-
-	c.sv = rpc.NewJsonRpcServer(c.bm, c.sm)
-	c.sv.Start()
-
 	c.cs.Start()
 }
 
@@ -197,8 +202,12 @@ func (c *chain) startAsImporter(ch <-chan []byte) {
 		bm: c.bm,
 		ch: ch,
 	}
-	sm = c.sm
 
+	// JSON-RPC
+	c.sv = rpc.NewJsonRpcServer(c.bm, c.sm)
+	c.sv.Start()
+
+	sm = c.sm
 	c.cs.Start()
 }
 
