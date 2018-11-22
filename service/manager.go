@@ -27,13 +27,12 @@ type manager struct {
 	db db.Database
 }
 
-// TODO It should be declared in module package.
-func NewManager(database db.Database) module.ServiceManager {
-	bk, _ := database.GetBucket(db.MerkleTrie)
+func NewManager(chain module.Chain) module.ServiceManager {
+	bk, _ := chain.GetDatabase().GetBucket(db.MerkleTrie)
 	return &manager{
 		patchTxPool:  NewtransactionPool(bk),
 		normalTxPool: NewtransactionPool(bk),
-		db:           database,
+		db:           chain.GetDatabase(),
 	}
 }
 

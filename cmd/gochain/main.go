@@ -51,7 +51,7 @@ func (c *singleChain) VoteListDecoder() module.VoteListDecoder {
 func (c *singleChain) start() {
 	c.database = db.NewMapDB()
 
-	c.sm = service.NewManager(c.database)
+	c.sm = service.NewManager(c)
 	c.bm = block.NewManager(c, c.sm)
 	c.cs = consensus.NewConsensus(c.bm)
 	c.sv = rpc.NewJsonRpcServer(c.bm, c.sm)

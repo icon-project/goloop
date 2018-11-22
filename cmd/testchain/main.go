@@ -181,7 +181,7 @@ func (c *importOnlyConsensus) Start() {
 func (c *chain) startAsProposer(ch chan<- []byte) {
 	c.wallet = common.NewWallet()
 	c.database = db.NewMapDB()
-	c.sm = service.NewManager(c.database)
+	c.sm = service.NewManager(c)
 	c.bm = block.NewManager(c, c.sm)
 	c.cs = &proposeOnlyConsensus{
 		sm: c.sm,
@@ -195,7 +195,7 @@ func (c *chain) startAsProposer(ch chan<- []byte) {
 func (c *chain) startAsImporter(ch <-chan []byte) {
 	c.wallet = common.NewWallet()
 	c.database = db.NewMapDB()
-	c.sm = service.NewManager(c.database)
+	c.sm = service.NewManager(c)
 	c.bm = block.NewManager(c, c.sm)
 	c.cs = &importOnlyConsensus{
 		sm: c.sm,
