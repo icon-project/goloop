@@ -118,10 +118,14 @@ func (c *proposeOnlyConsensus) Start() {
 		blk.MarshalBody(buf)
 		fmt.Printf("Proposer: Finalized Block(%d) %x\n", blk.Height(), blk.ID())
 		c.ch <- buf.Bytes()
-		_, err = c.bm.GetBlockByHeight(int64(height) + 1)
+		blk2, err := c.bm.GetBlockByHeight(int64(height) + 1)
 		if err != nil {
 			panic(err)
 		}
+		if !bytes.Equal(blk.ID(), blk2.ID()) {
+			panic("id not equal")
+		}
+
 		height++
 	}
 }
