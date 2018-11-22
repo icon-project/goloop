@@ -96,8 +96,8 @@ func Test_transport(t *testing.T) {
 	nt1.(*transport).pd.registPeerHandler(tph1)
 	nt2.(*transport).pd.registPeerHandler(tph2)
 
-	assert.Nil(t, nt1.Start(), "Transport.Start fail")
-	assert.Nil(t, nt2.Start(), "Transport.Start fail")
+	assert.Nil(t, nt1.Listen(), "Transport.Start fail")
+	assert.Nil(t, nt2.Listen(), "Transport.Start fail")
 
 	assert.Nil(t, nt2.Dial(nt1.Address(), ""), "Transport.Dial fail")
 

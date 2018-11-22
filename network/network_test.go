@@ -160,9 +160,9 @@ func Test_network(t *testing.T) {
 	vms.AddRole(module.ROLE_VALIDATOR, vrp...)
 	vms.AddRole(module.ROLE_SEED, srp...)
 
-	cnt.Start()
-	snt.Start()
-	vnt.Start()
+	cnt.Listen()
+	snt.Listen()
+	vnt.Listen()
 
 	// snal := []NetAddress{NetAddress(sl.address)}
 	// pd.peerToPeers[testChannel].seeds.Merge(snal...)
