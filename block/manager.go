@@ -665,11 +665,11 @@ func (m *manager) newBlockFromReader(r io.Reader) (module.Block, error) {
 	var blockFormat blockV2Format
 	err := v2Codec.Unmarshal(r, &blockFormat.blockV2HeaderFormat)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	err = v2Codec.Unmarshal(r, &blockFormat.blockV2BodyFormat)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	patches := m.newTransactionListFromBSS(
 		blockFormat.PatchTransactions,
