@@ -286,6 +286,7 @@ func (t *transition) executeTxs(l module.TransactionList, wc WorldContext, rctBu
 			return false, 0
 		} else {
 			rctBuf[cnt] = rct
+			cnt++
 		}
 	}
 	return true, cnt
