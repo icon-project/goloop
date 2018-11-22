@@ -43,3 +43,13 @@ func (sig *Signature) UnmarshalJSON(s []byte) error {
 		return err
 	}
 }
+
+func (sig *Signature) MarshalBinary() ([]byte, error) {
+	return sig.Signature.SerializeRSV()
+}
+
+func (sig *Signature) UnmarshalBinary(s []byte) error {
+	var err error
+	sig.Signature, err = crypto.ParseSignature(s)
+	return err
+}
