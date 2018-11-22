@@ -10,6 +10,12 @@ type TransitionCallback interface {
 	OnExecute(Transition, error)
 }
 
+// Block information used by service manager.
+type BlockInfo interface {
+	Height() int64
+	Timestamp() int64
+}
+
 type Transaction interface {
 	Group() TransactionGroup
 	ID() []byte
