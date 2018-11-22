@@ -3,10 +3,16 @@ package v3
 import (
 	"log"
 	"reflect"
+	"strings"
 
 	"github.com/asaskevich/govalidator"
+	"github.com/icon-project/goloop/module"
 	"github.com/osamingo/jsonrpc"
 )
+
+// JSON RPC version
+const jsonRpcV2 int = 2
+const jsonRpcV3 int = 3
 
 // JSON-RPC Request Params
 type getBlockByHeightParam struct {
@@ -56,15 +62,15 @@ type getStatusParam struct {
 
 // JSON-RPC Response Result
 type blockV2 struct {
-	Version            string      `json:"version"`
-	PrevBlockHash      string      `json:"prev_block_hash"`
-	MerkleTreeRootHash string      `json:"merkle_tree_root_hash"`
-	Timestamp          int64       `json:"time_stamp"`
-	Transactions       interface{} `json:"confirmed_transaction_list,omitempty"`
-	BlockHash          string      `json:"block_hash"`
-	Height             int64       `json:"height"`
-	PeerID             string      `json:"peer_id"`
-	Signature          string      `json:"signature"`
+	Version            string        `json:"version"`
+	PrevBlockHash      string        `json:"prev_block_hash"`
+	MerkleTreeRootHash string        `json:"merkle_tree_root_hash"`
+	Timestamp          int64         `json:"time_stamp"`
+	Transactions       []interface{} `json:"confirmed_transaction_list,omitempty"`
+	BlockHash          string        `json:"block_hash"`
+	Height             int64         `json:"height"`
+	PeerID             string        `json:"peer_id"`
+	Signature          string        `json:"signature"`
 }
 
 type transactionV2 struct {
@@ -152,14 +158,15 @@ func validateParam(s interface{}) *jsonrpc.Error {
 
 func convertToResult(source interface{}, result interface{}, target reflect.Type) error {
 	jsonMap := source.(map[string]interface{})
-
-	// t := reflect.TypeOf(target)
 	log.Printf("convert : [%s]", target.Name())
-	v := reflect.ValueOf(result).Elem()
 
+	v := reflect.ValueOf(result).Elem()
 	for i := 0; i < target.NumField(); i++ {
 		field := target.Field(i)
+
 		tag := field.Tag.Get("json")
+		tag = strings.Split(tag, ",")[0]
+
 		value := jsonMap[tag]
 		vf := v.FieldByName(field.Name)
 		switch vt := value.(type) {
@@ -171,6 +178,38 @@ func convertToResult(source interface{}, result interface{}, target reflect.Type
 			vf.SetInt(value.(int64))
 		}
 	}
+	return nil
+}
 
+func addConfirmedTxList(txList module.TransactionList, result *blockV2) error {
+	it := txList.Iterator()
+	for it.Has() {
+		tx, _, _ := it.Get()
+		var txMap interface{}
+
+		tx2 := transactionV2{}
+		tx3 := transactionV3{}
+
+		var err error
+		log.Printf("tx version (%d)", tx.Version())
+		switch tx.Version() {
+		case jsonRpcV2:
+			txMap, err = tx.ToJSON(jsonRpcV2)
+			if err != nil {
+				log.Println(err.Error())
+			}
+			convertToResult(txMap, &tx2, reflect.TypeOf(tx2))
+			result.Transactions = append(result.Transactions, tx2)
+		case jsonRpcV3:
+			txMap, err = tx.ToJSON(jsonRpcV3)
+			if err != nil {
+				log.Println(err.Error())
+			}
+			convertToResult(txMap, &tx3, reflect.TypeOf(tx3))
+			result.Transactions = append(result.Transactions, tx3)
+		}
+		log.Println("TxList : ", txMap)
+		it.Next()
+	}
 	return nil
 }

@@ -8,15 +8,10 @@ import (
 	"strconv"
 
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service"
-
 	"github.com/intel-go/fastjson"
 	"github.com/osamingo/jsonrpc"
 	client "github.com/ybbus/jsonrpc"
 )
-
-// JSON RPC api v2
-const jsonRpcV2 int = 2
 
 // ICON TestNet v2
 const apiEndPoint string = "https://testwallet.icon.foundation/api/v2"
@@ -38,14 +33,15 @@ func (h sendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjson
 		return nil, err
 	}
 
-	p, _ := params.MarshalJSON()
-	log.Printf("params : %s", p)
-	tx, err := service.NewTransaction(p)
-	log.Printf("tx : %x", tx.Hash())
+	// sendTransaction Call
+	tx, _ := params.MarshalJSON()
 	txHash, err := h.sm.SendTransaction(tx)
 	if err != nil {
-
+		log.Println(err.Error())
+		return nil, jsonrpc.ErrInternal()
 	}
+	// txHash
+	log.Printf("txHash : %x", txHash)
 
 	result := &sendTranscationResult{
 		ResponseCode:    0,
@@ -146,6 +142,8 @@ func (h getLastBlockHandler) ServeJSONRPC(c context.Context, params *fastjson.Ra
 		if block != nil {
 			jsonMap, err := block.ToJSON(jsonRpcV2)
 			err = convertToResult(jsonMap, &result, reflect.TypeOf(result))
+			txList := jsonMap.(map[string]interface{})["confirmed_transaction_list"].(module.TransactionList)
+			err = addConfirmedTxList(txList, &result)
 			if err != nil {
 				log.Println(err.Error())
 				return nil, jsonrpc.ErrInternal()
@@ -196,6 +194,8 @@ func (h getBlockByHashHandler) ServeJSONRPC(c context.Context, params *fastjson.
 		if block != nil {
 			jsonMap, err := block.ToJSON(jsonRpcV2)
 			err = convertToResult(jsonMap, &result, reflect.TypeOf(result))
+			txList := jsonMap.(map[string]interface{})["confirmed_transaction_list"].(module.TransactionList)
+			err = addConfirmedTxList(txList, &result)
 			if err != nil {
 				log.Println(err.Error())
 				return nil, jsonrpc.ErrInternal()
@@ -247,6 +247,8 @@ func (h getBlockByHeightHandler) ServeJSONRPC(c context.Context, params *fastjso
 		if block != nil {
 			jsonMap, err := block.ToJSON(jsonRpcV2)
 			err = convertToResult(jsonMap, &result, reflect.TypeOf(result))
+			txList := jsonMap.(map[string]interface{})["confirmed_transaction_list"].(module.TransactionList)
+			err = addConfirmedTxList(txList, &result)
 			if err != nil {
 				log.Println(err.Error())
 				return nil, jsonrpc.ErrInternal()

@@ -13,9 +13,6 @@ import (
 	client "github.com/ybbus/jsonrpc"
 )
 
-// JSON RPC api v3
-const jsonRpcV3 int = 3
-
 // ICON TestNet v3
 const apiEndPoint string = "https://testwallet.icon.foundation/api/v3"
 
@@ -46,6 +43,8 @@ func (h getLastBlockHandler) ServeJSONRPC(c context.Context, params *fastjson.Ra
 		if block != nil {
 			jsonMap, err := block.ToJSON(jsonRpcV3)
 			err = convertToResult(jsonMap, &result, reflect.TypeOf(result))
+			txList := jsonMap.(map[string]interface{})["confirmed_transaction_list"].(module.TransactionList)
+			err = addConfirmedTxList(txList, &result)
 			if err != nil {
 				log.Println(err.Error())
 				return nil, jsonrpc.ErrInternal()
@@ -94,6 +93,8 @@ func (h getBlockByHeightHandler) ServeJSONRPC(c context.Context, params *fastjso
 		if block != nil {
 			jsonMap, err := block.ToJSON(jsonRpcV3)
 			err = convertToResult(jsonMap, &result, reflect.TypeOf(result))
+			txList := jsonMap.(map[string]interface{})["confirmed_transaction_list"].(module.TransactionList)
+			err = addConfirmedTxList(txList, &result)
 			if err != nil {
 				log.Println(err.Error())
 				return nil, jsonrpc.ErrInternal()
@@ -141,6 +142,8 @@ func (h getBlockByHashHandler) ServeJSONRPC(c context.Context, params *fastjson.
 		if block != nil {
 			jsonMap, err := block.ToJSON(jsonRpcV3)
 			err = convertToResult(jsonMap, &result, reflect.TypeOf(result))
+			txList := jsonMap.(map[string]interface{})["confirmed_transaction_list"].(module.TransactionList)
+			err = addConfirmedTxList(txList, &result)
 			if err != nil {
 				log.Println(err.Error())
 				return nil, jsonrpc.ErrInternal()
