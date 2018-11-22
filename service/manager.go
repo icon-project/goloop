@@ -1,10 +1,10 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
-	"math/big"
 	"time"
 
 	"github.com/icon-project/goloop/common"
@@ -70,30 +70,32 @@ func (m *manager) ProposeTransition(parent module.Transition) (module.Transition
 		nil
 }
 
-// ProposeGenesisTransition proposes a Transition for Genesis
-// with transactions of Genesis.
+//{"accounts": [{"name": "god", "address": "hx5a05b58a25a1e5ea0f1d5715e1f655dffc1fb30a", "balance": "0x2961fff8ca4a62327800000"}, {"name": "treasury", "address": "hx1000000000000000000000000000000000000000", "balance": "0x0"}], "message": "A rhizome has no beginning or end; it is always in the middle, between things, interbeing, intermezzo. The tree is filiation, but the rhizome is alliance, uniquely alliance. The tree imposes the verb \"to be\" but the fabric of the rhizome is the conjunction, \"and ... and ...and...\"This conjunction carries enough force to shake and uproot the verb \"to be.\" Where are you going? Where are you coming from? What are you heading for? These are totally useless questions.\n\n - Mille Plateaux, Gilles Deleuze & Felix Guattari\n\n\"Hyperconnect the world\""}
+var genesisTx = "{\"accounts\": " +
+	"[{\"name\": \"god\", " +
+	"\"address\": \"hx5a05b58a25a1e5ea0f1d5715e1f655dffc1fb30a\", " +
+	"\"balance\": \"0x2961fff8ca4a62327800000\"}, " +
+	"{\"name\": \"treasury\", " +
+	"\"address\": \"hx1000000000000000000000000000000000000000\", " +
+	"\"balance\": \"0x0\"}], " +
+	"\"message\": \"A rhizome has no beginning or end; " +
+	"it is always in the middle, between things, interbeing, intermezzo. " +
+	"The tree is filiation, but the rhizome is alliance, uniquely alliance. " +
+	"The tree imposes the verb to be but the fabric of the rhizome is the conjunction, and ... and ...and...This conjunction carries enough force to shake and uproot the verb to be. Where are you going? Where are you coming from? What are you heading for? These are totally useless questions.- Mille Plateaux, Gilles Deleuze & Felix GuattariHyperconnect the world\"}"
+
 func (m *manager) ProposeGenesisTransition(parent module.Transition) (module.Transition, error) {
 	if pt, ok := parent.(*transition); ok {
+		// TODO: temp code below to create genesis transaction. remove later
+		genjs := new(genesisV3JSON)
+		if err := json.Unmarshal([]byte(genesisTx), genjs); err != nil {
+			return nil, err
+		}
+		genjs.raw = make([]byte, len([]byte(genesisTx)))
+		copy(genjs.raw, []byte(genesisTx))
 		t := newTransition(pt,
 			NewTransactionListFromSlice(m.db, nil),
-			NewTransactionListFromSlice(m.db, nil),
+			NewTransactionListFromSlice(pt.db, []module.Transaction{&genesisV3{genesisV3JSON: genjs}}),
 			true)
-
-		// create transition instance and return it
-		// add god account and coin to WorldContext
-		// TODO: remove below late, temp code for test
-		ws, err := WorldStateFromSnapshot(pt.worldSnapshot)
-		if err != nil {
-			log.Panicf("Fail to make WorldState from snapshot err=%+v", err)
-		}
-		wc := NewWorldContext(ws, t.timestamp, uint64(t.height))
-
-		// GOD Account
-		as := wc.GetAccountState([]byte{90, 5, 181, 138, 37, 161, 229, 234, 15, 29, 87, 21, 225, 246, 85, 223, 252, 31, 179, 10})
-		balance := new(big.Int)
-		balance.SetString("800460000000000000000000000", 10)
-		as.SetBalance(balance)
-		pt.worldSnapshot = wc.GetSnapshot()
 		return t, nil
 	}
 	return nil, common.ErrIllegalArgument
@@ -270,9 +272,4 @@ func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
 func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {
 	valList, _ := ValidatorListFromHash(m.db, hash)
 	return valList
-}
-
-// For test
-func T_NewAccountState(db db.Database) AccountState {
-	return newAccountState(db, nil)
 }
