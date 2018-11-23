@@ -125,6 +125,20 @@ func (c *proposeOnlyConsensus) Start() {
 		if !bytes.Equal(blk.ID(), blk2.ID()) {
 			panic("id not equal")
 		}
+		blk2, err = c.bm.GetBlock(blk.ID())
+		if err != nil {
+			panic(err)
+		}
+		if !bytes.Equal(blk.ID(), blk2.ID()) {
+			panic("id not equal")
+		}
+		blk2, err = c.bm.GetLastBlock()
+		if err != nil {
+			panic(err)
+		}
+		if !bytes.Equal(blk.ID(), blk2.ID()) {
+			panic("id not equal")
+		}
 
 		height++
 		time.Sleep(1 * time.Second)
@@ -167,6 +181,27 @@ func (c *importOnlyConsensus) Start() {
 			panic(err)
 		}
 		fmt.Printf("Importer: Finalized Block(%d) %x\n", blk.Height(), blk.ID())
+		blk2, err := c.bm.GetBlockByHeight(blk.Height())
+		if err != nil {
+			panic(err)
+		}
+		if !bytes.Equal(blk.ID(), blk2.ID()) {
+			panic("id not equal")
+		}
+		blk2, err = c.bm.GetBlock(blk.ID())
+		if err != nil {
+			panic(err)
+		}
+		if !bytes.Equal(blk.ID(), blk2.ID()) {
+			panic("id not equal")
+		}
+		blk2, err = c.bm.GetLastBlock()
+		if err != nil {
+			panic(err)
+		}
+		if !bytes.Equal(blk.ID(), blk2.ID()) {
+			panic("id not equal")
+		}
 
 		b, err := c.bm.GetBlockByHeight(blk.Height())
 		if err != nil {
