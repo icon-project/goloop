@@ -56,7 +56,7 @@ type BlockManager interface {
 	//	Finalize updates world state according to Block block and removes non-finalized committed blocks with the same height as block from persistent storage.
 	Finalize(Block) error
 
-	GetTransactionInfo(id []byte) TransactionInfo
+	GetTransactionInfo(id []byte) (TransactionInfo, error)
 }
 
 type TransactionInfo interface {

@@ -738,28 +738,28 @@ func (txInfo *transactionInfo) GetReceipt() module.Receipt {
 	return txInfo._sm.ReceiptFromTransactionID(txInfo._txID)
 }
 
-func (m *manager) GetTransactionInfo(id []byte) module.TransactionInfo {
+func (m *manager) GetTransactionInfo(id []byte) (module.TransactionInfo, error) {
 	m.syncer.begin()
 	defer m.syncer.end()
 
 	return m.getTransactionInfo(id)
 }
 
-func (m *manager) getTransactionInfo(id []byte) module.TransactionInfo {
+func (m *manager) getTransactionInfo(id []byte) (module.TransactionInfo, error) {
 	// TODO handle V1 in GetTransactionInfo
 	tlb := m.bucketFor(db.TransactionLocatorByHash)
 	var loc transactionLocator
 	err := tlb.get(raw(id), &loc)
 	if err != nil {
-		return nil
+		return nil, common.ErrNotFound
 	}
 	block, err := m.getBlockByHeight(loc.BlockHeight)
 	if err != nil {
-		return nil
+		return nil, common.ErrInvalidState
 	}
 	mtr, err := block.NormalTransactions().Get(loc.IndexInGroup)
 	if err != nil {
-		return nil
+		return nil, common.ErrInvalidState
 	}
 	return &transactionInfo{
 		_sm:      m.sm,
@@ -768,7 +768,7 @@ func (m *manager) getTransactionInfo(id []byte) module.TransactionInfo {
 		_index:   loc.IndexInGroup,
 		_group:   loc.TransactionGroup,
 		_mtr:     mtr,
-	}
+	}, nil
 }
 
 func (m *manager) GetBlockByHeight(height int64) (module.Block, error) {
