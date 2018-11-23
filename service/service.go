@@ -29,9 +29,11 @@ type WorldContext interface {
 	WorldState
 	StepPrice() *big.Int
 	TimeStamp() int64
-	BlockHeight() uint64
+	BlockHeight() int64
 	Treasury() module.Address
 	WorldStateChanged(ws WorldState) WorldContext
+	WorldVirtualState() WorldVirtualState
+	GetFuture(lq []LockRequest) WorldContext
 }
 
 type Transaction interface {
