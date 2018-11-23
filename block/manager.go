@@ -595,6 +595,8 @@ func (m *manager) finalize(bn *bnode) error {
 			return common.ErrUnknown
 		}
 		b.set(block.Height(), raw(block.ID()))
+		chainProp := m.bucketFor(db.ChainProperty)
+		chainProp.set(raw(keyLastBlockHeight), block.Height())
 	}
 	// TODO update DB for v1 : blockV1, trLocatorByHash
 	return nil
