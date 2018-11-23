@@ -53,6 +53,15 @@ func newTransition(parent *transition, patchtxs module.TransactionList, normaltx
 	} else {
 		step = stepInited
 	}
+
+	var height int64
+	var timestamp int64
+	if parent != nil {
+		height = parent.height + 1
+		// TODO set a correct timestamp.
+		timestamp = time.Now().UnixNano() / 1000
+	}
+
 	if patchtxs == nil {
 		patchtxs = newTransactionListFromList(parent.db, nil)
 	}
@@ -60,10 +69,9 @@ func newTransition(parent *transition, patchtxs module.TransactionList, normaltx
 		normaltxs = newTransactionListFromList(parent.db, nil)
 	}
 	return &transition{
-		parent: parent,
-		height: parent.height + 1,
-		// TODO set a correct timestamp
-		timestamp:          time.Now().UnixNano() / 1000,
+		parent:             parent,
+		height:             height,
+		timestamp:          timestamp,
 		patchTransactions:  patchtxs,
 		normalTransactions: normaltxs,
 		db:                 parent.db,
@@ -152,15 +160,25 @@ func (t *transition) LogBloom() []byte {
 	return t.logBloom.Bytes()
 }
 
+func (t *transition) newWorldContext() WorldContext {
+	var ws WorldState
+	if t.parent != nil {
+		var err error
+		ws, err = WorldStateFromSnapshot(t.parent.worldSnapshot)
+		if err != nil {
+			log.Panicf("Fail to build world state from snapshot err=%+v", err)
+		}
+	} else {
+		ws = NewWorldState(t.db, nil, nil)
+	}
+	return NewWorldContext(ws, t.timestamp, t.height)
+}
+
 func (t *transition) executeSync(alreadyValidated bool) {
 	var normalCount, patchCount int
 	if !alreadyValidated {
 		var ok bool
-		ws, err := WorldStateFromSnapshot(t.parent.worldSnapshot)
-		if err != nil {
-			log.Panicf("Fail to build world state from snapshot err=%+v", err)
-		}
-		wc := NewWorldContext(ws, t.timestamp, uint64(t.height))
+		wc := t.newWorldContext()
 		ok, patchCount = t.validateTxs(t.patchTransactions, wc)
 		if !ok {
 			return
@@ -188,11 +206,7 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	t.step = stepExecuting
 	t.mutex.Unlock()
 
-	ws, err := WorldStateFromSnapshot(t.parent.worldSnapshot)
-	if err != nil {
-		log.Panicf("Fail to make WorldState from snapshot err=%+v", err)
-	}
-	wc := NewWorldContext(ws, t.timestamp, uint64(t.height))
+	wc := t.newWorldContext()
 	patchReceipts := make([]Receipt, patchCount)
 	t.executeTxs(t.patchTransactions, wc, patchReceipts)
 	normalReceipts := make([]Receipt, normalCount)
