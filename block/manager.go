@@ -579,7 +579,7 @@ func (m *manager) finalize(bn *bnode) error {
 				TransactionGroup: module.TransactionGroupPatch,
 				IndexInGroup:     i,
 			}
-			lb.set(raw(tr.Hash()), trLoc)
+			lb.set(raw(tr.ID()), trLoc)
 		}
 		for it := block.NormalTransactions().Iterator(); it.Has(); it.Next() {
 			tr, i, _ := it.Get()
@@ -588,7 +588,7 @@ func (m *manager) finalize(bn *bnode) error {
 				TransactionGroup: module.TransactionGroupNormal,
 				IndexInGroup:     i,
 			}
-			lb.set(raw(tr.Hash()), trLoc)
+			lb.set(raw(tr.ID()), trLoc)
 		}
 		b := m.bucketFor(db.BlockHeaderHashByHeight)
 		if b == nil {
