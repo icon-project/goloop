@@ -1,133 +1,89 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
-	"fmt"
-	"log"
-	"path/filepath"
-	"strings"
-
-	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/chain"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
-	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/consensus"
-	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
-	"github.com/icon-project/goloop/rpc"
-	"github.com/icon-project/goloop/service"
+	"io/ioutil"
+	"log"
+	"os"
 )
 
-type singleChain struct {
-	nid    int
-	wallet module.Wallet
-
-	database db.Database
-	sm       module.ServiceManager
-	bm       module.BlockManager
-	cs       module.Consensus
-	sv       rpc.JsonRpcServer
-	nt       module.NetworkTransport
-	nm       module.NetworkManager
+type GoChainConfig struct {
+	chain.Config
+	P2PAddr string `json:"p2p"`
+	Key     []byte `json:"key"`
 }
-
-func (c *singleChain) GetDatabase() db.Database {
-	return c.database
-}
-
-func (c *singleChain) GetWallet() module.Wallet {
-	return c.wallet
-}
-
-func (c *singleChain) GetNID() int {
-	return c.nid
-}
-
-var genesisTxFile = "/genesisTx.json"
-var topDir = "goloop"
-
-func (c *singleChain) GetGenesisTxPath() string {
-	path, _ := filepath.Abs(".")
-	base := filepath.Base(path)
-	switch {
-	case strings.Compare(base, topDir) == 0:
-		path = path + genesisTxFile
-	case strings.Compare(base, "icon-project") == 0:
-		path = path + "/" + topDir + genesisTxFile
-	default:
-		log.Panicln("Not considered case")
-	}
-
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		log.Panicln("Failed to get file path, err : ", err)
-	}
-	return absPath
-}
-func voteListDecoder([]byte) module.VoteList {
-	return nil
-}
-
-func (c *singleChain) VoteListDecoder() module.VoteListDecoder {
-	return module.VoteListDecoder(voteListDecoder)
-}
-
-func (c *singleChain) start() {
-	c.database = db.NewMapDB()
-
-	c.sm = service.NewManager(c)
-	c.bm = block.NewManager(c, c.sm)
-	c.cs = consensus.NewConsensus(c.bm)
-	c.sv = rpc.NewJsonRpcServer(c.bm, c.sm)
-	channel := fmt.Sprintf("%x", c.nid)
-
-	c.nm = network.NewManager(channel, c.nt, toRoles(role)...)
-	if seedAddr != "" {
-		c.nt.Dial(seedAddr, channel)
-	}
-
-	go c.cs.Start()
-	c.sv.ListenAndServe(rpcAddr)
-}
-
-func toRoles(r uint) []module.Role {
-	roles := make([]module.Role, 0)
-	switch r {
-	case 1:
-		roles = append(roles, module.ROLE_SEED)
-	case 2:
-		roles = append(roles, module.ROLE_VALIDATOR)
-	case 3:
-		roles = append(roles, module.ROLE_VALIDATOR)
-		roles = append(roles, module.ROLE_SEED)
-	}
-	return roles
-}
-
-var (
-	rpcAddr     string
-	p2pAddr     string
-	seedAddr    string
-	role        uint
-	asValidator bool
-	asSeed      bool
-)
 
 func main() {
-	c := new(singleChain)
+	var configFile, genesisFile string
+	var generate bool
+	var cfg GoChainConfig
 
-	flag.IntVar(&c.nid, "nid", 1, "Chain Network ID")
-	flag.StringVar(&rpcAddr, "rpc", ":9080", "Listen ip-port of JSON-RPC")
-	flag.StringVar(&p2pAddr, "p2p", "127.0.0.1:8080", "Listen ip-port of P2P")
-	flag.StringVar(&seedAddr, "seed", "", "Ip-port of Seed")
-	flag.UintVar(&role, "role", 0, "[0:None, 1:Seed, 2:Validator, 3:Both]")
+	flag.StringVar(&configFile, "config", "", "Parsing configuration file")
+	flag.BoolVar(&generate, "gen", false, "Generate configuration file")
+	flag.StringVar(&cfg.Channel, "channel", "default", "Channel name for the chain")
+	flag.StringVar(&cfg.P2PAddr, "p2p", "127.0.0.1:8080", "Listen ip-port of P2P")
+	flag.IntVar(&cfg.NID, "nid", 1, "Chain Network ID")
+	flag.StringVar(&cfg.RPCAddr, "rpc", ":9080", "Listen ip-port of JSON-RPC")
+	flag.StringVar(&cfg.SeedAddr, "seed", "", "Ip-port of Seed")
+	flag.StringVar(&genesisFile, "genesis", "", "Genesis transaction param")
+	flag.UintVar(&cfg.Role, "role", 0, "[0:None, 1:Seed, 2:Validator, 3:Both]")
 	flag.Parse()
 
-	priK, _ := crypto.GenerateKeyPair()
-	c.wallet, _ = common.WalletFromPrivateKey(priK)
-	c.nt = network.NewTransport(p2pAddr, priK)
-	c.nt.Listen()
-	defer c.nt.Close()
+	if len(genesisFile) > 0 {
+		genesis, err := ioutil.ReadFile(genesisFile)
+		if err != nil {
+			log.Panicf("Fail to open genesis file=%s err=%+v", genesisFile, err)
+		}
+		cfg.Genesis = genesis
+	}
 
-	c.start()
+	if len(configFile) > 0 && !generate {
+		if bs, e := ioutil.ReadFile(configFile); e == nil {
+			if err := json.Unmarshal(bs, &cfg); err != nil {
+				log.Panicf("Illegal config file=%s err=%+v", configFile, err)
+			}
+		} else {
+			log.Panicf("Fail to open config file=%s err=%+v", configFile, e)
+		}
+	}
+
+	key := cfg.Key
+	var priK *crypto.PrivateKey
+	if len(key) == 0 {
+		priK, _ = crypto.GenerateKeyPair()
+		cfg.Key = priK.Bytes()
+	} else {
+		var err error
+		if priK, err = crypto.ParsePrivateKey(key); err != nil {
+			log.Panicf("Illegal key data=[%x]", key)
+		}
+	}
+
+	if generate {
+		f, err := os.OpenFile(configFile, os.O_CREATE|os.O_WRONLY, 0777)
+		if err != nil {
+			log.Panicf("Fail to open file=%s err=%+v", configFile, err)
+		}
+
+		enc := json.NewEncoder(f)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(&cfg); err != nil {
+			log.Panicf("Fail to generate JSON for %+v", cfg)
+		}
+		f.Close()
+		os.Exit(0)
+	}
+
+	wallet, _ := common.WalletFromPrivateKey(priK)
+	nt := network.NewTransport(cfg.P2PAddr, priK)
+	nt.Listen()
+	defer nt.Close()
+
+	c := chain.NewChain(wallet, nt, &cfg.Config)
+	c.Start()
 }

@@ -50,7 +50,7 @@ type manager struct {
 }
 
 func (m *manager) db() db.Database {
-	return m.chain.GetDatabase()
+	return m.chain.Database()
 }
 
 type taskState int
@@ -305,7 +305,7 @@ func (pt *proposeTask) _onExecute(err error) {
 	block := &blockV2{
 		height:             pt.parentBlock.Height() + 1,
 		timestamp:          time.Now(),
-		proposer:           pt.manager.chain.GetWallet().Address(),
+		proposer:           pt.manager.chain.Wallet().Address(),
 		prevID:             pt.parentBlock.ID(),
 		logBloom:           pmtr.LogBloom(),
 		result:             pmtr.Result(),

@@ -3,7 +3,6 @@ package service
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"time"
 
@@ -29,11 +28,11 @@ type manager struct {
 }
 
 func NewManager(chain module.Chain) module.ServiceManager {
-	bk, _ := chain.GetDatabase().GetBucket(db.MerkleTrie)
+	bk, _ := chain.Database().GetBucket(db.MerkleTrie)
 	return &manager{
 		patchTxPool:  NewtransactionPool(bk),
 		normalTxPool: NewtransactionPool(bk),
-		db:           chain.GetDatabase(),
+		db:           chain.Database(),
 		chain:        chain,
 	}
 }
@@ -75,11 +74,7 @@ func (m *manager) ProposeTransition(parent module.Transition) (module.Transition
 func (m *manager) ProposeGenesisTransition(parent module.Transition) (module.Transition, error) {
 	if pt, ok := parent.(*transition); ok {
 		// TODO: temp code below to create genesis transaction. remove later
-		txString, err := ioutil.ReadFile(m.chain.GetGenesisTxPath())
-		if err != nil {
-			return nil, errors.New("File not exist")
-		}
-		ntx, err := NewTransactionFromJSON([]byte(txString))
+		ntx, err := NewTransactionFromJSON(m.chain.Genesis())
 		if err != nil {
 			log.Panicf("Failed to load genesis transaction")
 			return nil, err

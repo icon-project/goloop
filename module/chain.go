@@ -9,9 +9,9 @@ type Wallet interface {
 }
 
 type Chain interface {
-	GetDatabase() db.Database
-	GetWallet() Wallet
-	GetNID() int
+	Database() db.Database
+	Wallet() Wallet
+	NID() int
+	Genesis() []byte
 	VoteListDecoder() VoteListDecoder
-	GetGenesisTxPath() string
 }
