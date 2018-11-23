@@ -35,6 +35,13 @@ func (key *PrivateKey) PublicKey() *PublicKey {
 	return pk
 }
 
+// Bytes returns bytes form of private key.
+func (key *PrivateKey) Bytes() []byte {
+	kb := make([]byte, PrivateKeyLen)
+	copy(kb, key.bytes)
+	return kb
+}
+
 // TODO add 'func ToECDSA() ecdsa.PrivateKey' if needed
 
 const (
