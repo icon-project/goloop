@@ -13,4 +13,5 @@ type Chain interface {
 	GetWallet() Wallet
 	GetNID() int
 	VoteListDecoder() VoteListDecoder
+	GetGenesisTxPath() string
 }

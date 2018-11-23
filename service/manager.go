@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"time"
 
@@ -23,7 +24,8 @@ type manager struct {
 	patchTxPool  *transactionPool
 	normalTxPool *transactionPool
 
-	db db.Database
+	db    db.Database
+	chain module.Chain
 }
 
 func NewManager(chain module.Chain) module.ServiceManager {
@@ -32,6 +34,7 @@ func NewManager(chain module.Chain) module.ServiceManager {
 		patchTxPool:  NewtransactionPool(bk),
 		normalTxPool: NewtransactionPool(bk),
 		db:           chain.GetDatabase(),
+		chain:        chain,
 	}
 }
 
@@ -69,24 +72,14 @@ func (m *manager) ProposeTransition(parent module.Transition) (module.Transition
 		nil
 }
 
-//{"accounts": [{"name": "god", "address": "hx5a05b58a25a1e5ea0f1d5715e1f655dffc1fb30a", "balance": "0x2961fff8ca4a62327800000"}, {"name": "treasury", "address": "hx1000000000000000000000000000000000000000", "balance": "0x0"}], "message": "A rhizome has no beginning or end; it is always in the middle, between things, interbeing, intermezzo. The tree is filiation, but the rhizome is alliance, uniquely alliance. The tree imposes the verb \"to be\" but the fabric of the rhizome is the conjunction, \"and ... and ...and...\"This conjunction carries enough force to shake and uproot the verb \"to be.\" Where are you going? Where are you coming from? What are you heading for? These are totally useless questions.\n\n - Mille Plateaux, Gilles Deleuze & Felix Guattari\n\n\"Hyperconnect the world\""}
-var genesisTx = "{\"accounts\": " +
-	"[{\"name\": \"god\", " +
-	"\"address\": \"hx5a05b58a25a1e5ea0f1d5715e1f655dffc1fb30a\", " +
-	"\"balance\": \"0x2961fff8ca4a62327800000\"}, " +
-	"{\"name\": \"treasury\", " +
-	"\"address\": \"hx1000000000000000000000000000000000000000\", " +
-	"\"balance\": \"0x0\"}], " +
-	"\"message\": \"A rhizome has no beginning or end; " +
-	"it is always in the middle, between things, interbeing, intermezzo. " +
-	"The tree is filiation, but the rhizome is alliance, uniquely alliance. " +
-	"The tree imposes the verb to be but the fabric of the rhizome is the conjunction, and ... and ...and...This conjunction carries enough force to shake and uproot the verb to be. Where are you going? Where are you coming from? What are you heading for? These are totally useless questions.- Mille Plateaux, Gilles Deleuze & Felix GuattariHyperconnect the world\"," +
-	"\"validatorlist\": [\"01234\", \"12335\"]}"
-
 func (m *manager) ProposeGenesisTransition(parent module.Transition) (module.Transition, error) {
 	if pt, ok := parent.(*transition); ok {
 		// TODO: temp code below to create genesis transaction. remove later
-		ntx, err := NewTransactionFromJSON([]byte(genesisTx))
+		txString, err := ioutil.ReadFile(m.chain.GetGenesisTxPath())
+		if err != nil {
+			return nil, errors.New("File not exist")
+		}
+		ntx, err := NewTransactionFromJSON([]byte(txString))
 		if err != nil {
 			log.Panicf("Failed to load genesis transaction")
 			return nil, err

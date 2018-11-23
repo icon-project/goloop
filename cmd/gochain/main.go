@@ -3,6 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
+	"path/filepath"
+	"strings"
 
 	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/common"
@@ -40,6 +43,27 @@ func (c *singleChain) GetNID() int {
 	return c.nid
 }
 
+var genesisTxFile = "/genesisTx.json"
+var topDir = "goloop"
+
+func (c *singleChain) GetGenesisTxPath() string {
+	path, _ := filepath.Abs(".")
+	base := filepath.Base(path)
+	switch {
+	case strings.Compare(base, topDir) == 0:
+		path = path + genesisTxFile
+	case strings.Compare(base, "icon-project") == 0:
+		path = path + "/" + topDir + genesisTxFile
+	default:
+		log.Panicln("Not considered case")
+	}
+
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		log.Panicln("Failed to get file path, err : ", err)
+	}
+	return absPath
+}
 func voteListDecoder([]byte) module.VoteList {
 	return nil
 }
