@@ -2,12 +2,15 @@ package service
 
 import (
 	"bytes"
+
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
 )
 
+// TODO It assumes normal transaction. When supporting patch, add skipping
+// timestamp checking for it at PreValidate().
 type transaction struct {
 	Transaction
 }

@@ -155,7 +155,7 @@ func (g *genesisV3) Execute(wc WorldContext) (Receipt, error) {
 	for i, validator := range g.Validatorlist {
 		validators[i], _ = ValidatorFromAddress(validator)
 	}
-	//wc.SetValidators(g., validators)
+	wc.SetValidators(validators)
 	return rct, nil
 }
 
