@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -31,38 +33,39 @@ type chain struct {
 	sv       rpc.JsonRpcServer
 }
 
-func (c *chain) GetDatabase() db.Database {
+func (c *chain) Database() db.Database {
 	return c.database
 }
 
-func (c *chain) GetWallet() module.Wallet {
+func (c *chain) Wallet() module.Wallet {
 	return c.wallet
 }
 
-func (c *chain) GetNID() int {
+func (c *chain) NID() int {
 	return c.nid
 }
 
-var genesisTxFile = "/genesisTx.json"
-var topDir = "goloop"
-
-func (c *chain) GetGenesisTxPath() string {
-	path, _ := filepath.Abs(".")
-	base := filepath.Base(path)
-	switch {
-	case strings.Compare(base, topDir) == 0:
-		path = path + genesisTxFile
-	case strings.Compare(base, "icon-project") == 0:
-		path = path + "/" + topDir + genesisTxFile
-	default:
-		log.Panicln("Not considered case")
+func (c *chain) Genesis() []byte {
+	genPath := genesisFile
+	if len(genPath) == 0 {
+		file := "genesisTx.json"
+		topDir := "goloop"
+		path, _ := filepath.Abs(".")
+		base := filepath.Base(path)
+		switch {
+		case strings.Compare(base, topDir) == 0:
+			genPath = path + "/" + file
+		case strings.Compare(base, "icon-project") == 0:
+			genPath = path + "/" + topDir + "/" + file
+		default:
+			log.Panicln("Not considered case")
+		}
 	}
-
-	absPath, err := filepath.Abs(path)
+	gen, err := ioutil.ReadFile(genPath)
 	if err != nil {
-		log.Panicln("Failed to get file path, err : ", err)
+		log.Panicln("Failed to read genesisFile. err : ", err)
 	}
-	return absPath
+	return gen
 }
 
 func voteListDecoder([]byte) module.VoteList {
@@ -350,7 +353,11 @@ func (t transaction) String() string {
 	return fmt.Sprint(t.Transaction)
 }
 
+var genesisFile string
+
 func main() {
+	flag.StringVar(&genesisFile, "genesis", "", "Genesis transaction param")
+	flag.Parse()
 	proposer := new(chain)
 	importer := new(chain)
 
