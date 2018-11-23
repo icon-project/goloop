@@ -710,13 +710,12 @@ func (m *manager) newBlockFromReader(r io.Reader) (module.Block, error) {
 }
 
 type transactionInfo struct {
-	_sm           module.ServiceManager
-	_txID         []byte
-	_txBlock      module.Block
-	_receiptBlock module.Block
-	_index        int
-	_group        module.TransactionGroup
-	_mtr          module.Transaction
+	_sm      module.ServiceManager
+	_txID    []byte
+	_txBlock module.Block
+	_index   int
+	_group   module.TransactionGroup
+	_mtr     module.Transaction
 }
 
 func (txInfo *transactionInfo) Block() module.Block {
@@ -758,22 +757,17 @@ func (m *manager) getTransactionInfo(id []byte) module.TransactionInfo {
 	if err != nil {
 		return nil
 	}
-	rblock, err := m.getBlockByHeight(loc.BlockHeight + 1)
-	if err != nil {
-		return nil
-	}
 	mtr, err := block.NormalTransactions().Get(loc.IndexInGroup)
 	if err != nil {
 		return nil
 	}
 	return &transactionInfo{
-		_sm:           m.sm,
-		_txID:         id,
-		_txBlock:      block,
-		_receiptBlock: rblock,
-		_index:        loc.IndexInGroup,
-		_group:        loc.TransactionGroup,
-		_mtr:          mtr,
+		_sm:      m.sm,
+		_txID:    id,
+		_txBlock: block,
+		_index:   loc.IndexInGroup,
+		_group:   loc.TransactionGroup,
+		_mtr:     mtr,
 	}
 }
 
