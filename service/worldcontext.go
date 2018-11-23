@@ -10,7 +10,23 @@ type worldContext struct {
 	WorldState
 
 	timeStamp   int64
-	blockHeight uint64
+	blockHeight int64
+}
+
+func (c *worldContext) WorldVirtualState() WorldVirtualState {
+	if wvs, ok := c.WorldState.(WorldVirtualState); ok {
+		return wvs
+	}
+	return NewWorldVirtualState(c.WorldState, nil)
+}
+
+func (c *worldContext) GetFuture(lq []LockRequest) WorldContext {
+	wvs := c.WorldVirtualState()
+	if len(lq) == 0 {
+		return c.WorldStateChanged(wvs)
+	} else {
+		return c.WorldStateChanged(wvs.GetFuture(lq))
+	}
 }
 
 var stepPrice = big.NewInt(10 * GIGA)
@@ -24,7 +40,7 @@ func (c *worldContext) TimeStamp() int64 {
 	return c.timeStamp
 }
 
-func (c *worldContext) BlockHeight() uint64 {
+func (c *worldContext) BlockHeight() int64 {
 	return c.blockHeight
 }
 
@@ -42,7 +58,7 @@ func (c *worldContext) WorldStateChanged(ws WorldState) WorldContext {
 	}
 }
 
-func NewWorldContext(ws WorldState, ts int64, height uint64) WorldContext {
+func NewWorldContext(ws WorldState, ts int64, height int64) WorldContext {
 	return &worldContext{
 		WorldState:  ws,
 		timeStamp:   ts,

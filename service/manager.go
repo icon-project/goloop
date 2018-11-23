@@ -48,7 +48,7 @@ func (m *manager) ProposeTransition(parent module.Transition) (module.Transition
 	var timestamp int64 = time.Now().UnixNano() / 1000
 
 	ws, _ := WorldStateFromSnapshot(pt.worldSnapshot)
-	wc := NewWorldContext(ws, timestamp, uint64(pt.height+1))
+	wc := NewWorldContext(ws, timestamp, pt.height+1)
 
 	patchTxs := m.patchTxPool.candidate(wc, -1) // try to add all patches in the block
 	maxTxNum := txMaxNumInBlock - len(patchTxs)
