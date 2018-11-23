@@ -131,7 +131,7 @@ func main() {
 	api := flag.String("api", "v3", "JSON RPC API Version")
 	flag.Parse()
 
-	wallet := Wallet{"https://wallet.icon.foundation/api/"+ *api}
+	wallet := Wallet{"https://wallet.icon.foundation/api/" + *api}
 	if *network == "test" {
 		wallet = Wallet{"https://testwallet.icon.foundation/api/" + *api}
 	}
@@ -167,7 +167,6 @@ func main() {
 				log.Println("VERIFY FAILs", err)
 				break
 			}
-			fmt.Println("Proposer", blk.Proposer())
 		}
 	}
 	return
