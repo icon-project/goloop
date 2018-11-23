@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/big"
 	"strconv"
+	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
@@ -153,9 +154,12 @@ func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
 		return ErrNotEnoughBalance
 	}
 
-	tsdiff := wc.TimeStamp() - tx.TimeStamp.Value
-	if tsdiff < -5*60*1000*1000 || tsdiff > 5*60*1000*1000 {
-		return ErrTimeOut
+	if configOnCheckingTimestamp {
+		tsdiff := wc.TimeStamp() - tx.TimeStamp.Value
+		if tsdiff < int64(-5*time.Minute/time.Microsecond) ||
+			tsdiff > int64(5*time.Minute/time.Microsecond) {
+			return ErrTimeOut
+		}
 	}
 
 	if update {
