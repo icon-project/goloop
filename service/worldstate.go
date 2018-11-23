@@ -34,6 +34,7 @@ type WorldState interface {
 }
 
 type worldSnapshotImpl struct {
+	database   db.Database
 	accounts   trie.SnapshotForObject
 	validators module.ValidatorList
 }
@@ -101,8 +102,12 @@ func (ws *worldStateImpl) Reset(isnapshot WorldSnapshot) error {
 	if !ok {
 		return errors.New("InvalidSnapshotType")
 	}
+	if ws.database != snapshot.database {
+		return errors.New("InvalidSnapshotWithDifferentDB")
+	}
 	ws.accounts.Reset(snapshot.accounts)
 	ws.mutableAccounts = make(map[string]AccountState)
+	ws.validators = snapshot.validators
 	return nil
 }
 
@@ -178,6 +183,7 @@ func (ws *worldStateImpl) GetSnapshot() WorldSnapshot {
 		}
 	}
 	return &worldSnapshotImpl{
+		database:   ws.database,
 		accounts:   ws.accounts.GetSnapshot(),
 		validators: ws.validators,
 	}
@@ -185,6 +191,7 @@ func (ws *worldStateImpl) GetSnapshot() WorldSnapshot {
 
 func NewWorldState(database db.Database, stateHash []byte, vl module.ValidatorList) WorldState {
 	ws := new(worldStateImpl)
+	ws.database = database
 	ws.accounts = trie_manager.NewMutableForObject(database, stateHash, reflect.TypeOf((*accountSnapshotImpl)(nil)))
 	ws.mutableAccounts = make(map[string]AccountState)
 	if vl == nil {
@@ -197,6 +204,7 @@ func NewWorldState(database db.Database, stateHash []byte, vl module.ValidatorLi
 func WorldStateFromSnapshot(wss WorldSnapshot) (WorldState, error) {
 	if wss, ok := wss.(*worldSnapshotImpl); ok {
 		ws := new(worldStateImpl)
+		ws.database = wss.database
 		ws.accounts = trie_manager.NewMutableFromImmutableForObject(wss.accounts)
 		ws.mutableAccounts = make(map[string]AccountState)
 		ws.validators = wss.validators
