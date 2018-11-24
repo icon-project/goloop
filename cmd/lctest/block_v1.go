@@ -60,7 +60,7 @@ func (b *blockV1) Version() int {
 }
 
 func (b *blockV1) ID() []byte {
-	return b.blockV1Impl.BlockHash.ToBytes()
+	return b.blockV1Impl.BlockHash.Bytes()
 }
 
 func (b *blockV1) Height() int64 {
@@ -72,7 +72,7 @@ func (b *blockV1) PrevRound() int {
 }
 
 func (b *blockV1) PrevID() []byte {
-	return b.blockV1Impl.PrevBlockHash.ToBytes()
+	return b.blockV1Impl.PrevBlockHash.Bytes()
 }
 
 func (b *blockV1) Votes() module.VoteList {

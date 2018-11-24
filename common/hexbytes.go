@@ -28,7 +28,7 @@ func (rh *RawHexBytes) UnmarshalJSON(b []byte) error {
 	}
 }
 
-func (rh RawHexBytes) ToBytes() []byte {
+func (rh RawHexBytes) Bytes() []byte {
 	if rh == nil {
 		return nil
 	}
