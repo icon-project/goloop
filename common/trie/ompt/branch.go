@@ -196,6 +196,10 @@ func (n *branch) delete(m *mpt, keys []byte) (node, bool, error) {
 		}
 		if br.value == nil {
 			alive := br.children[idx]
+			alive, err := alive.realize(m)
+			if err != nil {
+				return n, false, err
+			}
 			switch nn := alive.(type) {
 			case *extension:
 				return nn.getKeyPrepended([]byte{byte(idx)}), true, nil
