@@ -364,11 +364,18 @@ func (wvs *worldVirtualState) Commit() {
 		return
 	}
 
-	for _, las := range wvs.accountStates {
+	for id, las := range wvs.accountStates {
 		if las.lock == AccountWriteLock {
 			las.lock = AccountWriteUnlock
-			ass := las.state.GetSnapshot()
-			las.state = newAccountROState(ass)
+			if las.depend != nil {
+				las.depend.WaitCommit()
+				las.state = las.depend.GetAccountROState([]byte(id))
+				las.base = las.state.GetSnapshot()
+				las.depend = nil
+			} else {
+				ass := las.state.GetSnapshot()
+				las.state = newAccountROState(ass)
+			}
 		}
 	}
 
