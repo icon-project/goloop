@@ -13,11 +13,11 @@ import (
 )
 
 const (
-	// AddressBytes indicate number of required bytes for address.
-	AddressBytes = 20
+	AddressIDBytes = 20
+	AddressBytes   = AddressIDBytes + 1
 )
 
-type Address [AddressBytes + 1]byte
+type Address [AddressBytes]byte
 
 func (a *Address) IsContract() bool {
 	return a[0] == 1
@@ -97,8 +97,8 @@ func (a *Address) SetTypeAndID(ic bool, id []byte) error {
 		return ErrIllegalArgument
 	}
 	switch {
-	case len(id) < AddressBytes:
-		copy(a[AddressBytes-len(id)+1:], id)
+	case len(id) < AddressIDBytes:
+		copy(a[AddressIDBytes-len(id)+1:], id)
 	default:
 		copy(a[1:], id)
 	}
