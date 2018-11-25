@@ -68,7 +68,7 @@ func (hs *HexBytes) UnmarshalJSON(b []byte) error {
 	}
 }
 
-func (hs HexBytes) ToBytes() []byte {
+func (hs HexBytes) Bytes() []byte {
 	if hs == nil {
 		return nil
 	}
