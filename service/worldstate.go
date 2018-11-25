@@ -158,7 +158,6 @@ func (ws *worldStateImpl) GetAccountSnapshot(id []byte) AccountSnapshot {
 	if obj != nil {
 		return obj.(*accountSnapshotImpl)
 	}
-	log.Printf("accountFor(%x) is nil", key)
 
 	ass := new(accountSnapshotImpl)
 	ass.database = ws.database
