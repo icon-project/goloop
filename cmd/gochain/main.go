@@ -3,13 +3,14 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"io/ioutil"
+	"log"
+	"os"
+
 	"github.com/icon-project/goloop/chain"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/network"
-	"io/ioutil"
-	"log"
-	"os"
 )
 
 type GoChainConfig struct {
@@ -80,7 +81,7 @@ func main() {
 	}
 
 	wallet, _ := common.WalletFromPrivateKey(priK)
-	nt := network.NewTransport(cfg.P2PAddr, priK)
+	nt := network.NewTransport(cfg.P2PAddr, wallet)
 	nt.Listen()
 	defer nt.Close()
 

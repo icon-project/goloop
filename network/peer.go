@@ -187,7 +187,7 @@ func (p *Peer) sendPacket(pkt *Packet) {
 }
 
 const (
-	peerIDSize = 20 //common.AddressBytes
+	peerIDSize = 20 //common.AddressIDBytes
 )
 
 type peerID struct {
@@ -196,6 +196,10 @@ type peerID struct {
 
 func NewPeerID(b []byte) module.PeerID {
 	return &peerID{common.NewAccountAddress(b)}
+}
+
+func NewPeerIDFromAddress(a module.Address) module.PeerID {
+	return NewPeerID(a.ID())
 }
 
 func NewPeerIDFromPublicKey(k *crypto.PublicKey) module.PeerID {

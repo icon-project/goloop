@@ -7,7 +7,6 @@ import (
 	"net"
 	"sync"
 
-	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
 	"github.com/ugorji/go/codec"
 )
@@ -19,10 +18,10 @@ type transport struct {
 	log  *logger
 }
 
-func NewTransport(address string, k *crypto.PrivateKey) module.NetworkTransport {
+func NewTransport(address string, w module.Wallet) module.NetworkTransport {
 	cn := newChannelNegotiator(NetAddress(address))
-	a := newAuthenticator(k)
-	id := NewPeerIDFromPublicKey(a.pubKey)
+	a := newAuthenticator(w)
+	id := NewPeerIDFromAddress(w.Address())
 	pd := newPeerDispatcher(id, cn, a)
 	l := newListener(address, pd.onAccept)
 	t := &transport{l: l, pd: pd, dMap: make(map[string]*Dialer), log: newLogger("Transport", address)}

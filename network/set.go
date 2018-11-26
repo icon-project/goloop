@@ -9,12 +9,12 @@ import (
 
 //TODO KeyEqual()bool, ScoreCompare()int
 type Set struct {
-	m   map[interface{}]int
+	m   map[interface{}]interface{}
 	mtx sync.RWMutex
 }
 
 func NewSet() *Set {
-	return &Set{m: make(map[interface{}]int)}
+	return &Set{m: make(map[interface{}]interface{})}
 }
 
 func (s *Set) Add(v interface{}) bool {
@@ -22,6 +22,17 @@ func (s *Set) Add(v interface{}) bool {
 	s.mtx.Lock()
 	if _, ok := s.m[v]; !ok {
 		s.m[v] = 1
+		return true
+	}
+	return false
+}
+
+func (s *Set) AddWithKeyFunc(v interface{}, keyFunc func(v interface{}) (k interface{})) bool {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+	if _, ok := s.m[v]; !ok {
+		k := keyFunc(v)
+		s.m[k] = v
 		return true
 	}
 	return false
@@ -44,7 +55,9 @@ func (s *Set) Contains(v interface{}) bool {
 	return ok
 }
 func (s *Set) Clear() {
-	s.m = make(map[interface{}]int)
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+	s.m = make(map[interface{}]interface{})
 }
 func (s *Set) IsEmpty() bool {
 	return s.Len() == 0
@@ -55,9 +68,15 @@ func (s *Set) Len() int {
 	return len(s.m)
 }
 func (s *Set) Merge(args ...interface{}) {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
 	for _, v := range args {
-		s.Add(v)
+		s.m[v] = 1
 	}
+}
+func (s *Set) ClearAndAdd(args ...interface{}) {
+	s.Clear()
+	s.Merge(args...)
 }
 
 //Not ordered array
@@ -169,7 +188,7 @@ func (s *PeerSet) getByRole(role PeerRoleFlag) []*Peer {
 }
 func (s *PeerSet) RemoveByRole(role PeerRoleFlag) []*Peer {
 	l := s.getByRole(role)
-	for _, p := range s.getByRole(role) {
+	for _, p := range l {
 		s.Remove(p)
 	}
 	return l
@@ -276,9 +295,32 @@ func (s *PeerIdSet) Contains(id module.PeerID) bool {
 	return s._contains(id)
 }
 func (s *PeerIdSet) Merge(args ...module.PeerID) {
+	var r bool = false
+	defer func() {
+		s.Set.mtx.Unlock()
+		if r {
+			s.onUpdate()
+		}
+	}()
 	for _, id := range args {
-		s.Add(id)
+		if !s._contains(id) {
+			s.Set.m[id] = 1
+			r = true
+		}
 	}
+}
+func (s *PeerIdSet) Array() []module.PeerID {
+	defer s.Set.mtx.RUnlock()
+	s.Set.mtx.RLock()
+	arr := make([]module.PeerID, 0)
+	for k := range s.Set.m {
+		arr = append(arr, k.(module.PeerID))
+	}
+	return arr
+}
+func (s *PeerIdSet) ClearAndAdd(args ...module.PeerID) {
+	s.Clear()
+	s.Merge(args...)
 }
 
 type RoleSet struct {
@@ -287,9 +329,4 @@ type RoleSet struct {
 
 func NewRoleSet() *RoleSet {
 	return &RoleSet{Set: NewSet()}
-}
-func (s *RoleSet) Merge(args ...module.Role) {
-	for _, r := range args {
-		s.Set.Add(r)
-	}
 }

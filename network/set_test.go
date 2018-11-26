@@ -108,6 +108,25 @@ func Test_set_PeerIdSet(t *testing.T) {
 	t.Log(s.Array())
 }
 
+func Test_set_RoleSet(t *testing.T) {
+	s := NewRoleSet()
+	assert.Equal(t, true, s.IsEmpty(), "true")
+	assert.Equal(t, true, s.Add(module.ROLE_SEED), "true")
+	assert.Equal(t, 1, s.Len(), "1")
+	assert.Equal(t, false, s.IsEmpty(), "false")
+	assert.Equal(t, true, s.Add(module.ROLE_VALIDATOR), "true")
+	assert.Equal(t, 2, s.Len(), "2")
+	assert.Equal(t, false, s.Add(module.ROLE_VALIDATOR), "false")
+	assert.Equal(t, 2, s.Len(), "2")
+	assert.Equal(t, true, s.Contains(module.ROLE_SEED), "true")
+	assert.Equal(t, false, s.Contains(module.Role("test")), "false")
+
+	s.Merge(module.ROLE_SEED, module.Role("test"))
+	assert.Equal(t, 3, s.Len(), "3")
+	assert.Equal(t, true, s.Contains(module.Role("test")), "true")
+	t.Log(s.Array())
+}
+
 func newDummyPeerID() *module.PeerID {
 	return nil
 }

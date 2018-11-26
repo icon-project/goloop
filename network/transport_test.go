@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
 )
@@ -85,11 +86,18 @@ func generatePrivateKey() *crypto.PrivateKey {
 	priK, _ := crypto.GenerateKeyPair()
 	return priK
 }
+
+func walletFromGeneratedPrivateKey() module.Wallet {
+	priK, _ := crypto.GenerateKeyPair()
+	w, _ := common.WalletFromPrivateKey(priK)
+	return w
+}
+
 func Test_transport(t *testing.T) {
 	var wg sync.WaitGroup
 
 	nt1 := GetTransport()
-	nt2 := NewTransport(testTransportAddress, generatePrivateKey())
+	nt2 := NewTransport(testTransportAddress, walletFromGeneratedPrivateKey())
 
 	tph1 := newTestPeerHandler("TestPeerHandler1", t, &wg)
 	tph2 := newTestPeerHandler("TestPeerHandler2", t, &wg)

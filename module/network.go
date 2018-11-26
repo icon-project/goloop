@@ -24,7 +24,8 @@ type Membership interface {
 	Unicast(subProtocol ProtocolInfo, bytes []byte, id PeerID) error
 
 	//for Authority management
-	//Role,PeerID 매핑정보는 다른 경로를 통해 공유되는 것을 전제로 한다.
+	SetRole(role Role, peers ...PeerID)
+	GetPeersByRole(role Role) []PeerID
 	AddRole(role Role, peers ...PeerID)
 	RemoveRole(role Role, peers ...PeerID)
 	HasRole(role Role, id PeerID) bool

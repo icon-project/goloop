@@ -3,6 +3,8 @@ package network
 import (
 	"sync"
 
+	"github.com/icon-project/goloop/module"
+
 	"github.com/icon-project/goloop/common/crypto"
 )
 
@@ -90,15 +92,19 @@ func (cn *ChannelNegotiator) handleJoinResponse(pkt *Packet, p *Peer) {
 
 type Authenticator struct {
 	*peerHandler
-	priKey *crypto.PrivateKey
+	wallet module.Wallet
 	pubKey *crypto.PublicKey
 	mtx    sync.Mutex
 }
 
-func newAuthenticator(priK *crypto.PrivateKey) *Authenticator {
+func newAuthenticator(w module.Wallet) *Authenticator {
+	pubK, err := crypto.ParsePublicKey(w.PublicKey())
+	if err != nil {
+		panic(err)
+	}
 	a := &Authenticator{
-		priKey:      priK,
-		pubKey:      priK.PublicKey(),
+		wallet:      w,
+		pubKey:      pubK,
 		peerHandler: newPeerHandler(newLogger("Authenticator", "")),
 	}
 	return a
@@ -143,8 +149,7 @@ func (a *Authenticator) Signature() []byte {
 	a.mtx.Lock()
 	pb := a.pubKey.SerializeUncompressed()
 	h := crypto.SHA3Sum256(pb)
-	s, _ := crypto.NewSignature(h, a.priKey)
-	sb, _ := s.SerializeRSV()
+	sb, _ := a.wallet.Sign(h)
 	return sb
 }
 

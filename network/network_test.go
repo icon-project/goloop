@@ -134,8 +134,8 @@ func (r *testReactor) Response(id module.PeerID) {
 
 func Test_network(t *testing.T) {
 	cnt := GetTransport()
-	snt := NewTransport(testSeedAddress, generatePrivateKey())
-	vnt := NewTransport(testCitizenAddress, generatePrivateKey())
+	snt := NewTransport(testSeedAddress, walletFromGeneratedPrivateKey())
+	vnt := NewTransport(testCitizenAddress, walletFromGeneratedPrivateKey())
 
 	t.Logf("c:%v,s:%v,v:%v", cnt.PeerID(), snt.PeerID(), vnt.PeerID())
 

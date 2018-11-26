@@ -3,6 +3,7 @@ package network
 import (
 	"errors"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
 )
@@ -86,7 +87,8 @@ func GetConfig() *Config {
 func GetTransport() module.NetworkTransport {
 	if singletonTransport == nil {
 		c := GetConfig()
-		singletonTransport = NewTransport(c.ListenAddress, c.PrivateKey)
+		w, _ := common.WalletFromPrivateKey(c.PrivateKey)
+		singletonTransport = NewTransport(c.ListenAddress, w)
 	}
 	return singletonTransport
 }

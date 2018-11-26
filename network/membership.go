@@ -120,6 +120,16 @@ func (ms *membership) getRolePeerIDSet(role module.Role) *PeerIdSet {
 	return s
 }
 
+func (ms *membership) SetRole(role module.Role, peers ...module.PeerID) {
+	s := ms.getRolePeerIDSet(role)
+	s.ClearAndAdd(peers...)
+}
+
+func (ms *membership) GetPeersByRole(role module.Role) []module.PeerID {
+	s := ms.getRolePeerIDSet(role)
+	return s.Array()
+}
+
 func (ms *membership) AddRole(role module.Role, peers ...module.PeerID) {
 	s := ms.getRolePeerIDSet(role)
 	for _, p := range peers {
