@@ -2,6 +2,7 @@ package chain
 
 import (
 	"encoding/json"
+
 	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/consensus"
@@ -80,7 +81,7 @@ func (c *singleChain) Start() {
 	c.sm = service.NewManager(c)
 	c.bm = block.NewManager(c, c.sm)
 	c.cs = consensus.NewConsensus(c.bm)
-	c.sv = rpc.NewJsonRpcServer(c.bm, c.sm)
+	c.sv = rpc.NewJsonRpcServer(c.bm, c.sm, c.nt)
 
 	c.nm = network.NewManager(c.cfg.Channel, c.nt, toRoles(c.cfg.Role)...)
 	if c.cfg.SeedAddr != "" {

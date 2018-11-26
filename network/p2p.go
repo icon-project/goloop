@@ -38,7 +38,7 @@ type PeerToPeer struct {
 
 	//Addresses
 	seeds *NetAddressSet
-	//Only for seed
+	//For seed, root
 	roots *NetAddressSet
 	//[TBD] 2hop peers of current tree for status change
 	grandParent   NetAddress
@@ -249,22 +249,47 @@ type QueryResultMessage struct {
 	Message  string
 }
 
+func (p2p *PeerToPeer) addSeed(p *Peer) {
+	c, o := p2p.seeds.PutByPeer(p)
+	if o != "" {
+		p2p.log.Println("Seed updated NetAddress old:", o, ", now:", p.netAddress, ",peerID:", p.id)
+	}
+	if c != "" {
+		p2p.log.Println("Warnning Seed conflict NetAddress", p.netAddress, "removed:", c, ",now:", p.id)
+	}
+}
+func (p2p *PeerToPeer) removeSeed(p *Peer) {
+	p2p.seeds.RemoveByPeer(p)
+}
+func (p2p *PeerToPeer) addRoot(p *Peer) {
+	c, o := p2p.roots.PutByPeer(p)
+	if o != "" {
+		p2p.log.Println("Root updated NetAddress old:", o, ", now:", p.netAddress, ",peerID:", p.id)
+	}
+	if c != "" {
+		p2p.log.Println("Warnning Root conflict NetAddress", p.netAddress, "removed:", c, ",now:", p.id)
+	}
+}
+func (p2p *PeerToPeer) removeRoot(p *Peer) {
+	p2p.roots.RemoveByPeer(p)
+}
+
 func (p2p *PeerToPeer) setRole(r PeerRoleFlag) {
 	if p2p.self.role != r {
 		p2p.self.role.Set(r)
 		switch r {
 		case p2pRoleNone:
-			p2p.roots.Remove(p2p.self.netAddress)
-			p2p.seeds.Remove(p2p.self.netAddress)
+			p2p.removeRoot(p2p.self)
+			p2p.removeSeed(p2p.self)
 		case p2pRoleSeed:
-			p2p.seeds.Merge(p2p.self.netAddress)
-			p2p.roots.Remove(p2p.self.netAddress)
+			p2p.addSeed(p2p.self)
+			p2p.removeRoot(p2p.self)
 		case p2pRoleRoot:
-			p2p.roots.Merge(p2p.self.netAddress)
-			p2p.seeds.Remove(p2p.self.netAddress)
+			p2p.addRoot(p2p.self)
+			p2p.removeSeed(p2p.self)
 		case p2pRoleRootSeed:
-			p2p.roots.Merge(p2p.self.netAddress)
-			p2p.seeds.Merge(p2p.self.netAddress)
+			p2p.addRoot(p2p.self)
+			p2p.addSeed(p2p.self)
 		}
 	}
 }
@@ -306,8 +331,8 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 	if p2p.isAllowedRole(qm.Role, p) {
 		p.role.Set(qm.Role)
 		if qm.Role == p2pRoleNone {
-			p2p.seeds.Remove(p.netAddress)
-			p2p.roots.Remove(p.netAddress)
+			p2p.removeSeed(p)
+			p2p.removeRoot(p)
 
 			m.Children = p2p.children.NetAddresses()
 			switch m.Role {
@@ -324,16 +349,17 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 				m.Seeds = p2p.seeds.Array()
 			}
 		} else {
+
 			switch qm.Role {
 			case p2pRoleSeed:
-				p2p.seeds.Add(p.netAddress)
-				p2p.roots.Remove(p.netAddress)
+				p2p.addSeed(p)
+				p2p.removeRoot(p)
 			case p2pRoleRoot:
-				p2p.seeds.Remove(p.netAddress)
-				p2p.roots.Add(p.netAddress)
+				p2p.removeSeed(p)
+				p2p.addRoot(p)
 			case p2pRoleRootSeed:
-				p2p.seeds.Add(p.netAddress)
-				p2p.roots.Add(p.netAddress)
+				p2p.addRoot(p)
+				p2p.addSeed(p)
 			}
 			m.Seeds = p2p.seeds.Array()
 			m.Roots = p2p.roots.Array()

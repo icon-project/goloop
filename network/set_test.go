@@ -1,6 +1,8 @@
 package network
 
 import (
+	"fmt"
+	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,25 +11,29 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+func generatePeer() *Peer {
+	id := generatePeerID()
+	na := generateNetAddress()
+	return &Peer{id: id, netAddress: na}
+}
+
+func generatePeerID() module.PeerID {
+	_, pubK := crypto.GenerateKeyPair()
+	return NewPeerIDFromPublicKey(pubK)
+}
+
+func generateNetAddress() NetAddress {
+	return NetAddress(fmt.Sprintf("127.0.0.1:%d", rand.Intn(65536)))
+}
+
 func Test_set_PeerSet(t *testing.T) {
 	s := NewPeerSet()
-	_, pubK1 := crypto.GenerateKeyPair()
-	_, pubK2 := crypto.GenerateKeyPair()
-	_, pubK3 := crypto.GenerateKeyPair()
-	p1 := NewPeerIDFromPublicKey(pubK1)
-	p2 := NewPeerIDFromPublicKey(pubK2)
-	p2_1 := NewPeerIDFromPublicKey(pubK2)
-	p3 := NewPeerIDFromPublicKey(pubK3)
-	n1 := NetAddress("127.0.0.1:8080")
-	n2 := NetAddress("127.0.0.1:8081")
-	n2_1 := NetAddress("127.0.0.1:8081")
-	n3 := NetAddress("127.0.0.1:8082")
-	v1 := &Peer{id: p1, netAddress: n1}
-	v2 := &Peer{id: p2, netAddress: n2}
-	v2_1 := &Peer{id: p2_1, netAddress: n2}
-	v2_2 := &Peer{id: p2, netAddress: n3}
-	v2_3 := &Peer{id: p2, netAddress: n2_1, incomming: true}
-	v3 := &Peer{id: p3, netAddress: n3}
+
+	v1 := generatePeer()
+	v2 := generatePeer()
+	v2_1 := &Peer{id: v2.id, netAddress: v2.netAddress}
+	v2_2 := &Peer{id: v2.id, netAddress: v2.netAddress, incomming: true}
+	v3 := generatePeer()
 
 	assert.Equal(t, true, s.IsEmpty(), "true")
 	assert.Equal(t, true, s.Add(v1), "true")
@@ -37,15 +43,13 @@ func Test_set_PeerSet(t *testing.T) {
 	assert.Equal(t, 2, s.Len(), "2")
 	assert.Equal(t, false, s.Add(v2_1), "false")
 	assert.Equal(t, 2, s.Len(), "2")
-	assert.Equal(t, false, s.Add(v2_2), "false")
-	assert.Equal(t, 2, s.Len(), "2")
-	assert.Equal(t, true, s.Add(v2_3), "true")
+	assert.Equal(t, true, s.Add(v2_2), "true")
 	assert.Equal(t, 3, s.Len(), "3")
 	assert.Equal(t, true, s.Contains(v1), "true")
 	assert.Equal(t, false, s.Contains(v3), "false")
 
-	assert.Equal(t, true, s.HasNetAddresse(n1), "true")
-	assert.Equal(t, false, s.HasNetAddresse(n3), "false")
+	assert.Equal(t, true, s.HasNetAddresse(v2.netAddress), "true")
+	assert.Equal(t, false, s.HasNetAddresse(v3.netAddress), "false")
 	t.Log(s.NetAddresses())
 
 	t.Log(s.Array())
@@ -53,40 +57,54 @@ func Test_set_PeerSet(t *testing.T) {
 
 func Test_set_NetAddressSet(t *testing.T) {
 	s := NewNetAddressSet()
-	v1 := NetAddress("127.0.0.1:8080")
-	v2 := NetAddress("127.0.0.1:8081")
-	v2_1 := NetAddress("127.0.0.1:8081")
-	v3 := NetAddress("127.0.0.1:8082")
+	v1 := generatePeer()
+	v1_1 := &Peer{id: v1.id, netAddress: generateNetAddress()}
+	v2 := &Peer{id: generatePeerID(), netAddress: v1_1.netAddress}
 
-	assert.Equal(t, true, s.IsEmpty(), "true")
-	assert.Equal(t, true, s.Add(v1), "true")
+	// assert.Equal(t, true, s.IsEmpty(), "true")
+	// assert.Equal(t, true, s.Add(v1.netAddress), "true")
+	// assert.Equal(t, 1, s.Len(), "1")
+	// assert.Equal(t, false, s.IsEmpty(), "false")
+	// assert.Equal(t, "", s.Map()[v1.netAddress], "empty string")
+	// assert.Equal(t, false, s.Add(v1.netAddress), "false")
+	// assert.Equal(t, 1, s.Len(), "1")
+	// t.Log(s.Map())
+
+	//When Peer connected
+	o, r := s.PutByPeer(v1)
+	assert.EqualValues(t, []interface{}{"", NetAddress("")}, []interface{}{o, r}, "empty NetAddress")
+	assert.Equal(t, true, s.Map()[v1.netAddress] == v1.id.String(), v1.id.String())
 	assert.Equal(t, 1, s.Len(), "1")
-	assert.Equal(t, false, s.IsEmpty(), "false")
-	assert.Equal(t, true, s.Add(v2), "true")
-	assert.Equal(t, 2, s.Len(), "2")
-	assert.Equal(t, false, s.Add(v2_1), "false")
-	assert.Equal(t, 2, s.Len(), "2")
-	assert.Equal(t, true, s.Contains(v1), "true")
-	assert.Equal(t, false, s.Contains(v3), "false")
+	t.Log(s.Map())
 
-	v4 := NetAddress("127.0.0.1:8084")
-	s.Merge(v2, v2_1, v3, v4)
-	assert.Equal(t, 4, s.Len(), "4")
-	assert.Equal(t, true, s.Contains(v3), "true")
-	assert.Equal(t, true, s.Contains(v4), "true")
-	t.Log(s.Array())
+	//Update NetAddress, NetAddressSet.PutByPeer returns old NetAddress
+	o, r = s.PutByPeer(v1_1)
+	assert.EqualValues(t, []interface{}{"", v1.netAddress}, []interface{}{o, r}, "empty NetAddress")
+	assert.Equal(t, v1_1.id.String(), s.Map()[v1_1.netAddress], v1_1.id.String())
+	assert.Equal(t, 1, s.Len(), "1")
+	t.Log(s.Map())
+
+	//When Peer connected with same NetAddress, NetAddressSet.PutByPeer returns conflict PeerID
+	o, r = s.PutByPeer(v2)
+	assert.EqualValues(t, []interface{}{v1_1.id.String(), NetAddress("")}, []interface{}{o, r}, "empty NetAddress")
+	assert.Equal(t, 1, s.Len(), "1")
+	t.Log(s.Map())
+
+	assert.Equal(t, true, s.RemoveByPeer(v2), "true")
+	assert.Equal(t, false, s.ContainsByPeer(v2), "false")
+	assert.Equal(t, 1, s.Len(), "1")
+	t.Log(s.Map())
+	//
+	//v2_1 := &Peer{id: v2.id, netAddress: v1.netAddress}
 }
 
 func Test_set_PeerIdSet(t *testing.T) {
 	s := NewPeerIdSet()
 
-	_, pubK1 := crypto.GenerateKeyPair()
-	_, pubK2 := crypto.GenerateKeyPair()
-	_, pubK3 := crypto.GenerateKeyPair()
-	v1 := NewPeerIDFromPublicKey(pubK1)
-	v2 := NewPeerIDFromPublicKey(pubK2)
-	v2_1 := NewPeerIDFromPublicKey(pubK2)
-	v3 := NewPeerIDFromPublicKey(pubK3)
+	v1 := generatePeerID()
+	v2 := generatePeerID()
+	v2_1 := NewPeerIDFromAddress(v2)
+	v3 := generatePeerID()
 
 	assert.Equal(t, true, s.IsEmpty(), "true")
 	assert.Equal(t, true, s.Add(v1), "true")
@@ -99,8 +117,7 @@ func Test_set_PeerIdSet(t *testing.T) {
 	assert.Equal(t, true, s.Contains(v1), "true")
 	assert.Equal(t, false, s.Contains(v3), "false")
 
-	_, pubK4 := crypto.GenerateKeyPair()
-	v4 := NewPeerIDFromPublicKey(pubK4)
+	v4 := generatePeerID()
 	s.Merge(v2, v2_1, v3, v4)
 	assert.Equal(t, 4, s.Len(), "4")
 	assert.Equal(t, true, s.Contains(v3), "true")

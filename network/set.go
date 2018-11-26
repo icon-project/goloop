@@ -2,6 +2,7 @@ package network
 
 import (
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/icon-project/goloop/module"
@@ -17,66 +18,81 @@ func NewSet() *Set {
 	return &Set{m: make(map[interface{}]interface{})}
 }
 
-func (s *Set) Add(v interface{}) bool {
-	defer s.mtx.Unlock()
-	s.mtx.Lock()
+func (s *Set) _add(v interface{}, d interface{}) bool {
 	if _, ok := s.m[v]; !ok {
-		s.m[v] = 1
+		s.m[v] = d
 		return true
 	}
 	return false
 }
 
-func (s *Set) AddWithKeyFunc(v interface{}, keyFunc func(v interface{}) (k interface{})) bool {
-	defer s.mtx.Unlock()
-	s.mtx.Lock()
-	if _, ok := s.m[v]; !ok {
-		k := keyFunc(v)
-		s.m[k] = v
-		return true
+func (s *Set) _set(v interface{}, d interface{}) interface{} {
+	old, ok := s.m[v]
+	if ok && old == d {
+		return nil
 	}
-	return false
+	s.m[v] = d
+	return old
 }
-
-func (s *Set) Remove(v interface{}) bool {
-	defer s.mtx.Unlock()
-	s.mtx.Lock()
+func (s *Set) _remove(v interface{}) bool {
 	if _, ok := s.m[v]; ok {
 		delete(s.m, v)
 		return true
 	}
 	return false
 }
-
-func (s *Set) Contains(v interface{}) bool {
-	defer s.mtx.RUnlock()
-	s.mtx.RLock()
-	_, ok := s.m[v]
-	return ok
+func (s *Set) _clear() {
+	s.m = make(map[interface{}]interface{})
+}
+func (s *Set) _merge(args ...interface{}) {
+	for _, v := range args {
+		s._set(v, true)
+	}
+}
+func (s *Set) Add(v interface{}) bool {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+	return s._add(v, true)
+}
+func (s *Set) Set(v interface{}, d interface{}) interface{} {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+	return s._set(v, d)
+}
+func (s *Set) Remove(v interface{}) bool {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+	return s._remove(v)
 }
 func (s *Set) Clear() {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
-	s.m = make(map[interface{}]interface{})
-}
-func (s *Set) IsEmpty() bool {
-	return s.Len() == 0
-}
-func (s *Set) Len() int {
-	defer s.mtx.RUnlock()
-	s.mtx.RLock()
-	return len(s.m)
+	s._clear()
 }
 func (s *Set) Merge(args ...interface{}) {
 	defer s.mtx.Unlock()
 	s.mtx.Lock()
-	for _, v := range args {
-		s.m[v] = 1
-	}
+	s._merge(args...)
 }
-func (s *Set) ClearAndAdd(args ...interface{}) {
-	s.Clear()
-	s.Merge(args...)
+func (s *Set) _contains(v interface{}) bool {
+	_, ok := s.m[v]
+	return ok
+}
+func (s *Set) _len() int {
+	return len(s.m)
+}
+func (s *Set) Contains(v interface{}) bool {
+	defer s.mtx.RUnlock()
+	s.mtx.RLock()
+	return s._contains(v)
+}
+func (s *Set) Len() int {
+	defer s.mtx.RUnlock()
+	s.mtx.RLock()
+	return s._len()
+}
+func (s *Set) IsEmpty() bool {
+	return s.Len() == 0
 }
 
 //Not ordered array
@@ -89,9 +105,19 @@ func (s *Set) Array() interface{} {
 	}
 	return arr
 }
+func (s *Set) Map() map[interface{}]interface{} {
+	defer s.mtx.RUnlock()
+	s.mtx.RLock()
+	m := make(map[interface{}]interface{})
+	for k, v := range s.m {
+		m[k] = v
+	}
+	return m
+}
+
 func (s *Set) String() string {
-	arr := s.Array()
-	return fmt.Sprintf("%v", arr)
+	m := s.Map()
+	return fmt.Sprintf("%v", m)
 }
 
 //TODO peer.Equal
@@ -213,24 +239,71 @@ func (s *PeerSet) HasNetAddresse(a NetAddress) bool {
 
 type NetAddressSet struct {
 	*Set
+	cache map[NetAddress]string
 }
 
 func NewNetAddressSet() *NetAddressSet {
-	return &NetAddressSet{Set: NewSet()}
+	s := &NetAddressSet{Set: NewSet()}
+	s.cache = s.Map()
+	return s
 }
 func (s *NetAddressSet) Add(a NetAddress) bool {
-	return s.Set.Add(a)
+	defer s.Set.mtx.Unlock()
+	s.Set.mtx.Lock()
+
+	return s._add(a, "")
 }
-func (s *NetAddressSet) Remove(a NetAddress) bool {
-	return s.Set.Remove(a)
+func (s *NetAddressSet) PutByPeer(p *Peer) (old string, removed NetAddress) {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+	d := p.id.String()
+	od := s._set(p.netAddress, d)
+	for k, v := range s.Set.m {
+		a := k.(NetAddress)
+		if a != p.netAddress && v == d {
+			s._remove(k)
+			removed = k.(NetAddress)
+			log.Println("NetAddressSet.PutByPeer remove", removed, v)
+		}
+	}
+	if od != nil {
+		old = od.(string)
+	}
+	return
+}
+func (s *NetAddressSet) RemoveByPeer(p *Peer) bool {
+	return s.Set.Remove(p.netAddress)
 }
 func (s *NetAddressSet) Contains(a NetAddress) bool {
 	return s.Set.Contains(a)
 }
+func (s *NetAddressSet) ContainsByPeer(p *Peer) bool {
+	defer s.mtx.RUnlock()
+	s.mtx.RLock()
+	d := s.Set.m[p.netAddress]
+	return d != nil && d == p.id.String()
+}
 func (s *NetAddressSet) Merge(args ...NetAddress) {
+	defer s.Set.mtx.Unlock()
+	s.Set.mtx.Lock()
+
+	//Add
 	for _, a := range args {
-		s.Set.Add(a)
+		if _, ok := s.Set.m[a]; !ok {
+			s.Set.m[a] = ""
+		}
+		if _, ok := s.cache[a]; ok {
+			delete(s.cache, a)
+		}
 	}
+
+	//Remove
+	for k, _ := range s.cache {
+		if d := s.Set.m[k]; d == "" {
+			delete(s.Set.m, k)
+		}
+	}
+	s.cache = s._map()
 }
 func (s *NetAddressSet) Array() []NetAddress {
 	defer s.Set.mtx.RUnlock()
@@ -240,6 +313,18 @@ func (s *NetAddressSet) Array() []NetAddress {
 		arr = append(arr, k.(NetAddress))
 	}
 	return arr
+}
+func (s *NetAddressSet) _map() map[NetAddress]string {
+	m := make(map[NetAddress]string)
+	for k, v := range s.Set.m {
+		m[k.(NetAddress)] = v.(string)
+	}
+	return m
+}
+func (s *NetAddressSet) Map() map[NetAddress]string {
+	defer s.Set.mtx.RUnlock()
+	s.Set.mtx.RLock()
+	return s._map()
 }
 
 type PeerIdSet struct {
@@ -302,6 +387,7 @@ func (s *PeerIdSet) Merge(args ...module.PeerID) {
 			s.onUpdate()
 		}
 	}()
+	s.Set.mtx.Lock()
 	for _, id := range args {
 		if !s._contains(id) {
 			s.Set.m[id] = 1
