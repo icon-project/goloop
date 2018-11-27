@@ -18,6 +18,10 @@ var (
 	singletonConfig    *Config
 )
 
+var (
+	singletonLoggerExcludes = &[]string{"onPacket"}
+)
+
 const (
 	DefaultTransportNet       = "tcp4"
 	DefaultMembershipName     = ""

@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/icon-project/goloop/module"
 )
@@ -69,26 +70,53 @@ func (m *manager) getProtocolInfo(name string) module.ProtocolInfo {
 }
 
 type logger struct {
-	name   string
-	prefix string
+	name           string
+	prefix         string
+	excludes       []string
+	globalExcludes *[]string
 }
 
 func newLogger(name string, prefix string) *logger {
-	return &logger{name, prefix}
+	return &logger{name, prefix, make([]string, 0), singletonLoggerExcludes}
+}
+
+func (l *logger) printable(v interface{}) bool {
+	if len(l.excludes) < 1 && l.globalExcludes != nil && len(*l.globalExcludes) < 1 {
+		return true
+	}
+	s, ok := v.(string)
+	if !ok {
+		return true
+	}
+	for _, e := range l.excludes {
+		if strings.HasPrefix(s, e) {
+			return false
+		}
+	}
+	for _, e := range *l.globalExcludes {
+		if strings.HasPrefix(s, e) {
+			return false
+		}
+	}
+	return true
 }
 
 func (l *logger) Println(v ...interface{}) {
-	//%T : type //%#v
-	s := fmt.Sprintf("[%s] %s", l.prefix, l.name)
-	w := make([]interface{}, len(v)+1)
-	copy(w[1:], v)
-	w[0] = s
-	log.Println(w...)
+	if l.printable(v[0]) {
+		//%T : type //%#v
+		s := fmt.Sprintf("[%s] %s", l.prefix, l.name)
+		w := make([]interface{}, len(v)+1)
+		copy(w[1:], v)
+		w[0] = s
+		log.Println(w...)
+	}
 }
 
 func (l *logger) Printf(format string, v ...interface{}) {
-	s := fmt.Sprintf(format, v...)
-	l.Println(s)
+	if l.printable(format) {
+		s := fmt.Sprintf(format, v...)
+		l.Println(s)
+	}
 }
 
 type protocolInfo uint16
