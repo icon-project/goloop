@@ -4,8 +4,6 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/icon-project/goloop/common/trie"
-
 	"github.com/icon-project/goloop/module"
 )
 
@@ -25,6 +23,13 @@ var (
 	ErrInvalidHashValue   = errors.New("InvalidHashValue")
 )
 
+type StepType int
+
+const (
+	StepTypeDefault StepType = iota
+	StepTypeInput
+)
+
 type WorldContext interface {
 	WorldState
 	StepPrice() *big.Int
@@ -34,6 +39,7 @@ type WorldContext interface {
 	WorldStateChanged(ws WorldState) WorldContext
 	WorldVirtualState() WorldVirtualState
 	GetFuture(lq []LockRequest) WorldContext
+	StepsFor(t StepType, n int) int64
 }
 
 type Transaction interface {
@@ -45,13 +51,8 @@ type Transaction interface {
 }
 
 type Receipt interface {
-	//module.Receipt
-	trie.Object
+	module.Receipt
 	AddLog(addr module.Address, indexed, data []string)
 	SetCumulativeStepUsed(cumulativeUsed *big.Int)
-	SetResult(success bool, used, price *big.Int)
-	CumulativeStepUsed() *big.Int
-	StepPrice() *big.Int
-	StepUsed() *big.Int
-	Success() bool
+	SetResult(success bool, result interface{}, used, price *big.Int)
 }

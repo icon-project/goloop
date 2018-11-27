@@ -15,14 +15,14 @@ import (
 )
 
 type transactionV3JSON struct {
-	Version   common.HexInt16  `json:"version"` // V3 only
+	Version   common.HexUint16 `json:"version"` // V3 only
 	From      common.Address   `json:"from"`
 	To        common.Address   `json:"to"`
-	Value     common.HexInt    `json:"value"`
-	StepLimit common.HexInt    `json:"stepLimit"` // V3 only
-	Fee       common.HexInt    `json:"fee"`       // V2 only
-	TimeStamp common.HexInt64  `json:"timestamp"`
-	NID       common.HexInt16  `json:"nid"` // V3 only
+	Value     common.HexUint   `json:"value"`
+	StepLimit common.HexUint   `json:"stepLimit"` // V3 only
+	Fee       common.HexUint   `json:"fee"`       // V2 only
+	TimeStamp common.HexUint64 `json:"timestamp"`
+	NID       common.HexUint16 `json:"nid"` // V3 only
 	Nonce     common.HexUint64 `json:"nonce"`
 	TxHash    common.HexBytes  `json:"txHash"`  // V3 only
 	Tx_Hash   common.HexBytes  `json:"tx_hash"` // V2 only
@@ -72,7 +72,9 @@ func (tx *transactionV3JSON) calcHash() ([]byte, error) {
 }
 
 func (tx *transactionV3JSON) ID() []byte {
-	tx.updateTxHash()
+	if err := tx.updateTxHash(); err != nil {
+		log.Panicf("Fail to calculate TxHash err=%+v", err)
+	}
 	return tx.txHash
 }
 
@@ -100,7 +102,7 @@ func (tx *transactionV3JSON) verifySignature() error {
 }
 
 func (tx *transactionV3JSON) Timestamp() int64 {
-	return tx.TimeStamp.Value
+	return int64(tx.TimeStamp.Value)
 }
 
 type transactionV3 struct {
@@ -155,7 +157,7 @@ func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
 	}
 
 	if configOnCheckingTimestamp {
-		tsdiff := wc.TimeStamp() - tx.TimeStamp.Value
+		tsdiff := wc.TimeStamp() - int64(tx.TimeStamp.Value)
 		if tsdiff < int64(-5*time.Minute/time.Microsecond) ||
 			tsdiff > int64(5*time.Minute/time.Microsecond) {
 			return ErrTimeOut
@@ -175,7 +177,7 @@ func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
 
 func (tx *transactionV3) Prepare(wvs WorldVirtualState) (WorldVirtualState, error) {
 	var lq []LockRequest
-	if tx.DataType == "" {
+	if !tx.To.IsContract() {
 		lq = []LockRequest{
 			{string(tx.From.ID()), AccountWriteLock},
 			{string(tx.To.ID()), AccountWriteLock},
@@ -188,49 +190,142 @@ func (tx *transactionV3) Prepare(wvs WorldVirtualState) (WorldVirtualState, erro
 	return wvs.GetFuture(lq), nil
 }
 
-var version3TransferStep = big.NewInt(100000)
+func (tx *transactionV3) transfer(wc WorldContext,
+	from, to module.Address, value, limit *big.Int) (bool, interface{}, *big.Int) {
+	stepUse := big.NewInt(wc.StepsFor(StepTypeDefault, 1))
 
-func (tx *transactionV3) Execute(wc WorldContext) (Receipt, error) {
-	r := new(receipt)
-	fee := new(big.Int)
-	stepPrice := wc.StepPrice()
-	fee.Set(stepPrice)
-	fee.Mul(fee, version3TransferStep)
-
-	trans := new(big.Int)
-	trans.Set(&tx.Value.Int)
-	trans.Add(trans, fee)
-
-	as1 := wc.GetAccountState(tx.From.ID())
-	bal1 := as1.GetBalance()
-	if bal1.Cmp(trans) < 0 {
-		trans.Set(fee)
-		if bal1.Cmp(trans) < 0 {
-			log.Printf("TransactionV3 not enough balance for fee: %s balance=%s < fee=%s",
-				tx.From.String(), bal1.Text(10), fee.Text(10))
-			r.SetResult(false, big.NewInt(0), stepPrice)
-			return r, nil
-		}
-		bal1.Sub(bal1, trans)
-		as1.SetBalance(bal1)
-		r.SetResult(false, version3TransferStep, stepPrice)
-		return r, nil
+	if stepUse.Cmp(limit) > 0 {
+		return false, FailureOutOfStep, limit
 	}
 
-	bal1.Sub(bal1, trans)
+	as1 := wc.GetAccountState(from.ID())
+	bal1 := as1.GetBalance()
+	if bal1.Cmp(value) < 0 {
+		return false, FailureOutOfBalance, limit
+	}
+	bal1.Sub(bal1, value)
 	as1.SetBalance(bal1)
 
-	as2 := wc.GetAccountState(tx.To.ID())
+	as2 := wc.GetAccountState(to.ID())
 	bal2 := as2.GetBalance()
-	bal2.Add(bal2, &tx.Value.Int)
+	bal2.Add(bal2, value)
 	as2.SetBalance(bal2)
 
-	r.SetResult(true, version3TransferStep, stepPrice)
-	return r, nil
+	return true, nil, stepUse
 }
 
-func (tx *transactionV3) ID() []byte {
-	return tx.transactionV3JSON.txHash
+func (tx *transactionV3) call(wc WorldContext, r Receipt,
+	from, to module.Address, value, limit *big.Int) (bool, interface{}, *big.Int) {
+	// TODO Implement transaction v3 contract call
+	log.Panicf("Not implemented")
+	return false, FailureUnknown, &zero
+}
+
+func countBytesOfData(data interface{}) int {
+	switch o := data.(type) {
+	case string:
+		if len(o) > 2 && o[:2] == "0x" {
+			o = o[2:]
+		}
+		bs := []byte(o)
+		for _, b := range bs {
+			if (b < '0' || b > '9') && (b < 'a' || b > 'f') {
+				return len(bs)
+			}
+		}
+		return (len(bs) + 1) / 2
+	case []interface{}:
+		var count int
+		for _, i := range o {
+			count += countBytesOfData(i)
+		}
+		return count
+	case map[string]interface{}:
+		var count int
+		for _, i := range o {
+			count += countBytesOfData(i)
+		}
+		return count
+	case bool:
+		return 1
+	case float64:
+		return len(common.Int64ToBytes(int64(o)))
+	default:
+		return 0
+	}
+}
+
+var zero big.Int
+
+func (tx *transactionV3) Execute(wc WorldContext) (Receipt, error) {
+	r := NewReceipt(&tx.To)
+	stepPrice := wc.StepPrice()
+	var (
+		fee                big.Int
+		success            bool
+		result             interface{}
+		stepUsed, bal1     *big.Int
+		stepUse, stepLimit big.Int
+	)
+	wcs := wc.GetSnapshot()
+	as1 := wc.GetAccountState(tx.From.ID())
+	stepLimit.Set(&tx.StepLimit.Int)
+
+	// it tries to execute
+	if tx.To.IsContract() {
+		success, result, stepUsed = tx.call(wc, r, &tx.From, &tx.To, &tx.Value.Int, &stepLimit)
+		stepUse.Set(stepUsed)
+		stepLimit.Sub(&stepLimit, stepUsed)
+	} else {
+		success, result, stepUsed = tx.transfer(wc, &tx.From, &tx.To, &tx.Value.Int, &stepLimit)
+		stepUse.Set(stepUsed)
+		stepLimit.Sub(&stepLimit, stepUsed)
+		if success && tx.DataType == "message" {
+			var data interface{}
+			if err := json.Unmarshal(tx.Data, &data); err != nil {
+				success = false
+				result = FailureUnknown
+				stepUsed = &stepLimit
+			} else {
+				var stepsForMessage big.Int
+				stepsForMessage.SetInt64(wc.StepsFor(StepTypeInput, countBytesOfData(data)))
+				if stepLimit.Cmp(&stepsForMessage) < 0 {
+					success = false
+					result = FailureOutOfStepForInput
+					stepUsed = &stepLimit
+				} else {
+					stepUsed = &stepsForMessage
+				}
+			}
+			stepUse.Add(&stepUse, stepUsed)
+			stepLimit.Sub(&stepLimit, stepUsed)
+		}
+	}
+
+	// try to charge fee
+	fee.Mul(&stepUse, stepPrice)
+	bal1 = as1.GetBalance()
+	for bal1.Cmp(&fee) < 0 {
+		if success {
+			// rollback all changes
+			success = false
+			result = FailureNotPayable
+			wc.Reset(wcs)
+			r = NewReceipt(&tx.To)
+			bal1 = as1.GetBalance()
+
+			stepUse.Set(&tx.StepLimit.Int)
+			fee.Mul(&stepUse, stepPrice)
+		} else {
+			stepPrice = &zero
+			fee.SetInt64(0)
+		}
+	}
+	bal1.Sub(bal1, &fee)
+	as1.SetBalance(bal1)
+
+	r.SetResult(success, result, &stepUse, stepPrice)
+	return r, nil
 }
 
 func (tx *transactionV3) Group() module.TransactionGroup {
@@ -249,7 +344,7 @@ func (tx *transactionV3) Hash() []byte {
 }
 
 func (tx *transactionV3) ToJSON(version int) (interface{}, error) {
-	if version == 3 {
+	if version == module.TransactionVersion3 {
 		var jso map[string]interface{}
 		if err := json.Unmarshal(tx.raw, &jso); err != nil {
 			return nil, err
@@ -260,11 +355,11 @@ func (tx *transactionV3) ToJSON(version int) (interface{}, error) {
 	}
 }
 
-func NewTransactionV3(b []byte) (module.Transaction, error) {
-	return NewTransactionV2V3FromJSON(b)
+func (tx *transactionV3) MarshalJSON() ([]byte, error) {
+	return tx.raw, nil
 }
 
-func NewTransactionV2V3FromJSON(js []byte) (Transaction, error) {
+func newTransactionV2V3FromJSON(js []byte) (Transaction, error) {
 	genjs := new(genesisV3JSON)
 	if err := json.Unmarshal(js, genjs); err != nil {
 		return nil, err

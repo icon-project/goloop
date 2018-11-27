@@ -2,7 +2,7 @@ package service
 
 import (
 	"bytes"
-
+	"encoding/json"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
@@ -39,6 +39,19 @@ func (t *transaction) Bytes() []byte {
 	return t.Transaction.Bytes()
 }
 
+func (t *transaction) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.Transaction)
+}
+
+func (t *transaction) UnmarshalJSON(data []byte) error {
+	if tx, err := newTransactionFromJSON(data); err != nil {
+		return err
+	} else {
+		t.Transaction = tx
+		return nil
+	}
+}
+
 func NewTransaction(b []byte) (module.Transaction, error) {
 	if tx, err := newTransaction(b); err != nil {
 		return nil, err
@@ -66,7 +79,7 @@ func NewTransactionFromJSON(b []byte) (module.Transaction, error) {
 }
 
 func newTransactionFromJSON(b []byte) (Transaction, error) {
-	tx, err := NewTransactionV2V3FromJSON(b)
+	tx, err := newTransactionV2V3FromJSON(b)
 	if err != nil {
 		return nil, err
 	}

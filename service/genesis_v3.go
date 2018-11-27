@@ -16,7 +16,7 @@ import (
 type accountInfo struct {
 	Name    string         `json:"name"`
 	Address common.Address `json:"address"`
-	Balance common.HexInt  `json:"balance"`
+	Balance common.HexUint `json:"balance"`
 }
 
 type genesisV3JSON struct {
@@ -145,20 +145,24 @@ func (g *genesisV3) Prepare(wvs WorldVirtualState) (WorldVirtualState, error) {
 }
 
 func (g *genesisV3) Execute(wc WorldContext) (Receipt, error) {
+	r := NewReceipt(common.NewAccountAddress([]byte{}))
 	for _, info := range g.Accounts {
 		ac := wc.GetAccountState(info.Address.ID())
 		ac.SetBalance(&info.Balance.Int)
 	}
-	rct := new(receipt)
-	rct.SetResult(true, big.NewInt(0), wc.StepPrice())
+	r.SetResult(true, nil, big.NewInt(0), big.NewInt(0))
 	validators := make([]module.Validator, len(g.Validatorlist))
 	for i, validator := range g.Validatorlist {
 		validators[i], _ = ValidatorFromAddress(validator)
 	}
 	wc.SetValidators(validators)
-	return rct, nil
+	return r, nil
 }
 
 func (g *genesisV3) Timestamp() int64 {
 	return 0
+}
+
+func (g *genesisV3) MarshalJSON() ([]byte, error) {
+	return g.raw, nil
 }

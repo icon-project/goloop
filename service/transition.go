@@ -43,7 +43,7 @@ type transition struct {
 	worldSnapshot  WorldSnapshot
 	patchReceipts  module.ReceiptList
 	normalReceipts module.ReceiptList
-	logBloom       LogBloom
+	logBloom       logBloom
 }
 
 func newTransition(parent *transition, patchtxs module.TransactionList, normaltxs module.TransactionList, alreadyValidated bool) *transition {

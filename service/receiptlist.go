@@ -71,7 +71,7 @@ func NewReceiptListFromSlice(database db.Database, list []Receipt) module.Receip
 	mt := trie_manager.NewMutableForObject(database, nil, receiptType)
 	for idx, r := range list {
 		k, _ := codec.MP.MarshalToBytes(uint(idx))
-		err := mt.Set(k, r)
+		err := mt.Set(k, r.(*receipt))
 		if err != nil {
 			log.Fatalf("NewTransanctionListFromSlice FAILs err=%+v", err)
 			return nil

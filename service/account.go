@@ -38,7 +38,7 @@ type AccountState interface {
 }
 
 type accountSnapshotImpl struct {
-	balance     common.HexInt
+	balance     common.HexUint
 	fIsContract bool
 	store       trie.Immutable
 	database    db.Database
@@ -139,7 +139,7 @@ func (s *accountSnapshotImpl) CodecDecodeSelf(d *ugorji.Decoder) {
 
 type accountStateImpl struct {
 	database   db.Database
-	balance    common.HexInt
+	balance    common.HexUint
 	isContract bool
 	store      trie.Mutable
 }

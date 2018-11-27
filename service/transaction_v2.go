@@ -58,7 +58,7 @@ func (tx *transactionV2) PreValidate(wc WorldContext, update bool) error {
 	}
 
 	if configOnCheckingTimestamp == true {
-		tsdiff := wc.TimeStamp() - tx.TimeStamp.Value
+		tsdiff := wc.TimeStamp() - int64(tx.TimeStamp.Value)
 		if tsdiff < int64(-5*time.Minute/time.Microsecond) ||
 			tsdiff > int64(5*time.Minute/time.Microsecond) {
 			return ErrTimeOut
@@ -85,30 +85,29 @@ func (tx *transactionV2) Prepare(wvs WorldVirtualState) (WorldVirtualState, erro
 }
 
 func (tx *transactionV2) Execute(wc WorldContext) (Receipt, error) {
-	r := new(receipt)
-	trans := new(big.Int)
-	trans.Set(&tx.Value.Int)
-	// Legacy ICON service checks if Fee is same as FixedFee, so actually
-	// tx.Fee and version2FixedFee are same here
-	trans.Add(trans, &tx.Fee.Int)
+	r := NewReceipt(&tx.To)
+	var trans big.Int
+
+	trans.Add(&tx.Value.Int, version2FixedFee)
 
 	as1 := wc.GetAccountState(tx.From.ID())
 	bal1 := as1.GetBalance()
-	if bal1.Cmp(trans) < 0 {
-		trans.Set(version2FixedFee)
-		if bal1.Cmp(trans) < 0 {
-			log.Printf("TransactionV2 not enough balance for fee: %s balance=%s < fee=%s",
-				tx.From.String(), bal1.Text(10), version2FixedFee.Text(10))
-			r.SetResult(false, big.NewInt(0), version2StepPrice)
-			return r, nil
+	if bal1.Cmp(&trans) < 0 {
+		stepUsed := version2StepUsed
+		stepPrice := &zero
+
+		log.Printf("TX2 Fail balance=%s value=%s fee=%s",
+			bal1.String(), tx.Value.Int.String(), tx.Fee.Int.String())
+
+		if bal1.Cmp(&tx.Value.Int) < 0 {
+			r.SetResult(false, FailureOutOfBalance, stepUsed, stepPrice)
+		} else {
+			r.SetResult(false, FailureNotPayable, stepUsed, stepPrice)
 		}
-		bal1.Sub(bal1, trans)
-		as1.SetBalance(bal1)
-		r.SetResult(false, version2StepUsed, version2StepPrice)
 		return r, nil
 	}
 
-	bal1.Sub(bal1, trans)
+	bal1.Sub(bal1, &trans)
 	as1.SetBalance(bal1)
 
 	as2 := wc.GetAccountState(tx.To.ID())
@@ -116,7 +115,7 @@ func (tx *transactionV2) Execute(wc WorldContext) (Receipt, error) {
 	bal2.Add(bal2, &tx.Value.Int)
 	as2.SetBalance(bal2)
 
-	r.SetResult(true, version2StepUsed, version2StepPrice)
+	r.SetResult(true, nil, version2StepUsed, version2StepPrice)
 	return r, nil
 }
 
@@ -145,4 +144,8 @@ func (tx *transactionV2) ToJSON(version int) (interface{}, error) {
 	} else {
 		return nil, errors.New("InvalidVersion:" + strconv.Itoa(version))
 	}
+}
+
+func (tx *transactionV2) MarshalJSON() ([]byte, error) {
+	return tx.raw, nil
 }

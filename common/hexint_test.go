@@ -3,9 +3,11 @@ package common
 import (
 	"bytes"
 	"encoding/hex"
-	"github.com/icon-project/goloop/common/codec"
 	"math/big"
+	"reflect"
 	"testing"
+
+	"github.com/icon-project/goloop/common/codec"
 )
 
 func TestHexInt_UnmarshalJSON(t *testing.T) {
@@ -60,7 +62,7 @@ func TestHexInt_UnmarshalJSON(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var v1 HexInt
+			var v1 HexUint
 			if _, err := codec.JSON.UnmarshalFromBytes([]byte(tt.args.json), &v1); err != nil {
 				if !tt.error {
 					t.Error(err)
@@ -108,10 +110,10 @@ func TestHexInt_EncodingDecoding(t *testing.T) {
 				return
 			}
 
-			var v1 HexInt
+			var v1 HexUint
 			v1.SetString(tt.args.s, 0)
 
-			var delta HexInt
+			var delta HexUint
 			delta.SetString("0x11223344556677889900", 0)
 			v1.Int.Add(&v1.Int, &delta.Int)
 			v1.Int.Sub(&v1.Int, &delta.Int)
@@ -126,7 +128,7 @@ func TestHexInt_EncodingDecoding(t *testing.T) {
 				t.Errorf("Encoded = [%x] wanted = [%x]", b, want)
 			}
 
-			var v2 HexInt
+			var v2 HexUint
 			if _, err := codec.MP.UnmarshalFromBytes(b, &v2); err != nil {
 				t.Error(err)
 				return
@@ -600,6 +602,160 @@ func TestHexUint64(t *testing.T) {
 
 			if v2.Value != tt.args.value {
 				t.Errorf("Decoded value (%d) is different from (%d)", v2.Value, tt.args.value)
+			}
+		})
+	}
+}
+
+func TestBigIntToBytes(t *testing.T) {
+	type args struct {
+		i *big.Int
+	}
+	tests := []struct {
+		name string
+		args args
+		want []byte
+	}{
+		{"T1", args{big.NewInt(-0x1)}, []byte{0xff}},
+		{"T2", args{big.NewInt(-0x7f)}, []byte{0x81}},
+		{"T3", args{big.NewInt(0x80)}, []byte{0x00, 0x80}},
+		{"T4", args{big.NewInt(-0x80)}, []byte{0x80}},
+		{"T5", args{big.NewInt(0)}, []byte{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := BigIntToBytes(tt.args.i); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("BigIntToBytes() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestInt64ToBytes(t *testing.T) {
+	type args struct {
+		v int64
+	}
+	tests := []struct {
+		name string
+		args args
+		want []byte
+	}{
+		{"T1", args{-1}, []byte{0xff}},
+		{"T2", args{-0x7f}, []byte{0x81}},
+		{"T3", args{0x80}, []byte{0x00, 0x80}},
+		{"T4", args{-0x80}, []byte{0x80}},
+		{"T5", args{0}, []byte{}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Int64ToBytes(tt.args.v); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Int64ToBytes() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBytesToInt64(t *testing.T) {
+	type args struct {
+		bs []byte
+	}
+	tests := []struct {
+		name string
+		args args
+		want int64
+	}{
+		{"T1", args{[]byte{}}, 0},
+		{"T2", args{[]byte{0x80}}, -0x80},
+		{"T3", args{[]byte{0x00, 0x80}}, 0x80},
+		{"T4", args{[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}, -0x8000000000000000},
+		{"T5", args{[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01}}, -0x7fffffffffffffff},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := BytesToInt64(tt.args.bs); got != tt.want {
+				t.Errorf("BytesToInt64() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseUint(t *testing.T) {
+	type args struct {
+		s    string
+		bits int
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    uint64
+		wantErr bool
+	}{
+		{"T1", args{"0x0", 16}, 0, false},
+		{"T2", args{"0xffff", 16}, 0xffff, false},
+		{"T3", args{"0xffffffffffffffff", 64}, 0xffffffffffffffff, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParseUint(tt.args.s, tt.args.bits)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseUint() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("ParseUint() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseInt(t *testing.T) {
+	type args struct {
+		s    string
+		bits int
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    int64
+		wantErr bool
+	}{
+		{"T1", args{"0x0", 16}, 0, false},
+		{"T2", args{"0xffff", 16}, -1, false},
+		{"T3", args{"0x0ffff", 16}, 0, true},
+		{"T4", args{"0x8000000000000000", 64}, -0x8000000000000000, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParseInt(tt.args.s, tt.args.bits)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseInt() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("ParseInt() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFormatInt(t *testing.T) {
+	type args struct {
+		v int64
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{"T0", args{0x00}, "0x0"},
+		{"T1", args{-0x80}, "0x80"},
+		{"T2", args{0x80}, "0x080"},
+		{"T3", args{-0xff}, "0xff01"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := FormatInt(tt.args.v); got != tt.want {
+				t.Errorf("FormatInt() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -58,7 +58,6 @@ func TestReceiptList(t *testing.T) {
 			&receipt{cumulativeStepUsed: *big.NewInt(int64(i)),
 				stepUsed:  *big.NewInt(int64(i)),
 				stepPrice: *big.NewInt(int64(i)),
-				logBloom:  LogBloom{},
 				eventLogs: nil,
 				success:   i%2 == 0,
 			}

@@ -30,6 +30,14 @@ func (c *worldContext) GetFuture(lq []LockRequest) WorldContext {
 }
 
 var stepPrice = big.NewInt(10 * GIGA)
+var stepCosts = map[StepType]int64{
+	StepTypeDefault: 1000000,
+	StepTypeInput:   200,
+}
+
+func (c *worldContext) StepsFor(t StepType, n int) int64 {
+	return stepCosts[t] * int64(n)
+}
 
 func (c *worldContext) StepPrice() *big.Int {
 	// TODO We need to access world state to get valid value.

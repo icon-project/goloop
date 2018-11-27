@@ -1,5 +1,7 @@
 package module
 
+import "math/big"
+
 // TransitionCallback provides transition change notifications. All functions
 // are called back with the same Transition instance for the convenience.
 type TransitionCallback interface {
@@ -50,8 +52,21 @@ type TransactionList interface {
 	Flush() error
 }
 
+type Reason interface {
+	Code() int32
+	Message() string
+}
+
 type Receipt interface {
 	Bytes() []byte
+	To() Address
+	CumulativeStepUsed() *big.Int
+	StepPrice() *big.Int
+	StepUsed() *big.Int
+	Success() bool
+	Result() []byte
+	Reason() Reason
+	Check(r Receipt) error
 }
 
 type ReceiptIterator interface {

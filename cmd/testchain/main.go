@@ -99,7 +99,7 @@ type proposeOnlyConsensus struct {
 
 func (c *proposeOnlyConsensus) Start() {
 	blks, err := c.bm.FinalizeGenesisBlocks(
-		common.NewAccountAddress(make([]byte, common.AddressBytes)),
+		common.NewAccountAddress(make([]byte, common.AddressIDBytes)),
 		time.Unix(0, 0),
 		&emptyVoteList{},
 	)
@@ -180,7 +180,7 @@ type importOnlyConsensus struct {
 
 func (c *importOnlyConsensus) Start() {
 	_, err := c.bm.FinalizeGenesisBlocks(
-		common.NewAccountAddress(make([]byte, common.AddressBytes)),
+		common.NewAccountAddress(make([]byte, common.AddressIDBytes)),
 		time.Unix(0, 0),
 		&emptyVoteList{},
 	)
