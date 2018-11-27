@@ -159,9 +159,9 @@ func NewReason(code int32, message string) module.Reason {
 
 type receiptJSON struct {
 	To                 common.Address  `json:"to"`
-	CumulativeStepUsed common.HexUint  `json:"cumulativeStepUsed"`
-	StepUsed           common.HexUint  `json:"stepUsed"`
-	StepPrice          common.HexUint  `json:"stepPrice"`
+	CumulativeStepUsed common.HexInt   `json:"cumulativeStepUsed"`
+	StepUsed           common.HexInt   `json:"stepUsed"`
+	StepPrice          common.HexInt   `json:"stepPrice"`
 	ScoreAddress       *common.Address `json:"scoreAddress,omitempty"`
 	Failure            *failureReason  `json:"failure,omitempty"`
 	EventLogs          []eventLog      `json:"eventLogs"`

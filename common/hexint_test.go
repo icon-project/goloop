@@ -62,7 +62,7 @@ func TestHexInt_UnmarshalJSON(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var v1 HexUint
+			var v1 HexInt
 			if _, err := codec.JSON.UnmarshalFromBytes([]byte(tt.args.json), &v1); err != nil {
 				if !tt.error {
 					t.Error(err)
@@ -110,10 +110,10 @@ func TestHexInt_EncodingDecoding(t *testing.T) {
 				return
 			}
 
-			var v1 HexUint
+			var v1 HexInt
 			v1.SetString(tt.args.s, 0)
 
-			var delta HexUint
+			var delta HexInt
 			delta.SetString("0x11223344556677889900", 0)
 			v1.Int.Add(&v1.Int, &delta.Int)
 			v1.Int.Sub(&v1.Int, &delta.Int)
@@ -128,7 +128,7 @@ func TestHexInt_EncodingDecoding(t *testing.T) {
 				t.Errorf("Encoded = [%x] wanted = [%x]", b, want)
 			}
 
-			var v2 HexUint
+			var v2 HexInt
 			if _, err := codec.MP.UnmarshalFromBytes(b, &v2); err != nil {
 				t.Error(err)
 				return
@@ -720,9 +720,12 @@ func TestParseInt(t *testing.T) {
 		wantErr bool
 	}{
 		{"T1", args{"0x0", 16}, 0, false},
-		{"T2", args{"0xffff", 16}, -1, false},
-		{"T3", args{"0x0ffff", 16}, 0, true},
-		{"T4", args{"0x8000000000000000", 64}, -0x8000000000000000, false},
+		{"T2", args{"0x7fff", 16}, 0x7fff, false},
+		{"T3", args{"-0x8000", 16}, -0x8000, false},
+		{"T4", args{"0xffff", 16}, 0, true},
+		{"T5", args{"0x0ffff", 16}, 0, true},
+		{"T6", args{"-0x8000000000000000", 64}, -0x8000000000000000, false},
+		{"T6", args{"-0x10000000000000000", 64}, 0, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -748,9 +751,10 @@ func TestFormatInt(t *testing.T) {
 		want string
 	}{
 		{"T0", args{0x00}, "0x0"},
-		{"T1", args{-0x80}, "0x80"},
-		{"T2", args{0x80}, "0x080"},
-		{"T3", args{-0xff}, "0xff01"},
+		{"T1", args{-0x1}, "-0x1"},
+		{"T2", args{-0x80}, "-0x80"},
+		{"T3", args{0x80}, "0x80"},
+		{"T4", args{-0xff}, "-0xff"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

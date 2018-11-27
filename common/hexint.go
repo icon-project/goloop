@@ -105,39 +105,61 @@ func Int64ToBytes(v int64) []byte {
 	return bs
 }
 
-func encodeHexNumber(b []byte) string {
+func encodeHexNumber(neg bool, b []byte) string {
 	s := hex.EncodeToString(b)
 	if len(s) == 0 {
 		return "0x0"
 	}
 	if s[0] == '0' {
-		return "0x" + s[1:]
+		s = s[1:]
 	}
-	return "0x" + s
+	if neg {
+		return "-0x" + s
+	} else {
+		return "0x" + s
+	}
 }
 
-func decodeHexNumber(s string) ([]byte, error) {
+func decodeHexNumber(s string) (bool, []byte, error) {
+	negative := false
+	if len(s) > 0 && s[0] == '-' {
+		negative = true
+		s = s[1:]
+	}
 	if len(s) > 2 && s[0:2] == "0x" {
 		s = s[2:]
 	}
 	if (len(s) % 2) == 1 {
 		s = "0" + s
 	}
-	return hex.DecodeString(s)
+	bs, err := hex.DecodeString(s)
+	return negative, bs, err
 }
 
 func ParseInt(s string, bits int) (int64, error) {
-	if bs, err := decodeHexNumber(s); err == nil {
+	if negative, bs, err := decodeHexNumber(s); err == nil {
 		if len(bs)*8 > bits {
 			return 0, errors.New("OutOfRange")
 		}
-		return BytesToInt64(bs), nil
+		u64 := BytesToUint64(bs)
+		edge := (uint64(1)) << uint(bits-1)
+		if negative {
+			if u64 > edge {
+				return 0, errors.New("OutOfRange")
+			}
+			return -int64(u64), nil
+		} else {
+			if u64 >= edge {
+				return 0, errors.New("OutOfRange")
+			}
+			return int64(u64), nil
+		}
 	}
 	return strconv.ParseInt(s, 0, bits)
 }
 
 func ParseUint(s string, bits int) (uint64, error) {
-	if bs, err := decodeHexNumber(s); err == nil {
+	if negative, bs, err := decodeHexNumber(s); err == nil && !negative {
 		if len(bs)*8 > bits {
 			return 0, errors.New("OutOfRange")
 		}
@@ -147,59 +169,18 @@ func ParseUint(s string, bits int) (uint64, error) {
 }
 
 func FormatInt(v int64) string {
-	return encodeHexNumber(Int64ToBytes(v))
+	var bs []byte
+	if v < 0 {
+		bs = Uint64ToBytes(uint64(-v))
+		return encodeHexNumber(true, bs)
+	} else {
+		bs = Uint64ToBytes(uint64(v))
+		return encodeHexNumber(false, bs)
+	}
 }
 
 func FormatUint(v uint64) string {
-	return encodeHexNumber(Uint64ToBytes(v))
-}
-
-type HexUint struct {
-	big.Int
-}
-
-func (i HexUint) String() string {
-	return "0x" + i.Text(16)
-}
-
-func (i HexUint) MarshalJSON() ([]byte, error) {
-	return json.Marshal(i.String())
-}
-
-func (i *HexUint) UnmarshalJSON(b []byte) error {
-	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
-		s = string(b)
-		if _, ok := i.SetString(s, 0); ok {
-			return nil
-		}
-		return err
-	} else {
-		if len(s) >= 2 && s[0:2] == "0x" {
-			s = s[2:]
-		}
-		if _, ok := i.SetString(s, 16); ok {
-			return nil
-		}
-	}
-	return errors.Errorf("FailToParse(%s) for HexUint", s)
-}
-
-func (i *HexUint) CodecEncodeSelf(e *codec.Encoder) {
-	e.Encode(i.Bytes())
-}
-
-func (i *HexUint) CodecDecodeSelf(d *codec.Decoder) {
-	var b []byte
-	if err := d.Decode(&b); err == nil {
-		i.SetBytes(b)
-	}
-}
-
-func (i *HexUint) Clone() HexUint {
-	var v HexUint
-	v.Set(&i.Int)
-	return v
+	return encodeHexNumber(false, Uint64ToBytes(v))
 }
 
 type HexInt struct {
@@ -207,37 +188,7 @@ type HexInt struct {
 }
 
 func (i HexInt) String() string {
-	s := hex.EncodeToString(i.Bytes())
-	if len(s) == 0 {
-		return "0x0"
-	}
-	if s[0] == '0' {
-		return "0x" + s[1:]
-	} else {
-		return "0x" + s
-	}
-}
-
-func (i *HexInt) SetString(s string) (*big.Int, bool) {
-	if len(s) > 2 && s[0:2] == "0x" {
-		s = s[2:]
-	}
-	if len(s)%2 == 1 {
-		return i.Int.SetString(s, 16)
-	}
-	if bs, err := hex.DecodeString(s); err != nil {
-		return nil, false
-	} else {
-		return i.SetBytes(bs), true
-	}
-}
-
-func (i *HexInt) Bytes() []byte {
-	return BigIntToBytes(&i.Int)
-}
-
-func (i *HexInt) SetBytes(b []byte) *big.Int {
-	return BigIntSetBytes(&i.Int, b)
+	return encodeHexNumber(i.Sign() < 0, i.Bytes())
 }
 
 func (i HexInt) MarshalJSON() ([]byte, error) {
@@ -248,14 +199,20 @@ func (i *HexInt) UnmarshalJSON(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
 		s = string(b)
-		if _, ok := i.Int.SetString(s, 0); ok {
+		if _, ok := i.SetString(s, 0); ok {
 			return nil
 		}
 		return err
 	} else {
-		if _, ok := i.SetString(s); ok {
-			return nil
+		neg, bs, err := decodeHexNumber(s)
+		if err != nil {
+			return err
 		}
+		i.SetBytes(bs)
+		if neg {
+			i.Neg(&i.Int)
+		}
+		return nil
 	}
 	return errors.Errorf("FailToParse(%s) for HexInt", s)
 }

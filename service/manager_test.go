@@ -38,8 +38,8 @@ type txTest struct {
 type txTestV2 struct {
 	From      common.Address  `json:"from"`
 	To        common.Address  `json:"to"`
-	Value     common.HexUint  `json:"value"`
-	Fee       common.HexUint  `json:"fee"`
+	Value     common.HexInt   `json:"value"`
+	Fee       common.HexInt   `json:"fee"`
 	Timestamp common.HexInt64 `json:"timestamp"`
 	Nonce     common.HexInt64 `json:"nonce"`
 	Signature common.HexBytes `json:"signature"`
@@ -49,8 +49,8 @@ type txTestV3 struct {
 	Version   common.HexInt16 `json:"version"`
 	From      common.Address  `json:"from"`
 	To        common.Address  `json:"to"`
-	Value     common.HexUint  `json:"value"`
-	StepLimit common.HexUint  `json:"stepLimit"`
+	Value     common.HexInt   `json:"value"`
+	StepLimit common.HexInt   `json:"stepLimit"`
 	Timestamp common.HexInt64 `json:"timestamp"`
 	Nid       common.HexInt16 `json:"nid"`
 	Nonce     common.HexInt64 `json:"nonce"`
@@ -161,16 +161,16 @@ func createTxInst(wallet module.Wallet, to module.Address, value *big.Int, times
 	case 2:
 		m["from"] = tx.from.String()
 		m["to"] = tx.to.String()
-		m["value"] = common.HexUint{*tx.value}.String()
-		m["fee"] = common.HexUint{*tx.stepLimit}.String()
+		m["value"] = common.HexInt{*tx.value}.String()
+		m["fee"] = common.HexInt{*tx.stepLimit}.String()
 		m["timestamp"] = common.HexInt64{tx.timestamp}.String()
 		m["nonce"] = common.HexInt64{tx.nonce}.String()
 	case 3:
 		m["version"] = common.HexInt16{int16(tx.version)}.String()
 		m["from"] = tx.from.String()
 		m["to"] = tx.to.String()
-		m["value"] = common.HexUint{*tx.value}.String()
-		m["stepLimit"] = common.HexUint{*tx.stepLimit}.String()
+		m["value"] = common.HexInt{*tx.value}.String()
+		m["stepLimit"] = common.HexInt{*tx.stepLimit}.String()
 		m["timestamp"] = common.HexInt64{tx.timestamp}.String()
 		m["nid"] = common.HexInt16{int16(tx.nid)}.String()
 		m["nonce"] = common.HexInt64{tx.nonce}.String()
@@ -201,8 +201,8 @@ func marshalTx(tx *txTest) []byte {
 		ti := txTestV2{
 			From:      *tx.from,
 			To:        *tx.to,
-			Value:     common.HexUint{*tx.value},
-			Fee:       common.HexUint{*tx.stepLimit},
+			Value:     common.HexInt{*tx.value},
+			Fee:       common.HexInt{*tx.stepLimit},
 			Timestamp: common.HexInt64{tx.timestamp},
 			Nonce:     common.HexInt64{tx.nonce},
 			Signature: tx.signature,
@@ -213,8 +213,8 @@ func marshalTx(tx *txTest) []byte {
 			Version:   common.HexInt16{int16(tx.version)},
 			From:      *tx.from,
 			To:        *tx.to,
-			Value:     common.HexUint{*tx.value},
-			StepLimit: common.HexUint{*tx.stepLimit},
+			Value:     common.HexInt{*tx.value},
+			StepLimit: common.HexInt{*tx.stepLimit},
 			Timestamp: common.HexInt64{tx.timestamp},
 			Nid:       common.HexInt16{int16(tx.nid)},
 			Nonce:     common.HexInt64{tx.nonce},

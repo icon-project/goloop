@@ -18,12 +18,12 @@ type transactionV3JSON struct {
 	Version   common.HexUint16 `json:"version"` // V3 only
 	From      common.Address   `json:"from"`
 	To        common.Address   `json:"to"`
-	Value     common.HexUint   `json:"value"`
-	StepLimit common.HexUint   `json:"stepLimit"` // V3 only
-	Fee       common.HexUint   `json:"fee"`       // V2 only
-	TimeStamp common.HexUint64 `json:"timestamp"`
-	NID       common.HexUint16 `json:"nid"` // V3 only
-	Nonce     common.HexUint64 `json:"nonce"`
+	Value     common.HexInt    `json:"value"`
+	StepLimit common.HexInt    `json:"stepLimit"` // V3 only
+	Fee       common.HexInt    `json:"fee"`       // V2 only
+	TimeStamp common.HexInt64  `json:"timestamp"`
+	NID       common.HexInt16  `json:"nid"` // V3 only
+	Nonce     common.HexInt64  `json:"nonce"`
 	TxHash    common.HexBytes  `json:"txHash"`  // V3 only
 	Tx_Hash   common.HexBytes  `json:"tx_hash"` // V2 only
 	Signature common.Signature `json:"signature"`
@@ -102,7 +102,7 @@ func (tx *transactionV3JSON) verifySignature() error {
 }
 
 func (tx *transactionV3JSON) Timestamp() int64 {
-	return int64(tx.TimeStamp.Value)
+	return tx.TimeStamp.Value
 }
 
 type transactionV3 struct {
@@ -157,7 +157,7 @@ func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
 	}
 
 	if configOnCheckingTimestamp {
-		tsdiff := wc.TimeStamp() - int64(tx.TimeStamp.Value)
+		tsdiff := wc.TimeStamp() - tx.TimeStamp.Value
 		if tsdiff < int64(-5*time.Minute/time.Microsecond) ||
 			tsdiff > int64(5*time.Minute/time.Microsecond) {
 			return ErrTimeOut

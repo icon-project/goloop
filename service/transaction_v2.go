@@ -58,7 +58,7 @@ func (tx *transactionV2) PreValidate(wc WorldContext, update bool) error {
 	}
 
 	if configOnCheckingTimestamp == true {
-		tsdiff := wc.TimeStamp() - int64(tx.TimeStamp.Value)
+		tsdiff := wc.TimeStamp() - tx.TimeStamp.Value
 		if tsdiff < int64(-5*time.Minute/time.Microsecond) ||
 			tsdiff > int64(5*time.Minute/time.Microsecond) {
 			return ErrTimeOut

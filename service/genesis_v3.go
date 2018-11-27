@@ -16,7 +16,7 @@ import (
 type accountInfo struct {
 	Name    string         `json:"name"`
 	Address common.Address `json:"address"`
-	Balance common.HexUint `json:"balance"`
+	Balance common.HexInt  `json:"balance"`
 }
 
 type genesisV3JSON struct {
