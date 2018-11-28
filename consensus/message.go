@@ -15,6 +15,8 @@ const (
 	protoVote
 )
 
+var protocols = []module.ProtocolInfo{protoProposal, protoBlockPart, protoVote}
+
 type unmarshaler func([]byte) (message, error)
 
 type protocolUnmarshaler struct {
@@ -39,26 +41,28 @@ func unmarshalMessage(sp module.ProtocolInfo, bs []byte) (message, error) {
 
 type message interface {
 	height() int64
+	round() int32
 	verify() error
 	dispatch(cs *consensus) (bool, error)
 }
 
-type payloadBase struct {
+type _HR struct {
 	Height int64
-	Round  int
+	Round  int32
 }
 
-func (b *payloadBase) height() int64 {
+func (b *_HR) height() int64 {
 	return b.Height
 }
 
-// TODO remove duplicated code
+func (b *_HR) round() int32 {
+	return b.Round
+}
+
 type proposal struct {
-	payloadBase
-	BlockPartsHash []byte // Merkle root of MPT[rlp(index)]BlockPartBytes
-	NumBlockParts  int
-	POLRound       int
-	POLBlockID     []byte
+	_HR
+	BlockPartsHeader BlockPartsHeader
+	POLRound         int32
 }
 
 func (p *proposal) bytes() []byte {
@@ -84,7 +88,7 @@ func unmarshalProposalMessage(bs []byte) (message, error) {
 }
 
 func (msg *proposalMessage) verify() error {
-	if msg.Height < 0 || msg.Round < 0 || msg.NumBlockParts <= 0 || msg.POLRound < -1 {
+	if msg.Height < 0 || msg.Round < 0 || msg.BlockPartsHeader.Count <= 0 || msg.POLRound < -1 || msg.POLRound >= msg.Round {
 		return errors.New("bad field value")
 	}
 	return msg.signedBase.verify()
@@ -95,11 +99,8 @@ func (msg *proposalMessage) dispatch(cs *consensus) (bool, error) {
 }
 
 type blockPartMessage struct {
-	payloadBase
-	Height int64
-	Round  int
-	Index  int
-	Proof  [][]byte // Merkle proof to root
+	_HR
+	BlockPart []byte
 }
 
 func unmarshalBlockPartMessage(bs []byte) (message, error) {
@@ -111,7 +112,7 @@ func unmarshalBlockPartMessage(bs []byte) (message, error) {
 }
 
 func (msg *blockPartMessage) verify() error {
-	if msg.Height < 0 || msg.Round < 0 || msg.Index < 0 {
+	if msg.Height < 0 || msg.Round < 0 {
 		return errors.New("bad field value")
 	}
 	return nil
@@ -130,9 +131,10 @@ const (
 )
 
 type vote struct {
-	payloadBase
-	Type    voteType
-	BlockID []byte
+	_HR
+	Type             voteType
+	BlockID          []byte
+	BlockPartsHeader BlockPartsHeader
 }
 
 func (v *vote) bytes() []byte {
