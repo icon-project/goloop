@@ -41,11 +41,11 @@ type consensus struct {
 	hvs              heightVoteSet
 	nextProposeTime  time.Time
 	lockedRound      int32
-	lockedBlockParts BlockParts
+	lockedBlockParts PartSet
 	lockedBlock      module.Block
 
 	proposalPOLRound  int32
-	currentBlockParts BlockParts
+	currentBlockParts PartSet
 	currentBlock      module.Block
 
 	timer              *time.Timer
@@ -151,7 +151,7 @@ func (cs *consensus) receiveProposal(msg *proposalMessage) (bool, error) {
 		return false, nil
 	}
 	cs.proposalPOLRound = msg.proposal.POLRound
-	cs.currentBlockParts = newBlockPartsFromHeader(&msg.proposal.BlockPartsHeader)
+	cs.currentBlockParts = newPartSetFromID(&msg.proposal.BlockPartsHeader)
 
 	if cs.step == stepPropose && cs.isProposalAndPOLPrevotesComplete() {
 		cs.enterPrevote()
@@ -170,16 +170,12 @@ func (cs *consensus) receiveBlockPart(msg *blockPartMessage) (bool, error) {
 		return true, nil
 	}
 
-	bp, err := newBlockPart(msg.BlockPart)
+	bp, err := newPart(msg.BlockPart)
 	if err != nil {
 		return false, err
 	}
-	added, err := cs.currentBlockParts.AddPart(bp)
-	if err != nil {
+	if err := cs.currentBlockParts.AddPart(bp); err != nil {
 		return false, err
-	}
-	if !added {
-		return false, nil
 	}
 
 	if cs.step == stepPropose && cs.isProposalAndPOLPrevotesComplete() {
@@ -344,7 +340,11 @@ func (cs *consensus) enterPropose() {
 					if cs.hrs != hrs {
 						return
 					}
-					bps := newBlockPartsFromBlock(blk)
+					psb := newPartSetBuffer()
+					blk.MarshalHeader(psb)
+					blk.MarshalBody(psb)
+					bps := psb.PartSet()
+
 					cs.sendProposal(bps, -1)
 					cs.enterPrevote()
 				},
@@ -514,7 +514,7 @@ func (cs *consensus) enterNewHeight() {
 	}
 }
 
-func (cs *consensus) sendProposal(blockParts BlockParts, polRound int32) {
+func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) {
 	// TODO sign, send proposal and blockParts, receive
 }
 

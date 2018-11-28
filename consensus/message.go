@@ -61,7 +61,7 @@ func (b *_HR) round() int32 {
 
 type proposal struct {
 	_HR
-	BlockPartsHeader BlockPartsHeader
+	BlockPartsHeader PartSetID
 	POLRound         int32
 }
 
@@ -134,7 +134,7 @@ type vote struct {
 	_HR
 	Type             voteType
 	BlockID          []byte
-	BlockPartsHeader BlockPartsHeader
+	BlockPartsHeader PartSetID
 }
 
 func (v *vote) bytes() []byte {

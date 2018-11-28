@@ -29,7 +29,7 @@ func (vs *voteSet) getOverTwoThirdsBlockID() (bid []byte, bidIsOverTwoThirds boo
 }
 
 // returns true if has +2/3 for nil or a block
-func (vs *voteSet) getOverTwoThirdsBlockPartsHeader() (*BlockPartsHeader, bool) {
+func (vs *voteSet) getOverTwoThirdsBlockPartsHeader() (*PartSetID, bool) {
 	// TODO
 	return nil, true
 }
