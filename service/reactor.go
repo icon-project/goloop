@@ -60,7 +60,9 @@ func (r *serviceReactor) propagateTransaction(pi module.ProtocolInfo, tx *transa
 	//}
 	//r.membership.Broadcast(pi, buf.Bytes(), module.BROADCAST_ALL)
 	// TODO: have to serialize with MP. below is temp code for test
-	r.membership.Multicast(PROPAGATE_TRANSACTION, tx.Bytes(), module.ROLE_VALIDATOR)
+	if r != nil {
+		r.membership.Multicast(PROPAGATE_TRANSACTION, tx.Bytes(), module.ROLE_VALIDATOR)
+	}
 	return nil
 }
 
