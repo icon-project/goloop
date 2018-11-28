@@ -3,7 +3,6 @@ package network
 import (
 	"fmt"
 	"reflect"
-	"sync"
 	"time"
 
 	"github.com/icon-project/goloop/module"
@@ -15,10 +14,9 @@ type PeerToPeer struct {
 	ch              chan *Packet
 	onPacketCbFuncs map[module.ProtocolInfo]packetCbFunc
 	//[TBD] detecting duplicate transmission
-	packetPool    map[uint64]*Packet
-	mtxPacketPool sync.Mutex
-	packetRw      *PacketReadWriter
-	transport     module.NetworkTransport
+	packetPool *PacketPool
+	packetRw   *PacketReadWriter
+	transport  module.NetworkTransport
 
 	//Topology with Connected Peers
 	self      *Peer
@@ -63,7 +61,7 @@ func newPeerToPeer(channel string, t module.NetworkTransport) *PeerToPeer {
 		channel:         channel,
 		ch:              make(chan *Packet),
 		onPacketCbFuncs: make(map[module.ProtocolInfo]packetCbFunc),
-		packetPool:      make(map[uint64]*Packet),
+		packetPool:      NewPacketPool(DefaultPacketPoolNumBucket, DefaultPacketPoolBucketLen),
 		packetRw:        NewPacketReadWriter(),
 		transport:       t,
 		//
@@ -212,26 +210,14 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 		if p.connType == p2pConnTypeNone {
 			p2p.log.Println("onPacket Ignore, undetermined PeerConnectionType")
 		} else if cbFunc := p2p.onPacketCbFuncs[pkt.protocol]; cbFunc != nil {
-			if !p2p.hasPacket(pkt) && !p2p.self.id.Equal(pkt.src) {
-				p2p.putPacketPool(pkt)
+			if !p2p.packetPool.Contains(pkt) && !p2p.self.id.Equal(pkt.src) {
+				p2p.packetPool.Put(pkt)
 				cbFunc(pkt, p)
 			} else {
 				p2p.log.Println("onPacket Ignore, duplicated", pkt.hashOfPacket)
 			}
 		}
 	}
-}
-
-func (p2p *PeerToPeer) hasPacket(pkt *Packet) bool {
-	defer p2p.mtxPacketPool.Unlock()
-	p2p.mtxPacketPool.Lock()
-	_, ok := p2p.packetPool[pkt.hashOfPacket]
-	return ok
-}
-func (p2p *PeerToPeer) putPacketPool(pkt *Packet) {
-	defer p2p.mtxPacketPool.Unlock()
-	p2p.mtxPacketPool.Lock()
-	p2p.packetPool[pkt.hashOfPacket] = pkt
 }
 
 func (p2p *PeerToPeer) encodeMsgpack(v interface{}) []byte {

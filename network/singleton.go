@@ -23,11 +23,13 @@ var (
 )
 
 const (
-	DefaultTransportNet       = "tcp4"
-	DefaultMembershipName     = ""
-	DefaultPacketBufferSize   = 4096 //bufio.defaultBufSize=4096
-	DefaultDiscoveryPeriodSec = 1
-	DefaultSeedPeriodSec      = 5
+	DefaultTransportNet        = "tcp4"
+	DefaultMembershipName      = ""
+	DefaultPacketBufferSize    = 4096 //bufio.defaultBufSize=4096
+	DefaultPacketPoolNumBucket = 10
+	DefaultPacketPoolBucketLen = 10
+	DefaultDiscoveryPeriodSec  = 1
+	DefaultSeedPeriodSec       = 5
 )
 
 var (

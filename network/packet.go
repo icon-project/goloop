@@ -4,11 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"hash"
 	"hash/fnv"
 	"io"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/icon-project/goloop/module"
@@ -230,11 +232,128 @@ func (pw *PacketWriter) Flush() error {
 }
 
 type PacketReadWriter struct {
-	*PacketReader
-	*PacketWriter
+	b    *bytes.Buffer
+	rd   *PacketReader
+	wr   *PacketWriter
+	rpkt *Packet
+	wpkt *Packet
+	mtx  sync.RWMutex
 }
 
 func NewPacketReadWriter() *PacketReadWriter {
-	buf := bytes.NewBuffer(make([]byte, DefaultPacketBufferSize))
-	return &PacketReadWriter{NewPacketReader(buf), NewPacketWriter(buf)}
+	b := bytes.NewBuffer(make([]byte, DefaultPacketBufferSize))
+	b.Reset()
+	return &PacketReadWriter{b: b, rd: NewPacketReader(b), wr: NewPacketWriter(b)}
+}
+
+func (prw *PacketReadWriter) WritePacket(pkt *Packet) error {
+	defer prw.mtx.Unlock()
+	prw.mtx.Lock()
+	if err := prw.wr.WritePacket(pkt); err != nil {
+		return err
+	}
+	if err := prw.wr.Flush(); err != nil {
+		return err
+	}
+	prw.wpkt = pkt
+	return nil
+}
+
+func (prw *PacketReadWriter) ReadPacket() (*Packet, error) {
+	defer prw.mtx.RUnlock()
+	prw.mtx.RLock()
+	if prw.rpkt == nil {
+		//(pkt *Packet, h hash.Hash64, e error)
+		pkt, h, err := prw.rd.ReadPacket()
+		if err != nil {
+			return nil, err
+		}
+		if pkt.hashOfPacket != h.Sum64() {
+			e := fmt.Sprintf("Invalid hashOfPacket:%x, expected:%x", pkt.hashOfPacket, h.Sum64())
+			return pkt, errors.New(e)
+		}
+		prw.rpkt = pkt
+	}
+	return prw.rpkt, nil
+}
+
+func (prw *PacketReadWriter) Reset() {
+	defer prw.mtx.Unlock()
+	prw.mtx.Lock()
+	prw.b.Reset()
+	prw.rd.Reset()
+	prw.wr.Reset()
+	prw.rpkt = nil
+	prw.wpkt = nil
+}
+
+type PacketPool struct {
+	buckets     []map[uint64]*Packet
+	len         []int
+	cur         int
+	numOfBucket int
+	lenOfBucket int
+	mtx         sync.RWMutex
+}
+
+func NewPacketPool(numOfBucket uint8, lenOfBucket uint16) *PacketPool {
+	pp := &PacketPool{
+		buckets:     make([]map[uint64]*Packet, numOfBucket),
+		len:         make([]int, numOfBucket),
+		cur:         0,
+		numOfBucket: int(numOfBucket),
+		lenOfBucket: int(lenOfBucket),
+	}
+	pp.buckets[0] = make(map[uint64]*Packet)
+	return pp
+}
+
+func (pp *PacketPool) Put(pkt *Packet) {
+	defer pp.mtx.Unlock()
+	pp.mtx.Lock()
+
+	m := pp.buckets[pp.cur]
+	m[pkt.hashOfPacket] = pkt
+	pp.len[pp.cur]++
+	if pp.len[pp.cur] >= pp.lenOfBucket {
+		pp.cur++
+		if pp.cur >= pp.numOfBucket {
+			pp.cur = 0
+		}
+		pp.buckets[pp.cur] = make(map[uint64]*Packet)
+		pp.len[pp.cur] = 0
+	}
+}
+
+func (pp *PacketPool) Clear() {
+	defer pp.mtx.Unlock()
+	pp.mtx.Lock()
+
+	for i := 0; i < pp.numOfBucket; i++ {
+		pp.buckets[i] = nil
+	}
+	pp.cur = 0
+	pp.buckets[0] = make(map[uint64]*Packet)
+}
+
+func (pp *PacketPool) Contains(pkt *Packet) bool {
+	defer pp.mtx.RUnlock()
+	pp.mtx.RLock()
+
+	cur := pp.cur
+	for i := 0; i < pp.numOfBucket; i++ {
+		m := pp.buckets[cur]
+		if m == nil {
+			return false
+		}
+		_, ok := m[pkt.hashOfPacket]
+		if ok {
+			return true
+		}
+		if cur < 1 {
+			cur = pp.numOfBucket
+		}
+		cur--
+	}
+	return false
 }
