@@ -65,7 +65,7 @@ func (m *manager) getProtocolInfo(name string) module.ProtocolInfo {
 	if name == DefaultMembershipName {
 		return pi
 	} else {
-		return NewProtocolInfoWithIdVersion(pi.ID()+byte(len(m.memberships)), 0)
+		return NewProtocolInfoWithIDVersion(pi.ID()+byte(len(m.memberships)), 0)
 	}
 }
 
@@ -77,6 +77,7 @@ type logger struct {
 }
 
 func newLogger(name string, prefix string) *logger {
+	//l := log.New(os.Stdout, fmt.Sprintf("[%s] %s", prefix, name), log.LstdFlags)
 	return &logger{name, prefix, make([]string, 0), singletonLoggerExcludes}
 }
 
@@ -124,7 +125,7 @@ type protocolInfo uint16
 func NewProtocolInfo(b []byte) module.ProtocolInfo {
 	return protocolInfo(binary.BigEndian.Uint16(b[:2]))
 }
-func NewProtocolInfoWithIdVersion(id byte, version byte) module.ProtocolInfo {
+func NewProtocolInfoWithIDVersion(id byte, version byte) module.ProtocolInfo {
 	return protocolInfo(int(id)<<8 | int(version))
 }
 func (pi protocolInfo) ID() byte {

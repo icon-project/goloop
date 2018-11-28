@@ -27,44 +27,25 @@ const (
 	DefaultMembershipName     = ""
 	DefaultPacketBufferSize   = 4096 //bufio.defaultBufSize=4096
 	DefaultDiscoveryPeriodSec = 1
-	DefaultSeedPeriodSec      = 1
+	DefaultSeedPeriodSec      = 5
 )
 
-// const (
-// 	PROTO_CONTOL     = 0x0000
-// 	PROTO_DEF_MEMBER = 0x0100
-// )
-
-// const (
-// 	PROTO_AUTH_HS1 = 0x0101
-// 	PROTO_AUTH_HS2 = 0x0201
-// 	PROTO_AUTH_HS3 = 0x0301
-// 	PROTO_AUTH_HS4 = 0x0401
-// )
-
-// const (
-// 	PROTO_CHAN_JOIN_REQ  = 0x0501
-// 	PROTO_CHAN_JOIN_RESP = 0x0601
-// )
-
-// const (
-// 	PROTO_P2P_QUERY        = 0x0701
-// 	PROTO_P2P_QUERY_RESULT = 0x0801
-// )
+var (
+	PROTO_CONTOL     module.ProtocolInfo = protocolInfo(0x0000)
+	PROTO_DEF_MEMBER module.ProtocolInfo = protocolInfo(0x0100)
+)
 
 var (
-	PROTO_CONTOL           module.ProtocolInfo = protocolInfo(0x0000)
-	PROTO_DEF_MEMBER       module.ProtocolInfo = protocolInfo(0x0100)
 	PROTO_AUTH_KEY_REQ     module.ProtocolInfo = protocolInfo(0x0100)
 	PROTO_AUTH_KEY_RESP    module.ProtocolInfo = protocolInfo(0x0200)
 	PROTO_AUTH_SIGN_REQ    module.ProtocolInfo = protocolInfo(0x0300)
 	PROTO_AUTH_SIGN_RESP   module.ProtocolInfo = protocolInfo(0x0400)
-	PROTO_CHAN_JOIN_REQ    module.ProtocolInfo = protocolInfo(0x0501)
-	PROTO_CHAN_JOIN_RESP   module.ProtocolInfo = protocolInfo(0x0601)
-	PROTO_P2P_QUERY        module.ProtocolInfo = protocolInfo(0x0701)
-	PROTO_P2P_QUERY_RESULT module.ProtocolInfo = protocolInfo(0x0801)
-	PROTO_P2P_CONN_REQ     module.ProtocolInfo = protocolInfo(0x0901)
-	PROTO_P2P_CONN_RESP    module.ProtocolInfo = protocolInfo(0x0A01)
+	PROTO_CHAN_JOIN_REQ    module.ProtocolInfo = protocolInfo(0x0500)
+	PROTO_CHAN_JOIN_RESP   module.ProtocolInfo = protocolInfo(0x0600)
+	PROTO_P2P_QUERY        module.ProtocolInfo = protocolInfo(0x0700)
+	PROTO_P2P_QUERY_RESULT module.ProtocolInfo = protocolInfo(0x0800)
+	PROTO_P2P_CONN_REQ     module.ProtocolInfo = protocolInfo(0x0900)
+	PROTO_P2P_CONN_RESP    module.ProtocolInfo = protocolInfo(0x0A00)
 )
 
 type Config struct {

@@ -31,6 +31,7 @@ type Peer struct {
 	rtt       PeerRTT
 	connType  PeerConnectionType
 	role      PeerRoleFlag
+	roleMtx   sync.RWMutex
 }
 
 type packetCbFunc func(pkt *Packet, p *Peer)
@@ -57,11 +58,6 @@ type PeerRoleFlag byte
 func (pr *PeerRoleFlag) Has(o PeerRoleFlag) bool {
 	return (*pr)&o == o
 }
-
-func (pr *PeerRoleFlag) Set(o PeerRoleFlag) {
-	*pr = o
-}
-
 func (pr *PeerRoleFlag) SetFlag(o PeerRoleFlag) {
 	*pr |= o
 }
@@ -89,7 +85,7 @@ func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool) *Peer {
 	}
 	p.setPacketCbFunc(cbFunc)
 	p.setErrorCbFunc(func(err error, p *Peer) {
-		p.conn.Close()
+		p.Close()
 	})
 	p.setCloseCbFunc(func(p *Peer) {
 		//ignore
@@ -126,8 +122,30 @@ func (p *Peer) setCloseCbFunc(cbFunc closeCbFunc) {
 	p.onClose = cbFunc
 }
 
-func (p *Peer) setRole(role PeerRoleFlag) {
-	p.role.Set(role)
+func (p *Peer) setRole(r PeerRoleFlag) {
+	defer p.roleMtx.Unlock()
+	p.roleMtx.Lock()
+	p.role.SetFlag(r)
+}
+func (p *Peer) getRole() PeerRoleFlag {
+	defer p.roleMtx.RUnlock()
+	p.roleMtx.RLock()
+	return p.role
+}
+func (p *Peer) hasRole(r PeerRoleFlag) bool {
+	defer p.roleMtx.RUnlock()
+	p.roleMtx.RLock()
+	return p.role.Has(r)
+}
+func (p *Peer) eqaulRole(r PeerRoleFlag) bool {
+	defer p.roleMtx.RUnlock()
+	p.roleMtx.RLock()
+	return p.role == r
+}
+func (p *Peer) Close() {
+	if err := p.conn.Close(); err == nil {
+		p.onClose(p)
+	}
 }
 
 //receive from bufio.Reader, unmarshalling and peerToPeer.onPacket
@@ -135,9 +153,9 @@ func (p *Peer) receiveRoutine() {
 	defer func() {
 		if err := recover(); err != nil {
 			//TODO recover()
-			log.Fatal(err)
+			log.Println("Peer.receiveRoutine recover", err)
 		}
-		p.conn.Close()
+		p.Close()
 	}()
 	for {
 		pkt, h, err := p.reader.ReadPacket()
@@ -145,10 +163,10 @@ func (p *Peer) receiveRoutine() {
 			if oe, ok := err.(*net.OpError); ok { //after p.conn.Close()
 				//referenced from golang.org/x/net/http2/server.go isClosedConnError
 				if strings.Contains(oe.Err.Error(), "use of closed network connection") {
-					p.onClose(p)
+					p.Close()
 				}
 			} else if err == io.EOF || err == io.ErrUnexpectedEOF { //half Close (recieved tcp close)
-				p.onClose(p)
+				p.Close()
 			} else {
 				//TODO
 				// p.reader.Reset()

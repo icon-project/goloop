@@ -123,13 +123,13 @@ func (s *Set) String() string {
 //TODO peer.Equal
 type PeerSet struct {
 	*Set
-	incomming *PeerIdSet
-	outgoing  *PeerIdSet
+	incomming *PeerIDSet
+	outgoing  *PeerIDSet
 	addrs     *NetAddressSet
 }
 
 func NewPeerSet() *PeerSet {
-	return &PeerSet{Set: NewSet(), incomming: NewPeerIdSet(), outgoing: NewPeerIdSet(), addrs: NewNetAddressSet()}
+	return &PeerSet{Set: NewSet(), incomming: NewPeerIDSet(), outgoing: NewPeerIDSet(), addrs: NewNetAddressSet()}
 }
 
 func (s *PeerSet) _contains(p *Peer) bool {
@@ -206,7 +206,7 @@ func (s *PeerSet) getByRole(role PeerRoleFlag) []*Peer {
 	s.Set.mtx.RLock()
 	l := make([]*Peer, 0, len(s.Set.m))
 	for k := range s.Set.m {
-		if p := k.(*Peer); p.role.Has(role) {
+		if p := k.(*Peer); p.hasRole(role) {
 			l = append(l, p)
 		}
 	}
@@ -223,7 +223,7 @@ func (s *PeerSet) GetByRoleAndIncomming(role PeerRoleFlag, in bool) *Peer {
 	defer s.Set.mtx.RUnlock()
 	s.Set.mtx.RLock()
 	for k := range s.Set.m {
-		if p := k.(*Peer); p.incomming == in && p.role.Has(role) {
+		if p := k.(*Peer); p.incomming == in && p.hasRole(role) {
 			return p
 		}
 	}
@@ -298,7 +298,7 @@ func (s *NetAddressSet) Merge(args ...NetAddress) {
 	}
 
 	//Remove
-	for k, _ := range s.cache {
+	for k := range s.cache {
 		if d := s.Set.m[k]; d == "" {
 			delete(s.Set.m, k)
 		}
@@ -327,17 +327,17 @@ func (s *NetAddressSet) Map() map[NetAddress]string {
 	return s._map()
 }
 
-type PeerIdSet struct {
+type PeerIDSet struct {
 	*Set
 	onUpdate func()
 }
 
-func NewPeerIdSet() *PeerIdSet {
-	s := &PeerIdSet{Set: NewSet(), onUpdate: func() {}}
+func NewPeerIDSet() *PeerIDSet {
+	s := &PeerIDSet{Set: NewSet(), onUpdate: func() {}}
 	return s
 }
 
-func (s *PeerIdSet) _contains(v interface{}) bool {
+func (s *PeerIDSet) _contains(v interface{}) bool {
 	for k := range s.Set.m {
 		if k.(module.PeerID).Equal(v.(module.PeerID)) {
 			return true
@@ -346,7 +346,7 @@ func (s *PeerIdSet) _contains(v interface{}) bool {
 	return false
 }
 
-func (s *PeerIdSet) Add(id module.PeerID) (r bool) {
+func (s *PeerIDSet) Add(id module.PeerID) (r bool) {
 	defer func() {
 		s.Set.mtx.Unlock()
 		if r {
@@ -360,7 +360,7 @@ func (s *PeerIdSet) Add(id module.PeerID) (r bool) {
 	}
 	return
 }
-func (s *PeerIdSet) Remove(id module.PeerID) (r bool) {
+func (s *PeerIDSet) Remove(id module.PeerID) (r bool) {
 	defer func() {
 		s.Set.mtx.Unlock()
 		if r {
@@ -374,13 +374,13 @@ func (s *PeerIdSet) Remove(id module.PeerID) (r bool) {
 	}
 	return
 }
-func (s *PeerIdSet) Contains(id module.PeerID) bool {
+func (s *PeerIDSet) Contains(id module.PeerID) bool {
 	defer s.mtx.RUnlock()
 	s.mtx.RLock()
 	return s._contains(id)
 }
-func (s *PeerIdSet) Merge(args ...module.PeerID) {
-	var r bool = false
+func (s *PeerIDSet) Merge(args ...module.PeerID) {
+	var r bool
 	defer func() {
 		s.Set.mtx.Unlock()
 		if r {
@@ -395,7 +395,7 @@ func (s *PeerIdSet) Merge(args ...module.PeerID) {
 		}
 	}
 }
-func (s *PeerIdSet) Array() []module.PeerID {
+func (s *PeerIDSet) Array() []module.PeerID {
 	defer s.Set.mtx.RUnlock()
 	s.Set.mtx.RLock()
 	arr := make([]module.PeerID, 0)
@@ -404,7 +404,7 @@ func (s *PeerIdSet) Array() []module.PeerID {
 	}
 	return arr
 }
-func (s *PeerIdSet) ClearAndAdd(args ...module.PeerID) {
+func (s *PeerIDSet) ClearAndAdd(args ...module.PeerID) {
 	s.Clear()
 	s.Merge(args...)
 }

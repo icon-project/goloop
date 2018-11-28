@@ -3,7 +3,6 @@ package network
 import (
 	"container/list"
 	"fmt"
-	"log"
 	"net"
 	"sync"
 
@@ -62,6 +61,8 @@ type Listener struct {
 	mtx      sync.Mutex
 	closeCh  chan bool
 	onAccept acceptCbFunc
+	//log
+	log *logger
 }
 
 type acceptCbFunc func(conn net.Conn)
@@ -70,12 +71,14 @@ func newListener(address string, cbFunc acceptCbFunc) *Listener {
 	return &Listener{
 		address:  address,
 		onAccept: cbFunc,
+		log:      newLogger("Listener", address),
 	}
 }
 
 func (l *Listener) Listen() error {
 	defer l.mtx.Unlock()
 	l.mtx.Lock()
+
 	if l.ln != nil {
 		return ErrAlreadyListened
 	}
@@ -112,7 +115,7 @@ func (l *Listener) acceptRoutine() {
 	for {
 		conn, err := l.ln.Accept()
 		if err != nil {
-			log.Println("Listener acceptRoutine", err)
+			l.log.Println("Listener acceptRoutine", err)
 			return
 		}
 		l.onAccept(conn)
@@ -123,6 +126,8 @@ type Dialer struct {
 	onConnect connectCbFunc
 	channel   string
 	conn      net.Conn
+	//log
+	log *logger
 }
 
 type connectCbFunc func(conn net.Conn, addr string, d *Dialer)
@@ -131,13 +136,14 @@ func newDialer(channel string, cbFunc connectCbFunc) *Dialer {
 	return &Dialer{
 		onConnect: cbFunc,
 		channel:   channel,
+		log:       newLogger("Dialer", channel),
 	}
 }
 
 func (d *Dialer) Dial(addr string) error {
 	conn, err := net.Dial(DefaultTransportNet, addr)
 	if err != nil {
-		log.Println("Dialer Dial", err)
+		d.log.Println("Dialer Dial", err)
 		return err
 	}
 	d.conn = conn
@@ -225,14 +231,14 @@ type PeerDispatcher struct {
 	p2pMap       map[string]*PeerToPeer
 }
 
-func newPeerDispatcher(selfPeerId module.PeerID, peerHandlers ...PeerHandler) *PeerDispatcher {
+func newPeerDispatcher(id module.PeerID, peerHandlers ...PeerHandler) *PeerDispatcher {
 	pd := &PeerDispatcher{
 		peerHandlers: list.New(),
 		p2pMap:       make(map[string]*PeerToPeer),
 		peerHandler:  newPeerHandler(newLogger("PeerDispatcher", "")),
 	}
 	// pd.peerHandler.codecHandle.MapType = reflect.TypeOf(map[string]interface{}(nil))
-	pd.setSelfPeerID(selfPeerId)
+	pd.setSelfPeerID(id)
 
 	pd.registPeerHandler(pd)
 	for _, ph := range peerHandlers {

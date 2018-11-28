@@ -98,8 +98,8 @@ func Test_set_NetAddressSet(t *testing.T) {
 	//v2_1 := &Peer{id: v2.id, netAddress: v1.netAddress}
 }
 
-func Test_set_PeerIdSet(t *testing.T) {
-	s := NewPeerIdSet()
+func Test_set_PeerIDSet(t *testing.T) {
+	s := NewPeerIDSet()
 
 	v1 := generatePeerID()
 	v2 := generatePeerID()

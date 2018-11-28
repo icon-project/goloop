@@ -11,7 +11,7 @@ type membership struct {
 	name        string
 	protocol    module.ProtocolInfo
 	p2p         *PeerToPeer
-	roles       map[module.Role]*PeerIdSet
+	roles       map[module.Role]*PeerIDSet
 	authorities map[module.Authority]*RoleSet
 	reactors    map[string]module.Reactor
 	cbFuncs     map[module.ProtocolInfo]receiveCbFunc
@@ -27,7 +27,7 @@ func newMembership(name string, pi module.ProtocolInfo, p2p *PeerToPeer) *member
 		name:        name,
 		protocol:    pi,
 		p2p:         p2p,
-		roles:       make(map[module.Role]*PeerIdSet),
+		roles:       make(map[module.Role]*PeerIDSet),
 		authorities: make(map[module.Authority]*RoleSet),
 		reactors:    make(map[string]module.Reactor),
 		cbFuncs:     make(map[module.ProtocolInfo]receiveCbFunc),
@@ -110,10 +110,10 @@ func (ms *membership) Broadcast(subProtocol module.ProtocolInfo, bytes []byte, b
 	return nil
 }
 
-func (ms *membership) getRolePeerIDSet(role module.Role) *PeerIdSet {
+func (ms *membership) getRolePeerIDSet(role module.Role) *PeerIDSet {
 	s, ok := ms.roles[role]
 	if !ok {
-		s := NewPeerIdSet()
+		s := NewPeerIDSet()
 		ms.roles[role] = s
 		ms.destByRole[role] = byte(len(ms.roles) + p2pDestPeerGroup)
 	}
