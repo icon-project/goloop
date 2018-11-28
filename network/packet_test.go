@@ -41,3 +41,19 @@ func Test_packet_PacketPool(t *testing.T) {
 	assert.Equal(t, true, pp.Contains(pkts[3]), "true")
 	assert.Equal(t, true, pp.Contains(pkts[4]), "true")
 }
+
+func Benchmark_packet_PacketPool(b *testing.B) {
+	b.StopTimer()
+	pp := NewPacketPool(DefaultPacketPoolNumBucket, DefaultPacketPoolBucketLen)
+	pkts := make([]*Packet, b.N)
+	for i := 0; i < b.N; i++ {
+		pkt := &Packet{}
+		pkt.hashOfPacket = uint64(i)
+		pkts[i] = pkt
+	}
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		pkt := pkts[i]
+		pp.Put(pkt)
+	}
+}

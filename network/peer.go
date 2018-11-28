@@ -7,6 +7,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
@@ -41,8 +42,51 @@ type closeCbFunc func(p *Peer)
 //TODO define netAddress as IP:Port
 type NetAddress string
 
-//TODO define PeerRTT
-type PeerRTT uint32
+//TODO define PeerRTT,
+type PeerRTT struct {
+	last time.Duration
+	avg  time.Duration
+	st   time.Time
+	et   time.Time
+}
+
+func NewPeerRTT() *PeerRTT {
+	return &PeerRTT{}
+}
+
+func (r *PeerRTT) Start() time.Time {
+	r.st = time.Now()
+	return r.st
+}
+
+func (r *PeerRTT) Stop() time.Time {
+	r.et = time.Now()
+	r.last = r.et.Sub(r.st)
+
+	//exponential weighted moving average model
+	//avg = (1-0.125)*avg + 0.125*last
+	if r.avg > 0 {
+		fv := 0.875*float64(r.avg) + 0.125*float64(r.last)
+		r.avg = time.Duration(fv)
+	} else {
+		r.avg = r.last
+	}
+	return r.et
+}
+
+func (r *PeerRTT) Last(d time.Duration) float64 {
+	fv := float64(r.last) / float64(d)
+	return fv
+}
+
+func (r *PeerRTT) Avg(d time.Duration) float64 {
+	fv := float64(r.avg) / float64(d)
+	return fv
+}
+
+func (r *PeerRTT) String() string {
+	return fmt.Sprintf("{last:%v,avg:%v}", r.last.String(), r.avg.String())
+}
 
 const (
 	p2pRoleNone     = 0x00
@@ -99,7 +143,7 @@ func (p *Peer) String() string {
 		return ""
 	}
 	return fmt.Sprintf("{id:%v, addr:%v, in:%v, channel:%v, role:%v, rtt:%v}",
-		p.id, p.netAddress, p.incomming, p.channel, p.role, p.rtt)
+		p.id, p.netAddress, p.incomming, p.channel, p.role, p.rtt.String())
 }
 
 func (p *Peer) ID() module.PeerID {
@@ -125,7 +169,7 @@ func (p *Peer) setCloseCbFunc(cbFunc closeCbFunc) {
 func (p *Peer) setRole(r PeerRoleFlag) {
 	defer p.roleMtx.Unlock()
 	p.roleMtx.Lock()
-	p.role.SetFlag(r)
+	p.role = r
 }
 func (p *Peer) getRole() PeerRoleFlag {
 	defer p.roleMtx.RUnlock()

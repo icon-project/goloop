@@ -2,6 +2,7 @@ package network
 
 import (
 	"sync"
+	"time"
 
 	"github.com/icon-project/goloop/module"
 
@@ -167,13 +168,16 @@ type PublicKeyResponse struct {
 }
 type SignatureRequest struct {
 	Signature []byte
+	Rtt       float64
 }
 type SignatureResponse struct {
 	Signature []byte
+	Rtt       float64
 }
 
 func (a *Authenticator) sendPublicKeyRequest(p *Peer) {
 	m := &PublicKeyRequest{PublicKey: a.pubKey.SerializeCompressed()}
+	p.rtt.Start()
 	a.sendPacket(PROTO_AUTH_KEY_REQ, m, p)
 	a.log.Println("sendPublicKeyRequest", m, p)
 }
@@ -189,6 +193,7 @@ func (a *Authenticator) handlePublicKeyRequest(pkt *Packet, p *Peer) {
 	}
 
 	m := &PublicKeyResponse{PublicKey: a.pubKey.SerializeCompressed()}
+	p.rtt.Start()
 	a.sendPacket(PROTO_AUTH_KEY_RESP, m, p)
 }
 
@@ -196,6 +201,7 @@ func (a *Authenticator) handlePublicKeyResponse(pkt *Packet, p *Peer) {
 	rm := &PublicKeyResponse{}
 	a.decode(pkt.payload, rm)
 	a.log.Println("handlePublicKeyResponse", rm, p)
+	p.rtt.Stop()
 	p.pubKey, _ = crypto.ParsePublicKey(rm.PublicKey)
 	p.id = NewPeerIDFromPublicKey(p.pubKey)
 	if !p.id.Equal(pkt.src) {
@@ -203,6 +209,7 @@ func (a *Authenticator) handlePublicKeyResponse(pkt *Packet, p *Peer) {
 	}
 
 	m := &SignatureRequest{Signature: a.Signature()}
+	m.Rtt = p.rtt.Last(time.Millisecond)
 	a.sendPacket(PROTO_AUTH_SIGN_REQ, m, p)
 }
 
@@ -210,9 +217,11 @@ func (a *Authenticator) handleSignatureRequest(pkt *Packet, p *Peer) {
 	rm := &SignatureRequest{}
 	a.decode(pkt.payload, rm)
 	a.log.Println("handleSignatureRequest", rm, p)
+	p.rtt.Stop()
 	s, _ := crypto.ParseSignature(rm.Signature)
 	if a.VerifySignature(s, p) {
 		m := &SignatureResponse{Signature: a.Signature()}
+		m.Rtt = p.rtt.Last(time.Millisecond)
 		a.sendPacket(PROTO_AUTH_SIGN_RESP, m, p)
 
 		a.nextOnPeer(p)

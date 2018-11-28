@@ -1,6 +1,7 @@
 package network
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -144,17 +145,32 @@ func Test_set_RoleSet(t *testing.T) {
 	t.Log(s.Array())
 }
 
-func newDummyPeerID() *module.PeerID {
-	return nil
+type dummyPeerID struct {
+	s string
+	b []byte
 }
+
+func newDummyPeerID(s string) module.PeerID         { return &dummyPeerID{s: s, b: []byte(s)} }
+func (pi *dummyPeerID) String() string              { return pi.s }
+func (pi *dummyPeerID) Bytes() []byte               { return pi.b }
+func (pi *dummyPeerID) ID() []byte                  { return pi.b }
+func (pi *dummyPeerID) IsContract() bool            { return false }
+func (pi *dummyPeerID) Equal(a module.Address) bool { return bytes.Equal(pi.b, a.ID()) }
+func (pi *dummyPeerID) Copy(b []byte)               { copy(b, pi.b) }
 
 func Benchmark_set_PeerSet(b *testing.B) {
 	b.StopTimer()
 	s := NewPeerSet()
-	_, pubK := crypto.GenerateKeyPair()
-	p := &Peer{id: NewPeerIDFromPublicKey(pubK), netAddress: "127.0.0.1:8080"}
+	pArr := make([]*Peer, b.N)
+	for i := 0; i < b.N; i++ {
+		s := fmt.Sprintf("%d", i)
+		p := &Peer{id: newDummyPeerID(s), netAddress: NetAddress(s)}
+		pArr[i] = p
+	}
+
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
+		p := pArr[i]
 		s.Add(p)
 	}
 }

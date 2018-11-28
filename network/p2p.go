@@ -303,6 +303,7 @@ func (p2p *PeerToPeer) setRoleByAllowedSet() PeerRoleFlag {
 	}
 	role := PeerRoleFlag(r)
 	p2p.setRole(role)
+	p2p.log.Println("setRoleByAllowedSet", p2p.getRole())
 	return role
 }
 
@@ -314,6 +315,7 @@ func (p2p *PeerToPeer) sendQuery(p *Peer) {
 	m := &QueryMessage{Role: p2p.getRole()}
 	pkt := NewPacket(PROTO_P2P_QUERY, p2p.encodeMsgpack(m))
 	pkt.src = p2p.self.id
+	p.rtt.Start()
 	p.sendPacket(pkt)
 	p2p.log.Println("sendQuery", m, p)
 }
@@ -370,6 +372,7 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 		return
 	}
 	p2p.log.Println("handleQueryResult", qrm)
+	p.rtt.Stop()
 	role := p2p.getRole()
 	if p2p.isAllowedRole(qrm.Role, p) {
 		p.setRole(qrm.Role)
