@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/big"
 	"math/rand"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/icon-project/goloop/common"
@@ -16,6 +19,7 @@ import (
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/rpc"
 )
 
 type txTest struct {
@@ -261,7 +265,7 @@ func createRandTx(valid bool, time int64, validNum int) module.Transaction {
 		timestamp = time + 1000 + int64(rand.Int()%100)
 		// TODO: check value type. no
 	} else {
-		timestamp = time - TestTxLiveDuration() - 1000 - int64(rand.Int()%10)
+		timestamp = time - txLiveDuration - 1000 - int64(rand.Int()%10)
 	}
 
 	return createTxInst(walletFrom, to, value, timestamp)
@@ -303,6 +307,55 @@ func initTestWallets(testWalletNum int, db db.Database, mpts ...trie.Mutable) {
 	}
 }
 
+type chain struct {
+	wallet module.Wallet
+	nid    int
+
+	database db.Database
+	sm       module.ServiceManager
+	bm       module.BlockManager
+	cs       module.Consensus
+	sv       rpc.JsonRpcServer
+}
+
+func (c *chain) VoteListDecoder() module.VoteListDecoder {
+	return nil
+}
+
+func (c *chain) Database() db.Database {
+	return c.database
+}
+
+func (c *chain) Wallet() module.Wallet {
+	return c.wallet
+}
+
+func (c *chain) NID() int {
+	return c.nid
+}
+
+func (c *chain) Genesis() []byte {
+	genPath := ""
+	if len(genPath) == 0 {
+		file := "genesisTx.json"
+		topDir := "goloop"
+		path, _ := filepath.Abs(".")
+		base := filepath.Base(path)
+		switch {
+		case strings.Compare(base, topDir) == 0:
+			genPath = path + "/" + file
+		case strings.Compare(base, "icon-project") == 0:
+			genPath = path + "/" + topDir + "/" + file
+		default:
+			log.Panicln("Not considered case")
+		}
+	}
+	gen, err := ioutil.ReadFile(genPath)
+	if err != nil {
+		log.Panicln("Failed to read genesisFile. err : ", err)
+	}
+	return gen
+}
 func TestServiceManager(t *testing.T) {
 	// initialize leader trie
 	leaderDB := db.NewMapDB()
@@ -317,7 +370,10 @@ func TestServiceManager(t *testing.T) {
 
 	// request transactions
 	requestCh := make(chan bool)
-	leaderServiceManager := NewManager(leaderDB)
+	c := new(chain)
+	c.wallet = common.NewWallet()
+	c.database = leaderDB
+	leaderServiceManager := NewManager(c)
 	go requestTx(TEST_VALID_REQUEST_TX_NUM, leaderServiceManager, requestCh)
 
 	//run service manager for leader
@@ -366,7 +422,10 @@ func TestServiceManager(t *testing.T) {
 	validatorSnapshot.Flush()
 	validatorResult := make([]byte, 96)
 	copy(validatorResult, validatorSnapshot.Hash())
-	validatorServiceManager := NewManager(validatorDB)
+	validatorCh := new(chain)
+	validatorCh.wallet = common.NewWallet()
+	validatorCh.database = validatorDB
+	validatorServiceManager := NewManager(validatorCh)
 	validatorValidator, _ := ValidatorListFromSlice(leaderDB, nil)
 	initVTrs, err := validatorServiceManager.CreateInitialTransition(validatorResult, validatorValidator, 0)
 	if err != nil {

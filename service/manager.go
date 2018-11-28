@@ -23,8 +23,9 @@ type manager struct {
 	patchTxPool  *transactionPool
 	normalTxPool *transactionPool
 
-	db    db.Database
-	chain module.Chain
+	db      db.Database
+	chain   module.Chain
+	reactor *serviceReactor
 }
 
 func NewManager(chain module.Chain) module.ServiceManager {
@@ -253,11 +254,28 @@ func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
 		log.Panicf("Wrong TransactionGroup. %v", newTx.Group())
 	}
 
-	go txPool.add(newTx)
+	go func() {
+		if result, err := txPool.add(newTx); err == nil && result == true {
+			m.reactor.propagateTransaction(PROPAGATE_TRANSACTION, newTx)
+		} else if err != nil {
+			log.Fatalf("Failed to add transaction to txPool. err = %s\n", err)
+		}
+	}()
 	return hash, nil
 }
 
 func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {
 	valList, _ := ValidatorListFromHash(m.db, hash)
 	return valList
+}
+
+func (m *manager) GetReactor(membership module.Membership) module.Reactor {
+	if m.reactor != nil {
+		return m.reactor
+	}
+	// TODO change below.
+	reactor := &serviceReactor{membership: membership, txPool: m.normalTxPool}
+	membership.RegistReactor(reactorName, reactor, subProtocols)
+	m.reactor = reactor
+	return reactor
 }

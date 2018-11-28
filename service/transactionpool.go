@@ -61,9 +61,9 @@ func (txPool *transactionPool) runGc(expired int64) error {
 }
 
 // transaction에 넣을 때 간단한 검증이 필요하다면, 검증은 외부에서 해야 함.
-func (txPool *transactionPool) add(tx *transaction) error {
-	txPool.addList([]*transaction{tx})
-	return nil
+func (txPool *transactionPool) add(tx *transaction) (bool, error) {
+	result := txPool.addList([]*transaction{tx})
+	return result, nil
 	// KN.KIM 시간이 만료된 것은 받지 않을 것이냐,...
 	//expired := makeTimestamp() - txLiveDuration
 	//if tx.TimeStamp() < expired {
@@ -170,10 +170,10 @@ func (txPool *transactionPool) candidate(wc WorldContext, max int) []module.Tran
 	return txs[:txsIndex]
 }
 
-// 사용할 경우 없음. 이것도 간단한 검증은 외부에서 수행
-func (txPool *transactionPool) addList(txs []*transaction) {
+// return true if one of txs is added to pool
+func (txPool *transactionPool) addList(txs []*transaction) bool {
 	if len(txs) == 0 {
-		return
+		return false
 	}
 	expired := makeTimestamp() - txLiveDuration
 	txPool.mutex.Lock()
@@ -195,9 +195,10 @@ func (txPool *transactionPool) addList(txs []*transaction) {
 	}
 
 	if txList.Len() >= txPoolSize {
-		return
+		return false
 	}
 
+	result := false
 	// check whether this transaction is already in txPool
 	revIter := txList.Back()
 	for _, addTx := range addTxs {
@@ -219,6 +220,7 @@ func (txPool *transactionPool) addList(txs []*transaction) {
 				revIter = txList.InsertAfter(addTx, revIter)
 				txPool.txHashMap[string(addTx.ID())] = addTx
 				inserted = true
+				result = true
 				break
 			}
 			revIter = revIter.Prev()
@@ -227,10 +229,11 @@ func (txPool *transactionPool) addList(txs []*transaction) {
 		if inserted == false {
 			txList.PushFront(addTx)
 			txPool.txHashMap[string(addTx.ID())] = addTx
+			result = true
 		}
 	}
 
-	return
+	return result
 }
 
 // finalize할 때 호출됨.
@@ -271,8 +274,4 @@ func (txPool *transactionPool) removeList(txs module.TransactionList) {
 		}
 		t = t.Next()
 	}
-}
-
-func TestTxLiveDuration() int64 {
-	return txLiveDuration
 }

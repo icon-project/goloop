@@ -1,6 +1,8 @@
 package module
 
-import "math/big"
+import (
+	"math/big"
+)
 
 // TransitionCallback provides transition change notifications. All functions
 // are called back with the same Transition instance for the convenience.
@@ -182,4 +184,6 @@ type ServiceManager interface {
 
 	// ValidatorListFromHash returns ValidatorList from hash.
 	ValidatorListFromHash(hash []byte) ValidatorList
+
+	GetReactor(membership Membership) Reactor
 }
