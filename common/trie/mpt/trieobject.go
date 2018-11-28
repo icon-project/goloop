@@ -15,6 +15,11 @@ type mptForObj struct {
 	*mpt
 }
 
+func (m *mptForObj) Prove(k []byte, p [][]byte) (trie.Object, error) {
+	// TODO: Implement mptForObject.Prove
+	panic("implement me")
+}
+
 func newMptForObj(db db.Database, bk db.Bucket, initialHash hash, t reflect.Type) *mptForObj {
 	return &mptForObj{
 		mpt: &mpt{root: hash(append([]byte(nil), []byte(initialHash)...)),

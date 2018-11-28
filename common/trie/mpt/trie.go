@@ -466,6 +466,11 @@ func (m *mpt) GetProof(k []byte) [][]byte {
 	return proofBuf
 }
 
+func (m *mpt) Prove(k []byte, p [][]byte) ([]byte, error) {
+	// TODO: Implement mpt.Prove
+	panic("implement me")
+}
+
 func (m *mpt) Iterator() trie.Iterator {
 	iter := newIterator(m)
 	iter.Next()

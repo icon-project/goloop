@@ -17,6 +17,7 @@ type (
 		GetProof(k []byte) [][]byte // return nill of this Tree is empty
 		Iterator() Iterator
 		Equal(immutable Immutable, exact bool) bool
+		Prove(k []byte, p [][]byte) ([]byte, error)
 	}
 
 	Snapshot interface {
@@ -58,6 +59,7 @@ type (
 		GetProof(k []byte) [][]byte // return nill of this Tree is empty
 		Iterator() IteratorForObject
 		Equal(object ImmutableForObject, exact bool) bool
+		Prove(k []byte, p [][]byte) (Object, error)
 	}
 
 	SnapshotForObject interface {

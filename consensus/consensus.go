@@ -340,7 +340,7 @@ func (cs *consensus) enterPropose() {
 					if cs.hrs != hrs {
 						return
 					}
-					psb := newPartSetBuffer()
+					psb := newPartSetBuffer(1024 * 10)
 					blk.MarshalHeader(psb)
 					blk.MarshalBody(psb)
 					bps := psb.PartSet()

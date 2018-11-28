@@ -4,14 +4,13 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/trie"
+	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/sha3"
 	"io"
-)
-
-const (
-	FragmentBytes  int = 10 * 1024
-	PartIndexBytes     = 2
+	"log"
 )
 
 type Part interface {
@@ -34,7 +33,7 @@ type PartSetBuffer interface {
 }
 
 type PartSetID struct {
-	Count int32
+	Count uint16
 	Hash  []byte
 }
 
@@ -56,7 +55,7 @@ func (id *PartSetID) String() string {
 type partSet struct {
 	added int
 	parts []*part
-	hash  []byte
+	tree  trie.Immutable
 }
 
 func (ps *partSet) ID() *PartSetID {
@@ -64,24 +63,16 @@ func (ps *partSet) ID() *PartSetID {
 		return nil
 	}
 	return &PartSetID{
-		Count: int32(len(ps.parts)),
+		Count: uint16(len(ps.parts)),
 		Hash:  ps.Hash(),
 	}
 }
 
 func (ps *partSet) Hash() []byte {
-	if !ps.IsComplete() {
-		return nil
+	if ps.tree != nil {
+		return ps.tree.Hash()
 	}
-	if ps.hash == nil {
-		sha := sha3.New256()
-		for _, p := range ps.parts {
-			sha.Write(p.data)
-		}
-		hash := sha.Sum([]byte{})[:]
-		ps.hash = hash[:]
-	}
-	return ps.hash
+	return nil
 }
 
 func (ps *partSet) Parts() int {
@@ -108,10 +99,10 @@ func (r *blockPartsReader) Read(p []byte) (n int, err error) {
 	nbs := 0
 	for nbs < len(p) && r.idx < len(r.ps.parts) {
 		part := r.ps.parts[r.idx]
-		read := copy(p[nbs:], part.data[r.offset+PartIndexBytes:])
+		read := copy(p[nbs:], part.data[r.offset:])
 		r.offset += read
 		nbs += read
-		if (r.offset + PartIndexBytes) >= len(part.data) {
+		if r.offset >= len(part.data) {
 			r.idx += 1
 			r.offset = 0
 		}
@@ -126,8 +117,11 @@ func (ps *partSet) NewReader() io.Reader {
 	return &blockPartsReader{ps: ps, idx: 0, offset: 0}
 }
 
-// TODO need prove with the part.
 func (ps *partSet) AddPart(p Part) error {
+	pt, ok := p.(*part)
+	if !ok {
+		return errors.New("InvalidPartObj")
+	}
 	idx := p.Index()
 	if idx < 0 || idx >= len(ps.parts) {
 		return errors.New("InvalidIndexValue")
@@ -135,7 +129,13 @@ func (ps *partSet) AddPart(p Part) error {
 	if ps.parts[idx] != nil {
 		return errors.New("AlreadyAdded")
 	}
-	ps.parts[idx] = p.(*part)
+	key, _ := codec.MarshalToBytes(uint16(pt.idx))
+	data, err := ps.tree.Prove(key, pt.proof)
+	if err != nil {
+		return err
+	}
+	pt.data = data
+	ps.parts[idx] = pt
 	ps.added += 1
 	return nil
 }
@@ -144,57 +144,78 @@ type partSetBuffer struct {
 	ps     *partSet
 	part   *part
 	offset int
+	size   int
 }
 
-func (w *partSetBuffer) Write(p []byte) (n int, err error) {
+func (b *partSetBuffer) Write(p []byte) (n int, err error) {
 	written := 0
 	for written < len(p) {
-		if w.part == nil {
-			w.part = &part{
-				idx:  len(w.ps.parts),
-				data: make([]byte, FragmentBytes+PartIndexBytes),
+		if b.part == nil {
+			b.part = &part{
+				idx:  len(b.ps.parts),
+				data: make([]byte, b.size),
 			}
-			binary.BigEndian.PutUint16(w.part.data, uint16(w.part.idx))
+			binary.BigEndian.PutUint16(b.part.data, uint16(b.part.idx))
 		}
-		n := copy(w.part.data[PartIndexBytes+w.offset:], p[written:])
+		n := copy(b.part.data[b.offset:], p[written:])
 
-		w.offset += n
+		b.offset += n
 		written += n
-		if w.offset == FragmentBytes {
-			w.ps.parts = append(w.ps.parts, w.part)
-			w.ps.added += 1
-			w.offset = 0
-			w.part = nil
+		if b.offset == b.size {
+			b.ps.parts = append(b.ps.parts, b.part)
+			b.ps.added += 1
+			b.offset = 0
+			b.part = nil
 		}
 	}
 	return written, nil
 }
 
-func (w *partSetBuffer) PartSet() PartSet {
-	if w.part != nil {
-		w.part.data = w.part.data[0 : PartIndexBytes+w.offset]
-		w.ps.parts = append(w.ps.parts, w.part)
-		w.ps.added += 1
-		w.part = nil
+func (b *partSetBuffer) PartSet() PartSet {
+	if b.part != nil {
+		b.part.data = b.part.data[0:b.offset]
+		b.ps.parts = append(b.ps.parts, b.part)
+		b.ps.added += 1
+		b.part = nil
+
+		mt := trie_manager.NewMutable(db.NewNullDB(), nil)
+		for i, p := range b.ps.parts {
+			key, _ := codec.MarshalToBytes(uint16(i))
+			_ = mt.Set(key, p.data)
+		}
+		ss := mt.GetSnapshot()
+		for i, p := range b.ps.parts {
+			key, _ := codec.MarshalToBytes(uint16(i))
+			p.proof = ss.GetProof(key)
+			if p.proof == nil {
+				return nil
+			}
+		}
+		b.ps.tree = ss
 	}
-	return w.ps
+	return b.ps
 }
 
-func newPartSetBuffer() PartSetBuffer {
-	return &partSetBuffer{ps: new(partSet)}
+func newPartSetBuffer(sz int) PartSetBuffer {
+	return &partSetBuffer{ps: new(partSet), size: sz}
 }
 
 func newPartSetFromID(h *PartSetID) PartSet {
 	return &partSet{
 		parts: make([]*part, h.Count),
-		hash:  h.Hash,
+		tree:  trie_manager.NewImmutable(db.NewNullDB(), h.Hash),
 	}
 }
 
-// TODO need to add proof
+type partBinary struct {
+	Index uint16
+	Proof [][]byte
+}
+
 type part struct {
-	idx  int
-	data []byte
+	idx   int
+	proof [][]byte
+	data  []byte
 }
 
 func (p *part) Index() int {
@@ -202,15 +223,25 @@ func (p *part) Index() int {
 }
 
 func (p *part) Bytes() []byte {
-	return p.data
+	pb := partBinary{
+		Index: uint16(p.idx),
+		Proof: p.proof,
+	}
+	if bs, err := codec.MarshalToBytes(&pb); err != nil {
+		log.Panicf("Fail to marshal partBinary err=%+v", err)
+		return nil
+	} else {
+		return bs
+	}
 }
 
 func newPart(b []byte) (Part, error) {
-	if len(b) < 2 {
-		return nil, errors.New("TooShortPartBytes")
+	var pb partBinary
+	if _, err := codec.UnmarshalFromBytes(b, &pb); err != nil {
+		return nil, err
 	}
 	return &part{
-		idx:  int(binary.BigEndian.Uint16(b[:PartIndexBytes])),
-		data: b,
+		idx:   int(pb.Index),
+		proof: pb.Proof,
 	}, nil
 }
