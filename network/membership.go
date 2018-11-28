@@ -25,14 +25,15 @@ type receiveCbFunc func(pi module.ProtocolInfo, bytes []byte, id module.PeerID) 
 
 func newMembership(name string, pi module.ProtocolInfo, p2p *PeerToPeer) *membership {
 	ms := &membership{
-		name:        name,
-		protocol:    pi,
-		p2p:         p2p,
-		roles:       make(map[module.Role]*PeerIDSet),
-		authorities: make(map[module.Authority]*RoleSet),
-		reactors:    make(map[string]module.Reactor),
-		cbFuncs:     make(map[uint16]receiveCbFunc),
-		destByRole:  make(map[module.Role]byte),
+		name:         name,
+		protocol:     pi,
+		p2p:          p2p,
+		roles:        make(map[module.Role]*PeerIDSet),
+		authorities:  make(map[module.Authority]*RoleSet),
+		reactors:     make(map[string]module.Reactor),
+		cbFuncs:      make(map[uint16]receiveCbFunc),
+		subProtocols: make(map[uint16]module.ProtocolInfo),
+		destByRole:   make(map[module.Role]byte),
 		//
 		log: newLogger("Membership", fmt.Sprintf("%s.%s.%s", p2p.channel, p2p.self.id, name)),
 	}
