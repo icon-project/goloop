@@ -8,14 +8,15 @@ import (
 )
 
 type membership struct {
-	name        string
-	protocol    module.ProtocolInfo
-	p2p         *PeerToPeer
-	roles       map[module.Role]*PeerIDSet
-	authorities map[module.Authority]*RoleSet
-	reactors    map[string]module.Reactor
-	cbFuncs     map[uint16]receiveCbFunc
-	destByRole  map[module.Role]byte
+	name         string
+	protocol     module.ProtocolInfo
+	p2p          *PeerToPeer
+	roles        map[module.Role]*PeerIDSet
+	authorities  map[module.Authority]*RoleSet
+	reactors     map[string]module.Reactor
+	cbFuncs      map[uint16]receiveCbFunc
+	subProtocols map[uint16]module.ProtocolInfo
+	destByRole   map[module.Role]byte
 	//log
 	log *logger
 }
@@ -52,9 +53,10 @@ func (ms *membership) onPacket(pkt *Packet, p *Peer) {
 	//auth := Authority(pkt.cast)
 	//r := HasAuthority(auth, role) range roles
 	//if r == true
-
-	if cbFunc := ms.cbFuncs[pkt.subProtocol.Uint16()]; cbFunc != nil {
-		r, err := cbFunc(pkt.subProtocol, pkt.payload, p.ID())
+	k := pkt.subProtocol.Uint16()
+	if cbFunc := ms.cbFuncs[k]; cbFunc != nil {
+		pi := ms.subProtocols[k]
+		r, err := cbFunc(pi, pkt.payload, p.ID())
 		if err != nil {
 			ms.log.Println(err)
 		}
@@ -70,9 +72,10 @@ func (ms *membership) RegistReactor(name string, reactor module.Reactor, subProt
 		return common.ErrIllegalArgument
 	}
 	for _, sp := range subProtocols {
-		if _, ok := ms.cbFuncs[sp.Uint16()]; ok {
+		if _, ok := ms.subProtocols[sp.Uint16()]; ok {
 			return common.ErrIllegalArgument
 		}
+		ms.subProtocols[sp.Uint16()] = sp
 		ms.cbFuncs[sp.Uint16()] = reactor.OnReceive
 		ms.log.Printf("RegistReactor.cbFuncs %#x %s", sp.Uint16(), name)
 	}
