@@ -1,7 +1,5 @@
 package db
 
-import "github.com/icon-project/goloop/common"
-
 type nullDB struct {
 }
 
@@ -17,7 +15,7 @@ type nullBucket struct {
 }
 
 func (*nullBucket) Get(key []byte) ([]byte, error) {
-	return nil, common.ErrNotFound
+	return nil, nil
 }
 
 func (*nullBucket) Has(key []byte) bool {
@@ -25,13 +23,11 @@ func (*nullBucket) Has(key []byte) bool {
 }
 
 func (*nullBucket) Set(key []byte, value []byte) error {
-	panic("implement me")
-	return common.ErrUnsupported
+	panic("NullBucket.Set() Unsupported")
 }
 
 func (*nullBucket) Delete(key []byte) error {
-	panic("implement me")
-	return common.ErrUnsupported
+	panic("NullBucket.Delete() Unsupported")
 }
 
 func NewNullDB() *nullDB {
