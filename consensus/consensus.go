@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"errors"
+	"log"
 	"sync"
 	"time"
 
@@ -25,6 +26,11 @@ type hrs struct {
 	step   step
 }
 
+type blockPartSet struct {
+	PartSet
+	block module.Block
+}
+
 type consensus struct {
 	hrs
 
@@ -35,18 +41,15 @@ type consensus struct {
 
 	msgQueue []message
 
-	lastBlock        module.Block
-	validators       module.ValidatorList
-	votes            module.VoteList
-	hvs              heightVoteSet
-	nextProposeTime  time.Time
-	lockedRound      int32
-	lockedBlockParts PartSet
-	lockedBlock      module.Block
-
+	lastBlock         module.Block
+	validators        module.ValidatorList
+	votes             module.VoteList
+	hvs               heightVoteSet
+	nextProposeTime   time.Time
+	lockedRound       int32
+	lockedBlockParts  *blockPartSet
 	proposalPOLRound  int32
-	currentBlockParts PartSet
-	currentBlock      module.Block
+	currentBlockParts *blockPartSet
 
 	timer              *time.Timer
 	cancelBlockRequest func() bool
@@ -68,20 +71,19 @@ func (cs *consensus) resetForNewHeight(prevBlock module.Block, votes module.Vote
 	cs.hvs.reset(cs.validators.Len())
 	cs.lockedRound = -1
 	cs.lockedBlockParts = nil
-	cs.lockedBlock = nil
 	cs.resetForNewRound(0)
 }
 
 func (cs *consensus) resetForNextHeight() {
 	votes := cs.hvs.votesFor(cs.round, voteTypePrecommit).voteList()
-	cs.resetForNewHeight(cs.currentBlock, votes)
+	cs.resetForNewHeight(cs.currentBlockParts.block, votes)
 }
 
 func (cs *consensus) resetForNewRound(round int32) {
 	cs.proposalPOLRound = -1
 	cs.currentBlockParts = nil
-	cs.currentBlock = nil
 	cs.round = round
+	cs.step = stepPrepropose
 	cs.enterPropose()
 }
 
@@ -94,10 +96,6 @@ func (cs *consensus) resetForNewStep() {
 		cs.timer.Stop()
 		cs.timer = nil
 	}
-}
-
-func (cs *consensus) enqueueMessage(msg message) {
-	cs.msgQueue = append(cs.msgQueue, msg)
 }
 
 func (cs *consensus) OnReceive(
@@ -151,7 +149,9 @@ func (cs *consensus) receiveProposal(msg *proposalMessage) (bool, error) {
 		return false, nil
 	}
 	cs.proposalPOLRound = msg.proposal.POLRound
-	cs.currentBlockParts = newPartSetFromID(&msg.proposal.BlockPartsHeader)
+	cs.currentBlockParts = &blockPartSet{
+		PartSet: newPartSetFromID(&msg.proposal.BlockPartSetID),
+	}
 
 	if cs.step == stepPropose && cs.isProposalAndPOLPrevotesComplete() {
 		cs.enterPrevote()
@@ -191,112 +191,79 @@ func (cs *consensus) receiveVote(msg *voteMessage) (bool, error) {
 	if index < 0 {
 		return false, nil
 	}
-	if added := cs.hvs.add(index, msg); !added {
+	added, votes := cs.hvs.add(index, msg)
+	if !added {
 		return false, nil
 	}
-	return false, nil
-}
-
-/*
-func (cs *consensus) receiveVote(msg *voteMessage) (bool, error) {
+	if !votes.hasOverTwoThirds() {
+		return true, nil
+	}
 	if msg.Type == voteTypePrevote {
-		return cs.receivePrevote(msg)
+		return cs.handlePrevoteMessage(msg, votes)
 	} else {
-		return cs.receivePrecommit(msg)
+		return cs.handlePrecommitMessage(msg, votes)
 	}
 }
-*/
 
-func (cs *consensus) receivePrevote(msg *voteMessage) (bool, error) {
-	index := cs.validators.IndexOf(msg.address())
-	if index < 0 {
-		return false, nil
+func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) (bool, error) {
+	partSetID, ok := prevotes.getOverTwoThirdsPartSetID()
+	if ok {
+		if cs.lockedRound < msg.Round && cs.lockedBlockParts != nil && !cs.lockedBlockParts.ID().Equal(partSetID) {
+			cs.lockedRound = -1
+			cs.lockedBlockParts = &blockPartSet{}
+		}
+		if cs.round == msg.Round && !cs.currentBlockParts.ID().Equal(partSetID) {
+			cs.currentBlockParts = &blockPartSet{
+				PartSet: newPartSetFromID(partSetID),
+			}
+		}
 	}
-	if added := cs.hvs.add(index, msg); !added {
-		return false, nil
-	}
-
-	if msg.Round < cs.round {
-		if cs.step >= stepPrevote {
-			return true, nil
+	if cs.round > msg.Round && cs.step < stepPrevote && msg.Round == cs.proposalPOLRound {
+		cs.enterPrevote()
+	} else if cs.round == msg.Round && cs.step < stepPrevote {
+		cs.enterPrevote()
+	} else if cs.round == msg.Round && cs.step == stepPrevote {
+		cs.enterPrevoteWait()
+	} else if cs.round == msg.Round && cs.step == stepPrevoteWait {
+		if ok {
+			cs.enterPrecommit()
 		}
-		if !cs.isProposalAndPOLPrevotesComplete() {
-			return false, nil
-		}
-		if msg.Round != cs.proposalPOLRound {
-			return true, nil
-		}
-		prevotes := cs.hvs._votes[msg.Round][voteTypePrevote]
-		bid, _ := prevotes.getOverTwoThirdsBlockID()
-		if bid != nil {
+	} else if cs.round < msg.Round {
+		cs.resetForNewRound(msg.Round)
+		if cs.step < stepPrevote {
 			cs.enterPrevote()
 		}
-		return true, nil
-	}
-
-	prevotes := cs.hvs._votes[msg.Round][voteTypePrevote]
-	if !prevotes.hasOverTwoThirds() {
-		return true, nil
-	}
-	if cs.round < msg.Round || cs.step < stepPrevote {
-		cs.enterPrevoteForRound(msg.Round)
-		return true, nil
-	}
-	if cs.step == stepPrevote {
-		cs.enterPrevoteWait()
-		return true, nil
-	}
-	if cs.step == stepPrevoteWait {
-		_, overTwoThirds := prevotes.getOverTwoThirdsBlockID()
-		if !overTwoThirds {
-			return true, nil
-		}
-		cs.enterPrecommit()
 	}
 	return true, nil
 }
 
-func (cs *consensus) receivePrecommit(msg *voteMessage) (bool, error) {
+func (cs *consensus) handlePrecommitMessage(msg *voteMessage, precommits *voteSet) (bool, error) {
 	if msg.Round < cs.round {
 		return true, nil
 	}
 
-	index := cs.validators.IndexOf(msg.address())
-	if index < 0 {
-		return false, nil
-	}
-	if added := cs.hvs.add(index, msg); !added {
-		return false, nil
-	}
-
-	precommits := cs.hvs._votes[msg.Round][voteTypePrecommit]
-	if !precommits.hasOverTwoThirds() {
-		return true, nil
-	}
-	if cs.round < msg.Round || cs.step < stepPrecommit {
-		cs.enterPrecommitForRound(msg.Round)
-		return true, nil
-	}
-	if cs.step == stepPrecommit {
+	if cs.round == msg.Round && cs.step < stepPrecommit {
+		cs.enterPrecommit()
+	} else if cs.round == msg.Round && cs.step == stepPrecommit {
 		cs.enterPrecommitWait()
-		return true, nil
-	}
-	if cs.step == stepPrecommitWait {
-		bid, overTwoThirds := precommits.getOverTwoThirdsBlockID()
-		if !overTwoThirds {
-			return true, nil
+	} else if cs.round == msg.Round && cs.step == stepPrecommitWait {
+		partSetID, ok := precommits.getOverTwoThirdsPartSetID()
+		if partSetID != nil {
+			cs.enterCommit(partSetID)
+		} else if ok && partSetID == nil {
+			cs.resetForNewRound(cs.round + 1)
 		}
-		if bid == nil {
-			cs.enterProposeForNextRound()
-		} else {
-			cs.enterCommit(bid)
+	} else if cs.round < msg.Round {
+		cs.resetForNewRound(msg.Round)
+		if cs.step < stepPrecommit {
+			cs.enterPrecommit()
 		}
 	}
 	return true, nil
 }
 
-func (cs *consensus) enterProposeForNextRound() {
-	cs.resetForNewRound(cs.round + 1)
+func (cs *consensus) enqueueMessage(msg message) {
+	cs.msgQueue = append(cs.msgQueue, msg)
 }
 
 func (cs *consensus) dispatchQueuedMessage() {
@@ -311,9 +278,17 @@ func (cs *consensus) dispatchQueuedMessage() {
 	}
 }
 
+func (cs *consensus) setStep(step step) {
+	if cs.step >= step {
+		log.Panicf("bad step transition (%v->%v)\n", cs.step, step)
+	}
+	cs.step = step
+	log.Printf("consensus: setStep(%v)\n", cs.step)
+}
+
 func (cs *consensus) enterPropose() {
 	cs.resetForNewStep()
-	cs.step = stepPropose
+	cs.setStep(stepPropose)
 
 	hrs := cs.hrs
 	cs.timer = time.AfterFunc(timeoutPropose, func() {
@@ -328,8 +303,9 @@ func (cs *consensus) enterPropose() {
 	})
 
 	if cs.isProposer() {
-		if cs.lockedBlockParts.IsComplete() {
+		if cs.lockedBlockParts != nil && cs.lockedBlockParts.IsComplete() {
 			cs.sendProposal(cs.lockedBlockParts, cs.lockedRound)
+			cs.currentBlockParts = cs.lockedBlockParts
 			cs.dispatchQueuedMessage()
 		} else {
 			cs.bm.Propose(cs.lastBlock.ID(), cs.votes,
@@ -346,6 +322,10 @@ func (cs *consensus) enterPropose() {
 					bps := psb.PartSet()
 
 					cs.sendProposal(bps, -1)
+					cs.currentBlockParts = &blockPartSet{
+						PartSet: bps,
+						block:   blk,
+					}
 					cs.enterPrevote()
 				},
 			)
@@ -354,42 +334,33 @@ func (cs *consensus) enterPropose() {
 	cs.dispatchQueuedMessage()
 }
 
-func (cs *consensus) enterPrevoteForRound(round int32) {
-	cs.resetForNewRound(round)
-	if cs.step < stepPrevote {
-		cs.enterPrevote()
-	}
-}
-
 func (cs *consensus) enterPrevote() {
 	cs.resetForNewStep()
-	cs.step = stepPrevote
-
-	if cs.lockedBlockParts != nil && cs.lockedRound < cs.proposalPOLRound {
-		cs.lockedBlockParts = nil
-		cs.lockedRound = -1
-	}
+	cs.setStep(stepPrevote)
 
 	if cs.lockedBlockParts != nil {
-		//		cs.sendVote(voteTypePrevote, cs.lockedBlockID)
-	} else if cs.currentBlockParts.IsComplete() {
+		cs.sendVote(voteTypePrevote, cs.lockedBlockParts.ID())
+	} else if cs.currentBlockParts != nil && cs.currentBlockParts.IsComplete() {
 		hrs := cs.hrs
 		var err error
-		cs.cancelBlockRequest, err = cs.bm.Import(cs.currentBlockParts.NewReader(), func(blk module.Block, err error) {
-			cs.mutex.Lock()
-			defer cs.mutex.Unlock()
+		cs.cancelBlockRequest, err = cs.bm.Import(
+			cs.currentBlockParts.NewReader(),
+			func(blk module.Block, err error) {
+				cs.mutex.Lock()
+				defer cs.mutex.Unlock()
 
-			if cs.hrs != hrs {
-				return
-			}
+				if cs.hrs != hrs {
+					return
+				}
 
-			if err == nil {
-				cs.currentBlock = blk
-				cs.sendVote(voteTypePrevote, blk.ID())
-			} else {
-				cs.sendVote(voteTypePrevote, nil)
-			}
-		})
+				if err == nil {
+					cs.currentBlockParts.block = blk
+					cs.sendVote(voteTypePrevote, cs.currentBlockParts.ID())
+				} else {
+					cs.sendVote(voteTypePrevote, nil)
+				}
+			},
+		)
 		if err != nil {
 			cs.sendVote(voteTypePrevote, nil)
 		}
@@ -397,7 +368,7 @@ func (cs *consensus) enterPrevote() {
 		cs.sendVote(voteTypePrevote, nil)
 	}
 
-	prevotes := cs.hvs._votes[cs.round][voteTypePrevote]
+	prevotes := cs.hvs.votesFor(cs.round, voteTypePrevote)
 	if prevotes.hasOverTwoThirds() {
 		cs.enterPrevoteWait()
 	}
@@ -405,11 +376,11 @@ func (cs *consensus) enterPrevote() {
 
 func (cs *consensus) enterPrevoteWait() {
 	cs.resetForNewStep()
-	cs.step = stepPrevoteWait
+	cs.setStep(stepPrevoteWait)
 
-	prevotes := cs.hvs._votes[cs.round][voteTypePrevote]
-	_, overTwoThirds := prevotes.getOverTwoThirdsBlockID()
-	if overTwoThirds {
+	prevotes := cs.hvs.votesFor(cs.round, voteTypePrevote)
+	_, ok := prevotes.getOverTwoThirdsPartSetID()
+	if ok {
 		cs.enterPrecommit()
 	} else {
 		hrs := cs.hrs
@@ -425,39 +396,39 @@ func (cs *consensus) enterPrevoteWait() {
 	}
 }
 
-func (cs *consensus) enterPrecommitForRound(round int32) {
-	cs.resetForNewRound(round)
-	cs.enterPrecommit()
-}
-
 func (cs *consensus) enterPrecommit() {
 	cs.resetForNewStep()
-	cs.step = stepPrecommit
+	cs.setStep(stepPrecommit)
 
-	prevotes := cs.hvs._votes[cs.round][voteTypePrevote]
-	bid, overTwoThirds := prevotes.getOverTwoThirdsBlockID()
-	if overTwoThirds && bid != nil {
-		// TODO check blockID
-		if cs.currentBlockParts.IsComplete() {
-			//			cs.lockedBlockID = bid
-			cs.lockedRound = cs.round
-			cs.lockedBlockParts = cs.currentBlockParts
-			cs.sendVote(voteTypePrecommit, bid)
-		} else {
-			// TODO clear proposal if blockID doesn't match
-			//			cs.lockedBlockID = nil
-			cs.lockedRound = -1
-			cs.sendVote(voteTypePrecommit, nil)
-		}
-	} else if overTwoThirds && bid == nil {
-		//		cs.lockedBlockID = nil
-		cs.lockedRound = -1
+	prevotes := cs.hvs.votesFor(cs.round, voteTypePrevote)
+	partSetID, ok := prevotes.getOverTwoThirdsPartSetID()
+
+	if !ok {
 		cs.sendVote(voteTypePrecommit, nil)
+	} else if partSetID == nil {
+		cs.lockedRound = -1
+		cs.lockedBlockParts = nil
+		cs.sendVote(voteTypePrecommit, nil)
+	} else if cs.lockedBlockParts != nil && cs.lockedBlockParts.ID().Equal(partSetID) {
+		cs.lockedRound = cs.round
+		cs.sendVote(voteTypePrecommit, cs.lockedBlockParts.ID())
+	} else if cs.currentBlockParts != nil && cs.currentBlockParts.ID().Equal(partSetID) && cs.currentBlockParts.IsComplete() {
+		cs.lockedRound = cs.round
+		cs.lockedBlockParts = cs.currentBlockParts
+		cs.sendVote(voteTypePrecommit, cs.lockedBlockParts.ID())
 	} else {
+		// polka for a block we don't have
+		if cs.currentBlockParts != nil && !cs.currentBlockParts.ID().Equal(partSetID) {
+			cs.currentBlockParts = &blockPartSet{
+				PartSet: newPartSetFromID(partSetID),
+			}
+		}
+		cs.lockedRound = -1
+		cs.lockedBlockParts = nil
 		cs.sendVote(voteTypePrecommit, nil)
 	}
 
-	precommits := cs.hvs._votes[cs.round][voteTypePrecommit]
+	precommits := cs.hvs.votesFor(cs.round, voteTypePrecommit)
 	if precommits.hasOverTwoThirds() {
 		cs.enterPrecommitWait()
 	}
@@ -465,14 +436,14 @@ func (cs *consensus) enterPrecommit() {
 
 func (cs *consensus) enterPrecommitWait() {
 	cs.resetForNewStep()
-	cs.step = stepPrecommitWait
+	cs.setStep(stepPrecommitWait)
 
-	precommits := cs.hvs._votes[cs.round][voteTypePrecommit]
-	bid, overTwoThrids := precommits.getOverTwoThirdsBlockID()
-	if overTwoThrids && bid != nil {
-		cs.enterCommit(bid)
-	} else if overTwoThrids && bid == nil {
-		cs.enterProposeForNextRound()
+	precommits := cs.hvs.votesFor(cs.round, voteTypePrecommit)
+	partSetID, ok := precommits.getOverTwoThirdsPartSetID()
+	if ok && partSetID != nil {
+		cs.enterCommit(partSetID)
+	} else if ok && partSetID == nil {
+		cs.resetForNewRound(cs.round + 1)
 	} else {
 		hrs := cs.hrs
 		cs.timer = time.AfterFunc(timeoutPrecommit, func() {
@@ -482,30 +453,65 @@ func (cs *consensus) enterPrecommitWait() {
 			if cs.hrs != hrs {
 				return
 			}
-			cs.enterProposeForNextRound()
+			cs.resetForNewRound(cs.round + 1)
 		})
 	}
 }
 
-func (cs *consensus) enterCommit(bid []byte) {
+func (cs *consensus) tryCommit() {
+}
+
+func (cs *consensus) enterCommit(partSetID *PartSetID) {
 	cs.resetForNewStep()
-	cs.step = stepCommit
+	cs.setStep(stepCommit)
 	cs.nextProposeTime = time.Now().Add(timeoutCommit)
-	if cs.currentBlockParts.IsComplete() {
-		// TODO import and finalize
-		if cs.currentBlock == nil {
+
+	if !cs.currentBlockParts.ID().Equal(partSetID) {
+		cs.currentBlockParts = &blockPartSet{
+			PartSet: newPartSetFromID(partSetID),
 		}
-		cs.enterNewHeight()
+	}
+	if cs.currentBlockParts.IsComplete() {
+		if cs.currentBlockParts.block == nil {
+			hrs := cs.hrs
+			cs.bm.Import(
+				cs.currentBlockParts.NewReader(),
+				func(blk module.Block, err error) {
+					cs.mutex.Lock()
+					defer cs.mutex.Unlock()
+
+					if cs.hrs != hrs {
+						return
+					}
+
+					if err != nil {
+						panic(err)
+					}
+					cs.currentBlockParts.block = blk
+					cs.bm.Finalize(cs.currentBlockParts.block)
+					cs.enterNewHeight()
+				},
+			)
+		} else {
+			cs.bm.Finalize(cs.currentBlockParts.block)
+			cs.enterNewHeight()
+		}
 	}
 }
 
 func (cs *consensus) enterNewHeight() {
+	cs.resetForNewStep()
+	cs.setStep(stepNewHeight)
+
 	now := time.Now()
 	if cs.nextProposeTime.Before(now) {
 		cs.resetForNextHeight()
 	} else {
 		hrs := cs.hrs
 		cs.timer = time.AfterFunc(cs.nextProposeTime.Sub(now), func() {
+			cs.mutex.Lock()
+			defer cs.mutex.Unlock()
+
 			if cs.hrs != hrs {
 				return
 			}
@@ -518,7 +524,7 @@ func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) {
 	// TODO sign, send proposal and blockParts, receive
 }
 
-func (cs *consensus) sendVote(vt voteType, bid []byte) {
+func (cs *consensus) sendVote(vt voteType, partSetID *PartSetID) {
 	// TODO sign, send, receive
 }
 
@@ -552,8 +558,8 @@ func (cs *consensus) isProposalAndPOLPrevotesComplete() bool {
 		return false
 	}
 	if cs.proposalPOLRound > 0 {
-		prevotes := cs.hvs._votes[cs.proposalPOLRound][voteTypePrevote]
-		if bid, _ := prevotes.getOverTwoThirdsBlockID(); bid != nil {
+		prevotes := cs.hvs.votesFor(cs.proposalPOLRound, voteTypePrevote)
+		if id, _ := prevotes.getOverTwoThirdsPartSetID(); id != nil {
 			return true
 		}
 		return false
@@ -568,7 +574,7 @@ func (cs *consensus) Start() {
 	gblks, err := cs.bm.FinalizeGenesisBlocks(
 		zeroAddress,
 		time.Time{},
-		nil,
+		newVoteList(nil),
 	)
 	if err != nil {
 		return

@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
+	"log"
+
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/pkg/errors"
-	"io"
-	"log"
 )
 
 type Part interface {
@@ -59,9 +60,6 @@ type partSet struct {
 }
 
 func (ps *partSet) ID() *PartSetID {
-	if !ps.IsComplete() {
-		return nil
-	}
 	return &PartSetID{
 		Count: uint16(len(ps.parts)),
 		Hash:  ps.Hash(),

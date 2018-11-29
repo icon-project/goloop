@@ -61,8 +61,8 @@ func (b *_HR) round() int32 {
 
 type proposal struct {
 	_HR
-	BlockPartsHeader PartSetID
-	POLRound         int32
+	BlockPartSetID PartSetID
+	POLRound       int32
 }
 
 func (p *proposal) bytes() []byte {
@@ -88,7 +88,7 @@ func unmarshalProposalMessage(bs []byte) (message, error) {
 }
 
 func (msg *proposalMessage) verify() error {
-	if msg.Height < 0 || msg.Round < 0 || msg.BlockPartsHeader.Count <= 0 || msg.POLRound < -1 || msg.POLRound >= msg.Round {
+	if msg.Height < 0 || msg.Round < 0 || msg.BlockPartSetID.Count <= 0 || msg.POLRound < -1 || msg.POLRound >= msg.Round {
 		return errors.New("bad field value")
 	}
 	return msg.signedBase.verify()

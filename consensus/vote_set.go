@@ -22,14 +22,7 @@ func (vs *voteSet) hasOverTwoThirds() bool {
 }
 
 // returns true if has +2/3 for nil or a block
-// to be removed
-func (vs *voteSet) getOverTwoThirdsBlockID() (bid []byte, bidIsOverTwoThirds bool) {
-	// TODO
-	return nil, true
-}
-
-// returns true if has +2/3 for nil or a block
-func (vs *voteSet) getOverTwoThirdsBlockPartsHeader() (*PartSetID, bool) {
+func (vs *voteSet) getOverTwoThirdsPartSetID() (*PartSetID, bool) {
 	// TODO
 	return nil, true
 }
@@ -45,7 +38,7 @@ type heightVoteSet struct {
 	_votes       map[int32][numberOfVoteTypes]*voteSet
 }
 
-func (hvs *heightVoteSet) add(index int, v *voteMessage) bool {
+func (hvs *heightVoteSet) add(index int, v *voteMessage) (bool, *voteSet) {
 	rvs := hvs._votes[v.Round]
 	if rvs[v.Type] == nil {
 		rvs[v.Type] = &voteSet{
@@ -55,7 +48,7 @@ func (hvs *heightVoteSet) add(index int, v *voteMessage) bool {
 		hvs._votes[v.Round] = rvs
 	}
 	vs := rvs[v.Type]
-	return vs.add(index, v)
+	return vs.add(index, v), vs
 }
 
 func (hvs *heightVoteSet) votesFor(round int32, voteType voteType) *voteSet {
