@@ -175,8 +175,7 @@ func (m *manager) TransactionFromBytes(b []byte, blockVersion int) module.Transa
 // TransactionListFromHash returns a TransactionList instance from
 // the hash of transactions or nil when no transactions exist.
 func (m *manager) TransactionListFromHash(hash []byte) module.TransactionList {
-	// TODO nil if hash is invalid?
-	return newTransactionListFromHash(m.db, hash)
+	return NewTransactionListFromHash(m.db, hash)
 }
 
 // TransactionListFromSlice returns list of transactions.
