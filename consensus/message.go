@@ -61,7 +61,7 @@ func (b *_HR) round() int32 {
 
 type proposal struct {
 	_HR
-	BlockPartSetID PartSetID
+	BlockPartSetID *PartSetID
 	POLRound       int32
 }
 
@@ -78,9 +78,14 @@ type proposalMessage struct {
 	proposal
 }
 
-func unmarshalProposalMessage(bs []byte) (message, error) {
+func newProposalMessage() *proposalMessage {
 	msg := &proposalMessage{}
 	msg.signedBase._byteser = msg
+	return msg
+}
+
+func unmarshalProposalMessage(bs []byte) (message, error) {
+	msg := newProposalMessage()
 	if _, err := msgCodec.UnmarshalFromBytes(bs, msg); err != nil {
 		return nil, err
 	}
@@ -103,8 +108,12 @@ type blockPartMessage struct {
 	BlockPart []byte
 }
 
+func newBlockPartMessage() *blockPartMessage {
+	return &blockPartMessage{}
+}
+
 func unmarshalBlockPartMessage(bs []byte) (message, error) {
-	msg := &blockPartMessage{}
+	msg := newBlockPartMessage()
 	if _, err := msgCodec.UnmarshalFromBytes(bs, msg); err != nil {
 		return nil, err
 	}
@@ -132,9 +141,9 @@ const (
 
 type vote struct {
 	_HR
-	Type             voteType
-	BlockID          []byte
-	BlockPartsHeader PartSetID
+	Type           voteType
+	BlockID        []byte
+	BlockPartSetID *PartSetID
 }
 
 func (v *vote) bytes() []byte {
@@ -150,9 +159,14 @@ type voteMessage struct {
 	vote
 }
 
-func unmarshalVoteMessage(bs []byte) (message, error) {
+func newVoteMessage() *voteMessage {
 	msg := &voteMessage{}
 	msg.signedBase._byteser = msg
+	return msg
+}
+
+func unmarshalVoteMessage(bs []byte) (message, error) {
+	msg := newVoteMessage()
 	if _, err := msgCodec.UnmarshalFromBytes(bs, msg); err != nil {
 		return nil, err
 	}

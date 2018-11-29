@@ -1,10 +1,10 @@
 package consensus
 
 import (
-	"errors"
-
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/module"
+	"github.com/pkg/errors"
 )
 
 type byteser interface {
@@ -51,5 +51,18 @@ func (s *signedBase) verify() error {
 	if s.publicKey() == nil {
 		return errors.New("bad signature")
 	}
+	return nil
+}
+
+func (s *signedBase) sign(wallet module.Wallet) error {
+	sigBS, err := wallet.Sign(s.hash())
+	if err != nil {
+		return errors.Errorf("sendVote : %v", err)
+	}
+	sig, err := crypto.ParseSignature(sigBS)
+	if err != nil {
+		return errors.Errorf("sendVote : %v", err)
+	}
+	s.Signature.Signature = sig
 	return nil
 }

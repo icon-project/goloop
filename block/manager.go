@@ -3,6 +3,7 @@ package block
 import (
 	"bytes"
 	"io"
+	"log"
 	"time"
 
 	"github.com/pkg/errors"
@@ -404,6 +405,8 @@ func (m *manager) Import(
 	m.syncer.begin()
 	defer m.syncer.end()
 
+	log.Printf("BM| Import(%v)\n", r)
+
 	it, err := m._import(r, cb)
 	if err != nil {
 		return nil, err
@@ -434,6 +437,8 @@ func (m *manager) FinalizeGenesisBlocks(
 ) (block []module.Block, err error) {
 	m.syncer.begin()
 	defer m.syncer.end()
+
+	log.Printf("BM| FinalizeGenesisBlocks()\n")
 
 	if m.finalized != nil {
 		return nil, common.ErrInvalidState
@@ -509,6 +514,8 @@ func (m *manager) Propose(
 ) (canceler func() bool, err error) {
 	m.syncer.begin()
 	defer m.syncer.end()
+
+	log.Printf("BM| Propose(%v, %v)\n", parentID, votes)
 
 	pt, err := m._propose(parentID, votes, cb)
 	if err != nil {

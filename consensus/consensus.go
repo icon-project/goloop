@@ -2,22 +2,23 @@ package consensus
 
 import (
 	"bytes"
-	"errors"
 	"log"
 	"sync"
 	"time"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
+	"github.com/pkg/errors"
 )
 
 var zeroAddress = common.NewAddress(make([]byte, common.AddressBytes))
 
 const (
-	timeoutPropose   = time.Second * 3
-	timeoutPrevote   = time.Second * 3
-	timeoutPrecommit = time.Second * 3
-	timeoutCommit    = time.Second * 3
+	timeoutPropose   = time.Second * 1
+	timeoutPrevote   = time.Second * 1
+	timeoutPrecommit = time.Second * 1
+	timeoutCommit    = time.Second * 1
 )
 
 type hrs struct {
@@ -108,8 +109,10 @@ func (cs *consensus) OnReceive(
 
 	msg, err := unmarshalMessage(sp, bs)
 	if err != nil {
+		log.Printf("CS| OnReceive: error=%v\n", err)
 		return false, err
 	}
+	log.Printf("CS| OnReceive %+v\n", msg)
 	if err := msg.verify(); err != nil {
 		return false, err
 	}
@@ -125,6 +128,7 @@ func (cs *consensus) OnReceive(
 
 func (cs *consensus) OnError() {
 	cs.mutex.Lock()
+	log.Printf("CS| OnError\n")
 	defer cs.mutex.Unlock()
 }
 
@@ -150,7 +154,7 @@ func (cs *consensus) receiveProposal(msg *proposalMessage) (bool, error) {
 	}
 	cs.proposalPOLRound = msg.proposal.POLRound
 	cs.currentBlockParts = &blockPartSet{
-		PartSet: newPartSetFromID(&msg.proposal.BlockPartSetID),
+		PartSet: newPartSetFromID(msg.proposal.BlockPartSetID),
 	}
 
 	if cs.step == stepPropose && cs.isProposalAndPOLPrevotesComplete() {
@@ -283,7 +287,7 @@ func (cs *consensus) setStep(step step) {
 		log.Panicf("bad step transition (%v->%v)\n", cs.step, step)
 	}
 	cs.step = step
-	log.Printf("consensus: setStep(%v)\n", cs.step)
+	log.Printf("CS| setStep(%v)\n", cs.step)
 }
 
 func (cs *consensus) enterPropose() {
@@ -298,7 +302,6 @@ func (cs *consensus) enterPropose() {
 		if cs.hrs != hrs {
 			return
 		}
-		// cannot send proposal
 		cs.enterPrevote()
 	})
 
@@ -520,12 +523,57 @@ func (cs *consensus) enterNewHeight() {
 	}
 }
 
-func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) {
-	// TODO sign, send proposal and blockParts, receive
+func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) error {
+	/*
+		msg := newProposalMessage()
+		msg.Height = cs.height
+		msg.Round = cs.round
+		msg.BlockPartSetID = blockParts.ID()
+		msg.POLRound = polRound
+		err := msg.sign(cs.wallet)
+		if err != nil {
+			return errors.Errorf("sendVote : %v", err)
+		}
+		msgBS, err := msgCodec.MarshalToBytes(msg)
+		if err != nil {
+			return errors.Errorf("sendVote : %v", err)
+		}
+		cs.dm.Broadcast(protoProposal, msgBS, module.BROADCAST_ALL)
+
+		bpmsg := newBlockPartMessage()
+		bpmsg.Height = cs.height
+		bpmsg.Round = cs.round
+		for i := 0; i < blockParts.Parts(); i++ {
+			bpmsg.BlockPart = blockParts.GetPart(i).Bytes()
+			bpmsgBS, err := msgCodec.MarshalToBytes(bpmsg)
+			if err != nil {
+				return errors.Errorf("sendVote : %v", err)
+			}
+			cs.dm.Broadcast(protoBlockPart, bpmsgBS, module.BROADCAST_ALL)
+		}
+	*/
+
+	return nil
 }
 
-func (cs *consensus) sendVote(vt voteType, partSetID *PartSetID) {
-	// TODO sign, send, receive
+func (cs *consensus) sendVote(vt voteType, partSetID *PartSetID) error {
+	/*
+		msg := newVoteMessage()
+		msg.Height = cs.height
+		msg.Round = cs.round
+		msg.Type = vt
+		msg.BlockPartSetID = partSetID
+		err := msg.sign(cs.wallet)
+		if err != nil {
+			return errors.Errorf("sendVote : %v", err)
+		}
+		_, err = msgCodec.MarshalToBytes(msg)
+		if err != nil {
+			return errors.Errorf("sendVote : %v", err)
+		}
+	*/
+	//cs.dm.Broadcast(protoVote, msgBS, module.BROADCAST_ALL)
+	return nil
 }
 
 func getProposerIndex(
@@ -546,7 +594,12 @@ func (cs *consensus) isProposerFor(height int64, round int32) bool {
 	if v == nil {
 		return false
 	}
-	return bytes.Equal(v.PublicKey(), cs.wallet.PublicKey())
+	wPubKey, err := crypto.ParsePublicKey(cs.wallet.PublicKey())
+	if err != nil {
+		panic(err)
+	}
+	waddr := common.NewAccountAddressFromPublicKey(wPubKey)
+	return bytes.Equal(v.Address().Bytes(), waddr.Bytes())
 }
 
 func (cs *consensus) isProposer() bool {
