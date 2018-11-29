@@ -214,11 +214,10 @@ func (i *HexInt) UnmarshalJSON(b []byte) error {
 		}
 		return nil
 	}
-	return errors.Errorf("FailToParse(%s) for HexInt", s)
 }
 
 func (i *HexInt) CodecEncodeSelf(e *codec.Encoder) {
-	e.Encode(i.Bytes())
+	_ = e.Encode(i.Bytes())
 }
 
 func (i *HexInt) CodecDecodeSelf(d *codec.Decoder) {
@@ -226,6 +225,15 @@ func (i *HexInt) CodecDecodeSelf(d *codec.Decoder) {
 	if err := d.Decode(&b); err == nil {
 		i.SetBytes(b)
 	}
+}
+
+func (i *HexInt) UnmarshalBinary(data []byte) error {
+	i.SetBytes(data)
+	return nil
+}
+
+func (i *HexInt) MarshalBinary() (data []byte, err error) {
+	return i.Bytes(), nil
 }
 
 func (i *HexInt) Clone() HexInt {
@@ -260,11 +268,11 @@ func (i *HexInt16) UnmarshalJSON(b []byte) error {
 }
 
 func (i *HexInt16) CodecEncodeSelf(e *codec.Encoder) {
-	e.Encode(i.Value)
+	_ = e.Encode(i.Value)
 }
 
-func (i *HexInt16) CodecDecodeSelf(e *codec.Decoder) {
-	e.Decode(&i.Value)
+func (i *HexInt16) CodecDecodeSelf(d *codec.Decoder) {
+	_ = d.Decode(&i.Value)
 }
 
 func (i HexInt16) Bytes() []byte {
@@ -297,11 +305,11 @@ func (i *HexUint16) UnmarshalJSON(b []byte) error {
 }
 
 func (i *HexUint16) CodecEncodeSelf(e *codec.Encoder) {
-	e.Encode(i.Value)
+	_ = e.Encode(i.Value)
 }
 
-func (i *HexUint16) CodecDecodeSelf(e *codec.Decoder) {
-	e.Decode(&i.Value)
+func (i *HexUint16) CodecDecodeSelf(d *codec.Decoder) {
+	_ = d.Decode(&i.Value)
 }
 
 func (i HexUint16) Bytes() []byte {
@@ -334,11 +342,11 @@ func (i *HexInt32) UnmarshalJSON(b []byte) error {
 }
 
 func (i *HexInt32) CodecEncodeSelf(e *codec.Encoder) {
-	e.Encode(i.Value)
+	_ = e.Encode(i.Value)
 }
 
-func (i *HexInt32) CodecDecodeSelf(e *codec.Decoder) {
-	e.Decode(&i.Value)
+func (i *HexInt32) CodecDecodeSelf(d *codec.Decoder) {
+	_ = d.Decode(&i.Value)
 }
 
 type HexUint32 struct {
@@ -367,11 +375,11 @@ func (i *HexUint32) UnmarshalJSON(b []byte) error {
 }
 
 func (i *HexUint32) CodecEncodeSelf(e *codec.Encoder) {
-	e.Encode(i.Value)
+	_ = e.Encode(i.Value)
 }
 
 func (i *HexUint32) CodecDecodeSelf(e *codec.Decoder) {
-	e.Decode(&i.Value)
+	_ = e.Decode(&i.Value)
 }
 
 type HexInt64 struct {
@@ -400,11 +408,11 @@ func (i *HexInt64) UnmarshalJSON(b []byte) error {
 }
 
 func (i *HexInt64) CodecEncodeSelf(e *codec.Encoder) {
-	e.Encode(i.Value)
+	_ = e.Encode(i.Value)
 }
 
 func (i *HexInt64) CodecDecodeSelf(e *codec.Decoder) {
-	e.Decode(&i.Value)
+	_ = e.Decode(&i.Value)
 }
 
 type HexUint64 struct {
@@ -433,9 +441,9 @@ func (i *HexUint64) UnmarshalJSON(b []byte) error {
 }
 
 func (i *HexUint64) CodecEncodeSelf(e *codec.Encoder) {
-	e.Encode(i.Value)
+	_ = e.Encode(i.Value)
 }
 
 func (i *HexUint64) CodecDecodeSelf(e *codec.Decoder) {
-	e.Decode(&i.Value)
+	_ = e.Decode(&i.Value)
 }
