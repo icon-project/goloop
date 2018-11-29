@@ -64,7 +64,7 @@ func newVoteList(msgs []*voteMessage) *voteList {
 // NewVoteListFromBytes returns VoteList from serialized bytes
 func NewVoteListFromBytes(bs []byte) module.VoteList {
 	var vl *voteList
-	_, err := vlCodec.UnmarshalFromBytes(bs, vl)
+	_, err := vlCodec.UnmarshalFromBytes(bs, &vl)
 	if err != nil {
 		return nil
 	}
