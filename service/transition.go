@@ -63,10 +63,10 @@ func newTransition(parent *transition, patchtxs module.TransactionList, normaltx
 	}
 
 	if patchtxs == nil {
-		patchtxs = newTransactionListFromList(parent.db, nil)
+		patchtxs = NewTransactionListFromSlice(parent.db, nil)
 	}
 	if normaltxs == nil {
-		normaltxs = newTransactionListFromList(parent.db, nil)
+		normaltxs = NewTransactionListFromSlice(parent.db, nil)
 	}
 	return &transition{
 		parent:             parent,
@@ -91,8 +91,8 @@ func newInitTransition(db db.Database, result []byte, validatorList module.Valid
 
 	return &transition{
 		height:             height,
-		patchTransactions:  newTransactionListFromList(db, nil),
-		normalTransactions: newTransactionListFromList(db, nil),
+		patchTransactions:  NewTransactionListFromSlice(db, nil),
+		normalTransactions: NewTransactionListFromSlice(db, nil),
 		db:                 db,
 		step:               stepComplete,
 		worldSnapshot:      ws.GetSnapshot(),
