@@ -185,5 +185,5 @@ type ServiceManager interface {
 	// ValidatorListFromHash returns ValidatorList from hash.
 	ValidatorListFromHash(hash []byte) ValidatorList
 
-	GetReactor(membership Membership) Reactor
+	SetMembership(membership Membership) error
 }

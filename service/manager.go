@@ -269,13 +269,13 @@ func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {
 	return valList
 }
 
-func (m *manager) GetReactor(membership module.Membership) module.Reactor {
+func (m *manager) SetMembership(membership module.Membership) error {
 	if m.reactor != nil {
-		return m.reactor
+		return errors.New("membership is already registered")
 	}
 	// TODO change below.
 	reactor := &serviceReactor{membership: membership, txPool: m.normalTxPool}
 	membership.RegistReactor(reactorName, reactor, subProtocols)
 	m.reactor = reactor
-	return reactor
+	return nil
 }

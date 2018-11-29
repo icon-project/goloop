@@ -82,6 +82,7 @@ func (c *singleChain) Start() {
 		c.nt.Dial(c.cfg.SeedAddr, c.cfg.Channel)
 	}
 
+	c.sm.SetMembership(c.nm.GetMembership(network.DefaultMembershipName))
 	c.cs = consensus.NewConsensus(c, c.bm, c.nm)
 	go c.cs.Start()
 
