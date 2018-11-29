@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"reflect"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
@@ -71,7 +72,8 @@ func (l *transactionList) Flush() error {
 	return nil
 }
 
-func NewTransactionListFromTrie(t trie.ImmutableForObject) module.TransactionList {
+func NewTransactionListFromHash(d db.Database, h []byte) module.TransactionList {
+	t := trie_manager.NewImmutableForObject(d, h, reflect.TypeOf((*transaction)(nil)))
 	return &transactionList{t}
 }
 
