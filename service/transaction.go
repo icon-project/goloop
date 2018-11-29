@@ -39,6 +39,19 @@ func (t *transaction) Bytes() []byte {
 	return t.Transaction.Bytes()
 }
 
+func (t *transaction) MarshalBinary() (data []byte, err error) {
+	return t.Bytes(), nil
+}
+
+func (t *transaction) UnmarshalBinary(data []byte) error {
+	if tx, err := newTransaction(data); err != nil {
+		return err
+	} else {
+		t.Transaction = tx
+		return nil
+	}
+}
+
 func (t *transaction) MarshalJSON() ([]byte, error) {
 	return json.Marshal(t.Transaction)
 }
