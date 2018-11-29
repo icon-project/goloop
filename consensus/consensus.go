@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -524,55 +525,54 @@ func (cs *consensus) enterNewHeight() {
 }
 
 func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) error {
-	/*
-		msg := newProposalMessage()
-		msg.Height = cs.height
-		msg.Round = cs.round
-		msg.BlockPartSetID = blockParts.ID()
-		msg.POLRound = polRound
-		err := msg.sign(cs.wallet)
-		if err != nil {
-			return errors.Errorf("sendVote : %v", err)
-		}
-		msgBS, err := msgCodec.MarshalToBytes(msg)
-		if err != nil {
-			return errors.Errorf("sendVote : %v", err)
-		}
-		cs.dm.Broadcast(protoProposal, msgBS, module.BROADCAST_ALL)
+	msg := newProposalMessage()
+	msg.Height = cs.height
+	msg.Round = cs.round
+	msg.BlockPartSetID = blockParts.ID()
+	msg.POLRound = polRound
+	err := msg.sign(cs.wallet)
+	if err != nil {
+		return errors.Errorf("sendVote : %v", err)
+	}
+	msgBS, err := msgCodec.MarshalToBytes(msg)
+	if err != nil {
+		return errors.Errorf("sendVote : %v", err)
+	}
+	fmt.Printf("send message = %v \n", msg)
+	cs.dm.Broadcast(protoProposal, msgBS, module.BROADCAST_ALL)
 
-		bpmsg := newBlockPartMessage()
-		bpmsg.Height = cs.height
-		bpmsg.Round = cs.round
-		for i := 0; i < blockParts.Parts(); i++ {
-			bpmsg.BlockPart = blockParts.GetPart(i).Bytes()
-			bpmsgBS, err := msgCodec.MarshalToBytes(bpmsg)
-			if err != nil {
-				return errors.Errorf("sendVote : %v", err)
-			}
-			cs.dm.Broadcast(protoBlockPart, bpmsgBS, module.BROADCAST_ALL)
+	bpmsg := newBlockPartMessage()
+	bpmsg.Height = cs.height
+	bpmsg.Round = cs.round
+	for i := 0; i < blockParts.Parts(); i++ {
+		bpmsg.BlockPart = blockParts.GetPart(i).Bytes()
+		bpmsgBS, err := msgCodec.MarshalToBytes(bpmsg)
+		if err != nil {
+			return errors.Errorf("sendVote : %v", err)
 		}
-	*/
+		fmt.Printf("send message = %v \n", bpmsg)
+		cs.dm.Broadcast(protoBlockPart, bpmsgBS, module.BROADCAST_ALL)
+	}
 
 	return nil
 }
 
 func (cs *consensus) sendVote(vt voteType, partSetID *PartSetID) error {
-	/*
-		msg := newVoteMessage()
-		msg.Height = cs.height
-		msg.Round = cs.round
-		msg.Type = vt
-		msg.BlockPartSetID = partSetID
-		err := msg.sign(cs.wallet)
-		if err != nil {
-			return errors.Errorf("sendVote : %v", err)
-		}
-		_, err = msgCodec.MarshalToBytes(msg)
-		if err != nil {
-			return errors.Errorf("sendVote : %v", err)
-		}
-	*/
-	//cs.dm.Broadcast(protoVote, msgBS, module.BROADCAST_ALL)
+	msg := newVoteMessage()
+	msg.Height = cs.height
+	msg.Round = cs.round
+	msg.Type = vt
+	msg.BlockPartSetID = partSetID
+	err := msg.sign(cs.wallet)
+	if err != nil {
+		return errors.Errorf("sendVote : %v", err)
+	}
+	msgBS, err := msgCodec.MarshalToBytes(msg)
+	if err != nil {
+		return errors.Errorf("sendVote : %v", err)
+	}
+	fmt.Printf("send message = %v \n", msg)
+	cs.dm.Broadcast(protoVote, msgBS, module.BROADCAST_ALL)
 	return nil
 }
 
