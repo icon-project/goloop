@@ -1,12 +1,13 @@
-// +build ompt
+// +build !mapTrie
 
 package trie_manager
 
 import (
+	"reflect"
+
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/ompt"
-	"reflect"
 )
 
 func NewImmutableForObject(db db.Database, h []byte, t reflect.Type) trie.ImmutableForObject {
