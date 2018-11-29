@@ -167,6 +167,8 @@ type ServiceManager interface {
 
 	// TransactionListFromHash returns a TransactionList instance from
 	// the hash of transactions or nil when no transactions exist.
+	// It assumes it's called only by new version block, so it doesn't receive
+	// version value.
 	TransactionListFromHash(hash []byte) TransactionList
 
 	// TransactionListFromSlice returns list of transactions.
