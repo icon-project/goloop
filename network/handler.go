@@ -33,9 +33,9 @@ func (cn *ChannelNegotiator) onPeer(p *Peer) {
 }
 
 //TODO callback from Peer.sendRoutine or Peer.receiveRoutine
-func (cn *ChannelNegotiator) onError(err error, p *Peer) {
-	cn.log.Println("onError", err, p)
-	cn.peerHandler.onError(err, p)
+func (cn *ChannelNegotiator) onError(err error, p *Peer, pkt *Packet) {
+	cn.log.Println("onError", err, p, pkt)
+	cn.peerHandler.onError(err, p, pkt)
 }
 
 //callback from Peer.receiveRoutine
@@ -120,9 +120,9 @@ func (a *Authenticator) onPeer(p *Peer) {
 }
 
 //TODO callback from Peer.sendRoutine or Peer.receiveRoutine
-func (a *Authenticator) onError(err error, p *Peer) {
-	a.log.Println("onError", err, p)
-	a.peerHandler.onError(err, p)
+func (a *Authenticator) onError(err error, p *Peer, pkt *Packet) {
+	a.log.Println("onError", err, p, pkt)
+	a.peerHandler.onError(err, p, pkt)
 }
 
 //callback from Peer.receiveRoutine

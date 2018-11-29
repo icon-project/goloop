@@ -36,7 +36,7 @@ type Peer struct {
 }
 
 type packetCbFunc func(pkt *Packet, p *Peer)
-type errorCbFunc func(err error, p *Peer)
+type errorCbFunc func(err error, p *Peer, pkt *Packet)
 type closeCbFunc func(p *Peer)
 
 //TODO define netAddress as IP:Port
@@ -128,7 +128,7 @@ func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool) *Peer {
 		incomming: incomming,
 	}
 	p.setPacketCbFunc(cbFunc)
-	p.setErrorCbFunc(func(err error, p *Peer) {
+	p.setErrorCbFunc(func(err error, p *Peer, pkt *Packet) {
 		p.Close()
 	})
 	p.setCloseCbFunc(func(p *Peer) {
@@ -214,7 +214,7 @@ func (p *Peer) receiveRoutine() {
 			} else {
 				//TODO
 				// p.reader.Reset()
-				p.onError(err, p)
+				p.onError(err, p, pkt)
 			}
 			return
 		}
@@ -243,11 +243,11 @@ func (p *Peer) sendPacket(pkt *Packet) {
 	if err := p.writer.WritePacket(pkt); err != nil {
 		log.Printf("Peer.sendPacket WritePacket onError %T %#v %s", err, err, p.String())
 		//TODO
-		p.onError(err, p)
+		p.onError(err, p, pkt)
 	} else if err := p.writer.Flush(); err != nil {
 		log.Printf("Peer.sendPacket Flush onError %T %#v %s", err, err, p.String())
 		//TODO
-		p.onError(err, p)
+		p.onError(err, p, pkt)
 	}
 }
 

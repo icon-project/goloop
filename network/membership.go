@@ -3,41 +3,47 @@ package network
 import (
 	"fmt"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/module"
 )
 
 type membership struct {
-	name         string
-	protocol     module.ProtocolInfo
-	p2p          *PeerToPeer
-	roles        map[module.Role]*PeerIDSet
-	authorities  map[module.Authority]*RoleSet
-	reactors     map[string]module.Reactor
-	cbFuncs      map[uint16]receiveCbFunc
-	subProtocols map[uint16]module.ProtocolInfo
-	destByRole   map[module.Role]byte
+	name             string
+	protocol         module.ProtocolInfo
+	p2p              *PeerToPeer
+	roles            map[module.Role]*PeerIDSet
+	authorities      map[module.Authority]*RoleSet
+	reactors         map[string]module.Reactor
+	onReceiveCbFuncs map[uint16]receiveCbFunc
+	onErrorCbFuncs   map[uint16]func()
+	subProtocols     map[uint16]module.ProtocolInfo
+	destByRole       map[module.Role]byte
 	//log
 	log *logger
 }
 
 type receiveCbFunc func(pi module.ProtocolInfo, bytes []byte, id module.PeerID) (bool, error)
 
+//type sendCbFunc func(pi module.ProtocolInfo, bytes []byte)
+//Broadcast
+//Multicast
+//Unicast
+
 func newMembership(name string, pi module.ProtocolInfo, p2p *PeerToPeer) *membership {
 	ms := &membership{
-		name:         name,
-		protocol:     pi,
-		p2p:          p2p,
-		roles:        make(map[module.Role]*PeerIDSet),
-		authorities:  make(map[module.Authority]*RoleSet),
-		reactors:     make(map[string]module.Reactor),
-		cbFuncs:      make(map[uint16]receiveCbFunc),
-		subProtocols: make(map[uint16]module.ProtocolInfo),
-		destByRole:   make(map[module.Role]byte),
+		name:             name,
+		protocol:         pi,
+		p2p:              p2p,
+		roles:            make(map[module.Role]*PeerIDSet),
+		authorities:      make(map[module.Authority]*RoleSet),
+		reactors:         make(map[string]module.Reactor),
+		onReceiveCbFuncs: make(map[uint16]receiveCbFunc),
+		onErrorCbFuncs:   make(map[uint16]func()),
+		subProtocols:     make(map[uint16]module.ProtocolInfo),
+		destByRole:       make(map[module.Role]byte),
 		//
 		log: newLogger("Membership", fmt.Sprintf("%s.%s.%s", p2p.channel, p2p.self.id, name)),
 	}
-	p2p.setPacketCbFunc(pi, ms.onPacket)
+	p2p.setCbFunc(pi, ms.onPacket, ms.onError)
 	return ms
 }
 
@@ -49,13 +55,9 @@ func (ms *membership) workerRoutine() {
 //callback from PeerToPeer.onPacket() in Peer.onReceiveRoutine
 func (ms *membership) onPacket(pkt *Packet, p *Peer) {
 	ms.log.Println("onPacket", pkt)
-	//Check authority
-	//roles := Roles(pkt.src)
-	//auth := Authority(pkt.cast)
-	//r := HasAuthority(auth, role) range roles
-	//if r == true
+	//TODO Check authority
 	k := pkt.subProtocol.Uint16()
-	if cbFunc := ms.cbFuncs[k]; cbFunc != nil {
+	if cbFunc := ms.onReceiveCbFuncs[k]; cbFunc != nil {
 		pi := ms.subProtocols[k]
 		r, err := cbFunc(pi, pkt.payload, p.ID())
 		if err != nil {
@@ -63,55 +65,71 @@ func (ms *membership) onPacket(pkt *Packet, p *Peer) {
 		}
 		if r {
 			ms.log.Println("onPacket rebroadcast", pkt)
-			ms.p2p.ch <- pkt
+			ms.p2p.send(pkt)
+		}
+	}
+}
+
+func (ms *membership) onError(err error, p *Peer, pkt *Packet) {
+	ms.log.Println("onError", err, p, pkt)
+	if pkt != nil {
+		k := pkt.subProtocol.Uint16()
+		if cbFunc := ms.onErrorCbFuncs[k]; cbFunc != nil {
+			cbFunc()
 		}
 	}
 }
 
 func (ms *membership) RegistReactor(name string, reactor module.Reactor, subProtocols []module.ProtocolInfo) error {
 	if _, ok := ms.reactors[name]; ok {
-		return common.ErrIllegalArgument
+		return ErrAlreadyRegisteredReactor
 	}
 	for _, sp := range subProtocols {
-		if _, ok := ms.subProtocols[sp.Uint16()]; ok {
-			return common.ErrIllegalArgument
+		k := sp.Uint16()
+		if _, ok := ms.subProtocols[k]; ok {
+			return ErrAlreadyRegisteredProtocol
 		}
-		ms.subProtocols[sp.Uint16()] = sp
-		ms.cbFuncs[sp.Uint16()] = reactor.OnReceive
-		ms.log.Printf("RegistReactor.cbFuncs %#x %s", sp.Uint16(), name)
+		ms.subProtocols[k] = sp
+		ms.onReceiveCbFuncs[k] = reactor.OnReceive
+		ms.onErrorCbFuncs[k] = reactor.OnError
+		ms.log.Printf("RegistReactor.cbFuncs %#x %s", k, name)
 	}
 	return nil
 }
 
 func (ms *membership) Unicast(subProtocol module.ProtocolInfo, bytes []byte, id module.PeerID) error {
-	pkt := NewPacket(subProtocol, bytes)
-	pkt.protocol = ms.protocol
-	pkt.dest = p2pDestPeer
-	ms.p2p.sendToPeer(pkt, id)
-	return nil
-}
-
-//TxMessage,VoteMessage, Send to Validators
-func (ms *membership) Multicast(subProtocol module.ProtocolInfo, bytes []byte, role module.Role) error {
-	if _, ok := ms.roles[role]; !ok {
-		return common.ErrIllegalArgument
+	p := ms.p2p.getPeer(id)
+	if p == nil {
+		return fmt.Errorf("not connected Peer %v", id)
 	}
 
 	pkt := NewPacket(subProtocol, bytes)
 	pkt.protocol = ms.protocol
-	pkt.dest = ms.destByRole[role]
-	ms.p2p.ch <- pkt
+	pkt.dest = p2pDestPeer
+	ms.p2p.sendToPeer(pkt, p)
 	return nil
 }
 
-//ProposeMessage,BlockMessage, Send to Citizen
+//TxMessage,PrevoteMessage, Send to Validators
+func (ms *membership) Multicast(subProtocol module.ProtocolInfo, bytes []byte, role module.Role) error {
+	if _, ok := ms.roles[role]; !ok {
+		return ErrNotRegisteredRole
+	}
+	//TODO Check authority
+	pkt := NewPacket(subProtocol, bytes)
+	pkt.protocol = ms.protocol
+	pkt.dest = ms.destByRole[role]
+	return ms.p2p.send(pkt)
+}
+
+//ProposeMessage,PrecommitMessage,BlockMessage, Send to Citizen
 func (ms *membership) Broadcast(subProtocol module.ProtocolInfo, bytes []byte, broadcastType module.BroadcastType) error {
+	//TODO Check authority
 	pkt := NewPacket(subProtocol, bytes)
 	pkt.protocol = ms.protocol
 	pkt.dest = p2pDestAny
 	pkt.ttl = byte(broadcastType)
-	ms.p2p.ch <- pkt
-	return nil
+	return ms.p2p.send(pkt)
 }
 
 func (ms *membership) getRolePeerIDSet(role module.Role) *PeerIDSet {

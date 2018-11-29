@@ -68,24 +68,26 @@ func (r *testReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.Peer
 		rm := &testNetworkBroadcast{}
 		r.decode(b, rm)
 		r.log.Println("handleProtoTestNetworkBroadcast", rm, id)
-
+		r.t.Log(r.name, "OnReceive", rm)
 		re = true
 	case ProtoTestNetworkMulticast:
 		rm := &testNetworkMulticast{}
 		r.decode(b, rm)
 		r.log.Println("handleProtoTestNetworkMulticast", rm, id)
-
+		r.t.Log(r.name, "OnReceive", rm)
 		re = true
 	case ProtoTestNetworkRequest:
 		rm := &testNetworkRequest{}
 		r.decode(b, rm)
 		r.log.Println("handleProtoTestNetworkRequest", rm, id)
+		r.t.Log(r.name, "OnReceive", rm)
 
 		r.Response(id)
 	case ProtoTestNetworkResponse:
 		rm := &testNetworkResponse{}
 		r.decode(b, rm)
 		r.log.Println("handleProtoTestNetworkResponse", rm, id)
+		r.t.Log(r.name, "OnReceive", rm)
 	default:
 		re = false
 	}
@@ -112,24 +114,28 @@ func (r *testReactor) Broadcast() {
 	m := &testNetworkBroadcast{Message: "TestBroasdcast"}
 	r.ms.Broadcast(ProtoTestNetworkBroadcast, r.encode(m), module.BROADCAST_ALL)
 	r.log.Println("Broadcast", m)
+	r.t.Log(r.name, "Broadcast")
 }
 
 func (r *testReactor) Multicast() {
 	m := &testNetworkMulticast{Message: "TestMulticast"}
 	r.ms.Multicast(ProtoTestNetworkMulticast, r.encode(m), module.ROLE_VALIDATOR)
 	r.log.Println("Multicast", m)
+	r.t.Log(r.name, "Multicast")
 }
 
 func (r *testReactor) Request(id module.PeerID) {
 	m := &testNetworkRequest{Message: "Hello"}
 	r.ms.Unicast(ProtoTestNetworkRequest, r.encode(m), id)
 	r.log.Println("Request", m, id)
+	r.t.Log(r.name, "Request")
 }
 
 func (r *testReactor) Response(id module.PeerID) {
 	m := &testNetworkResponse{Message: "World"}
-	r.ms.Unicast(ProtoTestNetworkRequest, r.encode(m), id)
+	r.ms.Unicast(ProtoTestNetworkResponse, r.encode(m), id)
 	r.log.Println("Response", m, id)
+	r.t.Log(r.name, "Response")
 }
 
 func Test_network(t *testing.T) {

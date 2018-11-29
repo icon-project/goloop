@@ -2,6 +2,7 @@ package network
 
 import (
 	"errors"
+	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
@@ -9,8 +10,11 @@ import (
 )
 
 var (
-	ErrAlreadyListened = errors.New("Already listened")
-	ErrAlreadyClosed   = errors.New("Already closed")
+	ErrAlreadyListened           = errors.New("Already listened")
+	ErrAlreadyClosed             = errors.New("Already closed")
+	ErrAlreadyRegisteredReactor  = errors.New("Already registered reactor")
+	ErrAlreadyRegisteredProtocol = errors.New("Already registered protocol")
+	ErrNotRegisteredRole         = errors.New("Not registered role")
 )
 var (
 	singletonTransport module.NetworkTransport
@@ -19,7 +23,7 @@ var (
 )
 
 var (
-	singletonLoggerExcludes = &[]string{"onPacket"}
+	singletonLoggerExcludes = []string{"Authenticator", "ChannelNegotiator", "PeerToPeer"}
 )
 
 const (
@@ -30,6 +34,8 @@ const (
 	DefaultPacketPoolBucketLen = 10
 	DefaultDiscoveryPeriodSec  = 1
 	DefaultSeedPeriodSec       = 5
+	DefaultSendDelay           = 1 * time.Second
+	DefaultSendTaskTimeout     = 100 * time.Millisecond
 )
 
 var (

@@ -70,19 +70,24 @@ func (m *manager) getProtocolInfo(name string) module.ProtocolInfo {
 }
 
 type logger struct {
-	name           string
-	prefix         string
-	excludes       []string
-	globalExcludes *[]string
+	name     string
+	prefix   string
+	excludes []string
 }
 
 func newLogger(name string, prefix string) *logger {
 	//l := log.New(os.Stdout, fmt.Sprintf("[%s] %s", prefix, name), log.LstdFlags)
-	return &logger{name, prefix, make([]string, 0), singletonLoggerExcludes}
+	return &logger{name, prefix, make([]string, 0)}
 }
 
 func (l *logger) printable(v interface{}) bool {
-	if len(l.excludes) < 1 && l.globalExcludes != nil && len(*l.globalExcludes) < 1 {
+	for _, e := range singletonLoggerExcludes {
+		if e == l.name {
+			return false
+		}
+	}
+
+	if len(l.excludes) < 1 {
 		return true
 	}
 	s, ok := v.(string)
@@ -90,11 +95,6 @@ func (l *logger) printable(v interface{}) bool {
 		return true
 	}
 	for _, e := range l.excludes {
-		if strings.HasPrefix(s, e) {
-			return false
-		}
-	}
-	for _, e := range *l.globalExcludes {
 		if strings.HasPrefix(s, e) {
 			return false
 		}

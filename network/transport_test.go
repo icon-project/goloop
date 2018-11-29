@@ -51,10 +51,10 @@ func (ph *testPeerHandler) onPeer(p *Peer) {
 	}
 }
 
-func (ph *testPeerHandler) onError(err error, p *Peer) {
-	ph.log.Println("onError", err, p)
-	ph.peerHandler.onError(err, p)
-	assert.Fail(ph.t, "TestPeerHandler.onError", err, p)
+func (ph *testPeerHandler) onError(err error, p *Peer, pkt *Packet) {
+	ph.log.Println("onError", err, p, pkt)
+	ph.peerHandler.onError(err, p, pkt)
+	assert.Fail(ph.t, "TestPeerHandler.onError", err, p, pkt)
 }
 
 func (ph *testPeerHandler) onPacket(pkt *Packet, p *Peer) {

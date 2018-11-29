@@ -154,7 +154,7 @@ func (d *Dialer) Dial(addr string) error {
 type PeerHandler interface {
 	onPeer(p *Peer)
 	onPacket(pkt *Packet, p *Peer)
-	onError(err error, p *Peer)
+	onError(err error, p *Peer, pkt *Packet)
 	onClose(p *Peer)
 	setNext(ph PeerHandler)
 	setSelfPeerID(id module.PeerID)
@@ -186,7 +186,7 @@ func (ph *peerHandler) nextOnPeer(p *Peer) {
 	}
 }
 
-func (ph *peerHandler) onError(err error, p *Peer) {
+func (ph *peerHandler) onError(err error, p *Peer, pkt *Packet) {
 	ph.log.Println("onError", err, p)
 	err = p.conn.Close()
 	if err != nil {
@@ -296,13 +296,13 @@ func (pd *PeerDispatcher) onPeer(p *Peer) {
 	} else {
 		//TODO error
 		err := fmt.Errorf("not exists PeerToPeer[%s]", p.channel)
-		pd.onError(err, p)
+		pd.onError(err, p, nil)
 	}
 }
 
 //TODO callback from Peer.sendRoutine or Peer.receiveRoutine
-func (pd *PeerDispatcher) onError(err error, p *Peer) {
-	pd.peerHandler.onError(err, p)
+func (pd *PeerDispatcher) onError(err error, p *Peer, pkt *Packet) {
+	pd.peerHandler.onError(err, p, pkt)
 }
 
 //callback from Peer.receiveRoutine
