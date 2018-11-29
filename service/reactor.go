@@ -6,11 +6,8 @@ import (
 	"log"
 
 	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/module"
-)
 
-var (
-	serviceReactorCodec = codec.MP
+	"github.com/icon-project/goloop/module"
 )
 
 type serviceReactor struct {
@@ -20,31 +17,28 @@ type serviceReactor struct {
 
 const (
 	reactorName           = "serviceReactor"
-	PROPAGATE_TRANSACTION = protocolInfo(0x1005)
+	PROPAGATE_TRANSACTION = protocolInfo(0x1001)
 )
 
 var (
-	subProtocols = []module.ProtocolInfo{PROPAGATE_TRANSACTION}
+	sReactorCodec = codec.MP
+	subProtocols  = []module.ProtocolInfo{PROPAGATE_TRANSACTION}
 )
 
 func (r *serviceReactor) OnReceive(subProtocol module.ProtocolInfo, buf []byte, peerId module.PeerID) (bool, error) {
 	switch subProtocol {
 	case PROPAGATE_TRANSACTION:
 		var tx transaction
-		//serviceReactorCodec.Unmarshal(bytes.NewBuffer(buf), &tx)
-		//if tx.Verify() != nil {
-		//	log.Errorf("Failed to unmarshal.")
-		//	return false, nil
-		//}
-		// TODO below is temp for test. have to implement serialization with MP
-		ntx, err := NewTransactionFromJSON(buf)
-		log.Println("OnReceive err = ", err)
-		if err != nil {
+		if _, err := sReactorCodec.UnmarshalFromBytes(buf, &tx); err != nil {
+			log.Printf("Failed to unmarshal transaction. buf = %x, err = %s\n", buf, err)
+		}
+
+		if err := tx.Verify(); err != nil {
+			log.Printf("Failed to verify tx. err = %x\n", err)
 			return false, err
 		}
-		tx = *ntx.(*transaction)
 		if result, err := r.txPool.add(&tx); result == false {
-			log.Fatalf("Failed to add tx. tx = %v, err = %s\n", tx, err)
+			log.Printf("Failed to add tx. tx = %v, err = %s\n", tx, err)
 		}
 		return true, nil
 	}
@@ -52,17 +46,12 @@ func (r *serviceReactor) OnReceive(subProtocol module.ProtocolInfo, buf []byte, 
 }
 
 func (r *serviceReactor) propagateTransaction(pi module.ProtocolInfo, tx *transaction) error {
-	// serialize transaction
-	//buf := bytes.NewBuffer(nil)
-	//if err := serviceReactorCodec.Marshal(buf, tx); err != nil {
-	//	log.Errorf("Failed to marshal transaction. tx : %v, err : %s", tx, err)
-	//	return err
-	//}
-	//r.membership.Broadcast(pi, buf.Bytes(), module.BROADCAST_ALL)
-	// TODO: have to serialize with MP. below is temp code for test
-	if r != nil {
-		r.membership.Multicast(PROPAGATE_TRANSACTION, tx.Bytes(), module.ROLE_VALIDATOR)
+	buf, err := sReactorCodec.MarshalToBytes(tx)
+	if err != nil {
+		log.Printf("Failed to marshal transaction. tx = %v, err = %s\n", tx, err)
 	}
+
+	r.membership.Multicast(PROPAGATE_TRANSACTION, buf, module.ROLE_VALIDATOR)
 	return nil
 }
 
