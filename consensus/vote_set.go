@@ -19,9 +19,9 @@ func (vs *voteSet) add(index int, v *voteMessage) bool {
 	}
 	vs.msgs[index] = v
 	found := false
-	for _, c := range vs.counters {
+	for i, c := range vs.counters {
 		if c.partsID.Equal(v.BlockPartSetID) {
-			c.count++
+			vs.counters[i].count++
 			found = true
 			break
 		}
@@ -43,7 +43,7 @@ func (vs *voteSet) hasOverTwoThirds() bool {
 func (vs *voteSet) getOverTwoThirdsPartSetID() (*PartSetID, bool) {
 	var max int
 	if vs.maxIndex < 0 {
-		max := 0
+		max = 0
 		for i, c := range vs.counters {
 			if c.count > max {
 				vs.maxIndex = i
@@ -60,8 +60,18 @@ func (vs *voteSet) getOverTwoThirdsPartSetID() (*PartSetID, bool) {
 	}
 }
 
-func (vs *voteSet) voteList() *voteList {
-	return newVoteList(vs.msgs)
+func (vs *voteSet) voteListForOverTwoThirds() *voteList {
+	partSetID, ok := vs.getOverTwoThirdsPartSetID()
+	if !ok {
+		return nil
+	}
+	var msgs []*voteMessage
+	for _, msg := range vs.msgs {
+		if msg != nil && msg.BlockPartSetID.Equal(partSetID) {
+			msgs = append(msgs, msg)
+		}
+	}
+	return newVoteList(msgs)
 }
 
 type roundVoteSet = [numberOfVoteTypes]*voteSet

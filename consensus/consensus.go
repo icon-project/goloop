@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -12,6 +13,8 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
 )
+
+var logger *log.Logger
 
 var zeroAddress = common.NewAddress(make([]byte, common.AddressBytes))
 
@@ -76,17 +79,11 @@ func (cs *consensus) resetForNewHeight(prevBlock module.Block, votes module.Vote
 	cs.resetForNewRound(0)
 }
 
-func (cs *consensus) resetForNextHeight() {
-	votes := cs.hvs.votesFor(cs.round, voteTypePrecommit).voteList()
-	cs.resetForNewHeight(cs.currentBlockParts.block, votes)
-}
-
 func (cs *consensus) resetForNewRound(round int32) {
 	cs.proposalPOLRound = -1
 	cs.currentBlockParts = nil
 	cs.round = round
 	cs.step = stepPrepropose
-	cs.enterPropose()
 }
 
 func (cs *consensus) resetForNewStep() {
@@ -110,10 +107,10 @@ func (cs *consensus) OnReceive(
 
 	msg, err := unmarshalMessage(sp, bs)
 	if err != nil {
-		log.Printf("CS| OnReceive: error=%v\n", err)
+		logger.Printf("OnReceive: error=%v\n", err)
 		return false, err
 	}
-	log.Printf("CS| OnReceive %+v\n", msg)
+	logger.Printf("OnReceive %T%+v\n", msg, msg)
 	if err := msg.verify(); err != nil {
 		return false, err
 	}
@@ -129,7 +126,7 @@ func (cs *consensus) OnReceive(
 
 func (cs *consensus) OnError() {
 	cs.mutex.Lock()
-	log.Printf("CS| OnError\n")
+	logger.Printf("OnError\n")
 	defer cs.mutex.Unlock()
 }
 
@@ -182,6 +179,13 @@ func (cs *consensus) receiveBlockPart(msg *blockPartMessage) (bool, error) {
 	if err := cs.currentBlockParts.AddPart(bp); err != nil {
 		return false, err
 	}
+	if cs.currentBlockParts.IsComplete() {
+		block, err := cs.bm.NewBlockFromReader(cs.currentBlockParts.NewReader())
+		if err != nil {
+			panic(err)
+		}
+		cs.currentBlockParts.block = block
+	}
 
 	if cs.step == stepPropose && cs.isProposalAndPOLPrevotesComplete() {
 		cs.enterPrevote()
@@ -217,7 +221,7 @@ func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) (
 			cs.lockedRound = -1
 			cs.lockedBlockParts = &blockPartSet{}
 		}
-		if cs.round == msg.Round && !cs.currentBlockParts.ID().Equal(partSetID) {
+		if cs.round == msg.Round && partSetID != nil && (cs.currentBlockParts == nil || !cs.currentBlockParts.ID().Equal(partSetID)) {
 			cs.currentBlockParts = &blockPartSet{
 				PartSet: newPartSetFromID(partSetID),
 			}
@@ -234,7 +238,7 @@ func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) (
 			cs.enterPrecommit()
 		}
 	} else if cs.round < msg.Round {
-		cs.resetForNewRound(msg.Round)
+		cs.enterProposeForRound(msg.Round)
 		if cs.step < stepPrevote {
 			cs.enterPrevote()
 		}
@@ -248,18 +252,22 @@ func (cs *consensus) handlePrecommitMessage(msg *voteMessage, precommits *voteSe
 	}
 
 	if cs.round == msg.Round && cs.step < stepPrecommit {
+		logger.Println("handlePrecommit: <stepPrecommit")
 		cs.enterPrecommit()
 	} else if cs.round == msg.Round && cs.step == stepPrecommit {
+		logger.Println("handlePrecommit: ==stepPrecommit")
 		cs.enterPrecommitWait()
 	} else if cs.round == msg.Round && cs.step == stepPrecommitWait {
+		logger.Println("handlePrecommit: ==stepPrecommitWait")
 		partSetID, ok := precommits.getOverTwoThirdsPartSetID()
 		if partSetID != nil {
 			cs.enterCommit(partSetID)
 		} else if ok && partSetID == nil {
-			cs.resetForNewRound(cs.round + 1)
+			cs.enterProposeForRound(cs.round + 1)
 		}
 	} else if cs.round < msg.Round {
-		cs.resetForNewRound(msg.Round)
+		logger.Println("handlePrecommit future Round")
+		cs.enterProposeForRound(msg.Round)
 		if cs.step < stepPrecommit {
 			cs.enterPrecommit()
 		}
@@ -285,10 +293,21 @@ func (cs *consensus) dispatchQueuedMessage() {
 
 func (cs *consensus) setStep(step step) {
 	if cs.step >= step {
-		log.Panicf("bad step transition (%v->%v)\n", cs.step, step)
+		logger.Panicf("bad step transition (%v->%v)\n", cs.step, step)
 	}
 	cs.step = step
-	log.Printf("CS| setStep(%v)\n", cs.step)
+	logger.Printf("setStep(%v)\n", cs.step)
+}
+
+func (cs *consensus) enterProposeForNextHeight() {
+	votes := cs.hvs.votesFor(cs.round, voteTypePrecommit).voteListForOverTwoThirds()
+	cs.resetForNewHeight(cs.currentBlockParts.block, votes)
+	cs.enterPropose()
+}
+
+func (cs *consensus) enterProposeForRound(round int32) {
+	cs.resetForNewRound(round)
+	cs.enterPropose()
 }
 
 func (cs *consensus) enterPropose() {
@@ -343,30 +362,38 @@ func (cs *consensus) enterPrevote() {
 	cs.setStep(stepPrevote)
 
 	if cs.lockedBlockParts != nil {
-		cs.sendVote(voteTypePrevote, cs.lockedBlockParts.ID())
+		cs.sendVote(voteTypePrevote, cs.lockedBlockParts)
 	} else if cs.currentBlockParts != nil && cs.currentBlockParts.IsComplete() {
 		hrs := cs.hrs
-		var err error
-		cs.cancelBlockRequest, err = cs.bm.Import(
-			cs.currentBlockParts.NewReader(),
-			func(blk module.Block, err error) {
-				cs.mutex.Lock()
-				defer cs.mutex.Unlock()
+		if cs.currentBlockParts.block != nil {
+			cs.sendVote(voteTypePrevote, cs.currentBlockParts)
+		} else {
+			var err error
+			cs.cancelBlockRequest, err = cs.bm.Import(
+				cs.currentBlockParts.NewReader(),
+				func(blk module.Block, err error) {
+					cs.mutex.Lock()
+					defer cs.mutex.Unlock()
 
-				if cs.hrs != hrs {
-					return
-				}
+					if cs.hrs != hrs {
+						return
+					}
 
-				if err == nil {
-					cs.currentBlockParts.block = blk
-					cs.sendVote(voteTypePrevote, cs.currentBlockParts.ID())
-				} else {
-					cs.sendVote(voteTypePrevote, nil)
-				}
-			},
-		)
-		if err != nil {
-			cs.sendVote(voteTypePrevote, nil)
+					if err == nil {
+						logger.Println("prevote: onImport: OK")
+						cs.currentBlockParts.block = blk
+						cs.sendVote(voteTypePrevote, cs.currentBlockParts)
+					} else {
+						logger.Println("prevote: onImport: ", err)
+						cs.sendVote(voteTypePrevote, nil)
+					}
+				},
+			)
+			if err != nil {
+				logger.Println("prevote: ", err)
+				cs.sendVote(voteTypePrevote, nil)
+				return
+			}
 		}
 	} else {
 		cs.sendVote(voteTypePrevote, nil)
@@ -408,20 +435,25 @@ func (cs *consensus) enterPrecommit() {
 	partSetID, ok := prevotes.getOverTwoThirdsPartSetID()
 
 	if !ok {
+		logger.Println("enterPrecommit: !ok")
 		cs.sendVote(voteTypePrecommit, nil)
 	} else if partSetID == nil {
+		logger.Println("enterPrecommit: partSetID==nil")
 		cs.lockedRound = -1
 		cs.lockedBlockParts = nil
 		cs.sendVote(voteTypePrecommit, nil)
 	} else if cs.lockedBlockParts != nil && cs.lockedBlockParts.ID().Equal(partSetID) {
+		logger.Println("enterPrecommit: updateLockRound")
 		cs.lockedRound = cs.round
-		cs.sendVote(voteTypePrecommit, cs.lockedBlockParts.ID())
+		cs.sendVote(voteTypePrecommit, cs.lockedBlockParts)
 	} else if cs.currentBlockParts != nil && cs.currentBlockParts.ID().Equal(partSetID) && cs.currentBlockParts.IsComplete() {
+		logger.Println("enterPrecommit: updateLock")
 		cs.lockedRound = cs.round
 		cs.lockedBlockParts = cs.currentBlockParts
-		cs.sendVote(voteTypePrecommit, cs.lockedBlockParts.ID())
+		cs.sendVote(voteTypePrecommit, cs.lockedBlockParts)
 	} else {
 		// polka for a block we don't have
+		logger.Println("enterPrecommit: polka for we don't have")
 		if cs.currentBlockParts != nil && !cs.currentBlockParts.ID().Equal(partSetID) {
 			cs.currentBlockParts = &blockPartSet{
 				PartSet: newPartSetFromID(partSetID),
@@ -445,10 +477,13 @@ func (cs *consensus) enterPrecommitWait() {
 	precommits := cs.hvs.votesFor(cs.round, voteTypePrecommit)
 	partSetID, ok := precommits.getOverTwoThirdsPartSetID()
 	if ok && partSetID != nil {
+		logger.Println("enterPrecommitWait: ok && partSetID!=nil")
 		cs.enterCommit(partSetID)
 	} else if ok && partSetID == nil {
-		cs.resetForNewRound(cs.round + 1)
+		logger.Println("enterPrecommitWait: ok && partSetID==nil")
+		cs.enterProposeForRound(cs.round + 1)
 	} else {
+		logger.Println("enterPrecommitWait: else")
 		hrs := cs.hrs
 		cs.timer = time.AfterFunc(timeoutPrecommit, func() {
 			cs.mutex.Lock()
@@ -457,12 +492,9 @@ func (cs *consensus) enterPrecommitWait() {
 			if cs.hrs != hrs {
 				return
 			}
-			cs.resetForNewRound(cs.round + 1)
+			cs.enterProposeForRound(cs.round + 1)
 		})
 	}
-}
-
-func (cs *consensus) tryCommit() {
 }
 
 func (cs *consensus) enterCommit(partSetID *PartSetID) {
@@ -509,7 +541,7 @@ func (cs *consensus) enterNewHeight() {
 
 	now := time.Now()
 	if cs.nextProposeTime.Before(now) {
-		cs.resetForNextHeight()
+		cs.enterProposeForNextHeight()
 	} else {
 		hrs := cs.hrs
 		cs.timer = time.AfterFunc(cs.nextProposeTime.Sub(now), func() {
@@ -519,7 +551,7 @@ func (cs *consensus) enterNewHeight() {
 			if cs.hrs != hrs {
 				return
 			}
-			cs.resetForNextHeight()
+			cs.enterProposeForNextHeight()
 		})
 	}
 }
@@ -538,7 +570,7 @@ func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) error {
 	if err != nil {
 		return errors.Errorf("sendVote : %v", err)
 	}
-	fmt.Printf("send message = %v \n", msg)
+	logger.Printf("sendProposal = %+v \n", msg)
 	cs.dm.Broadcast(protoProposal, msgBS, module.BROADCAST_ALL)
 
 	bpmsg := newBlockPartMessage()
@@ -550,19 +582,39 @@ func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) error {
 		if err != nil {
 			return errors.Errorf("sendVote : %v", err)
 		}
-		fmt.Printf("send message = %v \n", bpmsg)
+		logger.Printf("sendBlockPart = %+v \n", bpmsg)
 		cs.dm.Broadcast(protoBlockPart, bpmsgBS, module.BROADCAST_ALL)
 	}
 
 	return nil
 }
 
-func (cs *consensus) sendVote(vt voteType, partSetID *PartSetID) error {
+func (cs *consensus) sendVote(vt voteType, blockParts *blockPartSet) error {
+	defer func() {
+		go func() {
+			cs.mutex.Lock()
+			defer cs.mutex.Unlock()
+
+			cs.dispatchQueuedMessage()
+		}()
+	}()
 	msg := newVoteMessage()
 	msg.Height = cs.height
 	msg.Round = cs.round
 	msg.Type = vt
-	msg.BlockPartSetID = partSetID
+
+	if blockParts != nil {
+		// TODO fixme
+		if blockParts.block != nil {
+			msg.BlockID = blockParts.block.ID()
+		} else {
+			msg.BlockID = nil
+		}
+		msg.BlockPartSetID = blockParts.ID()
+	} else {
+		msg.BlockID = nil
+		msg.BlockPartSetID = nil
+	}
 	err := msg.sign(cs.wallet)
 	if err != nil {
 		return errors.Errorf("sendVote : %v", err)
@@ -571,8 +623,9 @@ func (cs *consensus) sendVote(vt voteType, partSetID *PartSetID) error {
 	if err != nil {
 		return errors.Errorf("sendVote : %v", err)
 	}
-	fmt.Printf("send message = %v \n", msg)
+	logger.Printf("sendVote = %+v \n", msg)
 	cs.dm.Broadcast(protoVote, msgBS, module.BROADCAST_ALL)
+	cs.enqueueMessage(msg)
 	return nil
 }
 
@@ -633,6 +686,18 @@ func (cs *consensus) Start() {
 		return
 	}
 	lastFinalizedBlock := gblks[len(gblks)-1]
-	cs.resetForNewHeight(lastFinalizedBlock, newVoteList(nil))
 	cs.dm.RegistReactor("consensus", cs, protocols)
+
+	prefix := fmt.Sprintf("%x|CS|", cs.wallet.Address().Bytes()[1:3])
+	logger = log.New(os.Stderr, prefix, log.Lshortfile|log.Lmicroseconds)
+
+	go func() {
+		time.Sleep(time.Second * 3)
+
+		cs.mutex.Lock()
+		defer cs.mutex.Unlock()
+
+		cs.resetForNewHeight(lastFinalizedBlock, newVoteList(nil))
+		cs.enterPropose()
+	}()
 }
