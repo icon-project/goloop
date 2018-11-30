@@ -14,7 +14,7 @@ import (
 
 const (
 	configOnCheckingTimestamp = false // set true if you want check timestamp in txpool
-	txPoolSize                = 100
+	txPoolSize                = 5000
 	txLiveDuration            = int64(60 * time.Second / time.Microsecond) // 60 seconds in microsecond
 )
 
