@@ -242,6 +242,12 @@ func (i *HexInt) Clone() HexInt {
 	return v
 }
 
+func NewHexInt(v int64) *HexInt {
+	i := new(HexInt)
+	i.SetInt64(v)
+	return i
+}
+
 type HexInt16 struct {
 	Value int16
 }
