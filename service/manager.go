@@ -237,7 +237,7 @@ func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
 		log.Printf("Failed to verify transaction. tx : %x\n", newTx.Bytes())
 		return nil, err
 	}
-	hash := newTx.Hash()
+	hash := newTx.ID()
 	if hash == nil {
 		log.Printf("Failed to get hash from tx : %x\n", newTx.Bytes())
 		return nil, errors.New("Invalid Transaction. Failed to get hash")
@@ -257,7 +257,9 @@ func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
 		if result, err := txPool.add(newTx); err == nil && result == true {
 			m.reactor.propagateTransaction(PROPAGATE_TRANSACTION, newTx)
 		} else if err != nil {
-			log.Fatalf("Failed to add transaction to txPool. err = %s\n", err)
+			log.Printf("Failed to add transaction to txPool. err = %s\n", err)
+		} else {
+			log.Printf("Duplicated transaction\n")
 		}
 	}()
 	return hash, nil
