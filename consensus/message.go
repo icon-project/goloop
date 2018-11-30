@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
@@ -139,6 +140,17 @@ const (
 	numberOfVoteTypes
 )
 
+func (vt voteType) String() string {
+	switch vt {
+	case voteTypePrevote:
+		return "PreVote"
+	case voteTypePrecommit:
+		return "PreCommit"
+	default:
+		return "Unknown"
+	}
+}
+
 type vote struct {
 	_HR
 	Type           voteType
@@ -152,6 +164,10 @@ func (v *vote) bytes() []byte {
 		panic(err)
 	}
 	return bs
+}
+
+func (v *vote) String() string {
+	return fmt.Sprintf("Vote[%s,H=%d,R=%d,bid=<%x>]", v.Type, v.Height, v.Round, v.BlockID)
 }
 
 type voteMessage struct {
@@ -182,4 +198,8 @@ func (msg *voteMessage) verify() error {
 
 func (msg *voteMessage) dispatch(cs *consensus) (bool, error) {
 	return cs.receiveVote(msg)
+}
+
+func (msg *voteMessage) String() string {
+	return fmt.Sprintf("VoteMessage[%s,H=%d,R=%d,bid=<%x>,sig=%s]", msg.Type, msg.Height, msg.Round, msg.BlockID, msg.address())
 }
