@@ -17,6 +17,22 @@ type GoChainConfig struct {
 	chain.Config
 	P2PAddr string `json:"p2p"`
 	Key     []byte `json:"key"`
+
+	fileName string
+}
+
+func (config *GoChainConfig) String() string {
+	return ""
+}
+
+func (config *GoChainConfig) Set(name string) error {
+	config.fileName = name
+	if bs, e := ioutil.ReadFile(name); e == nil {
+		if err := json.Unmarshal(bs, config); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func main() {
@@ -24,7 +40,7 @@ func main() {
 	var generate bool
 	var cfg GoChainConfig
 
-	flag.StringVar(&configFile, "config", "", "Parsing configuration file")
+	flag.Var(&cfg, "config", "Parsing configuration file")
 	flag.BoolVar(&generate, "gen", false, "Generate configuration file")
 	flag.StringVar(&cfg.Channel, "channel", "default", "Channel name for the chain")
 	flag.StringVar(&cfg.P2PAddr, "p2p", "127.0.0.1:8080", "Listen ip-port of P2P")
@@ -43,16 +59,6 @@ func main() {
 		cfg.Genesis = genesis
 	}
 
-	if len(configFile) > 0 && !generate {
-		if bs, e := ioutil.ReadFile(configFile); e == nil {
-			if err := json.Unmarshal(bs, &cfg); err != nil {
-				log.Panicf("Illegal config file=%s err=%+v", configFile, err)
-			}
-		} else {
-			log.Panicf("Fail to open config file=%s err=%+v", configFile, e)
-		}
-	}
-
 	key := cfg.Key
 	var priK *crypto.PrivateKey
 	if len(key) == 0 {
@@ -66,7 +72,11 @@ func main() {
 	}
 
 	if generate {
-		f, err := os.OpenFile(configFile, os.O_CREATE|os.O_WRONLY, 0777)
+		if len(cfg.fileName) == 0 {
+			cfg.fileName = "config.json"
+		}
+		f, err := os.OpenFile(cfg.fileName,
+			os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0777)
 		if err != nil {
 			log.Panicf("Fail to open file=%s err=%+v", configFile, err)
 		}
