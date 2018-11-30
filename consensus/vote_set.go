@@ -20,7 +20,7 @@ func (vs *voteSet) add(index int, v *voteMessage) bool {
 	vs.msgs[index] = v
 	found := false
 	for _, c := range vs.counters {
-		if c.partsID == v.BlockPartSetID {
+		if c.partsID.Equal(v.BlockPartSetID) {
 			c.count++
 			found = true
 			break
@@ -61,7 +61,7 @@ func (vs *voteSet) getOverTwoThirdsPartSetID() (*PartSetID, bool) {
 }
 
 func (vs *voteSet) voteList() *voteList {
-	return nil
+	return newVoteList(vs.msgs)
 }
 
 type roundVoteSet = [numberOfVoteTypes]*voteSet
