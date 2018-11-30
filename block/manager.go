@@ -2,8 +2,10 @@ package block
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
+	"os"
 	"time"
 
 	"github.com/pkg/errors"
@@ -21,6 +23,7 @@ import (
 // TODO wait for transaction available
 
 var dbCodec = codec.MP
+var logger *log.Logger
 
 const (
 	keyLastBlockHeight = "block.lastHeight"
@@ -334,6 +337,8 @@ func NewManager(
 	chain module.Chain,
 	sm module.ServiceManager,
 ) module.BlockManager {
+	prefix := fmt.Sprintf("%x|BM|", chain.Wallet().Address().Bytes()[1:3])
+	logger = log.New(os.Stderr, prefix, log.Lshortfile|log.Lmicroseconds)
 	// TODO if last block is v1 block
 	m := &manager{
 		chain: chain,
@@ -405,7 +410,7 @@ func (m *manager) Import(
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	log.Printf("BM| Import(%v)\n", r)
+	logger.Printf("Import(%v)\n", r)
 
 	it, err := m._import(r, cb)
 	if err != nil {
@@ -414,6 +419,7 @@ func (m *manager) Import(
 	return func() bool {
 		m.syncer.begin()
 		defer m.syncer.end()
+		logger.Printf("cancelImport()\n")
 		return it.cancel()
 	}, nil
 }
@@ -438,7 +444,7 @@ func (m *manager) FinalizeGenesisBlocks(
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	log.Printf("BM| FinalizeGenesisBlocks()\n")
+	logger.Printf("FinalizeGenesisBlocks()\n")
 
 	if m.finalized != nil {
 		return nil, common.ErrInvalidState
@@ -515,7 +521,7 @@ func (m *manager) Propose(
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	log.Printf("BM| Propose(%v, %v)\n", parentID, votes)
+	logger.Printf("Propose(%v, %v)\n", parentID, votes)
 
 	pt, err := m._propose(parentID, votes, cb)
 	if err != nil {
@@ -524,6 +530,8 @@ func (m *manager) Propose(
 	return func() bool {
 		m.syncer.begin()
 		defer m.syncer.end()
+
+		logger.Printf("cancelPropose(%v)\n", parentID)
 		return pt.cancel()
 	}, nil
 }
@@ -667,6 +675,13 @@ func (m *manager) newTransactionListFromBSS(
 		ts[i] = m.sm.TransactionFromBytes(bs, version)
 	}
 	return m.sm.TransactionListFromSlice(ts, version)
+}
+
+func (m *manager) NewBlockFromReader(r io.Reader) (module.Block, error) {
+	m.syncer.begin()
+	defer m.syncer.end()
+
+	return m.newBlockFromReader(r)
 }
 
 func (m *manager) newBlockFromReader(r io.Reader) (module.Block, error) {

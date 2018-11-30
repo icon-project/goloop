@@ -36,6 +36,7 @@ type BlockManager interface {
 	GetBlockByHeight(height int64) (Block, error)
 	GetLastBlock() (Block, error)
 	GetBlock(id []byte) (Block, error)
+	NewBlockFromReader(r io.Reader) (Block, error)
 
 	//	Propose proposes a Block following the parent Block.
 	//	The result is asynchronously notified by cb. canceler cancels the
