@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	configLogMapDB = true
+	configLogMapDB = false
 )
 
 func init() {
