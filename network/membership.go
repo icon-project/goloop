@@ -64,8 +64,12 @@ func (ms *membership) onPacket(pkt *Packet, p *Peer) {
 			ms.log.Println(err)
 		}
 		if r {
-			ms.log.Println("onPacket rebroadcast", pkt)
-			ms.p2p.send(pkt)
+			if pkt.ttl == 1 {
+				ms.log.Println("onPacket rebroadcast Ignore, not allowed when ttl=1", pkt)
+			} else {
+				ms.log.Println("onPacket rebroadcast", pkt)
+				ms.p2p.send(pkt)
+			}
 		}
 	}
 }

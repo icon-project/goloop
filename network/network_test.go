@@ -132,29 +132,36 @@ func (r *testReactor) p2pConn() string {
 }
 
 func (r *testReactor) Broadcast(msg string) {
-	r.t.Log(time.Now(), r.name, "Broadcast", r.p2pConn())
 	m := &testNetworkBroadcast{Message: fmt.Sprintf("Broadcast.%s.%s", msg, r.name)}
+	r.t.Log(time.Now(), r.name, "Broadcast", m, r.p2pConn())
 	r.ms.Broadcast(ProtoTestNetworkBroadcast, r.encode(m), module.BROADCAST_ALL)
 	r.log.Println("Broadcast", m)
 }
 
+func (r *testReactor) BroadcastNeighbor(msg string) {
+	m := &testNetworkBroadcast{Message: fmt.Sprintf("BroadcastNeighbor.%s.%s", msg, r.name)}
+	r.t.Log(time.Now(), r.name, "BroadcastNeighbor", m, r.p2pConn())
+	r.ms.Broadcast(ProtoTestNetworkBroadcast, r.encode(m), module.BROADCAST_NEIGHBOR)
+	r.log.Println("BroadcastNeighbor", m)
+}
+
 func (r *testReactor) Multicast(msg string) {
-	r.t.Log(time.Now(), r.name, "Multicast", r.p2pConn())
 	m := &testNetworkMulticast{Message: fmt.Sprintf("Multicast.%s.%s", msg, r.name)}
+	r.t.Log(time.Now(), r.name, "Multicast", m, r.p2pConn())
 	r.ms.Multicast(ProtoTestNetworkMulticast, r.encode(m), module.ROLE_VALIDATOR)
 	r.log.Println("Multicast", m)
 }
 
 func (r *testReactor) Request(msg string, id module.PeerID) {
-	r.t.Log(time.Now(), r.name, "Request", r.p2pConn())
 	m := &testNetworkRequest{Message: fmt.Sprintf("Request.%s.%s", msg, r.name)}
+	r.t.Log(time.Now(), r.name, "Request", m, r.p2pConn())
 	r.ms.Unicast(ProtoTestNetworkRequest, r.encode(m), id)
 	r.log.Println("Request", m, id)
 }
 
 func (r *testReactor) Response(msg string, id module.PeerID) {
-	r.t.Log(time.Now(), r.name, "Response", r.p2pConn())
 	m := &testNetworkResponse{Message: fmt.Sprintf("Response.%s.%s", msg, r.name)}
+	r.t.Log(time.Now(), r.name, "Response", m, r.p2pConn())
 	r.ms.Unicast(ProtoTestNetworkResponse, r.encode(m), id)
 	r.log.Println("Response", m, id)
 }
@@ -195,11 +202,15 @@ func Test_network(t *testing.T) {
 	t.Log(time.Now(), "Messaging")
 	m["TestValidator"][0].Broadcast("Test1")
 	time.Sleep(DefaultSendDelay)
-	m["TestSeed"][0].Multicast("Test2")
+	m["TestValidator"][0].BroadcastNeighbor("Test2")
+	time.Sleep(DefaultSendDelay)
+	m["TestValidator"][0].Multicast("Test3")
+	time.Sleep(DefaultSendDelay)
+	m["TestSeed"][0].Multicast("Test4")
 	time.Sleep(2 * DefaultSendDelay)
-	m["TestCitizen"][0].Multicast("Test3")
+	m["TestCitizen"][0].Multicast("Test5")
 	time.Sleep(3 * DefaultSendDelay)
-	m["TestCitizen"][1].Request("Test4", sr.nt.PeerID())
+	m["TestCitizen"][0].Request("Test6", sr.nt.PeerID())
 	time.Sleep(DefaultSendDelay)
 
 	for _, arr := range m {
