@@ -61,12 +61,11 @@ func (m *manager) GetMembership(name string) module.Membership {
 
 //TODO protocolInfo management
 func (m *manager) getProtocolInfo(name string) module.ProtocolInfo {
-	pi := module.ProtocolInfo(PROTO_DEF_MEMBER)
 	if name == DefaultMembershipName {
-		return pi
-	} else {
-		return NewProtocolInfoWithIDVersion(pi.ID()+byte(len(m.memberships)), 0)
+		return PROTO_DEF_MEMBER
 	}
+	id := PROTO_DEF_MEMBER.ID() + byte(len(m.memberships))
+	return NewProtocolInfoWithIDVersion(id, 0)
 }
 
 type logger struct {

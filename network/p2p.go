@@ -75,8 +75,8 @@ func newPeerToPeer(channel string, t module.NetworkTransport) *PeerToPeer {
 		nephews:         NewPeerSet(),
 		friends:         NewPeerSet(),
 		orphanages:      NewPeerSet(),
-		discoveryTicker: time.NewTicker(time.Duration(DefaultDiscoveryPeriodSec) * time.Second),
-		seedTicker:      time.NewTicker(time.Duration(DefaultSeedPeriodSec) * time.Second),
+		discoveryTicker: time.NewTicker(DefaultDiscoveryPeriod),
+		seedTicker:      time.NewTicker(DefaultSeedPeriod),
 		duplicated:      NewSet(),
 		dialing:         NewNetAddressSet(),
 		//
@@ -99,6 +99,14 @@ func newPeerToPeer(channel string, t module.NetworkTransport) *PeerToPeer {
 		p2p.setRoleByAllowedSet()
 	}
 	t.(*transport).pd.registPeerToPeer(p2p)
+	p2p.log.excludes = []string{
+		"handleQuery",
+		"sendQuery",
+		"sendRoutine",
+		"sendToPeer",
+		"onPacket",
+		"onPeer",
+	}
 
 	go p2p.sendRoutine()
 	go p2p.discoveryRoutine()
@@ -434,6 +442,7 @@ func (p2p *PeerToPeer) sendToPeersAfter(pkt *Packet, peers *PeerSet, d time.Dura
 	go func(pkt *Packet) {
 		select {
 		case <-time.After(d):
+			p2p.log.Println("sendToPeersAfter", pkt, peers.Len(), d)
 			p2p.sendToPeers(pkt, peers)
 		}
 	}(pkt)
@@ -498,8 +507,9 @@ func (p2p *PeerToPeer) send(pkt *Packet) (err error) {
 	p2p.ch <- ctx
 	select {
 	case <-ctx.Done(): //using only exit routine
-		if ctx.Err() != context.Canceled {
+		if ctx.Err() != context.Canceled { //context.DeadlineExceeded
 			err = ctx.Err()
+			p2p.log.Println("send", err)
 		}
 	case <-done:
 	}
@@ -528,9 +538,8 @@ func (p2p *PeerToPeer) getPeer(id module.PeerID) *Peer {
 		return p
 	} else if p := p2p.orphanages.GetByID(id); p != nil {
 		return p
-	} else {
-		return nil
 	}
+	return nil
 }
 
 func (p2p *PeerToPeer) isAllowedRole(role PeerRoleFlag, p *Peer) bool {
@@ -631,52 +640,64 @@ func (p2p *PeerToPeer) discoverFriends() {
 
 func (p2p *PeerToPeer) discoverParent(pr PeerRoleFlag, s *NetAddressSet) {
 	//TODO connection between p2pRoleNone
-	if p2p.parent == nil && p2p.preParent.Len() < 1 {
-		//TODO sort by rtt, sizeof(children)
-		p := p2p.orphanages.GetByRoleAndIncomming(pr, false)
-		if p != nil {
-			p2p.orphanages.Remove(p)
-			p2p.preParent.Add(p)
-			p2p.sendP2PConnectionRequest(p2pConnTypeParent, p)
-			p2p.log.Println("discoverParent try p2pConnTypeParent", p)
-		} else {
-			if p2p.uncles.Len() > 0 {
-				//TODO sort by rtt, sizeof(children)
-				p = p2p.uncles.GetByRoleAndIncomming(pr, false)
-				if p != nil {
-					p2p.uncles.Remove(p)
-					p.connType = p2pConnTypeNone
-					p2p.preParent.Add(p)
-					p2p.sendP2PConnectionRequest(p2pConnTypeParent, p)
-					p2p.log.Println("discoverParent try p2pConnTypeParent from p2pConnTypeUncle", p)
-				}
+	if p2p.parent == nil {
+		if p2p.preParent.Len() < 1 {
+			//TODO sort by rtt, sizeof(children)
+			p := p2p.orphanages.GetByRoleAndIncomming(pr, false)
+			if p != nil {
+				p2p.orphanages.Remove(p)
+				p2p.preParent.Add(p)
+				p2p.sendP2PConnectionRequest(p2pConnTypeParent, p)
+				p2p.log.Println("discoverParent try p2pConnTypeParent", p)
 			} else {
-				for _, na := range s.Array() {
-					if na != p2p.self.netAddress && !p2p.uncles.HasNetAddresse(na) {
-						p2p.log.Println("discoverParent dial to", na)
-						p2p.dial(na)
+				if p2p.uncles.Len() > 0 {
+					//TODO sort by rtt, sizeof(children)
+					p = p2p.uncles.GetByRoleAndIncomming(pr, false)
+					if p != nil {
+						p2p.uncles.Remove(p)
+						p.connType = p2pConnTypeNone
+						p2p.preParent.Add(p)
+						p2p.sendP2PConnectionRequest(p2pConnTypeParent, p)
+						p2p.log.Println("discoverParent try p2pConnTypeParent from p2pConnTypeUncle", p)
+					}
+				} else {
+					for _, na := range s.Array() {
+						if na != p2p.self.netAddress && !p2p.uncles.HasNetAddresse(na) {
+							p2p.log.Println("discoverParent dial to", na)
+							p2p.dial(na)
+						}
 					}
 				}
 			}
+		} else {
+			p2p.log.Println("discoverParent waiting P2PConnectionResponse")
 		}
+	} else {
+		p2p.log.Println("discoverParent nothing to do")
 	}
 }
 
 func (p2p *PeerToPeer) discoverUncle(ur PeerRoleFlag, s *NetAddressSet) {
-	if p2p.parent != nil && p2p.uncles.Len() < 2 {
-		//TODO p2pConnTypeUncle condition
-		p := p2p.orphanages.GetByRoleAndIncomming(ur, false)
-		if p != nil {
-			p2p.sendP2PConnectionRequest(p2pConnTypeUncle, p)
-			p2p.log.Println("discoverUncle try p2pConnTypeUncle", p)
-		} else {
-			for _, na := range s.Array() {
-				if na != p2p.self.netAddress && na != p2p.parent.netAddress && !p2p.uncles.HasNetAddresse(na) {
-					p2p.log.Println("discoverUncle dial to", na)
-					p2p.dial(na)
+	if p2p.parent != nil {
+		if p2p.uncles.Len() < 2 {
+			//TODO p2pConnTypeUncle condition
+			p := p2p.orphanages.GetByRoleAndIncomming(ur, false)
+			if p != nil {
+				p2p.sendP2PConnectionRequest(p2pConnTypeUncle, p)
+				p2p.log.Println("discoverUncle try p2pConnTypeUncle", p)
+			} else {
+				for _, na := range s.Array() {
+					if na != p2p.self.netAddress && na != p2p.parent.netAddress && !p2p.uncles.HasNetAddresse(na) {
+						p2p.log.Println("discoverUncle dial to", na)
+						p2p.dial(na)
+					}
 				}
 			}
+		} else {
+			p2p.log.Println("discoverUncle nothing to do")
 		}
+	} else {
+		p2p.log.Println("discoverUncle parent is nil")
 	}
 }
 

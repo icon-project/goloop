@@ -132,12 +132,13 @@ func NewPeerSet() *PeerSet {
 	return &PeerSet{Set: NewSet(), incomming: NewPeerIDSet(), outgoing: NewPeerIDSet(), addrs: NewNetAddressSet()}
 }
 
-func (s *PeerSet) _contains(p *Peer) bool {
+func (s *PeerSet) _contains(p *Peer) (r bool) {
 	if p.incomming {
-		return s.incomming.Contains(p.id)
+		r = s.incomming.Contains(p.id)
 	} else {
-		return s.outgoing.Contains(p.id)
+		r = s.outgoing.Contains(p.id)
 	}
+	return
 }
 
 func (s *PeerSet) Add(p *Peer) bool {

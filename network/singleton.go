@@ -23,7 +23,7 @@ var (
 )
 
 var (
-	singletonLoggerExcludes = []string{"Authenticator", "ChannelNegotiator", "PeerToPeer"}
+	singletonLoggerExcludes = []string{"Authenticator", "ChannelNegotiator"}
 )
 
 const (
@@ -32,8 +32,8 @@ const (
 	DefaultPacketBufferSize    = 4096 //bufio.defaultBufSize=4096
 	DefaultPacketPoolNumBucket = 10
 	DefaultPacketPoolBucketLen = 10
-	DefaultDiscoveryPeriodSec  = 1
-	DefaultSeedPeriodSec       = 5
+	DefaultDiscoveryPeriod     = 2 * time.Second
+	DefaultSeedPeriod          = 3 * time.Second
 	DefaultSendDelay           = 1 * time.Second
 	DefaultSendTaskTimeout     = 100 * time.Millisecond
 )

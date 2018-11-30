@@ -197,7 +197,7 @@ func (p *Peer) receiveRoutine() {
 	defer func() {
 		if err := recover(); err != nil {
 			//TODO recover()
-			log.Println("Peer.receiveRoutine recover", err)
+			log.Printf("Peer.receiveRoutine recover %+v", err)
 		}
 		p.Close()
 	}()
