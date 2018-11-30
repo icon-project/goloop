@@ -104,6 +104,10 @@ func (msg *proposalMessage) dispatch(cs *consensus) (bool, error) {
 	return cs.receiveProposal(msg)
 }
 
+func (msg *proposalMessage) String() string {
+	return fmt.Sprintf("ProposalMessage[H=%d,R=%d,parts=%d,eoa=%s", msg.Height, msg.Round, msg.BlockPartSetID.Count, msg.address())
+}
+
 type blockPartMessage struct {
 	_HR
 	BlockPart []byte
@@ -130,6 +134,11 @@ func (msg *blockPartMessage) verify() error {
 
 func (msg *blockPartMessage) dispatch(cs *consensus) (bool, error) {
 	return cs.receiveBlockPart(msg)
+}
+
+func (msg *blockPartMessage) String() string {
+	return fmt.Sprintf("BlockPartMessage[H=%d,R=%d]",
+		msg.Height, msg.Round)
 }
 
 type voteType byte
