@@ -55,15 +55,15 @@ type blockResult struct {
 }
 
 type blockV2 struct {
-	Version            string          `json:"version"`
-	PrevBlockHash      string          `json:"prev_block_hash"`
-	MerkleTreeRootHash string          `json:"merkle_tree_root_hash"`
-	Timestamp          int64          `json:"time_stamp"`
+	Version            string        `json:"version"`
+	PrevBlockHash      string        `json:"prev_block_hash"`
+	MerkleTreeRootHash string        `json:"merkle_tree_root_hash"`
+	Timestamp          int64         `json:"time_stamp"`
 	Transactions       []interface{} `json:"confirmed_transaction_list,omitempty"`
-	BlockHash          string          `json:"block_hash"`
-	Height             int64           `json:"height"`
-	PeerID             string          `json:"peer_id"`
-	Signature          string          `json:"signature"`
+	BlockHash          string        `json:"block_hash"`
+	Height             int64         `json:"height"`
+	PeerID             string        `json:"peer_id"`
+	Signature          string        `json:"signature"`
 }
 
 type transactionV2 struct {
@@ -138,10 +138,10 @@ func convertToResult(source interface{}, result interface{}, target reflect.Type
 		vf := v.FieldByName(field.Name)
 		switch vt := value.(type) {
 		case string:
-			log.Printf("%s : %s", field.Name, vt)
+			//log.Printf("%s : %s", field.Name, vt)
 			vf.SetString(vt)
 		case int64:
-			log.Printf("%s : %d", field.Name, vt)
+			//log.Printf("%s : %d", field.Name, vt)
 			vf.SetInt(value.(int64))
 		}
 	}
@@ -149,8 +149,8 @@ func convertToResult(source interface{}, result interface{}, target reflect.Type
 }
 
 func addConfirmedTxList(txList module.TransactionList, result *blockV2) error {
-	it := txList.Iterator()
-	for it.Has() {
+
+	for it := txList.Iterator(); it.Has(); it.Next() {
 		tx, _, _ := it.Get()
 		var txMap interface{}
 
@@ -158,7 +158,7 @@ func addConfirmedTxList(txList module.TransactionList, result *blockV2) error {
 		tx3 := transactionV3{}
 
 		var err error
-		log.Printf("tx version (%d)", tx.Version())
+		//log.Printf("tx version (%d)", tx.Version())
 		switch tx.Version() {
 		case jsonRpcV2:
 			txMap, err = tx.ToJSON(jsonRpcV2)
@@ -175,8 +175,6 @@ func addConfirmedTxList(txList module.TransactionList, result *blockV2) error {
 			convertToResult(txMap, &tx3, reflect.TypeOf(tx3))
 			result.Transactions = append(result.Transactions, tx3)
 		}
-		log.Println("TxList : ", txMap)
-		it.Next()
 	}
 	return nil
 }

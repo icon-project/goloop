@@ -42,7 +42,18 @@ type transactionHashParam struct {
 	TransactionHash string `json:"txHash" valid:"t_hash,required"`
 }
 
-type sendTransactionParam struct {
+type sendTransactionParamV2 struct {
+	FromAddress     string `json:"from" valid:"t_addr_eoa,required"`
+	ToAddress       string `json:"to" valid:"t_addr_eoa,required"`
+	Value           string `json:"value" valid:"t_int,required"`
+	Fee             string `json:"fee" valid:"t_int,required"`
+	Timestamp       string `json:"timestamp" valid:"int,required"`
+	Nonce           string `json:"nonce" valid:"int,optional"`
+	TransactionHash string `json:"tx_hash" valid:"t_hash_v2,required"`
+	Signature       string `json:"signature" valid:"t_sig,required"`
+}
+
+type sendTransactionParamV3 struct {
 	Version     string      `json:"version" valid:"t_int,required"`
 	FromAddress string      `json:"from" valid:"t_addr_eoa,required"`
 	ToAddress   string      `json:"to" valid:"t_addr,optional"`
@@ -158,7 +169,7 @@ func validateParam(s interface{}) *jsonrpc.Error {
 
 func convertToResult(source interface{}, result interface{}, target reflect.Type) error {
 	jsonMap := source.(map[string]interface{})
-	log.Printf("convert : [%s]", target.Name())
+	//log.Printf("convert : [%s]", target.Name())
 
 	v := reflect.ValueOf(result).Elem()
 	for i := 0; i < target.NumField(); i++ {
@@ -171,10 +182,10 @@ func convertToResult(source interface{}, result interface{}, target reflect.Type
 		vf := v.FieldByName(field.Name)
 		switch vt := value.(type) {
 		case string:
-			log.Printf("%s : %s", field.Name, vt)
+			//log.Printf("%s : %s", field.Name, vt)
 			vf.SetString(vt)
 		case int64:
-			log.Printf("%s : %d", field.Name, vt)
+			//log.Printf("%s : %d", field.Name, vt)
 			vf.SetInt(value.(int64))
 		}
 	}
@@ -182,8 +193,8 @@ func convertToResult(source interface{}, result interface{}, target reflect.Type
 }
 
 func addConfirmedTxList(txList module.TransactionList, result *blockV2) error {
-	it := txList.Iterator()
-	for it.Has() {
+
+	for it := txList.Iterator(); it.Has(); it.Next() {
 		tx, _, _ := it.Get()
 		var txMap interface{}
 
@@ -191,7 +202,7 @@ func addConfirmedTxList(txList module.TransactionList, result *blockV2) error {
 		tx3 := transactionV3{}
 
 		var err error
-		log.Printf("tx version (%d)", tx.Version())
+		//log.Printf("tx version (%d)", tx.Version())
 		switch tx.Version() {
 		case jsonRpcV2:
 			txMap, err = tx.ToJSON(jsonRpcV2)
@@ -208,8 +219,6 @@ func addConfirmedTxList(txList module.TransactionList, result *blockV2) error {
 			convertToResult(txMap, &tx3, reflect.TypeOf(tx3))
 			result.Transactions = append(result.Transactions, tx3)
 		}
-		log.Println("TxList : ", txMap)
-		it.Next()
 	}
 	return nil
 }

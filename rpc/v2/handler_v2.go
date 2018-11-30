@@ -3,6 +3,7 @@ package v2
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"log"
 	"reflect"
 	"strconv"
@@ -45,7 +46,7 @@ func (h sendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjson
 
 	result := &sendTranscationResult{
 		ResponseCode:    0,
-		TransactionHash: string(txHash[:]),
+		TransactionHash: fmt.Sprintf("%x", txHash),
 	}
 
 	return result, nil

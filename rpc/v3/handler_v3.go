@@ -3,6 +3,7 @@ package v3
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"log"
 	"reflect"
 	"strconv"
@@ -24,6 +25,9 @@ type getLastBlockHandler struct {
 }
 
 func (h getLastBlockHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+
+	//_, span := trace.StartSpan(context.Background(), getLastBlock)
+	//defer span.End()
 
 	//var result blockV2
 	result := blockV2{}
@@ -242,7 +246,9 @@ func (h getTotalSupplyeHandler) ServeJSONRPC(c context.Context, params *fastjson
 }
 
 // getTransactionResult
-type getTransactionResultHandler struct{}
+type getTransactionResultHandler struct {
+	bm module.BlockManager
+}
 
 func (h getTransactionResultHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
@@ -266,7 +272,9 @@ func (h getTransactionResultHandler) ServeJSONRPC(c context.Context, params *fas
 }
 
 // getTransactionByHash
-type getTransactionByHashHandler struct{}
+type getTransactionByHashHandler struct {
+	bm module.BlockManager
+}
 
 func (h getTransactionByHashHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
@@ -278,15 +286,42 @@ func (h getTransactionByHashHandler) ServeJSONRPC(c context.Context, params *fas
 		return nil, err
 	}
 
-	var result transactionV3
-
-	err := rpcClient.CallFor(&result, getTransactionByHash, param)
-	if err != nil {
-		log.Println(err.Error())
-		return nil, jsonrpc.ErrInternal()
+	if jsonRpcV3 == 0 {
+		var result transactionV3
+		err := rpcClient.CallFor(&result, getTransactionByHash, param)
+		if err != nil {
+			log.Println(err.Error())
+			return nil, jsonrpc.ErrInternal()
+		}
+		return result, nil
+	} else {
+		hash, err := hex.DecodeString(param.TransactionHash[2:])
+		log.Printf("TxHash : %x", hash)
+		txInfo, err := h.bm.GetTransactionInfo(hash)
+		if txInfo != nil {
+			tx := txInfo.Transaction()
+			var txMap interface{}
+			switch tx.Version() {
+			case jsonRpcV2:
+				txV2 := transactionV2{}
+				txMap, err = tx.ToJSON(jsonRpcV2)
+				if err != nil {
+					log.Println(err.Error())
+				}
+				convertToResult(txMap, &txV2, reflect.TypeOf(txV2))
+				return txV2, nil
+			case jsonRpcV3:
+				txV3 := transactionV3{}
+				txMap, err = tx.ToJSON(jsonRpcV3)
+				if err != nil {
+					log.Println(err.Error())
+				}
+				convertToResult(txMap, &txV3, reflect.TypeOf(txV3))
+				return txV3, nil
+			}
+		}
 	}
-
-	return result, nil
+	return nil, jsonrpc.ErrInternal()
 }
 
 // sendTransaction
@@ -296,7 +331,9 @@ type sendTransactionHandler struct {
 
 func (h sendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
-	var param sendTransactionParam
+	//var param sendTransactionParamV3
+	var param sendTransactionParamV2
+
 	if err := jsonrpc.Unmarshal(params, &param); err != nil {
 		return nil, err
 	}
@@ -313,7 +350,7 @@ func (h sendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjson
 	}
 	// txHash
 	log.Printf("txHash : %x", txHash)
-	result := "0x4bf74e6aeeb43bde5dc8d5b62537a33ac8eb7605ebbdb51b015c1881b45b3aed"
+	result := fmt.Sprintf("0x%x",txHash)
 
 	return result, nil
 }
