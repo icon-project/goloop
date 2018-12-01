@@ -35,7 +35,7 @@ class Status(object):
 
 class Codec(metaclass=ABCMeta):
     @abstractmethod
-    def encode(self, o: Any) -> Tuple[bytes, int]:
+    def encode(self, o: Any) -> Tuple[int, bytes]:
         pass
 
     @abstractmethod
@@ -63,10 +63,12 @@ class ServiceManagerProxy:
 
     def connect(self, addr):
         self.__client.connect(addr)
+
+    def send_version(self, v: int, pid: int, name: str):
         self.__client.send(Message.VERSION, [
-            1,
-            os.getpid(),
-            str("python")
+            v,
+            pid,
+            name,
         ])
 
     def set_invoke_handler(self, invoke: Callable[[str, 'Address', 'Address', int, int, str, bytes], None]):
@@ -95,7 +97,7 @@ class ServiceManagerProxy:
         elif isinstance(o, bytes):
             return o
         else:
-            v, t = self.__codec.encode(o)
+            t, v = self.__codec.encode(o)
             return v
 
     def decode_any(self, to: list) -> Any:
@@ -118,28 +120,27 @@ class ServiceManagerProxy:
         else:
             return self.decode(tag, val)
 
-    def encode_any(self, o: Any) -> Any:
+    def encode_any(self, o: Any) -> Tuple[int,Any]:
         if o is None:
-            return [TypeTag.NIL, b'']
+            return TypeTag.NIL, b''
         elif isinstance(o, dict):
             m = {}
             for k, v in o.items():
                 m[k] = self.encode_any(v)
-            return [TypeTag.DICT, m]
+            return TypeTag.DICT, m
         elif isinstance(o, list):
             lst = []
             for v in o:
                 lst.append(self.encode_any(v))
-            return [TypeTag.LIST, lst]
+            return TypeTag.LIST, lst
         elif isinstance(o, bytes):
-            return [TypeTag.BYTES, o]
+            return TypeTag.BYTES, o
         elif isinstance(o, str):
-            return [TypeTag.STRING, o.encode('utf-8')]
+            return TypeTag.STRING, o.encode('utf-8')
         elif isinstance(o, int):
-            return [TypeTag.INT, int_to_bytes(o)]
+            return TypeTag.INT, int_to_bytes(o)
         else:
-            bs, tag = self.__codec.encode()
-            return [tag, bs]
+            return self.__codec.encode(o)
 
     def __handle_invoke(self, data):
         code = self.decode(TypeTag.STRING, data[0])
@@ -203,8 +204,11 @@ class ServiceManagerProxy:
             raise Exception(f'InvalidMsg({msg}) exp={Message.GETINFO}')
         return self.decode_any(value)
 
-    def send_event(self, idxcnt: int, event: List[Any]):
+    def send_event(self, idxcnt: int, items: List[Any]):
+        event_msg = []
+        for item in items:
+            event_msg.append(self.encode_any(item))
         self.__client.send(Message.EVENT, [
             idxcnt,
-            map(lambda x: self.encode(x), event),
+            event_msg,
         ])

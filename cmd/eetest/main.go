@@ -50,8 +50,8 @@ func (cc *callContext) SetValue(key, value []byte) error {
 	return err
 }
 
-func (cc *callContext) OnEvent(idxcnt uint16, msgs [][]byte) {
-	fmt.Printf("CallContext.OnEvent()\n")
+func (cc *callContext) OnEvent(idxcnt uint16, msgs []interface{}) {
+	fmt.Printf("CallContext.OnEvent(%d,%v)\n", idxcnt, msgs)
 }
 
 func (cc *callContext) OnResult(status uint16, steps *big.Int, result []byte) {
