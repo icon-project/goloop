@@ -8,30 +8,36 @@ import (
 	"github.com/pkg/errors"
 	"log"
 	"math/big"
+	"sync"
 )
 
+type Message uint
+
 const (
-	M_VERSION  uint = 0
-	M_INVOKE        = 1
-	M_RESULT        = 2
-	M_GETVALUE      = 3
-	M_SETVALUE      = 4
-	M_CALL          = 5
-	M_EVENT         = 6
+	msgVESION   uint = 0
+	msgINVOKE        = 1
+	msgRESULT        = 2
+	msgGETVALUE      = 3
+	msgSETVALUE      = 4
+	msgCALL          = 5
+	msgEVENT         = 6
+	msgGETINFO       = 7
 )
 
 type CallContext interface {
 	GetValue(key []byte) ([]byte, error)
 	SetValue(key, value []byte) error
+	GetInfo() map[string]interface{}
 	OnEvent(idxcnt uint16, msgs [][]byte)
-	OnResult(code uint16, steps *big.Int)
-	OnCall(from, to module.Address, value, limit *big.Int)
+	OnResult(status uint16, steps *big.Int, result []byte)
+	OnCall(from, to module.Address, value, limit *big.Int, params []byte)
 }
 
 type Proxy interface {
 	Invoke(ctx CallContext, code string, from, to module.Address,
-		value, limit *big.Int, method string, params interface{}) error
-	SendResult(ctx CallContext, status uint16, steps *big.Int) error
+		value, limit *big.Int, method string, params []byte) error
+	SendResult(ctx CallContext, status uint16, steps *big.Int, result []byte) error
+	Release()
 }
 
 type callFrame struct {
@@ -42,7 +48,15 @@ type callFrame struct {
 }
 
 type proxy struct {
+	lock     sync.Mutex
+	reserved bool
+	mgr      *manager
+
 	conn ipc.Connection
+
+	version   uint16
+	pid       uint32
+	scoreType scoreType
 
 	frame *callFrame
 
@@ -53,6 +67,7 @@ type proxy struct {
 type versionMessage struct {
 	Version uint16 `codec:"version"`
 	PID     uint32 `codec:"pid"`
+	Type    string
 }
 
 type invokeMessage struct {
@@ -62,12 +77,7 @@ type invokeMessage struct {
 	Value  common.HexInt  `codec:"value"`
 	Limit  common.HexInt  `codec:"limit"`
 	Method string         `codec:"method"`
-	Params interface{}    `codec:"params"`
-}
-
-type resultMessage struct {
-	status   uint16        `codec:"status"`
-	stepUsed common.HexInt `codec:"stepUsed"`
+	Params []byte         `codec:"params"`
 }
 
 type setMessage struct {
@@ -80,7 +90,7 @@ type callMessage struct {
 	Value  common.HexInt
 	Limit  common.HexInt
 	Method string
-	Params interface{}
+	Params []byte
 }
 
 type eventMessage struct {
@@ -89,7 +99,7 @@ type eventMessage struct {
 }
 
 func (p *proxy) Invoke(ctx CallContext, code string, from, to module.Address,
-	value, limit *big.Int, method string, params interface{},
+	value, limit *big.Int, method string, params []byte,
 ) error {
 	var m invokeMessage
 	m.Code = code
@@ -100,53 +110,106 @@ func (p *proxy) Invoke(ctx CallContext, code string, from, to module.Address,
 	m.Method = method
 	m.Params = params
 
+	p.lock.Lock()
+	defer p.lock.Unlock()
 	p.frame = &callFrame{
 		addr: to,
 		ctx:  ctx,
 		prev: p.frame,
 	}
-	return p.conn.Send(M_INVOKE, &m)
+	return p.conn.Send(msgINVOKE, &m)
 }
 
-func (p *proxy) SendResult(ctx CallContext, status uint16, stepUsed *big.Int) error {
+type resultMessage struct {
+	Status   uint16
+	StepUsed common.HexInt
+	Result   []byte
+}
+
+func (p *proxy) reserve() bool {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	if p.reserved {
+		return false
+	}
+	return true
+}
+
+func (p *proxy) Release() {
+	p.lock.Lock()
+	if !p.reserved {
+		p.lock.Unlock()
+		return
+	}
+	p.reserved = false
+	if p.frame == nil {
+		p.lock.Unlock()
+		p.mgr.onReady(p.scoreType, p)
+	}
+}
+
+func (p *proxy) SendResult(ctx CallContext, status uint16, stepUsed *big.Int, result []byte) error {
 	var m resultMessage
-	m.status = status
-	m.stepUsed.Set(stepUsed)
-	return p.conn.Send(M_RESULT, &m)
+	m.Status = status
+	m.StepUsed.Set(stepUsed)
+	m.Result = result
+	return p.conn.Send(msgRESULT, &m)
 }
 
 func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 	switch msg {
-	case M_VERSION:
+	case msgVESION:
 		var m versionMessage
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
 			c.Close()
 			return err
 		}
-		log.Println("VERSION:%d, PID:%d", m.Version, m.PID)
+		log.Printf("VERSION:%d, PID:%d", m.Version, m.PID)
+		p.version = m.Version
+		p.pid = m.PID
+		if t, ok := scoreNameToType[m.Type]; !ok {
+			return errors.Errorf("UnknownSCOREName(%s)", m.Type)
+		} else {
+			p.scoreType = t
+		}
+
+		p.mgr.onReady(p.scoreType, p)
 		return nil
 
-	case M_CALL:
+	case msgCALL:
 		var m callMessage
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
 			c.Close()
 			return err
 		}
-		p.frame.ctx.OnCall(p.frame.addr, &m.To, &m.Value.Int, &m.Limit.Int)
+		p.frame.ctx.OnCall(p.frame.addr,
+			&m.To, &m.Value.Int, &m.Limit.Int, m.Params)
 		return nil
 
-	case M_RESULT:
+	case msgRESULT:
 		var m resultMessage
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
 			c.Close()
 			return err
 		}
+		p.lock.Lock()
 		frame := p.frame
 		p.frame = frame.prev
-		frame.ctx.OnResult(m.status, &m.stepUsed.Int)
+		p.lock.Unlock()
+
+		frame.ctx.OnResult(m.Status, &m.StepUsed.Int, m.Result)
+
+		p.lock.Lock()
+		if p.frame == nil && !p.reserved {
+			p.lock.Unlock()
+			p.mgr.onReady(p.scoreType, p)
+		} else {
+			p.lock.Unlock()
+		}
 		return nil
 
-	case M_GETVALUE:
+	case msgGETVALUE:
 		var m []byte
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
 			c.Close()
@@ -156,9 +219,9 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		if err != nil || value == nil {
 			value = []byte{}
 		}
-		return p.conn.Send(M_GETVALUE, value)
+		return p.conn.Send(msgGETVALUE, value)
 
-	case M_SETVALUE:
+	case msgSETVALUE:
 		var m setMessage
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
 			c.Close()
@@ -166,7 +229,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		}
 		return p.frame.ctx.SetValue(m.Key, m.Value)
 
-	case M_EVENT:
+	case msgEVENT:
 		var m eventMessage
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
 			c.Close()
@@ -175,19 +238,42 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		p.frame.ctx.OnEvent(m.Index, m.Messages)
 		return nil
 
+	case msgGETINFO:
+		v := p.frame.ctx.GetInfo()
+		eo, err := common.EncodeAny(v)
+		if err != nil {
+			return err
+		}
+		return p.conn.Send(msgGETINFO, eo)
+
 	default:
 		return errors.Errorf("UnknownMessage(%d)", msg)
 	}
 }
 
-func newConnection(c ipc.Connection) (*proxy, error) {
+func (p *proxy) HandleMessages() error {
+	for {
+		err := p.conn.HandleMessage()
+		if err != nil {
+			log.Printf("Error on conn.HandleMessage() err=%+v\n", err)
+			break
+		}
+	}
+	p.mgr.detach(p)
+	p.conn.Close()
+	return nil
+}
+
+func newConnection(m *manager, c ipc.Connection) (*proxy, error) {
 	p := &proxy{
+		mgr:  m,
 		conn: c,
 	}
-	c.SetHandler(M_VERSION, p)
-	c.SetHandler(M_RESULT, p)
-	c.SetHandler(M_GETVALUE, p)
-	c.SetHandler(M_SETVALUE, p)
-	c.SetHandler(M_CALL, p)
+	c.SetHandler(msgVESION, p)
+	c.SetHandler(msgRESULT, p)
+	c.SetHandler(msgGETVALUE, p)
+	c.SetHandler(msgSETVALUE, p)
+	c.SetHandler(msgCALL, p)
+	c.SetHandler(msgGETINFO, p)
 	return p, nil
 }

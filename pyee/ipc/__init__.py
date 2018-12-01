@@ -14,10 +14,6 @@
 # limitations under the License.
 
 from .client import Client
+from .proxy import ServiceManagerProxy
 
-Client = Client
-
-MSG_INVOKE = 3
-MSG_RESULT = 4
-MSG_GETVALUE = 5
-MSG_SETVALUE = 6
+ServiceManagerProxy = ServiceManagerProxy

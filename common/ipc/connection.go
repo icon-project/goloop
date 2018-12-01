@@ -16,6 +16,7 @@ type Connection interface {
 	Send(msg uint, data interface{}) error
 	SendAndReceive(msg uint, data interface{}, buf interface{}) error
 	SetHandler(msg uint, handler MessageHandler)
+	HandleMessage() error
 	Close() error
 }
 

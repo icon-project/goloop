@@ -33,11 +33,11 @@ class Client:
         return self.conn.recv(n)
 
     def send(self, msg: int, data: Any):
-        self._send(msg, 0, data)
+        self._send(msg, data)
 
-    def send_and_receive(self, msg: int, data: Any) -> Tuple[int, int, Any]:
+    def send_and_receive(self, msg: int, data: Any) -> Tuple[int, Any]:
         self._send(msg, data)
         return self._recv()
 
-    def receive(self) -> Tuple[int, int, Any]:
+    def receive(self) -> Tuple[int, Any]:
         return self._recv()
