@@ -204,11 +204,8 @@ class ServiceManagerProxy:
             raise Exception(f'InvalidMsg({msg}) exp={Message.GETINFO}')
         return self.decode_any(value)
 
-    def send_event(self, idxcnt: int, items: List[Any]):
-        event_msg = []
-        for item in items:
-            event_msg.append(self.encode_any(item))
+    def send_event(self, indexed: List[Any], data: List[Any]):
         self.__client.send(Message.EVENT, [
-            idxcnt,
-            event_msg,
+            [self.encode(v) for v in indexed],
+            [self.encode(v) for v in data]
         ])

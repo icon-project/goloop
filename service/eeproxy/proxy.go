@@ -6,7 +6,6 @@ import (
 	"github.com/icon-project/goloop/common/ipc"
 	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
-	ugorji "github.com/ugorji/go/codec"
 	"log"
 	"math/big"
 	"sync"
@@ -29,7 +28,7 @@ type CallContext interface {
 	GetValue(key []byte) ([]byte, error)
 	SetValue(key, value []byte) error
 	GetInfo() map[string]interface{}
-	OnEvent(idxcnt uint16, msgs []interface{})
+	OnEvent(addr module.Address, indexed, data [][]byte)
 	OnResult(status uint16, steps *big.Int, result []byte)
 	OnCall(from, to module.Address, value, limit *big.Int, params []byte)
 }
@@ -95,8 +94,8 @@ type callMessage struct {
 }
 
 type eventMessage struct {
-	Index    uint16
-	Messages []ugorji.Raw
+	Indexed [][]byte
+	Data    [][]byte
 }
 
 func (p *proxy) Invoke(ctx CallContext, code string, from, to module.Address,
@@ -147,7 +146,9 @@ func (p *proxy) Release() {
 	if p.frame == nil {
 		p.lock.Unlock()
 		p.mgr.onReady(p.scoreType, p)
+		return
 	}
+	p.lock.Unlock()
 }
 
 func (p *proxy) SendResult(ctx CallContext, status uint16, stepUsed *big.Int, result []byte) error {
@@ -235,15 +236,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 			c.Close()
 			return err
 		}
-		msgs := make([]interface{}, len(m.Messages))
-		for i, bs := range m.Messages {
-			if o, err := common.UnmarshalAny(bs); err == nil {
-				msgs[i] = o
-			} else {
-				return err
-			}
-		}
-		p.frame.ctx.OnEvent(m.Index, msgs)
+		p.frame.ctx.OnEvent(p.frame.addr, m.Indexed, m.Data)
 		return nil
 
 	case msgGETINFO:

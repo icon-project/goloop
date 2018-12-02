@@ -54,10 +54,14 @@ type TransactionList interface {
 	Flush() error
 }
 
-type Reason interface {
-	Code() int32
-	Message() string
-}
+type Status int
+
+const (
+	StatusSuccess      = 0
+	StatusNotPayable   = 0x7d64
+	StatusOutOfBalance = 0x7f58
+	StatusSystemError  = 0x7000
+)
 
 type Receipt interface {
 	Bytes() []byte
@@ -65,9 +69,8 @@ type Receipt interface {
 	CumulativeStepUsed() *big.Int
 	StepPrice() *big.Int
 	StepUsed() *big.Int
-	Success() bool
-	Result() []byte
-	Reason() Reason
+	Status() Status
+	SCOREAddress() Address
 	Check(r Receipt) error
 }
 

@@ -4,14 +4,10 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/pkg/errors"
 	"github.com/ugorji/go/codec"
-	"log"
 	"math/big"
-	"regexp"
-	"strings"
 )
 
 const (
@@ -92,72 +88,26 @@ func (lb *logBloom) addBit(idx uint16) {
 	lb.Int.SetBit(&lb.Int, int(idx), 1)
 }
 
-func decomposeSignature(s string) (string, []string) {
-	reg := regexp.MustCompile(`^(\w+)\(((?:\w+)(?:,(?:\w+))*)\)$`)
-	if reg == nil {
-		return "", nil
-	}
-	matches := reg.FindStringSubmatch(s)
-	if len(matches) < 2 {
-		return "", nil
-	}
-	return matches[1], strings.Split(matches[2], ",")
-}
-
-func (lb *logBloom) AddEvent(e *eventLog) error {
+func (lb *logBloom) AddLog(e *eventLog) {
 	if len(e.Indexed) < 1 {
-		return nil
+		return
 	}
-	ws := make([]string, 0, len(e.Indexed))
-	ws = append(ws, string([]byte{0})+e.Indexed[0])
-	_, pts := decomposeSignature(e.Indexed[0])
-	for i, is := range e.Indexed[1:] {
-		if i >= len(pts) {
-			break
-		}
-		w := []byte{byte(i + 1)}
-		switch pts[i] {
-		case "Address":
-			var addr common.Address
-			if err := addr.SetString(is); err != nil {
-				return err
-			}
-			w = append(w, addr.ID()...)
-		case "int":
-			var value big.Int
-			value.SetString(is, 0)
-			w = append(w, common.BigIntToBytes(&value)...)
-		case "str":
-			w = append(w, []byte(is)...)
-		case "bytes":
-			bs, err := hex.DecodeString(is[2:])
-			if err != nil {
-				return err
-			}
-			w = append(w, bs...)
-		case "bool":
-			if is == "0x1" {
-				w = append(w, 1)
-			} else {
-				w = append(w, 0)
-			}
-		default:
-			log.Panicf("Unknown parameter type=%s", pts[i])
-		}
-		ws = append(ws, string(w))
+	for i, b := range e.Indexed {
+		bs := make([]byte, len(b)+1)
+		bs[0] = byte(i)
+		copy(bs[1:], b)
+		lb.addLog(bs)
 	}
-	lb.AddLog(ws...)
-	return nil
 }
 
-func (lb *logBloom) AddLog(logs ...string) {
+func (lb *logBloom) addLog(logs ...[]byte) {
 	for _, log := range logs {
 		var h []byte
 		if configLogBloomLegacy {
-			h = crypto.SHASum256([]byte(log))
+			h = crypto.SHASum256(log)
 			h = []byte(hex.EncodeToString(h))
 		} else {
-			h = crypto.SHA3Sum256([]byte(log))
+			h = crypto.SHA3Sum256(log)
 		}
 		for i := 0; i < 3; i++ {
 			lb.addBit(binary.BigEndian.Uint16(h[i*2:i*2+2]) & (LogBloomBits - 1))

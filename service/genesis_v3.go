@@ -150,7 +150,7 @@ func (g *genesisV3) Execute(wc WorldContext) (Receipt, error) {
 		ac := wc.GetAccountState(info.Address.ID())
 		ac.SetBalance(&info.Balance.Int)
 	}
-	r.SetResult(true, nil, big.NewInt(0), big.NewInt(0))
+	r.SetResult(0, big.NewInt(0), big.NewInt(0), nil)
 	validators := make([]module.Validator, len(g.Validatorlist))
 	for i, validator := range g.Validatorlist {
 		validators[i], _ = ValidatorFromAddress(validator)

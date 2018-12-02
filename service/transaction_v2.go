@@ -100,9 +100,9 @@ func (tx *transactionV2) Execute(wc WorldContext) (Receipt, error) {
 			bal1.String(), tx.Value.Int.String(), tx.Fee.Int.String())
 
 		if bal1.Cmp(&tx.Value.Int) < 0 {
-			r.SetResult(false, FailureOutOfBalance, stepUsed, stepPrice)
+			r.SetResult(module.StatusOutOfBalance, stepUsed, stepPrice, nil)
 		} else {
-			r.SetResult(false, FailureNotPayable, stepUsed, stepPrice)
+			r.SetResult(module.StatusNotPayable, stepUsed, stepPrice, nil)
 		}
 		return r, nil
 	}
@@ -115,7 +115,7 @@ func (tx *transactionV2) Execute(wc WorldContext) (Receipt, error) {
 	bal2.Add(bal2, &tx.Value.Int)
 	as2.SetBalance(bal2)
 
-	r.SetResult(true, nil, version2StepUsed, version2StepPrice)
+	r.SetResult(module.StatusSuccess, version2StepUsed, version2StepPrice, nil)
 	return r, nil
 }
 

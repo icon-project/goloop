@@ -191,17 +191,17 @@ func (tx *transactionV3) Prepare(wvs WorldVirtualState) (WorldVirtualState, erro
 }
 
 func (tx *transactionV3) transfer(wc WorldContext,
-	from, to module.Address, value, limit *big.Int) (bool, interface{}, *big.Int) {
+	from, to module.Address, value, limit *big.Int) (module.Status, *big.Int) {
 	stepUse := big.NewInt(wc.StepsFor(StepTypeDefault, 1))
 
 	if stepUse.Cmp(limit) > 0 {
-		return false, FailureOutOfStep, limit
+		return module.StatusNotPayable, limit
 	}
 
 	as1 := wc.GetAccountState(from.ID())
 	bal1 := as1.GetBalance()
 	if bal1.Cmp(value) < 0 {
-		return false, FailureOutOfBalance, limit
+		return module.StatusOutOfBalance, limit
 	}
 	bal1.Sub(bal1, value)
 	as1.SetBalance(bal1)
@@ -211,14 +211,14 @@ func (tx *transactionV3) transfer(wc WorldContext,
 	bal2.Add(bal2, value)
 	as2.SetBalance(bal2)
 
-	return true, nil, stepUse
+	return module.StatusSuccess, stepUse
 }
 
 func (tx *transactionV3) call(wc WorldContext, r Receipt,
-	from, to module.Address, value, limit *big.Int) (bool, interface{}, *big.Int) {
+	from, to module.Address, value, limit *big.Int) (module.Status, *big.Int) {
 	// TODO Implement transaction v3 contract call
 	log.Panicf("Not implemented")
-	return false, FailureUnknown, &zero
+	return module.StatusSystemError, &zero
 }
 
 func countBytesOfData(data interface{}) int {
@@ -262,8 +262,7 @@ func (tx *transactionV3) Execute(wc WorldContext) (Receipt, error) {
 	stepPrice := wc.StepPrice()
 	var (
 		fee                big.Int
-		success            bool
-		result             interface{}
+		status             module.Status
 		stepUsed, bal1     *big.Int
 		stepUse, stepLimit big.Int
 	)
@@ -273,25 +272,23 @@ func (tx *transactionV3) Execute(wc WorldContext) (Receipt, error) {
 
 	// it tries to execute
 	if tx.To.IsContract() {
-		success, result, stepUsed = tx.call(wc, r, &tx.From, &tx.To, &tx.Value.Int, &stepLimit)
+		status, stepUsed = tx.call(wc, r, &tx.From, &tx.To, &tx.Value.Int, &stepLimit)
 		stepUse.Set(stepUsed)
 		stepLimit.Sub(&stepLimit, stepUsed)
 	} else {
-		success, result, stepUsed = tx.transfer(wc, &tx.From, &tx.To, &tx.Value.Int, &stepLimit)
+		status, stepUsed = tx.transfer(wc, &tx.From, &tx.To, &tx.Value.Int, &stepLimit)
 		stepUse.Set(stepUsed)
 		stepLimit.Sub(&stepLimit, stepUsed)
-		if success && tx.DataType == "message" {
+		if status == 0 && tx.DataType == "message" {
 			var data interface{}
 			if err := json.Unmarshal(tx.Data, &data); err != nil {
-				success = false
-				result = FailureUnknown
+				status = module.StatusSystemError
 				stepUsed = &stepLimit
 			} else {
 				var stepsForMessage big.Int
 				stepsForMessage.SetInt64(wc.StepsFor(StepTypeInput, countBytesOfData(data)))
 				if stepLimit.Cmp(&stepsForMessage) < 0 {
-					success = false
-					result = FailureOutOfStepForInput
+					status = module.StatusNotPayable
 					stepUsed = &stepLimit
 				} else {
 					stepUsed = &stepsForMessage
@@ -306,10 +303,9 @@ func (tx *transactionV3) Execute(wc WorldContext) (Receipt, error) {
 	fee.Mul(&stepUse, stepPrice)
 	bal1 = as1.GetBalance()
 	for bal1.Cmp(&fee) < 0 {
-		if success {
+		if status == 0 {
 			// rollback all changes
-			success = false
-			result = FailureNotPayable
+			status = module.StatusNotPayable
 			wc.Reset(wcs)
 			r = NewReceipt(&tx.To)
 			bal1 = as1.GetBalance()
@@ -324,7 +320,7 @@ func (tx *transactionV3) Execute(wc WorldContext) (Receipt, error) {
 	bal1.Sub(bal1, &fee)
 	as1.SetBalance(bal1)
 
-	r.SetResult(success, result, &stepUse, stepPrice)
+	r.SetResult(status, &stepUse, stepPrice, nil)
 	return r, nil
 }
 
