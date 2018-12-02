@@ -80,6 +80,11 @@ type invokeMessage struct {
 	Params []byte         `codec:"params"`
 }
 
+type getValueMessage struct {
+	Success bool
+	Value   []byte
+}
+
 type setMessage struct {
 	Key   []byte `codec:"key"`
 	Value []byte `codec:"value"`
@@ -201,16 +206,24 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		return nil
 
 	case msgGETVALUE:
-		var m []byte
-		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
+		var key []byte
+		if _, err := codec.MP.UnmarshalFromBytes(data, &key); err != nil {
 			c.Close()
 			return err
 		}
-		value, err := p.frame.ctx.GetValue(m)
-		if err != nil || value == nil {
-			value = []byte{}
+		var m getValueMessage
+		if value, err := p.frame.ctx.GetValue(key); err != nil {
+			return err
+		} else {
+			if value != nil {
+				m.Success = true
+				m.Value = value
+			} else {
+				m.Success = false
+				m.Value = nil
+			}
 		}
-		return p.conn.Send(msgGETVALUE, value)
+		return p.conn.Send(msgGETVALUE, &m)
 
 	case msgSETVALUE:
 		var m setMessage

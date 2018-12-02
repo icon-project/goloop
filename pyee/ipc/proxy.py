@@ -189,11 +189,11 @@ class ServiceManagerProxy:
             elif msg == Message.RESULT:
                 return data[0], self.decode('int', data[1]), data[2]
 
-    def get_value(self, key: bytes) -> bytes:
+    def get_value(self, key: bytes) -> Tuple[bool, bytes]:
         msg, value = self.__client.send_and_receive(Message.GETVALUE, key)
         if msg != Message.GETVALUE:
             raise Exception(f'InvalidMsg({msg}) exp={Message.GETVALUE}')
-        return value
+        return tuple(value)
 
     def set_value(self, key: bytes, value: bytes):
         self.__client.send(Message.SETVALUE, [key, value])
