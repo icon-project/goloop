@@ -1,7 +1,6 @@
 package service
 
 import (
-	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"github.com/icon-project/goloop/common"
@@ -174,7 +173,7 @@ type receiptJSON struct {
 	SCOREAddress       *common.Address  `json:"scoreAddress,omitempty"`
 	Failure            *failureReason   `json:"failure,omitempty"`
 	EventLogs          []*eventLogJSON  `json:"eventLogs"`
-	LogBloom           common.HexBytes  `json:"logsBloom"`
+	LogBloom           logBloom         `json:"logsBloom"`
 	Status             common.HexUint16 `json:"status"`
 }
 
@@ -194,7 +193,8 @@ func (r *receipt) ToJSON(version int) (interface{}, error) {
 				logs[i] = logjson
 			}
 		}
-		rjo.LogBloom = r.data.LogBloom.Bytes()
+		rjo.EventLogs = logs
+		rjo.LogBloom.SetBytes(r.data.LogBloom.Bytes())
 		if r.data.Status == module.StatusSuccess {
 			rjo.Status.Value = 1
 			rjo.SCOREAddress = r.data.SCOREAddress
@@ -209,7 +209,7 @@ func (r *receipt) ToJSON(version int) (interface{}, error) {
 		rjson["stepUsed"] = &rjo.StepUsed
 		rjson["stepPrice"] = &rjo.StepPrice
 		rjson["eventLogs"] = rjo.EventLogs
-		rjson["logBloom"] = rjo.LogBloom
+		rjson["logBloom"] = &rjo.LogBloom
 		rjson["status"] = &rjo.Status
 		if rjo.Failure != nil {
 			rjson["failure"] = rjo.Failure
@@ -247,18 +247,17 @@ func (r *receipt) UnmarshalJSON(bs []byte) error {
 	data.CumulativeStepUsed.Set(&rjson.CumulativeStepUsed.Int)
 	data.StepUsed.Set(&rjson.StepUsed.Int)
 	data.StepPrice.Set(&rjson.StepPrice.Int)
-	data.EventLogs = make([]*eventLog, len(rjson.EventLogs))
-	for i, e := range rjson.EventLogs {
-		if el, err := eventLogFromJSON(e); err != nil {
-			return err
-		} else {
-			data.EventLogs[i] = el
-			data.LogBloom.AddLog(el)
+	if len(rjson.EventLogs) > 0 {
+		data.EventLogs = make([]*eventLog, len(rjson.EventLogs))
+		for i, e := range rjson.EventLogs {
+			if el, err := eventLogFromJSON(e); err != nil {
+				return err
+			} else {
+				data.EventLogs[i] = el
+			}
 		}
 	}
-	if !bytes.Equal(data.LogBloom.Bytes(), rjson.LogBloom.Bytes()) {
-		return errors.New("LogBloomNotMatching")
-	}
+	data.LogBloom.SetBytes(rjson.LogBloom.Bytes())
 	return nil
 }
 
@@ -278,7 +277,9 @@ func (r *receipt) SetCumulativeStepUsed(cumulativeUsed *big.Int) {
 
 func (r *receipt) SetResult(status module.Status, used, price *big.Int, addr module.Address) {
 	r.data.Status = status
-	r.data.SCOREAddress = common.NewAddress(addr.Bytes())
+	if status == module.StatusSuccess && addr != nil {
+		r.data.SCOREAddress = common.NewAddress(addr.Bytes())
+	}
 	r.data.StepUsed.Set(used)
 	r.data.StepPrice.Set(price)
 }
