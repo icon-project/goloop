@@ -133,10 +133,12 @@ func (ti *transitionImpl) OnValidate(tr module.Transition, err error) {
 		return
 	}
 	ti._valErr = &err
+	cbs := make([]transitionCallback, len(ti._cbs))
+	copy(cbs, ti._cbs)
 	if err != nil {
 		ti._cbs = nil
 	}
-	for _, cb := range ti._cbs {
+	for _, cb := range cbs {
 		cb.onValidate(err)
 	}
 }

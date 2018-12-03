@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -165,6 +166,27 @@ func (c *proposeOnlyConsensus) Start() {
 		}
 		if !bytes.Equal(blk.ID(), blk2.ID()) {
 			panic("id not equal")
+		}
+		for it := blk2.NormalTransactions().Iterator(); it.Has(); it.Next() {
+			tr, _, err := it.Get()
+			if err != nil {
+				panic(err)
+			}
+			_, err = c.bm.GetTransactionInfo(tr.ID())
+			if err != nil {
+				panic(err)
+			}
+			res, err := tr.ToJSON(2)
+			if err != nil {
+				panic(err)
+			}
+			resMap := res.(map[string]interface{})
+			fmt.Printf("Proposer: tx %x\n", tr.Hash())
+			txjsonHashHex := resMap["tx_hash"].(string)
+			txHashHex := hex.EncodeToString(tr.Hash())
+			if txjsonHashHex != txHashHex {
+				panic("tx hash not equal")
+			}
 		}
 
 		height++
