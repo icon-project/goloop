@@ -33,7 +33,8 @@ type hrs struct {
 
 type blockPartSet struct {
 	PartSet
-	block module.Block
+	block    module.Block
+	noImport bool
 }
 
 type consensus struct {
@@ -331,7 +332,8 @@ func (cs *consensus) enterPropose() {
 			cs.currentBlockParts = cs.lockedBlockParts
 			cs.dispatchQueuedMessage()
 		} else {
-			cs.bm.Propose(cs.lastBlock.ID(), cs.votes,
+			var err error
+			cs.cancelBlockRequest, err = cs.bm.Propose(cs.lastBlock.ID(), cs.votes,
 				func(blk module.Block, err error) {
 					cs.mutex.Lock()
 					defer cs.mutex.Unlock()
@@ -339,6 +341,12 @@ func (cs *consensus) enterPropose() {
 					if cs.hrs != hrs {
 						return
 					}
+
+					if err != nil {
+						panic(err)
+					}
+					logger.Printf("enterPropose: onPropose: OK")
+
 					psb := newPartSetBuffer(1024 * 10)
 					blk.MarshalHeader(psb)
 					blk.MarshalBody(psb)
@@ -346,12 +354,16 @@ func (cs *consensus) enterPropose() {
 
 					cs.sendProposal(bps, -1)
 					cs.currentBlockParts = &blockPartSet{
-						PartSet: bps,
-						block:   blk,
+						PartSet:  bps,
+						block:    blk,
+						noImport: true,
 					}
 					cs.enterPrevote()
 				},
 			)
+			if err != nil {
+				logger.Panicf("enterPropose: %v\n", err)
+			}
 		}
 	}
 	cs.dispatchQueuedMessage()
@@ -381,7 +393,7 @@ func (cs *consensus) enterPrevote() {
 
 					if err == nil {
 						logger.Println("prevote: onImport: OK")
-						cs.currentBlockParts.block = blk
+						cs.currentBlockParts.noImport = true
 						cs.sendVote(voteTypePrevote, cs.currentBlockParts)
 					} else {
 						logger.Println("prevote: onImport: ", err)
@@ -508,7 +520,7 @@ func (cs *consensus) enterCommit(partSetID *PartSetID) {
 		}
 	}
 	if cs.currentBlockParts.IsComplete() {
-		if cs.currentBlockParts.block == nil {
+		if !cs.currentBlockParts.noImport {
 			hrs := cs.hrs
 			cs.bm.Import(
 				cs.currentBlockParts.NewReader(),
@@ -523,13 +535,19 @@ func (cs *consensus) enterCommit(partSetID *PartSetID) {
 					if err != nil {
 						panic(err)
 					}
-					cs.currentBlockParts.block = blk
-					cs.bm.Finalize(cs.currentBlockParts.block)
+					cs.currentBlockParts.noImport = true
+					err = cs.bm.Finalize(cs.currentBlockParts.block)
+					if err != nil {
+						logger.Panicf("enterCommit: %v\n", err)
+					}
 					cs.enterNewHeight()
 				},
 			)
 		} else {
-			cs.bm.Finalize(cs.currentBlockParts.block)
+			err := cs.bm.Finalize(cs.currentBlockParts.block)
+			if err != nil {
+				logger.Panicf("enterCommit: %v\n", err)
+			}
 			cs.enterNewHeight()
 		}
 	}
