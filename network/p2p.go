@@ -503,8 +503,8 @@ func (p2p *PeerToPeer) send(pkt *Packet) (err error) {
 	done := make(chan struct{})
 	ctx := context.WithValue(context.Background(), p2pContextKeyDone, done)
 	ctx = context.WithValue(ctx, p2pContextKeyPacket, pkt)
-	ctx, cancle := context.WithTimeout(ctx, DefaultSendTaskTimeout)
-	defer cancle()
+	ctx, cancel := context.WithTimeout(ctx, DefaultSendTaskTimeout)
+	defer cancel()
 
 	p2p.ch <- ctx
 	select {
