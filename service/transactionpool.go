@@ -3,13 +3,13 @@ package service
 import (
 	"bytes"
 	"container/list"
+	"log"
 	"sort"
 	"sync"
 	"time"
 
-	"github.com/icon-project/goloop/module"
-
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/module"
 )
 
 const (
@@ -60,59 +60,69 @@ func (txPool *transactionPool) runGc(expired int64) error {
 	return nil
 }
 
-// transaction에 넣을 때 간단한 검증이 필요하다면, 검증은 외부에서 해야 함.
-func (txPool *transactionPool) add(tx *transaction) (bool, error) {
-	result := txPool.addList([]*transaction{tx})
-	return result, nil
-	// KN.KIM 시간이 만료된 것은 받지 않을 것이냐,...
-	//expired := makeTimestamp() - txLiveDuration
-	//if tx.TimeStamp() < expired {
-	//	return nil
-	//}
-	//txList := txPool.txList
-	//
-	//if txList.Len() >= txPoolSize {
-	//	return nil
-	//}
-	//txPool.mutex.Lock()
-	//defer txPool.mutex.Unlock()
-	//if iter := txList.Front(); iter != nil {
-	//	if iter.Value.(*transaction).TimeStamp() < expired {
-	//		txPool.runGc(expired)
-	//	}
-	//}
-	//
-	//if txPool.txList.Len() == 0 {
-	//    txList.PushBack(tx)
-	//	fmt.Println("first push ID = ", tx.ID(), ", timestamp = ", tx.TimeStamp())
-	//	txPool.txHashMap[string(tx.ID())] = tx
-	//    return nil
-	//}
-	//
-	//// check whether this transaction is already in txPool
-	//if _, ok := txPool.txHashMap[string(tx.ID())]; ok {
-	//	// TODO: 추가적으로 address, nonce까지 검사할 필요가 있을까?
-	//	fmt.Println("drop ID = ", tx.ID(), ", timestamp = ", tx.TimeStamp())
-	//	return nil
-	//}
-	//
-	//inserted := false
-	//// TODO: built-in list를 사용하면 아래처럼 search & insert가 효과적이지 않은 것으로 보인다.
-	//// 그리고 명시적인 형변환도 필요하다. 런타임시에 효율적이지 않다. 이후에는 직접 list를 구현하는 것이 좋지 않을까???
-	//for backIter := txList.Back(); backIter != nil; backIter = backIter.Prev() {
-	//    v := backIter.Value.(*transaction)
-	//    if v.TimeStamp() <= tx.TimeStamp() {
-	//        txList.InsertAfter(tx, backIter)
-	//        txPool.txHashMap[string(tx.ID())] = tx
-	//        inserted = true
-	//        break
-	//    }
-	//}
-	//if inserted == false {
-	//    txList.PushFront(tx)
-	//	txPool.txHashMap[string(tx.ID())] = tx
-	//}
-	//return nil
+/*
+	return nil if tx is nil or tx is added to pool
+	return ErrTransactionPoolOverFlow if pool is full
+	return ErrDuplicateTransaction if tx exists in pool
+	return ErrExpiredTransaction if Timestamp of tx is expired
+*/
+func (txPool *transactionPool) add(tx *transaction) error {
+	//err := txPool.addList([]*transaction{tx})
+	//return err
+	if tx == nil {
+		return nil
+	}
+	expired := makeTimestamp() - txLiveDuration
+	txPool.mutex.Lock()
+	defer txPool.mutex.Unlock()
+
+	txList := txPool.txList
+
+	if configOnCheckingTimestamp {
+		if iter := txList.Front(); iter != nil {
+			if iter.Value.(*transaction).Timestamp() < expired {
+				txPool.runGc(expired)
+			}
+		}
+	}
+
+	var err error
+	if txList.Len() >= txPoolSize {
+		return ErrTransactionPoolOverFlow
+	}
+
+	// check whether this transaction is already in txPool
+	if _, ok := txPool.txHashMap[string(tx.ID())]; ok {
+		// TODO: 추가적으로 address, nonce까지 검사할 필요가 있을까?
+		//fmt.Println("drop ID = ", addTx.ID(), ", timestamp = ", addTx.TimeStamp())
+		return ErrDuplicateTransaction
+	}
+	if configOnCheckingTimestamp {
+		if tx.Timestamp() < expired {
+			return ErrExpiredTransaction
+		}
+	}
+
+	inserted := false
+	//revIter := txList.Back()
+	//for revIter != nil {
+	for revIter := txList.Back(); revIter != nil; revIter = revIter.Prev() {
+		e := revIter.Value.(*transaction)
+		if e.Timestamp() <= tx.Timestamp() {
+			revIter = txList.InsertAfter(tx, revIter)
+			txPool.txHashMap[string(tx.ID())] = tx
+			inserted = true
+			break
+		}
+	}
+
+	if inserted == false {
+		txList.PushFront(tx)
+		txPool.txHashMap[string(tx.ID())] = tx
+	}
+	log.Println("Length of transaction : ", txList.Len())
+
+	return err
 }
 
 // 없다면, len()이 0인 TransactionList를 리턴한다. (nil 아님)
@@ -153,7 +163,7 @@ func (txPool *transactionPool) candidate(wc WorldContext, max int) []module.Tran
 	txs := make([]module.Transaction, txsLen)
 	txsIndex := 0
 	for iter := txPool.txList.Front(); iter != nil; {
-		if iter.Value.(Transaction).PreValidate(wc, true) != nil {
+		if err := iter.Value.(Transaction).PreValidate(wc, true); err != nil {
 			tmp := iter.Next()
 			txPool.txList.Remove(iter)
 			iter = tmp
@@ -171,10 +181,7 @@ func (txPool *transactionPool) candidate(wc WorldContext, max int) []module.Tran
 }
 
 // return true if one of txs is added to pool
-func (txPool *transactionPool) addList(txs []*transaction) bool {
-	if len(txs) == 0 {
-		return false
-	}
+func (txPool *transactionPool) addList(txs []*transaction) error {
 	expired := makeTimestamp() - txLiveDuration
 	txPool.mutex.Lock()
 	defer txPool.mutex.Unlock()
@@ -194,21 +201,23 @@ func (txPool *transactionPool) addList(txs []*transaction) bool {
 		}
 	}
 
+	var err error
 	if txList.Len() >= txPoolSize {
-		return false
+		return ErrTransactionPoolOverFlow
 	}
 
-	result := false
 	// check whether this transaction is already in txPool
 	revIter := txList.Back()
 	for _, addTx := range addTxs {
 		if _, ok := txPool.txHashMap[string(addTx.ID())]; ok {
 			// TODO: 추가적으로 address, nonce까지 검사할 필요가 있을까?
 			//fmt.Println("drop ID = ", addTx.ID(), ", timestamp = ", addTx.TimeStamp())
+			err = ErrDuplicateTransaction
 			continue
 		}
 		if configOnCheckingTimestamp {
 			if addTx.Timestamp() < expired {
+				err = ErrExpiredTransaction
 				continue
 			}
 		}
@@ -220,7 +229,6 @@ func (txPool *transactionPool) addList(txs []*transaction) bool {
 				revIter = txList.InsertAfter(addTx, revIter)
 				txPool.txHashMap[string(addTx.ID())] = addTx
 				inserted = true
-				result = true
 				break
 			}
 			revIter = revIter.Prev()
@@ -229,22 +237,27 @@ func (txPool *transactionPool) addList(txs []*transaction) bool {
 		if inserted == false {
 			txList.PushFront(addTx)
 			txPool.txHashMap[string(addTx.ID())] = addTx
-			result = true
 		}
 	}
 
-	return result
+	return err
 }
 
 // finalize할 때 호출됨.
 func (txPool *transactionPool) removeList(txs module.TransactionList) {
 	txPool.mutex.Lock()
 	defer txPool.mutex.Unlock()
+	// TODO: have to change transaction to module.Transaction after adding Timestamp to module.Transaction
 	var rmTxs []*transaction
 	for i := txs.Iterator(); i.Has(); i.Next() {
-		t, _, _ := i.Get()
-		if tx, ok := t.(*transaction); ok {
-			rmTxs = append(rmTxs, tx)
+		if t, _, err := i.Get(); err == nil {
+			ntx, err := NewTransactionFromJSON(t.Bytes())
+			if err != nil {
+				continue
+			}
+			rmTxs = append(rmTxs, ntx.(*transaction))
+		} else {
+			log.Println("Failed to get transaction from iterator, err : ", err)
 		}
 	}
 	rmTxsLen := len(rmTxs)

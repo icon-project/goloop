@@ -17,6 +17,12 @@ const (
 	txMaxNumInBlock = 10
 )
 
+var (
+	ErrDuplicateTransaction    = errors.New("DuplicateTransaction")
+	ErrTransactionPoolOverFlow = errors.New("TransactionPoolOverFlow")
+	ErrExpiredTransaction      = errors.New("ExpiredTransaction")
+)
+
 type manager struct {
 	// tx pool should be connected to transition for more than one branches.
 	// Currently, it doesn't allow another branch, so add tx pool here.
@@ -212,7 +218,6 @@ func (m *manager) checkTransitionResult(t module.Transition) (*transition, error
 }
 
 func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
-
 	var newTx *transaction
 	switch txo := tx.(type) {
 	case []byte:
@@ -253,15 +258,15 @@ func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
 		log.Panicf("Wrong TransactionGroup. %v", newTx.Group())
 	}
 
-	go func() {
-		if result, err := txPool.add(newTx); err == nil && result == true {
-			m.reactor.propagateTransaction(PROPAGATE_TRANSACTION, newTx)
-		} else if err != nil {
-			log.Printf("Failed to add transaction to txPool. err = %s\n", err)
-		} else {
-			log.Printf("Duplicated transaction\n")
-		}
-	}()
+	// TODO execute with goroutine after performamnce test
+	//go func() {
+	if err := txPool.add(newTx); err == nil {
+		m.reactor.propagateTransaction(PROPAGATE_TRANSACTION, newTx)
+	} else {
+		log.Printf("Failed to add transaction to txPool. err = %s\n", err)
+		return hash, err
+	}
+	//}()
 	return hash, nil
 }
 
