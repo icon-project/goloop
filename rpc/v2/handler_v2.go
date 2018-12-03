@@ -38,11 +38,9 @@ func (h sendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjson
 	tx, _ := params.MarshalJSON()
 	txHash, err := h.sm.SendTransaction(tx)
 	if err != nil {
-		log.Println(err.Error())
+		log.Printf("Fail on sm.SendTransaction err=%+v", err)
 		return nil, jsonrpc.ErrInternal()
 	}
-	// txHash
-	log.Printf("txHash : %x", txHash)
 
 	result := &sendTranscationResult{
 		ResponseCode:    0,
