@@ -331,8 +331,7 @@ type sendTransactionHandler struct {
 
 func (h sendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
-	//var param sendTransactionParamV3
-	var param sendTransactionParamV2
+	var param sendTransactionParamV3
 
 	if err := jsonrpc.Unmarshal(params, &param); err != nil {
 		return nil, err
@@ -349,8 +348,7 @@ func (h sendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjson
 		return nil, jsonrpc.ErrInternal()
 	}
 	// txHash
-	log.Printf("txHash : %x", txHash)
-	result := fmt.Sprintf("0x%x",txHash)
+	result := fmt.Sprintf("0x%x", txHash)
 
 	return result, nil
 }
