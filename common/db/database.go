@@ -31,11 +31,8 @@ func registerDBCreator(backend BackendType, creator dbCreator, force bool) {
 	backends[backend] = creator
 }
 
-func Open(name string) Database {
-	// TODO : configure Database options
-	defaultBackend := BadgerDBBackend
-	dir := "./data"
-	return openDatabase(defaultBackend, name, dir)
+func Open(dir, dbtype, name string) Database {
+	return openDatabase(BackendType(dbtype), name, dir)
 }
 
 func openDatabase(backend BackendType, name string, dir string) Database {

@@ -20,6 +20,10 @@ type Config struct {
 	SeedAddr string          `json:"seed_addr"`
 	Role     uint            `json:"role"`
 	Genesis  json.RawMessage `json:"genesis"`
+
+	DBDir  string `json:"db_dir"`
+	DBType string `json:"db_type"`
+	DBName string `json:"db_name"`
 }
 
 type singleChain struct {
@@ -72,7 +76,7 @@ func toRoles(r uint) []module.Role {
 }
 
 func (c *singleChain) Start() {
-	c.database = db.NewMapDB()
+	c.database = db.Open(c.cfg.DBDir, c.cfg.DBType, c.cfg.DBName)
 
 	c.vld = consensus.NewVoteListFromBytes
 	c.sm = service.NewManager(c)
@@ -95,9 +99,16 @@ func (c *singleChain) Start() {
 }
 
 func NewChain(wallet module.Wallet, transport module.NetworkTransport, cfg *Config) *singleChain {
-	return &singleChain{
+	chain := &singleChain{
 		wallet: wallet,
 		nt:     transport,
 		cfg:    *cfg,
 	}
+	if chain.cfg.DBName == "" {
+		chain.cfg.DBName = chain.cfg.Channel
+	}
+	if chain.cfg.DBType == "" {
+		chain.cfg.DBType = string(db.BadgerDBBackend)
+	}
+	return chain
 }

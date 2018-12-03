@@ -48,6 +48,9 @@ func main() {
 	flag.StringVar(&cfg.RPCAddr, "rpc", ":9080", "Listen ip-port of JSON-RPC")
 	flag.StringVar(&cfg.SeedAddr, "seed", "", "Ip-port of Seed")
 	flag.StringVar(&genesisFile, "genesis", "", "Genesis transaction param")
+	flag.StringVar(&cfg.DBType, "db_type", "mapdb", "Name of database system(*badgerdb, goleveldb, boltdb, mapdb)")
+	flag.StringVar(&cfg.DBDir, "db_dir", "", "Database directory")
+	flag.StringVar(&cfg.DBName, "db_name", "", "Database name for the chain(default:<channel name>)")
 	flag.UintVar(&cfg.Role, "role", 0, "[0:None, 1:Seed, 2:Validator, 3:Both]")
 	flag.Parse()
 
@@ -71,12 +74,17 @@ func main() {
 		}
 	}
 
+	if cfg.DBDir == "" {
+		addr := common.NewAccountAddressFromPublicKey(priK.PublicKey())
+		cfg.DBDir = ".db/" + addr.String()
+	}
+
 	if generate {
 		if len(cfg.fileName) == 0 {
 			cfg.fileName = "config.json"
 		}
 		f, err := os.OpenFile(cfg.fileName,
-			os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0777)
+			os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
 		if err != nil {
 			log.Panicf("Fail to open file=%s err=%+v", configFile, err)
 		}
@@ -88,6 +96,12 @@ func main() {
 		}
 		f.Close()
 		os.Exit(0)
+	}
+
+	if cfg.DBType != "mapdb" {
+		if err := os.MkdirAll(cfg.DBDir, 0755); err != nil {
+			log.Panicf("Fail to create directory %s err=%+v", cfg.DBDir, err)
+		}
 	}
 
 	wallet, _ := common.WalletFromPrivateKey(priK)
