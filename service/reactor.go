@@ -51,7 +51,9 @@ func (r *serviceReactor) propagateTransaction(pi module.ProtocolInfo, tx *transa
 		log.Printf("Failed to marshal transaction. tx = %v, err = %s\n", tx, err)
 	}
 
-	r.membership.Multicast(PROPAGATE_TRANSACTION, buf, module.ROLE_VALIDATOR)
+	if r != nil {
+		r.membership.Multicast(PROPAGATE_TRANSACTION, buf, module.ROLE_VALIDATOR)
+	}
 	return nil
 }
 
