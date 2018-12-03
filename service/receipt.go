@@ -311,7 +311,7 @@ func (r *receipt) Check(r2 module.Receipt) error {
 	if !ok {
 		return errors.New("IncompatibleReceipt")
 	}
-	if !reflect.DeepEqual(&r.data, rct2.data) {
+	if !reflect.DeepEqual(&r.data, &rct2.data) {
 		return errors.New("DataIsn'tEqual")
 	}
 	return nil
