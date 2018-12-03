@@ -120,7 +120,6 @@ func (txPool *transactionPool) add(tx *transaction) error {
 		txList.PushFront(tx)
 		txPool.txHashMap[string(tx.ID())] = tx
 	}
-	log.Println("Length of transaction : ", txList.Len())
 
 	return err
 }
