@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"hash"
 	"hash/fnv"
@@ -73,6 +72,22 @@ func NewPacketReader(rd io.Reader) *PacketReader {
 	return &PacketReader{Reader: bufio.NewReaderSize(rd, DefaultPacketBufferSize), rd: rd}
 }
 
+func (pr *PacketReader) _read(n int) ([]byte, error) {
+	b := make([]byte, n)
+	rn := 0
+	for {
+		tn, err := pr.Reader.Read(b[rn:])
+		if err != nil {
+			return nil, err
+		}
+		rn += tn
+		if rn >= n {
+			break
+		}
+	}
+	return b, nil
+}
+
 func (pr *PacketReader) Reset() {
 	pr.Reader.Reset(pr.rd)
 }
@@ -80,8 +95,7 @@ func (pr *PacketReader) Reset() {
 func (pr *PacketReader) ReadPacket() (pkt *Packet, h hash.Hash64, e error) {
 	for {
 		if pr.pkt == nil {
-			hb := make([]byte, packetHeaderSize)
-			_, err := pr.Read(hb)
+			hb, err := pr._read(packetHeaderSize)
 			if err != nil {
 				e = err
 				return
@@ -100,6 +114,10 @@ func (pr *PacketReader) ReadPacket() (pkt *Packet, h hash.Hash64, e error) {
 			ttl := tb[0]
 			tb = tb[1:]
 			lop := binary.BigEndian.Uint32(tb[:4])
+			if lop > DefaultPacketPayloadMax {
+				e = fmt.Errorf("Invalid packet lengthOfpayload %x, max:%x", lop, DefaultPacketPayloadMax)
+				return
+			}
 			tb = tb[4:]
 			pr.pkt = &Packet{protocol: pi, subProtocol: spi, src: src, dest: dest, ttl: ttl, lengthOfpayload: lop}
 			h = fnv.New64a()
@@ -107,25 +125,17 @@ func (pr *PacketReader) ReadPacket() (pkt *Packet, h hash.Hash64, e error) {
 		}
 
 		if pr.pkt.payload == nil {
-			//TODO if pkt.lengthOfpayload > p.reader.Size()
-			if pr.pkt.lengthOfpayload > uint32(pr.Buffered()) {
-				continue
-			}
-			pr.pkt.payload = make([]byte, pr.pkt.lengthOfpayload)
-			_, err := pr.Read(pr.pkt.payload)
+			payload, err := pr._read(int(pr.pkt.lengthOfpayload))
 			if err != nil {
 				e = err
 				return
 			}
+			pr.pkt.payload = payload
 			h.Write(pr.pkt.payload)
 		}
 
 		if pr.pkt.hashOfPacket == 0 {
-			if packetFooterSize > pr.Buffered() {
-				continue
-			}
-			fb := make([]byte, packetFooterSize)
-			_, err := pr.Read(fb)
+			fb, err := pr._read(packetFooterSize)
 			if err != nil {
 				e = err
 				return
@@ -269,8 +279,8 @@ func (prw *PacketReadWriter) ReadPacket() (*Packet, error) {
 			return nil, err
 		}
 		if pkt.hashOfPacket != h.Sum64() {
-			e := fmt.Sprintf("Invalid hashOfPacket:%x, expected:%x", pkt.hashOfPacket, h.Sum64())
-			return pkt, errors.New(e)
+			err := fmt.Errorf("Invalid hashOfPacket:%x, expected:%x", pkt.hashOfPacket, h.Sum64())
+			return pkt, err
 		}
 		prw.rpkt = pkt
 	}

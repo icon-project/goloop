@@ -2,6 +2,7 @@ package network
 
 import (
 	"errors"
+	"math"
 	"time"
 
 	"github.com/icon-project/goloop/common"
@@ -30,6 +31,7 @@ const (
 	DefaultTransportNet        = "tcp4"
 	DefaultMembershipName      = ""
 	DefaultPacketBufferSize    = 4096 //bufio.defaultBufSize=4096
+	DefaultPacketPayloadMax    = math.MaxInt32
 	DefaultPacketPoolNumBucket = 10
 	DefaultPacketPoolBucketLen = 10
 	DefaultDiscoveryPeriod     = 2 * time.Second
