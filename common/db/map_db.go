@@ -12,13 +12,20 @@ const (
 
 func init() {
 	dbCreator := func(name string, dir string) (Database, error) {
-		return make(mapDatabase), nil
+		return &mapDatabase{
+			name: name,
+			bks:  map[BucketID]*mapBucket{},
+		}, nil
 	}
 	registerDBCreator(MapDBBackend, dbCreator, false)
 }
 
 func NewMapDB() Database {
-	return make(mapDatabase)
+	dbase := &mapDatabase{
+		bks: map[BucketID]*mapBucket{},
+	}
+	dbase.name = fmt.Sprintf("%p", dbase)
+	return dbase
 }
 
 //----------------------------------------
@@ -26,21 +33,24 @@ func NewMapDB() Database {
 
 var _ Database = (*mapDatabase)(nil)
 
-type mapDatabase map[BucketID]*mapBucket
+type mapDatabase struct {
+	name string
+	bks  map[BucketID]*mapBucket
+}
 
-func (t mapDatabase) GetBucket(id BucketID) (Bucket, error) {
-	if bk, ok := t[id]; ok {
+func (t *mapDatabase) GetBucket(id BucketID) (Bucket, error) {
+	if bk, ok := t.bks[id]; ok {
 		return bk, nil
 	}
 	bk := &mapBucket{
-		id:   fmt.Sprintf("%p:%s", t, id),
+		id:   fmt.Sprintf("%s:%s", t.name, id),
 		real: make(map[string]string),
 	}
-	t[id] = bk
+	t.bks[id] = bk
 	return bk, nil
 }
 
-func (t mapDatabase) Close() error {
+func (t *mapDatabase) Close() error {
 	return nil
 }
 
