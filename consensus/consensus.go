@@ -297,7 +297,7 @@ func (cs *consensus) setStep(step step) {
 		logger.Panicf("bad step transition (%v->%v)\n", cs.step, step)
 	}
 	cs.step = step
-	logger.Printf("setStep(%v)\n", cs.step)
+	logger.Printf("setStep(H=%d,R=%d,S=%v)\n", cs.height, cs.round, cs.step)
 }
 
 func (cs *consensus) enterProposeForNextHeight() {
@@ -362,7 +362,7 @@ func (cs *consensus) enterPropose() {
 				},
 			)
 			if err != nil {
-				logger.Panicf("enterPropose: %v\n", err)
+				logger.Panicf("enterPropose: %+v\n", err)
 			}
 		}
 	}

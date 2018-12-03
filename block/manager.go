@@ -237,7 +237,7 @@ func (m *manager) _propose(
 ) (*proposeTask, error) {
 	bn := m.nmap[string(parentID)]
 	if bn == nil {
-		return nil, common.ErrIllegalArgument
+		return nil, errors.Errorf("NoParentBlock(id=<%x>)", parentID)
 	}
 	pt := &proposeTask{
 		task: task{
@@ -557,7 +557,7 @@ func (m *manager) Finalize(block module.Block) error {
 
 	bn := m.nmap[string(block.ID())]
 	if bn == nil || bn.parent != m.finalized {
-		return common.ErrIllegalArgument
+		return errors.Errorf("InvalidStatusForBlock(id=<%x>", block.ID())
 	}
 	return m.finalize(bn)
 }
