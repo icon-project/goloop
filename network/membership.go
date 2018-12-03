@@ -54,7 +54,7 @@ func (ms *membership) workerRoutine() {
 
 //callback from PeerToPeer.onPacket() in Peer.onReceiveRoutine
 func (ms *membership) onPacket(pkt *Packet, p *Peer) {
-	ms.log.Println("onPacket", pkt)
+	// ms.log.Println("onPacket", pkt)
 	//TODO Check authority
 	k := pkt.subProtocol.Uint16()
 	if cbFunc := ms.onReceiveCbFuncs[k]; cbFunc != nil {
@@ -65,9 +65,9 @@ func (ms *membership) onPacket(pkt *Packet, p *Peer) {
 		}
 		if r {
 			if pkt.ttl == 1 {
-				ms.log.Println("onPacket rebroadcast Ignore, not allowed when ttl=1", pkt)
+				// ms.log.Println("onPacket rebroadcast Ignore, not allowed when ttl=1", pkt)
 			} else {
-				ms.log.Println("onPacket rebroadcast", pkt)
+				// ms.log.Println("onPacket rebroadcast", pkt)
 				ms.p2p.send(pkt)
 			}
 		}
