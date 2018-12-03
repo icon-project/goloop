@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
@@ -59,6 +60,10 @@ func (v *validator) Bytes() []byte {
 		return nil
 	}
 	return bytes
+}
+
+func (v *validator) String() string {
+	return fmt.Sprintf("Validator[addr=%v,pkey=<%x>]", v.addr, v.pub)
 }
 
 func ValidatorFromAddress(a module.Address) (module.Validator, error) {

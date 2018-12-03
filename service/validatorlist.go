@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
@@ -89,6 +90,10 @@ func (vl *validatorList) IndexOf(addr module.Address) int {
 		return idx
 	}
 	return -1
+}
+
+func (vl *validatorList) String() string {
+	return fmt.Sprintf("ValidatorList[%+v]", vl.validators)
 }
 
 func ValidatorListFromHash(database db.Database, h []byte) (module.ValidatorList, error) {
