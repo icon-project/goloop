@@ -159,9 +159,11 @@ type eventLog struct {
 
 // JSON-RPC Request Params Validator
 func validateParam(s interface{}) *jsonrpc.Error {
-	_, err := govalidator.ValidateStruct(s)
-	if err != nil {
-		log.Println(err.Error())
+	ok, err := govalidator.ValidateStruct(s)
+	if !ok || err != nil {
+		if err != nil {
+			log.Printf("schema_v3.validateParam FAILs err=%+v", err)
+		}
 		return jsonrpc.ErrInvalidParams()
 	}
 	return nil
