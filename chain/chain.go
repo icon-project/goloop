@@ -2,6 +2,7 @@ package chain
 
 import (
 	"encoding/json"
+	"log"
 
 	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/common/db"
@@ -88,7 +89,9 @@ func (c *singleChain) Start() {
 
 	c.sv = rpc.NewJsonRpcServer(c.bm, c.sm)
 
-	c.sv.ListenAndServe(c.cfg.RPCAddr)
+	if err := c.sv.ListenAndServe(c.cfg.RPCAddr); err != nil {
+		log.Printf("Fail to Listen on RPC server err=%+v", err)
+	}
 }
 
 func NewChain(wallet module.Wallet, transport module.NetworkTransport, cfg *Config) *singleChain {
