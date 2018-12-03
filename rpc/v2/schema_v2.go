@@ -113,14 +113,20 @@ type getTransactionResultResponse struct {
 	Code int `json:"code"`
 }
 
+const (
+	configValidateSendTransaction = false
+)
+
 // JSON-RPC Request Params Validator
 func validateParam(s interface{}) *jsonrpc.Error {
-	ok, err := govalidator.ValidateStruct(s)
-	if !ok || err != nil {
-		if err != nil {
-			log.Printf("schema_v2.validateParam FAILs err=%+v", err)
+	if configValidateSendTransaction {
+		ok, err := govalidator.ValidateStruct(s)
+		if !ok || err != nil {
+			if err != nil {
+				log.Printf("schema_v2.validateParam FAILs err=%+v", err)
+			}
+			return jsonrpc.ErrInvalidParams()
 		}
-		return jsonrpc.ErrInvalidParams()
 	}
 	return nil
 }
