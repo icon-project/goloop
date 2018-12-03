@@ -30,15 +30,15 @@ func (r *serviceReactor) OnReceive(subProtocol module.ProtocolInfo, buf []byte, 
 	case PROPAGATE_TRANSACTION:
 		var tx transaction
 		if _, err := sReactorCodec.UnmarshalFromBytes(buf, &tx); err != nil {
-			log.Printf("Failed to unmarshal transaction. buf = %x, err = %s\n", buf, err)
+			log.Printf("Failed to unmarshal transaction. buf=%x, err=%+v\n", buf, err)
 		}
 
 		if err := tx.Verify(); err != nil {
-			log.Printf("Failed to verify tx. err = %x\n", err)
+			log.Printf("Failed to verify tx. err=%+v\n", err)
 			return false, err
 		}
 		if err := r.txPool.add(&tx); err != nil {
-			log.Printf("Failed to add tx. tx = %v, err = %s\n", tx, err)
+			log.Printf("Failed to add tx. tx=%x, err=%+v\n", tx.ID(), err)
 		}
 		return true, nil
 	}
@@ -48,7 +48,7 @@ func (r *serviceReactor) OnReceive(subProtocol module.ProtocolInfo, buf []byte, 
 func (r *serviceReactor) propagateTransaction(pi module.ProtocolInfo, tx *transaction) error {
 	buf, err := sReactorCodec.MarshalToBytes(tx)
 	if err != nil {
-		log.Printf("Failed to marshal transaction. tx = %v, err = %s\n", tx, err)
+		log.Printf("Failed to marshal transaction. tx=%v, err=%+v\n", tx, err)
 	}
 
 	if r != nil {
