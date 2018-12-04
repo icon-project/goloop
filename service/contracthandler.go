@@ -30,8 +30,6 @@ type (
 	}
 
 	ContractHandler interface {
-		eeproxy.CallContext
-
 		Prepare(wvs WorldVirtualState) (WorldVirtualState, error)
 		Cancel()
 	}
@@ -42,6 +40,7 @@ type (
 	}
 
 	AsyncContractHandler interface {
+		eeproxy.CallContext
 		ContractHandler
 		ExecuteAsync(wc WorldContext) <-chan interface{}
 
@@ -53,8 +52,16 @@ type contractManager struct {
 }
 
 func (cm *contractManager) GetHandler(tc TransactionContext, from, to module.Address, value, stepLimit *big.Int, dataType string, data interface{}) ContractHandler {
-	// TODO
-	panic("implement me")
+	var handler ContractHandler
+	switch dataType {
+	case dataTypeMessage:
+	case dataTypeCall:
+		handler = new(MethodCallHandler)
+	case dataTypeDeploy:
+		handler = new(DeployHandler)
+		// TODO simple transfer
+	}
+	return handler
 }
 
 // PrepareContractStore checks if contract codes are ready for a contract runtime
