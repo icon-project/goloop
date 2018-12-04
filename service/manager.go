@@ -173,9 +173,12 @@ func (m *manager) Finalize(t module.Transition, opt int) {
 }
 
 // TransactionFromBytes returns a Transaction instance from bytes.
-func (m *manager) TransactionFromBytes(b []byte, blockVersion int) module.Transaction {
-	tx, _ := newTransaction(b)
-	return tx
+func (m *manager) TransactionFromBytes(b []byte, blockVersion int) (module.Transaction, error) {
+	tx, err := NewTransaction(b)
+	if err != nil {
+		log.Printf("sm.TransactionFromBytes() fails with err=%+v", err)
+	}
+	return tx, nil
 }
 
 // TransactionListFromHash returns a TransactionList instance from

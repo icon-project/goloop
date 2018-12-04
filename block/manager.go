@@ -669,12 +669,16 @@ func (m *manager) newBlockFromHeaderReader(r io.Reader) (module.Block, error) {
 func (m *manager) newTransactionListFromBSS(
 	bss [][]byte,
 	version int,
-) module.TransactionList {
+) (module.TransactionList, error) {
 	ts := make([]module.Transaction, len(bss))
 	for i, bs := range bss {
-		ts[i] = m.sm.TransactionFromBytes(bs, version)
+		if tx, err := m.sm.TransactionFromBytes(bs, version); err != nil {
+			return nil, err
+		} else {
+			ts[i] = tx
+		}
 	}
-	return m.sm.TransactionListFromSlice(ts, version)
+	return m.sm.TransactionListFromSlice(ts, version), nil
 }
 
 func (m *manager) NewBlockFromReader(r io.Reader) (module.Block, error) {
@@ -695,17 +699,23 @@ func (m *manager) newBlockFromReader(r io.Reader) (module.Block, error) {
 	if err != nil {
 		return nil, err
 	}
-	patches := m.newTransactionListFromBSS(
+	patches, err := m.newTransactionListFromBSS(
 		blockFormat.PatchTransactions,
 		module.BlockVersion2,
 	)
+	if err != nil {
+		return nil, err
+	}
 	if !bytes.Equal(patches.Hash(), blockFormat.PatchTransactionsHash) {
 		return nil, errors.New("bad patch transactions hash")
 	}
-	normalTxs := m.newTransactionListFromBSS(
+	normalTxs, err := m.newTransactionListFromBSS(
 		blockFormat.NormalTransactions,
 		module.BlockVersion2,
 	)
+	if err != nil {
+		return nil, err
+	}
 	if !bytes.Equal(normalTxs.Hash(), blockFormat.NormalTransactionsHash) {
 		return nil, errors.New("bad normal transactions hash")
 	}

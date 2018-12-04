@@ -167,7 +167,7 @@ type ServiceManager interface {
 	Finalize(transition Transition, opt int)
 
 	// TransactionFromBytes returns a Transaction instance from bytes.
-	TransactionFromBytes(b []byte, blockVersion int) Transaction
+	TransactionFromBytes(b []byte, blockVersion int) (Transaction, error)
 
 	// TransactionListFromHash returns a TransactionList instance from
 	// the hash of transactions or nil when no transactions exist.

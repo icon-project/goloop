@@ -272,7 +272,6 @@ func (c *chain) startAsProposer(ch chan<- []byte) {
 		bm: c.bm,
 		ch: ch,
 	}
-	sm = c.sm
 	c.cs.Start()
 }
 
@@ -291,7 +290,6 @@ func (c *chain) startAsImporter(ch <-chan []byte) {
 	c.sv = rpc.NewJsonRpcServer(c.bm, c.sm)
 	c.sv.Start()
 
-	sm = c.sm
 	c.cs.Start()
 }
 
@@ -350,29 +348,6 @@ func (w *Wallet) GetBlockByHeight(h int) ([]byte, error) {
 		"height": fmt.Sprintf("0x%x", h),
 	}
 	return w.Call("icx_getBlockByHeight", p)
-}
-
-var sm module.ServiceManager
-
-type transaction struct {
-	module.Transaction
-}
-
-func (t *transaction) MarshalJSON() ([]byte, error) {
-	return nil, nil
-}
-
-func (t *transaction) UnmarshalJSON(b []byte) error {
-	tr := sm.TransactionFromBytes(b, module.BlockVersion1)
-	if tr == nil {
-		return common.ErrUnknown
-	}
-	t.Transaction = tr
-	return nil
-}
-
-func (t transaction) String() string {
-	return fmt.Sprint(t.Transaction)
 }
 
 var genesisFile string
