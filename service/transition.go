@@ -46,6 +46,29 @@ type transition struct {
 	logBloom       logBloom
 }
 
+type transitionResult struct {
+	StateHash         []byte
+	PatchReceiptHash  []byte
+	NormalReceiptHash []byte
+}
+
+func newTransitionResultFromBytes(bs []byte) (*transitionResult, error) {
+	tresult := new(transitionResult)
+	if _, err := codec.UnmarshalFromBytes(bs, tresult); err != nil {
+		return nil, err
+	}
+	return tresult, nil
+}
+
+func (tr *transitionResult) Bytes() []byte {
+	if bs, err := codec.MarshalToBytes(tr); err != nil {
+		log.Panicf("Fail to marshal transitionResult")
+		return nil
+	} else {
+		return bs
+	}
+}
+
 func newTransition(parent *transition, patchtxs module.TransactionList, normaltxs module.TransactionList, alreadyValidated bool) *transition {
 	var step int
 	if alreadyValidated {
@@ -81,13 +104,13 @@ func newTransition(parent *transition, patchtxs module.TransactionList, normaltx
 
 // all parameters should be valid.
 func newInitTransition(db db.Database, result []byte, validatorList module.ValidatorList, height int64) (*transition, error) {
-	hashes := [][]byte{nil, nil, nil}
+	var tresult transitionResult
 	if len(result) > 0 {
-		if _, err := codec.UnmarshalFromBytes(result, &hashes); err != nil {
+		if _, err := codec.UnmarshalFromBytes(result, &tresult); err != nil {
 			return nil, err
 		}
 	}
-	ws := NewWorldState(db, hashes[0], validatorList)
+	ws := NewWorldState(db, tresult.StateHash, validatorList)
 
 	return &transition{
 		height:             height,
@@ -238,11 +261,11 @@ func (t *transition) executeSync(alreadyValidated bool) {
 
 	t.worldSnapshot = wc.GetSnapshot()
 
-	t.result, _ = codec.MarshalToBytes([][]byte{
+	t.result = transitionResult{
 		t.worldSnapshot.StateHash(),
 		t.patchReceipts.Hash(),
 		t.normalReceipts.Hash(),
-	})
+	}.Bytes()
 
 	t.mutex.Lock()
 	t.step = stepComplete

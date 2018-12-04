@@ -206,6 +206,15 @@ func (m *manager) ReceiptFromTransactionID(id []byte) module.Receipt {
 
 // ReceiptListFromResult returns list of receipts from result.
 func (m *manager) ReceiptListFromResult(result []byte, g module.TransactionGroup) module.ReceiptList {
+	if tresult, err := newTransitionResultFromBytes(result); err == nil {
+		if g == module.TransactionGroupPatch {
+			return NewReceiptListFromHash(m.db, tresult.PatchReceiptHash)
+		} else {
+			return NewReceiptListFromHash(m.db, tresult.NormalReceiptHash)
+		}
+	} else {
+		log.Printf("Fail to unmarshal result bytes err=%+v", err)
+	}
 	return nil
 }
 
