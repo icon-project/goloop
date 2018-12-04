@@ -57,7 +57,7 @@ func (cm *contractManager) GetHandler(tc TransactionContext, from, to module.Add
 	// TODO
 	panic("implement me")
 }
-func (cm *contractManager) PrepareContractCode(module.Address) {
+func (cm *contractManager) PrepareContractStore(module.Address) {
 	// TODO 만약 valid한 contract이 store에 존재하지 않으면, 저장을 시도한다.
 	// 저장이 완료될 때까지 기다리지 않는다.
 	// 이건 일단 빈 구현을 두고 나중에 구현해도 된다.
