@@ -17,7 +17,7 @@ type transaction struct {
 
 func (t *transaction) Reset(s db.Database, k []byte) error {
 	tx, err := newTransaction(k)
-	if tx != nil {
+	if err != nil {
 		return err
 	}
 	t.Transaction = tx
