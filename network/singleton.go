@@ -38,6 +38,7 @@ const (
 	DefaultSeedPeriod          = 3 * time.Second
 	DefaultAlternateSendPeriod = 1 * time.Second
 	DefaultSendTaskTimeout     = 1 * time.Second
+	DefaultSendHistoryClear    = 0 //10 * time.Second
 )
 
 var (

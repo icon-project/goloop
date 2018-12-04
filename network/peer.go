@@ -19,13 +19,15 @@ type Peer struct {
 	netAddress NetAddress
 	pubKey     *crypto.PublicKey
 	//
-	conn     net.Conn
-	reader   *PacketReader
-	writer   *PacketWriter
-	onPacket packetCbFunc
-	onError  errorCbFunc
-	onClose  closeCbFunc
-	mtx      sync.Mutex
+	conn      net.Conn
+	reader    *PacketReader
+	writer    *PacketWriter
+	onPacket  packetCbFunc
+	onError   errorCbFunc
+	onClose   closeCbFunc
+	mtx       sync.Mutex
+	timestamp time.Time
+	hmap      map[uint64]time.Duration
 	//
 	incomming bool
 	channel   string
@@ -126,6 +128,8 @@ func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool) *Peer {
 		reader:    NewPacketReader(conn),
 		writer:    NewPacketWriter(conn),
 		incomming: incomming,
+		timestamp: time.Now(),
+		hmap:      make(map[uint64]time.Duration),
 	}
 	p.setPacketCbFunc(cbFunc)
 	p.setErrorCbFunc(func(err error, p *Peer, pkt *Packet) {
@@ -222,6 +226,7 @@ func (p *Peer) receiveRoutine() {
 			log.Println("Peer.receiveRoutine Invalid hashOfPacket :", pkt.hashOfPacket, ",expected:", h.Sum64())
 			continue
 		} else {
+			pkt.sender = p.id
 			p.onPacket(pkt, p)
 		}
 	}
@@ -240,6 +245,21 @@ func (p *Peer) receiveRoutine() {
 func (p *Peer) sendPacket(pkt *Packet) {
 	defer p.mtx.Unlock()
 	p.mtx.Lock()
+
+	if pkt.sender != nil && p.id.Equal(pkt.sender) {
+		// log.Println("Peer.sendPacket Ignore by sender", pkt.sender)
+		//TODO notify ignored
+		return
+	}
+
+	if DefaultSendHistoryClear > 0 && pkt.hashOfPacket != 0 {
+		if _, ok := p.hmap[pkt.hashOfPacket]; ok {
+			// log.Println("Peer.sendPacket Ignore by SendHistory", p.timestamp, d, pkt.hashOfPacket)
+			//TODO notify ignored
+			return
+		}
+	}
+
 	if err := p.writer.WritePacket(pkt); err != nil {
 		log.Printf("Peer.sendPacket WritePacket onError %T %#v %s", err, err, p.String())
 		//TODO
@@ -248,6 +268,20 @@ func (p *Peer) sendPacket(pkt *Packet) {
 		log.Printf("Peer.sendPacket Flush onError %T %#v %s", err, err, p.String())
 		//TODO
 		p.onError(err, p, pkt)
+	}
+
+	if DefaultSendHistoryClear > 0 {
+		now := time.Now()
+		d := now.Sub(p.timestamp)
+		p.hmap[pkt.hashOfPacket] = d
+		if d > DefaultSendHistoryClear {
+			for k, v := range p.hmap {
+				if v > DefaultSendHistoryClear {
+					delete(p.hmap, k)
+				}
+			}
+			p.timestamp = now
+		}
 	}
 }
 

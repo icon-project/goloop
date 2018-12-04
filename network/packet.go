@@ -31,6 +31,7 @@ type Packet struct {
 	payload         []byte
 	hashOfPacket    uint64 //8byte
 	//Transient fields
+	sender module.PeerID //20byte
 }
 
 const (
