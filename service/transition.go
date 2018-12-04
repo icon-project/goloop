@@ -261,11 +261,12 @@ func (t *transition) executeSync(alreadyValidated bool) {
 
 	t.worldSnapshot = wc.GetSnapshot()
 
-	t.result = transitionResult{
+	tresult := transitionResult{
 		t.worldSnapshot.StateHash(),
 		t.patchReceipts.Hash(),
 		t.normalReceipts.Hash(),
-	}.Bytes()
+	}
+	t.result = tresult.Bytes()
 
 	t.mutex.Lock()
 	t.step = stepComplete
