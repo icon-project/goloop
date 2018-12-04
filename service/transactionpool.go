@@ -67,8 +67,6 @@ func (txPool *transactionPool) runGc(expired int64) error {
 	return ErrExpiredTransaction if Timestamp of tx is expired
 */
 func (txPool *transactionPool) add(tx *transaction) error {
-	//err := txPool.addList([]*transaction{tx})
-	//return err
 	if tx == nil {
 		return nil
 	}
@@ -249,14 +247,15 @@ func (txPool *transactionPool) removeList(txs module.TransactionList) {
 	// TODO: have to change transaction to module.Transaction after adding Timestamp to module.Transaction
 	var rmTxs []*transaction
 	for i := txs.Iterator(); i.Has(); i.Next() {
-		if t, _, err := i.Get(); err == nil {
-			ntx, err := NewTransactionFromJSON(t.Bytes())
-			if err != nil {
-				continue
-			}
-			rmTxs = append(rmTxs, ntx.(*transaction))
+		t, _, err := i.Get()
+		if err != nil {
+			log.Printf("Failed to get transaction from iterator\n")
+			continue
+		}
+		if tx, ok := t.(*transaction); ok {
+			rmTxs = append(rmTxs, tx)
 		} else {
-			log.Println("Failed to get transaction from iterator, err : ", err)
+			log.Printf("Failed type assertion to transaction. t = %v\n", t)
 		}
 	}
 	rmTxsLen := len(rmTxs)
