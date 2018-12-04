@@ -14,29 +14,35 @@ import (
 type Message uint
 
 const (
-	msgVESION   uint = 0
-	msgINVOKE        = 1
-	msgRESULT        = 2
-	msgGETVALUE      = 3
-	msgSETVALUE      = 4
-	msgCALL          = 5
-	msgEVENT         = 6
-	msgGETINFO       = 7
+	msgVESION     uint = 0
+	msgINVOKE          = 1
+	msgRESULT          = 2
+	msgGETVALUE        = 3
+	msgSETVALUE        = 4
+	msgCALL            = 5
+	msgEVENT           = 6
+	msgGETINFO         = 7
+	msgGETBALANCE      = 8
+	msgGETAPI          = 9
 )
 
 type CallContext interface {
 	GetValue(key []byte) ([]byte, error)
 	SetValue(key, value []byte) error
+	DeleteValue(key []byte) error
 	GetInfo() map[string]interface{}
+	GetBalance(addr module.Address) *big.Int
 	OnEvent(addr module.Address, indexed, data [][]byte)
 	OnResult(status uint16, steps *big.Int, result []byte)
 	OnCall(from, to module.Address, value, limit *big.Int, params []byte)
+	OnAPI(obj interface{})
 }
 
 type Proxy interface {
 	Invoke(ctx CallContext, code string, from, to module.Address,
 		value, limit *big.Int, method string, params []byte) error
 	SendResult(ctx CallContext, status uint16, steps *big.Int, result []byte) error
+	GetAPI(ctx CallContext, code string) error
 	Release()
 }
 
@@ -85,9 +91,10 @@ type getValueMessage struct {
 	Value   []byte
 }
 
-type setMessage struct {
-	Key   []byte `codec:"key"`
-	Value []byte `codec:"value"`
+type setValueMessage struct {
+	Key      []byte `codec:"key"`
+	IsDelete bool
+	Value    []byte `codec:"value"`
 }
 
 type callMessage struct {
@@ -123,6 +130,10 @@ func (p *proxy) Invoke(ctx CallContext, code string, from, to module.Address,
 		prev: p.frame,
 	}
 	return p.conn.Send(msgINVOKE, &m)
+}
+
+func (p *proxy) GetAPI(ctx CallContext, code string) error {
+	return p.conn.Send(msgGETAPI, code)
 }
 
 type resultMessage struct {
@@ -226,12 +237,16 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		return p.conn.Send(msgGETVALUE, &m)
 
 	case msgSETVALUE:
-		var m setMessage
+		var m setValueMessage
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
 			c.Close()
 			return err
 		}
-		return p.frame.ctx.SetValue(m.Key, m.Value)
+		if m.IsDelete {
+			return p.frame.ctx.DeleteValue(m.Key)
+		} else {
+			return p.frame.ctx.SetValue(m.Key, m.Value)
+		}
 
 	case msgCALL:
 		var m callMessage
@@ -260,6 +275,22 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		}
 		return p.conn.Send(msgGETINFO, eo)
 
+	case msgGETBALANCE:
+		var addr common.Address
+		if _, err := codec.MP.UnmarshalFromBytes(data, &addr); err != nil {
+			return err
+		}
+		var balance common.HexInt
+		balance.Set(p.frame.ctx.GetBalance(&addr))
+		return p.conn.Send(msgGETBALANCE, &balance)
+
+	case msgGETAPI:
+		if obj, err := common.UnmarshalAny(data); err != nil {
+			return err
+		} else {
+			p.frame.ctx.OnAPI(obj)
+			return nil
+		}
 	default:
 		return errors.Errorf("UnknownMessage(%d)", msg)
 	}
@@ -290,5 +321,7 @@ func newConnection(m *manager, c ipc.Connection) (*proxy, error) {
 	c.SetHandler(msgCALL, p)
 	c.SetHandler(msgEVENT, p)
 	c.SetHandler(msgGETINFO, p)
+	c.SetHandler(msgGETBALANCE, p)
+	c.SetHandler(msgGETAPI, p)
 	return p, nil
 }

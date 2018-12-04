@@ -26,6 +26,8 @@ class Message(object):
     CALL = 5
     EVENT = 6
     GETINFO = 7
+    GETBALANCE = 8
+    GETAPI = 9
 
 
 class Status(object):
@@ -59,6 +61,7 @@ class ServiceManagerProxy:
     def __init__(self):
         self.__client = Client()
         self.__invoke = None
+        self.__get_api = None
         self.__codec = None
 
     def connect(self, addr):
@@ -73,6 +76,9 @@ class ServiceManagerProxy:
 
     def set_invoke_handler(self, invoke: Callable[[str, 'Address', 'Address', int, int, str, bytes], None]):
         self.__invoke = invoke
+
+    def set_api_handler(self, api: Callable[[str], Any]):
+        self.__get_api = api
 
     def set_codec(self, codec: Codec) -> None:
         self.__codec = codec
@@ -167,11 +173,22 @@ class ServiceManagerProxy:
                 None
             ])
 
+    def __handle_get_api(self, data):
+        try:
+            obj = self.__get_api(str(data))
+            self.__client.send(Message.GETAPI, self.encode_any(obj))
+        except:
+            self.__client.send(Message.GETAPI, [
+                self.encode_any(None)
+            ])
+
     def loop(self):
         while True:
             msg, data = self.__client.receive()
             if msg == Message.INVOKE:
                 self.__handle_invoke(data)
+            elif msg == Message.GETAPI:
+                self.__handle_get_api(data)
 
     def call(self, to: 'Address', value: int,
              step_limit: int, method: str,
@@ -179,7 +196,7 @@ class ServiceManagerProxy:
 
         self.__client.send(Message.CALL, [
             self.encode(to), self.encode(value), self.encode(step_limit),
-            self.encode(method), self.encode(params),
+            self.encode(method), params,
         ])
 
         while True:
@@ -187,22 +204,34 @@ class ServiceManagerProxy:
             if msg == Message.INVOKE:
                 self.__handle_invoke(data)
             elif msg == Message.RESULT:
-                return data[0], self.decode('int', data[1]), data[2]
+                return data[0], self.decode(TypeTag.INT, data[1]), data[2]
 
-    def get_value(self, key: bytes) -> Tuple[bool, bytes]:
+    def get_value(self, key: bytes) -> Union[None, bytes]:
         msg, value = self.__client.send_and_receive(Message.GETVALUE, key)
         if msg != Message.GETVALUE:
             raise Exception(f'InvalidMsg({msg}) exp={Message.GETVALUE}')
-        return tuple(value)
+        if value[0]:
+            return value[1]
+        else:
+            return None
 
-    def set_value(self, key: bytes, value: bytes):
-        self.__client.send(Message.SETVALUE, [key, value])
+    def set_value(self, key: bytes, value: Union[bytes, None]):
+        if value is None:
+            self.__client.send(Message.SETVALUE, [key, True, b''])
+        else:
+            self.__client.send(Message.SETVALUE, [key, False, value])
 
     def get_info(self) -> Any:
         msg, value = self.__client.send_and_receive(Message.GETINFO, b'')
         if msg != Message.GETINFO:
             raise Exception(f'InvalidMsg({msg}) exp={Message.GETINFO}')
         return self.decode_any(value)
+
+    def get_balance(self, addr: 'Address') -> int:
+        msg, value = self.__client.send_and_receive(Message.GETBALANCE, self.encode(addr))
+        if msg != Message.GETBALANCE:
+            raise Exception(f'InvalidMsg({msg}) exp={Message.GETBALANCE}')
+        return self.decode(TypeTag.INT, value)
 
     def send_event(self, indexed: List[Any], data: List[Any]):
         self.__client.send(Message.EVENT, [

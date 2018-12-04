@@ -50,6 +50,14 @@ func (cc *callContext) SetValue(key, value []byte) error {
 	return err
 }
 
+func (cc *callContext) DeleteValue(key []byte) error {
+	return cc.bk.Delete(key)
+}
+
+func (cc *callContext) GetBalance(addr module.Address) *big.Int {
+	return big.NewInt(service.GIGA)
+}
+
 func (cc *callContext) OnEvent(score module.Address, indexed, data [][]byte) {
 	fmt.Printf("CallContext.OnEvent(%s,%+v,%+v)\n", score, indexed, data)
 }
@@ -64,10 +72,15 @@ func (cc *callContext) OnCall(from, to module.Address, value, limit *big.Int, pa
 		from, to, value, limit, params)
 }
 
+func (cc *callContext) OnAPI(obj interface{}) {
+	fmt.Printf("CallContext.OnAPI(%+v)\n", obj)
+}
+
 func makeTransactions(cc *callContext, mgr eeproxy.Manager) {
 	for {
 		proxy := mgr.Get("python")
 		cc.proxy = proxy
+		proxy.GetAPI(cc, "score/")
 		proxy.Invoke(cc, "score/",
 			common.NewAddressFromString("cx9999999999999999999999999999999999999999"),
 			common.NewAddressFromString("hx3333333333333333333333333333333333333333"),

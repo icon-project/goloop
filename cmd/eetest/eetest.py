@@ -68,25 +68,58 @@ class TestEE(object):
         self.__proxy = proxy
         proxy.set_codec(EECodec())
         proxy.set_invoke_handler(self.invoke_handler)
+        proxy.set_api_handler(self.api_handler)
 
     def invoke_handler(self, code: str, _from: 'Address', _to: 'Address',
                        value: int, limit: int, method: str, params: bytes) -> Tuple[int, int, bytes]:
         print(f'invoke_handler(code={repr(code)},from={_from},to={_to},' +
               f'value={value},limit={limit},method={repr(method)},params={params})')
+        self.get_info()
         self.set_value(b"hello", b"world")
         self.get_value(b'hello')
+        self.set_value(b'foo', None)
         self.get_value(b'foo')
-        self.get_info()
+        self.get_balance(Address("cx1000000000000000000000000000000000000000"))
         self.send_event(["LogEvent(int,str,Address)", 1, "TEST"],
                         [Address.from_str("cx0004444444444444444444444444444444444444")])
         return 0, 10, bytes([])
+
+    def api_handler(self, code: str) -> Any:
+        api = [{
+            "type": "function",
+            "name": "balanceOf",
+            "inputs": [
+                {"name": "_owner", "type": "Address"},
+            ],
+            "outputs": [
+                {
+                    "type": "int",
+                }
+            ],
+            "readonly": "0x1",
+        }, {
+            "type": "eventlog",
+            "name": "FundTransfer",
+            "inputs": [
+                {"name": "backer", "type": "Address", "indexed": "0x1"},
+                {"name": "amount", "type": "int", "indexed": "0x1"},
+                {"name": "is_contribution", "type": "bool", "indexed": "0x1"},
+            ]
+        }]
+        print(f"get_api({code}) -> {api}")
+        return api
 
     def get_value(self, k: bytes) -> Tuple[bool, bytes]:
         ret = self.__proxy.get_value(k)
         print(f"get_value({repr(k)}) -> {repr(ret)}")
         return ret
 
-    def set_value(self, k: bytes, v: bytes):
+    def get_balance(self, addr: Address) -> int:
+        ret = self.__proxy.get_balance(addr)
+        print(f"get_balance({repr(addr)}) -> {ret}")
+        return ret
+
+    def set_value(self, k: bytes, v: Union[bytes, None]):
         print(f"set_value({repr(k)},{repr(v)})")
         return self.__proxy.set_value(k, v)
 
