@@ -262,10 +262,46 @@ func (h getTransactionResultHandler) ServeJSONRPC(c context.Context, params *fas
 
 	var result transactionResult
 
-	err := rpcClient.CallFor(&result, getTransactionResult, param)
-	if err != nil {
-		log.Println(err.Error())
-		return nil, jsonrpc.ErrInternal()
+	if jsonRpcV3 == 0 {
+		err := rpcClient.CallFor(&result, getTransactionResult, param)
+		if err != nil {
+			log.Println(err.Error())
+			return nil, &jsonrpc.Error{
+				Code:    jsonrpc.ErrorCodeInternal,
+				Message: "Fail to call external",
+				Data:    nil,
+			}
+		}
+	} else {
+		hash, err := hex.DecodeString(param.TransactionHash[2:])
+		if err != nil {
+			log.Printf("Fail on decoding txHash hash=\"%s\" err=%+v",
+				param.TransactionHash, err)
+			return nil, jsonrpc.ErrInvalidParams()
+		}
+		txinfo, err := h.bm.GetTransactionInfo(hash)
+		if err != nil {
+			log.Printf("Fail to get transaction info hash=<%x> err=%+v",
+				hash, err)
+			return nil, jsonrpc.ErrInvalidParams()
+		}
+		blk := txinfo.Block()
+		rct := txinfo.GetReceipt()
+		if rct == nil {
+			return nil, &jsonrpc.Error{
+				Code:    jsonrpc.ErrorCodeInternal,
+				Message: "There is no receipt",
+				Data:    nil,
+			}
+		}
+		rctjson, err := rct.ToJSON(jsonRpcV3)
+		rctmap := rctjson.(map[string]interface{})
+		rctmap["blockHash"] = "0x" + hex.EncodeToString(blk.ID())
+		rctmap["blockHeight"] = "0x" + strconv.FormatInt(
+			int64(blk.Height()), 16)
+		rctmap["txIndex"] = "0x" + strconv.FormatInt(
+			int64(txinfo.Index()), 16)
+		return rctmap, nil
 	}
 
 	return result, nil
