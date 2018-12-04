@@ -10,7 +10,6 @@ import (
 
 var contractMngr ContractManager
 
-// TODO eeManager는 contractMngr 안에?
 func init() {
 	contractMngr = new(contractManager)
 }
@@ -57,14 +56,14 @@ func (cm *contractManager) GetHandler(tc TransactionContext, from, to module.Add
 	// TODO
 	panic("implement me")
 }
-func (cm *contractManager) PrepareContractStore(module.Address) {
-	// TODO 만약 valid한 contract이 store에 존재하지 않으면, 저장을 시도한다.
-	// 저장이 완료될 때까지 기다리지 않는다.
-	// 이건 일단 빈 구현을 두고 나중에 구현해도 된다.
-	panic("implement me")
+
+// PrepareContractStore checks if contract codes are ready for a contract runtime
+// and starts to download and uncompress otherwise.
+func (cm *contractManager) PrepareContractStore(addr module.Address) {
+	// TODO implement when meaningful parallel execution can be performed
 }
 
-func (cm *contractManager) CheckContractStore(module.Address) string {
+func (cm *contractManager) CheckContractStore(addr module.Address) string {
 	// TODO 만약 valid한 contract이 store에 존재하지 않으면, 저장을 마치고 그 path를 리턴한다.
 	// TODO 만약 PrepareContractCode()에 의해서 저장 중이면, 저장 완료를 기다린다.
 	panic("implement me")
@@ -82,6 +81,30 @@ func (h *MethodCallHandler) ExecuteAsync(wc WorldContext) <-chan interface{} {
 }
 
 func (h *MethodCallHandler) Cancel() {
+	panic("implement me")
+}
+
+func (h *MethodCallHandler) GetValue(key []byte) ([]byte, error) {
+	panic("implement me")
+}
+
+func (h *MethodCallHandler) SetValue(key, value []byte) error {
+	panic("implement me")
+}
+
+func (h *MethodCallHandler) GetInfo() map[string]interface{} {
+	panic("implement me")
+}
+
+func (h *MethodCallHandler) OnEvent(addr module.Address, indexed, data [][]byte) {
+	panic("implement me")
+}
+
+func (h *MethodCallHandler) OnResult(status uint16, steps *big.Int, result []byte) {
+	panic("implement me")
+}
+
+func (h *MethodCallHandler) OnCall(from, to module.Address, value, limit *big.Int, params []byte) {
 	panic("implement me")
 }
 
