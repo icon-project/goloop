@@ -748,6 +748,7 @@ type transactionInfo struct {
 	_index   int
 	_group   module.TransactionGroup
 	_mtr     module.Transaction
+	_rBlock  module.Block
 }
 
 func (txInfo *transactionInfo) Block() module.Block {
@@ -767,7 +768,14 @@ func (txInfo *transactionInfo) Transaction() module.Transaction {
 }
 
 func (txInfo *transactionInfo) GetReceipt() module.Receipt {
-	return txInfo._sm.ReceiptFromTransactionID(txInfo._txID)
+	rblock := txInfo._rBlock
+	if rblock != nil {
+		rl := txInfo._sm.ReceiptListFromResult(rblock.Result(), txInfo._group)
+		if rct, err := rl.Get(int(txInfo._index)); err == nil {
+			return rct
+		}
+	}
+	return nil
 }
 
 func (m *manager) GetTransactionInfo(id []byte) (module.TransactionInfo, error) {
@@ -793,6 +801,10 @@ func (m *manager) getTransactionInfo(id []byte) (module.TransactionInfo, error) 
 	if err != nil {
 		return nil, common.ErrInvalidState
 	}
+	rblock, err := m.getBlockByHeight(loc.BlockHeight + 1)
+	if err != nil {
+		rblock = nil
+	}
 	return &transactionInfo{
 		_sm:      m.sm,
 		_txID:    id,
@@ -800,6 +812,7 @@ func (m *manager) getTransactionInfo(id []byte) (module.TransactionInfo, error) 
 		_index:   loc.IndexInGroup,
 		_group:   loc.TransactionGroup,
 		_mtr:     mtr,
+		_rBlock:  rblock,
 	}, nil
 }
 
