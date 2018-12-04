@@ -9,7 +9,6 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
@@ -19,12 +18,16 @@ type transactionList struct {
 	trie trie.ImmutableForObject
 }
 
-func (l *transactionList) Get(i int) (module.Transaction, error) {
+func intToKey(i int) []byte {
 	b, err := codec.MP.MarshalToBytes(uint(i))
 	if err != nil {
-		return nil, err
+		log.Panicf("Fail to marshal int i=%d", i)
 	}
-	obj, err := l.trie.Get(b)
+	return b
+}
+
+func (l *transactionList) Get(i int) (module.Transaction, error) {
+	obj, err := l.trie.Get(intToKey(i))
 	if err != nil {
 		return nil, err
 	}
@@ -69,6 +72,9 @@ func (l *transactionList) Equal(t module.TransactionList) bool {
 }
 
 func (l *transactionList) Flush() error {
+	if ss, ok := l.trie.(trie.SnapshotForObject); ok {
+		return ss.Flush()
+	}
 	return nil
 }
 
@@ -77,76 +83,10 @@ func NewTransactionListFromHash(d db.Database, h []byte) module.TransactionList 
 	return &transactionList{t}
 }
 
-type transactionSlice struct {
-	list []module.Transaction
-	trie trie.Immutable
-}
-
-func (l *transactionSlice) Flush() error {
-	if s, ok := l.trie.(trie.Snapshot); ok {
-		return s.Flush()
-	}
-	return nil
-}
-
-func (l *transactionSlice) Get(i int) (module.Transaction, error) {
-	if i >= 0 && i < len(l.list) {
-		return l.list[i], nil
-	}
-	return nil, common.ErrNotFound
-}
-
-type transactionSliceIterator struct {
-	list []module.Transaction
-	idx  int
-}
-
-func (i *transactionSliceIterator) Get() (module.Transaction, int, error) {
-	if i.idx >= len(i.list) {
-		return nil, 0, common.ErrInvalidState
-	}
-	return i.list[i.idx], i.idx, nil
-}
-
-func (i *transactionSliceIterator) Has() bool {
-	return i.idx < len(i.list)
-}
-
-func (i *transactionSliceIterator) Next() error {
-	if i.idx < len(i.list) {
-		i.idx++
-		return nil
-	} else {
-		return common.ErrInvalidState
-	}
-}
-
-func (l *transactionSlice) Iterator() module.TransactionIterator {
-	return &transactionSliceIterator{
-		list: l.list,
-		idx:  0,
-	}
-}
-
-func (l *transactionSlice) Hash() []byte {
-	return l.trie.Hash()
-}
-
-func (l *transactionSlice) Equal(t module.TransactionList) bool {
-	return bytes.Equal(l.trie.Hash(), t.Hash())
-}
-
 func NewTransactionListFromSlice(dbase db.Database, list []module.Transaction) module.TransactionList {
-	mt := trie_manager.NewMutable(dbase, nil)
-	for idx, tr := range list {
-		k, _ := codec.MP.MarshalToBytes(uint(idx))
-		v := tr.Bytes()
-		err := mt.Set(k, v)
-		if err != nil {
-			log.Fatalf("NewTransanctionListFromSlice FAILs err=%+v", err)
-			return nil
-		}
+	mt := trie_manager.NewMutableForObject(dbase, nil, reflect.TypeOf((*transaction)(nil)))
+	for idx, tx := range list {
+		mt.Set(intToKey(idx), tx.(trie.Object))
 	}
-	s := mt.GetSnapshot()
-	return &transactionSlice{list: list, trie: s}
+	return &transactionList{mt.GetSnapshot()}
 }
