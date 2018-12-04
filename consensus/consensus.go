@@ -25,6 +25,8 @@ const (
 	timeoutCommit    = time.Second * 1
 )
 
+const configBlockPartSize = 1024 * 100
+
 type hrs struct {
 	height int64
 	round  int32
@@ -347,7 +349,7 @@ func (cs *consensus) enterPropose() {
 					}
 					logger.Printf("enterPropose: onPropose: OK")
 
-					psb := newPartSetBuffer(1024 * 10)
+					psb := newPartSetBuffer(configBlockPartSize)
 					blk.MarshalHeader(psb)
 					blk.MarshalBody(psb)
 					bps := psb.PartSet()

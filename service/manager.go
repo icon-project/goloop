@@ -14,7 +14,7 @@ import (
 const (
 	// maximum number of transactions in a block
 	// TODO it should be configured or received from block manager
-	txMaxNumInBlock = 10
+	txMaxNumInBlock = 1000
 )
 
 var (
