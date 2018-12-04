@@ -72,6 +72,7 @@ type Receipt interface {
 	Status() Status
 	SCOREAddress() Address
 	Check(r Receipt) error
+	ToJSON(int) (interface{}, error)
 }
 
 type ReceiptIterator interface {
