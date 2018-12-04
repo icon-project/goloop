@@ -6,12 +6,12 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/icon-project/goloop/module"
-
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
 )
 
+/*
 var eeMngr eeproxy.Manager
 
 func init() {
@@ -22,6 +22,7 @@ func init() {
 
 	eeMngr = eeproxy.Manager(mgr)
 }
+*/
 
 type (
 	TransactionHandler interface {
@@ -204,7 +205,8 @@ func (tc *transactionContext) GetContract(addr common.Address) []byte {
 }
 
 func (tc *transactionContext) ReserveConnection(eeType string) error {
-	tc.conns[eeType] = eeMngr.Get(eeType)
+	// TODO
+	//tc.conns[eeType] = eeMngr.Get(eeType)
 	return nil
 }
 
