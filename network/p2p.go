@@ -12,7 +12,9 @@ import (
 
 type PeerToPeer struct {
 	channel         string
-	ch              chan context.Context
+	sendCh          chan context.Context
+	alternateCh     chan *Packet
+	sendTicker      *time.Ticker
 	onPacketCbFuncs map[uint16]packetCbFunc
 	onErrorCbFuncs  map[uint16]errorCbFunc
 	//[TBD] detecting duplicate transmission
@@ -61,7 +63,9 @@ func newPeerToPeer(channel string, t module.NetworkTransport) *PeerToPeer {
 	netAddress := NetAddress(t.Address())
 	p2p := &PeerToPeer{
 		channel:         channel,
-		ch:              make(chan context.Context),
+		sendCh:          make(chan context.Context),
+		alternateCh:     make(chan *Packet),
+		sendTicker:      time.NewTicker(DefaultAlternateSendPeriod),
 		onPacketCbFuncs: make(map[uint16]packetCbFunc),
 		onErrorCbFuncs:  make(map[uint16]errorCbFunc),
 		packetPool:      NewPacketPool(DefaultPacketPoolNumBucket, DefaultPacketPoolBucketLen),
@@ -100,15 +104,17 @@ func newPeerToPeer(channel string, t module.NetworkTransport) *PeerToPeer {
 	}
 	t.(*transport).pd.registPeerToPeer(p2p)
 	p2p.log.excludes = []string{
-		"handleQuery",
 		"sendQuery",
+		"handleQuery",
 		"sendRoutine",
+		"alternateSendRoutine",
 		"sendToPeer",
 		"onPacket",
 		"onPeer",
 	}
 
 	go p2p.sendRoutine()
+	go p2p.alternateSendRoutine()
 	go p2p.discoveryRoutine()
 	return p2p
 }
@@ -440,16 +446,6 @@ func (p2p *PeerToPeer) sendToPeer(pkt *Packet, p *Peer) {
 	}
 }
 
-func (p2p *PeerToPeer) sendToPeersAfter(pkt *Packet, peers *PeerSet, d time.Duration) {
-	go func(pkt *Packet) {
-		select {
-		case <-time.After(d):
-			p2p.log.Println("sendToPeersAfter", pkt, peers.Len(), d)
-			p2p.sendToPeers(pkt, peers)
-		}
-	}(pkt)
-}
-
 func (p2p *PeerToPeer) sendToPeers(pkt *Packet, peers *PeerSet) {
 	for _, p := range peers.Array() {
 		//p2p.packetRw.WriteTo(p.writer)
@@ -461,7 +457,7 @@ func (p2p *PeerToPeer) sendRoutine() {
 	//TODO goroutine exit
 	for {
 		select {
-		case ctx := <-p2p.ch:
+		case ctx := <-p2p.sendCh:
 			done := ctx.Value(p2pContextKeyDone).(chan struct{})
 			pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
 			p2p.log.Println("sendRoutine", pkt)
@@ -477,7 +473,7 @@ func (p2p *PeerToPeer) sendRoutine() {
 				case PROTO_DEF_MEMBER:
 					p2p.sendToPeers(pkt, p2p.friends)
 					p2p.sendToPeers(pkt, p2p.children)
-					p2p.sendToPeersAfter(pkt, p2p.nephews, DefaultSendDelay)
+					p2p.alternateCh <- pkt
 				default:
 					//send to all connected peer
 					p2p.sendToPeers(pkt, p2p.friends)
@@ -489,12 +485,40 @@ func (p2p *PeerToPeer) sendRoutine() {
 			case p2pRoleRoot: //multicast to reserved role : p2pDestAny < dest <= p2pDestPeerGroup
 				p2p.sendToPeers(pkt, p2p.friends)
 				p2p.sendToPeer(pkt, p2p.parent)
-				p2p.sendToPeersAfter(pkt, p2p.uncles, DefaultSendDelay)
+				p2p.alternateCh <- pkt
 			//case p2pRoleSeed:
 			default: //p2pDestPeerGroup < dest < p2pDestPeer
 				//TODO multicast Routing or Flooding
 			}
 			close(done)
+		}
+	}
+}
+
+func (p2p *PeerToPeer) alternateSendRoutine() {
+	var m = make(map[uint64]*Packet)
+	for {
+		select {
+		case pkt := <-p2p.alternateCh:
+			m[pkt.hashOfPacket] = pkt
+		case <-p2p.sendTicker.C:
+			for _, pkt := range m {
+				switch pkt.dest {
+				case p2pDestPeer:
+				case p2pDestAny:
+					switch pkt.protocol {
+					case PROTO_DEF_MEMBER:
+						p2p.sendToPeers(pkt, p2p.nephews)
+						p2p.log.Println("alternateSendRoutine nephews", p2p.nephews.Len(), pkt)
+					}
+				case p2pRoleRoot: //multicast to reserved role : p2pDestAny < dest <= p2pDestPeerGroup
+					p2p.sendToPeers(pkt, p2p.uncles)
+					p2p.log.Println("alternateSendRoutine uncles", p2p.uncles.Len(), pkt)
+				//case p2pRoleSeed:
+				default: //p2pDestPeerGroup < dest < p2pDestPeer
+				}
+				delete(m, pkt.hashOfPacket)
+			}
 		}
 	}
 }
@@ -506,7 +530,7 @@ func (p2p *PeerToPeer) send(pkt *Packet) (err error) {
 	ctx, cancel := context.WithTimeout(ctx, DefaultSendTaskTimeout)
 	defer cancel()
 
-	p2p.ch <- ctx
+	p2p.sendCh <- ctx
 	select {
 	case <-ctx.Done(): //using only exit routine
 		if ctx.Err() != context.Canceled { //context.DeadlineExceeded

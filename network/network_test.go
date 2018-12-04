@@ -201,17 +201,17 @@ func Test_network(t *testing.T) {
 	time.Sleep(2 * DefaultSeedPeriod)
 	t.Log(time.Now(), "Messaging")
 	m["TestValidator"][0].Broadcast("Test1")
-	time.Sleep(DefaultSendDelay)
+	time.Sleep(DefaultSendTaskTimeout)
 	m["TestValidator"][0].BroadcastNeighbor("Test2")
-	time.Sleep(DefaultSendDelay)
+	time.Sleep(DefaultSendTaskTimeout)
 	m["TestValidator"][0].Multicast("Test3")
-	time.Sleep(DefaultSendDelay)
+	time.Sleep(DefaultSendTaskTimeout)
 	m["TestSeed"][0].Multicast("Test4")
-	time.Sleep(2 * DefaultSendDelay)
+	time.Sleep(2 * DefaultSendTaskTimeout)
 	m["TestCitizen"][0].Multicast("Test5")
-	time.Sleep(3 * DefaultSendDelay)
+	time.Sleep(3 * DefaultSendTaskTimeout)
 	m["TestCitizen"][0].Request("Test6", sr.nt.PeerID())
-	time.Sleep(DefaultSendDelay)
+	time.Sleep(DefaultSendTaskTimeout)
 
 	for _, arr := range m {
 		for _, r := range arr {

@@ -36,8 +36,8 @@ const (
 	DefaultPacketPoolBucketLen = 10
 	DefaultDiscoveryPeriod     = 2 * time.Second
 	DefaultSeedPeriod          = 3 * time.Second
-	DefaultSendDelay           = 1 * time.Second
-	DefaultSendTaskTimeout     = 100 * time.Millisecond
+	DefaultAlternateSendPeriod = 1 * time.Second
+	DefaultSendTaskTimeout     = 1 * time.Second
 )
 
 var (
