@@ -235,7 +235,6 @@ func (txPool *transactionPool) removeList(txs module.TransactionList) {
 			continue
 		}
 		if tx, ok := t.(*transaction); ok {
-			log.Printf("len = %d, len = %d\n", txPool.txList.Len(), len(txPool.txHashMap))
 			if v, ok := txPool.txHashMap[string(tx.ID())]; ok {
 				txPool.txList.Remove(v)
 				delete(txPool.txHashMap, string(tx.ID()))
@@ -244,5 +243,4 @@ func (txPool *transactionPool) removeList(txs module.TransactionList) {
 			log.Printf("Failed type assertion to transaction. t = %v\n", t)
 		}
 	}
-	log.Printf("tx is added to pool size is %d, length of hashmap : %d\n", txPool.txList.Len(), len(txPool.txHashMap))
 }
