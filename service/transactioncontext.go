@@ -9,6 +9,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
+	"github.com/pkg/errors"
 )
 
 /*
@@ -57,17 +58,17 @@ type (
 )
 
 type contractStack struct {
-	handlers []ContractHandler
+	handlers []AsyncContractHandler
 }
 
 func newContractStack() *contractStack {
-	return &contractStack{make([]ContractHandler, 0)}
+	return &contractStack{make([]AsyncContractHandler, 0)}
 }
-func (s *contractStack) push(v ContractHandler) {
+func (s *contractStack) push(v AsyncContractHandler) {
 	s.handlers = append(s.handlers, v)
 }
 
-func (s *contractStack) pop() ContractHandler {
+func (s *contractStack) pop() AsyncContractHandler {
 	l := len(s.handlers)
 	if l > 0 {
 		e := s.handlers[l-1]
@@ -77,7 +78,7 @@ func (s *contractStack) pop() ContractHandler {
 	return nil
 }
 
-func (s *contractStack) peek() ContractHandler {
+func (s *contractStack) peek() AsyncContractHandler {
 	l := len(s.handlers)
 	if l > 0 {
 		return s.handlers[l-1]
@@ -85,7 +86,7 @@ func (s *contractStack) peek() ContractHandler {
 	return nil
 }
 
-func (s *contractStack) popIfValid(h ContractHandler) bool {
+func (s *contractStack) popIfValid(h AsyncContractHandler) bool {
 	l := len(s.handlers)
 	if l > 0 {
 		e := s.handlers[l-1]
@@ -103,15 +104,14 @@ type transactionContext struct {
 	value     *big.Int
 	stepLimit *big.Int
 	dataType  string
-	// TODO data type 검토
-	data interface{}
+	data      []byte
 
 	conns   map[string]eeproxy.Proxy
 	handler ContractHandler
 	receipt Receipt
 }
 
-func NewTransactionHandler(from, to module.Address, value, stepLimit *big.Int, dataType string, data interface{}) TransactionHandler {
+func NewTransactionHandler(from, to module.Address, value, stepLimit *big.Int, dataType string, data []byte) TransactionHandler {
 	tc := &transactionContext{
 		from:      from,
 		to:        to,
@@ -136,20 +136,33 @@ func (tc *transactionContext) Prepare(wvs WorldVirtualState) (WorldVirtualState,
 }
 
 func (tc *transactionContext) Execute(wc WorldContext) (Receipt, error) {
-	// TODO handle transfer (TransferCall과 구현을 통합할 방법 고민)
+	// TODO handle transfer. All transactions need simple transfer, so restructure
+	// a process of transaction handling
+	r := NewReceipt(tc.to)
 
 	switch tc.handler.(type) {
 	case SyncContractHandler:
 		h := tc.handler.(SyncContractHandler)
-		code, stepUsed := h.ExecuteSync(wc)
-		return tc.makeReceipt(code, stepUsed), nil
-	case AsyncContractHandler:
-		callStack := newContractStack()
-		callStack.push(tc.handler)
-		curCall := tc.handler
+		status, stepUsed, scoreAddr := h.ExecuteSync(wc)
 
-		h := tc.handler.(AsyncContractHandler)
-		exec := h.ExecuteAsync(wc)
+		r.SetResult(status, stepUsed, wc.StepPrice(), scoreAddr)
+		return r, nil
+	case AsyncContractHandler:
+		var (
+			status   module.Status
+			stepUsed *big.Int
+		)
+
+		curCall := tc.handler.(AsyncContractHandler)
+
+		callStack := newContractStack()
+		callStack.push(curCall)
+
+		exec, err := curCall.ExecuteAsync(wc)
+		if err != nil {
+			r.SetResult(module.StatusSystemError, new(big.Int), new(big.Int), nil)
+			return r, nil
+		}
 		timer := time.After(transactionTimeLimit)
 		for curCall != nil {
 			select {
@@ -157,6 +170,9 @@ func (tc *transactionContext) Execute(wc WorldContext) (Receipt, error) {
 				for curCall = callStack.pop(); curCall != nil; curCall = callStack.pop() {
 					curCall.Cancel()
 				}
+				// set result
+				status = module.StatusTimeout
+				stepUsed = tc.stepLimit
 			case result := <-exec:
 				switch result.(type) {
 				case *CallResultMessage:
@@ -164,34 +180,38 @@ func (tc *transactionContext) Execute(wc WorldContext) (Receipt, error) {
 					callStack.pop()
 					curCall = callStack.peek()
 					if curCall != nil {
-						tc.conns[h.EEType()].SendResult(h, msg.status, msg.stepUsed, msg.result)
+						tc.conns[curCall.EEType()].SendResult(curCall, msg.status, msg.stepUsed, msg.result)
+					} else {
+						// set result
+						status = module.Status(msg.status)
+						stepUsed = msg.stepUsed
 					}
 				case *CallRequestMessage:
 					msg := result.(*CallRequestMessage)
-					h = contractMngr.GetHandler(tc, msg.from, msg.to, msg.value, msg.stepLimit, dataTypeCall, msg.params).(AsyncContractHandler)
-					if h != nil {
-						callStack.push(h)
-						curCall = h
-						exec = h.ExecuteAsync(wc)
-					} else {
-						log.Println("can't find handler:", msg.from, msg.to, msg.value, msg.stepLimit, dataTypeCall, msg.params)
+					curCall = contractMngr.GetHandler(
+						tc, msg.from, msg.to, msg.value, msg.stepLimit,
+						dataTypeCall, msg.params,
+					).(AsyncContractHandler)
+					callStack.push(curCall)
+					exec, err = curCall.ExecuteAsync(wc)
+					// Now just end with no fee charged. Consider later how much
+					// we charge
+					if err != nil {
+						log.Fatalln("unknown message type:", reflect.TypeOf(result))
+						r.SetResult(module.StatusSystemError, new(big.Int), new(big.Int), nil)
+						return r, nil
 					}
 				default:
 					log.Println("unknown message type:", reflect.TypeOf(result))
 				}
 			}
 		}
-		// TODO create receipt for async
-		return nil, nil
-	default:
-		log.Println("unknown contract handler type:", reflect.TypeOf(tc.handler))
-		return nil, nil
-	}
-}
 
-func (tc *transactionContext) makeReceipt(code int, stepUsed *big.Int) Receipt {
-	// TODO make a receipt
-	return nil
+		r.SetResult(status, stepUsed, wc.StepPrice(), nil)
+		return r, nil
+	default:
+		return nil, errors.New("unknown contract handler type: " + reflect.TypeOf(tc.handler).String())
+	}
 }
 
 func (tc *transactionContext) Dispose() {

@@ -61,6 +61,7 @@ const (
 	StatusNotPayable   = 0x7d64
 	StatusOutOfBalance = 0x7f58
 	StatusSystemError  = 0x7000
+	StatusTimeout      = 0x7001
 )
 
 type Receipt interface {
