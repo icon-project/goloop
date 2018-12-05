@@ -33,7 +33,7 @@ type ValidatorList interface {
 }
 
 type VoteList interface {
-	Verify(block Block) error
+	Verify(block Block, validators ValidatorList) error
 	Bytes() []byte
 	Hash() []byte
 }

@@ -18,6 +18,7 @@ type Block interface {
 	NextValidators() ValidatorList
 	//	TODO remove
 	Verify() error
+	// voters are subset of previous preivous block's next validators
 	Votes() VoteList
 	NormalTransactions() TransactionList
 	PatchTransactions() TransactionList

@@ -127,7 +127,11 @@ func (m *manager) _import(
 	if bn == nil {
 		return nil, errors.Errorf("InvalidPreviousID(%x)", block.PrevID())
 	}
-	if err := verifyBlock(block, bn.block); err != nil {
+	pprev, err := m.getBlock(bn.block.PrevID())
+	if err != nil {
+		logger.Panicf("cannot get prev prev block %x\n", bn.block.PrevID())
+	}
+	if err := verifyBlock(block, bn.block, pprev.NextValidators()); err != nil {
 		return nil, err
 	}
 	it := &importTask{

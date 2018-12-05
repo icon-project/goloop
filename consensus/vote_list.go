@@ -18,7 +18,7 @@ type voteList struct {
 	Signatures     []common.Signature
 }
 
-func (vl *voteList) Verify(block module.Block) error {
+func (vl *voteList) Verify(block module.Block, validators module.ValidatorList) error {
 	// TODO
 	if block.Height() == 1 {
 		if len(vl.Signatures) == 0 {
@@ -33,7 +33,6 @@ func (vl *voteList) Verify(block module.Block) error {
 	msg.Type = voteTypePrecommit
 	msg.BlockID = block.ID()
 	msg.BlockPartSetID = vl.BlockPartSetID
-	validators := block.NextValidators()
 	for i, sig := range vl.Signatures {
 		msg.Signature = sig
 		index := validators.IndexOf(msg.address())
