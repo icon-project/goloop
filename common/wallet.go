@@ -34,7 +34,7 @@ func NewWallet() module.Wallet {
 	}
 }
 
-func WalletFromPrivateKey(sk *crypto.PrivateKey) (module.Wallet, error) {
+func NewWalletFromPrivateKey(sk *crypto.PrivateKey) (module.Wallet, error) {
 	pk := sk.PublicKey()
 	return &softwareWallet{
 		skey: sk,

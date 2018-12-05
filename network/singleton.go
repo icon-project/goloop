@@ -83,7 +83,7 @@ func GetConfig() *Config {
 func GetTransport() module.NetworkTransport {
 	if singletonTransport == nil {
 		c := GetConfig()
-		w, _ := common.WalletFromPrivateKey(c.PrivateKey)
+		w, _ := common.NewWalletFromPrivateKey(c.PrivateKey)
 		singletonTransport = NewTransport(c.ListenAddress, w)
 	}
 	return singletonTransport

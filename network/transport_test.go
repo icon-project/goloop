@@ -84,7 +84,7 @@ func (ph *testPeerHandler) onPacket(pkt *Packet, p *Peer) {
 
 func walletFromGeneratedPrivateKey() module.Wallet {
 	priK, _ := crypto.GenerateKeyPair()
-	w, _ := common.WalletFromPrivateKey(priK)
+	w, _ := common.NewWalletFromPrivateKey(priK)
 	return w
 }
 

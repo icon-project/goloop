@@ -104,7 +104,7 @@ func main() {
 		}
 	}
 
-	wallet, _ := common.WalletFromPrivateKey(priK)
+	wallet, _ := common.NewWalletFromPrivateKey(priK)
 	nt := network.NewTransport(cfg.P2PAddr, wallet)
 	nt.Listen()
 	defer nt.Close()
