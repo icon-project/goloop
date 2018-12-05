@@ -7,6 +7,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/icon-project/goloop/common/legacy"
 	"log"
 	"net/http"
 )
@@ -19,6 +20,10 @@ type JSONRPCResponse struct {
 type Wallet struct {
 	url string
 }
+
+const (
+	ClearLine = "\x1b[2K"
+)
 
 func (w *Wallet) Call(method string, params map[string]interface{}) ([]byte, error) {
 	d := map[string]interface{}{
@@ -87,7 +92,7 @@ func (w *Wallet) GetTransactionResultByHash(txHash string) ([]byte, error) {
 }
 
 func VerifyBlock(b []byte) error {
-	blk, err := NewBlockV1(b)
+	blk, err := legacy.ParseBlockV1(b)
 	if err != nil {
 		return err
 	}
@@ -104,7 +109,7 @@ func VerifyBlock(b []byte) error {
 			}
 		}
 	}
-	fmt.Printf("<> BLOCK %8d %s tx=%v\n",
+	fmt.Printf("%s<> BLOCK %8d %s tx=%v\r", ClearLine,
 		blk.Height(), hex.EncodeToString(blk.ID()), info)
 	return blk.Verify()
 }
@@ -113,11 +118,13 @@ func VerifyBlocksFromHeight(wallet Wallet, from int) {
 		//for i := 1; ; i++ {
 		b, err := wallet.GetBlockByHeight(i)
 		if err != nil {
+			fmt.Println()
 			log.Println("GetBlock ERROR", err)
 			break
 		}
 		err = VerifyBlock(b)
 		if err != nil {
+			fmt.Println()
 			log.Printf("VerifyBlock ERROR %+v", err)
 			log.Println("Block", string(b))
 			break
@@ -158,7 +165,7 @@ func main() {
 			}
 			log.Println("<> BLOCK", *height)
 			fmt.Println(string(b))
-			blk, err := NewBlockV1(b)
+			blk, err := legacy.ParseBlockV1(b)
 			if err != nil {
 				log.Println("PARSE FAILs", err)
 				break

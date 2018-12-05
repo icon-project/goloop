@@ -7,13 +7,13 @@ import (
 )
 
 func TestLoopChainDB_GetReceiptByTransaction(t *testing.T) {
-	dbase, err := OpenDatabase("./data/testnet/block")
+	dbase, err := OpenDatabase("./data/testnet/block", "")
 	if err != nil {
 		t.Errorf("Fail to open database err=%+v", err)
 		return
 	}
 
-	for i := 1; i < 100; i++ {
+	for i := 1; i < 10; i++ {
 		blk, err := dbase.GetBlockByHeight(i)
 		if err != nil {
 			t.Errorf("Fail to get block err=%+v", err)

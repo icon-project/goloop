@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
+	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	"log"
 	"math/big"
@@ -241,16 +242,21 @@ func (lc *LoopChainDB) AccountIterator() *accountV1Iterator {
 }
 
 func OpenDatabase(blockdir, scoredir string) (*LoopChainDB, error) {
-	blockbk, err := leveldb.OpenFile(blockdir, nil)
-	if err != nil {
-		return nil, err
+	lcdb := new(LoopChainDB)
+	opt := &opt.Options{
+		ReadOnly: true,
 	}
-	scorebk, err := leveldb.OpenFile(scoredir, nil)
-	if err != nil {
+	if blockbk, err := leveldb.OpenFile(blockdir, opt); err != nil {
 		return nil, err
+	} else {
+		lcdb.blockbk = blockbk
 	}
-	return &LoopChainDB{
-		blockbk: blockbk,
-		scorebk: scorebk,
-	}, nil
+	if scoredir != "" {
+		if scorebk, err := leveldb.OpenFile(scoredir, opt); err != nil {
+			log.Printf("Fail to open SCORE DB err=%+v (ignore)", err)
+		} else {
+			lcdb.scorebk = scorebk
+		}
+	}
+	return lcdb, nil
 }
