@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/big"
 	"time"
 
 	"github.com/icon-project/goloop/common"
@@ -295,4 +296,13 @@ func (m *manager) SetMembership(membership module.Membership) error {
 	membership.RegistReactor(reactorName, reactor, subProtocols)
 	m.reactor = reactor
 	return nil
+}
+
+func (m *manager) GetBalance(result []byte, addr module.Address) *big.Int {
+	if tresult, err := newTransitionResultFromBytes(result); err == nil {
+		ws := NewWorldSnapshot(m.db, tresult.StateHash, nil)
+		ass := ws.GetAccountSnapshot(addr.ID())
+		return ass.GetBalance()
+	}
+	return big.NewInt(0)
 }

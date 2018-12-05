@@ -44,7 +44,7 @@ func MethodRepository(bm module.BlockManager, sm module.ServiceManager) *jsonrpc
 	v3.RegisterMethod(getBlockByHeight, getBlockByHeightHandler{bm: bm}, getBlockByHeightParam{}, blockV2{})
 	v3.RegisterMethod(getBlockByHash, getBlockByHashHandler{bm: bm}, getBlockByHashParam{}, blockV2{})
 	v3.RegisterMethod(call, callHandler{}, callParam{}, nil)
-	v3.RegisterMethod(getBalance, getBalanceHandler{}, getBalanceParam{}, nil)
+	v3.RegisterMethod(getBalance, getBalanceHandler{bm: bm, sm: sm}, getBalanceParam{}, nil)
 	v3.RegisterMethod(getScoreApi, getScoreApiHandler{}, getScoreApiParam{}, getScoreApiResult{})
 	v3.RegisterMethod(getTotalSupply, getTotalSupplyeHandler{}, nil, nil)
 	v3.RegisterMethod(getTransactionResult, getTransactionResultHandler{bm: bm}, transactionHashParam{}, transactionResult{})

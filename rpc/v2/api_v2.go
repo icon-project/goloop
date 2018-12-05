@@ -35,7 +35,7 @@ func MethodRepository(bm module.BlockManager, sm module.ServiceManager) *jsonrpc
 	// api v2
 	v2.RegisterMethod(sendTransaction, sendTransactionHandler{sm: sm}, sendTransactionParam{}, sendTranscationResult{})
 	v2.RegisterMethod(getTransactionResult, getTransactionResultHandler{}, getTransactionResultParam{}, getTransactionResultResult{})
-	v2.RegisterMethod(getBalance, getBalanceHandler{}, getBalanceParam{}, getBalanceResult{})
+	v2.RegisterMethod(getBalance, getBalanceHandler{bm: bm, sm: sm}, getBalanceParam{}, getBalanceResult{})
 	v2.RegisterMethod(getTotalSupply, getTotalSupplyeHandler{}, nil, getTotalSupplyResult{})
 	v2.RegisterMethod(getLastBlock, getLastBlockHandler{bm: bm}, nil, blockResult{})
 	v2.RegisterMethod(getBlockByHash, getBlockByHashHandler{bm: bm}, getBlockByHashParam{}, blockResult{})

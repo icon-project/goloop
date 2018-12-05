@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/icon-project/goloop/common"
 	"log"
 	"reflect"
 	"strconv"
@@ -182,7 +183,10 @@ func (h callHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage
 }
 
 // getBalance
-type getBalanceHandler struct{}
+type getBalanceHandler struct {
+	bm module.BlockManager
+	sm module.ServiceManager
+}
 
 func (h getBalanceHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
@@ -196,10 +200,25 @@ func (h getBalanceHandler) ServeJSONRPC(c context.Context, params *fastjson.RawM
 
 	var result string
 
-	err := rpcClient.CallFor(&result, getBalance, param)
-	if err != nil {
-		log.Println(err.Error())
-		return nil, jsonrpc.ErrInternal()
+	if jsonRpcV3 == 0 {
+		err := rpcClient.CallFor(&result, getBalance, param)
+		if err != nil {
+			log.Println(err.Error())
+			return nil, jsonrpc.ErrInternal()
+		}
+	} else {
+		var addr common.Address
+		if err := addr.SetString(param.Address); err != nil {
+			return nil, jsonrpc.ErrInvalidParams()
+		}
+		block, err := h.bm.GetLastBlock()
+		if err != nil {
+			log.Println(err.Error())
+			return nil, jsonrpc.ErrInternal()
+		}
+		var balance common.HexInt
+		balance.Set(h.sm.GetBalance(block.Result(), &addr))
+		result = balance.String()
 	}
 
 	return result, nil

@@ -35,7 +35,7 @@ type WorldState interface {
 
 type worldSnapshotImpl struct {
 	database   db.Database
-	accounts   trie.SnapshotForObject
+	accounts   trie.ImmutableForObject
 	validators module.ValidatorList
 }
 
@@ -48,8 +48,10 @@ func (ws *worldSnapshotImpl) StateHash() []byte {
 }
 
 func (ws *worldSnapshotImpl) Flush() error {
-	if err := ws.accounts.Flush(); err != nil {
-		return err
+	if ass, ok := ws.accounts.(trie.SnapshotForObject); ok {
+		if err := ass.Flush(); err != nil {
+			return err
+		}
 	}
 	return ws.validators.Flush()
 }
@@ -197,6 +199,19 @@ func NewWorldState(database db.Database, stateHash []byte, vl module.ValidatorLi
 		vl, _ = ValidatorListFromHash(database, nil)
 	}
 	ws.validators = vl
+	return ws
+}
+
+func NewWorldSnapshot(dbase db.Database, stateHash []byte, vl module.ValidatorList) WorldSnapshot {
+	ws := new(worldSnapshotImpl)
+	ws.database = dbase
+	ws.accounts = trie_manager.NewImmutableForObject(dbase, stateHash,
+		reflect.TypeOf((*accountSnapshotImpl)(nil)))
+	if vl == nil {
+		vl, _ = ValidatorListFromHash(dbase, nil)
+	}
+	ws.validators = vl
+
 	return ws
 }
 
