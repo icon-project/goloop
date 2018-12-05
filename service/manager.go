@@ -275,7 +275,6 @@ func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
 	if err := txPool.add(newTx); err == nil {
 		m.reactor.propagateTransaction(PROPAGATE_TRANSACTION, newTx)
 	} else {
-		log.Printf("Failed to add transaction to txPool. err = %s\n", err)
 		return hash, err
 	}
 	//}()

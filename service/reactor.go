@@ -38,7 +38,7 @@ func (r *serviceReactor) OnReceive(subProtocol module.ProtocolInfo, buf []byte, 
 			return false, err
 		}
 		if err := r.txPool.add(&tx); err != nil {
-			log.Printf("Failed to add tx. tx=%x, err=%+v\n", tx.ID(), err)
+			return false, err
 		}
 		return true, nil
 	}
