@@ -23,6 +23,10 @@ const (
 	stepCanceled // canceled. requested to cancel after complete executione, just remain stepFinished
 )
 
+const (
+	configUseParallelExecution = true
+)
+
 type transition struct {
 	parent    *transition
 	height    int64
@@ -230,10 +234,17 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	t.mutex.Unlock()
 
 	wc := t.newWorldContext()
+
+	startTime := time.Now()
+
 	patchReceipts := make([]Receipt, patchCount)
 	t.executeTxs(t.patchTransactions, wc, patchReceipts)
 	normalReceipts := make([]Receipt, normalCount)
 	t.executeTxs(t.normalTransactions, wc, normalReceipts)
+
+	ellapsed := float64(time.Now().Sub(startTime) / time.Microsecond)
+	log.Printf("Transactions: %d Elapsed: %.3f microsecs TPS: %.2f",
+		patchCount+normalCount, ellapsed, float64(patchCount+normalCount)/ellapsed*1000000)
 
 	cumulativeSteps := big.NewInt(0)
 	gatheredFee := big.NewInt(0)
@@ -308,6 +319,7 @@ func (t *transition) executeTxs(l module.TransactionList, wc WorldContext, rctBu
 		return true, 0
 	}
 	cnt := 0
+	wvs := wc.WorldVirtualState()
 	for i := l.Iterator(); i.Has(); i.Next() {
 		if t.step == stepCanceled {
 			return false, 0
@@ -316,17 +328,32 @@ func (t *transition) executeTxs(l module.TransactionList, wc WorldContext, rctBu
 		if err != nil {
 			log.Panicf("Fail to iterate transaction list err=%+v", err)
 		}
-		if rct, err := tx.(Transaction).Execute(wc); err != nil {
-			t.mutex.Lock()
-			t.step = stepError
-			t.mutex.Unlock()
-			t.cb.OnExecute(t, err)
-			return false, 0
+		txo := tx.(Transaction)
+		if configUseParallelExecution {
+			wvs, err = txo.Prepare(wvs)
+			if err != nil {
+				log.Panicf("Fail to prepare for %+v", err)
+			}
+
+			wc = wc.WorldStateChanged(wvs)
+			go func(tx Transaction, wc WorldContext, rb *Receipt) {
+				if rct, err := tx.Execute(wc); err != nil {
+					log.Panicf("Fail to execute transaction err=%+v", err)
+				} else {
+					*rb = rct
+				}
+				wc.WorldVirtualState().Commit()
+			}(txo, wc, &rctBuf[cnt])
 		} else {
-			rctBuf[cnt] = rct
-			cnt++
+			if rct, err := txo.Execute(wc); err != nil {
+				log.Panicf("Fail to execute transaction err=%+v", err)
+			} else {
+				rctBuf[cnt] = rct
+			}
 		}
+		cnt++
 	}
+	wvs.Realize()
 	return true, cnt
 }
 
