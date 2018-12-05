@@ -59,7 +59,7 @@ type blockV2 struct {
 	PrevBlockHash      string        `json:"prev_block_hash"`
 	MerkleTreeRootHash string        `json:"merkle_tree_root_hash"`
 	Timestamp          int64         `json:"time_stamp"`
-	Transactions       []interface{} `json:"confirmed_transaction_list,omitempty"`
+	Transactions       []interface{} `json:"confirmed_transaction_list"`
 	BlockHash          string        `json:"block_hash"`
 	Height             int64         `json:"height"`
 	PeerID             string        `json:"peer_id"`
