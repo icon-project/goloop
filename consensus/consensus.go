@@ -721,3 +721,14 @@ func (cs *consensus) Start() {
 		cs.enterPropose()
 	}()
 }
+
+func (cs *consensus) GetStatus() *module.ConsensusStatus {
+	cs.mutex.Lock()
+	defer cs.mutex.Unlock()
+
+	return &module.ConsensusStatus{
+		Height:   cs.height,
+		Round:    cs.round,
+		Proposer: cs.isProposer(),
+	}
+}

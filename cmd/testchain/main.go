@@ -194,6 +194,10 @@ func (c *proposeOnlyConsensus) Start() {
 	}
 }
 
+func (c *proposeOnlyConsensus) GetStatus() *module.ConsensusStatus {
+	return nil
+}
+
 type importOnlyConsensus struct {
 	bm module.BlockManager
 	sm module.ServiceManager
@@ -260,6 +264,10 @@ func (c *importOnlyConsensus) Start() {
 		result := jsonMap.(map[string]interface{})
 		fmt.Printf("Importer: GetBlock  Block(%d) %s\n", result["height"], result["block_hash"])
 	}
+}
+
+func (c *importOnlyConsensus) GetStatus() *module.ConsensusStatus {
+	return nil
 }
 
 func (c *chain) startAsProposer(ch chan<- []byte) {
