@@ -31,6 +31,7 @@ func (r *serviceReactor) OnReceive(subProtocol module.ProtocolInfo, buf []byte, 
 		var tx transaction
 		if _, err := sReactorCodec.UnmarshalFromBytes(buf, &tx); err != nil {
 			log.Printf("Failed to unmarshal transaction. buf=%x, err=%+v\n", buf, err)
+			return false, err
 		}
 
 		if err := tx.Verify(); err != nil {
