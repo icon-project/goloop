@@ -35,7 +35,7 @@ class Address(object):
     def to_bytes(self):
         return copy(self.__bytes)
 
-    def __repr__(self):
+    def __str__(self):
         body = self.__bytes[1:].hex()
         if self.__bytes[0] == 0:
             return "hx" + body
