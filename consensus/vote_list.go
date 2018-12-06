@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -58,6 +59,11 @@ func (vl *voteList) Bytes() []byte {
 
 func (vl *voteList) Hash() []byte {
 	return crypto.SHA3Sum256(vl.Bytes())
+}
+
+func (vl *voteList) String() string {
+	return fmt.Sprintf("VoteList(R=%d,ID=%v,len(Signs)=%d)",
+		vl.Round, vl.BlockPartSetID, len(vl.Signatures))
 }
 
 func newVoteList(msgs []*voteMessage) *voteList {

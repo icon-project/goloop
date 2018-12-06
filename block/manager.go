@@ -525,7 +525,7 @@ func (m *manager) Propose(
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	logger.Printf("Propose(%v, %v)\n", parentID, votes)
+	logger.Printf("Propose(<%x>, %v)\n", parentID, votes)
 
 	pt, err := m._propose(parentID, votes, cb)
 	if err != nil {
@@ -535,7 +535,7 @@ func (m *manager) Propose(
 		m.syncer.begin()
 		defer m.syncer.end()
 
-		logger.Printf("cancelPropose(%v)\n", parentID)
+		logger.Printf("CancelPropose(<%x>)\n", parentID)
 		return pt.cancel()
 	}, nil
 }
