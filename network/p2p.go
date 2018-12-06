@@ -17,10 +17,9 @@ type PeerToPeer struct {
 	sendTicker      *time.Ticker
 	onPacketCbFuncs map[uint16]packetCbFunc
 	onErrorCbFuncs  map[uint16]errorCbFunc
-	//[TBD] detecting duplicate transmission
-	packetPool *PacketPool
-	packetRw   *PacketReadWriter
-	transport  module.NetworkTransport
+	packetPool      *PacketPool
+	packetRw        *PacketReadWriter
+	transport       module.NetworkTransport
 
 	//Topology with Connected Peers
 	self      *Peer
@@ -475,6 +474,7 @@ func (p2p *PeerToPeer) sendRoutine() {
 					p2p.sendToPeers(pkt, p2p.children)
 					p2p.alternateCh <- pkt
 				default:
+					//TODO gossip
 					//send to all connected peer
 					p2p.sendToPeers(pkt, p2p.friends)
 					p2p.sendToPeer(pkt, p2p.parent)
@@ -546,6 +546,7 @@ type p2pContextKey string
 
 var (
 	p2pContextKeyPacket = p2pContextKey("packet")
+	p2pContextKeyPeer   = p2pContextKey("peer")
 	p2pContextKeyDone   = p2pContextKey("done")
 )
 

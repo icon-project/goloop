@@ -30,6 +30,7 @@ var (
 const (
 	DefaultTransportNet        = "tcp4"
 	DefaultMembershipName      = ""
+	DefaultReactorQueueSize    = 1000
 	DefaultPacketBufferSize    = 4096 //bufio.defaultBufSize=4096
 	DefaultPacketPayloadMax    = math.MaxInt32
 	DefaultPacketPoolNumBucket = 10

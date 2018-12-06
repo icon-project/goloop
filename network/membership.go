@@ -1,27 +1,45 @@
 package network
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/icon-project/goloop/module"
 )
 
 type membership struct {
-	name             string
-	protocol         module.ProtocolInfo
-	p2p              *PeerToPeer
-	roles            map[module.Role]*PeerIDSet
-	authorities      map[module.Authority]*RoleSet
-	reactors         map[string]module.Reactor
-	onReceiveCbFuncs map[uint16]receiveCbFunc
-	onErrorCbFuncs   map[uint16]func()
-	subProtocols     map[uint16]module.ProtocolInfo
-	destByRole       map[module.Role]byte
+	name        string
+	protocol    module.ProtocolInfo
+	p2p         *PeerToPeer
+	roles       map[module.Role]*PeerIDSet
+	authorities map[module.Authority]*RoleSet
+	reactors    map[string]*baseReactor
+	protocolMap map[uint16]*baseReactor
+	destByRole  map[module.Role]byte
 	//log
 	log *logger
 }
 
-type receiveCbFunc func(pi module.ProtocolInfo, bytes []byte, id module.PeerID) (bool, error)
+type baseReactor struct {
+	impl         module.Reactor
+	name         string
+	subProtocols map[uint16]module.ProtocolInfo
+	q            *Queue
+}
+
+func newBaseReactor(name string, reactor module.Reactor, subProtocols []module.ProtocolInfo) *baseReactor {
+	br := &baseReactor{
+		impl:         reactor,
+		name:         name,
+		subProtocols: make(map[uint16]module.ProtocolInfo),
+		q:            NewQueue(DefaultReactorQueueSize),
+	}
+	for _, sp := range subProtocols {
+		k := sp.Uint16()
+		br.subProtocols[k] = sp
+	}
+	return br
+}
 
 //type sendCbFunc func(pi module.ProtocolInfo, bytes []byte)
 //Broadcast
@@ -30,16 +48,14 @@ type receiveCbFunc func(pi module.ProtocolInfo, bytes []byte, id module.PeerID) 
 
 func newMembership(name string, pi module.ProtocolInfo, p2p *PeerToPeer) *membership {
 	ms := &membership{
-		name:             name,
-		protocol:         pi,
-		p2p:              p2p,
-		roles:            make(map[module.Role]*PeerIDSet),
-		authorities:      make(map[module.Authority]*RoleSet),
-		reactors:         make(map[string]module.Reactor),
-		onReceiveCbFuncs: make(map[uint16]receiveCbFunc),
-		onErrorCbFuncs:   make(map[uint16]func()),
-		subProtocols:     make(map[uint16]module.ProtocolInfo),
-		destByRole:       make(map[module.Role]byte),
+		name:        name,
+		protocol:    pi,
+		p2p:         p2p,
+		roles:       make(map[module.Role]*PeerIDSet),
+		authorities: make(map[module.Authority]*RoleSet),
+		reactors:    make(map[string]*baseReactor),
+		protocolMap: make(map[uint16]*baseReactor),
+		destByRole:  make(map[module.Role]byte),
 		//
 		log: newLogger("Membership", fmt.Sprintf("%s.%s.%s", p2p.channel, p2p.self.id, name)),
 	}
@@ -48,8 +64,32 @@ func newMembership(name string, pi module.ProtocolInfo, p2p *PeerToPeer) *member
 }
 
 //TODO using worker pattern {pool or each packet or none} for reactor
-func (ms *membership) workerRoutine() {
-
+func (ms *membership) workerRoutine(br *baseReactor) {
+	for {
+		<-br.q.Wait()
+		for {
+			ctx := br.q.Pop()
+			if ctx == nil {
+				break
+			}
+			pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
+			p := ctx.Value(p2pContextKeyPeer).(*Peer)
+			pi := br.subProtocols[pkt.subProtocol.Uint16()]
+			// ms.log.Println("workerRoutine", pi, p.ID)
+			r, err := br.impl.OnReceive(pi, pkt.payload, p.ID())
+			if err != nil {
+				ms.log.Println("workerRoutine", err)
+			}
+			if r {
+				if pkt.ttl == 1 {
+					// ms.log.Println("workerRoutine rebroadcast Ignore, not allowed when ttl=1", pkt)
+				} else {
+					// ms.log.Println("workerRoutine rebroadcast", pkt)
+					ms.p2p.send(pkt)
+				}
+			}
+		}
+	}
 }
 
 //callback from PeerToPeer.onPacket() in Peer.onReceiveRoutine
@@ -57,19 +97,11 @@ func (ms *membership) onPacket(pkt *Packet, p *Peer) {
 	// ms.log.Println("onPacket", pkt)
 	//TODO Check authority
 	k := pkt.subProtocol.Uint16()
-	if cbFunc := ms.onReceiveCbFuncs[k]; cbFunc != nil {
-		pi := ms.subProtocols[k]
-		r, err := cbFunc(pi, pkt.payload, p.ID())
-		if err != nil {
-			ms.log.Println(err)
-		}
-		if r {
-			if pkt.ttl == 1 {
-				// ms.log.Println("onPacket rebroadcast Ignore, not allowed when ttl=1", pkt)
-			} else {
-				// ms.log.Println("onPacket rebroadcast", pkt)
-				ms.p2p.send(pkt)
-			}
+	if br, ok := ms.protocolMap[k]; ok {
+		ctx := context.WithValue(context.Background(), p2pContextKeyPacket, pkt)
+		ctx = context.WithValue(ctx, p2pContextKeyPeer, p)
+		if ok := br.q.Push(ctx); !ok {
+			ms.log.Println("onPacket", "BaseReactor Queue Push failure", pkt.protocol, pkt.subProtocol)
 		}
 	}
 }
@@ -78,8 +110,8 @@ func (ms *membership) onError(err error, p *Peer, pkt *Packet) {
 	ms.log.Println("onError", err, p, pkt)
 	if pkt != nil {
 		k := pkt.subProtocol.Uint16()
-		if cbFunc := ms.onErrorCbFuncs[k]; cbFunc != nil {
-			cbFunc()
+		if br, ok := ms.protocolMap[k]; ok {
+			br.impl.OnError()
 		}
 	}
 }
@@ -88,16 +120,16 @@ func (ms *membership) RegistReactor(name string, reactor module.Reactor, subProt
 	if _, ok := ms.reactors[name]; ok {
 		return ErrAlreadyRegisteredReactor
 	}
-	for _, sp := range subProtocols {
-		k := sp.Uint16()
-		if _, ok := ms.subProtocols[k]; ok {
+	br := newBaseReactor(name, reactor, subProtocols)
+	for k := range br.subProtocols {
+		if _, ok := ms.protocolMap[k]; ok {
 			return ErrAlreadyRegisteredProtocol
 		}
-		ms.subProtocols[k] = sp
-		ms.onReceiveCbFuncs[k] = reactor.OnReceive
-		ms.onErrorCbFuncs[k] = reactor.OnError
+		ms.protocolMap[k] = br
 		ms.log.Printf("RegistReactor.cbFuncs %#x %s", k, name)
 	}
+	ms.reactors[name] = br
+	go ms.workerRoutine(br)
 	return nil
 }
 

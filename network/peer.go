@@ -260,7 +260,11 @@ func (p *Peer) sendPacket(pkt *Packet) {
 		}
 	}
 
-	if err := p.writer.WritePacket(pkt); err != nil {
+	if err := p.conn.SetWriteDeadline(time.Now().Add(DefaultSendTaskTimeout)); err != nil {
+		log.Printf("Peer.sendPacket SetWriteDeadline onError %T %#v %s", err, err, p.String())
+		//TODO
+		p.onError(err, p, pkt)
+	} else if err := p.writer.WritePacket(pkt); err != nil {
 		log.Printf("Peer.sendPacket WritePacket onError %T %#v %s", err, err, p.String())
 		//TODO
 		p.onError(err, p, pkt)
@@ -303,6 +307,14 @@ func NewPeerIDFromAddress(a module.Address) module.PeerID {
 
 func NewPeerIDFromPublicKey(k *crypto.PublicKey) module.PeerID {
 	return &peerID{common.NewAccountAddressFromPublicKey(k)}
+}
+
+func NewPeerIDFromString(s string) module.PeerID {
+	a := common.NewAddressFromString(s)
+	if a.IsContract() {
+		panic("PeerId must be AccountAddress")
+	}
+	return &peerID{a}
 }
 
 func (pi *peerID) Copy(b []byte) {

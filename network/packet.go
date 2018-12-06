@@ -50,14 +50,13 @@ func NewPacket(subProtocol module.ProtocolInfo, payload []byte) *Packet {
 }
 
 func (p *Packet) String() string {
-	return fmt.Sprintf("{pi:%#04x,subPi:%#04x,src:%v,dest:%#x,ttl:%d,len:%v,payload:[%X],hash:%#x}",
+	return fmt.Sprintf("{pi:%#04x,subPi:%#04x,src:%v,dest:%#x,ttl:%d,len:%v,hash:%#x}",
 		p.protocol.Uint16(),
 		p.subProtocol.Uint16(),
 		p.src,
 		p.dest,
 		p.ttl,
 		p.lengthOfpayload,
-		p.payload,
 		p.hashOfPacket)
 }
 
