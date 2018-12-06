@@ -55,7 +55,7 @@ func (s *JsonRpcServer) jsonRpcHandler() http.Handler {
 	if s.nt != nil {
 		nmr := network.MethodRepository(s.nt)
 		router.Handle("/network", &corsHandler{next: nmr})
-		dir := "."
+		dir := "./network"
 		// if ex, err := os.Executable(); err == nil {
 		// 	dir = filepath.Dir(ex)
 		// }
