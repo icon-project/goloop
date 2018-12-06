@@ -39,8 +39,7 @@ type CallContext interface {
 }
 
 type Proxy interface {
-	Invoke(ctx CallContext, code string, from, to module.Address,
-		value, limit *big.Int, method string, params []byte) error
+	Invoke(ctx CallContext, code string, isQuery bool, from, to module.Address, value, limit *big.Int, method string, params []byte) error
 	SendResult(ctx CallContext, status uint16, steps *big.Int, result []byte) error
 	GetAPI(ctx CallContext, code string) error
 	Release()
@@ -77,7 +76,8 @@ type versionMessage struct {
 }
 
 type invokeMessage struct {
-	Code   string         `codec:"code"`
+	Code   string `codec:"code"`
+	IsQry  bool
 	From   common.Address `codec:"from"`
 	To     common.Address `codec:"to"`
 	Value  common.HexInt  `codec:"value"`
@@ -110,11 +110,10 @@ type eventMessage struct {
 	Data    [][]byte
 }
 
-func (p *proxy) Invoke(ctx CallContext, code string, from, to module.Address,
-	value, limit *big.Int, method string, params []byte,
-) error {
+func (p *proxy) Invoke(ctx CallContext, code string, isQuery bool, from module.Address, to module.Address, value *big.Int, limit *big.Int, method string, params []byte) error {
 	var m invokeMessage
 	m.Code = code
+	m.IsQry = isQuery
 	m.From.SetBytes(from.Bytes())
 	m.To.SetBytes(to.Bytes())
 	m.Value.Set(value)

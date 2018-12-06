@@ -81,12 +81,7 @@ func makeTransactions(cc *callContext, mgr eeproxy.Manager) {
 		proxy := mgr.Get("python")
 		cc.proxy = proxy
 		proxy.GetAPI(cc, "score/")
-		proxy.Invoke(cc, "score/",
-			common.NewAddressFromString("cx9999999999999999999999999999999999999999"),
-			common.NewAddressFromString("hx3333333333333333333333333333333333333333"),
-			big.NewInt(10), big.NewInt(service.GIGA),
-			"test",
-			[]byte("{ \"param1\": \"0x1\"}"))
+		proxy.Invoke(cc, "score/", false, common.NewAddressFromString("cx9999999999999999999999999999999999999999"), common.NewAddressFromString("hx3333333333333333333333333333333333333333"), big.NewInt(10), big.NewInt(service.GIGA), "test", []byte("{ \"param1\": \"0x1\"}"))
 		proxy.Release()
 		time.Sleep(time.Second)
 	}

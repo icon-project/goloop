@@ -63,6 +63,8 @@ class ServiceManagerProxy:
         self.__invoke = None
         self.__get_api = None
         self.__codec = None
+        self.__readonly_stack = []
+        self.__readonly = False
 
     def connect(self, addr):
         self.__client.connect(addr)
@@ -150,14 +152,17 @@ class ServiceManagerProxy:
 
     def __handle_invoke(self, data):
         code = self.decode(TypeTag.STRING, data[0])
-        _from = self.decode(TypeTag.ADDRESS, data[1])
-        _to = self.decode(TypeTag.ADDRESS, data[2])
-        value = self.decode(TypeTag.INT, data[3])
-        limit = self.decode(TypeTag.INT, data[4])
-        method = self.decode(TypeTag.STRING, data[5])
-        params = data[6]
+        is_query = data[2]
+        _from = self.decode(TypeTag.ADDRESS, data[2])
+        _to = self.decode(TypeTag.ADDRESS, data[3])
+        value = self.decode(TypeTag.INT, data[4])
+        limit = self.decode(TypeTag.INT, data[5])
+        method = self.decode(TypeTag.STRING, data[6])
+        params = data[7]
 
         try:
+            self.__readonly_stack.append(self.__readonly)
+            self.__readonly = is_query
             status, step_used, result = self.__invoke(
                 code, _from, _to, value, limit, method, params)
 
@@ -172,6 +177,8 @@ class ServiceManagerProxy:
                 self.encode(limit),
                 None
             ])
+        finally:
+            self.__readonly = self.__readonly_stack.pop(-1)
 
     def __handle_get_api(self, data):
         try:
@@ -216,6 +223,8 @@ class ServiceManagerProxy:
             return None
 
     def set_value(self, key: bytes, value: Union[bytes, None]):
+        if self.__readonly:
+            raise Exception('NoPermissionToWrite')
         if value is None:
             self.__client.send(Message.SETVALUE, [key, True, b''])
         else:
@@ -234,6 +243,8 @@ class ServiceManagerProxy:
         return self.decode(TypeTag.INT, value)
 
     def send_event(self, indexed: List[Any], data: List[Any]):
+        if self.__readonly:
+            return
         self.__client.send(Message.EVENT, [
             [self.encode(v) for v in indexed],
             [self.encode(v) for v in data]
