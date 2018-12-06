@@ -78,7 +78,7 @@ func (ms *membership) workerRoutine(br *baseReactor) {
 			// ms.log.Println("workerRoutine", pi, p.ID)
 			r, err := br.impl.OnReceive(pi, pkt.payload, p.ID())
 			if err != nil {
-				ms.log.Println("workerRoutine", err)
+				// ms.log.Println("workerRoutine", err)
 			}
 			if r {
 				if pkt.ttl == 1 {

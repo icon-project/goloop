@@ -6,13 +6,13 @@ import (
 )
 
 type Queue struct {
-	ch   chan bool
-	buf  []context.Context
-	w    int
-	r    int
-	mtx  sync.RWMutex
-	wait bool
-	size int
+	buf     []context.Context
+	w       int
+	r       int
+	size    int
+	mtx     sync.RWMutex
+	wait    map[chan bool]interface{}
+	mtxWait sync.Mutex
 }
 
 func NewQueue(size int) *Queue {
@@ -20,11 +20,12 @@ func NewQueue(size int) *Queue {
 		panic("queue size must be greater than zero")
 	}
 	q := &Queue{
-		ch:   make(chan bool),
+
 		buf:  make([]context.Context, size),
 		w:    0,
 		r:    0,
 		size: size,
+		wait: make(map[chan bool]interface{}),
 	}
 	return q
 }
@@ -32,6 +33,9 @@ func NewQueue(size int) *Queue {
 func (q *Queue) Push(ctx context.Context) bool {
 	defer q.mtx.Unlock()
 	q.mtx.Lock()
+	if ctx == nil {
+		return false
+	}
 	w := q.w
 	if len(q.buf) > (w + 1) {
 		w++
@@ -39,24 +43,20 @@ func (q *Queue) Push(ctx context.Context) bool {
 		w = 0
 	}
 	if q.r == w {
-		// log.Println("Queue.Push full")
 		return false
 	}
 	q.buf[q.w] = ctx
 	q.w = w
-	if q.wait {
-		q.wait = false
-		q.ch <- true
-	}
+
+	q._wakeup(nil)
 	return true
 }
 
 func (q *Queue) Pop() context.Context {
 	defer q.mtx.Unlock()
 	q.mtx.Lock()
-	q.wait = false
+
 	if q.w == q.r {
-		// log.Println("Queue.Pop empty")
 		return nil
 	}
 	ctx := q.buf[q.r].(context.Context)
@@ -66,16 +66,39 @@ func (q *Queue) Pop() context.Context {
 	} else {
 		q.r = 0
 	}
-
 	return ctx
+}
+
+func (q *Queue) _wait() chan bool {
+	defer q.mtxWait.Unlock()
+	q.mtxWait.Lock()
+	ch := make(chan bool)
+	q.wait[ch] = true
+	return ch
+}
+func (q *Queue) _wakeup(ch chan bool) {
+	defer q.mtxWait.Unlock()
+	q.mtxWait.Lock()
+	if ch == nil {
+		for k := range q.wait {
+			ch = k
+			break
+		}
+	}
+	if ch != nil {
+		close(ch)
+		delete(q.wait, ch)
+	}
 }
 
 func (q *Queue) Wait() <-chan bool {
 	defer q.mtx.RUnlock()
 	q.mtx.RLock()
-	q.wait = true
-	// log.Println("Queue.Wait")
-	return q.ch
+	ch := q._wait()
+	if q.w != q.r {
+		q._wakeup(ch)
+	}
+	return ch
 }
 
 func (q *Queue) Available() int {

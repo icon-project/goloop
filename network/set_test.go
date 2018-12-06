@@ -158,14 +158,18 @@ func (pi *dummyPeerID) IsContract() bool            { return false }
 func (pi *dummyPeerID) Equal(a module.Address) bool { return bytes.Equal(pi.b, a.ID()) }
 func (pi *dummyPeerID) Copy(b []byte)               { copy(b, pi.b) }
 
+func generateDummyPeer(s string) *Peer {
+	p := &Peer{id: newDummyPeerID(s), netAddress: NetAddress(s)}
+	return p
+}
+
 func Benchmark_set_PeerSet(b *testing.B) {
 	b.StopTimer()
 	s := NewPeerSet()
 	pArr := make([]*Peer, b.N)
 	for i := 0; i < b.N; i++ {
 		s := fmt.Sprintf("%d", i)
-		p := &Peer{id: newDummyPeerID(s), netAddress: NetAddress(s)}
-		pArr[i] = p
+		pArr[i] = generateDummyPeer(s)
 	}
 
 	b.StartTimer()
@@ -173,4 +177,12 @@ func Benchmark_set_PeerSet(b *testing.B) {
 		p := pArr[i]
 		s.Add(p)
 	}
+}
+
+func Benchmark_dummy_Peer(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		s := fmt.Sprintf("%d", i)
+		generateDummyPeer(s)
+	}
+	//Benchmark_dummy_Peer-8   	20000000	        97.1 ns/op	      16 B/op	       2 allocs/op
 }
