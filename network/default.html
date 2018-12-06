@@ -1,0 +1,84 @@
+<head>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/lodash@4.17.11/lodash.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/simple-jsonrpc-js@0.0.10/dist/simple-jsonrpc-js.min.js"></script>
+
+    <style type="text/css">
+        #defaultNetwork {
+            width: 800px;
+            height: 400px;
+            border: 1px solid lightgray;
+        }
+    </style>
+</head>
+<body>
+<table>
+    <tr>
+        <td><div id="defaultNetwork"></div></td>
+    </tr>
+</table>
+
+<script type="text/javascript">
+    var _color = {
+        node: {
+            0: '#99CCFF',
+            1: '#99FF99',
+            2: '#9999FF',
+            3: '#CC99FF'
+        },
+        edge: {
+            0: {color: 'black', highlight: 'black'},
+            1: {color: 'blue', highlight: 'blue'},//parent
+            2: {color: 'blue', highlight: 'blue'},//children
+            3: {color: 'red', highlight: 'red'},//uncle
+            4: {color: 'red', highlight: 'red'},//nephew
+            5: {color: 'violet', highlight: 'violet'},//friend
+        }
+    }
+
+    var container = document.getElementById('selfNetwork');
+    var options = {
+        height: '100%',
+        width: '100%',
+        nodes: {
+            shape: 'dot',
+            scaling: {
+                min: 1,
+                max: 5
+            }
+        },
+        edges:{
+            arrows: 'to',
+            smooth: {
+                type: 'continuous',
+                roundness: 1
+            }
+        },
+        layout: {
+            hierarchical: {
+                enabled: true,
+                direction: 'UD'
+            }
+        }
+    };
+    var defdata = {
+        nodes: new vis.DataSet(),
+        edges: new vis.DataSet(),
+    };
+    defdata.nodes.add({id:"normal",label:"Normal",level: 3, color: _color.node[0]})
+    defdata.nodes.add({id:"normal2",label:"Normal2",level: 3, color: _color.node[0]})
+    defdata.nodes.add({id:"seed",label:"Seed",level: 2, color: _color.node[1]})
+    defdata.nodes.add({id:"root",label:"Root",level: 1, color: _color.node[2]})
+    defdata.nodes.add({id:"rootseed",label:"RootSeed",level: 1, color: _color.node[3]})
+    defdata.edges.add({from: "normal", to: "seed", color: _color.edge[1]})
+    defdata.edges.add({from: "normal2", to: "seed", color: _color.edge[1]})
+    defdata.edges.add({from: "seed", to: "root", color: _color.edge[1]})
+    defdata.edges.add({from: "root", to: "rootseed", color: _color.edge[5]})
+    defdata.edges.add({from: "seed", to: "rootseed", color: _color.edge[3]})
+    defdata.edges.add({from: "normal", to: "rootseed", color: _color.edge[3]})
+    defdata.edges.add({from: "normal2", to: "rootseed", color: _color.edge[3]})
+    var defNetwork = new vis.Network(document.getElementById('defaultNetwork'), defdata, options);
+</script>
+</body>
+</html>

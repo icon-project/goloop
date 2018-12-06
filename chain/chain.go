@@ -3,6 +3,7 @@ package chain
 import (
 	"encoding/json"
 	"log"
+	"time"
 
 	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/common/db"
@@ -84,14 +85,23 @@ func (c *singleChain) Start() {
 
 	c.nm = network.NewManager(c.cfg.Channel, c.nt, toRoles(c.cfg.Role)...)
 	if c.cfg.SeedAddr != "" {
-		c.nt.Dial(c.cfg.SeedAddr, c.cfg.Channel)
+		var err error
+		for i := 0; i < 5; i++ {
+			if err = c.nt.Dial(c.cfg.SeedAddr, c.cfg.Channel); err == nil {
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	c.sm.SetMembership(c.nm.GetMembership(network.DefaultMembershipName))
 	c.cs = consensus.NewConsensus(c, c.bm, c.nm)
 	go c.cs.Start()
 
-	c.sv = rpc.NewJsonRpcServer(c.bm, c.sm)
+	c.sv = rpc.NewJsonRpcServer(c.bm, c.sm, c.nt)
 
 	if err := c.sv.ListenAndServe(c.cfg.RPCAddr); err != nil {
 		log.Printf("Fail to Listen on RPC server err=%+v", err)
