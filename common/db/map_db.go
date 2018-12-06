@@ -2,8 +2,10 @@ package db
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"log"
+	"sync"
+
+	"github.com/pkg/errors"
 )
 
 const (
@@ -60,11 +62,14 @@ func (t *mapDatabase) Close() error {
 var _ Bucket = (*mapBucket)(nil)
 
 type mapBucket struct {
-	id   string
-	real map[string]string
+	id    string
+	real  map[string]string
+	mutex sync.Mutex
 }
 
 func (t *mapBucket) Get(k []byte) ([]byte, error) {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
 	v, ok := t.real[string(k)]
 	if ok {
 		bytes := []byte(v)
@@ -80,6 +85,8 @@ func (t *mapBucket) Get(k []byte) ([]byte, error) {
 }
 
 func (t *mapBucket) Has(k []byte) bool {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
 	_, ok := t.real[string(k)]
 	if configLogMapDB {
 		log.Printf("mapBucket[%s].Has(%x) -> %v", t.id, k, ok)
@@ -94,6 +101,8 @@ func (t *mapBucket) Set(k, v []byte) error {
 	if configLogMapDB {
 		log.Printf("mapBucket[%s].Set(%x,%x)", t.id, k, v)
 	}
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
 	t.real[string(k)] = string(v)
 	return nil
 }
@@ -102,6 +111,8 @@ func (t *mapBucket) Delete(k []byte) error {
 	if configLogMapDB {
 		log.Printf("mapBucket[%s].Delete(%x)", t.id, k)
 	}
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
 	delete(t.real, string(k))
 	return nil
 }
