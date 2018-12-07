@@ -524,7 +524,7 @@ func (cs *consensus) enterCommit(partSetID *PartSetID) {
 	if cs.currentBlockParts.IsComplete() {
 		if !cs.currentBlockParts.noImport {
 			hrs := cs.hrs
-			cs.bm.Import(
+			_, err := cs.bm.Import(
 				cs.currentBlockParts.NewReader(),
 				func(blk module.Block, err error) {
 					cs.mutex.Lock()
@@ -545,6 +545,9 @@ func (cs *consensus) enterCommit(partSetID *PartSetID) {
 					cs.enterNewHeight()
 				},
 			)
+			if err != nil {
+				logger.Panicf("enterCommit: %v\n", err)
+			}
 		} else {
 			err := cs.bm.Finalize(cs.currentBlockParts.block)
 			if err != nil {
