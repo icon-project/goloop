@@ -295,7 +295,7 @@ func (c *chain) startAsImporter(ch <-chan []byte) {
 	}
 
 	// JSON-RPC
-	c.sv = rpc.NewJsonRpcServer(c.bm, c.sm, nil)
+	c.sv = rpc.NewJsonRpcServer(c.bm, c.sm, c.cs, nil)
 	c.sv.Start()
 
 	c.cs.Start()

@@ -70,6 +70,10 @@
   version = "1.6.2"
 
 [[constraint]]
+  name = "github.com/gorilla/handlers"
+  version = "1.4.0"
+
+[[constraint]]
   name = "github.com/osamingo/jsonrpc"
   version = "v2.1"
 
@@ -80,3 +84,7 @@
 [[constraint]]
   name = "github.com/asaskevich/govalidator"
   version = "v8"
+
+[[constraint]]
+  name = "go.opencensus.io"
+  version = "0.18.0"

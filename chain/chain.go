@@ -84,6 +84,7 @@ func (c *singleChain) Start() {
 	c.bm = block.NewManager(c, c.sm)
 
 	c.nm = network.NewManager(c.cfg.Channel, c.nt, toRoles(c.cfg.Role)...)
+
 	if c.cfg.SeedAddr != "" {
 		var err error
 		for i := 0; i < 5; i++ {
@@ -93,15 +94,17 @@ func (c *singleChain) Start() {
 			time.Sleep(500 * time.Millisecond)
 		}
 		if err != nil {
-			panic(err)
+			log.Printf("Dial to SeedAddr failed err=%+v", err)
 		}
 	}
 
-	c.sm.SetMembership(c.nm.GetMembership(network.DefaultMembershipName))
+	if err := c.sm.SetMembership(c.nm.GetMembership(network.DefaultMembershipName)); err != nil {
+		log.Printf("Fail to SetMebership err=%+v", err)
+	}
 	c.cs = consensus.NewConsensus(c, c.bm, c.nm)
 	go c.cs.Start()
 
-	c.sv = rpc.NewJsonRpcServer(c.bm, c.sm, c.nt)
+	c.sv = rpc.NewJsonRpcServer(c.bm, c.sm, c.cs, c.nt)
 
 	if err := c.sv.ListenAndServe(c.cfg.RPCAddr); err != nil {
 		log.Printf("Fail to Listen on RPC server err=%+v", err)

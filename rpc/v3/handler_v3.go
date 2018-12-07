@@ -402,7 +402,6 @@ func (h sendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjson
 		log.Println(err.Error())
 		return nil, jsonrpc.ErrInternal()
 	}
-	// txHash
 	result := fmt.Sprintf("0x%x", txHash)
 
 	return result, nil
