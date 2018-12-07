@@ -113,7 +113,7 @@ func (cs *consensus) OnReceive(
 		logger.Printf("OnReceive: error=%v\n", err)
 		return false, err
 	}
-	logger.Printf("OnReceive %T%+v\n", msg, msg)
+	logger.Printf("OnReceive %+v\n", msg)
 	if err := msg.verify(); err != nil {
 		return false, err
 	}

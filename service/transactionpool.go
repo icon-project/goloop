@@ -99,18 +99,18 @@ func (txPool *transactionPool) candidate(wc WorldContext, max int) []module.Tran
 	// 기반으로 사용된 적이 있는 것을 제외하는 방식으로 구현하려고 하는데, unfinalized
 	// branch가 긴 것을 감안하면 좀 더 효과적인 구현이 있을지 고민 필요
 	txPool.mutex.Lock()
-
 	if txPool.txList.Len() == 0 {
 		txPool.mutex.Unlock()
 		return []module.Transaction{}
 	}
 
+	txPoolCount := txPool.txList.Len()
 	txsLen := 0
 	if max < 0 {
-		txsLen = txPool.txList.Len()
+		txsLen = txPoolCount
 	} else {
-		if txPool.txList.Len() < max {
-			txsLen = txPool.txList.Len()
+		if txPoolCount < max {
+			txsLen = txPoolCount
 		} else {
 			txsLen = max
 		}
@@ -118,17 +118,12 @@ func (txPool *transactionPool) candidate(wc WorldContext, max int) []module.Tran
 
 	txs := make([]Transaction, txsLen)
 	txsIndex := 0
-	for iter := txPool.txList.Front(); iter != nil; {
-
+	for iter := txPool.txList.Front(); iter != nil && txsIndex < max; iter = iter.Next() {
 		txs[txsIndex] = iter.Value.(Transaction)
 		txsIndex++
-		if txsIndex == max {
-			break
-		}
-		iter = iter.Next()
 	}
-
 	txPool.mutex.Unlock()
+
 	validTxs := make([]module.Transaction, txsIndex)
 	index := 0
 	for i, tx := range txs[:txsIndex] {
@@ -152,6 +147,8 @@ func (txPool *transactionPool) candidate(wc WorldContext, max int) []module.Tran
 			}
 		}()
 	}
+
+	log.Printf("transactionPool.candidate collected=%d removed=%d poolsize=%d", index, txsIndex-index, txPoolCount)
 
 	return validTxs[:index]
 }

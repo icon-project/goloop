@@ -101,7 +101,7 @@ func (ms *membership) onPacket(pkt *Packet, p *Peer) {
 		ctx := context.WithValue(context.Background(), p2pContextKeyPacket, pkt)
 		ctx = context.WithValue(ctx, p2pContextKeyPeer, p)
 		if ok := br.q.Push(ctx); !ok {
-			ms.log.Println("onPacket", "BaseReactor Queue Push failure", pkt.protocol, pkt.subProtocol)
+			// ms.log.Println("onPacket", "BaseReactor Queue Push failure", pkt.protocol, pkt.subProtocol)
 		}
 	}
 }
