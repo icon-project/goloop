@@ -193,7 +193,7 @@ func (cs *consensus) receiveBlockPart(msg *blockPartMessage) (bool, error) {
 	if cs.step == stepPropose && cs.isProposalAndPOLPrevotesComplete() {
 		cs.enterPrevote()
 	} else if cs.step == stepCommit && cs.currentBlockParts.IsComplete() {
-		cs.enterNewHeight()
+		cs.commitAndEnterNewHeight()
 	}
 	return true, nil
 }
@@ -511,6 +511,42 @@ func (cs *consensus) enterPrecommitWait() {
 	}
 }
 
+func (cs *consensus) commitAndEnterNewHeight() {
+	if !cs.currentBlockParts.noImport {
+		hrs := cs.hrs
+		_, err := cs.bm.Import(
+			cs.currentBlockParts.NewReader(),
+			func(blk module.Block, err error) {
+				cs.mutex.Lock()
+				defer cs.mutex.Unlock()
+
+				if cs.hrs != hrs {
+					logger.Panicf("commitAndEnterNewHeight: bad cs.hrs=%v\n", cs.hrs)
+				}
+
+				if err != nil {
+					logger.Panicf("commitAndEnterNewHeight: %v\n", err)
+				}
+				cs.currentBlockParts.noImport = true
+				err = cs.bm.Finalize(cs.currentBlockParts.block)
+				if err != nil {
+					logger.Panicf("commitAndEnterNewHeight: %v\n", err)
+				}
+				cs.enterNewHeight()
+			},
+		)
+		if err != nil {
+			logger.Panicf("commitAndEnterNewHeight: %v\n", err)
+		}
+	} else {
+		err := cs.bm.Finalize(cs.currentBlockParts.block)
+		if err != nil {
+			logger.Panicf("commitAndEnterNewHeight: %v\n", err)
+		}
+		cs.enterNewHeight()
+	}
+}
+
 func (cs *consensus) enterCommit(partSetID *PartSetID) {
 	cs.resetForNewStep()
 	cs.setStep(stepCommit)
@@ -522,39 +558,7 @@ func (cs *consensus) enterCommit(partSetID *PartSetID) {
 		}
 	}
 	if cs.currentBlockParts.IsComplete() {
-		if !cs.currentBlockParts.noImport {
-			hrs := cs.hrs
-			_, err := cs.bm.Import(
-				cs.currentBlockParts.NewReader(),
-				func(blk module.Block, err error) {
-					cs.mutex.Lock()
-					defer cs.mutex.Unlock()
-
-					if cs.hrs != hrs {
-						return
-					}
-
-					if err != nil {
-						panic(err)
-					}
-					cs.currentBlockParts.noImport = true
-					err = cs.bm.Finalize(cs.currentBlockParts.block)
-					if err != nil {
-						logger.Panicf("enterCommit: %v\n", err)
-					}
-					cs.enterNewHeight()
-				},
-			)
-			if err != nil {
-				logger.Panicf("enterCommit: %v\n", err)
-			}
-		} else {
-			err := cs.bm.Finalize(cs.currentBlockParts.block)
-			if err != nil {
-				logger.Panicf("enterCommit: %v\n", err)
-			}
-			cs.enterNewHeight()
-		}
+		cs.commitAndEnterNewHeight()
 	}
 }
 
