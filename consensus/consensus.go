@@ -722,6 +722,8 @@ func (cs *consensus) Start() {
 	prefix := fmt.Sprintf("%x|CS|", cs.wallet.Address().Bytes()[1:3])
 	logger = log.New(os.Stderr, prefix, log.Lshortfile|log.Lmicroseconds)
 
+	logger.Printf("Consensus start wallet=%s", cs.wallet.Address())
+
 	go func() {
 		time.Sleep(time.Second * 3)
 
