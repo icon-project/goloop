@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -230,7 +231,7 @@ func marshalTx(tx *txTest) []byte {
 	return b
 }
 
-//const txLiveDuration = int64(60 * time.Second / time.Millisecond) // 60 seconds in millisecond
+const txLiveDuration = int64(60 * time.Second / time.Millisecond) // 60 seconds in millisecond
 //// true if valid transaction
 func createRandTx(valid bool, time int64, validNum int) module.Transaction {
 	idFrom := rand.Int() % TEST_ACCOUNTS_NUM

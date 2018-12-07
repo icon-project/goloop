@@ -23,7 +23,7 @@ type transactionPool struct {
 	mutex sync.Mutex
 }
 
-func NewtransactionPool(txdb db.Bucket) *transactionPool {
+func NewTransactionPool(txdb db.Bucket) *transactionPool {
 	pool := &transactionPool{
 		txdb:      txdb,
 		list:      list.New(),

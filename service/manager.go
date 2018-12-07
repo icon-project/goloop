@@ -15,7 +15,8 @@ import (
 const (
 	// maximum number of transactions in a block
 	// TODO it should be configured or received from block manager
-	txMaxNumInBlock = 2000
+	txMaxNumInBlock           = 2000
+	configOnCheckingTimestamp = false
 )
 
 var (
@@ -38,8 +39,8 @@ type manager struct {
 func NewManager(chain module.Chain) module.ServiceManager {
 	bk, _ := chain.Database().GetBucket(db.MerkleTrie)
 	return &manager{
-		patchTxPool:  NewtransactionPool(bk),
-		normalTxPool: NewtransactionPool(bk),
+		patchTxPool:  NewTransactionPool(bk),
+		normalTxPool: NewTransactionPool(bk),
 		db:           chain.Database(),
 		chain:        chain,
 	}
