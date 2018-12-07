@@ -11,31 +11,25 @@ import (
 )
 
 const (
-	configOnCheckingTimestamp = false // set true if you want check timestamp in txpool
-	txPoolSize                = 5000
-	txLiveDuration            = int64(60 * time.Second / time.Microsecond) // 60 seconds in microsecond
+	txPoolSize = 5000
 )
 
-////////////////////
-// Transaction Pool
-////////////////////
-// TODO garbage를 정리하는 방법 필요. 간단하게는 removeList()에 넣어두면 되긴 한데...
-// add()할 때 개수 체크 및 candidate()에서 정리
-// TODO GC 방법은 정리 필요
-// TODO transaction 시간 순으로 정렬 필요
-// KN.KIM - transactionPool내에서 TX관리는 linek list로 관리를 해야 삽입삭제가 용이할 것으로 보임.( 삽입삭제가 빈번할 수 있을 것으로 보임)
 type transactionPool struct {
-	txdb   db.Bucket
-	txList *list.List
-	//txList.Len() int
-	// transactionPool내에 입력하려 하는 txHash가 존재하는지 확인하기 위한 map.
-	// list를 끝까지 순환하면서 확인하는 것 보다 map을 사요하는 것이 더 효율적일 것이라 판단.
+	txdb db.Bucket
+
+	list      *list.List
 	txHashMap map[string]*list.Element
-	mutex     sync.Mutex
+
+	mutex sync.Mutex
 }
 
 func NewtransactionPool(txdb db.Bucket) *transactionPool {
-	return &transactionPool{txdb: txdb, txList: list.New(), txHashMap: make(map[string]*list.Element)}
+	pool := &transactionPool{
+		txdb:      txdb,
+		list:      list.New(),
+		txHashMap: make(map[string]*list.Element),
+	}
+	return pool
 }
 
 func makeTimestamp() int64 {
@@ -43,15 +37,15 @@ func makeTimestamp() int64 {
 }
 
 // TODO: check thread safe below
-func (txPool *transactionPool) runGc(expired int64) error {
-	txList := txPool.txList
+func (tp *transactionPool) runGc(expired int64) error {
+	txList := tp.list
 
 	for iter := txList.Front(); iter != nil; {
 		if iter.Value.(*transaction).Timestamp() >= expired {
 			break
 		}
 		tmp := iter.Next()
-		delete(txPool.txHashMap, string(iter.Value.(*transaction).ID()))
+		delete(tp.txHashMap, string(iter.Value.(*transaction).ID()))
 		txList.Remove(iter)
 		iter = tmp
 	}
@@ -64,164 +58,108 @@ func (txPool *transactionPool) runGc(expired int64) error {
 	return ErrDuplicateTransaction if tx exists in pool
 	return ErrExpiredTransaction if Timestamp of tx is expired
 */
-func (txPool *transactionPool) add(tx *transaction) error {
+func (tp *transactionPool) add(tx *transaction) error {
 	if tx == nil {
 		return nil
 	}
-	txPool.mutex.Lock()
-	defer txPool.mutex.Unlock()
+	tp.mutex.Lock()
+	defer tp.mutex.Unlock()
 	var err error
-	txList := txPool.txList
+	txList := tp.list
 	if txList.Len() >= txPoolSize {
 		return ErrTransactionPoolOverFlow
 	}
 
 	// check whether this transaction is already in txPool
-	if _, ok := txPool.txHashMap[string(tx.ID())]; ok {
-		// TODO: 추가적으로 address, nonce까지 검사할 필요가 있을까?
+	if _, ok := tp.txHashMap[string(tx.ID())]; ok {
 		return ErrDuplicateTransaction
 	}
 
 	element := txList.PushBack(tx)
-	txPool.txHashMap[string(tx.ID())] = element
+	tp.txHashMap[string(tx.ID())] = element
 
 	return err
 }
 
 // It returns all candidates for a negative integer n.
-func (txPool *transactionPool) candidate(wc WorldContext, max int) []module.Transaction {
-	// TODO state를 전달받더라도 실제 account info는 address를 통해서 바로 찾는 것이
-	// 유리할텐데... trie를 통해서 Get하면 비효율적임.
-	// TODO max가 음수이면 모든 transaction을 리턴한다. patch pool에 대해서 필요할 것
-	// 같음.
-	// TODO validate 작업도 필요.
-	// TODO ServiceManager에 하나의 pool을 관리하고 candidate를 구할 때 transition
-	// 기반으로 사용된 적이 있는 것을 제외하는 방식으로 구현하려고 하는데, unfinalized
-	// branch가 긴 것을 감안하면 좀 더 효과적인 구현이 있을지 고민 필요
-	txPool.mutex.Lock()
-	if txPool.txList.Len() == 0 {
-		txPool.mutex.Unlock()
+func (tp *transactionPool) candidate(wc WorldContext, max int) []module.Transaction {
+	tp.mutex.Lock()
+	if tp.list.Len() == 0 {
+		tp.mutex.Unlock()
 		return []module.Transaction{}
 	}
 
-	txPoolCount := txPool.txList.Len()
-	txsLen := 0
-	if max < 0 {
-		txsLen = txPoolCount
-	} else {
-		if txPoolCount < max {
-			txsLen = txPoolCount
-		} else {
-			txsLen = max
+	poolSize := tp.list.Len()
+
+	// txNum is number of transactions for pre-validate
+	txNum := poolSize
+	if max >= 0 && txNum > (max*13/10) {
+		txNum = max * 13 / 10
+	}
+
+	// make list to be used for pre-validate.
+	txs := make([]Transaction, txNum)
+	txIdx := 0
+	for e := tp.list.Front(); txIdx < txNum; e = e.Next() {
+		txs[txIdx] = e.Value.(Transaction)
+		txIdx++
+	}
+
+	tp.mutex.Unlock()
+
+	// txNum is number of transactions actually returned
+	if max >= 0 && txNum > max {
+		txNum = max
+	}
+
+	// make list of valid transactions
+	validTxs := make([]module.Transaction, txNum)
+	valNum := 0
+	for i, tx := range txs {
+		// TODO need to check transaction in parent transitions.
+		if v, err := tp.txdb.Get(tx.ID()); err == nil && v != nil {
+			continue
+		}
+		if err := tx.PreValidate(wc, true); err != nil {
+			continue
+		}
+		validTxs[valNum] = tx
+		txs[i] = nil
+		valNum++
+		if valNum == txNum {
+			txs = txs[:i+1]
+			validTxs = validTxs[:valNum]
+			break
 		}
 	}
 
-	txs := make([]Transaction, txsLen)
-	txsIndex := 0
-	for iter := txPool.txList.Front(); iter != nil && txsIndex < max; iter = iter.Next() {
-		txs[txsIndex] = iter.Value.(Transaction)
-		txsIndex++
-	}
-	txPool.mutex.Unlock()
-
-	validTxs := make([]module.Transaction, txsIndex)
-	index := 0
-	for i, tx := range txs[:txsIndex] {
-		if err := tx.(Transaction).PreValidate(wc, true); err == nil {
-			validTxs[index] = tx
-			txs[i] = nil
-			index++
-		}
-	}
-	if index != txsIndex {
+	if valNum != len(txs) {
 		go func() {
-			txPool.mutex.Lock()
-			defer txPool.mutex.Unlock()
+			tp.mutex.Lock()
+			defer tp.mutex.Unlock()
 			for _, tx := range txs {
 				if tx != nil {
-					if v, ok := txPool.txHashMap[string(tx.ID())]; ok {
-						txPool.txList.Remove(v)
-						delete(txPool.txHashMap, string(tx.ID()))
+					if v, ok := tp.txHashMap[string(tx.ID())]; ok {
+						tp.list.Remove(v)
+						delete(tp.txHashMap, string(tx.ID()))
 					}
 				}
 			}
 		}()
 	}
 
-	log.Printf("transactionPool.candidate collected=%d removed=%d poolsize=%d", index, txsIndex-index, txPoolCount)
+	log.Printf("transactionPool.candidate collected=%d removed=%d poolsize=%d",
+		valNum, len(txs)-valNum, poolSize)
 
-	return validTxs[:index]
+	return validTxs[:valNum]
 }
 
-// return true if one of txs is added to pool
-//func (txPool *transactionPool) addList(txs []*transaction) error {
-//	expired := makeTimestamp() - txLiveDuration
-//	txPool.mutex.Lock()
-//	defer txPool.mutex.Unlock()
-//
-//	addTxs := append([]*transaction{}, txs...)
-//	sort.Slice(addTxs, func(i, j int) bool {
-//		return addTxs[i].Timestamp() > addTxs[j].Timestamp()
-//	})
-//
-//	txList := txPool.txList
-//
-//	if configOnCheckingTimestamp {
-//		if iter := txList.Front(); iter != nil {
-//			if iter.Value.(*transaction).Timestamp() < expired {
-//				txPool.runGc(expired)
-//			}
-//		}
-//	}
-//
-//	var err error
-//	if txList.Len() >= txPoolSize {
-//		return ErrTransactionPoolOverFlow
-//	}
-//
-//	// check whether this transaction is already in txPool
-//	revIter := txList.Back()
-//	for _, addTx := range addTxs {
-//		if _, ok := txPool.txHashMap[string(addTx.ID())]; ok {
-//			// TODO: 추가적으로 address, nonce까지 검사할 필요가 있을까?
-//			//fmt.Println("drop ID = ", addTx.ID(), ", timestamp = ", addTx.TimeStamp())
-//			err = ErrDuplicateTransaction
-//			continue
-//		}
-//		if configOnCheckingTimestamp {
-//			if addTx.Timestamp() < expired {
-//				err = ErrExpiredTransaction
-//				continue
-//			}
-//		}
-//
-//		inserted := false
-//		for revIter != nil {
-//			tx := revIter.Value.(*transaction)
-//			if tx.Timestamp() <= addTx.Timestamp() {
-//				revIter = txList.InsertAfter(addTx, revIter)
-//				txPool.txHashMap[string(addTx.ID())] = addTx
-//				inserted = true
-//				break
-//			}
-//			revIter = revIter.Prev()
-//		}
-//
-//		if inserted == false {
-//			txList.PushFront(addTx)
-//			txPool.txHashMap[string(addTx.ID())] = addTx
-//		}
-//	}
-//
-//	return err
-//}
+// removeList remove transactions when transactions are finalized.
+func (tp *transactionPool) removeList(txs module.TransactionList) {
+	tp.mutex.Lock()
+	defer tp.mutex.Unlock()
 
-// finalize할 때 호출됨.
-func (txPool *transactionPool) removeList(txs module.TransactionList) {
-	txPool.mutex.Lock()
-	defer txPool.mutex.Unlock()
-
-	if txPool.txList.Len() == 0 {
+	if tp.list.Len() == 0 {
 		return
 	}
 
@@ -231,13 +169,11 @@ func (txPool *transactionPool) removeList(txs module.TransactionList) {
 			log.Printf("Failed to get transaction from iterator\n")
 			continue
 		}
-		if tx, ok := t.(*transaction); ok {
-			if v, ok := txPool.txHashMap[string(tx.ID())]; ok {
-				txPool.txList.Remove(v)
-				delete(txPool.txHashMap, string(tx.ID()))
-			}
-		} else {
-			log.Printf("Failed type assertion to transaction. t = %v\n", t)
+
+		id := string(t.ID())
+		if v, ok := tp.txHashMap[id]; ok {
+			tp.list.Remove(v)
+			delete(tp.txHashMap, id)
 		}
 	}
 }
