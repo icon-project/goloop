@@ -617,6 +617,10 @@ func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) error {
 }
 
 func (cs *consensus) sendVote(vt voteType, blockParts *blockPartSet) error {
+	if cs.validators.IndexOf(cs.wallet.Address()) < 0 {
+		return nil
+	}
+
 	defer func() {
 		go func() {
 			cs.mutex.Lock()
