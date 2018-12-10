@@ -33,8 +33,8 @@ const (
 	DefaultReactorQueueSize    = 1000
 	DefaultPacketBufferSize    = 4096 //bufio.defaultBufSize=4096
 	DefaultPacketPayloadMax    = math.MaxInt32
-	DefaultPacketPoolNumBucket = 10
-	DefaultPacketPoolBucketLen = 10
+	DefaultPacketPoolNumBucket = 20
+	DefaultPacketPoolBucketLen = 100
 	DefaultDiscoveryPeriod     = 2 * time.Second
 	DefaultSeedPeriod          = 3 * time.Second
 	DefaultAlternateSendPeriod = 1 * time.Second
