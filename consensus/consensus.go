@@ -332,7 +332,6 @@ func (cs *consensus) enterPropose() {
 		if cs.lockedBlockParts != nil && cs.lockedBlockParts.IsComplete() {
 			cs.sendProposal(cs.lockedBlockParts, cs.lockedRound)
 			cs.currentBlockParts = cs.lockedBlockParts
-			cs.dispatchQueuedMessage()
 		} else {
 			var err error
 			cs.cancelBlockRequest, err = cs.bm.Propose(cs.lastBlock.ID(), cs.votes,
