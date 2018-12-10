@@ -40,7 +40,15 @@ func main() {
 		return
 	}
 
-	startTime := time.Now()
+	var logs [5]struct {
+		when  time.Time
+		total int64
+	}
+	var front, back int
+
+	logs[front].when = time.Now()
+	logs[front].total = 0
+
 	var total int64 = 0
 	for bh := 1; cfg.Height < 0 || bh < cfg.Height; bh++ {
 		blk, err := db.GetBlockByHeight(bh)
@@ -79,10 +87,17 @@ func main() {
 
 			j++
 			total++
-			tps := float64(total) / float64(time.Now().Sub(startTime)/time.Second)
-			fmt.Printf("%sBlk[%7d] Tx[%8d] TPS=%.2f\r", ClearLine, bh, total, tps)
 			if (total % 1000) == 0 {
-				fmt.Println("")
+				front = (front + 1) % len(logs)
+				if front == back {
+					back = (back + 1) % len(logs)
+				}
+				logs[front].when = time.Now()
+				logs[front].total = total
+				tps := float64(logs[front].total-logs[back].total) / float64(logs[front].when.Sub(logs[back].when)/time.Millisecond) * 1000
+				fmt.Printf("%sBlk[%7d] Tx[%8d] TPS=%.2f\n", ClearLine, bh, total, tps)
+			} else {
+				fmt.Printf("%sBlk[%7d] Tx[%8d]\r", ClearLine, bh, total)
 			}
 			time.Sleep(time.Duration(cfg.TxDelay) * time.Microsecond)
 		}
