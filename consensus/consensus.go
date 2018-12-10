@@ -739,9 +739,12 @@ func (cs *consensus) GetStatus() *module.ConsensusStatus {
 	cs.mutex.Lock()
 	defer cs.mutex.Unlock()
 
-	return &module.ConsensusStatus{
-		Height:   cs.height,
-		Round:    cs.round,
-		Proposer: cs.isProposer(),
+	res := &module.ConsensusStatus{
+		Height: cs.height,
+		Round:  cs.round,
 	}
+	if cs.validators != nil {
+		res.Proposer = cs.isProposer()
+	}
+	return res
 }
