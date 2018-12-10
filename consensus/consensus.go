@@ -222,7 +222,7 @@ func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) (
 	if ok {
 		if cs.lockedRound < msg.Round && cs.lockedBlockParts != nil && !cs.lockedBlockParts.ID().Equal(partSetID) {
 			cs.lockedRound = -1
-			cs.lockedBlockParts = &blockPartSet{}
+			cs.lockedBlockParts = nil
 		}
 		if cs.round == msg.Round && partSetID != nil && (cs.currentBlockParts == nil || !cs.currentBlockParts.ID().Equal(partSetID)) {
 			cs.currentBlockParts = &blockPartSet{
