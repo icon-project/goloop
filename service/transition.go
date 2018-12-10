@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 
 	"github.com/icon-project/goloop/common/db"
@@ -47,7 +48,7 @@ type transition struct {
 	worldSnapshot  WorldSnapshot
 	patchReceipts  module.ReceiptList
 	normalReceipts module.ReceiptList
-	logBloom       logBloom
+	logBloom       common.LogBloom
 }
 
 type transitionResult struct {

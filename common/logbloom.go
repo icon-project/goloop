@@ -1,4 +1,4 @@
-package service
+package common
 
 import (
 	"encoding/binary"
@@ -13,43 +13,33 @@ import (
 const (
 	LogBloomBits  = 2048
 	LogBloomBytes = LogBloomBits / 8
-	LogBloomWords = LogBloomBytes / 4
 )
 
 const (
 	configLogBloomLegacy = true
 )
 
-/*
-	Sample event data
-	{
-		"scoreAddress":"cx88ff9111d2361d380030e9d79bbf8b11671f1ada",
-    	"indexed": [EventAccountRegistered(Address,int,int), hxca916987102102dcee50e5109346b6ee767bc2bd],
-		"data": [0x3635c9adc5dea00000, 0x43c33c1937564800000]
-	}
-*/
-
 // logBloom store blooms of logs.
-type logBloom struct {
+type LogBloom struct {
 	big.Int
 }
 
-func (lb *logBloom) String() string {
+func (lb *LogBloom) String() string {
 	return "0x" + hex.EncodeToString(lb.LogBytes())
 }
-func (lb *logBloom) LogBytes() []byte {
+func (lb *LogBloom) LogBytes() []byte {
 	bs := make([]byte, LogBloomBytes)
 	ibs := lb.Int.Bytes()
 	copy(bs[LogBloomBytes-len(ibs):], ibs)
 	return bs
 }
 
-func (lb logBloom) MarshalJSON() ([]byte, error) {
+func (lb LogBloom) MarshalJSON() ([]byte, error) {
 	s := "0x" + hex.EncodeToString(lb.LogBytes())
 	return json.Marshal(s)
 }
 
-func (lb *logBloom) UnmarshalJSON(data []byte) error {
+func (lb *LogBloom) UnmarshalJSON(data []byte) error {
 	var s string
 	if err := json.Unmarshal(data, &s); err != nil {
 		return err
@@ -61,38 +51,38 @@ func (lb *logBloom) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (lb *logBloom) CodecEncodeSelf(e *codec.Encoder) {
+func (lb *LogBloom) CodecEncodeSelf(e *codec.Encoder) {
 	b := lb.Bytes()
 	e.Encode(b)
 }
 
-func (lb *logBloom) CodecDecodeSelf(d *codec.Decoder) {
+func (lb *LogBloom) CodecDecodeSelf(d *codec.Decoder) {
 	var b []byte
 	d.Decode(&b)
 	lb.SetBytes(b)
 }
 
 // Merge bloom
-func (lb *logBloom) Merge(lb2 *logBloom) {
+func (lb *LogBloom) Merge(lb2 *LogBloom) {
 	lb.Int.Or(&lb.Int, &lb2.Int)
 }
 
 // Contain checks whether it includes the bloom
-func (lb *logBloom) Contain(lb2 *logBloom) bool {
+func (lb *LogBloom) Contain(lb2 *LogBloom) bool {
 	var r big.Int
 	r.And(&lb.Int, &lb2.Int)
 	return r.Cmp(&lb2.Int) == 0
 }
 
-func (lb *logBloom) addBit(idx uint16) {
+func (lb *LogBloom) addBit(idx uint16) {
 	lb.Int.SetBit(&lb.Int, int(idx), 1)
 }
 
-func (lb *logBloom) AddLog(e *eventLog) {
-	if len(e.Indexed) < 1 {
+func (lb *LogBloom) AddLog(log [][]byte) {
+	if len(log) == 0 {
 		return
 	}
-	for i, b := range e.Indexed {
+	for i, b := range log {
 		bs := make([]byte, len(b)+1)
 		bs[0] = byte(i)
 		copy(bs[1:], b)
@@ -100,7 +90,7 @@ func (lb *logBloom) AddLog(e *eventLog) {
 	}
 }
 
-func (lb *logBloom) addLog(logs ...[]byte) {
+func (lb *LogBloom) addLog(logs ...[]byte) {
 	for _, log := range logs {
 		var h []byte
 		if configLogBloomLegacy {
