@@ -367,6 +367,8 @@ func (cs *consensus) enterPropose() {
 			}
 		}
 	}
+	// dispatch twice to handle the case blockPart is queued before proposal
+	cs.dispatchQueuedMessage()
 	cs.dispatchQueuedMessage()
 }
 
