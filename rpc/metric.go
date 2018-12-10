@@ -71,7 +71,7 @@ func promethusExporter(cs module.Consensus) *prometheus.Exporter {
 	// Record some data points...
 	go func() {
 		// wait for consensus initializing
-		time.Sleep(5000 * time.Millisecond)
+		//time.Sleep(5000 * time.Millisecond)
 
 		ctx, err := tag.New(context.Background(), tag.Insert(hostname, os.Getenv("NODE_NAME")))
 		if err != nil {
