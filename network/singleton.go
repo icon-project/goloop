@@ -16,7 +16,7 @@ var (
 	ErrAlreadyRegisteredReactor  = errors.New("Already registered reactor")
 	ErrAlreadyRegisteredProtocol = errors.New("Already registered protocol")
 	ErrNotRegisteredRole         = errors.New("Not registered role")
-	ErrNotAvailabe               = errors.New("Not avaliable")
+	ErrNotAvailable              = errors.New("Not available")
 	ErrQueueOverflow             = errors.New("Queue full")
 	ErrDuplicatedPacket          = errors.New("Duplicated Packet")
 	ErrNilPacket                 = errors.New("Nil Packet")

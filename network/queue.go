@@ -9,6 +9,7 @@ type Queue struct {
 	buf     []context.Context
 	w       int
 	r       int
+	len     int
 	size    int
 	mtx     sync.RWMutex
 	wait    map[chan bool]interface{}
@@ -24,6 +25,7 @@ func NewQueue(size int) *Queue {
 		w:    0,
 		r:    0,
 		size: size,
+		len:  size + 1,
 		wait: make(map[chan bool]interface{}),
 	}
 	return q
@@ -36,7 +38,7 @@ func (q *Queue) Push(ctx context.Context) bool {
 		return false
 	}
 	w := q.w
-	if len(q.buf) > (w + 1) {
+	if q.len > (w + 1) {
 		w++
 	} else {
 		w = 0
@@ -60,7 +62,7 @@ func (q *Queue) Pop() context.Context {
 	}
 	ctx := q.buf[q.r].(context.Context)
 	q.buf[q.r] = nil
-	if len(q.buf) > (q.r + 1) {
+	if q.len > (q.r + 1) {
 		q.r++
 	} else {
 		q.r = 0

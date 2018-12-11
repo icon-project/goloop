@@ -150,8 +150,8 @@ func (p *Peer) String() string {
 	if p == nil {
 		return ""
 	}
-	return fmt.Sprintf("{id:%v, addr:%v, in:%v, channel:%v, role:%v, rtt:%v}",
-		p.id, p.netAddress, p.incomming, p.channel, p.role, p.rtt.String())
+	return fmt.Sprintf("{id:%v, addr:%v, in:%v, channel:%v, role:%v, conn:%v, rtt:%v}",
+		p.id, p.netAddress, p.incomming, p.channel, p.role, p.connType, p.rtt.String())
 }
 
 func (p *Peer) ID() module.PeerID {

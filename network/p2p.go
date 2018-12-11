@@ -413,7 +413,7 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 				p2p.log.Println("Warning", "handleQuery", "p2pRoleNone cannot query to p2pRoleRoot")
 				m.Message = "not allowed to query"
 				m.Children = nil
-				//p.conn.Close()
+				//p.Close()
 			case p2pRoleRootSeed:
 				//TODO hiding RootSeed role
 				m.Role = p2pRoleSeed
@@ -428,7 +428,7 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 		}
 	} else {
 		m.Message = "not exists allowedlist"
-		//p.conn.Close()
+		//p.Close()
 	}
 	rpkt := NewPacket(PROTO_P2P_QUERY_RESULT, p2p.encodeMsgpack(m))
 	rpkt.src = p2p.self.id
@@ -468,18 +468,18 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 			//disconn root->seed , seed->seed,
 			if !p.incomming && qrm.Role == p2pRoleSeed {
 				p2p.log.Println("handleQueryResult", "no need outgoing p2pRoleSeed connection from", role)
-				p.conn.Close()
+				p.Close()
 			}
 		}
 	} else {
 		p2p.log.Println("handleQueryResult", "not exists allowedlist", p)
-		//p.conn.Close()
+		//p.Close()
 	}
 }
 
 func (p2p *PeerToPeer) sendToPeer(pkt *Packet, p *Peer) error {
 	if p == nil {
-		return ErrNotAvailabe
+		return ErrNotAvailable
 	}
 	if pkt.src == nil {
 		pkt.src = p2p.self.id
@@ -496,7 +496,7 @@ func (p2p *PeerToPeer) sendToPeers(pkt *Packet, peers *PeerSet) {
 }
 
 func (p2p *PeerToPeer) sendRoutine() {
-	//TODO goroutine exit
+	// TODO goroutine exit
 	for {
 		<-p2p.sendQueue.Wait()
 		for {
@@ -548,9 +548,9 @@ func (p2p *PeerToPeer) alternateSendRoutine() {
 	var m = make(map[uint64]*Packet)
 	for {
 		select {
-		case <-p2p.sendQueue.Wait():
+		case <-p2p.alternateQueue.Wait():
 			for {
-				ctx := p2p.sendQueue.Pop()
+				ctx := p2p.alternateQueue.Pop()
 				if ctx == nil {
 					break
 				}
@@ -581,7 +581,8 @@ func (p2p *PeerToPeer) alternateSendRoutine() {
 
 func (p2p *PeerToPeer) send(pkt *Packet) error {
 	if p2p.numberOfPeer(true) < 1 {
-		return ErrNotAvailabe
+		p2p.log.Println("Warning", "send", "Not Available", pkt.protocol, pkt.subProtocol)
+		return ErrNotAvailable
 	}
 	ctx := context.WithValue(context.Background(), p2pContextKeyPacket, pkt)
 	if ok := p2p.sendQueue.Push(ctx); !ok {
@@ -711,7 +712,6 @@ func (p2p *PeerToPeer) syncSeeds() {
 				}
 			}
 		}
-		// }
 		for _, p := range p2p.friends.Array() {
 			if !p.incomming {
 				p2p.sendQuery(p)
@@ -726,6 +726,7 @@ func (p2p *PeerToPeer) discoverFriends() {
 		p2p.log.Println("discoverFriends", "p2pConnTypeFriend", p.id)
 		p.connType = p2pConnTypeFriend
 		p2p.friends.Add(p)
+		p2p.onEvent(p2pEventJoin, p)
 	}
 	for _, s := range p2p.roots.Array() {
 		if s != p2p.self.netAddress && !p2p.friends.HasNetAddresse(s) {
