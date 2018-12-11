@@ -561,6 +561,9 @@ func (cs *consensus) enterCommit(partSetID *PartSetID) {
 	if cs.currentBlockParts.IsComplete() {
 		cs.commitAndEnterNewHeight()
 	}
+
+	// dispatch to handle queued blockPart
+	cs.dispatchQueuedMessage()
 }
 
 func (cs *consensus) enterNewHeight() {
