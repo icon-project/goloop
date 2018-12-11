@@ -60,6 +60,10 @@ func (r *serviceReactor) propagateTransaction(pi module.ProtocolInfo, tx *transa
 
 func (r *serviceReactor) OnError() {
 }
+func (r *serviceReactor) OnJoin(id module.PeerID) {
+}
+func (r *serviceReactor) OnLeave(id module.PeerID) {
+}
 
 type protocolInfo uint16
 

@@ -102,6 +102,12 @@ func (r *testReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.Peer
 
 func (r *testReactor) OnError() {
 }
+func (r *testReactor) OnJoin(id module.PeerID) {
+	r.log.Println("OnJoin", id)
+}
+func (r *testReactor) OnLeave(id module.PeerID) {
+	r.log.Println("OnLeave", id)
+}
 
 func (r *testReactor) encode(v interface{}) []byte {
 	b := make([]byte, DefaultPacketBufferSize)

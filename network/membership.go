@@ -133,9 +133,9 @@ func (ms *membership) eventRoutine(br *baseReactor) {
 			ms.log.Println("eventRoutine", evt, p.ID())
 			switch evt {
 			case p2pEventJoin:
-				// br.impl.OnJoin(p.ID())
+				br.impl.OnJoin(p.ID())
 			case p2pEventLeave:
-				// br.impl.OnLeave(p.ID())
+				br.impl.OnLeave(p.ID())
 			}
 		}
 	}

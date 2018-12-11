@@ -133,6 +133,11 @@ func (cs *consensus) OnError() {
 	defer cs.mutex.Unlock()
 }
 
+func (cs *consensus) OnJoin(id module.PeerID) {
+}
+func (cs *consensus) OnLeave(id module.PeerID) {
+}
+
 func (cs *consensus) receiveProposal(msg *proposalMessage) (bool, error) {
 	if msg.Round < cs.round {
 		return true, nil

@@ -7,12 +7,12 @@ type NetworkManager interface {
 }
 
 type Reactor interface {
-	//TODO call from Membership.workerRoutine
-	//current direct call by Membership.onPacket from Peer.ReceiveRoutine
-	//case broadcast, if return (true,nil) then rebroadcast when receiving
+	//case broadcast and multicast, if return (true,nil) then rebroadcast
 	OnReceive(subProtocol ProtocolInfo, bytes []byte, id PeerID) (bool, error)
 	//TODO call from Membership.onError() while message delivering
 	OnError()
+	OnJoin(id PeerID)
+	OnLeave(id PeerID)
 }
 
 type Membership interface {
