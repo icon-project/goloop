@@ -189,7 +189,7 @@ func (a *Authenticator) handlePublicKeyRequest(pkt *Packet, p *Peer) {
 	p.pubKey, _ = crypto.ParsePublicKey(rm.PublicKey)
 	p.id = NewPeerIDFromPublicKey(p.pubKey)
 	if !p.id.Equal(pkt.src) {
-		a.log.Println("handlePublicKeyRequest Warnning id doesnt match pkt:", pkt.src, ",expected:", p.id)
+		a.log.Println("Warning", "handlePublicKeyRequest", "id doesnt match pkt:", pkt.src, ",expected:", p.id)
 	}
 
 	m := &PublicKeyResponse{PublicKey: a.pubKey.SerializeCompressed()}
@@ -205,7 +205,7 @@ func (a *Authenticator) handlePublicKeyResponse(pkt *Packet, p *Peer) {
 	p.pubKey, _ = crypto.ParsePublicKey(rm.PublicKey)
 	p.id = NewPeerIDFromPublicKey(p.pubKey)
 	if !p.id.Equal(pkt.src) {
-		a.log.Println("handlePublicKeyResponse Warnning id doesnt match pkt:", pkt.src, ",expected:", p.id)
+		a.log.Println("Warning", "handlePublicKeyResponse", "id doesnt match pkt:", pkt.src, ",expected:", p.id)
 	}
 
 	m := &SignatureRequest{Signature: a.Signature()}
@@ -226,11 +226,8 @@ func (a *Authenticator) handleSignatureRequest(pkt *Packet, p *Peer) {
 
 		a.nextOnPeer(p)
 	} else {
-		a.log.Println("handleSignatureRequest Incomming PeerId Invalid signature, try close")
-		err := p.conn.Close()
-		if err != nil {
-			a.log.Println("handleSignatureRequest p.conn.Close()", err)
-		}
+		a.log.Println("handleSignatureRequest", "Incomming PeerId Invalid signature, try close")
+		p.Close()
 	}
 }
 
@@ -242,10 +239,7 @@ func (a *Authenticator) handleSignatureResponse(pkt *Packet, p *Peer) {
 	if a.VerifySignature(s, p) {
 		a.nextOnPeer(p)
 	} else {
-		a.log.Println("handleSignatureResponse Outgoing PeerId Invalid signature, try close")
-		err := p.conn.Close()
-		if err != nil {
-			a.log.Println("handleSignatureResponse p.conn.Close()", err)
-		}
+		a.log.Println("handleSignatureResponse", "Outgoing PeerId Invalid signature, try close")
+		p.Close()
 	}
 }

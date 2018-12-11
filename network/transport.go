@@ -115,7 +115,7 @@ func (l *Listener) acceptRoutine() {
 	for {
 		conn, err := l.ln.Accept()
 		if err != nil {
-			l.log.Println("Listener acceptRoutine", err)
+			l.log.Println("Warning", "acceptRoutine", err)
 			return
 		}
 		l.onAccept(conn)
@@ -143,7 +143,7 @@ func newDialer(channel string, cbFunc connectCbFunc) *Dialer {
 func (d *Dialer) Dial(addr string) error {
 	conn, err := net.Dial(DefaultTransportNet, addr)
 	if err != nil {
-		d.log.Println("Dialer Dial", err)
+		d.log.Println("Warning", "Dial", err)
 		return err
 	}
 	d.conn = conn
@@ -210,7 +210,7 @@ func (ph *peerHandler) setSelfPeerID(id module.PeerID) {
 func (ph *peerHandler) sendPacket(pi module.ProtocolInfo, m interface{}, p *Peer) {
 	pkt := NewPacket(pi, ph.encode(m))
 	pkt.src = ph.self
-	p.sendPacket(pkt)
+	p.send(pkt)
 }
 
 func (ph *peerHandler) encode(v interface{}) []byte {

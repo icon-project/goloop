@@ -102,7 +102,7 @@ func (l *logger) printable(v interface{}) bool {
 }
 
 func (l *logger) Println(v ...interface{}) {
-	if l.printable(v[0]) {
+	if v[0] == "Warning" || l.printable(v[0]) {
 		//%T : type //%#v
 		s := fmt.Sprintf("[%s] %s", l.prefix, l.name)
 		w := make([]interface{}, len(v)+1)

@@ -82,10 +82,29 @@ func (ph *testPeerHandler) onPacket(pkt *Packet, p *Peer) {
 	}
 }
 
+//Using mutex for prevent panic d.nx != 0
+////crypto/sha256/sha256.go:253 (*digest).checkSum
+////crypto/sha256/sha256.go:229 (*digest).Sum
+////github.com/icon-project/goloop/vendor/github.com/haltingstate/secp256k1-go/secp256_rand.go:23 SumSHA256
+////github.com/icon-project/goloop/vendor/github.com/haltingstate/secp256k1-go/secp256_rand.go:50 (*EntropyPool).Mix256
+////github.com/icon-project/goloop/vendor/github.com/haltingstate/secp256k1-go/secp256_rand.go:71 (*EntropyPool).Mix
+////github.com/icon-project/goloop/vendor/github.com/haltingstate/secp256k1-go/secp256_rand.go:133 RandByte
+var walletMutex sync.Mutex
+
+type testWallet struct {
+	module.Wallet
+}
+
+func (w *testWallet) Sign(data []byte) ([]byte, error) {
+	defer walletMutex.Unlock()
+	walletMutex.Lock()
+	return w.Wallet.Sign(data)
+}
+
 func walletFromGeneratedPrivateKey() module.Wallet {
 	priK, _ := crypto.GenerateKeyPair()
 	w, _ := common.NewWalletFromPrivateKey(priK)
-	return w
+	return &testWallet{w}
 }
 
 func Test_transport(t *testing.T) {

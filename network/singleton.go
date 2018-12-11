@@ -16,6 +16,10 @@ var (
 	ErrAlreadyRegisteredReactor  = errors.New("Already registered reactor")
 	ErrAlreadyRegisteredProtocol = errors.New("Already registered protocol")
 	ErrNotRegisteredRole         = errors.New("Not registered role")
+	ErrNotAvailabe               = errors.New("Not avaliable")
+	ErrQueueOverflow             = errors.New("Queue full")
+	ErrDuplicatedPacket          = errors.New("Duplicated Packet")
+	ErrNilPacket                 = errors.New("Nil Packet")
 )
 var (
 	singletonTransport module.NetworkTransport
@@ -24,13 +28,22 @@ var (
 )
 
 var (
-	singletonLoggerExcludes = []string{"Authenticator", "ChannelNegotiator"}
+	singletonLoggerExcludes = []string{
+		"Listener",
+		"Dialer",
+		"PeerDispatcher",
+		"Authenticator",
+		"ChannelNegotiator",
+		"PeerToPeer",
+		"Membership",
+		"NetworkManager",
+	}
 )
 
 const (
 	DefaultTransportNet        = "tcp4"
 	DefaultMembershipName      = ""
-	DefaultReactorQueueSize    = 1000
+	DefaultReceiveQueueSize    = 1000
 	DefaultPacketBufferSize    = 4096 //bufio.defaultBufSize=4096
 	DefaultPacketPayloadMax    = math.MaxInt32
 	DefaultPacketPoolNumBucket = 20
@@ -38,8 +51,14 @@ const (
 	DefaultDiscoveryPeriod     = 2 * time.Second
 	DefaultSeedPeriod          = 3 * time.Second
 	DefaultAlternateSendPeriod = 1 * time.Second
-	DefaultSendTaskTimeout     = 1 * time.Second
+	DefaultSendTimeout         = 1 * time.Second
+	DefaultSendQueueSize       = 1000
 	DefaultSendHistoryClear    = 0 //10 * time.Second
+	DefaultEventQueueSize      = 100
+	DefaultPeerSendQueueSize   = 1000
+	DefaultUncleLimit          = 1
+	DefaultPacketRewriteLimit  = 10
+	DefaultPacketRewriteDelay  = 100 * time.Millisecond
 )
 
 var (

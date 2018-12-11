@@ -1,6 +1,7 @@
 package network
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -22,10 +23,10 @@ type Peer struct {
 	conn      net.Conn
 	reader    *PacketReader
 	writer    *PacketWriter
+	q         *Queue
 	onPacket  packetCbFunc
 	onError   errorCbFunc
 	onClose   closeCbFunc
-	mtx       sync.Mutex
 	timestamp time.Time
 	hmap      map[uint64]time.Duration
 	//
@@ -113,6 +114,7 @@ func (pr *PeerRoleFlag) UnSetFlag(o PeerRoleFlag) {
 
 const (
 	p2pConnTypeNone = iota
+	p2pConnTypePre
 	p2pConnTypeParent
 	p2pConnTypeChildren
 	p2pConnTypeUncle
@@ -127,6 +129,7 @@ func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool) *Peer {
 		conn:      conn,
 		reader:    NewPacketReader(conn),
 		writer:    NewPacketWriter(conn),
+		q:         NewQueue(DefaultPeerSendQueueSize),
 		incomming: incomming,
 		timestamp: time.Now(),
 		hmap:      make(map[uint64]time.Duration),
@@ -139,6 +142,7 @@ func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool) *Peer {
 		//ignore
 	})
 	go p.receiveRoutine()
+	go p.sendRoutine()
 	return p
 }
 
@@ -196,13 +200,18 @@ func (p *Peer) Close() {
 	}
 }
 
+func (p *Peer) _recover() interface{} {
+	if err := recover(); err != nil {
+		log.Printf("Peer._recover recover %+v", err)
+		return err
+	}
+	return nil
+}
+
 //receive from bufio.Reader, unmarshalling and peerToPeer.onPacket
 func (p *Peer) receiveRoutine() {
 	defer func() {
-		if err := recover(); err != nil {
-			//TODO recover()
-			log.Printf("Peer.receiveRoutine recover %+v", err)
-		}
+		// p._recover()
 		p.Close()
 	}()
 	for {
@@ -232,61 +241,65 @@ func (p *Peer) receiveRoutine() {
 	}
 }
 
-//Send marshalled packet to peer
-// func (p *Peer) sendFrom(rd io.Reader) error {
-// 	n, err := p.writer.ReadFrom(rd)
-// 	if err != nil {
-// 		//TODO
-// 		return err
-// 	}
-// 	return p.writer.Flush()
-// }
-
-func (p *Peer) sendPacket(pkt *Packet) {
-	defer p.mtx.Unlock()
-	p.mtx.Lock()
-
-	if pkt.sender != nil && p.id.Equal(pkt.sender) {
-		// log.Println("Peer.sendPacket Ignore by sender", pkt.sender)
-		//TODO notify ignored
-		return
-	}
-
-	if DefaultSendHistoryClear > 0 && pkt.hashOfPacket != 0 {
-		if _, ok := p.hmap[pkt.hashOfPacket]; ok {
-			// log.Println("Peer.sendPacket Ignore by SendHistory", p.timestamp, d, pkt.hashOfPacket)
-			//TODO notify ignored
-			return
-		}
-	}
-
-	if err := p.conn.SetWriteDeadline(time.Now().Add(DefaultSendTaskTimeout)); err != nil {
-		log.Printf("Peer.sendPacket SetWriteDeadline onError %T %#v %s", err, err, p.String())
-		//TODO
-		p.onError(err, p, pkt)
-	} else if err := p.writer.WritePacket(pkt); err != nil {
-		log.Printf("Peer.sendPacket WritePacket onError %T %#v %s", err, err, p.String())
-		//TODO
-		p.onError(err, p, pkt)
-	} else if err := p.writer.Flush(); err != nil {
-		log.Printf("Peer.sendPacket Flush onError %T %#v %s", err, err, p.String())
-		//TODO
-		p.onError(err, p, pkt)
-	}
-
-	if DefaultSendHistoryClear > 0 {
-		now := time.Now()
-		d := now.Sub(p.timestamp)
-		p.hmap[pkt.hashOfPacket] = d
-		if d > DefaultSendHistoryClear {
-			for k, v := range p.hmap {
-				if v > DefaultSendHistoryClear {
-					delete(p.hmap, k)
+func (p *Peer) sendRoutine() {
+	//TODO goroutine exit
+	for {
+		<-p.q.Wait()
+		for {
+			ctx := p.q.Pop()
+			if ctx == nil {
+				break
+			}
+			pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
+			if DefaultSendHistoryClear > 0 && pkt.hashOfPacket != 0 {
+				if d, ok := p.hmap[pkt.hashOfPacket]; ok {
+					log.Println("Peer.sendRoutine Ignore by SendHistory", p.timestamp, d, pkt.hashOfPacket)
+					//TODO notify ignored
+					return
 				}
 			}
-			p.timestamp = now
+
+			if err := p.conn.SetWriteDeadline(time.Now().Add(DefaultSendTimeout)); err != nil {
+				log.Printf("Peer.sendRoutine SetWriteDeadline onError %T %#v %s", err, err, p.String())
+				p.onError(err, p, pkt)
+			} else if err := p.writer.WritePacket(pkt); err != nil {
+				log.Printf("Peer.sendRoutine WritePacket onError %T %#v %s", err, err, p.String())
+				p.onError(err, p, pkt)
+			} else if err := p.writer.Flush(); err != nil {
+				log.Printf("Peer.sendRoutine Flush onError %T %#v %s", err, err, p.String())
+				p.onError(err, p, pkt)
+			}
+
+			if DefaultSendHistoryClear > 0 {
+				now := time.Now()
+				d := now.Sub(p.timestamp)
+				p.hmap[pkt.hashOfPacket] = d
+				if d > DefaultSendHistoryClear {
+					for k, v := range p.hmap {
+						if v > DefaultSendHistoryClear {
+							delete(p.hmap, k)
+						}
+					}
+					p.timestamp = now
+				}
+			}
 		}
 	}
+}
+
+func (p *Peer) send(pkt *Packet) error {
+	if pkt == nil {
+		return ErrNilPacket
+	}
+	if pkt.sender != nil && p.id.Equal(pkt.sender) {
+		return ErrDuplicatedPacket
+	}
+
+	ctx := context.WithValue(context.Background(), p2pContextKeyPacket, pkt)
+	if ok := p.q.Push(ctx); !ok {
+		return ErrQueueOverflow
+	}
+	return nil
 }
 
 const (

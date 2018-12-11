@@ -24,7 +24,8 @@ type baseReactor struct {
 	impl         module.Reactor
 	name         string
 	subProtocols map[uint16]module.ProtocolInfo
-	q            *Queue
+	receiveQueue *Queue
+	eventQueue   *Queue
 }
 
 func newBaseReactor(name string, reactor module.Reactor, subProtocols []module.ProtocolInfo) *baseReactor {
@@ -32,7 +33,8 @@ func newBaseReactor(name string, reactor module.Reactor, subProtocols []module.P
 		impl:         reactor,
 		name:         name,
 		subProtocols: make(map[uint16]module.ProtocolInfo),
-		q:            NewQueue(DefaultReactorQueueSize),
+		receiveQueue: NewQueue(DefaultReceiveQueueSize),
+		eventQueue:   NewQueue(DefaultEventQueueSize),
 	}
 	for _, sp := range subProtocols {
 		k := sp.Uint16()
@@ -41,10 +43,10 @@ func newBaseReactor(name string, reactor module.Reactor, subProtocols []module.P
 	return br
 }
 
-//type sendCbFunc func(pi module.ProtocolInfo, bytes []byte)
-//Broadcast
-//Multicast
-//Unicast
+//call from Membership.onError() while message delivering
+func (br *baseReactor) OnError(err error, subProtocol module.ProtocolInfo, bytes []byte, id module.PeerID) {
+
+}
 
 func newMembership(name string, pi module.ProtocolInfo, p2p *PeerToPeer) *membership {
 	ms := &membership{
@@ -59,32 +61,32 @@ func newMembership(name string, pi module.ProtocolInfo, p2p *PeerToPeer) *member
 		//
 		log: newLogger("Membership", fmt.Sprintf("%s.%s.%s", p2p.channel, p2p.self.id, name)),
 	}
-	p2p.setCbFunc(pi, ms.onPacket, ms.onError)
+	p2p.setCbFunc(pi, ms.onPacket, ms.onError, ms.onEvent, p2pEventJoin, p2pEventLeave)
 	return ms
 }
 
 //TODO using worker pattern {pool or each packet or none} for reactor
-func (ms *membership) workerRoutine(br *baseReactor) {
+func (ms *membership) receiveRoutine(br *baseReactor) {
 	for {
-		<-br.q.Wait()
+		<-br.receiveQueue.Wait()
 		for {
-			ctx := br.q.Pop()
+			ctx := br.receiveQueue.Pop()
 			if ctx == nil {
 				break
 			}
 			pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
 			p := ctx.Value(p2pContextKeyPeer).(*Peer)
 			pi := br.subProtocols[pkt.subProtocol.Uint16()]
-			// ms.log.Println("workerRoutine", pi, p.ID)
+			// ms.log.Println("receiveRoutine", pi, p.ID)
 			r, err := br.impl.OnReceive(pi, pkt.payload, p.ID())
 			if err != nil {
-				// ms.log.Println("workerRoutine", err)
+				// ms.log.Println("receiveRoutine", err)
 			}
 			if r {
 				if pkt.ttl == 1 {
-					// ms.log.Println("workerRoutine rebroadcast Ignore, not allowed when ttl=1", pkt)
+					// ms.log.Println("receiveRoutine rebroadcast Ignore, not allowed when ttl=1", pkt)
 				} else {
-					// ms.log.Println("workerRoutine rebroadcast", pkt)
+					// ms.log.Println("receiveRoutine rebroadcast", pkt)
 					ms.p2p.send(pkt)
 				}
 			}
@@ -100,8 +102,8 @@ func (ms *membership) onPacket(pkt *Packet, p *Peer) {
 	if br, ok := ms.protocolMap[k]; ok {
 		ctx := context.WithValue(context.Background(), p2pContextKeyPacket, pkt)
 		ctx = context.WithValue(ctx, p2pContextKeyPeer, p)
-		if ok := br.q.Push(ctx); !ok {
-			// ms.log.Println("onPacket", "BaseReactor Queue Push failure", pkt.protocol, pkt.subProtocol)
+		if ok := br.receiveQueue.Push(ctx); !ok {
+			// ms.log.Println("onPacket", "BaseReactor receiveQueue Push failure", br.name, pkt.protocol, pkt.subProtocol, p.ID())
 		}
 	}
 }
@@ -111,7 +113,41 @@ func (ms *membership) onError(err error, p *Peer, pkt *Packet) {
 	if pkt != nil {
 		k := pkt.subProtocol.Uint16()
 		if br, ok := ms.protocolMap[k]; ok {
-			br.impl.OnError()
+			pi := br.subProtocols[k]
+			//TODO error notify
+			br.OnError(err, pi, pkt.payload, p.ID())
+		}
+	}
+}
+
+func (ms *membership) eventRoutine(br *baseReactor) {
+	for {
+		<-br.eventQueue.Wait()
+		for {
+			ctx := br.eventQueue.Pop()
+			if ctx == nil {
+				break
+			}
+			evt := ctx.Value(p2pContextKeyEvent).(string)
+			p := ctx.Value(p2pContextKeyPeer).(*Peer)
+			ms.log.Println("eventRoutine", evt, p.ID())
+			switch evt {
+			case p2pEventJoin:
+				// br.impl.OnJoin(p.ID())
+			case p2pEventLeave:
+				// br.impl.OnLeave(p.ID())
+			}
+		}
+	}
+}
+
+func (ms *membership) onEvent(evt string, p *Peer) {
+	// ms.log.Println("onEvent", evt, p)
+	ctx := context.WithValue(context.Background(), p2pContextKeyEvent, evt)
+	ctx = context.WithValue(ctx, p2pContextKeyPeer, p)
+	for _, br := range ms.reactors {
+		if ok := br.eventQueue.Push(ctx); !ok {
+			// ms.log.Println("onEvent", "BaseReactor eventQueue Push failure", br.name, evt, p.ID())
 		}
 	}
 }
@@ -129,21 +165,17 @@ func (ms *membership) RegistReactor(name string, reactor module.Reactor, subProt
 		ms.log.Printf("RegistReactor.cbFuncs %#x %s", k, name)
 	}
 	ms.reactors[name] = br
-	go ms.workerRoutine(br)
+	go ms.receiveRoutine(br)
+	go ms.eventRoutine(br)
 	return nil
 }
 
 func (ms *membership) Unicast(subProtocol module.ProtocolInfo, bytes []byte, id module.PeerID) error {
-	p := ms.p2p.getPeer(id)
-	if p == nil {
-		return fmt.Errorf("not connected Peer %v", id)
-	}
-
 	pkt := NewPacket(subProtocol, bytes)
 	pkt.protocol = ms.protocol
 	pkt.dest = p2pDestPeer
-	ms.p2p.sendToPeer(pkt, p)
-	return nil
+	p := ms.p2p.getPeer(id, true)
+	return ms.p2p.sendToPeer(pkt, p)
 }
 
 //TxMessage,PrevoteMessage, Send to Validators

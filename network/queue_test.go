@@ -19,6 +19,48 @@ func generateOnReceiveContext(s string, i int) context.Context {
 	return ctx
 }
 
+func Test_queue(t *testing.T) {
+	q := NewQueue(10)
+	ticker := time.NewTicker(100 * time.Millisecond)
+	go func(q *Queue) {
+		for i := 0; i < 11; i++ {
+			ctx := context.WithValue(context.Background(), "i", i)
+			r := q.Push(ctx)
+			log.Println("push", i, r)
+		}
+	}(q)
+	n := 0
+Loop:
+	for {
+		select {
+		case <-q.Wait():
+			log.Println("wakeup")
+			for {
+				ctx := q.Pop()
+				if ctx == nil {
+					break
+				}
+				i := ctx.Value("i").(int)
+				log.Println("preSleep", i)
+				time.Sleep(500 * time.Millisecond)
+				log.Println("afterSleep", i)
+			}
+			log.Println("wakeup done")
+		case <-ticker.C:
+			n++
+			log.Println("ticker", n)
+			if n%10 == 0 {
+				ctx := context.WithValue(context.Background(), "i", n)
+				q.Push(ctx)
+			}
+			if n > 20 {
+				break Loop
+			}
+		}
+	}
+
+}
+
 func Test_queue_OnReceiveQueue(t *testing.T) {
 	q := NewQueue(10)
 	assert.Equal(t, 0, q.Available(), "0")

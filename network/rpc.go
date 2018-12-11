@@ -150,7 +150,7 @@ func jsonrpcHandleSendQuery(c context.Context, params *fastjson.RawMessage) (int
 	if err != nil {
 		return nil, err
 	}
-	p := p2p.getPeer(NewPeerIDFromString(id))
+	p := p2p.getPeer(NewPeerIDFromString(id), false)
 	p2p.sendQuery(p)
 	return nil, nil
 }

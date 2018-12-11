@@ -215,12 +215,14 @@ func (pw *PacketWriter) WritePacket(pkt *Packet) error {
 
 func (pw *PacketWriter) Write(b []byte) (int, error) {
 	wn := 0
+	re := 0
 	for {
 		n, err := pw.Writer.Write(b[wn:])
 		wn += n
-		if err != nil && err == io.ErrShortWrite {
+		if err != nil && err == io.ErrShortWrite && re < DefaultPacketRewriteLimit {
+			re++
 			log.Println("PacketWriter.Write io.ErrShortWrite", err)
-			time.Sleep(1 * time.Second)
+			time.Sleep(DefaultPacketRewriteDelay)
 			continue
 		} else {
 			return wn, err
@@ -229,11 +231,12 @@ func (pw *PacketWriter) Write(b []byte) (int, error) {
 }
 
 func (pw *PacketWriter) Flush() error {
+	re := 0
 	for {
 		err := pw.Writer.Flush()
-		if err != nil && err == io.ErrShortWrite {
+		if err != nil && err == io.ErrShortWrite && re < DefaultPacketRewriteLimit {
 			log.Println("PacketWriter.Flush io.ErrShortWrite", err)
-			time.Sleep(1 * time.Second)
+			time.Sleep(DefaultPacketRewriteDelay)
 			continue
 		} else {
 			return err

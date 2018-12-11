@@ -20,8 +20,7 @@ func NewQueue(size int) *Queue {
 		panic("queue size must be greater than zero")
 	}
 	q := &Queue{
-
-		buf:  make([]context.Context, size),
+		buf:  make([]context.Context, size+1),
 		w:    0,
 		r:    0,
 		size: size,

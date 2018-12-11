@@ -8,7 +8,6 @@ import (
 	"github.com/ugorji/go/codec"
 
 	"github.com/icon-project/goloop/module"
-	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -102,7 +101,6 @@ func (r *testReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.Peer
 }
 
 func (r *testReactor) OnError() {
-	assert.Fail(r.t, "TestReactor.onError")
 }
 
 func (r *testReactor) encode(v interface{}) []byte {
@@ -201,17 +199,17 @@ func Test_network(t *testing.T) {
 	time.Sleep(2 * DefaultSeedPeriod)
 	t.Log(time.Now(), "Messaging")
 	m["TestValidator"][0].Broadcast("Test1")
-	time.Sleep(DefaultSendTaskTimeout)
+	time.Sleep(DefaultSendTimeout)
 	m["TestValidator"][0].BroadcastNeighbor("Test2")
-	time.Sleep(DefaultSendTaskTimeout)
+	time.Sleep(DefaultSendTimeout)
 	m["TestValidator"][0].Multicast("Test3")
-	time.Sleep(DefaultSendTaskTimeout)
+	time.Sleep(DefaultSendTimeout)
 	m["TestSeed"][0].Multicast("Test4")
-	time.Sleep(2 * DefaultSendTaskTimeout)
+	time.Sleep(2 * DefaultSendTimeout)
 	m["TestCitizen"][0].Multicast("Test5")
-	time.Sleep(3 * DefaultSendTaskTimeout)
+	time.Sleep(3 * DefaultSendTimeout)
 	m["TestCitizen"][0].Request("Test6", sr.nt.PeerID())
-	time.Sleep(DefaultSendTaskTimeout)
+	time.Sleep(DefaultSendTimeout)
 
 	for _, arr := range m {
 		for _, r := range arr {
