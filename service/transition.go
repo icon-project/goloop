@@ -25,7 +25,7 @@ const (
 )
 
 const (
-	configUseParallelExecution = true
+	configUseParallelExecution = false
 )
 
 type transition struct {
@@ -243,10 +243,6 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	normalReceipts := make([]Receipt, normalCount)
 	t.executeTxs(t.normalTransactions, wc, normalReceipts)
 
-	ellapsed := float64(time.Now().Sub(startTime) / time.Microsecond)
-	log.Printf("Transactions: %d Elapsed: %.3f microsecs TPS: %.2f",
-		patchCount+normalCount, ellapsed, float64(patchCount+normalCount)/ellapsed*1000000)
-
 	cumulativeSteps := big.NewInt(0)
 	gatheredFee := big.NewInt(0)
 	fee := big.NewInt(0)
@@ -272,6 +268,10 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	tr.SetBalance(trbal)
 
 	t.worldSnapshot = wc.GetSnapshot()
+
+	ellapsed := float64(time.Now().Sub(startTime)/time.Microsecond) / 1000
+	log.Printf("Transactions: %6d  Elapsed: %7.3f msecs  TPS: %9.2f",
+		patchCount+normalCount, ellapsed, float64(patchCount+normalCount)/ellapsed*1000)
 
 	tresult := transitionResult{
 		t.worldSnapshot.StateHash(),
