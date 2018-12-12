@@ -4,6 +4,7 @@ type NetworkManager interface {
 	//CreateIfNotExists and return Membership
 	//if name == "" then return DefaultMembership with fixed PROTO_ID
 	GetMembership(name string) Membership
+	GetPeers() []PeerID
 }
 
 type Reactor interface {

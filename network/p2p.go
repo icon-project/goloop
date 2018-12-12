@@ -626,6 +626,24 @@ func (p2p *PeerToPeer) getPeer(id module.PeerID, onlyJoin bool) *Peer {
 	return nil
 }
 
+func (p2p *PeerToPeer) getPeers(onlyJoin bool) []*Peer {
+	arr := make([]*Peer, 0)
+	if p2p.parent != nil {
+		arr = append(arr, p2p.parent)
+	}
+	arr = append(arr, p2p.uncles.Array()...)
+	arr = append(arr, p2p.children.Array()...)
+	arr = append(arr, p2p.nephews.Array()...)
+	arr = append(arr, p2p.friends.Array()...)
+
+	if !onlyJoin {
+		arr = append(arr, p2p.preParent.Array()...)
+		arr = append(arr, p2p.preUncles.Array()...)
+		arr = append(arr, p2p.orphanages.Array()...)
+	}
+	return arr
+}
+
 func (p2p *PeerToPeer) numberOfPeer(onlyJoin bool) int {
 	n := p2p.uncles.Len()
 	n += p2p.children.Len()

@@ -59,6 +59,15 @@ func (m *manager) GetMembership(name string) module.Membership {
 	return ms
 }
 
+func (m *manager) GetPeers() []module.PeerID {
+	arr := m.p2p.getPeers(true)
+	l := make([]module.PeerID, len(arr))
+	for i, p := range arr {
+		l[i] = p.ID()
+	}
+	return l
+}
+
 //TODO protocolInfo management
 func (m *manager) getProtocolInfo(name string) module.ProtocolInfo {
 	if name == DefaultMembershipName {
