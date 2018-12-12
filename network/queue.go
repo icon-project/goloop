@@ -77,7 +77,7 @@ func (q *Queue) _wait() chan bool {
 	q.wait[ch] = true
 	return ch
 }
-func (q *Queue) _wakeup(ch chan bool) {
+func (q *Queue) _wakeup(ch chan bool) bool {
 	defer q.mtxWait.Unlock()
 	q.mtxWait.Lock()
 	if ch == nil {
@@ -89,7 +89,9 @@ func (q *Queue) _wakeup(ch chan bool) {
 	if ch != nil {
 		close(ch)
 		delete(q.wait, ch)
+		return true
 	}
+	return false
 }
 
 func (q *Queue) Wait() <-chan bool {
@@ -100,6 +102,16 @@ func (q *Queue) Wait() <-chan bool {
 		q._wakeup(ch)
 	}
 	return ch
+}
+
+func (q *Queue) Clear() {
+	defer q.mtx.Unlock()
+	q.mtx.Lock()
+	for q._wakeup(nil) {
+	}
+	q.r = 0
+	q.w = 0
+	q.buf = make([]context.Context, q.size+1)
 }
 
 func (q *Queue) Available() int {

@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"strings"
 	"sync"
 	"time"
 
@@ -29,6 +28,7 @@ type Peer struct {
 	onClose   closeCbFunc
 	timestamp time.Time
 	sentPool  *TimestampPool
+	close     chan error
 	//
 	incomming bool
 	channel   string
@@ -133,6 +133,7 @@ func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool) *Peer {
 		incomming: incomming,
 		timestamp: time.Now(),
 		sentPool:  NewTimestampPool(DefaultPeerSentExpireSecond + 1),
+		close:     make(chan error),
 	}
 	p.setPacketCbFunc(cbFunc)
 	p.setErrorCbFunc(func(err error, p *Peer, pkt *Packet) {
@@ -197,6 +198,7 @@ func (p *Peer) eqaulRole(r PeerRoleFlag) bool {
 func (p *Peer) Close() {
 	if err := p.conn.Close(); err == nil {
 		p.onClose(p)
+		close(p.close)
 	}
 }
 
@@ -208,31 +210,51 @@ func (p *Peer) _recover() interface{} {
 	return nil
 }
 
+func (p *Peer) isTemporaryError(err error) bool {
+	if oe, ok := err.(*net.OpError); ok { //after p.conn.Close()
+		// log.Printf("Peer.isTemporaryError OpError %+v %#v %#v %s", oe, oe, oe.Err, p.String())
+		// if se, ok := oe.Err.(*os.SyscallError); ok {
+		// 	log.Printf("Peer.isTemporaryError *os.SyscallError %+v %#v %#v %s", se, se.Err, se.Err, p.String())
+		// }
+
+		return oe.Temporary()
+		// if se, ok := oe.Err.(syscall.Errno); ok {
+		// 	return se == syscall.ECONNRESET || se == syscall.ECONNABORTED
+		// }
+
+		//referenced from golang.org/x/net/http2/server.go isClosedConnError
+		// if strings.Contains(oe.Err.Error(), "use of closed network connection") ||
+		// 	strings.Contains(oe.Err.Error(), "connection reset by peer") {
+		// 	return true
+		// }
+	} else if err == io.EOF || err == io.ErrUnexpectedEOF { //half Close (recieved tcp close)
+		return false
+	}
+	return true
+}
+
 //receive from bufio.Reader, unmarshalling and peerToPeer.onPacket
 func (p *Peer) receiveRoutine() {
 	defer func() {
 		// p._recover()
 		p.Close()
+		// log.Println("Peer.receiveRoutine end", p.String())
 	}()
 	for {
 		pkt, h, err := p.reader.ReadPacket()
 		if err != nil {
-			if oe, ok := err.(*net.OpError); ok { //after p.conn.Close()
-				//referenced from golang.org/x/net/http2/server.go isClosedConnError
-				if strings.Contains(oe.Err.Error(), "use of closed network connection") {
-					p.Close()
-				}
-			} else if err == io.EOF || err == io.ErrUnexpectedEOF { //half Close (recieved tcp close)
+			r := p.isTemporaryError(err)
+			// log.Printf("Peer.receiveRoutine Error isTemporary:{%v} error:{%+v} peer:%s", r, err, p.String())
+			if !r {
 				p.Close()
-			} else {
-				//TODO
-				// p.reader.Reset()
-				p.onError(err, p, pkt)
+				return
 			}
-			return
+			//TODO p.reader.Reset()
+			p.onError(err, p, pkt)
+			continue
 		}
 		if pkt.hashOfPacket != h.Sum64() {
-			log.Println("Peer.receiveRoutine Invalid hashOfPacket :", pkt.hashOfPacket, ",expected:", h.Sum64())
+			// log.Println("Peer.receiveRoutine Invalid hashOfPacket :", pkt.hashOfPacket, ",expected:", h.Sum64())
 			continue
 		} else {
 			pkt.sender = p.id
@@ -241,39 +263,56 @@ func (p *Peer) receiveRoutine() {
 	}
 }
 
+func (p *Peer) _send(pkt *Packet) error {
+	if err := p.conn.SetWriteDeadline(time.Now().Add(DefaultSendTimeout)); err != nil {
+		return err
+	} else if err := p.writer.WritePacket(pkt); err != nil {
+		return err
+	} else if err := p.writer.Flush(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (p *Peer) sendRoutine() {
-	//TODO goroutine exit
+	// defer func() {
+	// 	log.Println("Peer.sendRoutine end", p.String())
+	// }()
+Loop:
 	for {
-		<-p.q.Wait()
-		for {
-			ctx := p.q.Pop()
-			if ctx == nil {
-				break
-			}
-			pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
-
-			if DefaultPeerSentExpireSecond > 0 && pkt.hashOfPacket != 0 {
-				p.sentPool.RemoveBefore(DefaultPeerSentExpireSecond)
-				if p.sentPool.Contains(pkt.hashOfPacket) {
-					log.Println("Peer.sendRoutine Ignore by SendHistory", pkt.hashOfPacket)
-					//TODO notify ignored
-					continue
+		select {
+		case <-p.close:
+			break Loop
+		case <-p.q.Wait():
+			for {
+				ctx := p.q.Pop()
+				if ctx == nil {
+					break
 				}
-			}
+				pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
+				if DefaultPeerSentExpireSecond > 0 && pkt.hashOfPacket != 0 {
+					p.sentPool.RemoveBefore(DefaultPeerSentExpireSecond)
+					if p.sentPool.Contains(pkt.hashOfPacket) {
+						log.Printf("Peer.sendRoutine Ignore by SendHistory %#x", pkt.hashOfPacket)
+						//TODO notify ignored
+						continue
+					}
+				}
 
-			if err := p.conn.SetWriteDeadline(time.Now().Add(DefaultSendTimeout)); err != nil {
-				log.Printf("Peer.sendRoutine SetWriteDeadline onError %T %#v %s", err, err, p.String())
-				p.onError(err, p, pkt)
-			} else if err := p.writer.WritePacket(pkt); err != nil {
-				log.Printf("Peer.sendRoutine WritePacket onError %T %#v %s", err, err, p.String())
-				p.onError(err, p, pkt)
-			} else if err := p.writer.Flush(); err != nil {
-				log.Printf("Peer.sendRoutine Flush onError %T %#v %s", err, err, p.String())
-				p.onError(err, p, pkt)
-			}
+				if err := p._send(pkt); err != nil {
+					r := p.isTemporaryError(err)
+					// log.Printf("Peer.sendRoutine Error isTemporary:{%v} error:{%+v} peer:%s", r, err, p.String())
+					if !r {
+						p.Close()
+						return
+					}
+					//TODO p.writer.Reset()
+					p.onError(err, p, pkt)
+				}
 
-			if DefaultPeerSentExpireSecond > 0 {
-				p.sentPool.Put(pkt.hashOfPacket)
+				if DefaultPeerSentExpireSecond > 0 {
+					p.sentPool.Put(pkt.hashOfPacket)
+				}
 			}
 		}
 	}

@@ -188,10 +188,7 @@ func (ph *peerHandler) nextOnPeer(p *Peer) {
 
 func (ph *peerHandler) onError(err error, p *Peer, pkt *Packet) {
 	ph.log.Println("onError", err, p)
-	err = p.conn.Close()
-	if err != nil {
-		ph.log.Println("onError p.conn.Close", err)
-	}
+	p.Close()
 }
 
 func (ph *peerHandler) onClose(p *Peer) {

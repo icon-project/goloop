@@ -18,8 +18,8 @@ const (
 )
 
 var (
-	ProtoTestTransportRequest  module.ProtocolInfo = protocolInfo(0x0300)
-	ProtoTestTransportResponse module.ProtocolInfo = protocolInfo(0x0400)
+	ProtoTestTransportRequest  module.ProtocolInfo = protocolInfo(0xF300)
+	ProtoTestTransportResponse module.ProtocolInfo = protocolInfo(0xF400)
 )
 
 type testPeerHandler struct {
@@ -54,7 +54,7 @@ func (ph *testPeerHandler) onPeer(p *Peer) {
 func (ph *testPeerHandler) onError(err error, p *Peer, pkt *Packet) {
 	ph.log.Println("onError", err, p, pkt)
 	ph.peerHandler.onError(err, p, pkt)
-	assert.Fail(ph.t, "TestPeerHandler.onError", err, p, pkt)
+	assert.Fail(ph.t, "TestPeerHandler.onError", err.Error(), p, pkt)
 }
 
 func (ph *testPeerHandler) onPacket(pkt *Packet, p *Peer) {
