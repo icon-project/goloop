@@ -281,8 +281,7 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 		} else if pkt.ttl == 1 && !p.id.Equal(pkt.src) {
 			p2p.log.Println("Warning", "onPacket", "Ignore, Invalid Packet.src:", pkt.src, ",expected:", p.id)
 		} else if cbFunc := p2p.onPacketCbFuncs[pkt.protocol.Uint16()]; cbFunc != nil {
-			if !p2p.packetPool.Contains(pkt) && !p2p.self.id.Equal(pkt.src) {
-				p2p.packetPool.Put(pkt)
+			if p2p.packetPool.Put(pkt) && !p2p.self.id.Equal(pkt.src) {
 				cbFunc(pkt, p)
 			} else {
 				p2p.log.Println("onPacket", "Ignore, duplicated", pkt.hashOfPacket)

@@ -17,7 +17,7 @@ var (
 	ErrAlreadyRegisteredProtocol = errors.New("Already registered protocol")
 	ErrNotRegisteredRole         = errors.New("Not registered role")
 	ErrNotAvailable              = errors.New("Not available")
-	ErrQueueOverflow             = errors.New("Queue full")
+	ErrQueueOverflow             = errors.New("Queue overflow")
 	ErrDuplicatedPacket          = errors.New("Duplicated Packet")
 	ErrNilPacket                 = errors.New("Nil Packet")
 )
@@ -41,24 +41,24 @@ var (
 )
 
 const (
-	DefaultTransportNet        = "tcp4"
-	DefaultMembershipName      = ""
-	DefaultReceiveQueueSize    = 1000
-	DefaultPacketBufferSize    = 4096 //bufio.defaultBufSize=4096
-	DefaultPacketPayloadMax    = math.MaxInt32
-	DefaultPacketPoolNumBucket = 20
-	DefaultPacketPoolBucketLen = 100
-	DefaultDiscoveryPeriod     = 2 * time.Second
-	DefaultSeedPeriod          = 3 * time.Second
-	DefaultAlternateSendPeriod = 1 * time.Second
-	DefaultSendTimeout         = 1 * time.Second
-	DefaultSendQueueSize       = 1000
-	DefaultSendHistoryClear    = 0 //10 * time.Second
-	DefaultEventQueueSize      = 100
-	DefaultPeerSendQueueSize   = 1000
-	DefaultUncleLimit          = 1
-	DefaultPacketRewriteLimit  = 10
-	DefaultPacketRewriteDelay  = 100 * time.Millisecond
+	DefaultTransportNet         = "tcp4"
+	DefaultMembershipName       = ""
+	DefaultReceiveQueueSize     = 1000
+	DefaultPacketBufferSize     = 4096 //bufio.defaultBufSize=4096
+	DefaultPacketPayloadMax     = math.MaxInt32
+	DefaultPacketPoolNumBucket  = 20
+	DefaultPacketPoolBucketLen  = 100
+	DefaultDiscoveryPeriod      = 2 * time.Second
+	DefaultSeedPeriod           = 3 * time.Second
+	DefaultAlternateSendPeriod  = 1 * time.Second
+	DefaultSendTimeout          = 1 * time.Second
+	DefaultSendQueueSize        = 1000
+	DefaultEventQueueSize       = 100
+	DefaultPeerSendQueueSize    = 1000
+	DefaultPeerSentExpireSecond = 5
+	DefaultUncleLimit           = 1
+	DefaultPacketRewriteLimit   = 10
+	DefaultPacketRewriteDelay   = 100 * time.Millisecond
 )
 
 var (

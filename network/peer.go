@@ -28,7 +28,7 @@ type Peer struct {
 	onError   errorCbFunc
 	onClose   closeCbFunc
 	timestamp time.Time
-	hmap      map[uint64]time.Duration
+	sentPool  *TimestampPool
 	//
 	incomming bool
 	channel   string
@@ -132,7 +132,7 @@ func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool) *Peer {
 		q:         NewQueue(DefaultPeerSendQueueSize),
 		incomming: incomming,
 		timestamp: time.Now(),
-		hmap:      make(map[uint64]time.Duration),
+		sentPool:  NewTimestampPool(DefaultPeerSentExpireSecond + 1),
 	}
 	p.setPacketCbFunc(cbFunc)
 	p.setErrorCbFunc(func(err error, p *Peer, pkt *Packet) {
@@ -251,11 +251,13 @@ func (p *Peer) sendRoutine() {
 				break
 			}
 			pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
-			if DefaultSendHistoryClear > 0 && pkt.hashOfPacket != 0 {
-				if d, ok := p.hmap[pkt.hashOfPacket]; ok {
-					log.Println("Peer.sendRoutine Ignore by SendHistory", p.timestamp, d, pkt.hashOfPacket)
+
+			if DefaultPeerSentExpireSecond > 0 && pkt.hashOfPacket != 0 {
+				p.sentPool.RemoveBefore(DefaultPeerSentExpireSecond)
+				if p.sentPool.Contains(pkt.hashOfPacket) {
+					log.Println("Peer.sendRoutine Ignore by SendHistory", pkt.hashOfPacket)
 					//TODO notify ignored
-					return
+					continue
 				}
 			}
 
@@ -270,18 +272,8 @@ func (p *Peer) sendRoutine() {
 				p.onError(err, p, pkt)
 			}
 
-			if DefaultSendHistoryClear > 0 {
-				now := time.Now()
-				d := now.Sub(p.timestamp)
-				p.hmap[pkt.hashOfPacket] = d
-				if d > DefaultSendHistoryClear {
-					for k, v := range p.hmap {
-						if v > DefaultSendHistoryClear {
-							delete(p.hmap, k)
-						}
-					}
-					p.timestamp = now
-				}
+			if DefaultPeerSentExpireSecond > 0 {
+				p.sentPool.Put(pkt.hashOfPacket)
 			}
 		}
 	}

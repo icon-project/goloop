@@ -3,7 +3,6 @@ package network
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"hash/fnv"
 	"io"
 	"testing"
@@ -68,53 +67,4 @@ func Test_packet_PacketReadWriter(t *testing.T) {
 	assert.Error(t, err, "ReadPacket must fail(io.EOF) after Reset")
 
 	//prw.rd.WriteTo()
-}
-func Test_packet_PacketPool(t *testing.T) {
-	pp := NewPacketPool(2, 2)
-	pkts := make([]*Packet, 5)
-	for i := 0; i < 5; i++ {
-		pkt := NewPacket(protocolInfo(i), []byte(fmt.Sprintf("test_%d", i)))
-		pkt.hashOfPacket = uint64(i)
-		pkts[i] = pkt
-	}
-
-	for _, pkt := range pkts {
-		pp.Put(pkt)
-	}
-
-	assert.Equal(t, false, pp.Contains(pkts[0]), "false")
-	assert.Equal(t, false, pp.Contains(pkts[1]), "false")
-	assert.Equal(t, true, pp.Contains(pkts[2]), "true")
-	assert.Equal(t, true, pp.Contains(pkts[3]), "true")
-	assert.Equal(t, true, pp.Contains(pkts[4]), "true")
-}
-
-func generateDummyPacket(s string, i int) *Packet {
-	pkt := &Packet{payload: []byte(s), hashOfPacket: uint64(i)}
-	return pkt
-}
-
-func Benchmark_packet_PacketPool(b *testing.B) {
-	b.StopTimer()
-	pp := NewPacketPool(DefaultPacketPoolNumBucket, DefaultPacketPoolBucketLen)
-	pkts := make([]*Packet, b.N)
-	for i := 0; i < b.N; i++ {
-		pkt := &Packet{}
-		pkt.hashOfPacket = uint64(i)
-		pkts[i] = pkt
-	}
-	b.StartTimer()
-	for i := 0; i < b.N; i++ {
-		pkt := pkts[i]
-		pp.Put(pkt)
-	}
-}
-
-func Benchmark_dummy_Packet(b *testing.B) {
-	pkts := make([]*Packet, b.N)
-	for i := 0; i < b.N; i++ {
-		s := fmt.Sprintf("%d", i)
-		pkts[i] = generateDummyPacket(s, i)
-	}
-	//Benchmark_dummy_Packet-8   	 5000000	       282 ns/op	     144 B/op	       4 allocs/op
 }
