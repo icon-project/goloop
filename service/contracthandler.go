@@ -29,10 +29,10 @@ const (
 
 type (
 	ContractManager interface {
-		GetHandler(tc ContractCallContext, from, to module.Address,
+		GetHandler(cc CallContext, from, to module.Address,
 			value, stepLimit *big.Int, ctype int, data []byte) ContractHandler
-		PrepareContractStore(module.Address)
-		CheckContractStore(ContractCallContext, module.Address) (string, error)
+		PrepareContractStore([]byte)
+		CheckContractStore([]byte) (string, error)
 	}
 
 	ContractHandler interface {
@@ -59,7 +59,7 @@ type (
 type contractManager struct {
 }
 
-func (cm *contractManager) GetHandler(cc ContractCallContext,
+func (cm *contractManager) GetHandler(cc CallContext,
 	from, to module.Address, value, stepLimit *big.Int, ctype int, data []byte,
 ) ContractHandler {
 	var handler ContractHandler
@@ -95,11 +95,11 @@ func (cm *contractManager) GetHandler(cc ContractCallContext,
 
 // PrepareContractStore checks if contract codes are ready for a contract runtime
 // and starts to download and uncompress otherwise.
-func (cm *contractManager) PrepareContractStore(addr module.Address) {
+func (cm *contractManager) PrepareContractStore(code []byte) {
 	// TODO implement when meaningful parallel execution can be performed
 }
 
-func (cm *contractManager) CheckContractStore(cc ContractCallContext, addr module.Address) (string, error) {
+func (cm *contractManager) CheckContractStore(code []byte) (string, error) {
 	// TODO 만약 valid한 contract이 store에 존재하지 않으면, 저장을 마치고 그 path를 리턴한다.
 	// TODO 만약 PrepareContractCode()에 의해서 저장 중이면, 저장 완료를 기다린다.
 	panic("implement me")
@@ -261,12 +261,12 @@ type CallHandler struct {
 	method string
 	params []byte
 
-	cc ContractCallContext
+	cc CallContext
 	ch chan interface{}
 }
 
 func newCallHandler(from, to module.Address, value, stepLimit *big.Int,
-	data []byte, cc ContractCallContext,
+	data []byte, cc CallContext,
 ) *CallHandler {
 	var dataJSON struct {
 		method string          `json:"method"`
@@ -290,7 +290,9 @@ func (h *CallHandler) Prepare(wvs WorldVirtualState) (WorldVirtualState, error) 
 }
 
 func (h *CallHandler) ExecuteAsync(wc WorldContext) (<-chan interface{}, error) {
-	path, err := contractMngr.CheckContractStore(h.cc, h.to)
+	// TODO get code bytes
+	code := make([]byte, 0)
+	path, err := contractMngr.CheckContractStore(code)
 	if err != nil {
 		return nil, err
 	}

@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
 )
@@ -40,8 +39,7 @@ type (
 		Dispose()
 	}
 
-	ContractCallContext interface {
-		GetContract(common.Address) []byte
+	CallContext interface {
 		ReserveConnection(eeType string) error
 		GetConnection(eeType string) eeproxy.Proxy
 		AddEvent(idxcnt uint16, msgs [][]byte)
@@ -121,7 +119,7 @@ func (th *transactionHandler) Dispose() {
 	panic("implement me")
 }
 
-type contractCallContext struct {
+type callContext struct {
 	// set at Call()
 	wc             WorldContext
 	initialHandler ContractHandler
@@ -136,13 +134,13 @@ type contractCallContext struct {
 	conns map[string]eeproxy.Proxy
 }
 
-func newContractCallContext() *contractCallContext {
-	return &contractCallContext{
+func newContractCallContext() *callContext {
+	return &callContext{
 		conns: make(map[string]eeproxy.Proxy),
 	}
 }
 
-func (cc *contractCallContext) Call(handler ContractHandler, wc WorldContext,
+func (cc *callContext) Call(handler ContractHandler, wc WorldContext,
 ) (Receipt, error) {
 	cc.wc = wc
 	cc.initialHandler = handler
@@ -156,7 +154,7 @@ func (cc *contractCallContext) Call(handler ContractHandler, wc WorldContext,
 	return nil, nil
 }
 
-func (cc *contractCallContext) handleCall(handler ContractHandler,
+func (cc *callContext) handleCall(handler ContractHandler,
 ) (module.Status, *big.Int, module.Address) {
 	switch handler := handler.(type) {
 	case SyncContractHandler:
@@ -190,7 +188,7 @@ func (cc *contractCallContext) handleCall(handler ContractHandler,
 	}
 }
 
-func (cc *contractCallContext) waitResult(ch <-chan interface{}) (
+func (cc *callContext) waitResult(ch <-chan interface{}) (
 	module.Status, *big.Int, []byte, module.Address) {
 	for {
 		select {
@@ -225,7 +223,7 @@ func (cc *contractCallContext) waitResult(ch <-chan interface{}) (
 	}
 }
 
-func (cc *contractCallContext) handleResult(status module.Status,
+func (cc *callContext) handleResult(status module.Status,
 	stepUsed *big.Int, result []byte, addr module.Address,
 ) {
 	cc.lock.Lock()
@@ -260,18 +258,13 @@ func (cc *contractCallContext) handleResult(status module.Status,
 	}
 }
 
-func (cc *contractCallContext) GetContract(addr common.Address) []byte {
-	// TODO contract addr로 contract code 받아오기
-	panic("implement me")
-}
-
-func (cc *contractCallContext) ReserveConnection(eeType string) error {
+func (cc *callContext) ReserveConnection(eeType string) error {
 	// TODO
 	//tc.conns[eeType] = eeMngr.Get(eeType)
 	return nil
 }
 
-func (cc *contractCallContext) GetConnection(eeType string) eeproxy.Proxy {
+func (cc *callContext) GetConnection(eeType string) eeproxy.Proxy {
 	conn := cc.conns[eeType]
 	// Conceptually, it should return nil when it's not reserved in advance.
 	// But currently it doesn't assume it should be reserved, so retry to reserve here.
@@ -281,6 +274,6 @@ func (cc *contractCallContext) GetConnection(eeType string) eeproxy.Proxy {
 	return cc.conns[eeType]
 }
 
-func (cc *contractCallContext) AddEvent(idxcnt uint16, msgs [][]byte) {
+func (cc *callContext) AddEvent(idxcnt uint16, msgs [][]byte) {
 	// TODO parameter 정리 필요
 }
