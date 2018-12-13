@@ -2,11 +2,13 @@ package service
 
 import (
 	"encoding/json"
+	"log"
 	"math/big"
 	"time"
 
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
+	"github.com/pkg/errors"
 )
 
 var contractMngr ContractManager
@@ -18,21 +20,24 @@ func init() {
 const (
 	transactionTimeLimit = time.Duration(2 * time.Second)
 
-	dataTypeNone    = ""
-	dataTypeMessage = "message"
-	dataTypeCall    = "call"
-	dataTypeDeploy  = "deploy"
+	ctypeTransfer = iota
+	ctypeTransferAndMessage
+	ctypeTransferAndCall
+	ctypeTransferAndDeploy
+	ctypeCall
 )
 
 type (
 	ContractManager interface {
-		GetHandler(tc TransactionContext, from, to module.Address,
-			value, stepLimit *big.Int, dataType string, data []byte) ContractHandler
+		GetHandler(tc ContractCallContext, from, to module.Address,
+			value, stepLimit *big.Int, ctype int, data []byte) ContractHandler
 		PrepareContractStore(module.Address)
-		CheckContractStore(module.Address) (string, error)
+		CheckContractStore(ContractCallContext, module.Address) (string, error)
 	}
 
 	ContractHandler interface {
+		To() module.Address
+		StepLimit() *big.Int
 		Prepare(wvs WorldVirtualState) (WorldVirtualState, error)
 	}
 
@@ -54,31 +59,36 @@ type (
 type contractManager struct {
 }
 
-func (cm *contractManager) GetHandler(tc TransactionContext,
-	from, to module.Address, value, stepLimit *big.Int, dataType string,
-	data []byte,
+func (cm *contractManager) GetHandler(cc ContractCallContext,
+	from, to module.Address, value, stepLimit *big.Int, ctype int, data []byte,
 ) ContractHandler {
 	var handler ContractHandler
-	switch dataType {
-	case dataTypeCall:
-		// TODO
-		handler = new(MethodCallHandler)
-	case dataTypeDeploy:
-		// TODO
-		handler = new(DeployHandler)
-	case dataTypeMessage:
-		fallthrough
-	case dataTypeNone:
-		fallthrough
-	default:
+	switch ctype {
+	case ctypeTransfer:
 		handler = &TransferHandler{
-			from:       from,
-			to:         to,
-			value:      value,
-			stepLimit:  stepLimit,
-			hasMessage: dataType == dataTypeMessage,
-			data:       data,
+			from:      from,
+			to:        to,
+			value:     value,
+			stepLimit: stepLimit,
 		}
+	case ctypeTransferAndMessage:
+		handler = &TransferAndMessageHandler{
+			TransferHandler: TransferHandler{
+				from:      from,
+				to:        to,
+				value:     value,
+				stepLimit: stepLimit,
+			},
+			data: data,
+		}
+	case ctypeTransferAndDeploy:
+		panic("implement me")
+	case ctypeTransferAndCall:
+		handler = &TransferAndCallHandler{
+			*newCallHandler(from, to, value, stepLimit, data, cc),
+		}
+	case ctypeCall:
+		handler = newCallHandler(from, to, value, stepLimit, data, cc)
 	}
 	return handler
 }
@@ -89,13 +99,13 @@ func (cm *contractManager) PrepareContractStore(addr module.Address) {
 	// TODO implement when meaningful parallel execution can be performed
 }
 
-func (cm *contractManager) CheckContractStore(addr module.Address) (string, error) {
+func (cm *contractManager) CheckContractStore(cc ContractCallContext, addr module.Address) (string, error) {
 	// TODO 만약 valid한 contract이 store에 존재하지 않으면, 저장을 마치고 그 path를 리턴한다.
 	// TODO 만약 PrepareContractCode()에 의해서 저장 중이면, 저장 완료를 기다린다.
 	panic("implement me")
 }
 
-func ExecuteTransfer(wc WorldContext, from, to module.Address,
+func executeTransfer(wc WorldContext, from, to module.Address,
 	value, limit *big.Int,
 ) (module.Status, *big.Int) {
 	stepUsed := big.NewInt(wc.StepsFor(StepTypeDefault, 1))
@@ -123,8 +133,14 @@ func ExecuteTransfer(wc WorldContext, from, to module.Address,
 type TransferHandler struct {
 	from, to         module.Address
 	value, stepLimit *big.Int
-	hasMessage       bool
-	data             []byte
+}
+
+func (h *TransferHandler) To() module.Address {
+	return h.to
+}
+
+func (h *TransferHandler) StepLimit() *big.Int {
+	return h.stepLimit
 }
 
 func (h *TransferHandler) Prepare(wvs WorldVirtualState) (WorldVirtualState, error) {
@@ -148,11 +164,56 @@ func (h *TransferHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 	stepAvail.Set(h.stepLimit)
 
 	// it tries to execute
-	status, step = ExecuteTransfer(wc, h.from, h.to, h.value, &stepAvail)
+	status, step = executeTransfer(wc, h.from, h.to, h.value, &stepAvail)
 	stepUsed.Set(step)
 	stepAvail.Sub(&stepAvail, step)
 
-	if status == 0 && h.hasMessage {
+	// try to charge fee
+	fee.Mul(&stepUsed, stepPrice)
+	bal1 = as1.GetBalance()
+	for bal1.Cmp(&fee) < 0 {
+		if status == 0 {
+			// rollback all changes
+			status = module.StatusNotPayable
+			wc.Reset(wcs)
+			bal1 = as1.GetBalance()
+
+			stepUsed.Set(h.stepLimit)
+			fee.Mul(&stepUsed, stepPrice)
+		} else {
+			//stepPrice.SetInt64(0)
+			fee.SetInt64(0)
+		}
+	}
+	bal1.Sub(bal1, &fee)
+	as1.SetBalance(bal1)
+
+	return status, &stepUsed, nil
+}
+
+type TransferAndMessageHandler struct {
+	TransferHandler
+	data []byte
+}
+
+func (h *TransferAndMessageHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int, module.Address) {
+	stepPrice := wc.StepPrice()
+	var (
+		fee                 big.Int
+		status              module.Status
+		step, bal1          *big.Int
+		stepUsed, stepAvail big.Int
+	)
+	wcs := wc.GetSnapshot()
+	as1 := wc.GetAccountState(h.from.ID())
+	stepAvail.Set(h.stepLimit)
+
+	// it tries to execute
+	status, step = executeTransfer(wc, h.from, h.to, h.value, &stepAvail)
+	stepUsed.Set(step)
+	stepAvail.Sub(&stepAvail, step)
+
+	if status == 0 {
 		var data interface{}
 		if err := json.Unmarshal(h.data, &data); err != nil {
 			status = module.StatusSystemError
@@ -194,45 +255,144 @@ func (h *TransferHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 	return status, &stepUsed, nil
 }
 
-type MethodCallHandler struct {
+type CallHandler struct {
+	TransferHandler
+
+	method string
+	params []byte
+
+	cc ContractCallContext
+	ch chan interface{}
 }
 
-func (h *MethodCallHandler) Prepare(wvs WorldVirtualState) (WorldVirtualState, error) {
+func newCallHandler(from, to module.Address, value, stepLimit *big.Int,
+	data []byte, cc ContractCallContext,
+) *CallHandler {
+	var dataJSON struct {
+		method string          `json:"method"`
+		params json.RawMessage `json:"params"`
+	}
+	if err := json.Unmarshal(data, &dataJSON); err != nil {
+		log.Println("FAIL to parse 'data' of transaction")
+		return nil
+	}
+	return &CallHandler{
+		TransferHandler: TransferHandler{from: from, to: to, value: value, stepLimit: stepLimit},
+		method:          dataJSON.method,
+		params:          dataJSON.params,
+		cc:              cc,
+		ch:              make(chan interface{}),
+	}
+}
+
+func (h *CallHandler) Prepare(wvs WorldVirtualState) (WorldVirtualState, error) {
+	return wvs.GetFuture([]LockRequest{{"", AccountWriteLock}}), nil
+}
+
+func (h *CallHandler) ExecuteAsync(wc WorldContext) (<-chan interface{}, error) {
+	path, err := contractMngr.CheckContractStore(h.cc, h.to)
+	if err != nil {
+		return nil, err
+	}
+	conn := h.cc.GetConnection(h.EEType())
+	if conn == nil {
+		return nil, errors.New("FAIL to get connection of (" + h.EEType() + ")")
+	}
+	err = conn.Invoke(h, path, false, h.from, h.to, h.value,
+		h.stepLimit, h.method, h.params)
+	if err != nil {
+		return nil, err
+	}
+
+	return h.ch, nil
+}
+
+func (h *CallHandler) Cancel() {
+	// TODO what to do
 	panic("implement me")
 }
 
-func (h *MethodCallHandler) ExecuteAsync(wc WorldContext) (<-chan interface{}, error) {
+func (h *CallHandler) EEType() string {
+	// TODO resolve it at runtime
+	return "python"
+}
+
+func (h *CallHandler) GetValue(key []byte) ([]byte, error) {
+	h.cc.GetConnection(h.EEType())
 	panic("implement me")
 }
 
-func (h *MethodCallHandler) Cancel() {
+func (h *CallHandler) SetValue(key, value []byte) error {
 	panic("implement me")
 }
 
-func (h *MethodCallHandler) GetValue(key []byte) ([]byte, error) {
+func (h *CallHandler) DeleteValue(key []byte) error {
 	panic("implement me")
 }
 
-func (h *MethodCallHandler) SetValue(key, value []byte) error {
+func (h *CallHandler) GetInfo() map[string]interface{} {
 	panic("implement me")
 }
 
-func (h *MethodCallHandler) GetInfo() map[string]interface{} {
+func (h *CallHandler) GetBalance(addr module.Address) *big.Int {
 	panic("implement me")
 }
 
-func (h *MethodCallHandler) OnEvent(addr module.Address, indexed, data [][]byte) {
+func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) {
 	panic("implement me")
 }
 
-func (h *MethodCallHandler) OnResult(status uint16, steps *big.Int, result []byte) {
-	panic("implement me")
+func (h *CallHandler) OnResult(status uint16, steps *big.Int, result []byte) {
+	h.ch <- &CallResultMessage{
+		status:   module.Status(status),
+		stepUsed: steps,
+		result:   result,
+	}
 }
 
-func (h *MethodCallHandler) OnCall(from, to module.Address, value,
+func (h *CallHandler) OnCall(from, to module.Address, value,
 	limit *big.Int, params []byte,
 ) {
+	h.ch <- &CallRequestMessage{
+		from:      from,
+		to:        to,
+		value:     value,
+		stepLimit: limit,
+		params:    params,
+	}
+}
+
+func (h *CallHandler) OnAPI(obj interface{}) {
 	panic("implement me")
+}
+
+type TransferAndCallHandler struct {
+	CallHandler
+}
+
+func (h *TransferAndCallHandler) Prepare(wvs WorldVirtualState) (WorldVirtualState, error) {
+	if wvs, err := h.TransferHandler.Prepare(wvs); err == nil {
+		return h.CallHandler.Prepare(wvs)
+	} else {
+		return wvs, err
+	}
+}
+
+func (h *TransferAndCallHandler) ExecuteAsync(wc WorldContext) (<-chan interface{}, error) {
+	if status, stepUsed, _ := h.TransferHandler.ExecuteSync(wc); status == 0 {
+		return h.CallHandler.ExecuteAsync(wc)
+	} else {
+		go func() {
+			h.ch <- &CallResultMessage{
+				status:   module.Status(status),
+				stepUsed: stepUsed,
+				// TODO create error messages of status.
+				result: nil,
+			}
+		}()
+
+		return h.ch, nil
+	}
 }
 
 type DeployHandler struct {
