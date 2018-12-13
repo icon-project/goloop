@@ -31,8 +31,8 @@ type (
 	ContractManager interface {
 		GetHandler(cc CallContext, from, to module.Address,
 			value, stepLimit *big.Int, ctype int, data []byte) ContractHandler
-		PrepareContractStore([]byte)
-		CheckContractStore([]byte) (string, error)
+		PrepareContractStore(WorldState, module.Address)
+		CheckContractStore(WorldState, module.Address) (string, error)
 	}
 
 	ContractHandler interface {
@@ -95,11 +95,12 @@ func (cm *contractManager) GetHandler(cc CallContext,
 
 // PrepareContractStore checks if contract codes are ready for a contract runtime
 // and starts to download and uncompress otherwise.
-func (cm *contractManager) PrepareContractStore(code []byte) {
+func (cm *contractManager) PrepareContractStore(ws WorldState, addr module.Address) {
 	// TODO implement when meaningful parallel execution can be performed
 }
 
-func (cm *contractManager) CheckContractStore(code []byte) (string, error) {
+func (cm *contractManager) CheckContractStore(ws WorldState, addr module.Address,
+) (string, error) {
 	// TODO 만약 valid한 contract이 store에 존재하지 않으면, 저장을 마치고 그 path를 리턴한다.
 	// TODO 만약 PrepareContractCode()에 의해서 저장 중이면, 저장 완료를 기다린다.
 	panic("implement me")
@@ -290,9 +291,7 @@ func (h *CallHandler) Prepare(wvs WorldVirtualState) (WorldVirtualState, error) 
 }
 
 func (h *CallHandler) ExecuteAsync(wc WorldContext) (<-chan interface{}, error) {
-	// TODO get code bytes
-	code := make([]byte, 0)
-	path, err := contractMngr.CheckContractStore(code)
+	path, err := contractMngr.CheckContractStore(wc, h.to)
 	if err != nil {
 		return nil, err
 	}
