@@ -14,20 +14,66 @@ const (
 	txPoolSize = 5000
 )
 
+const (
+	txBucketCount = 256
+)
+
+func indexAndBucketKeyFromKey(k string) (int, string) {
+	return int(k[0]), k[1:]
+}
+
+type transactionMap struct {
+	buckets []map[string]*list.Element
+}
+
+func (m *transactionMap) Get(k string) (*list.Element, bool) {
+	idx, bkk := indexAndBucketKeyFromKey(k)
+	obj, ok := m.buckets[idx][bkk]
+	return obj, ok
+}
+
+func (m *transactionMap) Put(k string, v *list.Element) {
+	idx, bkk := indexAndBucketKeyFromKey(k)
+	m.buckets[idx][bkk] = v
+}
+
+func (m *transactionMap) Remove(k string) (*list.Element, bool) {
+	idx, bkk := indexAndBucketKeyFromKey(k)
+	obj, ok := m.buckets[idx][bkk]
+	if ok {
+		delete(m.buckets[idx], bkk)
+	}
+	return obj, ok
+}
+
+func (m *transactionMap) Delete(k string) {
+	idx, bkk := indexAndBucketKeyFromKey(k)
+	delete(m.buckets[idx], bkk)
+}
+
+func newTransactionMap() *transactionMap {
+	m := new(transactionMap)
+	m.buckets = make([]map[string]*list.Element, txBucketCount)
+	for i := 0; i < txBucketCount; i++ {
+		m.buckets[i] = make(map[string]*list.Element)
+	}
+	return m
+}
+
 type transactionPool struct {
 	txdb db.Bucket
 
-	list      *list.List
-	txHashMap map[string]*list.Element
+	list  *list.List
+	txMap *transactionMap
 
 	mutex sync.Mutex
 }
 
 func NewTransactionPool(txdb db.Bucket) *transactionPool {
 	pool := &transactionPool{
-		txdb:      txdb,
-		list:      list.New(),
-		txHashMap: make(map[string]*list.Element),
+		txdb:  txdb,
+		list:  list.New(),
+		txMap: newTransactionMap(),
 	}
 	return pool
 }
@@ -45,7 +91,7 @@ func (tp *transactionPool) runGc(expired int64) error {
 			break
 		}
 		tmp := iter.Next()
-		delete(tp.txHashMap, string(iter.Value.(*transaction).ID()))
+		tp.txMap.Delete(string(iter.Value.(*transaction).ID()))
 		txList.Remove(iter)
 		iter = tmp
 	}
@@ -70,13 +116,15 @@ func (tp *transactionPool) add(tx *transaction) error {
 		return ErrTransactionPoolOverFlow
 	}
 
+	txid := string(tx.ID())
+
 	// check whether this transaction is already in txPool
-	if _, ok := tp.txHashMap[string(tx.ID())]; ok {
+	if _, ok := tp.txMap.Get(txid); ok {
 		return ErrDuplicateTransaction
 	}
 
 	element := txList.PushBack(tx)
-	tp.txHashMap[string(tx.ID())] = element
+	tp.txMap.Put(txid, element)
 
 	return err
 }
@@ -139,9 +187,8 @@ func (tp *transactionPool) candidate(wc WorldContext, max int) []module.Transact
 			defer tp.mutex.Unlock()
 			for _, tx := range txs {
 				if tx != nil {
-					if v, ok := tp.txHashMap[string(tx.ID())]; ok {
+					if v, ok := tp.txMap.Remove(string(tx.ID())); ok {
 						tp.list.Remove(v)
-						delete(tp.txHashMap, string(tx.ID()))
 					}
 				}
 			}
@@ -170,10 +217,8 @@ func (tp *transactionPool) removeList(txs module.TransactionList) {
 			continue
 		}
 
-		id := string(t.ID())
-		if v, ok := tp.txHashMap[id]; ok {
+		if v, ok := tp.txMap.Remove(string(t.ID())); ok {
 			tp.list.Remove(v)
-			delete(tp.txHashMap, id)
 		}
 	}
 }
