@@ -11,15 +11,15 @@ import (
 )
 
 var (
-	ErrAlreadyListened           = errors.New("Already listened")
-	ErrAlreadyClosed             = errors.New("Already closed")
-	ErrAlreadyRegisteredReactor  = errors.New("Already registered reactor")
-	ErrAlreadyRegisteredProtocol = errors.New("Already registered protocol")
-	ErrNotRegisteredRole         = errors.New("Not registered role")
-	ErrNotAvailable              = errors.New("Not available")
-	ErrQueueOverflow             = errors.New("Queue overflow")
-	ErrDuplicatedPacket          = errors.New("Duplicated Packet")
-	ErrNilPacket                 = errors.New("Nil Packet")
+	ErrAlreadyListened           = errors.New("already listened")
+	ErrAlreadyClosed             = errors.New("already closed")
+	ErrAlreadyRegisteredReactor  = errors.New("already registered reactor")
+	ErrAlreadyRegisteredProtocol = errors.New("already registered protocol")
+	ErrNotRegisteredRole         = errors.New("not registered role")
+	ErrNotAvailable              = errors.New("not available")
+	ErrQueueOverflow             = errors.New("queue overflow")
+	ErrDuplicatedPacket          = errors.New("duplicated Packet")
+	ErrNilPacket                 = errors.New("nil Packet")
 )
 var (
 	singletonTransport module.NetworkTransport
@@ -55,28 +55,28 @@ const (
 	DefaultSendQueueSize        = 1000
 	DefaultEventQueueSize       = 100
 	DefaultPeerSendQueueSize    = 1000
-	DefaultPeerSentExpireSecond = 5
+	DefaultPeerPoolExpireSecond = 5
 	DefaultUncleLimit           = 1
 	DefaultPacketRewriteLimit   = 10
 	DefaultPacketRewriteDelay   = 100 * time.Millisecond
 )
 
 var (
-	PROTO_CONTOL     module.ProtocolInfo = protocolInfo(0x0000)
-	PROTO_DEF_MEMBER module.ProtocolInfo = protocolInfo(0x0100)
+	PROTO_CONTOL     = protocolInfo(0x0000)
+	PROTO_DEF_MEMBER = protocolInfo(0x0100)
 )
 
 var (
-	PROTO_AUTH_KEY_REQ     module.ProtocolInfo = protocolInfo(0x0100)
-	PROTO_AUTH_KEY_RESP    module.ProtocolInfo = protocolInfo(0x0200)
-	PROTO_AUTH_SIGN_REQ    module.ProtocolInfo = protocolInfo(0x0300)
-	PROTO_AUTH_SIGN_RESP   module.ProtocolInfo = protocolInfo(0x0400)
-	PROTO_CHAN_JOIN_REQ    module.ProtocolInfo = protocolInfo(0x0500)
-	PROTO_CHAN_JOIN_RESP   module.ProtocolInfo = protocolInfo(0x0600)
-	PROTO_P2P_QUERY        module.ProtocolInfo = protocolInfo(0x0700)
-	PROTO_P2P_QUERY_RESULT module.ProtocolInfo = protocolInfo(0x0800)
-	PROTO_P2P_CONN_REQ     module.ProtocolInfo = protocolInfo(0x0900)
-	PROTO_P2P_CONN_RESP    module.ProtocolInfo = protocolInfo(0x0A00)
+	PROTO_AUTH_KEY_REQ     = protocolInfo(0x0100)
+	PROTO_AUTH_KEY_RESP    = protocolInfo(0x0200)
+	PROTO_AUTH_SIGN_REQ    = protocolInfo(0x0300)
+	PROTO_AUTH_SIGN_RESP   = protocolInfo(0x0400)
+	PROTO_CHAN_JOIN_REQ    = protocolInfo(0x0500)
+	PROTO_CHAN_JOIN_RESP   = protocolInfo(0x0600)
+	PROTO_P2P_QUERY        = protocolInfo(0x0700)
+	PROTO_P2P_QUERY_RESULT = protocolInfo(0x0800)
+	PROTO_P2P_CONN_REQ     = protocolInfo(0x0900)
+	PROTO_P2P_CONN_RESP    = protocolInfo(0x0A00)
 )
 
 type Config struct {

@@ -32,6 +32,7 @@ type Packet struct {
 	hashOfPacket    uint64 //8byte
 	//Transient fields
 	sender module.PeerID //20byte
+	destPeer module.PeerID //20byte
 }
 
 const (
@@ -101,11 +102,9 @@ func (pr *PacketReader) ReadPacket() (pkt *Packet, h hash.Hash64, e error) {
 				return
 			}
 			tb := hb[:]
-			// pi := module.ProtocolInfo(binary.BigEndian.Uint16(tb[:2]))
-			pi := NewProtocolInfo(tb[:2])
+			pi := newProtocolInfo(tb[:2])
 			tb = tb[2:]
-			//spi := module.ProtocolInfo(binary.BigEndian.Uint16(tb[:2]))
-			spi := NewProtocolInfo(tb[:2])
+			spi := newProtocolInfo(tb[:2])
 			tb = tb[2:]
 			src := NewPeerID(tb[:peerIDSize])
 			tb = tb[peerIDSize:]
@@ -115,13 +114,15 @@ func (pr *PacketReader) ReadPacket() (pkt *Packet, h hash.Hash64, e error) {
 			tb = tb[1:]
 			lop := binary.BigEndian.Uint32(tb[:4])
 			if lop > DefaultPacketPayloadMax {
-				e = fmt.Errorf("Invalid packet lengthOfpayload %x, max:%x", lop, DefaultPacketPayloadMax)
+				e = fmt.Errorf("invalid packet lengthOfpayload %x, max:%x", lop, DefaultPacketPayloadMax)
 				return
 			}
 			tb = tb[4:]
 			pr.pkt = &Packet{protocol: pi, subProtocol: spi, src: src, dest: dest, ttl: ttl, lengthOfpayload: lop}
 			h = fnv.New64a()
-			h.Write(hb)
+			if _, err = h.Write(hb); err != nil {
+				log.Printf("PacketReader.ReadPacket hash/fnv.Hash64.Write hb %T %#v %s", err, err, err)
+			}
 		}
 
 		if pr.pkt.payload == nil {
@@ -131,7 +132,9 @@ func (pr *PacketReader) ReadPacket() (pkt *Packet, h hash.Hash64, e error) {
 				return
 			}
 			pr.pkt.payload = payload
-			h.Write(pr.pkt.payload)
+			if _, err = h.Write(payload); err != nil {
+				log.Printf("PacketReader.ReadPacket hash/fnv.Hash64.Write payload %T %#v %s", err, err, err)
+			}
 		}
 
 		if pr.pkt.hashOfPacket == 0 {
@@ -169,10 +172,8 @@ func (pw *PacketWriter) WritePacket(pkt *Packet) error {
 	hb := make([]byte, packetHeaderSize)
 	tb := hb[:]
 	pkt.protocol.Copy(tb[:2])
-	//binary.BigEndian.PutUint16(tb[:2], pkt.protocol.Uint16())
 	tb = tb[2:]
 	pkt.subProtocol.Copy(tb[:2])
-	//binary.BigEndian.PutUint16(tb[:2], uint16(pkt.subProtocol))
 	tb = tb[2:]
 	pkt.src.Copy(tb[:peerIDSize])
 	tb = tb[peerIDSize:]
@@ -199,8 +200,14 @@ func (pw *PacketWriter) WritePacket(pkt *Packet) error {
 	tb = fb[:]
 	if pkt.hashOfPacket == 0 {
 		h := fnv.New64a()
-		h.Write(hb)
-		h.Write(payload)
+		if _, err = h.Write(hb); err != nil {
+			log.Printf("PacketWriter.WritePacket hash/fnv.Hash64.Write hb %T %#v %s", err, err, err)
+			return err
+		}
+		if _, err = h.Write(payload); err != nil {
+			log.Printf("PacketWriter.WritePacket hash/fnv.Hash64.Write payload %T %#v %s", err, err, err)
+			return err
+		}
 		pkt.hashOfPacket = h.Sum64()
 	}
 	binary.BigEndian.PutUint64(tb[:8], pkt.hashOfPacket)
@@ -235,6 +242,7 @@ func (pw *PacketWriter) Flush() error {
 	for {
 		err := pw.Writer.Flush()
 		if err != nil && err == io.ErrShortWrite && re < DefaultPacketRewriteLimit {
+			re++
 			log.Println("PacketWriter.Flush io.ErrShortWrite", err)
 			time.Sleep(DefaultPacketRewriteDelay)
 			continue
@@ -282,7 +290,7 @@ func (prw *PacketReadWriter) ReadPacket() (*Packet, error) {
 			return nil, err
 		}
 		if pkt.hashOfPacket != h.Sum64() {
-			err := fmt.Errorf("Invalid hashOfPacket:%x, expected:%x", pkt.hashOfPacket, h.Sum64())
+			err := fmt.Errorf("invalid hashOfPacket:%x, expected:%x", pkt.hashOfPacket, h.Sum64())
 			return pkt, err
 		}
 		prw.rpkt = pkt

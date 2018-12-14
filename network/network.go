@@ -74,7 +74,7 @@ func (m *manager) getProtocolInfo(name string) module.ProtocolInfo {
 		return PROTO_DEF_MEMBER
 	}
 	id := PROTO_DEF_MEMBER.ID() + byte(len(m.memberships))
-	return NewProtocolInfoWithIDVersion(id, 0)
+	return NewProtocolInfo(id, 0)
 }
 
 type logger struct {
@@ -130,11 +130,14 @@ func (l *logger) Printf(format string, v ...interface{}) {
 
 type protocolInfo uint16
 
-func NewProtocolInfo(b []byte) module.ProtocolInfo {
-	return protocolInfo(binary.BigEndian.Uint16(b[:2]))
-}
-func NewProtocolInfoWithIDVersion(id byte, version byte) module.ProtocolInfo {
+func NewProtocolInfo(id byte, version byte) module.ProtocolInfo {
 	return protocolInfo(int(id)<<8 | int(version))
+}
+func NewProtocolInfoFrom(pi module.ProtocolInfo) module.ProtocolInfo {
+	return NewProtocolInfo(pi.ID(), pi.Version())
+}
+func newProtocolInfo(b []byte) protocolInfo {
+	return protocolInfo(binary.BigEndian.Uint16(b[:2]))
 }
 func (pi protocolInfo) ID() byte {
 	return byte(pi >> 8)
@@ -146,7 +149,8 @@ func (pi protocolInfo) Copy(b []byte) {
 	binary.BigEndian.PutUint16(b[:2], uint16(pi))
 }
 func (pi protocolInfo) String() string {
-	return fmt.Sprintf("{ID:%#02x,Ver:%#02x}", pi.ID(), pi.Version())
+	//return fmt.Sprintf("{ID:%#02x,Ver:%#02x}", pi.ID(), pi.Version())
+	return fmt.Sprintf("{%#04x}", pi.Uint16())
 }
 func (pi protocolInfo) Uint16() uint16 {
 	return uint16(pi)

@@ -202,7 +202,7 @@ func (s *PeerSet) GetByID(id module.PeerID) *Peer {
 	}
 	return nil
 }
-func (s *PeerSet) getByRole(role PeerRoleFlag) []*Peer {
+func (s *PeerSet) GetByHasRole(role PeerRoleFlag) []*Peer {
 	defer s.Set.mtx.RUnlock()
 	s.Set.mtx.RLock()
 	l := make([]*Peer, 0, len(s.Set.m))
@@ -213,10 +213,14 @@ func (s *PeerSet) getByRole(role PeerRoleFlag) []*Peer {
 	}
 	return l
 }
-func (s *PeerSet) RemoveByRole(role PeerRoleFlag) []*Peer {
-	l := s.getByRole(role)
-	for _, p := range l {
-		s.Remove(p)
+func (s *PeerSet) GetByRole(role PeerRoleFlag) []*Peer {
+	defer s.Set.mtx.RUnlock()
+	s.Set.mtx.RLock()
+	l := make([]*Peer, 0, len(s.Set.m))
+	for k := range s.Set.m {
+		if p := k.(*Peer); p.eqaulRole(role) {
+			l = append(l, p)
+		}
 	}
 	return l
 }

@@ -27,7 +27,7 @@ type Peer struct {
 	onError   errorCbFunc
 	onClose   closeCbFunc
 	timestamp time.Time
-	sentPool  *TimestampPool
+	pool      *TimestampPool
 	close     chan error
 	//
 	incomming bool
@@ -109,7 +109,7 @@ func (pr *PeerRoleFlag) SetFlag(o PeerRoleFlag) {
 	*pr |= o
 }
 func (pr *PeerRoleFlag) UnSetFlag(o PeerRoleFlag) {
-	*pr &= (^o)
+	*pr &= ^o
 }
 
 const (
@@ -132,7 +132,7 @@ func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool) *Peer {
 		q:         NewQueue(DefaultPeerSendQueueSize),
 		incomming: incomming,
 		timestamp: time.Now(),
-		sentPool:  NewTimestampPool(DefaultPeerSentExpireSecond + 1),
+		pool:      NewTimestampPool(DefaultPeerPoolExpireSecond + 1),
 		close:     make(chan error),
 	}
 	p.setPacketCbFunc(cbFunc)
@@ -254,10 +254,13 @@ func (p *Peer) receiveRoutine() {
 			continue
 		}
 		if pkt.hashOfPacket != h.Sum64() {
-			// log.Println("Peer.receiveRoutine Invalid hashOfPacket :", pkt.hashOfPacket, ",expected:", h.Sum64())
+			log.Println(p.id, "Peer", "receiveRoutine", "Drop, Invalid hash:",pkt.hashOfPacket,",expected:",h.Sum64(), pkt.protocol, pkt.subProtocol)
 			continue
 		} else {
 			pkt.sender = p.id
+			if DefaultPeerPoolExpireSecond > 0 {
+				p.pool.Put(pkt.hashOfPacket)
+			}
 			p.onPacket(pkt, p)
 		}
 	}
@@ -290,15 +293,14 @@ Loop:
 					break
 				}
 				pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
-				if DefaultPeerSentExpireSecond > 0 && pkt.hashOfPacket != 0 {
-					p.sentPool.RemoveBefore(DefaultPeerSentExpireSecond)
-					if p.sentPool.Contains(pkt.hashOfPacket) {
-						log.Printf("Peer.sendRoutine Ignore by SendHistory %#x", pkt.hashOfPacket)
-						//TODO notify ignored
-						continue
+
+
+				if DefaultPeerPoolExpireSecond > 0 && pkt.hashOfPacket != 0 {
+					p.pool.RemoveBefore(DefaultPeerPoolExpireSecond)
+					if p.pool.Contains(pkt.hashOfPacket) {
+						//log.Println(p.id, "Peer", "send", "Drop, Duplicated by hash", pkt.protocol, pkt.subProtocol, pkt.hashOfPacket)
 					}
 				}
-
 				if err := p._send(pkt); err != nil {
 					r := p.isTemporaryError(err)
 					// log.Printf("Peer.sendRoutine Error isTemporary:{%v} error:{%+v} peer:%s", r, err, p.String())
@@ -310,19 +312,32 @@ Loop:
 					p.onError(err, p, pkt)
 				}
 
-				if DefaultPeerSentExpireSecond > 0 {
-					p.sentPool.Put(pkt.hashOfPacket)
+				if DefaultPeerPoolExpireSecond > 0 {
+					p.pool.Put(pkt.hashOfPacket)
 				}
 			}
 		}
 	}
 }
 
+func (p *Peer) isDuplicatedToSend(pkt *Packet) bool {
+	if p.id.Equal(pkt.src) {
+		//log.Println(p.id, "Peer", "send", "Drop, Duplicated by src", pkt.protocol, pkt.subProtocol, pkt.src)
+		return true
+	}
+	if pkt.sender != nil && p.id.Equal(pkt.sender) {
+		//log.Println(p.id, "Peer", "send", "Drop, Duplicated by sender", pkt.protocol, pkt.subProtocol, pkt.sender)
+		return true
+	}
+
+	return false
+}
+
 func (p *Peer) send(pkt *Packet) error {
 	if pkt == nil {
 		return ErrNilPacket
 	}
-	if pkt.sender != nil && p.id.Equal(pkt.sender) {
+	if p.isDuplicatedToSend(pkt) {
 		return ErrDuplicatedPacket
 	}
 

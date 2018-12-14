@@ -6,8 +6,9 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/icon-project/goloop/module"
 	"github.com/ugorji/go/codec"
+
+	"github.com/icon-project/goloop/module"
 )
 
 type PeerToPeer struct {
@@ -23,17 +24,17 @@ type PeerToPeer struct {
 	transport       module.NetworkTransport
 
 	//Topology with Connected Peers
-	self      *Peer
-	parent    *Peer
-	preParent *PeerSet
-	children  *PeerSet
-	uncles    *PeerSet
-	preUncles *PeerSet
-	nephews   *PeerSet
-	//Only for root, parent is nil, uncles is empty
-	friends *PeerSet
+	self       *Peer
+	parent     *Peer
+	preParent  *PeerSet
+	children   *PeerSet
+	uncles     *PeerSet
+	preUncles  *PeerSet
+	nephews    *PeerSet
+	friends    *PeerSet //Only for root, parent is nil, uncles is empty
+	orphanages *PeerSet //Not joined
+
 	//Discovery
-	orphanages      *PeerSet
 	discoveryTicker *time.Ticker
 	seedTicker      *time.Ticker
 	duplicated      *Set
@@ -41,8 +42,7 @@ type PeerToPeer struct {
 
 	//Addresses
 	seeds *NetAddressSet
-	//For seed, root
-	roots *NetAddressSet
+	roots *NetAddressSet //For seed, root
 	//[TBD] 2hop peers of current tree for status change
 	grandParent   NetAddress
 	grandChildren *NetAddressSet
@@ -59,10 +59,6 @@ type PeerToPeer struct {
 }
 
 type eventCbFunc func(evt string, p *Peer)
-type eventHandler struct {
-	evt     string
-	onEvent eventCbFunc
-}
 
 const (
 	p2pEventJoin  = "join"
@@ -276,15 +272,19 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 			}
 		}
 	} else {
-		if p.connType == p2pConnTypeNone {
-			p2p.log.Println("Warning", "onPacket", "Ignore, undetermined PeerConnectionType")
-		} else if pkt.ttl == 1 && !p.id.Equal(pkt.src) {
-			p2p.log.Println("Warning", "onPacket", "Ignore, Invalid Packet.src:", pkt.src, ",expected:", p.id)
+		if pkt.ttl == 1 && !p.id.Equal(pkt.src) {
+			p2p.log.Println("Warning", "onPacket", "Drop, Invalid 1hop-src:", pkt.src, ",expected:", p.id, pkt.protocol, pkt.subProtocol)
+		} else if p2p.self.id.Equal(pkt.src) {
+			p2p.log.Println("Warning", "onPacket", "Drop, Invalid self-src", pkt.src, pkt.protocol, pkt.subProtocol)
 		} else if cbFunc := p2p.onPacketCbFuncs[pkt.protocol.Uint16()]; cbFunc != nil {
-			if p2p.packetPool.Put(pkt) && !p2p.self.id.Equal(pkt.src) {
+			if p.connType == p2pConnTypeNone {
+				p2p.log.Println("Warning", "onPacket", "undetermined PeerConnectionType", pkt.protocol, pkt.subProtocol)
+			}
+			if p2p.packetPool.Put(pkt) {
 				cbFunc(pkt, p)
 			} else {
-				p2p.log.Println("onPacket", "Ignore, duplicated", pkt.hashOfPacket)
+				//TODO drop counting each (protocol,subProtocol)
+				p2p.log.Println("onPacket", "Drop, Duplicated by hash", pkt.protocol, pkt.subProtocol, pkt.hashOfPacket, p.id)
 			}
 		}
 	}
@@ -302,6 +302,7 @@ func (p2p *PeerToPeer) decodeMsgpack(b []byte, v interface{}) error {
 	return dec.Decode(v)
 }
 
+//TODO timestamp or sequencenumber for validation (query,result pair)
 type QueryMessage struct {
 	Role PeerRoleFlag
 }
@@ -386,8 +387,12 @@ func (p2p *PeerToPeer) sendQuery(p *Peer) {
 	pkt := NewPacket(PROTO_P2P_QUERY, p2p.encodeMsgpack(m))
 	pkt.src = p2p.self.id
 	p.rtt.Start()
-	p.send(pkt)
-	p2p.log.Println("sendQuery", m, p)
+	err := p.send(pkt)
+	if err != nil {
+		p2p.log.Println("Warning","sendQuery", err)
+	}else{
+		p2p.log.Println("sendQuery", m, p)
+	}
 }
 
 func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
@@ -431,7 +436,12 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 	}
 	rpkt := NewPacket(PROTO_P2P_QUERY_RESULT, p2p.encodeMsgpack(m))
 	rpkt.src = p2p.self.id
-	p.send(rpkt)
+	err = p.send(rpkt)
+	if err != nil {
+		p2p.log.Println("Warning","handleQuery","sendQueryResult", err)
+	}else{
+		p2p.log.Println("handleQuery","sendQueryResult", m, p)
+	}
 }
 
 func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
@@ -476,15 +486,17 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 	}
 }
 
-func (p2p *PeerToPeer) sendToPeer(pkt *Packet, p *Peer) error {
-	if p == nil {
-		return ErrNotAvailable
+func (p2p *PeerToPeer) sendToPeer(pkt *Packet, p *Peer) {
+	if p == nil || p.isDuplicatedToSend(pkt){
+		return
 	}
-	if pkt.src == nil {
-		pkt.src = p2p.self.id
+
+	err := p.send(pkt)
+	if err != nil {
+		p2p.log.Println("Warning", "sendToPeer", err)
+	} else {
+		p2p.log.Println("sendToPeer", pkt.protocol, pkt.subProtocol, p.id)
 	}
-	p2p.log.Println("sendToPeer", pkt, p)
-	return p.send(pkt)
 }
 
 func (p2p *PeerToPeer) sendToPeers(pkt *Packet, peers *PeerSet) {
@@ -492,6 +504,22 @@ func (p2p *PeerToPeer) sendToPeers(pkt *Packet, peers *PeerSet) {
 		//p2p.packetRw.WriteTo(p.writer)
 		p2p.sendToPeer(pkt, p)
 	}
+}
+
+func (p2p *PeerToPeer) sendToFriends(pkt *Packet) {
+	var d time.Duration = 0
+	if pkt.sender != nil && pkt.sender.Equal(pkt.src) {
+		p := p2p.getPeer(pkt.sender, true)
+		if p != nil {
+			d = p.rtt.avg
+		}
+	}
+	go func() {
+		if d > 0 {
+			<-time.After(d)
+		}
+		p2p.sendToPeers(pkt, p2p.friends)
+	}()
 }
 
 func (p2p *PeerToPeer) sendRoutine() {
@@ -512,10 +540,14 @@ func (p2p *PeerToPeer) sendRoutine() {
 
 			switch pkt.dest {
 			case p2pDestPeer:
+				p := p2p.getPeer(pkt.destPeer, true)
+				if p != nil {
+					p2p.sendToPeer(pkt, p)
+				}
 			case p2pDestAny:
 				switch pkt.protocol {
 				case PROTO_DEF_MEMBER:
-					p2p.sendToPeers(pkt, p2p.friends)
+					p2p.sendToFriends(pkt)
 					p2p.sendToPeers(pkt, p2p.children)
 					if !p2p.alternateQueue.Push(ctx) {
 						p2p.log.Println("Warning", "sendRoutine", "alternateQueue Push failure", pkt.protocol, pkt.subProtocol)
@@ -530,7 +562,7 @@ func (p2p *PeerToPeer) sendRoutine() {
 					p2p.sendToPeers(pkt, p2p.nephews)
 				}
 			case p2pRoleRoot: //multicast to reserved role : p2pDestAny < dest <= p2pDestPeerGroup
-				p2p.sendToPeers(pkt, p2p.friends)
+				p2p.sendToFriends(pkt)
 				p2p.sendToPeer(pkt, p2p.parent)
 				if !p2p.alternateQueue.Push(ctx) {
 					p2p.log.Println("Warning", "sendRoutine", "alternateQueue Push failure", pkt.protocol, pkt.subProtocol)
@@ -583,6 +615,12 @@ func (p2p *PeerToPeer) send(pkt *Packet) error {
 		p2p.log.Println("Warning", "send", "Not Available", pkt.protocol, pkt.subProtocol)
 		return ErrNotAvailable
 	}
+	if pkt.dest == p2pDestPeer {
+		p := p2p.getPeer(pkt.destPeer, true)
+		if p == nil {
+			return ErrNotAvailable
+		}
+	}
 	ctx := context.WithValue(context.Background(), p2pContextKeyPacket, pkt)
 	if ok := p2p.sendQueue.Push(ctx); !ok {
 		p2p.log.Println("Warning", "send", "Queue Push failure", pkt.protocol, pkt.subProtocol)
@@ -602,6 +640,9 @@ var (
 )
 
 func (p2p *PeerToPeer) getPeer(id module.PeerID, onlyJoin bool) *Peer {
+	if id == nil {
+		return nil
+	}
 	if p2p.parent != nil && p2p.parent.id.Equal(id) {
 		return p2p.parent
 	} else if p := p2p.uncles.GetByID(id); p != nil {
@@ -738,8 +779,20 @@ func (p2p *PeerToPeer) syncSeeds() {
 }
 
 func (p2p *PeerToPeer) discoverFriends() {
-	roots := p2p.orphanages.RemoveByRole(p2pRoleRoot)
+	nones := p2p.friends.GetByRole(p2pRoleNone)
+	for _, p := range nones {
+		p2p.log.Println("discoverFriends", "not allowed connection from p2pRoleNone", p.id)
+		p.Close()
+	}
+	seeds := p2p.friends.GetByRole(p2pRoleSeed)
+	for _, p := range seeds {
+		p2p.friends.Remove(p)
+		p2p.orphanages.Add(p)
+		p2p.onEvent(p2pEventLeave, p)
+	}
+	roots := p2p.orphanages.GetByHasRole(p2pRoleRoot)
 	for _, p := range roots {
+		p2p.orphanages.Remove(p)
 		p2p.log.Println("discoverFriends", "p2pConnTypeFriend", p.id)
 		p.connType = p2pConnTypeFriend
 		p2p.friends.Add(p)
@@ -859,8 +912,12 @@ func (p2p *PeerToPeer) sendP2PConnectionRequest(connType PeerConnectionType, p *
 	m := &P2PConnectionRequest{ConnType: connType}
 	pkt := NewPacket(PROTO_P2P_CONN_REQ, p2p.encodeMsgpack(m))
 	pkt.src = p2p.self.id
-	p.send(pkt)
-	p2p.log.Println("sendP2PConnectionRequest", m)
+	err := p.send(pkt)
+	if err != nil {
+		p2p.log.Println("Warning","sendP2PConnectionRequest", err)
+	}else{
+		p2p.log.Println("sendP2PConnectionRequest", m, p)
+	}
 }
 func (p2p *PeerToPeer) handleP2PConnectionRequest(pkt *Packet, p *Peer) {
 	req := &P2PConnectionRequest{}
@@ -906,7 +963,12 @@ func (p2p *PeerToPeer) handleP2PConnectionRequest(pkt *Packet, p *Peer) {
 
 	rpkt := NewPacket(PROTO_P2P_CONN_RESP, p2p.encodeMsgpack(m))
 	rpkt.src = p2p.self.id
-	p.send(rpkt)
+	err = p.send(rpkt)
+	if err != nil {
+		p2p.log.Println("Warning","handleP2PConnectionRequest","sendP2PConnectionResponse", err)
+	}else{
+		p2p.log.Println("handleP2PConnectionRequest","sendP2PConnectionResponse", m, p)
+	}
 }
 
 func (p2p *PeerToPeer) handleP2PConnectionResponse(pkt *Packet, p *Peer) {

@@ -87,7 +87,9 @@ func (ms *membership) receiveRoutine(br *baseReactor) {
 					// ms.log.Println("receiveRoutine rebroadcast Ignore, not allowed when ttl=1", pkt)
 				} else {
 					// ms.log.Println("receiveRoutine rebroadcast", pkt)
-					ms.p2p.send(pkt)
+					if err := ms.p2p.send(pkt); err != nil {
+						ms.log.Println("Warning","receiveRoutine","rebroadcast",err)
+					}
 				}
 			}
 		}
@@ -174,8 +176,8 @@ func (ms *membership) Unicast(subProtocol module.ProtocolInfo, bytes []byte, id 
 	pkt := NewPacket(subProtocol, bytes)
 	pkt.protocol = ms.protocol
 	pkt.dest = p2pDestPeer
-	p := ms.p2p.getPeer(id, true)
-	return ms.p2p.sendToPeer(pkt, p)
+	pkt.destPeer = id
+	return ms.p2p.send(pkt)
 }
 
 //TxMessage,PrevoteMessage, Send to Validators
