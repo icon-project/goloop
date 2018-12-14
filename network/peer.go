@@ -266,7 +266,7 @@ func (p *Peer) receiveRoutine() {
 	}
 }
 
-func (p *Peer) _send(pkt *Packet) error {
+func (p *Peer) sendDirect(pkt *Packet) error {
 	if err := p.conn.SetWriteDeadline(time.Now().Add(DefaultSendTimeout)); err != nil {
 		return err
 	} else if err := p.writer.WritePacket(pkt); err != nil {
@@ -301,7 +301,7 @@ Loop:
 						//log.Println(p.id, "Peer", "send", "Drop, Duplicated by hash", pkt.protocol, pkt.subProtocol, pkt.hashOfPacket)
 					}
 				}
-				if err := p._send(pkt); err != nil {
+				if err := p.sendDirect(pkt); err != nil {
 					r := p.isTemporaryError(err)
 					// log.Printf("Peer.sendRoutine Error isTemporary:{%v} error:{%+v} peer:%s", r, err, p.String())
 					if !r {
