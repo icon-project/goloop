@@ -2,16 +2,16 @@ package chain
 
 import (
 	"encoding/json"
+	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/service"
 	"log"
 	"time"
 
-	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/rpc"
-	"github.com/icon-project/goloop/service"
 )
 
 type Config struct {
@@ -79,10 +79,6 @@ func toRoles(r uint) []module.Role {
 func (c *singleChain) Start() {
 	c.database = db.Open(c.cfg.DBDir, c.cfg.DBType, c.cfg.DBName)
 
-	c.vld = consensus.NewVoteListFromBytes
-	c.sm = service.NewManager(c)
-	c.bm = block.NewManager(c, c.sm)
-
 	c.nm = network.NewManager(c.cfg.Channel, c.nt, toRoles(c.cfg.Role)...)
 
 	if c.cfg.SeedAddr != "" {
@@ -98,9 +94,10 @@ func (c *singleChain) Start() {
 		}
 	}
 
-	if err := c.sm.SetMembership(c.nm.GetMembership(network.DefaultMembershipName)); err != nil {
-		log.Printf("Fail to SetMebership err=%+v", err)
-	}
+	c.vld = consensus.NewVoteListFromBytes
+	c.sm = service.NewManager(c, c.nm)
+	c.bm = block.NewManager(c, c.sm)
+
 	c.cs = consensus.NewConsensus(c, c.bm, c.nm)
 	go c.cs.Start()
 

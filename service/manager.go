@@ -31,19 +31,22 @@ type manager struct {
 	patchTxPool  *transactionPool
 	normalTxPool *transactionPool
 
-	db      db.Database
-	chain   module.Chain
-	reactor *serviceReactor
+	db        db.Database
+	chain     module.Chain
+	txReactor *transactionReactor
 }
 
-func NewManager(chain module.Chain) module.ServiceManager {
+func NewManager(chain module.Chain, nm module.NetworkManager) module.ServiceManager {
 	bk, _ := chain.Database().GetBucket(db.MerkleTrie)
-	return &manager{
+
+	mgr := &manager{
 		patchTxPool:  NewTransactionPool(bk),
 		normalTxPool: NewTransactionPool(bk),
 		db:           chain.Database(),
 		chain:        chain,
 	}
+	mgr.txReactor = newTransactionReactor(nm, mgr.patchTxPool, mgr.normalTxPool)
+	return mgr
 }
 
 // ProposeTransition proposes a Transition following the parent Transition.
@@ -272,31 +275,17 @@ func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
 		log.Panicf("Wrong TransactionGroup. %v", newTx.Group())
 	}
 
-	// TODO execute with goroutine after performamnce test
-	//go func() {
 	if err := txPool.add(newTx); err == nil {
-		m.reactor.propagateTransaction(PROPAGATE_TRANSACTION, newTx)
+		m.txReactor.propagateTransaction(protocolPropagateTransaction, newTx)
 	} else {
 		return hash, err
 	}
-	//}()
 	return hash, nil
 }
 
 func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {
 	valList, _ := ValidatorListFromHash(m.db, hash)
 	return valList
-}
-
-func (m *manager) SetMembership(membership module.Membership) error {
-	if m.reactor != nil {
-		return errors.New("membership is already registered")
-	}
-	// TODO change below.
-	reactor := &serviceReactor{membership: membership, txPool: m.normalTxPool}
-	membership.RegistReactor(reactorName, reactor, subProtocols)
-	m.reactor = reactor
-	return nil
 }
 
 func (m *manager) GetBalance(result []byte, addr module.Address) *big.Int {

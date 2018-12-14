@@ -189,8 +189,6 @@ type ServiceManager interface {
 	// ValidatorListFromHash returns ValidatorList from hash.
 	ValidatorListFromHash(hash []byte) ValidatorList
 
-	SetMembership(membership Membership) error
-
 	// GetBalance get balance of the account
 	GetBalance(result []byte, addr Address) *big.Int
 }
