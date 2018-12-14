@@ -2,7 +2,10 @@ package network
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"sort"
+	"strings"
 
 	"github.com/icon-project/goloop/module"
 
@@ -10,13 +13,15 @@ import (
 	"github.com/osamingo/jsonrpc"
 )
 
-func MethodRepository(nt module.NetworkTransport) *jsonrpc.MethodRepository {
+func MethodRepository(nm module.NetworkManager) *jsonrpc.MethodRepository {
 	mr := jsonrpc.NewMethodRepository()
+	m := nm.(*manager)
 	//RegisterMethod(method string, h Handler, params, result interface{}) error
-	mr.RegisterMethod("dial", jsonrpcWithContext(nt, jsonrpcHandleDial), nil, nil)
-	mr.RegisterMethod("query", jsonrpcWithContext(nt, jsonrpcHandleSendQuery), nil, nil)
-	mr.RegisterMethod("p2p", jsonrpcWithContext(nt, jsonrpcHandleP2P), nil, nil)
-	mr.RegisterMethod("logger", jsonrpcWithContext(nt, jsonrpcHandleLogger), nil, nil)
+	mr.RegisterMethod("dial", jsonrpcWithContext(m, jsonrpcHandleDial), nil, nil)
+	mr.RegisterMethod("query", jsonrpcWithContext(m, jsonrpcHandleSendQuery), nil, nil)
+	mr.RegisterMethod("p2p", jsonrpcWithContext(m, jsonrpcHandleP2P), nil, nil)
+	mr.RegisterMethod("membership", jsonrpcWithContext(m, jsonrpcHandleMembership), nil, nil)
+	mr.RegisterMethod("logger", jsonrpcWithContext(m, jsonrpcHandleLogger), nil, nil)
 	return mr
 }
 
@@ -29,14 +34,11 @@ func (f jsonrpcHandlerFunc) ServeJSONRPC(c context.Context, params *fastjson.Raw
 type rpcContextKey string
 
 var (
-	rpcContextKeyParamMap  = rpcContextKey("param")
-	rpcContextKeyTransport = rpcContextKey("transport")
-	rpcContextKeyP2P       = rpcContextKey("p2p")
+	rpcContextKeyParamMap = rpcContextKey("param")
+	rpcContextKeyManager  = rpcContextKey("manager")
 )
 
-func jsonrpcWithContext(nt module.NetworkTransport, next jsonrpcHandlerFunc) jsonrpcHandlerFunc {
-	t := nt.(*transport)
-	p2pMap := t.pd.p2pMap
+func jsonrpcWithContext(mgr *manager, next jsonrpcHandlerFunc) jsonrpcHandlerFunc {
 	return func(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 		m := make(map[string]interface{})
 		if err := jsonrpc.Unmarshal(params, &m); err != nil {
@@ -45,12 +47,7 @@ func jsonrpcWithContext(nt module.NetworkTransport, next jsonrpcHandlerFunc) jso
 		ctx := context.WithValue(c, rpcContextKeyParamMap, m)
 		//log.Println("jsonrpcWithChannel param", m)
 
-		ctx = context.WithValue(ctx, rpcContextKeyTransport, t)
-		if channel, ok := m["channel"]; ok {
-			if p2p, ok := p2pMap[channel.(string)]; ok {
-				ctx = context.WithValue(ctx, rpcContextKeyP2P, p2p)
-			}
-		}
+		ctx = context.WithValue(ctx, rpcContextKeyManager, mgr)
 		return next.ServeJSONRPC(ctx, params)
 	}
 }
@@ -114,32 +111,26 @@ func _getParamMap(c context.Context) (map[string]interface{}, *jsonrpc.Error) {
 	return m, nil
 }
 
-func _getTransport(c context.Context) (*transport, *jsonrpc.Error) {
-	v := c.Value(rpcContextKeyTransport)
+func _getManager(c context.Context) (*manager, *jsonrpc.Error) {
+	v := c.Value(rpcContextKeyManager)
 	if v == nil {
-		log.Println("_getTransport not exists rpcContextKeyTransport")
+		log.Println("_getManager not exists rpcContextKeyManager")
 		return nil, jsonrpc.ErrInvalidParams()
 	}
-	t, ok := v.(*transport)
+	mgr, ok := v.(*manager)
 	if !ok {
-		log.Println("_getTransport invalid context value to *transport")
+		log.Println("_getManager invalid context value to *manager")
 		return nil, jsonrpc.ErrInternal()
 	}
-	return t, nil
+	return mgr, nil
 }
 
 func _getP2P(c context.Context) (*PeerToPeer, *jsonrpc.Error) {
-	v := c.Value(rpcContextKeyP2P)
-	if v == nil {
-		log.Println("_getP2P not exists rpcContextKeyP2P")
-		return nil, jsonrpc.ErrInvalidParams()
+	mgr, err := _getManager(c)
+	if err != nil {
+		return nil, err
 	}
-	p2p, ok := v.(*PeerToPeer)
-	if !ok {
-		log.Println("_getP2P invalid context value to *PeerToPeer")
-		return nil, jsonrpc.ErrInternal()
-	}
-	return p2p, nil
+	return mgr.p2p, nil
 }
 func jsonrpcHandleSendQuery(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 	p2p, err := _getP2P(c)
@@ -186,6 +177,41 @@ func jsonrpcHandleP2P(c context.Context, params *fastjson.RawMessage) (interface
 	m["uncles"] = toMapArray(p2p.uncles)
 	m["nephews"] = toMapArray(p2p.nephews)
 	m["orphanages"] = toMapArray(p2p.orphanages)
+	return m, nil
+}
+
+func jsonrpcHandleMembership(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+	mgr, err := _getManager(c)
+	if err != nil {
+		return nil, err
+	}
+
+	m := make(map[string]interface{})
+	for _, ms := range mgr.memberships {
+		msmap := make(map[string]interface{})
+		rs := make(map[string]interface{})
+		for _, r := range ms.reactors {
+			rmap := make(map[string]interface{})
+
+			parr := make([]int, 0)
+			for _, p := range r.subProtocols {
+				parr = append(parr, int(p.Uint16()))
+			}
+			sort.Ints(parr)
+			sarr := make([]string, len(parr))
+			for i, p := range parr {
+				sarr[i] = fmt.Sprintf("%#04x", p)
+			}
+			rmap["subProtocols"] = strings.Join(sarr, ",")
+
+			rmap["receiveQueue"] = r.receiveQueue.Available()
+			rmap["eventQueue"] = r.eventQueue.Available()
+			rs[r.name] = rmap
+		}
+		msmap["protocol"] = fmt.Sprintf("%#04x,", ms.protocol.Uint16())
+		msmap["reactors"] = rs
+		m[ms.name] = msmap
+	}
 	return m, nil
 }
 

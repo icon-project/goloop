@@ -104,7 +104,7 @@ func (c *singleChain) Start() {
 	c.cs = consensus.NewConsensus(c, c.bm, c.nm)
 	go c.cs.Start()
 
-	c.sv = rpc.NewJsonRpcServer(c.bm, c.sm, c.cs, c.nt)
+	c.sv = rpc.NewJsonRpcServer(c.bm, c.sm, c.cs, c.nm)
 
 	if err := c.sv.ListenAndServe(c.cfg.RPCAddr); err != nil {
 		log.Printf("Fail to Listen on RPC server err=%+v", err)

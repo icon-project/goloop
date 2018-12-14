@@ -19,15 +19,15 @@ type JsonRpcServer struct {
 	bm module.BlockManager
 	sm module.ServiceManager
 	cs module.Consensus
-	nt module.NetworkTransport
+	nm module.NetworkManager
 }
 
-func NewJsonRpcServer(bm module.BlockManager, sm module.ServiceManager, cs module.Consensus, nt module.NetworkTransport) JsonRpcServer {
+func NewJsonRpcServer(bm module.BlockManager, sm module.ServiceManager, cs module.Consensus, nm module.NetworkManager) JsonRpcServer {
 	return JsonRpcServer{
 		bm: bm,
 		sm: sm,
 		cs: cs,
-		nt: nt,
+		nm: nm,
 	}
 }
 
@@ -59,8 +59,8 @@ func (s *JsonRpcServer) jsonRpcHandler() http.Handler {
 	maxAge := handlers.MaxAge(3600)
 
 	// network
-	if s.nt != nil {
-		nmr := network.MethodRepository(s.nt)
+	if s.nm != nil {
+		nmr := network.MethodRepository(s.nm)
 		router.Handle("/network", handlers.CORS(corsOrigins, corsMethods, corsHeaders, maxAge)(nmr))
 		router.PathPrefix("/view/network/").Handler(http.StripPrefix("/view/network/", &staticHandler{dir: "./html"}))
 	}
