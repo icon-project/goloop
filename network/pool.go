@@ -122,13 +122,9 @@ func (p *TimestampPool) _contains(k interface{}) bool {
 	return false
 }
 
-func (p *TimestampPool) Put(k interface{}) bool {
+func (p *TimestampPool) Put(k interface{}) {
 	defer p.mtx.Unlock()
 	p.mtx.Lock()
-
-	if p._contains(k) {
-		return false
-	}
 
 	now := time.Now()
 	n := now.Unix()
@@ -143,7 +139,6 @@ func (p *TimestampPool) Put(k interface{}) bool {
 	}
 	m := p.buckets[p.cur]
 	m[k] = now
-	return true
 }
 
 func (p *TimestampPool) Clear() {

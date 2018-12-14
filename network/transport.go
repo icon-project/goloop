@@ -6,8 +6,9 @@ import (
 	"net"
 	"sync"
 
-	"github.com/icon-project/goloop/module"
 	"github.com/ugorji/go/codec"
+
+	"github.com/icon-project/goloop/module"
 )
 
 type transport struct {
@@ -204,10 +205,15 @@ func (ph *peerHandler) setSelfPeerID(id module.PeerID) {
 	ph.log.prefix = fmt.Sprintf("%s", ph.self)
 }
 
-func (ph *peerHandler) sendPacket(pi module.ProtocolInfo, m interface{}, p *Peer) {
+func (ph *peerHandler) sendMessage(pi module.ProtocolInfo, m interface{}, p *Peer) {
 	pkt := NewPacket(pi, ph.encode(m))
 	pkt.src = ph.self
-	p.send(pkt)
+	err := p.send(pkt)
+	if err != nil {
+		ph.log.Println("Warning", "sendPacket", err)
+	} else {
+		ph.log.Println("sendPacket", m, p)
+	}
 }
 
 func (ph *peerHandler) encode(v interface{}) []byte {

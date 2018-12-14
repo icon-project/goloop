@@ -38,8 +38,10 @@ func Test_packet_PacketReader(t *testing.T) {
 	fb := make([]byte, packetFooterSize)
 	binary.BigEndian.PutUint32(hb[packetHeaderSize-4:], uint32(len(payload)))
 	hash := fnv.New64a()
-	hash.Write(hb)
-	hash.Write(payload)
+	_, err = hash.Write(hb)
+	assert.NoError(t, err, "hash.Write(hb) NoError")
+	_, err = hash.Write(payload)
+	assert.NoError(t, err, "hash.Write(payload) NoError")
 	binary.BigEndian.PutUint64(fb, hash.Sum64())
 
 	b.Write(hb)

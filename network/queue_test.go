@@ -64,7 +64,7 @@ Loop:
 func Test_queue_OnReceiveQueue(t *testing.T) {
 	q := NewQueue(10)
 	assert.Equal(t, 0, q.Available(), "0")
-	assert.Equal(t, false, q.Push(nil), "false")
+	assert.False(t, q.Push(nil), "false")
 
 	var ctxSize = 4
 	var workerSize = 2
@@ -73,7 +73,7 @@ func Test_queue_OnReceiveQueue(t *testing.T) {
 	for i := range arr {
 		s := fmt.Sprintf("%d", i)
 		arr[i] = generateOnReceiveContext(s, i)
-		assert.Equal(t, true, q.Push(arr[i]), "true")
+		assert.True(t, q.Push(arr[i]), "true")
 		assert.Equal(t, i+1, q.Available(), "Available")
 	}
 
@@ -112,7 +112,7 @@ func Test_queue_OnReceiveQueue(t *testing.T) {
 
 	go func() {
 		for i := range arr {
-			assert.Equal(t, true, q.Push(arr[i]), "true")
+			assert.True(t, q.Push(arr[i]), "true")
 			assert.Equal(t, i+1, q.Available(), fmt.Sprint(i+1))
 		}
 	}()

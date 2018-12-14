@@ -23,11 +23,11 @@ func Test_pool_PacketPool(t *testing.T) {
 		p.Put(pkt)
 	}
 
-	assert.Equal(t, false, p.Contains(pkts[0]), "false")
-	assert.Equal(t, false, p.Contains(pkts[1]), "false")
-	assert.Equal(t, true, p.Contains(pkts[2]), "true")
-	assert.Equal(t, true, p.Contains(pkts[3]), "true")
-	assert.Equal(t, true, p.Contains(pkts[4]), "true")
+	assert.False(t, p.Contains(pkts[0]), "false")
+	assert.False(t, p.Contains(pkts[1]), "false")
+	assert.True(t, p.Contains(pkts[2]), "true")
+	assert.True(t, p.Contains(pkts[3]), "true")
+	assert.True(t, p.Contains(pkts[4]), "true")
 }
 
 func generateDummyPacket(s string, i int) *Packet {
@@ -41,7 +41,7 @@ func Test_pool_TimestamPool(t *testing.T) {
 		p.Put(i)
 	}
 	for i := 0; i < 5; i++ {
-		assert.Equal(t, true, p.Contains(i), "true")
+		assert.True(t, p.Contains(i), "true")
 	}
 	log.Println(time.Now().Unix())
 	time.Sleep(1 * time.Second)
@@ -50,14 +50,14 @@ func Test_pool_TimestamPool(t *testing.T) {
 		p.Put(i + 5)
 	}
 	for i := 0; i < 5; i++ {
-		assert.Equal(t, true, p.Contains(i+5), "true")
+		assert.True(t, p.Contains(i+5), "true")
 	}
 	p.RemoveBefore(1)
 	for i := 0; i < 5; i++ {
-		assert.Equal(t, false, p.Contains(i), "false")
+		assert.False(t, p.Contains(i), "false")
 	}
 	for i := 0; i < 5; i++ {
-		assert.Equal(t, true, p.Contains(i+5), "true")
+		assert.True(t, p.Contains(i+5), "true")
 	}
 }
 

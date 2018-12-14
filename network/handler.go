@@ -64,7 +64,7 @@ type JoinResponse struct {
 
 func (cn *ChannelNegotiator) sendJoinRequest(p *Peer) {
 	m := &JoinRequest{Channel: p.channel, Addr: cn.netAddress}
-	cn.sendPacket(PROTO_CHAN_JOIN_REQ, m, p)
+	cn.sendMessage(PROTO_CHAN_JOIN_REQ, m, p)
 	cn.log.Println("sendJoinRequest", m, p)
 }
 
@@ -76,7 +76,7 @@ func (cn *ChannelNegotiator) handleJoinRequest(pkt *Packet, p *Peer) {
 	p.netAddress = rm.Addr
 
 	m := &JoinResponse{Channel: p.channel, Addr: cn.netAddress}
-	cn.sendPacket(PROTO_CHAN_JOIN_RESP, m, p)
+	cn.sendMessage(PROTO_CHAN_JOIN_RESP, m, p)
 
 	cn.nextOnPeer(p)
 }
@@ -178,7 +178,7 @@ type SignatureResponse struct {
 func (a *Authenticator) sendPublicKeyRequest(p *Peer) {
 	m := &PublicKeyRequest{PublicKey: a.pubKey.SerializeCompressed()}
 	p.rtt.Start()
-	a.sendPacket(PROTO_AUTH_KEY_REQ, m, p)
+	a.sendMessage(PROTO_AUTH_KEY_REQ, m, p)
 	a.log.Println("sendPublicKeyRequest", m, p)
 }
 
@@ -194,7 +194,7 @@ func (a *Authenticator) handlePublicKeyRequest(pkt *Packet, p *Peer) {
 
 	m := &PublicKeyResponse{PublicKey: a.pubKey.SerializeCompressed()}
 	p.rtt.Start()
-	a.sendPacket(PROTO_AUTH_KEY_RESP, m, p)
+	a.sendMessage(PROTO_AUTH_KEY_RESP, m, p)
 }
 
 func (a *Authenticator) handlePublicKeyResponse(pkt *Packet, p *Peer) {
@@ -210,7 +210,7 @@ func (a *Authenticator) handlePublicKeyResponse(pkt *Packet, p *Peer) {
 
 	m := &SignatureRequest{Signature: a.Signature()}
 	m.Rtt = p.rtt.Last(time.Millisecond)
-	a.sendPacket(PROTO_AUTH_SIGN_REQ, m, p)
+	a.sendMessage(PROTO_AUTH_SIGN_REQ, m, p)
 }
 
 func (a *Authenticator) handleSignatureRequest(pkt *Packet, p *Peer) {
@@ -222,11 +222,11 @@ func (a *Authenticator) handleSignatureRequest(pkt *Packet, p *Peer) {
 	if a.VerifySignature(s, p) {
 		m := &SignatureResponse{Signature: a.Signature()}
 		m.Rtt = p.rtt.Last(time.Millisecond)
-		a.sendPacket(PROTO_AUTH_SIGN_RESP, m, p)
+		a.sendMessage(PROTO_AUTH_SIGN_RESP, m, p)
 
 		a.nextOnPeer(p)
 	} else {
-		a.log.Println("handleSignatureRequest", "Incomming PeerId Invalid signature, try close")
+		a.log.Println("handleSignatureRequest", "Incoming PeerId Invalid signature, try close")
 		p.Close()
 	}
 }

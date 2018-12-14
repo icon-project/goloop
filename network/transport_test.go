@@ -46,7 +46,7 @@ func (ph *testPeerHandler) onPeer(p *Peer) {
 	if !p.incomming {
 		ph.wg.Add(1)
 		m := &testTransportRequest{Message: "Hello"}
-		ph.sendPacket(ProtoTestTransportRequest, m, p)
+		ph.sendMessage(ProtoTestTransportRequest, m, p)
 		ph.log.Println("sendProtoTestTransportRequest", m, p)
 	}
 }
@@ -68,7 +68,7 @@ func (ph *testPeerHandler) onPacket(pkt *Packet, p *Peer) {
 			ph.log.Println("handleProtoTestTransportRequest", rm, p)
 
 			m := &testTransportResponse{Message: "World"}
-			ph.sendPacket(ProtoTestTransportResponse, m, p)
+			ph.sendMessage(ProtoTestTransportResponse, m, p)
 
 			ph.nextOnPeer(p)
 		case ProtoTestTransportResponse:
