@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"math/big"
+	"time"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/eeproxy"
-	"log"
-	"math/big"
-	"time"
 )
 
 var mgr eeproxy.Manager
@@ -67,9 +68,9 @@ func (cc *callContext) OnResult(status uint16, steps *big.Int, result []byte) {
 		status, steps.String(), result)
 }
 
-func (cc *callContext) OnCall(from, to module.Address, value, limit *big.Int, params []byte) {
-	fmt.Printf("CallContext.OnCall(%s,%s,%s,%s,[% x])\n",
-		from, to, value, limit, params)
+func (cc *callContext) OnCall(from, to module.Address, value, limit *big.Int, method string, params []byte) {
+	fmt.Printf("CallContext.OnCall(%s,%s,%s,%s,%s,[% x])\n",
+		from, to, value, limit, method, params)
 }
 
 func (cc *callContext) OnAPI(obj interface{}) {

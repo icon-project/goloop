@@ -1,14 +1,15 @@
 package eeproxy
 
 import (
+	"log"
+	"math/big"
+	"sync"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/ipc"
 	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
-	"log"
-	"math/big"
-	"sync"
 )
 
 type Message uint
@@ -34,7 +35,7 @@ type CallContext interface {
 	GetBalance(addr module.Address) *big.Int
 	OnEvent(addr module.Address, indexed, data [][]byte)
 	OnResult(status uint16, steps *big.Int, result []byte)
-	OnCall(from, to module.Address, value, limit *big.Int, params []byte)
+	OnCall(from, to module.Address, value, limit *big.Int, method string, params []byte)
 	OnAPI(obj interface{})
 }
 
@@ -254,7 +255,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 			return err
 		}
 		p.frame.ctx.OnCall(p.frame.addr,
-			&m.To, &m.Value.Int, &m.Limit.Int, m.Params)
+			&m.To, &m.Value.Int, &m.Limit.Int, m.Method, m.Params)
 		return nil
 
 	case msgEVENT:
