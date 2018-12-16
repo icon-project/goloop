@@ -40,23 +40,25 @@ type (
 	}
 
 	CallContext interface {
+		Setup(WorldContext)
+		Call(ContractHandler) (module.Status, *big.Int, []byte, module.Address)
+		OnResult(status module.Status, stepUsed *big.Int, result []byte, addr module.Address)
+		OnCall(ContractHandler)
+		OnEvent(indexed, data [][]byte)
+		GetInfo() map[string]interface{}
+		GetBalance(module.Address) *big.Int
 		ReserveConnection(eeType string) error
 		GetConnection(eeType string) eeproxy.Proxy
-		AddEvent(idxcnt uint16, msgs [][]byte)
+		Dispose()
 	}
-
-	CallResultMessage struct {
+	callResultMessage struct {
 		status   module.Status
 		stepUsed *big.Int
 		result   []byte
 	}
 
-	CallRequestMessage struct {
-		from      module.Address
-		to        module.Address
-		value     *big.Int
-		stepLimit *big.Int
-		params    []byte
+	callRequestMessage struct {
+		handler ContractHandler
 	}
 )
 
@@ -69,6 +71,7 @@ type transactionHandler struct {
 	data      []byte
 
 	handler ContractHandler
+	cc      CallContext
 	receipt Receipt
 }
 
@@ -82,10 +85,8 @@ func NewTransactionHandler(from, to module.Address, value, stepLimit *big.Int,
 		stepLimit: stepLimit,
 		dataType:  dataType,
 		data:      data,
-		receipt:   NewReceipt(to),
 	}
-	// TODO check type of data
-	ctype := -1 // invalid contract type
+	ctype := ctypeNone // invalid contract type
 	switch dataType {
 	case dataTypeNone:
 		ctype = ctypeTransfer
@@ -96,8 +97,11 @@ func NewTransactionHandler(from, to module.Address, value, stepLimit *big.Int,
 	case dataTypeCall:
 		ctype = ctypeTransferAndCall
 	}
-	cc := newContractCallContext()
-	tc.handler = contractMngr.GetHandler(cc, from, to, value, stepLimit, ctype, data)
+
+	tc.receipt = NewReceipt(to)
+	tc.cc = newCallContext(tc.receipt)
+	tc.handler = contractMngr.GetHandler(tc.cc, from, to, value, stepLimit,
+		ctype, data)
 	if tc.handler == nil {
 		log.Println("can't find handler:", from, to, dataType, ctype)
 		return nil
@@ -110,114 +114,118 @@ func (th *transactionHandler) Prepare(wvs WorldVirtualState) (WorldVirtualState,
 }
 
 func (th *transactionHandler) Execute(wc WorldContext) (Receipt, error) {
-	cc := newContractCallContext()
-	return cc.Call(th.handler, wc)
+	th.cc.Setup(wc)
+	status, stepUsed, _, addr := th.cc.Call(th.handler)
+	if status != module.StatusSuccess {
+		stepUsed = th.stepLimit
+	}
+	th.receipt.SetResult(status, stepUsed, wc.StepPrice(), addr)
+	return th.receipt, nil
 }
 
 func (th *transactionHandler) Dispose() {
-	// TODO clean up all resources just in case of not calling Execute()
-	panic("implement me")
+	th.cc.Dispose()
 }
 
 type callContext struct {
-	// set at Call()
-	wc             WorldContext
-	initialHandler ContractHandler
+	receipt Receipt
+	conns   map[string]eeproxy.Proxy
 
-	lock  sync.Mutex
+	// set at Setup()
+	wc    WorldContext
+	info  map[string]interface{}
 	timer <-chan time.Time
 
-	//stepPrice *big.Int
-	//info map[string]interface{}
-
-	stack list.List
-	conns map[string]eeproxy.Proxy
+	lock   sync.Mutex
+	stack  list.List
+	waiter chan interface{}
 }
 
-func newContractCallContext() *callContext {
+func newCallContext(receipt Receipt) CallContext {
 	return &callContext{
-		conns: make(map[string]eeproxy.Proxy),
+		receipt: receipt,
+		waiter:  make(chan interface{}),
+		conns:   make(map[string]eeproxy.Proxy),
 	}
 }
 
-func (cc *callContext) Call(handler ContractHandler, wc WorldContext,
-) (Receipt, error) {
+func (cc *callContext) Setup(wc WorldContext) {
 	cc.wc = wc
-	cc.initialHandler = handler
-
-	// TODO create receipt
-	//r := NewReceipt(handler.To())
+	// TODO set info map
 
 	cc.timer = time.After(transactionTimeLimit)
-	cc.handleCall(handler)
+}
 
-	return nil, nil
+func (cc *callContext) Call(handler ContractHandler) (module.Status, *big.Int,
+	[]byte, module.Address,
+) {
+	return cc.handleCall(handler)
 }
 
 func (cc *callContext) handleCall(handler ContractHandler,
-) (module.Status, *big.Int, module.Address) {
+) (module.Status, *big.Int, []byte, module.Address) {
 	switch handler := handler.(type) {
 	case SyncContractHandler:
 		cc.lock.Lock()
 		e := cc.stack.PushBack(handler)
 		cc.lock.Unlock()
 
-		status, stepUsed, scoreAddr := handler.ExecuteSync(cc.wc)
+		status, stepUsed, result, scoreAddr := handler.ExecuteSync(cc.wc)
 
 		cc.lock.Lock()
 		cc.stack.Remove(e)
 		cc.lock.Unlock()
-		return status, stepUsed, scoreAddr
+		return status, stepUsed, result, scoreAddr
 	case AsyncContractHandler:
 		cc.lock.Lock()
 		e := cc.stack.PushBack(handler)
 		cc.lock.Unlock()
 
-		exec, err := handler.ExecuteAsync(cc.wc)
-		if err != nil {
+		if err := handler.ExecuteAsync(cc.wc); err != nil {
 			cc.lock.Lock()
 			cc.stack.Remove(e)
 			cc.lock.Unlock()
-			return module.StatusSystemError, handler.StepLimit(), nil
+			return module.StatusSystemError, handler.StepLimit(), nil, nil
 		}
-		status, stepUsed, _, scoreAddr := cc.waitResult(exec)
-		return status, stepUsed, scoreAddr
+		return cc.waitResult()
 	default:
 		log.Panicf("Unknown handler type")
-		return module.StatusSystemError, handler.StepLimit(), nil
+		return module.StatusSystemError, nil, nil, nil
 	}
 }
 
-func (cc *callContext) waitResult(ch <-chan interface{}) (
-	module.Status, *big.Int, []byte, module.Address) {
+func (cc *callContext) waitResult() (module.Status, *big.Int, []byte, module.Address) {
 	for {
 		select {
 		case <-cc.timer:
-			cc.lock.Lock()
-			for e := cc.stack.Back(); e != nil; e = cc.stack.Back() {
-				if _, ok := e.Value.(AsyncContractHandler); ok {
-					// actually all value is an instance of AsyncContractHandler
-					e.Value.(AsyncContractHandler).Cancel()
-				}
-				cc.stack.Remove(e)
-			}
-			cc.lock.Unlock()
-			return module.StatusTimeout, cc.initialHandler.StepLimit(), nil, nil
-		case msg := <-ch:
-			switch msg := msg.(type) {
-			case *CallResultMessage:
-				cc.handleResult(msg.status, msg.stepUsed, msg.result, nil)
-				return msg.status, msg.stepUsed, msg.result, nil
-			case *CallRequestMessage:
-				h := contractMngr.GetHandler(
-					cc, msg.from, msg.to, msg.value, msg.stepLimit,
-					ctypeCall, msg.params,
-				).(AsyncContractHandler)
+			handler := cc.cancelCall()
+			close(cc.waiter)
+			return module.StatusTimeout, handler.StepLimit(), nil, nil
+		case msg, more := <-cc.waiter:
+			if more {
+				switch msg := msg.(type) {
+				case *callResultMessage:
+					cc.lock.Lock()
+					// remove current frame
+					e := cc.stack.Back()
+					if e == nil {
+						log.Panicf("Fail to handle result(it's not in frame)")
+					}
+					cc.stack.Remove(e)
+					cc.lock.Unlock()
 
-				status, stepLimit, addr := cc.handleCall(h)
-				return status, stepLimit, nil, addr
-			default:
-				log.Printf("Invalid message=%[1]T %[1]+v", msg)
+					cc.handleResult(msg.status, msg.stepUsed, msg.result, nil)
+					return msg.status, msg.stepUsed, msg.result, nil
+				case *callRequestMessage:
+					status, stepUsed, result, addr := cc.handleCall(msg.handler)
+
+					cc.handleResult(status, stepUsed, result, addr)
+					return status, stepUsed, result, addr
+				default:
+					log.Printf("Invalid message=%[1]T %[1]+v", msg)
+				}
+			} else {
+				cc.cancelCall()
 			}
 		}
 	}
@@ -227,34 +235,66 @@ func (cc *callContext) handleResult(status module.Status,
 	stepUsed *big.Int, result []byte, addr module.Address,
 ) {
 	cc.lock.Lock()
-
-	// remove current frame
-	e := cc.stack.Back()
-	if e == nil {
-		log.Panicf("Fail to handle result(it's not in frame)")
-	}
-	cc.stack.Remove(e)
-
 	// back to parent frame
-	e = cc.stack.Back()
+	e := cc.stack.Back()
 	if e == nil {
 		return
 	}
 	cc.lock.Unlock()
+
 	switch h := e.Value.(type) {
 	case AsyncContractHandler:
 		if conn := cc.conns[h.EEType()]; conn != nil {
-			conn.SendResult(h, uint16(status), stepUsed, result)
+			_ = conn.SendResult(h, uint16(status), stepUsed, result)
 		} else {
 			log.Println("Unexpected contract handling: no IPC connection")
-			// go to parent frame with same result
-			cc.handleResult(module.StatusSystemError, stepUsed, nil, addr)
+			cc.OnResult(module.StatusSystemError, h.StepLimit(), nil, nil)
 		}
 	case SyncContractHandler:
-
+		// do nothing
+		return
 	default:
 		// It can't be happened
 		log.Println("Invalid contract handler type:", reflect.TypeOf(e.Value))
+	}
+}
+
+func (cc *callContext) cancelCall() ContractHandler {
+	cc.lock.Lock()
+	defer cc.lock.Unlock()
+	e := cc.stack.Back()
+	if h, ok := e.Value.(AsyncContractHandler); ok {
+		h.Cancel()
+	} else {
+		log.Panicln("Other types than AsyncContractHandler:",
+			reflect.TypeOf(e.Value))
+	}
+	cc.stack.Remove(e)
+
+	return e.Value.(ContractHandler)
+}
+
+func (cc *callContext) OnResult(status module.Status, stepUsed *big.Int, result []byte, addr module.Address) {
+	cc.waiter <- &callResultMessage{status: status, stepUsed: stepUsed, result: result}
+}
+
+func (cc *callContext) OnCall(handler ContractHandler) {
+	cc.waiter <- &callRequestMessage{handler}
+}
+
+func (cc *callContext) OnEvent(indexed, data [][]byte) {
+	cc.receipt.AddLog(nil, indexed, data)
+}
+
+func (cc *callContext) GetInfo() map[string]interface{} {
+	return cc.info
+}
+
+func (cc *callContext) GetBalance(addr module.Address) *big.Int {
+	if as := cc.wc.GetAccountState(addr.ID()); as != nil {
+		return as.GetBalance()
+	} else {
+		return big.NewInt(0)
 	}
 }
 
@@ -274,6 +314,8 @@ func (cc *callContext) GetConnection(eeType string) eeproxy.Proxy {
 	return cc.conns[eeType]
 }
 
-func (cc *callContext) AddEvent(idxcnt uint16, msgs [][]byte) {
-	// TODO parameter 정리 필요
+func (cc *callContext) Dispose() {
+	for _, v := range cc.conns {
+		v.Release()
+	}
 }

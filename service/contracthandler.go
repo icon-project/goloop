@@ -20,11 +20,14 @@ func init() {
 const (
 	transactionTimeLimit = time.Duration(2 * time.Second)
 
-	ctypeTransfer = iota
-	ctypeTransferAndMessage
-	ctypeTransferAndCall
-	ctypeTransferAndDeploy
+	ctypeTransfer = 0x100
+	ctypeNone     = iota
+	ctypeMessage
 	ctypeCall
+	ctypeDeploy
+	ctypeTransferAndMessage = ctypeTransfer | ctypeMessage
+	ctypeTransferAndCall    = ctypeTransfer | ctypeCall
+	ctypeTransferAndDeploy  = ctypeTransfer | ctypeDeploy
 )
 
 type (
@@ -36,19 +39,18 @@ type (
 	}
 
 	ContractHandler interface {
-		To() module.Address
 		StepLimit() *big.Int
 		Prepare(wvs WorldVirtualState) (WorldVirtualState, error)
 	}
 
 	SyncContractHandler interface {
 		ContractHandler
-		ExecuteSync(wc WorldContext) (module.Status, *big.Int, module.Address)
+		ExecuteSync(wc WorldContext) (module.Status, *big.Int, []byte, module.Address)
 	}
 
 	AsyncContractHandler interface {
 		ContractHandler
-		ExecuteAsync(wc WorldContext) (<-chan interface{}, error)
+		ExecuteAsync(wc WorldContext) error
 		Cancel()
 
 		EEType() string
@@ -82,6 +84,7 @@ func (cm *contractManager) GetHandler(cc CallContext,
 			data: data,
 		}
 	case ctypeTransferAndDeploy:
+		// TODO
 		panic("implement me")
 	case ctypeTransferAndCall:
 		handler = &TransferAndCallHandler{
@@ -134,10 +137,6 @@ func executeTransfer(wc WorldContext, from, to module.Address,
 type TransferHandler struct {
 	from, to         module.Address
 	value, stepLimit *big.Int
-}
-
-func (h *TransferHandler) To() module.Address {
-	return h.to
 }
 
 func (h *TransferHandler) StepLimit() *big.Int {
@@ -264,6 +263,9 @@ type CallHandler struct {
 
 	cc CallContext
 	ch chan interface{}
+
+	// evaluated at ExecuteAsync()
+	as AccountState
 }
 
 func newCallHandler(from, to module.Address, value, stepLimit *big.Int,
@@ -281,8 +283,9 @@ func newCallHandler(from, to module.Address, value, stepLimit *big.Int,
 		TransferHandler: TransferHandler{from: from, to: to, value: value, stepLimit: stepLimit},
 		method:          dataJSON.method,
 		params:          dataJSON.params,
-		cc:              cc,
-		ch:              make(chan interface{}),
+		// TODO assign account state
+		cc: cc,
+		ch: make(chan interface{}),
 	}
 }
 
@@ -290,80 +293,105 @@ func (h *CallHandler) Prepare(wvs WorldVirtualState) (WorldVirtualState, error) 
 	return wvs.GetFuture([]LockRequest{{"", AccountWriteLock}}), nil
 }
 
-func (h *CallHandler) ExecuteAsync(wc WorldContext) (<-chan interface{}, error) {
+func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
+	h.as = wc.GetAccountState(h.to.ID())
+
 	path, err := contractMngr.CheckContractStore(wc, h.to)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	conn := h.cc.GetConnection(h.EEType())
 	if conn == nil {
-		return nil, errors.New("FAIL to get connection of (" + h.EEType() + ")")
+		return errors.New("FAIL to get connection of (" + h.EEType() + ")")
 	}
 	err = conn.Invoke(h, path, false, h.from, h.to, h.value,
 		h.stepLimit, h.method, h.params)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return h.ch, nil
+	return nil
 }
 
 func (h *CallHandler) Cancel() {
-	// TODO what to do
-	panic("implement me")
+	// Do nothing
 }
 
 func (h *CallHandler) EEType() string {
-	// TODO resolve it at runtime
+	// TODO resolve it at run time
 	return "python"
 }
 
 func (h *CallHandler) GetValue(key []byte) ([]byte, error) {
-	h.cc.GetConnection(h.EEType())
-	panic("implement me")
+	if h.as != nil {
+		return h.as.GetValue(key)
+	} else {
+		return nil, errors.New("GetValue: No Account(" + h.to.String() + ") exists")
+	}
 }
 
 func (h *CallHandler) SetValue(key, value []byte) error {
-	panic("implement me")
+	if h.as != nil {
+		return h.as.SetValue(key, value)
+	} else {
+		return errors.New("SetValue: No Account(" + h.to.String() + ") exists")
+	}
 }
 
 func (h *CallHandler) DeleteValue(key []byte) error {
-	panic("implement me")
+	if h.as != nil {
+		return h.as.DeleteValue(key)
+	} else {
+		return errors.New("DeleteValue: No Account(" + h.to.String() + ") exists")
+	}
 }
 
 func (h *CallHandler) GetInfo() map[string]interface{} {
-	panic("implement me")
+	return h.cc.GetInfo()
 }
 
 func (h *CallHandler) GetBalance(addr module.Address) *big.Int {
-	panic("implement me")
+	return h.cc.GetBalance(addr)
 }
 
 func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) {
-	panic("implement me")
+	h.cc.OnEvent(indexed, data)
 }
 
 func (h *CallHandler) OnResult(status uint16, steps *big.Int, result []byte) {
-	h.ch <- &CallResultMessage{
-		status:   module.Status(status),
-		stepUsed: steps,
-		result:   result,
-	}
+	h.cc.OnResult(module.Status(status), steps, result, nil)
 }
 
 func (h *CallHandler) OnCall(from, to module.Address, value,
-	limit *big.Int, params []byte,
+	limit *big.Int, method string, params []byte,
 ) {
-	h.ch <- &CallRequestMessage{
-		from:      from,
-		to:        to,
-		value:     value,
-		stepLimit: limit,
-		params:    params,
+	ctype := ctypeNone
+	if method != "" {
+		ctype |= ctypeCall
 	}
+	if value.Sign() == 1 { // value >= 0
+		ctype |= ctypeTransfer
+	}
+	if ctype == ctypeNone {
+		log.Println("Invalid call:", from, to, value, method)
+
+		if conn := h.cc.GetConnection(h.EEType()); conn != nil {
+			conn.SendResult(h, uint16(module.StatusSystemError), h.stepLimit, nil)
+		} else {
+			// It can't be happened
+			log.Println("FAIL to get connection of (", h.EEType(), ")")
+		}
+		return
+	}
+
+	// TODO make data from method and params
+	var data []byte
+	handler := contractMngr.GetHandler(h.cc, from, to, value, limit, ctype, data)
+	h.cc.OnCall(handler)
 }
 
 func (h *CallHandler) OnAPI(obj interface{}) {
+	// TODO
 	panic("implement me")
 }
 
@@ -379,20 +407,15 @@ func (h *TransferAndCallHandler) Prepare(wvs WorldVirtualState) (WorldVirtualSta
 	}
 }
 
-func (h *TransferAndCallHandler) ExecuteAsync(wc WorldContext) (<-chan interface{}, error) {
+func (h *TransferAndCallHandler) ExecuteAsync(wc WorldContext) error {
 	if status, stepUsed, _ := h.TransferHandler.ExecuteSync(wc); status == 0 {
 		return h.CallHandler.ExecuteAsync(wc)
 	} else {
 		go func() {
-			h.ch <- &CallResultMessage{
-				status:   module.Status(status),
-				stepUsed: stepUsed,
-				// TODO create error messages of status.
-				result: nil,
-			}
+			h.cc.OnResult(module.Status(status), stepUsed, nil, nil)
 		}()
 
-		return h.ch, nil
+		return nil
 	}
 }
 
@@ -400,9 +423,11 @@ type DeployHandler struct {
 }
 
 func (h *DeployHandler) Prepare(wvs WorldVirtualState) (WorldVirtualState, error) {
+	// TODO
 	panic("implement me")
 }
 
 func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int, module.Address) {
+	// TODO
 	panic("implement me")
 }
