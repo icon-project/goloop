@@ -1,10 +1,11 @@
 package mpt
 
 import (
-	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/common/trie"
 	"io"
 	"reflect"
+
+	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/trie"
 )
 
 func makePrefix(l, prefix int) []byte {
@@ -185,7 +186,7 @@ func decodeBranch(buf []byte, t reflect.Type, db db.Database) node {
 	// serialized branch can have list which is another branch(sharedNibbles/value) or a leaf(keyEnd/value) or  hexa(serialized(rlp))
 	tagSize, contentSize, _ := getContentSize(buf)
 	// child is leaf, hash or nil(128)
-	newBranch := &branch{nodeBase: nodeBase{state: committedNode, hashedValue: buf}}
+	newBranch := &branch{nodeBase: nodeBase{state: committedNode, serializedValue: buf}}
 	for i, valueIndex := tagSize, 0; i < tagSize+contentSize; valueIndex++ {
 		// if list, call decoderLeaf
 		// if single byte
@@ -219,7 +220,11 @@ func decodeBranch(buf []byte, t reflect.Type, db db.Database) node {
 			i += tagSize + contentSize
 		} else if b < 0xf8 {
 			tagSize, contentSize, _ := getContentSize(buf[i:])
-			newBranch.nibbles[valueIndex] = deserialize(buf[i:i+tagSize+contentSize], t, db)
+			if valueIndex == 16 {
+				newBranch.value = decodeValue(buf[i+tagSize:], t, db)
+			} else {
+				newBranch.nibbles[valueIndex] = deserialize(buf[i:i+tagSize+contentSize], t, db)
+			}
 			i += tagSize + contentSize
 		} else {
 			tagSize = uint64(b-0xF7) + 1

@@ -124,3 +124,17 @@ func (l *leaf) get(m *mpt, k []byte) (node, trie.Object, error) {
 	}
 	return l, l.value, nil
 }
+
+func (l *leaf) proof(m *mpt, k []byte, depth int) ([][]byte, bool) {
+	var proofBuf [][]byte
+	if bytes.Compare(k, l.keyEnd) != 0 {
+		return nil, false
+	}
+	buf := l.serialize()
+	if len(buf) < hashableSize && depth != 1 {
+		return nil, true
+	}
+	proofBuf = make([][]byte, depth+1)
+	proofBuf[depth] = buf
+	return proofBuf, true
+}

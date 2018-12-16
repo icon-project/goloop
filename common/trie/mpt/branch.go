@@ -2,6 +2,8 @@ package mpt
 
 import (
 	"fmt"
+	"log"
+
 	"github.com/icon-project/goloop/common/trie"
 )
 
@@ -69,7 +71,7 @@ func (br *branch) hash() []byte {
 	if br.state == dirtyNode {
 		br.serializedValue = nil
 		br.hashedValue = nil
-	} else if br.hashedValue != nil { // not diry & has hashed value
+	} else if br.hashedValue != nil { // not dirty & has hashed value
 		return br.hashedValue
 	}
 
@@ -147,7 +149,12 @@ func (br *branch) deleteChild(m *mpt, k []byte) (node, nodeState, error) {
 		if br.value == nil {
 			// check nextNode.
 			// if nextNode is extension or branch, n must be extension
-			switch nn := br.nibbles[remainingNibble].(type) {
+			n := br.nibbles[remainingNibble]
+			if v, ok := br.nibbles[remainingNibble].(hash); ok {
+				serializedValue, _ := m.bk.Get(v)
+				n = deserialize(serializedValue, m.objType, m.db)
+			}
+			switch nn := n.(type) {
 			case *extension:
 				return &extension{sharedNibbles: append([]byte{byte(remainingNibble)}, nn.sharedNibbles...),
 					next: nn.next, nodeBase: nodeBase{state: dirtyNode}}, dirtyNode, nil
@@ -157,6 +164,8 @@ func (br *branch) deleteChild(m *mpt, k []byte) (node, nodeState, error) {
 			case *leaf:
 				return &leaf{keyEnd: append([]byte{byte(remainingNibble)}, nn.keyEnd...), value: nn.value,
 					nodeBase: nodeBase{state: dirtyNode}}, dirtyNode, nil
+			default:
+				log.Panicf("Not considered nn = %v\n", nn)
 			}
 		} else if remainingNibble == 16 {
 			return &leaf{value: br.value, nodeBase: nodeBase{state: dirtyNode}}, dirtyNode, nil
@@ -178,4 +187,34 @@ func (br *branch) get(m *mpt, k []byte) (node, trie.Object, error) {
 	}
 
 	return br, result, err
+}
+
+func (br *branch) proof(m *mpt, k []byte, depth int) ([][]byte, bool) {
+	var proofBuf [][]byte
+	result := true
+	if len(k) != 0 {
+		proofBuf, result = br.nibbles[k[0]].proof(m, k[1:], depth+1)
+		if result == false {
+			return nil, false
+		}
+		buf := br.serialize()
+		if len(buf) < hashableSize && depth != 1 {
+			return nil, true
+		}
+
+		if proofBuf == nil {
+			proofBuf = make([][]byte, depth+1)
+		}
+		proofBuf[depth] = buf
+	} else {
+		// find k
+		buf := br.serialize()
+		if len(buf) < hashableSize && depth != 1 {
+			return nil, true
+		}
+		proofBuf = make([][]byte, depth+1)
+		proofBuf[depth] = buf
+		return proofBuf, result
+	}
+	return proofBuf, result
 }

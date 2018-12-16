@@ -2,7 +2,6 @@ package mpt
 
 import (
 	"fmt"
-
 	"github.com/icon-project/goloop/common/trie"
 )
 
@@ -180,4 +179,26 @@ func (ex *extension) get(m *mpt, k []byte) (node, trie.Object, error) {
 		return ex, nil, err
 	}
 	return ex, result, err
+}
+
+func (ex *extension) proof(m *mpt, k []byte, depth int) ([][]byte, bool) {
+	var proofBuf [][]byte
+	result := true
+	match, same := compareHex(ex.sharedNibbles, k[:len(ex.sharedNibbles)])
+	if same == false {
+		return nil, false
+	}
+	proofBuf, result = ex.next.proof(m, k[match:], depth+1)
+	if result == false {
+		return nil, false
+	}
+	buf := ex.serialize()
+	if len(buf) < hashableSize && depth != 1 {
+		return nil, true
+	}
+	if proofBuf == nil {
+		proofBuf = make([][]byte, depth+1)
+	}
+	proofBuf[depth] = buf
+	return proofBuf, true
 }

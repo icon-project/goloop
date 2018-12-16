@@ -16,8 +16,8 @@ type mptForObj struct {
 }
 
 func (m *mptForObj) Prove(k []byte, p [][]byte) (trie.Object, error) {
-	// TODO: Implement mptForObject.Prove
-	panic("implement me")
+	k = bytesToNibbles(k)
+	return m.prove(k, p[1:], p[0])
 }
 
 func newMptForObj(db db.Database, bk db.Bucket, initialHash hash, t reflect.Type) *mptForObj {
@@ -31,12 +31,13 @@ func newMptForObj(db db.Database, bk db.Bucket, initialHash hash, t reflect.Type
 func newMptForObjFromImmutableForObject(immutable trie.ImmutableForObject) *mptForObj {
 	if m, ok := immutable.(*mptForObj); ok {
 		mpt := newMptForObj(m.db, m.bk, m.source.committedHash, m.objType)
-		mpt.source = m.source
+		//mpt.source = m.source
+		committedHash := m.source.committedHash
 		// Below means s1.Flush() was called after calling m.Reset(s1)
 		if m.source.prev != nil && bytes.Compare(m.source.committedHash, m.source.prev.committedHash) != 0 {
-			m.source.committedHash = hash(append([]byte(nil), []byte(m.source.prev.committedHash)...))
+			committedHash = hash(append([]byte(nil), []byte(m.source.prev.committedHash)...))
 		}
-		mpt.source = &source{committedHash: m.source.committedHash, prev: m.source, requestPool: make(map[string]trie.Object)}
+		mpt.source = &source{committedHash: committedHash, prev: m.source, requestPool: make(map[string]trie.Object)}
 		return mpt
 	}
 
@@ -44,6 +45,8 @@ func newMptForObjFromImmutableForObject(immutable trie.ImmutableForObject) *mptF
 }
 
 func (m *mptForObj) Get(k []byte) (trie.Object, error) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 	v, err := m.get(k)
 	if err != nil || v == nil {
 		return nil, err
@@ -78,6 +81,8 @@ func (m *mptForObj) Reset(s trie.ImmutableForObject) {
 	if ok == false {
 		return
 	}
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 
 	// Do not use reference.
 	committedHash := make(hash, len(immutableTrie.source.committedHash))

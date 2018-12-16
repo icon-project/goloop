@@ -43,6 +43,7 @@ type (
 		addChild(m *mpt, k []byte, v trie.Object) (node, nodeState)
 		deleteChild(m *mpt, k []byte) (node, nodeState, error)
 		get(m *mpt, k []byte) (node, trie.Object, error)
+		proof(m *mpt, k []byte, depth int) ([][]byte, bool)
 	}
 	byteValue []byte
 	hash      []byte
@@ -52,7 +53,6 @@ const printHash = false
 const printSerializedValue = false
 
 func (h hash) serialize() []byte {
-	// Not valid
 	return h
 }
 
@@ -104,6 +104,23 @@ func (h hash) get(m *mpt, k []byte) (node, trie.Object, error) {
 			serializedValue, deserializedNode, h)
 	}
 	return deserializedNode.get(m, k)
+}
+
+func (h hash) proof(m *mpt, k []byte, depth int) ([][]byte, bool) {
+	serializedValue, err := m.bk.Get(h)
+	if err != nil || serializedValue == nil {
+		return nil, false
+	}
+	deserializedNode := deserialize(serializedValue, m.objType, m.db)
+	switch m := deserializedNode.(type) {
+	case *branch:
+		m.hashedValue = h
+	case *extension:
+		m.hashedValue = h
+	case *leaf:
+		m.hashedValue = h
+	}
+	return deserializedNode.proof(m, k, depth+1)
 }
 
 func (v byteValue) Bytes() []byte {
