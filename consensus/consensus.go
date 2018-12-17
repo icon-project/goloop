@@ -726,7 +726,7 @@ func (cs *consensus) Start() {
 		return
 	}
 	lastFinalizedBlock := gblks[len(gblks)-1]
-	cs.dm.RegistReactor("consensus", cs, protocols)
+	cs.dm.RegisterReactor("consensus", cs, protocols)
 
 	prefix := fmt.Sprintf("%x|CS|", cs.wallet.Address().Bytes()[1:3])
 	logger = log.New(os.Stderr, prefix, log.Lshortfile|log.Lmicroseconds)

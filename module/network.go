@@ -17,7 +17,7 @@ type Reactor interface {
 }
 
 type Membership interface {
-	RegistReactor(name string, reactor Reactor, subProtocols []ProtocolInfo) error
+	RegisterReactor(name string, reactor Reactor, subProtocols []ProtocolInfo) error
 
 	//for Messaging
 	Broadcast(subProtocol ProtocolInfo, bytes []byte, broadcastType BroadcastType) error

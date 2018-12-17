@@ -154,7 +154,7 @@ func (ms *membership) onEvent(evt string, p *Peer) {
 	}
 }
 
-func (ms *membership) RegistReactor(name string, reactor module.Reactor, subProtocols []module.ProtocolInfo) error {
+func (ms *membership) RegisterReactor(name string, reactor module.Reactor, subProtocols []module.ProtocolInfo) error {
 	if _, ok := ms.reactors[name]; ok {
 		return ErrAlreadyRegisteredReactor
 	}

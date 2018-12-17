@@ -83,6 +83,6 @@ func newTransactionReactor(nm module.NetworkManager, patch *transactionPool, nor
 		patchPool:  patch,
 		normalPool: normal,
 	}
-	ms.RegistReactor(reactorName, ra, subProtocols)
+	ms.RegisterReactor(reactorName, ra, subProtocols)
 	return ra
 }
