@@ -403,11 +403,10 @@ func (m *mpt) GetProof(k []byte) [][]byte {
 	var proofBuf [][]byte
 	result := false
 	//m.root, proofBuf, result = m.proof(m.root, k, 1)
-	proofBuf, result = m.root.proof(m, k, 1)
+	proofBuf, result = m.root.proof(m, k, 0)
 	if result == false {
 		return nil
 	}
-	proofBuf[0] = m.root.hash()
 	return proofBuf
 }
 
@@ -460,7 +459,7 @@ func (m *mpt) prove(k []byte, pb [][]byte, p []byte) (trie.Object, error) {
 func (m *mpt) Prove(k []byte, p [][]byte) ([]byte, error) {
 	// p[0] should be hash
 	k = bytesToNibbles(k)
-	v, err := m.prove(k, p[1:], p[0])
+	v, err := m.prove(k, p[0:], p[0])
 	if err != nil {
 		return nil, err
 	}

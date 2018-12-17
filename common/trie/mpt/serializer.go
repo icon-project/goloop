@@ -126,41 +126,6 @@ func getContentSize(buf []byte) (uint64, uint64, error) {
 	return tagsize, contentsize, err
 }
 
-type testObject struct {
-	s          string
-	flushCount int
-}
-
-func (e *testObject) Bytes() []byte {
-	return []byte(e.s)
-}
-func (e *testObject) Reset(d db.Database, b []byte) error {
-	e.s = string(b)
-	return nil
-}
-func (e *testObject) Flush() error {
-	e.flushCount++
-	return nil
-}
-func (e *testObject) Equal(o trie.Object) bool {
-	e2, ok := o.(*testObject)
-	return ok && e.s == e2.s
-}
-
-//func decodeValue(buf []byte, t reflect.Type) trie.Object {
-//	var result trie.Object
-//	if t == nil {
-//		panic("PANIC")
-//	}
-//	// TODO: check below code
-//	if t == reflect.TypeOf([]byte{}) {
-//		result = byteValue(buf)
-//	} else {
-//		result = &testObject{s:string(buf)}
-//	}
-//	return result
-//}
-
 func decodeValue(buf []byte, t reflect.Type, db db.Database) trie.Object {
 	if t == nil || len(buf) == 0 {
 		return nil
