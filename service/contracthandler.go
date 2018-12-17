@@ -1,10 +1,18 @@
 package service
 
 import (
+	"archive/zip"
+	"bytes"
+	"encoding/hex"
 	"encoding/json"
+	"io/ioutil"
 	"log"
 	"math/big"
+	"os"
+	"strings"
 	"time"
+
+	"github.com/icon-project/goloop/common/db"
 
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
@@ -60,6 +68,7 @@ type (
 )
 
 type contractManager struct {
+	db db.Database
 }
 
 func (cm *contractManager) GetHandler(cc CallContext,
@@ -85,8 +94,7 @@ func (cm *contractManager) GetHandler(cc CallContext,
 			data: data,
 		}
 	case ctypeTransferAndDeploy:
-		// TODO
-		panic("implement me")
+		handler = newDeployHandler(from, to, value, stepLimit, data, cc, false)
 	case ctypeTransferAndCall:
 		handler = &TransferAndCallHandler{
 			*newCallHandler(from, to, value, stepLimit, data, cc),
@@ -97,17 +105,90 @@ func (cm *contractManager) GetHandler(cc CallContext,
 	return handler
 }
 
+// storeContract don't check if path exists or not
+// path existence has to be checked before storeContract is called
+func storeContract(path string, contractCode []byte) error {
+	zipReader, err :=
+		zip.NewReader(bytes.NewReader(contractCode), int64(len(contractCode)))
+	if err != nil {
+		return err
+	}
+
+	for _, zipFile := range zipReader.File {
+		storePath := path + "/" + zipFile.Name
+		if info := zipFile.FileInfo(); info.IsDir() {
+			os.MkdirAll(path+"/"+info.Name(), os.ModePerm)
+			continue
+		}
+		reader, err := zipFile.Open()
+		if err != nil {
+			return errors.New("Failed to open zip file\n")
+		}
+		buf, err := ioutil.ReadAll(reader)
+		if err != nil {
+			return errors.New("Failed to read zip file\n")
+		}
+		if err = ioutil.WriteFile(storePath, buf, os.ModePerm); err != nil {
+			log.Printf("Failed to write file. err = %s\n", err)
+		}
+	}
+	return nil
+}
+
+func prepareContract(compressedCode []byte, path string, removeIfExist bool) error {
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		if removeIfExist == false {
+			return nil
+		}
+		if err := os.RemoveAll(path); err != nil {
+			return err
+		}
+	}
+	os.MkdirAll(path, os.ModePerm)
+	err := storeContract(path, compressedCode)
+
+	return err
+}
+
 // PrepareContractStore checks if contract codes are ready for a contract runtime
 // and starts to download and uncompress otherwise.
 func (cm *contractManager) PrepareContractStore(ws WorldState, addr module.Address) {
 	// TODO implement when meaningful parallel execution can be performed
 }
 
-func (cm *contractManager) CheckContractStore(ws WorldState, addr module.Address,
-) (string, error) {
+// TODO Where is the root directory of contract
+// TODO How to generate contract path from codeHash
+func contractPath(codeHash string) (string, error) {
+	path := "./contract/" + codeHash
+	return path, nil
+}
+
+func (cm *contractManager) CheckContractStore(
+	ws WorldState, addr module.Address) (string, error) {
 	// TODO 만약 valid한 contract이 store에 존재하지 않으면, 저장을 마치고 그 path를 리턴한다.
 	// TODO 만약 PrepareContractCode()에 의해서 저장 중이면, 저장 완료를 기다린다.
-	panic("implement me")
+
+	as := ws.GetAccountState(addr.ID())
+
+	contract := as.GetCurContract()
+	if contract == nil {
+		return "", errors.New("Failed to find contract.")
+	}
+	codeHash := contract.GetCodeHash()
+	bk, err := cm.db.GetBucket(db.BytesByHash)
+	if err != nil {
+		return "", err
+	}
+	code, err := bk.Get(codeHash)
+	if err != nil {
+		return "", err
+	}
+	path, err := contractPath(string(codeHash))
+	err = prepareContract(code, path, false)
+	if err != nil {
+		return "", err
+	}
+	return path, nil
 }
 
 func executeTransfer(wc WorldContext, from, to module.Address,
@@ -425,15 +506,136 @@ func (h *TransferAndCallHandler) ExecuteAsync(wc WorldContext) error {
 	}
 }
 
+func newDeployHandler(from, to module.Address, value, stepLimit *big.Int,
+	data []byte, cc CallContext, force bool,
+) *DeployHandler {
+	var dataJSON struct {
+		contentType string          `json:"contentType""`
+		content     string          `json:"content"`
+		params      json.RawMessage `json:"params"`
+	}
+	if err := json.Unmarshal(data, &dataJSON); err != nil {
+		log.Println("FAIL to parse 'data' of transaction")
+		return nil
+	}
+	return &DeployHandler{
+		TransferHandler: TransferHandler{from: from, to: to, value: value, stepLimit: stepLimit},
+		content:         dataJSON.content,
+		contentType:     dataJSON.contentType,
+		params:          dataJSON.params,
+		force:           force,
+	}
+}
+
 type DeployHandler struct {
+	TransferHandler
+	cc          CallContext
+	db          db.Database
+	eeType      string
+	content     string
+	contentType string
+	params      json.RawMessage
+	force       bool
+}
+
+func (h *DeployHandler) GetValue(key []byte) ([]byte, error) {
+	panic("implement me")
+}
+
+func (h *DeployHandler) SetValue(key, value []byte) error {
+	panic("implement me")
+}
+
+func (h *DeployHandler) DeleteValue(key []byte) error {
+	panic("implement me")
+}
+
+func (h *DeployHandler) GetInfo() map[string]interface{} {
+	panic("implement me")
+}
+
+func (h *DeployHandler) GetBalance(addr module.Address) *big.Int {
+	panic("implement me")
+}
+
+func (h *DeployHandler) OnEvent(addr module.Address, indexed, data [][]byte) {
+	panic("implement me")
+}
+
+func (h *DeployHandler) OnResult(status uint16, steps *big.Int, result []byte) {
+	panic("implement me")
+}
+
+func (h *DeployHandler) OnCall(from, to module.Address, value, limit *big.Int, method string, params []byte) {
+	panic("implement me")
+}
+
+func (h *DeployHandler) OnAPI(obj interface{}) {
+	panic("implement me")
 }
 
 func (h *DeployHandler) Prepare(wvs WorldVirtualState) (WorldVirtualState, error) {
-	// TODO
 	panic("implement me")
 }
 
 func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int, module.Address) {
-	// TODO
-	panic("implement me")
+	const (
+		deployInstall = iota
+		deployUpdate
+
+		scoreInstallAddr = "cx0000000000000000000000000000000000000000"
+	)
+	force := h.force
+	if force == false {
+		if wc.IsAudit() == false {
+			force = true
+		} else {
+			l := wc.GetDeployerList()
+			if _, ok := l[h.from.String()]; ok {
+				force = true
+			}
+		}
+	}
+	deployType := deployUpdate
+	deployMethod := "on_update"
+	if strings.Compare(h.to.String(), scoreInstallAddr) == 0 {
+		deployType = deployInstall
+		deployMethod = "on_install"
+	} // TODO convert string to []byte
+	// calculate fee
+	buf, err := hex.DecodeString(strings.TrimPrefix(h.content, "0x"))
+	if err != nil {
+		log.Printf("Failed to")
+		return module.StatusSystemError, nil, nil
+	}
+	bufLen := int64(len(buf))
+	cost := new(big.Int)
+	cost.Mul(wc.StepPrice(), big.NewInt(bufLen))
+	// TODO add cost to treasury account
+	// TODO calculate fee
+	// TODO generate address
+	scoreAddr := []byte{1, 2}
+
+	if force == false {
+		// store ScoreDeployInfo and ScoreDeployTXParams
+		as := wc.GetAccountState(scoreAddr)
+		nc := as.GetNextContract()
+		nc.SetCodeHash([]byte("CODE HASH"))
+		nc.SetStatus(0)
+		return module.StatusSuccess, nil, nil
+	}
+
+	code, err := hex.DecodeString(h.content)
+	// store codeHash
+	bk, err := h.db.GetBucket(db.BytesByHash)
+	codeHash := "CodeHash"
+	err = bk.Set([]byte(codeHash), buf)
+	path, err := contractPath(codeHash)
+	prepareContract(code, path, deployType == deployUpdate)
+
+	proxy := h.cc.GetConnection(h.eeType)
+	proxy.Invoke(h, "", false, h.from, h.to, h.value, h.stepLimit, deployMethod, h.params)
+
+	proxy.GetAPI(h, "")
+	return module.StatusSuccess, nil, nil
 }
