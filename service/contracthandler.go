@@ -51,6 +51,7 @@ type (
 	AsyncContractHandler interface {
 		ContractHandler
 		ExecuteAsync(wc WorldContext) error
+		SendResult(status module.Status, steps *big.Int, result []byte) error
 		Cancel()
 
 		EEType() string
@@ -262,10 +263,10 @@ type CallHandler struct {
 	params []byte
 
 	cc CallContext
-	ch chan interface{}
 
-	// evaluated at ExecuteAsync()
-	as AccountState
+	// set in ExecuteAsync()
+	as   AccountState
+	conn eeproxy.Proxy
 }
 
 func newCallHandler(from, to module.Address, value, stepLimit *big.Int,
@@ -283,9 +284,7 @@ func newCallHandler(from, to module.Address, value, stepLimit *big.Int,
 		TransferHandler: TransferHandler{from: from, to: to, value: value, stepLimit: stepLimit},
 		method:          dataJSON.method,
 		params:          dataJSON.params,
-		// TODO assign account state
-		cc: cc,
-		ch: make(chan interface{}),
+		cc:              cc,
 	}
 }
 
@@ -300,17 +299,24 @@ func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 	if err != nil {
 		return err
 	}
-	conn := h.cc.GetConnection(h.EEType())
-	if conn == nil {
+	h.conn = h.cc.GetConnection(h.EEType())
+	if h.conn == nil {
 		return errors.New("FAIL to get connection of (" + h.EEType() + ")")
 	}
-	err = conn.Invoke(h, path, false, h.from, h.to, h.value,
+	err = h.conn.Invoke(h, path, false, h.from, h.to, h.value,
 		h.stepLimit, h.method, h.params)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (h *CallHandler) SendResult(status module.Status, steps *big.Int, result []byte) error {
+	if h.conn == nil {
+		return errors.New("Don't have a connection of (" + h.EEType() + ")")
+	}
+	return h.conn.SendResult(h, uint16(status), steps, result)
 }
 
 func (h *CallHandler) Cancel() {
