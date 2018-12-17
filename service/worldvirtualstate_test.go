@@ -2,11 +2,12 @@ package service
 
 import (
 	"encoding/binary"
-	"github.com/icon-project/goloop/common/db"
 	"log"
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/icon-project/goloop/common/db"
 )
 
 func Test_NewWorldVirtualState(t *testing.T) {
@@ -124,7 +125,7 @@ const (
 	NumberOfAccounts = 1000
 )
 
-func executeTransfer(ws WorldState, id1, id2 []byte, value *big.Int) {
+func wvexecuteTransfer(ws WorldState, id1, id2 []byte, value *big.Int) {
 	ws.GetSnapshot()
 	as1 := ws.GetAccountState(id1)
 	as2 := ws.GetAccountState(id2)
@@ -143,7 +144,7 @@ func executeTransferInVirtual(wvs WorldVirtualState, id1, id2 []byte, value *big
 	}
 	wvs = wvs.GetFuture(reqs)
 	go func(wvs WorldVirtualState, id1, id2 []byte, value *big.Int) {
-		executeTransfer(wvs, id1, id2, value)
+		wvexecuteTransfer(wvs, id1, id2, value)
 		wvs.Commit()
 	}(wvs, id1, id2, value)
 	return wvs
@@ -161,10 +162,10 @@ func TestIndependentTrasferInSequential(t *testing.T) {
 
 	transfer := big.NewInt(10)
 	for i := uint32(0); i < NumberOfAccounts; i += 2 {
-		executeTransfer(ws, intToBytes(i), intToBytes(i+1), transfer)
+		wvexecuteTransfer(ws, intToBytes(i), intToBytes(i+1), transfer)
 	}
 	for i := uint32(0); i < NumberOfAccounts; i += 2 {
-		executeTransfer(ws, intToBytes(i+1), intToBytes(i), transfer)
+		wvexecuteTransfer(ws, intToBytes(i+1), intToBytes(i), transfer)
 	}
 
 	wss := ws.GetSnapshot()
