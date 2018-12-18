@@ -586,16 +586,6 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int, m
 		scoreInstallAddr = "cx0000000000000000000000000000000000000000"
 	)
 	force := h.force
-	if force == false {
-		if wc.IsAudit() == false {
-			force = true
-		} else {
-			l := wc.GetDeployerList()
-			if _, ok := l[h.from.String()]; ok {
-				force = true
-			}
-		}
-	}
 	deployType := deployUpdate
 	deployMethod := "on_update"
 	if strings.Compare(h.to.String(), scoreInstallAddr) == 0 {
