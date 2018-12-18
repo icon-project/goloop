@@ -592,5 +592,5 @@ func newAccountROState(snapshot AccountSnapshot) AccountState {
 	return &accountROState{snapshot,
 		snapshot.GetContractOwner(),
 		newContractROState(snapshot.GetCurContract()),
-		newContractROState(snapshot.GetCurContract())}
+		newContractROState(snapshot.GetNextContract())}
 }
