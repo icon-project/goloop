@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/icon-project/goloop/common/db"
@@ -42,8 +43,8 @@ type (
 	ContractManager interface {
 		GetHandler(cc CallContext, from, to module.Address,
 			value, stepLimit *big.Int, ctype int, data []byte) ContractHandler
-		PrepareContractStore(WorldState, module.Address)
-		CheckContractStore(WorldState, module.Address) (string, error)
+		PrepareContractStore(ws WorldState, addr module.Address,
+			onEndCallback func(path string, err error))
 	}
 
 	ContractHandler interface {
@@ -152,7 +153,7 @@ func prepareContract(compressedCode []byte, path string, removeIfExist bool) err
 
 // PrepareContractStore checks if contract codes are ready for a contract runtime
 // and starts to download and uncompress otherwise.
-func (cm *contractManager) PrepareContractStore(ws WorldState, addr module.Address) {
+func (cm *contractManager) PrepareContractStore(ws WorldState, addr module.Address, onEndCallback func(string, error)) {
 	// TODO implement when meaningful parallel execution can be performed
 }
 
@@ -337,13 +338,57 @@ func (h *TransferAndMessageHandler) ExecuteSync(wc WorldContext) (module.Status,
 	return status, &stepUsed, nil
 }
 
+type contractStoreProxy struct {
+	started bool
+	path    string
+	err     error
+	cv      *sync.Cond
+}
+
+func newContractStoreProxy() *contractStoreProxy {
+	return &contractStoreProxy{cv: sync.NewCond(new(sync.Mutex))}
+}
+
+func (p *contractStoreProxy) prepare(ws WorldState, addr module.Address) {
+	p.cv.L.Lock()
+	if p.started {
+		// avoid to call PrepareContractStore() more than once
+		return
+	}
+	p.started = true
+	p.cv.L.Unlock()
+	contractMngr.PrepareContractStore(ws, addr, p.onContractStoreCompleted)
+}
+
+func (p *contractStoreProxy) check(ws WorldState, addr module.Address) (string, error) {
+	p.cv.L.Lock()
+	defer p.cv.L.Unlock()
+
+	if p.err != nil || p.path != "" {
+		return p.path, p.err
+	}
+
+	p.prepare(ws, addr)
+	p.cv.Wait()
+	return p.path, p.err
+}
+
+func (p *contractStoreProxy) onContractStoreCompleted(path string, err error) {
+	p.cv.L.Lock()
+	p.path = path
+	p.err = err
+	p.cv.Broadcast()
+	p.cv.L.Unlock()
+}
+
 type CallHandler struct {
 	TransferHandler
 
 	method string
 	params []byte
 
-	cc CallContext
+	cc  CallContext
+	csp *contractStoreProxy
 
 	// set in ExecuteAsync()
 	as   AccountState
@@ -366,24 +411,28 @@ func newCallHandler(from, to module.Address, value, stepLimit *big.Int,
 		method:          dataJSON.method,
 		params:          dataJSON.params,
 		cc:              cc,
+		csp:             newContractStoreProxy(),
 	}
 }
 
 func (h *CallHandler) Prepare(wvs WorldVirtualState) (WorldVirtualState, error) {
+	h.csp.prepare(wvs, h.to)
 	return wvs.GetFuture([]LockRequest{{"", AccountWriteLock}}), nil
 }
 
 func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 	h.as = wc.GetAccountState(h.to.ID())
 
-	path, err := contractMngr.CheckContractStore(wc, h.to)
-	if err != nil {
-		return err
-	}
 	h.conn = h.cc.GetConnection(h.EEType())
 	if h.conn == nil {
 		return errors.New("FAIL to get connection of (" + h.EEType() + ")")
 	}
+
+	path, err := h.csp.check(wc, h.to)
+	if err != nil {
+		return err
+	}
+
 	err = h.conn.Invoke(h, path, false, h.from, h.to, h.value,
 		h.stepLimit, h.method, h.params)
 	if err != nil {
@@ -518,8 +567,11 @@ func newDeployHandler(from, to module.Address, value, stepLimit *big.Int,
 		log.Println("FAIL to parse 'data' of transaction")
 		return nil
 	}
+	// TODO set db
 	return &DeployHandler{
 		TransferHandler: TransferHandler{from: from, to: to, value: value, stepLimit: stepLimit},
+		cc:              cc,
+		csp:             newContractStoreProxy(),
 		content:         dataJSON.content,
 		contentType:     dataJSON.contentType,
 		params:          dataJSON.params,
@@ -530,6 +582,7 @@ func newDeployHandler(from, to module.Address, value, stepLimit *big.Int,
 type DeployHandler struct {
 	TransferHandler
 	cc          CallContext
+	csp         *contractStoreProxy
 	db          db.Database
 	eeType      string
 	content     string
