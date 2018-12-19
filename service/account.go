@@ -56,6 +56,7 @@ type ContractSnapshot interface {
 	GetCodeHash() []byte
 	GetApiInfo() []byte
 	GetParams() []byte
+	GetContentType() contentType
 }
 
 type Contract interface {
@@ -67,6 +68,7 @@ type Contract interface {
 	SetCodeHash(hash []byte)
 	SetApiInfo(info []byte)
 	SetParams(params []byte)
+	SetContentType(t contentType)
 	GetSnapshot() ContractSnapshot
 }
 
@@ -209,16 +211,21 @@ func (s *accountSnapshotImpl) CodecDecodeSelf(d *ugorji.Decoder) {
 }
 
 type contractStatus int
+type contentType int
 
 const (
 	csInactive contractStatus = iota
 	csActive
 	csRejected
 	csPending
+
+	// "contentType"
+	cTypeAppZip contentType = iota // "application/zip"
 )
 
 type contractSnapshotImpl struct {
 	status      contractStatus
+	cType       contentType
 	contentType string
 	deployTx    []byte
 	auditTx     []byte
@@ -231,6 +238,9 @@ type contractImpl struct {
 	*contractSnapshotImpl
 }
 
+func NewContract() Contract {
+	return newContractImpl()
+}
 func newContractImpl() *contractImpl {
 	return &contractImpl{new(contractSnapshotImpl)}
 }
@@ -257,6 +267,10 @@ func (c *contractSnapshotImpl) GetApiInfo() []byte {
 
 func (c *contractSnapshotImpl) GetParams() []byte {
 	return append([]byte(nil), c.params...)
+}
+
+func (c *contractSnapshotImpl) GetContentType() contentType {
+	return c.cType
 }
 
 func (c *contractImpl) Reset(isnapshot ContractSnapshot) error {
@@ -296,6 +310,10 @@ func (c *contractImpl) SetApiInfo(info []byte) {
 
 func (c *contractImpl) SetParams(params []byte) {
 	c.params = append([]byte(nil), params...)
+}
+
+func (c *contractSnapshotImpl) SetContentType(t contentType) {
+	c.cType = t
 }
 
 func (c *contractImpl) GetSnapshot() ContractSnapshot {
