@@ -374,7 +374,7 @@ func aTestServiceManager(t *testing.T) {
 	c := new(chain)
 	c.wallet = common.NewWallet()
 	c.database = leaderDB
-	leaderServiceManager := NewManager(c, nil)
+	leaderServiceManager := NewManager(c, nil, nil)
 	go requestTx(TEST_VALID_REQUEST_TX_NUM, leaderServiceManager, requestCh)
 
 	//run service manager for leader
@@ -426,7 +426,7 @@ func aTestServiceManager(t *testing.T) {
 	validatorCh := new(chain)
 	validatorCh.wallet = common.NewWallet()
 	validatorCh.database = validatorDB
-	validatorServiceManager := NewManager(validatorCh, nil)
+	validatorServiceManager := NewManager(validatorCh, nil, nil)
 	validatorValidator, _ := ValidatorListFromSlice(leaderDB, nil)
 	initVTrs, err := validatorServiceManager.CreateInitialTransition(validatorResult, validatorValidator, 0)
 	if err != nil {

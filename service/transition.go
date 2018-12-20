@@ -9,6 +9,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/service/eeproxy"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
@@ -37,6 +38,8 @@ type transition struct {
 	normalTransactions module.TransactionList
 
 	db db.Database
+	cm ContractManager
+	em eeproxy.Manager
 
 	cb module.TransitionCallback
 
@@ -74,7 +77,9 @@ func (tr *transitionResult) Bytes() []byte {
 	}
 }
 
-func newTransition(parent *transition, patchtxs module.TransactionList, normaltxs module.TransactionList, alreadyValidated bool) *transition {
+func newTransition(parent *transition, patchtxs module.TransactionList,
+	normaltxs module.TransactionList, alreadyValidated bool,
+) *transition {
 	var step int
 	if alreadyValidated {
 		step = stepValidated
@@ -103,12 +108,17 @@ func newTransition(parent *transition, patchtxs module.TransactionList, normaltx
 		patchTransactions:  patchtxs,
 		normalTransactions: normaltxs,
 		db:                 parent.db,
+		cm:                 parent.cm,
+		em:                 parent.em,
 		step:               step,
 	}
 }
 
 // all parameters should be valid.
-func newInitTransition(db db.Database, result []byte, validatorList module.ValidatorList, height int64) (*transition, error) {
+func newInitTransition(db db.Database, result []byte,
+	validatorList module.ValidatorList, height int64, cm ContractManager,
+	em eeproxy.Manager,
+) (*transition, error) {
 	var tresult transitionResult
 	if len(result) > 0 {
 		if _, err := codec.UnmarshalFromBytes(result, &tresult); err != nil {
@@ -122,6 +132,8 @@ func newInitTransition(db db.Database, result []byte, validatorList module.Valid
 		patchTransactions:  NewTransactionListFromSlice(db, nil),
 		normalTransactions: NewTransactionListFromSlice(db, nil),
 		db:                 db,
+		cm:                 cm,
+		em:                 em,
 		step:               stepComplete,
 		worldSnapshot:      ws.GetSnapshot(),
 	}, nil
@@ -199,7 +211,7 @@ func (t *transition) newWorldContext() WorldContext {
 	} else {
 		ws = NewWorldState(t.db, nil, nil)
 	}
-	return NewWorldContext(ws, t.timestamp, t.height)
+	return NewWorldContext(ws, t.timestamp, t.height, t.cm, t.em)
 }
 
 func (t *transition) executeSync(alreadyValidated bool) {
@@ -320,7 +332,6 @@ func (t *transition) executeTxs(l module.TransactionList, wc WorldContext, rctBu
 		return true, 0
 	}
 	cnt := 0
-	wvs := wc.WorldVirtualState()
 	for i := l.Iterator(); i.Has(); i.Next() {
 		if t.step == stepCanceled {
 			return false, 0
@@ -330,15 +341,18 @@ func (t *transition) executeTxs(l module.TransactionList, wc WorldContext, rctBu
 			log.Panicf("Fail to iterate transaction list err=%+v", err)
 		}
 		txo := tx.(Transaction)
+		txh, err := txo.Handler(wc)
+		if err != nil {
+			log.Panicf("Fail to handle transaction for %+v", err)
+		}
 		if configUseParallelExecution {
-			wvs, err = txo.Prepare(wvs)
+			wc, err = txh.Prepare(wc)
 			if err != nil {
 				log.Panicf("Fail to prepare for %+v", err)
 			}
 
-			wc = wc.WorldStateChanged(wvs)
 			go func(tx Transaction, wc WorldContext, rb *Receipt) {
-				if rct, err := tx.Execute(wc); err != nil {
+				if rct, err := txh.Execute(wc); err != nil {
 					log.Panicf("Fail to execute transaction err=%+v", err)
 				} else {
 					*rb = rct
@@ -346,7 +360,7 @@ func (t *transition) executeTxs(l module.TransactionList, wc WorldContext, rctBu
 				wc.WorldVirtualState().Commit()
 			}(txo, wc, &rctBuf[cnt])
 		} else {
-			if rct, err := txo.Execute(wc); err != nil {
+			if rct, err := txh.Execute(wc); err != nil {
 				log.Panicf("Fail to execute transaction err=%+v", err)
 			} else {
 				rctBuf[cnt] = rct
@@ -354,7 +368,9 @@ func (t *transition) executeTxs(l module.TransactionList, wc WorldContext, rctBu
 		}
 		cnt++
 	}
-	wvs.Realize()
+	if configUseParallelExecution {
+		wc.WorldVirtualState().Realize()
+	}
 	return true, cnt
 }
 

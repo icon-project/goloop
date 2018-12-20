@@ -12,19 +12,6 @@ import (
 	"github.com/icon-project/goloop/service/eeproxy"
 )
 
-/*
-var eeMngr eeproxy.Manager
-
-func init() {
-	mgr, err := eeproxy.New("unix", "/tmp/ee.socket/")
-	if err != nil {
-		log.Panicf("FAIL to create EE Server err=%+v", err)
-	}
-
-	eeMngr = eeproxy.Manager(mgr)
-}
-*/
-
 const (
 	dataTypeNone    = ""
 	dataTypeMessage = "message"
@@ -34,7 +21,7 @@ const (
 
 type (
 	TransactionHandler interface {
-		Prepare(wvs WorldVirtualState) (WorldVirtualState, error)
+		Prepare(wc WorldContext) (WorldContext, error)
 		Execute(wc WorldContext) (Receipt, error)
 		Dispose()
 	}
@@ -76,8 +63,8 @@ type transactionHandler struct {
 	receipt Receipt
 }
 
-func NewTransactionHandler(from, to module.Address, value, stepLimit *big.Int,
-	dataType string, data []byte,
+func NewTransactionHandler(cm ContractManager, from, to module.Address,
+	value, stepLimit *big.Int, dataType string, data []byte,
 ) TransactionHandler {
 	tc := &transactionHandler{
 		from:      from,
@@ -101,17 +88,15 @@ func NewTransactionHandler(from, to module.Address, value, stepLimit *big.Int,
 
 	tc.receipt = NewReceipt(to)
 	tc.cc = newCallContext(tc.receipt)
-	tc.handler = contractMngr.GetHandler(tc.cc, from, to, value, stepLimit,
-		ctype, data)
+	tc.handler = cm.GetHandler(tc.cc, from, to, value, stepLimit, ctype, data)
 	if tc.handler == nil {
-		log.Println("can't find handler:", from, to, dataType, ctype)
 		return nil
 	}
 	return tc
 }
 
-func (th *transactionHandler) Prepare(wvs WorldVirtualState) (WorldVirtualState, error) {
-	return th.handler.Prepare(wvs)
+func (th *transactionHandler) Prepare(wc WorldContext) (WorldContext, error) {
+	return th.handler.Prepare(wc)
 }
 
 func (th *transactionHandler) Execute(wc WorldContext) (Receipt, error) {
@@ -160,6 +145,8 @@ func (cc *callContext) Setup(wc WorldContext) {
 func (cc *callContext) Call(handler ContractHandler) (module.Status, *big.Int,
 	[]byte, module.Address,
 ) {
+	tt := reflect.TypeOf(handler)
+	log.Println(tt)
 	switch handler := handler.(type) {
 	case SyncContractHandler:
 		cc.lock.Lock()
@@ -340,8 +327,7 @@ func (cc *callContext) GetBalance(addr module.Address) *big.Int {
 }
 
 func (cc *callContext) ReserveConnection(eeType string) error {
-	// TODO
-	//tc.conns[eeType] = eeMngr.Get(eeType)
+	cc.conns[eeType] = cc.wc.EEManager().Get(eeType)
 	return nil
 }
 

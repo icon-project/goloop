@@ -2,10 +2,13 @@ package chain
 
 import (
 	"encoding/json"
-	"github.com/icon-project/goloop/block"
-	"github.com/icon-project/goloop/service"
 	"log"
 	"time"
+
+	"github.com/icon-project/goloop/service/eeproxy"
+
+	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/service"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/consensus"
@@ -95,7 +98,12 @@ func (c *singleChain) Start() {
 	}
 
 	c.vld = consensus.NewVoteListFromBytes
-	c.sm = service.NewManager(c, c.nm)
+
+	em, err := eeproxy.New("unix", "/tmp/ee.socket")
+	if err != nil {
+		log.Panicln("FAIL to start EEManager")
+	}
+	c.sm = service.NewManager(c, c.nm, em)
 	c.bm = block.NewManager(c, c.sm)
 
 	c.cs = consensus.NewConsensus(c, c.bm, c.nm)

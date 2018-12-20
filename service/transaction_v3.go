@@ -108,6 +108,8 @@ func (tx *transactionV3JSON) Timestamp() int64 {
 type transactionV3 struct {
 	*transactionV3JSON
 	hash []byte
+
+	handler TransactionHandler
 }
 
 var stepsForTransfer = big.NewInt(100000)
@@ -175,153 +177,19 @@ func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
 	return nil
 }
 
-func (tx *transactionV3) Prepare(wvs WorldVirtualState) (WorldVirtualState, error) {
-	var lq []LockRequest
-	if !tx.To.IsContract() {
-		lq = []LockRequest{
-			{string(tx.From.ID()), AccountWriteLock},
-			{string(tx.To.ID()), AccountWriteLock},
-		}
-	} else {
-		lq = []LockRequest{
-			{"", AccountWriteLock},
-		}
+func (tx *transactionV3) Handler(wc WorldContext) (TransactionHandler, error) {
+	h := NewTransactionHandler(wc.ContractManager(),
+		&tx.From,
+		&tx.To,
+		&tx.Value.Int,
+		&tx.StepLimit.Int,
+		tx.DataType,
+		tx.Data)
+	if tx.handler == nil {
+		return nil, errors.New("can't find handler:" + tx.From.String() +
+			"," + tx.To.String() + "," + tx.DataType)
 	}
-	return wvs.GetFuture(lq), nil
-}
-
-func (tx *transactionV3) transfer(wc WorldContext,
-	from, to module.Address, value, limit *big.Int) (module.Status, *big.Int) {
-	stepUse := big.NewInt(wc.StepsFor(StepTypeDefault, 1))
-
-	if stepUse.Cmp(limit) > 0 {
-		return module.StatusNotPayable, limit
-	}
-
-	as1 := wc.GetAccountState(from.ID())
-	bal1 := as1.GetBalance()
-	if bal1.Cmp(value) < 0 {
-		return module.StatusOutOfBalance, limit
-	}
-	bal1.Sub(bal1, value)
-	as1.SetBalance(bal1)
-
-	as2 := wc.GetAccountState(to.ID())
-	bal2 := as2.GetBalance()
-	bal2.Add(bal2, value)
-	as2.SetBalance(bal2)
-
-	return module.StatusSuccess, stepUse
-}
-
-func (tx *transactionV3) call(wc WorldContext, r Receipt,
-	from, to module.Address, value, limit *big.Int) (module.Status, *big.Int) {
-	// TODO Implement transaction v3 contract call
-	log.Panicf("Not implemented")
-	return module.StatusSystemError, &zero
-}
-
-func countBytesOfData(data interface{}) int {
-	switch o := data.(type) {
-	case string:
-		if len(o) > 2 && o[:2] == "0x" {
-			o = o[2:]
-		}
-		bs := []byte(o)
-		for _, b := range bs {
-			if (b < '0' || b > '9') && (b < 'a' || b > 'f') {
-				return len(bs)
-			}
-		}
-		return (len(bs) + 1) / 2
-	case []interface{}:
-		var count int
-		for _, i := range o {
-			count += countBytesOfData(i)
-		}
-		return count
-	case map[string]interface{}:
-		var count int
-		for _, i := range o {
-			count += countBytesOfData(i)
-		}
-		return count
-	case bool:
-		return 1
-	case float64:
-		return len(common.Int64ToBytes(int64(o)))
-	default:
-		return 0
-	}
-}
-
-var zero big.Int
-
-func (tx *transactionV3) Execute(wc WorldContext) (Receipt, error) {
-	r := NewReceipt(&tx.To)
-	stepPrice := wc.StepPrice()
-	var (
-		fee                big.Int
-		status             module.Status
-		stepUsed, bal1     *big.Int
-		stepUse, stepLimit big.Int
-	)
-	wcs := wc.GetSnapshot()
-	as1 := wc.GetAccountState(tx.From.ID())
-	stepLimit.Set(&tx.StepLimit.Int)
-
-	// it tries to execute
-	if tx.To.IsContract() {
-		status, stepUsed = tx.call(wc, r, &tx.From, &tx.To, &tx.Value.Int, &stepLimit)
-		stepUse.Set(stepUsed)
-		stepLimit.Sub(&stepLimit, stepUsed)
-	} else {
-		status, stepUsed = tx.transfer(wc, &tx.From, &tx.To, &tx.Value.Int, &stepLimit)
-		stepUse.Set(stepUsed)
-		stepLimit.Sub(&stepLimit, stepUsed)
-		if status == 0 && tx.DataType == "message" {
-			var data interface{}
-			if err := json.Unmarshal(tx.Data, &data); err != nil {
-				status = module.StatusSystemError
-				stepUsed = &stepLimit
-			} else {
-				var stepsForMessage big.Int
-				stepsForMessage.SetInt64(wc.StepsFor(StepTypeInput, countBytesOfData(data)))
-				if stepLimit.Cmp(&stepsForMessage) < 0 {
-					status = module.StatusNotPayable
-					stepUsed = &stepLimit
-				} else {
-					stepUsed = &stepsForMessage
-				}
-			}
-			stepUse.Add(&stepUse, stepUsed)
-			stepLimit.Sub(&stepLimit, stepUsed)
-		}
-	}
-
-	// try to charge fee
-	fee.Mul(&stepUse, stepPrice)
-	bal1 = as1.GetBalance()
-	for bal1.Cmp(&fee) < 0 {
-		if status == 0 {
-			// rollback all changes
-			status = module.StatusNotPayable
-			wc.Reset(wcs)
-			r = NewReceipt(&tx.To)
-			bal1 = as1.GetBalance()
-
-			stepUse.Set(&tx.StepLimit.Int)
-			fee.Mul(&stepUse, stepPrice)
-		} else {
-			stepPrice = &zero
-			fee.SetInt64(0)
-		}
-	}
-	bal1.Sub(bal1, &fee)
-	as1.SetBalance(bal1)
-
-	r.SetResult(status, &stepUse, stepPrice, nil)
-	return r, nil
+	return h, nil
 }
 
 func (tx *transactionV3) Group() module.TransactionGroup {

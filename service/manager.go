@@ -10,6 +10,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/eeproxy"
 )
 
 const (
@@ -34,9 +35,12 @@ type manager struct {
 	db        db.Database
 	chain     module.Chain
 	txReactor *transactionReactor
+	cm        ContractManager
+	em        eeproxy.Manager
 }
 
-func NewManager(chain module.Chain, nm module.NetworkManager) module.ServiceManager {
+func NewManager(chain module.Chain, nm module.NetworkManager, em eeproxy.Manager,
+) module.ServiceManager {
 	bk, _ := chain.Database().GetBucket(db.MerkleTrie)
 
 	mgr := &manager{
@@ -44,6 +48,8 @@ func NewManager(chain module.Chain, nm module.NetworkManager) module.ServiceMana
 		normalTxPool: NewTransactionPool(bk),
 		db:           chain.Database(),
 		chain:        chain,
+		cm:           NewContractManager(chain.Database()),
+		em:           em,
 	}
 	mgr.txReactor = newTransactionReactor(nm, mgr.patchTxPool, mgr.normalTxPool)
 	return mgr
@@ -62,7 +68,7 @@ func (m *manager) ProposeTransition(parent module.Transition) (module.Transition
 	var timestamp int64 = time.Now().UnixNano() / 1000
 
 	ws, _ := WorldStateFromSnapshot(pt.worldSnapshot)
-	wc := NewWorldContext(ws, timestamp, pt.height+1)
+	wc := NewWorldContext(ws, timestamp, pt.height+1, m.cm, m.em)
 
 	patchTxs := m.patchTxPool.candidate(wc, -1) // try to add all patches in the block
 	maxTxNum := txMaxNumInBlock - len(patchTxs)
@@ -104,7 +110,7 @@ func (m *manager) ProposeGenesisTransition(parent module.Transition) (module.Tra
 // CreateInitialTransition creates an initial Transition with result and
 // vs validators.
 func (m *manager) CreateInitialTransition(result []byte, valList module.ValidatorList, height int64) (module.Transition, error) {
-	return newInitTransition(m.db, result, valList, height)
+	return newInitTransition(m.db, result, valList, height, m.cm, m.em)
 }
 
 // CreateTransition creates a Transition following parent Transition with txs
@@ -137,7 +143,7 @@ func (m *manager) GetPatches(parent module.Transition) module.TransactionList {
 	}
 
 	// TODO we need to get proper time stamp value and height.
-	wc := NewWorldContext(ws, 0, 0)
+	wc := NewWorldContext(ws, 0, 0, m.cm, m.em)
 	return NewTransactionListFromSlice(m.db, m.patchTxPool.candidate(wc, -1))
 }
 

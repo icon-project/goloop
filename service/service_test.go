@@ -125,7 +125,7 @@ func TestUnitService(t *testing.T) {
 	c := new(chain)
 	c.wallet = common.NewWallet()
 	c.database = db.NewMapDB()
-	leaderServiceManager := service.NewManager(c)
+	leaderServiceManager := service.NewManager(c, nil, nil)
 	it, _ := leaderServiceManager.CreateInitialTransition(nil, nil, -1)
 	parentTrs, _ := leaderServiceManager.ProposeGenesisTransition(it)
 	cb := &transitionCb{make(chan bool)}
@@ -168,7 +168,7 @@ func TestUnitService(t *testing.T) {
 	validatorCh := new(chain)
 	validatorCh.wallet = common.NewWallet()
 	validatorCh.database = db.NewMapDB()
-	validatorServiceManager := service.NewManager(validatorCh)
+	validatorServiceManager := service.NewManager(validatorCh, nil, nil)
 	vit, _ := leaderServiceManager.CreateInitialTransition(nil, nil, -1)
 	parentVTransition, _ := leaderServiceManager.ProposeGenesisTransition(vit)
 	parentVTransition.Execute(cb)

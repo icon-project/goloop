@@ -1,9 +1,11 @@
 package service
 
 import (
+	"math/big"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/module"
-	"math/big"
+	"github.com/icon-project/goloop/service/eeproxy"
 )
 
 type worldContext struct {
@@ -11,6 +13,9 @@ type worldContext struct {
 
 	timeStamp   int64
 	blockHeight int64
+
+	cm ContractManager
+	em eeproxy.Manager
 }
 
 func (c *worldContext) WorldVirtualState() WorldVirtualState {
@@ -58,6 +63,14 @@ func (c *worldContext) Treasury() module.Address {
 	return treasury
 }
 
+func (c *worldContext) ContractManager() ContractManager {
+	return c.cm
+}
+
+func (c *worldContext) EEManager() eeproxy.Manager {
+	return c.em
+}
+
 func (c *worldContext) WorldStateChanged(ws WorldState) WorldContext {
 	return &worldContext{
 		WorldState:  ws,
@@ -66,10 +79,14 @@ func (c *worldContext) WorldStateChanged(ws WorldState) WorldContext {
 	}
 }
 
-func NewWorldContext(ws WorldState, ts int64, height int64) WorldContext {
+func NewWorldContext(ws WorldState, ts int64, height int64, cm ContractManager,
+	em eeproxy.Manager,
+) WorldContext {
 	return &worldContext{
 		WorldState:  ws,
 		timeStamp:   ts,
 		blockHeight: height,
+		cm:          cm,
+		em:          em,
 	}
 }

@@ -274,7 +274,7 @@ func (c *chain) startAsProposer(ch chan<- []byte) {
 	c.wallet = common.NewWallet()
 	c.database = db.NewMapDB()
 	// TODO to run, create NetworkManager and set it for ServiceManager
-	c.sm = service.NewManager(c, nil)
+	c.sm = service.NewManager(c, nil, nil)
 	c.bm = block.NewManager(c, c.sm)
 	c.cs = &proposeOnlyConsensus{
 		sm: c.sm,
@@ -287,7 +287,7 @@ func (c *chain) startAsProposer(ch chan<- []byte) {
 func (c *chain) startAsImporter(ch <-chan []byte) {
 	c.wallet = common.NewWallet()
 	c.database = db.NewMapDB()
-	c.sm = service.NewManager(c, nil)
+	c.sm = service.NewManager(c, nil, nil)
 	c.bm = block.NewManager(c, c.sm)
 	c.cs = &importOnlyConsensus{
 		sm: c.sm,

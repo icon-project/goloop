@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/eeproxy"
 )
 
 const (
@@ -36,6 +37,8 @@ type WorldContext interface {
 	TimeStamp() int64
 	BlockHeight() int64
 	Treasury() module.Address
+	ContractManager() ContractManager
+	EEManager() eeproxy.Manager
 	WorldStateChanged(ws WorldState) WorldContext
 	WorldVirtualState() WorldVirtualState
 	GetFuture(lq []LockRequest) WorldContext
@@ -45,8 +48,7 @@ type WorldContext interface {
 type Transaction interface {
 	module.Transaction
 	PreValidate(wc WorldContext, update bool) error
-	Prepare(wvs WorldVirtualState) (WorldVirtualState, error)
-	Execute(wc WorldContext) (Receipt, error)
+	Handler(wc WorldContext) (TransactionHandler, error)
 	Timestamp() int64
 }
 

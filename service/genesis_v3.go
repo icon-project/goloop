@@ -136,12 +136,15 @@ func (g *genesisV3) PreValidate(wc WorldContext, update bool) error {
 	return nil
 }
 
-func (g *genesisV3) Prepare(wvs WorldVirtualState) (WorldVirtualState, error) {
+func (g *genesisV3) Handler(wc WorldContext) (TransactionHandler, error) {
+	return g, nil
+}
+
+func (g *genesisV3) Prepare(wc WorldContext) (WorldContext, error) {
 	lq := []LockRequest{
 		{"", AccountWriteLock},
 	}
-	wvs = wvs.GetFuture(lq)
-	return wvs, nil
+	return wc.WorldStateChanged(wc.WorldVirtualState().GetFuture(lq)), nil
 }
 
 func (g *genesisV3) Execute(wc WorldContext) (Receipt, error) {
@@ -157,6 +160,9 @@ func (g *genesisV3) Execute(wc WorldContext) (Receipt, error) {
 	}
 	wc.SetValidators(validators)
 	return r, nil
+}
+
+func (g *genesisV3) Dispose() {
 }
 
 func (g *genesisV3) Timestamp() int64 {

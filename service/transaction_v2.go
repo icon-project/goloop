@@ -76,12 +76,16 @@ func (tx *transactionV2) PreValidate(wc WorldContext, update bool) error {
 	return nil
 }
 
-func (tx *transactionV2) Prepare(wvs WorldVirtualState) (WorldVirtualState, error) {
+func (tx *transactionV2) Handler(wc WorldContext) (TransactionHandler, error) {
+	return tx, nil
+}
+
+func (tx *transactionV2) Prepare(wc WorldContext) (WorldContext, error) {
 	lq := []LockRequest{
 		{string(tx.From.ID()), AccountWriteLock},
 		{string(tx.To.ID()), AccountWriteLock},
 	}
-	return wvs.GetFuture(lq), nil
+	return wc.WorldStateChanged(wc.WorldVirtualState().GetFuture(lq)), nil
 }
 
 func (tx *transactionV2) Execute(wc WorldContext) (Receipt, error) {
@@ -94,7 +98,7 @@ func (tx *transactionV2) Execute(wc WorldContext) (Receipt, error) {
 	bal1 := as1.GetBalance()
 	if bal1.Cmp(&trans) < 0 {
 		stepUsed := version2StepUsed
-		stepPrice := &zero
+		stepPrice := new(big.Int)
 
 		log.Printf("TX2 Fail balance=%s value=%s fee=%s",
 			bal1.String(), tx.Value.Int.String(), tx.Fee.Int.String())
@@ -117,6 +121,9 @@ func (tx *transactionV2) Execute(wc WorldContext) (Receipt, error) {
 
 	r.SetResult(module.StatusSuccess, version2StepUsed, version2StepPrice, nil)
 	return r, nil
+}
+
+func (tx *transactionV2) Dispose() {
 }
 
 func (tx *transactionV2) Group() module.TransactionGroup {

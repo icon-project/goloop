@@ -24,15 +24,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-var contractMngr ContractManager
-
-func init() {
+func NewContractManager(db db.Database) ContractManager {
 	/*
 		contractManager has root path of each service manager's contract file
 		So contractManager has to be initialized
 		after configurable root path is passed to Service Manager
 	*/
-	contractMngr = new(contractManager)
+	return &contractManager{db: db}
 }
 
 const (
@@ -58,7 +56,7 @@ type (
 
 	ContractHandler interface {
 		StepLimit() *big.Int
-		Prepare(wvs WorldVirtualState) (WorldVirtualState, error)
+		Prepare(wc WorldContext) (WorldContext, error)
 	}
 
 	SyncContractHandler interface {
@@ -283,15 +281,15 @@ func (h *TransferHandler) StepLimit() *big.Int {
 	return h.stepLimit
 }
 
-func (h *TransferHandler) Prepare(wvs WorldVirtualState) (WorldVirtualState, error) {
+func (h *TransferHandler) Prepare(wc WorldContext) (WorldContext, error) {
 	lq := []LockRequest{
 		{string(h.from.ID()), AccountWriteLock},
 		{string(h.to.ID()), AccountWriteLock},
 	}
-	return wvs.GetFuture(lq), nil
+	return wc.WorldStateChanged(wc.WorldVirtualState().GetFuture(lq)), nil
 }
 
-func (h *TransferHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int, module.Address) {
+func (h *TransferHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int, []byte, module.Address) {
 	stepPrice := wc.StepPrice()
 	var (
 		fee                 big.Int
@@ -328,7 +326,7 @@ func (h *TransferHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 	bal1.Sub(bal1, &fee)
 	as1.SetBalance(bal1)
 
-	return status, &stepUsed, nil
+	return status, &stepUsed, nil, nil
 }
 
 type TransferAndMessageHandler struct {
@@ -336,7 +334,7 @@ type TransferAndMessageHandler struct {
 	data []byte
 }
 
-func (h *TransferAndMessageHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int, module.Address) {
+func (h *TransferAndMessageHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int, []byte, module.Address) {
 	stepPrice := wc.StepPrice()
 	var (
 		fee                 big.Int
@@ -360,7 +358,7 @@ func (h *TransferAndMessageHandler) ExecuteSync(wc WorldContext) (module.Status,
 			step = &stepAvail
 		} else {
 			var stepsForMessage big.Int
-			stepsForMessage.SetInt64(wc.StepsFor(StepTypeInput, countBytesOfData(data)))
+			stepsForMessage.SetInt64(wc.StepsFor(StepTypeInput, h.countBytesOfData(data)))
 			if stepAvail.Cmp(&stepsForMessage) < 0 {
 				status = module.StatusNotPayable
 				step = &stepAvail
@@ -392,7 +390,41 @@ func (h *TransferAndMessageHandler) ExecuteSync(wc WorldContext) (module.Status,
 	bal1.Sub(bal1, &fee)
 	as1.SetBalance(bal1)
 
-	return status, &stepUsed, nil
+	return status, &stepUsed, nil, nil
+}
+
+func (h *TransferAndMessageHandler) countBytesOfData(data interface{}) int {
+	switch o := data.(type) {
+	case string:
+		if len(o) > 2 && o[:2] == "0x" {
+			o = o[2:]
+		}
+		bs := []byte(o)
+		for _, b := range bs {
+			if (b < '0' || b > '9') && (b < 'a' || b > 'f') {
+				return len(bs)
+			}
+		}
+		return (len(bs) + 1) / 2
+	case []interface{}:
+		var count int
+		for _, i := range o {
+			count += h.countBytesOfData(i)
+		}
+		return count
+	case map[string]interface{}:
+		var count int
+		for _, i := range o {
+			count += h.countBytesOfData(i)
+		}
+		return count
+	case bool:
+		return 1
+	case float64:
+		return len(common.Int64ToBytes(int64(o)))
+	default:
+		return 0
+	}
 }
 
 type contractStoreProxy struct {
@@ -406,7 +438,7 @@ func newContractStoreProxy() *contractStoreProxy {
 	return &contractStoreProxy{cv: sync.NewCond(new(sync.Mutex))}
 }
 
-func (p *contractStoreProxy) prepare(ws WorldState, addr module.Address) {
+func (p *contractStoreProxy) prepare(wc WorldContext, addr module.Address) {
 	p.cv.L.Lock()
 	if p.started {
 		// avoid to call PrepareContractStore() more than once
@@ -414,10 +446,10 @@ func (p *contractStoreProxy) prepare(ws WorldState, addr module.Address) {
 	}
 	p.started = true
 	p.cv.L.Unlock()
-	contractMngr.PrepareContractStore(ws, addr, p.onContractStoreCompleted)
+	wc.ContractManager().PrepareContractStore(wc, addr, p.onContractStoreCompleted)
 }
 
-func (p *contractStoreProxy) check(ws WorldState, addr module.Address) (string, error) {
+func (p *contractStoreProxy) check(wc WorldContext, addr module.Address) (string, error) {
 	p.cv.L.Lock()
 	defer p.cv.L.Unlock()
 
@@ -425,7 +457,7 @@ func (p *contractStoreProxy) check(ws WorldState, addr module.Address) (string, 
 		return p.path, p.err
 	}
 
-	p.prepare(ws, addr)
+	p.prepare(wc, addr)
 	p.cv.Wait()
 	return p.path, p.err
 }
@@ -439,7 +471,9 @@ func (p *contractStoreProxy) onContractStoreCompleted(path string, err error) {
 }
 
 type CallHandler struct {
-	TransferHandler
+	// Don't embed TransferHandler because it should not be an instance of
+	// SyncContractHandler.
+	th TransferHandler
 
 	method string
 	params []byte
@@ -449,6 +483,7 @@ type CallHandler struct {
 
 	// set in ExecuteAsync()
 	as   AccountState
+	cm   ContractManager
 	conn eeproxy.Proxy
 }
 
@@ -464,34 +499,41 @@ func newCallHandler(from, to module.Address, value, stepLimit *big.Int,
 		return nil
 	}
 	return &CallHandler{
-		TransferHandler: TransferHandler{from: from, to: to, value: value, stepLimit: stepLimit},
-		method:          dataJSON.method,
-		params:          dataJSON.params,
-		cc:              cc,
-		csp:             newContractStoreProxy(),
+		th:     TransferHandler{from: from, to: to, value: value, stepLimit: stepLimit},
+		method: dataJSON.method,
+		params: dataJSON.params,
+		cc:     cc,
+		csp:    newContractStoreProxy(),
 	}
 }
 
-func (h *CallHandler) Prepare(wvs WorldVirtualState) (WorldVirtualState, error) {
-	h.csp.prepare(wvs, h.to)
-	return wvs.GetFuture([]LockRequest{{"", AccountWriteLock}}), nil
+func (h *CallHandler) StepLimit() *big.Int {
+	return h.th.stepLimit
+}
+
+func (h *CallHandler) Prepare(wc WorldContext) (WorldContext, error) {
+	h.csp.prepare(wc, h.th.to)
+
+	lq := []LockRequest{{"", AccountWriteLock}}
+	return wc.WorldStateChanged(wc.WorldVirtualState().GetFuture(lq)), nil
 }
 
 func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
-	h.as = wc.GetAccountState(h.to.ID())
+	h.as = wc.GetAccountState(h.th.to.ID())
 
+	h.cm = wc.ContractManager()
 	h.conn = h.cc.GetConnection(h.EEType())
 	if h.conn == nil {
 		return errors.New("FAIL to get connection of (" + h.EEType() + ")")
 	}
 
-	path, err := h.csp.check(wc, h.to)
+	path, err := h.csp.check(wc, h.th.to)
 	if err != nil {
 		return err
 	}
 
-	err = h.conn.Invoke(h, path, false, h.from, h.to, h.value,
-		h.stepLimit, h.method, h.params)
+	err = h.conn.Invoke(h, path, false, h.th.from, h.th.to, h.th.value,
+		h.th.stepLimit, h.method, h.params)
 	if err != nil {
 		return err
 	}
@@ -519,7 +561,7 @@ func (h *CallHandler) GetValue(key []byte) ([]byte, error) {
 	if h.as != nil {
 		return h.as.GetValue(key)
 	} else {
-		return nil, errors.New("GetValue: No Account(" + h.to.String() + ") exists")
+		return nil, errors.New("GetValue: No Account(" + h.th.to.String() + ") exists")
 	}
 }
 
@@ -527,7 +569,7 @@ func (h *CallHandler) SetValue(key, value []byte) error {
 	if h.as != nil {
 		return h.as.SetValue(key, value)
 	} else {
-		return errors.New("SetValue: No Account(" + h.to.String() + ") exists")
+		return errors.New("SetValue: No Account(" + h.th.to.String() + ") exists")
 	}
 }
 
@@ -535,7 +577,7 @@ func (h *CallHandler) DeleteValue(key []byte) error {
 	if h.as != nil {
 		return h.as.DeleteValue(key)
 	} else {
-		return errors.New("DeleteValue: No Account(" + h.to.String() + ") exists")
+		return errors.New("DeleteValue: No Account(" + h.th.to.String() + ") exists")
 	}
 }
 
@@ -569,7 +611,7 @@ func (h *CallHandler) OnCall(from, to module.Address, value,
 		log.Println("Invalid call:", from, to, value, method)
 
 		if conn := h.cc.GetConnection(h.EEType()); conn != nil {
-			conn.SendResult(h, uint16(module.StatusSystemError), h.stepLimit, nil)
+			conn.SendResult(h, uint16(module.StatusSystemError), h.th.stepLimit, nil)
 		} else {
 			// It can't be happened
 			log.Println("FAIL to get connection of (", h.EEType(), ")")
@@ -579,7 +621,7 @@ func (h *CallHandler) OnCall(from, to module.Address, value,
 
 	// TODO make data from method and params
 	var data []byte
-	handler := contractMngr.GetHandler(h.cc, from, to, value, limit, ctype, data)
+	handler := h.cm.GetHandler(h.cc, from, to, value, limit, ctype, data)
 	h.cc.OnCall(handler)
 }
 
@@ -592,20 +634,20 @@ type TransferAndCallHandler struct {
 	CallHandler
 }
 
-func (h *TransferAndCallHandler) Prepare(wvs WorldVirtualState) (WorldVirtualState, error) {
-	if wvs, err := h.TransferHandler.Prepare(wvs); err == nil {
-		return h.CallHandler.Prepare(wvs)
+func (h *TransferAndCallHandler) Prepare(wc WorldContext) (WorldContext, error) {
+	if wc, err := h.th.Prepare(wc); err == nil {
+		return h.CallHandler.Prepare(wc)
 	} else {
-		return wvs, err
+		return wc, err
 	}
 }
 
 func (h *TransferAndCallHandler) ExecuteAsync(wc WorldContext) error {
-	if status, stepUsed, _ := h.TransferHandler.ExecuteSync(wc); status == 0 {
+	if status, stepUsed, result, addr := h.th.ExecuteSync(wc); status == 0 {
 		return h.CallHandler.ExecuteAsync(wc)
 	} else {
 		go func() {
-			h.cc.OnResult(module.Status(status), stepUsed, nil, nil)
+			h.cc.OnResult(module.Status(status), stepUsed, result, addr)
 		}()
 
 		return nil
@@ -685,7 +727,7 @@ func GenContractAddr(from, timestamp, nonce []byte) []byte {
 }
 
 func (h *DeployHandler) ExecuteSync(wc WorldContext) (
-	module.Status, *big.Int, module.Address) {
+	module.Status, *big.Int, []byte, module.Address) {
 	const (
 		deployInstall = iota
 		deployUpdate
@@ -720,7 +762,7 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (
 		codeBuf, err = hex.DecodeString(hexContent)
 		if err != nil {
 			log.Printf("Failed to")
-			return module.StatusSystemError, nil, nil
+			return module.StatusSystemError, nil, nil, nil
 		}
 		// store codeHash
 		bk, err := h.db.GetBucket(db.BytesByHash)
@@ -728,11 +770,11 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (
 		v, err := bk.Get(codeHash[:])
 		if err != nil || v != nil {
 			log.Printf("err : %s, v = %x\n", err, v)
-			return module.StatusSystemError, nil, nil
+			return module.StatusSystemError, nil, nil, nil
 		}
 		if err = bk.Set(codeHash[:], codeBuf); err != nil {
 			log.Printf("failed to set code. err : %s\n", err)
-			return module.StatusSystemError, nil, nil
+			return module.StatusSystemError, nil, nil, nil
 		}
 
 		// calculate stepUsed and apply it
@@ -746,7 +788,7 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (
 		if bal.Cmp(stepUsed) < 0 {
 			stepUsed.Set(bal)
 			ownerAs.SetBalance(big.NewInt(0))
-			return module.StatusOutOfBalance, stepUsed, nil
+			return module.StatusOutOfBalance, stepUsed, nil, nil
 		}
 		bal.Sub(bal, stepUsed)
 		ownerAs.SetBalance(bal)
@@ -787,7 +829,7 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (
 			systemAs := wc.GetAccountState(sysAddr.ID())
 			systemAs.SetValue(h.txHash, contractAddr.ID())
 
-			return module.StatusSuccess, stepUsed, nil
+			return module.StatusSuccess, stepUsed, nil, nil
 		}
 	} else if h.cmdType == deployCmdAccept {
 		as := wc.GetAccountState(sysAddr.ID())
@@ -804,7 +846,7 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (
 		codeBuf, err = bk.Get(codeHash[:])
 		if err != nil || len(codeBuf) == 0 {
 			log.Printf("failed to get code. err : %s\n", err)
-			return module.StatusSystemError, nil, nil
+			return module.StatusSystemError, nil, nil, nil
 		}
 	} else if h.cmdType == deployCmdReject {
 	}
@@ -820,16 +862,16 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (
 	as := wc.GetAccountState(contractAddr.ID())
 	contract := as.GetNextContract()
 	contract.SetStatus(csActive)
-	handler := contractMngr.GetHandler(h.cc, h.from,
+	handler := wc.ContractManager().GetHandler(h.cc, h.from,
 		contractAddr, nil, nil, ctypeCall, h.data)
 	h.cc.Call(handler)
 	// TODO receive result
 
 	// GET API
-	handler = contractMngr.GetHandler(h.cc, h.from,
+	handler = wc.ContractManager().GetHandler(h.cc, h.from,
 		contractAddr, nil, nil, ctypeCall, h.data)
 	h.cc.Call(handler)
 	// TODO receive result
 
-	return module.StatusSuccess, nil, nil
+	return module.StatusSuccess, nil, nil, nil
 }
