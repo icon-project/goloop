@@ -4,6 +4,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
+	"log"
 	"math/big"
 )
 
@@ -64,8 +65,28 @@ func MarshalAny(obj interface{}) ([]byte, error) {
 	return codec.MarshalAny(TypeCodec, obj)
 }
 
-func EncodeAny(obj interface{}) (interface{}, error) {
+func EncodeAny(obj interface{}) (*codec.TypedObj, error) {
 	return codec.EncodeAny(TypeCodec, obj)
+}
+
+func MustEncodeAny(obj interface{}) *codec.TypedObj {
+	if tobj, err := codec.EncodeAny(TypeCodec, obj); err != nil {
+		log.Panicf("Fail on codec.EncodeAny() err=%+v", err)
+	} else {
+		return tobj
+	}
+}
+
+func DecodeAny(o *codec.TypedObj) (interface{}, error) {
+	return codec.DecodeAny(TypeCodec, o)
+}
+
+func MustDecodeAny(o *codec.TypeCodec) interface{} {
+	if obj, err := codec.DecodeAny(TypeCodec, o); err != nil {
+		log.Panicf("Fail on codec.DecodeAny() err=%+v", err)
+	} else {
+		return obj
+	}
 }
 
 func UnmarshalAny(bs []byte) (interface{}, error) {

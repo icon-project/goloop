@@ -28,15 +28,15 @@ type typedObjDummy struct {
 	Object ugorji.Raw
 }
 
-type typedObj struct {
+type TypedObj struct {
 	typedObjBase
 }
 
-func (o *typedObj) CodecEncodeSelf(e *ugorji.Encoder) {
+func (o *TypedObj) CodecEncodeSelf(e *ugorji.Encoder) {
 	e.Encode(&o.typedObjBase)
 }
 
-func (o *typedObj) CodecDecodeSelf(d *ugorji.Decoder) {
+func (o *TypedObj) CodecDecodeSelf(d *ugorji.Decoder) {
 	var tmp typedObjDummy
 	d.Decode(&tmp)
 	o.Type = tmp.Type
@@ -44,11 +44,11 @@ func (o *typedObj) CodecDecodeSelf(d *ugorji.Decoder) {
 	case TypeNil:
 		return
 	case TypeDict:
-		var m map[string]*typedObj
+		var m map[string]*TypedObj
 		MP.UnmarshalFromBytes([]byte(tmp.Object), &m)
 		o.Object = m
 	case TypeList:
-		var l []*typedObj
+		var l []*TypedObj
 		MP.UnmarshalFromBytes([]byte(tmp.Object), &l)
 		o.Object = l
 	case TypeString:
@@ -62,8 +62,8 @@ func (o *typedObj) CodecDecodeSelf(d *ugorji.Decoder) {
 	}
 }
 
-func newTypedObj(t uint8, o interface{}) *typedObj {
-	return &typedObj{typedObjBase{t, o}}
+func newTypedObj(t uint8, o interface{}) *TypedObj {
+	return &TypedObj{typedObjBase{t, o}}
 }
 
 func MarshalAny(tc TypeCodec, o interface{}) ([]byte, error) {
@@ -74,7 +74,7 @@ func MarshalAny(tc TypeCodec, o interface{}) ([]byte, error) {
 	}
 }
 
-func EncodeAny(tc TypeCodec, o interface{}) (*typedObj, error) {
+func EncodeAny(tc TypeCodec, o interface{}) (*TypedObj, error) {
 	if o == nil {
 		return newTypedObj(TypeNil, nil), nil
 	}
@@ -84,7 +84,7 @@ func EncodeAny(tc TypeCodec, o interface{}) (*typedObj, error) {
 	case []byte:
 		return newTypedObj(TypeBytes, obj), nil
 	case []interface{}:
-		l := make([]*typedObj, len(obj))
+		l := make([]*TypedObj, len(obj))
 		for i, o := range obj {
 			if eo, err := EncodeAny(tc, o); err != nil {
 				return nil, err
@@ -94,7 +94,7 @@ func EncodeAny(tc TypeCodec, o interface{}) (*typedObj, error) {
 		}
 		return newTypedObj(TypeList, l), nil
 	case map[string]interface{}:
-		m := make(map[string]*typedObj)
+		m := make(map[string]*TypedObj)
 		for k, o := range obj {
 			if eo, err := EncodeAny(tc, o); err != nil {
 				return nil, err
@@ -103,7 +103,7 @@ func EncodeAny(tc TypeCodec, o interface{}) (*typedObj, error) {
 			}
 		}
 		return newTypedObj(TypeDict, m), nil
-	case *typedObj:
+	case *TypedObj:
 		return obj, nil
 	default:
 		if tag, bytes, err := tc.Encode(obj); err != nil {
@@ -115,14 +115,14 @@ func EncodeAny(tc TypeCodec, o interface{}) (*typedObj, error) {
 }
 
 func UnmarshalAny(tc TypeCodec, bs []byte) (interface{}, error) {
-	var to typedObj
+	var to TypedObj
 	if _, err := UnmarshalFromBytes(bs, &to); err != nil {
 		return nil, err
 	}
 	return DecodeAny(tc, &to)
 }
 
-func DecodeAny(tc TypeCodec, to *typedObj) (interface{}, error) {
+func DecodeAny(tc TypeCodec, to *TypedObj) (interface{}, error) {
 	if to == nil {
 		return nil, nil
 	}
@@ -133,7 +133,7 @@ func DecodeAny(tc TypeCodec, to *typedObj) (interface{}, error) {
 		return to.Object, nil
 	case TypeDict:
 		m := make(map[string]interface{})
-		for k, nto := range to.Object.(map[string]*typedObj) {
+		for k, nto := range to.Object.(map[string]*TypedObj) {
 			var err error
 			m[k], err = DecodeAny(tc, nto)
 			if err != nil {
@@ -142,7 +142,7 @@ func DecodeAny(tc TypeCodec, to *typedObj) (interface{}, error) {
 		}
 		return m, nil
 	case TypeList:
-		tol := to.Object.([]*typedObj)
+		tol := to.Object.([]*TypedObj)
 		l := make([]interface{}, len(tol))
 		for i, to := range tol {
 			var err error
