@@ -177,8 +177,8 @@ func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
 	return nil
 }
 
-func (tx *transactionV3) GetHandler(wc WorldContext) (TransactionHandler, error) {
-	h := NewTransactionHandler(wc.ContractManager(),
+func (tx *transactionV3) GetHandler(cm ContractManager) (TransactionHandler, error) {
+	h := NewTransactionHandler(cm,
 		&tx.From,
 		&tx.To,
 		&tx.Value.Int,
