@@ -28,8 +28,8 @@ type (
 
 	CallContext interface {
 		Setup(WorldContext)
-		Call(ContractHandler) (module.Status, *big.Int, []byte, module.Address)
-		OnResult(status module.Status, stepUsed *big.Int, result []byte, addr module.Address)
+		Call(ContractHandler) (module.Status, *big.Int, interface{}, module.Address)
+		OnResult(status module.Status, stepUsed *big.Int, result interface{}, addr module.Address)
 		OnCall(ContractHandler)
 		OnEvent(indexed, data [][]byte)
 		GetInfo() map[string]interface{}
@@ -41,7 +41,7 @@ type (
 	callResultMessage struct {
 		status   module.Status
 		stepUsed *big.Int
-		result   []byte
+		result   interface{}
 		addr     module.Address
 	}
 
@@ -141,7 +141,7 @@ func (cc *callContext) Setup(wc WorldContext) {
 }
 
 func (cc *callContext) Call(handler ContractHandler) (module.Status, *big.Int,
-	[]byte, module.Address,
+	interface{}, module.Address,
 ) {
 	tt := reflect.TypeOf(handler)
 	log.Println(tt)
@@ -176,7 +176,7 @@ func (cc *callContext) Call(handler ContractHandler) (module.Status, *big.Int,
 }
 
 func (cc *callContext) waitResult(stepLimit *big.Int) (
-	module.Status, *big.Int, []byte, module.Address,
+	module.Status, *big.Int, interface{}, module.Address,
 ) {
 	for {
 		select {
@@ -233,7 +233,7 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (
 }
 
 func (cc *callContext) handleResult(status module.Status,
-	stepUsed *big.Int, result []byte, addr module.Address,
+	stepUsed *big.Int, result interface{}, addr module.Address,
 ) bool {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
@@ -283,7 +283,7 @@ func (cc *callContext) cancelCall() ContractHandler {
 }
 
 func (cc *callContext) OnResult(status module.Status, stepUsed *big.Int,
-	result []byte, addr module.Address,
+	result interface{}, addr module.Address,
 ) {
 	cc.sendMessage(&callResultMessage{
 		status:   status,

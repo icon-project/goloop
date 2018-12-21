@@ -34,14 +34,14 @@ type CallContext interface {
 	GetInfo() map[string]interface{}
 	GetBalance(addr module.Address) *big.Int
 	OnEvent(addr module.Address, indexed, data [][]byte)
-	OnResult(status uint16, steps *big.Int, result []byte)
+	OnResult(status uint16, steps *big.Int, result interface{})
 	OnCall(from, to module.Address, value, limit *big.Int, method string, params []byte)
 	OnAPI(obj interface{})
 }
 
 type Proxy interface {
 	Invoke(ctx CallContext, code string, isQuery bool, from, to module.Address, value, limit *big.Int, method string, params []byte) error
-	SendResult(ctx CallContext, status uint16, steps *big.Int, result []byte) error
+	SendResult(ctx CallContext, status uint16, steps *big.Int, result interface{}) error
 	GetAPI(ctx CallContext, code string) error
 	Release()
 }
@@ -139,7 +139,7 @@ func (p *proxy) GetAPI(ctx CallContext, code string) error {
 type resultMessage struct {
 	Status   uint16
 	StepUsed common.HexInt
-	Result   []byte
+	Result   *codec.TypedObj
 }
 
 func (p *proxy) reserve() bool {
@@ -167,11 +167,15 @@ func (p *proxy) Release() {
 	p.lock.Unlock()
 }
 
-func (p *proxy) SendResult(ctx CallContext, status uint16, stepUsed *big.Int, result []byte) error {
+func (p *proxy) SendResult(ctx CallContext, status uint16, stepUsed *big.Int, result interface{}) error {
 	var m resultMessage
 	m.Status = status
 	m.StepUsed.Set(stepUsed)
-	m.Result = result
+	if encoded, err := common.EncodeAny(result); err != nil {
+		return err
+	} else {
+		m.Result = encoded
+	}
 	return p.conn.Send(msgRESULT, &m)
 }
 
@@ -205,7 +209,13 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		p.frame = frame.prev
 		p.lock.Unlock()
 
-		frame.ctx.OnResult(m.Status, &m.StepUsed.Int, m.Result)
+		result, err := common.DecodeAny(m.Result)
+		if err != nil {
+			c.Close()
+			return err
+		}
+
+		frame.ctx.OnResult(m.Status, &m.StepUsed.Int, result)
 
 		p.lock.Lock()
 		if p.frame == nil && !p.reserved {

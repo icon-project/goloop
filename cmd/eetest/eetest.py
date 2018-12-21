@@ -71,7 +71,7 @@ class TestEE(object):
         proxy.set_api_handler(self.api_handler)
 
     def invoke_handler(self, code: str, _from: 'Address', _to: 'Address',
-                       value: int, limit: int, method: str, params: bytes) -> Tuple[int, int, bytes]:
+                       value: int, limit: int, method: str, params: bytes) -> Tuple[int, int, Any]:
         print(f'invoke_handler(code={repr(code)},from={_from},to={_to},' +
               f'value={value},limit={limit},method={repr(method)},params={params})')
         self.get_info()
@@ -82,7 +82,7 @@ class TestEE(object):
         self.get_balance(Address("cx1000000000000000000000000000000000000000"))
         self.send_event(["LogEvent(int,str,Address)", 1, "TEST"],
                         [Address.from_str("cx0004444444444444444444444444444444444444")])
-        return 0, 10, bytes([])
+        return 0, 10, "Test"
 
     def api_handler(self, code: str) -> Any:
         api = [{

@@ -67,7 +67,7 @@ type (
 	AsyncContractHandler interface {
 		ContractHandler
 		ExecuteAsync(wc WorldContext) error
-		SendResult(status module.Status, steps *big.Int, result []byte) error
+		SendResult(status module.Status, steps *big.Int, result interface{}) error
 		Cancel()
 
 		EEType() string
@@ -593,7 +593,7 @@ func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) {
 	h.cc.OnEvent(indexed, data)
 }
 
-func (h *CallHandler) OnResult(status uint16, steps *big.Int, result []byte) {
+func (h *CallHandler) OnResult(status uint16, steps *big.Int, result interface{}) {
 	h.cc.OnResult(module.Status(status), steps, result, nil)
 }
 

@@ -76,7 +76,7 @@ class ServiceManagerProxy:
             name,
         ])
 
-    def set_invoke_handler(self, invoke: Callable[[str, 'Address', 'Address', int, int, str, bytes], None]):
+    def set_invoke_handler(self, invoke: Callable[[str, 'Address', 'Address', int, int, str, Any], None]):
         self.__invoke = invoke
 
     def set_api_handler(self, api: Callable[[str], Any]):
@@ -169,13 +169,13 @@ class ServiceManagerProxy:
             self.__client.send(Message.RESULT, [
                 status,
                 self.encode(step_used),
-                self.encode(result)
+                self.encode_any(result)
             ])
         except BaseException as e:
             self.__client.send(Message.RESULT, [
                 Status.SYSTEM_FAILURE,
                 self.encode(limit),
-                None
+                self.encode_any(None)
             ])
         finally:
             self.__readonly = self.__readonly_stack.pop(-1)
@@ -199,7 +199,7 @@ class ServiceManagerProxy:
 
     def call(self, to: 'Address', value: int,
              step_limit: int, method: str,
-             params: bytes) -> Tuple[int, int, bytes]:
+             params: bytes) -> Tuple[int, int, Any]:
 
         self.__client.send(Message.CALL, [
             self.encode(to), self.encode(value), self.encode(step_limit),
@@ -211,7 +211,7 @@ class ServiceManagerProxy:
             if msg == Message.INVOKE:
                 self.__handle_invoke(data)
             elif msg == Message.RESULT:
-                return data[0], self.decode(TypeTag.INT, data[1]), data[2]
+                return data[0], self.decode(TypeTag.INT, data[1]), self.decode_any(data[2])
 
     def get_value(self, key: bytes) -> Union[None, bytes]:
         msg, value = self.__client.send_and_receive(Message.GETVALUE, key)

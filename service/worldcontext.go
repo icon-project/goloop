@@ -1,13 +1,13 @@
 package service
 
 import (
+	"github.com/icon-project/goloop/common/codec"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/scoredb"
-	"log"
 )
 
 const (
@@ -66,7 +66,7 @@ type governanceStorageInfo struct {
 	ass          AccountSnapshot
 	stepPrice    *big.Int
 	stepCosts    map[StepType]int64
-	stepCostInfo interface{}
+	stepCostInfo *codec.TypedObj
 }
 
 func (c *worldContext) updateGovernanceInfo() {
@@ -164,12 +164,7 @@ func (c *worldContext) GetTransactionInfo(ti *TransactionInfo) {
 func (c *worldContext) stepCostInfo() interface{} {
 	c.updateGovernanceInfo()
 	if c.governanceInfo.stepCostInfo == nil {
-		var err error
-		c.governanceInfo.stepCostInfo, err = common.EncodeAny(c.governanceInfo.stepCosts)
-		if err != nil {
-			log.Panicf("Fail to Encode stepCosts=%+v err=%+v",
-				c.governanceInfo.stepCosts, err)
-		}
+		c.governanceInfo.stepCostInfo = common.MustEncodeAny(c.governanceInfo.stepCosts)
 	}
 	return c.governanceInfo.stepCostInfo
 }

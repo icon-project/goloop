@@ -63,8 +63,8 @@ func (cc *callContext) OnEvent(score module.Address, indexed, data [][]byte) {
 	fmt.Printf("CallContext.OnEvent(%s,%+v,%+v)\n", score, indexed, data)
 }
 
-func (cc *callContext) OnResult(status uint16, steps *big.Int, result []byte) {
-	fmt.Printf("CallContext.OnResult(%d,%s,[% x])\n",
+func (cc *callContext) OnResult(status uint16, steps *big.Int, result interface{}) {
+	fmt.Printf("CallContext.OnResult(%d,%s,[%+v])\n",
 		status, steps.String(), result)
 }
 
