@@ -24,25 +24,51 @@ var (
 	ErrInvalidHashValue   = errors.New("InvalidHashValue")
 )
 
-type StepType int
+type StepType string
 
 const (
-	StepTypeDefault StepType = iota
-	StepTypeInput
+	StepTypeDefault          = "default"
+	StepTypeContractCall     = "contractCall"
+	StepTypeContractCreate   = "contractCreate"
+	StepTypeContractUpdate   = "contractUpdate"
+	StepTypeContractDestruct = "contractDestruct"
+	StepTypeContractSet      = "contractSet"
+	StepTypeGet              = "get"
+	StepTypeSet              = "set"
+	StepTypeReplace          = "replace"
+	StepTypeDelete           = "delete"
+	StepTypeInput            = "input"
+	StepTypeEventLog         = "eventLog"
+	StepTypeApiCall          = "apiCall"
 )
+
+type BlockInfo struct {
+	Timestamp int64
+	Height    int64
+}
+
+type TransactionInfo struct {
+	Index     int32
+	Timestamp int64
+	Nonce     *big.Int
+}
 
 type WorldContext interface {
 	WorldState
+	StepsFor(t StepType, n int) int64
 	StepPrice() *big.Int
-	TimeStamp() int64
+	BlockTimeStamp() int64
 	BlockHeight() int64
 	Treasury() module.Address
+	Governance() module.Address
+	GetInfo() map[string]interface{}
 	ContractManager() ContractManager
 	EEManager() eeproxy.Manager
 	WorldStateChanged(ws WorldState) WorldContext
 	WorldVirtualState() WorldVirtualState
 	GetFuture(lq []LockRequest) WorldContext
-	StepsFor(t StepType, n int) int64
+	SetTransactionInfo(ti *TransactionInfo)
+	GetTransactionInfo(ti *TransactionInfo)
 }
 
 type Transaction interface {
@@ -50,6 +76,7 @@ type Transaction interface {
 	PreValidate(wc WorldContext, update bool) error
 	GetHandler(cm ContractManager) (TransactionHandler, error)
 	Timestamp() int64
+	Nonce() *big.Int
 }
 
 type Receipt interface {

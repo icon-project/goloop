@@ -137,8 +137,6 @@ func newCallContext(receipt Receipt) CallContext {
 
 func (cc *callContext) Setup(wc WorldContext) {
 	cc.wc = wc
-	// TODO set info map
-
 	cc.timer = time.After(transactionTimeLimit)
 }
 
@@ -315,7 +313,7 @@ func (cc *callContext) OnEvent(indexed, data [][]byte) {
 }
 
 func (cc *callContext) GetInfo() map[string]interface{} {
-	return cc.info
+	return cc.wc.GetInfo()
 }
 
 func (cc *callContext) GetBalance(addr module.Address) *big.Int {

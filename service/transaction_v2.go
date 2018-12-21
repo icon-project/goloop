@@ -58,7 +58,7 @@ func (tx *transactionV2) PreValidate(wc WorldContext, update bool) error {
 	}
 
 	if configOnCheckingTimestamp == true {
-		tsdiff := wc.TimeStamp() - tx.TimeStamp.Value
+		tsdiff := wc.BlockTimeStamp() - tx.TimeStamp.Value
 		if tsdiff < int64(-5*time.Minute/time.Microsecond) ||
 			tsdiff > int64(5*time.Minute/time.Microsecond) {
 			return ErrTimeOut
@@ -139,6 +139,13 @@ func (tx *transactionV2) Hash() []byte {
 		tx.hash = crypto.SHA3Sum256(tx.Bytes())
 	}
 	return tx.hash
+}
+
+func (tx *transactionV2) Nonce() *big.Int {
+	if nonce := tx.transactionV3JSON.Nonce; nonce != nil {
+		return &nonce.Int
+	}
+	return nil
 }
 
 func (tx *transactionV2) ToJSON(version int) (interface{}, error) {

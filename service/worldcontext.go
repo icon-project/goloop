@@ -6,13 +6,34 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
+	"github.com/icon-project/goloop/service/scoredb"
+	"log"
+)
+
+const (
+	VarStepPrice  = "step_price"
+	VarStepCosts  = "step_costs"
+	VarStepTypes  = "step_types"
+	VarTreasury   = "treasury"
+	VarGovernance = "governance"
+)
+
+var (
+	SystemID = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 )
 
 type worldContext struct {
 	WorldState
 
-	timeStamp   int64
-	blockHeight int64
+	treasury   module.Address
+	governance module.Address
+
+	governanceInfo governanceStorageInfo
+
+	blockInfo BlockInfo
+	txInfo    TransactionInfo
+
+	info map[string]interface{}
 
 	cm ContractManager
 	em eeproxy.Manager
@@ -30,37 +51,82 @@ func (c *worldContext) GetFuture(lq []LockRequest) WorldContext {
 	if len(lq) == 0 {
 		return c.WorldStateChanged(wvs)
 	} else {
-		return c.WorldStateChanged(wvs.GetFuture(lq))
+		lq2 := make([]LockRequest, len(lq)+1)
+		copy(lq2, lq)
+		lq2[len(lq)] = LockRequest{
+			Lock: AccountReadLock,
+			ID:   string(c.governance.ID()),
+		}
+		return c.WorldStateChanged(wvs.GetFuture(lq2))
 	}
 }
 
-var stepPrice = big.NewInt(10 * GIGA)
-var stepCosts = map[StepType]int64{
-	StepTypeDefault: 1000000,
-	StepTypeInput:   200,
+type governanceStorageInfo struct {
+	updated      bool
+	ass          AccountSnapshot
+	stepPrice    *big.Int
+	stepCosts    map[StepType]int64
+	stepCostInfo interface{}
+}
+
+func (c *worldContext) updateGovernanceInfo() {
+	if !c.governanceInfo.updated {
+		ass := c.GetAccountSnapshot(c.governance.ID())
+		if c.governanceInfo.ass == nil || ass.StorageChangedAfter(c.governanceInfo.ass) {
+			c.governanceInfo.ass = ass
+
+			as := newAccountROState(ass)
+
+			stepPrice := scoredb.NewVarDB(as, VarStepPrice)
+			c.governanceInfo.stepPrice = stepPrice.BigInt()
+
+			stepCosts := make(map[StepType]int64)
+			stepTypes := scoredb.NewArrayDB(as, VarStepTypes)
+			stepCostDB := scoredb.NewDictDB(as, VarStepCosts, 1)
+			tcount := stepTypes.Size()
+			for i := 0; i < tcount; i++ {
+				tname := stepTypes.Get(i).String()
+				stepCosts[StepType(tname)] = stepCostDB.Get(tname).Int64()
+			}
+			c.governanceInfo.stepCosts = stepCosts
+			c.governanceInfo.stepCostInfo = nil
+		}
+		c.governanceInfo.updated = true
+	}
 }
 
 func (c *worldContext) StepsFor(t StepType, n int) int64 {
-	return stepCosts[t] * int64(n)
+	c.updateGovernanceInfo()
+	if v, ok := c.governanceInfo.stepCosts[t]; ok {
+		return v * int64(n)
+	} else {
+		return 0
+	}
 }
 
 func (c *worldContext) StepPrice() *big.Int {
-	// TODO We need to access world state to get valid value.
-	return stepPrice
+	c.updateGovernanceInfo()
+	return c.governanceInfo.stepPrice
 }
 
-func (c *worldContext) TimeStamp() int64 {
-	return c.timeStamp
+func (c *worldContext) BlockTimeStamp() int64 {
+	return c.blockInfo.Timestamp
 }
 
 func (c *worldContext) BlockHeight() int64 {
-	return c.blockHeight
+	return c.blockInfo.Height
 }
 
-var treasury = common.NewAddressFromString("hx1000000000000000000000000000000000000000")
+func (c *worldContext) GetBlockInfo(bi *BlockInfo) {
+	*bi = c.blockInfo
+}
 
 func (c *worldContext) Treasury() module.Address {
-	return treasury
+	return c.treasury
+}
+
+func (c *worldContext) Governance() module.Address {
+	return c.governance
 }
 
 func (c *worldContext) ContractManager() ContractManager {
@@ -72,21 +138,79 @@ func (c *worldContext) EEManager() eeproxy.Manager {
 }
 
 func (c *worldContext) WorldStateChanged(ws WorldState) WorldContext {
-	return &worldContext{
-		WorldState:  ws,
-		timeStamp:   c.timeStamp,
-		blockHeight: c.blockHeight,
+	wc := &worldContext{
+		WorldState:     ws,
+		treasury:       c.treasury,
+		governance:     c.governance,
+		governanceInfo: c.governanceInfo,
+		blockInfo:      c.blockInfo,
+
+		cm: c.cm,
+		em: c.em,
 	}
+	wc.governanceInfo.updated = false
+	return wc
+}
+
+func (c *worldContext) SetTransactionInfo(ti *TransactionInfo) {
+	c.txInfo = *ti
+	c.info = nil
+}
+
+func (c *worldContext) GetTransactionInfo(ti *TransactionInfo) {
+	*ti = c.txInfo
+}
+
+func (c *worldContext) stepCostInfo() interface{} {
+	c.updateGovernanceInfo()
+	if c.governanceInfo.stepCostInfo == nil {
+		var err error
+		c.governanceInfo.stepCostInfo, err = common.EncodeAny(c.governanceInfo.stepCosts)
+		if err != nil {
+			log.Panicf("Fail to Encode stepCosts=%+v err=%+v",
+				c.governanceInfo.stepCosts, err)
+		}
+	}
+	return c.governanceInfo.stepCostInfo
+}
+
+func (c *worldContext) GetInfo() map[string]interface{} {
+	if c.info == nil {
+		m := make(map[string]interface{})
+		m["B.height"] = c.blockInfo.Height
+		m["B.timestamp"] = c.blockInfo.Timestamp
+		m["T.index"] = c.txInfo.Index
+		m["T.timestamp"] = c.txInfo.Timestamp
+		m["T.nonce"] = c.txInfo.Nonce
+		m["StepCosts"] = c.stepCostInfo()
+		c.info = m
+	}
+	return c.info
 }
 
 func NewWorldContext(ws WorldState, ts int64, height int64, cm ContractManager,
 	em eeproxy.Manager,
 ) WorldContext {
+	var governance, treasury module.Address
+	ass := ws.GetAccountSnapshot(SystemID)
+	as := newAccountROState(ass)
+	if as != nil {
+		treasury = scoredb.NewVarDB(as, VarTreasury).Address()
+		governance = scoredb.NewVarDB(as, VarGovernance).Address()
+	}
+	if treasury == nil {
+		treasury = common.NewAddressFromString("hx1000000000000000000000000000000000000000")
+	}
+	if governance == nil {
+		governance = common.NewAddressFromString("cx0000000000000000000000000000000000000001")
+	}
 	return &worldContext{
-		WorldState:  ws,
-		timeStamp:   ts,
-		blockHeight: height,
-		cm:          cm,
-		em:          em,
+		WorldState: ws,
+		treasury:   treasury,
+		governance: governance,
+		blockInfo:  BlockInfo{Timestamp: ts, Height: height},
+
+		cm: cm,
+		em: em,
 	}
 }

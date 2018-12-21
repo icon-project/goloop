@@ -351,6 +351,11 @@ func (t *transition) executeTxs(l module.TransactionList, wc WorldContext, rctBu
 				log.Panicf("Fail to prepare for %+v", err)
 			}
 
+			wc.SetTransactionInfo(&TransactionInfo{
+				Index:     int32(cnt),
+				Timestamp: txo.Timestamp(),
+				Nonce:     txo.Nonce(),
+			})
 			go func(tx Transaction, wc WorldContext, rb *Receipt) {
 				if rct, err := txh.Execute(wc); err != nil {
 					log.Panicf("Fail to execute transaction err=%+v", err)

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"github.com/icon-project/goloop/service/scoredb"
 	"io"
 	"math/big"
 	"sort"
@@ -149,7 +150,10 @@ func (g *genesisV3) Prepare(wc WorldContext) (WorldContext, error) {
 
 func (g *genesisV3) Execute(wc WorldContext) (Receipt, error) {
 	r := NewReceipt(common.NewAccountAddress([]byte{}))
+	as := wc.GetAccountState(SystemID)
 	for _, info := range g.Accounts {
+		addr := scoredb.NewVarDB(as, info.Name)
+		addr.Set(&info.Address)
 		ac := wc.GetAccountState(info.Address.ID())
 		ac.SetBalance(&info.Balance.Int)
 	}
@@ -171,4 +175,8 @@ func (g *genesisV3) Timestamp() int64 {
 
 func (g *genesisV3) MarshalJSON() ([]byte, error) {
 	return g.raw, nil
+}
+
+func (g *genesisV3) Nonce() *big.Int {
+	return nil
 }

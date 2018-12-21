@@ -23,7 +23,7 @@ type transactionV3JSON struct {
 	Fee       common.HexInt    `json:"fee"`       // V2 only
 	TimeStamp common.HexInt64  `json:"timestamp"`
 	NID       common.HexInt16  `json:"nid"` // V3 only
-	Nonce     common.HexInt64  `json:"nonce"`
+	Nonce     *common.HexInt   `json:"nonce"`
 	TxHash    common.HexBytes  `json:"txHash"`  // V3 only
 	Tx_Hash   common.HexBytes  `json:"tx_hash"` // V2 only
 	Signature common.Signature `json:"signature"`
@@ -159,7 +159,7 @@ func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
 	}
 
 	if configOnCheckingTimestamp {
-		tsdiff := wc.TimeStamp() - tx.TimeStamp.Value
+		tsdiff := wc.BlockTimeStamp() - tx.TimeStamp.Value
 		if tsdiff < int64(-5*time.Minute/time.Microsecond) ||
 			tsdiff > int64(5*time.Minute/time.Microsecond) {
 			return ErrTimeOut
@@ -205,6 +205,13 @@ func (tx *transactionV3) Hash() []byte {
 		tx.hash = crypto.SHA3Sum256(tx.Bytes())
 	}
 	return tx.hash
+}
+
+func (tx *transactionV3) Nonce() *big.Int {
+	if nonce := tx.transactionV3JSON.Nonce; nonce != nil {
+		return &nonce.Int
+	}
+	return nil
 }
 
 func (tx *transactionV3) ToJSON(version int) (interface{}, error) {

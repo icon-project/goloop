@@ -21,6 +21,7 @@ type AccountSnapshot interface {
 	IsContract() bool
 	Empty() bool
 	GetValue(k []byte) ([]byte, error)
+	StorageChangedAfter(snapshot AccountSnapshot) bool
 
 	GetContractOwner() *common.Address
 	GetCurContract() ContractSnapshot
@@ -146,6 +147,21 @@ func (s *accountSnapshotImpl) Equal(object trie.Object) bool {
 		return s.store.Equal(s2.store, false)
 	} else {
 		log.Panicf("Replacing accountSnapshotImpl with other object(%T)", object)
+	}
+	return false
+}
+
+func (s *accountSnapshotImpl) StorageChangedAfter(ass AccountSnapshot) bool {
+	if s2, ok := ass.(*accountSnapshotImpl); ok {
+		if s.store == nil && s2.store == nil {
+			return true
+		}
+		if s.store == nil || s2.store == nil {
+			return false
+		}
+		if s2.store.Equal(s.store, false) {
+			return true
+		}
 	}
 	return false
 }
