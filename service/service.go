@@ -48,7 +48,7 @@ type WorldContext interface {
 type Transaction interface {
 	module.Transaction
 	PreValidate(wc WorldContext, update bool) error
-	Handler(wc WorldContext) (TransactionHandler, error)
+	GetHandler(wc WorldContext) (TransactionHandler, error)
 	Timestamp() int64
 }
 
