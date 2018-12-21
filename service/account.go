@@ -94,6 +94,9 @@ func (s *accountSnapshotImpl) IsContract() bool {
 }
 
 func (s *accountSnapshotImpl) GetValue(k []byte) ([]byte, error) {
+	if s.store == nil {
+		return nil, nil
+	}
 	return s.store.Get(k)
 }
 
