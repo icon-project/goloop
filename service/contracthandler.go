@@ -108,7 +108,7 @@ func (cm *contractManager) GetHandler(cc CallContext,
 		}
 	case ctypeTransferAndMessage:
 		handler = &TransferAndMessageHandler{
-			TransferHandler: TransferHandler{
+			TransferHandler: &TransferHandler{
 				from:      from,
 				to:        to,
 				value:     value,
@@ -120,7 +120,7 @@ func (cm *contractManager) GetHandler(cc CallContext,
 		handler = newDeployHandler(from, to, value, stepLimit, data, cc, false)
 	case ctypeTransferAndCall:
 		handler = &TransferAndCallHandler{
-			*newCallHandler(from, to, value, stepLimit, data, cc),
+			newCallHandler(from, to, value, stepLimit, data, cc),
 		}
 	case ctypeCall:
 		handler = newCallHandler(from, to, value, stepLimit, data, cc)
@@ -330,7 +330,7 @@ func (h *TransferHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 }
 
 type TransferAndMessageHandler struct {
-	TransferHandler
+	*TransferHandler
 	data []byte
 }
 
@@ -473,7 +473,7 @@ func (p *contractStoreProxy) onContractStoreCompleted(path string, err error) {
 type CallHandler struct {
 	// Don't embed TransferHandler because it should not be an instance of
 	// SyncContractHandler.
-	th TransferHandler
+	th *TransferHandler
 
 	method string
 	params []byte
@@ -499,7 +499,7 @@ func newCallHandler(from, to module.Address, value, stepLimit *big.Int,
 		return nil
 	}
 	return &CallHandler{
-		th:     TransferHandler{from: from, to: to, value: value, stepLimit: stepLimit},
+		th:     &TransferHandler{from: from, to: to, value: value, stepLimit: stepLimit},
 		method: dataJSON.method,
 		params: dataJSON.params,
 		cc:     cc,
@@ -631,7 +631,7 @@ func (h *CallHandler) OnAPI(obj interface{}) {
 }
 
 type TransferAndCallHandler struct {
-	CallHandler
+	*CallHandler
 }
 
 func (h *TransferAndCallHandler) Prepare(wc WorldContext) (WorldContext, error) {
@@ -668,7 +668,7 @@ func newDeployHandler(from, to module.Address, value, stepLimit *big.Int,
 	}
 	// TODO set db
 	return &DeployHandler{
-		TransferHandler: TransferHandler{from: from,
+		TransferHandler: &TransferHandler{from: from,
 			to: to, value: value, stepLimit: stepLimit},
 		cc:          cc,
 		csp:         newContractStoreProxy(),
@@ -688,7 +688,7 @@ const (
 )
 
 type DeployHandler struct {
-	TransferHandler
+	*TransferHandler
 	cc          CallContext
 	csp         *contractStoreProxy
 	db          db.Database
