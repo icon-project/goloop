@@ -22,7 +22,7 @@ func generatePacket(b []byte, len int) *Packet {
 			b = b[:len]
 		}
 	}
-	return NewPacket(protocolInfo(0x0000), b)
+	return newPacket(protocolInfo(0x0000), b)
 }
 
 func Test_packet_PacketReader(t *testing.T) {
@@ -55,7 +55,7 @@ func Test_packet_PacketReader(t *testing.T) {
 
 func Test_packet_PacketReadWriter(t *testing.T) {
 	prw := NewPacketReadWriter()
-	pkt := NewPacket(protocolInfo(0), []byte("test"))
+	pkt := newPacket(protocolInfo(0), []byte("test"))
 	pkt.src = generatePeerID()
 	assert.NoError(t, prw.WritePacket(pkt), "WritePacket fail")
 	rpkt, err := prw.ReadPacket()

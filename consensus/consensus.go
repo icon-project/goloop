@@ -44,7 +44,7 @@ type consensus struct {
 
 	bm     module.BlockManager
 	wallet module.Wallet
-	dm     module.Membership
+	dm     module.ProtocolHandler
 	mutex  sync.Mutex
 
 	msgQueue []message
@@ -64,11 +64,12 @@ type consensus struct {
 }
 
 func NewConsensus(c module.Chain, bm module.BlockManager, nm module.NetworkManager) module.Consensus {
-	return &consensus{
+	cs := &consensus{
 		bm:     bm,
 		wallet: c.Wallet(),
-		dm:     nm.GetMembership(""),
 	}
+	cs.dm, _ = nm.RegisterReactor("consensus", cs, protocols, 1)
+	return cs
 }
 
 func (cs *consensus) resetForNewHeight(prevBlock module.Block, votes module.VoteList) {
@@ -127,7 +128,7 @@ func (cs *consensus) OnReceive(
 	return msg.dispatch(cs)
 }
 
-func (cs *consensus) OnError() {
+func (cs *consensus) OnError(err error, subProtocol module.ProtocolInfo, bytes []byte, id module.PeerID) {
 	cs.mutex.Lock()
 	logger.Printf("OnError\n")
 	defer cs.mutex.Unlock()
@@ -726,7 +727,6 @@ func (cs *consensus) Start() {
 		return
 	}
 	lastFinalizedBlock := gblks[len(gblks)-1]
-	cs.dm.RegisterReactor("consensus", cs, protocols)
 
 	prefix := fmt.Sprintf("%x|CS|", cs.wallet.Address().Bytes()[1:3])
 	logger = log.New(os.Stderr, prefix, log.Lshortfile|log.Lmicroseconds)

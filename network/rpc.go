@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/icon-project/goloop/module"
@@ -17,11 +18,11 @@ func MethodRepository(nm module.NetworkManager) *jsonrpc.MethodRepository {
 	mr := jsonrpc.NewMethodRepository()
 	m := nm.(*manager)
 	//RegisterMethod(method string, h Handler, params, result interface{}) error
-	mr.RegisterMethod("dial", jsonrpcWithContext(m, jsonrpcHandleDial), nil, nil)
-	mr.RegisterMethod("query", jsonrpcWithContext(m, jsonrpcHandleSendQuery), nil, nil)
-	mr.RegisterMethod("p2p", jsonrpcWithContext(m, jsonrpcHandleP2P), nil, nil)
-	mr.RegisterMethod("membership", jsonrpcWithContext(m, jsonrpcHandleMembership), nil, nil)
-	mr.RegisterMethod("logger", jsonrpcWithContext(m, jsonrpcHandleLogger), nil, nil)
+	_ = mr.RegisterMethod("dial", jsonrpcWithContext(m, jsonrpcHandleDial), nil, nil)
+	_ = mr.RegisterMethod("query", jsonrpcWithContext(m, jsonrpcHandleSendQuery), nil, nil)
+	_ = mr.RegisterMethod("p2p", jsonrpcWithContext(m, jsonrpcHandleP2P), nil, nil)
+	_ = mr.RegisterMethod("protocol", jsonrpcWithContext(m, jsonrpcHandleProtocol), nil, nil)
+	_ = mr.RegisterMethod("logger", jsonrpcWithContext(m, jsonrpcHandleLogger), nil, nil)
 	return mr
 }
 
@@ -168,49 +169,32 @@ func jsonrpcHandleP2P(c context.Context, params *fastjson.RawMessage) (interface
 	}
 
 	m := make(map[string]interface{})
-	m["self"] = toMap(p2p.self)
+	m["self"] = peerToMap(p2p.self)
 	m["seeds"] = p2p.seeds.Map()
 	m["roots"] = p2p.roots.Map()
-	m["friends"] = toMapArray(p2p.friends)
-	m["parent"] = toMap(p2p.parent)
-	m["children"] = toMapArray(p2p.children)
-	m["uncles"] = toMapArray(p2p.uncles)
-	m["nephews"] = toMapArray(p2p.nephews)
-	m["orphanages"] = toMapArray(p2p.orphanages)
+	m["friends"] = peerToMapArray(p2p.friends)
+	m["parent"] = peerToMap(p2p.parent)
+	m["children"] = peerToMapArray(p2p.children)
+	m["uncles"] = peerToMapArray(p2p.uncles)
+	m["nephews"] = peerToMapArray(p2p.nephews)
+	m["orphanages"] = peerToMapArray(p2p.orphanages)
 	return m, nil
 }
 
-func jsonrpcHandleMembership(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+func jsonrpcHandleProtocol(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 	mgr, err := _getManager(c)
 	if err != nil {
 		return nil, err
 	}
+	protocol, _ := _getParamString(c, "protocol")
 
 	m := make(map[string]interface{})
-	for _, ms := range mgr.memberships {
-		msmap := make(map[string]interface{})
-		rs := make(map[string]interface{})
-		for _, r := range ms.reactors {
-			rmap := make(map[string]interface{})
-
-			parr := make([]int, 0)
-			for _, p := range r.subProtocols {
-				parr = append(parr, int(p.Uint16()))
-			}
-			sort.Ints(parr)
-			sarr := make([]string, len(parr))
-			for i, p := range parr {
-				sarr[i] = fmt.Sprintf("%#04x", p)
-			}
-			rmap["subProtocols"] = strings.Join(sarr, ",")
-
-			rmap["receiveQueue"] = r.receiveQueue.Available()
-			rmap["eventQueue"] = r.eventQueue.Available()
-			rs[r.name] = rmap
+	if ph, ok := mgr.protocolHandlers[protocol];ok {
+		m[ph.name] = protocolHandlerToMap(ph)
+	}else{
+		for _, ms := range mgr.protocolHandlers {
+			m[ms.name] = protocolHandlerToMap(ms)
 		}
-		msmap["protocol"] = fmt.Sprintf("%#04x,", ms.protocol.Uint16())
-		msmap["reactors"] = rs
-		m[ms.name] = msmap
 	}
 	return m, nil
 }
@@ -234,7 +218,7 @@ func jsonrpcHandleLogger(c context.Context, params *fastjson.RawMessage) (interf
 	case "PeerToPeer":
 		p2p.log.excludes = excludes[:]
 		//NetworkManager
-		//Membership
+		//ProtocolHandler
 		//Transport
 		//Listener
 		//Dialer
@@ -247,14 +231,14 @@ func jsonrpcHandleLogger(c context.Context, params *fastjson.RawMessage) (interf
 	return excludes, nil
 }
 
-func toMapArray(s *PeerSet) []map[string]interface{} {
+func peerToMapArray(s *PeerSet) []map[string]interface{} {
 	rarr := make([]map[string]interface{}, s.Len())
 	for i, v := range s.Array() {
-		rarr[i] = toMap(v)
+		rarr[i] = peerToMap(v)
 	}
 	return rarr
 }
-func toMap(p *Peer) map[string]interface{} {
+func peerToMap(p *Peer) map[string]interface{} {
 	m := make(map[string]interface{})
 	if p != nil {
 		m["id"] = p.id.String()
@@ -264,6 +248,36 @@ func toMap(p *Peer) map[string]interface{} {
 		m["role"] = p.role
 		m["conn"] = p.connType
 		m["rtt"] = p.rtt.String()
+		if p.q != nil {
+			sq := make([]string,DefaultSendQueueMaxPriority)
+			for i:=0;i<DefaultSendQueueMaxPriority;i++{
+				sq[i] = strconv.Itoa(p.q.Available(i))
+			}
+			m["sendQueue"] = strings.Join(sq,",")
+		}
+	}
+	return m
+}
+func protocolHandlerToMap(ph *protocolHandler) map[string]interface{} {
+	m := make(map[string]interface{})
+	if ph != nil {
+		m["protocol"] = fmt.Sprintf("%#04x,", ph.protocol.Uint16())
+		m["priority"] = ph.priority
+
+		parr := make([]int, 0)
+		for _, p := range ph.subProtocols {
+			parr = append(parr, int(p.Uint16()))
+		}
+		sort.Ints(parr)
+		sarr := make([]string, len(parr))
+		for i, p := range parr {
+			sarr[i] = fmt.Sprintf("%#04x", p)
+		}
+		m["subProtocols"] = strings.Join(sarr, ",")
+
+		m["receiveQueue"] = ph.receiveQueue.Available()
+		m["eventQueue"] = ph.eventQueue.Available()
+		m["sendQueue"] = ph.m.p2p.sendQueue.Available(int(ph.protocol.ID()))
 	}
 	return m
 }

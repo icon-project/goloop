@@ -34,7 +34,7 @@ var (
 
 type testReactor struct {
 	name        string
-	ms          module.Membership
+	ph          module.ProtocolHandler
 	codecHandle codec.Handle
 	log         *logger
 	t           *testing.T
@@ -43,10 +43,10 @@ type testReactor struct {
 	p2p         *PeerToPeer
 }
 
-func newTestReactor(name string, ms module.Membership, t *testing.T) *testReactor {
-	r := &testReactor{name: name, ms: ms, codecHandle: &codec.MsgpackHandle{}, log: newLogger("TestReactor", name), t: t}
-	ms.RegistReactor(name, r, testSubProtocols)
-	r.p2p = ms.(*membership).p2p
+func newTestReactor(name string, nm module.NetworkManager, t *testing.T) *testReactor {
+	r := &testReactor{name: name, nm: nm, codecHandle: &codec.MsgpackHandle{}, log: newLogger("TestReactor", name), t: t}
+	r.ph, _ = nm.RegisterReactor(name, r, testSubProtocols)
+	r.p2p = nm.(*manager).p2p
 	r.t.Log(time.Now(), r.name, "newTestReactor", r.p2p.self.id)
 	return r
 }
@@ -100,7 +100,7 @@ func (r *testReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.Peer
 	return
 }
 
-func (r *testReactor) OnError() {
+func (r *testReactor) OnError(err error, pi module.ProtocolInfo, b []byte, id module.PeerID) {
 }
 func (r *testReactor) OnJoin(id module.PeerID) {
 	r.log.Println("OnJoin", id)
@@ -138,35 +138,35 @@ func (r *testReactor) p2pConn() string {
 func (r *testReactor) Broadcast(msg string) {
 	m := &testNetworkBroadcast{Message: fmt.Sprintf("Broadcast.%s.%s", msg, r.name)}
 	r.t.Log(time.Now(), r.name, "Broadcast", m, r.p2pConn())
-	r.ms.Broadcast(ProtoTestNetworkBroadcast, r.encode(m), module.BROADCAST_ALL)
+	r.ph.Broadcast(ProtoTestNetworkBroadcast, r.encode(m), module.BROADCAST_ALL)
 	r.log.Println("Broadcast", m)
 }
 
 func (r *testReactor) BroadcastNeighbor(msg string) {
 	m := &testNetworkBroadcast{Message: fmt.Sprintf("BroadcastNeighbor.%s.%s", msg, r.name)}
 	r.t.Log(time.Now(), r.name, "BroadcastNeighbor", m, r.p2pConn())
-	r.ms.Broadcast(ProtoTestNetworkBroadcast, r.encode(m), module.BROADCAST_NEIGHBOR)
+	r.ph.Broadcast(ProtoTestNetworkBroadcast, r.encode(m), module.BROADCAST_NEIGHBOR)
 	r.log.Println("BroadcastNeighbor", m)
 }
 
 func (r *testReactor) Multicast(msg string) {
 	m := &testNetworkMulticast{Message: fmt.Sprintf("Multicast.%s.%s", msg, r.name)}
 	r.t.Log(time.Now(), r.name, "Multicast", m, r.p2pConn())
-	r.ms.Multicast(ProtoTestNetworkMulticast, r.encode(m), module.ROLE_VALIDATOR)
+	r.ph.Multicast(ProtoTestNetworkMulticast, r.encode(m), module.ROLE_VALIDATOR)
 	r.log.Println("Multicast", m)
 }
 
 func (r *testReactor) Request(msg string, id module.PeerID) {
 	m := &testNetworkRequest{Message: fmt.Sprintf("Request.%s.%s", msg, r.name)}
 	r.t.Log(time.Now(), r.name, "Request", m, r.p2pConn())
-	r.ms.Unicast(ProtoTestNetworkRequest, r.encode(m), id)
+	r.ph.Unicast(ProtoTestNetworkRequest, r.encode(m), id)
 	r.log.Println("Request", m, id)
 }
 
 func (r *testReactor) Response(msg string, id module.PeerID) {
 	m := &testNetworkResponse{Message: fmt.Sprintf("Response.%s.%s", msg, r.name)}
 	r.t.Log(time.Now(), r.name, "Response", m, r.p2pConn())
-	r.ms.Unicast(ProtoTestNetworkResponse, r.encode(m), id)
+	r.ph.Unicast(ProtoTestNetworkResponse, r.encode(m), id)
 	r.log.Println("Response", m, id)
 }
 
@@ -175,10 +175,8 @@ func generateNetwork(name string, port int, n int, t *testing.T, roles ...module
 	for i := 0; i < n; i++ {
 		nt := NewTransport(fmt.Sprintf("127.0.0.1:%d", port+i), walletFromGeneratedPrivateKey())
 		nm := NewManager(testChannel, nt, roles...)
-		ms := nm.GetMembership(DefaultMembershipName)
-		r := newTestReactor(fmt.Sprintf("%s_%d", name, i), ms, t)
+		r := newTestReactor(fmt.Sprintf("%s_%d", name, i), nm, t)
 		r.nt = nt
-		r.nm = nm
 		r.nt.Listen()
 		arr[i] = r
 	}

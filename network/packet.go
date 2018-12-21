@@ -22,8 +22,8 @@ const (
 
 //srcPeerId, castType, destInfo, TTL(0:unlimited)
 type Packet struct {
-	protocol        module.ProtocolInfo //2byte
-	subProtocol     module.ProtocolInfo //2byte
+	protocol        protocolInfo //2byte
+	subProtocol     protocolInfo //2byte
 	src             module.PeerID       //20byte
 	dest            byte
 	ttl             byte
@@ -33,6 +33,7 @@ type Packet struct {
 	//Transient fields
 	sender module.PeerID //20byte
 	destPeer module.PeerID //20byte
+	priority uint8
 }
 
 const (
@@ -41,13 +42,17 @@ const (
 	p2pDestPeer      = 0xFF
 )
 
-func NewPacket(subProtocol module.ProtocolInfo, payload []byte) *Packet {
+func NewPacket(pi protocolInfo, spi protocolInfo, payload []byte) *Packet {
 	return &Packet{
-		protocol:        PROTO_CONTOL,
-		subProtocol:     subProtocol,
+		protocol:        pi,
+		subProtocol:     spi,
 		lengthOfpayload: uint32(len(payload)),
 		payload:         payload[:],
 	}
+}
+
+func newPacket(spi protocolInfo, payload []byte) *Packet {
+	return NewPacket(PROTO_CONTOL, spi, payload)
 }
 
 func (p *Packet) String() string {
@@ -102,9 +107,9 @@ func (pr *PacketReader) ReadPacket() (pkt *Packet, h hash.Hash64, e error) {
 				return
 			}
 			tb := hb[:]
-			pi := newProtocolInfo(tb[:2])
+			pi := newProtocolInfoFrom(tb[:2])
 			tb = tb[2:]
-			spi := newProtocolInfo(tb[:2])
+			spi := newProtocolInfoFrom(tb[:2])
 			tb = tb[2:]
 			src := NewPeerID(tb[:peerIDSize])
 			tb = tb[peerIDSize:]

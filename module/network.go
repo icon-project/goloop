@@ -1,28 +1,9 @@
 package module
 
 type NetworkManager interface {
-	//CreateIfNotExists and return Membership
-	//if name == "" then return DefaultMembership with fixed PROTO_ID
-	GetMembership(name string) Membership
 	GetPeers() []PeerID
-}
 
-type Reactor interface {
-	//case broadcast and multicast, if return (true,nil) then rebroadcast
-	OnReceive(subProtocol ProtocolInfo, bytes []byte, id PeerID) (bool, error)
-	//TODO call from Membership.onError() while message delivering
-	OnError()
-	OnJoin(id PeerID)
-	OnLeave(id PeerID)
-}
-
-type Membership interface {
-	RegisterReactor(name string, reactor Reactor, subProtocols []ProtocolInfo) error
-
-	//for Messaging
-	Broadcast(subProtocol ProtocolInfo, bytes []byte, broadcastType BroadcastType) error
-	Multicast(subProtocol ProtocolInfo, bytes []byte, role Role) error
-	Unicast(subProtocol ProtocolInfo, bytes []byte, id PeerID) error
+	RegisterReactor(name string, reactor Reactor, piList []ProtocolInfo, priority uint8) (ProtocolHandler, error)
 
 	//for Authority management
 	SetRole(role Role, peers ...PeerID)
@@ -35,6 +16,21 @@ type Membership interface {
 	DenyAuthority(authority Authority, roles ...Role)
 	HasAuthority(authority Authority, role Role) bool
 	Authorities(role Role) []Authority
+}
+
+type Reactor interface {
+	//case broadcast and multicast, if return (true,nil) then rebroadcast
+	OnReceive(pi ProtocolInfo, b []byte, id PeerID) (bool, error)
+	OnError(err error, pi ProtocolInfo, b []byte, id PeerID)
+	OnJoin(id PeerID)
+	OnLeave(id PeerID)
+}
+
+type ProtocolHandler interface {
+	//for Messaging
+	Broadcast(pi ProtocolInfo, b []byte, bt BroadcastType) error
+	Multicast(pi ProtocolInfo, b []byte, role Role) error
+	Unicast(pi ProtocolInfo, b []byte, id PeerID) error
 }
 
 type BroadcastType byte

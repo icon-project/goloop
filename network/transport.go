@@ -205,8 +205,8 @@ func (ph *peerHandler) setSelfPeerID(id module.PeerID) {
 	ph.log.prefix = fmt.Sprintf("%s", ph.self)
 }
 
-func (ph *peerHandler) sendMessage(pi module.ProtocolInfo, m interface{}, p *Peer) {
-	pkt := NewPacket(pi, ph.encode(m))
+func (ph *peerHandler) sendMessage(pi protocolInfo, m interface{}, p *Peer) {
+	pkt := newPacket(pi, ph.encode(m))
 	pkt.src = ph.self
 	err := p.sendDirect(pkt)
 	if err != nil {

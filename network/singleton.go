@@ -15,6 +15,7 @@ var (
 	ErrAlreadyClosed             = errors.New("already closed")
 	ErrAlreadyRegisteredReactor  = errors.New("already registered reactor")
 	ErrAlreadyRegisteredProtocol = errors.New("already registered protocol")
+    ErrNotRegisteredProtocol     = errors.New("not registered protocol")
 	ErrNotRegisteredRole         = errors.New("not registered role")
 	ErrNotAvailable              = errors.New("not available")
 	ErrQueueOverflow             = errors.New("queue overflow")
@@ -35,14 +36,13 @@ var (
 		"Authenticator",
 		"ChannelNegotiator",
 		"PeerToPeer",
-		"Membership",
+		"ProtocolHandler",
 		"NetworkManager",
 	}
 )
 
 const (
 	DefaultTransportNet         = "tcp4"
-	DefaultMembershipName       = ""
 	DefaultReceiveQueueSize     = 1000
 	DefaultPacketBufferSize     = 4096 //bufio.defaultBufSize=4096
 	DefaultPacketPayloadMax     = math.MaxInt32
@@ -52,6 +52,7 @@ const (
 	DefaultSeedPeriod           = 3 * time.Second
 	DefaultAlternateSendPeriod  = 1 * time.Second
 	DefaultSendTimeout          = 1 * time.Second
+	DefaultSendQueueMaxPriority = 7
 	DefaultSendQueueSize        = 1000
 	DefaultEventQueueSize       = 100
 	DefaultPeerSendQueueSize    = 1000
@@ -63,7 +64,6 @@ const (
 
 var (
 	PROTO_CONTOL     = protocolInfo(0x0000)
-	PROTO_DEF_MEMBER = protocolInfo(0x0100)
 )
 
 var (

@@ -2,6 +2,7 @@ package network
 
 import (
 	"bytes"
+	"container/list"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -185,4 +186,71 @@ func Benchmark_dummy_Peer(b *testing.B) {
 		generateDummyPeer(s)
 	}
 	//Benchmark_dummy_Peer-8   	20000000	        97.1 ns/op	      16 B/op	       2 allocs/op
+}
+
+
+
+func Benchmark_golang_slice(b *testing.B) {
+	b.StopTimer()
+	s := make([]interface{}, b.N)
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		s[i] = i
+	}
+	for i := 0; i < b.N; i++ {
+		s[i] = nil
+	}
+}
+
+func Benchmark_golang_map(b *testing.B) {
+	b.StopTimer()
+	m := make(map[int]int, b.N)
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		m[i] = i
+	}
+	for i := 0; i < b.N; i++ {
+		delete(m, i)
+	}
+}
+
+func Benchmark_golang_map_remove(b *testing.B) {
+	b.StopTimer()
+	m := make(map[int]int, b.N)
+	for i := 0; i < b.N; i++ {
+		m[i] = i
+	}
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		delete(m, i)
+	}
+}
+
+func Benchmark_golang_list(b *testing.B) {
+	b.StopTimer()
+	l := list.New()
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		l.PushBack(i)
+	}
+	e := l.Front()
+	for e != nil{
+		n := e.Next()
+		l.Remove(e)
+		e = n
+	}
+}
+
+func Benchmark_golang_list_remove(b *testing.B) {
+	b.StopTimer()
+	l := list.New()
+	m := make(map[int]*list.Element, b.N)
+	for i := 0; i < b.N; i++ {
+		m[i] = l.PushBack(i)
+	}
+	b.StartTimer()
+	for _, v := range m {
+		l.Remove(v)
+	}
+
 }

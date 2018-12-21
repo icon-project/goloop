@@ -58,7 +58,149 @@ Loop:
 			}
 		}
 	}
+}
 
+func Test_queue_WeightQueue(t *testing.T) {
+	var wg sync.WaitGroup
+	wg.Add(10)
+	q := NewWeightQueue(10, 2)
+	assert.NoError(t,q.SetWeight(1, 2),"NoError q.SetWeight")
+	ticker := time.NewTicker(300 * time.Millisecond)
+
+	go func(q *WeightQueue, n int, p int) {
+		for i := 0; i < n; i++ {
+			ctx := context.WithValue(context.Background(), "i", i)
+			ctx = context.WithValue(ctx, "p", p)
+			r := q.Push(ctx, p)
+			log.Println("push p:", p, "i:", i, "r:", r)
+		}
+	}(q, 11, 1)
+
+
+	ch := make(chan bool)
+	go func(q *WeightQueue) {
+	Loop:
+		for {
+			select {
+			case <-q.Wait():
+				log.Println("wakeup")
+				for {
+					ctx := q.Pop()
+					if ctx == nil {
+						log.Println("ctx nil")
+						break
+					}
+					i := ctx.Value("i").(int)
+					p := ctx.Value("p").(int)
+					log.Println("pop p:", p, "i:", i)
+					switch p {
+					case 0:
+						time.Sleep(100 * time.Millisecond)
+					case 1:
+						time.Sleep(200 * time.Millisecond)
+					}
+					wg.Done()
+				}
+				log.Println("wakeup done")
+			case <-ch:
+				break Loop
+			}
+		}
+	}(q)
+
+	go func(ch chan bool) {
+		wg.Wait()
+		close(ch)
+	}(ch)
+
+	n := 0
+Loop:
+	for {
+		select {
+		case <-ticker.C:
+			ctx := context.WithValue(context.Background(), "i", n)
+			ctx = context.WithValue(ctx, "p", 0)
+			r := q.Push(ctx, 0)
+			if r {
+				wg.Add(1)
+			}
+			log.Println("push p:", 0, "i:", n, "r:", r)
+			n++
+		case <-ch:
+			break Loop
+		}
+	}
+}
+
+func Test_queue_PriorityQueue(t *testing.T) {
+	var wg sync.WaitGroup
+	wg.Add(10)
+	q := NewPriorityQueue(10, 1)
+	ticker := time.NewTicker(300 * time.Millisecond)
+
+	go func(q *PriorityQueue, n int, p uint8) {
+		for i := 0; i < n; i++ {
+			ctx := context.WithValue(context.Background(), "i", i)
+			ctx = context.WithValue(ctx, "p", p)
+			r := q.Push(ctx, p)
+			log.Println("push p:", p, "i:", i, "r:", r)
+		}
+	}(q, 11, 1)
+
+
+	ch := make(chan bool)
+	go func(q *PriorityQueue) {
+	Loop:
+		for {
+			select {
+			case <-q.Wait():
+				log.Println("wakeup")
+				for {
+					ctx := q.Pop()
+					if ctx == nil {
+						log.Println("ctx nil")
+						break
+					}
+					i := ctx.Value("i").(int)
+					p := ctx.Value("p").(int)
+					log.Println("pop p:", p, "i:", i)
+					switch p {
+					case 0:
+						time.Sleep(100 * time.Millisecond)
+					case 1:
+						time.Sleep(200 * time.Millisecond)
+					}
+					wg.Done()
+				}
+				log.Println("wakeup done")
+			case <-ch:
+				break Loop
+			}
+		}
+	}(q)
+
+	go func(ch chan bool) {
+		wg.Wait()
+		close(ch)
+	}(ch)
+
+	n := 0
+Loop:
+	for {
+		select {
+		case <-ticker.C:
+			ctx := context.WithValue(context.Background(), "i", n)
+			ctx = context.WithValue(ctx, "p", 0)
+			r := q.Push(ctx, 0)
+			if r {
+				wg.Add(1)
+			}
+			log.Println("push p:", 0, "i:", n, "r:", r)
+			n++
+		case <-ch:
+			break Loop
+		}
+	}
 }
 
 func Test_queue_OnReceiveQueue(t *testing.T) {
@@ -126,6 +268,7 @@ func Test_queue_OnReceiveQueue(t *testing.T) {
 	wg.Wait()
 	log.Println("finish")
 }
+
 
 func Benchmark_queue_OnReceiveQueue(b *testing.B) {
 	b.StopTimer()

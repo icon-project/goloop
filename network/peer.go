@@ -22,13 +22,14 @@ type Peer struct {
 	conn      net.Conn
 	reader    *PacketReader
 	writer    *PacketWriter
-	q         *Queue
+	q         *PriorityQueue
 	onPacket  packetCbFunc
 	onError   errorCbFunc
 	onClose   closeCbFunc
 	timestamp time.Time
 	pool      *TimestampPool
 	close     chan error
+	mtx       sync.Mutex
 	//
 	incomming bool
 	channel   string
@@ -114,7 +115,6 @@ func (pr *PeerRoleFlag) UnSetFlag(o PeerRoleFlag) {
 
 const (
 	p2pConnTypeNone = iota
-	p2pConnTypePre
 	p2pConnTypeParent
 	p2pConnTypeChildren
 	p2pConnTypeUncle
@@ -129,7 +129,7 @@ func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool) *Peer {
 		conn:      conn,
 		reader:    NewPacketReader(conn),
 		writer:    NewPacketWriter(conn),
-		q:         NewQueue(DefaultPeerSendQueueSize),
+		q:         NewPriorityQueue(DefaultPeerSendQueueSize, DefaultSendQueueMaxPriority),
 		incomming: incomming,
 		timestamp: time.Now(),
 		pool:      NewTimestampPool(DefaultPeerPoolExpireSecond + 1),
@@ -142,6 +142,7 @@ func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool) *Peer {
 	p.setCloseCbFunc(func(p *Peer) {
 		//ignore
 	})
+
 	go p.receiveRoutine()
 	go p.sendRoutine()
 	return p
@@ -185,16 +186,15 @@ func (p *Peer) getRole() PeerRoleFlag {
 	p.roleMtx.RLock()
 	return p.role
 }
-func (p *Peer) hasRole(r PeerRoleFlag) bool {
+func (p *Peer) compareRole(r PeerRoleFlag, equal bool) bool {
 	defer p.roleMtx.RUnlock()
 	p.roleMtx.RLock()
+	if equal {
+		return p.role == r
+	}
 	return p.role.Has(r)
 }
-func (p *Peer) eqaulRole(r PeerRoleFlag) bool {
-	defer p.roleMtx.RUnlock()
-	p.roleMtx.RLock()
-	return p.role == r
-}
+
 func (p *Peer) Close() {
 	if err := p.conn.Close(); err == nil {
 		p.onClose(p)
@@ -254,7 +254,7 @@ func (p *Peer) receiveRoutine() {
 			continue
 		}
 		if pkt.hashOfPacket != h.Sum64() {
-			log.Println(p.id, "Peer", "receiveRoutine", "Drop, Invalid hash:",pkt.hashOfPacket,",expected:",h.Sum64(), pkt.protocol, pkt.subProtocol)
+			log.Println(p.id, "Peer", "receiveRoutine", "Drop, Invalid hash:", pkt.hashOfPacket, ",expected:", h.Sum64(), pkt.protocol, pkt.subProtocol)
 			continue
 		} else {
 			pkt.sender = p.id
@@ -267,6 +267,9 @@ func (p *Peer) receiveRoutine() {
 }
 
 func (p *Peer) sendDirect(pkt *Packet) error {
+	defer p.mtx.Unlock()
+	p.mtx.Lock()
+
 	if err := p.conn.SetWriteDeadline(time.Now().Add(DefaultSendTimeout)); err != nil {
 		return err
 	} else if err := p.writer.WritePacket(pkt); err != nil {
@@ -293,7 +296,6 @@ Loop:
 					break
 				}
 				pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
-
 
 				if DefaultPeerPoolExpireSecond > 0 && pkt.hashOfPacket != 0 {
 					p.pool.RemoveBefore(DefaultPeerPoolExpireSecond)
@@ -342,7 +344,7 @@ func (p *Peer) send(pkt *Packet) error {
 	}
 
 	ctx := context.WithValue(context.Background(), p2pContextKeyPacket, pkt)
-	if ok := p.q.Push(ctx); !ok {
+	if ok := p.q.Push(ctx, pkt.priority); !ok {
 		return ErrQueueOverflow
 	}
 	return nil

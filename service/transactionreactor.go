@@ -1,7 +1,6 @@
 package service
 
 import (
-	"github.com/icon-project/goloop/network"
 	"log"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -10,7 +9,7 @@ import (
 )
 
 type transactionReactor struct {
-	membership module.Membership
+	membership module.ProtocolHandler
 	normalPool *transactionPool
 	patchPool  *transactionPool
 }
@@ -64,7 +63,7 @@ func (r *transactionReactor) propagateTransaction(pi module.ProtocolInfo, tx *tr
 	return nil
 }
 
-func (r *transactionReactor) OnError() {
+func (r *transactionReactor) OnError(err error, pi module.ProtocolInfo, b []byte, id module.PeerID) {
 	// Nothing to do now.
 }
 
@@ -77,12 +76,10 @@ func (r *transactionReactor) OnLeave(id module.PeerID) {
 }
 
 func newTransactionReactor(nm module.NetworkManager, patch *transactionPool, normal *transactionPool) *transactionReactor {
-	ms := nm.GetMembership(network.DefaultMembershipName)
 	ra := &transactionReactor{
-		membership: ms,
 		patchPool:  patch,
 		normalPool: normal,
 	}
-	ms.RegisterReactor(reactorName, ra, subProtocols)
+	ra.membership,_ = nm.RegisterReactor(reactorName, ra, subProtocols, 2)
 	return ra
 }

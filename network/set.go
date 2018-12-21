@@ -202,37 +202,42 @@ func (s *PeerSet) GetByID(id module.PeerID) *Peer {
 	}
 	return nil
 }
-func (s *PeerSet) GetByHasRole(role PeerRoleFlag) []*Peer {
-	defer s.Set.mtx.RUnlock()
-	s.Set.mtx.RLock()
+
+func (s *PeerSet) _getByRole(role PeerRoleFlag, equal bool) []*Peer {
 	l := make([]*Peer, 0, len(s.Set.m))
 	for k := range s.Set.m {
-		if p := k.(*Peer); p.hasRole(role) {
+		if p := k.(*Peer); p.compareRole(role, equal) {
 			l = append(l, p)
 		}
 	}
 	return l
 }
-func (s *PeerSet) GetByRole(role PeerRoleFlag) []*Peer {
+
+
+func (s *PeerSet) GetByRole(role PeerRoleFlag, equal bool) []*Peer {
 	defer s.Set.mtx.RUnlock()
 	s.Set.mtx.RLock()
+
 	l := make([]*Peer, 0, len(s.Set.m))
 	for k := range s.Set.m {
-		if p := k.(*Peer); p.eqaulRole(role) {
+		if p := k.(*Peer); p.compareRole(role, equal) {
 			l = append(l, p)
 		}
 	}
 	return l
 }
-func (s *PeerSet) GetByRoleAndIncomming(role PeerRoleFlag, in bool) *Peer {
+
+func (s *PeerSet) GetByRoleAndIncomming(role PeerRoleFlag, equal bool, in bool) []*Peer {
 	defer s.Set.mtx.RUnlock()
 	s.Set.mtx.RLock()
+
+	l := make([]*Peer, 0, len(s.Set.m))
 	for k := range s.Set.m {
-		if p := k.(*Peer); p.incomming == in && p.hasRole(role) {
-			return p
+		if p := k.(*Peer); p.incomming == in && p.compareRole(role, equal) {
+			l = append(l, p)
 		}
 	}
-	return nil
+	return l
 }
 
 func (s *PeerSet) NetAddresses() []NetAddress {
