@@ -72,6 +72,7 @@ func EncodeAny(obj interface{}) (*codec.TypedObj, error) {
 func MustEncodeAny(obj interface{}) *codec.TypedObj {
 	if tobj, err := codec.EncodeAny(TypeCodec, obj); err != nil {
 		log.Panicf("Fail on codec.EncodeAny() err=%+v", err)
+		return nil
 	} else {
 		return tobj
 	}
@@ -81,9 +82,10 @@ func DecodeAny(o *codec.TypedObj) (interface{}, error) {
 	return codec.DecodeAny(TypeCodec, o)
 }
 
-func MustDecodeAny(o *codec.TypeCodec) interface{} {
+func MustDecodeAny(o *codec.TypedObj) interface{} {
 	if obj, err := codec.DecodeAny(TypeCodec, o); err != nil {
 		log.Panicf("Fail on codec.DecodeAny() err=%+v", err)
+		return nil
 	} else {
 		return obj
 	}
