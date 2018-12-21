@@ -103,6 +103,8 @@ func EncodeAny(tc TypeCodec, o interface{}) (*typedObj, error) {
 			}
 		}
 		return newTypedObj(TypeDict, m), nil
+	case *typedObj:
+		return obj, nil
 	default:
 		if tag, bytes, err := tc.Encode(obj); err != nil {
 			return nil, err
