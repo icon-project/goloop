@@ -1,23 +1,109 @@
-package service_test
+package service
 
 import (
 	"bytes"
-	"io/ioutil"
+	"encoding/json"
+	"fmt"
 	"log"
-	"os"
-	"path/filepath"
-	"strings"
+	"net/http"
 	"testing"
 	"time"
 
-	"github.com/icon-project/goloop/common/legacy"
-	"github.com/icon-project/goloop/service"
+	"github.com/pkg/errors"
+
+	"github.com/icon-project/goloop/network"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/rpc"
 )
+
+const (
+	testTransactionNum = 20
+)
+
+type JSONRPCResponse struct {
+	Version string          `json:"jsonrpc"`
+	Result  json.RawMessage `json:"result"`
+}
+
+type Wallet struct {
+	url string
+}
+
+func (w *Wallet) Call(method string, params map[string]interface{}) ([]byte, error) {
+	d := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  method,
+	}
+	if params != nil {
+		d["params"] = params
+	}
+	req, err := json.Marshal(d)
+	if err != nil {
+		log.Println("Making request fails")
+		log.Println("Data", d)
+		return nil, err
+	}
+	resp, err := http.Post(w.url, "application/json", bytes.NewReader(req))
+	if resp.StatusCode != 200 {
+		return nil, errors.New(
+			fmt.Sprintf("FAIL to call res=%d", resp.StatusCode))
+	}
+
+	var buf = make([]byte, 2048*1024)
+	var bufLen, readed int = 0, 0
+
+	for true {
+		readed, _ = resp.Body.Read(buf[bufLen:])
+		if readed < 1 {
+			break
+		}
+		bufLen += readed
+	}
+	var r JSONRPCResponse
+	err = json.Unmarshal(buf[0:bufLen], &r)
+	if err != nil {
+		log.Println("JSON Parse Fail")
+		log.Println("JSON=", string(buf[0:bufLen]))
+		return nil, err
+	}
+	return r.Result.MarshalJSON()
+}
+
+func (w *Wallet) GetBlockByHeight(h int) ([]byte, error) {
+	p := map[string]interface{}{
+		"height": fmt.Sprintf("0x%x", h),
+	}
+	return w.Call("icx_getBlockByHeight", p)
+}
+
+type blockV1Impl struct {
+	Version            string             `json:"version"`
+	PrevBlockHash      common.RawHexBytes `json:"prev_block_hash"`
+	MerkleTreeRootHash common.RawHexBytes `json:"merkle_tree_root_hash"`
+	Transactions       []*transaction     `json:"confirmed_transaction_list"`
+	BlockHash          common.RawHexBytes `json:"block_hash"`
+	Height             int64              `json:"height"`
+	PeerID             string             `json:"peer_id"`
+	TimeStamp          uint64             `json:"time_stamp"`
+	Signature          common.Signature   `json:"signature"`
+}
+
+func ParseLegacy(b []byte) (module.TransactionList, error) {
+	var blk = new(blockV1Impl)
+	err := json.Unmarshal(b, blk)
+	if err != nil {
+		return nil, err
+	}
+	trs := make([]module.Transaction, len(blk.Transactions))
+	for i, tx := range blk.Transactions {
+		trs[i] = tx
+	}
+	return NewTransactionListV1FromSlice(trs), nil
+}
 
 type transitionCb struct {
 	exeDone chan bool
@@ -30,7 +116,7 @@ func (ts *transitionCb) OnExecute(module.Transition, error) {
 	ts.exeDone <- true
 }
 
-type chain struct {
+type serviceChain struct {
 	wallet module.Wallet
 	nid    int
 
@@ -41,91 +127,56 @@ type chain struct {
 	sv       rpc.JsonRpcServer
 }
 
-func (c *chain) VoteListDecoder() module.VoteListDecoder {
+func (c *serviceChain) VoteListDecoder() module.VoteListDecoder {
 	return nil
 }
 
-func (c *chain) Database() db.Database {
-	log.Println("DATABASE")
+func (c *serviceChain) Database() db.Database {
 	return c.database
 }
 
-func (c *chain) Wallet() module.Wallet {
+func (c *serviceChain) Wallet() module.Wallet {
 	return c.wallet
 }
 
-func (c *chain) NID() int {
+func (c *serviceChain) NID() int {
 	return c.nid
 }
 
-func (c *chain) Genesis() []byte {
-	genPath := ""
-	if len(genPath) == 0 {
-		file := "genesisTx.json"
-		topDir := "goloop"
-		path, _ := filepath.Abs(".")
-		base := filepath.Base(path)
-		switch {
-		case strings.Compare(base, topDir) == 0:
-			genPath = path + "/" + file
-		case strings.Compare(base, "icon-project") == 0:
-			genPath = path + "/" + topDir + "/" + file
-		case strings.Compare(base, "service") == 0:
-			genPath = strings.TrimSuffix(path, "/service") + "/" + file
-		default:
-			log.Panicln("Not considered case")
-		}
-	}
-	log.Println("gen : ", genPath)
-	gen, err := ioutil.ReadFile(genPath)
-	if err != nil {
-		log.Panicln("Failed to read genesisFile. err : ", err)
-	}
-	return gen
+func (c *serviceChain) Genesis() []byte {
+	genesis :=
+		`{
+		  "accounts": [
+			{
+			  "name": "god",
+			  "address": "hx5a05b58a25a1e5ea0f1d5715e1f655dffc1fb30a",
+			  "balance": "0x2961fff8ca4a623278000000000000000"
+			},
+			{
+			  "name": "treasury",
+			  "address": "hx1000000000000000000000000000000000000000",
+			  "balance": "0x0"
+			}
+		  ],
+		  "message": "A rhizome has no beginning or end; it is always in the middle, between things, interbeing, intermezzo. The tree is filiation, but the rhizome is alliance, uniquely alliance. The tree imposes the verb \"to be\" but the fabric of the rhizome is the conjunction, \"and ... and ...and...\"This conjunction carries enough force to shake and uproot the verb \"to be.\" Where are you going? Where are you coming from? What are you heading for? These are totally useless questions.\n\n - Mille Plateaux, Gilles Deleuze & Felix Guattari\n\n\"Hyperconnect the world\"",
+		  "validatorlist": [
+			"hx100000000000000000000000000000000001234",
+			"hx100000000000000000000000000000000012345"
+		  ]
+		}`
+	return []byte(genesis)
 }
 
-func sendTx(sm module.ServiceManager, done chan bool) {
-	db, err := legacy.OpenDatabase("./data/testnet/block", "./data/testnet/score")
-	if err != nil {
-		log.Printf("Fail to open database err=%+v", err)
-		return
-	}
-
-	for i := 1; i < 10000; i++ {
-		blk, err := db.GetBlockByHeight(i)
-		if err != nil {
-			log.Printf("Fail to get block err=%+v", err)
-			return
-		}
-		log.Printf("Block [%d] : %x", blk.Height(), blk.ID())
-		txl := blk.NormalTransactions()
-		txCnt := 0
-		for i := txl.Iterator(); i.Has(); i.Next() {
-			tx, _, err := i.Get()
-			if err != nil {
-				log.Printf("Failed to get transaction err=%+v", err)
-				os.Exit(-1)
-			}
-			txCnt += 1
-			//log.Printf("txCnt : %d\n", txCnt)
-
-			if _, err := sm.SendTransaction(tx); err == service.ErrTransactionPoolOverFlow {
-				log.Printf("Failed to send transaction err : %s\n", err)
-				log.Printf("Waiting for 5 seconds...")
-				time.Sleep(5 * time.Second)
-			}
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	log.Println("SendTx is done!!!")
-	done <- true
-}
 func TestUnitService(t *testing.T) {
 	// request transactions
-	c := new(chain)
+	c := new(serviceChain)
 	c.wallet = common.NewWallet()
 	c.database = db.NewMapDB()
-	leaderServiceManager := service.NewManager(c, nil, nil)
+	nt := network.NewTransport("127.0.0.1:8081", c.wallet)
+	nt.Listen()
+	defer nt.Close()
+
+	leaderServiceManager := NewManager(c, network.NewManager("default", nt, module.ROLE_VALIDATOR), nil)
 	it, _ := leaderServiceManager.CreateInitialTransition(nil, nil, -1)
 	parentTrs, _ := leaderServiceManager.ProposeGenesisTransition(it)
 	cb := &transitionCb{make(chan bool)}
@@ -135,7 +186,26 @@ func TestUnitService(t *testing.T) {
 
 	// request SendTransaction
 	sendDone := make(chan bool)
-	go sendTx(leaderServiceManager, sendDone)
+
+	height := 1
+	wallet := Wallet{"https://testwallet.icon.foundation/api/v3"}
+	go func() {
+		for i := 0; i < testTransactionNum; i++ {
+			b, err := wallet.GetBlockByHeight(height)
+			if err != nil {
+				panic(err)
+			}
+			tl, err := ParseLegacy(b)
+			if err != nil {
+				panic(err)
+			}
+			for itr := tl.Iterator(); itr.Has(); itr.Next() {
+				t, _, _ := itr.Get()
+				leaderServiceManager.SendTransaction(t)
+			}
+		}
+		sendDone <- true
+	}()
 
 	//run service manager for leader
 	txListChan := make(chan module.TransactionList)
@@ -165,10 +235,18 @@ func TestUnitService(t *testing.T) {
 	}()
 
 	// validator
-	validatorCh := new(chain)
+	validatorCh := new(serviceChain)
 	validatorCh.wallet = common.NewWallet()
 	validatorCh.database = db.NewMapDB()
-	validatorServiceManager := service.NewManager(validatorCh, nil, nil)
+
+	nt2 := network.NewTransport("127.0.0.1:8082", c.wallet)
+	nt2.Listen()
+	defer nt2.Close()
+
+	if err := nt.Dial("127.0.0.1:8081", "default"); err != nil {
+		log.Panic("Failed")
+	}
+	validatorServiceManager := NewManager(validatorCh, network.NewManager("default", nt2, module.ROLE_VALIDATOR), nil)
 	vit, _ := leaderServiceManager.CreateInitialTransition(nil, nil, -1)
 	parentVTransition, _ := leaderServiceManager.ProposeGenesisTransition(vit)
 	parentVTransition.Execute(cb)
@@ -191,7 +269,5 @@ func TestUnitService(t *testing.T) {
 			txListChan <- nil
 		}
 	}()
-
 	<-sendDone
-	time.Sleep(5 * time.Second)
 }
