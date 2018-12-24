@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	testTransactionNum = 20
+	testTransactionNum = 0
 )
 
 type JSONRPCResponse struct {
@@ -169,6 +169,9 @@ func (c *serviceChain) Genesis() []byte {
 
 func TestUnitService(t *testing.T) {
 	// request transactions
+	if testTransactionNum == 0 {
+		return
+	}
 	c := new(serviceChain)
 	c.wallet = common.NewWallet()
 	c.database = db.NewMapDB()

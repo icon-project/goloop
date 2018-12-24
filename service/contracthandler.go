@@ -3,6 +3,7 @@ package service
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -50,7 +51,8 @@ type (
 	ContractManager interface {
 		GetHandler(cc CallContext, from, to module.Address,
 			value, stepLimit *big.Int, ctype int, data []byte) ContractHandler
-		PrepareContractStore(ws WorldState, addr module.Address,
+
+		PrepareContractStore(ws WorldState, contract Contract,
 			onEndCallback func(path string, err error))
 	}
 
@@ -75,15 +77,16 @@ type (
 	}
 )
 
-type typeStore int
+// type for store status
+type tsStatus int
 
 const (
-	storeProgress typeStore = iota
-	storeComplete
+	tsInProgress tsStatus = iota
+	tsComplete
 )
 
 type storageCache struct {
-	status   typeStore
+	status   tsStatus
 	callback []func(string, error)
 }
 
@@ -128,11 +131,16 @@ func (cm *contractManager) GetHandler(cc CallContext,
 	return handler
 }
 
-// storeContract don't check if path exists or not
-// path existence has to be checked before storeContract is called
-func storeContract(path string, contractCode []byte) error {
+// if path does not exist, make the path
+func stroeContract(code []byte, path string) error {
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		if err := os.RemoveAll(path); err != nil {
+			return err
+		}
+	}
+	os.MkdirAll(path, os.ModePerm)
 	zipReader, err :=
-		zip.NewReader(bytes.NewReader(contractCode), int64(len(contractCode)))
+		zip.NewReader(bytes.NewReader(code), int64(len(code)))
 	if err != nil {
 		return err
 	}
@@ -158,37 +166,24 @@ func storeContract(path string, contractCode []byte) error {
 	return nil
 }
 
-func prepareContract(compressedCode []byte, path string, removeIfExist bool) error {
-	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		if removeIfExist == false {
-			return nil
-		}
-		if err := os.RemoveAll(path); err != nil {
-			return err
-		}
-	}
-	os.MkdirAll(path, os.ModePerm)
-	err := storeContract(path, compressedCode)
-
-	return err
-}
-
 // PrepareContractStore checks if contract codes are ready for a contract runtime
 // and starts to download and uncompress otherwise.
 // Do not call PrepareContractStore on onEndCallback
 func (cm *contractManager) PrepareContractStore(
-	ws WorldState, addr module.Address, onEndCallback func(string, error)) {
+	ws WorldState, contract Contract, onEndCallback func(string, error)) {
 	go func() {
-		contractId := addr.ID()
 		cm.lock.Lock()
-		if cacheInfo, ok := cm.storageCache[string(contractId)]; ok {
-			if cacheInfo.status != storeComplete {
+		codeHash := contract.CodeHash()
+		hashStr := string(codeHash)
+		var path string
+		if cacheInfo, ok := cm.storageCache[hashStr]; ok {
+			if cacheInfo.status != tsComplete {
 				cacheInfo.callback = append(cacheInfo.callback, onEndCallback)
 				cm.lock.Unlock()
 				return
 			}
-			path := contractPath(
-				fmt.Sprintf("%s/%x", cm.contractRoot, contractId))
+			path = contractPath(
+				fmt.Sprintf("%s/%x", cm.contractRoot, codeHash))
 			if _, err := os.Stat(path); !os.IsNotExist(err) {
 				onEndCallback(path, nil)
 				cm.lock.Unlock()
@@ -196,42 +191,31 @@ func (cm *contractManager) PrepareContractStore(
 			}
 		}
 
-		cm.storageCache[string(contractId)] =
-			&storageCache{storeProgress,
+		cm.storageCache[hashStr] =
+			&storageCache{tsInProgress,
 				[]func(string, error){onEndCallback}}
 		cm.lock.Unlock()
 
 		callEndCb := func(path string, err error) {
 			cm.lock.Lock()
-			storage := cm.storageCache[string(contractId)]
+			storage := cm.storageCache[hashStr]
 			for _, f := range storage.callback {
 				f(path, err)
 			}
 			storage.callback = nil
-			storage.status = storeComplete
+			storage.status = tsComplete
 			cm.lock.Unlock()
 		}
 
-		as := ws.GetAccountState(contractId)
-		contract := as.GetCurContract()
-		if contract == nil {
-			callEndCb("",
-				errors.New("Failed to get current contract info"))
-			return
+		if len(path) == 0 {
+			path = contractPath(fmt.Sprintf("%s/%x", cm.contractRoot, codeHash))
 		}
-		codeHash := contract.GetCodeHash()
-		bk, err := cm.db.GetBucket(db.BytesByHash)
+		codeBuf, err := contract.Code()
 		if err != nil {
 			callEndCb("", err)
 			return
 		}
-		code, err := bk.Get(codeHash)
-		if err != nil {
-			callEndCb("", err)
-			return
-		}
-		path := contractPath(fmt.Sprintf("%s/%x", cm.contractRoot, addr.ID()))
-		err = prepareContract(code, path, false)
+		err = stroeContract(codeBuf, path)
 		if err != nil {
 			callEndCb("", err)
 			return
@@ -240,10 +224,10 @@ func (cm *contractManager) PrepareContractStore(
 	}()
 }
 
-// TODO Where is the root directory of contract
-// TODO How to generate contract path from codeHash
+var contractRoot = "./contract/"
+
 func contractPath(codeHash string) string {
-	path := "./contract/" + codeHash
+	path := contractRoot + codeHash
 	return path
 }
 
@@ -446,7 +430,13 @@ func (p *contractStoreProxy) prepare(wc WorldContext, addr module.Address) {
 	}
 	p.started = true
 	p.cv.L.Unlock()
-	wc.ContractManager().PrepareContractStore(wc, addr, p.onContractStoreCompleted)
+	as := wc.GetAccountState(addr.ID())
+	contract := as.Contract()
+	if contract == nil {
+		log.Printf("contract is not prepared")
+		return
+	}
+	wc.ContractManager().PrepareContractStore(wc, contract, p.onContractStoreCompleted)
 }
 
 func (p *contractStoreProxy) check(wc WorldContext, addr module.Address) (string, error) {
@@ -671,7 +661,6 @@ func newDeployHandler(from, to module.Address, value, stepLimit *big.Int,
 		TransferHandler: &TransferHandler{from: from,
 			to: to, value: value, stepLimit: stepLimit},
 		cc:          cc,
-		csp:         newContractStoreProxy(),
 		content:     dataJSON.content,
 		contentType: dataJSON.contentType,
 
@@ -679,25 +668,13 @@ func newDeployHandler(from, to module.Address, value, stepLimit *big.Int,
 	}
 }
 
-type deployCmdType int
-
-const (
-	deployCmdDeploy deployCmdType = iota
-	deployCmdAccept
-	deployCmdReject
-)
-
 type DeployHandler struct {
 	*TransferHandler
 	cc          CallContext
-	csp         *contractStoreProxy
-	db          db.Database
 	eeType      string
 	content     string
 	contentType string
 	params      json.RawMessage
-	data        []byte
-	cmdType     deployCmdType
 	txHash      []byte
 
 	timestamp int
@@ -726,152 +703,129 @@ func GenContractAddr(from, timestamp, nonce []byte) []byte {
 	return addr
 }
 
-func (h *DeployHandler) ExecuteSync(wc WorldContext) (
+func (h *DeployHandler) ExecuteSync(wc WorldContext, limit *big.Int) (
 	module.Status, *big.Int, []byte, module.Address) {
-	const (
-		deployInstall = iota
-		deployUpdate
-
-		scoreSystemAddr     = "cx0000000000000000000000000000000000000000"
-		governanceScoreAddr = "cx0000000000000000000000000000000000000001"
-	)
-	var sysAddr common.Address
-	var governanceAddr common.Address
-	// TODO Address for system and governance have to be declared as global variable
-	sysAddr.SetString(scoreSystemAddr)
-	governanceAddr.SetString(governanceScoreAddr)
+	sysAs := wc.GetAccountState(SystemID)
 
 	var codeBuf []byte
-	var contractAddr *common.Address
-	deployType := deployInstall
-	if strings.Compare(h.to.String(), scoreSystemAddr) != 0 {
-		deployType = deployUpdate
-		contractAddr = common.NewAccountAddress(h.from.ID())
+	var contractID []byte
+	if bytes.Equal(h.to.ID(), SystemID) {
+		var tsBytes [4]byte
+		_ = binary.Write(bytes.NewBuffer(tsBytes[:]), binary.BigEndian, h.timestamp)
+		var nBytes [4]byte
+		_ = binary.Write(bytes.NewBuffer(nBytes[:]), binary.BigEndian, h.timestamp)
+		contractID = GenContractAddr(h.from.ID(), tsBytes[:], nBytes[:])
+	} else {
+		contractID = h.to.ID()
 	}
 
-	if h.cmdType == deployCmdDeploy {
-		// check if audit or from is deployer
-		force := false
+	var stepUsed *big.Int
 
-		// calculate fee
-		hexContent := strings.TrimPrefix(h.content, "0x")
-		if len(hexContent)%2 != 0 {
-			hexContent = "0" + hexContent
-		}
-		var err error
-		codeBuf, err = hex.DecodeString(hexContent)
-		if err != nil {
-			log.Printf("Failed to")
-			return module.StatusSystemError, nil, nil, nil
-		}
-		// store codeHash
-		bk, err := h.db.GetBucket(db.BytesByHash)
-		codeHash := sha3.Sum256(codeBuf)
-		v, err := bk.Get(codeHash[:])
-		if err != nil || v != nil {
-			log.Printf("err : %s, v = %x\n", err, v)
-			return module.StatusSystemError, nil, nil, nil
-		}
-		if err = bk.Set(codeHash[:], codeBuf); err != nil {
-			log.Printf("failed to set code. err : %s\n", err)
-			return module.StatusSystemError, nil, nil, nil
-		}
+	// calculate fee
+	hexContent := strings.TrimPrefix(h.content, "0x")
+	if len(hexContent)%2 != 0 {
+		hexContent = "0" + hexContent
+	}
+	var err error
+	codeBuf, err = hex.DecodeString(hexContent)
+	if err != nil {
+		log.Printf("Failed to")
+		return module.StatusSystemError, nil, nil, nil
+	}
 
-		// calculate stepUsed and apply it
-		codeLen := int64(len(codeBuf))
-		stepUsed := new(big.Int)
-		stepUsed.Mul(wc.StepPrice(), big.NewInt(codeLen))
+	// calculate stepUsed and apply it
+	codeLen := int64(len(codeBuf))
+	stepUsed = new(big.Int)
+	stepUsed.SetInt64(codeLen)
+	step := big.NewInt(wc.StepsFor(StepTypeContractCreate, 1))
+	stepUsed.Mul(stepUsed, step)
 
-		ownerAs := wc.GetAccountState(h.from.ID())
-		bal := ownerAs.GetBalance()
+	if stepUsed.Cmp(limit) > 0 {
+		return module.StatusNotPayable, limit, nil, nil
+	}
 
-		if bal.Cmp(stepUsed) < 0 {
-			stepUsed.Set(bal)
-			ownerAs.SetBalance(big.NewInt(0))
-			return module.StatusOutOfBalance, stepUsed, nil, nil
-		}
-		bal.Sub(bal, stepUsed)
-		ownerAs.SetBalance(bal)
+	ownerAs := wc.GetAccountState(h.from.ID())
+	bal := ownerAs.GetBalance()
 
-		if deployType == deployInstall {
-			var bTimestamp []byte
-			var bNonce []byte
-			contractAddr = common.NewAccountAddress(
-				GenContractAddr(h.from.ID(), bTimestamp, bNonce))
-		}
+	if bal.Cmp(stepUsed) < 0 {
+		stepUsed.Set(bal)
+		ownerAs.SetBalance(big.NewInt(0))
+		return module.StatusOutOfBalance, stepUsed, nil, nil
+	}
+	bal.Sub(bal, stepUsed)
+	ownerAs.SetBalance(bal)
 
-		// store ScoreDeployInfo and ScoreDeployTXParams
-		as := wc.GetAccountState(contractAddr.ID())
-		contract := NewContract()
-		defer as.SetNextContract(contract)
+	// store ScoreDeployInfo and ScoreDeployTXParams
+	as := wc.GetAccountState(contractID)
 
-		codeHash = sha3.Sum256(codeBuf)
-		contract.SetCodeHash(codeHash[:])
-		contract.SetDeployTx(h.txHash)
-		// TODO check when apiInfo is invoked // ???
-		contract.SetParams(h.params)
+	as.InitContractAccount(h.from)
+	as.DeployContract(codeBuf, h.eeType, h.contentType, h.params, h.txHash)
+	sysAs.SetValue(h.txHash, contractID)
 
-		cType := cTypeAppZip
-		switch h.contentType {
-		case "application/zip":
-			cType = cTypeAppZip
-		default:
-			log.Printf("WrongType. %s\n", h.contentType)
-		}
-		contract.SetContentType(cType)
+	// TODO create AcceptHandler and execute
+	return module.StatusSuccess, nil, nil, nil
+}
 
-		if force == false {
-			if deployType == deployUpdate {
-				contract.SetStatus(csPending)
-			} else {
-				contract.SetStatus(csInactive)
+type AcceptHandler struct {
+	from        module.Address
+	to          module.Address
+	cc          CallContext
+	txHash      []byte
+	auditTxHash []byte
+}
+
+func (h *AcceptHandler) ExecuteSync(wc WorldContext, limit *big.Int) (
+	module.Status, *big.Int, []byte, module.Address) {
+	sysAs := wc.GetAccountState(SystemID)
+	addr, err := sysAs.GetValue(h.txHash)
+	if err != nil || len(addr) == 0 {
+		log.Printf("Failed to get score address by txHash\n")
+		return module.StatusSystemError, nil, nil, nil
+	}
+	type completeParam struct {
+		path string
+		err  error
+	}
+	complete := make(chan *completeParam)
+	as := wc.GetAccountState(addr)
+	ws, _ := wc.(WorldState)
+	wc.ContractManager().PrepareContractStore(ws, as.NextContract(),
+		func(path string, err error) {
+			if err != nil {
+				complete <- &completeParam{path, nil}
 			}
-			systemAs := wc.GetAccountState(sysAddr.ID())
-			systemAs.SetValue(h.txHash, contractAddr.ID())
-
-			return module.StatusSuccess, stepUsed, nil, nil
-		}
-	} else if h.cmdType == deployCmdAccept {
-		as := wc.GetAccountState(sysAddr.ID())
-		cAddr, err := as.GetValue(h.txHash) // get contract address by txHash
-		if err != nil {
-			log.Printf("Failed to get value. err : %s\n", err)
-		}
-		contractAddr = common.NewAccountAddress(cAddr)
-		contractAs := wc.GetAccountState(contractAddr.ID())
-		nc := contractAs.GetNextContract()
-		codeHash := nc.GetCodeHash()
-		// store codeHash
-		bk, err := h.db.GetBucket(db.BytesByHash)
-		codeBuf, err = bk.Get(codeHash[:])
-		if err != nil || len(codeBuf) == 0 {
-			log.Printf("failed to get code. err : %s\n", err)
-			return module.StatusSystemError, nil, nil, nil
-		}
-	} else if h.cmdType == deployCmdReject {
+			complete <- &completeParam{"", err}
+		})
+	done := <-complete
+	if len(done.path) == 0 || done.err != nil {
+		return module.StatusSystemError, nil, nil, nil
 	}
-
-	path := contractPath(fmt.Sprintf("%x", contractAddr.ID()))
-	if err := prepareContract(codeBuf,
-		path, deployType == deployUpdate); err != nil {
-		log.Printf("failed to prepare contract. err : %s\n", err)
-	}
-
-	// statue -> active if failed to on_install, set inactive
-	// on_install or on_update
-	as := wc.GetAccountState(contractAddr.ID())
-	contract := as.GetNextContract()
-	contract.SetStatus(csActive)
-	handler := wc.ContractManager().GetHandler(h.cc, h.from,
-		contractAddr, nil, nil, ctypeCall, h.data)
-	h.cc.Call(handler)
-	// TODO receive result
-
 	// GET API
-	handler = wc.ContractManager().GetHandler(h.cc, h.from,
-		contractAddr, nil, nil, ctypeCall, h.data)
+	// TODO execute GET API and receive result
+
+	var method string
+	if bytes.Equal(h.to.ID(), SystemID) {
+		method = "on_install"
+	} else {
+		method = "on_update"
+	}
+	dataJson := map[string]interface{}{
+		"method": method, //on_install, on_update
+		"params": as.NextContract().Params(),
+	}
+	data, err := json.Marshal(dataJson)
+	if err != nil {
+		return module.StatusSystemError, nil, nil, nil
+	}
+	as.AcceptContract(h.txHash, h.auditTxHash)
+	// state -> active if failed to on_install, set inactive
+	// on_install or on_update
+	handler := wc.ContractManager().GetHandler(h.cc, h.from,
+		common.NewContractAddress(addr), nil, nil,
+		ctypeCall, data)
 	h.cc.Call(handler)
 	// TODO receive result
+	_ = sysAs.DeleteValue(h.txHash)
 
 	return module.StatusSuccess, nil, nil, nil
 }
