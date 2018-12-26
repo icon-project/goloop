@@ -17,14 +17,6 @@ import (
 	ugorji "github.com/ugorji/go/codec"
 )
 
-type Contract interface {
-	CodeHash() []byte
-	Code() ([]byte, error)
-	EEType() string
-	ContentType() string
-	Params() []byte
-}
-
 // AccountSnapshot represents immutable account state
 // It can be get from AccountState or WorldSnapshot.
 type AccountSnapshot interface {
@@ -37,8 +29,11 @@ type AccountSnapshot interface {
 
 	IsContractOwner(owner module.Address) bool
 	APIInfo() []byte
-	Contract() Contract
-	NextContract() Contract
+	Contract() ContractSnapshot
+	ActiveContract() ContractSnapshot
+	NextContract() ContractSnapshot
+	IsDisabled() bool
+	IsBlacklisted() bool
 }
 
 // AccountState represents mutable account state.
@@ -64,7 +59,12 @@ type AccountState interface {
 	AcceptContract(codeHash []byte, auditTxHash []byte) error
 	RejectContract(codeHash []byte, auditTxHash []byte) error
 	Contract() Contract
+	ActiveContract() Contract
 	NextContract() Contract
+	IsDisabled() bool
+	IsBlacklisted() bool
+	Disable(b bool)
+	Blacklist(b bool)
 }
 
 type accountSnapshotImpl struct {
@@ -75,8 +75,29 @@ type accountSnapshotImpl struct {
 
 	contractOwner *common.Address
 	apiInfo       []byte
-	curContract   *contractImpl
-	nextContract  *contractImpl
+	curContract   *contractSnapshotImpl
+	nextContract  *contractSnapshotImpl
+}
+
+func (s *accountSnapshotImpl) ActiveContract() ContractSnapshot {
+	if s.curContract != nil && s.curContract.status == csActive {
+		return s.curContract
+	}
+	return nil
+}
+
+func (s *accountSnapshotImpl) IsDisabled() bool {
+	if s.curContract.status&csDisable != 0 {
+		return true
+	}
+	return false
+}
+
+func (s *accountSnapshotImpl) IsBlacklisted() bool {
+	if s.curContract.status&csBlacklist != 0 {
+		return true
+	}
+	return false
 }
 
 func (s *accountSnapshotImpl) GetBalance() *big.Int {
@@ -108,14 +129,14 @@ func (s *accountSnapshotImpl) Bytes() []byte {
 	return b
 }
 
-func (s *accountSnapshotImpl) Contract() Contract {
-	if s.curContract == nil || s.curContract.status != csActive {
+func (s *accountSnapshotImpl) Contract() ContractSnapshot {
+	if s.curContract == nil {
 		return nil
 	}
 	return s.curContract
 }
 
-func (s *accountSnapshotImpl) NextContract() Contract {
+func (s *accountSnapshotImpl) NextContract() ContractSnapshot {
 	if s.nextContract == nil {
 		return nil
 	}
@@ -155,6 +176,15 @@ func (s *accountSnapshotImpl) Equal(object trie.Object) bool {
 		}
 		if s.fIsContract != s2.fIsContract ||
 			s.balance.Cmp(&s2.balance.Int) != 0 {
+			return false
+		}
+		if s.contractOwner.Equal(s2.contractOwner) == false {
+			return false
+		}
+		if s.curContract.Equal(s2.curContract) == false {
+			return false
+		}
+		if s.nextContract.Equal(s2.nextContract) == false {
 			return false
 		}
 		if s.store == s2.store {
@@ -245,109 +275,6 @@ func (s *accountSnapshotImpl) CodecDecodeSelf(d *ugorji.Decoder) {
 	if s.nextContract != nil {
 		s.nextContract.bk, _ = s.database.GetBucket(db.BytesByHash)
 	}
-
-}
-
-type contractStatus int
-
-const (
-	csInactive contractStatus = iota
-	csActive
-	csRejected
-	csPending
-)
-
-type contractImpl struct {
-	bk           db.Bucket
-	isNew        bool
-	status       contractStatus
-	contentType  string
-	eeType       string
-	deployTxHash []byte
-	auditTxHash  []byte
-	codeHash     []byte
-	code         []byte
-	params       []byte
-}
-
-func (c *contractImpl) CodeHash() []byte {
-	return c.codeHash
-}
-
-func (c *contractImpl) Code() ([]byte, error) {
-	if len(c.code) == 0 {
-		code, err := c.bk.Get(c.codeHash)
-		if err != nil {
-			return nil, err
-		}
-		if len(code) == 0 {
-			return nil, errors.New("Failed to find code by codeHash")
-		}
-		c.code = code
-	}
-	return c.code, nil
-}
-
-func (c *contractImpl) EEType() string {
-	return c.eeType
-}
-
-func (c *contractImpl) ContentType() string {
-	return c.contentType
-}
-
-func (c *contractImpl) Params() []byte {
-	return c.params
-}
-
-func (c *contractImpl) flush() error {
-	if c.isNew == false {
-		return nil
-	}
-	code, err := c.bk.Get(c.codeHash)
-	if err != nil {
-		return err
-	}
-	if len(code) != 0 {
-		return errors.New("Code already exists")
-	}
-	if err := c.bk.Set(c.codeHash, c.code); err != nil {
-		return err
-	}
-	return nil
-}
-func (c *contractImpl) CodecEncodeSelf(e *ugorji.Encoder) {
-	_ = e.Encode(c.status)
-	_ = e.Encode(c.contentType)
-	_ = e.Encode(c.eeType)
-	_ = e.Encode(c.deployTxHash)
-	_ = e.Encode(c.auditTxHash)
-	_ = e.Encode(c.codeHash)
-	_ = e.Encode(c.params)
-}
-
-func (c *contractImpl) CodecDecodeSelf(d *ugorji.Decoder) {
-	if err := d.Decode(&c.status); err != nil {
-		log.Fatalf("Fail to decode status in account")
-	}
-	if err := d.Decode(&c.contentType); err != nil {
-		log.Fatalf("Fail to decode contentType in account")
-	}
-	if err := d.Decode(&c.eeType); err != nil {
-		log.Fatalf("Fail to decode eeType in account")
-	}
-	if err := d.Decode(&c.deployTxHash); err != nil {
-		log.Fatalf("Fail to decode deployTxHash in account")
-	}
-	if err := d.Decode(&c.auditTxHash); err != nil {
-		log.Fatalf("Fail to decode auditTxHash in account")
-	}
-	if err := d.Decode(&c.codeHash); err != nil {
-		log.Fatalf("Fail to decode codeHash in account")
-	}
-	if err := d.Decode(&c.params); err != nil {
-		log.Fatalf("Fail to decode params in account, err = %s", err)
-	}
 }
 
 type accountStateImpl struct {
@@ -362,6 +289,49 @@ type accountStateImpl struct {
 	store         trie.Mutable
 }
 
+func (s *accountStateImpl) ActiveContract() Contract {
+	if s.curContract != nil && s.curContract.status == csActive {
+		return s.curContract
+	}
+	return nil
+}
+
+func (s *accountStateImpl) IsDisabled() bool {
+	if s.curContract != nil && s.curContract.status&csDisable != 0 {
+		return true
+	}
+	return false
+}
+
+func (s *accountStateImpl) IsBlacklisted() bool {
+	if s.curContract != nil && s.curContract.status&csBlacklist != 0 {
+		return true
+	}
+	return false
+}
+
+func (s *accountStateImpl) Disable(b bool) {
+	if s.curContract != nil {
+		status := s.curContract.status & csBlacklist
+		if b == true {
+			s.curContract.status = status | csDisable
+		} else {
+			s.curContract.status = status
+		}
+	}
+}
+
+func (s *accountStateImpl) Blacklist(b bool) {
+	if s.curContract != nil {
+		status := s.curContract.status & csDisable
+		if b == true {
+			s.curContract.status = status | csBlacklist
+		} else {
+			s.curContract.status = status
+		}
+	}
+}
+
 func (s *accountStateImpl) IsContractOwner(owner module.Address) bool {
 	if s.isContract == false {
 		return false
@@ -370,12 +340,16 @@ func (s *accountStateImpl) IsContractOwner(owner module.Address) bool {
 }
 
 func (s *accountStateImpl) InitContractAccount(address module.Address) {
+	if s.isContract == true {
+		log.Printf("already Contract account")
+		return
+	}
 	s.isContract = true
 	s.contractOwner = address
 }
 
 func (s *accountStateImpl) DeployContract(code []byte,
-	contentType string, eeType string, params []byte, txHash []byte) {
+	eeType string, contentType string, params []byte, txHash []byte) {
 	if s.isContract == false {
 		return
 	}
@@ -389,10 +363,10 @@ func (s *accountStateImpl) DeployContract(code []byte,
 		log.Printf("Failed to get bucket")
 		return
 	}
-	s.nextContract = &contractImpl{
+	s.nextContract = &contractImpl{contractSnapshotImpl{
 		bk: bk, isNew: true, status: status, contentType: contentType,
 		eeType: eeType, deployTxHash: txHash, codeHash: codeHash[:],
-		params: params, code: code,
+		params: params, code: code},
 	}
 }
 
@@ -460,14 +434,22 @@ func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
 		contractOwner = common.NewAccountAddress(s.contractOwner.Bytes())
 	}
 
+	var curContract *contractSnapshotImpl
+	if s.curContract != nil {
+		curContract = s.curContract.getSnapshot()
+	}
+	var nextContract *contractSnapshotImpl
+	if s.nextContract != nil {
+		nextContract = s.nextContract.getSnapshot()
+	}
 	return &accountSnapshotImpl{
 		database:      s.database,
 		balance:       s.balance.Clone(),
 		fIsContract:   s.isContract,
 		store:         store,
 		contractOwner: contractOwner,
-		curContract:   s.curContract,
-		nextContract:  s.nextContract,
+		curContract:   curContract,
+		nextContract:  nextContract,
 	}
 }
 
@@ -484,10 +466,12 @@ func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 		s.contractOwner = common.NewAccountAddress(snapshot.contractOwner.Bytes())
 	}
 	if snapshot.curContract != nil {
-		s.curContract = snapshot.curContract
+		s.curContract = new(contractImpl)
+		s.curContract.reset(snapshot.curContract)
 	}
 	if snapshot.nextContract != nil {
-		s.nextContract = snapshot.nextContract
+		s.nextContract = new(contractImpl)
+		s.nextContract.reset(snapshot.nextContract)
 	}
 	if s.store == nil && snapshot.store == nil {
 		return nil
@@ -527,7 +511,7 @@ func (s *accountStateImpl) DeleteValue(k []byte) error {
 }
 
 func (s *accountStateImpl) Contract() Contract {
-	if s.curContract == nil || s.curContract.status != csActive {
+	if s.curContract == nil {
 		return nil
 	}
 	return s.curContract
@@ -553,6 +537,31 @@ func newAccountState(database db.Database, snapshot *accountSnapshotImpl) Accoun
 
 type accountROState struct {
 	AccountSnapshot
+	curContract  Contract
+	nextContract Contract
+}
+
+func (a *accountROState) Contract() Contract {
+	return a.curContract
+}
+
+func (a *accountROState) ActiveContract() Contract {
+	if active := a.AccountSnapshot.ActiveContract(); active != nil {
+		return newContractROState(active)
+	}
+	return nil
+}
+
+func (a *accountROState) NextContract() Contract {
+	return a.nextContract
+}
+
+func (a *accountROState) Disable(b bool) {
+	log.Panicf("accountROState().Disable() is invoked")
+}
+
+func (a *accountROState) Blacklist(b bool) {
+	log.Panicf("accountROState().Blacklist() is invoked")
 }
 
 func (a *accountROState) SetBalance(v *big.Int) {
@@ -584,7 +593,7 @@ func (a *accountROState) InitContractAccount(address module.Address) {
 }
 
 func (a *accountROState) DeployContract(code []byte,
-	contentType string, eeType string, params []byte, txHash []byte) {
+	eeType string, contentType string, params []byte, txHash []byte) {
 	log.Panicf("accountROState().DeployContract() is invoked")
 }
 
@@ -596,9 +605,10 @@ func (a *accountROState) AcceptContract(
 func (a *accountROState) RejectContract(
 	txHash []byte, auditTxHash []byte) error {
 	return errors.New("ReadOnlyState")
-
 }
 
 func newAccountROState(snapshot AccountSnapshot) AccountState {
-	return &accountROState{snapshot}
+	return &accountROState{snapshot,
+		newContractROState(snapshot.Contract()),
+		newContractROState(snapshot.NextContract())}
 }

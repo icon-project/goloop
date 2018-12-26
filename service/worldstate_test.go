@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"log"
 	"math/big"
+	"strings"
 	"testing"
 
 	"github.com/icon-project/goloop/module"
@@ -11,6 +12,7 @@ import (
 	"github.com/icon-project/goloop/common"
 
 	"github.com/icon-project/goloop/common/db"
+	"golang.org/x/crypto/sha3"
 )
 
 func TestNewWorldState(t *testing.T) {
@@ -100,12 +102,32 @@ func TestNewWorldStateWithContract(t *testing.T) {
 
 	as.SetBalance(balance1)
 
-	c := func(a AccountState, owner module.Address, i int) {
+	d := func(a AccountState, owner module.Address, i int) {
 		a.InitContractAccount(owner)
 		a.DeployContract(test[i].testCode, test[i].testEeType,
 			test[i].testContentType, test[i].testParams, test[i].testDeployTx)
 	}
-	c(as, contractOwner, 0)
+	d(as, contractOwner, 0)
+
+	check := func(c ContractSnapshot, i int) {
+		code, _ := c.Code()
+		if bytes.Equal(code, test[i].testCode) == false {
+			log.Panicf("Invalid code")
+		}
+		if bytes.Equal(c.Params(), test[i].testParams) == false {
+			log.Panicf("Invalid params")
+		}
+		codeHash := sha3.Sum256(code)
+		if bytes.Equal(c.CodeHash(), codeHash[:]) == false {
+			log.Panicf("Invalide codeHash")
+		}
+		if strings.Compare(c.ContentType(), test[i].testContentType) != 0 {
+			log.Panicf("Invalid contentType %s\n", c.ContentType())
+		}
+		if strings.Compare(c.EEType(), test[i].testEeType) != 0 {
+			log.Panicf("Invalid EEType")
+		}
+	}
 	if as.IsContractOwner(contractOwner) == false {
 		log.Panicf("Wrong contractOwner. %s\n", contractOwner)
 	}
@@ -115,17 +137,14 @@ func TestNewWorldStateWithContract(t *testing.T) {
 		log.Panicf("Wrong contractOwner. %s\n", contractOwner)
 	}
 	if contract := snapshot.Contract(); contract != nil {
-		curCode, _ := contract.Code()
-		if len(curCode) != 0 {
-			log.Panicf("Wrong contrac. %x\n", curCode)
-		}
+		log.Panicf("Wrong contract.\n")
+	}
+	if contract := snapshot.ActiveContract(); contract != nil {
+		log.Panicf("Wrong contract.\n")
 	}
 
 	if contract := snapshot.NextContract(); contract != nil {
-		nextCode, _ := contract.Code()
-		if bytes.Equal(nextCode, test[0].testCode) == false {
-			log.Panicf("Wrong nextCode %x\n", nextCode)
-		}
+		check(contract, 0)
 	}
 
 	wsSnapshot := ws.GetSnapshot()
@@ -133,18 +152,12 @@ func TestNewWorldStateWithContract(t *testing.T) {
 	if wsAs.IsContractOwner(contractOwner) == false {
 		log.Panicf("Wrong contractOwner. %s\n", contractOwner)
 	}
-	if contract := wsAs.Contract(); contract != nil {
-		curCode, _ := contract.Code()
-		if len(curCode) != 0 {
-			log.Panicf("Wrong contrac. %x\n", curCode)
-		}
-	}
+	check(wsAs.NextContract(), 0)
 
-	if contract := wsAs.NextContract(); contract != nil {
-		nextCode, _ := contract.Code()
-		if bytes.Equal(nextCode, test[0].testCode) == false {
-			log.Panicf("Wrong nextCode %x\n", nextCode)
-		}
+	if contract := wsAs.NextContract(); contract == nil {
+		log.Panicf("Invalid nextContract\n")
+	} else {
+		check(contract, 0)
 	}
 
 	wsSnapshot.Flush()
@@ -153,34 +166,124 @@ func TestNewWorldStateWithContract(t *testing.T) {
 	ws2 := NewWorldState(db, hash, nil)
 	as2 := ws2.GetAccountState(contractAddr.ID())
 	if as2.IsContractOwner(contractOwner) == false {
-		log.Panicf("Wrong contractOwner. %s\n", contractOwner)
+		log.Panicf("Invalid contractOwner. %s\n", contractOwner)
 	}
-	if contract := as2.NextContract(); contract != nil {
-		nextCode, _ := contract.Code()
-		if bytes.Equal(nextCode, test[0].testCode) == false {
-			log.Panicf("Wrong contrac. %x\n", nextCode)
+	if contract := as2.NextContract(); contract == nil {
+		log.Panicf("Invalid contract.\n")
+	} else {
+		check(contract, 0)
+		if contract.Status() != csInactive {
+			log.Panicf("Invalid status %d\n", contract.Status())
 		}
 	}
 
-	if contract := as2.Contract(); contract != nil {
-		curCode, _ := contract.Code()
-		if len(curCode) != 0 {
-			log.Panicf("Wrong curCode %x\n", curCode)
-		}
+	if as2.Contract() != nil {
+		log.Panicf("Invalid Contract\n")
+	}
+
+	if as2.ActiveContract() != nil {
+		log.Panicf("Invalid status\n")
 	}
 
 	as2.AcceptContract(test[0].testDeployTx, test[0].testAuditTx)
-	if contract := as2.NextContract(); contract != nil {
-		nextCode, _ := contract.Code()
-		if len(nextCode) != 0 {
-			log.Panicf("Wrong contract. %x\n", nextCode)
+	if as2.NextContract() != nil {
+		log.Panicf("Invalid contract. \n")
+	}
+
+	if contract := as2.Contract(); contract == nil {
+		log.Panicf("Invalid contract. \n")
+	} else {
+		check(contract, 0)
+	}
+
+	if contract := as2.ActiveContract(); contract == nil {
+		log.Panicf("Invalid contract\n")
+	} else {
+		check(contract, 0)
+		if contract.Status() != csActive {
+			log.Panicf("Invalid status %d\n", contract.Status())
 		}
 	}
 
-	if contract := as2.Contract(); contract != nil {
-		curCode, _ := contract.Code()
-		if bytes.Equal(curCode, test[0].testCode) == false {
-			log.Panicf("Wrong curCode %x\n", curCode)
+	d(as2, contractOwner, 1)
+	vContract1 := func(as AccountState) {
+		if contract := as.Contract(); contract == nil {
+			log.Panicf("Invalid Contract")
+		} else {
+			check(contract, 0)
 		}
+		if contract := as.ActiveContract(); contract == nil {
+			log.Panicf("Invalid Contract")
+		} else {
+			check(contract, 0)
+		}
+		if contract := as.NextContract(); contract == nil {
+			log.Panicf("Invalid Contract")
+		} else {
+			check(contract, 1)
+		}
+	}
+	vContract1(as2)
+	vContract2 := func(as AccountSnapshot) {
+		if contract := as.Contract(); contract == nil {
+			log.Panicf("Invalid Contract")
+		} else {
+			check(contract, 0)
+		}
+		if contract := as.ActiveContract(); contract == nil {
+			log.Panicf("Invalid Contract")
+		} else {
+			check(contract, 0)
+		}
+		if contract := as.NextContract(); contract == nil {
+			log.Panicf("Invalid Contract")
+		} else {
+			check(contract, 1)
+		}
+	}
+	ss := as2.GetSnapshot()
+	vContract2(ss)
+
+	wsSnapshot = ws2.GetSnapshot()
+	wsSnapshot.Flush()
+	hash = wsSnapshot.StateHash()
+
+	ws3 := NewWorldState(db, hash, nil)
+	as3 := ws3.GetAccountState(contractAddr.ID())
+	if as3.IsContractOwner(contractOwner) == false {
+		log.Panicf("Invalid contractOwner. %s\n", contractOwner)
+	}
+	vContract1(as3)
+	ass := as3.GetSnapshot()
+	vContract2(ass)
+
+	as3.Disable(true)
+	if as3.ActiveContract() != nil {
+		log.Panicf("Invalid activeContract")
+	}
+	as3.Blacklist(true)
+	if as3.Contract().Status()&csBlacklist != csBlacklist {
+		log.Panic("Not blacklisted", as3.Contract().Status())
+	}
+	if as3.Contract().Status()&csDisable != csDisable {
+		log.Panic("Not disabled")
+	}
+	as3.Disable(false)
+	if as3.ActiveContract() != nil {
+		log.Panicf("Invalid activeContract")
+	}
+	if as3.Contract().Status()&csBlacklist != csBlacklist {
+		log.Panic("Not blacklisted", as3.Contract().Status())
+	}
+	wsSnapshot = ws3.GetSnapshot()
+	wsSnapshot.Flush()
+	hash = wsSnapshot.StateHash()
+	ws4 := NewWorldState(db, hash, nil)
+	as4 := ws4.GetAccountState(contractAddr.ID())
+	if as4.ActiveContract() != nil {
+		log.Panicf("Invalid activeContract")
+	}
+	if as4.Contract().Status()&csBlacklist != csBlacklist {
+		log.Panic("Not blacklisted", as4.Contract().Status())
 	}
 }
