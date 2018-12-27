@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/icon-project/goloop/common/merkle"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
@@ -506,6 +508,10 @@ func (m *mpt) Empty() bool {
 		return nilCnt == len(pool)
 	}
 	return len(pool) == 0 && m.root == nil
+}
+
+func (m *mpt) Resolve(builder merkle.Builder) error {
+	panic("Implement me")
 }
 
 func newMptFromImmutable(immutable trie.Immutable) *mpt {

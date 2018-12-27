@@ -2,10 +2,12 @@ package mpt
 
 import (
 	"bytes"
+	"log"
+
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
 	"golang.org/x/crypto/sha3"
-	"log"
 )
 
 /*
@@ -141,6 +143,10 @@ func (v byteValue) Equal(o trie.Object) bool {
 	}
 	return false
 
+}
+
+func (v byteValue) Resolve(builder merkle.Builder) error {
+	panic("Imeplement me")
 }
 
 func calcHash(data ...[]byte) []byte {
