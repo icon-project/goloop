@@ -105,7 +105,8 @@ func (m *manager) unicast(pi protocolInfo, spi protocolInfo, bytes []byte, id mo
 	pkt.dest = p2pDestPeer
 	pkt.destPeer = id
 	pkt.priority = m.priority[pi]
-	return m.p2p.send(pkt)
+	err := m.p2p.send(pkt)
+	return NewNetworkError(err)
 }
 
 //TxMessage,PrevoteMessage, Send to Validators
@@ -323,4 +324,21 @@ func (pi protocolInfo) String() string {
 }
 func (pi protocolInfo) Uint16() uint16 {
 	return uint16(pi)
+}
+
+type NetworkError struct {
+	error
+	IsTemporary bool
+}
+func(e *NetworkError) Temporary() bool {return e.IsTemporary}
+func NewNetworkError(err error) module.NetworkError{
+	if err != nil {
+		isTemporary := false
+		switch err {
+		case ErrQueueOverflow:
+			isTemporary = true
+		}
+		return &NetworkError{err, isTemporary}
+	}
+	return nil
 }

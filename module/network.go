@@ -65,3 +65,8 @@ type NetworkTransport interface {
 	PeerID() PeerID
 	Address() string
 }
+
+type NetworkError interface {
+	error
+	Temporary() bool // Is the error temporary?
+}
