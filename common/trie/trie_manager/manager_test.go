@@ -3,6 +3,7 @@ package trie_manager
 import (
 	"bytes"
 	"fmt"
+	"github.com/icon-project/goloop/common/merkle"
 	"log"
 	"reflect"
 	"strings"
@@ -765,6 +766,10 @@ func (o *Obj) Reset(s db.Database, k []byte) error {
 	return nil
 }
 
+func (o *Obj) Resolve(bd merkle.Builder) error {
+	return nil
+}
+
 func TestObject(t *testing.T) {
 	manager := mpt.NewManager(db.NewMapDB())
 	mutable := manager.NewMutable(nil)
@@ -808,6 +813,10 @@ func (e *testObject) Flush() error {
 func (e *testObject) Equal(o trie.Object) bool {
 	e2, ok := o.(*testObject)
 	return ok && e.s == e2.s
+}
+
+func (e *testObject) Resolve(bd merkle.Builder) error {
+	return nil
 }
 
 func TestObjectFlush(t *testing.T) {

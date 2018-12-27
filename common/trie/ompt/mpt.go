@@ -3,6 +3,7 @@ package ompt
 import (
 	"bytes"
 	"errors"
+	"github.com/icon-project/goloop/common/merkle"
 	"log"
 	"reflect"
 	"sync"
@@ -329,6 +330,47 @@ func (m *mpt) Equal(object trie.ImmutableForObject, exact bool) bool {
 
 func (m *mpt) Empty() bool {
 	return m.root == nil
+}
+
+func (m *mpt) Resolve(bd merkle.Builder) error {
+	if m.root != nil {
+		return m.resolve(bd, &m.root)
+	}
+	return nil
+}
+
+type nodeRequester struct {
+	mpt  *mpt
+	node *node
+	hash []byte
+}
+
+func (r *nodeRequester) OnData(bs []byte, bd merkle.Builder) error {
+	node, err := deserialize(r.hash, bs, stateFlushed)
+	if err != nil {
+		return err
+	}
+	*r.node = node
+	return node.resolve(r.mpt, bd)
+}
+
+func (m *mpt) resolve(d merkle.Builder, pNode *node) error {
+	node := *pNode
+	if node == nil {
+		return nil
+	}
+	newNode, err := node.realize(m)
+	if err != nil {
+		hash := []byte(node.(hash))
+		d.RequestData(db.MerkleTrie, hash, &nodeRequester{
+			mpt:  m,
+			node: pNode,
+			hash: hash,
+		})
+		return nil
+	}
+	*pNode = newNode
+	return newNode.resolve(m, d)
 }
 
 func NewMPT(d db.Database, h []byte, t reflect.Type) *mpt {

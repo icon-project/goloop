@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"github.com/icon-project/goloop/common/merkle"
 	"log"
 
 	"github.com/icon-project/goloop/common/db"
@@ -144,6 +145,24 @@ func (c *contractSnapshotImpl) flush() error {
 	}
 	if err := c.bk.Set(c.codeHash, c.code); err != nil {
 		return err
+	}
+	return nil
+}
+
+func (c *contractSnapshotImpl) OnData(bs []byte, builder merkle.Builder) error {
+	c.code = bs
+	return nil
+}
+
+func (c *contractSnapshotImpl) Resolve(builder merkle.Builder) error {
+	code, err := c.bk.Get(c.codeHash)
+	if err != nil {
+		return err
+	}
+	if code == nil {
+		builder.RequestData(db.BytesByHash, c.codeHash, c)
+	} else {
+		c.code = code
 	}
 	return nil
 }

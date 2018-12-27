@@ -1,6 +1,7 @@
 package ompt
 
 import (
+	"github.com/icon-project/goloop/common/merkle"
 	"reflect"
 
 	"github.com/icon-project/goloop/common/db"
@@ -75,6 +76,10 @@ func (m *mptForBytes) Equal(object trie.Immutable, exact bool) bool {
 		panic("Equal with invalid object")
 	}
 	return false
+}
+
+func (m *mptForBytes) Resolve(bd merkle.Builder) error {
+	return m.mpt.Resolve(bd)
 }
 
 func NewMPTForBytes(db db.Database, h []byte) *mptForBytes {

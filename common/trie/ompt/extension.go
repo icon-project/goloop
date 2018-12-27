@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/merkle"
 	"log"
 
 	"github.com/icon-project/goloop/common/trie"
@@ -201,7 +202,7 @@ func (n *extension) traverse(m *mpt, k string, v nodeScheduler) (string, trie.Ob
 	if next != n.next {
 		n.next = next
 	}
-	v(k+string(n.keys),n.next)
+	v(k+string(n.keys), n.next)
 	return "", nil, nil
 }
 
@@ -252,4 +253,11 @@ func (n *extension) prove(m *mpt, keys []byte, proof [][]byte) (nn node, obj tri
 		n.next = next
 	}
 	return n, obj, err
+}
+
+func (n *extension) resolve(m *mpt, bd merkle.Builder) error {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
+	return m.resolve(bd, &n.next)
 }

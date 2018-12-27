@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"github.com/icon-project/goloop/common/merkle"
 	"log"
 	"math/big"
 
@@ -198,6 +199,25 @@ func (s *accountSnapshotImpl) Equal(object trie.Object) bool {
 		log.Panicf("Replacing accountSnapshotImpl with other object(%T)", object)
 	}
 	return false
+}
+
+func (s *accountSnapshotImpl) Resolve(bd merkle.Builder) error {
+	if s.store != nil {
+		if err := s.store.Resolve(bd); err != nil {
+			return err
+		}
+	}
+	if s.curContract != nil {
+		if err := s.curContract.Resolve(bd); err != nil {
+			return err
+		}
+	}
+	if s.nextContract != nil {
+		if err := s.nextContract.Resolve(bd); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *accountSnapshotImpl) StorageChangedAfter(ass AccountSnapshot) bool {

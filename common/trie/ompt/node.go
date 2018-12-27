@@ -1,6 +1,7 @@
 package ompt
 
 import (
+	"github.com/icon-project/goloop/common/merkle"
 	"log"
 	"strconv"
 	"sync"
@@ -30,11 +31,12 @@ type (
 		traverse(m *mpt, nibs string, v nodeScheduler) (string, trie.Object, error)
 		getProof(m *mpt, keys []byte, proofs [][]byte) (node, [][]byte, error)
 		prove(m *mpt, keys []byte, proofs [][]byte) (node, trie.Object, error)
+		resolve(m *mpt, bd merkle.Builder) error
 	}
 )
 
 const (
-	configUseKeccak = true
+	configUseKeccak = false
 )
 
 const (

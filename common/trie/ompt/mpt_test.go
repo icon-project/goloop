@@ -3,6 +3,7 @@ package ompt
 import (
 	"bytes"
 	"encoding/hex"
+	"github.com/icon-project/goloop/common/merkle"
 	"log"
 	"reflect"
 	"testing"
@@ -320,6 +321,9 @@ func (e *testObject) Flush() error {
 func (e *testObject) Equal(o trie.Object) bool {
 	e2, ok := o.(*testObject)
 	return ok && e.s == e2.s
+}
+func (e *testObject) Resolve(builder merkle.Builder) error {
+	return nil
 }
 
 func TestObjectTest(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/merkle"
 	"log"
 
 	"github.com/icon-project/goloop/common/trie"
@@ -336,4 +337,28 @@ func (n *branch) prove(m *mpt, keys []byte, proof [][]byte) (nn node, obj trie.O
 		n.children[keys[0]] = nchild
 	}
 	return n, obj, err
+}
+
+func (n *branch) resolve(m *mpt, bd merkle.Builder) error {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
+	for i := range n.children {
+		if err := m.resolve(bd, &n.children[i]); err != nil {
+			return err
+		}
+	}
+	if n.value != nil {
+		value, changed, err := m.getObject(n.value)
+		if err != nil {
+			return err
+		}
+		if changed {
+			n.value = value
+		}
+		if err := n.value.Resolve(bd); err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -10,6 +10,11 @@ type Database interface {
 	Close() error
 }
 
+type LayerDB interface {
+	Database
+	Flush(write bool) error
+}
+
 type BackendType string
 
 const (

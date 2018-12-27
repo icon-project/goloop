@@ -6,6 +6,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
@@ -134,6 +135,10 @@ func (r *receipt) CodecDecodeSelf(d *ugorji.Decoder) {
 	if err := d.Decode(&r.data); err != nil {
 		log.Panicf("FailOnDecodeReceipt err=%+v", err)
 	}
+}
+
+func (r *receipt) Resolve(bd merkle.Builder) error {
+	return nil
 }
 
 type failureReason struct {

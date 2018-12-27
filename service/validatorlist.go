@@ -5,6 +5,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
 	"sync"
@@ -96,6 +97,14 @@ func (vl *validatorList) String() string {
 	return fmt.Sprintf("ValidatorList[%+v]", vl.validators)
 }
 
+func (vl *validatorList) OnData(bs []byte, bd merkle.Builder) error {
+	vl.serialized = bs
+	if _, err := codec.MP.UnmarshalFromBytes(bs, &vl.validators); err != nil {
+		return err
+	}
+	return nil
+}
+
 func ValidatorListFromHash(database db.Database, h []byte) (module.ValidatorList, error) {
 	bk, err := database.GetBucket(db.BytesByHash)
 	if err != nil {
@@ -119,6 +128,33 @@ func ValidatorListFromHash(database db.Database, h []byte) (module.ValidatorList
 		}
 		vl.hash = h
 		vl.serialized = value
+	}
+	return vl, nil
+}
+
+func NewValidatorListWithBuilder(builder merkle.Builder, h []byte) (module.ValidatorList, error) {
+	bk, err := builder.Database().GetBucket(db.BytesByHash)
+	if err != nil {
+		return nil, err
+	}
+	vl := &validatorList{
+		bucket: bk,
+	}
+	if len(h) > 0 {
+		vl.hash = h
+		value, err := bk.Get(h)
+		if err != nil {
+			return nil, err
+		}
+		if value == nil {
+			builder.RequestData(db.BytesByHash, h, vl)
+			vl.dirty = true
+		} else {
+			if _, err := codec.UnmarshalFromBytes(value, &vl.validators); err != nil {
+				return nil, err
+			}
+			vl.serialized = value
+		}
 	}
 	return vl, nil
 }

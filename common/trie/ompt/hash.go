@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/merkle"
 	"log"
 
 	"github.com/icon-project/goloop/common/trie"
@@ -105,4 +106,9 @@ func (h hash) prove(m *mpt, kb []byte, items [][]byte) (node, trie.Object, error
 		return h, nil, err
 	}
 	return n.prove(m, kb, items)
+}
+
+func (h hash) resolve(m *mpt, bd merkle.Builder) error {
+	panic("It should not be called.")
+	return nil
 }

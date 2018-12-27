@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
@@ -63,6 +64,10 @@ func (t *transaction) UnmarshalJSON(data []byte) error {
 		t.Transaction = tx
 		return nil
 	}
+}
+
+func (t *transaction) Resolve(builder merkle.Builder) error {
+	return nil
 }
 
 func NewTransaction(b []byte) (module.Transaction, error) {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/merkle"
 	"log"
 
 	"github.com/icon-project/goloop/common/trie"
@@ -231,4 +232,21 @@ func (n *leaf) prove(m *mpt, keys []byte, proof [][]byte) (node, trie.Object, er
 	}
 	return n, nil, common.ErrNotFound
 
+}
+
+func (n *leaf) resolve(m *mpt, bd merkle.Builder) error {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
+	nv, changed, err := m.getObject(n.value)
+	if err != nil {
+		return err
+	}
+	if changed {
+		n.value = nv
+	}
+	if err := n.value.Resolve(bd); err != nil {
+		return err
+	}
+	return nil
 }

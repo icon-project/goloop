@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"github.com/icon-project/goloop/common/merkle"
 	"log"
 	"reflect"
 
@@ -83,4 +84,13 @@ func NewReceiptListFromSlice(database db.Database, list []Receipt) module.Receip
 func NewReceiptListFromHash(database db.Database, h []byte) module.ReceiptList {
 	immutable := trie_manager.NewImmutableForObject(database, h, receiptType)
 	return &receiptList{immutable}
+}
+
+func NewReceiptListWithBuilder(builder merkle.Builder, h []byte) module.ReceiptList {
+	database := builder.Database()
+	snapshot := trie_manager.NewImmutableForObject(database, h, receiptType)
+	if err := snapshot.Resolve(builder); err != nil {
+		return nil
+	}
+	return &receiptList{snapshot}
 }

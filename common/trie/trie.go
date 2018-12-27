@@ -4,6 +4,7 @@ import (
 	"reflect"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/merkle"
 )
 
 type (
@@ -18,6 +19,7 @@ type (
 		Iterator() Iterator
 		Equal(immutable Immutable, exact bool) bool
 		Prove(k []byte, p [][]byte) ([]byte, error)
+		Resolve(builder merkle.Builder) error
 	}
 
 	Snapshot interface {
@@ -44,6 +46,7 @@ type (
 		Reset(s db.Database, k []byte) error
 		Flush() error
 		Equal(Object) bool
+		Resolve(builder merkle.Builder) error
 	}
 
 	IteratorForObject interface {
@@ -60,6 +63,7 @@ type (
 		Iterator() IteratorForObject
 		Equal(object ImmutableForObject, exact bool) bool
 		Prove(k []byte, p [][]byte) (Object, error)
+		Resolve(builder merkle.Builder) error
 	}
 
 	SnapshotForObject interface {
@@ -82,8 +86,3 @@ type (
 		NewMutableForObject(h []byte, t reflect.Type) MutableForObject
 	}
 )
-
-// Verify proofs,
-//func Verify(key []byte, proofs [][]byte, rootHash []byte ) bool {
-//	return true
-//}
