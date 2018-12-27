@@ -2,9 +2,10 @@ package service
 
 import (
 	"bytes"
-	"github.com/icon-project/goloop/common/merkle"
 	"log"
 	"math/big"
+
+	"github.com/icon-project/goloop/common/merkle"
 
 	"github.com/icon-project/goloop/module"
 	"golang.org/x/crypto/sha3"
@@ -18,10 +19,16 @@ import (
 	ugorji "github.com/ugorji/go/codec"
 )
 
+const (
+	AccountVersion1 = iota + 1
+	AccountVersion  = AccountVersion1
+)
+
 // AccountSnapshot represents immutable account state
 // It can be get from AccountState or WorldSnapshot.
 type AccountSnapshot interface {
 	trie.Object
+	Version() int
 	GetBalance() *big.Int
 	IsContract() bool
 	Empty() bool
@@ -42,6 +49,7 @@ type AccountSnapshot interface {
 // WorldState. Changes in this object will be retrieved by WorldState.
 // Of course, it also can be changed by WorldState.
 type AccountState interface {
+	Version() int
 	GetBalance() *big.Int
 	IsContract() bool
 	GetValue(k []byte) ([]byte, error)
@@ -69,6 +77,7 @@ type AccountState interface {
 }
 
 type accountSnapshotImpl struct {
+	version     int
 	balance     common.HexInt
 	fIsContract bool
 	store       trie.Immutable
@@ -78,6 +87,10 @@ type accountSnapshotImpl struct {
 	apiInfo       []byte
 	curContract   *contractSnapshotImpl
 	nextContract  *contractSnapshotImpl
+}
+
+func (s *accountSnapshotImpl) Version() int {
+	return s.version
 }
 
 func (s *accountSnapshotImpl) ActiveContract() ContractSnapshot {
@@ -119,7 +132,7 @@ func (s *accountSnapshotImpl) GetValue(k []byte) ([]byte, error) {
 }
 
 func (s *accountSnapshotImpl) Empty() bool {
-	return s.balance.BitLen() == 0 && s.store == nil
+	return s.balance.BitLen() == 0 && s.store == nil && s.contractOwner == nil
 }
 
 func (s *accountSnapshotImpl) Bytes() []byte {
@@ -247,57 +260,45 @@ func (s *accountSnapshotImpl) APIInfo() []byte {
 }
 
 func (s *accountSnapshotImpl) CodecEncodeSelf(e *ugorji.Encoder) {
-	_ = e.Encode(s.balance)
-	_ = e.Encode(s.fIsContract)
+	e.MustEncode(s.version)
+	e.MustEncode(s.balance)
+	e.MustEncode(s.fIsContract)
 	if s.store != nil {
-		_ = e.Encode(s.store.Hash())
+		e.MustEncode(s.store.Hash())
 	} else {
-		_ = e.Encode(nil)
+		e.MustEncode(nil)
 	}
-	_ = e.Encode(s.contractOwner)
-	_ = e.Encode(s.apiInfo)
-	_ = e.Encode(s.curContract)
-	_ = e.Encode(s.nextContract)
+	e.MustEncode(s.contractOwner)
+	e.MustEncode(s.apiInfo)
+	e.MustEncode(s.curContract)
+	e.MustEncode(s.nextContract)
 }
 
 func (s *accountSnapshotImpl) CodecDecodeSelf(d *ugorji.Decoder) {
-	if err := d.Decode(&s.balance); err != nil {
-		log.Fatalf("Fail to decode balance in account")
-	}
-	if err := d.Decode(&s.fIsContract); err != nil {
-		log.Fatalf("Fail to decode isContract in account")
-	}
+	d.MustDecode(&s.version)
+	d.MustDecode(&s.balance)
+	d.MustDecode(&s.fIsContract)
 	var hash []byte
-	if err := d.Decode(&hash); err != nil {
-		log.Fatalf("Fail to decode hash in account")
+	d.MustDecode(&hash)
+	if len(hash) == 0 {
+		s.store = nil
 	} else {
-		if len(hash) == 0 {
-			s.store = nil
-		} else {
-			s.store = trie_manager.NewImmutable(s.database, hash)
-		}
+		s.store = trie_manager.NewImmutable(s.database, hash)
 	}
-	if err := d.Decode(&s.contractOwner); err != nil {
-		log.Fatalf("Fail to decode contractOwner in account")
-	}
-	if err := d.Decode(&s.apiInfo); err != nil {
-		log.Fatalf("Fail to decode contractOwner in account")
-	}
-	if err := d.Decode(&s.curContract); err != nil {
-		log.Fatalf("Fail to decode curContract in account")
-	}
+	d.MustDecode(&s.contractOwner)
+	d.MustDecode(&s.apiInfo)
+	d.MustDecode(&s.curContract)
 	if s.curContract != nil {
 		s.curContract.bk, _ = s.database.GetBucket(db.BytesByHash)
 	}
-	if err := d.Decode(&s.nextContract); err != nil {
-		log.Fatalf("Fail to decode nextContract in account")
-	}
+	d.MustDecode(&s.nextContract)
 	if s.nextContract != nil {
 		s.nextContract.bk, _ = s.database.GetBucket(db.BytesByHash)
 	}
 }
 
 type accountStateImpl struct {
+	version    int
 	database   db.Database
 	balance    common.HexInt
 	isContract bool
@@ -307,6 +308,10 @@ type accountStateImpl struct {
 	curContract   *contractImpl
 	nextContract  *contractImpl
 	store         trie.Mutable
+}
+
+func (s *accountStateImpl) Version() int {
+	return s.version
 }
 
 func (s *accountStateImpl) ActiveContract() Contract {
@@ -464,6 +469,7 @@ func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
 	}
 	return &accountSnapshotImpl{
 		database:      s.database,
+		version:       s.version,
 		balance:       s.balance.Clone(),
 		fIsContract:   s.isContract,
 		store:         store,
@@ -481,6 +487,7 @@ func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 
 	s.balance.Set(&snapshot.balance.Int)
 	s.isContract = snapshot.fIsContract
+	s.version = snapshot.version
 
 	if snapshot.contractOwner != nil {
 		s.contractOwner = common.NewAccountAddress(snapshot.contractOwner.Bytes())
@@ -551,6 +558,8 @@ func newAccountState(database db.Database, snapshot *accountSnapshotImpl) Accoun
 		if err := s.Reset(snapshot); err != nil {
 			return nil
 		}
+	} else {
+		s.version = AccountVersion
 	}
 	return s
 }

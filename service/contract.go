@@ -2,8 +2,9 @@ package service
 
 import (
 	"bytes"
-	"github.com/icon-project/goloop/common/merkle"
 	"log"
+
+	"github.com/icon-project/goloop/common/merkle"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/pkg/errors"
@@ -99,37 +100,23 @@ func (c *contractSnapshotImpl) Status() contractStatus {
 }
 
 func (c *contractSnapshotImpl) CodecEncodeSelf(e *ugorji.Encoder) {
-	_ = e.Encode(c.status)
-	_ = e.Encode(c.contentType)
-	_ = e.Encode(c.eeType)
-	_ = e.Encode(c.deployTxHash)
-	_ = e.Encode(c.auditTxHash)
-	_ = e.Encode(c.codeHash)
-	_ = e.Encode(c.params)
+	e.MustEncode(c.status)
+	e.MustEncode(c.contentType)
+	e.MustEncode(c.eeType)
+	e.MustEncode(c.deployTxHash)
+	e.MustEncode(c.auditTxHash)
+	e.MustEncode(c.codeHash)
+	e.MustEncode(c.params)
 }
 
 func (c *contractSnapshotImpl) CodecDecodeSelf(d *ugorji.Decoder) {
-	if err := d.Decode(&c.status); err != nil {
-		log.Fatalf("Fail to decode status in account")
-	}
-	if err := d.Decode(&c.contentType); err != nil {
-		log.Fatalf("Fail to decode contentType in account")
-	}
-	if err := d.Decode(&c.eeType); err != nil {
-		log.Fatalf("Fail to decode eeType in account")
-	}
-	if err := d.Decode(&c.deployTxHash); err != nil {
-		log.Fatalf("Fail to decode deployTxHash in account")
-	}
-	if err := d.Decode(&c.auditTxHash); err != nil {
-		log.Fatalf("Fail to decode auditTxHash in account")
-	}
-	if err := d.Decode(&c.codeHash); err != nil {
-		log.Fatalf("Fail to decode codeHash in account")
-	}
-	if err := d.Decode(&c.params); err != nil {
-		log.Fatalf("Fail to decode params in account, err = %s", err)
-	}
+	d.MustDecode(&c.status)
+	d.MustDecode(&c.contentType)
+	d.MustDecode(&c.eeType)
+	d.MustDecode(&c.deployTxHash)
+	d.MustDecode(&c.auditTxHash)
+	d.MustDecode(&c.codeHash)
+	d.MustDecode(&c.params)
 }
 
 func (c *contractSnapshotImpl) flush() error {

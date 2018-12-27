@@ -243,6 +243,9 @@ func TestNewWorldStateWithContract(t *testing.T) {
 	}
 	ss := as2.GetSnapshot()
 	vContract2(ss)
+	if v := ss.Version(); v != AccountVersion {
+		log.Panicf("Invalid version. %d\n", v)
+	}
 
 	wsSnapshot = ws2.GetSnapshot()
 	wsSnapshot.Flush()
@@ -285,5 +288,8 @@ func TestNewWorldStateWithContract(t *testing.T) {
 	}
 	if as4.Contract().Status()&csBlacklist != csBlacklist {
 		log.Panic("Not blacklisted", as4.Contract().Status())
+	}
+	if v := as4.Version(); v != AccountVersion {
+		log.Panicf("Not valid version. %d\n", v)
 	}
 }
