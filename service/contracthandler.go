@@ -40,8 +40,10 @@ const (
 	ctypeTransfer = 0x100
 	ctypeNone     = iota
 	ctypeMessage
-	ctypeCall
 	ctypeDeploy
+	ctypeAccept
+	ctypeCall
+	ctypeGovCall
 	ctypeTransferAndMessage = ctypeTransfer | ctypeMessage
 	ctypeTransferAndCall    = ctypeTransfer | ctypeCall
 	ctypeTransferAndDeploy  = ctypeTransfer | ctypeDeploy
@@ -109,6 +111,12 @@ func (cm *contractManager) GetHandler(cc CallContext,
 			value:     value,
 			stepLimit: stepLimit,
 		}
+	case ctypeCall:
+		handler = newCallHandler(from, to, value, stepLimit, data, cc)
+	case ctypeGovCall:
+		handler = &GovCallHandler{
+			newCallHandler(from, to, value, stepLimit, data, cc),
+		}
 	case ctypeTransferAndMessage:
 		handler = &TransferAndMessageHandler{
 			TransferHandler: &TransferHandler{
@@ -119,20 +127,18 @@ func (cm *contractManager) GetHandler(cc CallContext,
 			},
 			data: data,
 		}
-	case ctypeTransferAndDeploy:
-		handler = newDeployHandler(from, to, value, stepLimit, data, cc, false)
 	case ctypeTransferAndCall:
 		handler = &TransferAndCallHandler{
 			newCallHandler(from, to, value, stepLimit, data, cc),
 		}
-	case ctypeCall:
-		handler = newCallHandler(from, to, value, stepLimit, data, cc)
+	case ctypeTransferAndDeploy:
+		handler = newDeployHandler(from, to, value, stepLimit, data, cc, false)
 	}
 	return handler
 }
 
 // if path does not exist, make the path
-func stroeContract(code []byte, path string) error {
+func storeContract(code []byte, path string) error {
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		if err := os.RemoveAll(path); err != nil {
 			return err
@@ -215,7 +221,7 @@ func (cm *contractManager) PrepareContractStore(
 			callEndCb("", err)
 			return
 		}
-		err = stroeContract(codeBuf, path)
+		err = storeContract(codeBuf, path)
 		if err != nil {
 			callEndCb("", err)
 			return
@@ -412,52 +418,60 @@ func (h *TransferAndMessageHandler) countBytesOfData(data interface{}) int {
 }
 
 type contractStoreProxy struct {
-	started bool
-	path    string
-	err     error
-	cv      *sync.Cond
+	contract Contract
+	started  bool
+	path     string
+	err      error
+	cv       *sync.Cond
 }
 
 func newContractStoreProxy() *contractStoreProxy {
 	return &contractStoreProxy{cv: sync.NewCond(new(sync.Mutex))}
 }
 
-func (p *contractStoreProxy) prepare(wc WorldContext, addr module.Address) {
+func (p *contractStoreProxy) prepare(wc WorldContext, contract Contract) {
 	p.cv.L.Lock()
-	if p.started {
-		// avoid to call PrepareContractStore() more than once
+	if contract != nil && contract.Equal(p.contract) {
+		// avoid to call PrepareContractStore() more than once for same contract
 		return
 	}
-	p.started = true
 	p.cv.L.Unlock()
-	as := wc.GetAccountState(addr.ID())
-	contract := as.Contract()
+
 	if contract == nil {
-		log.Printf("contract is not prepared")
+		p.cv.L.Lock()
+		p.err = errors.New("No contract exists")
+		p.cv.L.Unlock()
 		return
 	}
-	wc.ContractManager().PrepareContractStore(wc, contract, p.onContractStoreCompleted)
+
+	p.contract = contract
+	wc.ContractManager().PrepareContractStore(wc, contract, p.onStoreCompleted)
 }
 
-func (p *contractStoreProxy) check(wc WorldContext, addr module.Address) (string, error) {
+func (p *contractStoreProxy) check(wc WorldContext, contract Contract) (string, error) {
 	p.cv.L.Lock()
 	defer p.cv.L.Unlock()
 
-	if p.err != nil || p.path != "" {
+	if contract != nil && contract.Equal(p.contract) && (p.err != nil || p.path != "") {
 		return p.path, p.err
 	}
 
-	p.prepare(wc, addr)
+	p.prepare(wc, contract)
 	p.cv.Wait()
 	return p.path, p.err
 }
 
-func (p *contractStoreProxy) onContractStoreCompleted(path string, err error) {
+func (p *contractStoreProxy) onStoreCompleted(path string, err error) {
 	p.cv.L.Lock()
 	p.path = path
 	p.err = err
 	p.cv.Broadcast()
 	p.cv.L.Unlock()
+}
+
+type dataCallJSON struct {
+	method string          `json:"method"`
+	params json.RawMessage `json:"params"`
 }
 
 type CallHandler struct {
@@ -477,21 +491,19 @@ type CallHandler struct {
 	conn eeproxy.Proxy
 }
 
+// TODO data is not always JSON string, so consider it
 func newCallHandler(from, to module.Address, value, stepLimit *big.Int,
 	data []byte, cc CallContext,
 ) *CallHandler {
-	var dataJSON struct {
-		method string          `json:"method"`
-		params json.RawMessage `json:"params"`
-	}
-	if err := json.Unmarshal(data, &dataJSON); err != nil {
+	var jso dataCallJSON
+	if err := json.Unmarshal(data, &jso); err != nil {
 		log.Println("FAIL to parse 'data' of transaction")
 		return nil
 	}
 	return &CallHandler{
 		th:     &TransferHandler{from: from, to: to, value: value, stepLimit: stepLimit},
-		method: dataJSON.method,
-		params: dataJSON.params,
+		method: jso.method,
+		params: jso.params,
 		cc:     cc,
 		csp:    newContractStoreProxy(),
 	}
@@ -502,13 +514,14 @@ func (h *CallHandler) StepLimit() *big.Int {
 }
 
 func (h *CallHandler) Prepare(wc WorldContext) (WorldContext, error) {
-	h.csp.prepare(wc, h.th.to)
+	h.csp.prepare(wc, h.as.ActiveContract())
 
 	lq := []LockRequest{{"", AccountWriteLock}}
 	return wc.WorldStateChanged(wc.WorldVirtualState().GetFuture(lq)), nil
 }
 
 func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
+	// TODO check if contract is active
 	h.as = wc.GetAccountState(h.th.to.ID())
 
 	h.cm = wc.ContractManager()
@@ -517,7 +530,7 @@ func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 		return errors.New("FAIL to get connection of (" + h.EEType() + ")")
 	}
 
-	path, err := h.csp.check(wc, h.th.to)
+	path, err := h.csp.check(wc, h.as.ActiveContract())
 	if err != nil {
 		return err
 	}
@@ -609,15 +622,17 @@ func (h *CallHandler) OnCall(from, to module.Address, value,
 		return
 	}
 
-	// TODO make data from method and params
-	var data []byte
+	jso := dataCallJSON{method: method, params: params}
+	data, err := json.Marshal(jso)
+	if err != nil {
+		log.Panicln("Wrong params: FAIL to create data JSON string")
+	}
 	handler := h.cm.GetHandler(h.cc, from, to, value, limit, ctype, data)
 	h.cc.OnCall(handler)
 }
 
 func (h *CallHandler) OnAPI(obj interface{}) {
-	// TODO
-	panic("implement me")
+	log.Panicln("Unexpected OnAPI() call from Invoke()")
 }
 
 type TransferAndCallHandler struct {
@@ -766,66 +781,161 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext, limit *big.Int) (
 	return module.StatusSuccess, nil, nil, nil
 }
 
+type GovCallHandler struct {
+	*CallHandler
+}
+
+func (h *GovCallHandler) ExecuteAsync(wc WorldContext) error {
+	// skip to check if governance is active
+	h.as = wc.GetAccountState(h.th.to.ID())
+
+	h.cm = wc.ContractManager()
+	h.conn = h.cc.GetConnection(h.EEType())
+	if h.conn == nil {
+		return errors.New("FAIL to get connection of (" + h.EEType() + ")")
+	}
+
+	path, err := h.csp.check(wc, h.as.NextContract())
+	if err != nil {
+		return err
+	}
+
+	err = h.conn.Invoke(h, path, false, h.th.from, h.th.to, h.th.value,
+		h.th.stepLimit, h.method, h.params)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 type AcceptHandler struct {
 	from        module.Address
 	to          module.Address
-	cc          CallContext
+	stepLimit   *big.Int
 	txHash      []byte
 	auditTxHash []byte
+	cc          CallContext
 }
 
-func (h *AcceptHandler) ExecuteSync(wc WorldContext, limit *big.Int) (
-	module.Status, *big.Int, []byte, module.Address) {
+func newAcceptHandler(from, to module.Address, value, stepLimit *big.Int, data []byte, cc CallContext) *AcceptHandler {
+	// TODO parse hash
+	hash := make([]byte, 0)
+	auditTxHash := make([]byte, 0)
+	return &AcceptHandler{from: from, to: to, stepLimit: stepLimit, txHash: hash, auditTxHash: auditTxHash, cc: cc}
+}
+
+func (h *AcceptHandler) StepLimit() *big.Int {
+	return h.stepLimit
+}
+
+// It's never called
+func (h *AcceptHandler) Prepare(wc WorldContext) (WorldContext, error) {
+	lq := []LockRequest{{"", AccountWriteLock}}
+	return wc.WorldStateChanged(wc.WorldVirtualState().GetFuture(lq)), nil
+}
+
+func (h *AcceptHandler) ExecuteSync(wc WorldContext,
+) (module.Status, *big.Int, []byte, module.Address) {
+	// 1. call GetAPI
+	stepAvail := h.stepLimit
 	sysAs := wc.GetAccountState(SystemID)
 	addr, err := sysAs.GetValue(h.txHash)
 	if err != nil || len(addr) == 0 {
 		log.Printf("Failed to get score address by txHash\n")
-		return module.StatusSystemError, nil, nil, nil
+		return module.StatusSystemError, h.stepLimit, nil, nil
 	}
-	type completeParam struct {
-		path string
-		err  error
-	}
-	complete := make(chan *completeParam)
-	as := wc.GetAccountState(addr)
-	ws, _ := wc.(WorldState)
-	wc.ContractManager().PrepareContractStore(ws, as.NextContract(),
-		func(path string, err error) {
-			if err != nil {
-				complete <- &completeParam{path, nil}
-			}
-			complete <- &completeParam{"", err}
-		})
-	done := <-complete
-	if len(done.path) == 0 || done.err != nil {
-		return module.StatusSystemError, nil, nil, nil
-	}
-	// GET API
-	// TODO execute GET API and receive result
 
+	cgah := &callGetAPIHandler{newCallHandler(h.from, h.to, nil, stepAvail, nil, h.cc)}
+	status, stepUsed1, _, _ := h.cc.Call(cgah)
+	if status != module.StatusSuccess {
+		return status, h.stepLimit, nil, nil
+	}
+
+	// 2. call on_install or on_update of the contract
+	stepAvail = stepAvail.Sub(stepAvail, stepUsed1)
+	as := wc.GetAccountState(addr)
 	var method string
 	if bytes.Equal(h.to.ID(), SystemID) {
 		method = "on_install"
 	} else {
 		method = "on_update"
 	}
+	// TODO check the type of params
 	dataJson := map[string]interface{}{
 		"method": method, //on_install, on_update
 		"params": as.NextContract().Params(),
 	}
 	data, err := json.Marshal(dataJson)
 	if err != nil {
-		return module.StatusSystemError, nil, nil, nil
+		return module.StatusSystemError, h.stepLimit, nil, nil
 	}
-	as.AcceptContract(h.txHash, h.auditTxHash)
+	if err = as.AcceptContract(h.txHash, h.auditTxHash); err != nil {
+		return module.StatusSystemError, h.stepLimit, nil, nil
+	}
 	// state -> active if failed to on_install, set inactive
 	// on_install or on_update
 	handler := wc.ContractManager().GetHandler(h.cc, h.from,
-		common.NewContractAddress(addr), nil, nil,
+		common.NewContractAddress(addr), nil, stepAvail,
 		ctypeCall, data)
-	h.cc.Call(handler)
-	// TODO receive result
+	status, stepUsed2, _, _ := h.cc.Call(handler)
 	_ = sysAs.DeleteValue(h.txHash)
 
-	return module.StatusSuccess, nil, nil, nil
+	return status, stepUsed1.Add(stepUsed1, stepUsed2), nil, nil
+}
+
+type callGetAPIHandler struct {
+	*CallHandler
+}
+
+// It's never called
+func (h *callGetAPIHandler) Prepare(wc WorldContext) (WorldContext, error) {
+	h.csp.prepare(wc, h.as.NextContract())
+	return wc.WorldStateChanged(wc.WorldVirtualState().GetFuture(nil)), nil
+}
+
+func (h *callGetAPIHandler) ExecuteAsync(wc WorldContext) error {
+	// TODO check which contract it should use, current or next?
+	h.cm = wc.ContractManager()
+	h.conn = h.cc.GetConnection(h.EEType())
+	if h.conn == nil {
+		return errors.New("FAIL to get connection of (" + h.EEType() + ")")
+	}
+
+	path, err := h.csp.check(wc, h.as.NextContract())
+	if err != nil {
+		return err
+	}
+
+	err = h.conn.GetAPI(h, path)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (h *callGetAPIHandler) GetValue(key []byte) ([]byte, error) {
+	return nil, errors.New("Invalid GetValue() call")
+}
+
+func (h *callGetAPIHandler) SetValue(key, value []byte) error {
+	return errors.New("Invalid SetValue() call")
+}
+
+func (h *callGetAPIHandler) DeleteValue(key []byte) error {
+	return errors.New("Invalid DeleteValue() call")
+}
+
+func (h *callGetAPIHandler) OnResult(status uint16, steps *big.Int, result interface{}) {
+	log.Panicln("Unexpected call OnResult() from GetAPI()")
+}
+
+func (h *callGetAPIHandler) OnCall(from, to module.Address, value, limit *big.Int, method string, params []byte) {
+	log.Panicln("Unexpected call OnCall() from GetAPI()")
+}
+
+func (h *callGetAPIHandler) OnAPI(obj interface{}) {
+	// TODO implement after deciding how to store
+	panic("implement me")
 }
