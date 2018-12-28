@@ -6,8 +6,11 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
+	"github.com/icon-project/goloop/service/scoreapi"
 	"github.com/pkg/errors"
 )
 
@@ -77,8 +80,14 @@ func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 		return err
 	}
 
+	info := h.as.APIInfo()
+	params, err := info.ConvertParamsToTypedObj(h.method, h.params)
+	if err != nil {
+		return err
+	}
+
 	err = h.conn.Invoke(h, path, false, h.th.from, h.th.to, h.th.value,
-		h.th.stepLimit, h.method, h.params)
+		h.th.stepLimit, h.method, params)
 	if err != nil {
 		return err
 	}
@@ -86,7 +95,7 @@ func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 	return nil
 }
 
-func (h *CallHandler) SendResult(status module.Status, steps *big.Int, result []byte) error {
+func (h *CallHandler) SendResult(status module.Status, steps *big.Int, result *codec.TypedObj) error {
 	if h.conn == nil {
 		return errors.New("Don't have a connection of (" + h.EEType() + ")")
 	}
@@ -126,8 +135,8 @@ func (h *CallHandler) DeleteValue(key []byte) error {
 	}
 }
 
-func (h *CallHandler) GetInfo() map[string]interface{} {
-	return h.cc.GetInfo()
+func (h *CallHandler) GetInfo() *codec.TypedObj {
+	return common.MustEncodeAny(h.cc.GetInfo())
 }
 
 func (h *CallHandler) GetBalance(addr module.Address) *big.Int {
@@ -138,12 +147,12 @@ func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) {
 	h.cc.OnEvent(indexed, data)
 }
 
-func (h *CallHandler) OnResult(status uint16, steps *big.Int, result interface{}) {
+func (h *CallHandler) OnResult(status uint16, steps *big.Int, result *codec.TypedObj) {
 	h.cc.OnResult(module.Status(status), steps, result, nil)
 }
 
 func (h *CallHandler) OnCall(from, to module.Address, value,
-	limit *big.Int, method string, params []byte,
+	limit *big.Int, method string, params *codec.TypedObj,
 ) {
 	ctype := ctypeNone
 	if method != "" {
@@ -164,7 +173,14 @@ func (h *CallHandler) OnCall(from, to module.Address, value,
 		return
 	}
 
-	jso := dataCallJSON{method: method, params: params}
+	// TODO need to prepare shortcut to make contract handler with
+	//  *codec.TypedObj
+	paramBytes, err := json.Marshal(common.MustDecodeAny(params))
+	if err != nil {
+		log.Panicf("Fail to marshal object to JSON err=%+v", err)
+	}
+
+	jso := dataCallJSON{method: method, params: paramBytes}
 	data, err := json.Marshal(jso)
 	if err != nil {
 		log.Panicln("Wrong params: FAIL to create data JSON string")
@@ -173,8 +189,8 @@ func (h *CallHandler) OnCall(from, to module.Address, value,
 	h.cc.OnCall(handler)
 }
 
-func (h *CallHandler) OnAPI(obj interface{}) {
-	log.Panicln("Unexpected OnAPI() call from Invoke()")
+func (h *CallHandler) OnAPI(info *scoreapi.Info) {
+	h.as.SetAPIInfo(info)
 }
 
 type TransferAndCallHandler struct {

@@ -21,8 +21,14 @@ func (h *GovCallHandler) ExecuteAsync(wc WorldContext) error {
 		return err
 	}
 
+	info := h.as.APIInfo()
+	paramObj, err := info.ConvertParamsToTypedObj(h.method, h.params)
+	if err != nil {
+		return err
+	}
+
 	err = h.conn.Invoke(h, path, false, h.th.from, h.th.to, h.th.value,
-		h.th.stepLimit, h.method, h.params)
+		h.th.stepLimit, h.method, paramObj)
 	if err != nil {
 		return err
 	}

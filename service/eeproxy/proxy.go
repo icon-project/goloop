@@ -9,6 +9,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/ipc"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoreapi"
 	"github.com/pkg/errors"
 )
 
@@ -31,17 +32,17 @@ type CallContext interface {
 	GetValue(key []byte) ([]byte, error)
 	SetValue(key, value []byte) error
 	DeleteValue(key []byte) error
-	GetInfo() map[string]interface{}
+	GetInfo() *codec.TypedObj
 	GetBalance(addr module.Address) *big.Int
 	OnEvent(addr module.Address, indexed, data [][]byte)
-	OnResult(status uint16, steps *big.Int, result interface{})
-	OnCall(from, to module.Address, value, limit *big.Int, method string, params []byte)
-	OnAPI(obj interface{})
+	OnResult(status uint16, steps *big.Int, result *codec.TypedObj)
+	OnCall(from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj)
+	OnAPI(obj *scoreapi.Info)
 }
 
 type Proxy interface {
-	Invoke(ctx CallContext, code string, isQuery bool, from, to module.Address, value, limit *big.Int, method string, params []byte) error
-	SendResult(ctx CallContext, status uint16, steps *big.Int, result interface{}) error
+	Invoke(ctx CallContext, code string, isQuery bool, from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj) error
+	SendResult(ctx CallContext, status uint16, steps *big.Int, result *codec.TypedObj) error
 	GetAPI(ctx CallContext, code string) error
 	Release()
 }
@@ -79,12 +80,12 @@ type versionMessage struct {
 type invokeMessage struct {
 	Code   string `codec:"code"`
 	IsQry  bool
-	From   common.Address `codec:"from"`
-	To     common.Address `codec:"to"`
-	Value  common.HexInt  `codec:"value"`
-	Limit  common.HexInt  `codec:"limit"`
-	Method string         `codec:"method"`
-	Params []byte         `codec:"params"`
+	From   common.Address  `codec:"from"`
+	To     common.Address  `codec:"to"`
+	Value  common.HexInt   `codec:"value"`
+	Limit  common.HexInt   `codec:"limit"`
+	Method string          `codec:"method"`
+	Params *codec.TypedObj `codec:"params"`
 }
 
 type getValueMessage struct {
@@ -103,7 +104,7 @@ type callMessage struct {
 	Value  common.HexInt
 	Limit  common.HexInt
 	Method string
-	Params []byte
+	Params *codec.TypedObj
 }
 
 type eventMessage struct {
@@ -111,7 +112,7 @@ type eventMessage struct {
 	Data    [][]byte
 }
 
-func (p *proxy) Invoke(ctx CallContext, code string, isQuery bool, from module.Address, to module.Address, value *big.Int, limit *big.Int, method string, params []byte) error {
+func (p *proxy) Invoke(ctx CallContext, code string, isQuery bool, from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj) error {
 	var m invokeMessage
 	m.Code = code
 	m.IsQry = isQuery
@@ -167,15 +168,11 @@ func (p *proxy) Release() {
 	p.lock.Unlock()
 }
 
-func (p *proxy) SendResult(ctx CallContext, status uint16, stepUsed *big.Int, result interface{}) error {
+func (p *proxy) SendResult(ctx CallContext, status uint16, steps *big.Int, result *codec.TypedObj) error {
 	var m resultMessage
 	m.Status = status
-	m.StepUsed.Set(stepUsed)
-	if encoded, err := common.EncodeAny(result); err != nil {
-		return err
-	} else {
-		m.Result = encoded
-	}
+	m.StepUsed.Set(steps)
+	m.Result = result
 	return p.conn.Send(msgRESULT, &m)
 }
 
@@ -209,13 +206,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		p.frame = frame.prev
 		p.lock.Unlock()
 
-		result, err := common.DecodeAny(m.Result)
-		if err != nil {
-			c.Close()
-			return err
-		}
-
-		frame.ctx.OnResult(m.Status, &m.StepUsed.Int, result)
+		frame.ctx.OnResult(m.Status, &m.StepUsed.Int, m.Result)
 
 		p.lock.Lock()
 		if p.frame == nil && !p.reserved {
@@ -295,7 +286,8 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		return p.conn.Send(msgGETBALANCE, &balance)
 
 	case msgGETAPI:
-		if obj, err := common.UnmarshalAny(data); err != nil {
+		var obj *scoreapi.Info
+		if _, err := codec.MP.UnmarshalFromBytes(data, &obj); err != nil {
 			return err
 		} else {
 			p.frame.ctx.OnAPI(obj)

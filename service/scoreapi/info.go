@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/pkg/errors"
 	ugorji "github.com/ugorji/go/codec"
 )
 
@@ -47,6 +48,14 @@ func (info *Info) GetMethod(name string) *Method {
 	} else {
 		return nil
 	}
+}
+
+func (info *Info) ConvertParamsToTypedObj(method string, params []byte) (*codec.TypedObj, error) {
+	m := info.GetMethod(method)
+	if m == nil {
+		return nil, errors.Errorf("NoMethod(name=%s)", method)
+	}
+	return m.ConvertParamsToTypedObj(params)
 }
 
 func (info *Info) ToJSON(v int) (interface{}, error) {

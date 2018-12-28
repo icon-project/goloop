@@ -57,6 +57,63 @@ class TypeTag(object):
     ADDRESS = CUSTOM
 
 
+class APIType(object):
+    FUNCTION = 0
+    FALLBACK = 1
+    EVENT = 2
+
+
+class APIFlag(object):
+    READONLY = 1
+    EXTERNAL = 2
+    PAYABLE = 4
+
+
+class DataType(object):
+    INTEGER = 1
+    STRING = 2
+    BYTES = 3
+    BOOL = 4
+    ADDRESS = 5
+
+
+class APIInfo(object):
+    def __init__(self):
+        self.__values = []
+
+    def add_function(self, name: str, flags: int, inputs: List[Tuple[str, int]], outputs: List[int]):
+        self.__values.append([
+            APIType.FUNCTION,
+            name,
+            flags,
+            0,
+            inputs,
+            outputs,
+        ])
+
+    def add_fallback(self, name: str, flags: int, inputs: List[Tuple[str, int]], outputs: List[int]):
+        self.__values.append([
+            APIType.FALLBACK,
+            name,
+            flags,
+            0,
+            inputs,
+            outputs,
+        ])
+
+    def add_event(self, name: str, flags: int, indexed: int, inputs: List[Tuple[str, int]]):
+        self.__values.append([
+            APIType.EVENT,
+            name,
+            flags,
+            indexed,
+            inputs,
+            [],
+        ])
+
+    def get_data(self):
+        return self.__values
+
 class ServiceManagerProxy:
     def __init__(self):
         self.__client = Client()
@@ -79,7 +136,7 @@ class ServiceManagerProxy:
     def set_invoke_handler(self, invoke: Callable[[str, 'Address', 'Address', int, int, str, Any], None]):
         self.__invoke = invoke
 
-    def set_api_handler(self, api: Callable[[str], Any]):
+    def set_api_handler(self, api: Callable[[str], APIInfo]):
         self.__get_api = api
 
     def set_codec(self, codec: Codec) -> None:
@@ -152,13 +209,13 @@ class ServiceManagerProxy:
 
     def __handle_invoke(self, data):
         code = self.decode(TypeTag.STRING, data[0])
-        is_query = data[2]
+        is_query = data[1]
         _from = self.decode(TypeTag.ADDRESS, data[2])
         _to = self.decode(TypeTag.ADDRESS, data[3])
         value = self.decode(TypeTag.INT, data[4])
         limit = self.decode(TypeTag.INT, data[5])
         method = self.decode(TypeTag.STRING, data[6])
-        params = data[7]
+        params = self.decode_any(data[7])
 
         try:
             self.__readonly_stack.append(self.__readonly)
@@ -183,11 +240,12 @@ class ServiceManagerProxy:
     def __handle_get_api(self, data):
         try:
             obj = self.__get_api(str(data))
-            self.__client.send(Message.GETAPI, self.encode_any(obj))
+            if isinstance(obj, APIInfo):
+                self.__client.send(Message.GETAPI, obj.get_data())
+            else:
+                self.__client.send(Message.GETAPI, [])
         except:
-            self.__client.send(Message.GETAPI, [
-                self.encode_any(None)
-            ])
+            self.__client.send(Message.GETAPI, [])
 
     def loop(self):
         while True:
@@ -199,11 +257,11 @@ class ServiceManagerProxy:
 
     def call(self, to: 'Address', value: int,
              step_limit: int, method: str,
-             params: bytes) -> Tuple[int, int, Any]:
+             params: Any) -> Tuple[int, int, Any]:
 
         self.__client.send(Message.CALL, [
             self.encode(to), self.encode(value), self.encode(step_limit),
-            self.encode(method), params,
+            self.encode(method), self.encode_any(params),
         ])
 
         while True:

@@ -10,9 +10,10 @@ import (
 	"strings"
 
 	"github.com/icon-project/goloop/common"
-	"github.com/pkg/errors"
-
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoreapi"
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -263,15 +264,15 @@ func (h *callGetAPIHandler) DeleteValue(key []byte) error {
 	return errors.New("Invalid DeleteValue() call")
 }
 
-func (h *callGetAPIHandler) OnResult(status uint16, steps *big.Int, result interface{}) {
+func (h *callGetAPIHandler) OnResult(status uint16, steps *big.Int, result *codec.TypedObj) {
 	log.Panicln("Unexpected call OnResult() from GetAPI()")
 }
 
-func (h *callGetAPIHandler) OnCall(from, to module.Address, value, limit *big.Int, method string, params []byte) {
+func (h *callGetAPIHandler) OnCall(from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj) {
 	log.Panicln("Unexpected call OnCall() from GetAPI()")
 }
 
-func (h *callGetAPIHandler) OnAPI(obj interface{}) {
+func (h *callGetAPIHandler) OnAPI(info *scoreapi.Info) {
 	// TODO implement after deciding how to store
 	panic("implement me")
 }

@@ -5,18 +5,17 @@ import (
 	"log"
 	"math/big"
 
-	"github.com/icon-project/goloop/common/merkle"
-
-	"github.com/icon-project/goloop/module"
-	"golang.org/x/crypto/sha3"
-
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
+	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoreapi"
 	"github.com/pkg/errors"
 	ugorji "github.com/ugorji/go/codec"
+	"golang.org/x/crypto/sha3"
 )
 
 const (
@@ -36,7 +35,7 @@ type AccountSnapshot interface {
 	StorageChangedAfter(snapshot AccountSnapshot) bool
 
 	IsContractOwner(owner module.Address) bool
-	APIInfo() []byte
+	APIInfo() *scoreapi.Info
 	Contract() ContractSnapshot
 	ActiveContract() ContractSnapshot
 	NextContract() ContractSnapshot
@@ -63,8 +62,8 @@ type AccountState interface {
 	InitContractAccount(address module.Address)
 	DeployContract(code []byte, eeType string, contentType string,
 		params []byte, txHash []byte)
-	APIInfo() []byte
-	SetAPIInfo([]byte)
+	APIInfo() *scoreapi.Info
+	SetAPIInfo(*scoreapi.Info)
 	AcceptContract(codeHash []byte, auditTxHash []byte) error
 	RejectContract(codeHash []byte, auditTxHash []byte) error
 	Contract() Contract
@@ -84,7 +83,7 @@ type accountSnapshotImpl struct {
 	database    db.Database
 
 	contractOwner *common.Address
-	apiInfo       []byte
+	apiInfo       *scoreapi.Info
 	curContract   *contractSnapshotImpl
 	nextContract  *contractSnapshotImpl
 }
@@ -255,7 +254,7 @@ func (s *accountSnapshotImpl) IsContractOwner(owner module.Address) bool {
 	return s.contractOwner.Equal(owner)
 }
 
-func (s *accountSnapshotImpl) APIInfo() []byte {
+func (s *accountSnapshotImpl) APIInfo() *scoreapi.Info {
 	return s.apiInfo
 }
 
@@ -304,7 +303,7 @@ type accountStateImpl struct {
 	isContract bool
 
 	contractOwner module.Address
-	apiInfo       []byte // API Function Info
+	apiInfo       *scoreapi.Info
 	curContract   *contractImpl
 	nextContract  *contractImpl
 	store         trie.Mutable
@@ -423,11 +422,11 @@ func (s *accountStateImpl) RejectContract(
 	return nil
 }
 
-func (s *accountStateImpl) APIInfo() []byte {
+func (s *accountStateImpl) APIInfo() *scoreapi.Info {
 	return s.apiInfo
 }
 
-func (s *accountStateImpl) SetAPIInfo(apiInfo []byte) {
+func (s *accountStateImpl) SetAPIInfo(apiInfo *scoreapi.Info) {
 	s.apiInfo = apiInfo
 }
 
@@ -613,7 +612,7 @@ func (a *accountROState) Reset(snapshot AccountSnapshot) error {
 	return errors.New("ReadOnlyState")
 }
 
-func (a *accountROState) SetAPIInfo([]byte) {
+func (a *accountROState) SetAPIInfo(*scoreapi.Info) {
 	log.Panicf("accountROState().SetApiInfo() is invoked")
 }
 
