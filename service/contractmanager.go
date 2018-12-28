@@ -50,31 +50,23 @@ func (cm *contractManager) GetHandler(cc CallContext,
 	var handler ContractHandler
 	switch ctype {
 	case ctypeTransfer:
-		handler = &TransferHandler{
-			from:      from,
-			to:        to,
-			value:     value,
-			stepLimit: stepLimit,
-		}
+		handler = newTransferHandler(from, to, value, stepLimit)
 	case ctypeCall:
-		handler = newCallHandler(from, to, value, stepLimit, data, cc)
+		handler = newCallHandler(newCommonHandler(from, to, value, stepLimit), data, cc)
 	case ctypeGovCall:
 		handler = &GovCallHandler{
-			newCallHandler(from, to, value, stepLimit, data, cc),
+			newCallHandler(newCommonHandler(from, to, value, stepLimit), data, cc),
 		}
 	case ctypeTransferAndMessage:
 		handler = &TransferAndMessageHandler{
-			TransferHandler: &TransferHandler{
-				from:      from,
-				to:        to,
-				value:     value,
-				stepLimit: stepLimit,
-			},
-			data: data,
+			TransferHandler: newTransferHandler(from, to, value, stepLimit),
+			data:            data,
 		}
 	case ctypeTransferAndCall:
+		th := newTransferHandler(from, to, value, stepLimit)
 		handler = &TransferAndCallHandler{
-			newCallHandler(from, to, value, stepLimit, data, cc),
+			th:          th,
+			CallHandler: newCallHandler(th.CommonHandler, data, cc),
 		}
 	case ctypeTransferAndDeploy:
 		handler = newDeployHandler(from, to, value, stepLimit, data, cc, false)

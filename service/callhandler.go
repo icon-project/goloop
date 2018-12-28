@@ -19,9 +19,7 @@ type dataCallJSON struct {
 }
 
 type CallHandler struct {
-	// Don't embed TransferHandler because it should not be an instance of
-	// SyncContractHandler.
-	th *TransferHandler
+	*CommonHandler
 
 	method string
 	params []byte
@@ -35,8 +33,7 @@ type CallHandler struct {
 }
 
 // TODO data is not always JSON string, so consider it
-func newCallHandler(from, to module.Address, value, stepLimit *big.Int,
-	data []byte, cc CallContext,
+func newCallHandler(ch *CommonHandler, data []byte, cc CallContext,
 ) *CallHandler {
 	var jso dataCallJSON
 	if err := json.Unmarshal(data, &jso); err != nil {
@@ -44,15 +41,11 @@ func newCallHandler(from, to module.Address, value, stepLimit *big.Int,
 		return nil
 	}
 	return &CallHandler{
-		th:     &TransferHandler{from: from, to: to, value: value, stepLimit: stepLimit},
-		method: jso.Method,
-		params: jso.Params,
-		cc:     cc,
+		CommonHandler: ch,
+		method:        jso.Method,
+		params:        jso.Params,
+		cc:            cc,
 	}
-}
-
-func (h *CallHandler) StepLimit() *big.Int {
-	return h.th.stepLimit
 }
 
 func (h *CallHandler) Prepare(wc WorldContext) (WorldContext, error) {
@@ -67,7 +60,7 @@ func (h *CallHandler) Prepare(wc WorldContext) (WorldContext, error) {
 }
 
 func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
-	h.as = wc.GetAccountState(h.th.to.ID())
+	h.as = wc.GetAccountState(h.to.ID())
 
 	h.cm = wc.ContractManager()
 	h.conn = h.cc.GetConnection(h.EEType())
@@ -90,8 +83,8 @@ func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 		if err != nil {
 			return err
 		}
-		err = h.conn.Invoke(h, r.path, false, h.th.from, h.th.to,
-			h.th.value, h.th.stepLimit, h.method, paramObj)
+		err = h.conn.Invoke(h, r.path, false, h.from, h.to,
+			h.value, h.stepLimit, h.method, paramObj)
 		return err
 	default:
 		go func() {
@@ -100,13 +93,13 @@ func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 				if r.err == nil {
 					info := h.as.APIInfo()
 					if paramObj, err := info.ConvertParamsToTypedObj(h.method, h.params); err == nil {
-						if err = h.conn.Invoke(h, r.path, false, h.th.from, h.th.to,
-							h.th.value, h.th.stepLimit, h.method, paramObj); err == nil {
+						if err = h.conn.Invoke(h, r.path, false, h.from, h.to,
+							h.value, h.stepLimit, h.method, paramObj); err == nil {
 							return
 						}
 					}
 				}
-				h.OnResult(module.StatusSystemError, h.th.stepLimit, nil)
+				h.OnResult(module.StatusSystemError, h.stepLimit, nil)
 			}
 		}()
 	}
@@ -133,7 +126,7 @@ func (h *CallHandler) GetValue(key []byte) ([]byte, error) {
 	if h.as != nil {
 		return h.as.GetValue(key)
 	} else {
-		return nil, errors.New("GetValue: No Account(" + h.th.to.String() + ") exists")
+		return nil, errors.New("GetValue: No Account(" + h.to.String() + ") exists")
 	}
 }
 
@@ -141,7 +134,7 @@ func (h *CallHandler) SetValue(key, value []byte) error {
 	if h.as != nil {
 		return h.as.SetValue(key, value)
 	} else {
-		return errors.New("SetValue: No Account(" + h.th.to.String() + ") exists")
+		return errors.New("SetValue: No Account(" + h.to.String() + ") exists")
 	}
 }
 
@@ -149,7 +142,7 @@ func (h *CallHandler) DeleteValue(key []byte) error {
 	if h.as != nil {
 		return h.as.DeleteValue(key)
 	} else {
-		return errors.New("DeleteValue: No Account(" + h.th.to.String() + ") exists")
+		return errors.New("DeleteValue: No Account(" + h.to.String() + ") exists")
 	}
 }
 
@@ -183,7 +176,7 @@ func (h *CallHandler) OnCall(from, to module.Address, value,
 		log.Println("Invalid call:", from, to, value, method)
 
 		if conn := h.cc.GetConnection(h.EEType()); conn != nil {
-			conn.SendResult(h, uint16(module.StatusSystemError), h.th.stepLimit, nil)
+			conn.SendResult(h, uint16(module.StatusSystemError), h.stepLimit, nil)
 		} else {
 			// It can't be happened
 			log.Println("FAIL to get connection of (", h.EEType(), ")")
@@ -212,6 +205,7 @@ func (h *CallHandler) OnAPI(info *scoreapi.Info) {
 }
 
 type TransferAndCallHandler struct {
+	th *TransferHandler
 	*CallHandler
 }
 

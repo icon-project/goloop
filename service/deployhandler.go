@@ -18,7 +18,7 @@ import (
 )
 
 type DeployHandler struct {
-	*TransferHandler
+	*CommonHandler
 	cc          CallContext
 	eeType      string
 	content     string
@@ -44,11 +44,10 @@ func newDeployHandler(from, to module.Address, value, stepLimit *big.Int,
 	}
 	// TODO set db
 	return &DeployHandler{
-		TransferHandler: &TransferHandler{from: from,
-			to: to, value: value, stepLimit: stepLimit},
-		cc:          cc,
-		content:     dataJSON.content,
-		contentType: dataJSON.contentType,
+		CommonHandler: newCommonHandler(from, to, value, stepLimit),
+		cc:            cc,
+		content:       dataJSON.content,
+		contentType:   dataJSON.contentType,
 
 		params: dataJSON.params,
 	}
@@ -177,7 +176,7 @@ func (h *AcceptHandler) ExecuteSync(wc WorldContext,
 	}
 
 	// GET API
-	cgah := &callGetAPIHandler{newCallHandler(h.from, h.to, nil, stepAvail, nil, h.cc)}
+	cgah := &callGetAPIHandler{newCallHandler(newCommonHandler(h.from, h.to, nil, stepAvail), nil, h.cc)}
 	status, stepUsed1, _, _ := h.cc.Call(cgah)
 	if status != module.StatusSuccess {
 		return status, h.stepLimit, nil, nil
@@ -264,7 +263,7 @@ func (h *callGetAPIHandler) ExecuteAsync(wc WorldContext) error {
 						return
 					}
 				}
-				h.OnResult(module.StatusSystemError, h.th.stepLimit, nil)
+				h.OnResult(module.StatusSystemError, h.stepLimit, nil)
 			}
 		}()
 	}

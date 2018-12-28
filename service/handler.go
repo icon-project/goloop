@@ -52,3 +52,24 @@ type (
 		eeproxy.CallContext
 	}
 )
+
+type CommonHandler struct {
+	from, to         module.Address
+	value, stepLimit *big.Int
+}
+
+func newCommonHandler(from, to module.Address, value, stepLimit *big.Int) *CommonHandler {
+	return &CommonHandler{from: from, to: to, value: value, stepLimit: stepLimit}
+}
+
+func (h *CommonHandler) StepLimit() *big.Int {
+	return h.stepLimit
+}
+
+func (h *CommonHandler) Prepare(wc WorldContext) (WorldContext, error) {
+	lq := []LockRequest{
+		{string(h.from.ID()), AccountWriteLock},
+		{string(h.to.ID()), AccountWriteLock},
+	}
+	return wc.WorldStateChanged(wc.WorldVirtualState().GetFuture(lq)), nil
+}

@@ -34,20 +34,13 @@ func executeTransfer(wc WorldContext, from, to module.Address,
 }
 
 type TransferHandler struct {
-	from, to         module.Address
-	value, stepLimit *big.Int
+	*CommonHandler
 }
 
-func (h *TransferHandler) StepLimit() *big.Int {
-	return h.stepLimit
-}
-
-func (h *TransferHandler) Prepare(wc WorldContext) (WorldContext, error) {
-	lq := []LockRequest{
-		{string(h.from.ID()), AccountWriteLock},
-		{string(h.to.ID()), AccountWriteLock},
+func newTransferHandler(from, to module.Address, value, stepLimit *big.Int) *TransferHandler {
+	return &TransferHandler{
+		&CommonHandler{from: from, to: to, value: value, stepLimit: stepLimit},
 	}
-	return wc.WorldStateChanged(wc.WorldVirtualState().GetFuture(lq)), nil
 }
 
 func (h *TransferHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int, []byte, module.Address) {

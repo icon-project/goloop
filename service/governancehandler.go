@@ -10,7 +10,7 @@ type GovCallHandler struct {
 }
 
 func (h *GovCallHandler) ExecuteAsync(wc WorldContext) error {
-	h.as = wc.GetAccountState(h.th.to.ID())
+	h.as = wc.GetAccountState(h.to.ID())
 
 	h.cm = wc.ContractManager()
 	h.conn = h.cc.GetConnection(h.EEType())
@@ -34,8 +34,8 @@ func (h *GovCallHandler) ExecuteAsync(wc WorldContext) error {
 		if err != nil {
 			return err
 		}
-		err = h.conn.Invoke(h, r.path, false, h.th.from, h.th.to,
-			h.th.value, h.th.stepLimit, h.method, paramObj)
+		err = h.conn.Invoke(h, r.path, false, h.from, h.to,
+			h.value, h.stepLimit, h.method, paramObj)
 		return err
 	default:
 		go func() {
@@ -44,12 +44,12 @@ func (h *GovCallHandler) ExecuteAsync(wc WorldContext) error {
 				if r.err == nil {
 					info := h.as.APIInfo()
 					if paramObj, err := info.ConvertParamsToTypedObj(h.method, h.params); err == nil {
-						if err = h.conn.Invoke(h, r.path, false, h.th.from, h.th.to, h.th.value, h.th.stepLimit, h.method, paramObj); err == nil {
+						if err = h.conn.Invoke(h, r.path, false, h.from, h.to, h.value, h.stepLimit, h.method, paramObj); err == nil {
 							return
 						}
 					}
 				}
-				h.OnResult(module.StatusSystemError, h.th.stepLimit, nil)
+				h.OnResult(module.StatusSystemError, h.stepLimit, nil)
 			}
 		}()
 	}
