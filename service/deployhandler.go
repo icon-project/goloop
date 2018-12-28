@@ -227,28 +227,47 @@ type callGetAPIHandler struct {
 
 // It's never called
 func (h *callGetAPIHandler) Prepare(wc WorldContext) (WorldContext, error) {
-	h.csp.prepare(wc, h.as.NextContract())
+	c := h.as.NextContract()
+	if c == nil {
+		return nil, errors.New("No pending contract")
+	}
+	wc.ContractManager().PrepareContractStore(wc, c)
+
 	return wc.WorldStateChanged(wc.WorldVirtualState().GetFuture(nil)), nil
 }
 
 func (h *callGetAPIHandler) ExecuteAsync(wc WorldContext) error {
-	// TODO check which contract it should use, current or next?
 	h.cm = wc.ContractManager()
 	h.conn = h.cc.GetConnection(h.EEType())
 	if h.conn == nil {
 		return errors.New("FAIL to get connection of (" + h.EEType() + ")")
 	}
 
-	path, err := h.csp.check(wc, h.as.NextContract())
-	if err != nil {
-		return err
+	c := h.as.NextContract()
+	if c == nil {
+		return errors.New("No active contract")
 	}
-
-	err = h.conn.GetAPI(h, path)
-	if err != nil {
+	ch := wc.ContractManager().PrepareContractStore(wc, c)
+	select {
+	case r := <-ch:
+		if r.err != nil {
+			return r.err
+		}
+		err := h.conn.GetAPI(h, r.path)
 		return err
+	default:
+		go func() {
+			select {
+			case r := <-ch:
+				if r.err == nil {
+					if err := h.conn.GetAPI(h, r.path); err == nil {
+						return
+					}
+				}
+				h.OnResult(module.StatusSystemError, h.th.stepLimit, nil)
+			}
+		}()
 	}
-
 	return nil
 }
 
@@ -274,5 +293,7 @@ func (h *callGetAPIHandler) OnCall(from, to module.Address, value, limit *big.In
 
 func (h *callGetAPIHandler) OnAPI(info *scoreapi.Info) {
 	// TODO implement after deciding how to store
+	// TODO call back to call context:w
+
 	panic("implement me")
 }

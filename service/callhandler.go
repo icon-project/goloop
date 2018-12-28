@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"math/big"
-	"sync"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -15,8 +14,8 @@ import (
 )
 
 type dataCallJSON struct {
-	method string          `json:"method"`
-	params json.RawMessage `json:"params"`
+	Method string          `json:"method"`
+	Params json.RawMessage `json:"params"`
 }
 
 type CallHandler struct {
@@ -27,8 +26,7 @@ type CallHandler struct {
 	method string
 	params []byte
 
-	cc  CallContext
-	csp *contractStoreProxy
+	cc CallContext
 
 	// set in ExecuteAsync()
 	as   AccountState
@@ -47,10 +45,9 @@ func newCallHandler(from, to module.Address, value, stepLimit *big.Int,
 	}
 	return &CallHandler{
 		th:     &TransferHandler{from: from, to: to, value: value, stepLimit: stepLimit},
-		method: jso.method,
-		params: jso.params,
+		method: jso.Method,
+		params: jso.Params,
 		cc:     cc,
-		csp:    newContractStoreProxy(),
 	}
 }
 
@@ -59,14 +56,17 @@ func (h *CallHandler) StepLimit() *big.Int {
 }
 
 func (h *CallHandler) Prepare(wc WorldContext) (WorldContext, error) {
-	h.csp.prepare(wc, h.as.ActiveContract())
+	c := h.as.ActiveContract()
+	if c == nil {
+		return nil, errors.New("No active contract")
+	}
+	wc.ContractManager().PrepareContractStore(wc, c)
 
 	lq := []LockRequest{{"", AccountWriteLock}}
 	return wc.WorldStateChanged(wc.WorldVirtualState().GetFuture(lq)), nil
 }
 
 func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
-	// TODO check if contract is active
 	h.as = wc.GetAccountState(h.th.to.ID())
 
 	h.cm = wc.ContractManager()
@@ -75,23 +75,41 @@ func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 		return errors.New("FAIL to get connection of (" + h.EEType() + ")")
 	}
 
-	path, err := h.csp.check(wc, h.as.ActiveContract())
-	if err != nil {
-		return err
+	c := h.as.ActiveContract()
+	if c == nil {
+		return errors.New("No active contract")
 	}
-
-	info := h.as.APIInfo()
-	params, err := info.ConvertParamsToTypedObj(h.method, h.params)
-	if err != nil {
+	ch := wc.ContractManager().PrepareContractStore(wc, c)
+	select {
+	case r := <-ch:
+		if r.err != nil {
+			return r.err
+		}
+		info := h.as.APIInfo()
+		paramObj, err := info.ConvertParamsToTypedObj(h.method, h.params)
+		if err != nil {
+			return err
+		}
+		err = h.conn.Invoke(h, r.path, false, h.th.from, h.th.to,
+			h.th.value, h.th.stepLimit, h.method, paramObj)
 		return err
+	default:
+		go func() {
+			select {
+			case r := <-ch:
+				if r.err == nil {
+					info := h.as.APIInfo()
+					if paramObj, err := info.ConvertParamsToTypedObj(h.method, h.params); err == nil {
+						if err = h.conn.Invoke(h, r.path, false, h.th.from, h.th.to,
+							h.th.value, h.th.stepLimit, h.method, paramObj); err == nil {
+							return
+						}
+					}
+				}
+				h.OnResult(module.StatusSystemError, h.th.stepLimit, nil)
+			}
+		}()
 	}
-
-	err = h.conn.Invoke(h, path, false, h.th.from, h.th.to, h.th.value,
-		h.th.stepLimit, h.method, params)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -180,7 +198,7 @@ func (h *CallHandler) OnCall(from, to module.Address, value,
 		log.Panicf("Fail to marshal object to JSON err=%+v", err)
 	}
 
-	jso := dataCallJSON{method: method, params: paramBytes}
+	jso := dataCallJSON{Method: method, Params: paramBytes}
 	data, err := json.Marshal(jso)
 	if err != nil {
 		log.Panicln("Wrong params: FAIL to create data JSON string")
@@ -215,56 +233,4 @@ func (h *TransferAndCallHandler) ExecuteAsync(wc WorldContext) error {
 
 		return nil
 	}
-}
-
-type contractStoreProxy struct {
-	contract Contract
-	started  bool
-	path     string
-	err      error
-	cv       *sync.Cond
-}
-
-func newContractStoreProxy() *contractStoreProxy {
-	return &contractStoreProxy{cv: sync.NewCond(new(sync.Mutex))}
-}
-
-func (p *contractStoreProxy) prepare(wc WorldContext, contract Contract) {
-	p.cv.L.Lock()
-	if contract != nil && contract.Equal(p.contract) {
-		// avoid to call PrepareContractStore() more than once for same contract
-		return
-	}
-	p.cv.L.Unlock()
-
-	if contract == nil {
-		p.cv.L.Lock()
-		p.err = errors.New("No contract exists")
-		p.cv.L.Unlock()
-		return
-	}
-
-	p.contract = contract
-	wc.ContractManager().PrepareContractStore(wc, contract)
-}
-
-func (p *contractStoreProxy) check(wc WorldContext, contract Contract) (string, error) {
-	p.cv.L.Lock()
-	defer p.cv.L.Unlock()
-
-	if contract != nil && contract.Equal(p.contract) && (p.err != nil || p.path != "") {
-		return p.path, p.err
-	}
-
-	p.prepare(wc, contract)
-	p.cv.Wait()
-	return p.path, p.err
-}
-
-func (p *contractStoreProxy) onStoreCompleted(path string, err error) {
-	p.cv.L.Lock()
-	p.path = path
-	p.err = err
-	p.cv.Broadcast()
-	p.cv.L.Unlock()
 }

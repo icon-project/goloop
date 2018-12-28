@@ -54,8 +54,10 @@ type callContext struct {
 func newCallContext(receipt Receipt) CallContext {
 	return &callContext{
 		receipt: receipt,
-		waiter:  make(chan interface{}),
-		conns:   make(map[string]eeproxy.Proxy),
+		// 0-buffered channel is fine, but it sets some number just in case of
+		// EE unexpectedly sends messages up to 8.
+		waiter: make(chan interface{}, 8),
+		conns:  make(map[string]eeproxy.Proxy),
 	}
 }
 
@@ -99,6 +101,7 @@ func (cc *callContext) Call(handler ContractHandler) (module.Status, *big.Int,
 	}
 }
 
+// TODO check when disposed
 func (cc *callContext) waitResult(stepLimit *big.Int) (
 	module.Status, *big.Int, interface{}, module.Address,
 ) {
@@ -113,44 +116,41 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (
 				cc.stack.Remove(e)
 			}
 			cc.lock.Unlock()
-			close(cc.waiter)
 			return module.StatusTimeout, stepLimit, nil, nil
-		case msg, ok := <-cc.waiter:
-			if ok {
-				switch msg := msg.(type) {
-				case *callResultMessage:
-					if cc.handleResult(module.Status(msg.status), msg.stepUsed, msg.result, msg.addr) {
+		case msg := <-cc.waiter:
+			switch msg := msg.(type) {
+			case *callResultMessage:
+				if cc.handleResult(module.Status(msg.status), msg.stepUsed,
+					msg.result, msg.addr) {
+					continue
+				}
+				return module.Status(msg.status), msg.stepUsed, msg.result, nil
+			case *callRequestMessage:
+				switch handler := msg.handler.(type) {
+				case SyncContractHandler:
+					cc.lock.Lock()
+					cc.stack.PushBack(handler)
+					cc.lock.Unlock()
+					status, used, result, addr := handler.ExecuteSync(cc.wc)
+					if cc.handleResult(status, used, result, addr) {
 						continue
 					}
-					return module.Status(msg.status), msg.stepUsed, msg.result, nil
-				case *callRequestMessage:
-					switch handler := msg.handler.(type) {
-					case SyncContractHandler:
-						cc.lock.Lock()
-						cc.stack.PushBack(handler)
-						cc.lock.Unlock()
-						status, used, result, addr := handler.ExecuteSync(cc.wc)
-						if cc.handleResult(status, used, result, addr) {
+					return status, used, result, addr
+				case AsyncContractHandler:
+					cc.lock.Lock()
+					cc.stack.PushBack(handler)
+					cc.lock.Unlock()
+
+					if err := handler.ExecuteAsync(cc.wc); err != nil {
+						if cc.handleResult(module.StatusSystemError,
+							handler.StepLimit(), nil, nil) {
 							continue
 						}
-						return status, used, result, addr
-					case AsyncContractHandler:
-						cc.lock.Lock()
-						cc.stack.PushBack(handler)
-						cc.lock.Unlock()
-
-						if err := handler.ExecuteAsync(cc.wc); err != nil {
-							if cc.handleResult(module.StatusSystemError, handler.StepLimit(), nil, nil) {
-								continue
-							}
-							return module.StatusSystemError, handler.StepLimit(), nil, nil
-						}
+						return module.StatusSystemError, handler.StepLimit(), nil, nil
 					}
-				default:
-					log.Printf("Invalid message=%[1]T %[1]+v", msg)
 				}
-			} else {
-				return module.StatusTimeout, stepLimit, nil, nil
+			default:
+				log.Printf("Invalid message=%[1]T %[1]+v", msg)
 			}
 		}
 	}
