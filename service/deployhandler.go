@@ -176,7 +176,7 @@ func (h *AcceptHandler) ExecuteSync(wc WorldContext,
 	}
 
 	// GET API
-	cgah := &callGetAPIHandler{newCallHandler(newCommonHandler(h.from, h.to, nil, stepAvail), nil, h.cc)}
+	cgah := &callGetAPIHandler{newCallHandler(newCommonHandler(h.from, h.to, nil, stepAvail), nil, h.cc, false)}
 	status, stepUsed1, _, _ := h.cc.Call(cgah)
 	if status != module.StatusSuccess {
 		return status, h.stepLimit, nil, nil
@@ -196,21 +196,20 @@ func (h *AcceptHandler) ExecuteSync(wc WorldContext,
 	} else {
 		method = "on_update"
 	}
-	// TODO check the type of params
-	dataJson := map[string]interface{}{
-		"method": method, //on_install, on_update
-		"params": as.NextContract().Params(),
+	info := as.APIInfo()
+	if info == nil {
+		return module.StatusSystemError, h.stepLimit, nil, nil
 	}
-	data, err := json.Marshal(dataJson)
+	paramObj, err := info.ConvertParamsToTypedObj(method, as.NextContract().Params())
 	if err != nil {
 		return module.StatusSystemError, h.stepLimit, nil, nil
 	}
+	handler := newCallHandlerFromTypedObj(
+		newCommonHandler(h.from, common.NewContractAddress(addr), nil, stepAvail),
+		method, paramObj, h.cc, true)
 
 	// state -> active if failed to on_install, set inactive
 	// on_install or on_update
-	handler := wc.ContractManager().GetHandler(h.cc, h.from,
-		common.NewContractAddress(addr), nil, stepAvail,
-		ctypeCall, data)
 	status, stepUsed2, _, _ := h.cc.Call(handler)
 	if err = as.AcceptContract(h.txHash, h.auditTxHash); err != nil {
 		return module.StatusSystemError, h.stepLimit, nil, nil
@@ -291,8 +290,6 @@ func (h *callGetAPIHandler) OnCall(from, to module.Address, value, limit *big.In
 }
 
 func (h *callGetAPIHandler) OnAPI(info *scoreapi.Info) {
-	// TODO implement after deciding how to store
-	// TODO call back to call context:w
-
-	panic("implement me")
+	h.as.SetAPIInfo(info)
+	h.cc.OnResult(module.StatusSuccess, new(big.Int), nil, nil)
 }

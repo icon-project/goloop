@@ -23,8 +23,11 @@ type CallHandler struct {
 
 	method string
 	params []byte
+	// nil paramObj means it needs to convert params to *codec.TypedObj.
+	paramObj *codec.TypedObj
 
-	cc CallContext
+	cc        CallContext
+	forDeploy bool
 
 	// set in ExecuteAsync()
 	as   AccountState
@@ -32,8 +35,7 @@ type CallHandler struct {
 	conn eeproxy.Proxy
 }
 
-// TODO data is not always JSON string, so consider it
-func newCallHandler(ch *CommonHandler, data []byte, cc CallContext,
+func newCallHandler(ch *CommonHandler, data []byte, cc CallContext, forDeploy bool,
 ) *CallHandler {
 	var jso dataCallJSON
 	if err := json.Unmarshal(data, &jso); err != nil {
@@ -45,11 +47,28 @@ func newCallHandler(ch *CommonHandler, data []byte, cc CallContext,
 		method:        jso.Method,
 		params:        jso.Params,
 		cc:            cc,
+		forDeploy:     forDeploy,
+	}
+}
+
+func newCallHandlerFromTypedObj(ch *CommonHandler, method string,
+	paramObj *codec.TypedObj, cc CallContext, forDeploy bool,
+) *CallHandler {
+	return &CallHandler{
+		CommonHandler: ch,
+		method:        method,
+		paramObj:      paramObj,
+		cc:            cc,
+		forDeploy:     forDeploy,
 	}
 }
 
 func (h *CallHandler) Prepare(wc WorldContext) (WorldContext, error) {
-	c := h.as.ActiveContract()
+	as := wc.GetAccountState(h.to.ID())
+	if as == nil {
+		return nil, errors.New("No contract account")
+	}
+	c := as.ActiveContract()
 	if c == nil {
 		return nil, errors.New("No active contract")
 	}
@@ -61,6 +80,9 @@ func (h *CallHandler) Prepare(wc WorldContext) (WorldContext, error) {
 
 func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 	h.as = wc.GetAccountState(h.to.ID())
+	if h.as == nil {
+		return errors.New("No contract account")
+	}
 
 	h.cm = wc.ContractManager()
 	h.conn = h.cc.GetConnection(h.EEType())
@@ -78,23 +100,21 @@ func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 		if r.err != nil {
 			return r.err
 		}
-		info := h.as.APIInfo()
-		paramObj, err := info.ConvertParamsToTypedObj(h.method, h.params)
-		if err != nil {
-			return err
+		var err error
+		if err = h.ensureParamObj(); err == nil {
+			err = h.conn.Invoke(h, r.path, false, h.from, h.to,
+				h.value, h.stepLimit, h.method, h.paramObj)
 		}
-		err = h.conn.Invoke(h, r.path, false, h.from, h.to,
-			h.value, h.stepLimit, h.method, paramObj)
 		return err
 	default:
 		go func() {
 			select {
 			case r := <-ch:
 				if r.err == nil {
-					info := h.as.APIInfo()
-					if paramObj, err := info.ConvertParamsToTypedObj(h.method, h.params); err == nil {
+					var err error
+					if err = h.ensureParamObj(); err == nil {
 						if err = h.conn.Invoke(h, r.path, false, h.from, h.to,
-							h.value, h.stepLimit, h.method, paramObj); err == nil {
+							h.value, h.stepLimit, h.method, h.paramObj); err == nil {
 							return
 						}
 					}
@@ -104,6 +124,20 @@ func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 		}()
 	}
 	return nil
+}
+
+func (h *CallHandler) ensureParamObj() error {
+	if h.paramObj != nil {
+		return nil
+	}
+	info := h.as.APIInfo()
+	if info == nil {
+		return errors.New("No API Info in " + h.to.String())
+	}
+
+	var err error
+	h.paramObj, err = info.ConvertParamsToTypedObj(h.method, h.params)
+	return err
 }
 
 func (h *CallHandler) SendResult(status module.Status, steps *big.Int, result *codec.TypedObj) error {
@@ -118,8 +152,12 @@ func (h *CallHandler) Cancel() {
 }
 
 func (h *CallHandler) EEType() string {
-	// TODO resolve it at run time
-	return "python"
+	c := h.as.ActiveContract()
+	if c == nil {
+		log.Println("No active contract exists")
+		return ""
+	}
+	return c.EEType()
 }
 
 func (h *CallHandler) GetValue(key []byte) ([]byte, error) {
@@ -165,39 +203,7 @@ func (h *CallHandler) OnResult(status uint16, steps *big.Int, result *codec.Type
 func (h *CallHandler) OnCall(from, to module.Address, value,
 	limit *big.Int, method string, params *codec.TypedObj,
 ) {
-	ctype := ctypeNone
-	if method != "" {
-		ctype |= ctypeCall
-	}
-	if value.Sign() == 1 { // value >= 0
-		ctype |= ctypeTransfer
-	}
-	if ctype == ctypeNone {
-		log.Println("Invalid call:", from, to, value, method)
-
-		if conn := h.cc.GetConnection(h.EEType()); conn != nil {
-			conn.SendResult(h, uint16(module.StatusSystemError), h.stepLimit, nil)
-		} else {
-			// It can't be happened
-			log.Println("FAIL to get connection of (", h.EEType(), ")")
-		}
-		return
-	}
-
-	// TODO need to prepare shortcut to make contract handler with
-	//  *codec.TypedObj
-	paramBytes, err := json.Marshal(common.MustDecodeAny(params))
-	if err != nil {
-		log.Panicf("Fail to marshal object to JSON err=%+v", err)
-	}
-
-	jso := dataCallJSON{Method: method, Params: paramBytes}
-	data, err := json.Marshal(jso)
-	if err != nil {
-		log.Panicln("Wrong params: FAIL to create data JSON string")
-	}
-	handler := h.cm.GetHandler(h.cc, from, to, value, limit, ctype, data)
-	h.cc.OnCall(handler)
+	h.cc.OnCall(h.cm.GetCallHandler(h.cc, from, to, value, limit, method, params))
 }
 
 func (h *CallHandler) OnAPI(info *scoreapi.Info) {

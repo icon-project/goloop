@@ -10,6 +10,8 @@ import (
 	"os"
 	"sync"
 
+	"github.com/icon-project/goloop/common/codec"
+
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
@@ -52,10 +54,10 @@ func (cm *contractManager) GetHandler(cc CallContext,
 	case ctypeTransfer:
 		handler = newTransferHandler(from, to, value, stepLimit)
 	case ctypeCall:
-		handler = newCallHandler(newCommonHandler(from, to, value, stepLimit), data, cc)
+		handler = newCallHandler(newCommonHandler(from, to, value, stepLimit), data, cc, false)
 	case ctypeGovCall:
 		handler = &GovCallHandler{
-			newCallHandler(newCommonHandler(from, to, value, stepLimit), data, cc),
+			newCallHandler(newCommonHandler(from, to, value, stepLimit), data, cc, false),
 		}
 	case ctypeTransferAndMessage:
 		handler = &TransferAndMessageHandler{
@@ -66,12 +68,28 @@ func (cm *contractManager) GetHandler(cc CallContext,
 		th := newTransferHandler(from, to, value, stepLimit)
 		handler = &TransferAndCallHandler{
 			th:          th,
-			CallHandler: newCallHandler(th.CommonHandler, data, cc),
+			CallHandler: newCallHandler(th.CommonHandler, data, cc, false),
 		}
 	case ctypeTransferAndDeploy:
 		handler = newDeployHandler(from, to, value, stepLimit, data, cc, false)
 	}
 	return handler
+}
+
+func (cm *contractManager) GetCallHandler(cc CallContext, from, to module.Address,
+	value, stepLimit *big.Int, method string, paramObj *codec.TypedObj,
+) ContractHandler {
+	if value != nil && value.Sign() == 1 { //value > 0
+		th := newTransferHandler(from, to, value, stepLimit)
+		return &TransferAndCallHandler{
+			th:          th,
+			CallHandler: newCallHandlerFromTypedObj(th.CommonHandler, method, paramObj, cc, false),
+		}
+	} else {
+		return newCallHandlerFromTypedObj(
+			&CommonHandler{from: from, to: to, value: value, stepLimit: stepLimit},
+			method, paramObj, cc, false)
+	}
 }
 
 // if path does not exist, make the path

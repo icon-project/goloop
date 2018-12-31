@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/icon-project/goloop/common/codec"
+
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
 )
@@ -27,7 +29,8 @@ type (
 	ContractManager interface {
 		GetHandler(cc CallContext, from, to module.Address,
 			value, stepLimit *big.Int, ctype int, data []byte) ContractHandler
-
+		GetCallHandler(cc CallContext, from, to module.Address,
+			value, stepLimit *big.Int, method string, paramObj *codec.TypedObj) ContractHandler
 		PrepareContractStore(ws WorldState,
 			contract Contract) <-chan *storageResult
 	}
