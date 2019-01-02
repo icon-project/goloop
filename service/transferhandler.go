@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"math/big"
 
+	"github.com/icon-project/goloop/common/codec"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/module"
 )
@@ -43,7 +45,7 @@ func newTransferHandler(from, to module.Address, value, stepLimit *big.Int) *Tra
 	}
 }
 
-func (h *TransferHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int, []byte, module.Address) {
+func (h *TransferHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int, *codec.TypedObj, module.Address) {
 	stepPrice := wc.StepPrice()
 	var (
 		fee                 big.Int
@@ -88,7 +90,7 @@ type TransferAndMessageHandler struct {
 	data []byte
 }
 
-func (h *TransferAndMessageHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int, []byte, module.Address) {
+func (h *TransferAndMessageHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int, interface{}, module.Address) {
 	stepPrice := wc.StepPrice()
 	var (
 		fee                 big.Int

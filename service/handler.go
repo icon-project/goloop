@@ -2,8 +2,10 @@ package service
 
 import (
 	"math/big"
+	"reflect"
 	"time"
 
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
 )
@@ -31,13 +33,13 @@ type (
 
 	SyncContractHandler interface {
 		ContractHandler
-		ExecuteSync(wc WorldContext) (module.Status, *big.Int, []byte, module.Address)
+		ExecuteSync(wc WorldContext) (module.Status, *big.Int, *codec.TypedObj, module.Address)
 	}
 
 	AsyncContractHandler interface {
 		ContractHandler
 		ExecuteAsync(wc WorldContext) error
-		SendResult(status module.Status, steps *big.Int, result interface{}) error
+		SendResult(status module.Status, steps *big.Int, result *codec.TypedObj) error
 		Cancel()
 
 		EEType() string
@@ -55,6 +57,7 @@ func newCommonHandler(from, to module.Address, value, stepLimit *big.Int) *Commo
 }
 
 func (h *CommonHandler) StepLimit() *big.Int {
+	reflect.TypeOf(h)
 	return h.stepLimit
 }
 
@@ -63,5 +66,5 @@ func (h *CommonHandler) Prepare(wc WorldContext) (WorldContext, error) {
 		{string(h.from.ID()), AccountWriteLock},
 		{string(h.to.ID()), AccountWriteLock},
 	}
-	return wc.WorldStateChanged(wc.WorldVirtualState().GetFuture(lq)), nil
+	return wc.GetFuture(lq), nil
 }

@@ -85,7 +85,7 @@ func (tx *transactionV2) Prepare(wc WorldContext) (WorldContext, error) {
 		{string(tx.From.ID()), AccountWriteLock},
 		{string(tx.To.ID()), AccountWriteLock},
 	}
-	return wc.WorldStateChanged(wc.WorldVirtualState().GetFuture(lq)), nil
+	return wc.GetFuture(lq), nil
 }
 
 func (tx *transactionV2) Execute(wc WorldContext) (Receipt, error) {

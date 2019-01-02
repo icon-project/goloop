@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"github.com/icon-project/goloop/service/scoredb"
 	"io"
 	"math/big"
 	"sort"
+
+	"github.com/icon-project/goloop/service/scoredb"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
@@ -145,7 +146,7 @@ func (g *genesisV3) Prepare(wc WorldContext) (WorldContext, error) {
 	lq := []LockRequest{
 		{"", AccountWriteLock},
 	}
-	return wc.WorldStateChanged(wc.WorldVirtualState().GetFuture(lq)), nil
+	return wc.GetFuture(lq), nil
 }
 
 func (g *genesisV3) Execute(wc WorldContext) (Receipt, error) {

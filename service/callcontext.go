@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
 )
@@ -16,7 +17,7 @@ type (
 	CallContext interface {
 		Setup(WorldContext)
 		Call(ContractHandler) (module.Status, *big.Int, interface{}, module.Address)
-		OnResult(status module.Status, stepUsed *big.Int, result interface{}, addr module.Address)
+		OnResult(status module.Status, stepUsed *big.Int, result *codec.TypedObj, addr module.Address)
 		OnCall(ContractHandler)
 		OnEvent(indexed, data [][]byte)
 		GetInfo() map[string]interface{}
@@ -28,7 +29,7 @@ type (
 	callResultMessage struct {
 		status   module.Status
 		stepUsed *big.Int
-		result   interface{}
+		result   *codec.TypedObj
 		addr     module.Address
 	}
 
@@ -101,7 +102,6 @@ func (cc *callContext) Call(handler ContractHandler) (module.Status, *big.Int,
 	}
 }
 
-// TODO check when disposed
 func (cc *callContext) waitResult(stepLimit *big.Int) (
 	module.Status, *big.Int, interface{}, module.Address,
 ) {
@@ -116,6 +116,16 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (
 				cc.stack.Remove(e)
 			}
 			cc.lock.Unlock()
+
+			// kill EE; It'll restart by itself
+			// TODO call it when Proxy supports Kill() API
+			/*
+				for _, conn := range cc.conns {
+					conn.Kill()
+				}
+				cc.conns = nil
+			*/
+
 			return module.StatusTimeout, stepLimit, nil, nil
 		case msg := <-cc.waiter:
 			switch msg := msg.(type) {
@@ -157,7 +167,7 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (
 }
 
 func (cc *callContext) handleResult(status module.Status,
-	stepUsed *big.Int, result interface{}, addr module.Address,
+	stepUsed *big.Int, result *codec.TypedObj, addr module.Address,
 ) bool {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
@@ -207,7 +217,7 @@ func (cc *callContext) cancelCall() ContractHandler {
 }
 
 func (cc *callContext) OnResult(status module.Status, stepUsed *big.Int,
-	result interface{}, addr module.Address,
+	result *codec.TypedObj, addr module.Address,
 ) {
 	cc.sendMessage(&callResultMessage{
 		status:   status,

@@ -75,8 +75,9 @@ func genContractAddr(from, timestamp, nonce []byte) []byte {
 	return addr
 }
 
-func (h *DeployHandler) ExecuteSync(wc WorldContext) (
-	module.Status, *big.Int, []byte, module.Address) {
+func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
+	*codec.TypedObj, module.Address,
+) {
 	sysAs := wc.GetAccountState(SystemID)
 
 	update := false
@@ -174,7 +175,7 @@ func (h *AcceptHandler) StepLimit() *big.Int {
 // It's never called
 func (h *AcceptHandler) Prepare(wc WorldContext) (WorldContext, error) {
 	lq := []LockRequest{{"", AccountWriteLock}}
-	return wc.WorldStateChanged(wc.WorldVirtualState().GetFuture(lq)), nil
+	return wc.GetFuture(lq), nil
 }
 
 const (
@@ -182,8 +183,9 @@ const (
 	deployUpdate  = "on_update"
 )
 
-func (h *AcceptHandler) ExecuteSync(wc WorldContext,
-) (module.Status, *big.Int, []byte, module.Address) {
+func (h *AcceptHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
+	*codec.TypedObj, module.Address,
+) {
 	// 1. call GetAPI
 	stepAvail := h.stepLimit
 	sysAs := wc.GetAccountState(SystemID)
@@ -202,8 +204,7 @@ func (h *AcceptHandler) ExecuteSync(wc WorldContext,
 		methodStr = deployUpdate
 	}
 	// GET API
-	cgah := &callGetAPIHandler{newCallHandler(newCommonHandler(
-		h.from, scoreAddr, nil, stepAvail), nil, h.cc, false)}
+	cgah := newCallGetAPIHandler(newCommonHandler(h.from, scoreAddr, nil, stepAvail), h.cc)
 	status, stepUsed1, _, _ := h.cc.Call(cgah)
 	if status != module.StatusSuccess {
 		return status, h.stepLimit, nil, nil
@@ -240,30 +241,40 @@ func (h *AcceptHandler) ExecuteSync(wc WorldContext,
 }
 
 type callGetAPIHandler struct {
-	*CallHandler
+	*CommonHandler
+
+	cc CallContext
+
+	// set in ExecuteAsync()
+	as AccountState
+}
+
+func newCallGetAPIHandler(ch *CommonHandler, cc CallContext) *callGetAPIHandler {
+	return &callGetAPIHandler{CommonHandler: ch, cc: cc}
 }
 
 // It's never called
 func (h *callGetAPIHandler) Prepare(wc WorldContext) (WorldContext, error) {
-	c := h.as.NextContract()
+	as := wc.GetAccountState(h.to.ID())
+	c := as.NextContract()
 	if c == nil {
 		return nil, errors.New("No pending contract")
 	}
 	wc.ContractManager().PrepareContractStore(wc, c)
 
-	return wc.WorldStateChanged(wc.WorldVirtualState().GetFuture(nil)), nil
+	return wc.GetFuture(nil), nil
 }
 
 func (h *callGetAPIHandler) ExecuteAsync(wc WorldContext) error {
-	h.cm = wc.ContractManager()
-	h.conn = h.cc.GetConnection(h.EEType())
-	if h.conn == nil {
+	h.as = wc.GetAccountState(h.to.ID())
+	conn := h.cc.GetConnection(h.EEType())
+	if conn == nil {
 		return errors.New("FAIL to get connection of (" + h.EEType() + ")")
 	}
 
 	c := h.as.NextContract()
 	if c == nil {
-		return errors.New("No active contract")
+		return errors.New("No pending contract")
 	}
 	ch := wc.ContractManager().PrepareContractStore(wc, c)
 	select {
@@ -271,14 +282,14 @@ func (h *callGetAPIHandler) ExecuteAsync(wc WorldContext) error {
 		if r.err != nil {
 			return r.err
 		}
-		err := h.conn.GetAPI(h, r.path)
+		err := conn.GetAPI(h, r.path)
 		return err
 	default:
 		go func() {
 			select {
 			case r := <-ch:
 				if r.err == nil {
-					if err := h.conn.GetAPI(h, r.path); err == nil {
+					if err := conn.GetAPI(h, r.path); err == nil {
 						return
 					}
 				}
@@ -289,16 +300,51 @@ func (h *callGetAPIHandler) ExecuteAsync(wc WorldContext) error {
 	return nil
 }
 
+func (h *callGetAPIHandler) SendResult(status module.Status, steps *big.Int, result *codec.TypedObj) error {
+	log.Panicln("Unexpected SendResult() call")
+	return nil
+}
+
+func (h *callGetAPIHandler) Cancel() {
+	// Do nothing
+}
+
+func (h *callGetAPIHandler) EEType() string {
+	c := h.as.NextContract()
+	if c == nil {
+		log.Println("No associated contract exists")
+		return ""
+	}
+	return c.EEType()
+}
+
 func (h *callGetAPIHandler) GetValue(key []byte) ([]byte, error) {
-	return nil, errors.New("Invalid GetValue() call")
+	log.Panicln("Unexpected GetValue() call")
+	return nil, nil
 }
 
 func (h *callGetAPIHandler) SetValue(key, value []byte) error {
-	return errors.New("Invalid SetValue() call")
+	log.Panicln("Unexpected SetValue() call")
+	return nil
 }
 
 func (h *callGetAPIHandler) DeleteValue(key []byte) error {
-	return errors.New("Invalid DeleteValue() call")
+	log.Panicln("Unexpected DeleteValue() call")
+	return nil
+}
+
+func (h *callGetAPIHandler) GetInfo() *codec.TypedObj {
+	log.Panicln("Unexpected GetInfo() call")
+	return nil
+}
+
+func (h *callGetAPIHandler) GetBalance(addr module.Address) *big.Int {
+	log.Panicln("Unexpected GetBalance() call")
+	return nil
+}
+
+func (h *callGetAPIHandler) OnEvent(addr module.Address, indexed, data [][]byte) {
+	h.cc.OnEvent(indexed, data)
 }
 
 func (h *callGetAPIHandler) OnResult(status uint16, steps *big.Int, result *codec.TypedObj) {

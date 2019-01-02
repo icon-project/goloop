@@ -68,14 +68,22 @@ func (h *CallHandler) Prepare(wc WorldContext) (WorldContext, error) {
 	if as == nil {
 		return nil, errors.New("No contract account")
 	}
-	c := as.ActiveContract()
+	c := h.contract(as)
 	if c == nil {
 		return nil, errors.New("No active contract")
 	}
 	wc.ContractManager().PrepareContractStore(wc, c)
 
 	lq := []LockRequest{{"", AccountWriteLock}}
-	return wc.WorldStateChanged(wc.WorldVirtualState().GetFuture(lq)), nil
+	return wc.GetFuture(lq), nil
+}
+
+func (h *CallHandler) contract(as AccountState) Contract {
+	if !h.forDeploy {
+		return as.ActiveContract()
+	} else {
+		return as.NextContract()
+	}
 }
 
 func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
@@ -90,7 +98,7 @@ func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 		return errors.New("FAIL to get connection of (" + h.EEType() + ")")
 	}
 
-	c := h.as.ActiveContract()
+	c := h.contract(h.as)
 	if c == nil {
 		return errors.New("No active contract")
 	}
@@ -152,9 +160,9 @@ func (h *CallHandler) Cancel() {
 }
 
 func (h *CallHandler) EEType() string {
-	c := h.as.ActiveContract()
+	c := h.contract(h.as)
 	if c == nil {
-		log.Println("No active contract exists")
+		log.Println("No associated contract exists")
 		return ""
 	}
 	return c.EEType()
@@ -207,7 +215,7 @@ func (h *CallHandler) OnCall(from, to module.Address, value,
 }
 
 func (h *CallHandler) OnAPI(info *scoreapi.Info) {
-	h.as.SetAPIInfo(info)
+	log.Panicln("Unexpected OnAPI() call")
 }
 
 type TransferAndCallHandler struct {
@@ -216,11 +224,7 @@ type TransferAndCallHandler struct {
 }
 
 func (h *TransferAndCallHandler) Prepare(wc WorldContext) (WorldContext, error) {
-	if wc, err := h.th.Prepare(wc); err == nil {
-		return h.CallHandler.Prepare(wc)
-	} else {
-		return wc, err
-	}
+	return h.CallHandler.Prepare(wc)
 }
 
 func (h *TransferAndCallHandler) ExecuteAsync(wc WorldContext) error {

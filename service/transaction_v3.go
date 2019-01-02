@@ -108,8 +108,6 @@ func (tx *transactionV3JSON) Timestamp() int64 {
 type transactionV3 struct {
 	*transactionV3JSON
 	hash []byte
-
-	handler TransactionHandler
 }
 
 var stepsForTransfer = big.NewInt(100000)
@@ -185,7 +183,7 @@ func (tx *transactionV3) GetHandler(cm ContractManager) (TransactionHandler, err
 		&tx.StepLimit.Int,
 		tx.DataType,
 		tx.Data)
-	if tx.handler == nil {
+	if h == nil {
 		return nil, errors.New("can't find handler:" + tx.From.String() +
 			"," + tx.To.String() + "," + tx.DataType)
 	}
