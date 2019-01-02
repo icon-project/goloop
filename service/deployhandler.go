@@ -48,7 +48,9 @@ func newDeployHandler(from, to module.Address, value, stepLimit *big.Int,
 		cc:            cc,
 		content:       dataJSON.Content,
 		contentType:   dataJSON.ContentType,
-
+		// eeType is currently only python
+		// but it should be checked later by json element
+		eeType: "python",
 		params: dataJSON.Params,
 	}
 }
@@ -218,8 +220,7 @@ func (h *AcceptHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 
 	// 2. call on_install or on_update of the contract
 	stepAvail = stepAvail.Sub(stepAvail, stepUsed1)
-	as := wc.GetAccountState(scoreAddr.ID())
-	if cur := as.Contract(); cur != nil {
+	if cur := scoreAs.Contract(); cur != nil {
 		cur.SetStatus(csDisable)
 	}
 	handler := newCallHandlerFromTypedObj(
@@ -232,12 +233,12 @@ func (h *AcceptHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 	if status != module.StatusSuccess {
 		return status, h.stepLimit, nil, nil
 	}
-	if err = as.AcceptContract(h.txHash, h.auditTxHash); err != nil {
+	if err = scoreAs.AcceptContract(h.txHash, h.auditTxHash); err != nil {
 		return module.StatusSystemError, h.stepLimit, nil, nil
 	}
 	varDb.Delete()
 
-	return status, stepUsed1.Add(stepUsed1, stepUsed2), nil, nil
+	return status, stepUsed1.Add(stepUsed1, stepUsed2), nil, scoreAddr
 }
 
 type callGetAPIHandler struct {

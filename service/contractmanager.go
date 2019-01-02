@@ -8,6 +8,7 @@ import (
 	"log"
 	"math/big"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -96,38 +97,55 @@ func (cm *contractManager) GetCallHandler(cc CallContext, from, to module.Addres
 }
 
 // if path does not exist, make the path
-func storeContract(code []byte, path string) error {
-	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		if err := os.RemoveAll(path); err != nil {
-			return err
+func (cm *contractManager) storeContract(code []byte, codeHash []byte) (string, error) {
+	tmpPath := fmt.Sprintf("%s/tmp/%016x", cm.storeRoot, codeHash)
+	if _, err := os.Stat(tmpPath); !os.IsNotExist(err) {
+		if err := os.RemoveAll(tmpPath); err != nil {
+			return "", err
 		}
 	}
-	os.MkdirAll(path, os.ModePerm)
+	os.MkdirAll(tmpPath, 0755)
 	zipReader, err :=
 		zip.NewReader(bytes.NewReader(code), int64(len(code)))
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	for _, zipFile := range zipReader.File {
-		storePath := path + "/" + zipFile.Name
+		storePath := tmpPath + "/" + zipFile.Name
 		if info := zipFile.FileInfo(); info.IsDir() {
-			os.MkdirAll(path+"/"+info.Name(), os.ModePerm)
 			continue
+		}
+		storeDir := filepath.Dir(storePath)
+		if _, err := os.Stat(storeDir); os.IsNotExist(err) {
+			os.MkdirAll(storeDir, 0755)
 		}
 		reader, err := zipFile.Open()
 		if err != nil {
-			return errors.New("Failed to open zip file\n")
+			return "", errors.New("Failed to open zip file\n")
 		}
 		buf, err := ioutil.ReadAll(reader)
 		if err != nil {
-			return errors.New("Failed to read zip file\n")
+			return "", errors.New("Failed to read zip file\n")
 		}
 		if err = ioutil.WriteFile(storePath, buf, os.ModePerm); err != nil {
 			log.Printf("Failed to write file. err = %s\n", err)
 		}
 	}
-	return nil
+	path := cm.getContractPath(codeHash)
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		if err := os.RemoveAll(path); err != nil {
+			return "", err
+		}
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
+func (cm *contractManager) getContractPath(codeHash []byte) string {
+	return fmt.Sprintf("%s/%016x", cm.storeRoot, codeHash)
 }
 
 // PrepareContractStore checks if contract codes are ready for a contract runtime
@@ -146,7 +164,7 @@ func (cm *contractManager) PrepareContractStore(
 			cm.lock.Unlock()
 			return sr
 		}
-		path = fmt.Sprintf("%s/%x", cm.storeRoot, codeHash)
+		path = cm.getContractPath(codeHash)
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
 			sr <- &storageResult{path, nil}
 			cm.lock.Unlock()
@@ -171,15 +189,12 @@ func (cm *contractManager) PrepareContractStore(
 			cm.lock.Unlock()
 		}
 
-		if len(path) == 0 {
-			path = fmt.Sprintf("%s/%x", cm.storeRoot, codeHash)
-		}
 		codeBuf, err := contract.Code()
 		if err != nil {
 			callEndCb("", err)
 			return
 		}
-		err = storeContract(codeBuf, path)
+		path, err = cm.storeContract(codeBuf, codeHash)
 		if err != nil {
 			callEndCb("", err)
 			return
@@ -197,5 +212,14 @@ func NewContractManager(db db.Database) ContractManager {
 	*/
 	// To manage separate contract store for each chain, add chain ID to
 	// parameter here and add it to storeRoot.
-	return &contractManager{db: db, storeRoot: contractStoreRoot}
+
+	// remove tmp to prepare contract
+	storeRoot := contractStoreRoot
+	tmp := fmt.Sprintf("%s/tmp", storeRoot)
+	if _, err := os.Stat(tmp); !os.IsNotExist(err) {
+		if err := os.RemoveAll(tmp); err != nil {
+			log.Panicf("Failed to remove %s\n", tmp)
+		}
+	}
+	return &contractManager{db: db, storeRoot: storeRoot}
 }
