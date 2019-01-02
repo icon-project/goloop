@@ -1,10 +1,11 @@
 package scoredb
 
 import (
-	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/module"
 	"log"
 	"math/big"
+
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/module"
 )
 
 func ToKey(prefix byte, keys ...interface{}) []byte {
@@ -62,6 +63,12 @@ func ToBytes(v interface{}) []byte {
 		return obj.Bytes()
 	case module.Address:
 		return obj.Bytes()
+	case bool:
+		if obj {
+			return []byte{1}
+		} else {
+			return []byte{0}
+		}
 	case int:
 		return common.Int64ToBytes(int64(obj))
 	case int16:
@@ -122,6 +129,13 @@ func (e *valueImpl) String() string {
 	} else {
 		return ""
 	}
+}
+
+func (e *valueImpl) Bool() bool {
+	if bs := e.Bytes(); len(bs) > 1 || bs[0] != 0 {
+		return true
+	}
+	return false
 }
 
 func (e *valueImpl) Set(v interface{}) error {
