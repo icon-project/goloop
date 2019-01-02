@@ -307,15 +307,19 @@ func applyLockRequests(wvs *worldVirtualState, reqs []LockRequest) {
 		if req.ID != "" {
 			continue
 		}
-		switch req.Lock {
-		case AccountWriteLock:
-			wvs.worldLock = AccountWriteLock
-			return
-		case AccountReadLock:
-			wvs.worldLock = AccountReadLock
-		default:
-			log.Panicf("World lock request with invalid value=%d", req.Lock)
+		if req.Lock != AccountReadLock && req.Lock != AccountWriteLock {
+			log.Panicf("World invalid lock request req=%d", req.Lock)
+			continue
 		}
+
+		if req.Lock != wvs.worldLock && wvs.worldLock != AccountWriteLock {
+			wvs.worldLock = req.Lock
+		}
+	}
+
+	// If there is world write lock request, no individual lock is required.
+	if wvs.worldLock == AccountWriteLock {
+		return
 	}
 
 	wvs.accountStates = make(map[string]*lockedAccountState, len(reqs))
@@ -326,6 +330,12 @@ func applyLockRequests(wvs *worldVirtualState, reqs []LockRequest) {
 		if req.Lock != AccountReadLock && req.Lock != AccountWriteLock {
 			log.Panicf("Account(%x) invalid lock request req=%d",
 				req.ID, req.Lock)
+			continue
+		}
+
+		// If there is world lock related with specified, then it doesn't
+		// need to set lock for each accounts.
+		if req.Lock <= wvs.worldLock {
 			continue
 		}
 
