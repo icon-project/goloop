@@ -17,33 +17,40 @@ import (
 	"github.com/pkg/errors"
 )
 
-// type for store status
-type tsStatus int
+type (
+	tsStatus int
 
-const (
-	tsInProgress tsStatus = iota
-	tsComplete
+	ContractManager interface {
+		GetHandler(cc CallContext, from, to module.Address,
+			value, stepLimit *big.Int, ctype int, data []byte) ContractHandler
+		GetCallHandler(cc CallContext, from, to module.Address,
+			value, stepLimit *big.Int, method string, paramObj *codec.TypedObj) ContractHandler
+		PrepareContractStore(ws WorldState,
+			contract Contract) <-chan *storageResult
+	}
+
+	storageResult struct {
+		path string
+		err  error
+	}
+
+	storageCache struct {
+		status   tsStatus
+		callback []chan *storageResult
+	}
+
+	contractManager struct {
+		lock         sync.Mutex
+		db           db.Database
+		storageCache map[string]*storageCache
+		storeRoot    string
+	}
 )
 
-type storageResult struct {
-	path string
-	err  error
-}
-type storageCache struct {
-	status tsStatus
-	//callback []func(string, error)
-	callback []chan *storageResult
-}
-
-type contractManager struct {
-	lock         sync.Mutex
-	db           db.Database
-	storageCache map[string]*storageCache
-	storeRoot    string
-}
-
 const (
-	contractStoreRoot = "./contract/"
+	contractStoreRoot          = "./contract/"
+	tsInProgress      tsStatus = iota
+	tsComplete
 )
 
 func (cm *contractManager) GetHandler(cc CallContext,
@@ -55,10 +62,6 @@ func (cm *contractManager) GetHandler(cc CallContext,
 		handler = newTransferHandler(from, to, value, stepLimit)
 	case ctypeCall:
 		handler = newCallHandler(newCommonHandler(from, to, value, stepLimit), data, cc, false)
-	case ctypeGovCall:
-		handler = &GovCallHandler{
-			newCallHandler(newCommonHandler(from, to, value, stepLimit), data, cc, false),
-		}
 	case ctypeTransferAndMessage:
 		handler = &TransferAndMessageHandler{
 			TransferHandler: newTransferHandler(from, to, value, stepLimit),
