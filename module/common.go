@@ -8,11 +8,6 @@ type Address interface {
 	Equal(Address) bool
 }
 
-type Vote interface {
-	Voter() Validator
-	Bytes() []byte
-}
-
 type Validator interface {
 	Address() Address
 
