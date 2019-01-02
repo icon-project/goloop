@@ -1,11 +1,12 @@
 package consensus
 
 import (
-	"errors"
+	"bytes"
 	"fmt"
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
+	"github.com/pkg/errors"
 )
 
 var msgCodec = codec.MP
@@ -14,37 +15,38 @@ const (
 	protoProposal protocolInfo = iota << 8
 	protoBlockPart
 	protoVote
+	protoRoundState
+	protoVoteList
 )
 
-var protocols = []module.ProtocolInfo{protoProposal, protoBlockPart, protoVote}
-
-type unmarshaler func([]byte) (message, error)
-
-type protocolUnmarshaler struct {
-	proto     protocolInfo
-	unmarshal unmarshaler
+type protocolConstructor struct {
+	proto       protocolInfo
+	constructor func() message
 }
 
-var protocolUnmarshalers = [...]protocolUnmarshaler{
-	{protoProposal, unmarshalProposalMessage},
-	{protoBlockPart, unmarshalBlockPartMessage},
-	{protoVote, unmarshalVoteMessage},
+var protocolConstructors = [...]protocolConstructor{
+	{protoProposal, func() message { return newProposalMessage() }},
+	{protoBlockPart, func() message { return newBlockPartMessage() }},
+	{protoVote, func() message { return newVoteMessage() }},
+	{protoRoundState, func() message { return newRoundStateMessage() }},
+	{protoVoteList, func() message { return newVoteListMessage() }},
 }
 
 func unmarshalMessage(sp module.ProtocolInfo, bs []byte) (message, error) {
-	for _, pu := range protocolUnmarshalers {
-		if sp.Uint16() == pu.proto.Uint16() {
-			return pu.unmarshal(bs)
+	for _, pc := range protocolConstructors {
+		if sp.Uint16() == pc.proto.Uint16() {
+			msg := pc.constructor()
+			if _, err := msgCodec.UnmarshalFromBytes(bs, msg); err != nil {
+				return nil, err
+			}
+			return msg, nil
 		}
 	}
 	return nil, errors.New("Unknown protocol")
 }
 
 type message interface {
-	height() int64
-	round() int32
 	verify() error
-	dispatch(cs *consensus) (bool, error)
 }
 
 type _HR struct {
@@ -52,12 +54,22 @@ type _HR struct {
 	Round  int32
 }
 
-func (b *_HR) height() int64 {
-	return b.Height
+func (hr *_HR) height() int64 {
+	return hr.Height
 }
 
-func (b *_HR) round() int32 {
-	return b.Round
+func (hr *_HR) round() int32 {
+	return hr.Round
+}
+
+func (hr *_HR) verify() error {
+	if hr.Height <= 0 {
+		return errors.Errorf("bad height %v", hr.Height)
+	}
+	if hr.Round < 0 {
+		return errors.Errorf("bad round %v", hr.Round)
+	}
+	return nil
 }
 
 type proposal struct {
@@ -85,23 +97,14 @@ func newProposalMessage() *proposalMessage {
 	return msg
 }
 
-func unmarshalProposalMessage(bs []byte) (message, error) {
-	msg := newProposalMessage()
-	if _, err := msgCodec.UnmarshalFromBytes(bs, msg); err != nil {
-		return nil, err
-	}
-	return msg, nil
-}
-
 func (msg *proposalMessage) verify() error {
-	if msg.Height < 0 || msg.Round < 0 || msg.BlockPartSetID.Count <= 0 || msg.POLRound < -1 || msg.POLRound >= msg.Round {
+	if err := msg._HR.verify(); err != nil {
+		return err
+	}
+	if msg.BlockPartSetID.Count <= 0 || msg.POLRound < -1 || msg.POLRound >= msg.Round {
 		return errors.New("bad field value")
 	}
 	return msg.signedBase.verify()
-}
-
-func (msg *proposalMessage) dispatch(cs *consensus) (bool, error) {
-	return cs.receiveProposal(msg)
 }
 
 func (msg *proposalMessage) String() string {
@@ -109,7 +112,7 @@ func (msg *proposalMessage) String() string {
 }
 
 type blockPartMessage struct {
-	_HR
+	Height    int64 // just for debug
 	BlockPart []byte
 }
 
@@ -117,28 +120,15 @@ func newBlockPartMessage() *blockPartMessage {
 	return &blockPartMessage{}
 }
 
-func unmarshalBlockPartMessage(bs []byte) (message, error) {
-	msg := newBlockPartMessage()
-	if _, err := msgCodec.UnmarshalFromBytes(bs, msg); err != nil {
-		return nil, err
-	}
-	return msg, nil
-}
-
 func (msg *blockPartMessage) verify() error {
-	if msg.Height < 0 || msg.Round < 0 {
-		return errors.New("bad field value")
+	if msg.Height <= 0 {
+		return errors.Errorf("bad height %v", msg.Height)
 	}
 	return nil
 }
 
-func (msg *blockPartMessage) dispatch(cs *consensus) (bool, error) {
-	return cs.receiveBlockPart(msg)
-}
-
 func (msg *blockPartMessage) String() string {
-	return fmt.Sprintf("BlockPartMessage[H=%d,R=%d]",
-		msg.Height, msg.Round)
+	return fmt.Sprintf("BlockPartMessage[H=%d]", msg.Height)
 }
 
 type voteType byte
@@ -167,6 +157,12 @@ type vote struct {
 	BlockPartSetID *PartSetID
 }
 
+func (v *vote) Equal(v2 *vote) bool {
+	return v.Height == v2.Height && v.Round == v2.Round && v.Type == v2.Type &&
+		bytes.Equal(v.BlockID, v2.BlockID) &&
+		v.BlockPartSetID.Equal(v2.BlockPartSetID)
+}
+
 func (v *vote) bytes() []byte {
 	bs, err := msgCodec.MarshalToBytes(v)
 	if err != nil {
@@ -190,25 +186,59 @@ func newVoteMessage() *voteMessage {
 	return msg
 }
 
-func unmarshalVoteMessage(bs []byte) (message, error) {
-	msg := newVoteMessage()
-	if _, err := msgCodec.UnmarshalFromBytes(bs, msg); err != nil {
-		return nil, err
-	}
-	return msg, nil
-}
-
 func (msg *voteMessage) verify() error {
-	if msg.Height < 0 || msg.Round < 0 || msg.Type < voteTypePrevote || msg.Type > numberOfVoteTypes {
+	if err := msg._HR.verify(); err != nil {
+		return err
+	}
+	if msg.Type < voteTypePrevote || msg.Type > numberOfVoteTypes {
 		return errors.New("bad field value")
 	}
 	return msg.signedBase.verify()
 }
 
-func (msg *voteMessage) dispatch(cs *consensus) (bool, error) {
-	return cs.receiveVote(msg)
-}
-
 func (msg *voteMessage) String() string {
 	return fmt.Sprintf("VoteMessage[%s,H=%d,R=%d,bid=<%x>,sig=%s]", msg.Type, msg.Height, msg.Round, msg.BlockID, msg.address())
+}
+
+type peerRoundState struct {
+	_HR
+	// 1 if requesting
+	PrevotesMask   *bitArray
+	PrecommitsMask *bitArray
+	BlockPartsMask *bitArray
+}
+
+func (prs *peerRoundState) String() string {
+	if prs == nil {
+		return "peerRoundState=nil"
+	}
+	return fmt.Sprintf("H=%v,R=%v,PV=%v,PC=%v,BP=%v", prs.Height, prs.Round, prs.PrevotesMask, prs.PrecommitsMask, prs.BlockPartsMask)
+}
+
+type roundStateMessage struct {
+	peerRoundState
+	// TODO: add LastMaskType, LastIndex
+}
+
+func newRoundStateMessage() *roundStateMessage {
+	return &roundStateMessage{}
+}
+
+func (msg *roundStateMessage) verify() error {
+	if err := msg.peerRoundState._HR.verify(); err != nil {
+		return err
+	}
+	return nil
+}
+
+type voteListMessage struct {
+	VoteList *roundVoteList
+}
+
+func newVoteListMessage() *voteListMessage {
+	return &voteListMessage{}
+}
+
+func (msg *voteListMessage) verify() error {
+	return nil
 }

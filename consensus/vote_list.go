@@ -20,7 +20,7 @@ type voteList struct {
 }
 
 func (vl *voteList) Verify(block module.Block, validators module.ValidatorList) error {
-	// TODO
+	// TODO height should be 0
 	if block.Height() == 1 {
 		if len(vl.Signatures) == 0 {
 			return nil
@@ -28,6 +28,7 @@ func (vl *voteList) Verify(block module.Block, validators module.ValidatorList) 
 			return errors.Errorf("voters for height 1\n")
 		}
 	}
+	// TODO check duplicated votes
 	msg := newVoteMessage()
 	msg.Height = block.Height()
 	msg.Round = vl.Round
@@ -64,6 +65,21 @@ func (vl *voteList) Hash() []byte {
 func (vl *voteList) String() string {
 	return fmt.Sprintf("VoteList(R=%d,ID=%v,len(Signs)=%d)",
 		vl.Round, vl.BlockPartSetID, len(vl.Signatures))
+}
+
+func (vl *voteList) roundVoteList(h int64, bid []byte) *roundVoteList {
+	rvl := newRoundVoteList()
+	msg := newVoteMessage()
+	msg.Height = h
+	msg.Round = vl.Round
+	msg.Type = voteTypePrecommit
+	msg.BlockID = bid
+	msg.BlockPartSetID = vl.BlockPartSetID
+	for _, sig := range vl.Signatures {
+		msg.Signature = sig
+		rvl.AddVote(msg)
+	}
+	return rvl
 }
 
 func newVoteList(msgs []*voteMessage) *voteList {

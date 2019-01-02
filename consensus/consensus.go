@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"bytes"
+	"container/list"
 	"fmt"
 	"log"
 	"os"
@@ -18,6 +19,8 @@ var logger *log.Logger
 
 var zeroAddress = common.NewAddress(make([]byte, common.AddressBytes))
 
+var csProtocols = []module.ProtocolInfo{protoProposal, protoBlockPart, protoVote}
+
 const (
 	timeoutPropose   = time.Second * 1
 	timeoutPrevote   = time.Second * 1
@@ -25,7 +28,12 @@ const (
 	timeoutCommit    = time.Second * 1
 )
 
-const configBlockPartSize = 1024 * 100
+const (
+	configBlockPartSize  = 1024 * 100
+	configCommitCacheCap = 60
+	configEnginePriority = 2
+	configSyncerPriority = 3
+)
 
 type hrs struct {
 	height int64
@@ -39,40 +47,53 @@ type blockPartSet struct {
 	noImport bool
 }
 
+type commit struct {
+	height       int64
+	votes        *roundVoteList
+	blockPartSet PartSet
+}
+
 type consensus struct {
 	hrs
 
+	nm     module.NetworkManager
 	bm     module.BlockManager
 	wallet module.Wallet
-	dm     module.ProtocolHandler
+	ph     module.ProtocolHandler
 	mutex  sync.Mutex
+	syncer Syncer
 
-	msgQueue []message
-
-	lastBlock         module.Block
-	validators        module.ValidatorList
-	votes             module.VoteList
-	hvs               heightVoteSet
-	nextProposeTime   time.Time
-	lockedRound       int32
-	lockedBlockParts  *blockPartSet
-	proposalPOLRound  int32
-	currentBlockParts *blockPartSet
+	lastBlock          module.Block
+	validators         module.ValidatorList
+	votes              *voteList
+	hvs                heightVoteSet
+	nextProposeTime    time.Time
+	lockedRound        int32
+	lockedBlockParts   *blockPartSet
+	proposalPOLRound   int32
+	currentBlockParts  *blockPartSet
+	consumedNonunicast bool
 
 	timer              *time.Timer
 	cancelBlockRequest func() bool
+
+	// commit cache
+	commitMRU       *list.List
+	commitForHeight map[int64]*commit
 }
 
 func NewConsensus(c module.Chain, bm module.BlockManager, nm module.NetworkManager) module.Consensus {
 	cs := &consensus{
-		bm:     bm,
-		wallet: c.Wallet(),
+		nm:              nm,
+		bm:              bm,
+		wallet:          c.Wallet(),
+		commitMRU:       list.New(),
+		commitForHeight: make(map[int64]*commit, configCommitCacheCap),
 	}
-	cs.dm, _ = nm.RegisterReactor("consensus", cs, protocols, 1)
 	return cs
 }
 
-func (cs *consensus) resetForNewHeight(prevBlock module.Block, votes module.VoteList) {
+func (cs *consensus) resetForNewHeight(prevBlock module.Block, votes *voteList) {
 	cs.height = prevBlock.Height() + 1
 	cs.lastBlock = prevBlock
 	cs.validators = cs.lastBlock.NextValidators()
@@ -80,6 +101,7 @@ func (cs *consensus) resetForNewHeight(prevBlock module.Block, votes module.Vote
 	cs.hvs.reset(cs.validators.Len())
 	cs.lockedRound = -1
 	cs.lockedBlockParts = nil
+	cs.consumedNonunicast = false
 	cs.resetForNewRound(0)
 }
 
@@ -118,46 +140,47 @@ func (cs *consensus) OnReceive(
 	if err := msg.verify(); err != nil {
 		return false, err
 	}
-	if msg.height() < cs.height {
-		return true, nil
+	switch m := msg.(type) {
+	case *proposalMessage:
+		err = cs.ReceiveProposalMessage(m, false)
+	case *blockPartMessage:
+		_, err = cs.ReceiveBlockPartMessage(m, false)
+	case *voteMessage:
+		_, err = cs.ReceiveVoteMessage(m, false)
+	default:
+		logger.Panicf("received unknown message %v\n", msg)
 	}
-	if msg.height() > cs.height {
-		cs.enqueueMessage(msg)
-		return true, nil
+	if err != nil {
+		return false, err
 	}
-	return msg.dispatch(cs)
+	return true, nil
 }
 
 func (cs *consensus) OnError(err error, subProtocol module.ProtocolInfo, bytes []byte, id module.PeerID) {
-	cs.mutex.Lock()
 	logger.Printf("OnError\n")
-	defer cs.mutex.Unlock()
 }
 
 func (cs *consensus) OnJoin(id module.PeerID) {
 }
+
 func (cs *consensus) OnLeave(id module.PeerID) {
 }
 
-func (cs *consensus) receiveProposal(msg *proposalMessage) (bool, error) {
-	if msg.Round < cs.round {
-		return true, nil
-	}
-	if msg.Round > cs.round {
-		cs.enqueueMessage(msg)
-		return true, nil
+func (cs *consensus) ReceiveProposalMessage(msg *proposalMessage, unicast bool) error {
+	if msg.Height != cs.height || msg.Round != cs.round {
+		return nil
 	}
 	index := cs.validators.IndexOf(msg.address())
 	if index < 0 {
-		return false, errors.New("bad proposer")
+		return errors.New("bad proposer")
 	}
 	if cs.getProposerIndex(cs.height, cs.round) != index {
-		return false, errors.New("bad proposer")
+		return errors.New("bad proposer")
 	}
 
 	// TODO receive multiple proposal
 	if cs.currentBlockParts != nil {
-		return false, nil
+		return nil
 	}
 	cs.proposalPOLRound = msg.proposal.POLRound
 	cs.currentBlockParts = &blockPartSet{
@@ -169,24 +192,23 @@ func (cs *consensus) receiveProposal(msg *proposalMessage) (bool, error) {
 	} else if cs.step == stepCommit && cs.currentBlockParts.IsComplete() {
 		cs.enterNewHeight()
 	}
-	return true, nil
+	return nil
 }
 
-func (cs *consensus) receiveBlockPart(msg *blockPartMessage) (bool, error) {
-	if msg.Round < cs.round {
-		return true, nil
+func (cs *consensus) ReceiveBlockPartMessage(msg *blockPartMessage, unicast bool) (int, error) {
+	if msg.Height != cs.height {
+		return -1, nil
 	}
-	if msg.Round > cs.round || (msg.Round == cs.round && cs.currentBlockParts == nil) {
-		cs.enqueueMessage(msg)
-		return true, nil
+	if cs.currentBlockParts == nil {
+		return -1, nil
 	}
 
 	bp, err := newPart(msg.BlockPart)
 	if err != nil {
-		return false, err
+		return -1, err
 	}
 	if err := cs.currentBlockParts.AddPart(bp); err != nil {
-		return false, err
+		return -1, err
 	}
 	if cs.currentBlockParts.IsComplete() {
 		block, err := cs.bm.NewBlockFromReader(cs.currentBlockParts.NewReader())
@@ -201,29 +223,36 @@ func (cs *consensus) receiveBlockPart(msg *blockPartMessage) (bool, error) {
 	} else if cs.step == stepCommit && cs.currentBlockParts.IsComplete() {
 		cs.commitAndEnterNewHeight()
 	}
-	return true, nil
+	return bp.Index(), nil
 }
 
-func (cs *consensus) receiveVote(msg *voteMessage) (bool, error) {
+func (cs *consensus) ReceiveVoteMessage(msg *voteMessage, unicast bool) (int, error) {
+	if msg.Height != cs.height {
+		return -1, nil
+	}
 	index := cs.validators.IndexOf(msg.address())
 	if index < 0 {
-		return false, nil
+		return -1, errors.Errorf("bad voter %s", msg.address())
 	}
 	added, votes := cs.hvs.add(index, msg)
 	if !added {
-		return false, nil
+		return -1, nil
 	}
+	if !unicast {
+		cs.consumedNonunicast = true
+	}
+
 	if !votes.hasOverTwoThirds() {
-		return true, nil
+		return index, nil
 	}
 	if msg.Type == voteTypePrevote {
-		return cs.handlePrevoteMessage(msg, votes)
+		return index, cs.handlePrevoteMessage(msg, votes)
 	} else {
-		return cs.handlePrecommitMessage(msg, votes)
+		return index, cs.handlePrecommitMessage(msg, votes)
 	}
 }
 
-func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) (bool, error) {
+func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) error {
 	partSetID, ok := prevotes.getOverTwoThirdsPartSetID()
 	if ok {
 		if cs.lockedRound < msg.Round && cs.lockedBlockParts != nil && !cs.lockedBlockParts.ID().Equal(partSetID) {
@@ -236,6 +265,7 @@ func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) (
 			}
 		}
 	}
+
 	if cs.round > msg.Round && cs.step < stepPrevote && msg.Round == cs.proposalPOLRound {
 		cs.enterPrevote()
 	} else if cs.round == msg.Round && cs.step < stepPrevote {
@@ -252,12 +282,12 @@ func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) (
 			cs.enterPrevote()
 		}
 	}
-	return true, nil
+	return nil
 }
 
-func (cs *consensus) handlePrecommitMessage(msg *voteMessage, precommits *voteSet) (bool, error) {
+func (cs *consensus) handlePrecommitMessage(msg *voteMessage, precommits *voteSet) error {
 	if msg.Round < cs.round {
-		return true, nil
+		return nil
 	}
 
 	if cs.round == msg.Round && cs.step < stepPrecommit {
@@ -281,23 +311,7 @@ func (cs *consensus) handlePrecommitMessage(msg *voteMessage, precommits *voteSe
 			cs.enterPrecommit()
 		}
 	}
-	return true, nil
-}
-
-func (cs *consensus) enqueueMessage(msg message) {
-	cs.msgQueue = append(cs.msgQueue, msg)
-}
-
-func (cs *consensus) dispatchQueuedMessage() {
-	msgQueue := cs.msgQueue
-	cs.msgQueue = nil
-	for _, msg := range msgQueue {
-		if msg.height() == cs.height && msg.round() == cs.round {
-			msg.dispatch(cs)
-		} else {
-			cs.msgQueue = append(cs.msgQueue, msg)
-		}
-	}
+	return nil
 }
 
 func (cs *consensus) setStep(step step) {
@@ -306,6 +320,7 @@ func (cs *consensus) setStep(step step) {
 	}
 	cs.step = step
 	logger.Printf("setStep(H=%d,R=%d,S=%v)\n", cs.height, cs.round, cs.step)
+	cs.syncer.OnEngineStepChange()
 }
 
 func (cs *consensus) enterProposeForNextHeight() {
@@ -373,9 +388,6 @@ func (cs *consensus) enterPropose() {
 			}
 		}
 	}
-	// dispatch twice to handle the case blockPart is queued before proposal
-	cs.dispatchQueuedMessage()
-	cs.dispatchQueuedMessage()
 }
 
 func (cs *consensus) enterPrevote() {
@@ -420,9 +432,13 @@ func (cs *consensus) enterPrevote() {
 		cs.sendVote(voteTypePrevote, nil)
 	}
 
-	prevotes := cs.hvs.votesFor(cs.round, voteTypePrevote)
-	if prevotes.hasOverTwoThirds() {
-		cs.enterPrevoteWait()
+	// send vote may change step
+	// TODO simplify
+	if cs.step == stepPrevote {
+		prevotes := cs.hvs.votesFor(cs.round, voteTypePrevote)
+		if prevotes.hasOverTwoThirds() {
+			cs.enterPrevoteWait()
+		}
 	}
 }
 
@@ -475,7 +491,7 @@ func (cs *consensus) enterPrecommit() {
 	} else {
 		// polka for a block we don't have
 		logger.Println("enterPrecommit: polka for we don't have")
-		if cs.currentBlockParts != nil && !cs.currentBlockParts.ID().Equal(partSetID) {
+		if cs.currentBlockParts == nil || !cs.currentBlockParts.ID().Equal(partSetID) {
 			cs.currentBlockParts = &blockPartSet{
 				PartSet: newPartSetFromID(partSetID),
 			}
@@ -485,9 +501,12 @@ func (cs *consensus) enterPrecommit() {
 		cs.sendVote(voteTypePrecommit, nil)
 	}
 
-	precommits := cs.hvs.votesFor(cs.round, voteTypePrecommit)
-	if precommits.hasOverTwoThirds() {
-		cs.enterPrecommitWait()
+	// sendVote may change step
+	if cs.step == stepPrecommit {
+		precommits := cs.hvs.votesFor(cs.round, voteTypePrecommit)
+		if precommits.hasOverTwoThirds() {
+			cs.enterPrecommitWait()
+		}
 	}
 }
 
@@ -557,9 +576,13 @@ func (cs *consensus) commitAndEnterNewHeight() {
 func (cs *consensus) enterCommit(partSetID *PartSetID) {
 	cs.resetForNewStep()
 	cs.setStep(stepCommit)
-	cs.nextProposeTime = time.Now().Add(timeoutCommit)
+	if cs.consumedNonunicast {
+		cs.nextProposeTime = time.Now().Add(timeoutCommit)
+	} else {
+		cs.nextProposeTime = time.Now()
+	}
 
-	if !cs.currentBlockParts.ID().Equal(partSetID) {
+	if cs.currentBlockParts == nil || !cs.currentBlockParts.ID().Equal(partSetID) {
 		cs.currentBlockParts = &blockPartSet{
 			PartSet: newPartSetFromID(partSetID),
 		}
@@ -567,9 +590,6 @@ func (cs *consensus) enterCommit(partSetID *PartSetID) {
 	if cs.currentBlockParts.IsComplete() {
 		cs.commitAndEnterNewHeight()
 	}
-
-	// dispatch to handle queued blockPart
-	cs.dispatchQueuedMessage()
 }
 
 func (cs *consensus) enterNewHeight() {
@@ -577,9 +597,7 @@ func (cs *consensus) enterNewHeight() {
 	cs.setStep(stepNewHeight)
 
 	now := time.Now()
-	if cs.nextProposeTime.Before(now) {
-		cs.enterProposeForNextHeight()
-	} else {
+	if cs.nextProposeTime.After(now) {
 		hrs := cs.hrs
 		cs.timer = time.AfterFunc(cs.nextProposeTime.Sub(now), func() {
 			cs.mutex.Lock()
@@ -590,6 +608,8 @@ func (cs *consensus) enterNewHeight() {
 			}
 			cs.enterProposeForNextHeight()
 		})
+	} else {
+		cs.enterProposeForNextHeight()
 	}
 }
 
@@ -601,26 +621,25 @@ func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) error {
 	msg.POLRound = polRound
 	err := msg.sign(cs.wallet)
 	if err != nil {
-		return errors.Errorf("sendVote : %v", err)
+		return errors.Errorf("sendProposal : %v", err)
 	}
 	msgBS, err := msgCodec.MarshalToBytes(msg)
 	if err != nil {
-		return errors.Errorf("sendVote : %v", err)
+		return errors.Errorf("sendProposal : %v", err)
 	}
 	logger.Printf("sendProposal = %+v \n", msg)
-	cs.dm.Broadcast(protoProposal, msgBS, module.BROADCAST_ALL)
+	cs.ph.Broadcast(protoProposal, msgBS, module.BROADCAST_ALL)
 
 	bpmsg := newBlockPartMessage()
 	bpmsg.Height = cs.height
-	bpmsg.Round = cs.round
 	for i := 0; i < blockParts.Parts(); i++ {
 		bpmsg.BlockPart = blockParts.GetPart(i).Bytes()
 		bpmsgBS, err := msgCodec.MarshalToBytes(bpmsg)
 		if err != nil {
-			return errors.Errorf("sendVote : %v", err)
+			return errors.Errorf("sendProposal : %v", err)
 		}
 		logger.Printf("sendBlockPart = %+v \n", bpmsg)
-		cs.dm.Broadcast(protoBlockPart, bpmsgBS, module.BROADCAST_ALL)
+		cs.ph.Broadcast(protoBlockPart, bpmsgBS, module.BROADCAST_ALL)
 	}
 
 	return nil
@@ -631,26 +650,13 @@ func (cs *consensus) sendVote(vt voteType, blockParts *blockPartSet) error {
 		return nil
 	}
 
-	defer func() {
-		go func() {
-			cs.mutex.Lock()
-			defer cs.mutex.Unlock()
-
-			cs.dispatchQueuedMessage()
-		}()
-	}()
 	msg := newVoteMessage()
 	msg.Height = cs.height
 	msg.Round = cs.round
 	msg.Type = vt
 
 	if blockParts != nil {
-		// TODO fixme
-		if blockParts.block != nil {
-			msg.BlockID = blockParts.block.ID()
-		} else {
-			msg.BlockID = nil
-		}
+		msg.BlockID = blockParts.block.ID()
 		msg.BlockPartSetID = blockParts.ID()
 	} else {
 		msg.BlockID = nil
@@ -665,8 +671,12 @@ func (cs *consensus) sendVote(vt voteType, blockParts *blockPartSet) error {
 		return errors.Errorf("sendVote : %v", err)
 	}
 	logger.Printf("sendVote = %+v \n", msg)
-	cs.dm.Broadcast(protoVote, msgBS, module.BROADCAST_ALL)
-	cs.enqueueMessage(msg)
+	if vt == voteTypePrevote {
+		cs.ph.Multicast(protoVote, msgBS, module.ROLE_VALIDATOR)
+	} else {
+		cs.ph.Broadcast(protoVote, msgBS, module.BROADCAST_ALL)
+	}
+	cs.ReceiveVoteMessage(msg, false)
 	return nil
 }
 
@@ -732,16 +742,12 @@ func (cs *consensus) Start() {
 	logger = log.New(os.Stderr, prefix, log.Lshortfile|log.Lmicroseconds)
 
 	logger.Printf("Consensus start wallet=%s", cs.wallet.Address())
+	cs.ph, _ = cs.nm.RegisterReactor("consensus", cs, csProtocols, configEnginePriority)
 
-	go func() {
-		time.Sleep(time.Second * 3)
-
-		cs.mutex.Lock()
-		defer cs.mutex.Unlock()
-
-		cs.resetForNewHeight(lastFinalizedBlock, newVoteList(nil))
-		cs.enterPropose()
-	}()
+	cs.resetForNewHeight(lastFinalizedBlock, newVoteList(nil))
+	cs.syncer = newSyncer(cs, cs.nm, &cs.mutex)
+	cs.syncer.Start()
+	cs.enterPropose()
 }
 
 func (cs *consensus) GetStatus() *module.ConsensusStatus {
@@ -756,4 +762,106 @@ func (cs *consensus) GetStatus() *module.ConsensusStatus {
 		res.Proposer = cs.isProposer()
 	}
 	return res
+}
+
+func (cs *consensus) getCommit(h int64) *commit {
+	if h > cs.height || (h == cs.height && cs.step < stepCommit) {
+		logger.Panicf("cs.getCommit: invalid param h=%v cs.height=%v cs.step=%v\n", h, cs.height, cs.step)
+	}
+
+	c := cs.commitForHeight[h]
+	if c != nil {
+		return c
+	}
+
+	if h == cs.height && !cs.currentBlockParts.IsComplete() {
+		return &commit{
+			height:       h,
+			votes:        cs.hvs.votesFor(cs.round, voteTypePrecommit).voteList(),
+			blockPartSet: cs.currentBlockParts,
+		}
+	}
+
+	if cs.commitMRU.Len() == configCommitCacheCap {
+		c := cs.commitMRU.Remove(cs.commitMRU.Back()).(*commit)
+		delete(cs.commitForHeight, c.height)
+	}
+
+	if h == cs.height {
+		c = &commit{
+			height:       h,
+			votes:        cs.hvs.votesFor(cs.round, voteTypePrecommit).voteList(),
+			blockPartSet: cs.currentBlockParts,
+		}
+	} else {
+		b, err := cs.bm.GetBlockByHeight(h)
+		if err != nil {
+			logger.Panicf("cs.getCommit: %v\n", err)
+		}
+		var vl *roundVoteList
+		if h == cs.height-1 {
+			vl = cs.votes.roundVoteList(h, b.ID())
+		} else {
+			nb, err := cs.bm.GetBlockByHeight(h + 1)
+			if err != nil {
+				logger.Panicf("cs.getCommit: %v\n", err)
+			}
+			vl = nb.Votes().(*voteList).roundVoteList(h, b.ID())
+		}
+		psb := newPartSetBuffer(configBlockPartSize)
+		b.MarshalHeader(psb)
+		b.MarshalBody(psb)
+		bps := psb.PartSet()
+		c = &commit{
+			height:       h,
+			votes:        vl,
+			blockPartSet: bps,
+		}
+	}
+	cs.commitMRU.PushBack(c)
+	cs.commitForHeight[c.height] = c
+	return c
+}
+
+func (cs *consensus) GetCommitBlockParts(h int64) PartSet {
+	c := cs.getCommit(h)
+	return c.blockPartSet
+}
+
+func (cs *consensus) GetCommitPrecommits(h int64) *roundVoteList {
+	c := cs.getCommit(h)
+	return c.votes
+}
+
+func (cs *consensus) GetPrecommits(r int32) *roundVoteList {
+	return cs.hvs.votesFor(r, voteTypePrecommit).voteList()
+}
+
+func (cs *consensus) GetVotes(r int32, prevotesMask *bitArray, precommitsMask *bitArray) *roundVoteList {
+	return cs.hvs.getVoteListForMask(r, prevotesMask, precommitsMask)
+}
+
+func (cs *consensus) GetRoundState() *peerRoundState {
+	prs := &peerRoundState{}
+	prs.Height = cs.height
+	prs.Round = cs.round
+	prs.PrevotesMask = cs.hvs.votesFor(cs.round, voteTypePrevote).getMask()
+	prs.PrecommitsMask = cs.hvs.votesFor(cs.round, voteTypePrecommit).getMask()
+	bp := cs.currentBlockParts
+	if bp != nil {
+		prs.BlockPartsMask = cs.currentBlockParts.GetMask()
+	}
+	return prs
+}
+
+func (cs *consensus) Height() int64 {
+	return cs.height
+}
+
+func (cs *consensus) Round() int32 {
+	return cs.round
+}
+
+func (cs *consensus) Step() step {
+	return cs.step
 }

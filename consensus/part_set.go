@@ -26,6 +26,7 @@ type PartSet interface {
 	IsComplete() bool
 	NewReader() io.Reader
 	AddPart(Part) error
+	GetMask() *bitArray
 }
 
 type PartSetBuffer interface {
@@ -57,6 +58,7 @@ type partSet struct {
 	added int
 	parts []*part
 	tree  trie.Immutable
+	ba    *bitArray
 }
 
 func (ps *partSet) ID() *PartSetID {
@@ -86,6 +88,10 @@ func (ps *partSet) GetPart(i int) Part {
 
 func (ps *partSet) IsComplete() bool {
 	return ps.added == len(ps.parts)
+}
+
+func (ps *partSet) GetMask() *bitArray {
+	return ps.ba
 }
 
 type blockPartsReader struct {
@@ -135,6 +141,7 @@ func (ps *partSet) AddPart(p Part) error {
 	pt.data = data
 	ps.parts[idx] = pt
 	ps.added += 1
+	ps.ba.Set(idx)
 	return nil
 }
 
@@ -191,6 +198,8 @@ func (b *partSetBuffer) PartSet() PartSet {
 		}
 		b.ps.tree = ss
 	}
+	b.ps.ba = newBitArray(b.ps.added)
+	b.ps.ba.Flip()
 	return b.ps
 }
 
@@ -202,6 +211,7 @@ func newPartSetFromID(h *PartSetID) PartSet {
 	return &partSet{
 		parts: make([]*part, h.Count),
 		tree:  trie_manager.NewImmutable(db.NewNullDB(), h.Hash),
+		ba:    newBitArray(int(h.Count)),
 	}
 }
 

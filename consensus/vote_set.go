@@ -7,9 +7,11 @@ type counter struct {
 
 type voteSet struct {
 	msgs     []*voteMessage
+	maxIndex int
+	mask     *bitArray
+
 	counters []counter
 	count    int
-	maxIndex int
 }
 
 // return true if added
@@ -31,6 +33,7 @@ func (vs *voteSet) add(index int, v *voteMessage) bool {
 	}
 	vs.count++
 	vs.maxIndex = -1
+	vs.mask.Set(index)
 	return true
 }
 
@@ -74,6 +77,29 @@ func (vs *voteSet) voteListForOverTwoThirds() *voteList {
 	return newVoteList(msgs)
 }
 
+func (vs *voteSet) voteList() *roundVoteList {
+	rvl := newRoundVoteList()
+	for _, msg := range vs.msgs {
+		if msg != nil {
+			rvl.AddVote(msg)
+		}
+	}
+	return rvl
+}
+
+// shall not modify returned array. invalidated if a vote is added.
+func (vs *voteSet) getMask() *bitArray {
+	return vs.mask
+}
+
+func newVoteSet(nValidators int) *voteSet {
+	return &voteSet{
+		msgs:     make([]*voteMessage, nValidators),
+		maxIndex: -1,
+		mask:     newBitArray(nValidators),
+	}
+}
+
 type roundVoteSet = [numberOfVoteTypes]*voteSet
 
 type heightVoteSet struct {
@@ -89,10 +115,7 @@ func (hvs *heightVoteSet) add(index int, v *voteMessage) (bool, *voteSet) {
 func (hvs *heightVoteSet) votesFor(round int32, voteType voteType) *voteSet {
 	rvs := hvs._votes[round]
 	if rvs[voteType] == nil {
-		rvs[voteType] = &voteSet{
-			msgs:     make([]*voteMessage, hvs._nValidators),
-			maxIndex: -1,
-		}
+		rvs[voteType] = newVoteSet(hvs._nValidators)
 		hvs._votes[round] = rvs
 	}
 	vs := rvs[voteType]
@@ -102,4 +125,21 @@ func (hvs *heightVoteSet) votesFor(round int32, voteType voteType) *voteSet {
 func (hvs *heightVoteSet) reset(nValidators int) {
 	hvs._nValidators = nValidators
 	hvs._votes = make(map[int32][numberOfVoteTypes]*voteSet)
+}
+
+func (hvs *heightVoteSet) getVoteListForMask(round int32, prevotesMask *bitArray, precommitsMask *bitArray) *roundVoteList {
+	rvl := newRoundVoteList()
+	prevotes := hvs.votesFor(round, voteTypePrevote)
+	for i, msg := range prevotes.msgs {
+		if prevotesMask.Get(i) && msg != nil {
+			rvl.AddVote(msg)
+		}
+	}
+	precommits := hvs.votesFor(round, voteTypePrecommit)
+	for i, msg := range precommits.msgs {
+		if precommitsMask.Get(i) && msg != nil {
+			rvl.AddVote(msg)
+		}
+	}
+	return rvl
 }
