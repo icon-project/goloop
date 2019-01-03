@@ -4,9 +4,9 @@ import os.path
 from copy import copy
 import os
 
-basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../pyee"))
 sys.path.append(basedir)
-from pyee.pyexec.ipc import *
+from pyexec.ipc import *
 
 
 class Address(object):
@@ -73,9 +73,9 @@ class TestEE(object):
         proxy.set_invoke_handler(self.invoke_handler)
         proxy.set_api_handler(self.api_handler)
 
-    def invoke_handler(self, code: str, _from: 'Address', _to: 'Address',
+    def invoke_handler(self, code: str, is_query: bool, _from: 'Address', _to: 'Address',
                        value: int, limit: int, method: str, params: Any) -> Tuple[int, int, Any]:
-        print(f'invoke_handler(code={repr(code)},from={_from},to={_to},' +
+        print(f'invoke_handler(code={repr(code)},is_query={is_query},from={_from},to={_to},' +
               f'value={value},limit={limit},method={repr(method)},params={params})')
         self.get_info()
         self.set_value(b"hello", b"world")
@@ -88,16 +88,16 @@ class TestEE(object):
         return 0, 10, "Test"
 
     def api_handler(self, code: str) -> APIInfo:
-        info = APIInfo()
-        info.add_function("hello", 0, [
-            ("msg", DataType.STRING)
+        info = APIInfo(self.__proxy)
+        info.add_function("hello", 0, 0, [
+            ("msg", DataType.STRING, None)
         ], [
             DataType.STRING
         ])
-        info.add_event("LogEvent", 0, 2, [
-            ("id", DataType.INTEGER),
-            ("msg", DataType.STRING),
-            ("addr", DataType.ADDRESS)
+        info.add_event("LogEvent", 2, [
+            ("id", DataType.INTEGER, None),
+            ("msg", DataType.STRING, None),
+            ("addr", DataType.ADDRESS, None)
         ])
         return info
 

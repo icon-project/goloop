@@ -62,7 +62,9 @@ def convert_inputs(params: list) -> List[Tuple[str, int]]:
     for param in params:
         name: str = param.get('name')
         typ: int = convert_data_type(param.get('type'))
-        result.append((name, typ))
+        # TODO optional parameter must be set.
+        default: Any = None
+        result.append((name, typ, default))
     return result
 
 
@@ -114,11 +116,13 @@ class PyExecEngine(object):
         print(f'[api_handler] code={code}')
         apis = ServiceEngine.get_score_api(code)
         print(f"get_api({code}) -> {apis}")
-        info = APIInfo()
+        info = APIInfo(self.__proxy)
         for api in apis:
             typ = api[0]
             if typ == APIType.FUNCTION:
-                info.add_function(api[1], api[2], convert_inputs(api[3]), convert_output(api[4]))
+                # TODO optional parameter count must be applied.
+                optional = 0
+                info.add_function(api[1], api[2], optional, convert_inputs(api[3]), convert_output(api[4]))
             elif typ == APIType.FALLBACK:
                 info.add_fallback(api[1], api[2], convert_inputs(api[3]))
             elif typ == APIType.EVENT:

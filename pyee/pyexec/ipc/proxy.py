@@ -91,36 +91,55 @@ class DataType(object):
 
 
 class APIInfo(object):
-    def __init__(self):
+    def __init__(self, proxy: 'ServiceManagerProxy'):
         self.__values = []
+        self.__proxy = proxy
 
-    def add_function(self, name: str, flags: int, inputs: List[Tuple[str, int]], outputs: List[int]):
+    def __encode_inputs(self, inputs: List[Tuple[str, int, Any]], optinal: int) -> List[Tuple[str, int, bytes]]:
+        mandatory = len(inputs) - optinal
+        new_inputs = []
+        for i in range(len(inputs)):
+            name, _type, default = inputs[i]
+            if i < mandatory:
+                new_inputs.append((name, _type, None))
+            else:
+                new_inputs.append((name, _type, self.__proxy.encode(default)))
+        return new_inputs
+
+    def add_function(self, name: str, flags: int, optional: int, inputs: List[Tuple[str, int, Any]],
+                     outputs: List[int]):
         self.__values.append([
             APIType.FUNCTION,
             name,
             flags,
-            0,
-            inputs,
+            len(inputs)-optional,
+            self.__encode_inputs(inputs, optional),
             outputs,
         ])
 
-    def add_fallback(self, name: str, flags: int, inputs: List[Tuple[str, int]]):
+    def add_fallback(self, name: str, flags: int, inputs: List[Tuple[str, int, Any]]):
+        if len(inputs) > 0:
+            return
+        if (flags & APIFlag.PAYABLE) == 0:
+            return
         self.__values.append([
             APIType.FALLBACK,
             name,
             flags,
             0,
-            inputs,
+            [],
             [],
         ])
 
-    def add_event(self, name: str, indexed: int, inputs: List[Tuple[str, int]]):
+    def add_event(self, name: str, indexed: int, inputs: List[Tuple[str, int, Any]]):
+        if indexed > len(inputs):
+            raise Exception("IllegalIndexedCount")
         self.__values.append([
             APIType.EVENT,
             name,
             0,
             indexed,
-            inputs,
+            self.__encode_inputs(inputs, 0),
             [],
         ])
 
@@ -175,6 +194,11 @@ class ServiceManagerProxy:
             return o.encode('utf-8')
         elif isinstance(o, bytes):
             return o
+        elif isinstance(o, bool):
+            if o:
+                return b'\x01'
+            else:
+                return b'\x00'
         else:
             t, v = self.__codec.encode(o)
             return v
@@ -245,6 +269,7 @@ class ServiceManagerProxy:
                 self.encode_any(result)
             ])
         except BaseException as e:
+            raise e
             self.__client.send(Message.RESULT, [
                 Status.SYSTEM_FAILURE,
                 self.encode(limit),

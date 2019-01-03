@@ -60,6 +60,77 @@ func (t DataType) String() string {
 	}
 }
 
+func (t DataType) ConvertToJSON(bs []byte) interface{} {
+	switch t {
+	case Integer:
+		var i common.HexInt
+		if len(bs) > 0 {
+			i.SetBytes(bs)
+		}
+		return &i
+	case String:
+		if bs == nil {
+			return nil
+		}
+		return string(bs)
+	case Bytes:
+		if bs == nil {
+			return nil
+		}
+		return common.HexBytes(bs)
+	case Bool:
+		if (len(bs) == 1 && bs[0] == 0) || len(bs) == 0 {
+			return "0x0"
+		} else {
+			return "0x1"
+		}
+	case Address:
+		if len(bs) == 0 {
+			return nil
+		}
+		addr := new(common.Address)
+		addr.SetBytes(bs)
+		return addr
+	default:
+		log.Panicf("Unknown DataType=%d", t)
+		return nil
+	}
+}
+
+func (t DataType) Decode(bs []byte) interface{} {
+	switch t {
+	case Integer:
+		var i common.HexInt
+		if len(bs) > 0 {
+			i.SetBytes(bs)
+		}
+		return &i
+	case String:
+		if bs == nil {
+			return nil
+		}
+		return string(bs)
+	case Bytes:
+		return bs
+	case Bool:
+		if (len(bs) == 1 && bs[0] == 0) || len(bs) == 0 {
+			return false
+		} else {
+			return true
+		}
+	case Address:
+		if len(bs) == 0 {
+			return nil
+		}
+		addr := new(common.Address)
+		addr.SetBytes(bs)
+		return addr
+	default:
+		log.Panicf("Unknown DataType=%d", t)
+		return nil
+	}
+}
+
 const (
 	FlagReadOnly = 1 << iota
 	FlagExternal
@@ -67,8 +138,9 @@ const (
 )
 
 type Parameter struct {
-	Name string
-	Type DataType
+	Name    string
+	Type    DataType
+	Default []byte
 }
 
 type Method struct {
@@ -106,8 +178,14 @@ func (a *Method) ToJSON(version int) (interface{}, error) {
 		io := make(map[string]interface{})
 		io["name"] = input.Name
 		io["type"] = input.Type.String()
-		if i < a.Indexed {
-			io["indexed"] = "0x1"
+		if a.Type == Event {
+			if i < a.Indexed {
+				io["indexed"] = "0x1"
+			}
+		} else {
+			if i >= a.Indexed {
+				io["default"] = input.Type.ConvertToJSON(input.Default)
+			}
 		}
 		inputs[i] = io
 	}
@@ -129,6 +207,32 @@ func (a *Method) ToJSON(version int) (interface{}, error) {
 	return m, nil
 }
 
+func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedObj, error) {
+	if paramObj.Type == codec.TypeList {
+		return paramObj, nil
+	}
+	if paramObj.Type != codec.TypeDict {
+		return nil, errors.Errorf("UnknownType(%v)", paramObj.Type)
+	}
+	params, ok := paramObj.Object.(map[string]interface{})
+	if !ok {
+		return nil, errors.Errorf("FailToCastDictToMap")
+	}
+	inputs := make([]interface{}, len(a.Inputs))
+	for i, input := range a.Inputs {
+		if obj, ok := params[input.Name]; ok {
+			inputs[i] = obj
+		} else {
+			if i >= a.Indexed {
+				inputs[i] = input.Type.Decode(input.Default)
+			} else {
+				return nil, errors.Errorf("MissingParameter(name=%s)", input.Name)
+			}
+		}
+	}
+	return common.EncodeAny(inputs)
+}
+
 func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
 	var params map[string]string
 	if err := json.Unmarshal(bs, &params); err != nil {
@@ -138,6 +242,10 @@ func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
 	for i, input := range a.Inputs {
 		param, ok := params[input.Name]
 		if !ok {
+			if i >= a.Indexed {
+				inputs[i] = input.Type.Decode(input.Default)
+				continue
+			}
 			return nil, errors.Errorf("MissingParam(param=%s)", input.Name)
 		}
 		switch input.Type {
