@@ -134,7 +134,7 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (
 					msg.result, msg.addr) {
 					continue
 				}
-				return module.Status(msg.status), msg.stepUsed, msg.result, nil
+				return msg.status, msg.stepUsed, msg.result, nil
 			case *callRequestMessage:
 				switch handler := msg.handler.(type) {
 				case SyncContractHandler:
@@ -171,6 +171,19 @@ func (cc *callContext) handleResult(status module.Status,
 ) bool {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
+
+	if status == module.StatusTimeout {
+		if e := cc.stack.Back(); e != nil {
+			log.Println("Unexpected: StatusTimeout is thrown by another code than callcontext!")
+			for e = cc.stack.Back(); e != nil; e = cc.stack.Back() {
+				if h, ok := e.Value.(AsyncContractHandler); ok {
+					h.Cancel()
+				}
+				cc.stack.Remove(e)
+			}
+		}
+		return false
+	}
 
 	// remove current frame
 	e := cc.stack.Back()
