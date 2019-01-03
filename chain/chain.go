@@ -103,6 +103,7 @@ func (c *singleChain) Start() {
 	if err != nil {
 		log.Panicln("FAIL to start EEManager")
 	}
+	go em.Loop()
 	c.sm = service.NewManager(c, c.nm, em)
 	c.bm = block.NewManager(c, c.sm)
 
