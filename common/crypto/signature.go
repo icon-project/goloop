@@ -139,17 +139,6 @@ func (sig *Signature) Verify(msg []byte, pubKey *PublicKey) bool {
 		return false
 	}
 	ret := secp256k1.VerifySignature(msg, s, pubKey.bytes)
-	// TODO disable malleability check?
-	// if ret == 0 {
-	// 	// TODO why?
-	// 	if (s[32] >> 7) == 1 {
-	// 		log.Println("VALID SIG but fails malleability")
-	// 	}
-	// 	// TODO why?
-	// 	if s[64] >= 4 {
-	// 		log.Println("RECOVER BYTE INVALID")
-	// 	}
-	// }
 	return ret != 0
 }
 
