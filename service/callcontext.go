@@ -160,7 +160,7 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (
 					}
 				}
 			default:
-				log.Printf("Invalid message=%[1]T %[1]+v", msg)
+				log.Printf("Invalid message=%[1]T %+[1]v", msg)
 			}
 		}
 	}
