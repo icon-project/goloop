@@ -51,6 +51,9 @@ func NewManager(chain module.Chain, nm module.NetworkManager, em eeproxy.Manager
 		cm:           NewContractManager(chain.Database()),
 		em:           em,
 	}
+	if em != nil {
+		go em.Loop()
+	}
 	mgr.txReactor = newTransactionReactor(nm, mgr.patchTxPool, mgr.normalTxPool)
 	return mgr
 }

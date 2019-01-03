@@ -121,17 +121,6 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 		return module.StatusNotPayable, h.stepLimit, nil, nil
 	}
 
-	ownerAs := wc.GetAccountState(h.from.ID())
-	bal := ownerAs.GetBalance()
-
-	if bal.Cmp(stepUsed) < 0 {
-		stepUsed.Set(bal)
-		ownerAs.SetBalance(big.NewInt(0))
-		return module.StatusOutOfBalance, stepUsed, nil, nil
-	}
-	bal.Sub(bal, stepUsed)
-	ownerAs.SetBalance(bal)
-
 	// store ScoreDeployInfo and ScoreDeployTXParams
 	as := wc.GetAccountState(contractID)
 	if update == false {
@@ -141,17 +130,24 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 			return module.StatusSystemError, stepUsed, nil, nil
 		}
 	}
-
+	scoreAddr := common.NewContractAddress(contractID)
 	as.DeployContract(codeBuf, h.eeType, h.contentType, h.params, h.txHash)
-	scoreAddr := scoredb.NewVarDB(sysAs, h.txHash)
-	_ = scoreAddr.Set(common.NewContractAddress(contractID))
+	scoreDb := scoredb.NewVarDB(sysAs, h.txHash)
+	_ = scoreDb.Set(scoreAddr)
 
 	//if audit == false || deployer {
 	ah := newAcceptHandler(h.from, common.NewContractAddress(contractID),
 		nil, nil, h.params, h.cc)
-	ah.ExecuteSync(wc)
+	status, acceptStepUsed, _, _ := ah.ExecuteSync(wc)
+	if acceptStepUsed != nil {
+		stepUsed = stepUsed.Add(stepUsed, acceptStepUsed)
+	}
+	log.Printf("Deployhandler status %x\n", status)
+	if status != module.StatusSuccess {
+		return status, stepUsed, nil, nil
+	}
 	//}
-	return module.StatusSuccess, nil, nil, nil
+	return module.StatusSuccess, stepUsed, nil, scoreAddr
 }
 
 type AcceptHandler struct {
@@ -238,7 +234,7 @@ func (h *AcceptHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 	}
 	varDb.Delete()
 
-	return status, stepUsed1.Add(stepUsed1, stepUsed2), nil, scoreAddr
+	return status, stepUsed1.Add(stepUsed1, stepUsed2), nil, nil
 }
 
 type callGetAPIHandler struct {

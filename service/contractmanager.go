@@ -49,7 +49,7 @@ type (
 )
 
 const (
-	contractStoreRoot          = "./contract/"
+	contractStoreRoot          = "./contract"
 	tsInProgress      tsStatus = iota
 	tsComplete
 )
@@ -221,5 +221,6 @@ func NewContractManager(db db.Database) ContractManager {
 			log.Panicf("Failed to remove %s\n", tmp)
 		}
 	}
-	return &contractManager{db: db, storeRoot: storeRoot}
+	return &contractManager{db: db, storeRoot: storeRoot,
+		storageCache: make(map[string]*storageCache)}
 }
