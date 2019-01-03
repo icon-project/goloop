@@ -62,26 +62,6 @@ func (h *TransferHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 	stepUsed.Set(step)
 	stepAvail.Sub(&stepAvail, step)
 
-	// try to charge fee
-	fee.Mul(&stepUsed, stepPrice)
-	bal1 = as1.GetBalance()
-	for bal1.Cmp(&fee) < 0 {
-		if status == 0 {
-			// rollback all changes
-			status = module.StatusNotPayable
-			wc.Reset(wcs)
-			bal1 = as1.GetBalance()
-
-			stepUsed.Set(h.stepLimit)
-			fee.Mul(&stepUsed, stepPrice)
-		} else {
-			//stepPrice.SetInt64(0)
-			fee.SetInt64(0)
-		}
-	}
-	bal1.Sub(bal1, &fee)
-	as1.SetBalance(bal1)
-
 	return status, &stepUsed, nil, nil
 }
 

@@ -97,17 +97,14 @@ func (tx *transactionV2) Execute(wc WorldContext) (Receipt, error) {
 	as1 := wc.GetAccountState(tx.From.ID())
 	bal1 := as1.GetBalance()
 	if bal1.Cmp(&trans) < 0 {
-		stepUsed := version2StepUsed
-		stepPrice := new(big.Int)
-
 		log.Printf("TX2 Fail balance=%s value=%s fee=%s",
 			bal1.String(), tx.Value.Int.String(), tx.Fee.Int.String())
 
-		if bal1.Cmp(&tx.Value.Int) < 0 {
-			r.SetResult(module.StatusOutOfBalance, stepUsed, stepPrice, nil)
-		} else {
-			r.SetResult(module.StatusNotPayable, stepUsed, stepPrice, nil)
+		stepPrice := version2StepPrice
+		if bal1.Cmp(version2FixedFee) < 0 {
+			stepPrice.SetInt64(0)
 		}
+		r.SetResult(module.StatusNotPayable, version2StepUsed, stepPrice, nil)
 		return r, nil
 	}
 

@@ -69,13 +69,50 @@ func (th *transactionHandler) Prepare(wc WorldContext) (WorldContext, error) {
 }
 
 func (th *transactionHandler) Execute(wc WorldContext) (Receipt, error) {
+	// Make a copy of initial state
+	wcs := wc.GetSnapshot()
+
+	// Execute
 	th.cc.Setup(wc)
 	status, stepUsed, _, addr := th.cc.Call(th.handler)
-	// TODO 확인 필요.
+
+	// If it's not successful, roll back the state.
 	if status != module.StatusSuccess {
-		stepUsed = th.stepLimit
+		// In case of timeout, returned stepUsed may not be same as stepLimit.
+		// So set it again.
+		stepUsed.Set(th.stepLimit)
+		wc.Reset(wcs)
 	}
-	th.receipt.SetResult(status, stepUsed, wc.StepPrice(), addr)
+
+	// Try to charge fee
+	stepPrice := wc.StepPrice()
+	fee := big.NewInt(0).Mul(stepUsed, stepPrice)
+
+	as := wc.GetAccountState(th.from.ID())
+	bal := as.GetBalance()
+	for bal.Cmp(fee) < 0 {
+		if status == module.StatusSuccess {
+			// rollback all changes
+			status = module.StatusNotPayable
+			wc.Reset(wcs)
+			bal = as.GetBalance()
+
+			stepUsed.Set(th.stepLimit)
+			fee.Mul(stepUsed, stepPrice)
+		} else {
+			stepPrice.SetInt64(0)
+			fee.SetInt64(0)
+		}
+	}
+	bal.Sub(bal, fee)
+	as.SetBalance(bal)
+
+	// Make a receipt
+	if status == module.StatusSuccess {
+		th.receipt.SetResult(status, stepUsed, stepPrice, addr)
+	} else {
+		th.receipt.SetResult(status, stepUsed, stepPrice, nil)
+	}
 	return th.receipt, nil
 }
 
