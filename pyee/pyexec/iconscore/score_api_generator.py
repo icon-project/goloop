@@ -171,7 +171,8 @@ class ScoreApiGenerator:
         if param.default is not Parameter.empty:
             if param.default is not None and not isinstance(param.default, main_type):
                 raise InvalidParamsException(f'default params type mismatch. value: {param.default} type: {main_type}')
-            info[ScoreApiGenerator.__API_INPUTS_DEFAULT] = TypeConverter.convert_type_reverse(param.default)
+            # the default param value will be encoded at ipc.proxy
+            info[ScoreApiGenerator.__API_INPUTS_DEFAULT] = param.default
         src.append(info)
 
     @staticmethod

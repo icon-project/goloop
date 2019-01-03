@@ -57,15 +57,19 @@ def convert_data_type(typ: str) -> DataType:
         raise Exception(f"UnknownType: {typ}")
 
 
-def convert_inputs(params: list) -> List[Tuple[str, int]]:
+def convert_inputs(params: list) -> Tuple[int, List[Tuple[str, int, Any]]]:
     result = list()
+    optional = 0
     for param in params:
         name: str = param.get('name')
         typ: int = convert_data_type(param.get('type'))
-        # TODO optional parameter must be set.
-        default: Any = None
+        if 'default' in param:
+            default = param.get('default')
+            optional += 1
+        else:
+            default: Any = None
         result.append((name, typ, default))
-    return result
+    return optional, result
 
 
 def convert_output(params: list) -> List[int]:
@@ -119,14 +123,13 @@ class PyExecEngine(object):
         info = APIInfo(self.__proxy)
         for api in apis:
             typ = api[0]
+            optional, inputs = convert_inputs(api[3])
             if typ == APIType.FUNCTION:
-                # TODO optional parameter count must be applied.
-                optional = 0
-                info.add_function(api[1], api[2], optional, convert_inputs(api[3]), convert_output(api[4]))
+                info.add_function(api[1], api[2], optional, inputs, convert_output(api[4]))
             elif typ == APIType.FALLBACK:
-                info.add_fallback(api[1], api[2], convert_inputs(api[3]))
+                info.add_fallback(api[1], api[2], inputs)
             elif typ == APIType.EVENT:
-                info.add_event(api[1], api[2], convert_inputs(api[3]))
+                info.add_event(api[1], api[2], inputs)
         return info
 
     def connect(self, addr: str):

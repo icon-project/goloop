@@ -95,8 +95,8 @@ class APIInfo(object):
         self.__values = []
         self.__proxy = proxy
 
-    def __encode_inputs(self, inputs: List[Tuple[str, int, Any]], optinal: int) -> List[Tuple[str, int, bytes]]:
-        mandatory = len(inputs) - optinal
+    def __encode_inputs(self, inputs: List[Tuple[str, int, Any]], optional: int) -> List[Tuple[str, int, bytes]]:
+        mandatory = len(inputs) - optional
         new_inputs = []
         for i in range(len(inputs)):
             name, _type, default = inputs[i]
@@ -112,7 +112,7 @@ class APIInfo(object):
             APIType.FUNCTION,
             name,
             flags,
-            len(inputs)-optional,
+            len(inputs) - optional,
             self.__encode_inputs(inputs, optional),
             outputs,
         ])
@@ -269,7 +269,6 @@ class ServiceManagerProxy:
                 self.encode_any(result)
             ])
         except BaseException as e:
-            raise e
             self.__client.send(Message.RESULT, [
                 Status.SYSTEM_FAILURE,
                 self.encode(limit),
