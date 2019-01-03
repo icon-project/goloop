@@ -265,8 +265,7 @@ func (t *transition) executeSync(alreadyValidated bool) {
 			cumulativeSteps.Add(cumulativeSteps, used)
 			r.SetCumulativeStepUsed(cumulativeSteps)
 
-			fee.Set(r.StepPrice())
-			fee.Mul(fee, used)
+			fee.Mul(r.StepPrice(), used)
 			gatheredFee.Add(gatheredFee, fee)
 		}
 	}
@@ -281,9 +280,9 @@ func (t *transition) executeSync(alreadyValidated bool) {
 
 	t.worldSnapshot = wc.GetSnapshot()
 
-	ellapsed := float64(time.Now().Sub(startTime)/time.Microsecond) / 1000
+	elapsed := float64(time.Now().Sub(startTime)/time.Microsecond) / 1000
 	log.Printf("Transactions: %6d  Elapsed: %7.3f msecs  TPS: %9.2f",
-		patchCount+normalCount, ellapsed, float64(patchCount+normalCount)/ellapsed*1000)
+		patchCount+normalCount, elapsed, float64(patchCount+normalCount)/elapsed*1000)
 
 	tresult := transitionResult{
 		t.worldSnapshot.StateHash(),
