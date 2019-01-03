@@ -46,23 +46,8 @@ func newTransferHandler(from, to module.Address, value, stepLimit *big.Int) *Tra
 }
 
 func (h *TransferHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int, *codec.TypedObj, module.Address) {
-	stepPrice := wc.StepPrice()
-	var (
-		fee                 big.Int
-		status              module.Status
-		step, bal1          *big.Int
-		stepUsed, stepAvail big.Int
-	)
-	wcs := wc.GetSnapshot()
-	as1 := wc.GetAccountState(h.from.ID())
-	stepAvail.Set(h.stepLimit)
-
-	// it tries to execute
-	status, step = executeTransfer(wc, h.from, h.to, h.value, &stepAvail)
-	stepUsed.Set(step)
-	stepAvail.Sub(&stepAvail, step)
-
-	return status, &stepUsed, nil, nil
+	status, stepUsed := executeTransfer(wc, h.from, h.to, h.value, h.stepLimit)
+	return status, stepUsed, nil, nil
 }
 
 type TransferAndMessageHandler struct {
