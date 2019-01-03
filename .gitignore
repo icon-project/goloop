@@ -1,3 +1,4 @@
 vendor
-
 .idea
+.venv
+__pycache__

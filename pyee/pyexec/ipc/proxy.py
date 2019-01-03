@@ -1,7 +1,20 @@
+# Copyright 2018 ICON Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from typing import Any, Tuple, List, Union, Callable
+from abc import ABCMeta, abstractmethod
 from .client import Client
-import os
-from abc import *
 
 
 # Convert python int to bytes of golang big.Int.
@@ -91,21 +104,21 @@ class APIInfo(object):
             outputs,
         ])
 
-    def add_fallback(self, name: str, flags: int, inputs: List[Tuple[str, int]], outputs: List[int]):
+    def add_fallback(self, name: str, flags: int, inputs: List[Tuple[str, int]]):
         self.__values.append([
             APIType.FALLBACK,
             name,
             flags,
             0,
             inputs,
-            outputs,
+            [],
         ])
 
-    def add_event(self, name: str, flags: int, indexed: int, inputs: List[Tuple[str, int]]):
+    def add_event(self, name: str, indexed: int, inputs: List[Tuple[str, int]]):
         self.__values.append([
             APIType.EVENT,
             name,
-            flags,
+            0,
             indexed,
             inputs,
             [],
@@ -113,6 +126,7 @@ class APIInfo(object):
 
     def get_data(self):
         return self.__values
+
 
 class ServiceManagerProxy:
     def __init__(self):
@@ -133,7 +147,7 @@ class ServiceManagerProxy:
             name,
         ])
 
-    def set_invoke_handler(self, invoke: Callable[[str, 'Address', 'Address', int, int, str, Any], None]):
+    def set_invoke_handler(self, invoke):
         self.__invoke = invoke
 
     def set_api_handler(self, api: Callable[[str], APIInfo]):
@@ -152,7 +166,7 @@ class ServiceManagerProxy:
         else:
             return self.__codec.decode(tag, val)
 
-    def encode(self, o: Any) -> Tuple[bytes]:
+    def encode(self, o: Any) -> bytes:
         if o is None:
             return bytes([])
         if isinstance(o, int):
@@ -193,7 +207,7 @@ class ServiceManagerProxy:
             for k, v in o.items():
                 m[k] = self.encode_any(v)
             return TypeTag.DICT, m
-        elif isinstance(o, list):
+        elif isinstance(o, list) or isinstance(o, tuple):
             lst = []
             for v in o:
                 lst.append(self.encode_any(v))
@@ -215,13 +229,15 @@ class ServiceManagerProxy:
         value = self.decode(TypeTag.INT, data[4])
         limit = self.decode(TypeTag.INT, data[5])
         method = self.decode(TypeTag.STRING, data[6])
-        params = self.decode_any(data[7])
+        params = data[7]
+        if isinstance(params, list):
+            params = self.decode_any(params)
 
         try:
             self.__readonly_stack.append(self.__readonly)
             self.__readonly = is_query
             status, step_used, result = self.__invoke(
-                code, _from, _to, value, limit, method, params)
+                code, is_query, _from, _to, value, limit, method, params)
 
             self.__client.send(Message.RESULT, [
                 status,
@@ -239,7 +255,8 @@ class ServiceManagerProxy:
 
     def __handle_get_api(self, data):
         try:
-            obj = self.__get_api(str(data))
+            code = self.decode(TypeTag.STRING, data)
+            obj = self.__get_api(code)
             if isinstance(obj, APIInfo):
                 self.__client.send(Message.GETAPI, obj.get_data())
             else:
@@ -261,7 +278,7 @@ class ServiceManagerProxy:
 
         self.__client.send(Message.CALL, [
             self.encode(to), self.encode(value), self.encode(step_limit),
-            self.encode(method), self.encode_any(params),
+            self.encode(method), self.encode_any(params)
         ])
 
         while True:

@@ -1,0 +1,2 @@
+msgpack==0.5.6
+iconcommons>=1.0.5

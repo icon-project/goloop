@@ -6,7 +6,7 @@ import os
 
 basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.append(basedir)
-from pyee.ipc import *
+from pyee.pyexec.ipc import *
 
 
 class Address(object):
