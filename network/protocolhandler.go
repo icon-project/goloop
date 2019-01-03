@@ -59,7 +59,7 @@ func (ph *protocolHandler) receiveRoutine() {
 				// ph.log.Println("receiveRoutine", err)
 			}
 
-			if r && pkt.ttl != 1 {
+			if r && pkt.ttl != 1 && pkt.dest != p2pDestPeer {
 				if err := ph.m.relay(pkt); err != nil {
 					ph.log.Println("Warning", "receiveRoutine", "relay", err)
 				}
