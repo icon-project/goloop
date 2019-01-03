@@ -43,8 +43,8 @@ type hrs struct {
 
 type blockPartSet struct {
 	PartSet
-	block    module.Block
-	noImport bool
+	block     module.Block // nil if partset is incomplete or invalid block
+	validated bool
 }
 
 type commit struct {
@@ -213,9 +213,10 @@ func (cs *consensus) ReceiveBlockPartMessage(msg *blockPartMessage, unicast bool
 	if cs.currentBlockParts.IsComplete() {
 		block, err := cs.bm.NewBlockFromReader(cs.currentBlockParts.NewReader())
 		if err != nil {
-			panic(err)
+			logger.Printf("ReceivedBlockPartMessage: cannot create block: %+v\n", err)
+		} else {
+			cs.currentBlockParts.block = block
 		}
-		cs.currentBlockParts.block = block
 	}
 
 	if cs.step == stepPropose && cs.isProposalAndPOLPrevotesComplete() {
@@ -376,9 +377,9 @@ func (cs *consensus) enterPropose() {
 
 					cs.sendProposal(bps, -1)
 					cs.currentBlockParts = &blockPartSet{
-						PartSet:  bps,
-						block:    blk,
-						noImport: true,
+						PartSet:   bps,
+						block:     blk,
+						validated: true,
 					}
 					cs.enterPrevote()
 				},
@@ -398,7 +399,7 @@ func (cs *consensus) enterPrevote() {
 		cs.sendVote(voteTypePrevote, cs.lockedBlockParts)
 	} else if cs.currentBlockParts != nil && cs.currentBlockParts.IsComplete() {
 		hrs := cs.hrs
-		if cs.currentBlockParts.block != nil {
+		if cs.currentBlockParts.validated {
 			cs.sendVote(voteTypePrevote, cs.currentBlockParts)
 		} else {
 			var err error
@@ -414,7 +415,7 @@ func (cs *consensus) enterPrevote() {
 
 					if err == nil {
 						logger.Println("prevote: onImport: OK")
-						cs.currentBlockParts.noImport = true
+						cs.currentBlockParts.validated = true
 						cs.sendVote(voteTypePrevote, cs.currentBlockParts)
 					} else {
 						logger.Println("prevote: onImport: ", err)
@@ -483,7 +484,7 @@ func (cs *consensus) enterPrecommit() {
 		logger.Println("enterPrecommit: updateLockRound")
 		cs.lockedRound = cs.round
 		cs.sendVote(voteTypePrecommit, cs.lockedBlockParts)
-	} else if cs.currentBlockParts != nil && cs.currentBlockParts.ID().Equal(partSetID) && cs.currentBlockParts.IsComplete() {
+	} else if cs.currentBlockParts != nil && cs.currentBlockParts.ID().Equal(partSetID) && cs.currentBlockParts.validated {
 		logger.Println("enterPrecommit: updateLock")
 		cs.lockedRound = cs.round
 		cs.lockedBlockParts = cs.currentBlockParts
@@ -538,7 +539,7 @@ func (cs *consensus) enterPrecommitWait() {
 }
 
 func (cs *consensus) commitAndEnterNewHeight() {
-	if !cs.currentBlockParts.noImport {
+	if !cs.currentBlockParts.validated {
 		hrs := cs.hrs
 		_, err := cs.bm.Import(
 			cs.currentBlockParts.NewReader(),
@@ -553,7 +554,7 @@ func (cs *consensus) commitAndEnterNewHeight() {
 				if err != nil {
 					logger.Panicf("commitAndEnterNewHeight: %v\n", err)
 				}
-				cs.currentBlockParts.noImport = true
+				cs.currentBlockParts.validated = true
 				err = cs.bm.Finalize(cs.currentBlockParts.block)
 				if err != nil {
 					logger.Panicf("commitAndEnterNewHeight: %v\n", err)
