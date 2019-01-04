@@ -220,6 +220,10 @@ type roundStateMessage struct {
 	// TODO: add LastMaskType, LastIndex
 }
 
+func (msg *roundStateMessage) String() string {
+	return fmt.Sprintf("RoundStateMessage:%v", msg.peerRoundState)
+}
+
 func newRoundStateMessage() *roundStateMessage {
 	return &roundStateMessage{}
 }
