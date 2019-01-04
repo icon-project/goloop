@@ -134,6 +134,13 @@ func (p *proxy) Invoke(ctx CallContext, code string, isQuery bool, from, to modu
 }
 
 func (p *proxy) GetAPI(ctx CallContext, code string) error {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+	p.frame = &callFrame{
+		addr: nil,
+		ctx:  ctx,
+		prev: p.frame,
+	}
 	return p.conn.Send(msgGETAPI, code)
 }
 
@@ -290,7 +297,11 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		if _, err := codec.MP.UnmarshalFromBytes(data, &obj); err != nil {
 			return err
 		} else {
-			p.frame.ctx.OnAPI(obj)
+			p.lock.Lock()
+			frame := p.frame
+			p.frame = frame.prev
+			p.lock.Unlock()
+			frame.ctx.OnAPI(obj)
 			return nil
 		}
 	default:
