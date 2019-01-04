@@ -1,6 +1,9 @@
 package consensus
 
 import (
+	"fmt"
+	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -43,16 +46,21 @@ type peer struct {
 	*syncer
 	id         module.PeerID
 	wakeUpChan chan struct{}
+	logger     *log.Logger
+	debug      *log.Logger
 
 	running bool
 	*peerRoundState
 }
 
 func newPeer(syncer *syncer, id module.PeerID) *peer {
+	prefix := fmt.Sprintf("%x|CS|%x|", syncer.addr.Bytes()[1:3], id.Bytes()[1:3])
 	return &peer{
 		syncer:     syncer,
 		id:         id,
 		wakeUpChan: make(chan struct{}, 1),
+		logger:     log.New(os.Stderr, prefix, log.Lshortfile|log.Lmicroseconds),
+		debug:      log.New(debugWriter, prefix, log.Lshortfile|log.Lmicroseconds),
 		running:    true, // TODO better way
 	}
 }
@@ -65,7 +73,7 @@ func (p *peer) setRoundState(prs *peerRoundState) {
 func (p *peer) doSync() (module.ProtocolInfo, message) {
 	e := p.engine
 	if p.peerRoundState == nil {
-		logger.Printf("nil peer round state\n")
+		p.debug.Printf("nil peer round state\n")
 		return nil, nil
 	}
 
@@ -89,7 +97,7 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 		}
 		idx := mask.PickRandom()
 		if idx < 0 {
-			logger.Printf("no bp to send\n")
+			p.debug.Printf("no bp to send: %v/%v\n", p.BlockPartsMask, partSet.GetMask())
 			return nil, nil
 		}
 		part := partSet.GetPart(idx)
@@ -101,6 +109,7 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 		return protoBlockPart, msg
 	}
 	if p.Height > e.Height() {
+		p.debug.Printf("higher peer height %v > %v\n", p.Height, e.Height())
 		return nil, nil
 	}
 
@@ -109,14 +118,14 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 		msg := newVoteListMessage()
 		msg.VoteList = vl
 		p.peerRoundState = nil
-		logger.Printf("vl for PC\n")
+		p.debug.Printf("PC for round %v\n", e.Round())
 		return protoVoteList, msg
 	} else if p.Round < e.Round()-1 {
 		vl := e.GetPrecommits(e.Round() - 1)
 		msg := newVoteListMessage()
 		msg.VoteList = vl
 		p.peerRoundState = nil
-		logger.Printf("vl for PC(R-1)\n")
+		p.debug.Printf("PC for round %v (prev round)\n", e.Round())
 		return protoVoteList, msg
 	} else if p.Round == e.Round() {
 		logger.Printf("r=%v pv=%v pc=%v\n", e.Round(), p.PrevotesMask, p.PrecommitsMask)
@@ -125,34 +134,32 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 			msg := newVoteListMessage()
 			msg.VoteList = vl
 			p.peerRoundState = nil
-			logger.Printf("vl for current round votes\n")
 			return protoVoteList, msg
 		}
-		logger.Printf("empty vl to send\n")
 	}
 
-	logger.Printf("nothing to send\n")
+	p.debug.Printf("nothing to send\n")
 	return nil, nil
 }
 
 func (p *peer) sync() {
 	var nextSendTime *time.Time
 
-	logger.Printf("%x| peer start sync\n", p.id.Bytes()[1:3])
+	p.logger.Printf("peer start sync\n")
 	for {
 		<-p.wakeUpChan
 
-		logger.Printf("%x| peer.wakeUp\n", p.id.Bytes()[1:3])
+		p.debug.Printf("peer.wakeUp\n")
 		p.mutex.Lock()
 		if !p.running {
 			p.mutex.Unlock()
-			logger.Printf("%x| peer.!running\n", p.id.Bytes()[1:3])
+			p.debug.Printf("peer is not running\n")
 			break
 		}
 		now := time.Now()
 		if nextSendTime != nil && now.Before(*nextSendTime) {
 			p.mutex.Unlock()
-			logger.Printf("%x| peer.now=%v nextSendTime=%v\n", p.id.Bytes()[1:3], now, nextSendTime)
+			p.debug.Printf("peer.now=%v nextSendTime=%v\n", now.Format(time.StampMicro), nextSendTime.Format(time.StampMicro))
 			continue
 		}
 		proto, msg := p.doSync()
@@ -165,11 +172,11 @@ func (p *peer) sync() {
 
 		msgBS, err := msgCodec.MarshalToBytes(msg)
 		if err != nil {
-			logger.Panicf("peer.sync: %v\n", err)
+			p.logger.Panicf("peer.sync: %v\n", err)
 		}
-		logger.Printf("send message %+v\n", msg)
+		p.logger.Printf("send message %+v\n", msg)
 		if err = p.ph.Unicast(proto, msgBS, p.id); err != nil {
-			logger.Printf("peer.sync: %v\n", err)
+			p.logger.Printf("peer.sync: %v\n", err)
 		}
 		if nextSendTime == nil {
 			nextSendTime = &now
@@ -200,6 +207,7 @@ type syncer struct {
 	engine Engine
 	nm     module.NetworkManager
 	mutex  *sync.Mutex
+	addr   module.Address
 
 	ph           module.ProtocolHandler
 	peers        []*peer
@@ -208,11 +216,12 @@ type syncer struct {
 	running      bool
 }
 
-func newSyncer(e Engine, nm module.NetworkManager, mutex *sync.Mutex) Syncer {
+func newSyncer(e Engine, nm module.NetworkManager, mutex *sync.Mutex, addr module.Address) Syncer {
 	return &syncer{
 		engine: e,
 		nm:     nm,
 		mutex:  mutex,
+		addr:   addr,
 	}
 }
 
@@ -226,6 +235,7 @@ func (s *syncer) Start() error {
 	peerIDs := s.nm.GetPeers()
 	s.peers = make([]*peer, len(peerIDs))
 	for i, peerID := range peerIDs {
+		logger.Printf("Start: starting peer list %v\n", peerID)
 		s.peers[i] = newPeer(s, peerID)
 		go s.peers[i].sync()
 	}
@@ -246,7 +256,7 @@ func (s *syncer) OnReceive(sp module.ProtocolInfo, bs []byte,
 
 	msg, err := unmarshalMessage(sp, bs)
 	if err != nil {
-		logger.Printf("OnReceive: error=%v\n", err)
+		logger.Printf("OnReceive: error=%+v\n", err)
 		return false, err
 	}
 	logger.Printf("OnReceive %+v\n", msg)
@@ -309,6 +319,8 @@ func (s *syncer) OnJoin(id module.PeerID) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
+	logger.Printf("OnJoin: %v\n", id)
+
 	if !s.running {
 		return
 	}
@@ -327,6 +339,8 @@ func (s *syncer) OnJoin(id module.PeerID) {
 func (s *syncer) OnLeave(id module.PeerID) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
+	logger.Printf("OnLeave: %v\n", id)
 
 	if !s.running {
 		return
@@ -367,7 +381,7 @@ func (s *syncer) doSendRoundStateMessage(id module.PeerID) {
 	msg.peerRoundState = *e.GetRoundState()
 	bs, err := msgCodec.MarshalToBytes(msg)
 	if err != nil {
-		logger.Panicf("syncer.doSendRoundStateMessage: %v\n", err)
+		logger.Panicf("syncer.doSendRoundStateMessage: %+v\n", err)
 	}
 	if id == nil {
 		logger.Printf("broadcastRoundState : %+v\n", msg)

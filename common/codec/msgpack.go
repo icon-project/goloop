@@ -1,8 +1,10 @@
 package codec
 
 import (
-	ugorji "github.com/ugorji/go/codec"
 	"io"
+
+	"github.com/pkg/errors"
+	ugorji "github.com/ugorji/go/codec"
 )
 
 var mpCodecObject mpCodec
@@ -14,12 +16,12 @@ type mpCodec struct {
 
 func (c *mpCodec) Marshal(w io.Writer, v interface{}) error {
 	e := ugorji.NewEncoder(w, c.handle)
-	return e.Encode(v)
+	return errors.WithStack(e.Encode(v))
 }
 
 func (c *mpCodec) Unmarshal(r io.Reader, v interface{}) error {
 	e := ugorji.NewDecoder(r, c.handle)
-	return e.Decode(v)
+	return errors.WithStack(e.Decode(v))
 }
 
 func init() {
