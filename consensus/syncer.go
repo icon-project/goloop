@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	configSendBPS                   = 1024 * 300
-	configRoundStateMessageInterval = 250 * time.Millisecond
+	configSendBPS                   = 1024 * 500
+	configRoundStateMessageInterval = 300 * time.Millisecond
 )
 
 type Engine interface {
