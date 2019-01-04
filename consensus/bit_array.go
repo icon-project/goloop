@@ -73,7 +73,7 @@ func (ba *bitArray) AssignAnd(ba2 *bitArray) {
 		lba = lba2
 	}
 	for i := 0; i < lba; i++ {
-		ba.Words[i] = ba.Words[i] & ba2.Words[i]
+		ba.Words[i] &= ba2.Words[i]
 	}
 }
 
