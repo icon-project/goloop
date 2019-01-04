@@ -184,10 +184,13 @@ func (p *peer) sync() {
 		delta := time.Second * time.Duration(len(msgBS)) / configSendBPS
 		next := nextSendTime.Add(delta)
 		nextSendTime = &next
-		waitTime := now.Sub(*nextSendTime)
-		time.AfterFunc(waitTime, func() {
-			p.wakeUp()
-		})
+		waitTime := nextSendTime.Sub(now)
+		p.debug.Printf("msg size=%v delta=%v waitTime=%v\n", len(msgBS), delta, waitTime)
+		if waitTime > time.Duration(0) {
+			time.AfterFunc(waitTime, func() {
+				p.wakeUp()
+			})
+		}
 	}
 }
 
@@ -384,8 +387,10 @@ func (s *syncer) doSendRoundStateMessage(id module.PeerID) {
 		logger.Panicf("syncer.doSendRoundStateMessage: %+v\n", err)
 	}
 	if id == nil {
-		logger.Printf("broadcastRoundState : %+v\n", msg)
-		s.ph.Broadcast(protoRoundState, bs, module.BROADCAST_NEIGHBOR)
+		if len(s.peers) > 0 {
+			logger.Printf("broadcastRoundState : %+v\n", msg)
+			s.ph.Broadcast(protoRoundState, bs, module.BROADCAST_NEIGHBOR)
+		}
 	} else {
 		logger.Printf("sendRoundState : %+v\n", msg)
 		s.ph.Unicast(protoRoundState, bs, id)

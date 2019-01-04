@@ -139,8 +139,9 @@ func (cs *consensus) OnReceive(
 		logger.Printf("OnReceive: %+v\n", err)
 		return false, err
 	}
-	logger.Printf("OnReceive %+v\n", msg)
-	if err := msg.verify(); err != nil {
+	debug.Printf("OnReceive: %+v\n", msg)
+	if err = msg.verify(); err != nil {
+		logger.Printf("OnReceive: %+v\n", err)
 		return false, err
 	}
 	switch m := msg.(type) {
