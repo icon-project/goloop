@@ -74,11 +74,6 @@ func main() {
 		}
 	}
 
-	if cfg.DBDir == "" {
-		addr := common.NewAccountAddressFromPublicKey(priK.PublicKey())
-		cfg.DBDir = ".db/" + addr.String()
-	}
-
 	if generate {
 		if len(cfg.fileName) == 0 {
 			cfg.fileName = "config.json"
@@ -98,13 +93,19 @@ func main() {
 		os.Exit(0)
 	}
 
+	wallet, _ := common.NewWalletFromPrivateKey(priK)
+
+	if cfg.DBDir == "" {
+		addr := wallet.Address()
+		cfg.DBDir = ".db/" + addr.String()
+	}
+
 	if cfg.DBType != "mapdb" {
 		if err := os.MkdirAll(cfg.DBDir, 0755); err != nil {
 			log.Panicf("Fail to create directory %s err=%+v", cfg.DBDir, err)
 		}
 	}
 
-	wallet, _ := common.NewWalletFromPrivateKey(priK)
 	nt := network.NewTransport(cfg.P2PAddr, wallet)
 	nt.Listen()
 	defer nt.Close()
