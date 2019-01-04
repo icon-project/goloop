@@ -18,7 +18,6 @@ type validator struct {
 
 func (v *validator) CodecEncodeSelf(e *ugorji.Encoder) {
 	if len(v.pub) == 0 {
-		e.Encode([]byte{})
 		e.Encode(v.addr)
 	} else {
 		e.Encode(v.pub)
@@ -26,12 +25,12 @@ func (v *validator) CodecEncodeSelf(e *ugorji.Encoder) {
 }
 
 func (v *validator) CodecDecodeSelf(d *ugorji.Decoder) {
-	var pubkey []byte
-	d.Decode(&pubkey)
-	if len(pubkey) == 0 {
-		d.Decode(&v.addr)
+	var bs []byte
+	d.Decode(&bs)
+	if len(bs) == common.AddressBytes {
+		v.addr = common.NewAddress(bs)
 	} else {
-		v.setPublicKey(pubkey)
+		v.setPublicKey(bs)
 	}
 }
 
