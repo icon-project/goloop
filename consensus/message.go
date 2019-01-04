@@ -202,7 +202,6 @@ func (msg *voteMessage) String() string {
 
 type peerRoundState struct {
 	_HR
-	// 1 if requesting
 	PrevotesMask   *bitArray
 	PrecommitsMask *bitArray
 	BlockPartsMask *bitArray

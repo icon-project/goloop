@@ -83,18 +83,13 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 			msg := newVoteListMessage()
 			msg.VoteList = vl
 			p.BlockPartsMask = newBitArray(e.GetCommitBlockParts(p.Height).Parts())
-			p.BlockPartsMask.Flip()
-			logger.Printf("vote list for commit\n")
+			p.debug.Printf("PC for commit %v\n", p.Height)
 			return protoVoteList, msg
 		}
 		partSet := e.GetCommitBlockParts(p.Height)
-		var mask *bitArray
-		if partSet.IsComplete() {
-			mask = p.BlockPartsMask
-		} else {
-			mask = p.BlockPartsMask.Copy()
-			mask.AssignAnd(partSet.GetMask())
-		}
+		mask := p.BlockPartsMask.Copy()
+		mask.Flip()
+		mask.AssignAnd(partSet.GetMask())
 		idx := mask.PickRandom()
 		if idx < 0 {
 			p.debug.Printf("no bp to send: %v/%v\n", p.BlockPartsMask, partSet.GetMask())
@@ -104,8 +99,7 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 		msg := newBlockPartMessage()
 		msg.Height = p.Height
 		msg.BlockPart = part.Bytes()
-		p.BlockPartsMask.Unset(idx)
-		logger.Printf("bp to send\n")
+		p.BlockPartsMask.Set(idx)
 		return protoBlockPart, msg
 	}
 	if p.Height > e.Height() {
@@ -128,8 +122,13 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 		p.debug.Printf("PC for round %v (prev round)\n", e.Round())
 		return protoVoteList, msg
 	} else if p.Round == e.Round() {
-		logger.Printf("r=%v pv=%v pc=%v\n", e.Round(), p.PrevotesMask, p.PrecommitsMask)
-		vl := e.GetVotes(e.Round(), p.PrevotesMask, p.PrecommitsMask)
+		rs := e.GetRoundState()
+		p.debug.Printf("r=%v pv=%v/%v pc=%v/%v\n", e.Round(), p.PrevotesMask, rs.PrevotesMask, p.PrecommitsMask, rs.PrecommitsMask)
+		pv := p.PrevotesMask.Copy()
+		pv.Flip()
+		pc := p.PrecommitsMask.Copy()
+		pc.Flip()
+		vl := e.GetVotes(e.Round(), pv, pc)
 		if vl.Len() > 0 {
 			msg := newVoteListMessage()
 			msg.VoteList = vl
@@ -283,11 +282,6 @@ func (s *syncer) OnReceive(sp module.ProtocolInfo, bs []byte,
 	case *roundStateMessage:
 		for _, p := range s.peers {
 			if p.id.Equal(id) {
-				m.peerRoundState.PrevotesMask.Flip()
-				m.peerRoundState.PrecommitsMask.Flip()
-				if m.peerRoundState.BlockPartsMask != nil {
-					m.peerRoundState.BlockPartsMask.Flip()
-				}
 				p.setRoundState(&m.peerRoundState)
 			}
 		}
