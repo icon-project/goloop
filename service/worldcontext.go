@@ -65,7 +65,7 @@ type governanceStorageInfo struct {
 	updated      bool
 	ass          AccountSnapshot
 	stepPrice    *big.Int
-	stepCosts    map[StepType]int64
+	stepCosts    map[string]int64
 	stepCostInfo *codec.TypedObj
 }
 
@@ -80,13 +80,13 @@ func (c *worldContext) updateGovernanceInfo() {
 			stepPrice := scoredb.NewVarDB(as, VarStepPrice)
 			c.governanceInfo.stepPrice = stepPrice.BigInt()
 
-			stepCosts := make(map[StepType]int64)
+			stepCosts := make(map[string]int64)
 			stepTypes := scoredb.NewArrayDB(as, VarStepTypes)
 			stepCostDB := scoredb.NewDictDB(as, VarStepCosts, 1)
 			tcount := stepTypes.Size()
 			for i := 0; i < tcount; i++ {
 				tname := stepTypes.Get(i).String()
-				stepCosts[StepType(tname)] = stepCostDB.Get(tname).Int64()
+				stepCosts[tname] = stepCostDB.Get(tname).Int64()
 			}
 			c.governanceInfo.stepCosts = stepCosts
 			c.governanceInfo.stepCostInfo = nil
@@ -97,7 +97,7 @@ func (c *worldContext) updateGovernanceInfo() {
 
 func (c *worldContext) StepsFor(t StepType, n int) int64 {
 	c.updateGovernanceInfo()
-	if v, ok := c.governanceInfo.stepCosts[t]; ok {
+	if v, ok := c.governanceInfo.stepCosts[string(t)]; ok {
 		return v * int64(n)
 	} else {
 		return 0
