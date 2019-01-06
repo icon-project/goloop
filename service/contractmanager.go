@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -36,8 +37,8 @@ type (
 	}
 
 	storageCache struct {
-		status   tsStatus
-		callback []chan *storageResult
+		status tsStatus
+		result []chan *storageResult
 	}
 
 	contractManager struct {
@@ -97,7 +98,7 @@ func (cm *contractManager) GetCallHandler(cc CallContext, from, to module.Addres
 }
 
 // if path does not exist, make the path
-func (cm *contractManager) storeContract(code []byte, codeHash []byte) (string, error) {
+func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []byte) (string, error) {
 	tmpPath := fmt.Sprintf("%s/tmp/%016x", cm.storeRoot, codeHash)
 	if _, err := os.Stat(tmpPath); !os.IsNotExist(err) {
 		if err := os.RemoveAll(tmpPath); err != nil {
@@ -111,36 +112,55 @@ func (cm *contractManager) storeContract(code []byte, codeHash []byte) (string, 
 		return "", err
 	}
 
-	for _, zipFile := range zipReader.File {
-		storePath := tmpPath + "/" + zipFile.Name
-		if info := zipFile.FileInfo(); info.IsDir() {
-			continue
+	var path string
+	switch eeType {
+	case "python":
+		noRoot := false
+		rootDir := ""
+		for _, zipFile := range zipReader.File {
+			if info := zipFile.FileInfo(); info.IsDir() {
+				continue
+			}
+			if strings.Contains(zipFile.Name, "/") {
+				if len(rootDir) == 0 {
+					rootDir = strings.Split(zipFile.Name, "/")[0]
+				}
+			} else if noRoot == false {
+				noRoot = true
+			}
+			log.Printf("zipFile.Name : %s\n", zipFile.Name)
+			storePath := tmpPath + "/" + zipFile.Name
+			storeDir := filepath.Dir(storePath)
+			if _, err := os.Stat(storeDir); os.IsNotExist(err) {
+				os.MkdirAll(storeDir, 0755)
+			}
+			reader, err := zipFile.Open()
+			if err != nil {
+				return "", errors.New("Failed to open zip file\n")
+			}
+			buf, err := ioutil.ReadAll(reader)
+			if err != nil {
+				return "", errors.New("Failed to read zip file\n")
+			}
+			if err = ioutil.WriteFile(storePath, buf, os.ModePerm); err != nil {
+				log.Printf("Failed to write file. err = %s\n", err)
+			}
 		}
-		storeDir := filepath.Dir(storePath)
-		if _, err := os.Stat(storeDir); os.IsNotExist(err) {
-			os.MkdirAll(storeDir, 0755)
+		if noRoot == false {
+			tmpPath = tmpPath + "/" + rootDir
 		}
-		reader, err := zipFile.Open()
-		if err != nil {
-			return "", errors.New("Failed to open zip file\n")
+		path = cm.getContractPath(codeHash)
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			if err := os.RemoveAll(path); err != nil {
+				return "", err
+			}
 		}
-		buf, err := ioutil.ReadAll(reader)
-		if err != nil {
-			return "", errors.New("Failed to read zip file\n")
-		}
-		if err = ioutil.WriteFile(storePath, buf, os.ModePerm); err != nil {
-			log.Printf("Failed to write file. err = %s\n", err)
-		}
-	}
-	path := cm.getContractPath(codeHash)
-	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		if err := os.RemoveAll(path); err != nil {
+		if err := os.Rename(tmpPath, path); err != nil {
 			return "", err
 		}
+	default:
 	}
-	if err := os.Rename(tmpPath, path); err != nil {
-		return "", err
-	}
+
 	return path, nil
 }
 
@@ -160,7 +180,7 @@ func (cm *contractManager) PrepareContractStore(
 	sr := make(chan *storageResult, 1)
 	if cacheInfo, ok := cm.storageCache[hashStr]; ok {
 		if cacheInfo.status != tsComplete {
-			cacheInfo.callback = append(cacheInfo.callback, sr)
+			cacheInfo.result = append(cacheInfo.result, sr)
 			cm.lock.Unlock()
 			return sr
 		}
@@ -174,17 +194,17 @@ func (cm *contractManager) PrepareContractStore(
 
 	cm.storageCache[hashStr] =
 		&storageCache{tsInProgress,
-			[]chan *storageResult{}}
+			[]chan *storageResult{sr}}
 	cm.lock.Unlock()
 
 	go func() {
 		callEndCb := func(path string, err error) {
 			cm.lock.Lock()
 			storage := cm.storageCache[hashStr]
-			for _, f := range storage.callback {
+			for _, f := range storage.result {
 				f <- &storageResult{path, err}
 			}
-			storage.callback = nil
+			storage.result = nil
 			storage.status = tsComplete
 			cm.lock.Unlock()
 		}
@@ -194,7 +214,7 @@ func (cm *contractManager) PrepareContractStore(
 			callEndCb("", err)
 			return
 		}
-		path, err = cm.storeContract(codeBuf, codeHash)
+		path, err = cm.storeContract(contract.EEType(), codeBuf, codeHash)
 		if err != nil {
 			callEndCb("", err)
 			return
@@ -214,7 +234,7 @@ func NewContractManager(db db.Database) ContractManager {
 	// parameter here and add it to storeRoot.
 
 	// remove tmp to prepare contract
-	storeRoot := contractStoreRoot
+	storeRoot, _ := filepath.Abs(contractStoreRoot)
 	tmp := fmt.Sprintf("%s/tmp", storeRoot)
 	if _, err := os.Stat(tmp); !os.IsNotExist(err) {
 		if err := os.RemoveAll(tmp); err != nil {

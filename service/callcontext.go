@@ -249,7 +249,7 @@ func (cc *callContext) sendMessage(msg interface{}) {
 	defer cc.lock.Unlock()
 
 	if e := cc.stack.Back(); e != nil {
-		if _, ok := e.Value.(*AsyncContractHandler); ok {
+		if _, ok := e.Value.(AsyncContractHandler); ok {
 			cc.waiter <- msg
 		}
 	}

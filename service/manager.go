@@ -91,7 +91,6 @@ func (m *manager) ProposeTransition(parent module.Transition) (module.Transition
 
 func (m *manager) ProposeGenesisTransition(parent module.Transition) (module.Transition, error) {
 	if pt, ok := parent.(*transition); ok {
-		// TODO: temp code below to create genesis transaction. remove later
 		ntx, err := NewTransactionFromJSON(m.chain.Genesis())
 		if err != nil {
 			log.Panicf("Failed to load genesis transaction")

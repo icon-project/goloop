@@ -103,6 +103,16 @@ func EncodeAny(tc TypeCodec, o interface{}) (*TypedObj, error) {
 			}
 		}
 		return newTypedObj(TypeDict, m), nil
+	case map[string]int64:
+		m := make(map[string]*TypedObj)
+		for k, o := range obj {
+			if eo, err := EncodeAny(tc, o); err != nil {
+				return nil, err
+			} else {
+				m[k] = eo
+			}
+		}
+		return newTypedObj(TypeDict, m), nil
 	case *TypedObj:
 		return obj, nil
 	default:

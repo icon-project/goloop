@@ -136,8 +136,8 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 	_ = scoreDb.Set(scoreAddr)
 
 	//if audit == false || deployer {
-	ah := newAcceptHandler(h.from, common.NewContractAddress(contractID),
-		nil, nil, h.params, h.cc)
+	ah := newAcceptHandler(h.from, h.to, //common.NewContractAddress(contractID),
+		nil, h.stepLimit, h.params, h.cc)
 	status, acceptStepUsed, _, _ := ah.ExecuteSync(wc)
 	if acceptStepUsed != nil {
 		stepUsed = stepUsed.Add(stepUsed, acceptStepUsed)
@@ -220,7 +220,7 @@ func (h *AcceptHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 		cur.SetStatus(csDisable)
 	}
 	handler := newCallHandlerFromTypedObj(
-		newCommonHandler(h.from, scoreAddr, nil, stepAvail),
+		newCommonHandler(h.from, scoreAddr, big.NewInt(0), stepAvail),
 		methodStr, typedObj, h.cc, true)
 
 	// state -> active if failed to on_install, set inactive

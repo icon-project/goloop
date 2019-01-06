@@ -13,7 +13,7 @@ import (
 var BigIntOne = big.NewInt(1)
 
 func BigIntToBytes(i *big.Int) []byte {
-	if i.Sign() == 0 {
+	if i == nil || i.Sign() == 0 {
 		return []byte{}
 	} else if i.Sign() > 0 {
 		bl := i.BitLen()
