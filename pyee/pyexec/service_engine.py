@@ -60,13 +60,13 @@ class ServiceEngine(ContextContainer):
 
     @classmethod
     def invoke(cls, context: IconScoreContext):
-        print(TAG, '[invoke]', context.method, context.params)
+        Logger.info(f'[invoke] {context.method}, {context.params}', TAG)
 
         cls._push_context(context)
         status, step_used, ret = cls._handle_invoke(context)
         cls._pop_context()
 
-        print(f'=== RESULT: {ret}')
+        print(f'*** RESULT: {status}, {step_used}, {ret}')
         return status, step_used, ret
 
     @classmethod
@@ -88,7 +88,6 @@ class ServiceEngine(ContextContainer):
             status = Status.FAILURE
         finally:
             step_used = context.step_counter.step_used
-            print(f'=== step_used = {step_used}')
 
         return status, step_used, ret
 
@@ -106,10 +105,10 @@ class ServiceEngine(ContextContainer):
             arg_params = []
             params: dict = decode_params(context.params)
             kw_params = cls._convert_score_params_by_annotations(icon_score, func_name, params)
-            print(f'  -- kw_params: {kw_params}')
+            Logger.info(f'-- kw_params: {kw_params}', TAG)
         elif isinstance(context.params, list):
             arg_params: list = context.params
-            print(f'  -- arg_params: {arg_params}')
+            Logger.info(f'-- arg_params: {arg_params}', TAG)
             kw_params = {}
         else:
             raise InvalidParamsException('Unknown params type')

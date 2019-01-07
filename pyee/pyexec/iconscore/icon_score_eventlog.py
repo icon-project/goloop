@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from typing import TYPE_CHECKING, List, Optional, Any
+from iconcommons import Logger
 
 from .icon_score_step import StepType
 from ..base.address import Address
@@ -116,7 +117,7 @@ class EventLogEmitter(object):
             context.step_counter.apply_step(StepType.EVENT_LOG, event_size)
 
         event = EventLog(score_address, indexed, data)
-        print(f'Eventlog --> {event.to_dict()}')
+        Logger.info(f'Eventlog --> {event.to_dict()}', 'EventLog')
         cls._proxy.send_event(
             event.indexed,
             event.data

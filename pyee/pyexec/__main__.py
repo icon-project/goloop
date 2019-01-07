@@ -14,21 +14,42 @@
 
 import argparse
 import sys
+from iconcommons import IconConfig, Logger
+
 from .pyexec import PyExecEngine
 from .ipc.proxy import ServiceManagerProxy
 
 default_address = '/tmp/pyee_uds_socket'
+default_log_config = {
+    "log": {
+        "logger": "pyexec",
+        "level": "info",
+        "colorLog": True,
+        "outputType": "console",
+    }
+}
+
+
+def init_logger():
+    conf = IconConfig("", default_log_config)
+    Logger.load_config(conf)
 
 
 def main():
     parser = argparse.ArgumentParser(prog='pyexec', description='Python Executor for ICON SCORE')
+    parser.add_argument('-v', '--verbose', dest='verbose', action='store_true',
+                        help='verbose mode')
     parser.add_argument('-s', '--socket', dest='socket',
                         help='an UNIX domain socket address for the server')
     args = parser.parse_args()
+
     if args.socket:
         server_address = args.socket
     else:
         server_address = default_address
+
+    if args.verbose:
+        init_logger()
 
     engine = PyExecEngine(ServiceManagerProxy())
     engine.connect(server_address)

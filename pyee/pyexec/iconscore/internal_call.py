@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from typing import TYPE_CHECKING, Optional, Any
+from iconcommons import Logger
 
 from .icon_score_eventlog import EventLogEmitter
 from .icon_score_step import StepType
@@ -23,6 +24,8 @@ from ..utils import check_error_response
 
 if TYPE_CHECKING:
     from .icon_score_context import IconScoreContext
+
+TAG = 'InternalCall'
 
 
 class InternalCall(object):
@@ -50,12 +53,12 @@ class InternalCall(object):
         context.step_counter.apply_step(StepType.CONTRACT_CALL, 1)
 
         print(f'<== InternalCall.message_call: from={addr_from} to={addr_to} amount={amount} func_name={func_name}')
-        print(f'    arg_params={arg_params}')
-        print(f'    kw_params={kw_params}')
+        Logger.info(f'-- arg_params={arg_params}', TAG)
+        Logger.info(f'-- kw_params={kw_params}', TAG)
         new_limit = context.step_counter.step_remained()
         status, step_used, result = \
             cls._proxy.call(addr_to, amount, new_limit, func_name, arg_params)
-        print(f'==> call result: {status}, {step_used}, {result}')
+        print(f'\n==> call result: {status}, {step_used}, {result}')
 
         if step_used > new_limit:
             context.step_counter.add_step(new_limit)

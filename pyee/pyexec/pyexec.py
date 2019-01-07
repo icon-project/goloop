@@ -14,6 +14,7 @@
 
 import os
 from typing import Tuple, Any, Union, List
+from iconcommons import Logger
 
 from .icon_constant import IconScoreContextType
 from .base.address import Address
@@ -24,6 +25,7 @@ from .service_engine import ServiceEngine, IconScoreContext
 from .iconscore.icon_score_step import IconScoreStepCounter
 from .ipc.proxy import ServiceManagerProxy, Codec, TypeTag, APIInfo, APIType, DataType
 
+TAG = 'PyExec'
 version_number = 1
 
 
@@ -87,8 +89,8 @@ class PyExecEngine(object):
 
     def invoke_handler(self, code: str, is_query: bool, _from: 'Address', to: 'Address',
                        value: int, limit: int, method: str, params: Any) -> Tuple[int, int, Any]:
-        print(f'\ninvoke_handler(code={repr(code)},is_query={is_query},from={_from},to={to},' +
-              f'value={value},limit={limit},method={repr(method)},params={params})')
+        print(f'\n[invoke_handle] code={repr(code)},is_query={is_query},from={_from},to={to},' +
+              f'value={value},limit={limit},method={repr(method)},params={params}')
         context = IconScoreContext(IconScoreContextType.QUERY if is_query
                                    else IconScoreContextType.INVOKE)
         context.set_invoke_params(code, to, method, params)
@@ -107,17 +109,17 @@ class PyExecEngine(object):
         context.owner: Address = info.get('Owner')
         context.step_counter = IconScoreStepCounter(info.get('StepCosts'),
                                                     limit)
-        print(f'[Transaction] {context.tx}')
-        print(f'[Block] {context.block}')
-        print(f'[Message] {context.msg}')
-        print(f'[Owner] {context.owner}')
-        print(f'[StepCounter] {context.step_counter}')
+        Logger.info(f'[Transaction] {context.tx}', TAG)
+        Logger.info(f'[Block] {context.block}', TAG)
+        Logger.info(f'[Message] {context.msg}', TAG)
+        Logger.info(f'[Owner] {context.owner}', TAG)
+        Logger.info(f'[StepCounter] {context.step_counter}', TAG)
         return ServiceEngine.invoke(context)
 
     def api_handler(self, code: str) -> APIInfo:
         print(f'[api_handler] code={code}')
         apis = ServiceEngine.get_score_api(code)
-        print(f"get_api({code}) -> {apis}")
+        Logger.info(f"get_api({code}) -> {apis}", TAG)
         info = APIInfo(self.__proxy)
         for api in apis:
             typ = api[0]
@@ -137,7 +139,7 @@ class PyExecEngine(object):
 
     def get_info(self) -> Any:
         info = self.__proxy.get_info()
-        print(f"get_info() -> {info}")
+        Logger.info(f"get_info() -> {info}", TAG)
         return info
 
     def call(self, to: Address, value: int, limit: int,
@@ -146,20 +148,20 @@ class PyExecEngine(object):
 
     def get_value(self, k: bytes) -> Union[bytes, None]:
         ret = self.__proxy.get_value(k)
-        print(f"get_value({repr(k)}) -> {repr(ret)}")
+        Logger.info(f"get_value({repr(k)}) -> {repr(ret)}", TAG)
         return ret
 
     def set_value(self, k: bytes, v: Union[bytes, None]):
-        print(f"set_value({repr(k)},{repr(v)})")
+        Logger.info(f"set_value({repr(k)},{repr(v)})", TAG)
         self.__proxy.set_value(k, v)
 
     def get_balance(self, addr: Address) -> int:
         ret = self.__proxy.get_balance(addr)
-        print(f"get_balance({repr(addr)}) -> {ret}")
+        Logger.info(f"get_balance({repr(addr)}) -> {ret}", TAG)
         return ret
 
     def send_event(self, indexed: List[Any], data: List[Any]):
-        print(f"send_event({indexed},{data})")
+        Logger.info(f"send_event({indexed},{data})", TAG)
         self.__proxy.send_event(indexed, data)
 
     def process(self):
