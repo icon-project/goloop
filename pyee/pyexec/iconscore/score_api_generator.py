@@ -15,10 +15,10 @@
 from inspect import signature, Signature, Parameter, isclass
 from typing import Any, Optional
 
-from .icon_score_constant import ConstBitFlag, CONST_BIT_FLAG, CONST_INDEXED_ARGS_COUNT, STR_FALLBACK, BaseType
+from .icon_score_constant import ConstBitFlag, CONST_BIT_FLAG, CONST_INDEXED_ARGS_COUNT, BaseType, \
+    STR_FALLBACK, STR_ON_INSTALL, STR_ON_UPDATE
 from ..base.address import Address
 from ..base.exception import IconScoreException, IconTypeError, InvalidParamsException
-from ..base.type_converter import TypeConverter
 from ..utils import get_main_type_from_annotations_type
 from ..ipc.proxy import APIType
 
@@ -37,10 +37,10 @@ class ScoreApiGenerator:
     __API_PARAMS_INDEXED = 'Indexed'
     __API_TYPE_FUNCTION = 'function'
     __API_TYPE_EVENT = 'eventlog'
-    __API_TYPE_FALLBACK = STR_FALLBACK
 
-    __API_TYPE_ON_INSTALL = 'on_install'
-    __API_TYPE_ON_UPDATE = 'on_update'
+    __API_TYPE_FALLBACK = STR_FALLBACK
+    __API_TYPE_ON_INSTALL = STR_ON_INSTALL
+    __API_TYPE_ON_UPDATE = STR_ON_UPDATE
 
     @staticmethod
     def generate(score_funcs: list) -> list:

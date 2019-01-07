@@ -30,8 +30,10 @@ CONST_INDEXED_ARGS_COUNT = '__indexed_args_count'
 FORMAT_IS_NOT_FUNCTION_OBJECT = "isn't function object: {}, cls: {}"
 FORMAT_IS_NOT_DERIVED_OF_OBJECT = "isn't derived of {}"
 FORMAT_DECORATOR_DUPLICATED = "can't duplicated {} decorator func: {}, cls: {}"
-STR_IS_NOT_CALLABLE = 'is not callable'
+
 STR_FALLBACK = 'fallback'
+STR_ON_INSTALL = 'on_install'
+STR_ON_UPDATE = 'on_update'
 
 
 @unique

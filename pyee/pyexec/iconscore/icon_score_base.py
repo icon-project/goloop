@@ -27,9 +27,10 @@ from ..icon_constant import ICX_TRANSFER_EVENT_LOG, IconScoreContextType
 from ..utils import get_main_type_from_annotations_type
 
 from .icon_score_base2 import InterfaceScore, revert, Block, Icx
-from .icon_score_constant import CONST_INDEXED_ARGS_COUNT, FORMAT_IS_NOT_FUNCTION_OBJECT, CONST_BIT_FLAG, \
-    ConstBitFlag, FORMAT_DECORATOR_DUPLICATED, FORMAT_IS_NOT_DERIVED_OF_OBJECT, STR_FALLBACK, CONST_CLASS_EXTERNALS, \
-    CONST_CLASS_PAYABLES, CONST_CLASS_API, T, BaseType
+from .icon_score_constant import CONST_INDEXED_ARGS_COUNT, CONST_BIT_FLAG, ConstBitFlag, \
+    FORMAT_IS_NOT_FUNCTION_OBJECT, FORMAT_IS_NOT_DERIVED_OF_OBJECT, FORMAT_DECORATOR_DUPLICATED, \
+    STR_FALLBACK, STR_ON_INSTALL, STR_ON_UPDATE, \
+    CONST_CLASS_EXTERNALS, CONST_CLASS_PAYABLES, CONST_CLASS_API, T, BaseType
 from .icon_score_context import ContextGetter, IconScoreContext
 from .score_api_generator import ScoreApiGenerator
 from .icon_score_step import StepType
@@ -381,7 +382,9 @@ class IconScoreBase(IconScoreObject, ContextGetter,
                arg_params: Optional[list] = None,
                kw_params: Optional[dict] = None) -> Any:
 
-        if func_name != STR_FALLBACK:
+        if func_name != STR_FALLBACK and \
+                func_name != STR_ON_INSTALL and \
+                func_name != STR_ON_UPDATE:
             self.validate_external_method(func_name)
 
         self.__check_payable(func_name, self.__get_attr_dict(CONST_CLASS_PAYABLES))

@@ -120,9 +120,6 @@ class ServiceEngine(ContextContainer):
     @staticmethod
     def _convert_score_params_by_annotations(icon_score: 'IconScoreBase', func_name: str, kw_params: dict) -> dict:
         tmp_params = kw_params
-
-        icon_score.validate_external_method(func_name)
-
         score_func = getattr(icon_score, func_name)
         annotation_params = TypeConverter.make_annotations_from_method(score_func)
         TypeConverter.convert_data_params(annotation_params, tmp_params)
