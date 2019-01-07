@@ -109,23 +109,8 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (
 		select {
 		case <-cc.timer:
 			cc.lock.Lock()
-			for e := cc.stack.Back(); e != nil; e = cc.stack.Back() {
-				if h, ok := e.Value.(AsyncContractHandler); ok {
-					h.Cancel()
-				}
-				cc.stack.Remove(e)
-			}
+			cc.handleTimeout()
 			cc.lock.Unlock()
-
-			// kill EE; It'll restart by itself
-			// TODO call it when Proxy supports Kill() API
-			/*
-				for _, conn := range cc.conns {
-					conn.Kill()
-				}
-				cc.conns = nil
-			*/
-
 			return module.StatusTimeout, stepLimit, nil, nil
 		case msg := <-cc.waiter:
 			switch msg := msg.(type) {
@@ -166,6 +151,24 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (
 	}
 }
 
+func (cc *callContext) handleTimeout() {
+	for e := cc.stack.Back(); e != nil; e = cc.stack.Back() {
+		if h, ok := e.Value.(AsyncContractHandler); ok {
+			h.Cancel()
+		}
+		cc.stack.Remove(e)
+	}
+
+	// TODO call it when Proxy supports Kill() API
+	// kill EE; It'll restart by itself
+	/*
+		for _, conn := range cc.conns {
+			conn.Kill()
+		}
+		cc.conns = nil
+	*/
+}
+
 func (cc *callContext) handleResult(status module.Status,
 	stepUsed *big.Int, result *codec.TypedObj, addr module.Address,
 ) bool {
@@ -175,12 +178,7 @@ func (cc *callContext) handleResult(status module.Status,
 	if status == module.StatusTimeout {
 		if e := cc.stack.Back(); e != nil {
 			log.Println("Unexpected: StatusTimeout is thrown by another code than callcontext!")
-			for e = cc.stack.Back(); e != nil; e = cc.stack.Back() {
-				if h, ok := e.Value.(AsyncContractHandler); ok {
-					h.Cancel()
-				}
-				cc.stack.Remove(e)
-			}
+			cc.handleTimeout()
 		}
 		return false
 	}
