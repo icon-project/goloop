@@ -17,11 +17,14 @@ const (
 	VarStepTypes  = "step_types"
 	VarTreasury   = "treasury"
 	VarGovernance = "governance"
-	VarSystem     = "system"
+)
+
+const (
+	SystemIDStr = "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
 )
 
 var (
-	SystemID = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	SystemID = []byte(SystemIDStr)
 )
 
 type worldContext struct {
@@ -29,7 +32,6 @@ type worldContext struct {
 
 	treasury   module.Address
 	governance module.Address
-	system     module.Address
 
 	systemInfo systemStorageInfo
 
@@ -58,7 +60,7 @@ func (c *worldContext) GetFuture(lq []LockRequest) WorldContext {
 		copy(lq2, lq)
 		lq2[len(lq)] = LockRequest{
 			Lock: AccountReadLock,
-			ID:   string(c.system.ID()),
+			ID:   SystemIDStr,
 		}
 		return c.WorldStateChanged(wvs.GetFuture(lq2))
 	}
@@ -74,7 +76,7 @@ type systemStorageInfo struct {
 
 func (c *worldContext) updateSystemInfo() {
 	if !c.systemInfo.updated {
-		ass := c.GetAccountSnapshot(c.system.ID())
+		ass := c.GetAccountSnapshot(SystemID)
 		if c.systemInfo.ass == nil || ass.StorageChangedAfter(c.systemInfo.ass) {
 			c.systemInfo.ass = ass
 
@@ -192,13 +194,12 @@ func (c *worldContext) GetInfo() map[string]interface{} {
 func NewWorldContext(ws WorldState, bi module.BlockInfo, cm ContractManager,
 	em eeproxy.Manager,
 ) WorldContext {
-	var system, governance, treasury module.Address
+	var governance, treasury module.Address
 	ass := ws.GetAccountSnapshot(SystemID)
 	as := newAccountROState(ass)
 	if as != nil {
 		treasury = scoredb.NewVarDB(as, VarTreasury).Address()
 		governance = scoredb.NewVarDB(as, VarGovernance).Address()
-		system = scoredb.NewVarDB(as, VarSystem).Address()
 	}
 	if treasury == nil {
 		treasury = common.NewAddressFromString("hx1000000000000000000000000000000000000000")
@@ -206,14 +207,10 @@ func NewWorldContext(ws WorldState, bi module.BlockInfo, cm ContractManager,
 	if governance == nil {
 		governance = common.NewAddressFromString("cx0000000000000000000000000000000000000001")
 	}
-	if system == nil {
-		system = common.NewAddressFromString("cx0000000000000000000000000000000000000000")
-	}
 	return &worldContext{
 		WorldState: ws,
 		treasury:   treasury,
 		governance: governance,
-		system:     system,
 		blockInfo:  BlockInfo{Timestamp: bi.Timestamp(), Height: bi.Height()},
 
 		cm: cm,
