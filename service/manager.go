@@ -41,7 +41,7 @@ type manager struct {
 
 func NewManager(chain module.Chain, nm module.NetworkManager, em eeproxy.Manager,
 ) module.ServiceManager {
-	bk, _ := chain.Database().GetBucket(db.MerkleTrie)
+	bk, _ := chain.Database().GetBucket(db.TransactionLocatorByHash)
 
 	mgr := &manager{
 		patchTxPool:  NewTransactionPool(bk),
