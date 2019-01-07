@@ -36,6 +36,24 @@ func TestHexInt_UnmarshalJSON(t *testing.T) {
 			error:    false,
 		},
 		{
+			name:     "ShortNumber3",
+			args:     args{"\"-10\""},
+			expected: big.NewInt(-0x10),
+			error:    false,
+		},
+		{
+			name:     "ShortNumber4",
+			args:     args{"\"-0x80\""},
+			expected: big.NewInt(-0x80),
+			error:    false,
+		},
+		{
+			name:     "ShortNumber5",
+			args:     args{"\"0x80\""},
+			expected: big.NewInt(0x80),
+			error:    false,
+		},
+		{
 			name:     "ShortFloat",
 			args:     args{"291.5"},
 			expected: nil,
@@ -100,6 +118,26 @@ func TestHexInt_EncodingDecoding(t *testing.T) {
 			"Case2",
 			args{"0x2"},
 			"a102",
+		},
+		{
+			"Case3",
+			args{"-0x1"},
+			"a1ff",
+		},
+		{
+			"Case4",
+			args{"-0x80"},
+			"a180",
+		},
+		{
+			"Case5",
+			args{"0x80"},
+			"a20080",
+		},
+		{
+			"Case6",
+			args{"0x0"},
+			"a100",
 		},
 	}
 

@@ -188,7 +188,7 @@ type HexInt struct {
 }
 
 func (i HexInt) String() string {
-	return encodeHexNumber(i.Sign() < 0, i.Bytes())
+	return encodeHexNumber(i.Sign() < 0, i.Int.Bytes())
 }
 
 func (i HexInt) MarshalJSON() ([]byte, error) {
@@ -208,7 +208,7 @@ func (i *HexInt) UnmarshalJSON(b []byte) error {
 		if err != nil {
 			return err
 		}
-		i.SetBytes(bs)
+		i.Int.SetBytes(bs)
 		if neg {
 			i.Neg(&i.Int)
 		}
@@ -217,7 +217,7 @@ func (i *HexInt) UnmarshalJSON(b []byte) error {
 }
 
 func (i *HexInt) CodecEncodeSelf(e *codec.Encoder) {
-	_ = e.Encode(i.Bytes())
+	e.MustEncode(i.Bytes())
 }
 
 func (i *HexInt) CodecDecodeSelf(d *codec.Decoder) {
@@ -240,6 +240,14 @@ func (i *HexInt) Clone() HexInt {
 	var v HexInt
 	v.Set(&i.Int)
 	return v
+}
+
+func (i *HexInt) Bytes() []byte {
+	return BigIntToBytes(&i.Int)
+}
+
+func (i *HexInt) SetBytes(bs []byte) *big.Int {
+	return BigIntSetBytes(&i.Int, bs)
 }
 
 func NewHexInt(v int64) *HexInt {
@@ -311,7 +319,7 @@ func (i *HexUint16) UnmarshalJSON(b []byte) error {
 }
 
 func (i *HexUint16) CodecEncodeSelf(e *codec.Encoder) {
-	_ = e.Encode(i.Value)
+	e.MustEncode(i.Value)
 }
 
 func (i *HexUint16) CodecDecodeSelf(d *codec.Decoder) {

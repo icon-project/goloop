@@ -78,9 +78,7 @@ func ToBytes(v interface{}) []byte {
 	case int64:
 		return common.Int64ToBytes(obj)
 	case *big.Int:
-		var value common.HexInt
-		value.Set(obj)
-		return value.Bytes()
+		return common.BigIntToBytes(obj)
 	case string:
 		return []byte(obj)
 	case []byte:
@@ -97,8 +95,8 @@ type valueImpl struct {
 
 func (e *valueImpl) BigInt() *big.Int {
 	if bs := e.Bytes(); bs != nil {
-		var value common.HexInt
-		return value.SetBytes(bs)
+		value := new(big.Int)
+		return common.BigIntSetBytes(value, bs)
 	} else {
 		return nil
 	}
