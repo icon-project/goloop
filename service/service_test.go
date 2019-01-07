@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/icon-project/goloop/service/eeproxy"
+
 	"github.com/pkg/errors"
 
 	"github.com/icon-project/goloop/network"
@@ -21,6 +23,7 @@ import (
 
 const (
 	testTransactionNum = 0
+	startBlk           = 23434 // version3
 )
 
 type JSONRPCResponse struct {
@@ -48,7 +51,10 @@ func (w *Wallet) Call(method string, params map[string]interface{}) ([]byte, err
 		return nil, err
 	}
 	resp, err := http.Post(w.url, "application/json", bytes.NewReader(req))
-	if resp.StatusCode != 200 {
+	if err != nil || resp.StatusCode != 200 {
+		if err != nil {
+			return nil, err
+		}
 		return nil, errors.New(
 			fmt.Sprintf("FAIL to call res=%d", resp.StatusCode))
 	}
@@ -178,8 +184,12 @@ func TestUnitService(t *testing.T) {
 	nt := network.NewTransport("127.0.0.1:8081", c.wallet)
 	nt.Listen()
 	defer nt.Close()
-
-	leaderServiceManager := NewManager(c, network.NewManager("default", nt, module.ROLE_VALIDATOR), nil)
+	em, err := eeproxy.New("unix", "/tmp/pyee_uds_socket")
+	if err != nil {
+		log.Panicln("FAIL to start EEManager")
+	}
+	go em.Loop()
+	leaderServiceManager := NewManager(c, network.NewManager("default", nt, module.ROLE_VALIDATOR), em)
 	it, _ := leaderServiceManager.CreateInitialTransition(nil, nil, -1)
 	parentTrs, _ := leaderServiceManager.ProposeGenesisTransition(it)
 	cb := &transitionCb{make(chan bool)}
@@ -190,11 +200,13 @@ func TestUnitService(t *testing.T) {
 	// request SendTransaction
 	sendDone := make(chan bool)
 
-	height := 1
 	wallet := Wallet{"https://testwallet.icon.foundation/api/v3"}
+	blockDone := make(chan bool)
+
 	go func() {
-		for i := 0; i < testTransactionNum; i++ {
-			b, err := wallet.GetBlockByHeight(height)
+		for i := startBlk; i < startBlk+testTransactionNum; i++ {
+			fmt.Printf("block height = %d\n", i)
+			b, err := wallet.GetBlockByHeight(i)
 			if err != nil {
 				panic(err)
 			}
@@ -206,6 +218,7 @@ func TestUnitService(t *testing.T) {
 				t, _, _ := itr.Get()
 				leaderServiceManager.SendTransaction(t)
 			}
+			<-blockDone
 		}
 		sendDone <- true
 	}()
@@ -231,6 +244,7 @@ func TestUnitService(t *testing.T) {
 				panic("Failed to compare result ")
 			}
 			leaderServiceManager.Finalize(transition, module.FinalizeNormalTransaction|module.FinalizeResult)
+			blockDone <- true
 			// get result then run below
 			parentTrs = transition
 			time.Sleep(10 * time.Millisecond)
@@ -249,7 +263,7 @@ func TestUnitService(t *testing.T) {
 	if err := nt.Dial("127.0.0.1:8081", "default"); err != nil {
 		log.Panic("Failed")
 	}
-	validatorServiceManager := NewManager(validatorCh, network.NewManager("default", nt2, module.ROLE_VALIDATOR), nil)
+	validatorServiceManager := NewManager(validatorCh, network.NewManager("default", nt2, module.ROLE_VALIDATOR), em)
 	vit, _ := leaderServiceManager.CreateInitialTransition(nil, nil, -1)
 	parentVTransition, _ := leaderServiceManager.ProposeGenesisTransition(vit)
 	parentVTransition.Execute(cb)
