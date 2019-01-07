@@ -223,7 +223,7 @@ func (it *importTask) _onExecute(err error) {
 			it.cb(nil, err)
 			return
 		}
-		it.out = it.in.transit(it.block.NormalTransactions(), it)
+		it.out = it.in.transit(it.block.NormalTransactions(), newBlockInfoFromBlock(it.block), it)
 		if it.out == nil {
 			it.stop()
 			it.cb(nil, common.ErrUnknown)
@@ -303,7 +303,9 @@ func (pt *proposeTask) _onExecute(err error) {
 		pt.cb(nil, err)
 		return
 	}
-	tr := pt.in.propose(nil)
+	height := pt.parentBlock.Height() + 1
+	timestamp := time.Now()
+	tr := pt.in.propose(newBlockInfo(height, timestamp), nil)
 	if tr == nil {
 		pt.stop()
 		pt.cb(nil, err)
@@ -311,8 +313,8 @@ func (pt *proposeTask) _onExecute(err error) {
 	pmtr := pt.in.mtransition()
 	mtr := tr.mtransition()
 	block := &blockV2{
-		height:             pt.parentBlock.Height() + 1,
-		timestamp:          time.Now(),
+		height:             height,
+		timestamp:          timestamp,
 		proposer:           pt.manager.chain.Wallet().Address(),
 		prevID:             pt.parentBlock.ID(),
 		logBloom:           pmtr.LogBloom(),
@@ -376,7 +378,7 @@ func NewManager(
 		block: lastFinalized,
 		in:    tr,
 	}
-	bn.preexe = tr.transit(lastFinalized.NormalTransactions(), nil)
+	bn.preexe = tr.transit(lastFinalized.NormalTransactions(), newBlockInfoFromBlock(lastFinalized), nil)
 	m.finalized = bn
 	if bn != nil {
 		m.nmap[string(lastFinalized.ID())] = bn
@@ -494,7 +496,7 @@ func (m *manager) FinalizeGenesisBlocks(
 	bn := &bnode{}
 	bn.in = pbn.preexe.newTransition(nil)
 	pmtr := bn.in.mtransition()
-	bn.preexe = gmtr.transit(emptyTxs, nil)
+	bn.preexe = gmtr.transit(emptyTxs, newBlockInfo(genesisHeight+1, timestamp), nil)
 	mtr = bn.preexe.mtransition()
 	bn.block = &blockV2{
 		height:             genesisHeight + 1,

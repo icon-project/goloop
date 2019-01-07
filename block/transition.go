@@ -170,7 +170,6 @@ func (ti *transitionImpl) _addChild(
 	tr := &transition{cti, cb}
 	cti._cbs = append(ti._cbs, &transition{ti, cb})
 	var err error
-	// TODO set BlockInfo to Execute()
 	cti._canceler, err = mtr.Execute(cti)
 	if err != nil {
 		log.Println("Transition.Execute failed : ", err)
@@ -196,10 +195,10 @@ func (ti *transitionImpl) patch(
 
 func (ti *transitionImpl) transit(
 	txs module.TransactionList,
+	bi module.BlockInfo,
 	cb transitionCallback,
 ) *transition {
-	// TODO set BlockInfo
-	cmtr, err := ti._setting.sm.CreateTransition(ti._mtransition, txs, nil)
+	cmtr, err := ti._setting.sm.CreateTransition(ti._mtransition, txs, bi)
 	if err != nil {
 		log.Println("ServiceManager.CreateTransition failed : ", err)
 		return nil
@@ -207,9 +206,8 @@ func (ti *transitionImpl) transit(
 	return ti._addChild(cmtr, cb)
 }
 
-func (ti *transitionImpl) propose(cb transitionCallback) *transition {
-	// TODO set BlockInfo
-	cmtr, err := ti._setting.sm.ProposeTransition(ti._mtransition, nil)
+func (ti *transitionImpl) propose(bi module.BlockInfo, cb transitionCallback) *transition {
+	cmtr, err := ti._setting.sm.ProposeTransition(ti._mtransition, bi)
 	if err != nil {
 		log.Println("ServiceManager.ProposeTransition failed : ", err)
 		return nil
@@ -289,19 +287,20 @@ func (tr *transition) patch(
 
 func (tr *transition) transit(
 	txs module.TransactionList,
+	bi module.BlockInfo,
 	cb transitionCallback,
 ) *transition {
 	if tr._ti == nil {
 		return nil
 	}
-	return tr._ti.transit(txs, cb)
+	return tr._ti.transit(txs, bi, cb)
 }
 
-func (tr *transition) propose(cb transitionCallback) *transition {
+func (tr *transition) propose(bi module.BlockInfo, cb transitionCallback) *transition {
 	if tr._ti == nil {
 		return nil
 	}
-	return tr._ti.propose(cb)
+	return tr._ti.propose(bi, cb)
 }
 
 func (tr *transition) proposeGenesis(cb transitionCallback) *transition {
