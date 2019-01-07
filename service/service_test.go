@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	testTransactionNum = 0
+	testTransactionNum = 1000
 	startBlk           = 23434 // version3
 )
 
@@ -190,7 +190,7 @@ func TestUnitService(t *testing.T) {
 	}
 	go em.Loop()
 	leaderServiceManager := NewManager(c, network.NewManager("default", nt, module.ROLE_VALIDATOR), em)
-	it, _ := leaderServiceManager.CreateInitialTransition(nil, nil, -1)
+	it, _ := leaderServiceManager.CreateInitialTransition(nil, nil)
 	parentTrs, _ := leaderServiceManager.ProposeGenesisTransition(it)
 	cb := &transitionCb{make(chan bool)}
 	parentTrs.Execute(cb)
@@ -229,8 +229,9 @@ func TestUnitService(t *testing.T) {
 	// propose transition
 	go func() {
 		exeDone := make(chan bool)
+		h := int64(1)
 		for {
-			transition, err := leaderServiceManager.ProposeTransition(parentTrs)
+			transition, err := leaderServiceManager.ProposeTransition(parentTrs, newBlockInfo(h, time.Now().UnixNano()/int64(time.Millisecond)))
 			if err != nil {
 				log.Panicf("Failed to propose transition!, err = %s\n", err)
 			}
@@ -247,6 +248,7 @@ func TestUnitService(t *testing.T) {
 			blockDone <- true
 			// get result then run below
 			parentTrs = transition
+			h++
 			time.Sleep(10 * time.Millisecond)
 		}
 	}()
@@ -264,16 +266,18 @@ func TestUnitService(t *testing.T) {
 		log.Panic("Failed")
 	}
 	validatorServiceManager := NewManager(validatorCh, network.NewManager("default", nt2, module.ROLE_VALIDATOR), em)
-	vit, _ := leaderServiceManager.CreateInitialTransition(nil, nil, -1)
+	vit, _ := leaderServiceManager.CreateInitialTransition(nil, nil)
 	parentVTransition, _ := leaderServiceManager.ProposeGenesisTransition(vit)
 	parentVTransition.Execute(cb)
 	<-cb.exeDone
 	leaderServiceManager.Finalize(parentVTransition, module.FinalizeNormalTransaction|module.FinalizeResult)
 	go func() {
 		exeDone := make(chan bool)
+		h := int64(1)
 		for {
 			txList := <-txListChan
-			vTransition, err := validatorServiceManager.CreateTransition(parentVTransition, txList)
+			// Just make a similar BlockInfo and set it.
+			vTransition, err := validatorServiceManager.CreateTransition(parentVTransition, txList, newBlockInfo(h, time.Now().UnixNano()/int64(time.Millisecond)))
 			if err != nil {
 				log.Panicf("Failed to create transition for validator : %s", err)
 			}
@@ -283,6 +287,7 @@ func TestUnitService(t *testing.T) {
 			validatorResult = vTransition.Result()
 			validatorServiceManager.Finalize(vTransition, module.FinalizeNormalTransaction|module.FinalizeResult)
 			parentVTransition = vTransition
+			h++
 			txListChan <- nil
 		}
 	}()

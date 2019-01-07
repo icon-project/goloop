@@ -30,9 +30,8 @@ const (
 )
 
 type transition struct {
-	parent    *transition
-	height    int64
-	timestamp int64
+	parent *transition
+	bi     module.BlockInfo
 
 	patchTransactions  module.TransactionList
 	normalTransactions module.TransactionList
@@ -78,21 +77,13 @@ func (tr *transitionResult) Bytes() []byte {
 }
 
 func newTransition(parent *transition, patchtxs module.TransactionList,
-	normaltxs module.TransactionList, alreadyValidated bool,
+	normaltxs module.TransactionList, bi module.BlockInfo, alreadyValidated bool,
 ) *transition {
 	var step int
 	if alreadyValidated {
 		step = stepValidated
 	} else {
 		step = stepInited
-	}
-
-	var height int64
-	var timestamp int64
-	if parent != nil {
-		height = parent.height + 1
-		// TODO set a correct timestamp.
-		timestamp = time.Now().UnixNano() / 1000
 	}
 
 	if patchtxs == nil {
@@ -103,8 +94,7 @@ func newTransition(parent *transition, patchtxs module.TransactionList,
 	}
 	return &transition{
 		parent:             parent,
-		height:             height,
-		timestamp:          timestamp,
+		bi:                 bi,
 		patchTransactions:  patchtxs,
 		normalTransactions: normaltxs,
 		db:                 parent.db,
@@ -116,8 +106,7 @@ func newTransition(parent *transition, patchtxs module.TransactionList,
 
 // all parameters should be valid.
 func newInitTransition(db db.Database, result []byte,
-	validatorList module.ValidatorList, height int64, cm ContractManager,
-	em eeproxy.Manager,
+	validatorList module.ValidatorList, cm ContractManager, em eeproxy.Manager,
 ) (*transition, error) {
 	var tresult transitionResult
 	if len(result) > 0 {
@@ -128,7 +117,6 @@ func newInitTransition(db db.Database, result []byte,
 	ws := NewWorldState(db, tresult.StateHash, validatorList)
 
 	return &transition{
-		height:             height,
 		patchTransactions:  NewTransactionListFromSlice(db, nil),
 		normalTransactions: NewTransactionListFromSlice(db, nil),
 		db:                 db,
@@ -211,7 +199,7 @@ func (t *transition) newWorldContext() WorldContext {
 	} else {
 		ws = NewWorldState(t.db, nil, nil)
 	}
-	return NewWorldContext(ws, t.timestamp, t.height, t.cm, t.em)
+	return NewWorldContext(ws, t.bi, t.cm, t.em)
 }
 
 func (t *transition) executeSync(alreadyValidated bool) {

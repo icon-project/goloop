@@ -145,18 +145,14 @@ const (
 type ServiceManager interface {
 	// ProposeTransition proposes a Transition following the parent Transition.
 	// Returned Transition always passes validation.
-	ProposeTransition(parent Transition) (Transition, error)
+	ProposeTransition(parent Transition, bi BlockInfo) (Transition, error)
 	// ProposeGenesisTransition proposes a Transition for Genesis
 	// with transactions of Genesis.
 	ProposeGenesisTransition(parent Transition) (Transition, error)
-	// CreateInitialTransition creates an initial Transition
-	// Height is the height of the block which includes transactions.
-	// e.g. If the transactions are included in block n and results are in
-	// block n+1, Height is n. It can be -1 if it is the initial state for
-	// a genesis block.
-	CreateInitialTransition(result []byte, nextValidators ValidatorList, height int64) (Transition, error)
+	// CreateInitialTransition creates an initial Transition.
+	CreateInitialTransition(result []byte, nextValidators ValidatorList) (Transition, error)
 	// CreateTransition creates a Transition following parent Transition.
-	CreateTransition(parent Transition, txs TransactionList) (Transition, error)
+	CreateTransition(parent Transition, txs TransactionList, bi BlockInfo) (Transition, error)
 	// GetPatches returns all patch transactions based on the parent transition.
 	GetPatches(parent Transition) TransactionList
 	// PatchTransition creates a Transition by overwriting patches on the transition.

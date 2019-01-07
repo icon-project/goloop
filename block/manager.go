@@ -367,7 +367,7 @@ func NewManager(
 		return nil
 	}
 	lastFinalized, err := m.getBlock(hash)
-	mtr, _ := m.sm.CreateInitialTransition(lastFinalized.Result(), lastFinalized.NextValidators(), lastFinalized.Height()-1)
+	mtr, _ := m.sm.CreateInitialTransition(lastFinalized.Result(), lastFinalized.NextValidators())
 	if mtr == nil {
 		return nil
 	}
@@ -454,7 +454,7 @@ func (m *manager) FinalizeGenesisBlocks(
 		return nil, common.ErrInvalidState
 	}
 	pbn := &bnode{}
-	mtr, err := m.sm.CreateInitialTransition(nil, nil, genesisHeight-1)
+	mtr, err := m.sm.CreateInitialTransition(nil, nil)
 	if err != nil {
 		return nil, err
 	}

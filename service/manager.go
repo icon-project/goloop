@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"math/big"
-	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
@@ -58,17 +57,16 @@ func NewManager(chain module.Chain, nm module.NetworkManager, em eeproxy.Manager
 // ProposeTransition proposes a Transition following the parent Transition.
 // parent transition should have a valid result.
 // Returned Transition always passes validation.
-func (m *manager) ProposeTransition(parent module.Transition) (module.Transition, error) {
+func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInfo,
+) (module.Transition, error) {
 	// check validity of transition
 	pt, err := m.checkTransitionResult(parent)
 	if err != nil {
 		return nil, err
 	}
 
-	var timestamp int64 = time.Now().UnixNano() / 1000
-
 	ws, _ := WorldStateFromSnapshot(pt.worldSnapshot)
-	wc := NewWorldContext(ws, timestamp, pt.height+1, m.cm, m.em)
+	wc := NewWorldContext(ws, bi, m.cm, m.em)
 
 	patchTxs := m.patchTxPool.candidate(wc, -1) // try to add all patches in the block
 	maxTxNum := txMaxNumInBlock - len(patchTxs)
@@ -85,7 +83,7 @@ func (m *manager) ProposeTransition(parent module.Transition) (module.Transition
 	return newTransition(pt,
 			NewTransactionListFromSlice(m.db, patchTxs),
 			NewTransactionListFromSlice(m.db, normalTxs),
-			true),
+			bi, true),
 		nil
 }
 
@@ -99,7 +97,7 @@ func (m *manager) ProposeGenesisTransition(parent module.Transition) (module.Tra
 		t := newTransition(pt,
 			NewTransactionListFromSlice(m.db, nil),
 			NewTransactionListFromSlice(pt.db, []module.Transaction{ntx}),
-			true)
+			newBlockInfo(0, 0), true)
 
 		return t, nil
 	}
@@ -108,21 +106,24 @@ func (m *manager) ProposeGenesisTransition(parent module.Transition) (module.Tra
 
 // CreateInitialTransition creates an initial Transition with result and
 // vs validators.
-func (m *manager) CreateInitialTransition(result []byte, valList module.ValidatorList, height int64) (module.Transition, error) {
-	return newInitTransition(m.db, result, valList, height, m.cm, m.em)
+func (m *manager) CreateInitialTransition(result []byte,
+	valList module.ValidatorList,
+) (module.Transition, error) {
+	return newInitTransition(m.db, result, valList, m.cm, m.em)
 }
 
 // CreateTransition creates a Transition following parent Transition with txs
 // transactions.
 // parent transition should have a valid result.
-// TODO It has to receive timestamp
-func (m *manager) CreateTransition(parent module.Transition, txList module.TransactionList) (module.Transition, error) {
+func (m *manager) CreateTransition(parent module.Transition,
+	txList module.TransactionList, bi module.BlockInfo,
+) (module.Transition, error) {
 	// check validity of transition
 	pt, err := m.checkTransitionResult(parent)
 	if err != nil {
 		return nil, err
 	}
-	return newTransition(pt, nil, txList, false), nil
+	return newTransition(pt, nil, txList, bi, false), nil
 }
 
 // GetPatches returns all patch transactions based on the parent transition.
@@ -141,14 +142,14 @@ func (m *manager) GetPatches(parent module.Transition) module.TransactionList {
 		log.Panicf("Fail to creating world state from snapshot")
 	}
 
-	// TODO we need to get proper time stamp value and height.
-	wc := NewWorldContext(ws, 0, 0, m.cm, m.em)
+	wc := NewWorldContext(ws, pt.bi, m.cm, m.em)
 	return NewTransactionListFromSlice(m.db, m.patchTxPool.candidate(wc, -1))
 }
 
 // PatchTransition creates a Transition by overwriting patches on the transition.
 // It doesn't return same instance as transition, but new Transition instance.
-func (m *manager) PatchTransition(t module.Transition, patchTxList module.TransactionList) module.Transition {
+func (m *manager) PatchTransition(t module.Transition, patchTxList module.TransactionList,
+) module.Transition {
 	pt, ok := t.(*transition)
 	if !ok {
 		log.Panicf("Illegal transition for GetPatches type=%T", t)
@@ -158,7 +159,7 @@ func (m *manager) PatchTransition(t module.Transition, patchTxList module.Transa
 	// If there is no way to validate patches, then set 'alreadyValidated' to
 	// true. It'll skip unnecessary validation for already validated normal
 	// transactions.
-	return newTransition(pt.parent, patchTxList, pt.normalTransactions, false)
+	return newTransition(pt.parent, patchTxList, pt.normalTransactions, pt.bi, false)
 }
 
 // Finalize finalizes data related to the transition. It usually stores
@@ -300,4 +301,20 @@ func (m *manager) GetBalance(result []byte, addr module.Address) *big.Int {
 		return ass.GetBalance()
 	}
 	return big.NewInt(0)
+}
+
+type blockInfo struct {
+	height    int64
+	timestamp int64
+}
+
+func newBlockInfo(h, ts int64) *blockInfo {
+	return &blockInfo{height: h, timestamp: ts}
+}
+func (bi *blockInfo) Height() int64 {
+	return bi.height
+}
+
+func (bi *blockInfo) Timestamp() int64 {
+	return bi.timestamp
 }

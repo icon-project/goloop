@@ -170,6 +170,7 @@ func (ti *transitionImpl) _addChild(
 	tr := &transition{cti, cb}
 	cti._cbs = append(ti._cbs, &transition{ti, cb})
 	var err error
+	// TODO set BlockInfo to Execute()
 	cti._canceler, err = mtr.Execute(cti)
 	if err != nil {
 		log.Println("Transition.Execute failed : ", err)
@@ -197,7 +198,8 @@ func (ti *transitionImpl) transit(
 	txs module.TransactionList,
 	cb transitionCallback,
 ) *transition {
-	cmtr, err := ti._setting.sm.CreateTransition(ti._mtransition, txs)
+	// TODO set BlockInfo
+	cmtr, err := ti._setting.sm.CreateTransition(ti._mtransition, txs, nil)
 	if err != nil {
 		log.Println("ServiceManager.CreateTransition failed : ", err)
 		return nil
@@ -206,7 +208,8 @@ func (ti *transitionImpl) transit(
 }
 
 func (ti *transitionImpl) propose(cb transitionCallback) *transition {
-	cmtr, err := ti._setting.sm.ProposeTransition(ti._mtransition)
+	// TODO set BlockInfo
+	cmtr, err := ti._setting.sm.ProposeTransition(ti._mtransition, nil)
 	if err != nil {
 		log.Println("ServiceManager.ProposeTransition failed : ", err)
 		return nil

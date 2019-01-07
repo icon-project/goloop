@@ -189,7 +189,7 @@ func (c *worldContext) GetInfo() map[string]interface{} {
 	return c.info
 }
 
-func NewWorldContext(ws WorldState, ts int64, height int64, cm ContractManager,
+func NewWorldContext(ws WorldState, bi module.BlockInfo, cm ContractManager,
 	em eeproxy.Manager,
 ) WorldContext {
 	var system, governance, treasury module.Address
@@ -214,7 +214,7 @@ func NewWorldContext(ws WorldState, ts int64, height int64, cm ContractManager,
 		treasury:   treasury,
 		governance: governance,
 		system:     system,
-		blockInfo:  BlockInfo{Timestamp: ts, Height: height},
+		blockInfo:  BlockInfo{Timestamp: bi.Timestamp(), Height: bi.Height()},
 
 		cm: cm,
 		em: em,
