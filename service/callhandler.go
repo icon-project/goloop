@@ -201,7 +201,7 @@ func (h *CallHandler) GetBalance(addr module.Address) *big.Int {
 }
 
 func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) {
-	h.cc.OnEvent(indexed, data)
+	h.cc.OnEvent(addr, indexed, data)
 }
 
 func (h *CallHandler) OnResult(status uint16, steps *big.Int, result *codec.TypedObj) {

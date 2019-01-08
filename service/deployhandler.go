@@ -3,11 +3,9 @@ package service
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/hex"
 	"encoding/json"
 	"log"
 	"math/big"
-	"strings"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -22,7 +20,7 @@ type DeployHandler struct {
 	*CommonHandler
 	cc          CallContext
 	eeType      string
-	content     string
+	content     []byte
 	contentType string
 	params      []byte
 	txHash      []byte
@@ -36,7 +34,7 @@ func newDeployHandler(from, to module.Address, value, stepLimit *big.Int,
 ) *DeployHandler {
 	var dataJSON struct {
 		ContentType string          `json:"contentType""`
-		Content     string          `json:"content"`
+		Content     common.HexBytes `json:"content"`
 		Params      json.RawMessage `json:"params"`
 	}
 	if err := json.Unmarshal(data, &dataJSON); err != nil {
@@ -83,7 +81,6 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 	sysAs := wc.GetAccountState(SystemID)
 
 	update := false
-	var codeBuf []byte
 	var contractID []byte
 	if bytes.Equal(h.to.ID(), SystemID) { // install
 		var tsBytes [4]byte
@@ -98,20 +95,8 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 
 	var stepUsed *big.Int
 
-	// calculate fee
-	hexContent := strings.TrimPrefix(h.content, "0x")
-	if len(hexContent)%2 != 0 {
-		hexContent = "0" + hexContent
-	}
-	var err error
-	codeBuf, err = hex.DecodeString(hexContent)
-	if err != nil {
-		log.Printf("Failed to")
-		return module.StatusSystemError, nil, nil, nil
-	}
-
 	// calculate stepUsed and apply it
-	codeLen := int64(len(codeBuf))
+	codeLen := int64(len(h.content))
 	stepUsed = new(big.Int)
 	stepUsed.SetInt64(codeLen)
 	step := big.NewInt(wc.StepsFor(StepTypeContractCreate, 1))
@@ -131,7 +116,7 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 		}
 	}
 	scoreAddr := common.NewContractAddress(contractID)
-	as.DeployContract(codeBuf, h.eeType, h.contentType, h.params, h.txHash)
+	as.DeployContract(h.content, h.eeType, h.contentType, h.params, h.txHash)
 	scoreDb := scoredb.NewVarDB(sysAs, h.txHash)
 	_ = scoreDb.Set(scoreAddr)
 
@@ -341,7 +326,7 @@ func (h *callGetAPIHandler) GetBalance(addr module.Address) *big.Int {
 }
 
 func (h *callGetAPIHandler) OnEvent(addr module.Address, indexed, data [][]byte) {
-	h.cc.OnEvent(indexed, data)
+	log.Panicln("Unexpected OnEvent() call")
 }
 
 func (h *callGetAPIHandler) OnResult(status uint16, steps *big.Int, result *codec.TypedObj) {

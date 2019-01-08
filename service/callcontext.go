@@ -19,7 +19,7 @@ type (
 		Call(ContractHandler) (module.Status, *big.Int, interface{}, module.Address)
 		OnResult(status module.Status, stepUsed *big.Int, result *codec.TypedObj, addr module.Address)
 		OnCall(ContractHandler)
-		OnEvent(indexed, data [][]byte)
+		OnEvent(addr module.Address, indexed, data [][]byte)
 		GetInfo() map[string]interface{}
 		GetBalance(module.Address) *big.Int
 		ReserveConnection(eeType string) error
@@ -253,8 +253,8 @@ func (cc *callContext) sendMessage(msg interface{}) {
 	}
 }
 
-func (cc *callContext) OnEvent(indexed, data [][]byte) {
-	cc.receipt.AddLog(nil, indexed, data)
+func (cc *callContext) OnEvent(addr module.Address, indexed, data [][]byte) {
+	cc.receipt.AddLog(addr, indexed, data)
 }
 
 func (cc *callContext) GetInfo() map[string]interface{} {
