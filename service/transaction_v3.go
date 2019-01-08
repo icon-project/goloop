@@ -10,87 +10,105 @@ import (
 	"time"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
 )
 
-type transactionV3JSON struct {
-	Version   common.HexUint16 `json:"version"` // V3 only
+type transactionV3Data struct {
+	Version   common.HexUint16 `json:"version"`
 	From      common.Address   `json:"from"`
 	To        common.Address   `json:"to"`
-	Value     common.HexInt    `json:"value"`
-	StepLimit common.HexInt    `json:"stepLimit"` // V3 only
-	Fee       common.HexInt    `json:"fee"`       // V2 only
+	Value     *common.HexInt   `json:"value"`
+	StepLimit common.HexInt    `json:"stepLimit"`
 	TimeStamp common.HexInt64  `json:"timestamp"`
-	NID       common.HexInt16  `json:"nid"` // V3 only
-	Nonce     *common.HexInt   `json:"nonce"`
-	TxHash    common.HexBytes  `json:"txHash"`  // V3 only
-	Tx_Hash   common.HexBytes  `json:"tx_hash"` // V2 only
+	NID       *common.HexInt16 `json:"nid,omitempty"`
+	Nonce     *common.HexInt   `json:"nonce,omitempty"`
 	Signature common.Signature `json:"signature"`
-
-	DataType string          `json:"dataType"`
-	Data     json.RawMessage `json:"data"`
-
-	raw    []byte
-	txHash []byte
+	DataType  *string          `json:"dataType,omitempty"`
+	Data      json.RawMessage  `json:"data,omitempty"`
 }
 
-var (
-	v2FieldInclusion = map[string]bool(nil)
-	v2FieldExclusion = map[string]bool{
-		"method":    true,
-		"signature": true,
-		"tx_hash":   true,
-	}
-	v3FieldInclusion = map[string]bool(nil)
-	v3FieldExclusion = map[string]bool{
-		"signature": true,
-		"txHash":    true,
-	}
-)
+func (tx *transactionV3Data) calcHash() ([]byte, error) {
+	// sha := sha3.New256()
+	sha := bytes.NewBuffer(nil)
+	sha.Write([]byte("icx_sendTransaction"))
 
-func (tx *transactionV3JSON) calcHash() ([]byte, error) {
-	var data map[string]interface{}
-	var err error
-	if err = json.Unmarshal(tx.raw, &data); err != nil {
-		return nil, err
-	}
-	var bs []byte
-	if tx.Version.Value == 2 {
-		bs, err = SerializeMap(data, v2FieldInclusion, v2FieldExclusion)
-	} else {
-		bs, err = SerializeMap(data, v3FieldInclusion, v3FieldExclusion)
-	}
-	if err != nil {
-		log.Println("Serialize FAILs")
-		log.Println("JSON", string(tx.raw))
-		return nil, err
-	}
-	bs = append([]byte("icx_sendTransaction."), bs...)
-
-	return crypto.SHA3Sum256(bs), nil
-}
-
-func (tx *transactionV3JSON) ID() []byte {
-	if err := tx.updateTxHash(); err != nil {
-		log.Panicf("Fail to calculate TxHash err=%+v", err)
-	}
-	return tx.txHash
-}
-
-func (tx *transactionV3JSON) updateTxHash() error {
-	if tx.txHash == nil {
-		h, err := tx.calcHash()
-		if err != nil {
-			return err
+	// data
+	if tx.Data != nil {
+		sha.Write([]byte(".data."))
+		if len(tx.Data) > 0 {
+			var obj interface{}
+			if err := json.Unmarshal(tx.Data, &obj); err != nil {
+				return nil, err
+			}
+			if bs, err := serializeValue(obj); err != nil {
+				return nil, err
+			} else {
+				sha.Write(bs)
+			}
 		}
-		tx.txHash = h
 	}
-	return nil
+
+	// dataType
+	if tx.DataType != nil {
+		sha.Write([]byte(".dataType."))
+		sha.Write([]byte(*tx.DataType))
+	}
+
+	// from
+	sha.Write([]byte(".from."))
+	sha.Write([]byte(tx.From.String()))
+
+	// nid
+	if tx.NID != nil {
+		sha.Write([]byte(".nid."))
+		sha.Write([]byte(tx.NID.String()))
+	}
+
+	// nonce
+	if tx.Nonce != nil {
+		sha.Write([]byte(".nonce."))
+		sha.Write([]byte(tx.Nonce.String()))
+	}
+
+	// stepLimit
+	sha.Write([]byte(".stepLimit."))
+	sha.Write([]byte(tx.StepLimit.String()))
+
+	// timestamp
+	sha.Write([]byte(".timestamp."))
+	sha.Write([]byte(tx.TimeStamp.String()))
+
+	// to
+	sha.Write([]byte(".to."))
+	sha.Write([]byte(tx.To.String()))
+
+	// value
+	if tx.Value != nil {
+		sha.Write([]byte(".value."))
+		sha.Write([]byte(tx.Value.String()))
+	}
+
+	// version
+	sha.Write([]byte(".version."))
+	sha.Write([]byte(tx.Version.String()))
+
+	return crypto.SHA3Sum256(sha.Bytes()), nil
 }
 
-func (tx *transactionV3JSON) verifySignature() error {
-	pk, err := tx.Signature.RecoverPublicKey(tx.txHash)
+type transactionV3 struct {
+	transactionV3Data
+	txHash []byte
+	hash   []byte
+}
+
+func (tx *transactionV3) Timestamp() int64 {
+	return tx.TimeStamp.Value
+}
+
+func (tx *transactionV3) verifySignature() error {
+	pk, err := tx.Signature.RecoverPublicKey(tx.TxHash())
 	if err != nil {
 		return err
 	}
@@ -101,41 +119,34 @@ func (tx *transactionV3JSON) verifySignature() error {
 	return errors.New("InvalidSignature")
 }
 
-func (tx *transactionV3JSON) Timestamp() int64 {
-	return tx.TimeStamp.Value
-}
-
-type transactionV3 struct {
-	*transactionV3JSON
-	hash []byte
+func (tx *transactionV3) TxHash() []byte {
+	if tx.txHash == nil {
+		h, err := tx.calcHash()
+		if err != nil {
+			tx.txHash = []byte{}
+		} else {
+			tx.txHash = h
+		}
+	}
+	return tx.txHash
 }
 
 var stepsForTransfer = big.NewInt(100000)
+
+func (tx *transactionV3) ID() []byte {
+	return tx.TxHash()
+}
 
 func (tx *transactionV3) Version() int {
 	return module.TransactionVersion3
 }
 
 func (tx *transactionV3) Verify() error {
-	if tx.DataType == "" {
-		if tx.StepLimit.Cmp(stepsForTransfer) < 0 {
-			return ErrNotEnoughStep
-		}
-	} else {
-		if !tx.To.IsContract() {
-			return ErrContractIsRequired
-		}
+	if tx.Data != nil && (*tx.DataType) == "call" && !tx.To.IsContract() {
+		return ErrContractIsRequired
 	}
 
-	if err := tx.updateTxHash(); err != nil {
-		return err
-	}
-
-	if len(tx.TxHash) > 0 && !bytes.Equal(tx.txHash, tx.TxHash) {
-		return ErrInvalidHashValue
-	}
-
-	if err := tx.transactionV3JSON.verifySignature(); err != nil {
+	if err := tx.verifySignature(); err != nil {
 		return err
 	}
 
@@ -176,18 +187,13 @@ func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
 }
 
 func (tx *transactionV3) GetHandler(cm ContractManager) (TransactionHandler, error) {
-	h := NewTransactionHandler(cm,
+	return NewTransactionHandler(cm,
 		&tx.From,
 		&tx.To,
 		&tx.Value.Int,
 		&tx.StepLimit.Int,
 		tx.DataType,
 		tx.Data)
-	if h == nil {
-		return nil, errors.New("can't find handler:" + tx.From.String() +
-			"," + tx.To.String() + "," + tx.DataType)
-	}
-	return h, nil
 }
 
 func (tx *transactionV3) Group() module.TransactionGroup {
@@ -195,7 +201,23 @@ func (tx *transactionV3) Group() module.TransactionGroup {
 }
 
 func (tx *transactionV3) Bytes() []byte {
-	return tx.raw
+	bs, err := codec.MarshalToBytes(&tx.transactionV3Data)
+	if err != nil {
+		log.Panicf("Fail to marshal transaction=%+v", tx)
+		return nil
+	}
+	return bs
+}
+
+func (tx *transactionV3) SetBytes(bs []byte) error {
+	_, err := codec.UnmarshalFromBytes(bs, &tx.transactionV3Data)
+	if err != nil {
+		return err
+	}
+	if tx.transactionV3Data.Version.Value != module.TransactionVersion3 {
+		return errors.New("InvalidTransactionVersion")
+	}
+	return nil
 }
 
 func (tx *transactionV3) Hash() []byte {
@@ -206,7 +228,7 @@ func (tx *transactionV3) Hash() []byte {
 }
 
 func (tx *transactionV3) Nonce() *big.Int {
-	if nonce := tx.transactionV3JSON.Nonce; nonce != nil {
+	if nonce := tx.transactionV3Data.Nonce; nonce != nil {
 		return &nonce.Int
 	}
 	return nil
@@ -214,10 +236,31 @@ func (tx *transactionV3) Nonce() *big.Int {
 
 func (tx *transactionV3) ToJSON(version int) (interface{}, error) {
 	if version == module.TransactionVersion3 {
-		var jso map[string]interface{}
-		if err := json.Unmarshal(tx.raw, &jso); err != nil {
-			return nil, err
+		jso := map[string]interface{}{
+			"version":   &tx.transactionV3Data.Version,
+			"from":      &tx.transactionV3Data.From,
+			"to":        &tx.transactionV3Data.To,
+			"stepLimit": &tx.transactionV3Data.StepLimit,
+			"timestamp": &tx.transactionV3Data.TimeStamp,
+			"signature": &tx.transactionV3Data.Signature,
 		}
+		if tx.transactionV3Data.Value != nil {
+			jso["value"] = tx.transactionV3Data.Value
+		}
+		if tx.transactionV3Data.NID != nil {
+			jso["nid"] = tx.transactionV3Data.NID
+		}
+		if tx.transactionV3Data.Nonce != nil {
+			jso["nonce"] = tx.transactionV3Data.NID
+		}
+		if tx.transactionV3Data.DataType != nil {
+			jso["dataType"] = *tx.transactionV3Data.DataType
+		}
+		if tx.transactionV3Data.Data != nil {
+			jso["data"] = json.RawMessage(tx.transactionV3Data.Data)
+		}
+		jso["txHash"] = common.HexBytes(tx.ID())
+
 		return jso, nil
 	} else {
 		return nil, errors.New("InvalidVersion:" + strconv.Itoa(version))
@@ -225,35 +268,24 @@ func (tx *transactionV3) ToJSON(version int) (interface{}, error) {
 }
 
 func (tx *transactionV3) MarshalJSON() ([]byte, error) {
-	return tx.raw, nil
+	if obj, err := tx.ToJSON(module.TransactionVersion3); err != nil {
+		return nil, err
+	} else {
+		return json.Marshal(obj)
+	}
 }
 
-func newTransactionV2V3FromJSON(js []byte) (Transaction, error) {
-	genjs := new(genesisV3JSON)
-	if err := json.Unmarshal(js, genjs); err != nil {
+func newTransactionV3FromJSON(jso *transactionV3JSON) (*transactionV3, error) {
+	tx := new(transactionV3)
+	tx.transactionV3Data = jso.transactionV3Data
+	return tx, nil
+}
+
+func newTransactionV3FromBytes(bs []byte) (Transaction, error) {
+	tx := new(transactionV3)
+	if err := tx.SetBytes(bs); err != nil {
 		return nil, err
-	}
-	if len(genjs.Accounts) != 0 {
-		genjs.raw = make([]byte, len(js))
-		copy(genjs.raw, js)
-
-		return &genesisV3{genesisV3JSON: genjs}, nil
-	}
-
-	txjs := new(transactionV3JSON)
-	txjs.Version.Value = 2
-	if err := json.Unmarshal(js, txjs); err != nil {
-		return nil, err
-	}
-	txjs.raw = make([]byte, len(js))
-	copy(txjs.raw, js)
-
-	switch txjs.Version.Value {
-	case 2:
-		return &transactionV2{transactionV3JSON: txjs}, nil
-	case 3:
-		return &transactionV3{transactionV3JSON: txjs}, nil
-	default:
-		return nil, errors.New("IllegalVersion:" + txjs.Version.String())
+	} else {
+		return tx, nil
 	}
 }

@@ -83,9 +83,11 @@ func newTransaction(b []byte) (Transaction, error) {
 		return nil, errors.New("IllegalTransactionData")
 	}
 	if b[0] == '{' {
-		return newTransactionFromJSON(b)
+		if tx, err := newTransactionFromJSON(b); err == nil {
+			return tx, nil
+		}
 	}
-	return nil, errors.New("UnknownFormat")
+	return newTransactionV3FromBytes(b)
 }
 
 func NewTransactionFromJSON(b []byte) (module.Transaction, error) {

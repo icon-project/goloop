@@ -1,13 +1,13 @@
 package service
 
 import (
+	"github.com/go-errors/errors"
 	"math/big"
 
 	"github.com/icon-project/goloop/module"
 )
 
 const (
-	dataTypeNone    = ""
 	dataTypeMessage = "message"
 	dataTypeCall    = "call"
 	dataTypeDeploy  = "deploy"
@@ -24,7 +24,7 @@ type transactionHandler struct {
 	to        module.Address
 	value     *big.Int
 	stepLimit *big.Int
-	dataType  string
+	dataType  *string
 	data      []byte
 
 	handler ContractHandler
@@ -33,8 +33,8 @@ type transactionHandler struct {
 }
 
 func NewTransactionHandler(cm ContractManager, from, to module.Address,
-	value, stepLimit *big.Int, dataType string, data []byte,
-) TransactionHandler {
+	value, stepLimit *big.Int, dataType *string, data []byte,
+) (TransactionHandler, error) {
 	tc := &transactionHandler{
 		from:      from,
 		to:        to,
@@ -44,24 +44,28 @@ func NewTransactionHandler(cm ContractManager, from, to module.Address,
 		data:      data,
 	}
 	ctype := ctypeNone // invalid contract type
-	switch dataType {
-	case dataTypeNone:
+	if dataType == nil {
 		ctype = ctypeTransfer
-	case dataTypeMessage:
-		ctype = ctypeTransferAndMessage
-	case dataTypeDeploy:
-		ctype = ctypeTransferAndDeploy
-	case dataTypeCall:
-		ctype = ctypeTransferAndCall
+	} else {
+		switch *dataType {
+		case dataTypeMessage:
+			ctype = ctypeTransferAndMessage
+		case dataTypeDeploy:
+			ctype = ctypeTransferAndDeploy
+		case dataTypeCall:
+			ctype = ctypeTransferAndCall
+		default:
+			return nil, errors.Errorf("IllegalDataType(type=%s)", *dataType)
+		}
 	}
 
 	tc.receipt = NewReceipt(to)
 	tc.cc = newCallContext(tc.receipt)
 	tc.handler = cm.GetHandler(tc.cc, from, to, value, stepLimit, ctype, data)
 	if tc.handler == nil {
-		return nil
+		return nil, errors.New("NoSuitableHandler")
 	}
-	return tc
+	return tc, nil
 }
 
 func (th *transactionHandler) Prepare(wc WorldContext) (WorldContext, error) {

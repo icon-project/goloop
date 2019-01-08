@@ -35,7 +35,7 @@ func (tx *transactionV2) Verify() error {
 		return err
 	}
 
-	if !bytes.Equal(tx.txHash, tx.Tx_Hash) {
+	if !bytes.Equal(tx.txHash, tx.TxHashV2) {
 		return ErrInvalidHashValue
 	}
 
