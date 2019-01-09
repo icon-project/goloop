@@ -72,6 +72,13 @@ func genContractAddr(from, timestamp, nonce []byte) []byte {
 	return addr
 }
 
+func (h *DeployHandler) Prepare(wc WorldContext) (WorldContext, error) {
+	lq := []LockRequest{
+		{"", AccountWriteLock},
+	}
+	return wc.GetFuture(lq), nil
+}
+
 func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 	*codec.TypedObj, module.Address,
 ) {
