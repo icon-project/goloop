@@ -57,6 +57,15 @@ def convert_data_type(typ: str) -> DataType:
         raise Exception(f"UnknownType: {typ}")
 
 
+def convert_output_data_type(typ: str) -> DataType:
+    if typ == 'list':
+        return DataType.LIST
+    elif typ == 'dict':
+        return DataType.DICT
+    else:
+        return convert_data_type(typ)
+
+
 def convert_inputs(params: list) -> Tuple[int, List[Tuple[str, int, Any]]]:
     result = list()
     optional = 0
@@ -75,7 +84,7 @@ def convert_inputs(params: list) -> Tuple[int, List[Tuple[str, int, Any]]]:
 def convert_output(params: list) -> List[int]:
     result = list()
     for param in params:
-        result.append(convert_data_type(param.get('type')))
+        result.append(convert_output_data_type(param.get('type')))
     return result
 
 

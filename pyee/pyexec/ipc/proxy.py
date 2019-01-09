@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import traceback
 from typing import Any, Tuple, List, Union, Callable
 from abc import ABCMeta, abstractmethod
 from .client import Client
@@ -288,6 +289,7 @@ class ServiceManagerProxy:
             else:
                 self.__client.send(Message.GETAPI, [])
         except:
+            traceback.print_exc()
             self.__client.send(Message.GETAPI, [])
 
     def loop(self):
