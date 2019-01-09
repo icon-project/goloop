@@ -97,7 +97,7 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 		if info == nil {
 			return module.StatusSystemError, h.stepLimit, nil, nil
 		}
-		contractID = genContractAddr(h.from, info[InfoBlockTimestamp].(int64), info[InfoTxNonce].(*big.Int))
+		contractID = genContractAddr(h.from, info[InfoTxTimestamp].(int64), info[InfoTxNonce].(*big.Int))
 	} else { // deploy for update
 		contractID = h.to.ID()
 		update = true
