@@ -342,6 +342,7 @@ func (t *transition) executeTxs(l module.TransactionList, wc WorldContext, rctBu
 				Index:     int32(cnt),
 				Timestamp: txo.Timestamp(),
 				Nonce:     txo.Nonce(),
+				Hash:      txo.ID(),
 			})
 			go func(tx Transaction, wc WorldContext, rb *Receipt) {
 				if rct, err := txh.Execute(wc); err != nil {
@@ -356,6 +357,7 @@ func (t *transition) executeTxs(l module.TransactionList, wc WorldContext, rctBu
 				Index:     int32(cnt),
 				Timestamp: txo.Timestamp(),
 				Nonce:     txo.Nonce(),
+				Hash:      txo.ID(),
 			})
 			if rct, err := txh.Execute(wc); err != nil {
 				log.Panicf("Fail to execute transaction err=%+v", err)

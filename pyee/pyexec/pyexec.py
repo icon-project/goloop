@@ -23,7 +23,7 @@ from .base.message import Message
 from .base.transaction import Transaction
 from .service_engine import ServiceEngine, IconScoreContext
 from .iconscore.icon_score_step import IconScoreStepCounter
-from .ipc.proxy import ServiceManagerProxy, Codec, TypeTag, APIInfo, APIType, DataType
+from .ipc.proxy import ServiceManagerProxy, Codec, TypeTag, APIInfo, APIType, DataType, Info
 
 TAG = 'PyExec'
 version_number = 1
@@ -105,14 +105,14 @@ class PyExecEngine(object):
         context.set_invoke_params(code, to, method, params)
         # Get transaction info and set the context
         info = self.get_info()
-        context.tx = Transaction(tx_hash=info.get('T.hash'),
-                                 index=info.get('T.index'),
+        context.tx = Transaction(tx_hash=info.get(Info.TX_HASH),
+                                 index=info.get(Info.TX_INDEX),
                                  origin=_from,
-                                 timestamp=info.get('T.timestamp'),
-                                 nonce=info.get('T.nonce'))
-        context.block = Block(info.get('B.height'),
+                                 timestamp=info.get(Info.TX_TIMESTAMP),
+                                 nonce=info.get(Info.TX_NONCE))
+        context.block = Block(info.get(Info.BLOCK_HEIGHT),
                               info.get('B.hash'),
-                              info.get('B.timestamp'),
+                              info.get(Info.BLOCK_TIMESTAMP),
                               info.get('B.prevhash'))
         context.msg = Message(sender=_from, value=value)
         context.owner: Address = info.get('Owner')

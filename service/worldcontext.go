@@ -180,12 +180,13 @@ func (c *worldContext) stepCostInfo() interface{} {
 func (c *worldContext) GetInfo() map[string]interface{} {
 	if c.info == nil {
 		m := make(map[string]interface{})
-		m["B.height"] = c.blockInfo.Height
-		m["B.timestamp"] = c.blockInfo.Timestamp
-		m["T.index"] = c.txInfo.Index
-		m["T.timestamp"] = c.txInfo.Timestamp
-		m["T.nonce"] = c.txInfo.Nonce
-		m["StepCosts"] = c.stepCostInfo()
+		m[InfoBlockHeight] = c.blockInfo.Height
+		m[InfoBlockTimestamp] = c.blockInfo.Timestamp
+		m[InfoTxHash] = c.txInfo.Hash
+		m[InfoTxIndex] = c.txInfo.Index
+		m[InfoTxTimestamp] = c.txInfo.Timestamp
+		m[InfoTxNonce] = c.txInfo.Nonce
+		m[InfoStepCosts] = c.stepCostInfo()
 		c.info = m
 	}
 	return c.info

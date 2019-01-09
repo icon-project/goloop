@@ -49,6 +49,7 @@ type BlockInfo struct {
 
 type TransactionInfo struct {
 	Index     int32
+	Hash      []byte
 	Timestamp int64
 	Nonce     *big.Int
 }

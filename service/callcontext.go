@@ -38,6 +38,16 @@ type (
 	}
 )
 
+const (
+	InfoBlockTimestamp = "B.timestamp"
+	InfoBlockHeight    = "B.height"
+	InfoTxHash         = "T.hash"
+	InfoTxIndex        = "T.index"
+	InfoTxTimestamp    = "T.timestamp"
+	InfoTxNonce        = "T.nonce"
+	InfoStepCosts      = "StepCosts"
+)
+
 type callContext struct {
 	receipt Receipt
 	conns   map[string]eeproxy.Proxy

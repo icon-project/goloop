@@ -49,6 +49,16 @@ class Status(object):
     SYSTEM_FAILURE = 1
 
 
+class Info(object):
+    BLOCK_TIMESTAMP = "B.timestamp"
+    BLOCK_HEIGHT = "B.height"
+    TX_HASH = "T.hash"
+    TX_INDEX = "T.index"
+    TX_TIMESTAMP = "T.timestamp"
+    TX_NONCE = "T.nonce"
+    STEP_COSTS = "StepCosts"
+
+
 class Codec(metaclass=ABCMeta):
     @abstractmethod
     def encode(self, o: Any) -> Tuple[int, bytes]:
