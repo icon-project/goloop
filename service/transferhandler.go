@@ -55,7 +55,7 @@ type TransferAndMessageHandler struct {
 	data []byte
 }
 
-func (h *TransferAndMessageHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int, interface{}, module.Address) {
+func (h *TransferAndMessageHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int, *codec.TypedObj, module.Address) {
 	stepPrice := wc.StepPrice()
 	var (
 		fee                 big.Int

@@ -24,9 +24,6 @@ type DeployHandler struct {
 	contentType string
 	params      []byte
 	txHash      []byte
-
-	timestamp int
-	nonce     int
 }
 
 func newDeployHandler(from, to module.Address, value, stepLimit *big.Int,
@@ -83,11 +80,17 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 	update := false
 	var contractID []byte
 	if bytes.Equal(h.to.ID(), SystemID) { // install
-		var tsBytes [4]byte
-		_ = binary.Write(bytes.NewBuffer(tsBytes[:]), binary.BigEndian, h.timestamp)
-		var nBytes [4]byte
-		_ = binary.Write(bytes.NewBuffer(nBytes[:]), binary.BigEndian, h.nonce)
-		contractID = genContractAddr(h.from.ID(), tsBytes[:], nBytes[:])
+		tsBytes := bytes.NewBuffer(nil)
+		nBytes := bytes.NewBuffer(nil)
+		if info := h.cc.GetInfo(); info != nil {
+			if timestamp, ok := info["T.timestamp"].(int64); ok {
+				_ = binary.Write(tsBytes, binary.BigEndian, timestamp)
+			}
+			if nonce, ok := info["T.nonce"].(*big.Int); ok {
+				_ = binary.Write(nBytes, binary.BigEndian, nonce.Bytes())
+			}
+		}
+		contractID = genContractAddr(h.from.ID(), tsBytes.Bytes(), nBytes.Bytes())
 	} else { // deploy for update
 		contractID = h.to.ID()
 		update = true

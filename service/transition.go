@@ -352,6 +352,11 @@ func (t *transition) executeTxs(l module.TransactionList, wc WorldContext, rctBu
 				wc.WorldVirtualState().Commit()
 			}(txo, wc, &rctBuf[cnt])
 		} else {
+			wc.SetTransactionInfo(&TransactionInfo{
+				Index:     int32(cnt),
+				Timestamp: txo.Timestamp(),
+				Nonce:     txo.Nonce(),
+			})
 			if rct, err := txh.Execute(wc); err != nil {
 				log.Panicf("Fail to execute transaction err=%+v", err)
 			} else {

@@ -159,7 +159,9 @@ func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
 	trans := new(big.Int)
 	trans.Set(&tx.StepLimit.Int)
 	trans.Mul(trans, stepPrice)
-	trans.Add(trans, &tx.Value.Int)
+	if tx.Value != nil {
+		trans.Add(trans, &tx.Value.Int)
+	}
 
 	as1 := wc.GetAccountState(tx.From.ID())
 	balance1 := as1.GetBalance()
@@ -178,7 +180,9 @@ func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
 	if update {
 		as2 := wc.GetAccountState(tx.To.ID())
 		balance2 := as2.GetBalance()
-		balance2.Add(balance2, &tx.Value.Int)
+		if tx.Value != nil {
+			balance2.Add(balance2, &tx.Value.Int)
+		}
 		balance1.Sub(balance1, trans)
 		as1.SetBalance(balance1)
 		as2.SetBalance(balance2)
@@ -187,10 +191,16 @@ func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
 }
 
 func (tx *transactionV3) GetHandler(cm ContractManager) (TransactionHandler, error) {
+	var value *big.Int
+	if tx.Value != nil {
+		value = &tx.Value.Int
+	} else {
+		value = big.NewInt(0)
+	}
 	return NewTransactionHandler(cm,
 		&tx.From,
 		&tx.To,
-		&tx.Value.Int,
+		value,
 		&tx.StepLimit.Int,
 		tx.DataType,
 		tx.Data)
