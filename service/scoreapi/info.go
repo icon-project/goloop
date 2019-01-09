@@ -50,6 +50,14 @@ func (info *Info) GetMethod(name string) *Method {
 	}
 }
 
+func (info *Info) EnsureParamsSequential(method string, params *codec.TypedObj) (*codec.TypedObj, error) {
+	m := info.GetMethod(method)
+	if m == nil {
+		return nil, errors.Errorf("NoMethod(name=%s)", method)
+	}
+	return m.EnsureParamsSequential(params)
+}
+
 func (info *Info) ConvertParamsToTypedObj(method string, params []byte) (*codec.TypedObj, error) {
 	m := info.GetMethod(method)
 	if m == nil {

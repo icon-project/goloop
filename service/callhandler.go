@@ -135,12 +135,18 @@ func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 }
 
 func (h *CallHandler) ensureParamObj() error {
-	if h.paramObj != nil {
-		return nil
-	}
 	info := h.as.APIInfo()
 	if info == nil {
 		return errors.New("No API Info in " + h.to.String())
+	}
+
+	if h.paramObj != nil {
+		if params, err := info.EnsureParamsSequential(h.method, h.paramObj); err != nil {
+			return err
+		} else {
+			h.paramObj = params
+			return nil
+		}
 	}
 
 	var err error
