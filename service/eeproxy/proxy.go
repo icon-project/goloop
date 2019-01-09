@@ -3,6 +3,7 @@ package eeproxy
 import (
 	"log"
 	"math/big"
+	"os"
 	"sync"
 
 	"github.com/icon-project/goloop/common"
@@ -157,6 +158,7 @@ func (p *proxy) reserve() bool {
 	if p.reserved {
 		return false
 	}
+	p.reserved = true
 	return true
 }
 
@@ -301,7 +303,16 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 			frame := p.frame
 			p.frame = frame.prev
 			p.lock.Unlock()
+
 			frame.ctx.OnAPI(obj)
+
+			p.lock.Lock()
+			if p.frame == nil && !p.reserved {
+				p.lock.Unlock()
+				p.mgr.onReady(p.scoreType, p)
+			} else {
+				p.lock.Unlock()
+			}
 			return nil
 		}
 	default:
@@ -320,6 +331,18 @@ func (p *proxy) HandleMessages() error {
 	p.mgr.detach(p)
 	p.conn.Close()
 	return nil
+}
+
+func (p *proxy) Kill() error {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	if ps, err := os.FindProcess(int(p.pid)); err != nil {
+		return err
+	} else {
+		defer ps.Release()
+		return ps.Kill()
+	}
 }
 
 func newConnection(m *manager, c ipc.Connection) (*proxy, error) {

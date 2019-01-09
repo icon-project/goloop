@@ -122,8 +122,10 @@ func (m *manager) Get(name string) Proxy {
 		score.waitor.Wait()
 	}
 	p := score.ready
-	m.detach(p)
-	m.attach(&score.using, p)
+	if p.reserve() {
+		m.detach(p)
+		m.attach(&score.using, p)
+	}
 	return p
 }
 
