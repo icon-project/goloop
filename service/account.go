@@ -315,6 +315,10 @@ type accountStateImpl struct {
 	store         trie.Mutable
 }
 
+func (s *accountStateImpl) ContractOwner() module.Address {
+	return s.contractOwner
+}
+
 func (s *accountStateImpl) Version() int {
 	return s.version
 }
