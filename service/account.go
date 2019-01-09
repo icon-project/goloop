@@ -483,6 +483,7 @@ func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
 		fIsContract:   s.isContract,
 		store:         store,
 		contractOwner: contractOwner,
+		apiInfo:       s.apiInfo,
 		curContract:   curContract,
 		nextContract:  nextContract,
 	}
@@ -497,6 +498,7 @@ func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 	s.balance.Set(&snapshot.balance.Int)
 	s.isContract = snapshot.fIsContract
 	s.version = snapshot.version
+	s.apiInfo = snapshot.apiInfo
 
 	if snapshot.contractOwner != nil {
 		s.contractOwner = common.NewAccountAddress(snapshot.contractOwner.Bytes())

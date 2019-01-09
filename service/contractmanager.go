@@ -50,8 +50,9 @@ type (
 )
 
 const (
-	contractStoreRoot          = "./contract"
-	tsInProgress      tsStatus = iota
+	contractStoreRoot               = "./contract"
+	contractPythonRootFile          = "package.json"
+	tsInProgress           tsStatus = iota
 	tsComplete
 )
 
@@ -99,6 +100,12 @@ func (cm *contractManager) GetCallHandler(cc CallContext, from, to module.Addres
 
 // if path does not exist, make the path
 func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []byte) (string, error) {
+	var path string
+	path = cm.getContractPath(codeHash)
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		return path, nil
+	}
+
 	tmpPath := fmt.Sprintf("%s/tmp/%016x", cm.storeRoot, codeHash)
 	if _, err := os.Stat(tmpPath); !os.IsNotExist(err) {
 		if err := os.RemoveAll(tmpPath); err != nil {
@@ -112,21 +119,18 @@ func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []
 		return "", err
 	}
 
-	var path string
 	switch eeType {
 	case "python":
-		noRoot := false
+		findRoot := false
 		rootDir := ""
 		for _, zipFile := range zipReader.File {
 			if info := zipFile.FileInfo(); info.IsDir() {
 				continue
 			}
-			if strings.Contains(zipFile.Name, "/") {
-				if len(rootDir) == 0 {
-					rootDir = strings.Split(zipFile.Name, "/")[0]
-				}
-			} else if noRoot == false {
-				noRoot = true
+			if findRoot == false &&
+				strings.HasSuffix(zipFile.Name, contractPythonRootFile) {
+				rootDir = strings.TrimSuffix(zipFile.Name, contractPythonRootFile)
+				findRoot = true
 			}
 			log.Printf("zipFile.Name : %s\n", zipFile.Name)
 			storePath := tmpPath + "/" + zipFile.Name
@@ -146,16 +150,9 @@ func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []
 				log.Printf("Failed to write file. err = %s\n", err)
 			}
 		}
-		if noRoot == false {
-			tmpPath = tmpPath + "/" + rootDir
-		}
-		path = cm.getContractPath(codeHash)
-		if _, err := os.Stat(path); !os.IsNotExist(err) {
-			if err := os.RemoveAll(path); err != nil {
-				return "", err
-			}
-		}
-		if err := os.Rename(tmpPath, path); err != nil {
+		contractRoot := tmpPath + "/" + rootDir
+
+		if err := os.Rename(contractRoot, path); err != nil {
 			return "", err
 		}
 	default:

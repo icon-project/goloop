@@ -364,6 +364,7 @@ func (t *transition) executeTxs(l module.TransactionList, wc WorldContext, rctBu
 			} else {
 				rctBuf[cnt] = rct
 			}
+			txh.Dispose()
 		}
 		cnt++
 	}

@@ -54,16 +54,22 @@ func newDeployHandler(from, to module.Address, value, stepLimit *big.Int,
 // data = from(20 bytes) + timestamp (32 bytes) + if exists, nonce (32 bytes)
 // digest = sha3_256(data)
 // contract address = digest[len(digest) - 20:] // get last 20bytes
-func genContractAddr(from, timestamp, nonce []byte) []byte {
+func genContractAddr(from module.Address, timestamp int64, nonce *big.Int) []byte {
+	tsBytes := bytes.NewBuffer(nil)
+	noBytes := bytes.NewBuffer(nil)
+	_ = binary.Write(tsBytes, binary.BigEndian, timestamp)
+	if nonce != nil {
+		_ = binary.Write(noBytes, binary.BigEndian, nonce.Bytes())
+	}
 	data := make([]byte, 0, 84)
-	data = append([]byte(nil), from...)
+	data = append([]byte(nil), from.ID()...)
 	alignLen := 32 // 32 bytes alignment
-	tBytes := make([]byte, alignLen-len(timestamp), alignLen)
-	tBytes = append(tBytes, timestamp...)
+	tBytes := make([]byte, alignLen-tsBytes.Len(), alignLen)
+	tBytes = append(tBytes, tsBytes.Bytes()...)
 	data = append(data, tBytes...)
-	if len(nonce) != 0 {
-		nBytes := make([]byte, alignLen-len(nonce), alignLen)
-		nBytes = append(nBytes, nonce...)
+	if nonce != nil {
+		nBytes := make([]byte, alignLen-noBytes.Len(), alignLen)
+		nBytes = append(nBytes, noBytes.Bytes()...)
 		data = append(data, nBytes...)
 	}
 	digest := sha3.Sum256(data)
@@ -87,17 +93,11 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 	update := false
 	var contractID []byte
 	if bytes.Equal(h.to.ID(), SystemID) { // install
-		tsBytes := bytes.NewBuffer(nil)
-		nBytes := bytes.NewBuffer(nil)
-		if info := h.cc.GetInfo(); info != nil {
-			if timestamp, ok := info[InfoTxTimestamp].(int64); ok {
-				_ = binary.Write(tsBytes, binary.BigEndian, timestamp)
-			}
-			if nonce, ok := info[InfoTxNonce].(*big.Int); ok && nonce != nil {
-				_ = binary.Write(nBytes, binary.BigEndian, nonce.Bytes())
-			}
+		info := h.cc.GetInfo()
+		if info == nil {
+			return module.StatusSystemError, h.stepLimit, nil, nil
 		}
-		contractID = genContractAddr(h.from.ID(), tsBytes.Bytes(), nBytes.Bytes())
+		contractID = genContractAddr(h.from, info[InfoBlockTimestamp].(int64), info[InfoTxNonce].(*big.Int))
 	} else { // deploy for update
 		contractID = h.to.ID()
 		update = true
