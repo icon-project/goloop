@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"log"
 	"math/big"
+	"sync"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -235,14 +236,16 @@ func (h *AcceptHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 type callGetAPIHandler struct {
 	*CommonHandler
 
-	cc CallContext
+	cc       CallContext
+	canceled bool
+	lock     sync.Mutex
 
 	// set in ExecuteAsync()
 	as AccountState
 }
 
 func newCallGetAPIHandler(ch *CommonHandler, cc CallContext) *callGetAPIHandler {
-	return &callGetAPIHandler{CommonHandler: ch, cc: cc}
+	return &callGetAPIHandler{CommonHandler: ch, cc: cc, canceled: false}
 }
 
 // It's never called
@@ -280,12 +283,16 @@ func (h *callGetAPIHandler) ExecuteAsync(wc WorldContext) error {
 		go func() {
 			select {
 			case r := <-ch:
-				if r.err == nil {
-					if err := conn.GetAPI(h, r.path); err == nil {
-						return
+				h.lock.Lock()
+				if !h.canceled {
+					if r.err == nil {
+						if err := conn.GetAPI(h, r.path); err == nil {
+							return
+						}
 					}
+					h.cc.OnResult(module.StatusSystemError, h.stepLimit, nil, nil)
 				}
-				h.cc.OnResult(module.StatusSystemError, h.stepLimit, nil, nil)
+				h.lock.Unlock()
 			}
 		}()
 	}
@@ -298,7 +305,9 @@ func (h *callGetAPIHandler) SendResult(status module.Status, steps *big.Int, res
 }
 
 func (h *callGetAPIHandler) Cancel() {
-	// Do nothing
+	h.lock.Lock()
+	h.canceled = true
+	h.lock.Unlock()
 }
 
 func (h *callGetAPIHandler) EEType() string {

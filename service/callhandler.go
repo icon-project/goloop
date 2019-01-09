@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"math/big"
+	"sync"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -28,6 +29,8 @@ type CallHandler struct {
 
 	cc        CallContext
 	forDeploy bool
+	canceled  bool
+	lock      sync.Mutex
 
 	// set in ExecuteAsync()
 	as   AccountState
@@ -48,6 +51,7 @@ func newCallHandler(ch *CommonHandler, data []byte, cc CallContext, forDeploy bo
 		params:        jso.Params,
 		cc:            cc,
 		forDeploy:     forDeploy,
+		canceled:      false,
 	}
 }
 
@@ -120,16 +124,21 @@ func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 		go func() {
 			select {
 			case r := <-ch:
-				if r.err == nil {
-					var err error
-					if err = h.ensureParamObj(); err == nil {
-						if err = h.conn.Invoke(h, r.path, false, h.from, h.to,
-							h.value, h.stepLimit, h.method, h.paramObj); err == nil {
-							return
+				h.lock.Lock()
+				if !h.canceled {
+					if r.err == nil {
+						var err error
+						if err = h.ensureParamObj(); err == nil {
+							if err = h.conn.Invoke(h, r.path, false,
+								h.from, h.to, h.value, h.stepLimit, h.method,
+								h.paramObj); err == nil {
+								return
+							}
 						}
 					}
+					h.cc.OnResult(module.StatusSystemError, h.stepLimit, nil, nil)
 				}
-				h.OnResult(module.StatusSystemError, h.stepLimit, nil)
+				h.lock.Unlock()
 			}
 		}()
 	}
@@ -164,7 +173,9 @@ func (h *CallHandler) SendResult(status module.Status, steps *big.Int, result *c
 }
 
 func (h *CallHandler) Cancel() {
-	// Do nothing
+	h.lock.Lock()
+	h.canceled = true
+	h.lock.Unlock()
 }
 
 func (h *CallHandler) EEType() string {

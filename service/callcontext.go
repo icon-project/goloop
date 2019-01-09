@@ -70,8 +70,6 @@ func (cc *callContext) Setup(wc WorldContext) {
 func (cc *callContext) Call(handler ContractHandler) (module.Status, *big.Int,
 	interface{}, module.Address,
 ) {
-	tt := reflect.TypeOf(handler)
-	log.Println(tt)
 	switch handler := handler.(type) {
 	case SyncContractHandler:
 		cc.lock.Lock()
@@ -97,7 +95,7 @@ func (cc *callContext) Call(handler ContractHandler) (module.Status, *big.Int,
 		}
 		return cc.waitResult(handler.StepLimit())
 	default:
-		log.Panicf("Unknown handler type")
+		log.Panicln("Unknown handler type:", reflect.TypeOf(handler))
 		return module.StatusSystemError, handler.StepLimit(), nil, nil
 	}
 }
@@ -108,9 +106,7 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (
 	for {
 		select {
 		case <-cc.timer:
-			cc.lock.Lock()
 			cc.handleTimeout()
-			cc.lock.Unlock()
 			return module.StatusTimeout, stepLimit, nil, nil
 		case msg := <-cc.waiter:
 			switch msg := msg.(type) {
@@ -152,37 +148,44 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (
 }
 
 func (cc *callContext) handleTimeout() {
+	cc.lock.Lock()
+	achs := make([]AsyncContractHandler, 0, cc.stack.Len())
 	for e := cc.stack.Back(); e != nil; e = cc.stack.Back() {
 		if h, ok := e.Value.(AsyncContractHandler); ok {
-			h.Cancel()
+			achs = append(achs, h)
 		}
 		cc.stack.Remove(e)
 	}
+	cc.lock.Unlock()
 
-	// TODO call it when Proxy supports Kill() API
+	for _, h := range achs {
+		h.Cancel()
+	}
+
 	// kill EE; It'll restart by itself
-	/*
-		for _, conn := range cc.conns {
-			conn.Kill()
+	for name, conn := range cc.conns {
+		if err := conn.Kill(); err != nil {
+			log.Println("FAIL: conn[", name, "].Kill() (", err.Error(), ")")
 		}
-		cc.conns = nil
-	*/
+	}
+	cc.conns = nil
 }
 
 func (cc *callContext) handleResult(status module.Status,
 	stepUsed *big.Int, result *codec.TypedObj, addr module.Address,
 ) bool {
-	cc.lock.Lock()
-	defer cc.lock.Unlock()
-
 	if status == module.StatusTimeout {
-		if e := cc.stack.Back(); e != nil {
+		cc.lock.Lock()
+		e := cc.stack.Back()
+		cc.lock.Unlock()
+		if e != nil {
 			log.Println("Unexpected: StatusTimeout is thrown by another code than callcontext!")
 			cc.handleTimeout()
 		}
 		return false
 	}
 
+	cc.lock.Lock()
 	// remove current frame
 	e := cc.stack.Back()
 	if e == nil {
@@ -192,9 +195,11 @@ func (cc *callContext) handleResult(status module.Status,
 
 	// back to parent frame
 	e = cc.stack.Back()
+	cc.lock.Unlock()
 	if e == nil {
 		return false
 	}
+
 	switch h := e.Value.(type) {
 	case AsyncContractHandler:
 		if err := h.SendResult(status, stepUsed, result); err != nil {
