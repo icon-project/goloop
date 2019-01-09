@@ -30,19 +30,18 @@ class Block(object):
 
     _struct = Struct(f'>B{DEFAULT_BYTE_SIZE}s{DEFAULT_BYTE_SIZE}s{DEFAULT_BYTE_SIZE}s{DEFAULT_BYTE_SIZE}s')
 
-    def __init__(self, block_height: int, block_hash: bytes,
-                 timestamp: int, prev_hash: Optional[bytes]) -> None:
+    def __init__(self, block_height: int, timestamp: int,
+                 block_hash: bytes = None, prev_hash: bytes = None) -> None:
         """Constructor
 
         :param block_height: block height
+        :param timestamp: block timestamp in microsecond
         :param block_hash: block hash
-        :param timestamp: block timestamp
         :param prev_hash: prev block hash
         """
         self._height = block_height
-        self._hash = block_hash
-        # unit: microsecond
         self._timestamp = timestamp
+        self._hash = block_hash
         self._prev_hash = prev_hash
 
     @property
@@ -67,7 +66,7 @@ class Block(object):
         block_hash = params.get('blockHash')
         timestamp = params.get('timestamp', 0)
         prev_hash = params.get('prevBlockHash', b'\x00' * 32)
-        return Block(block_height, block_hash, timestamp, prev_hash)
+        return Block(block_height, timestamp, block_hash, prev_hash)
 
     @staticmethod
     def from_block(block: 'Block'):
@@ -75,7 +74,7 @@ class Block(object):
         block_hash = block.hash
         timestamp = block.timestamp
         prev_hash = block.prev_hash
-        return Block(block_height, block_hash, timestamp, prev_hash)
+        return Block(block_height, timestamp, block_hash, prev_hash)
 
     @staticmethod
     def from_bytes(buf: bytes) -> 'Block':
@@ -99,7 +98,7 @@ class Block(object):
             byte_prev_hash = None
         prev_block_hash = byte_prev_hash
 
-        block = Block(block_height, block_hash, timestamp, prev_block_hash)
+        block = Block(block_height, timestamp, block_hash, prev_block_hash)
         return block
 
     def to_bytes(self) -> bytes:
