@@ -41,6 +41,7 @@ type AccountSnapshot interface {
 	NextContract() ContractSnapshot
 	IsDisabled() bool
 	IsBlacklisted() bool
+	ContractOwner() module.Address
 }
 
 // AccountState represents mutable account state.
@@ -73,6 +74,7 @@ type AccountState interface {
 	IsBlacklisted() bool
 	Disable(b bool)
 	Blacklist(b bool)
+	ContractOwner() module.Address
 }
 
 type accountSnapshotImpl struct {
@@ -86,6 +88,10 @@ type accountSnapshotImpl struct {
 	apiInfo       *scoreapi.Info
 	curContract   *contractSnapshotImpl
 	nextContract  *contractSnapshotImpl
+}
+
+func (s *accountSnapshotImpl) ContractOwner() module.Address {
+	return s.contractOwner
 }
 
 func (s *accountSnapshotImpl) Version() int {

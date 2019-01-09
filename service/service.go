@@ -54,6 +54,10 @@ type TransactionInfo struct {
 	Nonce     *big.Int
 }
 
+type ContractInfo struct {
+	Owner module.Address
+}
+
 type WorldContext interface {
 	WorldState
 	StepsFor(t StepType, n int) int64
@@ -70,6 +74,7 @@ type WorldContext interface {
 	GetFuture(lq []LockRequest) WorldContext
 	SetTransactionInfo(ti *TransactionInfo)
 	GetTransactionInfo(ti *TransactionInfo)
+	SetContractInfo(si *ContractInfo)
 }
 
 type Transaction interface {

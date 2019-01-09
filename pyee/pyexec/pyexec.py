@@ -113,8 +113,8 @@ class PyExecEngine(object):
         context.block = Block(info.get(Info.BLOCK_HEIGHT),
                               info.get(Info.BLOCK_TIMESTAMP))
         context.msg = Message(sender=_from, value=value)
-        context.owner: Address = info.get('Owner')
-        context.step_counter = IconScoreStepCounter(info.get('StepCosts'),
+        context.owner: Address = info.get(Info.CONTRACT_OWNER)
+        context.step_counter = IconScoreStepCounter(info.get(Info.STEP_COSTS),
                                                     limit)
         Logger.info(f'[Transaction] {context.tx}', TAG)
         Logger.info(f'[Block] {context.block}', TAG)

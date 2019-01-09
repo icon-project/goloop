@@ -92,6 +92,8 @@ func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 		return errors.New("No contract account")
 	}
 
+	wc.SetContractInfo(&ContractInfo{Owner: h.as.ContractOwner()})
+
 	h.cm = wc.ContractManager()
 	h.conn = h.cc.GetConnection(h.EEType())
 	if h.conn == nil {

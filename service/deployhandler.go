@@ -90,10 +90,10 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 		tsBytes := bytes.NewBuffer(nil)
 		nBytes := bytes.NewBuffer(nil)
 		if info := h.cc.GetInfo(); info != nil {
-			if timestamp, ok := info["T.timestamp"].(int64); ok {
+			if timestamp, ok := info[InfoTxTimestamp].(int64); ok {
 				_ = binary.Write(tsBytes, binary.BigEndian, timestamp)
 			}
-			if nonce, ok := info["T.nonce"].(*big.Int); ok {
+			if nonce, ok := info[InfoTxNonce].(*big.Int); ok && nonce != nil {
 				_ = binary.Write(nBytes, binary.BigEndian, nonce.Bytes())
 			}
 		}

@@ -57,6 +57,7 @@ class Info(object):
     TX_TIMESTAMP = "T.timestamp"
     TX_NONCE = "T.nonce"
     STEP_COSTS = "StepCosts"
+    CONTRACT_OWNER = "C.Owner"
 
 
 class Codec(metaclass=ABCMeta):

@@ -20,6 +20,17 @@ const (
 )
 
 const (
+	InfoBlockTimestamp = "B.timestamp"
+	InfoBlockHeight    = "B.height"
+	InfoTxHash         = "T.hash"
+	InfoTxIndex        = "T.index"
+	InfoTxTimestamp    = "T.timestamp"
+	InfoTxNonce        = "T.nonce"
+	InfoStepCosts      = "StepCosts"
+	InfoContractOwner  = "C.Owner"
+)
+
+const (
 	SystemIDStr = "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
 )
 
@@ -35,8 +46,9 @@ type worldContext struct {
 
 	systemInfo systemStorageInfo
 
-	blockInfo BlockInfo
-	txInfo    TransactionInfo
+	blockInfo    BlockInfo
+	txInfo       TransactionInfo
+	contractInfo ContractInfo
 
 	info map[string]interface{}
 
@@ -169,6 +181,11 @@ func (c *worldContext) GetTransactionInfo(ti *TransactionInfo) {
 	*ti = c.txInfo
 }
 
+func (c *worldContext) SetContractInfo(si *ContractInfo) {
+	c.contractInfo = *si
+	c.info = nil
+}
+
 func (c *worldContext) stepCostInfo() interface{} {
 	c.updateSystemInfo()
 	if c.systemInfo.stepCostInfo == nil {
@@ -187,6 +204,7 @@ func (c *worldContext) GetInfo() map[string]interface{} {
 		m[InfoTxTimestamp] = c.txInfo.Timestamp
 		m[InfoTxNonce] = c.txInfo.Nonce
 		m[InfoStepCosts] = c.stepCostInfo()
+		m[InfoContractOwner] = c.contractInfo.Owner
 		c.info = m
 	}
 	return c.info
