@@ -285,7 +285,7 @@ func (h *callGetAPIHandler) ExecuteAsync(wc WorldContext) error {
 						return
 					}
 				}
-				h.OnResult(module.StatusSystemError, h.stepLimit, nil)
+				h.cc.OnResult(module.StatusSystemError, h.stepLimit, nil, nil)
 			}
 		}()
 	}
