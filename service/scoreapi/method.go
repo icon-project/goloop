@@ -40,6 +40,8 @@ const (
 	Bytes
 	Bool
 	Address
+	List
+	Dict
 )
 
 func (t DataType) String() string {
@@ -54,6 +56,10 @@ func (t DataType) String() string {
 		return "bool"
 	case Address:
 		return "Address"
+	case List:
+		return "list"
+	case Dict:
+		return "dict"
 	default:
 		log.Panicf("Fail to convert DataType=%d", t)
 		return "Unknown"

@@ -88,6 +88,8 @@ class DataType(object):
     BYTES = 3
     BOOL = 4
     ADDRESS = 5
+    LIST = 6
+    DICT = 7
 
 
 class APIInfo(object):
