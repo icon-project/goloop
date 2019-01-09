@@ -17,7 +17,7 @@ import (
 type Message uint
 
 const (
-	msgVESION     uint = 0
+	msgVERSION    uint = 0
 	msgINVOKE          = 1
 	msgRESULT          = 2
 	msgGETVALUE        = 3
@@ -46,6 +46,7 @@ type Proxy interface {
 	SendResult(ctx CallContext, status uint16, steps *big.Int, result *codec.TypedObj) error
 	GetAPI(ctx CallContext, code string) error
 	Release()
+	Kill() error
 }
 
 type callFrame struct {
@@ -187,7 +188,7 @@ func (p *proxy) SendResult(ctx CallContext, status uint16, steps *big.Int, resul
 
 func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 	switch msg {
-	case msgVESION:
+	case msgVERSION:
 		var m versionMessage
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
 			c.Close()
@@ -350,7 +351,7 @@ func newConnection(m *manager, c ipc.Connection) (*proxy, error) {
 		mgr:  m,
 		conn: c,
 	}
-	c.SetHandler(msgVESION, p)
+	c.SetHandler(msgVERSION, p)
 	c.SetHandler(msgRESULT, p)
 	c.SetHandler(msgGETVALUE, p)
 	c.SetHandler(msgSETVALUE, p)
