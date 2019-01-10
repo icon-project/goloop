@@ -859,7 +859,8 @@ func (cs *consensus) GetRoundState() *peerRoundState {
 	prs.PrevotesMask = cs.hvs.votesFor(cs.round, voteTypePrevote).getMask()
 	prs.PrecommitsMask = cs.hvs.votesFor(cs.round, voteTypePrecommit).getMask()
 	bp := cs.currentBlockParts
-	if bp != nil {
+	// TODO optimize
+	if bp != nil && cs.step >= stepCommit {
 		prs.BlockPartsMask = cs.currentBlockParts.GetMask()
 	}
 	return prs
