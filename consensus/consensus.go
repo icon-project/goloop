@@ -295,10 +295,6 @@ func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) e
 }
 
 func (cs *consensus) handlePrecommitMessage(msg *voteMessage, precommits *voteSet) error {
-	if msg.Round < cs.round {
-		return nil
-	}
-
 	if cs.round == msg.Round && cs.step < stepPrecommit {
 		cs.enterPrecommit()
 	} else if cs.round == msg.Round && cs.step == stepPrecommit {
