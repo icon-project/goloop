@@ -275,7 +275,7 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 			if p.connType == p2pConnTypeNone {
 				p2p.log.Println("Warning", "onPacket", "undetermined PeerConnectionType", pkt.protocol, pkt.subProtocol)
 			}
-			if p2p.packetPool.Put(pkt) {
+			if pkt.ttl == 1 || p2p.packetPool.Put(pkt) {
 				cbFunc(pkt, p)
 			} else {
 				//TODO drop counting each (protocol,subProtocol)
