@@ -113,7 +113,10 @@ func (msg *proposalMessage) String() string {
 }
 
 type blockPartMessage struct {
-	Height    int64 // just for debug
+	// for debugging
+	Height int64
+	Index  uint16
+
 	BlockPart []byte
 }
 
@@ -129,7 +132,7 @@ func (msg *blockPartMessage) verify() error {
 }
 
 func (msg *blockPartMessage) String() string {
-	return fmt.Sprintf("BlockPartMessage[H=%d]", msg.Height)
+	return fmt.Sprintf("BlockPartMessage[H=%d,I=%d]", msg.Height, msg.Index)
 }
 
 type voteType byte

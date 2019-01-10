@@ -638,6 +638,7 @@ func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) error {
 	bpmsg.Height = cs.height
 	for i := 0; i < blockParts.Parts(); i++ {
 		bpmsg.BlockPart = blockParts.GetPart(i).Bytes()
+		bpmsg.Index = uint16(i)
 		bpmsgBS, err := msgCodec.MarshalToBytes(bpmsg)
 		if err != nil {
 			return err

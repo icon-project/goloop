@@ -98,6 +98,7 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 		part := partSet.GetPart(idx)
 		msg := newBlockPartMessage()
 		msg.Height = p.Height
+		msg.Index = uint16(idx)
 		msg.BlockPart = part.Bytes()
 		p.BlockPartsMask.Set(idx)
 		return protoBlockPart, msg
