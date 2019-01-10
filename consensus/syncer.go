@@ -261,7 +261,7 @@ func (s *syncer) OnReceive(sp module.ProtocolInfo, bs []byte,
 		logger.Printf("OnReceive: error=%+v\n", err)
 		return false, err
 	}
-	logger.Printf("OnReceive %+v\n", msg)
+	logger.Printf("OnReceive %+v from %x\n", msg, id.Bytes()[1:3])
 	if err := msg.verify(); err != nil {
 		return false, err
 	}

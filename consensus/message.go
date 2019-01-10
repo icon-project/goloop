@@ -245,3 +245,7 @@ func newVoteListMessage() *voteListMessage {
 func (msg *voteListMessage) verify() error {
 	return nil
 }
+
+func (msg *voteListMessage) String() string {
+	return fmt.Sprintf("VoteListMessage:%v", msg.VoteList)
+}
