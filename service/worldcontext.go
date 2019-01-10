@@ -27,7 +27,7 @@ const (
 	InfoTxTimestamp    = "T.timestamp"
 	InfoTxNonce        = "T.nonce"
 	InfoStepCosts      = "StepCosts"
-	InfoContractOwner  = "C.Owner"
+	InfoContractOwner  = "C.owner"
 )
 
 const (

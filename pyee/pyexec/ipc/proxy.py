@@ -57,7 +57,7 @@ class Info(object):
     TX_TIMESTAMP = "T.timestamp"
     TX_NONCE = "T.nonce"
     STEP_COSTS = "StepCosts"
-    CONTRACT_OWNER = "C.Owner"
+    CONTRACT_OWNER = "C.owner"
 
 
 class Codec(metaclass=ABCMeta):
@@ -294,10 +294,13 @@ class ServiceManagerProxy:
     def __handle_get_api(self, data):
         try:
             code = self.decode(TypeTag.STRING, data)
+            print(f"EEProxy.GETAPI(code={code})")
             obj = self.__get_api(code)
             if isinstance(obj, APIInfo):
+                print(f"EEProxy.GETAPI result={obj}")
                 self.__client.send(Message.GETAPI, obj.get_data())
             else:
+                print(f"EEProxy.GETAPI Invalid Type result={obj}")
                 self.__client.send(Message.GETAPI, [])
         except:
             traceback.print_exc()
