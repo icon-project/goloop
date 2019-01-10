@@ -16,6 +16,7 @@ import (
 type (
 	CallContext interface {
 		Setup(WorldContext)
+		SetTimer()
 		Call(ContractHandler) (module.Status, *big.Int, interface{}, module.Address)
 		OnResult(status module.Status, stepUsed *big.Int, result *codec.TypedObj, addr module.Address)
 		OnCall(ContractHandler)
@@ -64,7 +65,14 @@ func newCallContext(receipt Receipt) CallContext {
 
 func (cc *callContext) Setup(wc WorldContext) {
 	cc.wc = wc
-	cc.timer = time.After(transactionTimeLimit)
+}
+
+func (cc *callContext) SetTimer() {
+	cc.lock.Lock()
+	if cc.timer == nil {
+		cc.timer = time.After(transactionTimeLimit)
+	}
+	cc.lock.Unlock()
 }
 
 func (cc *callContext) Call(handler ContractHandler) (module.Status, *big.Int,

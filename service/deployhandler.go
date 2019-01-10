@@ -272,6 +272,8 @@ func (h *callGetAPIHandler) ExecuteAsync(wc WorldContext) error {
 		return errors.New("No pending contract")
 	}
 	ch := wc.ContractManager().PrepareContractStore(wc, c)
+
+	h.cc.SetTimer()
 	select {
 	case r := <-ch:
 		if r.err != nil {

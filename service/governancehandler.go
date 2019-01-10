@@ -23,6 +23,8 @@ func (h *GovCallHandler) ExecuteAsync(wc WorldContext) error {
 		return errors.New("No active contract")
 	}
 	ch := wc.ContractManager().PrepareContractStore(wc, c)
+
+	h.cc.SetTimer()
 	select {
 	case r := <-ch:
 		if r.err != nil {
