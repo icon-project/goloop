@@ -290,6 +290,8 @@ func (s *syncer) OnReceive(sp module.ProtocolInfo, bs []byte,
 		for i := 0; i < m.VoteList.Len(); i++ {
 			s.engine.ReceiveVoteMessage(m.VoteList.Get(i), true)
 		}
+		rs := s.engine.GetRoundState()
+		debug.Printf("roundState=%+v\n", *rs)
 	default:
 		logger.Panicf("received unknown message %v\n", msg)
 	}

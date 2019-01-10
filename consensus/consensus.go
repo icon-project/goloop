@@ -299,7 +299,7 @@ func (cs *consensus) handlePrecommitMessage(msg *voteMessage, precommits *voteSe
 		cs.enterPrecommit()
 	} else if cs.round == msg.Round && cs.step == stepPrecommit {
 		cs.enterPrecommitWait()
-	} else if cs.round == msg.Round && cs.step == stepPrecommitWait {
+	} else if msg.Round < cs.round || (cs.round == msg.Round && cs.step == stepPrecommitWait) {
 		partSetID, ok := precommits.getOverTwoThirdsPartSetID()
 		if partSetID != nil {
 			cs.enterCommit(partSetID)
