@@ -383,11 +383,14 @@ func (s *syncer) doSendRoundStateMessage(id module.PeerID) {
 	if id == nil {
 		if len(s.peers) > 0 {
 			logger.Printf("broadcastRoundState : %+v\n", msg)
-			s.ph.Broadcast(protoRoundState, bs, module.BROADCAST_NEIGHBOR)
+			err = s.ph.Broadcast(protoRoundState, bs, module.BROADCAST_NEIGHBOR)
 		}
 	} else {
 		logger.Printf("sendRoundState : %+v\n", msg)
-		s.ph.Unicast(protoRoundState, bs, id)
+		err = s.ph.Unicast(protoRoundState, bs, id)
+	}
+	if err != nil {
+		logger.Printf("syncer.doSendRoundStateMessage: %+v\n", err)
 	}
 }
 

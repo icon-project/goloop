@@ -629,7 +629,10 @@ func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) error {
 		return err
 	}
 	logger.Printf("sendProposal = %+v\n", msg)
-	cs.ph.Broadcast(protoProposal, msgBS, module.BROADCAST_ALL)
+	err = cs.ph.Broadcast(protoProposal, msgBS, module.BROADCAST_ALL)
+	if err != nil {
+		logger.Printf("cs.sendProposal: %+v\n", err)
+	}
 
 	bpmsg := newBlockPartMessage()
 	bpmsg.Height = cs.height
@@ -640,7 +643,10 @@ func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) error {
 			return err
 		}
 		logger.Printf("sendBlockPart = %+v\n", bpmsg)
-		cs.ph.Broadcast(protoBlockPart, bpmsgBS, module.BROADCAST_ALL)
+		err = cs.ph.Broadcast(protoBlockPart, bpmsgBS, module.BROADCAST_ALL)
+		if err != nil {
+			logger.Printf("cs.sendProposal: %+v\n", err)
+		}
 	}
 
 	return nil
@@ -673,9 +679,12 @@ func (cs *consensus) sendVote(vt voteType, blockParts *blockPartSet) error {
 	}
 	logger.Printf("sendVote = %+v \n", msg)
 	if vt == voteTypePrevote {
-		cs.ph.Multicast(protoVote, msgBS, module.ROLE_VALIDATOR)
+		err = cs.ph.Multicast(protoVote, msgBS, module.ROLE_VALIDATOR)
 	} else {
-		cs.ph.Broadcast(protoVote, msgBS, module.BROADCAST_ALL)
+		err = cs.ph.Broadcast(protoVote, msgBS, module.BROADCAST_ALL)
+	}
+	if err != nil {
+		logger.Printf("cs.sendVote: %+v\n", err)
 	}
 	cs.ReceiveVoteMessage(msg, false)
 	return nil
@@ -744,7 +753,10 @@ func (cs *consensus) Start() {
 	debug = log.New(debugWriter, prefix, log.Lshortfile|log.Lmicroseconds)
 
 	logger.Printf("Consensus start wallet=%s", cs.wallet.Address())
-	cs.ph, _ = cs.nm.RegisterReactor("consensus", cs, csProtocols, configEnginePriority)
+	cs.ph, err = cs.nm.RegisterReactor("consensus", cs, csProtocols, configEnginePriority)
+	if err != nil {
+		logger.Printf("cs.Start: %+v\n", err)
+	}
 
 	cs.resetForNewHeight(lastFinalizedBlock, newVoteList(nil))
 	cs.syncer = newSyncer(cs, cs.nm, &cs.mutex, cs.wallet.Address())
