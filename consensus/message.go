@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"fmt"
+	"time"
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
@@ -216,6 +217,7 @@ func (prs *peerRoundState) String() string {
 
 type roundStateMessage struct {
 	peerRoundState
+	Timestamp int64
 	// TODO: add LastMaskType, LastIndex
 }
 
@@ -224,7 +226,9 @@ func (msg *roundStateMessage) String() string {
 }
 
 func newRoundStateMessage() *roundStateMessage {
-	return &roundStateMessage{}
+	return &roundStateMessage{
+		Timestamp: time.Now().UnixNano(),
+	}
 }
 
 func (msg *roundStateMessage) verify() error {
