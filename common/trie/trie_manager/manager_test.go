@@ -75,17 +75,17 @@ func TestCommit(t *testing.T) {
 
 func TestInsert(t *testing.T) {
 	manager := New(db.NewMapDB())
-	trie := manager.NewMutable(nil)
+	tree := manager.NewMutable(nil)
 
 	for k, v := range testPool {
-		updateString(trie, k, v)
+		updateString(tree, k, v)
 	}
 
 	hashHex := "8aad789dff2f538bca5d8ea56e8abe10f4c7ba3a5dea95fea4cd6e7c3a1168d3"
 	if !trie.ConfigUseKeccak256 {
 		hashHex = "c33dc4124235214a96518fc8bfdef30a6c1462a08e423c29f7b08513829c551f"
 	}
-	immutable := trie.GetSnapshot()
+	immutable := tree.GetSnapshot()
 	strRoot := fmt.Sprintf("%x", immutable.Hash())
 	if strings.Compare(strRoot, hashHex) != 0 {
 		t.Errorf("exp %s got %s", hashHex, strRoot)
@@ -97,10 +97,10 @@ func TestInsert(t *testing.T) {
 		t.Errorf("%s vs %s", testPool["doe"], string(doeV))
 	}
 
-	trie = manager.NewMutable(nil)
-	updateString(trie, "A", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	tree = manager.NewMutable(nil)
+	updateString(tree, "A", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
 
-	immutable = trie.GetSnapshot()
+	immutable = tree.GetSnapshot()
 	hashHex = "d23786fb4a010da3ce639d66d5e904a11dbc02746d1ce25029e53290cabf28ab"
 	if !trie.ConfigUseKeccak256 {
 		hashHex = "84ec0052caf94dc2df953a1a77ed86c20b401cff8e9b85c1c68511bc3d9259a6"
@@ -113,34 +113,34 @@ func TestInsert(t *testing.T) {
 
 func TestDelete1(t *testing.T) {
 	manager := mpt.NewManager(db.NewMapDB())
-	trie := manager.NewMutable(nil)
+	tree := manager.NewMutable(nil)
 
-	updateString(trie, "doe", "reindeer")
-	immutable := trie.GetSnapshot() // SNAPSHOT 1 - doe
+	updateString(tree, "doe", "reindeer")
+	immutable := tree.GetSnapshot() // SNAPSHOT 1 - doe
 	solution1 := fmt.Sprintf("%x", immutable.Hash())
-	updateString(trie, "dog", "puppy")
-	immutable = trie.GetSnapshot() // SNAPSHOT 2 - doe, dog
+	updateString(tree, "dog", "puppy")
+	immutable = tree.GetSnapshot() // SNAPSHOT 2 - doe, dog
 	solution2 := fmt.Sprintf("%x", immutable.Hash())
-	updateString(trie, "dogglesworth", "cat")
+	updateString(tree, "dogglesworth", "cat")
 
 	hashHex := "8aad789dff2f538bca5d8ea56e8abe10f4c7ba3a5dea95fea4cd6e7c3a1168d3"
 	if !trie.ConfigUseKeccak256 {
 		hashHex = "c33dc4124235214a96518fc8bfdef30a6c1462a08e423c29f7b08513829c551f"
 	}
-	immutable = trie.GetSnapshot() // SNAPSHOT 3 - doe, dog, dogglesworth
+	immutable = tree.GetSnapshot() // SNAPSHOT 3 - doe, dog, dogglesworth
 	strRoot := fmt.Sprintf("%x", immutable.Hash())
 	if strings.Compare(strRoot, hashHex) != 0 {
 		t.Errorf("exp %s got %s", hashHex, strRoot)
 	}
 
-	trie.Delete([]byte("dogglesworth"))
-	immutable = trie.GetSnapshot() // SNAPSHOT 4 - doe, dog
+	tree.Delete([]byte("dogglesworth"))
+	immutable = tree.GetSnapshot() // SNAPSHOT 4 - doe, dog
 	resultRoot := fmt.Sprintf("%x", immutable.Hash())
 	if strings.Compare(solution2, resultRoot) != 0 {
 		t.Errorf("solution %s, result %s", solution2, resultRoot)
 	}
-	trie.Delete([]byte("dog"))
-	immutable = trie.GetSnapshot() // SNAPSHOT 4 - doe
+	tree.Delete([]byte("dog"))
+	immutable = tree.GetSnapshot() // SNAPSHOT 4 - doe
 
 	resultRoot = fmt.Sprintf("%x", immutable.Hash())
 	if strings.Compare(solution1, resultRoot) != 0 {
@@ -150,7 +150,7 @@ func TestDelete1(t *testing.T) {
 
 func TestDelete2(t *testing.T) {
 	manager := mpt.NewManager(db.NewMapDB())
-	trie := manager.NewMutable(nil)
+	tree := manager.NewMutable(nil)
 	vals := []struct{ k, v string }{
 		{"do", "verb"},
 		{"ether", "wookiedoo"},
@@ -163,13 +163,13 @@ func TestDelete2(t *testing.T) {
 	}
 	for _, val := range vals {
 		if val.v != "" {
-			updateString(trie, val.k, val.v)
+			updateString(tree, val.k, val.v)
 		} else {
-			deleteString(trie, val.k)
+			deleteString(tree, val.k)
 		}
 	}
 
-	snapshot := trie.GetSnapshot()
+	snapshot := tree.GetSnapshot()
 	strRoot := fmt.Sprintf("%x", snapshot.Hash())
 	hashHex := "5991bb8c6514148a29db676a14ac506cd2cd5775ace63c30a4fe457715e9ac84"
 	if !trie.ConfigUseKeccak256 {
@@ -216,15 +216,15 @@ func TestCache(t *testing.T) {
 func TestDeleteSnapshot(t *testing.T) {
 	// delete, snapshot, write
 	manager := mpt.NewManager(db.NewMapDB())
-	trie := manager.NewMutable(nil)
+	tree := manager.NewMutable(nil)
 
-	updateString(trie, "doe", "reindeer")
-	updateString(trie, "dog", "puppy")
-	snapshot := trie.GetSnapshot() // SNAPSHOT - doe, dog
+	updateString(tree, "doe", "reindeer")
+	updateString(tree, "dog", "puppy")
+	snapshot := tree.GetSnapshot() // SNAPSHOT - doe, dog
 	solution2 := fmt.Sprintf("%x", snapshot.Hash())
-	updateString(trie, "dogglesworth", "cat")
+	updateString(tree, "dogglesworth", "cat")
 
-	snapshot = trie.GetSnapshot() // SNAPSHOT - doe, dog, dogglesworth
+	snapshot = tree.GetSnapshot() // SNAPSHOT - doe, dog, dogglesworth
 	hashHex := "8aad789dff2f538bca5d8ea56e8abe10f4c7ba3a5dea95fea4cd6e7c3a1168d3"
 	if !trie.ConfigUseKeccak256 {
 		hashHex = "c33dc4124235214a96518fc8bfdef30a6c1462a08e423c29f7b08513829c551f"
