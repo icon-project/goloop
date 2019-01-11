@@ -135,7 +135,7 @@ func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool) *Peer {
 		timestamp: time.Now(),
 		pool:      NewTimestampPool(DefaultPeerPoolExpireSecond + 1),
 		close:     make(chan error),
-		onError: func(err error, p *Peer, pkt *Packet) { p.Close(err) },
+		onError: func(err error, p *Peer, pkt *Packet) { p.Close() },
 		onClose: func(p *Peer) { },
 	}
 	p.setPacketCbFunc(cbFunc)
