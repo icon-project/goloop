@@ -25,7 +25,6 @@ from .iconscore.icon_score_base import IconScoreBase, ScoreErrorException, Inval
 from .iconscore.icon_score_context import ContextContainer, IconScoreContext
 from .iconscore.icon_score_eventlog import EventLogEmitter
 from .iconscore.icon_score_mapper import IconScoreMapper
-from .iconscore.icon_score_step import StepType
 from .iconscore.internal_call import InternalCall
 
 TAG = 'ServiceEngine'
@@ -106,15 +105,13 @@ class ServiceEngine(ContextContainer):
             arg_params = []
             params: dict = decode_params(context.params)
             kw_params = cls._convert_score_params_by_annotations(icon_score, func_name, params)
-            Logger.info(f'-- kw_params: {kw_params}', TAG)
+            Logger.info(f'kw_params: {kw_params}', TAG)
         elif isinstance(context.params, list):
             arg_params: list = context.params
-            Logger.info(f'-- arg_params: {arg_params}', TAG)
+            Logger.info(f'arg_params: {arg_params}', TAG)
             kw_params = {}
         else:
             raise InvalidParamsException('Unknown params type')
-
-        context.step_counter.apply_step(StepType.CONTRACT_CALL, 1)
 
         score_func = getattr(icon_score, '_IconScoreBase__call')
         return score_func(func_name=func_name, arg_params=arg_params, kw_params=kw_params)

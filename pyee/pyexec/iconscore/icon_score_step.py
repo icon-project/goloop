@@ -14,8 +14,8 @@
 
 from enum import Enum, auto
 
-from ..utils import to_camel_case
 from ..base.exception import IconServiceBaseException, ExceptionCode
+from ..utils import to_camel_case
 
 
 class AutoValueEnum(Enum):
@@ -26,12 +26,7 @@ class AutoValueEnum(Enum):
 
 
 class StepType(AutoValueEnum):
-    # DEFAULT = auto()
     CONTRACT_CALL = auto()
-    # CONTRACT_CREATE = auto()
-    # CONTRACT_UPDATE = auto()
-    # CONTRACT_DESTRUCT = auto()
-    # CONTRACT_SET = auto()
     GET = auto()
     SET = auto()
     REPLACE = auto()
@@ -119,7 +114,6 @@ class IconScoreStepCounter(object):
         self._step_costs: dict = converted_step_costs
         self._step_limit: int = step_limit
         self._step_used: int = 0
-        # self._external_call_count: int = 0
 
     @property
     def step_limit(self) -> int:
@@ -137,18 +131,20 @@ class IconScoreStepCounter(object):
         """
         return self._step_used
 
-    def step_remained(self) -> int:
-        return self._step_limit - self._step_used
+    def check_step_remained(self, step_type: StepType) -> int:
+        """ Check if remained steps are sufficient for executing step_type,
+            and returns the remained steps
+        """
+        required = self._step_costs.get(step_type, 0)
+        remained = self._step_limit - self._step_used
+        if required > remained:
+            # raise OutOfStepException
+            self.apply_step(step_type, 1)
+        return remained
 
     def apply_step(self, step_type: StepType, count: int) -> int:
         """ Increases steps for given step cost
         """
-
-        # if step_type == StepType.CONTRACT_CALL:
-        #     self._external_call_count += 1
-        #     if self._external_call_count > MAX_EXTERNAL_CALL_COUNT:
-        #         raise InvalidRequestException('Too many external calls')
-
         step_to_apply = self._step_costs.get(step_type, 0) * count
         if step_to_apply + self._step_used > self._step_limit:
             step_used = self._step_used

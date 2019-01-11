@@ -18,6 +18,7 @@ from iconcommons import Logger
 from ..base.address import Address
 from ..base.exception import ExceptionCode, IconScoreException
 from ..icon_constant import ICX_TRANSFER_EVENT_LOG, Status
+from ..iconscore.icon_score_step import StepType
 from ..utils import check_error_response
 from .icon_score_eventlog import EventLogEmitter
 
@@ -50,9 +51,10 @@ class InternalCall(object):
                      kw_params: Optional[dict] = None) -> Any:
 
         print(f'<== InternalCall.message_call: from={addr_from} to={addr_to} amount={amount} func_name={func_name}')
-        Logger.info(f'-- arg_params={arg_params}', TAG)
-        Logger.info(f'-- kw_params={kw_params}', TAG)
-        new_limit = context.step_counter.step_remained()
+        Logger.info(f'arg_params={arg_params}', TAG)
+        Logger.info(f'kw_params={kw_params}', TAG)
+        new_limit = context.step_counter.check_step_remained(StepType.CONTRACT_CALL)
+        Logger.info(f'new_limit={new_limit}', TAG)
         status, step_used, result = \
             cls._proxy.call(addr_to, amount, new_limit, func_name, arg_params)
         print(f'\n==> call result: {status}, {step_used}, {result}')
