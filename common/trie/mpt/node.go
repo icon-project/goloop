@@ -24,8 +24,6 @@ const hashableSize = 32
 
 type nodeState int
 
-const configUseKeccak = true
-
 const (
 	noneNode nodeState = iota
 	dirtyNode
@@ -150,7 +148,7 @@ func (v byteValue) Resolve(builder merkle.Builder) error {
 }
 
 func calcHash(data ...[]byte) []byte {
-	if configUseKeccak {
+	if trie.ConfigUseKeccak256 {
 		sha := sha3.NewLegacyKeccak256()
 		for _, d := range data {
 			sha.Write(d)
