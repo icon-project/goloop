@@ -22,9 +22,10 @@ from .database.factory import ContextDatabaseFactory
 
 from .icon_constant import Status
 from .iconscore.icon_score_base import IconScoreBase, ScoreErrorException, InvalidParamsException
-from .iconscore.icon_score_mapper import IconScoreMapper
 from .iconscore.icon_score_context import ContextContainer, IconScoreContext
 from .iconscore.icon_score_eventlog import EventLogEmitter
+from .iconscore.icon_score_mapper import IconScoreMapper
+from .iconscore.icon_score_step import StepType
 from .iconscore.internal_call import InternalCall
 
 TAG = 'ServiceEngine'
@@ -112,6 +113,8 @@ class ServiceEngine(ContextContainer):
             kw_params = {}
         else:
             raise InvalidParamsException('Unknown params type')
+
+        context.step_counter.apply_step(StepType.CONTRACT_CALL, 1)
 
         score_func = getattr(icon_score, '_IconScoreBase__call')
         return score_func(func_name=func_name, arg_params=arg_params, kw_params=kw_params)

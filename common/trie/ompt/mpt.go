@@ -361,7 +361,7 @@ func (m *mpt) resolve(d merkle.Builder, pNode *node) error {
 	}
 	newNode, err := node.realize(m)
 	if err != nil {
-		hash := []byte(node.(hash))
+		hash := node.hash()
 		d.RequestData(db.MerkleTrie, hash, &nodeRequester{
 			mpt:  m,
 			node: pNode,

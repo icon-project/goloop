@@ -57,7 +57,7 @@ func (hs *HexBytes) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &s); err != nil {
 		return err
 	}
-	if s[0:2] == "0x" {
+	if len(s) >= 2 && s[0:2] == "0x" {
 		s = s[2:]
 	}
 	if bin, err := hex.DecodeString(s); err != nil {

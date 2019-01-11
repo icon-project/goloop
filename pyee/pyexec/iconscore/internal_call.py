@@ -15,12 +15,11 @@
 from typing import TYPE_CHECKING, Optional, Any
 from iconcommons import Logger
 
-from .icon_score_eventlog import EventLogEmitter
-from .icon_score_step import StepType
 from ..base.address import Address
 from ..base.exception import ExceptionCode, IconScoreException
 from ..icon_constant import ICX_TRANSFER_EVENT_LOG, Status
 from ..utils import check_error_response
+from .icon_score_eventlog import EventLogEmitter
 
 if TYPE_CHECKING:
     from .icon_score_context import IconScoreContext
@@ -49,8 +48,6 @@ class InternalCall(object):
                      func_name: str,
                      arg_params: Optional[tuple] = None,
                      kw_params: Optional[dict] = None) -> Any:
-
-        context.step_counter.apply_step(StepType.CONTRACT_CALL, 1)
 
         print(f'<== InternalCall.message_call: from={addr_from} to={addr_to} amount={amount} func_name={func_name}')
         Logger.info(f'-- arg_params={arg_params}', TAG)

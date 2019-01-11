@@ -82,6 +82,9 @@ func TestInsert(t *testing.T) {
 	}
 
 	hashHex := "8aad789dff2f538bca5d8ea56e8abe10f4c7ba3a5dea95fea4cd6e7c3a1168d3"
+	if !trie.ConfigUseKeccak256 {
+		hashHex = "c33dc4124235214a96518fc8bfdef30a6c1462a08e423c29f7b08513829c551f"
+	}
 	immutable := trie.GetSnapshot()
 	strRoot := fmt.Sprintf("%x", immutable.Hash())
 	if strings.Compare(strRoot, hashHex) != 0 {
@@ -99,6 +102,9 @@ func TestInsert(t *testing.T) {
 
 	immutable = trie.GetSnapshot()
 	hashHex = "d23786fb4a010da3ce639d66d5e904a11dbc02746d1ce25029e53290cabf28ab"
+	if !trie.ConfigUseKeccak256 {
+		hashHex = "84ec0052caf94dc2df953a1a77ed86c20b401cff8e9b85c1c68511bc3d9259a6"
+	}
 	strRoot = fmt.Sprintf("%x", immutable.Hash())
 	if strings.Compare(strRoot, hashHex) != 0 {
 		t.Errorf("exp %s got %s", hashHex, strRoot)
@@ -118,6 +124,9 @@ func TestDelete1(t *testing.T) {
 	updateString(trie, "dogglesworth", "cat")
 
 	hashHex := "8aad789dff2f538bca5d8ea56e8abe10f4c7ba3a5dea95fea4cd6e7c3a1168d3"
+	if !trie.ConfigUseKeccak256 {
+		hashHex = "c33dc4124235214a96518fc8bfdef30a6c1462a08e423c29f7b08513829c551f"
+	}
 	immutable = trie.GetSnapshot() // SNAPSHOT 3 - doe, dog, dogglesworth
 	strRoot := fmt.Sprintf("%x", immutable.Hash())
 	if strings.Compare(strRoot, hashHex) != 0 {
@@ -163,6 +172,9 @@ func TestDelete2(t *testing.T) {
 	snapshot := trie.GetSnapshot()
 	strRoot := fmt.Sprintf("%x", snapshot.Hash())
 	hashHex := "5991bb8c6514148a29db676a14ac506cd2cd5775ace63c30a4fe457715e9ac84"
+	if !trie.ConfigUseKeccak256 {
+		hashHex = "422a17a872ce2e062b0998b85bee742dfa98f429c49bb22b81495d23fd3ce841"
+	}
 	if strings.Compare(strRoot, hashHex) != 0 {
 		t.Errorf("exp %s got %s", hashHex, strRoot)
 	}
@@ -177,6 +189,9 @@ func TestCache(t *testing.T) {
 	}
 
 	hashHex := "8aad789dff2f538bca5d8ea56e8abe10f4c7ba3a5dea95fea4cd6e7c3a1168d3"
+	if !trie.ConfigUseKeccak256 {
+		hashHex = "c33dc4124235214a96518fc8bfdef30a6c1462a08e423c29f7b08513829c551f"
+	}
 	snapshot := mutable.GetSnapshot()
 	root := snapshot.Hash()
 	strRoot := fmt.Sprintf("%x", root)
@@ -211,6 +226,9 @@ func TestDeleteSnapshot(t *testing.T) {
 
 	snapshot = trie.GetSnapshot() // SNAPSHOT - doe, dog, dogglesworth
 	hashHex := "8aad789dff2f538bca5d8ea56e8abe10f4c7ba3a5dea95fea4cd6e7c3a1168d3"
+	if !trie.ConfigUseKeccak256 {
+		hashHex = "c33dc4124235214a96518fc8bfdef30a6c1462a08e423c29f7b08513829c551f"
+	}
 	strRoot := fmt.Sprintf("%x", snapshot.Hash())
 	if strings.Compare(strRoot, hashHex) != 0 {
 		t.Errorf("exp %s got %s", hashHex, strRoot)

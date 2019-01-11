@@ -295,15 +295,11 @@ func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) e
 }
 
 func (cs *consensus) handlePrecommitMessage(msg *voteMessage, precommits *voteSet) error {
-	if msg.Round < cs.round {
-		return nil
-	}
-
 	if cs.round == msg.Round && cs.step < stepPrecommit {
 		cs.enterPrecommit()
 	} else if cs.round == msg.Round && cs.step == stepPrecommit {
 		cs.enterPrecommitWait()
-	} else if cs.round == msg.Round && cs.step == stepPrecommitWait {
+	} else if msg.Round < cs.round || (cs.round == msg.Round && cs.step == stepPrecommitWait) {
 		partSetID, ok := precommits.getOverTwoThirdsPartSetID()
 		if partSetID != nil {
 			cs.enterCommit(partSetID)
@@ -863,7 +859,8 @@ func (cs *consensus) GetRoundState() *peerRoundState {
 	prs.PrevotesMask = cs.hvs.votesFor(cs.round, voteTypePrevote).getMask()
 	prs.PrecommitsMask = cs.hvs.votesFor(cs.round, voteTypePrecommit).getMask()
 	bp := cs.currentBlockParts
-	if bp != nil {
+	// TODO optimize
+	if bp != nil && cs.step >= stepCommit {
 		prs.BlockPartsMask = cs.currentBlockParts.GetMask()
 	}
 	return prs
