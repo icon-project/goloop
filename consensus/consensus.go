@@ -302,7 +302,9 @@ func (cs *consensus) handlePrecommitMessage(msg *voteMessage, precommits *voteSe
 	} else if msg.Round < cs.round || (cs.round == msg.Round && cs.step == stepPrecommitWait) {
 		partSetID, ok := precommits.getOverTwoThirdsPartSetID()
 		if partSetID != nil {
-			cs.enterCommit(partSetID)
+			if cs.step < stepCommit {
+				cs.enterCommit(partSetID)
+			}
 		} else if ok && partSetID == nil {
 			cs.enterProposeForRound(cs.round + 1)
 		}
