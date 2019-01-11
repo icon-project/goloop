@@ -137,7 +137,7 @@ func TestHexInt_EncodingDecoding(t *testing.T) {
 		{
 			"Case6",
 			args{"0x0"},
-			"a100",
+			"a0",
 		},
 	}
 
@@ -763,7 +763,7 @@ func TestParseInt(t *testing.T) {
 		{"T4", args{"0xffff", 16}, 0, true},
 		{"T5", args{"0x0ffff", 16}, 0, true},
 		{"T6", args{"-0x8000000000000000", 64}, -0x8000000000000000, false},
-		{"T6", args{"-0x10000000000000000", 64}, 0, true},
+		{"T7", args{"-0x10000000000000000", 64}, 0, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

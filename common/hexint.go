@@ -137,6 +137,9 @@ func decodeHexNumber(s string) (bool, []byte, error) {
 }
 
 func ParseInt(s string, bits int) (int64, error) {
+	if v64, err := strconv.ParseInt(s, 0, bits); err == nil {
+		return v64, nil
+	}
 	if negative, bs, err := decodeHexNumber(s); err == nil {
 		if len(bs)*8 > bits {
 			return 0, errors.New("OutOfRange")
@@ -154,18 +157,23 @@ func ParseInt(s string, bits int) (int64, error) {
 			}
 			return int64(u64), nil
 		}
+	} else {
+		return 0, err
 	}
-	return strconv.ParseInt(s, 0, bits)
 }
 
 func ParseUint(s string, bits int) (uint64, error) {
+	if v64, err := strconv.ParseUint(s, 0, bits); err == nil {
+		return v64, nil
+	}
 	if negative, bs, err := decodeHexNumber(s); err == nil && !negative {
 		if len(bs)*8 > bits {
 			return 0, errors.New("OutOfRange")
 		}
 		return BytesToUint64(bs), nil
+	} else {
+		return 0, errors.New("IllegalFormat")
 	}
-	return strconv.ParseUint(s, 0, bits)
 }
 
 func FormatInt(v int64) string {
