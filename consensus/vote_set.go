@@ -16,9 +16,25 @@ type voteSet struct {
 
 // return true if added
 func (vs *voteSet) add(index int, v *voteMessage) bool {
-	if vs.msgs[index] != nil {
-		return false
+	omsg := vs.msgs[index]
+	if omsg != nil {
+		if omsg.vote.Equal(&v.vote) {
+			return false
+		}
+		for i, c := range vs.counters {
+			if c.partsID.Equal(omsg.BlockPartSetID) {
+				vs.counters[i].count--
+				if vs.counters[i].count == 0 {
+					last := len(vs.counters) - 1
+					vs.counters[i] = vs.counters[last]
+					vs.counters = vs.counters[:last]
+				}
+				break
+			}
+		}
+		vs.count--
 	}
+
 	vs.msgs[index] = v
 	found := false
 	for i, c := range vs.counters {
