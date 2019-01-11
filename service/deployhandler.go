@@ -57,18 +57,16 @@ func newDeployHandler(from, to module.Address, value, stepLimit *big.Int,
 // contract address = digest[len(digest) - 20:] // get last 20bytes
 func genContractAddr(from module.Address, timestamp int64, nonce *big.Int) []byte {
 	tsBytes := bytes.NewBuffer(nil)
-	noBytes := bytes.NewBuffer(nil)
 	_ = binary.Write(tsBytes, binary.BigEndian, timestamp)
-	if nonce != nil {
-		_ = binary.Write(noBytes, binary.BigEndian, nonce.Bytes())
-	}
 	data := make([]byte, 0, 84)
 	data = append([]byte(nil), from.ID()...)
 	alignLen := 32 // 32 bytes alignment
 	tBytes := make([]byte, alignLen-tsBytes.Len(), alignLen)
 	tBytes = append(tBytes, tsBytes.Bytes()...)
 	data = append(data, tBytes...)
-	if nonce != nil {
+	if nonce != nil && nonce.Sign() != 0 {
+		noBytes := bytes.NewBuffer(nil)
+		_ = binary.Write(noBytes, binary.BigEndian, nonce.Bytes())
 		nBytes := make([]byte, alignLen-noBytes.Len(), alignLen)
 		nBytes = append(nBytes, noBytes.Bytes()...)
 		data = append(data, nBytes...)
@@ -110,8 +108,8 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 	codeLen := int64(len(h.content))
 	stepUsed = new(big.Int)
 	stepUsed.SetInt64(codeLen)
-	step := big.NewInt(wc.StepsFor(StepTypeContractCreate, 1))
-	stepUsed.Mul(stepUsed, step)
+	stepCost := big.NewInt(wc.StepsFor(StepTypeContractCreate, 1))
+	stepUsed.Mul(stepUsed, stepCost)
 
 	if stepUsed.Cmp(h.stepLimit) > 0 {
 		return module.StatusNotPayable, h.stepLimit, nil, nil
@@ -138,7 +136,6 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 	if acceptStepUsed != nil {
 		stepUsed = stepUsed.Add(stepUsed, acceptStepUsed)
 	}
-	log.Printf("Deployhandler status %x\n", status)
 	if status != module.StatusSuccess {
 		return status, stepUsed, nil, nil
 	}
