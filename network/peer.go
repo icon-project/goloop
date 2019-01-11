@@ -30,6 +30,7 @@ type Peer struct {
 	pool      *TimestampPool
 	close     chan error
 	mtx       sync.Mutex
+	once      sync.Once
 	//
 	incomming bool
 	channel   string
@@ -134,17 +135,11 @@ func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool) *Peer {
 		timestamp: time.Now(),
 		pool:      NewTimestampPool(DefaultPeerPoolExpireSecond + 1),
 		close:     make(chan error),
+		onError: func(err error, p *Peer, pkt *Packet) { p.Close(err) },
+		onClose: func(p *Peer) { },
 	}
 	p.setPacketCbFunc(cbFunc)
-	p.setErrorCbFunc(func(err error, p *Peer, pkt *Packet) {
-		p.Close()
-	})
-	p.setCloseCbFunc(func(p *Peer) {
-		//ignore
-	})
 
-	go p.receiveRoutine()
-	go p.sendRoutine()
 	return p
 }
 
@@ -154,6 +149,16 @@ func (p *Peer) String() string {
 	}
 	return fmt.Sprintf("{id:%v, addr:%v, in:%v, channel:%v, role:%v, conn:%v, rtt:%v}",
 		p.id, p.netAddress, p.incomming, p.channel, p.role, p.connType, p.rtt.String())
+}
+func (p *Peer) ConnString() string {
+	if p == nil {
+		return ""
+	}
+	if p.incomming {
+		return fmt.Sprint(p.conn.LocalAddr(), "<-", p.conn.RemoteAddr())
+	} else {
+		return fmt.Sprint(p.conn.LocalAddr(), "->", p.conn.RemoteAddr())
+	}
 }
 
 func (p *Peer) ID() module.PeerID {
@@ -165,6 +170,12 @@ func (p *Peer) NetAddress() NetAddress {
 }
 
 func (p *Peer) setPacketCbFunc(cbFunc packetCbFunc) {
+	if cbFunc != nil {
+		p.once.Do(func(){
+			go p.receiveRoutine()
+			go p.sendRoutine()
+		})
+	}
 	p.onPacket = cbFunc
 }
 
@@ -261,7 +272,11 @@ func (p *Peer) receiveRoutine() {
 			if DefaultPeerPoolExpireSecond > 0 {
 				p.pool.Put(pkt.hashOfPacket)
 			}
-			p.onPacket(pkt, p)
+			if cbFunc := p.onPacket; cbFunc != nil {
+				cbFunc(pkt, p)
+			} else {
+				log.Printf("Warning Peer[%s].onPacket in nil, Drop %s", p.ConnString(), pkt.String())
+			}
 		}
 	}
 }
