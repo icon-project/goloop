@@ -110,7 +110,6 @@ func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 	}
 	ch := wc.ContractManager().PrepareContractStore(wc, c)
 
-	h.cc.SetTimer()
 	select {
 	case r := <-ch:
 		if r.err != nil {

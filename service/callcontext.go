@@ -16,7 +16,6 @@ import (
 type (
 	CallContext interface {
 		Setup(WorldContext)
-		SetTimer()
 		Call(ContractHandler) (module.Status, *big.Int, interface{}, module.Address)
 		OnResult(status module.Status, stepUsed *big.Int, result *codec.TypedObj, addr module.Address)
 		OnCall(ContractHandler)
@@ -67,14 +66,6 @@ func (cc *callContext) Setup(wc WorldContext) {
 	cc.wc = wc
 }
 
-func (cc *callContext) SetTimer() {
-	cc.lock.Lock()
-	if cc.timer == nil {
-		cc.timer = time.After(transactionTimeLimit)
-	}
-	cc.lock.Unlock()
-}
-
 func (cc *callContext) Call(handler ContractHandler) (module.Status, *big.Int,
 	interface{}, module.Address,
 ) {
@@ -111,6 +102,11 @@ func (cc *callContext) Call(handler ContractHandler) (module.Status, *big.Int,
 func (cc *callContext) waitResult(stepLimit *big.Int) (
 	module.Status, *big.Int, interface{}, module.Address,
 ) {
+	// It checks transaction timeout after the first call to EE
+	if cc.timer == nil {
+		cc.timer = time.After(transactionTimeLimit)
+	}
+
 	for {
 		select {
 		case <-cc.timer:
