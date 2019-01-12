@@ -279,7 +279,11 @@ func (cc *callContext) GetBalance(addr module.Address) *big.Int {
 }
 
 func (cc *callContext) ReserveConnection(eeType string) error {
-	cc.conns[eeType] = cc.wc.EEManager().Get(eeType)
+	conn := cc.wc.EEManager().Get(eeType)
+	if conn == nil {
+		log.Panicln("Fails to get connection of eetype(" + eeType + ")")
+	}
+	cc.conns[eeType] = conn
 	return nil
 }
 
