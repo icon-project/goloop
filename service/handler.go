@@ -2,7 +2,6 @@ package service
 
 import (
 	"math/big"
-	"reflect"
 	"time"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -28,7 +27,8 @@ const (
 type (
 	ContractHandler interface {
 		StepLimit() *big.Int
-		Prepare(wc WorldContext) (WorldContext, error)
+		ApplySteps(WorldContext, StepType, int) bool
+		Prepare(WorldContext) (WorldContext, error)
 	}
 
 	SyncContractHandler interface {
@@ -48,17 +48,27 @@ type (
 )
 
 type CommonHandler struct {
-	from, to         module.Address
-	value, stepLimit *big.Int
+	from, to                   module.Address
+	value, stepLimit, stepUsed *big.Int
 }
 
 func newCommonHandler(from, to module.Address, value, stepLimit *big.Int) *CommonHandler {
-	return &CommonHandler{from: from, to: to, value: value, stepLimit: stepLimit}
+	return &CommonHandler{
+		from: from, to: to, value: value, stepLimit: stepLimit,
+		stepUsed: big.NewInt(0)}
 }
 
 func (h *CommonHandler) StepLimit() *big.Int {
-	reflect.TypeOf(h)
 	return h.stepLimit
+}
+
+func (h *CommonHandler) ApplySteps(wc WorldContext, stepType StepType, n int) bool {
+	h.stepUsed.Add(h.stepUsed, big.NewInt(wc.StepsFor(stepType, n)))
+	if h.stepUsed.Cmp(h.stepLimit) > 0 {
+		h.stepUsed = h.stepLimit
+		return false
+	}
+	return true
 }
 
 func (h *CommonHandler) Prepare(wc WorldContext) (WorldContext, error) {
@@ -67,4 +77,8 @@ func (h *CommonHandler) Prepare(wc WorldContext) (WorldContext, error) {
 		{string(h.to.ID()), AccountWriteLock},
 	}
 	return wc.GetFuture(lq), nil
+}
+
+func (h *CommonHandler) StepAvail() *big.Int {
+	return big.NewInt(0).Sub(h.stepLimit, h.stepUsed)
 }

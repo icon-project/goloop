@@ -102,16 +102,14 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 		update = true
 	}
 
-	var stepUsed *big.Int
-
 	// calculate stepUsed and apply it
-	codeLen := int64(len(h.content))
-	stepUsed = new(big.Int)
-	stepUsed.SetInt64(codeLen)
-	stepCost := big.NewInt(wc.StepsFor(StepTypeContractCreate, 1))
-	stepUsed.Mul(stepUsed, stepCost)
-
-	if stepUsed.Cmp(h.stepLimit) > 0 {
+	st := StepType(StepTypeContractCreate)
+	if update {
+		st = StepTypeContractUpdate
+	}
+	codeLen := len(h.content)
+	if !h.ApplySteps(wc, st, 1) ||
+		!h.ApplySteps(wc, StepTypeContractSet, codeLen) {
 		return module.StatusNotPayable, h.stepLimit, nil, nil
 	}
 
@@ -121,7 +119,7 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 		as.InitContractAccount(h.from)
 	} else {
 		if as.IsContract() == false || as.IsContractOwner(h.from) == false {
-			return module.StatusSystemError, stepUsed, nil, nil
+			return module.StatusSystemError, h.stepUsed, nil, nil
 		}
 	}
 	scoreAddr := common.NewContractAddress(contractID)
@@ -131,16 +129,15 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 
 	//if audit == false || deployer {
 	ah := newAcceptHandler(h.from, h.to, //common.NewContractAddress(contractID),
-		nil, h.stepLimit, h.params, h.cc)
+		nil, h.StepAvail(), h.params, h.cc)
 	status, acceptStepUsed, _, _ := ah.ExecuteSync(wc)
-	if acceptStepUsed != nil {
-		stepUsed = stepUsed.Add(stepUsed, acceptStepUsed)
-	}
+	h.stepUsed.Add(h.stepUsed, acceptStepUsed)
 	if status != module.StatusSuccess {
-		return status, stepUsed, nil, nil
+		scoreAddr = nil
 	}
 	//}
-	return module.StatusSuccess, stepUsed, nil, scoreAddr
+
+	return module.StatusSuccess, h.stepUsed, nil, scoreAddr
 }
 
 type AcceptHandler struct {
@@ -159,10 +156,6 @@ func newAcceptHandler(from, to module.Address, value, stepLimit *big.Int, data [
 		txHash:        hash, auditTxHash: auditTxHash, cc: cc}
 }
 
-func (h *AcceptHandler) StepLimit() *big.Int {
-	return h.stepLimit
-}
-
 // It's never called
 func (h *AcceptHandler) Prepare(wc WorldContext) (WorldContext, error) {
 	lq := []LockRequest{{"", AccountWriteLock}}
@@ -178,7 +171,7 @@ func (h *AcceptHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 	*codec.TypedObj, module.Address,
 ) {
 	// 1. call GetAPI
-	stepAvail := h.stepLimit
+	//stepAvail := h.stepLimit
 	sysAs := wc.GetAccountState(SystemID)
 	varDb := scoredb.NewVarDB(sysAs, h.txHash)
 	scoreAddr := varDb.Address()
@@ -195,8 +188,9 @@ func (h *AcceptHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 		methodStr = deployUpdate
 	}
 	// GET API
-	cgah := newCallGetAPIHandler(newCommonHandler(h.from, scoreAddr, nil, stepAvail), h.cc)
+	cgah := newCallGetAPIHandler(newCommonHandler(h.from, scoreAddr, nil, h.StepAvail()), h.cc)
 	status, stepUsed1, _, _ := h.cc.Call(cgah)
+	h.stepUsed.Add(h.stepUsed, stepUsed1)
 	if status != module.StatusSuccess {
 		return status, h.stepLimit, nil, nil
 	}
@@ -208,17 +202,17 @@ func (h *AcceptHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 	}
 
 	// 2. call on_install or on_update of the contract
-	stepAvail = stepAvail.Sub(stepAvail, stepUsed1)
 	if cur := scoreAs.Contract(); cur != nil {
 		cur.SetStatus(csDisable)
 	}
 	handler := newCallHandlerFromTypedObj(
-		newCommonHandler(h.from, scoreAddr, big.NewInt(0), stepAvail),
+		newCommonHandler(h.from, scoreAddr, big.NewInt(0), h.StepAvail()),
 		methodStr, typedObj, h.cc, true)
 
 	// state -> active if failed to on_install, set inactive
 	// on_install or on_update
 	status, stepUsed2, _, _ := h.cc.Call(handler)
+	h.stepUsed.Add(h.stepUsed, stepUsed2)
 	if status != module.StatusSuccess {
 		return status, h.stepLimit, nil, nil
 	}
@@ -227,7 +221,7 @@ func (h *AcceptHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 	}
 	varDb.Delete()
 
-	return status, stepUsed1.Add(stepUsed1, stepUsed2), nil, nil
+	return status, h.stepUsed, nil, nil
 }
 
 type callGetAPIHandler struct {
