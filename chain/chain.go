@@ -43,6 +43,7 @@ type singleChain struct {
 	nm       module.NetworkManager
 
 	cfg Config
+	pm  eeproxy.Manager
 }
 
 func (c *singleChain) Database() db.Database {
@@ -98,13 +99,7 @@ func (c *singleChain) Start() {
 	}
 
 	c.vld = consensus.NewVoteListFromBytes
-
-	em, err := eeproxy.New("unix", "/tmp/ee.socket")
-	if err != nil {
-		log.Panicln("FAIL to start EEManager")
-	}
-	go em.Loop()
-	c.sm = service.NewManager(c, c.nm, em)
+	c.sm = service.NewManager(c, c.nm, c.pm)
 	c.bm = block.NewManager(c, c.sm)
 
 	c.cs = consensus.NewConsensus(c, c.bm, c.nm)
@@ -117,11 +112,17 @@ func (c *singleChain) Start() {
 	}
 }
 
-func NewChain(wallet module.Wallet, transport module.NetworkTransport, cfg *Config) *singleChain {
+func NewChain(
+	wallet module.Wallet,
+	transport module.NetworkTransport,
+	pm eeproxy.Manager,
+	cfg *Config,
+) *singleChain {
 	chain := &singleChain{
 		wallet: wallet,
 		nt:     transport,
 		cfg:    *cfg,
+		pm:     pm,
 	}
 	if chain.cfg.DBName == "" {
 		chain.cfg.DBName = chain.cfg.Channel

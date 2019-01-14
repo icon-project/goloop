@@ -11,6 +11,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/network"
+	"github.com/icon-project/goloop/service/eeproxy"
 )
 
 type GoChainConfig struct {
@@ -110,6 +111,12 @@ func main() {
 	nt.Listen()
 	defer nt.Close()
 
-	c := chain.NewChain(wallet, nt, &cfg.Config)
+	pm, err := eeproxy.New("unix", "/tmp/ee.socket")
+	if err != nil {
+		log.Panicln("FAIL to start EEManager")
+	}
+	go pm.Loop()
+
+	c := chain.NewChain(wallet, nt, pm, &cfg.Config)
 	c.Start()
 }
