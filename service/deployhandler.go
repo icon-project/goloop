@@ -253,6 +253,10 @@ func (h *callGetAPIHandler) Prepare(wc WorldContext) (WorldContext, error) {
 
 func (h *callGetAPIHandler) ExecuteAsync(wc WorldContext) error {
 	h.as = wc.GetAccountState(h.to.ID())
+	if !h.as.IsContract() {
+		return errors.New("FAIL: not a contract account")
+	}
+
 	conn := h.cc.GetConnection(h.EEType())
 	if conn == nil {
 		return errors.New("FAIL to get connection of (" + h.EEType() + ")")

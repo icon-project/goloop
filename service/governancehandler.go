@@ -18,6 +18,9 @@ func (h *GovCallHandler) ExecuteAsync(wc WorldContext) error {
 
 	// Prepare
 	h.as = wc.GetAccountState(h.to.ID())
+	if !h.as.IsContract() {
+		return errors.New("FAIL: not a contract account")
+	}
 
 	wc.SetContractInfo(&ContractInfo{Owner: h.as.ContractOwner()})
 

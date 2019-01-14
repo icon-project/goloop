@@ -69,9 +69,6 @@ func newCallHandlerFromTypedObj(ch *CommonHandler, method string,
 
 func (h *CallHandler) Prepare(wc WorldContext) (WorldContext, error) {
 	as := wc.GetAccountState(h.to.ID())
-	if as == nil {
-		return nil, errors.New("No contract account")
-	}
 	c := h.contract(as)
 	if c == nil {
 		return nil, errors.New("No active contract")
@@ -99,10 +96,9 @@ func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 
 	// Prepare
 	h.as = wc.GetAccountState(h.to.ID())
-	if h.as.IsContract() == false {
-		return errors.New("No contract account")
+	if !h.as.IsContract() {
+		return errors.New("FAIL: not a contract account")
 	}
-
 	wc.SetContractInfo(&ContractInfo{Owner: h.as.ContractOwner()})
 
 	h.cm = wc.ContractManager()
