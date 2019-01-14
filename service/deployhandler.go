@@ -133,7 +133,7 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 	status, acceptStepUsed, _, _ := ah.ExecuteSync(wc)
 	h.stepUsed.Add(h.stepUsed, acceptStepUsed)
 	if status != module.StatusSuccess {
-		scoreAddr = nil
+		return status, h.stepUsed, nil, nil
 	}
 	//}
 

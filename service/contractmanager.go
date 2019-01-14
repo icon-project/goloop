@@ -93,7 +93,7 @@ func (cm *contractManager) GetCallHandler(cc CallContext, from, to module.Addres
 		}
 	} else {
 		return newCallHandlerFromTypedObj(
-			&CommonHandler{from: from, to: to, value: value, stepLimit: stepLimit},
+			&CommonHandler{from: from, to: to, value: value, stepLimit: stepLimit, stepUsed: big.NewInt(0)},
 			method, paramObj, cc, false)
 	}
 }

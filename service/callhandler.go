@@ -99,7 +99,7 @@ func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 
 	// Prepare
 	h.as = wc.GetAccountState(h.to.ID())
-	if h.as == nil {
+	if h.as.IsContract() == false {
 		return errors.New("No contract account")
 	}
 

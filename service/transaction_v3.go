@@ -261,7 +261,7 @@ func (tx *transactionV3) ToJSON(version int) (interface{}, error) {
 			jso["nid"] = tx.transactionV3Data.NID
 		}
 		if tx.transactionV3Data.Nonce != nil {
-			jso["nonce"] = tx.transactionV3Data.NID
+			jso["nonce"] = tx.transactionV3Data.Nonce
 		}
 		if tx.transactionV3Data.DataType != nil {
 			jso["dataType"] = *tx.transactionV3Data.DataType

@@ -14,7 +14,8 @@ type TransferHandler struct {
 
 func newTransferHandler(from, to module.Address, value, stepLimit *big.Int) *TransferHandler {
 	return &TransferHandler{
-		&CommonHandler{from: from, to: to, value: value, stepLimit: stepLimit},
+		&CommonHandler{from: from, to: to, value: value,
+			stepLimit: stepLimit, stepUsed: big.NewInt(0)},
 	}
 }
 
