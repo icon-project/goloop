@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -83,26 +84,34 @@ func (th *transactionHandler) Execute(wc WorldContext) (Receipt, error) {
 	th.cc.Setup(wc)
 
 	// Calculate common steps
+	var status module.Status
 	var stepUsed *big.Int
-	status := module.Status(module.StatusSuccess)
-	if !th.handler.ApplySteps(wc, StepTypeDefault, 1) ||
-		!th.handler.ApplySteps(wc, StepTypeInput, th.countBytesOfData(th.data)) {
-		status = module.StatusNotPayable
-		stepUsed = th.handler.StepLimit()
-	}
-
-	// Execute
 	var addr module.Address
-	if status == module.StatusSuccess {
-		status, stepUsed, _, addr = th.cc.Call(th.handler)
+	var iData interface{}
+	if err := json.Unmarshal(th.data, &iData); err == nil {
+		status = module.StatusSuccess
 
-		// If it's not successful, roll back the state.
-		if status != module.StatusSuccess {
-			// In case of timeout, returned stepUsed may not be same as stepLimit.
-			// So set it again.
-			stepUsed.Set(th.stepLimit)
-			wc.Reset(wcs)
+		if !th.handler.ApplySteps(wc, StepTypeDefault, 1) ||
+			!th.handler.ApplySteps(wc, StepTypeInput, th.countBytesOfData(iData)) {
+			status = module.StatusNotPayable
+			stepUsed = th.handler.StepLimit()
 		}
+
+		// Execute
+		if status == module.StatusSuccess {
+			status, stepUsed, _, addr = th.cc.Call(th.handler)
+
+			// If it's not successful, roll back the state.
+			if status != module.StatusSuccess {
+				// In case of timeout, returned stepUsed may not be same as stepLimit.
+				// So set it again.
+				stepUsed.Set(th.stepLimit)
+				wc.Reset(wcs)
+			}
+		}
+	} else {
+		status = module.StatusSystemError
+		stepUsed = th.stepLimit
 	}
 
 	// Try to charge fee
