@@ -83,7 +83,12 @@ func (ps *partSet) GetPart(i int) Part {
 	if i < 0 || i >= len(ps.parts) {
 		return nil
 	}
-	return ps.parts[i]
+	p := ps.parts[i]
+	if p == nil {
+		// return nil interface not interface to nil value
+		return nil
+	}
+	return p
 }
 
 func (ps *partSet) IsComplete() bool {
