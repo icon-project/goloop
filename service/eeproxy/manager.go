@@ -36,7 +36,7 @@ type manager struct {
 	lock   sync.Mutex
 
 	scores [numberOfSCORETypes]struct {
-		waitor *sync.Cond
+		waiter *sync.Cond
 		ready  *proxy
 		using  *proxy
 	}
@@ -84,7 +84,7 @@ func (m *manager) onReady(t scoreType, p *proxy) {
 	score := &m.scores[t]
 	m.attach(&score.ready, p)
 	if p.next == nil {
-		score.waitor.Broadcast()
+		score.waiter.Broadcast()
 	}
 }
 
@@ -119,7 +119,7 @@ func (m *manager) Get(name string) Proxy {
 
 	score := &m.scores[t]
 	for score.ready == nil {
-		score.waitor.Wait()
+		score.waiter.Wait()
 	}
 	p := score.ready
 	if p.reserve() {
@@ -143,7 +143,7 @@ func New(net, addr string) (*manager, error) {
 	srv.SetHandler(m)
 	m.server = srv
 	for i := 0; i < len(m.scores); i++ {
-		m.scores[i].waitor = sync.NewCond(&m.lock)
+		m.scores[i].waiter = sync.NewCond(&m.lock)
 	}
 
 	return m, nil
