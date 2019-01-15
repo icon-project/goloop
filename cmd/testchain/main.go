@@ -98,7 +98,7 @@ type proposeOnlyConsensus struct {
 	ch chan<- []byte
 }
 
-func (c *proposeOnlyConsensus) Start() {
+func (c *proposeOnlyConsensus) Start() error {
 	blks, err := c.bm.FinalizeGenesisBlocks(
 		common.NewAccountAddress(make([]byte, common.AddressIDBytes)),
 		time.Unix(0, 0),
@@ -192,6 +192,7 @@ func (c *proposeOnlyConsensus) Start() {
 		height++
 		time.Sleep(1 * time.Second)
 	}
+	return nil
 }
 
 func (c *proposeOnlyConsensus) GetStatus() *module.ConsensusStatus {
@@ -204,7 +205,7 @@ type importOnlyConsensus struct {
 	ch <-chan []byte
 }
 
-func (c *importOnlyConsensus) Start() {
+func (c *importOnlyConsensus) Start() error {
 	_, err := c.bm.FinalizeGenesisBlocks(
 		common.NewAccountAddress(make([]byte, common.AddressIDBytes)),
 		time.Unix(0, 0),
@@ -264,6 +265,7 @@ func (c *importOnlyConsensus) Start() {
 		result := jsonMap.(map[string]interface{})
 		fmt.Printf("Importer: GetBlock  Block(%d) %s\n", result["height"], result["block_hash"])
 	}
+	return nil
 }
 
 func (c *importOnlyConsensus) GetStatus() *module.ConsensusStatus {
