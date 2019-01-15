@@ -29,13 +29,14 @@ type CallHandler struct {
 
 	cc        CallContext
 	forDeploy bool
-	canceled  bool
+	disposed  bool
 	lock      sync.Mutex
 
 	// set in ExecuteAsync()
 	as   AccountState
 	cm   ContractManager
 	conn eeproxy.Proxy
+	cs   ContractStore
 }
 
 func newCallHandler(ch *CommonHandler, data []byte, cc CallContext, forDeploy bool,
@@ -51,7 +52,7 @@ func newCallHandler(ch *CommonHandler, data []byte, cc CallContext, forDeploy bo
 		params:        jso.Params,
 		cc:            cc,
 		forDeploy:     forDeploy,
-		canceled:      false,
+		disposed:      false,
 	}
 }
 
@@ -73,7 +74,16 @@ func (h *CallHandler) Prepare(wc WorldContext) (WorldContext, error) {
 	if c == nil {
 		return nil, errors.New("No active contract")
 	}
-	wc.ContractManager().PrepareContractStore(wc, c)
+
+	var err error
+	h.lock.Lock()
+	if h.cs == nil {
+		h.cs, err = wc.ContractManager().PrepareContractStore(wc, c)
+	}
+	h.lock.Unlock()
+	if err != nil {
+		return nil, err
+	}
 
 	lq := []LockRequest{{"", AccountWriteLock}}
 	return wc.GetFuture(lq), nil
@@ -112,43 +122,31 @@ func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 	if c == nil {
 		return errors.New("No active contract")
 	}
-	ch := wc.ContractManager().PrepareContractStore(wc, c)
+	h.lock.Lock()
+	var err error
+	if h.cs == nil {
+		h.cs, err = wc.ContractManager().PrepareContractStore(wc, c)
+	}
+	h.lock.Unlock()
+	if err != nil {
+		return err
+	}
+	path, err := h.cs.WaitResult()
+	if err != nil {
+		return err
+	}
 
 	// Execute
-	select {
-	case r := <-ch:
-		if r.Error != nil {
-			return r.Error
-		}
-		var err error
+	h.lock.Lock()
+	if !h.disposed {
 		if err = h.ensureParamObj(); err == nil {
-			err = h.conn.Invoke(h, r.Path, false, h.from, h.to,
-				h.value, h.StepAvail(), h.method, h.paramObj)
+			err = h.conn.Invoke(h, path, false, h.from, h.to, h.value,
+				h.StepAvail(), h.method, h.paramObj)
 		}
-		return err
-	default:
-		go func() {
-			select {
-			case r := <-ch:
-				h.lock.Lock()
-				if !h.canceled {
-					if r.Error == nil {
-						var err error
-						if err = h.ensureParamObj(); err == nil {
-							if err = h.conn.Invoke(h, r.Path, false,
-								h.from, h.to, h.value, h.StepAvail(),
-								h.method, h.paramObj); err == nil {
-								return
-							}
-						}
-					}
-					h.cc.OnResult(module.StatusSystemError, h.stepLimit, nil, nil)
-				}
-				h.lock.Unlock()
-			}
-		}()
 	}
-	return nil
+	h.lock.Unlock()
+
+	return err
 }
 
 func (h *CallHandler) ensureParamObj() error {
@@ -178,9 +176,12 @@ func (h *CallHandler) SendResult(status module.Status, steps *big.Int, result *c
 	return h.conn.SendResult(h, uint16(status), steps, result)
 }
 
-func (h *CallHandler) Cancel() {
+func (h *CallHandler) Dispose() {
 	h.lock.Lock()
-	h.canceled = true
+	h.disposed = true
+	if h.cs != nil {
+		h.cs.Dispose()
+	}
 	h.lock.Unlock()
 }
 
@@ -254,7 +255,7 @@ func (h *TransferAndCallHandler) Prepare(wc WorldContext) (WorldContext, error) 
 }
 
 func (h *TransferAndCallHandler) ExecuteAsync(wc WorldContext) error {
-	if status, stepUsed, result, addr := h.th.ExecuteSync(wc); status == 0 {
+	if status, stepUsed, result, addr := h.th.ExecuteSync(wc); status == module.StatusSuccess {
 		return h.CallHandler.ExecuteAsync(wc)
 	} else {
 		go func() {

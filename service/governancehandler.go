@@ -35,38 +35,29 @@ func (h *GovCallHandler) ExecuteAsync(wc WorldContext) error {
 	if c == nil {
 		return errors.New("No active contract")
 	}
-	ch := wc.ContractManager().PrepareContractStore(wc, c)
+
+	var err error
+	h.lock.Lock()
+	h.cs, err = wc.ContractManager().PrepareContractStore(wc, c)
+	h.lock.Unlock()
+	if err != nil {
+		return err
+	}
+
+	path, err := h.cs.WaitResult()
+	if err != nil {
+		return nil
+	}
 
 	// Execute
-	select {
-	case r := <-ch:
-		if r.Error != nil {
-			return r.Error
-		}
-
-		var err error
+	h.lock.Lock()
+	if !h.disposed {
 		if err = h.ensureParamObj(); err == nil {
-			err = h.conn.Invoke(h, r.Path, false, h.from, h.to,
-				h.value, h.StepAvail(), h.method, h.paramObj)
+			err = h.conn.Invoke(h, path, false, h.from, h.to, h.value,
+				h.StepAvail(), h.method, h.paramObj)
 		}
-		return err
-	default:
-		go func() {
-			select {
-			case r := <-ch:
-				if r.Error == nil {
-					var err error
-					if err = h.ensureParamObj(); err == nil {
-						if err = h.conn.Invoke(h, r.Path, false,
-							h.from, h.to, h.value, h.StepAvail(),
-							h.method, h.paramObj); err == nil {
-							return
-						}
-					}
-				}
-				h.cc.OnResult(module.StatusSystemError, h.stepLimit, nil, nil)
-			}
-		}()
 	}
-	return nil
+	h.lock.Unlock()
+
+	return err
 }

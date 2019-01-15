@@ -228,15 +228,16 @@ type callGetAPIHandler struct {
 	*CommonHandler
 
 	cc       CallContext
-	canceled bool
+	disposed bool
 	lock     sync.Mutex
+	cs       ContractStore
 
 	// set in ExecuteAsync()
 	as AccountState
 }
 
 func newCallGetAPIHandler(ch *CommonHandler, cc CallContext) *callGetAPIHandler {
-	return &callGetAPIHandler{CommonHandler: ch, cc: cc, canceled: false}
+	return &callGetAPIHandler{CommonHandler: ch, cc: cc, disposed: false}
 }
 
 // It's never called
@@ -246,7 +247,16 @@ func (h *callGetAPIHandler) Prepare(wc WorldContext) (WorldContext, error) {
 	if c == nil {
 		return nil, errors.New("No pending contract")
 	}
-	wc.ContractManager().PrepareContractStore(wc, c)
+
+	var err error
+	h.lock.Lock()
+	if h.cs == nil {
+		h.cs, err = wc.ContractManager().PrepareContractStore(wc, c)
+	}
+	h.lock.Unlock()
+	if err != nil {
+		return nil, err
+	}
 
 	return wc.GetFuture(nil), nil
 }
@@ -266,33 +276,25 @@ func (h *callGetAPIHandler) ExecuteAsync(wc WorldContext) error {
 	if c == nil {
 		return errors.New("No pending contract")
 	}
-	ch := wc.ContractManager().PrepareContractStore(wc, c)
-
-	select {
-	case r := <-ch:
-		if r.Error != nil {
-			return r.Error
-		}
-		err := conn.GetAPI(h, r.Path)
+	var err error
+	h.lock.Lock()
+	h.cs, err = wc.ContractManager().PrepareContractStore(wc, c)
+	h.lock.Unlock()
+	if err != nil {
 		return err
-	default:
-		go func() {
-			select {
-			case r := <-ch:
-				h.lock.Lock()
-				if !h.canceled {
-					if r.Error == nil {
-						if err := conn.GetAPI(h, r.Path); err == nil {
-							return
-						}
-					}
-					h.cc.OnResult(module.StatusSystemError, h.stepLimit, nil, nil)
-				}
-				h.lock.Unlock()
-			}
-		}()
 	}
-	return nil
+	path, err := h.cs.WaitResult()
+	if err != nil {
+		return err
+	}
+
+	h.lock.Lock()
+	if !h.disposed {
+		err = conn.GetAPI(h, path)
+	}
+	h.lock.Unlock()
+
+	return err
 }
 
 func (h *callGetAPIHandler) SendResult(status module.Status, steps *big.Int, result *codec.TypedObj) error {
@@ -300,9 +302,12 @@ func (h *callGetAPIHandler) SendResult(status module.Status, steps *big.Int, res
 	return nil
 }
 
-func (h *callGetAPIHandler) Cancel() {
+func (h *callGetAPIHandler) Dispose() {
 	h.lock.Lock()
-	h.canceled = true
+	h.disposed = true
+	if h.cs != nil {
+		h.cs.Dispose()
+	}
 	h.lock.Unlock()
 }
 

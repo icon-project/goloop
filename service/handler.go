@@ -40,7 +40,7 @@ type (
 		ContractHandler
 		ExecuteAsync(wc WorldContext) error
 		SendResult(status module.Status, steps *big.Int, result *codec.TypedObj) error
-		Cancel()
+		Dispose()
 
 		EEType() string
 		eeproxy.CallContext

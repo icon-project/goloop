@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/icon-project/goloop/common/codec"
 
@@ -27,8 +28,19 @@ type (
 			value, stepLimit *big.Int, ctype int, data []byte) ContractHandler
 		GetCallHandler(cc CallContext, from, to module.Address,
 			value, stepLimit *big.Int, method string, paramObj *codec.TypedObj) ContractHandler
-		PrepareContractStore(ws WorldState,
-			contract Contract) <-chan *StorageResult
+		PrepareContractStore(ws WorldState, contract Contract) (ContractStore, error)
+	}
+
+	ContractStore interface {
+		WaitResult() (string, error)
+		Dispose()
+	}
+
+	contractStoreImpl struct {
+		cm      *contractManager
+		cashKey string
+		ch      chan *StorageResult
+		timer   <-chan time.Time
 	}
 
 	StorageResult struct {
@@ -37,6 +49,7 @@ type (
 	}
 
 	storageCache struct {
+		refCnt int
 		status tsStatus
 		result []chan *StorageResult
 	}
@@ -55,6 +68,33 @@ const (
 	tsInProgress           tsStatus = iota
 	tsComplete
 )
+
+func (cs *contractStoreImpl) WaitResult() (string, error) {
+	var result *StorageResult
+	if cs.timer == nil {
+		result = <-cs.ch
+		return result.Path, result.Error
+	}
+	select {
+	case <-cs.timer:
+		result = &StorageResult{Error: errors.New("Expired")}
+	case result = <-cs.ch:
+	}
+	return result.Path, result.Error
+}
+
+func (cs *contractStoreImpl) Dispose() {
+	cs.cm.dispose(cs.cashKey)
+}
+
+func (cm *contractManager) dispose(key string) {
+	cm.lock.Lock()
+	defer cm.lock.Unlock()
+	cm.storageCache[key].refCnt--
+	if cm.storageCache[key].refCnt == 0 {
+		// remove
+	}
+}
 
 func (cm *contractManager) GetHandler(cc CallContext,
 	from, to module.Address, value, stepLimit *big.Int, ctype int, data []byte,
@@ -169,29 +209,31 @@ func (cm *contractManager) getContractPath(codeHash []byte) string {
 // and starts to download and uncompress otherwise.
 // Do not call PrepareContractStore on onEndCallback
 func (cm *contractManager) PrepareContractStore(
-	ws WorldState, contract Contract) <-chan *StorageResult {
+	ws WorldState, contract Contract) (ContractStore, error) {
 	cm.lock.Lock()
 	codeHash := contract.CodeHash()
 	hashStr := string(codeHash)
 	var path string
 	sr := make(chan *StorageResult, 1)
+	cs := &contractStoreImpl{cm, hashStr, sr, nil}
 	if cacheInfo, ok := cm.storageCache[hashStr]; ok {
 		if cacheInfo.status != tsComplete {
 			cacheInfo.result = append(cacheInfo.result, sr)
+			cacheInfo.refCnt++
 			cm.lock.Unlock()
-			return sr
+			return cs, nil
 		}
 		path = cm.getContractPath(codeHash)
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
 			sr <- &StorageResult{path, nil}
 			cm.lock.Unlock()
-			return sr
+			return cs, nil
 		}
 	}
-
 	cm.storageCache[hashStr] =
-		&storageCache{tsInProgress,
-			[]chan *StorageResult{sr}}
+		&storageCache{refCnt: 0, status: tsInProgress,
+			result: []chan *StorageResult{sr}}
+	cs.timer = time.After(transactionTimeLimit)
 	cm.lock.Unlock()
 
 	go func() {
@@ -218,7 +260,7 @@ func (cm *contractManager) PrepareContractStore(
 		}
 		callEndCb(path, nil)
 	}()
-	return sr
+	return cs, nil
 }
 
 func NewContractManager(db db.Database) ContractManager {

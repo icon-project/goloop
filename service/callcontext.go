@@ -90,6 +90,7 @@ func (cc *callContext) Call(handler ContractHandler) (module.Status, *big.Int,
 			cc.lock.Lock()
 			cc.stack.Remove(e)
 			cc.lock.Unlock()
+			handler.Dispose()
 			return module.StatusSystemError, handler.StepLimit(), nil, nil
 		}
 		return cc.waitResult(handler.StepLimit())
@@ -163,7 +164,7 @@ func (cc *callContext) handleTimeout() {
 	cc.lock.Unlock()
 
 	for _, h := range achs {
-		h.Cancel()
+		h.Dispose()
 	}
 
 	// kill EE; It'll restart by itself
@@ -191,20 +192,24 @@ func (cc *callContext) handleResult(status module.Status,
 
 	cc.lock.Lock()
 	// remove current frame
-	e := cc.stack.Back()
-	if e == nil {
+	current := cc.stack.Back()
+	if current == nil {
 		log.Panicf("Fail to handle result(it's not in frame)")
 	}
-	cc.stack.Remove(e)
+	cc.stack.Remove(current)
 
 	// back to parent frame
-	e = cc.stack.Back()
+	parent := cc.stack.Back()
 	cc.lock.Unlock()
-	if e == nil {
+
+	if ach, ok := current.Value.(AsyncContractHandler); ok {
+		ach.Dispose()
+	}
+	if parent == nil {
 		return false
 	}
 
-	switch h := e.Value.(type) {
+	switch h := parent.Value.(type) {
 	case AsyncContractHandler:
 		if err := h.SendResult(status, stepUsed, result); err != nil {
 			log.Println("FAIL to SendResult(): ", err)
@@ -216,24 +221,9 @@ func (cc *callContext) handleResult(status module.Status,
 		return false
 	default:
 		// It can't be happened
-		log.Panicln("Invalid contract handler type:", reflect.TypeOf(e.Value))
+		log.Panicln("Invalid contract handler type:", reflect.TypeOf(parent.Value))
 		return true
 	}
-}
-
-func (cc *callContext) cancelCall() ContractHandler {
-	cc.lock.Lock()
-	defer cc.lock.Unlock()
-	e := cc.stack.Back()
-	if h, ok := e.Value.(AsyncContractHandler); ok {
-		h.Cancel()
-	} else {
-		log.Panicln("Other types than AsyncContractHandler:",
-			reflect.TypeOf(e.Value))
-	}
-	cc.stack.Remove(e)
-
-	return e.Value.(ContractHandler)
 }
 
 func (cc *callContext) OnResult(status module.Status, stepUsed *big.Int,
