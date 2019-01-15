@@ -172,7 +172,9 @@ func (p *proxy) Release() {
 	p.reserved = false
 	if p.frame == nil {
 		p.lock.Unlock()
-		p.mgr.onReady(p.scoreType, p)
+		if !p.mgr.onReady(p.scoreType, p) {
+			p.conn.Close()
+		}
 		return
 	}
 	p.lock.Unlock()
@@ -191,7 +193,6 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 	case msgVERSION:
 		var m versionMessage
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
-			c.Close()
 			return err
 		}
 		p.version = m.Version
@@ -202,13 +203,14 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 			p.scoreType = t
 		}
 
-		p.mgr.onReady(p.scoreType, p)
+		if !p.mgr.onReady(p.scoreType, p) {
+			return errors.New("OutOfInstance")
+		}
 		return nil
 
 	case msgRESULT:
 		var m resultMessage
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
-			c.Close()
 			return err
 		}
 		p.lock.Lock()
@@ -230,7 +232,6 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 	case msgGETVALUE:
 		var key []byte
 		if _, err := codec.MP.UnmarshalFromBytes(data, &key); err != nil {
-			c.Close()
 			return err
 		}
 		var m getValueMessage
@@ -250,7 +251,6 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 	case msgSETVALUE:
 		var m setValueMessage
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
-			c.Close()
 			return err
 		}
 		if m.IsDelete {
@@ -262,7 +262,6 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 	case msgCALL:
 		var m callMessage
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
-			c.Close()
 			return err
 		}
 		p.frame.ctx.OnCall(p.frame.addr,
@@ -272,7 +271,6 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 	case msgEVENT:
 		var m eventMessage
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
-			c.Close()
 			return err
 		}
 		p.frame.ctx.OnEvent(p.frame.addr, m.Indexed, m.Data)
@@ -329,9 +327,12 @@ func (p *proxy) HandleMessages() error {
 			break
 		}
 	}
-	p.mgr.detach(p)
 	p.conn.Close()
 	return nil
+}
+
+func (p *proxy) Close() error {
+	return p.conn.Close()
 }
 
 func (p *proxy) Kill() error {

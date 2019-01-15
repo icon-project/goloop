@@ -1,9 +1,11 @@
 package eeproxy
 
 import (
+	"log"
+	"sync"
+
 	"github.com/icon-project/goloop/common/ipc"
 	"github.com/pkg/errors"
-	"sync"
 )
 
 type scoreType int
@@ -28,7 +30,15 @@ func (t scoreType) String() string {
 
 type Manager interface {
 	Get(t string) Proxy
+	SetEngine(t string, e Engine) error
+	SetInstances(t string, n int) error
 	Loop() error
+	Close() error
+}
+
+type Engine interface {
+	Init(net, addr string) error
+	SetInstances(n int) error
 }
 
 type manager struct {
@@ -36,10 +46,56 @@ type manager struct {
 	lock   sync.Mutex
 
 	scores [numberOfSCORETypes]struct {
+		engine Engine
+		target int
+		active int
 		waiter *sync.Cond
 		ready  *proxy
 		using  *proxy
 	}
+}
+
+func (m *manager) SetEngine(t string, e Engine) error {
+	scoreType, ok := scoreNameToType[t]
+	if !ok {
+		return errors.Errorf("IllegalScoreType(t=%s)", t)
+	}
+	addr := m.server.Addr()
+	if err := e.Init(addr.Network(), addr.String()); err != nil {
+		return err
+	}
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	score := &m.scores[scoreType]
+	score.engine = e
+
+	return nil
+}
+
+func (m *manager) SetInstances(t string, n int) error {
+	scoreType, ok := scoreNameToType[t]
+	if !ok {
+		return errors.Errorf("IllegalScoreType(t=%s)", t)
+	}
+
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	score := &m.scores[scoreType]
+	if err := score.engine.SetInstances(n); err != nil {
+		return err
+	}
+
+	score.target = n
+	for score.ready != nil && score.active > score.target {
+		item := score.ready
+		m.detach(item)
+		item.Close()
+		score.active -= 1
+	}
+
+	return nil
 }
 
 func (m *manager) OnConnect(c ipc.Connection) error {
@@ -60,12 +116,14 @@ func (m *manager) OnClose(c ipc.Connection) error {
 		for p := e.ready; p != nil; p = p.next {
 			if p.conn == c {
 				m.detach(p)
+				e.active -= 1
 				return nil
 			}
 		}
 		for p := e.using; p != nil; p = p.next {
 			if p.conn == c {
 				m.detach(p)
+				e.active -= 1
 				return nil
 			}
 		}
@@ -73,24 +131,38 @@ func (m *manager) OnClose(c ipc.Connection) error {
 	return errors.New("NotFound")
 }
 
-func (m *manager) onReady(t scoreType, p *proxy) {
+func (m *manager) onReady(t scoreType, p *proxy) bool {
 	m.lock.Lock()
 	defer m.lock.Unlock()
+
 	if t < 0 || t >= numberOfSCORETypes {
-		return
+		return false
+	}
+	score := &m.scores[t]
+
+	if detached := m.detach(p); detached {
+		if score.active > score.target {
+			score.active -= 1
+			return false
+		}
+	} else {
+		if score.active >= score.target {
+			return false
+		} else {
+			score.active += 1
+		}
 	}
 
-	m.detach(p)
-	score := &m.scores[t]
 	m.attach(&score.ready, p)
 	if p.next == nil {
 		score.waiter.Broadcast()
 	}
+	return true
 }
 
-func (m *manager) detach(p *proxy) {
+func (m *manager) detach(p *proxy) bool {
 	if p.pprev == nil {
-		return
+		return false
 	}
 	*p.pprev = p.next
 	if p.next != nil {
@@ -98,6 +170,7 @@ func (m *manager) detach(p *proxy) {
 	}
 	p.pprev = nil
 	p.next = nil
+	return true
 }
 
 func (m *manager) attach(r **proxy, p *proxy) {
@@ -131,6 +204,15 @@ func (m *manager) Get(name string) Proxy {
 
 func (m *manager) Loop() error {
 	return m.server.Loop()
+}
+
+func (m *manager) Close() error {
+	if err := m.server.Close(); err != nil {
+		log.Printf("Fail to close IPC server err=%+v", err)
+		return err
+	}
+	// TODO stopping all proxies.
+	return nil
 }
 
 func New(net, addr string) (*manager, error) {

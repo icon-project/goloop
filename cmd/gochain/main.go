@@ -117,6 +117,13 @@ func main() {
 	}
 	go pm.Loop()
 
+	ee, err := eeproxy.NewPythonEE()
+	if err != nil {
+		log.Panicf("FAIL to create PythonEE err=%+v", err)
+	}
+	pm.SetEngine("python", ee)
+	pm.SetInstances("python", 1)
+
 	c := chain.NewChain(wallet, nt, pm, &cfg.Config)
 	c.Start()
 }
