@@ -117,12 +117,12 @@ func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 	// Execute
 	select {
 	case r := <-ch:
-		if r.err != nil {
-			return r.err
+		if r.Error != nil {
+			return r.Error
 		}
 		var err error
 		if err = h.ensureParamObj(); err == nil {
-			err = h.conn.Invoke(h, r.path, false, h.from, h.to,
+			err = h.conn.Invoke(h, r.Path, false, h.from, h.to,
 				h.value, h.StepAvail(), h.method, h.paramObj)
 		}
 		return err
@@ -132,10 +132,10 @@ func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 			case r := <-ch:
 				h.lock.Lock()
 				if !h.canceled {
-					if r.err == nil {
+					if r.Error == nil {
 						var err error
 						if err = h.ensureParamObj(); err == nil {
-							if err = h.conn.Invoke(h, r.path, false,
+							if err = h.conn.Invoke(h, r.Path, false,
 								h.from, h.to, h.value, h.StepAvail(),
 								h.method, h.paramObj); err == nil {
 								return

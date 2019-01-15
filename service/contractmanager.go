@@ -28,17 +28,17 @@ type (
 		GetCallHandler(cc CallContext, from, to module.Address,
 			value, stepLimit *big.Int, method string, paramObj *codec.TypedObj) ContractHandler
 		PrepareContractStore(ws WorldState,
-			contract Contract) <-chan *storageResult
+			contract Contract) <-chan *StorageResult
 	}
 
-	storageResult struct {
-		path string
-		err  error
+	StorageResult struct {
+		Path  string
+		Error error
 	}
 
 	storageCache struct {
 		status tsStatus
-		result []chan *storageResult
+		result []chan *StorageResult
 	}
 
 	contractManager struct {
@@ -169,12 +169,12 @@ func (cm *contractManager) getContractPath(codeHash []byte) string {
 // and starts to download and uncompress otherwise.
 // Do not call PrepareContractStore on onEndCallback
 func (cm *contractManager) PrepareContractStore(
-	ws WorldState, contract Contract) <-chan *storageResult {
+	ws WorldState, contract Contract) <-chan *StorageResult {
 	cm.lock.Lock()
 	codeHash := contract.CodeHash()
 	hashStr := string(codeHash)
 	var path string
-	sr := make(chan *storageResult, 1)
+	sr := make(chan *StorageResult, 1)
 	if cacheInfo, ok := cm.storageCache[hashStr]; ok {
 		if cacheInfo.status != tsComplete {
 			cacheInfo.result = append(cacheInfo.result, sr)
@@ -183,7 +183,7 @@ func (cm *contractManager) PrepareContractStore(
 		}
 		path = cm.getContractPath(codeHash)
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
-			sr <- &storageResult{path, nil}
+			sr <- &StorageResult{path, nil}
 			cm.lock.Unlock()
 			return sr
 		}
@@ -191,7 +191,7 @@ func (cm *contractManager) PrepareContractStore(
 
 	cm.storageCache[hashStr] =
 		&storageCache{tsInProgress,
-			[]chan *storageResult{sr}}
+			[]chan *StorageResult{sr}}
 	cm.lock.Unlock()
 
 	go func() {
@@ -199,7 +199,7 @@ func (cm *contractManager) PrepareContractStore(
 			cm.lock.Lock()
 			storage := cm.storageCache[hashStr]
 			for _, f := range storage.result {
-				f <- &storageResult{path, err}
+				f <- &StorageResult{path, err}
 			}
 			storage.result = nil
 			storage.status = tsComplete

@@ -270,10 +270,10 @@ func (h *callGetAPIHandler) ExecuteAsync(wc WorldContext) error {
 
 	select {
 	case r := <-ch:
-		if r.err != nil {
-			return r.err
+		if r.Error != nil {
+			return r.Error
 		}
-		err := conn.GetAPI(h, r.path)
+		err := conn.GetAPI(h, r.Path)
 		return err
 	default:
 		go func() {
@@ -281,8 +281,8 @@ func (h *callGetAPIHandler) ExecuteAsync(wc WorldContext) error {
 			case r := <-ch:
 				h.lock.Lock()
 				if !h.canceled {
-					if r.err == nil {
-						if err := conn.GetAPI(h, r.path); err == nil {
+					if r.Error == nil {
+						if err := conn.GetAPI(h, r.Path); err == nil {
 							return
 						}
 					}
