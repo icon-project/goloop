@@ -17,7 +17,7 @@ func (sig Signature) MarshalJSON() ([]byte, error) {
 	}
 	if bytes, err := sig.SerializeRSV(); err == nil {
 		s := base64.StdEncoding.EncodeToString(bytes)
-		return []byte(s), nil
+		return json.Marshal(s)
 	} else {
 		return nil, err
 	}
