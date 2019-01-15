@@ -733,7 +733,7 @@ func (cs *consensus) isProposalAndPOLPrevotesComplete() bool {
 	return true
 }
 
-func (cs *consensus) Start() {
+func (cs *consensus) Start() error {
 	cs.mutex.Lock()
 	defer cs.mutex.Unlock()
 
@@ -743,7 +743,7 @@ func (cs *consensus) Start() {
 		newVoteList(nil),
 	)
 	if err != nil {
-		return
+		return err
 	}
 	lastFinalizedBlock := gblks[len(gblks)-1]
 
@@ -761,6 +761,7 @@ func (cs *consensus) Start() {
 	cs.syncer = newSyncer(cs, cs.nm, &cs.mutex, cs.wallet.Address())
 	cs.syncer.Start()
 	cs.enterPropose()
+	return nil
 }
 
 func (cs *consensus) GetStatus() *module.ConsensusStatus {

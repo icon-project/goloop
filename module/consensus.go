@@ -7,6 +7,6 @@ type ConsensusStatus struct {
 }
 
 type Consensus interface {
-	Start()
+	Start() error
 	GetStatus() *ConsensusStatus
 }
