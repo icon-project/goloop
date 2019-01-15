@@ -36,7 +36,7 @@ type lockedAccountState struct {
 
 type worldVirtualState struct {
 	mutex  sync.Mutex
-	waitor *sync.Cond
+	waiter *sync.Cond
 
 	parent    *worldVirtualState
 	real      WorldState
@@ -168,7 +168,7 @@ func (wvs *worldVirtualState) Reset(snapshot WorldSnapshot) error {
 	wvs.mutex.Lock()
 	defer wvs.mutex.Unlock()
 
-	if wvs.waitor == nil {
+	if wvs.waiter == nil {
 		return errors.New("AlreadyCommitted")
 	}
 
@@ -243,9 +243,9 @@ func (wvs *worldVirtualState) WaitCommit() {
 }
 
 func (wvs *worldVirtualState) waitCommitInLock() {
-	if wvs.waitor != nil {
-		wvs.waitor.Wait()
-		wvs.waitor = nil
+	if wvs.waiter != nil {
+		wvs.waiter.Wait()
+		wvs.waiter = nil
 	}
 }
 
@@ -294,7 +294,7 @@ func (wvs *worldVirtualState) getRealizedBase() WorldSnapshot {
 func (wvs *worldVirtualState) GetFuture(reqs []LockRequest) WorldVirtualState {
 	nwvs := new(worldVirtualState)
 	nwvs.real = wvs.real
-	nwvs.waitor = sync.NewCond(&nwvs.mutex)
+	nwvs.waiter = sync.NewCond(&nwvs.mutex)
 	nwvs.base = wvs.committed
 	nwvs.parent = wvs
 	applyLockRequests(nwvs, reqs)
@@ -370,7 +370,7 @@ func (wvs *worldVirtualState) Commit() {
 	wvs.mutex.Lock()
 	defer wvs.mutex.Unlock()
 
-	if wvs.waitor == nil {
+	if wvs.waiter == nil {
 		return
 	}
 
@@ -394,8 +394,8 @@ func (wvs *worldVirtualState) Commit() {
 		wvs.committed = wvs.real.GetSnapshot()
 	}
 
-	wvs.waitor.Broadcast()
-	wvs.waitor = nil
+	wvs.waiter.Broadcast()
+	wvs.waiter = nil
 	return
 }
 
@@ -406,7 +406,7 @@ func NewWorldVirtualState(ws WorldState, reqs []LockRequest) WorldVirtualState {
 	if len(reqs) == 0 {
 		nwvs.committed = nwvs.base
 	} else {
-		nwvs.waitor = sync.NewCond(&nwvs.mutex)
+		nwvs.waiter = sync.NewCond(&nwvs.mutex)
 		applyLockRequests(nwvs, reqs)
 	}
 	return nwvs
