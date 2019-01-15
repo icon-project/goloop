@@ -7,11 +7,11 @@ import (
 
 type RawHexBytes []byte
 
-func (rh *RawHexBytes) MarshalJSON() ([]byte, error) {
-	if rh == nil || *rh == nil {
+func (rh RawHexBytes) MarshalJSON() ([]byte, error) {
+	if rh == nil || rh == nil {
 		return []byte("nil"), nil
 	}
-	s := hex.EncodeToString(*rh)
+	s := hex.EncodeToString(rh)
 	return json.Marshal(s)
 }
 
@@ -44,11 +44,11 @@ func (rh RawHexBytes) String() string {
 
 type HexBytes []byte
 
-func (hs *HexBytes) MarshalJSON() ([]byte, error) {
-	if hs == nil || *hs == nil {
+func (hs HexBytes) MarshalJSON() ([]byte, error) {
+	if hs == nil {
 		return []byte("nil"), nil
 	}
-	s := "0x" + hex.EncodeToString(*hs)
+	s := "0x" + hex.EncodeToString(hs)
 	return json.Marshal(s)
 }
 
