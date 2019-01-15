@@ -3,6 +3,12 @@ package service
 import (
 	"encoding/hex"
 	"encoding/json"
+	"log"
+	"math/big"
+	"reflect"
+	"regexp"
+	"strings"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
@@ -11,11 +17,6 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
 	ugorji "github.com/ugorji/go/codec"
-	"log"
-	"math/big"
-	"reflect"
-	"regexp"
-	"strings"
 )
 
 var FailureSystemError = &failureReason{
@@ -47,7 +48,7 @@ type eventLog struct {
 
 func (log *eventLog) ToJSON(v int) (*eventLogJSON, error) {
 	_, pts := decomposeSignature(string(log.Indexed[0]))
-	if len(pts)-1 != len(log.Indexed)+len(log.Data) {
+	if len(pts)+1 != len(log.Indexed)+len(log.Data) {
 		return nil, errors.New("NumberOfParametersAreNotSameAsData")
 	}
 
