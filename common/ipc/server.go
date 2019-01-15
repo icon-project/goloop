@@ -21,12 +21,18 @@ type Server interface {
 
 	// Close the port, and it causes loop end.
 	Close() error
+
+	Addr() net.Addr
 }
 
 type server struct {
 	mutex    sync.Mutex
 	listener net.Listener
 	handler  ConnectionHandler
+}
+
+func (s *server) Addr() net.Addr {
+	return s.listener.Addr()
 }
 
 func (s *server) Listen(network, address string) error {
