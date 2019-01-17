@@ -849,6 +849,11 @@ func (cs *consensus) applyRoundWAL() error {
 			if m.height() != cs.height {
 				continue
 			}
+			index := cs.validators.IndexOf(m.address())
+			if index < 0 {
+				continue
+			}
+			_, _ = cs.hvs.add(index, m)
 			var mstep step
 			if m.Type == voteTypePrevote {
 				mstep = stepPrevote
@@ -859,11 +864,6 @@ func (cs *consensus) applyRoundWAL() error {
 				round = m.round()
 				rstep = mstep
 			}
-			index := cs.validators.IndexOf(m.address())
-			if index < 0 {
-				continue
-			}
-			_, _ = cs.hvs.add(index, m)
 		case *voteListMessage:
 			for i := 0; i < m.VoteList.Len(); i++ {
 				vmsg := m.VoteList.Get(i)
