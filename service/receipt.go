@@ -274,7 +274,7 @@ func (r *receipt) AddLog(addr module.Address, indexed, data [][]byte) {
 	log.Data = data
 
 	r.data.EventLogs = append(r.data.EventLogs, log)
-	r.data.LogBloom.AddLog(log.Indexed)
+	r.data.LogBloom.AddLog(&log.Addr, log.Indexed)
 }
 
 func (r *receipt) SetCumulativeStepUsed(cumulativeUsed *big.Int) {

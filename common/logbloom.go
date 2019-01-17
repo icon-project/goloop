@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
 	"github.com/ugorji/go/codec"
 	"math/big"
@@ -16,7 +17,8 @@ const (
 )
 
 const (
-	configLogBloomLegacy = true
+	configLogBloomSHA256      = true
+	configLogBloomIncludeAddr = false
 )
 
 // logBloom store blooms of logs.
@@ -78,9 +80,12 @@ func (lb *LogBloom) addBit(idx uint16) {
 	lb.Int.SetBit(&lb.Int, int(idx), 1)
 }
 
-func (lb *LogBloom) AddLog(log [][]byte) {
+func (lb *LogBloom) AddLog(addr module.Address, log [][]byte) {
 	if len(log) == 0 {
 		return
+	}
+	if configLogBloomIncludeAddr {
+		lb.addLog(addr.Bytes())
 	}
 	for i, b := range log {
 		bs := make([]byte, len(b)+1)
@@ -93,7 +98,7 @@ func (lb *LogBloom) AddLog(log [][]byte) {
 func (lb *LogBloom) addLog(logs ...[]byte) {
 	for _, log := range logs {
 		var h []byte
-		if configLogBloomLegacy {
+		if configLogBloomSHA256 {
 			h = crypto.SHASum256(log)
 			h = []byte(hex.EncodeToString(h))
 		} else {
