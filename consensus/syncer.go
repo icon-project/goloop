@@ -257,7 +257,7 @@ func (s *syncer) OnReceive(sp module.ProtocolInfo, bs []byte,
 		return false, nil
 	}
 
-	msg, err := unmarshalMessage(sp, bs)
+	msg, err := unmarshalMessage(sp.Uint16(), bs)
 	if err != nil {
 		logger.Printf("OnReceive: error=%+v\n", err)
 		return false, err

@@ -134,7 +134,7 @@ func (cs *consensus) OnReceive(
 	cs.mutex.Lock()
 	defer cs.mutex.Unlock()
 
-	msg, err := unmarshalMessage(sp, bs)
+	msg, err := unmarshalMessage(sp.Uint16(), bs)
 	if err != nil {
 		logger.Printf("OnReceive: %+v\n", err)
 		return false, err

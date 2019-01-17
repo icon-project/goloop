@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
 )
 
@@ -33,9 +32,9 @@ var protocolConstructors = [...]protocolConstructor{
 	{protoVoteList, func() message { return newVoteListMessage() }},
 }
 
-func unmarshalMessage(sp module.ProtocolInfo, bs []byte) (message, error) {
+func unmarshalMessage(sp uint16, bs []byte) (message, error) {
 	for _, pc := range protocolConstructors {
-		if sp.Uint16() == pc.proto.Uint16() {
+		if sp == uint16(pc.proto) {
 			msg := pc.constructor()
 			if _, err := msgCodec.UnmarshalFromBytes(bs, msg); err != nil {
 				return nil, err
