@@ -16,14 +16,16 @@ import (
 )
 
 type JsonRpcServer struct {
+	ch module.Chain
 	bm module.BlockManager
 	sm module.ServiceManager
 	cs module.Consensus
 	nm module.NetworkManager
 }
 
-func NewJsonRpcServer(bm module.BlockManager, sm module.ServiceManager, cs module.Consensus, nm module.NetworkManager) JsonRpcServer {
+func NewJsonRpcServer(ch module.Chain, bm module.BlockManager, sm module.ServiceManager, cs module.Consensus, nm module.NetworkManager) JsonRpcServer {
 	return JsonRpcServer{
+		ch: ch,
 		bm: bm,
 		sm: sm,
 		cs: cs,
@@ -51,7 +53,7 @@ func (s *JsonRpcServer) jsonRpcHandler() http.Handler {
 
 	// api
 	router.Handle("/api/v2", v2.MethodRepository(s.bm, s.sm))
-	router.Handle("/api/v3", v3.MethodRepository(s.bm, s.sm))
+	router.Handle("/api/v3", v3.MethodRepository(s.ch, s.bm, s.sm, s.cs))
 
 	corsOrigins := handlers.AllowedOrigins([]string{"*"})
 	corsMethods := handlers.AllowedMethods([]string{"POST", "GET", "OPTIONS", "PUT", "DELETE"})

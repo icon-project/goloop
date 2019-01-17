@@ -1,13 +1,16 @@
 package v3
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"fmt"
-	"github.com/icon-project/goloop/common"
 	"log"
 	"reflect"
 	"strconv"
+
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/db"
 
 	"github.com/icon-project/goloop/module"
 	"github.com/intel-go/fastjson"
@@ -19,6 +22,13 @@ import (
 const apiEndPoint string = "https://testwallet.icon.foundation/api/v3"
 
 var rpcClient = client.NewClient(apiEndPoint)
+
+func addReason(rerr *jsonrpc.Error, err error) *jsonrpc.Error {
+	log.Printf("MKSONG: fail with reason err=%+v", err)
+	// rerr.Message = err.Error()
+	// rerr.Data = err.Error()
+	return rerr
+}
 
 // getLastBlock
 type getLastBlockHandler struct {
@@ -429,4 +439,138 @@ func (h getStatusHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMe
 	}
 
 	return result, nil
+}
+
+type getDataByHashHandler struct {
+	db db.Database
+}
+
+func (h getDataByHashHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+	var param struct {
+		Hash string `json:"hash" valid:"t_hash,required"`
+	}
+	if rpcErr := jsonrpc.Unmarshal(params, &param); rpcErr != nil {
+		return nil, rpcErr
+	}
+	if rpcErr := validateParam(&param); rpcErr != nil {
+		return nil, rpcErr
+	}
+	hash, err := hex.DecodeString(param.Hash[2:])
+	if err != nil {
+		return nil, addReason(jsonrpc.ErrInvalidParams(), err)
+	}
+
+	bk, err := h.db.GetBucket(db.BytesByHash)
+	if err != nil {
+		return nil, addReason(jsonrpc.ErrInternal(), err)
+	}
+
+	value, err := bk.Get(hash)
+	if err != nil {
+		return nil, addReason(jsonrpc.ErrInternal(), err)
+	}
+
+	if value == nil {
+		return nil, jsonrpc.ErrInvalidParams()
+	}
+	return value, nil
+}
+
+type getBlockHeaderByHeightHandler struct {
+	bm module.BlockManager
+}
+
+func (h getBlockHeaderByHeightHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+	var param struct {
+		Height string `json:"height" valid:"t_int,required"`
+	}
+	if rpcErr := jsonrpc.Unmarshal(params, &param); rpcErr != nil {
+		return nil, rpcErr
+	}
+	if rpcErr := validateParam(&param); rpcErr != nil {
+		return nil, rpcErr
+	}
+
+	height, err2 := strconv.ParseInt(param.Height, 0, 64)
+	if err2 != nil {
+		return nil, addReason(jsonrpc.ErrInvalidParams(), err2)
+	}
+
+	block, err2 := h.bm.GetBlockByHeight(height)
+	if err2 != nil {
+		return nil, addReason(jsonrpc.ErrInvalidParams(), err2)
+	}
+	buf := bytes.NewBuffer(nil)
+	if err2 := block.MarshalHeader(buf); err2 != nil {
+		return nil, addReason(jsonrpc.ErrInternal(), err2)
+	}
+	return buf.Bytes(), nil
+}
+
+type getVotesByHeightHandler struct {
+	cs module.Consensus
+}
+
+func (h getVotesByHeightHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+	var param struct {
+		Height string `json:"height" valid:"t_int,required"`
+	}
+	if rpcErr := jsonrpc.Unmarshal(params, &param); rpcErr != nil {
+		return nil, rpcErr
+	}
+	if rpcErr := validateParam(&param); rpcErr != nil {
+		return nil, rpcErr
+	}
+
+	height, err2 := strconv.ParseInt(param.Height, 0, 64)
+	if err2 != nil {
+		return nil, addReason(jsonrpc.ErrInvalidParams(), err2)
+	}
+	votes, err2 := h.cs.GetVotesForHeight(height)
+	if err2 != nil {
+		return nil, addReason(jsonrpc.ErrInvalidParams(), err2)
+	}
+	return votes.Bytes(), nil
+}
+
+type getProofForResultHandler struct {
+	bm module.BlockManager
+	sm module.ServiceManager
+}
+
+func (h getProofForResultHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (result interface{}, err *jsonrpc.Error) {
+	var param struct {
+		Hash  string `json:"hash" valid:"t_hash,required"`
+		Index string `json:"hash" valid:"t_int,required"`
+	}
+	if rpcErr := jsonrpc.Unmarshal(params, &param); rpcErr != nil {
+		return nil, rpcErr
+	}
+	if rpcErr := validateParam(&param); rpcErr != nil {
+		return nil, rpcErr
+	}
+
+	index, err2 := strconv.ParseInt(param.Index, 0, 64)
+	if err2 != nil {
+		return nil, addReason(jsonrpc.ErrInvalidParams(), err2)
+	}
+	hash, err2 := hex.DecodeString(param.Hash[2:])
+	if err2 != nil {
+		return nil, addReason(jsonrpc.ErrInvalidParams(), err2)
+	}
+
+	block, err2 := h.bm.GetBlock(hash)
+	if err2 != nil {
+		return nil, addReason(jsonrpc.ErrInvalidParams(), err2)
+	}
+	blockResult := block.Result()
+	rl := h.sm.ReceiptListFromResult(blockResult, module.TransactionGroupNormal)
+	if rl == nil {
+		return nil, addReason(jsonrpc.ErrInvalidParams(), err2)
+	}
+	proofs, err2 := rl.GetProof(int(index))
+	if err2 != nil {
+		return nil, addReason(jsonrpc.ErrInvalidParams(), err2)
+	}
+	return proofs, nil
 }

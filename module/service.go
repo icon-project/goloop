@@ -84,6 +84,7 @@ type ReceiptIterator interface {
 
 type ReceiptList interface {
 	Get(int) (Receipt, error)
+	GetProof(n int) ([][]byte, error)
 	Iterator() ReceiptIterator
 	Hash() []byte
 	Flush() error

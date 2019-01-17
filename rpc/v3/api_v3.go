@@ -33,9 +33,14 @@ const (
 	getTransactionByHash string = "icx_getTransactionByHash"
 	sendTransaction      string = "icx_sendTransaction"
 	getStatus            string = "ise_getStatus"
+
+	getDataByHash          string = "icx_getDataByHash"
+	getBlockHeaderByHeight string = "icx_getBlockHeaderByHeight"
+	getVotesByHeight       string = "icx_getVotesByHeight"
+	getProofForResult      string = "icx_getProofForResult"
 )
 
-func MethodRepository(bm module.BlockManager, sm module.ServiceManager) *jsonrpc.MethodRepository {
+func MethodRepository(ch module.Chain, bm module.BlockManager, sm module.ServiceManager, cs module.Consensus) *jsonrpc.MethodRepository {
 
 	v3 := jsonrpc.NewMethodRepository()
 
@@ -52,5 +57,10 @@ func MethodRepository(bm module.BlockManager, sm module.ServiceManager) *jsonrpc
 	v3.RegisterMethod(sendTransaction, sendTransactionHandler{sm: sm}, sendTransactionParamV3{}, nil)
 	v3.RegisterMethod(getStatus, getStatusHandler{}, getStatusParam{}, nil)
 
+	// api v3.1
+	v3.RegisterMethod(getDataByHash, getDataByHashHandler{db: ch.Database()}, nil, nil)
+	v3.RegisterMethod(getBlockHeaderByHeight, getBlockHeaderByHeightHandler{bm: bm}, nil, nil)
+	v3.RegisterMethod(getVotesByHeight, getVotesByHeightHandler{cs: cs}, nil, nil)
+	v3.RegisterMethod(getProofForResult, getProofForResultHandler{bm: bm, sm: sm}, nil, nil)
 	return v3
 }

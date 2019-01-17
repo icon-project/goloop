@@ -108,7 +108,7 @@ func (c *singleChain) Start() {
 		log.Panicf("singleChain.Start: %+v\n", err)
 	}
 
-	c.sv = rpc.NewJsonRpcServer(c.bm, c.sm, c.cs, c.nm)
+	c.sv = rpc.NewJsonRpcServer(c, c.bm, c.sm, c.cs, c.nm)
 
 	if err := c.sv.ListenAndServe(c.cfg.RPCAddr); err != nil {
 		log.Printf("Fail to Listen on RPC server err=%+v", err)

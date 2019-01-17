@@ -1168,6 +1168,12 @@ func (cs *consensus) GetStatus() *module.ConsensusStatus {
 	return res
 }
 
+func (cs *consensus) GetVotesForHeight(height int64) (module.VoteList, error) {
+	// TODO implement
+	logger.Panicln("cs.GetVotesForHeight: not implemented")
+	return nil, errors.New("NotImplemented")
+}
+
 func (cs *consensus) getCommit(h int64) *commit {
 	if h > cs.height || (h == cs.height && cs.step < stepCommit) {
 		logger.Panicf("cs.getCommit: invalid param h=%v cs.height=%v cs.step=%v\n", h, cs.height, cs.step)

@@ -55,6 +55,18 @@ func (l *receiptList) Get(n int) (module.Receipt, error) {
 	return nil, fmt.Errorf("IllegalObjectType(%T)", obj)
 }
 
+func (l *receiptList) GetProof(n int) ([][]byte, error) {
+	b, err := codec.MP.MarshalToBytes(uint(n))
+	if err != nil {
+		return nil, err
+	}
+	proof := l.immutableTrie.GetProof(b)
+	if proof == nil {
+		return nil, errors.Errorf("IllegalArgument")
+	}
+	return proof, nil
+}
+
 func (l *receiptList) Hash() []byte {
 	return l.immutableTrie.Hash()
 }
