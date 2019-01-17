@@ -45,6 +45,8 @@ type WALReader interface {
 	Read(v interface{}) (left []byte, err error)
 	ReadBytes() ([]byte, error)
 	Close() error
+	// Repair repairs UnexpectedEOF or CorruptedWAL by truncating.
+	Repair() error
 }
 
 type WALConfig struct {
@@ -74,6 +76,7 @@ type walInfo struct {
 	tailIdx   uint64
 	totalSize int64
 	tailSize  int64
+	fileSizes []int64
 }
 
 func fileFor(id string, idx uint64) string {
@@ -96,6 +99,7 @@ func readWALInfo(id string) (*walInfo, error) {
 	}
 
 	prefix := filepath.Base(id) + "_"
+	fileSizeFor := make(map[uint64]int64)
 	for _, entry := range entries {
 		if !strings.HasPrefix(entry.Name(), prefix) {
 			continue
@@ -107,6 +111,7 @@ func readWALInfo(id string) (*walInfo, error) {
 		if err != nil {
 			continue
 		}
+		fileSizeFor[idx] = fileSize
 		//log.Printf("file=%v size=%v\n", entry.Name(), entry.Size())
 		if maxIndex == 0 || maxIndex < idx {
 			maxIndex = idx
@@ -117,11 +122,21 @@ func readWALInfo(id string) (*walInfo, error) {
 		}
 	}
 
+	nFiles := maxIndex - minIndex + 1
+	if nFiles < 0 {
+		nFiles = 0
+	}
+	fileSizes := make([]int64, nFiles)
+	for i := uint64(0); i < nFiles; i++ {
+		fileSizes[i] = fileSizeFor[i+minIndex]
+	}
+
 	return &walInfo{
 		minIndex,
 		maxIndex,
 		totalSize,
 		tailSize,
+		fileSizes,
 	}, nil
 }
 
@@ -305,9 +320,12 @@ func (w *walWriter) doHousekeeping() {
 }
 
 type walReader struct {
-	mutex  sync.Mutex
-	files  []*os.File
-	reader io.Reader
+	mutex       sync.Mutex
+	files       []*os.File
+	reader      io.Reader
+	validOffset int64
+	id          string
+	wi          *walInfo
 }
 
 func OpenWALForRead(id string) (WALReader, error) {
@@ -340,6 +358,8 @@ func OpenWALForRead(id string) (WALReader, error) {
 	w.reader = bufio.NewReaderSize(io.MultiReader(readers...), configWALBufSize)
 	w.files = files
 	files = nil
+	w.id = id
+	w.wi = wi
 	return w, nil
 }
 
@@ -363,6 +383,7 @@ func (w *walReader) ReadBytes() ([]byte, error) {
 		return nil, errors.Wrapf(errCorruptedWAL, "bad crc: read:%x actural:%x payloadLen:%v payload:%x", crc, actualCRC, payloadLen, payload)
 	}
 
+	w.validOffset += int64(headerLen + payloadLen)
 	return payload, nil
 }
 
@@ -380,6 +401,33 @@ func (w *walReader) Close() error {
 		if err != nil {
 			return errors.WithStack(err)
 		}
+	}
+	w.files = nil
+	return nil
+}
+
+func (w *walReader) Repair() error {
+	w.Close()
+
+	left := w.validOffset
+	idx := w.wi.headIdx
+	for _, s := range w.wi.fileSizes {
+		if left <= s {
+			if left < s {
+				err := os.Truncate(fileFor(w.id, idx), left)
+				if err != nil {
+					return errors.WithStack(err)
+				}
+			}
+			for i := idx + 1; i <= w.wi.tailIdx; i++ {
+				if err := os.Remove(fileFor(w.id, idx)); err != nil {
+					return errors.WithStack(err)
+				}
+			}
+			return nil
+		}
+		left -= s
+		idx++
 	}
 	return nil
 }
@@ -400,8 +448,4 @@ func IsEOF(err error) bool {
 
 func IsUnexpectedEOF(err error) bool {
 	return errors.Cause(err) == io.ErrUnexpectedEOF
-}
-
-func IsAnyEOF(err error) bool {
-	return IsEOF(err) || IsUnexpectedEOF(err)
 }

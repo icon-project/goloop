@@ -813,7 +813,18 @@ func (cs *consensus) applyRoundWAL() error {
 	rstep := stepPrepropose
 	for {
 		bs, err := wr.ReadBytes()
-		if IsAnyEOF(err) {
+		if IsEOF(err) {
+			err = wr.Close()
+			if err != nil {
+				return err
+			}
+			break
+		} else if IsCorruptedWAL(err) || IsUnexpectedEOF(err) {
+			logger.Printf("applyRoundWAL: %+v\n", err)
+			err := wr.Repair()
+			if err != nil {
+				return err
+			}
 			break
 		} else if err != nil {
 			return err
@@ -871,10 +882,6 @@ func (cs *consensus) applyRoundWAL() error {
 			}
 		}
 	}
-	err = wr.Close()
-	if err != nil {
-		return err
-	}
 	cs.round = round
 	cs.step = rstep
 	return nil
@@ -891,7 +898,18 @@ func (cs *consensus) applyLockWAL() error {
 	var lastBPSetLockRound int32
 	for {
 		bs, err := wr.ReadBytes()
-		if IsAnyEOF(err) {
+		if IsEOF(err) {
+			err = wr.Close()
+			if err != nil {
+				return err
+			}
+			break
+		} else if IsCorruptedWAL(err) || IsUnexpectedEOF(err) {
+			logger.Printf("applyLockWAL: %+v\n", err)
+			err := wr.Repair()
+			if err != nil {
+				return err
+			}
 			break
 		} else if err != nil {
 			return err
@@ -947,10 +965,6 @@ func (cs *consensus) applyLockWAL() error {
 			}
 		}
 	}
-	err = wr.Close()
-	if err != nil {
-		return err
-	}
 	if lastBPSet != nil {
 		blk, err := cs.bm.NewBlockFromReader(lastBPSet.NewReader())
 		if err != nil {
@@ -973,7 +987,18 @@ func (cs *consensus) applyCommitWAL(prevValidators module.ValidatorList) error {
 	}
 	for {
 		bs, err := wr.ReadBytes()
-		if IsAnyEOF(err) {
+		if IsEOF(err) {
+			err = wr.Close()
+			if err != nil {
+				return err
+			}
+			break
+		} else if IsCorruptedWAL(err) || IsUnexpectedEOF(err) {
+			logger.Printf("applyCommitWAL: %+v\n", err)
+			err := wr.Repair()
+			if err != nil {
+				return err
+			}
 			break
 		} else if err != nil {
 			return err
@@ -1019,10 +1044,6 @@ func (cs *consensus) applyCommitWAL(prevValidators module.ValidatorList) error {
 				}
 			}
 		}
-	}
-	err = wr.Close()
-	if err != nil {
-		return err
 	}
 	return nil
 }
