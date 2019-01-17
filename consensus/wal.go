@@ -22,6 +22,7 @@ const (
 	configWALFileLimit            = 1024 * 1024 * 2
 	configWALTotalLimit           = configWALFileLimit * 4
 	configWALHousekeepingInterval = time.Second * 1
+	configWALSyncInterval         = time.Second * 1
 )
 
 const (
@@ -53,6 +54,7 @@ type WALConfig struct {
 	FileLimit            int64
 	TotalLimit           int64
 	HousekeepingInterval time.Duration
+	SyncInterval         time.Duration
 }
 
 type file struct {
@@ -60,12 +62,13 @@ type file struct {
 }
 
 type walWriter struct {
-	mutex   sync.Mutex
-	id      string
-	cfg     WALConfig
-	buf     *bufio.Writer
-	tail    file
-	tailIdx uint64
+	mutex            sync.Mutex
+	id               string
+	cfg              WALConfig
+	buf              *bufio.Writer
+	tail             file
+	tailIdx          uint64
+	eldestUnsyncData *time.Time
 
 	ticker     *time.Ticker
 	tickerStop chan struct{}
@@ -155,6 +158,9 @@ func OpenWALForWrite(id string, cfg *WALConfig) (WALWriter, error) {
 	if w.cfg.HousekeepingInterval <= time.Duration(0) {
 		w.cfg.HousekeepingInterval = configWALHousekeepingInterval
 	}
+	if w.cfg.SyncInterval <= time.Duration(0) {
+		w.cfg.SyncInterval = configWALSyncInterval
+	}
 
 	w.buf = bufio.NewWriterSize(&w.tail, configWALBufSize)
 	wi, err := readWALInfo(w.id)
@@ -194,8 +200,12 @@ func (w *walWriter) WriteBytes(payload []byte) (int, error) {
 	binary.BigEndian.PutUint32(frame[4:headerLen], uint32(payloadLen))
 	copy(frame[headerLen:], payload)
 	//log.Printf("wal write crc=%x payloadLen:%v payload:%x\n", crc, payloadLen, payload)
-
-	return w.buf.Write(frame)
+	n, err := w.buf.Write(frame)
+	if err == nil && w.eldestUnsyncData == nil {
+		now := time.Now()
+		w.eldestUnsyncData = &now
+	}
+	return n, err
 }
 
 func (w *walWriter) Write(v interface{}) error {
@@ -215,11 +225,14 @@ func (w *walWriter) Sync() error {
 }
 
 func (w *walWriter) sync() error {
-	err := w.buf.Flush()
-	if err != nil {
+	if err := w.buf.Flush(); err != nil {
 		return errors.WithStack(err)
 	}
-	return w.tail.Sync()
+	if err := w.tail.Sync(); err != nil {
+		return err
+	}
+	w.eldestUnsyncData = nil
+	return nil
 }
 
 func (w *walWriter) startHousekeeping() {
@@ -299,6 +312,11 @@ func (w *walWriter) doHousekeeping() {
 		err := w.shift()
 		if err != nil {
 			panic(err)
+		}
+	} else {
+		eud := w.eldestUnsyncData
+		if eud != nil && eud.Add(w.cfg.SyncInterval).Before(time.Now()) {
+			w.sync()
 		}
 	}
 	//log.Printf("wi.totalSize=%v cfg.TotalLimit=%v\n", wi.totalSize, w.cfg.TotalLimit)
