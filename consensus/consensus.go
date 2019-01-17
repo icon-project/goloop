@@ -304,10 +304,8 @@ func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) e
 			cs.enterPrecommit()
 		}
 	} else if cs.round < msg.Round {
-		cs.enterProposeForRound(msg.Round)
-		if cs.step < stepPrevote {
-			cs.enterPrevote()
-		}
+		cs.resetForNewRound(msg.Round)
+		cs.enterPrevote()
 	}
 	return nil
 }
@@ -327,10 +325,8 @@ func (cs *consensus) handlePrecommitMessage(msg *voteMessage, precommits *voteSe
 			cs.enterProposeForRound(cs.round + 1)
 		}
 	} else if cs.round < msg.Round {
-		cs.enterProposeForRound(msg.Round)
-		if cs.step < stepPrecommit {
-			cs.enterPrecommit()
-		}
+		cs.resetForNewRound(msg.Round)
+		cs.enterPrecommit()
 	}
 	return nil
 }
