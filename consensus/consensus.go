@@ -1020,6 +1020,10 @@ func (cs *consensus) applyCommitWAL(prevValidators module.ValidatorList) error {
 			}
 		}
 	}
+	err = wr.Close()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
