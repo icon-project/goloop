@@ -119,6 +119,7 @@ func newInitTransition(db db.Database, result []byte,
 	return &transition{
 		patchTransactions:  NewTransactionListFromSlice(db, nil),
 		normalTransactions: NewTransactionListFromSlice(db, nil),
+		bi:                 &blockInfo{int64(0), int64(0)},
 		db:                 db,
 		cm:                 cm,
 		em:                 em,
