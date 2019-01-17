@@ -115,7 +115,8 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 		p.peerRoundState = nil
 		p.debug.Printf("PC for round %v\n", e.Round())
 		return protoVoteList, msg
-	} else if p.Round < e.Round()-1 {
+	} else if p.Round < e.Round() {
+		// TODO: check peer step
 		vl := e.GetPrecommits(e.Round() - 1)
 		msg := newVoteListMessage()
 		msg.VoteList = vl
