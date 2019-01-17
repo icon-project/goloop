@@ -876,6 +876,23 @@ func (cs *consensus) applyRoundWAL() error {
 				}
 				_, _ = cs.hvs.add(index, vmsg)
 			}
+			vmsg := m.VoteList.Get(0)
+			if vmsg.Height != cs.height {
+				continue
+			}
+			var mstep step
+			if vmsg.Type == voteTypePrevote {
+				mstep = stepPrevote
+			} else {
+				mstep = stepPrecommit
+			}
+			if round < vmsg.Round || (round == vmsg.Round && rstep < mstep) {
+				votes := cs.hvs.votesFor(vmsg.Round, vmsg.Type)
+				if votes.hasOverTwoThirds() {
+					round = vmsg.Round
+					rstep = mstep
+				}
+			}
 		}
 	}
 	cs.round = round
@@ -937,11 +954,29 @@ func (cs *consensus) applyLockWAL() error {
 				}
 				_, _ = cs.hvs.add(index, vmsg)
 			}
-			prevotes := cs.hvs.votesFor(m.VoteList.Get(0).Round, voteTypePrevote)
+			vmsg := m.VoteList.Get(0)
+			if vmsg.Height != cs.height {
+				continue
+			}
+			prevotes := cs.hvs.votesFor(vmsg.Round, voteTypePrevote)
 			psid, ok := prevotes.getOverTwoThirdsPartSetID()
 			if ok && psid != nil {
 				bpset = newPartSetFromID(psid)
-				bpsetLockRound = m.VoteList.Get(0).Round
+				bpsetLockRound = vmsg.Round
+			}
+			// update round/step
+			var mstep step
+			if vmsg.Type == voteTypePrevote {
+				mstep = stepPrevote
+			} else {
+				mstep = stepPrecommit
+			}
+			if cs.round < vmsg.Round || (cs.round == vmsg.Round && cs.step < mstep) {
+				votes := cs.hvs.votesFor(vmsg.Round, vmsg.Type)
+				if votes.hasOverTwoThirds() {
+					cs.round = vmsg.Round
+					cs.step = mstep
+				}
 			}
 		case *blockPartMessage:
 			if m.Height != cs.height {
@@ -1037,6 +1072,24 @@ func (cs *consensus) applyCommitWAL(prevValidators module.ValidatorList) error {
 						continue
 					}
 					_, _ = cs.hvs.add(index, vmsg)
+				}
+				// update round/step
+				vmsg := m.VoteList.Get(0)
+				if vmsg.Height != cs.height {
+					continue
+				}
+				var mstep step
+				if vmsg.Type == voteTypePrevote {
+					mstep = stepPrevote
+				} else {
+					mstep = stepPrecommit
+				}
+				if cs.round < vmsg.Round || (cs.round == vmsg.Round && cs.step < mstep) {
+					votes := cs.hvs.votesFor(vmsg.Round, vmsg.Type)
+					if votes.hasOverTwoThirds() {
+						cs.round = vmsg.Round
+						cs.step = mstep
+					}
 				}
 			}
 		}
