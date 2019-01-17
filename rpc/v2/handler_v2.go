@@ -4,15 +4,16 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"github.com/icon-project/goloop/common"
 	"log"
 	"reflect"
 	"strconv"
 
-	"github.com/icon-project/goloop/module"
 	"github.com/intel-go/fastjson"
 	"github.com/osamingo/jsonrpc"
 	client "github.com/ybbus/jsonrpc"
+
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/module"
 )
 
 // ICON TestNet v2
@@ -141,7 +142,7 @@ type getLastBlockHandler struct {
 
 func (h getLastBlockHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
-	//var result blockV2
+	// var result blockV2
 	result := blockV2{}
 
 	if jsonRpcV2 == 0 {
@@ -192,7 +193,7 @@ func (h getBlockByHashHandler) ServeJSONRPC(c context.Context, params *fastjson.
 		return nil, err
 	}
 
-	//var result blockV2
+	// var result blockV2
 	result := blockV2{}
 
 	if jsonRpcV2 == 0 {
@@ -244,7 +245,7 @@ func (h getBlockByHeightHandler) ServeJSONRPC(c context.Context, params *fastjso
 		return nil, err
 	}
 
-	//var result blockV2
+	// var result blockV2
 	result := blockV2{}
 
 	if jsonRpcV2 == 0 {

@@ -9,13 +9,14 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/db"
-
-	"github.com/icon-project/goloop/module"
 	"github.com/intel-go/fastjson"
 	"github.com/osamingo/jsonrpc"
 	client "github.com/ybbus/jsonrpc"
+
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service"
 )
 
 // ICON TestNet v3
@@ -37,10 +38,10 @@ type getLastBlockHandler struct {
 
 func (h getLastBlockHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 
-	//_, span := trace.StartSpan(context.Background(), getLastBlock)
-	//defer span.End()
+	// _, span := trace.StartSpan(context.Background(), getLastBlock)
+	// defer span.End()
 
-	//var result blockV2
+	// var result blockV2
 	result := blockV2{}
 
 	if jsonRpcV3 == 0 {
@@ -88,7 +89,7 @@ func (h getBlockByHeightHandler) ServeJSONRPC(c context.Context, params *fastjso
 		return nil, err
 	}
 
-	//var result blockV2
+	// var result blockV2
 	result := blockV2{}
 
 	if jsonRpcV3 == 0 {
@@ -138,7 +139,7 @@ func (h getBlockByHashHandler) ServeJSONRPC(c context.Context, params *fastjson.
 		return nil, err
 	}
 
-	//var result blockV2
+	// var result blockV2
 	result := blockV2{}
 
 	if jsonRpcV3 == 0 {
@@ -368,21 +369,21 @@ func (h getTransactionByHashHandler) ServeJSONRPC(c context.Context, params *fas
 			var txMap interface{}
 			switch tx.Version() {
 			case jsonRpcV2:
-				txV2 := transactionV2{}
+				// txV2 := transactionV2{}
 				txMap, err = tx.ToJSON(jsonRpcV2)
 				if err != nil {
 					log.Println(err.Error())
 				}
-				convertToResult(txMap, &txV2, reflect.TypeOf(txV2))
-				return txV2, nil
+				// convertToResult(txMap, &txV2, reflect.TypeOf(txV2))
+				return txMap, nil
 			case jsonRpcV3:
-				txV3 := transactionV3{}
+				// txV3 := transactionV3{}
 				txMap, err = tx.ToJSON(jsonRpcV3)
 				if err != nil {
 					log.Println(err.Error())
 				}
-				convertToResult(txMap, &txV3, reflect.TypeOf(txV3))
-				return txV3, nil
+				// convertToResult(txMap, &txV3, reflect.TypeOf(txV3))
+				return txMap, nil
 			}
 		}
 	}
@@ -408,10 +409,20 @@ func (h sendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjson
 	// sendTransaction Call
 	tx, _ := params.MarshalJSON()
 	txHash, err := h.sm.SendTransaction(tx)
+
 	if err != nil {
-		log.Println(err.Error())
-		return nil, jsonrpc.ErrInternal()
+		if err == service.ErrTransactionPoolOverFlow {
+			error := &jsonrpc.Error{
+				Code:    -32101,
+				Message: "TransactionPool Overflow",
+			}
+			return nil, error
+		} else {
+			log.Println(err.Error())
+			return nil, jsonrpc.ErrInternal()
+		}
 	}
+
 	result := fmt.Sprintf("0x%x", txHash)
 
 	return result, nil

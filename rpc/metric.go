@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/icon-project/goloop/module"
 	"github.com/intel-go/fastjson"
 	"github.com/osamingo/jsonrpc"
 
@@ -16,6 +15,8 @@ import (
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 	"go.opencensus.io/trace"
+
+	"github.com/icon-project/goloop/module"
 )
 
 var (
@@ -71,7 +72,7 @@ func promethusExporter(cs module.Consensus) *prometheus.Exporter {
 	// Record some data points...
 	go func() {
 		// wait for consensus initializing
-		//time.Sleep(5000 * time.Millisecond)
+		// time.Sleep(5000 * time.Millisecond)
 
 		ctx, err := tag.New(context.Background(), tag.Insert(hostname, os.Getenv("NODE_NAME")))
 		if err != nil {
@@ -96,11 +97,11 @@ func jaegerExporter() {
 
 	// jaeger
 	agentEndpointURI := "localhost:6831"
-	//collectorEndpointURI := "http://localhost:14268"
+	// collectorEndpointURI := "http://localhost:14268"
 
 	je, err := jaeger.NewExporter(jaeger.Options{
 		AgentEndpoint: agentEndpointURI,
-		//CollectorEndpoint: collectorEndpointURI,
+		// CollectorEndpoint: collectorEndpointURI,
 		Process: jaeger.Process{
 			ServiceName: "json-rpc",
 		},

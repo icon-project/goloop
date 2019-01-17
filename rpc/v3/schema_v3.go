@@ -6,8 +6,9 @@ import (
 	"strings"
 
 	"github.com/asaskevich/govalidator"
-	"github.com/icon-project/goloop/module"
 	"github.com/osamingo/jsonrpc"
+
+	"github.com/icon-project/goloop/module"
 )
 
 // JSON RPC version
@@ -171,7 +172,7 @@ func validateParam(s interface{}) *jsonrpc.Error {
 
 func convertToResult(source interface{}, result interface{}, target reflect.Type) error {
 	jsonMap := source.(map[string]interface{})
-	//log.Printf("convert : [%s]", target.Name())
+	// log.Printf("convert : [%s]", target.Name())
 
 	v := reflect.ValueOf(result).Elem()
 	for i := 0; i < target.NumField(); i++ {
@@ -184,10 +185,10 @@ func convertToResult(source interface{}, result interface{}, target reflect.Type
 		vf := v.FieldByName(field.Name)
 		switch vt := value.(type) {
 		case string:
-			//log.Printf("%s : %s", field.Name, vt)
+			// log.Printf("%s : %s", field.Name, vt)
 			vf.SetString(vt)
 		case int64:
-			//log.Printf("%s : %d", field.Name, vt)
+			// log.Printf("%s : %d", field.Name, vt)
 			vf.SetInt(value.(int64))
 		}
 	}
@@ -198,24 +199,24 @@ func addConfirmedTxList(txList module.TransactionList, result *blockV2) error {
 
 	for it := txList.Iterator(); it.Has(); it.Next() {
 		tx, _, _ := it.Get()
-		tx2 := transactionV2{}
-		tx3 := transactionV3{}
+		// tx2 := transactionV2{}
+		// tx3 := transactionV3{}
 
 		switch tx.Version() {
 		case jsonRpcV2:
 			txMap, err := tx.ToJSON(jsonRpcV2)
-			err = convertToResult(txMap, &tx2, reflect.TypeOf(tx2))
+			// err = convertToResult(txMap, &tx2, reflect.TypeOf(tx2))
 			if err != nil {
 				log.Printf("Fail to tx convert JSON(v2) err=%+v", err)
 			}
-			result.Transactions = append(result.Transactions, tx2)
+			result.Transactions = append(result.Transactions, txMap)
 		case jsonRpcV3:
 			txMap, err := tx.ToJSON(jsonRpcV3)
-			err = convertToResult(txMap, &tx3, reflect.TypeOf(tx3))
+			// err = convertToResult(txMap, &tx3, reflect.TypeOf(tx3))
 			if err != nil {
 				log.Printf("Fail to tx convert JSON(v3) err=%+v", err)
 			}
-			result.Transactions = append(result.Transactions, tx3)
+			result.Transactions = append(result.Transactions, txMap)
 		}
 	}
 	return nil
