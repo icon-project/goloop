@@ -48,6 +48,7 @@ func unmarshalMessage(sp module.ProtocolInfo, bs []byte) (message, error) {
 
 type message interface {
 	verify() error
+	subprotocol() uint16
 }
 
 type _HR struct {
@@ -108,6 +109,10 @@ func (msg *proposalMessage) verify() error {
 	return msg.signedBase.verify()
 }
 
+func (msg *proposalMessage) subprotocol() uint16 {
+	return uint16(protoProposal)
+}
+
 func (msg *proposalMessage) String() string {
 	return fmt.Sprintf("ProposalMessage[H=%d,R=%d,parts=%d,eoa=%s", msg.Height, msg.Round, msg.BlockPartSetID.Count, msg.address())
 }
@@ -129,6 +134,10 @@ func (msg *blockPartMessage) verify() error {
 		return errors.Errorf("bad height %v", msg.Height)
 	}
 	return nil
+}
+
+func (msg *blockPartMessage) subprotocol() uint16 {
+	return uint16(protoBlockPart)
 }
 
 func (msg *blockPartMessage) String() string {
@@ -200,6 +209,10 @@ func (msg *voteMessage) verify() error {
 	return msg.signedBase.verify()
 }
 
+func (msg *voteMessage) subprotocol() uint16 {
+	return uint16(protoVote)
+}
+
 func (msg *voteMessage) String() string {
 	return fmt.Sprintf("VoteMessage[%s,H=%d,R=%d,bid=<%x>,sig=%s]", msg.Type, msg.Height, msg.Round, msg.BlockID, msg.address())
 }
@@ -241,6 +254,10 @@ func (msg *roundStateMessage) verify() error {
 	return nil
 }
 
+func (msg *roundStateMessage) subprotocol() uint16 {
+	return uint16(protoRoundState)
+}
+
 type voteListMessage struct {
 	VoteList *roundVoteList
 }
@@ -255,4 +272,8 @@ func (msg *voteListMessage) verify() error {
 
 func (msg *voteListMessage) String() string {
 	return fmt.Sprintf("VoteListMessage:%v", msg.VoteList)
+}
+
+func (msg *voteListMessage) subprotocol() uint16 {
+	return uint16(protoVoteList)
 }
