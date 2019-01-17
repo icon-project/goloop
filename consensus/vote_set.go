@@ -21,6 +21,10 @@ func (vs *voteSet) add(index int, v *voteMessage) bool {
 		if omsg.vote.Equal(&v.vote) {
 			return false
 		}
+		psid, ok := vs.getOverTwoThirdsPartSetID()
+		if ok && psid != nil && psid.Equal(v.BlockPartSetID) {
+			return false
+		}
 		for i, c := range vs.counters {
 			if c.partsID.Equal(omsg.BlockPartSetID) {
 				vs.counters[i].count--
