@@ -76,6 +76,10 @@ type walInfo struct {
 	tailSize  int64
 }
 
+func fileFor(id string, idx uint64) string {
+	return fmt.Sprintf("%s_%d", id, idx)
+}
+
 func readWALInfo(id string) (*walInfo, error) {
 	groupDir := filepath.Dir(id)
 	var minIndex, maxIndex uint64 = maxUint64, 0
@@ -148,7 +152,7 @@ func OpenWALForWrite(id string, cfg *WALConfig) (WALWriter, error) {
 	if err != nil {
 		return nil, err
 	}
-	w.tail.File, err = os.OpenFile(fmt.Sprintf("%s_%d", w.id, wi.tailIdx), os.O_CREATE|os.O_WRONLY|os.O_APPEND, walPermission)
+	w.tail.File, err = os.OpenFile(fileFor(w.id, wi.tailIdx), os.O_CREATE|os.O_WRONLY|os.O_APPEND, walPermission)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -258,7 +262,7 @@ func (w *walWriter) shift() error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	w.tail.File, err = os.OpenFile(fmt.Sprintf("%s_%d", w.id, w.tailIdx+1), os.O_CREATE|os.O_WRONLY|os.O_APPEND, walPermission)
+	w.tail.File, err = os.OpenFile(fileFor(w.id, w.tailIdx+1), os.O_CREATE|os.O_WRONLY|os.O_APPEND, walPermission)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -284,7 +288,7 @@ func (w *walWriter) doHousekeeping() {
 	}
 	//log.Printf("wi.totalSize=%v cfg.TotalLimit=%v\n", wi.totalSize, w.cfg.TotalLimit)
 	for wi.totalSize > w.cfg.TotalLimit {
-		path := fmt.Sprintf("%s_%d", w.id, wi.headIdx)
+		path := fileFor(w.id, wi.headIdx)
 		fInfo, err := os.Stat(path)
 		if err != nil {
 			err = errors.WithStack(err)
@@ -326,7 +330,7 @@ func OpenWALForRead(id string) (WALReader, error) {
 	}()
 
 	for i := 0; i < len(files); i++ {
-		files[i], err = os.Open(fmt.Sprintf("%s_%d", id, wi.headIdx+uint64(i)))
+		files[i], err = os.Open(fileFor(id, wi.headIdx+uint64(i)))
 		if err != nil {
 			return nil, errors.WithStack(err)
 		}
