@@ -19,7 +19,7 @@ from iconcommons import IconConfig, Logger
 from .pyexec import PyExecEngine
 from .ipc.proxy import ServiceManagerProxy
 
-default_address = '/tmp/pyee_uds_socket'
+default_address = '/tmp/ee.socket'
 default_log_config = {
     "log": {
         "logger": "pyexec",
@@ -40,7 +40,9 @@ def main():
     parser.add_argument('-v', '--verbose', dest='verbose', action='store_true',
                         help='verbose mode')
     parser.add_argument('-s', '--socket', dest='socket',
-                        help='an UNIX domain socket address for the server')
+                        help='a UNIX domain socket address for connection')
+    parser.add_argument('-u', '--uuid', dest='uuid', required=True,
+                        help='an UUID for this instance')
     args = parser.parse_args()
 
     if args.socket:
@@ -52,7 +54,7 @@ def main():
         init_logger()
 
     engine = PyExecEngine(ServiceManagerProxy())
-    engine.connect(server_address)
+    engine.connect(server_address, args.uuid)
     engine.process()
 
 

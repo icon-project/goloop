@@ -346,5 +346,6 @@ func newConnection(m *manager, c ipc.Connection) (*proxy, error) {
 }
 
 func newUID() string {
-	return uuid.NewV4().String()
+	uid, _ := uuid.NewV4()
+	return uid.String()
 }

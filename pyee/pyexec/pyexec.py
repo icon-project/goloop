@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 from typing import Tuple, Any, Union, List
 from iconcommons import Logger
 
@@ -139,10 +138,10 @@ class PyExecEngine(object):
                 info.add_event(api[1], api[2], inputs)
         return info
 
-    def connect(self, addr: str):
-        print(f"connect({addr})")
+    def connect(self, addr: str, uuid: str):
+        print(f"connect({addr}, {uuid})")
         self.__proxy.connect(addr)
-        self.__proxy.send_version(version_number, os.getpid(), "python")
+        self.__proxy.send_version(version_number, uuid, "python")
 
     def get_info(self) -> Any:
         info = self.__proxy.get_info()

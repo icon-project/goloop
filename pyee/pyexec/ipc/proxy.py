@@ -173,10 +173,10 @@ class ServiceManagerProxy:
     def connect(self, addr):
         self.__client.connect(addr)
 
-    def send_version(self, v: int, pid: int, name: str):
+    def send_version(self, v: int, uuid: str, name: str):
         self.__client.send(Message.VERSION, [
             v,
-            pid,
+            uuid,
             name,
         ])
 
