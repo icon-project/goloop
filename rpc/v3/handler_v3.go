@@ -537,7 +537,7 @@ func (h getVotesByHeightHandler) ServeJSONRPC(c context.Context, params *fastjso
 	if err2 != nil {
 		return nil, addReason(jsonrpc.ErrInvalidParams(), err2)
 	}
-	votes, err2 := h.cs.GetVotesForHeight(height)
+	votes, err2 := h.cs.GetVotesByHeight(height)
 	if err2 != nil {
 		return nil, addReason(jsonrpc.ErrInvalidParams(), err2)
 	}
