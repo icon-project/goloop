@@ -1017,11 +1017,12 @@ func (cs *consensus) applyLockWAL() error {
 		if err != nil {
 			return err
 		}
-		cs.lockedBlockParts = &blockPartSet{
+		cs.currentBlockParts = &blockPartSet{
 			PartSet:   lastBPSet,
 			block:     blk,
 			validated: false,
 		}
+		cs.lockedBlockParts = cs.currentBlockParts
 		cs.lockedRound = lastBPSetLockRound
 	}
 	return nil
