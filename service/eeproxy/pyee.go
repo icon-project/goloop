@@ -101,7 +101,7 @@ func (e *pythonExecutionEngine) OnAttach(uid string) bool {
 func (e *pythonExecutionEngine) newCmd(uid string) *exec.Cmd {
 	args := append(e.args, "-s", e.addr, "-u", uid)
 	cmd := exec.Command(e.python, args...)
-	//cmd.Env = append(cmd.Env, "PYTHONPATH=./pyee")
+	cmd.Env = append([]string{"PYTHONPATH=./pyee"}, os.Environ()...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd
