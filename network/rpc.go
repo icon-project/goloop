@@ -238,7 +238,7 @@ func jsonrpcHandleGeo(c context.Context, params *fastjson.RawMessage) (interface
 
 	update := err1 == nil && err2 == nil
 	if update {
-		setLocation(p2p, lat, lot)
+		//setLocation(p2p, lat, lot)
 		rpcLog.Println("jsonrpcHandleGeo","SetLocation", lat, lot)
 	}
 	m := make(map[string]interface{})
