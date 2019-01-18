@@ -39,6 +39,8 @@ type Manager interface {
 type Engine interface {
 	Init(net, addr string) error
 	SetInstances(n int) error
+	OnAttach(uid string) bool
+	Kill(uid string) (bool, error)
 }
 
 type manager struct {
@@ -127,23 +129,28 @@ func (m *manager) OnClose(c ipc.Connection) error {
 	return errors.New("NotFound")
 }
 
-func (m *manager) onReady(t scoreType, p *proxy) bool {
+func (m *manager) onReady(t scoreType, p *proxy) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
 	if t < 0 || t >= numberOfSCORETypes {
-		return false
+		return errors.Errorf("IllegalScoreType(type=%d)", t)
 	}
 	score := &m.scores[t]
+	if !score.engine.OnAttach(p.uid) {
+		return errors.Errorf("InvalidUID(uid=%s)", p.uid)
+	}
 
 	if detached := m.detach(p); detached {
 		if score.active > score.target {
 			score.active -= 1
-			return false
+			return errors.Errorf("ScalingDown(target=%d,active=%d)",
+				score.target, score.active)
 		}
 	} else {
 		if score.active >= score.target {
-			return false
+			return errors.Errorf("NoMoreInstance(target=%d,active=%d)",
+				score.target, score.active)
 		} else {
 			score.active += 1
 		}
@@ -153,7 +160,7 @@ func (m *manager) onReady(t scoreType, p *proxy) bool {
 	if p.next == nil {
 		score.waiter.Broadcast()
 	}
-	return true
+	return nil
 }
 
 func (m *manager) detach(p *proxy) bool {
@@ -209,6 +216,18 @@ func (m *manager) Close() error {
 	}
 	// TODO stopping all proxies.
 	return nil
+}
+
+func (m *manager) Kill(uid string) error {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	for _, s := range m.scores {
+		if ok, err := s.engine.Kill(uid); ok {
+			return err
+		}
+	}
+	return errors.New("NoEntry")
 }
 
 func New(net, addr string) (*manager, error) {

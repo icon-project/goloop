@@ -3,7 +3,6 @@ package eeproxy
 import (
 	"log"
 	"math/big"
-	"os"
 	"sync"
 
 	"github.com/icon-project/goloop/common"
@@ -12,6 +11,7 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreapi"
 	"github.com/pkg/errors"
+	"github.com/satori/go.uuid"
 )
 
 type Message uint
@@ -64,7 +64,7 @@ type proxy struct {
 	conn ipc.Connection
 
 	version   uint16
-	pid       uint32
+	uid       string
 	scoreType scoreType
 
 	frame *callFrame
@@ -75,7 +75,7 @@ type proxy struct {
 
 type versionMessage struct {
 	Version uint16 `codec:"version"`
-	PID     uint32 `codec:"pid"`
+	UID     string
 	Type    string
 }
 
@@ -172,7 +172,8 @@ func (p *proxy) Release() {
 	p.reserved = false
 	if p.frame == nil {
 		p.lock.Unlock()
-		if !p.mgr.onReady(p.scoreType, p) {
+		if err := p.mgr.onReady(p.scoreType, p); err != nil {
+			log.Printf("Fail to make it ready err=%+v", err)
 			p.conn.Close()
 		}
 		return
@@ -196,17 +197,14 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 			return err
 		}
 		p.version = m.Version
-		p.pid = m.PID
+		p.uid = m.UID
 		if t, ok := scoreNameToType[m.Type]; !ok {
 			return errors.Errorf("UnknownSCOREName(%s)", m.Type)
 		} else {
 			p.scoreType = t
 		}
 
-		if !p.mgr.onReady(p.scoreType, p) {
-			return errors.New("OutOfInstance")
-		}
-		return nil
+		return p.mgr.onReady(p.scoreType, p)
 
 	case msgRESULT:
 		var m resultMessage
@@ -223,7 +221,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		p.lock.Lock()
 		if p.frame == nil && !p.reserved {
 			p.lock.Unlock()
-			p.mgr.onReady(p.scoreType, p)
+			return p.mgr.onReady(p.scoreType, p)
 		} else {
 			p.lock.Unlock()
 		}
@@ -308,7 +306,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 			p.lock.Lock()
 			if p.frame == nil && !p.reserved {
 				p.lock.Unlock()
-				p.mgr.onReady(p.scoreType, p)
+				return p.mgr.onReady(p.scoreType, p)
 			} else {
 				p.lock.Unlock()
 			}
@@ -327,12 +325,7 @@ func (p *proxy) Kill() error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	if ps, err := os.FindProcess(int(p.pid)); err != nil {
-		return err
-	} else {
-		defer ps.Release()
-		return ps.Kill()
-	}
+	return p.mgr.Kill(p.uid)
 }
 
 func newConnection(m *manager, c ipc.Connection) (*proxy, error) {
@@ -350,4 +343,8 @@ func newConnection(m *manager, c ipc.Connection) (*proxy, error) {
 	c.SetHandler(msgGETBALANCE, p)
 	c.SetHandler(msgGETAPI, p)
 	return p, nil
+}
+
+func newUID() string {
+	return uuid.NewV4().String()
 }
