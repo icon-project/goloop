@@ -99,12 +99,8 @@ func (m *manager) SetInstances(t string, n int) error {
 }
 
 func (m *manager) OnConnect(c ipc.Connection) error {
-	if proxy, err := newConnection(m, c); err != nil {
-		go proxy.HandleMessages()
-		return nil
-	} else {
-		return err
-	}
+	_, err := newConnection(m, c)
+	return err
 }
 
 func (m *manager) OnClose(c ipc.Connection) error {

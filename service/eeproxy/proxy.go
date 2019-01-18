@@ -319,18 +319,6 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 	}
 }
 
-func (p *proxy) HandleMessages() error {
-	for {
-		err := p.conn.HandleMessage()
-		if err != nil {
-			log.Printf("Error on conn.HandleMessage() err=%+v\n", err)
-			break
-		}
-	}
-	p.conn.Close()
-	return nil
-}
-
 func (p *proxy) Close() error {
 	return p.conn.Close()
 }
