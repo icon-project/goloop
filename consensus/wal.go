@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	configWALBufSize              = 1024 * 1
+	configWALBufSize              = 1024 * 4
 	configWALFileLimit            = 1024 * 1024 * 2
 	configWALTotalLimit           = configWALFileLimit * 4
 	configWALHousekeepingInterval = time.Second * 1
