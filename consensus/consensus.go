@@ -331,15 +331,18 @@ func (cs *consensus) handlePrecommitMessage(msg *voteMessage, precommits *voteSe
 	return nil
 }
 
+func (cs *consensus) notifySyncer() {
+	if cs.syncer != nil {
+		cs.syncer.OnEngineStepChange()
+	}
+}
+
 func (cs *consensus) setStep(step step) {
 	if cs.step >= step {
 		logger.Panicf("bad step transition (%v->%v)\n", cs.step, step)
 	}
 	cs.step = step
 	logger.Printf("setStep(%v.%v.%v)\n", cs.height, cs.round, cs.step)
-	if cs.syncer != nil {
-		cs.syncer.OnEngineStepChange()
-	}
 }
 
 func (cs *consensus) enterProposeForNextHeight() {
@@ -406,6 +409,7 @@ func (cs *consensus) enterPropose() {
 			}
 		}
 	}
+	cs.notifySyncer()
 }
 
 func (cs *consensus) enterPrevote() {
@@ -449,6 +453,8 @@ func (cs *consensus) enterPrevote() {
 		cs.sendVote(voteTypePrevote, nil)
 	}
 
+	cs.notifySyncer()
+
 	// send vote may change step
 	// TODO simplify
 	if cs.step == stepPrevote {
@@ -469,6 +475,8 @@ func (cs *consensus) enterPrevoteWait() {
 	if err := cs.roundWAL.writeMessage(msg); err != nil {
 		logger.Printf("enterPrevoteWait: %+v\n", err)
 	}
+
+	cs.notifySyncer()
 
 	_, ok := prevotes.getOverTwoThirdsPartSetID()
 	if ok {
@@ -541,6 +549,8 @@ func (cs *consensus) enterPrecommit() {
 		cs.sendVote(voteTypePrecommit, nil)
 	}
 
+	cs.notifySyncer()
+
 	// sendVote may change step
 	if cs.step == stepPrecommit {
 		precommits := cs.hvs.votesFor(cs.round, voteTypePrecommit)
@@ -560,6 +570,8 @@ func (cs *consensus) enterPrecommitWait() {
 	if err := cs.roundWAL.writeMessage(msg); err != nil {
 		logger.Printf("enterPrecommitWait: %+v\n", err)
 	}
+
+	cs.notifySyncer()
 
 	partSetID, ok := precommits.getOverTwoThirdsPartSetID()
 	if ok && partSetID != nil {
@@ -641,6 +653,9 @@ func (cs *consensus) enterCommit(precommits *voteSet, partSetID *PartSetID) {
 			PartSet: newPartSetFromID(partSetID),
 		}
 	}
+
+	cs.notifySyncer()
+
 	if cs.currentBlockParts.IsComplete() {
 		cs.commitAndEnterNewHeight()
 	}
@@ -649,6 +664,7 @@ func (cs *consensus) enterCommit(precommits *voteSet, partSetID *PartSetID) {
 func (cs *consensus) enterNewHeight() {
 	cs.resetForNewStep()
 	cs.setStep(stepNewHeight)
+	cs.notifySyncer()
 
 	now := time.Now()
 	if cs.nextProposeTime.After(now) {
