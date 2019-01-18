@@ -108,7 +108,10 @@ func main() {
 	}
 
 	nt := network.NewTransport(cfg.P2PAddr, wallet)
-	nt.Listen()
+	err := nt.Listen()
+	if err != nil {
+		log.Panicf("FAIL to listen P2P err=%+v", err)
+	}
 	defer nt.Close()
 
 	pm, err := eeproxy.New("unix", "/tmp/ee.socket")

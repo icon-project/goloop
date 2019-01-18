@@ -301,9 +301,16 @@
   version = "v0.18.0"
 
 [[projects]]
-  digest = "1:07bed7db52308c8338e0848cde9b26ec6fdab68c6c79ab1098dc728b6a899e45"
+  digest = "1:5de655260d03b7563c7aee81ad5b03083a4e44ab43e7022a3f25ab2a6534014e"
   name = "golang.org/x/crypto"
-  packages = ["sha3"]
+  packages = [
+    "chacha20poly1305",
+    "hkdf",
+    "internal/chacha20",
+    "internal/subtle",
+    "poly1305",
+    "sha3",
+  ]
   pruneopts = "UT"
   revision = "bc7917b19d8f099105de72dc62898400be07c984"
 
@@ -329,9 +336,12 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:fbacfb57e3d052810813bca2d48c22fbde916ecfc4a2bac08df30ed6e9e59759"
+  digest = "1:d4aa440883ef89f91ec8a74c58bc52c801781c565e4d9af9b7b0a5cafa86deaa"
   name = "golang.org/x/sys"
-  packages = ["unix"]
+  packages = [
+    "cpu",
+    "unix",
+  ]
   pruneopts = "UT"
   revision = "d69651ed3497faee15a5363a89578e9991f6d5e2"
 
@@ -371,6 +381,8 @@
     "go.opencensus.io/stats/view",
     "go.opencensus.io/tag",
     "go.opencensus.io/trace",
+    "golang.org/x/crypto/chacha20poly1305",
+    "golang.org/x/crypto/hkdf",
     "golang.org/x/crypto/sha3",
   ]
   solver-name = "gps-cdcl"

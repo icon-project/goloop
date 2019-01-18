@@ -1,12 +1,17 @@
 package network
 
 import (
+	"crypto/elliptic"
+	"crypto/tls"
+	"errors"
+	"fmt"
+	"io"
+	"os"
 	"sync"
 	"time"
 
-	"github.com/icon-project/goloop/module"
-
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/module"
 )
 
 //Negotiation map<channel, map<protocolHandler.name, {protocol, []subProtocol}>>
@@ -28,7 +33,6 @@ func (cn *ChannelNegotiator) onPeer(p *Peer) {
 	cn.log.Println("onPeer", p)
 	if !p.incomming {
 		cn.sendJoinRequest(p)
-
 	}
 }
 
@@ -93,21 +97,32 @@ func (cn *ChannelNegotiator) handleJoinResponse(pkt *Packet, p *Peer) {
 
 type Authenticator struct {
 	*peerHandler
-	wallet module.Wallet
-	pubKey *crypto.PublicKey
-	mtx    sync.Mutex
+	wallet             module.Wallet
+	secureSuites       map[string][]SecureSuite
+	secureAeads        map[string][]SecureAeadSuite
+	secureKeyCurve     elliptic.Curve
+	secureKeySecretLen int
+	secureKeyNum       int
+	secureKeyLogWriter io.Writer
+	mtx                sync.Mutex
 }
 
 func newAuthenticator(w module.Wallet) *Authenticator {
-	pubK, err := crypto.ParsePublicKey(w.PublicKey())
+	_, err := crypto.ParsePublicKey(w.PublicKey())
 	if err != nil {
+		//TODO panic
 		panic(err)
 	}
 	a := &Authenticator{
-		wallet:      w,
-		pubKey:      pubK,
-		peerHandler: newPeerHandler(newLogger("Authenticator", "")),
+		wallet:             w,
+		secureSuites:       make(map[string][]SecureSuite),
+		secureAeads:        make(map[string][]SecureAeadSuite),
+		secureKeyCurve:     DefaultSecureEllipticCurve,
+		secureKeySecretLen: crypto.PrivateKeyLen,
+		secureKeyNum:       2,
+		peerHandler:        newPeerHandler(newLogger("Authenticator", "")),
 	}
+	a.secureKeyLogWriter = os.Stdout
 	return a
 }
 
@@ -115,7 +130,7 @@ func newAuthenticator(w module.Wallet) *Authenticator {
 func (a *Authenticator) onPeer(p *Peer) {
 	a.log.Println("onPeer", p)
 	if !p.incomming {
-		a.sendPublicKeyRequest(p)
+		a.sendSecureRequest(p)
 	}
 }
 
@@ -132,9 +147,9 @@ func (a *Authenticator) onPacket(pkt *Packet, p *Peer) {
 	case PROTO_CONTOL:
 		switch pkt.subProtocol {
 		case PROTO_AUTH_KEY_REQ:
-			a.handlePublicKeyRequest(pkt, p)
+			a.handleSecureRequest(pkt, p)
 		case PROTO_AUTH_KEY_RESP:
-			a.handlePublicKeyResponse(pkt, p)
+			a.handleSecureResponse(pkt, p)
 		case PROTO_AUTH_SIGN_REQ:
 			a.handleSignatureRequest(pkt, p)
 		case PROTO_AUTH_SIGN_RESP:
@@ -145,71 +160,265 @@ func (a *Authenticator) onPacket(pkt *Packet, p *Peer) {
 	}
 }
 
-func (a *Authenticator) Signature() []byte {
+func (a *Authenticator) Signature(content []byte) []byte {
 	defer a.mtx.Unlock()
 	a.mtx.Lock()
-	pb := a.pubKey.SerializeUncompressed()
-	h := crypto.SHA3Sum256(pb)
+	h := crypto.SHA3Sum256(content)
 	sb, _ := a.wallet.Sign(h)
 	return sb
 }
 
-func (a *Authenticator) VerifySignature(s *crypto.Signature, p *Peer) bool {
-	pb := p.pubKey.SerializeUncompressed()
-	h := crypto.SHA3Sum256(pb)
-	return s.Verify(h, p.pubKey)
+func (a *Authenticator) VerifySignature(publicKey []byte, signature []byte, content []byte) (module.PeerID, error) {
+	pubKey, err := crypto.ParsePublicKey(publicKey)
+	if err != nil {
+		return nil, fmt.Errorf("fail to parse public key : %s", err.Error())
+	}
+	id := NewPeerIDFromPublicKey(pubKey)
+	if id == nil {
+		return nil, fmt.Errorf("fail to create peer id by public key : %s", pubKey.String())
+	}
+	s, err := crypto.ParseSignature(signature)
+	if err != nil {
+		return nil, fmt.Errorf("fail to parse signature : %s", err.Error())
+	}
+	h := crypto.SHA3Sum256(content)
+	if !s.Verify(h, pubKey) {
+		err = errors.New("fail to verify signature")
+	}
+	return id, err
 }
 
-type PublicKeyRequest struct {
-	PublicKey []byte
+type SecureRequest struct {
+	Channel          string
+	SecureSuites     []SecureSuite
+	SecureAeadSuites []SecureAeadSuite
+	SecureParam      []byte
 }
-type PublicKeyResponse struct {
-	PublicKey []byte
+type SecureResponse struct {
+	Channel         string
+	SecureSuite     SecureSuite
+	SecureAeadSuite SecureAeadSuite
+	SecureParam     []byte
+	SecureError     SecureError
 }
 type SignatureRequest struct {
+	PublicKey []byte
 	Signature []byte
-	Rtt       float64
+	Rtt       time.Duration
 }
 type SignatureResponse struct {
+	PublicKey []byte
 	Signature []byte
-	Rtt       float64
+	Rtt       time.Duration
+	Error     string
 }
 
-func (a *Authenticator) sendPublicKeyRequest(p *Peer) {
-	m := &PublicKeyRequest{PublicKey: a.pubKey.SerializeCompressed()}
+func (a *Authenticator) sendSecureRequest(p *Peer) {
+	p.secureKey = newSecureKey(a.secureKeyCurve, a.secureKeyLogWriter)
+	sms := a.secureSuites[p.channel]
+	if len(sms) == 0 {
+		sms = DefaultSecureSuites
+	}
+	sas := a.secureAeads[p.channel]
+	if len(sas) == 0 {
+		sas = DefaultSecureAeadSuites
+	}
+	m := &SecureRequest{
+		Channel:          p.channel,
+		SecureSuites:     sms,
+		SecureAeadSuites: sas,
+		SecureParam:      p.secureKey.marshalPublicKey(),
+	}
+
 	p.rtt.Start()
 	a.sendMessage(PROTO_AUTH_KEY_REQ, m, p)
-	a.log.Println("sendPublicKeyRequest", m, p)
+	a.log.Println("sendSecureRequest", m, p)
 }
 
-func (a *Authenticator) handlePublicKeyRequest(pkt *Packet, p *Peer) {
-	rm := &PublicKeyRequest{}
+func (a *Authenticator) handleSecureRequest(pkt *Packet, p *Peer) {
+	rm := &SecureRequest{}
 	a.decode(pkt.payload, rm)
-	a.log.Println("handlePublicKeyRequest", rm, p)
-	p.pubKey, _ = crypto.ParsePublicKey(rm.PublicKey)
-	p.id = NewPeerIDFromPublicKey(p.pubKey)
-	if !p.id.Equal(pkt.src) {
-		a.log.Println("Warning", "handlePublicKeyRequest", "id doesnt match pkt:", pkt.src, ",expected:", p.id)
+	a.log.Println("handleSecureRequest", rm, p)
+
+	m := &SecureResponse{
+		Channel:         p.channel,
+		SecureSuite:     SecureSuiteUnknown,
+		SecureAeadSuite: SecureAeadSuiteUnknown,
 	}
 
-	m := &PublicKeyResponse{PublicKey: a.pubKey.SerializeCompressed()}
+	sms := a.secureSuites[rm.Channel]
+	if len(sms) == 0 {
+		sms = DefaultSecureSuites
+	}
+SecureSuiteLoop:
+	for _, sm := range sms {
+		for _, rsm := range rm.SecureSuites {
+			if rsm == sm {
+				m.SecureSuite = sm
+				a.log.Println("handleSecureRequest", p.ConnString(), "SecureSuite", sm)
+				break SecureSuiteLoop
+			}
+		}
+	}
+	if m.SecureSuite == SecureSuiteUnknown {
+		m.SecureError = SecureErrorInvalid
+	}
+
+	sas := a.secureAeads[rm.Channel]
+	if len(sas) == 0 {
+		sas = DefaultSecureAeadSuites
+	}
+SecureAeadLoop:
+	for _, sa := range sas {
+		for _, rsa := range rm.SecureAeadSuites {
+			if rsa == sa {
+				m.SecureAeadSuite = sa
+				a.log.Println("handleSecureRequest", p.ConnString(), "SecureAeadSuite", sa)
+				break SecureAeadLoop
+			}
+		}
+	}
+	if m.SecureAeadSuite == SecureAeadSuiteUnknown && (m.SecureSuite == SecureSuiteEcdhe || m.SecureSuite == SecureSuiteTls) {
+		m.SecureError = SecureErrorInvalid
+	}
+
+	switch p.conn.(type) {
+	case *SecureConn:
+		m.SecureSuite = SecureSuiteEcdhe
+		m.SecureError = SecureErrorEstablished
+	case *tls.Conn:
+		m.SecureSuite = SecureSuiteTls
+		m.SecureError = SecureErrorEstablished
+	default:
+		p.secureKey = newSecureKey(a.secureKeyCurve, a.secureKeyLogWriter)
+		m.SecureParam = p.secureKey.marshalPublicKey()
+	}
+
 	p.rtt.Start()
 	a.sendMessage(PROTO_AUTH_KEY_RESP, m, p)
-}
-
-func (a *Authenticator) handlePublicKeyResponse(pkt *Packet, p *Peer) {
-	rm := &PublicKeyResponse{}
-	a.decode(pkt.payload, rm)
-	a.log.Println("handlePublicKeyResponse", rm, p)
-	p.rtt.Stop()
-	p.pubKey, _ = crypto.ParsePublicKey(rm.PublicKey)
-	p.id = NewPeerIDFromPublicKey(p.pubKey)
-	if !p.id.Equal(pkt.src) {
-		a.log.Println("Warning", "handlePublicKeyResponse", "id doesnt match pkt:", pkt.src, ",expected:", p.id)
+	if m.SecureError != SecureErrorNone {
+		err := fmt.Errorf("handleSecureRequest error[%v]", m.SecureError)
+		a.log.Println("Warning", "handleSecureRequest", p.ConnString(), "SecureError", err)
+		p.CloseByError(err)
+		return
 	}
 
-	m := &SignatureRequest{Signature: a.Signature()}
-	m.Rtt = p.rtt.Last(time.Millisecond)
+	p.channel = rm.Channel
+	p.secureKey.sa = m.SecureAeadSuite
+	p.secureKey.setPeerPublicKey(rm.SecureParam, p.incomming)
+	p.secureKey.hkdf(a.secureKeySecretLen, a.secureKeyNum)
+	switch m.SecureSuite {
+	case SecureSuiteEcdhe:
+		secureConn, err := NewSecureConn(p.conn, m.SecureAeadSuite, p.secureKey)
+		if err != nil {
+			a.log.Println("Warning", "handleSecureRequest", p.ConnString(), "failed NewSecureConn", err)
+			p.CloseByError(err)
+			return
+		}
+		p.ResetConn(secureConn)
+	case SecureSuiteTls:
+		if config := p.secureKey.tlsConfig(); config != nil {
+			tlsConn := tls.Server(p.conn, config)
+			p.ResetConn(tlsConn)
+		}
+	}
+}
+
+func (a *Authenticator) handleSecureResponse(pkt *Packet, p *Peer) {
+	rm := &SecureResponse{}
+	a.decode(pkt.payload, rm)
+	a.log.Println("handleSecureResponse", rm, p)
+	p.rtt.Stop()
+
+	if rm.SecureError != SecureErrorNone {
+		err := fmt.Errorf("handleSecureResponse error[%v]", rm.SecureError)
+		a.log.Println("Warning", "handleSecureResponse", p.ConnString(), "SecureError", err)
+		p.CloseByError(err)
+		return
+	}
+
+	var rsm SecureSuite = SecureSuiteUnknown
+	sms := a.secureSuites[p.channel]
+	if len(sms) == 0 {
+		sms = DefaultSecureSuites
+	}
+SecureSuiteLoop:
+	for _, sm := range sms {
+		if sm == rm.SecureSuite {
+			rsm = sm
+			break SecureSuiteLoop
+		}
+	}
+	if rsm == SecureSuiteUnknown {
+		err := fmt.Errorf("handleSecureResponse invalid SecureSuite %d", rm.SecureSuite)
+		a.log.Println("Warning", "handleSecureResponse", p.ConnString(), "SecureError", err)
+		p.CloseByError(err)
+		return
+	}
+
+	var rsa SecureAeadSuite = SecureAeadSuiteUnknown
+	sas := a.secureAeads[rm.Channel]
+	if len(sas) == 0 {
+		sas = DefaultSecureAeadSuites
+	}
+SecureAeadLoop:
+	for _, sa := range sas {
+		if sa == rm.SecureAeadSuite {
+			rsa = sa
+			break SecureAeadLoop
+		}
+	}
+	if rsa == SecureAeadSuiteUnknown && (rsm == SecureSuiteEcdhe || rsm == SecureSuiteTls) {
+		err := fmt.Errorf("handleSecureResponse invalid SecureSuite %d SecureAeadSuite %d", rm.SecureSuite, rm.SecureAeadSuite)
+		a.log.Println("Warning", "handleSecureResponse", p.ConnString(), "SecureError", err)
+		p.CloseByError(err)
+		return
+	}
+
+	var secured bool
+	switch p.conn.(type) {
+	case *SecureConn:
+		secured = true
+	case *tls.Conn:
+		secured = true
+	}
+	if secured {
+		err := fmt.Errorf("handleSecureResponse already established secure connection %T", p.conn)
+		a.log.Println("Warning", "handleSecureResponse", p.ConnString(), "SecureError", err)
+		p.CloseByError(err)
+		return
+	}
+
+	p.secureKey.sa = rm.SecureAeadSuite
+	p.secureKey.setPeerPublicKey(rm.SecureParam, p.incomming)
+	p.secureKey.hkdf(a.secureKeySecretLen, a.secureKeyNum)
+	switch rm.SecureSuite {
+	case SecureSuiteEcdhe:
+		secureConn, err := NewSecureConn(p.conn, rm.SecureAeadSuite, p.secureKey)
+		if err != nil {
+			a.log.Println("Warning", "handleSecureResponse", p.ConnString(), "failed NewSecureConn", err)
+			p.CloseByError(err)
+			return
+		}
+		p.ResetConn(secureConn)
+	case SecureSuiteTls:
+		if config := p.secureKey.tlsConfig(); config != nil {
+			tlsConn := tls.Client(p.conn, config)
+			if err := tlsConn.Handshake(); err != nil {
+				a.log.Println("Warning", "handleSecureResponse", p.ConnString(), "failed tls handshake", err)
+				p.CloseByError(err)
+				return
+			} else {
+				p.ResetConn(tlsConn)
+			}
+		}
+	}
+
+	m := &SignatureRequest{
+		PublicKey: a.wallet.PublicKey(),
+		Signature: a.Signature(p.secureKey.extra),
+		Rtt:       p.rtt.last,
+	}
 	a.sendMessage(PROTO_AUTH_SIGN_REQ, m, p)
 }
 
@@ -218,28 +427,60 @@ func (a *Authenticator) handleSignatureRequest(pkt *Packet, p *Peer) {
 	a.decode(pkt.payload, rm)
 	a.log.Println("handleSignatureRequest", rm, p)
 	p.rtt.Stop()
-	s, _ := crypto.ParseSignature(rm.Signature)
-	if a.VerifySignature(s, p) {
-		m := &SignatureResponse{Signature: a.Signature()}
-		m.Rtt = p.rtt.Last(time.Millisecond)
-		a.sendMessage(PROTO_AUTH_SIGN_RESP, m, p)
-
-		a.nextOnPeer(p)
-	} else {
-		a.log.Println("handleSignatureRequest", "Incoming PeerId Invalid signature, try close")
-		p.Close()
+	df := rm.Rtt - p.rtt.last
+	if df > DefaultRttAccuracy {
+		a.log.Println("Warning", "handleSignatureRequest", df, "DefaultRttAccuracy", DefaultRttAccuracy)
 	}
+
+	m := &SignatureResponse{
+		PublicKey: a.wallet.PublicKey(),
+		Signature: a.Signature(p.secureKey.extra),
+		Rtt:       p.rtt.last,
+	}
+
+	id, err := a.VerifySignature(rm.PublicKey, rm.Signature, p.secureKey.extra)
+	if err != nil {
+		m = &SignatureResponse{Error: err.Error()}
+	}
+	p.id = id
+	a.sendMessage(PROTO_AUTH_SIGN_RESP, m, p)
+
+	if m.Error != "" {
+		err := fmt.Errorf("handleSignatureRequest error[%v]", m.Error)
+		a.log.Println("Warning", "handleSignatureRequest", p.ConnString(), "Error", err)
+		p.CloseByError(err)
+		return
+	}
+	a.nextOnPeer(p)
 }
 
 func (a *Authenticator) handleSignatureResponse(pkt *Packet, p *Peer) {
 	rm := &SignatureResponse{}
 	a.decode(pkt.payload, rm)
 	a.log.Println("handleSignatureResponse", rm, p)
-	s, _ := crypto.ParseSignature(rm.Signature)
-	if a.VerifySignature(s, p) {
-		a.nextOnPeer(p)
-	} else {
-		a.log.Println("handleSignatureResponse", "Outgoing PeerId Invalid signature, try close")
-		p.Close()
+
+	df := rm.Rtt - p.rtt.last
+	if df > DefaultRttAccuracy {
+		a.log.Println("Warning", "handleSignatureResponse", df, "DefaultRttAccuracy", DefaultRttAccuracy)
 	}
+
+	if rm.Error != "" {
+		err := fmt.Errorf("handleSignatureResponse error[%v]", rm.Error)
+		a.log.Println("Warning", "handleSignatureResponse", p.ConnString(), "Error", err)
+		p.CloseByError(err)
+		return
+	}
+
+	id, err := a.VerifySignature(rm.PublicKey, rm.Signature, p.secureKey.extra)
+	if err != nil {
+		err := fmt.Errorf("handleSignatureResponse error[%v]", err)
+		a.log.Println("Warning", "handleSignatureResponse", p.ConnString(), "Error", err)
+		p.CloseByError(err)
+		return
+	}
+	p.id = id
+	if !p.id.Equal(pkt.src) {
+		a.log.Println("Warning", "handleSignatureResponse", "id doesnt match pkt:", pkt.src, ",expected:", p.id)
+	}
+	a.nextOnPeer(p)
 }

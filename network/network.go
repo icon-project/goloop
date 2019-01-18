@@ -256,7 +256,7 @@ func newLogger(name string, prefix string) *logger {
 }
 
 func (l *logger) printable(v interface{}) bool {
-	for _, e := range singletonLoggerExcludes {
+	for _, e := range ExcludeLoggers {
 		if e == l.name {
 			return false
 		}

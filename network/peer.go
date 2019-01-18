@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,20 +18,23 @@ import (
 type Peer struct {
 	id         module.PeerID
 	netAddress NetAddress
-	pubKey     *crypto.PublicKey
+	secureKey  *secureKey
 	//
-	conn      net.Conn
-	reader    *PacketReader
-	writer    *PacketWriter
-	q         *PriorityQueue
-	onPacket  packetCbFunc
-	onError   errorCbFunc
-	onClose   closeCbFunc
-	timestamp time.Time
-	pool      *TimestampPool
-	close     chan error
-	mtx       sync.Mutex
-	once      sync.Once
+	conn        net.Conn
+	reader      *PacketReader
+	writer      *PacketWriter
+	q           *PriorityQueue
+	onPacket    packetCbFunc
+	onError     errorCbFunc
+	onClose     closeCbFunc
+	timestamp   time.Time
+	pool        *TimestampPool
+	close       chan error
+	closed      bool
+	closeReason []string
+	closeErr    []error
+	mtx         sync.Mutex
+	once        sync.Once
 	//
 	incomming bool
 	channel   string
@@ -38,6 +42,8 @@ type Peer struct {
 	connType  PeerConnectionType
 	role      PeerRoleFlag
 	roleMtx   sync.RWMutex
+	children  []NetAddress
+	//
 }
 
 type packetCbFunc func(pkt *Packet, p *Peer)
@@ -127,28 +133,36 @@ type PeerConnectionType byte
 
 func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool) *Peer {
 	p := &Peer{
-		conn:      conn,
-		reader:    NewPacketReader(conn),
-		writer:    NewPacketWriter(conn),
-		q:         NewPriorityQueue(DefaultPeerSendQueueSize, DefaultSendQueueMaxPriority),
-		incomming: incomming,
-		timestamp: time.Now(),
-		pool:      NewTimestampPool(DefaultPeerPoolExpireSecond + 1),
-		close:     make(chan error),
-		onError: func(err error, p *Peer, pkt *Packet) { p.Close() },
-		onClose: func(p *Peer) { },
+		conn:        conn,
+		reader:      NewPacketReader(conn),
+		writer:      NewPacketWriter(conn),
+		q:           NewPriorityQueue(DefaultPeerSendQueueSize, DefaultSendQueueMaxPriority),
+		incomming:   incomming,
+		timestamp:   time.Now(),
+		pool:        NewTimestampPool(DefaultPeerPoolExpireSecond + 1),
+		close:       make(chan error),
+		closeReason: make([]string, 0),
+		closeErr:    make([]error, 0),
+		onError:     func(err error, p *Peer, pkt *Packet) { p.CloseByError(err) },
+		onClose:     func(p *Peer) {},
 	}
 	p.setPacketCbFunc(cbFunc)
 
 	return p
 }
 
+func (p *Peer) ResetConn(conn net.Conn) {
+	p.conn = conn
+	p.reader.Reset(conn)
+	p.writer.Reset(conn)
+}
+
 func (p *Peer) String() string {
 	if p == nil {
 		return ""
 	}
-	return fmt.Sprintf("{id:%v, addr:%v, in:%v, channel:%v, role:%v, conn:%v, rtt:%v}",
-		p.id, p.netAddress, p.incomming, p.channel, p.role, p.connType, p.rtt.String())
+	return fmt.Sprintf("{id:%v, addr:%v, in:%v, channel:%v, role:%v, conn:%v, rtt:%v, children:%d}",
+		p.id, p.netAddress, p.incomming, p.channel, p.role, p.connType, p.rtt.String(), len(p.children))
 }
 func (p *Peer) ConnString() string {
 	if p == nil {
@@ -170,13 +184,13 @@ func (p *Peer) NetAddress() NetAddress {
 }
 
 func (p *Peer) setPacketCbFunc(cbFunc packetCbFunc) {
+	p.onPacket = cbFunc
 	if cbFunc != nil {
-		p.once.Do(func(){
+		p.once.Do(func() {
 			go p.receiveRoutine()
 			go p.sendRoutine()
 		})
 	}
-	p.onPacket = cbFunc
 }
 
 func (p *Peer) setErrorCbFunc(cbFunc errorCbFunc) {
@@ -206,19 +220,73 @@ func (p *Peer) compareRole(r PeerRoleFlag, equal bool) bool {
 	return p.role.Has(r)
 }
 
-func (p *Peer) Close() {
-	if err := p.conn.Close(); err == nil {
+func (p *Peer) _close(err error) {
+	if cerr := p.conn.Close(); cerr == nil {
+		p.closed = true
+		if err != nil && !p.isCloseError(err) {
+			log.Printf("Warning Peer[%s].Close by error %+v", p.ConnString(), err)
+		}
 		p.onClose(p)
 		close(p.close)
 	}
 }
 
+func (p *Peer) Close(reason string) {
+	p.closeReason = append(p.closeReason, reason)
+	p._close(nil)
+}
+
+func (p *Peer) CloseByError(err error) {
+	p.closeErr = append(p.closeErr, err)
+	p._close(err)
+}
+
+func (p *Peer) CloseInfo() string {
+	reason := "reason:["
+	for i, s := range p.closeReason {
+		if i != 0 {
+			reason += ","
+		}
+		reason += "\"" + s + "\""
+	}
+	reason += "],"
+	closeErr := "closeErr:["
+	for i, e := range p.closeErr {
+		if i != 0 {
+			reason += ","
+		}
+		if p.isCloseError(e) {
+			closeErr += "CLOSED_ERR"
+		}
+		closeErr += fmt.Sprintf("{%T %v}", e, e)
+	}
+	closeErr += "]"
+	return reason + closeErr
+}
+
 func (p *Peer) _recover() interface{} {
 	if err := recover(); err != nil {
-		log.Printf("Peer._recover recover %+v", err)
+		log.Printf("Warning Peer[%s]._recover from %+v", p.ConnString(), err)
+		p._close(fmt.Errorf("_recover from %+v", err))
 		return err
 	}
 	return nil
+}
+
+func (p *Peer) isCloseError(err error) bool {
+	if oe, ok := err.(*net.OpError); ok {
+		// if se, ok := oe.Err.(syscall.Errno); ok {
+		// 	return se == syscall.ECONNRESET || se == syscall.ECONNABORTED
+		// }
+		//referenced from golang.org/x/net/http2/server.go isClosedConnError
+		if strings.Contains(oe.Err.Error(), "use of closed network connection") ||
+			strings.Contains(oe.Err.Error(), "connection reset by peer") {
+			return true
+		}
+	} else if err == io.EOF || err == io.ErrUnexpectedEOF { //half Close (recieved tcp close)
+		return true
+	}
+	return false
 }
 
 func (p *Peer) isTemporaryError(err error) bool {
@@ -227,17 +295,7 @@ func (p *Peer) isTemporaryError(err error) bool {
 		// if se, ok := oe.Err.(*os.SyscallError); ok {
 		// 	log.Printf("Peer.isTemporaryError *os.SyscallError %+v %#v %#v %s", se, se.Err, se.Err, p.String())
 		// }
-
 		return oe.Temporary()
-		// if se, ok := oe.Err.(syscall.Errno); ok {
-		// 	return se == syscall.ECONNRESET || se == syscall.ECONNABORTED
-		// }
-
-		//referenced from golang.org/x/net/http2/server.go isClosedConnError
-		// if strings.Contains(oe.Err.Error(), "use of closed network connection") ||
-		// 	strings.Contains(oe.Err.Error(), "connection reset by peer") {
-		// 	return true
-		// }
 	} else if err == io.EOF || err == io.ErrUnexpectedEOF { //half Close (recieved tcp close)
 		return false
 	}
@@ -247,9 +305,10 @@ func (p *Peer) isTemporaryError(err error) bool {
 //receive from bufio.Reader, unmarshalling and peerToPeer.onPacket
 func (p *Peer) receiveRoutine() {
 	defer func() {
-		// p._recover()
-		p.Close()
-		// log.Println("Peer.receiveRoutine end", p.String())
+		if err := p._recover(); err == nil {
+			p.Close("receiveRoutine finish")
+		}
+		// log.Println("Peer.receiveRoutine finish", p.String())
 	}()
 	for {
 		pkt, h, err := p.reader.ReadPacket()
@@ -257,7 +316,7 @@ func (p *Peer) receiveRoutine() {
 			r := p.isTemporaryError(err)
 			// log.Printf("Peer.receiveRoutine Error isTemporary:{%v} error:{%+v} peer:%s", r, err, p.String())
 			if !r {
-				p.Close()
+				p.CloseByError(err)
 				return
 			}
 			//TODO p.reader.Reset()
@@ -322,7 +381,7 @@ Loop:
 					r := p.isTemporaryError(err)
 					// log.Printf("Peer.sendRoutine Error isTemporary:{%v} error:{%+v} peer:%s", r, err, p.String())
 					if !r {
-						p.Close()
+						p.CloseByError(err)
 						return
 					}
 					//TODO p.writer.Reset()
@@ -350,19 +409,32 @@ func (p *Peer) isDuplicatedToSend(pkt *Packet) bool {
 	return false
 }
 
-func (p *Peer) send(pkt *Packet) error {
-	if pkt == nil {
-		return ErrNilPacket
+func (p *Peer) send(ctx context.Context) error {
+	if p == nil || p.closed {
+		return ErrNotAvailable
 	}
+	c := ctx.Value(p2pContextKeyCounter).(*Counter)
+	c.peer++
+	pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
 	if p.isDuplicatedToSend(pkt) {
+		c.duplicate++
 		return ErrDuplicatedPacket
 	}
-
-	ctx := context.WithValue(context.Background(), p2pContextKeyPacket, pkt)
 	if ok := p.q.Push(ctx, pkt.priority); !ok {
+		c.overflow++
 		return ErrQueueOverflow
 	}
+	c.enqueue++
 	return nil
+}
+
+func (p *Peer) sendPacket(pkt *Packet) error {
+	if p == nil || p.closed {
+		return ErrNotAvailable
+	}
+	ctx := context.WithValue(context.Background(), p2pContextKeyPacket, pkt)
+	ctx = context.WithValue(ctx, p2pContextKeyCounter, &Counter{})
+	return p.send(ctx)
 }
 
 const (

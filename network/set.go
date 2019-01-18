@@ -165,14 +165,29 @@ func (s *PeerSet) Remove(p *Peer) bool {
 	if s._contains(p) {
 		if p.incomming {
 			s.incomming.Remove(p.id)
+			if !s.outgoing.Contains(p.id) {
+				s.addrs.Remove(p.netAddress)
+			}
 		} else {
 			s.outgoing.Remove(p.id)
+			if !s.incomming.Contains(p.id) {
+				s.addrs.Remove(p.netAddress)
+			}
 		}
-		s.addrs.Remove(p.netAddress)
 		delete(s.Set.m, p)
 		return true
 	}
 	return false
+}
+func (s *PeerSet) Clear() {
+	defer s.mtx.Unlock()
+	s.mtx.Lock()
+
+	s._clear()
+	s.incomming.Clear()
+	s.outgoing.Clear()
+	s.addrs.Clear()
+
 }
 func (s *PeerSet) Contains(p *Peer) bool {
 	return s._contains(p)
@@ -246,6 +261,29 @@ func (s *PeerSet) NetAddresses() []NetAddress {
 func (s *PeerSet) HasNetAddresse(a NetAddress) bool {
 	return s.addrs.Contains(a)
 }
+func (s *PeerSet) HasNetAddresseAndIncomming(a NetAddress, in bool) bool {
+	defer s.Set.mtx.RUnlock()
+	s.Set.mtx.RLock()
+
+	for k := range s.Set.m {
+		if p := k.(*Peer); p.incomming == in && p.netAddress == a {
+			return true
+		}
+	}
+	return false
+}
+func (s *PeerSet) Find(foundFunc func(p *Peer)bool) []*Peer {
+	defer s.Set.mtx.RUnlock()
+	s.Set.mtx.RLock()
+
+	l := make([]*Peer, 0, len(s.Set.m))
+	for k := range s.Set.m {
+		if p := k.(*Peer); foundFunc(p) {
+			l = append(l, p)
+		}
+	}
+	return l
+}
 
 type NetAddressSet struct {
 	*Set
@@ -292,6 +330,13 @@ func (s *NetAddressSet) ContainsByPeer(p *Peer) bool {
 	s.mtx.RLock()
 	d := s.Set.m[p.netAddress]
 	return d != nil && d == p.id.String()
+}
+func (s *NetAddressSet) Clear() {
+	defer s.Set.mtx.Unlock()
+	s.Set.mtx.Lock()
+
+	s._clear()
+	s.cache = s._map()
 }
 func (s *NetAddressSet) Merge(args ...NetAddress) {
 	defer s.Set.mtx.Unlock()

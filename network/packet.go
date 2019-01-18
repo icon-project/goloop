@@ -22,18 +22,19 @@ const (
 
 //srcPeerId, castType, destInfo, TTL(0:unlimited)
 type Packet struct {
-	protocol        protocolInfo //2byte
-	subProtocol     protocolInfo //2byte
-	src             module.PeerID       //20byte
+	protocol        protocolInfo  //2byte
+	subProtocol     protocolInfo  //2byte
+	src             module.PeerID //20byte
 	dest            byte
 	ttl             byte
 	lengthOfpayload uint32 //4byte
 	payload         []byte
 	hashOfPacket    uint64 //8byte
 	//Transient fields
-	sender module.PeerID //20byte
-	destPeer module.PeerID //20byte
-	priority uint8
+	sender    module.PeerID //20byte
+	destPeer  module.PeerID //20byte
+	priority  uint8
+	timestamp time.Time
 }
 
 const (
@@ -48,6 +49,7 @@ func NewPacket(pi protocolInfo, spi protocolInfo, payload []byte) *Packet {
 		subProtocol:     spi,
 		lengthOfpayload: uint32(len(payload)),
 		payload:         payload[:],
+		timestamp:       time.Now(),
 	}
 }
 
@@ -94,7 +96,8 @@ func (pr *PacketReader) _read(n int) ([]byte, error) {
 	return b, nil
 }
 
-func (pr *PacketReader) Reset() {
+func (pr *PacketReader) Reset(rd io.Reader) {
+	pr.rd = rd
 	pr.Reader.Reset(pr.rd)
 }
 
@@ -152,6 +155,8 @@ func (pr *PacketReader) ReadPacket() (pkt *Packet, h hash.Hash64, e error) {
 			pr.pkt.hashOfPacket = binary.BigEndian.Uint64(tb[:8])
 			tb = tb[8:]
 
+			pr.pkt.timestamp = time.Now()
+
 			pkt = pr.pkt
 			pr.pkt = nil
 			return
@@ -169,7 +174,8 @@ func NewPacketWriter(w io.Writer) *PacketWriter {
 	return &PacketWriter{Writer: bufio.NewWriterSize(w, DefaultPacketBufferSize), wr: w}
 }
 
-func (pw *PacketWriter) Reset() {
+func (pw *PacketWriter) Reset(wr io.Writer) {
+	pw.wr = wr
 	pw.Writer.Reset(pw.wr)
 }
 
@@ -303,12 +309,12 @@ func (prw *PacketReadWriter) ReadPacket() (*Packet, error) {
 	return prw.rpkt, nil
 }
 
-func (prw *PacketReadWriter) Reset() {
+func (prw *PacketReadWriter) Reset(rd io.Reader, wr io.Writer) {
 	defer prw.mtx.Unlock()
 	prw.mtx.Lock()
 	prw.b.Reset()
-	prw.rd.Reset()
-	prw.wr.Reset()
+	prw.rd.Reset(rd)
+	prw.wr.Reset(wr)
 	prw.rpkt = nil
 	prw.wpkt = nil
 }

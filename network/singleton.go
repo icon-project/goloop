@@ -1,13 +1,10 @@
 package network
 
 import (
+	"crypto/elliptic"
 	"errors"
 	"math"
 	"time"
-
-	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/crypto"
-	"github.com/icon-project/goloop/module"
 )
 
 var (
@@ -15,27 +12,21 @@ var (
 	ErrAlreadyClosed             = errors.New("already closed")
 	ErrAlreadyRegisteredReactor  = errors.New("already registered reactor")
 	ErrAlreadyRegisteredProtocol = errors.New("already registered protocol")
-    ErrNotRegisteredProtocol     = errors.New("not registered protocol")
+	ErrNotRegisteredProtocol     = errors.New("not registered protocol")
 	ErrNotRegisteredRole         = errors.New("not registered role")
 	ErrNotAvailable              = errors.New("not available")
 	ErrQueueOverflow             = errors.New("queue overflow")
 	ErrDuplicatedPacket          = errors.New("duplicated Packet")
-	ErrNilPacket                 = errors.New("nil Packet")
-)
-var (
-	singletonTransport module.NetworkTransport
-	singletonManagers  = make(map[string]module.NetworkManager)
-	singletonConfig    *Config
 )
 
 var (
-	singletonLoggerExcludes = []string{
+	ExcludeLoggers = []string{
 		"Listener",
 		"Dialer",
 		"PeerDispatcher",
 		"Authenticator",
 		"ChannelNegotiator",
-		"PeerToPeer",
+		//"PeerToPeer",
 		"ProtocolHandler",
 		"NetworkManager",
 	}
@@ -47,23 +38,27 @@ const (
 	DefaultPacketBufferSize     = 4096 //bufio.defaultBufSize=4096
 	DefaultPacketPayloadMax     = math.MaxInt32
 	DefaultPacketPoolNumBucket  = 20
-	DefaultPacketPoolBucketLen  = 100
+	DefaultPacketPoolBucketLen  = 500
 	DefaultDiscoveryPeriod      = 2 * time.Second
 	DefaultSeedPeriod           = 3 * time.Second
+	DefaultMinSeed				= 1
 	DefaultAlternateSendPeriod  = 1 * time.Second
-	DefaultSendTimeout          = 1 * time.Second
+	DefaultSendTimeout          = 5 * time.Second
 	DefaultSendQueueMaxPriority = 7
 	DefaultSendQueueSize        = 1000
 	DefaultEventQueueSize       = 100
 	DefaultPeerSendQueueSize    = 1000
 	DefaultPeerPoolExpireSecond = 5
-	DefaultUncleLimit           = 1
+	DefaultUncleLimit           = 2
+	DefaultChildrenLimit        = 1
+	DefaultNephewLimit          = 2
 	DefaultPacketRewriteLimit   = 10
 	DefaultPacketRewriteDelay   = 100 * time.Millisecond
+	DefaultRttAccuracy          = 10 * time.Millisecond
 )
 
 var (
-	PROTO_CONTOL     = protocolInfo(0x0000)
+	PROTO_CONTOL = protocolInfo(0x0000)
 )
 
 var (
@@ -77,58 +72,19 @@ var (
 	PROTO_P2P_QUERY_RESULT = protocolInfo(0x0800)
 	PROTO_P2P_CONN_REQ     = protocolInfo(0x0900)
 	PROTO_P2P_CONN_RESP    = protocolInfo(0x0A00)
+	PROTO_P2P_RTT_REQ      = protocolInfo(0x0B00)
+	PROTO_P2P_RTT_RESP     = protocolInfo(0x0C00)
 )
 
-type Config struct {
-	ListenAddress string
-	SeedAddress   string
-	RoleSeed      bool
-	RoleRoot      bool
-	PrivateKey    *crypto.PrivateKey
-}
-
-func GetConfig() *Config {
-	if singletonConfig == nil {
-		//TODO Read from file or DB
-		priK, _ := crypto.GenerateKeyPair()
-		singletonConfig = &Config{
-			ListenAddress: "127.0.0.1:8080",
-			PrivateKey:    priK,
-		}
-
+var (
+	DefaultSecureEllipticCurve = elliptic.P256()
+	DefaultSecureSuites        = []SecureSuite{
+		SecureSuiteNone,
+		SecureSuiteTls,
+		SecureSuiteEcdhe,
 	}
-	return singletonConfig
-}
-
-func GetTransport() module.NetworkTransport {
-	if singletonTransport == nil {
-		c := GetConfig()
-		w, _ := common.NewWalletFromPrivateKey(c.PrivateKey)
-		singletonTransport = NewTransport(c.ListenAddress, w)
+	DefaultSecureAeadSuites = []SecureAeadSuite{
+		SecureAeadSuiteChaCha20Poly1305,
+		SecureAeadSuiteAes128Gcm,
 	}
-	return singletonTransport
-}
-
-func GetManager(channel string) module.NetworkManager {
-	nm, ok := singletonManagers[channel]
-	if !ok {
-		c := GetConfig()
-		t := GetTransport()
-		m := NewManager(channel, t)
-
-		r := PeerRoleFlag(p2pRoleNone)
-		if c.RoleSeed {
-			r.SetFlag(p2pRoleSeed)
-		}
-		if c.RoleRoot {
-			r.SetFlag(p2pRoleRoot)
-		}
-		m.(*manager).p2p.setRole(r)
-		if c.SeedAddress != "" {
-			m.(*manager).p2p.seeds.Add(NetAddress(c.SeedAddress))
-		}
-		nm = m
-		singletonManagers[channel] = m
-	}
-	return nm
-}
+)

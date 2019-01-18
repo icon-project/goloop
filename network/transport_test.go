@@ -14,7 +14,8 @@ import (
 
 const (
 	testChannel          = "testchannel"
-	testTransportAddress = "127.0.0.1:8081"
+	testTransportAddress1 = "127.0.0.1:8080"
+	testTransportAddress2 = "127.0.0.1:8081"
 )
 
 var (
@@ -44,7 +45,6 @@ func (ph *testPeerHandler) onPeer(p *Peer) {
 	ph.log.Println("onPeer", p)
 	p.setPacketCbFunc(ph.onPacket)
 	if !p.incomming {
-		ph.wg.Add(1)
 		m := &testTransportRequest{Message: "Hello"}
 		ph.sendMessage(ProtoTestTransportRequest, m, p)
 		ph.log.Println("sendProtoTestTransportRequest", m, p)
@@ -110,13 +110,17 @@ func walletFromGeneratedPrivateKey() module.Wallet {
 func Test_transport(t *testing.T) {
 	var wg sync.WaitGroup
 
-	nt1 := GetTransport()
-	nt2 := NewTransport(testTransportAddress, walletFromGeneratedPrivateKey())
+	ExcludeLoggers = []string{}
 
+	nt1 := NewTransport(testTransportAddress1, walletFromGeneratedPrivateKey())
+	nt2 := NewTransport(testTransportAddress2, walletFromGeneratedPrivateKey())
+
+	wg.Add(1)
 	tph1 := newTestPeerHandler("TestPeerHandler1", t, &wg)
 	tph2 := newTestPeerHandler("TestPeerHandler2", t, &wg)
-	nt1.(*transport).pd.registPeerHandler(tph1)
-	nt2.(*transport).pd.registPeerHandler(tph2)
+
+	nt1.(*transport).pd.registPeerHandler(tph1, false)
+	nt2.(*transport).pd.registPeerHandler(tph2, false)
 
 	assert.Nil(t, nt1.Listen(), "Transport.Start fail")
 	assert.Nil(t, nt2.Listen(), "Transport.Start fail")

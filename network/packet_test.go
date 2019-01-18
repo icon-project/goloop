@@ -64,7 +64,7 @@ func Test_packet_PacketReadWriter(t *testing.T) {
 	rpkt, err = prw.ReadPacket()
 	assert.NoError(t, err, "ReadPacket fail")
 	assert.Equal(t, pkt, rpkt, "ReadPacket")
-	prw.Reset()
+	prw.Reset(prw.b,prw.b)
 	rpkt, err = prw.ReadPacket()
 	assert.Error(t, err, "ReadPacket must fail(io.EOF) after Reset")
 

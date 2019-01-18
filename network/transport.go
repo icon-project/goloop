@@ -189,7 +189,7 @@ func (ph *peerHandler) nextOnPeer(p *Peer) {
 
 func (ph *peerHandler) onError(err error, p *Peer, pkt *Packet) {
 	ph.log.Println("onError", err, p)
-	p.Close()
+	p.CloseByError(err)
 }
 
 func (ph *peerHandler) onClose(p *Peer) {
@@ -243,9 +243,9 @@ func newPeerDispatcher(id module.PeerID, peerHandlers ...PeerHandler) *PeerDispa
 	// pd.peerHandler.codecHandle.MapType = reflect.TypeOf(map[string]interface{}(nil))
 	pd.setSelfPeerID(id)
 
-	pd.registPeerHandler(pd)
+	pd.registPeerHandler(pd, true)
 	for _, ph := range peerHandlers {
-		pd.registPeerHandler(ph)
+		pd.registPeerHandler(ph, true)
 	}
 	return pd
 }
@@ -254,12 +254,22 @@ func (pd *PeerDispatcher) registPeerToPeer(p2p *PeerToPeer) {
 	pd.p2pMap[p2p.channel] = p2p
 }
 
-func (pd *PeerDispatcher) registPeerHandler(ph PeerHandler) {
-	pd.log.Println("registPeerHandler", ph)
-	elm := pd.peerHandlers.PushBack(ph)
-	if prev := elm.Prev(); prev != nil {
-		ph.setNext(prev.Value.(PeerHandler))
+func (pd *PeerDispatcher) registPeerHandler(ph PeerHandler, pushBack bool) {
+	pd.log.Println("registPeerHandler", ph, pushBack)
+	if pushBack {
+		elm := pd.peerHandlers.PushBack(ph)
+		if prev := elm.Prev(); prev != nil {
+			ph.setNext(prev.Value.(PeerHandler))
+			ph.setSelfPeerID(pd.self)
+		}
+	} else {
+		f := pd.peerHandlers.Front()
+		elm := pd.peerHandlers.InsertAfter(ph, f)
+		pd.setNext(ph)
 		ph.setSelfPeerID(pd.self)
+		if next := elm.Next(); next != nil {
+			next.Value.(PeerHandler).setNext(ph)
+		}
 	}
 }
 
