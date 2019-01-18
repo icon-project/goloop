@@ -191,6 +191,8 @@ func (p *peer) sync() {
 			time.AfterFunc(waitTime, func() {
 				p.wakeUp()
 			})
+		} else {
+			p.wakeUp()
 		}
 	}
 }
