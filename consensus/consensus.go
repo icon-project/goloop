@@ -857,6 +857,7 @@ func (cs *consensus) applyRoundWAL() error {
 			if m.height() != cs.height {
 				continue
 			}
+			debug.Printf("WAL: my proposal %v\n", m)
 			if m.round() < round || (m.round() == round && rstep <= stepPropose) {
 				round = m.round()
 				rstep = stepPropose
@@ -865,6 +866,7 @@ func (cs *consensus) applyRoundWAL() error {
 			if m.height() != cs.height {
 				continue
 			}
+			debug.Printf("WAL: my vote %v\n", m)
 			index := cs.validators.IndexOf(m.address())
 			if index < 0 {
 				continue
@@ -886,6 +888,7 @@ func (cs *consensus) applyRoundWAL() error {
 				if vmsg.height() != cs.height {
 					continue
 				}
+				debug.Printf("WAL: round vote %v\n", vmsg)
 				index := cs.validators.IndexOf(vmsg.address())
 				if index < 0 {
 					continue
@@ -960,10 +963,11 @@ func (cs *consensus) applyLockWAL() error {
 				continue
 			}
 			for i := 0; i < m.VoteList.Len(); i++ {
-				if m.VoteList.Get(i).height() != cs.height {
+				vmsg := m.VoteList.Get(i)
+				if vmsg.height() != cs.height {
 					continue
 				}
-				vmsg := m.VoteList.Get(i)
+				debug.Printf("WAL: round vote %v\n", vmsg)
 				index := cs.validators.IndexOf(vmsg.address())
 				if index < 0 {
 					continue
@@ -977,6 +981,7 @@ func (cs *consensus) applyLockWAL() error {
 			prevotes := cs.hvs.votesFor(vmsg.Round, voteTypePrevote)
 			psid, ok := prevotes.getOverTwoThirdsPartSetID()
 			if ok && psid != nil {
+				debug.Printf("WAL: POL R=%v psid=%v\n", vmsg.Round, psid)
 				bpset = newPartSetFromID(psid)
 				bpsetLockRound = vmsg.Round
 			}
@@ -1006,9 +1011,11 @@ func (cs *consensus) applyLockWAL() error {
 				return err
 			}
 			err = bpset.AddPart(bp)
+			debug.Printf("WAL: blockPart %v\n", m)
 			if err == nil && bpset.IsComplete() {
 				lastBPSet = bpset
 				lastBPSetLockRound = bpsetLockRound
+				debug.Printf("WAL: blockPart complete\n")
 			}
 		}
 	}
@@ -1071,6 +1078,7 @@ func (cs *consensus) applyCommitWAL(prevValidators module.ValidatorList) error {
 				vs := newVoteSet(prevValidators.Len())
 				for i := 0; i < m.VoteList.Len(); i++ {
 					msg := m.VoteList.Get(i)
+					debug.Printf("WAL: round vote %v\n", msg)
 					index := prevValidators.IndexOf(msg.address())
 					if index < 0 {
 						return errors.Errorf("bad voter %v", msg.address())
@@ -1084,6 +1092,7 @@ func (cs *consensus) applyCommitWAL(prevValidators module.ValidatorList) error {
 			} else if m.VoteList.Get(0).height() == cs.height {
 				for i := 0; i < m.VoteList.Len(); i++ {
 					vmsg := m.VoteList.Get(i)
+					debug.Printf("WAL: round vote %v\n", vmsg)
 					index := cs.validators.IndexOf(vmsg.address())
 					if index < 0 {
 						continue
