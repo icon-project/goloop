@@ -5,13 +5,13 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/gofrs/uuid"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/ipc"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreapi"
 	"github.com/pkg/errors"
-	"github.com/satori/go.uuid"
 )
 
 type Message uint
@@ -346,5 +346,5 @@ func newConnection(m *manager, c ipc.Connection) (*proxy, error) {
 }
 
 func newUID() string {
-	return uuid.NewV4().String()
+	return uuid.Must(uuid.NewV4()).String()
 }
