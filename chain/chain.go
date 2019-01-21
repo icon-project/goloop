@@ -28,6 +28,8 @@ type Config struct {
 	DBDir  string `json:"db_dir"`
 	DBType string `json:"db_type"`
 	DBName string `json:"db_name"`
+
+	WALDir string `json:"wal_dir`
 }
 
 type singleChain struct {
@@ -102,7 +104,7 @@ func (c *singleChain) Start() {
 	c.sm = service.NewManager(c, c.nm, c.pm)
 	c.bm = block.NewManager(c, c.sm)
 
-	c.cs = consensus.NewConsensus(c, c.bm, c.nm)
+	c.cs = consensus.NewConsensus(c, c.bm, c.nm, c.cfg.WALDir)
 	err := c.cs.Start()
 	if err != nil {
 		log.Panicf("singleChain.Start: %+v\n", err)

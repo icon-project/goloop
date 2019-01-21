@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path"
 	"sync"
 	"time"
 
@@ -38,7 +39,6 @@ const (
 	configCommitCacheCap    = 60
 	configEnginePriority    = 2
 	configSyncerPriority    = 3
-	configWALDir            = ".wal"
 	configRoundWALID        = "round"
 	configRoundWALDataSize  = 1024 * 500
 	configLockWALID         = "lock"
@@ -68,18 +68,16 @@ type commit struct {
 type consensus struct {
 	hrs
 
-	nm          module.NetworkManager
-	bm          module.BlockManager
-	wallet      module.Wallet
-	ph          module.ProtocolHandler
-	mutex       sync.Mutex
-	syncer      Syncer
-	roundWALID  string
-	roundWAL    *walMessageWriter
-	lockWALID   string
-	lockWAL     *walMessageWriter
-	commitWALID string
-	commitWAL   *walMessageWriter
+	nm        module.NetworkManager
+	bm        module.BlockManager
+	wallet    module.Wallet
+	ph        module.ProtocolHandler
+	mutex     sync.Mutex
+	syncer    Syncer
+	walDir    string
+	roundWAL  *walMessageWriter
+	lockWAL   *walMessageWriter
+	commitWAL *walMessageWriter
 
 	lastBlock          module.Block
 	validators         module.ValidatorList
@@ -100,11 +98,12 @@ type consensus struct {
 	commitForHeight map[int64]*commit
 }
 
-func NewConsensus(c module.Chain, bm module.BlockManager, nm module.NetworkManager) module.Consensus {
+func NewConsensus(c module.Chain, bm module.BlockManager, nm module.NetworkManager, walDir string) module.Consensus {
 	cs := &consensus{
 		nm:              nm,
 		bm:              bm,
 		wallet:          c.Wallet(),
+		walDir:          walDir,
 		commitMRU:       list.New(),
 		commitForHeight: make(map[int64]*commit, configCommitCacheCap),
 	}
@@ -817,7 +816,7 @@ func (cs *consensus) isProposalAndPOLPrevotesComplete() bool {
 }
 
 func (cs *consensus) applyRoundWAL() error {
-	wr, err := OpenWALForRead(cs.roundWALID)
+	wr, err := OpenWALForRead(path.Join(cs.walDir, configRoundWALID))
 	if err != nil {
 		return err
 	}
@@ -920,7 +919,7 @@ func (cs *consensus) applyRoundWAL() error {
 }
 
 func (cs *consensus) applyLockWAL() error {
-	wr, err := OpenWALForRead(cs.lockWALID)
+	wr, err := OpenWALForRead(path.Join(cs.walDir, configLockWALID))
 	if err != nil {
 		return err
 	}
@@ -1036,7 +1035,7 @@ func (cs *consensus) applyLockWAL() error {
 }
 
 func (cs *consensus) applyCommitWAL(prevValidators module.ValidatorList) error {
-	wr, err := OpenWALForRead(cs.commitWALID)
+	wr, err := OpenWALForRead(path.Join(cs.walDir, configCommitWALID))
 	if err != nil {
 		return nil
 	}
@@ -1144,10 +1143,6 @@ func (cs *consensus) Start() error {
 	logger = log.New(os.Stderr, prefix, log.Lshortfile|log.Lmicroseconds)
 	debug = log.New(debugWriter, prefix, log.Lshortfile|log.Lmicroseconds)
 
-	cs.roundWALID = fmt.Sprintf("%s/%s/%s", configWALDir, cs.wallet.Address(), configRoundWALID)
-	cs.lockWALID = fmt.Sprintf("%s/%s/%s", configWALDir, cs.wallet.Address(), configLockWALID)
-	cs.commitWALID = fmt.Sprintf("%s/%s/%s", configWALDir, cs.wallet.Address(), configCommitWALID)
-
 	var lastBlock module.Block
 	var prevBlock module.Block
 	lastBlock, err := cs.bm.GetLastBlock()
@@ -1181,7 +1176,7 @@ func (cs *consensus) Start() error {
 		return err
 	}
 
-	ww, err := OpenWALForWrite(cs.roundWALID, &WALConfig{
+	ww, err := OpenWALForWrite(path.Join(cs.walDir, configRoundWALID), &WALConfig{
 		FileLimit:  configRoundWALDataSize,
 		TotalLimit: configRoundWALDataSize * 3,
 	})
@@ -1190,7 +1185,7 @@ func (cs *consensus) Start() error {
 	}
 	cs.roundWAL = &walMessageWriter{ww}
 
-	ww, err = OpenWALForWrite(cs.lockWALID, &WALConfig{
+	ww, err = OpenWALForWrite(path.Join(cs.walDir, configLockWALID), &WALConfig{
 		FileLimit:  configLockWALDataSize,
 		TotalLimit: configLockWALDataSize * 3,
 	})
@@ -1199,7 +1194,7 @@ func (cs *consensus) Start() error {
 	}
 	cs.lockWAL = &walMessageWriter{ww}
 
-	ww, err = OpenWALForWrite(cs.commitWALID, &WALConfig{
+	ww, err = OpenWALForWrite(path.Join(cs.walDir, configCommitWALID), &WALConfig{
 		FileLimit:  configCommitWALDataSize,
 		TotalLimit: configCommitWALDataSize * 3,
 	})

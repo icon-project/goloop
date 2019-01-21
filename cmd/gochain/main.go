@@ -53,6 +53,7 @@ func main() {
 	flag.StringVar(&cfg.DBDir, "db_dir", "", "Database directory")
 	flag.StringVar(&cfg.DBName, "db_name", "", "Database name for the chain(default:<channel name>)")
 	flag.UintVar(&cfg.Role, "role", 0, "[0:None, 1:Seed, 2:Validator, 3:Both]")
+	flag.StringVar(&cfg.WALDir, "wal_dir", "", "WAL directory")
 	flag.Parse()
 
 	if len(genesisFile) > 0 {
@@ -99,6 +100,11 @@ func main() {
 	if cfg.DBDir == "" {
 		addr := wallet.Address()
 		cfg.DBDir = ".db/" + addr.String()
+	}
+
+	if cfg.WALDir == "" {
+		addr := wallet.Address()
+		cfg.WALDir = ".wal/" + addr.String()
 	}
 
 	if cfg.DBType != "mapdb" {
