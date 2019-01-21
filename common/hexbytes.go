@@ -8,7 +8,7 @@ import (
 type RawHexBytes []byte
 
 func (rh RawHexBytes) MarshalJSON() ([]byte, error) {
-	if rh == nil || rh == nil {
+	if rh == nil {
 		return []byte("nil"), nil
 	}
 	s := hex.EncodeToString(rh)
