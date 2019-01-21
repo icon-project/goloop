@@ -14,7 +14,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-type dataCallJSON struct {
+type DataCallJSON struct {
 	Method string          `json:"method"`
 	Params json.RawMessage `json:"params"`
 }
@@ -41,7 +41,7 @@ type CallHandler struct {
 
 func newCallHandler(ch *CommonHandler, data []byte, cc CallContext, forDeploy bool,
 ) *CallHandler {
-	var jso dataCallJSON
+	var jso DataCallJSON
 	if err := json.Unmarshal(data, &jso); err != nil {
 		log.Println("FAIL to parse 'data' of transaction")
 		return nil

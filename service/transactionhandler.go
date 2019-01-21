@@ -1,10 +1,7 @@
 package service
 
 import (
-	"encoding/json"
 	"math/big"
-
-	"github.com/icon-project/goloop/common"
 
 	"github.com/go-errors/errors"
 
@@ -87,12 +84,15 @@ func (th *transactionHandler) Execute(wc WorldContext) (Receipt, error) {
 	var status module.Status
 	var stepUsed *big.Int
 	var addr module.Address
-	var iData interface{}
-	if err := json.Unmarshal(th.data, &iData); err == nil {
-		status = module.StatusSuccess
+	status = module.StatusSuccess
 
+	cnt, err := countBytesOfData(th.data)
+	if err != nil {
+		status = module.StatusSystemError
+		stepUsed = th.stepLimit
+	} else {
 		if !th.handler.ApplySteps(wc, StepTypeDefault, 1) ||
-			!th.handler.ApplySteps(wc, StepTypeInput, th.countBytesOfData(iData)) {
+			!th.handler.ApplySteps(wc, StepTypeInput, cnt) {
 			status = module.StatusNotPayable
 			stepUsed = th.handler.StepLimit()
 		}
@@ -109,9 +109,6 @@ func (th *transactionHandler) Execute(wc WorldContext) (Receipt, error) {
 				wc.Reset(wcs)
 			}
 		}
-	} else {
-		status = module.StatusSystemError
-		stepUsed = th.stepLimit
 	}
 
 	// Try to charge fee
@@ -141,40 +138,6 @@ func (th *transactionHandler) Execute(wc WorldContext) (Receipt, error) {
 	th.receipt.SetResult(status, stepUsed, stepPrice, addr)
 
 	return th.receipt, nil
-}
-
-func (h *transactionHandler) countBytesOfData(data interface{}) int {
-	switch o := data.(type) {
-	case string:
-		if len(o) > 2 && o[:2] == "0x" {
-			o = o[2:]
-		}
-		bs := []byte(o)
-		for _, b := range bs {
-			if (b < '0' || b > '9') && (b < 'a' || b > 'f') {
-				return len(bs)
-			}
-		}
-		return (len(bs) + 1) / 2
-	case []interface{}:
-		var count int
-		for _, i := range o {
-			count += h.countBytesOfData(i)
-		}
-		return count
-	case map[string]interface{}:
-		var count int
-		for _, i := range o {
-			count += h.countBytesOfData(i)
-		}
-		return count
-	case bool:
-		return 1
-	case float64:
-		return len(common.Int64ToBytes(int64(o)))
-	default:
-		return 0
-	}
 }
 
 func (th *transactionHandler) Dispose() {

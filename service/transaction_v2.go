@@ -27,10 +27,27 @@ func (tx *transactionV2) Version() int {
 }
 
 func (tx *transactionV2) Verify() error {
+	// value >= 0
+	if tx.Value != nil && tx.Value.Sign() < 0 {
+		return ErrInvalidValueValue
+	}
+
+	// character level size of data element <= 512KB
+	if n, err := countBytesOfData(tx.Data); err != nil || n > txMaxDataSize {
+		return ErrInvalidDataValue
+	}
+
+	// fee == FixedFee
 	if tx.Fee.Int.Cmp(version2FixedFee) != 0 {
 		return ErrInvalidFeeValue
 	}
 
+	// check if it's EOA
+	if tx.To.IsContract() {
+		return ErrNotEOA
+	}
+
+	// signature verification
 	if err := tx.updateTxHash(); err != nil {
 		return err
 	}
@@ -47,6 +64,16 @@ func (tx *transactionV2) Verify() error {
 }
 
 func (tx *transactionV2) PreValidate(wc WorldContext, update bool) error {
+	// outdated or invalid timestamp?
+	if configOnCheckingTimestamp == true {
+		tsdiff := wc.BlockTimeStamp() - tx.TimeStamp.Value
+		if tsdiff < int64(-5*time.Minute/time.Microsecond) ||
+			tsdiff > int64(5*time.Minute/time.Microsecond) {
+			return ErrTimeOut
+		}
+	}
+
+	// balance >= (fee + value)
 	trans := new(big.Int)
 	trans.Set(&tx.Value.Int)
 	trans.Add(trans, &tx.Fee.Int)
@@ -57,14 +84,7 @@ func (tx *transactionV2) PreValidate(wc WorldContext, update bool) error {
 		return ErrNotEnoughBalance
 	}
 
-	if configOnCheckingTimestamp == true {
-		tsdiff := wc.BlockTimeStamp() - tx.TimeStamp.Value
-		if tsdiff < int64(-5*time.Minute/time.Microsecond) ||
-			tsdiff > int64(5*time.Minute/time.Microsecond) {
-			return ErrTimeOut
-		}
-	}
-
+	// for cumulative balance check
 	if update {
 		as2 := wc.GetAccountState(tx.To.ID())
 		balance2 := as2.GetBalance()

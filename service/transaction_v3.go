@@ -15,6 +15,10 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+const (
+	txMaxDataSize = 512 * 1024 // 512kB
+)
+
 type transactionV3Data struct {
 	Version   common.HexUint16 `json:"version"`
 	From      common.Address   `json:"from"`
@@ -131,8 +135,6 @@ func (tx *transactionV3) TxHash() []byte {
 	return tx.txHash
 }
 
-var stepsForTransfer = big.NewInt(100000)
-
 func (tx *transactionV3) ID() []byte {
 	return tx.TxHash()
 }
@@ -142,10 +144,48 @@ func (tx *transactionV3) Version() int {
 }
 
 func (tx *transactionV3) Verify() error {
-	if tx.Data != nil && (*tx.DataType) == "call" && !tx.To.IsContract() {
-		return ErrContractIsRequired
+	// value >= 0
+	if tx.Value != nil && tx.Value.Sign() < 0 {
+		return ErrInvalidValueValue
 	}
 
+	// character level size of data element <= 512KB
+	if n, err := countBytesOfData(tx.Data); err != nil || n > txMaxDataSize {
+		return ErrInvalidDataValue
+	}
+
+	// Checkups by data types
+	switch *tx.DataType {
+	case dataTypeCall:
+		// element check
+		if tx.Data == nil {
+			return ErrInvalidDataValue
+		}
+		_, err := tx.parseCallData()
+		return err
+	case dataTypeDeploy:
+		// element check
+		if tx.Data == nil {
+			return ErrInvalidDataValue
+		}
+		type dataDeployJSON struct {
+			ContentType string          `json:"contentType""`
+			Content     common.HexBytes `json:"content"`
+			Params      json.RawMessage `json:"params"`
+		}
+		var jso dataDeployJSON
+		if json.Unmarshal(tx.Data, jso) != nil || jso.ContentType == "" ||
+			jso.Content == nil {
+			return ErrInvalidDataValue
+		}
+
+		// value == 0
+		if tx.Value.Sign() != 0 {
+			return ErrInvalidValueValue
+		}
+	}
+
+	// signature verification
 	if err := tx.verifySignature(); err != nil {
 		return err
 	}
@@ -153,7 +193,38 @@ func (tx *transactionV3) Verify() error {
 	return nil
 }
 
+func (tx *transactionV3) parseCallData() (*DataCallJSON, error) {
+	var jso *DataCallJSON
+	if json.Unmarshal(tx.Data, jso) != nil || jso.Method == "" {
+		return nil, ErrInvalidDataValue
+	} else {
+		return jso, nil
+	}
+}
+
 func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
+	// TODO check if network ID is valid
+
+	// outdated or invalid timestamp?
+	if configOnCheckingTimestamp {
+		tsdiff := wc.BlockTimeStamp() - tx.TimeStamp.Value
+		if tsdiff < int64(-5*time.Minute/time.Microsecond) ||
+			tsdiff > int64(5*time.Minute/time.Microsecond) {
+			return ErrTimeOut
+		}
+	}
+
+	// stepLimit >= default step + input steps
+	cnt, err := countBytesOfData(tx.Data)
+	if err != nil {
+		return err
+	}
+	minStep := big.NewInt(wc.StepsFor(StepTypeDefault, 1) + wc.StepsFor(StepTypeInput, cnt))
+	if tx.StepLimit.Cmp(minStep) < 0 {
+		return ErrNotEnoughStep
+	}
+
+	// balance >= (fee + value)
 	stepPrice := wc.StepPrice()
 
 	trans := new(big.Int)
@@ -169,14 +240,7 @@ func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
 		return ErrNotEnoughBalance
 	}
 
-	if configOnCheckingTimestamp {
-		tsdiff := wc.BlockTimeStamp() - tx.TimeStamp.Value
-		if tsdiff < int64(-5*time.Minute/time.Microsecond) ||
-			tsdiff > int64(5*time.Minute/time.Microsecond) {
-			return ErrTimeOut
-		}
-	}
-
+	// for cumulative balance check
 	if update {
 		as2 := wc.GetAccountState(tx.To.ID())
 		balance2 := as2.GetBalance()
@@ -186,6 +250,46 @@ func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
 		balance1.Sub(balance1, trans)
 		as1.SetBalance(balance1)
 		as2.SetBalance(balance2)
+	}
+
+	// checkups by data types
+	switch *tx.DataType {
+	case dataTypeCall:
+		// check if contract is active and not blacklisted
+		as := wc.GetAccountState(tx.To.ID())
+		if !as.IsContract() {
+			return ErrNotContractAccount
+		}
+		if as.ActiveContract() == nil {
+			return ErrNoActiveContract
+		}
+		if as.IsBlacklisted() {
+			return ErrBlacklisted
+		}
+
+		// check method and parameters
+		if info := as.APIInfo(); info == nil {
+			return ErrNoActiveContract
+		} else {
+			jso, _ := tx.parseCallData() // Already checked at Verify(). It can't be nil.
+			if _, err = info.ConvertParamsToTypedObj(jso.Method, jso.Params); err != nil {
+				return ErrInvalidMethod
+			}
+		}
+	case dataTypeDeploy:
+		// update case: check if contract is active and from is its owner
+		if !bytes.Equal(tx.To.ID(), SystemID) { // update
+			as := wc.GetAccountState(tx.To.ID())
+			if !as.IsContract() {
+				return ErrNotContractAccount
+			}
+			if as.ActiveContract() == nil {
+				return ErrNoActiveContract
+			}
+			if !as.IsContractOwner(&tx.From) {
+				return ErrNotContractOwner
+			}
+		}
 	}
 	return nil
 }
@@ -297,5 +401,52 @@ func newTransactionV3FromBytes(bs []byte) (Transaction, error) {
 		return nil, err
 	} else {
 		return tx, nil
+	}
+}
+
+func countBytesOfData(data []byte) (int, error) {
+	if data == nil {
+		return 0, nil
+	}
+
+	var idata interface{}
+	if err := json.Unmarshal(data, idata); err != nil {
+		return 0, err
+	} else {
+		return countBytesOfDataValue(idata), nil
+	}
+}
+
+func countBytesOfDataValue(v interface{}) int {
+	switch o := v.(type) {
+	case string:
+		if len(o) > 2 && o[:2] == "0x" {
+			o = o[2:]
+		}
+		bs := []byte(o)
+		for _, b := range bs {
+			if (b < '0' || b > '9') && (b < 'a' || b > 'f') {
+				return len(bs)
+			}
+		}
+		return (len(bs) + 1) / 2
+	case []interface{}:
+		var count int
+		for _, i := range o {
+			count += countBytesOfDataValue(i)
+		}
+		return count
+	case map[string]interface{}:
+		var count int
+		for _, i := range o {
+			count += countBytesOfDataValue(i)
+		}
+		return count
+	case bool:
+		return 1
+	case float64:
+		return len(common.Int64ToBytes(int64(o)))
+	default:
+		return 0
 	}
 }

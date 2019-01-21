@@ -18,10 +18,18 @@ const (
 var (
 	ErrNotEnoughBalance   = errors.New("NotEnoughBalance")
 	ErrTimeOut            = errors.New("TimeOut")
+	ErrInvalidValueValue  = errors.New("InvalidValueValue")
 	ErrInvalidFeeValue    = errors.New("InvalidFeeValue")
+	ErrInvalidDataValue   = errors.New("InvalidDataValue")
 	ErrNotEnoughStep      = errors.New("NotEnoughStep")
 	ErrContractIsRequired = errors.New("ContractIsRequired")
 	ErrInvalidHashValue   = errors.New("InvalidHashValue")
+	ErrNotContractAccount = errors.New("NotContractAccount")
+	ErrNotEOA             = errors.New("NotEOA")
+	ErrNoActiveContract   = errors.New("NoActiveContract")
+	ErrNotContractOwner   = errors.New("NotContractOwner")
+	ErrBlacklisted        = errors.New("Blacklisted")
+	ErrInvalidMethod      = errors.New("InvalidMethod")
 )
 
 type StepType string
