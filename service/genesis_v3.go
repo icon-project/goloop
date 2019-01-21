@@ -149,6 +149,32 @@ func (g *genesisV3) Prepare(wc WorldContext) (WorldContext, error) {
 	return wc.GetFuture(lq), nil
 }
 
+func (g *genesisV3) setDefaultSystemInfo(as AccountState) {
+	stepCosts := map[string]int64{
+		"default":          0x186a0,
+		"contractCall":     0x61a8,
+		"contractCreate":   0x3b9aca00,
+		"contractUpdate":   0x5f5e1000,
+		"contractDestruct": -0x11170,
+		"contractSet":      0x7530,
+		"get":              0x0,
+		"set":              0x140,
+		"replace":          0x50,
+		"delete":           -0xf0,
+		"input":            0xc8,
+		"eventLog":         0x64,
+		"apiCall":          0x0,
+	}
+
+	scoredb.NewVarDB(as, VarStepPrice).Set(big.NewInt(100000))
+	for k, v := range stepCosts {
+		stepTypes := scoredb.NewArrayDB(as, VarStepTypes)
+		stepTypes.Put(k)
+		stepCostDB := scoredb.NewDictDB(as, VarStepCosts, 1)
+		stepCostDB.Set(k, v)
+	}
+}
+
 func (g *genesisV3) Execute(wc WorldContext) (Receipt, error) {
 	r := NewReceipt(common.NewAccountAddress([]byte{}))
 	as := wc.GetAccountState(SystemID)
@@ -158,6 +184,7 @@ func (g *genesisV3) Execute(wc WorldContext) (Receipt, error) {
 		ac := wc.GetAccountState(info.Address.ID())
 		ac.SetBalance(&info.Balance.Int)
 	}
+	g.setDefaultSystemInfo(as)
 	r.SetResult(module.StatusSuccess, big.NewInt(0), big.NewInt(0), nil)
 	validators := make([]module.Validator, len(g.Validatorlist))
 	for i, validator := range g.Validatorlist {

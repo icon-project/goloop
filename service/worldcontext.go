@@ -95,9 +95,6 @@ func (c *worldContext) updateSystemInfo() {
 			as := newAccountROState(ass)
 
 			stepPrice := scoredb.NewVarDB(as, VarStepPrice).BigInt()
-			if stepPrice == nil {
-				stepPrice = version2StepPrice
-			}
 			c.systemInfo.stepPrice = stepPrice
 
 			stepCosts := make(map[string]int64)
