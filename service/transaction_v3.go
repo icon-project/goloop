@@ -175,13 +175,13 @@ func (tx *transactionV3) Verify() error {
 				Params      json.RawMessage `json:"params"`
 			}
 			var jso dataDeployJSON
-			if json.Unmarshal(tx.Data, jso) != nil || jso.ContentType == "" ||
+			if json.Unmarshal(tx.Data, &jso) != nil || jso.ContentType == "" ||
 				jso.Content == nil {
 				return ErrInvalidDataValue
 			}
 
 			// value == 0
-			if tx.Value.Sign() != 0 {
+			if tx.Value != nil && tx.Value.Sign() != 0 {
 				return ErrInvalidValueValue
 			}
 		}
@@ -196,11 +196,11 @@ func (tx *transactionV3) Verify() error {
 }
 
 func (tx *transactionV3) parseCallData() (*DataCallJSON, error) {
-	var jso *DataCallJSON
-	if json.Unmarshal(tx.Data, jso) != nil || jso.Method == "" {
+	var jso DataCallJSON
+	if json.Unmarshal(tx.Data, &jso) != nil || jso.Method == "" {
 		return nil, ErrInvalidDataValue
 	} else {
-		return jso, nil
+		return &jso, nil
 	}
 }
 
@@ -414,7 +414,7 @@ func countBytesOfData(data []byte) (int, error) {
 	}
 
 	var idata interface{}
-	if err := json.Unmarshal(data, idata); err != nil {
+	if err := json.Unmarshal(data, &idata); err != nil {
 		return 0, err
 	} else {
 		return countBytesOfDataValue(idata), nil
