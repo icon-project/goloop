@@ -310,16 +310,18 @@ func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) e
 }
 
 func (cs *consensus) handlePrecommitMessage(msg *voteMessage, precommits *voteSet) error {
-	if cs.round == msg.Round && cs.step < stepPrecommit {
+	if msg.Round < cs.round && cs.step < stepCommit {
+		if psid, _ := precommits.getOverTwoThirdsPartSetID(); psid != nil {
+			cs.enterCommit(precommits, psid)
+		}
+	} else if cs.round == msg.Round && cs.step < stepPrecommit {
 		cs.enterPrecommit()
 	} else if cs.round == msg.Round && cs.step == stepPrecommit {
 		cs.enterPrecommitWait()
-	} else if msg.Round < cs.round || (cs.round == msg.Round && cs.step == stepPrecommitWait) {
+	} else if cs.round == msg.Round && cs.step == stepPrecommitWait {
 		partSetID, ok := precommits.getOverTwoThirdsPartSetID()
 		if partSetID != nil {
-			if cs.step < stepCommit {
-				cs.enterCommit(precommits, partSetID)
-			}
+			cs.enterCommit(precommits, partSetID)
 		} else if ok && partSetID == nil {
 			cs.enterProposeForRound(cs.round + 1)
 		}
