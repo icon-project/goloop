@@ -155,33 +155,35 @@ func (tx *transactionV3) Verify() error {
 	}
 
 	// Checkups by data types
-	switch *tx.DataType {
-	case dataTypeCall:
-		// element check
-		if tx.Data == nil {
-			return ErrInvalidDataValue
-		}
-		_, err := tx.parseCallData()
-		return err
-	case dataTypeDeploy:
-		// element check
-		if tx.Data == nil {
-			return ErrInvalidDataValue
-		}
-		type dataDeployJSON struct {
-			ContentType string          `json:"contentType""`
-			Content     common.HexBytes `json:"content"`
-			Params      json.RawMessage `json:"params"`
-		}
-		var jso dataDeployJSON
-		if json.Unmarshal(tx.Data, jso) != nil || jso.ContentType == "" ||
-			jso.Content == nil {
-			return ErrInvalidDataValue
-		}
+	if tx.DataType != nil {
+		switch *tx.DataType {
+		case dataTypeCall:
+			// element check
+			if tx.Data == nil {
+				return ErrInvalidDataValue
+			}
+			_, err := tx.parseCallData()
+			return err
+		case dataTypeDeploy:
+			// element check
+			if tx.Data == nil {
+				return ErrInvalidDataValue
+			}
+			type dataDeployJSON struct {
+				ContentType string          `json:"contentType""`
+				Content     common.HexBytes `json:"content"`
+				Params      json.RawMessage `json:"params"`
+			}
+			var jso dataDeployJSON
+			if json.Unmarshal(tx.Data, jso) != nil || jso.ContentType == "" ||
+				jso.Content == nil {
+				return ErrInvalidDataValue
+			}
 
-		// value == 0
-		if tx.Value.Sign() != 0 {
-			return ErrInvalidValueValue
+			// value == 0
+			if tx.Value.Sign() != 0 {
+				return ErrInvalidValueValue
+			}
 		}
 	}
 
@@ -253,32 +255,10 @@ func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
 	}
 
 	// checkups by data types
-	switch *tx.DataType {
-	case dataTypeCall:
-		// check if contract is active and not blacklisted
-		as := wc.GetAccountState(tx.To.ID())
-		if !as.IsContract() {
-			return ErrNotContractAccount
-		}
-		if as.ActiveContract() == nil {
-			return ErrNoActiveContract
-		}
-		if as.IsBlacklisted() {
-			return ErrBlacklisted
-		}
-
-		// check method and parameters
-		if info := as.APIInfo(); info == nil {
-			return ErrNoActiveContract
-		} else {
-			jso, _ := tx.parseCallData() // Already checked at Verify(). It can't be nil.
-			if _, err = info.ConvertParamsToTypedObj(jso.Method, jso.Params); err != nil {
-				return ErrInvalidMethod
-			}
-		}
-	case dataTypeDeploy:
-		// update case: check if contract is active and from is its owner
-		if !bytes.Equal(tx.To.ID(), SystemID) { // update
+	if tx.DataType != nil {
+		switch *tx.DataType {
+		case dataTypeCall:
+			// check if contract is active and not blacklisted
 			as := wc.GetAccountState(tx.To.ID())
 			if !as.IsContract() {
 				return ErrNotContractAccount
@@ -286,8 +266,32 @@ func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
 			if as.ActiveContract() == nil {
 				return ErrNoActiveContract
 			}
-			if !as.IsContractOwner(&tx.From) {
-				return ErrNotContractOwner
+			if as.IsBlacklisted() {
+				return ErrBlacklisted
+			}
+
+			// check method and parameters
+			if info := as.APIInfo(); info == nil {
+				return ErrNoActiveContract
+			} else {
+				jso, _ := tx.parseCallData() // Already checked at Verify(). It can't be nil.
+				if _, err = info.ConvertParamsToTypedObj(jso.Method, jso.Params); err != nil {
+					return ErrInvalidMethod
+				}
+			}
+		case dataTypeDeploy:
+			// update case: check if contract is active and from is its owner
+			if !bytes.Equal(tx.To.ID(), SystemID) { // update
+				as := wc.GetAccountState(tx.To.ID())
+				if !as.IsContract() {
+					return ErrNotContractAccount
+				}
+				if as.ActiveContract() == nil {
+					return ErrNoActiveContract
+				}
+				if !as.IsContractOwner(&tx.From) {
+					return ErrNotContractOwner
+				}
 			}
 		}
 	}
