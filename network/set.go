@@ -429,6 +429,22 @@ func (s *PeerIDSet) Remove(id module.PeerID) (r bool) {
 	}
 	return
 }
+func (s *PeerIDSet) Removes(args ...module.PeerID) {
+	var r bool
+	defer func() {
+		s.Set.mtx.Unlock()
+		if r {
+			s.onUpdate()
+		}
+	}()
+	s.Set.mtx.Lock()
+	for _, id := range args {
+		if s._contains(id) {
+			delete(s.Set.m, id)
+			r = true
+		}
+	}
+}
 func (s *PeerIDSet) Contains(id module.PeerID) bool {
 	defer s.mtx.RUnlock()
 	s.mtx.RLock()

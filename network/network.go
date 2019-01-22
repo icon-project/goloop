@@ -180,18 +180,12 @@ func (m *manager) GetPeersByRole(role module.Role) []module.PeerID {
 
 func (m *manager) AddRole(role module.Role, peers ...module.PeerID) {
 	s := m.getRolePeerIDSet(role)
-	for _, p := range peers {
-		if !s.Contains(p) {
-			s.Add(p)
-		}
-	}
+	s.Merge(peers...)
 }
 
 func (m *manager) RemoveRole(role module.Role, peers ...module.PeerID) {
 	s := m.getRolePeerIDSet(role)
-	for _, p := range peers {
-		s.Remove(p)
-	}
+	s.Removes(peers...)
 }
 
 func (m *manager) HasRole(role module.Role, id module.PeerID) bool {
