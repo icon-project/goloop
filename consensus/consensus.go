@@ -1246,14 +1246,14 @@ func (cs *consensus) GetVotesByHeight(height int64) (module.CommitVoteSet, error
 	return nil, errors.New("NotImplemented")
 }
 
-func (cs *consensus) getCommit(h int64) *commit {
+func (cs *consensus) getCommit(h int64) (*commit, error) {
 	if h > cs.height || (h == cs.height && cs.step < stepCommit) {
-		logger.Panicf("cs.getCommit: invalid param h=%v cs.height=%v cs.step=%v\n", h, cs.height, cs.step)
+		return nil, errors.Errorf("cs.getCommit: invalid param h=%v cs.height=%v cs.step=%v\n", h, cs.height, cs.step)
 	}
 
 	c := cs.commitForHeight[h]
 	if c != nil {
-		return c
+		return c, nil
 	}
 
 	if h == cs.height && !cs.currentBlockParts.IsComplete() {
@@ -1261,8 +1261,8 @@ func (cs *consensus) getCommit(h int64) *commit {
 			height:       h,
 			votes:        cs.hvs.votesFor(cs.round, voteTypePrecommit).voteList(),
 			blockPartSet: cs.currentBlockParts,
+		}, nil
 		}
-	}
 
 	if cs.commitMRU.Len() == configCommitCacheCap {
 		c := cs.commitMRU.Remove(cs.commitMRU.Back()).(*commit)
@@ -1278,7 +1278,7 @@ func (cs *consensus) getCommit(h int64) *commit {
 	} else {
 		b, err := cs.bm.GetBlockByHeight(h)
 		if err != nil {
-			logger.Panicf("cs.getCommit: %+v\n", err)
+			return nil, err
 		}
 		var vl *voteList
 		if h == cs.height-1 {
@@ -1286,7 +1286,7 @@ func (cs *consensus) getCommit(h int64) *commit {
 		} else {
 			nb, err := cs.bm.GetBlockByHeight(h + 1)
 			if err != nil {
-				logger.Panicf("cs.getCommit: %+v\n", err)
+				return nil, err
 			}
 			vl = nb.Votes().(*commitVoteList).voteList(h, b.ID())
 		}
@@ -1302,16 +1302,22 @@ func (cs *consensus) getCommit(h int64) *commit {
 	}
 	cs.commitMRU.PushBack(c)
 	cs.commitForHeight[c.height] = c
-	return c
+	return c, nil
 }
 
 func (cs *consensus) GetCommitBlockParts(h int64) PartSet {
-	c := cs.getCommit(h)
+	c, err := cs.getCommit(h)
+	if err != nil {
+		logger.Panicf("cs.GetCommitBlockParts: %+v\n", err)
+	}
 	return c.blockPartSet
 }
 
 func (cs *consensus) GetCommitPrecommits(h int64) *voteList {
-	c := cs.getCommit(h)
+	c, err := cs.getCommit(h)
+	if err != nil {
+		logger.Panicf("cs.GetCommitPrecommits: %+v\n", err)
+	}
 	return c.votes
 }
 
