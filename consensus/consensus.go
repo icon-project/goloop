@@ -1240,7 +1240,7 @@ func (cs *consensus) GetStatus() *module.ConsensusStatus {
 	return res
 }
 
-func (cs *consensus) GetVotesByHeight(height int64) (module.VoteList, error) {
+func (cs *consensus) GetVotesByHeight(height int64) (module.CommitVoteSet, error) {
 	// TODO implement
 	logger.Panicln("cs.GetVotesForHeight: not implemented")
 	return nil, errors.New("NotImplemented")

@@ -69,12 +69,12 @@ func (c *chain) Genesis() []byte {
 	return gen
 }
 
-func voteListDecoder([]byte) module.VoteList {
+func voteListDecoder([]byte) module.CommitVoteSet {
 	return &emptyVoteList{}
 }
 
-func (c *chain) VoteListDecoder() module.VoteListDecoder {
-	return module.VoteListDecoder(voteListDecoder)
+func (c *chain) CommitVoteSetDecoder() module.CommitVoteSetDecoder {
+	return module.CommitVoteSetDecoder(voteListDecoder)
 }
 
 type emptyVoteList struct {
@@ -98,7 +98,7 @@ type proposeOnlyConsensus struct {
 	ch chan<- []byte
 }
 
-func (c *proposeOnlyConsensus) GetVotesByHeight(height int64) (module.VoteList, error) {
+func (c *proposeOnlyConsensus) GetVotesByHeight(height int64) (module.CommitVoteSet, error) {
 	panic("Implement me")
 }
 
@@ -209,7 +209,7 @@ type importOnlyConsensus struct {
 	ch <-chan []byte
 }
 
-func (c *importOnlyConsensus) GetVotesByHeight(height int64) (module.VoteList, error) {
+func (c *importOnlyConsensus) GetVotesByHeight(height int64) (module.CommitVoteSet, error) {
 	panic("Implement me")
 }
 

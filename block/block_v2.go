@@ -51,7 +51,7 @@ type blockV2 struct {
 	patchTransactions  module.TransactionList
 	normalTransactions module.TransactionList
 	nextValidators     module.ValidatorList
-	votes              module.VoteList
+	votes              module.CommitVoteSet
 	_id                []byte
 }
 
@@ -84,7 +84,7 @@ func (b *blockV2) PrevID() []byte {
 	return b.prevID
 }
 
-func (b *blockV2) Votes() module.VoteList {
+func (b *blockV2) Votes() module.CommitVoteSet {
 	return b.votes
 }
 

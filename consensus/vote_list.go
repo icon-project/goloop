@@ -100,8 +100,8 @@ func newVoteList(msgs []*voteMessage) *voteList {
 	return vl
 }
 
-// NewVoteListFromBytes returns VoteList from serialized bytes
-func NewVoteListFromBytes(bs []byte) module.VoteList {
+// NewCommitVoteSetFromBytes returns VoteList from serialized bytes
+func NewCommitVoteSetFromBytes(bs []byte) module.CommitVoteSet {
 	vl := &voteList{}
 	_, err := vlCodec.UnmarshalFromBytes(bs, vl)
 	if err != nil {

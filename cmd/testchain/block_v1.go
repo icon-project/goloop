@@ -75,7 +75,7 @@ func (b *blockV1) PrevID() []byte {
 	return b.blockV1Impl.PrevBlockHash.Bytes()
 }
 
-func (b *blockV1) Votes() module.VoteList {
+func (b *blockV1) Votes() module.CommitVoteSet {
 	return nil
 }
 

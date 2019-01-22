@@ -37,7 +37,7 @@ func (*testBlock) Verify() error {
 	panic("implement me")
 }
 
-func (*testBlock) Votes() module.VoteList {
+func (*testBlock) Votes() module.CommitVoteSet {
 	panic("implement me")
 }
 

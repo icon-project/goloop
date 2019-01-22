@@ -19,7 +19,7 @@ type Block interface {
 	//	TODO remove
 	Verify() error
 	// voters are subset of previous preivous block's next validators
-	Votes() VoteList
+	Votes() CommitVoteSet
 	NormalTransactions() TransactionList
 	PatchTransactions() TransactionList
 	Timestamp() time.Time
@@ -43,9 +43,9 @@ type BlockManager interface {
 	//	The result is asynchronously notified by cb. canceler cancels the
 	//	operation. canceler returns true and cb is not called if the
 	//	cancellation was successful.
-	Propose(parentID []byte, votes VoteList, cb func(Block, error)) (canceler func() bool, err error)
+	Propose(parentID []byte, votes CommitVoteSet, cb func(Block, error)) (canceler func() bool, err error)
 
-	FinalizeGenesisBlocks(proposer Address, timestamp time.Time, votes VoteList) (block []Block, err error)
+	FinalizeGenesisBlocks(proposer Address, timestamp time.Time, votes CommitVoteSet) (block []Block, err error)
 
 	//	Import creates a Block from blockBytes.
 	//	The result is asynchronously notified by cb. canceler cancels the

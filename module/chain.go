@@ -13,5 +13,5 @@ type Chain interface {
 	Wallet() Wallet
 	NID() int
 	Genesis() []byte
-	VoteListDecoder() VoteListDecoder
+	CommitVoteSetDecoder() CommitVoteSetDecoder
 }

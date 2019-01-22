@@ -27,13 +27,13 @@ type ValidatorList interface {
 	Get(i int) (Validator, bool)
 }
 
-type VoteList interface {
+type CommitVoteSet interface {
 	Verify(block Block, validators ValidatorList) error
 	Bytes() []byte
 	Hash() []byte
 }
 
-type VoteListDecoder func([]byte) VoteList
+type CommitVoteSetDecoder func([]byte) CommitVoteSet
 
 type TransactionGroup int
 

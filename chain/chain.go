@@ -36,7 +36,7 @@ type singleChain struct {
 	wallet module.Wallet
 
 	database db.Database
-	vld      module.VoteListDecoder
+	vld      module.CommitVoteSetDecoder
 	sm       module.ServiceManager
 	bm       module.BlockManager
 	cs       module.Consensus
@@ -64,7 +64,7 @@ func (c *singleChain) Genesis() []byte {
 	return c.cfg.Genesis
 }
 
-func (c *singleChain) VoteListDecoder() module.VoteListDecoder {
+func (c *singleChain) CommitVoteSetDecoder() module.CommitVoteSetDecoder {
 	return c.vld
 }
 
@@ -91,7 +91,7 @@ func (c *singleChain) Start() {
 
 	c.nm = network.NewManager(c.cfg.Channel, c.nt, c.cfg.SeedAddr, toRoles(c.cfg.Role)...)
 
-	c.vld = consensus.NewVoteListFromBytes
+	c.vld = consensus.NewCommitVoteSetFromBytes
 	c.sm = service.NewManager(c, c.nm, c.pm, c.cfg.ContractDir)
 	c.bm = block.NewManager(c, c.sm)
 

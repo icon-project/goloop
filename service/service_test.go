@@ -131,7 +131,7 @@ type serviceChain struct {
 	cs       module.Consensus
 }
 
-func (c *serviceChain) VoteListDecoder() module.VoteListDecoder {
+func (c *serviceChain) CommitVoteSetDecoder() module.CommitVoteSetDecoder {
 	return nil
 }
 

@@ -9,5 +9,5 @@ type ConsensusStatus struct {
 type Consensus interface {
 	Start() error
 	GetStatus() *ConsensusStatus
-	GetVotesByHeight(height int64) (VoteList, error)
+	GetVotesByHeight(height int64) (CommitVoteSet, error)
 }

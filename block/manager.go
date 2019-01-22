@@ -82,7 +82,7 @@ type importTask struct {
 type proposeTask struct {
 	task
 	parentBlock module.Block
-	votes       module.VoteList
+	votes       module.CommitVoteSet
 }
 
 func (bn *bnode) addChild(c *bnode) {
@@ -236,7 +236,7 @@ func (it *importTask) _onExecute(err error) {
 
 func (m *manager) _propose(
 	parentID []byte,
-	votes module.VoteList,
+	votes module.CommitVoteSet,
 	cb func(module.Block, error),
 ) (*proposeTask, error) {
 	bn := m.nmap[string(parentID)]
@@ -445,7 +445,7 @@ func (cb *channelingCB) onExecute(err error) {
 func (m *manager) FinalizeGenesisBlocks(
 	proposer module.Address,
 	timestamp time.Time,
-	votes module.VoteList,
+	votes module.CommitVoteSet,
 ) (block []module.Block, err error) {
 	m.syncer.begin()
 	defer m.syncer.end()
@@ -521,7 +521,7 @@ func (m *manager) FinalizeGenesisBlocks(
 
 func (m *manager) Propose(
 	parentID []byte,
-	votes module.VoteList,
+	votes module.CommitVoteSet,
 	cb func(module.Block, error),
 ) (canceler func() bool, err error) {
 	m.syncer.begin()
@@ -623,7 +623,7 @@ func (m *manager) finalize(bn *bnode) error {
 	return nil
 }
 
-func (m *manager) voteListFromHash(hash []byte) module.VoteList {
+func (m *manager) commitVoteSetFromHash(hash []byte) module.CommitVoteSet {
 	hb := m.bucketFor(db.BytesByHash)
 	if hb == nil {
 		return nil
@@ -632,7 +632,7 @@ func (m *manager) voteListFromHash(hash []byte) module.VoteList {
 	if err != nil {
 		return nil
 	}
-	dec := m.chain.VoteListDecoder()
+	dec := m.chain.CommitVoteSetDecoder()
 	return dec(bs)
 }
 
@@ -654,7 +654,7 @@ func (m *manager) newBlockFromHeaderReader(r io.Reader) (module.Block, error) {
 	if nextValidators == nil {
 		return nil, errors.Errorf("ValidatorListFromHas(%x)", header.NextValidatorsHash)
 	}
-	votes := m.voteListFromHash(header.VotesHash)
+	votes := m.commitVoteSetFromHash(header.VotesHash)
 	if votes == nil {
 		return nil, errors.Errorf("voteListFromHash(%x) failed", header.VotesHash)
 	}
@@ -729,7 +729,7 @@ func (m *manager) newBlockFromReader(r io.Reader) (module.Block, error) {
 	if !bytes.Equal(nextValidators.Hash(), blockFormat.NextValidatorsHash) {
 		return nil, errors.New("bad validator list hash")
 	}
-	votes := m.chain.VoteListDecoder()(blockFormat.Votes)
+	votes := m.chain.CommitVoteSetDecoder()(blockFormat.Votes)
 	if !bytes.Equal(votes.Hash(), blockFormat.VotesHash) {
 		return nil, errors.New("bad vote list hash")
 	}
