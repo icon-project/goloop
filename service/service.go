@@ -50,6 +50,22 @@ const (
 	StepTypeApiCall          = "apiCall"
 )
 
+var AllStepTypes = []string{
+	StepTypeDefault,
+	StepTypeContractCall,
+	StepTypeContractCreate,
+	StepTypeContractUpdate,
+	StepTypeContractDestruct,
+	StepTypeContractSet,
+	StepTypeGet,
+	StepTypeSet,
+	StepTypeReplace,
+	StepTypeDelete,
+	StepTypeInput,
+	StepTypeEventLog,
+	StepTypeApiCall,
+}
+
 type BlockInfo struct {
 	Timestamp int64
 	Height    int64

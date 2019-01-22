@@ -28,7 +28,8 @@ type Config struct {
 	DBType string `json:"db_type"`
 	DBName string `json:"db_name"`
 
-	WALDir string `json:"wal_dir`
+	WALDir      string `json:"wal_dir`
+	ContractDir string `json:"contract_dir"`
 }
 
 type singleChain struct {
@@ -67,6 +68,10 @@ func (c *singleChain) VoteListDecoder() module.VoteListDecoder {
 	return c.vld
 }
 
+func (c *singleChain) EEProxyManager() eeproxy.Manager {
+	return c.pm
+}
+
 func toRoles(r uint) []module.Role {
 	roles := make([]module.Role, 0)
 	switch r {
@@ -87,7 +92,7 @@ func (c *singleChain) Start() {
 	c.nm = network.NewManager(c.cfg.Channel, c.nt, c.cfg.SeedAddr, toRoles(c.cfg.Role)...)
 
 	c.vld = consensus.NewVoteListFromBytes
-	c.sm = service.NewManager(c, c.nm, c.pm)
+	c.sm = service.NewManager(c, c.nm, c.pm, c.cfg.ContractDir)
 	c.bm = block.NewManager(c, c.sm)
 
 	c.cs = consensus.NewConsensus(c, c.bm, c.nm, c.cfg.WALDir)

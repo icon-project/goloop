@@ -166,12 +166,15 @@ func (g *genesisV3) setDefaultSystemInfo(as AccountState) {
 		"apiCall":          0x0,
 	}
 
-	scoredb.NewVarDB(as, VarStepPrice).Set(big.NewInt(100000))
-	for k, v := range stepCosts {
-		stepTypes := scoredb.NewArrayDB(as, VarStepTypes)
-		stepTypes.Put(k)
-		stepCostDB := scoredb.NewDictDB(as, VarStepCosts, 1)
-		stepCostDB.Set(k, v)
+	scoredb.NewVarDB(as, VarStepPrice).Set(big.NewInt(10000000))
+	stepTypes := scoredb.NewArrayDB(as, VarStepTypes)
+	stepCostDB := scoredb.NewDictDB(as, VarStepCosts, 1)
+	for _, k := range AllStepTypes {
+		if v, ok := stepCosts[k]; ok {
+			stepTypes.Put(k)
+			stepCostDB.Set(k, v)
+		}
+
 	}
 }
 
