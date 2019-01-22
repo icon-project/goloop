@@ -119,8 +119,8 @@ func Test_transport(t *testing.T) {
 	tph1 := newTestPeerHandler("TestPeerHandler1", t, &wg)
 	tph2 := newTestPeerHandler("TestPeerHandler2", t, &wg)
 
-	nt1.(*transport).pd.registPeerHandler(tph1, false)
-	nt2.(*transport).pd.registPeerHandler(tph2, false)
+	nt1.(*transport).pd.registerPeerHandler(tph1, false)
+	nt2.(*transport).pd.registerPeerHandler(tph2, false)
 
 	assert.Nil(t, nt1.Listen(), "Transport.Start fail")
 	assert.Nil(t, nt2.Listen(), "Transport.Start fail")

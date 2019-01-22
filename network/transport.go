@@ -144,7 +144,7 @@ func newDialer(channel string, cbFunc connectCbFunc) *Dialer {
 func (d *Dialer) Dial(addr string) error {
 	conn, err := net.Dial(DefaultTransportNet, addr)
 	if err != nil {
-		d.log.Println("Warning", "Dial", err)
+		//d.log.Println("Warning", "Dial", err)
 		return err
 	}
 	d.conn = conn
@@ -243,19 +243,19 @@ func newPeerDispatcher(id module.PeerID, peerHandlers ...PeerHandler) *PeerDispa
 	// pd.peerHandler.codecHandle.MapType = reflect.TypeOf(map[string]interface{}(nil))
 	pd.setSelfPeerID(id)
 
-	pd.registPeerHandler(pd, true)
+	pd.registerPeerHandler(pd, true)
 	for _, ph := range peerHandlers {
-		pd.registPeerHandler(ph, true)
+		pd.registerPeerHandler(ph, true)
 	}
 	return pd
 }
 
-func (pd *PeerDispatcher) registPeerToPeer(p2p *PeerToPeer) {
+func (pd *PeerDispatcher) registerPeerToPeer(p2p *PeerToPeer) {
 	pd.p2pMap[p2p.channel] = p2p
 }
 
-func (pd *PeerDispatcher) registPeerHandler(ph PeerHandler, pushBack bool) {
-	pd.log.Println("registPeerHandler", ph, pushBack)
+func (pd *PeerDispatcher) registerPeerHandler(ph PeerHandler, pushBack bool) {
+	pd.log.Println("registerPeerHandler", ph, pushBack)
 	if pushBack {
 		elm := pd.peerHandlers.PushBack(ph)
 		if prev := elm.Prev(); prev != nil {
