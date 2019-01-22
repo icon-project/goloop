@@ -656,7 +656,7 @@ func (m *manager) newBlockFromHeaderReader(r io.Reader) (module.Block, error) {
 	}
 	votes := m.commitVoteSetFromHash(header.VotesHash)
 	if votes == nil {
-		return nil, errors.Errorf("voteListFromHash(%x) failed", header.VotesHash)
+		return nil, errors.Errorf("commitVoteSetFromHash(%x) failed", header.VotesHash)
 	}
 	return &blockV2{
 		height:             header.Height,

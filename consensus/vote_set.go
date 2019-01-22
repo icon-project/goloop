@@ -83,7 +83,7 @@ func (vs *voteSet) getOverTwoThirdsPartSetID() (*PartSetID, bool) {
 	}
 }
 
-func (vs *voteSet) voteListForOverTwoThirds() *voteList {
+func (vs *voteSet) commitVoteListForOverTwoThirds() *commitVoteList {
 	partSetID, ok := vs.getOverTwoThirdsPartSetID()
 	if !ok {
 		return nil
@@ -94,7 +94,7 @@ func (vs *voteSet) voteListForOverTwoThirds() *voteList {
 			msgs = append(msgs, msg)
 		}
 	}
-	return newVoteList(msgs)
+	return newCommitVoteList(msgs)
 }
 
 func (vs *voteSet) voteList() *roundVoteList {

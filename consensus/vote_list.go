@@ -13,13 +13,13 @@ import (
 
 var vlCodec = codec.MP
 
-type voteList struct {
+type commitVoteList struct {
 	Round          int32
 	BlockPartSetID *PartSetID
 	Signatures     []common.Signature
 }
 
-func (vl *voteList) Verify(block module.Block, validators module.ValidatorList) error {
+func (vl *commitVoteList) Verify(block module.Block, validators module.ValidatorList) error {
 	// TODO height should be 0
 	if block.Height() == 1 {
 		if len(vl.Signatures) == 0 {
@@ -50,7 +50,7 @@ func (vl *voteList) Verify(block module.Block, validators module.ValidatorList) 
 	return errors.Errorf("votes(%d) <= 2/3 of validators(%d)", len(vl.Signatures), validators.Len())
 }
 
-func (vl *voteList) Bytes() []byte {
+func (vl *commitVoteList) Bytes() []byte {
 	bs, err := vlCodec.MarshalToBytes(vl)
 	if err != nil {
 		return nil
@@ -58,16 +58,16 @@ func (vl *voteList) Bytes() []byte {
 	return bs
 }
 
-func (vl *voteList) Hash() []byte {
+func (vl *commitVoteList) Hash() []byte {
 	return crypto.SHA3Sum256(vl.Bytes())
 }
 
-func (vl *voteList) String() string {
+func (vl *commitVoteList) String() string {
 	return fmt.Sprintf("VoteList(R=%d,ID=%v,len(Signs)=%d)",
 		vl.Round, vl.BlockPartSetID, len(vl.Signatures))
 }
 
-func (vl *voteList) roundVoteList(h int64, bid []byte) *roundVoteList {
+func (vl *commitVoteList) roundVoteList(h int64, bid []byte) *roundVoteList {
 	rvl := newRoundVoteList()
 	msg := newVoteMessage()
 	msg.Height = h
@@ -82,8 +82,8 @@ func (vl *voteList) roundVoteList(h int64, bid []byte) *roundVoteList {
 	return rvl
 }
 
-func newVoteList(msgs []*voteMessage) *voteList {
-	vl := &voteList{}
+func newCommitVoteList(msgs []*voteMessage) *commitVoteList {
+	vl := &commitVoteList{}
 	l := len(msgs)
 	if l > 0 {
 		vl.Round = msgs[0].Round
@@ -102,7 +102,7 @@ func newVoteList(msgs []*voteMessage) *voteList {
 
 // NewCommitVoteSetFromBytes returns VoteList from serialized bytes
 func NewCommitVoteSetFromBytes(bs []byte) module.CommitVoteSet {
-	vl := &voteList{}
+	vl := &commitVoteList{}
 	_, err := vlCodec.UnmarshalFromBytes(bs, vl)
 	if err != nil {
 		return nil

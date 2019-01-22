@@ -81,7 +81,7 @@ type consensus struct {
 
 	lastBlock          module.Block
 	validators         module.ValidatorList
-	votes              *voteList
+	votes              *commitVoteList
 	hvs                heightVoteSet
 	nextProposeTime    time.Time
 	lockedRound        int32
@@ -110,7 +110,7 @@ func NewConsensus(c module.Chain, bm module.BlockManager, nm module.NetworkManag
 	return cs
 }
 
-func (cs *consensus) resetForNewHeight(prevBlock module.Block, votes *voteList) {
+func (cs *consensus) resetForNewHeight(prevBlock module.Block, votes *commitVoteList) {
 	cs.height = prevBlock.Height() + 1
 	cs.lastBlock = prevBlock
 	cs.validators = cs.lastBlock.NextValidators()
@@ -347,7 +347,7 @@ func (cs *consensus) setStep(step step) {
 }
 
 func (cs *consensus) enterProposeForNextHeight() {
-	votes := cs.hvs.votesFor(cs.round, voteTypePrecommit).voteListForOverTwoThirds()
+	votes := cs.hvs.votesFor(cs.round, voteTypePrecommit).commitVoteListForOverTwoThirds()
 	cs.resetForNewHeight(cs.currentBlockParts.block, votes)
 	cs.enterPropose()
 }
@@ -1088,7 +1088,7 @@ func (cs *consensus) applyCommitWAL(prevValidators module.ValidatorList) error {
 				}
 				psid, ok := vs.getOverTwoThirdsPartSetID()
 				if ok && psid != nil {
-					cs.votes = vs.voteListForOverTwoThirds()
+					cs.votes = vs.commitVoteListForOverTwoThirds()
 				}
 			} else if m.VoteList.Get(0).height() == cs.height {
 				for i := 0; i < m.VoteList.Len(); i++ {
@@ -1157,7 +1157,7 @@ func (cs *consensus) Start() error {
 		gblks, err := cs.bm.FinalizeGenesisBlocks(
 			zeroAddress,
 			time.Time{},
-			newVoteList(nil),
+			newCommitVoteList(nil),
 		)
 		if err != nil {
 			return err
@@ -1173,7 +1173,7 @@ func (cs *consensus) Start() error {
 		return err
 	}
 
-	cs.resetForNewHeight(lastBlock, newVoteList(nil))
+	cs.resetForNewHeight(lastBlock, newCommitVoteList(nil))
 	if err := cs.applyWAL(prevBlock.NextValidators()); err != nil {
 		return err
 	}
@@ -1288,7 +1288,7 @@ func (cs *consensus) getCommit(h int64) *commit {
 			if err != nil {
 				logger.Panicf("cs.getCommit: %+v\n", err)
 			}
-			vl = nb.Votes().(*voteList).roundVoteList(h, b.ID())
+			vl = nb.Votes().(*commitVoteList).roundVoteList(h, b.ID())
 		}
 		psb := newPartSetBuffer(configBlockPartSize)
 		b.MarshalHeader(psb)
