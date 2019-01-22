@@ -3,7 +3,6 @@ package chain
 import (
 	"encoding/json"
 	"log"
-	"time"
 
 	"github.com/icon-project/goloop/service/eeproxy"
 
@@ -85,20 +84,7 @@ func toRoles(r uint) []module.Role {
 func (c *singleChain) Start() {
 	c.database = db.Open(c.cfg.DBDir, c.cfg.DBType, c.cfg.DBName)
 
-	c.nm = network.NewManager(c.cfg.Channel, c.nt, toRoles(c.cfg.Role)...)
-
-	if c.cfg.SeedAddr != "" {
-		var err error
-		for i := 0; i < 5; i++ {
-			if err = c.nt.Dial(c.cfg.SeedAddr, c.cfg.Channel); err == nil {
-				break
-			}
-			time.Sleep(500 * time.Millisecond)
-		}
-		if err != nil {
-			log.Printf("Dial to SeedAddr failed err=%+v", err)
-		}
-	}
+	c.nm = network.NewManager(c.cfg.Channel, c.nt, c.cfg.SeedAddr, toRoles(c.cfg.Role)...)
 
 	c.vld = consensus.NewVoteListFromBytes
 	c.sm = service.NewManager(c, c.nm, c.pm)

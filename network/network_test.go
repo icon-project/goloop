@@ -223,7 +223,7 @@ func generateNetwork(name string, port int, n int, t *testing.T, roles ...module
 	arr := make([]*testReactor, n)
 	for i := 0; i < n; i++ {
 		nt := NewTransport(fmt.Sprintf("127.0.0.1:%d", port+i), walletFromGeneratedPrivateKey())
-		nm := NewManager(testChannel, nt, roles...)
+		nm := NewManager(testChannel, nt, "", roles...)
 		r := newTestReactor(fmt.Sprintf("%s_%d", name, i), nm, t)
 		r.nt = nt
 		r.nt.Listen()

@@ -25,7 +25,7 @@ type manager struct {
 	log *logger
 }
 
-func NewManager(channel string, t module.NetworkTransport, roles ...module.Role) module.NetworkManager {
+func NewManager(channel string, t module.NetworkTransport, initialSeed string, roles ...module.Role) module.NetworkManager {
 	m := &manager{
 		channel:          channel,
 		p2p:              newPeerToPeer(channel, t),
@@ -55,7 +55,9 @@ func NewManager(channel string, t module.NetworkTransport, roles ...module.Role)
 		}
 	}
 	m.p2p.setRole(role)
-
+	if initialSeed != "" {
+		m.p2p.seeds.Add(NetAddress(initialSeed))
+	}
 	m.log.Println("NewManager", channel)
 	return m
 }
