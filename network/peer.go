@@ -43,6 +43,7 @@ type Peer struct {
 	role      PeerRoleFlag
 	roleMtx   sync.RWMutex
 	children  []NetAddress
+	nephews    int
 	//
 }
 
@@ -129,6 +130,17 @@ const (
 	p2pConnTypeFriend
 )
 
+var (
+	strPeerConnectionType = []string{
+		"Orphanage",
+		"Parent",
+		"Children",
+		"Uncle",
+		"Nephew",
+		"Friend",
+	}
+)
+
 type PeerConnectionType byte
 
 func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool) *Peer {
@@ -161,8 +173,8 @@ func (p *Peer) String() string {
 	if p == nil {
 		return ""
 	}
-	return fmt.Sprintf("{id:%v, addr:%v, in:%v, channel:%v, role:%v, conn:%v, rtt:%v, children:%d}",
-		p.id, p.netAddress, p.incomming, p.channel, p.role, p.connType, p.rtt.String(), len(p.children))
+	return fmt.Sprintf("{id:%v, conn:%s, addr:%v, in:%v, channel:%v, role:%v, type:%v, rtt:%v, children:%d, nephews:%d}",
+		p.id, p.ConnString(), p.netAddress, p.incomming, p.channel, p.role, p.connType, p.rtt.String(), len(p.children), p.nephews)
 }
 func (p *Peer) ConnString() string {
 	if p == nil {
@@ -328,9 +340,7 @@ func (p *Peer) receiveRoutine() {
 			continue
 		} else {
 			pkt.sender = p.id
-			if DefaultPeerPoolExpireSecond > 0 {
-				p.pool.Put(pkt.hashOfPacket)
-			}
+			p.pool.Put(pkt.hashOfPacket)
 			if cbFunc := p.onPacket; cbFunc != nil {
 				cbFunc(pkt, p)
 			} else {
@@ -371,12 +381,15 @@ Loop:
 				}
 				pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
 
-				if DefaultPeerPoolExpireSecond > 0 && pkt.hashOfPacket != 0 {
+				if pkt.hashOfPacket != 0 {
 					p.pool.RemoveBefore(DefaultPeerPoolExpireSecond)
 					if p.pool.Contains(pkt.hashOfPacket) {
-						//log.Println(p.id, "Peer", "send", "Drop, Duplicated by hash", pkt.protocol, pkt.subProtocol, pkt.hashOfPacket)
+						//TODO drop counting each (protocol,subProtocol)
+						//log.Println(p.id, "Peer", "sendRoutine", "Drop, Duplicated by hash",p.ConnString(), pkt)
+						continue
 					}
 				}
+
 				if err := p.sendDirect(pkt); err != nil {
 					r := p.isTemporaryError(err)
 					// log.Printf("Peer.sendRoutine Error isTemporary:{%v} error:{%+v} peer:%s", r, err, p.String())
@@ -387,10 +400,8 @@ Loop:
 					//TODO p.writer.Reset()
 					p.onError(err, p, pkt)
 				}
-
-				if DefaultPeerPoolExpireSecond > 0 {
-					p.pool.Put(pkt.hashOfPacket)
-				}
+				//log.Println(p.id, "Peer", "sendRoutine",p.connType, p.ConnString(), pkt)
+				//p.pool.Put(pkt.hashOfPacket)
 			}
 		}
 	}
@@ -398,11 +409,11 @@ Loop:
 
 func (p *Peer) isDuplicatedToSend(pkt *Packet) bool {
 	if p.id.Equal(pkt.src) {
-		//log.Println(p.id, "Peer", "send", "Drop, Duplicated by src", pkt.protocol, pkt.subProtocol, pkt.src)
+		//log.Println(p.id, "Peer", "send", "Drop, Duplicated by src",p.ConnString(), pkt)
 		return true
 	}
 	if pkt.sender != nil && p.id.Equal(pkt.sender) {
-		//log.Println(p.id, "Peer", "send", "Drop, Duplicated by sender", pkt.protocol, pkt.subProtocol, pkt.sender)
+		//log.Println(p.id, "Peer", "send", "Drop, Duplicated by sender",p.ConnString(), pkt)
 		return true
 	}
 

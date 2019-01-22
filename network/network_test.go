@@ -130,6 +130,9 @@ func (r *testReactor) OnError(err error, pi module.ProtocolInfo, b []byte, id mo
 }
 func (r *testReactor) OnJoin(id module.PeerID) {
 	r.log.Println("OnJoin", id)
+	ctx := context.WithValue(context.Background(), "p2pConnInfo", newP2PConnInfo(r.p2p))
+	ctx = context.WithValue(ctx, "name", r.name)
+	r.ch <- ctx
 }
 func (r *testReactor) OnLeave(id module.PeerID) {
 	r.log.Println("OnLeave", id)
@@ -148,17 +151,32 @@ func (r *testReactor) decode(b []byte, v interface{}) {
 }
 
 func (r *testReactor) p2pConn() string {
-	p2p := r.p2p
-	var p int
+	return newP2PConnInfo(r.p2p).String()
+}
+
+type p2pConnInfo struct{
+	role PeerRoleFlag
+	friends int
+	parent int
+	uncles int
+	children int
+	nephews int
+}
+func newP2PConnInfo(p2p *PeerToPeer) *p2pConnInfo {
+	parent := 0
 	if p2p.parent != nil {
-		p = 1
+		parent = 1
 	}
-	return fmt.Sprintf("friends:%d, parent:%d, uncle:%d, children:%d, nephew:%d",
-		p2p.friends.Len(),
-		p,
-		p2p.uncles.Len(),
-		p2p.children.Len(),
-		p2p.nephews.Len())
+	return &p2pConnInfo{p2p.getRole(), p2p.friends.Len(), parent, p2p.uncles.Len(), p2p.children.Len(), p2p.nephews.Len()}
+}
+func (ci *p2pConnInfo) String() string {
+	return fmt.Sprintf("role:%d, friends:%d, parent:%d, uncle:%d, children:%d, nephew:%d",
+		ci.role,
+		ci.friends,
+		ci.parent,
+		ci.uncles,
+		ci.children,
+		ci.nephews)
 }
 
 func (r *testReactor) Broadcast(msg string) string {
@@ -234,7 +252,11 @@ func wait(ch <-chan context.Context, pi module.ProtocolInfo, msg string, n int, 
 	for {
 		select {
 		case ctx := <-ch:
-			rpi := ctx.Value("pi").(module.ProtocolInfo)
+			trpi := ctx.Value("pi")
+			if trpi == nil {
+				continue
+			}
+			rpi := trpi.(module.ProtocolInfo)
 			rmsg := ctx.Value("msg").(string)
 			rname := ctx.Value("name").(string)
 			if rpi.Uint16() == pi.Uint16() && msg == rmsg {
@@ -260,6 +282,59 @@ func wait(ch <-chan context.Context, pi module.ProtocolInfo, msg string, n int, 
 			}
 		case <-t.C:
 			return fmt.Errorf("timeout d:%v pi:%x msg:%s n:%d rn:%d dest:%v", d, pi.Uint16(), msg, n, rn, dest)
+		}
+	}
+}
+func waitConnection(ch <-chan context.Context, friends int, n int, d time.Duration) (map[string]time.Duration, time.Duration, error) {
+	t := time.NewTimer(d)
+	m := make(map[string]time.Duration)
+	s := time.Now()
+	var maxD time.Duration
+	for {
+		select {
+		case ctx := <-ch:
+			tci := ctx.Value("p2pConnInfo")
+			if tci == nil {
+				continue
+			}
+			ci := tci.(*p2pConnInfo)
+			rname := ctx.Value("name").(string)
+			switch ci.role {
+			case p2pRoleRoot, p2pRoleRootSeed:
+				if ci.friends == friends && ci.children == DefaultChildrenLimit && ci.nephews == DefaultNephewLimit {
+					if _,ok := m[rname]; !ok {
+						m[rname] = time.Since(s)
+					}
+				}
+			case p2pRoleSeed:
+				if ci.parent == 1 && ci.uncles == DefaultUncleLimit &&
+					ci.children == DefaultChildrenLimit && ci.nephews == DefaultNephewLimit {
+					if _,ok := m[rname]; !ok {
+						m[rname] = time.Since(s)
+					}
+				}
+			case p2pRoleNone:
+				if ci.parent == 1 && ci.uncles == DefaultUncleLimit {
+					if _,ok := m[rname]; !ok {
+						m[rname] = time.Since(s)
+					}
+				}
+			}
+			if len(m) >= n {
+				for _, md := range m {
+					if maxD < md {
+						maxD = md
+					}
+				}
+				return m, maxD, nil
+			}
+		case <-t.C:
+			for _, md := range m {
+				if maxD < md {
+					maxD = md
+				}
+			}
+			return m, maxD, fmt.Errorf("timeout d:%v, friends:%d, n:%d, rn:%d", d, friends, n, len(m))
 		}
 	}
 }
@@ -289,13 +364,16 @@ func Test_network(t *testing.T) {
 		}
 	}
 
-	time.Sleep(3 * DefaultSeedPeriod)
-	//time.Sleep(DefaultDiscoveryPeriod)
+	n := testNumValidator + testNumSeed + testNumCitizen
+	connMap, maxD, err := waitConnection(ch, testNumValidator-1, n, 10*DefaultSeedPeriod)
+	t.Log(time.Now(), "max:",maxD, connMap)
+	assert.NoError(t, err, "waitConnection", connMap)
+
 	t.Log(time.Now(), "Messaging")
 
 	msg := m["TestValidator"][0].Broadcast("Test1")
-	n := testNumValidator - 1 + testNumSeed + testNumCitizen
-	err := wait(ch, ProtoTestNetworkBroadcast, msg, n, time.Second)
+	n = testNumValidator - 1 + testNumSeed + testNumCitizen
+	err = wait(ch, ProtoTestNetworkBroadcast, msg, n, time.Second)
 	assert.NoError(t, err, "Broadcast", "Test1")
 
 	msg = m["TestValidator"][0].BroadcastNeighbor("Test2")
@@ -341,6 +419,8 @@ func Test_network(t *testing.T) {
 
 	err = wait(ch, ProtoTestNetworkResponse, msg, 1, time.Second, m["TestCitizen"][0].name)
 	assert.NoError(t, err, "Response", "Test6")
+
+	time.Sleep(2*DefaultAlternateSendPeriod)
 
 	for _, arr := range m {
 		for _, r := range arr {
