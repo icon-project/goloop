@@ -18,11 +18,10 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/rpc"
 )
 
 const (
-	testTransactionNum = 1000
+	testTransactionNum = 10000
 	startBlk           = 23434 // version3
 )
 
@@ -130,7 +129,6 @@ type serviceChain struct {
 	sm       module.ServiceManager
 	bm       module.BlockManager
 	cs       module.Consensus
-	sv       rpc.JsonRpcServer
 }
 
 func (c *serviceChain) VoteListDecoder() module.VoteListDecoder {
@@ -173,6 +171,22 @@ func (c *serviceChain) Genesis() []byte {
 	return []byte(genesis)
 }
 
+func eeProxy() eeproxy.Manager {
+	pm, err := eeproxy.New("unix", "/tmp/ee.socket")
+	if err != nil {
+		log.Panicln("FAIL to start EEManager")
+	}
+	go pm.Loop()
+
+	ee, err := eeproxy.NewPythonEE()
+	if err != nil {
+		log.Panicf("FAIL to create PythonEE err=%+v", err)
+	}
+	pm.SetEngine("python", ee)
+	pm.SetInstances("python", 1)
+	return pm
+}
+
 func TestUnitService(t *testing.T) {
 	// request transactions
 	if testTransactionNum == 0 {
@@ -184,12 +198,14 @@ func TestUnitService(t *testing.T) {
 	nt := network.NewTransport("127.0.0.1:8081", c.wallet)
 	nt.Listen()
 	defer nt.Close()
-	em, err := eeproxy.New("unix", "/tmp/pyee_uds_socket")
-	if err != nil {
-		log.Panicln("FAIL to start EEManager")
-	}
-	go em.Loop()
-	leaderServiceManager := NewManager(c, network.NewManager("default", nt, module.ROLE_VALIDATOR), em)
+	//em, err := eeproxy.New("unix", "/tmp/ee.socket")
+	//if err != nil {
+	//	log.Panicln("FAIL to start EEManager")
+	//}
+	//go em.Loop()
+	em := eeProxy()
+	leaderServiceManager := NewManager(c, nil, em, "./contract")
+	//leaderServiceManager := NewManager(c, network.NewManager("default", nt, "", module.ROLE_VALIDATOR), em, "./contract")
 	it, _ := leaderServiceManager.CreateInitialTransition(nil, nil)
 	parentTrs, _ := leaderServiceManager.ProposeGenesisTransition(it)
 	cb := &transitionCb{make(chan bool)}
@@ -265,7 +281,8 @@ func TestUnitService(t *testing.T) {
 	if err := nt.Dial("127.0.0.1:8081", "default"); err != nil {
 		log.Panic("Failed")
 	}
-	validatorServiceManager := NewManager(validatorCh, network.NewManager("default", nt2, module.ROLE_VALIDATOR), em)
+	validatorServiceManager := NewManager(validatorCh, nil, em, "./contract")
+	//validatorServiceManager := NewManager(validatorCh, network.NewManager("default", nt2, "", module.ROLE_VALIDATOR), em, "./contract")
 	vit, _ := leaderServiceManager.CreateInitialTransition(nil, nil)
 	parentVTransition, _ := leaderServiceManager.ProposeGenesisTransition(vit)
 	parentVTransition.Execute(cb)

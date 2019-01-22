@@ -3,6 +3,7 @@ package service
 import (
 	"archive/zip"
 	"bytes"
+	"container/list"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -21,7 +22,7 @@ import (
 )
 
 type (
-	tsStatus int
+	cStatus int
 
 	ContractManager interface {
 		GetHandler(cc CallContext, from, to module.Address,
@@ -37,21 +38,18 @@ type (
 	}
 
 	contractStoreImpl struct {
-		cm      *contractManager
-		cashKey string
-		ch      chan *StorageResult
-		timer   <-chan time.Time
-	}
-
-	StorageResult struct {
-		Path  string
-		Error error
+		sc   *storageCache
+		elem *list.Element // slice
+		ch   chan error
 	}
 
 	storageCache struct {
-		refCnt int
-		status tsStatus
-		result []chan *StorageResult
+		lock    sync.Mutex
+		clients *list.List // contractStoreImpl list
+		status  cStatus
+		path    string
+		err     error
+		timer   *time.Timer
 	}
 
 	contractManager struct {
@@ -63,37 +61,57 @@ type (
 )
 
 const (
-	contractStoreRoot               = "./contract"
-	contractPythonRootFile          = "package.json"
-	tsInProgress           tsStatus = iota
-	tsComplete
+	contractPythonRootFile         = "package.json"
+	csInProgress           cStatus = iota
+	csComplete
 )
 
+func (sc *storageCache) push(store *contractStoreImpl) {
+	sc.lock.Lock()
+	defer sc.lock.Unlock()
+	store.elem = sc.clients.PushBack(store)
+	store.sc = sc
+}
+
+func (sc *storageCache) remove(store *contractStoreImpl) {
+	sc.lock.Lock()
+	defer sc.lock.Unlock()
+	sc.clients.Remove(store.elem)
+}
+
+// if complete is already called, return false
+func (sc *storageCache) complete(path string, err error) bool {
+	sc.lock.Lock()
+	defer sc.lock.Unlock()
+	if sc.status == csComplete {
+		return false
+	}
+	sc.path = path
+	sc.err = err
+	for iter := sc.clients.Front(); iter != nil; iter = iter.Next() {
+		if cs, ok := iter.Value.(*contractStoreImpl); ok {
+			cs.notify(err)
+		}
+	}
+	sc.status = csComplete
+	return true
+}
+
 func (cs *contractStoreImpl) WaitResult() (string, error) {
-	var result *StorageResult
-	if cs.timer == nil {
-		result = <-cs.ch
-		return result.Path, result.Error
+	err := <-cs.ch
+	if err == nil {
+		return cs.sc.path, nil
 	}
-	select {
-	case <-cs.timer:
-		result = &StorageResult{Error: errors.New("Expired")}
-	case result = <-cs.ch:
-	}
-	return result.Path, result.Error
+	return "", err
 }
 
 func (cs *contractStoreImpl) Dispose() {
-	cs.cm.dispose(cs.cashKey)
+	cs.ch <- nil
+	cs.sc.remove(cs)
 }
 
-func (cm *contractManager) dispose(key string) {
-	cm.lock.Lock()
-	defer cm.lock.Unlock()
-	cm.storageCache[key].refCnt--
-	if cm.storageCache[key].refCnt == 0 {
-		// remove
-	}
+func (cs *contractStoreImpl) notify(err error) {
+	cs.ch <- err
 }
 
 func (cm *contractManager) GetHandler(cc CallContext,
@@ -139,18 +157,27 @@ func (cm *contractManager) GetCallHandler(cc CallContext, from, to module.Addres
 }
 
 // if path does not exist, make the path
-func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []byte) (string, error) {
+func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []byte, sc *storageCache) (string, error) {
 	var path string
-	path = cm.getContractPath(codeHash)
+	path = fmt.Sprintf("%s/%016x", cm.storeRoot, codeHash)
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		return path, nil
 	}
 
-	tmpPath := fmt.Sprintf("%s/tmp/%016x", cm.storeRoot, codeHash)
-	if _, err := os.Stat(tmpPath); !os.IsNotExist(err) {
-		if err := os.RemoveAll(tmpPath); err != nil {
-			return "", err
+	var tmpPath string
+	var i int
+	for i = 0; i < 10; i++ {
+		tmpPath = fmt.Sprintf("%s/tmp/%016x%d", cm.storeRoot, codeHash, i)
+		if _, err := os.Stat(tmpPath); !os.IsNotExist(err) {
+			if err := os.RemoveAll(tmpPath); err != nil {
+				continue
+			}
+		} else {
+			break
 		}
+	}
+	if i == 10 {
+		return "", errors.New("Failed to create temporary directory\n")
 	}
 	os.MkdirAll(tmpPath, 0755)
 	zipReader, err :=
@@ -172,7 +199,6 @@ func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []
 				rootDir = strings.TrimSuffix(zipFile.Name, contractPythonRootFile)
 				findRoot = true
 			}
-			log.Printf("zipFile.Name : %s\n", zipFile.Name)
 			storePath := tmpPath + "/" + zipFile.Name
 			storeDir := filepath.Dir(storePath)
 			if _, err := os.Stat(storeDir); os.IsNotExist(err) {
@@ -192,78 +218,75 @@ func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []
 		}
 		contractRoot := tmpPath + "/" + rootDir
 
+		sc.timer.Stop()
+		sc.lock.Lock()
+		if sc.status == csComplete {
+			sc.lock.Unlock()
+			os.Remove(contractRoot)
+			return "", nil
+		}
+		sc.lock.Unlock()
 		if err := os.Rename(contractRoot, path); err != nil {
 			return "", err
 		}
+		os.RemoveAll(tmpPath)
 	default:
 	}
 
 	return path, nil
 }
 
-func (cm *contractManager) getContractPath(codeHash []byte) string {
-	return fmt.Sprintf("%s/%016x", cm.storeRoot, codeHash)
-}
-
 // PrepareContractStore checks if contract codes are ready for a contract runtime
 // and starts to download and uncompress otherwise.
-// Do not call PrepareContractStore on onEndCallback
 func (cm *contractManager) PrepareContractStore(
 	ws WorldState, contract Contract) (ContractStore, error) {
 	cm.lock.Lock()
 	codeHash := contract.CodeHash()
 	hashStr := string(codeHash)
-	var path string
-	sr := make(chan *StorageResult, 1)
-	cs := &contractStoreImpl{cm, hashStr, sr, nil}
+	cs := &contractStoreImpl{ch: make(chan error, 1)}
 	if cacheInfo, ok := cm.storageCache[hashStr]; ok {
-		if cacheInfo.status != tsComplete {
-			cacheInfo.result = append(cacheInfo.result, sr)
-			cacheInfo.refCnt++
+		if cacheInfo.status != csComplete {
+			cacheInfo.push(cs)
 			cm.lock.Unlock()
 			return cs, nil
 		}
-		path = cm.getContractPath(codeHash)
-		if _, err := os.Stat(path); !os.IsNotExist(err) {
-			sr <- &StorageResult{path, nil}
+		if _, err := os.Stat(cacheInfo.path); !os.IsNotExist(err) {
+			cacheInfo.push(cs)
+			cs.ch <- nil
 			cm.lock.Unlock()
 			return cs, nil
 		}
 	}
-	cm.storageCache[hashStr] =
-		&storageCache{refCnt: 0, status: tsInProgress,
-			result: []chan *StorageResult{sr}}
-	cs.timer = time.After(transactionTimeLimit)
+	codeBuf, err := contract.Code()
+	if err != nil {
+		cm.lock.Unlock()
+		return nil, err
+	}
+	sc := &storageCache{clients: list.New(),
+		status: csInProgress, timer: nil}
+	timer := time.AfterFunc(scoreDecompressTimeLimit,
+		func() {
+			if sc.complete("", errors.New("Expired decompress time\n")) == true {
+				cm.lock.Lock()
+				delete(cm.storageCache, hashStr)
+				cm.lock.Unlock()
+			}
+		})
+	sc.timer = timer
+	cm.storageCache[hashStr] = sc
+	sc.push(cs)
 	cm.lock.Unlock()
 
 	go func() {
-		callEndCb := func(path string, err error) {
-			cm.lock.Lock()
-			storage := cm.storageCache[hashStr]
-			for _, f := range storage.result {
-				f <- &StorageResult{path, err}
-			}
-			storage.result = nil
-			storage.status = tsComplete
-			cm.lock.Unlock()
+		path, err := cm.storeContract(contract.EEType(), codeBuf, codeHash, sc)
+		if sc.complete(path, err) == false {
+			os.RemoveAll(path)
 		}
-
-		codeBuf, err := contract.Code()
-		if err != nil {
-			callEndCb("", err)
-			return
-		}
-		path, err = cm.storeContract(contract.EEType(), codeBuf, codeHash)
-		if err != nil {
-			callEndCb("", err)
-			return
-		}
-		callEndCb(path, nil)
 	}()
 	return cs, nil
 }
 
-func NewContractManager(db db.Database) ContractManager {
+func NewContractManager(db db.Database, contractDir string) ContractManager {
 	/*
 		contractManager has root path of each service manager's contract file
 		So contractManager has to be initialized
@@ -273,7 +296,7 @@ func NewContractManager(db db.Database) ContractManager {
 	// parameter here and add it to storeRoot.
 
 	// remove tmp to prepare contract
-	storeRoot, _ := filepath.Abs(contractStoreRoot)
+	storeRoot, _ := filepath.Abs(contractDir)
 	tmp := fmt.Sprintf("%s/tmp", storeRoot)
 	if _, err := os.Stat(tmp); !os.IsNotExist(err) {
 		if err := os.RemoveAll(tmp); err != nil {

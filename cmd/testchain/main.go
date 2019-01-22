@@ -98,6 +98,10 @@ type proposeOnlyConsensus struct {
 	ch chan<- []byte
 }
 
+func (c *proposeOnlyConsensus) GetVotesByHeight(height int64) (module.VoteList, error) {
+	panic("Implement me")
+}
+
 func (c *proposeOnlyConsensus) Start() error {
 	blks, err := c.bm.FinalizeGenesisBlocks(
 		common.NewAccountAddress(make([]byte, common.AddressIDBytes)),
@@ -205,6 +209,10 @@ type importOnlyConsensus struct {
 	ch <-chan []byte
 }
 
+func (c *importOnlyConsensus) GetVotesByHeight(height int64) (module.VoteList, error) {
+	panic("Implement me")
+}
+
 func (c *importOnlyConsensus) Start() error {
 	_, err := c.bm.FinalizeGenesisBlocks(
 		common.NewAccountAddress(make([]byte, common.AddressIDBytes)),
@@ -276,7 +284,7 @@ func (c *chain) startAsProposer(ch chan<- []byte) {
 	c.wallet = common.NewWallet()
 	c.database = db.NewMapDB()
 	// TODO to run, create NetworkManager and set it for ServiceManager
-	c.sm = service.NewManager(c, nil, nil)
+	c.sm = service.NewManager(c, nil, nil, "./contract")
 	c.bm = block.NewManager(c, c.sm)
 	c.cs = &proposeOnlyConsensus{
 		sm: c.sm,
@@ -289,7 +297,7 @@ func (c *chain) startAsProposer(ch chan<- []byte) {
 func (c *chain) startAsImporter(ch <-chan []byte) {
 	c.wallet = common.NewWallet()
 	c.database = db.NewMapDB()
-	c.sm = service.NewManager(c, nil, nil)
+	c.sm = service.NewManager(c, nil, nil, "./contract")
 	c.bm = block.NewManager(c, c.sm)
 	c.cs = &importOnlyConsensus{
 		sm: c.sm,
@@ -298,7 +306,7 @@ func (c *chain) startAsImporter(ch <-chan []byte) {
 	}
 
 	// JSON-RPC
-	c.sv = rpc.NewJsonRpcServer(c.bm, c.sm, c.cs, nil)
+	c.sv = rpc.NewJsonRpcServer(c, c.bm, c.sm, c.cs, nil)
 	c.sv.Start()
 
 	c.cs.Start()

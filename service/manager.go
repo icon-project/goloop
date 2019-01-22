@@ -38,7 +38,8 @@ type manager struct {
 	em        eeproxy.Manager
 }
 
-func NewManager(chain module.Chain, nm module.NetworkManager, em eeproxy.Manager,
+func NewManager(chain module.Chain, nm module.NetworkManager,
+	em eeproxy.Manager, contractDir string,
 ) module.ServiceManager {
 	bk, _ := chain.Database().GetBucket(db.TransactionLocatorByHash)
 
@@ -47,10 +48,12 @@ func NewManager(chain module.Chain, nm module.NetworkManager, em eeproxy.Manager
 		normalTxPool: NewTransactionPool(bk),
 		db:           chain.Database(),
 		chain:        chain,
-		cm:           NewContractManager(chain.Database()),
+		cm:           NewContractManager(chain.Database(), contractDir),
 		em:           em,
 	}
-	mgr.txReactor = newTransactionReactor(nm, mgr.patchTxPool, mgr.normalTxPool)
+	if nm != nil {
+		mgr.txReactor = newTransactionReactor(nm, mgr.patchTxPool, mgr.normalTxPool)
+	}
 	return mgr
 }
 
