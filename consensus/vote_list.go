@@ -67,8 +67,8 @@ func (vl *commitVoteList) String() string {
 		vl.Round, vl.BlockPartSetID, len(vl.Signatures))
 }
 
-func (vl *commitVoteList) roundVoteList(h int64, bid []byte) *roundVoteList {
-	rvl := newRoundVoteList()
+func (vl *commitVoteList) voteList(h int64, bid []byte) *voteList {
+	rvl := newVoteList()
 	msg := newVoteMessage()
 	msg.Height = h
 	msg.Round = vl.Round

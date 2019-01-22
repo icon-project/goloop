@@ -97,8 +97,8 @@ func (vs *voteSet) commitVoteListForOverTwoThirds() *commitVoteList {
 	return newCommitVoteList(msgs)
 }
 
-func (vs *voteSet) voteList() *roundVoteList {
-	rvl := newRoundVoteList()
+func (vs *voteSet) voteList() *voteList {
+	rvl := newVoteList()
 	for _, msg := range vs.msgs {
 		if msg != nil {
 			rvl.AddVote(msg)
@@ -147,8 +147,8 @@ func (hvs *heightVoteSet) reset(nValidators int) {
 	hvs._votes = make(map[int32][numberOfVoteTypes]*voteSet)
 }
 
-func (hvs *heightVoteSet) getVoteListForMask(round int32, prevotesMask *bitArray, precommitsMask *bitArray) *roundVoteList {
-	rvl := newRoundVoteList()
+func (hvs *heightVoteSet) getVoteListForMask(round int32, prevotesMask *bitArray, precommitsMask *bitArray) *voteList {
+	rvl := newVoteList()
 	prevotes := hvs.votesFor(round, voteTypePrevote)
 	for i, msg := range prevotes.msgs {
 		if prevotesMask.Get(i) && msg != nil {

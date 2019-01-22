@@ -61,7 +61,7 @@ type blockPartSet struct {
 
 type commit struct {
 	height       int64
-	votes        *roundVoteList
+	votes        *voteList
 	blockPartSet PartSet
 }
 
@@ -1280,15 +1280,15 @@ func (cs *consensus) getCommit(h int64) *commit {
 		if err != nil {
 			logger.Panicf("cs.getCommit: %+v\n", err)
 		}
-		var vl *roundVoteList
+		var vl *voteList
 		if h == cs.height-1 {
-			vl = cs.votes.roundVoteList(h, b.ID())
+			vl = cs.votes.voteList(h, b.ID())
 		} else {
 			nb, err := cs.bm.GetBlockByHeight(h + 1)
 			if err != nil {
 				logger.Panicf("cs.getCommit: %+v\n", err)
 			}
-			vl = nb.Votes().(*commitVoteList).roundVoteList(h, b.ID())
+			vl = nb.Votes().(*commitVoteList).voteList(h, b.ID())
 		}
 		psb := newPartSetBuffer(configBlockPartSize)
 		b.MarshalHeader(psb)
@@ -1310,16 +1310,16 @@ func (cs *consensus) GetCommitBlockParts(h int64) PartSet {
 	return c.blockPartSet
 }
 
-func (cs *consensus) GetCommitPrecommits(h int64) *roundVoteList {
+func (cs *consensus) GetCommitPrecommits(h int64) *voteList {
 	c := cs.getCommit(h)
 	return c.votes
 }
 
-func (cs *consensus) GetPrecommits(r int32) *roundVoteList {
+func (cs *consensus) GetPrecommits(r int32) *voteList {
 	return cs.hvs.votesFor(r, voteTypePrecommit).voteList()
 }
 
-func (cs *consensus) GetVotes(r int32, prevotesMask *bitArray, precommitsMask *bitArray) *roundVoteList {
+func (cs *consensus) GetVotes(r int32, prevotesMask *bitArray, precommitsMask *bitArray) *voteList {
 	return cs.hvs.getVoteListForMask(r, prevotesMask, precommitsMask)
 }
 

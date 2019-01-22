@@ -258,7 +258,7 @@ func (msg *roundStateMessage) subprotocol() uint16 {
 }
 
 type voteListMessage struct {
-	VoteList *roundVoteList
+	VoteList *voteList
 }
 
 func newVoteListMessage() *voteListMessage {

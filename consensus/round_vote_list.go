@@ -10,12 +10,12 @@ type VoteItem struct {
 }
 
 // TODO rename -> voteList
-type roundVoteList struct {
+type voteList struct {
 	Prototypes []vote
 	VoteItems  []VoteItem
 }
 
-func (vl *roundVoteList) AddVote(msg *voteMessage) {
+func (vl *voteList) AddVote(msg *voteMessage) {
 	index := -1
 	for i, p := range vl.Prototypes {
 		if p.Equal(&msg.vote) {
@@ -33,17 +33,17 @@ func (vl *roundVoteList) AddVote(msg *voteMessage) {
 	})
 }
 
-func (vl *roundVoteList) Len() int {
+func (vl *voteList) Len() int {
 	return len(vl.VoteItems)
 }
 
-func (vl *roundVoteList) Get(i int) *voteMessage {
+func (vl *voteList) Get(i int) *voteMessage {
 	msg := newVoteMessage()
 	msg.vote = vl.Prototypes[vl.VoteItems[i].PrototypeIndex]
 	msg.Signature = vl.VoteItems[i].Signature
 	return msg
 }
 
-func newRoundVoteList() *roundVoteList {
-	return &roundVoteList{}
+func newVoteList() *voteList {
+	return &voteList{}
 }

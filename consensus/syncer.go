@@ -17,9 +17,9 @@ const (
 
 type Engine interface {
 	GetCommitBlockParts(h int64) PartSet
-	GetCommitPrecommits(h int64) *roundVoteList
-	GetPrecommits(r int32) *roundVoteList
-	GetVotes(r int32, prevotesMask *bitArray, precommitsMask *bitArray) *roundVoteList
+	GetCommitPrecommits(h int64) *voteList
+	GetPrecommits(r int32) *voteList
+	GetVotes(r int32, prevotesMask *bitArray, precommitsMask *bitArray) *voteList
 	GetRoundState() *peerRoundState
 
 	Height() int64
