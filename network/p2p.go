@@ -23,7 +23,7 @@ type PeerToPeer struct {
 	onEventCbFuncs  map[string]map[uint16]eventCbFunc
 	packetPool      *PacketPool
 	packetRw        *PacketReadWriter
-	transport       module.NetworkTransport
+	dialer          *Dialer
 
 	//Topology with Connected Peers
 	self       *Peer
@@ -52,7 +52,7 @@ type PeerToPeer struct {
 	//managed PeerId
 	allowedRoots *PeerIDSet
 	allowedSeeds *PeerIDSet
-
+	allowedPeers *PeerIDSet
 	//codec
 	mph *codec.MsgpackHandle
 
@@ -63,15 +63,14 @@ type PeerToPeer struct {
 type eventCbFunc func(evt string, p *Peer)
 
 const (
-	p2pEventJoin      = "join"
-	p2pEventLeave     = "leave"
-	p2pEventDuplicate = "duplicate"
+	p2pEventJoin       = "join"
+	p2pEventLeave      = "leave"
+	p2pEventDuplicate  = "duplicate"
+	p2pEventNotAllowed = "not allowed"
 )
 
-//can be created each channel
-func newPeerToPeer(channel string, t module.NetworkTransport) *PeerToPeer {
-	id := t.PeerID()
-	netAddress := NetAddress(t.Address())
+//can be crea`ted each channel
+func newPeerToPeer(channel string, self *Peer, d *Dialer) *PeerToPeer {
 	p2p := &PeerToPeer{
 		channel:         channel,
 		sendQueue:       NewWeightQueue(DefaultSendQueueSize, DefaultSendQueueMaxPriority+1),
@@ -82,9 +81,9 @@ func newPeerToPeer(channel string, t module.NetworkTransport) *PeerToPeer {
 		onEventCbFuncs:  make(map[string]map[uint16]eventCbFunc),
 		packetPool:      NewPacketPool(DefaultPacketPoolNumBucket, DefaultPacketPoolBucketLen),
 		packetRw:        NewPacketReadWriter(),
-		transport:       t,
+		dialer:          d,
 		//
-		self:            &Peer{id: id, netAddress: netAddress},
+		self:            self,
 		children:        NewPeerSet(),
 		uncles:          NewPeerSet(),
 		nephews:         NewPeerSet(),
@@ -103,10 +102,11 @@ func newPeerToPeer(channel string, t module.NetworkTransport) *PeerToPeer {
 		//
 		allowedRoots: NewPeerIDSet(),
 		allowedSeeds: NewPeerIDSet(),
+		allowedPeers: NewPeerIDSet(),
 		//
 		mph: &codec.MsgpackHandle{},
 		//
-		log: newLogger("PeerToPeer", fmt.Sprintf("%s.%s", channel, id)),
+		log: newLogger("PeerToPeer", fmt.Sprintf("%s.%s", channel, self.id)),
 	}
 	p2p.mph.MapType = reflect.TypeOf(map[string]interface{}(nil))
 	p2p.allowedRoots.onUpdate = func() {
@@ -115,7 +115,16 @@ func newPeerToPeer(channel string, t module.NetworkTransport) *PeerToPeer {
 	p2p.allowedSeeds.onUpdate = func() {
 		p2p.setRoleByAllowedSet()
 	}
-	t.(*transport).pd.registPeerToPeer(p2p)
+	p2p.allowedPeers.onUpdate = func() {
+		peers := p2p.getPeers(false)
+		for _, p := range peers {
+			if !p2p.allowedPeers.Contains(p.ID()) {
+				p2p.onEvent(p2pEventNotAllowed, p)
+				p.CloseByError(errors.New("onUpdate not allowed connection"))
+			}
+		}
+	}
+
 	p2p.log.excludes = []string{
 		//"onPeer",
 		//"onClose",
@@ -146,7 +155,7 @@ func (p2p *PeerToPeer) dial(na NetAddress) error {
 		p2p.log.Println("Warning", "Already Dialing", na)
 		return nil
 	}
-	if err := p2p.transport.Dial(string(na), p2p.channel); err != nil {
+	if err := p2p.dialer.Dial(string(na)); err != nil {
 		p2p.log.Println("Warning", "Dial fail", na, err)
 		p2p.dialing.Remove(na)
 		return err
@@ -163,13 +172,17 @@ func (p2p *PeerToPeer) setCbFunc(pi module.ProtocolInfo, pktFunc packetCbFunc,
 	p2p.onPacketCbFuncs[k] = pktFunc
 	p2p.onErrorCbFuncs[k] = errFunc
 	for _, evt := range evts {
-		m := p2p.onEventCbFuncs[evt]
-		if m == nil {
-			m = make(map[uint16]eventCbFunc)
-			p2p.onEventCbFuncs[evt] = m
-		}
-		m[k] = evtFunc
+		p2p.setEventCbFunc(evt, k, evtFunc)
 	}
+}
+
+func (p2p *PeerToPeer) setEventCbFunc(evt string, k uint16, evtFunc eventCbFunc) {
+	m := p2p.onEventCbFuncs[evt]
+	if m == nil {
+		m = make(map[uint16]eventCbFunc)
+		p2p.onEventCbFuncs[evt] = m
+	}
+	m[k] = evtFunc
 }
 
 //callback from PeerDispatcher.onPeer
@@ -177,6 +190,11 @@ func (p2p *PeerToPeer) onPeer(p *Peer) {
 	p2p.log.Println("onPeer", p)
 	if !p.incomming {
 		p2p.dialing.Remove(p.netAddress)
+	}
+	if !p2p.allowedPeers.IsEmpty() && !p2p.allowedPeers.Contains(p.id) {
+		p2p.onEvent(p2pEventNotAllowed, p)
+		p.CloseByError(errors.New("onPeer not allowed connection"))
+		return
 	}
 	if dp := p2p.getPeer(p.id, false); dp != nil {
 		if p2p.removePeer(dp) {
@@ -386,11 +404,13 @@ func (p2p *PeerToPeer) applyPeerRole(p *Peer) {
 	}
 }
 
-func (p2p *PeerToPeer) setRole(r PeerRoleFlag) {
+func (p2p *PeerToPeer) setRole(r PeerRoleFlag) bool {
 	if !p2p.self.compareRole(r, true) {
 		p2p.self.setRole(r)
 		p2p.applyPeerRole(p2p.self)
+		return true
 	}
+	return false
 }
 
 func (p2p *PeerToPeer) setRoleByAllowedSet() PeerRoleFlag {
@@ -403,6 +423,7 @@ func (p2p *PeerToPeer) setRoleByAllowedSet() PeerRoleFlag {
 	}
 	role := PeerRoleFlag(r)
 	p2p.setRole(role)
+	//TODO disconnect invalid peer case p2pRoleRoot, p2pRoleSeed
 	p2p.log.Println("setRoleByAllowedSet", p2p.getRole())
 	return role
 }
@@ -1102,7 +1123,6 @@ func (p2p *PeerToPeer) updatePeerConnectionType(p *Peer, connType PeerConnection
 	if preset != nil {
 		preset.Remove(p)
 	}
-
 
 	p.connType = connType
 	switch connType {

@@ -42,6 +42,7 @@ const (
 	BROADCAST_NEIGHBOR  BroadcastType = 1
 	ROLE_VALIDATOR      Role          = "validator"
 	ROLE_SEED           Role          = "seed"
+	ROLE_NORMAL         Role          = "normal"
 	AUTHORITY_BROADCAST Authority     = "broadcast"
 )
 

@@ -25,10 +25,12 @@ type manager struct {
 	log *logger
 }
 
-func NewManager(channel string, t module.NetworkTransport, initialSeed string, roles ...module.Role) module.NetworkManager {
+func NewManager(channel string, nt module.NetworkTransport, initialSeed string, roles ...module.Role) module.NetworkManager {
+	t := nt.(*transport)
+	self := &Peer{id:t.PeerID(), netAddress: NetAddress(t.Address())}
 	m := &manager{
 		channel:          channel,
-		p2p:              newPeerToPeer(channel, t),
+		p2p:              newPeerToPeer(channel, self, t.GetDialer(channel)),
 		roles:            make(map[module.Role]*PeerIDSet),
 		authorities:      make(map[module.Authority]*RoleSet),
 		destByRole:       make(map[module.Role]byte),
@@ -37,11 +39,15 @@ func NewManager(channel string, t module.NetworkTransport, initialSeed string, r
 		log:              newLogger("NetworkManager", channel),
 	}
 
+	t.pd.registerPeerToPeer(m.p2p)
+
 	//Create default protocolHandler for P2P topology management
 	m.roles[module.ROLE_SEED] = m.p2p.allowedSeeds
 	m.roles[module.ROLE_VALIDATOR] = m.p2p.allowedRoots
+	m.roles[module.ROLE_NORMAL] = m.p2p.allowedPeers
 	m.destByRole[module.ROLE_SEED] = p2pRoleSeed
 	m.destByRole[module.ROLE_VALIDATOR] = p2pRoleRoot
+	m.destByRole[module.ROLE_NORMAL] = p2pRoleNone //same as broadcast
 
 	role := PeerRoleFlag(p2pRoleNone)
 	for _, r := range roles {
@@ -58,6 +64,7 @@ func NewManager(channel string, t module.NetworkTransport, initialSeed string, r
 	if initialSeed != "" {
 		m.p2p.seeds.Add(NetAddress(initialSeed))
 	}
+
 	m.log.Println("NewManager", channel)
 	return m
 }
