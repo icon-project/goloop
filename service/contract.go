@@ -128,11 +128,13 @@ func (c *contractSnapshotImpl) flush() error {
 		return err
 	}
 	if len(code) != 0 {
-		return errors.New("Code already exists")
+		log.Printf("Code already exists\n")
+		return nil
 	}
 	if err := c.bk.Set(c.codeHash, c.code); err != nil {
 		return err
 	}
+	c.isNew = false
 	return nil
 }
 
