@@ -90,6 +90,7 @@ type consensus struct {
 	proposalPOLRound   int32
 	currentBlockParts  *blockPartSet
 	consumedNonunicast bool
+	commitRound        int32
 
 	timer              *time.Timer
 	cancelBlockRequest func() bool
@@ -120,6 +121,7 @@ func (cs *consensus) resetForNewHeight(prevBlock module.Block, votes *commitVote
 	cs.lockedRound = -1
 	cs.lockedBlockParts = nil
 	cs.consumedNonunicast = false
+	cs.commitRound = -1
 	cs.resetForNewRound(0)
 }
 
@@ -313,7 +315,7 @@ func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) e
 func (cs *consensus) handlePrecommitMessage(msg *voteMessage, precommits *voteSet) error {
 	if msg.Round < cs.round && cs.step < stepCommit {
 		if psid, _ := precommits.getOverTwoThirdsPartSetID(); psid != nil {
-			cs.enterCommit(precommits, psid)
+			cs.enterCommit(precommits, psid, msg.Round)
 		}
 	} else if cs.round == msg.Round && cs.step < stepPrecommit {
 		cs.enterPrecommit()
@@ -322,7 +324,7 @@ func (cs *consensus) handlePrecommitMessage(msg *voteMessage, precommits *voteSe
 	} else if cs.round == msg.Round && cs.step == stepPrecommitWait {
 		partSetID, ok := precommits.getOverTwoThirdsPartSetID()
 		if partSetID != nil {
-			cs.enterCommit(precommits, partSetID)
+			cs.enterCommit(precommits, partSetID, msg.Round)
 		} else if ok && partSetID == nil {
 			cs.enterProposeForRound(cs.round + 1)
 		}
@@ -577,7 +579,7 @@ func (cs *consensus) enterPrecommitWait() {
 
 	partSetID, ok := precommits.getOverTwoThirdsPartSetID()
 	if ok && partSetID != nil {
-		cs.enterCommit(precommits, partSetID)
+		cs.enterCommit(precommits, partSetID, cs.round)
 	} else if ok && partSetID == nil {
 		cs.enterProposeForRound(cs.round + 1)
 	} else {
@@ -631,9 +633,10 @@ func (cs *consensus) commitAndEnterNewHeight() {
 	}
 }
 
-func (cs *consensus) enterCommit(precommits *voteSet, partSetID *PartSetID) {
+func (cs *consensus) enterCommit(precommits *voteSet, partSetID *PartSetID, round int32) {
 	cs.resetForNewStep()
 	cs.setStep(stepCommit)
+	cs.commitRound = round
 
 	msg := newVoteListMessage()
 	msg.VoteList = precommits.voteList()
@@ -1263,7 +1266,7 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 	}
 
 	if h == cs.height && !cs.currentBlockParts.IsComplete() {
-		pcs := cs.hvs.votesFor(cs.round, voteTypePrecommit)
+		pcs := cs.hvs.votesFor(cs.commitRound, voteTypePrecommit)
 		return &commit{
 			height:       h,
 			commitVotes:  pcs.commitVoteListForOverTwoThirds(),
@@ -1278,7 +1281,7 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 	}
 
 	if h == cs.height {
-		pcs := cs.hvs.votesFor(cs.round, voteTypePrecommit)
+		pcs := cs.hvs.votesFor(cs.commitRound, voteTypePrecommit)
 		c = &commit{
 			height:       h,
 			commitVotes:  pcs.commitVoteListForOverTwoThirds(),
