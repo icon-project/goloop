@@ -10,14 +10,10 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/binary"
-	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
-	"log"
 	"math/big"
 	"net"
-	"strings"
 	"time"
 
 	"golang.org/x/crypto/chacha20poly1305"
@@ -92,7 +88,7 @@ func newSecureAead(conn net.Conn, sa SecureAeadSuite, secret []byte) (*SecureAea
 	var aead cipher.AEAD
 	var err error
 	switch sa {
-	case SecureAeadSuiteAes128Gcm:
+	case SecureAeadSuiteAes128Gcm, SecureAeadSuiteAes256Gcm:
 		aes, err := aes.NewCipher(secret)
 		if err != nil {
 			return nil, err
@@ -170,37 +166,25 @@ type secureKey struct {
 	secret       [][]byte
 	extra        []byte
 	sa           SecureAeadSuite
-	keyLogWriter *tlsKeyLogWriter
+	keyLogWriter io.Writer
 }
 
-type tlsKeyLogWriter struct {
-	clientRandom []byte
-	masterSecret []byte
-	next         io.Writer
-}
-
-func (w *tlsKeyLogWriter) Write(b []byte) (n int, err error) {
-	s := string(b)
-	if arr := strings.Split(s, " "); len(arr) >= 3 && arr[0] == "CLIENT_RANDOM" {
-		w.clientRandom, _ = hex.DecodeString(arr[1])
-		w.masterSecret, _ = hex.DecodeString(arr[2])
-	}
-	if w.next != nil {
-		return w.next.Write(b)
-	}
-	return len(b), nil
-}
 func newSecureKey(curve elliptic.Curve, keyLogWriter io.Writer) *secureKey {
 	k, err := ecdsa.GenerateKey(curve, rand.Reader)
 	if err != nil {
 		//TODO panic
 		panic(err)
 	}
-	return &secureKey{PrivateKey: k, keyLogWriter: &tlsKeyLogWriter{next: keyLogWriter}}
+	return &secureKey{PrivateKey: k, keyLogWriter: keyLogWriter}
 }
 
 func (k *secureKey) marshalPublicKey() []byte {
 	return elliptic.Marshal(k.Curve, k.X, k.Y)
+}
+func (k *secureKey) setup(sa SecureAeadSuite, peerPublicKey []byte, defaultLower bool, numOfSecret int) error {
+	k.sa = sa
+	k.setPeerPublicKey(peerPublicKey, defaultLower)
+	return k.hkdf(numOfSecret)
 }
 func (k *secureKey) setPeerPublicKey(publicKey []byte, defaultLower bool) {
 	c := k.Curve
@@ -218,7 +202,20 @@ func (k *secureKey) setPeerPublicKey(publicKey []byte, defaultLower bool) {
 		}
 	}
 }
-func (k *secureKey) hkdf(secretLen int, numOfSecret int) {
+func (k *secureKey) hkdf(numOfSecret int) error {
+	var secretLen int
+	switch k.sa {
+	case SecureAeadSuiteAes128Gcm:
+		secretLen = 16
+	case SecureAeadSuiteAes256Gcm, SecureAeadSuiteChaCha20Poly1305:
+		secretLen = 32
+	default:
+		return fmt.Errorf("secureKey: unknown SecureAeadSuite")
+	}
+
+	if k.pX == nil || k.pY == nil {
+		return fmt.Errorf("secureKey: PeerPublicKey is nil")
+	}
 	c := k.Curve
 	mx, _ := c.ScalarMult(k.pX, k.pY, k.D.Bytes())
 	preSecret := make([]byte, (c.Params().BitSize+7)>>3)
@@ -227,8 +224,7 @@ func (k *secureKey) hkdf(secretLen int, numOfSecret int) {
 	hr := hkdf.New(sha3.New256, preSecret, nil, []byte("GOLOOP_SECUREKEY_SECRET_HKDF"))
 	b := make([]byte, secretLen*(numOfSecret+1))
 	if _, err := io.ReadFull(hr, b[:]); err != nil {
-		//TODO panic
-		panic(err)
+		return err
 	}
 	n := 0
 	k.secret = make([][]byte, numOfSecret)
@@ -247,22 +243,24 @@ func (k *secureKey) hkdf(secretLen int, numOfSecret int) {
 		s += fmt.Sprintf("%x \n", k.extra)
 		_, _ = k.keyLogWriter.Write([]byte(s))
 	}
+	return nil
 }
 
-func (k *secureKey) tlsConfig() *tls.Config {
+func (k *secureKey) tlsConfig() (*tls.Config, error) {
 	var cipher uint16 = 0
 	switch k.sa {
 	case SecureAeadSuiteAes128Gcm:
 		cipher = tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+	case SecureAeadSuiteAes256Gcm:
+		cipher = tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
 	case SecureAeadSuiteChaCha20Poly1305:
 		cipher = tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
 	default:
-		return nil
+		return nil, fmt.Errorf("secureKey: unknown SecureAeadSuite")
 	}
 	cert, err := k.selfCertificate("")
 	if err != nil {
-		//TODO panic
-		panic(err)
+		return nil, err
 	}
 	config := &tls.Config{
 		InsecureSkipVerify:    true,
@@ -273,7 +271,7 @@ func (k *secureKey) tlsConfig() *tls.Config {
 		VerifyPeerCertificate: k.verifyCertificate,
 		KeyLogWriter:          k.keyLogWriter,
 	}
-	return config
+	return config, nil
 }
 
 func (k *secureKey) selfCertificate(commonName string) (tls.Certificate, error) {
@@ -281,7 +279,6 @@ func (k *secureKey) selfCertificate(commonName string) (tls.Certificate, error) 
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
-		log.Fatalf("failed to generate serial number: %s", err)
 		return tls.Certificate{}, err
 	}
 	template := x509.Certificate{
@@ -299,7 +296,6 @@ func (k *secureKey) selfCertificate(commonName string) (tls.Certificate, error) 
 	}
 	b, err := x509.CreateCertificate(rand.Reader, &template, &template, k.Public(), k.PrivateKey)
 	if err != nil {
-		log.Fatalf("x509.CreateCertificate: %s", err)
 		return tls.Certificate{}, err
 	}
 	cert := tls.Certificate{}
@@ -331,7 +327,7 @@ func (k *secureKey) verifyCertificate(rawCerts [][]byte, verifiedChains [][]*x50
 	for _, cert := range certs {
 		pubK := cert.PublicKey.(*ecdsa.PublicKey)
 		if pubK.X.Cmp(k.pX) != 0 || pubK.Y.Cmp(k.pY) != 0 {
-			return errors.New("secureKey: mismatch certificate public key")
+			return fmt.Errorf("secureKey: mismatch certificate public key")
 		}
 		if _, err := cert.Verify(opts); err != nil {
 			return err
@@ -353,8 +349,9 @@ type SecureAeadSuite byte
 
 const (
 	SecureAeadSuiteUnknown = iota
-	SecureAeadSuiteAes128Gcm
 	SecureAeadSuiteChaCha20Poly1305
+	SecureAeadSuiteAes128Gcm
+	SecureAeadSuiteAes256Gcm
 )
 
 type SecureError string

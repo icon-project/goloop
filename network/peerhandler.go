@@ -1,12 +1,9 @@
 package network
 
 import (
-	"crypto/elliptic"
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io"
-	"os"
 	"sync"
 	"time"
 
@@ -28,7 +25,6 @@ func newChannelNegotiator(netAddress NetAddress) *ChannelNegotiator {
 	return cn
 }
 
-//callback from PeerHandler.nextOnPeer
 func (cn *ChannelNegotiator) onPeer(p *Peer) {
 	cn.log.Println("onPeer", p)
 	if !p.incomming {
@@ -36,13 +32,11 @@ func (cn *ChannelNegotiator) onPeer(p *Peer) {
 	}
 }
 
-//TODO callback from Peer.sendRoutine or Peer.receiveRoutine
 func (cn *ChannelNegotiator) onError(err error, p *Peer, pkt *Packet) {
 	cn.log.Println("onError", err, p, pkt)
 	cn.peerHandler.onError(err, p, pkt)
 }
 
-//callback from Peer.receiveRoutine
 func (cn *ChannelNegotiator) onPacket(pkt *Packet, p *Peer) {
 	cn.log.Println("onPacket", pkt, p)
 	switch pkt.protocol {
@@ -100,29 +94,22 @@ type Authenticator struct {
 	wallet             module.Wallet
 	secureSuites       map[string][]SecureSuite
 	secureAeads        map[string][]SecureAeadSuite
-	secureKeyCurve     elliptic.Curve
-	secureKeySecretLen int
 	secureKeyNum       int
-	secureKeyLogWriter io.Writer
 	mtx                sync.Mutex
 }
 
 func newAuthenticator(w module.Wallet) *Authenticator {
 	_, err := crypto.ParsePublicKey(w.PublicKey())
 	if err != nil {
-		//TODO panic
 		panic(err)
 	}
 	a := &Authenticator{
 		wallet:             w,
 		secureSuites:       make(map[string][]SecureSuite),
 		secureAeads:        make(map[string][]SecureAeadSuite),
-		secureKeyCurve:     DefaultSecureEllipticCurve,
-		secureKeySecretLen: crypto.PrivateKeyLen,
 		secureKeyNum:       2,
 		peerHandler:        newPeerHandler(newLogger("Authenticator", "")),
 	}
-	a.secureKeyLogWriter = os.Stdout
 	return a
 }
 
@@ -214,7 +201,7 @@ type SignatureResponse struct {
 }
 
 func (a *Authenticator) sendSecureRequest(p *Peer) {
-	p.secureKey = newSecureKey(a.secureKeyCurve, a.secureKeyLogWriter)
+	p.secureKey = newSecureKey(DefaultSecureEllipticCurve, DefaultSecureKeyLogWriter)
 	sms := a.secureSuites[p.channel]
 	if len(sms) == 0 {
 		sms = DefaultSecureSuites
@@ -290,7 +277,7 @@ SecureAeadLoop:
 		m.SecureSuite = SecureSuiteTls
 		m.SecureError = SecureErrorEstablished
 	default:
-		p.secureKey = newSecureKey(a.secureKeyCurve, a.secureKeyLogWriter)
+		p.secureKey = newSecureKey(DefaultSecureEllipticCurve, DefaultSecureKeyLogWriter)
 		m.SecureParam = p.secureKey.marshalPublicKey()
 	}
 
@@ -304,9 +291,12 @@ SecureAeadLoop:
 	}
 
 	p.channel = rm.Channel
-	p.secureKey.sa = m.SecureAeadSuite
-	p.secureKey.setPeerPublicKey(rm.SecureParam, p.incomming)
-	p.secureKey.hkdf(a.secureKeySecretLen, a.secureKeyNum)
+	err := p.secureKey.setup(m.SecureAeadSuite, rm.SecureParam, p.incomming, a.secureKeyNum)
+	if err != nil {
+		a.log.Println("Warning", "handleSecureRequest", p.ConnString(), "failed secureKey.setup", err)
+		p.CloseByError(err)
+		return
+	}
 	switch m.SecureSuite {
 	case SecureSuiteEcdhe:
 		secureConn, err := NewSecureConn(p.conn, m.SecureAeadSuite, p.secureKey)
@@ -317,10 +307,14 @@ SecureAeadLoop:
 		}
 		p.ResetConn(secureConn)
 	case SecureSuiteTls:
-		if config := p.secureKey.tlsConfig(); config != nil {
-			tlsConn := tls.Server(p.conn, config)
-			p.ResetConn(tlsConn)
+		config, err := p.secureKey.tlsConfig()
+		if err != nil {
+			a.log.Println("Warning", "handleSecureRequest", p.ConnString(), "failed tlsConfig", err)
+			p.CloseByError(err)
+			return
 		}
+		tlsConn := tls.Server(p.conn, config)
+		p.ResetConn(tlsConn)
 	}
 }
 
@@ -389,9 +383,12 @@ SecureAeadLoop:
 		return
 	}
 
-	p.secureKey.sa = rm.SecureAeadSuite
-	p.secureKey.setPeerPublicKey(rm.SecureParam, p.incomming)
-	p.secureKey.hkdf(a.secureKeySecretLen, a.secureKeyNum)
+	err := p.secureKey.setup(rm.SecureAeadSuite, rm.SecureParam, p.incomming, a.secureKeyNum)
+	if err != nil {
+		a.log.Println("Warning", "handleSecureRequest", p.ConnString(), "failed secureKey.setup", err)
+		p.CloseByError(err)
+		return
+	}
 	switch rm.SecureSuite {
 	case SecureSuiteEcdhe:
 		secureConn, err := NewSecureConn(p.conn, rm.SecureAeadSuite, p.secureKey)
@@ -402,16 +399,19 @@ SecureAeadLoop:
 		}
 		p.ResetConn(secureConn)
 	case SecureSuiteTls:
-		if config := p.secureKey.tlsConfig(); config != nil {
-			tlsConn := tls.Client(p.conn, config)
-			if err := tlsConn.Handshake(); err != nil {
-				a.log.Println("Warning", "handleSecureResponse", p.ConnString(), "failed tls handshake", err)
-				p.CloseByError(err)
-				return
-			} else {
-				p.ResetConn(tlsConn)
-			}
+		config, err := p.secureKey.tlsConfig()
+		if err != nil {
+			a.log.Println("Warning", "handleSecureResponse", p.ConnString(), "failed tlsConfig", err)
+			p.CloseByError(err)
+			return
 		}
+		tlsConn := tls.Client(p.conn, config)
+		if err := tlsConn.Handshake(); err != nil {
+			a.log.Println("Warning", "handleSecureResponse", p.ConnString(), "failed tls handshake", err)
+			p.CloseByError(err)
+			return
+		}
+		p.ResetConn(tlsConn)
 	}
 
 	m := &SignatureRequest{

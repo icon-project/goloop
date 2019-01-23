@@ -265,7 +265,7 @@ func (p *Peer) CloseInfo() string {
 	closeErr := "closeErr:["
 	for i, e := range p.closeErr {
 		if i != 0 {
-			reason += ","
+			closeErr += ","
 		}
 		if p.isCloseError(e) {
 			closeErr += "CLOSED_ERR"

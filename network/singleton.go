@@ -4,6 +4,7 @@ import (
 	"crypto/elliptic"
 	"errors"
 	"math"
+	"os"
 	"time"
 )
 
@@ -86,5 +87,7 @@ var (
 	DefaultSecureAeadSuites = []SecureAeadSuite{
 		SecureAeadSuiteChaCha20Poly1305,
 		SecureAeadSuiteAes128Gcm,
+		SecureAeadSuiteAes256Gcm,
 	}
+	DefaultSecureKeyLogWriter = os.Stdout
 )
