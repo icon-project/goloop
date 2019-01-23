@@ -770,7 +770,7 @@ func (cs *consensus) sendVote(vt voteType, blockParts *blockPartSet) error {
 	if err != nil {
 		logger.Printf("cs.sendVote: %+v\n", err)
 	}
-	cs.ReceiveVoteMessage(msg, false)
+	cs.ReceiveVoteMessage(msg, true)
 	return nil
 }
 
