@@ -61,6 +61,7 @@ type blockPartSet struct {
 
 type commit struct {
 	height       int64
+	commitVotes  *commitVoteList
 	votes        *voteList
 	blockPartSet PartSet
 }
@@ -1241,9 +1242,11 @@ func (cs *consensus) GetStatus() *module.ConsensusStatus {
 }
 
 func (cs *consensus) GetVotesByHeight(height int64) (module.CommitVoteSet, error) {
-	// TODO implement
-	logger.Panicln("cs.GetVotesForHeight: not implemented")
-	return nil, errors.New("NotImplemented")
+	c, err := cs.getCommit(height)
+	if err != nil {
+		return nil, err
+	}
+	return c.commitVotes, nil
 }
 
 func (cs *consensus) getCommit(h int64) (*commit, error) {
@@ -1260,6 +1263,7 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 		pcs := cs.hvs.votesFor(cs.round, voteTypePrecommit)
 		return &commit{
 			height:       h,
+			commitVotes:  pcs.commitVoteListForOverTwoThirds(),
 			votes:        pcs.voteListForOverTwoThirds(),
 			blockPartSet: cs.currentBlockParts,
 		}, nil
@@ -1274,6 +1278,7 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 		pcs := cs.hvs.votesFor(cs.round, voteTypePrecommit)
 		c = &commit{
 			height:       h,
+			commitVotes:  pcs.commitVoteListForOverTwoThirds(),
 			votes:        pcs.voteListForOverTwoThirds(),
 			blockPartSet: cs.currentBlockParts,
 		}
@@ -1282,22 +1287,24 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 		if err != nil {
 			return nil, err
 		}
-		var vl *voteList
+		var cvl *commitVoteList
 		if h == cs.height-1 {
-			vl = cs.votes.voteList(h, b.ID())
+			cvl = cs.votes
 		} else {
 			nb, err := cs.bm.GetBlockByHeight(h + 1)
 			if err != nil {
 				return nil, err
 			}
-			vl = nb.Votes().(*commitVoteList).voteList(h, b.ID())
+			cvl = nb.Votes().(*commitVoteList)
 		}
+		vl := cvl.voteList(h, b.ID())
 		psb := newPartSetBuffer(configBlockPartSize)
 		b.MarshalHeader(psb)
 		b.MarshalBody(psb)
 		bps := psb.PartSet()
 		c = &commit{
 			height:       h,
+			commitVotes:  cvl,
 			votes:        vl,
 			blockPartSet: bps,
 		}
