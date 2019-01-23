@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	configEnableDebugLog = true
+	configEnableDebugLog = false
 )
 
 var debugWriter io.Writer
