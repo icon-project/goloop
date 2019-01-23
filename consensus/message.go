@@ -266,6 +266,9 @@ func newVoteListMessage() *voteListMessage {
 }
 
 func (msg *voteListMessage) verify() error {
+	if msg.VoteList == nil {
+		return errors.Errorf("nil VoteList")
+	}
 	return nil
 }
 
