@@ -179,6 +179,10 @@ func (p *peer) sync() {
 		if err = p.ph.Unicast(proto, msgBS, p.id); err != nil {
 			p.logger.Printf("peer.sync: %v\n", err)
 		}
+		if configSendBPS < 0 {
+			p.wakeUp()
+			continue
+		}
 		if nextSendTime == nil {
 			nextSendTime = &now
 		}
