@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	configSendBPS                   = 1024 * 500
+	configSendBPS                   = -1
 	configRoundStateMessageInterval = 300 * time.Millisecond
 )
 
