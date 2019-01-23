@@ -11,6 +11,7 @@ const (
 	stepPrevoteWait
 	stepPrecommit
 	stepPrecommitWait
+	stepNewRound
 	stepCommit
 	stepNewHeight
 )
@@ -29,6 +30,8 @@ func (step step) String() string {
 		return "stepPrecommit"
 	case stepPrecommitWait:
 		return "stepPrecommitWait"
+	case stepNewRound:
+		return "stepNewRound"
 	case stepCommit:
 		return "stepCommit"
 	case stepNewHeight:

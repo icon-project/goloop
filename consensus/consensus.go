@@ -32,19 +32,21 @@ const (
 	timeoutPrevote   = time.Second * 1
 	timeoutPrecommit = time.Second * 1
 	timeoutCommit    = time.Second * 1
+	timeoutNewRound  = time.Second * 1
 )
 
 const (
-	configBlockPartSize     = 1024 * 100
-	configCommitCacheCap    = 60
-	configEnginePriority    = 2
-	configSyncerPriority    = 3
-	configRoundWALID        = "round"
-	configRoundWALDataSize  = 1024 * 500
-	configLockWALID         = "lock"
-	configLockWALDataSize   = 1024 * 1024 * 5
-	configCommitWALID       = "commit"
-	configCommitWALDataSize = 1024 * 500
+	configBlockPartSize               = 1024 * 100
+	configCommitCacheCap              = 60
+	configEnginePriority              = 2
+	configSyncerPriority              = 3
+	configRoundWALID                  = "round"
+	configRoundWALDataSize            = 1024 * 500
+	configLockWALID                   = "lock"
+	configLockWALDataSize             = 1024 * 1024 * 5
+	configCommitWALID                 = "commit"
+	configCommitWALDataSize           = 1024 * 500
+	configRoundTimeoutThresholdFactor = 2
 )
 
 type hrs struct {
@@ -326,7 +328,7 @@ func (cs *consensus) handlePrecommitMessage(msg *voteMessage, precommits *voteSe
 		if partSetID != nil {
 			cs.enterCommit(precommits, partSetID, msg.Round)
 		} else if ok && partSetID == nil {
-			cs.enterProposeForRound(cs.round + 1)
+			cs.enterNewRound()
 		}
 	} else if cs.round < msg.Round {
 		cs.resetForNewRound(msg.Round)
@@ -363,6 +365,12 @@ func (cs *consensus) enterProposeForRound(round int32) {
 func (cs *consensus) enterPropose() {
 	cs.resetForNewStep()
 	cs.setStep(stepPropose)
+
+	if int(cs.round) > cs.validators.Len()*configRoundTimeoutThresholdFactor {
+		cs.nextProposeTime = time.Now().Add(timeoutNewRound)
+	} else {
+		cs.nextProposeTime = time.Now()
+	}
 
 	hrs := cs.hrs
 	cs.timer = time.AfterFunc(timeoutPropose, func() {
@@ -581,7 +589,7 @@ func (cs *consensus) enterPrecommitWait() {
 	if ok && partSetID != nil {
 		cs.enterCommit(precommits, partSetID, cs.round)
 	} else if ok && partSetID == nil {
-		cs.enterProposeForRound(cs.round + 1)
+		cs.enterNewRound()
 	} else {
 		debug.Println("enterPrecommitWait: start timer")
 		hrs := cs.hrs
@@ -663,6 +671,28 @@ func (cs *consensus) enterCommit(precommits *voteSet, partSetID *PartSetID, roun
 
 	if cs.currentBlockParts.IsComplete() {
 		cs.commitAndEnterNewHeight()
+	}
+}
+
+func (cs *consensus) enterNewRound() {
+	cs.resetForNewStep()
+	cs.setStep(stepNewRound)
+	cs.notifySyncer()
+
+	now := time.Now()
+	if cs.nextProposeTime.After(now) {
+		hrs := cs.hrs
+		cs.timer = time.AfterFunc(cs.nextProposeTime.Sub(now), func() {
+			cs.mutex.Lock()
+			defer cs.mutex.Unlock()
+
+			if cs.hrs != hrs {
+				return
+			}
+			cs.enterProposeForRound(cs.round + 1)
+		})
+	} else {
+		cs.enterProposeForRound(cs.round + 1)
 	}
 }
 
