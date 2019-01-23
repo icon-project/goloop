@@ -350,7 +350,7 @@ func (cs *consensus) setStep(step step) {
 }
 
 func (cs *consensus) enterProposeForNextHeight() {
-	votes := cs.hvs.votesFor(cs.round, voteTypePrecommit).commitVoteListForOverTwoThirds()
+	votes := cs.hvs.votesFor(cs.commitRound, voteTypePrecommit).commitVoteListForOverTwoThirds()
 	cs.resetForNewHeight(cs.currentBlockParts.block, votes)
 	cs.enterPropose()
 }
