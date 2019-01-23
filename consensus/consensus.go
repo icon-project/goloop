@@ -1242,6 +1242,9 @@ func (cs *consensus) GetStatus() *module.ConsensusStatus {
 }
 
 func (cs *consensus) GetVotesByHeight(height int64) (module.CommitVoteSet, error) {
+	cs.mutex.Lock()
+	defer cs.mutex.Unlock()
+
 	c, err := cs.getCommit(height)
 	if err != nil {
 		return nil, err
