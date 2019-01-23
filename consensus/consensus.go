@@ -1257,12 +1257,13 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 	}
 
 	if h == cs.height && !cs.currentBlockParts.IsComplete() {
+		pcs := cs.hvs.votesFor(cs.round, voteTypePrecommit)
 		return &commit{
 			height:       h,
-			votes:        cs.hvs.votesFor(cs.round, voteTypePrecommit).voteList(),
+			votes:        pcs.voteListForOverTwoThirds(),
 			blockPartSet: cs.currentBlockParts,
 		}, nil
-		}
+	}
 
 	if cs.commitMRU.Len() == configCommitCacheCap {
 		c := cs.commitMRU.Remove(cs.commitMRU.Back()).(*commit)
@@ -1270,9 +1271,10 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 	}
 
 	if h == cs.height {
+		pcs := cs.hvs.votesFor(cs.round, voteTypePrecommit)
 		c = &commit{
 			height:       h,
-			votes:        cs.hvs.votesFor(cs.round, voteTypePrecommit).voteList(),
+			votes:        pcs.voteListForOverTwoThirds(),
 			blockPartSet: cs.currentBlockParts,
 		}
 	} else {

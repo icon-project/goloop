@@ -97,6 +97,20 @@ func (vs *voteSet) commitVoteListForOverTwoThirds() *commitVoteList {
 	return newCommitVoteList(msgs)
 }
 
+func (vs *voteSet) voteListForOverTwoThirds() *voteList {
+	partSetID, ok := vs.getOverTwoThirdsPartSetID()
+	if !ok {
+		return nil
+	}
+	rvl := newVoteList()
+	for _, msg := range vs.msgs {
+		if msg != nil && msg.BlockPartSetID.Equal(partSetID) {
+			rvl.AddVote(msg)
+		}
+	}
+	return rvl
+}
+
 func (vs *voteSet) voteList() *voteList {
 	rvl := newVoteList()
 	for _, msg := range vs.msgs {
