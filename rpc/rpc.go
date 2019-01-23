@@ -1,8 +1,12 @@
 package rpc
 
 import (
+	"bytes"
+	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
+	"os"
 	"path"
 	"strings"
 
@@ -52,8 +56,8 @@ func (s *JsonRpcServer) jsonRpcHandler() http.Handler {
 	router := mux.NewRouter()
 
 	// api
-	router.Handle("/api/v2", v2.MethodRepository(s.bm, s.sm))
-	router.Handle("/api/v3", v3.MethodRepository(s.ch, s.bm, s.sm, s.cs))
+	router.Handle("/api/v2", &chunkHandler{v2.MethodRepository(s.bm, s.sm)})
+	router.Handle("/api/v3", &chunkHandler{v3.MethodRepository(s.ch, s.bm, s.sm, s.cs)})
 
 	corsOrigins := handlers.AllowedOrigins([]string{"*"})
 	corsMethods := handlers.AllowedMethods([]string{"POST", "GET", "OPTIONS", "PUT", "DELETE"})
@@ -73,6 +77,24 @@ func (s *JsonRpcServer) jsonRpcHandler() http.Handler {
 	// jaegerExporter()
 
 	return router
+}
+
+type chunkHandler struct {
+	next http.Handler
+}
+
+func (h *chunkHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	//refer transfer.go 565
+	if len(r.TransferEncoding) > 0 && r.TransferEncoding[0] == "chunked" {
+		b, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			panic(err)
+		}
+		rd := bytes.NewReader(b)
+		r.ContentLength = int64(len(b))
+		r.Body = ioutil.NopCloser(rd)
+	}
+	h.next.ServeHTTP(w, r)
 }
 
 type staticHandler struct {
@@ -98,5 +120,11 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *JsonRpcServer) ListenAndServe(addr string) error {
-	return http.ListenAndServe(addr, s.jsonRpcHandler())
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+	errLogger := log.New(os.Stderr, "RPC|", log.Lshortfile|log.Lmicroseconds)
+	srv := &http.Server{Handler: s.jsonRpcHandler(), ErrorLog: errLogger}
+	return srv.Serve(ln)
 }
