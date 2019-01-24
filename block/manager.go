@@ -191,13 +191,15 @@ func (it *importTask) _onValidate(err error) {
 			it.cb(nil, err)
 			return
 		}
-		bn := &bnode{
-			block:  it.block,
-			in:     it.in.newTransition(nil),
-			preexe: it.out.newTransition(nil),
+		if _, ok := it.manager.nmap[string(it.block.ID())]; !ok {
+			bn := &bnode{
+				block:  it.block,
+				in:     it.in.newTransition(nil),
+				preexe: it.out.newTransition(nil),
+			}
+			it.manager.nmap[string(bn.block.ID())] = bn
+			it.manager.nmap[string(it.block.PrevID())].addChild(bn)
 		}
-		it.manager.nmap[string(bn.block.ID())] = bn
-		it.manager.nmap[string(bn.block.PrevID())].addChild(bn)
 		it.stop()
 		it.state = validatedOut
 		it.cb(it.block, err)
@@ -324,14 +326,15 @@ func (pt *proposeTask) _onExecute(err error) {
 		nextValidators:     pmtr.NextValidators(),
 		votes:              pt.votes,
 	}
-	bn := &bnode{
-		block:  block,
-		in:     pt.in.newTransition(nil),
-		preexe: tr,
+	if _, ok := pt.manager.nmap[string(block.ID())]; !ok {
+		bn := &bnode{
+			block:  block,
+			in:     pt.in.newTransition(nil),
+			preexe: tr,
+		}
+		pt.manager.nmap[string(bn.block.ID())] = bn
+		pt.manager.nmap[string(block.PrevID())].addChild(bn)
 	}
-	pt.manager.nmap[string(bn.block.ID())] = bn
-	// TODO refactor
-	pt.manager.nmap[string(bn.block.PrevID())].addChild(bn)
 	pt.stop()
 	pt.state = validatedOut
 	pt.cb(block, nil)
