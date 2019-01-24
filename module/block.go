@@ -52,6 +52,7 @@ type BlockManager interface {
 	//	operation. canceler returns true and cb is not called if the
 	//	cancellation was successful.
 	Import(r io.Reader, cb func(Block, error)) (canceler func() bool, err error)
+	ImportBlock(blk Block, cb func(Block, error)) (canceler func() bool, err error)
 
 	Commit(Block) error
 

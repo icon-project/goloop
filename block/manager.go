@@ -120,13 +120,9 @@ func (t *task) cb(block module.Block, err error) {
 }
 
 func (m *manager) _import(
-	r io.Reader,
+	block module.Block,
 	cb func(module.Block, error),
 ) (*importTask, error) {
-	block, err := m.newBlockFromReader(r)
-	if err != nil {
-		return nil, err
-	}
 	bn := m.nmap[string(block.PrevID())]
 	if bn == nil {
 		return nil, errors.Errorf("InvalidPreviousID(%x)", block.PrevID())
@@ -425,7 +421,11 @@ func (m *manager) Import(
 
 	logger.Printf("Import(%v)\n", r)
 
-	it, err := m._import(r, cb)
+	block, err := m.newBlockFromReader(r)
+	if err != nil {
+		return nil, err
+	}
+	it, err := m._import(block, cb)
 	if err != nil {
 		return nil, err
 	}
@@ -433,6 +433,27 @@ func (m *manager) Import(
 		m.syncer.begin()
 		defer m.syncer.end()
 		logger.Printf("cancelImport()\n")
+		return it.cancel()
+	}, nil
+}
+
+func (m *manager) ImportBlock(
+	block module.Block,
+	cb func(module.Block, error),
+) (func() bool, error) {
+	m.syncer.begin()
+	defer m.syncer.end()
+
+	logger.Printf("ImportBlock(%x)\n", block.ID())
+
+	it, err := m._import(block, cb)
+	if err != nil {
+		return nil, err
+	}
+	return func() bool {
+		m.syncer.begin()
+		defer m.syncer.end()
+		logger.Printf("cancelImportBlock()\n")
 		return it.cancel()
 	}, nil
 }
