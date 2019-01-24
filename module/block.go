@@ -37,20 +37,25 @@ type BlockManager interface {
 	GetBlockByHeight(height int64) (Block, error)
 	GetLastBlock() (Block, error)
 	GetBlock(id []byte) (Block, error)
+
+	//  NewBlockFromReader creates a Block from reader. The returned block
+	//	shall be imported by ImportBlock before it is Committed or Finalized.
 	NewBlockFromReader(r io.Reader) (Block, error)
 
 	//	Propose proposes a Block following the parent Block.
 	//	The result is asynchronously notified by cb. canceler cancels the
 	//	operation. canceler returns true and cb is not called if the
-	//	cancellation was successful.
+	//	cancellation was successful. Proposed block can be Commited or
+	// 	Finalized.
 	Propose(parentID []byte, votes CommitVoteSet, cb func(Block, error)) (canceler func() bool, err error)
 
 	FinalizeGenesisBlocks(proposer Address, timestamp time.Time, votes CommitVoteSet) (block []Block, err error)
 
-	//	Import creates a Block from blockBytes.
+	//	Import creates a Block from blockBytes and verifies the block.
 	//	The result is asynchronously notified by cb. canceler cancels the
 	//	operation. canceler returns true and cb is not called if the
-	//	cancellation was successful.
+	//	cancellation was successful. Imported block can be Commited or
+	//	Finalized.
 	Import(r io.Reader, cb func(Block, error)) (canceler func() bool, err error)
 	ImportBlock(blk Block, cb func(Block, error)) (canceler func() bool, err error)
 
