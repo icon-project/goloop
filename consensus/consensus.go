@@ -436,8 +436,8 @@ func (cs *consensus) enterPrevote() {
 			cs.sendVote(voteTypePrevote, cs.currentBlockParts)
 		} else {
 			var err error
-			cs.cancelBlockRequest, err = cs.bm.Import(
-				cs.currentBlockParts.NewReader(),
+			cs.cancelBlockRequest, err = cs.bm.ImportBlock(
+				cs.currentBlockParts.block,
 				func(blk module.Block, err error) {
 					cs.mutex.Lock()
 					defer cs.mutex.Unlock()
@@ -608,8 +608,8 @@ func (cs *consensus) enterPrecommitWait() {
 func (cs *consensus) commitAndEnterNewHeight() {
 	if !cs.currentBlockParts.validated {
 		hrs := cs.hrs
-		_, err := cs.bm.Import(
-			cs.currentBlockParts.NewReader(),
+		_, err := cs.bm.ImportBlock(
+			cs.currentBlockParts.block,
 			func(blk module.Block, err error) {
 				cs.mutex.Lock()
 				defer cs.mutex.Unlock()
