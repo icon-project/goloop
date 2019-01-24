@@ -25,7 +25,12 @@ var (
 
 var zeroAddress = common.NewAddress(make([]byte, common.AddressBytes))
 
-var csProtocols = []module.ProtocolInfo{protoProposal, protoBlockPart, protoVote}
+var csProtocols = []module.ProtocolInfo{
+	protoProposal,
+	protoBlockPart,
+	protoVote,
+	protoVoteList,
+}
 
 const (
 	timeoutPropose   = time.Second * 1
@@ -170,6 +175,13 @@ func (cs *consensus) OnReceive(
 		_, err = cs.ReceiveBlockPartMessage(m, false)
 	case *voteMessage:
 		_, err = cs.ReceiveVoteMessage(m, false)
+	case *voteListMessage:
+		for i := 0; i < m.VoteList.Len(); i++ {
+			if _, e := cs.ReceiveVoteMessage(m.VoteList.Get(i), false); e != nil {
+				logger.Printf("OnReceive: %+v\n", e)
+				err = errors.Errorf("last error of VoteList: %+v", e)
+			}
+		}
 	default:
 		logger.Printf("OnReceived: unexpected broadcast message %v", msg)
 	}
@@ -742,6 +754,22 @@ func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) error {
 	err = cs.ph.Broadcast(protoProposal, msgBS, module.BROADCAST_ALL)
 	if err != nil {
 		logger.Printf("cs.sendProposal: %+v\n", err)
+	}
+
+	if polRound >= 0 {
+		prevotes := cs.hvs.votesFor(polRound, voteTypePrevote)
+		vl := prevotes.voteListForOverTwoThirds()
+		vlmsg := newVoteListMessage()
+		vlmsg.VoteList = vl
+		logger.Printf("sendVoteList = %+v\n", vlmsg)
+		vlmsgBS, err := msgCodec.MarshalToBytes(vlmsg)
+		if err != nil {
+			return err
+		}
+		err = cs.ph.Multicast(protoVoteList, vlmsgBS, module.ROLE_VALIDATOR)
+		if err != nil {
+			logger.Printf("cs.sendProposal: %+v\n", err)
+		}
 	}
 
 	bpmsg := newBlockPartMessage()
