@@ -85,27 +85,31 @@ type proposeTask struct {
 	votes       module.CommitVoteSet
 }
 
-func (bn *bnode) addChild(c *bnode) {
-	bn.children = append(bn.children, c)
-	c.parent = bn
+func (m *manager) addNode(par *bnode, bn *bnode) {
+	par.children = append(par.children, bn)
+	bn.parent = par
+	m.nmap[string(bn.block.ID())] = bn
 }
 
-func (bn *bnode) dispose() {
+func (m *manager) removeNode(bn *bnode) {
 	for _, c := range bn.children {
-		c.dispose()
+		m.removeNode(c)
 	}
 	bn.in.dispose()
 	bn.preexe.dispose()
+	delete(m.nmap, string(bn.block.ID()))
 }
 
-func (bn *bnode) disposeExcept(e *bnode) {
+func (m *manager) removeNodeExcept(bn *bnode, except *bnode) {
 	for _, c := range bn.children {
-		if c != e {
-			c.dispose()
+		if c != except {
+			m.removeNode(c)
+			c.parent = nil
 		}
 	}
 	bn.in.dispose()
 	bn.preexe.dispose()
+	delete(m.nmap, string(bn.block.ID()))
 }
 
 func (t *task) cb(block module.Block, err error) {
@@ -197,8 +201,8 @@ func (it *importTask) _onValidate(err error) {
 				in:     it.in.newTransition(nil),
 				preexe: it.out.newTransition(nil),
 			}
-			it.manager.nmap[string(bn.block.ID())] = bn
-			it.manager.nmap[string(it.block.PrevID())].addChild(bn)
+			pbn := it.manager.nmap[string(it.block.PrevID())]
+			it.manager.addNode(pbn, bn)
 		}
 		it.stop()
 		it.state = validatedOut
@@ -332,8 +336,8 @@ func (pt *proposeTask) _onExecute(err error) {
 			in:     pt.in.newTransition(nil),
 			preexe: tr,
 		}
-		pt.manager.nmap[string(bn.block.ID())] = bn
-		pt.manager.nmap[string(block.PrevID())].addChild(bn)
+		pbn := pt.manager.nmap[string(block.PrevID())]
+		pt.manager.addNode(pbn, bn)
 	}
 	pt.stop()
 	pt.state = validatedOut
@@ -513,8 +517,7 @@ func (m *manager) FinalizeGenesisBlocks(
 		nextValidators:     pmtr.NextValidators(),
 		votes:              votes,
 	}
-	m.nmap[string(bn.block.ID())] = bn
-	pbn.addChild(bn)
+	m.addNode(pbn, bn)
 	err = m.finalize(bn)
 	if err != nil {
 		return nil, err
@@ -577,7 +580,7 @@ func (m *manager) finalize(bn *bnode) error {
 	block := bn.block
 
 	if m.finalized != nil {
-		m.finalized.disposeExcept(bn)
+		m.removeNodeExcept(m.finalized, bn)
 		m.sm.Finalize(
 			bn.in.mtransition(),
 			module.FinalizePatchTransaction|module.FinalizeResult,
@@ -586,7 +589,6 @@ func (m *manager) finalize(bn *bnode) error {
 	m.sm.Finalize(bn.preexe.mtransition(), module.FinalizeNormalTransaction)
 
 	m.finalized = bn
-	m.finalized.parent = nil
 
 	if blockV2, ok := block.(*blockV2); ok {
 		hb := m.bucketFor(db.BytesByHash)
