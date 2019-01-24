@@ -36,7 +36,7 @@ func (vl *commitVoteList) Verify(block module.Block, validators module.Validator
 	msg.BlockID = block.ID()
 	msg.BlockPartSetID = vl.BlockPartSetID
 	for i, sig := range vl.Signatures {
-		msg.Signature = sig
+		msg.setSignature(sig)
 		index := validators.IndexOf(msg.address())
 		if index < 0 {
 			logger.Println(msg)
@@ -76,7 +76,7 @@ func (vl *commitVoteList) voteList(h int64, bid []byte) *voteList {
 	msg.BlockID = bid
 	msg.BlockPartSetID = vl.BlockPartSetID
 	for _, sig := range vl.Signatures {
-		msg.Signature = sig
+		msg.setSignature(sig)
 		rvl.AddVote(msg)
 	}
 	return rvl

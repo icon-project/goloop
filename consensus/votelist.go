@@ -40,7 +40,7 @@ func (vl *voteList) Len() int {
 func (vl *voteList) Get(i int) *voteMessage {
 	msg := newVoteMessage()
 	msg.vote = vl.Prototypes[vl.VoteItems[i].PrototypeIndex]
-	msg.Signature = vl.VoteItems[i].Signature
+	msg.setSignature(vl.VoteItems[i].Signature)
 	return msg
 }
 

@@ -55,6 +55,8 @@ func (s *signedBase) verify() error {
 }
 
 func (s *signedBase) sign(wallet module.Wallet) error {
+	s._hash = nil
+	s._publicKey = nil
 	sigBS, err := wallet.Sign(s.hash())
 	if err != nil {
 		return errors.Errorf("sendVote : %v", err)
@@ -65,4 +67,10 @@ func (s *signedBase) sign(wallet module.Wallet) error {
 	}
 	s.Signature.Signature = sig
 	return nil
+}
+
+func (s *signedBase) setSignature(sig common.Signature) {
+	s.Signature = sig
+	s._hash = nil
+	s._publicKey = nil
 }
