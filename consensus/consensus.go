@@ -841,7 +841,7 @@ func (cs *consensus) isProposalAndPOLPrevotesComplete() bool {
 	if !cs.currentBlockParts.IsComplete() {
 		return false
 	}
-	if cs.proposalPOLRound > 0 {
+	if cs.proposalPOLRound >= 0 {
 		prevotes := cs.hvs.votesFor(cs.proposalPOLRound, voteTypePrevote)
 		if id, _ := prevotes.getOverTwoThirdsPartSetID(); id != nil {
 			return true
