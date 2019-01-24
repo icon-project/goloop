@@ -28,7 +28,7 @@ func (vl *commitVoteList) Verify(block module.Block, validators module.Validator
 			return errors.Errorf("voters for height 1\n")
 		}
 	}
-	// TODO check duplicated votes
+	vset := make([]bool, validators.Len())
 	msg := newVoteMessage()
 	msg.Height = block.Height()
 	msg.Round = vl.Round
@@ -42,6 +42,11 @@ func (vl *commitVoteList) Verify(block module.Block, validators module.Validator
 			logger.Println(msg)
 			return errors.Errorf("bad voter %x at index %d in vote list", msg.address(), i)
 		}
+		if vset[index] {
+			logger.Printf("voteList: %v\n", vl)
+			return errors.Errorf("vl.Verify: duplicated validator %v\n", msg.address())
+		}
+		vset[index] = true
 	}
 	twoThirds := validators.Len() * 2 / 3
 	if len(vl.Signatures) > twoThirds {
