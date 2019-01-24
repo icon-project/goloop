@@ -97,7 +97,7 @@ func (l *Listener) Close() error {
 	defer l.mtx.Unlock()
 	l.mtx.Lock()
 
-	if l.ln != nil {
+	if l.ln == nil {
 		return ErrAlreadyClosed
 	}
 	err := l.ln.Close()
