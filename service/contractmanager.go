@@ -123,19 +123,14 @@ func (cm *contractManager) GetHandler(cc CallContext,
 		handler = newTransferHandler(from, to, value, stepLimit)
 	case ctypeCall:
 		handler = newCallHandler(newCommonHandler(from, to, value, stepLimit), data, cc, false)
-	case ctypeTransferAndMessage:
-		handler = &TransferAndMessageHandler{
-			TransferHandler: newTransferHandler(from, to, value, stepLimit),
-			data:            data,
-		}
+	case ctypeDeploy:
+		handler = newDeployHandler(from, to, value, stepLimit, data, cc, false)
 	case ctypeTransferAndCall:
 		th := newTransferHandler(from, to, value, stepLimit)
 		handler = &TransferAndCallHandler{
 			th:          th,
 			CallHandler: newCallHandler(th.CommonHandler, data, cc, false),
 		}
-	case ctypeTransferAndDeploy:
-		handler = newDeployHandler(from, to, value, stepLimit, data, cc, false)
 	}
 	return handler
 }

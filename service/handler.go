@@ -15,14 +15,10 @@ const (
 
 	ctypeTransfer = 0x100
 	ctypeNone     = iota
-	ctypeMessage
 	ctypeDeploy
-	ctypeAccept
 	ctypeCall
 	ctypeGovCall
-	ctypeTransferAndMessage = ctypeTransfer | ctypeMessage
-	ctypeTransferAndCall    = ctypeTransfer | ctypeCall
-	ctypeTransferAndDeploy  = ctypeTransfer | ctypeDeploy
+	ctypeTransferAndCall = ctypeTransfer | ctypeCall
 )
 
 type (

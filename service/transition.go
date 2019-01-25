@@ -329,7 +329,7 @@ func (t *transition) executeTxs(l module.TransactionList, wc WorldContext, rctBu
 			log.Panicf("Fail to iterate transaction list err=%+v", err)
 		}
 		txo := tx.(Transaction)
-		txh, err := txo.GetHandler(wc.ContractManager())
+		txh, err := txo.GetHandler(wc)
 		if err != nil {
 			log.Panicf("Fail to handle transaction for %+v", err)
 		}

@@ -298,14 +298,14 @@ func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
 	return nil
 }
 
-func (tx *transactionV3) GetHandler(cm ContractManager) (TransactionHandler, error) {
+func (tx *transactionV3) GetHandler(wc WorldContext) (TransactionHandler, error) {
 	var value *big.Int
 	if tx.Value != nil {
 		value = &tx.Value.Int
 	} else {
 		value = big.NewInt(0)
 	}
-	return NewTransactionHandler(cm,
+	return NewTransactionHandler(wc,
 		&tx.From,
 		&tx.To,
 		value,

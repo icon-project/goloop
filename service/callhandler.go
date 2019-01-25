@@ -251,17 +251,47 @@ type TransferAndCallHandler struct {
 }
 
 func (h *TransferAndCallHandler) Prepare(wc WorldContext) (WorldContext, error) {
-	return h.CallHandler.Prepare(wc)
+	if wc.GetAccountState(h.to.ID()).IsContract() {
+		// transfer to contract account without method, then make "fallback" called
+		if h.method == "" {
+			h.method = "fallback"
+			h.params = json.RawMessage([]byte("{}"))
+		}
+		return h.CallHandler.Prepare(wc)
+	} else {
+		return h.th.Prepare(wc)
+	}
 }
 
 func (h *TransferAndCallHandler) ExecuteAsync(wc WorldContext) error {
-	if status, stepUsed, result, addr := h.th.ExecuteSync(wc); status == module.StatusSuccess {
-		return h.CallHandler.ExecuteAsync(wc)
-	} else {
-		go func() {
-			h.cc.OnResult(module.Status(status), stepUsed, result, addr)
-		}()
+	status, stepUsed, result, addr := h.th.ExecuteSync(wc)
+	if status == module.StatusSuccess {
+		as := wc.GetAccountState(h.to.ID())
+		if as.IsContract() {
+			if h.method == "" {
+				// For transfer to contract account without method name,
+				// set "fallback" by default
+				h.method = "fallback"
+				h.params = json.RawMessage([]byte("{}"))
+			}
 
-		return nil
+			apiInfo := as.APIInfo()
+			if apiInfo != nil {
+				m := apiInfo.GetMethod(h.method)
+				if m != nil && m.IsPayable() {
+					return h.CallHandler.ExecuteAsync(wc)
+				}
+			}
+
+			return errors.New("No payable function provided(" + h.method + ")")
+		} else {
+			// Even for EOA, method name can be "fallback" because EE client
+			// always set "fallback" to method name.
+		}
 	}
+
+	go func() {
+		h.cc.OnResult(module.Status(status), stepUsed, result, addr)
+	}()
+	return nil
 }

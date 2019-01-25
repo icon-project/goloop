@@ -138,7 +138,7 @@ func (g *genesisV3) PreValidate(wc WorldContext, update bool) error {
 	return nil
 }
 
-func (g *genesisV3) GetHandler(cm ContractManager) (TransactionHandler, error) {
+func (g *genesisV3) GetHandler(WorldContext) (TransactionHandler, error) {
 	return g, nil
 }
 

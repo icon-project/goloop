@@ -33,10 +33,10 @@ type transactionHandler struct {
 	receipt Receipt
 }
 
-func NewTransactionHandler(cm ContractManager, from, to module.Address,
+func NewTransactionHandler(wc WorldContext, from, to module.Address,
 	value, stepLimit *big.Int, dataType *string, data []byte,
 ) (TransactionHandler, error) {
-	tc := &transactionHandler{
+	th := &transactionHandler{
 		from:      from,
 		to:        to,
 		value:     value,
@@ -46,27 +46,39 @@ func NewTransactionHandler(cm ContractManager, from, to module.Address,
 	}
 	ctype := ctypeNone // invalid contract type
 	if dataType == nil {
-		ctype = ctypeTransfer
+		if wc.GetAccountState(to.ID()).IsContract() {
+			ctype = ctypeTransferAndCall
+		} else {
+			ctype = ctypeTransfer
+		}
 	} else {
 		switch *dataType {
 		case dataTypeMessage:
-			ctype = ctypeTransferAndMessage
+			if wc.GetAccountState(to.ID()).IsContract() {
+				ctype = ctypeTransferAndCall
+			} else {
+				ctype = ctypeTransfer
+			}
 		case dataTypeDeploy:
-			ctype = ctypeTransferAndDeploy
+			ctype = ctypeDeploy
 		case dataTypeCall:
-			ctype = ctypeTransferAndCall
+			if value != nil && value.Sign() == 1 { //value > 0
+				ctype = ctypeTransferAndCall
+			} else {
+				ctype = ctypeCall
+			}
 		default:
 			return nil, errors.Errorf("IllegalDataType(type=%s)", *dataType)
 		}
 	}
 
-	tc.receipt = NewReceipt(to)
-	tc.cc = newCallContext(tc.receipt)
-	tc.handler = cm.GetHandler(tc.cc, from, to, value, stepLimit, ctype, data)
-	if tc.handler == nil {
+	th.receipt = NewReceipt(to)
+	th.cc = newCallContext(th.receipt)
+	th.handler = wc.ContractManager().GetHandler(th.cc, from, to, value, stepLimit, ctype, data)
+	if th.handler == nil {
 		return nil, errors.New("NoSuitableHandler")
 	}
-	return tc, nil
+	return th, nil
 }
 
 func (th *transactionHandler) Prepare(wc WorldContext) (WorldContext, error) {
