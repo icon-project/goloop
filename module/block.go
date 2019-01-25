@@ -49,8 +49,6 @@ type BlockManager interface {
 	// 	Finalized.
 	Propose(parentID []byte, votes CommitVoteSet, cb func(Block, error)) (canceler func() bool, err error)
 
-	FinalizeGenesisBlocks(proposer Address, timestamp time.Time, votes CommitVoteSet) (block []Block, err error)
-
 	//	Import creates a Block from blockBytes and verifies the block.
 	//	The result is asynchronously notified by cb. canceler cancels the
 	//	operation. canceler returns true and cb is not called if the
@@ -63,6 +61,7 @@ type BlockManager interface {
 
 	//	Finalize updates world state according to Block block and removes non-finalized committed blocks with the same height as block from persistent storage.
 	Finalize(Block) error
+	FinalizeGenesisBlock(proposer Address, timestamp time.Time, votes CommitVoteSet) (block Block, err error)
 
 	GetTransactionInfo(id []byte) (TransactionInfo, error)
 }

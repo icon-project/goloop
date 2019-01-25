@@ -127,11 +127,17 @@ func (m *manager) _import(
 	if bn == nil {
 		return nil, errors.Errorf("InvalidPreviousID(%x)", block.PrevID())
 	}
-	pprev, err := m.getBlock(bn.block.PrevID())
-	if err != nil {
-		logger.Panicf("cannot get prev prev block %x\n", bn.block.PrevID())
+	var validators module.ValidatorList
+	if block.Height() == 1 {
+		validators = nil
+	} else {
+		pprev, err := m.getBlock(bn.block.PrevID())
+		if err != nil {
+			logger.Panicf("cannot get prev prev block %x\n", bn.block.PrevID())
+		}
+		validators = pprev.NextValidators()
 	}
-	if err := verifyBlock(block, bn.block, pprev.NextValidators()); err != nil {
+	if err := verifyBlock(block, bn.block, validators); err != nil {
 		return nil, err
 	}
 	it := &importTask{
@@ -470,45 +476,31 @@ func (cb *channelingCB) onExecute(err error) {
 	cb.ch <- err
 }
 
-func (m *manager) FinalizeGenesisBlocks(
+func (m *manager) FinalizeGenesisBlock(
 	proposer module.Address,
 	timestamp time.Time,
 	votes module.CommitVoteSet,
-) (block []module.Block, err error) {
+) (block module.Block, err error) {
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	logger.Printf("FinalizeGenesisBlocks()\n")
-
+	logger.Printf("FinalizeGenesisBlock()\n")
 	if m.finalized != nil {
 		return nil, common.ErrInvalidState
 	}
-	pbn := &bnode{}
 	mtr, err := m.sm.CreateInitialTransition(nil, nil)
 	if err != nil {
 		return nil, err
 	}
-	pbn.in = newInitialTransition(mtr, &m.syncer, m.sm)
+	in := newInitialTransition(mtr, &m.syncer, m.sm)
 	ch := make(chan error)
-	gmtr := pbn.in.proposeGenesis(&channelingCB{ch: ch})
-	pbn.preexe = gmtr
-	pbn.block = &blockV2{
-		height:             genesisHeight,
-		timestamp:          timestamp,
-		proposer:           proposer,
-		prevID:             nil,
-		logBloom:           mtr.LogBloom(),
-		result:             mtr.Result(),
-		patchTransactions:  gmtr.mtransition().PatchTransactions(),
-		normalTransactions: gmtr.mtransition().NormalTransactions(),
-		nextValidators:     mtr.NextValidators(),
-		votes:              votes,
-	}
-	m.nmap[string(pbn.block.ID())] = pbn
-	err = m.finalize(pbn)
+	gtxbs := m.chain.Genesis()
+	gtx, err := m.sm.TransactionFromBytes(gtxbs, module.BlockVersion2)
 	if err != nil {
 		return nil, err
 	}
+	gtxl := m.sm.TransactionListFromSlice([]module.Transaction{gtx}, module.BlockVersion2)
+	gtr := in.transit(gtxl, newBlockInfo(0, time.Time{}), &channelingCB{ch: ch})
 	m.syncer.end()
 
 	// wait for genesis transition execution
@@ -519,31 +511,30 @@ func (m *manager) FinalizeGenesisBlocks(
 	if err = <-ch; err != nil {
 		return nil, err
 	}
+
 	m.syncer.begin()
-	emptyTxs := m.sm.TransactionListFromSlice(nil, module.BlockVersion2)
 	bn := &bnode{}
-	bn.in = pbn.preexe.newTransition(nil)
-	pmtr := bn.in.mtransition()
-	bn.preexe = gmtr.transit(emptyTxs, newBlockInfo(genesisHeight+1, timestamp), nil)
-	mtr = bn.preexe.mtransition()
+	bn.in = in
+	bn.preexe = gtr
 	bn.block = &blockV2{
-		height:             genesisHeight + 1,
+		height:             genesisHeight,
 		timestamp:          timestamp,
 		proposer:           proposer,
-		prevID:             pbn.block.ID(),
-		logBloom:           pmtr.LogBloom(),
-		result:             pmtr.Result(),
-		patchTransactions:  mtr.PatchTransactions(),
-		normalTransactions: mtr.NormalTransactions(),
-		nextValidators:     pmtr.NextValidators(),
+		prevID:             nil,
+		logBloom:           mtr.LogBloom(),
+		result:             mtr.Result(),
+		patchTransactions:  gtr.mtransition().PatchTransactions(),
+		normalTransactions: gtr.mtransition().NormalTransactions(),
+		nextValidators:     gtr.mtransition().NextValidators(),
 		votes:              votes,
 	}
-	m.addNode(pbn, bn)
+	m.nmap[string(bn.block.ID())] = bn
 	err = m.finalize(bn)
+	m.sm.Finalize(gtr.mtransition(), module.FinalizeNormalTransaction|module.FinalizePatchTransaction|module.FinalizeResult)
 	if err != nil {
 		return nil, err
 	}
-	return []module.Block{pbn.block, bn.block}, nil
+	return bn.block, nil
 }
 
 func (m *manager) Propose(

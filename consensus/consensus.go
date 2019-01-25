@@ -1208,15 +1208,16 @@ func (cs *consensus) Start() error {
 	debug = log.New(debugWriter, prefix, log.Lshortfile|log.Lmicroseconds)
 
 	var lastBlock module.Block
-	var prevBlock module.Block
+	var validators module.ValidatorList
 	lastBlock, err := cs.bm.GetLastBlock()
 	if err == nil {
-		prevBlock, err = cs.bm.GetBlockByHeight(lastBlock.Height() - 1)
+		prevBlock, err := cs.bm.GetBlockByHeight(lastBlock.Height() - 1)
 		if err != nil {
 			return err
 		}
+		validators = prevBlock.NextValidators()
 	} else if err == common.ErrNotFound {
-		gblks, err := cs.bm.FinalizeGenesisBlocks(
+		gblk, err := cs.bm.FinalizeGenesisBlock(
 			zeroAddress,
 			time.Time{},
 			newCommitVoteList(nil),
@@ -1224,8 +1225,8 @@ func (cs *consensus) Start() error {
 		if err != nil {
 			return err
 		}
-		lastBlock = gblks[len(gblks)-1]
-		prevBlock = gblks[len(gblks)-2]
+		lastBlock = gblk
+		validators = gblk.NextValidators()
 	} else {
 		return err
 	}
@@ -1236,7 +1237,7 @@ func (cs *consensus) Start() error {
 	}
 
 	cs.resetForNewHeight(lastBlock, newCommitVoteList(nil))
-	if err := cs.applyWAL(prevBlock.NextValidators()); err != nil {
+	if err := cs.applyWAL(validators); err != nil {
 		return err
 	}
 
