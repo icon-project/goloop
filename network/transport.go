@@ -13,24 +13,27 @@ import (
 
 type transport struct {
 	l    *Listener
+	address NetAddress
 	pd   *PeerDispatcher
 	dMap map[string]*Dialer
 	log  *logger
 }
 
 func NewTransport(address string, w module.Wallet) module.NetworkTransport {
-	cn := newChannelNegotiator(NetAddress(address))
+	na := NetAddress(address)
+	cn := newChannelNegotiator(na)
 	a := newAuthenticator(w)
 	id := NewPeerIDFromAddress(w.Address())
 	pd := newPeerDispatcher(id, cn, a)
 	l := newListener(address, pd.onAccept)
-	t := &transport{l: l, pd: pd, dMap: make(map[string]*Dialer), log: newLogger("Transport", address)}
+	t := &transport{l: l, address:na, pd: pd, dMap: make(map[string]*Dialer), log: newLogger("Transport", address)}
 	return t
 }
 
 func (t *transport) Listen() error {
 	return t.l.Listen()
 }
+
 func (t *transport) Close() error {
 	return t.l.Close()
 }
@@ -44,7 +47,15 @@ func (t *transport) PeerID() module.PeerID {
 }
 
 func (t *transport) Address() string {
-	return t.l.address
+	return string(t.address)
+}
+
+func (t *transport) SetListenAddress(address string) error {
+	return t.l.SetAddress(address)
+}
+
+func (t *transport) GetListenAddress() string {
+	return t.l.Address()
 }
 
 func (t *transport) GetDialer(channel string) *Dialer {
@@ -74,6 +85,27 @@ func newListener(address string, cbFunc acceptCbFunc) *Listener {
 		onAccept: cbFunc,
 		log:      newLogger("Listener", address),
 	}
+}
+
+func (l *Listener) Address() string {
+	if l.ln == nil {
+		return l.address
+	}
+	la := l.ln.Addr()
+	return la.String()
+}
+
+func (l *Listener) SetAddress(address string) error {
+	defer l.mtx.Unlock()
+	l.mtx.Lock()
+
+	if l.ln != nil {
+		return ErrAlreadyListened
+	}
+
+	l.address = address
+	l.log.prefix = address
+	return nil
 }
 
 func (l *Listener) Listen() error {
@@ -142,7 +174,7 @@ func newDialer(channel string, cbFunc connectCbFunc) *Dialer {
 }
 
 func (d *Dialer) Dial(addr string) error {
-	conn, err := net.Dial(DefaultTransportNet, addr)
+	conn, err := net.DialTimeout(DefaultTransportNet, addr, DefaultDialTimeout)
 	if err != nil {
 		//d.log.Println("Warning", "Dial", err)
 		return err
@@ -307,13 +339,11 @@ func (pd *PeerDispatcher) onPeer(p *Peer) {
 		p.setCloseCbFunc(p2p.onClose)
 		p2p.onPeer(p)
 	} else {
-		//TODO error
 		err := fmt.Errorf("not exists PeerToPeer[%s]", p.channel)
-		pd.onError(err, p, nil)
+		p.CloseByError(err)
 	}
 }
 
-//TODO callback from Peer.sendRoutine or Peer.receiveRoutine
 func (pd *PeerDispatcher) onError(err error, p *Peer, pkt *Packet) {
 	pd.peerHandler.onError(err, p, pkt)
 }

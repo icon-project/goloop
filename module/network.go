@@ -65,6 +65,8 @@ type NetworkTransport interface {
 	Dial(address string, channel string) error
 	PeerID() PeerID
 	Address() string
+	SetListenAddress(address string) error
+	GetListenAddress() string
 }
 
 type NetworkError interface {

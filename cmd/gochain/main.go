@@ -17,6 +17,7 @@ import (
 type GoChainConfig struct {
 	chain.Config
 	P2PAddr string `json:"p2p"`
+	P2PListenAddr string `json:"p2p_listen"`
 	Key     []byte `json:"key"`
 
 	fileName string
@@ -44,7 +45,8 @@ func main() {
 	flag.Var(&cfg, "config", "Parsing configuration file")
 	flag.BoolVar(&generate, "gen", false, "Generate configuration file")
 	flag.StringVar(&cfg.Channel, "channel", "default", "Channel name for the chain")
-	flag.StringVar(&cfg.P2PAddr, "p2p", "127.0.0.1:8080", "Listen ip-port of P2P")
+	flag.StringVar(&cfg.P2PAddr, "p2p", "127.0.0.1:8080", "Advertise ip-port of P2P")
+	flag.StringVar(&cfg.P2PListenAddr, "p2p_listen", "", "Listen ip-port of P2P")
 	flag.IntVar(&cfg.NID, "nid", 1, "Chain Network ID")
 	flag.StringVar(&cfg.RPCAddr, "rpc", ":9080", "Listen ip-port of JSON-RPC")
 	flag.StringVar(&cfg.SeedAddr, "seed", "", "Ip-port of Seed")
@@ -120,6 +122,9 @@ func main() {
 	}
 
 	nt := network.NewTransport(cfg.P2PAddr, wallet)
+	if cfg.P2PListenAddr != "" {
+		_ = nt.SetListenAddress(cfg.P2PListenAddr)
+	}
 	err := nt.Listen()
 	if err != nil {
 		log.Panicf("FAIL to listen P2P err=%+v", err)

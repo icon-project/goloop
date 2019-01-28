@@ -122,10 +122,10 @@ func Test_transport(t *testing.T) {
 	nt1.(*transport).pd.registerPeerHandler(tph1, false)
 	nt2.(*transport).pd.registerPeerHandler(tph2, false)
 
-	assert.Nil(t, nt1.Listen(), "Transport.Start fail")
-	assert.Nil(t, nt2.Listen(), "Transport.Start fail")
+	assert.NoError(t, nt1.Listen(), "Transport.Start fail")
+	assert.NoError(t, nt2.Listen(), "Transport.Start fail")
 
-	assert.Nil(t, nt2.Dial(nt1.Address(), ""), "Transport.Dial fail")
+	assert.NoError(t, nt2.Dial(nt1.Address(), ""), "Transport.Dial fail")
 
 	wg.Wait()
 	time.Sleep(1 * time.Second)

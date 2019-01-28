@@ -35,6 +35,7 @@ var (
 
 const (
 	DefaultTransportNet         = "tcp4"
+	DefaultDialTimeout          = 5 * time.Second
 	DefaultReceiveQueueSize     = 1000
 	DefaultPacketBufferSize     = 4096 //bufio.defaultBufSize=4096
 	DefaultPacketPayloadMax     = math.MaxInt32
@@ -42,7 +43,7 @@ const (
 	DefaultPacketPoolBucketLen  = 500
 	DefaultDiscoveryPeriod      = 2 * time.Second
 	DefaultSeedPeriod           = 3 * time.Second
-	DefaultMinSeed				= 1
+	DefaultMinSeed              = 1
 	DefaultAlternateSendPeriod  = 1 * time.Second
 	DefaultSendTimeout          = 5 * time.Second
 	DefaultSendQueueMaxPriority = 7
