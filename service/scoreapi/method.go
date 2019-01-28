@@ -245,8 +245,10 @@ func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedO
 
 func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
 	var params map[string]string
-	if err := json.Unmarshal(bs, &params); err != nil {
-		return nil, scoreresult.Error(err, module.StatusInvalidParameter)
+	if len(bs) > 0 {
+		if err := json.Unmarshal(bs, &params); err != nil {
+			return nil, scoreresult.Error(err, module.StatusInvalidParameter)
+		}
 	}
 	inputs := make([]interface{}, len(a.Inputs))
 	for i, input := range a.Inputs {
