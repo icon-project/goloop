@@ -11,6 +11,7 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/scoreapi"
+	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/pkg/errors"
 )
 
@@ -100,7 +101,7 @@ func (h *CallHandler) contract(as AccountState) Contract {
 func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 	// Calculate steps
 	if !h.ApplySteps(wc, StepTypeContractCall, 1) {
-		h.cc.OnResult(module.StatusNotPayable, h.stepLimit, nil, nil)
+		h.cc.OnResult(module.StatusOutOfStep, h.stepLimit, nil, nil)
 		return nil
 	}
 
@@ -152,7 +153,7 @@ func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 func (h *CallHandler) ensureParamObj() error {
 	info := h.as.APIInfo()
 	if info == nil {
-		return errors.New("No API Info in " + h.to.String())
+		return scoreresult.NewError(module.StatusContractNotFound, "APIInfo() is null")
 	}
 
 	if h.paramObj != nil {

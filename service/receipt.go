@@ -19,21 +19,6 @@ import (
 	ugorji "github.com/ugorji/go/codec"
 )
 
-var FailureSystemError = &failureReason{
-	CodeValue:    common.HexUint16{Value: module.StatusSystemError},
-	MessageValue: "System Error",
-}
-
-var FailureNotPayable = &failureReason{
-	CodeValue:    common.HexUint16{Value: module.StatusNotPayable},
-	MessageValue: "This is not payable",
-}
-
-var FailureOutOfBalance = &failureReason{
-	CodeValue:    common.HexUint16{Value: module.StatusOutOfBalance},
-	MessageValue: "Out of balance",
-}
-
 type eventLogJSON struct {
 	Addr    common.Address `json:"scoreAddress"`
 	Indexed []string       `json:"indexed"`
@@ -156,18 +141,9 @@ func (f *failureReason) Message() string {
 }
 
 func failureReasonByCode(status module.Status) *failureReason {
-	switch status {
-	case module.StatusNotPayable:
-		return FailureNotPayable
-	case module.StatusOutOfBalance:
-		return FailureOutOfBalance
-	case module.StatusSystemError:
-		return FailureSystemError
-	default:
-		return &failureReason{
-			CodeValue:    common.HexUint16{Value: uint16(status)},
-			MessageValue: "Unknown",
-		}
+	return &failureReason{
+		CodeValue:    common.HexUint16{Value: uint16(status)},
+		MessageValue: status.String(),
 	}
 }
 

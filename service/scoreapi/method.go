@@ -3,10 +3,13 @@ package scoreapi
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"log"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/pkg/errors"
 )
 
@@ -218,7 +221,7 @@ func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedO
 		return paramObj, nil
 	}
 	if paramObj.Type != codec.TypeDict {
-		return nil, errors.Errorf("UnknownType(%v)", paramObj.Type)
+		return nil, scoreresult.ErrInvalidParameter
 	}
 	params, ok := paramObj.Object.(map[string]interface{})
 	if !ok {
@@ -232,7 +235,8 @@ func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedO
 			if i >= a.Indexed {
 				inputs[i] = input.Type.Decode(input.Default)
 			} else {
-				return nil, errors.Errorf("MissingParameter(name=%s)", input.Name)
+				return nil, scoreresult.NewError(module.StatusInvalidParameter,
+					fmt.Sprintf("MissingParameter(name=%s)", input.Name))
 			}
 		}
 	}
@@ -242,7 +246,7 @@ func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedO
 func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
 	var params map[string]string
 	if err := json.Unmarshal(bs, &params); err != nil {
-		return nil, err
+		return nil, scoreresult.Error(err, module.StatusInvalidParameter)
 	}
 	inputs := make([]interface{}, len(a.Inputs))
 	for i, input := range a.Inputs {
@@ -252,24 +256,27 @@ func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
 				inputs[i] = input.Type.Decode(input.Default)
 				continue
 			}
-			return nil, errors.Errorf("MissingParam(param=%s)", input.Name)
+			return nil, scoreresult.Errorf(module.StatusInvalidParameter,
+				"MissingParam(param=%s)", input.Name)
 		}
 		switch input.Type {
 		case Integer:
 			var value common.HexInt
 			if _, ok := value.SetString(param, 0); !ok {
-				return nil, errors.Errorf("FailToConvertInteger(param=%s,value=%s)", input.Name, param)
+				return nil, scoreresult.Errorf(module.StatusInvalidParameter,
+					"FailToConvertInteger(param=%s,value=%s)", input.Name, param)
 			}
 			inputs[i] = &value
 		case String:
 			inputs[i] = param
 		case Bytes:
 			if param[0:2] != "0x" {
-				return nil, errors.Errorf("InvalidPrefix(prefix=%s)", param[0:2])
+				return nil, scoreresult.Errorf(module.StatusInvalidParameter,
+					"InvalidPrefix(prefix=%s)", param[0:2])
 			}
 			value, err := hex.DecodeString(param[2:])
 			if err != nil {
-				return nil, err
+				return nil, scoreresult.Error(err, module.StatusInvalidParameter)
 			}
 			inputs[i] = value
 		case Bool:
@@ -279,17 +286,20 @@ func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
 			case "0x0":
 				inputs[i] = false
 			default:
-				return nil, errors.Errorf("IllegalParamForBool(param=%s)", param)
+				return nil, scoreresult.Errorf(module.StatusInvalidParameter,
+					"IllegalParamForBool(param=%s)", param)
 			}
 		case Address:
 			var value common.Address
 			if err := value.SetString(param); err != nil {
-				return nil, err
+				return nil, scoreresult.Error(err, module.StatusInvalidParameter)
 			}
 			inputs[i] = &value
 		default:
-			return nil, errors.Errorf("UnknownType(%d)", input.Type)
+			return nil, scoreresult.Errorf(module.StatusInvalidParameter,
+				"UnknownType(%d)", input.Type)
 		}
 	}
-	return common.EncodeAny(inputs)
+	to, err := common.EncodeAny(inputs)
+	return to, scoreresult.Error(err, module.StatusInvalidParameter)
 }

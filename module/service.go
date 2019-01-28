@@ -1,6 +1,7 @@
 package module
 
 import (
+	"fmt"
 	"math/big"
 )
 
@@ -57,12 +58,59 @@ type TransactionList interface {
 type Status int
 
 const (
-	StatusSuccess      = 0
-	StatusNotPayable   = 0x7d64
-	StatusOutOfBalance = 0x7f58
-	StatusSystemError  = 0x7000
-	StatusTimeout      = 0x7001
+	StatusSuccess Status = iota
+	StatusSystemError
+	StatusContractNotFound
+	StatusMethodNotFound
+	StatusMethodNotPayable
+	StatusIllegalFormat
+	StatusInvalidParameter
+	StatusInvalidInstance
+	StatusInvalidContainerAccess
+	StatusAccessDenied
+	StatusOutOfStep
+	StatusOutOfBalance
+	StatusTimeout
+	StatusStackOverflow
+	StatusUser = 32
 )
+
+func (s Status) String() string {
+	switch s {
+	case StatusSuccess:
+		return "Success"
+	case StatusSystemError:
+		return "SystemError"
+	case StatusContractNotFound:
+		return "ContractNotFound"
+	case StatusMethodNotFound:
+		return "MethodNotFound"
+	case StatusMethodNotPayable:
+		return "MethodNotPayable"
+	case StatusIllegalFormat:
+		return "IllegalFormat"
+	case StatusInvalidParameter:
+		return "InvalidParameter"
+	case StatusInvalidInstance:
+		return "InvalidInstance"
+	case StatusInvalidContainerAccess:
+		return "InvalidContainerAccess"
+	case StatusAccessDenied:
+		return "AccessDenied"
+	case StatusOutOfStep:
+		return "OutOfStep"
+	case StatusOutOfBalance:
+		return "OutOfBalance"
+	case StatusStackOverflow:
+		return "StackOverflow"
+	default:
+		if int(s) >= StatusUser {
+			return fmt.Sprintf("User(%d)", s-StatusUser)
+		} else {
+			return fmt.Sprintf("Unknown(code=%d)", s)
+		}
+	}
+}
 
 type Receipt interface {
 	Bytes() []byte

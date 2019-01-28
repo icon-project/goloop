@@ -20,7 +20,7 @@ func TestReceiptList(t *testing.T) {
 		r1 := NewReceipt(addr1)
 		used.SetInt64(int64(i * 100))
 		price.SetInt64(int64(i * 10))
-		r1.SetResult(module.StatusNotPayable, &used, &price, nil)
+		r1.SetResult(module.StatusOutOfBalance, &used, &price, nil)
 		rslice = append(rslice, r1)
 	}
 	addr2 := common.NewAddressFromString("cx0003737589788888888888888888888888888888")
@@ -28,7 +28,7 @@ func TestReceiptList(t *testing.T) {
 		r2 := NewReceipt(addr2)
 		used.SetInt64(int64(i * 100))
 		price.SetInt64(int64(i * 10))
-		r2.SetResult(module.StatusNotPayable, &used, &price, nil)
+		r2.SetResult(module.StatusOutOfBalance, &used, &price, nil)
 		rslice = append(rslice, r2)
 	}
 

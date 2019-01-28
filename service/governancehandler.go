@@ -12,7 +12,7 @@ type GovCallHandler struct {
 func (h *GovCallHandler) ExecuteAsync(wc WorldContext) error {
 	// Calculate steps
 	if !h.ApplySteps(wc, StepTypeContractCall, 1) {
-		h.cc.OnResult(module.StatusNotPayable, h.stepLimit, nil, nil)
+		h.cc.OnResult(module.StatusOutOfBalance, h.stepLimit, nil, nil)
 		return nil
 	}
 

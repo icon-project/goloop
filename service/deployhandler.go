@@ -110,7 +110,7 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 	codeLen := len(h.content)
 	if !h.ApplySteps(wc, st, 1) ||
 		!h.ApplySteps(wc, StepTypeContractSet, codeLen) {
-		return module.StatusNotPayable, h.stepLimit, nil, nil
+		return module.StatusOutOfStep, h.stepLimit, nil, nil
 	}
 
 	// store ScoreDeployInfo and ScoreDeployTXParams
@@ -118,8 +118,11 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 	if update == false {
 		as.InitContractAccount(h.from)
 	} else {
-		if as.IsContract() == false || as.IsContractOwner(h.from) == false {
-			return module.StatusSystemError, h.stepUsed, nil, nil
+		if as.IsContract() == false {
+			return module.StatusContractNotFound, h.stepUsed, nil, nil
+		}
+		if as.IsContractOwner(h.from) == false {
+			return module.StatusAccessDenied, h.stepUsed, nil, nil
 		}
 	}
 	scoreAddr := common.NewContractAddress(contractID)
@@ -357,8 +360,9 @@ func (h *callGetAPIHandler) OnCall(from, to module.Address, value, limit *big.In
 }
 
 func (h *callGetAPIHandler) OnAPI(status uint16, info *scoreapi.Info) {
-	if status == module.StatusSuccess {
+	s := module.Status(status)
+	if s == module.StatusSuccess {
 		h.as.SetAPIInfo(info)
 	}
-	h.cc.OnResult(module.Status(status), new(big.Int), nil, nil)
+	h.cc.OnResult(s, new(big.Int), nil, nil)
 }

@@ -105,7 +105,7 @@ func (th *transactionHandler) Execute(wc WorldContext) (Receipt, error) {
 	} else {
 		if !th.handler.ApplySteps(wc, StepTypeDefault, 1) ||
 			!th.handler.ApplySteps(wc, StepTypeInput, cnt) {
-			status = module.StatusNotPayable
+			status = module.StatusOutOfStep
 			stepUsed = th.handler.StepLimit()
 		}
 
@@ -132,7 +132,7 @@ func (th *transactionHandler) Execute(wc WorldContext) (Receipt, error) {
 	for bal.Cmp(fee) < 0 {
 		if status == module.StatusSuccess {
 			// rollback all changes
-			status = module.StatusNotPayable
+			status = module.StatusOutOfBalance
 			wc.Reset(wcs)
 			bal = as.GetBalance()
 

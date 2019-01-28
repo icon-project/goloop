@@ -124,7 +124,7 @@ func (tx *transactionV2) Execute(wc WorldContext) (Receipt, error) {
 		if bal1.Cmp(version2FixedFee) < 0 {
 			stepPrice.SetInt64(0)
 		}
-		r.SetResult(module.StatusNotPayable, version2StepUsed, stepPrice, nil)
+		r.SetResult(module.StatusOutOfBalance, version2StepUsed, stepPrice, nil)
 		return r, nil
 	}
 
