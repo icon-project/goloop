@@ -104,7 +104,7 @@ type WorldContext interface {
 type Transaction interface {
 	module.Transaction
 	PreValidate(wc WorldContext, update bool) error
-	GetHandler(wc WorldContext) (TransactionHandler, error)
+	GetHandler(cm ContractManager) (TransactionHandler, error)
 	Timestamp() int64
 	Nonce() *big.Int
 }
