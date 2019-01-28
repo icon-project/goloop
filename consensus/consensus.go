@@ -667,7 +667,7 @@ func (cs *consensus) enterCommit(precommits *voteSet, partSetID *PartSetID, roun
 		logger.Printf("cs.enterCommit: %+v\n", err)
 	}
 
-	if cs.consumedNonunicast {
+	if cs.consumedNonunicast || cs.validators.Len() == 1 {
 		cs.nextProposeTime = time.Now().Add(timeoutCommit)
 	} else {
 		cs.nextProposeTime = time.Now()
