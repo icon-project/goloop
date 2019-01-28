@@ -169,13 +169,14 @@ func (it *importTask) cancel() bool {
 	switch it.state {
 	case executingIn:
 		it.stop()
-		return true
 	case validatingOut:
 		it.stop()
-		return true
 	default:
+		logger.Printf("Cancel Import: Ignored\n")
 		return false
 	}
+	logger.Printf("Cancel Import: OK\n")
+	return true
 }
 
 func (it *importTask) onValidate(err error) {
@@ -279,10 +280,12 @@ func (pt *proposeTask) cancel() bool {
 	switch pt.state {
 	case executingIn:
 		pt.stop()
-		return true
 	default:
+		logger.Printf("Cancel Propose: Ignored\n")
 		return false
 	}
+	logger.Printf("Cancel Propose: OK\n")
+	return true
 }
 
 func (pt *proposeTask) onValidate(err error) {
@@ -438,7 +441,6 @@ func (m *manager) Import(
 	return func() bool {
 		m.syncer.begin()
 		defer m.syncer.end()
-		logger.Printf("cancelImport()\n")
 		return it.cancel()
 	}, nil
 }
@@ -459,7 +461,6 @@ func (m *manager) ImportBlock(
 	return func() bool {
 		m.syncer.begin()
 		defer m.syncer.end()
-		logger.Printf("cancelImportBlock()\n")
 		return it.cancel()
 	}, nil
 }
@@ -555,7 +556,6 @@ func (m *manager) Propose(
 		m.syncer.begin()
 		defer m.syncer.end()
 
-		logger.Printf("CancelPropose(<%x>)\n", parentID)
 		return pt.cancel()
 	}, nil
 }
