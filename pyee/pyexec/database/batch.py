@@ -17,7 +17,7 @@ from collections import OrderedDict
 from typing import TYPE_CHECKING, Optional
 from collections.abc import MutableMapping
 
-from ..base.exception import ServerErrorException
+from ..base.exception import DatabaseException
 
 if TYPE_CHECKING:
     from ..base.block import Block
@@ -84,7 +84,7 @@ class TransactionBatch(MutableMapping):
         call_batch[key] = value
 
     def __delitem__(self, key):
-        raise ServerErrorException('To delete item is not allowed')
+        raise DatabaseException('delete item is not allowed')
 
     def __contains__(self, item):
         for call_batch in self._call_batches:
@@ -121,7 +121,7 @@ class TransactionBatch(MutableMapping):
 
     def digest(self) -> bytes:
         if len(self._call_batches) != 1:
-            raise ServerErrorException(f'Wrong call_batch count: {len(self._call_batches)}')
+            raise DatabaseException(f'Wrong call_batch count: {len(self._call_batches)}')
 
         return digest(self._call_batches[0])
 

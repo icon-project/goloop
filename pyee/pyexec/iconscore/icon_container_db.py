@@ -16,7 +16,7 @@ from collections import Iterator
 from typing import TypeVar, Optional, Any, Union, TYPE_CHECKING
 
 from ..base.address import Address
-from ..base.exception import ContainerDBException
+from ..base.exception import InvalidParamsException, InvalidContainerAccessException
 from ..icon_constant import DATA_BYTE_ORDER
 from ..utils import int_to_bytes
 
@@ -44,14 +44,14 @@ class ContainerUtil(object):
         :return:
         """
         if var_key is None:
-            raise ContainerDBException('key is None')
+            raise InvalidParamsException('key is None')
 
         if cls == ArrayDB:
             container_id = ARRAY_DB_ID
         elif cls == DictDB:
             container_id = DICT_DB_ID
         else:
-            raise ContainerDBException(f'Unsupported container class: {cls}')
+            raise InvalidParamsException(f'Unsupported container class: {cls}')
 
         encoded_key: bytes = ContainerUtil.__encode_key(var_key)
         return b'|'.join([container_id, encoded_key])
@@ -64,7 +64,7 @@ class ContainerUtil(object):
         :return:
         """
         if key is None:
-            raise ContainerDBException('key is None')
+            raise InvalidParamsException('key is None')
 
         return ContainerUtil.__encode_key(key)
 
@@ -83,7 +83,7 @@ class ContainerUtil(object):
         elif isinstance(key, bytes):
             bytes_key = key
         else:
-            raise ContainerDBException(f"can't encode key: {key}")
+            raise InvalidParamsException(f'Unsupported key type: {type(key)}')
         return bytes_key
 
     @staticmethod
@@ -99,7 +99,7 @@ class ContainerUtil(object):
         elif isinstance(value, bytes):
             byte_value = value
         else:
-            raise ContainerDBException(f"can't encode value: {value}")
+            raise InvalidParamsException(f'Unsupported value type: {type(value)}')
         return byte_value
 
     @staticmethod
@@ -186,7 +186,7 @@ class DictDB(object):
 
     def __setitem__(self, key: K, value: V) -> None:
         if self.__depth != 1:
-            raise ContainerDBException(f'DictDB depth mismatch')
+            raise InvalidContainerAccessException(f'DictDB depth mismatch')
 
         encoded_key: bytes = ContainerUtil.encode_key(key)
         encoded_value: bytes = ContainerUtil.encode_value(value)
@@ -210,7 +210,7 @@ class DictDB(object):
 
     def __remove(self, key: K) -> None:
         if self.__depth != 1:
-            raise ContainerDBException(f'DictDB depth mismatch')
+            raise InvalidContainerAccessException(f'DictDB depth mismatch')
         self._db.delete(ContainerUtil.encode_key(key))
 
 
@@ -292,7 +292,7 @@ class ArrayDB(Iterator):
 
     def __setitem__(self, index: int, value: V) -> None:
         if index >= self.__size:
-            raise ContainerDBException(f'ArrayDB out of range')
+            raise InvalidContainerAccessException(f'ArrayDB has been accessed with an illegal index: {index}')
         sub_db = self._db
         byte_value = ContainerUtil.encode_value(value)
         sub_db.put(ContainerUtil.encode_key(index), byte_value)
@@ -302,7 +302,7 @@ class ArrayDB(Iterator):
             if index < 0:
                 index += len(self)
             if index < 0 or index >= len(self):
-                raise ContainerDBException(f'ArrayDB out of range, {index}')
+                raise InvalidContainerAccessException(f'ArrayDB has been accessed with an illegal index: {index}')
             sub_db = self._db
             index_byte_key = ContainerUtil.encode_key(index)
             return ContainerUtil.decode_object(sub_db.get(index_byte_key), self.__value_type)

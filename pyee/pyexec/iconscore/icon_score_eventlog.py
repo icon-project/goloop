@@ -17,7 +17,7 @@ from iconcommons import Logger
 
 from .icon_score_step import StepType
 from ..base.address import Address
-from ..base.exception import EventLogException
+from ..base.exception import InvalidEventLogException
 from ..icon_constant import DATA_BYTE_ORDER, ICX_TRANSFER_EVENT_LOG
 from ..utils import int_to_bytes, byte_length_of_int
 
@@ -92,11 +92,11 @@ class EventLogEmitter(object):
         """
 
         if context.readonly:
-            raise EventLogException(
+            raise InvalidEventLogException(
                 'The event log can not be recorded on readonly context')
 
         if indexed_args_count > len(arguments):
-            raise EventLogException(
+            raise InvalidEventLogException(
                 f'declared indexed_args_count is {indexed_args_count}, '
                 f'but argument count is {len(arguments)}')
 

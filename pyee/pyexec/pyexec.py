@@ -15,7 +15,7 @@
 from typing import Tuple, Any, Union, List
 from iconcommons import Logger
 
-from .icon_constant import IconScoreContextType
+from .icon_constant import IconScoreContextType, Status
 from .base.address import Address
 from .base.block import Block
 from .base.message import Message
@@ -122,22 +122,22 @@ class PyExecEngine(object):
         Logger.info(f'[StepCounter] {context.step_counter}', TAG)
         return ServiceEngine.invoke(context)
 
-    def api_handler(self, code: str) -> APIInfo:
+    def api_handler(self, code: str) -> Tuple[int, APIInfo]:
         print(f'[api_handler] code={code}')
-        apis = ServiceEngine.get_score_api(code)
-        Logger.info(f"get_api({code}) -> {apis}", TAG)
+        status, apis = ServiceEngine.get_score_api(code)
+        Logger.info(f"get_api({code}) -> {status} {apis}", TAG)
         info = APIInfo(self.__proxy)
-        for api in apis:
-            typ = api[0]
-            optional, inputs = convert_inputs(api[3])
-            if typ == APIType.FUNCTION:
-                info.add_function(api[1], api[2], optional, inputs, convert_output(api[4]))
-            elif typ == APIType.FALLBACK:
-                info.add_fallback(api[1], api[2], inputs)
-            elif typ == APIType.EVENT:
-                info.add_event(api[1], api[2], inputs)
-        # TODO need to catch exception to deliver proper status code.
-        return 0, info
+        if status == Status.SUCCESS:
+            for api in apis:
+                typ = api[0]
+                optional, inputs = convert_inputs(api[3])
+                if typ == APIType.FUNCTION:
+                    info.add_function(api[1], api[2], optional, inputs, convert_output(api[4]))
+                elif typ == APIType.FALLBACK:
+                    info.add_fallback(api[1], api[2], inputs)
+                elif typ == APIType.EVENT:
+                    info.add_event(api[1], api[2], inputs)
+        return status, info
 
     def connect(self, addr: str, uuid: str):
         print(f"connect({addr}, {uuid})")

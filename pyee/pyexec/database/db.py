@@ -15,7 +15,7 @@
 from typing import TYPE_CHECKING, Optional
 
 from iconcommons.logger import Logger
-from ..base.exception import DatabaseException
+from ..base.exception import DatabaseException, InvalidParamsException
 from ..icon_constant import ICON_DB_LOG_TAG, IconScoreContextType
 from ..iconscore.icon_score_context import ContextGetter
 
@@ -283,7 +283,7 @@ class IconScoreDatabase(ContextGetter):
         :return: sub db
         """
         if prefix is None:
-            raise DatabaseException(
+            raise InvalidParamsException(
                 'Invalid params: '
                 'prefix is None in IconScoreDatabase.get_sub_db()')
 

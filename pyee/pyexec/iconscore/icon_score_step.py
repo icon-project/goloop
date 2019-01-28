@@ -57,7 +57,7 @@ class OutOfStepException(IconServiceBaseException):
 
     @property
     def code(self) -> int:
-        return ExceptionCode.SCORE_ERROR
+        return ExceptionCode.OUT_OF_STEP
 
     @property
     def message(self) -> str:

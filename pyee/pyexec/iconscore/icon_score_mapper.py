@@ -125,7 +125,7 @@ class IconScoreMapper(object):
         if score_info is None:
             score_class = IconScoreLoader.load_package(code_path)
             if score_class is None:
-                raise InvalidParamsException(f'Failed to load score from "{code_path}"')
+                return None
             self.put_score_info(key, score_class, code_path)
         else:
             score_class = score_info.score_class

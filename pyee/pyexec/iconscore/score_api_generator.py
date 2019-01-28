@@ -18,7 +18,7 @@ from typing import Any, Optional
 from .icon_score_constant import ConstBitFlag, CONST_BIT_FLAG, CONST_INDEXED_ARGS_COUNT, BaseType, \
     STR_FALLBACK, STR_ON_INSTALL, STR_ON_UPDATE
 from ..base.address import Address
-from ..base.exception import IconScoreException, IconTypeError, InvalidParamsException
+from ..base.exception import IllegalFormatException, InvalidParamsException
 from ..utils import get_main_type_from_annotations_type
 from ..ipc.proxy import APIType
 
@@ -60,8 +60,8 @@ class ScoreApiGenerator:
                         func.__name__ == ScoreApiGenerator.__API_TYPE_FALLBACK:
                     src.append(ScoreApiGenerator.__generate_function_info(
                         func.__name__, const_bit_flag, signature(func)))
-            except IconTypeError as e:
-                raise IconScoreException(f"{e.message} at {func.__name__}")
+            except IllegalFormatException as e:
+                raise IllegalFormatException(f"{e.message} at {func.__name__}")
 
     @staticmethod
     def __generate_function_info(func_name: str, flags: int, sig_info: 'Signature') -> list:
@@ -107,7 +107,7 @@ class ScoreApiGenerator:
             return info_list
 
         if params_type is Signature.empty:
-            raise IconTypeError(
+            raise IllegalFormatException(
                 f"'Returning type should be declared in read-only functions")
 
         main_type = get_main_type_from_annotations_type(params_type)
@@ -121,7 +121,7 @@ class ScoreApiGenerator:
         if api_type is None:
             api_type = ScoreApiGenerator.__find_base_super_type(main_type)
         if api_type is None:
-            raise IconTypeError(f"'Unsupported type for '{params_type}'")
+            raise IllegalFormatException(f"'Unsupported type for '{params_type}'")
 
         info = dict()
         info[ScoreApiGenerator.__API_TYPE] = api_type.__name__
@@ -155,13 +155,13 @@ class ScoreApiGenerator:
         # If there's no hint of argument in the function declaration,
         # raise an exception
         if param.annotation is Parameter.empty:
-            raise IconTypeError(f"Missing argument hint for '{param.name}'")
+            raise IllegalFormatException(f"Missing argument hint for '{param.name}'")
 
         main_type = get_main_type_from_annotations_type(param.annotation)
         main_type = ScoreApiGenerator.__convert_str_to_type(main_type)
         api_type = ScoreApiGenerator.__find_base_super_type(main_type)
         if api_type is None:
-            raise IconTypeError(
+            raise IllegalFormatException(
                 f"'Unsupported type for '{param.name}: {param.annotation}'")
         info = dict()
         info[ScoreApiGenerator.__API_NAME] = param.name

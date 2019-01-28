@@ -16,10 +16,9 @@ from typing import TYPE_CHECKING, Optional, Any
 from iconcommons import Logger
 
 from ..base.address import Address
-from ..base.exception import ExceptionCode, IconScoreException
+from ..base.exception import ExceptionCode, IconServiceBaseException, IconScoreException
 from ..icon_constant import ICX_TRANSFER_EVENT_LOG, Status
 from ..iconscore.icon_score_step import StepType
-from ..utils import check_error_response
 from .icon_score_eventlog import EventLogEmitter
 
 if TYPE_CHECKING:
@@ -69,13 +68,11 @@ class InternalCall(object):
                 InternalCall.emit_event_log_for_icx_transfer(context, addr_from, addr_to, amount)
             return result
         else:
-            if check_error_response(result):
-                error = result.get('error')
-                code = error.get('code', ExceptionCode.INTERNAL_ERROR)
-                message = error.get('message')
-                raise IconScoreException(message, code)
+            if status < ExceptionCode.SCORE_ERROR:
+                raise IconServiceBaseException(result, status)
             else:
-                raise AssertionError('Result must be an error response')
+                code = status - ExceptionCode.SCORE_ERROR
+                raise IconScoreException(result, code)
 
     @staticmethod
     def emit_event_log_for_icx_transfer(context: 'IconScoreContext',

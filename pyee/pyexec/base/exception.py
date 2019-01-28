@@ -18,21 +18,24 @@ from typing import Optional, Union
 
 @unique
 class ExceptionCode(IntEnum):
-    """Result code enumeration
-
-    Refer to http://www.simple-is-better.org/json-rpc/jsonrpc20.html#examples
-    """
     OK = 0
+    SYSTEM_ERROR = 1
+    CONTRACT_NOT_FOUND = 2
+    METHOD_NOT_FOUND = 3
+    METHOD_NOT_PAYABLE = 4
+    ILLEGAL_FORMAT = 5
+    INVALID_PARAMETER = 6
+    INVALID_INSTANCE = 7
+    INVALID_CONTAINER_ACCESS = 8
+    ACCESS_DENIED = 9
+    OUT_OF_STEP = 10
+    OUT_OF_BALANCE = 11
+    TIMEOUT_ERROR = 12
+    STACK_OVERFLOW = 13
 
-    # 32000 ~ 32099: Server error
-    SERVER_ERROR = 32000
-    SCORE_ERROR = 32100
-    INVALID_REQUEST = 32600
-    METHOD_NOT_FOUND = 32601
-    INVALID_PARAMS = 32602
-    INTERNAL_ERROR = 32603
-
-    # for inner handle consensus #33000
+    # Caused by revert call or user defined custom exception.
+    SCORE_ERROR = 32
+    END = 99
 
     def __str__(self) -> str:
         if self.value == self.INVALID_REQUEST:
@@ -42,9 +45,6 @@ class ExceptionCode(IntEnum):
 
 
 class IconServiceBaseException(BaseException):
-    """All custom exceptions used in ICONService SHOULD inherit from IconServiceBaseException
-    """
-
     def __init__(self, message: Optional[str], code: ExceptionCode = ExceptionCode.OK):
         if message is None:
             message = str(code)
@@ -63,14 +63,9 @@ class IconServiceBaseException(BaseException):
         return f'{self.message} ({self.code})'
 
 
-class IconTypeError(IconServiceBaseException):
-    def __init__(self, message: str):
-        super().__init__(message)
-
-
-class InvalidParamsException(IconServiceBaseException):
+class ScoreNotFoundException(IconServiceBaseException):
     def __init__(self, message: Optional[str]):
-        super().__init__(message, ExceptionCode.INVALID_PARAMS)
+        super().__init__(message, ExceptionCode.CONTRACT_NOT_FOUND)
 
 
 class MethodNotFoundException(IconServiceBaseException):
@@ -78,89 +73,61 @@ class MethodNotFoundException(IconServiceBaseException):
         super().__init__(message, ExceptionCode.METHOD_NOT_FOUND)
 
 
-class ServerErrorException(IconServiceBaseException):
+class MethodNotPayableException(IconServiceBaseException):
     def __init__(self, message: Optional[str]):
-        super().__init__(message, ExceptionCode.SERVER_ERROR)
+        super().__init__(message, ExceptionCode.METHOD_NOT_PAYABLE)
 
 
-class ScoreErrorException(IconServiceBaseException):
-    def __init__(self, message: Optional[str], code: ExceptionCode = ExceptionCode.SCORE_ERROR):
-        super().__init__(message, code)
-
-
-class InvalidRequestException(IconServiceBaseException):
+class InvalidParamsException(IconServiceBaseException):
     def __init__(self, message: Optional[str]):
-        super().__init__(message, ExceptionCode.INVALID_REQUEST)
+        super().__init__(message, ExceptionCode.INVALID_PARAMETER)
 
 
 class DatabaseException(IconServiceBaseException):
-    def __init__(self, message: Optional[str], code: ExceptionCode = ExceptionCode.SERVER_ERROR):
-        super().__init__(message, code)
+    def __init__(self, message: Optional[str]):
+        super().__init__(message, ExceptionCode.ACCESS_DENIED)
+
+
+class InvalidInstanceException(IconServiceBaseException):
+    def __init__(self, message: Optional[str]):
+        super().__init__(message, ExceptionCode.INVALID_INSTANCE)
+
+
+class InvalidContainerAccessException(IconServiceBaseException):
+    def __init__(self, message: Optional[str]):
+        super().__init__(message, ExceptionCode.INVALID_CONTAINER_ACCESS)
+
+
+class IllegalFormatException(IconServiceBaseException):
+    def __init__(self, message: Optional[str]):
+        super().__init__(message, ExceptionCode.ILLEGAL_FORMAT)
+
+
+class InvalidExternalException(IconServiceBaseException):
+    def __init__(self, message: Optional[str]):
+        super().__init__(message, ExceptionCode.ILLEGAL_FORMAT)
+
+
+class InvalidPayableException(IconServiceBaseException):
+    def __init__(self, message: Optional[str]):
+        super().__init__(message, ExceptionCode.ILLEGAL_FORMAT)
+
+
+class InvalidEventLogException(IconServiceBaseException):
+    def __init__(self, message: Optional[str]):
+        super().__init__(message, ExceptionCode.ILLEGAL_FORMAT)
+
+
+class InvalidInterfaceException(IconServiceBaseException):
+    def __init__(self, message: Optional[str]):
+        super().__init__(message, ExceptionCode.ILLEGAL_FORMAT)
 
 
 class IconScoreException(IconServiceBaseException):
-    def __init__(self,
-                 message: Optional[str],
-                 code: ExceptionCode = ExceptionCode.SERVER_ERROR):
-        super().__init__(message, code)
-
-
-class APIIconScoreBaseException(IconScoreException):
-    def __init__(self, message: Optional[str], func_name: str, cls_name: str,
-                 code: ExceptionCode = ExceptionCode.SCORE_ERROR):
-        super().__init__(message, code)
-        self.__func_name = func_name
-        self.__cls_name = cls_name
-
-    @property
-    def func_name(self):
-        return self.__func_name
-
-    @property
-    def cls_name(self):
-        return self.__cls_name
-
-    def __str__(self):
-        return f'msg: {self.message}, func: {self.func_name}, cls: {self.cls_name} ({self.code})'
-
-
-class ExternalException(APIIconScoreBaseException):
-    def __init__(self, message: Optional[str], func_name: str, cls_name: str,
-                 code: ExceptionCode = ExceptionCode.SCORE_ERROR):
-        super().__init__(message, func_name, cls_name, code)
-
-
-class PayableException(APIIconScoreBaseException):
-    def __init__(self, message: Optional[str], func_name: str, cls_name: str,
-                 code: ExceptionCode = ExceptionCode.SCORE_ERROR):
-        super().__init__(message, func_name, cls_name, code)
-
-
-class RevertException(ScoreErrorException):
-    def __init__(self, message: Optional[str], code: Union[ExceptionCode, int] = ExceptionCode.SCORE_ERROR):
-        super().__init__(message, code)
-
-
-class InterfaceException(ScoreErrorException):
-    def __init__(self, message: Optional[str], code: ExceptionCode = ExceptionCode.SCORE_ERROR):
-        super().__init__(message, code)
-
-
-class EventLogException(ScoreErrorException):
-    def __init__(self, message: Optional[str], code: ExceptionCode = ExceptionCode.SCORE_ERROR):
-        super().__init__(message, code)
-
-
-class ContainerDBException(ScoreErrorException):
-    def __init__(self, message: Optional[str], code: ExceptionCode = ExceptionCode.SCORE_ERROR):
-        super().__init__(message, code)
-
-
-class ScoreInstallException(IconScoreException):
-    def __init__(self, message: Optional[str], code: ExceptionCode = ExceptionCode.INVALID_PARAMS):
-        super().__init__(message, code)
-
-
-class ScoreInstallExtractException(IconScoreException):
-    def __init__(self, message: Optional[str], code: ExceptionCode = ExceptionCode.INVALID_PARAMS):
+    def __init__(self, message: Optional[str], index: int = 0):
+        code = ExceptionCode.SCORE_ERROR + index
+        if code < ExceptionCode.SCORE_ERROR:
+            code = ExceptionCode.SCORE_ERROR
+        elif code > ExceptionCode.END:
+            code = ExceptionCode.END
         super().__init__(message, code)

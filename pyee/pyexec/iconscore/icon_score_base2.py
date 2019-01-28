@@ -18,7 +18,7 @@ from abc import ABC, ABCMeta
 from typing import TYPE_CHECKING, Optional, Union, Any
 
 from ..base.address import Address
-from ..base.exception import RevertException, ExceptionCode
+from ..base.exception import IconScoreException
 from .icon_score_constant import STR_FALLBACK
 from .icon_score_context import ContextContainer, IconScoreContext
 from .internal_call import InternalCall
@@ -131,8 +131,7 @@ class Icx(object):
         return False
 
 
-def revert(message: Optional[str] = None,
-           code: Union[ExceptionCode, int] = ExceptionCode.SCORE_ERROR) -> None:
+def revert(message: Optional[str] = None, code: int = 0) -> None:
     """
     Reverts the transaction and breaks.
     All the changes of state DB in current transaction will be rolled back.
@@ -140,7 +139,7 @@ def revert(message: Optional[str] = None,
     :param message: revert message
     :param code: code
     """
-    raise RevertException(message, code)
+    raise IconScoreException(message, code)
 
 
 def sha3_256(data: bytes) -> bytes:

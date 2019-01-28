@@ -16,12 +16,12 @@ from typing import Any
 from iconcommons import Logger
 
 from .base.address import Address, GETAPI_DUMMY_ADDRESS
-from .base.exception import ServerErrorException, IconServiceBaseException, ExceptionCode
+from .base.exception import *
 from .base.type_converter import TypeConverter
 from .database.factory import ContextDatabaseFactory
 
 from .icon_constant import Status
-from .iconscore.icon_score_base import IconScoreBase, ScoreErrorException, InvalidParamsException
+from .iconscore.icon_score_base import IconScoreBase
 from .iconscore.icon_score_context import ContextContainer, IconScoreContext
 from .iconscore.icon_score_eventlog import EventLogEmitter
 from .iconscore.icon_score_mapper import IconScoreMapper
@@ -71,8 +71,14 @@ class ServiceEngine(ContextContainer):
 
     @classmethod
     def get_score_api(cls, code: str):
-        icon_score: 'IconScoreBase' = cls._get_icon_score(GETAPI_DUMMY_ADDRESS, code)
-        return icon_score.get_api()
+        try:
+            icon_score: 'IconScoreBase' = cls._get_icon_score(GETAPI_DUMMY_ADDRESS, code)
+            ret = icon_score.get_api()
+            status = Status.SUCCESS
+        except BaseException as e:
+            status, ret = cls._get_status_from_exception(e)
+
+        return status, ret
 
     @classmethod
     def _get_icon_score(cls, address: Address, code: str):
@@ -84,8 +90,7 @@ class ServiceEngine(ContextContainer):
             ret = cls._internal_call(context)
             status = Status.SUCCESS
         except BaseException as e:
-            ret = cls._get_failure_from_exception(e)
-            status = Status.FAILURE
+            status, ret = cls._get_status_from_exception(e)
         finally:
             step_used = context.step_counter.step_used
 
@@ -95,8 +100,7 @@ class ServiceEngine(ContextContainer):
     def _internal_call(cls, context: IconScoreContext):
         icon_score: 'IconScoreBase' = cls._get_icon_score(context.to, context.code)
         if icon_score is None:
-            raise ServerErrorException(
-                f'SCORE not found: {context.to}')
+            raise ScoreNotFoundException(f'SCORE not found: {context.to}')
 
         func_name: str = context.method
         context.set_func_type_by_icon_score(icon_score, func_name)
@@ -125,9 +129,9 @@ class ServiceEngine(ContextContainer):
         return tmp_params
 
     @classmethod
-    def _get_failure_from_exception(cls, e: BaseException):
+    def _get_status_from_exception(cls, e: BaseException):
         if isinstance(e, IconServiceBaseException):
-            if e.code == ExceptionCode.SCORE_ERROR or isinstance(e, ScoreErrorException):
+            if e.code >= ExceptionCode.SCORE_ERROR or isinstance(e, IconScoreException):
                 Logger.warning(e.message, TAG)
             else:
                 Logger.exception(e.message, TAG)
@@ -138,11 +142,7 @@ class ServiceEngine(ContextContainer):
             Logger.exception(e, TAG)
             Logger.error(e, TAG)
 
-            code = ExceptionCode.SERVER_ERROR
+            code = ExceptionCode.SYSTEM_ERROR
             message = str(e)
 
-        return cls._make_error_response(code, message)
-
-    @staticmethod
-    def _make_error_response(code: Any, message: str):
-        return {'error': {'code': int(code), 'message': message}}
+        return code, message

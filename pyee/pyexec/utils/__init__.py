@@ -58,10 +58,6 @@ def to_camel_case(snake_str: str) -> str:
     return str_array[0] + ''.join(sub.title() for sub in str_array[1:])
 
 
-def check_error_response(result: Any):
-    return isinstance(result, dict) and result.get('error')
-
-
 def get_main_type_from_annotations_type(annotations_type: type) -> type:
     main_type = None
 

@@ -183,7 +183,7 @@ class ServiceManagerProxy:
     def set_invoke_handler(self, invoke):
         self.__invoke = invoke
 
-    def set_api_handler(self, api: Callable[[str],Tuple[int,APIInfo]]):
+    def set_api_handler(self, api: Callable[[str], Tuple[int, APIInfo]]):
         self.__get_api = api
 
     def set_codec(self, codec: Codec) -> None:
@@ -237,7 +237,7 @@ class ServiceManagerProxy:
         else:
             return self.decode(tag, val)
 
-    def encode_any(self, o: Any) -> Tuple[int,Any]:
+    def encode_any(self, o: Any) -> Tuple[int, Any]:
         if o is None:
             return TypeTag.NIL, b''
         elif isinstance(o, dict):
@@ -296,7 +296,7 @@ class ServiceManagerProxy:
             code = self.decode(TypeTag.STRING, data)
             print(f"EEProxy.GETAPI(code={code})")
             status, obj = self.__get_api(code)
-            if status==Status.SUCCESS :
+            if status == Status.SUCCESS:
                 if isinstance(obj, APIInfo):
                     print(f"EEProxy.GETAPI result={obj}")
                     self.__client.send(Message.GETAPI, [Status.SUCCESS, obj.get_data()])
@@ -306,7 +306,7 @@ class ServiceManagerProxy:
             else:
                 print(f"EEProxy.GETAPI returns failure status={status}")
                 self.__client.send(Message.GETAPI, [status, None])
-        except :
+        except:
             traceback.print_exc()
             self.__client.send(Message.GETAPI, [Status.SYSTEM_FAILURE, None])
 

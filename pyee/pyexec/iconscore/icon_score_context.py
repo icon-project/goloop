@@ -19,7 +19,6 @@ from ..base.address import Address
 from ..base.block import Block
 from ..base.message import Message
 from ..base.transaction import Transaction
-from ..base.exception import ServerErrorException
 from ..icon_constant import IconScoreFuncType, IconScoreContextType
 from .icon_score_step import IconScoreStepCounter
 from .icon_score_eventlog import EventLog
@@ -64,7 +63,7 @@ class ContextContainer(object):
         if context_stack is not None and len(context_stack) > 0:
             return context_stack.pop()
         else:
-            raise ServerErrorException('Failed to pop a context out of context_stack')
+            raise AssertionError('Failed to pop a context out of context_stack')
 
     @staticmethod
     def _clear_context() -> None:
