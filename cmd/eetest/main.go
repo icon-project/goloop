@@ -75,8 +75,8 @@ func (cc *callContext) OnCall(from, to module.Address, value, limit *big.Int, me
 		from, to, value, limit, method, params)
 }
 
-func (cc *callContext) OnAPI(obj *scoreapi.Info) {
-	fmt.Printf("CallContext.OnAPI(%+v)\n", obj)
+func (cc *callContext) OnAPI(status uint16, obj *scoreapi.Info) {
+	fmt.Printf("CallContext.OnAPI(%d,%+v)\n", status, obj)
 }
 
 func makeTransactions(cc *callContext, mgr eeproxy.Manager) {
@@ -95,12 +95,38 @@ func makeTransactions(cc *callContext, mgr eeproxy.Manager) {
 	}
 }
 
+type pythonEngine struct {
+}
+
+func (e *pythonEngine) Init(net, addr string) error {
+	// do nothing
+	return nil
+}
+
+func (e *pythonEngine) SetInstances(n int) error {
+	fmt.Printf("PythonEngine.SetInstances(n=%d)", n)
+	return nil
+}
+
+func (e *pythonEngine) OnAttach(uid string) bool {
+	fmt.Printf("PythonEngine.OnAttach(uid=%s)", uid)
+	return true
+}
+
+func (e *pythonEngine) Kill(uid string) (bool, error) {
+	// do nothing and return success.
+	return true, nil
+}
+
 func main() {
 	var err error
-	mgr, err = eeproxy.New("unix", "/tmp/ee.socket")
+	mgr, err = eeproxy.NewManager("unix", "/tmp/ee.socket")
 	if err != nil {
 		log.Panicf("Fail to make EEProxy err=%+v", err)
 	}
+
+	mgr.SetEngine("python", new(pythonEngine))
+	mgr.SetInstances("python", 1)
 
 	dbase := db.NewMapDB()
 	bk, err := dbase.GetBucket("")

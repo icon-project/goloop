@@ -183,7 +183,7 @@ class ServiceManagerProxy:
     def set_invoke_handler(self, invoke):
         self.__invoke = invoke
 
-    def set_api_handler(self, api: Callable[[str], APIInfo]):
+    def set_api_handler(self, api: Callable[[str],Tuple[int,APIInfo]]):
         self.__get_api = api
 
     def set_codec(self, codec: Codec) -> None:
@@ -295,16 +295,20 @@ class ServiceManagerProxy:
         try:
             code = self.decode(TypeTag.STRING, data)
             print(f"EEProxy.GETAPI(code={code})")
-            obj = self.__get_api(code)
-            if isinstance(obj, APIInfo):
-                print(f"EEProxy.GETAPI result={obj}")
-                self.__client.send(Message.GETAPI, obj.get_data())
+            status, obj = self.__get_api(code)
+            if status==Status.SUCCESS :
+                if isinstance(obj, APIInfo):
+                    print(f"EEProxy.GETAPI result={obj}")
+                    self.__client.send(Message.GETAPI, [Status.SUCCESS, obj.get_data()])
+                else:
+                    print(f"EEProxy.GETAPI Invalid Type result={obj}")
+                    self.__client.send(Message.GETAPI, [Status.SYSTEM_FAILURE, None])
             else:
-                print(f"EEProxy.GETAPI Invalid Type result={obj}")
-                self.__client.send(Message.GETAPI, [])
-        except:
+                print(f"EEProxy.GETAPI returns failure status={status}")
+                self.__client.send(Message.GETAPI, [status, None])
+        except :
             traceback.print_exc()
-            self.__client.send(Message.GETAPI, [])
+            self.__client.send(Message.GETAPI, [Status.SYSTEM_FAILURE, None])
 
     def loop(self):
         while True:

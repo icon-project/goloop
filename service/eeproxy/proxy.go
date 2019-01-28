@@ -38,7 +38,7 @@ type CallContext interface {
 	OnEvent(addr module.Address, indexed, data [][]byte)
 	OnResult(status uint16, steps *big.Int, result *codec.TypedObj)
 	OnCall(from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj)
-	OnAPI(obj *scoreapi.Info)
+	OnAPI(status uint16, obj *scoreapi.Info)
 }
 
 type Proxy interface {
@@ -112,6 +112,11 @@ type callMessage struct {
 type eventMessage struct {
 	Indexed [][]byte
 	Data    [][]byte
+}
+
+type getAPIMessage struct {
+	Status uint16
+	Info   *scoreapi.Info
 }
 
 func (p *proxy) Invoke(ctx CallContext, code string, isQuery bool, from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj) error {
@@ -292,8 +297,8 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		return p.conn.Send(msgGETBALANCE, &balance)
 
 	case msgGETAPI:
-		var obj *scoreapi.Info
-		if _, err := codec.MP.UnmarshalFromBytes(data, &obj); err != nil {
+		var m getAPIMessage
+		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
 			return err
 		} else {
 			p.lock.Lock()
@@ -301,7 +306,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 			p.frame = frame.prev
 			p.lock.Unlock()
 
-			frame.ctx.OnAPI(obj)
+			frame.ctx.OnAPI(m.Status, m.Info)
 
 			p.lock.Lock()
 			if p.frame == nil && !p.reserved {

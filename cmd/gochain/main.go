@@ -126,7 +126,7 @@ func main() {
 	}
 	defer nt.Close()
 
-	pm, err := eeproxy.New("unix", "/tmp/ee.socket")
+	pm, err := eeproxy.NewManager("unix", "/tmp/ee.socket")
 	if err != nil {
 		log.Panicln("FAIL to start EEManager")
 	}

@@ -172,7 +172,7 @@ func (c *serviceChain) Genesis() []byte {
 }
 
 func eeProxy() eeproxy.Manager {
-	pm, err := eeproxy.New("unix", "/tmp/ee.socket")
+	pm, err := eeproxy.NewManager("unix", "/tmp/ee.socket")
 	if err != nil {
 		log.Panicln("FAIL to start EEManager")
 	}
@@ -198,7 +198,7 @@ func TestUnitService(t *testing.T) {
 	nt := network.NewTransport("127.0.0.1:8081", c.wallet)
 	nt.Listen()
 	defer nt.Close()
-	//em, err := eeproxy.New("unix", "/tmp/ee.socket")
+	//em, err := eeproxy.NewManager("unix", "/tmp/ee.socket")
 	//if err != nil {
 	//	log.Panicln("FAIL to start EEManager")
 	//}

@@ -230,7 +230,7 @@ func (m *manager) Kill(uid string) error {
 	return errors.New("NoEntry")
 }
 
-func New(net, addr string) (*manager, error) {
+func NewManager(net, addr string) (*manager, error) {
 	srv := ipc.NewServer()
 	err := srv.Listen(net, addr)
 	if err != nil {

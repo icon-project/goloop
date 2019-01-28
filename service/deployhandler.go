@@ -189,8 +189,7 @@ func (h *AcceptHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 	}
 	// GET API
 	cgah := newCallGetAPIHandler(newCommonHandler(h.from, scoreAddr, nil, h.StepAvail()), h.cc)
-	status, stepUsed1, _, _ := h.cc.Call(cgah)
-	h.stepUsed.Add(h.stepUsed, stepUsed1)
+	status, _, _, _ := h.cc.Call(cgah)
 	if status != module.StatusSuccess {
 		return status, h.stepLimit, nil, nil
 	}
@@ -357,7 +356,9 @@ func (h *callGetAPIHandler) OnCall(from, to module.Address, value, limit *big.In
 	log.Panicln("Unexpected call OnCall() from GetAPI()")
 }
 
-func (h *callGetAPIHandler) OnAPI(info *scoreapi.Info) {
-	h.as.SetAPIInfo(info)
-	h.cc.OnResult(module.StatusSuccess, new(big.Int), nil, nil)
+func (h *callGetAPIHandler) OnAPI(status uint16, info *scoreapi.Info) {
+	if status == module.StatusSuccess {
+		h.as.SetAPIInfo(info)
+	}
+	h.cc.OnResult(module.Status(status), new(big.Int), nil, nil)
 }

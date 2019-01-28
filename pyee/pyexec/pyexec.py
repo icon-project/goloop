@@ -136,7 +136,8 @@ class PyExecEngine(object):
                 info.add_fallback(api[1], api[2], inputs)
             elif typ == APIType.EVENT:
                 info.add_event(api[1], api[2], inputs)
-        return info
+        # TODO need to catch exception to deliver proper status code.
+        return 0, info
 
     def connect(self, addr: str, uuid: str):
         print(f"connect({addr}, {uuid})")

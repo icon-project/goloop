@@ -241,7 +241,7 @@ func (h *CallHandler) OnCall(from, to module.Address, value,
 	h.cc.OnCall(h.cm.GetCallHandler(h.cc, from, to, value, limit, method, params))
 }
 
-func (h *CallHandler) OnAPI(info *scoreapi.Info) {
+func (h *CallHandler) OnAPI(status uint16, obj *scoreapi.Info) {
 	log.Panicln("Unexpected OnAPI() call")
 }
 

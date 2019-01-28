@@ -85,7 +85,7 @@ class TestEE(object):
         self.get_balance(Address("cx1000000000000000000000000000000000000000"))
         self.send_event(["LogEvent(int,str,Address)", 1, params[0]],
                         [Address.from_str("cx0004444444444444444444444444444444444444")])
-        return 0, 10, "Test"
+        return Status.SUCCESS, 10, "Test"
 
     def api_handler(self, code: str) -> APIInfo:
         info = APIInfo(self.__proxy)
@@ -99,7 +99,7 @@ class TestEE(object):
             ("msg", DataType.STRING, None),
             ("addr", DataType.ADDRESS, None)
         ])
-        return info
+        return Status.SUCCESS, info
 
     def get_value(self, k: bytes) -> Tuple[bool, bytes]:
         ret = self.__proxy.get_value(k)
@@ -127,7 +127,7 @@ class TestEE(object):
     def connect(self, addr: str):
         print(f"connect({addr})")
         self.__proxy.connect(addr)
-        self.__proxy.send_version(1, os.getpid(), "python")
+        self.__proxy.send_version(1, str(os.getpid()), "python")
 
     def loop(self):
         self.__proxy.loop()
