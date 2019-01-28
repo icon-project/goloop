@@ -262,12 +262,24 @@ func (k *secureKey) tlsConfig() (*tls.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	var curve tls.CurveID
+	switch k.Curve {
+	case elliptic.P256():
+		curve = tls.CurveP256
+	case elliptic.P384():
+		curve = tls.CurveP384
+	case elliptic.P521():
+		curve = tls.CurveP521
+	default:
+		return nil, fmt.Errorf("secureKey: unknown Curve")
+	}
+
 	config := &tls.Config{
 		InsecureSkipVerify:    true,
 		Certificates:          []tls.Certificate{cert},
 		ClientAuth:            tls.RequireAnyClientCert,
 		CipherSuites:          []uint16{cipher},
-		CurvePreferences:      []tls.CurveID{tls.CurveP256},
+		CurvePreferences:      []tls.CurveID{curve},
 		VerifyPeerCertificate: k.verifyCertificate,
 		KeyLogWriter:          k.keyLogWriter,
 	}
