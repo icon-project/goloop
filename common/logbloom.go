@@ -1,14 +1,16 @@
 package common
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"math/big"
+
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
 	"github.com/ugorji/go/codec"
-	"math/big"
 )
 
 const (
@@ -24,6 +26,12 @@ const (
 // logBloom store blooms of logs.
 type LogBloom struct {
 	big.Int
+}
+
+func NewLogBloom(bs []byte) *LogBloom {
+	lb := &LogBloom{}
+	lb.SetBytes(bs)
+	return lb
 }
 
 func (lb *LogBloom) String() string {
@@ -70,10 +78,20 @@ func (lb *LogBloom) Merge(lb2 *LogBloom) {
 }
 
 // Contain checks whether it includes the bloom
-func (lb *LogBloom) Contain(lb2 *LogBloom) bool {
+func (lb *LogBloom) Contain(mlb module.LogBloom) bool {
+	lb2, ok := mlb.(*LogBloom)
+	if !ok {
+		lbs := mlb.Bytes()
+		lb2 = new(LogBloom)
+		lb2.SetBytes(lbs)
+	}
 	var r big.Int
 	r.And(&lb.Int, &lb2.Int)
 	return r.Cmp(&lb2.Int) == 0
+}
+
+func (lb *LogBloom) Equal(mlb module.LogBloom) bool {
+	return bytes.Equal(lb.Bytes(), mlb.Bytes())
 }
 
 func (lb *LogBloom) addBit(idx uint16) {

@@ -35,6 +35,14 @@ type CommitVoteSet interface {
 
 type CommitVoteSetDecoder func([]byte) CommitVoteSet
 
+type LogBloom interface {
+	String() string
+	Bytes() []byte
+	LogBytes() []byte
+	Contain(lb2 LogBloom) bool
+	Equal(lb2 LogBloom) bool
+}
+
 type TransactionGroup int
 
 const (

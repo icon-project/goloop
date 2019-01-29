@@ -161,7 +161,7 @@ type Transition interface {
 
 	// LogBloom returns log bloom filter for this transition.
 	// It may return nil before cb.OnExecute is called back by Execute.
-	LogBloom() []byte
+	LogBloom() LogBloom
 }
 
 // Options for finalize

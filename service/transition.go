@@ -182,11 +182,11 @@ func (t *transition) NextValidators() module.ValidatorList {
 
 // LogBloom returns log bloom filter for this transition.
 // It may return nil before cb.OnExecute is called back by Execute.
-func (t *transition) LogBloom() []byte {
+func (t *transition) LogBloom() module.LogBloom {
 	if t.step != stepComplete {
 		return nil
 	}
-	return t.logBloom.Bytes()
+	return &t.logBloom
 }
 
 func (t *transition) newWorldContext() WorldContext {

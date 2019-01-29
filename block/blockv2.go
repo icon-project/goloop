@@ -46,7 +46,7 @@ type blockV2 struct {
 	timestamp          time.Time
 	proposer           module.Address
 	prevID             []byte
-	logBloom           []byte
+	logBloom           module.LogBloom
 	result             []byte
 	patchTransactions  module.TransactionList
 	normalTransactions module.TransactionList
@@ -112,7 +112,7 @@ func (b *blockV2) Proposer() module.Address {
 	return b.proposer
 }
 
-func (b *blockV2) LogBloom() []byte {
+func (b *blockV2) LogBloom() module.LogBloom {
 	return b.logBloom
 }
 
@@ -139,7 +139,7 @@ func (b *blockV2) _headerFormat() *blockV2HeaderFormat {
 		NextValidatorsHash:     b.nextValidators.Hash(),
 		PatchTransactionsHash:  b.patchTransactions.Hash(),
 		NormalTransactionsHash: b.normalTransactions.Hash(),
-		LogBloom:               b.logBloom,
+		LogBloom:               b.logBloom.Bytes(),
 		Result:                 b.result,
 	}
 }

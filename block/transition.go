@@ -229,7 +229,7 @@ func (ti *transitionImpl) verifyResult(block module.Block) error {
 	if !bytes.Equal(mtr.Result(), block.Result()) {
 		return errors.New("bad result")
 	}
-	if !bytes.Equal(mtr.LogBloom(), block.LogBloom()) {
+	if !mtr.LogBloom().Equal(block.LogBloom()) {
 		return errors.New("bad log bloom")
 	}
 	if !bytes.Equal(mtr.NextValidators().Hash(), block.NextValidators().Hash()) {

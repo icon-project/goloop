@@ -24,7 +24,7 @@ type Block interface {
 	PatchTransactions() TransactionList
 	Timestamp() time.Time
 	Proposer() Address
-	LogBloom() []byte
+	LogBloom() LogBloom
 	Result() []byte
 
 	MarshalHeader(w io.Writer) error
