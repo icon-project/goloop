@@ -174,10 +174,24 @@ func (h getBlockByHashHandler) ServeJSONRPC(c context.Context, params *fastjson.
 }
 
 // call
-type callHandler struct{}
+type callHandler struct {
+	bm module.BlockManager
+	sm module.ServiceManager
+}
+
+type blockInfo struct {
+	b module.Block
+}
+
+func (bi *blockInfo) Height() int64 {
+	return bi.b.Height()
+}
+
+func (bi *blockInfo) Timestamp() int64 {
+	return bi.b.Timestamp().UnixNano()
+}
 
 func (h callHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
-
 	var param callParam
 	if err := jsonrpc.Unmarshal(params, &param); err != nil {
 		return nil, err
@@ -187,8 +201,33 @@ func (h callHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage
 	}
 
 	// SCORE external function call
-	var result interface{}
-	result = "0x2961fff8ca4a62327800000"
+	var result string
+
+	if jsonRpcV3 == 0 {
+		err := rpcClient.CallFor(&result, call, param)
+		if err != nil {
+			log.Println(err.Error())
+			return nil, jsonrpc.ErrInternal()
+		}
+	} else {
+		block, err := h.bm.GetLastBlock()
+		if err != nil {
+			log.Println(err.Error())
+			return nil, jsonrpc.ErrInternal()
+		}
+		tx, _ := params.MarshalJSON()
+		// TODO temporary block info
+		s, r := h.sm.QueryTransaction(block.Result(), tx, &blockInfo{b: block})
+		if s != module.StatusSuccess {
+			return nil, &jsonrpc.Error{
+				// TODO Is it correct if our error code is in application error range?
+				Code:    jsonrpc.ErrorCode(-32500 - int(s)),
+				Message: r.(string),
+			}
+		} else {
+			return result, nil
+		}
+	}
 
 	return result, nil
 }

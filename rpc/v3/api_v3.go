@@ -48,7 +48,7 @@ func MethodRepository(ch module.Chain, bm module.BlockManager, sm module.Service
 	v3.RegisterMethod(getLastBlock, getLastBlockHandler{bm: bm}, nil, blockV2{})
 	v3.RegisterMethod(getBlockByHeight, getBlockByHeightHandler{bm: bm}, getBlockByHeightParam{}, blockV2{})
 	v3.RegisterMethod(getBlockByHash, getBlockByHashHandler{bm: bm}, getBlockByHashParam{}, blockV2{})
-	v3.RegisterMethod(call, callHandler{}, callParam{}, nil)
+	v3.RegisterMethod(call, callHandler{bm: bm, sm: sm}, callParam{}, nil)
 	v3.RegisterMethod(getBalance, getBalanceHandler{bm: bm, sm: sm}, getBalanceParam{}, nil)
 	v3.RegisterMethod(getScoreApi, getScoreApiHandler{}, getScoreApiParam{}, getScoreApiResult{})
 	v3.RegisterMethod(getTotalSupply, getTotalSupplyeHandler{}, nil, nil)
