@@ -339,6 +339,9 @@ func (m *manager) GetBalance(result []byte, addr module.Address) *big.Int {
 	if tresult, err := newTransitionResultFromBytes(result); err == nil {
 		ws := NewWorldSnapshot(m.db, tresult.StateHash, nil)
 		ass := ws.GetAccountSnapshot(addr.ID())
+		if ass == nil {
+			return big.NewInt(0)
+		}
 		return ass.GetBalance()
 	}
 	return big.NewInt(0)
