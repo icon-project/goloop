@@ -174,7 +174,19 @@ func (g *genesisV3) setDefaultSystemInfo(as AccountState) {
 			stepTypes.Put(k)
 			stepCostDB.Set(k, v)
 		}
+	}
 
+	stepLimit := map[string]int64{
+		LimitTypeInvoke: 0x9502f900,
+		LimitTypeCall:   0x2faf080,
+	}
+	stepLimitTypes := scoredb.NewArrayDB(as, VarStepLimitTypes)
+	stepLimitDB := scoredb.NewDictDB(as, VarStepLimit, 1)
+	for _, k := range AllLimitTypes {
+		if v, ok := stepLimit[k]; ok {
+			stepLimitTypes.Put(k)
+			stepLimitDB.Set(k, v)
+		}
 	}
 }
 

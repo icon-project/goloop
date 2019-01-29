@@ -48,6 +48,9 @@ const (
 	StepTypeInput            = "input"
 	StepTypeEventLog         = "eventLog"
 	StepTypeApiCall          = "apiCall"
+
+	LimitTypeInvoke = "invoke"
+	LimitTypeCall   = "query"
 )
 
 var AllStepTypes = []string{
@@ -64,6 +67,11 @@ var AllStepTypes = []string{
 	StepTypeInput,
 	StepTypeEventLog,
 	StepTypeApiCall,
+}
+
+var AllLimitTypes = []string{
+	LimitTypeInvoke,
+	LimitTypeCall,
 }
 
 type BlockInfo struct {
@@ -87,6 +95,7 @@ type WorldContext interface {
 	StepsFor(t StepType, n int) int64
 	StepPrice() *big.Int
 	BlockTimeStamp() int64
+	GetStepLimit(t string) *big.Int
 	BlockHeight() int64
 	Treasury() module.Address
 	Governance() module.Address

@@ -17,6 +17,9 @@ const (
 	VarStepTypes  = "step_types"
 	VarTreasury   = "treasury"
 	VarGovernance = "governance"
+
+	VarStepLimitTypes = "step_limit_types"
+	VarStepLimit      = "step_limit"
 )
 
 const (
@@ -83,6 +86,7 @@ type systemStorageInfo struct {
 	ass          AccountSnapshot
 	stepPrice    *big.Int
 	stepCosts    map[string]int64
+	stepLimit    map[string]int64
 	stepCostInfo *codec.TypedObj
 }
 
@@ -107,6 +111,16 @@ func (c *worldContext) updateSystemInfo() {
 			}
 			c.systemInfo.stepCosts = stepCosts
 			c.systemInfo.stepCostInfo = nil
+
+			stepLimit := make(map[string]int64)
+			stepLimitTypes := scoredb.NewArrayDB(as, VarStepLimitTypes)
+			stepLimitDB := scoredb.NewDictDB(as, VarStepLimit, 1)
+			tcount = stepLimitTypes.Size()
+			for i := 0; i < tcount; i++ {
+				tname := stepLimitTypes.Get(i).String()
+				stepLimit[tname] = stepLimitDB.Get(tname).Int64()
+			}
+			c.systemInfo.stepLimit = stepLimit
 		}
 		c.systemInfo.updated = true
 	}
@@ -124,6 +138,15 @@ func (c *worldContext) StepsFor(t StepType, n int) int64 {
 func (c *worldContext) StepPrice() *big.Int {
 	c.updateSystemInfo()
 	return c.systemInfo.stepPrice
+}
+
+func (c *worldContext) GetStepLimit(t string) *big.Int {
+	c.updateSystemInfo()
+	if v, ok := c.systemInfo.stepLimit[t]; ok {
+		return big.NewInt(v)
+	} else {
+		return big.NewInt(0)
+	}
 }
 
 func (c *worldContext) BlockTimeStamp() int64 {
