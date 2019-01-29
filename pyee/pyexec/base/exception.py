@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from enum import IntEnum, unique
-from typing import Optional, Union
+from typing import Optional
 
 
 @unique
@@ -33,15 +33,12 @@ class ExceptionCode(IntEnum):
     TIMEOUT_ERROR = 12
     STACK_OVERFLOW = 13
 
-    # Caused by revert call or user defined custom exception.
+    # Caused by revert call or user-defined exception.
     SCORE_ERROR = 32
     END = 99
 
     def __str__(self) -> str:
-        if self.value == self.INVALID_REQUEST:
-            return "Invalid Request"
-        else:
-            return str(self.name).capitalize().replace('_', ' ')
+        return str(self.name).capitalize().replace('_', ' ')
 
 
 class IconServiceBaseException(BaseException):
