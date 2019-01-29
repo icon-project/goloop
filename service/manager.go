@@ -261,7 +261,7 @@ func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
 	case *transaction:
 		newTx = txo
 	default:
-		return nil, fmt.Errorf("IllegalTransactoinType:%T", tx)
+		return nil, fmt.Errorf("IllegalTransactionType:%T", tx)
 	}
 
 	if err := newTx.Verify(); err != nil {
@@ -292,8 +292,8 @@ func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
 	return hash, nil
 }
 
-func (m *manager) Call(result []byte, tx interface{},
-	bi module.BlockInfo) (module.Status, interface{}) {
+func (m *manager) Call(result []byte, tx interface{}, bi module.BlockInfo,
+) (module.Status, interface{}) {
 	var newTx *transaction
 	switch txo := tx.(type) {
 	case []byte:
@@ -311,7 +311,7 @@ func (m *manager) Call(result []byte, tx interface{},
 	case *transaction:
 		newTx = txo
 	default:
-		return module.StatusSystemError, "IllegalTransactoinType"
+		return module.StatusSystemError, "IllegalTransactionType"
 	}
 
 	var wc WorldContext
