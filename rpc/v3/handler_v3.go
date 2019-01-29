@@ -219,10 +219,14 @@ func (h callHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage
 		// TODO temporary block info
 		s, r := h.sm.QueryTransaction(block.Result(), tx, &blockInfo{b: block})
 		if s != module.StatusSuccess {
+			msg, ok := r.(string)
+			if !ok {
+				msg = string(s)
+			}
 			return nil, &jsonrpc.Error{
 				// TODO Is it correct if our error code is in application error range?
 				Code:    jsonrpc.ErrorCode(-32500 - int(s)),
-				Message: r.(string),
+				Message: msg,
 			}
 		} else {
 			return result, nil
