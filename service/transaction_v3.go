@@ -162,7 +162,7 @@ func (tx *transactionV3) Verify() error {
 			if tx.Data == nil {
 				return ErrInvalidDataValue
 			}
-			_, err := tx.parseCallData()
+			_, err := ParseCallData(tx.Data)
 			return err
 		case dataTypeDeploy:
 			// element check
@@ -195,9 +195,9 @@ func (tx *transactionV3) Verify() error {
 	return nil
 }
 
-func (tx *transactionV3) parseCallData() (*DataCallJSON, error) {
+func ParseCallData(data []byte) (*DataCallJSON, error) {
 	var jso DataCallJSON
-	if json.Unmarshal(tx.Data, &jso) != nil || jso.Method == "" {
+	if json.Unmarshal(data, &jso) != nil || jso.Method == "" {
 		return nil, ErrInvalidDataValue
 	} else {
 		return &jso, nil
@@ -274,7 +274,7 @@ func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
 			if info := as.APIInfo(); info == nil {
 				return ErrNoActiveContract
 			} else {
-				jso, _ := tx.parseCallData() // Already checked at Verify(). It can't be nil.
+				jso, _ := ParseCallData(tx.Data) // Already checked at Verify(). It can't be nil.
 				if _, err = info.ConvertParamsToTypedObj(jso.Method, jso.Params); err != nil {
 					return ErrInvalidMethod
 				}

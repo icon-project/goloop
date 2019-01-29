@@ -143,6 +143,11 @@ func (tx *transactionV2) Execute(wc WorldContext) (Receipt, error) {
 func (tx *transactionV2) Dispose() {
 }
 
+func (tx *transactionV2) Query(wc WorldContext) (module.Status, interface{}) {
+	log.Panicln("V2 transaction shouldn't be called by icx_call()")
+	return module.StatusSuccess, nil
+}
+
 func (tx *transactionV2) Group() module.TransactionGroup {
 	return module.TransactionGroupNormal
 }

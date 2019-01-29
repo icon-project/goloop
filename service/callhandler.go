@@ -147,8 +147,8 @@ func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 	h.lock.Lock()
 	if !h.disposed {
 		if err = h.ensureParamObj(); err == nil {
-			err = h.conn.Invoke(h, path, false, h.from, h.to, h.value,
-				h.StepAvail(), h.method, h.paramObj)
+			err = h.conn.Invoke(h, path, h.cc.QueryMode(), h.from, h.to,
+				h.value, h.StepAvail(), h.method, h.paramObj)
 		}
 	}
 	h.lock.Unlock()

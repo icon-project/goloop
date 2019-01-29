@@ -15,7 +15,8 @@ import (
 
 type (
 	CallContext interface {
-		Setup(WorldContext)
+		Setup(WorldContext, bool)
+		QueryMode() bool
 		Call(ContractHandler) (module.Status, *big.Int, *codec.TypedObj, module.Address)
 		OnResult(status module.Status, stepUsed *big.Int, result *codec.TypedObj, addr module.Address)
 		OnCall(ContractHandler)
@@ -43,9 +44,10 @@ type callContext struct {
 	conns   map[string]eeproxy.Proxy
 
 	// set at Setup()
-	wc    WorldContext
-	info  map[string]interface{}
-	timer <-chan time.Time
+	wc      WorldContext
+	isQuery bool
+	info    map[string]interface{}
+	timer   <-chan time.Time
 
 	lock   sync.Mutex
 	stack  list.List
@@ -62,8 +64,13 @@ func newCallContext(receipt Receipt) CallContext {
 	}
 }
 
-func (cc *callContext) Setup(wc WorldContext) {
+func (cc *callContext) Setup(wc WorldContext, isQuery bool) {
 	cc.wc = wc
+	cc.isQuery = isQuery
+}
+
+func (cc *callContext) QueryMode() bool {
+	return cc.isQuery
 }
 
 func (cc *callContext) Call(handler ContractHandler) (module.Status, *big.Int, *codec.TypedObj, module.Address) {

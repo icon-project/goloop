@@ -3,9 +3,10 @@ package service
 import (
 	"encoding/json"
 	"errors"
+	"log"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
-	"log"
 )
 
 type transactionV3JSON struct {
@@ -79,7 +80,7 @@ func (tx *transactionV3JSON) Timestamp() int64 {
 	return tx.TimeStamp.Value
 }
 
-func newTransactionV2V3FromJSON(js []byte) (Transaction, error) {
+func newTransactionV2V3FromJSON(js []byte, defVer int) (Transaction, error) {
 	genjs := new(genesisV3JSON)
 	if err := json.Unmarshal(js, genjs); err != nil {
 		return nil, err
@@ -92,7 +93,7 @@ func newTransactionV2V3FromJSON(js []byte) (Transaction, error) {
 	}
 
 	txjs := new(transactionV3JSON)
-	txjs.Version.Value = 2
+	txjs.Version.Value = uint16(defVer)
 	if err := json.Unmarshal(js, txjs); err != nil {
 		return nil, err
 	}

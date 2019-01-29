@@ -92,7 +92,7 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 
 func (m *manager) ProposeGenesisTransition(parent module.Transition) (module.Transition, error) {
 	if pt, ok := parent.(*transition); ok {
-		ntx, err := NewTransactionFromJSON(m.chain.Genesis())
+		ntx, err := NewTransactionFromJSON(m.chain.Genesis(), 2)
 		if err != nil {
 			log.Panicf("Failed to load genesis transaction")
 			return nil, err
@@ -247,13 +247,13 @@ func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
 	var newTx *transaction
 	switch txo := tx.(type) {
 	case []byte:
-		ntx, err := NewTransactionFromJSON(txo)
+		ntx, err := NewTransactionFromJSON(txo, 2)
 		if err != nil {
 			return nil, err
 		}
 		newTx = ntx.(*transaction)
 	case string:
-		ntx, err := NewTransactionFromJSON([]byte(txo))
+		ntx, err := NewTransactionFromJSON([]byte(txo), 2)
 		if err != nil {
 			return nil, err
 		}
@@ -290,6 +290,44 @@ func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
 		return hash, err
 	}
 	return hash, nil
+}
+
+// TODO naming?
+func (m *manager) QueryTransaction(result []byte, tx interface{},
+	bi module.BlockInfo) (module.Status, interface{}) {
+	var newTx *transaction
+	switch txo := tx.(type) {
+	case []byte:
+		ntx, err := NewTransactionFromJSON(txo, 3)
+		if err != nil {
+			return module.StatusSystemError, err.Error()
+		}
+		newTx = ntx.(*transaction)
+	case string:
+		ntx, err := NewTransactionFromJSON([]byte(txo), 3)
+		if err != nil {
+			return module.StatusSystemError, err.Error()
+		}
+		newTx = ntx.(*transaction)
+	case *transaction:
+		newTx = txo
+	default:
+		return module.StatusSystemError, "IllegalTransactoinType"
+	}
+
+	var wc WorldContext
+	if tresult, err := newTransitionResultFromBytes(result); err == nil {
+		ws := NewWorldState(m.db, tresult.StateHash, nil)
+		wc = NewWorldContext(ws, bi, m.cm, m.em)
+	} else {
+		return module.StatusSystemError, err.Error()
+	}
+
+	th, err := newTx.GetHandler(wc.ContractManager())
+	if err != nil {
+		return module.StatusSystemError, err.Error()
+	}
+	return th.Query(wc)
 }
 
 func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {

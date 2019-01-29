@@ -2,9 +2,10 @@ package service
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
-	"testing"
 )
 
 func TestTransactionList_Iterator(t *testing.T) {
@@ -14,7 +15,7 @@ func TestTransactionList_Iterator(t *testing.T) {
 	txslice := make([]module.Transaction, len(txjsons))
 
 	for i, txjson := range txjsons {
-		if tx, err := NewTransactionFromJSON([]byte(txjson)); err != nil {
+		if tx, err := NewTransactionFromJSON([]byte(txjson), 2); err != nil {
 			t.Errorf("Fail to make TX from JSON err=%+v", err)
 		} else {
 			txslice[i] = tx

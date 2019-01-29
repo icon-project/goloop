@@ -229,7 +229,9 @@ type ServiceManager interface {
 
 	// SendTransaction adds transaction to a transaction pool.
 	SendTransaction(tx interface{}) ([]byte, error)
-	// SendTransaction(tx Transaction) ([]byte, error)
+
+	// QueryTransaction handles read-only contract API call.
+	QueryTransaction(result []byte, tx interface{}, bi BlockInfo) (Status, interface{})
 
 	// ValidatorListFromHash returns ValidatorList from hash.
 	ValidatorListFromHash(hash []byte) ValidatorList

@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/go-errors/errors"
+	"github.com/icon-project/goloop/common"
 
 	"github.com/icon-project/goloop/module"
 )
@@ -18,6 +19,7 @@ type TransactionHandler interface {
 	Prepare(wc WorldContext) (WorldContext, error)
 	Execute(wc WorldContext) (Receipt, error)
 	Dispose()
+	Query(wc WorldContext) (module.Status, interface{})
 }
 
 type transactionHandler struct {
@@ -90,7 +92,10 @@ func (th *transactionHandler) Execute(wc WorldContext) (Receipt, error) {
 	wcs := wc.GetSnapshot()
 
 	// Set up
-	th.cc.Setup(wc)
+	th.cc.Setup(wc, false)
+	if th.handler.StepLimit().Cmp(wc.GetStepLimit(LimitTypeInvoke)) > 0 {
+		th.handler.ResetSteps(wc.GetStepLimit(LimitTypeInvoke))
+	}
 
 	// Calculate common steps
 	var status module.Status
@@ -154,4 +159,34 @@ func (th *transactionHandler) Execute(wc WorldContext) (Receipt, error) {
 
 func (th *transactionHandler) Dispose() {
 	th.cc.Dispose()
+}
+
+func (th *transactionHandler) Query(wc WorldContext) (module.Status, interface{}) {
+	// check if function is read-only
+	jso, err := ParseCallData(th.data)
+	if err != nil {
+		return module.StatusMethodNotFound, err.Error()
+	}
+	as := wc.GetAccountSnapshot(th.to.ID())
+	apiInfo := as.APIInfo()
+	if apiInfo == nil {
+		return module.StatusContractNotFound, "APIInfo() is null"
+	} else {
+		m := apiInfo.GetMethod(jso.Method)
+		if m == nil {
+			return module.StatusMethodNotFound, string(module.StatusMethodNotFound)
+		}
+		if m == nil || !m.IsReadOnly() {
+			return module.StatusMethodNotFound, "Not a read-only API"
+		}
+	}
+
+	// Set up
+	th.cc.Setup(wc, true)
+	th.handler.ResetSteps(wc.GetStepLimit(LimitTypeCall))
+
+	// Execute
+	status, _, result, _ := th.cc.Call(th.handler)
+	msg, _ := common.DecodeAny(result)
+	return status, msg
 }

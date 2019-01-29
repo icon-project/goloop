@@ -24,6 +24,8 @@ const (
 type (
 	ContractHandler interface {
 		StepLimit() *big.Int
+		// TODO Not an adequate API here.
+		ResetSteps(*big.Int)
 		ApplySteps(WorldContext, StepType, int) bool
 		Prepare(WorldContext) (WorldContext, error)
 	}
@@ -57,6 +59,11 @@ func newCommonHandler(from, to module.Address, value, stepLimit *big.Int) *Commo
 
 func (h *CommonHandler) StepLimit() *big.Int {
 	return h.stepLimit
+}
+
+func (h *CommonHandler) ResetSteps(limit *big.Int) {
+	h.stepLimit = limit
+	h.stepUsed = big.NewInt(0)
 }
 
 func (h *CommonHandler) ApplySteps(wc WorldContext, stepType StepType, n int) bool {

@@ -212,6 +212,10 @@ func (g *genesisV3) Execute(wc WorldContext) (Receipt, error) {
 func (g *genesisV3) Dispose() {
 }
 
+func (g *genesisV3) Query(wc WorldContext) (module.Status, interface{}) {
+	return module.StatusSuccess, nil
+}
+
 func (g *genesisV3) Timestamp() int64 {
 	return 0
 }
