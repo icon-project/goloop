@@ -11,6 +11,7 @@ import (
 var (
 	ErrAlreadyListened           = errors.New("already listened")
 	ErrAlreadyClosed             = errors.New("already closed")
+	ErrAlreadyDialing            = errors.New("already dialing")
 	ErrAlreadyRegisteredReactor  = errors.New("already registered reactor")
 	ErrAlreadyRegisteredProtocol = errors.New("already registered protocol")
 	ErrNotRegisteredProtocol     = errors.New("not registered protocol")

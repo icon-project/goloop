@@ -12,11 +12,11 @@ import (
 )
 
 type transport struct {
-	l    *Listener
+	l       *Listener
 	address NetAddress
-	pd   *PeerDispatcher
-	dMap map[string]*Dialer
-	log  *logger
+	pd      *PeerDispatcher
+	dMap    map[string]*Dialer
+	log     *logger
 }
 
 func NewTransport(address string, w module.Wallet) module.NetworkTransport {
@@ -26,7 +26,7 @@ func NewTransport(address string, w module.Wallet) module.NetworkTransport {
 	id := NewPeerIDFromAddress(w.Address())
 	pd := newPeerDispatcher(id, cn, a)
 	l := newListener(address, pd.onAccept)
-	t := &transport{l: l, address:na, pd: pd, dMap: make(map[string]*Dialer), log: newLogger("Transport", address)}
+	t := &transport{l: l, address: na, pd: pd, dMap: make(map[string]*Dialer), log: newLogger("Transport", address)}
 	return t
 }
 
@@ -158,7 +158,7 @@ func (l *Listener) acceptRoutine() {
 type Dialer struct {
 	onConnect connectCbFunc
 	channel   string
-	conn      net.Conn
+	dialing   *Set
 	//log
 	log *logger
 }
@@ -169,17 +169,21 @@ func newDialer(channel string, cbFunc connectCbFunc) *Dialer {
 	return &Dialer{
 		onConnect: cbFunc,
 		channel:   channel,
+		dialing:   NewSet(),
 		log:       newLogger("Dialer", channel),
 	}
 }
 
 func (d *Dialer) Dial(addr string) error {
+	if !d.dialing.Add(addr) {
+		return ErrAlreadyDialing
+	}
 	conn, err := net.DialTimeout(DefaultTransportNet, addr, DefaultDialTimeout)
+	_ = d.dialing.Remove(addr)
 	if err != nil {
 		//d.log.Println("Warning", "Dial", err)
 		return err
 	}
-	d.conn = conn
 	d.onConnect(conn, addr, d)
 	return nil
 }

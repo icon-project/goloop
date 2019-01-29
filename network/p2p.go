@@ -40,7 +40,6 @@ type PeerToPeer struct {
 	discoveryTicker *time.Ticker
 	seedTicker      *time.Ticker
 	duplicated      *Set
-	dialing         *NetAddressSet
 
 	//Addresses
 	seeds *NetAddressSet
@@ -94,7 +93,6 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer) *PeerToPeer {
 		discoveryTicker: time.NewTicker(DefaultDiscoveryPeriod),
 		seedTicker:      time.NewTicker(DefaultSeedPeriod),
 		duplicated:      NewSet(),
-		dialing:         NewNetAddressSet(),
 		//
 		seeds:         NewNetAddressSet(),
 		roots:         NewNetAddressSet(),
@@ -150,14 +148,12 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer) *PeerToPeer {
 }
 
 func (p2p *PeerToPeer) dial(na NetAddress) error {
-	//TODO dialing context
-	if !p2p.dialing.Add(na) {
-		p2p.log.Println("Warning", "Already Dialing", na)
-		return nil
-	}
 	if err := p2p.dialer.Dial(string(na)); err != nil {
+		if err == ErrAlreadyDialing {
+			p2p.log.Println("Warning", "Dial ignore", na, err)
+			return nil
+		}
 		p2p.log.Println("Warning", "Dial fail", na, err)
-		p2p.dialing.Remove(na)
 		return err
 	}
 	return nil
@@ -189,7 +185,11 @@ func (p2p *PeerToPeer) setEventCbFunc(evt string, k uint16, evtFunc eventCbFunc)
 func (p2p *PeerToPeer) onPeer(p *Peer) {
 	p2p.log.Println("onPeer", p)
 	if !p.incomming {
-		p2p.dialing.Remove(p.netAddress)
+		raddr := p.conn.RemoteAddr().String()
+		if raddr != string(p.netAddress) {
+			//TODO TBD p.CloseByError(fmt.Errorf("mismatch address"))
+			p2p.log.Println("Warning","onPeer mismatch address:", raddr, "expected:",p.netAddress)//p.netAddress
+		}
 	}
 	if !p2p.allowedPeers.IsEmpty() && !p2p.allowedPeers.Contains(p.id) {
 		p2p.onEvent(p2pEventNotAllowed, p)
