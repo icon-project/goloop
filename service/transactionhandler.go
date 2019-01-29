@@ -183,7 +183,7 @@ func (th *transactionHandler) Query(wc WorldContext) (module.Status, interface{}
 
 	// Set up
 	th.cc.Setup(wc, true)
-	if th.handler.StepLimit().Cmp(big.NewInt(0)) == 0 ||
+	if th.handler.StepLimit().Sign() == 0 ||
 		th.handler.StepLimit().Cmp(wc.GetStepLimit(LimitTypeCall)) > 0 {
 		th.handler.ResetSteps(wc.GetStepLimit(LimitTypeCall))
 	}
