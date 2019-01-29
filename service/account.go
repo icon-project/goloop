@@ -5,6 +5,8 @@ import (
 	"log"
 	"math/big"
 
+	"github.com/icon-project/goloop/service/scoreresult"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
@@ -407,10 +409,10 @@ func (s *accountStateImpl) DeployContract(code []byte,
 func (s *accountStateImpl) AcceptContract(
 	txHash []byte, auditTxHash []byte) error {
 	if s.isContract == false || s.nextContract == nil {
-		return errors.New("Wrong contract status")
+		return scoreresult.NewDefaultError(module.StatusContractNotFound)
 	}
 	if bytes.Equal(txHash, s.nextContract.deployTxHash) == false {
-		return errors.New("Wrong txHash")
+		return scoreresult.NewError(module.StatusContractNotFound, "Wrong txHash")
 	}
 	s.curContract = s.nextContract
 	s.curContract.status = csActive

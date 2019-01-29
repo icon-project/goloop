@@ -270,14 +270,14 @@ func (h *TransferAndCallHandler) ExecuteAsync(wc WorldContext) error {
 		as := wc.GetAccountState(h.to.ID())
 		apiInfo := as.APIInfo()
 		if apiInfo == nil {
-			return errors.New("No API info")
+			return scoreresult.NewError(module.StatusContractNotFound, "APIInfo() is null")
 		} else {
 			m := apiInfo.GetMethod(h.method)
 			if m == nil {
-				return errors.New("Not existed API(" + h.method + ")")
+				return scoreresult.ErrMethodNotFound
 			}
 			if m == nil || !m.IsPayable() {
-				return errors.New("Not payable API(" + h.method + ")")
+				return scoreresult.ErrMethodNotPayable
 			}
 		}
 	}
