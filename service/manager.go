@@ -292,8 +292,7 @@ func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
 	return hash, nil
 }
 
-// TODO naming?
-func (m *manager) QueryTransaction(result []byte, tx interface{},
+func (m *manager) Call(result []byte, tx interface{},
 	bi module.BlockInfo) (module.Status, interface{}) {
 	var newTx *transaction
 	switch txo := tx.(type) {
