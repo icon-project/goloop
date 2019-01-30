@@ -221,7 +221,7 @@ func (h callHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage
 				Message: msg,
 			}
 		} else {
-			return result, nil
+			return r, nil
 		}
 	}
 

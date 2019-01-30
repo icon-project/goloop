@@ -43,6 +43,7 @@ func (qh *QueryHandler) Query(wc WorldContext) (module.Status, interface{}) {
 
 	// Execute
 	status, _, result, _ := cc.Call(handler)
+	cc.Dispose()
 	msg, _ := common.DecodeAny(result)
 	return status, msg
 }
