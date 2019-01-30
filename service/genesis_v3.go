@@ -5,8 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"io/ioutil"
+	"log"
 	"math/big"
+	"os"
 	"sort"
+	"strconv"
 
 	"github.com/icon-project/goloop/service/scoredb"
 
@@ -150,23 +154,62 @@ func (g *genesisV3) Prepare(wc WorldContext) (WorldContext, error) {
 }
 
 func (g *genesisV3) setDefaultSystemInfo(as AccountState) {
-	stepCosts := map[string]int64{
-		"default":          0x186a0,
-		"contractCall":     0x61a8,
-		"contractCreate":   0x3b9aca00,
-		"contractUpdate":   0x5f5e1000,
-		"contractDestruct": -0x11170,
-		"contractSet":      0x7530,
-		"get":              0x0,
-		"set":              0x140,
-		"replace":          0x50,
-		"delete":           -0xf0,
-		"input":            0xc8,
-		"eventLog":         0x64,
-		"apiCall":          0x0,
+	sysConfig := "./systemInfo.json"
+	var stepPrice int64 = 10000000
+	var stepCosts map[string]int64
+	var stepLimit map[string]int64
+	if _, err := os.Stat(sysConfig); !os.IsNotExist(err) {
+		info, err := ioutil.ReadFile(sysConfig)
+		if err != nil {
+			log.Panicf("Fail to open genesis file=%s err=%+v", info, err)
+		}
+		var infoMap = make(map[string]interface{})
+		err = json.Unmarshal(info, &infoMap)
+		if err != nil {
+			log.Panicf("error : %s\n", err)
+		}
+		for k, v := range infoMap {
+			switch k {
+			case VarStepTypes:
+				stepTypesMap := v.(map[string]interface{})
+				stepCosts = make(map[string]int64)
+				for sk, sv := range stepTypesMap {
+					stepCosts[sk], _ = strconv.ParseInt(sv.(string), 10, 64)
+				}
+			case VarStepPrice:
+				stepPrice, _ = strconv.ParseInt(v.(string), 10, 64)
+			case VarStepLimit:
+				stepLimitMap := v.(map[string]interface{})
+				stepLimit = make(map[string]int64)
+				for sk, sv := range stepLimitMap {
+					stepLimit[sk], _ = strconv.ParseInt(sv.(string), 10, 64)
+				}
+			}
+		}
+	} else {
+		stepCosts = map[string]int64{
+			"default":          0x186a0,
+			"contractCall":     0x61a8,
+			"contractCreate":   0x3b9aca00,
+			"contractUpdate":   0x5f5e1000,
+			"contractDestruct": -0x11170,
+			"contractSet":      0x7530,
+			"get":              0x0,
+			"set":              0x140,
+			"replace":          0x50,
+			"delete":           -0xf0,
+			"input":            0xc8,
+			"eventLog":         0x64,
+			"apiCall":          0x0,
+		}
+
+		stepLimit = map[string]int64{
+			LimitTypeInvoke: 0x9502f900,
+			LimitTypeCall:   0x2faf080,
+		}
 	}
 
-	scoredb.NewVarDB(as, VarStepPrice).Set(big.NewInt(10000000))
+	scoredb.NewVarDB(as, VarStepPrice).Set(big.NewInt(stepPrice))
 	stepTypes := scoredb.NewArrayDB(as, VarStepTypes)
 	stepCostDB := scoredb.NewDictDB(as, VarStepCosts, 1)
 	for _, k := range AllStepTypes {
@@ -176,10 +219,6 @@ func (g *genesisV3) setDefaultSystemInfo(as AccountState) {
 		}
 	}
 
-	stepLimit := map[string]int64{
-		LimitTypeInvoke: 0x9502f900,
-		LimitTypeCall:   0x2faf080,
-	}
 	stepLimitTypes := scoredb.NewArrayDB(as, VarStepLimitTypes)
 	stepLimitDB := scoredb.NewDictDB(as, VarStepLimit, 1)
 	for _, k := range AllLimitTypes {

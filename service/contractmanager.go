@@ -151,9 +151,12 @@ func (cm *contractManager) GetCallHandler(cc CallContext, from, to module.Addres
 	}
 }
 
+var tryTmpNum = 10
+
 // if path does not exist, make the path
 func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []byte, sc *storageCache) (string, error) {
 	var path string
+	defer sc.timer.Stop()
 	path = fmt.Sprintf("%s/%016x", cm.storeRoot, codeHash)
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		return path, nil
@@ -161,7 +164,7 @@ func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []
 
 	var tmpPath string
 	var i int
-	for i = 0; i < 10; i++ {
+	for i = 0; i < tryTmpNum; i++ {
 		tmpPath = fmt.Sprintf("%s/tmp/%016x%d", cm.storeRoot, codeHash, i)
 		if _, err := os.Stat(tmpPath); !os.IsNotExist(err) {
 			if err := os.RemoveAll(tmpPath); err != nil {
@@ -211,9 +214,12 @@ func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []
 				log.Printf("Failed to write file. err = %s\n", err)
 			}
 		}
+		if findRoot == false {
+			os.RemoveAll(tmpPath)
+			return "", errors.New("Root file does not exist")
+		}
 		contractRoot := tmpPath + "/" + rootDir
 
-		sc.timer.Stop()
 		sc.lock.Lock()
 		if sc.status == csComplete {
 			sc.lock.Unlock()

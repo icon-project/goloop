@@ -62,7 +62,7 @@ type AccountState interface {
 	Reset(snapshot AccountSnapshot) error
 
 	IsContractOwner(owner module.Address) bool
-	InitContractAccount(address module.Address)
+	InitContractAccount(address module.Address) bool
 	DeployContract(code []byte, eeType string, contentType string,
 		params []byte, txHash []byte)
 	APIInfo() *scoreapi.Info
@@ -375,13 +375,14 @@ func (s *accountStateImpl) IsContractOwner(owner module.Address) bool {
 	return s.contractOwner.Equal(owner)
 }
 
-func (s *accountStateImpl) InitContractAccount(address module.Address) {
+func (s *accountStateImpl) InitContractAccount(address module.Address) bool {
 	if s.isContract == true {
 		log.Printf("already Contract account")
-		return
+		return false
 	}
 	s.isContract = true
 	s.contractOwner = address
+	return true
 }
 
 func (s *accountStateImpl) DeployContract(code []byte,
@@ -630,8 +631,9 @@ func (a *accountROState) SetAPIInfo(*scoreapi.Info) {
 	log.Panicf("accountROState().SetApiInfo() is invoked")
 }
 
-func (a *accountROState) InitContractAccount(address module.Address) {
+func (a *accountROState) InitContractAccount(address module.Address) bool {
 	log.Panicf("accountROState().InitContractAccount() is invoked")
+	return false
 }
 
 func (a *accountROState) DeployContract(code []byte,

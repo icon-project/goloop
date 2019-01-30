@@ -120,7 +120,10 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 	// store ScoreDeployInfo and ScoreDeployTXParams
 	as := wc.GetAccountState(contractID)
 	if update == false {
-		as.InitContractAccount(h.from)
+		if as.InitContractAccount(h.from) == false {
+			msg, _ := common.EncodeAny("Already deployed contract")
+			return module.StatusSystemError, h.stepUsed, msg, nil
+		}
 	} else {
 		if as.IsContract() == false {
 			msg, _ := common.EncodeAny("Not a contract account")
