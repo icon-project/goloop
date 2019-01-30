@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	DictDBPrefix  = 0x00
-	ArrayDBPrefix = 0x01
+	ArrayDBPrefix = 0x00
+	DictDBPrefix  = 0x01
 	VarDBPrefix   = 0x02
 )
 
