@@ -1098,7 +1098,7 @@ func (cs *consensus) applyLockWAL() error {
 	return nil
 }
 
-func (cs *consensus) applyCommitWAL(prevValidators module.ValidatorList) error {
+func (cs *consensus) applyCommitWAL(prevValidators addressIndexer) error {
 	wr, err := OpenWALForRead(path.Join(cs.walDir, configCommitWALID))
 	if err != nil {
 		return nil
@@ -1186,7 +1186,7 @@ func (cs *consensus) applyCommitWAL(prevValidators module.ValidatorList) error {
 	return nil
 }
 
-func (cs *consensus) applyWAL(prevValidators module.ValidatorList) error {
+func (cs *consensus) applyWAL(prevValidators addressIndexer) error {
 	if err := cs.applyRoundWAL(); err != nil && !IsNotExist(err) {
 		return err
 	}
@@ -1199,6 +1199,22 @@ func (cs *consensus) applyWAL(prevValidators module.ValidatorList) error {
 	return nil
 }
 
+type addressIndexer interface {
+	IndexOf(module.Address) int
+	Len() int
+}
+
+type emptyAddressIndexer struct {
+}
+
+func (vl *emptyAddressIndexer) IndexOf(module.Address) int {
+	return -1
+}
+
+func (vl *emptyAddressIndexer) Len() int {
+	return 0
+}
+
 func (cs *consensus) Start() error {
 	cs.mutex.Lock()
 	defer cs.mutex.Unlock()
@@ -1207,28 +1223,19 @@ func (cs *consensus) Start() error {
 	logger = log.New(os.Stderr, prefix, log.Lshortfile|log.Lmicroseconds)
 	debug = log.New(debugWriter, prefix, log.Lshortfile|log.Lmicroseconds)
 
-	var lastBlock module.Block
-	var validators module.ValidatorList
 	lastBlock, err := cs.bm.GetLastBlock()
-	if err == nil {
+	if err != nil {
+		return err
+	}
+	var validators addressIndexer
+	if lastBlock.Height() > 0 {
 		prevBlock, err := cs.bm.GetBlockByHeight(lastBlock.Height() - 1)
 		if err != nil {
 			return err
 		}
 		validators = prevBlock.NextValidators()
-	} else if err == common.ErrNotFound {
-		gblk, err := cs.bm.FinalizeGenesisBlock(
-			zeroAddress,
-			time.Time{},
-			newCommitVoteList(nil),
-		)
-		if err != nil {
-			return err
-		}
-		lastBlock = gblk
-		validators = gblk.NextValidators()
 	} else {
-		return err
+		validators = &emptyAddressIndexer{}
 	}
 
 	cs.ph, err = cs.nm.RegisterReactor("consensus", cs, csProtocols, configEnginePriority)

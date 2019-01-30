@@ -108,6 +108,9 @@ func newCommitVoteList(msgs []*voteMessage) *commitVoteList {
 // NewCommitVoteSetFromBytes returns VoteList from serialized bytes
 func NewCommitVoteSetFromBytes(bs []byte) module.CommitVoteSet {
 	vl := &commitVoteList{}
+	if bs == nil {
+		return vl
+	}
 	_, err := vlCodec.UnmarshalFromBytes(bs, vl)
 	if err != nil {
 		return nil

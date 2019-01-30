@@ -371,6 +371,9 @@ func NewManager(
 	var height int64
 	err := chainPropBucket.get(raw(keyLastBlockHeight), &height)
 	if err == common.ErrNotFound {
+		if _, err := m.finalizeGenesisBlock(nil, time.Time{}, chain.CommitVoteSetDecoder()(nil)); err != nil {
+			return nil
+		}
 		return m
 	} else if err != nil {
 		return nil
@@ -477,14 +480,11 @@ func (cb *channelingCB) onExecute(err error) {
 	cb.ch <- err
 }
 
-func (m *manager) FinalizeGenesisBlock(
+func (m *manager) finalizeGenesisBlock(
 	proposer module.Address,
 	timestamp time.Time,
 	votes module.CommitVoteSet,
 ) (block module.Block, err error) {
-	m.syncer.begin()
-	defer m.syncer.end()
-
 	logger.Printf("FinalizeGenesisBlock()\n")
 	if m.finalized != nil {
 		return nil, common.ErrInvalidState
@@ -501,6 +501,7 @@ func (m *manager) FinalizeGenesisBlock(
 		return nil, err
 	}
 	gtxl := m.sm.TransactionListFromSlice([]module.Transaction{gtx}, module.BlockVersion2)
+	m.syncer.begin()
 	gtr := in.transit(gtxl, newBlockInfo(0, time.Time{}), &channelingCB{ch: ch})
 	m.syncer.end()
 
@@ -513,7 +514,6 @@ func (m *manager) FinalizeGenesisBlock(
 		return nil, err
 	}
 
-	m.syncer.begin()
 	bn := &bnode{}
 	bn.in = in
 	bn.preexe = gtr
@@ -653,6 +653,13 @@ func (m *manager) commitVoteSetFromHash(hash []byte) module.CommitVoteSet {
 	return dec(bs)
 }
 
+func newAddress(bs []byte) module.Address {
+	if bs != nil {
+		return common.NewAddress(bs)
+	}
+	return nil
+}
+
 func (m *manager) newBlockFromHeaderReader(r io.Reader) (module.Block, error) {
 	var header blockV2HeaderFormat
 	err := v2Codec.Unmarshal(r, &header)
@@ -678,7 +685,7 @@ func (m *manager) newBlockFromHeaderReader(r io.Reader) (module.Block, error) {
 	return &blockV2{
 		height:             header.Height,
 		timestamp:          timeFromUnixMicro(header.Timestamp),
-		proposer:           common.NewAddress(header.Proposer),
+		proposer:           newAddress(header.Proposer),
 		prevID:             header.PrevID,
 		logBloom:           common.NewLogBloom(header.LogBloom),
 		result:             header.Result,
@@ -753,7 +760,7 @@ func (m *manager) newBlockFromReader(r io.Reader) (module.Block, error) {
 	return &blockV2{
 		height:             blockFormat.Height,
 		timestamp:          timeFromUnixMicro(blockFormat.Timestamp),
-		proposer:           common.NewAddress(blockFormat.Proposer),
+		proposer:           newAddress(blockFormat.Proposer),
 		prevID:             blockFormat.PrevID,
 		logBloom:           common.NewLogBloom(blockFormat.LogBloom),
 		result:             blockFormat.Result,

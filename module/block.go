@@ -23,7 +23,7 @@ type Block interface {
 	NormalTransactions() TransactionList
 	PatchTransactions() TransactionList
 	Timestamp() time.Time
-	Proposer() Address
+	Proposer() Address // can be nil. e.g. in genesis block.
 	LogBloom() LogBloom
 	Result() []byte
 
@@ -61,7 +61,6 @@ type BlockManager interface {
 
 	//	Finalize updates world state according to Block block and removes non-finalized committed blocks with the same height as block from persistent storage.
 	Finalize(Block) error
-	FinalizeGenesisBlock(proposer Address, timestamp time.Time, votes CommitVoteSet) (block Block, err error)
 
 	GetTransactionInfo(id []byte) (TransactionInfo, error)
 }

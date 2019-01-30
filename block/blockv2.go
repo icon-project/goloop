@@ -129,11 +129,15 @@ func (b *blockV2) MarshalBody(w io.Writer) error {
 }
 
 func (b *blockV2) _headerFormat() *blockV2HeaderFormat {
+	var proposerBS []byte
+	if b.proposer != nil {
+		proposerBS = b.proposer.Bytes()
+	}
 	return &blockV2HeaderFormat{
 		Version:                b.Version(),
 		Height:                 b.height,
 		Timestamp:              unixMicroFromTime(b.timestamp),
-		Proposer:               b.proposer.Bytes(),
+		Proposer:               proposerBS,
 		PrevID:                 b.prevID,
 		VotesHash:              b.votes.Hash(),
 		NextValidatorsHash:     b.nextValidators.Hash(),
@@ -154,7 +158,11 @@ func (b *blockV2) ToJSON(rpcVersion int) (interface{}, error) {
 	res["confirmed_transaction_list"] = b.NormalTransactions()
 	res["block_hash"] = hex.EncodeToString(b.ID())
 	res["height"] = b.Height()
-	res["peer_id"] = fmt.Sprintf("hx%x", b.Proposer().ID())
+	if b.Proposer() != nil {
+		res["peer_id"] = fmt.Sprintf("hx%x", b.Proposer().ID())
+	} else {
+		res["peer_id"] = ""
+	}
 	// TODO add signautre?
 	res["signature"] = ""
 	return res, nil
