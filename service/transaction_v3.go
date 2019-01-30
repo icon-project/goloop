@@ -7,7 +7,6 @@ import (
 	"log"
 	"math/big"
 	"strconv"
-	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -209,10 +208,13 @@ func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
 
 	// outdated or invalid timestamp?
 	if configOnCheckingTimestamp {
-		tsdiff := wc.BlockTimeStamp() - tx.TimeStamp.Value
-		if tsdiff < int64(-5*time.Minute/time.Microsecond) ||
-			tsdiff > int64(5*time.Minute/time.Microsecond) {
+		tsDiff := wc.BlockTimeStamp() - tx.TimeStamp.Value
+		if tsDiff <= -configTXTimestampBackwardMargin ||
+			tsDiff > configTXTimestampForwardLimit {
 			return ErrTimeOut
+		}
+		if tsDiff > configTXTimestampForwardMargin {
+			return ErrFutureTransaction
 		}
 	}
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
@@ -14,10 +15,14 @@ import (
 )
 
 const (
+	configTXTimestampBackwardMargin = int64(5 * time.Minute / time.Microsecond)
+	configTXTimestampForwardMargin  = int64(5 * time.Minute / time.Microsecond)
+	configTXTimestampForwardLimit   = int64(10 * time.Minute / time.Microsecond)
+	configOnCheckingTimestamp       = true
+
 	// maximum number of transactions in a block
 	// TODO it should be configured or received from block manager
-	txMaxNumInBlock           = 2000
-	configOnCheckingTimestamp = false
+	txMaxNumInBlock = 2000
 )
 
 var (
@@ -176,10 +181,12 @@ func (m *manager) Finalize(t module.Transition, opt int) {
 			// Because transactionlist for transition is made only through peer and SendTransaction() call
 			// transactionlist has slice of transactions in case that finalize() is called
 			m.normalTxPool.removeList(tst.normalTransactions)
+			m.normalTxPool.removeOldTXs(tst.bi.Timestamp() - configTXTimestampBackwardMargin)
 		}
 		if opt&module.FinalizePatchTransaction == module.FinalizePatchTransaction {
 			tst.finalizePatchTransaction()
-			m.normalTxPool.removeList(tst.patchTransactions)
+			m.patchTxPool.removeList(tst.patchTransactions)
+			m.patchTxPool.removeOldTXs(tst.bi.Timestamp() - configTXTimestampBackwardMargin)
 		}
 		if opt&module.FinalizeResult == module.FinalizeResult {
 			tst.finalizeResult()

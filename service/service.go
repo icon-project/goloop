@@ -18,6 +18,7 @@ const (
 var (
 	ErrNotEnoughBalance   = errors.New("NotEnoughBalance")
 	ErrTimeOut            = errors.New("TimeOut")
+	ErrFutureTransaction  = errors.New("FutureTransaction")
 	ErrInvalidValueValue  = errors.New("InvalidValueValue")
 	ErrInvalidFeeValue    = errors.New("InvalidFeeValue")
 	ErrInvalidDataValue   = errors.New("InvalidDataValue")

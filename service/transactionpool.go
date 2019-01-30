@@ -82,51 +82,21 @@ func makeTimestamp() int64 {
 	return time.Now().UnixNano() / int64(time.Microsecond)
 }
 
-// TODO: check thread safe below
-func (tp *transactionPool) runGc(expired int64) error {
-	txList := tp.list
-
-	for iter := txList.Front(); iter != nil; {
-		if iter.Value.(*transaction).Timestamp() >= expired {
-			break
-		}
-		tmp := iter.Next()
-		tp.txMap.Delete(string(iter.Value.(*transaction).ID()))
-		txList.Remove(iter)
-		iter = tmp
-	}
-	return nil
-}
-
-/*
-	return nil if tx is nil or tx is added to pool
-	return ErrTransactionPoolOverFlow if pool is full
-	return ErrDuplicateTransaction if tx exists in pool
-	return ErrExpiredTransaction if Timestamp of tx is expired
-*/
-func (tp *transactionPool) add(tx *transaction) error {
-	if tx == nil {
-		return nil
+func (tp *transactionPool) removeOldTXs(bts int64) {
+	if !configOnCheckingTimestamp {
+		return
 	}
 	tp.mutex.Lock()
 	defer tp.mutex.Unlock()
-	var err error
-	txList := tp.list
-	if txList.Len() >= txPoolSize {
-		return ErrTransactionPoolOverFlow
+
+	iter := tp.list.Front()
+	for iter != nil {
+		next := iter.Next()
+		if iter.Value.(*transaction).Timestamp() <= bts {
+			tp.list.Remove(iter)
+		}
+		iter = next
 	}
-
-	txid := string(tx.ID())
-
-	// check whether this transaction is already in txPool
-	if _, ok := tp.txMap.Get(txid); ok {
-		return ErrDuplicateTransaction
-	}
-
-	element := txList.PushBack(tx)
-	tp.txMap.Put(txid, element)
-
-	return err
 }
 
 // It returns all candidates for a negative integer n.
@@ -169,6 +139,12 @@ func (tp *transactionPool) candidate(wc WorldContext, max int) []module.Transact
 			continue
 		}
 		if err := tx.PreValidate(wc, true); err != nil {
+			// If returned error is critical(not usable in the future)
+			// then it should removed from the pool
+			// Otherwise, it remains in the pool
+			if err != ErrTimeOut && err != ErrNotEnoughStep {
+				txs[i] = nil
+			}
 			continue
 		}
 		validTxs[valNum] = tx
@@ -199,6 +175,37 @@ func (tp *transactionPool) candidate(wc WorldContext, max int) []module.Transact
 		valNum, len(txs)-valNum, poolSize)
 
 	return validTxs[:valNum]
+}
+
+/*
+	return nil if tx is nil or tx is added to pool
+	return ErrTransactionPoolOverFlow if pool is full
+	return ErrDuplicateTransaction if tx exists in pool
+	return ErrExpiredTransaction if Timestamp of tx is expired
+*/
+func (tp *transactionPool) add(tx *transaction) error {
+	if tx == nil {
+		return nil
+	}
+	tp.mutex.Lock()
+	defer tp.mutex.Unlock()
+	var err error
+	txList := tp.list
+	if txList.Len() >= txPoolSize {
+		return ErrTransactionPoolOverFlow
+	}
+
+	txid := string(tx.ID())
+
+	// check whether this transaction is already in txPool
+	if _, ok := tp.txMap.Get(txid); ok {
+		return ErrDuplicateTransaction
+	}
+
+	element := txList.PushBack(tx)
+	tp.txMap.Put(txid, element)
+
+	return err
 }
 
 // removeList remove transactions when transactions are finalized.
