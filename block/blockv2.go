@@ -92,10 +92,6 @@ func (b *blockV2) NextValidators() module.ValidatorList {
 	return b.nextValidators
 }
 
-func (b *blockV2) Verify() error {
-	return nil
-}
-
 func (b *blockV2) NormalTransactions() module.TransactionList {
 	return b.normalTransactions
 }

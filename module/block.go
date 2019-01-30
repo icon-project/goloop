@@ -16,8 +16,6 @@ type Block interface {
 	Height() int64
 	PrevID() []byte
 	NextValidators() ValidatorList
-	//	TODO remove
-	Verify() error
 	// voters are subset of previous preivous block's next validators
 	Votes() CommitVoteSet
 	NormalTransactions() TransactionList
