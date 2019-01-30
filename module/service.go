@@ -231,7 +231,7 @@ type ServiceManager interface {
 	SendTransaction(tx interface{}) ([]byte, error)
 
 	// Call handles read-only contract API call.
-	Call(result []byte, tx interface{}, bi BlockInfo) (Status, interface{})
+	Call(result []byte, js []byte, bi BlockInfo) (Status, interface{}, error)
 
 	// ValidatorListFromHash returns ValidatorList from hash.
 	ValidatorListFromHash(hash []byte) ValidatorList

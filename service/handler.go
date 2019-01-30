@@ -24,9 +24,8 @@ const (
 type (
 	ContractHandler interface {
 		StepLimit() *big.Int
-		// TODO Not an adequate API here.
-		ResetSteps(*big.Int)
 		ApplySteps(WorldContext, StepType, int) bool
+		ResetSteps(*big.Int)
 		Prepare(WorldContext) (WorldContext, error)
 	}
 
@@ -61,11 +60,6 @@ func (h *CommonHandler) StepLimit() *big.Int {
 	return h.stepLimit
 }
 
-func (h *CommonHandler) ResetSteps(limit *big.Int) {
-	h.stepLimit = limit
-	h.stepUsed = big.NewInt(0)
-}
-
 func (h *CommonHandler) ApplySteps(wc WorldContext, stepType StepType, n int) bool {
 	h.stepUsed.Add(h.stepUsed, big.NewInt(wc.StepsFor(stepType, n)))
 	if h.stepUsed.Cmp(h.stepLimit) > 0 {
@@ -73,6 +67,13 @@ func (h *CommonHandler) ApplySteps(wc WorldContext, stepType StepType, n int) bo
 		return false
 	}
 	return true
+}
+
+// ResetSteps resets stepLimit and stepUsed. Actually, it is used to set stepLimit
+// when the current stepLimit exceeds system stepLimit just before execution.
+func (h *CommonHandler) ResetSteps(limit *big.Int) {
+	h.stepLimit = limit
+	h.stepUsed = big.NewInt(0)
 }
 
 func (h *CommonHandler) Prepare(wc WorldContext) (WorldContext, error) {

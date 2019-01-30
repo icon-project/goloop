@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -92,7 +93,7 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 
 func (m *manager) ProposeGenesisTransition(parent module.Transition) (module.Transition, error) {
 	if pt, ok := parent.(*transition); ok {
-		ntx, err := NewTransactionFromJSON(m.chain.Genesis(), 2)
+		ntx, err := NewTransactionFromJSON(m.chain.Genesis())
 		if err != nil {
 			log.Panicf("Failed to load genesis transaction")
 			return nil, err
@@ -247,13 +248,13 @@ func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
 	var newTx *transaction
 	switch txo := tx.(type) {
 	case []byte:
-		ntx, err := NewTransactionFromJSON(txo, 2)
+		ntx, err := NewTransactionFromJSON(txo)
 		if err != nil {
 			return nil, err
 		}
 		newTx = ntx.(*transaction)
 	case string:
-		ntx, err := NewTransactionFromJSON([]byte(txo), 2)
+		ntx, err := NewTransactionFromJSON([]byte(txo))
 		if err != nil {
 			return nil, err
 		}
@@ -292,41 +293,35 @@ func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
 	return hash, nil
 }
 
-func (m *manager) Call(result []byte, tx interface{}, bi module.BlockInfo,
-) (module.Status, interface{}) {
-	var newTx *transaction
-	switch txo := tx.(type) {
-	case []byte:
-		ntx, err := NewTransactionFromJSON(txo, 3)
-		if err != nil {
-			return module.StatusSystemError, err.Error()
-		}
-		newTx = ntx.(*transaction)
-	case string:
-		ntx, err := NewTransactionFromJSON([]byte(txo), 3)
-		if err != nil {
-			return module.StatusSystemError, err.Error()
-		}
-		newTx = ntx.(*transaction)
-	case *transaction:
-		newTx = txo
-	default:
-		return module.StatusSystemError, "IllegalTransactionType"
+func (m *manager) Call(resultHash []byte, js []byte, bi module.BlockInfo,
+) (module.Status, interface{}, error) {
+	type callJSON struct {
+		From     common.Address  `json:"from"`
+		To       common.Address  `json:"to"`
+		DataType *string         `json:"dataType"`
+		Data     json.RawMessage `json:"data"`
+	}
+
+	var jso callJSON
+	if json.Unmarshal(js, &jso) != nil {
+		return module.StatusSystemError, nil, errors.New("Fail to parse JSON RPC")
 	}
 
 	var wc WorldContext
-	if tresult, err := newTransitionResultFromBytes(result); err == nil {
+	if tresult, err := newTransitionResultFromBytes(resultHash); err == nil {
 		ws := NewWorldState(m.db, tresult.StateHash, nil)
 		wc = NewWorldContext(ws, bi, m.cm, m.em)
 	} else {
-		return module.StatusSystemError, err.Error()
+		return module.StatusSystemError, err.Error(), nil
 	}
 
-	th, err := newTx.GetHandler(wc.ContractManager())
+	qh, err := NewQueryHandler(wc.ContractManager(), &jso.From, &jso.To,
+		jso.DataType, jso.Data)
 	if err != nil {
-		return module.StatusSystemError, err.Error()
+		return module.StatusSystemError, err.Error(), nil
 	}
-	return th.Query(wc)
+	status, result := qh.Query(wc)
+	return status, result, nil
 }
 
 func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {

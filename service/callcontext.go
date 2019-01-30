@@ -15,7 +15,7 @@ import (
 
 type (
 	CallContext interface {
-		Setup(WorldContext, bool)
+		Setup(WorldContext)
 		QueryMode() bool
 		Call(ContractHandler) (module.Status, *big.Int, *codec.TypedObj, module.Address)
 		OnResult(status module.Status, stepUsed *big.Int, result *codec.TypedObj, addr module.Address)
@@ -41,22 +41,23 @@ type (
 
 type callContext struct {
 	receipt Receipt
+	isQuery bool
 	conns   map[string]eeproxy.Proxy
 
 	// set at Setup()
-	wc      WorldContext
-	isQuery bool
-	info    map[string]interface{}
-	timer   <-chan time.Time
+	wc    WorldContext
+	info  map[string]interface{}
+	timer <-chan time.Time
 
 	lock   sync.Mutex
 	stack  list.List
 	waiter chan interface{}
 }
 
-func newCallContext(receipt Receipt) CallContext {
+func newCallContext(receipt Receipt, isQuery bool) CallContext {
 	return &callContext{
 		receipt: receipt,
+		isQuery: isQuery,
 		// 0-buffered channel is fine, but it sets some number just in case of
 		// EE unexpectedly sends messages up to 8.
 		waiter: make(chan interface{}, 8),
@@ -64,9 +65,8 @@ func newCallContext(receipt Receipt) CallContext {
 	}
 }
 
-func (cc *callContext) Setup(wc WorldContext, isQuery bool) {
+func (cc *callContext) Setup(wc WorldContext) {
 	cc.wc = wc
-	cc.isQuery = isQuery
 }
 
 func (cc *callContext) QueryMode() bool {

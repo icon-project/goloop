@@ -26,7 +26,7 @@ func (t *transactionV3) MarshalJSON() ([]byte, error) {
 }
 
 func (t *transactionV3) UnmarshalJSON(b []byte) error {
-	if tr, err := service.NewTransactionFromJSON(b, 2); err != nil {
+	if tr, err := service.NewTransactionFromJSON(b); err != nil {
 		return err
 	} else {
 		t.Transaction = tr

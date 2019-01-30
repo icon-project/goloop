@@ -59,7 +59,7 @@ func (t *transaction) MarshalJSON() ([]byte, error) {
 }
 
 func (t *transaction) UnmarshalJSON(data []byte) error {
-	if tx, err := newTransactionFromJSON(data, 2); err != nil {
+	if tx, err := newTransactionFromJSON(data); err != nil {
 		return err
 	} else {
 		t.Transaction = tx
@@ -84,23 +84,23 @@ func newTransaction(b []byte) (Transaction, error) {
 		return nil, errors.New("IllegalTransactionData")
 	}
 	if b[0] == '{' {
-		if tx, err := newTransactionFromJSON(b, 2); err == nil {
+		if tx, err := newTransactionFromJSON(b); err == nil {
 			return tx, nil
 		}
 	}
 	return newTransactionV3FromBytes(b)
 }
 
-func NewTransactionFromJSON(b []byte, defVer int) (module.Transaction, error) {
-	if tx, err := newTransactionFromJSON(b, defVer); err != nil {
+func NewTransactionFromJSON(b []byte) (module.Transaction, error) {
+	if tx, err := newTransactionFromJSON(b); err != nil {
 		return nil, err
 	} else {
 		return &transaction{tx}, nil
 	}
 }
 
-func newTransactionFromJSON(b []byte, defVer int) (Transaction, error) {
-	tx, err := newTransactionV2V3FromJSON(b, defVer)
+func newTransactionFromJSON(b []byte) (Transaction, error) {
+	tx, err := newTransactionV2V3FromJSON(b)
 	if err != nil {
 		return nil, err
 	}

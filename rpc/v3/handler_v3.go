@@ -217,7 +217,11 @@ func (h callHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage
 		}
 		tx, _ := params.MarshalJSON()
 		// TODO temporary block info
-		s, r := h.sm.QueryTransaction(block.Result(), tx, &blockInfo{b: block})
+		s, r, err := h.sm.Call(block.Result(), tx, &blockInfo{b: block})
+		if err != nil {
+			log.Println(err.Error())
+			return nil, jsonrpc.ErrInternal()
+		}
 		if s != module.StatusSuccess {
 			msg, ok := r.(string)
 			if !ok {
