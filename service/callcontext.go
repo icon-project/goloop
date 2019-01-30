@@ -146,6 +146,8 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (module.Status, *big.Int, 
 							continue
 						}
 						return module.StatusSystemError, handler.StepLimit(), nil, nil
+					} else {
+						continue
 					}
 				}
 			default:
