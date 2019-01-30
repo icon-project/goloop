@@ -43,7 +43,7 @@ type blockV2Format struct {
 
 type blockV2 struct {
 	height             int64
-	timestamp          time.Time
+	timestamp          int64
 	proposer           module.Address
 	prevID             []byte
 	logBloom           module.LogBloom
@@ -100,7 +100,7 @@ func (b *blockV2) PatchTransactions() module.TransactionList {
 	return b.patchTransactions
 }
 
-func (b *blockV2) Timestamp() time.Time {
+func (b *blockV2) Timestamp() int64 {
 	return b.timestamp
 }
 
@@ -132,7 +132,7 @@ func (b *blockV2) _headerFormat() *blockV2HeaderFormat {
 	return &blockV2HeaderFormat{
 		Version:                b.Version(),
 		Height:                 b.height,
-		Timestamp:              unixMicroFromTime(b.timestamp),
+		Timestamp:              b.timestamp,
 		Proposer:               proposerBS,
 		PrevID:                 b.prevID,
 		VotesHash:              b.votes.Hash(),
@@ -150,7 +150,7 @@ func (b *blockV2) ToJSON(rpcVersion int) (interface{}, error) {
 	res["prev_block_hash"] = hex.EncodeToString(b.PrevID())
 	// TODO calc merkle_tree_root_hash
 	res["merkle_tree_root_hash"] = hex.EncodeToString(b.NormalTransactions().Hash())
-	res["time_stamp"] = unixMicroFromTime(b.Timestamp())
+	res["time_stamp"] = b.Timestamp()
 	res["confirmed_transaction_list"] = b.NormalTransactions()
 	res["block_hash"] = hex.EncodeToString(b.ID())
 	res["height"] = b.Height()

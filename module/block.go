@@ -2,7 +2,6 @@ package module
 
 import (
 	"io"
-	"time"
 )
 
 const (
@@ -20,7 +19,7 @@ type Block interface {
 	Votes() CommitVoteSet
 	NormalTransactions() TransactionList
 	PatchTransactions() TransactionList
-	Timestamp() time.Time
+	Timestamp() int64
 	Proposer() Address // can be nil. e.g. in genesis block.
 	LogBloom() LogBloom
 	Result() []byte

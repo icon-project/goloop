@@ -179,18 +179,6 @@ type callHandler struct {
 	sm module.ServiceManager
 }
 
-type blockInfo struct {
-	b module.Block
-}
-
-func (bi *blockInfo) Height() int64 {
-	return bi.b.Height()
-}
-
-func (bi *blockInfo) Timestamp() int64 {
-	return bi.b.Timestamp().UnixNano()
-}
-
 func (h callHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 	var param callParam
 	if err := jsonrpc.Unmarshal(params, &param); err != nil {
@@ -217,7 +205,7 @@ func (h callHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage
 		}
 		tx, _ := params.MarshalJSON()
 		// TODO temporary block info
-		s, r, err := h.sm.Call(block.Result(), tx, &blockInfo{b: block})
+		s, r, err := h.sm.Call(block.Result(), tx, block)
 		if err != nil {
 			log.Println(err.Error())
 			return nil, jsonrpc.ErrInternal()
