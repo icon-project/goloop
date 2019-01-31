@@ -315,7 +315,10 @@ func (m *mpt) Equal(object trie.ImmutableForObject, exact bool) bool {
 		if m2.root == nil || m.root == nil {
 			return false
 		}
-		if bytes.Equal(m2.root.hash(), m.root.hash()) {
+
+		h1 := m.root.hash()
+		h2 := m2.root.hash()
+		if len(h1) > 0 && bytes.Equal(h1, h2) {
 			return true
 		}
 		if exact {
