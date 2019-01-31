@@ -342,20 +342,28 @@ func (h getTransactionResultHandler) ServeJSONRPC(c context.Context, params *fas
 		if err != nil {
 			log.Printf("Fail on decoding txHash hash=\"%s\" err=%+v",
 				param.TransactionHash, err)
-			return nil, jsonrpc.ErrInvalidParams()
+			return nil, &jsonrpc.Error{
+				Code:    jsonrpc.ErrorCodeInternal,
+				Message: "Not a valid transaction hash",
+				Data:    nil,
+			}
 		}
 		txinfo, err := h.bm.GetTransactionInfo(hash)
 		if err != nil {
 			log.Printf("Fail to get transaction info hash=<%x> err=%+v",
 				hash, err)
-			return nil, jsonrpc.ErrInvalidParams()
+			return nil, &jsonrpc.Error{
+				Code:    jsonrpc.ErrorCodeInternal,
+				Message: "Transaction not found",
+				Data:    nil,
+			}
 		}
 		blk := txinfo.Block()
 		rct := txinfo.GetReceipt()
 		if rct == nil {
 			return nil, &jsonrpc.Error{
 				Code:    jsonrpc.ErrorCodeInternal,
-				Message: "There is no receipt",
+				Message: "No receipt",
 				Data:    nil,
 			}
 		}
