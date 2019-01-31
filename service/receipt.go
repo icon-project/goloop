@@ -43,6 +43,7 @@ func (log *eventLog) ToJSON(v int) (*eventLogJSON, error) {
 	eljson.Data = make([]string, len(log.Data))
 
 	aidx := 0
+	eljson.Indexed[0] = string(log.Indexed[0])
 	for i, v := range log.Indexed[1:] {
 		if s, err := bytesToStringByType(pts[aidx], v); err != nil {
 			return nil, err
