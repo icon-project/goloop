@@ -169,7 +169,12 @@ func (b *blockV1) ToJSON(rcpVersion int) (interface{}, error) {
 	return nil, nil
 }
 
-func ParseBlockV1(b []byte) (module.Block, error) {
+type Block interface {
+	module.Block
+	Verify() error
+}
+
+func ParseBlockV1(b []byte) (Block, error) {
 	var blk = new(blockV1Impl)
 	err := json.Unmarshal(b, blk)
 	if err != nil {

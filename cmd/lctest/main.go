@@ -7,9 +7,10 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/icon-project/goloop/common/legacy"
 	"log"
 	"net/http"
+
+	"github.com/icon-project/goloop/common/legacy"
 )
 
 type JSONRPCResponse struct {
@@ -112,6 +113,7 @@ func VerifyBlock(b []byte) error {
 	fmt.Printf("%s<> BLOCK %8d %s tx=%v\r", ClearLine,
 		blk.Height(), hex.EncodeToString(blk.ID()), info)
 	return blk.Verify()
+	return nil
 }
 func VerifyBlocksFromHeight(wallet Wallet, from int) {
 	for i := from; ; i++ {
