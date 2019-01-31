@@ -107,7 +107,8 @@ class IconScoreContext(object):
 
     @property
     def readonly(self):
-        return self.func_type == IconScoreFuncType.READONLY
+        return self.type == IconScoreContextType.QUERY or \
+               self.func_type == IconScoreFuncType.READONLY
 
     def set_func_type_by_icon_score(self, icon_score: 'IconScoreBase', func_name: str):
         is_func_readonly = getattr(icon_score, '_IconScoreBase__is_func_readonly')

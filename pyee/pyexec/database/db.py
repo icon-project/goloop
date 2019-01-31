@@ -16,19 +16,12 @@ from typing import TYPE_CHECKING, Optional
 
 from iconcommons.logger import Logger
 from ..base.exception import DatabaseException, InvalidParamsException
-from ..icon_constant import ICON_DB_LOG_TAG, IconScoreContextType
+from ..icon_constant import ICON_DB_LOG_TAG, IconScoreContextType, IconScoreFuncType
 from ..iconscore.icon_score_context import ContextGetter
 
 if TYPE_CHECKING:
     from ..iconscore.icon_score_context import IconScoreContext
     from ..base.address import Address
-
-
-def _get_context_type(context: 'IconScoreContext') -> 'IconScoreContextType':
-    if context is None:
-        return IconScoreContextType.DIRECT
-    else:
-        return context.type
 
 
 def _is_db_writable_on_context(context: 'IconScoreContext'):
@@ -38,9 +31,13 @@ def _is_db_writable_on_context(context: 'IconScoreContext'):
     :return:
     """
     if context is None:
-        return True
-    else:
-        return not context.readonly
+        return False
+
+    context_type = context.type
+    func_type = context.func_type
+
+    return context_type != IconScoreContextType.QUERY and \
+        func_type != IconScoreFuncType.READONLY
 
 
 class DummyDatabase(object):
@@ -169,11 +166,6 @@ class ContextDatabase(object):
         :param key:
         :return: value
         """
-        # context_type = _get_context_type(context)
-        # if context_type in (IconScoreContextType.DIRECT, IconScoreContextType.QUERY):
-        #     return self.key_value_db.get(key)
-        # else:
-        #     return self.get_from_batch(context, key)
         return self.key_value_db.get(key)
 
     def put(self,
@@ -187,13 +179,8 @@ class ContextDatabase(object):
         :param value:
         """
         if not _is_db_writable_on_context(context):
-            raise DatabaseException('put is not allowed')
+            raise DatabaseException('No permission to write')
 
-        # context_type = _get_context_type(context)
-        # if context_type == IconScoreContextType.DIRECT:
-        #     self.key_value_db.put(key, value)
-        # else:
-        #     context.tx_batch[key] = value
         self.key_value_db.put(key, value)
 
     def delete(self, context: Optional['IconScoreContext'], key: bytes):
@@ -203,13 +190,8 @@ class ContextDatabase(object):
         :param key: key to delete from db
         """
         if not _is_db_writable_on_context(context):
-            raise DatabaseException('delete is not allowed')
+            raise DatabaseException('No permission to delete')
 
-        # context_type = _get_context_type(context)
-        # if context_type == IconScoreContextType.DIRECT:
-        #     self.key_value_db.delete(key)
-        # else:
-        #     context.tx_batch[key] = None
         self.key_value_db.delete(key)
 
     def close(self, context: 'IconScoreContext') -> None:
@@ -218,8 +200,7 @@ class ContextDatabase(object):
         :param context:
         """
         if not _is_db_writable_on_context(context):
-            raise DatabaseException(
-                'close is not allowed on readonly context')
+            raise DatabaseException('No permission to close')
 
         if not self._is_shared:
             return self.key_value_db.close()
