@@ -103,7 +103,7 @@ func (tx *transactionV3Data) calcHash() ([]byte, error) {
 type transactionV3 struct {
 	transactionV3Data
 	txHash []byte
-	hash   []byte
+	bytes  []byte
 }
 
 func (tx *transactionV3) Timestamp() int64 {
@@ -321,12 +321,15 @@ func (tx *transactionV3) Group() module.TransactionGroup {
 }
 
 func (tx *transactionV3) Bytes() []byte {
-	bs, err := codec.MarshalToBytes(&tx.transactionV3Data)
-	if err != nil {
-		log.Panicf("Fail to marshal transaction=%+v", tx)
-		return nil
+	if tx.bytes == nil {
+		if bs, err := codec.MarshalToBytes(&tx.transactionV3Data); err != nil {
+			log.Panicf("Fail to marshal transaction=%+v err=%+v", tx, err)
+			return nil
+		} else {
+			tx.bytes = bs
+		}
 	}
-	return bs
+	return tx.bytes
 }
 
 func (tx *transactionV3) SetBytes(bs []byte) error {
@@ -337,14 +340,14 @@ func (tx *transactionV3) SetBytes(bs []byte) error {
 	if tx.transactionV3Data.Version.Value != module.TransactionVersion3 {
 		return errors.New("InvalidTransactionVersion")
 	}
+	nbs := make([]byte, len(bs))
+	copy(nbs, bs)
+	tx.bytes = nbs
 	return nil
 }
 
 func (tx *transactionV3) Hash() []byte {
-	if tx.hash == nil {
-		tx.hash = crypto.SHA3Sum256(tx.Bytes())
-	}
-	return tx.hash
+	return crypto.SHA3Sum256(tx.Bytes())
 }
 
 func (tx *transactionV3) Nonce() *big.Int {
