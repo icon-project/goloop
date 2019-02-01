@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -16,9 +17,9 @@ import (
 
 type GoChainConfig struct {
 	chain.Config
-	P2PAddr string `json:"p2p"`
+	P2PAddr       string `json:"p2p"`
 	P2PListenAddr string `json:"p2p_listen"`
-	Key     []byte `json:"key"`
+	Key           []byte `json:"key"`
 
 	fileName string
 }
@@ -99,6 +100,10 @@ func main() {
 	}
 
 	wallet, _ := common.NewWalletFromPrivateKey(priK)
+
+	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
+	prefix := fmt.Sprintf("%x|--|", wallet.Address().ID()[0:2])
+	log.SetPrefix(prefix)
 
 	if cfg.DBDir == "" {
 		addr := wallet.Address()
