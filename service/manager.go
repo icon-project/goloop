@@ -96,23 +96,6 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 		nil
 }
 
-func (m *manager) ProposeGenesisTransition(parent module.Transition) (module.Transition, error) {
-	if pt, ok := parent.(*transition); ok {
-		ntx, err := NewTransactionFromJSON(m.chain.Genesis())
-		if err != nil {
-			log.Panicf("Failed to load genesis transaction")
-			return nil, err
-		}
-		t := newTransition(pt,
-			NewTransactionListFromSlice(m.db, nil),
-			NewTransactionListFromSlice(pt.db, []module.Transaction{ntx}),
-			newBlockInfo(0, 0), true)
-
-		return t, nil
-	}
-	return nil, common.ErrIllegalArgument
-}
-
 // CreateInitialTransition creates an initial Transition with result and
 // vs validators.
 func (m *manager) CreateInitialTransition(result []byte,

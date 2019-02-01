@@ -195,9 +195,6 @@ type ServiceManager interface {
 	// ProposeTransition proposes a Transition following the parent Transition.
 	// Returned Transition always passes validation.
 	ProposeTransition(parent Transition, bi BlockInfo) (Transition, error)
-	// ProposeGenesisTransition proposes a Transition for Genesis
-	// with transactions of Genesis.
-	ProposeGenesisTransition(parent Transition) (Transition, error)
 	// CreateInitialTransition creates an initial Transition.
 	CreateInitialTransition(result []byte, nextValidators ValidatorList) (Transition, error)
 	// CreateTransition creates a Transition following parent Transition.
