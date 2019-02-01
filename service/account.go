@@ -514,18 +514,15 @@ func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 		s.nextContract = new(contractImpl)
 		s.nextContract.reset(snapshot.nextContract)
 	}
-	if s.store == nil && snapshot.store == nil {
+	if snapshot.store == nil {
+		s.store = nil
 		return nil
 	}
 	if s.store == nil {
 		s.store = trie_manager.NewMutable(s.database, nil)
 	}
-	if snapshot.store == nil {
-		s.store = nil
-	} else {
-		if err := s.store.Reset(snapshot.store); err != nil {
-			log.Panicf("Fail to make accountStateImpl err=%v", err)
-		}
+	if err := s.store.Reset(snapshot.store); err != nil {
+		log.Panicf("Fail to make accountStateImpl err=%v", err)
 	}
 	return nil
 }
