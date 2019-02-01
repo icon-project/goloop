@@ -252,6 +252,19 @@ func (m *manager) _propose(
 	if bn == nil {
 		return nil, errors.Errorf("NoParentBlock(id=<%x>)", parentID)
 	}
+	var validators module.ValidatorList
+	if bn.block.Height() == 0 {
+		validators = nil
+	} else {
+		pprev, err := m.getBlock(bn.block.PrevID())
+		if err != nil {
+			logger.Panicf("cannot get prev prev block %x\n", bn.block.PrevID())
+		}
+		validators = pprev.NextValidators()
+	}
+	if err := votes.Verify(bn.block, validators); err != nil {
+		return nil, err
+	}
 	pt := &proposeTask{
 		task: task{
 			manager: m,
