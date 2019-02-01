@@ -19,14 +19,20 @@ Functions and classes in this module don't have any external dependencies.
 
 import hashlib
 import re
-from typing import Any, Union
+from typing import Union
 
 from ..icon_constant import BUILTIN_SCORE_ADDRESS_MAPPER
 
 
-def int_to_bytes(n: int) -> bytes:
-    length = byte_length_of_int(n)
-    return n.to_bytes(length, byteorder='big', signed=True)
+def int_to_bytes(v: int) -> bytes:
+    if v == 0:
+        return b''
+    n_bytes = ((v + (v < 0)).bit_length() + 8) // 8
+    return v.to_bytes(n_bytes, byteorder="big", signed=True)
+
+
+def bytes_to_int(v: bytes) -> int:
+    return int.from_bytes(v, "big", signed=True)
 
 
 def byte_length_of_int(n: int):

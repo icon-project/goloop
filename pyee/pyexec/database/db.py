@@ -18,6 +18,7 @@ from iconcommons.logger import Logger
 from ..base.exception import DatabaseException, InvalidParamsException
 from ..icon_constant import ICON_DB_LOG_TAG, IconScoreContextType, IconScoreFuncType
 from ..iconscore.icon_score_context import ContextGetter
+from ..utils import sha3_256
 
 if TYPE_CHECKING:
     from ..iconscore.icon_score_context import IconScoreContext
@@ -256,6 +257,10 @@ class IconScoreDatabase(ContextGetter):
                 self._observer.on_delete(self._context, key, old_value)
         self._context_db.put(self._context, hashed_key, value)
 
+    @property
+    def prefix(self) -> bytes:
+        return self._prefix
+
     def get_sub_db(self, prefix: bytes) -> 'IconScoreDatabase':
         """
         Returns sub db with a prefix
@@ -269,7 +274,7 @@ class IconScoreDatabase(ContextGetter):
                 'prefix is None in IconScoreDatabase.get_sub_db()')
 
         if self._prefix is not None:
-            prefix = b'|'.join([self._prefix, prefix])
+            prefix = b''.join([self._prefix, prefix])
 
         icon_score_database = IconScoreDatabase(
             self.address, self._context_db, prefix)
@@ -305,9 +310,6 @@ class IconScoreDatabase(ContextGetter):
         :params key: key passed by SCORE
         :return: key bytes
         """
-        data = [self.address.to_bytes()]
         if self._prefix is not None:
-            data.append(self._prefix)
-        data.append(key)
-
-        return b'|'.join(data)
+            key = self._prefix + key
+        return sha3_256(key)
