@@ -50,6 +50,9 @@ func (id *PartSetID) Equal(id2 *PartSetID) bool {
 }
 
 func (id *PartSetID) String() string {
+	if id == nil {
+		return "<nil>"
+	}
 	return fmt.Sprintf("PartSet(parts=%d,hash=%x)", id.Count, id.Hash)
 }
 
