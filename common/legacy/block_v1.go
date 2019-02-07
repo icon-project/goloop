@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
@@ -133,15 +132,15 @@ func (b *blockV1) PatchTransactions() module.TransactionList {
 	return nil
 }
 
-func (b *blockV1) Timestamp() time.Time {
-	return time.Time{}
+func (b *blockV1) Timestamp() int64 {
+	return int64(b.TimeStamp)
 }
 
 func (b *blockV1) Proposer() module.Address {
 	return nil
 }
 
-func (b *blockV1) LogBloom() []byte {
+func (b *blockV1) LogBloom() module.LogBloom {
 	return nil
 }
 
@@ -184,7 +183,6 @@ func ParseBlockV1(b []byte) (Block, error) {
 	for i, tx := range blk.Transactions {
 		trs[i] = tx.Transaction
 	}
-	//transactionList := service.NewTransactionListV1FromSlice(trs)
-	//return &blockV1{blk, transactionList}, nil
-	return nil, nil
+	transactionList := service.NewTransactionListV1FromSlice(trs)
+	return &blockV1{blk, transactionList}, nil
 }
