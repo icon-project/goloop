@@ -42,7 +42,7 @@ def main():
     parser.add_argument('-s', '--socket', dest='socket',
                         help='a UNIX domain socket address for connection')
     parser.add_argument('-u', '--uuid', dest='uuid', required=True,
-                        help='an UUID for this instance')
+                        help='a UUID for this instance')
     args = parser.parse_args()
 
     if args.socket:
