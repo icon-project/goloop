@@ -14,16 +14,16 @@ import (
 )
 
 type PeerToPeer struct {
-	channel         string
-	sendQueue       *WeightQueue
-	alternateQueue  *Queue
-	sendTicker      *time.Ticker
-	onPacketCbFuncs map[uint16]packetCbFunc
-	onErrorCbFuncs  map[uint16]errorCbFunc
-	onEventCbFuncs  map[string]map[uint16]eventCbFunc
-	packetPool      *PacketPool
-	packetRw        *PacketReadWriter
-	dialer          *Dialer
+	channel          string
+	sendQueue        *WeightQueue
+	alternateQueue   Queue
+	sendTicker       *time.Ticker
+	onPacketCbFuncs  map[uint16]packetCbFunc
+	onFailureCbFuncs map[uint16]failureCbFunc
+	onEventCbFuncs   map[string]map[uint16]eventCbFunc
+	packetPool       *PacketPool
+	packetRw         *PacketReadWriter
+	dialer           *Dialer
 
 	//Topology with Connected Peers
 	self       *Peer
@@ -59,6 +59,8 @@ type PeerToPeer struct {
 	log *logger
 }
 
+type failureCbFunc func(err error, pkt *Packet, c *Counter)
+
 type eventCbFunc func(evt string, p *Peer)
 
 const (
@@ -71,16 +73,16 @@ const (
 //can be crea`ted each channel
 func newPeerToPeer(channel string, self *Peer, d *Dialer) *PeerToPeer {
 	p2p := &PeerToPeer{
-		channel:         channel,
-		sendQueue:       NewWeightQueue(DefaultSendQueueSize, DefaultSendQueueMaxPriority+1),
-		alternateQueue:  NewQueue(DefaultSendQueueSize),
-		sendTicker:      time.NewTicker(DefaultAlternateSendPeriod),
-		onPacketCbFuncs: make(map[uint16]packetCbFunc),
-		onErrorCbFuncs:  make(map[uint16]errorCbFunc),
-		onEventCbFuncs:  make(map[string]map[uint16]eventCbFunc),
-		packetPool:      NewPacketPool(DefaultPacketPoolNumBucket, DefaultPacketPoolBucketLen),
-		packetRw:        NewPacketReadWriter(),
-		dialer:          d,
+		channel:          channel,
+		sendQueue:        NewWeightQueue(DefaultSendQueueSize, DefaultSendQueueMaxPriority+1),
+		alternateQueue:   NewQueue(DefaultSendQueueSize),
+		sendTicker:       time.NewTicker(DefaultAlternateSendPeriod),
+		onPacketCbFuncs:  make(map[uint16]packetCbFunc),
+		onFailureCbFuncs: make(map[uint16]failureCbFunc),
+		onEventCbFuncs:   make(map[string]map[uint16]eventCbFunc),
+		packetPool:       NewPacketPool(DefaultPacketPoolNumBucket, DefaultPacketPoolBucketLen),
+		packetRw:         NewPacketReadWriter(),
+		dialer:           d,
 		//
 		self:            self,
 		children:        NewPeerSet(),
@@ -128,6 +130,7 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer) *PeerToPeer {
 		//"onClose",
 		//"onEvent",
 		"onPacket",
+		//"onFailure",
 		"sendQuery",
 		"handleQuery",
 		"sendRtt",
@@ -160,13 +163,13 @@ func (p2p *PeerToPeer) dial(na NetAddress) error {
 }
 
 func (p2p *PeerToPeer) setCbFunc(pi module.ProtocolInfo, pktFunc packetCbFunc,
-	errFunc errorCbFunc, evtFunc eventCbFunc, evts ...string) {
+	failFunc failureCbFunc, evtFunc eventCbFunc, evts ...string) {
 	k := pi.Uint16()
 	if _, ok := p2p.onPacketCbFuncs[k]; ok {
 		p2p.log.Println("Warning", "overwrite packetCbFunc", pi)
 	}
 	p2p.onPacketCbFuncs[k] = pktFunc
-	p2p.onErrorCbFuncs[k] = errFunc
+	p2p.onFailureCbFuncs[k] = failFunc
 	for _, evt := range evts {
 		p2p.setEventCbFunc(evt, k, evtFunc)
 	}
@@ -188,7 +191,7 @@ func (p2p *PeerToPeer) onPeer(p *Peer) {
 		raddr := p.conn.RemoteAddr().String()
 		if raddr != string(p.netAddress) {
 			//TODO TBD p.CloseByError(fmt.Errorf("mismatch address"))
-			p2p.log.Println("Warning","onPeer mismatch address:", raddr, "expected:",p.netAddress)//p.netAddress
+			p2p.log.Println("Warning", "onPeer mismatch address:", raddr, "expected:", p.netAddress) //p.netAddress
 		}
 	}
 	if !p2p.allowedPeers.IsEmpty() && !p2p.allowedPeers.Contains(p.id) {
@@ -218,8 +221,6 @@ func (p2p *PeerToPeer) onPeer(p *Peer) {
 func (p2p *PeerToPeer) onError(err error, p *Peer, pkt *Packet) {
 	p2p.log.Println("Warning", "onError", err, p, pkt)
 
-	p.CloseByError(err)
-
 	//Peer.receiveRoutine
 	//// bufio.Reader.Read error except {net.OpError, io.EOF, io.ErrUnexpectedEOF}
 	//Peer.sendRoutine
@@ -227,11 +228,10 @@ func (p2p *PeerToPeer) onError(err error, p *Peer, pkt *Packet) {
 	//// bufio.Writer.Write error
 	//// bufio.Writer.Flush error
 
-	if pkt != nil {
-		if cbFunc, ok := p2p.onErrorCbFuncs[pkt.protocol.Uint16()]; ok {
-			cbFunc(err, p, pkt)
-		}
-	}
+	//if p.isTemporaryError(err) {p.onError(err)}
+	//else {p.CloseByError(err)}
+
+	//if pkt == nil //readError
 }
 
 func (p2p *PeerToPeer) onClose(p *Peer) {
@@ -242,8 +242,9 @@ func (p2p *PeerToPeer) onClose(p *Peer) {
 		for ctx := p.q.Pop(); ctx != nil; ctx = p.q.Pop() {
 			c := ctx.Value(p2pContextKeyCounter).(*Counter)
 			c.close++
-			if c.close == c.enqueue {
-				//TODO onFailure ErrNotAvailable
+			if c.fixed && c.close == c.enqueue {
+				pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
+				p2p.onFailure(ErrNotAvailable, pkt, c)
 			}
 		}
 	}
@@ -255,6 +256,13 @@ func (p2p *PeerToPeer) onEvent(evt string, p *Peer) {
 		for _, cbFunc := range m {
 			cbFunc(evt, p)
 		}
+	}
+}
+
+func (p2p *PeerToPeer) onFailure(err error, pkt *Packet, c *Counter) {
+	p2p.log.Println("onFailure", err, pkt, c)
+	if cbFunc, ok := p2p.onFailureCbFuncs[pkt.protocol.Uint16()]; ok {
+		cbFunc(err, pkt, c)
 	}
 }
 
@@ -313,19 +321,33 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 			}
 		}
 	} else {
-		if pkt.ttl == 1 && !p.id.Equal(pkt.src) {
-			p2p.log.Println("Warning", "onPacket", "Drop, Invalid 1hop-src:", pkt.src, ",expected:", p.id, pkt.protocol, pkt.subProtocol)
-		} else if p2p.self.id.Equal(pkt.src) {
+		if p.connType == p2pConnTypeNone {
+			p2p.log.Println("Warning", "onPacket", "Drop, undetermined PeerConnectionType", pkt.protocol, pkt.subProtocol)
+			return
+		}
+
+		if p2p.self.id.Equal(pkt.src) {
 			p2p.log.Println("Warning", "onPacket", "Drop, Invalid self-src", pkt.src, pkt.protocol, pkt.subProtocol)
-		} else if cbFunc := p2p.onPacketCbFuncs[pkt.protocol.Uint16()]; cbFunc != nil {
-			if p.connType == p2pConnTypeNone {
-				//TODO drop from p.connType == p2pConnTypeNone
-				p2p.log.Println("Warning", "onPacket", "undetermined PeerConnectionType", pkt.protocol, pkt.subProtocol)
-			}
-			if pkt.ttl == 1 || p2p.packetPool.Put(pkt) {
+			return
+		}
+
+		isSourcePeer := p.id.Equal(pkt.src)
+		isOneHop := pkt.ttl == 1 || pkt.dest == p2pDestPeer
+		if isOneHop && !isSourcePeer {
+			p2p.log.Println("Warning", "onPacket", "Drop, Invalid 1hop-src:", pkt.src, ",expected:", p.id, pkt.protocol, pkt.subProtocol)
+			return
+		}
+
+		isBroadcast := pkt.dest == p2pDestAny && pkt.ttl != 1
+		if isBroadcast && isSourcePeer && !p.compareRole(p2pRoleRoot, false) {
+			p2p.log.Println("Warning", "onPacket", "Drop, Not authorized", p.id, pkt.protocol, pkt.subProtocol)
+			return
+		}
+
+		if cbFunc := p2p.onPacketCbFuncs[pkt.protocol.Uint16()]; cbFunc != nil {
+			if isOneHop || p2p.packetPool.Put(pkt) {
 				cbFunc(pkt, p)
 			} else {
-				//TODO drop counting each (protocol,subProtocol)
 				p2p.log.Println("onPacket", "Drop, Duplicated by hash", pkt.protocol, pkt.subProtocol, pkt.hashOfPacket, p.id)
 			}
 		}
@@ -434,8 +456,8 @@ func (p2p *PeerToPeer) getRole() PeerRoleFlag {
 
 func (p2p *PeerToPeer) sendQuery(p *Peer) {
 	m := &QueryMessage{Role: p2p.getRole()}
-	pkt := newPacket(PROTO_P2P_QUERY, p2p.encodeMsgpack(m))
-	pkt.src = p2p.self.id
+	pkt := newPacket(PROTO_P2P_QUERY, p2p.encodeMsgpack(m), p2p.self.id)
+	pkt.destPeer = p.id
 	err := p.sendPacket(pkt)
 	if err != nil {
 		p2p.log.Println("Warning", "sendQuery", err, p)
@@ -461,29 +483,22 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 		m.Seeds = p2p.seeds.Array()
 		m.Children = p2p.children.NetAddresses()
 		m.Nephews = p2p.nephews.NetAddresses()
-		if qm.Role == p2pRoleNone {
-			switch m.Role {
-			case p2pRoleSeed:
-			case p2pRoleRoot:
-				//TODO hiding Root role
+		if qm.Role.Has(p2pRoleSeed) || qm.Role.Has(p2pRoleRoot) {
+			m.Roots = p2p.roots.Array()
+		} else {
+			if m.Role.Has(p2pRoleRoot) && !m.Role.Has(p2pRoleSeed) {
 				p2p.log.Println("Warning", "handleQuery", "p2pRoleNone cannot query to p2pRoleRoot", p)
 				m.Message = "not allowed to query"
 				m.Seeds = nil
 				m.Children = nil
 				m.Nephews = nil
-				//p.Close()
-			case p2pRoleRootSeed:
-				//TODO hiding RootSeed role
-				m.Role = p2pRoleSeed
 			}
-		} else {
-			m.Roots = p2p.roots.Array()
 		}
 	} else {
 		m.Message = "not exists allowedlist"
 	}
-	rpkt := newPacket(PROTO_P2P_QUERY_RESULT, p2p.encodeMsgpack(m))
-	rpkt.src = p2p.self.id
+	rpkt := newPacket(PROTO_P2P_QUERY_RESULT, p2p.encodeMsgpack(m), p2p.self.id)
+	rpkt.destPeer = p.id
 	err = p.sendPacket(rpkt)
 	if err != nil {
 		p2p.log.Println("Warning", "handleQuery", "sendQueryResult", err, p)
@@ -508,24 +523,11 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 	if p2p.isAllowedRole(qrm.Role, p) {
 		p.setRole(qrm.Role)
 		p2p.applyPeerRole(p)
-		if role == p2pRoleNone {
-			switch qrm.Role {
-			case p2pRoleNone:
-				//TODO p2p.preParent.Merge(qrm.Children)
-			case p2pRoleSeed:
-				p2p.seeds.Merge(qrm.Seeds...)
-			case p2pRoleRoot:
-				p2p.log.Println("Warning", "handleQueryResult", "p2pRoleNone cannot query to p2pRoleRoot", p)
-				p.CloseByError(errors.New("handleQueryResult p2pRoleNone cannot query to p2pRoleRoot"))
-				return
-			case p2pRoleRootSeed:
-				//TODO hiding RootSeed role
-				p2p.seeds.Merge(qrm.Seeds...)
-			default:
-			}
-		} else {
+		if role.Has(p2pRoleSeed) || role.Has(p2pRoleRoot) {
 			p2p.seeds.Merge(qrm.Seeds...)
 			p2p.roots.Merge(qrm.Roots...)
+		} else {
+			p2p.seeds.Merge(qrm.Seeds...)
 		}
 	} else {
 		p2p.log.Println("handleQueryResult", "not exists allowedlist", p)
@@ -534,8 +536,8 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 	}
 
 	m := &RttMessage{Last: p.rtt.last, Average: p.rtt.avg}
-	rpkt := newPacket(PROTO_P2P_RTT_REQ, p2p.encodeMsgpack(m))
-	rpkt.src = p2p.self.id
+	rpkt := newPacket(PROTO_P2P_RTT_REQ, p2p.encodeMsgpack(m), p2p.self.id)
+	rpkt.destPeer = p.id
 	err = p.sendPacket(rpkt)
 	if err != nil {
 		p2p.log.Println("Warning", "handleQueryResult", "sendRttRequest", err, p)
@@ -561,8 +563,8 @@ func (p2p *PeerToPeer) handleRttRequest(pkt *Packet, p *Peer) {
 	}
 
 	m := &RttMessage{Last: p.rtt.last, Average: p.rtt.avg}
-	rpkt := newPacket(PROTO_P2P_RTT_RESP, p2p.encodeMsgpack(m))
-	rpkt.src = p2p.self.id
+	rpkt := newPacket(PROTO_P2P_RTT_RESP, p2p.encodeMsgpack(m), p2p.self.id)
+	rpkt.destPeer = p.id
 	err = p.sendPacket(rpkt)
 	if err != nil {
 		p2p.log.Println("Warning", "handleRttRequest", "sendRttResponse", err, p)
@@ -613,9 +615,6 @@ func (p2p *PeerToPeer) sendRoutine() {
 			pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
 			c := ctx.Value(p2pContextKeyCounter).(*Counter)
 			p2p.log.Println("sendRoutine", pkt)
-			if pkt.src == nil {
-				pkt.src = p2p.self.id
-			}
 			// p2p.packetRw.WritePacket(pkt)
 			r := p2p.getRole()
 			switch pkt.dest {
@@ -661,13 +660,17 @@ func (p2p *PeerToPeer) sendRoutine() {
 			}
 
 			if c.alternate < 1 {
+				c.fixed = true
 				if c.peer < 1 {
-					//TODO onFailure ErrNotAvailable
+					p2p.onFailure(ErrNotAvailable, pkt, c)
 				} else if c.enqueue < 1 {
-					//TODO onFailure ErrQueueOverflow
+					p2p.onFailure(ErrQueueOverflow, pkt, c)
+				} else if c.enqueue == c.close {
+					p2p.onFailure(ErrNotAvailable, pkt, c)
 				}
 			} else if !p2p.alternateQueue.Push(ctx) && c.enqueue < 1 {
-				//TODO onFailure ErrQueueOverflow
+				c.fixed = true
+				p2p.onFailure(ErrQueueOverflow, pkt, c)
 			}
 		}
 	}
@@ -684,6 +687,11 @@ func (p2p *PeerToPeer) alternateSendRoutine() {
 					break
 				}
 				pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
+				if preCtx, ok := m[pkt.hashOfPacket]; ok {
+					c := preCtx.Value(p2pContextKeyCounter).(*Counter)
+					c.fixed = true
+					p2p.log.Println("Warning", "alternateSendRoutine", "ignore duplicated packet", pkt)
+				}
 				m[pkt.hashOfPacket] = ctx
 			}
 		case <-p2p.sendTicker.C:
@@ -711,19 +719,38 @@ func (p2p *PeerToPeer) alternateSendRoutine() {
 					}
 				default: //p2pDestPeerGroup < dest < p2pDestPeer
 				}
-				if c.peer < 1 {
-					//TODO onFailure ErrNotAvailable
-				} else if c.enqueue < 1 {
-					//TODO onFailure ErrQueueOverflow
-				}
 				delete(m, pkt.hashOfPacket)
+
+				c.fixed = true
+				if c.peer < 1 {
+					p2p.onFailure(ErrNotAvailable, pkt, c)
+				} else if c.enqueue < 1 {
+					p2p.onFailure(ErrQueueOverflow, pkt, c)
+				} else if c.enqueue == c.close {
+					p2p.onFailure(ErrNotAvailable, pkt, c)
+				}
 			}
 		}
 	}
 }
 
 func (p2p *PeerToPeer) send(pkt *Packet) error {
+	if pkt.src == nil {
+		pkt.src = p2p.self.id
+	}
+
+	if pkt.dest == p2pDestAny && pkt.ttl != 1 &&
+		p2p.self.id.Equal(pkt.src) &&
+		!p2p.self.compareRole(p2pRoleRoot, false) {
+		//BROADCAST_ALL && not relay && not has p2pRoleRoot
+		return ErrNotAuthorized
+	}
+
 	if !p2p.available(pkt) {
+		if pkt.dest == p2pDestAny && pkt.ttl != 1 &&
+			p2p.self.compareRole(p2pRoleNone, true) {
+			return nil
+		}
 		//p2p.log.Println("Warning", "send", "Not Available", pkt.dest, pkt.protocol, pkt.subProtocol)
 		return ErrNotAvailable
 	}
@@ -748,14 +775,22 @@ var (
 	p2pContextKeyDone    = p2pContextKey("done")
 )
 
+//TODO data-race mutex
 type Counter struct {
 	peer      int
 	alternate int
-	enqueue   int
+	fixed     bool
 	//
+	enqueue   int
 	duplicate int
 	overflow  int
+	//
 	close     int
+}
+
+func (c *Counter) String() string {
+	return fmt.Sprintf("{peer:%d,alt:%d,enQ:%d,dup:%d,of:%d,close:%d}",
+		c.peer, c.alternate, c.enqueue, c.duplicate, c.overflow, c.close)
 }
 
 func (p2p *PeerToPeer) getPeer(id module.PeerID, onlyJoin bool) *Peer {
@@ -864,7 +899,7 @@ func (p2p *PeerToPeer) available(pkt *Packet) bool {
 		}
 	//case p2pRoleSeed:
 	default: //p2pDestPeerGroup < dest < p2pDestPeer
-		//TODO multicast Routing or Flooding
+		//TODO using route table
 		if j < 1 {
 			return false
 		}
@@ -1190,8 +1225,8 @@ type P2PConnectionResponse struct {
 
 func (p2p *PeerToPeer) sendP2PConnectionRequest(connType PeerConnectionType, p *Peer) {
 	m := &P2PConnectionRequest{ConnType: connType}
-	pkt := newPacket(PROTO_P2P_CONN_REQ, p2p.encodeMsgpack(m))
-	pkt.src = p2p.self.id
+	pkt := newPacket(PROTO_P2P_CONN_REQ, p2p.encodeMsgpack(m), p2p.self.id)
+	pkt.destPeer = p.id
 	err := p.sendPacket(pkt)
 	if err != nil {
 		p2p.log.Println("Warning", "sendP2PConnectionRequest", err, p)
@@ -1233,8 +1268,8 @@ func (p2p *PeerToPeer) handleP2PConnectionRequest(pkt *Packet, p *Peer) {
 	m.ReqConnType = req.ConnType
 	m.ConnType = p.connType
 
-	rpkt := newPacket(PROTO_P2P_CONN_RESP, p2p.encodeMsgpack(m))
-	rpkt.src = p2p.self.id
+	rpkt := newPacket(PROTO_P2P_CONN_RESP, p2p.encodeMsgpack(m), p2p.self.id)
+	rpkt.destPeer = p.id
 	err = p.sendPacket(rpkt)
 	if err != nil {
 		p2p.log.Println("Warning", "handleP2PConnectionRequest", "sendP2PConnectionResponse", err, p)

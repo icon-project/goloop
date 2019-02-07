@@ -54,7 +54,6 @@ type closeCbFunc func(p *Peer)
 //TODO define netAddress as IP:Port
 type NetAddress string
 
-//TODO define PeerRTT,
 type PeerRTT struct {
 	last time.Duration
 	avg  time.Duration
@@ -108,7 +107,6 @@ const (
 )
 
 //PeerRoleFlag as BitFlag MSB[_,_,_,_,_,_,Root,Seed]LSB
-//TODO remove p2pRoleRootSeed
 type PeerRoleFlag byte
 
 func (pr *PeerRoleFlag) Has(o PeerRoleFlag) bool {
@@ -238,8 +236,8 @@ func (p *Peer) _close(err error) {
 		if err != nil && !p.isCloseError(err) {
 			log.Printf("Warning Peer[%s].Close by error %+v", p.ConnString(), err)
 		}
-		p.onClose(p)
 		close(p.close)
+		p.onClose(p)
 	}
 }
 
@@ -279,7 +277,7 @@ func (p *Peer) CloseInfo() string {
 func (p *Peer) _recover() interface{} {
 	if err := recover(); err != nil {
 		log.Printf("Warning Peer[%s]._recover from %+v", p.ConnString(), err)
-		p._close(fmt.Errorf("_recover from %+v", err))
+		p.CloseByError(fmt.Errorf("_recover from %+v", err))
 		return err
 	}
 	return nil
@@ -308,10 +306,8 @@ func (p *Peer) isTemporaryError(err error) bool {
 		// 	log.Printf("Peer.isTemporaryError *os.SyscallError %+v %#v %#v %s", se, se.Err, se.Err, p.String())
 		// }
 		return oe.Temporary()
-	} else if err == io.EOF || err == io.ErrUnexpectedEOF { //half Close (recieved tcp close)
-		return false
 	}
-	return true
+	return false
 }
 
 //receive from bufio.Reader, unmarshalling and peerToPeer.onPacket
@@ -320,7 +316,6 @@ func (p *Peer) receiveRoutine() {
 		if err := p._recover(); err == nil {
 			p.Close("receiveRoutine finish")
 		}
-		// log.Println("Peer.receiveRoutine finish", p.String())
 	}()
 	for {
 		pkt, h, err := p.reader.ReadPacket()
@@ -331,12 +326,11 @@ func (p *Peer) receiveRoutine() {
 				p.CloseByError(err)
 				return
 			}
-			//TODO p.reader.Reset()
 			p.onError(err, p, pkt)
 			continue
 		}
 		if pkt.hashOfPacket != h.Sum64() {
-			log.Println(p.id, "Peer", "receiveRoutine", "Drop, Invalid hash:", pkt.hashOfPacket, ",expected:", h.Sum64(), pkt.protocol, pkt.subProtocol)
+			log.Printf("Warning Peer[%s] receiveRoutine Drop, Invalid hash:%x, expected:%x, %s", p.ConnString(), pkt.hashOfPacket, h.Sum64(), pkt.String())
 			continue
 		} else {
 			pkt.sender = p.id
@@ -392,12 +386,13 @@ Loop:
 
 				if err := p.sendDirect(pkt); err != nil {
 					r := p.isTemporaryError(err)
-					// log.Printf("Peer.sendRoutine Error isTemporary:{%v} error:{%+v} peer:%s", r, err, p.String())
+					//log.Printf("Peer.sendRoutine Error isTemporary:{%v} error:{%+v} peer:%s", r, err, p.String())
 					if !r {
+						//c := ctx.Value(p2pContextKeyCounter).(*Counter)
+						//log.Printf("Peer.sendRoutine Error isTemporary:{%v} error:{%+v} peer:%s counter:%s", r, err, p.String(), c.String())
 						p.CloseByError(err)
 						return
 					}
-					//TODO p.writer.Reset()
 					p.onError(err, p, pkt)
 				}
 				//log.Println(p.id, "Peer", "sendRoutine",p.connType, p.ConnString(), pkt)

@@ -97,7 +97,7 @@ func (m *manager) RegisterReactor(name string, r module.Reactor, spiList []modul
 	//TODO protocolInfo management
 	pi := newProtocolInfo(byte(len(m.protocolHandlers))+1, 0)
 	ph := newProtocolHandler(m, pi, spiList, r, name, priority)
-	m.p2p.setCbFunc(pi, ph.onPacket, ph.onError, ph.onEvent, p2pEventJoin, p2pEventLeave, p2pEventDuplicate)
+	m.p2p.setCbFunc(pi, ph.onPacket, ph.onFailure, ph.onEvent, p2pEventJoin, p2pEventLeave, p2pEventDuplicate)
 
 	m.protocolHandlers[name] = ph
 	m.priority[pi] = priority
@@ -123,7 +123,6 @@ func (m *manager) multicast(pi protocolInfo, spi protocolInfo, bytes []byte, rol
 	if _, ok := m.roles[role]; !ok {
 		return ErrNotRegisteredRole
 	}
-	//TODO Check authority
 	pkt := NewPacket(pi, spi, bytes)
 	pkt.dest = m.destByRole[role]
 	pkt.priority = m.priority[pi]
@@ -132,30 +131,19 @@ func (m *manager) multicast(pi protocolInfo, spi protocolInfo, bytes []byte, rol
 
 //ProposeMessage,PrecommitMessage,BlockMessage, Send to Citizen
 func (m *manager) broadcast(pi protocolInfo, spi protocolInfo, bytes []byte, broadcastType module.BroadcastType) error {
-	//TODO Check authority
 	pkt := NewPacket(pi, spi, bytes)
 	pkt.dest = p2pDestAny
 	pkt.ttl = byte(broadcastType)
 	pkt.priority = m.priority[pi]
-	err := m.p2p.send(pkt)
-	if err == ErrNotAvailable && pkt.dest == p2pDestAny &&
-		pkt.ttl != 1 && m.p2p.self.compareRole(p2pRoleNone, true) {
-		err = nil
-	}
-	return err
+	return m.p2p.send(pkt)
 }
 
 func (m *manager) relay(pkt *Packet) error {
-	//TODO Check authority
-	if pkt.ttl == 1 {
+	if pkt.ttl == 1 || pkt.dest == p2pDestPeer {
 		return errors.New("not allowed relay")
 	}
 	pkt.priority = m.priority[pkt.protocol]
-	err := m.p2p.send(pkt)
-	if err == ErrNotAvailable && pkt.dest == p2pDestAny && m.p2p.self.compareRole(p2pRoleNone, true) {
-		err = nil
-	}
-	return err
+	return m.p2p.send(pkt)
 }
 
 func (m *manager) getRolePeerIDSet(role module.Role) *PeerIDSet {

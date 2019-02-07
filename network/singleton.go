@@ -16,6 +16,7 @@ var (
 	ErrAlreadyRegisteredProtocol = errors.New("already registered protocol")
 	ErrNotRegisteredProtocol     = errors.New("not registered protocol")
 	ErrNotRegisteredRole         = errors.New("not registered role")
+	ErrNotAuthorized             = errors.New("not authorized")
 	ErrNotAvailable              = errors.New("not available")
 	ErrQueueOverflow             = errors.New("queue overflow")
 	ErrDuplicatedPacket          = errors.New("duplicated Packet")
@@ -50,6 +51,7 @@ const (
 	DefaultSendQueueMaxPriority = 7
 	DefaultSendQueueSize        = 1000
 	DefaultEventQueueSize       = 100
+	DefaultFailureQueueSize     = 100
 	DefaultPeerSendQueueSize    = 1000
 	DefaultPeerPoolExpireSecond = 5
 	DefaultUncleLimit           = 2

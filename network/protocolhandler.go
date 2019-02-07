@@ -14,8 +14,9 @@ type protocolHandler struct {
 	reactor      module.Reactor
 	name         string
 	priority     uint8
-	receiveQueue *Queue
-	eventQueue   *Queue
+	receiveQueue Queue
+	eventQueue   Queue
+	failureQueue Queue
 	//log
 	log *logger
 }
@@ -30,18 +31,29 @@ func newProtocolHandler(m *manager, pi protocolInfo, spiList []module.ProtocolIn
 		priority:     priority,
 		receiveQueue: NewQueue(DefaultReceiveQueueSize),
 		eventQueue:   NewQueue(DefaultEventQueueSize),
+		failureQueue: NewQueue(DefaultFailureQueueSize),
 		log:          newLogger("ProtocolHandler", fmt.Sprintf("%s.%s.%s", m.Channel(), m.PeerID(), name)),
 	}
 	for _, sp := range spiList {
 		k := protocolInfo(sp.Uint16())
 		ph.subProtocols[k] = sp
 	}
+
+	ph.log.excludes = []string{
+		"onEvent",
+		//"onFailure",
+		"onPacket",
+		"Unicast",
+		"Multicast",
+		"Broadcast",
+	}
+
 	go ph.receiveRoutine()
 	go ph.eventRoutine()
+	go ph.failureRoutine()
 	return ph
 }
 
-//TODO using worker pattern {pool or each packet or none} for reactor
 func (ph *protocolHandler) receiveRoutine() {
 	for {
 		<-ph.receiveQueue.Wait()
@@ -70,33 +82,70 @@ func (ph *protocolHandler) receiveRoutine() {
 
 //callback from PeerToPeer.onPacket() in Peer.onReceiveRoutine
 func (ph *protocolHandler) onPacket(pkt *Packet, p *Peer) {
-	// ph.log.Println("onPacket", pkt)
-	//TODO Check authority
+	ph.log.Println("onPacket", pkt, p)
+
 	k := pkt.subProtocol
 	if _, ok := ph.subProtocols[k]; ok {
 		ctx := context.WithValue(context.Background(), p2pContextKeyPacket, pkt)
 		ctx = context.WithValue(ctx, p2pContextKeyPeer, p)
 		if ok := ph.receiveQueue.Push(ctx); !ok {
-			// ph.log.Println("onPacket", "receiveQueue Push failure", ph.name, pkt.protocol, pkt.subProtocol, p.ID())
+			ph.log.Println("Warning", "onPacket", "receiveQueue Push failure", ph.name, pkt.protocol, pkt.subProtocol, p.ID())
 		}
 	}
 }
 
-func (ph *protocolHandler) onError(err error, p *Peer, pkt *Packet) {
-	ph.log.Println("onError", err, p, pkt)
-	if err != nil {
-		k := pkt.subProtocol
-		if pi, ok := ph.subProtocols[k]; ok {
-			var b []byte = nil
-			var id module.PeerID = nil
-			if pkt != nil {
-				b = pkt.payload
+func (ph *protocolHandler) failureRoutine() {
+	for {
+		<-ph.failureQueue.Wait()
+		for {
+			ctx := ph.failureQueue.Pop()
+			if ctx == nil {
+				break
 			}
-			if p != nil {
-				id = p.ID()
+			err := ctx.Value(p2pContextKeyError).(error)
+			pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
+			//c := ctx.Value(p2pContextKeyCounter).(*Counter)
+
+			k := pkt.subProtocol
+			if pi, ok := ph.subProtocols[k]; ok {
+				//var arg interface{}
+				//switch pkt.dest {
+				//case p2pDestPeer:
+				//	//module.PeerID
+				//	arg = pkt.destPeer
+				//case p2pDestAny:
+				//	//module.BroadcastType
+				//	if pkt.ttl == 1 {
+				//		arg = module.BROADCAST_NEIGHBOR
+				//	} else {
+				//		arg = module.BROADCAST_ALL
+				//	}
+				//case p2pRoleRoot:
+				//	//module.Role
+				//	arg = module.ROLE_VALIDATOR
+				//case p2pRoleSeed:
+				//	//module.Role
+				//	arg = module.ROLE_SEED
+				//default: //p2pDestPeerGroup < dest < p2pDestPeer
+				//}
+				//
+				//if pkt.sender != nil {
+				//	//Relay
+				//}
+
+				ph.reactor.OnError(NewNetworkError(err), pi, pkt.payload, nil)
 			}
-			ph.reactor.OnError(err, pi, b, id)
 		}
+	}
+}
+
+func (ph *protocolHandler) onFailure(err error, pkt *Packet, c *Counter) {
+	ph.log.Println("onFailure", err, pkt, c)
+	ctx := context.WithValue(context.Background(), p2pContextKeyError, err)
+	ctx = context.WithValue(ctx, p2pContextKeyPacket, pkt)
+	ctx = context.WithValue(ctx, p2pContextKeyCounter, c)
+	if ok := ph.failureQueue.Push(ctx); !ok {
+		ph.log.Println("Warning", "onFailure", "failureQueue Push failure", pkt)
 	}
 }
 
@@ -123,13 +172,12 @@ func (ph *protocolHandler) eventRoutine() {
 	}
 }
 
-//TODO check case p2p.onEvent
 func (ph *protocolHandler) onEvent(evt string, p *Peer) {
-	// ph.log.Println("onEvent", evt, p)
+	ph.log.Println("onEvent", evt, p)
 	ctx := context.WithValue(context.Background(), p2pContextKeyEvent, evt)
 	ctx = context.WithValue(ctx, p2pContextKeyPeer, p)
 	if ok := ph.eventQueue.Push(ctx); !ok {
-		// ph.log.Println("onEvent", "eventQueue Push failure", evt, p.ID())
+		ph.log.Println("Warning", "onEvent", "eventQueue Push failure", evt, p.ID())
 	}
 }
 
@@ -138,6 +186,7 @@ func (ph *protocolHandler) Unicast(pi module.ProtocolInfo, b []byte, id module.P
 	if _, ok := ph.subProtocols[spi]; !ok {
 		return ErrNotRegisteredProtocol
 	}
+	ph.log.Println("Unicast", pi, len(b), id)
 	return ph.m.unicast(ph.protocol, spi, b, id)
 }
 
@@ -147,6 +196,7 @@ func (ph *protocolHandler) Multicast(pi module.ProtocolInfo, b []byte, role modu
 	if _, ok := ph.subProtocols[spi]; !ok {
 		return ErrNotRegisteredProtocol
 	}
+	ph.log.Println("Multicast", pi, len(b), role)
 	return ph.m.multicast(ph.protocol, spi, b, role)
 }
 
@@ -156,5 +206,6 @@ func (ph *protocolHandler) Broadcast(pi module.ProtocolInfo, b []byte, bt module
 	if _, ok := ph.subProtocols[spi]; !ok {
 		return ErrNotRegisteredProtocol
 	}
+	ph.log.Println("Broadcast", pi, len(b), bt)
 	return ph.m.broadcast(ph.protocol, spi, b, bt)
 }

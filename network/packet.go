@@ -53,19 +53,23 @@ func NewPacket(pi protocolInfo, spi protocolInfo, payload []byte) *Packet {
 	}
 }
 
-func newPacket(spi protocolInfo, payload []byte) *Packet {
-	return NewPacket(PROTO_CONTOL, spi, payload)
+func newPacket(spi protocolInfo, payload []byte, src module.PeerID) *Packet {
+	pkt := NewPacket(PROTO_CONTOL, spi, payload)
+	pkt.dest = p2pDestPeer
+	pkt.src = src
+	return pkt
 }
 
 func (p *Packet) String() string {
-	return fmt.Sprintf("{pi:%#04x,subPi:%#04x,src:%v,dest:%#x,ttl:%d,len:%v,hash:%#x}",
+	return fmt.Sprintf("{pi:%#04x,subPi:%#04x,src:%v,dest:%#x,ttl:%d,len:%v,hash:%#x,sender:%v}",
 		p.protocol.Uint16(),
 		p.subProtocol.Uint16(),
 		p.src,
 		p.dest,
 		p.ttl,
 		p.lengthOfpayload,
-		p.hashOfPacket)
+		p.hashOfPacket,
+		p.sender)
 }
 
 type PacketReader struct {

@@ -242,11 +242,11 @@ func (ph *peerHandler) setSelfPeerID(id module.PeerID) {
 }
 
 func (ph *peerHandler) sendMessage(pi protocolInfo, m interface{}, p *Peer) {
-	pkt := newPacket(pi, ph.encode(m))
-	pkt.src = ph.self
+	pkt := newPacket(pi, ph.encode(m), ph.self)
 	err := p.sendDirect(pkt)
 	if err != nil {
 		ph.log.Println("Warning", "sendMessage", err)
+		p.CloseByError(err)
 	} else {
 		ph.log.Println("sendMessage", m, p)
 	}

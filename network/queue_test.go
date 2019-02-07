@@ -22,7 +22,7 @@ func generateOnReceiveContext(s string, i int) context.Context {
 func Test_queue(t *testing.T) {
 	q := NewQueue(10)
 	ticker := time.NewTicker(100 * time.Millisecond)
-	go func(q *Queue) {
+	go func(q Queue) {
 		for i := 0; i < 11; i++ {
 			ctx := context.WithValue(context.Background(), "i", i)
 			r := q.Push(ctx)
@@ -141,7 +141,7 @@ func Test_queue_PriorityQueue(t *testing.T) {
 	go func(q *PriorityQueue, n int, p uint8) {
 		for i := 0; i < n; i++ {
 			ctx := context.WithValue(context.Background(), "i", i)
-			ctx = context.WithValue(ctx, "p", p)
+			ctx = context.WithValue(ctx, "p", int(p))
 			r := q.Push(ctx, p)
 			log.Println("push p:", p, "i:", i, "r:", r)
 		}
@@ -229,7 +229,7 @@ func Test_queue_OnReceiveQueue(t *testing.T) {
 	var wg sync.WaitGroup
 	for i := 0; i < workerSize; i++ {
 		wg.Add(1)
-		go func(i int, q *Queue, ch chan<- context.Context) {
+		go func(i int, q Queue, ch chan<- context.Context) {
 			log.Println(i, "Queue.Wait")
 			for {
 				select {
@@ -281,7 +281,7 @@ func Benchmark_queue_OnReceiveQueue(b *testing.B) {
 
 	pushAndPop := true
 	if !pushAndPop {
-		go func(q *Queue, n int) {
+		go func(q Queue, n int) {
 			var t = 0
 			for {
 				<-q.Wait()

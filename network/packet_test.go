@@ -22,11 +22,10 @@ func generatePacket(b []byte, len int) *Packet {
 			b = b[:len]
 		}
 	}
-	return newPacket(protocolInfo(0x0000), b)
+	return newPacket(protocolInfo(0x0000), b, nil)
 }
 
 func Test_packet_PacketReader(t *testing.T) {
-	//TODO test with TCPConn
 	b := bytes.NewBuffer(make([]byte, DefaultPacketBufferSize))
 	b.Reset()
 	pr := NewPacketReader(b)
@@ -55,8 +54,7 @@ func Test_packet_PacketReader(t *testing.T) {
 
 func Test_packet_PacketReadWriter(t *testing.T) {
 	prw := NewPacketReadWriter()
-	pkt := newPacket(protocolInfo(0), []byte("test"))
-	pkt.src = generatePeerID()
+	pkt := newPacket(protocolInfo(0), []byte("test"), generatePeerID())
 	assert.NoError(t, prw.WritePacket(pkt), "WritePacket fail")
 	rpkt, err := prw.ReadPacket()
 	assert.NoError(t, err, "ReadPacket fail")

@@ -7,7 +7,17 @@ import (
 	"github.com/go-errors/errors"
 )
 
-type Queue struct {
+type Queue interface {
+	Push(ctx context.Context) bool
+	Pop() context.Context
+	Wait() <-chan bool
+	Clear()
+	Available() int
+	IsEmpty() bool
+	Size() int
+}
+
+type queue struct {
 	buf     []context.Context
 	w       int
 	r       int
@@ -18,11 +28,11 @@ type Queue struct {
 	mtxWait sync.Mutex
 }
 
-func NewQueue(size int) *Queue {
+func NewQueue(size int) Queue {
 	if size < 1 {
 		panic("queue size must be greater than zero")
 	}
-	q := &Queue{
+	q := &queue{
 		buf:  make([]context.Context, size+1),
 		w:    0,
 		r:    0,
@@ -33,7 +43,7 @@ func NewQueue(size int) *Queue {
 	return q
 }
 
-func (q *Queue) Push(ctx context.Context) bool {
+func (q *queue) Push(ctx context.Context) bool {
 	defer q.mtx.Unlock()
 	q.mtx.Lock()
 	if ctx == nil {
@@ -55,7 +65,7 @@ func (q *Queue) Push(ctx context.Context) bool {
 	return true
 }
 
-func (q *Queue) Pop() context.Context {
+func (q *queue) Pop() context.Context {
 	defer q.mtx.Unlock()
 	q.mtx.Lock()
 
@@ -72,14 +82,14 @@ func (q *Queue) Pop() context.Context {
 	return ctx
 }
 
-func (q *Queue) _wait() chan bool {
+func (q *queue) _wait() chan bool {
 	defer q.mtxWait.Unlock()
 	q.mtxWait.Lock()
 	ch := make(chan bool)
 	q.wait[ch] = true
 	return ch
 }
-func (q *Queue) _wakeup(ch chan bool) bool {
+func (q *queue) _wakeup(ch chan bool) bool {
 	defer q.mtxWait.Unlock()
 	q.mtxWait.Lock()
 	if ch == nil {
@@ -96,7 +106,7 @@ func (q *Queue) _wakeup(ch chan bool) bool {
 	return false
 }
 
-func (q *Queue) Wait() <-chan bool {
+func (q *queue) Wait() <-chan bool {
 	defer q.mtx.RUnlock()
 	q.mtx.RLock()
 	ch := q._wait()
@@ -106,7 +116,7 @@ func (q *Queue) Wait() <-chan bool {
 	return ch
 }
 
-func (q *Queue) Clear() {
+func (q *queue) Clear() {
 	defer q.mtx.Unlock()
 	q.mtx.Lock()
 	for q._wakeup(nil) {
@@ -116,7 +126,7 @@ func (q *Queue) Clear() {
 	q.buf = make([]context.Context, q.size+1)
 }
 
-func (q *Queue) Available() int {
+func (q *queue) Available() int {
 	defer q.mtx.RUnlock()
 	q.mtx.RLock()
 	if q.w < q.r {
@@ -124,13 +134,13 @@ func (q *Queue) Available() int {
 	}
 	return q.w - q.r
 }
-func (q *Queue) IsEmpty() bool {
+func (q *queue) IsEmpty() bool {
 	defer q.mtx.RUnlock()
 	q.mtx.RLock()
 	return q.w == q.r
 }
 
-func (q *Queue) Size() int {
+func (q *queue) Size() int {
 	return q.size
 }
 
@@ -139,7 +149,7 @@ var (
 )
 
 type MultiQueue struct {
-	s       []*Queue
+	s       []Queue
 	size    int
 	mtx     sync.RWMutex
 	wait    map[chan bool]interface{}
@@ -155,7 +165,7 @@ func NewMultiQueue(size int, numberOfQueue int) *MultiQueue {
 	}
 
 	mq := &MultiQueue{
-		s:    make([]*Queue, numberOfQueue),
+		s:    make([]Queue, numberOfQueue),
 		size: numberOfQueue,
 		wait: make(map[chan bool]interface{}),
 	}
