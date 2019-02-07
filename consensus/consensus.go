@@ -13,7 +13,6 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
 )
@@ -853,12 +852,7 @@ func (cs *consensus) isProposerFor(height int64, round int32) bool {
 	if v == nil {
 		return false
 	}
-	wPubKey, err := crypto.ParsePublicKey(cs.wallet.PublicKey())
-	if err != nil {
-		panic(err)
-	}
-	waddr := common.NewAccountAddressFromPublicKey(wPubKey)
-	return v.Address().Equal(waddr)
+	return v.Address().Equal(cs.wallet.Address())
 }
 
 func (cs *consensus) isProposer() bool {
