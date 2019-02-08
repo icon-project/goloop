@@ -191,7 +191,7 @@ func (cs *consensus) OnReceive(
 	return true, nil
 }
 
-func (cs *consensus) OnError(err error, subProtocol module.ProtocolInfo, bytes []byte, id module.PeerID) {
+func (cs *consensus) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
 	logger.Printf("OnError: %v\n", err)
 }
 

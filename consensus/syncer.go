@@ -308,11 +308,10 @@ func (s *syncer) OnReceive(sp module.ProtocolInfo, bs []byte,
 	return true, nil
 }
 
-func (s *syncer) OnError(
+func (s *syncer) OnFailure(
 	err error,
 	pi module.ProtocolInfo,
 	b []byte,
-	id module.PeerID,
 ) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()

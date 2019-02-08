@@ -73,7 +73,7 @@ func (ph *protocolHandler) receiveRoutine() {
 
 			if r && pkt.ttl != 1 && pkt.dest != p2pDestPeer {
 				if err := ph.m.relay(pkt); err != nil {
-					ph.log.Println("Warning", "receiveRoutine", "relay", err)
+					ph.onFailure(err, pkt, nil)
 				}
 			}
 		}
@@ -108,32 +108,27 @@ func (ph *protocolHandler) failureRoutine() {
 
 			k := pkt.subProtocol
 			if pi, ok := ph.subProtocols[k]; ok {
-				//var arg interface{}
-				//switch pkt.dest {
-				//case p2pDestPeer:
-				//	//module.PeerID
-				//	arg = pkt.destPeer
-				//case p2pDestAny:
-				//	//module.BroadcastType
-				//	if pkt.ttl == 1 {
-				//		arg = module.BROADCAST_NEIGHBOR
-				//	} else {
-				//		arg = module.BROADCAST_ALL
-				//	}
-				//case p2pRoleRoot:
-				//	//module.Role
-				//	arg = module.ROLE_VALIDATOR
-				//case p2pRoleSeed:
-				//	//module.Role
-				//	arg = module.ROLE_SEED
-				//default: //p2pDestPeerGroup < dest < p2pDestPeer
-				//}
-				//
-				//if pkt.sender != nil {
-				//	//Relay
-				//}
-
-				ph.reactor.OnError(NewNetworkError(err), pi, pkt.payload, nil)
+				var netErr module.NetworkError
+				if pkt.sender == nil {
+					switch pkt.dest {
+					case p2pDestPeer:
+						netErr = NewUnicastError(err, pkt.destPeer)
+					case p2pDestAny:
+						if pkt.ttl == 1 {
+							netErr = NewBroadcastError(err, module.BROADCAST_NEIGHBOR)
+						} else {
+							netErr = NewBroadcastError(err, module.BROADCAST_ALL)
+						}
+					default: //p2pDestPeerGroup < dest < p2pDestPeer
+						netErr = NewMulticastError(err, ph.m.getRoleByDest(pkt.dest))
+					}
+					ph.reactor.OnFailure(netErr, pi, pkt.payload)
+				} else {
+					//TODO retry relay
+					ph.log.Println("Warning", "receiveRoutine", "relay", err)
+					//netErr = newNetworkError(err, "relay", pkt)
+					//ph.reactor.OnFailure(netErr, pi, pkt.payload)
+				}
 			}
 		}
 	}
@@ -187,7 +182,10 @@ func (ph *protocolHandler) Unicast(pi module.ProtocolInfo, b []byte, id module.P
 		return ErrNotRegisteredProtocol
 	}
 	ph.log.Println("Unicast", pi, len(b), id)
-	return ph.m.unicast(ph.protocol, spi, b, id)
+	if err := ph.m.unicast(ph.protocol, spi, b, id); err != nil {
+		return NewUnicastError(err, id)
+	}
+	return nil
 }
 
 //TxMessage,PrevoteMessage, Send to Validators
@@ -197,7 +195,10 @@ func (ph *protocolHandler) Multicast(pi module.ProtocolInfo, b []byte, role modu
 		return ErrNotRegisteredProtocol
 	}
 	ph.log.Println("Multicast", pi, len(b), role)
-	return ph.m.multicast(ph.protocol, spi, b, role)
+	if err := ph.m.multicast(ph.protocol, spi, b, role); err != nil {
+		return NewMulticastError(err, role)
+	}
+	return nil
 }
 
 //ProposeMessage,PrecommitMessage,BlockMessage, Send to Citizen
@@ -207,5 +208,8 @@ func (ph *protocolHandler) Broadcast(pi module.ProtocolInfo, b []byte, bt module
 		return ErrNotRegisteredProtocol
 	}
 	ph.log.Println("Broadcast", pi, len(b), bt)
-	return ph.m.broadcast(ph.protocol, spi, b, bt)
+	if err := ph.m.broadcast(ph.protocol, spi, b, bt); err != nil {
+		return NewBroadcastError(err, bt)
+	}
+	return nil
 }

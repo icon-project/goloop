@@ -15,8 +15,8 @@ type manager struct {
 	p2p     *PeerToPeer
 	//
 	roles       map[module.Role]*PeerIDSet
-	authorities map[module.Authority]*RoleSet
 	destByRole  map[module.Role]byte
+	roleByDest  map[byte]module.Role
 	//
 	protocolHandlers map[string]*protocolHandler
 	priority         map[protocolInfo]uint8
@@ -32,8 +32,8 @@ func NewManager(channel string, nt module.NetworkTransport, initialSeed string, 
 		channel:          channel,
 		p2p:              newPeerToPeer(channel, self, t.GetDialer(channel)),
 		roles:            make(map[module.Role]*PeerIDSet),
-		authorities:      make(map[module.Authority]*RoleSet),
 		destByRole:       make(map[module.Role]byte),
+		roleByDest:       make(map[byte]module.Role),
 		protocolHandlers: make(map[string]*protocolHandler),
 		priority:         make(map[protocolInfo]uint8),
 		log:              newLogger("NetworkManager", channel),
@@ -114,8 +114,7 @@ func (m *manager) unicast(pi protocolInfo, spi protocolInfo, bytes []byte, id mo
 	pkt.dest = p2pDestPeer
 	pkt.destPeer = id
 	pkt.priority = m.priority[pi]
-	err := m.p2p.send(pkt)
-	return NewNetworkError(err)
+	return m.p2p.send(pkt)
 }
 
 //TxMessage,PrevoteMessage, Send to Validators
@@ -130,10 +129,10 @@ func (m *manager) multicast(pi protocolInfo, spi protocolInfo, bytes []byte, rol
 }
 
 //ProposeMessage,PrecommitMessage,BlockMessage, Send to Citizen
-func (m *manager) broadcast(pi protocolInfo, spi protocolInfo, bytes []byte, broadcastType module.BroadcastType) error {
+func (m *manager) broadcast(pi protocolInfo, spi protocolInfo, bytes []byte, bt module.BroadcastType) error {
 	pkt := NewPacket(pi, spi, bytes)
 	pkt.dest = p2pDestAny
-	pkt.ttl = byte(broadcastType)
+	pkt.ttl = byte(bt)
 	pkt.priority = m.priority[pi]
 	return m.p2p.send(pkt)
 }
@@ -146,7 +145,7 @@ func (m *manager) relay(pkt *Packet) error {
 	return m.p2p.send(pkt)
 }
 
-func (m *manager) getRolePeerIDSet(role module.Role) *PeerIDSet {
+func (m *manager) _getPeerIDSetByRole(role module.Role) *PeerIDSet {
 	s, ok := m.roles[role]
 	if !ok {
 		s := NewPeerIDSet()
@@ -157,27 +156,27 @@ func (m *manager) getRolePeerIDSet(role module.Role) *PeerIDSet {
 }
 
 func (m *manager) SetRole(role module.Role, peers ...module.PeerID) {
-	s := m.getRolePeerIDSet(role)
+	s := m._getPeerIDSetByRole(role)
 	s.ClearAndAdd(peers...)
 }
 
 func (m *manager) GetPeersByRole(role module.Role) []module.PeerID {
-	s := m.getRolePeerIDSet(role)
+	s := m._getPeerIDSetByRole(role)
 	return s.Array()
 }
 
 func (m *manager) AddRole(role module.Role, peers ...module.PeerID) {
-	s := m.getRolePeerIDSet(role)
+	s := m._getPeerIDSetByRole(role)
 	s.Merge(peers...)
 }
 
 func (m *manager) RemoveRole(role module.Role, peers ...module.PeerID) {
-	s := m.getRolePeerIDSet(role)
+	s := m._getPeerIDSetByRole(role)
 	s.Removes(peers...)
 }
 
 func (m *manager) HasRole(role module.Role, id module.PeerID) bool {
-	s := m.getRolePeerIDSet(role)
+	s := m._getPeerIDSetByRole(role)
 	return s.Contains(id)
 }
 
@@ -193,46 +192,8 @@ func (m *manager) Roles(id module.PeerID) []module.Role {
 	return s[:i]
 }
 
-func (m *manager) getAuthorityRoleSet(authority module.Authority) *RoleSet {
-	s, ok := m.authorities[authority]
-	if !ok {
-		s := NewRoleSet()
-		m.authorities[authority] = s
-	}
-	return s
-}
-
-func (m *manager) GrantAuthority(authority module.Authority, roles ...module.Role) {
-	s := m.getAuthorityRoleSet(authority)
-	for _, r := range roles {
-		if !s.Contains(r) {
-			s.Add(r)
-		}
-	}
-}
-
-func (m *manager) DenyAuthority(authority module.Authority, roles ...module.Role) {
-	l := m.getAuthorityRoleSet(authority)
-	for _, r := range roles {
-		l.Remove(r)
-	}
-}
-
-func (m *manager) HasAuthority(authority module.Authority, role module.Role) bool {
-	l := m.getAuthorityRoleSet(authority)
-	return l.Contains(role)
-}
-
-func (m *manager) Authorities(role module.Role) []module.Authority {
-	var i int
-	s := make([]module.Authority, len(m.authorities))
-	for k, v := range m.authorities {
-		if v.Contains(role) {
-			s = append(s, k)
-			i++
-		}
-	}
-	return s[:i]
+func (m *manager) getRoleByDest(dest byte) module.Role{
+	return m.roleByDest[dest]
 }
 
 type logger struct {
@@ -310,26 +271,37 @@ func (pi protocolInfo) Copy(b []byte) {
 	binary.BigEndian.PutUint16(b[:2], uint16(pi))
 }
 func (pi protocolInfo) String() string {
-	//return fmt.Sprintf("{ID:%#02x,Ver:%#02x}", pi.ID(), pi.Version())
 	return fmt.Sprintf("{%#04x}", pi.Uint16())
 }
 func (pi protocolInfo) Uint16() uint16 {
 	return uint16(pi)
 }
 
-type NetworkError struct {
+type Error struct {
 	error
 	IsTemporary bool
+	Operation string
+	OperationArgument interface{}
 }
-func(e *NetworkError) Temporary() bool {return e.IsTemporary}
-func NewNetworkError(err error) module.NetworkError{
+func(e *Error) Temporary() bool {return e.IsTemporary}
+
+func NewBroadcastError(err error, bt module.BroadcastType) module.NetworkError{
+	return newNetworkError(err, "broadcast", bt)
+}
+func NewMulticastError(err error, role module.Role) module.NetworkError{
+	return newNetworkError(err, "multicast", role)
+}
+func NewUnicastError(err error, id module.PeerID) module.NetworkError{
+	return newNetworkError(err, "unicast", id)
+}
+func newNetworkError(err error, op string, opArg interface{}) module.NetworkError{
 	if err != nil {
 		isTemporary := false
 		switch err {
 		case ErrQueueOverflow:
 			isTemporary = true
 		}
-		return &NetworkError{err, isTemporary}
+		return &Error{err, isTemporary, op, opArg}
 	}
 	return nil
 }

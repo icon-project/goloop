@@ -138,7 +138,7 @@ func (r *testReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.Peer
 	return
 }
 
-func (r *testReactor) OnError(err error, pi module.ProtocolInfo, b []byte, id module.PeerID) {
+func (r *testReactor) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
 	rm := &testNetworkMessage{}
 	r.decode(b, rm)
 	msg := rm.Message

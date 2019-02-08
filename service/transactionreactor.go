@@ -63,7 +63,7 @@ func (r *transactionReactor) propagateTransaction(pi module.ProtocolInfo, tx *tr
 	return nil
 }
 
-func (r *transactionReactor) OnError(err error, pi module.ProtocolInfo, b []byte, id module.PeerID) {
+func (r *transactionReactor) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
 	// Nothing to do now.
 }
 
