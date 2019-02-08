@@ -84,7 +84,7 @@ func ToBytes(v interface{}) []byte {
 	case []byte:
 		return obj
 	default:
-		log.Printf("UnknonwnType(%T)", v)
+		log.Fatalf("UnknonwnType(%T)", v)
 		return []byte{}
 	}
 }

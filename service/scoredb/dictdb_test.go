@@ -24,6 +24,11 @@ func TestNewDictDB(t *testing.T) {
 		return
 	}
 
+	if err := dict.Set(1, make([]byte, 1024), 3); err != nil {
+		t.Errorf("Fail to DictDB[1][long_bytes] = 3")
+		return
+	}
+
 	if v := dict2.Get(2).String(); v != "Test" {
 		t.Errorf("Returned string=%s is different from Test", v)
 		return
@@ -32,5 +37,29 @@ func TestNewDictDB(t *testing.T) {
 	if err := dict.Set(1, "Failed"); err == nil {
 		t.Errorf("It should fail on DictDB[1] = 'Failed'")
 		return
+	}
+
+	if dict3 := dict.GetDB(1, 2); dict3 != nil {
+		t.Errorf("It should return nil for value depth")
+	}
+
+	if dict3 := dict.GetDB(1, 2, 3); dict3 != nil {
+		t.Errorf("It should return nil with invalid key")
+	}
+
+	if v := dict2.Get(2, 3); v != nil {
+		t.Errorf("it should return nil with invalid key")
+	}
+
+	if err := dict.Delete(1, 2); err != nil {
+		t.Errorf("Fail to delete key")
+	}
+
+	if err := dict.Delete(1, 2, 3); err == nil {
+		t.Errorf("It should fail to delete with illegal key")
+	}
+
+	if v := dict2.Get(2); v != nil {
+		t.Errorf("it should return nil with invalid key")
 	}
 }

@@ -26,6 +26,14 @@ func TestNewArrayDB(t *testing.T) {
 		return
 	}
 
+	if v := arraydb.Get(2); v != nil {
+		t.Errorf("Index out of range should return nil")
+	}
+
+	if v := arraydb.Get(-2); v != nil {
+		t.Errorf("Index out of range should return nil")
+	}
+
 	if v := arraydb.Get(0).String(); v != "Value1" {
 		t.Errorf("Fail to verify array exp=%s value=%s", "Value1", v)
 		return
