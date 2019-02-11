@@ -207,7 +207,10 @@ func TestUnitService(t *testing.T) {
 	leaderServiceManager := NewManager(c, nil, em, "./contract")
 	//leaderServiceManager := NewManager(c, network.NewManager("default", nt, "", module.ROLE_VALIDATOR), em, "./contract")
 	it, _ := leaderServiceManager.CreateInitialTransition(nil, nil)
-	parentTrs, _ := leaderServiceManager.ProposeGenesisTransition(it)
+	bi := newBlockInfo(0, 0)
+	genesisTx, _ := NewTransactionFromJSON(c.Genesis())
+	txs := NewTransactionListFromSlice(c.database, []module.Transaction{genesisTx})
+	parentTrs, _ := leaderServiceManager.CreateTransition(it, txs, bi)
 	cb := &transitionCb{make(chan bool)}
 	parentTrs.Execute(cb)
 	<-cb.exeDone
@@ -284,7 +287,7 @@ func TestUnitService(t *testing.T) {
 	validatorServiceManager := NewManager(validatorCh, nil, em, "./contract")
 	//validatorServiceManager := NewManager(validatorCh, network.NewManager("default", nt2, "", module.ROLE_VALIDATOR), em, "./contract")
 	vit, _ := leaderServiceManager.CreateInitialTransition(nil, nil)
-	parentVTransition, _ := leaderServiceManager.ProposeGenesisTransition(vit)
+	parentVTransition, _ := leaderServiceManager.CreateTransition(vit, txs, bi)
 	parentVTransition.Execute(cb)
 	<-cb.exeDone
 	leaderServiceManager.Finalize(parentVTransition, module.FinalizeNormalTransaction|module.FinalizeResult)
