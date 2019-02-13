@@ -444,7 +444,7 @@ func (m *manager) Import(
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	logger.Printf("Import(%v)\n", r)
+	logger.Printf("Import(%x)\n", r)
 
 	block, err := m.newBlockFromReader(r)
 	if err != nil {
