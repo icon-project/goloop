@@ -28,7 +28,7 @@ type Config struct {
 	DBType string `json:"db_type"`
 	DBName string `json:"db_name"`
 
-	WALDir      string `json:"wal_dir`
+	WALDir      string `json:"wal_dir"`
 	ContractDir string `json:"contract_dir"`
 }
 
