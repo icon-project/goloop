@@ -763,7 +763,7 @@ func (m *manager) newBlockFromReader(r io.Reader) (module.Block, error) {
 		return nil, errors.New("bad normal transactions hash")
 	}
 	nextValidators := m.sm.ValidatorListFromHash(blockFormat.NextValidatorsHash)
-	if !bytes.Equal(nextValidators.Hash(), blockFormat.NextValidatorsHash) {
+	if nextValidators == nil {
 		return nil, errors.New("bad validator list hash")
 	}
 	votes := m.chain.CommitVoteSetDecoder()(blockFormat.Votes)
