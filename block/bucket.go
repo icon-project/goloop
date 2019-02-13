@@ -14,6 +14,20 @@ type bucket struct {
 	codec    codec.Codec
 }
 
+func newBucket(database db.Database, id db.BucketID, c codec.Codec) *bucket {
+	b := &bucket{}
+	dbb, err := database.GetBucket(id)
+	if err != nil {
+		return nil
+	}
+	b.dbBucket = dbb
+	if c == nil {
+		c = codec.MP
+	}
+	b.codec = c
+	return b
+}
+
 type raw []byte
 
 func (b *bucket) _marshal(obj interface{}) ([]byte, error) {
