@@ -17,17 +17,19 @@ import (
 type Message uint
 
 const (
-	msgVERSION    uint = 0
-	msgINVOKE          = 1
-	msgRESULT          = 2
-	msgGETVALUE        = 3
-	msgSETVALUE        = 4
-	msgCALL            = 5
-	msgEVENT           = 6
-	msgGETINFO         = 7
-	msgGETBALANCE      = 8
-	msgGETAPI          = 9
+	msgVERSION    = 0
+	msgINVOKE     = 1
+	msgRESULT     = 2
+	msgGETVALUE   = 3
+	msgSETVALUE   = 4
+	msgCALL       = 5
+	msgEVENT      = 6
+	msgGETINFO    = 7
+	msgGETBALANCE = 8
+	msgGETAPI     = 9
 )
+
+const configEnableDebug = true
 
 type CallContext interface {
 	GetValue(key []byte) ([]byte, error)
@@ -130,6 +132,11 @@ func (p *proxy) Invoke(ctx CallContext, code string, isQuery bool, from, to modu
 	m.Method = method
 	m.Params = params
 
+	if configEnableDebug {
+		log.Printf("Proxy[%p].Invoke code=%s query=%v from=%v to=%v value=%v limit=%v method=%s\n",
+			p, code, isQuery, from, to, value, limit, method)
+	}
+
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	p.frame = &callFrame{
@@ -187,9 +194,15 @@ func (p *proxy) Release() {
 }
 
 func (p *proxy) SendResult(ctx CallContext, status uint16, steps *big.Int, result *codec.TypedObj) error {
+	if configEnableDebug {
+		log.Printf("Proxy[%p].SendResult status=%d steps=%v\n", p, status, steps)
+	}
 	var m resultMessage
 	m.Status = status
 	m.StepUsed.Set(steps)
+	if result == nil {
+		result = codec.Nil
+	}
 	m.Result = result
 	return p.conn.Send(msgRESULT, &m)
 }
