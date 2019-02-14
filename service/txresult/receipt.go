@@ -350,10 +350,9 @@ func bytesToStringByType(t string, v []byte) (string, error) {
 	case "bytes":
 		return "0x" + hex.EncodeToString(v), nil
 	case "bool":
-		if len(v) != 1 {
-			return "", errors.Errorf("InvalidBytesForBool(<% x>)", v)
-		}
-		if v[0] == 0 {
+		var ivalue common.HexInt
+		ivalue.SetBytes(v)
+		if ivalue.Sign() == 0 {
 			return "0x0", nil
 		} else {
 			return "0x1", nil
