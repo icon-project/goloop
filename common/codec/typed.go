@@ -32,6 +32,12 @@ type TypedObj struct {
 	typedObjBase
 }
 
+var Nil = &TypedObj{
+	typedObjBase{
+		TypeNil, nil,
+	},
+}
+
 func (o *TypedObj) CodecEncodeSelf(e *ugorji.Encoder) {
 	e.Encode(&o.typedObjBase)
 }
