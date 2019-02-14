@@ -29,7 +29,7 @@ const (
 	msgGETAPI     = 9
 )
 
-const configEnableDebug = true
+const configEnableDebug = false
 
 type CallContext interface {
 	GetValue(key []byte) ([]byte, error)
@@ -234,6 +234,9 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		p.frame = frame.prev
 		p.lock.Unlock()
 
+		if configEnableDebug {
+			log.Printf("Proxy[%p].OnResult status=%d steps=%v\n", p, m.Status, &m.StepUsed.Int)
+		}
 		frame.ctx.OnResult(m.Status, &m.StepUsed.Int, m.Result)
 
 		p.lock.Lock()
@@ -280,6 +283,10 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
 			return err
 		}
+		if configEnableDebug {
+			log.Printf("Proxy[%p].OnCall from=%v to=%v value=%v steplimit=%v method=%s\n",
+				p, p.frame.addr, &m.To, &m.Value.Int, &m.Limit.Int, m.Method)
+		}
 		p.frame.ctx.OnCall(p.frame.addr,
 			&m.To, &m.Value.Int, &m.Limit.Int, m.Method, m.Params)
 		return nil
@@ -288,6 +295,10 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		var m eventMessage
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
 			return err
+		}
+		if configEnableDebug {
+			log.Printf("Proxy[%p].OnEvent from=%v indexed=%v data=%v\n",
+				p, p.frame.addr, m.Indexed, m.Data)
 		}
 		p.frame.ctx.OnEvent(p.frame.addr, m.Indexed, m.Data)
 		return nil
