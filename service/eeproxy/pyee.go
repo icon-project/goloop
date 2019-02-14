@@ -163,6 +163,6 @@ func NewPythonEE() (Engine, error) {
 	var e pythonExecutionEngine
 	e.instances = make(map[string]*pythonInstance)
 	e.python = "python3"
-	e.args = []string{"-m", "pyexec"}
+	e.args = []string{"-u", "-m", "pyexec"}
 	return &e, nil
 }
