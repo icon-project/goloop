@@ -8,6 +8,8 @@ import (
 	"math/big"
 	"strconv"
 
+	"github.com/icon-project/goloop/service/txresult"
+
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
 )
@@ -110,8 +112,8 @@ func (tx *transactionV2) Prepare(wc WorldContext) (WorldContext, error) {
 	return wc.GetFuture(lq), nil
 }
 
-func (tx *transactionV2) Execute(wc WorldContext) (Receipt, error) {
-	r := NewReceipt(&tx.To)
+func (tx *transactionV2) Execute(wc WorldContext) (txresult.Receipt, error) {
+	r := txresult.NewReceipt(&tx.To)
 	var trans big.Int
 
 	trans.Add(&tx.Value.Int, version2FixedFee)

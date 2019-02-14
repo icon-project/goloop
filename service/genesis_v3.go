@@ -12,6 +12,8 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/icon-project/goloop/service/txresult"
+
 	"github.com/icon-project/goloop/service/scoredb"
 
 	"github.com/icon-project/goloop/common"
@@ -229,8 +231,8 @@ func (g *genesisV3) setDefaultSystemInfo(as AccountState) {
 	}
 }
 
-func (g *genesisV3) Execute(wc WorldContext) (Receipt, error) {
-	r := NewReceipt(common.NewAccountAddress([]byte{}))
+func (g *genesisV3) Execute(wc WorldContext) (txresult.Receipt, error) {
+	r := txresult.NewReceipt(common.NewAccountAddress([]byte{}))
 	as := wc.GetAccountState(SystemID)
 	for _, info := range g.Accounts {
 		addr := scoredb.NewVarDB(as, info.Name)

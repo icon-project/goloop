@@ -3,6 +3,8 @@ package service
 import (
 	"math/big"
 
+	"github.com/icon-project/goloop/service/txresult"
+
 	"github.com/go-errors/errors"
 
 	"github.com/icon-project/goloop/module"
@@ -16,7 +18,7 @@ const (
 
 type TransactionHandler interface {
 	Prepare(wc WorldContext) (WorldContext, error)
-	Execute(wc WorldContext) (Receipt, error)
+	Execute(wc WorldContext) (txresult.Receipt, error)
 	Dispose()
 }
 
@@ -30,7 +32,7 @@ type transactionHandler struct {
 
 	handler ContractHandler
 	cc      CallContext
-	receipt Receipt
+	receipt txresult.Receipt
 }
 
 func NewTransactionHandler(cm ContractManager, from, to module.Address,
@@ -72,7 +74,7 @@ func NewTransactionHandler(cm ContractManager, from, to module.Address,
 		}
 	}
 
-	th.receipt = NewReceipt(to)
+	th.receipt = txresult.NewReceipt(to)
 	th.cc = newCallContext(th.receipt, false)
 	th.handler = cm.GetHandler(th.cc, from, to, value, stepLimit, ctype, data)
 	if th.handler == nil {
@@ -85,7 +87,7 @@ func (th *transactionHandler) Prepare(wc WorldContext) (WorldContext, error) {
 	return th.handler.Prepare(wc)
 }
 
-func (th *transactionHandler) Execute(wc WorldContext) (Receipt, error) {
+func (th *transactionHandler) Execute(wc WorldContext) (txresult.Receipt, error) {
 	// Make a copy of initial state
 	wcs := wc.GetSnapshot()
 

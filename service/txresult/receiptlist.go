@@ -1,10 +1,11 @@
-package service
+package txresult
 
 import (
 	"fmt"
-	"github.com/icon-project/goloop/common/merkle"
 	"log"
 	"reflect"
+
+	"github.com/icon-project/goloop/common/merkle"
 
 	"github.com/icon-project/goloop/common/codec"
 

@@ -1,4 +1,4 @@
-package service
+package txresult
 
 import (
 	"encoding/hex"
@@ -146,6 +146,13 @@ func failureReasonByCode(status module.Status) *failureReason {
 		CodeValue:    common.HexUint16{Value: uint16(status)},
 		MessageValue: status.String(),
 	}
+}
+
+type Receipt interface {
+	module.Receipt
+	AddLog(addr module.Address, indexed, data [][]byte)
+	SetCumulativeStepUsed(cumulativeUsed *big.Int)
+	SetResult(status module.Status, used, price *big.Int, addr module.Address)
 }
 
 type receiptJSON struct {

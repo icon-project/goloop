@@ -12,6 +12,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
+	"github.com/icon-project/goloop/service/txresult"
 )
 
 const (
@@ -213,9 +214,9 @@ func (m *manager) ReceiptFromTransactionID(id []byte) module.Receipt {
 func (m *manager) ReceiptListFromResult(result []byte, g module.TransactionGroup) module.ReceiptList {
 	if tresult, err := newTransitionResultFromBytes(result); err == nil {
 		if g == module.TransactionGroupPatch {
-			return NewReceiptListFromHash(m.db, tresult.PatchReceiptHash)
+			return txresult.NewReceiptListFromHash(m.db, tresult.PatchReceiptHash)
 		} else {
-			return NewReceiptListFromHash(m.db, tresult.NormalReceiptHash)
+			return txresult.NewReceiptListFromHash(m.db, tresult.NormalReceiptHash)
 		}
 	} else {
 		log.Printf("Fail to unmarshal result bytes err=%+v", err)

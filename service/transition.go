@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/icon-project/goloop/service/txresult"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/service/eeproxy"
@@ -239,16 +241,16 @@ func (t *transition) executeSync(alreadyValidated bool) {
 
 	startTime := time.Now()
 
-	patchReceipts := make([]Receipt, patchCount)
+	patchReceipts := make([]txresult.Receipt, patchCount)
 	t.executeTxs(t.patchTransactions, wc, patchReceipts)
-	normalReceipts := make([]Receipt, normalCount)
+	normalReceipts := make([]txresult.Receipt, normalCount)
 	t.executeTxs(t.normalTransactions, wc, normalReceipts)
 
 	cumulativeSteps := big.NewInt(0)
 	gatheredFee := big.NewInt(0)
 	fee := big.NewInt(0)
 
-	for _, receipts := range [][]Receipt{patchReceipts, normalReceipts} {
+	for _, receipts := range [][]txresult.Receipt{patchReceipts, normalReceipts} {
 		for _, r := range receipts {
 			used := r.StepUsed()
 			cumulativeSteps.Add(cumulativeSteps, used)
@@ -258,8 +260,8 @@ func (t *transition) executeSync(alreadyValidated bool) {
 			gatheredFee.Add(gatheredFee, fee)
 		}
 	}
-	t.patchReceipts = NewReceiptListFromSlice(t.db, patchReceipts)
-	t.normalReceipts = NewReceiptListFromSlice(t.db, normalReceipts)
+	t.patchReceipts = txresult.NewReceiptListFromSlice(t.db, patchReceipts)
+	t.normalReceipts = txresult.NewReceiptListFromSlice(t.db, normalReceipts)
 
 	// save gathered fee to treasury
 	tr := wc.GetAccountState(wc.Treasury().ID())
@@ -315,7 +317,7 @@ func (t *transition) validateTxs(l module.TransactionList, wc WorldContext) (boo
 	return true, cnt
 }
 
-func (t *transition) executeTxs(l module.TransactionList, wc WorldContext, rctBuf []Receipt) (bool, int) {
+func (t *transition) executeTxs(l module.TransactionList, wc WorldContext, rctBuf []txresult.Receipt) (bool, int) {
 	if l == nil {
 		return true, 0
 	}
@@ -345,7 +347,7 @@ func (t *transition) executeTxs(l module.TransactionList, wc WorldContext, rctBu
 				Nonce:     txo.Nonce(),
 				Hash:      txo.ID(),
 			})
-			go func(tx Transaction, wc WorldContext, rb *Receipt) {
+			go func(tx Transaction, wc WorldContext, rb *txresult.Receipt) {
 				if rct, err := txh.Execute(wc); err != nil {
 					log.Panicf("Fail to execute transaction err=%+v", err)
 				} else {

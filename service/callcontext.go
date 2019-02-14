@@ -11,6 +11,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
+	"github.com/icon-project/goloop/service/txresult"
 )
 
 type (
@@ -40,7 +41,7 @@ type (
 )
 
 type callContext struct {
-	receipt Receipt
+	receipt txresult.Receipt
 	isQuery bool
 	conns   map[string]eeproxy.Proxy
 
@@ -54,7 +55,7 @@ type callContext struct {
 	waiter chan interface{}
 }
 
-func newCallContext(receipt Receipt, isQuery bool) CallContext {
+func newCallContext(receipt txresult.Receipt, isQuery bool) CallContext {
 	return &callContext{
 		receipt: receipt,
 		isQuery: isQuery,

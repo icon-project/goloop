@@ -1,13 +1,14 @@
-package service
+package txresult
 
 import (
 	"bytes"
-	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/module"
 	"log"
 	"math/big"
 	"testing"
+
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/module"
 )
 
 func TestReceiptList(t *testing.T) {

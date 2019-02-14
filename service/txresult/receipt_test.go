@@ -1,13 +1,14 @@
-package service
+package txresult
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/module"
 	"math/big"
 	"testing"
+
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/module"
 )
 
 func TestReceipt_JSON(t *testing.T) {

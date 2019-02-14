@@ -118,10 +118,3 @@ type Transaction interface {
 	Timestamp() int64
 	Nonce() *big.Int
 }
-
-type Receipt interface {
-	module.Receipt
-	AddLog(addr module.Address, indexed, data [][]byte)
-	SetCumulativeStepUsed(cumulativeUsed *big.Int)
-	SetResult(status module.Status, used, price *big.Int, addr module.Address)
-}
