@@ -29,7 +29,7 @@ func Test_packet_PacketReader(t *testing.T) {
 	b := bytes.NewBuffer(make([]byte, DefaultPacketBufferSize))
 	b.Reset()
 	pr := NewPacketReader(b)
-	_, _, err := pr.ReadPacket()
+	_, err := pr.ReadPacket()
 	assert.Error(t, io.EOF, "ReadPacket EOF")
 
 	hb := make([]byte, packetHeaderSize)
@@ -46,10 +46,9 @@ func Test_packet_PacketReader(t *testing.T) {
 	b.Write(hb)
 	b.Write(payload)
 	b.Write(fb)
-	pkt, h, err := pr.ReadPacket()
+	pkt, err := pr.ReadPacket()
 	assert.NoError(t, err, "ReadPacket fail")
 	assert.Equal(t, hash.Sum64(), pkt.hashOfPacket, "ReadPacket Invalid hash")
-	assert.Equal(t, h.Sum64(), pkt.hashOfPacket, "ReadPacket Invalid hash")
 }
 
 func Test_packet_PacketReadWriter(t *testing.T) {

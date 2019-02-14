@@ -114,10 +114,12 @@ func (m *manager) unicast(pi protocolInfo, spi protocolInfo, bytes []byte, id mo
 	pkt.dest = p2pDestPeer
 	pkt.destPeer = id
 	pkt.priority = m.priority[pi]
-	return m.p2p.send(pkt)
+	pkt.src = m.PeerID()
+	pkt.forceSend = true
+	p := m.p2p.getPeer(id, true)
+	return p.sendPacket(pkt)
 }
 
-//TxMessage,PrevoteMessage, Send to Validators
 func (m *manager) multicast(pi protocolInfo, spi protocolInfo, bytes []byte, role module.Role) error {
 	if _, ok := m.roles[role]; !ok {
 		return ErrNotRegisteredRole
@@ -128,12 +130,14 @@ func (m *manager) multicast(pi protocolInfo, spi protocolInfo, bytes []byte, rol
 	return m.p2p.send(pkt)
 }
 
-//ProposeMessage,PrecommitMessage,BlockMessage, Send to Citizen
 func (m *manager) broadcast(pi protocolInfo, spi protocolInfo, bytes []byte, bt module.BroadcastType) error {
 	pkt := NewPacket(pi, spi, bytes)
 	pkt.dest = p2pDestAny
 	pkt.ttl = byte(bt)
 	pkt.priority = m.priority[pi]
+	if bt == module.BROADCAST_NEIGHBOR {
+		pkt.forceSend = true
+	}
 	return m.p2p.send(pkt)
 }
 

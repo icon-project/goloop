@@ -28,13 +28,17 @@ type Packet struct {
 	dest            byte
 	ttl             byte
 	lengthOfpayload uint32 //4byte
-	payload         []byte
 	hashOfPacket    uint64 //8byte
+	//
+	header  []byte
+	payload []byte
+	footer  []byte
 	//Transient fields
 	sender    module.PeerID //20byte
 	destPeer  module.PeerID //20byte
 	priority  uint8
 	timestamp time.Time
+	forceSend bool
 }
 
 const (
@@ -57,6 +61,7 @@ func newPacket(spi protocolInfo, payload []byte, src module.PeerID) *Packet {
 	pkt := NewPacket(PROTO_CONTOL, spi, payload)
 	pkt.dest = p2pDestPeer
 	pkt.src = src
+	pkt.forceSend = true
 	return pkt
 }
 
@@ -70,6 +75,166 @@ func (p *Packet) String() string {
 		p.lengthOfpayload,
 		p.hashOfPacket,
 		p.sender)
+}
+
+func (p *Packet) _read(r io.Reader, n int) ([]byte, int, error) {
+	b := make([]byte, n)
+	rn := 0
+	for {
+		tn, err := r.Read(b[rn:])
+		if rn += tn; err != nil {
+			return nil, rn, err
+		}
+		if rn >= n {
+			break
+		}
+	}
+	return b, rn, nil
+}
+
+func (p *Packet) WriteTo(w io.Writer) (n int64, err error) {
+	if err = p.updateHash(false); err != nil {
+		return
+	}
+
+	var tn int
+	tn, err = w.Write(p.headerToBytes(false))
+	if n += int64(tn); err != nil {
+		return
+	}
+	tn, err = w.Write(p.payload[:p.lengthOfpayload])
+	if n += int64(tn); err != nil {
+		return
+	}
+	tn, err = w.Write(p.footerToBytes(false))
+	if n += int64(tn); err != nil {
+		return
+	}
+	return
+}
+
+func (p *Packet) updateHash(force bool) error {
+	if p.hashOfPacket == 0 || force {
+		h, err := p._hash(force)
+		if err != nil {
+			return err
+		}
+		p.hashOfPacket = h.Sum64()
+	}
+	return nil
+}
+
+func (p *Packet) _hash(force bool) (hash.Hash64, error) {
+	h := fnv.New64a()
+	if _, err := h.Write(p.headerToBytes(force)); err != nil {
+		return nil, err
+	}
+	if _, err := h.Write(p.payload[:p.lengthOfpayload]); err != nil {
+		return nil, err
+	}
+	return h, nil
+}
+
+func (p *Packet) headerToBytes(force bool) []byte {
+	if p.header == nil || force {
+		p.header = make([]byte, packetHeaderSize)
+		tb := p.header[:]
+		p.protocol.Copy(tb[:2])
+		tb = tb[2:]
+		p.subProtocol.Copy(tb[:2])
+		tb = tb[2:]
+		p.src.Copy(tb[:peerIDSize])
+		tb = tb[peerIDSize:]
+		tb[0] = p.dest
+		tb = tb[1:]
+		tb[0] = p.ttl
+		tb = tb[1:]
+		binary.BigEndian.PutUint32(tb[:4], p.lengthOfpayload)
+		tb = tb[4:]
+	}
+	return p.header[:]
+}
+
+func (p *Packet) footerToBytes(force bool) []byte {
+	if p.footer == nil || force {
+		p.footer = make([]byte, packetFooterSize)
+		tb := p.footer[:]
+		binary.BigEndian.PutUint64(tb[:8], p.hashOfPacket)
+		tb = tb[8:]
+	}
+	return p.footer[:]
+}
+
+func (p *Packet) ReadFrom(r io.Reader) (n int64, err error) {
+	var b []byte
+	var tn int
+	b, tn, err = p._read(r, packetHeaderSize)
+	if n += int64(tn); err != nil {
+		return
+	}
+	if _, err = p.setHeader(b); err != nil {
+		return
+	}
+
+	p.payload, tn, err = p._read(r, int(p.lengthOfpayload))
+	if n += int64(tn); err != nil {
+		return
+	}
+
+	b, tn, err = p._read(r, packetFooterSize)
+	if n += int64(tn); err != nil {
+		return
+	}
+	if _, err = p.setFooter(b); err != nil {
+		return
+	}
+
+	h, err := p._hash(false)
+	if err != nil {
+		return
+	}
+	if h.Sum64() != p.hashOfPacket {
+		err = fmt.Errorf("invalid hashOfPacket")
+		return
+	}
+	return
+}
+
+func (p *Packet) setHeader(b []byte) ([]byte, error) {
+	if len(b) < packetHeaderSize {
+		//io.ErrShortBuffer
+		return b, fmt.Errorf("short buffer")
+	}
+	p.header = b[:packetHeaderSize]
+	tb := p.header[:]
+	p.protocol = newProtocolInfoFrom(tb[:2])
+	tb = tb[2:]
+	p.subProtocol = newProtocolInfoFrom(tb[:2])
+	tb = tb[2:]
+	p.src = NewPeerID(tb[:peerIDSize])
+	tb = tb[peerIDSize:]
+	p.dest = tb[0]
+	tb = tb[1:]
+	p.ttl = tb[0]
+	tb = tb[1:]
+	p.lengthOfpayload = binary.BigEndian.Uint32(tb[:4])
+	tb = tb[4:]
+	if p.lengthOfpayload > DefaultPacketPayloadMax {
+		return b[packetHeaderSize:], fmt.Errorf("invalid lengthOfpayload")
+	}
+	return b[packetHeaderSize:], nil
+}
+
+func (p *Packet) setFooter(b []byte) ([]byte, error) {
+	if len(b) < packetFooterSize {
+		//io.ErrShortBuffer
+		return b, fmt.Errorf("short buffer")
+	}
+	p.footer = b[:packetFooterSize]
+	tb := p.footer[:]
+	p.hashOfPacket = binary.BigEndian.Uint64(tb[:8])
+	tb = tb[8:]
+	return b[packetFooterSize:], nil
 }
 
 type PacketReader struct {
@@ -105,68 +270,14 @@ func (pr *PacketReader) Reset(rd io.Reader) {
 	pr.Reader.Reset(pr.rd)
 }
 
-func (pr *PacketReader) ReadPacket() (pkt *Packet, h hash.Hash64, e error) {
-	for {
-		if pr.pkt == nil {
-			hb, err := pr._read(packetHeaderSize)
-			if err != nil {
-				e = err
-				return
-			}
-			tb := hb[:]
-			pi := newProtocolInfoFrom(tb[:2])
-			tb = tb[2:]
-			spi := newProtocolInfoFrom(tb[:2])
-			tb = tb[2:]
-			src := NewPeerID(tb[:peerIDSize])
-			tb = tb[peerIDSize:]
-			dest := tb[0]
-			tb = tb[1:]
-			ttl := tb[0]
-			tb = tb[1:]
-			lop := binary.BigEndian.Uint32(tb[:4])
-			if lop > DefaultPacketPayloadMax {
-				e = fmt.Errorf("invalid packet lengthOfpayload %x, max:%x", lop, DefaultPacketPayloadMax)
-				return
-			}
-			tb = tb[4:]
-			pr.pkt = &Packet{protocol: pi, subProtocol: spi, src: src, dest: dest, ttl: ttl, lengthOfpayload: lop}
-			h = fnv.New64a()
-			if _, err = h.Write(hb); err != nil {
-				log.Printf("PacketReader.ReadPacket hash/fnv.Hash64.Write hb %T %#v %s", err, err, err)
-			}
-		}
-
-		if pr.pkt.payload == nil {
-			payload, err := pr._read(int(pr.pkt.lengthOfpayload))
-			if err != nil {
-				e = err
-				return
-			}
-			pr.pkt.payload = payload
-			if _, err = h.Write(payload); err != nil {
-				log.Printf("PacketReader.ReadPacket hash/fnv.Hash64.Write payload %T %#v %s", err, err, err)
-			}
-		}
-
-		if pr.pkt.hashOfPacket == 0 {
-			fb, err := pr._read(packetFooterSize)
-			if err != nil {
-				e = err
-				return
-			}
-			tb := fb[:]
-			pr.pkt.hashOfPacket = binary.BigEndian.Uint64(tb[:8])
-			tb = tb[8:]
-
-			pr.pkt.timestamp = time.Now()
-
-			pkt = pr.pkt
-			pr.pkt = nil
-			return
-		}
+func (pr *PacketReader) ReadPacket() (pkt *Packet, e error) {
+	pkt = &Packet{}
+	_, err := pkt.ReadFrom(pr)
+	if err != nil {
+		e = err
+		return
 	}
-
+	return
 }
 
 type PacketWriter struct {
@@ -184,50 +295,7 @@ func (pw *PacketWriter) Reset(wr io.Writer) {
 }
 
 func (pw *PacketWriter) WritePacket(pkt *Packet) error {
-	hb := make([]byte, packetHeaderSize)
-	tb := hb[:]
-	pkt.protocol.Copy(tb[:2])
-	tb = tb[2:]
-	pkt.subProtocol.Copy(tb[:2])
-	tb = tb[2:]
-	pkt.src.Copy(tb[:peerIDSize])
-	tb = tb[peerIDSize:]
-	tb[0] = pkt.dest
-	tb = tb[1:]
-	tb[0] = pkt.ttl
-	tb = tb[1:]
-	binary.BigEndian.PutUint32(tb[:4], pkt.lengthOfpayload)
-	tb = tb[4:]
-	_, err := pw.Write(hb)
-	if err != nil {
-		log.Printf("PacketWriter.WritePacket hb %T %#v %s", err, err, err)
-		return err
-	}
-	//
-	payload := pkt.payload[:pkt.lengthOfpayload]
-	_, err = pw.Write(payload)
-	if err != nil {
-		log.Printf("PacketWriter.WritePacket payload %T %#v %s", err, err, err)
-		return err
-	}
-	//
-	fb := make([]byte, packetFooterSize)
-	tb = fb[:]
-	if pkt.hashOfPacket == 0 {
-		h := fnv.New64a()
-		if _, err = h.Write(hb); err != nil {
-			log.Printf("PacketWriter.WritePacket hash/fnv.Hash64.Write hb %T %#v %s", err, err, err)
-			return err
-		}
-		if _, err = h.Write(payload); err != nil {
-			log.Printf("PacketWriter.WritePacket hash/fnv.Hash64.Write payload %T %#v %s", err, err, err)
-			return err
-		}
-		pkt.hashOfPacket = h.Sum64()
-	}
-	binary.BigEndian.PutUint64(tb[:8], pkt.hashOfPacket)
-	tb = tb[8:]
-	_, err = pw.Write(fb)
+	_, err := pkt.WriteTo(pw)
 	if err != nil {
 		log.Printf("PacketWriter.WritePacket fb %T %#v %s", err, err, err)
 		return err
@@ -300,13 +368,9 @@ func (prw *PacketReadWriter) ReadPacket() (*Packet, error) {
 	prw.mtx.RLock()
 	if prw.rpkt == nil {
 		//(pkt *Packet, h hash.Hash64, e error)
-		pkt, h, err := prw.rd.ReadPacket()
+		pkt, err := prw.rd.ReadPacket()
 		if err != nil {
 			return nil, err
-		}
-		if pkt.hashOfPacket != h.Sum64() {
-			err := fmt.Errorf("invalid hashOfPacket:%x, expected:%x", pkt.hashOfPacket, h.Sum64())
-			return pkt, err
 		}
 		prw.rpkt = pkt
 	}

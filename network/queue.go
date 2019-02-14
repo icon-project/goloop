@@ -92,11 +92,12 @@ func (q *queue) _wait() chan bool {
 func (q *queue) _wakeup(ch chan bool) bool {
 	defer q.mtxWait.Unlock()
 	q.mtxWait.Lock()
-	if ch == nil {
+	if ch == nil && len(q.wait) > 0{
 		for k := range q.wait {
-			ch = k
-			break
+			close(k)
+			delete(q.wait, k)
 		}
+		return true
 	}
 	if ch != nil {
 		close(ch)
@@ -215,11 +216,12 @@ func (mq *MultiQueue) _wait() chan bool {
 func (mq *MultiQueue) _wakeup(ch chan bool) bool {
 	defer mq.mtxWait.Unlock()
 	mq.mtxWait.Lock()
-	if ch == nil {
+	if ch == nil && len(mq.wait) > 0{
 		for k := range mq.wait {
-			ch = k
-			break
+			close(k)
+			delete(mq.wait, k)
 		}
+		return true
 	}
 	if ch != nil {
 		close(ch)

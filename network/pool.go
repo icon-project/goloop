@@ -89,6 +89,7 @@ type TimestampPool struct {
 	buckets     []map[interface{}]interface{}
 	cur         int
 	numOfBucket int
+	lastRemove  int64
 	mtx         sync.RWMutex
 }
 
@@ -157,6 +158,9 @@ func (p *TimestampPool) RemoveBefore(secondDuration int) {
 	p.mtx.Lock()
 
 	expire := time.Now().Unix() - int64(secondDuration)
+	if p.lastRemove >= expire {
+		return
+	}
 	cur := p.cur
 	for i := 0; i < p.numOfBucket; i++ {
 		t := p.timestamp[cur]
@@ -169,6 +173,7 @@ func (p *TimestampPool) RemoveBefore(secondDuration int) {
 		}
 		cur--
 	}
+	p.lastRemove = expire
 }
 
 func (p *TimestampPool) Contains(k interface{}) bool {

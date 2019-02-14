@@ -466,6 +466,7 @@ func listenerClose(t *testing.T, m map[string][]*testReactor) {
 }
 
 func Test_network_basic(t *testing.T) {
+	log.SetFlags(log.Lmicroseconds)
 	m := make(map[string][]*testReactor)
 	p := 8080
 	m["TestCitizen"], p = generateNetwork("TestCitizen", p, testNumCitizen, t)                              //8080~8083
