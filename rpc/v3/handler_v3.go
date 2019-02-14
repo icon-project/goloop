@@ -368,6 +368,13 @@ func (h getTransactionResultHandler) ServeJSONRPC(c context.Context, params *fas
 			}
 		}
 		rctjson, err := rct.ToJSON(jsonRpcV3)
+		if err != nil {
+			return nil, &jsonrpc.Error{
+				Code:    jsonrpc.ErrorCodeInternal,
+				Message: err.Error(),
+				Data:    nil,
+			}
+		}
 		rctmap := rctjson.(map[string]interface{})
 		rctmap["blockHash"] = "0x" + hex.EncodeToString(blk.ID())
 		rctmap["blockHeight"] = "0x" + strconv.FormatInt(
