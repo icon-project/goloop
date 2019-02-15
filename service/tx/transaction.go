@@ -15,16 +15,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-// TODO Right to place here?
 const (
 	ConfigTXTimestampBackwardMargin = int64(5 * time.Minute / time.Microsecond)
 	ConfigTXTimestampForwardMargin  = int64(5 * time.Minute / time.Microsecond)
 	ConfigTXTimestampForwardLimit   = int64(10 * time.Minute / time.Microsecond)
 	ConfigOnCheckingTimestamp       = true
-
-	// maximum number of transactions in a block
-	// TODO it should be configured or received from block manager
-	TxMaxNumInBlock = 2000
 )
 
 var (

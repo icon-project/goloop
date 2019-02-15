@@ -18,6 +18,10 @@ import (
 	"github.com/icon-project/goloop/service/txresult"
 )
 
+// maximum number of transactions in a block
+// TODO it should be configured or received from block manager
+const TxMaxNumInBlock = 2000
+
 type manager struct {
 	// tx pool should be connected to transition for more than one branches.
 	// Currently, it doesn't allow another branch, so add tx pool here.
@@ -65,10 +69,10 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 	wc := state.NewWorldContext(ws, bi)
 
 	patchTxs := m.patchTxPool.Candidate(wc, -1) // try to add all patches in the block
-	maxTxNum := tx.TxMaxNumInBlock - len(patchTxs)
+	maxTxNum := TxMaxNumInBlock - len(patchTxs)
 	var normalTxs []module.Transaction
 	if maxTxNum > 0 {
-		normalTxs = m.normalTxPool.Candidate(wc, tx.TxMaxNumInBlock-len(patchTxs))
+		normalTxs = m.normalTxPool.Candidate(wc, TxMaxNumInBlock-len(patchTxs))
 	} else {
 		// what if patches already exceed the limit of transactions? It usually
 		// doesn't happen but...
