@@ -7,6 +7,10 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/signal"
+	"runtime/pprof"
+	"sync/atomic"
+	"syscall"
 
 	"github.com/icon-project/goloop/chain"
 	"github.com/icon-project/goloop/common"
@@ -20,6 +24,7 @@ type GoChainConfig struct {
 	P2PAddr       string `json:"p2p"`
 	P2PListenAddr string `json:"p2p_listen"`
 	Key           []byte `json:"key"`
+	EESocket      string `json:"ee_socket"`
 
 	fileName string
 }
@@ -38,10 +43,13 @@ func (config *GoChainConfig) Set(name string) error {
 	return nil
 }
 
+var memProfileCnt int32 = 0
+
 func main() {
-	var configFile, genesisFile string
+	var genesisFile string
 	var generate bool
 	var cfg GoChainConfig
+	var cpuProfile, memProfile string
 
 	flag.Var(&cfg, "config", "Parsing configuration file")
 	flag.BoolVar(&generate, "gen", false, "Generate configuration file")
@@ -58,6 +66,9 @@ func main() {
 	flag.UintVar(&cfg.Role, "role", 0, "[0:None, 1:Seed, 2:Validator, 3:Both]")
 	flag.StringVar(&cfg.WALDir, "wal_dir", "", "WAL directory")
 	flag.StringVar(&cfg.ContractDir, "contract_dir", "", "Contract directory")
+	flag.StringVar(&cfg.EESocket, "ee_socket", "", "Execution engine socket path")
+	flag.StringVar(&cpuProfile, "cpuprofile", "", "CPU Profiling data file")
+	flag.StringVar(&memProfile, "memprofile", "", "Memory Profiling data file")
 	flag.Parse()
 
 	if len(genesisFile) > 0 {
@@ -87,7 +98,7 @@ func main() {
 		f, err := os.OpenFile(cfg.fileName,
 			os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
 		if err != nil {
-			log.Panicf("Fail to open file=%s err=%+v", configFile, err)
+			log.Panicf("Fail to open file=%s err=%+v", cfg.fileName, err)
 		}
 
 		enc := json.NewEncoder(f)
@@ -105,25 +116,62 @@ func main() {
 	prefix := fmt.Sprintf("%x|--|", wallet.Address().ID()[0:2])
 	log.SetPrefix(prefix)
 
+	addr := wallet.Address()
 	if cfg.DBDir == "" {
-		addr := wallet.Address()
 		cfg.DBDir = ".db/" + addr.String()
 	}
 
 	if cfg.WALDir == "" {
-		addr := wallet.Address()
 		cfg.WALDir = ".wal/" + addr.String()
 	}
 
 	if cfg.ContractDir == "" {
-		addr := wallet.Address()
 		cfg.ContractDir = ".contract/" + addr.String()
+	}
+
+	if cfg.EESocket == "" {
+		cfg.EESocket = ".socket/" + addr.String()
 	}
 
 	if cfg.DBType != "mapdb" {
 		if err := os.MkdirAll(cfg.DBDir, 0755); err != nil {
 			log.Panicf("Fail to create directory %s err=%+v", cfg.DBDir, err)
 		}
+	}
+
+	if cpuProfile != "" {
+		f, err := os.Create(cpuProfile)
+		if err != nil {
+			log.Fatalf("Fail to create %s for profile err=%+v", cpuProfile, err)
+		}
+		if err = pprof.StartCPUProfile(f); err != nil {
+			log.Fatalf("Fail to start profiling err=%+v", err)
+		}
+		defer func() {
+			pprof.StopCPUProfile()
+		}()
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt)
+		go func(c chan os.Signal) {
+			<-c
+			pprof.StopCPUProfile()
+		}(c)
+	}
+
+	if memProfile != "" {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, syscall.SIGHUP)
+		go func(c chan os.Signal) {
+			for {
+				<-c
+				cnt := atomic.AddInt32(&memProfileCnt, 1)
+				fileName := fmt.Sprintf("%s.%03d", memProfile, cnt)
+				if f, err := os.Create(fileName); err == nil {
+					pprof.WriteHeapProfile(f)
+					f.Close()
+				}
+			}
+		}(c)
 	}
 
 	nt := network.NewTransport(cfg.P2PAddr, wallet)
@@ -136,7 +184,7 @@ func main() {
 	}
 	defer nt.Close()
 
-	pm, err := eeproxy.NewManager("unix", "/tmp/ee.socket")
+	pm, err := eeproxy.NewManager("unix", cfg.EESocket)
 	if err != nil {
 		log.Panicln("FAIL to start EEManager")
 	}
