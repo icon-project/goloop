@@ -5,18 +5,19 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"log"
+	"math/big"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service"
+	"github.com/icon-project/goloop/service/txresult"
 	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/util"
-	"log"
-	"math/big"
 )
 
 type LoopChainDB struct {
@@ -93,7 +94,7 @@ func (lc *LoopChainDB) GetReceiptByTransaction(id []byte) (module.Receipt, error
 	if tinfo, err := lc.GetTransactionInfoByTransaction(id); err != nil {
 		return nil, err
 	} else {
-		if r, err := service.NewReceiptFromJSON(tinfo.Receipt, 3); err != nil {
+		if r, err := txresult.NewReceiptFromJSON(tinfo.Receipt, 3); err != nil {
 			return nil, err
 		} else {
 			return r, nil
