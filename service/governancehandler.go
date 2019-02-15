@@ -2,6 +2,7 @@ package service
 
 import (
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/state"
 	"github.com/pkg/errors"
 )
 
@@ -11,7 +12,7 @@ type GovCallHandler struct {
 
 func (h *GovCallHandler) ExecuteAsync(ctx Context) error {
 	// Calculate steps
-	if !h.ApplySteps(ctx, StepTypeContractCall, 1) {
+	if !h.ApplySteps(ctx, state.StepTypeContractCall, 1) {
 		h.cc.OnResult(module.StatusOutOfBalance, h.stepLimit, nil, nil)
 		return nil
 	}
@@ -22,7 +23,7 @@ func (h *GovCallHandler) ExecuteAsync(ctx Context) error {
 		return errors.New("FAIL: not a contract account")
 	}
 
-	ctx.SetContractInfo(&ContractInfo{Owner: h.as.ContractOwner()})
+	ctx.SetContractInfo(&state.ContractInfo{Owner: h.as.ContractOwner()})
 
 	h.cm = ctx.ContractManager()
 	h.conn = h.cc.GetConnection(h.EEType())

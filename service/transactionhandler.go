@@ -3,6 +3,7 @@ package service
 import (
 	"math/big"
 
+	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
 
 	"github.com/go-errors/errors"
@@ -17,7 +18,7 @@ const (
 )
 
 type TransactionHandler interface {
-	Prepare(ctx Context) (WorldContext, error)
+	Prepare(ctx Context) (state.WorldContext, error)
 	Execute(ctx Context) (txresult.Receipt, error)
 	Dispose()
 }
@@ -83,7 +84,7 @@ func NewTransactionHandler(cm ContractManager, from, to module.Address,
 	return th, nil
 }
 
-func (th *transactionHandler) Prepare(ctx Context) (WorldContext, error) {
+func (th *transactionHandler) Prepare(ctx Context) (state.WorldContext, error) {
 	return th.handler.Prepare(ctx)
 }
 
@@ -93,8 +94,8 @@ func (th *transactionHandler) Execute(ctx Context) (txresult.Receipt, error) {
 
 	// Set up
 	th.cc.Setup(ctx)
-	if th.handler.StepLimit().Cmp(ctx.GetStepLimit(LimitTypeInvoke)) > 0 {
-		th.handler.ResetSteps(ctx.GetStepLimit(LimitTypeInvoke))
+	if th.handler.StepLimit().Cmp(ctx.GetStepLimit(state.LimitTypeInvoke)) > 0 {
+		th.handler.ResetSteps(ctx.GetStepLimit(state.LimitTypeInvoke))
 	}
 
 	// Calculate common steps
@@ -108,8 +109,8 @@ func (th *transactionHandler) Execute(ctx Context) (txresult.Receipt, error) {
 		status = module.StatusSystemError
 		stepUsed = th.stepLimit
 	} else {
-		if !th.handler.ApplySteps(ctx, StepTypeDefault, 1) ||
-			!th.handler.ApplySteps(ctx, StepTypeInput, cnt) {
+		if !th.handler.ApplySteps(ctx, state.StepTypeDefault, 1) ||
+			!th.handler.ApplySteps(ctx, state.StepTypeInput, cnt) {
 			status = module.StatusOutOfStep
 			stepUsed = th.handler.StepLimit()
 		}

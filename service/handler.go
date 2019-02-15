@@ -7,6 +7,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
+	"github.com/icon-project/goloop/service/state"
 )
 
 const (
@@ -24,9 +25,9 @@ const (
 type (
 	ContractHandler interface {
 		StepLimit() *big.Int
-		ApplySteps(WorldContext, StepType, int) bool
+		ApplySteps(state.WorldContext, state.StepType, int) bool
 		ResetSteps(*big.Int)
-		Prepare(ctx Context) (WorldContext, error)
+		Prepare(ctx Context) (state.WorldContext, error)
 	}
 
 	SyncContractHandler interface {
@@ -60,7 +61,7 @@ func (h *CommonHandler) StepLimit() *big.Int {
 	return h.stepLimit
 }
 
-func (h *CommonHandler) ApplySteps(wc WorldContext, stepType StepType, n int) bool {
+func (h *CommonHandler) ApplySteps(wc state.WorldContext, stepType state.StepType, n int) bool {
 	h.stepUsed.Add(h.stepUsed, big.NewInt(wc.StepsFor(stepType, n)))
 	if h.stepUsed.Cmp(h.stepLimit) > 0 {
 		h.stepUsed = h.stepLimit
@@ -76,10 +77,10 @@ func (h *CommonHandler) ResetSteps(limit *big.Int) {
 	h.stepUsed = big.NewInt(0)
 }
 
-func (h *CommonHandler) Prepare(ctx Context) (WorldContext, error) {
-	lq := []LockRequest{
-		{string(h.from.ID()), AccountWriteLock},
-		{string(h.to.ID()), AccountWriteLock},
+func (h *CommonHandler) Prepare(ctx Context) (state.WorldContext, error) {
+	lq := []state.LockRequest{
+		{string(h.from.ID()), state.AccountWriteLock},
+		{string(h.to.ID()), state.AccountWriteLock},
 	}
 	return ctx.GetFuture(lq), nil
 }

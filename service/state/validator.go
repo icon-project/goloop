@@ -1,14 +1,15 @@
-package service
+package state
 
 import (
 	"fmt"
+	"log"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
 	ugorji "github.com/ugorji/go/codec"
-	"log"
 )
 
 type validator struct {

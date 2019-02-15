@@ -8,6 +8,7 @@ import (
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/state"
 )
 
 const (
@@ -100,7 +101,7 @@ func (tp *transactionPool) removeOldTXs(bts int64) {
 }
 
 // It returns all candidates for a negative integer n.
-func (tp *transactionPool) candidate(wc WorldContext, max int) []module.Transaction {
+func (tp *transactionPool) candidate(wc state.WorldContext, max int) []module.Transaction {
 	tp.mutex.Lock()
 	if tp.list.Len() == 0 {
 		tp.mutex.Unlock()
@@ -142,7 +143,7 @@ func (tp *transactionPool) candidate(wc WorldContext, max int) []module.Transact
 			// If returned error is critical(not usable in the future)
 			// then it should removed from the pool
 			// Otherwise, it remains in the pool
-			if err != ErrTimeOut && err != ErrNotEnoughStep {
+			if err != state.ErrTimeOut && err != state.ErrNotEnoughStep {
 				txs[i] = nil
 			}
 			continue

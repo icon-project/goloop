@@ -1,10 +1,11 @@
-package service
+package state
 
 import (
 	"bytes"
-	"github.com/icon-project/goloop/common/db"
 	"math/big"
 	"testing"
+
+	"github.com/icon-project/goloop/common/db"
 )
 
 func TestAccountSnapshot_Equal(t *testing.T) {

@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
 
 	"github.com/icon-project/goloop/service/scoredb"
@@ -137,7 +138,7 @@ func (g *genesisV3) Verify() error {
 	return nil
 }
 
-func (g *genesisV3) PreValidate(wc WorldContext, update bool) error {
+func (g *genesisV3) PreValidate(wc state.WorldContext, update bool) error {
 	if wc.BlockHeight() != 0 {
 		return common.ErrInvalidState
 	}
@@ -148,14 +149,14 @@ func (g *genesisV3) GetHandler(ContractManager) (TransactionHandler, error) {
 	return g, nil
 }
 
-func (g *genesisV3) Prepare(ctx Context) (WorldContext, error) {
-	lq := []LockRequest{
-		{"", AccountWriteLock},
+func (g *genesisV3) Prepare(ctx Context) (state.WorldContext, error) {
+	lq := []state.LockRequest{
+		{"", state.AccountWriteLock},
 	}
 	return ctx.GetFuture(lq), nil
 }
 
-func (g *genesisV3) setDefaultSystemInfo(as AccountState) {
+func (g *genesisV3) setDefaultSystemInfo(as state.AccountState) {
 	sysConfig := "./systemInfo.json"
 	var stepPrice int64 = 10000000
 	var stepCosts map[string]int64
@@ -172,15 +173,15 @@ func (g *genesisV3) setDefaultSystemInfo(as AccountState) {
 		}
 		for k, v := range infoMap {
 			switch k {
-			case VarStepTypes:
+			case state.VarStepTypes:
 				stepTypesMap := v.(map[string]interface{})
 				stepCosts = make(map[string]int64)
 				for sk, sv := range stepTypesMap {
 					stepCosts[sk], _ = strconv.ParseInt(sv.(string), 10, 64)
 				}
-			case VarStepPrice:
+			case state.VarStepPrice:
 				stepPrice, _ = strconv.ParseInt(v.(string), 10, 64)
-			case VarStepLimit:
+			case state.VarStepLimit:
 				stepLimitMap := v.(map[string]interface{})
 				stepLimit = make(map[string]int64)
 				for sk, sv := range stepLimitMap {
@@ -206,24 +207,24 @@ func (g *genesisV3) setDefaultSystemInfo(as AccountState) {
 		}
 
 		stepLimit = map[string]int64{
-			LimitTypeInvoke: 0x9502f900,
-			LimitTypeCall:   0x2faf080,
+			state.LimitTypeInvoke: 0x9502f900,
+			state.LimitTypeCall:   0x2faf080,
 		}
 	}
 
-	scoredb.NewVarDB(as, VarStepPrice).Set(big.NewInt(stepPrice))
-	stepTypes := scoredb.NewArrayDB(as, VarStepTypes)
-	stepCostDB := scoredb.NewDictDB(as, VarStepCosts, 1)
-	for _, k := range AllStepTypes {
+	scoredb.NewVarDB(as, state.VarStepPrice).Set(big.NewInt(stepPrice))
+	stepTypes := scoredb.NewArrayDB(as, state.VarStepTypes)
+	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
+	for _, k := range state.AllStepTypes {
 		if v, ok := stepCosts[k]; ok {
 			stepTypes.Put(k)
 			stepCostDB.Set(k, v)
 		}
 	}
 
-	stepLimitTypes := scoredb.NewArrayDB(as, VarStepLimitTypes)
-	stepLimitDB := scoredb.NewDictDB(as, VarStepLimit, 1)
-	for _, k := range AllLimitTypes {
+	stepLimitTypes := scoredb.NewArrayDB(as, state.VarStepLimitTypes)
+	stepLimitDB := scoredb.NewDictDB(as, state.VarStepLimit, 1)
+	for _, k := range state.AllLimitTypes {
 		if v, ok := stepLimit[k]; ok {
 			stepLimitTypes.Put(k)
 			stepLimitDB.Set(k, v)
@@ -233,7 +234,7 @@ func (g *genesisV3) setDefaultSystemInfo(as AccountState) {
 
 func (g *genesisV3) Execute(ctx Context) (txresult.Receipt, error) {
 	r := txresult.NewReceipt(common.NewAccountAddress([]byte{}))
-	as := ctx.GetAccountState(SystemID)
+	as := ctx.GetAccountState(state.SystemID)
 	for _, info := range g.Accounts {
 		addr := scoredb.NewVarDB(as, info.Name)
 		addr.Set(&info.Address)
@@ -244,7 +245,7 @@ func (g *genesisV3) Execute(ctx Context) (txresult.Receipt, error) {
 	r.SetResult(module.StatusSuccess, big.NewInt(0), big.NewInt(0), nil)
 	validators := make([]module.Validator, len(g.Validatorlist))
 	for i, validator := range g.Validatorlist {
-		validators[i], _ = ValidatorFromAddress(validator)
+		validators[i], _ = state.ValidatorFromAddress(validator)
 	}
 	ctx.SetValidators(validators)
 	return r, nil
@@ -253,7 +254,7 @@ func (g *genesisV3) Execute(ctx Context) (txresult.Receipt, error) {
 func (g *genesisV3) Dispose() {
 }
 
-func (g *genesisV3) Query(wc WorldContext) (module.Status, interface{}) {
+func (g *genesisV3) Query(wc state.WorldContext) (module.Status, interface{}) {
 	return module.StatusSuccess, nil
 }
 

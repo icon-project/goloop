@@ -1,11 +1,12 @@
-package service
+package state
 
 import (
+	"testing"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
-	"testing"
 )
 
 func TestValidatorListBasic(t *testing.T) {

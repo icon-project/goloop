@@ -198,14 +198,14 @@ func TestUnitService(t *testing.T) {
 	nt := network.NewTransport("127.0.0.1:8081", c.wallet)
 	nt.Listen()
 	defer nt.Close()
-	//em, err := eeproxy.NewManager("unix", "/tmp/ee.socket")
+	//eem, err := eeproxy.NewManager("unix", "/tmp/ee.socket")
 	//if err != nil {
 	//	log.Panicln("FAIL to start EEManager")
 	//}
-	//go em.Loop()
+	//go eem.Loop()
 	em := eeProxy()
 	leaderServiceManager := NewManager(c, nil, em, "./contract")
-	//leaderServiceManager := NewManager(c, network.NewManager("default", nt, "", module.ROLE_VALIDATOR), em, "./contract")
+	//leaderServiceManager := NewManager(c, network.NewManager("default", nt, "", module.ROLE_VALIDATOR), eem, "./contract")
 	it, _ := leaderServiceManager.CreateInitialTransition(nil, nil)
 	bi := newBlockInfo(0, 0)
 	genesisTx, _ := NewTransactionFromJSON(c.Genesis())
@@ -285,7 +285,7 @@ func TestUnitService(t *testing.T) {
 		log.Panic("Failed")
 	}
 	validatorServiceManager := NewManager(validatorCh, nil, em, "./contract")
-	//validatorServiceManager := NewManager(validatorCh, network.NewManager("default", nt2, "", module.ROLE_VALIDATOR), em, "./contract")
+	//validatorServiceManager := NewManager(validatorCh, network.NewManager("default", nt2, "", module.ROLE_VALIDATOR), eem, "./contract")
 	vit, _ := leaderServiceManager.CreateInitialTransition(nil, nil)
 	parentVTransition, _ := leaderServiceManager.CreateTransition(vit, txs, bi)
 	parentVTransition.Execute(cb)

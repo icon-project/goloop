@@ -12,6 +12,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
+	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
 )
 
@@ -75,8 +76,8 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 		return nil, err
 	}
 
-	ws, _ := WorldStateFromSnapshot(pt.worldSnapshot)
-	wc := NewWorldContext(ws, bi, m.cm, m.eem)
+	ws, _ := state.WorldStateFromSnapshot(pt.worldSnapshot)
+	wc := state.NewWorldContext(ws, bi)
 
 	patchTxs := m.patchTxPool.candidate(wc, -1) // try to add all patches in the block
 	maxTxNum := txMaxNumInBlock - len(patchTxs)
@@ -130,12 +131,12 @@ func (m *manager) GetPatches(parent module.Transition) module.TransactionList {
 		return nil
 	}
 
-	ws, err := WorldStateFromSnapshot(pt.worldSnapshot)
+	ws, err := state.WorldStateFromSnapshot(pt.worldSnapshot)
 	if err != nil {
 		log.Panicf("Fail to creating world state from snapshot")
 	}
 
-	wc := NewWorldContext(ws, pt.bi, m.cm, m.eem)
+	wc := state.NewWorldContext(ws, pt.bi)
 	return NewTransactionListFromSlice(m.db, m.patchTxPool.candidate(wc, -1))
 }
 
@@ -298,10 +299,10 @@ func (m *manager) Call(resultHash []byte, js []byte, bi module.BlockInfo,
 		return module.StatusSystemError, nil, errors.New("Fail to parse JSON RPC")
 	}
 
-	var wc WorldContext
+	var wc state.WorldContext
 	if tresult, err := newTransitionResultFromBytes(resultHash); err == nil {
-		ws := NewWorldState(m.db, tresult.StateHash, nil)
-		wc = NewWorldContext(ws, bi, m.cm, m.eem)
+		ws := state.NewWorldState(m.db, tresult.StateHash, nil)
+		wc = state.NewWorldContext(ws, bi)
 	} else {
 		return module.StatusSystemError, err.Error(), nil
 	}
@@ -316,13 +317,13 @@ func (m *manager) Call(resultHash []byte, js []byte, bi module.BlockInfo,
 }
 
 func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {
-	valList, _ := ValidatorListFromHash(m.db, hash)
+	valList, _ := state.ValidatorListFromHash(m.db, hash)
 	return valList
 }
 
 func (m *manager) GetBalance(result []byte, addr module.Address) *big.Int {
 	if tresult, err := newTransitionResultFromBytes(result); err == nil {
-		ws := NewWorldSnapshot(m.db, tresult.StateHash, nil)
+		ws := state.NewWorldSnapshot(m.db, tresult.StateHash, nil)
 		ass := ws.GetAccountSnapshot(addr.ID())
 		if ass == nil {
 			return big.NewInt(0)

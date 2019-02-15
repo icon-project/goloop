@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -48,7 +49,7 @@ type transition struct {
 	mutex sync.Mutex
 
 	result         []byte
-	worldSnapshot  WorldSnapshot
+	worldSnapshot  state.WorldSnapshot
 	patchReceipts  module.ReceiptList
 	normalReceipts module.ReceiptList
 	logBloom       txresult.LogBloom
@@ -115,7 +116,7 @@ func newInitTransition(db db.Database, result []byte,
 			return nil, err
 		}
 	}
-	ws := NewWorldState(db, tresult.StateHash, validatorList)
+	ws := state.NewWorldState(db, tresult.StateHash, validatorList)
 
 	return &transition{
 		patchTransactions:  NewTransactionListFromSlice(db, nil),
@@ -190,18 +191,18 @@ func (t *transition) LogBloom() module.LogBloom {
 	return &t.logBloom
 }
 
-func (t *transition) newWorldContext() WorldContext {
-	var ws WorldState
+func (t *transition) newWorldContext() state.WorldContext {
+	var ws state.WorldState
 	if t.parent != nil {
 		var err error
-		ws, err = WorldStateFromSnapshot(t.parent.worldSnapshot)
+		ws, err = state.WorldStateFromSnapshot(t.parent.worldSnapshot)
 		if err != nil {
 			log.Panicf("Fail to build world state from snapshot err=%+v", err)
 		}
 	} else {
-		ws = NewWorldState(t.db, nil, nil)
+		ws = state.NewWorldState(t.db, nil, nil)
 	}
-	return NewWorldContext(ws, t.bi, t.cm, t.eem)
+	return state.NewWorldContext(ws, t.bi)
 }
 
 func (t *transition) executeSync(alreadyValidated bool) {
@@ -289,7 +290,7 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	}
 }
 
-func (t *transition) validateTxs(l module.TransactionList, wc WorldContext) (bool, int) {
+func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext) (bool, int) {
 	if l == nil {
 		return true, 0
 	}
@@ -320,7 +321,7 @@ func (t *transition) executeTxs(l module.TransactionList, ctx Context, rctBuf []
 	if l == nil {
 		return true, 0
 	}
-	var wc WorldContext
+	var wc state.WorldContext
 	cnt := 0
 	for i := l.Iterator(); i.Has(); i.Next() {
 		if t.step == stepCanceled {
@@ -341,13 +342,13 @@ func (t *transition) executeTxs(l module.TransactionList, ctx Context, rctBuf []
 				log.Panicf("Fail to prepare for %+v", err)
 			}
 
-			wc.SetTransactionInfo(&TransactionInfo{
+			wc.SetTransactionInfo(&state.TransactionInfo{
 				Index:     int32(cnt),
 				Timestamp: txo.Timestamp(),
 				Nonce:     txo.Nonce(),
 				Hash:      txo.ID(),
 			})
-			go func(tx Transaction, wc WorldContext, rb *txresult.Receipt) {
+			go func(tx Transaction, wc state.WorldContext, rb *txresult.Receipt) {
 				if rct, err := txh.Execute(NewContext(wc, t.cm, t.eem)); err != nil {
 					log.Panicf("Fail to execute transaction err=%+v", err)
 				} else {
@@ -356,7 +357,7 @@ func (t *transition) executeTxs(l module.TransactionList, ctx Context, rctBuf []
 				wc.WorldVirtualState().Commit()
 			}(txo, wc, &rctBuf[cnt])
 		} else {
-			wc.SetTransactionInfo(&TransactionInfo{
+			wc.SetTransactionInfo(&state.TransactionInfo{
 				Index:     int32(cnt),
 				Timestamp: txo.Timestamp(),
 				Nonce:     txo.Nonce(),

@@ -1,4 +1,4 @@
-package service
+package state
 
 import (
 	"bytes"
@@ -75,7 +75,7 @@ func TestNewWorldStateWithContract(t *testing.T) {
 
 	test := []*testStruct{
 		{
-			testStatus:      csActive,
+			testStatus:      CSActive,
 			testContentType: "Application/Zip",
 			testEeType:      "Python",
 			testApiInfo:     []byte("APIINFO"),
@@ -85,7 +85,7 @@ func TestNewWorldStateWithContract(t *testing.T) {
 			testParams:      []byte("PARAMS"),
 		},
 		{
-			testStatus:      csRejected,
+			testStatus:      CSRejected,
 			testContentType: "Application/Zip2",
 			testEeType:      "Python2",
 			testApiInfo:     []byte("APIINFO2"),
@@ -172,7 +172,7 @@ func TestNewWorldStateWithContract(t *testing.T) {
 		log.Panicf("Invalid contract.\n")
 	} else {
 		check(contract, 0)
-		if contract.Status() != csInactive {
+		if contract.Status() != CSInactive {
 			log.Panicf("Invalid status %d\n", contract.Status())
 		}
 	}
@@ -200,7 +200,7 @@ func TestNewWorldStateWithContract(t *testing.T) {
 		log.Panicf("Invalid contract\n")
 	} else {
 		check(contract, 0)
-		if contract.Status() != csActive {
+		if contract.Status() != CSActive {
 			log.Panicf("Invalid status %d\n", contract.Status())
 		}
 	}
@@ -265,17 +265,17 @@ func TestNewWorldStateWithContract(t *testing.T) {
 		log.Panicf("Invalid activeContract")
 	}
 	as3.Blacklist(true)
-	if as3.Contract().Status()&csBlacklist != csBlacklist {
+	if as3.Contract().Status()&CSBlacklist != CSBlacklist {
 		log.Panic("Not blacklisted", as3.Contract().Status())
 	}
-	if as3.Contract().Status()&csDisable != csDisable {
+	if as3.Contract().Status()&CSDisable != CSDisable {
 		log.Panic("Not disabled")
 	}
 	as3.Disable(false)
 	if as3.ActiveContract() != nil {
 		log.Panicf("Invalid activeContract")
 	}
-	if as3.Contract().Status()&csBlacklist != csBlacklist {
+	if as3.Contract().Status()&CSBlacklist != CSBlacklist {
 		log.Panic("Not blacklisted", as3.Contract().Status())
 	}
 	wsSnapshot = ws3.GetSnapshot()
@@ -286,7 +286,7 @@ func TestNewWorldStateWithContract(t *testing.T) {
 	if as4.ActiveContract() != nil {
 		log.Panicf("Invalid activeContract")
 	}
-	if as4.Contract().Status()&csBlacklist != csBlacklist {
+	if as4.Contract().Status()&CSBlacklist != CSBlacklist {
 		log.Panic("Not blacklisted", as4.Contract().Status())
 	}
 	if v := as4.Version(); v != AccountVersion {

@@ -3,16 +3,26 @@ package service
 import (
 	"bytes"
 	"encoding/json"
+	"math/big"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/state"
 	"github.com/pkg/errors"
 )
 
 // TODO It assumes normal transaction. When supporting patch, add skipping
 // timestamp checking for it at PreValidate().
+type Transaction interface {
+	module.Transaction
+	PreValidate(wc state.WorldContext, update bool) error
+	GetHandler(cm ContractManager) (TransactionHandler, error)
+	Timestamp() int64
+	Nonce() *big.Int
+}
+
 type transaction struct {
 	Transaction
 }

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/service/state"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
@@ -29,7 +30,7 @@ type (
 			value, stepLimit *big.Int, ctype int, data []byte) ContractHandler
 		GetCallHandler(cc CallContext, from, to module.Address,
 			value, stepLimit *big.Int, method string, paramObj *codec.TypedObj) ContractHandler
-		PrepareContractStore(ws WorldState, contract Contract) (ContractStore, error)
+		PrepareContractStore(ws state.WorldState, contract state.Contract) (ContractStore, error)
 	}
 
 	ContractStore interface {
@@ -240,7 +241,7 @@ func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []
 // PrepareContractStore checks if contract codes are ready for a contract runtime
 // and starts to download and uncompress otherwise.
 func (cm *contractManager) PrepareContractStore(
-	ws WorldState, contract Contract) (ContractStore, error) {
+	ws state.WorldState, contract state.Contract) (ContractStore, error) {
 	cm.lock.Lock()
 	codeHash := contract.CodeHash()
 	hashStr := string(codeHash)

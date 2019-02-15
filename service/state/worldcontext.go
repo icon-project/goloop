@@ -1,4 +1,4 @@
-package service
+package state
 
 import (
 	"math/big"
@@ -7,7 +7,6 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/scoredb"
 )
 
@@ -54,9 +53,6 @@ type worldContext struct {
 	contractInfo ContractInfo
 
 	info map[string]interface{}
-
-	cm ContractManager
-	em eeproxy.Manager
 }
 
 func (c *worldContext) WorldVirtualState() WorldVirtualState {
@@ -169,14 +165,6 @@ func (c *worldContext) Governance() module.Address {
 	return c.governance
 }
 
-func (c *worldContext) ContractManager() ContractManager {
-	return c.cm
-}
-
-func (c *worldContext) EEManager() eeproxy.Manager {
-	return c.em
-}
-
 func (c *worldContext) WorldStateChanged(ws WorldState) WorldContext {
 	wc := &worldContext{
 		WorldState: ws,
@@ -184,9 +172,6 @@ func (c *worldContext) WorldStateChanged(ws WorldState) WorldContext {
 		governance: c.governance,
 		systemInfo: c.systemInfo,
 		blockInfo:  c.blockInfo,
-
-		cm: c.cm,
-		em: c.em,
 	}
 	wc.systemInfo.updated = false
 	return wc
@@ -230,9 +215,7 @@ func (c *worldContext) GetInfo() map[string]interface{} {
 	return c.info
 }
 
-func NewWorldContext(ws WorldState, bi module.BlockInfo, cm ContractManager,
-	em eeproxy.Manager,
-) WorldContext {
+func NewWorldContext(ws WorldState, bi module.BlockInfo) WorldContext {
 	var governance, treasury module.Address
 	ass := ws.GetAccountSnapshot(SystemID)
 	as := newAccountROState(ass)
@@ -251,8 +234,5 @@ func NewWorldContext(ws WorldState, bi module.BlockInfo, cm ContractManager,
 		treasury:   treasury,
 		governance: governance,
 		blockInfo:  BlockInfo{Timestamp: bi.Timestamp(), Height: bi.Height()},
-
-		cm: cm,
-		em: em,
 	}
 }

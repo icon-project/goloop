@@ -12,6 +12,7 @@ import (
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/scoreapi"
 	"github.com/icon-project/goloop/service/scoreresult"
+	"github.com/icon-project/goloop/service/state"
 	"github.com/pkg/errors"
 )
 
@@ -34,7 +35,7 @@ type CallHandler struct {
 	lock      sync.Mutex
 
 	// set in ExecuteAsync()
-	as   AccountState
+	as   state.AccountState
 	cm   ContractManager
 	conn eeproxy.Proxy
 	cs   ContractStore
@@ -75,7 +76,7 @@ func newCallHandlerFromTypedObj(ch *CommonHandler, method string,
 	}
 }
 
-func (h *CallHandler) Prepare(ctx Context) (WorldContext, error) {
+func (h *CallHandler) Prepare(ctx Context) (state.WorldContext, error) {
 	as := ctx.GetAccountState(h.to.ID())
 	c := h.contract(as)
 	if c == nil {
@@ -92,11 +93,11 @@ func (h *CallHandler) Prepare(ctx Context) (WorldContext, error) {
 		return nil, err
 	}
 
-	lq := []LockRequest{{"", AccountWriteLock}}
+	lq := []state.LockRequest{{"", state.AccountWriteLock}}
 	return ctx.GetFuture(lq), nil
 }
 
-func (h *CallHandler) contract(as AccountState) Contract {
+func (h *CallHandler) contract(as state.AccountState) state.Contract {
 	if !h.forDeploy {
 		return as.ActiveContract()
 	} else {
@@ -106,7 +107,7 @@ func (h *CallHandler) contract(as AccountState) Contract {
 
 func (h *CallHandler) ExecuteAsync(ctx Context) error {
 	// Calculate steps
-	if !h.ApplySteps(ctx, StepTypeContractCall, 1) {
+	if !h.ApplySteps(ctx, state.StepTypeContractCall, 1) {
 		h.cc.OnResult(module.StatusOutOfStep, h.stepLimit, nil, nil)
 		return nil
 	}
@@ -116,7 +117,7 @@ func (h *CallHandler) ExecuteAsync(ctx Context) error {
 	if !h.as.IsContract() {
 		return errors.New("FAIL: not a contract account")
 	}
-	ctx.SetContractInfo(&ContractInfo{Owner: h.as.ContractOwner()})
+	ctx.SetContractInfo(&state.ContractInfo{Owner: h.as.ContractOwner()})
 
 	h.cm = ctx.ContractManager()
 	h.conn = h.cc.GetConnection(h.EEType())
@@ -257,7 +258,7 @@ type TransferAndCallHandler struct {
 	*CallHandler
 }
 
-func (h *TransferAndCallHandler) Prepare(ctx Context) (WorldContext, error) {
+func (h *TransferAndCallHandler) Prepare(ctx Context) (state.WorldContext, error) {
 	if h.to.IsContract() {
 		return h.CallHandler.Prepare(ctx)
 	} else {

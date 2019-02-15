@@ -12,6 +12,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/state"
 )
 
 const (
@@ -145,12 +146,12 @@ func (tx *transactionV3) Version() int {
 func (tx *transactionV3) Verify() error {
 	// value >= 0
 	if tx.Value != nil && tx.Value.Sign() < 0 {
-		return ErrInvalidValueValue
+		return state.ErrInvalidValueValue
 	}
 
 	// character level size of data element <= 512KB
 	if n, err := countBytesOfData(tx.Data); err != nil || n > txMaxDataSize {
-		return ErrInvalidDataValue
+		return state.ErrInvalidDataValue
 	}
 
 	// Checkups by data types
@@ -159,14 +160,14 @@ func (tx *transactionV3) Verify() error {
 		case dataTypeCall:
 			// element check
 			if tx.Data == nil {
-				return ErrInvalidDataValue
+				return state.ErrInvalidDataValue
 			}
 			_, err := ParseCallData(tx.Data)
 			return err
 		case dataTypeDeploy:
 			// element check
 			if tx.Data == nil {
-				return ErrInvalidDataValue
+				return state.ErrInvalidDataValue
 			}
 			type dataDeployJSON struct {
 				ContentType string          `json:"contentType""`
@@ -176,12 +177,12 @@ func (tx *transactionV3) Verify() error {
 			var jso dataDeployJSON
 			if json.Unmarshal(tx.Data, &jso) != nil || jso.ContentType == "" ||
 				jso.Content == nil {
-				return ErrInvalidDataValue
+				return state.ErrInvalidDataValue
 			}
 
 			// value == 0
 			if tx.Value != nil && tx.Value.Sign() != 0 {
-				return ErrInvalidValueValue
+				return state.ErrInvalidValueValue
 			}
 		}
 	}
@@ -197,13 +198,13 @@ func (tx *transactionV3) Verify() error {
 func ParseCallData(data []byte) (*DataCallJSON, error) {
 	var jso DataCallJSON
 	if json.Unmarshal(data, &jso) != nil || jso.Method == "" {
-		return nil, ErrInvalidDataValue
+		return nil, state.ErrInvalidDataValue
 	} else {
 		return &jso, nil
 	}
 }
 
-func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
+func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 	// TODO check if network ID is valid
 
 	// outdated or invalid timestamp?
@@ -211,10 +212,10 @@ func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
 		tsDiff := wc.BlockTimeStamp() - tx.TimeStamp.Value
 		if tsDiff <= -configTXTimestampBackwardMargin ||
 			tsDiff > configTXTimestampForwardLimit {
-			return ErrTimeOut
+			return state.ErrTimeOut
 		}
 		if tsDiff > configTXTimestampForwardMargin {
-			return ErrFutureTransaction
+			return state.ErrFutureTransaction
 		}
 	}
 
@@ -223,9 +224,9 @@ func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
 	if err != nil {
 		return err
 	}
-	minStep := big.NewInt(wc.StepsFor(StepTypeDefault, 1) + wc.StepsFor(StepTypeInput, cnt))
+	minStep := big.NewInt(wc.StepsFor(state.StepTypeDefault, 1) + wc.StepsFor(state.StepTypeInput, cnt))
 	if tx.StepLimit.Cmp(minStep) < 0 {
-		return ErrNotEnoughStep
+		return state.ErrNotEnoughStep
 	}
 
 	// balance >= (fee + value)
@@ -241,7 +242,7 @@ func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
 	as1 := wc.GetAccountState(tx.From.ID())
 	balance1 := as1.GetBalance()
 	if balance1.Cmp(trans) < 0 {
-		return ErrNotEnoughBalance
+		return state.ErrNotEnoughBalance
 	}
 
 	// for cumulative balance check
@@ -263,36 +264,36 @@ func (tx *transactionV3) PreValidate(wc WorldContext, update bool) error {
 			// check if contract is active and not blacklisted
 			as := wc.GetAccountState(tx.To.ID())
 			if !as.IsContract() {
-				return ErrNotContractAccount
+				return state.ErrNotContractAccount
 			}
 			if as.ActiveContract() == nil {
-				return ErrNoActiveContract
+				return state.ErrNoActiveContract
 			}
 			if as.IsBlacklisted() {
-				return ErrBlacklisted
+				return state.ErrBlacklisted
 			}
 
 			// check method and parameters
 			if info := as.APIInfo(); info == nil {
-				return ErrNoActiveContract
+				return state.ErrNoActiveContract
 			} else {
 				jso, _ := ParseCallData(tx.Data) // Already checked at Verify(). It can't be nil.
 				if _, err = info.ConvertParamsToTypedObj(jso.Method, jso.Params); err != nil {
-					return ErrInvalidMethod
+					return state.ErrInvalidMethod
 				}
 			}
 		case dataTypeDeploy:
 			// update case: check if contract is active and from is its owner
-			if !bytes.Equal(tx.To.ID(), SystemID) { // update
+			if !bytes.Equal(tx.To.ID(), state.SystemID) { // update
 				as := wc.GetAccountState(tx.To.ID())
 				if !as.IsContract() {
-					return ErrNotContractAccount
+					return state.ErrNotContractAccount
 				}
 				if as.ActiveContract() == nil {
-					return ErrNoActiveContract
+					return state.ErrNoActiveContract
 				}
 				if !as.IsContractOwner(&tx.From) {
-					return ErrNotContractOwner
+					return state.ErrNotContractOwner
 				}
 			}
 		}

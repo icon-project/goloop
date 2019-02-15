@@ -10,9 +10,9 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/scoreapi"
+	"github.com/icon-project/goloop/service/state"
 )
 
 var mgr eeproxy.Manager
@@ -58,7 +58,7 @@ func (cc *callContext) DeleteValue(key []byte) error {
 }
 
 func (cc *callContext) GetBalance(addr module.Address) *big.Int {
-	return big.NewInt(service.GIGA)
+	return big.NewInt(state.GIGA)
 }
 
 func (cc *callContext) OnEvent(score module.Address, indexed, data [][]byte) {
@@ -89,7 +89,7 @@ func makeTransactions(cc *callContext, mgr eeproxy.Manager) {
 		proxy.Invoke(cc, "score/", false,
 			common.NewAddressFromString("cx9999999999999999999999999999999999999999"),
 			common.NewAddressFromString("hx3333333333333333333333333333333333333333"),
-			big.NewInt(10), big.NewInt(service.GIGA), "test", paramAny)
+			big.NewInt(10), big.NewInt(state.GIGA), "test", paramAny)
 		proxy.Release()
 		time.Sleep(time.Second)
 	}

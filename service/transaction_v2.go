@@ -8,14 +8,15 @@ import (
 	"math/big"
 	"strconv"
 
+	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
 
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
 )
 
-var version2FixedFee = big.NewInt(10 * PETA)
-var version2StepPrice = big.NewInt(10 * GIGA)
+var version2FixedFee = big.NewInt(10 * state.PETA)
+var version2StepPrice = big.NewInt(10 * state.GIGA)
 var version2StepUsed = big.NewInt(1000000)
 
 type transactionV2 struct {
@@ -30,22 +31,22 @@ func (tx *transactionV2) Version() int {
 func (tx *transactionV2) Verify() error {
 	// value >= 0
 	if tx.Value != nil && tx.Value.Sign() < 0 {
-		return ErrInvalidValueValue
+		return state.ErrInvalidValueValue
 	}
 
 	// character level size of data element <= 512KB
 	if n, err := countBytesOfData(tx.Data); err != nil || n > txMaxDataSize {
-		return ErrInvalidDataValue
+		return state.ErrInvalidDataValue
 	}
 
 	// fee == FixedFee
 	if tx.Fee.Int.Cmp(version2FixedFee) != 0 {
-		return ErrInvalidFeeValue
+		return state.ErrInvalidFeeValue
 	}
 
 	// check if it's EOA
 	if tx.To.IsContract() {
-		return ErrNotEOA
+		return state.ErrNotEOA
 	}
 
 	// signature verification
@@ -54,7 +55,7 @@ func (tx *transactionV2) Verify() error {
 	}
 
 	if !bytes.Equal(tx.txHash, tx.TxHashV2) {
-		return ErrInvalidHashValue
+		return state.ErrInvalidHashValue
 	}
 
 	if err := tx.transactionV3JSON.verifySignature(); err != nil {
@@ -64,16 +65,16 @@ func (tx *transactionV2) Verify() error {
 	return nil
 }
 
-func (tx *transactionV2) PreValidate(wc WorldContext, update bool) error {
+func (tx *transactionV2) PreValidate(wc state.WorldContext, update bool) error {
 	// outdated or invalid timestamp?
 	if configOnCheckingTimestamp == true {
 		tsDiff := wc.BlockTimeStamp() - tx.TimeStamp.Value
 		if tsDiff <= -configTXTimestampBackwardMargin ||
 			tsDiff > configTXTimestampForwardLimit {
-			return ErrTimeOut
+			return state.ErrTimeOut
 		}
 		if tsDiff > configTXTimestampForwardMargin {
-			return ErrFutureTransaction
+			return state.ErrFutureTransaction
 		}
 	}
 
@@ -85,7 +86,7 @@ func (tx *transactionV2) PreValidate(wc WorldContext, update bool) error {
 	as1 := wc.GetAccountState(tx.From.ID())
 	balance1 := as1.GetBalance()
 	if balance1.Cmp(trans) < 0 {
-		return ErrNotEnoughBalance
+		return state.ErrNotEnoughBalance
 	}
 
 	// for cumulative balance check
@@ -104,10 +105,10 @@ func (tx *transactionV2) GetHandler(cm ContractManager) (TransactionHandler, err
 	return tx, nil
 }
 
-func (tx *transactionV2) Prepare(ctx Context) (WorldContext, error) {
-	lq := []LockRequest{
-		{string(tx.From.ID()), AccountWriteLock},
-		{string(tx.To.ID()), AccountWriteLock},
+func (tx *transactionV2) Prepare(ctx Context) (state.WorldContext, error) {
+	lq := []state.LockRequest{
+		{string(tx.From.ID()), state.AccountWriteLock},
+		{string(tx.To.ID()), state.AccountWriteLock},
 	}
 	return ctx.GetFuture(lq), nil
 }
@@ -147,7 +148,7 @@ func (tx *transactionV2) Execute(ctx Context) (txresult.Receipt, error) {
 func (tx *transactionV2) Dispose() {
 }
 
-func (tx *transactionV2) Query(wc WorldContext) (module.Status, interface{}) {
+func (tx *transactionV2) Query(wc state.WorldContext) (module.Status, interface{}) {
 	log.Panicln("V2 transaction shouldn't be called by icx_call()")
 	return module.StatusSuccess, nil
 }

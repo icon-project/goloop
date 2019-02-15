@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/service/state"
 
 	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
@@ -39,7 +40,7 @@ func (qh *QueryHandler) Query(ctx Context) (module.Status, interface{}) {
 	cc := newCallContext(nil, true)
 	cc.Setup(ctx)
 	handler := ctx.ContractManager().GetHandler(cc, qh.from, qh.to,
-		big.NewInt(0), ctx.GetStepLimit(LimitTypeCall), ctypeCall, qh.data)
+		big.NewInt(0), ctx.GetStepLimit(state.LimitTypeCall), ctypeCall, qh.data)
 
 	// Execute
 	status, _, result, _ := cc.Call(handler)

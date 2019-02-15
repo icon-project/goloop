@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/icon-project/goloop/service/scoreresult"
+	"github.com/icon-project/goloop/service/state"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -79,38 +80,38 @@ func genContractAddr(from module.Address, timestamp int64, nonce *big.Int) []byt
 	return addr
 }
 
-func (h *DeployHandler) Prepare(ctx Context) (WorldContext, error) {
-	lq := []LockRequest{
-		{"", AccountWriteLock},
+func (h *DeployHandler) Prepare(ctx Context) (state.WorldContext, error) {
+	lq := []state.LockRequest{
+		{"", state.AccountWriteLock},
 	}
 	return ctx.GetFuture(lq), nil
 }
 
 func (h *DeployHandler) ExecuteSync(ctx Context) (module.Status, *big.Int, *codec.TypedObj, module.Address) {
-	sysAs := ctx.GetAccountState(SystemID)
+	sysAs := ctx.GetAccountState(state.SystemID)
 
 	update := false
 	var contractID []byte
-	if bytes.Equal(h.to.ID(), SystemID) { // install
+	if bytes.Equal(h.to.ID(), state.SystemID) { // install
 		info := h.cc.GetInfo()
 		if info == nil {
 			msg, _ := common.EncodeAny("no GetInfo()")
 			return module.StatusSystemError, h.stepLimit, msg, nil
 		}
-		contractID = genContractAddr(h.from, info[InfoTxTimestamp].(int64), info[InfoTxNonce].(*big.Int))
+		contractID = genContractAddr(h.from, info[state.InfoTxTimestamp].(int64), info[state.InfoTxNonce].(*big.Int))
 	} else { // deploy for update
 		contractID = h.to.ID()
 		update = true
 	}
 
 	// calculate stepUsed and apply it
-	st := StepType(StepTypeContractCreate)
+	st := state.StepType(state.StepTypeContractCreate)
 	if update {
-		st = StepTypeContractUpdate
+		st = state.StepTypeContractUpdate
 	}
 	codeLen := len(h.content)
 	if !h.ApplySteps(ctx, st, 1) ||
-		!h.ApplySteps(ctx, StepTypeContractSet, codeLen) {
+		!h.ApplySteps(ctx, state.StepTypeContractSet, codeLen) {
 		msg, _ := common.EncodeAny("Not enough step limit")
 		return module.StatusOutOfStep, h.stepLimit, msg, nil
 	}
@@ -167,8 +168,8 @@ func newAcceptHandler(from, to module.Address, value, stepLimit *big.Int, data [
 }
 
 // It's never called
-func (h *AcceptHandler) Prepare(ctx Context) (WorldContext, error) {
-	lq := []LockRequest{{"", AccountWriteLock}}
+func (h *AcceptHandler) Prepare(ctx Context) (state.WorldContext, error) {
+	lq := []state.LockRequest{{"", state.AccountWriteLock}}
 	return ctx.GetFuture(lq), nil
 }
 
@@ -179,7 +180,7 @@ const (
 
 func (h *AcceptHandler) ExecuteSync(ctx Context) (module.Status, *big.Int, *codec.TypedObj, module.Address) {
 	// 1. call GetAPI
-	sysAs := ctx.GetAccountState(SystemID)
+	sysAs := ctx.GetAccountState(state.SystemID)
 	varDb := scoredb.NewVarDB(sysAs, h.txHash)
 	scoreAddr := varDb.Address()
 	if scoreAddr == nil {
@@ -190,7 +191,7 @@ func (h *AcceptHandler) ExecuteSync(ctx Context) (module.Status, *big.Int, *code
 	scoreAs := ctx.GetAccountState(scoreAddr.ID())
 
 	var methodStr string
-	if bytes.Equal(h.to.ID(), SystemID) {
+	if bytes.Equal(h.to.ID(), state.SystemID) {
 		methodStr = deployInstall
 	} else {
 		methodStr = deployUpdate
@@ -212,7 +213,7 @@ func (h *AcceptHandler) ExecuteSync(ctx Context) (module.Status, *big.Int, *code
 
 	// 2. call on_install or on_update of the contract
 	if cur := scoreAs.Contract(); cur != nil {
-		cur.SetStatus(csDisable)
+		cur.SetStatus(state.CSDisable)
 	}
 	handler := newCallHandlerFromTypedObj(
 		newCommonHandler(h.from, scoreAddr, big.NewInt(0), h.StepAvail()),
@@ -244,7 +245,7 @@ type callGetAPIHandler struct {
 	cs       ContractStore
 
 	// set in ExecuteAsync()
-	as AccountState
+	as state.AccountState
 }
 
 func newCallGetAPIHandler(ch *CommonHandler, cc CallContext) *callGetAPIHandler {
@@ -252,7 +253,7 @@ func newCallGetAPIHandler(ch *CommonHandler, cc CallContext) *callGetAPIHandler 
 }
 
 // It's never called
-func (h *callGetAPIHandler) Prepare(ctx Context) (WorldContext, error) {
+func (h *callGetAPIHandler) Prepare(ctx Context) (state.WorldContext, error) {
 	as := ctx.GetAccountState(h.to.ID())
 	c := as.NextContract()
 	if c == nil {

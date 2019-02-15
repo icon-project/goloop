@@ -1,10 +1,11 @@
-package service
+package state
 
 import (
-	"github.com/icon-project/goloop/module"
-	"github.com/pkg/errors"
 	"log"
 	"sync"
+
+	"github.com/icon-project/goloop/module"
+	"github.com/pkg/errors"
 )
 
 const (

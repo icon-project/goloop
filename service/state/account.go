@@ -1,4 +1,4 @@
-package service
+package state
 
 import (
 	"bytes"
@@ -101,21 +101,21 @@ func (s *accountSnapshotImpl) Version() int {
 }
 
 func (s *accountSnapshotImpl) ActiveContract() ContractSnapshot {
-	if s.curContract != nil && s.curContract.status == csActive {
+	if s.curContract != nil && s.curContract.status == CSActive {
 		return s.curContract
 	}
 	return nil
 }
 
 func (s *accountSnapshotImpl) IsDisabled() bool {
-	if s.curContract.status&csDisable != 0 {
+	if s.curContract.status&CSDisable != 0 {
 		return true
 	}
 	return false
 }
 
 func (s *accountSnapshotImpl) IsBlacklisted() bool {
-	if s.curContract.status&csBlacklist != 0 {
+	if s.curContract.status&CSBlacklist != 0 {
 		return true
 	}
 	return false
@@ -326,21 +326,21 @@ func (s *accountStateImpl) Version() int {
 }
 
 func (s *accountStateImpl) ActiveContract() Contract {
-	if s.curContract != nil && s.curContract.status == csActive {
+	if s.curContract != nil && s.curContract.status == CSActive {
 		return s.curContract
 	}
 	return nil
 }
 
 func (s *accountStateImpl) IsDisabled() bool {
-	if s.curContract != nil && s.curContract.status&csDisable != 0 {
+	if s.curContract != nil && s.curContract.status&CSDisable != 0 {
 		return true
 	}
 	return false
 }
 
 func (s *accountStateImpl) IsBlacklisted() bool {
-	if s.curContract != nil && s.curContract.status&csBlacklist != 0 {
+	if s.curContract != nil && s.curContract.status&CSBlacklist != 0 {
 		return true
 	}
 	return false
@@ -348,9 +348,9 @@ func (s *accountStateImpl) IsBlacklisted() bool {
 
 func (s *accountStateImpl) Disable(b bool) {
 	if s.curContract != nil {
-		status := s.curContract.status & csBlacklist
+		status := s.curContract.status & CSBlacklist
 		if b == true {
-			s.curContract.status = status | csDisable
+			s.curContract.status = status | CSDisable
 		} else {
 			s.curContract.status = status
 		}
@@ -359,9 +359,9 @@ func (s *accountStateImpl) Disable(b bool) {
 
 func (s *accountStateImpl) Blacklist(b bool) {
 	if s.curContract != nil {
-		status := s.curContract.status & csDisable
+		status := s.curContract.status & CSDisable
 		if b == true {
-			s.curContract.status = status | csBlacklist
+			s.curContract.status = status | CSBlacklist
 		} else {
 			s.curContract.status = status
 		}
@@ -390,9 +390,9 @@ func (s *accountStateImpl) DeployContract(code []byte,
 	if s.isContract == false {
 		return
 	}
-	status := csInactive
+	status := CSInactive
 	if s.curContract != nil {
-		status = csPending
+		status = CSPending
 	}
 	codeHash := sha3.Sum256(code)
 	bk, err := s.database.GetBucket(db.BytesByHash)
@@ -416,7 +416,7 @@ func (s *accountStateImpl) AcceptContract(
 		return scoreresult.NewError(module.StatusContractNotFound, "Wrong txHash")
 	}
 	s.curContract = s.nextContract
-	s.curContract.status = csActive
+	s.curContract.status = CSActive
 	s.curContract.auditTxHash = auditTxHash
 	s.nextContract = nil
 	return nil
@@ -430,7 +430,7 @@ func (s *accountStateImpl) RejectContract(
 	if bytes.Equal(txHash, s.nextContract.deployTxHash) == false {
 		return errors.New("Wrong txHash")
 	}
-	s.nextContract.status = csRejected
+	s.nextContract.status = CSRejected
 	s.nextContract.auditTxHash = auditTxHash
 	return nil
 }

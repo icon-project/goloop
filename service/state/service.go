@@ -1,4 +1,4 @@
-package service
+package state
 
 import (
 	"errors"
@@ -7,6 +7,7 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+// TODO Check if everything here is adequate for state package.
 const (
 	GIGA = 1000 * 1000 * 1000
 	TERA = 1000 * GIGA
@@ -106,12 +107,4 @@ type WorldContext interface {
 	SetTransactionInfo(ti *TransactionInfo)
 	GetTransactionInfo(ti *TransactionInfo)
 	SetContractInfo(si *ContractInfo)
-}
-
-type Transaction interface {
-	module.Transaction
-	PreValidate(wc WorldContext, update bool) error
-	GetHandler(cm ContractManager) (TransactionHandler, error)
-	Timestamp() int64
-	Nonce() *big.Int
 }

@@ -1,11 +1,12 @@
-package service
+package state
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
-	"testing"
 
 	"github.com/icon-project/goloop/module"
 )

@@ -1,14 +1,15 @@
-package service
+package state
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
-	"sync"
 )
 
 type validatorList struct {

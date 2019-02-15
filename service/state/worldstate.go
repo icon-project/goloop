@@ -1,6 +1,10 @@
-package service
+package state
 
 import (
+	"log"
+	"reflect"
+	"sync"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
@@ -8,9 +12,6 @@ import (
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
-	"log"
-	"reflect"
-	"sync"
 )
 
 // WorldSnapshot represents snapshot of WorldState.

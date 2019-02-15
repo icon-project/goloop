@@ -1,4 +1,4 @@
-package service
+package state
 
 import (
 	"bytes"
@@ -14,12 +14,12 @@ import (
 type contractStatus int
 
 const (
-	csInactive contractStatus = 1 << iota
-	csActive
-	csPending
-	csRejected
-	csBlacklist
-	csDisable
+	CSInactive contractStatus = 1 << iota
+	CSActive
+	CSPending
+	CSRejected
+	CSBlacklist
+	CSDisable
 )
 
 type ContractSnapshot interface {
