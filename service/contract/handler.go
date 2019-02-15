@@ -1,4 +1,4 @@
-package service
+package contract
 
 import (
 	"math/big"
@@ -14,12 +14,12 @@ const (
 	transactionTimeLimit     = time.Duration(2 * time.Second)
 	scoreDecompressTimeLimit = time.Duration(3 * time.Second)
 
-	ctypeTransfer = 0x100
-	ctypeNone     = iota
-	ctypeDeploy
-	ctypeCall
-	ctypeGovCall
-	ctypeTransferAndCall = ctypeTransfer | ctypeCall
+	CTypeTransfer = 0x100
+	CTypeNone     = iota
+	CTypeDeploy
+	CTypeCall
+	CTypeGovCall
+	CTypeTransferAndCall = CTypeTransfer | CTypeCall
 )
 
 type (

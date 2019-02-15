@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
 
@@ -145,11 +146,11 @@ func (g *genesisV3) PreValidate(wc state.WorldContext, update bool) error {
 	return nil
 }
 
-func (g *genesisV3) GetHandler(ContractManager) (TransactionHandler, error) {
+func (g *genesisV3) GetHandler(contract.ContractManager) (TransactionHandler, error) {
 	return g, nil
 }
 
-func (g *genesisV3) Prepare(ctx Context) (state.WorldContext, error) {
+func (g *genesisV3) Prepare(ctx contract.Context) (state.WorldContext, error) {
 	lq := []state.LockRequest{
 		{"", state.AccountWriteLock},
 	}
@@ -232,7 +233,7 @@ func (g *genesisV3) setDefaultSystemInfo(as state.AccountState) {
 	}
 }
 
-func (g *genesisV3) Execute(ctx Context) (txresult.Receipt, error) {
+func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
 	r := txresult.NewReceipt(common.NewAccountAddress([]byte{}))
 	as := ctx.GetAccountState(state.SystemID)
 	for _, info := range g.Accounts {

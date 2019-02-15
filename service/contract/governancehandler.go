@@ -1,4 +1,4 @@
-package service
+package contract
 
 import (
 	"github.com/icon-project/goloop/module"

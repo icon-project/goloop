@@ -1,4 +1,4 @@
-package service
+package contract
 
 import (
 	"archive/zip"
@@ -120,13 +120,13 @@ func (cm *contractManager) GetHandler(cc CallContext,
 ) ContractHandler {
 	var handler ContractHandler
 	switch ctype {
-	case ctypeTransfer:
+	case CTypeTransfer:
 		handler = newTransferHandler(from, to, value, stepLimit)
-	case ctypeCall:
+	case CTypeCall:
 		handler = newCallHandler(newCommonHandler(from, to, value, stepLimit), data, cc, false)
-	case ctypeDeploy:
+	case CTypeDeploy:
 		handler = newDeployHandler(from, to, value, stepLimit, data, cc, false)
-	case ctypeTransferAndCall:
+	case CTypeTransferAndCall:
 		th := newTransferHandler(from, to, value, stepLimit)
 		handler = &TransferAndCallHandler{
 			th:          th,

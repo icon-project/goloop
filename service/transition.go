@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
 
@@ -39,7 +40,7 @@ type transition struct {
 	normalTransactions module.TransactionList
 
 	db  db.Database
-	cm  ContractManager
+	cm  contract.ContractManager
 	eem eeproxy.Manager
 
 	cb module.TransitionCallback
@@ -108,7 +109,7 @@ func newTransition(parent *transition, patchtxs module.TransactionList,
 
 // all parameters should be valid.
 func newInitTransition(db db.Database, result []byte,
-	validatorList module.ValidatorList, cm ContractManager, em eeproxy.Manager,
+	validatorList module.ValidatorList, cm contract.ContractManager, em eeproxy.Manager,
 ) (*transition, error) {
 	var tresult transitionResult
 	if len(result) > 0 {
@@ -237,7 +238,7 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	t.step = stepExecuting
 	t.mutex.Unlock()
 
-	ctx := NewContext(t.newWorldContext(), t.cm, t.eem)
+	ctx := contract.NewContext(t.newWorldContext(), t.cm, t.eem)
 
 	startTime := time.Now()
 
@@ -317,7 +318,7 @@ func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext
 	return true, cnt
 }
 
-func (t *transition) executeTxs(l module.TransactionList, ctx Context, rctBuf []txresult.Receipt) (bool, int) {
+func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, rctBuf []txresult.Receipt) (bool, int) {
 	if l == nil {
 		return true, 0
 	}
@@ -349,7 +350,7 @@ func (t *transition) executeTxs(l module.TransactionList, ctx Context, rctBuf []
 				Hash:      txo.ID(),
 			})
 			go func(tx Transaction, wc state.WorldContext, rb *txresult.Receipt) {
-				if rct, err := txh.Execute(NewContext(wc, t.cm, t.eem)); err != nil {
+				if rct, err := txh.Execute(contract.NewContext(wc, t.cm, t.eem)); err != nil {
 					log.Panicf("Fail to execute transaction err=%+v", err)
 				} else {
 					*rb = rct
@@ -363,7 +364,7 @@ func (t *transition) executeTxs(l module.TransactionList, ctx Context, rctBuf []
 				Nonce:     txo.Nonce(),
 				Hash:      txo.ID(),
 			})
-			if rct, err := txh.Execute(NewContext(wc, t.cm, t.eem)); err != nil {
+			if rct, err := txh.Execute(contract.NewContext(wc, t.cm, t.eem)); err != nil {
 				log.Panicf("Fail to execute transaction err=%+v", err)
 			} else {
 				rctBuf[cnt] = rct

@@ -11,6 +11,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
@@ -42,7 +43,7 @@ type manager struct {
 	db        db.Database
 	chain     module.Chain
 	txReactor *transactionReactor
-	cm        ContractManager
+	cm        contract.ContractManager
 	eem       eeproxy.Manager
 }
 
@@ -56,7 +57,7 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 		normalTxPool: NewTransactionPool(bk),
 		db:           chain.Database(),
 		chain:        chain,
-		cm:           NewContractManager(chain.Database(), contractDir),
+		cm:           contract.NewContractManager(chain.Database(), contractDir),
 		eem:          eem,
 	}
 	if nm != nil {
@@ -307,12 +308,12 @@ func (m *manager) Call(resultHash []byte, js []byte, bi module.BlockInfo,
 		return module.StatusSystemError, err.Error(), nil
 	}
 
-	qh, err := NewQueryHandler(m.cm, &jso.From, &jso.To,
+	qh, err := contract.NewQueryHandler(m.cm, &jso.From, &jso.To,
 		jso.DataType, jso.Data)
 	if err != nil {
 		return module.StatusSystemError, err.Error(), nil
 	}
-	status, result := qh.Query(NewContext(wc, m.cm, m.eem))
+	status, result := qh.Query(contract.NewContext(wc, m.cm, m.eem))
 	return status, result, nil
 }
 

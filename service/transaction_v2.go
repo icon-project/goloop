@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"strconv"
 
+	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
 
@@ -101,11 +102,11 @@ func (tx *transactionV2) PreValidate(wc state.WorldContext, update bool) error {
 	return nil
 }
 
-func (tx *transactionV2) GetHandler(cm ContractManager) (TransactionHandler, error) {
+func (tx *transactionV2) GetHandler(cm contract.ContractManager) (TransactionHandler, error) {
 	return tx, nil
 }
 
-func (tx *transactionV2) Prepare(ctx Context) (state.WorldContext, error) {
+func (tx *transactionV2) Prepare(ctx contract.Context) (state.WorldContext, error) {
 	lq := []state.LockRequest{
 		{string(tx.From.ID()), state.AccountWriteLock},
 		{string(tx.To.ID()), state.AccountWriteLock},
@@ -113,7 +114,7 @@ func (tx *transactionV2) Prepare(ctx Context) (state.WorldContext, error) {
 	return ctx.GetFuture(lq), nil
 }
 
-func (tx *transactionV2) Execute(ctx Context) (txresult.Receipt, error) {
+func (tx *transactionV2) Execute(ctx contract.Context) (txresult.Receipt, error) {
 	r := txresult.NewReceipt(&tx.To)
 	var trans big.Int
 

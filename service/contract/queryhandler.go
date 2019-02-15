@@ -1,4 +1,4 @@
-package service
+package contract
 
 import (
 	"math/big"
@@ -37,10 +37,10 @@ func (qh *QueryHandler) Query(ctx Context) (module.Status, interface{}) {
 	}
 
 	// Set up
-	cc := newCallContext(nil, true)
+	cc := NewCallContext(nil, true)
 	cc.Setup(ctx)
 	handler := ctx.ContractManager().GetHandler(cc, qh.from, qh.to,
-		big.NewInt(0), ctx.GetStepLimit(state.LimitTypeCall), ctypeCall, qh.data)
+		big.NewInt(0), ctx.GetStepLimit(state.LimitTypeCall), CTypeCall, qh.data)
 
 	// Execute
 	status, _, result, _ := cc.Call(handler)
@@ -52,7 +52,8 @@ func (qh *QueryHandler) Query(ctx Context) (module.Status, interface{}) {
 func NewQueryHandler(cm ContractManager, from, to module.Address,
 	dataType *string, data []byte,
 ) (*QueryHandler, error) {
-	if *dataType != dataTypeCall {
+	// TODO How can it use constant variable, "dataTypeCall"?
+	if *dataType != "call" {
 		return nil, errors.Errorf("IllegalDataType(type=%s)", *dataType)
 	}
 

@@ -1,4 +1,4 @@
-package service
+package contract
 
 import (
 	"encoding/json"
@@ -19,6 +19,16 @@ import (
 type DataCallJSON struct {
 	Method string          `json:"method"`
 	Params json.RawMessage `json:"params"`
+}
+
+// TODO Right to place here?I
+func ParseCallData(data []byte) (*DataCallJSON, error) {
+	var jso DataCallJSON
+	if json.Unmarshal(data, &jso) != nil || jso.Method == "" {
+		return nil, state.ErrInvalidDataValue
+	} else {
+		return &jso, nil
+	}
 }
 
 type CallHandler struct {

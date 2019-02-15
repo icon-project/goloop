@@ -3,6 +3,7 @@ package service
 import (
 	"math/big"
 
+	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
 
@@ -18,8 +19,8 @@ const (
 )
 
 type TransactionHandler interface {
-	Prepare(ctx Context) (state.WorldContext, error)
-	Execute(ctx Context) (txresult.Receipt, error)
+	Prepare(ctx contract.Context) (state.WorldContext, error)
+	Execute(ctx contract.Context) (txresult.Receipt, error)
 	Dispose()
 }
 
@@ -31,12 +32,12 @@ type transactionHandler struct {
 	dataType  *string
 	data      []byte
 
-	handler ContractHandler
-	cc      CallContext
+	handler contract.ContractHandler
+	cc      contract.CallContext
 	receipt txresult.Receipt
 }
 
-func NewTransactionHandler(cm ContractManager, from, to module.Address,
+func NewTransactionHandler(cm contract.ContractManager, from, to module.Address,
 	value, stepLimit *big.Int, dataType *string, data []byte,
 ) (TransactionHandler, error) {
 	th := &transactionHandler{
@@ -47,28 +48,28 @@ func NewTransactionHandler(cm ContractManager, from, to module.Address,
 		dataType:  dataType,
 		data:      data,
 	}
-	ctype := ctypeNone // invalid contract type
+	ctype := contract.CTypeNone // invalid contract type
 	if dataType == nil {
 		if th.to.IsContract() {
-			ctype = ctypeTransferAndCall
+			ctype = contract.CTypeTransferAndCall
 		} else {
-			ctype = ctypeTransfer
+			ctype = contract.CTypeTransfer
 		}
 	} else {
 		switch *dataType {
 		case dataTypeMessage:
 			if th.to.IsContract() {
-				ctype = ctypeTransferAndCall
+				ctype = contract.CTypeTransferAndCall
 			} else {
-				ctype = ctypeTransfer
+				ctype = contract.CTypeTransfer
 			}
 		case dataTypeDeploy:
-			ctype = ctypeDeploy
+			ctype = contract.CTypeDeploy
 		case dataTypeCall:
 			if value != nil && value.Sign() == 1 { //value > 0
-				ctype = ctypeTransferAndCall
+				ctype = contract.CTypeTransferAndCall
 			} else {
-				ctype = ctypeCall
+				ctype = contract.CTypeCall
 			}
 		default:
 			return nil, errors.Errorf("IllegalDataType(type=%s)", *dataType)
@@ -76,7 +77,7 @@ func NewTransactionHandler(cm ContractManager, from, to module.Address,
 	}
 
 	th.receipt = txresult.NewReceipt(to)
-	th.cc = newCallContext(th.receipt, false)
+	th.cc = contract.NewCallContext(th.receipt, false)
 	th.handler = cm.GetHandler(th.cc, from, to, value, stepLimit, ctype, data)
 	if th.handler == nil {
 		return nil, errors.New("NoSuitableHandler")
@@ -84,11 +85,11 @@ func NewTransactionHandler(cm ContractManager, from, to module.Address,
 	return th, nil
 }
 
-func (th *transactionHandler) Prepare(ctx Context) (state.WorldContext, error) {
+func (th *transactionHandler) Prepare(ctx contract.Context) (state.WorldContext, error) {
 	return th.handler.Prepare(ctx)
 }
 
-func (th *transactionHandler) Execute(ctx Context) (txresult.Receipt, error) {
+func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, error) {
 	// Make a copy of initial state
 	wcs := ctx.GetSnapshot()
 

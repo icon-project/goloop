@@ -1,4 +1,4 @@
-package service
+package contract
 
 import (
 	"container/list"
@@ -55,7 +55,7 @@ type callContext struct {
 	waiter chan interface{}
 }
 
-func newCallContext(receipt txresult.Receipt, isQuery bool) CallContext {
+func NewCallContext(receipt txresult.Receipt, isQuery bool) CallContext {
 	return &callContext{
 		receipt: receipt,
 		isQuery: isQuery,

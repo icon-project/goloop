@@ -9,6 +9,7 @@ import (
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/pkg/errors"
 )
@@ -18,7 +19,7 @@ import (
 type Transaction interface {
 	module.Transaction
 	PreValidate(wc state.WorldContext, update bool) error
-	GetHandler(cm ContractManager) (TransactionHandler, error)
+	GetHandler(cm contract.ContractManager) (TransactionHandler, error)
 	Timestamp() int64
 	Nonce() *big.Int
 }

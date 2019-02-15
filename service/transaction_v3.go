@@ -12,6 +12,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
 )
 
@@ -162,7 +163,7 @@ func (tx *transactionV3) Verify() error {
 			if tx.Data == nil {
 				return state.ErrInvalidDataValue
 			}
-			_, err := ParseCallData(tx.Data)
+			_, err := contract.ParseCallData(tx.Data)
 			return err
 		case dataTypeDeploy:
 			// element check
@@ -193,15 +194,6 @@ func (tx *transactionV3) Verify() error {
 	}
 
 	return nil
-}
-
-func ParseCallData(data []byte) (*DataCallJSON, error) {
-	var jso DataCallJSON
-	if json.Unmarshal(data, &jso) != nil || jso.Method == "" {
-		return nil, state.ErrInvalidDataValue
-	} else {
-		return &jso, nil
-	}
 }
 
 func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
@@ -277,7 +269,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 			if info := as.APIInfo(); info == nil {
 				return state.ErrNoActiveContract
 			} else {
-				jso, _ := ParseCallData(tx.Data) // Already checked at Verify(). It can't be nil.
+				jso, _ := contract.ParseCallData(tx.Data) // Already checked at Verify(). It can't be nil.
 				if _, err = info.ConvertParamsToTypedObj(jso.Method, jso.Params); err != nil {
 					return state.ErrInvalidMethod
 				}
@@ -301,7 +293,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 	return nil
 }
 
-func (tx *transactionV3) GetHandler(cm ContractManager) (TransactionHandler, error) {
+func (tx *transactionV3) GetHandler(cm contract.ContractManager) (TransactionHandler, error) {
 	var value *big.Int
 	if tx.Value != nil {
 		value = &tx.Value.Int
