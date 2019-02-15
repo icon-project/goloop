@@ -1,4 +1,4 @@
-package tx
+package service
 
 import (
 	"container/list"
@@ -9,6 +9,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
+	transaction "github.com/icon-project/goloop/service/tx"
 )
 
 const (
@@ -84,7 +85,7 @@ func makeTimestamp() int64 {
 }
 
 func (tp *TransactionPool) RemoveOldTXs(bts int64) {
-	if !ConfigOnCheckingTimestamp {
+	if !transaction.ConfigOnCheckingTimestamp {
 		return
 	}
 	tp.mutex.Lock()
@@ -93,7 +94,7 @@ func (tp *TransactionPool) RemoveOldTXs(bts int64) {
 	iter := tp.list.Front()
 	for iter != nil {
 		next := iter.Next()
-		if iter.Value.(*transaction).Timestamp() <= bts {
+		if iter.Value.(transaction.Transaction).Timestamp() <= bts {
 			tp.list.Remove(iter)
 		}
 		iter = next
@@ -117,10 +118,10 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, max int) []module.Tr
 	}
 
 	// make list to be used for pre-validate.
-	txs := make([]Transaction, txNum)
+	txs := make([]transaction.Transaction, txNum)
 	txIdx := 0
 	for e := tp.list.Front(); txIdx < txNum; e = e.Next() {
-		txs[txIdx] = e.Value.(Transaction)
+		txs[txIdx] = e.Value.(transaction.Transaction)
 		txIdx++
 	}
 
@@ -184,7 +185,7 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, max int) []module.Tr
 	return ErrDuplicateTransaction if tx exists in pool
 	return ErrExpiredTransaction if Timestamp of tx is expired
 */
-func (tp *TransactionPool) Add(tx Transaction) error {
+func (tp *TransactionPool) Add(tx transaction.Transaction) error {
 	if tx == nil {
 		return nil
 	}

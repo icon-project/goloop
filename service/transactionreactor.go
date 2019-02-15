@@ -1,9 +1,10 @@
-package tx
+package service
 
 import (
 	"log"
 
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/tx"
 )
 
 type TransactionReactor struct {
@@ -24,7 +25,7 @@ var (
 func (r *TransactionReactor) OnReceive(subProtocol module.ProtocolInfo, buf []byte, peerId module.PeerID) (bool, error) {
 	switch subProtocol {
 	case ProtocolPropagateTransaction:
-		tx, err := NewTransaction(buf)
+		tx, err := tx.NewTransaction(buf)
 		if err != nil {
 			log.Printf("Failed to unmarshal transaction. buf=%x, err=%+v\n", buf, err)
 			return false, err
@@ -48,7 +49,7 @@ func (r *TransactionReactor) OnReceive(subProtocol module.ProtocolInfo, buf []by
 	return false, nil
 }
 
-func (r *TransactionReactor) PropagateTransaction(pi module.ProtocolInfo, tx Transaction) error {
+func (r *TransactionReactor) PropagateTransaction(pi module.ProtocolInfo, tx tx.Transaction) error {
 	if r != nil {
 		r.membership.Multicast(ProtocolPropagateTransaction, tx.Bytes(), module.ROLE_VALIDATOR)
 	}

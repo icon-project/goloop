@@ -22,12 +22,6 @@ const (
 	ConfigOnCheckingTimestamp       = true
 )
 
-var (
-	ErrDuplicateTransaction    = errors.New("DuplicateTransaction")
-	ErrTransactionPoolOverFlow = errors.New("TransactionPoolOverFlow")
-	ErrExpiredTransaction      = errors.New("ExpiredTransaction")
-)
-
 // TODO It assumes normal transaction. When supporting patch, add skipping
 // timestamp checking for it at PreValidate().
 type Transaction interface {

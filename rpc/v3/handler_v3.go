@@ -9,8 +9,7 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/icon-project/goloop/service/tx"
-
+	"github.com/icon-project/goloop/service"
 	"github.com/intel-go/fastjson"
 	"github.com/osamingo/jsonrpc"
 	client "github.com/ybbus/jsonrpc"
@@ -462,7 +461,7 @@ func (h sendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjson
 	txHash, err := h.sm.SendTransaction(txo)
 
 	if err != nil {
-		if err == tx.ErrTransactionPoolOverFlow {
+		if err == service.ErrTransactionPoolOverFlow {
 			error := &jsonrpc.Error{
 				Code:    -32101,
 				Message: "TransactionPool Overflow",
