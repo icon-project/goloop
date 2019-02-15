@@ -9,7 +9,6 @@ import (
 
 	"github.com/icon-project/goloop/service/txresult"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/service/eeproxy"
 
@@ -52,7 +51,7 @@ type transition struct {
 	worldSnapshot  WorldSnapshot
 	patchReceipts  module.ReceiptList
 	normalReceipts module.ReceiptList
-	logBloom       common.LogBloom
+	logBloom       txresult.LogBloom
 }
 
 type transitionResult struct {

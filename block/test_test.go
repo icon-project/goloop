@@ -12,6 +12,7 @@ import (
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/txresult"
 	"github.com/pkg/errors"
 )
 
@@ -57,7 +58,7 @@ func (e *testError) Error() string {
 type testTransactionEffect struct {
 	WorldState     []byte
 	NextValidators *testValidatorList
-	LogBloom       common.LogBloom
+	LogBloom       txresult.LogBloom
 }
 
 type testReceiptData struct {
@@ -305,7 +306,7 @@ type testTransition struct {
 	normalTransactions *testTransactionList
 	baseValidators     *testValidatorList
 	_result            []byte
-	_logBloom          *common.LogBloom
+	_logBloom          *txresult.LogBloom
 
 	sync.Mutex
 	step     transitionStep
@@ -460,7 +461,7 @@ func (tr *testTransition) LogBloom() module.LogBloom {
 
 	if tr.step == transitionStepSucceed {
 		if tr._logBloom == nil {
-			tr._logBloom = common.NewLogBloom(nil)
+			tr._logBloom = txresult.NewLogBloom(nil)
 			tr._logBloom.Merge(&tr.patchTransactions.effect().LogBloom)
 			tr._logBloom.Merge(&tr.normalTransactions.effect().LogBloom)
 		}

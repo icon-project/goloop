@@ -69,7 +69,7 @@ type receiptData struct {
 	CumulativeStepUsed common.HexInt
 	StepUsed           common.HexInt
 	StepPrice          common.HexInt
-	LogBloom           common.LogBloom
+	LogBloom           LogBloom
 	EventLogs          []*eventLog
 	SCOREAddress       *common.Address
 }
@@ -163,7 +163,7 @@ type receiptJSON struct {
 	SCOREAddress       *common.Address  `json:"scoreAddress,omitempty"`
 	Failure            *failureReason   `json:"failure,omitempty"`
 	EventLogs          []*eventLogJSON  `json:"eventLogs"`
-	LogBloom           common.LogBloom  `json:"logsBloom"`
+	LogBloom           LogBloom         `json:"logsBloom"`
 	Status             common.HexUint16 `json:"status"`
 }
 

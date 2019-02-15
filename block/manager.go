@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/icon-project/goloop/service/txresult"
 	"github.com/pkg/errors"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -700,7 +701,7 @@ func (m *manager) newBlockFromHeaderReader(r io.Reader) (module.Block, error) {
 		timestamp:          header.Timestamp,
 		proposer:           newAddress(header.Proposer),
 		prevID:             header.PrevID,
-		logBloom:           common.NewLogBloom(header.LogBloom),
+		logBloom:           txresult.NewLogBloom(header.LogBloom),
 		result:             header.Result,
 		patchTransactions:  patches,
 		normalTransactions: normalTxs,
@@ -775,7 +776,7 @@ func (m *manager) newBlockFromReader(r io.Reader) (module.Block, error) {
 		timestamp:          blockFormat.Timestamp,
 		proposer:           newAddress(blockFormat.Proposer),
 		prevID:             blockFormat.PrevID,
-		logBloom:           common.NewLogBloom(blockFormat.LogBloom),
+		logBloom:           txresult.NewLogBloom(blockFormat.LogBloom),
 		result:             blockFormat.Result,
 		patchTransactions:  patches,
 		normalTransactions: normalTxs,
