@@ -1,9 +1,10 @@
-package contract
+package tx
 
 import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
 
 	"github.com/icon-project/goloop/module"
@@ -16,9 +17,9 @@ type QueryHandler struct {
 	data []byte
 }
 
-func (qh *QueryHandler) Query(ctx Context) (module.Status, interface{}) {
+func (qh *QueryHandler) Query(ctx contract.Context) (module.Status, interface{}) {
 	// check if function is read-only
-	jso, err := ParseCallData(qh.data)
+	jso, err := contract.ParseCallData(qh.data)
 	if err != nil {
 		return module.StatusMethodNotFound, err.Error()
 	}
@@ -37,10 +38,10 @@ func (qh *QueryHandler) Query(ctx Context) (module.Status, interface{}) {
 	}
 
 	// Set up
-	cc := NewCallContext(nil, true)
+	cc := contract.NewCallContext(nil, true)
 	cc.Setup(ctx)
 	handler := ctx.ContractManager().GetHandler(cc, qh.from, qh.to,
-		big.NewInt(0), ctx.GetStepLimit(state.LimitTypeCall), CTypeCall, qh.data)
+		big.NewInt(0), ctx.GetStepLimit(state.LimitTypeCall), contract.CTypeCall, qh.data)
 
 	// Execute
 	status, _, result, _ := cc.Call(handler)
@@ -49,11 +50,10 @@ func (qh *QueryHandler) Query(ctx Context) (module.Status, interface{}) {
 	return status, msg
 }
 
-func NewQueryHandler(cm ContractManager, from, to module.Address,
+func NewQueryHandler(cm contract.ContractManager, from, to module.Address,
 	dataType *string, data []byte,
 ) (*QueryHandler, error) {
-	// TODO How can it use constant variable, "dataTypeCall"?
-	if *dataType != "call" {
+	if *dataType != dataTypeCall {
 		return nil, errors.Errorf("IllegalDataType(type=%s)", *dataType)
 	}
 
