@@ -365,10 +365,16 @@ func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, 
 				Nonce:     txo.Nonce(),
 				Hash:      txo.ID(),
 			})
+			if logDebug {
+				log.Printf("START TX <0x%x>", txo.ID())
+			}
 			if rct, err := txh.Execute(ctx); err != nil {
 				log.Panicf("Fail to execute transaction err=%+v", err)
 			} else {
 				rctBuf[cnt] = rct
+			}
+			if logDebug {
+				log.Printf("END   TX <0x%x>", txo.ID())
 			}
 			txh.Dispose()
 		}
