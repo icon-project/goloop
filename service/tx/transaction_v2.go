@@ -1,4 +1,4 @@
-package service
+package tx
 
 import (
 	"bytes"
@@ -68,13 +68,13 @@ func (tx *transactionV2) Verify() error {
 
 func (tx *transactionV2) PreValidate(wc state.WorldContext, update bool) error {
 	// outdated or invalid timestamp?
-	if configOnCheckingTimestamp == true {
+	if ConfigOnCheckingTimestamp == true {
 		tsDiff := wc.BlockTimeStamp() - tx.TimeStamp.Value
-		if tsDiff <= -configTXTimestampBackwardMargin ||
-			tsDiff > configTXTimestampForwardLimit {
+		if tsDiff <= -ConfigTXTimestampBackwardMargin ||
+			tsDiff > ConfigTXTimestampForwardLimit {
 			return state.ErrTimeOut
 		}
-		if tsDiff > configTXTimestampForwardMargin {
+		if tsDiff > ConfigTXTimestampForwardMargin {
 			return state.ErrFutureTransaction
 		}
 	}

@@ -1,4 +1,4 @@
-package service
+package tx
 
 import (
 	"bytes"
@@ -171,7 +171,7 @@ func (tx *transactionV3) Verify() error {
 				return state.ErrInvalidDataValue
 			}
 			type dataDeployJSON struct {
-				ContentType string          `json:"contentType""`
+				ContentType string          `json:"contentType"`
 				Content     common.HexBytes `json:"content"`
 				Params      json.RawMessage `json:"params"`
 			}
@@ -200,13 +200,13 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 	// TODO check if network ID is valid
 
 	// outdated or invalid timestamp?
-	if configOnCheckingTimestamp {
+	if ConfigOnCheckingTimestamp {
 		tsDiff := wc.BlockTimeStamp() - tx.TimeStamp.Value
-		if tsDiff <= -configTXTimestampBackwardMargin ||
-			tsDiff > configTXTimestampForwardLimit {
+		if tsDiff <= -ConfigTXTimestampBackwardMargin ||
+			tsDiff > ConfigTXTimestampForwardLimit {
 			return state.ErrTimeOut
 		}
-		if tsDiff > configTXTimestampForwardMargin {
+		if tsDiff > ConfigTXTimestampForwardMargin {
 			return state.ErrFutureTransaction
 		}
 	}

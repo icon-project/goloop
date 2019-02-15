@@ -1,4 +1,4 @@
-package service
+package tx
 
 import (
 	"container/list"
@@ -61,7 +61,7 @@ func newTransactionMap() *transactionMap {
 	return m
 }
 
-type transactionPool struct {
+type TransactionPool struct {
 	txdb db.Bucket
 
 	list  *list.List
@@ -70,8 +70,8 @@ type transactionPool struct {
 	mutex sync.Mutex
 }
 
-func NewTransactionPool(txdb db.Bucket) *transactionPool {
-	pool := &transactionPool{
+func NewTransactionPool(txdb db.Bucket) *TransactionPool {
+	pool := &TransactionPool{
 		txdb:  txdb,
 		list:  list.New(),
 		txMap: newTransactionMap(),
@@ -83,8 +83,8 @@ func makeTimestamp() int64 {
 	return time.Now().UnixNano() / int64(time.Microsecond)
 }
 
-func (tp *transactionPool) removeOldTXs(bts int64) {
-	if !configOnCheckingTimestamp {
+func (tp *TransactionPool) RemoveOldTXs(bts int64) {
+	if !ConfigOnCheckingTimestamp {
 		return
 	}
 	tp.mutex.Lock()
@@ -101,7 +101,7 @@ func (tp *transactionPool) removeOldTXs(bts int64) {
 }
 
 // It returns all candidates for a negative integer n.
-func (tp *transactionPool) candidate(wc state.WorldContext, max int) []module.Transaction {
+func (tp *TransactionPool) Candidate(wc state.WorldContext, max int) []module.Transaction {
 	tp.mutex.Lock()
 	if tp.list.Len() == 0 {
 		tp.mutex.Unlock()
@@ -172,7 +172,7 @@ func (tp *transactionPool) candidate(wc state.WorldContext, max int) []module.Tr
 		}()
 	}
 
-	log.Printf("transactionPool.candidate collected=%d removed=%d poolsize=%d",
+	log.Printf("TransactionPool.candidate collected=%d removed=%d poolsize=%d",
 		valNum, len(txs)-valNum, poolSize)
 
 	return validTxs[:valNum]
@@ -184,7 +184,7 @@ func (tp *transactionPool) candidate(wc state.WorldContext, max int) []module.Tr
 	return ErrDuplicateTransaction if tx exists in pool
 	return ErrExpiredTransaction if Timestamp of tx is expired
 */
-func (tp *transactionPool) add(tx *transaction) error {
+func (tp *TransactionPool) Add(tx Transaction) error {
 	if tx == nil {
 		return nil
 	}
@@ -210,7 +210,7 @@ func (tp *transactionPool) add(tx *transaction) error {
 }
 
 // removeList remove transactions when transactions are finalized.
-func (tp *transactionPool) removeList(txs module.TransactionList) {
+func (tp *TransactionPool) RemoveList(txs module.TransactionList) {
 	tp.mutex.Lock()
 	defer tp.mutex.Unlock()
 

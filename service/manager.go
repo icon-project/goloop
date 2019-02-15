@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"log"
 	"math/big"
-	"time"
+
+	"github.com/icon-project/goloop/service/tx"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
@@ -17,32 +18,15 @@ import (
 	"github.com/icon-project/goloop/service/txresult"
 )
 
-const (
-	configTXTimestampBackwardMargin = int64(5 * time.Minute / time.Microsecond)
-	configTXTimestampForwardMargin  = int64(5 * time.Minute / time.Microsecond)
-	configTXTimestampForwardLimit   = int64(10 * time.Minute / time.Microsecond)
-	configOnCheckingTimestamp       = true
-
-	// maximum number of transactions in a block
-	// TODO it should be configured or received from block manager
-	txMaxNumInBlock = 2000
-)
-
-var (
-	ErrDuplicateTransaction    = errors.New("DuplicateTransaction")
-	ErrTransactionPoolOverFlow = errors.New("TransactionPoolOverFlow")
-	ErrExpiredTransaction      = errors.New("ExpiredTransaction")
-)
-
 type manager struct {
 	// tx pool should be connected to transition for more than one branches.
 	// Currently, it doesn't allow another branch, so add tx pool here.
-	patchTxPool  *transactionPool
-	normalTxPool *transactionPool
+	patchTxPool  *tx.TransactionPool
+	normalTxPool *tx.TransactionPool
 
 	db        db.Database
 	chain     module.Chain
-	txReactor *transactionReactor
+	txReactor *tx.TransactionReactor
 	cm        contract.ContractManager
 	eem       eeproxy.Manager
 }
@@ -53,15 +37,15 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 	bk, _ := chain.Database().GetBucket(db.TransactionLocatorByHash)
 
 	mgr := &manager{
-		patchTxPool:  NewTransactionPool(bk),
-		normalTxPool: NewTransactionPool(bk),
+		patchTxPool:  tx.NewTransactionPool(bk),
+		normalTxPool: tx.NewTransactionPool(bk),
 		db:           chain.Database(),
 		chain:        chain,
 		cm:           contract.NewContractManager(chain.Database(), contractDir),
 		eem:          eem,
 	}
 	if nm != nil {
-		mgr.txReactor = newTransactionReactor(nm, mgr.patchTxPool, mgr.normalTxPool)
+		mgr.txReactor = tx.NewTransactionReactor(nm, mgr.patchTxPool, mgr.normalTxPool)
 	}
 	return mgr
 }
@@ -80,11 +64,11 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 	ws, _ := state.WorldStateFromSnapshot(pt.worldSnapshot)
 	wc := state.NewWorldContext(ws, bi)
 
-	patchTxs := m.patchTxPool.candidate(wc, -1) // try to add all patches in the block
-	maxTxNum := txMaxNumInBlock - len(patchTxs)
+	patchTxs := m.patchTxPool.Candidate(wc, -1) // try to add all patches in the block
+	maxTxNum := tx.TxMaxNumInBlock - len(patchTxs)
 	var normalTxs []module.Transaction
 	if maxTxNum > 0 {
-		normalTxs = m.normalTxPool.candidate(wc, txMaxNumInBlock-len(patchTxs))
+		normalTxs = m.normalTxPool.Candidate(wc, tx.TxMaxNumInBlock-len(patchTxs))
 	} else {
 		// what if patches already exceed the limit of transactions? It usually
 		// doesn't happen but...
@@ -93,8 +77,8 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 
 	// create transition instance and return it
 	return newTransition(pt,
-			NewTransactionListFromSlice(m.db, patchTxs),
-			NewTransactionListFromSlice(m.db, normalTxs),
+			tx.NewTransactionListFromSlice(m.db, patchTxs),
+			tx.NewTransactionListFromSlice(m.db, normalTxs),
 			bi, true),
 		nil
 }
@@ -138,7 +122,7 @@ func (m *manager) GetPatches(parent module.Transition) module.TransactionList {
 	}
 
 	wc := state.NewWorldContext(ws, pt.bi)
-	return NewTransactionListFromSlice(m.db, m.patchTxPool.candidate(wc, -1))
+	return tx.NewTransactionListFromSlice(m.db, m.patchTxPool.Candidate(wc, -1))
 }
 
 // PatchTransition creates a Transition by overwriting patches on the transition.
@@ -166,13 +150,13 @@ func (m *manager) Finalize(t module.Transition, opt int) {
 			tst.finalizeNormalTransaction()
 			// Because transactionlist for transition is made only through peer and SendTransaction() call
 			// transactionlist has slice of transactions in case that finalize() is called
-			m.normalTxPool.removeList(tst.normalTransactions)
-			m.normalTxPool.removeOldTXs(tst.bi.Timestamp() - configTXTimestampBackwardMargin)
+			m.normalTxPool.RemoveList(tst.normalTransactions)
+			m.normalTxPool.RemoveOldTXs(tst.bi.Timestamp() - tx.ConfigTXTimestampBackwardMargin)
 		}
 		if opt&module.FinalizePatchTransaction == module.FinalizePatchTransaction {
 			tst.finalizePatchTransaction()
-			m.patchTxPool.removeList(tst.patchTransactions)
-			m.patchTxPool.removeOldTXs(tst.bi.Timestamp() - configTXTimestampBackwardMargin)
+			m.patchTxPool.RemoveList(tst.patchTransactions)
+			m.patchTxPool.RemoveOldTXs(tst.bi.Timestamp() - tx.ConfigTXTimestampBackwardMargin)
 		}
 		if opt&module.FinalizeResult == module.FinalizeResult {
 			tst.finalizeResult()
@@ -182,7 +166,7 @@ func (m *manager) Finalize(t module.Transition, opt int) {
 
 // TransactionFromBytes returns a Transaction instance from bytes.
 func (m *manager) TransactionFromBytes(b []byte, blockVersion int) (module.Transaction, error) {
-	tx, err := NewTransaction(b)
+	tx, err := tx.NewTransaction(b)
 	if err != nil {
 		log.Printf("sm.TransactionFromBytes() fails with err=%+v", err)
 	}
@@ -192,16 +176,16 @@ func (m *manager) TransactionFromBytes(b []byte, blockVersion int) (module.Trans
 // TransactionListFromHash returns a TransactionList instance from
 // the hash of transactions or nil when no transactions exist.
 func (m *manager) TransactionListFromHash(hash []byte) module.TransactionList {
-	return NewTransactionListFromHash(m.db, hash)
+	return tx.NewTransactionListFromHash(m.db, hash)
 }
 
 // TransactionListFromSlice returns list of transactions.
 func (m *manager) TransactionListFromSlice(txs []module.Transaction, version int) module.TransactionList {
 	switch version {
 	case module.BlockVersion1:
-		return NewTransactionListV1FromSlice(txs)
+		return tx.NewTransactionListV1FromSlice(txs)
 	case module.BlockVersion2:
-		return NewTransactionListFromSlice(m.db, txs)
+		return tx.NewTransactionListFromSlice(m.db, txs)
 	default:
 		return nil
 	}
@@ -237,25 +221,25 @@ func (m *manager) checkTransitionResult(t module.Transition) (*transition, error
 	return tst, nil
 }
 
-func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
-	var newTx *transaction
-	switch txo := tx.(type) {
+func (m *manager) SendTransaction(txi interface{}) ([]byte, error) {
+	var newTx tx.Transaction
+	switch txo := txi.(type) {
 	case []byte:
-		ntx, err := NewTransactionFromJSON(txo)
+		ntx, err := tx.NewTransactionFromJSON(txo)
 		if err != nil {
 			return nil, err
 		}
-		newTx = ntx.(*transaction)
+		newTx = ntx.(tx.Transaction)
 	case string:
-		ntx, err := NewTransactionFromJSON([]byte(txo))
+		ntx, err := tx.NewTransactionFromJSON([]byte(txo))
 		if err != nil {
 			return nil, err
 		}
-		newTx = ntx.(*transaction)
-	case *transaction:
+		newTx = ntx.(tx.Transaction)
+	case tx.Transaction:
 		newTx = txo
 	default:
-		return nil, fmt.Errorf("IllegalTransactionType:%T", tx)
+		return nil, fmt.Errorf("IllegalTransactionType:%T", txi)
 	}
 
 	if err := newTx.Verify(); err != nil {
@@ -268,7 +252,7 @@ func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
 		return nil, errors.New("Invalid Transaction. Failed to get hash")
 	}
 
-	var txPool *transactionPool
+	var txPool *tx.TransactionPool
 	switch newTx.Group() {
 	case module.TransactionGroupNormal:
 		txPool = m.normalTxPool
@@ -278,8 +262,8 @@ func (m *manager) SendTransaction(tx interface{}) ([]byte, error) {
 		log.Panicf("Wrong TransactionGroup. %v", newTx.Group())
 	}
 
-	if err := txPool.add(newTx); err == nil {
-		m.txReactor.propagateTransaction(protocolPropagateTransaction, newTx)
+	if err := txPool.Add(newTx); err == nil {
+		m.txReactor.PropagateTransaction(tx.ProtocolPropagateTransaction, newTx)
 	} else {
 		return hash, err
 	}

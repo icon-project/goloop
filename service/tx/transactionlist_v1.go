@@ -1,8 +1,9 @@
-package service
+package tx
 
 import (
 	"bytes"
 	"encoding/hex"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"

@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/icon-project/goloop/service/tx"
+
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
@@ -90,10 +92,10 @@ func newTransition(parent *transition, patchtxs module.TransactionList,
 	}
 
 	if patchtxs == nil {
-		patchtxs = NewTransactionListFromSlice(parent.db, nil)
+		patchtxs = tx.NewTransactionListFromSlice(parent.db, nil)
 	}
 	if normaltxs == nil {
-		normaltxs = NewTransactionListFromSlice(parent.db, nil)
+		normaltxs = tx.NewTransactionListFromSlice(parent.db, nil)
 	}
 	return &transition{
 		parent:             parent,
@@ -120,8 +122,8 @@ func newInitTransition(db db.Database, result []byte,
 	ws := state.NewWorldState(db, tresult.StateHash, validatorList)
 
 	return &transition{
-		patchTransactions:  NewTransactionListFromSlice(db, nil),
-		normalTransactions: NewTransactionListFromSlice(db, nil),
+		patchTransactions:  tx.NewTransactionListFromSlice(db, nil),
+		normalTransactions: tx.NewTransactionListFromSlice(db, nil),
 		bi:                 &blockInfo{int64(0), int64(0)},
 		db:                 db,
 		cm:                 cm,
@@ -301,12 +303,12 @@ func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext
 			return false, 0
 		}
 
-		tx, _, err := i.Get()
+		txi, _, err := i.Get()
 		if err != nil {
 			log.Panicf("Fail to iterate transaction list err=%+v", err)
 		}
 
-		if err := tx.(Transaction).PreValidate(wc, true); err != nil {
+		if err := txi.(tx.Transaction).PreValidate(wc, true); err != nil {
 			t.mutex.Lock()
 			t.step = stepError
 			t.mutex.Unlock()
@@ -328,11 +330,11 @@ func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, 
 		if t.step == stepCanceled {
 			return false, 0
 		}
-		tx, _, err := i.Get()
+		txi, _, err := i.Get()
 		if err != nil {
 			log.Panicf("Fail to iterate transaction list err=%+v", err)
 		}
-		txo := tx.(Transaction)
+		txo := txi.(tx.Transaction)
 		txh, err := txo.GetHandler(t.cm)
 		if err != nil {
 			log.Panicf("Fail to handle transaction for %+v", err)
@@ -349,7 +351,7 @@ func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, 
 				Nonce:     txo.Nonce(),
 				Hash:      txo.ID(),
 			})
-			go func(tx Transaction, wc state.WorldContext, rb *txresult.Receipt) {
+			go func(tx tx.Transaction, wc state.WorldContext, rb *txresult.Receipt) {
 				if rct, err := txh.Execute(contract.NewContext(wc, t.cm, t.eem)); err != nil {
 					log.Panicf("Fail to execute transaction err=%+v", err)
 				} else {

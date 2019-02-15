@@ -1,9 +1,10 @@
-package service
+package tx
 
 import (
 	"bytes"
 	"encoding/json"
 	"math/big"
+	"time"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/merkle"
@@ -12,6 +13,24 @@ import (
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/pkg/errors"
+)
+
+// TODO Right to place here?
+const (
+	ConfigTXTimestampBackwardMargin = int64(5 * time.Minute / time.Microsecond)
+	ConfigTXTimestampForwardMargin  = int64(5 * time.Minute / time.Microsecond)
+	ConfigTXTimestampForwardLimit   = int64(10 * time.Minute / time.Microsecond)
+	ConfigOnCheckingTimestamp       = true
+
+	// maximum number of transactions in a block
+	// TODO it should be configured or received from block manager
+	TxMaxNumInBlock = 2000
+)
+
+var (
+	ErrDuplicateTransaction    = errors.New("DuplicateTransaction")
+	ErrTransactionPoolOverFlow = errors.New("TransactionPoolOverFlow")
+	ErrExpiredTransaction      = errors.New("ExpiredTransaction")
 )
 
 // TODO It assumes normal transaction. When supporting patch, add skipping
@@ -82,7 +101,7 @@ func (t *transaction) Resolve(builder merkle.Builder) error {
 	return nil
 }
 
-func NewTransaction(b []byte) (module.Transaction, error) {
+func NewTransaction(b []byte) (Transaction, error) {
 	if tx, err := newTransaction(b); err != nil {
 		return nil, err
 	} else {
@@ -102,7 +121,7 @@ func newTransaction(b []byte) (Transaction, error) {
 	return newTransactionV3FromBytes(b)
 }
 
-func NewTransactionFromJSON(b []byte) (module.Transaction, error) {
+func NewTransactionFromJSON(b []byte) (Transaction, error) {
 	if tx, err := newTransactionFromJSON(b); err != nil {
 		return nil, err
 	} else {

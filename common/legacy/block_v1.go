@@ -10,10 +10,11 @@ import (
 	"io"
 	"log"
 
+	"github.com/icon-project/goloop/service/tx"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service"
 )
 
 type transactionV3 struct {
@@ -25,7 +26,7 @@ func (t *transactionV3) MarshalJSON() ([]byte, error) {
 }
 
 func (t *transactionV3) UnmarshalJSON(b []byte) error {
-	if tr, err := service.NewTransactionFromJSON(b); err != nil {
+	if tr, err := tx.NewTransactionFromJSON(b); err != nil {
 		return err
 	} else {
 		t.Transaction = tr
@@ -183,6 +184,6 @@ func ParseBlockV1(b []byte) (Block, error) {
 	for i, tx := range blk.Transactions {
 		trs[i] = tx.Transaction
 	}
-	transactionList := service.NewTransactionListV1FromSlice(trs)
+	transactionList := tx.NewTransactionListV1FromSlice(trs)
 	return &blockV1{blk, transactionList}, nil
 }
