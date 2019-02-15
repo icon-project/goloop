@@ -9,22 +9,22 @@ type GovCallHandler struct {
 	*CallHandler
 }
 
-func (h *GovCallHandler) ExecuteAsync(wc WorldContext) error {
+func (h *GovCallHandler) ExecuteAsync(ctx Context) error {
 	// Calculate steps
-	if !h.ApplySteps(wc, StepTypeContractCall, 1) {
+	if !h.ApplySteps(ctx, StepTypeContractCall, 1) {
 		h.cc.OnResult(module.StatusOutOfBalance, h.stepLimit, nil, nil)
 		return nil
 	}
 
 	// Prepare
-	h.as = wc.GetAccountState(h.to.ID())
+	h.as = ctx.GetAccountState(h.to.ID())
 	if !h.as.IsContract() {
 		return errors.New("FAIL: not a contract account")
 	}
 
-	wc.SetContractInfo(&ContractInfo{Owner: h.as.ContractOwner()})
+	ctx.SetContractInfo(&ContractInfo{Owner: h.as.ContractOwner()})
 
-	h.cm = wc.ContractManager()
+	h.cm = ctx.ContractManager()
 	h.conn = h.cc.GetConnection(h.EEType())
 	if h.conn == nil {
 		return errors.New("FAIL to get connection of (" + h.EEType() + ")")
@@ -38,7 +38,7 @@ func (h *GovCallHandler) ExecuteAsync(wc WorldContext) error {
 
 	var err error
 	h.lock.Lock()
-	h.cs, err = wc.ContractManager().PrepareContractStore(wc, c)
+	h.cs, err = ctx.ContractManager().PrepareContractStore(ctx, c)
 	h.lock.Unlock()
 	if err != nil {
 		return err

@@ -79,17 +79,15 @@ func genContractAddr(from module.Address, timestamp int64, nonce *big.Int) []byt
 	return addr
 }
 
-func (h *DeployHandler) Prepare(wc WorldContext) (WorldContext, error) {
+func (h *DeployHandler) Prepare(ctx Context) (WorldContext, error) {
 	lq := []LockRequest{
 		{"", AccountWriteLock},
 	}
-	return wc.GetFuture(lq), nil
+	return ctx.GetFuture(lq), nil
 }
 
-func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
-	*codec.TypedObj, module.Address,
-) {
-	sysAs := wc.GetAccountState(SystemID)
+func (h *DeployHandler) ExecuteSync(ctx Context) (module.Status, *big.Int, *codec.TypedObj, module.Address) {
+	sysAs := ctx.GetAccountState(SystemID)
 
 	update := false
 	var contractID []byte
@@ -111,14 +109,14 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 		st = StepTypeContractUpdate
 	}
 	codeLen := len(h.content)
-	if !h.ApplySteps(wc, st, 1) ||
-		!h.ApplySteps(wc, StepTypeContractSet, codeLen) {
+	if !h.ApplySteps(ctx, st, 1) ||
+		!h.ApplySteps(ctx, StepTypeContractSet, codeLen) {
 		msg, _ := common.EncodeAny("Not enough step limit")
 		return module.StatusOutOfStep, h.stepLimit, msg, nil
 	}
 
 	// store ScoreDeployInfo and ScoreDeployTXParams
-	as := wc.GetAccountState(contractID)
+	as := ctx.GetAccountState(contractID)
 	if update == false {
 		if as.InitContractAccount(h.from) == false {
 			msg, _ := common.EncodeAny("Already deployed contract")
@@ -142,7 +140,7 @@ func (h *DeployHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 	//if audit == false || deployer {
 	ah := newAcceptHandler(h.from, h.to, //common.NewContractAddress(contractID),
 		nil, h.StepAvail(), h.params, h.cc)
-	status, acceptStepUsed, result, _ := ah.ExecuteSync(wc)
+	status, acceptStepUsed, result, _ := ah.ExecuteSync(ctx)
 	h.stepUsed.Add(h.stepUsed, acceptStepUsed)
 	if status != module.StatusSuccess {
 		return status, h.stepUsed, result, nil
@@ -169,9 +167,9 @@ func newAcceptHandler(from, to module.Address, value, stepLimit *big.Int, data [
 }
 
 // It's never called
-func (h *AcceptHandler) Prepare(wc WorldContext) (WorldContext, error) {
+func (h *AcceptHandler) Prepare(ctx Context) (WorldContext, error) {
 	lq := []LockRequest{{"", AccountWriteLock}}
-	return wc.GetFuture(lq), nil
+	return ctx.GetFuture(lq), nil
 }
 
 const (
@@ -179,11 +177,9 @@ const (
 	deployUpdate  = "on_update"
 )
 
-func (h *AcceptHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
-	*codec.TypedObj, module.Address,
-) {
+func (h *AcceptHandler) ExecuteSync(ctx Context) (module.Status, *big.Int, *codec.TypedObj, module.Address) {
 	// 1. call GetAPI
-	sysAs := wc.GetAccountState(SystemID)
+	sysAs := ctx.GetAccountState(SystemID)
 	varDb := scoredb.NewVarDB(sysAs, h.txHash)
 	scoreAddr := varDb.Address()
 	if scoreAddr == nil {
@@ -191,7 +187,7 @@ func (h *AcceptHandler) ExecuteSync(wc WorldContext) (module.Status, *big.Int,
 		msg, _ := common.EncodeAny("Score not found by tx hash")
 		return module.StatusContractNotFound, h.stepLimit, msg, nil
 	}
-	scoreAs := wc.GetAccountState(scoreAddr.ID())
+	scoreAs := ctx.GetAccountState(scoreAddr.ID())
 
 	var methodStr string
 	if bytes.Equal(h.to.ID(), SystemID) {
@@ -256,8 +252,8 @@ func newCallGetAPIHandler(ch *CommonHandler, cc CallContext) *callGetAPIHandler 
 }
 
 // It's never called
-func (h *callGetAPIHandler) Prepare(wc WorldContext) (WorldContext, error) {
-	as := wc.GetAccountState(h.to.ID())
+func (h *callGetAPIHandler) Prepare(ctx Context) (WorldContext, error) {
+	as := ctx.GetAccountState(h.to.ID())
 	c := as.NextContract()
 	if c == nil {
 		return nil, errors.New("No pending contract")
@@ -266,18 +262,18 @@ func (h *callGetAPIHandler) Prepare(wc WorldContext) (WorldContext, error) {
 	var err error
 	h.lock.Lock()
 	if h.cs == nil {
-		h.cs, err = wc.ContractManager().PrepareContractStore(wc, c)
+		h.cs, err = ctx.ContractManager().PrepareContractStore(ctx, c)
 	}
 	h.lock.Unlock()
 	if err != nil {
 		return nil, err
 	}
 
-	return wc.GetFuture(nil), nil
+	return ctx.GetFuture(nil), nil
 }
 
-func (h *callGetAPIHandler) ExecuteAsync(wc WorldContext) error {
-	h.as = wc.GetAccountState(h.to.ID())
+func (h *callGetAPIHandler) ExecuteAsync(ctx Context) error {
+	h.as = ctx.GetAccountState(h.to.ID())
 	if !h.as.IsContract() {
 		return errors.New("FAIL: not a contract account")
 	}
@@ -293,7 +289,7 @@ func (h *callGetAPIHandler) ExecuteAsync(wc WorldContext) error {
 	}
 	var err error
 	h.lock.Lock()
-	h.cs, err = wc.ContractManager().PrepareContractStore(wc, c)
+	h.cs, err = ctx.ContractManager().PrepareContractStore(ctx, c)
 	h.lock.Unlock()
 	if err != nil {
 		return err

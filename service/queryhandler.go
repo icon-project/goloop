@@ -15,13 +15,13 @@ type QueryHandler struct {
 	data []byte
 }
 
-func (qh *QueryHandler) Query(wc WorldContext) (module.Status, interface{}) {
+func (qh *QueryHandler) Query(ctx Context) (module.Status, interface{}) {
 	// check if function is read-only
 	jso, err := ParseCallData(qh.data)
 	if err != nil {
 		return module.StatusMethodNotFound, err.Error()
 	}
-	as := wc.GetAccountSnapshot(qh.to.ID())
+	as := ctx.GetAccountSnapshot(qh.to.ID())
 	apiInfo := as.APIInfo()
 	if apiInfo == nil {
 		return module.StatusContractNotFound, "APIInfo() is null"
@@ -37,9 +37,9 @@ func (qh *QueryHandler) Query(wc WorldContext) (module.Status, interface{}) {
 
 	// Set up
 	cc := newCallContext(nil, true)
-	cc.Setup(wc)
-	handler := wc.ContractManager().GetHandler(cc, qh.from, qh.to,
-		big.NewInt(0), wc.GetStepLimit(LimitTypeCall), ctypeCall, qh.data)
+	cc.Setup(ctx)
+	handler := ctx.ContractManager().GetHandler(cc, qh.from, qh.to,
+		big.NewInt(0), ctx.GetStepLimit(LimitTypeCall), ctypeCall, qh.data)
 
 	// Execute
 	status, _, result, _ := cc.Call(handler)

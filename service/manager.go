@@ -42,11 +42,11 @@ type manager struct {
 	chain     module.Chain
 	txReactor *transactionReactor
 	cm        ContractManager
-	em        eeproxy.Manager
+	eem       eeproxy.Manager
 }
 
 func NewManager(chain module.Chain, nm module.NetworkManager,
-	em eeproxy.Manager, contractDir string,
+	eem eeproxy.Manager, contractDir string,
 ) module.ServiceManager {
 	bk, _ := chain.Database().GetBucket(db.TransactionLocatorByHash)
 
@@ -56,7 +56,7 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 		db:           chain.Database(),
 		chain:        chain,
 		cm:           NewContractManager(chain.Database(), contractDir),
-		em:           em,
+		eem:          eem,
 	}
 	if nm != nil {
 		mgr.txReactor = newTransactionReactor(nm, mgr.patchTxPool, mgr.normalTxPool)
@@ -76,7 +76,7 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 	}
 
 	ws, _ := WorldStateFromSnapshot(pt.worldSnapshot)
-	wc := NewWorldContext(ws, bi, m.cm, m.em)
+	wc := NewWorldContext(ws, bi, m.cm, m.eem)
 
 	patchTxs := m.patchTxPool.candidate(wc, -1) // try to add all patches in the block
 	maxTxNum := txMaxNumInBlock - len(patchTxs)
@@ -102,7 +102,7 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 func (m *manager) CreateInitialTransition(result []byte,
 	valList module.ValidatorList,
 ) (module.Transition, error) {
-	return newInitTransition(m.db, result, valList, m.cm, m.em)
+	return newInitTransition(m.db, result, valList, m.cm, m.eem)
 }
 
 // CreateTransition creates a Transition following parent Transition with txs
@@ -135,7 +135,7 @@ func (m *manager) GetPatches(parent module.Transition) module.TransactionList {
 		log.Panicf("Fail to creating world state from snapshot")
 	}
 
-	wc := NewWorldContext(ws, pt.bi, m.cm, m.em)
+	wc := NewWorldContext(ws, pt.bi, m.cm, m.eem)
 	return NewTransactionListFromSlice(m.db, m.patchTxPool.candidate(wc, -1))
 }
 
@@ -301,17 +301,17 @@ func (m *manager) Call(resultHash []byte, js []byte, bi module.BlockInfo,
 	var wc WorldContext
 	if tresult, err := newTransitionResultFromBytes(resultHash); err == nil {
 		ws := NewWorldState(m.db, tresult.StateHash, nil)
-		wc = NewWorldContext(ws, bi, m.cm, m.em)
+		wc = NewWorldContext(ws, bi, m.cm, m.eem)
 	} else {
 		return module.StatusSystemError, err.Error(), nil
 	}
 
-	qh, err := NewQueryHandler(wc.ContractManager(), &jso.From, &jso.To,
+	qh, err := NewQueryHandler(m.cm, &jso.From, &jso.To,
 		jso.DataType, jso.Data)
 	if err != nil {
 		return module.StatusSystemError, err.Error(), nil
 	}
-	status, result := qh.Query(wc)
+	status, result := qh.Query(NewContext(wc, m.cm, m.eem))
 	return status, result, nil
 }
 

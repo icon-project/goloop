@@ -5,7 +5,6 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service/eeproxy"
 )
 
 const (
@@ -101,8 +100,6 @@ type WorldContext interface {
 	Treasury() module.Address
 	Governance() module.Address
 	GetInfo() map[string]interface{}
-	ContractManager() ContractManager
-	EEManager() eeproxy.Manager
 	WorldStateChanged(ws WorldState) WorldContext
 	WorldVirtualState() WorldVirtualState
 	GetFuture(lq []LockRequest) WorldContext

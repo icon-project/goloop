@@ -148,11 +148,11 @@ func (g *genesisV3) GetHandler(ContractManager) (TransactionHandler, error) {
 	return g, nil
 }
 
-func (g *genesisV3) Prepare(wc WorldContext) (WorldContext, error) {
+func (g *genesisV3) Prepare(ctx Context) (WorldContext, error) {
 	lq := []LockRequest{
 		{"", AccountWriteLock},
 	}
-	return wc.GetFuture(lq), nil
+	return ctx.GetFuture(lq), nil
 }
 
 func (g *genesisV3) setDefaultSystemInfo(as AccountState) {
@@ -231,13 +231,13 @@ func (g *genesisV3) setDefaultSystemInfo(as AccountState) {
 	}
 }
 
-func (g *genesisV3) Execute(wc WorldContext) (txresult.Receipt, error) {
+func (g *genesisV3) Execute(ctx Context) (txresult.Receipt, error) {
 	r := txresult.NewReceipt(common.NewAccountAddress([]byte{}))
-	as := wc.GetAccountState(SystemID)
+	as := ctx.GetAccountState(SystemID)
 	for _, info := range g.Accounts {
 		addr := scoredb.NewVarDB(as, info.Name)
 		addr.Set(&info.Address)
-		ac := wc.GetAccountState(info.Address.ID())
+		ac := ctx.GetAccountState(info.Address.ID())
 		ac.SetBalance(&info.Balance.Int)
 	}
 	g.setDefaultSystemInfo(as)
@@ -246,7 +246,7 @@ func (g *genesisV3) Execute(wc WorldContext) (txresult.Receipt, error) {
 	for i, validator := range g.Validatorlist {
 		validators[i], _ = ValidatorFromAddress(validator)
 	}
-	wc.SetValidators(validators)
+	ctx.SetValidators(validators)
 	return r, nil
 }
 

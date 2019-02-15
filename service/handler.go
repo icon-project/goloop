@@ -26,17 +26,17 @@ type (
 		StepLimit() *big.Int
 		ApplySteps(WorldContext, StepType, int) bool
 		ResetSteps(*big.Int)
-		Prepare(WorldContext) (WorldContext, error)
+		Prepare(ctx Context) (WorldContext, error)
 	}
 
 	SyncContractHandler interface {
 		ContractHandler
-		ExecuteSync(wc WorldContext) (module.Status, *big.Int, *codec.TypedObj, module.Address)
+		ExecuteSync(ctx Context) (module.Status, *big.Int, *codec.TypedObj, module.Address)
 	}
 
 	AsyncContractHandler interface {
 		ContractHandler
-		ExecuteAsync(wc WorldContext) error
+		ExecuteAsync(ctx Context) error
 		SendResult(status module.Status, steps *big.Int, result *codec.TypedObj) error
 		Dispose()
 
@@ -76,12 +76,12 @@ func (h *CommonHandler) ResetSteps(limit *big.Int) {
 	h.stepUsed = big.NewInt(0)
 }
 
-func (h *CommonHandler) Prepare(wc WorldContext) (WorldContext, error) {
+func (h *CommonHandler) Prepare(ctx Context) (WorldContext, error) {
 	lq := []LockRequest{
 		{string(h.from.ID()), AccountWriteLock},
 		{string(h.to.ID()), AccountWriteLock},
 	}
-	return wc.GetFuture(lq), nil
+	return ctx.GetFuture(lq), nil
 }
 
 func (h *CommonHandler) StepAvail() *big.Int {

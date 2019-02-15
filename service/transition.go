@@ -37,9 +37,9 @@ type transition struct {
 	patchTransactions  module.TransactionList
 	normalTransactions module.TransactionList
 
-	db db.Database
-	cm ContractManager
-	em eeproxy.Manager
+	db  db.Database
+	cm  ContractManager
+	eem eeproxy.Manager
 
 	cb module.TransitionCallback
 
@@ -100,7 +100,7 @@ func newTransition(parent *transition, patchtxs module.TransactionList,
 		normalTransactions: normaltxs,
 		db:                 parent.db,
 		cm:                 parent.cm,
-		em:                 parent.em,
+		eem:                parent.eem,
 		step:               step,
 	}
 }
@@ -123,7 +123,7 @@ func newInitTransition(db db.Database, result []byte,
 		bi:                 &blockInfo{int64(0), int64(0)},
 		db:                 db,
 		cm:                 cm,
-		em:                 em,
+		eem:                em,
 		step:               stepComplete,
 		worldSnapshot:      ws.GetSnapshot(),
 	}, nil
@@ -201,7 +201,7 @@ func (t *transition) newWorldContext() WorldContext {
 	} else {
 		ws = NewWorldState(t.db, nil, nil)
 	}
-	return NewWorldContext(ws, t.bi, t.cm, t.em)
+	return NewWorldContext(ws, t.bi, t.cm, t.eem)
 }
 
 func (t *transition) executeSync(alreadyValidated bool) {
@@ -236,14 +236,14 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	t.step = stepExecuting
 	t.mutex.Unlock()
 
-	wc := t.newWorldContext()
+	ctx := NewContext(t.newWorldContext(), t.cm, t.eem)
 
 	startTime := time.Now()
 
 	patchReceipts := make([]txresult.Receipt, patchCount)
-	t.executeTxs(t.patchTransactions, wc, patchReceipts)
+	t.executeTxs(t.patchTransactions, ctx, patchReceipts)
 	normalReceipts := make([]txresult.Receipt, normalCount)
-	t.executeTxs(t.normalTransactions, wc, normalReceipts)
+	t.executeTxs(t.normalTransactions, ctx, normalReceipts)
 
 	cumulativeSteps := big.NewInt(0)
 	gatheredFee := big.NewInt(0)
@@ -263,12 +263,12 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	t.normalReceipts = txresult.NewReceiptListFromSlice(t.db, normalReceipts)
 
 	// save gathered fee to treasury
-	tr := wc.GetAccountState(wc.Treasury().ID())
+	tr := ctx.GetAccountState(ctx.Treasury().ID())
 	trbal := tr.GetBalance()
 	trbal.Add(trbal, gatheredFee)
 	tr.SetBalance(trbal)
 
-	t.worldSnapshot = wc.GetSnapshot()
+	t.worldSnapshot = ctx.GetSnapshot()
 
 	elapsed := float64(time.Now().Sub(startTime)/time.Microsecond) / 1000
 	log.Printf("Transactions: %6d  Elapsed: %7.3f msecs  TPS: %9.2f",
@@ -316,10 +316,11 @@ func (t *transition) validateTxs(l module.TransactionList, wc WorldContext) (boo
 	return true, cnt
 }
 
-func (t *transition) executeTxs(l module.TransactionList, wc WorldContext, rctBuf []txresult.Receipt) (bool, int) {
+func (t *transition) executeTxs(l module.TransactionList, ctx Context, rctBuf []txresult.Receipt) (bool, int) {
 	if l == nil {
 		return true, 0
 	}
+	var wc WorldContext
 	cnt := 0
 	for i := l.Iterator(); i.Has(); i.Next() {
 		if t.step == stepCanceled {
@@ -330,12 +331,12 @@ func (t *transition) executeTxs(l module.TransactionList, wc WorldContext, rctBu
 			log.Panicf("Fail to iterate transaction list err=%+v", err)
 		}
 		txo := tx.(Transaction)
-		txh, err := txo.GetHandler(wc.ContractManager())
+		txh, err := txo.GetHandler(t.cm)
 		if err != nil {
 			log.Panicf("Fail to handle transaction for %+v", err)
 		}
 		if configUseParallelExecution {
-			wc, err = txh.Prepare(wc)
+			wc, err = txh.Prepare(ctx)
 			if err != nil {
 				log.Panicf("Fail to prepare for %+v", err)
 			}
@@ -347,7 +348,7 @@ func (t *transition) executeTxs(l module.TransactionList, wc WorldContext, rctBu
 				Hash:      txo.ID(),
 			})
 			go func(tx Transaction, wc WorldContext, rb *txresult.Receipt) {
-				if rct, err := txh.Execute(wc); err != nil {
+				if rct, err := txh.Execute(NewContext(wc, t.cm, t.eem)); err != nil {
 					log.Panicf("Fail to execute transaction err=%+v", err)
 				} else {
 					*rb = rct
@@ -361,7 +362,7 @@ func (t *transition) executeTxs(l module.TransactionList, wc WorldContext, rctBu
 				Nonce:     txo.Nonce(),
 				Hash:      txo.ID(),
 			})
-			if rct, err := txh.Execute(wc); err != nil {
+			if rct, err := txh.Execute(NewContext(wc, t.cm, t.eem)); err != nil {
 				log.Panicf("Fail to execute transaction err=%+v", err)
 			} else {
 				rctBuf[cnt] = rct

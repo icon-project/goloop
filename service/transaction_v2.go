@@ -104,21 +104,21 @@ func (tx *transactionV2) GetHandler(cm ContractManager) (TransactionHandler, err
 	return tx, nil
 }
 
-func (tx *transactionV2) Prepare(wc WorldContext) (WorldContext, error) {
+func (tx *transactionV2) Prepare(ctx Context) (WorldContext, error) {
 	lq := []LockRequest{
 		{string(tx.From.ID()), AccountWriteLock},
 		{string(tx.To.ID()), AccountWriteLock},
 	}
-	return wc.GetFuture(lq), nil
+	return ctx.GetFuture(lq), nil
 }
 
-func (tx *transactionV2) Execute(wc WorldContext) (txresult.Receipt, error) {
+func (tx *transactionV2) Execute(ctx Context) (txresult.Receipt, error) {
 	r := txresult.NewReceipt(&tx.To)
 	var trans big.Int
 
 	trans.Add(&tx.Value.Int, version2FixedFee)
 
-	as1 := wc.GetAccountState(tx.From.ID())
+	as1 := ctx.GetAccountState(tx.From.ID())
 	bal1 := as1.GetBalance()
 	if bal1.Cmp(&trans) < 0 {
 		log.Printf("TX2 Fail balance=%s value=%s fee=%s",
@@ -135,7 +135,7 @@ func (tx *transactionV2) Execute(wc WorldContext) (txresult.Receipt, error) {
 	bal1.Sub(bal1, &trans)
 	as1.SetBalance(bal1)
 
-	as2 := wc.GetAccountState(tx.To.ID())
+	as2 := ctx.GetAccountState(tx.To.ID())
 	bal2 := as2.GetBalance()
 	bal2.Add(bal2, &tx.Value.Int)
 	as2.SetBalance(bal2)

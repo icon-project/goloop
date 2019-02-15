@@ -75,8 +75,8 @@ func newCallHandlerFromTypedObj(ch *CommonHandler, method string,
 	}
 }
 
-func (h *CallHandler) Prepare(wc WorldContext) (WorldContext, error) {
-	as := wc.GetAccountState(h.to.ID())
+func (h *CallHandler) Prepare(ctx Context) (WorldContext, error) {
+	as := ctx.GetAccountState(h.to.ID())
 	c := h.contract(as)
 	if c == nil {
 		return nil, errors.New("No active contract")
@@ -85,7 +85,7 @@ func (h *CallHandler) Prepare(wc WorldContext) (WorldContext, error) {
 	var err error
 	h.lock.Lock()
 	if h.cs == nil {
-		h.cs, err = wc.ContractManager().PrepareContractStore(wc, c)
+		h.cs, err = ctx.ContractManager().PrepareContractStore(ctx, c)
 	}
 	h.lock.Unlock()
 	if err != nil {
@@ -93,7 +93,7 @@ func (h *CallHandler) Prepare(wc WorldContext) (WorldContext, error) {
 	}
 
 	lq := []LockRequest{{"", AccountWriteLock}}
-	return wc.GetFuture(lq), nil
+	return ctx.GetFuture(lq), nil
 }
 
 func (h *CallHandler) contract(as AccountState) Contract {
@@ -104,21 +104,21 @@ func (h *CallHandler) contract(as AccountState) Contract {
 	}
 }
 
-func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
+func (h *CallHandler) ExecuteAsync(ctx Context) error {
 	// Calculate steps
-	if !h.ApplySteps(wc, StepTypeContractCall, 1) {
+	if !h.ApplySteps(ctx, StepTypeContractCall, 1) {
 		h.cc.OnResult(module.StatusOutOfStep, h.stepLimit, nil, nil)
 		return nil
 	}
 
 	// Prepare
-	h.as = wc.GetAccountState(h.to.ID())
+	h.as = ctx.GetAccountState(h.to.ID())
 	if !h.as.IsContract() {
 		return errors.New("FAIL: not a contract account")
 	}
-	wc.SetContractInfo(&ContractInfo{Owner: h.as.ContractOwner()})
+	ctx.SetContractInfo(&ContractInfo{Owner: h.as.ContractOwner()})
 
-	h.cm = wc.ContractManager()
+	h.cm = ctx.ContractManager()
 	h.conn = h.cc.GetConnection(h.EEType())
 	if h.conn == nil {
 		return errors.New("FAIL to get connection of (" + h.EEType() + ")")
@@ -132,7 +132,7 @@ func (h *CallHandler) ExecuteAsync(wc WorldContext) error {
 	h.lock.Lock()
 	var err error
 	if h.cs == nil {
-		h.cs, err = wc.ContractManager().PrepareContractStore(wc, c)
+		h.cs, err = ctx.ContractManager().PrepareContractStore(ctx, c)
 	}
 	h.lock.Unlock()
 	if err != nil {
@@ -257,17 +257,17 @@ type TransferAndCallHandler struct {
 	*CallHandler
 }
 
-func (h *TransferAndCallHandler) Prepare(wc WorldContext) (WorldContext, error) {
+func (h *TransferAndCallHandler) Prepare(ctx Context) (WorldContext, error) {
 	if h.to.IsContract() {
-		return h.CallHandler.Prepare(wc)
+		return h.CallHandler.Prepare(ctx)
 	} else {
-		return h.th.Prepare(wc)
+		return h.th.Prepare(ctx)
 	}
 }
 
-func (h *TransferAndCallHandler) ExecuteAsync(wc WorldContext) error {
+func (h *TransferAndCallHandler) ExecuteAsync(ctx Context) error {
 	if h.to.IsContract() {
-		as := wc.GetAccountState(h.to.ID())
+		as := ctx.GetAccountState(h.to.ID())
 		apiInfo := as.APIInfo()
 		if apiInfo == nil {
 			return scoreresult.NewError(module.StatusContractNotFound, "APIInfo() is null")
@@ -282,10 +282,10 @@ func (h *TransferAndCallHandler) ExecuteAsync(wc WorldContext) error {
 		}
 	}
 
-	status, stepUsed, result, addr := h.th.ExecuteSync(wc)
+	status, stepUsed, result, addr := h.th.ExecuteSync(ctx)
 	if status == module.StatusSuccess {
 		if h.to.IsContract() {
-			return h.CallHandler.ExecuteAsync(wc)
+			return h.CallHandler.ExecuteAsync(ctx)
 		} else {
 			// Even for EOA, method name can be "fallback" because EE client
 			// always set "fallback" to method name.

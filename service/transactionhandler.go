@@ -17,8 +17,8 @@ const (
 )
 
 type TransactionHandler interface {
-	Prepare(wc WorldContext) (WorldContext, error)
-	Execute(wc WorldContext) (txresult.Receipt, error)
+	Prepare(ctx Context) (WorldContext, error)
+	Execute(ctx Context) (txresult.Receipt, error)
 	Dispose()
 }
 
@@ -83,18 +83,18 @@ func NewTransactionHandler(cm ContractManager, from, to module.Address,
 	return th, nil
 }
 
-func (th *transactionHandler) Prepare(wc WorldContext) (WorldContext, error) {
-	return th.handler.Prepare(wc)
+func (th *transactionHandler) Prepare(ctx Context) (WorldContext, error) {
+	return th.handler.Prepare(ctx)
 }
 
-func (th *transactionHandler) Execute(wc WorldContext) (txresult.Receipt, error) {
+func (th *transactionHandler) Execute(ctx Context) (txresult.Receipt, error) {
 	// Make a copy of initial state
-	wcs := wc.GetSnapshot()
+	wcs := ctx.GetSnapshot()
 
 	// Set up
-	th.cc.Setup(wc)
-	if th.handler.StepLimit().Cmp(wc.GetStepLimit(LimitTypeInvoke)) > 0 {
-		th.handler.ResetSteps(wc.GetStepLimit(LimitTypeInvoke))
+	th.cc.Setup(ctx)
+	if th.handler.StepLimit().Cmp(ctx.GetStepLimit(LimitTypeInvoke)) > 0 {
+		th.handler.ResetSteps(ctx.GetStepLimit(LimitTypeInvoke))
 	}
 
 	// Calculate common steps
@@ -108,8 +108,8 @@ func (th *transactionHandler) Execute(wc WorldContext) (txresult.Receipt, error)
 		status = module.StatusSystemError
 		stepUsed = th.stepLimit
 	} else {
-		if !th.handler.ApplySteps(wc, StepTypeDefault, 1) ||
-			!th.handler.ApplySteps(wc, StepTypeInput, cnt) {
+		if !th.handler.ApplySteps(ctx, StepTypeDefault, 1) ||
+			!th.handler.ApplySteps(ctx, StepTypeInput, cnt) {
 			status = module.StatusOutOfStep
 			stepUsed = th.handler.StepLimit()
 		}
@@ -123,22 +123,22 @@ func (th *transactionHandler) Execute(wc WorldContext) (txresult.Receipt, error)
 				// In case of timeout, returned stepUsed may not be same as stepLimit.
 				// So set it again.
 				stepUsed.Set(th.stepLimit)
-				wc.Reset(wcs)
+				ctx.Reset(wcs)
 			}
 		}
 	}
 
 	// Try to charge fee
-	stepPrice := wc.StepPrice()
+	stepPrice := ctx.StepPrice()
 	fee := big.NewInt(0).Mul(stepUsed, stepPrice)
 
-	as := wc.GetAccountState(th.from.ID())
+	as := ctx.GetAccountState(th.from.ID())
 	bal := as.GetBalance()
 	for bal.Cmp(fee) < 0 {
 		if status == module.StatusSuccess {
 			// rollback all changes
 			status = module.StatusOutOfBalance
-			wc.Reset(wcs)
+			ctx.Reset(wcs)
 			bal = as.GetBalance()
 
 			stepUsed.Set(th.stepLimit)
