@@ -1,13 +1,13 @@
-package tx
+package service
 
 import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
-
-	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/tx"
 	"github.com/pkg/errors"
 )
 
@@ -19,7 +19,7 @@ type QueryHandler struct {
 
 func (qh *QueryHandler) Query(ctx contract.Context) (module.Status, interface{}) {
 	// check if function is read-only
-	jso, err := ParseCallData(qh.data)
+	jso, err := tx.ParseCallData(qh.data)
 	if err != nil {
 		return module.StatusMethodNotFound, err.Error()
 	}
@@ -53,7 +53,7 @@ func (qh *QueryHandler) Query(ctx contract.Context) (module.Status, interface{})
 func NewQueryHandler(cm contract.ContractManager, from, to module.Address,
 	dataType *string, data []byte,
 ) (*QueryHandler, error) {
-	if *dataType != dataTypeCall {
+	if *dataType != tx.DataTypeCall {
 		return nil, errors.Errorf("IllegalDataType(type=%s)", *dataType)
 	}
 

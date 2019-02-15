@@ -158,14 +158,14 @@ func (tx *transactionV3) Verify() error {
 	// Checkups by data types
 	if tx.DataType != nil {
 		switch *tx.DataType {
-		case dataTypeCall:
+		case DataTypeCall:
 			// element check
 			if tx.Data == nil {
 				return state.ErrInvalidDataValue
 			}
 			_, err := ParseCallData(tx.Data)
 			return err
-		case dataTypeDeploy:
+		case DataTypeDeploy:
 			// element check
 			if tx.Data == nil {
 				return state.ErrInvalidDataValue
@@ -252,7 +252,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 	// checkups by data types
 	if tx.DataType != nil {
 		switch *tx.DataType {
-		case dataTypeCall:
+		case DataTypeCall:
 			// check if contract is active and not blacklisted
 			as := wc.GetAccountState(tx.To.ID())
 			if !as.IsContract() {
@@ -274,7 +274,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 					return state.ErrInvalidMethod
 				}
 			}
-		case dataTypeDeploy:
+		case DataTypeDeploy:
 			// update case: check if contract is active and from is its owner
 			if !bytes.Equal(tx.To.ID(), state.SystemID) { // update
 				as := wc.GetAccountState(tx.To.ID())

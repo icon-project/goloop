@@ -296,7 +296,7 @@ func (m *manager) Call(resultHash []byte, js []byte, bi module.BlockInfo,
 		return module.StatusSystemError, err.Error(), nil
 	}
 
-	qh, err := tx.NewQueryHandler(m.cm, &jso.From, &jso.To,
+	qh, err := NewQueryHandler(m.cm, &jso.From, &jso.To,
 		jso.DataType, jso.Data)
 	if err != nil {
 		return module.StatusSystemError, err.Error(), nil

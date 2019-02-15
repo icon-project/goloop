@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	dataTypeMessage = "message"
-	dataTypeCall    = "call"
-	dataTypeDeploy  = "deploy"
+	DataTypeMessage = "message"
+	DataTypeCall    = "call"
+	DataTypeDeploy  = "deploy"
 )
 
 type TransactionHandler interface {
@@ -58,15 +58,15 @@ func NewTransactionHandler(cm contract.ContractManager, from, to module.Address,
 		}
 	} else {
 		switch *dataType {
-		case dataTypeMessage:
+		case DataTypeMessage:
 			if th.to.IsContract() {
 				ctype = contract.CTypeTransferAndCall
 			} else {
 				ctype = contract.CTypeTransfer
 			}
-		case dataTypeDeploy:
+		case DataTypeDeploy:
 			ctype = contract.CTypeDeploy
-		case dataTypeCall:
+		case DataTypeCall:
 			if value != nil && value.Sign() == 1 { //value > 0
 				ctype = contract.CTypeTransferAndCall
 			} else {
