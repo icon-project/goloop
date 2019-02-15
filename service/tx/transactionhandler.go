@@ -1,6 +1,7 @@
 package tx
 
 import (
+	"encoding/json"
 	"math/big"
 
 	"github.com/icon-project/goloop/service/contract"
@@ -161,4 +162,13 @@ func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, e
 
 func (th *transactionHandler) Dispose() {
 	th.cc.Dispose()
+}
+
+func ParseCallData(data []byte) (*contract.DataCallJSON, error) {
+	var jso contract.DataCallJSON
+	if json.Unmarshal(data, &jso) != nil || jso.Method == "" {
+		return nil, state.ErrInvalidDataValue
+	} else {
+		return &jso, nil
+	}
 }

@@ -163,7 +163,7 @@ func (tx *transactionV3) Verify() error {
 			if tx.Data == nil {
 				return state.ErrInvalidDataValue
 			}
-			_, err := contract.ParseCallData(tx.Data)
+			_, err := ParseCallData(tx.Data)
 			return err
 		case dataTypeDeploy:
 			// element check
@@ -269,7 +269,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 			if info := as.APIInfo(); info == nil {
 				return state.ErrNoActiveContract
 			} else {
-				jso, _ := contract.ParseCallData(tx.Data) // Already checked at Verify(). It can't be nil.
+				jso, _ := ParseCallData(tx.Data) // Already checked at Verify(). It can't be nil.
 				if _, err = info.ConvertParamsToTypedObj(jso.Method, jso.Params); err != nil {
 					return state.ErrInvalidMethod
 				}

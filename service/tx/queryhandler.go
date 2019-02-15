@@ -19,7 +19,7 @@ type QueryHandler struct {
 
 func (qh *QueryHandler) Query(ctx contract.Context) (module.Status, interface{}) {
 	// check if function is read-only
-	jso, err := contract.ParseCallData(qh.data)
+	jso, err := ParseCallData(qh.data)
 	if err != nil {
 		return module.StatusMethodNotFound, err.Error()
 	}
