@@ -25,12 +25,12 @@ const TxMaxNumInBlock = 2000
 type manager struct {
 	// tx pool should be connected to transition for more than one branches.
 	// Currently, it doesn't allow another branch, so add tx pool here.
-	patchTxPool  *tx.TransactionPool
-	normalTxPool *tx.TransactionPool
+	patchTxPool  *TransactionPool
+	normalTxPool *TransactionPool
 
 	db        db.Database
 	chain     module.Chain
-	txReactor *tx.TransactionReactor
+	txReactor *TransactionReactor
 	cm        contract.ContractManager
 	eem       eeproxy.Manager
 }
@@ -41,15 +41,15 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 	bk, _ := chain.Database().GetBucket(db.TransactionLocatorByHash)
 
 	mgr := &manager{
-		patchTxPool:  tx.NewTransactionPool(bk),
-		normalTxPool: tx.NewTransactionPool(bk),
+		patchTxPool:  NewTransactionPool(bk),
+		normalTxPool: NewTransactionPool(bk),
 		db:           chain.Database(),
 		chain:        chain,
 		cm:           contract.NewContractManager(chain.Database(), contractDir),
 		eem:          eem,
 	}
 	if nm != nil {
-		mgr.txReactor = tx.NewTransactionReactor(nm, mgr.patchTxPool, mgr.normalTxPool)
+		mgr.txReactor = NewTransactionReactor(nm, mgr.patchTxPool, mgr.normalTxPool)
 	}
 	return mgr
 }
@@ -256,7 +256,7 @@ func (m *manager) SendTransaction(txi interface{}) ([]byte, error) {
 		return nil, errors.New("Invalid Transaction. Failed to get hash")
 	}
 
-	var txPool *tx.TransactionPool
+	var txPool *TransactionPool
 	switch newTx.Group() {
 	case module.TransactionGroupNormal:
 		txPool = m.normalTxPool
@@ -267,7 +267,7 @@ func (m *manager) SendTransaction(txi interface{}) ([]byte, error) {
 	}
 
 	if err := txPool.Add(newTx); err == nil {
-		m.txReactor.PropagateTransaction(tx.ProtocolPropagateTransaction, newTx)
+		m.txReactor.PropagateTransaction(ProtocolPropagateTransaction, newTx)
 	} else {
 		return hash, err
 	}
