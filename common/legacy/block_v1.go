@@ -10,7 +10,7 @@ import (
 	"io"
 	"log"
 
-	"github.com/icon-project/goloop/service/tx"
+	"github.com/icon-project/goloop/service/transaction"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
@@ -26,7 +26,7 @@ func (t *transactionV3) MarshalJSON() ([]byte, error) {
 }
 
 func (t *transactionV3) UnmarshalJSON(b []byte) error {
-	if tr, err := tx.NewTransactionFromJSON(b); err != nil {
+	if tr, err := transaction.NewTransactionFromJSON(b); err != nil {
 		return err
 	} else {
 		t.Transaction = tr
@@ -184,6 +184,6 @@ func ParseBlockV1(b []byte) (Block, error) {
 	for i, tx := range blk.Transactions {
 		trs[i] = tx.Transaction
 	}
-	transactionList := tx.NewTransactionListV1FromSlice(trs)
+	transactionList := transaction.NewTransactionListV1FromSlice(trs)
 	return &blockV1{blk, transactionList}, nil
 }

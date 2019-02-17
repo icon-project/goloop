@@ -7,7 +7,7 @@ import (
 	"log"
 	"math/big"
 
-	"github.com/icon-project/goloop/service/tx"
+	"github.com/icon-project/goloop/service/transaction"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
@@ -81,8 +81,8 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 
 	// create transition instance and return it
 	return newTransition(pt,
-			tx.NewTransactionListFromSlice(m.db, patchTxs),
-			tx.NewTransactionListFromSlice(m.db, normalTxs),
+			transaction.NewTransactionListFromSlice(m.db, patchTxs),
+			transaction.NewTransactionListFromSlice(m.db, normalTxs),
 			bi, true),
 		nil
 }
@@ -126,7 +126,7 @@ func (m *manager) GetPatches(parent module.Transition) module.TransactionList {
 	}
 
 	wc := state.NewWorldContext(ws, pt.bi)
-	return tx.NewTransactionListFromSlice(m.db, m.patchTxPool.Candidate(wc, -1))
+	return transaction.NewTransactionListFromSlice(m.db, m.patchTxPool.Candidate(wc, -1))
 }
 
 // PatchTransition creates a Transition by overwriting patches on the transition.
@@ -155,12 +155,12 @@ func (m *manager) Finalize(t module.Transition, opt int) {
 			// Because transactionlist for transition is made only through peer and SendTransaction() call
 			// transactionlist has slice of transactions in case that finalize() is called
 			m.normalTxPool.RemoveList(tst.normalTransactions)
-			m.normalTxPool.RemoveOldTXs(tst.bi.Timestamp() - tx.ConfigTXTimestampBackwardMargin)
+			m.normalTxPool.RemoveOldTXs(tst.bi.Timestamp() - transaction.ConfigTXTimestampBackwardMargin)
 		}
 		if opt&module.FinalizePatchTransaction == module.FinalizePatchTransaction {
 			tst.finalizePatchTransaction()
 			m.patchTxPool.RemoveList(tst.patchTransactions)
-			m.patchTxPool.RemoveOldTXs(tst.bi.Timestamp() - tx.ConfigTXTimestampBackwardMargin)
+			m.patchTxPool.RemoveOldTXs(tst.bi.Timestamp() - transaction.ConfigTXTimestampBackwardMargin)
 		}
 		if opt&module.FinalizeResult == module.FinalizeResult {
 			tst.finalizeResult()
@@ -170,7 +170,7 @@ func (m *manager) Finalize(t module.Transition, opt int) {
 
 // TransactionFromBytes returns a Transaction instance from bytes.
 func (m *manager) TransactionFromBytes(b []byte, blockVersion int) (module.Transaction, error) {
-	tx, err := tx.NewTransaction(b)
+	tx, err := transaction.NewTransaction(b)
 	if err != nil {
 		log.Printf("sm.TransactionFromBytes() fails with err=%+v", err)
 	}
@@ -180,16 +180,16 @@ func (m *manager) TransactionFromBytes(b []byte, blockVersion int) (module.Trans
 // TransactionListFromHash returns a TransactionList instance from
 // the hash of transactions or nil when no transactions exist.
 func (m *manager) TransactionListFromHash(hash []byte) module.TransactionList {
-	return tx.NewTransactionListFromHash(m.db, hash)
+	return transaction.NewTransactionListFromHash(m.db, hash)
 }
 
 // TransactionListFromSlice returns list of transactions.
 func (m *manager) TransactionListFromSlice(txs []module.Transaction, version int) module.TransactionList {
 	switch version {
 	case module.BlockVersion1:
-		return tx.NewTransactionListV1FromSlice(txs)
+		return transaction.NewTransactionListV1FromSlice(txs)
 	case module.BlockVersion2:
-		return tx.NewTransactionListFromSlice(m.db, txs)
+		return transaction.NewTransactionListFromSlice(m.db, txs)
 	default:
 		return nil
 	}
@@ -226,21 +226,21 @@ func (m *manager) checkTransitionResult(t module.Transition) (*transition, error
 }
 
 func (m *manager) SendTransaction(txi interface{}) ([]byte, error) {
-	var newTx tx.Transaction
+	var newTx transaction.Transaction
 	switch txo := txi.(type) {
 	case []byte:
-		ntx, err := tx.NewTransactionFromJSON(txo)
+		ntx, err := transaction.NewTransactionFromJSON(txo)
 		if err != nil {
 			return nil, err
 		}
-		newTx = ntx.(tx.Transaction)
+		newTx = ntx.(transaction.Transaction)
 	case string:
-		ntx, err := tx.NewTransactionFromJSON([]byte(txo))
+		ntx, err := transaction.NewTransactionFromJSON([]byte(txo))
 		if err != nil {
 			return nil, err
 		}
-		newTx = ntx.(tx.Transaction)
-	case tx.Transaction:
+		newTx = ntx.(transaction.Transaction)
+	case transaction.Transaction:
 		newTx = txo
 	default:
 		return nil, fmt.Errorf("IllegalTransactionType:%T", txi)

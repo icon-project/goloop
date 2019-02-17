@@ -9,7 +9,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
-	transaction "github.com/icon-project/goloop/service/tx"
+	"github.com/icon-project/goloop/service/transaction"
 )
 
 const (
