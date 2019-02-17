@@ -2,9 +2,6 @@ package state
 
 import (
 	"errors"
-	"math/big"
-
-	"github.com/icon-project/goloop/module"
 )
 
 // TODO Check if everything here is adequate for state package.
@@ -49,9 +46,6 @@ const (
 	StepTypeInput            = "input"
 	StepTypeEventLog         = "eventLog"
 	StepTypeApiCall          = "apiCall"
-
-	LimitTypeInvoke = "invoke"
-	LimitTypeCall   = "query"
 )
 
 var AllStepTypes = []string{
@@ -68,43 +62,4 @@ var AllStepTypes = []string{
 	StepTypeInput,
 	StepTypeEventLog,
 	StepTypeApiCall,
-}
-
-var AllLimitTypes = []string{
-	LimitTypeInvoke,
-	LimitTypeCall,
-}
-
-type BlockInfo struct {
-	Timestamp int64
-	Height    int64
-}
-
-type TransactionInfo struct {
-	Index     int32
-	Hash      []byte
-	Timestamp int64
-	Nonce     *big.Int
-}
-
-type ContractInfo struct {
-	Owner module.Address
-}
-
-type WorldContext interface {
-	WorldState
-	StepsFor(t StepType, n int) int64
-	StepPrice() *big.Int
-	BlockTimeStamp() int64
-	GetStepLimit(t string) *big.Int
-	BlockHeight() int64
-	Treasury() module.Address
-	Governance() module.Address
-	GetInfo() map[string]interface{}
-	WorldStateChanged(ws WorldState) WorldContext
-	WorldVirtualState() WorldVirtualState
-	GetFuture(lq []LockRequest) WorldContext
-	SetTransactionInfo(ti *TransactionInfo)
-	GetTransactionInfo(ti *TransactionInfo)
-	SetContractInfo(si *ContractInfo)
 }

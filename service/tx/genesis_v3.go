@@ -208,8 +208,8 @@ func (g *genesisV3) setDefaultSystemInfo(as state.AccountState) {
 		}
 
 		stepLimit = map[string]int64{
-			state.LimitTypeInvoke: 0x9502f900,
-			state.LimitTypeCall:   0x2faf080,
+			LimitTypeInvoke: 0x9502f900,
+			LimitTypeCall:   0x2faf080,
 		}
 	}
 
@@ -225,7 +225,7 @@ func (g *genesisV3) setDefaultSystemInfo(as state.AccountState) {
 
 	stepLimitTypes := scoredb.NewArrayDB(as, state.VarStepLimitTypes)
 	stepLimitDB := scoredb.NewDictDB(as, state.VarStepLimit, 1)
-	for _, k := range state.AllLimitTypes {
+	for _, k := range AllLimitTypes {
 		if v, ok := stepLimit[k]; ok {
 			stepLimitTypes.Put(k)
 			stepLimitDB.Set(k, v)

@@ -40,6 +40,40 @@ var (
 	SystemID = []byte(SystemIDStr)
 )
 
+type WorldContext interface {
+	WorldState
+	StepsFor(t StepType, n int) int64
+	StepPrice() *big.Int
+	BlockTimeStamp() int64
+	GetStepLimit(t string) *big.Int
+	BlockHeight() int64
+	Treasury() module.Address
+	Governance() module.Address
+	GetInfo() map[string]interface{}
+	WorldStateChanged(ws WorldState) WorldContext
+	WorldVirtualState() WorldVirtualState
+	GetFuture(lq []LockRequest) WorldContext
+	SetTransactionInfo(ti *TransactionInfo)
+	GetTransactionInfo(ti *TransactionInfo)
+	SetContractInfo(si *ContractInfo)
+}
+
+type BlockInfo struct {
+	Timestamp int64
+	Height    int64
+}
+
+type TransactionInfo struct {
+	Index     int32
+	Hash      []byte
+	Timestamp int64
+	Nonce     *big.Int
+}
+
+type ContractInfo struct {
+	Owner module.Address
+}
+
 type worldContext struct {
 	WorldState
 

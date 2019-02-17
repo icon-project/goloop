@@ -96,8 +96,8 @@ func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, e
 
 	// Set up
 	th.cc.Setup(ctx)
-	if th.handler.StepLimit().Cmp(ctx.GetStepLimit(state.LimitTypeInvoke)) > 0 {
-		th.handler.ResetSteps(ctx.GetStepLimit(state.LimitTypeInvoke))
+	if th.handler.StepLimit().Cmp(ctx.GetStepLimit(LimitTypeInvoke)) > 0 {
+		th.handler.ResetSteps(ctx.GetStepLimit(LimitTypeInvoke))
 	}
 
 	// Calculate common steps
