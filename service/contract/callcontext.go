@@ -16,13 +16,12 @@ import (
 
 type (
 	CallContext interface {
-		Setup(Context)
+		Context
 		QueryMode() bool
 		Call(ContractHandler) (module.Status, *big.Int, *codec.TypedObj, module.Address)
 		OnResult(status module.Status, stepUsed *big.Int, result *codec.TypedObj, addr module.Address)
 		OnCall(ContractHandler)
 		OnEvent(addr module.Address, indexed, data [][]byte)
-		GetInfo() map[string]interface{}
 		GetBalance(module.Address) *big.Int
 		ReserveConnection(eeType string) error
 		GetConnection(eeType string) eeproxy.Proxy
@@ -41,22 +40,20 @@ type (
 )
 
 type callContext struct {
+	Context
 	receipt txresult.Receipt
 	isQuery bool
 	conns   map[string]eeproxy.Proxy
 
-	// set at Setup()
-	ctx   Context
-	info  map[string]interface{}
-	timer <-chan time.Time
-
+	timer  <-chan time.Time
 	lock   sync.Mutex
 	stack  list.List
 	waiter chan interface{}
 }
 
-func NewCallContext(receipt txresult.Receipt, isQuery bool) CallContext {
+func NewCallContext(ctx Context, receipt txresult.Receipt, isQuery bool) CallContext {
 	return &callContext{
+		Context: ctx,
 		receipt: receipt,
 		isQuery: isQuery,
 		// 0-buffered channel is fine, but it sets some number just in case of
@@ -64,10 +61,6 @@ func NewCallContext(receipt txresult.Receipt, isQuery bool) CallContext {
 		waiter: make(chan interface{}, 8),
 		conns:  make(map[string]eeproxy.Proxy),
 	}
-}
-
-func (cc *callContext) Setup(ctx Context) {
-	cc.ctx = ctx
 }
 
 func (cc *callContext) QueryMode() bool {
@@ -81,7 +74,7 @@ func (cc *callContext) Call(handler ContractHandler) (module.Status, *big.Int, *
 		e := cc.stack.PushBack(handler)
 		cc.lock.Unlock()
 
-		status, stepUsed, result, scoreAddr := handler.ExecuteSync(cc.ctx)
+		status, stepUsed, result, scoreAddr := handler.ExecuteSync(cc)
 
 		cc.lock.Lock()
 		cc.stack.Remove(e)
@@ -92,7 +85,7 @@ func (cc *callContext) Call(handler ContractHandler) (module.Status, *big.Int, *
 		e := cc.stack.PushBack(handler)
 		cc.lock.Unlock()
 
-		if err := handler.ExecuteAsync(cc.ctx); err != nil {
+		if err := handler.ExecuteAsync(cc); err != nil {
 			cc.lock.Lock()
 			cc.stack.Remove(e)
 			cc.lock.Unlock()
@@ -131,7 +124,7 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (module.Status, *big.Int, 
 					cc.lock.Lock()
 					cc.stack.PushBack(handler)
 					cc.lock.Unlock()
-					status, used, result, addr := handler.ExecuteSync(cc.ctx)
+					status, used, result, addr := handler.ExecuteSync(cc)
 					if cc.handleResult(status, used, result, addr) {
 						continue
 					}
@@ -141,7 +134,7 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (module.Status, *big.Int, 
 					cc.stack.PushBack(handler)
 					cc.lock.Unlock()
 
-					if err := handler.ExecuteAsync(cc.ctx); err != nil {
+					if err := handler.ExecuteAsync(cc); err != nil {
 						if cc.handleResult(module.StatusSystemError,
 							handler.StepLimit(), nil, nil) {
 							continue
@@ -262,12 +255,8 @@ func (cc *callContext) OnEvent(addr module.Address, indexed, data [][]byte) {
 	cc.receipt.AddLog(addr, indexed, data)
 }
 
-func (cc *callContext) GetInfo() map[string]interface{} {
-	return cc.ctx.GetInfo()
-}
-
 func (cc *callContext) GetBalance(addr module.Address) *big.Int {
-	if ass := cc.ctx.GetAccountSnapshot(addr.ID()); ass != nil {
+	if ass := cc.GetAccountSnapshot(addr.ID()); ass != nil {
 		return ass.GetBalance()
 	} else {
 		return big.NewInt(0)
@@ -275,7 +264,7 @@ func (cc *callContext) GetBalance(addr module.Address) *big.Int {
 }
 
 func (cc *callContext) ReserveConnection(eeType string) error {
-	conn := cc.ctx.EEManager().Get(eeType)
+	conn := cc.EEManager().Get(eeType)
 	if conn == nil {
 		log.Panicln("Fails to get connection of eetype(" + eeType + ")")
 	}

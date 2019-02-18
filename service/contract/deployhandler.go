@@ -22,7 +22,6 @@ import (
 
 type DeployHandler struct {
 	*CommonHandler
-	cc          CallContext
 	eeType      string
 	content     []byte
 	contentType string
@@ -31,7 +30,7 @@ type DeployHandler struct {
 }
 
 func newDeployHandler(from, to module.Address, value, stepLimit *big.Int,
-	data []byte, cc CallContext, force bool,
+	data []byte, force bool,
 ) *DeployHandler {
 	var dataJSON struct {
 		ContentType string          `json:"contentType""`
@@ -44,7 +43,6 @@ func newDeployHandler(from, to module.Address, value, stepLimit *big.Int,
 	}
 	return &DeployHandler{
 		CommonHandler: newCommonHandler(from, to, value, stepLimit),
-		cc:            cc,
 		content:       dataJSON.Content,
 		contentType:   dataJSON.ContentType,
 		// eeType is currently only python
@@ -87,13 +85,13 @@ func (h *DeployHandler) Prepare(ctx Context) (state.WorldContext, error) {
 	return ctx.GetFuture(lq), nil
 }
 
-func (h *DeployHandler) ExecuteSync(ctx Context) (module.Status, *big.Int, *codec.TypedObj, module.Address) {
-	sysAs := ctx.GetAccountState(state.SystemID)
+func (h *DeployHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *codec.TypedObj, module.Address) {
+	sysAs := cc.GetAccountState(state.SystemID)
 
 	update := false
 	var contractID []byte
 	if bytes.Equal(h.to.ID(), state.SystemID) { // install
-		info := h.cc.GetInfo()
+		info := cc.GetInfo()
 		if info == nil {
 			msg, _ := common.EncodeAny("no GetInfo()")
 			return module.StatusSystemError, h.stepLimit, msg, nil
@@ -110,14 +108,14 @@ func (h *DeployHandler) ExecuteSync(ctx Context) (module.Status, *big.Int, *code
 		st = state.StepTypeContractUpdate
 	}
 	codeLen := len(h.content)
-	if !h.ApplySteps(ctx, st, 1) ||
-		!h.ApplySteps(ctx, state.StepTypeContractSet, codeLen) {
+	if !h.ApplySteps(cc, st, 1) ||
+		!h.ApplySteps(cc, state.StepTypeContractSet, codeLen) {
 		msg, _ := common.EncodeAny("Not enough step limit")
 		return module.StatusOutOfStep, h.stepLimit, msg, nil
 	}
 
 	// store ScoreDeployInfo and ScoreDeployTXParams
-	as := ctx.GetAccountState(contractID)
+	as := cc.GetAccountState(contractID)
 	if update == false {
 		if as.InitContractAccount(h.from) == false {
 			msg, _ := common.EncodeAny("Already deployed contract")
@@ -140,8 +138,8 @@ func (h *DeployHandler) ExecuteSync(ctx Context) (module.Status, *big.Int, *code
 
 	//if audit == false || deployer {
 	ah := newAcceptHandler(h.from, h.to, //common.NewContractAddress(contractID),
-		nil, h.StepAvail(), h.params, h.cc)
-	status, acceptStepUsed, result, _ := ah.ExecuteSync(ctx)
+		nil, h.StepAvail(), h.params)
+	status, acceptStepUsed, result, _ := ah.ExecuteSync(cc)
 	h.stepUsed.Add(h.stepUsed, acceptStepUsed)
 	if status != module.StatusSuccess {
 		return status, h.stepUsed, result, nil
@@ -155,16 +153,15 @@ type AcceptHandler struct {
 	*CommonHandler
 	txHash      []byte
 	auditTxHash []byte
-	cc          CallContext
 }
 
-func newAcceptHandler(from, to module.Address, value, stepLimit *big.Int, data []byte, cc CallContext) *AcceptHandler {
+func newAcceptHandler(from, to module.Address, value, stepLimit *big.Int, data []byte) *AcceptHandler {
 	// TODO parse hash
 	hash := make([]byte, 0)
 	auditTxHash := make([]byte, 0)
 	return &AcceptHandler{
 		CommonHandler: newCommonHandler(from, to, value, stepLimit),
-		txHash:        hash, auditTxHash: auditTxHash, cc: cc}
+		txHash:        hash, auditTxHash: auditTxHash}
 }
 
 // It's never called
@@ -178,9 +175,9 @@ const (
 	deployUpdate  = "on_update"
 )
 
-func (h *AcceptHandler) ExecuteSync(ctx Context) (module.Status, *big.Int, *codec.TypedObj, module.Address) {
+func (h *AcceptHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *codec.TypedObj, module.Address) {
 	// 1. call GetAPI
-	sysAs := ctx.GetAccountState(state.SystemID)
+	sysAs := cc.GetAccountState(state.SystemID)
 	varDb := scoredb.NewVarDB(sysAs, h.txHash)
 	scoreAddr := varDb.Address()
 	if scoreAddr == nil {
@@ -188,7 +185,7 @@ func (h *AcceptHandler) ExecuteSync(ctx Context) (module.Status, *big.Int, *code
 		msg, _ := common.EncodeAny("Score not found by tx hash")
 		return module.StatusContractNotFound, h.stepLimit, msg, nil
 	}
-	scoreAs := ctx.GetAccountState(scoreAddr.ID())
+	scoreAs := cc.GetAccountState(scoreAddr.ID())
 
 	var methodStr string
 	if bytes.Equal(h.to.ID(), state.SystemID) {
@@ -197,8 +194,8 @@ func (h *AcceptHandler) ExecuteSync(ctx Context) (module.Status, *big.Int, *code
 		methodStr = deployUpdate
 	}
 	// GET API
-	cgah := newCallGetAPIHandler(newCommonHandler(h.from, scoreAddr, nil, h.StepAvail()), h.cc)
-	status, _, result, _ := h.cc.Call(cgah)
+	cgah := newCallGetAPIHandler(newCommonHandler(h.from, scoreAddr, nil, h.StepAvail()))
+	status, _, result, _ := cc.Call(cgah)
 	if status != module.StatusSuccess {
 		return status, h.stepLimit, result, nil
 	}
@@ -217,11 +214,11 @@ func (h *AcceptHandler) ExecuteSync(ctx Context) (module.Status, *big.Int, *code
 	}
 	handler := newCallHandlerFromTypedObj(
 		newCommonHandler(h.from, scoreAddr, big.NewInt(0), h.StepAvail()),
-		methodStr, typedObj, h.cc, true)
+		methodStr, typedObj, true)
 
 	// state -> active if failed to on_install, set inactive
 	// on_install or on_update
-	status, stepUsed2, _, _ := h.cc.Call(handler)
+	status, stepUsed2, _, _ := cc.Call(handler)
 	h.stepUsed.Add(h.stepUsed, stepUsed2)
 	if status != module.StatusSuccess {
 		return status, h.stepLimit, nil, nil
@@ -239,17 +236,17 @@ func (h *AcceptHandler) ExecuteSync(ctx Context) (module.Status, *big.Int, *code
 type callGetAPIHandler struct {
 	*CommonHandler
 
-	cc       CallContext
 	disposed bool
 	lock     sync.Mutex
 	cs       ContractStore
 
 	// set in ExecuteAsync()
+	cc CallContext
 	as state.AccountState
 }
 
-func newCallGetAPIHandler(ch *CommonHandler, cc CallContext) *callGetAPIHandler {
-	return &callGetAPIHandler{CommonHandler: ch, cc: cc, disposed: false}
+func newCallGetAPIHandler(ch *CommonHandler) *callGetAPIHandler {
+	return &callGetAPIHandler{CommonHandler: ch, disposed: false}
 }
 
 // It's never called
@@ -273,8 +270,10 @@ func (h *callGetAPIHandler) Prepare(ctx Context) (state.WorldContext, error) {
 	return ctx.GetFuture(nil), nil
 }
 
-func (h *callGetAPIHandler) ExecuteAsync(ctx Context) error {
-	h.as = ctx.GetAccountState(h.to.ID())
+func (h *callGetAPIHandler) ExecuteAsync(cc CallContext) error {
+	h.cc = cc
+
+	h.as = cc.GetAccountState(h.to.ID())
 	if !h.as.IsContract() {
 		return errors.New("FAIL: not a contract account")
 	}
@@ -290,7 +289,7 @@ func (h *callGetAPIHandler) ExecuteAsync(ctx Context) error {
 	}
 	var err error
 	h.lock.Lock()
-	h.cs, err = ctx.ContractManager().PrepareContractStore(ctx, c)
+	h.cs, err = cc.ContractManager().PrepareContractStore(cc, c)
 	h.lock.Unlock()
 	if err != nil {
 		return err

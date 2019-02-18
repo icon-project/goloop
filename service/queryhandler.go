@@ -37,9 +37,8 @@ func (qh *QueryHandler) Query(ctx contract.Context) (module.Status, interface{})
 	}
 
 	// Set up
-	cc := contract.NewCallContext(nil, true)
-	cc.Setup(ctx)
-	handler := ctx.ContractManager().GetHandler(cc, qh.from, qh.to,
+	cc := contract.NewCallContext(ctx, nil, true)
+	handler := ctx.ContractManager().GetHandler(qh.from, qh.to,
 		big.NewInt(0), ctx.GetStepLimit(transaction.LimitTypeCall), contract.CTypeCall, qh.data)
 
 	// Execute

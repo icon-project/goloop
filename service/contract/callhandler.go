@@ -29,23 +29,21 @@ type CallHandler struct {
 	// nil paramObj means it needs to convert params to *codec.TypedObj.
 	paramObj *codec.TypedObj
 
-	cc        CallContext
 	forDeploy bool
 	disposed  bool
 	lock      sync.Mutex
 
 	// set in ExecuteAsync()
+	cc   CallContext
 	as   state.AccountState
 	cm   ContractManager
 	conn eeproxy.Proxy
 	cs   ContractStore
 }
 
-func newCallHandler(ch *CommonHandler, data []byte, cc CallContext, forDeploy bool,
-) *CallHandler {
+func newCallHandler(ch *CommonHandler, data []byte, forDeploy bool) *CallHandler {
 	h := &CallHandler{
 		CommonHandler: ch,
-		cc:            cc,
 		forDeploy:     forDeploy,
 		disposed:      false,
 	}
@@ -65,13 +63,12 @@ func newCallHandler(ch *CommonHandler, data []byte, cc CallContext, forDeploy bo
 }
 
 func newCallHandlerFromTypedObj(ch *CommonHandler, method string,
-	paramObj *codec.TypedObj, cc CallContext, forDeploy bool,
+	paramObj *codec.TypedObj, forDeploy bool,
 ) *CallHandler {
 	return &CallHandler{
 		CommonHandler: ch,
 		method:        method,
 		paramObj:      paramObj,
-		cc:            cc,
 		forDeploy:     forDeploy,
 	}
 }
@@ -105,22 +102,24 @@ func (h *CallHandler) contract(as state.AccountState) state.Contract {
 	}
 }
 
-func (h *CallHandler) ExecuteAsync(ctx Context) error {
+func (h *CallHandler) ExecuteAsync(cc CallContext) error {
+	h.cc = cc
+
 	// Calculate steps
-	if !h.ApplySteps(ctx, state.StepTypeContractCall, 1) {
+	if !h.ApplySteps(cc, state.StepTypeContractCall, 1) {
 		h.cc.OnResult(module.StatusOutOfStep, h.stepLimit, nil, nil)
 		return nil
 	}
 
 	// Prepare
-	h.as = ctx.GetAccountState(h.to.ID())
+	h.as = cc.GetAccountState(h.to.ID())
 	if !h.as.IsContract() {
 		return errors.New("FAIL: not a contract account")
 	}
-	ctx.SetContractInfo(&state.ContractInfo{Owner: h.as.ContractOwner()})
+	cc.SetContractInfo(&state.ContractInfo{Owner: h.as.ContractOwner()})
 
-	h.cm = ctx.ContractManager()
-	h.conn = h.cc.GetConnection(h.EEType())
+	h.cm = cc.ContractManager()
+	h.conn = cc.GetConnection(h.EEType())
 	if h.conn == nil {
 		return errors.New("FAIL to get connection of (" + h.EEType() + ")")
 	}
@@ -133,7 +132,7 @@ func (h *CallHandler) ExecuteAsync(ctx Context) error {
 	h.lock.Lock()
 	var err error
 	if h.cs == nil {
-		h.cs, err = ctx.ContractManager().PrepareContractStore(ctx, c)
+		h.cs, err = cc.ContractManager().PrepareContractStore(cc, c)
 	}
 	h.lock.Unlock()
 	if err != nil {
@@ -246,7 +245,7 @@ func (h *CallHandler) OnResult(status uint16, steps *big.Int, result *codec.Type
 func (h *CallHandler) OnCall(from, to module.Address, value,
 	limit *big.Int, method string, params *codec.TypedObj,
 ) {
-	h.cc.OnCall(h.cm.GetCallHandler(h.cc, from, to, value, limit, method, params))
+	h.cc.OnCall(h.cm.GetCallHandler(from, to, value, limit, method, params))
 }
 
 func (h *CallHandler) OnAPI(status uint16, obj *scoreapi.Info) {
@@ -266,9 +265,9 @@ func (h *TransferAndCallHandler) Prepare(ctx Context) (state.WorldContext, error
 	}
 }
 
-func (h *TransferAndCallHandler) ExecuteAsync(ctx Context) error {
+func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) error {
 	if h.to.IsContract() {
-		as := ctx.GetAccountState(h.to.ID())
+		as := cc.GetAccountState(h.to.ID())
 		apiInfo := as.APIInfo()
 		if apiInfo == nil {
 			return scoreresult.NewError(module.StatusContractNotFound, "APIInfo() is null")
@@ -283,10 +282,10 @@ func (h *TransferAndCallHandler) ExecuteAsync(ctx Context) error {
 		}
 	}
 
-	status, stepUsed, result, addr := h.th.ExecuteSync(ctx)
+	status, stepUsed, result, addr := h.th.ExecuteSync(cc)
 	if status == module.StatusSuccess {
 		if h.to.IsContract() {
-			return h.CallHandler.ExecuteAsync(ctx)
+			return h.CallHandler.ExecuteAsync(cc)
 		} else {
 			// Even for EOA, method name can be "fallback" because EE client
 			// always set "fallback" to method name.
@@ -294,7 +293,7 @@ func (h *TransferAndCallHandler) ExecuteAsync(ctx Context) error {
 	}
 
 	go func() {
-		h.cc.OnResult(module.Status(status), stepUsed, result, addr)
+		cc.OnResult(module.Status(status), stepUsed, result, addr)
 	}()
 	return nil
 }

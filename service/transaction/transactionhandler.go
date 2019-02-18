@@ -33,9 +33,11 @@ type transactionHandler struct {
 	dataType  *string
 	data      []byte
 
-	handler contract.ContractHandler
-	cc      contract.CallContext
-	receipt txresult.Receipt
+	chandler contract.ContractHandler
+	receipt  txresult.Receipt
+
+	// Assigned at Execute()
+	cc contract.CallContext
 }
 
 func NewTransactionHandler(cm contract.ContractManager, from, to module.Address,
@@ -78,16 +80,15 @@ func NewTransactionHandler(cm contract.ContractManager, from, to module.Address,
 	}
 
 	th.receipt = txresult.NewReceipt(to)
-	th.cc = contract.NewCallContext(th.receipt, false)
-	th.handler = cm.GetHandler(th.cc, from, to, value, stepLimit, ctype, data)
-	if th.handler == nil {
+	th.chandler = cm.GetHandler(from, to, value, stepLimit, ctype, data)
+	if th.chandler == nil {
 		return nil, errors.New("NoSuitableHandler")
 	}
 	return th, nil
 }
 
 func (th *transactionHandler) Prepare(ctx contract.Context) (state.WorldContext, error) {
-	return th.handler.Prepare(ctx)
+	return th.chandler.Prepare(ctx)
 }
 
 func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, error) {
@@ -95,9 +96,9 @@ func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, e
 	wcs := ctx.GetSnapshot()
 
 	// Set up
-	th.cc.Setup(ctx)
-	if th.handler.StepLimit().Cmp(ctx.GetStepLimit(LimitTypeInvoke)) > 0 {
-		th.handler.ResetSteps(ctx.GetStepLimit(LimitTypeInvoke))
+	th.cc = contract.NewCallContext(ctx, th.receipt, false)
+	if th.chandler.StepLimit().Cmp(ctx.GetStepLimit(LimitTypeInvoke)) > 0 {
+		th.chandler.ResetSteps(ctx.GetStepLimit(LimitTypeInvoke))
 	}
 
 	// Calculate common steps
@@ -111,15 +112,15 @@ func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, e
 		status = module.StatusSystemError
 		stepUsed = th.stepLimit
 	} else {
-		if !th.handler.ApplySteps(ctx, state.StepTypeDefault, 1) ||
-			!th.handler.ApplySteps(ctx, state.StepTypeInput, cnt) {
+		if !th.chandler.ApplySteps(ctx, state.StepTypeDefault, 1) ||
+			!th.chandler.ApplySteps(ctx, state.StepTypeInput, cnt) {
 			status = module.StatusOutOfStep
-			stepUsed = th.handler.StepLimit()
+			stepUsed = th.chandler.StepLimit()
 		}
 
 		// Execute
 		if status == module.StatusSuccess {
-			status, stepUsed, _, addr = th.cc.Call(th.handler)
+			status, stepUsed, _, addr = th.cc.Call(th.chandler)
 
 			// If it's not successful, roll back the state.
 			if status != module.StatusSuccess {
@@ -161,7 +162,10 @@ func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, e
 }
 
 func (th *transactionHandler) Dispose() {
-	th.cc.Dispose()
+	// Actually it is called after calling Execute(), so cc can't be nil.
+	if th.cc != nil {
+		th.cc.Dispose()
+	}
 }
 
 func ParseCallData(data []byte) (*contract.DataCallJSON, error) {

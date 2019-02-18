@@ -26,9 +26,9 @@ type (
 	cStatus int
 
 	ContractManager interface {
-		GetHandler(cc CallContext, from, to module.Address,
+		GetHandler(from, to module.Address,
 			value, stepLimit *big.Int, ctype int, data []byte) ContractHandler
-		GetCallHandler(cc CallContext, from, to module.Address,
+		GetCallHandler(from, to module.Address,
 			value, stepLimit *big.Int, method string, paramObj *codec.TypedObj) ContractHandler
 		PrepareContractStore(ws state.WorldState, contract state.Contract) (ContractStore, error)
 	}
@@ -115,40 +115,40 @@ func (cs *contractStoreImpl) notify(err error) {
 	cs.ch <- err
 }
 
-func (cm *contractManager) GetHandler(cc CallContext,
-	from, to module.Address, value, stepLimit *big.Int, ctype int, data []byte,
+func (cm *contractManager) GetHandler(from, to module.Address, value,
+	stepLimit *big.Int, ctype int, data []byte,
 ) ContractHandler {
 	var handler ContractHandler
 	switch ctype {
 	case CTypeTransfer:
 		handler = newTransferHandler(from, to, value, stepLimit)
 	case CTypeCall:
-		handler = newCallHandler(newCommonHandler(from, to, value, stepLimit), data, cc, false)
+		handler = newCallHandler(newCommonHandler(from, to, value, stepLimit), data, false)
 	case CTypeDeploy:
-		handler = newDeployHandler(from, to, value, stepLimit, data, cc, false)
+		handler = newDeployHandler(from, to, value, stepLimit, data, false)
 	case CTypeTransferAndCall:
 		th := newTransferHandler(from, to, value, stepLimit)
 		handler = &TransferAndCallHandler{
 			th:          th,
-			CallHandler: newCallHandler(th.CommonHandler, data, cc, false),
+			CallHandler: newCallHandler(th.CommonHandler, data, false),
 		}
 	}
 	return handler
 }
 
-func (cm *contractManager) GetCallHandler(cc CallContext, from, to module.Address,
+func (cm *contractManager) GetCallHandler(from, to module.Address,
 	value, stepLimit *big.Int, method string, paramObj *codec.TypedObj,
 ) ContractHandler {
 	if value != nil && value.Sign() == 1 { //value > 0
 		th := newTransferHandler(from, to, value, stepLimit)
 		return &TransferAndCallHandler{
 			th:          th,
-			CallHandler: newCallHandlerFromTypedObj(th.CommonHandler, method, paramObj, cc, false),
+			CallHandler: newCallHandlerFromTypedObj(th.CommonHandler, method, paramObj, false),
 		}
 	} else {
 		return newCallHandlerFromTypedObj(
 			newCommonHandler(from, to, value, stepLimit),
-			method, paramObj, cc, false)
+			method, paramObj, false)
 	}
 }
 

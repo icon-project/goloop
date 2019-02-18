@@ -32,12 +32,12 @@ type (
 
 	SyncContractHandler interface {
 		ContractHandler
-		ExecuteSync(ctx Context) (module.Status, *big.Int, *codec.TypedObj, module.Address)
+		ExecuteSync(cc CallContext) (module.Status, *big.Int, *codec.TypedObj, module.Address)
 	}
 
 	AsyncContractHandler interface {
 		ContractHandler
-		ExecuteAsync(ctx Context) error
+		ExecuteAsync(cc CallContext) error
 		SendResult(status module.Status, steps *big.Int, result *codec.TypedObj) error
 		Dispose()
 
