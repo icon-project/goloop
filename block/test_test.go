@@ -549,7 +549,7 @@ func (sm *testServiceManager) PatchTransition(transition module.Transition, patc
 		return nil
 	}
 	tr := &testTransition{}
-	tr.baseValidators = tr.baseValidators
+	tr.baseValidators = ttr.baseValidators
 	tr.patchTransactions = ttxl
 	tr.normalTransactions = ttr.normalTransactions
 	return tr
