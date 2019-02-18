@@ -313,12 +313,12 @@ type testTransition struct {
 	_exeChan chan struct{}
 }
 
-func (l *testTransition) setExeChan(ch chan struct{}) {
-	l._exeChan = ch
+func (tr *testTransition) setExeChan(ch chan struct{}) {
+	tr._exeChan = ch
 }
 
-func (l *testTransition) exeChan() chan<- struct{} {
-	return l._exeChan
+func (tr *testTransition) exeChan() chan<- struct{} {
+	return tr._exeChan
 }
 
 func (tr *testTransition) PatchTransactions() module.TransactionList {
@@ -784,7 +784,7 @@ func newServiceManager(chain module.Chain) *testServiceManager {
 
 func newWallets(n int) []module.Wallet {
 	wallets := make([]module.Wallet, n)
-	for i, _ := range wallets {
+	for i := range wallets {
 		wallets[i] = common.NewWallet()
 	}
 	return wallets
