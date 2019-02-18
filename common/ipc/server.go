@@ -4,7 +4,7 @@ import (
 	"log"
 	"net"
 	"os"
-	"strings"
+	"path"
 	"sync"
 )
 
@@ -37,11 +37,10 @@ func (s *server) Addr() net.Addr {
 }
 
 func (s *server) Listen(network, address string) error {
-	index := strings.LastIndex(address, "/")
-	if index > 0 {
-		f := address[:index]
-		if _, err := os.Stat(f); os.IsNotExist(err) {
-			os.MkdirAll(f, 0755)
+	d := path.Dir(address)
+	if _, err := os.Stat(d); os.IsNotExist(err) {
+		if err := os.MkdirAll(d, 0755); err != nil {
+			log.Fatalf("Fail to create socket directory=%s err=%+v", d, err)
 		}
 	}
 	switch network {
