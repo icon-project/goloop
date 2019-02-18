@@ -4,6 +4,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 	"sync"
 )
 
@@ -36,6 +37,13 @@ func (s *server) Addr() net.Addr {
 }
 
 func (s *server) Listen(network, address string) error {
+	index := strings.LastIndex(address, "/")
+	if index > 0 {
+		f := address[:index]
+		if _, err := os.Stat(f); os.IsNotExist(err) {
+			os.MkdirAll(f, 0755)
+		}
+	}
 	switch network {
 	case "unix":
 		os.Remove(address)
