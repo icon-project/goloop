@@ -236,7 +236,8 @@ func (g *genesisV3) setDefaultSystemInfo(as state.AccountState) {
 func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
 	r := txresult.NewReceipt(common.NewAccountAddress([]byte{}))
 	as := ctx.GetAccountState(state.SystemID)
-	for _, info := range g.Accounts {
+	for i := range g.Accounts {
+		info := g.Accounts[i]
 		addr := scoredb.NewVarDB(as, info.Name)
 		addr.Set(&info.Address)
 		ac := ctx.GetAccountState(info.Address.ID())
