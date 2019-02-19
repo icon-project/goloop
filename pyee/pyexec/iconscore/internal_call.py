@@ -18,6 +18,7 @@ from iconcommons import Logger
 from ..base.address import Address
 from ..base.exception import ExceptionCode, IconServiceBaseException, IconScoreException
 from ..icon_constant import ICX_TRANSFER_EVENT_LOG, Status
+from ..iconscore.icon_score_constant import STR_FALLBACK
 from ..iconscore.icon_score_step import StepType
 from .icon_score_eventlog import EventLogEmitter
 
@@ -48,15 +49,19 @@ class InternalCall(object):
                      func_name: str,
                      arg_params: Optional[tuple] = None,
                      kw_params: Optional[dict] = None) -> Any:
-
-        print(f'<== InternalCall.message_call: from={addr_from} to={addr_to} amount={amount} func_name={func_name}')
-        Logger.info(f'arg_params={arg_params}', TAG)
-        Logger.info(f'kw_params={kw_params}', TAG)
+        if func_name is None:
+            func_name = STR_FALLBACK
+        print(f'[InterCall] from={addr_from} to={addr_to} amount={amount} func_name={func_name}')
+        Logger.info(f'arg_params={arg_params}, kw_params={kw_params}', TAG)
         new_limit = context.step_counter.check_step_remained(StepType.CONTRACT_CALL)
         Logger.info(f'new_limit={new_limit}', TAG)
+        if arg_params is not None:
+            params = arg_params
+        else:
+            params = kw_params
         status, step_used, result = \
-            cls._proxy.call(addr_to, amount, new_limit, func_name, arg_params)
-        print(f'\n==> call result: {status}, {step_used}, {result}')
+            cls._proxy.call(addr_to, amount, new_limit, func_name, params)
+        print(f'[InterCall] Result: {status}, {step_used}, {result}')
 
         if step_used > new_limit:
             context.step_counter.add_step(new_limit)
