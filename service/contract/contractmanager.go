@@ -141,9 +141,13 @@ func (cm *contractManager) GetCallHandler(from, to module.Address,
 ) ContractHandler {
 	if value != nil && value.Sign() == 1 { //value > 0
 		th := newTransferHandler(from, to, value, stepLimit)
-		return &TransferAndCallHandler{
-			th:          th,
-			CallHandler: newCallHandlerFromTypedObj(th.CommonHandler, method, paramObj, false),
+		if to.IsContract() {
+			return &TransferAndCallHandler{
+				th:          th,
+				CallHandler: newCallHandlerFromTypedObj(th.CommonHandler, method, paramObj, false),
+			}
+		} else {
+			return th
 		}
 	} else {
 		return newCallHandlerFromTypedObj(

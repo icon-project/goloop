@@ -284,12 +284,7 @@ func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) error {
 
 	status, stepUsed, result, addr := h.th.ExecuteSync(cc)
 	if status == module.StatusSuccess {
-		if h.to.IsContract() {
-			return h.CallHandler.ExecuteAsync(cc)
-		} else {
-			// Even for EOA, method name can be "fallback" because EE client
-			// always set "fallback" to method name.
-		}
+		return h.CallHandler.ExecuteAsync(cc)
 	}
 
 	go func() {
