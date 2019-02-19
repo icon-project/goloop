@@ -3,14 +3,12 @@ package scoreapi
 import (
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"log"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreresult"
-	"github.com/pkg/errors"
 )
 
 type MethodType int
@@ -223,9 +221,10 @@ func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedO
 	if paramObj.Type != codec.TypeDict {
 		return nil, scoreresult.ErrInvalidParameter
 	}
-	params, ok := paramObj.Object.(map[string]interface{})
+	params, ok := paramObj.Object.(map[string]*codec.TypedObj)
 	if !ok {
-		return nil, errors.Errorf("FailToCastDictToMap")
+		return nil, scoreresult.Errorf(module.StatusInvalidParameter,
+			"FailToCastDictToMap(type=%[1]T, obj=%[1]+v)", paramObj.Object)
 	}
 	inputs := make([]interface{}, len(a.Inputs))
 	for i, input := range a.Inputs {
@@ -235,12 +234,16 @@ func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedO
 			if i >= a.Indexed {
 				inputs[i] = input.Type.Decode(input.Default)
 			} else {
-				return nil, scoreresult.NewError(module.StatusInvalidParameter,
-					fmt.Sprintf("MissingParameter(name=%s)", input.Name))
+				return nil, scoreresult.Errorf(module.StatusInvalidParameter,
+					"MissingParameter(name=%s)", input.Name)
 			}
 		}
 	}
-	return common.EncodeAny(inputs)
+	if obj, err := common.EncodeAny(inputs); err != nil {
+		return nil, scoreresult.Error(err, module.StatusSystemError)
+	} else {
+		return obj, nil
+	}
 }
 
 func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
