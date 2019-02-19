@@ -106,7 +106,7 @@ class PyExecEngine(object):
         info = self.get_info()
         context.tx = Transaction(tx_hash=info.get(Info.TX_HASH),
                                  index=info.get(Info.TX_INDEX),
-                                 origin=_from,
+                                 origin=info.get(Info.TX_FROM),
                                  timestamp=info.get(Info.TX_TIMESTAMP),
                                  nonce=info.get(Info.TX_NONCE))
         context.block = Block(info.get(Info.BLOCK_HEIGHT),

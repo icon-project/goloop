@@ -54,6 +54,7 @@ class Info(object):
     BLOCK_HEIGHT = "B.height"
     TX_HASH = "T.hash"
     TX_INDEX = "T.index"
+    TX_FROM = "T.from"
     TX_TIMESTAMP = "T.timestamp"
     TX_NONCE = "T.nonce"
     STEP_COSTS = "StepCosts"
