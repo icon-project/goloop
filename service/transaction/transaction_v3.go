@@ -118,7 +118,7 @@ func (tx *transactionV3) verifySignature() error {
 		return err
 	}
 	addr := common.NewAccountAddressFromPublicKey(pk)
-	if addr.Equal(&tx.From) {
+	if addr.Equal(tx.From()) {
 		return nil
 	}
 	return errors.New("InvalidSignature")
@@ -134,6 +134,10 @@ func (tx *transactionV3) TxHash() []byte {
 		}
 	}
 	return tx.txHash
+}
+
+func (tx *transactionV3) From() module.Address {
+	return &tx.transactionV3Data.From
 }
 
 func (tx *transactionV3) ID() []byte {
@@ -231,7 +235,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 		trans.Add(trans, &tx.Value.Int)
 	}
 
-	as1 := wc.GetAccountState(tx.From.ID())
+	as1 := wc.GetAccountState(tx.From().ID())
 	balance1 := as1.GetBalance()
 	if balance1.Cmp(trans) < 0 {
 		return state.ErrNotEnoughBalance
@@ -284,7 +288,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 				if as.ActiveContract() == nil {
 					return state.ErrNoActiveContract
 				}
-				if !as.IsContractOwner(&tx.From) {
+				if !as.IsContractOwner(tx.From()) {
 					return state.ErrNotContractOwner
 				}
 			}
@@ -301,7 +305,7 @@ func (tx *transactionV3) GetHandler(cm contract.ContractManager) (TransactionHan
 		value = big.NewInt(0)
 	}
 	return NewTransactionHandler(cm,
-		&tx.From,
+		tx.From(),
 		&tx.To,
 		value,
 		&tx.StepLimit.Int,

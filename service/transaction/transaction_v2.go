@@ -25,6 +25,10 @@ type transactionV2 struct {
 	hash []byte
 }
 
+func (tx *transactionV2) From() module.Address {
+	return &tx.transactionV3JSON.From
+}
+
 func (tx *transactionV2) Version() int {
 	return module.TransactionVersion2
 }
@@ -84,7 +88,7 @@ func (tx *transactionV2) PreValidate(wc state.WorldContext, update bool) error {
 	trans.Set(&tx.Value.Int)
 	trans.Add(trans, &tx.Fee.Int)
 
-	as1 := wc.GetAccountState(tx.From.ID())
+	as1 := wc.GetAccountState(tx.From().ID())
 	balance1 := as1.GetBalance()
 	if balance1.Cmp(trans) < 0 {
 		return state.ErrNotEnoughBalance
@@ -108,7 +112,7 @@ func (tx *transactionV2) GetHandler(cm contract.ContractManager) (TransactionHan
 
 func (tx *transactionV2) Prepare(ctx contract.Context) (state.WorldContext, error) {
 	lq := []state.LockRequest{
-		{string(tx.From.ID()), state.AccountWriteLock},
+		{string(tx.From().ID()), state.AccountWriteLock},
 		{string(tx.To.ID()), state.AccountWriteLock},
 	}
 	return ctx.GetFuture(lq), nil
@@ -120,7 +124,7 @@ func (tx *transactionV2) Execute(ctx contract.Context) (txresult.Receipt, error)
 
 	trans.Add(&tx.Value.Int, version2FixedFee)
 
-	as1 := ctx.GetAccountState(tx.From.ID())
+	as1 := ctx.GetAccountState(tx.From().ID())
 	bal1 := as1.GetBalance()
 	if bal1.Cmp(&trans) < 0 {
 		log.Printf("TX2 Fail balance=%s value=%s fee=%s",

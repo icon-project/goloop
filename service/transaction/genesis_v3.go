@@ -93,6 +93,10 @@ type genesisV3 struct {
 	hash []byte
 }
 
+func (g *genesisV3) From() module.Address {
+	return nil
+}
+
 func (g *genesisV3) Version() int {
 	return module.TransactionVersion3
 }

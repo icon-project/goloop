@@ -24,6 +24,7 @@ type BlockInfo interface {
 type Transaction interface {
 	Group() TransactionGroup
 	ID() []byte
+	From() Address
 	Bytes() []byte
 	Hash() []byte
 	Verify() error
@@ -31,7 +32,6 @@ type Transaction interface {
 	ToJSON(version int) (interface{}, error)
 
 	// Version() int
-	// From() Address
 	// To() Address
 	// Value() *big.Int
 	// StepLimit() *big.Int

@@ -349,6 +349,7 @@ func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, 
 				Timestamp: txo.Timestamp(),
 				Nonce:     txo.Nonce(),
 				Hash:      txo.ID(),
+				From:      txo.From(),
 			})
 			go func(tx transaction.Transaction, wc state.WorldContext, rb *txresult.Receipt) {
 				if rct, err := txh.Execute(contract.NewContext(wc, t.cm, t.eem)); err != nil {
@@ -364,6 +365,7 @@ func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, 
 				Timestamp: txo.Timestamp(),
 				Nonce:     txo.Nonce(),
 				Hash:      txo.ID(),
+				From:      txo.From(),
 			})
 			if logDebug {
 				log.Printf("START TX <0x%x>", txo.ID())

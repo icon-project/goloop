@@ -28,6 +28,7 @@ const (
 	InfoTxIndex        = "T.index"
 	InfoTxTimestamp    = "T.timestamp"
 	InfoTxNonce        = "T.nonce"
+	InfoTxFrom         = "T.from"
 	InfoStepCosts      = "StepCosts"
 	InfoContractOwner  = "C.owner"
 )
@@ -66,6 +67,7 @@ type BlockInfo struct {
 type TransactionInfo struct {
 	Index     int32
 	Hash      []byte
+	From      module.Address
 	Timestamp int64
 	Nonce     *big.Int
 }
@@ -242,6 +244,7 @@ func (c *worldContext) GetInfo() map[string]interface{} {
 		m[InfoTxIndex] = c.txInfo.Index
 		m[InfoTxTimestamp] = c.txInfo.Timestamp
 		m[InfoTxNonce] = c.txInfo.Nonce
+		m[InfoTxFrom] = c.txInfo.From
 		m[InfoStepCosts] = c.stepCostInfo()
 		m[InfoContractOwner] = c.contractInfo.Owner
 		c.info = m
