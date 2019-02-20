@@ -57,8 +57,10 @@ class InternalCall(object):
         Logger.info(f'new_limit={new_limit}', TAG)
         if arg_params is not None:
             params = arg_params
-        else:
+        elif kw_params is not None:
             params = kw_params
+        else:
+            params = []
         status, step_used, result = \
             cls._proxy.call(addr_to, amount, new_limit, func_name, params)
         print(f'[InterCall] Result: {status}, {step_used}, {result}')
