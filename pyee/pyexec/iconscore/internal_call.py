@@ -17,10 +17,9 @@ from iconcommons import Logger
 
 from ..base.address import Address
 from ..base.exception import ExceptionCode, IconServiceBaseException, IconScoreException
-from ..icon_constant import ICX_TRANSFER_EVENT_LOG, Status
+from ..icon_constant import Status
 from ..iconscore.icon_score_constant import STR_FALLBACK
 from ..iconscore.icon_score_step import StepType
-from .icon_score_eventlog import EventLogEmitter
 
 if TYPE_CHECKING:
     from .icon_score_context import IconScoreContext
@@ -71,8 +70,6 @@ class InternalCall(object):
         context.step_counter.add_step(step_used)
 
         if status == Status.SUCCESS:
-            if amount > 0:
-                InternalCall.emit_event_log_for_icx_transfer(context, addr_from, addr_to, amount)
             return result
         else:
             if status < ExceptionCode.SCORE_ERROR:
@@ -80,13 +77,3 @@ class InternalCall(object):
             else:
                 code = status - ExceptionCode.SCORE_ERROR
                 raise IconScoreException(result, code)
-
-    @staticmethod
-    def emit_event_log_for_icx_transfer(context: 'IconScoreContext',
-                                        from_: 'Address',
-                                        to: 'Address',
-                                        value: int) -> None:
-        event_signature = ICX_TRANSFER_EVENT_LOG
-        arguments = [from_, to, value]
-        indexed_args_count = 3
-        EventLogEmitter.emit_event_log(context, from_, event_signature, arguments, indexed_args_count)
