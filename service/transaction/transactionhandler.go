@@ -124,9 +124,6 @@ func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, e
 
 			// If it's not successful, roll back the state.
 			if status != module.StatusSuccess {
-				// In case of timeout, returned stepUsed may not be same as stepLimit.
-				// So set it again.
-				stepUsed.Set(th.stepLimit)
 				ctx.Reset(wcs)
 			}
 		}
@@ -145,7 +142,6 @@ func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, e
 			ctx.Reset(wcs)
 			bal = as.GetBalance()
 
-			stepUsed.Set(th.stepLimit)
 			fee.Mul(stepUsed, stepPrice)
 		} else {
 			stepPrice.SetInt64(0)
