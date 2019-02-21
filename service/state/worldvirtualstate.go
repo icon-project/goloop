@@ -400,6 +400,11 @@ func (wvs *worldVirtualState) Commit() {
 	return
 }
 
+func (wvs *worldVirtualState) ClearCachedAccountStates() {
+	// On virtual state, it makes own WorldVirtualState for each transaction.
+	// So, we don't need to support this features.
+}
+
 func NewWorldVirtualState(ws WorldState, reqs []LockRequest) WorldVirtualState {
 	nwvs := new(worldVirtualState)
 	nwvs.real = ws

@@ -32,6 +32,7 @@ type WorldState interface {
 	GetValidators() module.ValidatorList
 	SetValidators(vl []module.Validator) error
 	Reset(snapshot WorldSnapshot) error
+	ClearCachedAccountStates()
 }
 
 type worldSnapshotImpl struct {
@@ -155,6 +156,26 @@ func (ws *worldStateImpl) GetAccountState(id []byte) AccountState {
 	ac := newAccountState(ws.database, as)
 	ws.mutableAccounts[ids] = ac
 	return ac
+}
+
+func (ws *worldStateImpl) ClearCachedAccountStates() {
+	ws.mutex.Lock()
+	defer ws.mutex.Unlock()
+
+	for id, as := range ws.mutableAccounts {
+		key := addressIDToKey([]byte(id))
+		s := as.GetSnapshot()
+		if s.Empty() {
+			if err := ws.accounts.Delete(key); err != nil {
+				log.Panicf("Fail to delete account key = %x", key)
+			}
+		} else {
+			if err := ws.accounts.Set(key, s); err != nil {
+				log.Panicf("Fail to set snapshot for %x", key)
+			}
+		}
+	}
+	ws.mutableAccounts = make(map[string]AccountState)
 }
 
 func (ws *worldStateImpl) GetAccountSnapshot(id []byte) AccountSnapshot {
