@@ -109,7 +109,20 @@ func (ws *worldStateImpl) Reset(isnapshot WorldSnapshot) error {
 		return errors.New("InvalidSnapshotWithDifferentDB")
 	}
 	ws.accounts.Reset(snapshot.accounts)
-	ws.mutableAccounts = make(map[string]AccountState)
+	for id, as := range ws.mutableAccounts {
+		key := addressIDToKey([]byte(id))
+		value, err := ws.accounts.Get(key)
+		if err != nil {
+			log.Panicf("Fail to read account value")
+		}
+		if value == nil {
+			as.Clear()
+		} else {
+			if err := as.Reset(value.(AccountSnapshot)); err != nil {
+				return err
+			}
+		}
+	}
 	ws.validators = snapshot.validators
 	return nil
 }

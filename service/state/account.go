@@ -60,6 +60,7 @@ type AccountState interface {
 	DeleteValue(k []byte) error
 	GetSnapshot() AccountSnapshot
 	Reset(snapshot AccountSnapshot) error
+	Clear()
 
 	IsContractOwner(owner module.Address) bool
 	InitContractAccount(address module.Address) bool
@@ -527,6 +528,17 @@ func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 	return nil
 }
 
+func (s *accountStateImpl) Clear() {
+	s.balance.SetInt64(0)
+	s.isContract = false
+	s.version = AccountVersion
+	s.apiInfo = nil
+	s.contractOwner = nil
+	s.curContract = nil
+	s.nextContract = nil
+	s.store = nil
+}
+
 func (s *accountStateImpl) GetValue(k []byte) ([]byte, error) {
 	if s.store == nil {
 		return nil, nil
@@ -646,6 +658,10 @@ func (a *accountROState) AcceptContract(
 func (a *accountROState) RejectContract(
 	txHash []byte, auditTxHash []byte) error {
 	return errors.New("ReadOnlyState")
+}
+
+func (a *accountROState) Clear() {
+	// nothing to do
 }
 
 func newAccountROState(snapshot AccountSnapshot) AccountState {
