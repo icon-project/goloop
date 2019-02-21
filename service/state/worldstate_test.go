@@ -63,7 +63,7 @@ func TestNewWorldStateWithContract(t *testing.T) {
 	contractOwner.SetString("'0x12345")
 
 	type testStruct struct {
-		testStatus      contractStatus
+		testStatus      ContractStatus
 		testContentType string
 		testEeType      string
 		testApiInfo     []byte
@@ -260,22 +260,22 @@ func TestNewWorldStateWithContract(t *testing.T) {
 	ass := as3.GetSnapshot()
 	vContract2(ass)
 
-	as3.Disable(true)
+	as3.SetDisable(true)
 	if as3.ActiveContract() != nil {
 		log.Panicf("Invalid activeContract")
 	}
-	as3.Blacklist(true)
-	if as3.Contract().Status()&CSBlacklist != CSBlacklist {
+	as3.SetBlock(true)
+	if as3.Contract().Status()&CSBlocked != CSBlocked {
 		log.Panic("Not blacklisted", as3.Contract().Status())
 	}
-	if as3.Contract().Status()&CSDisable != CSDisable {
+	if as3.Contract().Status()&CSDisabled != CSDisabled {
 		log.Panic("Not disabled")
 	}
-	as3.Disable(false)
+	as3.SetDisable(false)
 	if as3.ActiveContract() != nil {
 		log.Panicf("Invalid activeContract")
 	}
-	if as3.Contract().Status()&CSBlacklist != CSBlacklist {
+	if as3.Contract().Status()&CSBlocked != CSBlocked {
 		log.Panic("Not blacklisted", as3.Contract().Status())
 	}
 	wsSnapshot = ws3.GetSnapshot()
@@ -286,7 +286,7 @@ func TestNewWorldStateWithContract(t *testing.T) {
 	if as4.ActiveContract() != nil {
 		log.Panicf("Invalid activeContract")
 	}
-	if as4.Contract().Status()&CSBlacklist != CSBlacklist {
+	if as4.Contract().Status()&CSBlocked != CSBlocked {
 		log.Panic("Not blacklisted", as4.Contract().Status())
 	}
 	if v := as4.Version(); v != AccountVersion {

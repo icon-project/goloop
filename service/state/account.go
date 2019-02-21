@@ -42,7 +42,7 @@ type AccountSnapshot interface {
 	ActiveContract() ContractSnapshot
 	NextContract() ContractSnapshot
 	IsDisabled() bool
-	IsBlacklisted() bool
+	IsBlocked() bool
 	ContractOwner() module.Address
 }
 
@@ -72,10 +72,10 @@ type AccountState interface {
 	Contract() Contract
 	ActiveContract() Contract
 	NextContract() Contract
+	SetDisable(b bool)
 	IsDisabled() bool
-	IsBlacklisted() bool
-	Disable(b bool)
-	Blacklist(b bool)
+	SetBlock(b bool)
+	IsBlocked() bool
 	ContractOwner() module.Address
 }
 
@@ -108,14 +108,14 @@ func (s *accountSnapshotImpl) ActiveContract() ContractSnapshot {
 }
 
 func (s *accountSnapshotImpl) IsDisabled() bool {
-	if s.curContract.status&CSDisable != 0 {
+	if s.curContract.status&CSDisabled != 0 {
 		return true
 	}
 	return false
 }
 
-func (s *accountSnapshotImpl) IsBlacklisted() bool {
-	if s.curContract.status&CSBlacklist != 0 {
+func (s *accountSnapshotImpl) IsBlocked() bool {
+	if s.curContract.status&CSBlocked != 0 {
 		return true
 	}
 	return false
@@ -333,35 +333,35 @@ func (s *accountStateImpl) ActiveContract() Contract {
 }
 
 func (s *accountStateImpl) IsDisabled() bool {
-	if s.curContract != nil && s.curContract.status&CSDisable != 0 {
+	if s.curContract != nil && s.curContract.status&CSDisabled != 0 {
 		return true
 	}
 	return false
 }
 
-func (s *accountStateImpl) IsBlacklisted() bool {
-	if s.curContract != nil && s.curContract.status&CSBlacklist != 0 {
+func (s *accountStateImpl) IsBlocked() bool {
+	if s.curContract != nil && s.curContract.status&CSBlocked != 0 {
 		return true
 	}
 	return false
 }
 
-func (s *accountStateImpl) Disable(b bool) {
+func (s *accountStateImpl) SetDisable(b bool) {
 	if s.curContract != nil {
-		status := s.curContract.status & CSBlacklist
+		status := s.curContract.status & CSBlocked
 		if b == true {
-			s.curContract.status = status | CSDisable
+			s.curContract.status = status | CSDisabled
 		} else {
 			s.curContract.status = status
 		}
 	}
 }
 
-func (s *accountStateImpl) Blacklist(b bool) {
+func (s *accountStateImpl) SetBlock(b bool) {
 	if s.curContract != nil {
-		status := s.curContract.status & CSDisable
+		status := s.curContract.status & CSDisabled
 		if b == true {
-			s.curContract.status = status | CSBlacklist
+			s.curContract.status = status | CSBlocked
 		} else {
 			s.curContract.status = status
 		}
@@ -596,12 +596,12 @@ func (a *accountROState) NextContract() Contract {
 	return a.nextContract
 }
 
-func (a *accountROState) Disable(b bool) {
-	log.Panicf("accountROState().Disable() is invoked")
+func (a *accountROState) SetDisable(b bool) {
+	log.Panicf("accountROState().SetDisable() is invoked")
 }
 
-func (a *accountROState) Blacklist(b bool) {
-	log.Panicf("accountROState().Blacklist() is invoked")
+func (a *accountROState) SetBlock(b bool) {
+	log.Panicf("accountROState().SetBlock() is invoked")
 }
 
 func (a *accountROState) SetBalance(v *big.Int) {

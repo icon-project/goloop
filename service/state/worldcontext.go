@@ -19,6 +19,16 @@ const (
 
 	VarStepLimitTypes = "step_limit_types"
 	VarStepLimit      = "step_limit"
+	VarSysConfig      = "system_config"
+	VarRevision       = "system_revision"
+	VarDeployer       = "system_deployer"
+)
+
+const (
+	SysConfigFee = 1 << iota
+	SysConfigAudit
+	SysConfigDeployerWhiteList
+	SysConfigScorePackageValidator
 )
 
 const (
@@ -57,6 +67,12 @@ type WorldContext interface {
 	SetTransactionInfo(ti *TransactionInfo)
 	GetTransactionInfo(ti *TransactionInfo)
 	SetContractInfo(si *ContractInfo)
+
+	IsDeployer(addr string) bool
+	ConfFeeEnabled() bool
+	ConfAuditEnabled() bool
+	ConfDeployWhiteListEnabled() bool
+	ConfPackageValidatorEnabled() bool
 }
 
 type BlockInfo struct {
@@ -119,7 +135,9 @@ type systemStorageInfo struct {
 	stepPrice    *big.Int
 	stepCosts    map[string]int64
 	stepLimit    map[string]int64
+	sysConfig    int64
 	stepCostInfo *codec.TypedObj
+	deployer     map[string]bool
 }
 
 func (c *worldContext) updateSystemInfo() {
@@ -153,6 +171,13 @@ func (c *worldContext) updateSystemInfo() {
 				stepLimit[tname] = stepLimitDB.Get(tname).Int64()
 			}
 			c.systemInfo.stepLimit = stepLimit
+
+			c.systemInfo.sysConfig = scoredb.NewVarDB(as, VarSysConfig).Int64()
+			db := scoredb.NewArrayDB(as, VarDeployer)
+			for i := 0; i < db.Size(); i++ {
+				addr := db.Get(i).Address().String()
+				c.systemInfo.deployer[addr] = true
+			}
 		}
 		c.systemInfo.updated = true
 	}
@@ -179,6 +204,46 @@ func (c *worldContext) GetStepLimit(t string) *big.Int {
 	} else {
 		return big.NewInt(0)
 	}
+}
+
+func (c *worldContext) ConfFeeEnabled() bool {
+	c.updateSystemInfo()
+	if c.systemInfo.sysConfig&SysConfigFee == 0 {
+		return false
+	}
+	return true
+}
+
+func (c *worldContext) ConfAuditEnabled() bool {
+	c.updateSystemInfo()
+	if c.systemInfo.sysConfig&SysConfigAudit == 0 {
+		return false
+	}
+	return true
+}
+
+func (c *worldContext) ConfDeployWhiteListEnabled() bool {
+	c.updateSystemInfo()
+	if c.systemInfo.sysConfig&SysConfigDeployerWhiteList == 0 {
+		return false
+	}
+	return true
+}
+
+func (c *worldContext) ConfPackageValidatorEnabled() bool {
+	c.updateSystemInfo()
+	if c.systemInfo.sysConfig&SysConfigScorePackageValidator == 0 {
+		return false
+	}
+	return true
+}
+
+func (c *worldContext) IsDeployer(addr string) bool {
+	if c.systemInfo.deployer == nil {
+		return false
+	}
+	_, ok := c.systemInfo.deployer[addr]
+	return ok
 }
 
 func (c *worldContext) BlockTimeStamp() int64 {

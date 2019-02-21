@@ -11,15 +11,20 @@ import (
 	ugorji "github.com/ugorji/go/codec"
 )
 
-type contractStatus int
+type ContractStatus int
 
 const (
-	CSInactive contractStatus = 1 << iota
+	CSInactive ContractStatus = 1 << iota
 	CSActive
 	CSPending
 	CSRejected
-	CSBlacklist
-	CSDisable
+	CSBlocked
+	CSDisabled
+)
+
+const (
+	CTAppZip    = "application/zip"
+	CTAppSystem = "application/vnd.goloop.system"
 )
 
 type ContractSnapshot interface {
@@ -27,14 +32,16 @@ type ContractSnapshot interface {
 	Code() ([]byte, error)
 	EEType() string
 	ContentType() string
+	DeployTxHash() []byte
+	AuditTxHash() []byte
 	Params() []byte
-	Status() contractStatus
+	Status() ContractStatus
 	Equal(s ContractSnapshot) bool
 }
 type contractSnapshotImpl struct {
 	bk           db.Bucket
 	isNew        bool
-	status       contractStatus
+	status       ContractStatus
 	contentType  string
 	eeType       string
 	deployTxHash []byte
@@ -91,11 +98,19 @@ func (c *contractSnapshotImpl) ContentType() string {
 	return c.contentType
 }
 
+func (c *contractSnapshotImpl) DeployTxHash() []byte {
+	return c.deployTxHash
+}
+
+func (c *contractSnapshotImpl) AuditTxHash() []byte {
+	return c.auditTxHash
+}
+
 func (c *contractSnapshotImpl) Params() []byte {
 	return c.params
 }
 
-func (c *contractSnapshotImpl) Status() contractStatus {
+func (c *contractSnapshotImpl) Status() ContractStatus {
 	return c.status
 }
 
@@ -158,14 +173,14 @@ func (c *contractSnapshotImpl) Resolve(builder merkle.Builder) error {
 
 type Contract interface {
 	ContractSnapshot
-	SetStatus(status contractStatus)
+	SetStatus(status ContractStatus)
 }
 
 type contractImpl struct {
 	contractSnapshotImpl
 }
 
-func (c *contractImpl) SetStatus(status contractStatus) {
+func (c *contractImpl) SetStatus(status ContractStatus) {
 	c.status = status
 }
 
@@ -183,7 +198,7 @@ type contractROState struct {
 	ContractSnapshot
 }
 
-func (c *contractROState) SetStatus(status contractStatus) {
+func (c *contractROState) SetStatus(status ContractStatus) {
 	log.Panicf("contractROState().SetStatus() is invoked")
 }
 

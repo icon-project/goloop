@@ -23,14 +23,22 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+type preInstalledScores struct {
+	Owner       *common.Address  `json:"owner""`
+	ContentType string           `json:"contentType"`
+	ContentID   string           `json:"contentID"`
+	Params      *json.RawMessage `json:"params"`
+}
 type accountInfo struct {
-	Name    string         `json:"name"`
-	Address common.Address `json:"address"`
-	Balance common.HexInt  `json:"balance"`
+	Name    string              `json:"name"`
+	Address common.Address      `json:"address"`
+	Balance *common.HexInt      `json:"balance"`
+	Score   *preInstalledScores `json:"score"`
 }
 
 type genesisV3JSON struct {
-	Accounts      []accountInfo     `json:"accounts"`
+	Accounts []accountInfo `json:"accounts"`
+	//Scores        []preInstalledScores `json:"preinstalledScores"`
 	Message       string            `json:"message"`
 	Validatorlist []*common.Address `json:"validatorlist"`
 	raw           []byte
@@ -217,6 +225,9 @@ func (g *genesisV3) setDefaultSystemInfo(as state.AccountState) {
 		}
 	}
 
+	// TODO set system configuration.
+	//scoredb.NewVarDB(as, state.VarSysConfig).Set(state.SysConfigFee | state.SysConfigAudit)
+
 	scoredb.NewVarDB(as, state.VarStepPrice).Set(big.NewInt(stepPrice))
 	stepTypes := scoredb.NewArrayDB(as, state.VarStepTypes)
 	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
@@ -242,11 +253,15 @@ func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
 	as := ctx.GetAccountState(state.SystemID)
 	for i := range g.Accounts {
 		info := g.Accounts[i]
+		if info.Balance == nil {
+			continue
+		}
 		addr := scoredb.NewVarDB(as, info.Name)
 		addr.Set(&info.Address)
 		ac := ctx.GetAccountState(info.Address.ID())
 		ac.SetBalance(&info.Balance.Int)
 	}
+
 	g.setDefaultSystemInfo(as)
 	r.SetResult(module.StatusSuccess, big.NewInt(0), big.NewInt(0), nil)
 	validators := make([]module.Validator, len(g.Validatorlist))
@@ -254,7 +269,39 @@ func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
 		validators[i], _ = state.ValidatorFromAddress(validator)
 	}
 	ctx.SetValidators(validators)
+	g.deployPreInstall(ctx)
 	return r, nil
+}
+
+func (g *genesisV3) deployPreInstall(ctx contract.Context) {
+	// first install chainScore.
+	sas := ctx.GetAccountState(state.SystemID)
+	sas.InitContractAccount(nil)
+	sas.DeployContract(nil, "system", state.CTAppSystem,
+		nil, nil)
+	sas.AcceptContract(nil, nil)
+	sas.SetAPIInfo(contract.GetSystemScore(nil, common.NewContractAddress(state.SystemID), nil).GetAPI())
+
+	// TODO add map table for static system score.
+
+	for _, a := range g.Accounts {
+		if a.Score == nil {
+			continue
+		}
+		score := a.Score
+		cc := contract.NewCallContext(ctx, nil, false)
+		d := contract.NewDeployHandlerForPreInstall(score.Owner,
+			&a.Address, score.ContentType, score.ContentID, score.Params)
+		status, _, result, addr := cc.Call(d)
+		if status != module.StatusSuccess {
+			log.Panicf("Failed to install pre-installed score."+
+				"status : %d, addr : %v, file : %s\n", status, a.Address, score.ContentID)
+		}
+		log.Printf("Succeed to install pre-installed score."+
+			"owner : %v, addr : %v, file : %s, result = %v, addr = %v\n",
+			score.Owner, a.Address, score.ContentID, result, addr)
+		cc.Dispose()
+	}
 }
 
 func (g *genesisV3) Dispose() {

@@ -265,7 +265,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 			if as.ActiveContract() == nil {
 				return state.ErrNoActiveContract
 			}
-			if as.IsBlacklisted() {
+			if as.IsBlocked() {
 				return state.ErrBlacklisted
 			}
 

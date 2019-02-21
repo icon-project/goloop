@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"io/ioutil"
 	"log"
 	"math/big"
 	"sync"
@@ -22,11 +23,12 @@ import (
 
 type DeployHandler struct {
 	*CommonHandler
-	eeType      string
-	content     []byte
-	contentType string
-	params      []byte
-	txHash      []byte
+	eeType         string
+	content        []byte
+	contentType    string
+	params         []byte
+	txHash         []byte
+	preDefinedAddr module.Address
 }
 
 func newDeployHandler(from, to module.Address, value, stepLimit *big.Int,
@@ -49,6 +51,35 @@ func newDeployHandler(from, to module.Address, value, stepLimit *big.Int,
 		// but it should be checked later by json element
 		eeType: "python",
 		params: dataJSON.Params,
+	}
+}
+
+func NewDeployHandlerForPreInstall(owner, scoreAddr module.Address, contentType string,
+	file string, params *json.RawMessage,
+) *DeployHandler {
+	var zero big.Int
+	buf, err := ioutil.ReadFile(file)
+	if err != nil {
+		log.Printf("Failed to read file. err = %s\n", err)
+		return nil
+	}
+	var p []byte
+	if params == nil {
+		p = nil
+	} else {
+		p = *params
+	}
+	return &DeployHandler{
+		CommonHandler: newCommonHandler(owner,
+			common.NewContractAddress(state.SystemID),
+			&zero, &zero),
+		content:        buf,
+		contentType:    contentType,
+		preDefinedAddr: scoreAddr,
+		// eeType is currently only for python
+		// but it should be checked later by json element
+		eeType: "python",
+		params: p,
 	}
 }
 
@@ -90,13 +121,20 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 
 	update := false
 	var contractID []byte
+	info := cc.GetInfo()
+	if info == nil {
+		msg, _ := common.EncodeAny("no GetInfo()")
+		return module.StatusSystemError, h.stepLimit, msg, nil
+	} else {
+		h.txHash = info[state.InfoTxHash].([]byte)
+	}
 	if bytes.Equal(h.to.ID(), state.SystemID) { // install
-		info := cc.GetInfo()
-		if info == nil {
-			msg, _ := common.EncodeAny("no GetInfo()")
-			return module.StatusSystemError, h.stepLimit, msg, nil
+		// preDefinedAddr is not nil, it is pre-installed score.
+		if h.preDefinedAddr != nil {
+			contractID = h.preDefinedAddr.ID()
+		} else {
+			contractID = genContractAddr(h.from, info[state.InfoTxTimestamp].(int64), info[state.InfoTxNonce].(*big.Int))
 		}
-		contractID = genContractAddr(h.from, info[state.InfoTxTimestamp].(int64), info[state.InfoTxNonce].(*big.Int))
 	} else { // deploy for update
 		contractID = h.to.ID()
 		update = true
@@ -133,18 +171,19 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 	}
 	scoreAddr := common.NewContractAddress(contractID)
 	as.DeployContract(h.content, h.eeType, h.contentType, h.params, h.txHash)
-	scoreDb := scoredb.NewVarDB(sysAs, h.txHash)
-	_ = scoreDb.Set(scoreAddr)
+	scoreDB := scoredb.NewVarDB(sysAs, h.txHash)
+	_ = scoreDB.Set(scoreAddr)
 
-	//if audit == false || deployer {
-	ah := newAcceptHandler(h.from, h.to, //common.NewContractAddress(contractID),
-		nil, h.StepAvail(), h.params)
-	status, acceptStepUsed, result, _ := ah.ExecuteSync(cc)
-	h.stepUsed.Add(h.stepUsed, acceptStepUsed)
-	if status != module.StatusSuccess {
-		return status, h.stepUsed, result, nil
+	if cc.ConfAuditEnabled() == false ||
+		cc.IsDeployer(h.from.String()) || h.preDefinedAddr != nil {
+		ah := newAcceptHandler(h.from, h.to,
+			nil, h.StepAvail(), h.txHash, h.txHash)
+		status, acceptStepUsed, result, _ := ah.ExecuteSync(cc)
+		h.stepUsed.Add(h.stepUsed, acceptStepUsed)
+		if status != module.StatusSuccess {
+			return status, h.stepUsed, result, nil
+		}
 	}
-	//}
 
 	return module.StatusSuccess, h.stepUsed, nil, scoreAddr
 }
@@ -155,13 +194,10 @@ type AcceptHandler struct {
 	auditTxHash []byte
 }
 
-func newAcceptHandler(from, to module.Address, value, stepLimit *big.Int, data []byte) *AcceptHandler {
-	// TODO parse hash
-	hash := make([]byte, 0)
-	auditTxHash := make([]byte, 0)
+func newAcceptHandler(from, to module.Address, value, stepLimit *big.Int, txHash []byte, auditTxHash []byte) *AcceptHandler {
 	return &AcceptHandler{
 		CommonHandler: newCommonHandler(from, to, value, stepLimit),
-		txHash:        hash, auditTxHash: auditTxHash}
+		txHash:        txHash, auditTxHash: auditTxHash}
 }
 
 // It's never called
@@ -188,7 +224,7 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 	scoreAs := cc.GetAccountState(scoreAddr.ID())
 
 	var methodStr string
-	if bytes.Equal(h.to.ID(), state.SystemID) {
+	if scoreAs.Contract() == nil {
 		methodStr = deployInstall
 	} else {
 		methodStr = deployUpdate
@@ -210,7 +246,7 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 
 	// 2. call on_install or on_update of the contract
 	if cur := scoreAs.Contract(); cur != nil {
-		cur.SetStatus(state.CSDisable)
+		cur.SetStatus(state.CSDisabled)
 	}
 	handler := newCallHandlerFromTypedObj(
 		newCommonHandler(h.from, scoreAddr, big.NewInt(0), h.StepAvail()),
