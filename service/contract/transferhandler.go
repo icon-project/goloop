@@ -35,6 +35,15 @@ func (h *TransferHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, 
 	bal2.Add(bal2, h.value)
 	as2.SetBalance(bal2)
 
+	if h.from.IsContract() {
+		indexed := make([][]byte, 4, 4)
+		indexed[0] = []byte("ICXTransfer(Address,Address,int)")
+		indexed[1] = h.from.Bytes()
+		indexed[2] = h.to.Bytes()
+		indexed[3] = h.value.Bytes()
+		cc.OnEvent(h.from, indexed, make([][]byte, 0))
+	}
+
 	return module.StatusSuccess, h.stepUsed, nil, nil
 }
 
