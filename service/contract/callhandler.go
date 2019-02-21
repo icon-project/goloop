@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"math/big"
+	"strings"
 	"sync"
 
 	"github.com/icon-project/goloop/common"
@@ -118,16 +119,36 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 	}
 	cc.SetContractInfo(&state.ContractInfo{Owner: h.as.ContractOwner()})
 
-	h.cm = cc.ContractManager()
-	h.conn = cc.GetConnection(h.EEType())
-	if h.conn == nil {
-		return errors.New("FAIL to get connection of (" + h.EEType() + ")")
-	}
-
 	// Set up contract files
 	c := h.contract(h.as)
 	if c == nil {
 		return errors.New("No active contract")
+	}
+
+	if strings.Compare(c.ContentType(), state.CTAppSystem) == 0 {
+		var status module.Status
+		var result *codec.TypedObj
+		// TODO add transactionInfo to icx_call
+
+		var from module.Address
+		if f := cc.GetInfo()[state.InfoTxFrom]; f != nil {
+			from = f.(module.Address)
+		}
+		sScore := GetSystemScore(from, h.to, cc)
+		if err := h.ensureParamObj(); err == nil {
+			status, result = sScore.Invoke(h.method, h.paramObj)
+		}
+		go func() {
+			cc.OnResult(module.Status(status), big.NewInt(0), result, nil)
+		}()
+		// TODO define error
+		return nil
+	}
+
+	h.cm = cc.ContractManager()
+	h.conn = cc.GetConnection(h.EEType())
+	if h.conn == nil {
+		return errors.New("FAIL to get connection of (" + h.EEType() + ")")
 	}
 	h.lock.Lock()
 	var err error
