@@ -165,6 +165,12 @@ func TestAddress_Equal(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "NilAndNilPtr",
+			a:    nil,
+			args: args{(*Address)(nil)},
+			want: true,
+		},
+		{
 			name: "NilvsNonNil",
 			a:    nil,
 			args: args{NewAddressFromString("hx8888888888888888888888888888888888888888")},
@@ -174,6 +180,12 @@ func TestAddress_Equal(t *testing.T) {
 			name: "NonNilvsNil",
 			a:    NewAddressFromString("hx8888888888888888888888888888888888888888"),
 			args: args{nil},
+			want: false,
+		},
+		{
+			name: "NonNilvsNilPtr",
+			a:    NewAddressFromString("hx8888888888888888888888888888888888888888"),
+			args: args{(*Address)(nil)},
 			want: false,
 		},
 		{

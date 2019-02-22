@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"log"
+	"reflect"
 
 	"github.com/icon-project/goloop/module"
 	"github.com/ugorji/go/codec"
@@ -148,10 +149,11 @@ func NewAccountAddressFromPublicKey(pubKey *crypto.PublicKey) *Address {
 }
 
 func (a *Address) Equal(a2 module.Address) bool {
-	if a2 == nil && a == nil {
+	a2IsNil := a2 == nil || reflect.ValueOf(a2).IsNil()
+	if a2IsNil && a == nil {
 		return true
 	}
-	if a2 == nil || a == nil {
+	if a2IsNil || a == nil {
 		return false
 	}
 	return bytes.Equal(a[:], a2.Bytes())
