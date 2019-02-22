@@ -8,7 +8,9 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path"
 	"runtime/pprof"
+	"strconv"
 	"sync/atomic"
 	"syscall"
 
@@ -117,24 +119,27 @@ func main() {
 	log.SetPrefix(prefix)
 
 	addr := wallet.Address()
+	nodePath := path.Join(".", ".chain", addr.String())
+	chainPath := path.Join(nodePath, strconv.FormatInt(int64(cfg.NID), 16))
+
 	if cfg.DBDir == "" {
-		cfg.DBDir = ".db/" + addr.String()
+		cfg.DBDir = path.Join(chainPath, "db")
 	}
 
 	if cfg.WALDir == "" {
-		cfg.WALDir = ".wal/" + addr.String()
+		cfg.WALDir = path.Join(chainPath, "wal")
 	}
 
 	if cfg.ContractDir == "" {
-		cfg.ContractDir = ".contract/" + addr.String()
+		cfg.ContractDir = path.Join(nodePath, "contract")
 	}
 
 	if cfg.EESocket == "" {
-		cfg.EESocket = ".socket/" + addr.String()
+		cfg.EESocket = path.Join(nodePath, "socket")
 	}
 
 	if cfg.DBType != "mapdb" {
-		if err := os.MkdirAll(cfg.DBDir, 0755); err != nil {
+		if err := os.MkdirAll(cfg.DBDir, 0700); err != nil {
 			log.Panicf("Fail to create directory %s err=%+v", cfg.DBDir, err)
 		}
 	}
