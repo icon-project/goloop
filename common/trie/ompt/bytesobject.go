@@ -3,10 +3,10 @@ package ompt
 import (
 	"bytes"
 	"fmt"
-	"github.com/icon-project/goloop/common/merkle"
 	"log"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
 )
 
@@ -31,10 +31,11 @@ func (o bytesObject) String() string {
 }
 
 func (o bytesObject) Equal(n trie.Object) bool {
-	if bo, ok := n.(bytesObject); ok {
-		return bytes.Equal(o, bo)
+	if bo, ok := n.(bytesObject); n != nil && !ok {
+		return false
+	} else {
+		return bytes.Equal(bo, o)
 	}
-	return false
 }
 
 func (o bytesObject) Resolve(builder merkle.Builder) error {
