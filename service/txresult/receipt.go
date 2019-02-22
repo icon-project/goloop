@@ -19,6 +19,10 @@ import (
 	ugorji "github.com/ugorji/go/codec"
 )
 
+const (
+	EventLogICXTransfer = "ICXTransfer(Address,Address,int)"
+)
+
 type eventLogJSON struct {
 	Addr    common.Address `json:"scoreAddress"`
 	Indexed []string       `json:"indexed"`

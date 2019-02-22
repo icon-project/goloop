@@ -3,6 +3,8 @@ package contract
 import (
 	"math/big"
 
+	"github.com/icon-project/goloop/service/txresult"
+
 	"github.com/icon-project/goloop/common"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -37,7 +39,7 @@ func (h *TransferHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, 
 
 	if h.from.IsContract() {
 		indexed := make([][]byte, 4, 4)
-		indexed[0] = []byte("ICXTransfer(Address,Address,int)")
+		indexed[0] = []byte(txresult.EventLogICXTransfer)
 		indexed[1] = h.from.Bytes()
 		indexed[2] = h.to.Bytes()
 		indexed[3] = h.value.Bytes()

@@ -17,6 +17,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	MethodFallback = "fallback"
+)
+
 type DataCallJSON struct {
 	Method string          `json:"method"`
 	Params json.RawMessage `json:"params"`
@@ -57,7 +61,7 @@ func newCallHandler(ch *CommonHandler, data []byte, forDeploy bool) *CallHandler
 		h.method = jso.Method
 		h.params = jso.Params
 	} else if ch.to.IsContract() {
-		h.method = "fallback"
+		h.method = MethodFallback
 		h.params = []byte("{}")
 	}
 	return h
