@@ -332,6 +332,8 @@ class ServiceManagerProxy:
             msg, data = self.__client.receive()
             if msg == Message.INVOKE:
                 self.__handle_invoke(data)
+            elif msg == Message.GETAPI:
+                self.__handle_get_api(data)
             elif msg == Message.RESULT:
                 return data[0], self.decode(TypeTag.INT, data[1]), self.decode_any(data[2])
 
