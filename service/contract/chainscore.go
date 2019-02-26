@@ -28,14 +28,14 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 		{scoreapi.Function, "DisableScore",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
-				{"addr", scoreapi.Address, nil},
+				{"address", scoreapi.Address, nil},
 			},
 			nil,
 		},
 		{scoreapi.Function, "EnableScore",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
-				{"addr", scoreapi.Address, nil},
+				{"address", scoreapi.Address, nil},
 			},
 			nil,
 		},
@@ -53,9 +53,133 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			nil,
 		},
+		{scoreapi.Function, "RejectScore",
+			scoreapi.FlagExternal, 0,
+			[]scoreapi.Parameter{
+				{"txHash", scoreapi.Bytes, nil},
+			},
+			nil,
+		},
+		{scoreapi.Function, "BlockScore",
+			scoreapi.FlagExternal, 0,
+			[]scoreapi.Parameter{
+				{"address", scoreapi.Address, nil},
+			},
+			nil,
+		},
+		{scoreapi.Function, "UnblockScore",
+			scoreapi.FlagExternal, 0,
+			[]scoreapi.Parameter{
+				{"address", scoreapi.Address, nil},
+			},
+			nil,
+		},
+		{scoreapi.Function, "SetStepPrice",
+			scoreapi.FlagExternal, 0,
+			[]scoreapi.Parameter{
+				{"price", scoreapi.Integer, nil},
+			},
+			nil,
+		},
+		{scoreapi.Function, "SetStepCost",
+			scoreapi.FlagExternal, 0,
+			[]scoreapi.Parameter{
+				{"costType", scoreapi.String, nil},
+				{"cost", scoreapi.Integer, nil},
+			},
+			nil,
+		},
+		{scoreapi.Function, "SetMaxStepLimit",
+			scoreapi.FlagExternal, 0,
+			[]scoreapi.Parameter{
+				{"contextType", scoreapi.String, nil},
+				{"cost", scoreapi.Integer, nil},
+			},
+			nil,
+		},
+		{scoreapi.Function, "AddDeployer",
+			scoreapi.FlagExternal, 0,
+			[]scoreapi.Parameter{
+				{"address", scoreapi.Address, nil},
+			},
+			nil,
+		},
+		{scoreapi.Function, "RemoveDeployer",
+			scoreapi.FlagExternal, 0,
+			[]scoreapi.Parameter{
+				{"address", scoreapi.Address, nil},
+			},
+			nil,
+		},
+		{scoreapi.Function, "GetRevision",
+			scoreapi.FlagExternal, 0,
+			nil,
+			[]scoreapi.DataType{
+				scoreapi.Integer,
+			},
+		},
+		{scoreapi.Function, "GetStepPrice",
+			scoreapi.FlagExternal, 0,
+			nil,
+			[]scoreapi.DataType{
+				scoreapi.Integer,
+			},
+		},
+		{scoreapi.Function, "GetStepCost",
+			scoreapi.FlagExternal, 0,
+			[]scoreapi.Parameter{
+				{"t", scoreapi.String, nil},
+			},
+			[]scoreapi.DataType{
+				scoreapi.Integer,
+			},
+		},
+		{scoreapi.Function, "GetStepCosts",
+			scoreapi.FlagExternal, 0,
+			nil,
+			[]scoreapi.DataType{
+				scoreapi.Dict,
+			},
+		},
+		{scoreapi.Function, "GetMaxStepLimit",
+			scoreapi.FlagExternal, 0,
+			[]scoreapi.Parameter{
+				{"t", scoreapi.String, nil},
+			},
+			[]scoreapi.DataType{
+				scoreapi.Integer,
+			},
+		},
+		{scoreapi.Function, "GetScoreStatus",
+			scoreapi.FlagExternal, 0,
+			[]scoreapi.Parameter{
+				{"address", scoreapi.Address, nil},
+			},
+			[]scoreapi.DataType{
+				scoreapi.Bytes,
+			},
+		},
+		{scoreapi.Function, "IsDeployer",
+			scoreapi.FlagExternal, 0,
+			[]scoreapi.Parameter{
+				{"address", scoreapi.Address, nil},
+			},
+			[]scoreapi.DataType{
+				scoreapi.Integer,
+			},
+		},
 		{scoreapi.Function, "GetServiceConfig",
 			scoreapi.FlagExternal, 0,
 			nil,
+			[]scoreapi.DataType{
+				scoreapi.Integer,
+			},
+		},
+		{scoreapi.Function, "SetServiceConfig",
+			scoreapi.FlagExternal, 0,
+			[]scoreapi.Parameter{
+				{"config", scoreapi.Integer, nil},
+			},
 			nil,
 		},
 	}
@@ -72,7 +196,6 @@ func (s *ChainScore) Invoke(method string, paramObj *codec.TypedObj) (
 		}
 	}()
 	m := reflect.ValueOf(s).MethodByName(method)
-	log.Printf("method : %s, m : %v\n", method, m)
 	if m.IsValid() == false {
 		return module.StatusMethodNotFound, nil
 	}
@@ -87,33 +210,45 @@ func (s *ChainScore) Invoke(method string, paramObj *codec.TypedObj) (
 			objects[i] = reflect.ValueOf(v)
 		}
 	}
-	log.Printf("r : c\n")
 	r := m.Call(objects)
-	log.Printf("r : %v\n", r)
-	interfaceList := make([]interface{}, len(r))
+	interfaceList := make([]interface{}, len(r)-1)
+
+	// first output type in chain score method is error.
+	status = module.StatusSuccess
 	for i, v := range r {
-		interfaceList[i] = v.Interface()
+		if i == 0 {
+			if err := v.Interface(); err != nil {
+				log.Printf("Failed to invoke %s on chain score. %s\n", method, err.(error))
+			}
+			continue
+		}
+		interfaceList[i-1] = v.Interface()
 	}
 
 	result, _ = common.EncodeAny(interfaceList)
-	log.Printf("SysCall Execute : %v\n", result)
 	return module.StatusSuccess, result
 }
 
 // Destroy : Allowed from score owner
-func (s *ChainScore) DisableScore(addr module.Address) error {
-	as := s.cc.GetAccountState(addr.ID())
+func (s *ChainScore) DisableScore(address module.Address) error {
+	as := s.cc.GetAccountState(address.ID())
 	if as.ActiveContract() == nil {
 		return errors.New("Not active contract")
+	}
+	if as.IsContractOwner(s.from) == false {
+		return errors.New("Not Contract owner")
 	}
 	as.SetDisable(true)
 	return nil
 }
 
-func (s *ChainScore) EnableScore(addr module.Address) error {
-	as := s.cc.GetAccountState(addr.ID())
+func (s *ChainScore) EnableScore(address module.Address) error {
+	as := s.cc.GetAccountState(address.ID())
 	if as.ActiveContract() != nil {
 		return errors.New("Not disabled contract")
+	}
+	if as.IsContractOwner(s.from) == false {
+		return errors.New("Not Contract owner")
 	}
 	as.SetDisable(false)
 	return nil
@@ -122,7 +257,7 @@ func (s *ChainScore) EnableScore(addr module.Address) error {
 // Governance functions : Functions which can be called by governance SCORE.
 func (s *ChainScore) SetRevision(code int64) error {
 	if s.from.Equal(s.cc.Governance()) == false {
-		return errors.New("Wrong")
+		return errors.New("No permission to call this method.")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
 	r := scoredb.NewVarDB(as, state.VarRevision).Int64()
@@ -132,7 +267,10 @@ func (s *ChainScore) SetRevision(code int64) error {
 	return scoredb.NewVarDB(as, state.VarSysConfig).Set(code)
 }
 
-func (s *ChainScore) AcceptScore(txHash []byte) {
+func (s *ChainScore) AcceptScore(txHash []byte) error {
+	if s.from.Equal(s.cc.Governance()) == false {
+		return errors.New("No permission to call this method.")
+	}
 	info := s.cc.GetInfo()
 	auditTxHash := info[state.InfoTxHash].([]byte)
 	// TODO change below stepLimit
@@ -140,14 +278,22 @@ func (s *ChainScore) AcceptScore(txHash []byte) {
 		nil, big.NewInt(100000000000), txHash, auditTxHash)
 	// TODO check status, result
 	ah.ExecuteSync(s.cc)
+	return nil
 }
 
-func (s *ChainScore) RejectScore(txHash []byte) {
+func (s *ChainScore) RejectScore(txHash []byte) error {
+	if s.from.Equal(s.cc.Governance()) == false {
+		return errors.New("No permission to call this method.")
+	}
+	return nil
 }
 
 // Governance score would check the verification of the address
-func (s *ChainScore) BlockScore(addr module.Address) error {
-	as := s.cc.GetAccountState(addr.ID())
+func (s *ChainScore) BlockScore(address module.Address) error {
+	if s.from.Equal(s.cc.Governance()) == false {
+		return errors.New("No permission to call this method.")
+	}
+	as := s.cc.GetAccountState(address.ID())
 	if as.IsBlocked() == false {
 		as.SetBlock(true)
 	}
@@ -155,50 +301,72 @@ func (s *ChainScore) BlockScore(addr module.Address) error {
 }
 
 // Governance score would check the verification of the address
-func (s *ChainScore) UnblockScore(addr module.Address) error {
-	as := s.cc.GetAccountState(addr.ID())
+func (s *ChainScore) UnblockScore(address module.Address) error {
+	if s.from.Equal(s.cc.Governance()) == false {
+		return errors.New("No permission to call this method.")
+	}
+	as := s.cc.GetAccountState(address.ID())
 	if as.IsBlocked() == true {
 		as.SetBlock(false)
 	}
 	return nil
 }
 
-func (s *ChainScore) SetStepPrice(price int) {
+func (s *ChainScore) SetStepPrice(price int) error {
+	if s.from.Equal(s.cc.Governance()) == false {
+		return errors.New("No permission to call this method.")
+	}
 	as := s.cc.GetAccountState(state.SystemID)
-	scoredb.NewVarDB(as, state.VarStepPrice).Set(price)
+	return scoredb.NewVarDB(as, state.VarStepPrice).Set(price)
 }
 
-func (s *ChainScore) SetStepCost(costType string, cost int) {
+func (s *ChainScore) SetStepCost(costType string, cost int) error {
+	if s.from.Equal(s.cc.Governance()) == false {
+		return errors.New("No permission to call this method.")
+	}
 	as := s.cc.GetAccountState(state.SystemID)
 	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
 	if stepCostDB.Get(costType) == nil {
 		stepTypes := scoredb.NewArrayDB(as, state.VarStepTypes)
-		stepTypes.Put(costType)
+		if err := stepTypes.Put(costType); err != nil {
+			return err
+		}
 	}
-	stepCostDB.Set(costType, cost)
+	return stepCostDB.Set(costType, cost)
 }
 
-func (s *ChainScore) SetMaxStepLimit(contextType string, cost int) {
+func (s *ChainScore) SetMaxStepLimit(contextType string, cost int) error {
+	if s.from.Equal(s.cc.Governance()) == false {
+		return errors.New("No permission to call this method.")
+	}
 	as := s.cc.GetAccountState(state.SystemID)
 	stepLimitDB := scoredb.NewDictDB(as, state.VarStepLimit, 1)
 	if stepLimitDB.Get(contextType) == nil {
 		stepLimitTypes := scoredb.NewArrayDB(as, state.VarStepLimitTypes)
-		stepLimitTypes.Put(contextType)
+		if err := stepLimitTypes.Put(contextType); err != nil {
+			return err
+		}
 	}
-	stepLimitDB.Set(contextType, cost)
+	return stepLimitDB.Set(contextType, cost)
 }
 
-func (s *ChainScore) AddDeployer(addr module.Address) error {
+func (s *ChainScore) AddDeployer(address module.Address) error {
+	if s.from.Equal(s.cc.Governance()) == false {
+		return errors.New("No permission to call this method.")
+	}
 	as := s.cc.GetAccountState(state.SystemID)
 	db := scoredb.NewArrayDB(as, state.VarDeployer)
-	return db.Put(addr)
+	return db.Put(address)
 }
 
-func (s *ChainScore) RemoveDeployer(addr module.Address) error {
+func (s *ChainScore) RemoveDeployer(address module.Address) error {
+	if s.from.Equal(s.cc.Governance()) == false {
+		return errors.New("No permission to call this method.")
+	}
 	as := s.cc.GetAccountState(state.SystemID)
 	db := scoredb.NewArrayDB(as, state.VarDeployer)
 	for i := 0; i < db.Size(); i++ {
-		if db.Get(i).Address().Equal(addr) == true {
+		if db.Get(i).Address().Equal(address) == true {
 			rAddr := db.Pop().Address()
 			if i < db.Size()-1 { // addr is not rAddr
 				if err := db.Set(i, rAddr); err != nil {
@@ -255,7 +423,7 @@ type scoreStatus struct {
 	Disabled string     `json:"disabled"`
 }
 
-func (s *ChainScore) GetScoreStatus(addr module.Address) []byte {
+func (s *ChainScore) GetScoreStatus(address module.Address) (error, []byte) {
 	stringStatus := func(s state.ContractStatus) string {
 		var status string
 		switch s {
@@ -277,9 +445,11 @@ func (s *ChainScore) GetScoreStatus(addr module.Address) []byte {
 		return status
 	}
 
-	as := s.cc.GetAccountState(addr.ID())
+	as := s.cc.GetAccountState(address.ID())
 	scoreStatus := scoreStatus{}
-	if cur := as.Contract(); cur != nil {
+	if cur := as.Contract(); cur == nil {
+		return errors.New("SCORE not found"), nil
+	} else {
 		current := &curScore{}
 		current.Status = stringStatus(cur.Status())
 		current.DeployTxHash = fmt.Sprintf("%x", cur.DeployTxHash())
@@ -310,27 +480,27 @@ func (s *ChainScore) GetScoreStatus(addr module.Address) []byte {
 	if err != nil {
 		log.Panicf("err : %s\n", err)
 	}
-	return result
+	return nil, result
 }
 
-func (s *ChainScore) IsDeployer(addr module.Address) int {
+func (s *ChainScore) IsDeployer(address module.Address) (error, int) {
 	as := s.cc.GetAccountState(state.SystemID)
 	db := scoredb.NewArrayDB(as, state.VarDeployer)
 	for i := 0; i < db.Size(); i++ {
-		if db.Get(i).Address().Equal(addr) == true {
-			return 1
+		if db.Get(i).Address().Equal(address) == true {
+			return nil, 1
 		}
 	}
-	return 0
+	return nil, 0
 }
 
-func (s *ChainScore) GetServiceConfig() int64 {
+func (s *ChainScore) GetServiceConfig() (error, int64) {
 	as := s.cc.GetAccountState(state.SystemID)
-	return scoredb.NewVarDB(as, state.VarSysConfig).Int64()
+	return nil, scoredb.NewVarDB(as, state.VarSysConfig).Int64()
 }
 
 // Internal call
-func (s *ChainScore) SetServiceConfig(config int64) {
+func (s *ChainScore) SetServiceConfig(config int64) error {
 	as := s.cc.GetAccountState(state.SystemID)
-	scoredb.NewVarDB(as, state.VarSysConfig).Set(config)
+	return scoredb.NewVarDB(as, state.VarSysConfig).Set(config)
 }

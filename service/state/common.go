@@ -48,6 +48,16 @@ const (
 	StepTypeApiCall          = "apiCall"
 )
 
+const (
+	StepLimitTypeInvoke = "invoke"
+	StepLimitTypeQuery  = "query"
+)
+
+var AllStepLimitTypes = []string{
+	StepLimitTypeInvoke,
+	StepLimitTypeQuery,
+}
+
 var AllStepTypes = []string{
 	StepTypeDefault,
 	StepTypeContractCall,

@@ -41,9 +41,10 @@ type transition struct {
 	patchTransactions  module.TransactionList
 	normalTransactions module.TransactionList
 
-	db  db.Database
-	cm  contract.ContractManager
-	eem eeproxy.Manager
+	db    db.Database
+	cm    contract.ContractManager
+	eem   eeproxy.Manager
+	chain module.Chain
 
 	cb module.TransitionCallback
 
@@ -106,12 +107,14 @@ func newTransition(parent *transition, patchtxs module.TransactionList,
 		cm:                 parent.cm,
 		eem:                parent.eem,
 		step:               step,
+		chain:              parent.chain,
 	}
 }
 
 // all parameters should be valid.
 func newInitTransition(db db.Database, result []byte,
-	validatorList module.ValidatorList, cm contract.ContractManager, em eeproxy.Manager,
+	validatorList module.ValidatorList, cm contract.ContractManager,
+	em eeproxy.Manager, chain module.Chain,
 ) (*transition, error) {
 	var tresult transitionResult
 	if len(result) > 0 {
@@ -130,6 +133,7 @@ func newInitTransition(db db.Database, result []byte,
 		eem:                em,
 		step:               stepComplete,
 		worldSnapshot:      ws.GetSnapshot(),
+		chain:              chain,
 	}, nil
 }
 
@@ -240,7 +244,7 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	t.step = stepExecuting
 	t.mutex.Unlock()
 
-	ctx := contract.NewContext(t.newWorldContext(), t.cm, t.eem)
+	ctx := contract.NewContext(t.newWorldContext(), t.cm, t.eem, t.chain)
 
 	startTime := time.Now()
 
@@ -352,7 +356,7 @@ func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, 
 				From:      txo.From(),
 			})
 			go func(tx transaction.Transaction, wc state.WorldContext, rb *txresult.Receipt) {
-				if rct, err := txh.Execute(contract.NewContext(wc, t.cm, t.eem)); err != nil {
+				if rct, err := txh.Execute(contract.NewContext(wc, t.cm, t.eem, t.chain)); err != nil {
 					log.Panicf("Fail to execute transaction err=%+v", err)
 				} else {
 					*rb = rct

@@ -5,10 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"io/ioutil"
 	"log"
 	"math/big"
-	"os"
 	"sort"
 	"strconv"
 
@@ -24,10 +22,10 @@ import (
 )
 
 type preInstalledScores struct {
-	Owner       *common.Address  `json:"owner""`
-	ContentType string           `json:"contentType"`
-	ContentID   string           `json:"contentID"`
-	Params      *json.RawMessage `json:"params"`
+	Owner       *common.Address
+	ContentType string
+	ContentID   string
+	Params      *json.RawMessage
 }
 type accountInfo struct {
 	Name    string              `json:"name"`
@@ -36,11 +34,23 @@ type accountInfo struct {
 	Score   *preInstalledScores `json:"score"`
 }
 
+type systemInfo struct {
+	ConfFee                   bool
+	ConfAudit                 bool
+	ConfDeployerWhiteList     bool
+	ConfScorePackageValidator bool
+	Price                     struct {
+		Step_price common.HexInt
+		Step_limit *json.RawMessage
+		Step_types *json.RawMessage
+	}
+}
+
 type genesisV3JSON struct {
-	Accounts []accountInfo `json:"accounts"`
-	//Scores        []preInstalledScores `json:"preinstalledScores"`
+	Accounts      []accountInfo     `json:"accounts"`
 	Message       string            `json:"message"`
 	Validatorlist []*common.Address `json:"validatorlist"`
+	SystemInfo    systemInfo
 	raw           []byte
 	txHash        []byte
 }
@@ -169,81 +179,76 @@ func (g *genesisV3) Prepare(ctx contract.Context) (state.WorldContext, error) {
 	return ctx.GetFuture(lq), nil
 }
 
-func (g *genesisV3) setDefaultSystemInfo(as state.AccountState) {
-	sysConfig := "./systemInfo.json"
-	var stepPrice int64 = 10000000
-	var stepCosts map[string]int64
-	var stepLimit map[string]int64
-	if _, err := os.Stat(sysConfig); !os.IsNotExist(err) {
-		info, err := ioutil.ReadFile(sysConfig)
-		if err != nil {
-			log.Panicf("Fail to open genesis file=%s err=%+v", info, err)
-		}
-		var infoMap = make(map[string]interface{})
-		err = json.Unmarshal(info, &infoMap)
-		if err != nil {
-			log.Panicf("error : %s\n", err)
-		}
-		for k, v := range infoMap {
-			switch k {
-			case state.VarStepTypes:
-				stepTypesMap := v.(map[string]interface{})
-				stepCosts = make(map[string]int64)
-				for sk, sv := range stepTypesMap {
-					stepCosts[sk], _ = strconv.ParseInt(sv.(string), 10, 64)
-				}
-			case state.VarStepPrice:
-				stepPrice, _ = strconv.ParseInt(v.(string), 10, 64)
-			case state.VarStepLimit:
-				stepLimitMap := v.(map[string]interface{})
-				stepLimit = make(map[string]int64)
-				for sk, sv := range stepLimitMap {
-					stepLimit[sk], _ = strconv.ParseInt(sv.(string), 10, 64)
-				}
-			}
-		}
-	} else {
-		stepCosts = map[string]int64{
-			"default":          0x186a0,
-			"contractCall":     0x61a8,
-			"contractCreate":   0x3b9aca00,
-			"contractUpdate":   0x5f5e1000,
-			"contractDestruct": -0x11170,
-			"contractSet":      0x7530,
-			"get":              0x0,
-			"set":              0x140,
-			"replace":          0x50,
-			"delete":           -0xf0,
-			"input":            0xc8,
-			"eventLog":         0x64,
-			"apiCall":          0x0,
-		}
-
-		stepLimit = map[string]int64{
-			LimitTypeInvoke: 0x9502f900,
-			LimitTypeCall:   0x2faf080,
-		}
+func (g *genesisV3) setSystemInfo(as state.AccountState) {
+	info := g.SystemInfo
+	confValue := 0
+	if info.ConfFee == true {
+		confValue |= state.SysConfigFee
 	}
-
-	// TODO set system configuration.
-	//scoredb.NewVarDB(as, state.VarSysConfig).Set(state.SysConfigFee | state.SysConfigAudit)
-
-	scoredb.NewVarDB(as, state.VarStepPrice).Set(big.NewInt(stepPrice))
-	stepTypes := scoredb.NewArrayDB(as, state.VarStepTypes)
-	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
-	for _, k := range state.AllStepTypes {
-		if v, ok := stepCosts[k]; ok {
-			stepTypes.Put(k)
-			stepCostDB.Set(k, v)
-		}
+	if info.ConfAudit == true {
+		confValue |= state.SysConfigAudit
 	}
+	if info.ConfDeployerWhiteList == true {
+		confValue |= state.SysConfigDeployerWhiteList
+	}
+	if info.ConfScorePackageValidator == true {
+		confValue |= state.SysConfigScorePackageValidator
+	}
+	scoredb.NewVarDB(as, state.VarSysConfig).Set(confValue)
 
+	price := info.Price
+	scoredb.NewVarDB(as, state.VarStepPrice).Set(&price.Step_price.Int)
 	stepLimitTypes := scoredb.NewArrayDB(as, state.VarStepLimitTypes)
 	stepLimitDB := scoredb.NewDictDB(as, state.VarStepLimit, 1)
-	for _, k := range AllLimitTypes {
-		if v, ok := stepLimit[k]; ok {
+	if price.Step_limit != nil {
+		stepLimitsMap := make(map[string]string)
+		if err := json.Unmarshal(*price.Step_limit, &stepLimitsMap); err != nil {
+			log.Panicf("Failed to unmarshal\n")
+		}
+		for _, k := range state.AllStepLimitTypes {
+			cost := stepLimitsMap[k]
 			stepLimitTypes.Put(k)
-			stepLimitDB.Set(k, v)
+			var icost int64
+			if cost != "" {
+				var err error
+				icost, err = strconv.ParseInt(cost, 0, 64)
+				if err != nil {
+					log.Panicf("Failed to parse %s to integer. err = %s\n")
+				}
+			}
+			stepLimitDB.Set(k, icost)
+		}
+	} else {
+		for _, k := range state.AllStepLimitTypes {
+			stepLimitTypes.Put(k)
+			stepLimitDB.Set(k, 0)
+		}
+	}
+
+	stepTypes := scoredb.NewArrayDB(as, state.VarStepTypes)
+	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
+	if price.Step_types != nil {
+		stepTypesMap := make(map[string]string)
+		if err := json.Unmarshal(*price.Step_types, &stepTypesMap); err != nil {
+			log.Panicf("Failed to unmarshal\n")
+		}
+		for _, k := range state.AllStepTypes {
+			cost := stepTypesMap[k]
+			stepTypes.Put(k)
+			var icost int64
+			if cost != "" {
+				var err error
+				icost, err = strconv.ParseInt(cost, 0, 64)
+				if err != nil {
+					log.Panicf("Failed to parse %s to integer. err = %s\n")
+				}
+			}
+			stepCostDB.Set(k, icost)
+		}
+	} else {
+		for _, k := range state.AllStepTypes {
+			stepTypes.Put(k)
+			stepCostDB.Set(k, 0)
 		}
 	}
 }
@@ -261,8 +266,8 @@ func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
 		ac := ctx.GetAccountState(info.Address.ID())
 		ac.SetBalance(&info.Balance.Int)
 	}
+	g.setSystemInfo(as)
 
-	g.setDefaultSystemInfo(as)
 	r.SetResult(module.StatusSuccess, big.NewInt(0), big.NewInt(0), nil)
 	validators := make([]module.Validator, len(g.Validatorlist))
 	for i, validator := range g.Validatorlist {
@@ -280,7 +285,11 @@ func (g *genesisV3) deployPreInstall(ctx contract.Context) {
 	sas.DeployContract(nil, "system", state.CTAppSystem,
 		nil, nil)
 	sas.AcceptContract(nil, nil)
-	sas.SetAPIInfo(contract.GetSystemScore(nil, common.NewContractAddress(state.SystemID), nil).GetAPI())
+	chainScore := contract.GetSystemScore(nil, common.NewContractAddress(state.SystemID), nil)
+	if contract.CheckMethod(chainScore) == false {
+		log.Panicf("Failed to check method. wrong method info\n")
+	}
+	sas.SetAPIInfo(chainScore.GetAPI())
 
 	// TODO add map table for static system score.
 
@@ -290,16 +299,14 @@ func (g *genesisV3) deployPreInstall(ctx contract.Context) {
 		}
 		score := a.Score
 		cc := contract.NewCallContext(ctx, nil, false)
+		content := ctx.GetPreInstalledScore(score.ContentID)
 		d := contract.NewDeployHandlerForPreInstall(score.Owner,
-			&a.Address, score.ContentType, score.ContentID, score.Params)
-		status, _, result, addr := cc.Call(d)
+			&a.Address, score.ContentType, content, score.Params)
+		status, _, _, _ := cc.Call(d)
 		if status != module.StatusSuccess {
 			log.Panicf("Failed to install pre-installed score."+
 				"status : %d, addr : %v, file : %s\n", status, a.Address, score.ContentID)
 		}
-		log.Printf("Succeed to install pre-installed score."+
-			"owner : %v, addr : %v, file : %s, result = %v, addr = %v\n",
-			score.Owner, a.Address, score.ContentID, result, addr)
 		cc.Dispose()
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
-	"io/ioutil"
 	"log"
 	"math/big"
 	"sync"
@@ -55,14 +54,9 @@ func newDeployHandler(from, to module.Address, value, stepLimit *big.Int,
 }
 
 func NewDeployHandlerForPreInstall(owner, scoreAddr module.Address, contentType string,
-	file string, params *json.RawMessage,
+	content []byte, params *json.RawMessage,
 ) *DeployHandler {
 	var zero big.Int
-	buf, err := ioutil.ReadFile(file)
-	if err != nil {
-		log.Printf("Failed to read file. err = %s\n", err)
-		return nil
-	}
 	var p []byte
 	if params == nil {
 		p = nil
@@ -73,7 +67,7 @@ func NewDeployHandlerForPreInstall(owner, scoreAddr module.Address, contentType 
 		CommonHandler: newCommonHandler(owner,
 			common.NewContractAddress(state.SystemID),
 			&zero, &zero),
-		content:        buf,
+		content:        content,
 		contentType:    contentType,
 		preDefinedAddr: scoreAddr,
 		// eeType is currently only for python

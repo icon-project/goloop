@@ -92,7 +92,7 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 func (m *manager) CreateInitialTransition(result []byte,
 	valList module.ValidatorList,
 ) (module.Transition, error) {
-	return newInitTransition(m.db, result, valList, m.cm, m.eem)
+	return newInitTransition(m.db, result, valList, m.cm, m.eem, m.chain)
 }
 
 // CreateTransition creates a Transition following parent Transition with txs
@@ -301,7 +301,7 @@ func (m *manager) Call(resultHash []byte, js []byte, bi module.BlockInfo,
 	if err != nil {
 		return module.StatusSystemError, err.Error(), nil
 	}
-	status, result := qh.Query(contract.NewContext(wc, m.cm, m.eem))
+	status, result := qh.Query(contract.NewContext(wc, m.cm, m.eem, m.chain))
 	return status, result, nil
 }
 

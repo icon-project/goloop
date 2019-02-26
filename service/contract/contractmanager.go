@@ -156,7 +156,7 @@ func (cm *contractManager) GetCallHandler(from, to module.Address,
 	}
 }
 
-var tryTmpNum = 10
+const tryTmpNum = 10
 
 // if path does not exist, make the path
 func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []byte, sc *storageCache) (string, error) {
