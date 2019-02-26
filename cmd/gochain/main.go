@@ -35,6 +35,11 @@ func (config *GoChainConfig) String() string {
 	return ""
 }
 
+var (
+	version = "unknown"
+	build   = "unknown"
+)
+
 func (config *GoChainConfig) Set(name string) error {
 	config.fileName = name
 	if bs, e := ioutil.ReadFile(name); e == nil {
@@ -49,15 +54,16 @@ var memProfileCnt int32 = 0
 
 func main() {
 	var genesisFile string
-	var generate bool
+	var saveFile string
 	var cfg GoChainConfig
 	var cpuProfile, memProfile string
+	var nodePath, chainPath string
 
 	flag.Var(&cfg, "config", "Parsing configuration file")
-	flag.BoolVar(&generate, "gen", false, "Generate configuration file")
+	flag.StringVar(&saveFile, "save", "", "File path for storing current configuration(it exits after save)")
 	flag.StringVar(&cfg.Channel, "channel", "default", "Channel name for the chain")
 	flag.StringVar(&cfg.P2PAddr, "p2p", "127.0.0.1:8080", "Advertise ip-port of P2P")
-	flag.StringVar(&cfg.P2PListenAddr, "p2p_listen", "", "Listen ip-port of P2P")
+	flag.StringVar(&cfg.P2PListenAddr, "p2p_listen", ":8080", "Listen ip-port of P2P")
 	flag.IntVar(&cfg.NID, "nid", 1, "Chain Network ID")
 	flag.StringVar(&cfg.RPCAddr, "rpc", ":9080", "Listen ip-port of JSON-RPC")
 	flag.StringVar(&cfg.SeedAddr, "seed", "", "Ip-port of Seed")
@@ -71,6 +77,8 @@ func main() {
 	flag.StringVar(&cfg.EESocket, "ee_socket", "", "Execution engine socket path")
 	flag.StringVar(&cpuProfile, "cpuprofile", "", "CPU Profiling data file")
 	flag.StringVar(&memProfile, "memprofile", "", "Memory Profiling data file")
+	flag.StringVar(&nodePath, "node_dir", "", "Node data directory(default:.chain/<address>)")
+	flag.StringVar(&chainPath, "chain_dir", "", "Chain data directory(default:<node_dir>/<nid>")
 	flag.Parse()
 
 	if len(genesisFile) > 0 {
@@ -92,12 +100,32 @@ func main() {
 			log.Panicf("Illegal key data=[%x]", key)
 		}
 	}
+	wallet, _ := common.NewWalletFromPrivateKey(priK)
 
-	if generate {
-		if len(cfg.fileName) == 0 {
-			cfg.fileName = "config.json"
+	if len(cfg.Genesis) == 0 {
+		genesis := map[string]interface{}{
+			"accounts": []map[string]interface{}{
+				{
+					"name":    "god",
+					"address": wallet.Address().String(),
+					"balance": "0x2961fff8ca4a62327800000",
+				},
+				{
+					"name":    "treasury",
+					"address": "hx1000000000000000000000000000000000000000",
+					"balance": "0x0",
+				},
+			},
+			"message": "gochain generated gensis",
+			"validatorlist": []string{
+				wallet.Address().String(),
+			},
 		}
-		f, err := os.OpenFile(cfg.fileName,
+		cfg.Genesis, _ = json.Marshal(genesis)
+	}
+
+	if saveFile != "" {
+		f, err := os.OpenFile(saveFile,
 			os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
 		if err != nil {
 			log.Panicf("Fail to open file=%s err=%+v", cfg.fileName, err)
@@ -112,15 +140,19 @@ func main() {
 		os.Exit(0)
 	}
 
-	wallet, _ := common.NewWalletFromPrivateKey(priK)
-
 	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
 	prefix := fmt.Sprintf("%x|--|", wallet.Address().ID()[0:2])
 	log.SetPrefix(prefix)
 
 	addr := wallet.Address()
-	nodePath := path.Join(".", ".chain", addr.String())
-	chainPath := path.Join(nodePath, strconv.FormatInt(int64(cfg.NID), 16))
+
+	if nodePath == "" {
+		nodePath = path.Join(".", ".chain", addr.String())
+	}
+
+	if chainPath == "" {
+		chainPath = path.Join(nodePath, strconv.FormatInt(int64(cfg.NID), 16))
+	}
 
 	if cfg.DBDir == "" {
 		cfg.DBDir = path.Join(chainPath, "db")
@@ -178,6 +210,19 @@ func main() {
 			}
 		}(c)
 	}
+
+	logoLines := []string{
+		"  ____  ___   ____ _   _    _    ___ _   _ ",
+		" / ___|/ _ \\ / ___| | | |  / \\  |_ _| \\ | |",
+		"| |  _| | | | |   | |_| | / _ \\  | ||  \\| |",
+		"| |_| | |_| | |___|  _  |/ ___ \\ | || |\\  |",
+		" \\____|\\___/ \\____|_| |_/_/   \\_\\___|_| \\_|",
+	}
+	for _, l := range logoLines {
+		log.Println(l)
+	}
+	log.Printf("Version : %s", version)
+	log.Printf("Build   : %s", build)
 
 	nt := network.NewTransport(cfg.P2PAddr, wallet)
 	if cfg.P2PListenAddr != "" {

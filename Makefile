@@ -1,45 +1,62 @@
-GOTOOLS = \
-	github.com/golang/dep/cmd/dep \
-	gopkg.in/alecthomas/gometalinter.v2
-PACKAGES=$(shell go list ./...)
-INCLUDE = -I=. -I=${GOPATH}/src 
-BUILD_TAGS = ompt
-BUILD_FLAGS =
+#-------------------------------------------------------------------------------
+#
+# 	Makefile for building target binaries.
+#
 
-init: get_tools get_vendor_deps
+# Configuration
+BIN_DIR = ./bin
+LINUX_BIN_DIR = ./linux
 
-all: check build test install
+GOBUILD = go build
+GOBUILD_TAGS =
+GOBUILD_ENVS = CGO_ENABLED=0
+GOBUILD_LDFLAGS =
+GOBUILD_FLAGS = -tags "$(GOBUILD_TAGS)" -ldflags "$(GOBUILD_LDFLAGS)"
+GOBUILD_ENVS_LINUX = $(GOBUILD_ENVS) GOOS=linux GOARCH=amd64 
 
-check: ensure_deps
+# Build flags
+VERSION ?= $(shell git describe --always --tags --dirty)
+BUILD_INFO = tags($(GOBUILD_TAGS))-$(shell date '+%Y-%m-%d-%H:%M:%S')
 
-build:
-	@echo "--> Building"
-	CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' $(PACKAGES)
+#
+# Build scripts for command binaries.
+#
+CMDS = $(patsubst cmd/%,%,$(wildcard cmd/*))
+.PHONY: $(CMDS)
+define CMD_template
+$(BIN_DIR)/$(1) : $(1)
+$(1) : GOBUILD_LDFLAGS+=$$($(1)_LDFLAGS)
+$(1) : | vendor
+	@ \
+	echo "[#] go build ./cmd/$(1)"
+	$$(GOBUILD_ENVS) \
+	go build $$(GOBUILD_FLAGS) \
+	    -o $(BIN_DIR)/$(1) ./cmd/$(1)
 
-install:
-	@echo "--> Installing"
-	CGO_ENABLED=0 go install $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' $(PACKAGES)
+$(LINUX_BIN_DIR)/$(1) : $(1)-linux
+$(1)-linux : GOBUILD_LDFLAGS+=$$($(1)_LDFLAGS)
+$(1)-linux : | vendor
+	@ \
+	echo "[#] go build ./cmd/$(1)"
+	$$(GOBUILD_ENVS_LINUX) \
+	go build $$(GOBUILD_FLAGS) \
+	    -o $(LINUX_BIN_DIR)/$(1) ./cmd/$(1)
+endef
+$(foreach M,$(CMDS),$(eval $(call CMD_template,$(M))))
 
-test:
-	@echo "--> Running go test"
-	@go test $(PACKAGES)
+# Build flags for each command
+gochain_LDFLAGS = -X 'main.version=$(VERSION)' -X 'main.build=$(BUILD_INFO)'
+BUILD_TARGETS += gochain
 
-ensure_deps:
-	@rm -rf vendor/
-	@echo "--> Running dep"
-	@dep ensure
+vendor :
+	@ \
+	$(MAKE) ensure
+ensure :
+	@ \
+	echo "[#] dep ensure"
+	dep ensure
 
-get_tools:
-	@echo "--> Installing tools"
-	go get -u -v $(GOTOOLS)
-	@gometalinter.v2 --install
+linux : $(addsuffix -linux,$(BUILD_TARGETS))
 
-update_tools:
-	@echo "--> Updating tools"
-	@go get -u $(GOTOOLS)
-
-get_vendor_deps:
-	@rm -rf vendor/
-	@mkdir vendor/
-	@echo "--> Running dep"
-	@dep ensure -vendor-only
+.DEFAULT_GOAL := all
+all : $(BUILD_TARGETS)
