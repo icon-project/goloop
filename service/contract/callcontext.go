@@ -340,7 +340,7 @@ func (cc *callContext) OnResult(status module.Status, stepUsed *big.Int,
 
 func (cc *callContext) OnCall(handler ContractHandler) {
 	if !cc.isInAsyncFrame() {
-		log.Fatal("OnCall() should be called in AsyncContractHandler frame")
+		log.Panicln("OnCall() should be called in AsyncContractHandler frame")
 	}
 	cc.sendMessage(&callRequestMessage{handler})
 }
@@ -349,7 +349,7 @@ func (cc *callContext) sendMessage(msg interface{}) {
 	if cc.isInAsyncFrame() {
 		cc.waiter <- msg
 	} else {
-		log.Fatal("We are not in AsyncContractHandler frame")
+		log.Panicln("We are not in AsyncContractHandler frame")
 	}
 }
 
