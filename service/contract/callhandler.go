@@ -39,11 +39,12 @@ type CallHandler struct {
 	lock      sync.Mutex
 
 	// set in ExecuteAsync()
-	cc   CallContext
-	as   state.AccountState
-	cm   ContractManager
-	conn eeproxy.Proxy
-	cs   ContractStore
+	cc        CallContext
+	as        state.AccountState
+	cm        ContractManager
+	conn      eeproxy.Proxy
+	cs        ContractStore
+	isSysCall bool
 }
 
 func newCallHandler(ch *CommonHandler, data []byte, forDeploy bool) *CallHandler {
@@ -51,6 +52,7 @@ func newCallHandler(ch *CommonHandler, data []byte, forDeploy bool) *CallHandler
 		CommonHandler: ch,
 		forDeploy:     forDeploy,
 		disposed:      false,
+		isSysCall:     false,
 	}
 	if data != nil {
 		var jso DataCallJSON
@@ -75,6 +77,7 @@ func newCallHandlerFromTypedObj(ch *CommonHandler, method string,
 		method:        method,
 		paramObj:      paramObj,
 		forDeploy:     forDeploy,
+		isSysCall:     false,
 	}
 }
 
@@ -130,8 +133,10 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 	}
 
 	if strings.Compare(c.ContentType(), state.CTAppSystem) == 0 {
-		var status module.Status
-		var result *codec.TypedObj
+		h.isSysCall = true
+
+		//var status module.Status
+		//var result *codec.TypedObj
 		// TODO add transactionInfo to icx_call
 
 		var from module.Address
@@ -140,11 +145,9 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 		}
 		sScore := GetSystemScore(from, h.to, cc)
 		if err := h.ensureParamObj(); err == nil {
-			status, result = sScore.Invoke(h.method, h.paramObj)
+			//status, result = sScore.Invoke(h.method, h.paramObj)
+			sScore.Invoke(h.method, h.paramObj)
 		}
-		go func() {
-			cc.OnResult(module.Status(status), big.NewInt(0), result, nil)
-		}()
 		// TODO define error
 		return nil
 	}
@@ -202,10 +205,15 @@ func (h *CallHandler) ensureParamObj() error {
 }
 
 func (h *CallHandler) SendResult(status module.Status, steps *big.Int, result *codec.TypedObj) error {
-	if h.conn == nil {
-		return errors.New("Don't have a connection of (" + h.EEType() + ")")
+	if !h.isSysCall {
+		if h.conn == nil {
+			return errors.New("Don't have a connection of (" + h.EEType() + ")")
+		}
+		return h.conn.SendResult(h, uint16(status), steps, result)
+	} else {
+		h.cc.OnResult(module.Status(status), big.NewInt(0), result, nil)
+		return nil
 	}
-	return h.conn.SendResult(h, uint16(status), steps, result)
 }
 
 func (h *CallHandler) Dispose() {

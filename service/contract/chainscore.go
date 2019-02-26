@@ -139,7 +139,7 @@ func (s *ChainScore) AcceptScore(txHash []byte) {
 	ah := newAcceptHandler(s.from, s.to,
 		nil, big.NewInt(100000000000), txHash, auditTxHash)
 	// TODO check status, result
-	ah.ExecuteSync(s.cc)
+	s.cc.OnCall(ah)
 }
 
 func (s *ChainScore) RejectScore(txHash []byte) {
