@@ -116,7 +116,7 @@ func main() {
 					"balance": "0x0",
 				},
 			},
-			"message": "gochain generated gensis",
+			"message": "gochain generated genesis",
 			"validatorlist": []string{
 				wallet.Address().String(),
 			},
