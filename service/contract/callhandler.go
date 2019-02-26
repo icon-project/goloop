@@ -135,8 +135,8 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 	if strings.Compare(c.ContentType(), state.CTAppSystem) == 0 {
 		h.isSysCall = true
 
-		//var status module.Status
-		//var result *codec.TypedObj
+		var status module.Status
+		var result *codec.TypedObj
 		// TODO add transactionInfo to icx_call
 
 		var from module.Address
@@ -145,9 +145,11 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 		}
 		sScore := GetSystemScore(from, h.to, cc)
 		if err := h.ensureParamObj(); err == nil {
-			//status, result = sScore.Invoke(h.method, h.paramObj)
-			sScore.Invoke(h.method, h.paramObj)
+			status, result = sScore.Invoke(h.method, h.paramObj)
 		}
+		go func() {
+			cc.OnResult(module.Status(status), big.NewInt(0), result, nil)
+		}()
 		// TODO define error
 		return nil
 	}

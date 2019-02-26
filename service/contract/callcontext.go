@@ -78,6 +78,7 @@ type eventLog struct {
 
 type callFrame struct {
 	handler   ContractHandler
+	byOnCall  bool
 	snapshot  state.WorldSnapshot
 	eventLogs *list.List
 }
@@ -101,12 +102,13 @@ func (f *callFrame) ReturnToReceipt(r txresult.Receipt) {
 	}
 }
 
-func (cc *callContext) pushFrame(h ContractHandler) *list.Element {
+func (cc *callContext) pushFrame(h ContractHandler, byOnCall bool) *list.Element {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
 
 	frame := &callFrame{
 		handler:   h,
+		byOnCall:  byOnCall,
 		eventLogs: list.New(),
 	}
 	if !cc.isQuery {
@@ -195,14 +197,14 @@ func (cc *callContext) addLogToFrame(address module.Address, indexed [][]byte, d
 func (cc *callContext) Call(handler ContractHandler) (module.Status, *big.Int, *codec.TypedObj, module.Address) {
 	switch handler := handler.(type) {
 	case SyncContractHandler:
-		e := cc.pushFrame(handler)
+		e := cc.pushFrame(handler, false)
 
 		status, stepUsed, result, scoreAddr := handler.ExecuteSync(cc)
 
 		cc.popFrame(e, status)
 		return status, stepUsed, result, scoreAddr
 	case AsyncContractHandler:
-		e := cc.pushFrame(handler)
+		e := cc.pushFrame(handler, false)
 
 		if err := handler.ExecuteAsync(cc); err != nil {
 			cc.popFrame(e, module.StatusSystemError)
@@ -238,14 +240,14 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (module.Status, *big.Int, 
 			case *callRequestMessage:
 				switch handler := msg.handler.(type) {
 				case SyncContractHandler:
-					cc.pushFrame(handler)
+					cc.pushFrame(handler, true)
 					status, used, result, addr := handler.ExecuteSync(cc)
 					if cc.handleResult(status, used, result, addr) {
 						continue
 					}
 					return status, used, result, addr
 				case AsyncContractHandler:
-					cc.pushFrame(handler)
+					cc.pushFrame(handler, true)
 					if err := handler.ExecuteAsync(cc); err != nil {
 						if cc.handleResult(module.StatusSystemError,
 							handler.StepLimit(), nil, nil) {
@@ -312,20 +314,16 @@ func (cc *callContext) handleResult(status module.Status,
 		return false
 	}
 
-	switch h := lastFrame.handler.(type) {
-	case AsyncContractHandler:
+	if currentFrame.byOnCall {
+		// SyncContractHandler can't be queued by OnCall(), so don't consider it.
+		h := lastFrame.handler.(AsyncContractHandler)
 		if err := h.SendResult(status, stepUsed, result); err != nil {
 			log.Println("FAIL to SendResult(): ", err)
 			cc.OnResult(module.StatusSystemError, h.StepLimit(), nil, nil)
 		}
 		return true
-	case SyncContractHandler:
-		// do nothing
+	} else {
 		return false
-	default:
-		// It can't be happened
-		log.Panicf("Invalid contract handler type:%T", lastFrame.handler)
-		return true
 	}
 }
 
@@ -341,6 +339,9 @@ func (cc *callContext) OnResult(status module.Status, stepUsed *big.Int,
 }
 
 func (cc *callContext) OnCall(handler ContractHandler) {
+	if !cc.isInAsyncFrame() {
+		log.Fatal("OnCall() should be called in AsyncContractHandler frame")
+	}
 	cc.sendMessage(&callRequestMessage{handler})
 }
 
