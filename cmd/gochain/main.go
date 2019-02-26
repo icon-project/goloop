@@ -75,6 +75,7 @@ func main() {
 	flag.StringVar(&cfg.WALDir, "wal_dir", "", "WAL directory")
 	flag.StringVar(&cfg.ContractDir, "contract_dir", "", "Contract directory")
 	flag.StringVar(&cfg.EESocket, "ee_socket", "", "Execution engine socket path")
+	flag.StringVar(&cfg.PreInstalledStorage, "preinstalled_storage", "preinstalled_storage", "The storage where pre-installed scores are located")
 	flag.StringVar(&cpuProfile, "cpuprofile", "", "CPU Profiling data file")
 	flag.StringVar(&memProfile, "memprofile", "", "Memory Profiling data file")
 	flag.StringVar(&nodePath, "node_dir", "", "Node data directory(default:.chain/<address>)")

@@ -14,4 +14,5 @@ type Chain interface {
 	NID() int
 	Genesis() []byte
 	CommitVoteSetDecoder() CommitVoteSetDecoder
+	GetPreInstalledScore(contentID string) []byte
 }

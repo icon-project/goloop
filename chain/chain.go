@@ -2,7 +2,10 @@ package chain
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"log"
+	"os"
+	"path"
 
 	"github.com/icon-project/goloop/service/eeproxy"
 
@@ -28,8 +31,9 @@ type Config struct {
 	DBType string `json:"db_type"`
 	DBName string `json:"db_name"`
 
-	WALDir      string `json:"wal_dir"`
-	ContractDir string `json:"contract_dir"`
+	WALDir              string `json:"wal_dir"`
+	ContractDir         string `json:"contract_dir"`
+	PreInstalledStorage string `json:"preinstalled_storage"`
 }
 
 type singleChain struct {
@@ -62,6 +66,19 @@ func (c *singleChain) NID() int {
 
 func (c *singleChain) Genesis() []byte {
 	return c.cfg.Genesis
+}
+
+func (c *singleChain) GetPreInstalledScore(contentID string) []byte {
+	scorePath := path.Join(c.cfg.PreInstalledStorage, contentID)
+	if _, err := os.Stat(scorePath); os.IsNotExist(err) {
+		log.Printf("Fail to create socket directory=%s err=%+v", scorePath, err)
+	}
+	buf, err := ioutil.ReadFile(scorePath)
+	if err != nil {
+		log.Printf("Failed to read file. err = %s\n", err)
+		return nil
+	}
+	return buf
 }
 
 func (c *singleChain) CommitVoteSetDecoder() module.CommitVoteSetDecoder {
