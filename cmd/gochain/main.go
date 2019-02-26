@@ -71,7 +71,7 @@ func main() {
 	flag.StringVar(&cfg.DBType, "db_type", "mapdb", "Name of database system(*badgerdb, goleveldb, boltdb, mapdb)")
 	flag.StringVar(&cfg.DBDir, "db_dir", "", "Database directory")
 	flag.StringVar(&cfg.DBName, "db_name", "", "Database name for the chain(default:<channel name>)")
-	flag.UintVar(&cfg.Role, "role", 0, "[0:None, 1:Seed, 2:Validator, 3:Both]")
+	flag.UintVar(&cfg.Role, "role", 2, "[0:None, 1:Seed, 2:Validator, 3:Both]")
 	flag.StringVar(&cfg.WALDir, "wal_dir", "", "WAL directory")
 	flag.StringVar(&cfg.ContractDir, "contract_dir", "", "Contract directory")
 	flag.StringVar(&cfg.EESocket, "ee_socket", "", "Execution engine socket path")
