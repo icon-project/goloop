@@ -29,7 +29,10 @@ const (
 	msgGETAPI     = 9
 )
 
-const configEnableDebug = false
+const (
+	configEnableDebugLog   = true
+	configEnableDebugValue = false
+)
 
 type CallContext interface {
 	GetValue(key []byte) ([]byte, error)
@@ -132,7 +135,7 @@ func (p *proxy) Invoke(ctx CallContext, code string, isQuery bool, from, to modu
 	m.Method = method
 	m.Params = params
 
-	if configEnableDebug {
+	if configEnableDebugLog {
 		log.Printf("Proxy[%p].Invoke code=%s query=%v from=%v to=%v value=%v limit=%v method=%s\n",
 			p, code, isQuery, from, to, value, limit, method)
 	}
@@ -194,7 +197,7 @@ func (p *proxy) Release() {
 }
 
 func (p *proxy) SendResult(ctx CallContext, status uint16, steps *big.Int, result *codec.TypedObj) error {
-	if configEnableDebug {
+	if configEnableDebugLog {
 		log.Printf("Proxy[%p].SendResult status=%d steps=%v\n", p, status, steps)
 	}
 	var m resultMessage
@@ -234,7 +237,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		p.frame = frame.prev
 		p.lock.Unlock()
 
-		if configEnableDebug {
+		if configEnableDebugLog {
 			log.Printf("Proxy[%p].OnResult status=%d steps=%v\n", p, m.Status, &m.StepUsed.Int)
 		}
 		frame.ctx.OnResult(m.Status, &m.StepUsed.Int, m.Result)
@@ -255,6 +258,9 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		}
 		var m getValueMessage
 		if value, err := p.frame.ctx.GetValue(key); err != nil {
+			if configEnableDebugValue {
+				log.Printf("Proxy[%p].GetValue key=<%x> err=%+v\n", p, key, err)
+			}
 			return err
 		} else {
 			if value != nil {
@@ -263,6 +269,9 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 			} else {
 				m.Success = false
 				m.Value = nil
+			}
+			if configEnableDebugValue {
+				log.Printf("Proxy[%p].GetValue key=<%x> value=<%x>\n", p, key, value)
 			}
 		}
 		return p.conn.Send(msgGETVALUE, &m)
@@ -273,8 +282,14 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 			return err
 		}
 		if m.IsDelete {
+			if configEnableDebugValue {
+				log.Printf("Proxy[%p].Delete key=<%x>\n", p, m.Key)
+			}
 			return p.frame.ctx.DeleteValue(m.Key)
 		} else {
+			if configEnableDebugValue {
+				log.Printf("Proxy[%p].SetValue key=<%x> value=<%x>\n", p, m.Key, m.Value)
+			}
 			return p.frame.ctx.SetValue(m.Key, m.Value)
 		}
 
@@ -283,7 +298,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
 			return err
 		}
-		if configEnableDebug {
+		if configEnableDebugLog {
 			log.Printf("Proxy[%p].OnCall from=%v to=%v value=%v steplimit=%v method=%s\n",
 				p, p.frame.addr, &m.To, &m.Value.Int, &m.Limit.Int, m.Method)
 		}
@@ -296,7 +311,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
 			return err
 		}
-		if configEnableDebug {
+		if configEnableDebugLog {
 			log.Printf("Proxy[%p].OnEvent from=%v indexed=%v data=%v\n",
 				p, p.frame.addr, m.Indexed, m.Data)
 		}
