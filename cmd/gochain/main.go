@@ -63,7 +63,7 @@ func main() {
 	flag.StringVar(&saveFile, "save", "", "File path for storing current configuration(it exits after save)")
 	flag.StringVar(&cfg.Channel, "channel", "default", "Channel name for the chain")
 	flag.StringVar(&cfg.P2PAddr, "p2p", "127.0.0.1:8080", "Advertise ip-port of P2P")
-	flag.StringVar(&cfg.P2PListenAddr, "p2p_listen", ":8080", "Listen ip-port of P2P")
+	flag.StringVar(&cfg.P2PListenAddr, "p2p_listen", "", "Listen ip-port of P2P")
 	flag.IntVar(&cfg.NID, "nid", 1, "Chain Network ID")
 	flag.StringVar(&cfg.RPCAddr, "rpc", ":9080", "Listen ip-port of JSON-RPC")
 	flag.StringVar(&cfg.SeedAddr, "seed", "", "Ip-port of Seed")
