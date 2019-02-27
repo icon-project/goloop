@@ -1,0 +1,22 @@
+{
+	"step_price": "0",
+	"step_limit": {
+		"invoke": "0",
+		"query": "0"
+	},
+	"step_types": {
+		"default" : "0",
+		"contractCall" : "0",
+		"contractCreate":   "0",
+		"contractUpdate":   "0",
+		"contractDestruct": "0",
+		"contractSet":      "0",
+		"get":              "0",
+		"set":              "0",
+		"replace":          "0",
+		"delete":           "0",
+		"input":            "0",
+		"eventLog":         "0",
+		"apiCall":          "0"
+	}
+}

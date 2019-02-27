@@ -4,6 +4,7 @@
 #
 
 # Configuration
+BUILD_ROOT = $(abspath ./)
 BIN_DIR = ./bin
 LINUX_BIN_DIR = ./linux
 
@@ -15,7 +16,8 @@ GOBUILD_FLAGS = -tags "$(GOBUILD_TAGS)" -ldflags "$(GOBUILD_LDFLAGS)"
 GOBUILD_ENVS_LINUX = $(GOBUILD_ENVS) GOOS=linux GOARCH=amd64 
 
 # Build flags
-VERSION ?= $(shell git describe --always --tags --dirty)
+GL_VERSION ?= $(shell git describe --always --tags --dirty)
+GL_TAG ?= latest
 BUILD_INFO = tags($(GOBUILD_TAGS))-$(shell date '+%Y-%m-%d-%H:%M:%S')
 
 #
@@ -28,6 +30,7 @@ $(BIN_DIR)/$(1) : $(1)
 $(1) : GOBUILD_LDFLAGS+=$$($(1)_LDFLAGS)
 $(1) : | vendor
 	@ \
+	rm -f $(BIN_DIR)/$(1) ; \
 	echo "[#] go build ./cmd/$(1)"
 	$$(GOBUILD_ENVS) \
 	go build $$(GOBUILD_FLAGS) \
@@ -37,6 +40,7 @@ $(LINUX_BIN_DIR)/$(1) : $(1)-linux
 $(1)-linux : GOBUILD_LDFLAGS+=$$($(1)_LDFLAGS)
 $(1)-linux : | vendor
 	@ \
+	rm -f $(LINUX_BIN_DIR)/$(1) ; \
 	echo "[#] go build ./cmd/$(1)"
 	$$(GOBUILD_ENVS_LINUX) \
 	go build $$(GOBUILD_FLAGS) \
@@ -45,7 +49,7 @@ endef
 $(foreach M,$(CMDS),$(eval $(call CMD_template,$(M))))
 
 # Build flags for each command
-gochain_LDFLAGS = -X 'main.version=$(VERSION)' -X 'main.build=$(BUILD_INFO)'
+gochain_LDFLAGS = -X 'main.version=$(GL_VERSION)' -X 'main.build=$(BUILD_INFO)'
 BUILD_TARGETS += gochain
 
 vendor :
@@ -57,6 +61,45 @@ ensure :
 	dep ensure
 
 linux : $(addsuffix -linux,$(BUILD_TARGETS))
+
+DOCKER_IMAGE_TAG ?= latest
+GOLOOP_ENV_IMAGE = goloop-env:$(GL_TAG)
+GOCHAIN_IMAGE = gochain:$(GL_TAG)
+GOCHAIN_DOCKER_DIR = $(BUILD_ROOT)/build/gochain/
+GOLOOP_BASE_PATH = /work/src/github.com/icon-project/goloop
+GOLOOP_GOPATH = /work
+
+goloop-env-image :
+	@ \
+	if [ "`docker images -q $(GOLOOP_ENV_IMAGE)`" == "" ] ; then \
+	    docker build -t $(GOLOOP_ENV_IMAGE) ./docker/goloop-env/ ; \
+	fi
+
+run-% : goloop-env-image
+	@ \
+	docker run -it --rm \
+	    -v $(BUILD_ROOT):$(GOLOOP_BASE_PATH) \
+	    -w $(GOLOOP_BASE_PATH) \
+	    -e "GOPATH=$(GOLOOP_GOPATH)" \
+	    $(GOLOOP_ENV_IMAGE) \
+	    make "GL_VERSION=$(GL_VERSION)" "BUILD_INFO=$(BUILD_INFO)" \
+		$(patsubst run-%,%,$@)
+
+pyexec:
+	@ \
+	cd $(BUILD_ROOT)/pyee ; \
+	rm -rf build dist ; \
+	python3 setup.py bdist_wheel
+
+
+gochain-image: run-pyexec run-gochain-linux
+	@ rm -rf $(GOCHAIN_DOCKER_DIR)
+	@ mkdir -p $(GOCHAIN_DOCKER_DIR)
+	@ cp $(BUILD_ROOT)/docker/gochain/* $(GOCHAIN_DOCKER_DIR)
+	@ cp $(BUILD_ROOT)/linux/gochain $(GOCHAIN_DOCKER_DIR)
+	@ cp $(BUILD_ROOT)/pyee/dist/pyexec-*.whl $(GOCHAIN_DOCKER_DIR)
+	@ docker build -t $(GOCHAIN_IMAGE) $(GOCHAIN_DOCKER_DIR)
+
 
 .DEFAULT_GOAL := all
 all : $(BUILD_TARGETS)
