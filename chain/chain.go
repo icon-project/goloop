@@ -2,15 +2,11 @@ package chain
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"log"
-	"os"
-	"path"
-
-	"github.com/icon-project/goloop/service/eeproxy"
 
 	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/service"
+	"github.com/icon-project/goloop/service/eeproxy"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/consensus"
@@ -20,20 +16,22 @@ import (
 )
 
 type Config struct {
-	NID      int             `json:"nid"`
-	Channel  string          `json:"channel"`
-	RPCAddr  string          `json:"rpc_addr"`
-	SeedAddr string          `json:"seed_addr"`
-	Role     uint            `json:"role"`
-	Genesis  json.RawMessage `json:"genesis"`
+	NID      int    `json:"nid"`
+	Channel  string `json:"channel"`
+	RPCAddr  string `json:"rpc_addr"`
+	SeedAddr string `json:"seed_addr"`
+	Role     uint   `json:"role"`
 
 	DBDir  string `json:"db_dir"`
 	DBType string `json:"db_type"`
 	DBName string `json:"db_name"`
 
-	WALDir              string `json:"wal_dir"`
-	ContractDir         string `json:"contract_dir"`
-	PreInstalledStorage string `json:"preinstalled_storage"`
+	WALDir      string `json:"wal_dir"`
+	ContractDir string `json:"contract_dir"`
+
+	GenesisStorage  GenesisStorage  `json:"-"`
+	Genesis         json.RawMessage `json:"genesis"`
+	GenesisDataPath string          `json:"genesis_data,omitempty"`
 }
 
 type singleChain struct {
@@ -65,20 +63,11 @@ func (c *singleChain) NID() int {
 }
 
 func (c *singleChain) Genesis() []byte {
-	return c.cfg.Genesis
+	return c.cfg.GenesisStorage.Genesis()
 }
 
-func (c *singleChain) GetPreInstalledScore(contentID string) []byte {
-	scorePath := path.Join(c.cfg.PreInstalledStorage, contentID)
-	if _, err := os.Stat(scorePath); os.IsNotExist(err) {
-		log.Printf("Fail to create socket directory=%s err=%+v", scorePath, err)
-	}
-	buf, err := ioutil.ReadFile(scorePath)
-	if err != nil {
-		log.Printf("Failed to read file. err = %s\n", err)
-		return nil
-	}
-	return buf
+func (c *singleChain) GetGenesisData(key []byte) ([]byte, error) {
+	return c.cfg.GenesisStorage.Get(key)
 }
 
 func (c *singleChain) CommitVoteSetDecoder() module.CommitVoteSetDecoder {
@@ -142,6 +131,16 @@ func NewChain(
 	}
 	if chain.cfg.DBType == "" {
 		chain.cfg.DBType = string(db.BadgerDBBackend)
+	}
+	if chain.cfg.GenesisStorage == nil {
+		if gs, err := NewGenesisStorageWithDataDir(
+			chain.cfg.Genesis, chain.cfg.GenesisDataPath); err != nil {
+			log.Panicf("Fail to create GenesisStorage with path=%s err=%+v",
+				chain.cfg.GenesisDataPath, err)
+			return nil
+		} else {
+			chain.cfg.GenesisStorage = gs
+		}
 	}
 	return chain
 }

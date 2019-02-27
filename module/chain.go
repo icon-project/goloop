@@ -13,6 +13,6 @@ type Chain interface {
 	Wallet() Wallet
 	NID() int
 	Genesis() []byte
+	GetGenesisData(key []byte) ([]byte, error)
 	CommitVoteSetDecoder() CommitVoteSetDecoder
-	GetPreInstalledScore(contentID string) []byte
 }

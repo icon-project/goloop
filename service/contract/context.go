@@ -1,6 +1,8 @@
 package contract
 
 import (
+	"encoding/hex"
+
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/state"
@@ -10,7 +12,7 @@ type Context interface {
 	state.WorldContext
 	ContractManager() ContractManager
 	EEManager() eeproxy.Manager
-	GetPreInstalledScore(id string) []byte
+	GetPreInstalledScore(id string) ([]byte, error)
 }
 
 type context struct {
@@ -31,6 +33,10 @@ func (c *context) EEManager() eeproxy.Manager {
 	return c.eem
 }
 
-func (c *context) GetPreInstalledScore(id string) []byte {
-	return c.chain.GetPreInstalledScore(id)
+func (c *context) GetPreInstalledScore(id string) ([]byte, error) {
+	hash, err := hex.DecodeString(id)
+	if err != nil {
+		return nil, err
+	}
+	return c.chain.GetGenesisData(hash)
 }

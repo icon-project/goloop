@@ -299,7 +299,11 @@ func (g *genesisV3) deployPreInstall(ctx contract.Context) {
 		}
 		score := a.Score
 		cc := contract.NewCallContext(ctx, nil, false)
-		content := ctx.GetPreInstalledScore(score.ContentID)
+		content, err := ctx.GetPreInstalledScore(score.ContentID)
+		if err != nil {
+			log.Panicf("Fail to get PreInstalledScore for ID=%s",
+				score.ContentID)
+		}
 		d := contract.NewDeployHandlerForPreInstall(score.Owner,
 			&a.Address, score.ContentType, content, score.Params)
 		status, _, _, _ := cc.Call(d)
