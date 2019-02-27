@@ -14,6 +14,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/network"
 	"github.com/pkg/errors"
 )
 
@@ -128,6 +129,12 @@ func (cs *consensus) resetForNewHeight(prevBlock module.Block, votes *commitVote
 	cs.lockedBlockParts = nil
 	cs.consumedNonunicast = false
 	cs.commitRound = -1
+	peerIDs := make([]module.PeerID, cs.validators.Len())
+	for i := 0; i < cs.validators.Len(); i++ {
+		v, _ := cs.validators.Get(i)
+		peerIDs[i] = network.NewPeerIDFromAddress(v.Address())
+	}
+	cs.nm.SetRole(module.ROLE_VALIDATOR, peerIDs...)
 	cs.resetForNewRound(0)
 }
 
