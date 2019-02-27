@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"math/big"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
@@ -19,8 +20,8 @@ const (
 )
 
 const (
-	configLogBloomSHA256      = true
-	configLogBloomIncludeAddr = false
+	configLogBloomSHA256      = false
+	configLogBloomIncludeAddr = true
 )
 
 // logBloom store blooms of logs.
@@ -103,27 +104,36 @@ func (lb *LogBloom) AddLog(addr module.Address, log [][]byte) {
 		return
 	}
 	if configLogBloomIncludeAddr {
-		lb.addLog(addr.Bytes())
+		lb.AddAddressOfLog(addr)
 	}
 	for i, b := range log {
-		bs := make([]byte, len(b)+1)
-		bs[0] = byte(i)
-		copy(bs[1:], b)
-		lb.addLog(bs)
+		lb.AddIndexedOfLog(i, b)
 	}
 }
 
-func (lb *LogBloom) addLog(logs ...[]byte) {
-	for _, log := range logs {
-		var h []byte
-		if configLogBloomSHA256 {
-			h = crypto.SHASum256(log)
-			h = []byte(hex.EncodeToString(h))
-		} else {
-			h = crypto.SHA3Sum256(log)
-		}
-		for i := 0; i < 3; i++ {
-			lb.addBit(binary.BigEndian.Uint16(h[i*2:i*2+2]) & (LogBloomBits - 1))
-		}
+func (lb *LogBloom) AddAddressOfLog(addr module.Address) {
+	bs := make([]byte, common.AddressBytes+1)
+	bs[0] = 0xff
+	copy(bs[1:], addr.Bytes())
+	lb.addLog(bs)
+}
+
+func (lb *LogBloom) AddIndexedOfLog(i int, b []byte) {
+	bs := make([]byte, len(b)+1)
+	bs[0] = byte(i)
+	copy(bs[1:], b)
+	lb.addLog(bs)
+}
+
+func (lb *LogBloom) addLog(log []byte) {
+	var h []byte
+	if configLogBloomSHA256 {
+		h = crypto.SHASum256(log)
+		h = []byte(hex.EncodeToString(h))
+	} else {
+		h = crypto.SHA3Sum256(log)
+	}
+	for i := 0; i < 3; i++ {
+		lb.addBit(binary.BigEndian.Uint16(h[i*2:i*2+2]) & (LogBloomBits - 1))
 	}
 }
