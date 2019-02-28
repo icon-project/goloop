@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"log"
@@ -81,14 +82,18 @@ func (tx *transactionV3JSON) Timestamp() int64 {
 }
 
 func newTransactionV2V3FromJSON(js []byte) (Transaction, error) {
+	b := bytes.NewBuffer(nil)
+	if err := json.Compact(b, js); err != nil {
+		return nil, err
+	} else {
+		js = b.Bytes()
+	}
 	genjs := new(genesisV3JSON)
 	if err := json.Unmarshal(js, genjs); err != nil {
 		return nil, err
 	}
 	if len(genjs.Accounts) != 0 {
-		genjs.raw = make([]byte, len(js))
-		copy(genjs.raw, js)
-
+		genjs.raw = js
 		return &genesisV3{genesisV3JSON: genjs}, nil
 	}
 
@@ -97,8 +102,7 @@ func newTransactionV2V3FromJSON(js []byte) (Transaction, error) {
 	if err := json.Unmarshal(js, txjs); err != nil {
 		return nil, err
 	}
-	txjs.raw = make([]byte, len(js))
-	copy(txjs.raw, js)
+	txjs.raw = js
 
 	switch txjs.Version.Value {
 	case 2:
