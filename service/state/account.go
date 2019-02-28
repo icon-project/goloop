@@ -68,8 +68,8 @@ type AccountState interface {
 		params []byte, txHash []byte)
 	APIInfo() *scoreapi.Info
 	SetAPIInfo(*scoreapi.Info)
-	AcceptContract(codeHash []byte, auditTxHash []byte) error
-	RejectContract(codeHash []byte, auditTxHash []byte) error
+	AcceptContract(txHash []byte, auditTxHash []byte) error
+	RejectContract(txHash []byte, auditTxHash []byte) error
 	Contract() Contract
 	ActiveContract() Contract
 	NextContract() Contract
