@@ -137,21 +137,16 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 
 		var status module.Status
 		var result *codec.TypedObj
-		// TODO add transactionInfo to icx_call
-
-		var from module.Address
-		if f := cc.GetInfo()[state.InfoTxFrom]; f != nil {
-			from = f.(module.Address)
-		}
-		sScore := GetSystemScore(from, h.to, cc)
-		if err := h.ensureParamObj(); err == nil {
+		sScore := GetSystemScore(h.from, h.to, cc)
+		err := h.ensureParamObj()
+		if err == nil {
 			status, result = sScore.Invoke(h.method, h.paramObj)
+			go func() {
+				cc.OnResult(module.Status(status), big.NewInt(0), result, nil)
+			}()
 		}
-		go func() {
-			cc.OnResult(module.Status(status), big.NewInt(0), result, nil)
-		}()
 		// TODO define error
-		return nil
+		return err
 	}
 
 	h.cm = cc.ContractManager()

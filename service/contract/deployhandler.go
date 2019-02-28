@@ -241,7 +241,7 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 
 	// 2. call on_install or on_update of the contract
 	if cur := scoreAs.Contract(); cur != nil {
-		cur.SetStatus(state.CSDisabled)
+		cur.SetStatus(state.CSInactive)
 	}
 	handler := newCallHandlerFromTypedObj(
 		newCommonHandler(h.from, scoreAddr, big.NewInt(0), h.StepAvail()),

@@ -87,6 +87,7 @@ type accountSnapshotImpl struct {
 	store       trie.Immutable
 	database    db.Database
 
+	state         int
 	contractOwner *common.Address
 	apiInfo       *scoreapi.Info
 	curContract   *contractSnapshotImpl
@@ -102,21 +103,21 @@ func (s *accountSnapshotImpl) Version() int {
 }
 
 func (s *accountSnapshotImpl) ActiveContract() ContractSnapshot {
-	if s.curContract != nil && s.curContract.status == CSActive {
+	if s.curContract != nil && s.curContract.state == CSActive {
 		return s.curContract
 	}
 	return nil
 }
 
 func (s *accountSnapshotImpl) IsDisabled() bool {
-	if s.curContract.status&CSDisabled != 0 {
+	if s.state&ASDisabled != 0 {
 		return true
 	}
 	return false
 }
 
 func (s *accountSnapshotImpl) IsBlocked() bool {
-	if s.curContract.status&CSBlocked != 0 {
+	if s.state&ASBlocked != 0 {
 		return true
 	}
 	return false
@@ -197,7 +198,7 @@ func (s *accountSnapshotImpl) Equal(object trie.Object) bool {
 			return false
 		}
 		if s.fIsContract != s2.fIsContract ||
-			s.balance.Cmp(&s2.balance.Int) != 0 {
+			s.balance.Cmp(&s2.balance.Int) != 0 || s.state != s2.state {
 			return false
 		}
 		if s.contractOwner.Equal(s2.contractOwner) == false {
@@ -276,6 +277,7 @@ func (s *accountSnapshotImpl) CodecEncodeSelf(e *ugorji.Encoder) {
 	} else {
 		e.MustEncode(nil)
 	}
+	e.MustEncode(s.state)
 	e.MustEncode(s.contractOwner)
 	e.MustEncode(s.apiInfo)
 	e.MustEncode(s.curContract)
@@ -293,6 +295,7 @@ func (s *accountSnapshotImpl) CodecDecodeSelf(d *ugorji.Decoder) {
 	} else {
 		s.store = trie_manager.NewImmutable(s.database, hash)
 	}
+	d.MustDecode(&s.state)
 	d.MustDecode(&s.contractOwner)
 	d.MustDecode(&s.apiInfo)
 	d.MustDecode(&s.curContract)
@@ -311,6 +314,7 @@ type accountStateImpl struct {
 	balance    common.HexInt
 	isContract bool
 
+	state         int
 	contractOwner module.Address
 	apiInfo       *scoreapi.Info
 	curContract   *contractImpl
@@ -327,44 +331,42 @@ func (s *accountStateImpl) Version() int {
 }
 
 func (s *accountStateImpl) ActiveContract() Contract {
-	if s.curContract != nil && s.curContract.status == CSActive {
+	if s.curContract != nil && s.curContract.state == CSActive {
 		return s.curContract
 	}
 	return nil
 }
 
 func (s *accountStateImpl) IsDisabled() bool {
-	if s.curContract != nil && s.curContract.status&CSDisabled != 0 {
+	if s.state&ASDisabled == ASDisabled {
 		return true
 	}
 	return false
 }
 
 func (s *accountStateImpl) IsBlocked() bool {
-	if s.curContract != nil && s.curContract.status&CSBlocked != 0 {
+	if s.state&ASBlocked == ASBlocked {
 		return true
 	}
 	return false
 }
 
 func (s *accountStateImpl) SetDisable(b bool) {
-	if s.curContract != nil {
-		status := s.curContract.status & CSBlocked
+	if s.isContract == true {
 		if b == true {
-			s.curContract.status = status | CSDisabled
+			s.state = s.state | ASDisabled
 		} else {
-			s.curContract.status = status
+			s.state = s.state & ^ASDisabled
 		}
 	}
 }
 
 func (s *accountStateImpl) SetBlock(b bool) {
-	if s.curContract != nil {
-		status := s.curContract.status & CSDisabled
+	if s.isContract == true {
 		if b == true {
-			s.curContract.status = status | CSBlocked
+			s.state = s.state | ASBlocked
 		} else {
-			s.curContract.status = status
+			s.state = s.state & ^ASBlocked
 		}
 	}
 }
@@ -391,9 +393,9 @@ func (s *accountStateImpl) DeployContract(code []byte,
 	if s.isContract == false {
 		return
 	}
-	status := CSInactive
+	state := CSInactive
 	if s.curContract != nil {
-		status = CSPending
+		state = CSPending
 	}
 	codeHash := sha3.Sum256(code)
 	bk, err := s.database.GetBucket(db.BytesByHash)
@@ -402,7 +404,7 @@ func (s *accountStateImpl) DeployContract(code []byte,
 		return
 	}
 	s.nextContract = &contractImpl{contractSnapshotImpl{
-		bk: bk, isNew: true, status: status, contentType: contentType,
+		bk: bk, isNew: true, state: state, contentType: contentType,
 		eeType: eeType, deployTxHash: txHash, codeHash: codeHash[:],
 		params: params, code: code},
 	}
@@ -417,7 +419,7 @@ func (s *accountStateImpl) AcceptContract(
 		return scoreresult.NewError(module.StatusContractNotFound, "Wrong txHash")
 	}
 	s.curContract = s.nextContract
-	s.curContract.status = CSActive
+	s.curContract.state = CSActive
 	s.curContract.auditTxHash = auditTxHash
 	s.nextContract = nil
 	return nil
@@ -426,12 +428,12 @@ func (s *accountStateImpl) AcceptContract(
 func (s *accountStateImpl) RejectContract(
 	txHash []byte, auditTxHash []byte) error {
 	if s.isContract == false || s.nextContract == nil {
-		return errors.New("Wrong contract status")
+		return errors.New("Wrong contract state")
 	}
 	if bytes.Equal(txHash, s.nextContract.deployTxHash) == false {
 		return errors.New("Wrong txHash")
 	}
-	s.nextContract.status = CSRejected
+	s.nextContract.state = CSRejected
 	s.nextContract.auditTxHash = auditTxHash
 	return nil
 }
@@ -486,6 +488,7 @@ func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
 		balance:       s.balance.Clone(),
 		fIsContract:   s.isContract,
 		store:         store,
+		state:         s.state,
 		contractOwner: contractOwner,
 		apiInfo:       s.apiInfo,
 		curContract:   curContract,
@@ -503,6 +506,7 @@ func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 	s.isContract = snapshot.fIsContract
 	s.version = snapshot.version
 	s.apiInfo = snapshot.apiInfo
+	s.state = snapshot.state
 
 	if snapshot.contractOwner != nil {
 		s.contractOwner = common.NewAddress(snapshot.contractOwner.Bytes())

@@ -156,7 +156,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 				{"address", scoreapi.Address, nil},
 			},
 			[]scoreapi.DataType{
-				scoreapi.Bytes,
+				scoreapi.String,
 			},
 		},
 		{scoreapi.Function, "IsDeployer",
@@ -232,8 +232,8 @@ func (s *ChainScore) Invoke(method string, paramObj *codec.TypedObj) (
 // Destroy : Allowed from score owner
 func (s *ChainScore) DisableScore(address module.Address) error {
 	as := s.cc.GetAccountState(address.ID())
-	if as.ActiveContract() == nil {
-		return errors.New("Not active contract")
+	if as.IsContract() == false {
+		return errors.New("Not contract")
 	}
 	if as.IsContractOwner(s.from) == false {
 		return errors.New("Not Contract owner")
@@ -244,8 +244,8 @@ func (s *ChainScore) DisableScore(address module.Address) error {
 
 func (s *ChainScore) EnableScore(address module.Address) error {
 	as := s.cc.GetAccountState(address.ID())
-	if as.ActiveContract() != nil {
-		return errors.New("Not disabled contract")
+	if as.IsContract() == false {
+		return errors.New("Not contract")
 	}
 	if as.IsContractOwner(s.from) == false {
 		return errors.New("Not Contract owner")
@@ -423,8 +423,8 @@ type scoreStatus struct {
 	Disabled string     `json:"disabled"`
 }
 
-func (s *ChainScore) GetScoreStatus(address module.Address) (error, []byte) {
-	stringStatus := func(s state.ContractStatus) string {
+func (s *ChainScore) GetScoreStatus(address module.Address) (error, string) {
+	stringStatus := func(s state.ContractState) string {
 		var status string
 		switch s {
 		case state.CSInactive:
@@ -435,12 +435,8 @@ func (s *ChainScore) GetScoreStatus(address module.Address) (error, []byte) {
 			status = "pending"
 		case state.CSRejected:
 			status = "reject"
-		case state.CSBlocked:
-			status = "blacklist"
-		case state.CSDisabled:
-			status = "disable"
 		default:
-
+			log.Printf("GetScoreStatus - string : %v\n", s)
 		}
 		return status
 	}
@@ -448,7 +444,7 @@ func (s *ChainScore) GetScoreStatus(address module.Address) (error, []byte) {
 	as := s.cc.GetAccountState(address.ID())
 	scoreStatus := scoreStatus{}
 	if cur := as.Contract(); cur == nil {
-		return errors.New("SCORE not found"), nil
+		return errors.New("SCORE not found"), ""
 	} else {
 		current := &curScore{}
 		current.Status = stringStatus(cur.Status())
@@ -480,7 +476,7 @@ func (s *ChainScore) GetScoreStatus(address module.Address) (error, []byte) {
 	if err != nil {
 		log.Panicf("err : %s\n", err)
 	}
-	return nil, result
+	return nil, string(result)
 }
 
 func (s *ChainScore) IsDeployer(address module.Address) (error, int) {

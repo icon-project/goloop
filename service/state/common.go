@@ -26,7 +26,8 @@ var (
 	ErrNotEOA             = errors.New("NotEOA")
 	ErrNoActiveContract   = errors.New("NoActiveContract")
 	ErrNotContractOwner   = errors.New("NotContractOwner")
-	ErrBlacklisted        = errors.New("Blacklisted")
+	ErrBlockedContract    = errors.New("BlockedContract")
+	ErrDisabledContract   = errors.New("DisabledContract")
 	ErrInvalidMethod      = errors.New("InvalidMethod")
 )
 

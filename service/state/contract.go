@@ -11,15 +11,18 @@ import (
 	ugorji "github.com/ugorji/go/codec"
 )
 
-type ContractStatus int
+type ContractState int
 
 const (
-	CSInactive ContractStatus = 1 << iota
+	CSInactive ContractState = 1 << iota
 	CSActive
 	CSPending
 	CSRejected
-	CSBlocked
-	CSDisabled
+)
+
+const (
+	ASDisabled = 1 << iota
+	ASBlocked
 )
 
 const (
@@ -35,13 +38,14 @@ type ContractSnapshot interface {
 	DeployTxHash() []byte
 	AuditTxHash() []byte
 	Params() []byte
-	Status() ContractStatus
+	Status() ContractState
 	Equal(s ContractSnapshot) bool
 }
+
 type contractSnapshotImpl struct {
 	bk           db.Bucket
 	isNew        bool
-	status       ContractStatus
+	state        ContractState
 	contentType  string
 	eeType       string
 	deployTxHash []byte
@@ -59,7 +63,7 @@ func (c *contractSnapshotImpl) Equal(s ContractSnapshot) bool {
 		if c == nil || c2 == nil {
 			return false
 		}
-		if c.status != c2.status {
+		if c.state != c2.state {
 			return false
 		}
 		if bytes.Equal(c.codeHash, c2.codeHash) == false {
@@ -110,12 +114,12 @@ func (c *contractSnapshotImpl) Params() []byte {
 	return c.params
 }
 
-func (c *contractSnapshotImpl) Status() ContractStatus {
-	return c.status
+func (c *contractSnapshotImpl) Status() ContractState {
+	return c.state
 }
 
 func (c *contractSnapshotImpl) CodecEncodeSelf(e *ugorji.Encoder) {
-	e.MustEncode(c.status)
+	e.MustEncode(c.state)
 	e.MustEncode(c.contentType)
 	e.MustEncode(c.eeType)
 	e.MustEncode(c.deployTxHash)
@@ -125,7 +129,7 @@ func (c *contractSnapshotImpl) CodecEncodeSelf(e *ugorji.Encoder) {
 }
 
 func (c *contractSnapshotImpl) CodecDecodeSelf(d *ugorji.Decoder) {
-	d.MustDecode(&c.status)
+	d.MustDecode(&c.state)
 	d.MustDecode(&c.contentType)
 	d.MustDecode(&c.eeType)
 	d.MustDecode(&c.deployTxHash)
@@ -173,15 +177,15 @@ func (c *contractSnapshotImpl) Resolve(builder merkle.Builder) error {
 
 type Contract interface {
 	ContractSnapshot
-	SetStatus(status ContractStatus)
+	SetStatus(state ContractState)
 }
 
 type contractImpl struct {
 	contractSnapshotImpl
 }
 
-func (c *contractImpl) SetStatus(status ContractStatus) {
-	c.status = status
+func (c *contractImpl) SetStatus(state ContractState) {
+	c.state = state
 }
 
 func (c *contractImpl) getSnapshot() *contractSnapshotImpl {
@@ -198,7 +202,7 @@ type contractROState struct {
 	ContractSnapshot
 }
 
-func (c *contractROState) SetStatus(status ContractStatus) {
+func (c *contractROState) SetStatus(state ContractState) {
 	log.Panicf("contractROState().SetStatus() is invoked")
 }
 
