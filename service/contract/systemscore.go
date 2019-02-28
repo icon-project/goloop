@@ -2,6 +2,7 @@ package contract
 
 import (
 	"bytes"
+	"log"
 	"reflect"
 
 	"github.com/icon-project/goloop/common"
@@ -28,6 +29,10 @@ func CheckMethod(obj SystemScore) bool {
 		}
 		// CHECK INPUT
 		numIn := m.Type.NumIn()
+		if len(methodInfo.Inputs) != numIn-1 { //min receiver param
+			log.Printf("Wrong method intput. method[%s]\n", m.Name)
+			return false
+		}
 		for i := 1; i < numIn; i++ {
 			t := m.Type.In(i)
 			switch methodInfo.Inputs[i-1].Type {
@@ -57,9 +62,13 @@ func CheckMethod(obj SystemScore) bool {
 		}
 
 		numOut := m.Type.NumOut()
-		for i := 1; i < numOut; i++ {
+		if len(methodInfo.Outputs) != numOut-1 { // minus error
+			log.Printf("Wrong method output. method[%s]\n", m.Name)
+			return false
+		}
+		for i := 0; i < len(methodInfo.Outputs); i++ {
 			t := m.Type.Out(i)
-			switch methodInfo.Outputs[i-1] {
+			switch methodInfo.Outputs[i] {
 			case scoreapi.Integer:
 				if reflect.TypeOf(int(0)) != t && reflect.TypeOf(int64(0)) != t {
 					return false
@@ -78,6 +87,14 @@ func CheckMethod(obj SystemScore) bool {
 				}
 			case scoreapi.Address:
 				if reflect.TypeOf(&common.Address{}).Implements(t) == false {
+					return false
+				}
+			case scoreapi.List:
+				if t.Kind() != reflect.Slice && t.Kind() != reflect.Array {
+					return false
+				}
+			case scoreapi.Dict:
+				if t.Kind() != reflect.Map {
 					return false
 				}
 			default:

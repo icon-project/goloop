@@ -138,7 +138,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			scoreapi.FlagExternal, 0,
 			nil,
 			[]scoreapi.DataType{
-				scoreapi.Dict,
+				scoreapi.String,
 			},
 		},
 		{scoreapi.Function, "GetMaxStepLimit",
@@ -211,18 +211,23 @@ func (s *ChainScore) Invoke(method string, paramObj *codec.TypedObj) (
 		}
 	}
 	r := m.Call(objects)
-	interfaceList := make([]interface{}, len(r)-1)
+	resultLen := len(r)
+	var interfaceList []interface{}
+	if resultLen > 1 {
+		interfaceList = make([]interface{}, resultLen-1)
+	}
 
 	// first output type in chain score method is error.
 	status = module.StatusSuccess
 	for i, v := range r {
-		if i == 0 {
+		if resultLen == i+1 {
 			if err := v.Interface(); err != nil {
 				log.Printf("Failed to invoke %s on chain score. %s\n", method, err.(error))
 			}
 			continue
+		} else {
+			interfaceList[i] = v.Interface()
 		}
-		interfaceList[i-1] = v.Interface()
 	}
 
 	result, _ = common.EncodeAny(interfaceList)
@@ -273,8 +278,13 @@ func (s *ChainScore) AcceptScore(txHash []byte) error {
 	}
 	info := s.cc.GetInfo()
 	auditTxHash := info[state.InfoTxHash].([]byte)
+
+	v, err := s.GetMaxStepLimit(state.StepLimitTypeInvoke)
+	if err != nil {
+		return err
+	}
 	ah := newAcceptHandler(s.from, s.to,
-		nil, big.NewInt(s.GetMaxStepLimit(state.StepLimitTypeInvoke)), txHash, auditTxHash)
+		nil, big.NewInt(v), txHash, auditTxHash)
 	status, _, _, _ := ah.ExecuteSync(s.cc)
 	if status != module.StatusSuccess {
 		return errors.New(fmt.Sprintf("Failed to  execute acceptHandler. status = %d", status))
@@ -394,30 +404,44 @@ func (s *ChainScore) RemoveDeployer(address module.Address) error {
 }
 
 // User calls icx_call : Functions which can be called by anyone.
-func (s *ChainScore) GetRevision() int64 {
+func (s *ChainScore) GetRevision() (int64, error) {
 	as := s.cc.GetAccountState(state.SystemID)
-	return scoredb.NewVarDB(as, state.VarRevision).Int64()
+	return scoredb.NewVarDB(as, state.VarRevision).Int64(), nil
 }
 
-func (s *ChainScore) GetStepPrice() int64 {
+func (s *ChainScore) GetStepPrice() (int64, error) {
 	as := s.cc.GetAccountState(state.SystemID)
-	return scoredb.NewVarDB(as, state.VarStepPrice).Int64()
+	return scoredb.NewVarDB(as, state.VarStepPrice).Int64(), nil
 }
 
-func (s *ChainScore) GetStepCost(t string) int64 {
+func (s *ChainScore) GetStepCost(t string) (int64, error) {
 	as := s.cc.GetAccountState(state.SystemID)
 	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
-	return stepCostDB.Get(t).Int64()
+	return stepCostDB.Get(t).Int64(), nil
 }
 
-func (s *ChainScore) GetStepCosts() map[string]string {
-	return nil
+func (s *ChainScore) GetStepCosts() (string, error) {
+	as := s.cc.GetAccountState(state.SystemID)
+
+	stepCosts := make(map[string]string)
+	stepTypes := scoredb.NewArrayDB(as, state.VarStepTypes)
+	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
+	tcount := stepTypes.Size()
+	for i := 0; i < tcount; i++ {
+		tname := stepTypes.Get(i).String()
+		stepCosts[tname] = fmt.Sprintf("%d", stepCostDB.Get(tname).Int64())
+	}
+	result, err := json.Marshal(stepCosts)
+	if err != nil {
+		return "", err
+	}
+	return string(result), nil
 }
 
-func (s *ChainScore) GetMaxStepLimit(t string) int64 {
+func (s *ChainScore) GetMaxStepLimit(t string) (int64, error) {
 	as := s.cc.GetAccountState(state.SystemID)
 	stepLimitDB := scoredb.NewDictDB(as, state.VarStepLimit, 1)
-	return stepLimitDB.Get(t).Int64()
+	return stepLimitDB.Get(t).Int64(), nil
 }
 
 type curScore struct {
@@ -425,6 +449,7 @@ type curScore struct {
 	DeployTxHash string `json:"deployTxHash"`
 	AuditTxHash  string `json:"auditTxHash"`
 }
+
 type nextScore struct {
 	Status       string `json:"status"`
 	DeployTxHash string `json:"deployTxHash"`
@@ -437,7 +462,7 @@ type scoreStatus struct {
 	Disabled string     `json:"disabled"`
 }
 
-func (s *ChainScore) GetScoreStatus(address module.Address) (error, string) {
+func (s *ChainScore) GetScoreStatus(address module.Address) (string, error) {
 	stringStatus := func(s state.ContractState) string {
 		var status string
 		switch s {
@@ -488,23 +513,23 @@ func (s *ChainScore) GetScoreStatus(address module.Address) (error, string) {
 	if err != nil {
 		log.Panicf("err : %s\n", err)
 	}
-	return nil, string(result)
+	return string(result), nil
 }
 
-func (s *ChainScore) IsDeployer(address module.Address) (error, int) {
+func (s *ChainScore) IsDeployer(address module.Address) (int, error) {
 	as := s.cc.GetAccountState(state.SystemID)
 	db := scoredb.NewArrayDB(as, state.VarDeployer)
 	for i := 0; i < db.Size(); i++ {
 		if db.Get(i).Address().Equal(address) == true {
-			return nil, 1
+			return 1, nil
 		}
 	}
-	return nil, 0
+	return 0, nil
 }
 
-func (s *ChainScore) GetServiceConfig() (error, int64) {
+func (s *ChainScore) GetServiceConfig() (int64, error) {
 	as := s.cc.GetAccountState(state.SystemID)
-	return nil, scoredb.NewVarDB(as, state.VarSysConfig).Int64()
+	return scoredb.NewVarDB(as, state.VarSysConfig).Int64(), nil
 }
 
 // Internal call
