@@ -13,11 +13,13 @@ import (
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
+	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 )
 
 const (
-	txMaxDataSize = 512 * 1024 // 512kB
+	txMaxDataSize                    = 512 * 1024 // 512kB
+	configUseInputCoutingCompactJSON = true
 )
 
 type transactionV3Data struct {
@@ -415,11 +417,19 @@ func countBytesOfData(data []byte) (int, error) {
 		return 0, nil
 	}
 
-	var idata interface{}
-	if err := json.Unmarshal(data, &idata); err != nil {
-		return 0, err
+	if configUseInputCoutingCompactJSON {
+		b := bytes.NewBuffer(nil)
+		if err := json.Compact(b, data); err != nil {
+			return 0, scoreresult.ErrInvalidParameter
+		}
+		return b.Len(), nil
 	} else {
-		return countBytesOfDataValue(idata), nil
+		var idata interface{}
+		if err := json.Unmarshal(data, &idata); err != nil {
+			return 0, err
+		} else {
+			return countBytesOfDataValue(idata), nil
+		}
 	}
 }
 
