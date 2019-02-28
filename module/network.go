@@ -4,6 +4,7 @@ type NetworkManager interface {
 	GetPeers() []PeerID
 
 	RegisterReactor(name string, reactor Reactor, piList []ProtocolInfo, priority uint8) (ProtocolHandler, error)
+	RegisterReactorForStreams(name string, reactor Reactor, piList []ProtocolInfo, priority uint8) (ProtocolHandler, error)
 
 	SetRole(role Role, peers ...PeerID)
 	GetPeersByRole(role Role) []PeerID
