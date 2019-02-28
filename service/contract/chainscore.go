@@ -273,11 +273,12 @@ func (s *ChainScore) AcceptScore(txHash []byte) error {
 	}
 	info := s.cc.GetInfo()
 	auditTxHash := info[state.InfoTxHash].([]byte)
-	// TODO change below stepLimit
 	ah := newAcceptHandler(s.from, s.to,
-		nil, big.NewInt(100000000000), txHash, auditTxHash)
-	// TODO check status, result
-	ah.ExecuteSync(s.cc)
+		nil, big.NewInt(s.GetMaxStepLimit(state.StepLimitTypeInvoke)), txHash, auditTxHash)
+	status, _, _, _ := ah.ExecuteSync(s.cc)
+	if status != module.StatusSuccess {
+		return errors.New(fmt.Sprintf("Failed to  execute acceptHandler. status = %d", status))
+	}
 	return nil
 }
 
@@ -285,7 +286,20 @@ func (s *ChainScore) RejectScore(txHash []byte) error {
 	if s.from.Equal(s.cc.Governance()) == false {
 		return errors.New("No permission to call this method.")
 	}
-	return nil
+
+	sysAs := s.cc.GetAccountState(state.SystemID)
+	varDb := scoredb.NewVarDB(sysAs, txHash)
+	scoreAddr := varDb.Address()
+	if scoreAddr == nil {
+		return errors.New(fmt.Sprintf("Faile d to find score by txHash[%x]\n", txHash))
+	}
+	scoreAs := s.cc.GetAccountState(scoreAddr.ID())
+	// NOTE : cannot change from reject to accept because data with address mapped txHash is deleted from DB
+	info := s.cc.GetInfo()
+	auditTxHash := info[state.InfoTxHash].([]byte)
+	varDb.Delete()
+	return scoreAs.RejectContract(txHash, auditTxHash)
+
 }
 
 // Governance score would check the verification of the address
@@ -443,9 +457,7 @@ func (s *ChainScore) GetScoreStatus(address module.Address) (error, string) {
 
 	as := s.cc.GetAccountState(address.ID())
 	scoreStatus := scoreStatus{}
-	if cur := as.Contract(); cur == nil {
-		return errors.New("SCORE not found"), ""
-	} else {
+	if cur := as.Contract(); cur != nil {
 		current := &curScore{}
 		current.Status = stringStatus(cur.Status())
 		current.DeployTxHash = fmt.Sprintf("%x", cur.DeployTxHash())

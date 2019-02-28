@@ -174,9 +174,12 @@ func (c *worldContext) updateSystemInfo() {
 
 			c.systemInfo.sysConfig = scoredb.NewVarDB(as, VarSysConfig).Int64()
 			db := scoredb.NewArrayDB(as, VarDeployer)
-			for i := 0; i < db.Size(); i++ {
-				addr := db.Get(i).Address().String()
-				c.systemInfo.deployer[addr] = true
+			if db.Size() > 0 {
+				c.systemInfo.deployer = make(map[string]bool)
+				for i := 0; i < db.Size(); i++ {
+					addr := db.Get(i).Address().String()
+					c.systemInfo.deployer[addr] = true
+				}
 			}
 		}
 		c.systemInfo.updated = true
