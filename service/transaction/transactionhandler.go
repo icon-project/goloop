@@ -104,35 +104,35 @@ func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, e
 
 	// Calculate common steps
 	var status module.Status
-	var stepUsed *big.Int
 	var addr module.Address
 	status = module.StatusSuccess
 
-	cnt, err := countBytesOfData(th.data)
-	if err != nil {
-		status = module.StatusSystemError
-		stepUsed = th.stepLimit
+	if !th.chandler.ApplySteps(ctx, state.StepTypeDefault, 1) {
+		status = module.StatusOutOfStep
 	} else {
-		if !th.chandler.ApplySteps(ctx, state.StepTypeDefault, 1) ||
-			!th.chandler.ApplySteps(ctx, state.StepTypeInput, cnt) {
-			status = module.StatusOutOfStep
-			stepUsed = th.chandler.StepLimit()
-		}
+		cnt, err := countBytesOfData(th.data)
+		if err != nil {
+			status = module.StatusSystemError
+		} else {
+			if !th.chandler.ApplySteps(ctx, state.StepTypeInput, cnt) {
+				status = module.StatusOutOfStep
+			}
 
-		// Execute
-		if status == module.StatusSuccess {
-			status, stepUsed, _, addr = th.cc.Call(th.chandler)
+			// Execute
+			if status == module.StatusSuccess {
+				status, _, _, addr = th.cc.Call(th.chandler)
 
-			// If it's not successful, roll back the state.
-			if status != module.StatusSuccess {
-				ctx.Reset(wcs)
+				// If it's not successful, roll back the state.
+				if status != module.StatusSuccess {
+					ctx.Reset(wcs)
+				}
 			}
 		}
 	}
 
 	// Try to charge fee
 	stepPrice := ctx.StepPrice()
-	fee := big.NewInt(0).Mul(stepUsed, stepPrice)
+	fee := big.NewInt(0).Mul(th.chandler.StepUsed(), stepPrice)
 
 	as := ctx.GetAccountState(th.from.ID())
 	bal := as.GetBalance()
@@ -143,7 +143,7 @@ func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, e
 			ctx.Reset(wcs)
 			bal = as.GetBalance()
 
-			fee.Mul(stepUsed, stepPrice)
+			fee.Mul(th.chandler.StepUsed(), stepPrice)
 		} else {
 			stepPrice.SetInt64(0)
 			fee.SetInt64(0)
@@ -153,7 +153,7 @@ func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, e
 	as.SetBalance(bal)
 
 	// Make a receipt
-	th.receipt.SetResult(status, stepUsed, stepPrice, addr)
+	th.receipt.SetResult(status, th.chandler.StepUsed(), stepPrice, addr)
 
 	return th.receipt, nil
 }

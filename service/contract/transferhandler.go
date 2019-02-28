@@ -27,7 +27,7 @@ func (h *TransferHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, 
 	bal1 := as1.GetBalance()
 	if bal1.Cmp(h.value) < 0 {
 		msg, _ := common.EncodeAny(string(module.StatusOutOfBalance))
-		return module.StatusOutOfBalance, h.stepLimit, msg, nil
+		return module.StatusOutOfBalance, h.StepUsed(), msg, nil
 	}
 	bal1.Sub(bal1, h.value)
 	as1.SetBalance(bal1)
@@ -46,7 +46,7 @@ func (h *TransferHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, 
 		cc.OnEvent(h.from, indexed, make([][]byte, 0))
 	}
 
-	return module.StatusSuccess, h.stepUsed, nil, nil
+	return module.StatusSuccess, h.StepUsed(), nil, nil
 }
 
 type TransferAndMessageHandler struct {

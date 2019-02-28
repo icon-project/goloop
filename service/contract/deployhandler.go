@@ -34,7 +34,7 @@ func newDeployHandler(from, to module.Address, value, stepLimit *big.Int,
 	data []byte, force bool,
 ) *DeployHandler {
 	var dataJSON struct {
-		ContentType string          `json:"contentType""`
+		ContentType string          `json:"contentType"`
 		Content     common.HexBytes `json:"content"`
 		Params      json.RawMessage `json:"params"`
 	}
@@ -118,7 +118,7 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 	info := cc.GetInfo()
 	if info == nil {
 		msg, _ := common.EncodeAny("no GetInfo()")
-		return module.StatusSystemError, h.stepLimit, msg, nil
+		return module.StatusSystemError, h.StepUsed(), msg, nil
 	} else {
 		h.txHash = info[state.InfoTxHash].([]byte)
 	}
@@ -143,7 +143,7 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 	if !h.ApplySteps(cc, st, 1) ||
 		!h.ApplySteps(cc, state.StepTypeContractSet, codeLen) {
 		msg, _ := common.EncodeAny("Not enough step limit")
-		return module.StatusOutOfStep, h.stepLimit, msg, nil
+		return module.StatusOutOfStep, h.StepUsed(), msg, nil
 	}
 
 	// store ScoreDeployInfo and ScoreDeployTXParams
@@ -151,16 +151,16 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 	if update == false {
 		if as.InitContractAccount(h.from) == false {
 			msg, _ := common.EncodeAny("Already deployed contract")
-			return module.StatusSystemError, h.stepUsed, msg, nil
+			return module.StatusSystemError, h.StepUsed(), msg, nil
 		}
 	} else {
 		if as.IsContract() == false {
 			msg, _ := common.EncodeAny("Not a contract account")
-			return module.StatusContractNotFound, h.stepUsed, msg, nil
+			return module.StatusContractNotFound, h.StepUsed(), msg, nil
 		}
 		if as.IsContractOwner(h.from) == false {
 			msg, _ := common.EncodeAny("Not a contract owner")
-			return module.StatusAccessDenied, h.stepUsed, msg, nil
+			return module.StatusAccessDenied, h.StepUsed(), msg, nil
 		}
 	}
 	scoreAddr := common.NewContractAddress(contractID)
@@ -173,13 +173,13 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 		ah := newAcceptHandler(h.from, h.to,
 			nil, h.StepAvail(), h.txHash, h.txHash)
 		status, acceptStepUsed, result, _ := ah.ExecuteSync(cc)
-		h.stepUsed.Add(h.stepUsed, acceptStepUsed)
+		h.DeductSteps(acceptStepUsed)
 		if status != module.StatusSuccess {
-			return status, h.stepUsed, result, nil
+			return status, h.StepUsed(), result, nil
 		}
 	}
 
-	return module.StatusSuccess, h.stepUsed, nil, scoreAddr
+	return module.StatusSuccess, h.StepUsed(), nil, scoreAddr
 }
 
 type AcceptHandler struct {
@@ -225,9 +225,10 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 	}
 	// GET API
 	cgah := newCallGetAPIHandler(newCommonHandler(h.from, scoreAddr, nil, h.StepAvail()))
+	// It ignores stepUsed intentionally because it's not proper to charge step for GetAPI().
 	status, _, result, _ := cc.Call(cgah)
 	if status != module.StatusSuccess {
-		return status, h.stepLimit, result, nil
+		return status, h.StepUsed(), result, nil
 	}
 	apiInfo := scoreAs.APIInfo()
 	typedObj, err := apiInfo.ConvertParamsToTypedObj(
@@ -235,7 +236,7 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 	if err != nil {
 		status, result := scoreresult.StatusAndMessageForError(module.StatusSystemError, err)
 		msg, _ := common.EncodeAny(result)
-		return status, h.stepLimit, msg, nil
+		return status, h.StepUsed(), msg, nil
 	}
 
 	// 2. call on_install or on_update of the contract
@@ -249,18 +250,18 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 	// state -> active if failed to on_install, set inactive
 	// on_install or on_update
 	status, stepUsed2, _, _ := cc.Call(handler)
-	h.stepUsed.Add(h.stepUsed, stepUsed2)
+	h.DeductSteps(stepUsed2)
 	if status != module.StatusSuccess {
-		return status, h.stepLimit, nil, nil
+		return status, h.StepUsed(), nil, nil
 	}
 	if err = scoreAs.AcceptContract(h.txHash, h.auditTxHash); err != nil {
 		status, result := scoreresult.StatusAndMessageForError(module.StatusSystemError, err)
 		msg, _ := common.EncodeAny(result)
-		return status, h.stepLimit, msg, nil
+		return status, h.StepUsed(), msg, nil
 	}
 	varDb.Delete()
 
-	return status, h.stepUsed, nil, nil
+	return status, h.StepUsed(), nil, nil
 }
 
 type callGetAPIHandler struct {

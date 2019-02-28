@@ -25,7 +25,9 @@ const (
 type (
 	ContractHandler interface {
 		StepLimit() *big.Int
+		StepUsed() *big.Int
 		ApplySteps(state.WorldContext, state.StepType, int) bool
+		DeductSteps(*big.Int) bool
 		ResetSteps(*big.Int)
 		Prepare(ctx Context) (state.WorldContext, error)
 	}
@@ -61,8 +63,16 @@ func (h *CommonHandler) StepLimit() *big.Int {
 	return h.stepLimit
 }
 
+func (h *CommonHandler) StepUsed() *big.Int {
+	return h.stepUsed
+}
+
 func (h *CommonHandler) ApplySteps(wc state.WorldContext, stepType state.StepType, n int) bool {
-	h.stepUsed.Add(h.stepUsed, big.NewInt(wc.StepsFor(stepType, n)))
+	return h.DeductSteps(big.NewInt(wc.StepsFor(stepType, n)))
+}
+
+func (h *CommonHandler) DeductSteps(steps *big.Int) bool {
+	h.stepUsed.Add(h.stepUsed, steps)
 	if h.stepUsed.Cmp(h.stepLimit) > 0 {
 		h.stepUsed = h.stepLimit
 		return false

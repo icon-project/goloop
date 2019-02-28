@@ -115,7 +115,7 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 
 	// Calculate steps
 	if !h.ApplySteps(cc, state.StepTypeContractCall, 1) {
-		h.cc.OnResult(module.StatusOutOfStep, h.stepLimit, nil, nil)
+		h.cc.OnResult(module.StatusOutOfStep, h.StepUsed(), nil, nil)
 		return nil
 	}
 
@@ -273,8 +273,8 @@ func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) {
 }
 
 func (h *CallHandler) OnResult(status uint16, steps *big.Int, result *codec.TypedObj) {
-	h.stepUsed.Add(h.stepUsed, steps)
-	h.cc.OnResult(module.Status(status), h.stepUsed, result, nil)
+	h.DeductSteps(steps)
+	h.cc.OnResult(module.Status(status), h.StepUsed(), result, nil)
 }
 
 func (h *CallHandler) OnCall(from, to module.Address, value,
