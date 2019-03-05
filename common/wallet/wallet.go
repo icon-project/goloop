@@ -1,6 +1,7 @@
-package common
+package wallet
 
 import (
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
 )
@@ -11,7 +12,7 @@ type softwareWallet struct {
 }
 
 func (w *softwareWallet) Address() module.Address {
-	return NewAccountAddressFromPublicKey(w.pkey)
+	return common.NewAccountAddressFromPublicKey(w.pkey)
 }
 
 func (w *softwareWallet) Sign(data []byte) ([]byte, error) {
@@ -26,7 +27,7 @@ func (w *softwareWallet) PublicKey() []byte {
 	return w.pkey.SerializeCompressed()
 }
 
-func NewWallet() module.Wallet {
+func New() module.Wallet {
 	sk, pk := crypto.GenerateKeyPair()
 	return &softwareWallet{
 		skey: sk,
@@ -34,7 +35,7 @@ func NewWallet() module.Wallet {
 	}
 }
 
-func NewWalletFromPrivateKey(sk *crypto.PrivateKey) (module.Wallet, error) {
+func NewFromPrivateKey(sk *crypto.PrivateKey) (module.Wallet, error) {
 	pk := sk.PublicKey()
 	return &softwareWallet{
 		skey: sk,

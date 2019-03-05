@@ -301,14 +301,16 @@
   version = "v0.18.0"
 
 [[projects]]
-  digest = "1:5de655260d03b7563c7aee81ad5b03083a4e44ab43e7022a3f25ab2a6534014e"
+  digest = "1:bb0a98721972975fdd9b97cc9161bf884c5720db8481811725970ffa1b422601"
   name = "golang.org/x/crypto"
   packages = [
     "chacha20poly1305",
     "hkdf",
     "internal/chacha20",
     "internal/subtle",
+    "pbkdf2",
     "poly1305",
+    "scrypt",
     "sha3",
   ]
   pruneopts = "UT"
@@ -383,6 +385,7 @@
     "go.opencensus.io/trace",
     "golang.org/x/crypto/chacha20poly1305",
     "golang.org/x/crypto/hkdf",
+    "golang.org/x/crypto/scrypt",
     "golang.org/x/crypto/sha3",
   ]
   solver-name = "gps-cdcl"

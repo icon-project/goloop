@@ -5,15 +5,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/icon-project/goloop/common/wallet"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
 )
 
 const (
-	testChannel          = "testchannel"
+	testChannel           = "testchannel"
 	testTransportAddress1 = "127.0.0.1:8080"
 	testTransportAddress2 = "127.0.0.1:8081"
 )
@@ -103,7 +103,7 @@ func (w *testWallet) Sign(data []byte) ([]byte, error) {
 
 func walletFromGeneratedPrivateKey() module.Wallet {
 	priK, _ := crypto.GenerateKeyPair()
-	w, _ := common.NewWalletFromPrivateKey(priK)
+	w, _ := wallet.NewFromPrivateKey(priK)
 	return &testWallet{w}
 }
 
