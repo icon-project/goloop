@@ -1,8 +1,7 @@
 package db
 
 import (
-	"fmt"
-	"strings"
+	"github.com/pkg/errors"
 )
 
 type Database interface {
@@ -36,11 +35,11 @@ func registerDBCreator(backend BackendType, creator dbCreator, force bool) {
 	backends[backend] = creator
 }
 
-func Open(dir, dbtype, name string) Database {
+func Open(dir, dbtype, name string) (Database, error) {
 	return openDatabase(BackendType(dbtype), name, dir)
 }
 
-func openDatabase(backend BackendType, name string, dir string) Database {
+func openDatabase(backend BackendType, name string, dir string) (Database, error) {
 	dbCreator, ok := backends[backend]
 	if !ok {
 		keys := make([]string, len(backends))
@@ -49,12 +48,8 @@ func openDatabase(backend BackendType, name string, dir string) Database {
 			keys[i] = string(k)
 			i++
 		}
-		panic(fmt.Sprintf("Unknown db_backend %s, expected either %s", backend, strings.Join(keys, " or ")))
+		return nil, errors.Errorf("UnknownBackend(type=%s)", backend)
 	}
 
-	db, err := dbCreator(name, dir)
-	if err != nil {
-		panic(fmt.Sprintf("Error initializing Database: %v", err))
-	}
-	return db
+	return dbCreator(name, dir)
 }

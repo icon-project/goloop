@@ -92,8 +92,12 @@ func toRoles(r uint) []module.Role {
 	return roles
 }
 
-func (c *singleChain) Start() {
-	c.database = db.Open(c.cfg.DBDir, c.cfg.DBType, c.cfg.DBName)
+func (c *singleChain) Start() error {
+	var err error
+	c.database, err = db.Open(c.cfg.DBDir, c.cfg.DBType, c.cfg.DBName)
+	if err != nil {
+		log.Panicf("singleChain.Start: %+v", err)
+	}
 
 	c.nm = network.NewManager(c.cfg.Channel, c.nt, c.cfg.SeedAddr, toRoles(c.cfg.Role)...)
 

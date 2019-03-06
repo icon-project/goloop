@@ -2,6 +2,7 @@ package block
 
 import (
 	"bytes"
+	"log"
 	"math/big"
 	"reflect"
 	"sync"
@@ -11,6 +12,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/txresult"
 	"github.com/pkg/errors"
@@ -785,11 +787,15 @@ func newServiceManager(chain module.Chain) *testServiceManager {
 func newWallets(n int) []module.Wallet {
 	wallets := make([]module.Wallet, n)
 	for i := range wallets {
-		wallets[i] = common.NewWallet()
+		wallets[i] = wallet.New()
 	}
 	return wallets
 }
 
 func newMapDB() db.Database {
-	return db.Open("", "mapdb", "")
+	db, err := db.Open("", "mapdb", "")
+	if err != nil {
+		log.Panicf("Fail to open database err=%+v", err)
+	}
+	return db
 }
