@@ -106,7 +106,7 @@ func (c *singleChain) Start() error {
 	c.bm = block.NewManager(c, c.sm)
 
 	c.cs = consensus.NewConsensus(c, c.bm, c.nm, c.cfg.WALDir)
-	err := c.cs.Start()
+	err = c.cs.Start()
 	if err != nil {
 		log.Panicf("singleChain.Start: %+v\n", err)
 	}
