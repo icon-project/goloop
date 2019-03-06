@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/big"
 	"reflect"
+	"strconv"
 
 	"github.com/icon-project/goloop/common"
 
@@ -25,63 +26,63 @@ type ChainScore struct {
 
 func (s *ChainScore) GetAPI() *scoreapi.Info {
 	methods := []*scoreapi.Method{
-		{scoreapi.Function, "DisableScore",
+		{scoreapi.Function, "disableScore",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
 				{"address", scoreapi.Address, nil},
 			},
 			nil,
 		},
-		{scoreapi.Function, "EnableScore",
+		{scoreapi.Function, "enableScore",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
 				{"address", scoreapi.Address, nil},
 			},
 			nil,
 		},
-		{scoreapi.Function, "SetRevision",
+		{scoreapi.Function, "setRevision",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
 				{"code", scoreapi.Integer, nil},
 			},
 			nil,
 		},
-		{scoreapi.Function, "AcceptScore",
+		{scoreapi.Function, "acceptScore",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
 				{"txHash", scoreapi.Bytes, nil},
 			},
 			nil,
 		},
-		{scoreapi.Function, "RejectScore",
+		{scoreapi.Function, "rejectScore",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
 				{"txHash", scoreapi.Bytes, nil},
 			},
 			nil,
 		},
-		{scoreapi.Function, "BlockScore",
+		{scoreapi.Function, "blockScore",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
 				{"address", scoreapi.Address, nil},
 			},
 			nil,
 		},
-		{scoreapi.Function, "UnblockScore",
+		{scoreapi.Function, "unblockScore",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
 				{"address", scoreapi.Address, nil},
 			},
 			nil,
 		},
-		{scoreapi.Function, "SetStepPrice",
+		{scoreapi.Function, "setStepPrice",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
 				{"price", scoreapi.Integer, nil},
 			},
 			nil,
 		},
-		{scoreapi.Function, "SetStepCost",
+		{scoreapi.Function, "setStepCost",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
 				{"costType", scoreapi.String, nil},
@@ -89,7 +90,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			nil,
 		},
-		{scoreapi.Function, "SetMaxStepLimit",
+		{scoreapi.Function, "setMaxStepLimit",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
 				{"contextType", scoreapi.String, nil},
@@ -97,36 +98,36 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			nil,
 		},
-		{scoreapi.Function, "AddDeployer",
+		{scoreapi.Function, "addDeployer",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
 				{"address", scoreapi.Address, nil},
 			},
 			nil,
 		},
-		{scoreapi.Function, "RemoveDeployer",
+		{scoreapi.Function, "removeDeployer",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
 				{"address", scoreapi.Address, nil},
 			},
 			nil,
 		},
-		{scoreapi.Function, "GetRevision",
-			scoreapi.FlagExternal, 0,
+		{scoreapi.Function, "getRevision",
+			scoreapi.FlagReadOnly, 0,
 			nil,
 			[]scoreapi.DataType{
 				scoreapi.Integer,
 			},
 		},
-		{scoreapi.Function, "GetStepPrice",
-			scoreapi.FlagExternal, 0,
+		{scoreapi.Function, "getStepPrice",
+			scoreapi.FlagReadOnly, 0,
 			nil,
 			[]scoreapi.DataType{
 				scoreapi.Integer,
 			},
 		},
-		{scoreapi.Function, "GetStepCost",
-			scoreapi.FlagExternal, 0,
+		{scoreapi.Function, "getStepCost",
+			scoreapi.FlagReadOnly, 0,
 			[]scoreapi.Parameter{
 				{"t", scoreapi.String, nil},
 			},
@@ -134,24 +135,24 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 				scoreapi.Integer,
 			},
 		},
-		{scoreapi.Function, "GetStepCosts",
-			scoreapi.FlagExternal, 0,
+		{scoreapi.Function, "getStepCosts",
+			scoreapi.FlagReadOnly, 0,
 			nil,
 			[]scoreapi.DataType{
 				scoreapi.String,
 			},
 		},
-		{scoreapi.Function, "GetMaxStepLimit",
-			scoreapi.FlagExternal, 0,
+		{scoreapi.Function, "getMaxStepLimit",
+			scoreapi.FlagReadOnly, 0,
 			[]scoreapi.Parameter{
-				{"t", scoreapi.String, nil},
+				{"contextType", scoreapi.String, nil},
 			},
 			[]scoreapi.DataType{
 				scoreapi.Integer,
 			},
 		},
-		{scoreapi.Function, "GetScoreStatus",
-			scoreapi.FlagExternal, 0,
+		{scoreapi.Function, "getScoreStatus",
+			scoreapi.FlagReadOnly, 0,
 			[]scoreapi.Parameter{
 				{"address", scoreapi.Address, nil},
 			},
@@ -159,8 +160,8 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 				scoreapi.String,
 			},
 		},
-		{scoreapi.Function, "IsDeployer",
-			scoreapi.FlagExternal, 0,
+		{scoreapi.Function, "isDeployer",
+			scoreapi.FlagReadOnly, 0,
 			[]scoreapi.Parameter{
 				{"address", scoreapi.Address, nil},
 			},
@@ -168,14 +169,14 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 				scoreapi.Integer,
 			},
 		},
-		{scoreapi.Function, "GetServiceConfig",
-			scoreapi.FlagExternal, 0,
+		{scoreapi.Function, "getServiceConfig",
+			scoreapi.FlagReadOnly, 0,
 			nil,
 			[]scoreapi.DataType{
 				scoreapi.Integer,
 			},
 		},
-		{scoreapi.Function, "SetServiceConfig",
+		{scoreapi.Function, "setServiceConfig",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
 				{"config", scoreapi.Integer, nil},
@@ -191,11 +192,11 @@ func (s *ChainScore) Invoke(method string, paramObj *codec.TypedObj) (
 	status module.Status, result *codec.TypedObj) {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Printf("Failed to sysCall. err = %s\n", err)
+			log.Printf("Failed to sysCall method[%s]. err = %s\n", method, err)
 			status = module.StatusSystemError
 		}
 	}()
-	m := reflect.ValueOf(s).MethodByName(method)
+	m := reflect.ValueOf(s).MethodByName(FUNC_PREFIX + method)
 	if m.IsValid() == false {
 		return module.StatusMethodNotFound, nil
 	}
@@ -234,8 +235,116 @@ func (s *ChainScore) Invoke(method string, paramObj *codec.TypedObj) (
 	return module.StatusSuccess, result
 }
 
+type chain struct {
+	AuditEnabled             bool `json:"auditEnabled"`
+	DeployerWhiteListEnabled bool `json:"deployerWhiteListEnabled"`
+	Fee                      struct {
+		StepPrice common.HexInt    `json:"stepPrice"`
+		StepLimit *json.RawMessage `json:"stepLimit"`
+		StepCosts *json.RawMessage `json:"stepCosts"`
+	} `json:"fee"`
+}
+
+func (s *ChainScore) Install(param []byte) error {
+	chainCfg := chain{}
+	if err := json.Unmarshal(param, &chainCfg); err != nil {
+		log.Panicf("Failed to parse parameter for chainScore. err = %s", err)
+	}
+	confValue := 0
+	if chainCfg.AuditEnabled == true {
+		confValue |= state.SysConfigAudit
+	}
+	if chainCfg.DeployerWhiteListEnabled == true {
+		confValue |= state.SysConfigDeployerWhiteList
+	}
+	as := s.cc.GetAccountState(state.SystemID)
+	if err := scoredb.NewVarDB(as, state.VarSysConfig).Set(confValue); err != nil {
+		log.Panicf("Failed to set system config. err = %s", err)
+	}
+
+	price := chainCfg.Fee
+	if err := scoredb.NewVarDB(as, state.VarStepPrice).Set(&price.StepPrice.Int); err != nil {
+		log.Panicf("Failed to set stepPrice. err = %s", err)
+	}
+	stepLimitTypes := scoredb.NewArrayDB(as, state.VarStepLimitTypes)
+	stepLimitDB := scoredb.NewDictDB(as, state.VarStepLimit, 1)
+	if price.StepLimit != nil {
+		stepLimitsMap := make(map[string]string)
+		if err := json.Unmarshal(*price.StepLimit, &stepLimitsMap); err != nil {
+			log.Panicf("Failed to unmarshal\n")
+		}
+		for _, k := range state.AllStepLimitTypes {
+			cost := stepLimitsMap[k]
+			if err := stepLimitTypes.Put(k); err != nil {
+				log.Panicf("Failed to put stepLimit. err = %s", err)
+			}
+			var icost int64
+			if cost != "" {
+				var err error
+				icost, err = strconv.ParseInt(cost, 0, 64)
+				if err != nil {
+					log.Panicf("Failed to parse %s to integer. err = %s\n", cost, err)
+				}
+			}
+			if err := stepLimitDB.Set(k, icost); err != nil {
+				log.Panicf("Failed to Set stepLimit. err = %s", err)
+			}
+		}
+	} else {
+		for _, k := range state.AllStepLimitTypes {
+			if err := stepLimitTypes.Put(k); err != nil {
+				log.Panicf("Failed to put steLimitTypes. err = %s", err)
+			}
+			if err := stepLimitDB.Set(k, 0); err != nil {
+				log.Panicf("Failed to set stepLimit. err = %s", err)
+			}
+		}
+	}
+
+	stepTypes := scoredb.NewArrayDB(as, state.VarStepTypes)
+	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
+	if price.StepCosts != nil {
+		stepTypesMap := make(map[string]string)
+		if err := json.Unmarshal(*price.StepCosts, &stepTypesMap); err != nil {
+			log.Panicf("Failed to unmarshal\n")
+		}
+		for _, k := range state.AllStepTypes {
+			cost := stepTypesMap[k]
+			if err := stepTypes.Put(k); err != nil {
+				log.Panicf("Failed to put stepTypes. err = %s", err)
+			}
+			var icost int64
+			if cost != "" {
+				var err error
+				icost, err = strconv.ParseInt(cost, 0, 64)
+				if err != nil {
+					log.Panicf("Failed to parse %s to integer. err = %s\n", cost, err)
+				}
+			}
+			if err := stepCostDB.Set(k, icost); err != nil {
+				log.Panicf("Failed to set stepCost. err = %s", err)
+			}
+		}
+	} else {
+		for _, k := range state.AllStepTypes {
+			if err := stepTypes.Put(k); err != nil {
+				log.Panicf("Failed to put stepTypes. err = %s", err)
+			}
+			if err := stepCostDB.Set(k, 0); err != nil {
+				log.Panicf("Failed to set stepCost. err = %s", err)
+			}
+		}
+	}
+	return nil
+}
+
+func (s *ChainScore) Update(param []byte) error {
+	log.Panicf("Implement me")
+	return nil
+}
+
 // Destroy : Allowed from score owner
-func (s *ChainScore) DisableScore(address module.Address) error {
+func (s *ChainScore) Ex_disableScore(address module.Address) error {
 	as := s.cc.GetAccountState(address.ID())
 	if as.IsContract() == false {
 		return errors.New("Not contract")
@@ -247,7 +356,7 @@ func (s *ChainScore) DisableScore(address module.Address) error {
 	return nil
 }
 
-func (s *ChainScore) EnableScore(address module.Address) error {
+func (s *ChainScore) Ex_enableScore(address module.Address) error {
 	as := s.cc.GetAccountState(address.ID())
 	if as.IsContract() == false {
 		return errors.New("Not contract")
@@ -260,26 +369,26 @@ func (s *ChainScore) EnableScore(address module.Address) error {
 }
 
 // Governance functions : Functions which can be called by governance SCORE.
-func (s *ChainScore) SetRevision(code int64) error {
+func (s *ChainScore) Ex_setRevision(code *common.HexInt) error {
 	if s.from.Equal(s.cc.Governance()) == false {
 		return errors.New("No permission to call this method.")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
 	r := scoredb.NewVarDB(as, state.VarRevision).Int64()
-	if code <= r {
+	if code.Int64() <= r {
 		return errors.New(fmt.Sprintf("Wrong revision. cur : %d, passed : %d\n", r, code))
 	}
-	return scoredb.NewVarDB(as, state.VarSysConfig).Set(code)
+	return scoredb.NewVarDB(as, state.VarRevision).Set(code)
 }
 
-func (s *ChainScore) AcceptScore(txHash []byte) error {
+func (s *ChainScore) Ex_acceptScore(txHash []byte) error {
 	if s.from.Equal(s.cc.Governance()) == false {
 		return errors.New("No permission to call this method.")
 	}
 	info := s.cc.GetInfo()
 	auditTxHash := info[state.InfoTxHash].([]byte)
 
-	v, err := s.GetMaxStepLimit(state.StepLimitTypeInvoke)
+	v, err := s.Ex_getMaxStepLimit(state.StepLimitTypeInvoke)
 	if err != nil {
 		return err
 	}
@@ -292,7 +401,7 @@ func (s *ChainScore) AcceptScore(txHash []byte) error {
 	return nil
 }
 
-func (s *ChainScore) RejectScore(txHash []byte) error {
+func (s *ChainScore) Ex_rejectScore(txHash []byte) error {
 	if s.from.Equal(s.cc.Governance()) == false {
 		return errors.New("No permission to call this method.")
 	}
@@ -304,16 +413,18 @@ func (s *ChainScore) RejectScore(txHash []byte) error {
 		return errors.New(fmt.Sprintf("Faile d to find score by txHash[%x]\n", txHash))
 	}
 	scoreAs := s.cc.GetAccountState(scoreAddr.ID())
-	// NOTE : cannot change from reject to accept because data with address mapped txHash is deleted from DB
+	// NOTE : cannot change from reject to accept state because data with address mapped txHash is deleted from DB
 	info := s.cc.GetInfo()
 	auditTxHash := info[state.InfoTxHash].([]byte)
-	varDb.Delete()
+	if err := varDb.Delete(); err != nil {
+		log.Printf("Failed to delete scoreAddr. %s", scoreAddr.String())
+		return err
+	}
 	return scoreAs.RejectContract(txHash, auditTxHash)
-
 }
 
 // Governance score would check the verification of the address
-func (s *ChainScore) BlockScore(address module.Address) error {
+func (s *ChainScore) Ex_blockScore(address module.Address) error {
 	if s.from.Equal(s.cc.Governance()) == false {
 		return errors.New("No permission to call this method.")
 	}
@@ -325,7 +436,7 @@ func (s *ChainScore) BlockScore(address module.Address) error {
 }
 
 // Governance score would check the verification of the address
-func (s *ChainScore) UnblockScore(address module.Address) error {
+func (s *ChainScore) Ex_unblockScore(address module.Address) error {
 	if s.from.Equal(s.cc.Governance()) == false {
 		return errors.New("No permission to call this method.")
 	}
@@ -336,7 +447,7 @@ func (s *ChainScore) UnblockScore(address module.Address) error {
 	return nil
 }
 
-func (s *ChainScore) SetStepPrice(price int) error {
+func (s *ChainScore) Ex_setStepPrice(price *common.HexInt) error {
 	if s.from.Equal(s.cc.Governance()) == false {
 		return errors.New("No permission to call this method.")
 	}
@@ -344,7 +455,7 @@ func (s *ChainScore) SetStepPrice(price int) error {
 	return scoredb.NewVarDB(as, state.VarStepPrice).Set(price)
 }
 
-func (s *ChainScore) SetStepCost(costType string, cost int) error {
+func (s *ChainScore) Ex_setStepCost(costType string, cost *common.HexInt) error {
 	if s.from.Equal(s.cc.Governance()) == false {
 		return errors.New("No permission to call this method.")
 	}
@@ -359,7 +470,7 @@ func (s *ChainScore) SetStepCost(costType string, cost int) error {
 	return stepCostDB.Set(costType, cost)
 }
 
-func (s *ChainScore) SetMaxStepLimit(contextType string, cost int) error {
+func (s *ChainScore) Ex_setMaxStepLimit(contextType string, cost *common.HexInt) error {
 	if s.from.Equal(s.cc.Governance()) == false {
 		return errors.New("No permission to call this method.")
 	}
@@ -374,7 +485,7 @@ func (s *ChainScore) SetMaxStepLimit(contextType string, cost int) error {
 	return stepLimitDB.Set(contextType, cost)
 }
 
-func (s *ChainScore) AddDeployer(address module.Address) error {
+func (s *ChainScore) Ex_addDeployer(address module.Address) error {
 	if s.from.Equal(s.cc.Governance()) == false {
 		return errors.New("No permission to call this method.")
 	}
@@ -383,7 +494,7 @@ func (s *ChainScore) AddDeployer(address module.Address) error {
 	return db.Put(address)
 }
 
-func (s *ChainScore) RemoveDeployer(address module.Address) error {
+func (s *ChainScore) Ex_removeDeployer(address module.Address) error {
 	if s.from.Equal(s.cc.Governance()) == false {
 		return errors.New("No permission to call this method.")
 	}
@@ -404,23 +515,23 @@ func (s *ChainScore) RemoveDeployer(address module.Address) error {
 }
 
 // User calls icx_call : Functions which can be called by anyone.
-func (s *ChainScore) GetRevision() (int64, error) {
+func (s *ChainScore) Ex_getRevision() (int64, error) {
 	as := s.cc.GetAccountState(state.SystemID)
 	return scoredb.NewVarDB(as, state.VarRevision).Int64(), nil
 }
 
-func (s *ChainScore) GetStepPrice() (int64, error) {
+func (s *ChainScore) Ex_getStepPrice() (int64, error) {
 	as := s.cc.GetAccountState(state.SystemID)
 	return scoredb.NewVarDB(as, state.VarStepPrice).Int64(), nil
 }
 
-func (s *ChainScore) GetStepCost(t string) (int64, error) {
+func (s *ChainScore) Ex_getStepCost(t string) (int64, error) {
 	as := s.cc.GetAccountState(state.SystemID)
 	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
 	return stepCostDB.Get(t).Int64(), nil
 }
 
-func (s *ChainScore) GetStepCosts() (string, error) {
+func (s *ChainScore) Ex_getStepCosts() (string, error) {
 	as := s.cc.GetAccountState(state.SystemID)
 
 	stepCosts := make(map[string]string)
@@ -438,10 +549,10 @@ func (s *ChainScore) GetStepCosts() (string, error) {
 	return string(result), nil
 }
 
-func (s *ChainScore) GetMaxStepLimit(t string) (int64, error) {
+func (s *ChainScore) Ex_getMaxStepLimit(contextType string) (int64, error) {
 	as := s.cc.GetAccountState(state.SystemID)
 	stepLimitDB := scoredb.NewDictDB(as, state.VarStepLimit, 1)
-	return stepLimitDB.Get(t).Int64(), nil
+	return stepLimitDB.Get(contextType).Int64(), nil
 }
 
 type curScore struct {
@@ -462,7 +573,7 @@ type scoreStatus struct {
 	Disabled string     `json:"disabled"`
 }
 
-func (s *ChainScore) GetScoreStatus(address module.Address) (string, error) {
+func (s *ChainScore) Ex_getScoreStatus(address module.Address) (string, error) {
 	stringStatus := func(s state.ContractState) string {
 		var status string
 		switch s {
@@ -496,6 +607,7 @@ func (s *ChainScore) GetScoreStatus(address module.Address) (string, error) {
 		nextContract.DeployTxHash = fmt.Sprintf("%x", next.DeployTxHash())
 		scoreStatus.Next = nextContract
 	}
+
 	// blocked
 	if as.IsBlocked() == true {
 		scoreStatus.Blocked = "0x01"
@@ -516,7 +628,7 @@ func (s *ChainScore) GetScoreStatus(address module.Address) (string, error) {
 	return string(result), nil
 }
 
-func (s *ChainScore) IsDeployer(address module.Address) (int, error) {
+func (s *ChainScore) Ex_isDeployer(address module.Address) (int, error) {
 	as := s.cc.GetAccountState(state.SystemID)
 	db := scoredb.NewArrayDB(as, state.VarDeployer)
 	for i := 0; i < db.Size(); i++ {
@@ -527,7 +639,7 @@ func (s *ChainScore) IsDeployer(address module.Address) (int, error) {
 	return 0, nil
 }
 
-func (s *ChainScore) GetServiceConfig() (int64, error) {
+func (s *ChainScore) Ex_getServiceConfig() (int64, error) {
 	as := s.cc.GetAccountState(state.SystemID)
 	return scoredb.NewVarDB(as, state.VarSysConfig).Int64(), nil
 }

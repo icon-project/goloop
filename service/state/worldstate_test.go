@@ -63,7 +63,7 @@ func TestNewWorldStateWithContract(t *testing.T) {
 	contractOwner.SetString("'0x12345")
 
 	type testStruct struct {
-		testStatus      ContractStatus
+		testStatus      ContractState
 		testContentType string
 		testEeType      string
 		testApiInfo     []byte
@@ -173,7 +173,7 @@ func TestNewWorldStateWithContract(t *testing.T) {
 	} else {
 		check(contract, 0)
 		if contract.Status() != CSInactive {
-			log.Panicf("Invalid status %d\n", contract.Status())
+			log.Panicf("Invalid state %d\n", contract.Status())
 		}
 	}
 
@@ -182,7 +182,7 @@ func TestNewWorldStateWithContract(t *testing.T) {
 	}
 
 	if as2.ActiveContract() != nil {
-		log.Panicf("Invalid status\n")
+		log.Panicf("Invalid state\n")
 	}
 
 	as2.AcceptContract(test[0].testDeployTx, test[0].testAuditTx)
@@ -201,7 +201,7 @@ func TestNewWorldStateWithContract(t *testing.T) {
 	} else {
 		check(contract, 0)
 		if contract.Status() != CSActive {
-			log.Panicf("Invalid status %d\n", contract.Status())
+			log.Panicf("Invalid state %d\n", contract.Status())
 		}
 	}
 
@@ -265,18 +265,18 @@ func TestNewWorldStateWithContract(t *testing.T) {
 		log.Panicf("Invalid activeContract")
 	}
 	as3.SetBlock(true)
-	if as3.Contract().Status()&CSBlocked != CSBlocked {
-		log.Panic("Not blacklisted", as3.Contract().Status())
+	if as3.IsBlocked() == false {
+		log.Panic("Not blacklisted", as3.IsBlocked())
 	}
-	if as3.Contract().Status()&CSDisabled != CSDisabled {
+	if as3.IsDisabled() {
 		log.Panic("Not disabled")
 	}
 	as3.SetDisable(false)
 	if as3.ActiveContract() != nil {
 		log.Panicf("Invalid activeContract")
 	}
-	if as3.Contract().Status()&CSBlocked != CSBlocked {
-		log.Panic("Not blacklisted", as3.Contract().Status())
+	if as3.IsBlocked() == false {
+		log.Panic("Not blacklisted", as3.IsBlocked())
 	}
 	wsSnapshot = ws3.GetSnapshot()
 	wsSnapshot.Flush()
@@ -286,8 +286,8 @@ func TestNewWorldStateWithContract(t *testing.T) {
 	if as4.ActiveContract() != nil {
 		log.Panicf("Invalid activeContract")
 	}
-	if as4.Contract().Status()&CSBlocked != CSBlocked {
-		log.Panic("Not blacklisted", as4.Contract().Status())
+	if as4.IsBlocked() == false {
+		log.Panic("Not blacklisted", as4.IsBlocked())
 	}
 	if v := as4.Version(); v != AccountVersion {
 		log.Panicf("Not valid version. %d\n", v)

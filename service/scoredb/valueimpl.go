@@ -79,6 +79,8 @@ func ToBytes(v interface{}) []byte {
 		return common.Int64ToBytes(obj)
 	case *big.Int:
 		return common.BigIntToBytes(obj)
+	case *common.HexInt:
+		return obj.Bytes()
 	case string:
 		return []byte(obj)
 	case []byte:

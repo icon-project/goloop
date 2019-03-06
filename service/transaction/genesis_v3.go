@@ -8,7 +8,7 @@ import (
 	"log"
 	"math/big"
 	"sort"
-	"strconv"
+	"strings"
 
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
@@ -24,7 +24,7 @@ import (
 type preInstalledScores struct {
 	Owner       *common.Address
 	ContentType string
-	ContentID   string
+	ContentId   string
 	Params      *json.RawMessage
 }
 type accountInfo struct {
@@ -34,23 +34,11 @@ type accountInfo struct {
 	Score   *preInstalledScores `json:"score"`
 }
 
-type systemInfo struct {
-	ConfFee                   bool
-	ConfAudit                 bool
-	ConfDeployerWhiteList     bool
-	ConfScorePackageValidator bool
-	Price                     struct {
-		Step_price common.HexInt
-		Step_limit *json.RawMessage
-		Step_types *json.RawMessage
-	}
-}
-
 type genesisV3JSON struct {
 	Accounts      []accountInfo     `json:"accounts"`
 	Message       string            `json:"message"`
 	Validatorlist []*common.Address `json:"validatorlist"`
-	SystemInfo    systemInfo
+	Chain         json.RawMessage   `json:"chain"`
 	raw           []byte
 	txHash        []byte
 }
@@ -179,80 +167,6 @@ func (g *genesisV3) Prepare(ctx contract.Context) (state.WorldContext, error) {
 	return ctx.GetFuture(lq), nil
 }
 
-func (g *genesisV3) setSystemInfo(as state.AccountState) {
-	info := g.SystemInfo
-	confValue := 0
-	if info.ConfFee == true {
-		confValue |= state.SysConfigFee
-	}
-	if info.ConfAudit == true {
-		confValue |= state.SysConfigAudit
-	}
-	if info.ConfDeployerWhiteList == true {
-		confValue |= state.SysConfigDeployerWhiteList
-	}
-	if info.ConfScorePackageValidator == true {
-		confValue |= state.SysConfigScorePackageValidator
-	}
-	scoredb.NewVarDB(as, state.VarSysConfig).Set(confValue)
-
-	price := info.Price
-	scoredb.NewVarDB(as, state.VarStepPrice).Set(&price.Step_price.Int)
-	stepLimitTypes := scoredb.NewArrayDB(as, state.VarStepLimitTypes)
-	stepLimitDB := scoredb.NewDictDB(as, state.VarStepLimit, 1)
-	if price.Step_limit != nil {
-		stepLimitsMap := make(map[string]string)
-		if err := json.Unmarshal(*price.Step_limit, &stepLimitsMap); err != nil {
-			log.Panicf("Failed to unmarshal\n")
-		}
-		for _, k := range state.AllStepLimitTypes {
-			cost := stepLimitsMap[k]
-			stepLimitTypes.Put(k)
-			var icost int64
-			if cost != "" {
-				var err error
-				icost, err = strconv.ParseInt(cost, 0, 64)
-				if err != nil {
-					log.Panicf("Failed to parse %s to integer. err = %s\n")
-				}
-			}
-			stepLimitDB.Set(k, icost)
-		}
-	} else {
-		for _, k := range state.AllStepLimitTypes {
-			stepLimitTypes.Put(k)
-			stepLimitDB.Set(k, 0)
-		}
-	}
-
-	stepTypes := scoredb.NewArrayDB(as, state.VarStepTypes)
-	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
-	if price.Step_types != nil {
-		stepTypesMap := make(map[string]string)
-		if err := json.Unmarshal(*price.Step_types, &stepTypesMap); err != nil {
-			log.Panicf("Failed to unmarshal\n")
-		}
-		for _, k := range state.AllStepTypes {
-			cost := stepTypesMap[k]
-			stepTypes.Put(k)
-			var icost int64
-			if cost != "" {
-				var err error
-				icost, err = strconv.ParseInt(cost, 0, 64)
-				if err != nil {
-					log.Panicf("Failed to parse %s to integer. err = %s\n")
-				}
-			}
-			stepCostDB.Set(k, icost)
-		}
-	} else {
-		for _, k := range state.AllStepTypes {
-			stepTypes.Put(k)
-			stepCostDB.Set(k, 0)
-		}
-	}
-}
-
 func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
 	r := txresult.NewReceipt(common.NewAccountAddress([]byte{}))
 	as := ctx.GetAccountState(state.SystemID)
@@ -266,52 +180,62 @@ func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
 		ac := ctx.GetAccountState(info.Address.ID())
 		ac.SetBalance(&info.Balance.Int)
 	}
-	g.setSystemInfo(as)
 
-	r.SetResult(module.StatusSuccess, big.NewInt(0), big.NewInt(0), nil)
 	validators := make([]module.Validator, len(g.Validatorlist))
 	for i, validator := range g.Validatorlist {
 		validators[i], _ = state.ValidatorFromAddress(validator)
 	}
 	ctx.SetValidators(validators)
-	g.deployPreInstall(ctx)
+	g.deployPreInstall(ctx, r)
+	r.SetResult(module.StatusSuccess, big.NewInt(0), big.NewInt(0), nil)
 	return r, nil
 }
 
-func (g *genesisV3) deployPreInstall(ctx contract.Context) {
+const (
+	contentIdHash = "hash:"
+	contentIdCid  = "cid:"
+)
+
+func (g *genesisV3) deployPreInstall(ctx contract.Context, receipt txresult.Receipt) {
 	// first install chainScore.
 	sas := ctx.GetAccountState(state.SystemID)
 	sas.InitContractAccount(nil)
 	sas.DeployContract(nil, "system", state.CTAppSystem,
 		nil, nil)
-	sas.AcceptContract(nil, nil)
-	chainScore := contract.GetSystemScore(nil, common.NewContractAddress(state.SystemID), nil)
-	if contract.CheckMethod(chainScore) == false {
-		log.Panicf("Failed to check method. wrong method info\n")
+	if err := sas.AcceptContract(nil, nil); err != nil {
+		log.Panicf("Failed to accept chainScore. err = %s", err)
+	}
+	chainScore := contract.GetSystemScore(nil, common.NewContractAddress(state.SystemID), contract.NewCallContext(ctx, receipt, false))
+	if err := contract.CheckMethod(chainScore); err != nil {
+		log.Panicf("Failed to check method. err = %s\n", err)
 	}
 	sas.SetAPIInfo(chainScore.GetAPI())
-
-	// TODO add map table for static system score.
+	chainScore.Install(g.Chain)
 
 	for _, a := range g.Accounts {
 		if a.Score == nil {
 			continue
 		}
 		score := a.Score
-		cc := contract.NewCallContext(ctx, nil, false)
-		content, err := ctx.GetPreInstalledScore(score.ContentID)
-		if err != nil {
-			log.Panicf("Fail to get PreInstalledScore for ID=%s",
-				score.ContentID)
+		cc := contract.NewCallContext(ctx, receipt, false)
+		if strings.HasPrefix(score.ContentId, contentIdHash) == true {
+			contentHash := strings.TrimPrefix(score.ContentId, contentIdHash)
+			content, err := ctx.GetPreInstalledScore(contentHash)
+			if err != nil {
+				log.Panicf("Fail to get PreInstalledScore for ID=%s",
+					contentHash)
+			}
+			d := contract.NewDeployHandlerForPreInstall(score.Owner,
+				&a.Address, score.ContentType, content, score.Params)
+			status, _, _, _ := cc.Call(d)
+			if status != module.StatusSuccess {
+				log.Panicf("Failed to install pre-installed score."+
+					"status : %d, addr : %v, file : %s\n", status, a.Address, contentHash)
+			}
+			cc.Dispose()
+		} else if strings.HasPrefix(score.ContentId, contentIdHash) == true {
+
 		}
-		d := contract.NewDeployHandlerForPreInstall(score.Owner,
-			&a.Address, score.ContentType, content, score.Params)
-		status, _, _, _ := cc.Call(d)
-		if status != module.StatusSuccess {
-			log.Panicf("Failed to install pre-installed score."+
-				"status : %d, addr : %v, file : %s\n", status, a.Address, score.ContentID)
-		}
-		cc.Dispose()
 	}
 }
 
