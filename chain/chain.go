@@ -92,7 +92,7 @@ func toRoles(r uint) []module.Role {
 	return roles
 }
 
-func (c *singleChain) Start() error {
+func (c *singleChain) Start() {
 	var err error
 	c.database, err = db.Open(c.cfg.DBDir, c.cfg.DBType, c.cfg.DBName)
 	if err != nil {
