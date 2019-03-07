@@ -105,7 +105,7 @@ func genContractAddr(from module.Address, timestamp int64, nonce *big.Int) []byt
 
 func (h *DeployHandler) Prepare(ctx Context) (state.WorldContext, error) {
 	lq := []state.LockRequest{
-		{"", state.AccountWriteLock},
+		{state.WorldIDStr, state.AccountWriteLock},
 	}
 	return ctx.GetFuture(lq), nil
 }
@@ -196,7 +196,7 @@ func newAcceptHandler(from, to module.Address, value, stepLimit *big.Int, txHash
 
 // It's never called
 func (h *AcceptHandler) Prepare(ctx Context) (state.WorldContext, error) {
-	lq := []state.LockRequest{{"", state.AccountWriteLock}}
+	lq := []state.LockRequest{{state.WorldIDStr, state.AccountWriteLock}}
 	return ctx.GetFuture(lq), nil
 }
 

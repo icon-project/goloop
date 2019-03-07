@@ -162,7 +162,7 @@ func (g *genesisV3) GetHandler(contract.ContractManager) (TransactionHandler, er
 
 func (g *genesisV3) Prepare(ctx contract.Context) (state.WorldContext, error) {
 	lq := []state.LockRequest{
-		{"", state.AccountWriteLock},
+		{state.WorldIDStr, state.AccountWriteLock},
 	}
 	return ctx.GetFuture(lq), nil
 }

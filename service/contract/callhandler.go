@@ -98,7 +98,7 @@ func (h *CallHandler) Prepare(ctx Context) (state.WorldContext, error) {
 		return nil, err
 	}
 
-	lq := []state.LockRequest{{"", state.AccountWriteLock}}
+	lq := []state.LockRequest{{state.WorldIDStr, state.AccountWriteLock}}
 	return ctx.GetFuture(lq), nil
 }
 

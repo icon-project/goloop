@@ -9,6 +9,10 @@ import (
 )
 
 const (
+	WorldIDStr = ""
+)
+
+const (
 	AccountNoLock      = 0
 	AccountReadLock    = 1
 	AccountWriteLock   = 2
