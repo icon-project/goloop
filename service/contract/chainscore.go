@@ -247,8 +247,10 @@ type chain struct {
 
 func (s *ChainScore) Install(param []byte) error {
 	chainCfg := chain{}
-	if err := json.Unmarshal(param, &chainCfg); err != nil {
-		log.Panicf("Failed to parse parameter for chainScore. err = %s", err)
+	if param != nil {
+		if err := json.Unmarshal(param, &chainCfg); err != nil {
+			log.Panicf("Failed to parse parameter for chainScore. err = %s", err)
+		}
 	}
 	confValue := 0
 	if chainCfg.AuditEnabled == true {
