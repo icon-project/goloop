@@ -3,11 +3,11 @@ package state
 import (
 	"math/big"
 
-	"github.com/icon-project/goloop/common/codec"
-
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -21,6 +21,7 @@ const (
 	VarStepLimit      = "step_limit"
 	VarSysConfig      = "system_config"
 	VarRevision       = "system_revision"
+	VarMembers        = "members"
 	VarDeployer       = "system_deployer"
 )
 
@@ -29,6 +30,7 @@ const (
 	SysConfigAudit
 	SysConfigDeployerWhiteList
 	SysConfigScorePackageValidator
+	SysConfigMembership
 )
 
 const (
@@ -68,11 +70,13 @@ type WorldContext interface {
 	GetTransactionInfo(ti *TransactionInfo)
 	SetContractInfo(si *ContractInfo)
 
+	GetMembers() []module.Member
 	IsDeployer(addr string) bool
-	ConfFeeEnabled() bool
-	ConfAuditEnabled() bool
-	ConfDeployWhiteListEnabled() bool
-	ConfPackageValidatorEnabled() bool
+	CfgFeeEnabled() bool
+	CfgAuditEnabled() bool
+	CfgDeployWhiteListEnabled() bool
+	CfgPackageValidatorEnabled() bool
+	CfgMembershipEnabled() bool
 }
 
 type BlockInfo struct {
@@ -129,6 +133,46 @@ func (c *worldContext) GetFuture(lq []LockRequest) WorldContext {
 	}
 }
 
+func (c *worldContext) SetValidators(vl []module.Validator) error {
+	if c.CfgMembershipEnabled() {
+		as := c.GetAccountState(SystemID)
+		members := scoredb.NewArrayDB(as, VarMembers)
+		size := members.Size()
+		mm := make(map[module.Address]bool)
+		for i := 0; i < size; i++ {
+			mm[members.Get(i).Address()] = true
+		}
+
+		for _, v := range vl {
+			if _, present := mm[v.Address()]; !present {
+				return errors.New("validator(" + v.Address().String() + ") is not a member")
+			}
+		}
+	}
+
+	return c.WorldState.SetValidators(vl)
+}
+
+func (c *worldContext) GrantValidator(v module.Validator) error {
+	if c.CfgMembershipEnabled() {
+		as := c.GetAccountState(SystemID)
+		members := scoredb.NewArrayDB(as, VarMembers)
+		size := members.Size()
+		found := false
+		for i := 0; i < size; i++ {
+			if members.Get(i).Address().Equal(v.Address()) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return errors.New("Should be a member before granting validator")
+		}
+	}
+	return c.WorldState.GrantValidator(v)
+}
+
+// TODO What if some values such as deployer don't use cache here and are resolved on demand.
 type systemStorageInfo struct {
 	updated      bool
 	ass          AccountSnapshot
@@ -209,7 +253,7 @@ func (c *worldContext) GetStepLimit(t string) *big.Int {
 	}
 }
 
-func (c *worldContext) ConfFeeEnabled() bool {
+func (c *worldContext) CfgFeeEnabled() bool {
 	c.updateSystemInfo()
 	if c.systemInfo.sysConfig&SysConfigFee == 0 {
 		return false
@@ -217,7 +261,7 @@ func (c *worldContext) ConfFeeEnabled() bool {
 	return true
 }
 
-func (c *worldContext) ConfAuditEnabled() bool {
+func (c *worldContext) CfgAuditEnabled() bool {
 	c.updateSystemInfo()
 	if c.systemInfo.sysConfig&SysConfigAudit == 0 {
 		return false
@@ -225,7 +269,7 @@ func (c *worldContext) ConfAuditEnabled() bool {
 	return true
 }
 
-func (c *worldContext) ConfDeployWhiteListEnabled() bool {
+func (c *worldContext) CfgDeployWhiteListEnabled() bool {
 	c.updateSystemInfo()
 	if c.systemInfo.sysConfig&SysConfigDeployerWhiteList == 0 {
 		return false
@@ -233,12 +277,31 @@ func (c *worldContext) ConfDeployWhiteListEnabled() bool {
 	return true
 }
 
-func (c *worldContext) ConfPackageValidatorEnabled() bool {
+func (c *worldContext) CfgPackageValidatorEnabled() bool {
 	c.updateSystemInfo()
 	if c.systemInfo.sysConfig&SysConfigScorePackageValidator == 0 {
 		return false
 	}
 	return true
+}
+
+func (c *worldContext) CfgMembershipEnabled() bool {
+	c.updateSystemInfo()
+	if c.systemInfo.sysConfig&SysConfigMembership == 0 {
+		return false
+	}
+	return true
+}
+
+func (c *worldContext) GetMembers() []module.Member {
+	as := c.GetAccountState(SystemID)
+	members := scoredb.NewArrayDB(as, VarMembers)
+	size := members.Size()
+	ml := make([]module.Member, size)
+	for i := 0; i < size; i++ {
+		ml[i] = members.Get(i).Address().(module.Member)
+	}
+	return ml
 }
 
 func (c *worldContext) IsDeployer(addr string) bool {

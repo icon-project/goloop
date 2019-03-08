@@ -98,6 +98,41 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			nil,
 		},
+		{scoreapi.Function, "grantValidator",
+			scoreapi.FlagExternal, 0,
+			[]scoreapi.Parameter{
+				{"address", scoreapi.Address, nil},
+			},
+			nil,
+		},
+		{scoreapi.Function, "revokeValidator",
+			scoreapi.FlagExternal, 0,
+			[]scoreapi.Parameter{
+				{"address", scoreapi.Address, nil},
+			},
+			nil,
+		},
+		{scoreapi.Function, "getValidators",
+			scoreapi.FlagReadOnly, 0,
+			nil,
+			[]scoreapi.DataType{
+				scoreapi.List,
+			},
+		},
+		{scoreapi.Function, "addMember",
+			scoreapi.FlagExternal, 0,
+			[]scoreapi.Parameter{
+				{"address", scoreapi.Address, nil},
+			},
+			nil,
+		},
+		{scoreapi.Function, "removeMember",
+			scoreapi.FlagExternal, 0,
+			[]scoreapi.Parameter{
+				{"address", scoreapi.Address, nil},
+			},
+			nil,
+		},
 		{scoreapi.Function, "addDeployer",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
@@ -487,6 +522,79 @@ func (s *ChainScore) Ex_setMaxStepLimit(contextType string, cost *common.HexInt)
 	return stepLimitDB.Set(contextType, cost)
 }
 
+func (s *ChainScore) Ex_grantValidator(address module.Address) error {
+	if s.from.Equal(s.cc.Governance()) == false {
+		return errors.New("No permission to call this method.")
+	}
+	if v, err := state.ValidatorFromAddress(address); err == nil {
+		return s.cc.GrantValidator(v)
+	} else {
+		return err
+	}
+}
+
+func (s *ChainScore) Ex_revokeValidator(address module.Address) error {
+	if s.from.Equal(s.cc.Governance()) == false {
+		return errors.New("No permission to call this method.")
+	}
+	if v, err := state.ValidatorFromAddress(address); err == nil {
+		_, err = s.cc.RevokeValidator(v)
+		return err
+	} else {
+		return err
+	}
+}
+
+func (s *ChainScore) Ex_getValidators() ([]module.Address, error) {
+	vl := s.cc.GetValidators()
+	validators := make([]module.Address, vl.Len())
+	for i := 0; i < vl.Len(); i++ {
+		if v, ok := vl.Get(i); ok {
+			validators[i] = v.Address()
+		} else {
+			return nil, errors.New("Unexpected access failure")
+		}
+	}
+	return validators, nil
+}
+
+func (s *ChainScore) Ex_addMember(address module.Address) error {
+	if s.from.Equal(s.cc.Governance()) == false {
+		return errors.New("No permission to call this method.")
+	}
+	as := s.cc.GetAccountState(state.SystemID)
+	db := scoredb.NewArrayDB(as, state.VarMembers)
+	return db.Put(address)
+}
+
+func (s *ChainScore) Ex_removeMember(address module.Address) error {
+	if s.from.Equal(s.cc.Governance()) == false {
+		return errors.New("No permission to call this method.")
+	}
+
+	// If membership system is on, first check if the member is not a validator
+	if s.cc.CfgMembershipEnabled() {
+		if s.cc.GetValidators().IndexOf(address) >= 0 {
+			return errors.New("Should revoke validator before removing the member")
+		}
+	}
+
+	as := s.cc.GetAccountState(state.SystemID)
+	db := scoredb.NewArrayDB(as, state.VarMembers)
+	for i := 0; i < db.Size(); i++ {
+		if db.Get(i).Address().Equal(address) == true {
+			rAddr := db.Pop().Address()
+			if i < db.Size()-1 { // addr is not rAddr
+				if err := db.Set(i, rAddr); err != nil {
+					return err
+				}
+				break
+			}
+		}
+	}
+	return nil
+}
+
 func (s *ChainScore) Ex_addDeployer(address module.Address) error {
 	if s.from.Equal(s.cc.Governance()) == false {
 		return errors.New("No permission to call this method.")
@@ -648,6 +756,7 @@ func (s *ChainScore) Ex_getServiceConfig() (int64, error) {
 
 // Internal call
 func (s *ChainScore) SetServiceConfig(config int64) error {
+	// TODO If membership system get enabled from disabled, it should ensure all validators should be members.
 	as := s.cc.GetAccountState(state.SystemID)
 	return scoredb.NewVarDB(as, state.VarSysConfig).Set(config)
 }

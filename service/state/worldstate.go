@@ -18,7 +18,7 @@ import (
 // It can be use to WorldState recover state of WorldState to at some point.
 type WorldSnapshot interface {
 	GetAccountSnapshot(id []byte) AccountSnapshot
-	GetValidators() module.ValidatorList
+	GetValidators() ValidatorList
 	Flush() error
 	StateHash() []byte
 }
@@ -29,8 +29,10 @@ type WorldState interface {
 	GetAccountState(id []byte) AccountState
 	GetAccountSnapshot(id []byte) AccountSnapshot
 	GetSnapshot() WorldSnapshot
-	GetValidators() module.ValidatorList
+	GetValidators() ValidatorList
 	SetValidators(vl []module.Validator) error
+	GrantValidator(v module.Validator) error
+	RevokeValidator(v module.Validator) (bool, error)
 	Reset(snapshot WorldSnapshot) error
 	ClearCachedAccountStates()
 }
@@ -38,10 +40,10 @@ type WorldState interface {
 type worldSnapshotImpl struct {
 	database   db.Database
 	accounts   trie.ImmutableForObject
-	validators module.ValidatorList
+	validators ValidatorList
 }
 
-func (ws *worldSnapshotImpl) GetValidators() module.ValidatorList {
+func (ws *worldSnapshotImpl) GetValidators() ValidatorList {
 	return ws.validators
 }
 
@@ -82,10 +84,10 @@ type worldStateImpl struct {
 	database        db.Database
 	accounts        trie.MutableForObject
 	mutableAccounts map[string]AccountState
-	validators      module.ValidatorList
+	validators      ValidatorList
 }
 
-func (ws *worldStateImpl) GetValidators() module.ValidatorList {
+func (ws *worldStateImpl) GetValidators() ValidatorList {
 	return ws.validators
 }
 
@@ -96,6 +98,24 @@ func (ws *worldStateImpl) SetValidators(vl []module.Validator) error {
 	}
 	ws.validators = validators
 	return nil
+}
+
+func (ws *worldStateImpl) GrantValidator(v module.Validator) error {
+	validators := ws.validators.Copy()
+	if err := validators.Add(v); err != nil {
+		return err
+	}
+	ws.validators = validators
+	return nil
+}
+
+func (ws *worldStateImpl) RevokeValidator(v module.Validator) (bool, error) {
+	validators := ws.validators.Copy()
+	if validators.Remove(v) {
+		ws.validators = validators
+		return true, nil
+	}
+	return false, nil
 }
 
 func (ws *worldStateImpl) Reset(isnapshot WorldSnapshot) error {
@@ -225,7 +245,7 @@ func (ws *worldStateImpl) GetSnapshot() WorldSnapshot {
 	}
 }
 
-func NewWorldState(database db.Database, stateHash []byte, vl module.ValidatorList) WorldState {
+func NewWorldState(database db.Database, stateHash []byte, vl ValidatorList) WorldState {
 	ws := new(worldStateImpl)
 	ws.database = database
 	ws.accounts = trie_manager.NewMutableForObject(database, stateHash, reflect.TypeOf((*accountSnapshotImpl)(nil)))
@@ -237,7 +257,7 @@ func NewWorldState(database db.Database, stateHash []byte, vl module.ValidatorLi
 	return ws
 }
 
-func NewWorldSnapshot(dbase db.Database, stateHash []byte, vl module.ValidatorList) WorldSnapshot {
+func NewWorldSnapshot(dbase db.Database, stateHash []byte, vl ValidatorList) WorldSnapshot {
 	ws := new(worldSnapshotImpl)
 	ws.database = dbase
 	ws.accounts = trie_manager.NewImmutableForObject(dbase, stateHash,

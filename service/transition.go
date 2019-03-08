@@ -113,7 +113,7 @@ func newTransition(parent *transition, patchtxs module.TransactionList,
 
 // all parameters should be valid.
 func newInitTransition(db db.Database, result []byte,
-	validatorList module.ValidatorList, cm contract.ContractManager,
+	validatorList state.ValidatorList, cm contract.ContractManager,
 	em eeproxy.Manager, chain module.Chain,
 ) (*transition, error) {
 	var tresult transitionResult

@@ -12,6 +12,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+type ValidatorList interface {
+	module.ValidatorList
+	Copy() ValidatorList
+	Add(v module.Validator) error
+	Remove(v module.Validator) bool
+}
+
 type validatorList struct {
 	lock       sync.Mutex
 	bucket     db.Bucket
@@ -68,6 +75,57 @@ func (vl *validatorList) Len() int {
 	return len(vl.validators)
 }
 
+func (vl *validatorList) Copy() ValidatorList {
+	nvl := new(validatorList)
+	nvl.lock = sync.Mutex{}
+	nvl.bucket = vl.bucket
+	copy(nvl.validators, vl.validators)
+	copy(nvl.serialized, vl.serialized)
+	copy(nvl.hash, vl.hash)
+	nvl.dirty = vl.dirty
+	// Don't copy because the current map may change to be useless.
+	nvl.addrMap = nil
+	return nvl
+}
+func (vl *validatorList) Add(v module.Validator) error {
+	vl.lock.Lock()
+	defer vl.lock.Unlock()
+
+	if vl.indexOfInLock(v.Address()) < 0 {
+		var vo *validator
+		var ok bool
+		if vo, ok = v.(*validator); !ok {
+			var vi module.Validator
+			var err error
+			if vi, err = ValidatorFromPublicKey(v.PublicKey()); err != nil {
+				if vi, err = ValidatorFromAddress(v.Address()); err != nil {
+					return err
+				}
+			}
+			vo = vi.(*validator)
+		}
+
+		vl.validators = append(vl.validators, vo)
+		vl.dirty = true
+		vl.addrMap = nil
+	}
+	return nil
+}
+
+func (vl *validatorList) Remove(v module.Validator) bool {
+	vl.lock.Lock()
+	defer vl.lock.Unlock()
+
+	i := vl.indexOfInLock(v.Address())
+	if i < 0 {
+		return false
+	}
+	vl.validators = append(vl.validators[:i], vl.validators[i+1:]...)
+	vl.dirty = true
+	vl.addrMap = nil
+	return true
+}
+
 func (vl *validatorList) Get(i int) (module.Validator, bool) {
 	vl.lock.Lock()
 	defer vl.lock.Unlock()
@@ -82,6 +140,10 @@ func (vl *validatorList) IndexOf(addr module.Address) int {
 	vl.lock.Lock()
 	defer vl.lock.Unlock()
 
+	return vl.indexOfInLock(addr)
+}
+
+func (vl *validatorList) indexOfInLock(addr module.Address) int {
 	if vl.addrMap == nil {
 		vl.addrMap = make(map[string]int)
 		for i, v := range vl.validators {
@@ -106,7 +168,7 @@ func (vl *validatorList) OnData(bs []byte, bd merkle.Builder) error {
 	return nil
 }
 
-func ValidatorListFromHash(database db.Database, h []byte) (module.ValidatorList, error) {
+func ValidatorListFromHash(database db.Database, h []byte) (ValidatorList, error) {
 	bk, err := database.GetBucket(db.BytesByHash)
 	if err != nil {
 		return nil, err
@@ -133,7 +195,7 @@ func ValidatorListFromHash(database db.Database, h []byte) (module.ValidatorList
 	return vl, nil
 }
 
-func NewValidatorListWithBuilder(builder merkle.Builder, h []byte) (module.ValidatorList, error) {
+func NewValidatorListWithBuilder(builder merkle.Builder, h []byte) (ValidatorList, error) {
 	bk, err := builder.Database().GetBucket(db.BytesByHash)
 	if err != nil {
 		return nil, err
@@ -160,13 +222,12 @@ func NewValidatorListWithBuilder(builder merkle.Builder, h []byte) (module.Valid
 	return vl, nil
 }
 
-func ValidatorListFromSlice(database db.Database, vl []module.Validator) (module.ValidatorList, error) {
+func ValidatorListFromSlice(database db.Database, vl []module.Validator) (ValidatorList, error) {
 	bk, err := database.GetBucket(db.BytesByHash)
 	if err != nil {
 		return nil, err
 	}
 	nvl := &validatorList{
-		lock:       sync.Mutex{},
 		bucket:     bk,
 		validators: nil,
 		serialized: nil,

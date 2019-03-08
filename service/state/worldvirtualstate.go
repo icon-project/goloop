@@ -52,7 +52,7 @@ type worldVirtualState struct {
 	worldLock     int
 }
 
-func (wvs *worldVirtualState) GetValidators() module.ValidatorList {
+func (wvs *worldVirtualState) GetValidators() ValidatorList {
 	wvs.mutex.Lock()
 	defer wvs.mutex.Unlock()
 
@@ -79,6 +79,26 @@ func (wvs *worldVirtualState) SetValidators(vl []module.Validator) error {
 		return wvs.real.SetValidators(vl)
 	}
 	return errors.New("ValidatorListIsNotLocked")
+}
+
+func (wvs *worldVirtualState) GrantValidator(v module.Validator) error {
+	wvs.mutex.Lock()
+	defer wvs.mutex.Unlock()
+
+	if wvs.worldLock == AccountWriteLock {
+		return wvs.real.GrantValidator(v)
+	}
+	return errors.New("ValidatorListIsNotLocked")
+}
+
+func (wvs *worldVirtualState) RevokeValidator(v module.Validator) (bool, error) {
+	wvs.mutex.Lock()
+	defer wvs.mutex.Unlock()
+
+	if wvs.worldLock == AccountWriteLock {
+		return wvs.real.RevokeValidator(v)
+	}
+	return false, errors.New("ValidatorListIsNotLocked")
 }
 
 func (wvs *worldVirtualState) GetAccountSnapshot(id []byte) AccountSnapshot {
@@ -474,7 +494,7 @@ func (wvss *worldVirtualSnapshot) StateHash() []byte {
 	return wvss.base.StateHash()
 }
 
-func (wvss *worldVirtualSnapshot) GetValidators() module.ValidatorList {
+func (wvss *worldVirtualSnapshot) GetValidators() ValidatorList {
 	if wvss.base != nil {
 		return wvss.base.GetValidators()
 	}

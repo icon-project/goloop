@@ -168,7 +168,7 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 	scoreDB := scoredb.NewVarDB(sysAs, h.txHash)
 	_ = scoreDB.Set(scoreAddr)
 
-	if cc.ConfAuditEnabled() == false ||
+	if cc.CfgAuditEnabled() == false ||
 		cc.IsDeployer(h.from.String()) || h.preDefinedAddr != nil {
 		ah := newAcceptHandler(h.from, h.to,
 			nil, h.StepAvail(), h.txHash, h.txHash)
