@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"log"
 	"math/big"
-	"reflect"
 	"strconv"
 
 	"github.com/icon-project/goloop/common"
 
-	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/service/scoreapi"
 
 	"github.com/go-errors/errors"
@@ -20,8 +18,12 @@ import (
 )
 
 type ChainScore struct {
-	from, to module.Address
-	cc       CallContext
+	from module.Address
+	cc   CallContext
+}
+
+func NewChainScore(from module.Address, cc CallContext) SystemScore {
+	return &ChainScore{from, cc}
 }
 
 func (s *ChainScore) GetAPI() *scoreapi.Info {
@@ -188,53 +190,6 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 	return scoreapi.NewInfo(methods)
 }
 
-func (s *ChainScore) Invoke(method string, paramObj *codec.TypedObj) (
-	status module.Status, result *codec.TypedObj) {
-	defer func() {
-		if err := recover(); err != nil {
-			log.Printf("Failed to sysCall method[%s]. err = %s\n", method, err)
-			status = module.StatusSystemError
-		}
-	}()
-	m := reflect.ValueOf(s).MethodByName(FUNC_PREFIX + method)
-	if m.IsValid() == false {
-		return module.StatusMethodNotFound, nil
-	}
-	params, _ := common.DecodeAny(paramObj)
-	numIn := m.Type().NumIn()
-	objects := make([]reflect.Value, numIn)
-	if l, ok := params.([]interface{}); ok == true {
-		if len(l) != numIn {
-			return module.StatusInvalidParameter, nil
-		}
-		for i, v := range l {
-			objects[i] = reflect.ValueOf(v)
-		}
-	}
-	r := m.Call(objects)
-	resultLen := len(r)
-	var interfaceList []interface{}
-	if resultLen > 1 {
-		interfaceList = make([]interface{}, resultLen-1)
-	}
-
-	// first output type in chain score method is error.
-	status = module.StatusSuccess
-	for i, v := range r {
-		if resultLen == i+1 {
-			if err := v.Interface(); err != nil {
-				log.Printf("Failed to invoke %s on chain score. %s\n", method, err.(error))
-			}
-			continue
-		} else {
-			interfaceList[i] = v.Interface()
-		}
-	}
-
-	result, _ = common.EncodeAny(interfaceList)
-	return module.StatusSuccess, result
-}
-
 type chain struct {
 	AuditEnabled             bool `json:"auditEnabled"`
 	DeployerWhiteListEnabled bool `json:"deployerWhiteListEnabled"`
@@ -248,7 +203,8 @@ type chain struct {
 func (s *ChainScore) Install(param []byte) error {
 	chainCfg := chain{}
 	if err := json.Unmarshal(param, &chainCfg); err != nil {
-		log.Panicf("Failed to parse parameter for chainScore. err = %s", err)
+		log.Printf("Failed to parse parameter for chainScore. err = %s", err)
+		return err
 	}
 	confValue := 0
 	if chainCfg.AuditEnabled == true {
@@ -259,44 +215,52 @@ func (s *ChainScore) Install(param []byte) error {
 	}
 	as := s.cc.GetAccountState(state.SystemID)
 	if err := scoredb.NewVarDB(as, state.VarSysConfig).Set(confValue); err != nil {
-		log.Panicf("Failed to set system config. err = %s", err)
+		log.Printf("Failed to set system config. err = %s", err)
+		return err
 	}
 
 	price := chainCfg.Fee
 	if err := scoredb.NewVarDB(as, state.VarStepPrice).Set(&price.StepPrice.Int); err != nil {
-		log.Panicf("Failed to set stepPrice. err = %s", err)
+		log.Printf("Failed to set stepPrice. err = %s", err)
+		return err
 	}
 	stepLimitTypes := scoredb.NewArrayDB(as, state.VarStepLimitTypes)
 	stepLimitDB := scoredb.NewDictDB(as, state.VarStepLimit, 1)
 	if price.StepLimit != nil {
 		stepLimitsMap := make(map[string]string)
 		if err := json.Unmarshal(*price.StepLimit, &stepLimitsMap); err != nil {
-			log.Panicf("Failed to unmarshal\n")
+			log.Printf("Failed to unmarshal\n")
+			return err
 		}
 		for _, k := range state.AllStepLimitTypes {
 			cost := stepLimitsMap[k]
 			if err := stepLimitTypes.Put(k); err != nil {
-				log.Panicf("Failed to put stepLimit. err = %s", err)
+				log.Printf("Failed to put stepLimit. err = %s", err)
+				return err
 			}
 			var icost int64
 			if cost != "" {
 				var err error
 				icost, err = strconv.ParseInt(cost, 0, 64)
 				if err != nil {
-					log.Panicf("Failed to parse %s to integer. err = %s\n", cost, err)
+					log.Printf("Failed to parse %s to integer. err = %s\n", cost, err)
+					return err
 				}
 			}
 			if err := stepLimitDB.Set(k, icost); err != nil {
-				log.Panicf("Failed to Set stepLimit. err = %s", err)
+				log.Printf("Failed to Set stepLimit. err = %s", err)
+				return err
 			}
 		}
 	} else {
 		for _, k := range state.AllStepLimitTypes {
 			if err := stepLimitTypes.Put(k); err != nil {
-				log.Panicf("Failed to put steLimitTypes. err = %s", err)
+				log.Printf("Failed to put steLimitTypes. err = %s", err)
+				return err
 			}
 			if err := stepLimitDB.Set(k, 0); err != nil {
-				log.Panicf("Failed to set stepLimit. err = %s", err)
+				log.Printf("Failed to set stepLimit. err = %s", err)
+				return err
 			}
 		}
 	}
@@ -306,32 +270,38 @@ func (s *ChainScore) Install(param []byte) error {
 	if price.StepCosts != nil {
 		stepTypesMap := make(map[string]string)
 		if err := json.Unmarshal(*price.StepCosts, &stepTypesMap); err != nil {
-			log.Panicf("Failed to unmarshal\n")
+			log.Printf("Failed to unmarshal\n")
+			return err
 		}
 		for _, k := range state.AllStepTypes {
 			cost := stepTypesMap[k]
 			if err := stepTypes.Put(k); err != nil {
-				log.Panicf("Failed to put stepTypes. err = %s", err)
+				log.Printf("Failed to put stepTypes. err = %s", err)
+				return err
 			}
 			var icost int64
 			if cost != "" {
 				var err error
 				icost, err = strconv.ParseInt(cost, 0, 64)
 				if err != nil {
-					log.Panicf("Failed to parse %s to integer. err = %s\n", cost, err)
+					log.Printf("Failed to parse %s to integer. err = %s\n", cost, err)
+					return err
 				}
 			}
 			if err := stepCostDB.Set(k, icost); err != nil {
-				log.Panicf("Failed to set stepCost. err = %s", err)
+				log.Printf("Failed to set stepCost. err = %s", err)
+				return err
 			}
 		}
 	} else {
 		for _, k := range state.AllStepTypes {
 			if err := stepTypes.Put(k); err != nil {
-				log.Panicf("Failed to put stepTypes. err = %s", err)
+				log.Printf("Failed to put stepTypes. err = %s", err)
+				return err
 			}
 			if err := stepCostDB.Set(k, 0); err != nil {
-				log.Panicf("Failed to set stepCost. err = %s", err)
+				log.Printf("Failed to set stepCost. err = %s", err)
+				return err
 			}
 		}
 	}
@@ -392,7 +362,7 @@ func (s *ChainScore) Ex_acceptScore(txHash []byte) error {
 	if err != nil {
 		return err
 	}
-	ah := newAcceptHandler(s.from, s.to,
+	ah := newAcceptHandler(s.from, common.NewAddress(state.SystemID),
 		nil, big.NewInt(v), txHash, auditTxHash)
 	status, _, _, _ := ah.ExecuteSync(s.cc)
 	if status != module.StatusSuccess {
@@ -623,7 +593,8 @@ func (s *ChainScore) Ex_getScoreStatus(address module.Address) (string, error) {
 	}
 	result, err := json.Marshal(scoreStatus)
 	if err != nil {
-		log.Panicf("err : %s\n", err)
+		log.Printf("err : %s\n", err)
+		return "", err
 	}
 	return string(result), nil
 }

@@ -25,10 +25,8 @@ const (
 )
 
 const (
-	SysConfigFee = 1 << iota
-	SysConfigAudit
+	SysConfigAudit = 1 << iota
 	SysConfigDeployerWhiteList
-	SysConfigScorePackageValidator
 )
 
 const (
@@ -69,10 +67,8 @@ type WorldContext interface {
 	SetContractInfo(si *ContractInfo)
 
 	IsDeployer(addr string) bool
-	ConfFeeEnabled() bool
-	ConfAuditEnabled() bool
-	ConfDeployWhiteListEnabled() bool
-	ConfPackageValidatorEnabled() bool
+	AuditEnabled() bool
+	DeployWhiteListEnabled() bool
 }
 
 type BlockInfo struct {
@@ -209,15 +205,7 @@ func (c *worldContext) GetStepLimit(t string) *big.Int {
 	}
 }
 
-func (c *worldContext) ConfFeeEnabled() bool {
-	c.updateSystemInfo()
-	if c.systemInfo.sysConfig&SysConfigFee == 0 {
-		return false
-	}
-	return true
-}
-
-func (c *worldContext) ConfAuditEnabled() bool {
+func (c *worldContext) AuditEnabled() bool {
 	c.updateSystemInfo()
 	if c.systemInfo.sysConfig&SysConfigAudit == 0 {
 		return false
@@ -225,17 +213,9 @@ func (c *worldContext) ConfAuditEnabled() bool {
 	return true
 }
 
-func (c *worldContext) ConfDeployWhiteListEnabled() bool {
+func (c *worldContext) DeployWhiteListEnabled() bool {
 	c.updateSystemInfo()
 	if c.systemInfo.sysConfig&SysConfigDeployerWhiteList == 0 {
-		return false
-	}
-	return true
-}
-
-func (c *worldContext) ConfPackageValidatorEnabled() bool {
-	c.updateSystemInfo()
-	if c.systemInfo.sysConfig&SysConfigScorePackageValidator == 0 {
 		return false
 	}
 	return true

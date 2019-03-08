@@ -1,8 +1,8 @@
 package contract
 
 import (
-	"bytes"
 	"fmt"
+	"log"
 	"reflect"
 	"strings"
 
@@ -13,18 +13,57 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreapi"
-	"github.com/icon-project/goloop/service/state"
 )
 
 const (
 	FUNC_PREFIX = "Ex_"
 )
 
+const (
+	CID_CHAIN = "CID_CHAINSCORE"
+)
+
+var newSysScore = map[string]interface{}{
+	CID_CHAIN: NewChainScore,
+}
+
 type SystemScore interface {
 	Install(param []byte) error
 	Update(param []byte) error
 	GetAPI() *scoreapi.Info
-	Invoke(method string, paramObj *codec.TypedObj) (module.Status, *codec.TypedObj)
+}
+
+func GetSystemScore(contendId string, params ...interface{}) (score SystemScore, err error) {
+	defer func() {
+		if e := recover(); e != nil {
+			msg := fmt.Sprintf("Failed to call function for %s : err  = %s\n", contendId, e)
+			log.Printf(msg)
+			err = errors.New(msg)
+		}
+	}()
+	v, ok := newSysScore[contendId]
+	if ok == false {
+		return nil, errors.New(fmt.Sprintf("Wrong contentId. %s\n", contendId))
+	}
+	f := reflect.ValueOf(v)
+	if len(params) != f.Type().NumIn() {
+		return nil, errors.New("Wrong params number.")
+	}
+	in := make([]reflect.Value, len(params))
+	for i, p := range params {
+		in[i] = reflect.ValueOf(p)
+	}
+	result := f.Call(in)
+
+	if result[0].IsNil() {
+		return nil, errors.New("Failed to create new systemScore")
+	}
+
+	score, ok = result[0].Interface().(SystemScore)
+	if ok == false {
+		return nil, errors.New(fmt.Sprintf("Not SystemScore. Retuned Type is %s", result[0].Type().String()))
+	}
+	return score, nil
 }
 
 func CheckMethod(obj SystemScore) error {
@@ -126,14 +165,50 @@ func CheckMethod(obj SystemScore) error {
 	return nil
 }
 
-func GetSystemScore(from, to module.Address, cc CallContext) SystemScore {
-	// chain score
-	// addOn score - static, dynamic
-	if bytes.Equal(to.ID(), state.SystemID) == true {
-		return &ChainScore{from, to, cc}
+func Invoke(score SystemScore, method string, paramObj *codec.TypedObj) (status module.Status, result *codec.TypedObj) {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Printf("Failed to sysCall method[%s]. err = %s\n", method, err)
+			status = module.StatusSystemError
+		}
+	}()
+	m := reflect.ValueOf(score).MethodByName(FUNC_PREFIX + method)
+	if m.IsValid() == false {
+		return module.StatusMethodNotFound, nil
 	}
-	// get account for to
-	// get & load so
-	// get instance for it.
-	return nil
+	params, _ := common.DecodeAny(paramObj)
+	numIn := m.Type().NumIn()
+	objects := make([]reflect.Value, numIn)
+	if l, ok := params.([]interface{}); ok == true {
+		if len(l) != numIn {
+			return module.StatusInvalidParameter, nil
+		}
+		for i, v := range l {
+			objects[i] = reflect.ValueOf(v)
+		}
+	}
+	// check if it is eventLog or not.
+	// if eventLog then cc.AddLog().
+	r := m.Call(objects)
+	resultLen := len(r)
+	var interfaceList []interface{}
+	if resultLen > 1 {
+		interfaceList = make([]interface{}, resultLen-1)
+	}
+
+	// first output type in chain score method is error.
+	status = module.StatusSuccess
+	for i, v := range r {
+		if i+1 == resultLen {
+			if err := v.Interface(); err != nil {
+				log.Printf("Failed to invoke %s on chain score. %s\n", method, err.(error))
+			}
+			continue
+		} else {
+			interfaceList[i] = v.Interface()
+		}
+	}
+
+	result, _ = common.EncodeAny(interfaceList)
+	return status, result
 }

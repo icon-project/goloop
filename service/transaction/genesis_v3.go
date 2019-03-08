@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"math/big"
@@ -185,8 +186,14 @@ func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
 	for i, validator := range g.Validatorlist {
 		validators[i], _ = state.ValidatorFromAddress(validator)
 	}
-	ctx.SetValidators(validators)
-	g.deployPreInstall(ctx, r)
+	if err := ctx.SetValidators(validators); err != nil {
+		log.Printf("Failed to set validator. err = %s\n", err)
+		return nil, err
+	}
+	if err := g.deployPreInstall(ctx, r); err != nil {
+		log.Printf("Failed to pre-install score : err = %s", err)
+		return nil, err
+	}
 	r.SetResult(module.StatusSuccess, big.NewInt(0), big.NewInt(0), nil)
 	return r, nil
 }
@@ -196,18 +203,24 @@ const (
 	contentIdCid  = "cid:"
 )
 
-func (g *genesisV3) deployPreInstall(ctx contract.Context, receipt txresult.Receipt) {
+func (g *genesisV3) deployPreInstall(ctx contract.Context, receipt txresult.Receipt) error {
 	// first install chainScore.
 	sas := ctx.GetAccountState(state.SystemID)
 	sas.InitContractAccount(nil)
 	sas.DeployContract(nil, "system", state.CTAppSystem,
 		nil, nil)
 	if err := sas.AcceptContract(nil, nil); err != nil {
-		log.Panicf("Failed to accept chainScore. err = %s", err)
+		log.Printf("Failed to accept chainScore. err = %s", err)
+		return err
 	}
-	chainScore := contract.GetSystemScore(nil, common.NewContractAddress(state.SystemID), contract.NewCallContext(ctx, receipt, false))
+	chainScore, err := contract.GetSystemScore(contract.CID_CHAIN, common.NewContractAddress(state.SystemID), contract.NewCallContext(ctx, receipt, false))
+	if err != nil {
+		log.Printf("Failed to get systemScore")
+		return err
+	}
 	if err := contract.CheckMethod(chainScore); err != nil {
-		log.Panicf("Failed to check method. err = %s\n", err)
+		log.Printf("Failed to check method. err = %s\n", err)
+		return err
 	}
 	sas.SetAPIInfo(chainScore.GetAPI())
 	chainScore.Install(g.Chain)
@@ -222,21 +235,24 @@ func (g *genesisV3) deployPreInstall(ctx contract.Context, receipt txresult.Rece
 			contentHash := strings.TrimPrefix(score.ContentId, contentIdHash)
 			content, err := ctx.GetPreInstalledScore(contentHash)
 			if err != nil {
-				log.Panicf("Fail to get PreInstalledScore for ID=%s",
+				log.Printf("Fail to get PreInstalledScore for ID=%s",
 					contentHash)
+				return err
 			}
 			d := contract.NewDeployHandlerForPreInstall(score.Owner,
 				&a.Address, score.ContentType, content, score.Params)
 			status, _, _, _ := cc.Call(d)
 			if status != module.StatusSuccess {
-				log.Panicf("Failed to install pre-installed score."+
+				log.Printf("Failed to install pre-installed score."+
 					"status : %d, addr : %v, file : %s\n", status, a.Address, contentHash)
+				return errors.New(fmt.Sprintf("Failed to deploy pre-installed score. status = %d", status))
 			}
 			cc.Dispose()
 		} else if strings.HasPrefix(score.ContentId, contentIdHash) == true {
 
 		}
 	}
+	return nil
 }
 
 func (g *genesisV3) Dispose() {
