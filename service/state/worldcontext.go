@@ -138,13 +138,13 @@ func (c *worldContext) SetValidators(vl []module.Validator) error {
 		as := c.GetAccountState(SystemID)
 		members := scoredb.NewArrayDB(as, VarMembers)
 		size := members.Size()
-		mm := make(map[module.Address]bool)
+		mm := make(map[string]bool)
 		for i := 0; i < size; i++ {
-			mm[members.Get(i).Address()] = true
+			mm[members.Get(i).Address().String()] = true
 		}
 
 		for _, v := range vl {
-			if _, present := mm[v.Address()]; !present {
+			if _, present := mm[v.Address().String()]; !present {
 				return errors.New("validator(" + v.Address().String() + ") is not a member")
 			}
 		}
