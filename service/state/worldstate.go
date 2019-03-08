@@ -34,7 +34,7 @@ type WorldState interface {
 	GrantValidator(v module.Validator) error
 	RevokeValidator(v module.Validator) (bool, error)
 	Reset(snapshot WorldSnapshot) error
-	ClearCachedAccountStates()
+	ClearCache()
 }
 
 type worldSnapshotImpl struct {
@@ -178,7 +178,7 @@ func (ws *worldStateImpl) GetAccountState(id []byte) AccountState {
 	return ac
 }
 
-func (ws *worldStateImpl) ClearCachedAccountStates() {
+func (ws *worldStateImpl) ClearCache() {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
 

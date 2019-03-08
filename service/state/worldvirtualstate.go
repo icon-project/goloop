@@ -2,6 +2,7 @@ package state
 
 import (
 	"log"
+	"sort"
 	"sync"
 
 	"github.com/icon-project/goloop/module"
@@ -27,7 +28,7 @@ type LockRequest struct {
 type WorldVirtualState interface {
 	WorldState
 	GetFuture(reqs []LockRequest) WorldVirtualState
-	WaitCommit()
+	Begin()
 	Commit()
 	Realize()
 }
@@ -113,10 +114,14 @@ func (wvs *worldVirtualState) GetAccountState(id []byte) AccountState {
 	wvs.mutex.Lock()
 	defer wvs.mutex.Unlock()
 
+	return wvs.getAccountStateInLock(id)
+}
+
+func (wvs *worldVirtualState) getAccountStateInLock(id []byte) AccountState {
 	las, ok := wvs.accountStates[string(id)]
 	if ok {
 		if las.depend != nil {
-			las.depend.WaitCommit()
+			las.depend.waitCommit()
 			if las.lock == AccountWriteLock {
 				las.state = wvs.real.GetAccountState(id)
 			} else {
@@ -260,7 +265,7 @@ func (wvs *worldVirtualState) getDepend(id string) *worldVirtualState {
 	return nil
 }
 
-func (wvs *worldVirtualState) WaitCommit() {
+func (wvs *worldVirtualState) waitCommit() {
 	wvs.mutex.Lock()
 	defer wvs.mutex.Unlock()
 
@@ -323,7 +328,6 @@ func (wvs *worldVirtualState) GetFuture(reqs []LockRequest) WorldVirtualState {
 	nwvs.base = wvs.committed
 	nwvs.parent = wvs
 	applyLockRequests(nwvs, reqs)
-
 	return nwvs
 }
 
@@ -403,7 +407,7 @@ func (wvs *worldVirtualState) Commit() {
 		if las.lock == AccountWriteLock {
 			las.lock = AccountWriteUnlock
 			if las.depend != nil {
-				las.depend.WaitCommit()
+				las.depend.waitCommit()
 				las.state = las.depend.GetAccountROState([]byte(id))
 				las.base = las.state.GetSnapshot()
 				las.depend = nil
@@ -424,9 +428,26 @@ func (wvs *worldVirtualState) Commit() {
 	return
 }
 
-func (wvs *worldVirtualState) ClearCachedAccountStates() {
+func (wvs *worldVirtualState) ClearCache() {
 	// On virtual state, it makes own WorldVirtualState for each transaction.
 	// So, we don't need to support this features.
+}
+
+func (wvs *worldVirtualState) Begin() {
+	wvs.mutex.Lock()
+	defer wvs.mutex.Unlock()
+
+	if len(wvs.accountStates) == 0 {
+		return
+	}
+	ids := make([]string, 0, len(wvs.accountStates))
+	for idStr := range wvs.accountStates {
+		ids = append(ids, idStr)
+	}
+	sort.Strings(ids)
+	for _, idStr := range ids {
+		_ = wvs.getAccountStateInLock([]byte(idStr))
+	}
 }
 
 func NewWorldVirtualState(ws WorldState, reqs []LockRequest) WorldVirtualState {

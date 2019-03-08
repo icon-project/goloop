@@ -82,7 +82,9 @@ func newCallHandlerFromTypedObj(ch *CommonHandler, method string,
 }
 
 func (h *CallHandler) Prepare(ctx Context) (state.WorldContext, error) {
-	as := ctx.GetAccountState(h.to.ID())
+	lq := []state.LockRequest{{state.WorldIDStr, state.AccountWriteLock}}
+	wc := ctx.GetFuture(lq)
+	as := wc.GetAccountState(h.to.ID())
 	c := h.contract(as)
 	if c == nil {
 		return nil, errors.New("No active contract")
@@ -91,15 +93,14 @@ func (h *CallHandler) Prepare(ctx Context) (state.WorldContext, error) {
 	var err error
 	h.lock.Lock()
 	if h.cs == nil {
-		h.cs, err = ctx.ContractManager().PrepareContractStore(ctx, c)
+		h.cs, err = ctx.ContractManager().PrepareContractStore(wc, c)
 	}
 	h.lock.Unlock()
 	if err != nil {
 		return nil, err
 	}
 
-	lq := []state.LockRequest{{state.WorldIDStr, state.AccountWriteLock}}
-	return ctx.GetFuture(lq), nil
+	return wc, nil
 }
 
 func (h *CallHandler) contract(as state.AccountState) state.Contract {

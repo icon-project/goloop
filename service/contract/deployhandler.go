@@ -282,23 +282,8 @@ func newCallGetAPIHandler(ch *CommonHandler) *callGetAPIHandler {
 
 // It's never called
 func (h *callGetAPIHandler) Prepare(ctx Context) (state.WorldContext, error) {
-	as := ctx.GetAccountState(h.to.ID())
-	c := as.NextContract()
-	if c == nil {
-		return nil, errors.New("No pending contract")
-	}
-
-	var err error
-	h.lock.Lock()
-	if h.cs == nil {
-		h.cs, err = ctx.ContractManager().PrepareContractStore(ctx, c)
-	}
-	h.lock.Unlock()
-	if err != nil {
-		return nil, err
-	}
-
-	return ctx.GetFuture(nil), nil
+	log.Panicf("SHOULD not reach here")
+	return nil, nil
 }
 
 func (h *callGetAPIHandler) ExecuteAsync(cc CallContext) error {

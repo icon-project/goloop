@@ -347,22 +347,25 @@ func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, 
 			if err != nil {
 				log.Panicf("Fail to prepare for %+v", err)
 			}
-
-			wc.SetTransactionInfo(&state.TransactionInfo{
+			ctx = contract.NewContext(wc, t.cm, t.eem, t.chain)
+			ctx.SetTransactionInfo(&state.TransactionInfo{
 				Index:     int32(cnt),
 				Timestamp: txo.Timestamp(),
 				Nonce:     txo.Nonce(),
 				Hash:      txo.ID(),
 				From:      txo.From(),
 			})
-			go func(tx transaction.Transaction, wc state.WorldContext, rb *txresult.Receipt) {
-				if rct, err := txh.Execute(contract.NewContext(wc, t.cm, t.eem, t.chain)); err != nil {
+			go func(ctx contract.Context, rb *txresult.Receipt) {
+				wvs := ctx.WorldVirtualState()
+				wvs.Begin()
+				if rct, err := txh.Execute(ctx); err != nil {
 					log.Panicf("Fail to execute transaction err=%+v", err)
 				} else {
 					*rb = rct
 				}
-				wc.WorldVirtualState().Commit()
-			}(txo, wc, &rctBuf[cnt])
+				txh.Dispose()
+				wvs.Commit()
+			}(ctx, &rctBuf[cnt])
 		} else {
 			ctx.SetTransactionInfo(&state.TransactionInfo{
 				Index:     int32(cnt),
@@ -374,6 +377,7 @@ func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, 
 			if logDebug {
 				log.Printf("START TX <0x%x>", txo.ID())
 			}
+			ctx.ClearCache()
 			if rct, err := txh.Execute(ctx); err != nil {
 				log.Panicf("Fail to execute transaction err=%+v", err)
 			} else {
@@ -386,8 +390,8 @@ func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, 
 		}
 		cnt++
 	}
-	if configUseParallelExecution {
-		ctx.WorldVirtualState().Realize()
+	if wvs := ctx.WorldVirtualState(); wvs != nil {
+		wvs.Realize()
 	}
 	return true, cnt
 }

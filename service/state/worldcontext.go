@@ -98,6 +98,7 @@ type ContractInfo struct {
 
 type worldContext struct {
 	WorldState
+	virtualState WorldVirtualState
 
 	treasury   module.Address
 	governance module.Address
@@ -112,25 +113,24 @@ type worldContext struct {
 }
 
 func (c *worldContext) WorldVirtualState() WorldVirtualState {
-	if wvs, ok := c.WorldState.(WorldVirtualState); ok {
-		return wvs
-	}
-	return NewWorldVirtualState(c.WorldState, nil)
+	return c.virtualState
 }
 
 func (c *worldContext) GetFuture(lq []LockRequest) WorldContext {
-	wvs := c.WorldVirtualState()
-	if len(lq) == 0 {
-		return c.WorldStateChanged(wvs)
-	} else {
-		lq2 := make([]LockRequest, len(lq)+1)
-		copy(lq2, lq)
-		lq2[len(lq)] = LockRequest{
-			Lock: AccountReadLock,
-			ID:   SystemIDStr,
-		}
-		return c.WorldStateChanged(wvs.GetFuture(lq2))
+	lq2 := make([]LockRequest, len(lq)+1)
+	copy(lq2, lq)
+	lq2[len(lq)] = LockRequest{
+		Lock: AccountReadLock,
+		ID:   SystemIDStr,
 	}
+
+	var wvs WorldVirtualState
+	if c.virtualState != nil {
+		wvs = c.virtualState.GetFuture(lq2)
+	} else {
+		wvs = NewWorldVirtualState(c.WorldState, lq2)
+	}
+	return c.WorldStateChanged(wvs)
 }
 
 func (c *worldContext) SetValidators(vl []module.Validator) error {
@@ -332,13 +332,19 @@ func (c *worldContext) Governance() module.Address {
 	return c.governance
 }
 
+func tryVirtualState(ws WorldState) WorldVirtualState {
+	wvs, _ := ws.(WorldVirtualState)
+	return wvs
+}
+
 func (c *worldContext) WorldStateChanged(ws WorldState) WorldContext {
 	wc := &worldContext{
-		WorldState: ws,
-		treasury:   c.treasury,
-		governance: c.governance,
-		systemInfo: c.systemInfo,
-		blockInfo:  c.blockInfo,
+		WorldState:   ws,
+		virtualState: tryVirtualState(ws),
+		treasury:     c.treasury,
+		governance:   c.governance,
+		systemInfo:   c.systemInfo,
+		blockInfo:    c.blockInfo,
 	}
 	wc.systemInfo.updated = false
 	return wc
@@ -398,9 +404,10 @@ func NewWorldContext(ws WorldState, bi module.BlockInfo) WorldContext {
 		governance = common.NewAddressFromString("cx0000000000000000000000000000000000000001")
 	}
 	return &worldContext{
-		WorldState: ws,
-		treasury:   treasury,
-		governance: governance,
-		blockInfo:  BlockInfo{Timestamp: bi.Timestamp(), Height: bi.Height()},
+		WorldState:   ws,
+		virtualState: tryVirtualState(ws),
+		treasury:     treasury,
+		governance:   governance,
+		blockInfo:    BlockInfo{Timestamp: bi.Timestamp(), Height: bi.Height()},
 	}
 }

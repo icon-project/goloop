@@ -93,7 +93,6 @@ func (th *transactionHandler) Prepare(ctx contract.Context) (state.WorldContext,
 
 func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, error) {
 	// Make a copy of initial state
-	ctx.ClearCachedAccountStates()
 	wcs := ctx.GetSnapshot()
 
 	// Set up
