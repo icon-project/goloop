@@ -27,7 +27,7 @@ const (
 
 const (
 	CTAppZip    = "application/zip"
-	CTAppSystem = "application/vnd.goloop.system"
+	CTAppSystem = "application/x.score.system"
 )
 
 type ContractSnapshot interface {

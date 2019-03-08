@@ -138,10 +138,15 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 
 		var status module.Status
 		var result *codec.TypedObj
-		sScore := GetSystemScore(h.from, h.to, cc)
-		err := h.ensureParamObj()
+		// TODO cid in account
+		sScore, err := GetSystemScore(CID_CHAIN, h.from, cc)
+		if err != nil {
+			log.Printf("Failed to getSystem score. from : %s, to : %s, err : %s\n", h.from.String(), h.to.String(), err)
+			return err
+		}
+		err = h.ensureParamObj()
 		if err == nil {
-			status, result = sScore.Invoke(h.method, h.paramObj)
+			status, result = Invoke(sScore, h.method, h.paramObj)
 			go func() {
 				cc.OnResult(module.Status(status), big.NewInt(0), result, nil)
 			}()

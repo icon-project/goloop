@@ -72,11 +72,11 @@ type WorldContext interface {
 
 	GetMembers() []module.Member
 	IsDeployer(addr string) bool
-	CfgFeeEnabled() bool
-	CfgAuditEnabled() bool
-	CfgDeployWhiteListEnabled() bool
-	CfgPackageValidatorEnabled() bool
-	CfgMembershipEnabled() bool
+	FeeEnabled() bool
+	AuditEnabled() bool
+	DeployWhiteListEnabled() bool
+	PackageValidatorEnabled() bool
+	MembershipEnabled() bool
 }
 
 type BlockInfo struct {
@@ -134,7 +134,7 @@ func (c *worldContext) GetFuture(lq []LockRequest) WorldContext {
 }
 
 func (c *worldContext) SetValidators(vl []module.Validator) error {
-	if c.CfgMembershipEnabled() {
+	if c.MembershipEnabled() {
 		as := c.GetAccountState(SystemID)
 		members := scoredb.NewArrayDB(as, VarMembers)
 		size := members.Size()
@@ -154,7 +154,7 @@ func (c *worldContext) SetValidators(vl []module.Validator) error {
 }
 
 func (c *worldContext) GrantValidator(v module.Validator) error {
-	if c.CfgMembershipEnabled() {
+	if c.MembershipEnabled() {
 		as := c.GetAccountState(SystemID)
 		members := scoredb.NewArrayDB(as, VarMembers)
 		size := members.Size()
@@ -253,7 +253,7 @@ func (c *worldContext) GetStepLimit(t string) *big.Int {
 	}
 }
 
-func (c *worldContext) CfgFeeEnabled() bool {
+func (c *worldContext) FeeEnabled() bool {
 	c.updateSystemInfo()
 	if c.systemInfo.sysConfig&SysConfigFee == 0 {
 		return false
@@ -261,7 +261,7 @@ func (c *worldContext) CfgFeeEnabled() bool {
 	return true
 }
 
-func (c *worldContext) CfgAuditEnabled() bool {
+func (c *worldContext) AuditEnabled() bool {
 	c.updateSystemInfo()
 	if c.systemInfo.sysConfig&SysConfigAudit == 0 {
 		return false
@@ -269,7 +269,7 @@ func (c *worldContext) CfgAuditEnabled() bool {
 	return true
 }
 
-func (c *worldContext) CfgDeployWhiteListEnabled() bool {
+func (c *worldContext) DeployWhiteListEnabled() bool {
 	c.updateSystemInfo()
 	if c.systemInfo.sysConfig&SysConfigDeployerWhiteList == 0 {
 		return false
@@ -277,7 +277,7 @@ func (c *worldContext) CfgDeployWhiteListEnabled() bool {
 	return true
 }
 
-func (c *worldContext) CfgPackageValidatorEnabled() bool {
+func (c *worldContext) PackageValidatorEnabled() bool {
 	c.updateSystemInfo()
 	if c.systemInfo.sysConfig&SysConfigScorePackageValidator == 0 {
 		return false
@@ -285,7 +285,7 @@ func (c *worldContext) CfgPackageValidatorEnabled() bool {
 	return true
 }
 
-func (c *worldContext) CfgMembershipEnabled() bool {
+func (c *worldContext) MembershipEnabled() bool {
 	c.updateSystemInfo()
 	if c.systemInfo.sysConfig&SysConfigMembership == 0 {
 		return false
