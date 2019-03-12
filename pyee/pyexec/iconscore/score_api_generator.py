@@ -22,6 +22,11 @@ from ..base.exception import IllegalFormatException, InvalidParamsException
 from ..utils import get_main_type_from_annotations_type
 from ..ipc.proxy import APIType
 
+APIFlagsMask = ConstBitFlag.ReadOnly \
+               | ConstBitFlag.External \
+               | ConstBitFlag.Payable \
+               | ConstBitFlag.Isolated
+
 
 class ScoreApiGenerator:
 
@@ -65,6 +70,8 @@ class ScoreApiGenerator:
 
     @staticmethod
     def __generate_function_info(func_name: str, flags: int, sig_info: 'Signature') -> list:
+        if flags & APIFlagsMask != flags:
+            raise IllegalFormatException(f'Illegal combination of decorators')
         is_readonly = flags & ConstBitFlag.ReadOnly == ConstBitFlag.ReadOnly
         info = list()
         if func_name == ScoreApiGenerator.__API_TYPE_FALLBACK:

@@ -42,5 +42,6 @@ class ConstBitFlag(IntEnum):
     ReadOnly = 1
     External = 2
     Payable = 4
-    EventLog = 8
+    Isolated = 8
     Interface = 16
+    EventLog = 32

@@ -256,6 +256,27 @@ def payable(func):
     return __wrapper
 
 
+def isolated(func):
+    cls_name, func_name = str(func.__qualname__).split('.')
+    if not isfunction(func):
+        raise IllegalFormatException(FORMAT_IS_NOT_FUNCTION_OBJECT.format(func, cls_name))
+
+    if getattr(func, CONST_BIT_FLAG, 0) & ConstBitFlag.Isolated:
+        raise IllegalFormatException(FORMAT_DECORATOR_DUPLICATED.format('isolated', func_name, cls_name))
+    bit_flag = getattr(func, CONST_BIT_FLAG, 0) | ConstBitFlag.Isolated
+    setattr(func, CONST_BIT_FLAG, bit_flag)
+
+    @wraps(func)
+    def __wrapper(calling_obj: Any, *args, **kwargs):
+        if not (isinstance(calling_obj, IconScoreBase)):
+            raise InvalidInstanceException(
+                FORMAT_IS_NOT_DERIVED_OF_OBJECT.format(IconScoreBase.__name__))
+        res = func(calling_obj, *args, **kwargs)
+        return res
+
+    return __wrapper
+
+
 class IconScoreObject(ABC):
 
     def __init__(self, *args, **kwargs) -> None:
@@ -286,12 +307,14 @@ class IconScoreBaseMeta(ABCMeta):
                           if getattr(func, CONST_BIT_FLAG, 0) & ConstBitFlag.External}
         payable_funcs = [func for func in custom_funcs
                          if getattr(func, CONST_BIT_FLAG, 0) & ConstBitFlag.Payable]
+        isolated_funcs = [func for func in custom_funcs
+                          if getattr(func, CONST_BIT_FLAG, 0) & ConstBitFlag.Isolated]
 
-        readonly_payables = [func for func in payable_funcs
-                             if getattr(func, CONST_BIT_FLAG, 0) & ConstBitFlag.ReadOnly]
-
-        if bool(readonly_payables):
-            raise InvalidPayableException(f"Readonly method cannot be payable: {readonly_payables}")
+        for functions, name in [(payable_funcs, 'Payable'), (isolated_funcs, 'Isolated')]:
+            has_readonly = [func for func in functions
+                            if getattr(func, CONST_BIT_FLAG, 0) & ConstBitFlag.ReadOnly]
+            if bool(has_readonly):
+                raise IllegalFormatException(f"{name} method cannot be readonly")
 
         if external_funcs:
             setattr(cls, CONST_CLASS_EXTERNALS, external_funcs)

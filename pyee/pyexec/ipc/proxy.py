@@ -93,6 +93,7 @@ class APIFlag(object):
     READONLY = 1
     EXTERNAL = 2
     PAYABLE = 4
+    ISOLATED = 8
 
 
 class DataType(object):
