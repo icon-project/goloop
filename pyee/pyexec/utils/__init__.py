@@ -27,7 +27,7 @@ from ..icon_constant import BUILTIN_SCORE_ADDRESS_MAPPER
 def int_to_bytes(v: int) -> bytes:
     if v == 0:
         return b''
-    n_bytes = ((v + (v < 0)).bit_length() + 8) // 8
+    n_bytes = byte_length_of_int(v)
     return v.to_bytes(n_bytes, byteorder="big", signed=True)
 
 
@@ -36,7 +36,7 @@ def bytes_to_int(v: bytes) -> int:
 
 
 def byte_length_of_int(n: int):
-    return (n.bit_length() + 8) // 8
+    return ((n + (n < 0)).bit_length() + 8) // 8
 
 
 def is_lowercase_hex_string(value: str) -> bool:
