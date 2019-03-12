@@ -18,9 +18,9 @@ import (
 	"github.com/icon-project/goloop/service/txresult"
 )
 
-// maximum number of transactions in a block
+// Maximum size in bytes for transaction in a block.
 // TODO it should be configured or received from block manager
-const TxMaxNumInBlock = 2000
+const ConfigMaxTxBytesInABlock = 1024 * 1024
 
 type manager struct {
 	// tx pool should be connected to transition for more than one branches.
@@ -68,11 +68,11 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 	ws, _ := state.WorldStateFromSnapshot(pt.worldSnapshot)
 	wc := state.NewWorldContext(ws, bi)
 
-	patchTxs := m.patchTxPool.Candidate(wc, -1) // try to add all patches in the block
-	maxTxNum := TxMaxNumInBlock - len(patchTxs)
+	patchTxs, size := m.patchTxPool.Candidate(wc, ConfigMaxTxBytesInABlock) // try to add all patches in the block
+	txSizeInBlock := ConfigMaxTxBytesInABlock - size
 	var normalTxs []module.Transaction
-	if maxTxNum > 0 {
-		normalTxs = m.normalTxPool.Candidate(wc, TxMaxNumInBlock-len(patchTxs))
+	if txSizeInBlock > 0 {
+		normalTxs, _ = m.normalTxPool.Candidate(wc, txSizeInBlock)
 	} else {
 		// what if patches already exceed the limit of transactions? It usually
 		// doesn't happen but...
@@ -133,7 +133,8 @@ func (m *manager) GetPatches(parent module.Transition) module.TransactionList {
 	}
 
 	wc := state.NewWorldContext(ws, pt.bi)
-	return transaction.NewTransactionListFromSlice(m.db, m.patchTxPool.Candidate(wc, -1))
+	txs, _ := m.patchTxPool.Candidate(wc, ConfigMaxTxBytesInABlock)
+	return transaction.NewTransactionListFromSlice(m.db, txs)
 }
 
 // PatchTransition creates a Transition by overwriting patches on the transition.
@@ -254,7 +255,7 @@ func (m *manager) SendTransaction(txi interface{}) ([]byte, error) {
 	}
 
 	if err := newTx.Verify(); err != nil {
-		log.Printf("Failed to verify transaction. tx : %x\n", newTx.Bytes())
+		log.Printf("Failed to verify transaction. tx=<%x> err=%+v\n", newTx.Bytes(), err)
 		return nil, err
 	}
 	hash := newTx.ID()

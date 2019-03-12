@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	txPoolSize = 5000
+	configTxPoolSize             = 5000
+	configDefaultTxSliceCapacity = 1024
 )
 
 const (
@@ -102,65 +103,60 @@ func (tp *TransactionPool) RemoveOldTXs(bts int64) {
 }
 
 // It returns all candidates for a negative integer n.
-func (tp *TransactionPool) Candidate(wc state.WorldContext, max int) []module.Transaction {
+func (tp *TransactionPool) Candidate(wc state.WorldContext, max int) ([]module.Transaction, int) {
 	tp.mutex.Lock()
 	if tp.list.Len() == 0 {
 		tp.mutex.Unlock()
-		return []module.Transaction{}
+		return []module.Transaction{}, 0
 	}
 
+	if max <= 0 {
+		max = ConfigMaxTxBytesInABlock
+	}
+
+	txs := make([]transaction.Transaction, 0, configDefaultTxSliceCapacity)
 	poolSize := tp.list.Len()
-
-	// txNum is number of transactions for pre-validate
-	txNum := poolSize
-	if max >= 0 && txNum > (max*13/10) {
-		txNum = max * 13 / 10
+	txSize := int(0)
+	for e := tp.list.Front(); e != nil && txSize < max; e = e.Next() {
+		tx := e.Value.(transaction.Transaction)
+		bs := tx.Bytes()
+		if txSize+len(bs) > max {
+			break
+		}
+		txSize += len(bs)
+		txs = append(txs, tx)
 	}
-
-	// make list to be used for pre-validate.
-	txs := make([]transaction.Transaction, txNum)
-	txIdx := 0
-	for e := tp.list.Front(); txIdx < txNum; e = e.Next() {
-		txs[txIdx] = e.Value.(transaction.Transaction)
-		txIdx++
-	}
-
 	tp.mutex.Unlock()
 
-	// txNum is number of transactions actually returned
-	if max >= 0 && txNum > max {
-		txNum = max
-	}
-
 	// make list of valid transactions
-	validTxs := make([]module.Transaction, txNum)
+	validTxs := make([]module.Transaction, len(txs))
 	valNum := 0
-	for i, tx := range txs {
+	invalidNum := 0
+	txSize = 0
+	for _, tx := range txs {
 		// TODO need to check transaction in parent transitions.
 		if v, err := tp.txdb.Get(tx.ID()); err == nil && v != nil {
+			txs[invalidNum] = tx
+			invalidNum += 1
 			continue
 		}
 		if err := tx.PreValidate(wc, true); err != nil {
 			// If returned error is critical(not usable in the future)
 			// then it should removed from the pool
 			// Otherwise, it remains in the pool
-			if err != state.ErrTimeOut && err != state.ErrNotEnoughStep {
-				txs[i] = nil
+			if err == state.ErrTimeOut || err == state.ErrNotEnoughStep {
+				txs[invalidNum] = tx
+				invalidNum += 1
 			}
 			continue
 		}
 		validTxs[valNum] = tx
-		txs[i] = nil
+		txSize += len(tx.Bytes())
 		valNum++
-		if valNum == txNum {
-			txs = txs[:i+1]
-			validTxs = validTxs[:valNum]
-			break
-		}
 	}
 
-	if valNum != len(txs) {
-		go func() {
+	if invalidNum > 0 {
+		go func(txs []transaction.Transaction) {
 			tp.mutex.Lock()
 			defer tp.mutex.Unlock()
 			for _, tx := range txs {
@@ -170,13 +166,13 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, max int) []module.Tr
 					}
 				}
 			}
-		}()
+		}(txs[0:invalidNum])
 	}
 
 	log.Printf("TransactionPool.candidate collected=%d removed=%d poolsize=%d",
-		valNum, len(txs)-valNum, poolSize)
+		valNum, invalidNum, poolSize)
 
-	return validTxs[:valNum]
+	return validTxs[:valNum], txSize
 }
 
 /*
@@ -193,7 +189,7 @@ func (tp *TransactionPool) Add(tx transaction.Transaction) error {
 	defer tp.mutex.Unlock()
 	var err error
 	txList := tp.list
-	if txList.Len() >= txPoolSize {
+	if txList.Len() >= configTxPoolSize {
 		return ErrTransactionPoolOverFlow
 	}
 
