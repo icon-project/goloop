@@ -123,7 +123,7 @@ class IconScoreMapper(object):
         score_info: IconScoreInfo = self.get(key)
 
         if score_info is None:
-            score_class = IconScoreLoader.load_package(code_path)
+            score_class = IconScoreLoader.load_module(code_path)
             if score_class is None:
                 return None
             self.put_score_info(key, score_class, code_path)
