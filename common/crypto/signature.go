@@ -3,6 +3,7 @@ package crypto
 import (
 	"encoding/hex"
 	"errors"
+	"sync"
 
 	"github.com/haltingstate/secp256k1-go"
 )
@@ -23,8 +24,13 @@ type Signature struct {
 	hasV  bool
 }
 
+var globalLock sync.Mutex
+
 // NewSignature calculates an ECDSA signature including V, which is 0 or 1.
 func NewSignature(hash []byte, privKey *PrivateKey) (*Signature, error) {
+	globalLock.Lock()
+	defer globalLock.Unlock()
+
 	if len(hash) == 0 || len(hash) > HashLen || privKey == nil {
 		return nil, errors.New("Invalid arguments")
 	}
