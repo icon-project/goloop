@@ -23,6 +23,7 @@ const (
 	VarRevision       = "system_revision"
 	VarMembers        = "members"
 	VarDeployer       = "system_deployer"
+	VarLicense        = "license"
 )
 
 const (

@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/big"
 	"strconv"
+	"strings"
 
 	"github.com/icon-project/goloop/common"
 
@@ -146,6 +147,20 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
 				{"address", scoreapi.Address, nil},
+			},
+			nil,
+		},
+		{scoreapi.Function, "addLicense",
+			scoreapi.FlagExternal, 0,
+			[]scoreapi.Parameter{
+				{"contentId", scoreapi.String, nil},
+			},
+			nil,
+		},
+		{scoreapi.Function, "removeLicense",
+			scoreapi.FlagExternal, 0,
+			[]scoreapi.Parameter{
+				{"contentId", scoreapi.String, nil},
 			},
 			nil,
 		},
@@ -533,6 +548,11 @@ func (s *ChainScore) Ex_addMember(address module.Address) error {
 	}
 	as := s.cc.GetAccountState(state.SystemID)
 	db := scoredb.NewArrayDB(as, state.VarMembers)
+	for i := 0; i < db.Size(); i++ {
+		if db.Get(i).Address().Equal(address) == true {
+			return nil
+		}
+	}
 	return db.Put(address)
 }
 
@@ -553,7 +573,7 @@ func (s *ChainScore) Ex_removeMember(address module.Address) error {
 	for i := 0; i < db.Size(); i++ {
 		if db.Get(i).Address().Equal(address) == true {
 			rAddr := db.Pop().Address()
-			if i < db.Size()-1 { // addr is not rAddr
+			if i < db.Size() { // addr is not rAddr
 				if err := db.Set(i, rAddr); err != nil {
 					return err
 				}
@@ -570,6 +590,11 @@ func (s *ChainScore) Ex_addDeployer(address module.Address) error {
 	}
 	as := s.cc.GetAccountState(state.SystemID)
 	db := scoredb.NewArrayDB(as, state.VarDeployer)
+	for i := 0; i < db.Size(); i++ {
+		if db.Get(i).Address().Equal(address) == true {
+			return nil
+		}
+	}
 	return db.Put(address)
 }
 
@@ -582,8 +607,42 @@ func (s *ChainScore) Ex_removeDeployer(address module.Address) error {
 	for i := 0; i < db.Size(); i++ {
 		if db.Get(i).Address().Equal(address) == true {
 			rAddr := db.Pop().Address()
-			if i < db.Size()-1 { // addr is not rAddr
+			if i < db.Size() { // addr is not rAddr
 				if err := db.Set(i, rAddr); err != nil {
+					return err
+				}
+				break
+			}
+		}
+	}
+	return nil
+}
+
+func (s *ChainScore) Ex_addLicense(contentId string) error {
+	if s.from.Equal(s.cc.Governance()) == false {
+		return errors.New("No permission to call this method.")
+	}
+	as := s.cc.GetAccountState(state.SystemID)
+	db := scoredb.NewArrayDB(as, state.VarLicense)
+	for i := 0; i < db.Size(); i++ {
+		if strings.Compare(db.Get(i).String(), contentId) == 0 {
+			return nil
+		}
+	}
+	return db.Put(contentId)
+}
+
+func (s *ChainScore) Ex_removeLicense(contentId string) error {
+	if s.from.Equal(s.cc.Governance()) == false {
+		return errors.New("No permission to call this method.")
+	}
+	as := s.cc.GetAccountState(state.SystemID)
+	db := scoredb.NewArrayDB(as, state.VarLicense)
+	for i := 0; i < db.Size(); i++ {
+		if strings.Compare(db.Get(i).String(), contentId) == 0 {
+			id := db.Pop().String()
+			if i < db.Size() { // id is not contentId
+				if err := db.Set(i, id); err != nil {
 					return err
 				}
 				break
