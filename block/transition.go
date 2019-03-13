@@ -168,7 +168,7 @@ func (ti *transitionImpl) _addChild(
 		_nRef:        1,
 	}
 	tr := &transition{cti, cb}
-	cti._cbs = append(ti._cbs, &transition{ti, cb})
+	cti._cbs = append(cti._cbs, tr)
 	var err error
 	cti._canceler, err = mtr.Execute(cti)
 	if err != nil {
