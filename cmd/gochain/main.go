@@ -119,29 +119,34 @@ func main() {
 		if priK, err = crypto.ParsePrivateKey(cfg.Key); err != nil {
 			log.Panicf("Illegal key data=[%x]", cfg.Key)
 		}
+		cfg.Key = nil
+	}
+
+	if len(cfg.KeyStoreData) > 0 {
+		var err error
+		if len(keyStorePass) == 0 {
+			log.Panicf("There is no password information for the KeyStore")
+		}
+		priK, err = wallet.DecryptKeyStore(cfg.KeyStoreData, keyStorePass)
+		if err != nil {
+			log.Panicf("Fail to decrypt KeyStore err=%+v", err)
+		}
 	} else {
-		if len(cfg.KeyStoreData) == 0 {
+		// make sure that cfg.KeyStoreData always has valid value to let them
+		// be stored with -save_key_store option even though the key is
+		// provided by cfg.Key value.
+		if priK == nil {
 			priK, _ = crypto.GenerateKeyPair()
+		}
+		if len(keyStorePass) == 0 {
+			cfg.KeyStorePass = DefaultKeyStorePass
+			keyStorePass = []byte(cfg.KeyStorePass)
+		}
 
-			if len(keyStorePass) == 0 {
-				cfg.KeyStorePass = DefaultKeyStorePass
-				keyStorePass = []byte(cfg.KeyStorePass)
-			}
-
-			if ks, err := wallet.EncryptKeyAsKeyStore(priK, keyStorePass); err != nil {
-				log.Panicf("Fail to encrypt private key err=%+v", err)
-			} else {
-				cfg.KeyStoreData = ks
-			}
+		if ks, err := wallet.EncryptKeyAsKeyStore(priK, keyStorePass); err != nil {
+			log.Panicf("Fail to encrypt private key err=%+v", err)
 		} else {
-			var err error
-			if len(keyStorePass) == 0 {
-				log.Panicf("There is no password information for the KeyStore")
-			}
-			priK, err = wallet.DecryptKeyStore(cfg.KeyStoreData, keyStorePass)
-			if err != nil {
-				log.Panicf("Fail to decrypt KeyStore err=%+v", err)
-			}
+			cfg.KeyStoreData = ks
 		}
 	}
 	wallet, _ := wallet.NewFromPrivateKey(priK)
