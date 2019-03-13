@@ -98,18 +98,21 @@ func (m *manager) removeNode(bn *bnode) {
 	}
 	bn.in.dispose()
 	bn.preexe.dispose()
+	bn.parent = nil
 	delete(m.nmap, string(bn.block.ID()))
 }
 
 func (m *manager) removeNodeExcept(bn *bnode, except *bnode) {
 	for _, c := range bn.children {
-		if c != except {
-			m.removeNode(c)
+		if c == except {
 			c.parent = nil
+		} else {
+			m.removeNode(c)
 		}
 	}
 	bn.in.dispose()
 	bn.preexe.dispose()
+	bn.parent = nil
 	delete(m.nmap, string(bn.block.ID()))
 }
 
