@@ -168,10 +168,12 @@ func main() {
 					"balance": "0x0",
 				},
 			},
-			"message": "gochain generated genesis",
-			"validatorlist": []string{
-				wallet.Address().String(),
+			"chain": map[string]interface{}{
+				"validatorList": []string{
+					wallet.Address().String(),
+				},
 			},
+			"message": "gochain generated genesis",
 		}
 		cfg.Genesis, _ = json.Marshal(genesis)
 	}

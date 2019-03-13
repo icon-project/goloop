@@ -36,12 +36,11 @@ type accountInfo struct {
 }
 
 type genesisV3JSON struct {
-	Accounts      []accountInfo     `json:"accounts"`
-	Message       string            `json:"message"`
-	Validatorlist []*common.Address `json:"validatorlist"`
-	Chain         json.RawMessage   `json:"chain"`
-	raw           []byte
-	txHash        []byte
+	Accounts []accountInfo   `json:"accounts"`
+	Message  string          `json:"message"`
+	Chain    json.RawMessage `json:"chain"`
+	raw      []byte
+	txHash   []byte
 }
 
 func serialize(o map[string]interface{}) []byte {
@@ -182,14 +181,6 @@ func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
 		ac.SetBalance(&info.Balance.Int)
 	}
 
-	validators := make([]module.Validator, len(g.Validatorlist))
-	for i, validator := range g.Validatorlist {
-		validators[i], _ = state.ValidatorFromAddress(validator)
-	}
-	if err := ctx.SetValidators(validators); err != nil {
-		log.Printf("Failed to set validator. err = %s\n", err)
-		return nil, err
-	}
 	if err := g.deployPreInstall(ctx, r); err != nil {
 		log.Printf("Failed to pre-install score : err = %s", err)
 		return nil, err
@@ -203,8 +194,7 @@ const (
 	contentIdCid  = "cid:"
 )
 
-func (g *genesisV3) deployPreInstall(ctx contract.Context, receipt txresult.Receipt) error {
-	// first install chainScore.
+func (g *genesisV3) deployChainScore(ctx contract.Context, receipt txresult.Receipt) error {
 	sas := ctx.GetAccountState(state.SystemID)
 	sas.InitContractAccount(nil)
 	sas.DeployContract(nil, "system", state.CTAppSystem,
@@ -223,8 +213,14 @@ func (g *genesisV3) deployPreInstall(ctx contract.Context, receipt txresult.Rece
 		return err
 	}
 	sas.SetAPIInfo(chainScore.GetAPI())
-	chainScore.Install(g.Chain)
+	if err := chainScore.Install(g.Chain); err != nil {
+		return err
+	}
+	return nil
+}
 
+func (g *genesisV3) deployPreInstall(ctx contract.Context, receipt txresult.Receipt) error {
+	g.deployChainScore(ctx, receipt)
 	for _, a := range g.Accounts {
 		if a.Score == nil {
 			continue

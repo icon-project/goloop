@@ -248,29 +248,31 @@ type chain struct {
 		StepLimit *json.RawMessage `json:"stepLimit"`
 		StepCosts *json.RawMessage `json:"stepCosts"`
 	} `json:"fee"`
+	ValidatorList []*common.Address `json:"validatorList"`
 }
 
 func (s *ChainScore) Install(param []byte) error {
-	chainCfg := chain{}
+	chain := chain{}
 	if param != nil {
-		if err := json.Unmarshal(param, &chainCfg); err != nil {
-			log.Panicf("Failed to parse parameter for chainScore. err = %s", err)
+		if err := json.Unmarshal(param, &chain); err != nil {
+			log.Printf("Failed to parse parameter for chainScore. err = %s", err)
+			return err
 		}
 	}
 	confValue := 0
-	if chainCfg.AuditEnabled == true {
+	if chain.AuditEnabled == true {
 		confValue |= state.SysConfigAudit
 	}
-	if chainCfg.DeployerWhiteListEnabled == true {
+	if chain.DeployerWhiteListEnabled == true {
 		confValue |= state.SysConfigDeployerWhiteList
 	}
 	as := s.cc.GetAccountState(state.SystemID)
-	if err := scoredb.NewVarDB(as, state.VarSysConfig).Set(confValue); err != nil {
+	if err := scoredb.NewVarDB(as, state.VarServiceConfig).Set(confValue); err != nil {
 		log.Printf("Failed to set system config. err = %s", err)
 		return err
 	}
 
-	price := chainCfg.Fee
+	price := chain.Fee
 	if err := scoredb.NewVarDB(as, state.VarStepPrice).Set(&price.StepPrice.Int); err != nil {
 		log.Printf("Failed to set stepPrice. err = %s", err)
 		return err
@@ -355,6 +357,14 @@ func (s *ChainScore) Install(param []byte) error {
 				return err
 			}
 		}
+	}
+	validators := make([]module.Validator, len(chain.ValidatorList))
+	for i, validator := range chain.ValidatorList {
+		validators[i], _ = state.ValidatorFromAddress(validator)
+	}
+	if err := s.cc.SetValidators(validators); err != nil {
+		log.Printf("Failed to set validator. err = %s\n", err)
+		return err
 	}
 	return nil
 }
@@ -589,7 +599,7 @@ func (s *ChainScore) Ex_addDeployer(address module.Address) error {
 		return errors.New("No permission to call this method.")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
-	db := scoredb.NewArrayDB(as, state.VarDeployer)
+	db := scoredb.NewArrayDB(as, state.VarDeployers)
 	for i := 0; i < db.Size(); i++ {
 		if db.Get(i).Address().Equal(address) == true {
 			return nil
@@ -603,7 +613,7 @@ func (s *ChainScore) Ex_removeDeployer(address module.Address) error {
 		return errors.New("No permission to call this method.")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
-	db := scoredb.NewArrayDB(as, state.VarDeployer)
+	db := scoredb.NewArrayDB(as, state.VarDeployers)
 	for i := 0; i < db.Size(); i++ {
 		if db.Get(i).Address().Equal(address) == true {
 			rAddr := db.Pop().Address()
@@ -623,7 +633,7 @@ func (s *ChainScore) Ex_addLicense(contentId string) error {
 		return errors.New("No permission to call this method.")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
-	db := scoredb.NewArrayDB(as, state.VarLicense)
+	db := scoredb.NewArrayDB(as, state.VarLicenses)
 	for i := 0; i < db.Size(); i++ {
 		if strings.Compare(db.Get(i).String(), contentId) == 0 {
 			return nil
@@ -637,7 +647,7 @@ func (s *ChainScore) Ex_removeLicense(contentId string) error {
 		return errors.New("No permission to call this method.")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
-	db := scoredb.NewArrayDB(as, state.VarLicense)
+	db := scoredb.NewArrayDB(as, state.VarLicenses)
 	for i := 0; i < db.Size(); i++ {
 		if strings.Compare(db.Get(i).String(), contentId) == 0 {
 			id := db.Pop().String()
@@ -769,7 +779,7 @@ func (s *ChainScore) Ex_getScoreStatus(address module.Address) (string, error) {
 
 func (s *ChainScore) Ex_isDeployer(address module.Address) (int, error) {
 	as := s.cc.GetAccountState(state.SystemID)
-	db := scoredb.NewArrayDB(as, state.VarDeployer)
+	db := scoredb.NewArrayDB(as, state.VarDeployers)
 	for i := 0; i < db.Size(); i++ {
 		if db.Get(i).Address().Equal(address) == true {
 			return 1, nil
@@ -780,12 +790,16 @@ func (s *ChainScore) Ex_isDeployer(address module.Address) (int, error) {
 
 func (s *ChainScore) Ex_getServiceConfig() (int64, error) {
 	as := s.cc.GetAccountState(state.SystemID)
-	return scoredb.NewVarDB(as, state.VarSysConfig).Int64(), nil
+	return scoredb.NewVarDB(as, state.VarServiceConfig).Int64(), nil
 }
 
 // Internal call
-func (s *ChainScore) SetServiceConfig(config int64) error {
-	// TODO If membership system get enabled from disabled, it should ensure all validators should be members.
+func (s *ChainScore) GetMembers() []module.Address {
 	as := s.cc.GetAccountState(state.SystemID)
-	return scoredb.NewVarDB(as, state.VarSysConfig).Set(config)
+	db := scoredb.NewArrayDB(as, state.VarMembers)
+	members := make([]module.Address, db.Size())
+	for i := 0; i < db.Size(); i++ {
+		members[i] = db.Get(i).Address()
+	}
+	return members
 }

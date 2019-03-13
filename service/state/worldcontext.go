@@ -19,11 +19,11 @@ const (
 
 	VarStepLimitTypes = "step_limit_types"
 	VarStepLimit      = "step_limit"
-	VarSysConfig      = "system_config"
-	VarRevision       = "system_revision"
+	VarServiceConfig  = "serviceConfig"
+	VarRevision       = "revision"
 	VarMembers        = "members"
-	VarDeployer       = "system_deployer"
-	VarLicense        = "license"
+	VarDeployers      = "deployers"
+	VarLicenses       = "licenses"
 )
 
 const (
@@ -217,8 +217,8 @@ func (c *worldContext) updateSystemInfo() {
 			}
 			c.systemInfo.stepLimit = stepLimit
 
-			c.systemInfo.sysConfig = scoredb.NewVarDB(as, VarSysConfig).Int64()
-			db := scoredb.NewArrayDB(as, VarDeployer)
+			c.systemInfo.sysConfig = scoredb.NewVarDB(as, VarServiceConfig).Int64()
+			db := scoredb.NewArrayDB(as, VarDeployers)
 			if db.Size() > 0 {
 				c.systemInfo.deployer = make(map[string]bool)
 				for i := 0; i < db.Size(); i++ {
