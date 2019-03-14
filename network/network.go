@@ -1,7 +1,6 @@
 package network
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"log"
@@ -112,6 +111,7 @@ func (m *manager) unicast(pi protocolInfo, spi protocolInfo, bytes []byte, id mo
 	pkt := NewPacket(pi, spi, bytes)
 	pkt.protocol = pi
 	pkt.dest = p2pDestPeer
+	pkt.ttl = 1
 	pkt.destPeer = id
 	pkt.priority = m.priority[pi]
 	pkt.src = m.PeerID()
@@ -126,6 +126,7 @@ func (m *manager) multicast(pi protocolInfo, spi protocolInfo, bytes []byte, rol
 	}
 	pkt := NewPacket(pi, spi, bytes)
 	pkt.dest = m.destByRole[role]
+	pkt.ttl = 0
 	pkt.priority = m.priority[pi]
 	return m.p2p.send(pkt)
 }
@@ -253,26 +254,17 @@ func (l *logger) Printf(format string, v ...interface{}) {
 
 type protocolInfo uint16
 
-func NewProtocolInfo(id byte, version byte) module.ProtocolInfo {
-	return newProtocolInfo(id, version)
-}
-func NewProtocolInfoFrom(pi module.ProtocolInfo) module.ProtocolInfo {
-	return NewProtocolInfo(pi.ID(), pi.Version())
+func NewProtocolInfo(v uint16) module.ProtocolInfo {
+	return protocolInfo(v)
 }
 func newProtocolInfo(id byte, version byte) protocolInfo {
 	return protocolInfo(int(id)<<8 | int(version))
-}
-func newProtocolInfoFrom(b []byte) protocolInfo {
-	return protocolInfo(binary.BigEndian.Uint16(b[:2]))
 }
 func (pi protocolInfo) ID() byte {
 	return byte(pi >> 8)
 }
 func (pi protocolInfo) Version() byte {
 	return byte(pi)
-}
-func (pi protocolInfo) Copy(b []byte) {
-	binary.BigEndian.PutUint16(b[:2], uint16(pi))
 }
 func (pi protocolInfo) String() string {
 	return fmt.Sprintf("{%#04x}", pi.Uint16())

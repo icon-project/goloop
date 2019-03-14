@@ -1,6 +1,7 @@
 package network
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -13,7 +14,10 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/rpc/metric"
 )
+
+const isLoggingPacket = false
 
 type Peer struct {
 	id         module.PeerID
@@ -43,7 +47,7 @@ type Peer struct {
 	role      PeerRoleFlag
 	roleMtx   sync.RWMutex
 	children  []NetAddress
-	nephews    int
+	nephews   int
 	//
 }
 
@@ -332,7 +336,10 @@ func (p *Peer) receiveRoutine() {
 
 		pkt.sender = p.id
 		p.pool.Put(pkt.hashOfPacket)
-		//log.Println(p.id, "Peer", "receiveRoutine",p.connType, p.ConnString(), pkt)
+		metric.RecordOnRecv(p.channel, pkt.dest, pkt.ttl, pkt.extendInfo.hint(), pkt.protocol.Uint16(), pkt.lengthOfPayload)
+		if isLoggingPacket {
+			log.Println(p.id, "Peer", "receiveRoutine",p.connType, p.ConnString(), pkt)
+		}
 		if cbFunc := p.onPacket; cbFunc != nil {
 			cbFunc(pkt, p)
 		} else {
@@ -383,8 +390,11 @@ Loop:
 					}
 					p.onError(err, p, pkt)
 				}
-				//log.Println(p.id, "Peer", "sendRoutine",p.connType, p.ConnString(), pkt)
+				if isLoggingPacket {
+					log.Println(p.id, "Peer", "sendRoutine", p.connType, p.ConnString(), pkt)
+				}
 				p.pool.Put(pkt.hashOfPacket)
+				metric.RecordOnSend(p.channel, pkt.dest, pkt.ttl, pkt.extendInfo.hint(), pkt.protocol.Uint16(), pkt.lengthOfPayload)
 			}
 		case <-secondTick.C:
 			p.pool.RemoveBefore(DefaultPeerPoolExpireSecond)
@@ -417,6 +427,7 @@ func (p *Peer) send(ctx context.Context) error {
 	c := ctx.Value(p2pContextKeyCounter).(*Counter)
 	c.peer++
 	pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
+	//TODO dequeue 전에 peer.send가 호출되면 duplication chech가 되지 않음.
 	if p.isDuplicatedToSend(pkt) {
 		c.duplicate++
 		return ErrDuplicatedPacket
@@ -466,12 +477,12 @@ func NewPeerIDFromString(s string) module.PeerID {
 	return &peerID{a}
 }
 
-func (pi *peerID) Copy(b []byte) {
-	copy(b[:peerIDSize], pi.ID())
+func (pi *peerID) Bytes() []byte{
+	return pi.Address.ID()
 }
 
-func (pi *peerID) Equal(a module.Address) bool {
-	return a.Equal(pi.Address)
+func (pi *peerID) Equal(a module.PeerID) bool {
+	return bytes.Equal(pi.Bytes(), a.Bytes())
 }
 
 func (pi *peerID) String() string {

@@ -12,6 +12,7 @@ import (
 
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
+	"github.com/icon-project/goloop/rpc/metric"
 	"github.com/icon-project/goloop/rpc/v2"
 	"github.com/icon-project/goloop/rpc/v3"
 
@@ -71,9 +72,8 @@ func (s *JsonRpcServer) jsonRpcHandler() http.Handler {
 		router.PathPrefix("/view/network/").Handler(http.StripPrefix("/view/network/", &staticHandler{dir: "./html"}))
 	}
 
-	// status
 	router.Handle("/status", statusMethodRepository(s.cs))
-	router.Handle("/metrics", promethusExporter(s.cs))
+	router.Handle("/metrics", metric.PromethusExporter())
 	// jaegerExporter()
 
 	return router

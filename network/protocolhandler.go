@@ -104,7 +104,7 @@ func (ph *protocolHandler) failureRoutine() {
 			}
 			err := ctx.Value(p2pContextKeyError).(error)
 			pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
-			//c := ctx.Value(p2pContextKeyCounter).(*Counter)
+			c := ctx.Value(p2pContextKeyCounter).(*Counter)
 
 			k := pkt.subProtocol
 			if pi, ok := ph.subProtocols[k]; ok {
@@ -125,7 +125,7 @@ func (ph *protocolHandler) failureRoutine() {
 					ph.reactor.OnFailure(netErr, pi, pkt.payload)
 				} else {
 					//TODO retry relay
-					ph.log.Println("Warning", "receiveRoutine", "relay", err)
+					ph.log.Println("Warning", "receiveRoutine", "relay", err, c)
 					//netErr = newNetworkError(err, "relay", pkt)
 					//ph.reactor.OnFailure(netErr, pi, pkt.payload)
 				}

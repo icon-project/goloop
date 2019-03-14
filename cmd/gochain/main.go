@@ -19,6 +19,7 @@ import (
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/network"
+	"github.com/icon-project/goloop/rpc/metric"
 	"github.com/icon-project/goloop/service/eeproxy"
 )
 
@@ -293,6 +294,7 @@ func main() {
 	log.Printf("Version : %s", version)
 	log.Printf("Build   : %s", build)
 
+	metric.Initialize(wallet)
 	nt := network.NewTransport(cfg.P2PAddr, wallet)
 	if cfg.P2PListenAddr != "" {
 		_ = nt.SetListenAddress(cfg.P2PListenAddr)

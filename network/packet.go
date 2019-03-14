@@ -17,22 +17,26 @@ import (
 
 const (
 	packetHeaderSize = 10 + peerIDSize
-	packetFooterSize = 8
+	packetFooterSize = 10
 )
 
 //srcPeerId, castType, destInfo, TTL(0:unlimited)
 type Packet struct {
+	//header
 	protocol        protocolInfo  //2byte
 	subProtocol     protocolInfo  //2byte
 	src             module.PeerID //20byte
-	dest            byte
-	ttl             byte
-	lengthOfpayload uint32 //4byte
-	hashOfPacket    uint64 //8byte
-	//
+	dest byte
+	ttl byte
+	lengthOfPayload uint32 //4byte
+	//footer
+	hashOfPacket uint64 //8byte
+	extendInfo   packetExtendInfo
+	//bytes
 	header  []byte
 	payload []byte
 	footer  []byte
+	ext     []byte
 	//Transient fields
 	sender    module.PeerID //20byte
 	destPeer  module.PeerID //20byte
@@ -41,17 +45,60 @@ type Packet struct {
 	forceSend bool
 }
 
+type packetDestInfo uint16
+
 const (
 	p2pDestAny       = 0x00
 	p2pDestPeerGroup = 0x08
 	p2pDestPeer      = 0xFF
 )
+func newPacketDestInfo(dest byte, ttl byte) packetDestInfo {
+	return packetDestInfo(int(dest)<<8 | int(ttl))
+}
+func newPacketDestInfoFrom(b []byte) packetDestInfo {
+	return packetDestInfo(binary.BigEndian.Uint16(b[:2]))
+}
+func (i packetDestInfo) dest() byte {
+	return byte(i >> 8)
+}
+func (i packetDestInfo) ttl() byte {
+	return byte(i >> 8)
+}
+func (i packetDestInfo) String() string {
+	return fmt.Sprintf("{%#04x}", uint16(i))
+}
 
+type packetExtendInfo uint16
+
+const (
+	packetExtendMaxHint = 0x3F   // (1<<6)-1
+	packetExtendMaxLen  = 0x03FF // (1<<10)-1
+)
+
+func newPacketExtendInfo(hint byte, len int) packetExtendInfo {
+	return packetExtendInfo(int(hint)<<10 | int(len&packetExtendMaxLen))
+}
+func newPacketExtendInfoFrom(b []byte) packetExtendInfo {
+	return packetExtendInfo(binary.BigEndian.Uint16(b[:2]))
+}
+func (i packetExtendInfo) len() int {
+	l := i & packetExtendMaxLen
+	return int(l)
+}
+func (i packetExtendInfo) hint() byte {
+	h := i >> 10 & packetExtendMaxHint
+	return byte(h)
+}
+func (i packetExtendInfo) String() string {
+	return fmt.Sprintf("{hint:%d,len:%d}", i.hint(), i.len())
+}
+
+//TODO check DefaultPacketPayloadMax
 func NewPacket(pi protocolInfo, spi protocolInfo, payload []byte) *Packet {
 	return &Packet{
 		protocol:        pi,
 		subProtocol:     spi,
-		lengthOfpayload: uint32(len(payload)),
+		lengthOfPayload: uint32(len(payload)),
 		payload:         payload[:],
 		timestamp:       time.Now(),
 	}
@@ -60,25 +107,37 @@ func NewPacket(pi protocolInfo, spi protocolInfo, payload []byte) *Packet {
 func newPacket(spi protocolInfo, payload []byte, src module.PeerID) *Packet {
 	pkt := NewPacket(PROTO_CONTOL, spi, payload)
 	pkt.dest = p2pDestPeer
+	pkt.ttl = 1
 	pkt.src = src
 	pkt.forceSend = true
 	return pkt
 }
 
 func (p *Packet) String() string {
-	return fmt.Sprintf("{pi:%#04x,subPi:%#04x,src:%v,dest:%#x,ttl:%d,len:%v,hash:%#x,sender:%v}",
+	return fmt.Sprintf("{pi:%#04x,subPi:%#04x,src:%v,dest:%#x,ttl:%d,len:%v,footer:%#x,ext:%v,sender:%v}",
 		p.protocol.Uint16(),
 		p.subProtocol.Uint16(),
 		p.src,
 		p.dest,
 		p.ttl,
-		p.lengthOfpayload,
+		p.lengthOfPayload,
 		p.hashOfPacket,
+		p.extendInfo,
 		p.sender)
 }
 
+func (p *Packet) Len() int64 {
+	return int64(len(p.header)) + int64(len(p.payload)) + int64(len(p.footer)) + int64(len(p.ext))
+}
+
 func (p *Packet) _read(r io.Reader, n int) ([]byte, int, error) {
+	if n < 0 {
+		return nil, 0, fmt.Errorf("invalid n:%d", n)
+	}
 	b := make([]byte, n)
+	if n == 0 {
+		return b, 0, nil
+	}
 	rn := 0
 	for {
 		tn, err := r.Read(b[rn:])
@@ -102,13 +161,19 @@ func (p *Packet) WriteTo(w io.Writer) (n int64, err error) {
 	if n += int64(tn); err != nil {
 		return
 	}
-	tn, err = w.Write(p.payload[:p.lengthOfpayload])
+	tn, err = w.Write(p.payload[:p.lengthOfPayload])
 	if n += int64(tn); err != nil {
 		return
 	}
 	tn, err = w.Write(p.footerToBytes(false))
 	if n += int64(tn); err != nil {
 		return
+	}
+	if p.extendInfo.len() > 0 {
+		tn, err = w.Write(p.ext[:p.extendInfo.len()])
+		if n += int64(tn); err != nil {
+			return
+		}
 	}
 	return
 }
@@ -129,7 +194,7 @@ func (p *Packet) _hash(force bool) (hash.Hash64, error) {
 	if _, err := h.Write(p.headerToBytes(force)); err != nil {
 		return nil, err
 	}
-	if _, err := h.Write(p.payload[:p.lengthOfpayload]); err != nil {
+	if _, err := h.Write(p.payload[:p.lengthOfPayload]); err != nil {
 		return nil, err
 	}
 	return h, nil
@@ -139,17 +204,17 @@ func (p *Packet) headerToBytes(force bool) []byte {
 	if p.header == nil || force {
 		p.header = make([]byte, packetHeaderSize)
 		tb := p.header[:]
-		p.protocol.Copy(tb[:2])
+		binary.BigEndian.PutUint16(tb[:2], p.protocol.Uint16())
 		tb = tb[2:]
-		p.subProtocol.Copy(tb[:2])
+		binary.BigEndian.PutUint16(tb[:2], p.subProtocol.Uint16())
 		tb = tb[2:]
-		p.src.Copy(tb[:peerIDSize])
+		copy(tb[:peerIDSize], p.src.Bytes())
 		tb = tb[peerIDSize:]
 		tb[0] = p.dest
 		tb = tb[1:]
 		tb[0] = p.ttl
 		tb = tb[1:]
-		binary.BigEndian.PutUint32(tb[:4], p.lengthOfpayload)
+		binary.BigEndian.PutUint32(tb[:4], p.lengthOfPayload)
 		tb = tb[4:]
 	}
 	return p.header[:]
@@ -161,6 +226,8 @@ func (p *Packet) footerToBytes(force bool) []byte {
 		tb := p.footer[:]
 		binary.BigEndian.PutUint64(tb[:8], p.hashOfPacket)
 		tb = tb[8:]
+		binary.BigEndian.PutUint16(tb[:2], uint16(p.extendInfo))
+		tb = tb[2:]
 	}
 	return p.footer[:]
 }
@@ -176,7 +243,7 @@ func (p *Packet) ReadFrom(r io.Reader) (n int64, err error) {
 		return
 	}
 
-	p.payload, tn, err = p._read(r, int(p.lengthOfpayload))
+	p.payload, tn, err = p._read(r, int(p.lengthOfPayload))
 	if n += int64(tn); err != nil {
 		return
 	}
@@ -189,12 +256,19 @@ func (p *Packet) ReadFrom(r io.Reader) (n int64, err error) {
 		return
 	}
 
+	if p.extendInfo.len() > 0 {
+		p.ext, tn, err = p._read(r, int(p.extendInfo.len()))
+		if n += int64(tn); err != nil {
+			return
+		}
+	}
+
 	h, err := p._hash(false)
 	if err != nil {
 		return
 	}
 	if h.Sum64() != p.hashOfPacket {
-		err = fmt.Errorf("invalid hashOfPacket")
+		err = fmt.Errorf("invalid hashOfPacket %v expected:%#x", p, h.Sum64())
 		return
 	}
 	return
@@ -207,9 +281,9 @@ func (p *Packet) setHeader(b []byte) ([]byte, error) {
 	}
 	p.header = b[:packetHeaderSize]
 	tb := p.header[:]
-	p.protocol = newProtocolInfoFrom(tb[:2])
+	p.protocol = protocolInfo(binary.BigEndian.Uint16(tb[:2]))
 	tb = tb[2:]
-	p.subProtocol = newProtocolInfoFrom(tb[:2])
+	p.subProtocol = protocolInfo(binary.BigEndian.Uint16(tb[:2]))
 	tb = tb[2:]
 	p.src = NewPeerID(tb[:peerIDSize])
 	tb = tb[peerIDSize:]
@@ -217,10 +291,10 @@ func (p *Packet) setHeader(b []byte) ([]byte, error) {
 	tb = tb[1:]
 	p.ttl = tb[0]
 	tb = tb[1:]
-	p.lengthOfpayload = binary.BigEndian.Uint32(tb[:4])
+	p.lengthOfPayload = binary.BigEndian.Uint32(tb[:4])
 	tb = tb[4:]
-	if p.lengthOfpayload > DefaultPacketPayloadMax {
-		return b[packetHeaderSize:], fmt.Errorf("invalid lengthOfpayload")
+	if p.lengthOfPayload > DefaultPacketPayloadMax {
+		return b[packetHeaderSize:], fmt.Errorf("invalid lengthOfPayload")
 	}
 	return b[packetHeaderSize:], nil
 }
@@ -234,6 +308,8 @@ func (p *Packet) setFooter(b []byte) ([]byte, error) {
 	tb := p.footer[:]
 	p.hashOfPacket = binary.BigEndian.Uint64(tb[:8])
 	tb = tb[8:]
+	p.extendInfo = newPacketExtendInfoFrom(tb[:2])
+	tb = tb[2:]
 	return b[packetFooterSize:], nil
 }
 
@@ -367,7 +443,7 @@ func (prw *PacketReadWriter) ReadPacket() (*Packet, error) {
 	defer prw.mtx.RUnlock()
 	prw.mtx.RLock()
 	if prw.rpkt == nil {
-		//(pkt *Packet, h hash.Hash64, e error)
+		//(pkt *Packet, h footer.Hash64, e error)
 		pkt, err := prw.rd.ReadPacket()
 		if err != nil {
 			return nil, err

@@ -40,15 +40,16 @@ const (
 )
 
 type PeerID interface {
-	Address
-	Copy(b []byte)
+	Bytes() []byte
+	Equal(PeerID) bool
+	String() string
 }
 
+//TODO remove interface and using uint16
 type ProtocolInfo interface {
 	ID() byte
 	Version() byte
 	String() string
-	Copy(b []byte)
 	Uint16() uint16
 }
 
@@ -62,6 +63,7 @@ type NetworkTransport interface {
 	GetListenAddress() string
 }
 
+//TODO remove interface and implement network.IsTemporaryError(error) bool
 type NetworkError interface {
 	error
 	Temporary() bool // Is the error temporary?

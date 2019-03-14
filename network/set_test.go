@@ -54,7 +54,24 @@ func Test_set_PeerSet(t *testing.T) {
 	assert.False(t, s.HasNetAddresse(v3.netAddress), "false")
 	t.Log(s.NetAddresses())
 
-	t.Log(s.Array())
+
+	s.Remove(v2_2)
+	s.Add(v3)
+	l := s.Len()
+	arr := s.Array()
+	for i:=0;i<l;i++{
+		v := arr[i]
+		t.Log(i,v.id,v.netAddress)
+	}
+
+	for i:=0;i<100;i++ {
+		tarr := s.Array()
+		for ti := 0;ti<l;ti++{
+			if arr[ti].netAddress != tarr[ti].netAddress{
+				t.Log(i,ti,"Not equal",tarr[ti].netAddress, arr[ti].netAddress)
+			}
+		}
+	}
 }
 
 func Test_set_NetAddressSet(t *testing.T) {
@@ -105,7 +122,7 @@ func Test_set_PeerIDSet(t *testing.T) {
 
 	v1 := generatePeerID()
 	v2 := generatePeerID()
-	v2_1 := NewPeerIDFromAddress(v2)
+	v2_1 := NewPeerID(v2.Bytes())
 	v3 := generatePeerID()
 
 	assert.True(t, s.IsEmpty(), "true")
@@ -154,10 +171,7 @@ type dummyPeerID struct {
 func newDummyPeerID(s string) module.PeerID         { return &dummyPeerID{s: s, b: []byte(s)} }
 func (pi *dummyPeerID) String() string              { return pi.s }
 func (pi *dummyPeerID) Bytes() []byte               { return pi.b }
-func (pi *dummyPeerID) ID() []byte                  { return pi.b }
-func (pi *dummyPeerID) IsContract() bool            { return false }
-func (pi *dummyPeerID) Equal(a module.Address) bool { return bytes.Equal(pi.b, a.ID()) }
-func (pi *dummyPeerID) Copy(b []byte)               { copy(b, pi.b) }
+func (pi *dummyPeerID) Equal(a module.PeerID) bool { return bytes.Equal(pi.b, a.Bytes()) }
 
 func generateDummyPeer(s string) *Peer {
 	p := &Peer{id: newDummyPeerID(s), netAddress: NetAddress(s)}

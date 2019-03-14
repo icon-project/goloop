@@ -128,7 +128,7 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer) *PeerToPeer {
 	p2p.log.excludes = []string{
 		//"onPeer",
 		//"onClose",
-		//"onEvent",
+		"onEvent",
 		"onPacket",
 		//"onFailure",
 		"sendQuery",
@@ -142,6 +142,8 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer) *PeerToPeer {
 		"discoverUncle",
 		"discoverFriends",
 		//"updatePeerConnectionType",
+		"setRoleByAllowedSet",
+		"selectPeersFromFriends",
 	}
 
 	go p2p.sendRoutine()
@@ -348,7 +350,7 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 			if isOneHop || p2p.packetPool.Put(pkt) {
 				cbFunc(pkt, p)
 			} else {
-				p2p.log.Println("onPacket", "Drop, Duplicated by hash", pkt.protocol, pkt.subProtocol, pkt.hashOfPacket, p.id)
+				p2p.log.Println("onPacket", "Drop, Duplicated by footer", pkt.protocol, pkt.subProtocol, pkt.hashOfPacket, p.id)
 			}
 		}
 	}
@@ -446,7 +448,7 @@ func (p2p *PeerToPeer) setRoleByAllowedSet() PeerRoleFlag {
 	role := PeerRoleFlag(r)
 	p2p.setRole(role)
 	//TODO disconnect invalid peer case p2pRoleRoot, p2pRoleSeed
-	p2p.log.Println("setRoleByAllowedSet", p2p.getRole())
+	p2p.log.Println("setRoleByAllowedSet", p2p.getRole(), p2p.allowedRoots.Len(), p2p.allowedSeeds.Len(),p2p.allowedPeers.Len())
 	return role
 }
 
@@ -598,9 +600,102 @@ func (p2p *PeerToPeer) sendToPeers(ctx context.Context, peers *PeerSet) {
 	}
 }
 
+func (p2p *PeerToPeer) selectPeersFromFriends(pkt *Packet) ([]*Peer, []byte){
+	src := pkt.src
+
+	ps := p2p.friends.Array()
+	nr := p2p.allowedRoots.Len() - 1
+	if nr < 1 {
+		nr = len(ps)
+	}
+	f := nr/3
+	if f < DefaultFailureNodeMin {
+		f = DefaultFailureNodeMin
+	}
+	n := f + DefaultSelectiveFloodingAdd
+	tps := make([]*Peer,n)
+	lps := make([]*Peer,len(ps))
+	ti,li := 0,0
+
+	var ext []byte
+	if DefaultSimplePeerIDSize >= peerIDSize {
+		rids, _ := NewPeerIDSetFromBytes(pkt.ext)
+		tids := NewPeerIDSet()
+		for _, p := range ps {
+			if src.Equal(p.id) {
+				continue
+			}
+			if !rids.Contains(p.id) {
+				tps[ti] = p
+				ti++
+				tids.Add(p.id)
+			} else {
+				lps[li] = p
+				li++
+			}
+
+			if ti >= n {
+				break
+			}
+		}
+		ext = tids.Bytes()
+		p2p.log.Println("selectPeersFromFriends","hash:",pkt.hashOfPacket,"src:",pkt.src,"ext:",pkt.extendInfo,"rids:",rids,"tids:",tids)
+	} else {
+		rids, _ := NewBytesSetFromBytes(pkt.ext, DefaultSimplePeerIDSize)
+		tids := NewBytesSet(DefaultSimplePeerIDSize)
+		for _, p := range ps {
+			if src.Equal(p.id) {
+				continue
+			}
+			tb := p.id.Bytes()[:DefaultSimplePeerIDSize]
+			if !rids.Contains(tb) {
+				tps[ti] = p
+				ti++
+				tids.Add(tb)
+			} else {
+				lps[li] = p
+				li++
+			}
+
+			if ti >= n {
+				break
+			}
+		}
+		ext = tids.Bytes()
+		p2p.log.Println("selectPeersFromFriends","hash:",pkt.hashOfPacket,"src:",pkt.src,"ext:",pkt.extendInfo,"rids:",rids,"tids:",tids)
+	}
+	n = n - ti
+	for i := 0; i < n && i < li ; i++ {
+		tps[ti] = lps[i]
+		ti++
+	}
+	return tps[:ti], ext
+}
+
 func (p2p *PeerToPeer) sendToFriends(ctx context.Context) {
+	if UsingSelectiveFlooding {//selective (F+1) flooding with node-list
+		pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
+		ps, ext := p2p.selectPeersFromFriends(pkt)
+		pkt.extendInfo = newPacketExtendInfo(pkt.extendInfo.hint()+1, pkt.extendInfo.len()+len(ext))
+		if len(pkt.ext) > 0 {
+			ext = append(pkt.ext, ext...)
+		}
+		pkt.footerToBytes(true)
+		pkt.ext = ext[:]
+		for _, p := range ps {
+			//p2p.packetRw.WriteTo(p.writer)
+			if err := p.send(ctx); err != nil && err != ErrDuplicatedPacket {
+				p2p.log.Println("Warning", "sendToFriends", err, pkt.protocol, pkt.subProtocol, p.id)
+			}
+		}
+	} else {
+		pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
+		pkt.extendInfo = newPacketExtendInfo(pkt.extendInfo.hint()+1, 0)
+		pkt.footerToBytes(true)
+		p2p.sendToPeers(ctx, p2p.friends)
+	}
+	//TODO 1-hop broadcast with previous received packet-footer
 	//TODO clustered, using gateway
-	p2p.sendToPeers(ctx, p2p.friends)
 }
 
 func (p2p *PeerToPeer) sendRoutine() {
@@ -614,6 +709,7 @@ func (p2p *PeerToPeer) sendRoutine() {
 			}
 			pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
 			c := ctx.Value(p2pContextKeyCounter).(*Counter)
+			_ = pkt.updateHash(false)
 			p2p.log.Println("sendRoutine", pkt)
 			// p2p.packetRw.WritePacket(pkt)
 			r := p2p.getRole()
@@ -624,7 +720,7 @@ func (p2p *PeerToPeer) sendRoutine() {
 			case p2pDestAny:
 				if pkt.ttl == 1 {
 					if r.Has(p2pRoleRoot) {
-						p2p.sendToFriends(ctx)
+						p2p.sendToPeers(ctx, p2p.friends)
 					}
 					_ = p2p.parent.send(ctx)
 					p2p.sendToPeers(ctx, p2p.uncles)
@@ -663,10 +759,18 @@ func (p2p *PeerToPeer) sendRoutine() {
 				c.fixed = true
 				if c.peer < 1 {
 					p2p.onFailure(ErrNotAvailable, pkt, c)
-				} else if c.enqueue < 1 {
-					p2p.onFailure(ErrQueueOverflow, pkt, c)
-				} else if c.enqueue == c.close {
-					p2p.onFailure(ErrNotAvailable, pkt, c)
+				} else {
+					if c.enqueue < 1 {
+						if c.overflow > 0 {
+							p2p.onFailure(ErrQueueOverflow, pkt, c)
+						} else { //if c.duplicate == c.peer
+							//flooding-end by peer-history
+						}
+					} else {
+						if c.enqueue == c.close {
+							p2p.onFailure(ErrNotAvailable, pkt, c)
+						}
+					}
 				}
 			} else if !p2p.alternateQueue.Push(ctx) && c.enqueue < 1 {
 				c.fixed = true
@@ -724,10 +828,19 @@ func (p2p *PeerToPeer) alternateSendRoutine() {
 				c.fixed = true
 				if c.peer < 1 {
 					p2p.onFailure(ErrNotAvailable, pkt, c)
-				} else if c.enqueue < 1 {
-					p2p.onFailure(ErrQueueOverflow, pkt, c)
-				} else if c.enqueue == c.close {
-					p2p.onFailure(ErrNotAvailable, pkt, c)
+				} else {
+					//TODO alternate onFailure
+					if c.enqueue < 1 {
+						if c.overflow > 0 {
+							p2p.onFailure(ErrQueueOverflow, pkt, c)
+						} else { //if c.duplicate == c.peer
+							//flooding-end by peer-history
+						}
+					} else {
+						if c.enqueue == c.close {
+							p2p.onFailure(ErrNotAvailable, pkt, c)
+						}
+					}
 				}
 			}
 		}
@@ -779,7 +892,7 @@ var (
 type Counter struct {
 	peer      int
 	alternate int
-	fixed     bool
+	fixed     bool //no more change peer and alternate
 	//
 	enqueue   int
 	duplicate int

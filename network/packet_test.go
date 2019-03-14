@@ -38,9 +38,9 @@ func Test_packet_PacketReader(t *testing.T) {
 	binary.BigEndian.PutUint32(hb[packetHeaderSize-4:], uint32(len(payload)))
 	hash := fnv.New64a()
 	_, err = hash.Write(hb)
-	assert.NoError(t, err, "hash.Write(hb) NoError")
+	assert.NoError(t, err, "footer.Write(hb) NoError")
 	_, err = hash.Write(payload)
-	assert.NoError(t, err, "hash.Write(payload) NoError")
+	assert.NoError(t, err, "footer.Write(payload) NoError")
 	binary.BigEndian.PutUint64(fb, hash.Sum64())
 
 	b.Write(hb)
@@ -48,7 +48,7 @@ func Test_packet_PacketReader(t *testing.T) {
 	b.Write(fb)
 	pkt, err := pr.ReadPacket()
 	assert.NoError(t, err, "ReadPacket fail")
-	assert.Equal(t, hash.Sum64(), pkt.hashOfPacket, "ReadPacket Invalid hash")
+	assert.Equal(t, hash.Sum64(), pkt.hashOfPacket, "ReadPacket Invalid footer")
 }
 
 func Test_packet_PacketReadWriter(t *testing.T) {

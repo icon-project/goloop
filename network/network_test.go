@@ -626,7 +626,7 @@ var (
 
 type testQueue struct {
 	Queue
-	ch chan bool
+	ch  chan bool
 	mtx sync.Mutex
 }
 
@@ -639,7 +639,7 @@ func newTestQueue(size int) *testQueue {
 		len:  size + 1,
 		wait: make(map[chan bool]interface{}),
 	}
-	return &testQueue{Queue:q}
+	return &testQueue{Queue: q}
 }
 
 func (q *testQueue) Pop() context.Context {
