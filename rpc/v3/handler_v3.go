@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/icon-project/goloop/service"
 	"github.com/intel-go/fastjson"
 	"github.com/osamingo/jsonrpc"
 	client "github.com/ybbus/jsonrpc"
@@ -17,6 +16,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service"
 )
 
 // ICON TestNet v3
@@ -602,7 +602,7 @@ type getProofForResultHandler struct {
 func (h getProofForResultHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (result interface{}, err *jsonrpc.Error) {
 	var param struct {
 		Hash  string `json:"hash" valid:"t_hash,required"`
-		Index string `json:"hash" valid:"t_int,required"`
+		Index string `json:"index" valid:"t_int,required"`
 	}
 	if rpcErr := jsonrpc.Unmarshal(params, &param); rpcErr != nil {
 		return nil, rpcErr

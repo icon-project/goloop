@@ -44,10 +44,9 @@
   name = "go.etcd.io/bbolt"
   version = "v1.3.1-etcd.8"
 
-# TODO change it to version or revision later before official release
 [[constraint]]
   name = "github.com/syndtr/goleveldb"
-  branch = "master"
+  version = "v1.0.0"
 
 [[constraint]]
   name = "github.com/ugorji/go"
@@ -67,11 +66,15 @@
 
 [[constraint]]
   name = "github.com/gorilla/mux"
-  version = "1.6.2"
+  version = "v1.7.0"
 
 [[constraint]]
   name = "github.com/gorilla/handlers"
-  version = "1.4.0"
+  version = "v1.4.0"
+
+[[constraint]]
+  name = "github.com/gorilla/websocket"
+  version = "v1.4.0"
 
 [[constraint]]
   name = "github.com/osamingo/jsonrpc"
@@ -88,3 +91,11 @@
 [[constraint]]
   name = "go.opencensus.io"
   version = "0.18.0"
+
+[[constraint]]
+  name = "github.com/labstack/echo"
+  version = "v3.3.10"
+
+[[constraint]]
+  name = "gopkg.in/go-playground/validator.v9"
+  version = "v9.27.0"

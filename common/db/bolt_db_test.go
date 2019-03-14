@@ -16,7 +16,7 @@ func TestBoltDB_Database(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	testDB := openDatabase(BoltDBBackend, "test", dir)
+	testDB, _ := openDatabase(BoltDBBackend, "test", dir)
 	defer testDB.Close()
 
 	key := []byte("hello")

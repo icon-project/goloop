@@ -84,7 +84,7 @@ type chunkHandler struct {
 }
 
 func (h *chunkHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	//refer transfer.go 565
+	// refer transfer.go 565
 	if len(r.TransferEncoding) > 0 && r.TransferEncoding[0] == "chunked" {
 		b, err := ioutil.ReadAll(r.Body)
 		if err != nil {

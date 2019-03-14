@@ -66,6 +66,14 @@
   version = "v1.5.4"
 
 [[projects]]
+  digest = "1:76dc72490af7174349349838f2fe118996381b31ea83243812a97e5a0fd5ed55"
+  name = "github.com/dgrijalva/jwt-go"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "06ea1031745cb8b3dab3f6a236daf2b0aa468b7e"
+  version = "v3.2.0"
+
+[[projects]]
   branch = "master"
   digest = "1:8583eab935e3d99d3a7ac489cd2ee7c8e95eecd7c64ab1fc8382746dacaf8563"
   name = "github.com/dgryski/go-farm"
@@ -80,6 +88,25 @@
   pruneopts = "UT"
   revision = "a6af135bd4e28680facf08a3d206b454abc877a4"
   version = "v1.0.1"
+
+[[projects]]
+  digest = "1:e1ff887e232b2d8f4f7c7db15a5fac7be418025afc4dda53c59c765dbb5aa6b4"
+  name = "github.com/go-playground/locales"
+  packages = [
+    ".",
+    "currency",
+  ]
+  pruneopts = "UT"
+  revision = "f63010822830b6fe52288ee52d5a1151088ce039"
+  version = "v0.12.1"
+
+[[projects]]
+  digest = "1:e022cf244bcac1b6ef933f1a2e0adcf6a6dfd7b872d8d41e4d4179bb09a87cbc"
+  name = "github.com/go-playground/universal-translator"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "b32fa301c9fe55953584134cb6853a13c87ec0a1"
+  version = "v0.16.0"
 
 [[projects]]
   digest = "1:bed9d72d596f94e65fff37f4d6c01398074a6bb1c3f3ceff963516bd01db6ff5"
@@ -106,14 +133,6 @@
   revision = "2e65f85255dbc3072edf28d6b5b8efc472979f5a"
 
 [[projects]]
-  digest = "1:c79fb010be38a59d657c48c6ba1d003a8aa651fa56b579d959d74573b7dff8e1"
-  name = "github.com/gorilla/context"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "08b5f424b9271eedf6f9f0ce86cb9396ed337a42"
-  version = "v1.1.1"
-
-[[projects]]
   digest = "1:664d37ea261f0fc73dd17f4a1f5f46d01fbb0b0d75f6375af064824424109b7d"
   name = "github.com/gorilla/handlers"
   packages = ["."]
@@ -122,12 +141,20 @@
   version = "v1.4.0"
 
 [[projects]]
-  digest = "1:e73f5b0152105f18bc131fba127d9949305c8693f8a762588a82a48f61756f5f"
+  digest = "1:ca59b1175189b3f0e9f1793d2c350114be36eaabbe5b9f554b35edee1de50aea"
   name = "github.com/gorilla/mux"
   packages = ["."]
   pruneopts = "UT"
-  revision = "e3702bed27f0d39777b0b37b664b6280e8ef8fbf"
-  version = "v1.6.2"
+  revision = "a7962380ca08b5a188038c69871b8d3fbdf31e89"
+  version = "v1.7.0"
+
+[[projects]]
+  digest = "1:7b5c6e2eeaa9ae5907c391a91c132abfd5c9e8a784a341b5625e750c67e6825d"
+  name = "github.com/gorilla/websocket"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "66b9c49e59c6c48f0ffce28c2d8b8a5678502c6d"
+  version = "v1.4.0"
 
 [[projects]]
   digest = "1:65a3104ed11ab8453591c4d7bdf3bbf9838ead7f61ab25b04966e8b36d969e89"
@@ -146,6 +173,54 @@
   packages = ["."]
   pruneopts = "UT"
   revision = "f846ae58a1ab4a99d9480ce565601aebd84e333a"
+
+[[projects]]
+  digest = "1:efd601ad1d1189884f37ed075fadb5bbd17f1f5acf5862827247c6da56d125ba"
+  name = "github.com/labstack/echo"
+  packages = [
+    ".",
+    "middleware",
+  ]
+  pruneopts = "UT"
+  revision = "38772c686c76b501f94bd6cd5b77f5842e93b559"
+  version = "v3.3.10"
+
+[[projects]]
+  digest = "1:764bce605f1c70823a567ac3205a03e6b7f375ca747d8820fded0b0abddda802"
+  name = "github.com/labstack/gommon"
+  packages = [
+    "bytes",
+    "color",
+    "log",
+    "random",
+  ]
+  pruneopts = "UT"
+  revision = "7fd9f68ece0bcb1a905fac8f1549f0083f71c51b"
+  version = "v0.2.8"
+
+[[projects]]
+  digest = "1:6782ffc812e8e700e6952ede1e60487ff1fd9da489eff762985be662a7cfc431"
+  name = "github.com/leodido/go-urn"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "70078a794e8ea4b497ba7c19a78cd60f90ccf0f4"
+  version = "v1.1.0"
+
+[[projects]]
+  digest = "1:2fa7b0155cd54479a755c629de26f888a918e13f8857a2c442205d825368e084"
+  name = "github.com/mattn/go-colorable"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "3a70a971f94a22f2fa562ffcc7a0eb45f5daf045"
+  version = "v0.1.1"
+
+[[projects]]
+  digest = "1:3bb9c8451d199650bfd303e0068d86f135952fead374ad87c09a9b8a2cc4bd7c"
+  name = "github.com/mattn/go-isatty"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "369ecd8cea9851e459abb67eb171853e3986591e"
+  version = "v0.0.6"
 
 [[projects]]
   digest = "1:ff5ebae34cfbf047d505ee150de27e60570e8c394b3b8fdbb720ff6ac71985fc"
@@ -233,8 +308,7 @@
   version = "v1.2.2"
 
 [[projects]]
-  branch = "master"
-  digest = "1:59483b8e8183f10ab21a85ba1f4cbb4a2335d48891801f79ed7b9499f44d383c"
+  digest = "1:5b180f17d5bc50b765f4dcf0d126c72979531cbbd7f7929bf3edd87fb801ea2d"
   name = "github.com/syndtr/goleveldb"
   packages = [
     "leveldb",
@@ -251,7 +325,8 @@
     "leveldb/util",
   ]
   pruneopts = "UT"
-  revision = "6b91fda63f2e36186f1c9d0e48578defb69c5d43"
+  revision = "9d007e481048296f09f59bd19bb7ae584563cd95"
+  version = "v1.0.0"
 
 [[projects]]
   digest = "1:03aa6e485e528acb119fb32901cf99582c380225fc7d5a02758e08b180cb56c3"
@@ -260,6 +335,22 @@
   pruneopts = "UT"
   revision = "b4c50a2b199d93b13dc15e78929cfb23bfdf21ab"
   version = "v1.1.1"
+
+[[projects]]
+  digest = "1:c468422f334a6b46a19448ad59aaffdfc0a36b08fdcc1c749a0b29b6453d7e59"
+  name = "github.com/valyala/bytebufferpool"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "e746df99fe4a3986f4d4f79e13c1e0117ce9c2f7"
+  version = "v1.0.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:268b8bce0064e8c057d7b913605459f9a26dcab864c0886a56d196540fbf003f"
+  name = "github.com/valyala/fasttemplate"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "dcecefd839c4193db0d35b88ec65b4c12d360ab0"
 
 [[projects]]
   digest = "1:564b31f09a21367ada5b019d8413afe99cf770775606f94c7bef42b2ef79dfdf"
@@ -301,9 +392,11 @@
   version = "v0.18.0"
 
 [[projects]]
-  digest = "1:bb0a98721972975fdd9b97cc9161bf884c5720db8481811725970ffa1b422601"
+  digest = "1:6a8a99429d2283565a818ad80eabe196449a9a0b5f0ed976c0f727524a6790e3"
   name = "golang.org/x/crypto"
   packages = [
+    "acme",
+    "acme/autocert",
     "chacha20poly1305",
     "hkdf",
     "internal/chacha20",
@@ -355,6 +448,14 @@
   pruneopts = "UT"
   revision = "bed42c95df7d5f673175b43d85f6b4047efe3814"
 
+[[projects]]
+  digest = "1:a5000fcb87d763e1d410111d32f3e1d07a6f7913f7efdf68070636c407da54d1"
+  name = "gopkg.in/go-playground/validator.v9"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "b199fa0642d29caca62b6a99d65cc981ba5edc3b"
+  version = "v9.27.0"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
@@ -365,8 +466,11 @@
     "github.com/gofrs/uuid",
     "github.com/gorilla/handlers",
     "github.com/gorilla/mux",
+    "github.com/gorilla/websocket",
     "github.com/haltingstate/secp256k1-go",
     "github.com/intel-go/fastjson",
+    "github.com/labstack/echo",
+    "github.com/labstack/echo/middleware",
     "github.com/osamingo/jsonrpc",
     "github.com/pkg/errors",
     "github.com/stretchr/testify/assert",
@@ -387,6 +491,7 @@
     "golang.org/x/crypto/hkdf",
     "golang.org/x/crypto/scrypt",
     "golang.org/x/crypto/sha3",
+    "gopkg.in/go-playground/validator.v9",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

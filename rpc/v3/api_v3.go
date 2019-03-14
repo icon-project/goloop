@@ -32,7 +32,8 @@ const (
 	getTransactionResult string = "icx_getTransactionResult"
 	getTransactionByHash string = "icx_getTransactionByHash"
 	sendTransaction      string = "icx_sendTransaction"
-	getStatus            string = "ise_getStatus"
+
+	getStatus string = "ise_getStatus"
 
 	getDataByHash          string = "icx_getDataByHash"
 	getBlockHeaderByHeight string = "icx_getBlockHeaderByHeight"

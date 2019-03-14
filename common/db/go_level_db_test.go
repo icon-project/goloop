@@ -1,10 +1,11 @@
 package db
 
 import (
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGoLevelDB_Database(t *testing.T) {
@@ -15,7 +16,7 @@ func TestGoLevelDB_Database(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	testDB := openDatabase(GoLevelDBBackend,"test", dir)
+	testDB, _ := openDatabase(GoLevelDBBackend, "test", dir)
 	defer testDB.Close()
 
 	key := []byte("hello")

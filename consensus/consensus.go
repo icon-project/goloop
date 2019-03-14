@@ -15,6 +15,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
+	"github.com/icon-project/goloop/rpc/metric"
 	"github.com/pkg/errors"
 )
 
@@ -135,6 +136,7 @@ func (cs *consensus) resetForNewHeight(prevBlock module.Block, votes *commitVote
 		peerIDs[i] = network.NewPeerIDFromAddress(v.Address())
 	}
 	cs.nm.SetRole(module.ROLE_VALIDATOR, peerIDs...)
+	metric.RecordOnHeight("default", cs.isProposer(), cs.height)
 	cs.resetForNewRound(0)
 }
 
@@ -143,6 +145,7 @@ func (cs *consensus) resetForNewRound(round int32) {
 	cs.currentBlockParts = nil
 	cs.round = round
 	cs.step = stepPrepropose
+	metric.RecordOnRound("default", cs.isProposer(), cs.round)
 }
 
 func (cs *consensus) resetForNewStep() {

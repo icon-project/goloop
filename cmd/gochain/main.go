@@ -20,6 +20,7 @@ import (
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/rpc/metric"
+	"github.com/icon-project/goloop/server"
 	"github.com/icon-project/goloop/service/eeproxy"
 )
 
@@ -318,6 +319,9 @@ func main() {
 	pm.SetEngine("python", ee)
 	pm.SetInstances("python", 1)
 
-	c := chain.NewChain(wallet, nt, pm, &cfg.Config)
+	srv := server.NewManager()
+	srv.Start()
+
+	c := chain.NewChain(wallet, nt, srv, pm, &cfg.Config)
 	c.Start()
 }

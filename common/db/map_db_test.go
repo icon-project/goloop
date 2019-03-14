@@ -8,7 +8,7 @@ import (
 
 func TestMapDB_Database(t *testing.T) {
 
-	testDB := openDatabase(MapDBBackend, "", "")
+	testDB, _ := openDatabase(MapDBBackend, "", "")
 	defer testDB.Close()
 
 	key := []byte("hello")

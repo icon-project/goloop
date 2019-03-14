@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/server"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/eeproxy"
 
@@ -43,6 +44,7 @@ type singleChain struct {
 	bm       module.BlockManager
 	cs       module.Consensus
 	sv       rpc.JsonRpcServer
+	srv      *server.Manager
 	nt       module.NetworkTransport
 	nm       module.NetworkManager
 
@@ -78,6 +80,22 @@ func (c *singleChain) EEProxyManager() eeproxy.Manager {
 	return c.pm
 }
 
+func (c *singleChain) BlockManager() module.BlockManager {
+	return c.bm
+}
+
+func (c *singleChain) ServiceManager() module.ServiceManager {
+	return c.sm
+}
+
+func (c *singleChain) Consensus() module.Consensus {
+	return c.cs
+}
+
+func (c *singleChain) NetworkManager() module.NetworkManager {
+	return c.nm
+}
+
 func toRoles(r uint) []module.Role {
 	roles := make([]module.Role, 0)
 	switch r {
@@ -111,8 +129,10 @@ func (c *singleChain) Start() {
 		log.Panicf("singleChain.Start: %+v\n", err)
 	}
 
-	c.sv = rpc.NewJsonRpcServer(c, c.bm, c.sm, c.cs, c.nm)
+	// TODO : server
+	c.srv.SetChain(c)
 
+	c.sv = rpc.NewJsonRpcServer(c, c.bm, c.sm, c.cs, c.nm)
 	if err := c.sv.ListenAndServe(c.cfg.RPCAddr); err != nil {
 		log.Printf("Fail to Listen on RPC server err=%+v", err)
 	}
@@ -121,12 +141,14 @@ func (c *singleChain) Start() {
 func NewChain(
 	wallet module.Wallet,
 	transport module.NetworkTransport,
+	srv *server.Manager,
 	pm eeproxy.Manager,
 	cfg *Config,
 ) *singleChain {
 	chain := &singleChain{
 		wallet: wallet,
 		nt:     transport,
+		srv:    srv,
 		cfg:    *cfg,
 		pm:     pm,
 	}

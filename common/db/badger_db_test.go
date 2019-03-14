@@ -16,7 +16,7 @@ func TestBadgerDB_Database(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	testDB := openDatabase(BadgerDBBackend, "test", dir)
+	testDB, _ := openDatabase(BadgerDBBackend, "test", dir)
 	defer testDB.Close()
 
 	key := []byte("hello")
