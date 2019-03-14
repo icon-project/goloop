@@ -17,7 +17,6 @@ RUN rm pyexec-*.whl
 # installing gochain and other stuff
 ADD gochain ./
 ADD run.sh ./
-ADD systemInfo.json ./
 
 # container configuration
 EXPOSE 9080/tcp
