@@ -2,6 +2,7 @@ package network
 
 import (
 	"container/list"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"sync"
@@ -104,7 +105,7 @@ func (l *Listener) SetAddress(address string) error {
 	}
 
 	l.address = address
-	l.log.prefix = address
+	l.log.SetPrefix(address)
 	return nil
 }
 
@@ -238,7 +239,7 @@ func (ph *peerHandler) setNext(next PeerHandler) {
 
 func (ph *peerHandler) setSelfPeerID(id module.PeerID) {
 	ph.self = id
-	ph.log.prefix = fmt.Sprintf("%s", ph.self)
+	ph.log.SetPrefix(fmt.Sprintf("%s", hex.EncodeToString(ph.self.Bytes()[:DefaultSimplePeerIDSize])))
 }
 
 func (ph *peerHandler) sendMessage(pi protocolInfo, m interface{}, p *Peer) {

@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"reflect"
 	"sort"
@@ -106,7 +107,7 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer) *PeerToPeer {
 		//
 		mph: &codec.MsgpackHandle{},
 		//
-		log: newLogger("PeerToPeer", fmt.Sprintf("%s.%s", channel, self.id)),
+		log: newLogger("PeerToPeer", fmt.Sprintf("%s.%s", channel, hex.EncodeToString(self.id.Bytes()[:DefaultSimplePeerIDSize]))),
 	}
 	p2p.mph.MapType = reflect.TypeOf(map[string]interface{}(nil))
 	p2p.allowedRoots.onUpdate = func() {

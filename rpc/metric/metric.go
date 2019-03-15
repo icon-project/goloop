@@ -21,9 +21,10 @@ var (
 	MetricKeyHostname = NewMetricKey("hostname")
 	MetricKeyChannel  = NewMetricKey("channel")
 	mKeys             = []tag.Key{MetricKeyHostname, MetricKeyChannel}
-	MetricTagHostname tag.Mutator
+	MetricTagHostname = tag.Insert(MetricKeyHostname, _resolveHostname(nil))
 	mTags             = make(map[*tag.Key]map[string]tag.Mutator)
 	mtMtx             sync.Mutex
+	mtOnce            sync.Once
 )
 
 func NewMetricKey(k string) tag.Key {
@@ -73,6 +74,9 @@ func GetMetricTag(mk *tag.Key, v string) tag.Mutator {
 }
 
 func NewMetricContext(channel string, mts ...tag.Mutator) context.Context {
+	if channel == "" {
+		channel = "UNKNOWN"
+	}
 	mtChannel := GetMetricTag(&MetricKeyChannel, channel)
 	ms := append([]tag.Mutator{MetricTagHostname, mtChannel}, mts...)
 	ctx, err := tag.New(context.Background(), ms...)
@@ -82,12 +86,22 @@ func NewMetricContext(channel string, mts ...tag.Mutator) context.Context {
 	return ctx
 }
 
-func Initialize(w module.Wallet) {
+func _resolveHostname(w module.Wallet) string {
 	nodeName := os.Getenv("NODE_NAME")
 	if nodeName == "" {
-		nodeName = hex.EncodeToString(w.Address().ID()[:4])
+		if w == nil {
+			nodeName, _ = os.Hostname()
+		}else{
+			nodeName = hex.EncodeToString(w.Address().ID()[:4])
+		}
 	}
-	MetricTagHostname = tag.Insert(MetricKeyHostname, nodeName)
+	return nodeName
+}
+
+func Initialize(w module.Wallet) {
+	mtOnce.Do(func(){
+		MetricTagHostname = tag.Insert(MetricKeyHostname, _resolveHostname(w))
+	})
 }
 
 func PromethusExporter() *prometheus.Exporter {

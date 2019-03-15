@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/icon-project/goloop/module"
@@ -21,7 +22,14 @@ type protocolHandler struct {
 	log *logger
 }
 
-func newProtocolHandler(m *manager, pi protocolInfo, spiList []module.ProtocolInfo, r module.Reactor, name string, priority uint8) *protocolHandler {
+func newProtocolHandler(
+	m *manager,
+	pi protocolInfo,
+	spiList []module.ProtocolInfo,
+	r module.Reactor,
+	name string,
+	priority uint8) *protocolHandler {
+
 	ph := &protocolHandler{
 		m:            m,
 		protocol:     pi,
@@ -32,7 +40,11 @@ func newProtocolHandler(m *manager, pi protocolInfo, spiList []module.ProtocolIn
 		receiveQueue: NewQueue(DefaultReceiveQueueSize),
 		eventQueue:   NewQueue(DefaultEventQueueSize),
 		failureQueue: NewQueue(DefaultFailureQueueSize),
-		log:          newLogger("ProtocolHandler", fmt.Sprintf("%s.%s.%s", m.Channel(), m.PeerID(), name)),
+		log: newLogger("ProtocolHandler",
+			fmt.Sprintf("%s.%s.%s",
+				m.Channel(),
+				hex.EncodeToString(m.PeerID().Bytes()[:DefaultSimplePeerIDSize]),
+				name)),
 	}
 	for _, sp := range spiList {
 		k := protocolInfo(sp.Uint16())

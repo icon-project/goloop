@@ -17,7 +17,7 @@ func MethodRepository(nm module.NetworkManager) *jsonrpc.MethodRepository {
 	mr := jsonrpc.NewMethodRepository()
 	m := nm.(*manager)
 
-	rpcLog.prefix = m.p2p.log.prefix
+	rpcLog.SetPrefix(m.PeerID().String())
 	rpcLog.excludes = []string{
 		//"jsonrpcHandle",
 		"_getParam",

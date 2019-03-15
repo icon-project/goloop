@@ -172,7 +172,6 @@ type secureKey struct {
 func newSecureKey(curve elliptic.Curve, keyLogWriter io.Writer) *secureKey {
 	k, err := ecdsa.GenerateKey(curve, rand.Reader)
 	if err != nil {
-		//TODO panic
 		panic(err)
 	}
 	return &secureKey{PrivateKey: k, keyLogWriter: keyLogWriter}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -135,7 +136,7 @@ func (ph *tProtocolHandler) Unicast(pi module.ProtocolInfo, b []byte, id module.
 }
 
 func createAPeerID() module.PeerID {
-	return NewPeerIDFromAddress(common.NewWallet().Address())
+	return NewPeerIDFromAddress(wallet.New().Address())
 }
 
 type tReceiveEvent struct {

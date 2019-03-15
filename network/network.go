@@ -209,7 +209,17 @@ type logger struct {
 
 func newLogger(name string, prefix string) *logger {
 	//l := log.New(os.Stdout, fmt.Sprintf("[%s] %s", prefix, name), log.LstdFlags)
-	return &logger{name, prefix, make([]string, 0)}
+	l := &logger{name: name, excludes: make([]string, 0)}
+	l.SetPrefix(prefix)
+	return l
+}
+
+func (l *logger) SetPrefix(prefix string) {
+	if prefix == "" {
+		l.prefix = fmt.Sprintf("%s ", l.name)
+	} else {
+		l.prefix = fmt.Sprintf("[%s] %s ", prefix, l.name)
+	}
 }
 
 func (l *logger) printable(v interface{}) bool {
@@ -237,18 +247,16 @@ func (l *logger) printable(v interface{}) bool {
 func (l *logger) Println(v ...interface{}) {
 	if v[0] == "Warning" || l.printable(v[0]) {
 		//%T : type //%#v
-		s := fmt.Sprintf("[%s] %s", l.prefix, l.name)
-		w := make([]interface{}, len(v)+1)
-		copy(w[1:], v)
-		w[0] = s
-		log.Println(w...)
+		//w := make([]interface{}, len(v)+1)
+		//copy(w[1:], v)
+		//w[0] = l.prefix
+		_ = log.Output(2, l.prefix+fmt.Sprintln(v...))
 	}
 }
 
 func (l *logger) Printf(format string, v ...interface{}) {
 	if l.printable(format) {
-		s := fmt.Sprintf(format, v...)
-		l.Println(s)
+		_ = log.Output(2, fmt.Sprintf(l.prefix+format, v...))
 	}
 }
 

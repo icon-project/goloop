@@ -121,7 +121,6 @@ func (a *Authenticator) onPeer(p *Peer) {
 	}
 }
 
-//TODO callback from Peer.sendRoutine or Peer.receiveRoutine
 func (a *Authenticator) onError(err error, p *Peer, pkt *Packet) {
 	a.log.Println("onError", err, p, pkt)
 	a.peerHandler.onError(err, p, pkt)
