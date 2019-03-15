@@ -9,7 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/service/eeproxy"
+	"github.com/icon-project/goloop/service/transaction"
 
 	"github.com/pkg/errors"
 
@@ -86,15 +88,15 @@ func (w *Wallet) GetBlockByHeight(h int) ([]byte, error) {
 }
 
 type blockV1Impl struct {
-	Version            string             `json:"version"`
-	PrevBlockHash      common.RawHexBytes `json:"prev_block_hash"`
-	MerkleTreeRootHash common.RawHexBytes `json:"merkle_tree_root_hash"`
-	Transactions       []*transaction     `json:"confirmed_transaction_list"`
-	BlockHash          common.RawHexBytes `json:"block_hash"`
-	Height             int64              `json:"height"`
-	PeerID             string             `json:"peer_id"`
-	TimeStamp          uint64             `json:"time_stamp"`
-	Signature          common.Signature   `json:"signature"`
+	Version            string                    `json:"version"`
+	PrevBlockHash      common.RawHexBytes        `json:"prev_block_hash"`
+	MerkleTreeRootHash common.RawHexBytes        `json:"merkle_tree_root_hash"`
+	Transactions       []transaction.Transaction `json:"confirmed_transaction_list"`
+	BlockHash          common.RawHexBytes        `json:"block_hash"`
+	Height             int64                     `json:"height"`
+	PeerID             string                    `json:"peer_id"`
+	TimeStamp          uint64                    `json:"time_stamp"`
+	Signature          common.Signature          `json:"signature"`
 }
 
 func ParseLegacy(b []byte) (module.TransactionList, error) {
@@ -107,7 +109,7 @@ func ParseLegacy(b []byte) (module.TransactionList, error) {
 	for i, tx := range blk.Transactions {
 		trs[i] = tx
 	}
-	return NewTransactionListV1FromSlice(trs), nil
+	return transaction.NewTransactionListV1FromSlice(trs), nil
 }
 
 type transitionCb struct {
@@ -129,6 +131,26 @@ type serviceChain struct {
 	sm       module.ServiceManager
 	bm       module.BlockManager
 	cs       module.Consensus
+}
+
+func (c *serviceChain) GetGenesisData(key []byte) ([]byte, error) {
+	panic("implement me")
+}
+
+func (c *serviceChain) BlockManager() module.BlockManager {
+	return c.bm
+}
+
+func (c *serviceChain) Consensus() module.Consensus {
+	return c.cs
+}
+
+func (c *serviceChain) ServiceManager() module.ServiceManager {
+	return c.sm
+}
+
+func (c *serviceChain) NetworkManager() module.NetworkManager {
+	return nil
 }
 
 func (c *serviceChain) CommitVoteSetDecoder() module.CommitVoteSetDecoder {
@@ -193,7 +215,7 @@ func TestUnitService(t *testing.T) {
 		return
 	}
 	c := new(serviceChain)
-	c.wallet = common.NewWallet()
+	c.wallet = wallet.New()
 	c.database = db.NewMapDB()
 	nt := network.NewTransport("127.0.0.1:8081", c.wallet)
 	nt.Listen()
@@ -208,8 +230,8 @@ func TestUnitService(t *testing.T) {
 	//leaderServiceManager := NewManager(c, network.NewManager("default", nt, "", module.ROLE_VALIDATOR), eem, "./contract")
 	it, _ := leaderServiceManager.CreateInitialTransition(nil, nil)
 	bi := newBlockInfo(0, 0)
-	genesisTx, _ := NewTransactionFromJSON(c.Genesis())
-	txs := NewTransactionListFromSlice(c.database, []module.Transaction{genesisTx})
+	genesisTx, _ := transaction.NewTransactionFromJSON(c.Genesis())
+	txs := transaction.NewTransactionListFromSlice(c.database, []module.Transaction{genesisTx})
 	parentTrs, _ := leaderServiceManager.CreateTransition(it, txs, bi)
 	cb := &transitionCb{make(chan bool)}
 	parentTrs.Execute(cb)
@@ -219,13 +241,13 @@ func TestUnitService(t *testing.T) {
 	// request SendTransaction
 	sendDone := make(chan bool)
 
-	wallet := Wallet{"https://testwallet.icon.foundation/api/v3"}
+	client := Wallet{"https://testwallet.icon.foundation/api/v3"}
 	blockDone := make(chan bool)
 
 	go func() {
 		for i := startBlk; i < startBlk+testTransactionNum; i++ {
 			fmt.Printf("block height = %d\n", i)
-			b, err := wallet.GetBlockByHeight(i)
+			b, err := client.GetBlockByHeight(i)
 			if err != nil {
 				panic(err)
 			}
@@ -274,7 +296,7 @@ func TestUnitService(t *testing.T) {
 
 	// validator
 	validatorCh := new(serviceChain)
-	validatorCh.wallet = common.NewWallet()
+	validatorCh.wallet = wallet.New()
 	validatorCh.database = db.NewMapDB()
 
 	nt2 := network.NewTransport("127.0.0.1:8082", c.wallet)
