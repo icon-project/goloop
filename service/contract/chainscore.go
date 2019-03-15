@@ -362,7 +362,7 @@ func (s *ChainScore) Install(param []byte) error {
 	for i, validator := range chain.ValidatorList {
 		validators[i], _ = state.ValidatorFromAddress(validator)
 	}
-	if err := s.cc.SetValidators(validators); err != nil {
+	if err := s.cc.GetValidatorState().Set(validators); err != nil {
 		log.Printf("Failed to set validator. err = %s\n", err)
 		return err
 	}
@@ -521,7 +521,7 @@ func (s *ChainScore) Ex_grantValidator(address module.Address) error {
 		return errors.New("No permission to call this method.")
 	}
 	if v, err := state.ValidatorFromAddress(address); err == nil {
-		return s.cc.GrantValidator(v)
+		return s.cc.GetValidatorState().Add(v)
 	} else {
 		return err
 	}
@@ -532,18 +532,18 @@ func (s *ChainScore) Ex_revokeValidator(address module.Address) error {
 		return errors.New("No permission to call this method.")
 	}
 	if v, err := state.ValidatorFromAddress(address); err == nil {
-		_, err = s.cc.RevokeValidator(v)
-		return err
+		s.cc.GetValidatorState().Remove(v)
+		return nil
 	} else {
 		return err
 	}
 }
 
 func (s *ChainScore) Ex_getValidators() ([]module.Address, error) {
-	vl := s.cc.GetValidators()
-	validators := make([]module.Address, vl.Len())
-	for i := 0; i < vl.Len(); i++ {
-		if v, ok := vl.Get(i); ok {
+	vs := s.cc.GetValidatorState()
+	validators := make([]module.Address, vs.Len())
+	for i := 0; i < vs.Len(); i++ {
+		if v, ok := vs.Get(i); ok {
 			validators[i] = v.Address()
 		} else {
 			return nil, errors.New("Unexpected access failure")
@@ -573,7 +573,7 @@ func (s *ChainScore) Ex_removeMember(address module.Address) error {
 
 	// If membership system is on, first check if the member is not a validator
 	if s.cc.MembershipEnabled() {
-		if s.cc.GetValidators().IndexOf(address) >= 0 {
+		if s.cc.GetValidatorState().IndexOf(address) >= 0 {
 			return errors.New("Should revoke validator before removing the member")
 		}
 	}

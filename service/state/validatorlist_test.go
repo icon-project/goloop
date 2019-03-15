@@ -36,7 +36,7 @@ func TestValidatorListBasic(t *testing.T) {
 	validators = append(validators, v1)
 
 	mdb := db.NewMapDB()
-	vList1, err := ValidatorListFromSlice(mdb, validators)
+	vList1, err := ValidatorSnapshotFromSlice(mdb, validators)
 	if err != nil {
 		t.Errorf("Fail to make validatorList from slice err=%+v", err)
 		return
@@ -46,7 +46,7 @@ func TestValidatorListBasic(t *testing.T) {
 		return
 	}
 
-	vList2, err := ValidatorListFromHash(mdb, vList1.Hash())
+	vList2, err := ValidatorStateFromHash(mdb, vList1.Hash())
 	if err != nil {
 		t.Errorf("Fail to make validatorList from hash err=%+v", err)
 		return
@@ -110,20 +110,20 @@ func checkEmpty(t *testing.T, vl module.ValidatorList) {
 
 func TestEmptyValidatorList(t *testing.T) {
 	dbase := db.NewMapDB()
-	if vl, err := ValidatorListFromHash(dbase, nil); vl == nil || err != nil {
+	if vl, err := ValidatorSnapshotFromHash(dbase, nil); vl == nil || err != nil {
 		t.Errorf("Fail to make ValidatorList from nil hash err=%+v", err)
 		return
 	} else {
 		checkEmpty(t, vl)
 	}
-	if vl, err := ValidatorListFromSlice(dbase, nil); vl == nil || err != nil {
+	if vl, err := ValidatorSnapshotFromSlice(dbase, nil); vl == nil || err != nil {
 		t.Errorf("Fail to make ValidatorList from nil slice err=%+v", err)
 		return
 	} else {
 		checkEmpty(t, vl)
 	}
 
-	if vl, err := ValidatorListFromSlice(dbase, []module.Validator{}); vl == nil || err != nil {
+	if vl, err := ValidatorSnapshotFromSlice(dbase, []module.Validator{}); vl == nil || err != nil {
 		t.Errorf("Fail to make ValidatorList from nil slice err=%+v", err)
 		return
 	} else {

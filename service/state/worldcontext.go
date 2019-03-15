@@ -7,7 +7,6 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -132,45 +131,6 @@ func (c *worldContext) GetFuture(lq []LockRequest) WorldContext {
 		wvs = NewWorldVirtualState(c.WorldState, lq2)
 	}
 	return c.WorldStateChanged(wvs)
-}
-
-func (c *worldContext) SetValidators(vl []module.Validator) error {
-	if c.MembershipEnabled() {
-		as := c.GetAccountState(SystemID)
-		members := scoredb.NewArrayDB(as, VarMembers)
-		size := members.Size()
-		mm := make(map[string]bool)
-		for i := 0; i < size; i++ {
-			mm[members.Get(i).Address().String()] = true
-		}
-
-		for _, v := range vl {
-			if _, present := mm[v.Address().String()]; !present {
-				return errors.New("validator(" + v.Address().String() + ") is not a member")
-			}
-		}
-	}
-
-	return c.WorldState.SetValidators(vl)
-}
-
-func (c *worldContext) GrantValidator(v module.Validator) error {
-	if c.MembershipEnabled() {
-		as := c.GetAccountState(SystemID)
-		members := scoredb.NewArrayDB(as, VarMembers)
-		size := members.Size()
-		found := false
-		for i := 0; i < size; i++ {
-			if members.Get(i).Address().Equal(v.Address()) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return errors.New("Should be a member before granting validator")
-		}
-	}
-	return c.WorldState.GrantValidator(v)
 }
 
 // TODO What if some values such as deployer don't use cache here and are resolved on demand.

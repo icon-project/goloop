@@ -2,21 +2,31 @@ package state
 
 import (
 	"fmt"
+	"log"
 	"sync"
+
+	"github.com/icon-project/goloop/common/merkle"
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
-	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
 )
 
-type ValidatorList interface {
-	module.ValidatorList
-	Copy() ValidatorList
+type ValidatorSnapshot module.ValidatorList
+
+type ValidatorState interface {
+	Hash() []byte
+	Bytes() []byte
+	IndexOf(module.Address) int
+	Len() int
+	Get(i int) (module.Validator, bool)
+	Set([]module.Validator) error
 	Add(v module.Validator) error
 	Remove(v module.Validator) bool
+	GetSnapshot() ValidatorSnapshot
+	Reset(ValidatorSnapshot)
 }
 
 type validatorList struct {
@@ -56,74 +66,11 @@ func (vl *validatorList) Bytes() []byte {
 	return vl.serializeInLock()
 }
 
-func (vl *validatorList) Flush() error {
-	vl.lock.Lock()
-	defer vl.lock.Unlock()
-
-	if vl.dirty {
-		data := vl.serializeInLock()
-		key := vl.hashInLock()
-		return vl.bucket.Set(key, data)
-	}
-	return nil
-}
-
 func (vl *validatorList) Len() int {
 	vl.lock.Lock()
 	defer vl.lock.Unlock()
 
 	return len(vl.validators)
-}
-
-func (vl *validatorList) Copy() ValidatorList {
-	nvl := new(validatorList)
-	nvl.lock = sync.Mutex{}
-	nvl.bucket = vl.bucket
-	copy(nvl.validators, vl.validators)
-	copy(nvl.serialized, vl.serialized)
-	copy(nvl.hash, vl.hash)
-	nvl.dirty = vl.dirty
-	// Don't copy because the current map may change to be useless.
-	nvl.addrMap = nil
-	return nvl
-}
-func (vl *validatorList) Add(v module.Validator) error {
-	vl.lock.Lock()
-	defer vl.lock.Unlock()
-
-	if vl.indexOfInLock(v.Address()) < 0 {
-		var vo *validator
-		var ok bool
-		if vo, ok = v.(*validator); !ok {
-			var vi module.Validator
-			var err error
-			if vi, err = ValidatorFromPublicKey(v.PublicKey()); err != nil {
-				if vi, err = ValidatorFromAddress(v.Address()); err != nil {
-					return err
-				}
-			}
-			vo = vi.(*validator)
-		}
-
-		vl.validators = append(vl.validators, vo)
-		vl.dirty = true
-		vl.addrMap = nil
-	}
-	return nil
-}
-
-func (vl *validatorList) Remove(v module.Validator) bool {
-	vl.lock.Lock()
-	defer vl.lock.Unlock()
-
-	i := vl.indexOfInLock(v.Address())
-	if i < 0 {
-		return false
-	}
-	vl.validators = append(vl.validators[:i], vl.validators[i+1:]...)
-	vl.dirty = true
-	vl.addrMap = nil
-	return true
 }
 
 func (vl *validatorList) Get(i int) (module.Validator, bool) {
@@ -157,7 +104,7 @@ func (vl *validatorList) indexOfInLock(addr module.Address) int {
 }
 
 func (vl *validatorList) String() string {
-	return fmt.Sprintf("ValidatorList[%+v]", vl.validators)
+	return fmt.Sprintf("validatorList[%+v]", vl.validators)
 }
 
 func (vl *validatorList) OnData(bs []byte, bd merkle.Builder) error {
@@ -168,14 +115,125 @@ func (vl *validatorList) OnData(bs []byte, bd merkle.Builder) error {
 	return nil
 }
 
-func ValidatorListFromHash(database db.Database, h []byte) (ValidatorList, error) {
+type validatorSnapshot struct {
+	*validatorList
+}
+
+func (vss *validatorSnapshot) Flush() error {
+	vss.lock.Lock()
+	defer vss.lock.Unlock()
+
+	if vss.dirty {
+		data := vss.serializeInLock()
+		key := vss.hashInLock()
+		return vss.bucket.Set(key, data)
+	}
+	return nil
+}
+
+type validatorState struct {
+	*validatorList
+}
+
+func (vs *validatorState) GetSnapshot() ValidatorSnapshot {
+	vs.lock.Lock()
+	defer vs.lock.Unlock()
+
+	vl := new(validatorList)
+	vl.lock = sync.Mutex{}
+	vl.bucket = vs.bucket
+	vl.validators = make([]*validator, len(vs.validators))
+	copy(vl.validators, vs.validators)
+	vl.dirty = vs.dirty
+	vl.addrMap = vs.addrMap
+	return &validatorSnapshot{vl}
+}
+
+func (vs *validatorState) Reset(vss ValidatorSnapshot) {
+	snapshot, ok := vss.(*validatorSnapshot)
+	if !ok {
+		log.Panicf("It tries to Reset with invalid snapshot type=%T", vss)
+	}
+	vs.bucket = snapshot.bucket
+	vs.validators = make([]*validator, len(snapshot.validators))
+	copy(vs.validators, snapshot.validators)
+	vs.dirty = snapshot.dirty
+	vs.serialized = snapshot.serialized
+	vs.hash = snapshot.hash
+	vs.addrMap = snapshot.addrMap
+}
+
+func (vs *validatorState) Set(vl []module.Validator) error {
+	vs.lock.Lock()
+	defer vs.lock.Unlock()
+
+	vList := make([]*validator, len(vl))
+	for i, v := range vl {
+		if vo, ok := v.(*validator); ok {
+			vList[i] = vo
+		} else {
+			return errors.New("NotCompatibleValidator")
+		}
+	}
+	vs.validators = vList
+	vs.markChange()
+	return nil
+}
+
+func (vs *validatorState) Add(v module.Validator) error {
+	vs.lock.Lock()
+	defer vs.lock.Unlock()
+
+	if vs.indexOfInLock(v.Address()) < 0 {
+		var vo *validator
+		var ok bool
+		if vo, ok = v.(*validator); !ok {
+			var vi module.Validator
+			var err error
+			if vi, err = ValidatorFromPublicKey(v.PublicKey()); err != nil {
+				if vi, err = ValidatorFromAddress(v.Address()); err != nil {
+					return err
+				}
+			}
+			vo = vi.(*validator)
+		}
+
+		vs.validators = append(vs.validators, vo)
+		vs.markChange()
+	}
+	return nil
+}
+
+func (vs *validatorState) markChange() {
+	vs.dirty = true
+	vs.hash = nil
+	vs.serialized = nil
+	vs.addrMap = nil
+}
+
+func (vs *validatorState) Remove(v module.Validator) bool {
+	vs.lock.Lock()
+	defer vs.lock.Unlock()
+
+	i := vs.indexOfInLock(v.Address())
+	if i < 0 {
+		return false
+	}
+	vs.validators = append(vs.validators[:i], vs.validators[i+1:]...)
+	vs.markChange()
+	return true
+}
+
+func ValidatorStateFromHash(database db.Database, h []byte) (ValidatorState, error) {
 	bk, err := database.GetBucket(db.BytesByHash)
 	if err != nil {
 		return nil, err
 	}
-	vl := &validatorList{
-		bucket: bk,
-		dirty:  false,
+	vs := &validatorState{
+		&validatorList{
+			bucket: bk,
+			dirty:  false,
+		},
 	}
 	if len(h) > 0 {
 		value, err := bk.Get(h)
@@ -185,54 +243,86 @@ func ValidatorListFromHash(database db.Database, h []byte) (ValidatorList, error
 		if len(value) == 0 {
 			return nil, errors.New("InvalidHashValue")
 		}
-		_, err = codec.MP.UnmarshalFromBytes(value, &vl.validators)
+		_, err = codec.MP.UnmarshalFromBytes(value, &vs.validators)
 		if err != nil {
 			return nil, err
 		}
-		vl.hash = h
-		vl.serialized = value
+		vs.hash = h
+		vs.serialized = value
 	}
-	return vl, nil
+	return vs, nil
+}
+func ValidatorSnapshotFromHash(database db.Database, h []byte) (ValidatorSnapshot, error) {
+	bk, err := database.GetBucket(db.BytesByHash)
+	if err != nil {
+		return nil, err
+	}
+	vss := &validatorSnapshot{
+		&validatorList{
+			bucket: bk,
+			dirty:  false,
+		},
+	}
+	if len(h) > 0 {
+		value, err := bk.Get(h)
+		if err != nil {
+			return nil, err
+		}
+		if len(value) == 0 {
+			return nil, errors.New("InvalidHashValue")
+		}
+		_, err = codec.MP.UnmarshalFromBytes(value, &vss.validators)
+		if err != nil {
+			return nil, err
+		}
+		vss.hash = h
+		vss.serialized = value
+	}
+	return vss, nil
 }
 
-func NewValidatorListWithBuilder(builder merkle.Builder, h []byte) (ValidatorList, error) {
+func NewValidatorStateWithBuilder(builder merkle.Builder, h []byte) (ValidatorState, error) {
 	bk, err := builder.Database().GetBucket(db.BytesByHash)
 	if err != nil {
 		return nil, err
 	}
-	vl := &validatorList{
-		bucket: bk,
+	vs := &validatorState{
+		&validatorList{
+			bucket: bk,
+		},
 	}
 	if len(h) > 0 {
-		vl.hash = h
+		vs.hash = h
 		value, err := bk.Get(h)
 		if err != nil {
 			return nil, err
 		}
 		if value == nil {
-			builder.RequestData(db.BytesByHash, h, vl)
-			vl.dirty = true
+			builder.RequestData(db.BytesByHash, h, vs)
+			vs.dirty = true
 		} else {
-			if _, err := codec.UnmarshalFromBytes(value, &vl.validators); err != nil {
+			if _, err := codec.UnmarshalFromBytes(value, &vs.validators); err != nil {
 				return nil, err
 			}
-			vl.serialized = value
+			vs.serialized = value
 		}
 	}
-	return vl, nil
+	return vs, nil
 }
 
-func ValidatorListFromSlice(database db.Database, vl []module.Validator) (ValidatorList, error) {
+func ValidatorSnapshotFromSlice(database db.Database, vl []module.Validator) (ValidatorSnapshot, error) {
 	bk, err := database.GetBucket(db.BytesByHash)
 	if err != nil {
 		return nil, err
 	}
-	nvl := &validatorList{
-		bucket:     bk,
-		validators: nil,
-		serialized: nil,
-		hash:       nil,
-		dirty:      true,
+	vs := &validatorSnapshot{
+		&validatorList{
+			bucket:     bk,
+			validators: nil,
+			serialized: nil,
+			hash:       nil,
+			dirty:      true,
+		},
 	}
 
 	vList := make([]*validator, len(vl))
@@ -243,7 +333,26 @@ func ValidatorListFromSlice(database db.Database, vl []module.Validator) (Valida
 			return nil, errors.New("NotCompatibleValidator")
 		}
 	}
-	nvl.validators = vList
+	vs.validators = vList
 
-	return nvl, nil
+	return vs, nil
+}
+
+func ValidatorStateFromSnapshot(vss ValidatorSnapshot) ValidatorState {
+	snapshot, ok := vss.(*validatorSnapshot)
+	if !ok {
+		log.Panicf("It tries to Reset with invalid snapshot type=%T", vss)
+	}
+	vs := &validatorState{
+		&validatorList{
+			bucket:     snapshot.bucket,
+			serialized: snapshot.serialized,
+			hash:       snapshot.hash,
+			dirty:      snapshot.dirty,
+			addrMap:    snapshot.addrMap,
+		},
+	}
+	vs.validators = make([]*validator, len(snapshot.validators))
+	copy(vs.validators, snapshot.validators)
+	return vs
 }

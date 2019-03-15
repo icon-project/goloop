@@ -92,11 +92,11 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 func (m *manager) CreateInitialTransition(result []byte,
 	valList module.ValidatorList,
 ) (module.Transition, error) {
-	var vl state.ValidatorList
+	var vl state.ValidatorState
 	var ok bool
 	if valList != nil {
-		if vl, ok = valList.(state.ValidatorList); !ok {
-			log.Panicln("Unsupported ValidatorList implementation")
+		if vl, ok = valList.(state.ValidatorState); !ok {
+			log.Panicln("Unsupported ValidatorState implementation")
 		}
 	}
 	return newInitTransition(m.db, result, vl, m.cm, m.eem, m.chain)
@@ -314,7 +314,7 @@ func (m *manager) Call(resultHash []byte, js []byte, bi module.BlockInfo,
 }
 
 func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {
-	valList, _ := state.ValidatorListFromHash(m.db, hash)
+	valList, _ := state.ValidatorSnapshotFromHash(m.db, hash)
 	return valList
 }
 

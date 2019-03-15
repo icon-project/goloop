@@ -10,7 +10,6 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
-	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
 )
 
@@ -18,7 +17,7 @@ import (
 // It can be use to WorldState recover state of WorldState to at some point.
 type WorldSnapshot interface {
 	GetAccountSnapshot(id []byte) AccountSnapshot
-	GetValidators() ValidatorList
+	GetValidatorSnapshot() ValidatorSnapshot
 	Flush() error
 	StateHash() []byte
 }
@@ -29,10 +28,7 @@ type WorldState interface {
 	GetAccountState(id []byte) AccountState
 	GetAccountSnapshot(id []byte) AccountSnapshot
 	GetSnapshot() WorldSnapshot
-	GetValidators() ValidatorList
-	SetValidators(vl []module.Validator) error
-	GrantValidator(v module.Validator) error
-	RevokeValidator(v module.Validator) (bool, error)
+	GetValidatorState() ValidatorState
 	Reset(snapshot WorldSnapshot) error
 	ClearCache()
 }
@@ -40,10 +36,10 @@ type WorldState interface {
 type worldSnapshotImpl struct {
 	database   db.Database
 	accounts   trie.ImmutableForObject
-	validators ValidatorList
+	validators ValidatorSnapshot
 }
 
-func (ws *worldSnapshotImpl) GetValidators() ValidatorList {
+func (ws *worldSnapshotImpl) GetValidatorSnapshot() ValidatorSnapshot {
 	return ws.validators
 }
 
@@ -84,38 +80,11 @@ type worldStateImpl struct {
 	database        db.Database
 	accounts        trie.MutableForObject
 	mutableAccounts map[string]AccountState
-	validators      ValidatorList
+	validators      ValidatorState
 }
 
-func (ws *worldStateImpl) GetValidators() ValidatorList {
+func (ws *worldStateImpl) GetValidatorState() ValidatorState {
 	return ws.validators
-}
-
-func (ws *worldStateImpl) SetValidators(vl []module.Validator) error {
-	validators, err := ValidatorListFromSlice(ws.database, vl)
-	if err != nil {
-		return err
-	}
-	ws.validators = validators
-	return nil
-}
-
-func (ws *worldStateImpl) GrantValidator(v module.Validator) error {
-	validators := ws.validators.Copy()
-	if err := validators.Add(v); err != nil {
-		return err
-	}
-	ws.validators = validators
-	return nil
-}
-
-func (ws *worldStateImpl) RevokeValidator(v module.Validator) (bool, error) {
-	validators := ws.validators.Copy()
-	if validators.Remove(v) {
-		ws.validators = validators
-		return true, nil
-	}
-	return false, nil
 }
 
 func (ws *worldStateImpl) Reset(isnapshot WorldSnapshot) error {
@@ -144,7 +113,7 @@ func (ws *worldStateImpl) Reset(isnapshot WorldSnapshot) error {
 			}
 		}
 	}
-	ws.validators = snapshot.validators
+	ws.validators.Reset(snapshot.GetValidatorSnapshot())
 	return nil
 }
 
@@ -241,31 +210,31 @@ func (ws *worldStateImpl) GetSnapshot() WorldSnapshot {
 	return &worldSnapshotImpl{
 		database:   ws.database,
 		accounts:   ws.accounts.GetSnapshot(),
-		validators: ws.validators,
+		validators: ws.validators.GetSnapshot(),
 	}
 }
 
-func NewWorldState(database db.Database, stateHash []byte, vl ValidatorList) WorldState {
+func NewWorldState(database db.Database, stateHash []byte, vs ValidatorState) WorldState {
 	ws := new(worldStateImpl)
 	ws.database = database
 	ws.accounts = trie_manager.NewMutableForObject(database, stateHash, reflect.TypeOf((*accountSnapshotImpl)(nil)))
 	ws.mutableAccounts = make(map[string]AccountState)
-	if vl == nil {
-		vl, _ = ValidatorListFromHash(database, nil)
+	if vs == nil {
+		vs, _ = ValidatorStateFromHash(database, nil)
 	}
-	ws.validators = vl
+	ws.validators = vs
 	return ws
 }
 
-func NewWorldSnapshot(dbase db.Database, stateHash []byte, vl ValidatorList) WorldSnapshot {
+func NewWorldSnapshot(dbase db.Database, stateHash []byte, vs ValidatorSnapshot) WorldSnapshot {
 	ws := new(worldSnapshotImpl)
 	ws.database = dbase
 	ws.accounts = trie_manager.NewImmutableForObject(dbase, stateHash,
 		reflect.TypeOf((*accountSnapshotImpl)(nil)))
-	if vl == nil {
-		vl, _ = ValidatorListFromHash(dbase, nil)
+	if vs == nil {
+		vs, _ = ValidatorSnapshotFromHash(dbase, nil)
 	}
-	ws.validators = vl
+	ws.validators = vs
 
 	return ws
 }
@@ -276,7 +245,7 @@ func WorldStateFromSnapshot(wss WorldSnapshot) (WorldState, error) {
 		ws.database = wss.database
 		ws.accounts = trie_manager.NewMutableFromImmutableForObject(wss.accounts)
 		ws.mutableAccounts = make(map[string]AccountState)
-		ws.validators = wss.validators
+		ws.validators = ValidatorStateFromSnapshot(wss.GetValidatorSnapshot())
 		return ws, nil
 	}
 	return nil, common.ErrIllegalArgument

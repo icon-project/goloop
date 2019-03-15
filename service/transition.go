@@ -113,7 +113,7 @@ func newTransition(parent *transition, patchtxs module.TransactionList,
 
 // all parameters should be valid.
 func newInitTransition(db db.Database, result []byte,
-	validatorList state.ValidatorList, cm contract.ContractManager,
+	validatorList state.ValidatorState, cm contract.ContractManager,
 	em eeproxy.Manager, chain module.Chain,
 ) (*transition, error) {
 	var tresult transitionResult
@@ -183,7 +183,7 @@ func (t *transition) Result() []byte {
 // It may return nil before cb.OnExecute is called back by Execute.
 func (t *transition) NextValidators() module.ValidatorList {
 	if t.worldSnapshot != nil {
-		return t.worldSnapshot.GetValidators()
+		return t.worldSnapshot.GetValidatorSnapshot()
 	}
 	log.Printf("Fail to get valid Validators")
 	return nil
