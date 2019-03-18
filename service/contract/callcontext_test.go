@@ -110,14 +110,11 @@ func (tcc *testCallContext) Reset() {
 }
 
 func newCallContext() CallContext {
+	dbo, _ := db.Open("", string(db.MapDBBackend), "map")
 	return NewCallContext(
 		NewContext(
 			state.NewWorldContext(
-				state.NewWorldState(
-					db.Open("", string(db.MapDBBackend), "map"),
-					nil,
-					nil,
-				),
+				state.NewWorldState(dbo, nil, nil),
 				&blockInfo{},
 			),
 			nil,
@@ -136,6 +133,14 @@ type commonHandler struct {
 
 func (h *commonHandler) StepLimit() *big.Int {
 	return big.NewInt(0)
+}
+
+func (h *commonHandler) StepUsed() *big.Int {
+	panic("implement me")
+}
+
+func (h *commonHandler) DeductSteps(*big.Int) bool {
+	panic("implement me")
 }
 
 func (h *commonHandler) ApplySteps(state.WorldContext, state.StepType, int) bool {
