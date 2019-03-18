@@ -29,8 +29,8 @@ func JsonRpc(srv *Manager, mr *jsonrpc.MethodRepository) echo.MiddlewareFunc {
 			c.Set("method", method)
 
 			// TODO : ChainManager.Chain(channel)
-			// channel := c.Param("channel")
-			c.Set("chain", *srv.Chain())
+			channel := c.Param("channel")
+			c.Set("chain", *srv.Chain(channel))
 
 			return next(c)
 		}

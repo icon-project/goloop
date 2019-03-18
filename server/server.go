@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/labstack/echo"
@@ -9,15 +10,18 @@ import (
 
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/jsonrpc"
+	"github.com/icon-project/goloop/server/metric"
 	"github.com/icon-project/goloop/server/v3"
 )
 
 type Manager struct {
-	e     *echo.Echo
-	chain *module.Chain // Chain Manager
+	e      *echo.Echo
+	addr   string
+	chains map[string]*module.Chain // chain manager
+	mtx    sync.RWMutex
 }
 
-func NewManager() *Manager {
+func NewManager(addr string) *Manager {
 
 	e := echo.New()
 
@@ -29,16 +33,34 @@ func NewManager() *Manager {
 	e.Validator = validator
 
 	return &Manager{
-		e: e,
+		e:      e,
+		addr:   addr,
+		chains: map[string]*module.Chain{},
+		mtx:    sync.RWMutex{},
 	}
 }
 
-func (srv *Manager) SetChain(chain module.Chain) {
-	srv.chain = &chain
+// TODO : channel-chain
+func (srv *Manager) SetChain(channel string, chain module.Chain) {
+	if channel == "" || chain == nil {
+		return
+	}
+	srv.mtx.Lock()
+	srv.chains[channel] = &chain
+	srv.mtx.Unlock()
 }
 
-func (srv *Manager) Chain() *module.Chain {
-	return srv.chain
+func (srv *Manager) Chain(channel string) *module.Chain {
+	if channel == "" {
+		channel = "default"
+	}
+	srv.mtx.RLock()
+	chain, ok := srv.chains[channel]
+	if !ok {
+		return nil
+	}
+	srv.mtx.RUnlock()
+	return chain
 }
 
 func (srv *Manager) Start() {
@@ -49,7 +71,7 @@ func (srv *Manager) Start() {
 
 	// middleware
 	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
+	// e.Use(middleware.Recover())
 
 	// jsonrpc
 	g := e.Group("/api")
@@ -61,15 +83,12 @@ func (srv *Manager) Start() {
 	e.GET("/ws/echo", wsEcho)
 
 	// metric
-	// e.GET("/metrics", echo.WrapHandler(metric.PromethusExporter()))
+	e.GET("/metrics", echo.WrapHandler(metric.PromethusExporter()))
 
-	// Start server
-	go func() {
-		// cfg.rpc_port
-		if err := e.Start(":9081"); err != nil {
-			e.Logger.Info("shutting down the server")
-		}
-	}()
+	// Start server : main loop
+	if err := e.Start(srv.addr); err != nil {
+		e.Logger.Info("shutting down the server")
+	}
 }
 
 func (srv *Manager) Stop() {

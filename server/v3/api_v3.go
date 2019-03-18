@@ -3,7 +3,6 @@ package v3
 import (
 	"bytes"
 	"encoding/hex"
-	"encoding/json"
 	"strconv"
 
 	"github.com/icon-project/goloop/common"
@@ -39,11 +38,20 @@ func getLastBlock(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, er
 		return nil, jsonrpc.ErrInvalidParams()
 	}
 
-	chain, _ := ctx.Chain()
+	chain, err := ctx.Chain()
 	bm := chain.BlockManager()
 
-	block, _ := bm.GetLastBlock()
-	result, _ := block.ToJSON(3)
+	block, err := bm.GetLastBlock()
+	bj, err := block.ToJSON(3)
+	result := bj.(map[string]interface{})
+
+	txs := result["confirmed_transaction_list"].(module.TransactionList)
+	confirmedList, err := convertTransactionList(txs)
+	result["confirmed_transaction_list"] = confirmedList
+
+	if err != nil {
+		return nil, jsonrpc.ErrInternal()
+	}
 
 	return result, nil
 }
@@ -54,11 +62,20 @@ func getBlockByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}
 		return nil, err
 	}
 
-	chain, _ := ctx.Chain()
+	chain, err := ctx.Chain()
 	bm := chain.BlockManager()
 
-	block, _ := bm.GetBlockByHeight(param.Height.Value())
-	result, _ := block.ToJSON(3)
+	block, err := bm.GetBlockByHeight(param.Height.Value())
+	bj, err := block.ToJSON(3)
+	result := bj.(map[string]interface{})
+
+	txs := result["confirmed_transaction_list"].(module.TransactionList)
+	confirmedList, err := convertTransactionList(txs)
+	result["confirmed_transaction_list"] = confirmedList
+
+	if err != nil {
+		return nil, jsonrpc.ErrInternal()
+	}
 
 	return result, nil
 }
@@ -73,13 +90,48 @@ func getBlockByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, 
 	bm := chain.BlockManager()
 
 	block, _ := bm.GetBlock(param.Hash.Bytes())
-	result, _ := block.ToJSON(3)
+	bj, err := block.ToJSON(3)
+	result := bj.(map[string]interface{})
+
+	txs := result["confirmed_transaction_list"].(module.TransactionList)
+	confirmedList, err := convertTransactionList(txs)
+	result["confirmed_transaction_list"] = confirmedList
+
+	if err != nil {
+		return nil, jsonrpc.ErrInternal()
+	}
 
 	return result, nil
 }
 
 func call(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
-	return nil, nil
+	var param CallParam
+	if err := params.Convert(&param); err != nil {
+		return nil, err
+	}
+
+	chain, err := ctx.Chain()
+	bm := chain.BlockManager()
+	sm := chain.ServiceManager()
+
+	block, err := bm.GetLastBlock()
+	s, r, err := sm.Call(block.Result(), params.RawMessage(), block)
+	if err != nil {
+		return nil, err
+	}
+	if s != module.StatusSuccess {
+		msg, ok := r.(string)
+		if !ok {
+			msg = string(s)
+		}
+		return nil, &jsonrpc.Error{
+			// TODO Is it correct if our error code is in application error range?
+			Code:    jsonrpc.ErrorCode(-32500 - int(s)),
+			Message: msg,
+		}
+	} else {
+		return r, nil
+	}
 }
 
 func getBalance(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
@@ -88,13 +140,17 @@ func getBalance(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, erro
 		return nil, err
 	}
 
-	chain, _ := ctx.Chain()
+	chain, err := ctx.Chain()
 	bm := chain.BlockManager()
 	sm := chain.ServiceManager()
 
 	var balance common.HexInt
-	block, _ := bm.GetLastBlock()
+	block, err := bm.GetLastBlock()
 	balance.Set(sm.GetBalance(block.Result(), param.Address.Address()))
+
+	if err != nil {
+		return nil, jsonrpc.ErrInternal()
+	}
 
 	return balance, nil
 }
@@ -122,18 +178,22 @@ func getTransactionResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 		return nil, err
 	}
 
-	chain, _ := ctx.Chain()
+	chain, err := ctx.Chain()
 	bm := chain.BlockManager()
 
-	ti, _ := bm.GetTransactionInfo(param.Hash.Bytes())
+	ti, err := bm.GetTransactionInfo(param.Hash.Bytes())
 	block := ti.Block()
 	receipt := ti.GetReceipt()
-	res, _ := receipt.ToJSON(3)
+	res, err := receipt.ToJSON(3)
 
 	result := res.(map[string]interface{})
 	result["blockHash"] = "0x" + hex.EncodeToString(block.ID())
 	result["blockHeight"] = "0x" + strconv.FormatInt(int64(block.Height()), 16)
 	result["txIndex"] = "0x" + strconv.FormatInt(int64(ti.Index()), 16)
+
+	if err != nil {
+		return nil, jsonrpc.ErrInternal()
+	}
 
 	return result, nil
 }
@@ -144,12 +204,16 @@ func getTransactionByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 		return nil, err
 	}
 
-	chain, _ := ctx.Chain()
+	chain, err := ctx.Chain()
 	bm := chain.BlockManager()
 
-	ti, _ := bm.GetTransactionInfo(param.Hash.Bytes())
+	ti, err := bm.GetTransactionInfo(param.Hash.Bytes())
 	tx := ti.Transaction()
-	result, _ := tx.ToJSON(3)
+	result, err := tx.ToJSON(3)
+
+	if err != nil {
+		return nil, jsonrpc.ErrInternal()
+	}
 
 	return result, nil
 }
@@ -160,11 +224,15 @@ func sendTransaction(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{},
 		return nil, err
 	}
 
-	chain, _ := ctx.Chain()
+	chain, err := ctx.Chain()
 	sm := chain.ServiceManager()
-	tx, _ := json.Marshal(param)
-	hash, _ := sm.SendTransaction(tx)
+
+	hash, err := sm.SendTransaction(params.RawMessage())
 	result := "0x" + hex.EncodeToString(hash)
+
+	if err != nil {
+		return nil, jsonrpc.ErrInternal()
+	}
 
 	return result, nil
 }
@@ -175,17 +243,16 @@ func getDataByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, e
 		return nil, err
 	}
 
-	chain, _ := ctx.Chain()
+	chain, err := ctx.Chain()
 	dbm := chain.Database()
 
 	bucket, err := dbm.GetBucket(db.BytesByHash)
-	if err != nil {
-
-	}
 	value, err := bucket.Get(param.Hash.Bytes())
-	if err != nil {
 
+	if err != nil {
+		return nil, jsonrpc.ErrInternal()
 	}
+
 	if value == nil {
 		return nil, jsonrpc.ErrInvalidParams()
 	}
@@ -199,13 +266,17 @@ func getBlockHeaderByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (inter
 		return nil, err
 	}
 
-	chain, _ := ctx.Chain()
+	chain, err := ctx.Chain()
 	bm := chain.BlockManager()
 
-	block, _ := bm.GetBlockByHeight(param.Height.Value())
+	block, err := bm.GetBlockByHeight(param.Height.Value())
 	buf := bytes.NewBuffer(nil)
 	if err := block.MarshalHeader(buf); err != nil {
 		return nil, err
+	}
+
+	if err != nil {
+		return nil, jsonrpc.ErrInternal()
 	}
 
 	return buf.Bytes(), nil
@@ -217,9 +288,14 @@ func getVotesByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}
 		return nil, err
 	}
 
-	chain, _ := ctx.Chain()
+	chain, err := ctx.Chain()
 	cs := chain.Consensus()
-	votes, _ := cs.GetVotesByHeight(param.Height.Value())
+
+	votes, err := cs.GetVotesByHeight(param.Height.Value())
+
+	if err != nil {
+		return nil, jsonrpc.ErrInternal()
+	}
 
 	return votes.Bytes(), nil
 }
@@ -230,14 +306,18 @@ func getProofForResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{
 		return nil, err
 	}
 
-	chain, _ := ctx.Chain()
+	chain, err := ctx.Chain()
 	bm := chain.BlockManager()
 	sm := chain.ServiceManager()
 
-	block, _ := bm.GetBlock(param.BlockHash.Bytes())
+	block, err := bm.GetBlock(param.BlockHash.Bytes())
 	blockResult := block.Result()
 	receipts := sm.ReceiptListFromResult(blockResult, module.TransactionGroupNormal)
-	proofs, _ := receipts.GetProof(int(param.Index.Value()))
+	proofs, err := receipts.GetProof(int(param.Index.Value()))
+
+	if err != nil {
+		return nil, jsonrpc.ErrInternal()
+	}
 
 	return proofs, nil
 }

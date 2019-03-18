@@ -15,7 +15,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
-	"github.com/icon-project/goloop/rpc/metric"
+	"github.com/icon-project/goloop/server/metric"
 	"github.com/pkg/errors"
 )
 

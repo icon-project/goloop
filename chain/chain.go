@@ -5,21 +5,18 @@ import (
 	"log"
 
 	"github.com/icon-project/goloop/block"
-	"github.com/icon-project/goloop/server"
-	"github.com/icon-project/goloop/service"
-	"github.com/icon-project/goloop/service/eeproxy"
-
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
-	"github.com/icon-project/goloop/rpc"
+	"github.com/icon-project/goloop/server"
+	"github.com/icon-project/goloop/service"
+	"github.com/icon-project/goloop/service/eeproxy"
 )
 
 type Config struct {
 	NID      int    `json:"nid"`
 	Channel  string `json:"channel"`
-	RPCAddr  string `json:"rpc_addr"`
 	SeedAddr string `json:"seed_addr"`
 	Role     uint   `json:"role"`
 
@@ -43,7 +40,6 @@ type singleChain struct {
 	sm       module.ServiceManager
 	bm       module.BlockManager
 	cs       module.Consensus
-	sv       rpc.JsonRpcServer
 	srv      *server.Manager
 	nt       module.NetworkTransport
 	nm       module.NetworkManager
@@ -129,13 +125,8 @@ func (c *singleChain) Start() {
 		log.Panicf("singleChain.Start: %+v\n", err)
 	}
 
-	// TODO : server
-	c.srv.SetChain(c)
-
-	c.sv = rpc.NewJsonRpcServer(c, c.bm, c.sm, c.cs, c.nm)
-	if err := c.sv.ListenAndServe(c.cfg.RPCAddr); err != nil {
-		log.Printf("Fail to Listen on RPC server err=%+v", err)
-	}
+	// server : SetChain()
+	c.srv.SetChain(c.cfg.Channel, c)
 }
 
 func NewChain(

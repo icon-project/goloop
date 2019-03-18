@@ -63,6 +63,11 @@ func (p *Params) Convert(v interface{}) error {
 	return nil
 }
 
+func (p *Params) RawMessage() []byte {
+	bs, _ := p.rawMessage.MarshalJSON()
+	return bs
+}
+
 func (p *Params) IsEmpty() bool {
 	if p.rawMessage == nil {
 		return true

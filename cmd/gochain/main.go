@@ -19,8 +19,8 @@ import (
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/network"
-	"github.com/icon-project/goloop/rpc/metric"
 	"github.com/icon-project/goloop/server"
+	"github.com/icon-project/goloop/server/metric"
 	"github.com/icon-project/goloop/service/eeproxy"
 )
 
@@ -33,6 +33,7 @@ type GoChainConfig struct {
 	P2PAddr       string `json:"p2p"`
 	P2PListenAddr string `json:"p2p_listen"`
 	EESocket      string `json:"ee_socket"`
+	RPCAddr       string `json:"rpc_addr"`
 
 	Key          []byte          `json:"key,omitempty"`
 	KeyStoreData json.RawMessage `json:"key_store"`
@@ -319,9 +320,11 @@ func main() {
 	pm.SetEngine("python", ee)
 	pm.SetInstances("python", 1)
 
-	srv := server.NewManager()
-	// srv.Start()
-
+	// TODO : server-chain setting
+	srv := server.NewManager(cfg.RPCAddr)
 	c := chain.NewChain(wallet, nt, srv, pm, &cfg.Config)
 	c.Start()
+
+	// main loop
+	srv.Start()
 }

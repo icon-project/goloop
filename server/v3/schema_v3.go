@@ -1,6 +1,7 @@
 package v3
 
 import (
+	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/jsonrpc"
 )
 
@@ -53,4 +54,30 @@ type DataHashParam struct {
 type ProofResultParam struct {
 	BlockHash jsonrpc.HexBytes `json:"hash" validate:"required,t_hash"`
 	Index     jsonrpc.HexInt   `json:"index" validate:"required,t_int"`
+}
+
+// convert TransactionList to []Transaction
+func convertTransactionList(txs module.TransactionList) ([]interface{}, error) {
+	listTx := new([]interface{})
+	for it := txs.Iterator(); it.Has(); it.Next() {
+		tx, _, err := it.Get()
+		switch tx.Version() {
+		case module.TransactionVersion2:
+			res, err := tx.ToJSON(module.TransactionVersion2)
+			*listTx = append(*listTx, res)
+			if err != nil {
+				return nil, jsonrpc.ErrInternal()
+			}
+		case module.TransactionVersion3:
+			res, err := tx.ToJSON(module.TransactionVersion3)
+			*listTx = append(*listTx, res)
+			if err != nil {
+				return nil, jsonrpc.ErrInternal()
+			}
+		}
+		if err != nil {
+			return nil, jsonrpc.ErrInternal()
+		}
+	}
+	return *listTx, nil
 }

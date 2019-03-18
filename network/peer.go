@@ -14,7 +14,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/rpc/metric"
+	"github.com/icon-project/goloop/server/metric"
 )
 
 const isLoggingPacket = false
@@ -338,7 +338,7 @@ func (p *Peer) receiveRoutine() {
 		p.pool.Put(pkt.hashOfPacket)
 		metric.RecordOnRecv(p.channel, pkt.dest, pkt.ttl, pkt.extendInfo.hint(), pkt.protocol.Uint16(), pkt.lengthOfPayload)
 		if isLoggingPacket {
-			log.Println(p.id, "Peer", "receiveRoutine",p.connType, p.ConnString(), pkt)
+			log.Println(p.id, "Peer", "receiveRoutine", p.connType, p.ConnString(), pkt)
 		}
 		if cbFunc := p.onPacket; cbFunc != nil {
 			cbFunc(pkt, p)
@@ -477,7 +477,7 @@ func NewPeerIDFromString(s string) module.PeerID {
 	return &peerID{a}
 }
 
-func (pi *peerID) Bytes() []byte{
+func (pi *peerID) Bytes() []byte {
 	return pi.Address.ID()
 }
 
