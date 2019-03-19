@@ -1,3 +1,5 @@
+// +build service_test
+
 package service
 
 import (
