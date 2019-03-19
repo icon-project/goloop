@@ -20,6 +20,7 @@ const (
 	CSRejected
 )
 
+const ASActive = 0
 const (
 	ASDisabled = 1 << iota
 	ASBlocked

@@ -103,7 +103,7 @@ func (s *accountSnapshotImpl) Version() int {
 }
 
 func (s *accountSnapshotImpl) ActiveContract() ContractSnapshot {
-	if s.curContract != nil && s.curContract.state == CSActive {
+	if s.state == ASActive && s.curContract != nil && s.curContract.state == CSActive {
 		return s.curContract
 	}
 	return nil
@@ -331,7 +331,8 @@ func (s *accountStateImpl) Version() int {
 }
 
 func (s *accountStateImpl) ActiveContract() Contract {
-	if s.curContract != nil && s.curContract.state == CSActive {
+	if s.state == ASActive &&
+		s.curContract != nil && s.curContract.state == CSActive {
 		return s.curContract
 	}
 	return nil
@@ -602,6 +603,10 @@ func (a *accountROState) Contract() Contract {
 }
 
 func (a *accountROState) ActiveContract() Contract {
+	if a.IsBlocked() == true || a.IsDisabled() == true {
+		return nil
+	}
+
 	if active := a.AccountSnapshot.ActiveContract(); active != nil {
 		return newContractROState(active)
 	}
