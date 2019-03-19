@@ -48,11 +48,3 @@ func Test_server_self_connection(t *testing.T) {
 	conn.SendAndReceive(1, []byte("TEST"), &buf)
 	log.Printf("Result:%s", buf)
 }
-
-func Test_server_Loop(t *testing.T) {
-	domain, addr := "unix", "/tmp/test"
-	server := NewServer()
-	server.SetHandler(&connHandler{})
-	server.Listen(domain, addr)
-	server.Loop()
-}
