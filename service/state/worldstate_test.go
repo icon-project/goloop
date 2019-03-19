@@ -185,7 +185,10 @@ func TestNewWorldStateWithContract(t *testing.T) {
 		log.Panicf("Invalid state\n")
 	}
 
-	as2.AcceptContract(test[0].testDeployTx, test[0].testAuditTx)
+	if err := as2.AcceptContract(test[0].testDeployTx, test[0].testAuditTx); err != nil {
+		t.Errorf("Fail to AcceptContract err=%+v", err)
+		return
+	}
 	if as2.NextContract() != nil {
 		log.Panicf("Invalid contract. \n")
 	}
@@ -268,7 +271,7 @@ func TestNewWorldStateWithContract(t *testing.T) {
 	if as3.IsBlocked() == false {
 		log.Panic("Not blacklisted", as3.IsBlocked())
 	}
-	if as3.IsDisabled() {
+	if !as3.IsDisabled() {
 		log.Panic("Not disabled")
 	}
 	as3.SetDisable(false)
