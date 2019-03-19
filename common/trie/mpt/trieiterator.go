@@ -12,7 +12,7 @@ func (m *mpt) initIterator(iter *iteratorImpl) {
 		var err error
 		data, err = m.bk.Get(n)
 		if err != nil {
-			log.Fatalln("Failed to get value. key : %x", n)
+			log.Fatalf("Failed to get value. key : %x", n)
 			return
 		} else if len(data) == 0 {
 			return
