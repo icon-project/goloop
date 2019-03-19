@@ -224,7 +224,7 @@ func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedO
 	params, ok := paramObj.Object.(map[string]*codec.TypedObj)
 	if !ok {
 		return nil, scoreresult.Errorf(module.StatusInvalidParameter,
-			"FailToCastDictToMap(type=%[1]T, obj=%[1]+v)", paramObj.Object)
+			"FailToCastDictToMap(type=%[1]T, obj=%+[1]v)", paramObj.Object)
 	}
 	inputs := make([]interface{}, len(a.Inputs))
 	for i, input := range a.Inputs {
