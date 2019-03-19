@@ -214,15 +214,16 @@ func (ws *worldStateImpl) GetSnapshot() WorldSnapshot {
 	}
 }
 
-func NewWorldState(database db.Database, stateHash []byte, vs ValidatorState) WorldState {
+func NewWorldState(database db.Database, stateHash []byte, vs ValidatorSnapshot) WorldState {
 	ws := new(worldStateImpl)
 	ws.database = database
 	ws.accounts = trie_manager.NewMutableForObject(database, stateHash, reflect.TypeOf((*accountSnapshotImpl)(nil)))
 	ws.mutableAccounts = make(map[string]AccountState)
 	if vs == nil {
-		vs, _ = ValidatorStateFromHash(database, nil)
+		ws.validators, _ = ValidatorStateFromHash(database, nil)
+	} else {
+		ws.validators = ValidatorStateFromSnapshot(vs)
 	}
-	ws.validators = vs
 	return ws
 }
 

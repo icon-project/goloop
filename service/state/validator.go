@@ -1,6 +1,7 @@
 package state
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 
@@ -62,6 +63,15 @@ func (v *validator) Bytes() []byte {
 	return bytes
 }
 
+func (v *validator) SetBytes(bs []byte) error {
+	_, err := codec.MP.UnmarshalFromBytes(bs, v)
+	return err
+}
+
+func (v *validator) Equal(v2 module.Validator) bool {
+	return v2.Address().Equal(v.addr) && bytes.Equal(v2.PublicKey(), v.pub)
+}
+
 func (v *validator) String() string {
 	return fmt.Sprintf("Validator[addr=%v,pkey=<%x>]", v.addr, v.pub)
 }
@@ -87,4 +97,19 @@ func ValidatorFromPublicKey(pk []byte) (module.Validator, error) {
 		return nil, err
 	}
 	return v, nil
+}
+
+func validatorFromValidator(v module.Validator) (*validator, error) {
+	if v == nil {
+		return nil, nil
+	}
+	if vo, ok := v.(*validator); ok {
+		return vo, nil
+	} else {
+		vo = new(validator)
+		if err := vo.SetBytes(v.Bytes()); err != nil {
+			return nil, err
+		}
+		return vo, nil
+	}
 }

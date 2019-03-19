@@ -92,18 +92,7 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 func (m *manager) CreateInitialTransition(result []byte,
 	valList module.ValidatorList,
 ) (module.Transition, error) {
-	var vs state.ValidatorState
-	if valList != nil {
-		switch v := valList.(type) {
-		case state.ValidatorSnapshot:
-			vs = state.ValidatorStateFromSnapshot(v)
-		case state.ValidatorState:
-			vs = v
-		default:
-			log.Panicln("Unsupported VadliatorState implementation")
-		}
-	}
-	return newInitTransition(m.db, result, vs, m.cm, m.eem, m.chain)
+	return newInitTransition(m.db, result, valList, m.cm, m.eem, m.chain)
 }
 
 // CreateTransition creates a Transition following parent Transition with txs
