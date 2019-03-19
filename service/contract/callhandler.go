@@ -214,7 +214,8 @@ func (h *CallHandler) SendResult(status module.Status, steps *big.Int, result *c
 		}
 		return h.conn.SendResult(h, uint16(status), steps, result)
 	} else {
-		h.cc.OnResult(module.Status(status), big.NewInt(0), result, nil)
+		h.DeductSteps(steps)
+		h.cc.OnResult(module.Status(status), h.StepUsed(), result, nil)
 		return nil
 	}
 }
