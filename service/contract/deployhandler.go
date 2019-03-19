@@ -82,22 +82,29 @@ func NewDeployHandlerForPreInstall(owner, scoreAddr module.Address, contentType 
 // digest = sha3_256(data)
 // contract address = digest[len(digest) - 20:] // get last 20bytes
 func genContractAddr(from module.Address, timestamp int64, nonce *big.Int) []byte {
-	tsBytes := bytes.NewBuffer(nil)
-	_ = binary.Write(tsBytes, binary.BigEndian, timestamp)
-	data := make([]byte, 0, 84)
-	data = append([]byte(nil), from.ID()...)
-	alignLen := 32 // 32 bytes alignment
-	tBytes := make([]byte, alignLen-tsBytes.Len(), alignLen)
-	tBytes = append(tBytes, tsBytes.Bytes()...)
-	data = append(data, tBytes...)
+	md := sha3.New256()
+
+	// From ID(20 bytes)
+	md.Write(from.ID())
+
+	// Timestamp (32 bytes)
+	md.Write(make([]byte, 24)) // add padding
+	_ = binary.Write(md, binary.BigEndian, timestamp)
+
+	// Nonce (32 bytes)
 	if nonce != nil && nonce.Sign() != 0 {
-		noBytes := bytes.NewBuffer(nil)
-		_ = binary.Write(noBytes, binary.BigEndian, nonce.Bytes())
-		nBytes := make([]byte, alignLen-noBytes.Len(), alignLen)
-		nBytes = append(nBytes, noBytes.Bytes()...)
-		data = append(data, nBytes...)
+		var n common.HexInt
+		n.Set(nonce)
+		nb := n.Bytes()
+		if len(nb) >= 32 {
+			md.Write(nb[:32])
+		} else {
+			md.Write(make([]byte, 32-len(nb))) // add padding
+			md.Write(nb)
+		}
 	}
-	digest := sha3.Sum256(data)
+
+	digest := md.Sum([]byte{})
 	addr := make([]byte, 20)
 	copy(addr, digest[len(digest)-20:])
 	return addr
