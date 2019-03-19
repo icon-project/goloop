@@ -64,30 +64,29 @@ func (srv *Manager) Chain(channel string) *module.Chain {
 }
 
 func (srv *Manager) Start() {
-	e := srv.e
+
+	// middleware
+	srv.e.Use(middleware.Logger())
+	srv.e.Use(middleware.Recover())
 
 	// method
 	mr := v3.MethodRepository()
 
-	// middleware
-	e.Use(middleware.Logger())
-	// e.Use(middleware.Recover())
-
 	// jsonrpc
-	g := e.Group("/api")
+	g := srv.e.Group("/api")
 	g.Use(JsonRpc(srv, mr), JsonRpcLogger(), Chunk())
 	g.POST("/v3", mr.Handle)
 	g.POST("/v3/:channel", mr.Handle)
 
 	// websocket
-	e.GET("/ws/echo", wsEcho)
+	srv.e.GET("/ws/echo", wsEcho)
 
 	// metric
-	e.GET("/metrics", echo.WrapHandler(metric.PromethusExporter()))
+	srv.e.GET("/metrics", echo.WrapHandler(metric.PromethusExporter()))
 
 	// Start server : main loop
-	if err := e.Start(srv.addr); err != nil {
-		e.Logger.Info("shutting down the server")
+	if err := srv.e.Start(srv.addr); err != nil {
+		srv.e.Logger.Info("shutting down the server")
 	}
 }
 

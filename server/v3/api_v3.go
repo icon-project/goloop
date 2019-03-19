@@ -182,8 +182,18 @@ func getTransactionResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 	bm := chain.BlockManager()
 
 	ti, err := bm.GetTransactionInfo(param.Hash.Bytes())
+	if err != nil {
+		return nil, jsonrpc.ErrInternal()
+	}
 	block := ti.Block()
 	receipt := ti.GetReceipt()
+	if receipt == nil {
+		return nil, &jsonrpc.Error{
+			Code:    jsonrpc.ErrorCodeInternal,
+			Message: "No receipt",
+			Data:    nil,
+		}
+	}
 	res, err := receipt.ToJSON(3)
 
 	result := res.(map[string]interface{})
