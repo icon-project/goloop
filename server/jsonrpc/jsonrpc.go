@@ -3,7 +3,6 @@ package jsonrpc
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"reflect"
 
 	"github.com/labstack/echo"
@@ -34,7 +33,7 @@ type Context struct {
 func (ctx *Context) Chain() (module.Chain, error) {
 	chain, ok := ctx.Get("chain").(module.Chain)
 	if chain == nil || !ok {
-		return nil, errors.New("chain is empty")
+		return nil, errors.New("chain is not contained in this context")
 	}
 	return chain, nil
 }
@@ -46,19 +45,17 @@ type Params struct {
 
 func (p *Params) Convert(v interface{}) error {
 	if p.rawMessage == nil {
-		return ErrInvalidParams()
+		return errors.New("params message is null")
 	}
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
-		return errors.New("invalid convert error")
+		return errors.New("v is not pointer type or v is nil")
 	}
 	if err := json.Unmarshal(*p.rawMessage, v); err != nil {
-		fmt.Println(err.Error())
-		return ErrInvalidParams()
+		return err
 	}
 	if err := p.validator.Validate(v); err != nil {
-		fmt.Println(err.Error())
-		return ErrInvalidParams()
+		return err
 	}
 	return nil
 }

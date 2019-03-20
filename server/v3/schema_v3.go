@@ -58,19 +58,19 @@ type ProofResultParam struct {
 
 // convert TransactionList to []Transaction
 func convertTransactionList(txs module.TransactionList) ([]interface{}, error) {
-	listTx := new([]interface{})
+	list := new([]interface{})
 	for it := txs.Iterator(); it.Has(); it.Next() {
 		tx, _, err := it.Get()
 		switch tx.Version() {
 		case module.TransactionVersion2:
 			res, err := tx.ToJSON(module.TransactionVersion2)
-			*listTx = append(*listTx, res)
+			*list = append(*list, res)
 			if err != nil {
 				return nil, jsonrpc.ErrInternal()
 			}
 		case module.TransactionVersion3:
 			res, err := tx.ToJSON(module.TransactionVersion3)
-			*listTx = append(*listTx, res)
+			*list = append(*list, res)
 			if err != nil {
 				return nil, jsonrpc.ErrInternal()
 			}
@@ -79,5 +79,5 @@ func convertTransactionList(txs module.TransactionList) ([]interface{}, error) {
 			return nil, jsonrpc.ErrInternal()
 		}
 	}
-	return *listTx, nil
+	return *list, nil
 }

@@ -7,20 +7,17 @@ import (
 	"github.com/labstack/echo"
 )
 
-const (
-	// ErrorCodeParse is parse error code.
-	ErrorCodeParse ErrorCode = -32700
-	// ErrorCodeInvalidRequest is invalid request error code.
-	ErrorCodeInvalidRequest ErrorCode = -32600
-	// ErrorCodeMethodNotFound is method not found error code.
-	ErrorCodeMethodNotFound ErrorCode = -32601
-	// ErrorCodeInvalidParams is invalid params error code.
-	ErrorCodeInvalidParams ErrorCode = -32602
-	// ErrorCodeInternal is internal error code.
-	ErrorCodeInternal ErrorCode = -32603
-)
-
 type ErrorCode int
+
+const (
+	ErrorCodeParse          ErrorCode = -32700
+	ErrorCodeInvalidRequest ErrorCode = -32600
+	ErrorCodeMethodNotFound ErrorCode = -32601
+	ErrorCodeInvalidParams  ErrorCode = -32602
+	ErrorCodeInternal       ErrorCode = -32603
+	ErrorCodeServer         ErrorCode = -32000
+	ErrorCodeScore          ErrorCode = -32100
+)
 
 type Error struct {
 	Code    ErrorCode   `json:"code"`
@@ -28,65 +25,99 @@ type Error struct {
 	Data    interface{} `json:"data,omitempty"`
 }
 
-// Error implements error interface.
 func (e *Error) Error() string {
 	return fmt.Sprintf("jsonrpc: code: %d, message: %s, data: %+v", e.Code, e.Message, e.Data)
 }
 
-// ErrParse returns parse error.
-func ErrParse() *Error {
-	return &Error{
+func ErrParse(message ...interface{}) *Error {
+	re := &Error{
 		Code:    ErrorCodeParse,
 		Message: "Parse error",
 	}
+	if len(message) > 0 {
+		re.Data = message[0]
+	}
+	return re
 }
 
-// ErrInvalidRequest returns invalid request error.
-func ErrInvalidRequest() *Error {
-	return &Error{
+func ErrInvalidRequest(message ...interface{}) *Error {
+	re := &Error{
 		Code:    ErrorCodeInvalidRequest,
 		Message: "Invalid Request",
 	}
+	if len(message) > 0 {
+		re.Data = message[0]
+	}
+	return re
 }
 
-// ErrMethodNotFound returns method not found error.
-func ErrMethodNotFound() *Error {
-	return &Error{
+func ErrMethodNotFound(message ...interface{}) *Error {
+	re := &Error{
 		Code:    ErrorCodeMethodNotFound,
 		Message: "Method not found",
 	}
+	if len(message) > 0 {
+		re.Data = message[0]
+	}
+	return re
 }
 
-// ErrInvalidParams returns invalid params error.
-func ErrInvalidParams() *Error {
-	return &Error{
+func ErrInvalidParams(message ...interface{}) *Error {
+	re := &Error{
 		Code:    ErrorCodeInvalidParams,
 		Message: "Invalid params",
 	}
+	if len(message) > 0 {
+		re.Data = message[0]
+	}
+	return re
 }
 
-// ErrInternal returns internal error.
-func ErrInternal() *Error {
-	return &Error{
+func ErrInternal(message ...interface{}) *Error {
+	re := &Error{
 		Code:    ErrorCodeInternal,
 		Message: "Internal error",
 	}
+	if len(message) > 0 {
+		re.Data = message[0]
+	}
+	return re
+}
+
+func ErrServer(message ...interface{}) *Error {
+	re := &Error{
+		Code:    ErrorCodeServer,
+		Message: "Server error",
+	}
+	if len(message) > 0 {
+		re.Data = message[0]
+	}
+	return re
+}
+
+func ErrScore(message ...interface{}) *Error {
+	re := &Error{
+		Code:    ErrorCodeScore,
+		Message: "Score error",
+	}
+	if len(message) > 0 {
+		re.Data = message[0]
+	}
+	return re
 }
 
 func ErrorHandler(err error, c echo.Context) {
 	re, ok := err.(*Error)
 	if !ok {
-		re = ErrInternal()
 		// if err is not jsonrpc.Error, delegate to DefaultHTTPErrorHandler
-		// c.Echo().DefaultHTTPErrorHandler(err, c)
-		// return
+		c.Echo().DefaultHTTPErrorHandler(err, c)
+		return
 	}
 
-	// TODO : request is nil
 	req := c.Get("request").(*Request)
 	res := &Response{
 		ID:      req.ID,
-		Version: req.Version,
+		Version: Version,
 		Error:   re,
 	}
 
@@ -96,6 +127,10 @@ func ErrorHandler(err error, c echo.Context) {
 		status = http.StatusBadRequest
 	case ErrorCodeMethodNotFound:
 		status = http.StatusNotFound
+	case ErrorCodeScore:
+		status = http.StatusOK
+	case ErrorCodeServer, ErrorCodeInternal:
+		status = http.StatusInternalServerError
 	default:
 		status = http.StatusInternalServerError
 	}

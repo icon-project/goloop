@@ -16,7 +16,7 @@ func JsonRpc(srv *Manager, mr *jsonrpc.MethodRepository) echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			r := new(jsonrpc.Request)
 			if err := c.Bind(r); err != nil {
-				return jsonrpc.ErrInvalidRequest()
+				return jsonrpc.ErrParse()
 			}
 			c.Set("request", r)
 			if err := c.Validate(r); err != nil {
@@ -28,7 +28,7 @@ func JsonRpc(srv *Manager, mr *jsonrpc.MethodRepository) echo.MiddlewareFunc {
 			}
 			c.Set("method", method)
 
-			// TODO : ChainManager.Chain(channel)
+			// TODO : getChain("channel")
 			channel := c.Param("channel")
 			c.Set("chain", *srv.Chain(channel))
 

@@ -35,14 +35,12 @@ func (mr *MethodRepository) TakeMethod(r *Request) (Handler, error) {
 	if r.Method == "" || r.Version != Version {
 		return nil, ErrInvalidParams()
 	}
-
 	mr.mtx.RLock()
 	md, ok := mr.methods[r.Method]
 	mr.mtx.RUnlock()
 	if !ok {
 		return nil, ErrMethodNotFound()
 	}
-
 	return md, nil
 }
 

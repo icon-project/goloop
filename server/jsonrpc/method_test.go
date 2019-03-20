@@ -8,18 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type HelloParam struct {
-	Name string `json:"name"`
-}
-
-func hello(ctx *Context, params *Params) (result interface{}, err error) {
-	var param HelloParam
-	if err := params.Convert(&param); err != nil {
-		return nil, err
-	}
-	return "hello, " + param.Name, nil
-}
-
 func TestMethodRepository(t *testing.T) {
 	mr := NewMethodRepository()
 	mr.RegisterMethod("hello", hello)
@@ -48,10 +36,21 @@ func TestMethodRepository(t *testing.T) {
 
 	// c.JSON()
 	js, err := json.Marshal(res)
-
 	if err != nil {
 		assert.Error(t, err)
 	}
 
 	fmt.Println(string(js))
+}
+
+type HelloParam struct {
+	Name string `json:"name"`
+}
+
+func hello(ctx *Context, params *Params) (result interface{}, err error) {
+	var param HelloParam
+	if err := params.Convert(&param); err != nil {
+		return nil, ErrInvalidParams()
+	}
+	return "hello, " + param.Name, nil
 }
