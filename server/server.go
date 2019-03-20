@@ -66,7 +66,7 @@ func (srv *Manager) Chain(channel string) *module.Chain {
 func (srv *Manager) Start() {
 
 	// middleware
-	srv.e.Use(middleware.Logger())
+	// srv.e.Use(middleware.Logger())
 	srv.e.Use(middleware.Recover())
 
 	// method
@@ -74,7 +74,8 @@ func (srv *Manager) Start() {
 
 	// jsonrpc
 	g := srv.e.Group("/api")
-	g.Use(JsonRpc(srv, mr), JsonRpcLogger(), Chunk())
+	// g.Use(JsonRpc(srv, mr), JsonRpcLogger(), Chunk())
+	g.Use(JsonRpc(srv, mr), Chunk())
 	g.POST("/v3", mr.Handle)
 	g.POST("/v3/:channel", mr.Handle)
 
