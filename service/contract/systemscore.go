@@ -3,6 +3,7 @@ package contract
 import (
 	"fmt"
 	"log"
+	"math/big"
 	"reflect"
 	"strings"
 
@@ -165,23 +166,24 @@ func CheckMethod(obj SystemScore) error {
 	return nil
 }
 
-func Invoke(score SystemScore, method string, paramObj *codec.TypedObj) (status module.Status, result *codec.TypedObj) {
+func Invoke(score SystemScore, method string, paramObj *codec.TypedObj) (status module.Status, result *codec.TypedObj, steps *big.Int) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Printf("Failed to sysCall method[%s]. err = %s\n", method, err)
 			status = module.StatusSystemError
 		}
 	}()
+	steps = big.NewInt(0)
 	m := reflect.ValueOf(score).MethodByName(FUNC_PREFIX + method)
 	if m.IsValid() == false {
-		return module.StatusMethodNotFound, nil
+		return module.StatusMethodNotFound, nil, steps
 	}
 	params, _ := common.DecodeAny(paramObj)
 	numIn := m.Type().NumIn()
 	objects := make([]reflect.Value, numIn)
 	if l, ok := params.([]interface{}); ok == true {
 		if len(l) != numIn {
-			return module.StatusInvalidParameter, nil
+			return module.StatusInvalidParameter, nil, steps
 		}
 		for i, v := range l {
 			objects[i] = reflect.ValueOf(v)
@@ -196,10 +198,10 @@ func Invoke(score SystemScore, method string, paramObj *codec.TypedObj) (status 
 		interfaceList = make([]interface{}, resultLen-1)
 	}
 
-	// first output type in chain score method is error.
+	// last output type in chain score method is error.
 	status = module.StatusSuccess
 	for i, v := range r {
-		if i+1 == resultLen {
+		if i+1 == resultLen { // last output
 			if err := v.Interface(); err != nil {
 				log.Printf("Failed to invoke %s on chain score. %s\n", method, err.(error))
 			}
@@ -210,5 +212,6 @@ func Invoke(score SystemScore, method string, paramObj *codec.TypedObj) (status 
 	}
 
 	result, _ = common.EncodeAny(interfaceList)
-	return status, result
+	// TODO apply used step
+	return status, result, steps
 }

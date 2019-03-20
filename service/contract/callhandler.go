@@ -146,9 +146,11 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 		}
 		err = h.ensureParamObj()
 		if err == nil {
-			status, result = Invoke(sScore, h.method, h.paramObj)
+			var step *big.Int
+			status, result, step = Invoke(sScore, h.method, h.paramObj)
+			h.DeductSteps(step)
 			go func() {
-				cc.OnResult(module.Status(status), big.NewInt(0), result, nil)
+				cc.OnResult(module.Status(status), h.StepUsed(), result, nil)
 			}()
 		}
 		// TODO define error

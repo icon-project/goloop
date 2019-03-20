@@ -173,7 +173,7 @@ func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []
 		tmpPath = fmt.Sprintf("%s/tmp/%016x%d", cm.storeRoot, codeHash, i)
 		if _, err := os.Stat(tmpPath); !os.IsNotExist(err) {
 			if err := os.RemoveAll(tmpPath); err != nil {
-				continue
+				break
 			}
 		} else {
 			break
@@ -182,7 +182,9 @@ func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []
 	if i == 10 {
 		return "", errors.New("Failed to create temporary directory\n")
 	}
-	os.MkdirAll(tmpPath, 0755)
+	if err := os.MkdirAll(tmpPath, 0755); err != nil {
+		return "", err
+	}
 	zipReader, err :=
 		zip.NewReader(bytes.NewReader(code), int64(len(code)))
 	if err != nil {
