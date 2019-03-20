@@ -262,8 +262,10 @@ func generateNetwork(name string, port int, n int, t *testing.T, roles ...module
 		nm := NewManager(testChannel, nt, "", roles...)
 		r := newTestReactor(fmt.Sprintf("%s_%d", name, i), nm, t)
 		r.nt = nt
-		err := r.nt.Listen()
-		if err != nil {
+		if err := r.nt.Listen(); err != nil {
+			t.Fatal(err)
+		}
+		if err := nm.Start(); err != nil {
 			t.Fatal(err)
 		}
 		arr[i] = r
@@ -459,13 +461,19 @@ func dailByList(t *testing.T, arr []*testReactor, na NetAddress, delay time.Dura
 func listenerClose(t *testing.T, m map[string][]*testReactor) {
 	for _, arr := range m {
 		for _, r := range arr {
-			err := r.nt.Close()
+			log.Println("Try stopping",r.name)
+			err := r.nm.Stop()
+			assert.NoError(t, err, "Stop", r.name)
+			err = r.nt.Close()
 			assert.NoError(t, err, "Close", r.name)
 		}
 	}
 }
 
 func Test_network_basic(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
 	log.SetFlags(log.Lmicroseconds)
 	m := make(map[string][]*testReactor)
 	p := 8080
@@ -547,6 +555,9 @@ func Test_network_basic(t *testing.T) {
 }
 
 func Test_network_allowedPeer(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
 	m := make(map[string][]*testReactor)
 	p := 8080
 	m["TestAllowed"], p = generateNetwork("TestAllowed", p, testNumAllowedPeer, t, module.ROLE_VALIDATOR, module.ROLE_VALIDATOR)
@@ -665,6 +676,9 @@ func (q *testQueue) resume() {
 }
 
 func Test_network_failure(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
 	m := make(map[string][]*testReactor)
 	p := 8080
 	m["TestCitizen"], p = generateNetwork("TestCitizen", p, testNumCitizen, t)                              //8080~8083
@@ -723,18 +737,23 @@ func Test_network_failure(t *testing.T) {
 	}
 
 	msg = m["TestValidator"][0].Broadcast("Test3")
-
 	go func() {
-		for _, p := range pArr {
+		for i, p := range pArr {
+			log.Println("Close by testErrNotAvailable",i,len(pArr), p.id)
+			tq := p.q.s[testProtoPriority].(*testQueue)
+			go func(tq *testQueue) {
+				tq.resume()
+			}(tq)
 			p.Close("testErrNotAvailable")
 		}
 	}()
-	go func() {
-		for _, p := range pArr {
-			tq := p.q.s[testProtoPriority].(*testQueue)
-			tq.resume()
-		}
-	}()
+
+	//go func() {
+	//	for _, p := range pArr {
+	//		tq := p.q.s[testProtoPriority].(*testQueue)
+	//		tq.resume()
+	//	}
+	//}()
 
 	ctx, err = timeoutCtx(ch, 5*DefaultAlternateSendPeriod, "error")
 	assert.NoError(t, err, "Broadcast", "Test3")
@@ -745,7 +764,7 @@ func Test_network_failure(t *testing.T) {
 		}
 		rname := ctx.Value("name").(string)
 		assert.Equal(t, m["TestValidator"][0].name, rname, "")
-		assert.EqualError(t, ErrQueueOverflow, errStr, "")
+		assert.EqualError(t, ErrNotAvailable, errStr, "")
 	}
 
 	for _, p := range pArr {

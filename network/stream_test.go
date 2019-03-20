@@ -43,6 +43,14 @@ func newTNetworkManager(id module.PeerID) *tNetworkManager {
 	return &tNetworkManager{id: id}
 }
 
+func (nm *tNetworkManager) Start() error {
+	return nil
+}
+
+func (nm *tNetworkManager) Stop() error {
+	return nil
+}
+
 func (nm *tNetworkManager) GetPeers() []module.PeerID {
 	res := make([]module.PeerID, len(nm.peers))
 	for i := range nm.peers {

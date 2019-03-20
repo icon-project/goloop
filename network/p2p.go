@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/go-errors/errors"
@@ -58,6 +59,9 @@ type PeerToPeer struct {
 
 	//log
 	log *logger
+
+	started chan bool
+	mtx     sync.Mutex
 }
 
 type failureCbFunc func(err error, pkt *Packet, c *Counter)
@@ -71,7 +75,6 @@ const (
 	p2pEventNotAllowed = "not allowed"
 )
 
-//can be crea`ted each channel
 func newPeerToPeer(channel string, self *Peer, d *Dialer) *PeerToPeer {
 	p2p := &PeerToPeer{
 		channel:          channel,
@@ -146,11 +149,50 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer) *PeerToPeer {
 		"setRoleByAllowedSet",
 		"selectPeersFromFriends",
 	}
+	return p2p
+}
+
+func (p2p *PeerToPeer) Start() {
+	defer p2p.mtx.Unlock()
+	p2p.mtx.Lock()
+
+	if p2p.started != nil {
+		return
+	}
+	p2p.started = make(chan bool)
 
 	go p2p.sendRoutine()
 	go p2p.alternateSendRoutine()
 	go p2p.discoverRoutine()
-	return p2p
+}
+
+func (p2p *PeerToPeer) Stop() {
+	defer p2p.mtx.Unlock()
+	p2p.mtx.Lock()
+
+	if p2p.started == nil {
+		return
+	}
+	close(p2p.started)
+
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+	Loop:
+		for {
+			ps := p2p.getPeers(false)
+			for _, p := range ps {
+				p.Close("stop")
+			}
+			if len(ps) < 1 {
+				break Loop
+			}
+			time.Sleep(time.Second)
+		}
+		wg.Done()
+	}()
+	wg.Wait()
 }
 
 func (p2p *PeerToPeer) dial(na NetAddress) error {
@@ -241,11 +283,14 @@ func (p2p *PeerToPeer) onClose(p *Peer) {
 	p2p.log.Println("onClose", p.CloseInfo(), p)
 	if p2p.removePeer(p) {
 		p2p.onEvent(p2pEventLeave, p)
-
-		for ctx := p.q.Pop(); ctx != nil; ctx = p.q.Pop() {
+		ctx := p.last
+		if ctx == nil {
+			ctx = p.q.Pop()
+		}
+		for ; ctx != nil; ctx = p.q.Pop() {
 			c := ctx.Value(p2pContextKeyCounter).(*Counter)
-			c.close++
-			if c.fixed && c.close == c.enqueue {
+			c.increaseClose()
+			if c.fixed && c.Close() == c.enqueue {
 				pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
 				p2p.onFailure(ErrNotAvailable, pkt, c)
 			}
@@ -449,7 +494,7 @@ func (p2p *PeerToPeer) setRoleByAllowedSet() PeerRoleFlag {
 	role := PeerRoleFlag(r)
 	p2p.setRole(role)
 	//TODO disconnect invalid peer case p2pRoleRoot, p2pRoleSeed
-	p2p.log.Println("setRoleByAllowedSet", p2p.getRole(), p2p.allowedRoots.Len(), p2p.allowedSeeds.Len(),p2p.allowedPeers.Len())
+	p2p.log.Println("setRoleByAllowedSet", p2p.getRole(), p2p.allowedRoots.Len(), p2p.allowedSeeds.Len(), p2p.allowedPeers.Len())
 	return role
 }
 
@@ -601,7 +646,7 @@ func (p2p *PeerToPeer) sendToPeers(ctx context.Context, peers *PeerSet) {
 	}
 }
 
-func (p2p *PeerToPeer) selectPeersFromFriends(pkt *Packet) ([]*Peer, []byte){
+func (p2p *PeerToPeer) selectPeersFromFriends(pkt *Packet) ([]*Peer, []byte) {
 	src := pkt.src
 
 	ps := p2p.friends.Array()
@@ -609,14 +654,14 @@ func (p2p *PeerToPeer) selectPeersFromFriends(pkt *Packet) ([]*Peer, []byte){
 	if nr < 1 {
 		nr = len(ps)
 	}
-	f := nr/3
+	f := nr / 3
 	if f < DefaultFailureNodeMin {
 		f = DefaultFailureNodeMin
 	}
 	n := f + DefaultSelectiveFloodingAdd
-	tps := make([]*Peer,n)
-	lps := make([]*Peer,len(ps))
-	ti,li := 0,0
+	tps := make([]*Peer, n)
+	lps := make([]*Peer, len(ps))
+	ti, li := 0, 0
 
 	var ext []byte
 	if DefaultSimplePeerIDSize >= peerIDSize {
@@ -640,7 +685,7 @@ func (p2p *PeerToPeer) selectPeersFromFriends(pkt *Packet) ([]*Peer, []byte){
 			}
 		}
 		ext = tids.Bytes()
-		p2p.log.Println("selectPeersFromFriends","hash:",pkt.hashOfPacket,"src:",pkt.src,"ext:",pkt.extendInfo,"rids:",rids,"tids:",tids)
+		p2p.log.Println("selectPeersFromFriends", "hash:", pkt.hashOfPacket, "src:", pkt.src, "ext:", pkt.extendInfo, "rids:", rids, "tids:", tids)
 	} else {
 		rids, _ := NewBytesSetFromBytes(pkt.ext, DefaultSimplePeerIDSize)
 		tids := NewBytesSet(DefaultSimplePeerIDSize)
@@ -663,10 +708,10 @@ func (p2p *PeerToPeer) selectPeersFromFriends(pkt *Packet) ([]*Peer, []byte){
 			}
 		}
 		ext = tids.Bytes()
-		p2p.log.Println("selectPeersFromFriends","hash:",pkt.hashOfPacket,"src:",pkt.src,"ext:",pkt.extendInfo,"rids:",rids,"tids:",tids)
+		p2p.log.Println("selectPeersFromFriends", "hash:", pkt.hashOfPacket, "src:", pkt.src, "ext:", pkt.extendInfo, "rids:", rids, "tids:", tids)
 	}
 	n = n - ti
-	for i := 0; i < n && i < li ; i++ {
+	for i := 0; i < n && i < li; i++ {
 		tps[ti] = lps[i]
 		ti++
 	}
@@ -674,7 +719,7 @@ func (p2p *PeerToPeer) selectPeersFromFriends(pkt *Packet) ([]*Peer, []byte){
 }
 
 func (p2p *PeerToPeer) sendToFriends(ctx context.Context) {
-	if UsingSelectiveFlooding {//selective (F+1) flooding with node-list
+	if UsingSelectiveFlooding { //selective (F+1) flooding with node-list
 		pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
 		ps, ext := p2p.selectPeersFromFriends(pkt)
 		pkt.extendInfo = newPacketExtendInfo(pkt.extendInfo.hint()+1, pkt.extendInfo.len()+len(ext))
@@ -700,82 +745,86 @@ func (p2p *PeerToPeer) sendToFriends(ctx context.Context) {
 }
 
 func (p2p *PeerToPeer) sendRoutine() {
-	// TODO goroutine exit
+Loop:
 	for {
-		<-p2p.sendQueue.Wait()
-		for {
-			ctx := p2p.sendQueue.Pop()
-			if ctx == nil {
-				break
-			}
-			pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
-			c := ctx.Value(p2pContextKeyCounter).(*Counter)
-			_ = pkt.updateHash(false)
-			p2p.log.Println("sendRoutine", pkt)
-			// p2p.packetRw.WritePacket(pkt)
-			r := p2p.getRole()
-			switch pkt.dest {
-			case p2pDestPeer:
-				p := p2p.getPeer(pkt.destPeer, true)
-				_ = p.send(ctx)
-			case p2pDestAny:
-				if pkt.ttl == 1 {
-					if r.Has(p2pRoleRoot) {
-						p2p.sendToPeers(ctx, p2p.friends)
-					}
-					_ = p2p.parent.send(ctx)
-					p2p.sendToPeers(ctx, p2p.uncles)
-					p2p.sendToPeers(ctx, p2p.children)
-					p2p.sendToPeers(ctx, p2p.nephews)
-				} else {
-					if r.Has(p2pRoleRoot) {
-						p2p.sendToFriends(ctx)
-					}
-					p2p.sendToPeers(ctx, p2p.children)
-					c.alternate = p2p.nephews.Len()
+		select {
+		case <-p2p.started:
+			break Loop
+		case <-p2p.sendQueue.Wait():
+			for {
+				ctx := p2p.sendQueue.Pop()
+				if ctx == nil {
+					break
 				}
-			case p2pRoleRoot: //multicast to reserved role : p2pDestAny < dest <= p2pDestPeerGroup
-				if r.Has(p2pRoleRoot) {
-					p2p.sendToFriends(ctx)
-				} else {
-					_ = p2p.parent.send(ctx)
-					c.alternate = p2p.uncles.Len()
-				}
-			case p2pRoleSeed:
-				if r.Has(p2pRoleRoot) {
-					p2p.sendToFriends(ctx)
-					if r == p2pRoleRoot {
+				pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
+				c := ctx.Value(p2pContextKeyCounter).(*Counter)
+				_ = pkt.updateHash(false)
+				p2p.log.Println("sendRoutine", pkt)
+				// p2p.packetRw.WritePacket(pkt)
+				r := p2p.getRole()
+				switch pkt.dest {
+				case p2pDestPeer:
+					p := p2p.getPeer(pkt.destPeer, true)
+					_ = p.send(ctx)
+				case p2pDestAny:
+					if pkt.ttl == 1 {
+						if r.Has(p2pRoleRoot) {
+							p2p.sendToPeers(ctx, p2p.friends)
+						}
+						_ = p2p.parent.send(ctx)
+						p2p.sendToPeers(ctx, p2p.uncles)
+						p2p.sendToPeers(ctx, p2p.children)
+						p2p.sendToPeers(ctx, p2p.nephews)
+					} else {
+						if r.Has(p2pRoleRoot) {
+							p2p.sendToFriends(ctx)
+						}
 						p2p.sendToPeers(ctx, p2p.children)
 						c.alternate = p2p.nephews.Len()
 					}
-				} else {
-					_ = p2p.parent.send(ctx)
-					c.alternate = p2p.uncles.Len()
-				}
-			default: //p2pDestPeerGroup < dest < p2pDestPeer
-				//TODO multicast Routing or Flooding
-			}
-
-			if c.alternate < 1 {
-				c.fixed = true
-				if c.peer < 1 {
-					p2p.onFailure(ErrNotAvailable, pkt, c)
-				} else {
-					if c.enqueue < 1 {
-						if c.overflow > 0 {
-							p2p.onFailure(ErrQueueOverflow, pkt, c)
-						} else { //if c.duplicate == c.peer
-							//flooding-end by peer-history
+				case p2pRoleRoot: //multicast to reserved role : p2pDestAny < dest <= p2pDestPeerGroup
+					if r.Has(p2pRoleRoot) {
+						p2p.sendToFriends(ctx)
+					} else {
+						_ = p2p.parent.send(ctx)
+						c.alternate = p2p.uncles.Len()
+					}
+				case p2pRoleSeed:
+					if r.Has(p2pRoleRoot) {
+						p2p.sendToFriends(ctx)
+						if r == p2pRoleRoot {
+							p2p.sendToPeers(ctx, p2p.children)
+							c.alternate = p2p.nephews.Len()
 						}
 					} else {
-						if c.enqueue == c.close {
-							p2p.onFailure(ErrNotAvailable, pkt, c)
+						_ = p2p.parent.send(ctx)
+						c.alternate = p2p.uncles.Len()
+					}
+				default: //p2pDestPeerGroup < dest < p2pDestPeer
+					//TODO multicast Routing or Flooding
+				}
+
+				if c.alternate < 1 {
+					c.fixed = true
+					if c.peer < 1 {
+						p2p.onFailure(ErrNotAvailable, pkt, c)
+					} else {
+						if c.enqueue < 1 {
+							if c.overflow > 0 {
+								p2p.onFailure(ErrQueueOverflow, pkt, c)
+							} else { //if c.duplicate == c.peer
+								//flooding-end by peer-history
+							}
+						} else {
+							if c.enqueue == c.Close() {
+								p2p.onFailure(ErrNotAvailable, pkt, c)
+							}
 						}
 					}
+				} else if !p2p.alternateQueue.Push(ctx) && c.enqueue < 1 {
+					c.fixed = true
+					p2p.onFailure(ErrQueueOverflow, pkt, c)
 				}
-			} else if !p2p.alternateQueue.Push(ctx) && c.enqueue < 1 {
-				c.fixed = true
-				p2p.onFailure(ErrQueueOverflow, pkt, c)
 			}
 		}
 	}
@@ -783,8 +832,11 @@ func (p2p *PeerToPeer) sendRoutine() {
 
 func (p2p *PeerToPeer) alternateSendRoutine() {
 	var m = make(map[uint64]context.Context)
+Loop:
 	for {
 		select {
+		case <-p2p.started:
+			break Loop
 		case <-p2p.alternateQueue.Wait():
 			for {
 				ctx := p2p.alternateQueue.Pop()
@@ -838,7 +890,7 @@ func (p2p *PeerToPeer) alternateSendRoutine() {
 							//flooding-end by peer-history
 						}
 					} else {
-						if c.enqueue == c.close {
+						if c.enqueue == c.Close() {
 							p2p.onFailure(ErrNotAvailable, pkt, c)
 						}
 					}
@@ -899,12 +951,23 @@ type Counter struct {
 	duplicate int
 	overflow  int
 	//
-	close     int
+	close int
+	mtx sync.RWMutex
 }
 
 func (c *Counter) String() string {
 	return fmt.Sprintf("{peer:%d,alt:%d,enQ:%d,dup:%d,of:%d,close:%d}",
-		c.peer, c.alternate, c.enqueue, c.duplicate, c.overflow, c.close)
+		c.peer, c.alternate, c.enqueue, c.duplicate, c.overflow, c.Close())
+}
+func (c *Counter) increaseClose() {
+	defer c.mtx.Unlock()
+	c.mtx.Lock()
+	c.close++
+}
+func (c *Counter) Close() int{
+	defer c.mtx.RUnlock()
+	c.mtx.RLock()
+	return c.close
 }
 
 func (p2p *PeerToPeer) getPeer(id module.PeerID, onlyJoin bool) *Peer {
@@ -1038,9 +1101,11 @@ func (p2p *PeerToPeer) isAllowedRole(role PeerRoleFlag, p *Peer) bool {
 
 //Dial to seeds, roots, nodes and create p2p connection
 func (p2p *PeerToPeer) discoverRoutine() {
-	//TODO goroutine exit
+Loop:
 	for {
 		select {
+		case <-p2p.started:
+			break Loop
 		case <-p2p.seedTicker.C:
 			seeds := p2p.orphanages.GetByRoleAndIncomming(p2pRoleSeed, true, false)
 			minSeed := DefaultMinSeed

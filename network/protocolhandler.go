@@ -48,6 +48,9 @@ func newProtocolHandler(
 	}
 	for _, sp := range spiList {
 		k := protocolInfo(sp.Uint16())
+		if _, ok := ph.subProtocols[k]; ok {
+			ph.log.Println("Warning", "newProtocolHandler", "already registered protocol", ph.name, ph.protocol, sp)
+		}
 		ph.subProtocols[k] = sp
 	}
 
@@ -103,6 +106,8 @@ func (ph *protocolHandler) onPacket(pkt *Packet, p *Peer) {
 		if ok := ph.receiveQueue.Push(ctx); !ok {
 			ph.log.Println("Warning", "onPacket", "receiveQueue Push failure", ph.name, pkt.protocol, pkt.subProtocol, p.ID())
 		}
+	} else {
+		//ph.log.Println("Warning", "onPacket", "not registered protocol", ph.name, pkt.protocol, pkt.subProtocol, p.ID())
 	}
 }
 

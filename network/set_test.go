@@ -111,7 +111,7 @@ func Test_set_NetAddressSet(t *testing.T) {
 
 	assert.True(t, s.RemoveByPeer(v2), "true")
 	assert.False(t, s.ContainsByPeer(v2), "false")
-	assert.Equal(t, 1, s.Len(), "1")
+	assert.Equal(t, 0, s.Len(), "0")
 	t.Log(s.Map())
 	//
 	//v2_1 := &Peer{id: v2.id, netAddress: v1.netAddress}

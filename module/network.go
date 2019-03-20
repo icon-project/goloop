@@ -1,6 +1,9 @@
 package module
 
 type NetworkManager interface {
+	Start() error
+	Stop() error
+
 	GetPeers() []PeerID
 
 	RegisterReactor(name string, reactor Reactor, piList []ProtocolInfo, priority uint8) (ProtocolHandler, error)

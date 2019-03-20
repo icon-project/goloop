@@ -13,20 +13,21 @@ type manager struct {
 	channel string
 	p2p     *PeerToPeer
 	//
-	roles       map[module.Role]*PeerIDSet
-	destByRole  map[module.Role]byte
-	roleByDest  map[byte]module.Role
+	roles      map[module.Role]*PeerIDSet
+	destByRole map[module.Role]byte
+	roleByDest map[byte]module.Role
 	//
 	protocolHandlers map[string]*protocolHandler
 	priority         map[protocolInfo]uint8
 
+	pd *PeerDispatcher
 	//log
 	log *logger
 }
 
 func NewManager(channel string, nt module.NetworkTransport, initialSeed string, roles ...module.Role) module.NetworkManager {
 	t := nt.(*transport)
-	self := &Peer{id:t.PeerID(), netAddress: NetAddress(t.Address())}
+	self := &Peer{id: t.PeerID(), netAddress: NetAddress(t.Address())}
 	m := &manager{
 		channel:          channel,
 		p2p:              newPeerToPeer(channel, self, t.GetDialer(channel)),
@@ -35,10 +36,9 @@ func NewManager(channel string, nt module.NetworkTransport, initialSeed string, 
 		roleByDest:       make(map[byte]module.Role),
 		protocolHandlers: make(map[string]*protocolHandler),
 		priority:         make(map[protocolInfo]uint8),
+		pd:               t.pd,
 		log:              newLogger("NetworkManager", channel),
 	}
-
-	t.pd.registerPeerToPeer(m.p2p)
 
 	//Create default protocolHandler for P2P topology management
 	m.roles[module.ROLE_SEED] = m.p2p.allowedSeeds
@@ -82,6 +82,22 @@ func (m *manager) GetPeers() []module.PeerID {
 		l[i] = p.ID()
 	}
 	return l
+}
+
+func (m *manager) Start() error {
+	if !m.pd.registerPeerToPeer(m.p2p) {
+		return ErrAlreadyRegisteredP2P
+	}
+	m.p2p.Start()
+	return nil
+}
+
+func (m *manager) Stop() error {
+	if !m.pd.unregisterPeerToPeer(m.p2p) {
+		return ErrNotRegisteredP2P
+	}
+	m.p2p.Stop()
+	return nil
 }
 
 func (m *manager) RegisterReactor(name string, r module.Reactor, spiList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
@@ -197,7 +213,7 @@ func (m *manager) Roles(id module.PeerID) []module.Role {
 	return s[:i]
 }
 
-func (m *manager) getRoleByDest(dest byte) module.Role{
+func (m *manager) getRoleByDest(dest byte) module.Role {
 	return m.roleByDest[dest]
 }
 
@@ -283,22 +299,23 @@ func (pi protocolInfo) Uint16() uint16 {
 
 type Error struct {
 	error
-	IsTemporary bool
-	Operation string
+	IsTemporary       bool
+	Operation         string
 	OperationArgument interface{}
 }
-func(e *Error) Temporary() bool {return e.IsTemporary}
 
-func NewBroadcastError(err error, bt module.BroadcastType) module.NetworkError{
+func (e *Error) Temporary() bool { return e.IsTemporary }
+
+func NewBroadcastError(err error, bt module.BroadcastType) module.NetworkError {
 	return newNetworkError(err, "broadcast", bt)
 }
-func NewMulticastError(err error, role module.Role) module.NetworkError{
+func NewMulticastError(err error, role module.Role) module.NetworkError {
 	return newNetworkError(err, "multicast", role)
 }
-func NewUnicastError(err error, id module.PeerID) module.NetworkError{
+func NewUnicastError(err error, id module.PeerID) module.NetworkError {
 	return newNetworkError(err, "unicast", id)
 }
-func newNetworkError(err error, op string, opArg interface{}) module.NetworkError{
+func newNetworkError(err error, op string, opArg interface{}) module.NetworkError {
 	if err != nil {
 		isTemporary := false
 		switch err {

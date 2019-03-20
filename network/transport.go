@@ -269,6 +269,7 @@ type PeerDispatcher struct {
 	*peerHandler
 	peerHandlers *list.List
 	p2pMap       map[string]*PeerToPeer
+	mtx          sync.RWMutex
 }
 
 func newPeerDispatcher(id module.PeerID, peerHandlers ...PeerHandler) *PeerDispatcher {
@@ -287,8 +288,32 @@ func newPeerDispatcher(id module.PeerID, peerHandlers ...PeerHandler) *PeerDispa
 	return pd
 }
 
-func (pd *PeerDispatcher) registerPeerToPeer(p2p *PeerToPeer) {
+func (pd *PeerDispatcher) registerPeerToPeer(p2p *PeerToPeer) bool {
+	defer pd.mtx.Unlock()
+	pd.mtx.Lock()
+
+	if _, ok := pd.p2pMap[p2p.channel]; ok {
+		return false
+	}
 	pd.p2pMap[p2p.channel] = p2p
+	return true
+}
+
+func (pd *PeerDispatcher) unregisterPeerToPeer(p2p *PeerToPeer) bool {
+	defer pd.mtx.Unlock()
+	pd.mtx.Lock()
+	if t, ok := pd.p2pMap[p2p.channel]; !ok || t != p2p {
+		return false
+	}
+	delete(pd.p2pMap, p2p.channel)
+	return true
+}
+
+func (pd *PeerDispatcher) getPeerToPeer(channel string) *PeerToPeer{
+	defer pd.mtx.RUnlock()
+	pd.mtx.RLock()
+
+	return pd.p2pMap[channel]
 }
 
 func (pd *PeerDispatcher) registerPeerHandler(ph PeerHandler, pushBack bool) {
@@ -335,10 +360,11 @@ func (pd *PeerDispatcher) dispatchPeer(p *Peer) {
 	ph.onPeer(p)
 }
 
+
 //callback from PeerHandler.nextOnPeer
 func (pd *PeerDispatcher) onPeer(p *Peer) {
 	pd.log.Println("onPeer", p)
-	if p2p, ok := pd.p2pMap[p.channel]; ok {
+	if p2p := pd.getPeerToPeer(p.channel); p2p != nil {
 		p.setPacketCbFunc(p2p.onPacket)
 		p.setErrorCbFunc(p2p.onError)
 		p.setCloseCbFunc(p2p.onClose)

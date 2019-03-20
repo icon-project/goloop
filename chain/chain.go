@@ -114,6 +114,10 @@ func (c *singleChain) Start() {
 	}
 
 	c.nm = network.NewManager(c.cfg.Channel, c.nt, c.cfg.SeedAddr, toRoles(c.cfg.Role)...)
+	err = c.nm.Start()
+	if err != nil {
+		log.Panicf("singleChain.Start: %+v\n", err)
+	}
 
 	c.vld = consensus.NewCommitVoteSetFromBytes
 	c.sm = service.NewManager(c, c.nm, c.pm, c.cfg.ContractDir)

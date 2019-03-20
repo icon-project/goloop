@@ -6,6 +6,7 @@ import (
 	"hash/fnv"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -54,8 +55,11 @@ func Test_packet_PacketReader(t *testing.T) {
 func Test_packet_PacketReadWriter(t *testing.T) {
 	prw := NewPacketReadWriter()
 	pkt := newPacket(protocolInfo(0), []byte("test"), generatePeerID())
+	pkt.forceSend = false
+	pkt.timestamp = time.Now()
 	assert.NoError(t, prw.WritePacket(pkt), "WritePacket fail")
 	rpkt, err := prw.ReadPacket()
+	rpkt.timestamp = pkt.timestamp
 	assert.NoError(t, err, "ReadPacket fail")
 	assert.Equal(t, pkt, rpkt, "ReadPacket")
 	rpkt, err = prw.ReadPacket()

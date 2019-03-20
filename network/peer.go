@@ -49,6 +49,7 @@ type Peer struct {
 	children  []NetAddress
 	nephews   int
 	//
+	last context.Context
 }
 
 type packetCbFunc func(pkt *Packet, p *Peer)
@@ -375,19 +376,22 @@ Loop:
 		case <-p.q.Wait():
 			for {
 				ctx := p.q.Pop()
+				p.last = ctx
 				if ctx == nil {
 					break
 				}
 				pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
 				if err := p.sendDirect(pkt); err != nil {
 					r := p.isTemporaryError(err)
-					//log.Printf("Peer.sendRoutine Error isTemporary:{%v} error:{%+v} peer:%s", r, err, p.String())
+					log.Printf("Peer.sendRoutine Error isTemporary:{%v} error:{%+v} peer:%s", r, err, p.String())
 					if !r {
 						//c := ctx.Value(p2pContextKeyCounter).(*Counter)
 						//log.Printf("Peer.sendRoutine Error isTemporary:{%v} error:{%+v} peer:%s counter:%s", r, err, p.String(), c.String())
+						//TODO 전송실패시의 context를 peer에 저장해놓아야함.
 						p.CloseByError(err)
 						return
 					}
+					//TODO TemporaryError시의 failure는 어떻게 counting 할것인가?
 					p.onError(err, p, pkt)
 				}
 				if isLoggingPacket {
