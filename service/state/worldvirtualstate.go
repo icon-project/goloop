@@ -27,7 +27,7 @@ type LockRequest struct {
 type WorldVirtualState interface {
 	WorldState
 	GetFuture(reqs []LockRequest) WorldVirtualState
-	Begin()
+	Ensure()
 	Commit()
 	Realize()
 }
@@ -421,7 +421,7 @@ func (wvs *worldVirtualState) ClearCache() {
 	// So, we don't need to support this features.
 }
 
-func (wvs *worldVirtualState) Begin() {
+func (wvs *worldVirtualState) Ensure() {
 	wvs.mutex.Lock()
 	defer wvs.mutex.Unlock()
 

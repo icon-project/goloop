@@ -361,7 +361,7 @@ func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, 
 			})
 			go func(ctx contract.Context, rb *txresult.Receipt) {
 				wvs := ctx.WorldVirtualState()
-				wvs.Begin()
+				wvs.Ensure()
 				if rct, err := txh.Execute(ctx); err != nil {
 					log.Panicf("Fail to execute transaction err=%+v", err)
 				} else {

@@ -142,6 +142,7 @@ const (
 	FlagReadOnly = 1 << iota
 	FlagExternal
 	FlagPayable
+	FlagIsolated
 )
 
 type Parameter struct {
@@ -169,6 +170,10 @@ func (a *Method) IsReadOnly() bool {
 
 func (a *Method) IsExternal() bool {
 	return a.Type == Function && (a.Flags&FlagExternal) != 0
+}
+
+func (a *Method) IsIsolated() bool {
+	return a.Type != Event && (a.Flags&FlagIsolated) != 0
 }
 
 func (a *Method) IsCallable() bool {
@@ -210,6 +215,9 @@ func (a *Method) ToJSON(version int) (interface{}, error) {
 	}
 	if (a.Flags & FlagPayable) != 0 {
 		m["payable"] = "0x1"
+	}
+	if (a.Flags & FlagIsolated) != 0 {
+		m["isolated"] = "0x1"
 	}
 	return m, nil
 }
