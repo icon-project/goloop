@@ -237,8 +237,6 @@ func (cs *consensus) ReceiveProposalMessage(msg *proposalMessage, unicast bool) 
 
 	if cs.step == stepPropose && cs.isProposalAndPOLPrevotesComplete() {
 		cs.enterPrevote()
-	} else if cs.step == stepCommit && cs.currentBlockParts.IsComplete() {
-		cs.enterNewHeight()
 	}
 	return nil
 }
