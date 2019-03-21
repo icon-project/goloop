@@ -298,13 +298,14 @@ func (cs *consensus) ReceiveVoteMessage(msg *voteMessage, unicast bool) (int, er
 		return index, nil
 	}
 	if msg.Type == voteTypePrevote {
-		return index, cs.handlePrevoteMessage(msg, votes)
+		cs.handlePrevoteMessage(msg, votes)
 	} else {
-		return index, cs.handlePrecommitMessage(msg, votes)
+		cs.handlePrecommitMessage(msg, votes)
 	}
+	return index, nil
 }
 
-func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) error {
+func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) {
 	partSetID, ok := prevotes.getOverTwoThirdsPartSetID()
 	if ok {
 		if cs.lockedRound < msg.Round && cs.lockedBlockParts != nil && !cs.lockedBlockParts.ID().Equal(partSetID) {
@@ -332,10 +333,9 @@ func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) e
 		cs.resetForNewRound(msg.Round)
 		cs.enterPrevote()
 	}
-	return nil
 }
 
-func (cs *consensus) handlePrecommitMessage(msg *voteMessage, precommits *voteSet) error {
+func (cs *consensus) handlePrecommitMessage(msg *voteMessage, precommits *voteSet) {
 	if msg.Round < cs.round && cs.step < stepCommit {
 		if psid, _ := precommits.getOverTwoThirdsPartSetID(); psid != nil {
 			cs.enterCommit(precommits, psid, msg.Round)
@@ -355,7 +355,6 @@ func (cs *consensus) handlePrecommitMessage(msg *voteMessage, precommits *voteSe
 		cs.resetForNewRound(msg.Round)
 		cs.enterPrecommit()
 	}
-	return nil
 }
 
 func (cs *consensus) notifySyncer() {
