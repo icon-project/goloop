@@ -249,9 +249,13 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	startTime := time.Now()
 
 	patchReceipts := make([]txresult.Receipt, patchCount)
-	t.executeTxs(t.patchTransactions, ctx, patchReceipts)
+	if !t.executeTxs(t.patchTransactions, ctx, patchReceipts) {
+		return
+	}
 	normalReceipts := make([]txresult.Receipt, normalCount)
-	t.executeTxs(t.normalTransactions, ctx, normalReceipts)
+	if !t.executeTxs(t.normalTransactions, ctx, normalReceipts) {
+		return
+	}
 
 	cumulativeSteps := big.NewInt(0)
 	gatheredFee := big.NewInt(0)
@@ -324,14 +328,14 @@ func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext
 	return true, cnt
 }
 
-func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, rctBuf []txresult.Receipt) (bool, int) {
+func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, rctBuf []txresult.Receipt) bool {
 	if l == nil {
-		return true, 0
+		return true
 	}
 	cnt := 0
 	for i := l.Iterator(); i.Has(); i.Next() {
 		if t.step == stepCanceled {
-			return false, 0
+			return false
 		}
 		txi, _, err := i.Get()
 		if err != nil {
@@ -393,7 +397,7 @@ func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, 
 	if wvs := ctx.WorldVirtualState(); wvs != nil {
 		wvs.Realize()
 	}
-	return true, cnt
+	return true
 }
 
 func (t *transition) finalizeNormalTransaction() {
