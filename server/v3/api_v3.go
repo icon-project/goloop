@@ -9,6 +9,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/jsonrpc"
+	"github.com/icon-project/goloop/service"
 )
 
 const jsonRpcApiVersion = 3
@@ -309,6 +310,12 @@ func sendTransaction(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{},
 
 	hash, err := sm.SendTransaction(params.RawMessage())
 	if err != nil {
+		if err == service.ErrTransactionPoolOverFlow {
+			return nil, &jsonrpc.Error{
+				Code:    -32101,
+				Message: "TransactionPool Overflow",
+			}
+		}
 		return nil, jsonrpc.ErrServer(err.Error())
 	}
 
