@@ -123,19 +123,21 @@ func NewConsensus(c module.Chain, bm module.BlockManager, nm module.NetworkManag
 func (cs *consensus) resetForNewHeight(prevBlock module.Block, votes *commitVoteList) {
 	cs.height = prevBlock.Height() + 1
 	cs.lastBlock = prevBlock
-	cs.validators = cs.lastBlock.NextValidators()
+	if cs.validators == nil || !bytes.Equal(cs.validators.Hash(), cs.lastBlock.NextValidators().Hash()) {
+		cs.validators = cs.lastBlock.NextValidators()
+		peerIDs := make([]module.PeerID, cs.validators.Len())
+		for i := 0; i < cs.validators.Len(); i++ {
+			v, _ := cs.validators.Get(i)
+			peerIDs[i] = network.NewPeerIDFromAddress(v.Address())
+		}
+		cs.nm.SetRole(module.ROLE_VALIDATOR, peerIDs...)
+	}
 	cs.votes = votes
 	cs.hvs.reset(cs.validators.Len())
 	cs.lockedRound = -1
 	cs.lockedBlockParts = nil
 	cs.consumedNonunicast = false
 	cs.commitRound = -1
-	peerIDs := make([]module.PeerID, cs.validators.Len())
-	for i := 0; i < cs.validators.Len(); i++ {
-		v, _ := cs.validators.Get(i)
-		peerIDs[i] = network.NewPeerIDFromAddress(v.Address())
-	}
-	cs.nm.SetRole(module.ROLE_VALIDATOR, peerIDs...)
 	metric.RecordOnHeight("default", cs.isProposer(), cs.height)
 	cs.resetForNewRound(0)
 }
