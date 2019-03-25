@@ -215,10 +215,16 @@ func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []
 			}
 			buf, err := ioutil.ReadAll(reader)
 			if err != nil {
+				err = reader.Close()
 				return "", errors.New("Failed to read zip file\n")
 			}
 			if err = ioutil.WriteFile(storePath, buf, os.ModePerm); err != nil {
 				log.Printf("Failed to write file. err = %s\n", err)
+			}
+			err = reader.Close()
+			if err != nil {
+				log.Printf("Failed to close. err = %s\n", err)
+				return "", err
 			}
 		}
 		if findRoot == false {
