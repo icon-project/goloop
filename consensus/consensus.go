@@ -216,7 +216,7 @@ func (cs *consensus) OnLeave(id module.PeerID) {
 }
 
 func (cs *consensus) ReceiveProposalMessage(msg *proposalMessage, unicast bool) error {
-	if msg.Height != cs.height || msg.Round != cs.round {
+	if msg.Height != cs.height || msg.Round != cs.round || cs.step >= stepCommit {
 		return nil
 	}
 	index := cs.validators.IndexOf(msg.address())
@@ -306,6 +306,10 @@ func (cs *consensus) ReceiveVoteMessage(msg *voteMessage, unicast bool) (int, er
 }
 
 func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) {
+	if cs.step >= stepCommit {
+		return
+	}
+
 	partSetID, ok := prevotes.getOverTwoThirdsPartSetID()
 	if ok {
 		if cs.lockedRound < msg.Round && cs.lockedBlockParts != nil && !cs.lockedBlockParts.ID().Equal(partSetID) {
@@ -329,7 +333,7 @@ func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) {
 		if ok {
 			cs.enterPrecommit()
 		}
-	} else if cs.round < msg.Round {
+	} else if cs.round < msg.Round && cs.step < stepCommit {
 		cs.resetForNewRound(msg.Round)
 		cs.enterPrevote()
 	}
@@ -351,7 +355,7 @@ func (cs *consensus) handlePrecommitMessage(msg *voteMessage, precommits *voteSe
 		} else if ok && partSetID == nil {
 			cs.enterNewRound()
 		}
-	} else if cs.round < msg.Round {
+	} else if cs.round < msg.Round && cs.step < stepCommit {
 		cs.resetForNewRound(msg.Round)
 		cs.enterPrecommit()
 	}
