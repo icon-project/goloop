@@ -375,11 +375,6 @@ func (cs *consensus) setStep(step step) {
 	logger.Printf("setStep(%v.%v.%v)\n", cs.height, cs.round, cs.step)
 }
 
-func (cs *consensus) enterProposeForNextHeight() {
-	votes := cs.hvs.votesFor(cs.commitRound, voteTypePrecommit).commitVoteListForOverTwoThirds()
-	cs.resetForNewHeight(cs.currentBlockParts.block, votes)
-	cs.enterPropose()
-}
 
 func (cs *consensus) enterProposeForRound(round int32) {
 	cs.resetForNewRound(round)
@@ -725,6 +720,9 @@ func (cs *consensus) enterNewHeight() {
 	cs.setStep(stepNewHeight)
 	cs.notifySyncer()
 
+	votes := cs.hvs.votesFor(cs.commitRound, voteTypePrecommit).commitVoteListForOverTwoThirds()
+	cs.resetForNewHeight(cs.currentBlockParts.block, votes)
+
 	now := time.Now()
 	if cs.nextProposeTime.After(now) {
 		hrs := cs.hrs
@@ -735,10 +733,10 @@ func (cs *consensus) enterNewHeight() {
 			if cs.hrs != hrs {
 				return
 			}
-			cs.enterProposeForNextHeight()
+			cs.enterPropose()
 		})
 	} else {
-		cs.enterProposeForNextHeight()
+		cs.enterPropose()
 	}
 }
 
