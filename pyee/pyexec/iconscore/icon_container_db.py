@@ -195,7 +195,7 @@ class DictDB(object):
 
     def __setitem__(self, key: K, value: V) -> None:
         if self.__depth != 1:
-            raise InvalidContainerAccessException(f'DictDB depth mismatch')
+            raise InvalidContainerAccessException('DictDB depth mismatch')
 
         encoded_key: bytes = get_encoded_key(key)
         encoded_value: bytes = ContainerUtil.encode_value(value)
@@ -220,7 +220,7 @@ class DictDB(object):
 
     def __remove(self, key: K) -> None:
         if self.__depth != 1:
-            raise InvalidContainerAccessException(f'DictDB depth mismatch')
+            raise InvalidContainerAccessException('DictDB depth mismatch')
         self._db.delete(get_encoded_key(key))
 
 
@@ -290,14 +290,14 @@ class ArrayDB(object):
 
     def __setitem__(self, index: int, value: V) -> None:
         if not isinstance(index, int):
-            raise InvalidParamsException(f'Invalid index type: not an integer')
+            raise InvalidParamsException('Invalid index type: not an integer')
         size = self.__get_size()
         if index < 0:
             index += size
         if 0 <= index < size:
             self.__put(index, value)
         else:
-            raise InvalidParamsException(f'ArrayDB out of index')
+            raise InvalidParamsException('ArrayDB out of index')
 
     def __getitem__(self, index: int) -> V:
         return ArrayDB._get(self._db, self.__get_size(), index, self.__value_type)
@@ -311,14 +311,14 @@ class ArrayDB(object):
     @staticmethod
     def _get(db: 'IconScoreDatabase', size: int, index: int, value_type: type) -> V:
         if not isinstance(index, int):
-            raise InvalidParamsException(f'Invalid index type: not an integer')
+            raise InvalidParamsException('Invalid index type: not an integer')
         if index < 0:
             index += size
         if 0 <= index < size:
             key: bytes = get_encoded_key(index)
             return ContainerUtil.decode_object(db.get(key), value_type)
 
-        raise InvalidParamsException(f'ArrayDB out of index')
+        raise InvalidParamsException('ArrayDB out of index')
 
     @staticmethod
     def _get_generator(db: 'IconScoreDatabase', size: int, value_type: type):

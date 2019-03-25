@@ -115,7 +115,7 @@ class ScoreApiGenerator:
 
         if params_type is Signature.empty:
             raise IllegalFormatException(
-                f"'Returning type should be declared in read-only functions")
+                "Returning type should be declared in read-only functions")
 
         main_type = get_main_type_from_annotations_type(params_type)
         main_type = ScoreApiGenerator.__convert_str_to_type(main_type)
@@ -128,7 +128,7 @@ class ScoreApiGenerator:
         if api_type is None:
             api_type = ScoreApiGenerator.__find_base_super_type(main_type)
         if api_type is None:
-            raise IllegalFormatException(f"'Unsupported type for '{params_type}'")
+            raise IllegalFormatException(f"Unsupported type for '{params_type}'")
 
         info = dict()
         info[ScoreApiGenerator.__API_TYPE] = api_type.__name__
@@ -169,7 +169,7 @@ class ScoreApiGenerator:
         api_type = ScoreApiGenerator.__find_base_super_type(main_type)
         if api_type is None:
             raise IllegalFormatException(
-                f"'Unsupported type for '{param.name}: {param.annotation}'")
+                f"Unsupported type for '{param.name}: {param.annotation}'")
         info = dict()
         info[ScoreApiGenerator.__API_NAME] = param.name
         info[ScoreApiGenerator.__API_TYPE] = api_type.__name__
@@ -177,7 +177,7 @@ class ScoreApiGenerator:
             info[ScoreApiGenerator.__API_INPUTS_INDEXED] = is_indexed
         if param.default is not Parameter.empty:
             if param.default is not None and not isinstance(param.default, main_type):
-                raise InvalidParamsException(f'default params type mismatch. value: {param.default} type: {main_type}')
+                raise InvalidParamsException(f'Default params type mismatch. value: {param.default} type: {main_type}')
             # the default param value will be encoded at ipc.proxy
             info[ScoreApiGenerator.__API_INPUTS_DEFAULT] = param.default
         src.append(info)

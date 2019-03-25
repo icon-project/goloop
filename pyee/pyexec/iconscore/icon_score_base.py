@@ -32,10 +32,10 @@ from .icon_score_constant import CONST_INDEXED_ARGS_COUNT, CONST_BIT_FLAG, Const
     STR_FALLBACK, STR_ON_INSTALL, STR_ON_UPDATE, \
     CONST_CLASS_EXTERNALS, CONST_CLASS_PAYABLES, CONST_CLASS_API, T, BaseType
 from .icon_score_context import ContextGetter, IconScoreContext
-from .score_api_generator import ScoreApiGenerator
-from .icon_score_step import StepType
 from .icon_score_eventlog import EventLogEmitter
+from .icon_score_step import StepType
 from .internal_call import InternalCall
+from .score_api_generator import ScoreApiGenerator
 
 INDEXED_ARGS_LIMIT = 3
 
@@ -59,7 +59,8 @@ def interface(func):
     @wraps(func)
     def __wrapper(calling_obj: Any, *args, **kwargs):
         if not isinstance(calling_obj, InterfaceScore):
-            raise InvalidInstanceException(FORMAT_IS_NOT_DERIVED_OF_OBJECT.format(InterfaceScore.__name__))
+            raise InvalidInstanceException(
+                FORMAT_IS_NOT_DERIVED_OF_OBJECT.format(InterfaceScore.__name__))
 
         score = calling_obj.from_score
         addr_to = calling_obj.addr_to
@@ -96,8 +97,7 @@ def eventlog(func=None, *, indexed=0):
         raise InvalidEventLogException("Index exceeds the number of parameters")
 
     if getattr(func, CONST_BIT_FLAG, 0) & ConstBitFlag.EventLog:
-        raise InvalidEventLogException(
-            FORMAT_DECORATOR_DUPLICATED.format('eventlog', func_name, cls_name))
+        raise InvalidEventLogException(FORMAT_DECORATOR_DUPLICATED.format('eventlog', func_name, cls_name))
 
     bit_flag = getattr(func, CONST_BIT_FLAG, 0) | ConstBitFlag.EventLog
     setattr(func, CONST_BIT_FLAG, bit_flag)
@@ -199,8 +199,8 @@ def __resolve_arguments(function_name, parameters, args, kwargs) -> List[Any]:
             main_type = Address
 
         if value is not None and not isinstance(value, main_type):
-            raise IllegalFormatException(f"Mismatch type type of '{name}': "
-                                         f"{type(value)}, expected: {main_type}")
+            raise IllegalFormatException(
+                f"Type mismatch of '{name}': {type(value)}, expected: {main_type}")
         arguments.append(value)
     return arguments
 
@@ -246,7 +246,6 @@ def payable(func):
 
     @wraps(func)
     def __wrapper(calling_obj: Any, *args, **kwargs):
-
         if not (isinstance(calling_obj, IconScoreBase)):
             raise InvalidInstanceException(
                 FORMAT_IS_NOT_DERIVED_OF_OBJECT.format(IconScoreBase.__name__))
@@ -385,8 +384,9 @@ class IconScoreBase(IconScoreObject, ContextGetter,
         :param func_name: name of method
         """
 
-        if func_name not in self.__get_attr_dict(CONST_CLASS_EXTERNALS):
-            raise MethodNotFoundException(f'Method not external: {func_name}, {type(self).__name__}')
+        if not self.__is_external_method(func_name):
+            raise MethodNotFoundException(
+                f"Method not found: {type(self).__name__}.{func_name}")
 
     @classmethod
     def __get_attr_dict(cls, attr: str) -> dict:
@@ -406,32 +406,38 @@ class IconScoreBase(IconScoreObject, ContextGetter,
                 func_name != STR_ON_UPDATE:
             self.validate_external_method(func_name)
 
-        self.__check_payable(func_name, self.__get_attr_dict(CONST_CLASS_PAYABLES))
-
-        score_func = getattr(self, func_name)
-
         if func_name == STR_FALLBACK:
+            if not self.__is_payable_method(func_name):
+                raise MethodNotFoundException(
+                    f"Method not found: {type(self).__name__}.{func_name}")
+            score_func = getattr(self, func_name)
             ret = score_func()
         else:
+            self.__check_payable(func_name)
+            score_func = getattr(self, func_name)
             if arg_params is None:
                 arg_params = []
             if kw_params is None:
                 kw_params = {}
             ret = score_func(*arg_params, **kw_params)
-
         return ret
 
-    def __check_payable(self, func_name: str, payable_dict: dict):
-        if func_name not in payable_dict:
-            if self.msg.value > 0:
-                raise MethodNotPayableException(f'Method not payable: {func_name}, {type(self).__name__}')
+    def __check_payable(self, func_name: str):
+        if self.msg.value > 0 and not self.__is_payable_method(func_name):
+            raise MethodNotPayableException(
+                f"Method not payable: {type(self).__name__}.{func_name}")
+
+    def __is_external_method(self, func_name) -> bool:
+        return func_name in self.__get_attr_dict(CONST_CLASS_EXTERNALS)
+
+    def __is_payable_method(self, func_name) -> bool:
+        return func_name in self.__get_attr_dict(CONST_CLASS_PAYABLES)
 
     def __is_func_readonly(self, func_name: str) -> bool:
-        try:
+        if self.__is_external_method(func_name):
             func = getattr(self, func_name)
-        except AttributeError:
-            raise MethodNotFoundException(f'Method not found: {func_name}')
-        return bool(getattr(func, CONST_BIT_FLAG, 0) & ConstBitFlag.ReadOnly)
+            return bool(getattr(func, CONST_BIT_FLAG, 0) & ConstBitFlag.ReadOnly)
+        return False
 
     @staticmethod
     def __on_db_get(context: 'IconScoreContext',

@@ -15,10 +15,10 @@
 import hashlib
 import json
 from abc import ABC, ABCMeta
-from typing import TYPE_CHECKING, Optional, Union, Any
+from typing import TYPE_CHECKING, Optional, Any
 
 from ..base.address import Address
-from ..base.exception import IconScoreException
+from ..base.exception import InvalidParamsException, IconScoreException
 from .icon_score_constant import STR_FALLBACK
 from .icon_score_context import ContextContainer, IconScoreContext
 from .internal_call import InternalCall
@@ -139,7 +139,16 @@ def revert(message: Optional[str] = None, code: int = 0) -> None:
     :param message: revert message
     :param code: code
     """
-    raise IconScoreException(message, code)
+    try:
+        if not isinstance(code, int):
+            code = int(code)
+
+        if not isinstance(message, str):
+            message = str(message)
+    except:
+        raise InvalidParamsException("Revert error: code or message is invalid")
+    else:
+        raise IconScoreException(message, code)
 
 
 def sha3_256(data: bytes) -> bytes:
