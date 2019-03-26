@@ -7,12 +7,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/icon-project/goloop/consensus/fastsync"
 	"github.com/icon-project/goloop/module"
 )
 
 const (
 	configSendBPS                   = -1
 	configRoundStateMessageInterval = 300 * time.Millisecond
+	configFastSyncThreshold         = 4
 )
 
 type Engine interface {
@@ -28,6 +30,7 @@ type Engine interface {
 
 	ReceiveBlockPartMessage(msg *blockPartMessage, unicast bool) (int, error)
 	ReceiveVoteMessage(msg *voteMessage, unicast bool) (int, error)
+	ReceiveBlock(br fastsync.BlockResult)
 }
 
 type Syncer interface {
@@ -77,6 +80,11 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 		return nil, nil
 	}
 
+	if !p.peerRoundState.Sync {
+		p.debug.Printf("peer round state: no sync\n")
+		return nil, nil
+	}
+
 	if p.Height < e.Height() || (p.Height == e.Height() && e.Step() >= stepCommit) {
 		if p.BlockPartsMask == nil {
 			vl := e.GetCommitPrecommits(p.Height)
@@ -105,6 +113,13 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 	}
 	if p.Height > e.Height() {
 		p.debug.Printf("higher peer height %v > %v\n", p.Height, e.Height())
+		if p.Height > e.Height()+configFastSyncThreshold && p.syncer.fetchCanceler == nil {
+			blk, err := p.syncer.bm.GetBlockByHeight(e.Height() - 1)
+			if err != nil {
+				return nil, nil
+			}
+			p.syncer.fetchCanceler, _ = p.syncer.fsm.FetchBlocks(e.Height(), -1, blk, NewCommitVoteSetFromBytes, p.syncer)
+		}
 		return nil, nil
 	}
 
@@ -216,22 +231,32 @@ func (p *peer) wakeUp() {
 type syncer struct {
 	engine Engine
 	nm     module.NetworkManager
+	bm     module.BlockManager
 	mutex  *sync.Mutex
 	addr   module.Address
+	fsm    fastsync.Manager
 
-	ph           module.ProtocolHandler
-	peers        []*peer
-	timer        *time.Timer
-	lastSendTime time.Time
-	running      bool
+	ph            module.ProtocolHandler
+	peers         []*peer
+	timer         *time.Timer
+	lastSendTime  time.Time
+	running       bool
+	fetchCanceler func() bool
 }
 
-func newSyncer(e Engine, nm module.NetworkManager, mutex *sync.Mutex, addr module.Address) Syncer {
+func newSyncer(e Engine, nm module.NetworkManager, bm module.BlockManager, mutex *sync.Mutex, addr module.Address) Syncer {
+	fsm, err := fastsync.NewManager(nm, bm)
+	if err != nil {
+		return nil
+	}
+	fsm.StartServer()
 	return &syncer{
 		engine: e,
 		nm:     nm,
+		bm:     bm,
 		mutex:  mutex,
 		addr:   addr,
+		fsm:    fsm,
 	}
 }
 
@@ -432,4 +457,20 @@ func (s *syncer) Stop() {
 	s.timer.Stop()
 	s.timer = nil
 	s.running = false
+}
+
+func (s *syncer) OnBlock(br fastsync.BlockResult) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	logger.Printf("syncer.OnBlock %d\n", br.Block().Height())
+	s.engine.ReceiveBlock(br)
+}
+
+func (s *syncer) OnEnd(err error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	logger.Printf("syncer.OnEnd %+v\n", err)
+	s.fetchCanceler = nil
 }

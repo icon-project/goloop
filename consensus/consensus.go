@@ -13,6 +13,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/consensus/fastsync"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/server/metric"
@@ -99,6 +100,7 @@ type consensus struct {
 	currentBlockParts  *blockPartSet
 	consumedNonunicast bool
 	commitRound        int32
+	syncing            bool
 
 	timer              *time.Timer
 	cancelBlockRequest func() bool
@@ -106,6 +108,9 @@ type consensus struct {
 	// commit cache
 	commitMRU       *list.List
 	commitForHeight map[int64]*commit
+
+	// prefetch buffer
+	prefetchItems []fastsync.BlockResult
 }
 
 func NewConsensus(c module.Chain, bm module.BlockManager, nm module.NetworkManager, walDir string) module.Consensus {
@@ -138,6 +143,7 @@ func (cs *consensus) resetForNewHeight(prevBlock module.Block, votes *commitVote
 	cs.lockedBlockParts = nil
 	cs.consumedNonunicast = false
 	cs.commitRound = -1
+	cs.syncing = true
 	metric.RecordOnHeight("default", cs.isProposer(), cs.height)
 	cs.resetForNewRound(0)
 }
@@ -247,7 +253,7 @@ func (cs *consensus) ReceiveBlockPartMessage(msg *blockPartMessage, unicast bool
 	if msg.Height != cs.height {
 		return -1, nil
 	}
-	if cs.currentBlockParts == nil {
+	if cs.currentBlockParts == nil || cs.currentBlockParts.block != nil {
 		return -1, nil
 	}
 
@@ -375,6 +381,25 @@ func (cs *consensus) setStep(step step) {
 	logger.Printf("setStep(%v.%v.%v)\n", cs.height, cs.round, cs.step)
 }
 
+func (cs *consensus) processPrefetchItems() {
+	for i := 0; i < len(cs.prefetchItems); i++ {
+		pi := cs.prefetchItems[i]
+		if pi.Block().Height() < cs.height {
+			last := len(cs.prefetchItems) - 1
+			cs.prefetchItems[i] = cs.prefetchItems[last]
+			cs.prefetchItems[last] = nil
+			cs.prefetchItems = cs.prefetchItems[:last]
+			pi.Consume()
+		} else if pi.Block().Height() == cs.height {
+			last := len(cs.prefetchItems) - 1
+			cs.prefetchItems[i] = cs.prefetchItems[last]
+			cs.prefetchItems[last] = nil
+			cs.prefetchItems = cs.prefetchItems[:last]
+			cs.processBlock(pi)
+			return
+		}
+	}
+}
 
 func (cs *consensus) enterProposeForRound(round int32) {
 	cs.resetForNewRound(round)
@@ -688,7 +713,7 @@ func (cs *consensus) enterCommit(precommits *voteSet, partSetID *PartSetID, roun
 
 	cs.notifySyncer()
 
-	if cs.currentBlockParts.IsComplete() {
+	if cs.currentBlockParts.IsComplete() || cs.currentBlockParts.block != nil {
 		cs.commitAndEnterNewHeight()
 	}
 }
@@ -733,10 +758,16 @@ func (cs *consensus) enterNewHeight() {
 			if cs.hrs != hrs {
 				return
 			}
-			cs.enterPropose()
+			cs.processPrefetchItems()
+			if cs.step < stepPropose {
+				cs.enterPropose()
+			}
 		})
 	} else {
-		cs.enterPropose()
+		cs.processPrefetchItems()
+		if cs.step < stepPropose {
+			cs.enterPropose()
+		}
 	}
 }
 
@@ -1281,7 +1312,7 @@ func (cs *consensus) Start() error {
 	cs.commitWAL = &walMessageWriter{ww}
 
 	logger.Printf("Consensus start wallet=%s", cs.wallet.Address())
-	cs.syncer = newSyncer(cs, cs.nm, &cs.mutex, cs.wallet.Address())
+	cs.syncer = newSyncer(cs, cs.nm, cs.bm, &cs.mutex, cs.wallet.Address())
 	cs.syncer.Start()
 	if cs.step == stepPrepropose {
 		cs.enterPropose()
@@ -1421,6 +1452,7 @@ func (cs *consensus) GetRoundState() *peerRoundState {
 	prs.Round = cs.round
 	prs.PrevotesMask = cs.hvs.votesFor(cs.round, voteTypePrevote).getMask()
 	prs.PrecommitsMask = cs.hvs.votesFor(cs.round, voteTypePrecommit).getMask()
+	prs.Sync = cs.syncing
 	bp := cs.currentBlockParts
 	// TODO optimize
 	if bp != nil && cs.step >= stepCommit {
@@ -1439,6 +1471,64 @@ func (cs *consensus) Round() int32 {
 
 func (cs *consensus) Step() step {
 	return cs.step
+}
+
+func (cs *consensus) ReceiveBlock(br fastsync.BlockResult) {
+	blk := br.Block()
+	logger.Printf("ReceiveBlock: %d\n", blk.Height())
+
+	if cs.height < blk.Height() {
+		cs.prefetchItems = append(cs.prefetchItems, br)
+		return
+	}
+
+	if cs.height > blk.Height() ||
+		cs.height == blk.Height() && cs.step >= stepNewHeight ||
+		cs.height == blk.Height() && cs.step == stepCommit && cs.currentBlockParts.IsComplete() {
+		br.Consume()
+		return
+	}
+
+	cs.processBlock(br)
+}
+
+func (cs *consensus) processBlock(br fastsync.BlockResult) {
+	if cs.step >= stepNewHeight ||
+		cs.step == stepCommit && cs.currentBlockParts.IsComplete() {
+		panic("assertion failed\n")
+	}
+
+	br.Consume()
+
+	blk := br.Block()
+	logger.Printf("ProcessBlock: %d\n", blk.Height())
+
+	votes := br.Votes().(*commitVoteList)
+	vl := votes.voteList(blk.Height(), blk.ID())
+	for i := 0; i < vl.Len(); i++ {
+		m := vl.Get(i)
+		index := cs.validators.IndexOf(m.address())
+		cs.hvs.add(index, m)
+	}
+
+	precommits := cs.hvs.votesFor(votes.Round, voteTypePrecommit)
+	id, _ := precommits.getOverTwoThirdsPartSetID()
+	bps := newPartSetFromID(id)
+	validated := false
+	if cs.currentBlockParts != nil && cs.currentBlockParts.ID().Equal(id) {
+		validated = cs.currentBlockParts.validated
+	}
+	cs.currentBlockParts = &blockPartSet{
+		PartSet:   bps,
+		block:     blk,
+		validated: validated,
+	}
+	cs.syncing = false
+	if cs.step < stepCommit {
+		cs.enterCommit(precommits, id, votes.Round)
+	} else {
+		cs.commitAndEnterNewHeight()
+	}
 }
 
 type walMessageWriter struct {

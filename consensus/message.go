@@ -221,13 +221,14 @@ type peerRoundState struct {
 	PrevotesMask   *bitArray
 	PrecommitsMask *bitArray
 	BlockPartsMask *bitArray
+	Sync           bool
 }
 
 func (prs *peerRoundState) String() string {
 	if prs == nil {
 		return "peerRoundState=nil"
 	}
-	return fmt.Sprintf("H=%v,R=%v,PV=%v,PC=%v,BP=%v", prs.Height, prs.Round, prs.PrevotesMask, prs.PrecommitsMask, prs.BlockPartsMask)
+	return fmt.Sprintf("H=%v,R=%v,PV=%v,PC=%v,BP=%v,S=%t", prs.Height, prs.Round, prs.PrevotesMask, prs.PrecommitsMask, prs.BlockPartsMask, prs.Sync)
 }
 
 type roundStateMessage struct {
