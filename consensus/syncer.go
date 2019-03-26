@@ -54,7 +54,7 @@ type peer struct {
 }
 
 func newPeer(syncer *syncer, id module.PeerID) *peer {
-	prefix := fmt.Sprintf("%x|CS|%x|", syncer.addr.Bytes()[1:3], id.Bytes()[1:3])
+	prefix := fmt.Sprintf("%x|CS|%x|", syncer.addr.Bytes()[1:3], id.Bytes()[:2])
 	return &peer{
 		syncer:     syncer,
 		id:         id,
@@ -269,7 +269,7 @@ func (s *syncer) OnReceive(sp module.ProtocolInfo, bs []byte,
 		logger.Printf("OnReceive: error=%+v\n", err)
 		return false, err
 	}
-	logger.Printf("OnReceive %+v from %x\n", msg, id.Bytes()[1:3])
+	logger.Printf("OnReceive %+v from %x\n", msg, id.Bytes()[:2])
 	if err := msg.verify(); err != nil {
 		return false, err
 	}
