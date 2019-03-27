@@ -119,6 +119,11 @@ func (m *manager) RegisterReactor(name string, r module.Reactor, spiList []modul
 	return ph, nil
 }
 
+func (m *manager) UnregisterReactor(reactor module.Reactor) error {
+	//FIXME
+	return nil
+}
+
 func (m *manager) SetWeight(pi protocolInfo, weight int) error {
 	return m.p2p.sendQueue.SetWeight(int(pi.ID()), weight)
 }
