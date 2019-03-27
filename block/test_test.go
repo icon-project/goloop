@@ -50,6 +50,25 @@ func (c *testChain) CommitVoteSetDecoder() module.CommitVoteSetDecoder {
 	return c.vld
 }
 
+func (c *testChain) GetGenesisData(key []byte) ([]byte, error) {
+	panic("not implemented")
+}
+
+func (c *testChain) BlockManager() module.BlockManager {
+	panic("not implemented")
+}
+
+func (c *testChain) Consensus() module.Consensus {
+	panic("not implemented")
+}
+
+func (c *testChain) ServiceManager() module.ServiceManager {
+	panic("not implemented")
+}
+func (c *testChain) NetworkManager() module.NetworkManager {
+	panic("not implemented")
+}
+
 type testError struct {
 }
 
@@ -150,6 +169,10 @@ func (tx *testTransaction) Group() module.TransactionGroup {
 
 func (tx *testTransaction) ID() []byte {
 	return crypto.SHA3Sum256(tx.Bytes())
+}
+
+func (tx *testTransaction) From() module.Address {
+	panic("not implemented")
 }
 
 func (tx *testTransaction) Bytes() []byte {
@@ -773,7 +796,7 @@ func newTestChain(database db.Database, gtx *testTransaction) *testChain {
 		gtx = newGenesisTX(defaultValidators)
 	}
 	return &testChain{
-		wallet:   common.NewWallet(),
+		wallet:   wallet.New(),
 		database: database,
 		gtx:      gtx,
 		vld:      newCommitVoteSetFromBytes,
