@@ -27,15 +27,15 @@ type setting struct {
 }
 
 type transitionImpl struct {
-	_setting     *setting
-	_mtransition module.Transition    // nil iff disposed
-	_canceler    func() bool          // can be nil if not cancelable
-	_cbs         []transitionCallback // empty iff not running
-	_valErr      *error
-	_exeErr      *error
-	_nRef        int             // count only transactions
-	_parent      *transitionImpl // nil if parent is not accessible
-	_children    []*transitionImpl
+	_chainContext *chainContext
+	_mtransition  module.Transition    // nil iff disposed
+	_canceler     func() bool          // can be nil if not cancelable
+	_cbs          []transitionCallback // empty iff not running
+	_valErr       *error
+	_exeErr       *error
+	_nRef         int             // count only transactions
+	_parent       *transitionImpl // nil if parent is not accessible
+	_children     []*transitionImpl
 }
 
 type transition struct {
@@ -127,8 +127,8 @@ func (ti *transitionImpl) unref() {
 }
 
 func (ti *transitionImpl) OnValidate(tr module.Transition, err error) {
-	ti._setting.syncer.begin()
-	defer ti._setting.syncer.end()
+	ti._chainContext.syncer.begin()
+	defer ti._chainContext.syncer.end()
 	if !ti.running() {
 		return
 	}
@@ -144,8 +144,8 @@ func (ti *transitionImpl) OnValidate(tr module.Transition, err error) {
 }
 
 func (ti *transitionImpl) OnExecute(tr module.Transition, err error) {
-	ti._setting.syncer.begin()
-	defer ti._setting.syncer.end()
+	ti._chainContext.syncer.begin()
+	defer ti._chainContext.syncer.end()
 	if !ti.running() {
 		return
 	}
@@ -162,10 +162,10 @@ func (ti *transitionImpl) _addChild(
 	cb transitionCallback,
 ) *transition {
 	cti := &transitionImpl{
-		_setting:     ti._setting,
-		_mtransition: mtr,
-		_parent:      ti,
-		_nRef:        1,
+		_chainContext: ti._chainContext,
+		_mtransition:  mtr,
+		_parent:       ti,
+		_nRef:         1,
 	}
 	tr := &transition{cti, cb}
 	cti._cbs = append(cti._cbs, tr)
@@ -189,7 +189,7 @@ func (ti *transitionImpl) patch(
 		}
 	}
 	c := ti._children[len(ti._children)-1]
-	pmtr := ti._setting.sm.PatchTransition(c._mtransition, patches)
+	pmtr := ti._chainContext.sm.PatchTransition(c._mtransition, patches)
 	return ti._parent._addChild(pmtr, cb)
 }
 
@@ -198,7 +198,7 @@ func (ti *transitionImpl) transit(
 	bi module.BlockInfo,
 	cb transitionCallback,
 ) *transition {
-	cmtr, err := ti._setting.sm.CreateTransition(ti._mtransition, txs, bi)
+	cmtr, err := ti._chainContext.sm.CreateTransition(ti._mtransition, txs, bi)
 	if err != nil {
 		log.Println("ServiceManager.CreateTransition failed : ", err)
 		return nil
@@ -207,7 +207,7 @@ func (ti *transitionImpl) transit(
 }
 
 func (ti *transitionImpl) propose(bi module.BlockInfo, cb transitionCallback) *transition {
-	cmtr, err := ti._setting.sm.ProposeTransition(ti._mtransition, bi)
+	cmtr, err := ti._chainContext.sm.ProposeTransition(ti._mtransition, bi)
 	if err != nil {
 		log.Println("ServiceManager.ProposeTransition failed : ", err)
 		return nil
@@ -317,19 +317,15 @@ func (tr *transition) mtransition() module.Transition {
 
 func newInitialTransition(
 	mtransition module.Transition,
-	syncer *syncer,
-	sm module.ServiceManager,
+	chainContext *chainContext,
 ) *transition {
 	var nilErr error
 	ti := &transitionImpl{
-		_setting: &setting{
-			syncer: syncer,
-			sm:     sm,
-		},
-		_mtransition: mtransition,
-		_valErr:      &nilErr,
-		_exeErr:      &nilErr,
-		_nRef:        1,
+		_chainContext: chainContext,
+		_mtransition:  mtransition,
+		_valErr:       &nilErr,
+		_exeErr:       &nilErr,
+		_nRef:         1,
 	}
 	tr := &transition{
 		_ti: ti,

@@ -24,7 +24,6 @@ import (
 // TODO wait for transaction available
 
 var dbCodec = codec.MP
-var logger *log.Logger
 
 const (
 	keyLastBlockHeight = "block.lastHeight"
@@ -45,11 +44,15 @@ type bnode struct {
 	preexe   *transition
 }
 
-type manager struct {
+type chainContext struct {
 	syncer syncer
+	chain  module.Chain
+	sm     module.ServiceManager
+	logger *log.Logger
+}
 
-	chain     module.Chain
-	sm        module.ServiceManager
+type manager struct {
+	*chainContext
 	nmap      map[string]*bnode
 	finalized *bnode
 }
@@ -137,7 +140,7 @@ func (m *manager) _import(
 	} else {
 		pprev, err := m.getBlock(bn.block.PrevID())
 		if err != nil {
-			logger.Panicf("cannot get prev prev block %x\n", bn.block.PrevID())
+			m.logger.Panicf("cannot get prev prev block %x\n", bn.block.PrevID())
 		}
 		validators = pprev.NextValidators()
 	}
@@ -176,10 +179,10 @@ func (it *importTask) cancel() bool {
 	case validatingOut:
 		it.stop()
 	default:
-		logger.Printf("Cancel Import: Ignored\n")
+		it.manager.logger.Printf("Cancel Import: Ignored\n")
 		return false
 	}
-	logger.Printf("Cancel Import: OK\n")
+	it.manager.logger.Printf("Cancel Import: OK\n")
 	return true
 }
 
@@ -262,7 +265,7 @@ func (m *manager) _propose(
 	} else {
 		pprev, err := m.getBlock(bn.block.PrevID())
 		if err != nil {
-			logger.Panicf("cannot get prev prev block %x\n", bn.block.PrevID())
+			m.logger.Panicf("cannot get prev prev block %x\n", bn.block.PrevID())
 		}
 		validators = pprev.NextValidators()
 	}
@@ -298,10 +301,10 @@ func (pt *proposeTask) cancel() bool {
 	case executingIn:
 		pt.stop()
 	default:
-		logger.Printf("Cancel Propose: Ignored\n")
+		pt.manager.logger.Printf("Cancel Propose: Ignored\n")
 		return false
 	}
-	logger.Printf("Cancel Propose: OK\n")
+	pt.manager.logger.Printf("Cancel Propose: OK\n")
 	return true
 }
 
@@ -373,12 +376,15 @@ func NewManager(
 	sm module.ServiceManager,
 ) module.BlockManager {
 	prefix := fmt.Sprintf("%x|BM|", chain.Wallet().Address().Bytes()[1:3])
-	logger = log.New(os.Stderr, prefix, log.Lshortfile|log.Lmicroseconds)
+	logger := log.New(os.Stderr, prefix, log.Lshortfile|log.Lmicroseconds)
 	// TODO if last block is v1 block
 	m := &manager{
-		chain: chain,
-		sm:    sm,
-		nmap:  make(map[string]*bnode),
+		chainContext: &chainContext{
+			chain:  chain,
+			sm:     sm,
+			logger: logger,
+		},
+		nmap: make(map[string]*bnode),
 	}
 	chainPropBucket := m.bucketFor(db.ChainProperty)
 	if chainPropBucket == nil {
@@ -405,7 +411,7 @@ func NewManager(
 	if mtr == nil {
 		return nil
 	}
-	tr := newInitialTransition(mtr, &m.syncer, sm)
+	tr := newInitialTransition(mtr, m.chainContext)
 	bn := &bnode{
 		block: lastFinalized,
 		in:    tr,
@@ -448,7 +454,7 @@ func (m *manager) Import(
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	logger.Printf("Import(%x)\n", r)
+	m.logger.Printf("Import(%x)\n", r)
 
 	block, err := m.newBlockFromReader(r)
 	if err != nil {
@@ -472,7 +478,7 @@ func (m *manager) ImportBlock(
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	logger.Printf("ImportBlock(%x)\n", block.ID())
+	m.logger.Printf("ImportBlock(%x)\n", block.ID())
 
 	it, err := m._import(block, cb)
 	if err != nil {
@@ -502,7 +508,7 @@ func (m *manager) finalizeGenesisBlock(
 	timestamp int64,
 	votes module.CommitVoteSet,
 ) (block module.Block, err error) {
-	logger.Printf("FinalizeGenesisBlock()\n")
+	m.logger.Printf("FinalizeGenesisBlock()\n")
 	if m.finalized != nil {
 		return nil, common.ErrInvalidState
 	}
@@ -510,7 +516,7 @@ func (m *manager) finalizeGenesisBlock(
 	if err != nil {
 		return nil, err
 	}
-	in := newInitialTransition(mtr, &m.syncer, m.sm)
+	in := newInitialTransition(mtr, m.chainContext)
 	ch := make(chan error)
 	gtxbs := m.chain.Genesis()
 	gtx, err := m.sm.TransactionFromBytes(gtxbs, module.BlockVersion2)
@@ -563,7 +569,7 @@ func (m *manager) Propose(
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	logger.Printf("Propose(<%x>, %v)\n", parentID, votes)
+	m.logger.Printf("Propose(<%x>, %v)\n", parentID, votes)
 
 	pt, err := m._propose(parentID, votes, cb)
 	if err != nil {
