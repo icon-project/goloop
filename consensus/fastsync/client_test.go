@@ -11,47 +11,18 @@ import (
 )
 
 type clientTestSetUp struct {
-	t   *testing.T
-	bm  *tBlockManager
+	*fastSyncTestSetUp
 	nms []*tNetworkManager
 	phs []module.ProtocolHandler
 
 	reactors  []*tReactor
 	m         Manager
-	votes     [][]byte
-	rawBlocks [][]byte
-	blks      []module.Block
 	cb        *tFetchCallback
 }
 
 func newClientTestSetUp(t *testing.T, n int) *clientTestSetUp {
 	s := &clientTestSetUp{}
-	s.t = t
-	s.bm = newTBlockManager()
-	s.votes = make([][]byte, tNumBlocks)
-	s.rawBlocks = make([][]byte, tNumBlocks)
-	s.blks = make([]module.Block, tNumBlocks)
-	for i := 0; i < tNumBlocks; i++ {
-		var b []byte
-		if i < tNumLongBlocks {
-			b = createABytes(configChunkSize * 10)
-		} else {
-			b = createABytes(2)
-		}
-		if i > 0 {
-			s.blks[i] = newTBlock(int64(i), b[:1], s.blks[i-1].ID(), b[1:])
-			s.votes[i] = s.blks[i-1].ID()
-		} else {
-			s.blks[i] = newTBlock(int64(i), b[:1], nil, b[1:])
-			s.votes[i] = nil
-		}
-		buf := bytes.NewBuffer(nil)
-		err := s.blks[i].MarshalHeader(buf)
-		assert.Nil(s.t, err)
-		err = s.blks[i].MarshalBody(buf)
-		assert.Nil(s.t, err)
-		s.rawBlocks[i] = buf.Bytes()
-	}
+	s.fastSyncTestSetUp = newFastSyncTestSetUp(t)
 	s.nms = make([]*tNetworkManager, n)
 	s.reactors = make([]*tReactor, n)
 	s.phs = make([]module.ProtocolHandler, n)

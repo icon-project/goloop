@@ -14,16 +14,13 @@ const tNumShortBlocks = 10
 const tNumBlocks = tNumShortBlocks + tNumLongBlocks
 
 type serverTestSetUp struct {
-	t  *testing.T
-	bm *tBlockManager
-	nm *tNetworkManager
+	*fastSyncTestSetUp
 
-	nm2       *tNetworkManager
-	r2        *tReactor
-	ph2       module.ProtocolHandler
-	m         Manager
-	votes     [][]byte
-	rawBlocks [][]byte
+	nm  *tNetworkManager
+	nm2 *tNetworkManager
+	r2  *tReactor
+	ph2 module.ProtocolHandler
+	m   Manager
 }
 
 func createABytes(l int) []byte {
@@ -34,25 +31,7 @@ func createABytes(l int) []byte {
 
 func newServerTestSetUp(t *testing.T) *serverTestSetUp {
 	s := &serverTestSetUp{}
-	s.t = t
-	s.bm = newTBlockManager()
-	s.votes = make([][]byte, tNumBlocks)
-	s.rawBlocks = make([][]byte, tNumBlocks)
-	for i := 0; i < tNumBlocks; i++ {
-		var b []byte
-		if i < tNumLongBlocks {
-			b = createABytes(configChunkSize * 10)
-		} else {
-			b = createABytes(2)
-		}
-		s.rawBlocks[i] = b
-		s.votes[i] = b[:1]
-		var prev []byte
-		if i != 0 {
-			prev = s.rawBlocks[i-1][:1]
-		}
-		s.bm.SetBlock(int64(i), newTBlock(int64(i), b[:1], prev, b[1:]))
-	}
+	s.fastSyncTestSetUp = newFastSyncTestSetUp(t)
 	s.nm = newTNetworkManager()
 	s.nm2 = newTNetworkManager()
 	s.nm.join(s.nm2)
@@ -93,6 +72,7 @@ func TestServer_Success(t *testing.T) {
 		ev := ev.(tReceiveEvent)
 		var msg BlockData
 		codec.UnmarshalFromBytes(ev.b, &msg)
+		t.Logf("ev : %v\n", msg)
 		copy(data[recv:], msg.Data)
 		recv += len(msg.Data)
 	}

@@ -1,15 +1,18 @@
 package fastsync
 
 import (
+	"bytes"
 	"io"
 	"runtime"
-	"sync"
+	"testing"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 )
 
 type tReactorItem struct {
@@ -26,7 +29,7 @@ type tPacket struct {
 }
 
 type tNetworkManagerStatic struct {
-	sync.Mutex
+	common.Mutex
 	procList []*tNetworkManager
 }
 
@@ -52,7 +55,7 @@ func newTNetworkManagerForPeerID(id module.PeerID) *tNetworkManager {
 	nm := &tNetworkManager{
 		tNetworkManagerStatic: &nms,
 		id:                    id,
-		wakeUpCh:              make(chan struct{}),
+		wakeUpCh:              make(chan struct{}, 1),
 	}
 	go nm.process()
 	runtime.SetFinalizer(nm, (*tNetworkManager).dispose)
@@ -60,8 +63,6 @@ func newTNetworkManagerForPeerID(id module.PeerID) *tNetworkManager {
 }
 
 func (nm *tNetworkManager) dispose() {
-	nm.Lock()
-	defer nm.Unlock()
 	close(nm.wakeUpCh)
 }
 
@@ -70,6 +71,9 @@ func newTNetworkManager() *tNetworkManager {
 }
 
 func (nm *tNetworkManager) GetPeers() []module.PeerID {
+	nm.Lock()
+	defer nm.Unlock()
+
 	res := make([]module.PeerID, len(nm.peers))
 	for i := range nm.peers {
 		res[i] = nm.peers[i].id
@@ -78,6 +82,9 @@ func (nm *tNetworkManager) GetPeers() []module.PeerID {
 }
 
 func (nm *tNetworkManager) RegisterReactor(name string, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
+	nm.Lock()
+	defer nm.Unlock()
+
 	r := &tReactorItem{
 		name:     name,
 		reactor:  reactor,
@@ -93,18 +100,31 @@ func (nm *tNetworkManager) RegisterReactorForStreams(name string, reactor module
 }
 
 func (nm *tNetworkManager) join(nm2 *tNetworkManager) {
+	nm.Lock()
+	defer nm.Unlock()
+
 	nm.peers = append(nm.peers, nm2)
 	nm2.peers = append(nm2.peers, nm)
-	for _, r := range nm.reactorItems {
-		r.reactor.OnJoin(nm2.id)
-	}
-	for _, r := range nm2.reactorItems {
-		r.reactor.OnJoin(nm.id)
-	}
+	ri := make([]*tReactorItem, len(nm.reactorItems))
+	copy(ri, nm.reactorItems)
+	id2 := nm2.id
+	ri2 := make([]*tReactorItem, len(nm2.reactorItems))
+	copy(ri2, nm.reactorItems)
+	id := nm.id
+	nm.CallAfterUnlock(func() {
+		for _, r := range ri {
+			r.reactor.OnJoin(id2)
+		}
+		for _, r := range ri2 {
+			r.reactor.OnJoin(id)
+		}
+	})
 }
 
 func (nm *tNetworkManager) onReceiveUnicast(pi module.ProtocolInfo, b []byte, from module.PeerID) {
+	nm.Lock()
 	nm.recvBuf = append(nm.recvBuf, &tPacket{pi, b, from})
+	nm.Unlock()
 	select {
 	case nm.wakeUpCh <- struct{}{}:
 	default:
@@ -142,12 +162,19 @@ func (ph *tProtocolHandler) Multicast(pi module.ProtocolInfo, b []byte, role mod
 }
 
 func (ph *tProtocolHandler) Unicast(pi module.ProtocolInfo, b []byte, id module.PeerID) error {
+	ph.nm.Lock()
+	defer ph.nm.Unlock()
+
 	if ph.nm.drop {
 		return nil
 	}
 	for _, p := range ph.nm.peers {
 		if p.id.Equal(id) {
-			p.onReceiveUnicast(pi, b, ph.nm.id)
+			peer := p
+			id := ph.nm.id
+			ph.nm.CallAfterUnlock(func() {
+				peer.onReceiveUnicast(pi, b, id)
+			})
 			return nil
 		}
 	}
@@ -355,4 +382,44 @@ func (r *tReactor) OnJoin(id module.PeerID) {
 
 func (r *tReactor) OnLeave(id module.PeerID) {
 	r.ch <- tLeaveEvent{id}
+}
+
+type fastSyncTestSetUp struct {
+	t         *testing.T
+	bm        *tBlockManager
+	votes     [][]byte
+	rawBlocks [][]byte
+	blks      []module.Block
+}
+
+func newFastSyncTestSetUp(t *testing.T) *fastSyncTestSetUp {
+	s := &fastSyncTestSetUp{}
+	s.t = t
+	s.bm = newTBlockManager()
+	s.votes = make([][]byte, tNumBlocks)
+	s.rawBlocks = make([][]byte, tNumBlocks)
+	s.blks = make([]module.Block, tNumBlocks)
+	for i := 0; i < tNumBlocks; i++ {
+		var b []byte
+		if i < tNumLongBlocks {
+			b = createABytes(configChunkSize * 10)
+		} else {
+			b = createABytes(2)
+		}
+		if i > 0 {
+			s.blks[i] = newTBlock(int64(i), b[:1], s.blks[i-1].ID(), b[1:])
+			s.votes[i] = s.blks[i-1].ID()
+		} else {
+			s.blks[i] = newTBlock(int64(i), b[:1], nil, b[1:])
+			s.votes[i] = nil
+		}
+		buf := bytes.NewBuffer(nil)
+		err := s.blks[i].MarshalHeader(buf)
+		assert.Nil(s.t, err)
+		err = s.blks[i].MarshalBody(buf)
+		assert.Nil(s.t, err)
+		s.rawBlocks[i] = buf.Bytes()
+		s.bm.SetBlock(int64(i), s.blks[i])
+	}
+	return s
 }
