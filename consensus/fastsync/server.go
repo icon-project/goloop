@@ -253,7 +253,9 @@ loop:
 				h.nextMsg = nil
 				h.updateNextMsg()
 			} else {
-				log.Printf("error=%+v\n", err)
+				if logMsg {
+					log.Printf("error=%+v\n", err)
+				}
 			}
 		}
 
@@ -274,6 +276,9 @@ loop:
 						// TODO log
 						continue loop
 					}
+					if logMsg {
+						log.Printf("Received BlockRequest %d\n", msg.Height)
+					}
 					h.nextItems = append(h.nextItems, &msg)
 				}
 			default:
@@ -293,6 +298,9 @@ loop:
 					if err != nil {
 						// TODO log
 						continue loop
+					}
+					if logMsg {
+						log.Printf("Received BlockRequest %d\n", msg.Height)
 					}
 					h.nextItems = append(h.nextItems, &msg)
 				}
