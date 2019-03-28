@@ -267,6 +267,7 @@ func main() {
 		go func(c chan os.Signal) {
 			<-c
 			pprof.StopCPUProfile()
+			os.Exit(128 + int(syscall.SIGINT))
 		}(c)
 	}
 
