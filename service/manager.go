@@ -68,11 +68,16 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 	ws, _ := state.WorldStateFromSnapshot(pt.worldSnapshot)
 	wc := state.NewWorldContext(ws, bi)
 
-	patchTxs, size := m.patchTxPool.Candidate(wc, ConfigMaxTxBytesInABlock) // try to add all patches in the block
-	txSizeInBlock := ConfigMaxTxBytesInABlock - size
+	maxTxCount := m.chain.Regulator().MaxTxCount()
+	txSizeInBlock := ConfigMaxTxBytesInABlock
+
+	patchTxs, size := m.patchTxPool.Candidate(wc, txSizeInBlock, maxTxCount) // try to add all patches in the block
+	txSizeInBlock -= size
+	maxTxCount -= len(patchTxs)
+
 	var normalTxs []module.Transaction
-	if txSizeInBlock > 0 {
-		normalTxs, _ = m.normalTxPool.Candidate(wc, txSizeInBlock)
+	if txSizeInBlock > 0 && maxTxCount > 0 {
+		normalTxs, _ = m.normalTxPool.Candidate(wc, txSizeInBlock, maxTxCount)
 	} else {
 		// what if patches already exceed the limit of transactions? It usually
 		// doesn't happen but...
@@ -126,7 +131,7 @@ func (m *manager) GetPatches(parent module.Transition) module.TransactionList {
 	}
 
 	wc := state.NewWorldContext(ws, pt.bi)
-	txs, _ := m.patchTxPool.Candidate(wc, ConfigMaxTxBytesInABlock)
+	txs, _ := m.patchTxPool.Candidate(wc, ConfigMaxTxBytesInABlock, 0)
 	return transaction.NewTransactionListFromSlice(m.db, txs)
 }
 

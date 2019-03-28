@@ -1,6 +1,10 @@
 package module
 
-import "github.com/icon-project/goloop/common/db"
+import (
+	"time"
+
+	"github.com/icon-project/goloop/common/db"
+)
 
 type Wallet interface {
 	Address() Address
@@ -21,4 +25,12 @@ type Chain interface {
 	Consensus() Consensus
 	ServiceManager() ServiceManager
 	NetworkManager() NetworkManager
+	Regulator() Regulator
+}
+
+type Regulator interface {
+	MaxTxCount() int
+	CommitTimeout() time.Duration
+	OnTxExecution(count int, ed time.Duration, fd time.Duration)
+	SetCommitTimeout(d time.Duration)
 }

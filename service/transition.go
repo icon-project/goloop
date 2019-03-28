@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/transaction"
 
 	"github.com/icon-project/goloop/service/contract"
@@ -53,6 +54,10 @@ type transition struct {
 	patchReceipts  module.ReceiptList
 	normalReceipts module.ReceiptList
 	logBloom       txresult.LogBloom
+
+	transactionCount int
+	executeDuration  time.Duration
+	flushDuration    time.Duration
 }
 
 type transitionResult struct {
@@ -278,9 +283,16 @@ func (t *transition) executeSync(alreadyValidated bool) {
 
 	t.worldSnapshot = ctx.GetSnapshot()
 
-	elapsed := float64(time.Now().Sub(startTime)/time.Microsecond) / 1000
-	log.Printf("Transactions: %6d  Elapsed: %7.3f msecs  TPS: %9.2f",
-		patchCount+normalCount, elapsed, float64(patchCount+normalCount)/elapsed*1000)
+	txDuration := time.Now().Sub(startTime)
+	txCount := patchCount + normalCount
+	t.transactionCount = txCount
+	t.executeDuration = txDuration
+
+	elapsedMS := float64(txDuration/time.Microsecond) / 1000
+	log.Printf("Transactions: %6d  Elapsed: %9.3f ms  PerTx: %7.1f µs  TPS: %9.2f",
+		txCount, elapsedMS,
+		elapsedMS*1000/float64(txCount),
+		float64(txCount)/elapsedMS*1000)
 
 	tresult := transitionResult{
 		t.worldSnapshot.StateHash(),
@@ -343,10 +355,28 @@ func (t *transition) finalizePatchTransaction() {
 }
 
 func (t *transition) finalizeResult() {
+	startTS := time.Now()
 	t.worldSnapshot.Flush()
+	worldTS := time.Now()
 	t.patchReceipts.Flush()
 	t.normalReceipts.Flush()
 	t.parent = nil
+	finalTS := time.Now()
+
+	regulator := t.chain.Regulator()
+	ass := t.worldSnapshot.GetAccountSnapshot(state.SystemID)
+	if ass != nil {
+		commitTimeout := scoredb.NewVarDB(scoredb.NewStateStoreWith(ass), state.VarCommitTimeout)
+		timeout := commitTimeout.Int64()
+		if timeout <= 0 {
+			timeout = 1000
+		}
+		regulator.SetCommitTimeout(time.Millisecond * time.Duration(timeout))
+	}
+	regulator.OnTxExecution(t.transactionCount, t.executeDuration, finalTS.Sub(startTS))
+
+	log.Printf("finalizeResult() total=%s world=%s receipts=%s",
+		finalTS.Sub(startTS), worldTS.Sub(startTS), finalTS.Sub(worldTS))
 }
 
 func (t *transition) cancelExecution() bool {

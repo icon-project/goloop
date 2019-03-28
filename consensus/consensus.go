@@ -82,6 +82,7 @@ type consensus struct {
 	bm        module.BlockManager
 	wallet    module.Wallet
 	ph        module.ProtocolHandler
+	rg        module.Regulator
 	mutex     sync.Mutex
 	syncer    Syncer
 	walDir    string
@@ -118,6 +119,7 @@ func NewConsensus(c module.Chain, bm module.BlockManager, nm module.NetworkManag
 		nm:              nm,
 		bm:              bm,
 		wallet:          c.Wallet(),
+		rg:              c.Regulator(),
 		walDir:          walDir,
 		commitMRU:       list.New(),
 		commitForHeight: make(map[int64]*commit, configCommitCacheCap),
@@ -700,7 +702,7 @@ func (cs *consensus) enterCommit(precommits *voteSet, partSetID *PartSetID, roun
 	}
 
 	if cs.consumedNonunicast || cs.validators.Len() == 1 {
-		cs.nextProposeTime = time.Now().Add(timeoutCommit)
+		cs.nextProposeTime = time.Now().Add(cs.rg.CommitTimeout())
 	} else {
 		cs.nextProposeTime = time.Now()
 	}

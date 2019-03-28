@@ -249,6 +249,7 @@ type chain struct {
 		StepCosts *json.RawMessage `json:"stepCosts"`
 	} `json:"fee"`
 	ValidatorList []*common.Address `json:"validatorList"`
+	CommitTimeout *common.HexInt64  `json:"commitTimeout"`
 }
 
 func (s *ChainScore) Install(param []byte) error {
@@ -269,6 +270,15 @@ func (s *ChainScore) Install(param []byte) error {
 	as := s.cc.GetAccountState(state.SystemID)
 	if err := scoredb.NewVarDB(as, state.VarServiceConfig).Set(confValue); err != nil {
 		log.Printf("Failed to set system config. err = %s", err)
+		return err
+	}
+
+	timeout := int64(1000)
+	if chain.CommitTimeout != nil {
+		timeout = chain.CommitTimeout.Value
+	}
+	if err := scoredb.NewVarDB(as, state.VarCommitTimeout).Set(timeout); err != nil {
+		log.Printf("Failed to set newHeightTimeout. err = %s", err)
 		return err
 	}
 

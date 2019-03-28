@@ -3,6 +3,7 @@ package chain
 import (
 	"encoding/json"
 	"log"
+	"time"
 
 	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/common/db"
@@ -48,6 +49,8 @@ type singleChain struct {
 
 	cfg Config
 	pm  eeproxy.Manager
+
+	regulator *regulator
 }
 
 func (c *singleChain) Database() db.Database {
@@ -92,6 +95,10 @@ func (c *singleChain) Consensus() module.Consensus {
 
 func (c *singleChain) NetworkManager() module.NetworkManager {
 	return c.nm
+}
+
+func (c *singleChain) Regulator() module.Regulator {
+	return c.regulator
 }
 
 func toRoles(r uint) []module.Role {
@@ -151,11 +158,12 @@ func NewChain(
 	cfg *Config,
 ) *singleChain {
 	chain := &singleChain{
-		wallet: wallet,
-		nt:     transport,
-		srv:    srv,
-		cfg:    *cfg,
-		pm:     pm,
+		wallet:    wallet,
+		nt:        transport,
+		srv:       srv,
+		cfg:       *cfg,
+		pm:        pm,
+		regulator: NewRegulator(time.Second, 1000),
 	}
 	if chain.cfg.DBName == "" {
 		chain.cfg.DBName = chain.cfg.Channel

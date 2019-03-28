@@ -3,6 +3,7 @@ package service
 import (
 	"log"
 	"sync"
+	"time"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
@@ -13,6 +14,7 @@ import (
 const (
 	configTxPoolSize             = 5000
 	configDefaultTxSliceCapacity = 1024
+	configMaxTxCount             = 1500
 )
 
 type TransactionPool struct {
@@ -50,24 +52,29 @@ func (tp *TransactionPool) RemoveOldTXs(bts int64) {
 }
 
 // It returns all candidates for a negative integer n.
-func (tp *TransactionPool) Candidate(wc state.WorldContext, max int) ([]module.Transaction, int) {
+func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCount int) ([]module.Transaction, int) {
 	tp.mutex.Lock()
 	if tp.list.Len() == 0 {
 		tp.mutex.Unlock()
 		return []module.Transaction{}, 0
 	}
 
-	if max <= 0 {
-		max = ConfigMaxTxBytesInABlock
+	startTS := time.Now()
+
+	if maxBytes <= 0 {
+		maxBytes = ConfigMaxTxBytesInABlock
+	}
+	if maxCount <= 0 {
+		maxCount = configMaxTxCount
 	}
 
 	txs := make([]transaction.Transaction, 0, configDefaultTxSliceCapacity)
 	poolSize := tp.list.Len()
 	txSize := int(0)
-	for e := tp.list.Front(); e != nil && txSize < max; e = e.Next() {
+	for e := tp.list.Front(); e != nil && txSize < maxBytes && len(txs) < maxCount; e = e.Next() {
 		tx := e.Value()
 		bs := tx.Bytes()
-		if txSize+len(bs) > max {
+		if txSize+len(bs) > maxBytes {
 			break
 		}
 		txSize += len(bs)
@@ -114,8 +121,8 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, max int) ([]module.T
 		}(txs[0:invalidNum])
 	}
 
-	log.Printf("TransactionPool.Candidate collected=%d removed=%d poolsize=%d",
-		valNum, invalidNum, poolSize)
+	log.Printf("TransactionPool.Candidate collected=%d removed=%d poolsize=%d duration=%s",
+		valNum, invalidNum, poolSize, time.Now().Sub(startTS))
 
 	return validTxs[:valNum], txSize
 }

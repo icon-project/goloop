@@ -23,6 +23,7 @@ const (
 	VarMembers        = "members"
 	VarDeployers      = "deployers"
 	VarLicenses       = "licenses"
+	VarCommitTimeout  = "commitTimeout"
 )
 
 const (
