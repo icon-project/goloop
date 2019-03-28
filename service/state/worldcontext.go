@@ -151,7 +151,7 @@ func (c *worldContext) updateSystemInfo() {
 		if c.systemInfo.ass == nil || ass.StorageChangedAfter(c.systemInfo.ass) {
 			c.systemInfo.ass = ass
 
-			as := newAccountROState(ass)
+			as := scoredb.NewStateStoreWith(ass)
 
 			stepPrice := scoredb.NewVarDB(as, VarStepPrice).BigInt()
 			c.systemInfo.stepPrice = stepPrice
@@ -353,7 +353,7 @@ func (c *worldContext) GetInfo() map[string]interface{} {
 func NewWorldContext(ws WorldState, bi module.BlockInfo) WorldContext {
 	var governance, treasury module.Address
 	ass := ws.GetAccountSnapshot(SystemID)
-	as := newAccountROState(ass)
+	as := scoredb.NewStateStoreWith(ass)
 	if as != nil {
 		treasury = scoredb.NewVarDB(as, VarTreasury).Address()
 		governance = scoredb.NewVarDB(as, VarGovernance).Address()
