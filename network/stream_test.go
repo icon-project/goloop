@@ -74,6 +74,10 @@ func (nm *tNetworkManager) RegisterReactorForStreams(name string, reactor module
 	return registerReactorForStreams(nm, name, reactor, piList, priority, &common.GoTimeClock{})
 }
 
+func (nm *tNetworkManager) UnregisterReactor(reactor module.Reactor) error {
+	panic("not implemented")
+}
+
 func (nm *tNetworkManager) SetRole(role module.Role, peers ...module.PeerID) {
 	panic("not implemented")
 }
