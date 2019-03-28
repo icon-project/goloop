@@ -34,6 +34,7 @@ type GoChainConfig struct {
 	P2PListenAddr string `json:"p2p_listen"`
 	EESocket      string `json:"ee_socket"`
 	RPCAddr       string `json:"rpc_addr"`
+	EEInstances   int    `json:"ee_instances"`
 
 	Key          []byte          `json:"key,omitempty"`
 	KeyStoreData json.RawMessage `json:"key_store"`
@@ -96,6 +97,8 @@ func main() {
 	flag.StringVar(&memProfile, "memprofile", "", "Memory Profiling data file")
 	flag.StringVar(&nodePath, "node_dir", "", "Node data directory(default:.chain/<address>)")
 	flag.StringVar(&chainPath, "chain_dir", "", "Chain data directory(default:<node_dir>/<nid>")
+	flag.IntVar(&cfg.EEInstances, "ee_instances", 1, "Number of execution engines")
+	flag.IntVar(&cfg.ConcurrencyLevel, "concurrency", 1, "Maximum number of executors to use for concurrency")
 	flag.Parse()
 
 	if len(keyStoreFile) > 0 {
@@ -318,7 +321,7 @@ func main() {
 		log.Panicf("FAIL to create PythonEE err=%+v", err)
 	}
 	pm.SetEngine("python", ee)
-	pm.SetInstances("python", 1)
+	pm.SetInstances("python", cfg.EEInstances)
 
 	// TODO : server-chain setting
 	srv := server.NewManager(cfg.RPCAddr)

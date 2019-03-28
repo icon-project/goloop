@@ -30,6 +30,8 @@ type Config struct {
 	GenesisStorage  GenesisStorage  `json:"-"`
 	Genesis         json.RawMessage `json:"genesis"`
 	GenesisDataPath string          `json:"genesis_data,omitempty"`
+
+	ConcurrencyLevel int `json:"concurrency_level,omitempty"`
 }
 
 type singleChain struct {
@@ -104,6 +106,14 @@ func toRoles(r uint) []module.Role {
 		roles = append(roles, module.ROLE_SEED)
 	}
 	return roles
+}
+
+func (c *singleChain) ConcurrencyLevel() int {
+	if c.cfg.ConcurrencyLevel > 1 {
+		return c.cfg.ConcurrencyLevel
+	} else {
+		return 1
+	}
 }
 
 func (c *singleChain) Start() {

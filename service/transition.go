@@ -30,10 +30,6 @@ const (
 	stepCanceled // canceled. requested to cancel after complete executione, just remain stepFinished
 )
 
-const (
-	configUseParallelExecution = false
-)
-
 type transition struct {
 	parent *transition
 	bi     module.BlockInfo
@@ -332,72 +328,10 @@ func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, 
 	if l == nil {
 		return true
 	}
-	cnt := 0
-	for i := l.Iterator(); i.Has(); i.Next() {
-		if t.step == stepCanceled {
-			return false
-		}
-		txi, _, err := i.Get()
-		if err != nil {
-			log.Panicf("Fail to iterate transaction list err=%+v", err)
-		}
-		txo := txi.(transaction.Transaction)
-		txh, err := txo.GetHandler(t.cm)
-		if err != nil {
-			log.Panicf("Fail to handle transaction for %+v", err)
-		}
-		if configUseParallelExecution {
-			wc, err := txh.Prepare(ctx)
-			if err != nil {
-				log.Panicf("Fail to prepare for %+v", err)
-			}
-			ctx = contract.NewContext(wc, t.cm, t.eem, t.chain)
-			ctx.SetTransactionInfo(&state.TransactionInfo{
-				Index:     int32(cnt),
-				Timestamp: txo.Timestamp(),
-				Nonce:     txo.Nonce(),
-				Hash:      txo.ID(),
-				From:      txo.From(),
-			})
-			go func(ctx contract.Context, rb *txresult.Receipt) {
-				wvs := ctx.WorldVirtualState()
-				wvs.Ensure()
-				if rct, err := txh.Execute(ctx); err != nil {
-					log.Panicf("Fail to execute transaction err=%+v", err)
-				} else {
-					*rb = rct
-				}
-				txh.Dispose()
-				wvs.Commit()
-			}(ctx, &rctBuf[cnt])
-		} else {
-			ctx.SetTransactionInfo(&state.TransactionInfo{
-				Index:     int32(cnt),
-				Timestamp: txo.Timestamp(),
-				Nonce:     txo.Nonce(),
-				Hash:      txo.ID(),
-				From:      txo.From(),
-			})
-			if logDebug {
-				log.Printf("START TX <0x%x>", txo.ID())
-			}
-			ctx.ClearCache()
-			if rct, err := txh.Execute(ctx); err != nil {
-				log.Panicf("Fail to execute transaction err=%+v", err)
-			} else {
-				rctBuf[cnt] = rct
-			}
-			if logDebug {
-				log.Printf("END   TX <0x%x>", txo.ID())
-			}
-			txh.Dispose()
-		}
-		cnt++
+	if cc := t.chain.ConcurrencyLevel(); cc > 1 {
+		return t.executeTxsConcurrent(cc, l, ctx, rctBuf)
 	}
-	if wvs := ctx.WorldVirtualState(); wvs != nil {
-		wvs.Realize()
-	}
-	return true
+	return t.executeTxsSequential(l, ctx, rctBuf)
 }
 
 func (t *transition) finalizeNormalTransaction() {

@@ -12,6 +12,7 @@ type Chain interface {
 	Database() db.Database
 	Wallet() Wallet
 	NID() int
+	ConcurrencyLevel() int
 	Genesis() []byte
 	GetGenesisData(key []byte) ([]byte, error)
 	CommitVoteSetDecoder() CommitVoteSetDecoder
