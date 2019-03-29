@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"io"
 	"log"
-	"sync"
 	"time"
 
 	"github.com/icon-project/goloop/common"
@@ -77,7 +76,6 @@ type fetchRequest struct {
 	cb         FetchCallback
 	cvsDecoder module.CommitVoteSetDecoder
 	maxActive  int
-	cbMutex    sync.Mutex
 
 	validPeers     []*peer
 	nActivePeers   int
