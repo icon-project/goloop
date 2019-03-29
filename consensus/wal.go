@@ -269,7 +269,7 @@ func (w *walWriter) housekeep(t <-chan time.Time, s <-chan struct{}) {
 		case <-t:
 			w.doHousekeeping()
 		case <-s:
-			break
+			return
 		}
 	}
 }
