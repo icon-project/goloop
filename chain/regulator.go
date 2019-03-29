@@ -6,6 +6,10 @@ import (
 	"time"
 )
 
+const (
+	configMinimumTransactions = 100
+)
+
 type txExecutionEntry struct {
 	count     int
 	execution time.Duration
@@ -82,6 +86,9 @@ func (r *regulator) OnTxExecution(count int, ed time.Duration, fd time.Duration)
 	// For target duration
 	r.currentTxCount =
 		int(time.Duration(r.sum.count) * r.commitTimeout / (r.sum.execution + (r.sum.finalize * 2)))
+	if r.currentTxCount < configMinimumTransactions {
+		r.currentTxCount = configMinimumTransactions
+	}
 	log.Printf("OnTxExecution: TxCount=%d Execution=%s Finalize=%s -> MaxTxCount=%d",
 		count, ed, fd, r.currentTxCount)
 }
