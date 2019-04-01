@@ -3,8 +3,6 @@ package network
 import (
 	"context"
 	"sync"
-
-	"github.com/go-errors/errors"
 )
 
 type Queue interface {
@@ -92,7 +90,7 @@ func (q *queue) _wait() chan bool {
 func (q *queue) _wakeup(ch chan bool) bool {
 	defer q.mtxWait.Unlock()
 	q.mtxWait.Lock()
-	if ch == nil && len(q.wait) > 0{
+	if ch == nil && len(q.wait) > 0 {
 		for k := range q.wait {
 			close(k)
 			delete(q.wait, k)
@@ -145,12 +143,9 @@ func (q *queue) Size() int {
 	return q.size
 }
 
-var (
-	ErrInvalidArgument = errors.New("invalid argument")
-)
-
 type MultiQueue struct {
 	s       []Queue
+	nq      int
 	size    int
 	mtx     sync.RWMutex
 	wait    map[chan bool]interface{}
@@ -167,7 +162,8 @@ func NewMultiQueue(size int, numberOfQueue int) *MultiQueue {
 
 	mq := &MultiQueue{
 		s:    make([]Queue, numberOfQueue),
-		size: numberOfQueue,
+		nq: numberOfQueue,
+		size: size,
 		wait: make(map[chan bool]interface{}),
 	}
 	for i := 0; i < numberOfQueue; i++ {
@@ -180,7 +176,7 @@ func (mq *MultiQueue) Push(ctx context.Context, queueIndex int) bool {
 	defer mq.mtx.Unlock()
 	mq.mtx.Lock()
 
-	if queueIndex >= mq.size || queueIndex < 0 {
+	if queueIndex >= mq.nq || queueIndex < 0 {
 		return false
 	}
 
@@ -197,7 +193,7 @@ func (mq *MultiQueue) Pop(queueIndex int) context.Context {
 	defer mq.mtx.Unlock()
 	mq.mtx.Lock()
 
-	if queueIndex >= mq.size || queueIndex < 0 {
+	if queueIndex >= mq.nq || queueIndex < 0 {
 		return nil
 	}
 
@@ -216,7 +212,7 @@ func (mq *MultiQueue) _wait() chan bool {
 func (mq *MultiQueue) _wakeup(ch chan bool) bool {
 	defer mq.mtxWait.Unlock()
 	mq.mtxWait.Lock()
-	if ch == nil && len(mq.wait) > 0{
+	if ch == nil && len(mq.wait) > 0 {
 		for k := range mq.wait {
 			close(k)
 			delete(mq.wait, k)
@@ -269,7 +265,7 @@ func (mq *MultiQueue) Available(queueIndex int) int {
 	defer mq.mtx.RUnlock()
 	mq.mtx.RLock()
 
-	if queueIndex >= mq.size || queueIndex < 0 {
+	if queueIndex >= mq.nq || queueIndex < 0 {
 		return -1
 	}
 
@@ -282,22 +278,24 @@ func (mq *MultiQueue) IsEmpty() bool {
 	mq.mtx.RLock()
 	return mq._empty()
 }
-func (mq *MultiQueue) Len() int {
+func (mq *MultiQueue) Size() int {
 	return mq.size
 }
-
+func (mq *MultiQueue) NumberOfQueue() int {
+	return mq.nq
+}
 
 type WeightQueue struct {
 	*MultiQueue
-	w           []int
-	t           []int
+	w []int
+	t []int
 }
 
 func NewWeightQueue(size int, numberOfQueue int) *WeightQueue {
 	wq := &WeightQueue{
 		MultiQueue: NewMultiQueue(size, numberOfQueue),
-		w:           make([]int, numberOfQueue),
-		t:           make([]int, numberOfQueue),
+		w:          make([]int, numberOfQueue),
+		t:          make([]int, numberOfQueue),
 	}
 	for i := 0; i < numberOfQueue; i++ {
 		wq.w[i] = 1
@@ -310,13 +308,17 @@ func (wq *WeightQueue) SetWeight(queueIndex int, weight int) error {
 	defer wq.mtx.Unlock()
 	wq.mtx.Lock()
 
-	if queueIndex >= wq.size || queueIndex < 0 || weight < 1 {
-		return ErrInvalidArgument
+	if queueIndex >= wq.nq || queueIndex < 0 || weight < 1 {
+		return ErrIllegalArgument
 	}
 
 	wq.w[queueIndex] = weight
 	wq.t[queueIndex] = weight
 	return nil
+}
+
+func (wq *WeightQueue) Weight(queueIndex int) int {
+	return wq.w[queueIndex]
 }
 
 func (wq *WeightQueue) _pop() context.Context {
@@ -365,7 +367,7 @@ func NewPriorityQueue(size int, maxPriority uint8) *PriorityQueue {
 	}
 	l := int(maxPriority) + 1
 	pq := &PriorityQueue{
-		MultiQueue: NewMultiQueue(size, l),
+		MultiQueue:  NewMultiQueue(size, l),
 		maxPriority: maxPriority,
 	}
 	return pq
@@ -387,3 +389,6 @@ func (pq *PriorityQueue) Pop() context.Context {
 	return nil
 }
 
+func (pq *PriorityQueue) MaxPriority() int {
+	return int(pq.maxPriority)
+}

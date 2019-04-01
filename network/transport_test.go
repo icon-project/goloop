@@ -13,9 +13,8 @@ import (
 )
 
 const (
-	testChannel           = "testchannel"
-	testTransportAddress1 = "127.0.0.1:8080"
-	testTransportAddress2 = "127.0.0.1:8081"
+	testChannel                = "testchannel"
+	testTransportRandomAddress = ":0"
 )
 
 var (
@@ -112,8 +111,8 @@ func Test_transport(t *testing.T) {
 
 	ExcludeLoggers = []string{}
 
-	nt1 := NewTransport(testTransportAddress1, walletFromGeneratedPrivateKey())
-	nt2 := NewTransport(testTransportAddress2, walletFromGeneratedPrivateKey())
+	nt1 := NewTransport(testTransportRandomAddress, walletFromGeneratedPrivateKey())
+	nt2 := NewTransport(testTransportRandomAddress, walletFromGeneratedPrivateKey())
 
 	wg.Add(1)
 	tph1 := newTestPeerHandler("TestPeerHandler1", t, &wg)
@@ -122,11 +121,13 @@ func Test_transport(t *testing.T) {
 	nt1.(*transport).pd.registerPeerHandler(tph1, false)
 	nt2.(*transport).pd.registerPeerHandler(tph2, false)
 
-	assert.NoError(t, nt1.Listen(), "Transport.Start fail")
-	assert.NoError(t, nt2.Listen(), "Transport.Start fail")
+	assert.NoError(t, nt1.Listen(), "Transport1.Start fail")
+	assert.NoError(t, nt2.Listen(), "Transport2.Start fail")
 
-	assert.NoError(t, nt2.Dial(nt1.Address(), ""), "Transport.Dial fail")
+	assert.NoError(t, nt2.Dial(nt1.GetListenAddress(), ""), "Transport.Dial fail")
 
 	wg.Wait()
+	assert.NoError(t, nt1.Close(), "Transport1.Close fail")
+	assert.NoError(t, nt2.Close(), "Transport1.Close fail")
 	time.Sleep(1 * time.Second)
 }
