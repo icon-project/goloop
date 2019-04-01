@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"io"
 	"log"
-	"sync"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 )
@@ -20,13 +20,14 @@ type MessageItem struct {
 }
 
 type speer struct {
-	id       module.PeerID
-	msgCh    chan MessageItem
-	cancelCh chan struct{}
+	id        module.PeerID
+	msgCh     chan MessageItem
+	cancelCh  chan struct{}
+	stoppedCh chan struct{}
 }
 
 type server struct {
-	sync.Mutex
+	common.Mutex
 	nm    NetworkManager
 	ph    module.ProtocolHandler
 	bm    BlockManager
@@ -59,12 +60,13 @@ func (s *server) start() {
 
 func (s *server) _addPeer(id module.PeerID) {
 	speer := &speer{
-		id:       id,
-		msgCh:    make(chan MessageItem),
-		cancelCh: make(chan struct{}),
+		id:        id,
+		msgCh:     make(chan MessageItem),
+		cancelCh:  make(chan struct{}),
+		stoppedCh: make(chan struct{}),
 	}
 	s.peers = append(s.peers, speer)
-	h := newSConHandler(speer.msgCh, speer.cancelCh, speer.id, s.ph, s.bm)
+	h := newSConHandler(speer.msgCh, speer.cancelCh, speer.stoppedCh, speer.id, s.ph, s.bm)
 	go h.handle()
 }
 
@@ -76,6 +78,10 @@ func (s *server) stop() {
 		s.running = false
 		for _, p := range s.peers {
 			close(p.cancelCh)
+			pp := p // to capture loop var
+			s.CallAfterUnlock(func() {
+				<-pp.stoppedCh
+			})
 		}
 		s.peers = nil
 	}
@@ -109,7 +115,11 @@ func (s *server) onLeave(id module.PeerID) {
 			s.peers[i] = s.peers[last]
 			s.peers[last] = nil
 			s.peers = s.peers[:last]
+			pp := p // to capture loop var
 			close(p.cancelCh)
+			s.CallAfterUnlock(func() {
+				<-pp.stoppedCh
+			})
 			return
 		}
 	}
@@ -133,11 +143,12 @@ func (s *server) onReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) {
 }
 
 type sconHandler struct {
-	msgCh    <-chan MessageItem
-	cancelCh <-chan struct{}
-	id       module.PeerID
-	ph       module.ProtocolHandler
-	bm       BlockManager
+	msgCh     <-chan MessageItem
+	cancelCh  <-chan struct{}
+	stoppedCh chan<- struct{}
+	id        module.PeerID
+	ph        module.ProtocolHandler
+	bm        BlockManager
 
 	nextItems []*BlockRequest
 	buf       *bytes.Buffer
@@ -149,16 +160,18 @@ type sconHandler struct {
 func newSConHandler(
 	msgCh <-chan MessageItem,
 	cancelCh <-chan struct{},
+	stoppedCh chan<- struct{},
 	id module.PeerID,
 	ph module.ProtocolHandler,
 	bm BlockManager,
 ) *sconHandler {
 	h := &sconHandler{
-		msgCh:    msgCh,
-		cancelCh: cancelCh,
-		id:       id,
-		ph:       ph,
-		bm:       bm,
+		msgCh:     msgCh,
+		cancelCh:  cancelCh,
+		stoppedCh: stoppedCh,
+		id:        id,
+		ph:        ph,
+		bm:        bm,
 	}
 	return h
 }
@@ -308,4 +321,5 @@ loop:
 			}
 		}
 	}
+	h.stoppedCh <- struct{}{}
 }
