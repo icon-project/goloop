@@ -138,6 +138,7 @@ func (c *singleChain) Start() {
 
 	c.vld = consensus.NewCommitVoteSetFromBytes
 	c.sm = service.NewManager(c, c.nm, c.pm, c.cfg.ContractDir)
+	c.sm.Start()
 	c.bm = block.NewManager(c, c.sm)
 
 	c.cs = consensus.NewConsensus(c, c.bm, c.nm, c.cfg.WALDir)

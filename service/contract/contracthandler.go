@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	transactionTimeLimit     = time.Duration(2 * time.Second)
-	scoreDecompressTimeLimit = time.Duration(3 * time.Second)
+	transactionTimeLimit     = time.Duration(2 * time.Hour)
+	scoreDecompressTimeLimit = time.Duration(2 * time.Second)
 
 	CTypeTransfer = 0x100
 	CTypeNone     = iota

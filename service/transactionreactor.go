@@ -8,6 +8,7 @@ import (
 )
 
 type TransactionReactor struct {
+	nm         module.NetworkManager
 	membership module.ProtocolHandler
 	normalPool *TransactionPool
 	patchPool  *TransactionPool
@@ -50,7 +51,7 @@ func (r *TransactionReactor) OnReceive(subProtocol module.ProtocolInfo, buf []by
 }
 
 func (r *TransactionReactor) PropagateTransaction(pi module.ProtocolInfo, tx transaction.Transaction) error {
-	if r != nil {
+	if r != nil && r.membership != nil {
 		r.membership.Multicast(ProtocolPropagateTransaction, tx.Bytes(), module.ROLE_VALIDATOR)
 	}
 	return nil
@@ -68,11 +69,19 @@ func (r *TransactionReactor) OnLeave(id module.PeerID) {
 	// Nothing to do now.
 }
 
+func (r *TransactionReactor) Start() {
+	r.membership, _ = r.nm.RegisterReactor(ReactorName, r, subProtocols, 2)
+}
+
+func (r *TransactionReactor) Stop() {
+	_ = r.nm.UnregisterReactor(r)
+}
+
 func NewTransactionReactor(nm module.NetworkManager, patch *TransactionPool, normal *TransactionPool) *TransactionReactor {
 	ra := &TransactionReactor{
 		patchPool:  patch,
 		normalPool: normal,
+		nm:         nm,
 	}
-	ra.membership, _ = nm.RegisterReactor(ReactorName, ra, subProtocols, 2)
 	return ra
 }

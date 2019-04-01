@@ -36,7 +36,7 @@ type manager struct {
 }
 
 func NewManager(chain module.Chain, nm module.NetworkManager,
-	eem eeproxy.Manager, contractDir string,
+	eem eeproxy.Manager, chainRoot string,
 ) module.ServiceManager {
 	bk, _ := chain.Database().GetBucket(db.TransactionLocatorByHash)
 
@@ -45,13 +45,29 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 		normalTxPool: NewTransactionPool(bk),
 		db:           chain.Database(),
 		chain:        chain,
-		cm:           contract.NewContractManager(chain.Database(), contractDir),
+		cm:           contract.NewContractManager(chain.Database(), chainRoot),
 		eem:          eem,
 	}
 	if nm != nil {
 		mgr.txReactor = NewTransactionReactor(nm, mgr.patchTxPool, mgr.normalTxPool)
 	}
 	return mgr
+}
+
+func (m *manager) Start() {
+	if m.txReactor != nil {
+		m.txReactor.Start()
+	}
+}
+
+func (m *manager) Term() {
+	if m.txReactor != nil {
+		m.txReactor.Stop()
+	}
+	m.chain = nil
+	m.cm = nil
+	m.eem = nil
+	m.db = nil
 }
 
 // ProposeTransition proposes a Transition following the parent Transition.

@@ -34,6 +34,9 @@ func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, c
 	cnt := 0
 	for i := l.Iterator(); i.Has(); i.Next() {
 		if t.step == stepCanceled {
+			t.mutex.Lock()
+			t.cond.Signal()
+			t.mutex.Unlock()
 			return false
 		}
 		txi, _, err := i.Get()

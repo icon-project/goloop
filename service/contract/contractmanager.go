@@ -9,6 +9,7 @@ import (
 	"log"
 	"math/big"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -62,6 +63,7 @@ type (
 )
 
 const (
+	contractRoot                   = "contract"
 	contractPythonRootFile         = "package.json"
 	csInProgress           cStatus = iota
 	csComplete
@@ -218,7 +220,7 @@ func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []
 				err = reader.Close()
 				return "", errors.New("Failed to read zip file\n")
 			}
-			if err = ioutil.WriteFile(storePath, buf, os.ModePerm); err != nil {
+			if err = ioutil.WriteFile(storePath, buf, 0755); err != nil {
 				log.Printf("Failed to write file. err = %s\n", err)
 			}
 			err = reader.Close()
@@ -300,7 +302,7 @@ func (cm *contractManager) PrepareContractStore(
 	return cs, nil
 }
 
-func NewContractManager(db db.Database, contractDir string) ContractManager {
+func NewContractManager(db db.Database, chainRoot string) ContractManager {
 	/*
 		contractManager has root path of each service manager's contract file
 		So contractManager has to be initialized
@@ -310,7 +312,11 @@ func NewContractManager(db db.Database, contractDir string) ContractManager {
 	// parameter here and add it to storeRoot.
 
 	// remove tmp to prepare contract
+	contractDir := path.Join(chainRoot, contractRoot)
 	storeRoot, _ := filepath.Abs(contractDir)
+	if _, err := os.Stat(storeRoot); os.IsNotExist(err) {
+		os.MkdirAll(storeRoot, 0755)
+	}
 	tmp := fmt.Sprintf("%s/tmp", storeRoot)
 	if _, err := os.Stat(tmp); !os.IsNotExist(err) {
 		if err := os.RemoveAll(tmp); err != nil {

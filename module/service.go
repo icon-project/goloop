@@ -204,6 +204,11 @@ type ServiceManager interface {
 	// PatchTransition creates a Transition by overwriting patches on the transition.
 	PatchTransition(transition Transition, patches TransactionList) Transition
 
+	// Start starts service module.
+	Start()
+	// Term terminates serviceManager instance.
+	Term()
+
 	// Finalize finalizes data related to the transition. It usually stores
 	// data to a persistent storage. opt indicates which data are finalized.
 	// It should be called for every transition.

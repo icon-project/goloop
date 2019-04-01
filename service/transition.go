@@ -58,6 +58,7 @@ type transition struct {
 	transactionCount int
 	executeDuration  time.Duration
 	flushDuration    time.Duration
+	cond             *sync.Cond
 }
 
 type transitionResult struct {
@@ -242,6 +243,11 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	}
 
 	t.mutex.Lock()
+	if t.step == stepCanceled {
+		t.cond.Signal()
+		t.mutex.Unlock()
+		return
+	}
 	t.step = stepExecuting
 	t.mutex.Unlock()
 
@@ -302,6 +308,11 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	t.result = tresult.Bytes()
 
 	t.mutex.Lock()
+	if t.step == stepCanceled {
+		t.cond.Signal()
+		t.mutex.Unlock()
+		return
+	}
 	t.step = stepComplete
 	t.mutex.Unlock()
 	if t.cb != nil {
@@ -316,6 +327,9 @@ func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext
 	cnt := 0
 	for i := l.Iterator(); i.Has(); i.Next() {
 		if t.step == stepCanceled {
+			t.mutex.Lock()
+			t.cond.Signal()
+			t.mutex.Unlock()
 			return false, 0
 		}
 
@@ -326,9 +340,14 @@ func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext
 
 		if err := txi.(transaction.Transaction).PreValidate(wc, true); err != nil {
 			t.mutex.Lock()
-			t.step = stepError
-			t.mutex.Unlock()
-			t.cb.OnValidate(t, err)
+			if t.step == stepCanceled {
+				t.cond.Signal()
+				t.mutex.Unlock()
+			} else {
+				t.step = stepError
+				t.mutex.Unlock()
+				t.cb.OnValidate(t, err)
+			}
 			return false, 0
 		}
 		cnt += 1
@@ -381,10 +400,14 @@ func (t *transition) finalizeResult() {
 
 func (t *transition) cancelExecution() bool {
 	t.mutex.Lock()
+	defer t.mutex.Unlock()
 	if t.step != stepComplete && t.step != stepError {
+		t.cond = sync.NewCond(&t.mutex)
 		t.step = stepCanceled
+		t.cond.Wait()
+	} else if t.step == stepComplete {
+		return false
 	}
-	t.mutex.Unlock()
 	return true
 }
 
