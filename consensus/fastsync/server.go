@@ -164,6 +164,7 @@ func newSConHandler(
 }
 
 func (h *sconHandler) cancelAllRequests() {
+	h.nextMsg = nil
 	h.buf = nil
 	h.nextItems = nil
 	for {
