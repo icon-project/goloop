@@ -212,15 +212,12 @@ func (cs *consensus) OnReceive(
 }
 
 func (cs *consensus) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
-	logger.Printf("OnError: %v\n", err)
 }
 
 func (cs *consensus) OnJoin(id module.PeerID) {
-	logger.Printf("OnJoin: %v\n", id)
 }
 
 func (cs *consensus) OnLeave(id module.PeerID) {
-	logger.Printf("OnLeave: %v\n", id)
 }
 
 func (cs *consensus) ReceiveProposalMessage(msg *proposalMessage, unicast bool) error {
