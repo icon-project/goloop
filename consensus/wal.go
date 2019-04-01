@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/pkg/errors"
 )
@@ -62,7 +63,7 @@ type file struct {
 }
 
 type walWriter struct {
-	mutex            sync.Mutex
+	mutex            common.Mutex
 	id               string
 	cfg              WALConfig
 	buf              *bufio.Writer
@@ -70,8 +71,9 @@ type walWriter struct {
 	tailIdx          uint64
 	eldestUnsyncData *time.Time
 
-	ticker     *time.Ticker
-	tickerStop chan struct{}
+	ticker        *time.Ticker
+	tickerStop    chan struct{}
+	tickerStopped chan struct{}
 }
 
 type walInfo struct {
@@ -238,19 +240,26 @@ func (w *walWriter) sync() error {
 func (w *walWriter) startHousekeeping() {
 	w.ticker = time.NewTicker(w.cfg.HousekeepingInterval)
 	w.tickerStop = make(chan struct{})
-	go w.housekeep(w.ticker.C, w.tickerStop)
+	w.tickerStopped = make(chan struct{})
+	go w.housekeep(w.ticker.C, w.tickerStop, w.tickerStopped)
 }
 
 func (w *walWriter) stopHousekeeping() {
-	w.ticker.Stop()
-	w.tickerStop <- struct{}{}
-}
-
-func (w *walWriter) Close() error {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
+	w.ticker.Stop()
+	w.mutex.CallAfterUnlock(func() {
+		w.tickerStop <- struct{}{}
+		<-w.tickerStopped
+	})
+}
+
+func (w *walWriter) Close() error {
 	w.stopHousekeeping()
+
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
 
 	err := w.sync()
 	if err != nil {
@@ -263,12 +272,13 @@ func (w *walWriter) Close() error {
 	return nil
 }
 
-func (w *walWriter) housekeep(t <-chan time.Time, s <-chan struct{}) {
+func (w *walWriter) housekeep(t <-chan time.Time, s <-chan struct{}, d chan<- struct{}) {
 	for {
 		select {
 		case <-t:
 			w.doHousekeeping()
 		case <-s:
+			d <- struct{}{}
 			return
 		}
 	}
