@@ -30,6 +30,14 @@ type testChain struct {
 	vld      module.CommitVoteSetDecoder
 }
 
+func (c *testChain) ConcurrencyLevel() int {
+	panic("implement me")
+}
+
+func (c *testChain) Regulator() module.Regulator {
+	panic("implement me")
+}
+
 func (c *testChain) Database() db.Database {
 	return c.database
 }
@@ -68,6 +76,8 @@ func (c *testChain) ServiceManager() module.ServiceManager {
 func (c *testChain) NetworkManager() module.NetworkManager {
 	panic("not implemented")
 }
+
+
 
 type testError struct {
 }
@@ -660,6 +670,14 @@ func (sm *testServiceManager) ValidatorListFromHash(hash []byte) module.Validato
 
 func (sm *testServiceManager) GetBalance(result []byte, addr module.Address) *big.Int {
 	panic("not implemented")
+}
+
+func (sm *testServiceManager) Start() {
+	panic("implement me")
+}
+
+func (sm *testServiceManager) Term() {
+	panic("implement me")
 }
 
 type testValidator struct {
