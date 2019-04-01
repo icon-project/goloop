@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 
 	"github.com/icon-project/goloop/module"
 )
@@ -19,6 +20,8 @@ type manager struct {
 	//
 	protocolHandlers map[string]*protocolHandler
 	priority         map[protocolInfo]uint8
+
+	mtx sync.RWMutex
 
 	pd *PeerDispatcher
 	//log
@@ -84,23 +87,52 @@ func (m *manager) GetPeers() []module.PeerID {
 	return l
 }
 
+func (m *manager) Term() {
+	defer m.mtx.Unlock()
+	m.mtx.Lock()
+
+	_ = m._stop()
+	for _, ph := range m.protocolHandlers {
+		ph.Term()
+	}
+}
+
 func (m *manager) Start() error {
+	defer m.mtx.Unlock()
+	m.mtx.Lock()
+
+	if m.p2p.IsStarted() {
+		return nil
+	}
 	if !m.pd.registerPeerToPeer(m.p2p) {
-		return ErrAlreadyRegisteredP2P
+		log.Panicf("already registered p2p %s", m.channel)
 	}
 	m.p2p.Start()
 	return nil
 }
 
-func (m *manager) Stop() error {
+func (m *manager) _stop() error {
+	if !m.p2p.IsStarted() {
+		return nil
+	}
 	if !m.pd.unregisterPeerToPeer(m.p2p) {
-		return ErrNotRegisteredP2P
+		log.Panicf("already unregistered p2p %s", m.channel)
 	}
 	m.p2p.Stop()
 	return nil
 }
 
+func (m *manager) Stop() error {
+	defer m.mtx.Unlock()
+	m.mtx.Lock()
+
+	return m._stop()
+}
+
 func (m *manager) RegisterReactor(name string, r module.Reactor, spiList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
+	defer m.mtx.Unlock()
+	m.mtx.Lock()
+
 	if priority < 1 || priority > DefaultSendQueueMaxPriority {
 		log.Panicf("priority must be positive value and less than %d", DefaultSendQueueMaxPriority)
 	}
@@ -120,15 +152,39 @@ func (m *manager) RegisterReactor(name string, r module.Reactor, spiList []modul
 }
 
 func (m *manager) UnregisterReactor(reactor module.Reactor) error {
-	//FIXME
-	return nil
+	defer m.mtx.Unlock()
+	m.mtx.Lock()
+
+	for name, ph := range m.protocolHandlers {
+		if ph.reactor == reactor {
+			ph.Term()
+			m.p2p.unsetCbFunc(ph.protocol)
+			delete(m.protocolHandlers, name)
+			delete(m.priority, ph.protocol)
+			return nil
+		}
+	}
+	return ErrNotRegisteredReactor
+}
+
+func (m *manager) hasProtocolHandler(pi protocolInfo) bool {
+	defer m.mtx.RUnlock()
+	m.mtx.RLock()
+	_, ok := m.priority[pi]
+	return ok
 }
 
 func (m *manager) SetWeight(pi protocolInfo, weight int) error {
+	if !m.hasProtocolHandler(pi) {
+		return ErrNotRegisteredReactor
+	}
 	return m.p2p.sendQueue.SetWeight(int(pi.ID()), weight)
 }
 
 func (m *manager) unicast(pi protocolInfo, spi protocolInfo, bytes []byte, id module.PeerID) error {
+	if !m.hasProtocolHandler(pi) {
+		return ErrNotRegisteredReactor
+	}
 	pkt := NewPacket(pi, spi, bytes)
 	pkt.protocol = pi
 	pkt.dest = p2pDestPeer
@@ -142,6 +198,9 @@ func (m *manager) unicast(pi protocolInfo, spi protocolInfo, bytes []byte, id mo
 }
 
 func (m *manager) multicast(pi protocolInfo, spi protocolInfo, bytes []byte, role module.Role) error {
+	if !m.hasProtocolHandler(pi) {
+		return ErrNotRegisteredReactor
+	}
 	if _, ok := m.roles[role]; !ok {
 		return ErrNotRegisteredRole
 	}
@@ -149,10 +208,13 @@ func (m *manager) multicast(pi protocolInfo, spi protocolInfo, bytes []byte, rol
 	pkt.dest = m.destByRole[role]
 	pkt.ttl = 0
 	pkt.priority = m.priority[pi]
-	return m.p2p.send(pkt)
+	return m.p2p.Send(pkt)
 }
 
 func (m *manager) broadcast(pi protocolInfo, spi protocolInfo, bytes []byte, bt module.BroadcastType) error {
+	if !m.hasProtocolHandler(pi) {
+		return ErrNotRegisteredReactor
+	}
 	pkt := NewPacket(pi, spi, bytes)
 	pkt.dest = p2pDestAny
 	pkt.ttl = byte(bt)
@@ -160,7 +222,7 @@ func (m *manager) broadcast(pi protocolInfo, spi protocolInfo, bytes []byte, bt 
 	if bt == module.BROADCAST_NEIGHBOR {
 		pkt.forceSend = true
 	}
-	return m.p2p.send(pkt)
+	return m.p2p.Send(pkt)
 }
 
 func (m *manager) relay(pkt *Packet) error {
@@ -168,7 +230,7 @@ func (m *manager) relay(pkt *Packet) error {
 		return errors.New("not allowed relay")
 	}
 	pkt.priority = m.priority[pkt.protocol]
-	return m.p2p.send(pkt)
+	return m.p2p.Send(pkt)
 }
 
 func (m *manager) _getPeerIDSetByRole(role module.Role) *PeerIDSet {

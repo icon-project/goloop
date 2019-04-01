@@ -2,7 +2,7 @@ package module
 
 type NetworkManager interface {
 	Start() error
-	Stop() error
+	Term()
 
 	GetPeers() []PeerID
 

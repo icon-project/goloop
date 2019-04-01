@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-errors/errors"
 	"github.com/ugorji/go/codec"
 
 	"github.com/icon-project/goloop/module"
@@ -60,8 +59,8 @@ type PeerToPeer struct {
 	//log
 	log *logger
 
-	started chan bool
-	mtx     sync.Mutex
+	run chan bool
+	mtx sync.RWMutex
 }
 
 type failureCbFunc func(err error, pkt *Packet, c *Counter)
@@ -124,7 +123,7 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer) *PeerToPeer {
 		for _, p := range peers {
 			if !p2p.allowedPeers.Contains(p.ID()) {
 				p2p.onEvent(p2pEventNotAllowed, p)
-				p.CloseByError(errors.New("onUpdate not allowed connection"))
+				p.CloseByError(fmt.Errorf("onUpdate not allowed connection"))
 			}
 		}
 	}
@@ -152,29 +151,36 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer) *PeerToPeer {
 	return p2p
 }
 
+func (p2p *PeerToPeer) IsStarted() bool {
+	defer p2p.mtx.RUnlock()
+	p2p.mtx.RLock()
+
+	return p2p.run != nil
+}
+
 func (p2p *PeerToPeer) Start() {
 	defer p2p.mtx.Unlock()
 	p2p.mtx.Lock()
 
-	if p2p.started != nil {
+	if p2p.run != nil {
 		return
 	}
-	p2p.started = make(chan bool)
+	p2p.run = make(chan bool)
 
 	go p2p.sendRoutine()
 	go p2p.alternateSendRoutine()
 	go p2p.discoverRoutine()
 }
 
+//send queue에 들어있던 것들은 모두 전송시도한다.
 func (p2p *PeerToPeer) Stop() {
 	defer p2p.mtx.Unlock()
 	p2p.mtx.Lock()
 
-	if p2p.started == nil {
+	if p2p.run == nil {
 		return
 	}
-	close(p2p.started)
-
+	close(p2p.run)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -193,6 +199,8 @@ func (p2p *PeerToPeer) Stop() {
 		wg.Done()
 	}()
 	wg.Wait()
+
+	p2p.run = nil
 }
 
 func (p2p *PeerToPeer) dial(na NetAddress) error {
@@ -220,6 +228,15 @@ func (p2p *PeerToPeer) setCbFunc(pi module.ProtocolInfo, pktFunc packetCbFunc,
 	}
 }
 
+func (p2p *PeerToPeer) unsetCbFunc(pi module.ProtocolInfo) {
+	k := pi.Uint16()
+	if _, ok := p2p.onPacketCbFuncs[k]; ok {
+		p2p.unsetEventCbFunc(k)
+		delete(p2p.onFailureCbFuncs, k)
+		delete(p2p.onPacketCbFuncs, k)
+	}
+}
+
 func (p2p *PeerToPeer) setEventCbFunc(evt string, k uint16, evtFunc eventCbFunc) {
 	m := p2p.onEventCbFuncs[evt]
 	if m == nil {
@@ -227,6 +244,14 @@ func (p2p *PeerToPeer) setEventCbFunc(evt string, k uint16, evtFunc eventCbFunc)
 		p2p.onEventCbFuncs[evt] = m
 	}
 	m[k] = evtFunc
+}
+
+func (p2p *PeerToPeer) unsetEventCbFunc(k uint16) {
+	for _, m := range p2p.onEventCbFuncs {
+		if _, ok := m[k]; ok {
+			delete(m, k)
+		}
+	}
 }
 
 //callback from PeerDispatcher.onPeer
@@ -241,7 +266,7 @@ func (p2p *PeerToPeer) onPeer(p *Peer) {
 	}
 	if !p2p.allowedPeers.IsEmpty() && !p2p.allowedPeers.Contains(p.id) {
 		p2p.onEvent(p2pEventNotAllowed, p)
-		p.CloseByError(errors.New("onPeer not allowed connection"))
+		p.CloseByError(fmt.Errorf("onPeer not allowed connection"))
 		return
 	}
 	if dp := p2p.getPeer(p.id, false); dp != nil {
@@ -250,7 +275,7 @@ func (p2p *PeerToPeer) onPeer(p *Peer) {
 		}
 		p2p.duplicated.Add(dp)
 		if dp.incomming == p.incomming {
-			dp.CloseByError(errors.New("onPeer duplicated peer"))
+			dp.CloseByError(fmt.Errorf("onPeer duplicated peer"))
 			p2p.log.Println("Warning", "Already exists connected Peer, close duplicated peer", dp, p.incomming)
 		} else {
 			dp.Close("onPeer duplicated peer")
@@ -280,6 +305,7 @@ func (p2p *PeerToPeer) onError(err error, p *Peer, pkt *Packet) {
 }
 
 func (p2p *PeerToPeer) onClose(p *Peer) {
+
 	p2p.log.Println("onClose", p.CloseInfo(), p)
 	if p2p.removePeer(p) {
 		p2p.onEvent(p2pEventLeave, p)
@@ -299,6 +325,8 @@ func (p2p *PeerToPeer) onClose(p *Peer) {
 }
 
 func (p2p *PeerToPeer) onEvent(evt string, p *Peer) {
+	//FIXME [TBD]if !p2p.IsStarted() return
+
 	p2p.log.Println("onEvent", evt, p)
 	if m, ok := p2p.onEventCbFuncs[evt]; ok {
 		for _, cbFunc := range m {
@@ -308,6 +336,8 @@ func (p2p *PeerToPeer) onEvent(evt string, p *Peer) {
 }
 
 func (p2p *PeerToPeer) onFailure(err error, pkt *Packet, c *Counter) {
+	//FIXME [TBD]if !p2p.IsStarted() return
+
 	p2p.log.Println("onFailure", err, pkt, c)
 	if cbFunc, ok := p2p.onFailureCbFuncs[pkt.protocol.Uint16()]; ok {
 		cbFunc(err, pkt, c)
@@ -349,6 +379,7 @@ func (p2p *PeerToPeer) removePeer(p *Peer) (isLeave bool) {
 
 //callback from Peer.receiveRoutine
 func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
+	//FIXME if !p2p.IsStarted() return
 	if pkt.protocol == PROTO_CONTOL {
 		p2p.log.Println("onPacket", pkt, p)
 		switch pkt.protocol {
@@ -579,7 +610,7 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 		}
 	} else {
 		p2p.log.Println("handleQueryResult", "not exists allowedlist", p)
-		p.CloseByError(errors.New("handleQueryResult not exists allowedlist"))
+		p.CloseByError(fmt.Errorf("handleQueryResult not exists allowedlist"))
 		return
 	}
 
@@ -748,7 +779,7 @@ func (p2p *PeerToPeer) sendRoutine() {
 Loop:
 	for {
 		select {
-		case <-p2p.started:
+		case <-p2p.run:
 			break Loop
 		case <-p2p.sendQueue.Wait():
 			for {
@@ -835,7 +866,7 @@ func (p2p *PeerToPeer) alternateSendRoutine() {
 Loop:
 	for {
 		select {
-		case <-p2p.started:
+		case <-p2p.run:
 			break Loop
 		case <-p2p.alternateQueue.Wait():
 			for {
@@ -900,7 +931,11 @@ Loop:
 	}
 }
 
-func (p2p *PeerToPeer) send(pkt *Packet) error {
+func (p2p *PeerToPeer) Send(pkt *Packet) error {
+	if !p2p.IsStarted() {
+		return ErrNotStarted
+	}
+
 	if pkt.src == nil {
 		pkt.src = p2p.self.id
 	}
@@ -917,14 +952,14 @@ func (p2p *PeerToPeer) send(pkt *Packet) error {
 			p2p.self.compareRole(p2pRoleNone, true) {
 			return nil
 		}
-		//p2p.log.Println("Warning", "send", "Not Available", pkt.dest, pkt.protocol, pkt.subProtocol)
+		//p2p.log.Println("Warning", "Send", "Not Available", pkt.dest, pkt.protocol, pkt.subProtocol)
 		return ErrNotAvailable
 	}
 
 	ctx := context.WithValue(context.Background(), p2pContextKeyPacket, pkt)
 	ctx = context.WithValue(ctx, p2pContextKeyCounter, &Counter{})
 	if ok := p2p.sendQueue.Push(ctx, int(pkt.protocol.ID())); !ok {
-		p2p.log.Println("Warning", "send", "Queue Push failure", pkt.protocol, pkt.subProtocol)
+		p2p.log.Println("Warning", "Send", "Queue Push failure", pkt.protocol, pkt.subProtocol)
 		return ErrQueueOverflow
 	}
 	return nil
@@ -1104,7 +1139,7 @@ func (p2p *PeerToPeer) discoverRoutine() {
 Loop:
 	for {
 		select {
-		case <-p2p.started:
+		case <-p2p.run:
 			break Loop
 		case <-p2p.seedTicker.C:
 			seeds := p2p.orphanages.GetByRoleAndIncomming(p2pRoleSeed, true, false)
