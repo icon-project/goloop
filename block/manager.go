@@ -45,10 +45,11 @@ type bnode struct {
 }
 
 type chainContext struct {
-	syncer syncer
-	chain  module.Chain
-	sm     module.ServiceManager
-	logger *log.Logger
+	syncer  syncer
+	chain   module.Chain
+	sm      module.ServiceManager
+	logger  *log.Logger
+	running bool
 }
 
 type manager struct {
@@ -380,9 +381,10 @@ func NewManager(
 	// TODO if last block is v1 block
 	m := &manager{
 		chainContext: &chainContext{
-			chain:  chain,
-			sm:     sm,
-			logger: logger,
+			chain:   chain,
+			sm:      sm,
+			logger:  logger,
+			running: true,
 		},
 		nmap: make(map[string]*bnode),
 	}
@@ -422,6 +424,15 @@ func NewManager(
 		m.nmap[string(lastFinalized.ID())] = bn
 	}
 	return m
+}
+
+func (m *manager) Term() {
+	m.syncer.begin()
+	defer m.syncer.end()
+
+	m.removeNode(m.finalized)
+	m.finalized = nil
+	m.running = false
 }
 
 func (m *manager) GetBlock(id []byte) (module.Block, error) {

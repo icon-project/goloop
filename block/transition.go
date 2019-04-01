@@ -129,7 +129,7 @@ func (ti *transitionImpl) unref() {
 func (ti *transitionImpl) OnValidate(tr module.Transition, err error) {
 	ti._chainContext.syncer.begin()
 	defer ti._chainContext.syncer.end()
-	if !ti.running() {
+	if !ti._chainContext.running || !ti.running() {
 		return
 	}
 	ti._valErr = &err
@@ -146,7 +146,7 @@ func (ti *transitionImpl) OnValidate(tr module.Transition, err error) {
 func (ti *transitionImpl) OnExecute(tr module.Transition, err error) {
 	ti._chainContext.syncer.begin()
 	defer ti._chainContext.syncer.end()
-	if !ti.running() {
+	if !ti._chainContext.running || !ti.running() {
 		return
 	}
 	ti._exeErr = &err

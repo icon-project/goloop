@@ -60,6 +60,7 @@ type BlockManager interface {
 	Finalize(Block) error
 
 	GetTransactionInfo(id []byte) (TransactionInfo, error)
+	Term()
 }
 
 type TransactionInfo interface {
