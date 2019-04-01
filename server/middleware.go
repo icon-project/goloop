@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 
 	"github.com/labstack/echo"
 
@@ -11,7 +12,7 @@ import (
 )
 
 // JsonRpc()
-func JsonRpc(srv *Manager, mr *jsonrpc.MethodRepository) echo.MiddlewareFunc {
+func JsonRpc(mr *jsonrpc.MethodRepository) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			r := new(jsonrpc.Request)
@@ -27,12 +28,34 @@ func JsonRpc(srv *Manager, mr *jsonrpc.MethodRepository) echo.MiddlewareFunc {
 				return err
 			}
 			c.Set("method", method)
-
-			// TODO : getChain("channel")
-			channel := c.Param("channel")
-			c.Set("chain", *srv.Chain(channel))
-
 			return next(c)
+		}
+	}
+}
+
+func AnyChainInjector(srv *Manager) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(ctx echo.Context) error {
+			c := srv.AnyChain()
+			if c == nil {
+				return jsonrpc.ErrServer("not exists chain")
+			}
+			ctx.Set("chain", c)
+			return next(ctx)
+		}
+	}
+}
+
+func ChainInjector(srv *Manager) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(ctx echo.Context) error {
+			channel := ctx.Param("channel")
+			c := srv.Chain(channel)
+			if c == nil {
+				return ctx.NoContent(http.StatusNotFound)
+			}
+			ctx.Set("chain", c)
+			return next(ctx)
 		}
 	}
 }

@@ -17,8 +17,9 @@ import (
 type Manager struct {
 	e      *echo.Echo
 	addr   string
-	chains map[string]*module.Chain // chain manager
-	mtx    sync.RWMutex
+	chains map[string]module.Chain // chain manager
+
+	mtx sync.RWMutex
 }
 
 func NewManager(addr string) *Manager {
@@ -35,38 +36,60 @@ func NewManager(addr string) *Manager {
 	return &Manager{
 		e:      e,
 		addr:   addr,
-		chains: map[string]*module.Chain{},
+		chains: make(map[string]module.Chain),
 		mtx:    sync.RWMutex{},
 	}
 }
 
 // TODO : channel-chain
 func (srv *Manager) SetChain(channel string, chain module.Chain) {
+	defer srv.mtx.Unlock()
+	srv.mtx.Lock()
+
 	if channel == "" || chain == nil {
 		return
 	}
-	srv.mtx.Lock()
-	srv.chains[channel] = &chain
-	srv.mtx.Unlock()
+	srv.chains[channel] = chain
 }
 
-func (srv *Manager) Chain(channel string) *module.Chain {
+func (srv *Manager) RemoveChain(channel string) {
+	defer srv.mtx.Unlock()
+	srv.mtx.Lock()
+
 	if channel == "" {
-		channel = "default"
+		return
 	}
+	if _, ok := srv.chains[channel]; ok {
+		delete(srv.chains, channel)
+	}
+}
+
+func (srv *Manager) Chain(channel string) module.Chain {
+	defer srv.mtx.RUnlock()
 	srv.mtx.RLock()
-	chain, ok := srv.chains[channel]
-	if !ok {
-		return nil
+
+	if channel == "" {
+		for _, v := range srv.chains {
+			return v
+		}
 	}
-	srv.mtx.RUnlock()
-	return chain
+	return srv.chains[channel]
+}
+
+func (srv *Manager) AnyChain() module.Chain {
+	defer srv.mtx.RUnlock()
+	srv.mtx.RLock()
+
+	for _, v := range srv.chains {
+		return v
+	}
+	return nil
 }
 
 func (srv *Manager) Start() {
 
 	// middleware
-	// srv.e.Use(middleware.Logger())
+	//srv.e.Use(middleware.Logger())
 	srv.e.Use(middleware.Recover())
 
 	// method
@@ -75,9 +98,9 @@ func (srv *Manager) Start() {
 	// jsonrpc
 	g := srv.e.Group("/api")
 	// g.Use(JsonRpc(srv, mr), JsonRpcLogger(), Chunk())
-	g.Use(JsonRpc(srv, mr), Chunk())
-	g.POST("/v3", mr.Handle)
-	g.POST("/v3/:channel", mr.Handle)
+	g.Use(JsonRpc(mr), Chunk())
+	g.POST("/v3", mr.Handle, AnyChainInjector(srv))
+	g.POST("/v3/:channel", mr.Handle, ChainInjector(srv))
 
 	// websocket
 	srv.e.GET("/ws/echo", wsEcho)
@@ -97,4 +120,8 @@ func (srv *Manager) Stop() {
 	if err := srv.e.Shutdown(ctx); err != nil {
 		srv.e.Logger.Fatal(err)
 	}
+}
+
+func (srv *Manager) AdminEchoGroup() *echo.Group {
+	return srv.e.Group("/admin")
 }

@@ -16,28 +16,29 @@ type MethodRepository struct {
 
 func NewMethodRepository() *MethodRepository {
 	return &MethodRepository{
-		mtx:     sync.RWMutex{},
-		methods: map[string]Handler{},
+		methods: make(map[string]Handler),
 	}
 }
 
 func (mr *MethodRepository) RegisterMethod(method string, handler Handler) {
+	defer mr.mtx.Unlock()
+	mr.mtx.Lock()
+
 	if method == "" || handler == nil {
 		return
 	}
-	mr.mtx.Lock()
 	mr.methods[method] = handler
-	mr.mtx.Unlock()
-	return
 }
 
 func (mr *MethodRepository) TakeMethod(r *Request) (Handler, error) {
+	defer mr.mtx.RUnlock()
+	mr.mtx.RLock()
+
 	if r.Method == "" || r.Version != Version {
 		return nil, ErrInvalidParams()
 	}
-	mr.mtx.RLock()
+
 	md, ok := mr.methods[r.Method]
-	mr.mtx.RUnlock()
 	if !ok {
 		return nil, ErrMethodNotFound()
 	}
