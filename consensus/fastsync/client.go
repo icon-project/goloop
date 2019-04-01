@@ -403,7 +403,16 @@ func (fr *fetchRequest) cancel() bool {
 	fr.cl.Lock()
 	defer fr.cl.Unlock()
 
-	// TODO implement
+	if fr.cl.fr == fr {
+		fr.cl.fr = nil
+	}
+
+	for _, p := range fr.validPeers {
+		if p.f != nil {
+			p.f.cancel()
+		}
+	}
+
 	return false
 }
 
