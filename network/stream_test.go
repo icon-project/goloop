@@ -47,8 +47,7 @@ func (nm *tNetworkManager) Start() error {
 	return nil
 }
 
-func (nm *tNetworkManager) Stop() error {
-	return nil
+func (nm *tNetworkManager) Term() {
 }
 
 func (nm *tNetworkManager) GetPeers() []module.PeerID {
