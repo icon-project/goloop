@@ -8,7 +8,6 @@ import (
 	"log"
 	"os"
 	"path"
-	"sync"
 	"time"
 
 	"github.com/icon-project/goloop/common"
@@ -83,7 +82,7 @@ type consensus struct {
 	wallet    module.Wallet
 	ph        module.ProtocolHandler
 	rg        module.Regulator
-	mutex     sync.Mutex
+	mutex     common.Mutex
 	syncer    Syncer
 	walDir    string
 	roundWAL  *walMessageWriter
@@ -102,6 +101,7 @@ type consensus struct {
 	consumedNonunicast bool
 	commitRound        int32
 	syncing            bool
+	started            bool
 
 	timer              *time.Timer
 	cancelBlockRequest func() bool
@@ -176,6 +176,10 @@ func (cs *consensus) OnReceive(
 ) (bool, error) {
 	cs.mutex.Lock()
 	defer cs.mutex.Unlock()
+
+	if !cs.started {
+		return false, nil
+	}
 
 	msg, err := unmarshalMessage(sp.Uint16(), bs)
 	if err != nil {
@@ -420,7 +424,7 @@ func (cs *consensus) enterPropose() {
 		cs.mutex.Lock()
 		defer cs.mutex.Unlock()
 
-		if cs.hrs != hrs {
+		if cs.hrs != hrs || !cs.started {
 			return
 		}
 		cs.enterPrevote()
@@ -437,7 +441,7 @@ func (cs *consensus) enterPropose() {
 					cs.mutex.Lock()
 					defer cs.mutex.Unlock()
 
-					if cs.hrs != hrs {
+					if cs.hrs != hrs || !cs.started {
 						return
 					}
 
@@ -485,7 +489,7 @@ func (cs *consensus) enterPrevote() {
 					cs.mutex.Lock()
 					defer cs.mutex.Unlock()
 
-					if cs.hrs != hrs {
+					if cs.hrs != hrs || !cs.started {
 						return
 					}
 
@@ -542,7 +546,7 @@ func (cs *consensus) enterPrevoteWait() {
 			cs.mutex.Lock()
 			defer cs.mutex.Unlock()
 
-			if cs.hrs != hrs {
+			if cs.hrs != hrs || !cs.started {
 				return
 			}
 			cs.enterPrecommit()
@@ -640,7 +644,7 @@ func (cs *consensus) enterPrecommitWait() {
 			cs.mutex.Lock()
 			defer cs.mutex.Unlock()
 
-			if cs.hrs != hrs {
+			if cs.hrs != hrs || !cs.started {
 				return
 			}
 			cs.enterProposeForRound(cs.round + 1)
@@ -657,8 +661,8 @@ func (cs *consensus) commitAndEnterNewHeight() {
 				cs.mutex.Lock()
 				defer cs.mutex.Unlock()
 
-				if cs.hrs != hrs {
-					logger.Panicf("commitAndEnterNewHeight: hrs mismatch cs.hrs=%v hrs=%v\n", cs.hrs, hrs)
+				if cs.hrs != hrs || !cs.started {
+					return
 				}
 
 				if err != nil {
@@ -729,7 +733,7 @@ func (cs *consensus) enterNewRound() {
 			cs.mutex.Lock()
 			defer cs.mutex.Unlock()
 
-			if cs.hrs != hrs {
+			if cs.hrs != hrs || !cs.started {
 				return
 			}
 			cs.enterProposeForRound(cs.round + 1)
@@ -754,7 +758,7 @@ func (cs *consensus) enterNewHeight() {
 			cs.mutex.Lock()
 			defer cs.mutex.Unlock()
 
-			if cs.hrs != hrs {
+			if cs.hrs != hrs || !cs.started {
 				return
 			}
 			cs.processPrefetchItems()
@@ -1310,6 +1314,7 @@ func (cs *consensus) Start() error {
 	}
 	cs.commitWAL = &walMessageWriter{ww}
 
+	cs.started = true
 	logger.Printf("Consensus start wallet=%s", cs.wallet.Address())
 	cs.syncer = newSyncer(cs, cs.nm, cs.bm, &cs.mutex, cs.wallet.Address())
 	cs.syncer.Start()
@@ -1329,6 +1334,26 @@ func (cs *consensus) Start() error {
 		}
 	}
 	return nil
+}
+
+func (cs *consensus) Term() {
+	cs.mutex.Lock()
+	defer cs.mutex.Unlock()
+
+	cs.started = false
+
+	cs.nm.UnregisterReactor(cs)
+	cs.syncer.Stop()
+	if cs.timer != nil {
+		cs.timer.Stop()
+	}
+	if cs.cancelBlockRequest != nil {
+		cs.cancelBlockRequest()
+	}
+	cs.roundWAL.Close()
+	cs.lockWAL.Close()
+	cs.commitWAL.Close()
+	logger.Printf("Term\n")
 }
 
 func (cs *consensus) GetStatus() *module.ConsensusStatus {

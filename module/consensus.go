@@ -8,6 +8,7 @@ type ConsensusStatus struct {
 
 type Consensus interface {
 	Start() error
+	Term()
 	GetStatus() *ConsensusStatus
 	GetVotesByHeight(height int64) (CommitVoteSet, error)
 }

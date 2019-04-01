@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"sync"
 	"time"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/consensus/fastsync"
 	"github.com/icon-project/goloop/module"
 )
@@ -49,6 +49,7 @@ type peer struct {
 	*syncer
 	id         module.PeerID
 	wakeUpChan chan struct{}
+	stopped    chan struct{}
 	logger     *log.Logger
 	debug      *log.Logger
 
@@ -62,6 +63,7 @@ func newPeer(syncer *syncer, id module.PeerID) *peer {
 		syncer:     syncer,
 		id:         id,
 		wakeUpChan: make(chan struct{}, 1),
+		stopped:    make(chan struct{}),
 		logger:     log.New(os.Stderr, prefix, log.Lshortfile|log.Lmicroseconds),
 		debug:      log.New(debugWriter, prefix, log.Lshortfile|log.Lmicroseconds),
 		running:    true, // TODO better way
@@ -170,6 +172,7 @@ func (p *peer) sync() {
 		if !p.running {
 			p.mutex.Unlock()
 			p.debug.Printf("peer is not running\n")
+			p.stopped <- struct{}{}
 			break
 		}
 		now := time.Now()
@@ -219,6 +222,9 @@ func (p *peer) sync() {
 func (p *peer) stop() {
 	p.running = false
 	p.wakeUp()
+	p.syncer.mutex.CallAfterUnlock(func() {
+		<-p.stopped
+	})
 }
 
 func (p *peer) wakeUp() {
@@ -232,7 +238,7 @@ type syncer struct {
 	engine Engine
 	nm     module.NetworkManager
 	bm     module.BlockManager
-	mutex  *sync.Mutex
+	mutex  *common.Mutex
 	addr   module.Address
 	fsm    fastsync.Manager
 
@@ -244,7 +250,7 @@ type syncer struct {
 	fetchCanceler func() bool
 }
 
-func newSyncer(e Engine, nm module.NetworkManager, bm module.BlockManager, mutex *sync.Mutex, addr module.Address) Syncer {
+func newSyncer(e Engine, nm module.NetworkManager, bm module.BlockManager, mutex *common.Mutex, addr module.Address) Syncer {
 	fsm, err := fastsync.NewManager(nm, bm)
 	if err != nil {
 		return nil
@@ -454,14 +460,26 @@ func (s *syncer) Stop() {
 		p.stop()
 	}
 
-	s.timer.Stop()
-	s.timer = nil
 	s.running = false
+
+	if s.timer != nil {
+		s.timer.Stop()
+		s.timer = nil
+	}
+	s.fsm.StopServer()
+	if s.fetchCanceler != nil {
+		s.fetchCanceler()
+		s.fetchCanceler = nil
+	}
 }
 
 func (s *syncer) OnBlock(br fastsync.BlockResult) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
+	if !s.running {
+		return
+	}
 
 	logger.Printf("syncer.OnBlock %d\n", br.Block().Height())
 	s.engine.ReceiveBlock(br)
@@ -470,6 +488,10 @@ func (s *syncer) OnBlock(br fastsync.BlockResult) {
 func (s *syncer) OnEnd(err error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+
+	if !s.running {
+		return
+	}
 
 	logger.Printf("syncer.OnEnd %+v\n", err)
 	s.fetchCanceler = nil
