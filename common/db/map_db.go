@@ -36,11 +36,15 @@ func NewMapDB() Database {
 var _ Database = (*mapDatabase)(nil)
 
 type mapDatabase struct {
+	lock sync.Mutex
 	name string
 	bks  map[BucketID]*mapBucket
 }
 
 func (t *mapDatabase) GetBucket(id BucketID) (Bucket, error) {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+
 	if bk, ok := t.bks[id]; ok {
 		return bk, nil
 	}
