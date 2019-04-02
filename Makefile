@@ -9,6 +9,7 @@ BIN_DIR = ./bin
 LINUX_BIN_DIR = ./linux
 
 GOBUILD = go build
+GOTEST = go test
 GOBUILD_TAGS =
 GOBUILD_ENVS = CGO_ENABLED=0
 GOBUILD_LDFLAGS =
@@ -100,6 +101,8 @@ gochain-image: run-pyexec run-gochain-linux
 	@ cp $(BUILD_ROOT)/pyee/dist/pyexec-*.whl $(GOCHAIN_DOCKER_DIR)
 	@ docker build -t $(GOCHAIN_IMAGE) $(GOCHAIN_DOCKER_DIR)
 
+test :
+	$(GOTEST) -test.short ./...
 
 .DEFAULT_GOAL := all
 all : $(BUILD_TARGETS)
