@@ -414,10 +414,10 @@ func (s *accountStateImpl) DeployContract(code []byte,
 func (s *accountStateImpl) AcceptContract(
 	txHash []byte, auditTxHash []byte) error {
 	if s.isContract == false || s.nextContract == nil {
-		return scoreresult.NewDefaultError(module.StatusContractNotFound)
+		return scoreresult.NewError(module.StatusContractNotFound, "No available contract")
 	}
 	if bytes.Equal(txHash, s.nextContract.deployTxHash) == false {
-		return scoreresult.NewError(module.StatusContractNotFound, "Wrong txHash")
+		return scoreresult.NewError(module.StatusInvalidParameter, "Invalid txHash")
 	}
 	s.curContract = s.nextContract
 	s.curContract.state = CSActive
@@ -429,10 +429,10 @@ func (s *accountStateImpl) AcceptContract(
 func (s *accountStateImpl) RejectContract(
 	txHash []byte, auditTxHash []byte) error {
 	if s.isContract == false || s.nextContract == nil {
-		return errors.New("Wrong contract state")
+		return scoreresult.NewError(module.StatusContractNotFound, "No available contract")
 	}
 	if bytes.Equal(txHash, s.nextContract.deployTxHash) == false {
-		return errors.New("Wrong txHash")
+		return scoreresult.NewError(module.StatusInvalidParameter, "Invalid txHash")
 	}
 	s.nextContract.state = CSRejected
 	s.nextContract.auditTxHash = auditTxHash

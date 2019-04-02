@@ -3,7 +3,7 @@ package scoredb
 import (
 	"math/big"
 
-	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -48,11 +48,11 @@ type readonlyStateStore struct {
 }
 
 func (*readonlyStateStore) SetValue(key []byte, value []byte) error {
-	return common.ErrorCodeInvalidState.Error("SetValue() on ReadOnlyStore")
+	return errors.InvalidStateError.New("SetValue() on ReadOnlyStore")
 }
 
 func (*readonlyStateStore) DeleteValue(key []byte) error {
-	return common.ErrorCodeInvalidState.Error("DeleteValue() on ReadOnlyStore")
+	return errors.InvalidStateError.New("DeleteValue() on ReadOnlyStore")
 }
 
 func NewStateStoreWith(s ReadOnlyStore) StateStore {

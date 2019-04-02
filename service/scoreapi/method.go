@@ -248,7 +248,7 @@ func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedO
 		}
 	}
 	if obj, err := common.EncodeAny(inputs); err != nil {
-		return nil, scoreresult.Error(err, module.StatusSystemError)
+		return nil, scoreresult.WithStatus(err, module.StatusSystemError)
 	} else {
 		return obj, nil
 	}
@@ -258,7 +258,7 @@ func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
 	var params map[string]string
 	if len(bs) > 0 {
 		if err := json.Unmarshal(bs, &params); err != nil {
-			return nil, scoreresult.Error(err, module.StatusInvalidParameter)
+			return nil, scoreresult.WithStatus(err, module.StatusInvalidParameter)
 		}
 	}
 	inputs := make([]interface{}, len(a.Inputs))
@@ -289,7 +289,7 @@ func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
 			}
 			value, err := hex.DecodeString(param[2:])
 			if err != nil {
-				return nil, scoreresult.Error(err, module.StatusInvalidParameter)
+				return nil, scoreresult.WithStatus(err, module.StatusInvalidParameter)
 			}
 			inputs[i] = value
 		case Bool:
@@ -305,7 +305,7 @@ func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
 		case Address:
 			var value common.Address
 			if err := value.SetString(param); err != nil {
-				return nil, scoreresult.Error(err, module.StatusInvalidParameter)
+				return nil, scoreresult.WithStatus(err, module.StatusInvalidParameter)
 			}
 			inputs[i] = &value
 		default:
@@ -314,5 +314,5 @@ func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
 		}
 	}
 	to, err := common.EncodeAny(inputs)
-	return to, scoreresult.Error(err, module.StatusInvalidParameter)
+	return to, scoreresult.WithStatus(err, module.StatusInvalidParameter)
 }
