@@ -15,6 +15,7 @@ import org.junit.runners.Suite;
 import java.io.*;
 import java.math.BigInteger;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
@@ -59,7 +60,6 @@ public class SingleChainTestSuite {
             env.put("PYTHONPATH", "../pyee");
             pb.directory(new File("."));
 
-            // TODO temporary log handling. It may change based on docker.
             if (WITH_NODE_LOG) {
                 pb.redirectError(ProcessBuilder.Redirect.INHERIT);
                 pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
@@ -74,11 +74,17 @@ public class SingleChainTestSuite {
     }
 
     public static void stopGoLoop() {
-        goLoop.destroy();
-        if (goLoop.isAlive()) {
-            System.out.println("Failed to kill sub process");
-        } else {
-            System.out.println("Sub process is killed");
+        try {
+            goLoop.destroy();
+            goLoop.getErrorStream().close();
+            goLoop.getInputStream().close();
+            goLoop.getOutputStream().close();
+            goLoop.waitFor(5, TimeUnit.SECONDS);
+
+            Env.LOG.info("Sub process is killed");
+        }
+        catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }
