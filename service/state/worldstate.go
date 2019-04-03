@@ -154,7 +154,7 @@ func (ws *worldStateImpl) ClearCache() {
 	for id, as := range ws.mutableAccounts {
 		key := addressIDToKey([]byte(id))
 		s := as.GetSnapshot()
-		if s.Empty() {
+		if s.IsEmpty() {
 			if err := ws.accounts.Delete(key); err != nil {
 				log.Panicf("Fail to delete account key = %x", key)
 			}
@@ -197,7 +197,7 @@ func (ws *worldStateImpl) GetSnapshot() WorldSnapshot {
 	for id, as := range ws.mutableAccounts {
 		key := addressIDToKey([]byte(id))
 		s := as.GetSnapshot()
-		if s.Empty() {
+		if s.IsEmpty() {
 			if err := ws.accounts.Delete(key); err != nil {
 				log.Panicf("Fail to delete account key = %x", key)
 			}

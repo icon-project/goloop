@@ -32,7 +32,7 @@ type AccountSnapshot interface {
 	Version() int
 	GetBalance() *big.Int
 	IsContract() bool
-	Empty() bool
+	IsEmpty() bool
 	GetValue(k []byte) ([]byte, error)
 	StorageChangedAfter(snapshot AccountSnapshot) bool
 
@@ -140,7 +140,7 @@ func (s *accountSnapshotImpl) GetValue(k []byte) ([]byte, error) {
 	return s.store.Get(k)
 }
 
-func (s *accountSnapshotImpl) Empty() bool {
+func (s *accountSnapshotImpl) IsEmpty() bool {
 	return s.balance.BitLen() == 0 && s.store == nil && s.contractOwner == nil
 }
 
