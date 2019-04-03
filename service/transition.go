@@ -28,7 +28,7 @@ const (
 	stepExecuting
 	stepComplete // all information is ready. REMARK: InitTransition only has some result parts - result and nextValidators
 	stepError    // fails validation or execution
-	stepCanceled // canceled. requested to cancel after complete executione, just remain stepFinished
+	stepCanceled // canceled. requested to cancel after complete execution, just remain stepFinished
 )
 
 type transition struct {
