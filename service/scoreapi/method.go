@@ -313,6 +313,10 @@ func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
 				"UnknownType(%d)", input.Type)
 		}
 	}
-	to, err := common.EncodeAny(inputs)
-	return to, scoreresult.WithStatus(err, module.StatusInvalidParameter)
+
+	if to, err := common.EncodeAny(inputs); err != nil {
+		return nil, scoreresult.WithStatus(err, module.StatusInvalidParameter)
+	} else {
+		return to, nil
+	}
 }
