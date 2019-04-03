@@ -65,7 +65,7 @@ func (config *GoChainConfig) Set(name string) error {
 var memProfileCnt int32 = 0
 
 func main() {
-	var genesisFile string
+	var genesisFile, genesisStorage string
 	var keyStoreFile, keyStoreSecret string
 	var saveFile, saveKeyStore string
 	var cfg GoChainConfig
@@ -82,6 +82,7 @@ func main() {
 	flag.StringVar(&cfg.RPCAddr, "rpc", ":9080", "Listen ip-port of JSON-RPC")
 	flag.StringVar(&cfg.SeedAddr, "seed", "", "Ip-port of Seed")
 	flag.StringVar(&genesisFile, "genesis", "", "Genesis transaction param")
+	flag.StringVar(&genesisStorage, "genesisStorage", "", "Genesis storage for genesis transaction")
 	flag.StringVar(&cfg.DBType, "db_type", "mapdb", "Name of database system(*badgerdb, goleveldb, boltdb, mapdb)")
 	flag.StringVar(&cfg.DBDir, "db_dir", "", "Database directory")
 	flag.StringVar(&cfg.DBName, "db_name", "", "Database name for the chain(default:<channel name>)")
@@ -187,6 +188,17 @@ func main() {
 			"message": "gochain generated genesis",
 		}
 		cfg.Genesis, _ = json.Marshal(genesis)
+	}
+
+	if len(genesisStorage) > 0 {
+		storage, err := ioutil.ReadFile(genesisStorage)
+		if err != nil {
+			log.Printf("Fail to open genesisStorage=%s err=%+v\n", genesisStorage, err)
+		}
+		cfg.GenesisStorage, err = chain.NewGenesisStorage(storage)
+		if err != nil {
+			log.Printf("Failed to load genesisStorage\n")
+		}
 	}
 
 	if len(saveKeyStore) > 0 {
