@@ -50,7 +50,7 @@ class InternalCall(object):
                      kw_params: Optional[dict] = None) -> Any:
         if func_name is None:
             func_name = STR_FALLBACK
-        print(f'[InterCall] from={addr_from} to={addr_to} amount={amount} func_name={func_name}')
+        Logger.info(f'[InterCall] from={addr_from} to={addr_to} amount={amount} func_name={func_name}', TAG)
         Logger.info(f'arg_params={arg_params}, kw_params={kw_params}', TAG)
         new_limit = context.step_counter.check_step_remained(StepType.CONTRACT_CALL)
         Logger.info(f'new_limit={new_limit}', TAG)
@@ -62,7 +62,7 @@ class InternalCall(object):
             params = []
         status, step_used, result = \
             cls._proxy.call(addr_to, amount, new_limit, func_name, params)
-        print(f'[InterCall] Result: {status}, {step_used}, {result}')
+        Logger.info(f'[InterCall] Result: {status}, {step_used}, {result}', TAG)
 
         if step_used > new_limit:
             context.step_counter.add_step(new_limit)

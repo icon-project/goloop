@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any
 from iconcommons import Logger
 
 from .base.address import Address, GETAPI_DUMMY_ADDRESS
@@ -49,7 +48,7 @@ def decode_params(values: dict) -> dict:
 
 class ServiceEngine(ContextContainer):
 
-    _score_mapper: None
+    _score_mapper = None
 
     @classmethod
     def open(cls, proxy):
@@ -66,7 +65,7 @@ class ServiceEngine(ContextContainer):
         status, step_used, ret = cls._handle_invoke(context)
         cls._pop_context()
 
-        print(f'*** RESULT: {status}, {step_used}, {ret}')
+        Logger.info(f'*** RESULT: {status}, {step_used}, {ret}', TAG)
         return status, step_used, ret
 
     @classmethod

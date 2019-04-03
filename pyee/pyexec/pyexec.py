@@ -97,8 +97,8 @@ class PyExecEngine(object):
 
     def invoke_handler(self, code: str, is_query: bool, _from: 'Address', to: 'Address',
                        value: int, limit: int, method: str, params: Any) -> Tuple[int, int, Any]:
-        print(f'\n[invoke_handle] code={repr(code)},is_query={is_query},from={_from},to={to},' +
-              f'value={value},limit={limit},method={repr(method)},params={params}')
+        Logger.info(f'[invoke_handle] code={repr(code)},is_query={is_query},from={_from},to={to},' +
+                    f'value={value},limit={limit},method={repr(method)},params={params}', TAG)
         context = IconScoreContext(IconScoreContextType.QUERY if is_query
                                    else IconScoreContextType.INVOKE)
         context.set_invoke_params(code, to, method, params)
@@ -123,7 +123,7 @@ class PyExecEngine(object):
         return ServiceEngine.invoke(context)
 
     def api_handler(self, code: str) -> Tuple[int, APIInfo]:
-        print(f'[api_handler] code={code}')
+        Logger.info(f'[api_handler] code={code}', TAG)
         status, apis = ServiceEngine.get_score_api(code)
         Logger.info(f"get_api({code}) -> {status} {apis}", TAG)
         info = APIInfo(self.__proxy)
@@ -140,7 +140,7 @@ class PyExecEngine(object):
         return status, info
 
     def connect(self, addr: str, uuid: str):
-        print(f"connect({addr}, {uuid})")
+        Logger.info(f"connect({addr}, {uuid})", TAG)
         self.__proxy.connect(addr)
         self.__proxy.send_version(version_number, uuid, "python")
 

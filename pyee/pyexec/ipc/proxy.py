@@ -13,9 +13,12 @@
 # limitations under the License.
 
 import traceback
-from typing import Any, Tuple, List, Union, Callable
 from abc import ABCMeta, abstractmethod
+from typing import Any, Tuple, List, Union, Callable
+from iconcommons import Logger
 from .client import Client
+
+TAG = 'Proxy'
 
 
 # Convert python int to bytes of golang big.Int.
@@ -296,17 +299,17 @@ class ServiceManagerProxy:
     def __handle_get_api(self, data):
         try:
             code = self.decode(TypeTag.STRING, data)
-            print(f"EEProxy.GETAPI(code={code})")
+            Logger.info(f"EEProxy.GETAPI(code={code})", TAG)
             status, obj = self.__get_api(code)
             if status == Status.SUCCESS:
                 if isinstance(obj, APIInfo):
-                    print(f"EEProxy.GETAPI result={obj}")
+                    Logger.info(f"EEProxy.GETAPI result={obj}", TAG)
                     self.__client.send(Message.GETAPI, [Status.SUCCESS, obj.get_data()])
                 else:
-                    print(f"EEProxy.GETAPI Invalid Type result={obj}")
+                    Logger.info(f"EEProxy.GETAPI Invalid Type result={obj}", TAG)
                     self.__client.send(Message.GETAPI, [Status.SYSTEM_FAILURE, None])
             else:
-                print(f"EEProxy.GETAPI returns failure status={status}")
+                Logger.info(f"EEProxy.GETAPI returns failure status={status}", TAG)
                 self.__client.send(Message.GETAPI, [status, None])
         except:
             traceback.print_exc()
@@ -323,7 +326,7 @@ class ServiceManagerProxy:
     def call(self, to: 'Address', value: int,
              step_limit: int, method: str,
              params: Any) -> Tuple[int, int, Any]:
-        print(f"EEProxy.CALL value={value} method={method} params={params}")
+        Logger.info(f"EEProxy.CALL value={value} method={method} params={params}", TAG)
         self.__client.send(Message.CALL, [
             self.encode(to), self.encode(value), self.encode(step_limit),
             self.encode(method), self.encode_any(params)
