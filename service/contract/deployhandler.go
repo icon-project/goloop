@@ -241,8 +241,8 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 	typedObj, err := apiInfo.ConvertParamsToTypedObj(
 		methodStr, scoreAs.NextContract().Params())
 	if err != nil {
-		status, result := scoreresult.StatusAndMessageForError(module.StatusSystemError, err)
-		msg, _ := common.EncodeAny(result)
+		status, _ := scoreresult.StatusOf(err)
+		msg, _ := common.EncodeAny(err.Error())
 		return status, h.StepUsed(), msg, nil
 	}
 
@@ -262,8 +262,8 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 		return status, h.StepUsed(), nil, nil
 	}
 	if err = scoreAs.AcceptContract(h.txHash, h.auditTxHash); err != nil {
-		status, result := scoreresult.StatusAndMessageForError(module.StatusSystemError, err)
-		msg, _ := common.EncodeAny(result)
+		status, _ := scoreresult.StatusOf(err)
+		msg, _ := common.EncodeAny(err.Error())
 		return status, h.StepUsed(), msg, nil
 	}
 	varDb.Delete()

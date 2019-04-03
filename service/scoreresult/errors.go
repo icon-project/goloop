@@ -17,11 +17,11 @@ func statusForCode(c errors.Code) (module.Status, bool) {
 	}
 }
 
-func NewBaseError(s module.Status, msg string) error {
+func NewBase(s module.Status, msg string) error {
 	return errors.NewBase(codeForStatus(s), msg)
 }
 
-func NewError(s module.Status, m string) error {
+func New(s module.Status, m string) error {
 	return errors.Errorc(codeForStatus(s), m)
 }
 
@@ -29,16 +29,11 @@ func Errorf(s module.Status, format string, args ...interface{}) error {
 	return errors.Errorcf(codeForStatus(s), format, args...)
 }
 
-func StatusAndMessageForError(s module.Status, e error) (module.Status, string) {
-	if coder, ok := errors.CoderOf(e); ok {
-		if status, ok := statusForCode(coder.ErrorCode()); ok {
-			return status, coder.Error()
-		} else {
-			return s, coder.Error()
-		}
-	} else {
-		return s, e.Error()
+func StatusOf(e error) (module.Status, bool) {
+	if e == nil {
+		return module.StatusSuccess, true
 	}
+	return statusForCode(errors.CodeOf(e))
 }
 
 func WithStatus(e error, s module.Status) error {
@@ -46,18 +41,18 @@ func WithStatus(e error, s module.Status) error {
 }
 
 var (
-	ErrSystemError            = NewBaseError(module.StatusSystemError, "StatusSystemError")
-	ErrContractNotFound       = NewBaseError(module.StatusContractNotFound, "StatusContractNotFound")
-	ErrMethodNotFound         = NewBaseError(module.StatusMethodNotFound, "StatusMethodNotFound")
-	ErrMethodNotPayable       = NewBaseError(module.StatusMethodNotPayable, "StatusMethodNotPayable")
-	ErrIllegalFormat          = NewBaseError(module.StatusIllegalFormat, "StatusIllegalFormat")
-	ErrInvalidParameter       = NewBaseError(module.StatusInvalidParameter, "StatusInvalidParameter")
-	ErrInvalidInstance        = NewBaseError(module.StatusInvalidInstance, "StatusInvalidInstance")
-	ErrInvalidContainerAccess = NewBaseError(module.StatusInvalidContainerAccess, "StatusInvalidContainerAccess")
-	ErrAccessDenied           = NewBaseError(module.StatusAccessDenied, "StatusAccessDenied")
-	ErrOutOfStep              = NewBaseError(module.StatusOutOfStep, "StatusOutOfStep")
-	ErrOutOfBalance           = NewBaseError(module.StatusOutOfBalance, "StatusOutOfBalance")
-	ErrTimeout                = NewBaseError(module.StatusTimeout, "StatusTimeout")
-	ErrStackOverflow          = NewBaseError(module.StatusStackOverflow, "StatusStackOverflow")
-	ErrUser                   = NewBaseError(module.StatusUser, "StatusUser")
+	ErrSystemError            = NewBase(module.StatusSystemError, "StatusSystemError")
+	ErrContractNotFound       = NewBase(module.StatusContractNotFound, "StatusContractNotFound")
+	ErrMethodNotFound         = NewBase(module.StatusMethodNotFound, "StatusMethodNotFound")
+	ErrMethodNotPayable       = NewBase(module.StatusMethodNotPayable, "StatusMethodNotPayable")
+	ErrIllegalFormat          = NewBase(module.StatusIllegalFormat, "StatusIllegalFormat")
+	ErrInvalidParameter       = NewBase(module.StatusInvalidParameter, "StatusInvalidParameter")
+	ErrInvalidInstance        = NewBase(module.StatusInvalidInstance, "StatusInvalidInstance")
+	ErrInvalidContainerAccess = NewBase(module.StatusInvalidContainerAccess, "StatusInvalidContainerAccess")
+	ErrAccessDenied           = NewBase(module.StatusAccessDenied, "StatusAccessDenied")
+	ErrOutOfStep              = NewBase(module.StatusOutOfStep, "StatusOutOfStep")
+	ErrOutOfBalance           = NewBase(module.StatusOutOfBalance, "StatusOutOfBalance")
+	ErrTimeout                = NewBase(module.StatusTimeout, "StatusTimeout")
+	ErrStackOverflow          = NewBase(module.StatusStackOverflow, "StatusStackOverflow")
+	ErrUser                   = NewBase(module.StatusUser, "StatusUser")
 )

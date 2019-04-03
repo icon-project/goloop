@@ -221,7 +221,7 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 func (h *CallHandler) ensureParamObj() error {
 	info := h.as.APIInfo()
 	if info == nil {
-		return scoreresult.NewError(module.StatusContractNotFound, "APIInfo() is null")
+		return scoreresult.New(module.StatusContractNotFound, "APIInfo() is null")
 	}
 
 	if h.paramObj != nil {
@@ -338,7 +338,7 @@ func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) error {
 		as := cc.GetAccountState(h.to.ID())
 		apiInfo := as.APIInfo()
 		if apiInfo == nil {
-			return scoreresult.NewError(module.StatusContractNotFound, "APIInfo() is null")
+			return scoreresult.New(module.StatusContractNotFound, "APIInfo() is null")
 		} else {
 			m := apiInfo.GetMethod(h.method)
 			if m == nil {
