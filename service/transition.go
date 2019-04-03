@@ -58,7 +58,6 @@ type transition struct {
 	transactionCount int
 	executeDuration  time.Duration
 	flushDuration    time.Duration
-	cond             *sync.Cond
 }
 
 type transitionResult struct {
@@ -154,6 +153,7 @@ func (t *transition) NormalTransactions() module.TransactionList {
 // error.
 func (t *transition) Execute(cb module.TransitionCallback) (canceler func() bool, err error) {
 	t.mutex.Lock()
+	defer t.mutex.Unlock()
 
 	switch t.step {
 	case stepInited:
@@ -166,8 +166,6 @@ func (t *transition) Execute(cb module.TransitionCallback) (canceler func() bool
 	}
 	t.cb = cb
 	go t.executeSync(t.step == stepExecuting)
-
-	t.mutex.Unlock()
 
 	return t.cancelExecution, nil
 }
@@ -244,7 +242,6 @@ func (t *transition) executeSync(alreadyValidated bool) {
 
 	t.mutex.Lock()
 	if t.step == stepCanceled {
-		t.cond.Signal()
 		t.mutex.Unlock()
 		return
 	}
@@ -309,7 +306,6 @@ func (t *transition) executeSync(alreadyValidated bool) {
 
 	t.mutex.Lock()
 	if t.step == stepCanceled {
-		t.cond.Signal()
 		t.mutex.Unlock()
 		return
 	}
@@ -327,9 +323,6 @@ func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext
 	cnt := 0
 	for i := l.Iterator(); i.Has(); i.Next() {
 		if t.step == stepCanceled {
-			t.mutex.Lock()
-			t.cond.Signal()
-			t.mutex.Unlock()
 			return false, 0
 		}
 
@@ -340,14 +333,9 @@ func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext
 
 		if err := txi.(transaction.Transaction).PreValidate(wc, true); err != nil {
 			t.mutex.Lock()
-			if t.step == stepCanceled {
-				t.cond.Signal()
-				t.mutex.Unlock()
-			} else {
-				t.step = stepError
-				t.mutex.Unlock()
-				t.cb.OnValidate(t, err)
-			}
+			t.step = stepError
+			t.mutex.Unlock()
+			t.cb.OnValidate(t, err)
 			return false, 0
 		}
 		cnt += 1
@@ -402,9 +390,7 @@ func (t *transition) cancelExecution() bool {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	if t.step != stepComplete && t.step != stepError {
-		t.cond = sync.NewCond(&t.mutex)
 		t.step = stepCanceled
-		t.cond.Wait()
 	} else if t.step == stepComplete {
 		return false
 	}
