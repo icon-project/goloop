@@ -1,0 +1,21 @@
+plugins {
+    id 'java'
+}
+
+group 'foundation.icon'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+sourceSets.test.java.srcDirs = ["java"]
+
+dependencies {
+    implementation "com.squareup.okhttp3:okhttp:3.11.0"
+    implementation "com.squareup.okhttp3:logging-interceptor:3.11.0"
+    implementation "foundation.icon:icon-sdk:0.9.11"
+    testImplementation "junit:junit:4.12"
+}
