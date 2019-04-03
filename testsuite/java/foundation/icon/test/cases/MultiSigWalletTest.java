@@ -9,6 +9,7 @@ import foundation.icon.test.common.Env;
 import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.HelloScore;
 import foundation.icon.test.score.MultiSigWalletScore;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.math.BigInteger;
@@ -16,10 +17,11 @@ import java.math.BigInteger;
 import static foundation.icon.test.common.Env.LOG;
 
 public class MultiSigWalletTest {
-    private Env.Chain chain;
-    private IconService iconService;
+    private static Env.Chain chain;
+    private static IconService iconService;
 
-    public MultiSigWalletTest() {
+    @BeforeClass
+    public static void setUp() {
         Env.Node node = Env.nodes[0];
         chain = node.chains[0];
         iconService = new IconService(new HttpProvider(node.endpointUrl));

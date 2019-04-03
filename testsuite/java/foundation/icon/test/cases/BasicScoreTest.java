@@ -10,6 +10,7 @@ import foundation.icon.test.common.Env;
 import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.CrowdSaleScore;
 import foundation.icon.test.score.SampleTokenScore;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -21,10 +22,11 @@ import static foundation.icon.test.common.Env.LOG;
 // "@require(nodeNum=4,chainNum=1)" indicates it requires at least 4 nodes and
 // 1 chain for each.
 public class BasicScoreTest {
-    private final Env.Chain chain;
-    private final IconService iconService;
+    private static Env.Chain chain;
+    private static IconService iconService;
 
-    public BasicScoreTest() {
+    @BeforeClass
+    public static void setUp() {
         Env.Node node = Env.nodes[0];
         chain = Env.nodes[0].chains[0];
         iconService = new IconService(new HttpProvider(node.endpointUrl));

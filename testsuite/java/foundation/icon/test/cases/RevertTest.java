@@ -8,6 +8,7 @@ import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.StepCounterScore;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.math.BigInteger;
@@ -18,25 +19,27 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 public class RevertTest {
-    private final IconService iconService;
-    private final KeyWallet ownerWallet;
-    private final BigInteger nid;
+    private static Env.Chain chain;
+    private static IconService iconService;
 
-    public RevertTest() throws Exception {
-        iconService = new IconService(new HttpProvider(Env.nodes[0].endpointUrl));
-        ownerWallet = Utils.createAndStoreWallet();
-        nid = Env.nodes[0].chains[0].networkId;
+    @BeforeClass
+    public static void setUp() {
+        Env.Node node = Env.nodes[0];
+        chain = node.chains[0];
+        iconService = new IconService(new HttpProvider(node.endpointUrl));
     }
 
     @Test
     public void testRevert() throws Exception {
+        KeyWallet ownerWallet = Utils.createAndStoreWallet();
+
         LOG.infoEntering("deploy", "SCORE1");
         StepCounterScore score1 = StepCounterScore.mustDeploy(iconService,
-                ownerWallet, nid);
+                ownerWallet, chain.networkId);
         LOG.infoExiting("deployed:" + score1);
         LOG.infoEntering("deploy", "SCORE2");
         StepCounterScore score2 = StepCounterScore.mustDeploy(iconService,
-                ownerWallet, nid);
+                ownerWallet, chain.networkId);
         LOG.infoExiting("deployed:" + score2);
 
         TransactionResult txr;
