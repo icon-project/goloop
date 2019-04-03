@@ -23,6 +23,9 @@ import java.util.Map;
         RevertTest.class
 })
 public class SingleChainTestSuite {
+    private static final boolean WITH_NODE_LOG = false;
+    private static final int TEST_LOG_LEVEL = Log.LEVEL_INFO;
+
     @BeforeClass
     public static void setUp() throws Exception {
         startGoLoop();
@@ -32,7 +35,7 @@ public class SingleChainTestSuite {
         Env.Node node = new Env.Node("http://localhost:9080/api/v3", new Env.Chain[]{chain});
         Env.nodes = new Env.Node[]{node};
 
-        Env.LOG.setLevel(Log.LEVEL_DEBUG);
+        Env.LOG.setLevel(TEST_LOG_LEVEL);
     }
 
     @AfterClass
@@ -55,23 +58,14 @@ public class SingleChainTestSuite {
             env.put("PATH", "../.venv/bin" + separator + env.get("PATH"));
             env.put("PYTHONPATH", "../pyee");
             pb.directory(new File("."));
-            goLoop = pb.start();
 
-            // (for debugging) node log to stdout
-//            InputStream stderr = goLoop.getErrorStream();
-//            new Thread(() -> {
-//                try {
-//                    InputStreamReader isr = new InputStreamReader(stderr);
-//                    BufferedReader br = new BufferedReader(isr);
-//                    String line = null;
-//                    while ((line = br.readLine()) != null)
-//                        System.out.println(line);
-//                    int exitVal = goLoop.waitFor();
-//                    System.out.println("Process exitValue: " + exitVal);
-//                } catch (Exception e) {
-//                    e.printStackTrace();
-//                }
-//            }).start();
+            // TODO temporary log handling. It may change based on docker.
+            if (WITH_NODE_LOG) {
+                pb.redirectError(ProcessBuilder.Redirect.INHERIT);
+                pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+            }
+
+            goLoop = pb.start();
 
             Thread.sleep(3000);
         } catch (IOException | InterruptedException ex) {
