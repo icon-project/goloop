@@ -19,3 +19,7 @@ dependencies {
     implementation "foundation.icon:icon-sdk:0.9.11"
     testImplementation "junit:junit:4.12"
 }
+
+test {
+    exclude "foundation/icon/test/cases/*"
+}
