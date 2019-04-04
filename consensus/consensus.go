@@ -24,8 +24,6 @@ var (
 	debug  *log.Logger
 )
 
-var zeroAddress = common.NewAddress(make([]byte, common.AddressBytes))
-
 var csProtocols = []module.ProtocolInfo{
 	protoProposal,
 	protoBlockPart,
@@ -37,7 +35,6 @@ const (
 	timeoutPropose   = time.Second * 1
 	timeoutPrevote   = time.Second * 1
 	timeoutPrecommit = time.Second * 1
-	timeoutCommit    = time.Second * 1
 	timeoutNewRound  = time.Second * 1
 )
 
