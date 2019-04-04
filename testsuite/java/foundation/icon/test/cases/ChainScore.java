@@ -240,16 +240,11 @@ public class ChainScore {
                 .build();
         RpcItem item = Score.icxCall(iconService, BigInteger.valueOf(0), wallet, CHAINSCORE_ADDRESS,
                 "getMembers", params);
-        RpcObject rpcObject = item.asObject();
-        RpcArray rpcArray = null;
-        RpcItem memberItem = null;
+        RpcArray rpcArray = item.asArray();
         // TODO make function
-        if((memberItem = rpcObject.getItem("memberList")) != null) {
-            rpcArray = memberItem.asArray();
-            for(int i = 0; i < rpcArray.size(); i++) {
-                if(rpcArray.get(i).asAddress().equals(wallet)) {
-                    throw new Exception();
-                }
+        for(int i = 0; i < rpcArray.size(); i++) {
+            if(rpcArray.get(i).asAddress().equals(wallet)) {
+                throw new Exception();
             }
         }
         String []funcs = {"addMember", "removeMember"};
@@ -261,15 +256,12 @@ public class ChainScore {
                 item = Score.icxCall(iconService, BigInteger.valueOf(0), wallet, CHAINSCORE_ADDRESS,
                         "getMembers", params);
 
-                rpcObject = item.asObject();
                 boolean bFound = false;
-                if((memberItem = rpcObject.getItem("memberList")) != null) {
-                    rpcArray = memberItem.asArray();
-                    for(int i = 0; i < rpcArray.size(); i++) {
-                        if(rpcArray.get(i).asAddress().equals(wallet.getAddress())) {
-                            bFound = true;
-                            break;
-                        }
+                rpcArray = item.asArray();
+                for(int i = 0; i < rpcArray.size(); i++) {
+                    if(rpcArray.get(i).asAddress().equals(wallet.getAddress())) {
+                        bFound = true;
+                        break;
                     }
                 }
 

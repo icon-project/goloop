@@ -35,7 +35,6 @@ public class HelloWorld extends Score {
                 System.out.println("Failed to invoke. result = " + txResult);
                 return false;
             }
-            System.out.println("result : " + txResult.getProperties());
         }
         catch (IOException exception) {
             System.out.println("Failed to invoke. Exception : " + exception);
