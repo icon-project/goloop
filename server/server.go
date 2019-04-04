@@ -17,12 +17,12 @@ import (
 type Manager struct {
 	e      *echo.Echo
 	addr   string
+	wallet module.Wallet
 	chains map[string]module.Chain // chain manager
-
-	mtx sync.RWMutex
+	mtx    sync.RWMutex
 }
 
-func NewManager(addr string) *Manager {
+func NewManager(addr string, wallet module.Wallet) *Manager {
 
 	e := echo.New()
 
@@ -30,12 +30,15 @@ func NewManager(addr string) *Manager {
 	v3.RegisterValidationRule(validator)
 
 	e.HideBanner = true
+	e.HidePort = true
+
 	e.HTTPErrorHandler = jsonrpc.ErrorHandler
 	e.Validator = validator
 
 	return &Manager{
 		e:      e,
 		addr:   addr,
+		wallet: wallet,
 		chains: make(map[string]module.Chain),
 		mtx:    sync.RWMutex{},
 	}
@@ -89,8 +92,11 @@ func (srv *Manager) AnyChain() module.Chain {
 func (srv *Manager) Start() {
 
 	// middleware
-	//srv.e.Use(middleware.Logger())
+	// srv.e.Use(middleware.Logger())
 	srv.e.Use(middleware.Recover())
+
+	// auth
+	srv.e.POST("/auth", newToken)
 
 	// method
 	mr := v3.MethodRepository()

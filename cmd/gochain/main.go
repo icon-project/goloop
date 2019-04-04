@@ -337,7 +337,7 @@ func main() {
 	pm.SetInstances("python", cfg.EEInstances)
 
 	// TODO : server-chain setting
-	srv := server.NewManager(cfg.RPCAddr)
+	srv := server.NewManager(cfg.RPCAddr, wallet)
 	c := chain.NewChain(wallet, nt, srv, pm, &cfg.Config)
 	c.Start()
 
