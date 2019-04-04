@@ -96,7 +96,7 @@ func (srv *Manager) Start() {
 	srv.e.Use(middleware.Recover())
 
 	// auth
-	srv.e.POST("/auth", newToken)
+	// srv.e.POST("/auth", newToken)
 
 	// method
 	mr := v3.MethodRepository()
