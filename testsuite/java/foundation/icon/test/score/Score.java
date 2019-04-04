@@ -14,6 +14,7 @@ import java.math.BigInteger;
 
 public class Score {
     public static final BigInteger STEPS_DEFAULT = BigInteger.valueOf(2000000);
+    private static final long DEFAULT_WAITING_HEIGHT = 3;
 
     protected IconService service;
     protected Address scoreAddress;
@@ -28,7 +29,7 @@ public class Score {
     public static TransactionResult deployAndWaitResult(IconService service, Wallet wallet, String filePath, RpcObject params)
             throws IOException {
         Bytes txHash = Utils.deployScore(service, wallet, filePath, params);
-        return Utils.getTransactionResult(service, txHash);
+        return Utils.getTransactionResult(service, txHash, DEFAULT_WAITING_HEIGHT);
     }
 
     public static Address mustDeploy(IconService service, Wallet wallet, String filePath, RpcObject params)
@@ -118,9 +119,12 @@ public class Score {
 //    }
 
     public TransactionResult waitResult(Bytes txHash) throws IOException {
-        return Utils.getTransactionResult(this.service, txHash);
+        return Utils.getTransactionResult(this.service, txHash, DEFAULT_WAITING_HEIGHT);
     }
 
+    public TransactionResult waitResult(Bytes txHash, long height) throws IOException {
+        return Utils.getTransactionResult(this.service, txHash, DEFAULT_WAITING_HEIGHT);
+    }
     public Address getAddress() {
         return this.scoreAddress;
     }

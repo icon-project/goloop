@@ -41,6 +41,7 @@ import java.util.List;
 import static foundation.icon.test.common.Env.LOG;
 
 public class Utils {
+    public static final BigInteger STATUS_SUCCESS = BigInteger.ONE;
     public static BigInteger getMicroTime() {
         long timestamp = System.currentTimeMillis() * 1000L;
         return new BigInteger(Long.toString(timestamp));
@@ -131,13 +132,19 @@ public class Utils {
         return Files.readAllBytes(path);
     }
 
-    public static TransactionResult getTransactionResult(IconService iconService, Bytes txHash) throws IOException {
+    public static TransactionResult getTransactionResult(
+            IconService iconService, Bytes txHash, long height) throws IOException {
         TransactionResult result = null;
         String msg = null;
+        BigInteger waiting = iconService.getLastBlock().execute().getHeight().add(BigInteger.valueOf(height));
         while (result == null) {
             try {
                 result = iconService.getTransactionResult(txHash).execute();
             } catch (RpcError e) {
+                BigInteger now = iconService.getLastBlock().execute().getHeight();
+                if (waiting.compareTo(now) < 0) {
+                    return null;
+                }
                 try {
                     // wait until block confirmation
                     LOG.debug("RpcError: code(" + e.getCode() + ") message(" + e.getMessage() + "); Retry in 1 sec.");
