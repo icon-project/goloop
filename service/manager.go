@@ -296,7 +296,8 @@ func (m *manager) SendTransaction(txi interface{}) ([]byte, error) {
 	return hash, nil
 }
 
-func (m *manager) Call(resultHash []byte, js []byte, bi module.BlockInfo,
+func (m *manager) Call(resultHash []byte,
+	vl module.ValidatorList, js []byte, bi module.BlockInfo,
 ) (module.Status, interface{}, error) {
 	type callJSON struct {
 		From     common.Address  `json:"from"`
@@ -312,7 +313,7 @@ func (m *manager) Call(resultHash []byte, js []byte, bi module.BlockInfo,
 
 	var wc state.WorldContext
 	if tresult, err := newTransitionResultFromBytes(resultHash); err == nil {
-		ws := state.NewWorldState(m.db, tresult.StateHash, nil)
+		ws := state.NewWorldState(m.db, tresult.StateHash, vl)
 		wc = state.NewWorldContext(ws, bi)
 	} else {
 		return module.StatusSystemError, err.Error(), nil

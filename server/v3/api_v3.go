@@ -155,7 +155,7 @@ func call(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	sm := chain.ServiceManager()
 
 	block, err := bm.GetLastBlock()
-	status, result, err := sm.Call(block.Result(), params.RawMessage(), block)
+	status, result, err := sm.Call(block.Result(), block.NextValidators(), params.RawMessage(), block)
 	if err != nil {
 		return nil, jsonrpc.ErrInternal()
 	}

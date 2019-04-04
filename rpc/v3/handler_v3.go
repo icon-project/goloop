@@ -205,7 +205,7 @@ func (h callHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage
 		}
 		tx, _ := params.MarshalJSON()
 		// TODO temporary block info
-		s, r, err := h.sm.Call(block.Result(), tx, block)
+		s, r, err := h.sm.Call(block.Result(), block.NextValidators(), tx, block)
 		if err != nil {
 			log.Println(err.Error())
 			return nil, jsonrpc.ErrInternal()
