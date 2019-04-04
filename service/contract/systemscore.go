@@ -193,10 +193,7 @@ func Invoke(score SystemScore, method string, paramObj *codec.TypedObj) (status 
 	// if eventLog then cc.AddLog().
 	r := m.Call(objects)
 	resultLen := len(r)
-	var interfaceList []interface{}
-	if resultLen > 1 {
-		interfaceList = make([]interface{}, resultLen-1)
-	}
+	var output interface{}
 
 	// last output type in chain score method is error.
 	status = module.StatusSuccess
@@ -207,11 +204,11 @@ func Invoke(score SystemScore, method string, paramObj *codec.TypedObj) (status 
 			}
 			continue
 		} else {
-			interfaceList[i] = v.Interface()
+			output = v.Interface()
 		}
 	}
 
-	result, _ = common.EncodeAny(interfaceList)
+	result, _ = common.EncodeAny(output)
 	// TODO apply used step
 	return status, result, steps
 }

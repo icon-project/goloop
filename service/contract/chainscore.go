@@ -119,7 +119,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			scoreapi.FlagReadOnly, 0,
 			nil,
 			[]scoreapi.DataType{
-				scoreapi.List,
+				scoreapi.Dict,
 			},
 		},
 		{scoreapi.Function, "addMember",
@@ -219,6 +219,13 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			[]scoreapi.DataType{
 				scoreapi.Integer,
+			},
+		},
+		{scoreapi.Function, "getMembers",
+			scoreapi.FlagReadOnly, 0,
+			nil,
+			[]scoreapi.DataType{
+				scoreapi.Dict,
 			},
 		},
 		{scoreapi.Function, "getServiceConfig",
@@ -549,9 +556,9 @@ func (s *ChainScore) Ex_revokeValidator(address module.Address) error {
 	}
 }
 
-func (s *ChainScore) Ex_getValidators() ([]module.Address, error) {
+func (s *ChainScore) Ex_getValidators() (map[string][]interface{}, error) {
 	vs := s.cc.GetValidatorState()
-	validators := make([]module.Address, vs.Len())
+	validators := make([]interface{}, vs.Len())
 	for i := 0; i < vs.Len(); i++ {
 		if v, ok := vs.Get(i); ok {
 			validators[i] = v.Address()
@@ -559,7 +566,9 @@ func (s *ChainScore) Ex_getValidators() ([]module.Address, error) {
 			return nil, errors.New("Unexpected access failure")
 		}
 	}
-	return validators, nil
+	result := make(map[string][]interface{})
+	result["validatorList"] = validators
+	return result, nil
 }
 
 func (s *ChainScore) Ex_addMember(address module.Address) error {
@@ -804,12 +813,14 @@ func (s *ChainScore) Ex_getServiceConfig() (int64, error) {
 }
 
 // Internal call
-func (s *ChainScore) GetMembers() []module.Address {
+func (s *ChainScore) Ex_getMembers() (map[string][]interface{}, error) {
 	as := s.cc.GetAccountState(state.SystemID)
 	db := scoredb.NewArrayDB(as, state.VarMembers)
-	members := make([]module.Address, db.Size())
+	members := make([]interface{}, db.Size())
 	for i := 0; i < db.Size(); i++ {
 		members[i] = db.Get(i).Address()
 	}
-	return members
+	result := make(map[string][]interface{})
+	result["memberList"] = members
+	return result, nil
 }
