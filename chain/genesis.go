@@ -4,14 +4,16 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"path"
+	"regexp"
 
 	"github.com/icon-project/goloop/common/crypto"
-	"github.com/pkg/errors"
+	"github.com/icon-project/goloop/common/errors"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -153,6 +155,108 @@ func (gs *genesisStorageWithZip) Get(key []byte) ([]byte, error) {
 	} else {
 		return nil, errors.Errorf("InvalidData(hash=<%x>,key=<%x>", hash, key)
 	}
+}
+
+type templateContext struct {
+	path   string
+	writer *zip.Writer
+}
+
+func processContent(o interface{}, c *templateContext) (interface{}, error) {
+	switch obj := o.(type) {
+	case []interface{}:
+		for i, v := range obj {
+			if no, err := processContent(v, c); err != nil {
+				return nil, err
+			} else {
+				obj[i] = no
+			}
+		}
+		return obj, nil
+	case map[string]interface{}:
+		for k, v := range obj {
+			if no, err := processContent(v, c); err != nil {
+				return nil, err
+			} else {
+				obj[k] = no
+			}
+		}
+		return obj, nil
+	case string:
+		// processing template
+		r := regexp.MustCompile("{{(read|hash):([^>]+)}}")
+		for {
+			m := r.FindStringSubmatchIndex(obj)
+			if len(m) == 0 {
+				break
+			}
+			key := obj[m[2]:m[3]]
+			if key == "read" {
+				name := obj[m[4]:m[5]]
+				data, err := ioutil.ReadFile(path.Join(c.path, name))
+				if err != nil {
+					return o, err
+				}
+				obj = obj[0:m[0]] + "0x" + hex.EncodeToString(data) + obj[m[1]:]
+			} else {
+				name := obj[m[4]:m[5]]
+				data, err := ioutil.ReadFile(path.Join(c.path, name))
+				if err != nil {
+					return o, err
+				}
+				hash := hex.EncodeToString(crypto.SHA3Sum256(data))
+				f, err := c.writer.Create(hash)
+				if err != nil {
+					return o, err
+				}
+				f.Write(data)
+				obj = obj[0:m[0]] + "0x" + hash + obj[m[1]:]
+			}
+		}
+		return obj, nil
+	default:
+		return o, nil
+	}
+}
+
+func WriteGenesisStorageFromDirectory(w io.Writer, p string) error {
+	zw := zip.NewWriter(w)
+
+	// load and decode genesis
+	genesis, err := ioutil.ReadFile(path.Join(p, GenesisFileName))
+	if err != nil {
+		return errors.Wrapf(err, "Fail to read %s/%s", p, GenesisFileName)
+	}
+	d := json.NewDecoder(bytes.NewBuffer(genesis))
+	d.UseNumber()
+	var genesisObj map[string]interface{}
+	err = d.Decode(&genesisObj)
+	if err != nil {
+		return errors.Wrap(err, "Fail to decode genesis")
+	}
+
+	// process genesis template
+	_, err = processContent(genesisObj, &templateContext{
+		writer: zw,
+		path:   p,
+	})
+
+	// write genesis data at last
+	f, err := zw.Create(GenesisFileName)
+	if err != nil {
+		return errors.Wrapf(err, "Fail to create %s", GenesisFileName)
+	}
+	genesis, err = json.Marshal(genesisObj)
+	if err != nil {
+		return errors.Wrap(err, "Fail to marshal JSON")
+	}
+	_, err = f.Write(genesis)
+	if err != nil {
+		return errors.Wrap(err, "Fail to write genesis")
+	}
+	_ = zw.Flush()
+	_ = zw.Close()
+	return nil
 }
 
 func NewGenesisStorage(data []byte) (GenesisStorage, error) {
