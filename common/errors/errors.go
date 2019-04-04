@@ -43,6 +43,14 @@ func (c Code) Errorf(f string, args ...interface{}) error {
 	return Errorcf(c, f, args...)
 }
 
+func (c Code) Wrap(e error, msg string) error {
+	return Wrapc(e, c, msg)
+}
+
+func (c Code) Wrapf(e error, f string, args ...interface{}) error {
+	return Wrapcf(e, c, f, args...)
+}
+
 /*------------------------------------------------------------------------------
 Simple mapping to github.com/pkg/errors for easy stack print
 */
