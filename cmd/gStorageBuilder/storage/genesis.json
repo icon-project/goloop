@@ -1,0 +1,35 @@
+{
+  "accounts": [
+    {
+      "name": "god",
+	  "address": "hxb6b5791be0b5ef67063b3c10b840fb81514db2fd",
+      "balance": "0x2961fff8ca4a62327800000"
+    },
+    {
+      "name": "treasury",
+      "address": "hx1000000000000000000000000000000000000000",
+      "balance": "0x0"
+    },
+    {
+      "name": "governance",
+      "address": "cx0000000000000000000000000000000000000001",
+      "score": {
+        "owner": "hx1000000000000000000000000000000000000000",
+        "contentType": "application/zip",
+        "@content": "governance.zip",
+        "params" : {
+          "name": "Governance",
+          "value" : "40"
+        }
+      }
+    }
+  ],
+  "chain" : {
+    "auditEnabled" : false,
+    "deployerWhiteListEnabled" : false,
+    "validatorList": [
+      "hx4805489d4fd3c07fea9b7e1b210e7926c4aa5943"
+    ]
+  },
+  "message": "test genesis for genesisStorage"
+}
