@@ -36,10 +36,10 @@ func MethodRepository() *jsonrpc.MethodRepository {
 	return mr
 }
 
-func getLastBlock(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
-	if !params.IsEmpty() {
-		return nil, jsonrpc.ErrInvalidParams()
-	}
+func getLastBlock(ctx *jsonrpc.Context, _ *jsonrpc.Params) (interface{}, error) {
+	// if !params.IsEmpty() {
+	// 	return nil, jsonrpc.ErrInvalidParams()
+	// }
 
 	chain, err := ctx.Chain()
 	if err != nil {
@@ -210,10 +210,10 @@ func getScoreApi(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, err
 	return nil, nil
 }
 
-func getTotalSupply(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
-	if !params.IsEmpty() {
-		return nil, jsonrpc.ErrInvalidParams()
-	}
+func getTotalSupply(ctx *jsonrpc.Context, _ *jsonrpc.Params) (interface{}, error) {
+	// if !params.IsEmpty() {
+	// 	return nil, jsonrpc.ErrInvalidParams()
+	// }
 	_, err := ctx.Chain()
 	if err != nil {
 	}

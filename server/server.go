@@ -2,9 +2,12 @@ package server
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 	"sync"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 
@@ -95,8 +98,13 @@ func (srv *Manager) Start() {
 	// srv.e.Use(middleware.Logger())
 	srv.e.Use(middleware.Recover())
 
-	// auth
-	// srv.e.POST("/auth", newToken)
+	// auth : hello test
+	srv.e.POST("/auth", authentication(srv.wallet))
+	srv.e.GET("hello", func(c echo.Context) error {
+		token := c.Get("token").(*jwt.Token)
+		claims := token.Claims.(*tokenClaims)
+		return c.JSON(http.StatusOK, fmt.Sprintf("Hello: %s[%s]", claims.Audience, claims.Role))
+	}, middleware.JWTWithConfig(JWTConfig(srv.wallet)))
 
 	// method
 	mr := v3.MethodRepository()
