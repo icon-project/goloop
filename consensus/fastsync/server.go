@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"log"
+	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -246,6 +247,21 @@ func (h *sconHandler) updateNextMsg() {
 	h.nextMsg = codec.MustMarshalToBytes(&msg)
 }
 
+func (h *sconHandler) processRequestMsg(msgItem *MessageItem) {
+	if msgItem.pi == protoBlockRequest {
+		var msg BlockRequest
+		_, err := codec.UnmarshalFromBytes(msgItem.b, &msg)
+		if err != nil {
+			// TODO log
+			return
+		}
+		if logMsg {
+			log.Printf("Received BlockRequest %d\n", msg.Height)
+		}
+		h.nextItems = append(h.nextItems, &msg)
+	}
+}
+
 func (h *sconHandler) handle() {
 loop:
 	for {
@@ -260,21 +276,23 @@ loop:
 		}
 
 		h.updateNextMsg()
+		var err error
 		if h.nextMsg != nil {
-			err := h.ph.Unicast(h.nextMsgPI, h.nextMsg, h.id)
+			err = h.ph.Unicast(h.nextMsgPI, h.nextMsg, h.id)
 			if err == nil {
 				// TODO: refactor
 				h.nextMsg = nil
 				h.updateNextMsg()
-			} else {
+			} else if !isTemporary(err) {
 				if logMsg {
 					log.Printf("error=%+v\n", err)
 				}
+				h.cancelAllRequests()
 			}
 		}
 
 		// if packet is dropped too much, use ticker to slow down sending
-		if len(h.nextMsg) > 0 {
+		if len(h.nextMsg) > 0 && err == nil {
 			select {
 			case _, more := <-h.cancelCh:
 				if !more {
@@ -283,19 +301,23 @@ loop:
 				h.cancelAllRequests()
 				continue loop
 			case msgItem := <-h.msgCh:
-				if msgItem.pi == protoBlockRequest {
-					var msg BlockRequest
-					_, err := codec.UnmarshalFromBytes(msgItem.b, &msg)
-					if err != nil {
-						// TODO log
-						continue loop
-					}
-					if logMsg {
-						log.Printf("Received BlockRequest %d\n", msg.Height)
-					}
-					h.nextItems = append(h.nextItems, &msg)
-				}
+				h.processRequestMsg(&msgItem)
 			default:
+			}
+		} else if len(h.nextMsg) > 0 && isTemporary(err) {
+			timer := time.NewTimer(configSendInterval)
+			select {
+			case _, more := <-h.cancelCh:
+				timer.Stop()
+				if !more {
+					break loop
+				}
+				h.cancelAllRequests()
+				continue loop
+			case msgItem := <-h.msgCh:
+				timer.Stop()
+				h.processRequestMsg(&msgItem)
+			case <-timer.C:
 			}
 		} else {
 			select {
@@ -306,18 +328,7 @@ loop:
 				h.cancelAllRequests()
 				continue
 			case msgItem := <-h.msgCh:
-				if msgItem.pi == protoBlockRequest {
-					var msg BlockRequest
-					_, err := codec.UnmarshalFromBytes(msgItem.b, &msg)
-					if err != nil {
-						// TODO log
-						continue loop
-					}
-					if logMsg {
-						log.Printf("Received BlockRequest %d\n", msg.Height)
-					}
-					h.nextItems = append(h.nextItems, &msg)
-				}
+				h.processRequestMsg(&msgItem)
 			}
 		}
 	}

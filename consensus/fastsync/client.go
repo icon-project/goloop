@@ -422,11 +422,11 @@ func (f *fetcher) _doSend() {
 	msg.Height = f.height
 	bs := codec.MustMarshalToBytes(&msg)
 	log.Printf("Request %d, %d\n", f.requestID, f.height)
-	err := f.cl.ph.Unicast(protoBlockRequest, bs, f.id)
 	if f.timer != nil {
 		f.timer.Stop()
 		f.timer = nil
 	}
+	err := f.cl.ph.Unicast(protoBlockRequest, bs, f.id)
 	if err == nil {
 		f.step = fstepWaitResp
 		var timer *time.Timer
@@ -445,7 +445,7 @@ func (f *fetcher) _doSend() {
 			})
 		})
 		f.timer = timer
-	} else {
+	} else if isTemporary(err) {
 		var timer *time.Timer
 		timer = time.AfterFunc(configSendInterval, func() {
 			f.Lock()
@@ -457,6 +457,12 @@ func (f *fetcher) _doSend() {
 			}
 		})
 		f.timer = timer
+	} else {
+		f._cancel()
+		cl := f.cl
+		f.CallAfterUnlock(func() {
+			cl.onResult(f, err, nil, nil)
+		})
 	}
 }
 
@@ -477,7 +483,7 @@ func (f *fetcher) _cancel() {
 	f.step = fstepFin
 	for {
 		err := f.cl.ph.Unicast(protoCancelAllBlockRequests, bs, f.id)
-		if err == nil {
+		if err == nil || !isTemporary(err) {
 			return
 		}
 		time.Sleep(configSendInterval)
@@ -582,4 +588,9 @@ func VerifyBlock(
 		return err
 	}
 	return nil
+}
+
+func isTemporary(err error) bool {
+	ne, ok := err.(module.NetworkError)
+	return ok && ne.Temporary()
 }
