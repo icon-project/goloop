@@ -7,7 +7,7 @@ import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.Utils;
-import foundation.icon.test.score.HelloScore;
+import foundation.icon.test.score.HelloWorld;
 import foundation.icon.test.score.MultiSigWalletScore;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -74,8 +74,8 @@ public class MultiSigWalletTest {
 
         // *** Send 1 icx to Contract
         // deploy sample multiSigWalletScore to accept icx
-        LOG.info("deploy: HelloScore");
-        HelloScore helloScore = HelloScore.mustDeploy(iconService, ownerWallet, chain.networkId);
+        LOG.info("deploy: HelloWorld");
+        HelloWorld helloScore = HelloWorld.mustDeploy(iconService, ownerWallet, chain.networkId);
 
         // 3. tx is initiated by ownerWallet first
         LOG.infoEntering("call", "submitIcxTransaction() - send 1 icx to hello");

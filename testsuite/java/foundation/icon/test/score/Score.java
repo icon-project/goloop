@@ -123,7 +123,7 @@ public class Score {
     }
 
     public TransactionResult waitResult(Bytes txHash, long height) throws IOException {
-        return Utils.getTransactionResult(this.service, txHash, DEFAULT_WAITING_HEIGHT);
+        return Utils.getTransactionResult(this.service, txHash, height);
     }
     public Address getAddress() {
         return this.scoreAddress;
