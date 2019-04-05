@@ -21,9 +21,6 @@ import java.util.concurrent.TimeUnit;
         ChainScore.class,
 })
 public class GovScoreTestSuite {
-    private static final boolean WITH_NODE_LOG = true;
-    private static final int TEST_LOG_LEVEL = Log.LEVEL_INFO;
-
     @BeforeClass
     public static void setUp() throws Exception {
         startGoLoop();
@@ -33,7 +30,7 @@ public class GovScoreTestSuite {
         Env.Node node = new Env.Node("http://localhost:9080/api/v3", new Env.Chain[]{chain});
         Env.nodes = new Env.Node[]{node};
 
-        Env.LOG.setLevel(TEST_LOG_LEVEL);
+        Env.LOG.setLevel(Config.TEST_LOG_LEVEL);
     }
 
     @AfterClass
@@ -61,7 +58,7 @@ public class GovScoreTestSuite {
             env.put("PYTHONPATH", "../pyee");
             pb.directory(new File("."));
 
-            if (WITH_NODE_LOG) {
+            if (Config.WITH_NODE_LOG) {
                 pb.redirectError(ProcessBuilder.Redirect.INHERIT);
                 pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
             }
