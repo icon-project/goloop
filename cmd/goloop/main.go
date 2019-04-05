@@ -174,7 +174,7 @@ func initConfig() {
 		sockPath := os.Getenv("GOLOOP_SOCK")
 		if sockPath != "" {
 			cfg.CliSocket = sockPath
-		}else {
+		} else {
 			cfg.CliSocket = path.Join(cfg.NodeDir, "cli.sock")
 		}
 	}
@@ -222,8 +222,8 @@ func main() {
 	cobra.OnInitialize(initConfig)
 	rootCmd := &cobra.Command{Use: "goloop"}
 	rootFlags := rootCmd.Flags()
-	rootCmd.PersistentFlags().VarP(&cfg, "config", "c","Parsing configuration file")
-	rootCmd.PersistentFlags().StringVarP(&cfg.CliSocket, "node_sock","s", "",
+	rootCmd.PersistentFlags().VarP(&cfg, "config", "c", "Parsing configuration file")
+	rootCmd.PersistentFlags().StringVarP(&cfg.CliSocket, "node_sock", "s", "",
 		"Node Command Line Interface socket path(default $GOLOOP_SOCK=[node_dir]/cli.sock)")
 	rootFlags.StringVar(&saveFile, "save", "", "File path for storing current configuration(it exits after save)")
 	rootFlags.StringVar(&saveKeyStore, "save_key_store", "", "File path for storing current KeyStore")
@@ -276,22 +276,18 @@ func main() {
 			}
 		}()
 
-		pm, err := eeproxy.NewManager("unix", cfg.EESocket)
-		if err != nil {
-			log.Panicln("FAIL to start EEManager")
-		}
-		go pm.Loop()
-
 		ee, err := eeproxy.NewPythonEE()
 		if err != nil {
 			log.Panicf("FAIL to create PythonEE err=%+v", err)
 		}
-		if err := pm.SetEngine("python", ee); err != nil {
-			log.Panicf("FAIL to eeproxy.SetEngine err=%+v", err)
+		pm, err := eeproxy.NewManager("unix", cfg.EESocket, ee)
+		if err != nil {
+			log.Panicln("FAIL to start EEManager")
 		}
-		if err := pm.SetInstances("python", cfg.EEInstances); err != nil {
-			log.Panicf("FAIL to eeproxy.SetInstances err=%+v", err)
+		if err := pm.SetInstances(cfg.EEInstances, cfg.EEInstances, cfg.EEInstances); err != nil {
+			log.Panicf("FAIL to EEManager.SetInstances err=%+v", err)
 		}
+		go pm.Loop()
 
 		srv := server.NewManager(cfg.RPCAddr, w)
 
@@ -301,6 +297,6 @@ func main() {
 
 	chainCmd := NewChainCmd(&cfg)
 	systemCmd := NewSystemCmd(&cfg)
-	rootCmd.AddCommand(startCmd, chainCmd,systemCmd)
+	rootCmd.AddCommand(startCmd, chainCmd, systemCmd)
 	rootCmd.Execute()
 }

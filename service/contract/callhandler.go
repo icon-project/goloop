@@ -187,7 +187,7 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 	}
 
 	h.cm = cc.ContractManager()
-	h.conn = cc.GetConnection(h.EEType())
+	h.conn = cc.GetProxy(h.EEType())
 	if h.conn == nil {
 		return errors.New("FAIL to get connection of (" + h.EEType() + ")")
 	}

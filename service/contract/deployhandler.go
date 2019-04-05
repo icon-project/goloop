@@ -301,7 +301,7 @@ func (h *callGetAPIHandler) ExecuteAsync(cc CallContext) error {
 		return errors.New("FAIL: not a contract account")
 	}
 
-	conn := h.cc.GetConnection(h.EEType())
+	conn := h.cc.GetProxy(h.EEType())
 	if conn == nil {
 		return errors.New("FAIL to get connection of (" + h.EEType() + ")")
 	}

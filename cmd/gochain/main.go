@@ -305,18 +305,18 @@ func main() {
 	}
 	defer nt.Close()
 
-	pm, err := eeproxy.NewManager("unix", cfg.EESocket)
+	ee, err := eeproxy.NewPythonEE()
+	if err != nil {
+		log.Panicf("FAIL to create PythonEE err=%+v", err)
+	}
+
+	pm, err := eeproxy.NewManager("unix", cfg.EESocket, ee)
 	if err != nil {
 		log.Panicln("FAIL to start EEManager")
 	}
 	go pm.Loop()
 
-	ee, err := eeproxy.NewPythonEE()
-	if err != nil {
-		log.Panicf("FAIL to create PythonEE err=%+v", err)
-	}
-	pm.SetEngine("python", ee)
-	pm.SetInstances("python", cfg.EEInstances)
+	pm.SetInstances(cfg.EEInstances, cfg.EEInstances, cfg.EEInstances)
 
 	// TODO : server-chain setting
 	srv := server.NewManager(cfg.RPCAddr, wallet)

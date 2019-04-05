@@ -17,6 +17,10 @@ import (
 
 var mgr eeproxy.Manager
 
+const (
+	ApplicationType = "python"
+)
+
 type callContext struct {
 	bk    db.Bucket
 	proxy eeproxy.Proxy
@@ -83,19 +87,24 @@ func makeTransactions(cc *callContext, mgr eeproxy.Manager) {
 	paramObj := []interface{}{"Test"}
 	paramAny := common.MustEncodeAny(paramObj)
 	for {
-		proxy := mgr.Get("python")
+		executor := mgr.GetExecutor(eeproxy.ForTransaction)
+		proxy := executor.Get(ApplicationType)
 		cc.proxy = proxy
 		proxy.GetAPI(cc, "score/")
 		proxy.Invoke(cc, "score/", false,
 			common.NewAddressFromString("cx9999999999999999999999999999999999999999"),
 			common.NewAddressFromString("hx3333333333333333333333333333333333333333"),
 			big.NewInt(10), big.NewInt(state.GIGA), "test", paramAny)
-		proxy.Release()
+		executor.Release()
 		time.Sleep(time.Second)
 	}
 }
 
 type pythonEngine struct {
+}
+
+func (e *pythonEngine) Type() string {
+	return ApplicationType
 }
 
 func (e *pythonEngine) Init(net, addr string) error {
@@ -104,12 +113,12 @@ func (e *pythonEngine) Init(net, addr string) error {
 }
 
 func (e *pythonEngine) SetInstances(n int) error {
-	fmt.Printf("PythonEngine.SetInstances(n=%d)", n)
+	fmt.Printf("PythonEngine.SetInstances(n=%d)\n", n)
 	return nil
 }
 
 func (e *pythonEngine) OnAttach(uid string) bool {
-	fmt.Printf("PythonEngine.OnAttach(uid=%s)", uid)
+	fmt.Printf("PythonEngine.OnAttach(uid=%s)\n", uid)
 	return true
 }
 
@@ -120,13 +129,12 @@ func (e *pythonEngine) Kill(uid string) (bool, error) {
 
 func main() {
 	var err error
-	mgr, err = eeproxy.NewManager("unix", "/tmp/ee.socket")
+
+	mgr, err := eeproxy.NewManager("unix", "/tmp/ee.socket", new(pythonEngine))
 	if err != nil {
 		log.Panicf("Fail to make EEProxy err=%+v", err)
 	}
-
-	mgr.SetEngine("python", new(pythonEngine))
-	mgr.SetInstances("python", 1)
+	mgr.SetInstances(1, 1, 1)
 
 	dbase := db.NewMapDB()
 	bk, err := dbase.GetBucket("")

@@ -26,8 +26,8 @@ type (
 		OnCall(ContractHandler)
 		OnEvent(addr module.Address, indexed, data [][]byte)
 		GetBalance(module.Address) *big.Int
-		ReserveConnection(eeType string) error
-		GetConnection(eeType string) eeproxy.Proxy
+		ReserveExecutor() error
+		GetProxy(eeType string) eeproxy.Proxy
 		Dispose()
 	}
 	callResultMessage struct {
@@ -44,9 +44,9 @@ type (
 
 type callContext struct {
 	Context
-	receipt txresult.Receipt
-	isQuery bool
-	conns   map[string]eeproxy.Proxy
+	receipt  txresult.Receipt
+	isQuery  bool
+	executor *eeproxy.Executor
 
 	timer  <-chan time.Time
 	lock   sync.Mutex
@@ -62,7 +62,6 @@ func NewCallContext(ctx Context, receipt txresult.Receipt, isQuery bool) CallCon
 		// 0-buffered channel is fine, but it sets some number just in case of
 		// EE unexpectedly sends messages up to 8.
 		waiter: make(chan interface{}, 8),
-		conns:  make(map[string]eeproxy.Proxy),
 	}
 }
 
@@ -285,13 +284,8 @@ func (cc *callContext) handleTimeout() {
 		h.Dispose()
 	}
 
-	// kill EE; It'll restart by itself
-	for name, conn := range cc.conns {
-		if err := conn.Kill(); err != nil {
-			log.Println("FAIL: conn[", name, "].Kill() (", err.Error(), ")")
-		}
-	}
-	cc.conns = nil
+	cc.executor.Kill()
+	cc.executor = nil
 }
 
 func (cc *callContext) handleResult(status module.Status,
@@ -367,27 +361,24 @@ func (cc *callContext) GetBalance(addr module.Address) *big.Int {
 	}
 }
 
-func (cc *callContext) ReserveConnection(eeType string) error {
-	conn := cc.EEManager().Get(eeType)
-	if conn == nil {
-		log.Panicln("Fails to get connection of eetype(" + eeType + ")")
+func (cc *callContext) ReserveExecutor() error {
+	if cc.executor == nil {
+		priority := eeproxy.ForTransaction
+		if cc.isQuery {
+			priority = eeproxy.ForQuery
+		}
+		cc.executor = cc.EEManager().GetExecutor(priority)
 	}
-	cc.conns[eeType] = conn
 	return nil
 }
 
-func (cc *callContext) GetConnection(eeType string) eeproxy.Proxy {
-	conn := cc.conns[eeType]
-	// Conceptually, it should return nil when it's not reserved in advance.
-	// But currently it doesn't assume it should be reserved, so retry to reserve here.
-	if conn == nil {
-		cc.ReserveConnection(eeType)
-	}
-	return cc.conns[eeType]
+func (cc *callContext) GetProxy(eeType string) eeproxy.Proxy {
+	cc.ReserveExecutor()
+	return cc.executor.Get(eeType)
 }
 
 func (cc *callContext) Dispose() {
-	for _, v := range cc.conns {
-		v.Release()
+	if cc.executor != nil {
+		cc.executor.Release()
 	}
 }

@@ -54,6 +54,11 @@ type Proxy interface {
 	Kill() error
 }
 
+type proxyManager interface {
+	onReady(t string, p *proxy) error
+	kill(u string) error
+}
+
 type callFrame struct {
 	addr module.Address
 	ctx  CallContext
@@ -64,13 +69,13 @@ type callFrame struct {
 type proxy struct {
 	lock     sync.Mutex
 	reserved bool
-	mgr      *manager
+	mgr      proxyManager
 
 	conn ipc.Connection
 
 	version   uint16
 	uid       string
-	scoreType scoreType
+	scoreType string
 
 	frame *callFrame
 
@@ -219,11 +224,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		}
 		p.version = m.Version
 		p.uid = m.UID
-		if t, ok := scoreNameToType[m.Type]; !ok {
-			return errors.Errorf("UnknownSCOREName(%s)", m.Type)
-		} else {
-			p.scoreType = t
-		}
+		p.scoreType = m.Type
 
 		return p.mgr.onReady(p.scoreType, p)
 
@@ -361,7 +362,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 	}
 }
 
-func (p *proxy) Close() error {
+func (p *proxy) close() error {
 	return p.conn.Close()
 }
 
@@ -369,10 +370,32 @@ func (p *proxy) Kill() error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	return p.mgr.Kill(p.uid)
+	return p.mgr.kill(p.uid)
 }
 
-func newConnection(m *manager, c ipc.Connection) (*proxy, error) {
+func (p *proxy) detach() bool {
+	if p.pprev == nil {
+		return false
+	}
+	*p.pprev = p.next
+	if p.next != nil {
+		p.next.pprev = p.pprev
+	}
+	p.pprev = nil
+	p.next = nil
+	return true
+}
+
+func (p *proxy) attachTo(r **proxy) {
+	p.next = *r
+	if p.next != nil {
+		p.next.pprev = &p.next
+	}
+	p.pprev = r
+	*r = p
+}
+
+func newConnection(m proxyManager, c ipc.Connection) (*proxy, error) {
 	p := &proxy{
 		mgr:  m,
 		conn: c,

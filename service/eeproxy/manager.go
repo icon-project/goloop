@@ -1,247 +1,268 @@
 package eeproxy
 
 import (
-	"log"
 	"sync"
 
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/ipc"
-	"github.com/pkg/errors"
 )
 
-type scoreType int
+type RequestPriority int
 
 const (
-	pythonSCORE scoreType = iota
-	numberOfSCORETypes
+	ForTransaction RequestPriority = iota
+	ForQuery
+)
+const (
+	numberOfPriorities = 2
 )
 
-var scoreNameToType = map[string]scoreType{
-	"python": pythonSCORE,
-}
-
-func (t scoreType) String() string {
-	switch t {
-	case pythonSCORE:
-		return "PythonSCORE"
-	default:
-		return "UnknownSCORE"
-	}
-}
-
 type Manager interface {
-	Get(t string) Proxy
-	SetEngine(t string, e Engine) error
-	SetInstances(t string, n int) error
+	GetExecutor(pr RequestPriority) *Executor
+	SetInstances(total, tx, query int) error
 	Loop() error
 	Close() error
 }
 
 type Engine interface {
+	Type() string
 	Init(net, addr string) error
 	SetInstances(n int) error
 	OnAttach(uid string) bool
 	Kill(uid string) (bool, error)
 }
 
-type manager struct {
-	server ipc.Server
-	lock   sync.Mutex
-
-	scores [numberOfSCORETypes]struct {
-		engine Engine
-		target int
-		active int
-		waiter *sync.Cond
-		ready  *proxy
-		using  *proxy
-	}
+type Executor struct {
+	priority RequestPriority
+	manager  *executorManager
+	typeMap  map[string]int
+	proxies  []*proxy
 }
 
-func (m *manager) SetEngine(t string, e Engine) error {
-	scoreType, ok := scoreNameToType[t]
-	if !ok {
-		return errors.Errorf("IllegalScoreType(t=%s)", t)
-	}
-	addr := m.server.Addr()
-	if err := e.Init(addr.Network(), addr.String()); err != nil {
-		return err
-	}
-	m.lock.Lock()
-	defer m.lock.Unlock()
-
-	score := &m.scores[scoreType]
-	score.engine = e
-
-	return nil
-}
-
-func (m *manager) SetInstances(t string, n int) error {
-	scoreType, ok := scoreNameToType[t]
-	if !ok {
-		return errors.Errorf("IllegalScoreType(t=%s)", t)
-	}
-
-	m.lock.Lock()
-	defer m.lock.Unlock()
-
-	score := &m.scores[scoreType]
-	if err := score.engine.SetInstances(n); err != nil {
-		return err
-	}
-
-	score.target = n
-	for score.ready != nil && score.active > score.target {
-		item := score.ready
-		m.detach(item)
-		item.Close()
-		score.active -= 1
-	}
-
-	return nil
-}
-
-func (m *manager) OnConnect(c ipc.Connection) error {
-	_, err := newConnection(m, c)
-	return err
-}
-
-func (m *manager) OnClose(c ipc.Connection) error {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-
-	for i := 0; i < len(m.scores); i++ {
-		e := &m.scores[i]
-		for p := e.ready; p != nil; p = p.next {
-			if p.conn == c {
-				m.detach(p)
-				e.active -= 1
-				return nil
-			}
-		}
-		for p := e.using; p != nil; p = p.next {
-			if p.conn == c {
-				m.detach(p)
-				e.active -= 1
-				return nil
-			}
-		}
-	}
-	return errors.New("NotFound")
-}
-
-func (m *manager) onReady(t scoreType, p *proxy) error {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-
-	if t < 0 || t >= numberOfSCORETypes {
-		return errors.Errorf("IllegalScoreType(type=%d)", t)
-	}
-	score := &m.scores[t]
-	if !score.engine.OnAttach(p.uid) {
-		return errors.Errorf("InvalidUID(uid=%s)", p.uid)
-	}
-
-	if detached := m.detach(p); detached {
-		if score.active > score.target {
-			score.active -= 1
-			return errors.Errorf("ScalingDown(target=%d,active=%d)",
-				score.target, score.active)
-		}
-	} else {
-		if score.active >= score.target {
-			return errors.Errorf("NoMoreInstance(target=%d,active=%d)",
-				score.target, score.active)
-		} else {
-			score.active += 1
-		}
-	}
-
-	m.attach(&score.ready, p)
-	if p.next == nil {
-		score.waiter.Broadcast()
-	}
-	return nil
-}
-
-func (m *manager) detach(p *proxy) bool {
-	if p.pprev == nil {
-		return false
-	}
-	*p.pprev = p.next
-	if p.next != nil {
-		p.next.pprev = p.pprev
-	}
-	p.pprev = nil
-	p.next = nil
-	return true
-}
-
-func (m *manager) attach(r **proxy, p *proxy) {
-	p.next = *r
-	if p.next != nil {
-		p.next.pprev = &p.next
-	}
-	p.pprev = r
-	*r = p
-}
-
-func (m *manager) Get(name string) Proxy {
-	t, ok := scoreNameToType[name]
+func (e *Executor) Get(name string) Proxy {
+	t, ok := e.typeMap[name]
 	if !ok {
 		return nil
 	}
-	m.lock.Lock()
-	defer m.lock.Unlock()
-
-	score := &m.scores[t]
-	for score.ready == nil {
-		score.waiter.Wait()
-	}
-	p := score.ready
-	if p.reserve() {
-		m.detach(p)
-		m.attach(&score.using, p)
-	}
-	return p
+	return e.proxies[t]
 }
 
-func (m *manager) Loop() error {
-	return m.server.Loop()
+func (e *Executor) Release() {
+	e.manager.onRelease(e.priority, e)
+	for _, p := range e.proxies {
+		p.Release()
+	}
 }
 
-func (m *manager) Close() error {
-	if err := m.server.Close(); err != nil {
-		log.Printf("Fail to close IPC server err=%+v", err)
-		return err
+func (e *Executor) Kill() {
+	for _, p := range e.proxies {
+		p.Kill()
 	}
-	// TODO stopping all proxies.
+}
+
+type engine struct {
+	engine Engine
+	active int
+	ready  *proxy
+	using  *proxy
+}
+
+type executorState struct {
+	limit    int
+	assigned int
+	waiter   *sync.Cond
+	waiting  int
+}
+
+type executorManager struct {
+	lock sync.Mutex
+
+	server ipc.Server
+
+	typeMap map[string]int
+	engines []*engine
+
+	executorLimit  int
+	executorStates [numberOfPriorities]executorState
+}
+
+func (em *executorManager) onReady(t string, p *proxy) error {
+	em.lock.Lock()
+	defer em.lock.Unlock()
+
+	i, ok := em.typeMap[t]
+	if !ok {
+		return errors.Errorf("InvalidApplicationType:%s", t)
+	}
+
+	e := em.engines[i]
+
+	if !e.engine.OnAttach(p.uid) {
+		return errors.Errorf("InvalidUID(uid=%s)", p.uid)
+	}
+
+	if p.detach() {
+		if e.active > em.executorLimit {
+			e.active -= 1
+			return errors.Errorf("ScalingDown(target=%d,active=%d)",
+				em.executorLimit, e.active)
+		}
+	} else {
+		e.active += 1
+	}
+	p.attachTo(&e.ready)
+
+	for i := range em.executorStates {
+		s := em.executorStates[i]
+		if s.assigned < s.limit && s.waiting > 0 {
+			s.waiter.Signal()
+			return nil
+		}
+	}
 	return nil
 }
 
-func (m *manager) Kill(uid string) error {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-
-	for _, s := range m.scores {
-		if ok, err := s.engine.Kill(uid); ok {
+func (em *executorManager) kill(u string) error {
+	for _, e := range em.engines {
+		if ok, err := e.engine.Kill(u); ok {
 			return err
 		}
 	}
 	return errors.New("NoEntry")
 }
 
-func NewManager(net, addr string) (*manager, error) {
+func (em *executorManager) OnConnect(c ipc.Connection) error {
+	_, err := newConnection(em, c)
+	return err
+}
+
+func (em *executorManager) OnClose(c ipc.Connection) error {
+	em.lock.Lock()
+	defer em.lock.Unlock()
+
+	for _, e := range em.engines {
+		for p := e.ready; p != nil; p = p.next {
+			if p.conn == c {
+				p.detach()
+				e.active -= 1
+				return nil
+			}
+		}
+		for p := e.using; p != nil; p = p.next {
+			if p.conn == c {
+				p.detach()
+				e.active -= 1
+				return nil
+			}
+		}
+	}
+	return errors.New("UnknownConnection")
+}
+
+func (em *executorManager) Close() error {
+	if err := em.server.Close(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (em *executorManager) createExecutorInLock(pr RequestPriority) *Executor {
+	ps := make([]*proxy, len(em.engines))
+	for i, e := range em.engines {
+		if e.ready == nil {
+			return nil
+		}
+		ps[i] = e.ready
+	}
+	for i, p := range ps {
+		p.detach()
+		p.attachTo(&em.engines[i].using)
+	}
+	return &Executor{
+		priority: pr,
+		manager:  em,
+		proxies:  ps,
+		typeMap:  em.typeMap,
+	}
+}
+
+func (em *executorManager) onRelease(pr RequestPriority, ex *Executor) {
+	em.lock.Lock()
+	defer em.lock.Unlock()
+
+	em.executorStates[pr].assigned -= 1
+}
+
+func (em *executorManager) GetExecutor(pr RequestPriority) *Executor {
+	em.lock.Lock()
+	defer em.lock.Unlock()
+
+	es := &em.executorStates[pr]
+	es.waiting += 1
+	for {
+		if es.assigned < es.limit {
+			e := em.createExecutorInLock(pr)
+			if e != nil {
+				es.assigned += 1
+				es.waiting -= 1
+				return e
+			}
+		}
+		es.waiter.Wait()
+	}
+}
+
+func (em *executorManager) SetInstances(total, tx, query int) error {
+	em.lock.Lock()
+	defer em.lock.Unlock()
+
+	for _, e := range em.engines {
+		if err := e.engine.SetInstances(total); err != nil {
+			return err
+		}
+	}
+
+	em.executorLimit = total
+	em.executorStates[ForTransaction].limit = tx
+	em.executorStates[ForQuery].limit = query
+
+	for _, e := range em.engines {
+		for e.ready != nil && e.active > em.executorLimit {
+			item := e.ready
+			item.detach()
+			item.close()
+			e.active -= 1
+		}
+	}
+	return nil
+}
+
+func (em *executorManager) Loop() error {
+	return em.server.Loop()
+}
+
+func NewManager(net, addr string, engines ...Engine) (Manager, error) {
 	srv := ipc.NewServer()
 	err := srv.Listen(net, addr)
 	if err != nil {
 		return nil, err
 	}
-	m := new(manager)
-	srv.SetHandler(m)
-	m.server = srv
-	for i := 0; i < len(m.scores); i++ {
-		m.scores[i].waiter = sync.NewCond(&m.lock)
+	im := new(executorManager)
+	srv.SetHandler(im)
+	im.server = srv
+
+	for i := 0; i < len(im.executorStates); i++ {
+		im.executorStates[i].waiter = sync.NewCond(&im.lock)
 	}
 
-	return m, nil
+	im.engines = make([]*engine, len(engines))
+	im.typeMap = make(map[string]int)
+	for i, e := range engines {
+		if err := e.Init(net, addr); err != nil {
+			return nil, err
+		}
+		im.engines[i] = &engine{engine: e}
+		im.typeMap[e.Type()] = i
+	}
+	return im, nil
 }

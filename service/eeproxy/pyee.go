@@ -49,6 +49,10 @@ type pythonExecutionEngine struct {
 	net, addr string
 }
 
+func (e *pythonExecutionEngine) Type() string {
+	return "python"
+}
+
 func (e *pythonExecutionEngine) Kill(uid string) (bool, error) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
