@@ -73,8 +73,37 @@ func (c *testChain) Consensus() module.Consensus {
 func (c *testChain) ServiceManager() module.ServiceManager {
 	panic("not implemented")
 }
+
 func (c *testChain) NetworkManager() module.NetworkManager {
 	panic("not implemented")
+}
+
+func (c *testChain) Init(sync bool) error {
+	panic("implement me")
+}
+
+func (c *testChain) Start(sync bool) error {
+	panic("implement me")
+}
+
+func (c *testChain) Stop(sync bool) error {
+	panic("implement me")
+}
+
+func (c *testChain) Term(sync bool) error {
+	panic("implement me")
+}
+
+func (c *testChain) Reset(sync bool) error {
+	panic("implement me")
+}
+
+func (c *testChain) Verify(sync bool) error {
+	panic("implement me")
+}
+
+func (c *testChain) State() string {
+	panic("implement me")
 }
 
 type testError struct {

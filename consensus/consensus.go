@@ -1340,17 +1340,29 @@ func (cs *consensus) Term() {
 	cs.started = false
 
 	cs.nm.UnregisterReactor(cs)
-	cs.syncer.Stop()
+	if cs.syncer != nil {
+		cs.syncer.Stop()
+	}
+
 	if cs.timer != nil {
 		cs.timer.Stop()
 	}
 	if cs.cancelBlockRequest != nil {
 		cs.cancelBlockRequest()
 	}
-	cs.roundWAL.Close()
-	cs.lockWAL.Close()
-	cs.commitWAL.Close()
-	logger.Printf("Term\n")
+	if cs.roundWAL != nil {
+		cs.roundWAL.Close()
+	}
+	if cs.lockWAL != nil {
+		cs.lockWAL.Close()
+	}
+	if cs.commitWAL != nil {
+		cs.commitWAL.Close()
+	}
+
+	if logger != nil {
+		logger.Printf("Term\n")
+	}
 }
 
 func (cs *consensus) GetStatus() *module.ConsensusStatus {

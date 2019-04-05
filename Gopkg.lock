@@ -167,6 +167,14 @@
   revision = "572209b26df66a638573023571b5ce80983214eb"
 
 [[projects]]
+  digest = "1:870d441fe217b8e689d7949fef6e43efbc787e50f200cb1e70dbca9204a1d6be"
+  name = "github.com/inconshreveable/mousetrap"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
+  version = "v1.0"
+
+[[projects]]
   branch = "master"
   digest = "1:c1dd060cad9abcf334c6bc7f9d71688d526722f505d947f965d38a010a349336"
   name = "github.com/intel-go/fastjson"
@@ -298,6 +306,22 @@
   ]
   pruneopts = "UT"
   revision = "619930b0b4713cc1280189bf0a4c54b3fb506f60"
+
+[[projects]]
+  digest = "1:645cabccbb4fa8aab25a956cbcbdf6a6845ca736b2c64e197ca7cbb9d210b939"
+  name = "github.com/spf13/cobra"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "ef82de70bb3f60c65fb8eebacbb2d122ef517385"
+  version = "v0.0.3"
+
+[[projects]]
+  digest = "1:c1b1102241e7f645bc8e0c22ae352e8f0dc6484b6cb4d132fa9f24174e0119e2"
+  name = "github.com/spf13/pflag"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "298182f68c66c05229eb03ac171abe6e309ee79a"
+  version = "v1.0.3"
 
 [[projects]]
   digest = "1:18752d0b95816a1b777505a97f71c7467a8445b8ffb55631a7bf779f6ba4fa83"
@@ -462,6 +486,7 @@
   input-imports = [
     "github.com/asaskevich/govalidator",
     "github.com/dgraph-io/badger",
+    "github.com/dgrijalva/jwt-go",
     "github.com/go-errors/errors",
     "github.com/gofrs/uuid",
     "github.com/gorilla/handlers",
@@ -473,6 +498,7 @@
     "github.com/labstack/echo/middleware",
     "github.com/osamingo/jsonrpc",
     "github.com/pkg/errors",
+    "github.com/spf13/cobra",
     "github.com/stretchr/testify/assert",
     "github.com/syndtr/goleveldb/leveldb",
     "github.com/syndtr/goleveldb/leveldb/iterator",

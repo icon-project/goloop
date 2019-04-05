@@ -70,7 +70,7 @@ func main() {
 	var saveFile, saveKeyStore string
 	var cfg GoChainConfig
 	var cpuProfile, memProfile string
-	var nodePath, chainPath string
+	var nodePath string
 
 	flag.Var(&cfg, "config", "Parsing configuration file")
 	flag.StringVar(&saveFile, "save", "", "File path for storing current configuration(it exits after save)")
@@ -97,7 +97,7 @@ func main() {
 	flag.StringVar(&cpuProfile, "cpuprofile", "", "CPU Profiling data file")
 	flag.StringVar(&memProfile, "memprofile", "", "Memory Profiling data file")
 	flag.StringVar(&nodePath, "node_dir", "", "Node data directory(default:.chain/<address>)")
-	flag.StringVar(&chainPath, "chain_dir", "", "Chain data directory(default:<node_dir>/<nid>")
+	flag.StringVar(&cfg.ChainDir, "chain_dir", "", "Chain data directory(default:<node_dir>/<nid>")
 	flag.IntVar(&cfg.EEInstances, "ee_instances", 1, "Number of execution engines")
 	flag.IntVar(&cfg.ConcurrencyLevel, "concurrency", 1, "Maximum number of executors to use for concurrency")
 	flag.Parse()
@@ -237,30 +237,12 @@ func main() {
 		nodePath = path.Join(".", ".chain", addr.String())
 	}
 
-	if chainPath == "" {
-		chainPath = path.Join(nodePath, strconv.FormatInt(int64(cfg.NID), 16))
-	}
-
-	if cfg.DBDir == "" {
-		cfg.DBDir = path.Join(chainPath, "db")
-	}
-
-	if cfg.WALDir == "" {
-		cfg.WALDir = path.Join(chainPath, "wal")
-	}
-
-	if cfg.ContractDir == "" {
-		cfg.ContractDir = path.Join(nodePath, "contract")
+	if cfg.ChainDir == "" {
+		cfg.ChainDir = path.Join(nodePath, strconv.FormatInt(int64(cfg.NID), 16))
 	}
 
 	if cfg.EESocket == "" {
 		cfg.EESocket = path.Join(nodePath, "socket")
-	}
-
-	if cfg.DBType != "mapdb" {
-		if err := os.MkdirAll(cfg.DBDir, 0700); err != nil {
-			log.Panicf("Fail to create directory %s err=%+v", cfg.DBDir, err)
-		}
 	}
 
 	if cpuProfile != "" {
@@ -339,7 +321,14 @@ func main() {
 	// TODO : server-chain setting
 	srv := server.NewManager(cfg.RPCAddr, wallet)
 	c := chain.NewChain(wallet, nt, srv, pm, &cfg.Config)
-	c.Start()
+	err = c.Init(true)
+	if err != nil {
+		log.Panicf("FAIL to initialize Chain err=%+v", err)
+	}
+	err = c.Start(true)
+	if err != nil {
+		log.Panicf("FAIL to start Chain err=%+v", err)
+	}
 
 	// main loop
 	srv.Start()

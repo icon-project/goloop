@@ -26,6 +26,15 @@ type Chain interface {
 	ServiceManager() ServiceManager
 	NetworkManager() NetworkManager
 	Regulator() Regulator
+
+	Init(sync bool) error
+	Start(sync bool) error
+	Stop(sync bool) error
+	Term(sync bool) error
+	State() string
+
+	Reset(sync bool) error
+	Verify(sync bool) error
 }
 
 type Regulator interface {

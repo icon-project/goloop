@@ -3,9 +3,14 @@ package chain
 import (
 	"encoding/json"
 	"log"
+	"os"
+	"path"
+	"strconv"
+	"sync"
 	"time"
 
 	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
@@ -33,6 +38,8 @@ type Config struct {
 	GenesisDataPath string          `json:"genesis_data,omitempty"`
 
 	ConcurrencyLevel int `json:"concurrency_level,omitempty"`
+
+	ChainDir string `json:"chain_dir"`
 }
 
 type singleChain struct {
@@ -51,6 +58,57 @@ type singleChain struct {
 	pm  eeproxy.Manager
 
 	regulator *regulator
+
+	state       State
+	lastErr     error
+	initialized bool
+	mtx         sync.RWMutex
+}
+
+const (
+	StateCreated State = iota
+	StateInitializing
+	StateInitializeFailed
+	StateStarting
+	StateStartFailed
+	StateStarted
+	StateStopping
+	StateStopped
+	StateTerminating
+	StateTerminated
+	StateVerifying
+	StateVerifyFailed
+	StateReseting
+	StateResetFailed
+)
+
+type State int
+
+func (s State) String() string {
+	switch s {
+	case StateCreated:
+		return "created"
+	case StateInitializing:
+		return "initializing"
+	case StateInitializeFailed:
+		return "initialize failed"
+	case StateStarting:
+		return "starting"
+	case StateStartFailed:
+		return "start failed"
+	case StateStarted:
+		return "started"
+	case StateStopping:
+		return "stopping"
+	case StateStopped:
+		return "stopped"
+	case StateTerminating:
+		return "terminating"
+	case StateTerminated:
+		return "terminated"
+	default:
+		return "unknown"
+	}
 }
 
 func (c *singleChain) Database() db.Database {
@@ -123,32 +181,268 @@ func (c *singleChain) ConcurrencyLevel() int {
 	}
 }
 
-func (c *singleChain) Start() {
-	var err error
-	c.database, err = db.Open(c.cfg.DBDir, c.cfg.DBType, c.cfg.DBName)
-	if err != nil {
-		log.Panicf("singleChain.Start: %+v", err)
+func (c *singleChain) State() string {
+	return c._state().String()
+}
+
+func (c *singleChain) _state() State {
+	defer c.mtx.RUnlock()
+	c.mtx.RLock()
+
+	return c.state
+}
+
+func (c *singleChain) _setState(s State, err error) {
+	defer c.mtx.Unlock()
+	c.mtx.Lock()
+
+	c.state = s
+	c.lastErr = err
+}
+
+func (c *singleChain) _transit(to State, froms ... State) error {
+	defer c.mtx.Unlock()
+	c.mtx.Lock()
+
+	invalid := true
+	if len(froms) < 1 {
+		if c.state != to {
+			invalid = false
+		}
+	} else {
+		for _, f := range froms {
+			if f == c.state {
+				invalid = false
+				break
+			}
+		}
+	}
+	if invalid {
+		return common.ErrInvalidState
+	}
+	c.state = to
+	return nil
+}
+
+func (c *singleChain) _init() error {
+	if c.cfg.ChainDir == "" {
+		c.cfg.ChainDir = path.Join(".", ".chain", c.wallet.Address().String())
+	}
+	if err := os.MkdirAll(c.cfg.ChainDir, 0700); err != nil {
+		log.Panicf("Fail to create directory %s err=%+v", c.cfg.ChainDir, err)
 	}
 
-	c.nm = network.NewManager(c.cfg.Channel, c.nt, c.cfg.SeedAddr, toRoles(c.cfg.Role)...)
-	err = c.nm.Start()
-	if err != nil {
-		log.Panicf("singleChain.Start: %+v\n", err)
+	if c.cfg.Channel == "" {
+		c.cfg.Channel = strconv.FormatInt(int64(c.cfg.NID), 16)
+	}
+
+	if c.cfg.DBDir == "" {
+		c.cfg.DBDir = path.Join(c.cfg.ChainDir, "db")
+	}
+	if c.cfg.DBType == "" {
+		c.cfg.DBType = string(db.GoLevelDBBackend)
+	}
+	if c.cfg.DBType != "mapdb" {
+		if err := os.MkdirAll(c.cfg.DBDir, 0700); err != nil {
+			return err
+		}
+	}
+	if c.cfg.DBName == "" {
+		c.cfg.DBName = c.cfg.Channel
+	}
+
+	if c.cfg.WALDir == "" {
+		c.cfg.WALDir = path.Join(c.cfg.ChainDir, "wal")
+	}
+	if c.cfg.ContractDir == "" {
+		c.cfg.ContractDir = path.Join(c.cfg.ChainDir, "contract")
+	}
+	if c.cfg.GenesisStorage == nil {
+		if gs, err := NewGenesisStorageWithDataDir(
+			c.cfg.Genesis, c.cfg.GenesisDataPath); err != nil {
+			return err
+		} else {
+			c.cfg.GenesisStorage = gs
+		}
+	}
+
+	if cdb, err := db.Open(c.cfg.DBDir, c.cfg.DBType, c.cfg.DBName); err != nil {
+		return err
+	} else {
+		c.database = cdb
 	}
 
 	c.vld = consensus.NewCommitVoteSetFromBytes
-	c.sm = service.NewManager(c, c.nm, c.pm, c.cfg.ContractDir)
-	c.sm.Start()
-	c.bm = block.NewManager(c, c.sm)
+	return nil
+}
 
+func (c *singleChain) _prepare() {
+	c.nm = network.NewManager(c.cfg.Channel, c.nt, c.cfg.SeedAddr, toRoles(c.cfg.Role)...)
+	c.sm = service.NewManager(c, c.nm, c.pm, c.cfg.ContractDir)
+	c.bm = block.NewManager(c, c.sm)
 	c.cs = consensus.NewConsensus(c, c.bm, c.nm, c.cfg.WALDir)
-	err = c.cs.Start()
-	if err != nil {
-		log.Panicf("singleChain.Start: %+v\n", err)
+}
+
+func (c *singleChain) _start() error {
+	if err := c.nm.Start(); err != nil {
+		return err
+	}
+	c.sm.Start()
+	if err := c.cs.Start(); err != nil {
+		return err
+	}
+	c.srv.SetChain(c.cfg.Channel, c)
+
+	return nil
+}
+
+func (c *singleChain) _stop() {
+	c.srv.RemoveChain(c.cfg.Channel)
+
+	if c.cs != nil {
+		c.cs.Term()
+		c.cs = nil
+	}
+	if c.bm != nil {
+		c.bm.Term()
+		c.bm = nil
+	}
+	if c.sm != nil {
+		c.sm.Term()
+		c.sm = nil
+	}
+	if c.nm != nil {
+		c.nm.Term()
+		c.nm = nil
+	}
+}
+
+func (c *singleChain) _execute(sync bool, f func()) error {
+	if sync {
+		f()
+		return c.lastErr
+	} else {
+		go f()
+		return nil
+	}
+}
+
+func (c *singleChain) Init(sync bool) error {
+	if err := c._transit(StateInitializing, StateCreated, StateStopped); err != nil {
+		return err
 	}
 
-	// server : SetChain()
-	c.srv.SetChain(c.cfg.Channel, c)
+	f := func() {
+		s := StateStopped
+		err := c._init()
+		if err != nil {
+			s = StateInitializeFailed
+		} else {
+			c._prepare()
+		}
+		c._setState(s, err)
+	}
+	return c._execute(sync, f)
+}
+
+func (c *singleChain) Start(sync bool) error {
+	if err := c._transit(StateStarting, StateStopped); err != nil {
+		return err
+	}
+
+	f := func(){
+		s := StateStarted
+		err := c._start()
+		if err != nil {
+			s = StateStartFailed
+			c._stop()
+			c._prepare()
+		}
+		c._setState(s, err)
+	}
+	return c._execute(sync, f)
+}
+
+func (c *singleChain) Stop(sync bool) error {
+	if err := c._transit(StateStopping, StateStarted); err != nil {
+		return err
+	}
+	f := func(){
+		c._stop()
+		c._prepare()
+		c._setState(StateStopped, nil)
+	}
+	return c._execute(sync, f)
+}
+
+func (c *singleChain) Term(sync bool) error {
+	err := c._transit(StateTerminating)
+	if err != nil {
+		return err
+	}
+
+	f := func(){
+		c._stop()
+		c.vld = nil
+		if c.database != nil {
+			err = c.database.Close()
+		}
+		c._setState(StateTerminated, err)
+	}
+	return c._execute(sync, f)
+}
+
+func (c *singleChain) _verify() error {
+	//verify code here
+	return nil
+}
+
+func (c *singleChain) Verify(sync bool) error {
+	if err := c._transit(StateVerifying, StateStopped); err != nil {
+		return err
+	}
+
+	f := func(){
+		s := StateStopped
+		err := c._verify()
+		if err != nil {
+			s = StateVerifyFailed
+		}
+		c._setState(s, err)
+	}
+	return c._execute(sync, f)
+}
+
+func (c *singleChain) _reset() error {
+	if err := c.database.Close(); err != nil {
+		return err
+	}
+	if err := os.RemoveAll(c.cfg.DBDir); err != nil {
+		return err
+	}
+	if err := os.RemoveAll(c.cfg.WALDir); err != nil {
+		return err
+	}
+	if err := os.RemoveAll(c.cfg.ContractDir); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *singleChain) Reset(sync bool) error {
+	if err := c._transit(StateReseting, StateStopped); err != nil {
+		return err
+	}
+
+	f := func(){
+		s := StateStopped
+		err := c._reset()
+		if err != nil {
+			s = StateResetFailed
+		}
+		c._setState(s, err)
+	}
+	return c._execute(sync, f)
 }
 
 func NewChain(
@@ -158,7 +452,7 @@ func NewChain(
 	pm eeproxy.Manager,
 	cfg *Config,
 ) *singleChain {
-	chain := &singleChain{
+	c := &singleChain{
 		wallet:    wallet,
 		nt:        transport,
 		srv:       srv,
@@ -166,21 +460,5 @@ func NewChain(
 		pm:        pm,
 		regulator: NewRegulator(time.Second, 1000),
 	}
-	if chain.cfg.DBName == "" {
-		chain.cfg.DBName = chain.cfg.Channel
-	}
-	if chain.cfg.DBType == "" {
-		chain.cfg.DBType = string(db.BadgerDBBackend)
-	}
-	if chain.cfg.GenesisStorage == nil {
-		if gs, err := NewGenesisStorageWithDataDir(
-			chain.cfg.Genesis, chain.cfg.GenesisDataPath); err != nil {
-			log.Panicf("Fail to create GenesisStorage with path=%s err=%+v",
-				chain.cfg.GenesisDataPath, err)
-			return nil
-		} else {
-			chain.cfg.GenesisStorage = gs
-		}
-	}
-	return chain
+	return c
 }

@@ -52,6 +52,7 @@ $(foreach M,$(CMDS),$(eval $(call CMD_template,$(M))))
 # Build flags for each command
 gochain_LDFLAGS = -X 'main.version=$(GL_VERSION)' -X 'main.build=$(BUILD_INFO)'
 BUILD_TARGETS += gochain
+goloop_LDFLAGS = -X 'main.version=$(GL_VERSION)' -X 'main.build=$(BUILD_INFO)'
 
 vendor :
 	@ \
