@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/zip"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -9,63 +10,71 @@ import (
 	"log"
 	"os"
 	"path"
+	"regexp"
 	"strings"
 
-	"golang.org/x/crypto/sha3"
+	"github.com/icon-project/goloop/common/crypto"
 )
 
 const (
 	GenesisFileName = "genesis.json"
 )
 
-func addContent(writer *zip.Writer, dir string, name string) string {
-	content, err := ioutil.ReadFile(path.Join(dir, name))
-	if err != nil {
-		log.Printf("Failed to read file(%s). %s\n", content, err)
-		return ""
-	}
-
-	hash := fmt.Sprintf("%x", sha3.Sum256(content))
-
-	contentFile, err := writer.Create(hash)
-	if err != nil {
-		log.Printf("Failed to create file.\n")
-		return ""
-	}
-	contentFile.Write(content)
-	return hash
+type templateContext struct {
+	path   string
+	writer *zip.Writer
 }
 
-func extractContent(js interface{}, contentMap map[string]string, writer *zip.Writer, dirPath string) {
+func extractContent(js interface{}, contentMap map[string]string, c *templateContext) error {
 	switch v := js.(type) {
 	case []interface{}:
 		for _, v2 := range v {
-			extractContent(v2, contentMap, writer, dirPath)
+			if err := extractContent(v2, contentMap, c); err != nil {
+				return err
+			}
 		}
 	case map[string]interface{}:
 		for k, v2 := range v {
-			if strings.Compare(k, "@contentId") == 0 {
-				delete(v, k)
-				if s, ok := v2.(string); ok {
-					hash := addContent(writer, dirPath, s)
-					v["contentId"] = "hash:" + hash
-					contentMap[s] = hash
-				}
-			} else if strings.Compare(k, "@content") == 0 {
-				delete(v, k)
-				if s, ok := v2.(string); ok {
-					filePath := path.Join(dirPath, s)
-					data, err := ioutil.ReadFile(filePath)
-					if err != nil {
-						fmt.Printf("failed to readfile. err = %s, file = %s\n", err, filePath)
+			if str, ok := v2.(string); ok {
+				// processing template
+				r := regexp.MustCompile("{{(read|hash):([^>]+)}}")
+				for {
+					m := r.FindStringSubmatch(str)
+					if len(m) == 0 {
+						break
 					}
-					v["content"] = data
+					key := m[1]
+					if key == "read" {
+						name := m[2]
+						data, err := ioutil.ReadFile(path.Join(c.path, name))
+						if err != nil {
+							return err
+						}
+						str = strings.Replace(str, m[0], "0x"+hex.EncodeToString(data), 1)
+					} else {
+						name := m[2]
+						data, err := ioutil.ReadFile(path.Join(c.path, name))
+						if err != nil {
+							return err
+						}
+						hash := hex.EncodeToString(crypto.SHA3Sum256(data))
+						f, err := c.writer.Create(hash)
+						if err != nil {
+							return err
+						}
+						f.Write(data)
+						str = strings.Replace(str, m[0], "0x"+hash, 1)
+					}
+					v[k] = str
 				}
 			} else {
-				extractContent(v2, contentMap, writer, dirPath)
+				if err := extractContent(v2, contentMap, c); err != nil {
+					return err
+				}
 			}
 		}
 	}
+	return nil
 }
 
 func buildStorage(storageName string, dir string) map[string]string {
@@ -85,8 +94,15 @@ func buildStorage(storageName string, dir string) map[string]string {
 	}
 	if len(genesis) != 0 {
 		gMap := make(map[string]interface{})
-		json.Unmarshal(genesis, &gMap)
-		extractContent(gMap, contentMap, zWriter, dir)
+		if err := json.Unmarshal(genesis, &gMap); err != nil {
+			log.Printf("Failed to unmarshal. err = %s\n", err)
+			return nil
+		}
+		if err := extractContent(gMap, contentMap,
+			&templateContext{dir, zWriter}); err != nil {
+			log.Printf("Failed to extrace content. err = %s\n", err)
+			return nil
+		}
 		if len(gMap) != 0 {
 			genesis, _ = json.Marshal(gMap)
 		}

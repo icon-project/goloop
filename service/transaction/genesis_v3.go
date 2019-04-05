@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,10 +24,11 @@ import (
 )
 
 type preInstalledScores struct {
-	Owner       *common.Address
-	ContentType string
-	ContentId   string
-	Params      *json.RawMessage
+	Owner       *common.Address  `json:"owner"`
+	ContentType string           `json:"contentType"`
+	ContentId   string           `json:"contentId"`
+	Content     string           `json:"content"`
+	Params      *json.RawMessage `json:"params"`
 }
 type accountInfo struct {
 	Name    string              `json:"name"`
@@ -220,32 +222,54 @@ func (g *genesisV3) deployChainScore(ctx contract.Context, receipt txresult.Rece
 }
 
 func (g *genesisV3) deployPreInstall(ctx contract.Context, receipt txresult.Receipt) error {
-	g.deployChainScore(ctx, receipt)
+	if err := g.deployChainScore(ctx, receipt); err != nil {
+		log.Printf("Filed to deploy ChainScore. err = %s\n", err)
+		return err
+	}
 	for _, a := range g.Accounts {
 		if a.Score == nil {
 			continue
 		}
 		score := a.Score
 		cc := contract.NewCallContext(ctx, receipt, false)
-		if strings.HasPrefix(score.ContentId, contentIdHash) == true {
-			contentHash := strings.TrimPrefix(score.ContentId, contentIdHash)
-			content, err := ctx.GetPreInstalledScore(contentHash)
-			if err != nil {
-				log.Printf("Fail to get PreInstalledScore for ID=%s",
-					contentHash)
-				return err
+		if score.Content != "" {
+			if strings.HasPrefix(score.Content, "0x") {
+				score.Content = strings.TrimPrefix(score.Content, "0x")
 			}
+			data, _ := hex.DecodeString(score.Content)
 			d := contract.NewDeployHandlerForPreInstall(score.Owner,
-				&a.Address, score.ContentType, content, score.Params)
+				&a.Address, score.ContentType, data, score.Params)
 			status, _, _, _ := cc.Call(d)
 			if status != module.StatusSuccess {
 				log.Printf("Failed to install pre-installed score."+
-					"status : %d, addr : %v, file : %s\n", status, a.Address, contentHash)
+					"status : %d, addr : %v\n", status, a.Address)
 				return errors.New(fmt.Sprintf("Failed to deploy pre-installed score. status = %d", status))
 			}
 			cc.Dispose()
-		} else if strings.HasPrefix(score.ContentId, contentIdHash) == true {
-
+		} else if score.ContentId != "" {
+			if strings.HasPrefix(score.ContentId, contentIdHash) == true {
+				contentHash := strings.TrimPrefix(score.ContentId, contentIdHash)
+				content, err := ctx.GetPreInstalledScore(contentHash)
+				if err != nil {
+					log.Printf("Fail to get PreInstalledScore for ID=%s",
+						contentHash)
+					return err
+				}
+				d := contract.NewDeployHandlerForPreInstall(score.Owner,
+					&a.Address, score.ContentType, content, score.Params)
+				status, _, _, _ := cc.Call(d)
+				if status != module.StatusSuccess {
+					log.Printf("Failed to install pre-installed score."+
+						"status : %d, addr : %v, file : %s\n", status, a.Address, contentHash)
+					return errors.New(fmt.Sprintf("Failed to deploy pre-installed score. status = %d", status))
+				}
+				cc.Dispose()
+			} else if strings.HasPrefix(score.ContentId, contentIdCid) == true {
+				// TODO implement for contentCid
+			}
+		} else {
+			return errors.New("failed to install pre-installed score. " +
+				"valid content does not exist")
 		}
 	}
 	return nil

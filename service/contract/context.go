@@ -2,6 +2,7 @@ package contract
 
 import (
 	"encoding/hex"
+	"strings"
 
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
@@ -34,6 +35,9 @@ func (c *context) EEManager() eeproxy.Manager {
 }
 
 func (c *context) GetPreInstalledScore(id string) ([]byte, error) {
+	if strings.HasPrefix(id, "0x") == true {
+		id = strings.TrimPrefix(id, "0x")
+	}
 	hash, err := hex.DecodeString(id)
 	if err != nil {
 		return nil, err

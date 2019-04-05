@@ -16,10 +16,10 @@
       "score": {
         "owner": "hx1000000000000000000000000000000000000000",
         "contentType": "application/zip",
-        "@content": "governance.zip",
+        "contentId": "hash:{{hash:governance.zip}}",
         "params" : {
           "name": "Governance",
-          "value" : "40"
+          "value" : "50"
         }
       }
     }
@@ -28,7 +28,7 @@
     "auditEnabled" : false,
     "deployerWhiteListEnabled" : false,
     "validatorList": [
-      "hx4805489d4fd3c07fea9b7e1b210e7926c4aa5943"
+      "hxb6b5791be0b5ef67063b3c10b840fb81514db2fd"
     ]
   },
   "message": "test genesis for genesisStorage"
