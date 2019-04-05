@@ -46,6 +46,8 @@ public class GovScoreTestSuite {
 
     public static void startGoLoop() {
         try {
+            Runtime.getRuntime().exec("rm -rf .chain");
+
             // TODO Make it configurable
             // TODO Consider how to print log (care for it later with docker)
             // TODO Get god wallet from config.json, not from additional file.
