@@ -6,6 +6,7 @@ import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
+import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Utils;
 
 import java.math.BigInteger;
@@ -23,7 +24,8 @@ public class Score {
             RpcObject params, BigInteger value) throws Exception {
 
         long timestamp = System.currentTimeMillis() * 1000L;
-        Transaction transaction = TransactionBuilder.of(nid)
+        Transaction transaction = TransactionBuilder.newBuilder()
+                .nid(nid)
                 .from(fromWallet.getAddress())
                 .to(scoreAddr)
                 .stepLimit(new BigInteger("2000000"))
@@ -37,7 +39,7 @@ public class Score {
         Bytes txHash = iconService.sendTransaction(signedTransaction).execute();
         TransactionResult result = Utils.getTransactionResult(iconService, txHash, DEFAULT_WAITING_TIME);
         if (result != null) {
-            if (!Utils.STATUS_SUCCESS.equals(result.getStatus())) {
+            if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
                 // TODO define Deploy fail exception
                 throw new Exception("Failed to call.");
             }
@@ -54,7 +56,7 @@ public class Score {
                 .from(fromWallet.getAddress())
                 .to(scoreAddr)
                 .method(function);
-        if(params != null) {
+        if (params != null) {
             builder.params(params);
         }
         Call<RpcItem> call = builder.build();
