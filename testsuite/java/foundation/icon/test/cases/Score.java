@@ -10,6 +10,8 @@ import foundation.icon.test.common.Utils;
 
 import java.math.BigInteger;
 
+import static foundation.icon.test.score.Score.DEFAULT_WAITING_TIME;
+
 /*
 sendTransaction with call
 icx_call
@@ -33,7 +35,7 @@ public class Score {
 
         SignedTransaction signedTransaction = new SignedTransaction(transaction, fromWallet);
         Bytes txHash = iconService.sendTransaction(signedTransaction).execute();
-        TransactionResult result = Utils.getTransactionResult(iconService, txHash, 3);
+        TransactionResult result = Utils.getTransactionResult(iconService, txHash, DEFAULT_WAITING_TIME);
         if (result != null) {
             if (!Utils.STATUS_SUCCESS.equals(result.getStatus())) {
                 // TODO define Deploy fail exception

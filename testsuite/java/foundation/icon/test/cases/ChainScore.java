@@ -19,6 +19,7 @@ import org.junit.runners.Parameterized;
 
 import java.math.BigInteger;
 import java.util.*;
+import java.util.concurrent.TimeoutException;
 
 @RunWith(Parameterized.class)
 public class ChainScore {
@@ -187,7 +188,12 @@ public class ChainScore {
     public void blockUnblockScore() throws Exception {
         KeyWallet fromWallet = scoreOwnerWallet;
 
-        if (!helloWorld.invokeHello(testWallets[1])) {
+        try {
+            if (!helloWorld.invokeHello(testWallets[1])) {
+                throw new Exception();
+            }
+        }
+        catch (TimeoutException ex) {
             throw new Exception();
         }
         // true is block, false is unblock

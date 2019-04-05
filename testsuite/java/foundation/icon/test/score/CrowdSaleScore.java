@@ -27,6 +27,7 @@ import foundation.icon.test.common.Utils;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.concurrent.TimeoutException;
 
 import static foundation.icon.test.common.Env.LOG;
 
@@ -35,7 +36,7 @@ public class CrowdSaleScore extends Score {
 
     public static CrowdSaleScore mustDeploy(IconService service, Wallet wallet, BigInteger nid,
                                             BigInteger goalInIcx, Address tokenScore, int durationInBlocks)
-            throws IOException, TransactionFailureException
+            throws IOException, TransactionFailureException, TimeoutException
     {
         RpcObject params = new RpcObject.Builder()
                 .put("_fundingGoalInIcx", new RpcValue(goalInIcx))
@@ -53,7 +54,7 @@ public class CrowdSaleScore extends Score {
         super(iconService, scoreAddress, nid);
     }
 
-    public TransactionResult checkGoalReached(Wallet wallet) throws IOException {
+    public TransactionResult checkGoalReached(Wallet wallet) throws IOException, TimeoutException {
         return invokeAndWaitResult(wallet,
                 "checkGoalReached", null, null, STEPS_DEFAULT);
     }
@@ -73,7 +74,7 @@ public class CrowdSaleScore extends Score {
         }
     }
 
-    public TransactionResult safeWithdrawal(Wallet wallet) throws IOException {
+    public TransactionResult safeWithdrawal(Wallet wallet) throws IOException, TimeoutException {
         return invokeAndWaitResult(wallet, "safeWithdrawal", null, null, STEPS_DEFAULT);
     }
 }

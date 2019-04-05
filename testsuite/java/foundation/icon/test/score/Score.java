@@ -11,10 +11,11 @@ import foundation.icon.test.common.Utils;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.concurrent.TimeoutException;
 
 public class Score {
     public static final BigInteger STEPS_DEFAULT = BigInteger.valueOf(2000000);
-    private static final long DEFAULT_WAITING_HEIGHT = 3;
+    public static final long DEFAULT_WAITING_TIME = 3000; // millisecond
 
     protected IconService service;
     protected Address scoreAddress;
@@ -26,14 +27,15 @@ public class Score {
         this.nid = nid;
     }
 
-    public static TransactionResult deployAndWaitResult(IconService service, Wallet wallet, String filePath, RpcObject params)
-            throws IOException {
+    public static TransactionResult deployAndWaitResult(IconService service
+            , Wallet wallet, String filePath, RpcObject params)
+            throws IOException, TimeoutException {
         Bytes txHash = Utils.deployScore(service, wallet, filePath, params);
-        return Utils.getTransactionResult(service, txHash, DEFAULT_WAITING_HEIGHT);
+        return Utils.getTransactionResult(service, txHash, DEFAULT_WAITING_TIME);
     }
 
     public static Address mustDeploy(IconService service, Wallet wallet, String filePath, RpcObject params)
-            throws IOException, TransactionFailureException {
+            throws IOException, TransactionFailureException, TimeoutException {
         TransactionResult result = deployAndWaitResult(service, wallet, filePath, params);
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new TransactionFailureException(result.getFailure());
@@ -82,7 +84,7 @@ public class Score {
 
     public TransactionResult invokeAndWaitResult(Wallet wallet, String method,
                                                  RpcObject params, BigInteger value, BigInteger steps)
-            throws IOException {
+            throws IOException, TimeoutException {
         Bytes txHash = this.invoke(wallet, method, params, value, steps);
         return waitResult(txHash);
     }
@@ -118,13 +120,14 @@ public class Score {
 //        return transferAndWaitResult(wallet, to,  value, STEPS_TRANSFER);
 //    }
 
-    public TransactionResult waitResult(Bytes txHash) throws IOException {
-        return Utils.getTransactionResult(this.service, txHash, DEFAULT_WAITING_HEIGHT);
+    public TransactionResult waitResult(Bytes txHash) throws IOException, TimeoutException {
+        return Utils.getTransactionResult(this.service, txHash, DEFAULT_WAITING_TIME);
     }
 
-    public TransactionResult waitResult(Bytes txHash, long height) throws IOException {
-        return Utils.getTransactionResult(this.service, txHash, height);
+    public TransactionResult waitResult(Bytes txHash, long waiting) throws IOException, TimeoutException {
+        return Utils.getTransactionResult(this.service, txHash, waiting);
     }
+
     public Address getAddress() {
         return this.scoreAddress;
     }

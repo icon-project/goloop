@@ -9,12 +9,13 @@ import foundation.icon.test.common.Utils;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.concurrent.TimeoutException;
 
 public class HelloWorld extends Score {
     private static final String PATH = Constants.SCORE_ROOT +  "helloWorld.zip";
 
     public static HelloWorld mustDeploy(IconService service, Wallet wallet, BigInteger nid)
-            throws IOException, TransactionFailureException
+            throws IOException, TransactionFailureException, TimeoutException
     {
         return new HelloWorld(
                 service,
@@ -27,13 +28,13 @@ public class HelloWorld extends Score {
         super(iconService, scoreAddress, nid);
     }
 
-    public boolean invokeHello(Wallet from) {
+    public boolean invokeHello(Wallet from) throws TimeoutException{
         try {
             TransactionResult txResult = invokeAndWaitResult(from, "hello", null
                     , BigInteger.valueOf(0), BigInteger.valueOf(100));
             if (txResult == null || txResult.getStatus().compareTo(Utils.STATUS_SUCCESS) != 0) {
                 System.out.println("Failed to invoke. result = " + txResult);
-                return false;
+                throw new TimeoutException();
             }
         }
         catch (IOException exception) {

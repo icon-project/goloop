@@ -14,6 +14,7 @@ import foundation.icon.test.common.Utils;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.concurrent.TimeoutException;
 
 import static foundation.icon.test.common.Env.LOG;
 
@@ -22,7 +23,7 @@ public class SampleTokenScore extends Score {
 
     public static SampleTokenScore mustDeploy(IconService service, Wallet wallet, BigInteger nid,
                                               BigInteger initialSupply, int decimals)
-            throws IOException, TransactionFailureException
+            throws IOException, TransactionFailureException, TimeoutException
     {
         RpcObject params = new RpcObject.Builder()
                 .put("_initialSupply", new RpcValue(initialSupply))

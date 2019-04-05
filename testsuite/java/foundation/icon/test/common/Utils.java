@@ -37,6 +37,7 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 
 import static foundation.icon.test.common.Env.LOG;
 
@@ -133,17 +134,16 @@ public class Utils {
     }
 
     public static TransactionResult getTransactionResult(
-            IconService iconService, Bytes txHash, long height) throws IOException {
+            IconService iconService, Bytes txHash, long waitingTime) throws IOException, TimeoutException {
         TransactionResult result = null;
         String msg = null;
-        BigInteger waiting = iconService.getLastBlock().execute().getHeight().add(BigInteger.valueOf(height));
+        long limitTime = System.currentTimeMillis() + waitingTime;
         while (result == null) {
             try {
                 result = iconService.getTransactionResult(txHash).execute();
             } catch (RpcError e) {
-                BigInteger now = iconService.getLastBlock().execute().getHeight();
-                if (waiting.compareTo(now) < 0) {
-                    return null;
+                if (limitTime < System.currentTimeMillis()) {
+                    throw new TimeoutException();
                 }
                 try {
                     // wait until block confirmation
