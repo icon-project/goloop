@@ -18,6 +18,11 @@ dependencies {
     testImplementation "junit:junit:4.12"
 }
 
+compileTestJava {
+    options.warnings = true
+    options.deprecation = true
+}
+
 test {
     exclude "foundation/icon/test/cases/*"
     testLogging.showStandardStreams = true
