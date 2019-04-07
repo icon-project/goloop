@@ -42,7 +42,6 @@ import java.util.concurrent.TimeoutException;
 import static foundation.icon.test.common.Env.LOG;
 
 public class Utils {
-    public static final BigInteger STATUS_SUCCESS = BigInteger.ONE;
     public static BigInteger getMicroTime() {
         long timestamp = System.currentTimeMillis() * 1000L;
         return new BigInteger(Long.toString(timestamp));
@@ -110,7 +109,7 @@ public class Utils {
         return iconService.sendTransaction(signedTransaction).execute();
     }
 
-    // TODO audit on/off에 따른 구현 필요
+    // TODO What if audit is on?
     public static Bytes deployScore(IconService iconService, Wallet fromWallet, String zipfile, RpcObject params) throws IOException {
         byte[] content = readFile(zipfile);
         Transaction transaction = TransactionBuilder.newBuilder()
@@ -136,7 +135,6 @@ public class Utils {
     public static TransactionResult getTransactionResult(
             IconService iconService, Bytes txHash, long waitingTime) throws IOException, TimeoutException {
         TransactionResult result = null;
-        String msg = null;
         long limitTime = System.currentTimeMillis() + waitingTime;
         while (result == null) {
             try {
@@ -154,7 +152,6 @@ public class Utils {
                 }
             }
         }
-        LOG.info(msg);
         return result;
     }
 

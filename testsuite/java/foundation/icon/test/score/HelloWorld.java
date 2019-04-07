@@ -32,7 +32,7 @@ public class HelloWorld extends Score {
         try {
             TransactionResult txResult = invokeAndWaitResult(from, "hello", null
                     , BigInteger.valueOf(0), BigInteger.valueOf(100));
-            if (txResult == null || txResult.getStatus().compareTo(Utils.STATUS_SUCCESS) != 0) {
+            if (txResult == null || txResult.getStatus().compareTo(Constants.STATUS_SUCCESS) != 0) {
                 System.out.println("Failed to invoke. result = " + txResult);
                 throw new TimeoutException();
             }
