@@ -120,5 +120,6 @@ func PromethusExporter() *prometheus.Exporter {
 
 	RegisterConsensus()
 	RegisterNetwork()
+	RegisterTxPool()
 	return pe
 }

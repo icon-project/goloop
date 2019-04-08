@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/big"
 
+	"github.com/icon-project/goloop/server/metric"
 	"github.com/icon-project/goloop/service/transaction"
 
 	"github.com/icon-project/goloop/common"
@@ -41,12 +42,14 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 	bk, _ := chain.Database().GetBucket(db.TransactionLocatorByHash)
 
 	mgr := &manager{
-		patchTxPool:  NewTransactionPool(bk),
-		normalTxPool: NewTransactionPool(bk),
-		db:           chain.Database(),
-		chain:        chain,
-		cm:           contract.NewContractManager(chain.Database(), chainRoot),
-		eem:          eem,
+		patchTxPool: NewTransactionPool(bk,
+			metric.NewTxPoolContext(chain.NID(), metric.TxTypePatch)),
+		normalTxPool: NewTransactionPool(bk,
+			metric.NewTxPoolContext(chain.NID(), metric.TxTypeNormal)),
+		db:    chain.Database(),
+		chain: chain,
+		cm:    contract.NewContractManager(chain.Database(), chainRoot),
+		eem:   eem,
 	}
 	if nm != nil {
 		mgr.txReactor = NewTransactionReactor(nm, mgr.patchTxPool, mgr.normalTxPool)

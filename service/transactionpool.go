@@ -1,12 +1,14 @@
 package service
 
 import (
+	"context"
 	"log"
 	"sync"
 	"time"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/server/metric"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/transaction"
 )
@@ -23,12 +25,15 @@ type TransactionPool struct {
 	list *transactionList
 
 	mutex sync.Mutex
+
+	metric context.Context
 }
 
-func NewTransactionPool(txdb db.Bucket) *TransactionPool {
+func NewTransactionPool(txdb db.Bucket, ctx context.Context) *TransactionPool {
 	pool := &TransactionPool{
-		txdb: txdb,
-		list: newTransactionList(),
+		txdb:   txdb,
+		list:   newTransactionList(),
+		metric: ctx,
 	}
 	return pool
 }
@@ -46,6 +51,7 @@ func (tp *TransactionPool) RemoveOldTXs(bts int64) {
 		tx := iter.Value()
 		if tx.Timestamp() <= bts {
 			tp.list.Remove(iter)
+			metric.RecordOnDropTx(tp.metric, len(tx.Bytes()))
 		}
 		iter = next
 	}
@@ -116,6 +122,7 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 			for _, tx := range txs {
 				if tx != nil {
 					tp.list.RemoveTx(tx)
+					metric.RecordOnDropTx(tp.metric, len(tx.Bytes()))
 				}
 			}
 		}(txs[0:invalidNum])
@@ -144,7 +151,11 @@ func (tp *TransactionPool) Add(tx transaction.Transaction) error {
 		return ErrTransactionPoolOverFlow
 	}
 
-	return tp.list.Add(tx)
+	err := tp.list.Add(tx)
+	if err == nil {
+		metric.RecordOnAddTx(tp.metric, len(tx.Bytes()))
+	}
+	return err
 }
 
 // removeList remove transactions when transactions are finalized.
@@ -163,5 +174,6 @@ func (tp *TransactionPool) RemoveList(txs module.TransactionList) {
 			continue
 		}
 		tp.list.RemoveTx(t)
+		metric.RecordOnRemoveTx(tp.metric, len(t.Bytes()))
 	}
 }
