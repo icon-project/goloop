@@ -47,7 +47,7 @@ func TestCommit(t *testing.T) {
 			manager := tt.args.m
 			trie := manager.NewMutable(nil)
 			rootHash := make([]string, 3)
-			i := 0
+			items := 0
 
 			poolKey := []string{
 				"doe", "dog", "dogglesworth",
@@ -57,9 +57,10 @@ func TestCommit(t *testing.T) {
 				snapshot := trie.GetSnapshot()
 				snapshot.Flush()
 				rootHash[i] = fmt.Sprintf("%x", snapshot.Hash())
-				i++
+				items++
 			}
 
+			i := items
 			for i > 0 {
 				i--
 				snapshot := trie.GetSnapshot()
@@ -303,19 +304,19 @@ func TestNoHashed(t *testing.T) {
 	tr.Set([]byte{0x00, 0x01}, []byte{0xFE})
 	tr.Set([]byte{0x00, 0x01, 0x00}, []byte{unchanged})
 
-	immutalble := tr.GetSnapshot()
-	immutalble.Hash()
-	immutalble.Flush()
-	v, _ := immutalble.Get([]byte{0x0, 0x01, 0x00})
+	immutable := tr.GetSnapshot()
+	immutable.Hash()
+	immutable.Flush()
+	v, _ := immutable.Get([]byte{0x00, 0x01, 0x00})
 	if v[0] != unchanged {
 		t.Errorf("%d : %d", v[0], unchanged)
 	}
 	changed := byte(0xFA)
 	tr.Set([]byte{0x00, 0x01, 0x00}, []byte{changed})
-	immutalble = tr.GetSnapshot()
-	immutalble.Hash()
-	immutalble.Flush()
-	v, _ = immutalble.Get([]byte{0x0, 0x01, 0x00})
+	immutable = tr.GetSnapshot()
+	immutable.Hash()
+	immutable.Flush()
+	v, _ = immutable.Get([]byte{0x00, 0x01, 0x00})
 
 	if v[0] != changed {
 		t.Errorf("%d : %d", v[0], changed)
