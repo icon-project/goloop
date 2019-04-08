@@ -670,6 +670,7 @@ func (m *manager) finalize(bn *bnode) error {
 		chainProp := m.bucketFor(db.ChainProperty)
 		chainProp.set(raw(keyLastBlockHeight), block.Height())
 	}
+	m.logger.Printf("Finalize(%x)\n", block.ID())
 	// TODO update DB for v1 : blockV1, trLocatorByHash
 	return nil
 }
