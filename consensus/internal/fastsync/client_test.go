@@ -7,12 +7,13 @@ import (
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/consensus/internal/test"
 	"github.com/stretchr/testify/assert"
 )
 
 type clientTestSetUp struct {
 	*fastSyncTestSetUp
-	nms []*tNetworkManager
+	nms []*test.NetworkManager
 	phs []module.ProtocolHandler
 
 	reactors  []*tReactor
@@ -23,13 +24,13 @@ type clientTestSetUp struct {
 func newClientTestSetUp(t *testing.T, n int) *clientTestSetUp {
 	s := &clientTestSetUp{}
 	s.fastSyncTestSetUp = newFastSyncTestSetUp(t)
-	s.nms = make([]*tNetworkManager, n)
+	s.nms = make([]*test.NetworkManager, n)
 	s.reactors = make([]*tReactor, n)
 	s.phs = make([]module.ProtocolHandler, n)
 	for i := 0; i < n; i++ {
-		s.nms[i] = newTNetworkManager()
+		s.nms[i] = test.NewNetworkManager()
 		if i > 0 {
-			s.nms[0].join(s.nms[i])
+			s.nms[0].Join(s.nms[i])
 			s.reactors[i] = newTReactor()
 			var err error
 			s.phs[i], err = s.nms[i].RegisterReactorForStreams("fastsync", s.reactors[i], protocols, configFastSyncPriority)
@@ -126,9 +127,9 @@ func TestClient_Success(t *testing.T) {
 	_, err := s.m.FetchBlocks(1, 10, s.blks[0], newTCommitVoteSet, s.cb)
 	assert.Nil(t, err)
 	ev := <-s.reactors[1].ch
-	s.assertEqualReceiveEvent(protoBlockRequest, &BlockRequest{0x10000, 1}, s.nms[0].id, ev)
+	s.assertEqualReceiveEvent(protoBlockRequest, &BlockRequest{0x10000, 1}, s.nms[0].ID, ev)
 
-	s.respondBlockRequest(s.phs[1], 0x10000, s.rawBlocks[1], s.votes[2], s.nms[0].id)
+	s.respondBlockRequest(s.phs[1], 0x10000, s.rawBlocks[1], s.votes[2], s.nms[0].ID)
 
 	ev2 := <-s.cb.ch
 	s.assertBlockEvent(s.rawBlocks[1], ev2)
@@ -141,21 +142,21 @@ func TestClient_SuccessMulti(t *testing.T) {
 	assert.Nil(t, err)
 
 	ev := <-s.reactors[1].ch
-	s.assertEqualReceiveEvent(protoBlockRequest, &BlockRequest{0x10000, 1}, s.nms[0].id, ev)
+	s.assertEqualReceiveEvent(protoBlockRequest, &BlockRequest{0x10000, 1}, s.nms[0].ID, ev)
 
 	ev = <-s.reactors[2].ch
-	s.assertEqualReceiveEvent(protoBlockRequest, &BlockRequest{0x10000, 2}, s.nms[0].id, ev)
+	s.assertEqualReceiveEvent(protoBlockRequest, &BlockRequest{0x10000, 2}, s.nms[0].ID, ev)
 
-	s.respondBlockRequest(s.phs[2], 0x10000, s.rawBlocks[2], s.votes[3], s.nms[0].id)
+	s.respondBlockRequest(s.phs[2], 0x10000, s.rawBlocks[2], s.votes[3], s.nms[0].ID)
 	s.assertNoEvent(s.cb.ch)
 
 	ev = <-s.reactors[2].ch
-	s.assertEqualReceiveEvent(protoBlockRequest, &BlockRequest{0x10001, 3}, s.nms[0].id, ev)
+	s.assertEqualReceiveEvent(protoBlockRequest, &BlockRequest{0x10001, 3}, s.nms[0].ID, ev)
 
-	s.respondBlockRequest(s.phs[2], 0x10001, s.rawBlocks[3], s.votes[4], s.nms[0].id)
+	s.respondBlockRequest(s.phs[2], 0x10001, s.rawBlocks[3], s.votes[4], s.nms[0].ID)
 	s.assertNoEvent(s.cb.ch)
 
-	s.respondBlockRequest(s.phs[1], 0x10000, s.rawBlocks[1], s.votes[2], s.nms[0].id)
+	s.respondBlockRequest(s.phs[1], 0x10000, s.rawBlocks[1], s.votes[2], s.nms[0].ID)
 
 	ev2 := <-s.cb.ch
 	s.assertBlockEvent(s.rawBlocks[1], ev2)

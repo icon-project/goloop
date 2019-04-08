@@ -2,6 +2,7 @@ package fastsync
 
 import (
 	"crypto/rand"
+	"github.com/icon-project/goloop/consensus/internal/test"
 	"testing"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -16,8 +17,8 @@ const tNumBlocks = tNumShortBlocks + tNumLongBlocks
 type serverTestSetUp struct {
 	*fastSyncTestSetUp
 
-	nm  *tNetworkManager
-	nm2 *tNetworkManager
+	nm  *test.NetworkManager
+	nm2 *test.NetworkManager
 	r2  *tReactor
 	ph2 module.ProtocolHandler
 	m   Manager
@@ -32,9 +33,9 @@ func createABytes(l int) []byte {
 func newServerTestSetUp(t *testing.T) *serverTestSetUp {
 	s := &serverTestSetUp{}
 	s.fastSyncTestSetUp = newFastSyncTestSetUp(t)
-	s.nm = newTNetworkManager()
-	s.nm2 = newTNetworkManager()
-	s.nm.join(s.nm2)
+	s.nm = test.NewNetworkManager()
+	s.nm2 = test.NewNetworkManager()
+	s.nm.Join(s.nm2)
 	s.r2 = newTReactor()
 	var err error
 	s.ph2, err = s.nm2.RegisterReactorForStreams("fastsync", s.r2, protocols, configFastSyncPriority)
@@ -50,7 +51,7 @@ func (s *serverTestSetUp) sendBlockRequest(ph module.ProtocolHandler, rid uint32
 		RequestID: rid,
 		Height:    height,
 	})
-	err := s.ph2.Unicast(protoBlockRequest, bs, s.nm.id)
+	err := s.ph2.Unicast(protoBlockRequest, bs, s.nm.ID)
 	assert.Nil(s.t, err)
 }
 
@@ -64,7 +65,7 @@ func TestServer_Success(t *testing.T) {
 	s.sendBlockRequest(s.ph2, 0, 0)
 	ev := <-s.r2.ch
 	md := &BlockMetadata{0, int32(len(s.rawBlocks[0])), s.votes[1]}
-	s.assertEqualReceiveEvent(protoBlockMetadata, md, s.nm.id, ev)
+	s.assertEqualReceiveEvent(protoBlockMetadata, md, s.nm.ID, ev)
 	recv := 0
 	data := make([]byte, md.BlockLength)
 	for recv < int(md.BlockLength) {
