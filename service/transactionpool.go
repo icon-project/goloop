@@ -121,8 +121,9 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 			defer tp.mutex.Unlock()
 			for _, tx := range txs {
 				if tx != nil {
-					tp.list.RemoveTx(tx)
-					metric.RecordOnDropTx(tp.metric, len(tx.Bytes()))
+					if tp.list.RemoveTx(tx) {
+						metric.RecordOnDropTx(tp.metric, len(tx.Bytes()))
+					}
 				}
 			}
 		}(txs[0:invalidNum])
@@ -173,7 +174,8 @@ func (tp *TransactionPool) RemoveList(txs module.TransactionList) {
 			log.Printf("Failed to get transaction from iterator\n")
 			continue
 		}
-		tp.list.RemoveTx(t)
-		metric.RecordOnRemoveTx(tp.metric, len(t.Bytes()))
+		if tp.list.RemoveTx(t) {
+			metric.RecordOnRemoveTx(tp.metric, len(t.Bytes()))
+		}
 	}
 }
