@@ -12,7 +12,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/consensus/fastsync"
+	"github.com/icon-project/goloop/consensus/internal/fastsync"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/server/metric"
