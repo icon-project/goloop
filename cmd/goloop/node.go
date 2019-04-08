@@ -286,11 +286,22 @@ func NewNode(
 	}
 	for _, f := range fs {
 		if f.IsDir() {
-			cfgFile := path.Join(cfg.NodeDir, f.Name(), ChainConfigFileName)
+			chainPath := path.Join(cfg.NodeDir, f.Name())
+			cfgFile := path.Join(chainPath, ChainConfigFileName)
 			ccfg, err := n.loadChainConfig(cfgFile)
 			if err != nil {
 				log.Panicf("Fail to load chain config %s err=%+v", cfgFile, err)
 			}
+			gsFile := path.Join(chainPath, ChainGenesisZipFileName)
+			genesis, err := ioutil.ReadFile(gsFile)
+			if err != nil {
+				log.Panicf("Fail to read chain genesis zip file %s err=%+v", gsFile, err)
+			}
+			gs, err := chain.NewGenesisStorage(genesis)
+			if err != nil {
+				log.Panicf("Fail to parse chain genesis zip file %s err=%+v", gsFile, err)
+			}
+			ccfg.GenesisStorage = gs
 			if _, err := n._add(ccfg); err != nil {
 				log.Panicf("Fail to join chain %v err=%+v", ccfg, err)
 			}
