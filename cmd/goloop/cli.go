@@ -15,6 +15,7 @@ import (
 	"path"
 	"strconv"
 
+	"github.com/icon-project/goloop/chain"
 	"github.com/spf13/cobra"
 )
 
@@ -68,12 +69,11 @@ func (c *UnixDomainSockHttpClient) Do(method, url string, reqPtr, respPtr interf
 
 	//if reqB != nil {
 	//	log.Println("Using json header")
-		req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json")
 	//} else {
 	//	log.Println("Using text header")
 	//	req.Header.Set("Accept","*/*")
 	//}
-
 
 	resp, err = c._do(req)
 	if err != nil {
@@ -97,6 +97,31 @@ func (c *UnixDomainSockHttpClient) Post(url string) (resp *http.Response, err er
 func (c *UnixDomainSockHttpClient) PostWithJson(url string, ptr interface{}) (resp *http.Response, err error) {
 	return c.Do(http.MethodPost, url, ptr, nil)
 }
+
+func (c *UnixDomainSockHttpClient) PostWithReader(url string, ptr interface{}, fieldname string, r io.Reader) (resp *http.Response, err error) {
+	buf := &bytes.Buffer{}
+	mw := multipart.NewWriter(buf)
+	if err = MultipartCopy(mw, fieldname, r); err != nil {
+		return
+	}
+	if err = MultipartJson(mw, "json", ptr); err != nil {
+		return
+	}
+	if err = mw.Close(); err != nil {
+		return
+	}
+	req, err := http.NewRequest(http.MethodPost, "http://localhost"+url, buf)
+	if err != nil {
+		return
+	}
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	resp, err = c._do(req)
+	if err != nil {
+		return
+	}
+	return
+}
+
 func (c *UnixDomainSockHttpClient) PostWithFile(url string, ptr interface{}, fieldname, filename string) (resp *http.Response, err error) {
 	buf := &bytes.Buffer{}
 	mw := multipart.NewWriter(buf)
@@ -122,6 +147,21 @@ func (c *UnixDomainSockHttpClient) PostWithFile(url string, ptr interface{}, fie
 }
 func (c *UnixDomainSockHttpClient) Delete(url string) (resp *http.Response, err error) {
 	return c.Do(http.MethodDelete, url, nil, nil)
+}
+
+func MultipartCopy(mw *multipart.Writer, fieldname string, r io.Reader) error {
+	h := make(textproto.MIMEHeader)
+	h.Set("Content-Disposition",
+		fmt.Sprintf(`form-data; name="%s"; filename="blob"`, fieldname))
+	h.Set("Content-Type", "application/zip")
+	pw, err := mw.CreatePart(h)
+	if err != nil {
+		return err
+	}
+	if _, err = io.Copy(pw, r); err != nil {
+		return err
+	}
+	return nil
 }
 
 func MultipartFile(mw *multipart.Writer, fieldname, filename string) error {
@@ -169,8 +209,8 @@ func JsonIntend(v interface{}) (string, error) {
 }
 
 var (
-	genesisZip string
-	joinChainParam JoinChainParam
+	genesisZip, genesisDir string
+	joinChainParam         JoinChainParam
 )
 
 func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
@@ -202,7 +242,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 	joinCmd := &cobra.Command{
 		Use:   "join NID",
 		Short: "Join chain",
-		Args: cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			hc := NewUnixDomainSockHttpClient(cfg.CliSocket)
 			var err error
@@ -211,7 +251,23 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 				return
 			}
 
-			resp, err := hc.PostWithFile(UrlChain, &joinChainParam,"genesisZip",genesisZip)
+			var resp *http.Response
+
+			if len(genesisZip) > 0 {
+				resp, err = hc.PostWithFile(UrlChain, &joinChainParam, "genesisZip", genesisZip)
+			} else if len(genesisDir) > 0 {
+				buf := bytes.NewBuffer(nil)
+				err = chain.WriteGenesisStorageFromDirectory(buf, genesisDir)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+				resp, err = hc.PostWithReader(UrlChain, &joinChainParam, "genesisZip", buf)
+			} else {
+				fmt.Println("There is no genesis")
+				return
+			}
+
 			if err != nil {
 				fmt.Println(err, resp)
 				return
@@ -225,17 +281,18 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 		},
 	}
 	joinCmd.Flags().StringVar(&genesisZip, "genesis", "", "Genesis Zip filepath")
+	joinCmd.Flags().StringVar(&genesisDir, "genesis_dir", "", "Genesis template directory")
 	joinCmd.Flags().StringVar(&joinChainParam.SeedAddr, "seed", "", "Ip-port of Seed")
 	joinCmd.Flags().UintVar(&joinChainParam.Role, "role", 2, "[0:None, 1:Seed, 2:Validator, 3:Both]")
 
 	leaveCmd := &cobra.Command{
-		Use:   "leave NID",
-		Short: "Leave chain",
-		Args: cobra.ExactArgs(1),
+		Use:                   "leave NID",
+		Short:                 "Leave chain",
+		Args:                  cobra.ExactArgs(1),
 		DisableFlagsInUseLine: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			hc := NewUnixDomainSockHttpClient(cfg.CliSocket)
-			resp, err := hc.Delete(UrlChain+"/"+args[0])
+			resp, err := hc.Delete(UrlChain + "/" + args[0])
 			if err != nil {
 				fmt.Println(err, resp)
 				return
@@ -250,9 +307,9 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 	}
 	cmd.AddCommand(joinCmd, leaveCmd)
 	inspectCmd := &cobra.Command{
-		Use:   "inspect NID",
-		Short: "Inspect chain",
-		Args: cobra.ExactArgs(1),
+		Use:                   "inspect NID",
+		Short:                 "Inspect chain",
+		Args:                  cobra.ExactArgs(1),
 		DisableFlagsInUseLine: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			hc := NewUnixDomainSockHttpClient(cfg.CliSocket)
@@ -271,13 +328,13 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 		},
 	}
 	startCmd := &cobra.Command{
-		Use:   "start NID",
-		Short: "Chain start",
-		Args: cobra.ExactArgs(1),
+		Use:                   "start NID",
+		Short:                 "Chain start",
+		Args:                  cobra.ExactArgs(1),
 		DisableFlagsInUseLine: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			hc := NewUnixDomainSockHttpClient(cfg.CliSocket)
-			resp, err := hc.Post(UrlChain+"/"+args[0]+"/start")
+			resp, err := hc.Post(UrlChain + "/" + args[0] + "/start")
 			if err != nil {
 				fmt.Println(err, resp)
 				return
@@ -291,13 +348,13 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 		},
 	}
 	stopCmd := &cobra.Command{
-		Use:   "stop NID",
-		Short: "Chain stop",
-		Args: cobra.ExactArgs(1),
+		Use:                   "stop NID",
+		Short:                 "Chain stop",
+		Args:                  cobra.ExactArgs(1),
 		DisableFlagsInUseLine: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			hc := NewUnixDomainSockHttpClient(cfg.CliSocket)
-			resp, err := hc.Post(UrlChain+"/"+args[0]+"/stop")
+			resp, err := hc.Post(UrlChain + "/" + args[0] + "/stop")
 			if err != nil {
 				fmt.Println(err, resp)
 				return
@@ -316,8 +373,8 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 
 func NewSystemCmd(cfg *GoLoopConfig) *cobra.Command {
 	c := &cobra.Command{
-		Use:   "system",
-		Short: "System info",
+		Use:                   "system",
+		Short:                 "System info",
 		DisableFlagsInUseLine: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			hc := NewUnixDomainSockHttpClient(cfg.CliSocket)

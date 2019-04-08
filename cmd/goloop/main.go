@@ -70,7 +70,7 @@ var (
 
 	cfg                          GoLoopConfig
 	keyStoreFile, keyStoreSecret string
-	saveFile, saveKeyStore       string
+	saveKeyStore                 string
 
 	cpuProfile, memProfile string
 
@@ -145,22 +145,6 @@ func initConfig() {
 		}
 	}
 
-	if saveFile != "" {
-		f, err := os.OpenFile(saveFile,
-			os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
-		if err != nil {
-			log.Panicf("Fail to open file=%s err=%+v", cfg.fileName, err)
-		}
-
-		enc := json.NewEncoder(f)
-		enc.SetIndent("", "  ")
-		if err := enc.Encode(&cfg); err != nil {
-			log.Panicf("Fail to generate JSON for %+v", cfg)
-		}
-		f.Close()
-		os.Exit(0)
-	}
-
 	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
 	prefix := fmt.Sprintf("%x|--|", w.Address().ID()[0:2])
 	log.SetPrefix(prefix)
@@ -221,39 +205,59 @@ func initConfig() {
 func main() {
 	cobra.OnInitialize(initConfig)
 	rootCmd := &cobra.Command{Use: "goloop"}
-	rootFlags := rootCmd.Flags()
-	rootCmd.PersistentFlags().VarP(&cfg, "config", "c", "Parsing configuration file")
-	rootCmd.PersistentFlags().StringVarP(&cfg.CliSocket, "node_sock", "s", "",
+	rootPFlags := rootCmd.PersistentFlags()
+	rootPFlags.VarP(&cfg, "config", "c", "Parsing configuration file")
+	rootPFlags.StringVarP(&cfg.CliSocket, "node_sock", "s", "",
 		"Node Command Line Interface socket path(default $GOLOOP_SOCK=[node_dir]/cli.sock)")
-	rootFlags.StringVar(&saveFile, "save", "", "File path for storing current configuration(it exits after save)")
-	rootFlags.StringVar(&saveKeyStore, "save_key_store", "", "File path for storing current KeyStore")
-	rootFlags.StringVar(&cfg.P2PAddr, "p2p", "127.0.0.1:8080", "Advertise ip-port of P2P")
-	rootFlags.StringVar(&cfg.P2PListenAddr, "p2p_listen", "", "Listen ip-port of P2P")
-	rootFlags.StringVar(&cfg.RPCAddr, "rpc", ":9080", "Listen ip-port of JSON-RPC")
-	rootFlags.StringVar(&cfg.EESocket, "ee_socket", "", "Execution engine socket path")
-	rootFlags.StringVar(&keyStoreFile, "key_store", "", "KeyStore file for w")
-	rootFlags.StringVar(&keyStoreSecret, "key_secret", "", "Secret(password) file for KeyStore")
-	rootFlags.StringVar(&cfg.KeyStorePass, "key_password", "", "Password for the KeyStore file")
-	rootFlags.StringVar(&cpuProfile, "cpuprofile", "", "CPU Profiling data file")
-	rootFlags.StringVar(&memProfile, "memprofile", "", "Memory Profiling data file")
-	rootFlags.StringVar(&cfg.NodeDir, "node_dir", "", "Node data directory(default:.chain/<address>)")
-	rootFlags.IntVar(&cfg.EEInstances, "ee_instances", 1, "Number of execution engines")
-	rootFlags.StringVar(&cfg.DBType, "db_type", "goleveldb", "Name of database system(*badgerdb, goleveldb, boltdb, mapdb)")
-	rootFlags.IntVar(&cfg.ConcurrencyLevel, "concurrency", 1, "Maximum number of executors to use for concurrency")
+	rootPFlags.StringVar(&cpuProfile, "cpuprofile", "", "CPU Profiling data file")
+	rootPFlags.StringVar(&memProfile, "memprofile", "", "Memory Profiling data file")
+
+	serverCmd := &cobra.Command{Use: "server", Short: "Server management"}
+	serverFlags := serverCmd.PersistentFlags()
+	serverFlags.StringVar(&cfg.P2PAddr, "p2p", "127.0.0.1:8080", "Advertise ip-port of P2P")
+	serverFlags.StringVar(&cfg.P2PListenAddr, "p2p_listen", "", "Listen ip-port of P2P")
+	serverFlags.StringVar(&cfg.RPCAddr, "rpc", ":9080", "Listen ip-port of JSON-RPC")
+	serverFlags.StringVar(&cfg.EESocket, "ee_socket", "", "Execution engine socket path")
+	serverFlags.StringVar(&keyStoreFile, "key_store", "", "KeyStore file for w")
+	serverFlags.StringVar(&keyStoreSecret, "key_secret", "", "Secret(password) file for KeyStore")
+	serverFlags.StringVar(&cfg.KeyStorePass, "key_password", "", "Password for the KeyStore file")
+	serverFlags.StringVar(&cfg.NodeDir, "node_dir", "", "Node data directory(default:.chain/<address>)")
+	serverFlags.IntVar(&cfg.EEInstances, "ee_instances", 1, "Number of execution engines")
+	serverFlags.StringVar(&cfg.DBType, "db_type", "goleveldb", "Name of database system(*badgerdb, goleveldb, boltdb, mapdb)")
+	serverFlags.IntVar(&cfg.ConcurrencyLevel, "concurrency", 1, "Maximum number of executors to use for concurrency")
+
+	saveCmd := &cobra.Command{
+		Use:   "save [file]",
+		Short: "Save configuration",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			f, err := os.OpenFile(args[0],
+				os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+			if err != nil {
+				log.Panicf("Fail to open file=%s err=%+v", cfg.fileName, err)
+			}
+			enc := json.NewEncoder(f)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(&cfg); err != nil {
+				log.Panicf("Fail to generate JSON for %+v", cfg)
+			}
+			f.Close()
+		},
+	}
+	saveCmd.Flags().StringVar(&saveKeyStore, "save_key_store", "", "File path for storing current KeyStore")
+	serverCmd.AddCommand(saveCmd)
 
 	startCmd := &cobra.Command{
 		Use:   "start",
-		Short: "Start goloop",
+		Short: "Start server",
 	}
 	startCmd.Run = func(cmd *cobra.Command, args []string) {
 		logoLines := []string{
-			" ____  ___  _     ___   ___  ____",
-			"/ ___|/ _ \\| |   / _ \\ / _ \\|  _ \\",
+			"  ____  ___  _     ___   ___  ____",
+			" / ___|/ _ \\| |   / _ \\ / _ \\|  _ \\",
 			"| |  _| | | | |  | | | | | | | |_) |",
 			"| |_| | |_| | |__| |_| | |_| |  __/",
-			"\\____|\\___/|_____\\___/ \\___/|_|",
-			"",
-			//"generated by http://patorjk.com/software/taag/#p=display&f=Ivrit&t=GOLOOP",
+			" \\____|\\___/|_____\\___/ \\___/|_|",
 		}
 		for _, l := range logoLines {
 			log.Println(l)
@@ -294,9 +298,10 @@ func main() {
 		n := NewNode(w, nt, srv, pm, &cfg.NodeConfig)
 		n.Start()
 	}
+	serverCmd.AddCommand(startCmd)
 
 	chainCmd := NewChainCmd(&cfg)
 	systemCmd := NewSystemCmd(&cfg)
-	rootCmd.AddCommand(startCmd, chainCmd, systemCmd)
+	rootCmd.AddCommand(serverCmd, chainCmd, systemCmd)
 	rootCmd.Execute()
 }
