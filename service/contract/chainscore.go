@@ -191,7 +191,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			scoreapi.FlagReadOnly, 0,
 			nil,
 			[]scoreapi.DataType{
-				scoreapi.String,
+				scoreapi.Dict,
 			},
 		},
 		{scoreapi.Function, "getMaxStepLimit",
@@ -700,26 +700,36 @@ func (s *ChainScore) Ex_getStepCost(t string) (int64, error) {
 	return stepCostDB.Get(t).Int64(), nil
 }
 
-func (s *ChainScore) Ex_getStepCosts() (string, error) {
+func (s *ChainScore) Ex_getStepCosts() (map[string]interface{}, error) {
 	as := s.cc.GetAccountState(state.SystemID)
 
-	stepCosts := make(map[string]string)
+	stepCosts := make(map[string]interface{})
 	stepTypes := scoredb.NewArrayDB(as, state.VarStepTypes)
 	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
 	tcount := stepTypes.Size()
 	for i := 0; i < tcount; i++ {
 		tname := stepTypes.Get(i).String()
-		stepCosts[tname] = fmt.Sprintf("%d", stepCostDB.Get(tname).Int64())
+		stepCosts[tname] = stepCostDB.Get(tname).Int64()
 	}
-	result, err := json.Marshal(stepCosts)
-	if err != nil {
-		return "", err
-	}
-	return string(result), nil
+	return stepCosts, nil
 }
 
 func (s *ChainScore) Ex_getMaxStepLimit(contextType string) (int64, error) {
 	as := s.cc.GetAccountState(state.SystemID)
+	stepLimitTypes := scoredb.NewArrayDB(as, state.VarStepLimitTypes)
+	tcount := stepLimitTypes.Size()
+	found := false
+	for i := 0; i < tcount; i++ {
+		if stepLimitTypes.Get(i).String() == contextType {
+			found = true
+			break
+		}
+	}
+
+	if found == false {
+		return 0, nil
+	}
+
 	stepLimitDB := scoredb.NewDictDB(as, state.VarStepLimit, 1)
 	return stepLimitDB.Get(contextType).Int64(), nil
 }

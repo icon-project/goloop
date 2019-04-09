@@ -201,6 +201,7 @@ func Invoke(score SystemScore, method string, paramObj *codec.TypedObj) (status 
 		if i+1 == resultLen { // last output
 			if err := v.Interface(); err != nil {
 				log.Printf("Failed to invoke %s on chain score. %s\n", method, err.(error))
+				status = module.StatusSystemError
 			}
 			continue
 		} else {
