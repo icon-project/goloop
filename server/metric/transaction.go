@@ -2,11 +2,11 @@ package metric
 
 import (
 	"context"
+	"log"
 	"strconv"
 	"sync"
 	"time"
 
-	"github.com/labstack/gommon/log"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
