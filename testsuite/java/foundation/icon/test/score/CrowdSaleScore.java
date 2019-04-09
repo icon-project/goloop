@@ -23,6 +23,8 @@ import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
+import foundation.icon.test.common.ResultTimeoutException;
+import foundation.icon.test.common.TransactionFailureException;
 import foundation.icon.test.common.Utils;
 
 import java.io.IOException;
@@ -36,7 +38,7 @@ public class CrowdSaleScore extends Score {
 
     public static CrowdSaleScore mustDeploy(IconService service, Wallet wallet, BigInteger nid,
                                             BigInteger goalInIcx, Address tokenScore, int durationInBlocks)
-            throws IOException, TransactionFailureException, TimeoutException
+            throws ResultTimeoutException, TransactionFailureException, IOException
     {
         RpcObject params = new RpcObject.Builder()
                 .put("_fundingGoalInIcx", new RpcValue(goalInIcx))
@@ -54,7 +56,8 @@ public class CrowdSaleScore extends Score {
         super(iconService, scoreAddress, nid);
     }
 
-    public TransactionResult checkGoalReached(Wallet wallet) throws IOException, TimeoutException {
+    public TransactionResult checkGoalReached(Wallet wallet)
+            throws ResultTimeoutException, IOException {
         return invokeAndWaitResult(wallet,
                 "checkGoalReached", null, null, STEPS_DEFAULT);
     }
@@ -74,7 +77,7 @@ public class CrowdSaleScore extends Score {
         }
     }
 
-    public TransactionResult safeWithdrawal(Wallet wallet) throws IOException, TimeoutException {
+    public TransactionResult safeWithdrawal(Wallet wallet) throws ResultTimeoutException , IOException {
         return invokeAndWaitResult(wallet, "safeWithdrawal", null, null, STEPS_DEFAULT);
     }
 }

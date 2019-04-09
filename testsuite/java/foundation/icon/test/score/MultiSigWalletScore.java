@@ -8,11 +8,12 @@ import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
+import foundation.icon.test.common.ResultTimeoutException;
+import foundation.icon.test.common.TransactionFailureException;
 import foundation.icon.test.common.Utils;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.util.concurrent.TimeoutException;
 
 public class MultiSigWalletScore extends Score {
     private static final BigInteger STEPS = BigInteger.valueOf(10000000);
@@ -20,7 +21,7 @@ public class MultiSigWalletScore extends Score {
 
     public static MultiSigWalletScore mustDeploy(IconService service, Wallet wallet, BigInteger nid,
                                                  Address[] walletOwners, int required)
-            throws IOException, TransactionFailureException, TimeoutException {
+            throws IOException, TransactionFailureException, ResultTimeoutException {
         StringBuffer buf = new StringBuffer();
         for (int i = 0; i < walletOwners.length; i++) {
             buf.append(walletOwners[i].toString()).append(",");
@@ -41,7 +42,7 @@ public class MultiSigWalletScore extends Score {
         super(iconService, scoreAddress, nid);
     }
 
-    public TransactionResult submitIcxTransaction(Wallet fromWallet, Address dest, long value, String description) throws IOException, TimeoutException {
+    public TransactionResult submitIcxTransaction(Wallet fromWallet, Address dest, long value, String description) throws IOException, ResultTimeoutException {
         BigInteger icx = IconAmount.of(BigInteger.valueOf(value), IconAmount.Unit.ICX).toLoop();
         RpcObject params = new RpcObject.Builder()
                 .put("_destination", new RpcValue(dest))
@@ -51,14 +52,14 @@ public class MultiSigWalletScore extends Score {
         return invokeAndWaitResult(fromWallet, "submitTransaction", params, null, STEPS);
     }
 
-    public TransactionResult confirmTransaction(Wallet fromWallet, BigInteger txId) throws IOException, TimeoutException {
+    public TransactionResult confirmTransaction(Wallet fromWallet, BigInteger txId) throws IOException, ResultTimeoutException {
         RpcObject params = new RpcObject.Builder()
                 .put("_transactionId", new RpcValue(txId))
                 .build();
         return invokeAndWaitResult(fromWallet, "confirmTransaction", params, null, STEPS);
     }
 
-    public TransactionResult addWalletOwner(Wallet fromWallet, Address newOwner, String description) throws IOException, TimeoutException {
+    public TransactionResult addWalletOwner(Wallet fromWallet, Address newOwner, String description) throws IOException, ResultTimeoutException {
         String methodParams = String.format("[{\"name\": \"_walletOwner\", \"type\": \"Address\", \"value\": \"%s\"}]", newOwner);
         RpcObject params = new RpcObject.Builder()
                 .put("_destination", new RpcValue(scoreAddress))
@@ -69,7 +70,7 @@ public class MultiSigWalletScore extends Score {
         return invokeAndWaitResult(fromWallet, "submitTransaction", params, null, STEPS);
     }
 
-    public TransactionResult replaceWalletOwner(Wallet fromWallet, Address oldOwner, Address newOwner, String description) throws IOException, TimeoutException {
+    public TransactionResult replaceWalletOwner(Wallet fromWallet, Address oldOwner, Address newOwner, String description) throws IOException, ResultTimeoutException {
         String methodParams = String.format(
                 "[{\"name\": \"_walletOwner\", \"type\": \"Address\", \"value\": \"%s\"},"
                         + "{\"name\": \"_newWalletOwner\", \"type\": \"Address\", \"value\": \"%s\"}]", oldOwner, newOwner);
@@ -82,7 +83,7 @@ public class MultiSigWalletScore extends Score {
         return invokeAndWaitResult(fromWallet, "submitTransaction", params, null, STEPS);
     }
 
-    public TransactionResult changeRequirement(Wallet fromWallet, int required, String description) throws IOException, TimeoutException {
+    public TransactionResult changeRequirement(Wallet fromWallet, int required, String description) throws IOException, ResultTimeoutException {
         String methodParams = String.format("[{\"name\": \"_required\", \"type\": \"int\", \"value\": \"%d\"}]", required);
         RpcObject params = new RpcObject.Builder()
                 .put("_destination", new RpcValue(scoreAddress))

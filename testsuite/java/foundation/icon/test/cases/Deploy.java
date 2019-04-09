@@ -2,19 +2,23 @@ package foundation.icon.test.cases;
 
 import foundation.icon.icx.*;
 import foundation.icon.icx.data.Address;
+import foundation.icon.icx.data.Bytes;
+import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
+import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
-import foundation.icon.test.common.Env;
-import foundation.icon.test.common.Utils;
+import foundation.icon.test.common.*;
+import foundation.icon.test.score.GovScore;
+import foundation.icon.test.score.HelloWorld;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.math.BigInteger;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+
+import static junit.framework.TestCase.fail;
 
 /*
 test cases
@@ -25,37 +29,179 @@ test cases
 4. content
  - no root file.
  - not zip
- - too large
- - takes too long time for uncompress
-5. sendTransaction with invalid/valid params
-6. sendTransaction for update with invalid score address
-7. change destination url.
+ - too large - takes too long time for uncompress 5. sendTransaction with invalid/valid params 6. sendTransaction for update with invalid score address 7. change destination url.
 8. sendTransaction with invalid signature
  */
 public class Deploy {
-    private String contentPath;
-    private KeyWallet governor;
-    private KeyWallet owner;
-    private boolean audit;
-    private final IconService iconService;
-    private final Env.Chain chain;
-
-    public static final Address ZERO_ADDRESS = new Address("cx0000000000000000000000000000000000000000");
-    public Deploy() {
-        Env.Node node = Env.nodes[0];
-        chain = Env.nodes[0].chains[0];
-        iconService = new IconService(new HttpProvider(node.endpointUrl));
-    }
+    private static KeyWallet govWallet;
+    private static KeyWallet godWallet;
+    private static IconService iconService;
+    private static Env.Chain chain;
+    private static GovScore govScore;
+    private static final BigInteger stepCostCC = BigInteger.valueOf(10);
+    private static final BigInteger stepPrice = BigInteger.valueOf(10);
+    private static final BigInteger invokeMaxStepLimit = BigInteger.valueOf(100000);
+    private static BigInteger defStepCostCC;
+    private static BigInteger defMaxStepLimit;
+    private static BigInteger defStepPrice;
 
     @BeforeClass
-    public static void initDeploy() {
-
+    public static void init() throws Exception {
+        Env.Node node = Env.nodes[0];
+        chain = Env.nodes[0].chains[0];
+        godWallet = chain.godWallet;
+        iconService = new IconService(new HttpProvider(node.endpointUrl));
+        govWallet = KeyWallet.create();
+        govScore = new GovScore(iconService, Env.nodes[0].chains[0].networkId, govWallet);
+        initDeploy();
     }
 
-    public void notEnoughBalance() {
+    public static void initDeploy() throws Exception {
+        RpcObject params = new RpcObject.Builder()
+                .put("contextType", new RpcValue("invoke"))
+                .build();
+        defMaxStepLimit = Utils.icxCall(iconService, BigInteger.valueOf(0), govWallet, Constants.CHAINSCORE_ADDRESS,
+                "getMaxStepLimit", params).asInteger();
+
+
+        defStepCostCC = Utils.icxCall(iconService, BigInteger.valueOf(0), govWallet, Constants.CHAINSCORE_ADDRESS,
+                "getStepCosts", null).asObject().getItem("contractCreate").asInteger();
+
+        defStepPrice = Utils.icxCall(iconService, BigInteger.valueOf(0), govWallet, Constants.CHAINSCORE_ADDRESS,
+                "getStepPrice", null).asInteger();
+        System.out.format("%s, %s, %s\n", defMaxStepLimit.toString(), defStepCostCC.toString(), defStepPrice.toString());
+
+
+        Bytes txHash = Utils.transfer(iconService, godWallet, govWallet.getAddress(), 9999999);
+        try {
+            TransactionResult result = Utils.getTransactionResult(iconService, txHash, 5000);
+            System.out.println("result : " + result);
+        }
+        catch (ResultTimeoutException ex) {
+            throw ex;
+        }
+        System.out.format("govWallet addr : %s\n", govWallet.getAddress());
+        BigInteger bal = iconService.getBalance(govWallet.getAddress()).execute();
+        System.out.format("govWallet balance : %s\n", bal.toString());
+
+        govScore.setMaxStepLimit("invoke", invokeMaxStepLimit);
+        govScore.setStepCost("contractCreate", stepCostCC);
+        govScore.setStepPrice(stepPrice);
     }
 
-    public void notEnoughStepLimit() {
+    @AfterClass
+    public static void destroy() throws Exception {
+        govScore.setMaxStepLimit("invoke", defMaxStepLimit);
+        govScore.setStepCost("contractCreate", defStepCostCC);
+        govScore.setStepPrice(defStepPrice);
+    }
+
+    @Test
+    public void notEnoughBalance() throws Exception {
+        System.out.format("%s, %s, %s\n", defMaxStepLimit.toString(), defStepCostCC.toString(), defStepPrice.toString());
+        KeyWallet owner = KeyWallet.create();
+        BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
+        if(bal.compareTo(BigInteger.valueOf(0)) != 0) {
+            throw new Exception();
+        }
+
+        try {
+            HelloWorld.mustDeploy(iconService, owner, Env.nodes[0].chains[0].networkId);
+        }
+        catch(ResultTimeoutException ex) {
+            return;
+        }
+        throw new Exception();
+    }
+
+    @Test
+    public void notEnoughStepLimit() throws Exception {
+        System.out.format("%s, %s, %s\n", defMaxStepLimit.toString(), defStepCostCC.toString(), defStepPrice.toString());
+        KeyWallet owner = KeyWallet.create();
+        BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
+        if(bal.compareTo(BigInteger.valueOf(0)) != 0) {
+            throw new Exception();
+        }
+
+        long value = 10;
+        Utils.transfer(iconService, godWallet, owner.getAddress(), value);
+        while(true) {
+            bal = iconService.getBalance(owner.getAddress()).execute();
+            if(bal.compareTo(BigInteger.valueOf(value)) == 0) {
+                break;
+            }
+        }
+
+        try {
+            HelloWorld.mustDeploy(iconService, owner, Env.nodes[0].chains[0].networkId, 1);
+        }
+        catch(TransactionFailureException ex) {
+            return;
+        }
+        throw new Exception();
+    }
+
+    @Test
+    public void installWithInvalidParams() throws Exception {
+        KeyWallet owner = KeyWallet.create();
+        BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
+        if(bal.compareTo(BigInteger.valueOf(0)) != 0) {
+            throw new Exception();
+        }
+
+        long value = 100000000;
+        Utils.transfer(iconService, godWallet, owner.getAddress(), value);
+        while(true) {
+            bal = iconService.getBalance(owner.getAddress()).execute();
+            if(bal.compareTo(BigInteger.valueOf(value)) == 0) {
+                break;
+            }
+        }
+        RpcObject params = new RpcObject.Builder()
+                .put("invalidParam", new RpcValue("invalid"))
+                .build();
+        try {
+            HelloWorld.mustDeploy(iconService, owner, params, Env.nodes[0].chains[0].networkId, -1);
+        }
+        catch(TransactionFailureException ex) {
+            return;
+        }
+        throw new Exception();
+    }
+
+    @Test
+    public void updateWithInvalidParams() throws Exception {
+        KeyWallet owner = KeyWallet.create();
+        BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
+        if(bal.compareTo(BigInteger.valueOf(0)) != 0) {
+            throw new Exception();
+        }
+        long value = 999999999;
+        Utils.transfer(iconService, godWallet, owner.getAddress(), value);
+        while(true) {
+            bal = iconService.getBalance(owner.getAddress()).execute();
+            if(bal.compareTo(BigInteger.valueOf(value)) == 0) {
+                break;
+            }
+        }
+
+        HelloWorld score = HelloWorld.mustDeploy(iconService, owner, Env.nodes[0].chains[0].networkId, 10000);
+
+        score.invokeHello(owner);
+
+        RpcObject params = new RpcObject.Builder()
+                .put("invalidParam", new RpcValue("invalid"))
+                .build();
+        try {
+            score.update(iconService, owner, params, Env.nodes[0].chains[0].networkId);
+        }
+        catch (TransactionFailureException ex) {
+            return;
+        }
+        fail();
+    }
+
+    public void updateWithInvalidScoreAddress() {
     }
 
     public void invalidContentNoRootFile() {
@@ -65,14 +211,5 @@ public class Deploy {
     }
 
     public void invalidContentTooBig() {
-    }
-
-    public void installWithInvalidParams() {
-    }
-
-    public void updateWithInvalidParams() {
-    }
-
-    public void updateWithInvalidScoreAddress() {
     }
 }

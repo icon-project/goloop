@@ -7,9 +7,7 @@ import foundation.icon.icx.data.IconAmount;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
-import foundation.icon.test.common.Constants;
-import foundation.icon.test.common.Env;
-import foundation.icon.test.common.Utils;
+import foundation.icon.test.common.*;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -23,7 +21,7 @@ public class SampleTokenScore extends Score {
 
     public static SampleTokenScore mustDeploy(IconService service, Wallet wallet, BigInteger nid,
                                               BigInteger initialSupply, int decimals)
-            throws IOException, TransactionFailureException, TimeoutException
+            throws ResultTimeoutException, TransactionFailureException, IOException
     {
         RpcObject params = new RpcObject.Builder()
                 .put("_initialSupply", new RpcValue(initialSupply))

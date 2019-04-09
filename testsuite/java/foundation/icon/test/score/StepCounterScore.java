@@ -8,6 +8,8 @@ import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
+import foundation.icon.test.common.ResultTimeoutException;
+import foundation.icon.test.common.TransactionFailureException;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -18,7 +20,7 @@ public class StepCounterScore extends Score {
     protected final static BigInteger STEPS = BigInteger.valueOf(3).multiply(BigInteger.TEN.pow(6));
 
     public static StepCounterScore mustDeploy(IconService service, Wallet wallet, BigInteger nid)
-            throws IOException, TransactionFailureException, TimeoutException
+            throws IOException, TransactionFailureException, ResultTimeoutException
     {
         return new StepCounterScore(
                 service,
@@ -31,12 +33,12 @@ public class StepCounterScore extends Score {
         super(service, target, nid);
     }
 
-    public TransactionResult increaseStep(Wallet wallet) throws IOException, TimeoutException {
+    public TransactionResult increaseStep(Wallet wallet) throws ResultTimeoutException, IOException {
         return this.invokeAndWaitResult(wallet,
                 "increaseStep", null, null, STEPS);
     }
 
-    public TransactionResult setStep(Wallet wallet, BigInteger step) throws IOException, TimeoutException {
+    public TransactionResult setStep(Wallet wallet, BigInteger step) throws ResultTimeoutException, IOException {
         return this.invokeAndWaitResult(wallet,
                 "setStep",
                 (new RpcObject.Builder())
@@ -45,7 +47,7 @@ public class StepCounterScore extends Score {
                 null, STEPS);
     }
 
-    public TransactionResult resetStep(Wallet wallet, BigInteger step) throws IOException, TimeoutException {
+    public TransactionResult resetStep(Wallet wallet, BigInteger step) throws ResultTimeoutException, IOException {
         return this.invokeAndWaitResult(wallet,
                 "resetStep",
                 (new RpcObject.Builder())
@@ -54,7 +56,7 @@ public class StepCounterScore extends Score {
                 null, STEPS);
     }
 
-    public TransactionResult setStepOf(Wallet wallet, Address target, BigInteger step) throws IOException, TimeoutException {
+    public TransactionResult setStepOf(Wallet wallet, Address target, BigInteger step) throws ResultTimeoutException, IOException {
         return this.invokeAndWaitResult(wallet,
                 "setStepOf",
                 (new RpcObject.Builder())
@@ -64,7 +66,7 @@ public class StepCounterScore extends Score {
                 null, STEPS);
     }
 
-    public TransactionResult trySetStepWith(Wallet wallet, Address target, BigInteger step) throws IOException, TimeoutException {
+    public TransactionResult trySetStepWith(Wallet wallet, Address target, BigInteger step) throws ResultTimeoutException, IOException{
         return this.invokeAndWaitResult(wallet,
                 "trySetStepWith",
                 (new RpcObject.Builder())

@@ -1,4 +1,4 @@
-package foundation.icon.test.score;
+package foundation.icon.test.common;
 
 import foundation.icon.icx.data.TransactionResult;
 

@@ -25,5 +25,6 @@ compileTestJava {
 
 test {
     exclude "foundation/icon/test/cases/*"
+    dependsOn cleanTest
     testLogging.showStandardStreams = true
 }
