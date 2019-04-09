@@ -37,11 +37,11 @@ func (r *TransactionReactor) OnReceive(subProtocol module.ProtocolInfo, buf []by
 			return false, err
 		}
 		if tx.Group() == module.TransactionGroupPatch {
-			if err := r.patchPool.Add(tx); err != nil {
+			if err := r.patchPool.Add(tx, false); err != nil {
 				return false, err
 			}
 		} else {
-			if err := r.normalPool.Add(tx); err != nil {
+			if err := r.normalPool.Add(tx, false); err != nil {
 				return false, err
 			}
 		}

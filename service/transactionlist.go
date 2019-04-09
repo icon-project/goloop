@@ -1,6 +1,8 @@
 package service
 
 import (
+	"time"
+
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/transaction"
 )
@@ -24,6 +26,7 @@ type transactionList struct {
 
 type txElement struct {
 	value transaction.Transaction
+	ts    int64
 
 	list               *transactionList
 	listNext, listPrev *txElement
@@ -45,11 +48,15 @@ func (t *txElement) Remove() bool {
 	return true
 }
 
+func (t *txElement) TimeStamp() int64 {
+	return t.ts
+}
+
 func (t *txElement) Value() transaction.Transaction {
 	return t.value
 }
 
-func (l *transactionList) Add(tx transaction.Transaction) error {
+func (l *transactionList) Add(tx transaction.Transaction, ts bool) error {
 	tidBk, tidSlot := indexAndBucketKeyFromKey(string(tx.ID()))
 	if _, ok := l.idMap[tidBk][tidSlot]; ok {
 		return ErrDuplicateTransaction
@@ -58,6 +65,9 @@ func (l *transactionList) Add(tx transaction.Transaction) error {
 	e := &txElement{
 		value: tx,
 		list:  l,
+	}
+	if ts {
+		e.ts = time.Now().UnixNano()
 	}
 
 	l.idMap[tidBk][tidSlot] = e
@@ -112,12 +122,12 @@ func (l *transactionList) Add(tx transaction.Transaction) error {
 	return nil
 }
 
-func (l *transactionList) RemoveTx(tx module.Transaction) bool {
+func (l *transactionList) RemoveTx(tx module.Transaction) (bool, int64) {
 	tidBk, tidSlot := indexAndBucketKeyFromKey(string(tx.ID()))
 	if e, ok := l.idMap[tidBk][tidSlot]; ok {
-		return l.Remove(e)
+		return l.Remove(e), e.ts
 	}
-	return false
+	return false, 0
 }
 
 func (l *transactionList) Remove(t *txElement) bool {

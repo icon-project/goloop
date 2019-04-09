@@ -77,12 +77,12 @@ func TestTransactionList_AddRemove(t *testing.T) {
 	l := newTransactionList()
 	tx := newMockTransaction([]byte{0x01, 0x02, 0x03, 0x04}, common.NewAddressFromString("hx1111111111111111111111111111111111111111"), 0)
 
-	if err := l.Add(tx); err != nil {
+	if err := l.Add(tx, false); err != nil {
 		t.Error("Fail to add transaction")
 		return
 	}
 
-	if err := l.Add(tx); err != ErrDuplicateTransaction {
+	if err := l.Add(tx, false); err != ErrDuplicateTransaction {
 		t.Errorf("It should return ErrDuplicateTransaction err=%+v", err)
 	}
 
@@ -92,7 +92,7 @@ func TestTransactionList_AddRemove(t *testing.T) {
 	}
 
 	tx2 := newMockTransaction([]byte{0x01, 0x02, 0x03, 0x05}, common.NewAddressFromString("hx1111111111111111111111111111111111111112"), 0)
-	if err := l.Add(tx2); err != nil {
+	if err := l.Add(tx2, false); err != nil {
 		t.Error("Fail to add second transaction")
 		return
 	}
@@ -118,10 +118,10 @@ func TestTransactionList_AddRemove(t *testing.T) {
 		t.Errorf("After removing all, it still has non-zero length len=%d", len)
 	}
 
-	if err := l.Add(tx); err != nil {
+	if err := l.Add(tx, false); err != nil {
 		t.Errorf("It fails to add first transaction after removal")
 	}
-	if err := l.Add(tx2); err != nil {
+	if err := l.Add(tx2, false); err != nil {
 		t.Errorf("It fails to add second transaction after removal")
 	}
 
@@ -147,23 +147,23 @@ func TestTransactionList_TestSort(t *testing.T) {
 	tx5 := newMockTransaction([]byte{0x00, 0x00, 0x00, 0x05}, from2, 3)
 
 	l := newTransactionList()
-	l.Add(tx2)
-	l.Add(tx1)
+	l.Add(tx2, false)
+	l.Add(tx1, false)
 	if l.Front().Value() != tx1 {
 		t.Error("tx1 should be first(by re-ordering)")
 	}
 
 	l = newTransactionList()
-	l.Add(tx2)
-	l.Add(tx3)
-	l.Add(tx5)
-	l.Add(tx1)
+	l.Add(tx2, false)
+	l.Add(tx3, false)
+	l.Add(tx5, false)
+	l.Add(tx1, false)
 	if l.Front().Value() != tx1 {
 		t.Error("tx1 should be first(by re-ordering)")
 	}
 
 	l.RemoveTx(tx3)
-	l.Add(tx4)
+	l.Add(tx4, false)
 	e := l.Front()
 	if tx := e.Value(); tx != tx1 {
 		t.Errorf("First item should be tx1 but tx=%x", tx.ID())
@@ -185,10 +185,10 @@ func TestTransactionList_TestSort(t *testing.T) {
 	}
 
 	l = newTransactionList()
-	l.Add(tx5)
-	l.Add(tx4)
+	l.Add(tx5, false)
+	l.Add(tx4, false)
 	l.RemoveTx(tx5)
-	l.Add(tx3)
+	l.Add(tx3, false)
 
 	e = l.Front()
 	if tx := e.Value(); tx != tx3 {

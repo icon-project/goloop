@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"time"
 
 	"github.com/icon-project/goloop/server/metric"
 	"github.com/icon-project/goloop/service/transaction"
@@ -29,6 +30,9 @@ type manager struct {
 	patchTxPool  *TransactionPool
 	normalTxPool *TransactionPool
 
+	patchMetric  *metric.TxMetric
+	normalMetric *metric.TxMetric
+
 	db        db.Database
 	chain     module.Chain
 	txReactor *TransactionReactor
@@ -41,15 +45,18 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 ) module.ServiceManager {
 	bk, _ := chain.Database().GetBucket(db.TransactionLocatorByHash)
 
+	pMetric := metric.NewTransactionMetric(chain.NID(), metric.TxTypePatch)
+	nMetric := metric.NewTransactionMetric(chain.NID(), metric.TxTypeNormal)
+
 	mgr := &manager{
-		patchTxPool: NewTransactionPool(bk,
-			metric.NewTxPoolContext(chain.NID(), metric.TxTypePatch)),
-		normalTxPool: NewTransactionPool(bk,
-			metric.NewTxPoolContext(chain.NID(), metric.TxTypeNormal)),
-		db:    chain.Database(),
-		chain: chain,
-		cm:    contract.NewContractManager(chain.Database(), chainRoot),
-		eem:   eem,
+		patchMetric:  pMetric,
+		normalMetric: nMetric,
+		patchTxPool:  NewTransactionPool(bk, pMetric),
+		normalTxPool: NewTransactionPool(bk, nMetric),
+		db:           chain.Database(),
+		chain:        chain,
+		cm:           contract.NewContractManager(chain.Database(), chainRoot),
+		eem:          eem,
 	}
 	if nm != nil {
 		mgr.txReactor = NewTransactionReactor(nm, mgr.patchTxPool, mgr.normalTxPool)
@@ -189,6 +196,9 @@ func (m *manager) Finalize(t module.Transition, opt int) {
 		}
 		if opt&module.FinalizeResult == module.FinalizeResult {
 			tst.finalizeResult()
+			now := time.Now()
+			m.patchMetric.OnFinalize(tst.patchTransactions.Hash(), now)
+			m.normalMetric.OnFinalize(tst.normalTransactions.Hash(), now)
 		}
 	}
 }
@@ -291,7 +301,7 @@ func (m *manager) SendTransaction(txi interface{}) ([]byte, error) {
 		log.Panicf("Wrong TransactionGroup. %v", newTx.Group())
 	}
 
-	if err := txPool.Add(newTx); err == nil {
+	if err := txPool.Add(newTx, true); err == nil {
 		m.txReactor.PropagateTransaction(ProtocolPropagateTransaction, newTx)
 	} else {
 		return hash, err

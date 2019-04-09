@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"log"
 	"sync"
 	"time"
@@ -26,14 +25,14 @@ type TransactionPool struct {
 
 	mutex sync.Mutex
 
-	metric context.Context
+	metric *metric.TxMetric
 }
 
-func NewTransactionPool(txdb db.Bucket, ctx context.Context) *TransactionPool {
+func NewTransactionPool(txdb db.Bucket, m *metric.TxMetric) *TransactionPool {
 	pool := &TransactionPool{
 		txdb:   txdb,
 		list:   newTransactionList(),
-		metric: ctx,
+		metric: m,
 	}
 	return pool
 }
@@ -51,7 +50,7 @@ func (tp *TransactionPool) RemoveOldTXs(bts int64) {
 		tx := iter.Value()
 		if tx.Timestamp() <= bts {
 			tp.list.Remove(iter)
-			metric.RecordOnDropTx(tp.metric, len(tx.Bytes()))
+			tp.metric.OnDropTx(len(tx.Bytes()))
 		}
 		iter = next
 	}
@@ -121,8 +120,8 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 			defer tp.mutex.Unlock()
 			for _, tx := range txs {
 				if tx != nil {
-					if tp.list.RemoveTx(tx) {
-						metric.RecordOnDropTx(tp.metric, len(tx.Bytes()))
+					if ok, _ := tp.list.RemoveTx(tx); ok {
+						tp.metric.OnDropTx(len(tx.Bytes()))
 					}
 				}
 			}
@@ -141,7 +140,7 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 	return ErrDuplicateTransaction if tx exists in pool
 	return ErrExpiredTransaction if Timestamp of tx is expired
 */
-func (tp *TransactionPool) Add(tx transaction.Transaction) error {
+func (tp *TransactionPool) Add(tx transaction.Transaction, direct bool) error {
 	if tx == nil {
 		return nil
 	}
@@ -152,9 +151,9 @@ func (tp *TransactionPool) Add(tx transaction.Transaction) error {
 		return ErrTransactionPoolOverFlow
 	}
 
-	err := tp.list.Add(tx)
+	err := tp.list.Add(tx, direct)
 	if err == nil {
-		metric.RecordOnAddTx(tp.metric, len(tx.Bytes()))
+		tp.metric.OnAddTx(len(tx.Bytes()))
 	}
 	return err
 }
@@ -168,14 +167,26 @@ func (tp *TransactionPool) RemoveList(txs module.TransactionList) {
 		return
 	}
 
+	now := time.Now()
+	var duration time.Duration
+	var count int
+
 	for i := txs.Iterator(); i.Has(); i.Next() {
 		t, _, err := i.Get()
 		if err != nil {
 			log.Printf("Failed to get transaction from iterator\n")
 			continue
 		}
-		if tp.list.RemoveTx(t) {
-			metric.RecordOnRemoveTx(tp.metric, len(t.Bytes()))
+		if ok, ts := tp.list.RemoveTx(t); ok {
+			if ts != 0 {
+				duration += now.Sub(time.Unix(0, ts))
+				count += 1
+			}
+			tp.metric.OnRemoveTx(len(t.Bytes()))
 		}
+	}
+
+	if count > 0 {
+		tp.metric.OnCommit(txs.Hash(), now, duration/time.Duration(count))
 	}
 }
