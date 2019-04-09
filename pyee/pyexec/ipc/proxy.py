@@ -267,7 +267,10 @@ class ServiceManagerProxy:
     def __handle_invoke(self, data):
         code = self.decode(TypeTag.STRING, data[0])
         is_query = data[1]
-        _from = self.decode(TypeTag.ADDRESS, data[2])
+        if data[2] is None:
+            _from = None
+        else:
+            _from = self.decode(TypeTag.ADDRESS, data[2])
         _to = self.decode(TypeTag.ADDRESS, data[3])
         value = self.decode(TypeTag.INT, data[4])
         limit = self.decode(TypeTag.INT, data[5])

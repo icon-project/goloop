@@ -313,7 +313,6 @@ func (m *manager) Call(resultHash []byte,
 	vl module.ValidatorList, js []byte, bi module.BlockInfo,
 ) (module.Status, interface{}, error) {
 	type callJSON struct {
-		From     common.Address  `json:"from"`
 		To       common.Address  `json:"to"`
 		DataType *string         `json:"dataType"`
 		Data     json.RawMessage `json:"data"`
@@ -326,14 +325,13 @@ func (m *manager) Call(resultHash []byte,
 
 	var wc state.WorldContext
 	if tresult, err := newTransitionResultFromBytes(resultHash); err == nil {
-		ws := state.NewWorldState(m.db, tresult.StateHash, vl)
+		ws := state.NewReadOnlyWorldState(m.db, tresult.StateHash, vl)
 		wc = state.NewWorldContext(ws, bi)
 	} else {
 		return module.StatusSystemError, err.Error(), nil
 	}
 
-	qh, err := NewQueryHandler(m.cm, &jso.From, &jso.To,
-		jso.DataType, jso.Data)
+	qh, err := NewQueryHandler(m.cm, &jso.To, jso.DataType, jso.Data)
 	if err != nil {
 		return module.StatusSystemError, err.Error(), nil
 	}

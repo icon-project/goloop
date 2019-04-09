@@ -92,7 +92,7 @@ type versionMessage struct {
 type invokeMessage struct {
 	Code   string `codec:"code"`
 	IsQry  bool
-	From   common.Address  `codec:"from"`
+	From   *common.Address `codec:"from"`
 	To     common.Address  `codec:"to"`
 	Value  common.HexInt   `codec:"value"`
 	Limit  common.HexInt   `codec:"limit"`
@@ -133,7 +133,9 @@ func (p *proxy) Invoke(ctx CallContext, code string, isQuery bool, from, to modu
 	var m invokeMessage
 	m.Code = code
 	m.IsQry = isQuery
-	m.From.SetBytes(from.Bytes())
+	if from != nil {
+		m.From = common.NewAddress(from.Bytes())
+	}
 	m.To.SetBytes(to.Bytes())
 	m.Value.Set(value)
 	m.Limit.Set(limit)

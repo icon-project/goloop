@@ -416,9 +416,13 @@ func (s *ChainScore) Ex_enableScore(address module.Address) error {
 	return nil
 }
 
+func (s *ChainScore) fromGovernance() bool {
+	return s.cc.Governance().Equal(s.from)
+}
+
 // Governance functions : Functions which can be called by governance SCORE.
 func (s *ChainScore) Ex_setRevision(code *common.HexInt) error {
-	if s.from.Equal(s.cc.Governance()) == false {
+	if !s.fromGovernance() {
 		return errors.New("No permission to call this method.")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
@@ -430,7 +434,7 @@ func (s *ChainScore) Ex_setRevision(code *common.HexInt) error {
 }
 
 func (s *ChainScore) Ex_acceptScore(txHash []byte) error {
-	if s.from.Equal(s.cc.Governance()) == false {
+	if !s.fromGovernance() {
 		return errors.New("No permission to call this method.")
 	}
 	info := s.cc.GetInfo()
@@ -450,7 +454,7 @@ func (s *ChainScore) Ex_acceptScore(txHash []byte) error {
 }
 
 func (s *ChainScore) Ex_rejectScore(txHash []byte) error {
-	if s.from.Equal(s.cc.Governance()) == false {
+	if !s.fromGovernance() {
 		return errors.New("No permission to call this method.")
 	}
 
@@ -473,7 +477,7 @@ func (s *ChainScore) Ex_rejectScore(txHash []byte) error {
 
 // Governance score would check the verification of the address
 func (s *ChainScore) Ex_blockScore(address module.Address) error {
-	if s.from.Equal(s.cc.Governance()) == false {
+	if !s.fromGovernance() {
 		return errors.New("No permission to call this method.")
 	}
 	as := s.cc.GetAccountState(address.ID())
@@ -485,7 +489,7 @@ func (s *ChainScore) Ex_blockScore(address module.Address) error {
 
 // Governance score would check the verification of the address
 func (s *ChainScore) Ex_unblockScore(address module.Address) error {
-	if s.from.Equal(s.cc.Governance()) == false {
+	if !s.fromGovernance() {
 		return errors.New("No permission to call this method.")
 	}
 	as := s.cc.GetAccountState(address.ID())
@@ -496,7 +500,7 @@ func (s *ChainScore) Ex_unblockScore(address module.Address) error {
 }
 
 func (s *ChainScore) Ex_setStepPrice(price *common.HexInt) error {
-	if s.from.Equal(s.cc.Governance()) == false {
+	if !s.fromGovernance() {
 		return errors.New("No permission to call this method.")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
@@ -504,7 +508,7 @@ func (s *ChainScore) Ex_setStepPrice(price *common.HexInt) error {
 }
 
 func (s *ChainScore) Ex_setStepCost(costType string, cost *common.HexInt) error {
-	if s.from.Equal(s.cc.Governance()) == false {
+	if !s.fromGovernance() {
 		return errors.New("No permission to call this method.")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
@@ -519,7 +523,7 @@ func (s *ChainScore) Ex_setStepCost(costType string, cost *common.HexInt) error 
 }
 
 func (s *ChainScore) Ex_setMaxStepLimit(contextType string, cost *common.HexInt) error {
-	if s.from.Equal(s.cc.Governance()) == false {
+	if !s.fromGovernance() {
 		return errors.New("No permission to call this method.")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
@@ -534,7 +538,7 @@ func (s *ChainScore) Ex_setMaxStepLimit(contextType string, cost *common.HexInt)
 }
 
 func (s *ChainScore) Ex_grantValidator(address module.Address) error {
-	if s.from.Equal(s.cc.Governance()) == false {
+	if !s.fromGovernance() {
 		return errors.New("No permission to call this method.")
 	}
 	if v, err := state.ValidatorFromAddress(address); err == nil {
@@ -545,7 +549,7 @@ func (s *ChainScore) Ex_grantValidator(address module.Address) error {
 }
 
 func (s *ChainScore) Ex_revokeValidator(address module.Address) error {
-	if s.from.Equal(s.cc.Governance()) == false {
+	if !s.fromGovernance() {
 		return errors.New("No permission to call this method.")
 	}
 	if v, err := state.ValidatorFromAddress(address); err == nil {
@@ -570,7 +574,7 @@ func (s *ChainScore) Ex_getValidators() ([]interface{}, error) {
 }
 
 func (s *ChainScore) Ex_addMember(address module.Address) error {
-	if s.from.Equal(s.cc.Governance()) == false {
+	if !s.fromGovernance() {
 		return errors.New("No permission to call this method.")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
@@ -584,7 +588,7 @@ func (s *ChainScore) Ex_addMember(address module.Address) error {
 }
 
 func (s *ChainScore) Ex_removeMember(address module.Address) error {
-	if s.from.Equal(s.cc.Governance()) == false {
+	if !s.fromGovernance() {
 		return errors.New("No permission to call this method.")
 	}
 
@@ -612,7 +616,7 @@ func (s *ChainScore) Ex_removeMember(address module.Address) error {
 }
 
 func (s *ChainScore) Ex_addDeployer(address module.Address) error {
-	if s.from.Equal(s.cc.Governance()) == false {
+	if !s.fromGovernance() {
 		return errors.New("No permission to call this method.")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
@@ -626,7 +630,7 @@ func (s *ChainScore) Ex_addDeployer(address module.Address) error {
 }
 
 func (s *ChainScore) Ex_removeDeployer(address module.Address) error {
-	if s.from.Equal(s.cc.Governance()) == false {
+	if !s.fromGovernance() {
 		return errors.New("No permission to call this method.")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
@@ -646,7 +650,7 @@ func (s *ChainScore) Ex_removeDeployer(address module.Address) error {
 }
 
 func (s *ChainScore) Ex_addLicense(contentId string) error {
-	if s.from.Equal(s.cc.Governance()) == false {
+	if !s.fromGovernance() {
 		return errors.New("No permission to call this method.")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
@@ -660,7 +664,7 @@ func (s *ChainScore) Ex_addLicense(contentId string) error {
 }
 
 func (s *ChainScore) Ex_removeLicense(contentId string) error {
-	if s.from.Equal(s.cc.Governance()) == false {
+	if !s.fromGovernance() {
 		return errors.New("No permission to call this method.")
 	}
 	as := s.cc.GetAccountState(state.SystemID)

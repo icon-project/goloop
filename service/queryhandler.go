@@ -11,7 +11,6 @@ import (
 )
 
 type QueryHandler struct {
-	from module.Address
 	to   module.Address
 	data []byte
 }
@@ -38,7 +37,7 @@ func (qh *QueryHandler) Query(ctx contract.Context) (module.Status, interface{})
 
 	// Set up
 	cc := contract.NewCallContext(ctx, nil, true)
-	handler := ctx.ContractManager().GetHandler(qh.from, qh.to,
+	handler := ctx.ContractManager().GetHandler(nil, qh.to,
 		big.NewInt(0), ctx.GetStepLimit(transaction.LimitTypeCall), contract.CTypeCall, qh.data)
 
 	// Execute
@@ -48,15 +47,12 @@ func (qh *QueryHandler) Query(ctx contract.Context) (module.Status, interface{})
 	return status, msg
 }
 
-func NewQueryHandler(cm contract.ContractManager, from, to module.Address,
-	dataType *string, data []byte,
-) (*QueryHandler, error) {
+func NewQueryHandler(cm contract.ContractManager, to module.Address, dataType *string, data []byte) (*QueryHandler, error) {
 	if *dataType != transaction.DataTypeCall {
 		return nil, errors.Errorf("IllegalDataType(type=%s)", *dataType)
 	}
 
 	qh := &QueryHandler{
-		from: from,
 		to:   to,
 		data: data,
 	}
