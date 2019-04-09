@@ -674,6 +674,9 @@ func (a *accountROState) Clear() {
 }
 
 func newAccountROState(snapshot AccountSnapshot) AccountState {
+	if snapshot == nil {
+		snapshot = new(accountSnapshotImpl)
+	}
 	return &accountROState{snapshot,
 		newContractROState(snapshot.Contract()),
 		newContractROState(snapshot.NextContract())}
