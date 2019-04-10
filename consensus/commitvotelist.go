@@ -39,11 +39,9 @@ func (vl *commitVoteList) Verify(block module.Block, validators module.Validator
 		msg.setSignature(sig)
 		index := validators.IndexOf(msg.address())
 		if index < 0 {
-			logger.Println(msg)
 			return errors.Errorf("bad voter %x at index %d in vote list", msg.address(), i)
 		}
 		if vset[index] {
-			logger.Printf("voteList: %v\n", vl)
 			return errors.Errorf("vl.Verify: duplicated validator %v\n", msg.address())
 		}
 		vset[index] = true
