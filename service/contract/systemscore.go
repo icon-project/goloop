@@ -7,11 +7,9 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/go-errors/errors"
-
 	"github.com/icon-project/goloop/common"
-
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreapi"
 )
@@ -46,15 +44,33 @@ func GetSystemScore(contendId string, params ...interface{}) (score SystemScore,
 	if ok == false {
 		return nil, errors.New(fmt.Sprintf("Wrong contentId. %s\n", contendId))
 	}
+
 	f := reflect.ValueOf(v)
-	if len(params) != f.Type().NumIn() {
+	fType := f.Type()
+	if len(params) != fType.NumIn() {
 		return nil, errors.New("Wrong params number.")
 	}
+
 	in := make([]reflect.Value, len(params))
 	for i, p := range params {
-		in[i] = reflect.ValueOf(p)
+		pValue := reflect.ValueOf(p)
+		if !pValue.IsValid() {
+			in[i] = reflect.New(fType.In(i)).Elem()
+			continue
+		}
+		if !pValue.Type().AssignableTo(fType.In(i)) {
+			return nil,
+				errors.InvalidStateError.Errorf("Can't cast from %s to %s", pValue.Type(), fType.In(i))
+		}
+		in[i] = reflect.New(fType.In(i)).Elem()
+		in[i].Set(pValue)
 	}
+
 	result := f.Call(in)
+
+	if len(result) < 1 {
+		return nil, errors.UnknownError.New("Fail to create system score")
+	}
 
 	if result[0].IsNil() {
 		return nil, errors.New("Failed to create new systemScore")
@@ -178,17 +194,38 @@ func Invoke(score SystemScore, method string, paramObj *codec.TypedObj) (status 
 	if m.IsValid() == false {
 		return module.StatusMethodNotFound, nil, steps
 	}
-	params, _ := common.DecodeAny(paramObj)
-	numIn := m.Type().NumIn()
-	objects := make([]reflect.Value, numIn)
-	if l, ok := params.([]interface{}); ok == true {
-		if len(l) != numIn {
+	mType := m.Type()
+
+	var params []interface{}
+	if ps, err := common.DecodeAny(paramObj); err != nil {
+		return module.StatusInvalidParameter, nil, steps
+	} else {
+		var ok bool
+		params, ok = ps.([]interface{})
+		if !ok {
 			return module.StatusInvalidParameter, nil, steps
 		}
-		for i, v := range l {
-			objects[i] = reflect.ValueOf(v)
-		}
 	}
+
+	if len(params) != mType.NumIn() {
+		return module.StatusInvalidParameter, nil, steps
+	}
+
+	objects := make([]reflect.Value, len(params))
+	for i, p := range params {
+		oType := mType.In(i)
+		pValue := reflect.ValueOf(p)
+		if !pValue.IsValid() {
+			objects[i] = reflect.New(mType.In(i)).Elem()
+			continue
+		}
+		if !pValue.Type().AssignableTo(oType) {
+			return module.StatusInvalidParameter, nil, steps
+		}
+		objects[i] = reflect.New(mType.In(i)).Elem()
+		objects[i].Set(pValue)
+	}
+
 	// check if it is eventLog or not.
 	// if eventLog then cc.AddLog().
 	r := m.Call(objects)
@@ -200,7 +237,7 @@ func Invoke(score SystemScore, method string, paramObj *codec.TypedObj) (status 
 	for i, v := range r {
 		if i+1 == resultLen { // last output
 			if err := v.Interface(); err != nil {
-				log.Printf("Failed to invoke %s on chain score. %s\n", method, err.(error))
+				log.Printf("Method %s returns failure err=%s\n", method, err.(error))
 				status = module.StatusSystemError
 			}
 			continue
