@@ -3,16 +3,15 @@ package trie_manager
 import (
 	"bytes"
 	"fmt"
-	"github.com/icon-project/goloop/common/merkle"
 	"log"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/icon-project/goloop/common/merkle"
+
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
-	"github.com/icon-project/goloop/common/trie/mpt"
-	"github.com/icon-project/goloop/common/trie/ompt"
 )
 
 var testPool = map[string]string{
@@ -22,55 +21,31 @@ var testPool = map[string]string{
 }
 
 func TestCommit(t *testing.T) {
-	type args struct {
-		m trie.Manager
-	}
-	tests := []struct {
-		name string
-		args args
-	}{
-		{
-			"mpt",
-			args{
-				mpt.NewManager(db.NewMapDB()),
-			},
-		},
-		{
-			"ompt",
-			args{
-				ompt.NewManager(db.NewMapDB()),
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			manager := tt.args.m
-			trie := manager.NewMutable(nil)
-			rootHash := make([]string, 3)
-			items := 0
+	manager := New(db.NewMapDB())
+	trie := manager.NewMutable(nil)
+	rootHash := make([]string, 3)
+	items := 0
 
-			poolKey := []string{
-				"doe", "dog", "dogglesworth",
-			}
-			for i, k := range poolKey {
-				updateString(trie, k, testPool[k])
-				snapshot := trie.GetSnapshot()
-				snapshot.Flush()
-				rootHash[i] = fmt.Sprintf("%x", snapshot.Hash())
-				items++
-			}
+	poolKey := []string{
+		"doe", "dog", "dogglesworth",
+	}
+	for i, k := range poolKey {
+		updateString(trie, k, testPool[k])
+		snapshot := trie.GetSnapshot()
+		snapshot.Flush()
+		rootHash[i] = fmt.Sprintf("%x", snapshot.Hash())
+		items++
+	}
 
-			i := items
-			for i > 0 {
-				i--
-				snapshot := trie.GetSnapshot()
-				root := fmt.Sprintf("%x", snapshot.Hash())
-				if strings.Compare(root, rootHash[i]) != 0 {
-					t.Errorf("%s vs %s", root, rootHash[i])
-				}
-				trie.Delete([]byte(poolKey[i]))
-			}
-		})
+	i := items
+	for i > 0 {
+		i--
+		snapshot := trie.GetSnapshot()
+		root := fmt.Sprintf("%x", snapshot.Hash())
+		if strings.Compare(root, rootHash[i]) != 0 {
+			t.Errorf("%s vs %s", root, rootHash[i])
+		}
+		trie.Delete([]byte(poolKey[i]))
 	}
 }
 
@@ -113,7 +88,7 @@ func TestInsert(t *testing.T) {
 }
 
 func TestDelete1(t *testing.T) {
-	manager := mpt.NewManager(db.NewMapDB())
+	manager := New(db.NewMapDB())
 	tree := manager.NewMutable(nil)
 
 	updateString(tree, "doe", "reindeer")
@@ -150,7 +125,7 @@ func TestDelete1(t *testing.T) {
 }
 
 func TestDelete2(t *testing.T) {
-	manager := mpt.NewManager(db.NewMapDB())
+	manager := New(db.NewMapDB())
 	tree := manager.NewMutable(nil)
 	vals := []struct{ k, v string }{
 		{"do", "verb"},
@@ -182,7 +157,7 @@ func TestDelete2(t *testing.T) {
 }
 
 func TestCache(t *testing.T) {
-	manager := mpt.NewManager(db.NewMapDB())
+	manager := New(db.NewMapDB())
 	mutable := manager.NewMutable(nil)
 
 	for k, v := range testPool {
@@ -216,7 +191,7 @@ func TestCache(t *testing.T) {
 
 func TestDeleteSnapshot(t *testing.T) {
 	// delete, snapshot, write
-	manager := mpt.NewManager(db.NewMapDB())
+	manager := New(db.NewMapDB())
 	tree := manager.NewMutable(nil)
 
 	updateString(tree, "doe", "reindeer")
@@ -269,7 +244,7 @@ func TestDeleteSnapshot(t *testing.T) {
 }
 
 func TestLateFlush(t *testing.T) {
-	manager := mpt.NewManager(db.NewMapDB())
+	manager := New(db.NewMapDB())
 	tr := manager.NewMutable(nil)
 	poolList := []string{
 		"doe",
@@ -597,47 +572,26 @@ func Test_NewMutable(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tdbs := []db.Database{
-				db.NewMapDB(),
-				db.NewMapDB(),
-			}
-			mgrs := []trie.Manager{
-				ompt.NewManager(tdbs[0]),
-				mpt.NewManager(tdbs[1]),
-			}
-			hashes := [][]byte{nil, nil}
+			mgr := New(db.NewMapDB())
 
-			for i, mgr := range mgrs {
-				log.Printf("Makes new MPT with Manager[%d]", i)
-				got := mgr.NewMutable(tt.args.h)
-				if got == nil {
-					t.Errorf("NewMutable() = %v, want non nil", got)
-					return
-				}
-				applyTestEntries(got, tt.args.e, t)
-				s := got.GetSnapshot()
-				h := s.Hash()
-				log.Printf("Snapshot Hash:%x", h)
-				log.Println("Flush")
-				s.Flush()
-				hashes[i] = h
+			log.Print("Makes new MPT with Manager")
+			got := mgr.NewMutable(tt.args.h)
+			if got == nil {
+				t.Errorf("NewMutable() = %v, want non nil", got)
+				return
 			}
+			applyTestEntries(got, tt.args.e, t)
+			s := got.GetSnapshot()
+			hash := s.Hash()
+			log.Printf("Snapshot Hash:%x", hash)
+			log.Println("Flush")
+			s.Flush()
 
-			mgrsToCheck := []trie.Manager{
-				ompt.NewManager(tdbs[0]),
-				ompt.NewManager(tdbs[1]),
-				mpt.NewManager(tdbs[0]),
-				mpt.NewManager(tdbs[1]),
-			}
-
-			for i, mgr := range mgrsToCheck {
-				log.Printf("Verify results DB[%d] Manager[%d]", i%2, i/2)
-				s2 := mgr.NewImmutable(hashes[i/2])
-				if !checkTestEntries(s2, tt.want.e, t) {
-					log.Printf("FAIL verification with DB[%d] Manager[%d]", i%2, i/2)
-				} else {
-					log.Printf("OKAY verification with DB[%d] Manager[%d]", i%2, i/2)
-				}
+			s2 := mgr.NewImmutable(hash)
+			if !checkTestEntries(s2, tt.want.e, t) {
+				log.Printf("FAIL verification")
+			} else {
+				log.Printf("OKAY verification")
 			}
 		})
 	}
@@ -694,71 +648,54 @@ func Test_Snapshot(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mgrs := []trie.Manager{
-				ompt.NewManager(db.NewMapDB()),
-				mpt.NewManager(db.NewMapDB()),
-			}
-			ms := []trie.Mutable{
-				mgrs[0].NewMutable(nil),
-				mgrs[1].NewMutable(nil),
-			}
-			ss := make([][2]trie.Snapshot, len(tt.snapshots))
-			for midx, m := range ms {
-				for sidx, s := range tt.snapshots {
-					log.Printf("Mutable(%d) apply Snapshot(%d) and check", midx, sidx)
-					t.Run(fmt.Sprintf("Mutable(%d)_Apply_Snapshot(%d)", midx, sidx), func(t *testing.T) {
-						applyTestEntries(m, s.tx, t)
-					})
-					ss[sidx][midx] = m.GetSnapshot()
+			mgr := New(db.NewMapDB())
+			m := mgr.NewMutable(nil)
 
-					func(midx, sidx int) {
-						log.Printf("Snapshot(~%d) Verify START", sidx)
-						for i := 0; i <= sidx; i++ {
-							s := tt.snapshots[i]
-							sx := ss[i][midx]
-							t.Run(fmt.Sprintf("Mutable(%d)_Check_Snapshot(%d/%d)", midx, i, sidx), func(t *testing.T) {
-								checkTestEntries(sx, s.r, t)
-							})
-						}
-						log.Printf("Snapshot(~%d) Verify DONE", sidx)
-					}(midx, sidx)
-				}
-			}
-			t.Run("HashCompare", func(t *testing.T) {
-				for sidx := 0; sidx < len(tt.snapshots); sidx++ {
-					h1, h2 := ss[sidx][0].Hash(), ss[sidx][1].Hash()
-					if !bytes.Equal(h1, h2) {
-						t.Errorf("Snapshot(%d) Hash %x != %x", sidx, h1, h2)
-					}
-				}
-			})
-			log.Println("Verifying Snapshot from Hashes after Flush in reverse")
-			for midx, m := range mgrs {
-				log.Printf("Manager(%d) Verify Snapshots", midx)
-				for sidx := len(tt.snapshots) - 1; sidx >= 0; sidx-- {
-					log.Printf("Manager(%d) Snapshot(%d) Verify", midx, sidx)
-					ss[sidx][midx].Flush()
-					h := ss[sidx][midx].Hash()
-					sx := m.NewImmutable(h)
-					s := tt.snapshots[sidx]
-					t.Run(fmt.Sprintf("Manager(%d)_Verify_Snapshot(%d/%x)", midx, sidx, h), func(t *testing.T) {
-						checkTestEntries(sx, s.r, t)
-					})
+			ss := make([]trie.Snapshot, len(tt.snapshots))
+			for sidx, s := range tt.snapshots {
+				log.Printf("Apply Snapshot(%d) and check", sidx)
+				t.Run(fmt.Sprintf("Apply_Snapshot(%d)", sidx), func(t *testing.T) {
+					applyTestEntries(m, s.tx, t)
+				})
+				ss[sidx] = m.GetSnapshot()
 
-					if sidx < len(tt.snapshots)-1 {
-						sidx := sidx + 1
-						h := ss[sidx-1][midx].Hash()
-						s := tt.snapshots[sidx]
-						log.Printf("Manager(%d) Snapshot(%d) Verify from Snapshot(%x)", midx, sidx, h)
-						mutable := m.NewMutable(h)
-						t.Run(fmt.Sprintf("Manager(%d) Apply Snapshot(%d) from Snapshot(%x)", midx, sidx, h), func(t *testing.T) {
-							applyTestEntries(mutable, s.tx, t)
-						})
-						sx := mutable.GetSnapshot()
-						t.Run(fmt.Sprintf("Manager(%d) Verify Snapshot(%d) from Snapshot(%x)", midx, sidx, h), func(t *testing.T) {
+				func(sidx int) {
+					log.Printf("Snapshot(~%d) Verify START", sidx)
+					for i := 0; i <= sidx; i++ {
+						s := tt.snapshots[i]
+						sx := ss[i]
+						t.Run(fmt.Sprintf("Check_Snapshot(%d/%d)", i, sidx), func(t *testing.T) {
 							checkTestEntries(sx, s.r, t)
 						})
 					}
+					log.Printf("Snapshot(~%d) Verify DONE", sidx)
+				}(sidx)
+			}
+			log.Println("Verifying Snapshot from Hashes after Flush in reverse")
+			log.Printf("Verify Snapshots")
+			for sidx := len(tt.snapshots) - 1; sidx >= 0; sidx-- {
+				log.Printf("Snapshot(%d) Verify", sidx)
+				ss[sidx].Flush()
+				h := ss[sidx].Hash()
+				sx := mgr.NewImmutable(h)
+				s := tt.snapshots[sidx]
+				t.Run(fmt.Sprintf("Verify_Snapshot(%d/%x)", sidx, h), func(t *testing.T) {
+					checkTestEntries(sx, s.r, t)
+				})
+
+				if sidx < len(tt.snapshots)-1 {
+					sidx := sidx + 1
+					h := ss[sidx-1].Hash()
+					s := tt.snapshots[sidx]
+					log.Printf("Snapshot(%d) Verify from Snapshot(%x)", sidx, h)
+					mutable := mgr.NewMutable(h)
+					t.Run(fmt.Sprintf("Apply Snapshot(%d) from Snapshot(%x)", sidx, h), func(t *testing.T) {
+						applyTestEntries(mutable, s.tx, t)
+					})
+					sx := mutable.GetSnapshot()
+					t.Run(fmt.Sprintf("Verify Snapshot(%d) from Snapshot(%x)", sidx, h), func(t *testing.T) {
+						checkTestEntries(sx, s.r, t)
+					})
 				}
 			}
 		})
@@ -790,7 +727,7 @@ func (o *Obj) Resolve(bd merkle.Builder) error {
 }
 
 func TestObject(t *testing.T) {
-	manager := mpt.NewManager(db.NewMapDB())
+	manager := New(db.NewMapDB())
 	mutable := manager.NewMutable(nil)
 	mutableObj := manager.NewMutableForObject(nil, reflect.TypeOf(Obj{}))
 	mutableSnaps := make([]trie.Snapshot, 3)
