@@ -291,11 +291,11 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	t.transactionCount = txCount
 	t.executeDuration = txDuration
 
-	//elapsedMS := float64(txDuration/time.Microsecond) / 1000
-	//log.Printf("Transactions: %6d  Elapsed: %9.3f ms  PerTx: %7.1f µs  TPS: %9.2f",
-	//	txCount, elapsedMS,
-	//	elapsedMS*1000/float64(txCount),
-	//	float64(txCount)/elapsedMS*1000)
+	elapsedMS := float64(txDuration/time.Microsecond) / 1000
+	log.Printf("Transactions: %6d  Elapsed: %9.3f ms  PerTx: %7.1f µs  TPS: %9.2f",
+		txCount, elapsedMS,
+		elapsedMS*1000/float64(txCount),
+		float64(txCount)/elapsedMS*1000)
 
 	tresult := transitionResult{
 		t.worldSnapshot.StateHash(),
@@ -364,7 +364,7 @@ func (t *transition) finalizePatchTransaction() {
 func (t *transition) finalizeResult() {
 	startTS := time.Now()
 	t.worldSnapshot.Flush()
-	//worldTS := time.Now()
+	worldTS := time.Now()
 	t.patchReceipts.Flush()
 	t.normalReceipts.Flush()
 	t.parent = nil
@@ -382,8 +382,8 @@ func (t *transition) finalizeResult() {
 	}
 	regulator.OnTxExecution(t.transactionCount, t.executeDuration, finalTS.Sub(startTS))
 
-	//log.Printf("finalizeResult() total=%s world=%s receipts=%s",
-	//	finalTS.Sub(startTS), worldTS.Sub(startTS), finalTS.Sub(worldTS))
+	log.Printf("finalizeResult() total=%s world=%s receipts=%s",
+		finalTS.Sub(startTS), worldTS.Sub(startTS), finalTS.Sub(worldTS))
 }
 
 func (t *transition) cancelExecution() bool {

@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"math/big"
 	"testing"
 
@@ -199,18 +198,4 @@ func TestTransactionList_TestSort(t *testing.T) {
 	if tx := e.Value(); tx != tx4 {
 		t.Errorf("First item should be tx4 but tx=%x", tx.ID())
 	}
-}
-
-func TestAbc(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skip")
-	}
-	fmt.Printf("testing.Verbose() = %t\n", testing.Verbose())
-	fmt.Printf("testing.Short() = %t\n", testing.Short())
-	t.Run("ABCP", func(t *testing.T) {
-		fmt.Printf("Hello : ABC\n")
-	})
-	t.Run("XYZP", func(t *testing.T) {
-		fmt.Printf("Hello : XYZ\n")
-	})
 }

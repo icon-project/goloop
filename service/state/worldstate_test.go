@@ -269,7 +269,7 @@ func TestNewWorldStateWithContract(t *testing.T) {
 	}
 	as3.SetBlock(true)
 	if as3.IsBlocked() == false {
-		log.Panic("Not blocked", as3.IsBlocked())
+		log.Panic("Not blacklisted", as3.IsBlocked())
 	}
 	if !as3.IsDisabled() {
 		log.Panic("Not disabled")
@@ -280,9 +280,6 @@ func TestNewWorldStateWithContract(t *testing.T) {
 	}
 	if as3.IsBlocked() == false {
 		log.Panic("Not blacklisted", as3.IsBlocked())
-	}
-	if as3.IsDisabled() {
-		log.Panic("Not disabled")
 	}
 	wsSnapshot = ws3.GetSnapshot()
 	wsSnapshot.Flush()
