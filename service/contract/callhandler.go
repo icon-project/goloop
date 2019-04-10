@@ -167,8 +167,11 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 
 		var status module.Status
 		var result *codec.TypedObj
-		// TODO cid in account
-		sScore, err := GetSystemScore(CID_CHAIN, h.from, cc)
+		from := h.from
+		if from == nil {
+			from = common.NewAddress(state.SystemID)
+		}
+		sScore, err := GetSystemScore(CID_CHAIN, from, cc)
 		if err != nil {
 			log.Printf("Failed to getSystem score. from : %s, to : %s, err : %s\n", h.from.String(), h.to.String(), err)
 			return err
