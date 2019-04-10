@@ -25,7 +25,7 @@ test cases
 1. Not enough balance.
 2. Not enough stepLimit.
 3. Invalid signature
-4. Transfer coin. check balances of both accounts with GetBalance api.
+4. TransferTest coin. check balances of both accounts with GetBalance api.
  - Check balances in every transaction.
  - Check
  set StepPrice 0 or not.
@@ -211,14 +211,11 @@ public class TransferTest {
         }
     }
 
-    public void notEnoughSteplimit() {
-
-    }
-
-    public void invalidSignature() {
-
-    }
-
     public void transferAndCheckBal() throws Exception {
+    }
+
+
+    public void transferWithMessage() throws Exception {
+
     }
 }
