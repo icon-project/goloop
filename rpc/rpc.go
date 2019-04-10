@@ -11,12 +11,9 @@ import (
 	"strings"
 
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/network"
-	"github.com/icon-project/goloop/rpc/metric"
 	"github.com/icon-project/goloop/rpc/v2"
 	"github.com/icon-project/goloop/rpc/v3"
 
-	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -60,20 +57,6 @@ func (s *JsonRpcServer) jsonRpcHandler() http.Handler {
 	router.Handle("/api/v2", &chunkHandler{v2.MethodRepository(s.bm, s.sm)})
 	router.Handle("/api/v3", &chunkHandler{v3.MethodRepository(s.ch, s.bm, s.sm, s.cs)})
 
-	corsOrigins := handlers.AllowedOrigins([]string{"*"})
-	corsMethods := handlers.AllowedMethods([]string{"POST", "GET", "OPTIONS", "PUT", "DELETE"})
-	corsHeaders := handlers.AllowedHeaders([]string{"Origin", "Accept", "X-Requested-With", "Content-Type", "Access-Control-Request-Method", "Access-Control-Allow-Headers", "Authorization"})
-	maxAge := handlers.MaxAge(3600)
-
-	// network
-	if s.nm != nil {
-		nmr := network.MethodRepository(s.nm)
-		router.Handle("/network", handlers.CORS(corsOrigins, corsMethods, corsHeaders, maxAge)(nmr))
-		router.PathPrefix("/view/network/").Handler(http.StripPrefix("/view/network/", &staticHandler{dir: "./html"}))
-	}
-
-	router.Handle("/status", statusMethodRepository(s.cs))
-	router.Handle("/metrics", metric.PromethusExporter())
 	// jaegerExporter()
 
 	return router
