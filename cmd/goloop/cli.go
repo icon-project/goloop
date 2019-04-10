@@ -313,7 +313,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 		DisableFlagsInUseLine: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			hc := NewUnixDomainSockHttpClient(cfg.CliSocket)
-			v := &ChainView{}
+			v := &ChainInspectView{}
 			resp, err := hc.Get(UrlChain+"/"+args[0], v)
 			if err != nil {
 				fmt.Println(err, resp)

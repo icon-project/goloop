@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -10,6 +11,8 @@ import (
 	"github.com/labstack/echo"
 
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/network"
+	"github.com/icon-project/goloop/server/metric"
 )
 
 const (
@@ -37,17 +40,21 @@ type JoinChainParam struct {
 }
 
 type ChainView struct {
-	NID      int             `json:"nid"`
-	Genesis  json.RawMessage `json:"genesis"`
-	State    string          `json:"state"`
-	Height   int64           `json:"height"`
+	NID    int    `json:"nid"`
+	State  string `json:"state"`
+	Height int64  `json:"height"`
+}
+
+type ChainInspectView struct {
+	*ChainView
+	Genesis json.RawMessage        `json:"genesis"`
+	Module  map[string]interface{} `json:"module"`
 }
 
 func NewChainView(c module.Chain) *ChainView {
 	v := &ChainView{
-		NID:     c.NID(),
-		Genesis: c.Genesis(),
-		State:   c.State(),
+		NID: c.NID(),
+		State: c.State(),
 	}
 
 	if bm := c.BlockManager(); bm != nil {
@@ -58,6 +65,32 @@ func NewChainView(c module.Chain) *ChainView {
 	return v
 }
 
+type InspectFunc func(c module.Chain) map[string]interface{}
+
+var (
+	inspectFuncs = make(map[string]InspectFunc)
+)
+
+func NewChainInspectView(c module.Chain) *ChainInspectView {
+	v := &ChainInspectView{
+		ChainView: NewChainView(c),
+		Genesis:   c.Genesis(),
+	}
+	v.Module = make(map[string]interface{})
+	for name, f := range inspectFuncs {
+		v.Module[name] = f(c)
+	}
+	return v
+}
+
+func RegisterInspectFunc(name string, f InspectFunc) error {
+	if _, ok := inspectFuncs[name]; ok {
+		return fmt.Errorf("already exist function name:%s", name)
+	}
+	inspectFuncs[name] = f
+	return nil
+}
+
 func RegisterRest(n *Node) {
 	r := Rest{n}
 	ag := n.srv.AdminEchoGroup()
@@ -66,6 +99,9 @@ func RegisterRest(n *Node) {
 
 	r.RegisterChainHandlers(n.cliSrv.e.Group(UrlChain))
 	r.RegisterSystemHandlers(n.cliSrv.e.Group(UrlSystem))
+
+	_ = RegisterInspectFunc("metrics", metric.Inspect)
+	_ = RegisterInspectFunc("network", network.Inspect)
 }
 
 func (r *Rest) RegisterChainHandlers(g *echo.Group) {
@@ -181,7 +217,7 @@ func (r *Rest) JoinChain(ctx echo.Context) error {
 
 func (r *Rest) GetChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(module.Chain)
-	return ctx.JSON(http.StatusOK, NewChainView(c))
+	return ctx.JSON(http.StatusOK, NewChainInspectView(c))
 }
 
 func (r *Rest) LeaveChain(ctx echo.Context) error {
