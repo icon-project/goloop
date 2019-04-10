@@ -32,7 +32,7 @@ test cases
  -
 5.
  */
-public class Transfer {
+public class TransferTest {
     private static KeyWallet godWallet;
     private static KeyWallet[]testWallets;
     private static IconService iconService;

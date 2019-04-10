@@ -64,7 +64,7 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 		return []module.Transaction{}, 0
 	}
 
-	startTS := time.Now()
+	//startTS := time.Now()
 
 	if maxBytes <= 0 {
 		maxBytes = ConfigMaxTxBytesInABlock
@@ -74,7 +74,7 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 	}
 
 	txs := make([]transaction.Transaction, 0, configDefaultTxSliceCapacity)
-	poolSize := tp.list.Len()
+	//poolSize := tp.list.Len()
 	txSize := int(0)
 	for e := tp.list.Front(); e != nil && txSize < maxBytes && len(txs) < maxCount; e = e.Next() {
 		tx := e.Value()
@@ -103,6 +103,7 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 			// If returned error is critical(not usable in the future)
 			// then it should removed from the pool
 			// Otherwise, it remains in the pool
+			log.Printf("Failed to prevalidate. err = %s\n", err)
 			if err == state.ErrTimeOut || err == state.ErrNotEnoughStep {
 				txs[invalidNum] = tx
 				invalidNum += 1
@@ -128,8 +129,9 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 		}(txs[0:invalidNum])
 	}
 
-	log.Printf("TransactionPool.Candidate collected=%d removed=%d poolsize=%d duration=%s",
-		valNum, invalidNum, poolSize, time.Now().Sub(startTS))
+	//log.Printf("TransactionPool.Candidate collected=%d removed=%d poolsize=%d duration=%s",
+	//	valNum, invalidNum, poolSize, time.Now().Sub(startTS))
+	log.Printf("valNum = %d\n", valNum)
 
 	return validTxs[:valNum], txSize
 }

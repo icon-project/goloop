@@ -38,7 +38,6 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.util.List;
-import java.util.concurrent.TimeoutException;
 
 import static foundation.icon.test.common.Env.LOG;
 

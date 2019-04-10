@@ -13,7 +13,6 @@ import foundation.icon.test.common.Utils;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.util.concurrent.TimeoutException;
 
 public class Score {
     public static final BigInteger STEPS_DEFAULT = BigInteger.valueOf(2000000);

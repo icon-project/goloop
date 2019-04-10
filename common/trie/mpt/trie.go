@@ -376,7 +376,7 @@ func (m *mpt) Flush() error {
 	}
 
 	m.source.requestPool = nil
-	m.source.prev = nil
+	//m.source.prev = nil
 	return nil
 }
 

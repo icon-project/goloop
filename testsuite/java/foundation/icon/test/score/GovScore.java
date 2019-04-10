@@ -2,11 +2,9 @@ package foundation.icon.test.score;
 
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
-import foundation.icon.icx.data.Address;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
-import foundation.icon.test.common.Utils;
 
 import java.math.BigInteger;
 

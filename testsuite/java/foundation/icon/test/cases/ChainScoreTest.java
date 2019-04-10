@@ -24,12 +24,12 @@ import java.math.BigInteger;
 import java.util.*;
 
 @RunWith(Parameterized.class)
-public class ChainScore {
+public class ChainScoreTest {
     public Address toAddr;
     private static Env.Chain chain;
     private static IconService iconService;
 
-    public ChainScore(ChainScoreInput input){
+    public ChainScoreTest(ChainScoreInput input){
         toAddr = input.getTo();
     }
 

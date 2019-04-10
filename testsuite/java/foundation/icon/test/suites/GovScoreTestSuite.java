@@ -1,11 +1,10 @@
 package foundation.icon.test.suites;
 
 import foundation.icon.icx.KeyWallet;
-import foundation.icon.test.cases.ChainScore;
-import foundation.icon.test.cases.Deploy;
-import foundation.icon.test.cases.Transfer;
+import foundation.icon.test.cases.ChainScoreTest;
+import foundation.icon.test.cases.DeployTest;
+import foundation.icon.test.cases.TransferTest;
 import foundation.icon.test.common.Env;
-import foundation.icon.test.common.Log;
 import foundation.icon.test.common.Utils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -20,9 +19,9 @@ import java.util.concurrent.TimeUnit;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
-        ChainScore.class,
-        Transfer.class,
-        Deploy.class
+        ChainScoreTest.class,
+        TransferTest.class,
+        DeployTest.class
 })
 public class GovScoreTestSuite {
     @BeforeClass

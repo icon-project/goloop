@@ -12,7 +12,6 @@ import foundation.icon.test.common.*;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.concurrent.TimeoutException;
 
 import static foundation.icon.test.common.Env.LOG;
 

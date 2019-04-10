@@ -1,11 +1,9 @@
 package foundation.icon.test.cases;
 
 import foundation.icon.icx.*;
-import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
-import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.*;
@@ -13,7 +11,6 @@ import foundation.icon.test.score.GovScore;
 import foundation.icon.test.score.HelloWorld;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.math.BigInteger;
@@ -32,7 +29,7 @@ test cases
  - too large - takes too long time for uncompress 5. sendTransaction with invalid/valid params 6. sendTransaction for update with invalid score address 7. change destination url.
 8. sendTransaction with invalid signature
  */
-public class Deploy {
+public class DeployTest {
     private static KeyWallet govWallet;
     private static KeyWallet godWallet;
     private static IconService iconService;

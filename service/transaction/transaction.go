@@ -19,7 +19,7 @@ const (
 	ConfigTXTimestampBackwardMargin = int64(5 * time.Minute / time.Microsecond)
 	ConfigTXTimestampForwardMargin  = int64(5 * time.Minute / time.Microsecond)
 	ConfigTXTimestampForwardLimit   = int64(10 * time.Minute / time.Microsecond)
-	ConfigOnCheckingTimestamp       = true
+	ConfigOnCheckingTimestamp       = false
 )
 
 const (

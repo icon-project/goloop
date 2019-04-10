@@ -13,7 +13,6 @@ import foundation.icon.test.common.TransactionFailureException;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.util.concurrent.TimeoutException;
 
 public class StepCounterScore extends Score {
     private static final String PATH = Constants.SCORE_ROOT + "step_counter.zip";
