@@ -109,6 +109,9 @@ type consensus struct {
 
 	// prefetch buffer
 	prefetchItems []fastsync.BlockResult
+
+	// monitor
+	metric *metric.ConsensusMetric
 }
 
 func NewConsensus(c module.Chain, bm module.BlockManager, nm module.NetworkManager, walDir string) module.Consensus {
@@ -120,6 +123,7 @@ func NewConsensus(c module.Chain, bm module.BlockManager, nm module.NetworkManag
 		walDir:          walDir,
 		commitMRU:       list.New(),
 		commitForHeight: make(map[int64]*commit, configCommitCacheCap),
+		metric:          metric.NewConsensusMetric(c.MetricContext()),
 	}
 	return cs
 }
@@ -143,7 +147,7 @@ func (cs *consensus) resetForNewHeight(prevBlock module.Block, votes *commitVote
 	cs.consumedNonunicast = false
 	cs.commitRound = -1
 	cs.syncing = true
-	metric.RecordOnHeight("default", cs.isProposer(), cs.height)
+	cs.metric.OnHeight(cs.height)
 	cs.resetForNewRound(0)
 }
 
@@ -152,7 +156,7 @@ func (cs *consensus) resetForNewRound(round int32) {
 	cs.currentBlockParts = nil
 	cs.round = round
 	cs.step = stepPrepropose
-	metric.RecordOnRound("default", cs.isProposer(), cs.round)
+	cs.metric.OnRound(cs.round)
 }
 
 func (cs *consensus) resetForNewStep() {

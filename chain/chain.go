@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/server"
+	"github.com/icon-project/goloop/server/metric"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/eeproxy"
 )
@@ -63,6 +65,9 @@ type singleChain struct {
 	lastErr     error
 	initialized bool
 	mtx         sync.RWMutex
+
+	// monitor
+	metricCtx context.Context
 }
 
 const (
@@ -159,6 +164,10 @@ func (c *singleChain) Regulator() module.Regulator {
 	return c.regulator
 }
 
+func (c *singleChain) MetricContext() context.Context {
+	return c.metricCtx
+}
+
 func toRoles(r uint) []module.Role {
 	roles := make([]module.Role, 0)
 	switch r {
@@ -200,7 +209,7 @@ func (c *singleChain) _setState(s State, err error) {
 	c.lastErr = err
 }
 
-func (c *singleChain) _transit(to State, froms ... State) error {
+func (c *singleChain) _transit(to State, froms ...State) error {
 	defer c.mtx.Unlock()
 	c.mtx.Lock()
 
@@ -273,12 +282,13 @@ func (c *singleChain) _init() error {
 	}
 
 	c.vld = consensus.NewCommitVoteSetFromBytes
+	c.metricCtx = metric.GetMetricContextByNID(c.NID())
 	return nil
 }
 
 func (c *singleChain) _prepare() {
-	c.nm = network.NewManager(c.cfg.Channel, c.nt, c.cfg.SeedAddr, toRoles(c.cfg.Role)...)
-	c.sm = service.NewManager(c, c.nm, c.pm, c.cfg.ContractDir)
+	c.nm = network.NewManager(c, c.nt, c.cfg.SeedAddr, toRoles(c.cfg.Role)...)
+	c.sm = service.NewManager(c, c.nm, c.pm, c.cfg.ChainDir)
 	c.bm = block.NewManager(c, c.sm)
 	c.cs = consensus.NewConsensus(c, c.bm, c.nm, c.cfg.WALDir)
 }
@@ -350,7 +360,7 @@ func (c *singleChain) Start(sync bool) error {
 		return err
 	}
 
-	f := func(){
+	f := func() {
 		s := StateStarted
 		err := c._start()
 		if err != nil {
@@ -367,7 +377,7 @@ func (c *singleChain) Stop(sync bool) error {
 	if err := c._transit(StateStopping, StateStarted); err != nil {
 		return err
 	}
-	f := func(){
+	f := func() {
 		c._stop()
 		c._prepare()
 		c._setState(StateStopped, nil)
@@ -381,7 +391,7 @@ func (c *singleChain) Term(sync bool) error {
 		return err
 	}
 
-	f := func(){
+	f := func() {
 		c._stop()
 		c.vld = nil
 		if c.database != nil {
@@ -402,7 +412,7 @@ func (c *singleChain) Verify(sync bool) error {
 		return err
 	}
 
-	f := func(){
+	f := func() {
 		s := StateStopped
 		err := c._verify()
 		if err != nil {
@@ -434,7 +444,7 @@ func (c *singleChain) Reset(sync bool) error {
 		return err
 	}
 
-	f := func(){
+	f := func() {
 		s := StateStopped
 		err := c._reset()
 		if err != nil {
@@ -459,6 +469,7 @@ func NewChain(
 		cfg:       *cfg,
 		pm:        pm,
 		regulator: NewRegulator(time.Second, 1000),
+		metricCtx: metric.GetMetricContextByNID(cfg.NID),
 	}
 	return c
 }

@@ -101,7 +101,7 @@ func (n *Node) _remove(c module.Chain) error {
 		return err
 	}
 
-	chainPath := path.Join(n.cfg.NodeDir, strconv.FormatInt(int64(c.NID()), 16))
+	chainPath := n.ChainPath(c.NID())
 	if err := os.RemoveAll(chainPath); err != nil {
 		return fmt.Errorf("fail to remove dir %s err=%+v", chainPath, err)
 	}
@@ -109,6 +109,12 @@ func (n *Node) _remove(c module.Chain) error {
 	delete(n.m, c.NID())
 	return nil
 }
+
+func (n *Node) ChainPath(NID int) string {
+	chainPath := path.Join(n.cfg.NodeDir, strconv.FormatInt(int64(NID), 16))
+	return chainPath
+}
+
 
 func (n *Node) _get(NID int) (module.Chain, error) {
 	c, ok := n.m[NID]
@@ -161,11 +167,12 @@ func (n *Node) JoinChain(
 		return nil, err
 	}
 
-	chainPath := path.Join(n.cfg.NodeDir, strconv.FormatInt(int64(NID), 16))
+	chainPath := n.ChainPath(NID)
 	if err := os.MkdirAll(chainPath, 0700); err != nil {
 		log.Panicf("Fail to create directory %s err=%+v", chainPath, err)
 	}
 
+	//TODO JoinChainParam optional values {Channel}
 	channel := strconv.FormatInt(int64(NID), 16)
 	cfg := &chain.Config{
 		NID:            NID,
@@ -276,6 +283,7 @@ func NewNode(
 		cfg: *cfg,
 		m:   make(map[int]module.Chain),
 	}
+
 	//Load chains
 	if err := os.MkdirAll(cfg.NodeDir, 0700); err != nil {
 		log.Panicf("Fail to create directory %s err=%+v", cfg.NodeDir, err)

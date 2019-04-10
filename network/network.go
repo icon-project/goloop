@@ -4,10 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/server/metric"
 )
 
 type manager struct {
@@ -26,14 +28,19 @@ type manager struct {
 	pd *PeerDispatcher
 	//log
 	log *logger
+
+	//monitor
+	mtr *metric.NetworkMetric
 }
 
-func NewManager(channel string, nt module.NetworkTransport, initialSeed string, roles ...module.Role) module.NetworkManager {
+func NewManager(c module.Chain, nt module.NetworkTransport, initialSeed string, roles ...module.Role) module.NetworkManager {
 	t := nt.(*transport)
 	self := &Peer{id: t.PeerID(), netAddress: NetAddress(t.Address())}
+	channel := strconv.FormatInt(int64(c.NID()), 16)
+	mtr := metric.NewNetworkMetric(c.MetricContext())
 	m := &manager{
 		channel:          channel,
-		p2p:              newPeerToPeer(channel, self, t.GetDialer(channel)),
+		p2p:              newPeerToPeer(channel, self, t.GetDialer(channel), mtr),
 		roles:            make(map[module.Role]*PeerIDSet),
 		destByRole:       make(map[module.Role]byte),
 		roleByDest:       make(map[byte]module.Role),
@@ -41,6 +48,7 @@ func NewManager(channel string, nt module.NetworkTransport, initialSeed string, 
 		priority:         make(map[protocolInfo]uint8),
 		pd:               t.pd,
 		log:              newLogger("NetworkManager", channel),
+		mtr:       mtr,
 	}
 
 	//Create default protocolHandler for P2P topology management
@@ -92,7 +100,9 @@ func (m *manager) Term() {
 	m.mtx.Lock()
 
 	_ = m._stop()
+	m.log.Println("Term protocolHandlers")
 	for _, ph := range m.protocolHandlers {
+		m.log.Println("Term", ph.name)
 		ph.Term()
 	}
 }

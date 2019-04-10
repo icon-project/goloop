@@ -12,6 +12,7 @@ import (
 	"github.com/ugorji/go/codec"
 
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/server/metric"
 )
 
 type PeerToPeer struct {
@@ -59,6 +60,9 @@ type PeerToPeer struct {
 	//log
 	log *logger
 
+	//monitor
+	mtr *metric.NetworkMetric
+
 	run chan bool
 	mtx sync.RWMutex
 }
@@ -74,7 +78,7 @@ const (
 	p2pEventNotAllowed = "not allowed"
 )
 
-func newPeerToPeer(channel string, self *Peer, d *Dialer) *PeerToPeer {
+func newPeerToPeer(channel string, self *Peer, d *Dialer, mtr *metric.NetworkMetric) *PeerToPeer {
 	p2p := &PeerToPeer{
 		channel:          channel,
 		sendQueue:        NewWeightQueue(DefaultSendQueueSize, DefaultSendQueueMaxPriority+1),
@@ -110,6 +114,8 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer) *PeerToPeer {
 		mph: &codec.MsgpackHandle{},
 		//
 		log: newLogger("PeerToPeer", fmt.Sprintf("%s.%s", channel, hex.EncodeToString(self.id.Bytes()[:DefaultSimplePeerIDSize]))),
+		//
+		mtr: mtr,
 	}
 	p2p.mph.MapType = reflect.TypeOf(map[string]interface{}(nil))
 	p2p.allowedRoots.onUpdate = func() {
@@ -180,6 +186,7 @@ func (p2p *PeerToPeer) Stop() {
 	if p2p.run == nil {
 		return
 	}
+	p2p.log.Println("Stop", "try close p2p.run")
 	close(p2p.run)
 
 	var wg sync.WaitGroup
@@ -189,6 +196,7 @@ func (p2p *PeerToPeer) Stop() {
 		for {
 			ps := p2p.getPeers(false)
 			for _, p := range ps {
+				p2p.log.Println("Stop", "try Peer.Close", p)
 				p.Close("stop")
 			}
 			if len(ps) < 1 {
@@ -198,9 +206,10 @@ func (p2p *PeerToPeer) Stop() {
 		}
 		wg.Done()
 	}()
+	p2p.log.Println("Stop", "wait peer Closing")
 	wg.Wait()
-
 	p2p.run = nil
+	p2p.log.Println("Stop", "Done")
 }
 
 func (p2p *PeerToPeer) dial(na NetAddress) error {
@@ -987,7 +996,7 @@ type Counter struct {
 	overflow  int
 	//
 	close int
-	mtx sync.RWMutex
+	mtx   sync.RWMutex
 }
 
 func (c *Counter) String() string {
@@ -999,7 +1008,7 @@ func (c *Counter) increaseClose() {
 	c.mtx.Lock()
 	c.close++
 }
-func (c *Counter) Close() int{
+func (c *Counter) Close() int {
 	defer c.mtx.RUnlock()
 	c.mtx.RLock()
 	return c.close

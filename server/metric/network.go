@@ -1,8 +1,9 @@
 package metric
 
 import (
+	"context"
 	"fmt"
-	"log"
+	"sync"
 
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
@@ -18,32 +19,59 @@ var (
 )
 
 func RegisterNetwork() {
-	err := view.Register(
-		NewMetricView(msSend, view.Count(), networkMks),
-		NewMetricView(msSend, view.Sum(), networkMks),
-		NewMetricView(msRecv, view.Count(), networkMks),
-		NewMetricView(msRecv, view.Sum(), networkMks),
-	)
-	if err != nil {
-		log.Fatalf("Fail RegisterMetric view.Register %+v", err)
-	}
+	RegisterMetricView(msSend, view.Count(), networkMks)
+	RegisterMetricView(msSend, view.Sum(), networkMks)
+	RegisterMetricView(msRecv, view.Count(), networkMks)
+	RegisterMetricView(msRecv, view.Sum(), networkMks)
 }
 
-func recordNetwork(channel string, dest byte, ttl byte, hint byte, protocol uint16, m stats.Measurement) {
+type NetworkMetric struct {
+	ctx    context.Context
+	ctxMap map[string]context.Context
+	ctxMtx sync.RWMutex
+}
+
+func (m *NetworkMetric) get(key string) (context.Context, bool) {
+	m.ctxMtx.RLock()
+	defer m.ctxMtx.RUnlock()
+
+	v, ok := m.ctxMap[key]
+	return v, ok
+}
+
+func (m *NetworkMetric) put(key string, ctx context.Context) {
+	m.ctxMtx.Lock()
+	defer m.ctxMtx.Unlock()
+
+	m.ctxMap[key] = ctx
+}
+
+func (m *NetworkMetric) getMetricContext(dest byte, ttl byte, hint byte, protocol uint16) context.Context {
 	strDest := fmt.Sprintf("0x%02x%02x%02x", dest, ttl, hint)
-	mtDest := GetMetricTag(&mkDest, strDest)
-
 	strProtocol := fmt.Sprintf("%#04x", protocol)
-	mtProtocol := GetMetricTag(&mkProtocol, strProtocol)
-
-	ctx := NewMetricContext(channel, mtDest, mtProtocol)
-	stats.Record(ctx, m)
+	key := strDest + strProtocol
+	ctx, ok := m.get(key)
+	if !ok {
+		ctx = GetMetricContext(m.ctx, &mkDest, strDest)
+		ctx = GetMetricContext(ctx, &mkProtocol, strProtocol)
+		m.put(key, ctx)
+	}
+	return ctx
 }
 
-func RecordOnSend(channel string, dest byte, ttl byte, hint byte, protocol uint16, pktLen uint32) {
-	recordNetwork(channel, dest, ttl, hint, protocol, msSend.M(int64(pktLen)))
+func (m *NetworkMetric) OnSend(dest byte, ttl byte, hint byte, protocol uint16, pktLen uint32) {
+	ctx := m.getMetricContext(dest, ttl, hint, protocol)
+	stats.Record(ctx, msSend.M(int64(pktLen)))
 }
 
-func RecordOnRecv(channel string, dest byte, ttl byte, hint byte, protocol uint16, pktLen uint32) {
-	recordNetwork(channel, dest, ttl, hint, protocol, msRecv.M(int64(pktLen)))
+func (m *NetworkMetric) OnRecv(dest byte, ttl byte, hint byte, protocol uint16, pktLen uint32) {
+	ctx := m.getMetricContext(dest, ttl, hint, protocol)
+	stats.Record(ctx, msRecv.M(int64(pktLen)))
+}
+
+func NewNetworkMetric(ctx context.Context) *NetworkMetric {
+	return &NetworkMetric{
+		ctx: ctx,
+		ctxMap: make(map[string]context.Context),
+	}
 }

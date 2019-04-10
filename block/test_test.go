@@ -2,6 +2,7 @@ package block
 
 import (
 	"bytes"
+	"context"
 	"log"
 	"math/big"
 	"reflect"
@@ -103,6 +104,10 @@ func (c *testChain) Verify(sync bool) error {
 }
 
 func (c *testChain) State() string {
+	panic("implement me")
+}
+
+func (c *testChain) MetricContext() context.Context {
 	panic("implement me")
 }
 

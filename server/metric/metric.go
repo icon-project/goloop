@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"log"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -19,11 +20,14 @@ import (
 //metric common tag key
 var (
 	MetricKeyHostname = NewMetricKey("hostname")
-	MetricKeyChannel  = NewMetricKey("channel")
-	mKeys             = []tag.Key{MetricKeyHostname, MetricKeyChannel}
-	MetricTagHostname = tag.Insert(MetricKeyHostname, _resolveHostname(nil))
+	MetricKeyChain    = NewMetricKey("channel")
+	mKeys             = []tag.Key{MetricKeyHostname, MetricKeyChain}
+	RootMetricCtx     = context.Background()
 	mTags             = make(map[*tag.Key]map[string]tag.Mutator)
-	mtMtx             sync.Mutex
+	mCtxs             = make(map[tag.Mutator]context.Context)
+	mViews            = make(map[string]*view.View)
+	mViewMtx          sync.RWMutex
+	mTagMtx           sync.Mutex
 	mtOnce            sync.Once
 )
 
@@ -45,19 +49,28 @@ var aggTypeName = map[view.AggType]string{
 	view.AggTypeLastValue:    "",
 }
 
-func NewMetricView(m stats.Measure, a *view.Aggregation, tks []tag.Key) *view.View {
-	return &view.View{
+func RegisterMetricView(m stats.Measure, a *view.Aggregation, tks []tag.Key) *view.View {
+	defer mViewMtx.Unlock()
+	mViewMtx.Lock()
+
+	v := &view.View{
 		Name:        m.Name() + aggTypeName[a.Type],
 		Description: m.Description() + " Aggregated " + a.Type.String(),
 		Measure:     m,
 		Aggregation: a,
 		TagKeys:     append(mKeys, tks...),
 	}
+	err := view.Register(v)
+	if err != nil {
+		log.Fatalf("Fail RegisterMetricView view.Register %+v", err)
+	}
+	mViews[v.Name] = v
+	return v
 }
 
-func GetMetricTag(mk *tag.Key, v string) tag.Mutator {
-	defer mtMtx.Unlock()
-	mtMtx.Lock()
+func GetMetricContext(p context.Context, mk *tag.Key, v string) context.Context {
+	defer mTagMtx.Unlock()
+	mTagMtx.Lock()
 
 	m, ok := mTags[mk]
 	if !ok {
@@ -70,20 +83,26 @@ func GetMetricTag(mk *tag.Key, v string) tag.Mutator {
 		mt = tag.Upsert(*mk, v)
 		m[v] = mt
 	}
-	return mt
-}
 
-func NewMetricContext(channel string, mts ...tag.Mutator) context.Context {
-	if channel == "" {
-		channel = "UNKNOWN"
-	}
-	mtChannel := GetMetricTag(&MetricKeyChannel, channel)
-	ms := append([]tag.Mutator{MetricTagHostname, mtChannel}, mts...)
-	ctx, err := tag.New(context.Background(), ms...)
-	if err != nil {
-		log.Fatalf("Fail tag.New %+v", err)
+	ctx, ok := mCtxs[mt]
+	if !ok {
+		tCtx, err := tag.New(p, mt)
+		if err != nil {
+			log.Fatalf("Fail tag.New %+v", err)
+		}
+		mCtxs[mt] = tCtx
+		ctx = tCtx
 	}
 	return ctx
+}
+
+func DefaultMetricContext() context.Context {
+	return GetMetricContext(RootMetricCtx, &MetricKeyChain, "UNKNOWN")
+}
+
+func GetMetricContextByNID(NID int) context.Context {
+	chainID := strconv.FormatInt(int64(NID), 16)
+	return GetMetricContext(RootMetricCtx, &MetricKeyChain, chainID)
 }
 
 func _resolveHostname(w module.Wallet) string {
@@ -100,7 +119,8 @@ func _resolveHostname(w module.Wallet) string {
 
 func Initialize(w module.Wallet) {
 	mtOnce.Do(func() {
-		MetricTagHostname = tag.Insert(MetricKeyHostname, _resolveHostname(w))
+		log.Println("Initialize RootMetricCtx")
+		RootMetricCtx = GetMetricContext(context.Background(), &MetricKeyHostname, _resolveHostname(w))
 	})
 }
 
@@ -122,4 +142,44 @@ func PromethusExporter() *prometheus.Exporter {
 	RegisterNetwork()
 	RegisterTransaction()
 	return pe
+}
+
+func ParseMetricData(r *view.Row) interface{} {
+	switch data := r.Data.(type) {
+	case *view.CountData:
+		return data.Value
+	case *view.DistributionData:
+		return data
+	case *view.SumData:
+		return data.Value
+	case *view.LastValueData:
+		return data.Value
+	}
+	return nil
+}
+
+func Inspect(c module.Chain) map[string]interface{} {
+	mViewMtx.RLock()
+	defer mViewMtx.RUnlock()
+
+	//c.MetricContext()
+	chainID, ok := tag.FromContext(c.MetricContext()).Value(MetricKeyChain)
+	if !ok {
+		return nil
+	}
+	m := make(map[string]interface{})
+	for k, v := range mViews {
+		m[v.Name] = nil
+		rows, _ := view.RetrieveData(k)
+		for _, r := range rows {
+		LoopTag:
+			for _, t := range r.Tags {
+				if t.Key.Name() == MetricKeyChain.Name() && t.Value == chainID {
+					m[v.Name] = ParseMetricData(r)
+					break LoopTag
+				}
+			}
+		}
+	}
+	return m
 }

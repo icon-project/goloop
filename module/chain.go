@@ -1,6 +1,7 @@
 package module
 
 import (
+	"context"
 	"time"
 
 	"github.com/icon-project/goloop/common/db"
@@ -35,6 +36,8 @@ type Chain interface {
 
 	Reset(sync bool) error
 	Verify(sync bool) error
+
+	MetricContext() context.Context
 }
 
 type Regulator interface {

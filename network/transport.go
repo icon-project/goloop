@@ -10,6 +10,7 @@ import (
 	"github.com/ugorji/go/codec"
 
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/server/metric"
 )
 
 type transport struct {
@@ -270,6 +271,8 @@ type PeerDispatcher struct {
 	peerHandlers *list.List
 	p2pMap       map[string]*PeerToPeer
 	mtx          sync.RWMutex
+
+	mtr       *metric.NetworkMetric
 }
 
 func newPeerDispatcher(id module.PeerID, peerHandlers ...PeerHandler) *PeerDispatcher {
@@ -277,6 +280,7 @@ func newPeerDispatcher(id module.PeerID, peerHandlers ...PeerHandler) *PeerDispa
 		peerHandlers: list.New(),
 		p2pMap:       make(map[string]*PeerToPeer),
 		peerHandler:  newPeerHandler(newLogger("PeerDispatcher", "")),
+		mtr: metric.NewNetworkMetric(metric.DefaultMetricContext()),
 	}
 	// pd.peerHandler.codecHandle.MapType = reflect.TypeOf(map[string]interface{}(nil))
 	pd.setSelfPeerID(id)
@@ -309,7 +313,7 @@ func (pd *PeerDispatcher) unregisterPeerToPeer(p2p *PeerToPeer) bool {
 	return true
 }
 
-func (pd *PeerDispatcher) getPeerToPeer(channel string) *PeerToPeer{
+func (pd *PeerDispatcher) getPeerToPeer(channel string) *PeerToPeer {
 	defer pd.mtx.RUnlock()
 	pd.mtx.RLock()
 
@@ -354,17 +358,18 @@ func (pd *PeerDispatcher) onConnect(conn net.Conn, addr string, d *Dialer) {
 func (pd *PeerDispatcher) dispatchPeer(p *Peer) {
 	elm := pd.peerHandlers.Back()
 	ph := elm.Value.(PeerHandler)
+	p.setMetric(pd.mtr)
 	p.setPacketCbFunc(ph.onPacket)
 	p.setErrorCbFunc(ph.onError)
 	p.setCloseCbFunc(ph.onClose)
 	ph.onPeer(p)
 }
 
-
 //callback from PeerHandler.nextOnPeer
 func (pd *PeerDispatcher) onPeer(p *Peer) {
 	pd.log.Println("onPeer", p)
 	if p2p := pd.getPeerToPeer(p.channel); p2p != nil {
+		p.setMetric(p2p.mtr)
 		p.setPacketCbFunc(p2p.onPacket)
 		p.setErrorCbFunc(p2p.onError)
 		p.setCloseCbFunc(p2p.onClose)

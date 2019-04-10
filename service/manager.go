@@ -45,8 +45,8 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 ) module.ServiceManager {
 	bk, _ := chain.Database().GetBucket(db.TransactionLocatorByHash)
 
-	pMetric := metric.NewTransactionMetric(chain.NID(), metric.TxTypePatch)
-	nMetric := metric.NewTransactionMetric(chain.NID(), metric.TxTypeNormal)
+	pMetric := metric.NewTransactionMetric(chain.MetricContext(), metric.TxTypePatch)
+	nMetric := metric.NewTransactionMetric(chain.MetricContext(), metric.TxTypeNormal)
 
 	mgr := &manager{
 		patchMetric:  pMetric,

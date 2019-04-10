@@ -50,6 +50,10 @@ type Peer struct {
 	nephews   int
 	//
 	last context.Context
+
+	//monitor
+	mtr       *metric.NetworkMetric
+	metricMtx sync.RWMutex
 }
 
 type packetCbFunc func(pkt *Packet, p *Peer)
@@ -337,7 +341,7 @@ func (p *Peer) receiveRoutine() {
 
 		pkt.sender = p.id
 		p.pool.Put(pkt.hashOfPacket)
-		metric.RecordOnRecv(p.channel, pkt.dest, pkt.ttl, pkt.extendInfo.hint(), pkt.protocol.Uint16(), pkt.lengthOfPayload)
+		p.getMetric().OnRecv(pkt.dest, pkt.ttl, pkt.extendInfo.hint(), pkt.protocol.Uint16(), pkt.lengthOfPayload)
 		if isLoggingPacket {
 			log.Println(p.id, "Peer", "receiveRoutine", p.connType, p.ConnString(), pkt)
 		}
@@ -398,7 +402,7 @@ Loop:
 					log.Println(p.id, "Peer", "sendRoutine", p.connType, p.ConnString(), pkt)
 				}
 				p.pool.Put(pkt.hashOfPacket)
-				metric.RecordOnSend(p.channel, pkt.dest, pkt.ttl, pkt.extendInfo.hint(), pkt.protocol.Uint16(), pkt.lengthOfPayload)
+				p.getMetric().OnSend(pkt.dest, pkt.ttl, pkt.extendInfo.hint(), pkt.protocol.Uint16(), pkt.lengthOfPayload)
 			}
 		case <-secondTick.C:
 			p.pool.RemoveBefore(DefaultPeerPoolExpireSecond)
@@ -451,6 +455,18 @@ func (p *Peer) sendPacket(pkt *Packet) error {
 	ctx := context.WithValue(context.Background(), p2pContextKeyPacket, pkt)
 	ctx = context.WithValue(ctx, p2pContextKeyCounter, &Counter{})
 	return p.send(ctx)
+}
+
+func (p *Peer) setMetric(nm *metric.NetworkMetric) {
+	p.metricMtx.Lock()
+	defer p.metricMtx.Unlock()
+	p.mtr = nm
+}
+
+func (p *Peer) getMetric() *metric.NetworkMetric {
+	p.metricMtx.RLock()
+	defer p.metricMtx.RUnlock()
+	return p.mtr
 }
 
 const (

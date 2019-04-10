@@ -2,8 +2,6 @@ package metric
 
 import (
 	"context"
-	"log"
-	"strconv"
 	"sync"
 	"time"
 
@@ -28,19 +26,14 @@ var (
 )
 
 func RegisterTransaction() {
-	err := view.Register(
-		NewMetricView(msAddTx, view.Count(), txPoolMks),
-		NewMetricView(msAddTx, view.Sum(), txPoolMks),
-		NewMetricView(msRemoveTx, view.Count(), txPoolMks),
-		NewMetricView(msRemoveTx, view.Sum(), txPoolMks),
-		NewMetricView(msDropTx, view.Count(), txPoolMks),
-		NewMetricView(msDropTx, view.Sum(), txPoolMks),
-		NewMetricView(msFinLatency, view.LastValue(), txPoolMks),
-		NewMetricView(msCommitLatency, view.LastValue(), txPoolMks),
-	)
-	if err != nil {
-		log.Fatalf("Fail RegisterMetric view.Register %+v", err)
-	}
+	RegisterMetricView(msAddTx, view.Count(), txPoolMks)
+	RegisterMetricView(msAddTx, view.Sum(), txPoolMks)
+	RegisterMetricView(msRemoveTx, view.Count(), txPoolMks)
+	RegisterMetricView(msRemoveTx, view.Sum(), txPoolMks)
+	RegisterMetricView(msDropTx, view.Count(), txPoolMks)
+	RegisterMetricView(msDropTx, view.Sum(), txPoolMks)
+	RegisterMetricView(msFinLatency, view.LastValue(), txPoolMks)
+	RegisterMetricView(msCommitLatency, view.LastValue(), txPoolMks)
 }
 
 type commitRecord struct {
@@ -91,10 +84,9 @@ func (c *TxMetric) OnCommit(hash []byte, ts time.Time, d time.Duration) {
 	stats.Record(c.context, msCommitLatency.M(int64(d/time.Millisecond)))
 }
 
-func NewTransactionMetric(nid int, t string) *TxMetric {
-	mtTxType := GetMetricTag(&mkTxType, t)
+func NewTransactionMetric(ctx context.Context, t string) *TxMetric {
 	return &TxMetric{
-		context: NewMetricContext(strconv.Itoa(nid), mtTxType),
+		context: GetMetricContext(ctx, &mkTxType, t),
 		commits: make(map[string]*commitRecord),
 	}
 }

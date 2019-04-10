@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/ugorji/go/codec"
 
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -255,11 +256,42 @@ func (r *testReactor) Response(msg string, id module.PeerID) string {
 	return m.Message
 }
 
+type dummyChain struct {
+	nid int
+	metricCtx context.Context
+}
+func (c *dummyChain) Database() db.Database {panic("not implemented")}
+func (c *dummyChain) Wallet() module.Wallet {panic("not implemented")}
+func (c *dummyChain) NID() int {return c.nid}
+func (c *dummyChain) ConcurrencyLevel() int {panic("not implemented")}
+func (c *dummyChain) Genesis() []byte {panic("not implemented")}
+func (c *dummyChain) GetGenesisData(key []byte) ([]byte, error) {panic("not implemented")}
+func (c *dummyChain) CommitVoteSetDecoder() module.CommitVoteSetDecoder {panic("not implemented")}
+
+func (c *dummyChain) BlockManager() module.BlockManager {panic("not implemented")}
+func (c *dummyChain) Consensus() module.Consensus {panic("not implemented")}
+func (c *dummyChain) ServiceManager() module.ServiceManager {panic("not implemented")}
+func (c *dummyChain) NetworkManager() module.NetworkManager {panic("not implemented")}
+func (c *dummyChain) Regulator() module.Regulator {panic("not implemented")}
+
+func (c *dummyChain) Init(sync bool) error  {panic("not implemented")}
+func (c *dummyChain) Start(sync bool) error {panic("not implemented")}
+func (c *dummyChain) Stop(sync bool) error {panic("not implemented")}
+func (c *dummyChain) Term(sync bool) error {panic("not implemented")}
+func (c *dummyChain) State() string {panic("not implemented")}
+
+func (c *dummyChain) Reset(sync bool) error {panic("not implemented")}
+func (c *dummyChain) Verify(sync bool) error {panic("not implemented")}
+
+func (c *dummyChain) MetricContext() context.Context {return c.metricCtx}
+
 func generateNetwork(name string, port int, n int, t *testing.T, roles ...module.Role) ([]*testReactor, int) {
 	arr := make([]*testReactor, n)
 	for i := 0; i < n; i++ {
-		nt := NewTransport(fmt.Sprintf("127.0.0.1:%d", port+i), walletFromGeneratedPrivateKey())
-		nm := NewManager(testChannel, nt, "", roles...)
+		w := walletFromGeneratedPrivateKey()
+		nt := NewTransport(fmt.Sprintf("127.0.0.1:%d", port+i), w)
+		c := &dummyChain{nid:i, metricCtx: context.Background()}
+		nm := NewManager(c, nt, "", roles...)
 		r := newTestReactor(fmt.Sprintf("%s_%d", name, i), nm, t)
 		r.nt = nt
 		if err := r.nt.Listen(); err != nil {
