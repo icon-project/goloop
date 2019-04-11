@@ -211,14 +211,21 @@ func getScoreApi(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, err
 }
 
 func getTotalSupply(ctx *jsonrpc.Context, _ *jsonrpc.Params) (interface{}, error) {
-	// if !params.IsEmpty() {
-	// 	return nil, jsonrpc.ErrInvalidParams()
-	// }
-	_, err := ctx.Chain()
+	chain, err := ctx.Chain()
 	if err != nil {
+		return nil, jsonrpc.ErrServer(err.Error())
 	}
-	// TODO : service interface required
-	return nil, nil
+	bm := chain.BlockManager()
+	b, err := bm.GetLastBlock()
+	if err != nil {
+		return nil, jsonrpc.ErrServer(err.Error())
+	}
+	sm := chain.ServiceManager()
+
+	var tsValue common.HexInt
+	tsValue.Set(sm.GetTotalSupply(b.Result()))
+
+	return &tsValue, nil
 }
 
 func getTransactionResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {

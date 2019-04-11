@@ -24,6 +24,7 @@ const (
 	VarDeployers      = "deployers"
 	VarLicenses       = "licenses"
 	VarCommitTimeout  = "commitTimeout"
+	VarTotalSupply    = "total_supply"
 )
 
 const (

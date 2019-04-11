@@ -240,4 +240,7 @@ type ServiceManager interface {
 
 	// GetBalance get balance of the account
 	GetBalance(result []byte, addr Address) *big.Int
+
+	// GetTotalSupply get total supplied coin
+	GetTotalSupply(result []byte) *big.Int
 }

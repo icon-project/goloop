@@ -170,8 +170,10 @@ func (g *genesisV3) Prepare(ctx contract.Context) (state.WorldContext, error) {
 }
 
 func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
-	r := txresult.NewReceipt(common.NewAccountAddress([]byte{}))
+	r := txresult.NewReceipt(common.NewContractAddress(state.SystemID))
 	as := ctx.GetAccountState(state.SystemID)
+
+	var totalSupply big.Int
 	for i := range g.Accounts {
 		info := g.Accounts[i]
 		if info.Balance == nil {
@@ -181,6 +183,13 @@ func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
 		addr.Set(&info.Address)
 		ac := ctx.GetAccountState(info.Address.ID())
 		ac.SetBalance(&info.Balance.Int)
+		totalSupply.Add(&totalSupply, &info.Balance.Int)
+	}
+
+	ts := scoredb.NewVarDB(as, state.VarTotalSupply)
+	if err := ts.Set(&totalSupply); err != nil {
+		log.Printf("Fail to store total supply err=%+v", err)
+		return nil, err
 	}
 
 	if err := g.deployPreInstall(ctx, r); err != nil {

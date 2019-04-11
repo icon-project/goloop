@@ -704,6 +704,10 @@ func (sm *testServiceManager) GetBalance(result []byte, addr module.Address) *bi
 	panic("not implemented")
 }
 
+func (sm *testServiceManager) GetTotalSupply(result []byte) *big.Int {
+	panic("not implemented")
+}
+
 func (sm *testServiceManager) Start() {
 	panic("implement me")
 }

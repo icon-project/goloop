@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/icon-project/goloop/server/metric"
+	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/transaction"
 
 	"github.com/icon-project/goloop/common"
@@ -352,6 +353,20 @@ func (m *manager) GetBalance(result []byte, addr module.Address) *big.Int {
 			return big.NewInt(0)
 		}
 		return ass.GetBalance()
+	}
+	return big.NewInt(0)
+}
+
+func (m *manager) GetTotalSupply(result []byte) *big.Int {
+	if tr, err := newTransitionResultFromBytes(result); err == nil {
+		wss := state.NewWorldSnapshot(m.db, tr.StateHash, nil)
+		ass := wss.GetAccountSnapshot(state.SystemID)
+		as := scoredb.NewStateStoreWith(ass)
+		tsVar := scoredb.NewVarDB(as, state.VarTotalSupply)
+
+		if ts := tsVar.BigInt(); ts != nil {
+			return ts
+		}
 	}
 	return big.NewInt(0)
 }
