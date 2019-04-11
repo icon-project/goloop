@@ -53,17 +53,8 @@ public class HelloWorld extends Score {
         super(iconService, scoreAddress, nid);
     }
 
-    public boolean invokeHello(Wallet from) {
-        try {
-            TransactionResult result = invokeAndWaitResult(from, "hello", null
-                    , BigInteger.valueOf(0), BigInteger.valueOf(100));
-            if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
-                return false;
-            }
-        }
-        catch ( ResultTimeoutException | IOException ex) {
-            return false;
-        }
-        return true;
+    public TransactionResult invokeHello(Wallet from) throws ResultTimeoutException, IOException{
+        return invokeAndWaitResult(from, "hello", null
+                , BigInteger.valueOf(0), BigInteger.valueOf(100));
     }
 }

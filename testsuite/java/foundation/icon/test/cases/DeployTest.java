@@ -66,7 +66,6 @@ public class DeployTest {
 
         defStepPrice = Utils.icxCall(iconService, BigInteger.valueOf(0), govWallet, Constants.CHAINSCORE_ADDRESS,
                 "getStepPrice", null).asInteger();
-        System.out.format("%s, %s, %s\n", defMaxStepLimit.toString(), defStepCostCC.toString(), defStepPrice.toString());
 
 
         Bytes txHash = Utils.transfer(iconService, godWallet, govWallet.getAddress(), 9999999);
@@ -77,9 +76,7 @@ public class DeployTest {
         catch (ResultTimeoutException ex) {
             throw ex;
         }
-        System.out.format("govWallet addr : %s\n", govWallet.getAddress());
         BigInteger bal = iconService.getBalance(govWallet.getAddress()).execute();
-        System.out.format("govWallet balance : %s\n", bal.toString());
 
         govScore.setMaxStepLimit("invoke", invokeMaxStepLimit);
         govScore.setStepCost("contractCreate", stepCostCC);
@@ -95,7 +92,6 @@ public class DeployTest {
 
     @Test
     public void notEnoughBalance() throws Exception {
-        System.out.format("%s, %s, %s\n", defMaxStepLimit.toString(), defStepCostCC.toString(), defStepPrice.toString());
         KeyWallet owner = KeyWallet.create();
         BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
         if(bal.compareTo(BigInteger.valueOf(0)) != 0) {
@@ -108,12 +104,11 @@ public class DeployTest {
         catch(ResultTimeoutException ex) {
             return;
         }
-        throw new Exception();
+        fail();
     }
 
     @Test
     public void notEnoughStepLimit() throws Exception {
-        System.out.format("%s, %s, %s\n", defMaxStepLimit.toString(), defStepCostCC.toString(), defStepPrice.toString());
         KeyWallet owner = KeyWallet.create();
         BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
         if(bal.compareTo(BigInteger.valueOf(0)) != 0) {
@@ -135,7 +130,7 @@ public class DeployTest {
         catch(TransactionFailureException ex) {
             return;
         }
-        throw new Exception();
+        fail();
     }
 
     @Test
@@ -163,7 +158,7 @@ public class DeployTest {
         catch(TransactionFailureException ex) {
             return;
         }
-        throw new Exception();
+        fail();
     }
 
     @Test

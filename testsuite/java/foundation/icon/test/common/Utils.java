@@ -174,8 +174,8 @@ public class Utils {
         return Files.readAllBytes(path);
     }
 
-    public static TransactionResult getTransactionResult(
-            IconService iconService, Bytes txHash, long waitingTime) throws ResultTimeoutException, IOException  {
+    public static TransactionResult getTransactionResult(IconService iconService, Bytes txHash, long waitingTime)
+            throws ResultTimeoutException, IOException  {
         TransactionResult result = null;
         long limitTime = System.currentTimeMillis() + waitingTime;
         while (result == null) {
@@ -228,7 +228,7 @@ public class Utils {
 
     public static TransactionResult sendTransactionWithCall(
             IconService iconService, BigInteger nid, Wallet fromWallet, Address scoreAddr, String function,
-            RpcObject params, long value) throws TransactionFailureException, ResultTimeoutException, IOException {
+            RpcObject params, long value) throws ResultTimeoutException, IOException {
 
         long timestamp = System.currentTimeMillis() * 1000L;
         Transaction transaction = TransactionBuilder.newBuilder()
@@ -246,9 +246,6 @@ public class Utils {
         SignedTransaction signedTransaction = new SignedTransaction(transaction, fromWallet);
         Bytes txHash = iconService.sendTransaction(signedTransaction).execute();
         TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
-        if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
-            throw new TransactionFailureException(result.getFailure());
-        }
         return result;
     }
 

@@ -88,7 +88,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 		{scoreapi.Function, "setStepCost",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
-				{"costType", scoreapi.String, nil},
+				{"type", scoreapi.String, nil},
 				{"cost", scoreapi.Integer, nil},
 			},
 			nil,
@@ -97,10 +97,11 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
 				{"contextType", scoreapi.String, nil},
-				{"cost", scoreapi.Integer, nil},
+				{"limit", scoreapi.Integer, nil},
 			},
 			nil,
 		},
+		// TODO add setValidators(addresses)
 		{scoreapi.Function, "grantValidator",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
@@ -114,13 +115,6 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 				{"address", scoreapi.Address, nil},
 			},
 			nil,
-		},
-		{scoreapi.Function, "getValidators",
-			scoreapi.FlagReadOnly, 0,
-			nil,
-			[]scoreapi.DataType{
-				scoreapi.List,
-			},
 		},
 		{scoreapi.Function, "addMember",
 			scoreapi.FlagExternal, 0,
@@ -181,7 +175,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 		{scoreapi.Function, "getStepCost",
 			scoreapi.FlagReadOnly, 0,
 			[]scoreapi.Parameter{
-				{"t", scoreapi.String, nil},
+				{"type", scoreapi.String, nil},
 			},
 			[]scoreapi.DataType{
 				scoreapi.Integer,
@@ -209,7 +203,22 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 				{"address", scoreapi.Address, nil},
 			},
 			[]scoreapi.DataType{
+				//scoreapi.Dict,
 				scoreapi.String,
+			},
+		},
+		{scoreapi.Function, "getMembers",
+			scoreapi.FlagReadOnly, 0,
+			nil,
+			[]scoreapi.DataType{
+				scoreapi.List,
+			},
+		},
+		{scoreapi.Function, "getValidators",
+			scoreapi.FlagReadOnly, 0,
+			nil,
+			[]scoreapi.DataType{
+				scoreapi.List,
 			},
 		},
 		{scoreapi.Function, "isDeployer",
@@ -221,26 +230,12 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 				scoreapi.Integer,
 			},
 		},
-		{scoreapi.Function, "getMembers",
-			scoreapi.FlagReadOnly, 0,
-			nil,
-			[]scoreapi.DataType{
-				scoreapi.List,
-			},
-		},
 		{scoreapi.Function, "getServiceConfig",
 			scoreapi.FlagReadOnly, 0,
 			nil,
 			[]scoreapi.DataType{
 				scoreapi.Integer,
 			},
-		},
-		{scoreapi.Function, "setServiceConfig",
-			scoreapi.FlagExternal, 0,
-			[]scoreapi.Parameter{
-				{"config", scoreapi.Integer, nil},
-			},
-			nil,
 		},
 	}
 
@@ -751,6 +746,60 @@ type scoreStatus struct {
 	Blocked  string     `json:"blocked"`
 	Disabled string     `json:"disabled"`
 }
+
+//func (s *ChainScore) Ex_getScoreStatus(address module.Address) (map[string]interface{}, error) {
+//	stringStatus := func(s state.ContractState) string {
+//		var status string
+//		switch s {
+//		case state.CSInactive:
+//			status = "inactive"
+//		case state.CSActive:
+//			status = "active"
+//		case state.CSPending:
+//			status = "pending"
+//		case state.CSRejected:
+//			status = "reject"
+//		default:
+//			log.Printf("GetScoreStatus - string : %v\n", s)
+//		}
+//		return status
+//	}
+//
+//	as := s.cc.GetAccountState(address.ID())
+//	if as == nil {
+//		return nil, errors.New("SCORE not found")
+//	}
+//	scoreStatus := make(map[string]interface{})
+//	if cur := as.Contract(); cur != nil {
+//		curContract := make(map[string]interface{})
+//		curContract["status"] = stringStatus(cur.Status())
+//		curContract["deployTxHash"] = fmt.Sprintf("%x", cur.DeployTxHash())
+//		curContract["auditTxHash"] = fmt.Sprintf("%x", cur.AuditTxHash())
+//		scoreStatus["current"] = curContract
+//	}
+//
+//	if next := as.NextContract(); next != nil {
+//		nextContract := make(map[string]interface{})
+//		nextContract["status"] = stringStatus(next.Status())
+//		nextContract["deployTxHash"] = fmt.Sprintf("%x", next.DeployTxHash())
+//		scoreStatus["next"] = nextContract
+//	}
+//
+//	// blocked
+//	if as.IsBlocked() == true {
+//		scoreStatus["blocked"] = "0x1"
+//	} else {
+//		scoreStatus["blocked"] = "0x0"
+//	}
+//
+//	// disabled
+//	if as.IsDisabled() == true {
+//		scoreStatus["disabled"] = "0x1"
+//	} else {
+//		scoreStatus["disabled"] = "0x0"
+//	}
+//	return scoreStatus, nil
+//}
 
 func (s *ChainScore) Ex_getScoreStatus(address module.Address) (string, error) {
 	stringStatus := func(s state.ContractState) string {

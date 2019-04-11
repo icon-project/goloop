@@ -99,16 +99,15 @@ public class TransferTest {
             Bytes txHash = Utils.transfer(iconService, wallets[i], testWallets[i].getAddress(), rand.nextInt(100) + 1);
 
             try {
-                TransactionResult result = Utils.getTransactionResult(iconService, txHash, 3000);
+                Utils.getTransactionResult(iconService, txHash, 5000);
                 throw new Exception();
             }
             catch (ResultTimeoutException ex) {
-                System.out.println("Failed to get transactoinResult.");
+                // success
             }
 
             BigInteger bal2;
-            if((bal2 = iconService.getBalance(testWallets[i].getAddress()).execute()).compareTo(bal) != 0) {
-                System.out.println("bal = " + bal + ", bal2 = " + bal2);
+            if((iconService.getBalance(testWallets[i].getAddress()).execute()).compareTo(bal) != 0) {
                 throw new Exception();
             }
         }

@@ -16,7 +16,7 @@ import java.math.BigInteger;
 
 public class Score {
     public static final BigInteger STEPS_DEFAULT = BigInteger.valueOf(2000000);
-    public static final long DEFAULT_WAITING_TIME = 7000; // millisecond
+    public static final long DEFAULT_WAITING_TIME = 5000; // millisecond
 
     protected IconService service;
     protected Address scoreAddress;
