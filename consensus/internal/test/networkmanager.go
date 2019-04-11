@@ -1,8 +1,6 @@
 package test
 
 import (
-	"runtime"
-
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
@@ -17,28 +15,27 @@ type tReactorItem struct {
 	priority uint8
 }
 
-type tPacket struct {
-	pi module.ProtocolInfo
-	b  []byte
-	id module.PeerID
-}
-
 type tNetworkManagerStatic struct {
 	common.Mutex
-	procList []*NetworkManager
+	jobs chan func()
+}
+
+func (p *tNetworkManagerStatic) process() {
+	for {
+		job := <-p.jobs
+		job()
+	}
 }
 
 var nms = tNetworkManagerStatic{}
 
 type NetworkManager struct {
 	*tNetworkManagerStatic
-	ID       module.PeerID
-	wakeUpCh chan struct{}
+	ID module.PeerID
 
 	reactorItems []*tReactorItem
 	peers        []*NetworkManager
 	drop         bool
-	recvBuf      []*tPacket
 }
 
 type tProtocolHandler struct {
@@ -46,23 +43,22 @@ type tProtocolHandler struct {
 	ri *tReactorItem
 }
 
-func NewNetworkManagerForPeerID(id module.PeerID) *NetworkManager {
+func newTNetworkManagerForPeerID(id module.PeerID) *NetworkManager {
+	nms.Lock()
+	if nms.jobs == nil {
+		nms.jobs = make(chan func(), 1000)
+		go nms.process()
+	}
+	nms.Unlock()
 	nm := &NetworkManager{
 		tNetworkManagerStatic: &nms,
 		ID:                    id,
-		wakeUpCh:              make(chan struct{}, 1),
 	}
-	go nm.process()
-	runtime.SetFinalizer(nm, (*NetworkManager).dispose)
 	return nm
 }
 
-func (nm *NetworkManager) dispose() {
-	close(nm.wakeUpCh)
-}
-
 func NewNetworkManager() *NetworkManager {
-	return NewNetworkManagerForPeerID(createAPeerID())
+	return newTNetworkManagerForPeerID(createAPeerID())
 }
 
 func (nm *NetworkManager) GetPeers() []module.PeerID {
@@ -116,44 +112,41 @@ func (nm *NetworkManager) Join(nm2 *NetworkManager) {
 	})
 }
 
-func (nm *NetworkManager) onReceiveUnicast(pi module.ProtocolInfo, b []byte, from module.PeerID) {
-	nm.Lock()
-	nm.recvBuf = append(nm.recvBuf, &tPacket{pi, b, from})
-	nm.Unlock()
-	select {
-	case nm.wakeUpCh <- struct{}{}:
-	default:
-	}
-}
-
-func (nm *NetworkManager) process() {
-	for {
-		select {
-		case _, more := <-nm.wakeUpCh:
-			if !more {
-				return
-			}
-		}
-		nm.Lock()
-		recvBuf := nm.recvBuf
-		nm.recvBuf = nil
-		reactorItems := make([]*tReactorItem, len(nm.reactorItems))
-		copy(reactorItems, nm.reactorItems)
-		nm.Unlock()
-		for _, p := range recvBuf {
-			for _, r := range reactorItems {
-				r.reactor.OnReceive(p.pi, p.b, p.id)
+func (nm *NetworkManager) receivePacket(pi module.ProtocolInfo, b []byte, from module.PeerID) {
+	for _, ri := range nm.reactorItems {
+		if ri.accept(pi) {
+			r := ri.reactor
+			nm.jobs <- func() {
+				r.OnReceive(pi, b, from)
 			}
 		}
 	}
 }
 
 func (ph *tProtocolHandler) Broadcast(pi module.ProtocolInfo, b []byte, bt module.BroadcastType) error {
-	panic("not implemented")
+	ph.nm.Lock()
+	defer ph.nm.Unlock()
+
+	if ph.nm.drop {
+		return nil
+	}
+	for _, p := range ph.nm.peers {
+		p.receivePacket(pi, b, ph.nm.ID)
+	}
+	return nil
 }
 
 func (ph *tProtocolHandler) Multicast(pi module.ProtocolInfo, b []byte, role module.Role) error {
-	panic("not implemented")
+	ph.nm.Lock()
+	defer ph.nm.Unlock()
+
+	if ph.nm.drop {
+		return nil
+	}
+	for _, p := range ph.nm.peers {
+		p.receivePacket(pi, b, ph.nm.ID)
+	}
+	return nil
 }
 
 func (ph *tProtocolHandler) Unicast(pi module.ProtocolInfo, b []byte, id module.PeerID) error {
@@ -165,11 +158,7 @@ func (ph *tProtocolHandler) Unicast(pi module.ProtocolInfo, b []byte, id module.
 	}
 	for _, p := range ph.nm.peers {
 		if p.ID.Equal(id) {
-			peer := p
-			id := ph.nm.ID
-			ph.nm.CallAfterUnlock(func() {
-				peer.onReceiveUnicast(pi, b, id)
-			})
+			p.receivePacket(pi, b, ph.nm.ID)
 			return nil
 		}
 	}
@@ -178,4 +167,13 @@ func (ph *tProtocolHandler) Unicast(pi module.ProtocolInfo, b []byte, id module.
 
 func createAPeerID() module.PeerID {
 	return network.NewPeerIDFromAddress(wallet.New().Address())
+}
+
+func (ri *tReactorItem) accept(pi module.ProtocolInfo) bool {
+	for _, rpi := range ri.piList {
+		if pi.Uint16() == rpi.Uint16() {
+			return true
+		}
+	}
+	return false
 }
