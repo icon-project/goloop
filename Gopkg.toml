@@ -33,20 +33,16 @@
   unused-packages = true
 
 [[constraint]]
+  name = "github.com/stretchr/testify"
+  version = "v1.2.2"
+
+[[constraint]]
   name = "golang.org/x/crypto"
   revision = "bc7917b19d8f099105de72dc62898400be07c984"
 
 [[constraint]]
-  name = "github.com/dgraph-io/badger"
-  version = "v1.5.3"
-
-[[constraint]]
-  name = "go.etcd.io/bbolt"
-  version = "v1.3.1-etcd.8"
-
-[[constraint]]
-  name = "github.com/syndtr/goleveldb"
-  version = "v1.0.0"
+  name = "github.com/haltingstate/secp256k1-go"
+  revision = "572209b26df66a638573023571b5ce80983214eb"
 
 [[constraint]]
   name = "github.com/ugorji/go"
@@ -57,40 +53,16 @@
   version = "v1.0.1"
 
 [[constraint]]
-  name = "github.com/stretchr/testify"
-  version = "v1.2.2"
+  name = "github.com/syndtr/goleveldb"
+  version = "v1.0.0"
 
 [[constraint]]
-  name = "github.com/haltingstate/secp256k1-go"
-  revision = "572209b26df66a638573023571b5ce80983214eb" 
+  name = "go.etcd.io/bbolt"
+  version = "v1.3.2"
 
 [[constraint]]
-  name = "github.com/gorilla/mux"
-  version = "v1.7.0"
-
-[[constraint]]
-  name = "github.com/gorilla/handlers"
-  version = "v1.4.0"
-
-[[constraint]]
-  name = "github.com/gorilla/websocket"
-  version = "v1.4.0"
-
-[[constraint]]
-  name = "github.com/osamingo/jsonrpc"
-  version = "v2.1"
-
-[[constraint]]
-  name = "github.com/ybbus/jsonrpc"
-  version = "v2.1.2"
-
-[[constraint]]
-  name = "github.com/asaskevich/govalidator"
-  version = "v8"
-
-[[constraint]]
-  name = "go.opencensus.io"
-  version = "0.18.0"
+  name = "github.com/dgraph-io/badger"
+  version = "v1.5.3"
 
 [[constraint]]
   name = "github.com/labstack/echo"
@@ -99,3 +71,15 @@
 [[constraint]]
   name = "gopkg.in/go-playground/validator.v9"
   version = "v9.27.0"
+
+[[constraint]]
+  name = "github.com/gorilla/websocket"
+  version = "v1.4.0"
+
+[[constraint]]
+  name = "go.opencensus.io"
+  version = "0.18.0"
+
+[[constraint]]
+  name = "github.com/ybbus/jsonrpc"
+  version = "v2.1.2"

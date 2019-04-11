@@ -3,36 +3,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e95de5c830369d6592224de57a31cd87a2ba1cec2abaf050d06a63ee8f7babd8"
-  name = "git.apache.org/thrift.git"
-  packages = ["lib/go/thrift"]
-  pruneopts = "UT"
-  revision = "b073e1438d9236203c70efb5b3ba55a61f4c4d14"
-  source = "github.com/apache/thrift"
-
-[[projects]]
-  branch = "master"
   digest = "1:b02e5e3f836f077a3249d1dfe3c57d305e007f71a98f2e69c170a2dd8d2b266c"
   name = "github.com/AndreasBriese/bbloom"
   packages = ["."]
   pruneopts = "UT"
   revision = "343706a395b76e5ca5c7dca46a5d937b48febc74"
-
-[[projects]]
-  branch = "master"
-  digest = "1:c312c313bb8040fcfb5698f38b51ec279e4635c7619773e6f018c908586c64b1"
-  name = "github.com/alecthomas/jsonschema"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "f2c93856175a7dd6abe88c5c3900b67ad054adcc"
-
-[[projects]]
-  digest = "1:14a0043ce3fe6a179c16a7fae2d7aa096cbc203f1589706538125e26186d63d5"
-  name = "github.com/asaskevich/govalidator"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "521b25f4b05fd26bec69d9dedeb8f9c9a83939a8"
-  version = "v8"
 
 [[projects]]
   branch = "master"
@@ -133,22 +108,6 @@
   revision = "2e65f85255dbc3072edf28d6b5b8efc472979f5a"
 
 [[projects]]
-  digest = "1:664d37ea261f0fc73dd17f4a1f5f46d01fbb0b0d75f6375af064824424109b7d"
-  name = "github.com/gorilla/handlers"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "7e0847f9db758cdebd26c149d0ae9d5d0b9c98ce"
-  version = "v1.4.0"
-
-[[projects]]
-  digest = "1:ca59b1175189b3f0e9f1793d2c350114be36eaabbe5b9f554b35edee1de50aea"
-  name = "github.com/gorilla/mux"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "a7962380ca08b5a188038c69871b8d3fbdf31e89"
-  version = "v1.7.0"
-
-[[projects]]
   digest = "1:7b5c6e2eeaa9ae5907c391a91c132abfd5c9e8a784a341b5625e750c67e6825d"
   name = "github.com/gorilla/websocket"
   packages = ["."]
@@ -173,14 +132,6 @@
   pruneopts = "UT"
   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
   version = "v1.0"
-
-[[projects]]
-  branch = "master"
-  digest = "1:c1dd060cad9abcf334c6bc7f9d71688d526722f505d947f965d38a010a349336"
-  name = "github.com/intel-go/fastjson"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "f846ae58a1ab4a99d9480ce565601aebd84e333a"
 
 [[projects]]
   digest = "1:efd601ad1d1189884f37ed075fadb5bbd17f1f5acf5862827247c6da56d125ba"
@@ -237,14 +188,6 @@
   pruneopts = "UT"
   revision = "c12348ce28de40eed0136aa2b644d0ee0650e56c"
   version = "v1.0.1"
-
-[[projects]]
-  digest = "1:f9544e040a914c2de663031150db1fe0d592841ba039b01d27ac216dea061d5a"
-  name = "github.com/osamingo/jsonrpc"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "92d51847b98f375bd5db9fd00f8b36dbc279c384"
-  version = "v2.1"
 
 [[projects]]
   digest = "1:40e195917a951a8bf867cd05de2a46aaf1806c50cf92eebf4c16f78cd196f747"
@@ -385,21 +328,19 @@
   version = "v2.1.2"
 
 [[projects]]
-  digest = "1:3762d59edaa6e5c71d5e594c020c8391f274ff283e9c30fb43c518ec59a3f9b3"
+  digest = "1:5f7414cf41466d4b4dd7ec52b2cd3e481e08cfd11e7e24fef730c0e483e88bb1"
   name = "go.etcd.io/bbolt"
   packages = ["."]
   pruneopts = "UT"
-  revision = "7ee3ded59d4835e10f3e7d0f7603c42aa5e83820"
-  version = "v1.3.1-etcd.8"
+  revision = "63597a96ec0ad9e6d43c3fc81e809909e0237461"
+  version = "v1.3.2"
 
 [[projects]]
-  digest = "1:83676b69253565e11fc408b83b4dc803f2e792cc2d855b7efbfd8041c11937ea"
+  digest = "1:036099821592a40622e787d809038012b4d442335c6127cf09857c7a1225b720"
   name = "go.opencensus.io"
   packages = [
     ".",
     "exemplar",
-    "exporter/jaeger",
-    "exporter/jaeger/internal/gen-go/jaeger",
     "exporter/prometheus",
     "internal",
     "internal/tagencoding",
@@ -407,9 +348,6 @@
     "stats/internal",
     "stats/view",
     "tag",
-    "trace",
-    "trace/internal",
-    "trace/tracestate",
   ]
   pruneopts = "UT"
   revision = "b7bf3cdb64150a8c8c53b769fdeb2ba581bd4d4b"
@@ -447,14 +385,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:5e4d81c50cffcb124b899e4f3eabec3930c73532f0096c27f94476728ba03028"
-  name = "golang.org/x/sync"
-  packages = ["semaphore"]
-  pruneopts = "UT"
-  revision = "42b317875d0fa942474b76e1b46a6060d720ae6e"
-
-[[projects]]
-  branch = "master"
   digest = "1:d4aa440883ef89f91ec8a74c58bc52c801781c565e4d9af9b7b0a5cafa86deaa"
   name = "golang.org/x/sys"
   packages = [
@@ -463,14 +393,6 @@
   ]
   pruneopts = "UT"
   revision = "d69651ed3497faee15a5363a89578e9991f6d5e2"
-
-[[projects]]
-  branch = "master"
-  digest = "1:5f003878aabe31d7f6b842d4de32b41c46c214bb629bb485387dbcce1edf5643"
-  name = "google.golang.org/api"
-  packages = ["support/bundler"]
-  pruneopts = "UT"
-  revision = "bed42c95df7d5f673175b43d85f6b4047efe3814"
 
 [[projects]]
   digest = "1:a5000fcb87d763e1d410111d32f3e1d07a6f7913f7efdf68070636c407da54d1"
@@ -484,19 +406,14 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/asaskevich/govalidator",
     "github.com/dgraph-io/badger",
     "github.com/dgrijalva/jwt-go",
     "github.com/go-errors/errors",
     "github.com/gofrs/uuid",
-    "github.com/gorilla/handlers",
-    "github.com/gorilla/mux",
     "github.com/gorilla/websocket",
     "github.com/haltingstate/secp256k1-go",
-    "github.com/intel-go/fastjson",
     "github.com/labstack/echo",
     "github.com/labstack/echo/middleware",
-    "github.com/osamingo/jsonrpc",
     "github.com/pkg/errors",
     "github.com/spf13/cobra",
     "github.com/stretchr/testify/assert",
@@ -507,12 +424,10 @@
     "github.com/ugorji/go/codec",
     "github.com/ybbus/jsonrpc",
     "go.etcd.io/bbolt",
-    "go.opencensus.io/exporter/jaeger",
     "go.opencensus.io/exporter/prometheus",
     "go.opencensus.io/stats",
     "go.opencensus.io/stats/view",
     "go.opencensus.io/tag",
-    "go.opencensus.io/trace",
     "golang.org/x/crypto/chacha20poly1305",
     "golang.org/x/crypto/hkdf",
     "golang.org/x/crypto/scrypt",
