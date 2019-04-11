@@ -407,7 +407,7 @@ func (s *syncer) OnEngineStepChange() {
 			}
 		}
 	}
-	if e.Step() == stepPropose || e.Step() == stepPrecommitWait || e.Step() == stepCommit {
+	if e.Step() == stepPropose || e.Step() == stepCommit {
 		s.sendRoundStateMessage()
 	}
 }
