@@ -5,21 +5,22 @@ import "fmt"
 type step int
 
 const (
-	stepPrepropose step = iota
+	stepNewHeight step = iota
+	stepNewRound
 	stepPropose
 	stepPrevote
 	stepPrevoteWait
 	stepPrecommit
 	stepPrecommitWait
-	stepNewRound
 	stepCommit
-	stepNewHeight
 )
 
 func (step step) String() string {
 	switch step {
-	case stepPrepropose:
-		return "stepPrepropose"
+	case stepNewHeight:
+		return "stepNewHeight"
+	case stepNewRound:
+		return "stepNewRound"
 	case stepPropose:
 		return "stepPropose"
 	case stepPrevote:
@@ -30,12 +31,8 @@ func (step step) String() string {
 		return "stepPrecommit"
 	case stepPrecommitWait:
 		return "stepPrecommitWait"
-	case stepNewRound:
-		return "stepNewRound"
 	case stepCommit:
 		return "stepCommit"
-	case stepNewHeight:
-		return "stepNewHeight"
 	default:
 		return fmt.Sprintf("step %d", step)
 	}

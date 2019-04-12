@@ -128,7 +128,7 @@ func NewConsensus(c module.Chain, bm module.BlockManager, nm module.NetworkManag
 	return cs
 }
 
-func (cs *consensus) resetForNewHeight(prevBlock module.Block, votes *commitVoteList) {
+func (cs *consensus) _resetForNewHeight(prevBlock module.Block, votes *commitVoteList) {
 	cs.height = prevBlock.Height() + 1
 	cs.lastBlock = prevBlock
 	if cs.validators == nil || !bytes.Equal(cs.validators.Hash(), cs.lastBlock.NextValidators().Hash()) {
@@ -148,18 +148,34 @@ func (cs *consensus) resetForNewHeight(prevBlock module.Block, votes *commitVote
 	cs.commitRound = -1
 	cs.syncing = true
 	cs.metric.OnHeight(cs.height)
-	cs.resetForNewRound(0)
 }
 
-func (cs *consensus) resetForNewRound(round int32) {
+func (cs *consensus) resetForNewHeight(prevBlock module.Block, votes *commitVoteList) {
+	cs.endStep()
+	cs._resetForNewHeight(prevBlock, votes)
+	cs._resetForNewRound(0)
+	cs.beginStep(stepNewHeight)
+}
+
+func (cs *consensus) _resetForNewRound(round int32) {
 	cs.proposalPOLRound = -1
 	cs.currentBlockParts = nil
 	cs.round = round
-	cs.step = stepPrepropose
 	cs.metric.OnRound(cs.round)
 }
 
-func (cs *consensus) resetForNewStep() {
+func (cs *consensus) resetForNewRound(round int32) {
+	cs.endStep()
+	cs._resetForNewRound(round)
+	cs.beginStep(stepNewRound)
+}
+
+func (cs *consensus) resetForNewStep(step step) {
+	cs.endStep()
+	cs.beginStep(step)
+}
+
+func (cs *consensus) endStep() {
 	if cs.cancelBlockRequest != nil {
 		cs.cancelBlockRequest()
 		cs.cancelBlockRequest = nil
@@ -168,6 +184,25 @@ func (cs *consensus) resetForNewStep() {
 		cs.timer.Stop()
 		cs.timer = nil
 	}
+}
+
+func isValidTransition(from step, to step) bool {
+	switch to {
+	case stepNewHeight:
+		return from != stepNewRound
+	case stepNewRound:
+		return from > stepNewRound
+	default:
+		return from < to
+	}
+}
+
+func (cs *consensus) beginStep(step step) {
+	if !isValidTransition(cs.step, step) {
+		logger.Panicf("bad step transition (%v->%v)\n", cs.step, step)
+	}
+	cs.step = step
+	logger.Printf("enterStep(%v.%v.%v)\n", cs.height, cs.round, cs.step)
 }
 
 func (cs *consensus) OnReceive(
@@ -377,14 +412,6 @@ func (cs *consensus) notifySyncer() {
 	}
 }
 
-func (cs *consensus) setStep(step step) {
-	if cs.step >= step {
-		logger.Panicf("bad step transition (%v->%v)\n", cs.step, step)
-	}
-	cs.step = step
-	logger.Printf("setStep(%v.%v.%v)\n", cs.height, cs.round, cs.step)
-}
-
 func (cs *consensus) processPrefetchItems() {
 	for i := 0; i < len(cs.prefetchItems); i++ {
 		pi := cs.prefetchItems[i]
@@ -405,14 +432,8 @@ func (cs *consensus) processPrefetchItems() {
 	}
 }
 
-func (cs *consensus) enterProposeForRound(round int32) {
-	cs.resetForNewRound(round)
-	cs.enterPropose()
-}
-
 func (cs *consensus) enterPropose() {
-	cs.resetForNewStep()
-	cs.setStep(stepPropose)
+	cs.resetForNewStep(stepPropose)
 
 	if int(cs.round) > cs.validators.Len()*configRoundTimeoutThresholdFactor {
 		cs.nextProposeTime = time.Now().Add(timeoutNewRound)
@@ -473,8 +494,7 @@ func (cs *consensus) enterPropose() {
 }
 
 func (cs *consensus) enterPrevote() {
-	cs.resetForNewStep()
-	cs.setStep(stepPrevote)
+	cs.resetForNewStep(stepPrevote)
 
 	if cs.lockedBlockParts != nil {
 		cs.sendVote(voteTypePrevote, cs.lockedBlockParts)
@@ -526,8 +546,7 @@ func (cs *consensus) enterPrevote() {
 }
 
 func (cs *consensus) enterPrevoteWait() {
-	cs.resetForNewStep()
-	cs.setStep(stepPrevoteWait)
+	cs.resetForNewStep(stepPrevoteWait)
 
 	prevotes := cs.hvs.votesFor(cs.round, voteTypePrevote)
 	msg := newVoteListMessage()
@@ -556,8 +575,7 @@ func (cs *consensus) enterPrevoteWait() {
 }
 
 func (cs *consensus) enterPrecommit() {
-	cs.resetForNewStep()
-	cs.setStep(stepPrecommit)
+	cs.resetForNewStep(stepPrecommit)
 
 	prevotes := cs.hvs.votesFor(cs.round, voteTypePrevote)
 	partSetID, ok := prevotes.getOverTwoThirdsPartSetID()
@@ -621,8 +639,7 @@ func (cs *consensus) enterPrecommit() {
 }
 
 func (cs *consensus) enterPrecommitWait() {
-	cs.resetForNewStep()
-	cs.setStep(stepPrecommitWait)
+	cs.resetForNewStep(stepPrecommitWait)
 
 	precommits := cs.hvs.votesFor(cs.round, voteTypePrecommit)
 	msg := newVoteListMessage()
@@ -648,7 +665,7 @@ func (cs *consensus) enterPrecommitWait() {
 			if cs.hrs != hrs || !cs.started {
 				return
 			}
-			cs.enterProposeForRound(cs.round + 1)
+			cs.enterNewRound()
 		})
 	}
 }
@@ -690,8 +707,7 @@ func (cs *consensus) commitAndEnterNewHeight() {
 }
 
 func (cs *consensus) enterCommit(precommits *voteSet, partSetID *PartSetID, round int32) {
-	cs.resetForNewStep()
-	cs.setStep(stepCommit)
+	cs.resetForNewStep(stepCommit)
 	cs.commitRound = round
 
 	msg := newVoteListMessage()
@@ -722,8 +738,7 @@ func (cs *consensus) enterCommit(precommits *voteSet, partSetID *PartSetID, roun
 }
 
 func (cs *consensus) enterNewRound() {
-	cs.resetForNewStep()
-	cs.setStep(stepNewRound)
+	cs.resetForNewRound(cs.round + 1)
 	cs.notifySyncer()
 
 	now := time.Now()
@@ -736,20 +751,17 @@ func (cs *consensus) enterNewRound() {
 			if cs.hrs != hrs || !cs.started {
 				return
 			}
-			cs.enterProposeForRound(cs.round + 1)
+			cs.enterPropose()
 		})
 	} else {
-		cs.enterProposeForRound(cs.round + 1)
+		cs.enterPropose()
 	}
 }
 
 func (cs *consensus) enterNewHeight() {
-	cs.resetForNewStep()
-	cs.setStep(stepNewHeight)
-	cs.notifySyncer()
-
 	votes := cs.hvs.votesFor(cs.commitRound, voteTypePrecommit).commitVoteListForOverTwoThirds()
 	cs.resetForNewHeight(cs.currentBlockParts.block, votes)
+	cs.notifySyncer()
 
 	now := time.Now()
 	if cs.nextProposeTime.After(now) {
@@ -924,7 +936,7 @@ func (cs *consensus) applyRoundWAL() error {
 		return err
 	}
 	round := int32(0)
-	rstep := stepPrepropose
+	rstep := stepNewHeight
 	for {
 		bs, err := wr.ReadBytes()
 		if IsEOF(err) {
@@ -1318,7 +1330,7 @@ func (cs *consensus) Start() error {
 	logger.Printf("Consensus start wallet=%s", cs.wallet.Address())
 	cs.syncer = newSyncer(cs, cs.nm, cs.bm, &cs.mutex, cs.wallet.Address())
 	cs.syncer.Start()
-	if cs.step == stepPrepropose {
+	if cs.step == stepNewHeight {
 		cs.enterPropose()
 	} else if cs.step == stepPropose {
 		cs.enterPrevote()
@@ -1519,7 +1531,6 @@ func (cs *consensus) ReceiveBlock(br fastsync.BlockResult) {
 	}
 
 	if cs.height > blk.Height() ||
-		cs.height == blk.Height() && cs.step >= stepNewHeight ||
 		cs.height == blk.Height() && cs.step == stepCommit && cs.currentBlockParts.IsComplete() {
 		br.Consume()
 		return
@@ -1529,8 +1540,7 @@ func (cs *consensus) ReceiveBlock(br fastsync.BlockResult) {
 }
 
 func (cs *consensus) processBlock(br fastsync.BlockResult) {
-	if cs.step >= stepNewHeight ||
-		cs.step == stepCommit && cs.currentBlockParts.IsComplete() {
+	if cs.step == stepCommit && cs.currentBlockParts.IsComplete() {
 		panic("assertion failed\n")
 	}
 
