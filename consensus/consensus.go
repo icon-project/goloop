@@ -703,10 +703,9 @@ func (cs *consensus) enterCommit(precommits *voteSet, partSetID *PartSetID, roun
 		logger.Printf("cs.enterCommit: %+v\n", err)
 	}
 
+	cs.nextProposeTime = time.Now()
 	if cs.consumedNonunicast || cs.validators.Len() == 1 {
-		cs.nextProposeTime = time.Now().Add(cs.rg.CommitTimeout())
-	} else {
-		cs.nextProposeTime = time.Now()
+		cs.nextProposeTime = cs.nextProposeTime.Add(cs.rg.CommitTimeout())
 	}
 
 	if cs.currentBlockParts == nil || !cs.currentBlockParts.ID().Equal(partSetID) {
