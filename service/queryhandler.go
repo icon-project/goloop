@@ -22,6 +22,9 @@ func (qh *QueryHandler) Query(ctx contract.Context) (module.Status, interface{})
 		return module.StatusMethodNotFound, err.Error()
 	}
 	as := ctx.GetAccountSnapshot(qh.to.ID())
+	if as == nil {
+		return module.StatusContractNotFound, "Contract not found"
+	}
 	apiInfo := as.APIInfo()
 	if apiInfo == nil {
 		return module.StatusContractNotFound, "APIInfo() is null"
@@ -30,8 +33,8 @@ func (qh *QueryHandler) Query(ctx contract.Context) (module.Status, interface{})
 		if m == nil {
 			return module.StatusMethodNotFound, string(module.StatusMethodNotFound)
 		}
-		if m == nil || !m.IsReadOnly() {
-			return module.StatusMethodNotFound, "Not a read-only API"
+		if !m.IsReadOnly() {
+			return module.StatusMethodNotFound, "Not a read-only method"
 		}
 	}
 
