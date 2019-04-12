@@ -207,5 +207,8 @@ func (c *contractROState) SetStatus(state ContractState) {
 }
 
 func newContractROState(snapshot ContractSnapshot) Contract {
+	if snapshot == nil {
+		return nil
+	}
 	return &contractROState{snapshot}
 }
