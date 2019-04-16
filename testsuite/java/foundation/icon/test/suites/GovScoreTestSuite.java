@@ -38,7 +38,7 @@ public class GovScoreTestSuite {
         }
 
         KeyWallet god = Utils.readWalletFromFile("./data/keystore_god.json", "gochain");
-        Env.Chain chain = new Env.Chain(BigInteger.valueOf(3), god);
+        Env.Chain chain = new Env.Chain(BigInteger.valueOf(1), god);
         Env.Node node = new Env.Node("http://localhost:9080/api/v3", new Env.Chain[]{chain});
         Env.nodes = new Env.Node[]{node};
 
