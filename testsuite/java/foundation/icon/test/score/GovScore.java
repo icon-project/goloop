@@ -35,7 +35,7 @@ public class GovScore extends Score {
         RpcObject params = new RpcObject.Builder()
                 .put("price", new RpcValue(price))
                 .build();
-        invokeAndWaitResult(govWallet, "setStepPrice", params, 0, 1000);
+        invokeAndWaitResult(govWallet, "setStepPrice", params, 0, 100);
     }
 
     public void setStepCost(String type, BigInteger cost) throws Exception{
@@ -43,7 +43,7 @@ public class GovScore extends Score {
                 .put("type", new RpcValue(type))
                 .put("cost", new RpcValue(cost))
                 .build();
-        invokeAndWaitResult(govWallet, "setStepCost", params, 0, 1000);
+        invokeAndWaitResult(govWallet, "setStepCost", params, 0, 100);
     }
 
     public void setMaxStepLimit(String type, BigInteger cost) throws Exception{

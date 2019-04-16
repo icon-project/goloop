@@ -22,6 +22,7 @@ import java.math.BigInteger;
 
 public class Constants {
     public static final BigInteger STATUS_SUCCESS = BigInteger.ONE;
+    public static final BigInteger STATUS_FAIL = BigInteger.valueOf(0);
     public static final Address ZERO_ADDRESS = new Address("cx0000000000000000000000000000000000000000");
     public static final String CONTENT_TYPE = "application/zip";
     public static final String SCORE_ROOT = "./data/";

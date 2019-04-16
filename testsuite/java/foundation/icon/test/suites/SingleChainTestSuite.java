@@ -24,9 +24,16 @@ import java.util.concurrent.TimeUnit;
         RevertTest.class
 })
 public class SingleChainTestSuite {
+    private static boolean bRunChain = true;
     @BeforeClass
     public static void setUp() throws Exception {
-        startGoLoop();
+        if("no".equals(System.getProperty("runChain"))) {
+            bRunChain = false;
+        }
+
+        if(bRunChain) {
+            startGoLoop();
+        }
 
         KeyWallet god = Utils.readWalletFromFile("./data/keystore_god.json", "gochain");
         Env.Chain chain = new Env.Chain(BigInteger.valueOf(3), god);
@@ -38,7 +45,9 @@ public class SingleChainTestSuite {
 
     @AfterClass
     public static void tearDown() {
-        stopGoLoop();
+        if(bRunChain) {
+            stopGoLoop();
+        }
     }
 
     // TODO Share the following methods in common class?

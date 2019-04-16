@@ -16,6 +16,7 @@ import org.junit.Test;
 import java.math.BigInteger;
 
 import static junit.framework.TestCase.fail;
+import static org.junit.Assert.*;
 
 /*
 test cases
@@ -71,7 +72,7 @@ public class DeployTest {
         Bytes txHash = Utils.transfer(iconService, godWallet, govWallet.getAddress(), 9999999);
         try {
             TransactionResult result = Utils.getTransactionResult(iconService, txHash, 5000);
-            System.out.println("result : " + result);
+            assertEquals(result.getStatus(), Constants.STATUS_SUCCESS);
         }
         catch (ResultTimeoutException ex) {
             throw ex;
@@ -191,6 +192,9 @@ public class DeployTest {
             return;
         }
         fail();
+    }
+
+    public void udpateScoreAndCall() {
     }
 
     public void updateWithInvalidScoreAddress() {

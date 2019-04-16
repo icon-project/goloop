@@ -3,6 +3,7 @@ package foundation.icon.test.suites;
 import foundation.icon.icx.KeyWallet;
 import foundation.icon.test.cases.ChainScoreTest;
 import foundation.icon.test.cases.DeployTest;
+import foundation.icon.test.cases.ScoreTest;
 import foundation.icon.test.cases.TransferTest;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.Utils;
@@ -21,12 +22,20 @@ import java.util.concurrent.TimeUnit;
 @Suite.SuiteClasses({
         ChainScoreTest.class,
         TransferTest.class,
-        DeployTest.class
+        DeployTest.class,
+        ScoreTest.class
 })
 public class GovScoreTestSuite {
+    private static boolean bRunChain = true;
     @BeforeClass
     public static void setUp() throws Exception {
-        startGoLoop();
+        if("no".equals(System.getProperty("runChain"))) {
+            bRunChain = false;
+        }
+
+        if(bRunChain) {
+            startGoLoop();
+        }
 
         KeyWallet god = Utils.readWalletFromFile("./data/keystore_god.json", "gochain");
         Env.Chain chain = new Env.Chain(BigInteger.valueOf(3), god);
@@ -38,7 +47,9 @@ public class GovScoreTestSuite {
 
     @AfterClass
     public static void tearDown() {
-        stopGoLoop();
+        if(bRunChain) {
+            stopGoLoop();
+        }
     }
 
     // TODO Share the following methods in common class?

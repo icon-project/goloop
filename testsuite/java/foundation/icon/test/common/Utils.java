@@ -42,7 +42,6 @@ import java.util.List;
 import static foundation.icon.test.common.Env.LOG;
 
 public class Utils {
-    public static final BigInteger STATUS_SUCCESS = BigInteger.ONE;
     public static BigInteger getMicroTime() {
         long timestamp = System.currentTimeMillis() * 1000L;
         return new BigInteger(Long.toString(timestamp));
