@@ -29,7 +29,7 @@ type transactionV3Data struct {
 	Value     *common.HexInt   `json:"value"`
 	StepLimit common.HexInt    `json:"stepLimit"`
 	TimeStamp common.HexInt64  `json:"timestamp"`
-	NID       *common.HexInt16 `json:"nid,omitempty"`
+	NID       *common.HexInt64 `json:"nid,omitempty"`
 	Nonce     *common.HexInt   `json:"nonce,omitempty"`
 	Signature common.Signature `json:"signature"`
 	DataType  *string          `json:"dataType,omitempty"`
@@ -203,6 +203,9 @@ func (tx *transactionV3) Verify() error {
 }
 
 func (tx *transactionV3) ValidateNetwork(nid int) bool {
+	if tx.NID == nil {
+		return true
+	}
 	return int(tx.NID.Value) == nid
 }
 
