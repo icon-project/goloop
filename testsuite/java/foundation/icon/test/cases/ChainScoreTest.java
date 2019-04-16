@@ -24,8 +24,10 @@ import org.junit.runners.Parameterized;
 import java.math.BigInteger;
 import java.util.*;
 
+import static org.junit.Assert.*;
+
 @RunWith(Parameterized.class)
-public class ChainScoreTest {
+public class ChainScoreTest{
     public Address toAddr;
     private static Env.Chain chain;
     private static IconService iconService;
@@ -85,7 +87,7 @@ public class ChainScoreTest {
         for (int i = 0; i < testWalletNum + 1; i++) {
             KeyWallet wallet = KeyWallet.create();
             try {
-                txHash[i] = Utils.transfer(iconService, Env.nodes[0].chains[0].godWallet
+                txHash[i] = Utils.transfer(iconService, chain.godWallet
                         , wallet.getAddress(), value);
             } catch (Exception ex) {
                 System.out.println("Failed to transfer");
@@ -99,7 +101,7 @@ public class ChainScoreTest {
         }
 
         helloWorld = HelloWorld.mustDeploy(iconService,
-                helloWorldOwner, BigInteger.valueOf(0));
+                helloWorldOwner, chain.networkId);
     }
 
     @AfterClass
@@ -141,9 +143,7 @@ public class ChainScoreTest {
         };
 
         TransactionResult result = helloWorld.invokeHello(leaserWallet);
-        if(result.getStatus().compareTo(Constants.STATUS_SUCCESS) != 0) {
-            throw new Exception();
-        }
+        assertEquals(result.getStatus(), Constants.STATUS_SUCCESS);
 
         for (String method : methods) {
             for (KeyWallet wallet : fromWallets) {

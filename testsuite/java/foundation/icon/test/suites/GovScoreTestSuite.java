@@ -12,9 +12,12 @@ import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
+import static org.junit.Assert.*;
+
 import java.io.File;
 import java.io.IOException;
-import java.math.BigInteger;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -37,9 +40,19 @@ public class GovScoreTestSuite {
             startGoLoop();
         }
 
-        KeyWallet god = Utils.readWalletFromFile("./data/keystore_god.json", "gochain");
-        Env.Chain chain = new Env.Chain(BigInteger.valueOf(1), god);
-        Env.Node node = new Env.Node("http://localhost:9080/api/v3", new Env.Chain[]{chain});
+        KeyWallet god = Env.getGodWallet();
+        if(god == null) {
+            god = Utils.readWalletFromFile("./data/keystore_god.json", "gochain");
+        }
+        assertTrue(god!=null);
+
+        Env.Chain chain = new Env.Chain(god);
+        List<String> endpoint = Env.getEndpoint();
+        if(endpoint==null) {
+            endpoint = new LinkedList<>();
+            endpoint.add("http://localhost:9080/api/v3");
+        }
+        Env.Node node = new Env.Node(endpoint.get(0), new Env.Chain[]{chain});
         Env.nodes = new Env.Node[]{node};
 
         Env.LOG.setLevel(Config.TEST_LOG_LEVEL);
