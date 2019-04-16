@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/icon-project/goloop/service/txresult"
@@ -56,6 +57,7 @@ type manager struct {
 	*chainContext
 	nmap      map[string]*bnode
 	finalized *bnode
+	newHeight *sync.Cond
 }
 
 func (m *manager) db() db.Database {
@@ -388,6 +390,7 @@ func NewManager(
 		},
 		nmap: make(map[string]*bnode),
 	}
+	m.newHeight = sync.NewCond(&m.syncer.mutex)
 	chainPropBucket := m.bucketFor(db.ChainProperty)
 	if chainPropBucket == nil {
 		return nil
@@ -669,6 +672,7 @@ func (m *manager) finalize(bn *bnode) error {
 		chainProp.set(raw(keyLastBlockHeight), block.Height())
 	}
 	m.logger.Printf("Finalize(%x)\n", block.ID())
+	m.newHeight.Broadcast()
 	// TODO update DB for v1 : blockV1, trLocatorByHash
 	return nil
 }
@@ -908,6 +912,16 @@ func (m *manager) getLastBlock() (module.Block, error) {
 	err := chainProp.get(raw(keyLastBlockHeight), &height)
 	if err != nil {
 		return nil, err
+	}
+	return m.getBlockByHeight(height)
+}
+
+func (m *manager) WaitForBlock(height int64) (module.Block, error) {
+	m.syncer.begin()
+	defer m.syncer.end()
+
+	for m.finalized.block.Height() < height {
+		m.newHeight.Wait()
 	}
 	return m.getBlockByHeight(height)
 }

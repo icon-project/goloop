@@ -294,3 +294,41 @@ func TestBlockManager_Import_Cancel(t *testing.T) {
 	res := canceler()
 	assert.Equal(t, true, res, "canceler result")
 }
+
+func TestBlockManager_WaitForBlock_Nonblock(t *testing.T) {
+	s := newBlockManagerTestSetUp(t)
+	const height = int64(1)
+	r := s.bg.getReaderForBlock(height)
+	br := importSync(s.bm, r)
+	br.assertOK(t)
+	s.bm.Finalize(br.blk)
+	blk, err := s.bm.WaitForBlock(height)
+	assert.Nil(t, err)
+	assert.Equal(t, blk.Height(), height)
+	assert.Equal(t, blk.ID(), br.blk.ID())
+}
+
+func TestBlockManager_WaitForBlock_Block(t *testing.T) {
+	s := newBlockManagerTestSetUp(t)
+	ch := make(chan cbResult)
+	const height = int64(3)
+	go func() {
+		blk, err := s.bm.WaitForBlock(height)
+		ch <- cbResult{blk, err}
+	}()
+	var br *blockResult
+	for i := int64(1); i <= height; i++ {
+		r := s.bg.getReaderForBlock(i)
+		br = importSync(s.bm, r)
+		br.assertOK(t)
+		select {
+		case res := <-ch:
+			assert.Failf(t, "unexpected return from WaitForBlock", "res=%v", res)
+		default:
+		}
+		s.bm.Finalize(br.blk)
+	}
+	res := <-ch
+	assert.Equal(t, res.blk.Height(), height)
+	assert.Equal(t, res.blk.ID(), br.blk.ID())
+}
