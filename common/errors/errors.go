@@ -25,6 +25,7 @@ const (
 	UnsupportedError
 	InvalidStateError
 	NotFoundError
+	InvalidNetworkError
 )
 
 var (
@@ -33,6 +34,7 @@ var (
 	ErrInvalidState    = NewBase(InvalidStateError, "InvalidState")
 	ErrUnsupported     = NewBase(UnsupportedError, "Unsupported")
 	ErrNotFound        = NewBase(NotFoundError, "NotFound")
+	ErrInvalidNetwork  = NewBase(InvalidNetworkError, "InvalidNetwork")
 )
 
 func (c Code) New(msg string) error {

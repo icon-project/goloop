@@ -237,6 +237,10 @@ func (tx *testTransaction) ToJSON(version int) (interface{}, error) {
 	panic("not implemented")
 }
 
+func (tx *testTransaction) ValidateNetwork(nid int) bool {
+	return true
+}
+
 type testTransactionIterator struct {
 	*testTransactionList
 	i int
@@ -714,6 +718,10 @@ func (sm *testServiceManager) Start() {
 
 func (sm *testServiceManager) Term() {
 	panic("implement me")
+}
+
+func (sm *testServiceManager) GetNetworkID(result []byte) (int64, error) {
+	return 0, nil
 }
 
 type testValidator struct {

@@ -30,6 +30,7 @@ type Transaction interface {
 	Verify() error
 	Version() int
 	ToJSON(version int) (interface{}, error)
+	ValidateNetwork(nid int) bool
 
 	// Version() int
 	// To() Address
@@ -243,4 +244,7 @@ type ServiceManager interface {
 
 	// GetTotalSupply get total supplied coin
 	GetTotalSupply(result []byte) *big.Int
+
+	// GetNetworkID get network ID of of the state
+	GetNetworkID(result []byte) (int64, error)
 }

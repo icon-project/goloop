@@ -2,12 +2,12 @@ package service
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"math/big"
 	"time"
 
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/server/metric"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/transaction"
@@ -52,8 +52,8 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 	mgr := &manager{
 		patchMetric:  pMetric,
 		normalMetric: nMetric,
-		patchTxPool:  NewTransactionPool(bk, pMetric),
-		normalTxPool: NewTransactionPool(bk, nMetric),
+		patchTxPool:  NewTransactionPool(chain.NID(), bk, pMetric),
+		normalTxPool: NewTransactionPool(chain.NID(), bk, nMetric),
 		db:           chain.Database(),
 		chain:        chain,
 		cm:           contract.NewContractManager(chain.Database(), chainRoot),
@@ -369,6 +369,21 @@ func (m *manager) GetTotalSupply(result []byte) *big.Int {
 		}
 	}
 	return big.NewInt(0)
+}
+
+func (m *manager) GetNetworkID(result []byte) (int64, error) {
+	if tr, err := newTransitionResultFromBytes(result); err == nil {
+		wss := state.NewWorldSnapshot(m.db, tr.StateHash, nil)
+		ass := wss.GetAccountSnapshot(state.SystemID)
+		as := scoredb.NewStateStoreWith(ass)
+		nidVar := scoredb.NewVarDB(as, state.VarNetwork)
+		if nidVar.Bytes() == nil {
+			return 0, errors.ErrNotFound
+		}
+		return nidVar.Int64(), nil
+	} else {
+		return 0, err
+	}
 }
 
 type blockInfo struct {

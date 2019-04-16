@@ -15,6 +15,7 @@ const (
 	VarStepTypes  = "step_types"
 	VarTreasury   = "treasury"
 	VarGovernance = "governance"
+	VarNetwork    = "network"
 
 	VarStepLimitTypes = "step_limit_types"
 	VarStepLimit      = "step_limit"
@@ -25,6 +26,10 @@ const (
 	VarLicenses       = "licenses"
 	VarCommitTimeout  = "commitTimeout"
 	VarTotalSupply    = "total_supply"
+)
+
+const (
+	DefaultNID = 1
 )
 
 const (

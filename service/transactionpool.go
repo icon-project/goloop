@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/metric"
 	"github.com/icon-project/goloop/service/state"
@@ -19,6 +20,7 @@ const (
 )
 
 type TransactionPool struct {
+	nid  int
 	txdb db.Bucket
 
 	list *transactionList
@@ -28,8 +30,9 @@ type TransactionPool struct {
 	metric *metric.TxMetric
 }
 
-func NewTransactionPool(txdb db.Bucket, m *metric.TxMetric) *TransactionPool {
+func NewTransactionPool(nid int, txdb db.Bucket, m *metric.TxMetric) *TransactionPool {
 	pool := &TransactionPool{
+		nid:    nid,
 		txdb:   txdb,
 		list:   newTransactionList(),
 		metric: m,
@@ -143,6 +146,9 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 func (tp *TransactionPool) Add(tx transaction.Transaction, direct bool) error {
 	if tx == nil {
 		return nil
+	}
+	if !tx.ValidateNetwork(tp.nid) {
+		return errors.InvalidNetworkError.Errorf("Invalid Network ID")
 	}
 	tp.mutex.Lock()
 	defer tp.mutex.Unlock()

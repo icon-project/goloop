@@ -202,6 +202,10 @@ func (tx *transactionV3) Verify() error {
 	return nil
 }
 
+func (tx *transactionV3) ValidateNetwork(nid int) bool {
+	return int(tx.NID.Value) == nid
+}
+
 func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 	// TODO check if network ID is valid
 

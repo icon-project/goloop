@@ -65,6 +65,10 @@ func (*mockTransaction) Nonce() *big.Int {
 	panic("implement me")
 }
 
+func (t *mockTransaction) ValidateNetwork(nid int) bool {
+	panic("implement me")
+}
+
 func newMockTransaction(id []byte, from module.Address, ts int64) *mockTransaction {
 	return &mockTransaction{
 		id:        id,

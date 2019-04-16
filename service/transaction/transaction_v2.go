@@ -70,6 +70,10 @@ func (tx *transactionV2) Verify() error {
 	return nil
 }
 
+func (tx *transactionV2) ValidateNetwork(nid int) bool {
+	return true
+}
+
 func (tx *transactionV2) PreValidate(wc state.WorldContext, update bool) error {
 	// outdated or invalid timestamp?
 	if ConfigOnCheckingTimestamp == true {

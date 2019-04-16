@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -12,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
@@ -38,9 +38,10 @@ type accountInfo struct {
 }
 
 type genesisV3JSON struct {
-	Accounts []accountInfo   `json:"accounts"`
-	Message  string          `json:"message"`
-	Chain    json.RawMessage `json:"chain"`
+	Accounts []accountInfo    `json:"accounts"`
+	Message  string           `json:"message"`
+	Chain    json.RawMessage  `json:"chain"`
+	NID      *common.HexInt64 `json:"nid"`
 	raw      []byte
 	txHash   []byte
 }
@@ -162,6 +163,10 @@ func (g *genesisV3) GetHandler(contract.ContractManager) (TransactionHandler, er
 	return g, nil
 }
 
+func (g *genesisV3) ValidateNetwork(nid int) bool {
+	return g.NID.Value == int64(nid)
+}
+
 func (g *genesisV3) Prepare(ctx contract.Context) (state.WorldContext, error) {
 	lq := []state.LockRequest{
 		{state.WorldIDStr, state.AccountWriteLock},
@@ -185,6 +190,13 @@ func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
 		ac.SetBalance(&info.Balance.Int)
 		totalSupply.Add(&totalSupply, &info.Balance.Int)
 	}
+
+	nid := g.NID.Value
+	if nid == 0 {
+		nid = state.DefaultNID
+	}
+	nidVar := scoredb.NewVarDB(as, state.VarNetwork)
+	nidVar.Set(nid)
 
 	ts := scoredb.NewVarDB(as, state.VarTotalSupply)
 	if err := ts.Set(&totalSupply); err != nil {
