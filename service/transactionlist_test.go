@@ -12,6 +12,7 @@ import (
 )
 
 type mockTransaction struct {
+	NID       int
 	id        []byte
 	from      module.Address
 	timeStamp int64
@@ -29,8 +30,8 @@ func (t *mockTransaction) From() module.Address {
 	return t.from
 }
 
-func (*mockTransaction) Bytes() []byte {
-	panic("implement me")
+func (t *mockTransaction) Bytes() []byte {
+	return t.id
 }
 
 func (*mockTransaction) Hash() []byte {
@@ -66,7 +67,7 @@ func (*mockTransaction) Nonce() *big.Int {
 }
 
 func (t *mockTransaction) ValidateNetwork(nid int) bool {
-	panic("implement me")
+	return t.NID == nid
 }
 
 func newMockTransaction(id []byte, from module.Address, ts int64) *mockTransaction {

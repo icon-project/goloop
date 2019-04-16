@@ -8,7 +8,6 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/server/metric"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/transaction"
 )
@@ -19,6 +18,13 @@ const (
 	configMaxTxCount             = 1500
 )
 
+type Monitor interface {
+	OnDropTx(bs int)
+	OnAddTx(bs int)
+	OnRemoveTx(bs int)
+	OnCommit(id []byte, ts time.Time, d time.Duration)
+}
+
 type TransactionPool struct {
 	nid  int
 	txdb db.Bucket
@@ -27,15 +33,15 @@ type TransactionPool struct {
 
 	mutex sync.Mutex
 
-	metric *metric.TxMetric
+	monitor Monitor
 }
 
-func NewTransactionPool(nid int, txdb db.Bucket, m *metric.TxMetric) *TransactionPool {
+func NewTransactionPool(nid int, txdb db.Bucket, m Monitor) *TransactionPool {
 	pool := &TransactionPool{
-		nid:    nid,
-		txdb:   txdb,
-		list:   newTransactionList(),
-		metric: m,
+		nid:     nid,
+		txdb:    txdb,
+		list:    newTransactionList(),
+		monitor: m,
 	}
 	return pool
 }
@@ -53,7 +59,7 @@ func (tp *TransactionPool) RemoveOldTXs(bts int64) {
 		tx := iter.Value()
 		if tx.Timestamp() <= bts {
 			tp.list.Remove(iter)
-			tp.metric.OnDropTx(len(tx.Bytes()))
+			tp.monitor.OnDropTx(len(tx.Bytes()))
 		}
 		iter = next
 	}
@@ -124,7 +130,7 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 			for _, tx := range txs {
 				if tx != nil {
 					if ok, _ := tp.list.RemoveTx(tx); ok {
-						tp.metric.OnDropTx(len(tx.Bytes()))
+						tp.monitor.OnDropTx(len(tx.Bytes()))
 					}
 				}
 			}
@@ -159,7 +165,7 @@ func (tp *TransactionPool) Add(tx transaction.Transaction, direct bool) error {
 
 	err := tp.list.Add(tx, direct)
 	if err == nil {
-		tp.metric.OnAddTx(len(tx.Bytes()))
+		tp.monitor.OnAddTx(len(tx.Bytes()))
 	}
 	return err
 }
@@ -188,11 +194,11 @@ func (tp *TransactionPool) RemoveList(txs module.TransactionList) {
 				duration += now.Sub(time.Unix(0, ts))
 				count += 1
 			}
-			tp.metric.OnRemoveTx(len(t.Bytes()))
+			tp.monitor.OnRemoveTx(len(t.Bytes()))
 		}
 	}
 
 	if count > 0 {
-		tp.metric.OnCommit(txs.Hash(), now, duration/time.Duration(count))
+		tp.monitor.OnCommit(txs.Hash(), now, duration/time.Duration(count))
 	}
 }
