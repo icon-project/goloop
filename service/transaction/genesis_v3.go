@@ -23,6 +23,10 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+const (
+	InvalidGenesisError = iota + errors.CodeService + 100
+)
+
 type preInstalledScores struct {
 	Owner       *common.Address  `json:"owner"`
 	ContentType string           `json:"contentType"`
@@ -144,17 +148,17 @@ func (g *genesisV3) Verify() error {
 		acs[ac.Name] = &ac
 	}
 	if _, ok := acs["treasury"]; !ok {
-		return errors.New("NoTreasury")
+		return InvalidGenesisError.New("NoTreasuryAccount")
 	}
 	if _, ok := acs["god"]; !ok {
-		return errors.New("NoGod")
+		return InvalidGenesisError.New("NoGodAccount")
 	}
 	return nil
 }
 
 func (g *genesisV3) PreValidate(wc state.WorldContext, update bool) error {
 	if wc.BlockHeight() != 0 {
-		return common.ErrInvalidState
+		return errors.ErrInvalidState
 	}
 	return nil
 }
@@ -191,9 +195,14 @@ func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
 		totalSupply.Add(&totalSupply, &info.Balance.Int)
 	}
 
-	nid := g.NID.Value
-	if nid == 0 {
+	var nid int64
+	if g.NID == nil {
 		nid = state.DefaultNID
+	} else {
+		nid = g.NID.Value
+		if nid == 0 {
+			return nil, InvalidGenesisError.Errorf("IllegalNetworkID(%d)", nid)
+		}
 	}
 	nidVar := scoredb.NewVarDB(as, state.VarNetwork)
 	nidVar.Set(nid)
