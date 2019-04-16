@@ -420,9 +420,7 @@ func NewManager(
 	}
 	bn.preexe = tr.transit(lastFinalized.NormalTransactions(), lastFinalized, nil)
 	m.finalized = bn
-	if bn != nil {
-		m.nmap[string(lastFinalized.ID())] = bn
-	}
+	m.nmap[string(lastFinalized.ID())] = bn
 	return m
 }
 
