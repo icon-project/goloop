@@ -203,8 +203,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 				{"address", scoreapi.Address, nil},
 			},
 			[]scoreapi.DataType{
-				//scoreapi.Dict,
-				scoreapi.String,
+				scoreapi.Dict,
 			},
 		},
 		{scoreapi.Function, "getMembers",
@@ -747,61 +746,7 @@ type scoreStatus struct {
 	Disabled string     `json:"disabled"`
 }
 
-//func (s *ChainScore) Ex_getScoreStatus(address module.Address) (map[string]interface{}, error) {
-//	stringStatus := func(s state.ContractState) string {
-//		var status string
-//		switch s {
-//		case state.CSInactive:
-//			status = "inactive"
-//		case state.CSActive:
-//			status = "active"
-//		case state.CSPending:
-//			status = "pending"
-//		case state.CSRejected:
-//			status = "reject"
-//		default:
-//			log.Printf("GetScoreStatus - string : %v\n", s)
-//		}
-//		return status
-//	}
-//
-//	as := s.cc.GetAccountState(address.ID())
-//	if as == nil {
-//		return nil, errors.New("SCORE not found")
-//	}
-//	scoreStatus := make(map[string]interface{})
-//	if cur := as.Contract(); cur != nil {
-//		curContract := make(map[string]interface{})
-//		curContract["status"] = stringStatus(cur.Status())
-//		curContract["deployTxHash"] = fmt.Sprintf("%x", cur.DeployTxHash())
-//		curContract["auditTxHash"] = fmt.Sprintf("%x", cur.AuditTxHash())
-//		scoreStatus["current"] = curContract
-//	}
-//
-//	if next := as.NextContract(); next != nil {
-//		nextContract := make(map[string]interface{})
-//		nextContract["status"] = stringStatus(next.Status())
-//		nextContract["deployTxHash"] = fmt.Sprintf("%x", next.DeployTxHash())
-//		scoreStatus["next"] = nextContract
-//	}
-//
-//	// blocked
-//	if as.IsBlocked() == true {
-//		scoreStatus["blocked"] = "0x1"
-//	} else {
-//		scoreStatus["blocked"] = "0x0"
-//	}
-//
-//	// disabled
-//	if as.IsDisabled() == true {
-//		scoreStatus["disabled"] = "0x1"
-//	} else {
-//		scoreStatus["disabled"] = "0x0"
-//	}
-//	return scoreStatus, nil
-//}
-
-func (s *ChainScore) Ex_getScoreStatus(address module.Address) (string, error) {
+func (s *ChainScore) Ex_getScoreStatus(address module.Address) (map[string]interface{}, error) {
 	stringStatus := func(s state.ContractState) string {
 		var status string
 		switch s {
@@ -820,41 +765,39 @@ func (s *ChainScore) Ex_getScoreStatus(address module.Address) (string, error) {
 	}
 
 	as := s.cc.GetAccountState(address.ID())
-	scoreStatus := scoreStatus{}
+	if as == nil {
+		return nil, errors.New("SCORE not found")
+	}
+	scoreStatus := make(map[string]interface{})
 	if cur := as.Contract(); cur != nil {
-		current := &curScore{}
-		current.Status = stringStatus(cur.Status())
-		current.DeployTxHash = fmt.Sprintf("%x", cur.DeployTxHash())
-		current.AuditTxHash = fmt.Sprintf("%x", cur.AuditTxHash())
-		scoreStatus.Current = current
+		curContract := make(map[string]interface{})
+		curContract["status"] = stringStatus(cur.Status())
+		curContract["deployTxHash"] = fmt.Sprintf("%x", cur.DeployTxHash())
+		curContract["auditTxHash"] = fmt.Sprintf("%x", cur.AuditTxHash())
+		scoreStatus["current"] = curContract
 	}
 
 	if next := as.NextContract(); next != nil {
-		nextContract := &nextScore{}
-		nextContract.Status = stringStatus(next.Status())
-		nextContract.DeployTxHash = fmt.Sprintf("%x", next.DeployTxHash())
-		scoreStatus.Next = nextContract
+		nextContract := make(map[string]interface{})
+		nextContract["status"] = stringStatus(next.Status())
+		nextContract["deployTxHash"] = fmt.Sprintf("%x", next.DeployTxHash())
+		scoreStatus["next"] = nextContract
 	}
 
 	// blocked
 	if as.IsBlocked() == true {
-		scoreStatus.Blocked = "0x01"
+		scoreStatus["blocked"] = "0x1"
 	} else {
-		scoreStatus.Blocked = "0x00"
+		scoreStatus["blocked"] = "0x0"
 	}
 
 	// disabled
 	if as.IsDisabled() == true {
-		scoreStatus.Disabled = "0x01"
+		scoreStatus["disabled"] = "0x1"
 	} else {
-		scoreStatus.Disabled = "0x00"
+		scoreStatus["disabled"] = "0x0"
 	}
-	result, err := json.Marshal(scoreStatus)
-	if err != nil {
-		log.Printf("err : %s\n", err)
-		return "", err
-	}
-	return string(result), nil
+	return scoreStatus, nil
 }
 
 func (s *ChainScore) Ex_isDeployer(address module.Address) (int, error) {
