@@ -165,6 +165,10 @@ func (b *blockV1) MarshalBody(w io.Writer) error {
 	return nil
 }
 
+func (b *blockV1) Marshal(w io.Writer) error {
+	return nil
+}
+
 func (b *blockV1) ToJSON(rcpVersion int) (interface{}, error) {
 	return nil, nil
 }

@@ -99,6 +99,13 @@ func (b *tBlock) MarshalBody(w io.Writer) error {
 	return err
 }
 
+func (b *tBlock) Marshal(w io.Writer) error {
+	if err := b.MarshalHeader(w); err!=nil {
+		return err
+	}
+	return b.MarshalBody(w)
+}
+
 func (b *tBlock) ToJSON(rcpVersion int) (interface{}, error) {
 	panic("not implemented")
 }

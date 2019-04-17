@@ -124,6 +124,13 @@ func (b *blockV2) MarshalBody(w io.Writer) error {
 	return v2Codec.Marshal(w, b._bodyFormat())
 }
 
+func (b *blockV2) Marshal(w io.Writer) error {
+	if err:=b.MarshalHeader(w); err!=nil {
+		return err
+	}
+	return b.MarshalBody(w)
+}
+
 func (b *blockV2) _headerFormat() *blockV2HeaderFormat {
 	var proposerBS []byte
 	if b.proposer != nil {
