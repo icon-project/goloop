@@ -29,7 +29,7 @@ CMDS = $(patsubst cmd/%,%,$(wildcard cmd/*))
 define CMD_template
 $(BIN_DIR)/$(1) : $(1)
 $(1) : GOBUILD_LDFLAGS+=$$($(1)_LDFLAGS)
-$(1) : | vendor
+$(1) :
 	@ \
 	rm -f $(BIN_DIR)/$(1) ; \
 	echo "[#] go build ./cmd/$(1)"
@@ -39,7 +39,7 @@ $(1) : | vendor
 
 $(LINUX_BIN_DIR)/$(1) : $(1)-linux
 $(1)-linux : GOBUILD_LDFLAGS+=$$($(1)_LDFLAGS)
-$(1)-linux : | vendor
+$(1)-linux :
 	@ \
 	rm -f $(LINUX_BIN_DIR)/$(1) ; \
 	echo "[#] go build ./cmd/$(1)"
@@ -54,14 +54,6 @@ gochain_LDFLAGS = -X 'main.version=$(GL_VERSION)' -X 'main.build=$(BUILD_INFO)'
 BUILD_TARGETS += gochain
 goloop_LDFLAGS = -X 'main.version=$(GL_VERSION)' -X 'main.build=$(BUILD_INFO)'
 BUILD_TARGETS += goloop
-
-vendor :
-	@ \
-	$(MAKE) ensure
-ensure :
-	@ \
-	echo "[#] dep ensure"
-	dep ensure
 
 linux : $(addsuffix -linux,$(BUILD_TARGETS))
 
