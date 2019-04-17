@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
@@ -53,7 +53,7 @@ type ChainInspectView struct {
 
 func NewChainView(c module.Chain) *ChainView {
 	v := &ChainView{
-		NID: c.NID(),
+		NID:   c.NID(),
 		State: c.State(),
 	}
 

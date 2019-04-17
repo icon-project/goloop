@@ -5,7 +5,7 @@ import (
 	"errors"
 	"reflect"
 
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 
 	"github.com/icon-project/goloop/module"
 )

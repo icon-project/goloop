@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 )
 
 type Handler func(ctx *Context, params *Params) (result interface{}, err error)

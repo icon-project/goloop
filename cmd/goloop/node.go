@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 
 	"github.com/icon-project/goloop/chain"
 	"github.com/icon-project/goloop/module"
@@ -24,12 +24,12 @@ import (
 )
 
 const (
-	ChainConfigFileName = "config.json"
+	ChainConfigFileName     = "config.json"
 	ChainGenesisZipFileName = "genesis.zip"
 )
 
 type NodeConfig struct {
-	NodeDir string `json:"node_dir"`
+	NodeDir   string `json:"node_dir"`
 	CliSocket string `json:"node_sock"`
 
 	//chain.Config
@@ -49,8 +49,8 @@ type Node struct {
 
 	cliSrv struct {
 		srv http.Server
-		e *echo.Echo
-		l net.Listener
+		e   *echo.Echo
+		l   net.Listener
 	}
 }
 
@@ -115,7 +115,6 @@ func (n *Node) ChainPath(NID int) string {
 	return chainPath
 }
 
-
 func (n *Node) _get(NID int) (module.Chain, error) {
 	c, ok := n.m[NID]
 	if !ok {
@@ -142,7 +141,7 @@ func (n *Node) Start() {
 
 func (n *Node) Stop() {
 	n.srv.Stop()
-	ctx, cf := context.WithTimeout(context.Background(), 5 * time.Second)
+	ctx, cf := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cf()
 	if err := n.cliSrv.srv.Shutdown(ctx); err != nil {
 		log.Panic(err)
