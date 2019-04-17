@@ -162,11 +162,131 @@ type templateContext struct {
 	writer *zip.Writer
 }
 
-func processContent(o interface{}, c *templateContext) (interface{}, error) {
+func (c *templateContext) AddData(data []byte) (string, error) {
+	hash := hex.EncodeToString(crypto.SHA3Sum256(data))
+	f, err := c.writer.Create(hash)
+	if err != nil {
+		return "", err
+	}
+	if _, err := f.Write(data) ; err != nil {
+		return "", err
+	}
+	return hash, nil
+}
+
+func writeToZip(writer *zip.Writer, p, n string) error {
+	p2 := path.Join(p, n)
+	st, err := os.Stat(p2)
+	if err != nil {
+		return errors.Wrap(err, "writeToZip: FAIL on os.State")
+	}
+	if !st.IsDir() {
+		fd, err := os.Open(p2)
+		defer fd.Close()
+
+		if err != nil {
+			return errors.Wrapf(err,"writeToZip: fail to open %s", p2)
+		}
+		zf, err := writer.Create(n)
+		if err != nil {
+			return errors.Wrapf(err,"writeToZip: fail to create entry %s", n)
+		}
+		if _, err := io.Copy(zf, fd) ; err != nil {
+			return errors.Wrap(err,"writeToZip: fail to copy")
+		}
+		return nil
+	}
+
+	fis, err := ioutil.ReadDir(p2)
+	if err != nil {
+		return errors.Wrap(err,"writeToZip: FAIL on ReadDir")
+	}
+	for _, fi := range fis {
+		if err := writeToZip(writer, p, path.Join(n, fi.Name())) ; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func zipDirectory(p string) ([]byte, error) {
+	bs := bytes.NewBuffer(nil)
+	zw := zip.NewWriter(bs)
+
+	if err := writeToZip(zw, p, "") ; err != nil {
+		zw.Close()
+		return nil, err
+	} else {
+		zw.Flush()
+		zw.Close()
+		return bs.Bytes(), nil
+	}
+}
+
+var regexTemplate = regexp.MustCompile("{{(read|hash|zip|ziphash):([^}]+)}}")
+
+func processTemplate(c *templateContext, s string) (r string, e error) {
+	org := s
+	defer func() {
+		log.Printf("processTemplate(%s) -> %s, %+v", org, r, e)
+	}()
+	for {
+		m := regexTemplate.FindStringSubmatchIndex(s)
+		if len(m) == 0 {
+			break
+		}
+		key := s[m[2]:m[3]]
+		p := path.Join(c.path, s[m[4]:m[5]])
+		switch key {
+		case "read":
+			data, err := ioutil.ReadFile(p)
+			if err != nil {
+				return s, err
+			}
+			s = s[0:m[0]] + "0x" + hex.EncodeToString(data) + s[m[1]:]
+
+		case "zip":
+			data, err := zipDirectory(p)
+			if err != nil {
+				return s, err
+			}
+			s = s[0:m[0]] + "0x" + hex.EncodeToString(data) + s[m[1]:]
+
+		case "hash":
+			data, err := ioutil.ReadFile(p)
+			if err != nil {
+				return s, err
+			}
+			hash, err := c.AddData(data)
+			if err != nil {
+				return s, err
+			}
+			s = s[0:m[0]] + "0x" + hash + s[m[1]:]
+
+		case "ziphash":
+			data, err := zipDirectory(path.Join(p))
+			if err != nil {
+				return s, err
+			}
+			hash, err := c.AddData(data)
+			if err != nil {
+				return s, err
+			}
+			s = s[0:m[0]] + "0x" + hash + s[m[1]:]
+
+		default:
+			return s, errors.IllegalArgumentError.Errorf(
+				"Unknown keyword:%q for %q", key, s)
+		}
+	}
+	return s, nil
+}
+
+func processContent(c *templateContext, o interface{}) (interface{}, error) {
 	switch obj := o.(type) {
 	case []interface{}:
 		for i, v := range obj {
-			if no, err := processContent(v, c); err != nil {
+			if no, err := processContent(c, v); err != nil {
 				return nil, err
 			} else {
 				obj[i] = no
@@ -175,7 +295,7 @@ func processContent(o interface{}, c *templateContext) (interface{}, error) {
 		return obj, nil
 	case map[string]interface{}:
 		for k, v := range obj {
-			if no, err := processContent(v, c); err != nil {
+			if no, err := processContent(c, v); err != nil {
 				return nil, err
 			} else {
 				obj[k] = no
@@ -183,63 +303,51 @@ func processContent(o interface{}, c *templateContext) (interface{}, error) {
 		}
 		return obj, nil
 	case string:
-		// processing template
-		r := regexp.MustCompile("{{(read|hash):([^>]+)}}")
-		for {
-			m := r.FindStringSubmatchIndex(obj)
-			if len(m) == 0 {
-				break
-			}
-			key := obj[m[2]:m[3]]
-			if key == "read" {
-				name := obj[m[4]:m[5]]
-				data, err := ioutil.ReadFile(path.Join(c.path, name))
-				if err != nil {
-					return o, err
-				}
-				obj = obj[0:m[0]] + "0x" + hex.EncodeToString(data) + obj[m[1]:]
-			} else {
-				name := obj[m[4]:m[5]]
-				data, err := ioutil.ReadFile(path.Join(c.path, name))
-				if err != nil {
-					return o, err
-				}
-				hash := hex.EncodeToString(crypto.SHA3Sum256(data))
-				f, err := c.writer.Create(hash)
-				if err != nil {
-					return o, err
-				}
-				f.Write(data)
-				obj = obj[0:m[0]] + "0x" + hash + obj[m[1]:]
-			}
-		}
-		return obj, nil
+		return processTemplate(c, obj)
 	default:
 		return o, nil
 	}
 }
 
-func WriteGenesisStorageFromDirectory(w io.Writer, p string) error {
+// WriteGenesisStorageFromPath write genesis data from the template.
+// You may specify directory containing genesis.json. Or specify template
+// file itself.
+func WriteGenesisStorageFromPath(w io.Writer, p string) error {
+	var genesisDir, genesisTemplate string
+
+	st, err := os.Stat(p)
+	if err != nil {
+		return err
+	}
+	if st.IsDir() {
+		genesisDir = p
+		genesisTemplate = path.Join(p, GenesisFileName)
+	} else {
+		genesisDir, _ = path.Split(p)
+		genesisTemplate = p
+	}
+
 	zw := zip.NewWriter(w)
+	defer zw.Close()
 
 	// load and decode genesis
-	genesis, err := ioutil.ReadFile(path.Join(p, GenesisFileName))
+	genesis, err := ioutil.ReadFile(genesisTemplate)
 	if err != nil {
-		return errors.Wrapf(err, "Fail to read %s/%s", p, GenesisFileName)
+		return errors.Wrapf(err, "Fail to read %s", genesisTemplate)
 	}
 	d := json.NewDecoder(bytes.NewBuffer(genesis))
 	d.UseNumber()
 	var genesisObj map[string]interface{}
 	err = d.Decode(&genesisObj)
 	if err != nil {
-		return errors.Wrap(err, "Fail to decode genesis")
+		return errors.Wrapf(err, "Fail to decode %s", genesisTemplate)
 	}
 
 	// process genesis template
-	_, err = processContent(genesisObj, &templateContext{
+	_, err = processContent(&templateContext{
 		writer: zw,
-		path:   p,
-	})
+		path:   genesisDir,
+	}, genesisObj)
 
 	// write genesis data at last
 	f, err := zw.Create(GenesisFileName)
@@ -255,7 +363,6 @@ func WriteGenesisStorageFromDirectory(w io.Writer, p string) error {
 		return errors.Wrap(err, "Fail to write genesis")
 	}
 	_ = zw.Flush()
-	_ = zw.Close()
 	return nil
 }
 

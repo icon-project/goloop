@@ -209,8 +209,8 @@ func JsonIntend(v interface{}) (string, error) {
 }
 
 var (
-	genesisZip, genesisDir string
-	joinChainParam         JoinChainParam
+	genesisZip, genesisPath string
+	joinChainParam          JoinChainParam
 )
 
 func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
@@ -255,9 +255,9 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 
 			if len(genesisZip) > 0 {
 				resp, err = hc.PostWithFile(UrlChain, &joinChainParam, "genesisZip", genesisZip)
-			} else if len(genesisDir) > 0 {
+			} else if len(genesisPath) > 0 {
 				buf := bytes.NewBuffer(nil)
-				err = chain.WriteGenesisStorageFromDirectory(buf, genesisDir)
+				err = chain.WriteGenesisStorageFromPath(buf, genesisPath)
 				if err != nil {
 					fmt.Println(err)
 					return
@@ -280,8 +280,8 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 			fmt.Println(string(b))
 		},
 	}
-	joinCmd.Flags().StringVar(&genesisZip, "genesis", "", "Genesis Zip filepath")
-	joinCmd.Flags().StringVar(&genesisDir, "genesis_dir", "", "Genesis template directory")
+	joinCmd.Flags().StringVar(&genesisZip, "genesis", "", "Genesis storage path")
+	joinCmd.Flags().StringVar(&genesisPath, "genesis_template", "", "Genesis template directory or file")
 	joinCmd.Flags().StringVar(&joinChainParam.SeedAddr, "seed", "", "Ip-port of Seed")
 	joinCmd.Flags().UintVar(&joinChainParam.Role, "role", 2, "[0:None, 1:Seed, 2:Validator, 3:Both]")
 
