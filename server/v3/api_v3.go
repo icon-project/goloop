@@ -203,11 +203,25 @@ func getScoreApi(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, err
 	if err := params.Convert(&param); err != nil {
 		return nil, jsonrpc.ErrInvalidParams()
 	}
-	_, err := ctx.Chain()
+	chain, err := ctx.Chain()
 	if err != nil {
+		return nil, jsonrpc.ErrServer(err.Error())
 	}
-	// TODO : service interface required
-	return nil, nil
+	bm := chain.BlockManager()
+	b, err := bm.GetLastBlock()
+	if err != nil {
+		return nil, jsonrpc.ErrServer(err.Error())
+	}
+	sm := chain.ServiceManager()
+	info, err := sm.GetAPIInfo(b.Result(), param.Address.Address())
+	if err != nil {
+		return nil, jsonrpc.ErrInvalidParams(err.Error())
+	}
+	if jso, err := info.ToJSON(jsonRpcApiVersion); err != nil {
+		return nil, jsonrpc.ErrServer(err.Error())
+	} else {
+		return jso, nil
+	}
 }
 
 func getTotalSupply(ctx *jsonrpc.Context, _ *jsonrpc.Params) (interface{}, error) {

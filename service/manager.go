@@ -386,6 +386,25 @@ func (m *manager) GetNetworkID(result []byte) (int64, error) {
 	}
 }
 
+func (m *manager) GetAPIInfo(result []byte, addr module.Address) (module.APIInfo, error) {
+	if !addr.IsContract() {
+		return nil, state.ErrNotContractAccount
+	}
+
+	tr, err := newTransitionResultFromBytes(result)
+	if err != nil {
+		return nil, err
+	}
+
+	wss := state.NewWorldSnapshot(m.db, tr.StateHash, nil)
+	ass := wss.GetAccountSnapshot(addr.ID())
+	info := ass.APIInfo()
+	if info == nil {
+		return nil, state.ErrNoActiveContract
+	}
+	return info, nil
+}
+
 type blockInfo struct {
 	height    int64
 	timestamp int64

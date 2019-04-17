@@ -165,6 +165,10 @@ type Transition interface {
 	LogBloom() LogBloom
 }
 
+type APIInfo interface {
+	ToJSON(int) (interface{}, error)
+}
+
 // Options for finalize
 const (
 	FinalizeNormalTransaction = 1 << iota
@@ -247,4 +251,7 @@ type ServiceManager interface {
 
 	// GetNetworkID get network ID of of the state
 	GetNetworkID(result []byte) (int64, error)
+
+	// GetAPIInfo get API info of the contract
+	GetAPIInfo(result []byte, addr Address) (APIInfo, error)
 }

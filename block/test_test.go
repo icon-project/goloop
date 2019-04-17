@@ -724,6 +724,10 @@ func (sm *testServiceManager) GetNetworkID(result []byte) (int64, error) {
 	return 0, nil
 }
 
+func (sm *testServiceManager) GetAPIInfo(result []byte, addr module.Address) (module.APIInfo, error) {
+	return nil, nil
+}
+
 type testValidator struct {
 	Address_ *common.Address
 }
