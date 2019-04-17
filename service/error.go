@@ -1,9 +1,17 @@
 package service
 
-import "github.com/pkg/errors"
+import "github.com/icon-project/goloop/common/errors"
+
+const (
+	DuplicateTransactionError errors.Code = iota + errors.CodeService
+	TransactionPoolOverflowError
+	ExpiredTransactionError
+	TransitionInterruptedError
+)
 
 var (
-	ErrDuplicateTransaction    = errors.New("DuplicateTransaction")
-	ErrTransactionPoolOverFlow = errors.New("TransactionPoolOverFlow")
-	ErrExpiredTransaction      = errors.New("ExpiredTransaction")
+	ErrDuplicateTransaction    = errors.NewBase(DuplicateTransactionError, "DuplicateTransaction")
+	ErrTransactionPoolOverFlow = errors.NewBase(TransactionPoolOverflowError, "TransactionPoolOverFlow")
+	ErrExpiredTransaction      = errors.NewBase(ExpiredTransactionError, "ExpiredTransaction")
+	ErrTransitionInterrupted   = errors.NewBase(TransitionInterruptedError, "TransitionInterrupted")
 )
