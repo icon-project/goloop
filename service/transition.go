@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/transaction"
@@ -244,19 +245,21 @@ func (t *transition) newWorldContext() (state.WorldContext, error) {
 }
 
 func (t *transition) reportValidation(e error) bool {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
+	locker := common.LockForAutoCall(&t.mutex)
+	defer locker.Unlock()
+
+	log.Printf("reportValidation(err=%+v)", e)
 
 	switch t.step {
-	case stepValidating:
+	case stepValidating, stepExecuting:
 		if e != nil {
 			t.step = stepError
 		} else {
 			t.step = stepExecuting
 		}
-		fallthrough
-	case stepExecuting:
-		go t.cb.OnValidate(t, e)
+		locker.CallAfterUnlock(func() {
+			t.cb.OnValidate(t, e)
+		})
 		return true
 	case stepCanceled:
 		log.Printf("Ignore error err=%+v", e)
@@ -267,8 +270,10 @@ func (t *transition) reportValidation(e error) bool {
 }
 
 func (t *transition) reportExecution(e error) bool {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
+	locker := common.LockForAutoCall(&t.mutex)
+	defer locker.Unlock()
+
+	log.Printf("reportExecution(err=%+v)", e)
 
 	switch t.step {
 	case stepExecuting:
@@ -278,7 +283,9 @@ func (t *transition) reportExecution(e error) bool {
 		} else {
 			t.step = stepComplete
 		}
-		go t.cb.OnExecute(t, e)
+		locker.CallAfterUnlock(func() {
+			t.cb.OnExecute(t, e)
+		})
 		return true
 	case stepCanceled:
 		log.Printf("Ignore error err=%+v", e)
