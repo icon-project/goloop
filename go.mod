@@ -19,7 +19,7 @@ require (
 	github.com/spf13/pflag v1.0.3 // indirect
 	github.com/stretchr/testify v1.3.0
 	github.com/syndtr/goleveldb v1.0.0
-	github.com/ugorji/go/codec v0.0.0-20181204163529-d75b2dcb6bc8
+	github.com/ugorji/go/codec v0.0.0-20181209151446-772ced7fd4c2
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	go.etcd.io/bbolt v1.3.2
 	go.opencensus.io v0.20.2
