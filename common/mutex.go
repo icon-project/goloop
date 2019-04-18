@@ -39,3 +39,40 @@ func (m *Mutex) CallBeforeUnlock(f func()) {
 func (m *Mutex) CallAfterUnlock(f func()) {
 	m.acbs = append(m.acbs, f)
 }
+
+type AutoCallLocker struct {
+	locker sync.Locker
+	bcbs   []func()
+	acbs   []func()
+}
+
+// Unlock calls scheduled functions and releases lock.
+func (m *AutoCallLocker) Unlock() {
+	for i := 0; i < len(m.bcbs); i++ {
+		m.bcbs[i]()
+	}
+	m.bcbs = nil
+	acbs := m.acbs
+	m.acbs = nil
+	m.locker.Unlock()
+	for _, cb := range acbs {
+		cb()
+	}
+}
+
+// CallBeforeUnlock schedules to call f before next unlock. This function shall
+// be called while lock is acquired.
+func (m *AutoCallLocker) CallBeforeUnlock(f func()) {
+	m.bcbs = append(m.bcbs, f)
+}
+
+// CallAfterUnlock schedules to call f after next unlock. This function shall be
+// called while lock is acquired.
+func (m *AutoCallLocker) CallAfterUnlock(f func()) {
+	m.acbs = append(m.acbs, f)
+}
+
+func LockForAutoCall(locker sync.Locker) *AutoCallLocker {
+	locker.Lock()
+	return &AutoCallLocker{locker: locker}
+}
