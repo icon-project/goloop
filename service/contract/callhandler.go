@@ -9,12 +9,12 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/scoreapi"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -116,7 +116,7 @@ func (h *CallHandler) Prepare(ctx Context) (state.WorldContext, error) {
 
 	c := h.contract(as)
 	if c == nil {
-		return nil, errors.New("No active contract")
+		return nil, scoreresult.New(module.StatusContractNotFound, "NotActiveContract")
 	}
 
 	var err error
@@ -126,7 +126,7 @@ func (h *CallHandler) Prepare(ctx Context) (state.WorldContext, error) {
 	}
 	h.lock.Unlock()
 	if err != nil {
-		return nil, err
+		return nil, scoreresult.WithStatus(err, module.StatusContractNotFound)
 	}
 
 	return wc, nil
@@ -152,14 +152,14 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 	// Prepare
 	h.as = cc.GetAccountState(h.to.ID())
 	if !h.as.IsContract() {
-		return errors.New("FAIL: not a contract account")
+		return scoreresult.New(module.StatusContractNotFound, "NotAContractAccount")
 	}
 	cc.SetContractInfo(&state.ContractInfo{Owner: h.as.ContractOwner()})
 
 	// Set up contract files
 	c := h.contract(h.as)
 	if c == nil {
-		return errors.New("No active contract")
+		return scoreresult.New(module.StatusContractNotFound, "NotActiveContract")
 	}
 
 	if strings.Compare(c.ContentType(), state.CTAppSystem) == 0 {
@@ -173,8 +173,7 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 		}
 		sScore, err := GetSystemScore(CID_CHAIN, from, cc)
 		if err != nil {
-			log.Printf("Failed to getSystem score. from : %s, to : %s, err : %s\n", h.from.String(), h.to.String(), err)
-			return err
+			return errors.Wrapc(err, errors.CodeOf(scoreresult.ErrSystemError), "FailToGetSystemScore")
 		}
 		err = h.ensureParamObj()
 		if err == nil {
@@ -192,7 +191,8 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 	h.cm = cc.ContractManager()
 	h.conn = cc.GetProxy(h.EEType())
 	if h.conn == nil {
-		return errors.New("FAIL to get connection of (" + h.EEType() + ")")
+		return scoreresult.Errorf(module.StatusSystemError,
+			"FAIL to get connection of ("+h.EEType()+")")
 	}
 	h.lock.Lock()
 	var err error
@@ -205,7 +205,7 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 	}
 	path, err := h.cs.WaitResult()
 	if err != nil {
-		return err
+		return errors.Wrapc(err, PreparingContractError, "FAIL to prepare contract")
 	}
 
 	// Execute
@@ -244,7 +244,8 @@ func (h *CallHandler) ensureParamObj() error {
 func (h *CallHandler) SendResult(status module.Status, steps *big.Int, result *codec.TypedObj) error {
 	if !h.isSysCall {
 		if h.conn == nil {
-			return errors.New("Don't have a connection of (" + h.EEType() + ")")
+			return scoreresult.Errorf(module.StatusSystemError,
+				"Don't have a connection of ("+h.EEType()+")")
 		}
 		return h.conn.SendResult(h, uint16(status), steps, result)
 	} else {
@@ -276,7 +277,8 @@ func (h *CallHandler) GetValue(key []byte) ([]byte, error) {
 	if h.as != nil {
 		return h.as.GetValue(key)
 	} else {
-		return nil, errors.New("GetValue: No Account(" + h.to.String() + ") exists")
+		return nil, scoreresult.Errorf(module.StatusSystemError,
+			"GetValue: No Account("+h.to.String()+") exists")
 	}
 }
 
@@ -284,7 +286,8 @@ func (h *CallHandler) SetValue(key, value []byte) error {
 	if h.as != nil {
 		return h.as.SetValue(key, value)
 	} else {
-		return errors.New("SetValue: No Account(" + h.to.String() + ") exists")
+		return scoreresult.Errorf(module.StatusSystemError,
+			"SetValue: No Account("+h.to.String()+") exists")
 	}
 }
 
@@ -292,7 +295,8 @@ func (h *CallHandler) DeleteValue(key []byte) error {
 	if h.as != nil {
 		return h.as.DeleteValue(key)
 	} else {
-		return errors.New("DeleteValue: No Account(" + h.to.String() + ") exists")
+		return scoreresult.Errorf(module.StatusSystemError,
+			"DeleteValue: No Account("+h.to.String()+") exists")
 	}
 }
 

@@ -4,14 +4,12 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"math/big"
 	"sort"
 	"strings"
 
-	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
@@ -20,17 +18,14 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
-)
-
-const (
-	InvalidGenesisError = iota + errors.CodeService + 100
 )
 
 type preInstalledScores struct {
 	Owner       *common.Address  `json:"owner"`
 	ContentType string           `json:"contentType"`
-	ContentId   string           `json:"contentId"`
+	ContentID   string           `json:"contentId"`
 	Content     string           `json:"content"`
 	Params      *json.RawMessage `json:"params"`
 }
@@ -232,16 +227,14 @@ func (g *genesisV3) deployChainScore(ctx contract.Context, receipt txresult.Rece
 	sas.DeployContract(nil, "system", state.CTAppSystem,
 		nil, nil)
 	if err := sas.AcceptContract(nil, nil); err != nil {
-		log.Printf("Failed to accept chainScore. err = %s", err)
 		return err
 	}
-	chainScore, err := contract.GetSystemScore(contract.CID_CHAIN, common.NewContractAddress(state.SystemID), contract.NewCallContext(ctx, receipt, false))
+	chainScore, err := contract.GetSystemScore(contract.CID_CHAIN,
+		common.NewContractAddress(state.SystemID), contract.NewCallContext(ctx, receipt, false))
 	if err != nil {
-		log.Printf("Failed to get systemScore")
 		return err
 	}
 	if err := contract.CheckMethod(chainScore); err != nil {
-		log.Printf("Failed to check method. err = %s\n", err)
 		return err
 	}
 	sas.SetAPIInfo(chainScore.GetAPI())
@@ -253,55 +246,52 @@ func (g *genesisV3) deployChainScore(ctx contract.Context, receipt txresult.Rece
 
 func (g *genesisV3) deployPreInstall(ctx contract.Context, receipt txresult.Receipt) error {
 	if err := g.deployChainScore(ctx, receipt); err != nil {
-		log.Printf("Filed to deploy ChainScore. err = %s\n", err)
-		return err
+		log.Printf("FAIL to deploy ChainScore. %+v\n", err)
+		return InvalidGenesisError.Errorf("FAIL to deploy ChainScore")
 	}
-	for _, a := range g.Accounts {
-		if a.Score == nil {
+	for _, acc := range g.Accounts {
+		if acc.Score == nil {
 			continue
 		}
-		score := a.Score
+		score := acc.Score
 		cc := contract.NewCallContext(ctx, receipt, false)
 		if score.Content != "" {
 			if strings.HasPrefix(score.Content, "0x") {
 				score.Content = strings.TrimPrefix(score.Content, "0x")
 			}
 			data, _ := hex.DecodeString(score.Content)
-			d := contract.NewDeployHandlerForPreInstall(score.Owner,
-				&a.Address, score.ContentType, data, score.Params)
-			status, _, _, _ := cc.Call(d)
+			handler := contract.NewDeployHandlerForPreInstall(score.Owner,
+				&acc.Address, score.ContentType, data, score.Params)
+			status, _, _, _ := cc.Call(handler)
 			if status != module.StatusSuccess {
-				log.Printf("Failed to install pre-installed score."+
-					"status : %d, addr : %v\n", status, a.Address)
-				return errors.New(fmt.Sprintf("Failed to deploy pre-installed score. status = %d", status))
+				return InvalidGenesisError.Errorf("FAIL to install pre-installed score."+
+					"status : %d, addr : %v\n", status, acc.Address)
 			}
 			cc.Dispose()
-		} else if score.ContentId != "" {
-			if strings.HasPrefix(score.ContentId, contentIdHash) == true {
-				contentHash := strings.TrimPrefix(score.ContentId, contentIdHash)
+		} else if score.ContentID != "" {
+			if strings.HasPrefix(score.ContentID, contentIdHash) == true {
+				contentHash := strings.TrimPrefix(score.ContentID, contentIdHash)
 				content, err := ctx.GetPreInstalledScore(contentHash)
 				if err != nil {
-					log.Printf("Fail to get PreInstalledScore for ID=%s",
-						contentHash)
-					return err
+					return InvalidGenesisError.Errorf(
+						"Fail to get PreInstalledScore for ID=%s", contentHash)
 				}
-				d := contract.NewDeployHandlerForPreInstall(score.Owner,
-					&a.Address, score.ContentType, content, score.Params)
-				status, _, _, _ := cc.Call(d)
+				handler := contract.NewDeployHandlerForPreInstall(score.Owner,
+					&acc.Address, score.ContentType, content, score.Params)
+				status, _, _, _ := cc.Call(handler)
 				if status != module.StatusSuccess {
-					log.Printf("Failed to install pre-installed score."+
-						"status : %d, addr : %v, file : %s\n", status, a.Address, contentHash)
-					return errors.New(fmt.Sprintf("Failed to deploy pre-installed score. status = %d", status))
+					return InvalidGenesisError.Errorf("FAIL to install pre-installed score."+
+						"status : %d, addr : %v\n", status, acc.Address)
 				}
 				cc.Dispose()
-			} else if strings.HasPrefix(score.ContentId, contentIdCid) == true {
+			} else if strings.HasPrefix(score.ContentID, contentIdCid) == true {
 				// TODO implement for contentCid
 				return errors.UnsupportedError.New("CID prefix is't Unsupported")
 			} else {
-				return InvalidGenesisError.Errorf("SCORE<%s> Invalid contentId=%q", &a.Address, score.ContentId)
+				return InvalidGenesisError.Errorf("SCORE<%s> Invalid contentId=%q", &acc.Address, score.ContentID)
 			}
 		} else {
-			return InvalidGenesisError.Errorf("There is no content for score %s", &a.Address)
+			return InvalidGenesisError.Errorf("There is no content for score %s", &acc.Address)
 		}
 	}
 	return nil

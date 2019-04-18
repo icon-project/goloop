@@ -3,6 +3,7 @@ package contract
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/icon-project/goloop/service/scoreresult"
 	"log"
 	"math/big"
 	"strconv"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/icon-project/goloop/service/scoreapi"
 
-	"github.com/go-errors/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/state"
@@ -258,7 +258,7 @@ func (s *ChainScore) Install(param []byte) error {
 	if param != nil {
 		if err := json.Unmarshal(param, &chain); err != nil {
 			log.Printf("Failed to parse parameter for chainScore. err = %s", err)
-			return err
+			return scoreresult.Errorf(module.StatusIllegalFormat, "FailToInstallChainScore")
 		}
 	}
 	confValue := 0
@@ -389,10 +389,10 @@ func (s *ChainScore) Update(param []byte) error {
 func (s *ChainScore) Ex_disableScore(address module.Address) error {
 	as := s.cc.GetAccountState(address.ID())
 	if as.IsContract() == false {
-		return errors.New("Not contract")
+		return scoreresult.ErrContractNotFound
 	}
 	if as.IsContractOwner(s.from) == false {
-		return errors.New("Not Contract owner")
+		return scoreresult.New(module.StatusAccessDenied, "NotContractOwner")
 	}
 	as.SetDisable(true)
 	return nil
@@ -401,10 +401,10 @@ func (s *ChainScore) Ex_disableScore(address module.Address) error {
 func (s *ChainScore) Ex_enableScore(address module.Address) error {
 	as := s.cc.GetAccountState(address.ID())
 	if as.IsContract() == false {
-		return errors.New("Not contract")
+		return scoreresult.ErrContractNotFound
 	}
 	if as.IsContractOwner(s.from) == false {
-		return errors.New("Not Contract owner")
+		return scoreresult.New(module.StatusAccessDenied, "NotContractOwner")
 	}
 	as.SetDisable(false)
 	return nil
@@ -417,54 +417,55 @@ func (s *ChainScore) fromGovernance() bool {
 // Governance functions : Functions which can be called by governance SCORE.
 func (s *ChainScore) Ex_setRevision(code *common.HexInt) error {
 	if !s.fromGovernance() {
-		return errors.New("No permission to call this method.")
+		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
 	r := scoredb.NewVarDB(as, state.VarRevision).Int64()
 	if code.Int64() <= r {
-		return errors.New(fmt.Sprintf("Wrong revision. cur : %d, passed : %d\n", r, code))
+		return scoreresult.Errorf(module.StatusInvalidParameter,
+			"Can't set code. cur : %d, passed : %d\n", r, code)
 	}
 	return scoredb.NewVarDB(as, state.VarRevision).Set(code)
 }
 
 func (s *ChainScore) Ex_acceptScore(txHash []byte) error {
 	if !s.fromGovernance() {
-		return errors.New("No permission to call this method.")
+		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 	info := s.cc.GetInfo()
 	auditTxHash := info[state.InfoTxHash].([]byte)
 
 	v, err := s.Ex_getMaxStepLimit(state.StepLimitTypeInvoke)
 	if err != nil {
-		return err
+		return scoreresult.WithStatus(err, module.StatusSystemError)
 	}
 	ah := newAcceptHandler(s.from, common.NewAddress(state.SystemID),
 		nil, big.NewInt(v), txHash, auditTxHash)
 	status, _, _, _ := ah.ExecuteSync(s.cc)
 	if status != module.StatusSuccess {
-		return errors.New(fmt.Sprintf("Failed to  execute acceptHandler. status = %d", status))
+		return scoreresult.New(status, "Fail to execute acceptHandler")
 	}
 	return nil
 }
 
 func (s *ChainScore) Ex_rejectScore(txHash []byte) error {
 	if !s.fromGovernance() {
-		return errors.New("No permission to call this method.")
+		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 
 	sysAs := s.cc.GetAccountState(state.SystemID)
 	varDb := scoredb.NewVarDB(sysAs, txHash)
 	scoreAddr := varDb.Address()
 	if scoreAddr == nil {
-		return errors.New(fmt.Sprintf("Faile d to find score by txHash[%x]\n", txHash))
+		return scoreresult.Errorf(module.StatusInvalidParameter,
+			"Fail to find score by txHash[%x]\n", txHash)
 	}
 	scoreAs := s.cc.GetAccountState(scoreAddr.ID())
 	// NOTE : cannot change from reject to accept state because data with address mapped txHash is deleted from DB
 	info := s.cc.GetInfo()
 	auditTxHash := info[state.InfoTxHash].([]byte)
 	if err := varDb.Delete(); err != nil {
-		log.Printf("Failed to delete scoreAddr. %s", scoreAddr.String())
-		return err
+		return scoreresult.WithStatus(err, module.StatusSystemError)
 	}
 	return scoreAs.RejectContract(txHash, auditTxHash)
 }
@@ -472,7 +473,7 @@ func (s *ChainScore) Ex_rejectScore(txHash []byte) error {
 // Governance score would check the verification of the address
 func (s *ChainScore) Ex_blockScore(address module.Address) error {
 	if !s.fromGovernance() {
-		return errors.New("No permission to call this method.")
+		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 	as := s.cc.GetAccountState(address.ID())
 	if as.IsBlocked() == false {
@@ -484,7 +485,7 @@ func (s *ChainScore) Ex_blockScore(address module.Address) error {
 // Governance score would check the verification of the address
 func (s *ChainScore) Ex_unblockScore(address module.Address) error {
 	if !s.fromGovernance() {
-		return errors.New("No permission to call this method.")
+		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 	as := s.cc.GetAccountState(address.ID())
 	if as.IsBlocked() == true {
@@ -495,7 +496,7 @@ func (s *ChainScore) Ex_unblockScore(address module.Address) error {
 
 func (s *ChainScore) Ex_setStepPrice(price *common.HexInt) error {
 	if !s.fromGovernance() {
-		return errors.New("No permission to call this method.")
+		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
 	return scoredb.NewVarDB(as, state.VarStepPrice).Set(price)
@@ -503,14 +504,14 @@ func (s *ChainScore) Ex_setStepPrice(price *common.HexInt) error {
 
 func (s *ChainScore) Ex_setStepCost(costType string, cost *common.HexInt) error {
 	if !s.fromGovernance() {
-		return errors.New("No permission to call this method.")
+		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
 	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
 	if stepCostDB.Get(costType) == nil {
 		stepTypes := scoredb.NewArrayDB(as, state.VarStepTypes)
 		if err := stepTypes.Put(costType); err != nil {
-			return err
+			return scoreresult.WithStatus(err, module.StatusSystemError)
 		}
 	}
 	return stepCostDB.Set(costType, cost)
@@ -518,14 +519,14 @@ func (s *ChainScore) Ex_setStepCost(costType string, cost *common.HexInt) error 
 
 func (s *ChainScore) Ex_setMaxStepLimit(contextType string, cost *common.HexInt) error {
 	if !s.fromGovernance() {
-		return errors.New("No permission to call this method.")
+		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
 	stepLimitDB := scoredb.NewDictDB(as, state.VarStepLimit, 1)
 	if stepLimitDB.Get(contextType) == nil {
 		stepLimitTypes := scoredb.NewArrayDB(as, state.VarStepLimitTypes)
 		if err := stepLimitTypes.Put(contextType); err != nil {
-			return err
+			return scoreresult.WithStatus(err, module.StatusSystemError)
 		}
 	}
 	return stepLimitDB.Set(contextType, cost)
@@ -533,7 +534,7 @@ func (s *ChainScore) Ex_setMaxStepLimit(contextType string, cost *common.HexInt)
 
 func (s *ChainScore) Ex_grantValidator(address module.Address) error {
 	if !s.fromGovernance() {
-		return errors.New("No permission to call this method.")
+		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 	if v, err := state.ValidatorFromAddress(address); err == nil {
 		return s.cc.GetValidatorState().Add(v)
@@ -544,7 +545,7 @@ func (s *ChainScore) Ex_grantValidator(address module.Address) error {
 
 func (s *ChainScore) Ex_revokeValidator(address module.Address) error {
 	if !s.fromGovernance() {
-		return errors.New("No permission to call this method.")
+		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 	if v, err := state.ValidatorFromAddress(address); err == nil {
 		s.cc.GetValidatorState().Remove(v)
@@ -561,7 +562,7 @@ func (s *ChainScore) Ex_getValidators() ([]interface{}, error) {
 		if v, ok := vs.Get(i); ok {
 			validators[i] = v.Address()
 		} else {
-			return nil, errors.New("Unexpected access failure")
+			return nil, scoreresult.New(module.StatusSystemError, "Unexpected access failure")
 		}
 	}
 	return validators, nil
@@ -569,7 +570,7 @@ func (s *ChainScore) Ex_getValidators() ([]interface{}, error) {
 
 func (s *ChainScore) Ex_addMember(address module.Address) error {
 	if !s.fromGovernance() {
-		return errors.New("No permission to call this method.")
+		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
 	db := scoredb.NewArrayDB(as, state.VarMembers)
@@ -583,13 +584,13 @@ func (s *ChainScore) Ex_addMember(address module.Address) error {
 
 func (s *ChainScore) Ex_removeMember(address module.Address) error {
 	if !s.fromGovernance() {
-		return errors.New("No permission to call this method.")
+		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 
 	// If membership system is on, first check if the member is not a validator
 	if s.cc.MembershipEnabled() {
 		if s.cc.GetValidatorState().IndexOf(address) >= 0 {
-			return errors.New("Should revoke validator before removing the member")
+			return scoreresult.New(module.StatusSystemError, "Should revoke validator before removing the member")
 		}
 	}
 
@@ -611,7 +612,7 @@ func (s *ChainScore) Ex_removeMember(address module.Address) error {
 
 func (s *ChainScore) Ex_addDeployer(address module.Address) error {
 	if !s.fromGovernance() {
-		return errors.New("No permission to call this method.")
+		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
 	db := scoredb.NewArrayDB(as, state.VarDeployers)
@@ -625,7 +626,7 @@ func (s *ChainScore) Ex_addDeployer(address module.Address) error {
 
 func (s *ChainScore) Ex_removeDeployer(address module.Address) error {
 	if !s.fromGovernance() {
-		return errors.New("No permission to call this method.")
+		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
 	db := scoredb.NewArrayDB(as, state.VarDeployers)
@@ -645,7 +646,7 @@ func (s *ChainScore) Ex_removeDeployer(address module.Address) error {
 
 func (s *ChainScore) Ex_addLicense(contentId string) error {
 	if !s.fromGovernance() {
-		return errors.New("No permission to call this method.")
+		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
 	db := scoredb.NewArrayDB(as, state.VarLicenses)
@@ -659,7 +660,7 @@ func (s *ChainScore) Ex_addLicense(contentId string) error {
 
 func (s *ChainScore) Ex_removeLicense(contentId string) error {
 	if !s.fromGovernance() {
-		return errors.New("No permission to call this method.")
+		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
 	db := scoredb.NewArrayDB(as, state.VarLicenses)
@@ -766,7 +767,7 @@ func (s *ChainScore) Ex_getScoreStatus(address module.Address) (map[string]inter
 
 	as := s.cc.GetAccountState(address.ID())
 	if as == nil {
-		return nil, errors.New("SCORE not found")
+		return nil, scoreresult.ErrContractNotFound
 	}
 	scoreStatus := make(map[string]interface{})
 	if cur := as.Contract(); cur != nil {

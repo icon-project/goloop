@@ -3,10 +3,10 @@ package transaction
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"log"
 	"math/big"
-	"strconv"
+
+	"github.com/icon-project/goloop/service/scoreresult"
 
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
@@ -36,22 +36,22 @@ func (tx *transactionV2) Version() int {
 func (tx *transactionV2) Verify() error {
 	// value >= 0
 	if tx.Value != nil && tx.Value.Sign() < 0 {
-		return state.ErrInvalidValueValue
+		return InvalidValue.Errorf("InvalidTxValue(%s)", tx.Value.String())
 	}
 
 	// character level size of data element <= 512KB
 	if n, err := countBytesOfData(tx.Data); err != nil || n > txMaxDataSize {
-		return state.ErrInvalidDataValue
+		return InvalidValue.Errorf("InvalidTxData(%s)", tx.Value.String())
 	}
 
 	// fee == FixedFee
 	if tx.Fee.Int.Cmp(version2FixedFee) != 0 {
-		return state.ErrInvalidFeeValue
+		return InvalidValue.Errorf("InvalidFee(%s)", tx.Fee.String())
 	}
 
 	// check if it's EOA
 	if tx.To.IsContract() {
-		return state.ErrNotEOA
+		return InvalidValue.Errorf("NotEOA(%s)", tx.To.String())
 	}
 
 	// signature verification
@@ -60,7 +60,7 @@ func (tx *transactionV2) Verify() error {
 	}
 
 	if !bytes.Equal(tx.txHash, tx.TxHashV2) {
-		return state.ErrInvalidHashValue
+		return InvalidValue.Errorf("InvalidHash(%x, %v)", tx.txHash, tx.TxHashV2.Bytes())
 	}
 
 	if err := tx.transactionV3JSON.verifySignature(); err != nil {
@@ -80,10 +80,10 @@ func (tx *transactionV2) PreValidate(wc state.WorldContext, update bool) error {
 		tsDiff := wc.BlockTimeStamp() - tx.TimeStamp.Value
 		if tsDiff <= -ConfigTXTimestampBackwardMargin ||
 			tsDiff > ConfigTXTimestampForwardLimit {
-			return state.ErrTimeOut
+			return InvalidTxTime.Errorf("Timeout(block:%d, tx:%d)", wc.BlockTimeStamp(), tx.TimeStamp.Value)
 		}
 		if tsDiff > ConfigTXTimestampForwardMargin {
-			return state.ErrFutureTransaction
+			return InvalidTxTime.Errorf("FutureTxTime(block:%d, tx:%d)", wc.BlockTimeStamp(), tx.TimeStamp.Value)
 		}
 	}
 
@@ -95,7 +95,7 @@ func (tx *transactionV2) PreValidate(wc state.WorldContext, update bool) error {
 	as1 := wc.GetAccountState(tx.From().ID())
 	balance1 := as1.GetBalance()
 	if balance1.Cmp(trans) < 0 {
-		return state.ErrNotEnoughBalance
+		return scoreresult.ErrOutOfBalance
 	}
 
 	// for cumulative balance check
@@ -131,15 +131,13 @@ func (tx *transactionV2) Execute(ctx contract.Context) (txresult.Receipt, error)
 	as1 := ctx.GetAccountState(tx.From().ID())
 	bal1 := as1.GetBalance()
 	if bal1.Cmp(&trans) < 0 {
-		log.Printf("TX2 Fail balance=%s value=%s fee=%s",
-			bal1.String(), tx.Value.Int.String(), tx.Fee.Int.String())
-
 		stepPrice := version2StepPrice
 		if bal1.Cmp(version2FixedFee) < 0 {
 			stepPrice.SetInt64(0)
 		}
 		r.SetResult(module.StatusOutOfBalance, version2StepUsed, stepPrice, nil)
-		return r, nil
+		return r, scoreresult.Errorf(module.StatusOutOfBalance, "TX Fail balance=%s value=%s fee=%s",
+			bal1.String(), tx.Value.Int.String(), tx.Fee.Int.String())
 	}
 
 	bal1.Sub(bal1, &trans)
@@ -188,11 +186,11 @@ func (tx *transactionV2) ToJSON(version int) (interface{}, error) {
 	if version == 2 {
 		var jso map[string]interface{}
 		if err := json.Unmarshal(tx.raw, &jso); err != nil {
-			return nil, err
+			return nil, InvalidFormat.Errorf("Unmarshal FAILs(%s)", string(tx.raw))
 		}
 		return jso, nil
 	} else {
-		return nil, errors.New("InvalidVersion:" + strconv.Itoa(version))
+		return nil, InvalidVersion.Errorf("Version(%d)", version)
 	}
 }
 

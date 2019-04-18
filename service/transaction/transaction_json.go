@@ -3,11 +3,11 @@ package transaction
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"log"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/errors"
 )
 
 type transactionV3JSON struct {
@@ -38,9 +38,7 @@ func (tx *transactionV3JSON) calcHash() ([]byte, error) {
 	}
 	bs, err = SerializeMap(data, v2FieldInclusion, v2FieldExclusion)
 	if err != nil {
-		log.Println("Serialize FAILs")
-		log.Println("JSON", string(tx.raw))
-		return nil, err
+		return nil, InvalidFormat.Wrapf(err, "Serialize FAILs(%s)", string(tx.raw))
 	}
 	bs = append([]byte("icx_sendTransaction."), bs...)
 
@@ -68,13 +66,13 @@ func (tx *transactionV3JSON) updateTxHash() error {
 func (tx *transactionV3JSON) verifySignature() error {
 	pk, err := tx.Signature.RecoverPublicKey(tx.txHash)
 	if err != nil {
-		return err
+		return errors.WithCode(err, InvalidSignatureError)
 	}
 	addr := common.NewAccountAddressFromPublicKey(pk)
 	if addr.Equal(&tx.From) {
 		return nil
 	}
-	return errors.New("InvalidSignature")
+	return ErrInvalidSignature
 }
 
 func (tx *transactionV3JSON) Timestamp() int64 {
@@ -90,7 +88,7 @@ func newTransactionV2V3FromJSON(js []byte) (Transaction, error) {
 	}
 	genjs := new(genesisV3JSON)
 	if err := json.Unmarshal(js, genjs); err != nil {
-		return nil, err
+		return nil, InvalidFormat.Wrap(err, "Invalid json for genesis")
 	}
 	if len(genjs.Accounts) != 0 {
 		genjs.raw = js
@@ -100,7 +98,7 @@ func newTransactionV2V3FromJSON(js []byte) (Transaction, error) {
 	txjs := new(transactionV3JSON)
 	txjs.Version.Value = 2
 	if err := json.Unmarshal(js, txjs); err != nil {
-		return nil, err
+		return nil, InvalidFormat.Wrap(err, "Invalid json for transactionV3")
 	}
 	txjs.raw = js
 
@@ -111,6 +109,6 @@ func newTransactionV2V3FromJSON(js []byte) (Transaction, error) {
 		tx, err := newTransactionV3FromJSON(txjs)
 		return tx, err
 	default:
-		return nil, errors.New("IllegalVersion:" + txjs.Version.String())
+		return nil, InvalidVersion.Errorf("IllegalVersion:" + txjs.Version.String())
 	}
 }

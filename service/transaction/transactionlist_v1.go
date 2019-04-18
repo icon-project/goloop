@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/hex"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -18,7 +18,7 @@ func (l *TransactionListV1) Get(i int) (module.Transaction, error) {
 	if i >= 0 && i < len(l.list) {
 		return l.list[i], nil
 	}
-	return nil, common.ErrNotFound
+	return nil, errors.ErrNotFound
 }
 
 type transactionListV1Iterator struct {
@@ -28,7 +28,7 @@ type transactionListV1Iterator struct {
 
 func (i *transactionListV1Iterator) Get() (module.Transaction, int, error) {
 	if i.idx >= len(i.list) {
-		return nil, 0, common.ErrInvalidState
+		return nil, 0, errors.ErrInvalidState
 	}
 	return i.list[i.idx], i.idx, nil
 }
@@ -42,7 +42,7 @@ func (i *transactionListV1Iterator) Next() error {
 		i.idx++
 		return nil
 	} else {
-		return common.ErrInvalidState
+		return errors.ErrInvalidState
 	}
 }
 

@@ -2,6 +2,7 @@ package contract
 
 import (
 	"container/list"
+	"github.com/icon-project/goloop/service/scoreresult"
 	"log"
 	"math/big"
 	"reflect"
@@ -10,11 +11,11 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -186,7 +187,7 @@ func (cc *callContext) addLogToFrame(address module.Address, indexed [][]byte, d
 
 	e := cc.stack.Back()
 	if e == nil {
-		return errors.New("Frame is empty")
+		return errors.InvalidStateError.New("Frame is Empty")
 	}
 	frame := e.Value.(*callFrame)
 	frame.AddLog(address, indexed, data)
@@ -206,9 +207,11 @@ func (cc *callContext) Call(handler ContractHandler) (module.Status, *big.Int, *
 		e := cc.pushFrame(handler, false)
 
 		if err := handler.ExecuteAsync(cc); err != nil {
-			cc.popFrame(e, module.StatusSystemError)
+			errStatus, ok := scoreresult.StatusOf(err)
+			log.Printf("scoreresult error(%t) error(%v)\n", ok, errStatus)
+			cc.popFrame(e, errStatus)
 			handler.Dispose()
-			return module.StatusSystemError, handler.StepLimit(), nil, nil
+			return errStatus, handler.StepLimit(), nil, nil
 		}
 		return cc.waitResult(handler.StepLimit())
 	default:
@@ -248,11 +251,13 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (module.Status, *big.Int, 
 				case AsyncContractHandler:
 					cc.pushFrame(handler, true)
 					if err := handler.ExecuteAsync(cc); err != nil {
-						if cc.handleResult(module.StatusSystemError,
+						errStatus, ok := scoreresult.StatusOf(err)
+						log.Printf("scoreresult error(%t) error(%v)\n", ok, errStatus)
+						if cc.handleResult(errStatus,
 							handler.StepLimit(), nil, nil) {
 							continue
 						}
-						return module.StatusSystemError, handler.StepLimit(), nil, nil
+						return errStatus, handler.StepLimit(), nil, nil
 					} else {
 						continue
 					}

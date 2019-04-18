@@ -2,7 +2,7 @@ package transaction
 
 import (
 	"bytes"
-	"fmt"
+	"github.com/icon-project/goloop/common/errors"
 	"log"
 	"reflect"
 
@@ -29,12 +29,12 @@ func intToKey(i int) []byte {
 func (l *transactionList) Get(i int) (module.Transaction, error) {
 	obj, err := l.trie.Get(intToKey(i))
 	if err != nil {
-		return nil, err
+		return nil, errors.WithCode(err, errors.NotFoundError)
 	}
 	if tx, ok := obj.(module.Transaction); ok {
 		return tx, nil
 	}
-	return nil, fmt.Errorf("IllegalObjectType(%T)", obj)
+	return nil, errors.InvalidStateError.Errorf("IllegalObjectType(%T)", obj)
 }
 
 type transactionIterator struct {
@@ -44,7 +44,7 @@ type transactionIterator struct {
 func (i *transactionIterator) Get() (module.Transaction, int, error) {
 	obj, key, err := i.IteratorForObject.Get()
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, errors.WithCode(err, errors.NotFoundError)
 	}
 	if obj == nil {
 		return nil, 0, nil
@@ -56,7 +56,7 @@ func (i *transactionIterator) Get() (module.Transaction, int, error) {
 	if tx, ok := obj.(module.Transaction); ok {
 		return tx, int(idx), nil
 	}
-	return nil, 0, fmt.Errorf("IllegalObjectType(%T)", obj)
+	return nil, 0, errors.InvalidStateError.Errorf("IllegalObjectType(%T)", obj)
 }
 
 func (l *transactionList) Iterator() module.TransactionIterator {

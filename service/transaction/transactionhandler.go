@@ -8,8 +8,7 @@ import (
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
 
-	"github.com/go-errors/errors"
-
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -75,14 +74,14 @@ func NewTransactionHandler(cm contract.ContractManager, from, to module.Address,
 				ctype = contract.CTypeCall
 			}
 		default:
-			return nil, errors.Errorf("IllegalDataType(type=%s)", *dataType)
+			return nil, InvalidFormat.Errorf("IllegalDataType(type=%s)", *dataType)
 		}
 	}
 
 	th.receipt = txresult.NewReceipt(to)
 	th.chandler = cm.GetHandler(from, to, value, stepLimit, ctype, data)
 	if th.chandler == nil {
-		return nil, errors.New("NoSuitableHandler")
+		return nil, errors.InvalidStateError.New("NoSuitableHandler")
 	}
 	return th, nil
 }
@@ -167,7 +166,7 @@ func (th *transactionHandler) Dispose() {
 func ParseCallData(data []byte) (*contract.DataCallJSON, error) {
 	var jso contract.DataCallJSON
 	if json.Unmarshal(data, &jso) != nil || jso.Method == "" {
-		return nil, state.ErrInvalidDataValue
+		return nil, InvalidValue.Errorf("NoSpecifiedMethod(%s)", string(data))
 	} else {
 		return &jso, nil
 	}

@@ -3,14 +3,13 @@ package transaction
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"log"
 	"math/big"
-	"strconv"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoreresult"
@@ -117,13 +116,13 @@ func (tx *transactionV3) Timestamp() int64 {
 func (tx *transactionV3) verifySignature() error {
 	pk, err := tx.Signature.RecoverPublicKey(tx.TxHash())
 	if err != nil {
-		return err
+		return InvalidSignatureError.Wrap(err, "InvalidSignature")
 	}
 	addr := common.NewAccountAddressFromPublicKey(pk)
 	if addr.Equal(tx.From()) {
 		return nil
 	}
-	return errors.New("InvalidSignature")
+	return ErrInvalidSignature
 }
 
 func (tx *transactionV3) TxHash() []byte {
@@ -153,12 +152,15 @@ func (tx *transactionV3) Version() int {
 func (tx *transactionV3) Verify() error {
 	// value >= 0
 	if tx.Value != nil && tx.Value.Sign() < 0 {
-		return state.ErrInvalidValueValue
+		return InvalidValue.Errorf("InvalidValue(%s)", tx.Value.String())
 	}
 
 	// character level size of data element <= 512KB
-	if n, err := countBytesOfData(tx.Data); err != nil || n > txMaxDataSize {
-		return state.ErrInvalidDataValue
+	n, err := countBytesOfData(tx.Data)
+	if err != nil {
+		return InvalidValue.Wrapf(err, "InvalidData(%x)", tx.Data)
+	} else if n > txMaxDataSize {
+		return InvalidValue.Errorf("InvalidData(%x, %d)", tx.Data, n)
 	}
 
 	// Checkups by data types
@@ -167,14 +169,14 @@ func (tx *transactionV3) Verify() error {
 		case DataTypeCall:
 			// element check
 			if tx.Data == nil {
-				return state.ErrInvalidDataValue
+				return InvalidValue.Errorf("TxData for call is NIL")
 			}
 			_, err := ParseCallData(tx.Data)
 			return err
 		case DataTypeDeploy:
 			// element check
 			if tx.Data == nil {
-				return state.ErrInvalidDataValue
+				return InvalidValue.New("TxData for deploy is NIL")
 			}
 			type dataDeployJSON struct {
 				ContentType string          `json:"contentType"`
@@ -184,12 +186,12 @@ func (tx *transactionV3) Verify() error {
 			var jso dataDeployJSON
 			if json.Unmarshal(tx.Data, &jso) != nil || jso.ContentType == "" ||
 				jso.Content == nil {
-				return state.ErrInvalidDataValue
+				return InvalidValue.Errorf("InvalidDeployData(%s)", string(tx.Data))
 			}
 
 			// value == 0
 			if tx.Value != nil && tx.Value.Sign() != 0 {
-				return state.ErrInvalidValueValue
+				return InvalidValue.Errorf("InvalidValue(%s)", tx.Value.String())
 			}
 		}
 	}
@@ -217,10 +219,10 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 		tsDiff := wc.BlockTimeStamp() - tx.TimeStamp.Value
 		if tsDiff <= -ConfigTXTimestampBackwardMargin ||
 			tsDiff > ConfigTXTimestampForwardLimit {
-			return state.ErrTimeOut
+			return InvalidTxTime.Errorf("Timeout(block:%d, tx:%d)", wc.BlockTimeStamp(), tx.TimeStamp.Value)
 		}
 		if tsDiff > ConfigTXTimestampForwardMargin {
-			return state.ErrFutureTransaction
+			return InvalidTxTime.Errorf("FutureTxTime(block:%d, tx:%d)", wc.BlockTimeStamp(), tx.TimeStamp.Value)
 		}
 	}
 
@@ -231,7 +233,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 	}
 	minStep := big.NewInt(wc.StepsFor(state.StepTypeDefault, 1) + wc.StepsFor(state.StepTypeInput, cnt))
 	if tx.StepLimit.Cmp(minStep) < 0 {
-		return state.ErrNotEnoughStep
+		return scoreresult.ErrOutOfStep
 	}
 
 	// balance >= (fee + value)
@@ -247,7 +249,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 	as1 := wc.GetAccountState(tx.From().ID())
 	balance1 := as1.GetBalance()
 	if balance1.Cmp(trans) < 0 {
-		return state.ErrNotEnoughBalance
+		return scoreresult.ErrOutOfBalance
 	}
 
 	// for cumulative balance check
@@ -269,19 +271,11 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 			// check if contract is active and not blacklisted
 			as := wc.GetAccountState(tx.To.ID())
 			if !as.IsContract() {
-				return state.ErrNotContractAccount
+				return contract.InvalidContractError.New("NotAContractAccount")
 			}
-
-			if as.IsBlocked() {
-				return state.ErrBlockedContract
-			}
-
-			if as.IsDisabled() {
-				return state.ErrDisabledContract
-			}
-
 			if as.ActiveContract() == nil {
-				return state.ErrNoActiveContract
+				return contract.InvalidContractError.Errorf(
+					"NotActiveContract(blocked(%t), disabled(%t))", as.IsBlocked(), as.IsDisabled())
 			}
 
 			// check method and parameters
@@ -290,7 +284,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 			} else {
 				jso, _ := ParseCallData(tx.Data) // Already checked at Verify(). It can't be nil.
 				if _, err = info.ConvertParamsToTypedObj(jso.Method, jso.Params); err != nil {
-					return state.ErrInvalidMethod
+					return errors.Wrap(err, "PreValidation FAIL")
 				}
 			}
 		case DataTypeDeploy:
@@ -298,13 +292,14 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 			if !bytes.Equal(tx.To.ID(), state.SystemID) { // update
 				as := wc.GetAccountState(tx.To.ID())
 				if !as.IsContract() {
-					return state.ErrNotContractAccount
+					return contract.InvalidContractError.New("NotAContractAccount")
 				}
 				if as.ActiveContract() == nil {
-					return state.ErrNoActiveContract
+					return contract.InvalidContractError.Errorf(
+						"NotActiveContract(blocked(%t), disabled(%t))", as.IsBlocked(), as.IsDisabled())
 				}
 				if !as.IsContractOwner(tx.From()) {
-					return state.ErrNotContractOwner
+					return scoreresult.New(module.StatusAccessDenied, "NotContractOwner")
 				}
 			}
 		}
@@ -347,10 +342,10 @@ func (tx *transactionV3) Bytes() []byte {
 func (tx *transactionV3) SetBytes(bs []byte) error {
 	_, err := codec.UnmarshalFromBytes(bs, &tx.transactionV3Data)
 	if err != nil {
-		return err
+		return ErrInvalidFormat
 	}
 	if tx.transactionV3Data.Version.Value != module.TransactionVersion3 {
-		return errors.New("InvalidTransactionVersion")
+		return InvalidVersion.Errorf("NotTxVersion3(%d)", tx.transactionV3Data.Version.Value)
 	}
 	nbs := make([]byte, len(bs))
 	copy(nbs, bs)
@@ -398,13 +393,13 @@ func (tx *transactionV3) ToJSON(version int) (interface{}, error) {
 
 		return jso, nil
 	} else {
-		return nil, errors.New("InvalidVersion:" + strconv.Itoa(version))
+		return nil, InvalidVersion.Errorf("Version(%d)", version)
 	}
 }
 
 func (tx *transactionV3) MarshalJSON() ([]byte, error) {
 	if obj, err := tx.ToJSON(module.TransactionVersion3); err != nil {
-		return nil, err
+		return nil, scoreresult.WithStatus(err, module.StatusIllegalFormat)
 	} else {
 		return json.Marshal(obj)
 	}
@@ -419,7 +414,7 @@ func newTransactionV3FromJSON(jso *transactionV3JSON) (*transactionV3, error) {
 func newTransactionV3FromBytes(bs []byte) (Transaction, error) {
 	tx := new(transactionV3)
 	if err := tx.SetBytes(bs); err != nil {
-		return nil, err
+		return nil, scoreresult.WithStatus(err, module.StatusIllegalFormat)
 	} else {
 		return tx, nil
 	}
@@ -439,7 +434,7 @@ func countBytesOfData(data []byte) (int, error) {
 	} else {
 		var idata interface{}
 		if err := json.Unmarshal(data, &idata); err != nil {
-			return 0, err
+			return 0, scoreresult.WithStatus(err, module.StatusIllegalFormat)
 		} else {
 			return countBytesOfDataValue(idata), nil
 		}

@@ -13,10 +13,10 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreapi"
 	"github.com/icon-project/goloop/service/scoredb"
-	"github.com/pkg/errors"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -298,17 +298,18 @@ func (h *callGetAPIHandler) ExecuteAsync(cc CallContext) error {
 
 	h.as = cc.GetAccountState(h.to.ID())
 	if !h.as.IsContract() {
-		return errors.New("FAIL: not a contract account")
+		return InvalidContractError.New("NotAContractAccount")
 	}
 
 	conn := h.cc.GetProxy(h.EEType())
 	if conn == nil {
-		return errors.New("FAIL to get connection of (" + h.EEType() + ")")
+		return errors.InvalidStateError.Errorf(
+			"FAIL to get connection of (" + h.EEType() + ")")
 	}
 
 	c := h.as.NextContract()
 	if c == nil {
-		return errors.New("No pending contract")
+		return errors.InvalidStateError.Errorf("No pending contract")
 	}
 	var err error
 	h.lock.Lock()
@@ -319,7 +320,7 @@ func (h *callGetAPIHandler) ExecuteAsync(cc CallContext) error {
 	}
 	path, err := h.cs.WaitResult()
 	if err != nil {
-		return err
+		return errors.Wrapc(err, PreparingContractError, "FAIL to prepare contract")
 	}
 
 	h.lock.Lock()

@@ -4,14 +4,15 @@ import (
 	"archive/zip"
 	"bytes"
 	"container/list"
-	"fmt"
+	"encoding/hex"
+	"github.com/icon-project/goloop/service/scoreresult"
 	"io/ioutil"
 	"log"
 	"math/big"
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
+	"strconv"
 	"sync"
 	"time"
 
@@ -19,8 +20,8 @@ import (
 	"github.com/icon-project/goloop/service/state"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -63,6 +64,7 @@ type (
 )
 
 const (
+	tmpRoot                        = "tmp"
 	contractRoot                   = "contract"
 	contractPythonRootFile         = "package.json"
 	csInProgress           cStatus = iota
@@ -164,7 +166,8 @@ const tryTmpNum = 10
 func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []byte, sc *storageCache) (string, error) {
 	var path string
 	defer sc.timer.Stop()
-	path = fmt.Sprintf("%s/%016x", cm.storeRoot, codeHash)
+	contractDir := "hx" + hex.EncodeToString(codeHash)
+	path = filepath.Join(cm.storeRoot, contractDir)
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		return path, nil
 	}
@@ -172,7 +175,7 @@ func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []
 	var tmpPath string
 	var i int
 	for i = 0; i < tryTmpNum; i++ {
-		tmpPath = fmt.Sprintf("%s/tmp/%016x%d", cm.storeRoot, codeHash, i)
+		tmpPath = filepath.Join(cm.storeRoot, tmpRoot, contractDir+strconv.Itoa(i))
 		if _, err := os.Stat(tmpPath); !os.IsNotExist(err) {
 			if err := os.RemoveAll(tmpPath); err != nil {
 				break
@@ -181,16 +184,16 @@ func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []
 			break
 		}
 	}
-	if i == 10 {
-		return "", errors.New("Failed to create temporary directory\n")
+	if i == tryTmpNum {
+		return "", scoreresult.Errorf(module.StatusSystemError, "Fail to create temporary directory")
 	}
 	if err := os.MkdirAll(tmpPath, 0755); err != nil {
-		return "", err
+		return "", scoreresult.WithStatus(err, module.StatusSystemError)
 	}
 	zipReader, err :=
 		zip.NewReader(bytes.NewReader(code), int64(len(code)))
 	if err != nil {
-		return "", err
+		return "", scoreresult.WithStatus(err, module.StatusSystemError)
 	}
 
 	switch eeType {
@@ -202,39 +205,38 @@ func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []
 				continue
 			}
 			if findRoot == false &&
-				strings.HasSuffix(zipFile.Name, contractPythonRootFile) {
-				rootDir = strings.TrimSuffix(zipFile.Name, contractPythonRootFile)
+				filepath.Base(zipFile.Name) == contractPythonRootFile {
+				rootDir = filepath.Dir(zipFile.Name)
 				findRoot = true
 			}
-			storePath := tmpPath + "/" + zipFile.Name
+			storePath := filepath.Join(tmpPath, zipFile.Name)
 			storeDir := filepath.Dir(storePath)
 			if _, err := os.Stat(storeDir); os.IsNotExist(err) {
 				os.MkdirAll(storeDir, 0755)
 			}
 			reader, err := zipFile.Open()
 			if err != nil {
-				return "", errors.New("Failed to open zip file\n")
+				return "", errors.Wrap(err, "Fail to open zip file")
 			}
 			buf, err := ioutil.ReadAll(reader)
 			if err != nil {
 				err = reader.Close()
-				return "", errors.New("Failed to read zip file\n")
+				return "", errors.Wrap(err, "Fail to read zip file")
 			}
 			if err = ioutil.WriteFile(storePath, buf, 0755); err != nil {
 				log.Printf("Failed to write file. err = %s\n", err)
 			}
 			err = reader.Close()
 			if err != nil {
-				log.Printf("Failed to close. err = %s\n", err)
-				return "", err
+				return "", errors.Wrap(err, "Fail to close zip file")
 			}
 		}
 		if findRoot == false {
 			os.RemoveAll(tmpPath)
-			return "", errors.New("Root file does not exist")
+			return "", scoreresult.Errorf(module.StatusIllegalFormat,
+				"Root file does not exist(required:%s)\n", contractPythonRootFile)
 		}
-		contractRoot := tmpPath + "/" + rootDir
-
+		contractRoot := filepath.Join(tmpPath, rootDir)
 		sc.lock.Lock()
 		if sc.status == csComplete {
 			sc.lock.Unlock()
@@ -243,7 +245,8 @@ func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []
 		}
 		sc.lock.Unlock()
 		if err := os.Rename(contractRoot, path); err != nil {
-			return "", err
+			return "", errors.Wrap(err, "Fail to rename")
+
 		}
 		os.RemoveAll(tmpPath)
 	default:
@@ -282,7 +285,8 @@ func (cm *contractManager) PrepareContractStore(
 		status: csInProgress, timer: nil}
 	timer := time.AfterFunc(scoreDecompressTimeLimit,
 		func() {
-			if sc.complete("", errors.New("Expired decompress time\n")) == true {
+			if sc.complete("", scoreresult.New(module.StatusTimeout,
+				"Timeout waiting for extracting score")) == true {
 				cm.lock.Lock()
 				delete(cm.storageCache, hashStr)
 				cm.lock.Unlock()
@@ -315,11 +319,13 @@ func NewContractManager(db db.Database, chainRoot string) ContractManager {
 	contractDir := path.Join(chainRoot, contractRoot)
 	storeRoot, _ := filepath.Abs(contractDir)
 	if _, err := os.Stat(storeRoot); os.IsNotExist(err) {
+		// TODO check error
 		os.MkdirAll(storeRoot, 0755)
 	}
-	tmp := fmt.Sprintf("%s/tmp", storeRoot)
+	tmp := filepath.Join(storeRoot, tmpRoot)
 	if _, err := os.Stat(tmp); !os.IsNotExist(err) {
 		if err := os.RemoveAll(tmp); err != nil {
+			// TODO remove panic and return error
 			log.Panicf("Failed to remove %s\n", tmp)
 		}
 	}
