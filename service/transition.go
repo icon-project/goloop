@@ -1,12 +1,13 @@
 package service
 
 import (
-	"errors"
+	"fmt"
 	"log"
 	"math/big"
 	"sync"
 	"time"
 
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/transaction"
 
@@ -21,15 +22,38 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+type transitionStep int
+
 const (
-	stepInited    = iota // parent, patch/normalTxes and state are ready.
-	stepValidated        // Upon inited state, Txes are validated.
+	stepInited    transitionStep = iota // parent, patch/normalTxes and state are ready.
+	stepValidated                       // Upon inited state, Txes are validated.
 	stepValidating
 	stepExecuting
 	stepComplete // all information is ready. REMARK: InitTransition only has some result parts - result and nextValidators
 	stepError    // fails validation or execution
 	stepCanceled // canceled. requested to cancel after complete execution, just remain stepFinished
 )
+
+func (s transitionStep) String() string {
+	switch s {
+	case stepInited:
+		return "stepInited"
+	case stepValidating:
+		return "stepValidating"
+	case stepValidated:
+		return "stepValidated"
+	case stepExecuting:
+		return "stepExecuting"
+	case stepComplete:
+		return "stepComplete"
+	case stepError:
+		return "stepError"
+	case stepCanceled:
+		return "stepCanceled"
+	default:
+		return fmt.Sprintf("stepUnknown(%d)", int(s))
+	}
+}
 
 type transition struct {
 	parent *transition
@@ -46,7 +70,7 @@ type transition struct {
 	cb module.TransitionCallback
 
 	// internal processing state
-	step  int
+	step  transitionStep
 	mutex sync.Mutex
 
 	result         []byte
@@ -86,7 +110,7 @@ func (tr *transitionResult) Bytes() []byte {
 func newTransition(parent *transition, patchtxs module.TransactionList,
 	normaltxs module.TransactionList, bi module.BlockInfo, alreadyValidated bool,
 ) *transition {
-	var step int
+	var step transitionStep
 	if alreadyValidated {
 		step = stepValidated
 	} else {
@@ -159,10 +183,9 @@ func (t *transition) Execute(cb module.TransitionCallback) (canceler func() bool
 	case stepInited:
 		t.step = stepValidating
 	case stepValidated:
-		// when this transition created by this node
 		t.step = stepExecuting
 	default:
-		return nil, errors.New("Invalid transition state: " + t.stepString())
+		return nil, errors.InvalidStateError.Errorf("Invalid transition state: %s", t.step)
 	}
 	t.cb = cb
 	go t.executeSync(t.step == stepExecuting)
@@ -172,6 +195,9 @@ func (t *transition) Execute(cb module.TransitionCallback) (canceler func() bool
 
 // Result returns service manager defined result bytes.
 func (t *transition) Result() []byte {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
 	if t.step != stepComplete {
 		return nil
 	}
@@ -182,51 +208,109 @@ func (t *transition) Result() []byte {
 // transaction processing.
 // It may return nil before cb.OnExecute is called back by Execute.
 func (t *transition) NextValidators() module.ValidatorList {
-	if t.worldSnapshot != nil {
-		return t.worldSnapshot.GetValidatorSnapshot()
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
+	if t.step != stepComplete {
+		return nil
 	}
-	log.Printf("Fail to get valid Validators")
-	return nil
+	return t.worldSnapshot.GetValidatorSnapshot()
 }
 
 // LogBloom returns log bloom filter for this transition.
 // It may return nil before cb.OnExecute is called back by Execute.
 func (t *transition) LogBloom() module.LogBloom {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
 	if t.step != stepComplete {
 		return nil
 	}
 	return &t.logBloom
 }
 
-func (t *transition) newWorldContext() state.WorldContext {
+func (t *transition) newWorldContext() (state.WorldContext, error) {
 	var ws state.WorldState
 	if t.parent != nil {
 		var err error
 		ws, err = state.WorldStateFromSnapshot(t.parent.worldSnapshot)
 		if err != nil {
-			log.Panicf("Fail to build world state from snapshot err=%+v", err)
+			return nil, err
 		}
 	} else {
 		ws = state.NewWorldState(t.db, nil, nil)
 	}
-	return state.NewWorldContext(ws, t.bi)
+	return state.NewWorldContext(ws, t.bi), nil
+}
+
+func (t *transition) reportValidation(e error) bool {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
+	switch t.step {
+	case stepValidating:
+		if e != nil {
+			t.step = stepError
+		} else {
+			t.step = stepExecuting
+		}
+		fallthrough
+	case stepExecuting:
+		go t.cb.OnValidate(t, e)
+		return true
+	case stepCanceled:
+		log.Printf("Ignore error err=%+v", e)
+	default:
+		log.Printf("Invalid state %s for err=%+v", t.step, e)
+	}
+	return false
+}
+
+func (t *transition) reportExecution(e error) bool {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
+	switch t.step {
+	case stepExecuting:
+		if e != nil {
+			log.Printf("Execution failed with err=%+v", e)
+			t.step = stepError
+		} else {
+			t.step = stepComplete
+		}
+		go t.cb.OnExecute(t, e)
+		return true
+	case stepCanceled:
+		log.Printf("Ignore error err=%+v", e)
+	default:
+		log.Printf("Invalid state %s for err=%+v", t.step, e)
+	}
+	return false
+}
+
+func (t *transition) canceled() bool {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+	return t.step == stepCanceled
 }
 
 func (t *transition) executeSync(alreadyValidated bool) {
 	var normalCount, patchCount int
 	if !alreadyValidated {
-		var ok bool
-		wc := t.newWorldContext()
-		ok, patchCount = t.validateTxs(t.patchTransactions, wc)
-		if !ok {
+		wc, err := t.newWorldContext()
+		if err != nil {
+			t.reportValidation(err)
 			return
 		}
-		ok, normalCount = t.validateTxs(t.normalTransactions, wc)
-		if !ok {
+		patchCount, err = t.validateTxs(t.patchTransactions, wc)
+		if err != nil {
+			t.reportValidation(err)
 			return
 		}
-		if t.cb != nil {
-			t.cb.OnValidate(t, nil)
+		normalCount, err = t.validateTxs(t.normalTransactions, wc)
+		if err != nil {
+			t.reportValidation(err)
+			return
 		}
 	} else {
 		for i := t.patchTransactions.Iterator(); i.Has(); i.Next() {
@@ -235,29 +319,29 @@ func (t *transition) executeSync(alreadyValidated bool) {
 		for i := t.normalTransactions.Iterator(); i.Has(); i.Next() {
 			normalCount++
 		}
-		if t.cb != nil {
-			t.cb.OnValidate(t, nil)
-		}
 	}
 
-	t.mutex.Lock()
-	if t.step == stepCanceled {
-		t.mutex.Unlock()
+	if !t.reportValidation(nil) {
 		return
 	}
-	t.step = stepExecuting
-	t.mutex.Unlock()
 
-	ctx := contract.NewContext(t.newWorldContext(), t.cm, t.eem, t.chain)
+	wc, err := t.newWorldContext()
+	if err != nil {
+		t.reportExecution(err)
+		return
+	}
+	ctx := contract.NewContext(wc, t.cm, t.eem, t.chain)
 
 	startTime := time.Now()
 
 	patchReceipts := make([]txresult.Receipt, patchCount)
-	if !t.executeTxs(t.patchTransactions, ctx, patchReceipts) {
+	if err := t.executeTxs(t.patchTransactions, ctx, patchReceipts); err != nil {
+		t.reportExecution(err)
 		return
 	}
 	normalReceipts := make([]txresult.Receipt, normalCount)
-	if !t.executeTxs(t.normalTransactions, ctx, normalReceipts) {
+	if err := t.executeTxs(t.normalTransactions, ctx, normalReceipts); err != nil {
+		t.reportExecution(err)
 		return
 	}
 
@@ -304,48 +388,35 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	}
 	t.result = tresult.Bytes()
 
-	t.mutex.Lock()
-	if t.step == stepCanceled {
-		t.mutex.Unlock()
-		return
-	}
-	t.step = stepComplete
-	t.mutex.Unlock()
-	if t.cb != nil {
-		t.cb.OnExecute(t, nil)
-	}
+	t.reportExecution(nil)
 }
 
-func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext) (bool, int) {
+func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext) (int, error) {
 	if l == nil {
-		return true, 0
+		return 0, nil
 	}
 	cnt := 0
 	for i := l.Iterator(); i.Has(); i.Next() {
-		if t.step == stepCanceled {
-			return false, 0
+		if t.canceled() {
+			return 0, ErrTransitionInterrupted
 		}
 
 		txi, _, err := i.Get()
 		if err != nil {
-			log.Panicf("Fail to iterate transaction list err=%+v", err)
+			return 0, errors.Wrap(err, "validateTxs: fail to get transaction")
 		}
 
 		if err := txi.(transaction.Transaction).PreValidate(wc, true); err != nil {
-			t.mutex.Lock()
-			t.step = stepError
-			t.mutex.Unlock()
-			t.cb.OnValidate(t, err)
-			return false, 0
+			return 0, err
 		}
 		cnt += 1
 	}
-	return true, cnt
+	return cnt, nil
 }
 
-func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, rctBuf []txresult.Receipt) bool {
+func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, rctBuf []txresult.Receipt) error {
 	if l == nil {
-		return true
+		return nil
 	}
 	if cc := t.chain.ConcurrencyLevel(); cc > 1 {
 		return t.executeTxsConcurrent(cc, l, ctx, rctBuf)
@@ -395,23 +466,4 @@ func (t *transition) cancelExecution() bool {
 		return false
 	}
 	return true
-}
-
-func (t *transition) stepString() string {
-	switch t.step {
-	case stepInited:
-		return "Inited"
-	case stepValidated:
-		return "Validated"
-	case stepValidating:
-		return "Validating"
-	case stepExecuting:
-		return "Executing"
-	case stepComplete:
-		return "Executed"
-	case stepCanceled:
-		return "Canceled"
-	default:
-		return ""
-	}
 }

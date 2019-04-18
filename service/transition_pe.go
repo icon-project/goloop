@@ -2,6 +2,7 @@ package service
 
 import (
 	"log"
+	"sync"
 
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
@@ -10,44 +11,70 @@ import (
 	"github.com/icon-project/goloop/service/txresult"
 )
 
-type goRoutineLimiter chan struct{}
-
-func (l goRoutineLimiter) Done() {
-	l <- struct{}{}
+type executionContext struct {
+	waiter    chan struct{}
+	lastError error
+	lock      sync.Mutex
 }
 
-func (l goRoutineLimiter) Ready() {
-	<-l
+func (c *executionContext) Done() {
+	c.waiter <- struct{}{}
 }
 
-func newLimiter(n int) goRoutineLimiter {
+func (c *executionContext) Ready() {
+	<-c.waiter
+}
+
+func (c *executionContext) Error() error {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	return c.lastError
+}
+
+func (c *executionContext) Report(e error) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	if c.lastError != nil {
+		c.lastError = e
+	}
+}
+
+func newExecutionContext(n int) *executionContext {
 	ch := make(chan struct{}, n)
 	for i := 0; i < n; i++ {
 		ch <- struct{}{}
 	}
-	return ch
+	return &executionContext{waiter: ch}
 }
 
-func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, ctx contract.Context, rctBuf []txresult.Receipt) bool {
-	limiter := newLimiter(level)
+func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, ctx contract.Context, rctBuf []txresult.Receipt) error {
+	ec := newExecutionContext(level)
 
 	cnt := 0
 	for i := l.Iterator(); i.Has(); i.Next() {
-		if t.step == stepCanceled {
-			return false
+		if err := ec.Error(); err != nil {
+			return err
 		}
+
+		if t.step == stepCanceled {
+			return ErrTransitionInterrupted
+		}
+
 		txi, _, err := i.Get()
 		if err != nil {
-			log.Panicf("Fail to iterate transaction list err=%+v", err)
+			log.Printf("Fail to iterate transaction list err=%+v", err)
+			return err
 		}
 		txo := txi.(transaction.Transaction)
 		txh, err := txo.GetHandler(t.cm)
 		if err != nil {
-			log.Panicf("Fail to handle transaction for %+v", err)
+			log.Printf("Fail to handle transaction for %+v", err)
+			return err
 		}
 		wc, err2 := txh.Prepare(ctx)
 		if err2 != nil {
-			log.Panicf("Fail to prepare for %+v", err2)
+			log.Printf("Fail to prepare for %+v", err2)
+			return err2
 		}
 		ctx = contract.NewContext(wc, t.cm, t.eem, t.chain)
 		ctx.SetTransactionInfo(&state.TransactionInfo{
@@ -58,17 +85,18 @@ func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, c
 			From:      txo.From(),
 		})
 
-		limiter.Ready()
+		ec.Ready()
 		go func(ctx contract.Context, rb *txresult.Receipt) {
 			wvs := ctx.WorldVirtualState()
 			if rct, err := txh.Execute(ctx); err != nil {
-				log.Panicf("Fail to execute transaction err=%+v", err)
+				log.Printf("Fail to execute transaction err=%+v", err)
+				ec.Report(err)
 			} else {
 				*rb = rct
 			}
 			txh.Dispose()
 			wvs.Commit()
-			limiter.Done()
+			ec.Done()
 		}(ctx, &rctBuf[cnt])
 
 		cnt++
@@ -76,5 +104,5 @@ func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, c
 	if wvs := ctx.WorldVirtualState(); wvs != nil {
 		wvs.Realize()
 	}
-	return true
+	return nil
 }

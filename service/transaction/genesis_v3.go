@@ -214,7 +214,7 @@ func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
 	}
 
 	if err := g.deployPreInstall(ctx, r); err != nil {
-		log.Printf("Failed to pre-install score : err = %s", err)
+		log.Printf("Failed to install scores err=%s", err)
 		return nil, err
 	}
 	r.SetResult(module.StatusSuccess, big.NewInt(0), big.NewInt(0), nil)
@@ -296,10 +296,12 @@ func (g *genesisV3) deployPreInstall(ctx contract.Context, receipt txresult.Rece
 				cc.Dispose()
 			} else if strings.HasPrefix(score.ContentId, contentIdCid) == true {
 				// TODO implement for contentCid
+				return errors.UnsupportedError.New("CID prefix is't Unsupported")
+			} else {
+				return InvalidGenesisError.Errorf("SCORE<%s> Invalid contentId=%q", &a.Address, score.ContentId)
 			}
 		} else {
-			return errors.New("failed to install pre-installed score. " +
-				"valid content does not exist")
+			return InvalidGenesisError.Errorf("There is no content for score %s", &a.Address)
 		}
 	}
 	return nil

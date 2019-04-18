@@ -10,20 +10,22 @@ import (
 	"github.com/icon-project/goloop/service/txresult"
 )
 
-func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract.Context, rctBuf []txresult.Receipt) bool {
+func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract.Context, rctBuf []txresult.Receipt) error {
 	cnt := 0
 	for i := l.Iterator(); i.Has(); i.Next() {
 		if t.step == stepCanceled {
-			return false
+			return ErrTransitionInterrupted
 		}
 		txi, _, err := i.Get()
 		if err != nil {
-			log.Panicf("Fail to iterate transaction list err=%+v", err)
+			log.Printf("Fail to iterate transaction list err=%+v", err)
+			return err
 		}
 		txo := txi.(transaction.Transaction)
 		txh, err := txo.GetHandler(t.cm)
 		if err != nil {
-			log.Panicf("Fail to handle transaction for %+v", err)
+			log.Printf("Fail to GetHandler err=%+v", err)
+			return err
 		}
 		ctx.SetTransactionInfo(&state.TransactionInfo{
 			Index:     int32(cnt),
@@ -37,7 +39,9 @@ func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract
 		}
 		ctx.ClearCache()
 		if rct, err := txh.Execute(ctx); err != nil {
-			log.Panicf("Fail to execute transaction err=%+v", err)
+			txh.Dispose()
+			log.Printf("Fail to execute transaction err=%+v", err)
+			return err
 		} else {
 			rctBuf[cnt] = rct
 		}
@@ -47,5 +51,5 @@ func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract
 		txh.Dispose()
 		cnt++
 	}
-	return true
+	return nil
 }
