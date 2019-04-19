@@ -49,7 +49,7 @@ func (log *eventLog) Data() [][]byte {
 }
 
 func (log *eventLog) ToJSON(v int) (*eventLogJSON, error) {
-	_, pts := decomposeSignature(string(log.data.Indexed[0]))
+	_, pts := DecomposeEventSignature(string(log.data.Indexed[0]))
 	if len(pts)+1 != len(log.data.Indexed)+len(log.data.Data) {
 		return nil, errors.InvalidStateError.New("NumberOfParametersAreNotSameAsData")
 	}
@@ -62,7 +62,7 @@ func (log *eventLog) ToJSON(v int) (*eventLogJSON, error) {
 	aidx := 0
 	eljson.Indexed[0] = string(log.data.Indexed[0])
 	for i, v := range log.data.Indexed[1:] {
-		if s, err := bytesToStringByType(pts[aidx], v); err != nil {
+		if s, err := EventDataBytesToStringByType(pts[aidx], v); err != nil {
 			return nil, err
 		} else {
 			eljson.Indexed[i+1] = s
@@ -70,7 +70,7 @@ func (log *eventLog) ToJSON(v int) (*eventLogJSON, error) {
 		}
 	}
 	for i, v := range log.data.Data {
-		if s, err := bytesToStringByType(pts[aidx], v); err != nil {
+		if s, err := EventDataBytesToStringByType(pts[aidx], v); err != nil {
 			return nil, err
 		} else {
 			eljson.Data[i] = s
@@ -370,7 +370,7 @@ func NewReceipt(to module.Address) Receipt {
 	return r
 }
 
-func decomposeSignature(s string) (string, []string) {
+func DecomposeEventSignature(s string) (string, []string) {
 	reg := regexp.MustCompile(`^(\w+)\(((?:\w+)(?:,(?:\w+))*)\)$`)
 	if reg == nil {
 		return "", nil
@@ -382,7 +382,7 @@ func decomposeSignature(s string) (string, []string) {
 	return matches[1], strings.Split(matches[2], ",")
 }
 
-func bytesToStringByType(t string, v []byte) (string, error) {
+func EventDataBytesToStringByType(t string, v []byte) (string, error) {
 	switch t {
 	case "Address":
 		var addr common.Address
@@ -411,7 +411,7 @@ func bytesToStringByType(t string, v []byte) (string, error) {
 	}
 }
 
-func stringToBytesByType(t string, v string) ([]byte, error) {
+func EventDataStringToBytesByType(t string, v string) ([]byte, error) {
 	switch t {
 	case "Address":
 		var addr common.Address
@@ -448,7 +448,7 @@ func eventLogFromJSON(e *eventLogJSON) (*eventLog, error) {
 	el.data.Addr = e.Addr
 	el.data.Indexed = make([][]byte, len(e.Indexed))
 	el.data.Data = make([][]byte, len(e.Data))
-	_, pts := decomposeSignature(e.Indexed[0])
+	_, pts := DecomposeEventSignature(e.Indexed[0])
 
 	if len(pts)+1 != len(e.Indexed)+len(e.Data) {
 		return nil, errors.InvalidStateError.New("InvalidSignatureCount")
@@ -458,7 +458,7 @@ func eventLogFromJSON(e *eventLogJSON) (*eventLog, error) {
 
 	aidx := 0
 	for i, is := range e.Indexed[1:] {
-		if bs, err := stringToBytesByType(pts[aidx], is); err != nil {
+		if bs, err := EventDataStringToBytesByType(pts[aidx], is); err != nil {
 			return nil, err
 		} else {
 			el.data.Indexed[i+1] = bs
@@ -467,7 +467,7 @@ func eventLogFromJSON(e *eventLogJSON) (*eventLog, error) {
 	}
 
 	for i, is := range e.Data {
-		if bs, err := stringToBytesByType(pts[aidx], is); err != nil {
+		if bs, err := EventDataStringToBytesByType(pts[aidx], is); err != nil {
 			return nil, err
 		} else {
 			el.data.Data[i] = bs
