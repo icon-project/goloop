@@ -113,6 +113,17 @@ func (s Status) String() string {
 	}
 }
 
+type EventLog interface {
+	Address() Address
+	Data() [][]byte
+}
+
+type EventLogIterator interface {
+	Has() bool
+	Next() error
+	Get() (EventLog, error)
+}
+
 type Receipt interface {
 	Bytes() []byte
 	To() Address
@@ -123,6 +134,8 @@ type Receipt interface {
 	SCOREAddress() Address
 	Check(r Receipt) error
 	ToJSON(int) (interface{}, error)
+	LogBloom() LogBloom
+	EventLogIterator() EventLogIterator
 }
 
 type ReceiptIterator interface {

@@ -30,26 +30,38 @@ type eventLogJSON struct {
 	Data    []string       `json:"data"`
 }
 
-type eventLog struct {
+type eventLogData struct {
 	Addr    common.Address
 	Indexed [][]byte
 	Data    [][]byte
 }
 
+type eventLog struct {
+	data eventLogData
+}
+
+func (log *eventLog) Address() module.Address {
+	return &log.data.Addr
+}
+
+func (log *eventLog) Data() [][]byte {
+	return log.data.Data
+}
+
 func (log *eventLog) ToJSON(v int) (*eventLogJSON, error) {
-	_, pts := decomposeSignature(string(log.Indexed[0]))
-	if len(pts)+1 != len(log.Indexed)+len(log.Data) {
+	_, pts := decomposeSignature(string(log.data.Indexed[0]))
+	if len(pts)+1 != len(log.data.Indexed)+len(log.data.Data) {
 		return nil, errors.InvalidStateError.New("NumberOfParametersAreNotSameAsData")
 	}
 
 	eljson := new(eventLogJSON)
-	eljson.Addr = log.Addr
-	eljson.Indexed = make([]string, len(log.Indexed))
-	eljson.Data = make([]string, len(log.Data))
+	eljson.Addr = log.data.Addr
+	eljson.Indexed = make([]string, len(log.data.Indexed))
+	eljson.Data = make([]string, len(log.data.Data))
 
 	aidx := 0
-	eljson.Indexed[0] = string(log.Indexed[0])
-	for i, v := range log.Indexed[1:] {
+	eljson.Indexed[0] = string(log.data.Indexed[0])
+	for i, v := range log.data.Indexed[1:] {
 		if s, err := bytesToStringByType(pts[aidx], v); err != nil {
 			return nil, err
 		} else {
@@ -57,7 +69,7 @@ func (log *eventLog) ToJSON(v int) (*eventLogJSON, error) {
 			aidx++
 		}
 	}
-	for i, v := range log.Data {
+	for i, v := range log.data.Data {
 		if s, err := bytesToStringByType(pts[aidx], v); err != nil {
 			return nil, err
 		} else {
@@ -131,6 +143,38 @@ func (r *receipt) CodecDecodeSelf(d *ugorji.Decoder) {
 
 func (r *receipt) Resolve(bd merkle.Builder) error {
 	return nil
+}
+
+func (r *receipt) LogBloom() module.LogBloom {
+	return &r.data.LogBloom
+}
+
+func (r *receipt) EventLogIterator() module.EventLogIterator {
+	return nil
+}
+
+type eventLogIterator struct {
+	slice []*eventLog
+	index int
+}
+
+func (it *eventLogIterator) Has() bool {
+	return it.index < len(it.slice)
+}
+
+func (it *eventLogIterator) Next() error {
+	if it.index >= len(it.slice) {
+		return errors.InvalidStateError.New("no next item")
+	}
+	it.index++
+	return nil
+}
+
+func (it *eventLogIterator) Get() (module.EventLog, error) {
+	if !it.Has() {
+		return nil, errors.InvalidStateError.New("no item")
+	}
+	return it.slice[it.index], nil
 }
 
 type failureReason struct {
@@ -258,12 +302,12 @@ func (r *receipt) UnmarshalJSON(bs []byte) error {
 
 func (r *receipt) AddLog(addr module.Address, indexed, data [][]byte) {
 	log := new(eventLog)
-	log.Addr.SetBytes(addr.Bytes())
-	log.Indexed = indexed
-	log.Data = data
+	log.data.Addr.SetBytes(addr.Bytes())
+	log.data.Indexed = indexed
+	log.data.Data = data
 
 	r.data.EventLogs = append(r.data.EventLogs, log)
-	r.data.LogBloom.AddLog(&log.Addr, log.Indexed)
+	r.data.LogBloom.AddLog(&log.data.Addr, log.data.Indexed)
 }
 
 func (r *receipt) SetCumulativeStepUsed(cumulativeUsed *big.Int) {
@@ -401,23 +445,23 @@ func stringToBytesByType(t string, v string) ([]byte, error) {
 
 func eventLogFromJSON(e *eventLogJSON) (*eventLog, error) {
 	el := new(eventLog)
-	el.Addr = e.Addr
-	el.Indexed = make([][]byte, len(e.Indexed))
-	el.Data = make([][]byte, len(e.Data))
+	el.data.Addr = e.Addr
+	el.data.Indexed = make([][]byte, len(e.Indexed))
+	el.data.Data = make([][]byte, len(e.Data))
 	_, pts := decomposeSignature(e.Indexed[0])
 
 	if len(pts)+1 != len(e.Indexed)+len(e.Data) {
 		return nil, errors.InvalidStateError.New("InvalidSignatureCount")
 	}
 
-	el.Indexed[0] = []byte(e.Indexed[0])
+	el.data.Indexed[0] = []byte(e.Indexed[0])
 
 	aidx := 0
 	for i, is := range e.Indexed[1:] {
 		if bs, err := stringToBytesByType(pts[aidx], is); err != nil {
 			return nil, err
 		} else {
-			el.Indexed[i+1] = bs
+			el.data.Indexed[i+1] = bs
 			aidx++
 		}
 	}
@@ -426,7 +470,7 @@ func eventLogFromJSON(e *eventLogJSON) (*eventLog, error) {
 		if bs, err := stringToBytesByType(pts[aidx], is); err != nil {
 			return nil, err
 		} else {
-			el.Data[i] = bs
+			el.data.Data[i] = bs
 			aidx++
 		}
 	}

@@ -180,6 +180,14 @@ func (r *testReceipt) ToJSON(int) (interface{}, error) {
 	panic("not implemented")
 }
 
+func (r *testReceipt) LogBloom() module.LogBloom {
+	panic("not implemented")
+}
+
+func (r *testReceipt) EventLogIterator() module.EventLogIterator {
+	panic("not implemented")
+}
+
 type testTransactionData struct {
 	Group                 module.TransactionGroup
 	CreateError           *testError
