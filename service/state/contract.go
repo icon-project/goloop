@@ -7,7 +7,7 @@ import (
 	"github.com/icon-project/goloop/common/merkle"
 
 	"github.com/icon-project/goloop/common/db"
-	"github.com/pkg/errors"
+	"github.com/icon-project/goloop/common/errors"
 	ugorji "github.com/ugorji/go/codec"
 )
 
@@ -88,7 +88,8 @@ func (c *contractSnapshotImpl) Code() ([]byte, error) {
 			return nil, err
 		}
 		if len(code) == 0 {
-			return nil, errors.New("Failed to find code by codeHash")
+			return nil, errors.NotFoundError.Errorf(
+				"FAIL to find code by codeHash(%x)", c.codeHash)
 		}
 		c.code = code
 	}

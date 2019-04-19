@@ -10,12 +10,12 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreapi"
-	"github.com/pkg/errors"
 	ugorji "github.com/ugorji/go/codec"
 	"golang.org/x/crypto/sha3"
 )
@@ -414,10 +414,10 @@ func (s *accountStateImpl) DeployContract(code []byte,
 func (s *accountStateImpl) AcceptContract(
 	txHash []byte, auditTxHash []byte) error {
 	if s.isContract == false || s.nextContract == nil {
-		return scoreresult.New(module.StatusContractNotFound, "No available contract")
+		return scoreresult.New(module.StatusContractNotFound, "NoAvailableContract")
 	}
 	if bytes.Equal(txHash, s.nextContract.deployTxHash) == false {
-		return scoreresult.New(module.StatusInvalidParameter, "Invalid txHash")
+		return errors.NotFoundError.Errorf("NoMatchedDeployTxHash(%x)(%x)", txHash, s.nextContract.deployTxHash)
 	}
 	s.curContract = s.nextContract
 	s.curContract.state = CSActive
@@ -429,10 +429,10 @@ func (s *accountStateImpl) AcceptContract(
 func (s *accountStateImpl) RejectContract(
 	txHash []byte, auditTxHash []byte) error {
 	if s.isContract == false || s.nextContract == nil {
-		return scoreresult.New(module.StatusContractNotFound, "No available contract")
+		return scoreresult.New(module.StatusContractNotFound, "NoAvailableContract")
 	}
 	if bytes.Equal(txHash, s.nextContract.deployTxHash) == false {
-		return scoreresult.New(module.StatusInvalidParameter, "Invalid txHash")
+		return errors.NotFoundError.Errorf("NoMatchedDeployTxHash(%x)(%x)", txHash, s.nextContract.deployTxHash)
 	}
 	s.nextContract.state = CSRejected
 	s.nextContract.auditTxHash = auditTxHash
@@ -630,11 +630,11 @@ func (a *accountROState) SetBalance(v *big.Int) {
 }
 
 func (a *accountROState) SetValue(k, v []byte) error {
-	return errors.New("ReadOnlyState")
+	return errors.InvalidStateError.New("ReadOnlyState")
 }
 
 func (a *accountROState) DeleteValue(k []byte) error {
-	return errors.New("ReadOnlyState")
+	return errors.InvalidStateError.New("ReadOnlyState")
 }
 
 func (a *accountROState) GetSnapshot() AccountSnapshot {
@@ -642,7 +642,7 @@ func (a *accountROState) GetSnapshot() AccountSnapshot {
 }
 
 func (a *accountROState) Reset(snapshot AccountSnapshot) error {
-	return errors.New("ReadOnlyState")
+	return errors.InvalidStateError.New("ReadOnlyState")
 }
 
 func (a *accountROState) SetAPIInfo(*scoreapi.Info) {
@@ -661,12 +661,12 @@ func (a *accountROState) DeployContract(code []byte,
 
 func (a *accountROState) AcceptContract(
 	txHash []byte, auditTxHash []byte) error {
-	return errors.New("ReadOnlyState")
+	return errors.InvalidStateError.New("ReadOnlyState")
 }
 
 func (a *accountROState) RejectContract(
 	txHash []byte, auditTxHash []byte) error {
-	return errors.New("ReadOnlyState")
+	return errors.InvalidStateError.New("ReadOnlyState")
 }
 
 func (a *accountROState) Clear() {

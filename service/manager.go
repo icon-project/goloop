@@ -2,7 +2,7 @@ package service
 
 import (
 	"encoding/json"
-	"fmt"
+	"github.com/icon-project/goloop/service/scoreresult"
 	"log"
 	"math/big"
 	"time"
@@ -44,7 +44,11 @@ type manager struct {
 func NewManager(chain module.Chain, nm module.NetworkManager,
 	eem eeproxy.Manager, chainRoot string,
 ) module.ServiceManager {
-	bk, _ := chain.Database().GetBucket(db.TransactionLocatorByHash)
+	bk, err := chain.Database().GetBucket(db.TransactionLocatorByHash)
+	if err != nil {
+		log.Printf("FAIL to get bucket(%s) %v\n", db.TransactionLocatorByHash, err)
+		return nil //, err
+	}
 
 	pMetric := metric.NewTransactionMetric(chain.MetricContext(), metric.TxTypePatch)
 	nMetric := metric.NewTransactionMetric(chain.MetricContext(), metric.TxTypeNormal)
@@ -261,7 +265,7 @@ func (m *manager) checkTransitionResult(t module.Transition) (*transition, error
 	}
 	tst, ok := t.(*transition)
 	if !ok || tst.step != stepComplete {
-		return nil, common.ErrIllegalArgument
+		return nil, errors.ErrIllegalArgument
 	}
 	return tst, nil
 }
@@ -272,29 +276,27 @@ func (m *manager) SendTransaction(txi interface{}) ([]byte, error) {
 	case []byte:
 		ntx, err := transaction.NewTransactionFromJSON(txo)
 		if err != nil {
-			return nil, err
+			return nil, errors.WithCode(err, InvalidTransactionError)
 		}
 		newTx = ntx.(transaction.Transaction)
 	case string:
 		ntx, err := transaction.NewTransactionFromJSON([]byte(txo))
 		if err != nil {
-			return nil, err
+			return nil, errors.WithCode(err, InvalidTransactionError)
 		}
 		newTx = ntx.(transaction.Transaction)
 	case transaction.Transaction:
 		newTx = txo
 	default:
-		return nil, fmt.Errorf("IllegalTransactionType:%T", txi)
+		return nil, ErrIllegalTransactionType
 	}
 
 	if err := newTx.Verify(); err != nil {
-		log.Printf("Failed to verify transaction. tx=<%x> err=%+v\n", newTx.Bytes(), err)
-		return nil, err
+		return nil, InvalidTransactionError.Wrapf(err, "Failed to verify transaction. tx=<%x>\n", newTx.Bytes())
 	}
 	hash := newTx.ID()
 	if hash == nil {
-		log.Printf("Failed to get hash from tx : %x\n", newTx.Bytes())
-		return nil, errors.New("Invalid Transaction. Failed to get hash")
+		return nil, InvalidTransactionError.Errorf("Failed to get hash from tx : %x\n", newTx.Bytes())
 	}
 
 	var txPool *TransactionPool
@@ -308,7 +310,9 @@ func (m *manager) SendTransaction(txi interface{}) ([]byte, error) {
 	}
 
 	if err := txPool.Add(newTx, true); err == nil {
-		m.txReactor.PropagateTransaction(ProtocolPropagateTransaction, newTx)
+		if err = m.txReactor.PropagateTransaction(ProtocolPropagateTransaction, newTx); err != nil {
+			log.Printf("FAIL to propagate tx(%s)", err)
+		}
 	} else {
 		return hash, err
 	}
@@ -326,7 +330,7 @@ func (m *manager) Call(resultHash []byte,
 
 	var jso callJSON
 	if json.Unmarshal(js, &jso) != nil {
-		return module.StatusSystemError, nil, errors.New("Fail to parse JSON RPC")
+		return nil, InvalidTransactionError.Errorf("FailToParse(%s)", string(js))
 	}
 
 	var wc state.WorldContext
@@ -334,12 +338,12 @@ func (m *manager) Call(resultHash []byte,
 		ws := state.NewReadOnlyWorldState(m.db, tresult.StateHash, vl)
 		wc = state.NewWorldContext(ws, bi)
 	} else {
-		return module.StatusSystemError, err.Error(), nil
+		return nil, err
 	}
 
 	qh, err := NewQueryHandler(m.cm, &jso.To, jso.DataType, jso.Data)
 	if err != nil {
-		return module.StatusSystemError, err.Error(), nil
+		return nil, err
 	}
 	status, result := qh.Query(contract.NewContext(wc, m.cm, m.eem, m.chain))
 	if status != module.StatusSuccess {

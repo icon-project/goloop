@@ -5,12 +5,11 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
-	"github.com/pkg/errors"
 )
 
 // WorldSnapshot represents snapshot of WorldState.
@@ -93,10 +92,10 @@ func (ws *worldStateImpl) Reset(isnapshot WorldSnapshot) error {
 
 	snapshot, ok := isnapshot.(*worldSnapshotImpl)
 	if !ok {
-		return errors.New("InvalidSnapshotType")
+		return IllegalTypeError.New("InvalidSnapshot")
 	}
 	if ws.database != snapshot.database {
-		return errors.New("InvalidSnapshotWithDifferentDB")
+		return errors.InvalidStateError.New("InvalidSnapshotWithDifferentDB")
 	}
 	ws.accounts.Reset(snapshot.accounts)
 	for id, as := range ws.mutableAccounts {
@@ -249,5 +248,5 @@ func WorldStateFromSnapshot(wss WorldSnapshot) (WorldState, error) {
 		ws.validators = ValidatorStateFromSnapshot(wss.GetValidatorSnapshot())
 		return ws, nil
 	}
-	return nil, common.ErrIllegalArgument
+	return nil, errors.ErrIllegalArgument
 }

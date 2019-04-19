@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"sync"
 
-	"github.com/pkg/errors"
+	"github.com/icon-project/goloop/common/errors"
 )
 
 type InstanceStatus int
@@ -78,7 +78,7 @@ func (e *pythonExecutionEngine) SetInstances(n int) error {
 	defer e.lock.Unlock()
 
 	if n < 0 {
-		return errors.New("IllegalArgument")
+		return errors.ErrIllegalArgument
 	}
 
 	e.target = n

@@ -101,7 +101,7 @@ func newTransitionResultFromBytes(bs []byte) (*transitionResult, error) {
 
 func (tr *transitionResult) Bytes() []byte {
 	if bs, err := codec.MarshalToBytes(tr); err != nil {
-		log.Panicf("Fail to marshal transitionResult")
+		log.Printf("Fail to marshal transitionResult")
 		return nil
 	} else {
 		return bs
@@ -145,7 +145,7 @@ func newInitTransition(db db.Database, result []byte,
 	var tresult transitionResult
 	if len(result) > 0 {
 		if _, err := codec.UnmarshalFromBytes(result, &tresult); err != nil {
-			return nil, err
+			return nil, errors.IllegalArgumentError.Errorf("InvalidResult(%x)", result)
 		}
 	}
 	ws := state.NewWorldState(db, tresult.StateHash, validatorList)

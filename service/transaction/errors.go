@@ -13,7 +13,7 @@ const (
 	InvalidGenesisError = iota + errors.CodeService + 100
 	InvalidSignatureError
 	InvalidVersion
-	InvalidValue
+	InvalidTxValue
 	InvalidTxTime
 	InvalidFormat
 )

@@ -52,7 +52,7 @@ func (r *TransactionReactor) OnReceive(subProtocol module.ProtocolInfo, buf []by
 
 func (r *TransactionReactor) PropagateTransaction(pi module.ProtocolInfo, tx transaction.Transaction) error {
 	if r != nil && r.membership != nil {
-		r.membership.Multicast(ProtocolPropagateTransaction, tx.Bytes(), module.ROLE_VALIDATOR)
+		return r.membership.Multicast(ProtocolPropagateTransaction, tx.Bytes(), module.ROLE_VALIDATOR)
 	}
 	return nil
 }

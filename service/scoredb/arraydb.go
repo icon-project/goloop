@@ -2,7 +2,7 @@ package scoredb
 
 import (
 	"github.com/icon-project/goloop/common/crypto"
-	"github.com/pkg/errors"
+	"github.com/icon-project/goloop/common/errors"
 	"log"
 )
 
@@ -43,7 +43,7 @@ func (a *ArrayDB) Get(i int) Value {
 
 func (a *ArrayDB) Set(i int, v interface{}) error {
 	if i < 0 || i >= a.Size() {
-		return errors.New("InvalidArgument")
+		return errors.ErrIllegalArgument
 	}
 	return a.store.SetValue(a.keyHashForIndex(i), ToBytes(v))
 }

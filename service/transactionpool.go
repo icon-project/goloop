@@ -154,7 +154,7 @@ func (tp *TransactionPool) Add(tx transaction.Transaction, direct bool) error {
 		return nil
 	}
 	if !tx.ValidateNetwork(tp.nid) {
-		return errors.InvalidNetworkError.Errorf("Invalid Network ID")
+		return errors.InvalidNetworkError.Errorf("Invalid Network ID(%d)", tp.nid)
 	}
 	tp.mutex.Lock()
 	defer tp.mutex.Unlock()

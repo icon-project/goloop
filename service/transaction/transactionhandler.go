@@ -166,7 +166,7 @@ func (th *transactionHandler) Dispose() {
 func ParseCallData(data []byte) (*contract.DataCallJSON, error) {
 	var jso contract.DataCallJSON
 	if json.Unmarshal(data, &jso) != nil || jso.Method == "" {
-		return nil, InvalidValue.Errorf("NoSpecifiedMethod(%s)", string(data))
+		return nil, InvalidTxValue.Errorf("NoSpecifiedMethod(%s)", string(data))
 	} else {
 		return &jso, nil
 	}

@@ -88,7 +88,7 @@ func newTransactionV2V3FromJSON(js []byte) (Transaction, error) {
 	}
 	genjs := new(genesisV3JSON)
 	if err := json.Unmarshal(js, genjs); err != nil {
-		return nil, InvalidFormat.Wrap(err, "Invalid json for genesis")
+		return nil, InvalidFormat.Wrapf(err, "Invalid json for genesis(%s)", string(js))
 	}
 	if len(genjs.Accounts) != 0 {
 		genjs.raw = js
@@ -98,7 +98,7 @@ func newTransactionV2V3FromJSON(js []byte) (Transaction, error) {
 	txjs := new(transactionV3JSON)
 	txjs.Version.Value = 2
 	if err := json.Unmarshal(js, txjs); err != nil {
-		return nil, InvalidFormat.Wrap(err, "Invalid json for transactionV3")
+		return nil, InvalidFormat.Wrapf(err, "Invalid json for transactionV3(%s)", string(js))
 	}
 	txjs.raw = js
 

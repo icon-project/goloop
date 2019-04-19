@@ -15,7 +15,7 @@ import (
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/transaction"
 
-	"github.com/pkg/errors"
+	"github.com/icon-project/goloop/common/errors"
 
 	"github.com/icon-project/goloop/network"
 

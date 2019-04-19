@@ -9,7 +9,6 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
-	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoreresult"
@@ -152,15 +151,15 @@ func (tx *transactionV3) Version() int {
 func (tx *transactionV3) Verify() error {
 	// value >= 0
 	if tx.Value != nil && tx.Value.Sign() < 0 {
-		return InvalidValue.Errorf("InvalidValue(%s)", tx.Value.String())
+		return InvalidTxValue.Errorf("InvalidTxValue(%s)", tx.Value.String())
 	}
 
 	// character level size of data element <= 512KB
 	n, err := countBytesOfData(tx.Data)
 	if err != nil {
-		return InvalidValue.Wrapf(err, "InvalidData(%x)", tx.Data)
+		return InvalidTxValue.Wrapf(err, "InvalidData(%x)", tx.Data)
 	} else if n > txMaxDataSize {
-		return InvalidValue.Errorf("InvalidData(%x, %d)", tx.Data, n)
+		return InvalidTxValue.Errorf("InvalidData(%x, %d)", tx.Data, n)
 	}
 
 	// Checkups by data types
@@ -169,14 +168,14 @@ func (tx *transactionV3) Verify() error {
 		case DataTypeCall:
 			// element check
 			if tx.Data == nil {
-				return InvalidValue.Errorf("TxData for call is NIL")
+				return InvalidTxValue.Errorf("TxData for call is NIL")
 			}
 			_, err := ParseCallData(tx.Data)
 			return err
 		case DataTypeDeploy:
 			// element check
 			if tx.Data == nil {
-				return InvalidValue.New("TxData for deploy is NIL")
+				return InvalidTxValue.New("TxData for deploy is NIL")
 			}
 			type dataDeployJSON struct {
 				ContentType string          `json:"contentType"`
@@ -186,12 +185,12 @@ func (tx *transactionV3) Verify() error {
 			var jso dataDeployJSON
 			if json.Unmarshal(tx.Data, &jso) != nil || jso.ContentType == "" ||
 				jso.Content == nil {
-				return InvalidValue.Errorf("InvalidDeployData(%s)", string(tx.Data))
+				return InvalidTxValue.Errorf("InvalidDeployData(%s)", string(tx.Data))
 			}
 
 			// value == 0
 			if tx.Value != nil && tx.Value.Sign() != 0 {
-				return InvalidValue.Errorf("InvalidValue(%s)", tx.Value.String())
+				return InvalidTxValue.Errorf("InvalidTxValue(%s)", tx.Value.String())
 			}
 		}
 	}
@@ -284,7 +283,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 			} else {
 				jso, _ := ParseCallData(tx.Data) // Already checked at Verify(). It can't be nil.
 				if _, err = info.ConvertParamsToTypedObj(jso.Method, jso.Params); err != nil {
-					return errors.Wrap(err, "PreValidation FAIL")
+					return err
 				}
 			}
 		case DataTypeDeploy:

@@ -1,7 +1,7 @@
 package txresult
 
 import (
-	"fmt"
+	"github.com/icon-project/goloop/service/state"
 	"log"
 	"reflect"
 
@@ -10,10 +10,10 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/module"
-	"github.com/pkg/errors"
 )
 
 type receiptList struct {
@@ -33,7 +33,7 @@ func (i *receiptIterator) Get() (module.Receipt, error) {
 	if ok {
 		return rct, nil
 	} else {
-		return nil, errors.Errorf("InvalidReceiptObject:%T", obj)
+		return nil, state.IllegalTypeError.Errorf("InvalidReceiptObject:%T", obj)
 	}
 }
 
@@ -53,7 +53,7 @@ func (l *receiptList) Get(n int) (module.Receipt, error) {
 	if tx, ok := obj.(module.Receipt); ok {
 		return tx, nil
 	}
-	return nil, fmt.Errorf("IllegalObjectType(%T)", obj)
+	return nil, state.IllegalTypeError.Errorf("IllegalObjectType(%T)", obj)
 }
 
 func (l *receiptList) GetProof(n int) ([][]byte, error) {
@@ -63,7 +63,7 @@ func (l *receiptList) GetProof(n int) ([][]byte, error) {
 	}
 	proof := l.immutableTrie.GetProof(b)
 	if proof == nil {
-		return nil, errors.Errorf("IllegalArgument")
+		return nil, errors.ErrIllegalArgument
 	}
 	return proof, nil
 }

@@ -9,8 +9,8 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
-	"github.com/pkg/errors"
 	"github.com/ugorji/go/codec"
 )
 
@@ -57,7 +57,7 @@ func (lb *LogBloom) UnmarshalJSON(data []byte) error {
 	}
 	if _, ok := lb.SetString(s, 0); !ok {
 		lb.SetInt64(0)
-		return errors.New("IllegalArgument")
+		return errors.ErrIllegalArgument
 	}
 	return nil
 }

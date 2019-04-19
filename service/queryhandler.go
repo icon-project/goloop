@@ -7,7 +7,6 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/transaction"
-	"github.com/pkg/errors"
 )
 
 type QueryHandler struct {
@@ -19,22 +18,22 @@ func (qh *QueryHandler) Query(ctx contract.Context) (module.Status, interface{})
 	// check if function is read-only
 	jso, err := transaction.ParseCallData(qh.data)
 	if err != nil {
-		return module.StatusMethodNotFound, err.Error()
+		return module.StatusMethodNotFound, nil
 	}
 	as := ctx.GetAccountSnapshot(qh.to.ID())
 	if as == nil {
-		return module.StatusContractNotFound, "Contract not found"
+		return module.StatusContractNotFound, nil
 	}
 	apiInfo := as.APIInfo()
 	if apiInfo == nil {
-		return module.StatusContractNotFound, "APIInfo() is null"
+		return module.StatusContractNotFound, nil
 	} else {
 		m := apiInfo.GetMethod(jso.Method)
 		if m == nil {
-			return module.StatusMethodNotFound, string(module.StatusMethodNotFound)
+			return module.StatusMethodNotFound, nil
 		}
 		if !m.IsReadOnly() {
-			return module.StatusMethodNotFound, "Not a read-only method"
+			return module.StatusMethodNotFound, nil
 		}
 	}
 
@@ -55,7 +54,7 @@ func (qh *QueryHandler) Query(ctx contract.Context) (module.Status, interface{})
 
 func NewQueryHandler(cm contract.ContractManager, to module.Address, dataType *string, data []byte) (*QueryHandler, error) {
 	if *dataType != transaction.DataTypeCall {
-		return nil, errors.Errorf("IllegalDataType(type=%s)", *dataType)
+		return nil, transaction.InvalidTxValue.Errorf("IllegalDataType(type=%s)", *dataType)
 	}
 
 	qh := &QueryHandler{

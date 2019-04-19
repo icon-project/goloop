@@ -7,6 +7,8 @@ const (
 	TransactionPoolOverflowError
 	ExpiredTransactionError
 	TransitionInterruptedError
+	IllegalTransactionTypeError
+	InvalidTransactionError
 )
 
 var (
@@ -14,4 +16,6 @@ var (
 	ErrTransactionPoolOverFlow = errors.NewBase(TransactionPoolOverflowError, "TransactionPoolOverFlow")
 	ErrExpiredTransaction      = errors.NewBase(ExpiredTransactionError, "ExpiredTransaction")
 	ErrTransitionInterrupted   = errors.NewBase(TransitionInterruptedError, "TransitionInterrupted")
+	ErrIllegalTransactionType  = errors.NewBase(IllegalTransactionTypeError, "IllegalTransactionType")
+	ErrInvalidTransaction      = errors.NewBase(InvalidTransactionError, "InvalidTransaction")
 )

@@ -3,6 +3,7 @@ package txresult
 import (
 	"encoding/hex"
 	"encoding/json"
+	"github.com/icon-project/goloop/service/state"
 	"log"
 	"math/big"
 	"reflect"
@@ -12,10 +13,10 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
-	"github.com/pkg/errors"
 	ugorji "github.com/ugorji/go/codec"
 )
 
@@ -38,7 +39,7 @@ type eventLog struct {
 func (log *eventLog) ToJSON(v int) (*eventLogJSON, error) {
 	_, pts := decomposeSignature(string(log.Indexed[0]))
 	if len(pts)+1 != len(log.Indexed)+len(log.Data) {
-		return nil, errors.New("NumberOfParametersAreNotSameAsData")
+		return nil, errors.InvalidStateError.New("NumberOfParametersAreNotSameAsData")
 	}
 
 	eljson := new(eventLogJSON)
@@ -213,7 +214,7 @@ func (r *receipt) ToJSON(version int) (interface{}, error) {
 		}
 		return rjson, nil
 	default:
-		return nil, common.ErrIllegalArgument
+		return nil, errors.ErrIllegalArgument
 	}
 }
 
@@ -303,10 +304,10 @@ func (r *receipt) Status() module.Status {
 func (r *receipt) Check(r2 module.Receipt) error {
 	rct2, ok := r2.(*receipt)
 	if !ok {
-		return errors.New("IncompatibleReceipt")
+		return state.IllegalTypeError.New("IncompatibleReceipt")
 	}
 	if !reflect.DeepEqual(&r.data, &rct2.data) {
-		return errors.New("DataIsn'tEqual")
+		return errors.InvalidStateError.New("DataIsn'tEqual")
 	}
 	return nil
 }
@@ -406,7 +407,7 @@ func eventLogFromJSON(e *eventLogJSON) (*eventLog, error) {
 	_, pts := decomposeSignature(e.Indexed[0])
 
 	if len(pts)+1 != len(e.Indexed)+len(e.Data) {
-		return nil, errors.New("InvalidSignatureCount")
+		return nil, errors.InvalidStateError.New("InvalidSignatureCount")
 	}
 
 	el.Indexed[0] = []byte(e.Indexed[0])

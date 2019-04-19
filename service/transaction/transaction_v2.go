@@ -36,22 +36,22 @@ func (tx *transactionV2) Version() int {
 func (tx *transactionV2) Verify() error {
 	// value >= 0
 	if tx.Value != nil && tx.Value.Sign() < 0 {
-		return InvalidValue.Errorf("InvalidTxValue(%s)", tx.Value.String())
+		return InvalidTxValue.Errorf("InvalidTxValue(%s)", tx.Value.String())
 	}
 
 	// character level size of data element <= 512KB
 	if n, err := countBytesOfData(tx.Data); err != nil || n > txMaxDataSize {
-		return InvalidValue.Errorf("InvalidTxData(%s)", tx.Value.String())
+		return InvalidTxValue.Errorf("InvalidTxData(%s)", tx.Value.String())
 	}
 
 	// fee == FixedFee
 	if tx.Fee.Int.Cmp(version2FixedFee) != 0 {
-		return InvalidValue.Errorf("InvalidFee(%s)", tx.Fee.String())
+		return InvalidTxValue.Errorf("InvalidFee(%s)", tx.Fee.String())
 	}
 
 	// check if it's EOA
 	if tx.To.IsContract() {
-		return InvalidValue.Errorf("NotEOA(%s)", tx.To.String())
+		return InvalidTxValue.Errorf("NotEOA(%s)", tx.To.String())
 	}
 
 	// signature verification
@@ -60,7 +60,7 @@ func (tx *transactionV2) Verify() error {
 	}
 
 	if !bytes.Equal(tx.txHash, tx.TxHashV2) {
-		return InvalidValue.Errorf("InvalidHash(%x, %v)", tx.txHash, tx.TxHashV2.Bytes())
+		return InvalidTxValue.Errorf("InvalidHash(%x, %v)", tx.txHash, tx.TxHashV2.Bytes())
 	}
 
 	if err := tx.transactionV3JSON.verifySignature(); err != nil {

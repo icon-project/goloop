@@ -8,10 +8,10 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/ipc"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreapi"
-	"github.com/pkg/errors"
 )
 
 type Message uint

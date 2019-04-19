@@ -1,11 +1,10 @@
 package state
 
 import (
+	"github.com/icon-project/goloop/common/errors"
 	"log"
 	"sort"
 	"sync"
-
-	"github.com/pkg/errors"
 )
 
 const (
@@ -177,17 +176,17 @@ func (wvs *worldVirtualState) GetSnapshot() WorldSnapshot {
 func (wvs *worldVirtualState) Reset(snapshot WorldSnapshot) error {
 	wvss, ok := snapshot.(*worldVirtualSnapshot)
 	if !ok {
-		return errors.New("InvalidSnapshot")
+		return IllegalTypeError.New("InvalidSnapshot")
 	}
 	if wvs != wvss.origin {
-		return errors.New("InvalidSnapshot")
+		return errors.InvalidStateError.New("InvalidSnapshot")
 	}
 
 	wvs.mutex.Lock()
 	defer wvs.mutex.Unlock()
 
 	if wvs.waiter == nil {
-		return errors.New("AlreadyCommitted")
+		return errors.InvalidStateError.New("AlreadyCommitted")
 	}
 
 	if wvs.worldLock == AccountWriteLock {

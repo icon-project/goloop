@@ -8,8 +8,8 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
-	"github.com/pkg/errors"
 	ugorji "github.com/ugorji/go/codec"
 )
 
@@ -78,7 +78,7 @@ func (v *validator) String() string {
 
 func ValidatorFromAddress(a module.Address) (module.Validator, error) {
 	if a == nil {
-		return nil, errors.New("IllegalArgument")
+		return nil, errors.ErrIllegalArgument
 	}
 	v := &validator{
 		pub:  nil,

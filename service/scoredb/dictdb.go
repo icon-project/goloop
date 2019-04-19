@@ -2,7 +2,7 @@ package scoredb
 
 import (
 	"github.com/icon-project/goloop/common/crypto"
-	"github.com/pkg/errors"
+	"github.com/icon-project/goloop/common/errors"
 )
 
 type DictDB struct {
@@ -54,7 +54,7 @@ func (d *DictDB) Get(keys ...interface{}) Value {
 
 func (d *DictDB) Set(params ...interface{}) error {
 	if len(params) != d.depth+1 {
-		return errors.New("IllegalArgument")
+		return errors.ErrIllegalArgument
 	}
 
 	kbytes := d.keyBytesForKeys(params[:len(params)-1]...)

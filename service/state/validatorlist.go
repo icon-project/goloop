@@ -10,8 +10,8 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
-	"github.com/pkg/errors"
 )
 
 type ValidatorSnapshot module.ValidatorList
@@ -288,7 +288,7 @@ func validatorSnapshotFromHash(bk db.Bucket, h []byte) (*validatorSnapshot, erro
 			return nil, err
 		}
 		if len(value) == 0 {
-			return nil, errors.New("InvalidHashValue")
+			return nil, errors.NotFoundError.New("InvalidHashValue")
 		}
 		_, err = codec.MP.UnmarshalFromBytes(value, &vss.validators)
 		if err != nil {
@@ -340,7 +340,7 @@ func ValidatorSnapshotFromSlice(database db.Database, vl []module.Validator) (Va
 		if vo, ok := v.(*validator); ok {
 			vList[i] = vo
 		} else {
-			return nil, errors.New("NotCompatibleValidator")
+			return nil, ErrIllegalType
 		}
 	}
 	vss.validators = vList
