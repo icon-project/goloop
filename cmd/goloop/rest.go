@@ -33,16 +33,23 @@ type SystemView struct {
 }
 
 type JoinChainParam struct {
-	NID      int             `json:"nid"`
-	SeedAddr string          `json:"seed_addr"`
-	Role     uint            `json:"role"`
-	Genesis  json.RawMessage `json:"genesis"`
+	NID    int    `json:"nid"`
+	DBType string `json:"db_type"`
+
+	SeedAddr         string `json:"seed_addr"`
+	Role             uint   `json:"role"`
+	ConcurrencyLevel int    `json:"concurrency_level,omitempty"`
+
+	Channel string `json:"channel"`
+
+	Genesis json.RawMessage `json:"genesis"`
 }
 
 type ChainView struct {
-	NID    int    `json:"nid"`
-	State  string `json:"state"`
-	Height int64  `json:"height"`
+	NID       int    `json:"nid"`
+	State     string `json:"state"`
+	Height    int64  `json:"height"`
+	LastError string `json:"lasterr"`
 }
 
 type ChainInspectView struct {
@@ -51,10 +58,18 @@ type ChainInspectView struct {
 	Module  map[string]interface{} `json:"module"`
 }
 
+//TODO [TBD]move to module.Chain ?
+type LastErrorReportor interface {
+	LastError() error
+}
+
 func NewChainView(c module.Chain) *ChainView {
 	v := &ChainView{
 		NID:   c.NID(),
 		State: c.State(),
+	}
+	if r, ok := c.(LastErrorReportor); ok && r.LastError() != nil {
+		v.LastError = r.LastError().Error()
 	}
 
 	if bm := c.BlockManager(); bm != nil {
@@ -111,17 +126,21 @@ func (r *Rest) RegisterChainHandlers(g *echo.Group) {
 	g.GET(UrlChainRes, r.GetChain, r.ChainInjector)
 	g.DELETE(UrlChainRes, r.GetChain, r.ChainInjector)
 	g.DELETE(UrlChainRes, r.LeaveChain, r.ChainInjector)
+	//TODO update chain configuration ex> Channel, Seed, ConcurrencyLevel ...
+	//g.PUT(UrlChainRes, r.UpdateChain, r.ChainInjector)
 	g.POST(UrlChainRes+"/start", r.StartChain, r.ChainInjector)
 	g.POST(UrlChainRes+"/stop", r.StopChain, r.ChainInjector)
+	g.POST(UrlChainRes+"/reset", r.ResetChain, r.ChainInjector)
+	g.POST(UrlChainRes+"/verify", r.VerifyChain, r.ChainInjector)
 }
 
 func (r *Rest) ChainInjector(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(ctx echo.Context) error {
-		NID, err := strconv.Atoi(ctx.Param(ParamNID))
+		NID, err := strconv.ParseInt(ctx.Param(ParamNID), 16, 64)
 		if err != nil {
 			return err
 		}
-		c := r.n.GetChain(NID)
+		c := r.n.GetChain(int(NID))
 		if c == nil {
 			return ctx.NoContent(http.StatusNotFound)
 		}
@@ -207,7 +226,7 @@ func (r *Rest) JoinChain(ctx echo.Context) error {
 	//	log.Println("Warning", err)
 	//	return err
 	//}
-	_, err = r.n.JoinChain(p.NID, p.SeedAddr, p.Role, genesis)
+	_, err = r.n.JoinChain(p.NID, p.SeedAddr, p.Role, p.DBType, p.ConcurrencyLevel, genesis)
 	if err != nil {
 		log.Println("Warning", err)
 		return err
@@ -239,6 +258,22 @@ func (r *Rest) StartChain(ctx echo.Context) error {
 func (r *Rest) StopChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(module.Chain)
 	if err := r.n.StopChain(c.NID()); err != nil {
+		return err
+	}
+	return ctx.String(http.StatusOK, "OK")
+}
+
+func (r *Rest) ResetChain(ctx echo.Context) error {
+	c := ctx.Get("chain").(module.Chain)
+	if err := r.n.ResetChain(c.NID()); err != nil {
+		return err
+	}
+	return ctx.String(http.StatusOK, "OK")
+}
+
+func (r *Rest) VerifyChain(ctx echo.Context) error {
+	c := ctx.Get("chain").(module.Chain)
+	if err := r.n.VerifyChain(c.NID()); err != nil {
 		return err
 	}
 	return ctx.String(http.StatusOK, "OK")

@@ -10,7 +10,7 @@ type NetworkManager interface {
 	RegisterReactorForStreams(name string, reactor Reactor, piList []ProtocolInfo, priority uint8) (ProtocolHandler, error)
 	UnregisterReactor(reactor Reactor) error
 
-	SetRole(role Role, peers ...PeerID)
+	SetRole(version int64, role Role, peers ...PeerID)
 	GetPeersByRole(role Role) []PeerID
 	AddRole(role Role, peers ...PeerID)
 	RemoveRole(role Role, peers ...PeerID)

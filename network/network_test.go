@@ -260,12 +260,12 @@ type dummyChain struct {
 	nid int
 	metricCtx context.Context
 }
-func (c *dummyChain) Database() db.Database {panic("not implemented")}
-func (c *dummyChain) Wallet() module.Wallet {panic("not implemented")}
-func (c *dummyChain) NID() int {return c.nid}
-func (c *dummyChain) ConcurrencyLevel() int {panic("not implemented")}
-func (c *dummyChain) Genesis() []byte {panic("not implemented")}
-func (c *dummyChain) GetGenesisData(key []byte) ([]byte, error) {panic("not implemented")}
+func (c *dummyChain) Database() db.Database                             {panic("not implemented")}
+func (c *dummyChain) Wallet() module.Wallet                             {panic("not implemented")}
+func (c *dummyChain) NID() int                                          { return c.nid }
+func (c *dummyChain) ConcurrencyLevel() int                             {panic("not implemented")}
+func (c *dummyChain) Genesis() []byte                                   {panic("not implemented")}
+func (c *dummyChain) GetGenesisData(key []byte) ([]byte, error)         {panic("not implemented")}
 func (c *dummyChain) CommitVoteSetDecoder() module.CommitVoteSetDecoder {panic("not implemented")}
 
 func (c *dummyChain) BlockManager() module.BlockManager {panic("not implemented")}
@@ -602,7 +602,7 @@ func Test_network_allowedPeer(t *testing.T) {
 		notAllowed = append(notAllowed, r.nt.PeerID())
 	}
 	for _, r := range m["TestAllowed"] {
-		r.nm.SetRole(module.ROLE_NORMAL, allowed...)
+		r.nm.SetRole(0, module.ROLE_NORMAL, allowed...)
 	}
 	sr := m["TestAllowed"][0]
 	dailByMap(t, m, sr.p2p.self.netAddress, 100*time.Millisecond)

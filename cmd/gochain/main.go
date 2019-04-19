@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"path/filepath"
 	"runtime/pprof"
 	"strconv"
 	"sync/atomic"
@@ -39,21 +40,18 @@ type GoChainConfig struct {
 	Key          []byte          `json:"key,omitempty"`
 	KeyStoreData json.RawMessage `json:"key_store"`
 	KeyStorePass string          `json:"key_password"`
-
-	fileName string
 }
 
 func (config *GoChainConfig) String() string {
 	return ""
 }
 
-var (
-	version = "unknown"
-	build   = "unknown"
-)
+func (config *GoChainConfig) Type() string {
+	return "GoChainConfig"
+}
 
 func (config *GoChainConfig) Set(name string) error {
-	config.fileName = name
+	config.FilePath, _ = filepath.Abs(name)
 	if bs, e := ioutil.ReadFile(name); e == nil {
 		if err := json.Unmarshal(bs, config); err != nil {
 			return err
@@ -64,13 +62,19 @@ func (config *GoChainConfig) Set(name string) error {
 
 var memProfileCnt int32 = 0
 
+var (
+	version = "unknown"
+	build   = "unknown"
+)
+
 func main() {
 	var genesisFile, genesisStorage string
 	var keyStoreFile, keyStoreSecret string
 	var saveFile, saveKeyStore string
 	var cfg GoChainConfig
 	var cpuProfile, memProfile string
-	var nodePath string
+	var chainDir string
+	var eeSocket string
 
 	flag.Var(&cfg, "config", "Parsing configuration file")
 	flag.StringVar(&saveFile, "save", "", "File path for storing current configuration(it exits after save)")
@@ -84,20 +88,15 @@ func main() {
 	flag.StringVar(&genesisFile, "genesis", "", "Genesis transaction param")
 	flag.StringVar(&genesisStorage, "genesisStorage", "", "Genesis storage for genesis transaction")
 	flag.StringVar(&cfg.DBType, "db_type", "mapdb", "Name of database system(*badgerdb, goleveldb, boltdb, mapdb)")
-	flag.StringVar(&cfg.DBDir, "db_dir", "", "Database directory")
-	flag.StringVar(&cfg.DBName, "db_name", "", "Database name for the chain(default:<channel name>)")
 	flag.UintVar(&cfg.Role, "role", 2, "[0:None, 1:Seed, 2:Validator, 3:Both]")
-	flag.StringVar(&cfg.WALDir, "wal_dir", "", "WAL directory")
-	flag.StringVar(&cfg.ContractDir, "contract_dir", "", "Contract directory")
-	flag.StringVar(&cfg.EESocket, "ee_socket", "", "Execution engine socket path")
+	flag.StringVar(&eeSocket, "ee_socket", "", "Execution engine socket path(default:.chain/<address>/ee.sock")
 	flag.StringVar(&cfg.GenesisDataPath, "genesis_data", "", "Genesis data directory")
 	flag.StringVar(&keyStoreFile, "key_store", "", "KeyStore file for wallet")
 	flag.StringVar(&keyStoreSecret, "key_secret", "", "Secret(password) file for KeyStore")
 	flag.StringVar(&cfg.KeyStorePass, "key_password", "", "Password for the KeyStore file")
 	flag.StringVar(&cpuProfile, "cpuprofile", "", "CPU Profiling data file")
 	flag.StringVar(&memProfile, "memprofile", "", "Memory Profiling data file")
-	flag.StringVar(&nodePath, "node_dir", "", "Node data directory(default:.chain/<address>)")
-	flag.StringVar(&cfg.ChainDir, "chain_dir", "", "Chain data directory(default:<node_dir>/<nid>")
+	flag.StringVar(&chainDir, "chain_dir", "", "Chain data directory(default:.chain/<address>/<nid>")
 	flag.IntVar(&cfg.EEInstances, "ee_instances", 1, "Number of execution engines")
 	flag.IntVar(&cfg.ConcurrencyLevel, "concurrency", 1, "Maximum number of executors to use for concurrency")
 	flag.Parse()
@@ -193,11 +192,11 @@ func main() {
 	if len(genesisStorage) > 0 {
 		storage, err := ioutil.ReadFile(genesisStorage)
 		if err != nil {
-			log.Printf("Fail to open genesisStorage=%s err=%+v\n", genesisStorage, err)
+			log.Panicf("Fail to open genesisStorage=%s err=%+v\n", genesisStorage, err)
 		}
 		cfg.GenesisStorage, err = chain.NewGenesisStorage(storage)
 		if err != nil {
-			log.Printf("Failed to load genesisStorage\n")
+			log.Panicf("Failed to load genesisStorage\n")
 		}
 	}
 
@@ -215,7 +214,7 @@ func main() {
 		f, err := os.OpenFile(saveFile,
 			os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
 		if err != nil {
-			log.Panicf("Fail to open file=%s err=%+v", cfg.fileName, err)
+			log.Panicf("Fail to open file=%s err=%+v", saveFile, err)
 		}
 
 		enc := json.NewEncoder(f)
@@ -231,18 +230,22 @@ func main() {
 	prefix := fmt.Sprintf("%x|--|", wallet.Address().ID()[0:2])
 	log.SetPrefix(prefix)
 
-	addr := wallet.Address()
-
-	if nodePath == "" {
-		nodePath = path.Join(".", ".chain", addr.String())
+	if chainDir != "" {
+		cfg.BaseDir = cfg.ResolveRelative(chainDir)
 	}
 
-	if cfg.ChainDir == "" {
-		cfg.ChainDir = path.Join(nodePath, strconv.FormatInt(int64(cfg.NID), 16))
+	if cfg.BaseDir == "" {
+		cfg.BaseDir = cfg.ResolveRelative(path.Join(".chain",
+			wallet.Address().String(), strconv.FormatInt(int64(cfg.NID), 16)))
+	}
+
+	if eeSocket != "" {
+		cfg.EESocket = cfg.ResolveRelative(eeSocket)
 	}
 
 	if cfg.EESocket == "" {
-		cfg.EESocket = path.Join(nodePath, "socket")
+		cfg.EESocket = cfg.ResolveRelative(path.Join(".chain",
+			wallet.Address().String(), "ee.sock"))
 	}
 
 	if cpuProfile != "" {

@@ -67,7 +67,7 @@ func NewManager(c module.Chain, nt module.NetworkTransport, initialSeed string, 
 		case module.ROLE_VALIDATOR:
 			role.SetFlag(p2pRoleRoot)
 		default:
-			m.log.Println("Ignore role", r)
+			m.log.Println("Warning","NewManager","ignored role", r)
 		}
 	}
 	m.p2p.setRole(role)
@@ -253,9 +253,12 @@ func (m *manager) _getPeerIDSetByRole(role module.Role) *PeerIDSet {
 	return s
 }
 
-func (m *manager) SetRole(role module.Role, peers ...module.PeerID) {
+func (m *manager) SetRole(version int64, role module.Role, peers ...module.PeerID) {
 	s := m._getPeerIDSetByRole(role)
-	s.ClearAndAdd(peers...)
+	if s.version > version {
+		s.version = version
+		s.ClearAndAdd(peers...)
+	}
 }
 
 func (m *manager) GetPeersByRole(role module.Role) []module.PeerID {

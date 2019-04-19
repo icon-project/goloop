@@ -22,13 +22,17 @@ var (
 	MetricKeyHostname = NewMetricKey("hostname")
 	MetricKeyChain    = NewMetricKey("channel")
 	mKeys             = []tag.Key{MetricKeyHostname, MetricKeyChain}
-	RootMetricCtx     = context.Background()
 	mTags             = make(map[*tag.Key]map[string]tag.Mutator)
-	mCtxs             = make(map[tag.Mutator]context.Context)
 	mViews            = make(map[string]*view.View)
 	mViewMtx          sync.RWMutex
 	mTagMtx           sync.Mutex
-	mtOnce            sync.Once
+
+	rootMetricCtx    = GetMetricContext(context.Background(), &MetricKeyHostname, _resolveHostname(nil))
+	defaultMetricCtx = GetMetricContext(rootMetricCtx, &MetricKeyChain, "UNKNOWN")
+	chainMetricCtxs  = make(map[string]context.Context)
+	chainMetricMtx   sync.RWMutex
+
+	mtOnce sync.Once
 )
 
 func NewMetricKey(k string) tag.Key {
@@ -60,8 +64,7 @@ func RegisterMetricView(m stats.Measure, a *view.Aggregation, tks []tag.Key) *vi
 		Aggregation: a,
 		TagKeys:     append(mKeys, tks...),
 	}
-	err := view.Register(v)
-	if err != nil {
+	if err := view.Register(v);err != nil {
 		log.Fatalf("Fail RegisterMetricView view.Register %+v", err)
 	}
 	mViews[v.Name] = v
@@ -84,25 +87,28 @@ func GetMetricContext(p context.Context, mk *tag.Key, v string) context.Context 
 		m[v] = mt
 	}
 
-	ctx, ok := mCtxs[mt]
-	if !ok {
-		tCtx, err := tag.New(p, mt)
-		if err != nil {
-			log.Fatalf("Fail tag.New %+v", err)
-		}
-		mCtxs[mt] = tCtx
-		ctx = tCtx
+	ctx, err := tag.New(p, mt)
+	if err != nil {
+		log.Fatalf("Fail tag.New %+v", err)
 	}
 	return ctx
 }
 
 func DefaultMetricContext() context.Context {
-	return GetMetricContext(RootMetricCtx, &MetricKeyChain, "UNKNOWN")
+	return defaultMetricCtx
 }
 
-func GetMetricContextByNID(NID int) context.Context {
-	chainID := strconv.FormatInt(int64(NID), 16)
-	return GetMetricContext(RootMetricCtx, &MetricKeyChain, chainID)
+func GetMetricContextByNID(nid int) context.Context {
+	chainMetricMtx.Lock()
+	defer chainMetricMtx.Unlock()
+
+	chainID := strconv.FormatInt(int64(nid), 16)
+	ctx, ok := chainMetricCtxs[chainID]
+	if !ok {
+		ctx = GetMetricContext(rootMetricCtx, &MetricKeyChain, chainID)
+		chainMetricCtxs[chainID] = ctx
+	}
+	return ctx
 }
 
 func _resolveHostname(w module.Wallet) string {
@@ -119,8 +125,9 @@ func _resolveHostname(w module.Wallet) string {
 
 func Initialize(w module.Wallet) {
 	mtOnce.Do(func() {
-		log.Println("Initialize RootMetricCtx")
-		RootMetricCtx = GetMetricContext(context.Background(), &MetricKeyHostname, _resolveHostname(w))
+		log.Println("Initialize rootMetricCtx")
+		rootMetricCtx = GetMetricContext(context.Background(), &MetricKeyHostname, _resolveHostname(w))
+		defaultMetricCtx = GetMetricContext(rootMetricCtx, &MetricKeyChain, "UNKNOWN")
 	})
 }
 
@@ -162,7 +169,6 @@ func Inspect(c module.Chain) map[string]interface{} {
 	mViewMtx.RLock()
 	defer mViewMtx.RUnlock()
 
-	//c.MetricContext()
 	chainID, ok := tag.FromContext(c.MetricContext()).Value(MetricKeyChain)
 	if !ok {
 		return nil
@@ -182,4 +188,19 @@ func Inspect(c module.Chain) map[string]interface{} {
 		}
 	}
 	return m
+}
+
+func ResetMetricViews() {
+	mViewMtx.RLock()
+	defer mViewMtx.RUnlock()
+	vs := make([]*view.View, 0)
+	for _, v := range mViews {
+		vs = append(vs, v)
+	}
+	view.Unregister(vs...)
+
+	if err := view.Register(vs...);err != nil {
+		log.Fatalf("Fail ResetMetricViews view.Register %+v", err)
+	}
+
 }

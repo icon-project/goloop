@@ -77,7 +77,7 @@ func (nm *tNetworkManager) UnregisterReactor(reactor module.Reactor) error {
 	panic("not implemented")
 }
 
-func (nm *tNetworkManager) SetRole(role module.Role, peers ...module.PeerID) {
+func (nm *tNetworkManager) SetRole(version int64, role module.Role, peers ...module.PeerID) {
 	panic("not implemented")
 }
 

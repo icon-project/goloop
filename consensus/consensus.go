@@ -137,7 +137,7 @@ func (cs *consensus) _resetForNewHeight(prevBlock module.Block, votes *commitVot
 			v, _ := cs.validators.Get(i)
 			peerIDs[i] = network.NewPeerIDFromAddress(v.Address())
 		}
-		cs.nm.SetRole(module.ROLE_VALIDATOR, peerIDs...)
+		cs.nm.SetRole(cs.height, module.ROLE_VALIDATOR, peerIDs...)
 	}
 	cs.votes = votes
 	cs.hvs.reset(cs.validators.Len())

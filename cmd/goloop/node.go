@@ -1,25 +1,24 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net"
-	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"sync"
-	"time"
 
 	"github.com/labstack/echo/v4"
 
 	"github.com/icon-project/goloop/chain"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/server"
+	"github.com/icon-project/goloop/server/metric"
 	"github.com/icon-project/goloop/service/eeproxy"
 )
 
@@ -29,12 +28,35 @@ const (
 )
 
 type NodeConfig struct {
-	NodeDir   string `json:"node_dir"`
-	CliSocket string `json:"node_sock"`
+	//static
+	CliSocket     string `json:"node_sock"` //relative path
+	P2PAddr       string `json:"p2p"`
+	P2PListenAddr string `json:"p2p_listen"`
+	RPCAddr       string `json:"rpc_addr"`
+	EESocket      string `json:"ee_socket"`
+	EEInstances   int    `json:"ee_instances"`
 
-	//chain.Config
-	DBType           string `json:"db_type"`
-	ConcurrencyLevel int    `json:"concurrency_level,omitempty"`
+	BaseDir  string `json:"node_dir"`
+	FilePath string `json:"-"` //absolute path
+}
+
+func (c *NodeConfig) ResolveAbsolute(targetPath string) string {
+	if filepath.IsAbs(targetPath) {
+		return targetPath
+	}
+	if c.FilePath == "" {
+		r, _ := filepath.Abs(targetPath)
+		return r
+	}
+	return filepath.Clean(path.Join(filepath.Dir(c.FilePath), targetPath))
+}
+
+func (c *NodeConfig) ResolveRelative(targetPath string) string {
+	absPath, _ := filepath.Abs(targetPath)
+	base := filepath.Dir(c.FilePath)
+	base, _ = filepath.Abs(base)
+	r, _ := filepath.Rel(base, absPath)
+	return r
 }
 
 type Node struct {
@@ -47,11 +69,7 @@ type Node struct {
 	mtx sync.RWMutex
 	m   map[int]module.Chain
 
-	cliSrv struct {
-		srv http.Server
-		e   *echo.Echo
-		l   net.Listener
-	}
+	cliSrv *UnixDomainSockHttpServer
 }
 
 func (n *Node) loadChainConfig(filename string) (*chain.Config, error) {
@@ -101,18 +119,20 @@ func (n *Node) _remove(c module.Chain) error {
 		return err
 	}
 
-	chainPath := n.ChainPath(c.NID())
+	chainPath := n.ChainDir(c.NID())
 	if err := os.RemoveAll(chainPath); err != nil {
 		return fmt.Errorf("fail to remove dir %s err=%+v", chainPath, err)
 	}
 
 	delete(n.m, c.NID())
+	metric.ResetMetricViews()
 	return nil
 }
 
-func (n *Node) ChainPath(NID int) string {
-	chainPath := path.Join(n.cfg.NodeDir, strconv.FormatInt(int64(NID), 16))
-	return chainPath
+func (n *Node) ChainDir(NID int) string {
+	nodeDir := n.cfg.ResolveAbsolute(cfg.BaseDir)
+	chainDir := path.Join(nodeDir, strconv.FormatInt(int64(NID), 16))
+	return chainDir
 }
 
 func (n *Node) _get(NID int) (module.Chain, error) {
@@ -124,34 +144,41 @@ func (n *Node) _get(NID int) (module.Chain, error) {
 }
 
 func (n *Node) Start() {
-	go n.srv.Start()
-
-	if err := os.RemoveAll(n.cfg.CliSocket); err != nil {
-		log.Panic(err)
-	}
-	l, err := net.Listen("unix", n.cfg.CliSocket)
+	err := n.nt.Listen()
 	if err != nil {
+		log.Panicf("FAIL to P2P listen err=%+v", err)
+	}
+
+	go n.srv.Start()
+	go func(){
+		if err := n.pm.Loop(); err != nil {
+			log.Panic(err)
+		}
+	}()
+
+	if err := n.cliSrv.Start(); err != nil {
 		log.Panic(err)
 	}
-	n.cliSrv.l = l
-	if err := n.cliSrv.srv.Serve(l); err != nil {
-		log.Panic(err)
-	}
+
 }
 
 func (n *Node) Stop() {
+	if err := n.nt.Close(); err != nil {
+		log.Panicf("FAIL to P2P close err=%+v", err)
+	}
 	n.srv.Stop()
-	ctx, cf := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cf()
-	if err := n.cliSrv.srv.Shutdown(ctx); err != nil {
+	if err := n.cliSrv.Stop(); err != nil {
 		log.Panic(err)
 	}
 }
 
+//TODO [TBD] using JoinChainParam struct
 func (n *Node) JoinChain(
 	NID int,
 	seed string,
 	role uint,
+	dbType string,
+	concurrencyLevel int,
 	genesis []byte,
 ) (module.Chain, error) {
 	defer n.mtx.Unlock()
@@ -166,41 +193,40 @@ func (n *Node) JoinChain(
 		return nil, err
 	}
 
-	chainPath := n.ChainPath(NID)
-	if err := os.MkdirAll(chainPath, 0700); err != nil {
-		log.Panicf("Fail to create directory %s err=%+v", chainPath, err)
+	chainDir := n.ChainDir(NID)
+	log.Println("ChainDir",chainDir)
+	if err := os.MkdirAll(chainDir, 0700); err != nil {
+		log.Panicf("Fail to create directory %s err=%+v", chainDir, err)
 	}
 
-	//TODO JoinChainParam optional values {Channel}
+	cfgFile, _ := filepath.Abs(path.Join(chainDir, ChainConfigFileName))
 	channel := strconv.FormatInt(int64(NID), 16)
 	cfg := &chain.Config{
 		NID:            NID,
+		DBType:         dbType,
 		Channel:        channel,
 		SeedAddr:       seed,
 		Role:           role,
-		DBType:         n.cfg.DBType,
-		DBName:         channel,
 		GenesisStorage: gs,
-		//GenesisDataPath: path.Join(chainPath, "genesis"),
-		ConcurrencyLevel: n.cfg.ConcurrencyLevel,
-		ChainDir:         chainPath,
+		//GenesisDataPath: path.Join(chainDir, "genesis"),
+		ConcurrencyLevel: concurrencyLevel,
+		FilePath:         cfgFile,
 	}
 
-	cfgFile := path.Join(chainPath, ChainConfigFileName)
 	if err := n.saveChainConfig(cfg, cfgFile); err != nil {
-		_ = os.RemoveAll(chainPath)
+		_ = os.RemoveAll(chainDir)
 		return nil, err
 	}
 
-	gsFile := path.Join(chainPath, ChainGenesisZipFileName)
+	gsFile := path.Join(chainDir, ChainGenesisZipFileName)
 	if err := ioutil.WriteFile(gsFile, genesis, 0755); err != nil {
-		_ = os.RemoveAll(chainPath)
+		_ = os.RemoveAll(chainDir)
 		return nil, err
 	}
 
 	c, err := n._add(cfg)
 	if err != nil {
-		_ = os.RemoveAll(chainPath)
+		_ = os.RemoveAll(chainDir)
 		return nil, err
 	}
 	return c, nil
@@ -239,6 +265,28 @@ func (n *Node) StopChain(NID int) error {
 	return c.Stop(false)
 }
 
+func (n *Node) ResetChain(NID int) error {
+	defer n.mtx.RUnlock()
+	n.mtx.RLock()
+
+	c, err := n._get(NID)
+	if err != nil {
+		return err
+	}
+	return c.Reset(true)
+}
+
+func (n *Node) VerifyChain(NID int) error {
+	defer n.mtx.RUnlock()
+	n.mtx.RLock()
+
+	c, err := n._get(NID)
+	if err != nil {
+		return err
+	}
+	return c.Verify(false)
+}
+
 func (n *Node) GetChains() []module.Chain {
 	defer n.mtx.RUnlock()
 	n.mtx.RLock()
@@ -262,44 +310,72 @@ func (n *Node) GetChain(NID int) module.Chain {
 
 func NewNode(
 	w module.Wallet,
-	nt module.NetworkTransport,
-	srv *server.Manager,
-	pm eeproxy.Manager,
 	cfg *NodeConfig,
 ) *Node {
-	if cfg.NodeDir == "" {
-		cfg.NodeDir = path.Join(".", ".chain", w.Address().String())
+	metric.Initialize(w)
+
+	if cfg.BaseDir == "" {
+		cfg.BaseDir = path.Join(".", ".chain", w.Address().String())
 	}
 	if cfg.CliSocket == "" {
-		cfg.CliSocket = path.Join(cfg.NodeDir, "cli.sock")
+		cfg.CliSocket = path.Join(cfg.BaseDir, "cli.sock")
+	}
+	if cfg.EESocket == "" {
+		cfg.EESocket = path.Join(cfg.BaseDir, "ee.sock")
 	}
 
+	nt := network.NewTransport(cfg.P2PAddr, w)
+	if cfg.P2PListenAddr != "" {
+		_ = nt.SetListenAddress(cfg.P2PListenAddr)
+	}
+	srv := server.NewManager(cfg.RPCAddr, w)
+
+	ee, err := eeproxy.NewPythonEE()
+	if err != nil {
+		log.Panicf("FAIL to create PythonEE err=%+v", err)
+	}
+	eeSocket := cfg.ResolveAbsolute(cfg.EESocket)
+	pm, err := eeproxy.NewManager("unix", eeSocket, ee)
+	if err != nil {
+		log.Panicln("FAIL to start EEManager")
+	}
+	if err := pm.SetInstances(cfg.EEInstances, cfg.EEInstances, cfg.EEInstances); err != nil {
+		log.Panicf("FAIL to EEManager.SetInstances err=%+v", err)
+	}
+
+	cliSrv := NewUnixDomainSockHttpServer(cfg.ResolveAbsolute(cfg.CliSocket), echo.New())
+
 	n := &Node{
-		w:   w,
-		nt:  nt,
-		srv: srv,
-		pm:  pm,
-		cfg: *cfg,
-		m:   make(map[int]module.Chain),
+		w:      w,
+		nt:     nt,
+		srv:    srv,
+		pm:     pm,
+		cfg:    *cfg,
+		m:      make(map[int]module.Chain),
+		cliSrv: cliSrv,
 	}
 
 	//Load chains
-	if err := os.MkdirAll(cfg.NodeDir, 0700); err != nil {
-		log.Panicf("Fail to create directory %s err=%+v", cfg.NodeDir, err)
+	nodeDir := cfg.ResolveAbsolute(cfg.BaseDir)
+	if err := os.MkdirAll(nodeDir, 0700); err != nil {
+		log.Panicf("Fail to create directory %s err=%+v", cfg.BaseDir, err)
 	}
-	fs, err := ioutil.ReadDir(cfg.NodeDir)
+	fs, err := ioutil.ReadDir(nodeDir)
 	if err != nil {
-		log.Panicf("Fail to read directory %s err=%+v", cfg.NodeDir, err)
+		log.Panicf("Fail to read directory %s err=%+v", cfg.BaseDir, err)
 	}
 	for _, f := range fs {
 		if f.IsDir() {
-			chainPath := path.Join(cfg.NodeDir, f.Name())
-			cfgFile := path.Join(chainPath, ChainConfigFileName)
+			chainDir := path.Join(nodeDir, f.Name())
+			log.Println("Load from ChainDir",chainDir)
+			cfgFile := path.Join(chainDir, ChainConfigFileName)
 			ccfg, err := n.loadChainConfig(cfgFile)
 			if err != nil {
 				log.Panicf("Fail to load chain config %s err=%+v", cfgFile, err)
 			}
-			gsFile := path.Join(chainPath, ChainGenesisZipFileName)
+			ccfg.FilePath = cfgFile
+
+			gsFile := path.Join(chainDir, ChainGenesisZipFileName)
 			genesis, err := ioutil.ReadFile(gsFile)
 			if err != nil {
 				log.Panicf("Fail to read chain genesis zip file %s err=%+v", gsFile, err)
@@ -314,10 +390,6 @@ func NewNode(
 			}
 		}
 	}
-
-	n.cliSrv.e = echo.New()
-	n.cliSrv.srv.Handler = n.cliSrv.e
-	n.cliSrv.srv.ErrorLog = n.cliSrv.e.StdLogger
 
 	RegisterRest(n)
 	return n

@@ -8,7 +8,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"path"
+	"path/filepath"
 	"runtime/pprof"
 	"sync/atomic"
 	"syscall"
@@ -19,10 +19,6 @@ import (
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/network"
-	"github.com/icon-project/goloop/server"
-	"github.com/icon-project/goloop/server/metric"
-	"github.com/icon-project/goloop/service/eeproxy"
 )
 
 const (
@@ -31,17 +27,10 @@ const (
 
 type GoLoopConfig struct {
 	NodeConfig
-	P2PAddr       string `json:"p2p"`
-	P2PListenAddr string `json:"p2p_listen"`
-	EESocket      string `json:"ee_socket"`
-	RPCAddr       string `json:"rpc_addr"`
-	EEInstances   int    `json:"ee_instances"`
 
 	Key          []byte          `json:"key,omitempty"`
 	KeyStoreData json.RawMessage `json:"key_store"`
 	KeyStorePass string          `json:"key_password"`
-
-	fileName string
 }
 
 func (config *GoLoopConfig) String() string {
@@ -53,7 +42,7 @@ func (config *GoLoopConfig) Type() string {
 }
 
 func (config *GoLoopConfig) Set(name string) error {
-	config.fileName = name
+	config.FilePath, _ = filepath.Abs(name)
 	if bs, e := ioutil.ReadFile(name); e == nil {
 		if err := json.Unmarshal(bs, config); err != nil {
 			return err
@@ -71,6 +60,8 @@ var (
 	cfg                          GoLoopConfig
 	keyStoreFile, keyStoreSecret string
 	saveKeyStore                 string
+	nodeDir string
+	cliSocket, eeSocket string
 
 	cpuProfile, memProfile string
 
@@ -135,35 +126,19 @@ func initConfig() {
 	}
 	w, _ = wallet.NewFromPrivateKey(priK)
 
-	if len(saveKeyStore) > 0 {
-		ks := bytes.NewBuffer(nil)
-		if err := json.Indent(ks, cfg.KeyStoreData, "", "  "); err != nil {
-			log.Panicf("Fail to indenting key data err=%+v", err)
-		}
-		if err := ioutil.WriteFile(saveKeyStore, ks.Bytes(), 0700); err != nil {
-			log.Panicf("Fail to save key store to the file=%s err=%+v", saveKeyStore, err)
-		}
-	}
 
 	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
 	prefix := fmt.Sprintf("%x|--|", w.Address().ID()[0:2])
 	log.SetPrefix(prefix)
 
-	addr := w.Address()
-
-	if cfg.NodeDir == "" {
-		cfg.NodeDir = path.Join(".", ".chain", addr.String())
+	if nodeDir != "" {
+		cfg.BaseDir = cfg.ResolveRelative(nodeDir)
 	}
-	if cfg.CliSocket == "" {
-		sockPath := os.Getenv("GOLOOP_SOCK")
-		if sockPath != "" {
-			cfg.CliSocket = sockPath
-		} else {
-			cfg.CliSocket = path.Join(cfg.NodeDir, "cli.sock")
-		}
+	if cliSocket != "" {
+		cfg.CliSocket = cfg.ResolveRelative(cliSocket)
 	}
-	if cfg.EESocket == "" {
-		cfg.EESocket = path.Join(cfg.NodeDir, "ee.sock")
+	if eeSocket != "" {
+		cfg.EESocket = cfg.ResolveRelative(eeSocket)
 	}
 
 	if cpuProfile != "" {
@@ -207,7 +182,7 @@ func main() {
 	rootCmd := &cobra.Command{Use: "goloop"}
 	rootPFlags := rootCmd.PersistentFlags()
 	rootPFlags.VarP(&cfg, "config", "c", "Parsing configuration file")
-	rootPFlags.StringVarP(&cfg.CliSocket, "node_sock", "s", "",
+	rootPFlags.StringVarP(&cliSocket, "node_sock", "s", "",
 		"Node Command Line Interface socket path(default $GOLOOP_SOCK=[node_dir]/cli.sock)")
 	rootPFlags.StringVar(&cpuProfile, "cpuprofile", "", "CPU Profiling data file")
 	rootPFlags.StringVar(&memProfile, "memprofile", "", "Memory Profiling data file")
@@ -217,24 +192,24 @@ func main() {
 	serverFlags.StringVar(&cfg.P2PAddr, "p2p", "127.0.0.1:8080", "Advertise ip-port of P2P")
 	serverFlags.StringVar(&cfg.P2PListenAddr, "p2p_listen", "", "Listen ip-port of P2P")
 	serverFlags.StringVar(&cfg.RPCAddr, "rpc", ":9080", "Listen ip-port of JSON-RPC")
-	serverFlags.StringVar(&cfg.EESocket, "ee_socket", "", "Execution engine socket path")
-	serverFlags.StringVar(&keyStoreFile, "key_store", "", "KeyStore file for w")
+	serverFlags.StringVar(&eeSocket, "ee_socket", "", "Execution engine socket path")
+	serverFlags.StringVar(&keyStoreFile, "key_store", "", "KeyStore file for wallet")
 	serverFlags.StringVar(&keyStoreSecret, "key_secret", "", "Secret(password) file for KeyStore")
 	serverFlags.StringVar(&cfg.KeyStorePass, "key_password", "", "Password for the KeyStore file")
-	serverFlags.StringVar(&cfg.NodeDir, "node_dir", "", "Node data directory(default:.chain/<address>)")
 	serverFlags.IntVar(&cfg.EEInstances, "ee_instances", 1, "Number of execution engines")
-	serverFlags.StringVar(&cfg.DBType, "db_type", "goleveldb", "Name of database system(*badgerdb, goleveldb, boltdb, mapdb)")
-	serverFlags.IntVar(&cfg.ConcurrencyLevel, "concurrency", 1, "Maximum number of executors to use for concurrency")
+	serverFlags.StringVar(&nodeDir, "node_dir", "",
+		"Node data directory(default:<configuration file path>/<address>)")
 
 	saveCmd := &cobra.Command{
 		Use:   "save [file]",
 		Short: "Save configuration",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			f, err := os.OpenFile(args[0],
+			saveFilePath := args[0]
+			f, err := os.OpenFile(saveFilePath,
 				os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
 			if err != nil {
-				log.Panicf("Fail to open file=%s err=%+v", cfg.fileName, err)
+				log.Panicf("Fail to open file=%s err=%+v", saveFilePath, err)
 			}
 			enc := json.NewEncoder(f)
 			enc.SetIndent("", "  ")
@@ -242,6 +217,16 @@ func main() {
 				log.Panicf("Fail to generate JSON for %+v", cfg)
 			}
 			f.Close()
+
+			if len(saveKeyStore) > 0 {
+				ks := bytes.NewBuffer(nil)
+				if err := json.Indent(ks, cfg.KeyStoreData, "", "  "); err != nil {
+					log.Panicf("Fail to indenting key data err=%+v", err)
+				}
+				if err := ioutil.WriteFile(saveKeyStore, ks.Bytes(), 0700); err != nil {
+					log.Panicf("Fail to save key store to the file=%s err=%+v", saveKeyStore, err)
+				}
+			}
 		},
 	}
 	saveCmd.Flags().StringVar(&saveKeyStore, "save_key_store", "", "File path for storing current KeyStore")
@@ -265,37 +250,11 @@ func main() {
 		log.Printf("Version : %s", version)
 		log.Printf("Build   : %s", build)
 
-		metric.Initialize(w)
-		nt := network.NewTransport(cfg.P2PAddr, w)
-		if cfg.P2PListenAddr != "" {
-			_ = nt.SetListenAddress(cfg.P2PListenAddr)
-		}
-		err := nt.Listen()
-		if err != nil {
-			log.Panicf("FAIL to listen P2P err=%+v", err)
-		}
-		defer func() {
-			if err := nt.Close(); err != nil {
-				log.Panicf("FAIL to close P2P err=%+v", err)
-			}
-		}()
 
-		ee, err := eeproxy.NewPythonEE()
-		if err != nil {
-			log.Panicf("FAIL to create PythonEE err=%+v", err)
-		}
-		pm, err := eeproxy.NewManager("unix", cfg.EESocket, ee)
-		if err != nil {
-			log.Panicln("FAIL to start EEManager")
-		}
-		if err := pm.SetInstances(cfg.EEInstances, cfg.EEInstances, cfg.EEInstances); err != nil {
-			log.Panicf("FAIL to EEManager.SetInstances err=%+v", err)
-		}
-		go pm.Loop()
 
-		srv := server.NewManager(cfg.RPCAddr, w)
 
-		n := NewNode(w, nt, srv, pm, &cfg.NodeConfig)
+
+		n := NewNode(w, &cfg.NodeConfig)
 		n.Start()
 	}
 	serverCmd.AddCommand(startCmd)
@@ -303,5 +262,6 @@ func main() {
 	chainCmd := NewChainCmd(&cfg)
 	systemCmd := NewSystemCmd(&cfg)
 	rootCmd.AddCommand(serverCmd, chainCmd, systemCmd)
+
 	rootCmd.Execute()
 }

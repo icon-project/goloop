@@ -413,6 +413,7 @@ func (s *NetAddressSet) Map() map[NetAddress]string {
 
 type PeerIDSet struct {
 	*Set
+	version int64
 	onUpdate func()
 }
 

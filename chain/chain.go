@@ -3,9 +3,11 @@ package chain
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"time"
@@ -23,25 +25,43 @@ import (
 )
 
 type Config struct {
-	NID      int    `json:"nid"`
-	Channel  string `json:"channel"`
-	SeedAddr string `json:"seed_addr"`
-	Role     uint   `json:"role"`
-
-	DBDir  string `json:"db_dir"`
+	//fixed
+	NID    int    `json:"nid"`
 	DBType string `json:"db_type"`
-	DBName string `json:"db_name"`
 
-	WALDir      string `json:"wal_dir"`
-	ContractDir string `json:"contract_dir"`
+	//static
+	SeedAddr         string `json:"seed_addr"`
+	Role             uint   `json:"role"`
+	ConcurrencyLevel int    `json:"concurrency_level,omitempty"`
+
+	//runtime
+	Channel string `json:"channel"`
 
 	GenesisStorage  GenesisStorage  `json:"-"`
 	Genesis         json.RawMessage `json:"genesis"`
 	GenesisDataPath string          `json:"genesis_data,omitempty"`
 
-	ConcurrencyLevel int `json:"concurrency_level,omitempty"`
+	BaseDir string `json:"chain_dir"`
+	FilePath string `json:"-"` //absolute path
+}
 
-	ChainDir string `json:"chain_dir"`
+func (c *Config) ResolveAbsolute(targetPath string) string {
+	if filepath.IsAbs(targetPath) {
+		return targetPath
+	}
+	if c.FilePath == "" {
+		r, _ := filepath.Abs(targetPath)
+		return r
+	}
+	return filepath.Clean(path.Join(filepath.Dir(c.FilePath),targetPath))
+}
+
+func (c *Config) ResolveRelative(targetPath string) string {
+	absPath, _ := filepath.Abs(targetPath)
+	base := filepath.Dir(c.FilePath)
+	base, _ = filepath.Abs(base)
+	r, _ := filepath.Rel(base, absPath)
+	return r
 }
 
 type singleChain struct {
@@ -69,6 +89,12 @@ type singleChain struct {
 	// monitor
 	metricCtx context.Context
 }
+
+const (
+	DefaultDBDir       = "db"
+	DefaultWALDir      = "wal"
+	DefaultContractDir = "contract"
+)
 
 const (
 	StateCreated State = iota
@@ -201,6 +227,10 @@ func (c *singleChain) _state() State {
 	return c.state
 }
 
+func (c *singleChain) LastError() error {
+	return c.lastErr
+}
+
 func (c *singleChain) _setState(s State, err error) {
 	defer c.mtx.Unlock()
 	c.mtx.Lock()
@@ -234,38 +264,22 @@ func (c *singleChain) _transit(to State, froms ...State) error {
 }
 
 func (c *singleChain) _init() error {
-	if c.cfg.ChainDir == "" {
-		c.cfg.ChainDir = path.Join(".", ".chain", c.wallet.Address().String())
-	}
-	if err := os.MkdirAll(c.cfg.ChainDir, 0700); err != nil {
-		log.Panicf("Fail to create directory %s err=%+v", c.cfg.ChainDir, err)
-	}
-
 	if c.cfg.Channel == "" {
 		c.cfg.Channel = strconv.FormatInt(int64(c.cfg.NID), 16)
 	}
-
-	if c.cfg.DBDir == "" {
-		c.cfg.DBDir = path.Join(c.cfg.ChainDir, "db")
-	}
+	chainDir := c.cfg.ResolveAbsolute(c.cfg.BaseDir)
+	log.Println("ConfigFilepath",c.cfg.FilePath, "BaseDir",c.cfg.BaseDir,"ChainDir", chainDir)
+	DBDir := path.Join(chainDir, DefaultDBDir)
 	if c.cfg.DBType == "" {
 		c.cfg.DBType = string(db.GoLevelDBBackend)
 	}
 	if c.cfg.DBType != "mapdb" {
-		if err := os.MkdirAll(c.cfg.DBDir, 0700); err != nil {
+		if err := os.MkdirAll(DBDir, 0700); err != nil {
 			return err
 		}
 	}
-	if c.cfg.DBName == "" {
-		c.cfg.DBName = c.cfg.Channel
-	}
+	DBName := strconv.FormatInt(int64(c.cfg.NID), 16)
 
-	if c.cfg.WALDir == "" {
-		c.cfg.WALDir = path.Join(c.cfg.ChainDir, "wal")
-	}
-	if c.cfg.ContractDir == "" {
-		c.cfg.ContractDir = path.Join(c.cfg.ChainDir, "contract")
-	}
 	if c.cfg.GenesisStorage == nil {
 		if gs, err := NewGenesisStorageWithDataDir(
 			c.cfg.Genesis, c.cfg.GenesisDataPath); err != nil {
@@ -275,7 +289,7 @@ func (c *singleChain) _init() error {
 		}
 	}
 
-	if cdb, err := db.Open(c.cfg.DBDir, c.cfg.DBType, c.cfg.DBName); err != nil {
+	if cdb, err := db.Open(DBDir, c.cfg.DBType, DBName); err != nil {
 		return err
 	} else {
 		c.database = cdb
@@ -288,9 +302,13 @@ func (c *singleChain) _init() error {
 
 func (c *singleChain) _prepare() {
 	c.nm = network.NewManager(c, c.nt, c.cfg.SeedAddr, toRoles(c.cfg.Role)...)
-	c.sm = service.NewManager(c, c.nm, c.pm, c.cfg.ChainDir)
+	//TODO [TBD] is service/contract.ContractManager owner of ContractDir ?
+	chainDir := c.cfg.ResolveAbsolute(c.cfg.BaseDir)
+	ContractDir := path.Join(chainDir, DefaultContractDir)
+	c.sm = service.NewManager(c, c.nm, c.pm, ContractDir)
 	c.bm = block.NewManager(c, c.sm)
-	c.cs = consensus.NewConsensus(c, c.bm, c.nm, c.cfg.WALDir)
+	WALDir := path.Join(chainDir, DefaultWALDir)
+	c.cs = consensus.NewConsensus(c, c.bm, c.nm, WALDir)
 }
 
 func (c *singleChain) _start() error {
@@ -404,7 +422,7 @@ func (c *singleChain) Term(sync bool) error {
 
 func (c *singleChain) _verify() error {
 	//verify code here
-	return nil
+	return fmt.Errorf("not implemented")
 }
 
 func (c *singleChain) Verify(sync bool) error {
@@ -427,13 +445,19 @@ func (c *singleChain) _reset() error {
 	if err := c.database.Close(); err != nil {
 		return err
 	}
-	if err := os.RemoveAll(c.cfg.DBDir); err != nil {
+	chainDir := c.cfg.ResolveAbsolute(c.cfg.BaseDir)
+	DBDir := path.Join(chainDir, DefaultDBDir)
+	if err := os.RemoveAll(DBDir); err != nil {
 		return err
 	}
-	if err := os.RemoveAll(c.cfg.WALDir); err != nil {
+
+	WALDir := path.Join(chainDir, DefaultWALDir)
+	if err := os.RemoveAll(WALDir); err != nil {
 		return err
 	}
-	if err := os.RemoveAll(c.cfg.ContractDir); err != nil {
+
+	ContractDir := path.Join(chainDir, DefaultContractDir)
+	if err := os.RemoveAll(ContractDir); err != nil {
 		return err
 	}
 	return nil
@@ -445,11 +469,14 @@ func (c *singleChain) Reset(sync bool) error {
 	}
 
 	f := func() {
+		//TODO [TBD] if each module has Reset(), then doesn't need c._stop(), c._prepare()
 		s := StateStopped
+		c._stop()
 		err := c._reset()
 		if err != nil {
 			s = StateResetFailed
 		}
+		c._prepare()
 		c._setState(s, err)
 	}
 	return c._execute(sync, f)
