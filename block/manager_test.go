@@ -302,7 +302,8 @@ func TestBlockManager_WaitForBlock_Nonblock(t *testing.T) {
 	br := importSync(s.bm, r)
 	br.assertOK(t)
 	s.bm.Finalize(br.blk)
-	blk, err := s.bm.WaitForBlock(height)
+	bch, err := s.bm.WaitForBlock(height)
+	blk := <-bch
 	assert.Nil(t, err)
 	assert.Equal(t, blk.Height(), height)
 	assert.Equal(t, blk.ID(), br.blk.ID())
@@ -310,25 +311,22 @@ func TestBlockManager_WaitForBlock_Nonblock(t *testing.T) {
 
 func TestBlockManager_WaitForBlock_Block(t *testing.T) {
 	s := newBlockManagerTestSetUp(t)
-	ch := make(chan cbResult)
 	const height = int64(3)
-	go func() {
-		blk, err := s.bm.WaitForBlock(height)
-		ch <- cbResult{blk, err}
-	}()
+	bch, err := s.bm.WaitForBlock(height)
+	assert.Nil(t, err)
 	var br *blockResult
 	for i := int64(1); i <= height; i++ {
 		r := s.bg.getReaderForBlock(i)
 		br = importSync(s.bm, r)
 		br.assertOK(t)
 		select {
-		case res := <-ch:
-			assert.Failf(t, "unexpected return from WaitForBlock", "res=%v", res)
+		case blk := <-bch:
+			assert.Failf(t, "unexpected return from WaitForBlock", "blk=%v", blk)
 		default:
 		}
 		s.bm.Finalize(br.blk)
 	}
-	res := <-ch
-	assert.Equal(t, res.blk.Height(), height)
-	assert.Equal(t, res.blk.ID(), br.blk.ID())
+	blk := <-bch
+	assert.Equal(t, blk.Height(), height)
+	assert.Equal(t, blk.ID(), br.blk.ID())
 }

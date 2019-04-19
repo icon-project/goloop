@@ -6,11 +6,11 @@ import (
 	"io"
 	"log"
 	"os"
-	"sync"
 	"time"
 
-	"github.com/icon-project/goloop/service/txresult"
 	"github.com/pkg/errors"
+
+	"github.com/icon-project/goloop/service/txresult"
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
@@ -53,11 +53,13 @@ type chainContext struct {
 	running bool
 }
 
+type finalizationCB = func(module.Block) bool
+
 type manager struct {
 	*chainContext
-	nmap      map[string]*bnode
-	finalized *bnode
-	newHeight *sync.Cond
+	nmap            map[string]*bnode
+	finalized       *bnode
+	finalizationCBs []finalizationCB
 }
 
 func (m *manager) db() db.Database {
@@ -390,7 +392,6 @@ func NewManager(
 		},
 		nmap: make(map[string]*bnode),
 	}
-	m.newHeight = sync.NewCond(&m.syncer.mutex)
 	chainPropBucket := m.bucketFor(db.ChainProperty)
 	if chainPropBucket == nil {
 		return nil
@@ -672,7 +673,17 @@ func (m *manager) finalize(bn *bnode) error {
 		chainProp.set(raw(keyLastBlockHeight), block.Height())
 	}
 	m.logger.Printf("Finalize(%x)\n", block.ID())
-	m.newHeight.Broadcast()
+	for i := 0; i < len(m.finalizationCBs); {
+		cb := m.finalizationCBs[i]
+		if cb(block) {
+			last := len(m.finalizationCBs) - 1
+			m.finalizationCBs[i] = m.finalizationCBs[last]
+			m.finalizationCBs[last] = nil
+			m.finalizationCBs = m.finalizationCBs[:last]
+			continue
+		}
+		i++
+	}
 	// TODO update DB for v1 : blockV1, trLocatorByHash
 	return nil
 }
@@ -916,12 +927,26 @@ func (m *manager) getLastBlock() (module.Block, error) {
 	return m.getBlockByHeight(height)
 }
 
-func (m *manager) WaitForBlock(height int64) (module.Block, error) {
+func (m *manager) WaitForBlock(height int64) (<-chan module.Block, error) {
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	for m.finalized.block.Height() < height {
-		m.newHeight.Wait()
+	bch := make(chan module.Block, 1)
+
+	blk, err := m.getBlockByHeight(height)
+	if err == nil {
+		bch <- blk
+		return bch, nil
+	} else if err != common.ErrNotFound {
+		return nil, err
 	}
-	return m.getBlockByHeight(height)
+
+	m.finalizationCBs = append(m.finalizationCBs, func(blk module.Block) bool {
+		if blk.Height() == height {
+			bch <- blk
+			return true
+		}
+		return false
+	})
+	return bch, nil
 }

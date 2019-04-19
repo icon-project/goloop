@@ -36,8 +36,9 @@ type BlockManager interface {
 	GetLastBlock() (Block, error)
 	GetBlock(id []byte) (Block, error)
 
-	// WaitForBlock blocks until the block with the given height is finalized.
-	WaitForBlock(height int64) (Block, error)
+	// WaitForBlock returns a channel that receives the block with the given
+	// height.
+	WaitForBlock(height int64) (<-chan Block, error)
 
 	//  NewBlockFromReader creates a Block from reader. The returned block
 	//	shall be imported by ImportBlock before it is Committed or Finalized.
