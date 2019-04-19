@@ -48,6 +48,11 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 
 	pMetric := metric.NewTransactionMetric(chain.MetricContext(), metric.TxTypePatch)
 	nMetric := metric.NewTransactionMetric(chain.MetricContext(), metric.TxTypeNormal)
+	cm, err := contract.NewContractManager(chain.Database(), chainRoot)
+	if err != nil {
+		log.Printf("FAIL to create contractManager : %v\n", err)
+		return nil //, err
+	}
 
 	mgr := &manager{
 		patchMetric:  pMetric,
@@ -56,7 +61,7 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 		normalTxPool: NewTransactionPool(chain.NID(), bk, nMetric),
 		db:           chain.Database(),
 		chain:        chain,
-		cm:           contract.NewContractManager(chain.Database(), chainRoot),
+		cm:           cm,
 		eem:          eem,
 	}
 	if nm != nil {

@@ -306,7 +306,7 @@ func (cm *contractManager) PrepareContractStore(
 	return cs, nil
 }
 
-func NewContractManager(db db.Database, chainRoot string) ContractManager {
+func NewContractManager(db db.Database, chainRoot string) (ContractManager, error) {
 	/*
 		contractManager has root path of each service manager's contract file
 		So contractManager has to be initialized
@@ -314,21 +314,26 @@ func NewContractManager(db db.Database, chainRoot string) ContractManager {
 	*/
 	// To manage separate contract store for each chain, add chain ID to
 	// parameter here and add it to storeRoot.
-
-	// remove tmp to prepare contract
 	contractDir := path.Join(chainRoot, contractRoot)
-	storeRoot, _ := filepath.Abs(contractDir)
+	var storeRoot string
+	if !filepath.IsAbs(contractDir) {
+		var err error
+		storeRoot, err = filepath.Abs(contractDir)
+		if err != nil {
+			return nil, errors.UnknownError.Wrapf(err, "FAIL to get abs(%s)", contractDir)
+		}
+	} else {
+		storeRoot = contractDir
+	}
 	if _, err := os.Stat(storeRoot); os.IsNotExist(err) {
-		// TODO check error
-		os.MkdirAll(storeRoot, 0755)
+		if err := os.MkdirAll(storeRoot, 0755); err != nil {
+			return nil, errors.UnknownError.Wrapf(err, "FAIL to make dir(%s)", contractDir)
+		}
 	}
 	tmp := filepath.Join(storeRoot, tmpRoot)
 	if _, err := os.Stat(tmp); !os.IsNotExist(err) {
-		if err := os.RemoveAll(tmp); err != nil {
-			// TODO remove panic and return error
-			log.Panicf("Failed to remove %s\n", tmp)
-		}
+		os.RemoveAll(tmp)
 	}
 	return &contractManager{db: db, storeRoot: storeRoot,
-		storageCache: make(map[string]*storageCache)}
+		storageCache: make(map[string]*storageCache)}, nil
 }
