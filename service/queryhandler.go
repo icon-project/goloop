@@ -46,8 +46,11 @@ func (qh *QueryHandler) Query(ctx contract.Context) (module.Status, interface{})
 	// Execute
 	status, _, result, _ := cc.Call(handler)
 	cc.Dispose()
-	msg, _ := common.DecodeAny(result)
-	return status, msg
+	if status != module.StatusSuccess {
+		return status, nil
+	}
+	value, _ := common.DecodeAny(result)
+	return status, value
 }
 
 func NewQueryHandler(cm contract.ContractManager, to module.Address, dataType *string, data []byte) (*QueryHandler, error) {

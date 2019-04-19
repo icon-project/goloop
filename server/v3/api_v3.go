@@ -3,6 +3,7 @@ package v3
 import (
 	"bytes"
 	"encoding/hex"
+	"github.com/icon-project/goloop/common/errors"
 	"strconv"
 
 	"github.com/icon-project/goloop/common"
@@ -155,19 +156,13 @@ func call(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	sm := chain.ServiceManager()
 
 	block, err := bm.GetLastBlock()
-	status, result, err := sm.Call(block.Result(), block.NextValidators(), params.RawMessage(), block)
+	result, err := sm.Call(block.Result(), block.NextValidators(), params.RawMessage(), block)
 	if err != nil {
-		return nil, jsonrpc.ErrInternal()
-	}
-	if status != module.StatusSuccess {
-		msg, ok := result.(string)
-		if !ok {
-			msg = string(status)
-		}
+		status := errors.CodeOf(err)
 		return nil, &jsonrpc.Error{
 			// TODO Is it correct if our error code is in application error range?
 			Code:    jsonrpc.ErrorCode(-32500 - int(status)),
-			Message: msg,
+			Message: err.Error(),
 		}
 	} else {
 		return result, nil

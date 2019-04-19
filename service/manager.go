@@ -312,7 +312,7 @@ func (m *manager) SendTransaction(txi interface{}) ([]byte, error) {
 
 func (m *manager) Call(resultHash []byte,
 	vl module.ValidatorList, js []byte, bi module.BlockInfo,
-) (module.Status, interface{}, error) {
+) (interface{}, error) {
 	type callJSON struct {
 		To       common.Address  `json:"to"`
 		DataType *string         `json:"dataType"`
@@ -337,7 +337,10 @@ func (m *manager) Call(resultHash []byte,
 		return module.StatusSystemError, err.Error(), nil
 	}
 	status, result := qh.Query(contract.NewContext(wc, m.cm, m.eem, m.chain))
-	return status, result, nil
+	if status != module.StatusSuccess {
+		return nil, scoreresult.NewBase(status, status.String())
+	}
+	return result, nil
 }
 
 func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {

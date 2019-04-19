@@ -691,7 +691,7 @@ func (sm *testServiceManager) SendTransaction(tx interface{}) ([]byte, error) {
 	return nil, errors.Errorf("bad type")
 }
 
-func (sm *testServiceManager) Call(result []byte, vl module.ValidatorList, js []byte, bi module.BlockInfo) (module.Status, interface{}, error) {
+func (sm *testServiceManager) Call(result []byte, vl module.ValidatorList, js []byte, bi module.BlockInfo) (interface{}, error) {
 	panic("not implemented")
 }
 
