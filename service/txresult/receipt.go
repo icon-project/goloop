@@ -44,6 +44,10 @@ func (log *eventLog) Address() module.Address {
 	return &log.data.Addr
 }
 
+func (log *eventLog) Indexed() [][]byte {
+	return log.data.Indexed
+}
+
 func (log *eventLog) Data() [][]byte {
 	return log.data.Data
 }

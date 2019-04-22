@@ -115,6 +115,7 @@ func (s Status) String() string {
 
 type EventLog interface {
 	Address() Address
+	Indexed() [][]byte
 	Data() [][]byte
 }
 
