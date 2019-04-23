@@ -37,35 +37,35 @@ type eventLogData struct {
 }
 
 type eventLog struct {
-	data eventLogData
+	eventLogData
 }
 
 func (log *eventLog) Address() module.Address {
-	return &log.data.Addr
+	return &log.eventLogData.Addr
 }
 
 func (log *eventLog) Indexed() [][]byte {
-	return log.data.Indexed
+	return log.eventLogData.Indexed
 }
 
 func (log *eventLog) Data() [][]byte {
-	return log.data.Data
+	return log.eventLogData.Data
 }
 
 func (log *eventLog) ToJSON(v int) (*eventLogJSON, error) {
-	_, pts := DecomposeEventSignature(string(log.data.Indexed[0]))
-	if len(pts)+1 != len(log.data.Indexed)+len(log.data.Data) {
+	_, pts := DecomposeEventSignature(string(log.eventLogData.Indexed[0]))
+	if len(pts)+1 != len(log.eventLogData.Indexed)+len(log.eventLogData.Data) {
 		return nil, errors.InvalidStateError.New("NumberOfParametersAreNotSameAsData")
 	}
 
 	eljson := new(eventLogJSON)
-	eljson.Addr = log.data.Addr
-	eljson.Indexed = make([]string, len(log.data.Indexed))
-	eljson.Data = make([]string, len(log.data.Data))
+	eljson.Addr = log.eventLogData.Addr
+	eljson.Indexed = make([]string, len(log.eventLogData.Indexed))
+	eljson.Data = make([]string, len(log.eventLogData.Data))
 
 	aidx := 0
-	eljson.Indexed[0] = string(log.data.Indexed[0])
-	for i, v := range log.data.Indexed[1:] {
+	eljson.Indexed[0] = string(log.eventLogData.Indexed[0])
+	for i, v := range log.eventLogData.Indexed[1:] {
 		if s, err := EventDataBytesToStringByType(pts[aidx], v); err != nil {
 			return nil, err
 		} else {
@@ -73,7 +73,7 @@ func (log *eventLog) ToJSON(v int) (*eventLogJSON, error) {
 			aidx++
 		}
 	}
-	for i, v := range log.data.Data {
+	for i, v := range log.eventLogData.Data {
 		if s, err := EventDataBytesToStringByType(pts[aidx], v); err != nil {
 			return nil, err
 		} else {
@@ -306,12 +306,12 @@ func (r *receipt) UnmarshalJSON(bs []byte) error {
 
 func (r *receipt) AddLog(addr module.Address, indexed, data [][]byte) {
 	log := new(eventLog)
-	log.data.Addr.SetBytes(addr.Bytes())
-	log.data.Indexed = indexed
-	log.data.Data = data
+	log.eventLogData.Addr.SetBytes(addr.Bytes())
+	log.eventLogData.Indexed = indexed
+	log.eventLogData.Data = data
 
 	r.data.EventLogs = append(r.data.EventLogs, log)
-	r.data.LogBloom.AddLog(&log.data.Addr, log.data.Indexed)
+	r.data.LogBloom.AddLog(&log.eventLogData.Addr, log.eventLogData.Indexed)
 }
 
 func (r *receipt) SetCumulativeStepUsed(cumulativeUsed *big.Int) {
@@ -449,23 +449,23 @@ func EventDataStringToBytesByType(t string, v string) ([]byte, error) {
 
 func eventLogFromJSON(e *eventLogJSON) (*eventLog, error) {
 	el := new(eventLog)
-	el.data.Addr = e.Addr
-	el.data.Indexed = make([][]byte, len(e.Indexed))
-	el.data.Data = make([][]byte, len(e.Data))
+	el.eventLogData.Addr = e.Addr
+	el.eventLogData.Indexed = make([][]byte, len(e.Indexed))
+	el.eventLogData.Data = make([][]byte, len(e.Data))
 	_, pts := DecomposeEventSignature(e.Indexed[0])
 
 	if len(pts)+1 != len(e.Indexed)+len(e.Data) {
 		return nil, errors.InvalidStateError.New("InvalidSignatureCount")
 	}
 
-	el.data.Indexed[0] = []byte(e.Indexed[0])
+	el.eventLogData.Indexed[0] = []byte(e.Indexed[0])
 
 	aidx := 0
 	for i, is := range e.Indexed[1:] {
 		if bs, err := EventDataStringToBytesByType(pts[aidx], is); err != nil {
 			return nil, err
 		} else {
-			el.data.Indexed[i+1] = bs
+			el.eventLogData.Indexed[i+1] = bs
 			aidx++
 		}
 	}
@@ -474,7 +474,7 @@ func eventLogFromJSON(e *eventLogJSON) (*eventLog, error) {
 		if bs, err := EventDataStringToBytesByType(pts[aidx], is); err != nil {
 			return nil, err
 		} else {
-			el.data.Data[i] = bs
+			el.eventLogData.Data[i] = bs
 			aidx++
 		}
 	}
