@@ -27,8 +27,8 @@ public class BasicScoreTest {
 
     @BeforeClass
     public static void setUp() {
-        Env.Node node = Env.nodes[0];
-        chain = Env.nodes[0].chains[0];
+        Env.Node node = Env.getInstance().nodes[0];
+        chain = node.chains[0];
         iconService = new IconService(new HttpProvider(node.endpointUrl));
     }
 
@@ -40,27 +40,27 @@ public class BasicScoreTest {
 
         // transfer initial icx to owner address
         LOG.infoEntering("transfer", "initial icx to owner address");
-        Utils.transferIcx(iconService, chain.godWallet, ownerWallet.getAddress(), "100");
+        Utils.transferIcx(iconService, chain.networkId, chain.godWallet, ownerWallet.getAddress(), "100");
         Utils.ensureIcxBalance(iconService, ownerWallet.getAddress(), 0, 100);
         LOG.infoExiting();
 
         // deploy sample token
         LOG.infoEntering("deploy", "sample token SCORE");
         long initialSupply = 1000;
-        SampleTokenScore sampleTokenScore = SampleTokenScore.mustDeploy(iconService, ownerWallet,
-                chain.networkId, BigInteger.valueOf(initialSupply), 18);
+        SampleTokenScore sampleTokenScore = SampleTokenScore.mustDeploy(iconService, chain, ownerWallet,
+                BigInteger.valueOf(initialSupply), 18);
         LOG.infoExiting();
 
         // deploy crowd sale
         LOG.infoEntering("deploy", "crowd sale SCORE");
-        CrowdSaleScore crowdSaleScore = CrowdSaleScore.mustDeploy(iconService, ownerWallet,
-                chain.networkId, new BigInteger("100"), sampleTokenScore.getAddress(), 10);
+        CrowdSaleScore crowdSaleScore = CrowdSaleScore.mustDeploy(iconService, chain, ownerWallet,
+                new BigInteger("100"), sampleTokenScore.getAddress(), 10);
         LOG.infoExiting();
 
         // send 50 icx to Alice
         LOG.infoEntering("transfer", "50 to Alice; 100 to Bob");
-        Utils.transferIcx(iconService, chain.godWallet, aliceWallet.getAddress(), "50");
-        Utils.transferIcx(iconService, chain.godWallet, bobWallet.getAddress(), "100");
+        Utils.transferIcx(iconService, chain.networkId, chain.godWallet, aliceWallet.getAddress(), "50");
+        Utils.transferIcx(iconService, chain.networkId, chain.godWallet, bobWallet.getAddress(), "100");
         Utils.ensureIcxBalance(iconService, aliceWallet.getAddress(), 0, 50);
         Utils.ensureIcxBalance(iconService, bobWallet.getAddress(), 0, 100);
         LOG.infoExiting();
@@ -72,8 +72,8 @@ public class BasicScoreTest {
 
         // Alice: send icx to crowd sale score from Alice and Bob
         LOG.infoEntering("transfer", "to crowdSaleScore(40 from Alice, 60 from Bob)");
-        Utils.transferIcx(iconService, aliceWallet, crowdSaleScore.getAddress(), "40");
-        Utils.transferIcx(iconService, bobWallet, crowdSaleScore.getAddress(), "60");
+        Utils.transferIcx(iconService, chain.networkId, aliceWallet, crowdSaleScore.getAddress(), "40");
+        Utils.transferIcx(iconService, chain.networkId, bobWallet, crowdSaleScore.getAddress(), "60");
         sampleTokenScore.ensureTokenBalance(aliceWallet, 40);
         sampleTokenScore.ensureTokenBalance(bobWallet, 60);
         LOG.infoExiting();

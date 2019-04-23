@@ -6,77 +6,145 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.util.LinkedList;
-import java.util.List;
 
 public class Env {
     public static final Log LOG = Log.getGlobal();
 
-    public static Node[] nodes;
+    private class ChannelEnv {
+        private final String godPath;
+        private final String governorPath;
+        private final BigInteger networkId;
+
+        ChannelEnv(String god, BigInteger networkId, String govenor) {
+            this.godPath = god;
+            if (networkId == null) {
+                this.networkId = Constants.DEFAULT_NID;
+            }
+            else {
+                this.networkId = networkId;
+            }
+            this.governorPath = govenor;
+        }
+
+        KeyWallet getGodWallet() {
+            KeyWallet wallet = null;
+            try {
+                if (godPath == null) {
+                    wallet = Utils.readWalletFromFile("./data/keystore_god.json", "gochain");
+                } else {
+                    wallet = Utils.readWalletFromFile(godPath, "gochain");
+                }
+            }
+            catch (IOException ex){
+                ex.printStackTrace();
+            }
+            return wallet;
+        }
+
+        BigInteger getNetworkId() {
+            return networkId;
+        }
+
+        KeyWallet getGovernorWallet() {
+            KeyWallet wallet = null;
+            try {
+                if (governorPath == null) {
+                    wallet = KeyWallet.create();
+                } else {
+                    wallet = Utils.readWalletFromFile(governorPath, "governor");
+                }
+            }
+            catch (Exception ex) {
+                ex.printStackTrace();
+            }
+            return wallet;
+        }
+    }
 
     public static class Node {
         public final String endpointUrl;
         public final Chain[] chains;
 
-        public Node(String endpointUrl, Chain[] chains) {
+        public Node(String endpointUrl, ChannelEnv[] env) {
             this.endpointUrl = endpointUrl;
-            this.chains = chains;
+
+//            assert(env is null)
+            this.chains = new Chain[env.length];
+            for(int i = 0; i < env.length; i++) {
+                ChannelEnv chEnv = env[i];
+                Chain chain = new Chain(chEnv.getGodWallet(), chEnv.getNetworkId(), chEnv.getGovernorWallet());
+                this.chains[i] = chain;
+            }
         }
     }
 
     public static class Chain {
-        public final BigInteger networkId;
-        public final KeyWallet godWallet;
+        public KeyWallet godWallet;
+        public KeyWallet governorWallet;
+        public BigInteger networkId;
+        // 0 : init, 1 : enable, -1 : disable
+        public int audit;
 
         public Chain(KeyWallet god) {
             this.networkId = Constants.DEFAULT_NID;
             this.godWallet = god;
+            this.audit = 0;
         }
 
-        public Chain(KeyWallet god, BigInteger nid) {
-            this.networkId = nid;
-            this.godWallet = god;
+        public Chain(KeyWallet god, BigInteger nid, KeyWallet governor) {
+            godWallet = god;
+            networkId = nid;
+            governorWallet = governor;
+        }
+
+        public boolean isAudit() {
+            if ( audit == 0 ) {
+                // check audit
+                // 0 : init, 1 : enable, -1 : disable
+            }
+            return this.audit > 0;
         }
     }
 
-    private static KeyWallet godWallet;
-    private static List<String> endPoints;
+    public static Node[] nodes;
 
-    public static KeyWallet getGodWallet() {
-        if (godWallet == null) {
-            String path = System.getProperty("godKey");
-            if (path == null) {
-                return null;
-            }
-            try {
-                godWallet = Utils.readWalletFromFile(path, "gochain");
-            } catch (IOException ex) {
-                ex.printStackTrace();
-            }
+    private Env() {
+        // pass node & chain environment
+        String godPath = System.getProperty("godKey");
+
+        String governorPath = System.getProperty("governorKey");
+
+        String endPath = System.getProperty("endpointUrls");
+        nodes = new Node[1];
+        if(endPath == null) {
+            ChannelEnv[]envs = new ChannelEnv[1];
+            envs[0] = new ChannelEnv(godPath, Constants.DEFAULT_NID, governorPath);
+            nodes[0] = new Node("http://localhost:9080/api/v3", envs);
         }
-        return godWallet;
-    }
-
-    public static List<String> getEndpoint() {
-        if (endPoints == null) {
-            String path = System.getProperty("endpointUrls");
-            if (path == null) {
-                return null;
-            }
-            List<String> list = new LinkedList<>();
+        else {
             try {
-                BufferedReader reader = new BufferedReader(new FileReader(path));
+                BufferedReader reader = new BufferedReader(new FileReader(endPath));
                 String endpoint;
+                ChannelEnv[]envs = new ChannelEnv[1];
+                envs[0] = new ChannelEnv(godPath, Constants.DEFAULT_NID, governorPath);
+                int index = 0;
                 while ((endpoint = reader.readLine()) != null) {
-                    list.add(endpoint);
+                    nodes[index] = new Node(endpoint, envs);
+                    index++;
                 }
                 reader.close();
-                endPoints = list;
             } catch (IOException ex) {
-                System.out.println("Failed to get endpoint. path = " + path);
+                System.out.println("Failed to get endpoint. path = " + endPath);
                 ex.printStackTrace();
             }
         }
-        return endPoints;
+    }
+
+    private static class LazyHolder {
+        public static final Env INSTANCE = new Env();
+    }
+
+    public static Env getInstance() {
+        return LazyHolder.INSTANCE;
     }
 }

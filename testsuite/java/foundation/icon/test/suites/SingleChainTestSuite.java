@@ -38,21 +38,6 @@ public class SingleChainTestSuite {
             startGoLoop();
         }
 
-        KeyWallet god = Env.getGodWallet();
-        if(god == null) {
-            god = Utils.readWalletFromFile("./data/keystore_god.json", "gochain");
-        }
-        assertTrue(god!=null);
-
-        Env.Chain chain = new Env.Chain(god);
-        List<String> endpoint = Env.getEndpoint();
-        if(endpoint==null) {
-            endpoint = new LinkedList<>();
-            endpoint.add("http://localhost:9080/api/v3");
-        }
-        Env.Node node = new Env.Node(endpoint.get(0), new Env.Chain[]{chain});
-        Env.nodes = new Env.Node[]{node};
-
         Env.LOG.setLevel(Config.TEST_LOG_LEVEL);
     }
 

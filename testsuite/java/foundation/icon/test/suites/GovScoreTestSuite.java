@@ -6,18 +6,13 @@ import foundation.icon.test.cases.DeployTest;
 import foundation.icon.test.cases.ScoreTest;
 import foundation.icon.test.cases.TransferTest;
 import foundation.icon.test.common.Env;
-import foundation.icon.test.common.Utils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
-import static org.junit.Assert.*;
-
 import java.io.File;
 import java.io.IOException;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -39,21 +34,6 @@ public class GovScoreTestSuite {
         if(bRunChain) {
             startGoLoop();
         }
-
-        KeyWallet god = Env.getGodWallet();
-        if(god == null) {
-            god = Utils.readWalletFromFile("./data/keystore_god.json", "gochain");
-        }
-        assertTrue(god!=null);
-
-        Env.Chain chain = new Env.Chain(god);
-        List<String> endpoint = Env.getEndpoint();
-        if(endpoint==null) {
-            endpoint = new LinkedList<>();
-            endpoint.add("http://localhost:9080/api/v3");
-        }
-        Env.Node node = new Env.Node(endpoint.get(0), new Env.Chain[]{chain});
-        Env.nodes = new Env.Node[]{node};
 
         Env.LOG.setLevel(Config.TEST_LOG_LEVEL);
     }

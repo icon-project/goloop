@@ -26,6 +26,7 @@ import foundation.icon.icx.data.TransactionResult.EventLog;
 import foundation.icon.icx.transport.jsonrpc.RpcError;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
+import foundation.icon.test.score.GovScore;
 
 import java.io.File;
 import java.io.IOException;
@@ -94,9 +95,9 @@ public class Utils {
         }
     }
 
-    public static Bytes transfer(IconService iconService, Wallet fromWallet, Address to, long value) throws IOException {
+    public static Bytes transfer(IconService iconService, BigInteger networkId, Wallet fromWallet, Address to, long value) throws IOException {
         Transaction transaction = TransactionBuilder.newBuilder()
-                .nid(Env.nodes[0].chains[0].networkId)
+                .nid(networkId)
                 .from(fromWallet.getAddress())
                 .to(to)
                 .value(BigInteger.valueOf(value))
@@ -109,9 +110,9 @@ public class Utils {
         return iconService.sendTransaction(signedTransaction).execute();
     }
 
-    public static Bytes transferIcx(IconService iconService, Wallet fromWallet, Address to, String value) throws IOException {
+    public static Bytes transferIcx(IconService iconService, BigInteger networkId, Wallet fromWallet, Address to, String value) throws IOException {
         Transaction transaction = TransactionBuilder.newBuilder()
-                .nid(Env.nodes[0].chains[0].networkId)
+                .nid(networkId)
                 .from(fromWallet.getAddress())
                 .to(to)
                 .value(IconAmount.of(value, IconAmount.Unit.ICX).toLoop())
@@ -124,14 +125,16 @@ public class Utils {
         return iconService.sendTransaction(signedTransaction).execute();
     }
 
-    // TODO What if audit is on?
-    public static Bytes deployScore(IconService iconService, Wallet fromWallet, Address to, String zipfile, RpcObject params) throws IOException {
+    public static Bytes deployScore(IconService iconService, BigInteger networkId, Wallet fromWallet, Address to, String zipfile, RpcObject params, long stepLimit) throws IOException {
         byte[] content = readFile(zipfile);
+        if(stepLimit == -1) {
+            stepLimit = 200000;
+        }
         Transaction transaction = TransactionBuilder.newBuilder()
-                .nid(Env.nodes[0].chains[0].networkId)
+                .nid(networkId)
                 .from(fromWallet.getAddress())
                 .to(to)
-                .stepLimit(new BigInteger("1000"))
+                .stepLimit(BigInteger.valueOf(stepLimit))
                 .timestamp(getMicroTime())
                 .nonce(new BigInteger("1"))
                 .deploy(Constants.CONTENT_TYPE, content)
@@ -142,30 +145,22 @@ public class Utils {
         return iconService.sendTransaction(signedTransaction).execute();
     }
 
-    public static Bytes deployScore(IconService iconService, Wallet fromWallet, String zipfile, RpcObject params, long stepLimit) throws IOException {
-        byte[] content = readFile(zipfile);
-        if(stepLimit == -1) {
-            stepLimit = 200000;
+    public static Bytes installScore(IconService iconService, Env.Chain chain, Wallet fromWallet, String zipfile, RpcObject params, long stepLimit) throws IOException {
+        Bytes txHash = deployScore(iconService, chain.networkId, fromWallet, Constants.CHAINSCORE_ADDRESS, zipfile, params, stepLimit);
+        if(chain.isAudit()) {
+            Bytes acceptHash = new GovScore(iconService, chain).acceptScore(txHash);
+            return acceptHash;
         }
-        Transaction transaction = TransactionBuilder.newBuilder()
-                .nid(Env.nodes[0].chains[0].networkId)
-                .from(fromWallet.getAddress())
-                .to(Constants.ZERO_ADDRESS)
-                .stepLimit(BigInteger.valueOf(stepLimit))
-                .timestamp(getMicroTime())
-                .nonce(new BigInteger("1"))
-                .deploy(Constants.CONTENT_TYPE, content)
-                .params(params)
-                .build();
+        return txHash;
+    }
 
-        SignedTransaction signedTransaction = new SignedTransaction(transaction, fromWallet);
-        try {
-            return iconService.sendTransaction(signedTransaction).execute();
+    public static Bytes updateScore(IconService iconService, Env.Chain chain, Wallet fromWallet, Address scoreAddr, String zipfile, RpcObject params, long stepLimit) throws IOException {
+        Bytes txHash = deployScore(iconService, chain.networkId, fromWallet, scoreAddr, zipfile, params, stepLimit);
+        if(chain.isAudit()) {
+            Bytes acceptHash = new GovScore(iconService, chain).acceptScore(txHash);
+            return acceptHash;
         }
-        catch (Exception ex) {
-            System.out.println("deployScore err : " + ex.getMessage() + ", " +  ex);
-            throw ex;
-        }
+        return txHash;
     }
 
     private static byte[] readFile(String zipfile) throws IOException {

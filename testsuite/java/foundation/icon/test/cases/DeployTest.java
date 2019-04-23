@@ -31,8 +31,6 @@ test cases
 8. sendTransaction with invalid signature
  */
 public class DeployTest {
-    private static KeyWallet govWallet;
-    private static KeyWallet godWallet;
     private static IconService iconService;
     private static Env.Chain chain;
     private static GovScore govScore;
@@ -45,12 +43,11 @@ public class DeployTest {
 
     @BeforeClass
     public static void init() throws Exception {
-        Env.Node node = Env.nodes[0];
-        chain = Env.nodes[0].chains[0];
-        godWallet = chain.godWallet;
+        Env.Node node = Env.getInstance().nodes[0];
+        chain = node.chains[0];
         iconService = new IconService(new HttpProvider(node.endpointUrl));
-        govWallet = KeyWallet.create();
-        govScore = new GovScore(iconService, Env.nodes[0].chains[0].networkId, govWallet);
+        chain.governorWallet = KeyWallet.create();
+        govScore = new GovScore(iconService, chain);
         initDeploy();
     }
 
@@ -58,18 +55,17 @@ public class DeployTest {
         RpcObject params = new RpcObject.Builder()
                 .put("contextType", new RpcValue("invoke"))
                 .build();
-        defMaxStepLimit = Utils.icxCall(iconService, BigInteger.valueOf(0), govWallet, Constants.CHAINSCORE_ADDRESS,
+        defMaxStepLimit = Utils.icxCall(iconService, BigInteger.valueOf(0), chain.governorWallet, Constants.CHAINSCORE_ADDRESS,
                 "getMaxStepLimit", params).asInteger();
 
 
-        defStepCostCC = Utils.icxCall(iconService, BigInteger.valueOf(0), govWallet, Constants.CHAINSCORE_ADDRESS,
+        defStepCostCC = Utils.icxCall(iconService, BigInteger.valueOf(0), chain.governorWallet, Constants.CHAINSCORE_ADDRESS,
                 "getStepCosts", null).asObject().getItem("contractCreate").asInteger();
 
-        defStepPrice = Utils.icxCall(iconService, BigInteger.valueOf(0), govWallet, Constants.CHAINSCORE_ADDRESS,
+        defStepPrice = Utils.icxCall(iconService, BigInteger.valueOf(0), chain.governorWallet, Constants.CHAINSCORE_ADDRESS,
                 "getStepPrice", null).asInteger();
 
-
-        Bytes txHash = Utils.transfer(iconService, godWallet, govWallet.getAddress(), 9999999);
+        Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, chain.governorWallet.getAddress(), 9999999);
         try {
             TransactionResult result = Utils.getTransactionResult(iconService, txHash, 5000);
             assertEquals(result.getStatus(), Constants.STATUS_SUCCESS);
@@ -77,8 +73,6 @@ public class DeployTest {
         catch (ResultTimeoutException ex) {
             throw ex;
         }
-        BigInteger bal = iconService.getBalance(govWallet.getAddress()).execute();
-
         govScore.setMaxStepLimit("invoke", invokeMaxStepLimit);
         govScore.setStepCost("contractCreate", stepCostCC);
         govScore.setStepPrice(stepPrice);
@@ -100,7 +94,7 @@ public class DeployTest {
         }
 
         try {
-            HelloWorld.mustDeploy(iconService, owner, Env.nodes[0].chains[0].networkId);
+            HelloWorld.install(iconService, chain, owner);
         }
         catch(ResultTimeoutException ex) {
             return;
@@ -117,7 +111,7 @@ public class DeployTest {
         }
 
         long value = 10;
-        Utils.transfer(iconService, godWallet, owner.getAddress(), value);
+        Utils.transfer(iconService, chain.networkId, chain.godWallet, owner.getAddress(), value);
         while(true) {
             bal = iconService.getBalance(owner.getAddress()).execute();
             if(bal.compareTo(BigInteger.valueOf(value)) == 0) {
@@ -126,7 +120,7 @@ public class DeployTest {
         }
 
         try {
-            HelloWorld.mustDeploy(iconService, owner, Env.nodes[0].chains[0].networkId, 1);
+            HelloWorld.install(iconService, chain, owner, 1);
         }
         catch(TransactionFailureException ex) {
             return;
@@ -143,7 +137,7 @@ public class DeployTest {
         }
 
         long value = 100000000;
-        Utils.transfer(iconService, godWallet, owner.getAddress(), value);
+        Utils.transfer(iconService, chain.networkId, chain.godWallet, owner.getAddress(), value);
         while(true) {
             bal = iconService.getBalance(owner.getAddress()).execute();
             if(bal.compareTo(BigInteger.valueOf(value)) == 0) {
@@ -154,7 +148,7 @@ public class DeployTest {
                 .put("invalidParam", new RpcValue("invalid"))
                 .build();
         try {
-            HelloWorld.mustDeploy(iconService, owner, params, Env.nodes[0].chains[0].networkId, -1);
+            HelloWorld.install(iconService, chain, owner, params, -1);
         }
         catch(TransactionFailureException ex) {
             return;
@@ -170,7 +164,7 @@ public class DeployTest {
             throw new Exception();
         }
         long value = 999999999;
-        Utils.transfer(iconService, godWallet, owner.getAddress(), value);
+        Utils.transfer(iconService, chain.networkId, chain.godWallet, owner.getAddress(), value);
         while(true) {
             bal = iconService.getBalance(owner.getAddress()).execute();
             if(bal.compareTo(BigInteger.valueOf(value)) == 0) {
@@ -178,7 +172,7 @@ public class DeployTest {
             }
         }
 
-        HelloWorld score = HelloWorld.mustDeploy(iconService, owner, Env.nodes[0].chains[0].networkId, 10000);
+        HelloWorld score = HelloWorld.install(iconService, chain, owner, 10000);
 
         score.invokeHello(owner);
 
@@ -186,7 +180,7 @@ public class DeployTest {
                 .put("invalidParam", new RpcValue("invalid"))
                 .build();
         try {
-            score.update(iconService, owner, params, Env.nodes[0].chains[0].networkId);
+            score.update(iconService, chain, owner, params);
         }
         catch (TransactionFailureException ex) {
             return;

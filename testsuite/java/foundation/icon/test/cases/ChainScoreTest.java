@@ -32,38 +32,27 @@ public class ChainScoreTest{
     private static Env.Chain chain;
     private static IconService iconService;
 
-    public ChainScoreTest(ChainScoreInput input){
-        toAddr = input.getTo();
+    public ChainScoreTest(Address input, String toScore){
+        toAddr = input;
     }
 
-    static class ChainScoreInput {
-        private Address to;
-        public ChainScoreInput(Address to) {
-            this.to = to;
-        }
-        public Address getTo() {
-            return this.to;
-        }
-    }
-
-    @Parameterized.Parameters
-    public static Collection<ChainScoreInput> initInput() {
-        return Arrays.asList(
-                new ChainScoreInput(Constants.CHAINSCORE_ADDRESS),
-                new ChainScoreInput(Constants.GOV_ADDRESS)
-        );
+    @Parameterized.Parameters(name = "{1}")
+    public static Iterable<Object[]> initInput() {
+        return Arrays.asList(new Object[][] {
+                {Constants.CHAINSCORE_ADDRESS, "ToChainScore"},
+                {Constants.GOV_ADDRESS, "ToGovernanceScore"},
+        });
     }
 
     private static KeyWallet helloWorldOwner;
     private static KeyWallet[]testWallets;
     private static final int testWalletNum = 3;
     private static HelloWorld helloWorld;
-    private static boolean isAuditEnabled;
 
     @BeforeClass
     public static void init() throws Exception {
-        Env.Node node = Env.nodes[0];
-        chain = Env.nodes[0].chains[0];
+        Env.Node node = Env.getInstance().nodes[0];
+        chain = node.chains[0];
         iconService = new IconService(new HttpProvider(node.endpointUrl));
         testWallets = new KeyWallet[testWalletNum];
         initChainScore();
@@ -87,7 +76,7 @@ public class ChainScoreTest{
         for (int i = 0; i < testWalletNum + 1; i++) {
             KeyWallet wallet = KeyWallet.create();
             try {
-                txHash[i] = Utils.transfer(iconService, chain.godWallet
+                txHash[i] = Utils.transfer(iconService, chain.networkId, chain.godWallet
                         , wallet.getAddress(), value);
             } catch (Exception ex) {
                 System.out.println("Failed to transfer");
@@ -100,8 +89,7 @@ public class ChainScoreTest{
             }
         }
 
-        helloWorld = HelloWorld.mustDeploy(iconService,
-                helloWorldOwner, chain.networkId);
+        helloWorld = HelloWorld.install(iconService, chain, helloWorldOwner);
     }
 
     @AfterClass
@@ -213,11 +201,11 @@ public class ChainScoreTest{
     @Ignore
     @Test
     public void acceptScore() throws Exception{
-        if (!isAuditEnabled) {
+        if (!chain.isAudit()) {
             return;
         }
-        Bytes txHash = Utils.deployScore(iconService, helloWorldOwner,
-                Constants.SCORE_ROOT + "helloWorld.zip", null, 10000);
+        Bytes txHash = Utils.deployScore(iconService, chain.networkId, helloWorldOwner, Constants.CHAINSCORE_ADDRESS,
+                Constants.SCORE_ROOT + "helloWorld.zip", null, -1);
         TransactionResult result = Utils.getTransactionResult(iconService, txHash, 5000);
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new Exception();
@@ -250,11 +238,11 @@ public class ChainScoreTest{
     @Ignore
     @Test
     public void rejectScore() throws Exception {
-        if (!isAuditEnabled) {
+        if (!chain.isAudit()) {
             return;
         }
-        Bytes txHash = Utils.deployScore(iconService, helloWorldOwner,
-                Constants.SCORE_ROOT + "helloWorld.zip", null, 10000);
+        Bytes txHash = Utils.deployScore(iconService, chain.networkId, helloWorldOwner, Constants.CHAINSCORE_ADDRESS,
+                Constants.SCORE_ROOT + "helloWorld.zip", null, -1);
         TransactionResult result = Utils.getTransactionResult(iconService, txHash, 5000);
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new Exception();

@@ -22,10 +22,7 @@ import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
-import foundation.icon.test.common.Constants;
-import foundation.icon.test.common.ResultTimeoutException;
-import foundation.icon.test.common.TransactionFailureException;
-import foundation.icon.test.common.Utils;
+import foundation.icon.test.common.*;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -35,7 +32,7 @@ import static foundation.icon.test.common.Env.LOG;
 public class CrowdSaleScore extends Score {
     private static final String PATH = Constants.SCORE_ROOT + "crowdSale.zip";
 
-    public static CrowdSaleScore mustDeploy(IconService service, Wallet wallet, BigInteger nid,
+    public static CrowdSaleScore mustDeploy(IconService service, Env.Chain chain, Wallet wallet,
                                             BigInteger goalInIcx, Address tokenScore, int durationInBlocks)
             throws ResultTimeoutException, TransactionFailureException, IOException
     {
@@ -46,13 +43,13 @@ public class CrowdSaleScore extends Score {
                 .build();
         return new CrowdSaleScore(
                 service,
-                Score.mustDeploy(service, wallet, PATH, params),
-                nid
+                chain,
+                Score.install(service, chain, wallet, PATH, params)
         );
     }
 
-    public CrowdSaleScore(IconService iconService, Address scoreAddress, BigInteger nid) {
-        super(iconService, scoreAddress, nid);
+    public CrowdSaleScore(IconService iconService, Env.Chain chain, Address scoreAddress) {
+        super(iconService, chain, scoreAddress);
     }
 
     public TransactionResult checkGoalReached(Wallet wallet)

@@ -24,7 +24,7 @@ public class RevertTest {
 
     @BeforeClass
     public static void setUp() {
-        Env.Node node = Env.nodes[0];
+        Env.Node node = Env.getInstance().nodes[0];
         chain = node.chains[0];
         iconService = new IconService(new HttpProvider(node.endpointUrl));
     }
@@ -35,11 +35,11 @@ public class RevertTest {
 
         LOG.infoEntering("deploy", "SCORE1");
         StepCounterScore score1 = StepCounterScore.mustDeploy(iconService,
-                ownerWallet, chain.networkId);
+                chain, ownerWallet);
         LOG.infoExiting("deployed:" + score1);
         LOG.infoEntering("deploy", "SCORE2");
         StepCounterScore score2 = StepCounterScore.mustDeploy(iconService,
-                ownerWallet, chain.networkId);
+                chain, ownerWallet);
         LOG.infoExiting("deployed:" + score2);
 
         TransactionResult txr;

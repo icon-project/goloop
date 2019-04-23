@@ -8,6 +8,7 @@ import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
+import foundation.icon.test.common.Env;
 import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.TransactionFailureException;
 
@@ -18,18 +19,18 @@ public class StepCounterScore extends Score {
     private static final String PATH = Constants.SCORE_ROOT + "step_counter.zip";
     protected final static BigInteger STEPS = BigInteger.valueOf(3).multiply(BigInteger.TEN.pow(6));
 
-    public static StepCounterScore mustDeploy(IconService service, Wallet wallet, BigInteger nid)
+    public static StepCounterScore mustDeploy(IconService service, Env.Chain chain, Wallet wallet)
             throws IOException, TransactionFailureException, ResultTimeoutException
     {
         return new StepCounterScore(
                 service,
-                Score.mustDeploy(service, wallet, PATH, null),
-                nid
+                chain,
+                Score.install(service, chain, wallet, PATH, null)
         );
     }
 
-    public StepCounterScore(IconService service, Address target, BigInteger nid) {
-        super(service, target, nid);
+    public StepCounterScore(IconService service, Env.Chain chain, Address target) {
+        super(service, chain, target);
     }
 
     public TransactionResult increaseStep(Wallet wallet) throws ResultTimeoutException, IOException {

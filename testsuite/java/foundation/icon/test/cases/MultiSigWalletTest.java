@@ -22,7 +22,7 @@ public class MultiSigWalletTest {
 
     @BeforeClass
     public static void setUp() {
-        Env.Node node = Env.nodes[0];
+        Env.Node node = Env.getInstance().nodes[0];
         chain = node.chains[0];
         iconService = new IconService(new HttpProvider(node.endpointUrl));
     }
@@ -41,13 +41,13 @@ public class MultiSigWalletTest {
         LOG.info("deploy: MultiSigWalletScore");
         Address[] walletOwners =
                 new Address[] {ownerWallet.getAddress(), aliceWallet.getAddress(), bobWallet.getAddress()};
-        MultiSigWalletScore multiSigWalletScore = MultiSigWalletScore.mustDeploy(iconService, ownerWallet,
-                chain.networkId, walletOwners, 2);
+        MultiSigWalletScore multiSigWalletScore =
+                MultiSigWalletScore.mustDeploy(iconService, chain, ownerWallet, walletOwners, 2);
         Address multiSigWalletAddress = multiSigWalletScore.getAddress();
 
         // send 3 icx to the multiSigWallet
         LOG.info("transfer: 3 icx to multiSigWallet");
-        Utils.transferIcx(iconService, chain.godWallet, multiSigWalletAddress, "3");
+        Utils.transferIcx(iconService, chain.networkId, chain.godWallet, multiSigWalletAddress, "3");
         Utils.ensureIcxBalance(iconService, multiSigWalletAddress, 0, 3);
 
         // *** Send 2 icx to Bob (EOA)
@@ -75,7 +75,7 @@ public class MultiSigWalletTest {
         // *** Send 1 icx to Contract
         // deploy sample multiSigWalletScore to accept icx
         LOG.info("deploy: HelloWorld");
-        HelloWorld helloScore = HelloWorld.mustDeploy(iconService, ownerWallet, chain.networkId);
+        HelloWorld helloScore = HelloWorld.install(iconService, chain, ownerWallet);
 
         // 3. tx is initiated by ownerWallet first
         LOG.infoEntering("call", "submitIcxTransaction() - send 1 icx to hello");

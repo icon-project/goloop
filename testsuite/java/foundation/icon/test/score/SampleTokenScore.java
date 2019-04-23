@@ -18,7 +18,7 @@ import static foundation.icon.test.common.Env.LOG;
 public class SampleTokenScore extends Score {
     private static final String PATH = Constants.SCORE_ROOT + "sampleToken.zip";
 
-    public static SampleTokenScore mustDeploy(IconService service, Wallet wallet, BigInteger nid,
+    public static SampleTokenScore mustDeploy(IconService service, Env.Chain chain, Wallet wallet,
                                               BigInteger initialSupply, int decimals)
             throws ResultTimeoutException, TransactionFailureException, IOException
     {
@@ -28,13 +28,13 @@ public class SampleTokenScore extends Score {
                 .build();
         return new SampleTokenScore(
                 service,
-                Score.mustDeploy(service, wallet, PATH, params),
-                nid
+                chain,
+                Score.install(service, chain, wallet, PATH, params)
         );
     }
 
-    public SampleTokenScore(IconService iconService, Address scoreAddress, BigInteger nid) {
-        super(iconService, scoreAddress, nid);
+    public SampleTokenScore(IconService iconService, Env.Chain chain, Address scoreAddress) {
+        super(iconService, chain, scoreAddress);
 
         //TODO: check if this is really a token SCORE that conforms to IRC2
     }
@@ -74,7 +74,7 @@ public class SampleTokenScore extends Score {
                 .build();
 
         Transaction transaction = TransactionBuilder.newBuilder()
-                .nid(Env.nodes[0].chains[0].networkId)
+                .nid(chain.networkId)
                 .from(fromWallet.getAddress())
                 .to(scoreAddress)
                 .stepLimit(STEPS_DEFAULT)

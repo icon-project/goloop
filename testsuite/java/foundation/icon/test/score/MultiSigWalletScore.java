@@ -7,10 +7,7 @@ import foundation.icon.icx.data.IconAmount;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
-import foundation.icon.test.common.Constants;
-import foundation.icon.test.common.ResultTimeoutException;
-import foundation.icon.test.common.TransactionFailureException;
-import foundation.icon.test.common.Utils;
+import foundation.icon.test.common.*;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -19,7 +16,7 @@ public class MultiSigWalletScore extends Score {
     private static final BigInteger STEPS = BigInteger.valueOf(10000000);
     private static final String PATH = Constants.SCORE_ROOT + "multiSigWallet.zip";
 
-    public static MultiSigWalletScore mustDeploy(IconService service, Wallet wallet, BigInteger nid,
+    public static MultiSigWalletScore mustDeploy(IconService service, Env.Chain chain, Wallet wallet,
                                                  Address[] walletOwners, int required)
             throws IOException, TransactionFailureException, ResultTimeoutException {
         StringBuffer buf = new StringBuffer();
@@ -33,13 +30,13 @@ public class MultiSigWalletScore extends Score {
                 .build();
         return new MultiSigWalletScore(
                 service,
-                Score.mustDeploy(service, wallet, PATH, params),
-                nid
+                chain,
+                Score.install(service, chain, wallet, PATH, params)
         );
     }
 
-    public MultiSigWalletScore(IconService iconService, Address scoreAddress, BigInteger nid) {
-        super(iconService, scoreAddress, nid);
+    public MultiSigWalletScore(IconService iconService, Env.Chain chain, Address scoreAddress) {
+        super(iconService, chain, scoreAddress);
     }
 
     public TransactionResult submitIcxTransaction(Wallet fromWallet, Address dest, long value, String description) throws IOException, ResultTimeoutException {

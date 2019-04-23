@@ -15,7 +15,6 @@ import foundation.icon.test.common.Env;
 import foundation.icon.test.common.Utils;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
 
 import static org.junit.Assert.*;
 
@@ -28,7 +27,7 @@ test cases
 1. Not enough balance.
 2. Not enough stepLimit.
 3. Invalid signature
-4. TransferTest coin. check balances of both accounts with GetBalance api.
+coin. check balances of both accounts with GetBalance api.
  - Check balances in every transaction.
  - Check
  set StepPrice 0 or not.
@@ -36,13 +35,11 @@ test cases
 5.
  */
 public class TransferTest {
-    private static KeyWallet godWallet;
     private static KeyWallet[]testWallets;
     private static IconService iconService;
     private static Env.Chain chain;
     private static final int testWalletNum = 10;
     private static GovScore govScore;
-    private static KeyWallet govWallet;
 
     @BeforeClass
     public static void init() throws Exception {
@@ -50,14 +47,12 @@ public class TransferTest {
         for(int i = 0; i < testWallets.length; i++){
             testWallets[i] = KeyWallet.create();
         }
-        Env.Node node = Env.nodes[0];
-        chain = Env.nodes[0].chains[0];
-        godWallet = chain.godWallet;
+        Env.Node node = Env.getInstance().nodes[0];
+        chain = node.chains[0];
         iconService = new IconService(new HttpProvider(node.endpointUrl));
-        govWallet = KeyWallet.create();
-        govScore = new GovScore(iconService, Env.nodes[0].chains[0].networkId, govWallet);
-        initTransfer(godWallet, testWallets, 1000);
-        initTransfer(godWallet, new KeyWallet[]{govWallet}, 999999);
+        govScore = new GovScore(iconService, chain);
+        initTransfer(chain.godWallet, testWallets, 1000);
+        initTransfer(chain.godWallet, new KeyWallet[]{chain.governorWallet}, 999999);
     }
 
     // add step
@@ -69,7 +64,7 @@ public class TransferTest {
             throw new Exception();
         }
         for (KeyWallet w : to) {
-            txHash = Utils.transfer(iconService, from, w.getAddress(), value);
+            txHash = Utils.transfer(iconService, chain.networkId, from, w.getAddress(), value);
         }
 
         try {
@@ -99,7 +94,7 @@ public class TransferTest {
 
             // transfer from GOD to test wallets
             BigInteger bal = iconService.getBalance(testWallets[i].getAddress()).execute();
-            Bytes txHash = Utils.transfer(iconService, wallets[i], testWallets[i].getAddress(), rand.nextInt(100) + 1);
+            Bytes txHash = Utils.transfer(iconService, chain.networkId, wallets[i], testWallets[i].getAddress(), rand.nextInt(100) + 1);
 
             try {
                 Utils.getTransactionResult(iconService, txHash, 5000);
@@ -109,7 +104,6 @@ public class TransferTest {
                 // success
             }
 
-            BigInteger bal2;
             if((iconService.getBalance(testWallets[i].getAddress()).execute()).compareTo(bal) != 0) {
                 throw new Exception();
             }
@@ -122,7 +116,7 @@ public class TransferTest {
         RpcObject params = new RpcObject.Builder()
                 .put("contextType", new RpcValue("invoke"))
                 .build();
-        BigInteger maxStepLimit = Utils.icxCall(iconService, BigInteger.valueOf(0), govWallet, Constants.CHAINSCORE_ADDRESS,
+        BigInteger maxStepLimit = Utils.icxCall(iconService, BigInteger.valueOf(0), chain.governorWallet, Constants.CHAINSCORE_ADDRESS,
                 "getMaxStepLimit", params).asInteger();
         BigInteger stepCost = Utils.icxCall(iconService, BigInteger.valueOf(0), testWallet,
                 Constants.CHAINSCORE_ADDRESS,"getStepCosts", null).asObject().getItem("default").asInteger();
@@ -149,7 +143,7 @@ public class TransferTest {
                 BigInteger bal = iconService.getBalance(wallet.getAddress()).execute();
                 if(bal.compareTo(need) > 0) {
                     Transaction transaction = TransactionBuilder.newBuilder()
-                            .nid(Env.nodes[0].chains[0].networkId)
+                            .nid(chain.networkId)
                             .from(wallet.getAddress())
                             .to(wallet.getAddress())
                             .value(BigInteger.valueOf(value))
@@ -184,7 +178,7 @@ public class TransferTest {
         KeyWallet testWallet = KeyWallet.create();
         for(KeyWallet wallet : testWallets) {
             Transaction transaction = TransactionBuilder.newBuilder()
-                    .nid(Env.nodes[0].chains[0].networkId)
+                    .nid(chain.networkId)
                     .from(wallet.getAddress())
                     .to(testWallet.getAddress())
                     .value(BigInteger.valueOf(1))
@@ -230,7 +224,7 @@ public class TransferTest {
             if(balance.compareTo(value) < 0) {
                 return false;
             }
-            txHash = Utils.transfer(iconService, wallet, account.getAddress(), value.longValue());
+            txHash = Utils.transfer(iconService, chain.networkId, wallet, account.getAddress(), value.longValue());
             balance = balance.subtract(value);
             acRecord.add("transfer " + value + ", current balance : " + balance);
             account.receive(value, txHash);
@@ -272,8 +266,8 @@ public class TransferTest {
         int transferNum = 1000;
         final int testWalletNum = 1000;
         Account []testAccounts = new Account[testWalletNum];
-        Account godAccount = new Account(godWallet,
-                iconService.getBalance(godWallet.getAddress()).execute());
+        Account godAccount = new Account(chain.godWallet,
+                iconService.getBalance(chain.godWallet.getAddress()).execute());
         Random rand = new Random();
         for(int i = 0; i < testWalletNum; i++) {
             KeyWallet wallet;

@@ -27,9 +27,7 @@ stepUsed is bigger than specified stepLimit
 public class ScoreTest {
     private static IconService iconService;
     private static Env.Chain chain;
-    private static KeyWallet godWallet;
     private static KeyWallet ownerWallet;
-    private static KeyWallet govWallet;
     private static GovScore govScore;
     private static Score testScore;
     private static final String PATH = Constants.SCORE_ROOT +  "helloWorld.zip";
@@ -38,19 +36,17 @@ public class ScoreTest {
 
     @BeforeClass
     public static void init() throws Exception {
-        Env.Node node = Env.nodes[0];
-        chain = Env.nodes[0].chains[0];
-        godWallet = chain.godWallet;
+        Env.Node node = Env.getInstance().nodes[0];
+        chain = node.chains[0];
         iconService = new IconService(new HttpProvider(node.endpointUrl));
         ownerWallet = KeyWallet.create();
-        govWallet = KeyWallet.create();
         initScoreTest();
     }
 
     private static void initScoreTest() throws Exception {
-        Address []addrs = {ownerWallet.getAddress(), govWallet.getAddress()};
+        Address []addrs = {ownerWallet.getAddress(), chain.governorWallet.getAddress()};
         for(Address addr : addrs){
-            Bytes txHash = Utils.transfer(iconService, godWallet, addr, 90000000);
+            Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, addr, 90000000);
             try {
                 Utils.getTransactionResult(iconService, txHash, 5000);
             }
@@ -63,10 +59,10 @@ public class ScoreTest {
         RpcObject params = new RpcObject.Builder()
                 .put("name", new RpcValue("HelloWorld"))
                 .build();
-        Address scoreAddr = Score.mustDeploy(iconService, ownerWallet, PATH, params);
-        testScore = new Score(iconService, scoreAddr, chain.networkId);
+        Address scoreAddr = Score.install(iconService, chain, ownerWallet, PATH, params);
+        testScore = new Score(iconService, chain, scoreAddr);
 
-        govScore = new GovScore(iconService, Env.nodes[0].chains[0].networkId, govWallet);
+        govScore = new GovScore(iconService, chain);
         govScore.setMaxStepLimit("invoke", BigInteger.valueOf(1000));
         govScore.setMaxStepLimit("query", BigInteger.valueOf(1000));
         govScore.setStepCost("contractCall", BigInteger.valueOf(testCCValue));
@@ -89,7 +85,7 @@ public class ScoreTest {
                 RpcObject params = new RpcObject.Builder()
                         .put(param, new RpcValue("ICONLOOP"))
                         .build();
-                TransactionResult result = testScore.invokeAndWaitResult(godWallet, "helloWithName", params
+                TransactionResult result = testScore.invokeAndWaitResult(chain.godWallet, "helloWithName", params
                         , BigInteger.valueOf(0), BigInteger.valueOf(100));
                 assertEquals(result.getStatus(), Constants.STATUS_SUCCESS);
             } catch (ResultTimeoutException ex) {
@@ -115,7 +111,7 @@ public class ScoreTest {
                         builder.put(param, new RpcValue("ICONLOOP"));
                 }
                 RpcObject objParam = builder.build();
-                TransactionResult result = testScore.invokeAndWaitResult(godWallet,
+                TransactionResult result = testScore.invokeAndWaitResult(chain.godWallet,
                         "helloWithName", objParam, BigInteger.valueOf(0), BigInteger.valueOf(100));
                 assertEquals(result.getStatus(), Constants.STATUS_SUCCESS);
                 assertTrue(params.length == 1);
@@ -138,7 +134,7 @@ public class ScoreTest {
             try {
                 BigInteger sub = BigInteger.valueOf(needValue).subtract(iconService.getBalance(testWallet.getAddress()).execute());
                 if(sub.compareTo(BigInteger.ZERO) > 0) {
-                    Bytes txHash = Utils.transfer(iconService, godWallet, testWallet.getAddress(), sub.longValue());
+                    Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, testWallet.getAddress(), sub.longValue());
                     try {
                         Utils.getTransactionResult(iconService, txHash, 5000);
                     }
@@ -169,7 +165,7 @@ public class ScoreTest {
         long needValue = testCCValue * testStepPrice;
         long []values = {needValue, needValue - 1};
         for(long value : values) {
-            Bytes txHash = Utils.transfer(iconService, godWallet, testWallet.getAddress(), value);
+            Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, testWallet.getAddress(), value);
             try {
                 Utils.getTransactionResult(iconService, txHash, 5000);
             }
@@ -195,7 +191,7 @@ public class ScoreTest {
         long needValue = testCCValue * testStepPrice ; // invoke & query
         final long testVal = 987;
         KeyWallet testWallet = KeyWallet.create();
-        Bytes txHash = Utils.transfer(iconService, godWallet, testWallet.getAddress(), testVal + needValue);
+        Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, testWallet.getAddress(), testVal + needValue);
         try {
             Utils.getTransactionResult(iconService, txHash, 5000);
         }

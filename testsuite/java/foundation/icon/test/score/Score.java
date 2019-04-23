@@ -6,10 +6,7 @@ import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
-import foundation.icon.test.common.Constants;
-import foundation.icon.test.common.ResultTimeoutException;
-import foundation.icon.test.common.TransactionFailureException;
-import foundation.icon.test.common.Utils;
+import foundation.icon.test.common.*;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -20,49 +17,32 @@ public class Score {
 
     protected IconService service;
     protected Address scoreAddress;
-    protected BigInteger nid;
+    protected Env.Chain chain;
 
-    public Score(IconService service, Address scoreAddress, BigInteger nid) {
+    public Score(IconService service, Env.Chain chain, Address scoreAddress) {
         this.service = service;
+        this.chain = chain;
         this.scoreAddress = scoreAddress;
-        this.nid = nid;
     }
 
-    public static TransactionResult deployAndWaitResult(IconService service
-            , Wallet wallet, String filePath, RpcObject params, long stepLimit)
-            throws ResultTimeoutException, IOException {
-        Bytes txHash = Utils.deployScore(service, wallet, filePath, params, stepLimit);
-        return Utils.getTransactionResult(service, txHash, DEFAULT_WAITING_TIME);
-    }
-
-    public static Address mustDeploy(IconService service, Wallet wallet, String filePath, RpcObject params, long stepLimit)
+    public static Address install(IconService service, Env.Chain chain, Wallet wallet, String filePath, RpcObject params)
             throws IOException, TransactionFailureException, ResultTimeoutException {
-        TransactionResult result = deployAndWaitResult(service, wallet, filePath, params, stepLimit);
+        return install(service, chain, wallet, filePath, params, -1);
+    }
+
+    public static Address install(IconService service, Env.Chain chain, Wallet wallet, String filePath, RpcObject params, long stepLimit)
+            throws IOException, TransactionFailureException, ResultTimeoutException {
+        Bytes txHash = Utils.installScore(service, chain, wallet, filePath, params, stepLimit);
+        TransactionResult result = Utils.getTransactionResult(service, txHash, DEFAULT_WAITING_TIME);
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new TransactionFailureException(result.getFailure());
         }
         return new Address(result.getScoreAddress());
     }
 
-    public static TransactionResult deployAndWaitResult(IconService service
-            , Wallet wallet, String filePath, RpcObject params)
-            throws ResultTimeoutException, IOException {
-        Bytes txHash = Utils.deployScore(service, wallet, Constants.CHAINSCORE_ADDRESS, filePath, params);
-        return Utils.getTransactionResult(service, txHash, DEFAULT_WAITING_TIME);
-    }
-
-    public static Address mustDeploy(IconService service, Wallet wallet, String filePath, RpcObject params)
-            throws IOException, TransactionFailureException, ResultTimeoutException {
-        TransactionResult result = deployAndWaitResult(service, wallet, filePath, params);
-        if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
-            throw new TransactionFailureException(result.getFailure());
-        }
-        return new Address(result.getScoreAddress());
-    }
-
-    public void update(IconService service, Wallet wallet, String filePath, RpcObject params, BigInteger nid)
+    public void update(IconService service, Env.Chain chain, Wallet wallet, String filePath, RpcObject params)
             throws TransactionFailureException, ResultTimeoutException, IOException {
-        Bytes txHash = Utils.deployScore(service, wallet, this.scoreAddress, filePath, params);
+        Bytes txHash = Utils.updateScore(service, chain, wallet, this.scoreAddress, filePath, params, -1);
         TransactionResult result = Utils.getTransactionResult(service, txHash, DEFAULT_WAITING_TIME);
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new TransactionFailureException(result.getFailure());
@@ -87,7 +67,7 @@ public class Score {
                         RpcObject params, long value, long steps)
             throws IOException {
         TransactionBuilder.Builder builder = TransactionBuilder.newBuilder()
-                .nid(nid)
+                .nid(chain.networkId)
                 .from(wallet.getAddress())
                 .to(this.scoreAddress)
                 .stepLimit(BigInteger.valueOf(steps));
@@ -112,7 +92,7 @@ public class Score {
                         RpcObject params, BigInteger value, BigInteger steps)
             throws IOException {
         TransactionBuilder.Builder builder = TransactionBuilder.newBuilder()
-                .nid(nid)
+                .nid(chain.networkId)
                 .from(wallet.getAddress())
                 .to(this.scoreAddress)
                 .stepLimit(steps);
