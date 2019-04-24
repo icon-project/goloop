@@ -48,9 +48,7 @@ public class Env {
         }
 
         public String getAPIUrl(int v) {
-            // TODO apply name for channel later
-//            return node.url + "/api/v" + v + "/" + name;
-            return node.url + "/api/v" + v;
+            return node.url + "/api/v" + v + "/" + name;
         }
     }
 
