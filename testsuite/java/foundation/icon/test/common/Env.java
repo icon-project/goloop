@@ -11,6 +11,7 @@ import static org.junit.Assert.assertNotNull;
 public class Env {
     public static final Log LOG = Log.getGlobal();
     public static Node []nodes;
+    public static Chain []chains;
     public static int testApiVer = 3;
 
     public static class Node {
@@ -26,13 +27,10 @@ public class Env {
         List<Channel> channelList;
         public KeyWallet godWallet;
         public KeyWallet governorWallet;
-        // 0 : init, 1 : enable, -1 : disable
-        int audit;
-        Chain(int networkId, KeyWallet god, KeyWallet governor, boolean audit) {
+        Chain(int networkId, KeyWallet god, KeyWallet governor) {
             this.networkId = networkId;
             this.godWallet = god;
             this.governorWallet = governor;
-            this.audit = 0;
         }
     }
 
@@ -96,12 +94,7 @@ public class Env {
                     ex.printStackTrace();
                 }
             }
-            String audit = props.getProperty(chainName + ".audit");
-            boolean bAudit = false;
-            if ( audit != null ) {
-                bAudit = Boolean.parseBoolean(audit);
-            }
-            Chain chain = new Chain(Integer.parseInt(nid), godWallet, governorWallet, bAudit);
+            Chain chain = new Chain(Integer.parseInt(nid), godWallet, governorWallet);
             chainMap.put(nid, chain);
         }
         return chainMap;
@@ -159,6 +152,8 @@ public class Env {
         }
         Map<String, Chain> chainMap = readChains(props);
         assertNotNull(chainMap);
+        Env.chains = chainMap.values().toArray(new Chain[chainMap.size()]);
+
         List<Node> nodeList = readNodes(props, chainMap);
         assertNotNull(nodeList);
         Env.nodes = nodeList.toArray(new Node[nodeList.size()]);
