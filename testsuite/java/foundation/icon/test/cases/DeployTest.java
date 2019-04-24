@@ -56,14 +56,14 @@ public class DeployTest {
         RpcObject params = new RpcObject.Builder()
                 .put("contextType", new RpcValue("invoke"))
                 .build();
-        defMaxStepLimit = Utils.icxCall(iconService, chain.networkId, chain.governorWallet, Constants.CHAINSCORE_ADDRESS,
+        defMaxStepLimit = Utils.icxCall(iconService, Constants.CHAINSCORE_ADDRESS,
                 "getMaxStepLimit", params).asInteger();
 
 
-        defStepCostCC = Utils.icxCall(iconService, chain.networkId, chain.governorWallet, Constants.CHAINSCORE_ADDRESS,
+        defStepCostCC = Utils.icxCall(iconService, Constants.CHAINSCORE_ADDRESS,
                 "getStepCosts", null).asObject().getItem("contractCreate").asInteger();
 
-        defStepPrice = Utils.icxCall(iconService, chain.networkId, chain.governorWallet, Constants.CHAINSCORE_ADDRESS,
+        defStepPrice = Utils.icxCall(iconService, Constants.CHAINSCORE_ADDRESS,
                 "getStepPrice", null).asInteger();
 
         Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, chain.governorWallet.getAddress(), 9999999);

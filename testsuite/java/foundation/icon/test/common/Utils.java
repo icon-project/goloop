@@ -110,7 +110,8 @@ public class Utils {
         return iconService.sendTransaction(signedTransaction).execute();
     }
 
-    public static Bytes transferIcx(IconService iconService, int networkId, Wallet fromWallet, Address to, String value) throws IOException {
+    public static Bytes transferIcx(IconService iconService, int networkId,
+            Wallet fromWallet, Address to, String value) throws IOException {
         Transaction transaction = TransactionBuilder.newBuilder()
                 .nid(BigInteger.valueOf(networkId))
                 .from(fromWallet.getAddress())
@@ -125,7 +126,9 @@ public class Utils {
         return iconService.sendTransaction(signedTransaction).execute();
     }
 
-    public static Bytes deployScore(IconService iconService, int networkId, Wallet fromWallet, Address to, String zipfile, RpcObject params, long stepLimit) throws IOException {
+    public static Bytes deployScore(IconService iconService, int networkId,
+            Wallet fromWallet, Address to, String zipfile, RpcObject params, long stepLimit)
+                throws IOException {
         byte[] content = readFile(zipfile);
         if(stepLimit == -1) {
             stepLimit = 200000;
@@ -145,18 +148,22 @@ public class Utils {
         return iconService.sendTransaction(signedTransaction).execute();
     }
 
-    public static Bytes installScore(IconService iconService, Env.Chain chain, Wallet fromWallet, String zipfile, RpcObject params, long stepLimit) throws IOException {
+    public static Bytes installScore(IconService iconService, Env.Chain chain,
+            Wallet fromWallet, String zipfile, RpcObject params, long stepLimit)
+                throws IOException {
         Bytes txHash = deployScore(iconService, chain.networkId, fromWallet, Constants.CHAINSCORE_ADDRESS, zipfile, params, stepLimit);
-        if(isAudit(iconService, chain.governorWallet)) {
+        if(isAudit(iconService)) {
             Bytes acceptHash = new GovScore(iconService, chain).acceptScore(txHash);
             return acceptHash;
         }
         return txHash;
     }
 
-    public static Bytes updateScore(IconService iconService, Env.Chain chain, Wallet fromWallet, Address scoreAddr, String zipfile, RpcObject params, long stepLimit) throws IOException {
+    public static Bytes updateScore(IconService iconService, Env.Chain chain,
+            Wallet fromWallet, Address scoreAddr, String zipfile, RpcObject params, long stepLimit)
+                throws IOException {
         Bytes txHash = deployScore(iconService, chain.networkId, fromWallet, scoreAddr, zipfile, params, stepLimit);
-        if(isAudit(iconService, chain.governorWallet)) {
+        if(isAudit(iconService)) {
             Bytes acceptHash = new GovScore(iconService, chain).acceptScore(txHash);
             return acceptHash;
         }
@@ -206,10 +213,9 @@ public class Utils {
     }
 
     public static RpcItem icxCall(
-            IconService iconService, int nid, Wallet fromWallet, Address scoreAddr, String function,
+            IconService iconService, Address scoreAddr, String function,
             RpcObject params) throws Exception {
         Call.Builder builder = new Call.Builder()
-                .from(fromWallet.getAddress())
                 .to(scoreAddr)
                 .method(function);
         if(params != null) {
@@ -242,10 +248,9 @@ public class Utils {
         return result;
     }
 
-    public static Bytes sendTransactionWithCall(
-            IconService iconService, int nid, Wallet fromWallet, Address scoreAddr, String function,
-            RpcObject params, long value, boolean waitResult) throws TransactionFailureException, ResultTimeoutException, IOException {
-
+    public static Bytes sendTransactionWithCall(IconService iconService, int nid, Wallet fromWallet,
+            Address scoreAddr, String function, RpcObject params, long value, boolean waitResult)
+                    throws TransactionFailureException, ResultTimeoutException, IOException {
         long timestamp = System.currentTimeMillis() * 1000L;
         Transaction transaction = TransactionBuilder.newBuilder()
                 .nid(BigInteger.valueOf(nid))
@@ -270,10 +275,10 @@ public class Utils {
         return txHash;
     }
 
-    public static boolean isAudit(IconService iconService, KeyWallet wallet) {
-        BigInteger rpcObject = null;
+    public static boolean isAudit(IconService iconService) {
+        BigInteger rpcObject;
         try {
-            rpcObject = icxCall(iconService, 0, wallet,
+            rpcObject = icxCall(iconService,
                     Constants.CHAINSCORE_ADDRESS, "getServiceConfig", null).asInteger();
         }
         catch (Exception ex) {

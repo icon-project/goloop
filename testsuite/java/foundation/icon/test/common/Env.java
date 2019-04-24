@@ -59,6 +59,10 @@ public class Env {
 
             String nid = props.getProperty(chainName + ".nid");
             if (nid == null) {
+                if( i == 0 ) {
+                    System.out.println("FAIL. no nid for chain");
+                    throw new IllegalStateException("FAIL. no nid for channel");
+                }
                 break;
             }
             String godWalletPath = props.getProperty(chainName + ".godWallet");

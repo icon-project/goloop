@@ -117,9 +117,9 @@ public class TransferTest {
         RpcObject params = new RpcObject.Builder()
                 .put("contextType", new RpcValue("invoke"))
                 .build();
-        BigInteger maxStepLimit = Utils.icxCall(iconService, chain.networkId, chain.governorWallet, Constants.CHAINSCORE_ADDRESS,
+        BigInteger maxStepLimit = Utils.icxCall(iconService, Constants.CHAINSCORE_ADDRESS,
                 "getMaxStepLimit", params).asInteger();
-        BigInteger stepCost = Utils.icxCall(iconService, chain.networkId, testWallet,
+        BigInteger stepCost = Utils.icxCall(iconService,
                 Constants.CHAINSCORE_ADDRESS,"getStepCosts", null).asObject().getItem("default").asInteger();
 
         // transfer from GOD to test wallets
@@ -130,11 +130,11 @@ public class TransferTest {
         govScore.setStepPrice(BigInteger.valueOf(sp));
 
         final long value = 1;
-        RpcItem item = Utils.icxCall(iconService, chain.networkId, testWallet,
+        RpcItem item = Utils.icxCall(iconService,
                 Constants.CHAINSCORE_ADDRESS,"getStepCosts", null);
         BigInteger stepDefault = item.asObject().getItem("default").asInteger();
 
-        item = Utils.icxCall(iconService, chain.networkId, testWallet,
+        item = Utils.icxCall(iconService,
                 Constants.CHAINSCORE_ADDRESS,"getStepPrice", null);
         BigInteger need = stepDefault.multiply(item.asInteger()).add(BigInteger.valueOf(1));
 

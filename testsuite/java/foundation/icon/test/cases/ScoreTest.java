@@ -209,7 +209,7 @@ public class ScoreTest {
             RpcObject params = new RpcObject.Builder()
                     .put("_owner", new RpcValue(testWallet.getAddress()))
                     .build();
-            assertTrue(Utils.icxCall(iconService, chain.networkId, testWallet, testScore.getAddress(),
+            assertTrue(Utils.icxCall(iconService, testScore.getAddress(),
                     "balanceOf",params).asInteger().equals(BigInteger.valueOf(testVal)));
         } catch (ResultTimeoutException ex) {
             fail();

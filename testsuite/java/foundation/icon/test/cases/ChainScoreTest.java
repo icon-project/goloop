@@ -166,7 +166,7 @@ public class ChainScoreTest{
     public void setRevision() throws Exception{
         KeyWallet wallet = KeyWallet.create();
 
-        RpcItem item = Utils.icxCall(iconService, chain.networkId, wallet,
+        RpcItem item = Utils.icxCall(iconService,
                 Constants.CHAINSCORE_ADDRESS, "getRevision", null);
 
         BigInteger revision = item.asInteger();
@@ -175,7 +175,7 @@ public class ChainScoreTest{
         builder.put("code", new RpcValue(revision));
         sendGovCallTx(wallet, "setRevision", builder.build());
 
-        BigInteger newRevision = Utils.icxCall(iconService, chain.networkId, wallet,
+        BigInteger newRevision = Utils.icxCall(iconService,
                 Constants.CHAINSCORE_ADDRESS, "getRevision", null).asInteger();
         if (!revision.equals(newRevision)) {
             if(!this.toAddr.equals(Constants.CHAINSCORE_ADDRESS)) {
@@ -201,7 +201,7 @@ public class ChainScoreTest{
     @Ignore
     @Test
     public void acceptScore() throws Exception{
-        if (!Utils.isAudit(iconService, KeyWallet.create())) {
+        if (!Utils.isAudit(iconService)) {
             return;
         }
         Bytes txHash = Utils.deployScore(iconService, chain.networkId, helloWorldOwner, Constants.CHAINSCORE_ADDRESS,
@@ -238,7 +238,7 @@ public class ChainScoreTest{
     @Ignore
     @Test
     public void rejectScore() throws Exception {
-        if (!Utils.isAudit(iconService, KeyWallet.create())) {
+        if (!Utils.isAudit(iconService)) {
             return;
         }
         Bytes txHash = Utils.deployScore(iconService, chain.networkId, helloWorldOwner, Constants.CHAINSCORE_ADDRESS,
@@ -282,7 +282,7 @@ public class ChainScoreTest{
         //check blocked is 0x0 (false)
         RpcObject.Builder builder = new RpcObject.Builder();
         builder.put("address", new RpcValue(helloWorld.getAddress()));
-        RpcObject rpcObject = Utils.icxCall(iconService, chain.networkId, wallet,
+        RpcObject rpcObject = Utils.icxCall(iconService,
                 Constants.CHAINSCORE_ADDRESS, "getScoreStatus", builder.build()).asObject();
         RpcItem blocked = rpcObject.getItem("blocked");
         if (blocked == null || blocked.asBoolean()) {
@@ -294,7 +294,7 @@ public class ChainScoreTest{
         for (String method : methods) {
             sendGovCallTx(wallet, method, builder.build());
 
-            rpcObject = Utils.icxCall(iconService, chain.networkId, wallet,
+            rpcObject = Utils.icxCall(iconService,
                     Constants.CHAINSCORE_ADDRESS, "getScoreStatus", builder.build()).asObject();
             blocked = rpcObject.getItem("blocked");
             if (blocked == null) {
@@ -323,8 +323,8 @@ public class ChainScoreTest{
     @Test
     public void setStepPrice() throws Exception {
         KeyWallet wallet = testWallets[0];
-        BigInteger originPrice = Utils.icxCall(iconService, chain.networkId,
-                wallet, Constants.CHAINSCORE_ADDRESS, "getStepPrice", null).asInteger();
+        BigInteger originPrice = Utils.icxCall(iconService,
+                Constants.CHAINSCORE_ADDRESS, "getStepPrice", null).asInteger();
         BigInteger newPrice = originPrice.add(BigInteger.valueOf(10));
         BigInteger []stepPrices = new BigInteger[] {newPrice, originPrice};
         for(BigInteger price : stepPrices) {
@@ -339,8 +339,8 @@ public class ChainScoreTest{
                 cmp = originPrice;
             }
 
-            BigInteger queryPrice = Utils.icxCall(iconService, chain.networkId,
-                    wallet, Constants.CHAINSCORE_ADDRESS, "getStepPrice", null).asInteger();
+            BigInteger queryPrice = Utils.icxCall(iconService,
+                    Constants.CHAINSCORE_ADDRESS, "getStepPrice", null).asInteger();
             if(queryPrice.compareTo(cmp) != 0) {
                 throw new Exception();
             }
@@ -350,7 +350,7 @@ public class ChainScoreTest{
     @Test
     public void setStepCost() throws Exception{
         KeyWallet wallet = testWallets[0];
-        RpcItem stepCosts = Utils.icxCall(iconService, chain.networkId, wallet,
+        RpcItem stepCosts = Utils.icxCall(iconService,
                 Constants.CHAINSCORE_ADDRESS, "getStepCosts", null);
         Bytes []txHashList = new Bytes[GovScore.stepCostTypes.length];
 
@@ -395,7 +395,7 @@ public class ChainScoreTest{
             cmpCosts = originMap;
         }
 
-        rpcObject = Utils.icxCall(iconService, chain.networkId, wallet,
+        rpcObject = Utils.icxCall(iconService,
                 Constants.CHAINSCORE_ADDRESS, "getStepCosts", null).asObject();
         for (String type : GovScore.stepCostTypes) {
             if (cmpCosts.get(type).compareTo(rpcObject.getItem(type).asInteger()) != 0) {
@@ -422,7 +422,7 @@ public class ChainScoreTest{
                 }
             }
 
-            rpcObject = Utils.icxCall(iconService, chain.networkId, wallet,
+            rpcObject = Utils.icxCall(iconService,
                     Constants.CHAINSCORE_ADDRESS, "getStepCosts", null).asObject();
             for (String type : GovScore.stepCostTypes) {
                 if (originMap.get(type).compareTo(rpcObject.getItem(type).asInteger()) != 0) {
@@ -440,7 +440,7 @@ public class ChainScoreTest{
             RpcObject params = new RpcObject.Builder()
                     .put("contextType", new RpcValue(type))
                     .build();
-            BigInteger originLimit = Utils.icxCall(iconService, chain.networkId, wallet, Constants.CHAINSCORE_ADDRESS,
+            BigInteger originLimit = Utils.icxCall(iconService, Constants.CHAINSCORE_ADDRESS,
                     "getMaxStepLimit", params).asInteger();
 
             BigInteger newLimit = originLimit.add(BigInteger.valueOf(10));
@@ -460,8 +460,8 @@ public class ChainScoreTest{
                 else {
                     cmp = originLimit;
                 }
-                BigInteger queryLimit = Utils.icxCall(iconService, chain.networkId,
-                        wallet, Constants.CHAINSCORE_ADDRESS,"getMaxStepLimit", params).asInteger();
+                BigInteger queryLimit = Utils.icxCall(iconService,
+                        Constants.CHAINSCORE_ADDRESS,"getMaxStepLimit", params).asInteger();
                 if(queryLimit.compareTo(cmp) != 0) {
                     throw new Exception();
                 }
@@ -478,7 +478,7 @@ public class ChainScoreTest{
         RpcObject params = new RpcObject.Builder()
                 .put("address", new RpcValue(wallet.getAddress()))
                 .build();
-        RpcItem item = Utils.icxCall(iconService, chain.networkId, wallet,
+        RpcItem item = Utils.icxCall(iconService,
                 Constants.CHAINSCORE_ADDRESS, "getValidators", params);
         RpcArray rpcArray = item.asArray();
         for(int i = 0; i < rpcArray.size(); i++) {
@@ -492,7 +492,7 @@ public class ChainScoreTest{
             builder.put("address", new RpcValue(wallet.getAddress().toString()));
             sendGovCallTx(wallet, method, builder.build());
 
-            item = Utils.icxCall(iconService, chain.networkId, wallet, Constants.CHAINSCORE_ADDRESS,
+            item = Utils.icxCall(iconService, Constants.CHAINSCORE_ADDRESS,
                     "getValidators", params);
             boolean bFound = false;
             rpcArray = item.asArray();
@@ -520,8 +520,8 @@ public class ChainScoreTest{
     @Test
     public void addRemoveMember() throws Exception{
         KeyWallet wallet = testWallets[0];
-        RpcItem item = Utils.icxCall(iconService, chain.networkId,
-                wallet, Constants.CHAINSCORE_ADDRESS,"getMembers", null);
+        RpcItem item = Utils.icxCall(iconService,
+                Constants.CHAINSCORE_ADDRESS,"getMembers", null);
 
         RpcArray rpcArray = item.asArray();
         for(int i = 0; i < rpcArray.size(); i++) {
@@ -534,7 +534,7 @@ public class ChainScoreTest{
             RpcObject.Builder builder = new RpcObject.Builder();
             builder.put("address", new RpcValue(wallet.getAddress().toString()));
             sendGovCallTx(wallet, method, builder.build());
-            item = Utils.icxCall(iconService, chain.networkId, wallet,
+            item = Utils.icxCall(iconService,
                     Constants.CHAINSCORE_ADDRESS, "getMembers", null);
 
             boolean bFound = false;
@@ -567,8 +567,8 @@ public class ChainScoreTest{
         RpcObject params = new RpcObject.Builder()
                 .put("address", new RpcValue(wallet.getAddress()))
                 .build();
-        RpcItem item = Utils.icxCall(iconService, chain.networkId,
-                wallet, Constants.CHAINSCORE_ADDRESS,"isDeployer", params);
+        RpcItem item = Utils.icxCall(iconService,
+                Constants.CHAINSCORE_ADDRESS,"isDeployer", params);
         if (item.asBoolean()) {
             throw new Exception();
         }
@@ -577,7 +577,7 @@ public class ChainScoreTest{
             RpcObject.Builder builder = new RpcObject.Builder();
             builder.put("address", new RpcValue(wallet.getAddress().toString()));
             sendGovCallTx(wallet, method, builder.build());
-            item = Utils.icxCall(iconService, chain.networkId, wallet,
+            item = Utils.icxCall(iconService,
                     Constants.CHAINSCORE_ADDRESS,"isDeployer", params);
            if(item.asBoolean() && (!this.toAddr.equals(Constants.GOV_ADDRESS)
                    && method.compareTo("addDeployer") != 0)) {
