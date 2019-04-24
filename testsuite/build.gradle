@@ -1,11 +1,15 @@
+import java.util.concurrent.TimeUnit
+
 plugins {
     id 'java'
 }
 
 group 'foundation.icon'
-version '1.0-SNAPSHOT'
+version '0.9'
 
-sourceCompatibility = 1.8
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+}
 
 repositories {
     mavenCentral()
@@ -21,6 +25,112 @@ dependencies {
 compileTestJava {
     options.warnings = true
     options.deprecation = true
+}
+
+class ChainTest extends Test {
+    String configFile = "./data/config.json"
+    String logFile = "./chain.log"
+    String envFile = "./data/env.properties"
+    String gsFile = null
+    Process process = null
+
+    void startServer() {
+        List<String> commands = new LinkedList<String>()
+        commands.add("../bin/gochain")
+        commands.add("-config")
+        commands.add(configFile)
+        if ( gsFile != null ) {
+            commands.add("-genesisStorage")
+            commands.add(gsFile)
+        }
+
+        Runtime.getRuntime().exec("rm -rf .chain")
+
+        ProcessBuilder pb = new ProcessBuilder(commands)
+
+        // adding PYTHONPATH for using pyee directly.
+        def env = pb.environment()
+        def sep = System.getProperties().getProperty("path.separator")
+        env.put("PYTHONPATH", "../pyee")
+
+        // set working directory
+        pb.directory(new File("."))
+
+        File log_file = new File(logFile)
+        pb.redirectError(log_file)
+        pb.redirectOutput(log_file)
+
+        process = pb.start()
+
+        // Hook shutdown for kill the process for sure
+        final ChainTest t = this
+        Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+            public void run() {
+                t.stopServer()
+            }
+        }))
+        System.setProperty("CHAIN_ENV", envFile)
+    }
+
+    @TaskAction
+    @Override
+    void executeTests() {
+        def noServer = System.getProperty("noServer")
+        if ( noServer==null || noServer != "true") {
+            logging.println("STARTING Stand-alone server")
+            logging.println("Config: ${configFile}")
+            logging.println("Log   : ${logFile}")
+            logging.println("Env   : ${envFile}")
+            if (gsFile != null) {
+                logging.println("GSFile: ${gsFile}")
+            }
+            startServer()
+        }
+        try {
+            super.executeTests()
+        } finally {
+            stopServer()
+        }
+    }
+
+    synchronized void stopServer() {
+        if (process != null) {
+            logging.println("STOPPING Stand-alone server")
+            process.destroy()
+            process.waitFor(1, TimeUnit.SECONDS)
+        }
+        process = null
+    }
+}
+
+task testNormal(type: ChainTest, overwrite: true) {
+    include "foundation/icon/test/cases/*"
+    exclude "foundation/icon/test/cases/ChainScoreTest*"
+    exclude "foundation/icon/test/cases/DeployTest*"
+    exclude "foundation/icon/test/cases/TransferTest*"
+    exclude "foundation/icon/test/cases/ScoreTest*"
+
+    configFile = "./data/config.json"
+    logFile = "./normal.log"
+    envFile = "./data/env.properties"
+
+    dependsOn cleanTest
+    testLogging.showStandardStreams = true
+}
+
+task testGovernance(type: ChainTest, overwrite: true) {
+    include "foundation/icon/test/cases/ChainScoreTest*"
+    include "foundation/icon/test/cases/TransferTest*"
+    include "foundation/icon/test/cases/DeployTest*"
+    include "foundation/icon/test/cases/ScoreTest*"
+
+    configFile = "./data/govConfig.json"
+    logFile = "./gov.log"
+    envFile = "./data/env.properties"
+    gsFile = "./data/genesisStorage.zip"
+
+    dependsOn cleanTest
+    testLogging.showStandardStreams = true
 }
 
 test {
