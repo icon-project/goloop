@@ -30,7 +30,7 @@ import java.math.BigInteger;
 import static foundation.icon.test.common.Env.LOG;
 
 public class CrowdSaleScore extends Score {
-    private static final String PATH = Constants.SCORE_ROOT + "crowdSale.zip";
+    private static final String PATH = Constants.SCORE_CROWDSALE_PATH;
 
     public static CrowdSaleScore mustDeploy(IconService service, Env.Chain chain, Wallet wallet,
                                             BigInteger goalInIcx, Address tokenScore, int durationInBlocks)

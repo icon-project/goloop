@@ -28,8 +28,7 @@ import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.test.score.GovScore;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.file.Files;
@@ -39,6 +38,8 @@ import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import static foundation.icon.test.common.Env.LOG;
 
@@ -127,9 +128,9 @@ public class Utils {
     }
 
     public static Bytes deployScore(IconService iconService, int networkId,
-            Wallet fromWallet, Address to, String zipfile, RpcObject params, long stepLimit)
+            Wallet fromWallet, Address to, String contentPath, RpcObject params, long stepLimit)
                 throws IOException {
-        byte[] content = readFile(zipfile);
+        byte[] content = zipContent(contentPath);
         if(stepLimit == -1) {
             stepLimit = 200000;
         }
@@ -149,9 +150,9 @@ public class Utils {
     }
 
     public static Bytes installScore(IconService iconService, Env.Chain chain,
-            Wallet fromWallet, String zipfile, RpcObject params, long stepLimit)
+            Wallet fromWallet, String contentPath, RpcObject params, long stepLimit)
                 throws IOException {
-        Bytes txHash = deployScore(iconService, chain.networkId, fromWallet, Constants.CHAINSCORE_ADDRESS, zipfile, params, stepLimit);
+        Bytes txHash = deployScore(iconService, chain.networkId, fromWallet, Constants.CHAINSCORE_ADDRESS, contentPath, params, stepLimit);
         if(isAudit(iconService)) {
             Bytes acceptHash = new GovScore(iconService, chain).acceptScore(txHash);
             return acceptHash;
@@ -160,9 +161,9 @@ public class Utils {
     }
 
     public static Bytes updateScore(IconService iconService, Env.Chain chain,
-            Wallet fromWallet, Address scoreAddr, String zipfile, RpcObject params, long stepLimit)
+            Wallet fromWallet, Address scoreAddr, String contentPath, RpcObject params, long stepLimit)
                 throws IOException {
-        Bytes txHash = deployScore(iconService, chain.networkId, fromWallet, scoreAddr, zipfile, params, stepLimit);
+        Bytes txHash = deployScore(iconService, chain.networkId, fromWallet, scoreAddr, contentPath, params, stepLimit);
         if(isAudit(iconService)) {
             Bytes acceptHash = new GovScore(iconService, chain).acceptScore(txHash);
             return acceptHash;
@@ -286,5 +287,39 @@ public class Utils {
         }
         long lAudit = rpcObject.longValue();
         return (lAudit & 0x2) == 0x2;
+    }
+
+    private static void recursiveZip(File source, String zipPath, ZipOutputStream zos) throws IOException{
+        if(source.isHidden()) {
+            return;
+        }
+        if(source.isDirectory()) {
+            String dir = source.getName();
+            if(!dir.endsWith(File.separator)) {
+                dir = dir + File.separator;
+            }
+            zos.putNextEntry(new ZipEntry(dir));
+            zos.closeEntry();
+            File []files = source.listFiles();
+            String path = zipPath == null ? dir : zipPath + dir;
+            for(File file : files) {
+                recursiveZip(file, path, zos);
+            }
+        }
+        else {
+            ZipEntry ze = new ZipEntry(zipPath + source.getName());
+            zos.putNextEntry(ze);
+            zos.write(Files.readAllBytes(source.toPath()));
+            zos.closeEntry();
+        }
+    }
+
+    public static byte[] zipContent(String path) throws IOException {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        ZipOutputStream zos = new ZipOutputStream(outputStream);
+        recursiveZip(new File(path), null, zos);
+        zos.close();
+        outputStream.close();
+        return outputStream.toByteArray();
     }
 }

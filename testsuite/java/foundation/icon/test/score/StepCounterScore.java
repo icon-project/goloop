@@ -16,7 +16,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 
 public class StepCounterScore extends Score {
-    private static final String PATH = Constants.SCORE_ROOT + "step_counter.zip";
+    private static final String PATH = Constants.SCORE_STEPCOUNTER_PATH;
     protected final static BigInteger STEPS = BigInteger.valueOf(3).multiply(BigInteger.TEN.pow(6));
 
     public static StepCounterScore mustDeploy(IconService service, Env.Chain chain, Wallet wallet)

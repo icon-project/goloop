@@ -30,7 +30,7 @@ public class ScoreTest {
     private static KeyWallet ownerWallet;
     private static GovScore govScore;
     private static Score testScore;
-    private static final String PATH = Constants.SCORE_ROOT +  "helloWorld.zip";
+    private static final String PATH = Constants.SCORE_HELLOWORLD_PATH;
     private static final long testCCValue = 10;
     private static final long testStepPrice = 1;
 

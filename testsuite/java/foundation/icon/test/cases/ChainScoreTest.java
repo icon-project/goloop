@@ -205,7 +205,7 @@ public class ChainScoreTest{
             return;
         }
         Bytes txHash = Utils.deployScore(iconService, chain.networkId, helloWorldOwner, Constants.CHAINSCORE_ADDRESS,
-                Constants.SCORE_ROOT + "helloWorld.zip", null, -1);
+                Constants.SCORE_HELLOWORLD_PATH, null, -1);
         TransactionResult result = Utils.getTransactionResult(iconService, txHash, 5000);
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new Exception();
@@ -242,7 +242,7 @@ public class ChainScoreTest{
             return;
         }
         Bytes txHash = Utils.deployScore(iconService, chain.networkId, helloWorldOwner, Constants.CHAINSCORE_ADDRESS,
-                Constants.SCORE_ROOT + "helloWorld.zip", null, -1);
+                Constants.SCORE_HELLOWORLD_PATH, null, -1);
         TransactionResult result = Utils.getTransactionResult(iconService, txHash, 5000);
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new Exception();

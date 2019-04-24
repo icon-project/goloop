@@ -16,7 +16,7 @@ import java.math.BigInteger;
 import static foundation.icon.test.common.Env.LOG;
 
 public class SampleTokenScore extends Score {
-    private static final String PATH = Constants.SCORE_ROOT + "sampleToken.zip";
+    private static final String PATH = Constants.SCORE_SAMPLETOKEN_PATH;
 
     public static SampleTokenScore mustDeploy(IconService service, Env.Chain chain, Wallet wallet,
                                               BigInteger initialSupply, int decimals)

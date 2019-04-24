@@ -15,8 +15,8 @@ import java.io.IOException;
 import java.math.BigInteger;
 
 public class HelloWorld extends Score {
-    private static final String INSTALL_PATH = Constants.SCORE_ROOT +  "helloWorld.zip";
-    private static final String UPDATE_PATH = Constants.SCORE_ROOT +  "helloWorld2.zip";
+    private static final String INSTALL_PATH = Constants.SCORE_ROOT +  "hello_world";
+    private static final String UPDATE_PATH = Constants.SCORE_ROOT +  "hello_world2";
 
     public HelloWorld(IconService iconService, Env.Chain chain, Address scoreAddress) {
         super(iconService, chain, scoreAddress);

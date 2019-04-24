@@ -25,14 +25,14 @@ public class Score {
         this.scoreAddress = scoreAddress;
     }
 
-    public static Address install(IconService service, Env.Chain chain, Wallet wallet, String filePath, RpcObject params)
+    public static Address install(IconService service, Env.Chain chain, Wallet wallet, String contentPath, RpcObject params)
             throws IOException, TransactionFailureException, ResultTimeoutException {
-        return install(service, chain, wallet, filePath, params, -1);
+        return install(service, chain, wallet, contentPath, params, -1);
     }
 
-    public static Address install(IconService service, Env.Chain chain, Wallet wallet, String filePath, RpcObject params, long stepLimit)
+    public static Address install(IconService service, Env.Chain chain, Wallet wallet, String contentPath, RpcObject params, long stepLimit)
             throws IOException, TransactionFailureException, ResultTimeoutException {
-        Bytes txHash = Utils.installScore(service, chain, wallet, filePath, params, stepLimit);
+        Bytes txHash = Utils.installScore(service, chain, wallet, contentPath, params, stepLimit);
         TransactionResult result = Utils.getTransactionResult(service, txHash, DEFAULT_WAITING_TIME);
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new TransactionFailureException(result.getFailure());
@@ -40,9 +40,9 @@ public class Score {
         return new Address(result.getScoreAddress());
     }
 
-    public void update(IconService service, Env.Chain chain, Wallet wallet, String filePath, RpcObject params)
+    public void update(IconService service, Env.Chain chain, Wallet wallet, String contentPath, RpcObject params)
             throws TransactionFailureException, ResultTimeoutException, IOException {
-        Bytes txHash = Utils.updateScore(service, chain, wallet, this.scoreAddress, filePath, params, -1);
+        Bytes txHash = Utils.updateScore(service, chain, wallet, this.scoreAddress, contentPath, params, -1);
         TransactionResult result = Utils.getTransactionResult(service, txHash, DEFAULT_WAITING_TIME);
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new TransactionFailureException(result.getFailure());

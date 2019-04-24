@@ -14,7 +14,7 @@ import java.math.BigInteger;
 
 public class MultiSigWalletScore extends Score {
     private static final BigInteger STEPS = BigInteger.valueOf(10000000);
-    private static final String PATH = Constants.SCORE_ROOT + "multiSigWallet.zip";
+    private static final String PATH = Constants.SCORE_MULTISIG_PATH;
 
     public static MultiSigWalletScore mustDeploy(IconService service, Env.Chain chain, Wallet wallet,
                                                  Address[] walletOwners, int required)
