@@ -44,8 +44,9 @@ public class DeployTest {
     @BeforeClass
     public static void init() throws Exception {
         Env.Node node = Env.getInstance().nodes[0];
-        chain = node.chains[0];
-        iconService = new IconService(new HttpProvider(node.endpointUrl));
+        Env.Channel channel = node.channels[0];
+        chain = channel.chain;
+        iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
         chain.governorWallet = KeyWallet.create();
         govScore = new GovScore(iconService, chain);
         initDeploy();
@@ -55,14 +56,14 @@ public class DeployTest {
         RpcObject params = new RpcObject.Builder()
                 .put("contextType", new RpcValue("invoke"))
                 .build();
-        defMaxStepLimit = Utils.icxCall(iconService, BigInteger.valueOf(0), chain.governorWallet, Constants.CHAINSCORE_ADDRESS,
+        defMaxStepLimit = Utils.icxCall(iconService, chain.networkId, chain.governorWallet, Constants.CHAINSCORE_ADDRESS,
                 "getMaxStepLimit", params).asInteger();
 
 
-        defStepCostCC = Utils.icxCall(iconService, BigInteger.valueOf(0), chain.governorWallet, Constants.CHAINSCORE_ADDRESS,
+        defStepCostCC = Utils.icxCall(iconService, chain.networkId, chain.governorWallet, Constants.CHAINSCORE_ADDRESS,
                 "getStepCosts", null).asObject().getItem("contractCreate").asInteger();
 
-        defStepPrice = Utils.icxCall(iconService, BigInteger.valueOf(0), chain.governorWallet, Constants.CHAINSCORE_ADDRESS,
+        defStepPrice = Utils.icxCall(iconService, chain.networkId, chain.governorWallet, Constants.CHAINSCORE_ADDRESS,
                 "getStepPrice", null).asInteger();
 
         Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, chain.governorWallet.getAddress(), 9999999);

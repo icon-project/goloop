@@ -28,8 +28,9 @@ public class BasicScoreTest {
     @BeforeClass
     public static void setUp() {
         Env.Node node = Env.getInstance().nodes[0];
-        chain = node.chains[0];
-        iconService = new IconService(new HttpProvider(node.endpointUrl));
+        Env.Channel channel = node.channels[0];
+        chain = channel.chain;
+        iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
     }
 
     @Test
@@ -54,7 +55,7 @@ public class BasicScoreTest {
         // deploy crowd sale
         LOG.infoEntering("deploy", "crowd sale SCORE");
         CrowdSaleScore crowdSaleScore = CrowdSaleScore.mustDeploy(iconService, chain, ownerWallet,
-                new BigInteger("100"), sampleTokenScore.getAddress(), 10);
+                    new BigInteger("100"), sampleTokenScore.getAddress(), 10);
         LOG.infoExiting();
 
         // send 50 icx to Alice

@@ -52,8 +52,8 @@ public class ChainScoreTest{
     @BeforeClass
     public static void init() throws Exception {
         Env.Node node = Env.getInstance().nodes[0];
-        chain = node.chains[0];
-        iconService = new IconService(new HttpProvider(node.endpointUrl));
+        chain = node.channels[0].chain;
+        iconService = new IconService(new HttpProvider(node.channels[0].getAPIUrl(Env.testApiVer)));
         testWallets = new KeyWallet[testWalletNum];
         initChainScore();
     }
@@ -201,7 +201,7 @@ public class ChainScoreTest{
     @Ignore
     @Test
     public void acceptScore() throws Exception{
-        if (!chain.isAudit()) {
+        if (!Utils.isAudit(iconService, KeyWallet.create())) {
             return;
         }
         Bytes txHash = Utils.deployScore(iconService, chain.networkId, helloWorldOwner, Constants.CHAINSCORE_ADDRESS,
@@ -238,7 +238,7 @@ public class ChainScoreTest{
     @Ignore
     @Test
     public void rejectScore() throws Exception {
-        if (!chain.isAudit()) {
+        if (!Utils.isAudit(iconService, KeyWallet.create())) {
             return;
         }
         Bytes txHash = Utils.deployScore(iconService, chain.networkId, helloWorldOwner, Constants.CHAINSCORE_ADDRESS,

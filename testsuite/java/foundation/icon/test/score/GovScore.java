@@ -3,11 +3,14 @@ package foundation.icon.test.score;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.data.Bytes;
+import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
+import foundation.icon.test.common.ResultTimeoutException;
 
+import java.io.IOException;
 import java.math.BigInteger;
 
 public class GovScore extends Score {
@@ -27,7 +30,6 @@ public class GovScore extends Score {
             "apiCall"
     };
 
-//    public GovScore(IconService iconService, BigInteger nid, KeyWallet govWallet) {
     public GovScore(IconService iconService, Env.Chain chain) {
         super(iconService, chain, Constants.GOV_ADDRESS);
     }

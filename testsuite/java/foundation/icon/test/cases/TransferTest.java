@@ -48,8 +48,9 @@ public class TransferTest {
             testWallets[i] = KeyWallet.create();
         }
         Env.Node node = Env.getInstance().nodes[0];
-        chain = node.chains[0];
-        iconService = new IconService(new HttpProvider(node.endpointUrl));
+        Env.Channel channel = node.channels[0];
+        chain = channel.chain;
+        iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
         govScore = new GovScore(iconService, chain);
         initTransfer(chain.godWallet, testWallets, 1000);
         initTransfer(chain.godWallet, new KeyWallet[]{chain.governorWallet}, 999999);
@@ -116,9 +117,9 @@ public class TransferTest {
         RpcObject params = new RpcObject.Builder()
                 .put("contextType", new RpcValue("invoke"))
                 .build();
-        BigInteger maxStepLimit = Utils.icxCall(iconService, BigInteger.valueOf(0), chain.governorWallet, Constants.CHAINSCORE_ADDRESS,
+        BigInteger maxStepLimit = Utils.icxCall(iconService, chain.networkId, chain.governorWallet, Constants.CHAINSCORE_ADDRESS,
                 "getMaxStepLimit", params).asInteger();
-        BigInteger stepCost = Utils.icxCall(iconService, BigInteger.valueOf(0), testWallet,
+        BigInteger stepCost = Utils.icxCall(iconService, chain.networkId, testWallet,
                 Constants.CHAINSCORE_ADDRESS,"getStepCosts", null).asObject().getItem("default").asInteger();
 
         // transfer from GOD to test wallets
@@ -129,11 +130,11 @@ public class TransferTest {
         govScore.setStepPrice(BigInteger.valueOf(sp));
 
         final long value = 1;
-        RpcItem item = Utils.icxCall(iconService, BigInteger.valueOf(0), testWallet,
+        RpcItem item = Utils.icxCall(iconService, chain.networkId, testWallet,
                 Constants.CHAINSCORE_ADDRESS,"getStepCosts", null);
         BigInteger stepDefault = item.asObject().getItem("default").asInteger();
 
-        item = Utils.icxCall(iconService, BigInteger.valueOf(0), testWallet,
+        item = Utils.icxCall(iconService, chain.networkId, testWallet,
                 Constants.CHAINSCORE_ADDRESS,"getStepPrice", null);
         BigInteger need = stepDefault.multiply(item.asInteger()).add(BigInteger.valueOf(1));
 
@@ -143,7 +144,7 @@ public class TransferTest {
                 BigInteger bal = iconService.getBalance(wallet.getAddress()).execute();
                 if(bal.compareTo(need) > 0) {
                     Transaction transaction = TransactionBuilder.newBuilder()
-                            .nid(chain.networkId)
+                            .nid(BigInteger.valueOf(chain.networkId))
                             .from(wallet.getAddress())
                             .to(wallet.getAddress())
                             .value(BigInteger.valueOf(value))
@@ -178,7 +179,7 @@ public class TransferTest {
         KeyWallet testWallet = KeyWallet.create();
         for(KeyWallet wallet : testWallets) {
             Transaction transaction = TransactionBuilder.newBuilder()
-                    .nid(chain.networkId)
+                    .nid(BigInteger.valueOf(chain.networkId))
                     .from(wallet.getAddress())
                     .to(testWallet.getAddress())
                     .value(BigInteger.valueOf(1))

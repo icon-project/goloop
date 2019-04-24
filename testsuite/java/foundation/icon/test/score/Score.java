@@ -67,7 +67,7 @@ public class Score {
                         RpcObject params, long value, long steps)
             throws IOException {
         TransactionBuilder.Builder builder = TransactionBuilder.newBuilder()
-                .nid(chain.networkId)
+                .nid(BigInteger.valueOf(chain.networkId))
                 .from(wallet.getAddress())
                 .to(this.scoreAddress)
                 .stepLimit(BigInteger.valueOf(steps));
@@ -92,7 +92,7 @@ public class Score {
                         RpcObject params, BigInteger value, BigInteger steps)
             throws IOException {
         TransactionBuilder.Builder builder = TransactionBuilder.newBuilder()
-                .nid(chain.networkId)
+                .nid(BigInteger.valueOf(chain.networkId))
                 .from(wallet.getAddress())
                 .to(this.scoreAddress)
                 .stepLimit(steps);

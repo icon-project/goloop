@@ -74,7 +74,7 @@ public class SampleTokenScore extends Score {
                 .build();
 
         Transaction transaction = TransactionBuilder.newBuilder()
-                .nid(chain.networkId)
+                .nid(BigInteger.valueOf(chain.networkId))
                 .from(fromWallet.getAddress())
                 .to(scoreAddress)
                 .stepLimit(STEPS_DEFAULT)
