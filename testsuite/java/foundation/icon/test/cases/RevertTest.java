@@ -24,7 +24,7 @@ public class RevertTest {
 
     @BeforeClass
     public static void setUp() {
-        Env.Node node = Env.getInstance().nodes[0];
+        Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
         chain = channel.chain;
         iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));

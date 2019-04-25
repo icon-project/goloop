@@ -43,7 +43,7 @@ public class DeployTest {
 
     @BeforeClass
     public static void init() throws Exception {
-        Env.Node node = Env.getInstance().nodes[0];
+        Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
         chain = channel.chain;
         iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
