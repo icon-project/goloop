@@ -154,7 +154,7 @@ func (r *receipt) LogBloom() module.LogBloom {
 }
 
 func (r *receipt) EventLogIterator() module.EventLogIterator {
-	return nil
+	return &eventLogIterator{r.data.EventLogs, 0}
 }
 
 type eventLogIterator struct {
