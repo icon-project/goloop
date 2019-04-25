@@ -257,15 +257,15 @@ type ServiceManager interface {
 	// ValidatorListFromHash returns ValidatorList from hash.
 	ValidatorListFromHash(hash []byte) ValidatorList
 
-	// GetBalance get balance of the account
-	GetBalance(result []byte, addr Address) *big.Int
+	// GetBalance returns balance of the account
+	GetBalance(result []byte, addr Address) (*big.Int, error)
 
-	// GetTotalSupply get total supplied coin
-	GetTotalSupply(result []byte) *big.Int
+	// GetTotalSupply returns total supplied coin
+	GetTotalSupply(result []byte) (*big.Int, error)
 
-	// GetNetworkID get network ID of of the state
+	// GetNetworkID returns network ID of the state
 	GetNetworkID(result []byte) (int64, error)
 
-	// GetAPIInfo get API info of the contract
+	// GetAPIInfo returns API info of the contract
 	GetAPIInfo(result []byte, addr Address) (APIInfo, error)
 }

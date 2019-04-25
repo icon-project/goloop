@@ -188,9 +188,12 @@ func getBalance(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, erro
 	if err != nil {
 		return nil, jsonrpc.ErrServer()
 	}
-	balance.Set(sm.GetBalance(block.Result(), param.Address.Address()))
-
-	return balance, nil
+	b, err := sm.GetBalance(block.Result(), param.Address.Address())
+	if err != nil {
+		return nil, jsonrpc.ErrServer(err.Error())
+	}
+	balance.Set(b)
+	return &balance, nil
 }
 
 func getScoreApi(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
@@ -232,7 +235,11 @@ func getTotalSupply(ctx *jsonrpc.Context, _ *jsonrpc.Params) (interface{}, error
 	sm := chain.ServiceManager()
 
 	var tsValue common.HexInt
-	tsValue.Set(sm.GetTotalSupply(b.Result()))
+	ts, err := sm.GetTotalSupply(b.Result())
+	if err != nil {
+		return nil, jsonrpc.ErrServer(err.Error())
+	}
+	tsValue.Set(ts)
 
 	return &tsValue, nil
 }

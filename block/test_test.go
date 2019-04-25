@@ -712,11 +712,11 @@ func (sm *testServiceManager) ValidatorListFromHash(hash []byte) module.Validato
 	return tvl
 }
 
-func (sm *testServiceManager) GetBalance(result []byte, addr module.Address) *big.Int {
+func (sm *testServiceManager) GetBalance(result []byte, addr module.Address) (*big.Int, error) {
 	panic("not implemented")
 }
 
-func (sm *testServiceManager) GetTotalSupply(result []byte) *big.Int {
+func (sm *testServiceManager) GetTotalSupply(result []byte) (*big.Int, error) {
 	panic("not implemented")
 }
 

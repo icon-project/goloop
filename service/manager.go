@@ -2,10 +2,11 @@ package service
 
 import (
 	"encoding/json"
-	"github.com/icon-project/goloop/service/scoreresult"
 	"log"
 	"math/big"
 	"time"
+
+	"github.com/icon-project/goloop/service/scoreresult"
 
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/server/metric"
@@ -24,6 +25,7 @@ import (
 // Maximum size in bytes for transaction in a block.
 // TODO it should be configured or received from block manager
 const ConfigMaxTxBytesInABlock = 1024 * 1024
+const ConfigWorldSnapshotCacheSize = 10
 
 type manager struct {
 	// tx pool should be connected to transition for more than one branches.
@@ -39,6 +41,7 @@ type manager struct {
 	txReactor *TransactionReactor
 	cm        contract.ContractManager
 	eem       eeproxy.Manager
+	wsc       *worldSnapshotCache
 }
 
 func NewManager(chain module.Chain, nm module.NetworkManager,
@@ -67,6 +70,7 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 		chain:        chain,
 		cm:           cm,
 		eem:          eem,
+		wsc:          newWorldSnapshotCache(chain.Database(), ConfigWorldSnapshotCacheSize),
 	}
 	if nm != nil {
 		mgr.txReactor = NewTransactionReactor(nm, mgr.patchTxPool, mgr.normalTxPool)
@@ -357,58 +361,55 @@ func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {
 	return valList
 }
 
-func (m *manager) GetBalance(result []byte, addr module.Address) *big.Int {
-	if tresult, err := newTransitionResultFromBytes(result); err == nil {
-		ws := state.NewWorldSnapshot(m.db, tresult.StateHash, nil)
-		ass := ws.GetAccountSnapshot(addr.ID())
-		if ass == nil {
-			return big.NewInt(0)
-		}
-		return ass.GetBalance()
+func (m *manager) GetBalance(result []byte, addr module.Address) (*big.Int, error) {
+	wss, err := m.wsc.GetWorldSnapshot(result)
+	if err != nil {
+		return nil, err
 	}
-	return big.NewInt(0)
+	ass := wss.GetAccountSnapshot(addr.ID())
+	if ass == nil {
+		return big.NewInt(0), nil
+	}
+	return ass.GetBalance(), nil
 }
 
-func (m *manager) GetTotalSupply(result []byte) *big.Int {
-	if tr, err := newTransitionResultFromBytes(result); err == nil {
-		wss := state.NewWorldSnapshot(m.db, tr.StateHash, nil)
-		ass := wss.GetAccountSnapshot(state.SystemID)
-		as := scoredb.NewStateStoreWith(ass)
-		tsVar := scoredb.NewVarDB(as, state.VarTotalSupply)
-
-		if ts := tsVar.BigInt(); ts != nil {
-			return ts
-		}
+func (m *manager) GetTotalSupply(result []byte) (*big.Int, error) {
+	wss, err := m.wsc.GetWorldSnapshot(result)
+	if err != nil {
+		return nil, err
 	}
-	return big.NewInt(0)
+	ass := wss.GetAccountSnapshot(state.SystemID)
+	as := scoredb.NewStateStoreWith(ass)
+	tsVar := scoredb.NewVarDB(as, state.VarTotalSupply)
+
+	if ts := tsVar.BigInt(); ts != nil {
+		return ts, nil
+	}
+	return big.NewInt(0), nil
 }
 
 func (m *manager) GetNetworkID(result []byte) (int64, error) {
-	if tr, err := newTransitionResultFromBytes(result); err == nil {
-		wss := state.NewWorldSnapshot(m.db, tr.StateHash, nil)
-		ass := wss.GetAccountSnapshot(state.SystemID)
-		as := scoredb.NewStateStoreWith(ass)
-		nidVar := scoredb.NewVarDB(as, state.VarNetwork)
-		if nidVar.Bytes() == nil {
-			return 0, errors.ErrNotFound
-		}
-		return nidVar.Int64(), nil
-	} else {
+	wss, err := m.wsc.GetWorldSnapshot(result)
+	if err != nil {
 		return 0, err
 	}
+	ass := wss.GetAccountSnapshot(state.SystemID)
+	as := scoredb.NewStateStoreWith(ass)
+	nidVar := scoredb.NewVarDB(as, state.VarNetwork)
+	if nidVar.Bytes() == nil {
+		return 0, errors.ErrNotFound
+	}
+	return nidVar.Int64(), nil
 }
 
 func (m *manager) GetAPIInfo(result []byte, addr module.Address) (module.APIInfo, error) {
 	if !addr.IsContract() {
 		return nil, state.ErrNotContractAccount
 	}
-
-	tr, err := newTransitionResultFromBytes(result)
+	wss, err := m.wsc.GetWorldSnapshot(result)
 	if err != nil {
 		return nil, err
 	}
-
-	wss := state.NewWorldSnapshot(m.db, tr.StateHash, nil)
 	ass := wss.GetAccountSnapshot(addr.ID())
 	info := ass.APIInfo()
 	if info == nil {
