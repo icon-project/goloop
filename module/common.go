@@ -9,7 +9,7 @@ type Address interface {
 }
 
 type Validator interface {
-	Member
+	Address() Address
 
 	// PublicKey returns public key of the validator.
 	// If it doesn't have, then it return nil
@@ -27,8 +27,16 @@ type ValidatorList interface {
 	Get(i int) (Validator, bool)
 }
 
-type Member interface {
-	Address() Address
+type MemberIterator interface {
+	Has() bool
+	Next() error
+	Get() (Address, error)
+}
+
+type MemberList interface {
+	IsEmpty() bool
+	Equal(MemberList) bool
+	Iterator() MemberIterator
 }
 
 type CommitVoteSet interface {

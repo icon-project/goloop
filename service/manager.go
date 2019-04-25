@@ -418,6 +418,21 @@ func (m *manager) GetAPIInfo(result []byte, addr module.Address) (module.APIInfo
 	return info, nil
 }
 
+func (m *manager) GetMembers(result []byte) (module.MemberList, error) {
+	wss, err := m.wsc.GetWorldSnapshot(result)
+	if err != nil {
+		return nil, err
+	}
+	ass := wss.GetAccountSnapshot(state.SystemID)
+	as := scoredb.NewStateStoreWith(ass)
+	varConfig := scoredb.NewVarDB(as, state.VarServiceConfig)
+
+	if (varConfig.Int64() & state.SysConfigMembership) == 0 {
+		return newMemberList(nil), nil
+	}
+	return newMemberList(ass), nil
+}
+
 type blockInfo struct {
 	height    int64
 	timestamp int64

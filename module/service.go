@@ -268,4 +268,7 @@ type ServiceManager interface {
 
 	// GetAPIInfo returns API info of the contract
 	GetAPIInfo(result []byte, addr Address) (APIInfo, error)
+
+	// GetMembers returns network member list
+	GetMembers(result []byte) (MemberList, error)
 }

@@ -736,6 +736,10 @@ func (sm *testServiceManager) GetAPIInfo(result []byte, addr module.Address) (mo
 	return nil, nil
 }
 
+func (sm *testServiceManager) GetMembers(result []byte) (module.MemberList, error) {
+	panic("implement me")
+}
+
 type testValidator struct {
 	Address_ *common.Address
 }

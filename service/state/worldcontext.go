@@ -77,7 +77,6 @@ type WorldContext interface {
 	GetTransactionInfo(ti *TransactionInfo)
 	SetContractInfo(si *ContractInfo)
 
-	GetMembers() []module.Member
 	IsDeployer(addr string) bool
 	FeeEnabled() bool
 	AuditEnabled() bool
@@ -259,17 +258,6 @@ func (c *worldContext) MembershipEnabled() bool {
 		return false
 	}
 	return true
-}
-
-func (c *worldContext) GetMembers() []module.Member {
-	as := c.GetAccountState(SystemID)
-	members := scoredb.NewArrayDB(as, VarMembers)
-	size := members.Size()
-	ml := make([]module.Member, size)
-	for i := 0; i < size; i++ {
-		ml[i] = members.Get(i).Address().(module.Member)
-	}
-	return ml
 }
 
 func (c *worldContext) IsDeployer(addr string) bool {
