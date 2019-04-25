@@ -356,6 +356,7 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	gatheredFee := big.NewInt(0)
 	fee := big.NewInt(0)
 
+	t.logBloom.SetInt64(0)
 	for _, receipts := range [][]txresult.Receipt{patchReceipts, normalReceipts} {
 		for _, r := range receipts {
 			used := r.StepUsed()
@@ -364,6 +365,8 @@ func (t *transition) executeSync(alreadyValidated bool) {
 
 			fee.Mul(r.StepPrice(), used)
 			gatheredFee.Add(gatheredFee, fee)
+
+			t.logBloom.Merge(r.LogBloom().(*txresult.LogBloom))
 		}
 	}
 	t.patchReceipts = txresult.NewReceiptListFromSlice(t.db, patchReceipts)
