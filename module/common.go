@@ -44,6 +44,7 @@ type LogBloom interface {
 	Bytes() []byte
 	LogBytes() []byte
 	Contain(lb2 LogBloom) bool
+	Merge(lb2 LogBloom)
 	Equal(lb2 LogBloom) bool
 }
 

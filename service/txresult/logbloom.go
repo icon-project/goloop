@@ -74,8 +74,18 @@ func (lb *LogBloom) CodecDecodeSelf(d *codec.Decoder) {
 }
 
 // Merge bloom
-func (lb *LogBloom) Merge(lb2 *LogBloom) {
-	lb.Int.Or(&lb.Int, &lb2.Int)
+func (lb *LogBloom) Merge(lb2 module.LogBloom) {
+	if lb2 == nil {
+		return
+	}
+	var lb2Ptr *LogBloom
+	if ptr, ok := lb2.(*LogBloom); ok {
+		lb2Ptr = ptr
+	} else {
+		lb2Ptr = new(LogBloom)
+		lb2Ptr.SetBytes(lb2.Bytes())
+	}
+	lb.Int.Or(&lb.Int, &lb2Ptr.Int)
 }
 
 // Contain checks whether it includes the bloom

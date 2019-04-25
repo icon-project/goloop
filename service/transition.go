@@ -366,7 +366,7 @@ func (t *transition) executeSync(alreadyValidated bool) {
 			fee.Mul(r.StepPrice(), used)
 			gatheredFee.Add(gatheredFee, fee)
 
-			t.logBloom.Merge(r.LogBloom().(*txresult.LogBloom))
+			t.logBloom.Merge(r.LogBloom())
 		}
 	}
 	t.patchReceipts = txresult.NewReceiptListFromSlice(t.db, patchReceipts)
