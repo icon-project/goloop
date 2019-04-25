@@ -87,7 +87,7 @@ func main() {
 	flag.StringVar(&cfg.SeedAddr, "seed", "", "Ip-port of Seed")
 	flag.StringVar(&genesisFile, "genesis", "", "Genesis transaction param")
 	flag.StringVar(&genesisStorage, "genesisStorage", "", "Genesis storage for genesis transaction")
-	flag.StringVar(&cfg.DBType, "db_type", "mapdb", "Name of database system(*badgerdb, goleveldb, boltdb, mapdb)")
+	flag.StringVar(&cfg.DBType, "db_type", "goleveldb", "Name of database system(badgerdb, *goleveldb, boltdb, mapdb)")
 	flag.UintVar(&cfg.Role, "role", 2, "[0:None, 1:Seed, 2:Validator, 3:Both]")
 	flag.StringVar(&eeSocket, "ee_socket", "", "Execution engine socket path(default:.chain/<address>/ee.sock")
 	flag.StringVar(&cfg.GenesisDataPath, "genesis_data", "", "Genesis data directory")
