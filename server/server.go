@@ -118,6 +118,8 @@ func (srv *Manager) Start() {
 
 	// websocket
 	srv.e.GET("/ws/echo", wsEcho)
+	srv.e.GET("/api/v3/:channel/block", wsBlock, ChainInjector(srv))
+	srv.e.GET("/api/v3/:channel/event", wsEvent, ChainInjector(srv))
 
 	// metric
 	srv.e.GET("/metrics", echo.WrapHandler(metric.PromethusExporter()))
