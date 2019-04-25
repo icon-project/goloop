@@ -19,6 +19,7 @@ sourceSets.test.java.srcDirs = ["java"]
 
 dependencies {
     implementation "foundation.icon:icon-sdk:0.9.11"
+    implementation "org.java-websocket:Java-WebSocket:1.4.0"
     testImplementation "junit:junit:4.12"
 }
 
