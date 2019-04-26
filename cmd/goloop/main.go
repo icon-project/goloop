@@ -188,7 +188,7 @@ func main() {
 	serverFlags := serverCmd.PersistentFlags()
 	serverFlags.StringVar(&flagCfg.P2PAddr, "p2p", "127.0.0.1:8080", "Advertise ip-port of P2P")
 	serverFlags.StringVar(&flagCfg.P2PListenAddr, "p2p_listen", "", "Listen ip-port of P2P")
-	serverFlags.StringVar(&flagCfg.RPCAddr, "rpc", ":9080", "Listen ip-port of JSON-RPC")
+	serverFlags.StringVar(&flagCfg.RPCAddr, "rpc_addr", ":9080", "Listen ip-port of JSON-RPC")
 	serverFlags.StringVar(&eeSocket, "ee_socket", "", "Execution engine socket path")
 	serverFlags.StringVar(&keyStoreFile, "key_store", "", "KeyStore file for wallet")
 	serverFlags.StringVar(&keyStoreSecret, "key_secret", "", "Secret(password) file for KeyStore")
