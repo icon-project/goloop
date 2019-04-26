@@ -251,7 +251,9 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 		cur.SetStatus(state.CSInactive)
 	}
 	handler := newCallHandlerFromTypedObj(
-		newCommonHandler(h.from, scoreAddr, big.NewInt(0), h.StepAvail()),
+		// NOTE : on_install or on_update should be invoked by score owner.
+		// 	self.msg.sender should be deployer(score owner) when on_install or on_update is invoked in SCORE
+		newCommonHandler(scoreAs.ContractOwner(), scoreAddr, big.NewInt(0), h.StepAvail()),
 		methodStr, typedObj, true)
 
 	// state -> active if failed to on_install, set inactive
