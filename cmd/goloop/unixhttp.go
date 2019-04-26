@@ -10,11 +10,16 @@ import (
 	"net"
 	"net/http"
 	"net/textproto"
+	"net/url"
 	"os"
 	"path"
 	"time"
 
 	"github.com/labstack/echo/v4"
+)
+
+const (
+	BaseUnixDomainSockHttpEndpoint = "http://localhost"
 )
 
 type UnixDomainSockHttpServer struct {
@@ -90,7 +95,7 @@ func (c *UnixDomainSockHttpClient) _do(req *http.Request) (resp *http.Response, 
 	return
 }
 
-func (c *UnixDomainSockHttpClient) Do(method, url string, reqPtr, respPtr interface{}) (resp *http.Response, err error) {
+func (c *UnixDomainSockHttpClient) Do(method, reqUrl string, reqPtr, respPtr interface{}) (resp *http.Response, err error) {
 	var reqB io.Reader
 	if reqPtr != nil {
 		b, mErr := json.Marshal(reqPtr)
@@ -101,7 +106,7 @@ func (c *UnixDomainSockHttpClient) Do(method, url string, reqPtr, respPtr interf
 		reqB = bytes.NewBuffer(b)
 
 	}
-	req, err := http.NewRequest(method, "http://localhost"+url, reqB)
+	req, err := http.NewRequest(method, BaseUnixDomainSockHttpEndpoint+reqUrl, reqB)
 	if err != nil {
 		return
 	}
@@ -127,17 +132,27 @@ func (c *UnixDomainSockHttpClient) Do(method, url string, reqPtr, respPtr interf
 	return
 }
 
-func (c *UnixDomainSockHttpClient) Get(url string, ptr interface{}) (resp *http.Response, err error) {
-	return c.Do(http.MethodGet, url, nil, ptr)
+func (c *UnixDomainSockHttpClient) Get(reqUrl string, ptr interface{}, reqParams ... *url.Values) (resp *http.Response, err error) {
+	reqUrlWithParams := reqUrl
+	if len(reqParams) > 0 {
+		reqUrlWithParams += "?"
+		for i, p := range reqParams {
+			if i != 0 {
+				reqUrlWithParams += "&"
+			}
+			reqUrlWithParams += p.Encode()
+		}
+	}
+	return c.Do(http.MethodGet, reqUrlWithParams, nil, ptr)
 }
-func (c *UnixDomainSockHttpClient) Post(url string) (resp *http.Response, err error) {
-	return c.Do(http.MethodPost, url, nil, nil)
+func (c *UnixDomainSockHttpClient) Post(reqUrl string) (resp *http.Response, err error) {
+	return c.Do(http.MethodPost, reqUrl, nil, nil)
 }
-func (c *UnixDomainSockHttpClient) PostWithJson(url string, ptr interface{}) (resp *http.Response, err error) {
-	return c.Do(http.MethodPost, url, ptr, nil)
+func (c *UnixDomainSockHttpClient) PostWithJson(reqUrl string, ptr interface{}) (resp *http.Response, err error) {
+	return c.Do(http.MethodPost, reqUrl, ptr, nil)
 }
 
-func (c *UnixDomainSockHttpClient) PostWithReader(url string, ptr interface{}, fieldname string, r io.Reader) (resp *http.Response, err error) {
+func (c *UnixDomainSockHttpClient) PostWithReader(reqUrl string, ptr interface{}, fieldname string, r io.Reader) (resp *http.Response, err error) {
 	buf := &bytes.Buffer{}
 	mw := multipart.NewWriter(buf)
 	if err = MultipartCopy(mw, fieldname, r); err != nil {
@@ -149,7 +164,7 @@ func (c *UnixDomainSockHttpClient) PostWithReader(url string, ptr interface{}, f
 	if err = mw.Close(); err != nil {
 		return
 	}
-	req, err := http.NewRequest(http.MethodPost, "http://localhost"+url, buf)
+	req, err := http.NewRequest(http.MethodPost, BaseUnixDomainSockHttpEndpoint+reqUrl, buf)
 	if err != nil {
 		return
 	}
@@ -161,7 +176,7 @@ func (c *UnixDomainSockHttpClient) PostWithReader(url string, ptr interface{}, f
 	return
 }
 
-func (c *UnixDomainSockHttpClient) PostWithFile(url string, ptr interface{}, fieldname, filename string) (resp *http.Response, err error) {
+func (c *UnixDomainSockHttpClient) PostWithFile(reqUrl string, ptr interface{}, fieldname, filename string) (resp *http.Response, err error) {
 	buf := &bytes.Buffer{}
 	mw := multipart.NewWriter(buf)
 	if err = MultipartFile(mw, fieldname, filename); err != nil {
@@ -173,7 +188,7 @@ func (c *UnixDomainSockHttpClient) PostWithFile(url string, ptr interface{}, fie
 	if err = mw.Close(); err != nil {
 		return
 	}
-	req, err := http.NewRequest(http.MethodPost, "http://localhost"+url, buf)
+	req, err := http.NewRequest(http.MethodPost, BaseUnixDomainSockHttpEndpoint+reqUrl, buf)
 	if err != nil {
 		return
 	}
@@ -184,8 +199,8 @@ func (c *UnixDomainSockHttpClient) PostWithFile(url string, ptr interface{}, fie
 	}
 	return
 }
-func (c *UnixDomainSockHttpClient) Delete(url string) (resp *http.Response, err error) {
-	return c.Do(http.MethodDelete, url, nil, nil)
+func (c *UnixDomainSockHttpClient) Delete(reqUrl string) (resp *http.Response, err error) {
+	return c.Do(http.MethodDelete, reqUrl, nil, nil)
 }
 
 func MultipartCopy(mw *multipart.Writer, fieldname string, r io.Reader) error {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -67,7 +68,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 			hc := NewUnixDomainSockHttpClient(cliSocket)
 			var err error
 			var NID int64
-			if NID, err = strconv.ParseInt(args[0],16,64); err != nil {
+			if NID, err = strconv.ParseInt(args[0], 16, 64); err != nil {
 				fmt.Println("cannot parse NID", err)
 				return
 			}
@@ -138,13 +139,20 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			cliSocket := cfg.ResolveAbsolute(cfg.CliSocket)
 			hc := NewUnixDomainSockHttpClient(cliSocket)
-			v := &ChainInspectView{}
-			resp, err := hc.Get(UrlChain+"/"+args[0], v)
+			format := cmd.Flag("format").Value.String()
+			var v interface{}
+			v = ChainInspectView{}
+			params := &url.Values{}
+			if format != "" {
+				v = make(map[string]interface{})
+				params.Add("format", format)
+			}
+			resp, err := hc.Get(UrlChain + "/" + args[0], &v, params)
 			if err != nil {
 				fmt.Println(err, resp)
 				return
 			}
-			s, err := JsonIntend(v)
+			s, err := JsonIntend(&v)
 			if err != nil {
 				fmt.Println(err, resp)
 				return
@@ -152,6 +160,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 			fmt.Println(s)
 		},
 	}
+	inspectCmd.Flags().StringP("format", "f","", "Format the output using the given Go template")
 	rootCmd.AddCommand(inspectCmd)
 	startCmd := &cobra.Command{
 		Use:                   "start NID",
@@ -252,8 +261,15 @@ func NewSystemCmd(cfg *GoLoopConfig) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			cliSocket := cfg.ResolveAbsolute(cfg.CliSocket)
 			hc := NewUnixDomainSockHttpClient(cliSocket)
-			v := &SystemView{}
-			resp, err := hc.Get(UrlSystem, v)
+			format := cmd.Flag("format").Value.String()
+			var v interface{}
+			v = SystemView{}
+			params := &url.Values{}
+			if format != "" {
+				v = make(map[string]interface{})
+				params.Add("format", format)
+			}
+			resp, err := hc.Get(UrlSystem, v, params)
 			if err != nil {
 				fmt.Println(err, resp)
 				return
@@ -266,5 +282,6 @@ func NewSystemCmd(cfg *GoLoopConfig) *cobra.Command {
 			fmt.Println(s)
 		},
 	}
+	rootCmd.Flags().StringP("format", "f","", "Format the output using the given Go template")
 	return rootCmd
 }

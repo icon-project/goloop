@@ -7,12 +7,14 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"text/template"
 
 	"github.com/labstack/echo/v4"
 
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/server/metric"
+	"github.com/icon-project/goloop/service"
 )
 
 const (
@@ -46,16 +48,16 @@ type JoinChainParam struct {
 }
 
 type ChainView struct {
-	NID       int    `json:"nid"`
-	State     string `json:"state"`
-	Height    int64  `json:"height"`
-	LastError string `json:"lasterr"`
+	NID       int    `json:"NID"`
+	State     string `json:"State"`
+	Height    int64  `json:"Height"`
+	LastError string `json:"LastError"`
 }
 
 type ChainInspectView struct {
 	*ChainView
-	Genesis json.RawMessage        `json:"genesis"`
-	Module  map[string]interface{} `json:"module"`
+	Genesis json.RawMessage        `json:"Genesis"`
+	Module  map[string]interface{} `json:"Module"`
 }
 
 //TODO [TBD]move to module.Chain ?
@@ -117,6 +119,7 @@ func RegisterRest(n *Node) {
 
 	_ = RegisterInspectFunc("metrics", metric.Inspect)
 	_ = RegisterInspectFunc("network", network.Inspect)
+	_ = RegisterInspectFunc("service", service.Inspect)
 }
 
 func (r *Rest) RegisterChainHandlers(g *echo.Group) {
@@ -234,9 +237,19 @@ func (r *Rest) JoinChain(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, "OK")
 }
 
+var (
+	defaultJsonTemplate = NewJsonTemplate("default")
+)
+
 func (r *Rest) GetChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(module.Chain)
-	return ctx.JSON(http.StatusOK, NewChainInspectView(c))
+	v := NewChainInspectView(c)
+
+	format := ctx.QueryParam("format")
+	if format != "" {
+		return defaultJsonTemplate.JSON(format, v, ctx.Response())
+	}
+	return ctx.JSON(http.StatusOK, v)
 }
 
 func (r *Rest) LeaveChain(ctx echo.Context) error {
@@ -289,5 +302,46 @@ func (r *Rest) GetSystem(ctx echo.Context) error {
 		P2PAddr:       r.n.nt.Address(),
 		P2PListenAddr: r.n.nt.GetListenAddress(),
 	}
+
+	format := ctx.QueryParam("format")
+	if format != "" {
+		return defaultJsonTemplate.JSON(format, v, ctx.Response())
+	}
 	return ctx.JSON(http.StatusOK, v)
+}
+
+type JsonTemplate struct {
+	*template.Template
+}
+
+func NewJsonTemplate(name string) *JsonTemplate {
+	tmpl := &JsonTemplate{template.New(name)}
+	tmpl.Option("missingkey=error")
+	tmpl.Funcs(template.FuncMap{
+		"json": func(v interface{}) string {
+			a, _ := json.Marshal(v)
+			return string(a)
+		},
+	})
+	return tmpl
+}
+
+func (t *JsonTemplate) JSON(format string, v interface{}, resp *echo.Response) error {
+	nt, err := t.Clone()
+	if err != nil {
+		return err
+	}
+	nt, err = nt.Parse(format)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	err = nt.Execute(resp, v)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	resp.Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSONCharsetUTF8)
+	resp.WriteHeader(http.StatusOK)
+	return nil
 }
