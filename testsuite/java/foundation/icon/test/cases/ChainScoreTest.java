@@ -9,11 +9,8 @@ import foundation.icon.icx.transport.jsonrpc.RpcArray;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
-import foundation.icon.test.common.Constants;
-import foundation.icon.test.common.ResultTimeoutException;
+import foundation.icon.test.common.*;
 import foundation.icon.test.score.GovScore;
-import foundation.icon.test.common.Env;
-import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.HelloWorld;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -24,6 +21,7 @@ import org.junit.runners.Parameterized;
 import java.math.BigInteger;
 import java.util.*;
 
+import static foundation.icon.test.common.Env.LOG;
 import static org.junit.Assert.*;
 
 @RunWith(Parameterized.class)
@@ -198,73 +196,129 @@ public class ChainScoreTest{
         }
     }
 
-    @Ignore
     @Test
-    public void acceptScore() throws Exception{
+    public void acceptScore() throws Exception {
         if (!Utils.isAudit(iconService)) {
             return;
         }
-        Bytes txHash = Utils.deployScore(iconService, chain.networkId, helloWorldOwner, Constants.CHAINSCORE_ADDRESS,
-                Constants.SCORE_HELLOWORLD_PATH, null, -1);
+        KeyWallet owner = KeyWallet.create();
+        RpcObject params = new RpcObject.Builder()
+                .put("name", new RpcValue("HelloWorld"))
+                .build();
+        Bytes txHash = Utils.deployScore(iconService, chain.networkId, owner, Constants.CHAINSCORE_ADDRESS,
+                Constants.SCORE_HELLOWORLD_PATH, params, 2000);
         TransactionResult result = Utils.getTransactionResult(iconService, txHash, 5000);
-        if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
-            throw new Exception();
+        assertEquals(result.getStatus(), Constants.STATUS_SUCCESS);
+
+        Address scoreAddr = new Address(result.getScoreAddress());
+        KeyWallet caller = KeyWallet.create();
+        String []expectedStatus;
+        if(toAddr == Constants.GOV_ADDRESS) {
+            expectedStatus = new String[]{Constants.SCORE_STATUS_PENDING, Constants.SCORE_STATUS_ACTIVE};
         }
-        Address addr = new Address(result.getScoreAddress());
-        KeyWallet tmpWallet = KeyWallet.create();
-        boolean []list = {false, true};
-        for(boolean accepted : list) {
+        else {
+            expectedStatus = new String[]{Constants.SCORE_STATUS_PENDING, Constants.SCORE_STATUS_PENDING};
+        }
+        String expectedItem = "next";
+        for(String expect : expectedStatus) {
+            params = new RpcObject.Builder()
+                    .put("address", new RpcValue(scoreAddr))
+                    .build();
+            RpcObject rpcObject = Utils.icxCall(iconService,
+                    Constants.CHAINSCORE_ADDRESS, "getScoreStatus", params).asObject();
+            RpcObject object = rpcObject.getItem(expectedItem).asObject();
+            assertNotNull(object);
+
+            String status = object.getItem("status").asString();
+            assertEquals(status, expect);
+
             try {
                 Utils.sendTransactionWithCall(iconService, chain.networkId,
-                        tmpWallet, addr, "hello", null, 0);
-                if(!accepted) {
-                    throw new Exception();
-                }
+                        caller, scoreAddr, "hello", null, 0);
+                assertEquals(expect, Constants.SCORE_STATUS_ACTIVE);
             }
             catch(ResultTimeoutException ex) {
-                if(accepted) {
-                    throw new Exception();
-                }
+                assertEquals(expect, Constants.SCORE_STATUS_PENDING);
             }
-            if(!accepted) {
-                RpcObject.Builder builder = new RpcObject.Builder();
-                builder.put("txHash", new RpcValue(txHash.toHexString(true)));
-                Utils.sendTransactionWithCall(iconService, chain.networkId,
-                        tmpWallet, this.toAddr, "acceptScore", builder.build(), 0);
+            if(expect == Constants.SCORE_STATUS_PENDING) {
+                LOG.infoEntering("accept", "accept score");
+                params = new RpcObject.Builder()
+                        .put("txHash", new RpcValue(txHash))
+                        .build();
+                TransactionResult acceptResult =
+                        Utils.sendTransactionWithCall(iconService, chain.networkId,
+                                chain.governorWallet, toAddr, "acceptScore", params, 0);
+                if(toAddr == Constants.GOV_ADDRESS) {
+                    assertEquals(acceptResult.getStatus(), Constants.STATUS_SUCCESS);
+                    expectedItem = "current";
+                }
+                else {
+                    assertEquals(acceptResult.getStatus(), Constants.STATUS_FAIL);
+                }
+                LOG.infoExiting();
             }
         }
     }
 
-    @Ignore
     @Test
     public void rejectScore() throws Exception {
         if (!Utils.isAudit(iconService)) {
             return;
         }
-        Bytes txHash = Utils.deployScore(iconService, chain.networkId, helloWorldOwner, Constants.CHAINSCORE_ADDRESS,
-                Constants.SCORE_HELLOWORLD_PATH, null, -1);
+        KeyWallet owner = KeyWallet.create();
+        RpcObject params = new RpcObject.Builder()
+                .put("name", new RpcValue("HelloWorld"))
+                .build();
+        Bytes txHash = Utils.deployScore(iconService, chain.networkId, owner,
+                Constants.CHAINSCORE_ADDRESS, Constants.SCORE_HELLOWORLD_PATH, params, 2000);
         TransactionResult result = Utils.getTransactionResult(iconService, txHash, 5000);
-        if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
-            throw new Exception();
+        assertEquals(result.getStatus(), Constants.STATUS_SUCCESS);
+
+        Address scoreAddr = new Address(result.getScoreAddress());
+        KeyWallet caller = KeyWallet.create();
+        String []expectedStatus;
+        if(toAddr == Constants.GOV_ADDRESS) {
+            expectedStatus = new String[]{Constants.SCORE_STATUS_PENDING, Constants.SCORE_STATUS_REJECT};
         }
-        Address addr = new Address(result.getScoreAddress());
-        KeyWallet tmpWallet = KeyWallet.create();
-        boolean []list = {false, true};
-        for(boolean rejected : list) {
+        else {
+            expectedStatus = new String[]{Constants.SCORE_STATUS_PENDING, Constants.SCORE_STATUS_PENDING};
+        }
+
+        for(String expect : expectedStatus) {
+            params = new RpcObject.Builder()
+                    .put("address", new RpcValue(scoreAddr))
+                    .build();
+            RpcObject rpcObject =
+                    Utils.icxCall(iconService, Constants.CHAINSCORE_ADDRESS, "getScoreStatus", params).asObject();
+            RpcObject object = rpcObject.getItem("next").asObject();
+            assertNotNull(object);
+
+            String status = object.getItem("status").asString();
+            assertEquals(status, expect);
+
             try {
-                Utils.sendTransactionWithCall(iconService, chain.networkId,
-                        tmpWallet, addr, "hello", null, 0);
-                throw new Exception();
+                Utils.sendTransactionWithCall(iconService, chain.networkId, caller, scoreAddr, "hello", null, 0);
+                // cannot reach here
+                fail();
             }
             catch(ResultTimeoutException ex) {
+                //success
             }
-            if(!rejected) {
-                RpcObject.Builder builder = new RpcObject.Builder();
-                builder.put("txHash", new RpcValue(txHash.toHexString(true)));
-                Utils.sendTransactionWithCall(iconService, chain.networkId,
-                        tmpWallet, this.toAddr, "rejectScore", builder.build(), 0);
-            } else {
-                // TODO get scoreStatus
+            if(expect == Constants.SCORE_STATUS_PENDING) {
+                LOG.infoEntering("reject", "reject score");
+                params = new RpcObject.Builder()
+                        .put("txHash", new RpcValue(txHash))
+                        .build();
+                TransactionResult acceptResult =
+                        Utils.sendTransactionWithCall(iconService, chain.networkId,
+                                chain.governorWallet, toAddr, "rejectScore", params, 0);
+                if(toAddr == Constants.GOV_ADDRESS) {
+                    assertEquals(acceptResult.getStatus(), Constants.STATUS_SUCCESS);
+                }
+                else {
+                    assertEquals(acceptResult.getStatus(), Constants.STATUS_FAIL);
+                }
+                LOG.infoExiting();
             }
         }
     }

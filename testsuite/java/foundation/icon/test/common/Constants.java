@@ -31,6 +31,11 @@ public class Constants {
             = new Address("cx0000000000000000000000000000000000000000");
     public static final Address GOV_ADDRESS
             = new Address("cx0000000000000000000000000000000000000001");
+
+    public static final String SCORE_STATUS_PENDING = "pending";
+    public static final String SCORE_STATUS_ACTIVE = "active";
+    public static final String SCORE_STATUS_REJECT = "rejected";
+
     public static final String SCORE_MULTISIG_PATH = Constants.SCORE_ROOT + "multisig_wallet";
     public static final String SCORE_STEPCOUNTER_PATH = Constants.SCORE_ROOT + "step_counter";
     public static final String SCORE_CROWDSALE_PATH = Constants.SCORE_ROOT + "crowdsale";

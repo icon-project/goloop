@@ -758,7 +758,7 @@ func (s *ChainScore) Ex_getScoreStatus(address module.Address) (map[string]inter
 		case state.CSPending:
 			status = "pending"
 		case state.CSRejected:
-			status = "reject"
+			status = "rejected"
 		default:
 			log.Printf("GetScoreStatus - string : %v\n", s)
 		}
