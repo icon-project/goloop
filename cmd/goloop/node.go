@@ -25,6 +25,7 @@ import (
 const (
 	ChainConfigFileName     = "config.json"
 	ChainGenesisZipFileName = "genesis.zip"
+	DefaultNodeCliSock      = "cli.sock"
 )
 
 type NodeConfig struct {
@@ -150,7 +151,7 @@ func (n *Node) Start() {
 	}
 
 	go n.srv.Start()
-	go func(){
+	go func() {
 		if err := n.pm.Loop(); err != nil {
 			log.Panic(err)
 		}
@@ -194,7 +195,7 @@ func (n *Node) JoinChain(
 	}
 
 	chainDir := n.ChainDir(NID)
-	log.Println("ChainDir",chainDir)
+	log.Println("ChainDir", chainDir)
 	if err := os.MkdirAll(chainDir, 0700); err != nil {
 		log.Panicf("Fail to create directory %s err=%+v", chainDir, err)
 	}
@@ -318,7 +319,7 @@ func NewNode(
 		cfg.BaseDir = path.Join(".", ".chain", w.Address().String())
 	}
 	if cfg.CliSocket == "" {
-		cfg.CliSocket = path.Join(cfg.BaseDir, "cli.sock")
+		cfg.CliSocket = path.Join(cfg.BaseDir, DefaultNodeCliSock)
 	}
 	if cfg.EESocket == "" {
 		cfg.EESocket = path.Join(cfg.BaseDir, "ee.sock")
@@ -367,7 +368,7 @@ func NewNode(
 	for _, f := range fs {
 		if f.IsDir() {
 			chainDir := path.Join(nodeDir, f.Name())
-			log.Println("Load from ChainDir",chainDir)
+			log.Println("Load from ChainDir", chainDir)
 			cfgFile := path.Join(chainDir, ChainConfigFileName)
 			ccfg, err := n.loadChainConfig(cfgFile)
 			if err != nil {

@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path"
 	"reflect"
 	"runtime/pprof"
 	"strings"
@@ -129,6 +130,9 @@ func initConfig() {
 	}
 	if cliSocket != "" {
 		cfg.CliSocket = cfg.ResolveRelative(cliSocket)
+	}
+	if cfg.CliSocket == "" {
+		cfg.CliSocket = path.Join(cfg.BaseDir, DefaultNodeCliSock)
 	}
 	if eeSocket != "" {
 		cfg.EESocket = cfg.ResolveRelative(eeSocket)
