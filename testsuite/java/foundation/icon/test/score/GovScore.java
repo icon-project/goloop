@@ -1,7 +1,6 @@
 package foundation.icon.test.score;
 
 import foundation.icon.icx.IconService;
-import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
@@ -57,7 +56,17 @@ public class GovScore extends Score {
         invokeAndWaitResult(chain.governorWallet, "setMaxStepLimit", params, 0, 1000);
     }
 
-    public Bytes acceptScore(Bytes txHash) {
-        return null;
+    public TransactionResult acceptScore(Bytes txHash) throws ResultTimeoutException, IOException {
+        RpcObject params = new RpcObject.Builder()
+                .put("txHash", new RpcValue(txHash))
+                .build();
+        return invokeAndWaitResult(chain.governorWallet, "acceptScore", params, 0, 1000);
+    }
+
+    public TransactionResult rejectScore(Bytes txHash) throws ResultTimeoutException, IOException {
+        RpcObject params = new RpcObject.Builder()
+                .put("txHash", new RpcValue(txHash))
+                .build();
+        return invokeAndWaitResult(chain.governorWallet, "rejectScore", params, 0, 1000);
     }
 }

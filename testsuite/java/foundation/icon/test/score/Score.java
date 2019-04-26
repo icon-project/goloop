@@ -14,6 +14,7 @@ import java.math.BigInteger;
 public class Score {
     public static final BigInteger STEPS_DEFAULT = BigInteger.valueOf(2000000);
     public static final long DEFAULT_WAITING_TIME = 5000; // millisecond
+    private static final Log LOG = Log.getGlobal();
 
     protected IconService service;
     protected Address scoreAddress;
@@ -37,6 +38,15 @@ public class Score {
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new TransactionFailureException(result.getFailure());
         }
+
+        if(Utils.isAudit(service)) {
+            LOG.infoEntering("accept", "accept score");
+            TransactionResult acceptResult = new GovScore(service, chain).acceptScore(txHash);
+            if (!Constants.STATUS_SUCCESS.equals(acceptResult.getStatus())) {
+                throw new TransactionFailureException(acceptResult.getFailure());
+            }
+            LOG.infoExiting();
+        }
         return new Address(result.getScoreAddress());
     }
 
@@ -44,6 +54,12 @@ public class Score {
             throws TransactionFailureException, ResultTimeoutException, IOException {
         Bytes txHash = Utils.updateScore(service, chain, wallet, this.scoreAddress, contentPath, params, -1);
         TransactionResult result = Utils.getTransactionResult(service, txHash, DEFAULT_WAITING_TIME);
+        if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
+            throw new TransactionFailureException(result.getFailure());
+        }
+        if(Utils.isAudit(service)) {
+            result = new GovScore(service, chain).acceptScore(txHash);
+        }
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new TransactionFailureException(result.getFailure());
         }

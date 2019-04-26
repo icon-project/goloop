@@ -26,14 +26,11 @@ import foundation.icon.icx.data.TransactionResult.EventLog;
 import foundation.icon.icx.transport.jsonrpc.RpcError;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
-import foundation.icon.test.score.GovScore;
 
 import java.io.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
@@ -153,10 +150,6 @@ public class Utils {
             Wallet fromWallet, String contentPath, RpcObject params, long stepLimit)
                 throws IOException {
         Bytes txHash = deployScore(iconService, chain.networkId, fromWallet, Constants.CHAINSCORE_ADDRESS, contentPath, params, stepLimit);
-        if(isAudit(iconService)) {
-            Bytes acceptHash = new GovScore(iconService, chain).acceptScore(txHash);
-            return acceptHash;
-        }
         return txHash;
     }
 
@@ -164,16 +157,7 @@ public class Utils {
             Wallet fromWallet, Address scoreAddr, String contentPath, RpcObject params, long stepLimit)
                 throws IOException {
         Bytes txHash = deployScore(iconService, chain.networkId, fromWallet, scoreAddr, contentPath, params, stepLimit);
-        if(isAudit(iconService)) {
-            Bytes acceptHash = new GovScore(iconService, chain).acceptScore(txHash);
-            return acceptHash;
-        }
         return txHash;
-    }
-
-    private static byte[] readFile(String zipfile) throws IOException {
-        Path path = Paths.get(zipfile);
-        return Files.readAllBytes(path);
     }
 
     public static TransactionResult getTransactionResult(IconService iconService, Bytes txHash, long waitingTime)
