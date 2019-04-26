@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -12,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/icon-project/goloop/chain"
+	"github.com/icon-project/goloop/common"
 )
 
 var (
@@ -32,6 +34,18 @@ func JsonIntend(v interface{}) (string, error) {
 	return string(buf.Bytes()), nil
 }
 
+func GetUnixDomainSockHttpClient(cfg *GoLoopConfig) *UnixDomainSockHttpClient {
+	if cfg.CliSocket == "" {
+		if cfg.priK == nil {
+			log.Panicf("fail to using default CliSocket")
+		}
+		addr := common.NewAccountAddressFromPublicKey(cfg.priK.PublicKey())
+		cfg.FillEmpty(addr)
+	}
+	cliSocket := cfg.ResolveAbsolute(cfg.CliSocket)
+	return NewUnixDomainSockHttpClient(cliSocket)
+}
+
 func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "chain",
@@ -43,8 +57,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 		Use:   "ls",
 		Short: "List chains",
 		Run: func(cmd *cobra.Command, args []string) {
-			cliSocket := cfg.ResolveAbsolute(cfg.CliSocket)
-			hc := NewUnixDomainSockHttpClient(cliSocket)
+			hc := GetUnixDomainSockHttpClient(cfg)
 			l := make([]*ChainView, 0)
 			resp, err := hc.Get(UrlChain, &l)
 			if err != nil {
@@ -64,8 +77,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 		Short: "Join chain",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			cliSocket := cfg.ResolveAbsolute(cfg.CliSocket)
-			hc := NewUnixDomainSockHttpClient(cliSocket)
+			hc := GetUnixDomainSockHttpClient(cfg)
 			var err error
 			var NID int64
 			if NID, err = strconv.ParseInt(args[0], 16, 64); err != nil {
@@ -115,8 +127,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 		Args:                  cobra.ExactArgs(1),
 		DisableFlagsInUseLine: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			cliSocket := cfg.ResolveAbsolute(cfg.CliSocket)
-			hc := NewUnixDomainSockHttpClient(cliSocket)
+			hc := GetUnixDomainSockHttpClient(cfg)
 			resp, err := hc.Delete(UrlChain + "/" + args[0])
 			if err != nil {
 				fmt.Println(err, resp)
@@ -137,8 +148,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 		Args:                  cobra.ExactArgs(1),
 		DisableFlagsInUseLine: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			cliSocket := cfg.ResolveAbsolute(cfg.CliSocket)
-			hc := NewUnixDomainSockHttpClient(cliSocket)
+			hc := GetUnixDomainSockHttpClient(cfg)
 			format := cmd.Flag("format").Value.String()
 			var v interface{}
 			v = ChainInspectView{}
@@ -168,8 +178,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 		Args:                  cobra.ExactArgs(1),
 		DisableFlagsInUseLine: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			cliSocket := cfg.ResolveAbsolute(cfg.CliSocket)
-			hc := NewUnixDomainSockHttpClient(cliSocket)
+			hc := GetUnixDomainSockHttpClient(cfg)
 			resp, err := hc.Post(UrlChain + "/" + args[0] + "/start")
 			if err != nil {
 				fmt.Println(err, resp)
@@ -190,8 +199,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 		Args:                  cobra.ExactArgs(1),
 		DisableFlagsInUseLine: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			cliSocket := cfg.ResolveAbsolute(cfg.CliSocket)
-			hc := NewUnixDomainSockHttpClient(cliSocket)
+			hc := GetUnixDomainSockHttpClient(cfg)
 			resp, err := hc.Post(UrlChain + "/" + args[0] + "/stop")
 			if err != nil {
 				fmt.Println(err, resp)
@@ -212,8 +220,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 		Args:                  cobra.ExactArgs(1),
 		DisableFlagsInUseLine: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			cliSocket := cfg.ResolveAbsolute(cfg.CliSocket)
-			hc := NewUnixDomainSockHttpClient(cliSocket)
+			hc := GetUnixDomainSockHttpClient(cfg)
 			resp, err := hc.Post(UrlChain + "/" + args[0] + "/reset")
 			if err != nil {
 				fmt.Println(err, resp)
@@ -234,8 +241,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 		Args:                  cobra.ExactArgs(1),
 		DisableFlagsInUseLine: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			cliSocket := cfg.ResolveAbsolute(cfg.CliSocket)
-			hc := NewUnixDomainSockHttpClient(cliSocket)
+			hc := GetUnixDomainSockHttpClient(cfg)
 			resp, err := hc.Post(UrlChain + "/" + args[0] + "/verify")
 			if err != nil {
 				fmt.Println(err, resp)
@@ -259,8 +265,7 @@ func NewSystemCmd(cfg *GoLoopConfig) *cobra.Command {
 		Short:                 "System info",
 		DisableFlagsInUseLine: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			cliSocket := cfg.ResolveAbsolute(cfg.CliSocket)
-			hc := NewUnixDomainSockHttpClient(cliSocket)
+			hc := GetUnixDomainSockHttpClient(cfg)
 			format := cmd.Flag("format").Value.String()
 			var v interface{}
 			v = SystemView{}

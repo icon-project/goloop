@@ -25,7 +25,6 @@ import (
 const (
 	ChainConfigFileName     = "config.json"
 	ChainGenesisZipFileName = "genesis.zip"
-	DefaultNodeCliSock      = "cli.sock"
 )
 
 type NodeConfig struct {
@@ -58,6 +57,18 @@ func (c *NodeConfig) ResolveRelative(targetPath string) string {
 	base, _ = filepath.Abs(base)
 	r, _ := filepath.Rel(base, absPath)
 	return r
+}
+
+func (c *NodeConfig) FillEmpty(addr module.Address) {
+	if c.BaseDir == "" {
+		c.BaseDir = path.Join(".", ".chain", addr.String())
+	}
+	if c.CliSocket == "" {
+		c.CliSocket = path.Join(cfg.BaseDir, "cli.sock")
+	}
+	if c.EESocket == "" {
+		c.EESocket = path.Join(cfg.BaseDir, "ee.sock")
+	}
 }
 
 type Node struct {
@@ -315,15 +326,7 @@ func NewNode(
 ) *Node {
 	metric.Initialize(w)
 
-	if cfg.BaseDir == "" {
-		cfg.BaseDir = path.Join(".", ".chain", w.Address().String())
-	}
-	if cfg.CliSocket == "" {
-		cfg.CliSocket = path.Join(cfg.BaseDir, DefaultNodeCliSock)
-	}
-	if cfg.EESocket == "" {
-		cfg.EESocket = path.Join(cfg.BaseDir, "ee.sock")
-	}
+	cfg.FillEmpty(w.Address())
 
 	nt := network.NewTransport(cfg.P2PAddr, w)
 	if cfg.P2PListenAddr != "" {

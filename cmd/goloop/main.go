@@ -131,9 +131,6 @@ func initConfig() {
 	if cliSocket != "" {
 		cfg.CliSocket = cfg.ResolveRelative(cliSocket)
 	}
-	if cfg.CliSocket == "" {
-		cfg.CliSocket = path.Join(cfg.BaseDir, DefaultNodeCliSock)
-	}
 	if eeSocket != "" {
 		cfg.EESocket = cfg.ResolveRelative(eeSocket)
 	}
@@ -199,7 +196,7 @@ func main() {
 	serverFlags.StringVar(&flagCfg.KeyStorePass, "key_password", "", "Password for the KeyStore file")
 	serverFlags.IntVar(&flagCfg.EEInstances, "ee_instances", 1, "Number of execution engines")
 	serverFlags.StringVar(&nodeDir, "node_dir", "",
-		"Node data directory(default:<configuration file path>/<address>)")
+		"Node data directory(default:<configuration file path>/.chain/<address>)")
 	vc.BindPFlags(serverFlags)
 
 	saveCmd := &cobra.Command{
@@ -228,17 +225,9 @@ func main() {
 			}
 
 			saveFilePath := args[0]
-			f, err := os.OpenFile(saveFilePath,
-				os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
-			if err != nil {
-				log.Panicf("Fail to open file=%s err=%+v", saveFilePath, err)
+			if err := saveJsonFile(saveFilePath, &cfg); err != nil {
+				log.Panicf("Fail to save JSON %s err=%+v", saveFilePath, err)
 			}
-			enc := json.NewEncoder(f)
-			enc.SetIndent("", "  ")
-			if err := enc.Encode(&cfg); err != nil {
-				log.Panicf("Fail to generate JSON for %+v", cfg)
-			}
-			f.Close()
 		},
 	}
 	saveCmd.Flags().StringVar(&saveKeyStore, "save_key_store", "", "KeyStore File path to save")
@@ -309,5 +298,23 @@ func makeSureKeyStore(cfg *GoLoopConfig) error {
 	} else {
 		cfg.KeyStoreData = ks
 	}
+	return nil
+}
+
+func saveJsonFile(filePath string, v interface{}) error {
+	if err := os.MkdirAll(path.Dir(filePath), 0700); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+	if err != nil {
+		return err
+	}
+	enc := json.NewEncoder(f)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(v); err != nil {
+		return err
+	}
+	f.Close()
+	log.Println("Save configuration to", filePath)
 	return nil
 }
