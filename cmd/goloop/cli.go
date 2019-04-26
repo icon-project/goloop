@@ -269,12 +269,12 @@ func NewSystemCmd(cfg *GoLoopConfig) *cobra.Command {
 				v = make(map[string]interface{})
 				params.Add("format", format)
 			}
-			resp, err := hc.Get(UrlSystem, v, params)
+			resp, err := hc.Get(UrlSystem, &v, params)
 			if err != nil {
 				fmt.Println(err, resp)
 				return
 			}
-			s, err := JsonIntend(v)
+			s, err := JsonIntend(&v)
 			if err != nil {
 				fmt.Println(err, resp)
 				return
