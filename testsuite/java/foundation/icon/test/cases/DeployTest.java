@@ -47,7 +47,6 @@ public class DeployTest {
         Env.Channel channel = node.channels[0];
         chain = channel.chain;
         iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
-        chain.governorWallet = KeyWallet.create();
         govScore = new GovScore(iconService, chain);
         initDeploy();
     }

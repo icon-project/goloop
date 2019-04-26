@@ -4,6 +4,7 @@ import foundation.icon.icx.KeyWallet;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.util.*;
 
 import static org.junit.Assert.assertNotNull;
@@ -16,9 +17,9 @@ public class Env {
     private static String dataPath;
 
     public static class Node {
-        private String url;
+        private final String url;
+        public final KeyWallet wallet;
         public Channel []channels;
-        public KeyWallet wallet;
         Node(String url, KeyWallet wallet) {
             this.url = url;
             this.wallet = wallet;
@@ -26,16 +27,26 @@ public class Env {
     }
 
     public static class Chain {
-        public int networkId;
+        private final Properties props;
+        private final String prefix;
+
+        public final int networkId;
         private List<Channel> channelList;
         public Channel []channels;
-        public KeyWallet godWallet;
-        public KeyWallet governorWallet;
-        Chain(int networkId, KeyWallet god, KeyWallet governor) {
+        public final KeyWallet godWallet;
+        public final KeyWallet governorWallet;
+
+        Chain(Properties props, String prefix, int networkId, KeyWallet god, KeyWallet governor) {
+            this.props = props;
+            this.prefix = prefix;
             this.networkId = networkId;
             this.godWallet = god;
             this.governorWallet = governor;
             this.channelList = new LinkedList<>();
+        }
+
+        public String getProperty(String key) {
+            return this.props.getProperty(prefix+key);
         }
 
         private void makeChannels() {
@@ -104,7 +115,7 @@ public class Env {
                     throw new IllegalArgumentException("FAIL to read governor wallet. path = " + govWalletPath);
                 }
             }
-            Chain chain = new Chain(Integer.parseInt(nid), godWallet, governorWallet);
+            Chain chain = new Chain(props, chainName+".", Integer.parseInt(nid), godWallet, governorWallet);
             chainMap.put(nid, chain);
         }
         return chainMap;
@@ -136,6 +147,7 @@ public class Env {
             }
 
             Node node = new Node(url, nodeWallet);
+
             // read channel env
             List<Channel> channelsOnNode = new LinkedList<>();
             for( int j = 0; ; j++ ) {
