@@ -394,10 +394,7 @@ func (s *accountStateImpl) DeployContract(code []byte,
 	if s.isContract == false {
 		return
 	}
-	state := CSInactive
-	if s.curContract != nil {
-		state = CSPending
-	}
+	state := CSPending
 	codeHash := sha3.Sum256(code)
 	bk, err := s.database.GetBucket(db.BytesByHash)
 	if err != nil {
