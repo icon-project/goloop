@@ -22,6 +22,7 @@ type Manager struct {
 	addr   string
 	wallet module.Wallet
 	chains map[string]module.Chain // chain manager
+	wssm   *wsSessionManager
 	mtx    sync.RWMutex
 }
 
@@ -43,6 +44,7 @@ func NewManager(addr string, wallet module.Wallet) *Manager {
 		addr:   addr,
 		wallet: wallet,
 		chains: make(map[string]module.Chain),
+		wssm:   newWSSessionManager(),
 		mtx:    sync.RWMutex{},
 	}
 }
@@ -65,7 +67,8 @@ func (srv *Manager) RemoveChain(channel string) {
 	if channel == "" {
 		return
 	}
-	if _, ok := srv.chains[channel]; ok {
+	if chain, ok := srv.chains[channel]; ok {
+		srv.wssm.StopSessionsForChain(chain)
 		delete(srv.chains, channel)
 	}
 }
@@ -118,8 +121,8 @@ func (srv *Manager) Start() {
 
 	// websocket
 	srv.e.GET("/ws/echo", wsEcho)
-	srv.e.GET("/api/v3/:channel/block", wsBlock, ChainInjector(srv))
-	srv.e.GET("/api/v3/:channel/event", wsEvent, ChainInjector(srv))
+	srv.e.GET("/api/v3/:channel/block", srv.wssm.RunBlockSession, ChainInjector(srv))
+	srv.e.GET("/api/v3/:channel/event", srv.wssm.RunEventSession, ChainInjector(srv))
 
 	// metric
 	srv.e.GET("/metrics", echo.WrapHandler(metric.PromethusExporter()))
@@ -133,6 +136,7 @@ func (srv *Manager) Start() {
 func (srv *Manager) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
+	srv.wssm.StopAllSessions()
 	if err := srv.e.Shutdown(ctx); err != nil {
 		srv.e.Logger.Fatal(err)
 	}
