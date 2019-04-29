@@ -120,7 +120,6 @@ func (srv *Manager) Start() {
 	g.POST("/v3/:channel", mr.Handle, ChainInjector(srv))
 
 	// websocket
-	srv.e.GET("/ws/echo", wsEcho)
 	srv.e.GET("/api/v3/:channel/block", srv.wssm.RunBlockSession, ChainInjector(srv))
 	srv.e.GET("/api/v3/:channel/event", srv.wssm.RunEventSession, ChainInjector(srv))
 

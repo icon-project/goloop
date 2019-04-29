@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
-	"log"
 	"net/http"
 	"sync"
 
@@ -302,31 +301,6 @@ func (er *EventRequest) match(el module.EventLog) bool {
 		}
 	}
 	return true
-}
-
-func wsEcho(c echo.Context) error {
-
-	upgrader := Upgrader()
-	ws, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
-	if err != nil {
-		return err
-	}
-	defer ws.Close()
-
-	for {
-		// Write
-		err := ws.WriteMessage(websocket.TextMessage, []byte("Hello, Client!"))
-		if err != nil {
-			c.Logger().Error(err)
-		}
-
-		// Read
-		_, msg, err := ws.ReadMessage()
-		if err != nil {
-			c.Logger().Error(err)
-		}
-		log.Printf("%s\n", msg)
-	}
 }
 
 func readLoop(c *websocket.Conn, ech chan<- error) {
