@@ -75,6 +75,7 @@ type consensus struct {
 
 	nm        module.NetworkManager
 	bm        module.BlockManager
+	sm        module.ServiceManager
 	wallet    module.Wallet
 	ph        module.ProtocolHandler
 	rg        module.Regulator
@@ -87,6 +88,7 @@ type consensus struct {
 
 	lastBlock          module.Block
 	validators         module.ValidatorList
+	members            module.MemberList
 	votes              *commitVoteList
 	hvs                heightVoteSet
 	nextProposeTime    time.Time
@@ -117,6 +119,7 @@ func NewConsensus(c module.Chain, bm module.BlockManager, nm module.NetworkManag
 	cs := &consensus{
 		nm:              nm,
 		bm:              bm,
+		sm:              c.ServiceManager(),
 		wallet:          c.Wallet(),
 		rg:              c.Regulator(),
 		walDir:          walDir,
@@ -138,6 +141,20 @@ func (cs *consensus) _resetForNewHeight(prevBlock module.Block, votes *commitVot
 			peerIDs[i] = network.NewPeerIDFromAddress(v.Address())
 		}
 		cs.nm.SetRole(cs.height, module.ROLE_VALIDATOR, peerIDs...)
+	}
+	nextMembers, err := cs.sm.GetMembers(cs.lastBlock.Result())
+	if err != nil {
+		logger.Printf("GetMemebers error=%v\n", err)
+	} else {
+		if cs.members == nil || !cs.members.Equal(nextMembers) {
+			cs.members = nextMembers
+			var peerIDs []module.PeerID
+			for it := nextMembers.Iterator(); it.Has(); it.Next() {
+				addr, _ := it.Get()
+				peerIDs = append(peerIDs, network.NewPeerIDFromAddress(addr))
+			}
+			cs.nm.SetRole(cs.height, module.ROLE_NORMAL, peerIDs...)
+		}
 	}
 	cs.votes = votes
 	cs.hvs.reset(cs.validators.Len())
