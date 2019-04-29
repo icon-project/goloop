@@ -4,7 +4,6 @@ import foundation.icon.icx.KeyWallet;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.math.BigInteger;
 import java.util.*;
 
 import static org.junit.Assert.assertNotNull;
