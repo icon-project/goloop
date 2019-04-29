@@ -26,6 +26,7 @@ import foundation.icon.icx.data.TransactionResult.EventLog;
 import foundation.icon.icx.transport.jsonrpc.RpcError;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
+import org.junit.Assert;
 
 import java.io.*;
 import java.math.BigDecimal;
@@ -39,6 +40,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static foundation.icon.test.common.Env.LOG;
+import static org.junit.Assert.assertTrue;
 
 public class Utils {
     public static BigInteger getMicroTime() {
@@ -93,12 +95,12 @@ public class Utils {
         }
     }
 
-    public static Bytes transfer(IconService iconService, int networkId, Wallet fromWallet, Address to, long value) throws IOException {
+    public static Bytes transfer(IconService iconService, int networkId, Wallet fromWallet, Address to, BigInteger value) throws IOException {
         Transaction transaction = TransactionBuilder.newBuilder()
                 .nid(BigInteger.valueOf(networkId))
                 .from(fromWallet.getAddress())
                 .to(to)
-                .value(BigInteger.valueOf(value))
+                .value(value)
                 .stepLimit(new BigInteger("1000"))
                 .timestamp(getMicroTime())
                 .nonce(new BigInteger("1"))
@@ -106,6 +108,10 @@ public class Utils {
 
         SignedTransaction signedTransaction = new SignedTransaction(transaction, fromWallet);
         return iconService.sendTransaction(signedTransaction).execute();
+    }
+
+    public static Bytes transfer(IconService iconService, int networkId, Wallet fromWallet, Address to, long value) throws IOException {
+        return transfer(iconService, networkId, fromWallet, to, BigInteger.valueOf(value));
     }
 
     public static Bytes transferIcx(IconService iconService, int networkId,
@@ -212,6 +218,12 @@ public class Utils {
 
     public static TransactionResult sendTransactionWithCall(
             IconService iconService, int nid, Wallet fromWallet, Address scoreAddr, String function,
+                RpcObject params) throws ResultTimeoutException, IOException {
+        return sendTransactionWithCall(iconService, nid, fromWallet, scoreAddr, function, params, 0);
+    }
+
+    public static TransactionResult sendTransactionWithCall(
+            IconService iconService, int nid, Wallet fromWallet, Address scoreAddr, String function,
             RpcObject params, long value) throws ResultTimeoutException, IOException {
 
         long timestamp = System.currentTimeMillis() * 1000L;
@@ -305,5 +317,66 @@ public class Utils {
         zos.close();
         outputStream.close();
         return outputStream.toByteArray();
+    }
+
+    public static void assertEquals(Object expected, Object actual) {
+        try {
+            Assert.assertEquals(expected, actual);
+        }
+        catch(AssertionError error) {
+            LOG.warning("expected : " + expected + ", but actual : " + actual);
+            throw error;
+        }
+    }
+
+    public static void assertNotEquals(Object expected, Object actual) {
+        try {
+            Assert.assertNotEquals(expected, actual);
+        }
+        catch(AssertionError error) {
+            LOG.warning("expected : " + expected + ", but actual : " + actual);
+            throw error;
+        }
+    }
+
+    public static void transferAndCheck(IconService service, Env.Chain chain,
+                                        KeyWallet from, Address to, BigInteger val) throws Exception{
+        BigInteger prevFromBal = service.getBalance(from.getAddress()).execute();
+        BigInteger expectedFromBal = prevFromBal.subtract(val);
+        assertTrue(expectedFromBal.signum() >= 0);
+
+        BigInteger prevToBal = service.getBalance(to).execute();
+        Bytes txHash = Utils.transfer(service, chain.networkId, from, to, val);
+        TransactionResult result = Utils.getTransactionResult(
+                service, txHash, Constants.DEFAULT_WAITING_TIME);
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        assertEquals(prevToBal.add(val), service.getBalance(to).execute());
+
+        BigInteger curFromBal = service.getBalance(from.getAddress()).execute();
+        assertEquals(expectedFromBal, curFromBal);
+    }
+
+    public static void transferAndCheck(IconService service, Env.Chain chain,
+                                        KeyWallet from, Address []to, BigInteger val) throws Exception{
+        BigInteger prevFromBal = service.getBalance(from.getAddress()).execute();
+        BigInteger expectedFromBal = prevFromBal.subtract(val.multiply(BigInteger.valueOf(to.length)));
+        assertTrue(expectedFromBal.signum() >= 0);
+
+        BigInteger []prevBal = new BigInteger[to.length];
+        Bytes []txHash = new Bytes[to.length];
+        for(int i = 0; i < to.length; i++) {
+            prevBal[i] = service.getBalance(to[i]).execute();
+            txHash[i] = Utils.transfer(service, chain.networkId,
+                    from, to[i], val);
+        }
+
+        for(int i = 0; i < to.length; i++) {
+            TransactionResult result = Utils.getTransactionResult(
+                    service, txHash[i], Constants.DEFAULT_WAITING_TIME);
+            assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+            assertEquals(prevBal[i].add(val), service.getBalance(to[i]).execute());
+        }
+        BigInteger curFromBal = service.getBalance(from.getAddress()).execute();
+        assertEquals(expectedFromBal, curFromBal);
     }
 }
