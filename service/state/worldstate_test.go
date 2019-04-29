@@ -172,7 +172,7 @@ func TestNewWorldStateWithContract(t *testing.T) {
 		log.Panicf("Invalid contract.\n")
 	} else {
 		check(contract, 0)
-		if contract.Status() != CSInactive {
+		if contract.Status() != CSPending {
 			log.Panicf("Invalid state %d\n", contract.Status())
 		}
 	}
