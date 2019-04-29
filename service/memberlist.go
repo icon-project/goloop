@@ -100,6 +100,10 @@ func (m *memberList) equal(m2 *memberList) bool {
 		return false
 	}
 
+	if m.snapshot.Equal(m2.snapshot) {
+		return true
+	}
+
 	m1List, err := m.getMembers()
 	if err != nil {
 		log.Printf("Fail to get member list err=%+v", err)
@@ -140,6 +144,12 @@ func (m *memberList) getMembers() ([]module.Address, error) {
 	}
 
 	as := scoredb.NewStateStoreWith(m.snapshot)
+	varConfig := scoredb.NewVarDB(as, state.VarServiceConfig)
+	if (varConfig.Int64() & state.SysConfigMembership) == 0 {
+		m.updated = true
+		return nil, nil
+	}
+
 	varMembers := scoredb.NewArrayDB(as, state.VarMembers)
 	size := varMembers.Size()
 	members := make([]module.Address, size)
@@ -152,10 +162,10 @@ func (m *memberList) getMembers() ([]module.Address, error) {
 }
 
 func (m *memberList) IsEmpty() bool {
-	if l, err := m.getMembers(); err != nil {
+	if members, err := m.getMembers(); err != nil {
 		return true
 	} else {
-		return len(l) == 0
+		return members == nil
 	}
 }
 
