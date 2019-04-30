@@ -26,11 +26,12 @@ public class Constants {
     public static final String CONTENT_TYPE = "application/zip";
     public static final String SCORE_ROOT = "./data/scores/";
     public static final long DEFAULT_WAITING_TIME = 7000; // millisecond
-    public static final BigInteger DEFAULT_NID = BigInteger.ONE;
     public static final Address CHAINSCORE_ADDRESS
             = new Address("cx0000000000000000000000000000000000000000");
     public static final Address GOV_ADDRESS
             = new Address("cx0000000000000000000000000000000000000001");
+    public static final Address TREASURY_ADDRESS
+            = new Address("cx1000000000000000000000000000000000000000");
 
     public static final String SCORE_STATUS_PENDING = "pending";
     public static final String SCORE_STATUS_ACTIVE = "active";

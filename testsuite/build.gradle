@@ -110,6 +110,7 @@ task testNormal(type: ChainTest, overwrite: true) {
     exclude "foundation/icon/test/cases/DeployTest*"
     exclude "foundation/icon/test/cases/TransferTest*"
     exclude "foundation/icon/test/cases/ScoreTest*"
+    exclude "foundation/icon/test/cases/StepTest*"
 
     configFile = "./data/config.json"
     logFile = "./normal.log"
@@ -124,6 +125,7 @@ task testGovernance(type: ChainTest, overwrite: true) {
     include "foundation/icon/test/cases/TransferTest*"
     include "foundation/icon/test/cases/DeployTest*"
     include "foundation/icon/test/cases/ScoreTest*"
+    include "foundation/icon/test/cases/StepTest*"
 
     configFile = "./data/govConfig.json"
     logFile = "./gov.log"

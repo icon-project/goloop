@@ -67,14 +67,6 @@ public class DeployTest {
                 "getStepPrice", null).asInteger();
 
         Utils.transferAndCheck(iconService, chain, chain.godWallet, chain.governorWallet.getAddress(), Constants.DEFAULT_BALANCE);
-//        Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, chain.governorWallet.getAddress(), 9999999);
-//        try {
-//            TransactionResult result = Utils.getTransactionResult(iconService, txHash, 5000);
-//            assertEquals(result.getStatus(), Constants.STATUS_SUCCESS);
-//        }
-//        catch (ResultTimeoutException ex) {
-//            throw ex;
-//        }
         govScore.setMaxStepLimit("invoke", invokeMaxStepLimit);
         govScore.setStepCost("contractCreate", stepCostCC);
         govScore.setStepPrice(stepPrice);

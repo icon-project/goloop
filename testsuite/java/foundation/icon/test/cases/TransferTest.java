@@ -52,7 +52,6 @@ public class TransferTest {
         initTransfer();
     }
 
-    // add step
     public static void initTransfer() throws Exception {
         testWallets = new KeyWallet[testWalletNum];
         Address []addrs = new Address[testWalletNum];
