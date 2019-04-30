@@ -413,6 +413,9 @@ func NewManager(
 		return nil
 	}
 	lastFinalized, err := m.getBlock(hash)
+	if err != nil {
+		return nil
+	}
 	mtr, _ := m.sm.CreateInitialTransition(lastFinalized.Result(), lastFinalized.NextValidators())
 	if mtr == nil {
 		return nil
