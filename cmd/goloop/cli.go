@@ -4,12 +4,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 
+	"github.com/gosuri/uitable"
+	"github.com/jroimartin/gocui"
 	"github.com/spf13/cobra"
 
 	"github.com/icon-project/goloop/chain"
@@ -157,7 +160,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 				v = make(map[string]interface{})
 				params.Add("format", format)
 			}
-			resp, err := hc.Get(UrlChain + "/" + args[0], &v, params)
+			resp, err := hc.Get(UrlChain+"/"+args[0], &v, params)
 			if err != nil {
 				fmt.Println(err, resp)
 				return
@@ -170,7 +173,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 			fmt.Println(s)
 		},
 	}
-	inspectCmd.Flags().StringP("format", "f","", "Format the output using the given Go template")
+	inspectCmd.Flags().StringP("format", "f", "", "Format the output using the given Go template")
 	rootCmd.AddCommand(inspectCmd)
 	startCmd := &cobra.Command{
 		Use:                   "start NID",
@@ -287,6 +290,120 @@ func NewSystemCmd(cfg *GoLoopConfig) *cobra.Command {
 			fmt.Println(s)
 		},
 	}
-	rootCmd.Flags().StringP("format", "f","", "Format the output using the given Go template")
+	rootCmd.Flags().StringP("format", "f", "", "Format the output using the given Go template")
+	return rootCmd
+}
+
+const (
+	TableCellDisplayNil = "-"
+)
+
+var (
+	noStream    bool
+	intervalSec int
+)
+
+func UpdateCuiByStatsViewStream(g *gocui.Gui) StreamCallbackFunc {
+	return func(respPtr interface{}) error {
+		sv := respPtr.(*StatsView)
+		cuiView, err := g.View("main")
+		if err != nil {
+			return err
+		}
+		cuiView.Clear()
+		if _, err := fmt.Fprintln(cuiView, sv.Timestamp); err != nil {
+			return err
+		}
+		maxX, _ := cuiView.Size()
+		table := StatsViewToTable(sv, uint(maxX))
+		if _, err := fmt.Fprint(cuiView, table); err != nil {
+			return err
+		}
+
+		g.Update(CuiNilUserEvtFunc)
+		return nil
+	}
+}
+
+func StatsViewToTable(v *StatsView, maxColWidth uint) *uitable.Table {
+	thAlias := []interface{}{
+		"Chain",
+		"Height",
+		"Duration(ms)",
+		"TxRequest",
+		"TxDrop",
+		"TxProcess",
+		"TxCommit(ms)",
+		"TxFinalize(ms)",
+	}
+	th := []interface{}{
+		"nid",
+		"consensus_height",
+		"consensus_height_duration",
+		"txpool_add_cnt",
+		"txpool_drop_cnt",
+		"txpool_remove_cnt",
+		"txlatency_commit",
+		"txlatency_finalize",
+	}
+
+	table := uitable.New()
+	table.MaxColWidth = maxColWidth
+	if len(v.Chains) > 0 {
+		table.AddRow(thAlias...)
+		for _, c := range v.Chains {
+			td := make([]interface{}, 0)
+			for _, h := range th {
+				tdv := c[h.(string)]
+				tds := fmt.Sprint(tdv)
+				if tdv == nil {
+					tds = TableCellDisplayNil
+				}
+				td = append(td, tds)
+			}
+			table.AddRow(td...)
+		}
+	} else {
+		table.AddRow("there is no chain")
+	}
+	return table
+}
+
+func NewStatsCmd(cfg *GoLoopConfig) *cobra.Command {
+	rootCmd := &cobra.Command{
+		Use:                   "stats",
+		Short:                 "Display a live streams of chains metric-statistics",
+		DisableFlagsInUseLine: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			hc := GetUnixDomainSockHttpClient(cfg)
+			v := StatsView{}
+			params := &url.Values{}
+			params.Add("interval", fmt.Sprint(intervalSec))
+
+			var resp *http.Response
+			var err error
+			if noStream {
+				params.Add("stream", "false")
+				resp, err = hc.Get(UrlStats, &v, params)
+				cmd.Println(v.Timestamp)
+				table := StatsViewToTable(&v, 50)
+				cmd.Println(table)
+			} else {
+				g, guiTermCh := NewCui()
+				resp, err = hc.Stream(UrlStats, nil, &v, UpdateCuiByStatsViewStream(g), guiTermCh, params)
+				TermGui(g, guiTermCh)
+			}
+			if err != nil {
+				if noStream && err == io.EOF {
+					//ignore EOF error
+					err = nil
+				} else {
+					fmt.Println(err, resp)
+				}
+			}
+		},
+	}
+	rootCmd.Flags().BoolVar(&noStream, "no-stream", false, "Only pull the first metric-statistics")
+	rootCmd.Flags().IntVar(&intervalSec, "interval", 1, "Pull interval")
 	return rootCmd
 }

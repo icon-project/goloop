@@ -273,7 +273,8 @@ func main() {
 
 	chainCmd := NewChainCmd(&cfg)
 	systemCmd := NewSystemCmd(&cfg)
-	rootCmd.AddCommand(serverCmd, chainCmd, systemCmd)
+	statsCmd := NewStatsCmd(&cfg)
+	rootCmd.AddCommand(serverCmd, chainCmd, systemCmd, statsCmd)
 
 	genMdCmd := NewGenerateMarkdownCommand()
 	genMdCmd.Hidden = true

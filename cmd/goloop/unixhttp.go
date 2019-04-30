@@ -132,18 +132,65 @@ func (c *UnixDomainSockHttpClient) Do(method, reqUrl string, reqPtr, respPtr int
 	return
 }
 
-func (c *UnixDomainSockHttpClient) Get(reqUrl string, ptr interface{}, reqParams ... *url.Values) (resp *http.Response, err error) {
-	reqUrlWithParams := reqUrl
-	if len(reqParams) > 0 {
-		reqUrlWithParams += "?"
-		for i, p := range reqParams {
-			if i != 0 {
-				reqUrlWithParams += "&"
+type StreamCallbackFunc func(respPtr interface{}) error
+
+func (c *UnixDomainSockHttpClient) Stream(reqUrl string, reqPtr, respPtr interface{},
+	respFunc StreamCallbackFunc, cancelCh <-chan bool, reqParams ...*url.Values) (resp *http.Response, err error) {
+	var reqB io.Reader
+	if reqPtr != nil {
+		b, mErr := json.Marshal(reqPtr)
+		if mErr != nil {
+			err = mErr
+			return
+		}
+		reqB = bytes.NewBuffer(b)
+
+	}
+	req, err := http.NewRequest(http.MethodGet, BaseUnixDomainSockHttpEndpoint+UrlWithParams(reqUrl, reqParams...), reqB)
+	if err != nil {
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err = c._do(req)
+	if err != nil {
+		return
+	}
+	if respFunc != nil {
+		ch := make(chan interface{})
+		dec := json.NewDecoder(resp.Body)
+		defer resp.Body.Close()
+
+		go func() {
+			for {
+				if err := dec.Decode(respPtr); err != nil {
+					ch <- err
+					return
+				}
+				ch <- respPtr
 			}
-			reqUrlWithParams += p.Encode()
+		}()
+
+		for {
+			select {
+			case <-cancelCh:
+				return
+			case v := <-ch:
+				if de, ok := v.(error); ok {
+					err = de
+					return
+				}
+				if err = respFunc(v); err != nil {
+					return
+				}
+			}
 		}
 	}
-	return c.Do(http.MethodGet, reqUrlWithParams, nil, ptr)
+	return
+}
+
+func (c *UnixDomainSockHttpClient) Get(reqUrl string, ptr interface{}, reqParams ...*url.Values) (resp *http.Response, err error) {
+	return c.Do(http.MethodGet, UrlWithParams(reqUrl, reqParams...), nil, ptr)
 }
 func (c *UnixDomainSockHttpClient) Post(reqUrl string) (resp *http.Response, err error) {
 	return c.Do(http.MethodPost, reqUrl, nil, nil)
@@ -201,6 +248,20 @@ func (c *UnixDomainSockHttpClient) PostWithFile(reqUrl string, ptr interface{}, 
 }
 func (c *UnixDomainSockHttpClient) Delete(reqUrl string) (resp *http.Response, err error) {
 	return c.Do(http.MethodDelete, reqUrl, nil, nil)
+}
+
+func UrlWithParams(reqUrl string, reqParams ...*url.Values) string {
+	reqUrlWithParams := reqUrl
+	if len(reqParams) > 0 {
+		reqUrlWithParams += "?"
+		for i, p := range reqParams {
+			if i != 0 {
+				reqUrlWithParams += "&"
+			}
+			reqUrlWithParams += p.Encode()
+		}
+	}
+	return reqUrlWithParams
 }
 
 func MultipartCopy(mw *multipart.Writer, fieldname string, r io.Reader) error {

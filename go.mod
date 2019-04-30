@@ -10,11 +10,15 @@ require (
 	github.com/go-playground/universal-translator v0.16.0 // indirect
 	github.com/gofrs/uuid v3.2.0+incompatible
 	github.com/gorilla/websocket v1.4.0
+	github.com/gosuri/uitable v0.0.0-20160404203958-36ee7e946282
 	github.com/haltingstate/secp256k1-go v0.0.0-20151224084235-572209b26df6
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/jroimartin/gocui v0.4.0
 	github.com/labstack/echo/v4 v4.0.0
 	github.com/leodido/go-urn v1.1.0 // indirect
+	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/mitchellh/mapstructure v1.1.2
+	github.com/nsf/termbox-go v0.0.0-20190325093121-288510b9734e // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/spf13/cobra v0.0.3
 	github.com/spf13/pflag v1.0.3

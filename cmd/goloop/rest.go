@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
+	"os"
 	"strconv"
+	"syscall"
 	"text/template"
+	"time"
 
 	"github.com/labstack/echo/v4"
 
@@ -19,6 +23,7 @@ import (
 
 const (
 	UrlSystem   = "/system"
+	UrlStats    = "/stats"
 	UrlChain    = "/chain"
 	ParamNID    = "nid"
 	UrlChainRes = "/:" + ParamNID
@@ -32,6 +37,11 @@ type SystemView struct {
 	Address       string `json:"address"`
 	P2PAddr       string `json:"p2p"`
 	P2PListenAddr string `json:"p2p_listen"`
+}
+
+type StatsView struct {
+	Chains    []map[string]interface{}
+	Timestamp time.Time
 }
 
 type JoinChainParam struct {
@@ -116,6 +126,7 @@ func RegisterRest(n *Node) {
 
 	r.RegisterChainHandlers(n.cliSrv.e.Group(UrlChain))
 	r.RegisterSystemHandlers(n.cliSrv.e.Group(UrlSystem))
+	r.RegisterStatsHandlers(n.cliSrv.e.Group(UrlStats))
 
 	_ = RegisterInspectFunc("metrics", metric.Inspect)
 	_ = RegisterInspectFunc("network", network.Inspect)
@@ -308,6 +319,88 @@ func (r *Rest) GetSystem(ctx echo.Context) error {
 		return defaultJsonTemplate.JSON(format, v, ctx.Response())
 	}
 	return ctx.JSON(http.StatusOK, v)
+}
+
+func (r *Rest) RegisterStatsHandlers(g *echo.Group) {
+	g.GET("", r.StreamStats)
+}
+
+func (r *Rest) StreamStats(ctx echo.Context) error {
+	intervalSec := 1
+	param := ctx.QueryParam("interval")
+	if param != "" {
+		var err error
+		intervalSec, err = strconv.Atoi(param)
+		if err != nil {
+			return err
+		}
+	}
+
+	streaming := true
+	param = ctx.QueryParam("stream")
+	if param != "" {
+		var err error
+		streaming, err = strconv.ParseBool(param)
+		if err != nil {
+			return err
+		}
+	}
+	//chains := ctx.QueryParam("chains")
+	//strings.Split(chains,",")
+
+	resp := ctx.Response()
+	resp.Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSONCharsetUTF8)
+	resp.WriteHeader(http.StatusOK)
+	if err := r.ResponseStatsView(resp); err != nil {
+		return err
+	}
+	resp.Flush()
+
+	tick := time.NewTicker(time.Duration(intervalSec) * time.Second)
+	for streaming {
+		select {
+		case <-tick.C:
+			if err := r.ResponseStatsView(resp); err != nil {
+				return err
+			}
+			resp.Flush()
+		}
+	}
+	return nil
+}
+
+func (r *Rest) ResponseStatsView(resp *echo.Response) error {
+	v := StatsView{
+		Chains: make([]map[string]interface{}, 0),
+		Timestamp: time.Now(),
+	}
+	for _, c := range r.n.GetChains() {
+		m := metric.Inspect(c)
+		if c.State() == "started" {
+			m["nid"] = c.NID()
+			v.Chains = append(v.Chains, m)
+		}
+	}
+	if err := json.NewEncoder(resp).Encode(&v); err != nil {
+		if EqualsSyscallErrno(err,syscall.EPIPE){
+			//ignore 'write: broken pipe' error
+			//close by client
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
+func EqualsSyscallErrno(err error, sen syscall.Errno) bool {
+	if oe, ok := err.(*net.OpError); ok {
+		if se, ok := oe.Err.(*os.SyscallError); ok {
+			if en, ok := se.Err.(syscall.Errno); ok && en == sen{
+				return true
+			}
+		}
+	}
+	return false
 }
 
 type JsonTemplate struct {
