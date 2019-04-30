@@ -3,6 +3,7 @@ package consensus
 import (
 	"bytes"
 	"fmt"
+	"log"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -96,7 +97,7 @@ func newCommitVoteList(msgs []*voteMessage) *commitVoteList {
 		for i := 0; i < l; i++ {
 			vl.Signatures[i] = msgs[i].Signature
 			if !bytes.Equal(blockID, msgs[i].BlockID) {
-				logger.Panicf("newVoteList: bad block id in messages <%x> <%x>", blockID, msgs[i].BlockID)
+				log.Panicf("newVoteList: bad block id in messages <%x> <%x>", blockID, msgs[i].BlockID)
 			}
 		}
 	}

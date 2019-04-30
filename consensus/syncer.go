@@ -236,6 +236,8 @@ func (p *peer) wakeUp() {
 
 type syncer struct {
 	engine Engine
+	logger *log.Logger
+	debug  *log.Logger
 	nm     module.NetworkManager
 	bm     module.BlockManager
 	mutex  *common.Mutex
@@ -250,7 +252,7 @@ type syncer struct {
 	fetchCanceler func() bool
 }
 
-func newSyncer(e Engine, nm module.NetworkManager, bm module.BlockManager, mutex *common.Mutex, addr module.Address) Syncer {
+func newSyncer(e Engine, logger *log.Logger, debug *log.Logger, nm module.NetworkManager, bm module.BlockManager, mutex *common.Mutex, addr module.Address) Syncer {
 	fsm, err := fastsync.NewManager(nm, bm)
 	if err != nil {
 		return nil
@@ -258,6 +260,8 @@ func newSyncer(e Engine, nm module.NetworkManager, bm module.BlockManager, mutex
 	fsm.StartServer()
 	return &syncer{
 		engine: e,
+		logger: logger,
+		debug:  debug,
 		nm:     nm,
 		bm:     bm,
 		mutex:  mutex,
@@ -276,7 +280,7 @@ func (s *syncer) Start() error {
 	peerIDs := s.nm.GetPeers()
 	s.peers = make([]*peer, len(peerIDs))
 	for i, peerID := range peerIDs {
-		logger.Printf("Start: starting peer list %v\n", peerID)
+		s.logger.Printf("Start: starting peer list %v\n", peerID)
 		s.peers[i] = newPeer(s, peerID)
 		go s.peers[i].sync()
 	}
@@ -297,10 +301,10 @@ func (s *syncer) OnReceive(sp module.ProtocolInfo, bs []byte,
 
 	msg, err := unmarshalMessage(sp.Uint16(), bs)
 	if err != nil {
-		logger.Printf("OnReceive: error=%+v\n", err)
+		s.logger.Printf("OnReceive: error=%+v\n", err)
 		return false, err
 	}
-	logger.Printf("OnReceive %+v from %x\n", msg, id.Bytes()[:2])
+	s.logger.Printf("OnReceive %+v from %x\n", msg, id.Bytes()[:2])
 	if err := msg.verify(); err != nil {
 		return false, err
 	}
@@ -329,9 +333,9 @@ func (s *syncer) OnReceive(sp module.ProtocolInfo, bs []byte,
 			s.engine.ReceiveVoteMessage(m.VoteList.Get(i), true)
 		}
 		rs := s.engine.GetRoundState()
-		debug.Printf("roundState=%+v\n", *rs)
+		s.debug.Printf("roundState=%+v\n", *rs)
 	default:
-		logger.Panicf("received unknown message %v\n", msg)
+		s.logger.Panicf("received unknown message %v\n", msg)
 	}
 	if err != nil {
 		return false, err
@@ -356,7 +360,7 @@ func (s *syncer) OnJoin(id module.PeerID) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	logger.Printf("OnJoin: %v\n", id)
+	s.logger.Printf("OnJoin: %v\n", id)
 
 	if !s.running {
 		return
@@ -377,7 +381,7 @@ func (s *syncer) OnLeave(id module.PeerID) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	logger.Printf("OnLeave: %v\n", id)
+	s.logger.Printf("OnLeave: %v\n", id)
 
 	if !s.running {
 		return
@@ -418,19 +422,19 @@ func (s *syncer) doSendRoundStateMessage(id module.PeerID) {
 	msg.peerRoundState = *e.GetRoundState()
 	bs, err := msgCodec.MarshalToBytes(msg)
 	if err != nil {
-		logger.Panicf("syncer.doSendRoundStateMessage: %+v\n", err)
+		s.logger.Panicf("syncer.doSendRoundStateMessage: %+v\n", err)
 	}
 	if id == nil {
 		if len(s.peers) > 0 {
-			logger.Printf("broadcastRoundState : %+v\n", msg)
+			s.logger.Printf("broadcastRoundState : %+v\n", msg)
 			err = s.ph.Broadcast(protoRoundState, bs, module.BROADCAST_NEIGHBOR)
 		}
 	} else {
-		logger.Printf("sendRoundState : %+v\n", msg)
+		s.logger.Printf("sendRoundState : %+v\n", msg)
 		err = s.ph.Unicast(protoRoundState, bs, id)
 	}
 	if err != nil {
-		logger.Printf("syncer.doSendRoundStateMessage: %+v\n", err)
+		s.logger.Printf("syncer.doSendRoundStateMessage: %+v\n", err)
 	}
 }
 
@@ -481,7 +485,7 @@ func (s *syncer) OnBlock(br fastsync.BlockResult) {
 		return
 	}
 
-	logger.Printf("syncer.OnBlock %d\n", br.Block().Height())
+	s.logger.Printf("syncer.OnBlock %d\n", br.Block().Height())
 	s.engine.ReceiveBlock(br)
 }
 
@@ -493,6 +497,6 @@ func (s *syncer) OnEnd(err error) {
 		return
 	}
 
-	logger.Printf("syncer.OnEnd %+v\n", err)
+	s.logger.Printf("syncer.OnEnd %+v\n", err)
 	s.fetchCanceler = nil
 }
