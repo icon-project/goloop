@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log"
+	"os"
 	"path"
 	"time"
 
@@ -912,7 +913,6 @@ func getProposerIndex(
 	height int64,
 	round int32,
 ) int {
-	//log.Printf("height : %d, round : %d, ValidatorLen : %d\n", height, round, validators.Len())
 	return int((height + int64(round)) % int64(validators.Len()))
 }
 
@@ -1288,7 +1288,7 @@ func (cs *consensus) Start() error {
 	defer cs.mutex.Unlock()
 
 	prefix := fmt.Sprintf("%x|CS|", cs.wallet.Address().Bytes()[1:3])
-	logger = log.New(debugWriter, prefix, log.Lshortfile|log.Lmicroseconds)
+	logger = log.New(os.Stderr, prefix, log.Lshortfile|log.Lmicroseconds)
 	debug = log.New(debugWriter, prefix, log.Lshortfile|log.Lmicroseconds)
 
 	lastBlock, err := cs.bm.GetLastBlock()
