@@ -2,26 +2,19 @@ package foundation.icon.test.cases;
 
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
-import foundation.icon.icx.data.IconAmount;
-import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
-import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.Utils;
-import foundation.icon.test.score.CrowdSaleScore;
 import foundation.icon.test.score.EventGen;
-import foundation.icon.test.score.SampleTokenScore;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.drafts.Draft_6455;
 import org.java_websocket.handshake.ServerHandshake;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.math.BigInteger;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
 
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.Assert.assertTrue;
@@ -55,7 +48,7 @@ public class WSEventTest {
 
     private boolean waitForMessage() {
         synchronized (condVar) {
-            while (recvBuffer==null) {
+            while (recvBuffer == null) {
                 try {
                     condVar.wait();
                 } catch (InterruptedException e) {
