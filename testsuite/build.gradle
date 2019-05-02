@@ -136,9 +136,6 @@ task testGovernance(type: ChainTest, overwrite: true) {
     testLogging.showStandardStreams = true
 }
 
-test {
-    exclude "foundation/icon/test/cases/*"
-    dependsOn cleanTest
-    systemProperties(System.getProperties())
-    testLogging.showStandardStreams = true
+task test(overwrite: true) {
+    dependsOn testNormal, testGovernance
 }
