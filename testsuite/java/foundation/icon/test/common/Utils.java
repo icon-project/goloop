@@ -95,23 +95,33 @@ public class Utils {
         }
     }
 
-    public static Bytes transfer(IconService iconService, int networkId, Wallet fromWallet, Address to, BigInteger value) throws IOException {
-        Transaction transaction = TransactionBuilder.newBuilder()
+    public static Bytes transfer(IconService iconService, int networkId, Wallet fromWallet, Address to, BigInteger value, String msg) throws IOException {
+        TransactionBuilder.Builder builder = TransactionBuilder.newBuilder()
                 .nid(BigInteger.valueOf(networkId))
                 .from(fromWallet.getAddress())
                 .to(to)
                 .value(value)
                 .stepLimit(new BigInteger("1000"))
                 .timestamp(getMicroTime())
-                .nonce(new BigInteger("1"))
-                .build();
+                .nonce(new BigInteger("1"));
+        Transaction transaction;
+        if(msg != null) {
+            transaction = builder.message(msg).build();
+        }
+        else {
+            transaction = builder.build();
+        }
 
         SignedTransaction signedTransaction = new SignedTransaction(transaction, fromWallet);
         return iconService.sendTransaction(signedTransaction).execute();
     }
 
+    public static Bytes transfer(IconService iconService, int networkId, Wallet fromWallet, Address to, BigInteger value) throws IOException {
+        return transfer(iconService, networkId, fromWallet, to, value, null);
+    }
+
     public static Bytes transfer(IconService iconService, int networkId, Wallet fromWallet, Address to, long value) throws IOException {
-        return transfer(iconService, networkId, fromWallet, to, BigInteger.valueOf(value));
+        return transfer(iconService, networkId, fromWallet, to, BigInteger.valueOf(value), null);
     }
 
     public static Bytes transferIcx(IconService iconService, int networkId,

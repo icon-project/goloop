@@ -1,16 +1,26 @@
 package foundation.icon.test.cases;
 
 import foundation.icon.icx.IconService;
+import foundation.icon.icx.KeyWallet;
+import foundation.icon.icx.data.Address;
+import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.ScoreApi;
+import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
+import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
+import foundation.icon.test.common.Utils;
+import foundation.icon.test.score.GovScore;
 import foundation.icon.test.score.StepCounterScore;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.math.BigInteger;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import static foundation.icon.test.common.Env.LOG;
 import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.*;
 
@@ -29,10 +39,16 @@ public class GetAPITest {
     }
 
     static final String TYPE_FUNCTION = "function";
-    static final String TYPE_EVENT = "event";
+    static final String TYPE_FALLBACK = "fallback";
+    static final String TYPE_EVENTLOG = "eventlog";
+
     static final String TYPE_INT = "int";
     static final String TYPE_STRING = "str";
+    static final String TYPE_BYTES = "bytes";
+    static final String TYPE_BOOL = "bool";
     static final String TYPE_ADDRESS = "Address";
+    static final String TYPE_LIST = "list";
+    static final String TYPE_DICT = "dict";
 
     static final String VALUE_TRUE = "0x1";
     static final String VALUE_FALSE = "0x0";
@@ -69,7 +85,7 @@ public class GetAPITest {
                 List<ScoreApi.Param> inputs = api.getInputs();
                 assertThat(inputs.size(), is(0));
             } else if ( name == "ExternalProgress" ) {
-                assertThat(api.getType(), is("event"));
+                assertThat(api.getType(), is("eventlog"));
                 assertThat(api.getReadonly(), anyOf(is(VALUE_FALSE), nullValue()));
 
                 List<ScoreApi.Param> inputs = api.getInputs();
@@ -85,7 +101,7 @@ public class GetAPITest {
                 assertThat(p2.getType(), is("int"));
                 assertThat(p2.getIndexed(), is(BigInteger.ONE));
             } else if ( name == "OnStep" ) {
-                assertThat(api.getType(), is("event"));
+                assertThat(api.getType(), is("eventlog"));
                 assertThat(api.getReadonly(), anyOf(is(VALUE_FALSE), nullValue()));
 
                 List<ScoreApi.Param> inputs = api.getInputs();
@@ -116,6 +132,8 @@ public class GetAPITest {
                 assertThat(api.getReadonly(), anyOf(is(VALUE_FALSE), nullValue()));
 
                 List<ScoreApi.Param> inputs = api.getInputs();
+
+
                 assertThat(inputs.size(), is(2));
 
                 ScoreApi.Param p1 = inputs.get(0);
@@ -131,5 +149,122 @@ public class GetAPITest {
                 throw new Exception("Unexpected method:"+api.toString());
             }
         }
+    }
+
+    static class FuncInfo {
+        String type; // type of function
+        Map<String, Input> inputsMap;
+        String outputs;
+        String readonly;
+        String payable;
+
+        static class Input {
+            String name;
+            String type; // type of data
+            BigInteger indexed;
+            Input(String name, String type, BigInteger indexed) {
+                this.name = name;
+                this.type = type;
+                this.indexed = indexed;
+            }
+        }
+
+        FuncInfo(String type, Input[] inputs, String outputs, String readonly, String payable) {
+            this.type = type;
+            this.outputs = outputs;
+            this.readonly = readonly;
+            this.payable = payable;
+            inputsMap = new HashMap<>();
+            if(inputs != null) {
+                for(Input param : inputs) {
+                    inputsMap.put(param.name, param);
+                }
+            }
+        }
+    }
+
+    @Test
+    public void checkScoreApi() throws Exception {
+        // TODO check whether support method overloading in score
+        // expected type(function, eventlog, fallback), name, inputs(name, type, indexed), outputs(type), readonly, payable
+        Map<String, FuncInfo> expectedFuncMap = new HashMap<String, FuncInfo>() {{
+            put("externalMethod", new FuncInfo(TYPE_FUNCTION, null, null, VALUE_FALSE,  VALUE_FALSE));
+            put("externalReadonlyMethod", new FuncInfo(TYPE_FUNCTION, null, null, VALUE_TRUE, VALUE_FALSE));
+            put("payableExternalMethod", new FuncInfo(TYPE_FUNCTION, null, TYPE_STRING, VALUE_FALSE, VALUE_TRUE));
+            put("externalPayableMethod", new FuncInfo(TYPE_FUNCTION, null, null, VALUE_FALSE, VALUE_TRUE));
+            put("externalReadonlyFalseMethod", new FuncInfo(TYPE_FUNCTION, null, null, VALUE_FALSE, VALUE_FALSE));
+            put("return_list", new FuncInfo(TYPE_FUNCTION, null, TYPE_LIST, VALUE_TRUE, VALUE_FALSE));
+            put("return_dict", new FuncInfo(TYPE_FUNCTION, null, TYPE_DICT, VALUE_TRUE, VALUE_FALSE));
+            put("fallback", new FuncInfo(TYPE_FALLBACK, null, null, VALUE_FALSE, VALUE_TRUE));
+            put("param_int", new FuncInfo(TYPE_FUNCTION, new FuncInfo.Input[] {
+                    new FuncInfo.Input("param1", TYPE_INT, null)
+            }, "int", VALUE_TRUE, VALUE_FALSE));
+            put("param_str", new FuncInfo(TYPE_FUNCTION, new FuncInfo.Input[] {
+                    new FuncInfo.Input("param1", TYPE_STRING, null)
+            }, "str", VALUE_TRUE, VALUE_FALSE));
+            put("param_bytes", new FuncInfo(TYPE_FUNCTION, new FuncInfo.Input[] {
+                    new FuncInfo.Input("param1", TYPE_BYTES, null)
+            }, "bytes", VALUE_TRUE, VALUE_FALSE));
+            put("param_bool", new FuncInfo(TYPE_FUNCTION, new FuncInfo.Input[] {
+                    new FuncInfo.Input("param1", TYPE_BOOL, null)
+            }, "bool", VALUE_TRUE, VALUE_FALSE));
+            put("param_Address", new FuncInfo(TYPE_FUNCTION, new FuncInfo.Input[] {
+                    new FuncInfo.Input("param1", TYPE_ADDRESS, null)
+            }, "Address", VALUE_TRUE, VALUE_FALSE));
+            put("eventlog_index1", new FuncInfo(TYPE_EVENTLOG, new FuncInfo.Input[] {
+                    new FuncInfo.Input("param1", TYPE_INT, BigInteger.ONE),
+                    new FuncInfo.Input("param2", TYPE_STRING, null)
+            }, null, VALUE_FALSE, VALUE_FALSE));
+        }};
+
+        LOG.infoEntering("checkScoreApi");
+        String scorePath = Constants.SCORE_ROOT + "score_api";
+        Bytes txHash = Utils.installScore(iconService, chain, KeyWallet.create(), scorePath, null, -1);
+        TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+
+        if(Utils.isAudit(iconService)) {
+            LOG.infoEntering("accept", "accept score");
+            TransactionResult acceptResult = new GovScore(iconService, chain).acceptScore(txHash);
+            assertEquals(Constants.STATUS_SUCCESS, acceptResult.getStatus());
+            LOG.infoExiting();
+        }
+
+        Address scoreAddr = new Address(result.getScoreAddress());
+        List<ScoreApi> apis = iconService.getScoreApi(scoreAddr).execute();
+        for ( ScoreApi api : apis ) {
+            String funcName = api.getName();
+            FuncInfo fInfo = expectedFuncMap.get(funcName);
+            assertNotNull(fInfo);
+            assertEquals(fInfo.type, api.getType());
+            if(fInfo.readonly.equals(VALUE_TRUE)) {
+                assertEquals(fInfo.readonly, api.getReadonly());
+            }
+            if(fInfo.payable.equals(VALUE_TRUE)) {
+                assertEquals(fInfo.payable, api.getProperties().getItem("payable").asString());
+            }
+            for(ScoreApi.Param sParam : api.getInputs()) {
+                String pName = sParam.getName();
+                FuncInfo.Input fParam = fInfo.inputsMap.get(pName);
+                assertNotNull(fParam);
+                assertEquals(fParam.type, sParam.getType());
+                if(fParam.indexed != null) {
+                    assertEquals(fParam.indexed, sParam.getIndexed());
+                }
+                fInfo.inputsMap.remove(sParam.getName());
+            }
+            if(fInfo.inputsMap.size() != 0) {
+                LOG.warning("Not received param [" + fInfo.inputsMap.keySet() + "]");
+                fail();
+            }
+            expectedFuncMap.remove(funcName);
+        }
+        // check remains from map
+        if(expectedFuncMap.size() != 0) {
+            // TODO check null
+            LOG.warning("NOT received [" + expectedFuncMap.keySet() + "]");
+            fail();
+        }
+        LOG.infoExiting();
     }
 }
