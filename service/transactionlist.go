@@ -187,6 +187,12 @@ func (l *transactionList) Len() int {
 	return l.size
 }
 
+func (l *transactionList) HasTx(id []byte) bool {
+	tidBk, tidSlot := indexAndBucketKeyFromKey(string(id))
+	_, ok := l.idMap[tidBk][tidSlot]
+	return ok
+}
+
 func newTransactionList() *transactionList {
 	l := new(transactionList)
 

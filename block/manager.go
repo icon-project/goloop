@@ -8,8 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/pkg/errors"
-
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/service/txresult"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -460,7 +459,7 @@ func (m *manager) getBlock(id []byte) (module.Block, error) {
 	if headerBytes != nil {
 		return m.newBlockFromHeaderReader(bytes.NewReader(headerBytes))
 	}
-	return nil, common.ErrUnknown
+	return nil, common.ErrNotFound
 }
 
 func (m *manager) Import(

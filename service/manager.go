@@ -427,6 +427,10 @@ func (m *manager) GetMembers(result []byte) (module.MemberList, error) {
 	return newMemberList(ass), nil
 }
 
+func (m *manager) HasTransaction(id []byte) bool {
+	return m.normalTxPool.HasTx(id) || m.patchTxPool.HasTx(id)
+}
+
 type blockInfo struct {
 	height    int64
 	timestamp int64

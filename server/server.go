@@ -36,7 +36,7 @@ func NewManager(addr string, wallet module.Wallet) *Manager {
 	e.HideBanner = true
 	e.HidePort = true
 
-	e.HTTPErrorHandler = jsonrpc.ErrorHandler
+	e.HTTPErrorHandler = HTTPErrorHandler
 	e.Validator = validator
 
 	return &Manager{

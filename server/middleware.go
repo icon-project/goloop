@@ -38,7 +38,7 @@ func AnyChainInjector(srv *Manager) echo.MiddlewareFunc {
 		return func(ctx echo.Context) error {
 			c := srv.AnyChain()
 			if c == nil {
-				return jsonrpc.ErrServer("not exists chain")
+				return jsonrpc.ErrorCodeServer.New("not exists chain")
 			}
 			ctx.Set("chain", c)
 			return next(ctx)

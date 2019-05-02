@@ -555,6 +555,10 @@ type testServiceManager struct {
 	exeChan      chan struct{}
 }
 
+func (sm *testServiceManager) HasTransaction(id []byte) bool {
+	return false
+}
+
 func newTestServiceManager(database db.Database) *testServiceManager {
 	sm := &testServiceManager{}
 	sm.transactions = make([][]*testTransaction, 2)

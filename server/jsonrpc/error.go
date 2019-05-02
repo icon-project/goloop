@@ -4,19 +4,46 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/labstack/echo/v4"
 )
 
 type ErrorCode int
 
+func (c ErrorCode) Wrap(err error, debug bool) *Error {
+	return NewError(c, err, debug)
+}
+
+func (c ErrorCode) New(msg string) *Error {
+	return &Error{
+		Code:    c,
+		Message: msg,
+	}
+}
+
+func (c ErrorCode) Errorf(f string, args ...interface{}) *Error {
+	return &Error{
+		Code:    c,
+		Message: fmt.Sprintf(f, args...),
+	}
+}
+
 const (
-	ErrorCodeParse          ErrorCode = -32700
+	ErrorCodeJsonParse      ErrorCode = -32700
 	ErrorCodeInvalidRequest ErrorCode = -32600
 	ErrorCodeMethodNotFound ErrorCode = -32601
 	ErrorCodeInvalidParams  ErrorCode = -32602
 	ErrorCodeInternal       ErrorCode = -32603
 	ErrorCodeServer         ErrorCode = -32000
-	ErrorCodeScore          ErrorCode = -32100
+	ErrorCodeSystem         ErrorCode = -32400
+	ErrorCodeScore          ErrorCode = -32500
+)
+
+const (
+	ErrorCodeTxPoolOverflow ErrorCode = -32401
+	ErrorCodePending        ErrorCode = -32402
+	ErrorCodeExecuting      ErrorCode = -32403
+	ErrorCodeNotFound       ErrorCode = -32404
 )
 
 type Error struct {
@@ -31,7 +58,7 @@ func (e *Error) Error() string {
 
 func ErrParse(message ...interface{}) *Error {
 	re := &Error{
-		Code:    ErrorCodeParse,
+		Code:    ErrorCodeJsonParse,
 		Message: "Parse error",
 	}
 	if len(message) > 0 {
@@ -84,36 +111,35 @@ func ErrInternal(message ...interface{}) *Error {
 	return re
 }
 
+func AttachDebug(je *Error, err error) {
+	// TODO attach additional information for debug from err.
+}
+
+func NewError(code ErrorCode, err error, debug bool) *Error {
+	re := &Error{
+		Code:    code,
+		Message: fmt.Sprintf("%s", err),
+	}
+	if debug {
+		AttachDebug(re, err)
+	}
+	return re
+}
+
+func ErrScore(err error, debug bool) *Error {
+	s, _ := scoreresult.StatusOf(err)
+	return NewError(ErrorCodeScore-ErrorCode(s), err, debug)
+}
+
 func ErrServer(message ...interface{}) *Error {
 	re := &Error{
 		Code:    ErrorCodeServer,
-		Message: "Server error",
-	}
-	if len(message) > 0 {
-		re.Data = message[0]
+		Message: fmt.Sprint(message...),
 	}
 	return re
 }
 
-func ErrScore(message ...interface{}) *Error {
-	re := &Error{
-		Code:    ErrorCodeScore,
-		Message: "Score error",
-	}
-	if len(message) > 0 {
-		re.Data = message[0]
-	}
-	return re
-}
-
-func ErrorHandler(err error, c echo.Context) {
-	re, ok := err.(*Error)
-	if !ok {
-		// if err is not jsonrpc.Error, delegate to DefaultHTTPErrorHandler
-		c.Echo().DefaultHTTPErrorHandler(err, c)
-		return
-	}
-
+func ErrorHandler(re *Error, c echo.Context) {
 	req := c.Get("request").(*Request)
 	res := &Response{
 		ID:      req.ID,
@@ -123,21 +149,24 @@ func ErrorHandler(err error, c echo.Context) {
 
 	status := 0
 	switch re.Code {
-	case ErrorCodeParse, ErrorCodeInvalidRequest, ErrorCodeInvalidParams:
+	case ErrorCodeJsonParse, ErrorCodeInvalidRequest, ErrorCodeInvalidParams:
 		status = http.StatusBadRequest
-	case ErrorCodeMethodNotFound:
+	case ErrorCodeMethodNotFound, ErrorCodeNotFound:
 		status = http.StatusNotFound
-	case ErrorCodeScore:
-		status = http.StatusOK
 	case ErrorCodeServer, ErrorCodeInternal:
 		status = http.StatusInternalServerError
 	default:
-		status = http.StatusInternalServerError
+		switch {
+		case re.Code <= ErrorCodeScore && re.Code > ErrorCode(ErrorCodeScore-100):
+			status = http.StatusOK
+		default:
+			status = http.StatusInternalServerError
+		}
 	}
 
 	// Send response
 	if !c.Response().Committed {
-		err = c.JSON(status, res)
+		err := c.JSON(status, res)
 		if err != nil {
 			c.Logger().Error(err)
 		}

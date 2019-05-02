@@ -38,6 +38,14 @@ func (ctx *Context) Chain() (module.Chain, error) {
 	return chain, nil
 }
 
+func (ctx *Context) IncludeDebug() bool {
+	if debug, ok := ctx.Get("debug").(bool); ok {
+		return debug
+	} else {
+		return false
+	}
+}
+
 type Params struct {
 	rawMessage *json.RawMessage
 	validator  echo.Validator

@@ -53,6 +53,10 @@ func (c Code) Wrapf(e error, f string, args ...interface{}) error {
 	return Wrapcf(e, c, f, args...)
 }
 
+func (c Code) Equals(e error) bool {
+	return CodeOf(e) == c
+}
+
 /*------------------------------------------------------------------------------
 Simple mapping to github.com/pkg/errors for easy stack print
 */
@@ -97,7 +101,11 @@ func (e *baseError) Format(f fmt.State, c rune) {
 	}
 }
 
-func NewBase(code Code, msg string) error {
+func (e *baseError) Equals(err error) bool {
+	return CodeOf(err) == e.code
+}
+
+func NewBase(code Code, msg string) *baseError {
 	return &baseError{code, msg}
 }
 

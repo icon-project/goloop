@@ -1,34 +1,11 @@
 package state
 
-import (
-	"errors"
-)
-
 // TODO Check if everything here is adequate for state package.
 const (
 	GIGA = 1000 * 1000 * 1000
 	TERA = 1000 * GIGA
 	PETA = 1000 * TERA
 	EXA  = 1000 * PETA
-)
-
-var (
-	ErrNotEnoughBalance   = errors.New("NotEnoughBalance")
-	ErrTimeOut            = errors.New("TimeOut")
-	ErrFutureTransaction  = errors.New("FutureTransaction")
-	ErrInvalidValueValue  = errors.New("InvalidValueValue")
-	ErrInvalidFeeValue    = errors.New("InvalidFeeValue")
-	ErrInvalidDataValue   = errors.New("InvalidDataValue")
-	ErrNotEnoughStep      = errors.New("NotEnoughStep")
-	ErrContractIsRequired = errors.New("ContractIsRequired")
-	ErrInvalidHashValue   = errors.New("InvalidHashValue")
-	ErrNotContractAccount = errors.New("NotContractAccount")
-	ErrNotEOA             = errors.New("NotEOA")
-	ErrNoActiveContract   = errors.New("NoActiveContract")
-	ErrNotContractOwner   = errors.New("NotContractOwner")
-	ErrBlockedContract    = errors.New("BlockedContract")
-	ErrDisabledContract   = errors.New("DisabledContract")
-	ErrInvalidMethod      = errors.New("InvalidMethod")
 )
 
 type StepType string

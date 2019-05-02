@@ -202,3 +202,10 @@ func (tp *TransactionPool) RemoveList(txs module.TransactionList) {
 		tp.monitor.OnCommit(txs.Hash(), now, duration/time.Duration(count))
 	}
 }
+
+func (tp *TransactionPool) HasTx(tid []byte) bool {
+	tp.mutex.Lock()
+	defer tp.mutex.Unlock()
+
+	return tp.list.HasTx(tid)
+}

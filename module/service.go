@@ -271,4 +271,7 @@ type ServiceManager interface {
 
 	// GetMembers returns network member list
 	GetMembers(result []byte) (MemberList, error)
+
+	// HasTransaction returns whether it has specified transaction in the pool
+	HasTransaction(id []byte) bool
 }
