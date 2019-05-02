@@ -113,10 +113,10 @@ type consensus struct {
 	metric *metric.ConsensusMetric
 }
 
-func NewConsensus(c module.Chain, bm module.BlockManager, nm module.NetworkManager, walDir string) module.Consensus {
+func NewConsensus(c module.Chain, walDir string) module.Consensus {
 	cs := &consensus{
-		nm:              nm,
-		bm:              bm,
+		nm:              c.NetworkManager(),
+		bm:              c.BlockManager(),
 		sm:              c.ServiceManager(),
 		wallet:          c.Wallet(),
 		rg:              c.Regulator(),

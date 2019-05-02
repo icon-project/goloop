@@ -308,7 +308,7 @@ func (c *singleChain) _prepare() {
 	c.sm = service.NewManager(c, c.nm, c.pm, ContractDir)
 	c.bm = block.NewManager(c, c.sm)
 	WALDir := path.Join(chainDir, DefaultWALDir)
-	c.cs = consensus.NewConsensus(c, c.bm, c.nm, WALDir)
+	c.cs = consensus.NewConsensus(c, WALDir)
 }
 
 func (c *singleChain) _start() error {
