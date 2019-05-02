@@ -34,11 +34,12 @@ type blockGenerator struct {
 	n  int64
 }
 
-func newBlockGenerator(t *testing.T, c module.Chain) *blockGenerator {
+func newBlockGenerator(t *testing.T, gtx *testTransaction) *blockGenerator {
 	bg := &blockGenerator{}
 	bg.t = t
+	c := newTestChain(newMapDB(), gtx)
 	bg.sm = newTestServiceManager(c.Database())
-	bg.bm = NewManager(c, bg.sm)
+	bg.bm = NewManager(c)
 	return bg
 }
 
@@ -83,10 +84,9 @@ func newBlockManagerTestSetUp(t *testing.T) *blockManagerTestSetUp {
 	s.database = newMapDB()
 	s.gtx = newGenesisTX(defaultValidators)
 	s.chain = newTestChain(s.database, s.gtx)
-	s.sm = newServiceManager(s.chain)
-	s.bm = NewManager(s.chain, s.sm)
-	c := newTestChain(newMapDB(), s.gtx)
-	s.bg = newBlockGenerator(t, c)
+	s.sm = s.chain.sm
+	s.bm = NewManager(s.chain)
+	s.bg = newBlockGenerator(t, s.gtx)
 	return s
 }
 
@@ -169,8 +169,8 @@ func TestBlockManager_New_HasValidGenesisBlock(t *testing.T) {
 	id := blk.ID()
 	assert.Equal(t, s.gtx.Data.Effect.NextValidators.Bytes(), blk.NextValidators().Bytes())
 
-	sm := newServiceManager(s.chain)
-	bm = NewManager(s.chain, sm)
+	c := newTestChain(s.chain.Database(), s.chain.gtx)
+	bm = NewManager(c)
 	assertHasValidGenesisBlock(t, bm)
 	blk, _ = bm.GetLastBlock()
 	assert.Equal(t, id, blk.ID(), "ID")

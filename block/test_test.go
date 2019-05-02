@@ -29,6 +29,7 @@ type testChain struct {
 	database db.Database
 	gtx      *testTransaction
 	vld      module.CommitVoteSetDecoder
+	sm       *testServiceManager
 }
 
 func (c *testChain) ConcurrencyLevel() int {
@@ -72,7 +73,7 @@ func (c *testChain) Consensus() module.Consensus {
 }
 
 func (c *testChain) ServiceManager() module.ServiceManager {
-	panic("not implemented")
+	return c.sm
 }
 
 func (c *testChain) NetworkManager() module.NetworkManager {
@@ -877,12 +878,14 @@ func newTestChain(database db.Database, gtx *testTransaction) *testChain {
 	if gtx == nil {
 		gtx = newGenesisTX(defaultValidators)
 	}
-	return &testChain{
+	c := &testChain{
 		wallet:   wallet.New(),
 		database: database,
 		gtx:      gtx,
 		vld:      newCommitVoteSetFromBytes,
 	}
+	c.sm = newServiceManager(c)
+	return c
 }
 
 func newServiceManager(chain module.Chain) *testServiceManager {

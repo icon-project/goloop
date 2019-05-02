@@ -375,17 +375,14 @@ func (pt *proposeTask) _onExecute(err error) {
 }
 
 // NewManager creates BlockManager.
-func NewManager(
-	chain module.Chain,
-	sm module.ServiceManager,
-) module.BlockManager {
+func NewManager(chain module.Chain) module.BlockManager {
 	prefix := fmt.Sprintf("%x|BM|", chain.Wallet().Address().Bytes()[1:3])
 	logger := log.New(os.Stderr, prefix, log.Lshortfile|log.Lmicroseconds)
 	// TODO if last block is v1 block
 	m := &manager{
 		chainContext: &chainContext{
 			chain:   chain,
-			sm:      sm,
+			sm:      chain.ServiceManager(),
 			logger:  logger,
 			running: true,
 		},

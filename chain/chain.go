@@ -306,7 +306,7 @@ func (c *singleChain) _prepare() {
 	chainDir := c.cfg.ResolveAbsolute(c.cfg.BaseDir)
 	ContractDir := path.Join(chainDir, DefaultContractDir)
 	c.sm = service.NewManager(c, c.nm, c.pm, ContractDir)
-	c.bm = block.NewManager(c, c.sm)
+	c.bm = block.NewManager(c)
 	WALDir := path.Join(chainDir, DefaultWALDir)
 	c.cs = consensus.NewConsensus(c, WALDir)
 }
