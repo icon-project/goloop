@@ -20,7 +20,6 @@ import (
 
 // TODO overall error handling log? return error?
 // TODO import, finalize V1
-// TODO refactor code using bucketFor
 // TODO wait for transaction available
 
 var dbCodec = codec.MP
@@ -388,13 +387,13 @@ func NewManager(chain module.Chain) module.BlockManager {
 		},
 		nmap: make(map[string]*bnode),
 	}
-	chainPropBucket := m.bucketFor(db.ChainProperty)
-	if chainPropBucket == nil {
+	chainPropBucket, err := m.bucketFor(db.ChainProperty)
+	if err != nil {
 		return nil
 	}
 
 	var height int64
-	err := chainPropBucket.get(raw(keyLastBlockHeight), &height)
+	err = chainPropBucket.get(raw(keyLastBlockHeight), &height)
 	if err == common.ErrNotFound {
 		if _, err := m.finalizeGenesisBlock(nil, 0, chain.CommitVoteSetDecoder()(nil)); err != nil {
 			return nil
@@ -403,7 +402,10 @@ func NewManager(chain module.Chain) module.BlockManager {
 	} else if err != nil {
 		return nil
 	}
-	hashByHeightBucket := m.bucketFor(db.BlockHeaderHashByHeight)
+	hashByHeightBucket, err := m.bucketFor(db.BlockHeaderHashByHeight)
+	if err != nil {
+		return nil
+	}
 	hash, err := hashByHeightBucket.getBytes(&height)
 	if err != nil {
 		return nil
@@ -445,9 +447,9 @@ func (m *manager) GetBlock(id []byte) (module.Block, error) {
 
 func (m *manager) getBlock(id []byte) (module.Block, error) {
 	// TODO handle v1
-	hb := m.bucketFor(db.BytesByHash)
-	if hb == nil {
-		panic("cannot get bucket BytesByHash")
+	hb, err := m.bucketFor(db.BytesByHash)
+	if err != nil {
+		return nil, err
 	}
 	headerBytes, err := hb.getBytes(raw(id))
 	if err != nil {
@@ -599,15 +601,15 @@ func (m *manager) Commit(block module.Block) error {
 	return nil
 }
 
-func (m *manager) bucketFor(id db.BucketID) *bucket {
+func (m *manager) bucketFor(id db.BucketID) (*bucket, error) {
 	b, err := m.db().GetBucket(id)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	return &bucket{
 		dbBucket: b,
 		codec:    dbCodec,
-	}
+	}, nil
 }
 
 func (m *manager) Finalize(block module.Block) error {
@@ -638,13 +640,16 @@ func (m *manager) finalize(bn *bnode) error {
 	m.finalized = bn
 
 	if blockV2, ok := block.(*blockV2); ok {
-		hb := m.bucketFor(db.BytesByHash)
-		if hb == nil {
-			return common.ErrUnknown
+		hb, err := m.bucketFor(db.BytesByHash)
+		if err != nil {
+			return err
 		}
 		hb.put(blockV2._headerFormat())
 		hb.set(raw(block.Votes().Hash()), raw(block.Votes().Bytes()))
-		lb := m.bucketFor(db.TransactionLocatorByHash)
+		lb, err := m.bucketFor(db.TransactionLocatorByHash)
+		if err != nil {
+			return err
+		}
 		for it := block.PatchTransactions().Iterator(); it.Has(); it.Next() {
 			tr, i, _ := it.Get()
 			trLoc := transactionLocator{
@@ -663,12 +668,15 @@ func (m *manager) finalize(bn *bnode) error {
 			}
 			lb.set(raw(tr.ID()), trLoc)
 		}
-		b := m.bucketFor(db.BlockHeaderHashByHeight)
-		if b == nil {
-			return common.ErrUnknown
+		b, err := m.bucketFor(db.BlockHeaderHashByHeight)
+		if err != nil {
+			return err
 		}
 		b.set(block.Height(), raw(block.ID()))
-		chainProp := m.bucketFor(db.ChainProperty)
+		chainProp, err := m.bucketFor(db.ChainProperty)
+		if err != nil {
+			return err
+		}
 		chainProp.set(raw(keyLastBlockHeight), block.Height())
 	}
 	m.logger.Printf("Finalize(%x)\n", block.ID())
@@ -688,8 +696,8 @@ func (m *manager) finalize(bn *bnode) error {
 }
 
 func (m *manager) commitVoteSetFromHash(hash []byte) module.CommitVoteSet {
-	hb := m.bucketFor(db.BytesByHash)
-	if hb == nil {
+	hb, err := m.bucketFor(db.BytesByHash)
+	if err != nil {
 		return nil
 	}
 	bs, err := hb.getBytes(raw(hash))
@@ -864,9 +872,12 @@ func (m *manager) GetTransactionInfo(id []byte) (module.TransactionInfo, error) 
 
 func (m *manager) getTransactionInfo(id []byte) (module.TransactionInfo, error) {
 	// TODO handle V1 in GetTransactionInfo
-	tlb := m.bucketFor(db.TransactionLocatorByHash)
+	tlb, err := m.bucketFor(db.TransactionLocatorByHash)
+	if err != nil {
+		return nil, err
+	}
 	var loc transactionLocator
-	err := tlb.get(raw(id), &loc)
+	err = tlb.get(raw(id), &loc)
 	if err != nil {
 		return nil, common.ErrNotFound
 	}
@@ -901,7 +912,10 @@ func (m *manager) GetBlockByHeight(height int64) (module.Block, error) {
 }
 
 func (m *manager) getBlockByHeight(height int64) (module.Block, error) {
-	headerHashByHeight := m.bucketFor(db.BlockHeaderHashByHeight)
+	headerHashByHeight, err := m.bucketFor(db.BlockHeaderHashByHeight)
+	if err != nil {
+		return nil, err
+	}
 	hash, err := headerHashByHeight.getBytes(height)
 	if err != nil {
 		return nil, err
@@ -917,9 +931,12 @@ func (m *manager) GetLastBlock() (module.Block, error) {
 }
 
 func (m *manager) getLastBlock() (module.Block, error) {
-	chainProp := m.bucketFor(db.ChainProperty)
+	chainProp, err := m.bucketFor(db.ChainProperty)
+	if err != nil {
+		return nil, err
+	}
 	var height int64
-	err := chainProp.get(raw(keyLastBlockHeight), &height)
+	err = chainProp.get(raw(keyLastBlockHeight), &height)
 	if err != nil {
 		return nil, err
 	}
