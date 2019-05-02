@@ -644,8 +644,12 @@ func (m *manager) finalize(bn *bnode) error {
 		if err != nil {
 			return err
 		}
-		hb.put(blockV2._headerFormat())
-		hb.set(raw(block.Votes().Hash()), raw(block.Votes().Bytes()))
+		if err = hb.put(blockV2._headerFormat()); err != nil {
+			return err
+		}
+		if err = hb.set(raw(block.Votes().Hash()), raw(block.Votes().Bytes())); err != nil {
+			return err
+		}
 		lb, err := m.bucketFor(db.TransactionLocatorByHash)
 		if err != nil {
 			return err
@@ -657,7 +661,9 @@ func (m *manager) finalize(bn *bnode) error {
 				TransactionGroup: module.TransactionGroupPatch,
 				IndexInGroup:     i,
 			}
-			lb.set(raw(tr.ID()), trLoc)
+			if err = lb.set(raw(tr.ID()), trLoc); err != nil {
+				return err
+			}
 		}
 		for it := block.NormalTransactions().Iterator(); it.Has(); it.Next() {
 			tr, i, _ := it.Get()
@@ -666,18 +672,24 @@ func (m *manager) finalize(bn *bnode) error {
 				TransactionGroup: module.TransactionGroupNormal,
 				IndexInGroup:     i,
 			}
-			lb.set(raw(tr.ID()), trLoc)
+			if err = lb.set(raw(tr.ID()), trLoc); err != nil {
+				return err
+			}
 		}
 		b, err := m.bucketFor(db.BlockHeaderHashByHeight)
 		if err != nil {
 			return err
 		}
-		b.set(block.Height(), raw(block.ID()))
+		if err = b.set(block.Height(), raw(block.ID())); err != nil {
+			return err
+		}
 		chainProp, err := m.bucketFor(db.ChainProperty)
 		if err != nil {
 			return err
 		}
-		chainProp.set(raw(keyLastBlockHeight), block.Height())
+		if err = chainProp.set(raw(keyLastBlockHeight), block.Height()); err != nil {
+			return err
+		}
 	}
 	m.logger.Printf("Finalize(%x)\n", block.ID())
 	for i := 0; i < len(m.finalizationCBs); {
