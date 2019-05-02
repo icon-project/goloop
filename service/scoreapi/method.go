@@ -26,7 +26,7 @@ func (t MethodType) String() string {
 	case Fallback:
 		return "fallback"
 	case Event:
-		return "event"
+		return "eventlog"
 	default:
 		log.Panicf("Fail to convert MethodType=%d", t)
 		return "Unknown"
@@ -180,6 +180,13 @@ func (a *Method) IsCallable() bool {
 	return a.Type != Event
 }
 
+func (a *Method) IsFallback() bool {
+	return a.Type == Fallback
+}
+
+func (a *Method) IsEvent() bool {
+	return a.Type == Event
+}
 func (a *Method) ToJSON(version int) (interface{}, error) {
 	m := make(map[string]interface{})
 	m["type"] = a.Type.String()

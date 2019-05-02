@@ -69,7 +69,7 @@ func (info *Info) ConvertParamsToTypedObj(method string, params []byte) (*codec.
 func (info *Info) ToJSON(v int) (interface{}, error) {
 	jso := make([]interface{}, 0, len(info.methods))
 	for _, method := range info.methods {
-		if !method.IsExternal() {
+		if !method.IsExternal() && !method.IsEvent() && !method.IsFallback() {
 			continue
 		}
 		if json, err := method.ToJSON(v); err != nil {
