@@ -76,8 +76,8 @@ class ChainTest extends Test {
     @TaskAction
     @Override
     void executeTests() {
-        def noServer = System.getProperty("noServer")
-        if ( noServer==null || noServer != "true") {
+        def noServer = System.getProperty("NO_SERVER")
+        if (noServer == null || noServer != "true") {
             logging.println("STARTING Stand-alone server")
             logging.println("Config: ${configFile}")
             logging.println("Log   : ${logFile}")
