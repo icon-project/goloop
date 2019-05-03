@@ -3,10 +3,10 @@ package block
 import (
 	"bytes"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 )
 
 type bucket struct {
@@ -54,7 +54,7 @@ func (b *bucket) getBytes(key interface{}) ([]byte, error) {
 	}
 	bs, err := b.dbBucket.Get(keyBS)
 	if bs == nil && err == nil {
-		err = common.ErrNotFound
+		err = errors.ErrNotFound
 	}
 	return bs, err
 }

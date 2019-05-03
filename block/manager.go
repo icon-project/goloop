@@ -143,7 +143,7 @@ func (m *manager) _import(
 	} else {
 		pprev, err := m.getBlock(bn.block.PrevID())
 		if err != nil {
-			m.logger.Panicf("cannot get prev prev block %x\n", bn.block.PrevID())
+			return nil, errors.InvalidStateError.Wrapf(err, "Cannot get prev block %x", bn.block.PrevID())
 		}
 		validators = pprev.NextValidators()
 	}
@@ -268,7 +268,7 @@ func (m *manager) _propose(
 	} else {
 		pprev, err := m.getBlock(bn.block.PrevID())
 		if err != nil {
-			m.logger.Panicf("cannot get prev prev block %x\n", bn.block.PrevID())
+			return nil, errors.InvalidStateError.Wrapf(err, "Cannot get prev block %x", bn.block.PrevID())
 		}
 		validators = pprev.NextValidators()
 	}
@@ -287,7 +287,7 @@ func (m *manager) _propose(
 	patches := m.sm.GetPatches(bn.in.mtransition())
 	pt.in = bn.preexe.patch(patches, pt)
 	if pt.in == nil {
-		return nil, common.ErrUnknown
+		return nil, errors.New("FailToPatch")
 	}
 	return pt, nil
 }
@@ -394,7 +394,7 @@ func NewManager(chain module.Chain) module.BlockManager {
 
 	var height int64
 	err = chainPropBucket.get(raw(keyLastBlockHeight), &height)
-	if err == common.ErrNotFound {
+	if errors.NotFoundError.Equals(err) {
 		if _, err := m.finalizeGenesisBlock(nil, 0, chain.CommitVoteSetDecoder()(nil)); err != nil {
 			return nil
 		}
@@ -455,10 +455,10 @@ func (m *manager) getBlock(id []byte) (module.Block, error) {
 	if err != nil {
 		return nil, err
 	}
-	if headerBytes != nil {
-		return m.newBlockFromHeaderReader(bytes.NewReader(headerBytes))
+	if headerBytes == nil {
+		return nil, errors.InvalidStateError.Errorf("nil header")
 	}
-	return nil, common.ErrNotFound
+	return m.newBlockFromHeaderReader(bytes.NewReader(headerBytes))
 }
 
 func (m *manager) Import(
@@ -891,15 +891,15 @@ func (m *manager) getTransactionInfo(id []byte) (module.TransactionInfo, error) 
 	var loc transactionLocator
 	err = tlb.get(raw(id), &loc)
 	if err != nil {
-		return nil, common.ErrNotFound
+		return nil, errors.ErrNotFound
 	}
 	block, err := m.getBlockByHeight(loc.BlockHeight)
 	if err != nil {
-		return nil, common.ErrInvalidState
+		return nil, errors.InvalidStateError.Wrapf(err, "block h=%d not found", loc.BlockHeight)
 	}
 	mtr, err := block.NormalTransactions().Get(loc.IndexInGroup)
 	if err != nil {
-		return nil, common.ErrInvalidState
+		return nil, errors.InvalidStateError.Wrapf(err, "transaction i=%d not in block h=%d", loc.IndexInGroup, loc.BlockHeight)
 	}
 	rblock, err := m.getBlockByHeight(loc.BlockHeight + 1)
 	if err != nil {
@@ -932,7 +932,11 @@ func (m *manager) getBlockByHeight(height int64) (module.Block, error) {
 	if err != nil {
 		return nil, err
 	}
-	return m.getBlock(hash)
+	blk, err := m.getBlock(hash)
+	if errors.NotFoundError.Equals(err) {
+		return blk, errors.InvalidStateError.Wrapf(err, "block h=%d by hash=%x not found", height, hash)
+	}
+	return blk, err
 }
 
 func (m *manager) GetLastBlock() (module.Block, error) {
@@ -949,10 +953,18 @@ func (m *manager) getLastBlock() (module.Block, error) {
 	}
 	var height int64
 	err = chainProp.get(raw(keyLastBlockHeight), &height)
-	if err != nil {
+
+	if errors.NotFoundError.Equals(err) {
+		return nil, errors.InvalidStateError.Wrapf(err, "cannot get lastBlockHeight")
+	} else if err != nil {
 		return nil, err
 	}
-	return m.getBlockByHeight(height)
+
+	blk, err := m.getBlockByHeight(height)
+	if errors.NotFoundError.Equals(err) {
+		return nil, errors.InvalidStateError.Wrapf(err, "block h=%d not found", height)
+	}
+	return blk, err
 }
 
 func (m *manager) WaitForBlock(height int64) (<-chan module.Block, error) {
@@ -965,7 +977,7 @@ func (m *manager) WaitForBlock(height int64) (<-chan module.Block, error) {
 	if err == nil {
 		bch <- blk
 		return bch, nil
-	} else if err != common.ErrNotFound {
+	} else if !errors.NotFoundError.Equals(err) {
 		return nil, err
 	}
 
