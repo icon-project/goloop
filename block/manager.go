@@ -568,10 +568,10 @@ func (m *manager) finalizeGenesisBlock(
 	}
 	m.nmap[string(bn.block.ID())] = bn
 	err = m.finalize(bn)
-	m.sm.Finalize(gtr.mtransition(), module.FinalizeNormalTransaction|module.FinalizePatchTransaction|module.FinalizeResult)
 	if err != nil {
 		return nil, err
 	}
+	m.sm.Finalize(gtr.mtransition(), module.FinalizeNormalTransaction|module.FinalizePatchTransaction|module.FinalizeResult)
 	return bn.block, nil
 }
 
