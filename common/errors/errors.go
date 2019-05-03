@@ -54,6 +54,9 @@ func (c Code) Wrapf(e error, f string, args ...interface{}) error {
 }
 
 func (c Code) Equals(e error) bool {
+	if e == nil {
+		return false
+	}
 	return CodeOf(e) == c
 }
 
@@ -102,6 +105,9 @@ func (e *baseError) Format(f fmt.State, c rune) {
 }
 
 func (e *baseError) Equals(err error) bool {
+	if err == nil {
+		return false
+	}
 	return CodeOf(err) == e.code
 }
 
