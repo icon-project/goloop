@@ -13,7 +13,6 @@ import java.math.BigInteger;
 
 public class Score {
     public static final BigInteger STEPS_DEFAULT = BigInteger.valueOf(2000000);
-    public static final long DEFAULT_WAITING_TIME = 5000; // millisecond
     private static final Log LOG = Log.getGlobal();
 
     protected IconService service;
@@ -28,13 +27,13 @@ public class Score {
 
     public static Address install(IconService service, Env.Chain chain, Wallet wallet, String contentPath, RpcObject params)
             throws IOException, TransactionFailureException, ResultTimeoutException {
-        return install(service, chain, wallet, contentPath, params, -1);
+        return install(service, chain, wallet, contentPath, params, Constants.DEFAULT_STEP_LIMIT);
     }
 
     public static Address install(IconService service, Env.Chain chain, Wallet wallet, String contentPath, RpcObject params, long stepLimit)
             throws IOException, TransactionFailureException, ResultTimeoutException {
-        Bytes txHash = Utils.installScore(service, chain, wallet, contentPath, params, stepLimit);
-        TransactionResult result = Utils.getTransactionResult(service, txHash, DEFAULT_WAITING_TIME);
+        Bytes txHash = Utils.deployScore(service, chain.networkId, wallet, Constants.CHAINSCORE_ADDRESS, contentPath, params, stepLimit);
+        TransactionResult result = Utils.getTransactionResult(service, txHash, Constants.DEFAULT_WAITING_TIME);
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new TransactionFailureException(result.getFailure());
         }
@@ -52,8 +51,8 @@ public class Score {
 
     public void update(IconService service, Env.Chain chain, Wallet wallet, String contentPath, RpcObject params)
             throws TransactionFailureException, ResultTimeoutException, IOException {
-        Bytes txHash = Utils.updateScore(service, chain, wallet, this.scoreAddress, contentPath, params, -1);
-        TransactionResult result = Utils.getTransactionResult(service, txHash, DEFAULT_WAITING_TIME);
+        Bytes txHash = Utils.deployScore(service, chain.networkId, wallet, this.scoreAddress, contentPath, params);
+        TransactionResult result = Utils.getTransactionResult(service, txHash, Constants.DEFAULT_WAITING_TIME);
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new TransactionFailureException(result.getFailure());
         }
@@ -117,7 +116,7 @@ public class Score {
             builder = builder.value(value);
         }
 
-        Transaction t = null;
+        Transaction t;
         if (params != null) {
             t = builder.call(method).params(params).build();
         } else {
@@ -144,7 +143,7 @@ public class Score {
     }
 
     public TransactionResult waitResult(Bytes txHash) throws ResultTimeoutException, IOException {
-        return Utils.getTransactionResult(this.service, txHash, DEFAULT_WAITING_TIME);
+        return Utils.getTransactionResult(this.service, txHash, Constants.DEFAULT_WAITING_TIME);
     }
 
     public TransactionResult waitResult(Bytes txHash, long waiting) throws ResultTimeoutException, IOException {

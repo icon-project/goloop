@@ -30,9 +30,9 @@ public class MultiSigWalletTest {
 
     @Test
     public void multiSigWalletTest() throws Exception {
-        KeyWallet ownerWallet = Utils.createAndStoreWallet();
-        KeyWallet aliceWallet = Utils.createAndStoreWallet();
-        KeyWallet bobWallet = Utils.createAndStoreWallet();
+        KeyWallet ownerWallet = KeyWallet.create();
+        KeyWallet aliceWallet = KeyWallet.create();
+        KeyWallet bobWallet = KeyWallet.create();
 
         LOG.info("Address of owner: " + ownerWallet.getAddress());
         LOG.info("Address of Alice: " + aliceWallet.getAddress());
@@ -98,7 +98,7 @@ public class MultiSigWalletTest {
         LOG.infoExiting();
 
         // *** Add new wallet owner (charlie)
-        KeyWallet charlieWallet = Utils.createAndStoreWallet();
+        KeyWallet charlieWallet = KeyWallet.create();
         // 5. tx is initiated by ownerWallet first
         LOG.infoEntering("call", "addWalletOwner(Charlie)");
         result = multiSigWalletScore.addWalletOwner(ownerWallet, charlieWallet.getAddress(), "add new wallet owner");
@@ -115,7 +115,7 @@ public class MultiSigWalletTest {
         LOG.infoExiting();
 
         // *** Replace wallet owner (charlie -> david)
-        KeyWallet davidWallet = Utils.createAndStoreWallet();
+        KeyWallet davidWallet = KeyWallet.create();
         // 7. tx is initiated by ownerWallet first
         LOG.infoEntering("call", "replaceWalletOwner(Charlie to David)");
         result = multiSigWalletScore.replaceWalletOwner(ownerWallet, charlieWallet.getAddress(),

@@ -26,40 +26,23 @@ import foundation.icon.icx.data.TransactionResult.EventLog;
 import foundation.icon.icx.transport.jsonrpc.RpcError;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
-import org.junit.Assert;
 
 import java.io.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.file.Files;
-import java.security.InvalidAlgorithmParameterException;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static foundation.icon.test.common.Env.LOG;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class Utils {
     public static BigInteger getMicroTime() {
         long timestamp = System.currentTimeMillis() * 1000L;
         return new BigInteger(Long.toString(timestamp));
-    }
-
-    public static KeyWallet createAndStoreWallet() throws IOException {
-        try {
-            KeyWallet wallet = KeyWallet.create();
-            KeyWallet.store(wallet, "P@sswOrd", new File("/tmp"));
-            return wallet;
-        } catch (InvalidAlgorithmParameterException | NoSuchAlgorithmException | NoSuchProviderException e) {
-            e.printStackTrace();
-            throw new IOException("Key creation failed!");
-        } catch (KeystoreException e) {
-            e.printStackTrace();
-            throw new IOException("Key store failed!");
-        }
     }
 
     public static KeyWallet readWalletFromFile(String path, String password) throws IOException {
@@ -141,12 +124,15 @@ public class Utils {
     }
 
     public static Bytes deployScore(IconService iconService, int networkId,
+                                    Wallet fromWallet, Address to, String contentPath, RpcObject params)
+            throws IOException {
+        return deployScore(iconService, networkId, fromWallet, to, contentPath, params, Constants.DEFAULT_STEP_LIMIT);
+    }
+
+    public static Bytes deployScore(IconService iconService, int networkId,
             Wallet fromWallet, Address to, String contentPath, RpcObject params, long stepLimit)
                 throws IOException {
         byte[] content = zipContent(contentPath);
-        if(stepLimit == -1) {
-            stepLimit = 200000;
-        }
         Transaction transaction = TransactionBuilder.newBuilder()
                 .nid(BigInteger.valueOf(networkId))
                 .from(fromWallet.getAddress())
@@ -160,20 +146,6 @@ public class Utils {
 
         SignedTransaction signedTransaction = new SignedTransaction(transaction, fromWallet);
         return iconService.sendTransaction(signedTransaction).execute();
-    }
-
-    public static Bytes installScore(IconService iconService, Env.Chain chain,
-            Wallet fromWallet, String contentPath, RpcObject params, long stepLimit)
-                throws IOException {
-        Bytes txHash = deployScore(iconService, chain.networkId, fromWallet, Constants.CHAINSCORE_ADDRESS, contentPath, params, stepLimit);
-        return txHash;
-    }
-
-    public static Bytes updateScore(IconService iconService, Env.Chain chain,
-            Wallet fromWallet, Address scoreAddr, String contentPath, RpcObject params, long stepLimit)
-                throws IOException {
-        Bytes txHash = deployScore(iconService, chain.networkId, fromWallet, scoreAddr, contentPath, params, stepLimit);
-        return txHash;
     }
 
     public static TransactionResult getTransactionResult(IconService iconService, Bytes txHash, long waitingTime)
@@ -327,26 +299,6 @@ public class Utils {
         zos.close();
         outputStream.close();
         return outputStream.toByteArray();
-    }
-
-    public static void assertEquals(Object expected, Object actual) {
-        try {
-            Assert.assertEquals(expected, actual);
-        }
-        catch(AssertionError error) {
-            LOG.warning("expected : " + expected + ", but actual : " + actual);
-            throw error;
-        }
-    }
-
-    public static void assertNotEquals(Object expected, Object actual) {
-        try {
-            Assert.assertNotEquals(expected, actual);
-        }
-        catch(AssertionError error) {
-            LOG.warning("expected : " + expected + ", but actual : " + actual);
-            throw error;
-        }
     }
 
     public static void transferAndCheck(IconService service, Env.Chain chain,

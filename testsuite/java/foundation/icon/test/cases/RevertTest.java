@@ -32,7 +32,7 @@ public class RevertTest {
 
     @Test
     public void testRevert() throws Exception {
-        KeyWallet ownerWallet = Utils.createAndStoreWallet();
+        KeyWallet ownerWallet = KeyWallet.create();
 
         LOG.infoEntering("deploy", "SCORE1");
         StepCounterScore score1 = StepCounterScore.mustDeploy(iconService,

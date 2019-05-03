@@ -185,7 +185,6 @@ public class GetAPITest {
 
     @Test
     public void checkScoreApi() throws Exception {
-        // TODO check whether support method overloading in score
         // expected type(function, eventlog, fallback), name, inputs(name, type, indexed), outputs(type), readonly, payable
         Map<String, FuncInfo> expectedFuncMap = new HashMap<String, FuncInfo>() {{
             put("externalMethod", new FuncInfo(TYPE_FUNCTION, null, null, VALUE_FALSE,  VALUE_FALSE));
@@ -218,8 +217,9 @@ public class GetAPITest {
         }};
 
         LOG.infoEntering("checkScoreApi");
-        String scorePath = Constants.SCORE_ROOT + "score_api";
-        Bytes txHash = Utils.installScore(iconService, chain, KeyWallet.create(), scorePath, null, -1);
+        String scorePath = Constants.SCORE_API_PATH;
+        Bytes txHash = Utils.deployScore(iconService, chain.networkId,
+                KeyWallet.create(), Constants.CHAINSCORE_ADDRESS, scorePath, null);
         TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
 
@@ -259,9 +259,7 @@ public class GetAPITest {
             }
             expectedFuncMap.remove(funcName);
         }
-        // check remains from map
         if(expectedFuncMap.size() != 0) {
-            // TODO check null
             LOG.warning("NOT received [" + expectedFuncMap.keySet() + "]");
             fail();
         }

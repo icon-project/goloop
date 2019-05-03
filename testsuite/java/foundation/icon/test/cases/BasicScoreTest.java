@@ -35,9 +35,9 @@ public class BasicScoreTest {
 
     @Test
     public void basicScoreTest() throws Exception {
-        KeyWallet ownerWallet = Utils.createAndStoreWallet();
-        KeyWallet aliceWallet = Utils.createAndStoreWallet();
-        KeyWallet bobWallet = Utils.createAndStoreWallet();
+        KeyWallet ownerWallet = KeyWallet.create();
+        KeyWallet aliceWallet = KeyWallet.create();
+        KeyWallet bobWallet = KeyWallet.create();
 
         // transfer initial icx to owner address
         LOG.infoEntering("transfer", "initial icx to owner address");

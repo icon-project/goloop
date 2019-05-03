@@ -108,9 +108,9 @@ public class WSEventTest {
 
     @Test
     public void wsEventTest() throws Exception {
-        KeyWallet ownerWallet = Utils.createAndStoreWallet();
-        KeyWallet aliceWallet = Utils.createAndStoreWallet();
-        KeyWallet bobWallet = Utils.createAndStoreWallet();
+        KeyWallet ownerWallet = KeyWallet.create();
+        KeyWallet aliceWallet = KeyWallet.create();
+        KeyWallet bobWallet = KeyWallet.create();
 
         LOG.infoEntering("transfer", "initial icx to owner address");
         Utils.transferIcx(iconService, chain.networkId, chain.godWallet, ownerWallet.getAddress(), "100");

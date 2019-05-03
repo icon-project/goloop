@@ -77,7 +77,7 @@ public class TransferTest {
         Random rand = new Random();
         for (int i = 0; i < wallets.length; i++) {
             wallets[i] = KeyWallet.create();
-            Utils.assertEquals(BigInteger.ZERO, iconService.getBalance(wallets[i].getAddress()).execute());
+            assertEquals(BigInteger.ZERO, iconService.getBalance(wallets[i].getAddress()).execute());
 
             // transfer from no balance wallet to test wallets
             BigInteger bal = iconService.getBalance(testWallets[i].getAddress()).execute();
@@ -89,7 +89,7 @@ public class TransferTest {
             catch (ResultTimeoutException ex) {
                 // success
             }
-            Utils.assertEquals(bal, iconService.getBalance(testWallets[i].getAddress()).execute());
+            assertEquals(bal, iconService.getBalance(testWallets[i].getAddress()).execute());
         }
         LOG.infoExiting();
     }
@@ -143,14 +143,14 @@ public class TransferTest {
             try {
                 Utils.getTransactionResult(iconService, txHash, 5000);
                 LOG.infoExiting();
-                Utils.assertEquals(newDefStepCost, testLimit);
+                assertEquals(newDefStepCost, testLimit);
                 BigInteger resultBal = iconService.getBalance(toWallet.getAddress()).execute();
-                Utils.assertEquals(toBal.add(testValue), resultBal);
+                assertEquals(toBal.add(testValue), resultBal);
             }
             catch (ResultTimeoutException ex) {
                 LOG.info("FAIL to get result");
                 LOG.infoExiting();
-                Utils.assertNotEquals(newDefStepCost, testLimit);
+                assertNotEquals(newDefStepCost, testLimit);
             }
         }
         govScore.setStepCost("default", prevDefStepCost);
@@ -231,7 +231,7 @@ public class TransferTest {
                     return true;
                 }
                 TransactionResult result = Utils.getTransactionResult(iconService, txHash, 5000);
-                Utils.assertEquals(result.getStatus(), Constants.STATUS_SUCCESS);
+                assertEquals(result.getStatus(), Constants.STATUS_SUCCESS);
                 BigInteger cmpBal = iconService.getBalance(wallet.getAddress()).execute();
                 if(cmpBal.compareTo(balance) != 0){
                     System.out.println("calculated balance " + balance + ", getBalance " + cmpBal);

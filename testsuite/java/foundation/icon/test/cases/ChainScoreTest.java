@@ -87,7 +87,7 @@ public class ChainScoreTest{
             builder.put("limit", new RpcValue("100000"));
             TransactionResult result = Utils.sendTransactionWithCall(iconService, chain.networkId,
                     KeyWallet.create(), Constants.GOV_ADDRESS, "setMaxStepLimit", builder.build(), 0);
-            Utils.assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+            assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
         }
     }
 
@@ -108,19 +108,13 @@ public class ChainScoreTest{
 
     public TransactionResult sendGovCallTx(String method, RpcObject params) throws Exception {
         TransactionResult result;
-        try {
-            result = Utils.sendTransactionWithCall(iconService, chain.networkId,
-                    chain.governorWallet, toAddr, method, params, 0);
-        }
-        catch (Exception ex) {
-            ex.printStackTrace();
-            throw ex;
-        }
+        result = Utils.sendTransactionWithCall(iconService, chain.networkId,
+                chain.governorWallet, toAddr, method, params, 0);
         if(toAddr.equals(Constants.GOV_ADDRESS)) {
-            Utils.assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+            assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
         }
         else {
-            Utils.assertEquals(Constants.STATUS_FAIL, result.getStatus());
+            assertEquals(Constants.STATUS_FAIL, result.getStatus());
         }
         return result;
     }
@@ -152,7 +146,7 @@ public class ChainScoreTest{
                 result = Utils.sendTransactionWithCall(iconService,
                         chain.networkId, from, Constants.CHAINSCORE_ADDRESS, method, params);
                 LOG.infoExiting();
-                Utils.assertEquals(from == helloWorldOwner ? Constants.STATUS_SUCCESS : Constants.STATUS_FAIL, result.getStatus());
+                assertEquals(from == helloWorldOwner ? Constants.STATUS_SUCCESS : Constants.STATUS_FAIL, result.getStatus());
 
                 boolean disabled = Utils.icxCall(iconService,
                         Constants.CHAINSCORE_ADDRESS, "getScoreStatus", params).asObject().getItem("disabled").asBoolean();
@@ -161,12 +155,12 @@ public class ChainScoreTest{
                 try {
                     LOG.infoEntering("method[hello], disabled[" + disabled + "]");
                     result = helloWorld.invokeHello(caller);
-                    Utils.assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+                    assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
                 }
                 catch (ResultTimeoutException ex) {
                     LOG.info("FAIL to get result by tx");
                     if(from == helloWorldOwner) {
-                        Utils.assertEquals("disableScore", method);
+                        assertEquals("disableScore", method);
                     }
                 }
                 LOG.infoExiting();
@@ -191,7 +185,7 @@ public class ChainScoreTest{
         BigInteger revision = Utils.icxCall(iconService,
                 Constants.CHAINSCORE_ADDRESS, "getRevision", null).asInteger();
         if(toAddr.equals(Constants.GOV_ADDRESS)) {
-            Utils.assertEquals(newRevision, revision);
+            assertEquals(newRevision, revision);
             for (int i = 0; i < 2; i++) {
                 // It allows to set a greater value than the current. test with same value & less value.
                 BigInteger wrongRevision = revision.subtract(BigInteger.valueOf(i));
@@ -203,14 +197,14 @@ public class ChainScoreTest{
                         Utils.sendTransactionWithCall(iconService, chain.networkId,
                         chain.governorWallet, Constants.GOV_ADDRESS, "setRevision", params);
                 LOG.infoExiting();
-                Utils.assertEquals(Constants.STATUS_FAIL, result.getStatus());
+                assertEquals(Constants.STATUS_FAIL, result.getStatus());
                 newRevision = Utils.icxCall(iconService,
                         Constants.CHAINSCORE_ADDRESS, "getRevision", null).asInteger();
-                Utils.assertEquals(revision, newRevision);
+                assertEquals(revision, newRevision);
             }
         }
         else {
-            Utils.assertEquals(oldRevision, revision);
+            assertEquals(oldRevision, revision);
         }
         LOG.infoExiting();
     }
@@ -226,7 +220,7 @@ public class ChainScoreTest{
                 .put("name", new RpcValue("HelloWorld"))
                 .build();
         Bytes txHash = Utils.deployScore(iconService, chain.networkId, owner, Constants.CHAINSCORE_ADDRESS,
-                Constants.SCORE_HELLOWORLD_PATH, params, 2000);
+                Constants.SCORE_HELLOWORLD_PATH, params);
         TransactionResult result = Utils.getTransactionResult(iconService, txHash, 5000);
         assertEquals(result.getStatus(), Constants.STATUS_SUCCESS);
 
@@ -248,16 +242,16 @@ public class ChainScoreTest{
                     Constants.CHAINSCORE_ADDRESS, "getScoreStatus", params).asObject();
             RpcObject object = rpcObject.getItem(expectedItem).asObject();
             assertNotNull(object);
-            Utils.assertEquals(expect, object.getItem("status").asString());
+            assertEquals(expect, object.getItem("status").asString());
 
             try {
                 Utils.sendTransactionWithCall(iconService, chain.networkId,
                         caller, scoreAddr, "hello", null, 0);
-                Utils.assertEquals(Constants.SCORE_STATUS_ACTIVE, expect);
+                assertEquals(Constants.SCORE_STATUS_ACTIVE, expect);
             }
             catch(ResultTimeoutException ex) {
                 LOG.info("FAIL to get result by tx");
-                Utils.assertEquals(Constants.SCORE_STATUS_PENDING, expect);
+                assertEquals(Constants.SCORE_STATUS_PENDING, expect);
             }
             if(expect == Constants.SCORE_STATUS_PENDING) {
                 params = new RpcObject.Builder()
@@ -268,11 +262,11 @@ public class ChainScoreTest{
                         Utils.sendTransactionWithCall(iconService, chain.networkId,
                                 chain.governorWallet, toAddr, "acceptScore", params, 0);
                 if(toAddr == Constants.GOV_ADDRESS) {
-                    Utils.assertEquals(Constants.STATUS_SUCCESS, acceptResult.getStatus());
+                    assertEquals(Constants.STATUS_SUCCESS, acceptResult.getStatus());
                     expectedItem = "current";
                 }
                 else {
-                    Utils.assertEquals(Constants.STATUS_FAIL, acceptResult.getStatus());
+                    assertEquals(Constants.STATUS_FAIL, acceptResult.getStatus());
                 }
                 LOG.infoExiting();
             }
@@ -291,7 +285,7 @@ public class ChainScoreTest{
                 .put("name", new RpcValue("HelloWorld"))
                 .build();
         Bytes txHash = Utils.deployScore(iconService, chain.networkId, owner,
-                Constants.CHAINSCORE_ADDRESS, Constants.SCORE_HELLOWORLD_PATH, params, 2000);
+                Constants.CHAINSCORE_ADDRESS, Constants.SCORE_HELLOWORLD_PATH, params);
         TransactionResult result = Utils.getTransactionResult(iconService, txHash, 5000);
         assertEquals(result.getStatus(), Constants.STATUS_SUCCESS);
 
@@ -352,7 +346,7 @@ public class ChainScoreTest{
         LOG.infoEntering("blockUnblockScore");
         KeyWallet caller = testWallets[1];
         TransactionResult result = helloWorld.invokeHello(caller);
-        Utils.assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
 
         //check blocked is 0x0 (false)
         RpcObject params = new RpcObject.Builder()
@@ -376,12 +370,12 @@ public class ChainScoreTest{
             LOG.infoEntering("method[hello], disabled[" + blocked + "]");
             try {
                 result = helloWorld.invokeHello(caller);
-                Utils.assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+                assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
             }
             catch (ResultTimeoutException ex) {
                 LOG.info("FAIL to get result by tx");
                 if(toAddr.equals(Constants.GOV_ADDRESS)) {
-                    Utils.assertEquals("blockScore", method);
+                    assertEquals("blockScore", method);
                 }
             }
             LOG.infoExiting();
@@ -404,14 +398,14 @@ public class ChainScoreTest{
         BigInteger resultPrice = Utils.icxCall(iconService,
                 Constants.CHAINSCORE_ADDRESS, "getStepPrice", null).asInteger();
         if(toAddr.equals(Constants.GOV_ADDRESS)) {
-            Utils.assertEquals(newPrice, resultPrice);
+            assertEquals(newPrice, resultPrice);
             params = new RpcObject.Builder()
                     .put("price", new RpcValue(originPrice))
                     .build();
             sendGovCallTx("setStepPrice", params);
         }
         else {
-            Utils.assertEquals(originPrice, resultPrice);
+            assertEquals(originPrice, resultPrice);
         }
         LOG.infoExiting();
     }
@@ -447,10 +441,10 @@ public class ChainScoreTest{
         for(Bytes txHash : txHashList) {
             TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
             if(toAddr.equals(Constants.GOV_ADDRESS)) {
-                Utils.assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+                assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
             }
             else {
-                Utils.assertEquals(Constants.STATUS_FAIL, result.getStatus());
+                assertEquals(Constants.STATUS_FAIL, result.getStatus());
             }
         }
 
@@ -464,7 +458,7 @@ public class ChainScoreTest{
         rpcObject = Utils.icxCall(iconService,
                 Constants.CHAINSCORE_ADDRESS, "getStepCosts", null).asObject();
         for (String type : GovScore.stepCostTypes) {
-            Utils.assertEquals(cmpCosts.get(type), rpcObject.getItem(type).asInteger());
+            assertEquals(cmpCosts.get(type), rpcObject.getItem(type).asInteger());
         }
 
         if(this.toAddr.equals(Constants.GOV_ADDRESS)) {
@@ -483,13 +477,13 @@ public class ChainScoreTest{
             for(Bytes txHash : txHashList) {
                 TransactionResult result =
                         Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
-                Utils.assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+                assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
             }
 
             rpcObject = Utils.icxCall(iconService,
                     Constants.CHAINSCORE_ADDRESS, "getStepCosts", null).asObject();
             for (String type : GovScore.stepCostTypes) {
-                Utils.assertEquals(originMap.get(type), rpcObject.getItem(type).asInteger());
+                assertEquals(originMap.get(type), rpcObject.getItem(type).asInteger());
             }
         }
         LOG.infoExiting();
@@ -517,7 +511,7 @@ public class ChainScoreTest{
             BigInteger resultLimit = Utils.icxCall(iconService,
                     Constants.CHAINSCORE_ADDRESS,"getMaxStepLimit", params).asInteger();
             if (this.toAddr.equals(Constants.GOV_ADDRESS)) {
-                Utils.assertEquals(newLimit, resultLimit);
+                assertEquals(newLimit, resultLimit);
                 params = new RpcObject.Builder()
                         .put("contextType", new RpcValue(type))
                         .put("limit", new RpcValue(originLimit))
@@ -525,7 +519,7 @@ public class ChainScoreTest{
                 sendGovCallTx("setMaxStepLimit", params);
             }
             else {
-                Utils.assertEquals(originLimit, resultLimit);
+                assertEquals(originLimit, resultLimit);
             }
         }
         LOG.infoExiting();
@@ -611,10 +605,10 @@ public class ChainScoreTest{
             }
             if(toAddr.equals(Constants.GOV_ADDRESS)) {
                 if(bFound) {
-                    Utils.assertEquals("addMember", method);
+                    assertEquals("addMember", method);
                 }
                 else {
-                    Utils.assertEquals("removeMember", method);
+                    assertEquals("removeMember", method);
                 }
             } else {
                 assertFalse(bFound);

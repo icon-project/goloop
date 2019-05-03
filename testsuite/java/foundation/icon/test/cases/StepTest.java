@@ -202,7 +202,7 @@ public class StepTest {
                     .from(from.getAddress())
                     .to(to)
                     .value(value)
-                    .stepLimit(new BigInteger("1000000"))
+                    .stepLimit(new BigInteger("100000"))
                     .timestamp(getMicroTime())
                     .nonce(new BigInteger("1"))
                     .message(msg)
@@ -226,7 +226,7 @@ public class StepTest {
             TransactionBuilder.Builder builder = TransactionBuilder.newBuilder()
                     .nid(BigInteger.valueOf(chain.networkId))
                     .from(from.getAddress())
-                    .stepLimit(new BigInteger("100000000"))
+                    .stepLimit(new BigInteger("10000000"))
                     .timestamp(getMicroTime())
                     .nonce(new BigInteger("1"));
             if(to != null) {
@@ -298,7 +298,7 @@ public class StepTest {
     @Test
     public void deployStep() throws Exception {
         LOG.infoEntering("deployStep" );
-        final String installPath = Constants.SCORE_ROOT + "hello_world";
+        final String installPath = Constants.SCORE_HELLOWORLD_PATH;
         RpcObject params = new RpcObject.Builder()
                 .put("name", new RpcValue("HelloWorld"))
                 .build();
@@ -309,7 +309,7 @@ public class StepTest {
         assertEquals(sTx.usedCoin(), usedCoin);
         assertEquals(sTx.usedCoin(), sTx.treasuryBal);
 
-        final String updatePath = Constants.SCORE_ROOT + "hello_world2";
+        final String updatePath = Constants.SCORE_HELLOWORLD_UPDATE_PATH;
         Address socreAddr = sTx.scoreAddr;
         params = new RpcObject.Builder()
                 .put("name", new RpcValue("HelloWorld"))
@@ -332,8 +332,8 @@ public class StepTest {
                 .put("name", new RpcValue("HelloWorld"))
                 .build();
         LOG.infoEntering("install score" );
-        Bytes txHash = Utils.installScore(iconService, chain, scoreOwner,
-                Constants.SCORE_ROOT + "hello_world", params, 10000000);
+        Bytes txHash = Utils.deployScore(iconService, chain.networkId, scoreOwner,
+                Constants.CHAINSCORE_ADDRESS, Constants.SCORE_HELLOWORLD_PATH, params);
         TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
         LOG.infoExiting();
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());

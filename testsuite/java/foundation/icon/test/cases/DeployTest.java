@@ -84,7 +84,7 @@ public class DeployTest {
         LOG.infoEntering( "disableEnableScore");
         KeyWallet owner = KeyWallet.create();
         BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
-        Utils.assertEquals(BigInteger.ZERO, bal);
+        assertEquals(BigInteger.ZERO, bal);
         try {
             LOG.infoEntering("deploy SCORE");
             HelloWorld.install(iconService, chain, owner);
@@ -103,20 +103,14 @@ public class DeployTest {
         LOG.infoEntering( "notEnoughStepLimit");
         KeyWallet owner = KeyWallet.create();
         BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
-        Utils.assertEquals(BigInteger.ZERO, bal);
+        assertEquals(BigInteger.ZERO, bal);
 
         long value = 10;
         Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, owner.getAddress(), value);
-        try {
-            TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
-            Utils.assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-            bal = iconService.getBalance(owner.getAddress()).execute();
-            Utils.assertEquals(BigInteger.valueOf(value), bal);
-        }
-        catch (RuntimeException ex) {
-            ex.printStackTrace();
-            fail();
-        }
+        TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        bal = iconService.getBalance(owner.getAddress()).execute();
+        assertEquals(BigInteger.valueOf(value), bal);
         try {
             HelloWorld.install(iconService, chain, owner, 1);
         }
@@ -132,24 +126,18 @@ public class DeployTest {
         LOG.infoEntering( "installWithInvalidParams");
         KeyWallet owner = KeyWallet.create();
         BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
-        Utils.assertEquals(BigInteger.ZERO, bal);
+        assertEquals(BigInteger.ZERO, bal);
         long value = 100000000;
         Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, owner.getAddress(), value);
-        try {
-            TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
-            Utils.assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-            bal = iconService.getBalance(owner.getAddress()).execute();
-            Utils.assertEquals(BigInteger.valueOf(value), bal);
-        }
-        catch (RuntimeException ex) {
-            ex.printStackTrace();
-            fail();
-        }
+        TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        bal = iconService.getBalance(owner.getAddress()).execute();
+        assertEquals(BigInteger.valueOf(value), bal);
         RpcObject params = new RpcObject.Builder()
                 .put("invalidParam", new RpcValue("invalid"))
                 .build();
         try {
-            HelloWorld.install(iconService, chain, owner, params, -1);
+            HelloWorld.install(iconService, chain, owner, params, Constants.DEFAULT_STEP_LIMIT);
         }
         catch(TransactionFailureException ex) {
             LOG.infoExiting();
@@ -163,21 +151,14 @@ public class DeployTest {
         LOG.infoEntering( "installWithInvalidParams");
         KeyWallet owner = KeyWallet.create();
         BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
-        Utils.assertEquals(BigInteger.ZERO, bal);
-        long value = 999999999;
-        Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, owner.getAddress(), value);
-        try {
-            TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
-            Utils.assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-            bal = iconService.getBalance(owner.getAddress()).execute();
-            Utils.assertEquals(BigInteger.valueOf(value), bal);
-        }
-        catch (RuntimeException ex) {
-            ex.printStackTrace();
-            fail();
-        }
+        assertEquals(BigInteger.ZERO, bal);
+        Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, owner.getAddress(), Constants.DEFAULT_BALANCE);
+        TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        bal = iconService.getBalance(owner.getAddress()).execute();
+        assertEquals(Constants.DEFAULT_BALANCE, bal);
         LOG.infoEntering( "install");
-        HelloWorld score = HelloWorld.install(iconService, chain, owner, 10000);
+        HelloWorld score = HelloWorld.install(iconService, chain, owner);
         LOG.infoExiting();
         LOG.infoEntering( "invoke");
         score.invokeHello(owner);

@@ -15,8 +15,8 @@ import java.io.IOException;
 import java.math.BigInteger;
 
 public class HelloWorld extends Score {
-    private static final String INSTALL_PATH = Constants.SCORE_ROOT +  "hello_world";
-    private static final String UPDATE_PATH = Constants.SCORE_ROOT +  "hello_world2";
+    private static final String INSTALL_PATH = Constants.SCORE_HELLOWORLD_PATH;
+    private static final String UPDATE_PATH = Constants.SCORE_HELLOWORLD_UPDATE_PATH;
 
     public HelloWorld(IconService iconService, Env.Chain chain, Address scoreAddress) {
         super(iconService, chain, scoreAddress);
@@ -26,7 +26,7 @@ public class HelloWorld extends Score {
     public static HelloWorld install(IconService service, Env.Chain chain, Wallet wallet)
             throws TransactionFailureException, ResultTimeoutException, IOException
     {
-        return install(service, chain, wallet, -1);
+        return install(service, chain, wallet, 2000000);
     }
 
     // install with default parameter

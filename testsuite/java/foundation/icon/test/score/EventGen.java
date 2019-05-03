@@ -25,7 +25,7 @@ public class EventGen extends Score {
     public static EventGen install(IconService service, Env.Chain chain, Wallet wallet)
             throws TransactionFailureException, ResultTimeoutException, IOException
     {
-        return install(service, chain, wallet, -1);
+        return install(service, chain, wallet, Constants.DEFAULT_STEP_LIMIT);
     }
 
     // install with default parameter

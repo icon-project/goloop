@@ -72,7 +72,7 @@ public class ScoreTest {
     }
 
     @Test
-    public void invalidParamName() {
+    public void invalidParamName() throws Exception {
         LOG.infoEntering( "invalidParamName");
         for(String param : new String[]{"name", "nami"}) {
             try {
@@ -87,8 +87,6 @@ public class ScoreTest {
                 assertEquals(result.getStatus(), Constants.STATUS_SUCCESS);
             } catch (ResultTimeoutException ex) {
                 assertTrue(!param.equals("name"));
-            } catch (Exception ex) {
-                fail();
             }
         }
         LOG.infoExiting();
@@ -96,7 +94,7 @@ public class ScoreTest {
 
     @Ignore
     @Test
-    public void invalidParamNum() {
+    public void invalidParamNum() throws Exception {
         LOG.infoEntering( "invalidParamNum");
         for(String []params : new String[][]{{}, {"name"}, {"name", "age"}}) {
             try {
@@ -114,8 +112,6 @@ public class ScoreTest {
             } catch (ResultTimeoutException ex) {
                 assertTrue(params.length != 1);
                 LOG.infoExiting();
-            } catch (Exception ex) {
-                fail();
             }
         }
         LOG.infoExiting();
@@ -132,8 +128,8 @@ public class ScoreTest {
                 if(sub.compareTo(BigInteger.ZERO) > 0) {
                     Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, testWallet.getAddress(), sub.longValue());
                     TransactionResult result = Utils.getTransactionResult(iconService, txHash, 5000);
-                    Utils.assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-                    Utils.assertEquals(iconService.getBalance(testWallet.getAddress()).execute()
+                    assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+                    assertEquals(iconService.getBalance(testWallet.getAddress()).execute()
                             , BigInteger.valueOf(needValue));
                 }
                 LOG.infoEntering("invoke");
@@ -141,14 +137,12 @@ public class ScoreTest {
                         null, BigInteger.valueOf(0), BigInteger.valueOf(step));
                 LOG.infoExiting();
                 if(step < testCCValue) {
-                    Utils.assertEquals(Constants.STATUS_FAIL, result.getStatus());
+                    assertEquals(Constants.STATUS_FAIL, result.getStatus());
                 } else {
-                    Utils.assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+                    assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
                 }
             } catch (ResultTimeoutException ex) {
                 assertTrue(step < testCCValue);
-            } catch (Exception ex) {
-                fail();
             }
         }
         LOG.infoExiting();
@@ -163,17 +157,15 @@ public class ScoreTest {
         for(long value : values) {
             Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, testWallet.getAddress(), value);
             TransactionResult result = Utils.getTransactionResult(iconService, txHash, 5000);
-            Utils.assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-            Utils.assertEquals(iconService.getBalance(testWallet.getAddress()).execute()
+            assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+            assertEquals(iconService.getBalance(testWallet.getAddress()).execute()
                     , BigInteger.valueOf(value));
             try {
                 result = testScore.invokeAndWaitResult(testWallet, "hello", null
                         , BigInteger.valueOf(0), BigInteger.valueOf(testCCValue));
-                Utils.assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+                assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
             } catch (ResultTimeoutException ex) {
                 assertTrue(value < needValue);
-            } catch (Exception ex) {
-                fail();
             }
         }
         LOG.infoExiting();
@@ -187,12 +179,12 @@ public class ScoreTest {
         KeyWallet testWallet = KeyWallet.create();
         Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, testWallet.getAddress(), testVal + needValue);
         TransactionResult result = Utils.getTransactionResult(iconService, txHash, 5000);
-        Utils.assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
         assertEquals(iconService.getBalance(testWallet.getAddress()).execute()
                 , BigInteger.valueOf(testVal + needValue));
         result = testScore.invokeAndWaitResult(testWallet, "transfer",
                 null, BigInteger.valueOf(testVal), BigInteger.valueOf(testCCValue));
-        Utils.assertEquals(result.getStatus(), Constants.STATUS_SUCCESS);
+        assertEquals(result.getStatus(), Constants.STATUS_SUCCESS);
 
         RpcObject params = new RpcObject.Builder()
                 .put("_owner", new RpcValue(testWallet.getAddress()))
