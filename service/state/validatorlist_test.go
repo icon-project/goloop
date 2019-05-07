@@ -11,9 +11,9 @@ import (
 
 func TestValidatorListBasic(t *testing.T) {
 	addrs := []module.Address{
-		common.NewAddressFromString("cx0000000000000000000000000000000000000000"),
+		common.NewAddressFromString("hx0000000000000000000000000000000000000000"),
 		common.NewAddressFromString("hx0000000000000000000000000000000000000001"),
-		common.NewAddressFromString("cx0000000000000000000000000000000000000002"),
+		common.NewAddressFromString("hx0000000000000000000000000000000000000002"),
 	}
 	var validators []module.Validator
 	for _, a := range addrs {

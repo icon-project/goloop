@@ -23,7 +23,7 @@ func TestValidatorFromAddress(t *testing.T) {
 		{
 			name: "EOA1",
 			args: args{
-				common.NewAddressFromString("cx4567db98764567db98764567db98764567db9876"),
+				common.NewAddressFromString("hx4567db98764567db98764567db98764567db9876"),
 			},
 			wantErr: false,
 		},
