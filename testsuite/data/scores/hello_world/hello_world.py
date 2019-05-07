@@ -20,19 +20,24 @@ class HelloWorld(IconScoreBase):
         return "HelloWorld"
 
     @external
-    def hello(self) -> str:
+    def hello(self):
         Logger.info('Hello, world!', TAG)
-        return "Hello"
 
     @external
-    def helloWithName(self, name: str) -> str:
-        return "Hello " + name
+    def helloWithName(self, name: str):
+        Logger.info('Hello %s' % name,  TAG)
 
     @payable
     def fallback(self):
         Logger.info('fallback is called', TAG)
         self._balances[self.msg.sender] = self.msg.value
 
+    @external
+    def infiniteLoop(self):
+        loopCnt = 1
+        while True:
+            loopCnt = loopCnt + 1
+            # print("loopCnt ", loopCnt)
 
     @external
     @payable

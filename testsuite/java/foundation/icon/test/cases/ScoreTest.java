@@ -30,6 +30,7 @@ public class ScoreTest {
     private static IconService iconService;
     private static Env.Chain chain;
     private static KeyWallet ownerWallet;
+    private static KeyWallet callerWallet;
     private static GovScore govScore;
     private static Score testScore;
     private static final String PATH = Constants.SCORE_HELLOWORLD_PATH;
@@ -47,7 +48,8 @@ public class ScoreTest {
 
     private static void initScoreTest() throws Exception {
         ownerWallet = KeyWallet.create();
-        Address []addrs = {ownerWallet.getAddress(), chain.governorWallet.getAddress()};
+        callerWallet = KeyWallet.create();
+        Address []addrs = {ownerWallet.getAddress(), callerWallet.getAddress(), chain.governorWallet.getAddress()};
         Utils.transferAndCheck(iconService, chain, chain.godWallet, addrs, Constants.DEFAULT_BALANCE);
 
         RpcObject params = new RpcObject.Builder()
@@ -81,10 +83,10 @@ public class ScoreTest {
                         .build();
                 LOG.infoEntering( "invoke");
                 TransactionResult result =
-                        testScore.invokeAndWaitResult(chain.godWallet, "helloWithName",
+                        testScore.invokeAndWaitResult(callerWallet, "helloWithName",
                                 params, BigInteger.valueOf(0), BigInteger.valueOf(100));
                 LOG.infoExiting();
-                assertEquals(result.getStatus(), Constants.STATUS_SUCCESS);
+                assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
             } catch (ResultTimeoutException ex) {
                 assertTrue(!param.equals("name"));
             }
@@ -104,9 +106,9 @@ public class ScoreTest {
                 }
                 RpcObject objParam = builder.build();
                 LOG.info("invoke param[" + params + "]");
-                TransactionResult result = testScore.invokeAndWaitResult(chain.godWallet,
+                TransactionResult result = testScore.invokeAndWaitResult(callerWallet,
                         "helloWithName", objParam, BigInteger.valueOf(0), BigInteger.valueOf(100));
-                assertEquals(result.getStatus(), Constants.STATUS_SUCCESS);
+                assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
                 assertTrue(params.length == 1);
                 LOG.infoExiting();
             } catch (ResultTimeoutException ex) {
@@ -126,11 +128,7 @@ public class ScoreTest {
             try {
                 BigInteger sub = BigInteger.valueOf(needValue).subtract(iconService.getBalance(testWallet.getAddress()).execute());
                 if(sub.compareTo(BigInteger.ZERO) > 0) {
-                    Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, testWallet.getAddress(), sub.longValue());
-                    TransactionResult result = Utils.getTransactionResult(iconService, txHash, 5000);
-                    assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-                    assertEquals(iconService.getBalance(testWallet.getAddress()).execute()
-                            , BigInteger.valueOf(needValue));
+                    Utils.transferAndCheck(iconService, chain, chain.godWallet, testWallet.getAddress(), sub);
                 }
                 LOG.infoEntering("invoke");
                 TransactionResult result = testScore.invokeAndWaitResult(testWallet, "hello",
@@ -155,13 +153,9 @@ public class ScoreTest {
         long needValue = testCCValue * testStepPrice;
         long []values = {needValue, needValue - 1};
         for(long value : values) {
-            Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, testWallet.getAddress(), value);
-            TransactionResult result = Utils.getTransactionResult(iconService, txHash, 5000);
-            assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-            assertEquals(iconService.getBalance(testWallet.getAddress()).execute()
-                    , BigInteger.valueOf(value));
+            Utils.transferAndCheck(iconService, chain, chain.godWallet, testWallet.getAddress(), BigInteger.valueOf(value));
             try {
-                result = testScore.invokeAndWaitResult(testWallet, "hello", null
+                TransactionResult result = testScore.invokeAndWaitResult(testWallet, "hello", null
                         , BigInteger.valueOf(0), BigInteger.valueOf(testCCValue));
                 assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
             } catch (ResultTimeoutException ex) {
@@ -175,26 +169,38 @@ public class ScoreTest {
     public void callWithValue() throws Exception {
         LOG.infoEntering( "callWithValue");
         long needValue = testCCValue * testStepPrice ; // invoke & query
-        final long testVal = 987;
-        KeyWallet testWallet = KeyWallet.create();
-        Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, testWallet.getAddress(), testVal + needValue);
-        TransactionResult result = Utils.getTransactionResult(iconService, txHash, 5000);
-        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-        assertEquals(iconService.getBalance(testWallet.getAddress()).execute()
-                , BigInteger.valueOf(testVal + needValue));
-        result = testScore.invokeAndWaitResult(testWallet, "transfer",
+        final long testVal = 10;
+        KeyWallet testWallet;
+        BigInteger expectedBal;
+        do{
+            testWallet = KeyWallet.create();
+            expectedBal = iconService.getBalance(testWallet.getAddress()).execute();
+        } while(expectedBal.signum() != 0);
+
+        Utils.transferAndCheck(iconService, chain, chain.godWallet, testWallet.getAddress(), BigInteger.valueOf(testVal + needValue));
+        TransactionResult result = testScore.invokeAndWaitResult(testWallet, "transfer",
                 null, BigInteger.valueOf(testVal), BigInteger.valueOf(testCCValue));
-        assertEquals(result.getStatus(), Constants.STATUS_SUCCESS);
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
 
         RpcObject params = new RpcObject.Builder()
                 .put("_owner", new RpcValue(testWallet.getAddress()))
                 .build();
-        assertTrue(Utils.icxCall(iconService, testScore.getAddress(),
-                "balanceOf",params).asInteger().equals(BigInteger.valueOf(testVal)));
+        expectedBal = Utils.icxCall(iconService, testScore.getAddress(), "balanceOf",params).asInteger();
+        assertEquals(BigInteger.valueOf(testVal), expectedBal);
+        assertEquals(BigInteger.ZERO, iconService.getBalance(testWallet.getAddress()).execute());
         LOG.infoExiting();
     }
 
-    public void invalidAddress() {
+    @Test
+    public void timeout() throws Exception {
+        LOG.infoEntering( "timeout");
+        LOG.infoEntering( "invoke");
+        TransactionResult result =
+                testScore.invokeAndWaitResult(callerWallet, "infiniteLoop",
+                        null, BigInteger.valueOf(0), BigInteger.valueOf(100));
+        assertEquals(Constants.STATUS_FAIL, result.getStatus());
+        LOG.infoExiting();
+        LOG.infoExiting();
     }
 
 }

@@ -1,6 +1,7 @@
 package foundation.icon.test.cases;
 
 import foundation.icon.icx.*;
+import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
@@ -8,12 +9,17 @@ import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.*;
 import foundation.icon.test.score.GovScore;
-import foundation.icon.test.score.HelloWorld;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.file.Files;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import static foundation.icon.test.common.Env.LOG;
 import static junit.framework.TestCase.fail;
@@ -36,7 +42,7 @@ public class DeployTest {
     private static Env.Chain chain;
     private static GovScore govScore;
     private static final BigInteger stepCostCC = BigInteger.valueOf(10);
-    private static final BigInteger stepPrice = BigInteger.valueOf(10);
+    private static final BigInteger stepPrice = BigInteger.valueOf(1);
     private static final BigInteger invokeMaxStepLimit = BigInteger.valueOf(100000);
     private static BigInteger defStepCostCC;
     private static BigInteger defMaxStepLimit;
@@ -58,15 +64,12 @@ public class DeployTest {
                 .build();
         defMaxStepLimit = Utils.icxCall(iconService, Constants.CHAINSCORE_ADDRESS,
                 "getMaxStepLimit", params).asInteger();
-
-
         defStepCostCC = Utils.icxCall(iconService, Constants.CHAINSCORE_ADDRESS,
                 "getStepCosts", null).asObject().getItem("contractCreate").asInteger();
-
         defStepPrice = Utils.icxCall(iconService, Constants.CHAINSCORE_ADDRESS,
                 "getStepPrice", null).asInteger();
 
-        Utils.transferAndCheck(iconService, chain, chain.godWallet, chain.governorWallet.getAddress(), Constants.DEFAULT_BALANCE);
+        Utils.transferAndCheck(iconService, chain, chain.godWallet, chain.governorWallet.getAddress(), new BigInteger("10000000000"));
         govScore.setMaxStepLimit("invoke", invokeMaxStepLimit);
         govScore.setStepCost("contractCreate", stepCostCC);
         govScore.setStepPrice(stepPrice);
@@ -79,17 +82,68 @@ public class DeployTest {
         govScore.setStepPrice(defStepPrice);
     }
 
+    private Address deploy(KeyWallet owner, Address to, String contentPath, RpcObject params, long stepLimit) throws Exception {
+        LOG.infoEntering("deploy to " + to);
+        Bytes txHash = Utils.deployScore(iconService, chain.networkId, owner, to, contentPath, params, stepLimit);
+        TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
+        if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
+            LOG.infoExiting();
+            throw new TransactionFailureException(result.getFailure());
+        }
+
+        if(Utils.isAudit(iconService)) {
+            LOG.infoEntering("accept", "accept score");
+            TransactionResult acceptResult = new GovScore(iconService, chain).acceptScore(txHash);
+            if (!Constants.STATUS_SUCCESS.equals(acceptResult.getStatus())) {
+                LOG.infoExiting();
+                LOG.infoExiting();
+                throw new TransactionFailureException(acceptResult.getFailure());
+            }
+            LOG.infoExiting();
+        }
+        LOG.infoExiting();
+        return new Address(result.getScoreAddress());
+    }
+
+    private void invoke(KeyWallet from, Address to, String method, RpcObject params) throws Exception {
+        TransactionBuilder.Builder builder = TransactionBuilder.newBuilder()
+                .nid(BigInteger.valueOf(chain.networkId))
+                .from(from.getAddress())
+                .to(to)
+                .stepLimit(BigInteger.valueOf(Constants.DEFAULT_STEP_LIMIT));
+
+        Transaction t;
+        if (params != null) {
+            t = builder.call(method).params(params).build();
+        } else {
+            t = builder.call(method).build();
+        }
+        Bytes txHash = iconService.sendTransaction(new SignedTransaction(t, from)).execute();
+        LOG.info("txHash [" + txHash + "]");
+        TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
+        if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
+            throw new TransactionFailureException(result.getFailure());
+        }
+    }
+
     @Test
     public void notEnoughBalance() throws Exception {
-        LOG.infoEntering( "disableEnableScore");
+        LOG.infoEntering( "notEnoughBalance");
         KeyWallet owner = KeyWallet.create();
         BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
         assertEquals(BigInteger.ZERO, bal);
+
+        LOG.infoEntering("transfer and check balance");
+        Utils.transferAndCheck(iconService, chain, chain.godWallet, owner.getAddress(), BigInteger.valueOf(2));
+        LOG.infoExiting();
+        RpcObject params = new RpcObject.Builder()
+                .put("name", new RpcValue("HelloWorld"))
+                .build();
         try {
-            LOG.infoEntering("deploy SCORE");
-            HelloWorld.install(iconService, chain, owner);
+            deploy(owner, Constants.CHAINSCORE_ADDRESS, Constants.SCORE_HELLOWORLD_PATH, params, 1);
         }
-        catch(ResultTimeoutException ex) {
+        // If StepTypeDefault or StepTypeInput is not 0, ResultTimeoutException will be happened.
+        catch(TransactionFailureException ex) {
             LOG.infoExiting();
             LOG.info("FAIL to get result");
             LOG.infoExiting();
@@ -105,14 +159,14 @@ public class DeployTest {
         BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
         assertEquals(BigInteger.ZERO, bal);
 
-        long value = 10;
-        Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, owner.getAddress(), value);
-        TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
-        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-        bal = iconService.getBalance(owner.getAddress()).execute();
-        assertEquals(BigInteger.valueOf(value), bal);
+        LOG.infoEntering("transfer and check balance");
+        Utils.transferAndCheck(iconService, chain, chain.godWallet, owner.getAddress(), BigInteger.valueOf(1000));
+        LOG.infoExiting();
+        RpcObject params = new RpcObject.Builder()
+                .put("name", new RpcValue("HelloWorld"))
+                .build();
         try {
-            HelloWorld.install(iconService, chain, owner, 1);
+            deploy(owner, Constants.CHAINSCORE_ADDRESS, Constants.SCORE_HELLOWORLD_PATH, params, 1);
         }
         catch(TransactionFailureException ex) {
             LOG.infoExiting();
@@ -127,17 +181,15 @@ public class DeployTest {
         KeyWallet owner = KeyWallet.create();
         BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
         assertEquals(BigInteger.ZERO, bal);
-        long value = 100000000;
-        Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, owner.getAddress(), value);
-        TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
-        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-        bal = iconService.getBalance(owner.getAddress()).execute();
-        assertEquals(BigInteger.valueOf(value), bal);
+
+        LOG.infoEntering("transfer and check balance");
+        Utils.transferAndCheck(iconService, chain, chain.godWallet, owner.getAddress(), Constants.DEFAULT_BALANCE);
+        LOG.infoExiting();
         RpcObject params = new RpcObject.Builder()
                 .put("invalidParam", new RpcValue("invalid"))
                 .build();
         try {
-            HelloWorld.install(iconService, chain, owner, params, Constants.DEFAULT_STEP_LIMIT);
+            deploy(owner, Constants.CHAINSCORE_ADDRESS, Constants.SCORE_HELLOWORLD_PATH, params, Constants.DEFAULT_STEP_LIMIT);
         }
         catch(TransactionFailureException ex) {
             LOG.infoExiting();
@@ -148,46 +200,334 @@ public class DeployTest {
 
     @Test
     public void updateWithInvalidParams() throws Exception {
-        LOG.infoEntering( "installWithInvalidParams");
+        LOG.infoEntering( "updateWithInvalidParams");
         KeyWallet owner = KeyWallet.create();
         BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
         assertEquals(BigInteger.ZERO, bal);
-        Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, owner.getAddress(), Constants.DEFAULT_BALANCE);
-        TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
-        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-        bal = iconService.getBalance(owner.getAddress()).execute();
-        assertEquals(Constants.DEFAULT_BALANCE, bal);
-        LOG.infoEntering( "install");
-        HelloWorld score = HelloWorld.install(iconService, chain, owner);
-        LOG.infoExiting();
-        LOG.infoEntering( "invoke");
-        score.invokeHello(owner);
+
+        LOG.infoEntering("transfer and check balance");
+        Utils.transferAndCheck(iconService, chain, chain.godWallet, owner.getAddress(), Constants.DEFAULT_BALANCE);
         LOG.infoExiting();
         RpcObject params = new RpcObject.Builder()
+                .put("name", new RpcValue("HelloWorld"))
+                .build();
+        LOG.infoEntering("deploy");
+        Address scoreAddr = deploy(owner, Constants.CHAINSCORE_ADDRESS, Constants.SCORE_HELLOWORLD_PATH, params, Constants.DEFAULT_STEP_LIMIT);
+        LOG.infoExiting();
+
+        LOG.infoEntering( "invoke");
+        invoke(owner, scoreAddr, "hello", null);
+        LOG.infoExiting();
+
+        params = new RpcObject.Builder()
                 .put("invalidParam", new RpcValue("invalid"))
                 .build();
         try {
-            LOG.infoEntering( "update");
-            score.update(iconService, chain, owner, params);
+            LOG.infoEntering("update");
+            deploy(owner, scoreAddr, Constants.SCORE_HELLOWORLD_UPDATE_PATH, params, Constants.DEFAULT_STEP_LIMIT);
             LOG.infoExiting();
         }
-        catch (TransactionFailureException ex) {
+        catch(TransactionFailureException ex) {
+            LOG.infoExiting();
             LOG.infoExiting();
             return;
         }
         fail();
     }
 
-    public void udpateScoreAndCall() {
+    @Test
+    public void installScoreAndCall() throws Exception {
+        LOG.infoEntering( "installScoreAndCall");
+        KeyWallet owner = KeyWallet.create();
+        BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
+        assertEquals(BigInteger.ZERO, bal);
+
+        LOG.infoEntering("transfer and check balance");
+        Utils.transferAndCheck(iconService, chain, chain.godWallet, owner.getAddress(), Constants.DEFAULT_BALANCE);
+        LOG.infoExiting();
+        RpcObject params = new RpcObject.Builder()
+                .put("name", new RpcValue("HelloWorld"))
+                .build();
+        LOG.infoEntering("deploy");
+        Address scoreAddr = deploy(owner, Constants.CHAINSCORE_ADDRESS, Constants.SCORE_HELLOWORLD_PATH, params, Constants.DEFAULT_STEP_LIMIT);
+        LOG.infoExiting();
+
+        LOG.infoEntering( "invoke");
+        invoke(owner, scoreAddr, "hello", null);
+        LOG.infoExiting();
+        LOG.infoExiting();
     }
 
-    public void updateWithInvalidScoreAddress() {
+    @Test
+    public void updateScoreAndCall() throws Exception {
+        LOG.infoEntering( "updateScoreAndCall");
+        KeyWallet owner = KeyWallet.create();
+        BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
+        assertEquals(BigInteger.ZERO, bal);
+
+        LOG.infoEntering("transfer and check balance");
+        Utils.transferAndCheck(iconService, chain, chain.godWallet, owner.getAddress(), Constants.DEFAULT_BALANCE);
+        LOG.infoExiting();
+
+        LOG.infoEntering("deploy");
+        RpcObject params = new RpcObject.Builder()
+                .put("name", new RpcValue("HelloWorld"))
+                .build();
+        Address scoreAddr = deploy(owner, Constants.CHAINSCORE_ADDRESS, Constants.SCORE_HELLOWORLD_PATH, params, Constants.DEFAULT_STEP_LIMIT);
+        LOG.infoExiting();
+
+        LOG.infoEntering( "invoke");
+        params = new RpcObject.Builder()
+                .put("name", new RpcValue("ICONLOOP"))
+                .build();
+        invoke(owner, scoreAddr, "helloWithName", params);
+        LOG.infoExiting();
+
+        LOG.infoEntering("update");
+        params = new RpcObject.Builder()
+                .put("name", new RpcValue("HelloWorld"))
+                .build();
+        deploy(owner, scoreAddr, Constants.SCORE_HELLOWORLD_UPDATE_PATH, params, Constants.DEFAULT_STEP_LIMIT);
+        LOG.infoExiting();
+
+        LOG.infoEntering( "invoke");
+        params = new RpcObject.Builder()
+                .put("name", new RpcValue("ICONLOOP"))
+                .build();
+        invoke(owner, scoreAddr, "helloWithName2", params);
+        LOG.infoExiting();
+        LOG.infoExiting();
     }
 
-    public void invalidContentNoRootFile() {
+    @Test
+    public void updateWithInvalidOwner() throws Exception {
+        LOG.infoEntering( "updateWithInvalidOwner");
+        KeyWallet owner = KeyWallet.create();
+        BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
+        assertEquals(BigInteger.ZERO, bal);
+
+        LOG.infoEntering("transfer and check balance");
+        Utils.transferAndCheck(iconService, chain, chain.godWallet, owner.getAddress(), Constants.DEFAULT_BALANCE);
+        LOG.infoExiting();
+
+        LOG.infoEntering("deploy");
+        RpcObject params = new RpcObject.Builder()
+                .put("name", new RpcValue("HelloWorld"))
+                .build();
+        Address scoreAddr = deploy(owner, Constants.CHAINSCORE_ADDRESS, Constants.SCORE_HELLOWORLD_PATH, params, Constants.DEFAULT_STEP_LIMIT);
+        LOG.infoExiting();
+
+        LOG.infoEntering( "invoke");
+        params = new RpcObject.Builder()
+                .put("name", new RpcValue("ICONLOOP"))
+                .build();
+        invoke(owner, scoreAddr, "helloWithName", params);
+        LOG.infoExiting();
+
+
+        boolean failEx = false;
+        LOG.infoExiting();
+        try {
+            LOG.infoEntering("update");
+            params = new RpcObject.Builder()
+                    .put("name", new RpcValue("HelloWorld"))
+                    .build();
+            deploy(KeyWallet.create(), scoreAddr, Constants.SCORE_HELLOWORLD_UPDATE_PATH, params, Constants.DEFAULT_STEP_LIMIT);
+            LOG.infoExiting();
+        }
+        catch (ResultTimeoutException ex) {
+            LOG.infoExiting();
+            failEx = true;
+        }
+        assertTrue(failEx);
+
+        LOG.infoEntering( "invoke not updated score method");
+        params = new RpcObject.Builder()
+                .put("name", new RpcValue("ICONLOOP"))
+                .build();
+        invoke(owner, scoreAddr, "helloWithName", params);
+        LOG.infoExiting();
+        LOG.infoExiting();
     }
 
-    public void invalidContentNotZip() {
+    @Test
+    public void updateWithInvalidScoreAddress() throws Exception {
+        LOG.infoEntering( "updateWithInvalidScoreAddress");
+        KeyWallet owner = KeyWallet.create();
+        BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
+        assertEquals(BigInteger.ZERO, bal);
+
+        LOG.infoEntering("transfer and check balance");
+        Utils.transferAndCheck(iconService, chain, chain.godWallet, owner.getAddress(), Constants.DEFAULT_BALANCE);
+        LOG.infoExiting();
+
+        LOG.infoEntering("deploy");
+        RpcObject params = new RpcObject.Builder()
+                .put("name", new RpcValue("HelloWorld"))
+                .build();
+        Address scoreAddr = deploy(owner, Constants.CHAINSCORE_ADDRESS, Constants.SCORE_HELLOWORLD_PATH, params, Constants.DEFAULT_STEP_LIMIT);
+        LOG.infoExiting();
+
+        LOG.infoEntering( "invoke");
+        params = new RpcObject.Builder()
+                .put("name", new RpcValue("ICONLOOP"))
+                .build();
+        invoke(owner, scoreAddr, "helloWithName", params);
+        LOG.infoExiting();
+
+
+        boolean failEx = false;
+        LOG.infoExiting();
+        try {
+            LOG.infoEntering("update");
+            params = new RpcObject.Builder()
+                    .put("name", new RpcValue("HelloWorld"))
+                    .build();
+            deploy(owner, KeyWallet.create().getAddress(), Constants.SCORE_HELLOWORLD_UPDATE_PATH, params, Constants.DEFAULT_STEP_LIMIT);
+            LOG.infoExiting();
+        }
+        catch (ResultTimeoutException ex) {
+            LOG.infoExiting();
+            failEx = true;
+        }
+        assertTrue(failEx);
+
+        LOG.infoEntering( "invoke not updated score method");
+        params = new RpcObject.Builder()
+                .put("name", new RpcValue("ICONLOOP"))
+                .build();
+        invoke(owner, scoreAddr, "helloWithName", params);
+        LOG.infoExiting();
+        LOG.infoExiting();
+    }
+
+    private static void recursiveZip(File source, String zipPath, ZipOutputStream zos, boolean root) throws IOException {
+        if(source.isHidden()) {
+            return;
+        }
+        if(source.isDirectory()) {
+            String dir = source.getName();
+            if(!dir.endsWith(File.separator)) {
+                dir = dir + File.separator;
+            }
+            zos.putNextEntry(new ZipEntry(dir));
+            zos.closeEntry();
+            File []files = source.listFiles();
+            String path = zipPath == null ? dir : zipPath + dir;
+            for(File file : files) {
+                recursiveZip(file, path, zos, root);
+            }
+        }
+        else {
+            if(!root && source.getName().equals(Constants.SCORE_PYTHON_ROOT)) {
+                return;
+            }
+            ZipEntry ze = new ZipEntry(zipPath + source.getName());
+            zos.putNextEntry(ze);
+            zos.write(Files.readAllBytes(source.toPath()));
+            zos.closeEntry();
+        }
+    }
+
+    private Address installScore(byte []content, RpcObject params) throws Exception {
+        LOG.infoEntering( "installScoreAndCall");
+        KeyWallet owner = KeyWallet.create();
+        BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
+        assertEquals(BigInteger.ZERO, bal);
+        Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, owner.getAddress(), new BigInteger("100000"));
+        TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        bal = iconService.getBalance(owner.getAddress()).execute();
+        assertEquals(new BigInteger("100000"), bal);
+
+        TransactionBuilder.DeployBuilder builder = TransactionBuilder.newBuilder()
+                .nid(BigInteger.valueOf(chain.networkId))
+                .from(owner.getAddress())
+                .to(Constants.CHAINSCORE_ADDRESS)
+                .stepLimit(BigInteger.valueOf(3000))
+                .timestamp(Utils.getMicroTime())
+                .nonce(new BigInteger("1"))
+                .deploy(Constants.CONTENT_TYPE, content);
+        if(params != null) {
+            builder = builder.params(params);
+        }
+        Transaction transaction = builder.build();
+        SignedTransaction signedTransaction = new SignedTransaction(transaction, owner);
+        txHash = iconService.sendTransaction(signedTransaction).execute();
+        result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
+        if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
+            LOG.infoExiting();
+            return null;
+        }
+
+        if(Utils.isAudit(iconService)) {
+            LOG.infoEntering("accept", "accept score");
+            TransactionResult acceptResult = new GovScore(iconService, chain).acceptScore(txHash);
+            if (!Constants.STATUS_SUCCESS.equals(acceptResult.getStatus())) {
+                throw new TransactionFailureException(acceptResult.getFailure());
+            }
+            LOG.infoExiting();
+        }
+        LOG.infoExiting();
+        return new Address(result.getScoreAddress());
+    }
+
+    @Test
+    public void invalidContentNoRootFile() throws Exception {
+        RpcObject params = new RpcObject.Builder()
+                .put("name", new RpcValue("HelloWorld"))
+                .build();
+        for(boolean includeRoot : new boolean[]{true, false}) {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            ZipOutputStream zos = new ZipOutputStream(outputStream);
+            recursiveZip(new File(Constants.SCORE_HELLOWORLD_PATH), null, zos, includeRoot);
+            zos.close();
+            outputStream.close();
+            byte[] content =  outputStream.toByteArray();
+            assertEquals(includeRoot, installScore(content, params) != null);
+        }
+    }
+
+
+    private static void readScore(File source, ByteArrayOutputStream bos) throws IOException {
+        if(source.isHidden()) {
+            return;
+        }
+        if(source.isDirectory()) {
+            File []files = source.listFiles();
+            for(File file : files) {
+                readScore(file, bos);
+            }
+        }
+        else {
+            if(source.getName().equals(Constants.SCORE_PYTHON_ROOT)) {
+                return;
+            }
+            bos.write(Files.readAllBytes(source.toPath()));
+        }
+    }
+
+    @Test
+    public void invalidContentNotZip() throws Exception {
+        RpcObject params = new RpcObject.Builder()
+                .put("name", new RpcValue("HelloWorld"))
+                .build();
+        for(boolean zip : new boolean[]{true, false}) {
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            File source = new File(Constants.SCORE_HELLOWORLD_PATH);
+            if(zip) {
+                ZipOutputStream zos = new ZipOutputStream(bos);
+                recursiveZip(new File(Constants.SCORE_HELLOWORLD_PATH), null, zos, true);
+                zos.close();
+                bos.close();
+            }
+            else {
+                readScore(source, bos);
+            }
+            bos.close();
+            byte[] content =  bos.toByteArray();
+            assertEquals(zip, installScore(content, params) != null);
+        }
     }
 
     public void invalidContentTooBig() {

@@ -16,10 +16,14 @@ class HelloWorld(IconScoreBase):
     @external(readonly=True)
     def name(self) -> str:
         return "HelloWorld"
+
     @external
-    def hello(self) -> str:
+    def hello(self):
         Logger.info('Hello, world!', TAG)
-        return "Hello"
+
+    @external
+    def helloWithName2(self, name: str):
+        Logger.info('Hello 2 %s' % name,  TAG)
 
     @payable
     def fallback(self):
