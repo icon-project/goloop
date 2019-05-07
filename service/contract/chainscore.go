@@ -3,11 +3,13 @@ package contract
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/icon-project/goloop/service/scoreresult"
 	"log"
 	"math/big"
 	"strconv"
 	"strings"
+
+	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/service/scoreresult"
 
 	"github.com/icon-project/goloop/common"
 
@@ -250,6 +252,7 @@ type chain struct {
 		StepCosts *json.RawMessage `json:"stepCosts"`
 	} `json:"fee"`
 	ValidatorList []*common.Address `json:"validatorList"`
+	MemberList    []*common.Address `json:"memberList"`
 	CommitTimeout *common.HexInt64  `json:"commitTimeout"`
 }
 
@@ -267,6 +270,9 @@ func (s *ChainScore) Install(param []byte) error {
 	}
 	if chain.DeployerWhiteListEnabled == true {
 		confValue |= state.SysConfigDeployerWhiteList
+	}
+	if len(chain.MemberList) > 0 {
+		confValue |= state.SysConfigMembership
 	}
 	as := s.cc.GetAccountState(state.SystemID)
 	if err := scoredb.NewVarDB(as, state.VarServiceConfig).Set(confValue); err != nil {
@@ -376,6 +382,38 @@ func (s *ChainScore) Install(param []byte) error {
 	if err := s.cc.GetValidatorState().Set(validators); err != nil {
 		log.Printf("Failed to set validator. err = %s\n", err)
 		return err
+	}
+
+	if len(chain.MemberList) > 0 {
+		members := scoredb.NewArrayDB(as, state.VarMembers)
+
+		vs := s.cc.GetValidatorState()
+		vc := 0
+		m := make(map[string]bool)
+		for i, member := range chain.MemberList {
+			if member == nil {
+				return errors.IllegalArgumentError.Errorf(
+					"Member[%d] is null", i)
+			}
+			if member.IsContract() {
+				return errors.IllegalArgumentError.Errorf(
+					"Member must be EOA(%s)", member.String())
+			}
+			mn := member.String()
+			if _, ok := m[mn]; ok {
+				return errors.IllegalArgumentError.Errorf(
+					"Duplicated Member(%s)", member.String())
+			}
+			m[mn] = true
+			if idx := vs.IndexOf(member); idx >= 0 {
+				vc += 1
+			}
+			members.Put(member)
+		}
+		if vc != vs.Len() {
+			return errors.IllegalArgumentError.New(
+				"All Validators must be included in the members")
+		}
 	}
 	return nil
 }
@@ -533,6 +571,9 @@ func (s *ChainScore) Ex_setMaxStepLimit(contextType string, cost *common.HexInt)
 }
 
 func (s *ChainScore) Ex_grantValidator(address module.Address) error {
+	if address.IsContract() {
+		return scoreresult.New(module.StatusInvalidParameter, "address should be EOA")
+	}
 	if !s.fromGovernance() {
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
@@ -544,6 +585,9 @@ func (s *ChainScore) Ex_grantValidator(address module.Address) error {
 }
 
 func (s *ChainScore) Ex_revokeValidator(address module.Address) error {
+	if address.IsContract() {
+		return scoreresult.New(module.StatusInvalidParameter, "address should be EOA")
+	}
 	if !s.fromGovernance() {
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
@@ -569,6 +613,9 @@ func (s *ChainScore) Ex_getValidators() ([]interface{}, error) {
 }
 
 func (s *ChainScore) Ex_addMember(address module.Address) error {
+	if address.IsContract() {
+		return scoreresult.New(module.StatusInvalidParameter, "address should be EOA")
+	}
 	if !s.fromGovernance() {
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
@@ -583,6 +630,10 @@ func (s *ChainScore) Ex_addMember(address module.Address) error {
 }
 
 func (s *ChainScore) Ex_removeMember(address module.Address) error {
+	if address.IsContract() {
+		return scoreresult.New(module.StatusInvalidParameter, "address should be EOA")
+	}
+
 	if !s.fromGovernance() {
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
