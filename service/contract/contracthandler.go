@@ -11,14 +11,13 @@ import (
 )
 
 const (
-	transactionTimeLimit     = time.Duration(2 * time.Hour)
+	transactionTimeLimit     = time.Duration(2 * time.Second)
 	scoreDecompressTimeLimit = time.Duration(2 * time.Second)
 
 	CTypeTransfer = 0x100
 	CTypeNone     = iota
 	CTypeDeploy
 	CTypeCall
-	CTypeGovCall
 	CTypeTransferAndCall = CTypeTransfer | CTypeCall
 )
 
