@@ -58,6 +58,7 @@ func (e *Executor) Kill() {
 	for _, p := range e.proxies {
 		p.Kill()
 	}
+	e.Release()
 }
 
 type engine struct {
@@ -177,6 +178,7 @@ func (em *executorManager) createExecutorInLock(pr RequestPriority) *Executor {
 	for i, p := range ps {
 		p.detach()
 		p.attachTo(&em.engines[i].using)
+		p.reserve()
 	}
 	return &Executor{
 		priority: pr,
