@@ -80,6 +80,9 @@ func ValidatorFromAddress(a module.Address) (module.Validator, error) {
 	if a == nil {
 		return nil, errors.ErrIllegalArgument
 	}
+	if a.IsContract() {
+		return nil, errors.ErrIllegalArgument
+	}
 	v := &validator{
 		pub:  nil,
 		addr: new(common.Address),
