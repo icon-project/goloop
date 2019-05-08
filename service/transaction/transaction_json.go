@@ -86,13 +86,10 @@ func newTransactionV2V3FromJSON(js []byte) (Transaction, error) {
 	} else {
 		js = b.Bytes()
 	}
-	genjs := new(genesisV3JSON)
-	if err := json.Unmarshal(js, genjs); err != nil {
-		return nil, InvalidFormat.Wrapf(err, "Invalid json for genesis(%s)", string(js))
-	}
-	if len(genjs.Accounts) != 0 {
-		genjs.raw = js
-		return &genesisV3{genesisV3JSON: genjs}, nil
+
+	genjs, err := newGenesisV3(js)
+	if err == nil {
+		return genjs, nil
 	}
 
 	txjs := new(transactionV3JSON)
@@ -104,10 +101,9 @@ func newTransactionV2V3FromJSON(js []byte) (Transaction, error) {
 
 	switch txjs.Version.Value {
 	case 2:
-		return &transactionV2{transactionV3JSON: txjs}, nil
+		return newTransactionV2FromJSONObject(txjs)
 	case 3:
-		tx, err := newTransactionV3FromJSON(txjs)
-		return tx, err
+		return newTransactionV3FromJSONObject(txjs)
 	default:
 		return nil, InvalidVersion.Errorf("IllegalVersion:" + txjs.Version.String())
 	}

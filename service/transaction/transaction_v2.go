@@ -197,3 +197,7 @@ func (tx *transactionV2) ToJSON(version int) (interface{}, error) {
 func (tx *transactionV2) MarshalJSON() ([]byte, error) {
 	return tx.raw, nil
 }
+
+func newTransactionV2FromJSONObject(txjs *transactionV3JSON) (Transaction, error) {
+	return &transactionV2{transactionV3JSON: txjs}, nil
+}

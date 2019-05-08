@@ -404,7 +404,7 @@ func (tx *transactionV3) MarshalJSON() ([]byte, error) {
 	}
 }
 
-func newTransactionV3FromJSON(jso *transactionV3JSON) (*transactionV3, error) {
+func newTransactionV3FromJSONObject(jso *transactionV3JSON) (Transaction, error) {
 	tx := new(transactionV3)
 	tx.transactionV3Data = jso.transactionV3Data
 	return tx, nil

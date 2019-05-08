@@ -315,3 +315,15 @@ func (g *genesisV3) MarshalJSON() ([]byte, error) {
 func (g *genesisV3) Nonce() *big.Int {
 	return nil
 }
+
+func newGenesisV3(js []byte) (Transaction, error) {
+	genjs := new(genesisV3JSON)
+	if err := json.Unmarshal(js, genjs); err != nil {
+		return nil, InvalidFormat.Wrapf(err, "Invalid json for genesis(%s)", string(js))
+	}
+	if len(genjs.Accounts) != 0 {
+		genjs.raw = js
+		return &genesisV3{genesisV3JSON: genjs}, nil
+	}
+	return nil, InvalidGenesisError.New("NoAccounts")
+}
