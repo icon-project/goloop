@@ -1,13 +1,10 @@
 package transaction
 
 import (
-	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"io"
 	"log"
 	"math/big"
-	"sort"
 	"strings"
 
 	"github.com/icon-project/goloop/service/contract"
@@ -45,43 +42,12 @@ type genesisV3JSON struct {
 	txHash   []byte
 }
 
-func serialize(o map[string]interface{}) []byte {
-	var buf = bytes.NewBuffer(nil)
-	serializePart(buf, o)
-	return buf.Bytes()[1:]
-}
-
-func serializePart(w io.Writer, o interface{}) {
-	switch obj := o.(type) {
-	case string:
-		w.Write([]byte("."))
-		w.Write([]byte(obj))
-	case []interface{}:
-		for _, v := range obj {
-			serializePart(w, v)
-		}
-	case map[string]interface{}:
-		keys := make([]string, 0, len(obj))
-		for k := range obj {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
-			if v, ok := obj[k]; ok {
-				w.Write([]byte("."))
-				w.Write([]byte(k))
-				serializePart(w, v)
-			}
-		}
-	}
-}
-
 func (g *genesisV3JSON) calcHash() ([]byte, error) {
-	var data map[string]interface{}
-	if err := json.Unmarshal(g.raw, &data); err != nil {
+	bs, err := SerializeJSON(g.raw, nil, nil)
+	if err != nil {
 		return nil, err
 	}
-	bs := append([]byte("genesis_tx."), serialize(data)...)
+	bs = append([]byte("genesis_tx."), bs...)
 	return crypto.SHA3Sum256(bs), nil
 }
 
