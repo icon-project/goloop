@@ -46,12 +46,16 @@ public class SampleTokenScore extends Score {
         return call(owner, "balanceOf", params).asInteger();
     }
 
-    public void ensureTokenBalance(KeyWallet wallet, long value) throws IOException {
+    public void ensureTokenBalance(KeyWallet wallet, long value) throws ResultTimeoutException, IOException {
+        long limitTime = System.currentTimeMillis() + Constants.DEFAULT_WAITING_TIME;
         while (true) {
             BigInteger balance = balanceOf(wallet.getAddress());
             String msg = "Token balance of " + wallet.getAddress() + ": " + balance;
             if (balance.equals(BigInteger.valueOf(0))) {
                 try {
+                    if (limitTime < System.currentTimeMillis()) {
+                        throw new ResultTimeoutException(null);
+                    }
                     // wait until block confirmation
                     LOG.info(msg + "; Retry in 1 sec.");
                     Thread.sleep(1000);

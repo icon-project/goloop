@@ -55,13 +55,17 @@ public class Utils {
         }
     }
 
-    public static void ensureIcxBalance(IconService iconService, Address address, long oldVal, long newVal) throws IOException {
+    public static void ensureIcxBalance(IconService iconService, Address address, long oldVal, long newVal) throws Exception {
         BigInteger oldValInt = BigInteger.valueOf(oldVal).multiply(BigDecimal.TEN.pow(18).toBigInteger());
         BigInteger newValInt = BigInteger.valueOf(newVal).multiply(BigDecimal.TEN.pow(18).toBigInteger());
+        long limitTime = System.currentTimeMillis() + Constants.DEFAULT_WAITING_TIME;
         while (true) {
             BigInteger icxBalance = iconService.getBalance(address).execute();
             String msg = "ICX balance of " + address + ": " + icxBalance;
             if (icxBalance.equals(oldValInt)) {
+                if (limitTime < System.currentTimeMillis()) {
+                    throw new ResultTimeoutException(null);
+                }
                 try {
                     // wait until block confirmation
                     LOG.debug(msg + "; Retry in 1 sec.");
@@ -182,7 +186,7 @@ public class Utils {
                 }
             }
         }
-        return null;
+        return null ;
     }
 
     public static RpcItem icxCall(
@@ -223,8 +227,7 @@ public class Utils {
 
         SignedTransaction signedTransaction = new SignedTransaction(transaction, fromWallet);
         Bytes txHash = iconService.sendTransaction(signedTransaction).execute();
-        TransactionResult result = getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
-        return result;
+        return getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
     }
 
     public static Bytes sendTransactionWithCall(IconService iconService, int nid, Wallet fromWallet,
@@ -279,6 +282,9 @@ public class Utils {
             zos.putNextEntry(new ZipEntry(dir));
             zos.closeEntry();
             File []files = source.listFiles();
+            if(files == null) {
+                return;
+            }
             String path = zipPath == null ? dir : zipPath + dir;
             for(File file : files) {
                 recursiveZip(file, path, zos);
