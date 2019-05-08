@@ -35,15 +35,15 @@ const (
 	ErrorCodeInvalidParams  ErrorCode = -32602
 	ErrorCodeInternal       ErrorCode = -32603
 	ErrorCodeServer         ErrorCode = -32000
-	ErrorCodeSystem         ErrorCode = -32400
-	ErrorCodeScore          ErrorCode = -32500
+	ErrorCodeSystem         ErrorCode = -31000
+	ErrorCodeScore          ErrorCode = -30000
 )
 
 const (
-	ErrorCodeTxPoolOverflow ErrorCode = -32401
-	ErrorCodePending        ErrorCode = -32402
-	ErrorCodeExecuting      ErrorCode = -32403
-	ErrorCodeNotFound       ErrorCode = -32404
+	ErrorCodeTxPoolOverflow ErrorCode = -31001
+	ErrorCodePending        ErrorCode = -31002
+	ErrorCodeExecuting      ErrorCode = -31003
+	ErrorCodeNotFound       ErrorCode = -31004
 )
 
 type Error struct {
