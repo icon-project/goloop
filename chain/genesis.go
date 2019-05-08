@@ -168,7 +168,7 @@ func (c *templateContext) AddData(data []byte) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if _, err := f.Write(data) ; err != nil {
+	if _, err := f.Write(data); err != nil {
 		return "", err
 	}
 	return hash, nil
@@ -185,24 +185,24 @@ func writeToZip(writer *zip.Writer, p, n string) error {
 		defer fd.Close()
 
 		if err != nil {
-			return errors.Wrapf(err,"writeToZip: fail to open %s", p2)
+			return errors.Wrapf(err, "writeToZip: fail to open %s", p2)
 		}
 		zf, err := writer.Create(n)
 		if err != nil {
-			return errors.Wrapf(err,"writeToZip: fail to create entry %s", n)
+			return errors.Wrapf(err, "writeToZip: fail to create entry %s", n)
 		}
-		if _, err := io.Copy(zf, fd) ; err != nil {
-			return errors.Wrap(err,"writeToZip: fail to copy")
+		if _, err := io.Copy(zf, fd); err != nil {
+			return errors.Wrap(err, "writeToZip: fail to copy")
 		}
 		return nil
 	}
 
 	fis, err := ioutil.ReadDir(p2)
 	if err != nil {
-		return errors.Wrap(err,"writeToZip: FAIL on ReadDir")
+		return errors.Wrap(err, "writeToZip: FAIL on ReadDir")
 	}
 	for _, fi := range fis {
-		if err := writeToZip(writer, p, path.Join(n, fi.Name())) ; err != nil {
+		if err := writeToZip(writer, p, path.Join(n, fi.Name())); err != nil {
 			return err
 		}
 	}
@@ -213,7 +213,7 @@ func zipDirectory(p string) ([]byte, error) {
 	bs := bytes.NewBuffer(nil)
 	zw := zip.NewWriter(bs)
 
-	if err := writeToZip(zw, p, "") ; err != nil {
+	if err := writeToZip(zw, p, ""); err != nil {
 		zw.Close()
 		return nil, err
 	} else {
@@ -226,10 +226,6 @@ func zipDirectory(p string) ([]byte, error) {
 var regexTemplate = regexp.MustCompile("{{(read|hash|zip|ziphash):([^}]+)}}")
 
 func processTemplate(c *templateContext, s string) (r string, e error) {
-	org := s
-	defer func() {
-		log.Printf("processTemplate(%s) -> %s, %+v", org, r, e)
-	}()
 	for {
 		m := regexTemplate.FindStringSubmatchIndex(s)
 		if len(m) == 0 {
