@@ -289,7 +289,11 @@ func newGenesisV3(js []byte) (Transaction, error) {
 	}
 	if len(genjs.Accounts) != 0 {
 		genjs.raw = js
-		return &genesisV3{genesisV3JSON: genjs}, nil
+		tx := &genesisV3{genesisV3JSON: genjs}
+		if err := tx.updateTxHash(); err != nil {
+			return nil, err
+		}
+		return tx, nil
 	}
 	return nil, InvalidGenesisError.New("NoAccounts")
 }

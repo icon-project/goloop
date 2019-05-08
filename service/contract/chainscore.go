@@ -244,8 +244,8 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 }
 
 type chain struct {
-	AuditEnabled             bool `json:"auditEnabled"`
-	DeployerWhiteListEnabled bool `json:"deployerWhiteListEnabled"`
+	AuditEnabled             common.HexInt16 `json:"auditEnabled"`
+	DeployerWhiteListEnabled common.HexInt16 `json:"deployerWhiteListEnabled"`
 	Fee                      struct {
 		StepPrice common.HexInt    `json:"stepPrice"`
 		StepLimit *json.RawMessage `json:"stepLimit"`
@@ -265,10 +265,10 @@ func (s *ChainScore) Install(param []byte) error {
 		}
 	}
 	confValue := 0
-	if chain.AuditEnabled == true {
+	if chain.AuditEnabled.Value != 0 {
 		confValue |= state.SysConfigAudit
 	}
-	if chain.DeployerWhiteListEnabled == true {
+	if chain.DeployerWhiteListEnabled.Value != 0 {
 		confValue |= state.SysConfigDeployerWhiteList
 	}
 	if len(chain.MemberList) > 0 {
