@@ -63,7 +63,7 @@ type CryptoData struct {
 }
 
 type KeyStoreData struct {
-	Address  common.Address `json:"address`
+	Address  common.Address `json:"address"`
 	ID       string         `json:"id"`
 	Version  int            `json:"version"`
 	CoinType string         `json:"coinType"`
@@ -193,6 +193,17 @@ func DecryptKeyStore(data, pw []byte) (*crypto.PrivateKey, error) {
 			address.String(), ksData.Address.String())
 	}
 	return secret, nil
+}
+
+func ReadAddressFromKeyStore(data []byte) (module.Address, error) {
+	var ksData KeyStoreData
+	if err := json.Unmarshal(data, &ksData); err != nil {
+		return nil, err
+	}
+	if ksData.CoinType != coinTypeICON {
+		return nil, errors.Errorf("InvalidCoinType(coin=%s)", ksData.CoinType)
+	}
+	return &ksData.Address, nil
 }
 
 func NewFromKeyStore(data, pw []byte) (module.Wallet, error) {
