@@ -1,31 +1,35 @@
 package foundation.icon.test.cases;
 
-import foundation.icon.icx.*;
+import foundation.icon.icx.IconService;
+import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.data.Address;
-import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
-import foundation.icon.test.common.*;
+import foundation.icon.test.common.Constants;
+import foundation.icon.test.common.Env;
+import foundation.icon.test.common.ResultTimeoutException;
+import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.GovScore;
 import foundation.icon.test.score.Score;
-
-import static foundation.icon.test.common.Env.LOG;
-import static org.junit.Assert.*;
-
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 
 import java.math.BigInteger;
+
+import static foundation.icon.test.common.Env.LOG;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /*
 sendTransaction with call
 icx_call
 stepUsed is bigger than specified stepLimit
  */
+@Tag(Constants.TAG_SERIAL)
 public class ScoreTest {
     private static IconService iconService;
     private static Env.Chain chain;
@@ -37,7 +41,7 @@ public class ScoreTest {
     private static final long testCCValue = 10;
     private static final long testStepPrice = 1;
 
-    @BeforeClass
+    @BeforeAll
     public static void init() throws Exception {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
@@ -65,7 +69,7 @@ public class ScoreTest {
         govScore.setStepPrice(BigInteger.valueOf(testStepPrice));
     }
 
-    @AfterClass
+    @AfterAll
     public static void destroy() throws Exception {
         // TODO set initial value not 0
         govScore.setStepCost("contractCall", BigInteger.valueOf(0));
@@ -94,8 +98,6 @@ public class ScoreTest {
         LOG.infoExiting();
     }
 
-    @Ignore
-    @Test
     public void invalidParamNum() throws Exception {
         LOG.infoEntering( "invalidParamNum");
         for(String []params : new String[][]{{}, {"name"}, {"name", "age"}}) {

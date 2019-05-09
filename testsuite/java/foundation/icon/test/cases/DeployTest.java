@@ -9,9 +9,10 @@ import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.*;
 import foundation.icon.test.score.GovScore;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -22,8 +23,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static foundation.icon.test.common.Env.LOG;
-import static junit.framework.TestCase.fail;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 /*
 test cases
@@ -37,6 +37,7 @@ test cases
  - too large - takes too long time for uncompress 5. sendTransaction with invalid/valid params 6. sendTransaction for update with invalid score address 7. change destination url.
 8. sendTransaction with invalid signature
  */
+@Tag(Constants.TAG_SERIAL)
 public class DeployTest {
     private static IconService iconService;
     private static Env.Chain chain;
@@ -48,7 +49,7 @@ public class DeployTest {
     private static BigInteger defMaxStepLimit;
     private static BigInteger defStepPrice;
 
-    @BeforeClass
+    @BeforeAll
     public static void init() throws Exception {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
@@ -75,7 +76,7 @@ public class DeployTest {
         govScore.setStepPrice(stepPrice);
     }
 
-    @AfterClass
+    @AfterAll
     public static void destroy() throws Exception {
         govScore.setMaxStepLimit("invoke", defMaxStepLimit);
         govScore.setStepCost("contractCreate", defStepCostCC);
@@ -91,15 +92,12 @@ public class DeployTest {
             throw new TransactionFailureException(result.getFailure());
         }
 
-        if(Utils.isAudit(iconService)) {
-            LOG.infoEntering("accept", "accept score");
-            TransactionResult acceptResult = new GovScore(iconService, chain).acceptScore(txHash);
-            if (!Constants.STATUS_SUCCESS.equals(acceptResult.getStatus())) {
-                LOG.infoExiting();
-                LOG.infoExiting();
-                throw new TransactionFailureException(acceptResult.getFailure());
-            }
+        try {
+            Utils.acceptIfAuditEnabled(iconService, chain, txHash);
+        }
+        catch(TransactionFailureException ex) {
             LOG.infoExiting();
+            throw ex;
         }
         LOG.infoExiting();
         return new Address(result.getScoreAddress());
@@ -146,7 +144,6 @@ public class DeployTest {
         catch(TransactionFailureException ex) {
             LOG.infoExiting();
             LOG.info("FAIL to get result");
-            LOG.infoExiting();
             return;
         }
         fail();
@@ -460,13 +457,13 @@ public class DeployTest {
             return null;
         }
 
-        if(Utils.isAudit(iconService)) {
-            LOG.infoEntering("accept", "accept score");
-            TransactionResult acceptResult = new GovScore(iconService, chain).acceptScore(txHash);
-            if (!Constants.STATUS_SUCCESS.equals(acceptResult.getStatus())) {
-                throw new TransactionFailureException(acceptResult.getFailure());
-            }
+
+        try {
+            Utils.acceptIfAuditEnabled(iconService, chain, txHash);
+        }
+        catch(TransactionFailureException ex) {
             LOG.infoExiting();
+            throw ex;
         }
         LOG.infoExiting();
         return new Address(result.getScoreAddress());
@@ -484,7 +481,13 @@ public class DeployTest {
             zos.close();
             outputStream.close();
             byte[] content =  outputStream.toByteArray();
-            assertEquals(includeRoot, installScore(content, params) != null);
+            try {
+                assertEquals(includeRoot, installScore(content, params) != null);
+            }
+            catch (TransactionFailureException ex) {
+                assertTrue(Utils.isAudit(iconService));
+                assertFalse(includeRoot);
+            }
         }
     }
 
@@ -526,7 +529,13 @@ public class DeployTest {
             }
             bos.close();
             byte[] content =  bos.toByteArray();
-            assertEquals(zip, installScore(content, params) != null);
+            try {
+                assertEquals(zip, installScore(content, params) != null);
+            }
+            catch (TransactionFailureException ex) {
+                assertTrue(Utils.isAudit(iconService));
+                assertFalse(zip);
+            }
         }
     }
 

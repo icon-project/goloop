@@ -5,22 +5,25 @@ import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
+import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.HelloWorld;
 import foundation.icon.test.score.MultiSigWalletScore;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 
 import java.math.BigInteger;
 
 import static foundation.icon.test.common.Env.LOG;
 
+@Tag(Constants.TAG_PARALLEL)
 public class MultiSigWalletTest {
     private static Env.Chain chain;
     private static IconService iconService;
 
-    @BeforeClass
+    @BeforeAll
     public static void setUp() {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];

@@ -6,23 +6,22 @@ import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
-import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.StepCounterScore;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 
 import java.math.BigInteger;
 
 import static foundation.icon.test.common.Env.LOG;
-import static junit.framework.TestCase.assertEquals;
-import static org.hamcrest.CoreMatchers.not;
-import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
+@Tag(Constants.TAG_PARALLEL)
 public class RevertTest {
     private static Env.Chain chain;
     private static IconService iconService;
 
-    @BeforeClass
+    @BeforeAll
     public static void setUp() {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
@@ -65,7 +64,7 @@ public class RevertTest {
 
         LOG.infoEntering("call", score2 + ".setStepOf(" + score1 + "," + v + ")");
         txr = score2.setStepOf(ownerWallet, score1.getAddress(), v);
-        assertThat(Constants.STATUS_SUCCESS, not(txr.getStatus()));
+        assertEquals(Constants.STATUS_FAIL, txr.getStatus());
         LOG.infoExiting("Result:" + txr);
 
         LOG.infoEntering("call", score1 + ".getStep()");

@@ -10,10 +10,10 @@ import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.Utils;
-import foundation.icon.test.score.GovScore;
 import foundation.icon.test.score.StepCounterScore;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 
 import java.math.BigInteger;
 import java.util.HashMap;
@@ -21,15 +21,16 @@ import java.util.List;
 import java.util.Map;
 
 import static foundation.icon.test.common.Env.LOG;
-import static org.hamcrest.CoreMatchers.*;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
+
+@Tag(Constants.TAG_PARALLEL)
 public class GetAPITest {
     static Env.Chain chain;
     static IconService iconService;
     static StepCounterScore score;
 
-    @BeforeClass
+    @BeforeAll
     public static void init() throws Exception {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
@@ -59,92 +60,90 @@ public class GetAPITest {
         for ( ScoreApi api : apis ) {
             String name = api.getName().intern();
             if ( name == "getStep" ) {
-                assertThat(api.getType(), is(TYPE_FUNCTION));
-                assertThat(api.getInputs().size(), is(0));
-                assertThat(api.getReadonly(), is(VALUE_TRUE));
+                assertEquals(api.getType(), TYPE_FUNCTION);
+                assertEquals(api.getInputs().size(), 0);
+                assertEquals(api.getReadonly(), VALUE_TRUE);
 
                 List<ScoreApi.Param> outputs = api.getOutputs();
-                assertThat(outputs.size(), is(1));
+                assertEquals(outputs.size(), 1);
 
                 ScoreApi.Param o1 = outputs.get(0);
-                assertThat(o1.getType(), is(TYPE_INT));
+                assertEquals(o1.getType(), TYPE_INT);
             } else if ( name == "setStep" || name == "resetStep" ) {
-                assertThat(api.getType(), is(TYPE_FUNCTION));
-                assertThat(api.getReadonly(), anyOf(is(VALUE_FALSE), nullValue()));
+                assertEquals(api.getType(), TYPE_FUNCTION);
+                assertNull(api.getReadonly());
 
                 List<ScoreApi.Param> inputs = api.getInputs();
-                assertThat(inputs.size(), is(1));
+                assertEquals(inputs.size(), 1);
 
                 ScoreApi.Param p1 = inputs.get(0);
-                assertThat(p1.getName(), is("step"));
-                assertThat(p1.getType(), is("int"));
+                assertEquals(p1.getName(), "step");
+                assertEquals(p1.getType(), "int");
             } else if ( name == "increaseStep" ) {
                 assertEquals(TYPE_FUNCTION, api.getType());
-                assertThat(api.getReadonly(), anyOf(is(VALUE_FALSE), nullValue()));
+                assertNull(api.getReadonly());
 
                 List<ScoreApi.Param> inputs = api.getInputs();
-                assertThat(inputs.size(), is(0));
+                assertEquals(inputs.size(), 0);
             } else if ( name == "ExternalProgress" ) {
-                assertThat(api.getType(), is("eventlog"));
-                assertThat(api.getReadonly(), anyOf(is(VALUE_FALSE), nullValue()));
+                assertEquals(api.getType(), "eventlog");
+                assertNull(api.getReadonly());
 
                 List<ScoreApi.Param> inputs = api.getInputs();
-                assertThat(inputs.size(), is(2));
+                assertEquals(inputs.size(), 2);
 
                 ScoreApi.Param p1 = inputs.get(0);
-                assertThat(p1.getName(), is("addr"));
-                assertThat(p1.getType(), is("Address"));
-                assertThat(p1.getIndexed(), is(BigInteger.ONE));
+                assertEquals(p1.getName(), "addr");
+                assertEquals(p1.getType(), "Address");
+                assertEquals(p1.getIndexed(), BigInteger.ONE);
 
                 ScoreApi.Param p2 = inputs.get(1);
-                assertThat(p2.getName(), is("step"));
-                assertThat(p2.getType(), is("int"));
-                assertThat(p2.getIndexed(), is(BigInteger.ONE));
+                assertEquals(p2.getName(), "step");
+                assertEquals(p2.getType(), "int");
+                assertEquals(p2.getIndexed(), BigInteger.ONE);
             } else if ( name == "OnStep" ) {
-                assertThat(api.getType(), is("eventlog"));
-                assertThat(api.getReadonly(), anyOf(is(VALUE_FALSE), nullValue()));
+                assertEquals(api.getType(), "eventlog");
+                assertNull(api.getReadonly());
 
                 List<ScoreApi.Param> inputs = api.getInputs();
-                assertThat(inputs.size(), is(1));
+                assertEquals(inputs.size(), 1);
 
                 ScoreApi.Param p1 = inputs.get(0);
-                assertThat(p1.getName(), is("step"));
-                assertThat(p1.getType(), is("int"));
-                assertThat(p1.getIndexed(), equalTo(BigInteger.ONE));
+                assertEquals(p1.getName(), "step");
+                assertEquals(p1.getType(), "int");
+                assertEquals(p1.getIndexed(), BigInteger.ONE);
             } else if ( name == "trySetStepWith" || name == "setStepOf" ) {
-                assertThat(api.getType(), is(TYPE_FUNCTION));
-                assertThat(api.getReadonly(), anyOf(is(VALUE_FALSE), nullValue()));
+                assertEquals(api.getType(), TYPE_FUNCTION);
+                assertNull(api.getReadonly());
 
                 List<ScoreApi.Param> inputs = api.getInputs();
-                assertThat(inputs.size(), is(2));
+                assertEquals(inputs.size(), 2);
 
                 ScoreApi.Param p1 = inputs.get(0);
-                assertThat(p1.getName(), is("addr"));
-                assertThat(p1.getType(), is(TYPE_ADDRESS));
-                assertThat(p1.getIndexed(), anyOf(equalTo(BigInteger.ZERO), nullValue()));
+                assertEquals(p1.getName(), "addr");
+                assertEquals(p1.getType(), TYPE_ADDRESS);
+                assertNull(p1.getIndexed());
 
                 ScoreApi.Param p2 = inputs.get(1);
-                assertThat(p2.getName(), is("step"));
-                assertThat(p2.getType(), is(TYPE_INT));
-                assertThat(p2.getIndexed(), anyOf(equalTo(BigInteger.ZERO), nullValue()));
+                assertEquals(p2.getName(), "step");
+                assertEquals(p2.getType(), TYPE_INT);
+                assertNull(p2.getIndexed());
             } else if ( name == "increaseStepWith") {
-                assertThat(api.getType(), is(TYPE_FUNCTION));
-                assertThat(api.getReadonly(), anyOf(is(VALUE_FALSE), nullValue()));
+                assertEquals(api.getType(), TYPE_FUNCTION);
+                assertNull(api.getReadonly());
 
                 List<ScoreApi.Param> inputs = api.getInputs();
-
-
-                assertThat(inputs.size(), is(2));
+                assertEquals(inputs.size(), 2);
 
                 ScoreApi.Param p1 = inputs.get(0);
-                assertThat(p1.getName(), is("addr"));
-                assertThat(p1.getType(), is(TYPE_ADDRESS));
-                assertThat(p1.getIndexed(), anyOf(equalTo(BigInteger.ZERO), nullValue()));
+                assertEquals(p1.getName(), "addr");
+                assertEquals(p1.getType(), TYPE_ADDRESS);
+                assertNull(p1.getIndexed());
 
                 ScoreApi.Param p2 = inputs.get(1);
-                assertThat(p2.getName(), is("count"));
-                assertThat(p2.getType(), is(TYPE_INT));
-                assertThat(p2.getIndexed(), anyOf(equalTo(BigInteger.ZERO), nullValue()));
+                assertEquals(p2.getName(), "count");
+                assertEquals(p2.getType(), TYPE_INT);
+                assertNull(p2.getIndexed());
             } else {
                 throw new Exception("Unexpected method:"+api.toString());
             }
@@ -223,13 +222,7 @@ public class GetAPITest {
         TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
 
-        if(Utils.isAudit(iconService)) {
-            LOG.infoEntering("accept", "accept score");
-            TransactionResult acceptResult = new GovScore(iconService, chain).acceptScore(txHash);
-            assertEquals(Constants.STATUS_SUCCESS, acceptResult.getStatus());
-            LOG.infoExiting();
-        }
-
+        Utils.acceptIfAuditEnabled(iconService, chain, txHash);
         Address scoreAddr = new Address(result.getScoreAddress());
         List<ScoreApi> apis = iconService.getScoreApi(scoreAddr).execute();
         for ( ScoreApi api : apis ) {

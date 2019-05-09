@@ -20,7 +20,8 @@ sourceSets.test.java.srcDirs = ["java"]
 dependencies {
     implementation "foundation.icon:icon-sdk:0.9.11"
     implementation "org.java-websocket:Java-WebSocket:1.4.0"
-    testImplementation "junit:junit:4.12"
+    compile "org.junit.jupiter:junit-jupiter:5.4.2"
+    testRuntime "org.junit.jupiter:junit-jupiter-engine:5.4.2"
 }
 
 compileTestJava {
@@ -112,6 +113,9 @@ task testNormal(type: ChainTest, overwrite: true) {
     exclude "foundation/icon/test/cases/ScoreTest*"
     exclude "foundation/icon/test/cases/StepTest*"
 
+    useJUnit {
+        includeCategories 'foundation.icon.test.categories.ParallelTest'
+    }
     configFile = "./data/config.json"
     logFile = "./normal.log"
     envFile = "./data/env.properties"
@@ -136,6 +140,38 @@ task testGovernance(type: ChainTest, overwrite: true) {
     testLogging.showStandardStreams = true
 }
 
+task testSerial(type: ChainTest, overwrite: true) {
+    useJUnitPlatform {
+        includeTags 'serial'
+    }
+    configFile = "./data/govConfig.json"
+    logFile = "./gov.log"
+    envFile = "./data/env.properties"
+    gsFile = "./data/genesisStorage.zip"
+
+    dependsOn cleanTest
+    testLogging.showStandardStreams = true
+}
+
+task testParallel(type: ChainTest, overwrite: true) {
+    useJUnitPlatform {
+        includeTags 'parallel'
+    }
+
+    configFile = "./data/config.json"
+    logFile = "./normal.log"
+    envFile = "./data/env.properties"
+
+    dependsOn cleanTest
+    testLogging.showStandardStreams = true
+
+    def forks = System.getProperty("FORKS")
+    if(forks == null || !forks.isInteger()) {
+        forks = 2
+    }
+    maxParallelForks = forks
+}
+
 task test(overwrite: true) {
-    dependsOn testNormal, testGovernance
+    dependsOn testParallel, testSerial
 }

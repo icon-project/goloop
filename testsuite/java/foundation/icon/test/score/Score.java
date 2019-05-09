@@ -38,13 +38,12 @@ public class Score {
             throw new TransactionFailureException(result.getFailure());
         }
 
-        if(Utils.isAudit(service)) {
-            LOG.infoEntering("accept", "accept score");
-            TransactionResult acceptResult = new GovScore(service, chain).acceptScore(txHash);
-            if (!Constants.STATUS_SUCCESS.equals(acceptResult.getStatus())) {
-                throw new TransactionFailureException(acceptResult.getFailure());
-            }
+        try {
+            Utils.acceptIfAuditEnabled(service, chain, txHash);
+        }
+        catch(TransactionFailureException ex) {
             LOG.infoExiting();
+            throw ex;
         }
         return new Address(result.getScoreAddress());
     }
@@ -56,11 +55,12 @@ public class Score {
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new TransactionFailureException(result.getFailure());
         }
-        if(Utils.isAudit(service)) {
-            result = new GovScore(service, chain).acceptScore(txHash);
+        try {
+            Utils.acceptIfAuditEnabled(service, chain, txHash);
         }
-        if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
-            throw new TransactionFailureException(result.getFailure());
+        catch(TransactionFailureException ex) {
+            LOG.infoExiting();
+            throw ex;
         }
     }
 

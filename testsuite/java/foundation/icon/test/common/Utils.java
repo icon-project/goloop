@@ -26,8 +26,11 @@ import foundation.icon.icx.data.TransactionResult.EventLog;
 import foundation.icon.icx.transport.jsonrpc.RpcError;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
+import foundation.icon.test.score.GovScore;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.file.Files;
@@ -36,8 +39,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static foundation.icon.test.common.Env.LOG;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class Utils {
     public static BigInteger getMicroTime() {
@@ -268,6 +271,20 @@ public class Utils {
         }
         long lAudit = rpcObject.longValue();
         return (lAudit & 0x2) == 0x2;
+    }
+
+    public static TransactionResult acceptIfAuditEnabled(IconService iconService, Env.Chain chain, Bytes txHash) throws ResultTimeoutException, IOException, TransactionFailureException {
+        TransactionResult result = null;
+        if(Utils.isAudit(iconService)) {
+            LOG.infoEntering("accept", "accept score");
+            result = new GovScore(iconService, chain).acceptScore(txHash);
+            if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
+                LOG.infoExiting();
+                throw new TransactionFailureException(result.getFailure());
+            }
+            LOG.infoExiting();
+        }
+        return result;
     }
 
     private static void recursiveZip(File source, String zipPath, ZipOutputStream zos) throws IOException{

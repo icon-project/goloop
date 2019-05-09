@@ -9,11 +9,13 @@ import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
+import foundation.icon.test.common.TransactionFailureException;
 import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.GovScore;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 
 import java.math.BigInteger;
 import java.util.HashMap;
@@ -23,8 +25,9 @@ import java.util.Map;
 
 import static foundation.icon.test.common.Env.LOG;
 import static foundation.icon.test.common.Utils.getMicroTime;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
+@Tag(Constants.TAG_SERIAL)
 public class StepTest {
     private static KeyWallet[]testWallets;
     private static IconService iconService;
@@ -34,7 +37,7 @@ public class StepTest {
     private static Map<String, BigInteger> defStepCosts = new HashMap<>();
     private static BigInteger defStepPrice;
 
-    @BeforeClass
+    @BeforeAll
     public static void init() throws Exception {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
@@ -44,7 +47,7 @@ public class StepTest {
         initTransfer();
     }
 
-    @AfterClass
+    @AfterAll
     public static void destroy() throws Exception {
         govScore.setStepPrice(defStepPrice);
         setSteps(defStepCosts);
@@ -245,6 +248,14 @@ public class StepTest {
             TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
             assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
 
+            try {
+                Utils.acceptIfAuditEnabled(iconService, chain, txHash);
+            }
+            catch(TransactionFailureException ex) {
+                LOG.infoExiting();
+                throw ex;
+            }
+
             this.scoreAddr = new Address(result.getScoreAddress());
             BigInteger bal = iconService.getBalance(from.getAddress()).execute();
             BigInteger treasury = iconService.getBalance(Constants.TREASURY_ADDRESS).execute();
@@ -297,6 +308,9 @@ public class StepTest {
 
     @Test
     public void deployStep() throws Exception {
+        if (Utils.isAudit(iconService)) {
+            return;
+        }
         LOG.infoEntering("deployStep" );
         final String installPath = Constants.SCORE_HELLOWORLD_PATH;
         RpcObject params = new RpcObject.Builder()
@@ -325,7 +339,7 @@ public class StepTest {
 
     @Test
     public void callStep() throws Exception {
-        LOG.infoEntering("callStep" );
+        LOG.infoEntering("callStep");
         KeyWallet scoreOwner = testWallets[2];
         KeyWallet caller = testWallets[3];
         RpcObject params = new RpcObject.Builder()
@@ -337,14 +351,14 @@ public class StepTest {
         TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
         LOG.infoExiting();
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-        if(Utils.isAudit(iconService)) {
-            LOG.infoEntering("accept", "accept score");
-            govScore.acceptScore(txHash);
-            assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        try {
+            Utils.acceptIfAuditEnabled(iconService, chain, txHash);
+        }
+        catch(TransactionFailureException ex) {
             LOG.infoExiting();
+            throw ex;
         }
         Address scoreAddr = new Address(result.getScoreAddress());
-
         StepTransaction sTx = new StepTransaction();
         LOG.infoEntering("invoke" );
         BigInteger usedCoin = sTx.call(caller, scoreAddr, "hello", null, null);

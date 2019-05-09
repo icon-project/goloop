@@ -8,19 +8,22 @@ import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
-import foundation.icon.test.common.ResultTimeoutException;
-import foundation.icon.test.score.GovScore;
 import foundation.icon.test.common.Env;
+import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.Utils;
-import org.junit.BeforeClass;
-import org.junit.Test;
-
-import static foundation.icon.test.common.Env.LOG;
-import static org.junit.Assert.*;
+import foundation.icon.test.score.GovScore;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.util.*;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Random;
+
+import static foundation.icon.test.common.Env.LOG;
+import static org.junit.jupiter.api.Assertions.*;
 
 /*
 test cases
@@ -34,6 +37,7 @@ coin. check balances of both accounts with GetBalance api.
  -
 5.
  */
+@Tag(Constants.TAG_SERIAL)
 public class TransferTest {
     private static KeyWallet[]testWallets;
     private static IconService iconService;
@@ -41,7 +45,7 @@ public class TransferTest {
     private static final int testWalletNum = 10;
     private static GovScore govScore;
 
-    @BeforeClass
+    @BeforeAll
     public static void init() throws Exception {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];

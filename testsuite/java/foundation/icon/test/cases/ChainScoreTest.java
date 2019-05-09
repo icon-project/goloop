@@ -1,6 +1,7 @@
 package foundation.icon.test.cases;
 
-import foundation.icon.icx.*;
+import foundation.icon.icx.IconService;
+import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
@@ -9,48 +10,46 @@ import foundation.icon.icx.transport.jsonrpc.RpcArray;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
-import foundation.icon.test.common.*;
+import foundation.icon.test.common.Constants;
+import foundation.icon.test.common.Env;
+import foundation.icon.test.common.ResultTimeoutException;
+import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.GovScore;
 import foundation.icon.test.score.HelloWorld;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.math.BigInteger;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
 import static foundation.icon.test.common.Env.LOG;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
-@RunWith(Parameterized.class)
+@Tag(Constants.TAG_SERIAL)
 public class ChainScoreTest{
-    public Address toAddr;
     private static Env.Chain chain;
     private static IconService iconService;
-    private static String testName;
-
-    public ChainScoreTest(Address input, String name){
-        toAddr = input;
-        testName = name;
-    }
-
-    @Parameterized.Parameters(name = "{1}")
-    public static Iterable<Object[]> initInput() {
-        return Arrays.asList(new Object[][] {
-                {Constants.CHAINSCORE_ADDRESS, "To_ChainScore"},
-                {Constants.GOV_ADDRESS, "To_GovernanceScore"},
-        });
-    }
-
     private static KeyWallet helloWorldOwner;
     private static KeyWallet[]testWallets;
     private static final int testWalletNum = 3;
     private static HelloWorld helloWorld;
 
-    @BeforeClass
+    enum TargetScore {
+        TO_CHAINSCORE(Constants.CHAINSCORE_ADDRESS),
+        TO_GOVSCORE(Constants.GOV_ADDRESS);
+
+        Address addr;
+        TargetScore(Address addr) {
+            this.addr = addr;
+        }
+    }
+
+    @BeforeAll
     public static void init() {
         Env.Node node = Env.nodes[0];
         chain = node.channels[0].chain;
@@ -91,7 +90,7 @@ public class ChainScoreTest{
         }
     }
 
-    @AfterClass
+    @AfterAll
     public static void destroy() throws Exception {
         String []cTypes = {"invoke", "query"};
         for(String cType : cTypes) {
@@ -106,7 +105,7 @@ public class ChainScoreTest{
         }
     }
 
-    public TransactionResult sendGovCallTx(String method, RpcObject params) throws Exception {
+    public TransactionResult sendGovCallTx(Address toAddr, String method, RpcObject params) throws Exception {
         TransactionResult result;
         result = Utils.sendTransactionWithCall(iconService, chain.networkId,
                 chain.governorWallet, toAddr, method, params, 0);
@@ -121,10 +120,6 @@ public class ChainScoreTest{
 
     @Test
     public void disableEnableScore() throws Exception{
-        if(this.toAddr.equals(Constants.GOV_ADDRESS)) {
-            return;
-        }
-
         LOG.infoEntering( "disableEnableScore");
         KeyWallet notOwner = testWallets[0];
         KeyWallet[]fromWallets = {
@@ -169,8 +164,9 @@ public class ChainScoreTest{
         LOG.infoExiting();
     }
 
-    @Test
-    public void setRevision() throws Exception{
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(TargetScore.class)
+    public void setRevision(TargetScore score) throws Exception{
         LOG.infoEntering("setRevision");
         BigInteger oldRevision = Utils.icxCall(iconService,
                 Constants.CHAINSCORE_ADDRESS, "getRevision", null).asInteger();
@@ -179,12 +175,12 @@ public class ChainScoreTest{
                 .put("code", new RpcValue(newRevision))
                 .build();
         LOG.infoEntering("method[setRevision] OLD[" + oldRevision + "], NEW[" + newRevision + "]");
-        sendGovCallTx( "setRevision", params);
+        sendGovCallTx(score.addr,  "setRevision", params);
         LOG.infoExiting();
 
         BigInteger revision = Utils.icxCall(iconService,
                 Constants.CHAINSCORE_ADDRESS, "getRevision", null).asInteger();
-        if(toAddr.equals(Constants.GOV_ADDRESS)) {
+        if(score.addr.equals(Constants.GOV_ADDRESS)) {
             assertEquals(newRevision, revision);
             for (int i = 0; i < 2; i++) {
                 // It allows to set a greater value than the current. test with same value & less value.
@@ -209,8 +205,9 @@ public class ChainScoreTest{
         LOG.infoExiting();
     }
 
-    @Test
-    public void acceptScore() throws Exception {
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(TargetScore.class)
+    public void acceptScore(TargetScore score) throws Exception {
         if (!Utils.isAudit(iconService)) {
             return;
         }
@@ -227,7 +224,7 @@ public class ChainScoreTest{
         Address scoreAddr = new Address(result.getScoreAddress());
         KeyWallet caller = KeyWallet.create();
         String []expectedStatus;
-        if(toAddr == Constants.GOV_ADDRESS) {
+        if(score.addr == Constants.GOV_ADDRESS) {
             expectedStatus = new String[]{Constants.SCORE_STATUS_PENDING, Constants.SCORE_STATUS_ACTIVE};
         }
         else {
@@ -260,8 +257,8 @@ public class ChainScoreTest{
                 LOG.infoEntering( "accept score");
                 TransactionResult acceptResult =
                         Utils.sendTransactionWithCall(iconService, chain.networkId,
-                                chain.governorWallet, toAddr, "acceptScore", params, 0);
-                if(toAddr == Constants.GOV_ADDRESS) {
+                                chain.governorWallet, score.addr, "acceptScore", params, 0);
+                if(score.addr == Constants.GOV_ADDRESS) {
                     assertEquals(Constants.STATUS_SUCCESS, acceptResult.getStatus());
                     expectedItem = "current";
                 }
@@ -274,8 +271,9 @@ public class ChainScoreTest{
         LOG.infoExiting();
     }
 
-    @Test
-    public void rejectScore() throws Exception {
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(TargetScore.class)
+    public void rejectScore(TargetScore score) throws Exception {
         if (!Utils.isAudit(iconService)) {
             return;
         }
@@ -292,7 +290,7 @@ public class ChainScoreTest{
         Address scoreAddr = new Address(result.getScoreAddress());
         KeyWallet caller = KeyWallet.create();
         String []expectedStatus;
-        if(toAddr == Constants.GOV_ADDRESS) {
+        if(score.addr == Constants.GOV_ADDRESS) {
             expectedStatus = new String[]{Constants.SCORE_STATUS_PENDING, Constants.SCORE_STATUS_REJECT};
         }
         else {
@@ -327,8 +325,8 @@ public class ChainScoreTest{
                         .build();
                 TransactionResult acceptResult =
                         Utils.sendTransactionWithCall(iconService, chain.networkId,
-                                chain.governorWallet, toAddr, "rejectScore", params, 0);
-                if(toAddr == Constants.GOV_ADDRESS) {
+                                chain.governorWallet, score.addr, "rejectScore", params, 0);
+                if(score.addr == Constants.GOV_ADDRESS) {
                     assertEquals(acceptResult.getStatus(), Constants.STATUS_SUCCESS);
                 }
                 else {
@@ -340,9 +338,9 @@ public class ChainScoreTest{
         LOG.infoExiting();
     }
 
-    // test block / unblock score
-    @Test
-    public void blockUnblockScore() throws Exception {
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(TargetScore.class)
+    public void blockUnblockScore(TargetScore score) throws Exception {
         LOG.infoEntering("blockUnblockScore");
         KeyWallet caller = testWallets[1];
         TransactionResult result = helloWorld.invokeHello(caller);
@@ -359,12 +357,12 @@ public class ChainScoreTest{
 
         for (String method : new String[]{"blockScore", "unblockScore"}) {
             LOG.infoEntering("method[" + method + "]");
-            sendGovCallTx(method, params);
+            sendGovCallTx(score.addr, method, params);
             LOG.infoExiting();
             rpcObject = Utils.icxCall(iconService,
                     Constants.CHAINSCORE_ADDRESS, "getScoreStatus", params).asObject();
             boolean blocked = rpcObject.getItem("blocked").asBoolean();
-            assertTrue(toAddr.equals(Constants.GOV_ADDRESS) ? prevBlocked != blocked : prevBlocked == blocked);
+            assertTrue(score.addr.equals(Constants.GOV_ADDRESS) ? prevBlocked != blocked : prevBlocked == blocked);
             prevBlocked = blocked;
 
             LOG.infoEntering("method[hello], disabled[" + blocked + "]");
@@ -374,7 +372,7 @@ public class ChainScoreTest{
             }
             catch (ResultTimeoutException ex) {
                 LOG.info("FAIL to get result by tx");
-                if(toAddr.equals(Constants.GOV_ADDRESS)) {
+                if(score.addr.equals(Constants.GOV_ADDRESS)) {
                     assertEquals("blockScore", method);
                 }
             }
@@ -383,8 +381,9 @@ public class ChainScoreTest{
         LOG.infoExiting();
     }
 
-    @Test
-    public void setStepPrice() throws Exception {
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(TargetScore.class)
+    public void setStepPrice(TargetScore score) throws Exception {
         LOG.infoEntering("setStepPrice");
         BigInteger originPrice = Utils.icxCall(iconService,
                 Constants.CHAINSCORE_ADDRESS, "getStepPrice", null).asInteger();
@@ -393,16 +392,16 @@ public class ChainScoreTest{
                 .put("price", new RpcValue(newPrice.toString()))
                 .build();
         LOG.infoEntering("method[setStepPrice]");
-        sendGovCallTx("setStepPrice", params);
+        sendGovCallTx(score.addr, "setStepPrice", params);
         LOG.infoExiting();
         BigInteger resultPrice = Utils.icxCall(iconService,
                 Constants.CHAINSCORE_ADDRESS, "getStepPrice", null).asInteger();
-        if(toAddr.equals(Constants.GOV_ADDRESS)) {
+        if(score.addr.equals(Constants.GOV_ADDRESS)) {
             assertEquals(newPrice, resultPrice);
             params = new RpcObject.Builder()
                     .put("price", new RpcValue(originPrice))
                     .build();
-            sendGovCallTx("setStepPrice", params);
+            sendGovCallTx(score.addr, "setStepPrice", params);
         }
         else {
             assertEquals(originPrice, resultPrice);
@@ -410,8 +409,9 @@ public class ChainScoreTest{
         LOG.infoExiting();
     }
 
-    @Test
-    public void setStepCost() throws Exception{
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(TargetScore.class)
+    public void setStepCost(TargetScore score) throws Exception{
         LOG.infoEntering("setStepCost");
         KeyWallet wallet = testWallets[0];
         RpcItem stepCosts = Utils.icxCall(iconService,
@@ -435,12 +435,12 @@ public class ChainScoreTest{
                     .build();
             LOG.infoEntering("method[setStepCost], type[" + type + "], cost[" + newCost + "]");
             txHashList[i] = Utils.sendTransactionWithCall(iconService, chain.networkId,
-                    wallet, this.toAddr, "setStepCost", params, 0, false);
+                    wallet, score.addr, "setStepCost", params, 0, false);
             LOG.infoExiting();
         }
         for(Bytes txHash : txHashList) {
             TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
-            if(toAddr.equals(Constants.GOV_ADDRESS)) {
+            if(score.addr.equals(Constants.GOV_ADDRESS)) {
                 assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
             }
             else {
@@ -449,7 +449,7 @@ public class ChainScoreTest{
         }
 
         Map<String, BigInteger> cmpCosts;
-        if(toAddr.equals(Constants.GOV_ADDRESS)) {
+        if(score.addr.equals(Constants.GOV_ADDRESS)) {
             cmpCosts = newStepCostsMap;
         }
         else {
@@ -461,7 +461,7 @@ public class ChainScoreTest{
             assertEquals(cmpCosts.get(type), rpcObject.getItem(type).asInteger());
         }
 
-        if(this.toAddr.equals(Constants.GOV_ADDRESS)) {
+        if(score.addr.equals(Constants.GOV_ADDRESS)) {
             // rollback
             txHashList = new Bytes[GovScore.stepCostTypes.length];
             for(int i = 0; i < GovScore.stepCostTypes.length; i++) {
@@ -471,7 +471,7 @@ public class ChainScoreTest{
                         .put("cost", new RpcValue(originMap.get(type)))
                         .build();
                 txHashList[i] = Utils.sendTransactionWithCall(iconService, chain.networkId,
-                        wallet, this.toAddr, "setStepCost", params, 0, false);
+                        wallet, score.addr, "setStepCost", params, 0, false);
             }
 
             for(Bytes txHash : txHashList) {
@@ -489,8 +489,9 @@ public class ChainScoreTest{
         LOG.infoExiting();
     }
 
-    @Test
-    public void setMaxStepLimit() throws Exception {
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(TargetScore.class)
+    public void setMaxStepLimit(TargetScore score) throws Exception {
         LOG.infoEntering("setMaxStepLimit");
         for(String type : new String[]{"invoke", "query"}) {
             RpcObject params = new RpcObject.Builder()
@@ -505,18 +506,18 @@ public class ChainScoreTest{
                     .put("limit", new RpcValue(newLimit))
                     .build();
             LOG.infoEntering("method[setMaxStepLimit], contextType[" + type + "]");
-            sendGovCallTx("setMaxStepLimit", params);
+            sendGovCallTx(score.addr, "setMaxStepLimit", params);
             LOG.infoExiting();
 
             BigInteger resultLimit = Utils.icxCall(iconService,
                     Constants.CHAINSCORE_ADDRESS,"getMaxStepLimit", params).asInteger();
-            if (this.toAddr.equals(Constants.GOV_ADDRESS)) {
+            if (score.addr.equals(Constants.GOV_ADDRESS)) {
                 assertEquals(newLimit, resultLimit);
                 params = new RpcObject.Builder()
                         .put("contextType", new RpcValue(type))
                         .put("limit", new RpcValue(originLimit))
                         .build();
-                sendGovCallTx("setMaxStepLimit", params);
+                sendGovCallTx(score.addr, "setMaxStepLimit", params);
             }
             else {
                 assertEquals(originLimit, resultLimit);
@@ -525,11 +526,7 @@ public class ChainScoreTest{
         LOG.infoExiting();
     }
 
-    // TBD : setValidator API
-//    public void setValidators() {}
-    @Ignore
-    @Test
-    public void grantRevokeValidator() throws Exception {
+    public void grantRevokeValidator(TargetScore score) throws Exception {
         KeyWallet wallet = testWallets[0];
         RpcObject params = new RpcObject.Builder()
                 .put("address", new RpcValue(wallet.getAddress()))
@@ -546,7 +543,7 @@ public class ChainScoreTest{
         for (String method : methods) {
             RpcObject.Builder builder = new RpcObject.Builder();
             builder.put("address", new RpcValue(wallet.getAddress().toString()));
-            sendGovCallTx(method, builder.build());
+            sendGovCallTx(score.addr, method, builder.build());
 
             item = Utils.icxCall(iconService, Constants.CHAINSCORE_ADDRESS,
                     "getValidators", params);
@@ -559,7 +556,7 @@ public class ChainScoreTest{
                 }
             }
 
-            if(this.toAddr.equals(Constants.CHAINSCORE_ADDRESS)) {
+            if(score.addr.equals(Constants.CHAINSCORE_ADDRESS)) {
                 if(bFound == true) {
                     throw new Exception();
                 }
@@ -573,8 +570,9 @@ public class ChainScoreTest{
         }
     }
 
-    @Test
-    public void addRemoveMember() throws Exception{
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(TargetScore.class)
+    public void addRemoveMember(TargetScore score) throws Exception{
         LOG.infoEntering("addRemoveMember");
         KeyWallet wallet = testWallets[0];
         RpcItem item = Utils.icxCall(iconService,
@@ -591,7 +589,7 @@ public class ChainScoreTest{
                     .put("address", new RpcValue(wallet.getAddress().toString()))
                     .build();
             LOG.infoEntering("method[" + method + "]");
-            sendGovCallTx(method, params);
+            sendGovCallTx(score.addr, method, params);
             LOG.infoExiting();
             item = Utils.icxCall(iconService,
                     Constants.CHAINSCORE_ADDRESS, "getMembers", null);
@@ -603,7 +601,7 @@ public class ChainScoreTest{
                     break;
                 }
             }
-            if(toAddr.equals(Constants.GOV_ADDRESS)) {
+            if(score.addr.equals(Constants.GOV_ADDRESS)) {
                 if(bFound) {
                     assertEquals("addMember", method);
                 }
@@ -617,8 +615,9 @@ public class ChainScoreTest{
         LOG.infoExiting();
     }
 
-    @Test
-    public void addRemoveDeployer() throws Exception {
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(TargetScore.class)
+    public void addRemoveDeployer(TargetScore score) throws Exception {
         LOG.infoEntering( "addRemoveDeployer");
         KeyWallet wallet = testWallets[0];
         RpcObject params = new RpcObject.Builder()
@@ -629,11 +628,11 @@ public class ChainScoreTest{
 
         for (String method : new String[]{"addDeployer", "removeDeployer"}) {
             LOG.infoEntering("method[" + method + "]");
-            sendGovCallTx(method, params);
+            sendGovCallTx(score.addr, method, params);
             LOG.infoExiting();
             isDeployer = Utils.icxCall(iconService, Constants.CHAINSCORE_ADDRESS,"isDeployer", params).asBoolean();
 
-            if(toAddr.equals(Constants.CHAINSCORE_ADDRESS)) {
+            if(score.addr.equals(Constants.CHAINSCORE_ADDRESS)) {
                 assertFalse(isDeployer);
             } else {
                 if(method.equals("addDeployer")) {
