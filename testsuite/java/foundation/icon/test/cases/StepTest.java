@@ -27,7 +27,7 @@ import static foundation.icon.test.common.Env.LOG;
 import static foundation.icon.test.common.Utils.getMicroTime;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@Tag(Constants.TAG_SERIAL)
+@Tag(Constants.TAG_GOVERNANCE)
 public class StepTest {
     private static KeyWallet[]testWallets;
     private static IconService iconService;
@@ -112,7 +112,7 @@ public class StepTest {
         Map<String, BigInteger> steps = new HashMap<>();
         BigInteger stepPrice;
         BigInteger usedStep;
-        BigInteger treasuryBal;
+        BigInteger treasuryFee;
         Address scoreAddr;
         StepTransaction() throws Exception {
             RpcObject rpcObject = Utils.icxCall(iconService,
@@ -218,7 +218,7 @@ public class StepTest {
             assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
             BigInteger bal = iconService.getBalance(from.getAddress()).execute();
             BigInteger treasury = iconService.getBalance(Constants.TREASURY_ADDRESS).execute();
-            treasuryBal = treasury.subtract(prevTresury);
+            treasuryFee = treasury.subtract(prevTresury);
             return prevBal.subtract(bal.add(value));
         }
 
@@ -259,7 +259,7 @@ public class StepTest {
             this.scoreAddr = new Address(result.getScoreAddress());
             BigInteger bal = iconService.getBalance(from.getAddress()).execute();
             BigInteger treasury = iconService.getBalance(Constants.TREASURY_ADDRESS).execute();
-            treasuryBal = treasury.subtract(prevTresury);
+            treasuryFee = treasury.subtract(prevTresury);
             return prevBal.subtract(bal);
         }
 
@@ -289,7 +289,7 @@ public class StepTest {
             assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
             BigInteger bal = iconService.getBalance(from.getAddress()).execute();
             BigInteger treasury = iconService.getBalance(Constants.TREASURY_ADDRESS).execute();
-            treasuryBal = treasury.subtract(prevTresury);
+            treasuryFee = treasury.subtract(prevTresury);
             return prevBal.subtract(bal);
         }
     }
@@ -303,14 +303,11 @@ public class StepTest {
         LOG.infoExiting();
         LOG.infoExiting();
         assertEquals(sTx.usedCoin(), usedCoin);
-        assertEquals(sTx.usedCoin(), sTx.treasuryBal);
+        assertEquals(sTx.usedCoin(), sTx.treasuryFee);
     }
 
     @Test
     public void deployStep() throws Exception {
-        if (Utils.isAudit(iconService)) {
-            return;
-        }
         LOG.infoEntering("deployStep" );
         final String installPath = Constants.SCORE_HELLOWORLD_PATH;
         RpcObject params = new RpcObject.Builder()
@@ -321,7 +318,9 @@ public class StepTest {
         BigInteger usedCoin = sTx.deploy(testWallets[0], null, installPath, params);
         LOG.infoExiting();
         assertEquals(sTx.usedCoin(), usedCoin);
-        assertEquals(sTx.usedCoin(), sTx.treasuryBal);
+        if(!Utils.isAudit(iconService)) {
+            assertEquals(sTx.usedCoin(), sTx.treasuryFee);
+        }
 
         final String updatePath = Constants.SCORE_HELLOWORLD_UPDATE_PATH;
         Address socreAddr = sTx.scoreAddr;
@@ -333,7 +332,9 @@ public class StepTest {
         usedCoin = sTx.deploy(testWallets[0], socreAddr, updatePath, params);
         LOG.infoExiting();
         assertEquals(sTx.usedCoin(), usedCoin);
-        assertEquals(sTx.usedCoin(), sTx.treasuryBal);
+        if(!Utils.isAudit(iconService)) {
+            assertEquals(sTx.usedCoin(), sTx.treasuryFee);
+        }
         LOG.infoExiting();
     }
 
@@ -364,7 +365,7 @@ public class StepTest {
         BigInteger usedCoin = sTx.call(caller, scoreAddr, "hello", null, null);
         LOG.infoExiting();
         assertEquals(sTx.usedCoin(), usedCoin);
-        assertEquals(sTx.usedCoin(), sTx.treasuryBal);
+        assertEquals(sTx.usedCoin(), sTx.treasuryFee);
         LOG.infoExiting();
     }
 }

@@ -16,7 +16,7 @@ import java.math.BigInteger;
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@Tag(Constants.TAG_PARALLEL)
+@Tag(Constants.TAG_NORMAL)
 public class RevertTest {
     private static Env.Chain chain;
     private static IconService iconService;

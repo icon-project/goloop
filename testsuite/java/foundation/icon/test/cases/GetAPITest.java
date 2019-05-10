@@ -24,7 +24,7 @@ import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.*;
 
 
-@Tag(Constants.TAG_PARALLEL)
+@Tag(Constants.TAG_NORMAL)
 public class GetAPITest {
     static Env.Chain chain;
     static IconService iconService;

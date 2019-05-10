@@ -105,57 +105,28 @@ class ChainTest extends Test {
     }
 }
 
-task testNormal(type: ChainTest, overwrite: true) {
-    include "foundation/icon/test/cases/*"
-    exclude "foundation/icon/test/cases/ChainScoreTest*"
-    exclude "foundation/icon/test/cases/DeployTest*"
-    exclude "foundation/icon/test/cases/TransferTest*"
-    exclude "foundation/icon/test/cases/ScoreTest*"
-    exclude "foundation/icon/test/cases/StepTest*"
-
-    useJUnit {
-        includeCategories 'foundation.icon.test.categories.ParallelTest'
-    }
-    configFile = "./data/config.json"
-    logFile = "./normal.log"
-    envFile = "./data/env.properties"
-
-    dependsOn cleanTest
-    testLogging.showStandardStreams = true
-}
-
 task testGovernance(type: ChainTest, overwrite: true) {
-    include "foundation/icon/test/cases/ChainScoreTest*"
-    include "foundation/icon/test/cases/TransferTest*"
-    include "foundation/icon/test/cases/DeployTest*"
-    include "foundation/icon/test/cases/ScoreTest*"
-    include "foundation/icon/test/cases/StepTest*"
-
-    configFile = "./data/govConfig.json"
-    logFile = "./gov.log"
-    envFile = "./data/env.properties"
-    gsFile = "./data/genesisStorage.zip"
-
-    dependsOn cleanTest
-    testLogging.showStandardStreams = true
-}
-
-task testSerial(type: ChainTest, overwrite: true) {
     useJUnitPlatform {
-        includeTags 'serial'
+        includeTags "governance"
     }
     configFile = "./data/govConfig.json"
     logFile = "./gov.log"
     envFile = "./data/env.properties"
-    gsFile = "./data/genesisStorage.zip"
+    def audit = System.getProperty("AUDIT")
+    if (audit == "true") {
+        gsFile = "./data/genesisStorage/gsAudit.zip"
+    }
+    else {
+        gsFile = "./data/genesisStorage/gs.zip"
+    }
 
     dependsOn cleanTest
     testLogging.showStandardStreams = true
 }
 
-task testParallel(type: ChainTest, overwrite: true) {
+task testNormal(type: ChainTest, overwrite: true) {
     useJUnitPlatform {
-        includeTags 'parallel'
+        includeTags "normal"
     }
 
     configFile = "./data/config.json"
@@ -164,14 +135,14 @@ task testParallel(type: ChainTest, overwrite: true) {
 
     dependsOn cleanTest
     testLogging.showStandardStreams = true
-
+    
     def forks = System.getProperty("FORKS")
     if(forks == null || !forks.isInteger()) {
-        forks = 2
+        forks = 1
     }
     maxParallelForks = forks
 }
 
 task test(overwrite: true) {
-    dependsOn testParallel, testSerial
+    dependsOn testNormal, testGovernance
 }

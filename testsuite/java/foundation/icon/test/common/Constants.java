@@ -21,8 +21,8 @@ import foundation.icon.icx.data.Address;
 import java.math.BigInteger;
 
 public class Constants {
-    public static final String TAG_SERIAL = "serial";
-    public static final String TAG_PARALLEL = "parallel";
+    public static final String TAG_GOVERNANCE = "governance";
+    public static final String TAG_NORMAL = "normal";
     public static final BigInteger STATUS_SUCCESS = BigInteger.ONE;
     public static final BigInteger STATUS_FAIL = BigInteger.ZERO;
     public static final String CONTENT_TYPE = "application/zip";

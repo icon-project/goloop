@@ -30,7 +30,7 @@ import java.util.Map;
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.*;
 
-@Tag(Constants.TAG_SERIAL)
+@Tag(Constants.TAG_GOVERNANCE)
 public class ChainScoreTest{
     private static Env.Chain chain;
     private static IconService iconService;
@@ -644,9 +644,4 @@ public class ChainScoreTest{
         }
         LOG.infoExiting();
     }
-
-//    public void addLicense() {}
-//
-//    public void removeLicense( ) {}
-
 }

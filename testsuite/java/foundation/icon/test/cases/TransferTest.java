@@ -37,7 +37,7 @@ coin. check balances of both accounts with GetBalance api.
  -
 5.
  */
-@Tag(Constants.TAG_SERIAL)
+@Tag(Constants.TAG_GOVERNANCE)
 public class TransferTest {
     private static KeyWallet[]testWallets;
     private static IconService iconService;

@@ -29,7 +29,7 @@ sendTransaction with call
 icx_call
 stepUsed is bigger than specified stepLimit
  */
-@Tag(Constants.TAG_SERIAL)
+@Tag(Constants.TAG_GOVERNANCE)
 public class ScoreTest {
     private static IconService iconService;
     private static Env.Chain chain;

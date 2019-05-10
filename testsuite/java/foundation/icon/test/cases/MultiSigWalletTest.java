@@ -18,7 +18,7 @@ import java.math.BigInteger;
 
 import static foundation.icon.test.common.Env.LOG;
 
-@Tag(Constants.TAG_PARALLEL)
+@Tag(Constants.TAG_NORMAL)
 public class MultiSigWalletTest {
     private static Env.Chain chain;
     private static IconService iconService;

@@ -5,6 +5,7 @@ import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
+import foundation.icon.icx.transport.jsonrpc.RpcError;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.*;
@@ -37,7 +38,7 @@ test cases
  - too large - takes too long time for uncompress 5. sendTransaction with invalid/valid params 6. sendTransaction for update with invalid score address 7. change destination url.
 8. sendTransaction with invalid signature
  */
-@Tag(Constants.TAG_SERIAL)
+@Tag(Constants.TAG_GOVERNANCE)
 public class DeployTest {
     private static IconService iconService;
     private static Env.Chain chain;
