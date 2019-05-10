@@ -21,11 +21,6 @@ type transitionCallback interface {
 	onExecute(error)
 }
 
-type setting struct {
-	syncer *syncer
-	sm     module.ServiceManager
-}
-
 type transitionImpl struct {
 	_chainContext *chainContext
 	_mtransition  module.Transition    // nil iff disposed
