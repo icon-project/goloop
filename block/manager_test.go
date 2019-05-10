@@ -39,7 +39,9 @@ func newBlockGenerator(t *testing.T, gtx *testTransaction) *blockGenerator {
 	bg.t = t
 	c := newTestChain(newMapDB(), gtx)
 	bg.sm = newTestServiceManager(c.Database())
-	bg.bm = NewManager(c)
+	var err error
+	bg.bm, err = NewManager(c)
+	assert.Nil(t, err)
 	return bg
 }
 
@@ -85,7 +87,9 @@ func newBlockManagerTestSetUp(t *testing.T) *blockManagerTestSetUp {
 	s.gtx = newGenesisTX(defaultValidators)
 	s.chain = newTestChain(s.database, s.gtx)
 	s.sm = s.chain.sm
-	s.bm = NewManager(s.chain)
+	var err error
+	s.bm, err = NewManager(s.chain)
+	assert.Nil(t, err)
 	s.bg = newBlockGenerator(t, s.gtx)
 	return s
 }
@@ -170,7 +174,9 @@ func TestBlockManager_New_HasValidGenesisBlock(t *testing.T) {
 	assert.Equal(t, s.gtx.Data.Effect.NextValidators.Bytes(), blk.NextValidators().Bytes())
 
 	c := newTestChain(s.chain.Database(), s.chain.gtx)
-	bm = NewManager(c)
+	var err error
+	bm, err = NewManager(c)
+	assert.Nil(t, err)
 	assertHasValidGenesisBlock(t, bm)
 	blk, _ = bm.GetLastBlock()
 	assert.Equal(t, id, blk.ID(), "ID")

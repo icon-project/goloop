@@ -374,7 +374,7 @@ func (pt *proposeTask) _onExecute(err error) {
 }
 
 // NewManager creates BlockManager.
-func NewManager(chain module.Chain) module.BlockManager {
+func NewManager(chain module.Chain) (module.BlockManager, error) {
 	prefix := fmt.Sprintf("%x|BM|", chain.Wallet().Address().Bytes()[1:3])
 	logger := log.New(os.Stderr, prefix, log.Lshortfile|log.Lmicroseconds)
 	// TODO if last block is v1 block
@@ -389,34 +389,34 @@ func NewManager(chain module.Chain) module.BlockManager {
 	}
 	chainPropBucket, err := m.bucketFor(db.ChainProperty)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	var height int64
 	err = chainPropBucket.get(raw(keyLastBlockHeight), &height)
 	if errors.NotFoundError.Equals(err) {
 		if _, err := m.finalizeGenesisBlock(nil, 0, chain.CommitVoteSetDecoder()(nil)); err != nil {
-			return nil
+			return nil, err
 		}
-		return m
+		return m, nil
 	} else if err != nil {
-		return nil
+		return nil, err
 	}
 	hashByHeightBucket, err := m.bucketFor(db.BlockHeaderHashByHeight)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	hash, err := hashByHeightBucket.getBytes(&height)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	lastFinalized, err := m.getBlock(hash)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	mtr, _ := m.sm.CreateInitialTransition(lastFinalized.Result(), lastFinalized.NextValidators())
 	if mtr == nil {
-		return nil
+		return nil, err
 	}
 	tr := newInitialTransition(mtr, m.chainContext)
 	bn := &bnode{
@@ -426,7 +426,7 @@ func NewManager(chain module.Chain) module.BlockManager {
 	bn.preexe = tr.transit(lastFinalized.NormalTransactions(), lastFinalized, nil)
 	m.finalized = bn
 	m.nmap[string(lastFinalized.ID())] = bn
-	return m
+	return m, nil
 }
 
 func (m *manager) Term() {
