@@ -7,6 +7,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/jsonrpc"
 	"github.com/icon-project/goloop/service"
@@ -48,19 +49,19 @@ func getLastBlock(ctx *jsonrpc.Context, _ *jsonrpc.Params) (interface{}, error) 
 
 	block, err := bm.GetLastBlock()
 	if err != nil {
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 
 	blockJson, err := block.ToJSON(jsonRpcApiVersion)
 	if err != nil {
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 
 	result := blockJson.(map[string]interface{})
 	txList := result["confirmed_transaction_list"].(module.TransactionList)
 	confirmedTxList, err := convertTransactionList(txList)
 	if err != nil {
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 
 	result["confirmed_transaction_list"] = confirmedTxList
@@ -84,20 +85,22 @@ func getBlockByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}
 	bm := chain.BlockManager()
 
 	block, err := bm.GetBlockByHeight(param.Height.Value())
-	if err != nil {
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	if errors.NotFoundError.Equals(err) {
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	} else if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 
 	blockJson, err := block.ToJSON(jsonRpcApiVersion)
 	if err != nil {
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 
 	result := blockJson.(map[string]interface{})
 	txList := result["confirmed_transaction_list"].(module.TransactionList)
 	confirmedTxList, err := convertTransactionList(txList)
 	if err != nil {
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 
 	result["confirmed_transaction_list"] = confirmedTxList
@@ -121,20 +124,22 @@ func getBlockByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, 
 	bm := chain.BlockManager()
 
 	block, err := bm.GetBlock(param.Hash.Bytes())
-	if err != nil {
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	if errors.NotFoundError.Equals(err) {
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	} else if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 
 	blockJson, err := block.ToJSON(jsonRpcApiVersion)
 	if err != nil {
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 
 	result := blockJson.(map[string]interface{})
 	txList := result["confirmed_transaction_list"].(module.TransactionList)
 	confirmedTxList, err := convertTransactionList(txList)
 	if err != nil {
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 
 	result["confirmed_transaction_list"] = confirmedTxList
@@ -185,11 +190,11 @@ func getBalance(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, erro
 	var balance common.HexInt
 	block, err := bm.GetLastBlock()
 	if err != nil {
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 	b, err := sm.GetBalance(block.Result(), param.Address.Address())
 	if err != nil {
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 	balance.Set(b)
 	return &balance, nil
@@ -208,7 +213,7 @@ func getScoreApi(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, err
 	bm := chain.BlockManager()
 	b, err := bm.GetLastBlock()
 	if err != nil {
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 	sm := chain.ServiceManager()
 	info, err := sm.GetAPIInfo(b.Result(), param.Address.Address())
@@ -231,14 +236,14 @@ func getTotalSupply(ctx *jsonrpc.Context, _ *jsonrpc.Params) (interface{}, error
 	bm := chain.BlockManager()
 	b, err := bm.GetLastBlock()
 	if err != nil {
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 	sm := chain.ServiceManager()
 
 	var tsValue common.HexInt
 	ts, err := sm.GetTotalSupply(b.Result())
 	if err != nil {
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 	tsValue.Set(ts)
 
@@ -262,11 +267,13 @@ func getTransactionResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 	sm := chain.ServiceManager()
 
 	txInfo, err := bm.GetTransactionInfo(param.Hash.Bytes())
-	if err != nil {
+	if errors.NotFoundError.Equals(err) {
 		if sm.HasTransaction(param.Hash.Bytes()) {
 			return nil, jsonrpc.ErrorCodePending.New("Pending")
 		}
-		return nil, jsonrpc.ErrorCodeNotFound.New("Not Found")
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	} else if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 
 	block := txInfo.Block()
@@ -276,7 +283,7 @@ func getTransactionResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 	}
 	res, err := receipt.ToJSON(jsonRpcApiVersion)
 	if err != nil {
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 
 	result := res.(map[string]interface{})
@@ -303,8 +310,10 @@ func getTransactionByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 	bm := chain.BlockManager()
 
 	txInfo, err := bm.GetTransactionInfo(param.Hash.Bytes())
-	if err != nil {
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	if errors.NotFoundError.Equals(err) {
+		return nil, jsonrpc.ErrorCodeNotFound.New("Not Found")
+	} else if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 
 	tx := txInfo.Transaction()
@@ -314,15 +323,15 @@ func getTransactionByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 	case module.TransactionVersion2:
 		result, err = tx.ToJSON(module.TransactionVersion2)
 		if err != nil {
-			return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+			return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 		}
 	case module.TransactionVersion3:
 		result, err = tx.ToJSON(module.TransactionVersion3)
 		if err != nil {
-			return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+			return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 		}
 	default:
-		return nil, jsonrpc.ErrorCodeSystem.Errorf(
+		return nil, jsonrpc.ErrorCodeServer.Errorf(
 			"Unknown transaction version=%d", tx.Version())
 	}
 
@@ -349,7 +358,7 @@ func sendTransaction(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{},
 		if service.TransactionPoolOverflowError.Equals(err) {
 			return nil, jsonrpc.ErrorCodeTxPoolOverflow.Wrap(err, debug)
 		}
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 
 	result := "0x" + hex.EncodeToString(hash)
@@ -374,11 +383,11 @@ func getDataByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, e
 
 	bucket, err := dbm.GetBucket(db.BytesByHash)
 	if err != nil {
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 	value, err := bucket.Get(param.Hash.Bytes())
 	if err != nil {
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 
 	if value == nil {
@@ -404,13 +413,15 @@ func getBlockHeaderByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (inter
 	bm := chain.BlockManager()
 
 	block, err := bm.GetBlockByHeight(param.Height.Value())
-	if err != nil {
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	if errors.NotFoundError.Equals(err) {
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	} else if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 
 	buf := bytes.NewBuffer(nil)
 	if err := block.MarshalHeader(buf); err != nil {
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 
 	return buf.Bytes(), nil
@@ -432,8 +443,10 @@ func getVotesByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}
 	cs := chain.Consensus()
 
 	votes, err := cs.GetVotesByHeight(param.Height.Value())
-	if err != nil {
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	if errors.NotFoundError.Equals(err) {
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	} else if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 
 	return votes.Bytes(), nil
@@ -456,15 +469,17 @@ func getProofForResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{
 	sm := chain.ServiceManager()
 
 	block, err := bm.GetBlock(param.BlockHash.Bytes())
-	if err != nil {
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	if errors.NotFoundError.Equals(err) {
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	} else if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 
 	blockResult := block.Result()
 	receiptList := sm.ReceiptListFromResult(blockResult, module.TransactionGroupNormal)
 	proofs, err := receiptList.GetProof(int(param.Index.Value()))
 	if err != nil {
-		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 
 	return proofs, nil
