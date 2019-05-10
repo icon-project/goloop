@@ -245,7 +245,7 @@ func (it *importTask) _onExecute(err error) {
 		it.out = it.in.transit(it.block.NormalTransactions(), it.block, it)
 		if it.out == nil {
 			it.stop()
-			it.cb(nil, common.ErrUnknown)
+			it.cb(nil, errors.UnknownError.New("Create Transition Failed"))
 			return
 		}
 		it.state = validatingOut
@@ -524,7 +524,7 @@ func (m *manager) finalizeGenesisBlock(
 ) (block module.Block, err error) {
 	m.logger.Printf("FinalizeGenesisBlock()\n")
 	if m.finalized != nil {
-		return nil, common.ErrInvalidState
+		return nil, errors.InvalidStateError.New("InvalidState")
 	}
 	mtr, err := m.sm.CreateInitialTransition(nil, nil)
 	if err != nil {
