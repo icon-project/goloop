@@ -16,7 +16,7 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/server/metric"
-	"github.com/pkg/errors"
+	"github.com/icon-project/goloop/common/errors"
 )
 
 var csProtocols = []module.ProtocolInfo{
@@ -1421,7 +1421,7 @@ func (cs *consensus) GetVotesByHeight(height int64) (module.CommitVoteSet, error
 
 func (cs *consensus) getCommit(h int64) (*commit, error) {
 	if h > cs.height || (h == cs.height && cs.step < stepCommit) {
-		return nil, errors.Errorf("cs.getCommit: invalid param h=%v cs.height=%v cs.step=%v\n", h, cs.height, cs.step)
+		return nil, errors.NotFoundError.New("Not found")
 	}
 
 	c := cs.commitForHeight[h]
