@@ -306,7 +306,11 @@ func (c *singleChain) _prepare() {
 	chainDir := c.cfg.ResolveAbsolute(c.cfg.BaseDir)
 	ContractDir := path.Join(chainDir, DefaultContractDir)
 	var err error
-	c.sm = service.NewManager(c, c.nm, c.pm, ContractDir)
+	c.sm, err = service.NewManager(c, c.nm, c.pm, ContractDir)
+	if err != nil {
+		//TODO error shall be returned
+		log.Panicf("prepare failed: %+v\n", err)
+	}
 	c.bm, err = block.NewManager(c)
 	if err != nil {
 		//TODO error shall be returned

@@ -46,11 +46,11 @@ type manager struct {
 
 func NewManager(chain module.Chain, nm module.NetworkManager,
 	eem eeproxy.Manager, chainRoot string,
-) module.ServiceManager {
+) (module.ServiceManager, error) {
 	bk, err := chain.Database().GetBucket(db.TransactionLocatorByHash)
 	if err != nil {
 		log.Printf("FAIL to get bucket(%s) %v\n", db.TransactionLocatorByHash, err)
-		return nil //, err
+		return nil, err
 	}
 
 	pMetric := metric.NewTransactionMetric(chain.MetricContext(), metric.TxTypePatch)
@@ -58,7 +58,7 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 	cm, err := contract.NewContractManager(chain.Database(), chainRoot)
 	if err != nil {
 		log.Printf("FAIL to create contractManager : %v\n", err)
-		return nil //, err
+		return nil, err
 	}
 
 	mgr := &manager{
@@ -75,7 +75,7 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 	if nm != nil {
 		mgr.txReactor = NewTransactionReactor(nm, mgr.patchTxPool, mgr.normalTxPool)
 	}
-	return mgr
+	return mgr, nil
 }
 
 func (m *manager) Start() {
