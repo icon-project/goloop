@@ -1,0 +1,143 @@
+stages:
+  - deps
+  - unit
+  - build
+  - pack
+  - integration
+  - cleanup
+
+variables:
+  GOLANG_VERSION: "1.12.4"
+  REPO_GO_DEPS: "goloop/go-deps/${CI_COMMIT_REF_NAME}"
+  PYTHON_VERSION: "3.7.3"
+  REPO_PY_DEPS: "goloop/py-deps/${CI_COMMIT_REF_NAME}"
+  REPO_GOCHAIN: "goloop/gochain/${CI_COMMIT_REF_NAME}"
+
+before_script:
+  - env
+
+deps:go:
+  image: docker:git
+  stage: deps
+  script:
+    - sh docker/go-deps/build.sh
+  tags:
+    - docker-build
+
+deps:py:
+  image: docker:git
+  stage: deps
+  script:
+    - sh docker/py-deps/build.sh
+  tags:
+    - docker-build
+
+unit:go:
+  image: "${REPO_GO_DEPS}"
+  stage: unit
+  script:
+    - make test
+  tags:
+    - docker
+  dependencies:
+    - deps:go
+
+unit:py:
+  image: "${REPO_PY_DEPS}"
+  stage: unit
+  script:
+    - cd pyee
+    - python -m unittest -v
+  tags:
+    - docker
+  dependencies:
+    - deps:py
+
+build:pyee:
+  image: "${REPO_PY_DEPS}"
+  stage: build
+  script:
+    - cd pyee
+    - python3 setup.py bdist_wheel
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - pyee/dist
+  tags:
+    - docker
+
+build:gochian:
+  image: "${REPO_GO_DEPS}"
+  stage: build
+  script:
+    - make gochain
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - bin/gochain
+  tags:
+    - docker
+
+build:goloop:
+  image: "${REPO_GO_DEPS}"
+  stage: build
+  script:
+    - make goloop
+  artifacts:
+    expire_in: 1 week
+    paths:
+      - bin/goloop
+  tags:
+    - docker
+
+pack:gochian:
+  image: docker:git
+  stage: pack
+  script:
+    - sh docker/gochain/build.sh
+  tags:
+    - docker-build
+  dependencies:
+    - build:pyee
+    - build:gochian
+
+integration:java-sdk:gochain:
+  image: "openjdk:8u212-jdk-alpine"
+  stage: integration
+  services:
+    - ${REPO_GOCHAIN}
+  variables:
+    GOCHAIN_CONFIG: "${CI_PROJECT_DIR}/testsuite/data/config.json"
+    GOCHAIN_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}"
+    GOCHAIN_LOGFILE: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/gochain.log"
+  script:
+    - cd testsuite
+    - sed -i "s/localhost/$(echo ${REPO_GOCHAIN//\//-}|cut -d ":" -f 1)/" data/env.properties
+    - ./gradlew testNormal -DnoServer=true
+  after_script:
+    - cp -r $GOCHAIN_DATA gochain_data
+  cache:
+    key: "$CI_COMMIT_REF_NAME"
+    paths:
+      - testsuite/.gradle
+  artifacts:
+    expire_in: 1 week
+    when: on_failure
+    paths:
+      - gochain_data
+      - testsuite/build/reports
+  tags:
+    - docker
+  dependencies:
+    - pack:gochian
+
+cleanup:integration:
+  image: docker:git
+  stage: cleanup
+  variables:
+    GOCHAIN_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}"
+  script:
+    - rm -rf $GOCHAIN_DATA
+  when: always
+  tags:
+    - docker
