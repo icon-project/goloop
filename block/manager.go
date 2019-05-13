@@ -158,9 +158,10 @@ func (m *manager) _import(
 		},
 	}
 	it.state = executingIn
-	it.in = bn.preexe.patch(it.block.PatchTransactions(), it)
-	if it.in == nil {
-		return nil, errors.New("FailToPatch")
+	var err error
+	it.in, err = bn.preexe.patch(it.block.PatchTransactions(), it)
+	if err != nil {
+		return nil, err
 	}
 	return it, nil
 }
@@ -242,10 +243,10 @@ func (it *importTask) _onExecute(err error) {
 			it.cb(nil, err)
 			return
 		}
-		it.out = it.in.transit(it.block.NormalTransactions(), it.block, it)
-		if it.out == nil {
+		it.out, err = it.in.transit(it.block.NormalTransactions(), it.block, it)
+		if err != nil {
 			it.stop()
-			it.cb(nil, errors.UnknownError.New("Create Transition Failed"))
+			it.cb(nil, err)
 			return
 		}
 		it.state = validatingOut
@@ -285,9 +286,10 @@ func (m *manager) _propose(
 	}
 	pt.state = executingIn
 	patches := m.sm.GetPatches(bn.in.mtransition())
-	pt.in = bn.preexe.patch(patches, pt)
-	if pt.in == nil {
-		return nil, errors.New("FailToPatch")
+	var err error
+	pt.in, err = bn.preexe.patch(patches, pt)
+	if err != nil {
+		return nil, err
 	}
 	return pt, nil
 }
@@ -339,8 +341,8 @@ func (pt *proposeTask) _onExecute(err error) {
 	}
 	height := pt.parentBlock.Height() + 1
 	timestamp := unixMicroFromTime(time.Now())
-	tr := pt.in.propose(newBlockInfo(height, timestamp), nil)
-	if tr == nil {
+	tr, err := pt.in.propose(newBlockInfo(height, timestamp), nil)
+	if err != nil {
 		pt.stop()
 		pt.cb(nil, err)
 	}
@@ -423,7 +425,10 @@ func NewManager(chain module.Chain) (module.BlockManager, error) {
 		block: lastFinalized,
 		in:    tr,
 	}
-	bn.preexe = tr.transit(lastFinalized.NormalTransactions(), lastFinalized, nil)
+	bn.preexe, err = tr.transit(lastFinalized.NormalTransactions(), lastFinalized, nil)
+	if err != nil {
+		return nil, err
+	}
 	m.finalized = bn
 	m.nmap[string(lastFinalized.ID())] = bn
 	return m, nil
@@ -539,7 +544,11 @@ func (m *manager) finalizeGenesisBlock(
 	}
 	gtxl := m.sm.TransactionListFromSlice([]module.Transaction{gtx}, module.BlockVersion2)
 	m.syncer.begin()
-	gtr := in.transit(gtxl, newBlockInfo(0, timestamp), &channelingCB{ch: ch})
+	gtr, err := in.transit(gtxl, newBlockInfo(0, timestamp), &channelingCB{ch: ch})
+	if err != nil {
+		m.syncer.end()
+		return nil, err
+	}
 	m.syncer.end()
 
 	// wait for genesis transition execution

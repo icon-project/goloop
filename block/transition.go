@@ -3,7 +3,6 @@ package block
 import (
 	"bytes"
 	"errors"
-	"log"
 
 	"github.com/icon-project/goloop/module"
 )
@@ -155,7 +154,7 @@ func (ti *transitionImpl) OnExecute(tr module.Transition, err error) {
 func (ti *transitionImpl) _addChild(
 	mtr module.Transition,
 	cb transitionCallback,
-) *transition {
+) (*transition, error) {
 	cti := &transitionImpl{
 		_chainContext: ti._chainContext,
 		_mtransition:  mtr,
@@ -167,20 +166,19 @@ func (ti *transitionImpl) _addChild(
 	var err error
 	cti._canceler, err = mtr.Execute(cti)
 	if err != nil {
-		log.Println("Transition.Execute failed : ", err)
-		return nil
+		return nil, err
 	}
 	ti._children = append(ti._children, cti)
-	return tr
+	return tr, nil
 }
 
 func (ti *transitionImpl) patch(
 	patches module.TransactionList,
 	cb transitionCallback,
-) *transition {
+) (*transition, error) {
 	for _, c := range ti._parent._children {
 		if c._mtransition.PatchTransactions().Equal(patches) {
-			return c._newTransition(cb)
+			return c._newTransition(cb), nil
 		}
 	}
 	c := ti._children[len(ti._children)-1]
@@ -192,20 +190,18 @@ func (ti *transitionImpl) transit(
 	txs module.TransactionList,
 	bi module.BlockInfo,
 	cb transitionCallback,
-) *transition {
+) (*transition, error) {
 	cmtr, err := ti._chainContext.sm.CreateTransition(ti._mtransition, txs, bi)
 	if err != nil {
-		log.Println("ServiceManager.CreateTransition failed : ", err)
-		return nil
+		return nil, err
 	}
 	return ti._addChild(cmtr, cb)
 }
 
-func (ti *transitionImpl) propose(bi module.BlockInfo, cb transitionCallback) *transition {
+func (ti *transitionImpl) propose(bi module.BlockInfo, cb transitionCallback) (*transition, error) {
 	cmtr, err := ti._chainContext.sm.ProposeTransition(ti._mtransition, bi)
 	if err != nil {
-		log.Println("ServiceManager.ProposeTransition failed : ", err)
-		return nil
+		return nil, err
 	}
 	return ti._addChild(cmtr, cb)
 }
@@ -264,9 +260,9 @@ func (tr *transition) cancel() bool {
 func (tr *transition) patch(
 	patches module.TransactionList,
 	cb transitionCallback,
-) *transition {
+) (*transition, error) {
 	if tr._ti == nil {
-		return nil
+		return nil, nil
 	}
 	return tr._ti.patch(patches, cb)
 }
@@ -275,16 +271,16 @@ func (tr *transition) transit(
 	txs module.TransactionList,
 	bi module.BlockInfo,
 	cb transitionCallback,
-) *transition {
+) (*transition, error) {
 	if tr._ti == nil {
-		return nil
+		return nil, nil
 	}
 	return tr._ti.transit(txs, bi, cb)
 }
 
-func (tr *transition) propose(bi module.BlockInfo, cb transitionCallback) *transition {
+func (tr *transition) propose(bi module.BlockInfo, cb transitionCallback) (*transition, error) {
 	if tr._ti == nil {
-		return nil
+		return nil, nil
 	}
 	return tr._ti.propose(bi, cb)
 }
