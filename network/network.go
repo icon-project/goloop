@@ -1,13 +1,13 @@
 package network
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"strconv"
 	"strings"
 	"sync"
 
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/metric"
 )
@@ -48,7 +48,7 @@ func NewManager(c module.Chain, nt module.NetworkTransport, initialSeed string, 
 		priority:         make(map[protocolInfo]uint8),
 		pd:               t.pd,
 		log:              newLogger("NetworkManager", channel),
-		mtr:       mtr,
+		mtr:              mtr,
 	}
 
 	//Create default protocolHandler for P2P topology management
@@ -67,7 +67,7 @@ func NewManager(c module.Chain, nt module.NetworkTransport, initialSeed string, 
 		case module.ROLE_VALIDATOR:
 			role.SetFlag(p2pRoleRoot)
 		default:
-			m.log.Println("Warning","NewManager","ignored role", r)
+			m.log.Println("Warning", "NewManager", "ignored role", r)
 		}
 	}
 	m.p2p.setRole(role)
@@ -386,6 +386,8 @@ type Error struct {
 
 func (e *Error) Temporary() bool { return e.IsTemporary }
 
+func (e *Error) Unwrap() error { return e.error }
+
 func NewBroadcastError(err error, bt module.BroadcastType) module.NetworkError {
 	return newNetworkError(err, "broadcast", bt)
 }
@@ -398,8 +400,7 @@ func NewUnicastError(err error, id module.PeerID) module.NetworkError {
 func newNetworkError(err error, op string, opArg interface{}) module.NetworkError {
 	if err != nil {
 		isTemporary := false
-		switch err {
-		case ErrQueueOverflow:
+		if QueueOverflowError.Equals(err) {
 			isTemporary = true
 		}
 		return &Error{err, isTemporary, op, opArg}

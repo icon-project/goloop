@@ -2,27 +2,44 @@ package network
 
 import (
 	"crypto/elliptic"
-	"errors"
 	"math"
 	"os"
 	"time"
+
+	"github.com/icon-project/goloop/common/errors"
+)
+
+const (
+	AlreadyListenedError = errors.CodeNetwork + iota
+	AlreadyClosedError
+	AlreadyDialingError
+	AlreadyRegisteredReactorError
+	AlreadyRegisteredProtocolError
+	NotRegisteredReactorError
+	NotRegisteredProtocolError
+	NotRegisteredRoleError
+	NotAuthorizedError
+	NotAvailableError
+	NotStartedError
+	QueueOverflowError
+	DuplicatedPacketError
 )
 
 var (
-	ErrAlreadyListened           = errors.New("already listened")
-	ErrAlreadyClosed             = errors.New("already closed")
-	ErrAlreadyDialing            = errors.New("already dialing")
-	ErrAlreadyRegisteredReactor  = errors.New("already registered reactor")
-	ErrAlreadyRegisteredProtocol = errors.New("already registered protocol")
-	ErrNotRegisteredReactor      = errors.New("not registered reactor")
-	ErrNotRegisteredProtocol     = errors.New("not registered protocol")
-	ErrNotRegisteredRole         = errors.New("not registered role")
-	ErrNotAuthorized             = errors.New("not authorized")
-	ErrNotAvailable              = errors.New("not available")
-	ErrNotStarted                = errors.New("not run")
-	ErrQueueOverflow             = errors.New("queue overflow")
-	ErrDuplicatedPacket          = errors.New("duplicated Packet")
-	ErrIllegalArgument           = errors.New("illegal argument")
+	ErrAlreadyListened           = errors.NewBase(AlreadyListenedError, "AlreadyListened")
+	ErrAlreadyClosed             = errors.NewBase(AlreadyClosedError, "AlreadyClosed")
+	ErrAlreadyDialing            = errors.NewBase(AlreadyDialingError, "AlreadyDialing")
+	ErrAlreadyRegisteredReactor  = errors.NewBase(AlreadyRegisteredReactorError, "AlreadyRegisteredReactor")
+	ErrAlreadyRegisteredProtocol = errors.NewBase(AlreadyRegisteredProtocolError, "AlreadyRegisteredProtocol")
+	ErrNotRegisteredReactor      = errors.NewBase(NotRegisteredReactorError, "NotRegisteredReactor")
+	ErrNotRegisteredProtocol     = errors.NewBase(NotRegisteredProtocolError, "NotRegisteredProtocol")
+	ErrNotRegisteredRole         = errors.NewBase(NotRegisteredRoleError, "NotRegisteredRole")
+	ErrNotAuthorized             = errors.NewBase(NotAuthorizedError, "NotAuthorized")
+	ErrNotAvailable              = errors.NewBase(NotAvailableError, "NotAvailable")
+	ErrNotStarted                = errors.NewBase(NotStartedError, "NotStarted")
+	ErrQueueOverflow             = errors.NewBase(QueueOverflowError, "QueueOverflow")
+	ErrDuplicatedPacket          = errors.NewBase(DuplicatedPacketError, "DuplicatedPacket")
+	ErrIllegalArgument           = errors.ErrIllegalArgument
 )
 
 var (

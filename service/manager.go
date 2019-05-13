@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/service/scoreresult"
 
 	"github.com/icon-project/goloop/common/errors"
@@ -315,7 +316,9 @@ func (m *manager) SendTransaction(txi interface{}) ([]byte, error) {
 
 	if err := txPool.Add(newTx, true); err == nil {
 		if err = m.txReactor.PropagateTransaction(ProtocolPropagateTransaction, newTx); err != nil {
-			log.Printf("FAIL to propagate tx(%s)", err)
+			if !network.NotAvailableError.Equals(err) {
+				log.Printf("FAIL to propagate tx err=%+v", err)
+			}
 		}
 	} else {
 		return hash, err
