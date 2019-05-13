@@ -172,7 +172,7 @@ func (ctx *Context) sendRequests(wg sync.WaitGroup, client *Client) {
 				log.Panicf("Fail to send TX err=%+v", err)
 			}
 			if r.Error != nil {
-				if r.Error.Code == -32101 {
+				if rpc.ErrorCode(r.Error.Code) == rpc.ErrorCodeTxPoolOverflow {
 					time.Sleep(ctx.delay)
 					continue
 				}
