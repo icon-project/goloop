@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 #   GOCHAIN autostart script
 #
@@ -35,9 +35,11 @@
 #                   Set it as "1" to enable automatic generation of KeySecret
 #                   through user input.
 #
+#   GOCHAIN_LOGFILE (optional)
+#                   Path to Log using 'tee'
+set -e
 
-
-GOCHAIN="./gochain"
+GOCHAIN="gochain"
 
 GOCHAIN_DATA=${GOCHAIN_DATA:-"./data"}
 GOCHAIN_CONFIG=${GOCHAIN_CONFIG:-"./config.json"}
@@ -47,23 +49,23 @@ if [ ! -d ${GOCHAIN_DATA} ] ; then
     mkdir -p ${GOCHAIN_DATA} || exit -1
 fi
 
-GOCHAIN_OPTIONS=(-node_dir "${GOCHAIN_DATA}")
-GOCHAIN_OPTIONS+=(-ee_socket "/tmp/socket")
-GOCHAIN_OPTIONS+=(-db_type goleveldb)
-GOCHAIN_OPTIONS+=(-role 3)
+GOCHAIN_OPTIONS="-chain_dir ${GOCHAIN_DATA}"
+GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS -ee_socket /tmp/socket"
+GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS -db_type goleveldb"
+GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS -role 3"
 
 if [ "${GOCHAIN_GENESIS}" != "" ] ; then
-    GOCHAIN_OPTIONS+=(-genesis "${GOCHAIN_GENESIS}")
+    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS -genesis ${GOCHAIN_GENESIS}"
 fi
 
 if [ "${GOCHAIN_GENESIS_DATA}" != "" ] ; then
-    GOCHAIN_OPTIONS+=(-genesis_data "${GOCHAIN_GENESIS_DATA}")
+    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS -genesis_data ${GOCHAIN_GENESIS_DATA}"
 fi
 
 if [ -r "${GOCHAIN_KEYSTORE}" ] ; then
-    GOCHAIN_OPTIONS+=(-key_store "${GOCHAIN_KEYSTORE}")
+    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS -key_store ${GOCHAIN_KEYSTORE}"
 else
-    GOCHAIN_OPTIONS+=(-save_key_store "${GOCHAIN_KEYSTORE}")
+    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS -save_key_store ${GOCHAIN_KEYSTORE}"
 fi
 
 if [ "${GOCHAIN_KEYAUTO}" == "1" ] ; then
@@ -76,20 +78,27 @@ if [ "${GOCHAIN_KEYAUTO}" == "1" ] ; then
 fi
 
 if [ "${GOCHAIN_KEYSECRET}" != "" ] ; then
-    GOCHAIN_OPTIONS+=(-key_secret "${GOCHAIN_KEYSECRET}")
+    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS -key_secret ${GOCHAIN_KEYSECRET}"
 fi
 
 if [ "${GOCHAIN_ADDRESS}" != "" ] ; then
-    GOCHAIN_OPTIONS+=(-p2p ${GOCHAIN_ADDRESS})
+    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS -p2p ${GOCHAIN_ADDRESS}"
 else
-    GOCHAIN_OPTIONS+=(-p2p "${HOST}:8080")
+    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS -p2p ${HOST}:8080"
 fi
-GOCHAIN_OPTIONS+=(-p2p_listen ":8080")
+GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS -p2p_listen :8080"
 
-if [ -n -r "${GOCHAIN_CONFIG}" ] ; then
+if [ ! -r "${GOCHAIN_CONFIG}" ] ; then
     echo "[!] Generate config path=[${GOCHAIN_CONFIG}]"
-    ${GOCHAIN} "${GOCHAIN_OPTIONS[@]}" \
-        -save ${GOCHAIN_CONFIG} || exit -1
+    ${GOCHAIN} ${GOCHAIN_OPTIONS} -save ${GOCHAIN_CONFIG} || exit 1
 fi
 
-${GOCHAIN} -config ${GOCHAIN_CONFIG} "${GOCHAIN_OPTIONS[@]}"
+if [ "${GOCHAIN_LOGFILE}" != "" ] ; then
+  GOCHAIN_LOGDIR=$(dirname ${GOCHAIN_LOGFILE})
+  if [ ! -d "${GOCHAIN_LOGDIR}" ] ; then
+    mkdir -p ${GOCHAIN_LOGDIR}
+  fi
+  ${GOCHAIN} -config ${GOCHAIN_CONFIG} ${GOCHAIN_OPTIONS} 2>&1 | tee -a ${GOCHAIN_LOGFILE}
+else
+  ${GOCHAIN} -config ${GOCHAIN_CONFIG} ${GOCHAIN_OPTIONS}
+fi

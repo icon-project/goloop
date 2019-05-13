@@ -9,17 +9,19 @@ BIN_DIR = ./bin
 LINUX_BIN_DIR = ./linux
 
 GOBUILD = go build
-GOTEST = go test
 GOBUILD_TAGS =
 GOBUILD_ENVS = CGO_ENABLED=0
 GOBUILD_LDFLAGS =
 GOBUILD_FLAGS = -tags "$(GOBUILD_TAGS)" -ldflags "$(GOBUILD_LDFLAGS)"
-GOBUILD_ENVS_LINUX = $(GOBUILD_ENVS) GOOS=linux GOARCH=amd64 
+GOBUILD_ENVS_LINUX = $(GOBUILD_ENVS) GOOS=linux GOARCH=amd64
+
+GOTEST = go test
+GOTEST_FLAGS = -test.short
 
 # Build flags
 GL_VERSION ?= $(shell git describe --always --tags --dirty)
 GL_TAG ?= latest
-BUILD_INFO = tags($(GOBUILD_TAGS))-$(shell date '+%Y-%m-%d-%H:%M:%S')
+BUILD_INFO = $(shell go env GOOS)/$(shell go env GOARCH) tags($(GOBUILD_TAGS))-$(shell date '+%Y-%m-%d-%H:%M:%S')
 
 #
 # Build scripts for command binaries.
@@ -96,7 +98,7 @@ gochain-image: run-pyexec run-gochain-linux
 	@ docker build -t $(GOCHAIN_IMAGE) $(GOCHAIN_DOCKER_DIR)
 
 test :
-	$(GOTEST) -test.short ./...
+	$(GOBUILD_ENVS) $(GOTEST) $(GOBUILD_FLAGS) ./... $(GOTEST_FLAGS)
 
 .DEFAULT_GOAL := all
 all : $(BUILD_TARGETS)
