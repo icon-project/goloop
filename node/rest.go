@@ -35,6 +35,8 @@ type Rest struct {
 
 // swagger:model SystemView
 type SystemView struct {
+	BuildVersion  string `json:"build_version"`
+	BuildTags     string `json:"build_tags"`
 	Address       string `json:"address"`
 	P2PAddr       string `json:"p2p"`
 	P2PListenAddr string `json:"p2p_listen"`
@@ -495,6 +497,8 @@ func (r *Rest) RegisterSystemHandlers(g *echo.Group) {
 
 func (r *Rest) GetSystem(ctx echo.Context) error {
 	v := &SystemView{
+		BuildVersion:       r.n.cfg.BuildVersion,
+		BuildTags:         r.n.cfg.BuildTags,
 		Address:       r.n.w.Address().String(),
 		P2PAddr:       r.n.nt.Address(),
 		P2PListenAddr: r.n.nt.GetListenAddress(),

@@ -79,6 +79,8 @@ func StringInterfaceMapToJsonRawMessageHookFunc(
 }
 
 func initConfig() {
+	cfg.BuildVersion = version
+	cfg.BuildTags = build
 	if cfg.FilePath != "" {
 		f, err := os.Open(cfg.FilePath)
 		if err != nil {
@@ -276,6 +278,15 @@ func main() {
 	systemCmd := NewSystemCmd(&cfg)
 	statsCmd := NewStatsCmd(&cfg)
 	rootCmd.AddCommand(serverCmd, chainCmd, systemCmd, statsCmd)
+
+	rootCmd.AddCommand(&cobra.Command{
+		Use:   "version",
+		Short: "Print goloop version",
+		Args:  cobra.ExactArgs(0),
+		Run: func(cmd *cobra.Command, args []string) {
+			cmd.Println("goloop version", version, build)
+		},
+	})
 
 	genMdCmd := NewGenerateMarkdownCommand()
 	genMdCmd.Hidden = true

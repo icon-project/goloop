@@ -23,6 +23,10 @@ type NodeConfig struct {
 
 	BaseDir  string `json:"node_dir"`
 	FilePath string `json:"-"` // absolute path
+
+	// build info
+	BuildVersion string `json:"-"`
+	BuildTags    string `json:"-"`
 }
 
 func (c *NodeConfig) ResolveAbsolute(targetPath string) string {
