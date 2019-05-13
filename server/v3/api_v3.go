@@ -37,6 +37,46 @@ func MethodRepository() *jsonrpc.MethodRepository {
 	return mr
 }
 
+// swagger:operation POST /api/v3/{nid}/:getLastBlock v3 getLastBlock
+//
+// icx_getLastBlock
+//
+// icx_getLastBlock
+//
+// ---
+// consumes:
+//   - application/json
+//
+// produces:
+//   - application/json
+//
+// parameters:
+//   - description: getLastBlock
+//     name: getLastBlock
+//     in: body
+//     required: true
+//     schema:
+//       allOf:
+//         - $ref: '#/definitions/JsonRpcRequest'
+//       example:
+//         id: 1001
+//         jsonrpc: "2.0"
+//         method: icx_getLastBlock
+//
+// responses:
+//   200:
+//     description: Success
+//     schema:
+//       allOf:
+//         - $ref: '#/definitions/JsonRpcResult'
+//         - type: object
+//           properties:
+//             result:
+//               $ref: '#/definitions/block'
+//   default:
+//     description: JSON-RPC Error
+//     schema:
+//       $ref: '#/definitions/JsonRpcErrorResponse'
 func getLastBlock(ctx *jsonrpc.Context, _ *jsonrpc.Params) (interface{}, error) {
 	debug := ctx.IncludeDebug()
 
@@ -69,6 +109,52 @@ func getLastBlock(ctx *jsonrpc.Context, _ *jsonrpc.Params) (interface{}, error) 
 	return result, nil
 }
 
+// swagger:operation POST /api/v3/{nid}/:getBlockByHeight v3 getBlockByHeight
+//
+// icx_getBlockByHeight
+//
+// icx_getBlockByHeight
+//
+// ---
+// consumes:
+//   - application/json
+//
+// produces:
+//   - application/json
+//
+// parameters:
+//   - description: getBlockByHeight
+//     name: getBlockByHeight
+//     in: body
+//     required: true
+//     schema:
+//       allOf:
+//         - $ref: '#/definitions/JsonRpcRequest'
+//         - type: object
+//           properties:
+//             params:
+//               $ref: '#/definitions/blockHeightParam'
+//       example:
+//         id: 1001
+//         jsonrpc: "2.0"
+//         method: icx_getBlockByHeight
+//         params:
+//           height: "0x100"
+//
+// responses:
+//   200:
+//     description: Success
+//     schema:
+//       allOf:
+//         - $ref: '#/definitions/JsonRpcResult'
+//         - type: object
+//           properties:
+//             result:
+//               $ref: '#/definitions/block'
+//   default:
+//     description: JSON-RPC Error
+//     schema:
+//       $ref: '#/definitions/JsonRpcErrorResponse'
 func getBlockByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	debug := ctx.IncludeDebug()
 
@@ -108,6 +194,52 @@ func getBlockByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}
 	return result, nil
 }
 
+// swagger:operation POST /api/v3/{nid}/:getBlockByHash v3 getBlockByHash
+//
+// icx_getBlockByHash
+//
+// icx_getBlockByHash
+//
+// ---
+// consumes:
+//   - application/json
+//
+// produces:
+//   - application/json
+//
+// parameters:
+//   - description: getBlockByHash
+//     name: getBlockByHash
+//     in: body
+//     required: true
+//     schema:
+//       allOf:
+//         - $ref: '#/definitions/JsonRpcRequest'
+//         - type: object
+//           properties:
+//             params:
+//               $ref: '#/definitions/blockHashParam'
+//       example:
+//         id: 1001
+//         jsonrpc: "2.0"
+//         method: icx_getBlockByHash
+//         params:
+//           hash: "0x3a317563d4eefa52af7733e1ea68fe29daf77e78c8fb1c66e699b6f35673141e"
+//
+// responses:
+//   200:
+//     description: Success
+//     schema:
+//       allOf:
+//         - $ref: '#/definitions/JsonRpcResult'
+//         - type: object
+//           properties:
+//             result:
+//               $ref: '#/definitions/block'
+//   default:
+//     description: JSON-RPC Error
+//     schema:
+//       $ref: '#/definitions/JsonRpcErrorResponse'
 func getBlockByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	debug := ctx.IncludeDebug()
 
@@ -147,6 +279,43 @@ func getBlockByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, 
 	return result, nil
 }
 
+// swagger:operation POST /api/v3/{nid}/:call v3 call
+//
+// icx_call
+//
+// icx_call
+//
+// ---
+// consumes:
+//   - application/json
+//
+// produces:
+//   - application/json
+//
+// parameters:
+//   - description: call
+//     name: call
+//     in: body
+//     required: true
+//     schema:
+//       allOf:
+//         - $ref: '#/definitions/JsonRpcRequest'
+//         - type: object
+//           properties:
+//             params:
+//               $ref: '#/definitions/callParam'
+//       example:
+//         id: 1001
+//         jsonrpc: "2.0"
+//         method: icx_call
+//
+// responses:
+//   200:
+//     description: Success
+//   default:
+//     description: JSON-RPC Error
+//     schema:
+//       $ref: '#/definitions/JsonRpcErrorResponse'
 func call(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	debug := ctx.IncludeDebug()
 
@@ -172,6 +341,45 @@ func call(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	}
 }
 
+// swagger:operation POST /api/v3/{nid}/:getBalance v3 getBalance
+//
+// icx_getBalance
+//
+// icx_getBalance
+//
+// ---
+// consumes:
+//   - application/json
+//
+// produces:
+//   - application/json
+//
+// parameters:
+//   - description: getBalance
+//     name: getBalance
+//     in: body
+//     required: true
+//     schema:
+//       allOf:
+//         - $ref: '#/definitions/JsonRpcRequest'
+//         - type: object
+//           properties:
+//             params:
+//               $ref: '#/definitions/addressParam'
+//       example:
+//         id: 1001
+//         jsonrpc: "2.0"
+//         method: icx_getBalance
+//         params:
+//           address: "hxb0776ee37f5b45bfaea8cff1d8232fbb6122ec32"
+//
+// responses:
+//   200:
+//     description: Success
+//   default:
+//     description: JSON-RPC Error
+//     schema:
+//       $ref: '#/definitions/JsonRpcErrorResponse'
 func getBalance(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	var param AddressParam
 	debug := ctx.IncludeDebug()
@@ -200,6 +408,45 @@ func getBalance(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, erro
 	return &balance, nil
 }
 
+// swagger:operation POST /api/v3/{nid}/:getScoreApi v3 getScoreApi
+//
+// icx_getScoreApi
+//
+// icx_getScoreApi
+//
+// ---
+// consumes:
+//   - application/json
+//
+// produces:
+//   - application/json
+//
+// parameters:
+//   - description: getScoreApi
+//     name: getScoreApi
+//     in: body
+//     required: true
+//     schema:
+//       allOf:
+//         - $ref: '#/definitions/JsonRpcRequest'
+//         - type: object
+//           properties:
+//             params:
+//               $ref: '#/definitions/scoreAddressParam'
+//       example:
+//         id: 1001
+//         jsonrpc: "2.0"
+//         method: icx_getScoreApi
+//         params:
+//           address: "cxb0776ee37f5b45bfaea8cff1d8232fbb6122ec32"
+//
+// responses:
+//   200:
+//     description: Success
+//   default:
+//     description: JSON-RPC Error
+//     schema:
+//       $ref: '#/definitions/JsonRpcErrorResponse'
 func getScoreApi(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	var param ScoreAddressParam
 	debug := ctx.IncludeDebug()
@@ -227,6 +474,39 @@ func getScoreApi(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, err
 	}
 }
 
+// swagger:operation POST /api/v3/{nid}/:getTotalSupply v3 getTotalSupply
+//
+// icx_getTotalSupply
+//
+// icx_getTotalSupply
+//
+// ---
+// consumes:
+//   - application/json
+//
+// produces:
+//   - application/json
+//
+// parameters:
+//   - description: getTotalSupply
+//     name: getTotalSupply
+//     in: body
+//     required: true
+//     schema:
+//       allOf:
+//         - $ref: '#/definitions/JsonRpcRequest'
+//       example:
+//         id: 1001
+//         jsonrpc: "2.0"
+//         method: icx_getTotalSupply
+//
+// responses:
+//   200:
+//     description: Success
+//   default:
+//     description: JSON-RPC Error
+//     schema:
+//       $ref: '#/definitions/JsonRpcErrorResponse'
 func getTotalSupply(ctx *jsonrpc.Context, _ *jsonrpc.Params) (interface{}, error) {
 	debug := ctx.IncludeDebug()
 	chain, err := ctx.Chain()
@@ -250,6 +530,45 @@ func getTotalSupply(ctx *jsonrpc.Context, _ *jsonrpc.Params) (interface{}, error
 	return &tsValue, nil
 }
 
+// swagger:operation POST /api/v3/{nid}/:getTransactionResult v3 getTransactionResult
+//
+// icx_getTransactionResult
+//
+// icx_getTransactionResult
+//
+// ---
+// consumes:
+//   - application/json
+//
+// produces:
+//   - application/json
+//
+// parameters:
+//   - description: getTransactionResult
+//     name: getTransactionResult
+//     in: body
+//     required: true
+//     schema:
+//       allOf:
+//         - $ref: '#/definitions/JsonRpcRequest'
+//         - type: object
+//           properties:
+//             params:
+//               $ref: '#/definitions/transactionHashParam'
+//       example:
+//         id: 1001
+//         jsonrpc: "2.0"
+//         method: icx_getTransactionResult
+//         params:
+//           txHash: "0xb903239f8543d04b5dc1ba6579132b143087c68db1b2168786408fcbce568238"
+//
+// responses:
+//   200:
+//     description: Success
+//   default:
+//     description: JSON-RPC Error
+//     schema:
+//       $ref: '#/definitions/JsonRpcErrorResponse'
 func getTransactionResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	debug := ctx.IncludeDebug()
 
@@ -294,6 +613,45 @@ func getTransactionResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 	return result, nil
 }
 
+// swagger:operation POST /api/v3/{nid}/:getTransactionByHash v3 getTransactionByHash
+//
+// icx_getTransactionByHash
+//
+// icx_getTransactionByHash
+//
+// ---
+// consumes:
+//   - application/json
+//
+// produces:
+//   - application/json
+//
+// parameters:
+//   - description: getTransactionByHash
+//     name: getTransactionByHash
+//     in: body
+//     required: true
+//     schema:
+//       allOf:
+//         - $ref: '#/definitions/JsonRpcRequest'
+//         - type: object
+//           properties:
+//             params:
+//               $ref: '#/definitions/transactionHashParam'
+//       example:
+//         id: 1001
+//         jsonrpc: "2.0"
+//         method: icx_getTransactionByHash
+//         params:
+//           txHash: "0xb903239f8543d04b5dc1ba6579132b143087c68db1b2168786408fcbce568238"
+//
+// responses:
+//   200:
+//     description: Success
+//   default:
+//     description: JSON-RPC Error
+//     schema:
+//       $ref: '#/definitions/JsonRpcErrorResponse'
 func getTransactionByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	debug := ctx.IncludeDebug()
 
@@ -338,6 +696,43 @@ func getTransactionByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 	return result, nil
 }
 
+// swagger:operation POST /api/v3/{nid}/:sendTransaction v3 sendTransaction
+//
+// icx_sendTransaction
+//
+// icx_sendTransaction
+//
+// ---
+// consumes:
+//   - application/json
+//
+// produces:
+//   - application/json
+//
+// parameters:
+//   - description: sendTransaction
+//     name: sendTransaction
+//     in: body
+//     required: true
+//     schema:
+//       allOf:
+//         - $ref: '#/definitions/JsonRpcRequest'
+//         - type: object
+//           properties:
+//             params:
+//               $ref: '#/definitions/transactionParam'
+//       example:
+//         id: 1001
+//         jsonrpc: "2.0"
+//         method: icx_sendTransaction
+//
+// responses:
+//   200:
+//     description: Success
+//   default:
+//     description: JSON-RPC Error
+//     schema:
+//       $ref: '#/definitions/JsonRpcErrorResponse'
 func sendTransaction(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	debug := ctx.IncludeDebug()
 
@@ -366,6 +761,43 @@ func sendTransaction(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{},
 	return result, nil
 }
 
+// swagger:operation POST /api/v3/{nid}/:getDataByHash extension getDataByHash
+//
+// icx_getDataByHash
+//
+// icx_getDataByHash
+//
+// ---
+// consumes:
+//   - application/json
+//
+// produces:
+//   - application/json
+//
+// parameters:
+//   - description: getDataByHash
+//     name: getDataByHash
+//     in: body
+//     required: true
+//     schema:
+//       allOf:
+//         - $ref: '#/definitions/JsonRpcRequest'
+//         - type: object
+//           properties:
+//             params:
+//               $ref: '#/definitions/dataHashParam'
+//       example:
+//         id: 1001
+//         jsonrpc: "2.0"
+//         method: icx_getDataByHash
+//
+// responses:
+//   200:
+//     description: Success
+//   default:
+//     description: JSON-RPC Error
+//     schema:
+//       $ref: '#/definitions/JsonRpcErrorResponse'
 func getDataByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	debug := ctx.IncludeDebug()
 
@@ -397,6 +829,43 @@ func getDataByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, e
 	return value, nil
 }
 
+// swagger:operation POST /api/v3/{nid}/:getBlockHeaderByHeight extension getBlockHeaderByHeight
+//
+// icx_getBlockHeaderByHeight
+//
+// icx_getBlockHeaderByHeight
+//
+// ---
+// consumes:
+//   - application/json
+//
+// produces:
+//   - application/json
+//
+// parameters:
+//   - description: getBlockHeaderByHeight
+//     name: getBlockHeaderByHeight
+//     in: body
+//     required: true
+//     schema:
+//       allOf:
+//         - $ref: '#/definitions/JsonRpcRequest'
+//         - type: object
+//           properties:
+//             params:
+//               $ref: '#/definitions/blockHeightParam'
+//       example:
+//         id: 1001
+//         jsonrpc: "2.0"
+//         method: icx_getBlockHeaderByHeight
+//
+// responses:
+//   200:
+//     description: Success
+//   default:
+//     description: JSON-RPC Error
+//     schema:
+//       $ref: '#/definitions/JsonRpcErrorResponse'
 func getBlockHeaderByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	debug := ctx.IncludeDebug()
 
@@ -427,6 +896,43 @@ func getBlockHeaderByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (inter
 	return buf.Bytes(), nil
 }
 
+// swagger:operation POST /api/v3/{nid}/:getVotesByHeight extension getVotesByHeight
+//
+// icx_getVotesByHeight
+//
+// icx_getVotesByHeight
+//
+// ---
+// consumes:
+//   - application/json
+//
+// produces:
+//   - application/json
+//
+// parameters:
+//   - description: getVotesByHeight
+//     name: getVotesByHeight
+//     in: body
+//     required: true
+//     schema:
+//       allOf:
+//         - $ref: '#/definitions/JsonRpcRequest'
+//         - type: object
+//           properties:
+//             params:
+//               $ref: '#/definitions/blockHeightParam'
+//       example:
+//         id: 1001
+//         jsonrpc: "2.0"
+//         method: icx_getVotesByHeight
+//
+// responses:
+//   200:
+//     description: Success
+//   default:
+//     description: JSON-RPC Error
+//     schema:
+//       $ref: '#/definitions/JsonRpcErrorResponse'
 func getVotesByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	debug := ctx.IncludeDebug()
 
@@ -452,6 +958,43 @@ func getVotesByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}
 	return votes.Bytes(), nil
 }
 
+// swagger:operation POST /api/v3/{nid}/:getProofForResult extension getProofForResult
+//
+// icx_getProofForResult
+//
+// icx_getProofForResult
+//
+// ---
+// consumes:
+//   - application/json
+//
+// produces:
+//   - application/json
+//
+// parameters:
+//   - description: getProofForResult
+//     name: getProofForResult
+//     in: body
+//     required: true
+//     schema:
+//       allOf:
+//         - $ref: '#/definitions/JsonRpcRequest'
+//         - type: object
+//           properties:
+//             params:
+//               $ref: '#/definitions/proofResultParam'
+//       example:
+//         id: 1001
+//         jsonrpc: "2.0"
+//         method: icx_getProofForResult
+//
+// responses:
+//   200:
+//     description: Success
+//   default:
+//     description: JSON-RPC Error
+//     schema:
+//       $ref: '#/definitions/JsonRpcErrorResponse'
 func getProofForResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	debug := ctx.IncludeDebug()
 

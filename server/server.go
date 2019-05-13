@@ -126,6 +126,13 @@ func (srv *Manager) Start() {
 	// metric
 	srv.e.GET("/metrics", echo.WrapHandler(metric.PromethusExporter()))
 
+	// document: redoc
+	// opts := RedocOpts{
+	// 	SpecURL: "doc/swagger.yaml",
+	// }
+	// srv.e.GET("/doc", Redoc(opts))
+	// srv.e.File("doc/swagger.yaml", "./doc/swagger.yaml")
+
 	// Start server : main loop
 	if err := srv.e.Start(srv.addr); err != nil {
 		srv.e.Logger.Info("shutting down the server")

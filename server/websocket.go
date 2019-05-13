@@ -91,6 +91,29 @@ func (wm *wsSessionManager) StopSessionsForChain(chain module.Chain) {
 	}
 }
 
+// swagger:operation GET /api/v3/:channel/block websocket wsBlock
+//
+// Monitor Block
+//
+// Monitor Block Changes
+//
+// ---
+// consumes:
+//   - application/json
+//
+// produces:
+//   - application/json
+//
+// schemes:
+//   - ws
+//
+// responses:
+//   200:
+//     description: Success
+//   500:
+//     description: Internal Server Error
+//     schema:
+//       $ref: '#/definitions/ErrorResponse'
 func (wm *wsSessionManager) RunBlockSession(ctx echo.Context) error {
 	chain, ok := ctx.Get("chain").(module.Chain)
 	if !ok {
@@ -150,6 +173,29 @@ loop:
 	return err
 }
 
+// swagger:operation GET /api/v3/:channel/event websocket wsEvent
+//
+// Monitor Events
+//
+// Monitor Events
+//
+// ---
+// consumes:
+//   - application/json
+//
+// produces:
+//   - application/json
+//
+// schemes:
+//   - ws
+//
+// responses:
+//   200:
+//     description: Success
+//   500:
+//     description: Internal Server Error
+//     schema:
+//       $ref: '#/definitions/ErrorResponse'
 func (wm *wsSessionManager) RunEventSession(ctx echo.Context) error {
 	chain, ok := ctx.Get("chain").(module.Chain)
 	if !ok {
