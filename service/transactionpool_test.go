@@ -12,15 +12,15 @@ import (
 type mockMonitor struct {
 }
 
-func (m *mockMonitor) OnDropTx(bs int) {
+func (m *mockMonitor) OnDropTx(n int, user bool) {
 	// do nothing
 }
 
-func (m *mockMonitor) OnAddTx(bs int) {
+func (m *mockMonitor) OnAddTx(n int, user bool) {
 	// do nothing
 }
 
-func (m *mockMonitor) OnRemoveTx(bs int) {
+func (m *mockMonitor) OnRemoveTx(n int, user bool) {
 	// do nothing
 }
 

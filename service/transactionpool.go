@@ -19,9 +19,9 @@ const (
 )
 
 type Monitor interface {
-	OnDropTx(bs int)
-	OnAddTx(bs int)
-	OnRemoveTx(bs int)
+	OnDropTx(n int, user bool)
+	OnAddTx(n int, user bool)
+	OnRemoveTx(n int, user bool)
 	OnCommit(id []byte, ts time.Time, d time.Duration)
 }
 
@@ -59,7 +59,8 @@ func (tp *TransactionPool) RemoveOldTXs(bts int64) {
 		tx := iter.Value()
 		if tx.Timestamp() <= bts {
 			tp.list.Remove(iter)
-			tp.monitor.OnDropTx(len(tx.Bytes()))
+			direct := iter.ts != 0
+			tp.monitor.OnDropTx(len(tx.Bytes()), direct)
 		}
 		iter = next
 	}
@@ -129,8 +130,9 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 			defer tp.mutex.Unlock()
 			for _, tx := range txs {
 				if tx != nil {
-					if ok, _ := tp.list.RemoveTx(tx); ok {
-						tp.monitor.OnDropTx(len(tx.Bytes()))
+					if ok, ts := tp.list.RemoveTx(tx); ok {
+						direct := ts != 0
+						tp.monitor.OnDropTx(len(tx.Bytes()), direct)
 					}
 				}
 			}
@@ -165,7 +167,7 @@ func (tp *TransactionPool) Add(tx transaction.Transaction, direct bool) error {
 
 	err := tp.list.Add(tx, direct)
 	if err == nil {
-		tp.monitor.OnAddTx(len(tx.Bytes()))
+		tp.monitor.OnAddTx(len(tx.Bytes()), direct)
 	}
 	return err
 }
@@ -194,7 +196,7 @@ func (tp *TransactionPool) RemoveList(txs module.TransactionList) {
 				duration += now.Sub(time.Unix(0, ts))
 				count += 1
 			}
-			tp.monitor.OnRemoveTx(len(t.Bytes()))
+			tp.monitor.OnRemoveTx(len(t.Bytes()), ts != 0)
 		}
 	}
 

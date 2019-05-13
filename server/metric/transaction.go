@@ -19,6 +19,9 @@ var (
 	msAddTx         = stats.Int64("txpool_add", "Add Transaction", stats.UnitBytes)
 	msRemoveTx      = stats.Int64("txpool_remove", "Remove Transaction", stats.UnitBytes)
 	msDropTx        = stats.Int64("txpool_drop", "Drop Transaction", stats.UnitBytes)
+	msAddUserTx     = stats.Int64("txpool_user_add", "Add User Transaction", stats.UnitBytes)
+	msRemoveUserTx  = stats.Int64("txpool_user_remove", "Remove User Transaction", stats.UnitBytes)
+	msDropUserTx    = stats.Int64("txpool_user_drop", "Drop User Transaction", stats.UnitBytes)
 	msFinLatency    = stats.Int64("txlatency_finalize", "Finalize Transaction Latency", stats.UnitMilliseconds)
 	msCommitLatency = stats.Int64("txlatency_commit", "Commit Transaction Latency", stats.UnitMilliseconds)
 	mkTxType        = NewMetricKey("tx_type")
@@ -32,6 +35,12 @@ func RegisterTransaction() {
 	RegisterMetricView(msRemoveTx, view.Sum(), txPoolMks)
 	RegisterMetricView(msDropTx, view.Count(), txPoolMks)
 	RegisterMetricView(msDropTx, view.Sum(), txPoolMks)
+	RegisterMetricView(msAddUserTx, view.Count(), txPoolMks)
+	RegisterMetricView(msAddUserTx, view.Sum(), txPoolMks)
+	RegisterMetricView(msRemoveUserTx, view.Count(), txPoolMks)
+	RegisterMetricView(msRemoveUserTx, view.Sum(), txPoolMks)
+	RegisterMetricView(msDropUserTx, view.Count(), txPoolMks)
+	RegisterMetricView(msDropUserTx, view.Sum(), txPoolMks)
 	RegisterMetricView(msFinLatency, view.LastValue(), txPoolMks)
 	RegisterMetricView(msCommitLatency, view.LastValue(), txPoolMks)
 }
@@ -47,16 +56,25 @@ type TxMetric struct {
 	commits map[string]*commitRecord
 }
 
-func (c *TxMetric) OnAddTx(n int) {
+func (c *TxMetric) OnAddTx(n int, user bool) {
 	stats.Record(c.context, msAddTx.M(int64(n)))
+	if user {
+		stats.Record(c.context, msAddUserTx.M(int64(n)))
+	}
 }
 
-func (c *TxMetric) OnRemoveTx(n int) {
+func (c *TxMetric) OnRemoveTx(n int, user bool) {
 	stats.Record(c.context, msRemoveTx.M(int64(n)))
+	if user {
+		stats.Record(c.context, msRemoveUserTx.M(int64(n)))
+	}
 }
 
-func (c *TxMetric) OnDropTx(n int) {
+func (c *TxMetric) OnDropTx(n int, user bool) {
 	stats.Record(c.context, msDropTx.M(int64(n)))
+	if user {
+		stats.Record(c.context, msDropUserTx.M(int64(n)))
+	}
 }
 
 func (c *TxMetric) OnFinalize(hash []byte, ts time.Time) {
