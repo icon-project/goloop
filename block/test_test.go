@@ -639,11 +639,11 @@ func (sm *testServiceManager) PatchTransition(transition module.Transition, patc
 	return tr
 }
 
-func (sm *testServiceManager) Finalize(transition module.Transition, opt int) {
+func (sm *testServiceManager) Finalize(transition module.Transition, opt int) error {
 	var tr *testTransition
 	var ok bool
 	if tr, ok = transition.(*testTransition); !ok {
-		return
+		return errors.New("invalid assertion. not testTransition")
 	}
 	if opt&module.FinalizeNormalTransaction != 0 {
 		sm.bucket.put(tr.normalTransactions)
@@ -654,6 +654,7 @@ func (sm *testServiceManager) Finalize(transition module.Transition, opt int) {
 	if opt&module.FinalizeResult != 0 {
 		sm.bucket.put(tr.NextValidators())
 	}
+	return nil
 }
 
 func (sm *testServiceManager) TransactionFromBytes(b []byte, blockVersion int) (module.Transaction, error) {

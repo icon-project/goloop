@@ -434,20 +434,26 @@ func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, 
 	return t.executeTxsSequential(l, ctx, rctBuf)
 }
 
-func (t *transition) finalizeNormalTransaction() {
-	t.normalTransactions.Flush()
+func (t *transition) finalizeNormalTransaction() error {
+	return t.normalTransactions.Flush()
 }
 
-func (t *transition) finalizePatchTransaction() {
-	t.patchTransactions.Flush()
+func (t *transition) finalizePatchTransaction() error {
+	return t.patchTransactions.Flush()
 }
 
-func (t *transition) finalizeResult() {
+func (t *transition) finalizeResult() error {
 	startTS := time.Now()
-	t.worldSnapshot.Flush()
+	if err := t.worldSnapshot.Flush(); err != nil {
+		return err
+	}
 	worldTS := time.Now()
-	t.patchReceipts.Flush()
-	t.normalReceipts.Flush()
+	if err := t.patchReceipts.Flush(); err != nil {
+		return err
+	}
+	if err := t.normalReceipts.Flush(); err != nil {
+		return err
+	}
 	t.parent = nil
 	finalTS := time.Now()
 
@@ -465,6 +471,7 @@ func (t *transition) finalizeResult() {
 
 	log.Printf("finalizeResult() total=%s world=%s receipts=%s",
 		finalTS.Sub(startTS), worldTS.Sub(startTS), finalTS.Sub(worldTS))
+	return nil
 }
 
 func (t *transition) cancelExecution() bool {

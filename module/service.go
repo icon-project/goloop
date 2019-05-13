@@ -231,7 +231,7 @@ type ServiceManager interface {
 	// Finalize finalizes data related to the transition. It usually stores
 	// data to a persistent storage. opt indicates which data are finalized.
 	// It should be called for every transition.
-	Finalize(transition Transition, opt int)
+	Finalize(transition Transition, opt int) error
 
 	// TransactionFromBytes returns a Transaction instance from bytes.
 	TransactionFromBytes(b []byte, blockVersion int) (Transaction, error)

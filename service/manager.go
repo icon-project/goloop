@@ -195,27 +195,36 @@ func (m *manager) PatchTransition(t module.Transition, patchTxList module.Transa
 // Finalize finalizes data related to the transition. It usually stores
 // data to a persistent storage. opt indicates which data are finalized.
 // It should be called for every transition.
-func (m *manager) Finalize(t module.Transition, opt int) {
+func (m *manager) Finalize(t module.Transition, opt int) error {
 	if tst, ok := t.(*transition); ok {
 		if opt&module.FinalizeNormalTransaction == module.FinalizeNormalTransaction {
-			tst.finalizeNormalTransaction()
+			if err := tst.finalizeNormalTransaction(); err != nil {
+				return err
+			}
 			// Because transactionlist for transition is made only through peer and SendTransaction() call
 			// transactionlist has slice of transactions in case that finalize() is called
 			m.normalTxPool.RemoveList(tst.normalTransactions)
 			m.normalTxPool.RemoveOldTXs(tst.bi.Timestamp() - transaction.ConfigTXTimestampBackwardMargin)
 		}
 		if opt&module.FinalizePatchTransaction == module.FinalizePatchTransaction {
-			tst.finalizePatchTransaction()
+			if err := tst.finalizePatchTransaction(); err != nil {
+				return err
+			}
 			m.patchTxPool.RemoveList(tst.patchTransactions)
 			m.patchTxPool.RemoveOldTXs(tst.bi.Timestamp() - transaction.ConfigTXTimestampBackwardMargin)
 		}
 		if opt&module.FinalizeResult == module.FinalizeResult {
-			tst.finalizeResult()
+			if err := tst.finalizeResult(); err != nil {
+				return err
+			}
 			now := time.Now()
 			m.patchMetric.OnFinalize(tst.patchTransactions.Hash(), now)
 			m.normalMetric.OnFinalize(tst.normalTransactions.Hash(), now)
 		}
+	} else {
+		panic("FAIL type assertion. Not transition pointer type")
 	}
+	return nil
 }
 
 // TransactionFromBytes returns a Transaction instance from bytes.
@@ -439,9 +448,6 @@ type blockInfo struct {
 	timestamp int64
 }
 
-func newBlockInfo(h, ts int64) *blockInfo {
-	return &blockInfo{height: h, timestamp: ts}
-}
 func (bi *blockInfo) Height() int64 {
 	return bi.height
 }
