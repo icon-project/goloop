@@ -1,4 +1,4 @@
-package main
+package node
 
 import (
 	"encoding/json"
@@ -33,6 +33,7 @@ type Rest struct {
 	n *Node
 }
 
+// swagger:model SystemView
 type SystemView struct {
 	Address       string `json:"address"`
 	P2PAddr       string `json:"p2p"`
@@ -44,6 +45,7 @@ type StatsView struct {
 	Timestamp time.Time
 }
 
+// swagger:model JoinChainParam
 type JoinChainParam struct {
 	NID    int    `json:"nid"`
 	DBType string `json:"db_type"`
@@ -57,6 +59,7 @@ type JoinChainParam struct {
 	Genesis json.RawMessage `json:"genesis"`
 }
 
+// swagger:model ChainView
 type ChainView struct {
 	NID       int    `json:"NID"`
 	State     string `json:"State"`
@@ -64,6 +67,7 @@ type ChainView struct {
 	LastError string `json:"LastError"`
 }
 
+// swagger:model ChainInspectView
 type ChainInspectView struct {
 	*ChainView
 	Genesis json.RawMessage        `json:"Genesis"`
@@ -163,6 +167,32 @@ func (r *Rest) ChainInjector(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
+// swagger:operation GET /chains chain ChainList
+//
+// List chains
+//
+// Returns a list of chains
+//
+// ---
+// consumes:
+// - application/json
+//
+// produces:
+// - application/json
+//
+// responses:
+//   200:
+//     description: Success
+//     schema:
+//       type: array
+//       items:
+//         "$ref": "#/definitions/ChainView"
+//   204:
+//     description: No Content
+//   500:
+//     description: Internal Server Error
+//     schema:
+//       $ref: '#/definitions/ErrorResponse'
 func (r *Rest) GetChains(ctx echo.Context) error {
 	l := make([]*ChainView, 0)
 	for _, c := range r.n.GetChains() {
@@ -211,6 +241,26 @@ func GetFileMultipart(ctx echo.Context, fieldname string) ([]byte, error) {
 	return b, nil
 }
 
+// swagger:operation POST /chains chain joinChain
+//
+// Join chain
+//
+// Join chain
+//
+// ---
+// consumes:
+// - application/json
+//
+// produces:
+// - application/json
+//
+// responses:
+//   200:
+//     description: Success
+//   500:
+//     description: Internal Server Error
+//     schema:
+//       $ref: '#/definitions/ErrorResponse'
 func (r *Rest) JoinChain(ctx echo.Context) error {
 	var err error
 	p := &JoinChainParam{}
@@ -252,6 +302,42 @@ var (
 	defaultJsonTemplate = NewJsonTemplate("default")
 )
 
+// swagger:operation GET /chains/{nid} chain getChain
+//
+// Get chain
+//
+// Get chain
+//
+// ---
+// consumes:
+// - application/json
+//
+// produces:
+// - application/json
+//
+// parameters:
+//   - name: nid
+//     description: chain network id
+//     in: path
+//     type: string
+//     required: true
+//
+// responses:
+//   200:
+//     description: Success
+//     schema:
+//       $ref: '#/definitions/ChainInspectView'
+//   404:
+//     description: Not Found
+//     schema:
+//       $ref: '#/definitions/ErrorResponse'
+//     examples:
+//       application/json:
+//         message: "Not Found : {nid}"
+//   500:
+//     description: Internal Server Error
+//     schema:
+//       $ref: '#/definitions/ErrorResponse'
 func (r *Rest) GetChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(module.Chain)
 	v := NewChainInspectView(c)
@@ -263,6 +349,26 @@ func (r *Rest) GetChain(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, v)
 }
 
+// swagger:operation DELETE /chains/{nid} chain leaveChain
+//
+// Leave chain
+//
+// Leave chain
+//
+// ---
+// consumes:
+// - application/json
+//
+// produces:
+// - application/json
+//
+// responses:
+//   200:
+//     description: Success
+//   500:
+//     description: Internal Server Error
+//     schema:
+//       $ref: '#/definitions/ErrorResponse'
 func (r *Rest) LeaveChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(module.Chain)
 	if err := r.n.LeaveChain(c.NID()); err != nil {
@@ -271,6 +377,26 @@ func (r *Rest) LeaveChain(ctx echo.Context) error {
 	return ctx.String(http.StatusOK, "OK")
 }
 
+// swagger:operation POST /chains/{nid}/start chain startChain
+//
+// Start chain
+//
+// Start chain
+//
+// ---
+// consumes:
+// - application/json
+//
+// produces:
+// - application/json
+//
+// responses:
+//   200:
+//     description: Success
+//   500:
+//     description: Internal Server Error
+//     schema:
+//       $ref: '#/definitions/ErrorResponse'
 func (r *Rest) StartChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(module.Chain)
 	if err := r.n.StartChain(c.NID()); err != nil {
@@ -279,6 +405,26 @@ func (r *Rest) StartChain(ctx echo.Context) error {
 	return ctx.String(http.StatusOK, "OK")
 }
 
+// swagger:operation POST /chains/{nid}/stop chain stopChain
+//
+// Stop chain
+//
+// Stop chain
+//
+// ---
+// consumes:
+// - application/json
+//
+// produces:
+// - application/json
+//
+// responses:
+//   200:
+//     description: Success
+//   500:
+//     description: Internal Server Error
+//     schema:
+//       $ref: '#/definitions/ErrorResponse'
 func (r *Rest) StopChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(module.Chain)
 	if err := r.n.StopChain(c.NID()); err != nil {
@@ -287,6 +433,26 @@ func (r *Rest) StopChain(ctx echo.Context) error {
 	return ctx.String(http.StatusOK, "OK")
 }
 
+// swagger:operation POST /chains/{nid}/reset chain resetChain
+//
+// Reset chain
+//
+// Reset chain
+//
+// ---
+// consumes:
+// - application/json
+//
+// produces:
+// - application/json
+//
+// responses:
+//   200:
+//     description: Success
+//   500:
+//     description: Internal Server Error
+//     schema:
+//       $ref: '#/definitions/ErrorResponse'
 func (r *Rest) ResetChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(module.Chain)
 	if err := r.n.ResetChain(c.NID()); err != nil {
@@ -295,6 +461,26 @@ func (r *Rest) ResetChain(ctx echo.Context) error {
 	return ctx.String(http.StatusOK, "OK")
 }
 
+// swagger:operation POST /chains/{nid}/verify chain verifyChain
+//
+// Verify chain
+//
+// Verify chain
+//
+// ---
+// consumes:
+// - application/json
+//
+// produces:
+// - application/json
+//
+// responses:
+//   200:
+//     description: Success
+//   500:
+//     description: Internal Server Error
+//     schema:
+//       $ref: '#/definitions/ErrorResponse'
 func (r *Rest) VerifyChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(module.Chain)
 	if err := r.n.VerifyChain(c.NID()); err != nil {
@@ -371,7 +557,7 @@ func (r *Rest) StreamStats(ctx echo.Context) error {
 
 func (r *Rest) ResponseStatsView(resp *echo.Response) error {
 	v := StatsView{
-		Chains: make([]map[string]interface{}, 0),
+		Chains:    make([]map[string]interface{}, 0),
 		Timestamp: time.Now(),
 	}
 	for _, c := range r.n.GetChains() {
@@ -382,7 +568,7 @@ func (r *Rest) ResponseStatsView(resp *echo.Response) error {
 		}
 	}
 	if err := json.NewEncoder(resp).Encode(&v); err != nil {
-		if EqualsSyscallErrno(err,syscall.EPIPE){
+		if EqualsSyscallErrno(err, syscall.EPIPE) {
 			//ignore 'write: broken pipe' error
 			//close by client
 			return nil
@@ -395,7 +581,7 @@ func (r *Rest) ResponseStatsView(resp *echo.Response) error {
 func EqualsSyscallErrno(err error, sen syscall.Errno) bool {
 	if oe, ok := err.(*net.OpError); ok {
 		if se, ok := oe.Err.(*os.SyscallError); ok {
-			if en, ok := se.Err.(syscall.Errno); ok && en == sen{
+			if en, ok := se.Err.(syscall.Errno); ok && en == sen {
 				return true
 			}
 		}

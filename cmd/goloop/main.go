@@ -22,6 +22,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/wallet"
+	"github.com/icon-project/goloop/node"
 )
 
 const (
@@ -29,7 +30,7 @@ const (
 )
 
 type GoLoopConfig struct {
-	NodeConfig
+	node.NodeConfig
 
 	KeyStoreData json.RawMessage `json:"key_store"`
 	Key          []byte          `json:"key,omitempty"`
@@ -266,7 +267,7 @@ func main() {
 		prefix := fmt.Sprintf("%x|--|", w.Address().ID()[0:2])
 		log.SetPrefix(prefix)
 
-		n := NewNode(w, &cfg.NodeConfig)
+		n := node.NewNode(w, &cfg.NodeConfig)
 		n.Start()
 	}
 	serverCmd.AddCommand(startCmd)

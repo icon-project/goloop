@@ -17,11 +17,12 @@ import (
 
 	"github.com/icon-project/goloop/chain"
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/node"
 )
 
 var (
 	genesisZip, genesisPath string
-	joinChainParam          JoinChainParam
+	joinChainParam          node.JoinChainParam
 )
 
 func JsonIntend(v interface{}) (string, error) {
@@ -37,7 +38,7 @@ func JsonIntend(v interface{}) (string, error) {
 	return string(buf.Bytes()), nil
 }
 
-func GetUnixDomainSockHttpClient(cfg *GoLoopConfig) *UnixDomainSockHttpClient {
+func GetUnixDomainSockHttpClient(cfg *GoLoopConfig) *node.UnixDomainSockHttpClient {
 	if cfg.CliSocket == "" {
 		if cfg.priK == nil {
 			log.Panicf("fail to using default CliSocket")
@@ -46,7 +47,7 @@ func GetUnixDomainSockHttpClient(cfg *GoLoopConfig) *UnixDomainSockHttpClient {
 		cfg.FillEmpty(addr)
 	}
 	cliSocket := cfg.ResolveAbsolute(cfg.CliSocket)
-	return NewUnixDomainSockHttpClient(cliSocket)
+	return node.NewUnixDomainSockHttpClient(cliSocket)
 }
 
 func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
@@ -61,8 +62,8 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 		Short: "List chains",
 		Run: func(cmd *cobra.Command, args []string) {
 			hc := GetUnixDomainSockHttpClient(cfg)
-			l := make([]*ChainView, 0)
-			resp, err := hc.Get(UrlChain, &l)
+			l := make([]*node.ChainView, 0)
+			resp, err := hc.Get(node.UrlChain, &l)
 			if err != nil {
 				fmt.Println(err, resp)
 				return
@@ -91,7 +92,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 			var resp *http.Response
 
 			if len(genesisZip) > 0 {
-				resp, err = hc.PostWithFile(UrlChain, &joinChainParam, "genesisZip", genesisZip)
+				resp, err = hc.PostWithFile(node.UrlChain, &joinChainParam, "genesisZip", genesisZip)
 			} else if len(genesisPath) > 0 {
 				buf := bytes.NewBuffer(nil)
 				err = chain.WriteGenesisStorageFromPath(buf, genesisPath)
@@ -99,7 +100,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 					fmt.Println(err)
 					return
 				}
-				resp, err = hc.PostWithReader(UrlChain, &joinChainParam, "genesisZip", buf)
+				resp, err = hc.PostWithReader(node.UrlChain, &joinChainParam, "genesisZip", buf)
 			} else {
 				fmt.Println("There is no genesis")
 				return
@@ -131,7 +132,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 		DisableFlagsInUseLine: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			hc := GetUnixDomainSockHttpClient(cfg)
-			resp, err := hc.Delete(UrlChain + "/" + args[0])
+			resp, err := hc.Delete(node.UrlChain + "/" + args[0])
 			if err != nil {
 				fmt.Println(err, resp)
 				return
@@ -154,13 +155,13 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 			hc := GetUnixDomainSockHttpClient(cfg)
 			format := cmd.Flag("format").Value.String()
 			var v interface{}
-			v = ChainInspectView{}
+			v = node.ChainInspectView{}
 			params := &url.Values{}
 			if format != "" {
 				v = make(map[string]interface{})
 				params.Add("format", format)
 			}
-			resp, err := hc.Get(UrlChain+"/"+args[0], &v, params)
+			resp, err := hc.Get(node.UrlChain+"/"+args[0], &v, params)
 			if err != nil {
 				fmt.Println(err, resp)
 				return
@@ -182,7 +183,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 		DisableFlagsInUseLine: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			hc := GetUnixDomainSockHttpClient(cfg)
-			resp, err := hc.Post(UrlChain + "/" + args[0] + "/start")
+			resp, err := hc.Post(node.UrlChain + "/" + args[0] + "/start")
 			if err != nil {
 				fmt.Println(err, resp)
 				return
@@ -203,7 +204,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 		DisableFlagsInUseLine: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			hc := GetUnixDomainSockHttpClient(cfg)
-			resp, err := hc.Post(UrlChain + "/" + args[0] + "/stop")
+			resp, err := hc.Post(node.UrlChain + "/" + args[0] + "/stop")
 			if err != nil {
 				fmt.Println(err, resp)
 				return
@@ -224,7 +225,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 		DisableFlagsInUseLine: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			hc := GetUnixDomainSockHttpClient(cfg)
-			resp, err := hc.Post(UrlChain + "/" + args[0] + "/reset")
+			resp, err := hc.Post(node.UrlChain + "/" + args[0] + "/reset")
 			if err != nil {
 				fmt.Println(err, resp)
 				return
@@ -245,7 +246,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 		DisableFlagsInUseLine: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			hc := GetUnixDomainSockHttpClient(cfg)
-			resp, err := hc.Post(UrlChain + "/" + args[0] + "/verify")
+			resp, err := hc.Post(node.UrlChain + "/" + args[0] + "/verify")
 			if err != nil {
 				fmt.Println(err, resp)
 				return
@@ -271,13 +272,13 @@ func NewSystemCmd(cfg *GoLoopConfig) *cobra.Command {
 			hc := GetUnixDomainSockHttpClient(cfg)
 			format := cmd.Flag("format").Value.String()
 			var v interface{}
-			v = SystemView{}
+			v = node.SystemView{}
 			params := &url.Values{}
 			if format != "" {
 				v = make(map[string]interface{})
 				params.Add("format", format)
 			}
-			resp, err := hc.Get(UrlSystem, &v, params)
+			resp, err := hc.Get(node.UrlSystem, &v, params)
 			if err != nil {
 				fmt.Println(err, resp)
 				return
@@ -303,9 +304,9 @@ var (
 	intervalSec int
 )
 
-func UpdateCuiByStatsViewStream(g *gocui.Gui) StreamCallbackFunc {
+func UpdateCuiByStatsViewStream(g *gocui.Gui) node.StreamCallbackFunc {
 	return func(respPtr interface{}) error {
-		sv := respPtr.(*StatsView)
+		sv := respPtr.(*node.StatsView)
 		cuiView, err := g.View("main")
 		if err != nil {
 			return err
@@ -325,7 +326,7 @@ func UpdateCuiByStatsViewStream(g *gocui.Gui) StreamCallbackFunc {
 	}
 }
 
-func StatsViewToTable(v *StatsView, maxColWidth uint) *uitable.Table {
+func StatsViewToTable(v *node.StatsView, maxColWidth uint) *uitable.Table {
 	thAlias := []interface{}{
 		"Chain",
 		"Height",
@@ -376,7 +377,7 @@ func NewStatsCmd(cfg *GoLoopConfig) *cobra.Command {
 		DisableFlagsInUseLine: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			hc := GetUnixDomainSockHttpClient(cfg)
-			v := StatsView{}
+			v := node.StatsView{}
 			params := &url.Values{}
 			params.Add("interval", fmt.Sprint(intervalSec))
 
@@ -384,13 +385,13 @@ func NewStatsCmd(cfg *GoLoopConfig) *cobra.Command {
 			var err error
 			if noStream {
 				params.Add("stream", "false")
-				resp, err = hc.Get(UrlStats, &v, params)
+				resp, err = hc.Get(node.UrlStats, &v, params)
 				cmd.Println(v.Timestamp)
 				table := StatsViewToTable(&v, 50)
 				cmd.Println(table)
 			} else {
 				g, guiTermCh := NewCui()
-				resp, err = hc.Stream(UrlStats, nil, &v, UpdateCuiByStatsViewStream(g), guiTermCh, params)
+				resp, err = hc.Stream(node.UrlStats, nil, &v, UpdateCuiByStatsViewStream(g), guiTermCh, params)
 				TermGui(g, guiTermCh)
 			}
 			if err != nil {

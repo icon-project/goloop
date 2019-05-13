@@ -1,4 +1,4 @@
-package main
+package node
 
 import (
 	"encoding/json"
@@ -21,55 +21,6 @@ import (
 	"github.com/icon-project/goloop/server/metric"
 	"github.com/icon-project/goloop/service/eeproxy"
 )
-
-const (
-	ChainConfigFileName     = "config.json"
-	ChainGenesisZipFileName = "genesis.zip"
-)
-
-type NodeConfig struct {
-	//static
-	CliSocket     string `json:"node_sock"` //relative path
-	P2PAddr       string `json:"p2p"`
-	P2PListenAddr string `json:"p2p_listen"`
-	RPCAddr       string `json:"rpc_addr"`
-	EESocket      string `json:"ee_socket"`
-	EEInstances   int    `json:"ee_instances"`
-
-	BaseDir  string `json:"node_dir"`
-	FilePath string `json:"-"` //absolute path
-}
-
-func (c *NodeConfig) ResolveAbsolute(targetPath string) string {
-	if filepath.IsAbs(targetPath) {
-		return targetPath
-	}
-	if c.FilePath == "" {
-		r, _ := filepath.Abs(targetPath)
-		return r
-	}
-	return filepath.Clean(path.Join(filepath.Dir(c.FilePath), targetPath))
-}
-
-func (c *NodeConfig) ResolveRelative(targetPath string) string {
-	absPath, _ := filepath.Abs(targetPath)
-	base := filepath.Dir(c.FilePath)
-	base, _ = filepath.Abs(base)
-	r, _ := filepath.Rel(base, absPath)
-	return r
-}
-
-func (c *NodeConfig) FillEmpty(addr module.Address) {
-	if c.BaseDir == "" {
-		c.BaseDir = path.Join(".", ".chain", addr.String())
-	}
-	if c.CliSocket == "" {
-		c.CliSocket = path.Join(cfg.BaseDir, "cli.sock")
-	}
-	if c.EESocket == "" {
-		c.EESocket = path.Join(cfg.BaseDir, "ee.sock")
-	}
-}
 
 type Node struct {
 	w   module.Wallet
@@ -142,7 +93,7 @@ func (n *Node) _remove(c module.Chain) error {
 }
 
 func (n *Node) ChainDir(NID int) string {
-	nodeDir := n.cfg.ResolveAbsolute(cfg.BaseDir)
+	nodeDir := n.cfg.ResolveAbsolute(n.cfg.BaseDir)
 	chainDir := path.Join(nodeDir, strconv.FormatInt(int64(NID), 16))
 	return chainDir
 }
@@ -184,7 +135,7 @@ func (n *Node) Stop() {
 	}
 }
 
-//TODO [TBD] using JoinChainParam struct
+// TODO [TBD] using JoinChainParam struct
 func (n *Node) JoinChain(
 	NID int,
 	seed string,
@@ -220,7 +171,7 @@ func (n *Node) JoinChain(
 		SeedAddr:       seed,
 		Role:           role,
 		GenesisStorage: gs,
-		//GenesisDataPath: path.Join(chainDir, "genesis"),
+		// GenesisDataPath: path.Join(chainDir, "genesis"),
 		ConcurrencyLevel: concurrencyLevel,
 		FilePath:         cfgFile,
 	}
@@ -359,7 +310,7 @@ func NewNode(
 		cliSrv: cliSrv,
 	}
 
-	//Load chains
+	// Load chains
 	nodeDir := cfg.ResolveAbsolute(cfg.BaseDir)
 	if err := os.MkdirAll(nodeDir, 0700); err != nil {
 		log.Panicf("Fail to create directory %s err=%+v", cfg.BaseDir, err)
