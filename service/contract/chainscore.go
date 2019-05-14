@@ -780,24 +780,6 @@ func (s *ChainScore) Ex_getMaxStepLimit(contextType string) (int64, error) {
 	return stepLimitDB.Get(contextType).Int64(), nil
 }
 
-type curScore struct {
-	Status       string `json:"status"`
-	DeployTxHash string `json:"deployTxHash"`
-	AuditTxHash  string `json:"auditTxHash"`
-}
-
-type nextScore struct {
-	Status       string `json:"status"`
-	DeployTxHash string `json:"deployTxHash"`
-}
-
-type scoreStatus struct {
-	Current  *curScore  `json:"current,omitempty"`
-	Next     *nextScore `json:"next,omitempty"`
-	Blocked  string     `json:"blocked"`
-	Disabled string     `json:"disabled"`
-}
-
 func (s *ChainScore) Ex_getScoreStatus(address module.Address) (map[string]interface{}, error) {
 	stringStatus := func(s state.ContractState) string {
 		var status string
