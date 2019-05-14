@@ -4,16 +4,6 @@
 //
 // authentication
 //
-// # Errors
-//
-//    The API uses standard HTTP status codes to indicate the success or failure of the API call.
-//    The body of the response will be JSON in the following format:
-//
-//    ```
-//    {
-//      "message": "page not found"
-//    }
-//    ```
 // Consumes:
 // - application/json
 //
