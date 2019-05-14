@@ -155,23 +155,29 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 			hc := GetUnixDomainSockHttpClient(cfg)
 			format := cmd.Flag("format").Value.String()
 			var v interface{}
-			v = node.ChainInspectView{}
 			params := &url.Values{}
-			if format != "" {
-				v = make(map[string]interface{})
+			if format == "" {
+				v = new(node.ChainInspectView)
+			}else{
+				v = new(string)
 				params.Add("format", format)
 			}
-			resp, err := hc.Get(node.UrlChain+"/"+args[0], &v, params)
+			resp, err := hc.Get(node.UrlChain+"/"+args[0], v, params)
 			if err != nil {
 				fmt.Println(err, resp)
 				return
 			}
-			s, err := JsonIntend(&v)
-			if err != nil {
-				fmt.Println(err, resp)
-				return
+			if format == "" {
+				s, err := JsonIntend(v)
+				if err != nil {
+					fmt.Println(err, resp)
+					return
+				}
+				fmt.Println(s)
+			} else {
+				s := v.(*string)
+				fmt.Println(*s)
 			}
-			fmt.Println(s)
 		},
 	}
 	inspectCmd.Flags().StringP("format", "f", "", "Format the output using the given Go template")
@@ -272,10 +278,11 @@ func NewSystemCmd(cfg *GoLoopConfig) *cobra.Command {
 			hc := GetUnixDomainSockHttpClient(cfg)
 			format := cmd.Flag("format").Value.String()
 			var v interface{}
-			v = node.SystemView{}
 			params := &url.Values{}
-			if format != "" {
-				v = make(map[string]interface{})
+			if format == "" {
+				v = new(node.SystemView)
+			}else{
+				v = new(string)
 				params.Add("format", format)
 			}
 			resp, err := hc.Get(node.UrlSystem, &v, params)
@@ -283,12 +290,17 @@ func NewSystemCmd(cfg *GoLoopConfig) *cobra.Command {
 				fmt.Println(err, resp)
 				return
 			}
-			s, err := JsonIntend(&v)
-			if err != nil {
-				fmt.Println(err, resp)
-				return
+			if format == "" {
+				s, err := JsonIntend(v)
+				if err != nil {
+					fmt.Println(err, resp)
+					return
+				}
+				fmt.Println(s)
+			} else {
+				s := v.(*string)
+				fmt.Println(*s)
 			}
-			fmt.Println(s)
 		},
 	}
 	rootCmd.Flags().StringP("format", "f", "", "Format the output using the given Go template")

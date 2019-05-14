@@ -346,7 +346,7 @@ func (r *Rest) GetChain(ctx echo.Context) error {
 
 	format := ctx.QueryParam("format")
 	if format != "" {
-		return defaultJsonTemplate.JSON(format, v, ctx.Response())
+		return defaultJsonTemplate.Response(format, v, ctx.Response())
 	}
 	return ctx.JSON(http.StatusOK, v)
 }
@@ -506,7 +506,7 @@ func (r *Rest) GetSystem(ctx echo.Context) error {
 
 	format := ctx.QueryParam("format")
 	if format != "" {
-		return defaultJsonTemplate.JSON(format, v, ctx.Response())
+		return defaultJsonTemplate.Response(format, v, ctx.Response())
 	}
 	return ctx.JSON(http.StatusOK, v)
 }
@@ -609,7 +609,7 @@ func NewJsonTemplate(name string) *JsonTemplate {
 	return tmpl
 }
 
-func (t *JsonTemplate) JSON(format string, v interface{}, resp *echo.Response) error {
+func (t *JsonTemplate) Response(format string, v interface{}, resp *echo.Response) error {
 	nt, err := t.Clone()
 	if err != nil {
 		return err
@@ -624,7 +624,9 @@ func (t *JsonTemplate) JSON(format string, v interface{}, resp *echo.Response) e
 		log.Println(err)
 		return err
 	}
-	resp.Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSONCharsetUTF8)
+
+	//resp.Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSONCharsetUTF8)
+	resp.Header().Set(echo.HeaderContentType, echo.MIMETextPlain)
 	resp.WriteHeader(http.StatusOK)
 	return nil
 }

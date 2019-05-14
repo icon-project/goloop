@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"log"
 	"mime/multipart"
 	"net"
 	"net/http"
@@ -104,8 +106,8 @@ func (c *UnixDomainSockHttpClient) Do(method, reqUrl string, reqPtr, respPtr int
 			return
 		}
 		reqB = bytes.NewBuffer(b)
-
 	}
+	log.Println(reqUrl)
 	req, err := http.NewRequest(method, BaseUnixDomainSockHttpEndpoint+reqUrl, reqB)
 	if err != nil {
 		return
@@ -123,11 +125,25 @@ func (c *UnixDomainSockHttpClient) Do(method, reqUrl string, reqPtr, respPtr int
 	if err != nil {
 		return
 	}
+
 	if respPtr != nil {
 		defer resp.Body.Close()
-		if err = json.NewDecoder(resp.Body).Decode(respPtr); err != nil {
-			return
+		switch ptr := respPtr.(type) {
+		case *string:
+			var b []byte
+			b, err = ioutil.ReadAll(resp.Body)
+			if err != nil {
+				log.Println("ioutil.ReadAll:",err)
+				return
+			}
+			*ptr = string(b)
+		default:
+			if err = json.NewDecoder(resp.Body).Decode(ptr); err != nil {
+				log.Println("json.NewDecoder:",err)
+				return
+			}
 		}
+
 	}
 	return
 }
