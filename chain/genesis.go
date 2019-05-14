@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"sort"
 
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
@@ -201,6 +202,10 @@ func writeToZip(writer *zip.Writer, p, n string) error {
 	if err != nil {
 		return errors.Wrap(err, "writeToZip: FAIL on ReadDir")
 	}
+	// make it generate consistent compressed zip file.
+	sort.SliceStable(fis, func(i, j int) bool {
+		return fis[i].Name() < fis[j].Name()
+	})
 	for _, fi := range fis {
 		if err := writeToZip(writer, p, path.Join(n, fi.Name())); err != nil {
 			return err
