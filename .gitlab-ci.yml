@@ -110,10 +110,11 @@ integration:java-sdk:gochain:
     GOCHAIN_CONFIG: "${CI_PROJECT_DIR}/testsuite/data/config.json"
     GOCHAIN_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}"
     GOCHAIN_LOGFILE: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/gochain.log"
+    NO_SERVER: "true"
   script:
     - cd testsuite
     - sed -i "s/localhost/$(echo ${REPO_GOCHAIN//\//-}|cut -d ":" -f 1)/" data/env.properties
-    - ./gradlew testNormal -DnoServer=true
+    - ./gradlew testNormal
   after_script:
     - cp -r $GOCHAIN_DATA gochain_data
   cache:
