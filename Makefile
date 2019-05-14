@@ -100,5 +100,8 @@ gochain-image: run-pyexec run-gochain-linux
 test :
 	$(GOBUILD_ENVS) $(GOTEST) $(GOBUILD_FLAGS) ./... $(GOTEST_FLAGS)
 
+test% : $(BIN_DIR)/gochain
+	@ cd testsuite ; ./gradlew $@
+
 .DEFAULT_GOAL := all
 all : $(BUILD_TARGETS)
