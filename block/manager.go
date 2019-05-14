@@ -580,7 +580,10 @@ func (m *manager) finalizeGenesisBlock(
 	if err != nil {
 		return nil, err
 	}
-	m.sm.Finalize(gtr.mtransition(), module.FinalizeNormalTransaction|module.FinalizePatchTransaction|module.FinalizeResult)
+	err = m.sm.Finalize(gtr.mtransition(), module.FinalizeNormalTransaction|module.FinalizePatchTransaction|module.FinalizeResult)
+	if err != nil {
+		return nil, err
+	}
 	return bn.block, nil
 }
 
@@ -639,12 +642,18 @@ func (m *manager) finalize(bn *bnode) error {
 
 	if m.finalized != nil {
 		m.removeNodeExcept(m.finalized, bn)
-		m.sm.Finalize(
+		err := m.sm.Finalize(
 			bn.in.mtransition(),
 			module.FinalizePatchTransaction|module.FinalizeResult,
 		)
+		if err != nil {
+			return err
+		}
 	}
-	m.sm.Finalize(bn.preexe.mtransition(), module.FinalizeNormalTransaction)
+	err := m.sm.Finalize(bn.preexe.mtransition(), module.FinalizeNormalTransaction)
+	if err != nil {
+		return err
+	}
 
 	m.finalized = bn
 
