@@ -24,7 +24,7 @@ import (
 const (
 	UrlSystem   = "/system"
 	UrlStats    = "/stats"
-	UrlChain    = "/chains"
+	UrlChain    = "/chain"
 	ParamNID    = "nid"
 	UrlChainRes = "/:" + ParamNID
 )
@@ -169,7 +169,7 @@ func (r *Rest) ChainInjector(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-// swagger:operation GET /admin/chains chain ChainList
+// swagger:operation GET /admin/chain chain ChainList
 //
 // List chains
 //
@@ -243,7 +243,7 @@ func GetFileMultipart(ctx echo.Context, fieldname string) ([]byte, error) {
 	return b, nil
 }
 
-// swagger:operation POST /admin/chains chain joinChain
+// swagger:operation POST /admin/chain chain joinChain
 //
 // Join chain
 //
@@ -305,14 +305,14 @@ func (r *Rest) JoinChain(ctx echo.Context) error {
 		log.Println("Warning", err)
 		return err
 	}
-	return ctx.JSON(http.StatusOK, "OK")
+	return ctx.String(http.StatusOK, "OK")
 }
 
 var (
 	defaultJsonTemplate = NewJsonTemplate("default")
 )
 
-// swagger:operation GET /admin/chains/{nid} chain getChain
+// swagger:operation GET /admin/chain/{nid} chain getChain
 //
 // Get chain
 //
@@ -359,7 +359,7 @@ func (r *Rest) GetChain(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, v)
 }
 
-// swagger:operation DELETE /admin/chains/{nid} chain leaveChain
+// swagger:operation DELETE /admin/chain/{nid} chain leaveChain
 //
 // Leave chain
 //
@@ -394,7 +394,7 @@ func (r *Rest) LeaveChain(ctx echo.Context) error {
 	return ctx.String(http.StatusOK, "OK")
 }
 
-// swagger:operation POST /admin/chains/{nid}/start chain startChain
+// swagger:operation POST /admin/chain/{nid}/start chain startChain
 //
 // Start chain
 //
@@ -429,7 +429,7 @@ func (r *Rest) StartChain(ctx echo.Context) error {
 	return ctx.String(http.StatusOK, "OK")
 }
 
-// swagger:operation POST /admin/chains/{nid}/stop chain stopChain
+// swagger:operation POST /admin/chain/{nid}/stop chain stopChain
 //
 // Stop chain
 //
@@ -464,7 +464,7 @@ func (r *Rest) StopChain(ctx echo.Context) error {
 	return ctx.String(http.StatusOK, "OK")
 }
 
-// swagger:operation POST /admin/chains/{nid}/reset chain resetChain
+// swagger:operation POST /admin/chain/{nid}/reset chain resetChain
 //
 // Reset chain
 //
@@ -499,7 +499,7 @@ func (r *Rest) ResetChain(ctx echo.Context) error {
 	return ctx.String(http.StatusOK, "OK")
 }
 
-// swagger:operation POST /chains/{nid}/verify chain verifyChain
+// swagger:operation POST /chain/{nid}/verify chain verifyChain
 //
 // Verify chain
 //
