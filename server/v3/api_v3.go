@@ -376,6 +376,13 @@ func call(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 // responses:
 //   200:
 //     description: Success
+//     schema:
+//       allOf:
+//         - $ref: '#/definitions/JsonRpcResult'
+//         - type: object
+//           properties:
+//             result:
+//               $ref: '#/definitions/HexInt'
 //   default:
 //     description: JSON-RPC Error
 //     schema:
@@ -443,6 +450,13 @@ func getBalance(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, erro
 // responses:
 //   200:
 //     description: Success
+//     schema:
+//       allOf:
+//         - $ref: '#/definitions/JsonRpcResult'
+//         - type: object
+//           properties:
+//             result:
+//               $ref: '#/definitions/scoreApi'
 //   default:
 //     description: JSON-RPC Error
 //     schema:
@@ -503,6 +517,13 @@ func getScoreApi(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, err
 // responses:
 //   200:
 //     description: Success
+//     schema:
+//       allOf:
+//         - $ref: '#/definitions/JsonRpcResult'
+//         - type: object
+//           properties:
+//             result:
+//               $ref: '#/definitions/HexInt'
 //   default:
 //     description: JSON-RPC Error
 //     schema:
@@ -565,6 +586,13 @@ func getTotalSupply(ctx *jsonrpc.Context, _ *jsonrpc.Params) (interface{}, error
 // responses:
 //   200:
 //     description: Success
+//     schema:
+//       allOf:
+//         - $ref: '#/definitions/JsonRpcResult'
+//         - type: object
+//           properties:
+//             result:
+//               $ref: '#/definitions/transactionResult'
 //   default:
 //     description: JSON-RPC Error
 //     schema:
@@ -648,6 +676,13 @@ func getTransactionResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 // responses:
 //   200:
 //     description: Success
+//     schema:
+//       allOf:
+//         - $ref: '#/definitions/JsonRpcResult'
+//         - type: object
+//           properties:
+//             result:
+//               $ref: '#/definitions/transaction'
 //   default:
 //     description: JSON-RPC Error
 //     schema:
@@ -729,6 +764,13 @@ func getTransactionByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 // responses:
 //   200:
 //     description: Success
+//     schema:
+//       allOf:
+//         - $ref: '#/definitions/JsonRpcResult'
+//         - type: object
+//           properties:
+//             result:
+//               $ref: '#/definitions/HexBytes'
 //   default:
 //     description: JSON-RPC Error
 //     schema:

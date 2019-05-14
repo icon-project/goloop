@@ -146,19 +146,19 @@ type _scoreApiOutput struct {
 
 // swagger:model transactionResult
 type _transactionResult struct {
-	Status             string     `json:"status"`
-	ToAddress          string     `json:"to"`
-	TxFailure          _txFailure `json:"failure,omitempty"`
-	TransactionHash    string     `json:"txHash"`
-	TransactionIndex   string     `json:"txIndex"`
-	BlockHeight        string     `json:"blockHeight"`
-	BlockHash          string     `json:"blockHash"`
-	CumulativeStepUsed string     `json:"cumulativeStepUsed"`
-	StepUsed           string     `json:"stepUsed"`
-	StepPrice          string     `json:"stepPrice"`
-	ScoreAddress       string     `json:"scoreAddress,omitempty"`
-	EventLogs          []eventLog `json:"eventLogs"`
-	LogsBloom          string     `json:"logsBloom,omitempty"`
+	Status             string      `json:"status"`
+	ToAddress          string      `json:"to"`
+	TxFailure          _txFailure  `json:"failure,omitempty"`
+	TransactionHash    string      `json:"txHash"`
+	TransactionIndex   string      `json:"txIndex"`
+	BlockHeight        string      `json:"blockHeight"`
+	BlockHash          string      `json:"blockHash"`
+	CumulativeStepUsed string      `json:"cumulativeStepUsed"`
+	StepUsed           string      `json:"stepUsed"`
+	StepPrice          string      `json:"stepPrice"`
+	ScoreAddress       string      `json:"scoreAddress,omitempty"`
+	EventLogs          []_eventLog `json:"eventLogs"`
+	LogsBloom          string      `json:"logsBloom,omitempty"`
 }
 
 // swagger:model transactionFailure
@@ -168,7 +168,7 @@ type _txFailure struct {
 }
 
 // swagger:model eventLog
-type eventLog struct {
+type _eventLog struct {
 	ScoreAddress string   `json:"scoreAddress"`
 	Indexed      []string `json:"indexed"`
 	Data         []string `json:"data"`
