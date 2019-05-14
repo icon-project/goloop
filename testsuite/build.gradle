@@ -34,6 +34,7 @@ class ChainTest extends Test {
     String logFile = "./chain.log"
     String envFile = "./data/env.properties"
     String gsFile = null
+    String gsDir = null
     Process process = null
 
     void startServer() {
@@ -42,8 +43,11 @@ class ChainTest extends Test {
         commands.add("-config")
         commands.add(configFile)
         if ( gsFile != null ) {
-            commands.add("-genesisStorage")
+            commands.add("-genesis_storage")
             commands.add(gsFile)
+        } else if ( gsDir != null) {
+            commands.add("-genesis")
+            commands.add(gsDir)
         }
 
         Runtime.getRuntime().exec("rm -rf .chain")
@@ -114,10 +118,10 @@ task testGovernance(type: ChainTest, overwrite: true) {
     envFile = "./data/env.properties"
     def audit = System.getProperty("AUDIT")
     if (audit == "true") {
-        gsFile = "./data/genesisStorage/gsAudit.zip"
+        gsDir = "./data/genesisStorage/genesis_audit.json"
     }
     else {
-        gsFile = "./data/genesisStorage/gs.zip"
+        gsDir = "./data/genesisStorage/genesis_normal.json"
     }
 
     dependsOn cleanTest

@@ -282,7 +282,7 @@ func (c *singleChain) _init() error {
 
 	if c.cfg.GenesisStorage == nil {
 		if gs, err := NewGenesisStorageWithDataDir(
-			c.cfg.Genesis, c.cfg.GenesisDataPath); err != nil {
+			c.cfg.Genesis, ""); err != nil {
 			return err
 		} else {
 			c.cfg.GenesisStorage = gs

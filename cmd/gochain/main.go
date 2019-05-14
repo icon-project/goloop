@@ -68,7 +68,7 @@ var (
 )
 
 func main() {
-	var genesisFile, genesisStorage string
+	var genesisStorage, genesisPath string
 	var keyStoreFile, keyStoreSecret string
 	var saveFile, saveKeyStore string
 	var cfg GoChainConfig
@@ -85,12 +85,11 @@ func main() {
 	flag.IntVar(&cfg.NID, "nid", 1, "Chain Network ID")
 	flag.StringVar(&cfg.RPCAddr, "rpc", ":9080", "Listen ip-port of JSON-RPC")
 	flag.StringVar(&cfg.SeedAddr, "seed", "", "Ip-port of Seed")
-	flag.StringVar(&genesisFile, "genesis", "", "Genesis transaction param")
-	flag.StringVar(&genesisStorage, "genesisStorage", "", "Genesis storage for genesis transaction")
+	flag.StringVar(&genesisStorage, "genesis_storage", "", "Genesis storage path")
+	flag.StringVar(&genesisPath, "genesis", "", "Genesis template directory or file")
 	flag.StringVar(&cfg.DBType, "db_type", "goleveldb", "Name of database system(badgerdb, *goleveldb, boltdb, mapdb)")
 	flag.UintVar(&cfg.Role, "role", 2, "[0:None, 1:Seed, 2:Validator, 3:Both]")
 	flag.StringVar(&eeSocket, "ee_socket", "", "Execution engine socket path(default:.chain/<address>/ee.sock")
-	flag.StringVar(&cfg.GenesisDataPath, "genesis_data", "", "Genesis data directory")
 	flag.StringVar(&keyStoreFile, "key_store", "", "KeyStore file for wallet")
 	flag.StringVar(&keyStoreSecret, "key_secret", "", "Secret(password) file for KeyStore")
 	flag.StringVar(&cfg.KeyStorePass, "key_password", "", "Password for the KeyStore file")
@@ -157,15 +156,26 @@ func main() {
 	}
 	wallet, _ := wallet.NewFromPrivateKey(priK)
 
-	if len(genesisFile) > 0 {
-		genesis, err := ioutil.ReadFile(genesisFile)
+	if len(genesisStorage) > 0 {
+		storage, err := ioutil.ReadFile(genesisStorage)
 		if err != nil {
-			log.Panicf("Fail to open genesis file=%s err=%+v", genesisFile, err)
+			log.Panicf("Fail to open genesisStorage=%s err=%+v\n", genesisStorage, err)
 		}
-		cfg.Genesis = genesis
-	}
-
-	if len(cfg.Genesis) == 0 {
+		cfg.GenesisStorage, err = chain.NewGenesisStorage(storage)
+		if err != nil {
+			log.Panicf("Failed to load genesisStorage\n")
+		}
+	} else if len(genesisPath) > 0 {
+		storage := bytes.NewBuffer(nil)
+		if err := chain.WriteGenesisStorageFromPath(storage, genesisPath); err != nil {
+			log.Printf("FAIL to generate gs. err = %s, path = %s\n", err, genesisPath)
+		}
+		var err error
+		cfg.GenesisStorage, err = chain.NewGenesisStorage(storage.Bytes())
+		if err != nil {
+			log.Panicf("Failed to load genesisStorage\n")
+		}
+	} else if len(cfg.Genesis) == 0 {
 		genesis := map[string]interface{}{
 			"accounts": []map[string]interface{}{
 				{
@@ -187,17 +197,6 @@ func main() {
 			"message": "gochain generated genesis",
 		}
 		cfg.Genesis, _ = json.Marshal(genesis)
-	}
-
-	if len(genesisStorage) > 0 {
-		storage, err := ioutil.ReadFile(genesisStorage)
-		if err != nil {
-			log.Panicf("Fail to open genesisStorage=%s err=%+v\n", genesisStorage, err)
-		}
-		cfg.GenesisStorage, err = chain.NewGenesisStorage(storage)
-		if err != nil {
-			log.Panicf("Failed to load genesisStorage\n")
-		}
 	}
 
 	if len(saveKeyStore) > 0 {
