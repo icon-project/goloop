@@ -29,8 +29,10 @@ type Node struct {
 	pm  eeproxy.Manager
 	cfg NodeConfig
 
-	mtx sync.RWMutex
-	m   map[int]module.Chain
+	mtx      sync.RWMutex
+	//TODO add module.Chain.Channel() then remove channels and change chains map[string] to map[int]
+	chains   map[string]module.Chain
+	channels map[int]string
 
 	cliSrv *UnixDomainSockHttpServer
 }
@@ -65,16 +67,27 @@ func (n *Node) saveChainConfig(cfg *chain.Config, filename string) error {
 }
 
 func (n *Node) _add(cfg *chain.Config) (module.Chain, error) {
-	if _, ok := n.m[cfg.NID]; ok {
-		return nil, fmt.Errorf("already joined chain %v", cfg)
+	nid := cfg.NID
+	channel := cfg.Channel
+	if channel == "" {
+		channel = strconv.FormatInt(int64(nid), 16)
+	}
+
+	if _, ok := n.channels[nid]; ok {
+		return nil, fmt.Errorf("already joined chain nid:%d %v", nid, cfg)
+	}
+
+	if _, ok := n.chains[channel]; ok {
+		return nil, fmt.Errorf("already joined chain channel:%s %v", channel, cfg)
 	}
 
 	c := chain.NewChain(n.w, n.nt, n.srv, n.pm, cfg)
 	if err := c.Init(true); err != nil {
 		return nil, err
 	}
-	n.m[cfg.NID] = c
-	return n.m[cfg.NID], nil
+	n.channels[nid] = channel
+	n.chains[channel] = c
+	return n.chains[channel], nil
 }
 
 func (n *Node) _remove(c module.Chain) error {
@@ -87,21 +100,26 @@ func (n *Node) _remove(c module.Chain) error {
 		return fmt.Errorf("fail to remove dir %s err=%+v", chainPath, err)
 	}
 
-	delete(n.m, c.NID())
+	delete(n.chains, n.channels[c.NID()])
+	delete(n.channels, c.NID())
 	metric.ResetMetricViews()
 	return nil
 }
 
-func (n *Node) ChainDir(NID int) string {
+func (n *Node) ChainDir(nid int) string {
 	nodeDir := n.cfg.ResolveAbsolute(n.cfg.BaseDir)
-	chainDir := path.Join(nodeDir, strconv.FormatInt(int64(NID), 16))
+	chainDir := path.Join(nodeDir, strconv.FormatInt(int64(nid), 16))
 	return chainDir
 }
 
-func (n *Node) _get(NID int) (module.Chain, error) {
-	c, ok := n.m[NID]
+func (n *Node) _get(nid int) (module.Chain, error) {
+	channel, ok := n.channels[nid]
 	if !ok {
-		return nil, fmt.Errorf("not joined chain %d", NID)
+		return nil, fmt.Errorf("not joined chain %d", nid)
+	}
+	c, ok := n.chains[channel]
+	if !ok {
+		return nil, fmt.Errorf("not joined chain %d", nid)
 	}
 	return c, nil
 }
@@ -137,18 +155,27 @@ func (n *Node) Stop() {
 
 // TODO [TBD] using JoinChainParam struct
 func (n *Node) JoinChain(
-	NID int,
+	nid int,
 	seed string,
 	role uint,
 	dbType string,
 	concurrencyLevel int,
+	channel string,
 	genesis []byte,
 ) (module.Chain, error) {
 	defer n.mtx.Unlock()
 	n.mtx.Lock()
 
-	if _, ok := n.m[NID]; ok {
-		return nil, fmt.Errorf("already joined chain %d", NID)
+	if _, ok := n.channels[nid]; ok {
+		return nil, fmt.Errorf("already joined chain nid:%d", nid)
+	}
+
+	if channel == "" {
+		channel = strconv.FormatInt(int64(nid), 16)
+	}
+
+	if _, ok := n.chains[channel]; ok {
+		return nil, fmt.Errorf("already joined chain channel:%s", channel)
 	}
 
 	gs, err := chain.NewGenesisStorage(genesis)
@@ -156,16 +183,16 @@ func (n *Node) JoinChain(
 		return nil, err
 	}
 
-	chainDir := n.ChainDir(NID)
+	chainDir := n.ChainDir(nid)
 	log.Println("ChainDir", chainDir)
 	if err := os.MkdirAll(chainDir, 0700); err != nil {
 		log.Panicf("Fail to create directory %s err=%+v", chainDir, err)
 	}
 
 	cfgFile, _ := filepath.Abs(path.Join(chainDir, ChainConfigFileName))
-	channel := strconv.FormatInt(int64(NID), 16)
+
 	cfg := &chain.Config{
-		NID:            NID,
+		NID:            nid,
 		DBType:         dbType,
 		Channel:        channel,
 		SeedAddr:       seed,
@@ -195,55 +222,55 @@ func (n *Node) JoinChain(
 	return c, nil
 }
 
-func (n *Node) LeaveChain(NID int) error {
+func (n *Node) LeaveChain(nid int) error {
 	defer n.mtx.Unlock()
 	n.mtx.Lock()
 
-	c, err := n._get(NID)
+	c, err := n._get(nid)
 	if err != nil {
 		return err
 	}
 	return n._remove(c)
 }
 
-func (n *Node) StartChain(NID int) error {
+func (n *Node) StartChain(nid int) error {
 	defer n.mtx.RUnlock()
 	n.mtx.RLock()
 
-	c, err := n._get(NID)
+	c, err := n._get(nid)
 	if err != nil {
 		return err
 	}
 	return c.Start(false)
 }
 
-func (n *Node) StopChain(NID int) error {
+func (n *Node) StopChain(nid int) error {
 	defer n.mtx.RUnlock()
 	n.mtx.RLock()
 
-	c, err := n._get(NID)
+	c, err := n._get(nid)
 	if err != nil {
 		return err
 	}
 	return c.Stop(false)
 }
 
-func (n *Node) ResetChain(NID int) error {
+func (n *Node) ResetChain(nid int) error {
 	defer n.mtx.RUnlock()
 	n.mtx.RLock()
 
-	c, err := n._get(NID)
+	c, err := n._get(nid)
 	if err != nil {
 		return err
 	}
 	return c.Reset(true)
 }
 
-func (n *Node) VerifyChain(NID int) error {
+func (n *Node) VerifyChain(nid int) error {
 	defer n.mtx.RUnlock()
 	n.mtx.RLock()
 
-	c, err := n._get(NID)
+	c, err := n._get(nid)
 	if err != nil {
 		return err
 	}
@@ -255,7 +282,7 @@ func (n *Node) GetChains() []module.Chain {
 	n.mtx.RLock()
 
 	l := make([]module.Chain, 0)
-	for _, v := range n.m {
+	for _, v := range n.chains {
 		l = append(l, v)
 	}
 	sort.Slice(l, func(i, j int) bool {
@@ -264,11 +291,18 @@ func (n *Node) GetChains() []module.Chain {
 	return l
 }
 
-func (n *Node) GetChain(NID int) module.Chain {
+func (n *Node) GetChain(nid int) module.Chain {
 	defer n.mtx.RUnlock()
 	n.mtx.RLock()
 
-	return n.m[NID]
+	return n.chains[n.channels[nid]]
+}
+
+func (n *Node) GetChainByChannel(channel string) module.Chain {
+	defer n.mtx.RUnlock()
+	n.mtx.RLock()
+
+	return n.chains[channel]
 }
 
 func NewNode(
@@ -301,13 +335,14 @@ func NewNode(
 	cliSrv := NewUnixDomainSockHttpServer(cfg.ResolveAbsolute(cfg.CliSocket), echo.New())
 
 	n := &Node{
-		w:      w,
-		nt:     nt,
-		srv:    srv,
-		pm:     pm,
-		cfg:    *cfg,
-		m:      make(map[int]module.Chain),
-		cliSrv: cliSrv,
+		w:        w,
+		nt:       nt,
+		srv:      srv,
+		pm:       pm,
+		cfg:      *cfg,
+		chains:   make(map[string]module.Chain),
+		channels: make(map[int]string),
+		cliSrv:   cliSrv,
 	}
 
 	// Load chains

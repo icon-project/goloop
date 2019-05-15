@@ -83,12 +83,12 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			hc := GetUnixDomainSockHttpClient(cfg)
 			var err error
-			var NID int64
-			if NID, err = strconv.ParseInt(args[0], 16, 64); err != nil {
+			var nid int64
+			if nid, err = strconv.ParseInt(args[0], 16, 64); err != nil {
 				fmt.Println("cannot parse NID", err)
 				return
 			}
-			joinChainParam.NID = int(NID)
+			joinChainParam.NID = int(nid)
 			var resp *http.Response
 
 			if len(genesisZip) > 0 {

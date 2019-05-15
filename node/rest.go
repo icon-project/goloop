@@ -309,7 +309,7 @@ func (r *Rest) JoinChain(ctx echo.Context) error {
 	// 	log.Println("Warning", err)
 	// 	return err
 	// }
-	_, err = r.n.JoinChain(p.NID, p.SeedAddr, p.Role, p.DBType, p.ConcurrencyLevel, genesis)
+	_, err = r.n.JoinChain(p.NID, p.SeedAddr, p.Role, p.DBType, p.ConcurrencyLevel, p.Channel, genesis)
 	if err != nil {
 		log.Println("Warning", err)
 		return err
