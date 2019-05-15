@@ -83,40 +83,6 @@ func SHA3Sum256WithReadCloser(rc io.ReadCloser) ([]byte, error) {
 	return s.Sum([]byte{}), nil
 }
 
-func NewGenesisStorageWithDataDir(genesis []byte, p string) (GenesisStorage, error) {
-	if p == "" {
-		return &genesisStorageWithDataDir{
-			genesis:  genesis,
-			dataMap:  nil,
-			dataPath: "",
-		}, nil
-	}
-	items, err := ioutil.ReadDir(p)
-	if err != nil {
-		return nil, err
-	}
-	m := make(map[string]string)
-	for _, info := range items {
-		if info.IsDir() {
-			continue
-		}
-		f, err := os.Open(path.Join(p, info.Name()))
-		if err != nil {
-			return nil, err
-		}
-		hash, err := SHA3Sum256WithReadCloser(f)
-		if err != nil {
-			return nil, err
-		}
-		m[string(hash)] = info.Name()
-	}
-	return &genesisStorageWithDataDir{
-		genesis:  genesis,
-		dataMap:  m,
-		dataPath: p,
-	}, nil
-}
-
 type genesisStorageWithZip struct {
 	genesis []byte
 	fileMap map[string]*zip.File

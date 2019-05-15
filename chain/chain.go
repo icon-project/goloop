@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/icon-project/goloop/common/errors"
 	"log"
 	"os"
 	"path"
@@ -37,9 +38,8 @@ type Config struct {
 	//runtime
 	Channel string `json:"channel"`
 
-	GenesisStorage  GenesisStorage  `json:"-"`
-	Genesis         json.RawMessage `json:"genesis"`
-	GenesisDataPath string          `json:"genesis_data,omitempty"`
+	GenesisStorage GenesisStorage  `json:"-"`
+	Genesis        json.RawMessage `json:"genesis"`
 
 	BaseDir  string `json:"chain_dir"`
 	FilePath string `json:"-"` //absolute path
@@ -281,11 +281,13 @@ func (c *singleChain) _init() error {
 	DBName := strconv.FormatInt(int64(c.cfg.NID), 16)
 
 	if c.cfg.GenesisStorage == nil {
-		if gs, err := NewGenesisStorageWithDataDir(
-			c.cfg.Genesis, ""); err != nil {
-			return err
-		} else {
-			c.cfg.GenesisStorage = gs
+		if len(c.cfg.Genesis) == 0 {
+			return errors.IllegalArgumentError.Errorf("FAIL to generate GenesisStorage")
+		}
+		c.cfg.GenesisStorage = &genesisStorageWithDataDir{
+			genesis:  c.cfg.Genesis,
+			dataMap:  nil,
+			dataPath: "",
 		}
 	}
 
