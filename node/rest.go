@@ -70,9 +70,9 @@ type ChainView struct {
 // swagger:model ChainInspectView
 type ChainInspectView struct {
 	*ChainView
-	GenesisTx json.RawMessage        `json:"genesisTx"`
+	GenesisTx json.RawMessage `json:"genesisTx"`
 	//TODO [TBD] define structure each module for inspect
-	Module    map[string]interface{} `json:"module"`
+	Module map[string]interface{} `json:"module"`
 }
 
 // TODO [TBD]move to module.Chain ?
@@ -248,20 +248,30 @@ func GetFileMultipart(ctx echo.Context, fieldname string) ([]byte, error) {
 //
 // Join chain
 //
+// {
+// "nid": "1",
+// "role": "0",
+// "seedAddress": "http://localhost:8080"
+// }
+//
 // ---
 // consumes:
-// - application/json
+// - multipart/form-data
 //
 // produces:
 // - application/json
 //
 // parameters:
-//   - name: JoinChainParam
-//     description: join chain param
-//     in: body
+//   - name: json
+//     description: join chain param json
+//     in: formData
 //     required: true
-//     schema:
-//       $ref: '#/definitions/JoinChainParam'
+//     type: string
+//   - name: genesisZip
+//     description: genesis storage file
+//     in: formData
+//     required: true
+//     type: file
 //
 // responses:
 //   200:
