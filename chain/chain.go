@@ -41,7 +41,7 @@ type Config struct {
 	Genesis         json.RawMessage `json:"genesis"`
 	GenesisDataPath string          `json:"genesis_data,omitempty"`
 
-	BaseDir string `json:"chain_dir"`
+	BaseDir  string `json:"chain_dir"`
 	FilePath string `json:"-"` //absolute path
 }
 
@@ -53,7 +53,7 @@ func (c *Config) ResolveAbsolute(targetPath string) string {
 		r, _ := filepath.Abs(targetPath)
 		return r
 	}
-	return filepath.Clean(path.Join(filepath.Dir(c.FilePath),targetPath))
+	return filepath.Clean(path.Join(filepath.Dir(c.FilePath), targetPath))
 }
 
 func (c *Config) ResolveRelative(targetPath string) string {
@@ -268,7 +268,7 @@ func (c *singleChain) _init() error {
 		c.cfg.Channel = strconv.FormatInt(int64(c.cfg.NID), 16)
 	}
 	chainDir := c.cfg.ResolveAbsolute(c.cfg.BaseDir)
-	log.Println("ConfigFilepath",c.cfg.FilePath, "BaseDir",c.cfg.BaseDir,"ChainDir", chainDir)
+	log.Println("ConfigFilepath", c.cfg.FilePath, "BaseDir", c.cfg.BaseDir, "ChainDir", chainDir)
 	DBDir := path.Join(chainDir, DefaultDBDir)
 	if c.cfg.DBType == "" {
 		c.cfg.DBType = string(db.GoLevelDBBackend)
@@ -300,7 +300,7 @@ func (c *singleChain) _init() error {
 	return nil
 }
 
-func (c *singleChain) _prepare() {
+func (c *singleChain) _prepare() error {
 	c.nm = network.NewManager(c, c.nt, c.cfg.SeedAddr, toRoles(c.cfg.Role)...)
 	//TODO [TBD] is service/contract.ContractManager owner of ContractDir ?
 	chainDir := c.cfg.ResolveAbsolute(c.cfg.BaseDir)
@@ -308,16 +308,15 @@ func (c *singleChain) _prepare() {
 	var err error
 	c.sm, err = service.NewManager(c, c.nm, c.pm, ContractDir)
 	if err != nil {
-		//TODO error shall be returned
-		log.Panicf("prepare failed: %+v\n", err)
+		return err
 	}
 	c.bm, err = block.NewManager(c)
 	if err != nil {
-		//TODO error shall be returned
-		log.Panicf("prepare failed: %+v\n", err)
+		return err
 	}
 	WALDir := path.Join(chainDir, DefaultWALDir)
 	c.cs = consensus.NewConsensus(c, WALDir)
+	return nil
 }
 
 func (c *singleChain) _start() error {
@@ -375,7 +374,10 @@ func (c *singleChain) Init(sync bool) error {
 		if err != nil {
 			s = StateInitializeFailed
 		} else {
-			c._prepare()
+			err = c._prepare()
+			if err != nil {
+				s = StateInitializeFailed
+			}
 		}
 		c._setState(s, err)
 	}

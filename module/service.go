@@ -236,6 +236,9 @@ type ServiceManager interface {
 	// TransactionFromBytes returns a Transaction instance from bytes.
 	TransactionFromBytes(b []byte, blockVersion int) (Transaction, error)
 
+	// GenesisTransactionFromBytes returns a Genesis Transaction instance from bytes.
+	GenesisTransactionFromBytes(b []byte, blockVersion int) (Transaction, error)
+
 	// TransactionListFromHash returns a TransactionList instance from
 	// the hash of transactions or nil when no transactions exist.
 	// It assumes it's called only by new version block, so it doesn't receive

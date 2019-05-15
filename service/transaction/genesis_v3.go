@@ -285,15 +285,15 @@ func (g *genesisV3) Nonce() *big.Int {
 func newGenesisV3(js []byte) (Transaction, error) {
 	genjs := new(genesisV3JSON)
 	if err := json.Unmarshal(js, genjs); err != nil {
-		return nil, InvalidFormat.Wrapf(err, "Invalid json for genesis(%s)", string(js))
+		return nil, errors.IllegalArgumentError.Wrapf(err, "Invalid json for genesis(%s)", string(js))
 	}
 	if len(genjs.Accounts) != 0 {
 		genjs.raw = js
 		tx := &genesisV3{genesisV3JSON: genjs}
 		if err := tx.updateTxHash(); err != nil {
-			return nil, err
+			return nil, InvalidGenesisError.Wrap(err, "FailToMakeTxHash")
 		}
 		return tx, nil
 	}
-	return nil, InvalidGenesisError.New("NoAccounts")
+	return nil, errors.IllegalArgumentError.New("NoAccounts")
 }

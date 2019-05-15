@@ -236,6 +236,14 @@ func (m *manager) TransactionFromBytes(b []byte, blockVersion int) (module.Trans
 	return tx, nil
 }
 
+func (m *manager) GenesisTransactionFromBytes(b []byte, blockVersion int) (module.Transaction, error) {
+	tx, err := transaction.NewGenesisTransaction(b)
+	if err != nil {
+		log.Printf("sm.GenesisTransactionFromBytes() fails with err=%+v", err)
+	}
+	return tx, nil
+}
+
 // TransactionListFromHash returns a TransactionList instance from
 // the hash of transactions or nil when no transactions exist.
 func (m *manager) TransactionListFromHash(hash []byte) module.TransactionList {

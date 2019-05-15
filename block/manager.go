@@ -538,7 +538,7 @@ func (m *manager) finalizeGenesisBlock(
 	in := newInitialTransition(mtr, m.chainContext)
 	ch := make(chan error)
 	gtxbs := m.chain.Genesis()
-	gtx, err := m.sm.TransactionFromBytes(gtxbs, module.BlockVersion2)
+	gtx, err := m.sm.GenesisTransactionFromBytes(gtxbs, module.BlockVersion2)
 	if err != nil {
 		return nil, err
 	}

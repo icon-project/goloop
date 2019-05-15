@@ -669,6 +669,10 @@ func (sm *testServiceManager) TransactionFromBytes(b []byte, blockVersion int) (
 	return ttx, nil
 }
 
+func (sm *testServiceManager) GenesisTransactionFromBytes(b []byte, blockVersion int) (module.Transaction, error) {
+	return sm.TransactionFromBytes(b, blockVersion)
+}
+
 func (sm *testServiceManager) TransactionListFromHash(hash []byte) module.TransactionList {
 	ttxs := &testTransactionList{}
 	err := sm.bucket.get(raw(hash), ttxs)

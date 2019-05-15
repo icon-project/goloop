@@ -108,6 +108,14 @@ func NewTransaction(b []byte) (Transaction, error) {
 	}
 }
 
+func NewGenesisTransaction(b []byte) (Transaction, error) {
+	if tx, err := newGenesisV3(b); err != nil {
+		return nil, err
+	} else {
+		return &transaction{tx}, nil
+	}
+}
+
 func newTransaction(b []byte) (Transaction, error) {
 	if len(b) < 1 {
 		return nil, errors.New("IllegalTransactionData")
