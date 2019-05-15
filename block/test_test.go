@@ -13,10 +13,10 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/txresult"
-	"github.com/pkg/errors"
 )
 
 const (
