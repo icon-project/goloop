@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/icon-project/goloop/common/codec"
-	"github.com/pkg/errors"
+	"github.com/icon-project/goloop/common/errors"
 )
 
 var msgCodec = codec.MP

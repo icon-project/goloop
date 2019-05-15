@@ -2,10 +2,10 @@ package test
 
 import (
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
-	"github.com/pkg/errors"
 )
 
 type tReactorItem struct {

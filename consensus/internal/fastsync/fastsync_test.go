@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 

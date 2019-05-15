@@ -8,8 +8,8 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
-	"github.com/pkg/errors"
 )
 
 const (
@@ -357,7 +357,7 @@ func (cl *client) onResult(f *fetcher, err error, blk module.Block, votes module
 var errNoBlock = errors.New("errNoBlock")
 
 func isNoBlock(err error) bool {
-	return errors.Cause(err) == errNoBlock
+	return errors.Is(err, errNoBlock)
 }
 
 type fstep byte

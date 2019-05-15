@@ -15,7 +15,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
-	"github.com/pkg/errors"
+	"github.com/icon-project/goloop/common/errors"
 )
 
 const (
@@ -461,19 +461,19 @@ func (w *walReader) Repair() error {
 }
 
 func IsCorruptedWAL(err error) bool {
-	return errors.Cause(err) == errCorruptedWAL
+	return errors.Is(err, errCorruptedWAL)
 }
 
 var errCorruptedWAL = errors.New("errCorruptedWAL")
 
 func IsNotExist(err error) bool {
-	return errors.Cause(err) == os.ErrNotExist
+	return errors.Is(err, os.ErrNotExist)
 }
 
 func IsEOF(err error) bool {
-	return errors.Cause(err) == io.EOF
+	return errors.Is(err, io.EOF)
 }
 
 func IsUnexpectedEOF(err error) bool {
-	return errors.Cause(err) == io.ErrUnexpectedEOF
+	return errors.Is(err, io.ErrUnexpectedEOF)
 }
