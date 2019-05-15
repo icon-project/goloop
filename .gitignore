@@ -1,6 +1,8 @@
-vendor
-.idea
-.venv
+.?*
 __pycache__
 **/.DS_Store
 **/*.iml
+doc.tmp/
+bin/
+linux/
+vendor/
