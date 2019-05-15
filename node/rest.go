@@ -35,45 +35,44 @@ type Rest struct {
 
 // swagger:model SystemView
 type SystemView struct {
-	BuildVersion  string `json:"build_version"`
-	BuildTags     string `json:"build_tags"`
+	BuildVersion  string `json:"buildVersion"`
+	BuildTags     string `json:"buildTags"`
 	Address       string `json:"address"`
 	P2PAddr       string `json:"p2p"`
-	P2PListenAddr string `json:"p2p_listen"`
+	P2PListenAddr string `json:"p2pListen"`
 }
 
 type StatsView struct {
-	Chains    []map[string]interface{}
-	Timestamp time.Time
+	Chains    []map[string]interface{} `json:"chains"`
+	Timestamp time.Time                `json:"timestamp"`
 }
 
 // swagger:model JoinChainParam
 type JoinChainParam struct {
 	NID    int    `json:"nid"`
-	DBType string `json:"db_type"`
+	DBType string `json:"dbType"`
 
-	SeedAddr         string `json:"seed_addr"`
+	SeedAddr         string `json:"seedAddress"`
 	Role             uint   `json:"role"`
-	ConcurrencyLevel int    `json:"concurrency_level,omitempty"`
+	ConcurrencyLevel int    `json:"concurrency,omitempty"`
 
 	Channel string `json:"channel"`
-
-	Genesis json.RawMessage `json:"genesis"`
 }
 
 // swagger:model ChainView
 type ChainView struct {
-	NID       int    `json:"NID"`
-	State     string `json:"State"`
-	Height    int64  `json:"Height"`
-	LastError string `json:"LastError"`
+	NID       int    `json:"nid"`
+	State     string `json:"state"`
+	Height    int64  `json:"height"`
+	LastError string `json:"lastError"`
 }
 
 // swagger:model ChainInspectView
 type ChainInspectView struct {
 	*ChainView
-	Genesis json.RawMessage        `json:"Genesis"`
-	Module  map[string]interface{} `json:"Module"`
+	GenesisTx json.RawMessage        `json:"genesisTx"`
+	//TODO [TBD] define structure each module for inspect
+	Module    map[string]interface{} `json:"module"`
 }
 
 // TODO [TBD]move to module.Chain ?
@@ -108,7 +107,7 @@ var (
 func NewChainInspectView(c module.Chain) *ChainInspectView {
 	v := &ChainInspectView{
 		ChainView: NewChainView(c),
-		Genesis:   c.Genesis(),
+		GenesisTx: c.Genesis(),
 	}
 	v.Module = make(map[string]interface{})
 	for name, f := range inspectFuncs {
