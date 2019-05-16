@@ -21,7 +21,6 @@ type commitVoteList struct {
 }
 
 func (vl *commitVoteList) Verify(block module.Block, validators module.ValidatorList) error {
-	// TODO height should be 0
 	if block.Height() == 0 {
 		if len(vl.Signatures) == 0 {
 			return nil
