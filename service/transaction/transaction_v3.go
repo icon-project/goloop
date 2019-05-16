@@ -115,7 +115,7 @@ func (tx *transactionV3) Timestamp() int64 {
 func (tx *transactionV3) verifySignature() error {
 	pk, err := tx.Signature.RecoverPublicKey(tx.TxHash())
 	if err != nil {
-		return InvalidSignatureError.Wrap(err, "InvalidSignature")
+		return InvalidSignatureError.Wrap(err, "FAIL to recover public key")
 	}
 	addr := common.NewAccountAddressFromPublicKey(pk)
 	if addr.Equal(tx.From()) {
@@ -159,7 +159,7 @@ func (tx *transactionV3) Verify() error {
 	if err != nil {
 		return InvalidTxValue.Wrapf(err, "InvalidData(%x)", tx.Data)
 	} else if n > txMaxDataSize {
-		return InvalidTxValue.Errorf("InvalidData(%x, %d)", tx.Data, n)
+		return InvalidTxValue.Errorf("InvalidDataSize(%d)", n)
 	}
 
 	// Checkups by data types
