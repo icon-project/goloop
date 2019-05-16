@@ -5,17 +5,21 @@ PRE_PWD=$(pwd)
 WORKDIR=$(dirname "$(readlink -f ${0})")
 cd $WORKDIR
 
-#refer from docker/py-deps/build.sh
+#refer ../py-deps/build.sh
 PYREQ_SHA=$(sha1sum ../../pyee/requirements.txt | cut -d ' ' -f 1)
-PYREQ_SHA_SHORT=${PYREQ_SHA:0:12}
 REPO_PY_DEPS=${REPO_PY_DEPS:-goloop/py-deps}
-TAG_PY_DEPS=${TAG_PY_DEPS:-${PYREQ_SHA_SHORT}}
+TAG_PY_DEPS=${TAG_BY_DEPS:-$(docker images --filter="reference=$REPO_PY_DEPS" --filter="label=GOLOOP_PYREQ_SHA=${PYREQ_SHA}" --format="{{.Tag}}" | head -n 1)}
+if [ "${TAG_PY_DEPS}" != "" ] ;then
+  TAG_SLUG=${TAG_PY_DEPS//\//__}
+  BUILD_ARG_TAG_PY_DEPS="--build-arg=TAG_PY_DEPS=${TAG_SLUG} "
+fi
 
+GOCHAIN_VERSION=${GOCHAIN_VERSION:-$(git describe --always --tags --dirty)}
 REPO_GOCHAIN=${REPO_GOCHAIN:-goloop/gochain}
-TAG_GOCHAIN=${TAG_GOCHAIN:-$(git describe --always --tags --dirty)}
-if [ "$(docker image inspect ${REPO_GOCHAIN}:${TAG_GOCHAIN} &> /dev/null;echo $?)" != "0" ]
+PRE_GOCHAIN_VERSION=$(docker image inspect ${REPO_GOCHAIN} -f "{{.Config.Labels.GOCHAIN_VERSION}}" || echo "none")
+if [ "${GOCHAIN_VERSION}" != "${PRE_GOCHAIN_VERSION}" ]
 then
-  echo "Build image ${REPO_GOCHAIN}:${TAG_GOCHAIN} using ${REPO_PY_DEPS}:${TAG_PY_DEPS}"
+  echo "Build image ${REPO_GOCHAIN} using ${REPO_PY_DEPS} with TAG_PY_DEPS:${TAG_PY_DEPS}"
   mkdir dist
   cp ../../pyee/dist/pyexec-*.whl ./dist/
   cp ../../bin/gochain ./dist/
@@ -26,11 +30,18 @@ then
   rm -rf testsuite
   docker build \
     --build-arg REPO_PY_DEPS=${REPO_PY_DEPS} \
-    --build-arg TAG_PY_DEPS=${TAG_PY_DEPS} \
-    --build-arg GOCHAIN_VERSION=${TAG_GOCHAIN} \
-    --tag ${REPO_GOCHAIN}:${TAG_GOCHAIN} --tag ${REPO_GOCHAIN} .
+    ${BUILD_ARG_TAG_PY_DEPS} \
+    --build-arg GOCHAIN_VERSION=${GOCHAIN_VERSION} \
+    --tag ${REPO_GOCHAIN} .
   rm -rf dist
 else
-  echo "Already exists image ${REPO_GOCHAIN}:${TAG_GOCHAIN}"
+  echo "Already exists image ${REPO_GOCHAIN}"
 fi
+
+if [ "${TAG_GOCHAIN}" != "" ] && [ "${TAG_GOCHAIN}" != "latest" ];then
+  TAG_SLUG=${TAG_GOCHAIN//\//__}
+  echo "Tag image ${REPO_GOCHAIN} to ${REPO_GOCHAIN}:${TAG_SLUG} for TAG_GOCHAIN:${TAG_GOCHAIN}"
+  docker tag ${REPO_GOCHAIN} ${REPO_GOCHAIN}:${TAG_SLUG}
+fi
+
 cd $PRE_PW
