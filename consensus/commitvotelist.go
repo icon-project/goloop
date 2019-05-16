@@ -25,7 +25,7 @@ func (vl *commitVoteList) Verify(block module.Block, validators module.Validator
 		if len(vl.Signatures) == 0 {
 			return nil
 		} else {
-			return errors.Errorf("voters for height 1\n")
+			return errors.Errorf("voters for height 0\n")
 		}
 	}
 	vset := make([]bool, validators.Len())
