@@ -30,6 +30,19 @@ import java.util.Map;
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.*;
 
+/*
+test methods
+    disableEnableScore
+    setRevision
+    acceptScore
+    rejectScore
+    blockUnblockScore
+    setStepPrice
+    setStepCost
+    setMaxStepLimit
+    addRemoveMember
+    addRemoveDeployer
+ */
 @Tag(Constants.TAG_GOVERNANCE)
 public class ChainScoreTest{
     private static Env.Chain chain;

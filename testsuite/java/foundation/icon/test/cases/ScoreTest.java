@@ -25,9 +25,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /*
-sendTransaction with call
-icx_call
-stepUsed is bigger than specified stepLimit
+test methods
+  positive
+    callWithValue
+  negative
+    invalidParamName
+    notEnoughStepLimit
+    notEnoughBalance
+    timeout
  */
 @Tag(Constants.TAG_GOVERNANCE)
 public class ScoreTest {

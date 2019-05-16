@@ -27,17 +27,24 @@ import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.*;
 
 /*
-test cases
-1. audit
-2. not enough balance for deploy.
- - setStepPrice
-3. not enough stepLimit for deploy.
-4. content
- - no root file.
- - not zip
- - too large - takes too long time for uncompress 5. sendTransaction with invalid/valid params 6. sendTransaction for update with invalid score address 7. change destination url.
-8. sendTransaction with invalid signature
+test methods
+  positive
+    installScoreAndCall
+    updateScoreAndCall
+  negative
+    notEnoughBalance
+    notEnoughStepLimit
+    installWithInvalidParams
+    updateWithInvalidParams
+    updateWithInvalidOwner
+    updateToInvalidScoreAddress
+    invalidContentNoRootFile
+    invalidContentNotZip
+    invalidContentTooBig
+    invalidScoreNoOnInstallMethod
+    invalidScoreNoOnUpdateMethod
  */
+
 @Tag(Constants.TAG_GOVERNANCE)
 public class DeployTest {
     private static IconService iconService;
@@ -349,7 +356,7 @@ public class DeployTest {
     }
 
     @Test
-    public void updateWithInvalidScoreAddress() throws Exception {
+    public void updateToInvalidScoreAddress() throws Exception {
         LOG.infoEntering( "updateWithInvalidScoreAddress");
         KeyWallet owner = KeyWallet.create();
         BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
@@ -432,11 +439,11 @@ public class DeployTest {
         KeyWallet owner = KeyWallet.create();
         BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
         assertEquals(BigInteger.ZERO, bal);
-        Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, owner.getAddress(), new BigInteger("100000"));
+        Bytes txHash = Utils.transfer(iconService, chain.networkId, chain.godWallet, owner.getAddress(), new BigInteger("10000000000000"));
         TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
         bal = iconService.getBalance(owner.getAddress()).execute();
-        assertEquals(new BigInteger("100000"), bal);
+        assertEquals(new BigInteger("10000000000000"), bal);
 
         TransactionBuilder.DeployBuilder builder = TransactionBuilder.newBuilder()
                 .nid(BigInteger.valueOf(chain.networkId))
@@ -540,6 +547,104 @@ public class DeployTest {
         }
     }
 
-    public void invalidContentTooBig() {
+    @Test
+    public void invalidContentTooBig() throws Exception {
+        String SCORE_TOO_BIG_PATH = Constants.SCORE_ROOT + "too_big";
+        LOG.infoEntering( "invalidContentTooBig");
+        KeyWallet owner = KeyWallet.create();
+        BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
+        assertEquals(BigInteger.ZERO, bal);
+
+        LOG.infoEntering("transfer and check balance");
+        Utils.transferAndCheck(iconService, chain, chain.godWallet, owner.getAddress(), Constants.DEFAULT_BALANCE);
+        LOG.infoExiting();
+
+        LOG.infoEntering("deploy");
+        RpcObject params = new RpcObject.Builder()
+                .put("name", new RpcValue("HelloWorld"))
+                .build();
+
+        try {
+            deploy(owner, Constants.CHAINSCORE_ADDRESS, SCORE_TOO_BIG_PATH, params, Constants.DEFAULT_STEP_LIMIT);
+            fail();
+        }
+        catch(Exception ex) {
+            LOG.infoExiting();
+        }
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void invalidScoreNoOnInstallMethod() throws Exception {
+        String SCORE_TOO_BIG_PATH = Constants.SCORE_ROOT + "no_install_method";
+        LOG.infoEntering( "invalidScoreNoOnInstallMethod");
+        KeyWallet owner = KeyWallet.create();
+        BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
+        assertEquals(BigInteger.ZERO, bal);
+
+        LOG.infoEntering("transfer and check balance");
+        Utils.transferAndCheck(iconService, chain, chain.godWallet, owner.getAddress(), Constants.DEFAULT_BALANCE);
+        LOG.infoExiting();
+
+        LOG.infoEntering("deploy");
+        RpcObject params = new RpcObject.Builder()
+                .put("name", new RpcValue("HelloWorld"))
+                .build();
+
+        try {
+            deploy(owner, Constants.CHAINSCORE_ADDRESS, SCORE_TOO_BIG_PATH, params, Constants.DEFAULT_STEP_LIMIT);
+            fail();
+        }
+        catch(TransactionFailureException ex) {
+            LOG.info("FAIL to depoly : expected result");
+        }
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void invalidScoreNoOnUpdateMethod() throws Exception {
+        LOG.infoEntering( "invalidScoreNoOnUpdateMethod");
+        KeyWallet owner = KeyWallet.create();
+        BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
+        assertEquals(BigInteger.ZERO, bal);
+
+        LOG.infoEntering("transfer and check balance");
+        Utils.transferAndCheck(iconService, chain, chain.godWallet, owner.getAddress(), Constants.DEFAULT_BALANCE);
+        LOG.infoExiting();
+
+        LOG.infoEntering("deploy");
+        RpcObject params = new RpcObject.Builder()
+                .put("name", new RpcValue("HelloWorld"))
+                .build();
+        Address scoreAddr = deploy(owner, Constants.CHAINSCORE_ADDRESS, Constants.SCORE_HELLOWORLD_PATH, params, Constants.DEFAULT_STEP_LIMIT);
+        LOG.infoExiting();
+
+        LOG.infoEntering( "invoke");
+        params = new RpcObject.Builder()
+                .put("name", new RpcValue("ICONLOOP"))
+                .build();
+        invoke(owner, scoreAddr, "helloWithName", params);
+        LOG.infoExiting();
+
+        boolean failEx = false;
+        String noUpdatePath = Constants.SCORE_ROOT + "no_update_method";
+        try {
+            LOG.infoEntering("update with no update method");
+            deploy(owner, scoreAddr, noUpdatePath, null, Constants.DEFAULT_STEP_LIMIT);
+            LOG.infoExiting();
+        }
+        catch (TransactionFailureException ex) {
+            LOG.infoExiting();
+            failEx = true;
+        }
+        assertTrue(failEx);
+
+        LOG.infoEntering( "invoke not updated score method");
+        params = new RpcObject.Builder()
+                .put("name", new RpcValue("ICONLOOP"))
+                .build();
+        invoke(owner, scoreAddr, "helloWithName", params);
+        LOG.infoExiting();
+        LOG.infoExiting();
     }
 }

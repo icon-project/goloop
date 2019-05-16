@@ -3,6 +3,7 @@ package foundation.icon.test.cases;
 import foundation.icon.icx.*;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
+import foundation.icon.icx.data.ConfirmedTransaction;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
@@ -26,16 +28,14 @@ import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.*;
 
 /*
-test cases
-1. Not enough balance.
-2. Not enough stepLimit.
-3. Invalid signature
-coin. check balances of both accounts with GetBalance api.
- - Check balances in every transaction.
- - Check
- set StepPrice 0 or not.
- -
-5.
+test methods
+  positive
+    transferAndCheckBal
+    transferWithMessage
+  negative
+    notEnoughBalance
+    notEnoughStepLimit
+    invalidSignature
  */
 @Tag(Constants.TAG_GOVERNANCE)
 public class TransferTest {
@@ -303,6 +303,37 @@ public class TransferTest {
     }
 
 
+    @Test
     public void transferWithMessage() throws Exception {
+        LOG.infoEntering( "transferWithMessage");
+        KeyWallet testWallet = KeyWallet.create();
+        for(KeyWallet wallet : testWallets) {
+            String msg = "message : " + wallet.toString();
+            Transaction transaction = TransactionBuilder.newBuilder()
+                    .nid(BigInteger.valueOf(chain.networkId))
+                    .from(wallet.getAddress())
+                    .to(testWallet.getAddress())
+                    .value(BigInteger.valueOf(1))
+                    .stepLimit(BigInteger.valueOf(1))
+                    .timestamp(Utils.getMicroTime())
+                    .nonce(BigInteger.valueOf(1))
+                    .message(msg)
+                    .build();
+
+            SignedTransaction signedTransaction = new SignedTransaction(transaction, wallet);
+            LOG.infoEntering("sendTransaction");
+            Bytes txHash = iconService.sendTransaction(signedTransaction).execute();
+            LOG.infoExiting();
+            LOG.infoEntering("getTxResult");
+            Utils.getTransactionResult(iconService, txHash, 5000);
+            LOG.infoExiting();
+            ConfirmedTransaction tx = iconService.getTransaction(txHash).execute();
+            StringBuilder sb = new StringBuilder("0x");
+            for(byte b: msg.getBytes(StandardCharsets.UTF_8)) {
+                sb.append(String.format("%02x", b));
+            }
+            assertEquals(sb.toString(), tx.getData().asBytes().toString());
+        }
+        LOG.infoExiting();
     }
 }

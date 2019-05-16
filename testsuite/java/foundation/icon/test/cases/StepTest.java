@@ -27,6 +27,12 @@ import static foundation.icon.test.common.Env.LOG;
 import static foundation.icon.test.common.Utils.getMicroTime;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+/*
+test methods
+    transferStep
+    deployStep
+    callStep
+ */
 @Tag(Constants.TAG_GOVERNANCE)
 public class StepTest {
     private static KeyWallet[]testWallets;
