@@ -45,10 +45,10 @@ type stream struct {
 	seq          uint16
 	peerAck      uint16
 	timedout     bool
-	repostTimer  common.Timer
+	repostTimer  *common.Timer
 	unackedItems []*sendItem // in seq order. first item's seq is peerAck+1
 	peerSeq      uint16
-	ackPostTimer common.Timer // nil if nothing to ack
+	ackPostTimer *common.Timer // nil if nothing to ack
 }
 
 func newReactor(clock common.Clock, ur module.Reactor,
@@ -193,13 +193,13 @@ func (s *stream) receive(sm *streamMessage) (res bool) {
 			timer = s.r.clock.AfterFunc(configAckWait, func() {
 				s.r.Lock()
 				defer s.r.Unlock()
-				if s.ackPostTimer != timer {
+				if s.ackPostTimer != &timer {
 					return
 				}
 
 				s.postAck()
 			})
-			s.ackPostTimer = timer
+			s.ackPostTimer = &timer
 		}
 		res = true
 	} else {
@@ -283,7 +283,7 @@ func (s *stream) updateRepostTimer(now time.Time) {
 	timer = s.r.clock.AfterFunc(diff, func() {
 		s.r.Lock()
 		defer s.r.Unlock()
-		if s.repostTimer != timer {
+		if s.repostTimer != &timer {
 			return
 		}
 
@@ -298,7 +298,7 @@ func (s *stream) updateRepostTimer(now time.Time) {
 		mi.t = now.Add(configPeerAckTimeout)
 		s.updateRepostTimer(now)
 	})
-	s.repostTimer = timer
+	s.repostTimer = &timer
 }
 
 // for test

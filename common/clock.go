@@ -5,13 +5,32 @@ import (
 	"time"
 )
 
-type Timer interface {
+type Timer struct {
+	ITimer
+	C <- chan time.Time
+}
+
+func newTimer(itm ITimer) Timer {
+	return Timer{itm, make(chan time.Time)}
+}
+
+func newTimerWithChan(itm ITimer, c <- chan time.Time) Timer {
+	return Timer{itm, c}
+}
+
+func (timer *Timer) Stop() {
+	timer.ITimer.Stop()
+}
+
+type ITimer interface {
 	Stop() bool
 }
 
 type Clock interface {
 	Now() time.Time
 	AfterFunc(d time.Duration, f func()) Timer
+	NewTimer(d time.Duration) Timer
+	Sleep(d time.Duration)
 }
 
 type GoTimeClock struct {
@@ -22,7 +41,15 @@ func (cl *GoTimeClock) Now() time.Time {
 }
 
 func (cl *GoTimeClock) AfterFunc(d time.Duration, f func()) Timer {
-	return time.AfterFunc(d, f)
+	return newTimer(time.AfterFunc(d, f))
+}
+
+func (cl *GoTimeClock) NewTimer(d time.Duration) Timer {
+	return newTimer(time.NewTimer(d))
+}
+
+func (cl *GoTimeClock) Sleep(d time.Duration) {
+	time.Sleep(d)
 }
 
 type afterFuncTimer struct {
@@ -71,7 +98,25 @@ func (cl *TestClock) AfterFunc(d time.Duration, f func()) Timer {
 	t := cl.now.Add(d)
 	aft := &afterFuncTimer{cl, t, f}
 	cl.afterFuncTimers = append(cl.afterFuncTimers, aft)
-	return aft
+	return newTimer(aft)
+}
+
+func (cl *TestClock) NewTimer(d time.Duration) Timer {
+	cl.Lock()
+	defer cl.Unlock()
+
+	t := cl.now.Add(d)
+	c := make(chan time.Time)
+	aft := &afterFuncTimer{cl, t, func() {
+		c <- cl.Now()
+	}}
+	cl.afterFuncTimers = append(cl.afterFuncTimers, aft)
+	return newTimerWithChan(aft, c)
+}
+
+func (cl *TestClock) Sleep(d time.Duration) {
+	timer := cl.NewTimer(d)
+	<-timer.C
 }
 
 func (cl *TestClock) PassTime(d time.Duration) {
