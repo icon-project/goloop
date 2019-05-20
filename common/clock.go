@@ -7,14 +7,14 @@ import (
 
 type Timer struct {
 	ITimer
-	C <- chan time.Time
+	C <-chan time.Time
 }
 
 func newTimer(itm ITimer) Timer {
 	return Timer{itm, make(chan time.Time)}
 }
 
-func newTimerWithChan(itm ITimer, c <- chan time.Time) Timer {
+func newTimerWithChan(itm ITimer, c <-chan time.Time) Timer {
 	return Timer{itm, c}
 }
 
