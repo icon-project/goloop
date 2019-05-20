@@ -46,12 +46,12 @@ var (
 	version = "unknown"
 	build   = "unknown"
 
-	cfg                              GoLoopConfig
-	flagCfg                          GoLoopConfig
-	keyStoreFile, keyStoreSecret     string
-	saveKeyStore, saveKeyStoreSecret string
-	nodeDir                          string
-	cliSocket, eeSocket              string
+	cfg                          GoLoopConfig
+	flagCfg                      GoLoopConfig
+	keyStoreFile, keyStoreSecret string
+	saveKeyStore                 string
+	nodeDir                      string
+	cliSocket, eeSocket          string
 
 	cpuProfile, memProfile string
 
@@ -218,12 +218,8 @@ func main() {
 				if err := ioutil.WriteFile(saveKeyStore, ks.Bytes(), 0700); err != nil {
 					log.Panicf("Fail to save key store to the file=%s err=%+v", saveKeyStore, err)
 				}
-				cfg.KeyStoreData = nil
 			}
-			if saveKeyStoreSecret != "" {
-				if err := ioutil.WriteFile(saveKeyStoreSecret, []byte(cfg.KeyStorePass), 0700); err != nil {
-					log.Panicf("Fail to save key store to the file=%s err=%+v", saveKeyStore, err)
-				}
+			if keyStoreSecret != "" {
 				cfg.KeyStorePass = ""
 			}
 
@@ -234,7 +230,6 @@ func main() {
 		},
 	}
 	saveCmd.Flags().StringVar(&saveKeyStore, "save_key_store", "", "KeyStore File path to save")
-	saveCmd.Flags().StringVar(&saveKeyStoreSecret, "save_key_secret", "", "Secret File path to save")
 
 	serverCmd.AddCommand(saveCmd)
 
