@@ -97,6 +97,17 @@ pack:gochian:
     - build:pyee
     - build:gochian
 
+pack:goloop:
+  image: docker:git
+  stage: pack
+  script:
+    - sh docker/goloop/build.sh
+  tags:
+    - docker-build
+  dependencies:
+    - build:pyee
+    - build:goloop
+
 #ITJ : Integration Test Java-sdk
 .integration:java-sdk:gochain: &ITJ__gochain
   image: "openjdk:8u212-jdk-alpine"

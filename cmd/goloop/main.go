@@ -81,6 +81,12 @@ func StringInterfaceMapToJsonRawMessageHookFunc(
 func initConfig() {
 	cfg.BuildVersion = version
 	cfg.BuildTags = build
+
+	if cfg.FilePath == "" {
+		//if GOLOOP_CONFIG is declared, using it
+		cfg.FilePath = vc.GetString("config")
+	}
+
 	if cfg.FilePath != "" {
 		f, err := os.Open(cfg.FilePath)
 		if err != nil {
@@ -92,6 +98,7 @@ func initConfig() {
 			log.Panicf("Fail to read config file=%s err=%+v", cfg.FilePath, err)
 		}
 	}
+
 	err := vc.Unmarshal(&cfg, viperDecodeOpt)
 	if err != nil {
 		log.Panicf("Fail to unmarshall config from env err=%+v", err)
@@ -215,7 +222,7 @@ func main() {
 				if err := json.Indent(ks, cfg.KeyStoreData, "", "  "); err != nil {
 					log.Panicf("Fail to indenting key data err=%+v", err)
 				}
-				if err := ioutil.WriteFile(saveKeyStore, ks.Bytes(), 0700); err != nil {
+				if err := ioutil.WriteFile(saveKeyStore, ks.Bytes(), 0600); err != nil {
 					log.Panicf("Fail to save key store to the file=%s err=%+v", saveKeyStore, err)
 				}
 			}
@@ -313,7 +320,7 @@ func saveJsonFile(filePath string, v interface{}) error {
 	if err := os.MkdirAll(path.Dir(filePath), 0700); err != nil {
 		return err
 	}
-	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
 	}

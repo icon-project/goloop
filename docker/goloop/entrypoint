@@ -1,0 +1,16 @@
+#!/bin/sh
+if [ "$GOLOOP_CONFIG" != "" ] && [ ! -f "$GOLOOP_CONFIG" ]; then
+  ENV_UNSET="GOLOOP_CONFIG=''"
+  if [ "$GOLOOP_KEY_STORE" != "" ]; then
+    GOLOOP_SAVE_KEY_STORE="--save_key_store=$GOLOOP_KEY_STORE"
+    if [ ! -f "$GOLOOP_KEY_STORE" ]; then
+      ENV_UNSET="$ENV_UNSET GOLOOP_KEY_STORE=''"
+    fi
+  fi
+  echo "ENV_UNSET=$ENV_UNSET"
+  sh -c "$ENV_UNSET goloop server save $GOLOOP_CONFIG $GOLOOP_SAVE_KEY_STORE"
+fi
+
+source /goloop/venv/bin/activate
+
+exec "$@"
