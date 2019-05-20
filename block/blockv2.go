@@ -125,7 +125,7 @@ func (b *blockV2) MarshalBody(w io.Writer) error {
 }
 
 func (b *blockV2) Marshal(w io.Writer) error {
-	if err:=b.MarshalHeader(w); err!=nil {
+	if err := b.MarshalHeader(w); err != nil {
 		return err
 	}
 	return b.MarshalBody(w)
