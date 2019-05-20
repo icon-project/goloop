@@ -39,8 +39,6 @@ unit:go:
     - make test
   tags:
     - docker
-  dependencies:
-    - deps:go
 
 unit:py:
   image: "${REPO_PY_DEPS}"
@@ -50,8 +48,6 @@ unit:py:
     - python -m unittest -v
   tags:
     - docker
-  dependencies:
-    - deps:py
 
 build:pyee:
   image: "${REPO_PY_DEPS}"
@@ -60,35 +56,35 @@ build:pyee:
     - cd pyee
     - python3 setup.py bdist_wheel
   artifacts:
-    expire_in: 1 week
+    expire_in: 1 day
     paths:
-      - pyee/dist
+      - pyee/dist/
+  tags:
+    - docker
+
+.build:go: &build__go
+  image: "${REPO_GO_DEPS}"
+  stage: build
+  variables:
+    BUILD_TARGET: all
+  script:
+    - make ${BUILD_TARGET}
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - bin/
   tags:
     - docker
 
 build:gochian:
-  image: "${REPO_GO_DEPS}"
-  stage: build
+  <<: *build__go
   script:
     - make gochain
-  artifacts:
-    expire_in: 1 week
-    paths:
-      - bin/gochain
-  tags:
-    - docker
 
 build:goloop:
-  image: "${REPO_GO_DEPS}"
-  stage: build
+  <<: *build__go
   script:
     - make goloop
-  artifacts:
-    expire_in: 1 week
-    paths:
-      - bin/goloop
-  tags:
-    - docker
 
 pack:gochian:
   image: docker:git
@@ -101,19 +97,22 @@ pack:gochian:
     - build:pyee
     - build:gochian
 
-integration:java-sdk:gochain:
+#ITJ : Integration Test Java-sdk
+.integration:java-sdk:gochain: &ITJ__gochain
   image: "openjdk:8u212-jdk-alpine"
   stage: integration
   services:
     - ${REPO_GOCHAIN}
   variables:
     GOCHAIN_CONFIG: "${CI_PROJECT_DIR}/testsuite/data/config.json"
-    GOCHAIN_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}"
-    GOCHAIN_LOGFILE: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/gochain.log"
-  script:
+    GOCHAIN_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_JOB_NAME}"
+    GOCHAIN_LOGFILE: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_JOB_NAME}/gochain.log"
+  before_script:
+    - env
     - cd testsuite
     - sed -i "s/localhost/$(echo ${REPO_GOCHAIN//\//-}|cut -d ":" -f 1)/" data/env.properties
-    - ./gradlew testNormal -DNO_SERVER="true"
+  script:
+    - ./gradlew test -DNO_SERVER="true"
   after_script:
     - cp -r $GOCHAIN_DATA gochain_data
   cache:
@@ -121,7 +120,7 @@ integration:java-sdk:gochain:
     paths:
       - testsuite/.gradle
   artifacts:
-    expire_in: 1 week
+    expire_in: 1 day
     when: on_failure
     paths:
       - gochain_data
@@ -130,6 +129,35 @@ integration:java-sdk:gochain:
     - docker
   dependencies:
     - pack:gochian
+
+ITJ:gochain:normal:
+  <<: *ITJ__gochain
+  variables:
+    GOCHAIN_CONFIG: "${CI_PROJECT_DIR}/testsuite/data/config.json"
+    GOCHAIN_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_JOB_NAME}"
+    GOCHAIN_LOGFILE: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_JOB_NAME}/gochain.log"
+  script:
+    - ./gradlew testNormal -DNO_SERVER="true"
+
+ITJ:gochain:governance:
+  <<: *ITJ__gochain
+  variables:
+    GOCHAIN_CONFIG: "${CI_PROJECT_DIR}/testsuite/data/govConfig.json"
+    GOCHAIN_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_JOB_NAME}"
+    GOCHAIN_LOGFILE: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_JOB_NAME}/gochain.log"
+    GOCHAIN_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_normal.json"
+  script:
+    - ./gradlew testGovernance -DNO_SERVER="true" -DAUDIT="false"
+
+ITJ:gochain:governance:audit:
+  <<: *ITJ__gochain
+  variables:
+    GOCHAIN_CONFIG: "${CI_PROJECT_DIR}/testsuite/data/govConfig.json"
+    GOCHAIN_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_JOB_NAME}"
+    GOCHAIN_LOGFILE: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_JOB_NAME}/gochain.log"
+    GOCHAIN_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_audit.json"
+  script:
+    - ./gradlew testGovernance -DNO_SERVER="true" -DAUDIT="true"
 
 cleanup:integration:
   image: docker:git
