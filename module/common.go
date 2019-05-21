@@ -43,6 +43,7 @@ type CommitVoteSet interface {
 	Verify(block Block, validators ValidatorList) error
 	Bytes() []byte
 	Hash() []byte
+	Timestamp() int64
 }
 
 type CommitVoteSetDecoder func([]byte) CommitVoteSet

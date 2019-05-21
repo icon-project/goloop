@@ -162,17 +162,26 @@ func (vt voteType) String() string {
 	}
 }
 
-type vote struct {
+type voteBase struct {
 	_HR
 	Type           voteType
 	BlockID        []byte
 	BlockPartSetID *PartSetID
 }
 
-func (v *vote) Equal(v2 *vote) bool {
+func (v *voteBase) Equal(v2 *voteBase) bool {
 	return v.Height == v2.Height && v.Round == v2.Round && v.Type == v2.Type &&
 		bytes.Equal(v.BlockID, v2.BlockID) &&
 		v.BlockPartSetID.Equal(v2.BlockPartSetID)
+}
+
+type vote struct {
+	voteBase
+	Timestamp int64
+}
+
+func (v *vote) Equal(v2 *vote) bool {
+	return v.voteBase.Equal(&v2.voteBase) && v.Timestamp == v2.Timestamp
 }
 
 func (v *vote) bytes() []byte {

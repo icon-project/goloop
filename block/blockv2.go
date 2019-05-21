@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
@@ -53,14 +52,6 @@ type blockV2 struct {
 	nextValidators     module.ValidatorList
 	votes              module.CommitVoteSet
 	_id                []byte
-}
-
-func unixMicroFromTime(t time.Time) int64 {
-	return t.UnixNano() / 1000
-}
-
-func timeFromUnixMicro(usec int64) time.Time {
-	return time.Unix(0, usec*1000)
 }
 
 func (b *blockV2) Version() int {

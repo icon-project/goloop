@@ -130,6 +130,10 @@ func (vs *tCommitVoteSet) Hash() []byte {
 	panic("not implemented")
 }
 
+func (vs *tCommitVoteSet) Timestamp() int64 {
+	panic("not implemented")
+}
+
 type tBlockManager struct {
 	bmap map[int64]module.Block
 }

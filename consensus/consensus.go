@@ -31,6 +31,7 @@ const (
 	timeoutPrevote   = time.Second * 1
 	timeoutPrecommit = time.Second * 1
 	timeoutNewRound  = time.Second * 1
+	blockTimeIota    = time.Second * 1
 )
 
 const (
@@ -865,6 +866,21 @@ func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) error {
 	return nil
 }
 
+func (cs *consensus) voteTimestamp() int64 {
+	var timestamp int64
+	blockIota := int64(cs.rg.CommitTimeout() / time.Microsecond)
+	if cs.lockedBlockParts != nil && cs.lockedBlockParts.block != nil {
+		timestamp = cs.lockedBlockParts.block.Timestamp() + blockIota
+	} else if cs.currentBlockParts != nil && cs.currentBlockParts.block != nil {
+		timestamp = cs.currentBlockParts.block.Timestamp() + blockIota
+	}
+	now := common.UnixMicroFromTime(time.Now())
+	if now > timestamp {
+		timestamp = now
+	}
+	return timestamp
+}
+
 func (cs *consensus) sendVote(vt voteType, blockParts *blockPartSet) error {
 	if cs.validators.IndexOf(cs.wallet.Address()) < 0 {
 		return nil
@@ -882,6 +898,8 @@ func (cs *consensus) sendVote(vt voteType, blockParts *blockPartSet) error {
 		msg.BlockID = nil
 		msg.BlockPartSetID = nil
 	}
+	msg.Timestamp = cs.voteTimestamp()
+
 	err := msg.sign(cs.wallet)
 	if err != nil {
 		return err

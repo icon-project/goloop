@@ -151,3 +151,7 @@ func (cl *TestClock) SetTime(t time.Time) {
 		i++
 	}
 }
+
+func UnixMicroFromTime(t time.Time) int64 {
+	return t.UnixNano() / int64(time.Microsecond)
+}

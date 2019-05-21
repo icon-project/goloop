@@ -856,6 +856,10 @@ func (vs *testCommitVoteSet) Hash() []byte {
 	return crypto.SHA3Sum256(vs.Bytes())
 }
 
+func (vs *testCommitVoteSet) Timestamp() int64 {
+	return 0
+}
+
 func newRandomTestValidatorList(n int) *testValidatorList {
 	wallets := newWallets(n)
 	validators := make([]*testValidator, n)

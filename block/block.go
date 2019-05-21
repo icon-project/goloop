@@ -17,5 +17,8 @@ func verifyBlock(b module.Block, prev module.Block, validators module.ValidatorL
 	if err := b.Votes().Verify(prev, validators); err != nil {
 		return err
 	}
+	if b.Timestamp() != b.Votes().Timestamp() {
+		return errors.New("bad timestamp")
+	}
 	return nil
 }

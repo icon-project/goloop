@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"time"
 
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/service/txresult"
@@ -340,7 +339,7 @@ func (pt *proposeTask) _onExecute(err error) {
 		return
 	}
 	height := pt.parentBlock.Height() + 1
-	timestamp := unixMicroFromTime(time.Now())
+	timestamp := pt.votes.Timestamp()
 	tr, err := pt.in.propose(newBlockInfo(height, timestamp), nil)
 	if err != nil {
 		pt.stop()
