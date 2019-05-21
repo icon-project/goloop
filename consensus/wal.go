@@ -477,3 +477,21 @@ func IsEOF(err error) bool {
 func IsUnexpectedEOF(err error) bool {
 	return errors.Is(err, io.ErrUnexpectedEOF)
 }
+
+type WALManager interface {
+	OpenForRead(id string) (WALReader, error)
+	OpenForWrite(id string, cfg *WALConfig) (WALWriter, error)
+}
+
+type walManager struct {
+}
+
+var defaultWALManager = &walManager{}
+
+func (wm *walManager) OpenForRead(id string) (WALReader, error) {
+	return OpenWALForRead(id)
+}
+
+func (wm *walManager) OpenForWrite(id string, cfg *WALConfig) (WALWriter, error) {
+	return OpenWALForWrite(id, cfg)
+}
