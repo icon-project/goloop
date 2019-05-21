@@ -1,6 +1,8 @@
 package codec
 
 import (
+	"bytes"
+	"github.com/icon-project/goloop/common/errors"
 	ugorji "github.com/ugorji/go/codec"
 )
 
@@ -10,7 +12,13 @@ const (
 	TypeList
 	TypeBytes
 	TypeString
+	TypeBool
 	TypeCustom = 10
+)
+
+var (
+	TrueBytes  = []byte{0x01}
+	FalseBytes = []byte{0x00}
 )
 
 type TypeCodec interface {
@@ -61,6 +69,10 @@ func (o *TypedObj) CodecDecodeSelf(d *ugorji.Decoder) {
 		var s string
 		MP.UnmarshalFromBytes([]byte(tmp.Object), &s)
 		o.Object = s
+	case TypeBool:
+		var bs []byte
+		MP.UnmarshalFromBytes([]byte(tmp.Object), &bs)
+		o.Object = bs
 	default:
 		var bs []byte
 		MP.UnmarshalFromBytes([]byte(tmp.Object), &bs)
@@ -89,6 +101,12 @@ func EncodeAny(tc TypeCodec, o interface{}) (*TypedObj, error) {
 		return newTypedObj(TypeString, obj), nil
 	case []byte:
 		return newTypedObj(TypeBytes, obj), nil
+	case bool:
+		if obj {
+			return newTypedObj(TypeBool, TrueBytes), nil
+		} else {
+			return newTypedObj(TypeBool, FalseBytes), nil
+		}
 	case []interface{}:
 		l := make([]*TypedObj, len(obj))
 		for i, o := range obj {
@@ -157,6 +175,15 @@ func DecodeAny(tc TypeCodec, to *TypedObj) (interface{}, error) {
 		return nil, nil
 	case TypeString, TypeBytes:
 		return to.Object, nil
+	case TypeBool:
+		bs := to.Object.([]byte)
+		if bytes.Equal(bs, FalseBytes) {
+			return false, nil
+		} else if bytes.Equal(bs, TrueBytes) {
+			return true, nil
+		} else {
+			return nil, errors.ErrIllegalArgument
+		}
 	case TypeDict:
 		m := make(map[string]interface{})
 		for k, nto := range to.Object.(map[string]*TypedObj) {

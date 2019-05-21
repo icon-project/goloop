@@ -80,6 +80,7 @@ class TypeTag(object):
     LIST = 2
     BYTES = 3
     STRING = 4
+    BOOL = 5
 
     CUSTOM = 10
     INT = CUSTOM + 1
@@ -201,6 +202,13 @@ class ServiceManagerProxy:
             return val.decode('utf-8')
         elif tag == TypeTag.INT:
             return bytes_to_int(val)
+        elif tag == TypeTag.BOOL:
+            if val == b'\x00':
+                return False
+            elif val == b'\x01':
+                return True
+            else:
+                raise Exception(f'IllegalBoolBytes{val.hex()})')
         else:
             return self.__codec.decode(tag, val)
 
@@ -261,6 +269,11 @@ class ServiceManagerProxy:
             return TypeTag.STRING, o.encode('utf-8')
         elif isinstance(o, int):
             return TypeTag.INT, int_to_bytes(o)
+        elif isinstance(o, bool):
+            if o:
+                return TypeTag.BOOL, b'\x01'
+            else:
+                return TypeTag.BOOL, b'\x00'
         else:
             return self.__codec.encode(o)
 
