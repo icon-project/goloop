@@ -31,7 +31,6 @@ const (
 	timeoutPrevote   = time.Second * 1
 	timeoutPrecommit = time.Second * 1
 	timeoutNewRound  = time.Second * 1
-	blockTimeIota    = time.Second * 1
 )
 
 const (
