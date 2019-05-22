@@ -42,14 +42,14 @@ Summarize the document to following items.
 
 |Name|Type|Required|Description|
 |---|---|---|---|
-|height|T_INT|true||
+|height|T_INT|true| Start height |
 
 > Example notification
 
 ```json
 {
-  "hash": "",
-  "height": "0x11"
+  "hash": "0xabc...",
+  "height": "0x10"
 }
 ```
 
@@ -69,10 +69,10 @@ Summarize the document to following items.
 ```json
 {
   "height": "0x10",
-  "addr": "",
-  "event": "",
+  "addr": "cx12ab...",
+  "event": "Event(int,bytes)",
   "data": [
-      "data1",
+      null,
       "data2",
       ...
   ]
@@ -82,18 +82,18 @@ Summarize the document to following items.
 
 |Name|Type|Required|Description|
 |---|---|---|---|
-|height|T_INT|true||
-|addr|T_ADDR|true||
-|event|String|true||
-|data|Array|true||
+|height|T_INT|true| Start height |
+|addr|T_ADDR|false||
+|event|String|true| Event signature |
+|data|Array|true| Array of parameters to match. Its length shall be equal to the number of parameters of the event. If an element is `null`, the parameter is not matched. |
 
 > Example notifiaction
 
 ```json
 {
-  "hash": "",
+  "hash": "0xdbc...",
   "height": "0x11",
-  "index":  ""
+  "index":  "0"
 }
 ```
 
