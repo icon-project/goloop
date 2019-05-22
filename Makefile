@@ -125,7 +125,7 @@ $(YQ) : | $(FAKE_PROJECT)
 	go get gopkg.in/mikefarah/yq.v2
 
 
-.PHONY: doc
+.PHONY: doc test
 doc : $(DOC_TMP)/swagger.yaml
 
 $(DOC_TMP)/swagger.yaml: | $(YQ) $(FAKE_PROJECT)
