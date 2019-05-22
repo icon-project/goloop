@@ -247,6 +247,9 @@ func (wm *wsSessionManager) RunEventSession(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "bad event request")
 	}
 	lb, err := er.compile()
+	if err != nil {
+		return err
+	}
 
 	ech := make(chan error)
 	go readLoop(c, ech)
