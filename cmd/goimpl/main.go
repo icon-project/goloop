@@ -10,7 +10,21 @@ import (
 	"golang.org/x/tools/imports"
 )
 
+func printUsage() {
+	fmt.Fprintf(os.Stderr, strings.Join([]string{
+		"goimpl <file> <impl-package> <impl-struct> <interface>",
+		"",
+		"Example:",
+		"    goimpl blockbase.go test BlockBase module.Block",
+		"",
+	}, "\n"))
+}
+
 func main() {
+	if len(os.Args) != 4 {
+		printUsage()
+		os.Exit(1)
+	}
 	file := os.Args[1]
 	pkg := os.Args[2]
 	strt := os.Args[3]
