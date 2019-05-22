@@ -68,17 +68,17 @@ func (h *hash) get(m *mpt, keys []byte) (node, trie.Object, error) {
 func (h *hash) set(m *mpt, keys []byte, o trie.Object) (node, bool, error) {
 	n, err := h.realize(m)
 	if err != nil || n == nil {
-		return nil, false, err
+		return h, false, err
 	}
-	return m.set(n, keys, o)
+	return n.set(m, keys, o)
 }
 
 func (h *hash) delete(m *mpt, keys []byte) (node, bool, error) {
 	n, err := h.realize(m)
 	if err != nil || n == nil {
-		return nil, false, err
+		return h, false, err
 	}
-	return m.delete(n, keys)
+	return n.delete(m, keys)
 }
 
 func (h *hash) traverse(m *mpt, k string, v nodeScheduler) (string, trie.Object, error) {

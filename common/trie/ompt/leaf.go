@@ -100,8 +100,10 @@ func (n *leaf) getChanged(keys []byte, o trie.Object) *leaf {
 
 func (n *leaf) set(m *mpt, keys []byte, o trie.Object) (node, bool, error) {
 	cnt, match := compareKeys(keys, n.keys)
-	// If it matches, no need to break leaf nodes.
-	// Buf if
+
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
 	switch {
 	case cnt == 0 && !match:
 		br := &branch{}
@@ -146,6 +148,9 @@ func (n *leaf) set(m *mpt, keys []byte, o trie.Object) (node, bool, error) {
 }
 
 func (n *leaf) getKeyPrepended(k []byte) *leaf {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
 	nk := make([]byte, len(k)+len(n.keys))
 	copy(nk, k)
 	copy(nk[len(k):], n.keys)

@@ -99,6 +99,10 @@ func (n *extension) getChanged(keys []byte, next node) *extension {
 
 func (n *extension) set(m *mpt, keys []byte, o trie.Object) (node, bool, error) {
 	cnt, _ := compareKeys(keys, n.keys)
+
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
 	switch {
 	case cnt == 0:
 		nb := &branch{}
@@ -132,12 +136,19 @@ func (n *extension) set(m *mpt, keys []byte, o trie.Object) (node, bool, error) 
 		next, dirty, err := n.next.set(m, keys[cnt:], o)
 		if dirty {
 			return n.getChanged(n.keys, next), true, err
+		} else {
+			if n.next != next {
+				n.next = next
+			}
 		}
 		return n, false, err
 	}
 }
 
 func (n *extension) getKeyPrepended(k []byte) *extension {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
 	nk := make([]byte, len(k)+len(n.keys))
 	copy(nk, k)
 	copy(nk[len(k):], n.keys)
@@ -145,6 +156,9 @@ func (n *extension) getKeyPrepended(k []byte) *extension {
 }
 
 func (n *extension) delete(m *mpt, keys []byte) (node, bool, error) {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
 	cnt, _ := compareKeys(keys, n.keys)
 	if cnt < len(n.keys) {
 		return n, false, nil
@@ -156,15 +170,9 @@ func (n *extension) delete(m *mpt, keys []byte) (node, bool, error) {
 		}
 		switch nn := next.(type) {
 		case *extension:
-			nkeys := make([]byte, len(n.keys)+len(nn.keys))
-			copy(nkeys, n.keys)
-			copy(nkeys[len(n.keys):], nn.keys)
-			return n.getChanged(nkeys, nn.next), true, err
+			return nn.getKeyPrepended(n.keys), true, err
 		case *leaf:
-			nkeys := make([]byte, len(n.keys)+len(nn.keys))
-			copy(nkeys, n.keys)
-			copy(nkeys[len(n.keys):], nn.keys)
-			return &leaf{keys: nkeys, value: nn.value}, true, err
+			return nn.getKeyPrepended(n.keys), true, err
 		}
 		return n.getChanged(n.keys, next), true, err
 	} else {

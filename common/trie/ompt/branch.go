@@ -128,6 +128,9 @@ func (n *branch) getChangable() *branch {
 }
 
 func (n *branch) set(m *mpt, keys []byte, o trie.Object) (node, bool, error) {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
 	if len(keys) == 0 {
 		if n.value == nil || !n.value.Equal(o) {
 			br := n.getChangable()
