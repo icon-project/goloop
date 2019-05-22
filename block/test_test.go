@@ -2,7 +2,6 @@ package block
 
 import (
 	"bytes"
-	"context"
 	"log"
 	"math/big"
 	"reflect"
@@ -17,6 +16,7 @@ import (
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/txresult"
+	"github.com/icon-project/goloop/test"
 )
 
 const (
@@ -25,19 +25,12 @@ const (
 )
 
 type testChain struct {
+	test.ChainBase
 	wallet   module.Wallet
 	database db.Database
 	gtx      *testTransaction
 	vld      module.CommitVoteSetDecoder
 	sm       *testServiceManager
-}
-
-func (c *testChain) ConcurrencyLevel() int {
-	panic("implement me")
-}
-
-func (c *testChain) Regulator() module.Regulator {
-	panic("implement me")
 }
 
 func (c *testChain) Database() db.Database {
@@ -48,10 +41,6 @@ func (c *testChain) Wallet() module.Wallet {
 	return c.wallet
 }
 
-func (c *testChain) NID() int {
-	return 0
-}
-
 func (c *testChain) Genesis() []byte {
 	return c.gtx.Bytes()
 }
@@ -60,56 +49,8 @@ func (c *testChain) CommitVoteSetDecoder() module.CommitVoteSetDecoder {
 	return c.vld
 }
 
-func (c *testChain) GetGenesisData(key []byte) ([]byte, error) {
-	panic("not implemented")
-}
-
-func (c *testChain) BlockManager() module.BlockManager {
-	panic("not implemented")
-}
-
-func (c *testChain) Consensus() module.Consensus {
-	panic("not implemented")
-}
-
 func (c *testChain) ServiceManager() module.ServiceManager {
 	return c.sm
-}
-
-func (c *testChain) NetworkManager() module.NetworkManager {
-	panic("not implemented")
-}
-
-func (c *testChain) Init(sync bool) error {
-	panic("implement me")
-}
-
-func (c *testChain) Start(sync bool) error {
-	panic("implement me")
-}
-
-func (c *testChain) Stop(sync bool) error {
-	panic("implement me")
-}
-
-func (c *testChain) Term(sync bool) error {
-	panic("implement me")
-}
-
-func (c *testChain) Reset(sync bool) error {
-	panic("implement me")
-}
-
-func (c *testChain) Verify(sync bool) error {
-	panic("implement me")
-}
-
-func (c *testChain) State() string {
-	panic("implement me")
-}
-
-func (c *testChain) MetricContext() context.Context {
-	panic("implement me")
 }
 
 type testError struct {
@@ -551,13 +492,10 @@ func (tr *testTransition) LogBloom() module.LogBloom {
 }
 
 type testServiceManager struct {
+	test.ServiceManagerBase
 	transactions [][]*testTransaction
 	bucket       *bucket
 	exeChan      chan struct{}
-}
-
-func (sm *testServiceManager) HasTransaction(id []byte) bool {
-	return false
 }
 
 func newTestServiceManager(database db.Database) *testServiceManager {
@@ -694,10 +632,6 @@ func (sm *testServiceManager) TransactionListFromSlice(txs []module.Transaction,
 	return newTestTransactionList(ttxs)
 }
 
-func (sm *testServiceManager) ReceiptListFromResult(result []byte, g module.TransactionGroup) module.ReceiptList {
-	panic("not implemented")
-}
-
 func (sm *testServiceManager) SendTransaction(tx interface{}) ([]byte, error) {
 	if ttx, ok := tx.(*testTransaction); ok {
 		if ttx.Data.CreateError != nil {
@@ -709,10 +643,6 @@ func (sm *testServiceManager) SendTransaction(tx interface{}) ([]byte, error) {
 	return nil, errors.Errorf("bad type")
 }
 
-func (sm *testServiceManager) Call(result []byte, vl module.ValidatorList, js []byte, bi module.BlockInfo) (interface{}, error) {
-	panic("not implemented")
-}
-
 func (sm *testServiceManager) ValidatorListFromHash(hash []byte) module.ValidatorList {
 	tvl := &testValidatorList{}
 	err := sm.bucket.get(raw(hash), tvl)
@@ -720,34 +650,6 @@ func (sm *testServiceManager) ValidatorListFromHash(hash []byte) module.Validato
 		return nil
 	}
 	return tvl
-}
-
-func (sm *testServiceManager) GetBalance(result []byte, addr module.Address) (*big.Int, error) {
-	panic("not implemented")
-}
-
-func (sm *testServiceManager) GetTotalSupply(result []byte) (*big.Int, error) {
-	panic("not implemented")
-}
-
-func (sm *testServiceManager) Start() {
-	panic("implement me")
-}
-
-func (sm *testServiceManager) Term() {
-	panic("implement me")
-}
-
-func (sm *testServiceManager) GetNetworkID(result []byte) (int64, error) {
-	return 0, nil
-}
-
-func (sm *testServiceManager) GetAPIInfo(result []byte, addr module.Address) (module.APIInfo, error) {
-	return nil, nil
-}
-
-func (sm *testServiceManager) GetMembers(result []byte) (module.MemberList, error) {
-	panic("implement me")
 }
 
 type testValidator struct {

@@ -21,9 +21,9 @@ const (
 
 type client struct {
 	common.Mutex
-	nm NetworkManager
+	nm module.NetworkManager
 	ph module.ProtocolHandler
-	bm BlockManager
+	bm module.BlockManager
 
 	fetchID uint16
 	fr      *fetchRequest
@@ -85,8 +85,8 @@ type fetchRequest struct {
 	pendingResults []*blockResult
 }
 
-func newClient(nm NetworkManager, ph module.ProtocolHandler,
-	bm BlockManager) *client {
+func newClient(nm module.NetworkManager, ph module.ProtocolHandler,
+	bm module.BlockManager) *client {
 	cl := &client{}
 	cl.nm = nm
 	cl.ph = ph

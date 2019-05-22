@@ -29,15 +29,15 @@ type speer struct {
 
 type server struct {
 	common.Mutex
-	nm    NetworkManager
+	nm    module.NetworkManager
 	ph    module.ProtocolHandler
-	bm    BlockManager
+	bm    module.BlockManager
 	peers []*speer
 
 	running bool
 }
 
-func newServer(nm NetworkManager, ph module.ProtocolHandler, bm BlockManager) *server {
+func newServer(nm module.NetworkManager, ph module.ProtocolHandler, bm module.BlockManager) *server {
 	s := &server{
 		nm: nm,
 		ph: ph,
@@ -149,7 +149,7 @@ type sconHandler struct {
 	stoppedCh chan<- struct{}
 	id        module.PeerID
 	ph        module.ProtocolHandler
-	bm        BlockManager
+	bm        module.BlockManager
 
 	nextItems []*BlockRequest
 	buf       *bytes.Buffer
@@ -164,7 +164,7 @@ func newSConHandler(
 	stoppedCh chan<- struct{},
 	id module.PeerID,
 	ph module.ProtocolHandler,
-	bm BlockManager,
+	bm module.BlockManager,
 ) *sconHandler {
 	h := &sconHandler{
 		msgCh:     msgCh,

@@ -6,6 +6,7 @@ import (
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
+	"github.com/icon-project/goloop/test"
 )
 
 type tReactorItem struct {
@@ -30,6 +31,7 @@ func (p *tNetworkManagerStatic) process() {
 var nms = tNetworkManagerStatic{}
 
 type NetworkManager struct {
+	test.NetworkManagerBase
 	*tNetworkManagerStatic
 	ID module.PeerID
 

@@ -1,7 +1,6 @@
 package fastsync
 
 import (
-	"io"
 	"math"
 
 	"github.com/icon-project/goloop/module"
@@ -99,7 +98,7 @@ func NewManager(nm module.NetworkManager, bm module.BlockManager) (Manager, erro
 	return newManager(nm, bm)
 }
 
-func newManager(nm NetworkManager, bm BlockManager) (Manager, error) {
+func newManager(nm module.NetworkManager, bm module.BlockManager) (Manager, error) {
 	m := &manager{}
 	ph, err := nm.RegisterReactorForStreams("fastsync", m, protocols, configFastSyncPriority)
 	if err != nil {
@@ -108,14 +107,4 @@ func newManager(nm NetworkManager, bm BlockManager) (Manager, error) {
 	m.server = newServer(nm, ph, bm)
 	m.client = newClient(nm, ph, bm)
 	return m, nil
-}
-
-type BlockManager interface {
-	GetBlockByHeight(height int64) (module.Block, error)
-	NewBlockFromReader(r io.Reader) (module.Block, error)
-}
-
-type NetworkManager interface {
-	GetPeers() []module.PeerID
-	RegisterReactorForStreams(name string, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error)
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/test"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
@@ -27,6 +28,7 @@ type tPacket struct {
 }
 
 type tNetworkManager struct {
+	test.NetworkManagerBase
 	id           module.PeerID
 	reactorItems []*tReactorItem
 	peers        []*tNetworkManager
@@ -41,13 +43,6 @@ type tProtocolHandler struct {
 
 func newTNetworkManager(id module.PeerID) *tNetworkManager {
 	return &tNetworkManager{id: id}
-}
-
-func (nm *tNetworkManager) Start() error {
-	return nil
-}
-
-func (nm *tNetworkManager) Term() {
 }
 
 func (nm *tNetworkManager) GetPeers() []module.PeerID {
@@ -71,34 +66,6 @@ func (nm *tNetworkManager) RegisterReactor(name string, reactor module.Reactor, 
 
 func (nm *tNetworkManager) RegisterReactorForStreams(name string, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
 	return registerReactorForStreams(nm, name, reactor, piList, priority, &common.GoTimeClock{})
-}
-
-func (nm *tNetworkManager) UnregisterReactor(reactor module.Reactor) error {
-	panic("not implemented")
-}
-
-func (nm *tNetworkManager) SetRole(version int64, role module.Role, peers ...module.PeerID) {
-	panic("not implemented")
-}
-
-func (nm *tNetworkManager) GetPeersByRole(role module.Role) []module.PeerID {
-	panic("not implemented")
-}
-
-func (nm *tNetworkManager) AddRole(role module.Role, peers ...module.PeerID) {
-	panic("not implemented")
-}
-
-func (nm *tNetworkManager) RemoveRole(role module.Role, peers ...module.PeerID) {
-	panic("not implemented")
-}
-
-func (nm *tNetworkManager) HasRole(role module.Role, id module.PeerID) bool {
-	panic("not implemented")
-}
-
-func (nm *tNetworkManager) Roles(id module.PeerID) []module.Role {
-	panic("not implemented")
 }
 
 func (nm *tNetworkManager) join(nm2 *tNetworkManager) {

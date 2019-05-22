@@ -8,6 +8,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/test"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,6 +23,7 @@ type tBlockBody struct {
 }
 
 type tBlock struct {
+	test.BlockBase
 	tBlockHeader
 	tBlockBody
 }
@@ -38,10 +40,6 @@ func newTBlock(height int64, id []byte, prev []byte, b []byte) module.Block {
 		},
 	}
 	return blk
-}
-
-func (b *tBlock) Version() int {
-	panic("not implemented")
 }
 
 func (b *tBlock) ID() []byte {
@@ -64,30 +62,6 @@ func (b *tBlock) Votes() module.CommitVoteSet {
 	return &tCommitVoteSet{b.Prev}
 }
 
-func (b *tBlock) NormalTransactions() module.TransactionList {
-	panic("not implemented")
-}
-
-func (b *tBlock) PatchTransactions() module.TransactionList {
-	panic("not implemented")
-}
-
-func (b *tBlock) Timestamp() int64 {
-	panic("not implemented")
-}
-
-func (b *tBlock) Proposer() module.Address {
-	panic("not implemented")
-}
-
-func (b *tBlock) LogBloom() module.LogBloom {
-	panic("not implemented")
-}
-
-func (b *tBlock) Result() []byte {
-	panic("not implemented")
-}
-
 func (b *tBlock) MarshalHeader(w io.Writer) error {
 	bs := codec.MustMarshalToBytes(&b.tBlockHeader)
 	_, err := w.Write(bs)
@@ -104,10 +78,6 @@ func (b *tBlock) Marshal(w io.Writer) error {
 		return err
 	}
 	return b.MarshalBody(w)
-}
-
-func (b *tBlock) ToJSON(rcpVersion int) (interface{}, error) {
-	panic("not implemented")
 }
 
 type tCommitVoteSet struct {
@@ -135,6 +105,7 @@ func (vs *tCommitVoteSet) Timestamp() int64 {
 }
 
 type tBlockManager struct {
+	test.BlockManagerBase
 	bmap map[int64]module.Block
 }
 

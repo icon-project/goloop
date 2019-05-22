@@ -5,64 +5,12 @@ import (
 	"io"
 	"log"
 	"testing"
-	"time"
 
-	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/test"
 )
 
 type testBlock struct {
-}
-
-func (*testBlock) Version() int {
-	panic("implement me")
-}
-
-func (*testBlock) ID() []byte {
-	panic("implement me")
-}
-
-func (*testBlock) Height() int64 {
-	panic("implement me")
-}
-
-func (*testBlock) PrevID() []byte {
-	panic("implement me")
-}
-
-func (*testBlock) NextValidators() module.ValidatorList {
-	panic("implement me")
-}
-
-func (*testBlock) Verify() error {
-	panic("implement me")
-}
-
-func (*testBlock) Votes() module.CommitVoteSet {
-	panic("implement me")
-}
-
-func (*testBlock) NormalTransactions() module.TransactionList {
-	panic("implement me")
-}
-
-func (*testBlock) PatchTransactions() module.TransactionList {
-	panic("implement me")
-}
-
-func (*testBlock) Timestamp() time.Time {
-	panic("implement me")
-}
-
-func (*testBlock) Proposer() module.Address {
-	panic("implement me")
-}
-
-func (*testBlock) LogBloom() []byte {
-	panic("implement me")
-}
-
-func (*testBlock) Result() []byte {
-	panic("implement me")
+	test.BlockBase
 }
 
 func (*testBlock) MarshalHeader(w io.Writer) error {
@@ -77,10 +25,6 @@ func (*testBlock) MarshalBody(w io.Writer) error {
 		return err
 	}
 	return nil
-}
-
-func (*testBlock) ToJSON(rcpVersion int) (interface{}, error) {
-	panic("implement me")
 }
 
 func TestBlockParts(t *testing.T) {
