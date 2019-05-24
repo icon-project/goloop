@@ -238,8 +238,12 @@ var typeMap = map[DataType]uint8{
 }
 
 func validateInputType(inputType DataType, paramObj *codec.TypedObj) error {
-	if typeMap[inputType] != paramObj.Type {
-		return errors.Wrapf(errors.ErrIllegalArgument, "invalid input type. %v but type %v\n", inputType, paramObj.Type)
+	if t, ok := typeMap[inputType]; !ok {
+		return errors.Wrapf(errors.ErrIllegalArgument, "invalid input type. %v is not defined\n", inputType)
+	} else {
+		if t != paramObj.Type {
+			return errors.Wrapf(errors.ErrIllegalArgument, "invalid input type. %v but type %v\n", inputType, paramObj.Type)
+		}
 	}
 	return nil
 }
