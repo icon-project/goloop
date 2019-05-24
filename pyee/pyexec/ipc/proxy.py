@@ -215,9 +215,7 @@ class ServiceManagerProxy:
     def encode(self, o: Any) -> bytes:
         if o is None:
             return bytes([])
-        if isinstance(o, int):
-            return int_to_bytes(o)
-        elif isinstance(o, str):
+        if isinstance(o, str):
             return o.encode('utf-8')
         elif isinstance(o, bytes):
             return o
@@ -226,6 +224,8 @@ class ServiceManagerProxy:
                 return b'\x01'
             else:
                 return b'\x00'
+        elif isinstance(o, int):
+            return int_to_bytes(o)
         else:
             t, v = self.__codec.encode(o)
             return v
@@ -267,13 +267,13 @@ class ServiceManagerProxy:
             return TypeTag.BYTES, o
         elif isinstance(o, str):
             return TypeTag.STRING, o.encode('utf-8')
-        elif isinstance(o, int):
-            return TypeTag.INT, int_to_bytes(o)
         elif isinstance(o, bool):
             if o:
                 return TypeTag.BOOL, b'\x01'
             else:
                 return TypeTag.BOOL, b'\x00'
+        elif isinstance(o, int):
+            return TypeTag.INT, int_to_bytes(o)
         else:
             return self.__codec.encode(o)
 
