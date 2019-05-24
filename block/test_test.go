@@ -452,7 +452,7 @@ func (tr *testTransition) Result() []byte {
 	defer tr.Unlock()
 
 	if tr.step == transitionStepSucceed {
-		if tr._result != nil {
+		if tr._result == nil {
 			result := &testTransitionResult{}
 			result.WorldState = tr.EffectiveTransactions().effect().WorldState
 			tr._result = codec.MustMarshalToBytes(result)
