@@ -3,12 +3,12 @@ package scoreapi
 import (
 	"encoding/hex"
 	"encoding/json"
-	"log"
-
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreresult"
+	"log"
 )
 
 type MethodType int
@@ -229,10 +229,33 @@ func (a *Method) ToJSON(version int) (interface{}, error) {
 	return m, nil
 }
 
+var typeMap = map[DataType]uint8{
+	Integer: common.TypeInt,
+	String:  codec.TypeString,
+	Bytes:   codec.TypeBytes,
+	Bool:    codec.TypeBool,
+	Address: common.TypeAddress,
+}
+
+func validateInputType(inputType DataType, paramObj *codec.TypedObj) error {
+	if typeMap[inputType] != paramObj.Type {
+		return errors.Wrapf(errors.ErrIllegalArgument, "invalid input type. %v but type %v\n", inputType, paramObj.Type)
+	}
+	return nil
+}
+
 func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedObj, error) {
 	if paramObj.Type == codec.TypeList {
+		tol := paramObj.Object.([]*codec.TypedObj)
+		for i, to := range tol {
+			if err := validateInputType(a.Inputs[i].Type, to); err != nil {
+				log.Printf("Fail validate input type. %s\n", err)
+				return nil, err
+			}
+		}
 		return paramObj, nil
 	}
+
 	if paramObj.Type != codec.TypeDict {
 		return nil, scoreresult.ErrInvalidParameter
 	}
@@ -244,6 +267,10 @@ func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedO
 	inputs := make([]interface{}, len(a.Inputs))
 	for i, input := range a.Inputs {
 		if obj, ok := params[input.Name]; ok {
+			if err := validateInputType(input.Type, obj); err != nil {
+				log.Printf("Fail validate input type. %s\n", err)
+				return nil, err
+			}
 			inputs[i] = obj
 		} else {
 			if i >= a.Indexed {
