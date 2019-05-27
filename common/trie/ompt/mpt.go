@@ -203,6 +203,9 @@ func (i *iterator) Next() error {
 	if i.error != nil {
 		return i.error
 	}
+	if i.value == nil && len(i.stack) == 0 {
+		return errors.New("NoMore")
+	}
 	for len(i.stack) > 0 {
 		l := len(i.stack)
 		ii := i.stack[l-1]
@@ -215,7 +218,7 @@ func (i *iterator) Next() error {
 		if i.error != nil {
 			i.key = ""
 			i.value = nil
-			return i.error
+			return nil
 		}
 		if i.value != nil {
 			i.key = string(keysToBytes(i.key))
@@ -225,11 +228,11 @@ func (i *iterator) Next() error {
 	i.key = ""
 	i.value = nil
 	i.error = nil
-	return errors.New("NoMoreItem")
+	return nil
 }
 
 func (i *iterator) Has() bool {
-	return i.value != nil
+	return i.value != nil || i.error != nil
 }
 
 func (m *mpt) Iterator() trie.IteratorForObject {
