@@ -403,15 +403,7 @@ func NewManager(chain module.Chain) (module.BlockManager, error) {
 	} else if err != nil {
 		return nil, err
 	}
-	hashByHeightBucket, err := m.bucketFor(db.BlockHeaderHashByHeight)
-	if err != nil {
-		return nil, err
-	}
-	hash, err := hashByHeightBucket.getBytes(&height)
-	if err != nil {
-		return nil, err
-	}
-	lastFinalized, err := m.getBlock(hash)
+	lastFinalized, err := m.getBlockByHeight(height)
 	if err != nil {
 		return nil, err
 	}
