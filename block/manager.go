@@ -895,18 +895,18 @@ func (txInfo *transactionInfo) Transaction() module.Transaction {
 	return txInfo._mtr
 }
 
-func (txInfo *transactionInfo) GetReceipt() module.Receipt {
+func (txInfo *transactionInfo) GetReceipt() (module.Receipt, error) {
 	rblock := txInfo._rBlock
 	if rblock != nil {
 		rl, err := txInfo._sm.ReceiptListFromResult(rblock.Result(), txInfo._group)
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		if rct, err := rl.Get(int(txInfo._index)); err == nil {
-			return rct
+			return rct, nil
 		}
 	}
-	return nil
+	return nil, ErrResultNotFinalized
 }
 
 func (m *manager) GetTransactionInfo(id []byte) (module.TransactionInfo, error) {

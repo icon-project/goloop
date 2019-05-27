@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"strconv"
 
+	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
@@ -623,10 +624,12 @@ func getTransactionResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 
-	block := txInfo.Block()
-	receipt := txInfo.GetReceipt()
-	if receipt == nil {
+	blk := txInfo.Block()
+	receipt, err := txInfo.GetReceipt()
+	if block.ResultNotFinalizedError.Equals(err) {
 		return nil, jsonrpc.ErrorCodeExecuting.New("Executing")
+	} else if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
 	res, err := receipt.ToJSON(jsonRpcApiVersion)
 	if err != nil {
@@ -634,8 +637,8 @@ func getTransactionResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 	}
 
 	result := res.(map[string]interface{})
-	result["blockHash"] = "0x" + hex.EncodeToString(block.ID())
-	result["blockHeight"] = "0x" + strconv.FormatInt(int64(block.Height()), 16)
+	result["blockHash"] = "0x" + hex.EncodeToString(blk.ID())
+	result["blockHeight"] = "0x" + strconv.FormatInt(int64(blk.Height()), 16)
 	result["txIndex"] = "0x" + strconv.FormatInt(int64(txInfo.Index()), 16)
 
 	return result, nil

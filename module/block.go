@@ -73,5 +73,5 @@ type TransactionInfo interface {
 	Index() int
 	Group() TransactionGroup
 	Transaction() Transaction
-	GetReceipt() Receipt
+	GetReceipt() (Receipt, error)
 }
