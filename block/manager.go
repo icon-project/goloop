@@ -26,6 +26,7 @@ var dbCodec = codec.MP
 const (
 	keyLastBlockHeight = "block.lastHeight"
 	genesisHeight      = 0
+	configCacheCap     = 10
 )
 
 type transactionLocator struct {
@@ -54,7 +55,9 @@ type finalizationCB = func(module.Block) bool
 
 type manager struct {
 	*chainContext
-	nmap            map[string]*bnode
+	nmap  map[string]*bnode
+	cache *cache
+
 	finalized       *bnode
 	finalizationCBs []finalizationCB
 }
@@ -386,7 +389,8 @@ func NewManager(chain module.Chain) (module.BlockManager, error) {
 			logger:  logger,
 			running: true,
 		},
-		nmap: make(map[string]*bnode),
+		nmap:  make(map[string]*bnode),
+		cache: newCache(configCacheCap),
 	}
 	chainPropBucket, err := m.bucketFor(db.ChainProperty)
 	if err != nil {
@@ -442,6 +446,14 @@ func (m *manager) GetBlock(id []byte) (module.Block, error) {
 }
 
 func (m *manager) getBlock(id []byte) (module.Block, error) {
+	blk := m.cache.Get(id)
+	if blk != nil {
+		return blk, nil
+	}
+	return m.doGetBlock(id)
+}
+
+func (m *manager) doGetBlock(id []byte) (module.Block, error) {
 	// TODO handle v1
 	hb, err := m.bucketFor(db.BytesByHash)
 	if err != nil {
@@ -454,7 +466,11 @@ func (m *manager) getBlock(id []byte) (module.Block, error) {
 	if headerBytes == nil {
 		return nil, errors.InvalidStateError.Errorf("nil header")
 	}
-	return m.newBlockFromHeaderReader(bytes.NewReader(headerBytes))
+	blk, err := m.newBlockFromHeaderReader(bytes.NewReader(headerBytes))
+	if blk != nil {
+		m.cache.Put(blk)
+	}
+	return blk, err
 }
 
 func (m *manager) Import(
@@ -933,6 +949,14 @@ func (m *manager) GetBlockByHeight(height int64) (module.Block, error) {
 }
 
 func (m *manager) getBlockByHeight(height int64) (module.Block, error) {
+	blk := m.cache.GetByHeight(height)
+	if blk != nil {
+		return blk, nil
+	}
+	return m.doGetBlockByHeight(height)
+}
+
+func (m *manager) doGetBlockByHeight(height int64) (module.Block, error) {
 	headerHashByHeight, err := m.bucketFor(db.BlockHeaderHashByHeight)
 	if err != nil {
 		return nil, err
@@ -941,7 +965,7 @@ func (m *manager) getBlockByHeight(height int64) (module.Block, error) {
 	if err != nil {
 		return nil, err
 	}
-	blk, err := m.getBlock(hash)
+	blk, err := m.doGetBlock(hash)
 	if errors.NotFoundError.Equals(err) {
 		return blk, errors.InvalidStateError.Wrapf(err, "block h=%d by hash=%x not found", height, hash)
 	}
