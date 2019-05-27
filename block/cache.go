@@ -8,16 +8,16 @@ import (
 
 type cache struct {
 	cap       int
-	heightMap map[int64]module.Block
-	idMap     map[string]module.Block
+	heightMap map[int64]*list.Element
+	idMap     map[string]*list.Element
 	mru       *list.List
 }
 
 func newCache(cap int) *cache {
 	return &cache{
 		cap:       cap,
-		heightMap: make(map[int64]module.Block),
-		idMap:     make(map[string]module.Block),
+		heightMap: make(map[int64]*list.Element),
+		idMap:     make(map[string]*list.Element),
 		mru:       list.New(),
 	}
 }
@@ -28,33 +28,23 @@ func (c *cache) Put(b module.Block) {
 		delete(c.heightMap, b.Height())
 		delete(c.idMap, string(b.ID()))
 	}
-	c.mru.PushFront(b)
-	c.heightMap[b.Height()] = b
-	c.idMap[string(b.ID())] = b
+	e := c.mru.PushFront(b)
+	c.heightMap[b.Height()] = e
+	c.idMap[string(b.ID())] = e
 }
 
 func (c *cache) Get(id []byte) module.Block {
-	if b, ok := c.idMap[string(id)]; ok {
-		for e := c.mru.Front(); e != nil; e = e.Next() {
-			if e.Value == b {
-				c.mru.MoveToFront(e)
-				break
-			}
-		}
-		return b
+	if e, ok := c.idMap[string(id)]; ok {
+		c.mru.MoveToFront(e)
+		return e.Value.(module.Block)
 	}
 	return nil
 }
 
 func (c *cache) GetByHeight(h int64) module.Block {
-	if b, ok := c.heightMap[h]; ok {
-		for e := c.mru.Front(); e != nil; e = e.Next() {
-			if e.Value == b {
-				c.mru.MoveToFront(e)
-				break
-			}
-		}
-		return b
+	if e, ok := c.heightMap[h]; ok {
+		c.mru.MoveToFront(e)
+		return e.Value.(module.Block)
 	}
 	return nil
 }
@@ -63,4 +53,3 @@ func (c *cache) GetByHeight(h int64) module.Block {
 func (c *cache) _getMRU() *list.List {
 	return c.mru
 }
-
