@@ -129,7 +129,7 @@ func newGenesisEditCmd(c string) *cobra.Command {
 		}
 		if *god != "" {
 			godAddr := mustParseAddress(*god)
-			ok := false
+			found := false
 			for i, ta := range as {
 				a, ok := ta.(map[string]interface{})
 				if !ok {
@@ -137,11 +137,11 @@ func newGenesisEditCmd(c string) *cobra.Command {
 				}
 				if a["name"] == "god" {
 					a["address"] = godAddr
-					ok = true
+					found = true
 					break
 				}
 			}
-			if !ok {
+			if !found {
 				log.Fatalf("Invalid genesis, must have 'god' node of 'accounts' array-node")
 			}
 			updated = true
