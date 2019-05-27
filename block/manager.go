@@ -952,28 +952,7 @@ func (m *manager) GetLastBlock() (module.Block, error) {
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	return m.getLastBlock()
-}
-
-func (m *manager) getLastBlock() (module.Block, error) {
-	chainProp, err := m.bucketFor(db.ChainProperty)
-	if err != nil {
-		return nil, err
-	}
-	var height int64
-	err = chainProp.get(raw(keyLastBlockHeight), &height)
-
-	if errors.NotFoundError.Equals(err) {
-		return nil, errors.InvalidStateError.Wrapf(err, "cannot get lastBlockHeight")
-	} else if err != nil {
-		return nil, err
-	}
-
-	blk, err := m.getBlockByHeight(height)
-	if errors.NotFoundError.Equals(err) {
-		return nil, errors.InvalidStateError.Wrapf(err, "block h=%d not found", height)
-	}
-	return blk, err
+	return m.finalized.block, nil
 }
 
 func (m *manager) WaitForBlock(height int64) (<-chan module.Block, error) {
