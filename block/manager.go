@@ -935,9 +935,14 @@ func (m *manager) getTransactionInfo(id []byte) (module.TransactionInfo, error) 
 	if err != nil {
 		return nil, errors.InvalidStateError.Wrapf(err, "transaction i=%d not in block h=%d", loc.IndexInGroup, loc.BlockHeight)
 	}
-	rblock, err := m.getBlockByHeight(loc.BlockHeight + 1)
-	if err != nil {
+	var rblock module.Block
+	if m.finalized.block.Height() < loc.BlockHeight + 1 {
 		rblock = nil
+	} else {
+		rblock, err = m.getBlockByHeight(loc.BlockHeight + 1)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &transactionInfo{
 		_sm:      m.sm,
