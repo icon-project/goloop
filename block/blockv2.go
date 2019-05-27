@@ -137,7 +137,7 @@ func (b *blockV2) _headerFormat() *blockV2HeaderFormat {
 		NextValidatorsHash:     b.nextValidators.Hash(),
 		PatchTransactionsHash:  b.patchTransactions.Hash(),
 		NormalTransactionsHash: b.normalTransactions.Hash(),
-		LogBloom:               b.logBloom.Bytes(),
+		LogBloom:               b.logBloom.CompressedBytes(),
 		Result:                 b.result,
 	}
 }

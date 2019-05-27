@@ -28,6 +28,9 @@ func TestLogBloom_Initial(t *testing.T) {
 	if len(lb1.Bytes()) != 0 {
 		t.Error("New log bloom must have empty bytes")
 	}
+	if len(lb1.CompressedBytes()) != 0 {
+		t.Error("New log bloom must have empty bytes")
+	}
 }
 
 func TestLogBloom_MergeContains(t *testing.T) {
@@ -65,5 +68,47 @@ func TestLogBloom_MergeContains(t *testing.T) {
 
 	if lb1.Contain(lb3) {
 		t.Error("Shouldn't contain smaller one")
+	}
+}
+
+func TestLogBloom_Bytes(t *testing.T) {
+	lb1 := NewLogBloom(nil)
+	lb1.AddLog(common.NewAddressFromString("cx0000000000000000000000000000000000000000"), [][]byte{
+		{0x01, 0x02, 0x03},
+	})
+
+	lb2 := NewLogBloom(lb1.Bytes())
+	if !bytes.Equal(lb2.LogBytes(), lb1.LogBytes()) {
+		t.Error("Deserialized one should be same as origin")
+	}
+
+	if !bytes.Equal(lb2.Bytes(), lb1.Bytes()) {
+		t.Error("Deserialized one should be same as origin")
+	}
+}
+
+func TestLogBloom_Compressed(t *testing.T) {
+	lb1 := NewLogBloom(nil)
+	lb1.AddLog(common.NewAddressFromString("cx0000000000000000000000000000000000000000"), [][]byte{
+		{0x01, 0x02, 0x03},
+	})
+
+	lb2 := NewLogBloom(lb1.Bytes())
+
+	if !bytes.Equal(lb2.LogBytes(), lb1.LogBytes()) {
+		t.Error("Deserialized one should be same as origin")
+	}
+	if !bytes.Equal(lb2.Bytes(), lb1.Bytes()) {
+		t.Error("Deserialized one should be same as origin")
+	}
+
+	lb3 := NewLogBloom(nil)
+	lb3.SetCompressedBytes(lb2.CompressedBytes())
+
+	if !bytes.Equal(lb3.LogBytes(), lb1.LogBytes()) {
+		t.Error("Deserialized one should be same as origin")
+	}
+	if !bytes.Equal(lb3.Bytes(), lb1.Bytes()) {
+		t.Error("Deserialized one should be same as origin")
 	}
 }

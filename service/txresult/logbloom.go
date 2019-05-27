@@ -2,9 +2,11 @@ package txresult
 
 import (
 	"bytes"
+	"compress/lzw"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"io/ioutil"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -146,4 +148,40 @@ func (lb *LogBloom) addLog(log []byte) {
 	for i := 0; i < 3; i++ {
 		lb.addBit(binary.BigEndian.Uint16(h[i*2:i*2+2]) & (LogBloomBits - 1))
 	}
+}
+func lzwCompress(bs []byte) []byte {
+	if len(bs) == 0 {
+		return []byte{}
+	}
+	wb := bytes.NewBuffer(nil)
+	fd := lzw.NewWriter(wb, lzw.MSB, 8)
+	_, _ = fd.Write(bs)
+	_ = fd.Close()
+	return wb.Bytes()
+}
+
+func lzwDecompress(bs []byte) []byte {
+	if len(bs) == 0 {
+		return []byte{}
+	}
+	wb := bytes.NewBuffer(bs)
+	fd := lzw.NewReader(wb, lzw.MSB, 8)
+	c, _ := ioutil.ReadAll(fd)
+	_ = fd.Close()
+	return c
+}
+
+func NewLogBloomFromCompressed(bs []byte) *LogBloom {
+	lb := &LogBloom{}
+	lb.SetCompressedBytes(bs)
+
+	return lb
+}
+
+func (lb *LogBloom) CompressedBytes() []byte {
+	return lzwCompress(lb.Bytes())
+}
+
+func (lb *LogBloom) SetCompressedBytes(bs []byte) *big.Int {
+	return lb.SetBytes(lzwDecompress(bs))
 }

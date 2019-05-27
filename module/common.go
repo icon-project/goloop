@@ -51,6 +51,7 @@ type CommitVoteSetDecoder func([]byte) CommitVoteSet
 type LogBloom interface {
 	String() string
 	Bytes() []byte
+	CompressedBytes() []byte
 	LogBytes() []byte
 	Contain(lb2 LogBloom) bool
 	Merge(lb2 LogBloom)
