@@ -680,7 +680,10 @@ func (m *manager) finalize(bn *bnode) error {
 			return err
 		}
 		for it := block.PatchTransactions().Iterator(); it.Has(); it.Next() {
-			tr, i, _ := it.Get()
+			tr, i, err := it.Get()
+			if err != nil {
+				return err
+			}
 			trLoc := transactionLocator{
 				BlockHeight:      block.Height(),
 				TransactionGroup: module.TransactionGroupPatch,
@@ -691,7 +694,10 @@ func (m *manager) finalize(bn *bnode) error {
 			}
 		}
 		for it := block.NormalTransactions().Iterator(); it.Has(); it.Next() {
-			tr, i, _ := it.Get()
+			tr, i, err := it.Get()
+			if err != nil {
+				return err
+			}
 			trLoc := transactionLocator{
 				BlockHeight:      block.Height(),
 				TransactionGroup: module.TransactionGroupNormal,

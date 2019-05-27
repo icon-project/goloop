@@ -273,10 +273,16 @@ loop:
 			rl := chain.ServiceManager().ReceiptListFromResult(blk.Result(), module.TransactionGroupNormal)
 			index := int32(0)
 			for rit := rl.Iterator(); rit.Has(); rit.Next() {
-				r, _ := rit.Get()
+				r, err := rit.Get()
+				if err != nil {
+					break loop
+				}
 				if r.LogBloom().Contain(lb) {
 					for eit := r.EventLogIterator(); eit.Has(); eit.Next() {
-						e, _ := eit.Get()
+						e, err := eit.Get()
+						if err != nil {
+							break loop
+						}
 						if er.match(e) {
 							var eventNotification EventNotification
 							eventNotification.Height.Value = h

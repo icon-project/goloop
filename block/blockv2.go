@@ -112,7 +112,11 @@ func (b *blockV2) MarshalHeader(w io.Writer) error {
 }
 
 func (b *blockV2) MarshalBody(w io.Writer) error {
-	return v2Codec.Marshal(w, b._bodyFormat())
+	bf, err := b._bodyFormat()
+	if err != nil {
+		return err
+	}
+	return v2Codec.Marshal(w, bf)
 }
 
 func (b *blockV2) Marshal(w io.Writer) error {
@@ -162,20 +166,31 @@ func (b *blockV2) ToJSON(rpcVersion int) (interface{}, error) {
 	return res, nil
 }
 
-func bssFromTransactionList(l module.TransactionList) [][]byte {
+func bssFromTransactionList(l module.TransactionList) ([][]byte, error) {
 	var res [][]byte
 	for it := l.Iterator(); it.Has(); it.Next() {
-		tr, _, _ := it.Get()
+		tr, _, err := it.Get()
+		if err != nil {
+			return nil, err
+		}
 		bs := tr.Bytes()
 		res = append(res, bs)
 	}
-	return res
+	return res, nil
 }
 
-func (b *blockV2) _bodyFormat() *blockV2BodyFormat {
-	return &blockV2BodyFormat{
-		PatchTransactions:  bssFromTransactionList(b.patchTransactions),
-		NormalTransactions: bssFromTransactionList(b.normalTransactions),
-		Votes:              b.votes.Bytes(),
+func (b *blockV2) _bodyFormat() (*blockV2BodyFormat, error) {
+	ptbss, err := bssFromTransactionList(b.patchTransactions)
+	if err != nil {
+		return nil, err
 	}
+	ntbss, err := bssFromTransactionList(b.normalTransactions)
+	if err != nil {
+		return nil, err
+	}
+	return &blockV2BodyFormat{
+		PatchTransactions:  ptbss,
+		NormalTransactions: ntbss,
+		Votes:              b.votes.Bytes(),
+	}, nil
 }
