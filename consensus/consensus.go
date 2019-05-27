@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"bytes"
-	"container/list"
 	"encoding/binary"
 	"fmt"
 	"log"
@@ -59,13 +58,6 @@ type blockPartSet struct {
 	validated bool
 }
 
-type commit struct {
-	height       int64
-	commitVotes  *commitVoteList
-	votes        *voteList
-	blockPartSet PartSet
-}
-
 type consensus struct {
 	hrs
 
@@ -104,8 +96,7 @@ type consensus struct {
 	cancelBlockRequest func() bool
 
 	// commit cache
-	commitMRU       *list.List
-	commitForHeight map[int64]*commit
+	commitCache     *commitCache
 
 	// prefetch buffer
 	prefetchItems []fastsync.BlockResult
@@ -127,8 +118,7 @@ func newConsensus(c module.Chain, walDir string, wm WALManager) module.Consensus
 		rg:              c.Regulator(),
 		walDir:          walDir,
 		wm:              wm,
-		commitMRU:       list.New(),
-		commitForHeight: make(map[int64]*commit, configCommitCacheCap),
+		commitCache:     newCommitCache(configCommitCacheCap),
 		metric:          metric.NewConsensusMetric(c.MetricContext()),
 	}
 	prefix := fmt.Sprintf("%x|CS|", cs.wallet.Address().Bytes()[1:3])
@@ -1447,7 +1437,7 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 		return nil, errors.NotFoundError.New("Not found")
 	}
 
-	c := cs.commitForHeight[h]
+	c := cs.commitCache.GetByHeight(h)
 	if c != nil {
 		return c, nil
 	}
@@ -1460,11 +1450,6 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 			votes:        pcs.voteListForOverTwoThirds(),
 			blockPartSet: cs.currentBlockParts,
 		}, nil
-	}
-
-	if cs.commitMRU.Len() == configCommitCacheCap {
-		c := cs.commitMRU.Remove(cs.commitMRU.Back()).(*commit)
-		delete(cs.commitForHeight, c.height)
 	}
 
 	if h == cs.height {
@@ -1502,8 +1487,7 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 			blockPartSet: bps,
 		}
 	}
-	cs.commitMRU.PushBack(c)
-	cs.commitForHeight[c.height] = c
+	cs.commitCache.Put(c)
 	return c, nil
 }
 
