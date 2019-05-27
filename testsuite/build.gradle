@@ -94,6 +94,8 @@ class ChainTest extends Test {
                 logging.println("GSFile: ${gsFile}")
             }
             startServer()
+        }else{
+            systemProperty("CHAIN_ENV", System.getProperty("CHAIN_ENV"))
         }
         try {
             super.executeTests()
