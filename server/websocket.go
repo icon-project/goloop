@@ -270,7 +270,10 @@ loop:
 				h++
 				continue loop
 			}
-			rl := chain.ServiceManager().ReceiptListFromResult(blk.Result(), module.TransactionGroupNormal)
+			rl, err := chain.ServiceManager().ReceiptListFromResult(blk.Result(), module.TransactionGroupNormal)
+			if err != nil {
+				break loop
+			}
 			index := int32(0)
 			for rit := rl.Iterator(); rit.Has(); rit.Next() {
 				r, err := rit.Get()

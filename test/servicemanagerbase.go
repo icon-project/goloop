@@ -57,7 +57,7 @@ func (_r *ServiceManagerBase) TransactionListFromSlice(txs []module.Transaction,
 	panic("not implemented")
 }
 
-func (_r *ServiceManagerBase) ReceiptListFromResult(result []byte, g module.TransactionGroup) module.ReceiptList {
+func (_r *ServiceManagerBase) ReceiptListFromResult(result []byte, g module.TransactionGroup) (module.ReceiptList, error) {
 	panic("not implemented")
 }
 

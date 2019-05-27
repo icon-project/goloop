@@ -239,6 +239,15 @@ func NewWorldSnapshot(dbase db.Database, stateHash []byte, vs ValidatorSnapshot)
 	return ws
 }
 
+func UpdateWorldSnapshotValidators(dbase db.Database, snapshot WorldSnapshot, vs ValidatorSnapshot) WorldSnapshot {
+	if ws, ok := snapshot.(*worldSnapshotImpl); ok {
+		ws.validators = vs
+		return ws
+	} else {
+		return NewWorldSnapshot(dbase, snapshot.StateHash(), vs)
+	}
+}
+
 func WorldStateFromSnapshot(wss WorldSnapshot) (WorldState, error) {
 	if wss, ok := wss.(*worldSnapshotImpl); ok {
 		ws := new(worldStateImpl)

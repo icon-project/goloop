@@ -249,7 +249,7 @@ type ServiceManager interface {
 	TransactionListFromSlice(txs []Transaction, version int) TransactionList
 
 	// ReceiptListFromResult returns list of receipts from result.
-	ReceiptListFromResult(result []byte, g TransactionGroup) ReceiptList
+	ReceiptListFromResult(result []byte, g TransactionGroup) (ReceiptList, error)
 
 	// SendTransaction adds transaction to a transaction pool.
 	SendTransaction(tx interface{}) ([]byte, error)

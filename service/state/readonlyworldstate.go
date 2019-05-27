@@ -3,7 +3,6 @@ package state
 import (
 	"sync"
 
-	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 )
@@ -79,8 +78,7 @@ func newReadOnlyValidatorState(vss ValidatorSnapshot) ValidatorState {
 	return &readonlyValidatorState{vss}
 }
 
-func NewReadOnlyWorldState(database db.Database, stateHash []byte, vs ValidatorSnapshot) WorldState {
-	wss := NewWorldSnapshot(database, stateHash, vs)
+func NewReadOnlyWorldState(wss WorldSnapshot) WorldState {
 	return &readOnlyWorldState{
 		WorldSnapshot:  wss,
 		accounts:       make(map[string]AccountState),

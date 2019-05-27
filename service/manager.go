@@ -20,13 +20,13 @@ import (
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/state"
-	"github.com/icon-project/goloop/service/txresult"
 )
 
 // Maximum size in bytes for transaction in a block.
 // TODO it should be configured or received from block manager
 const ConfigMaxTxBytesInABlock = 1024 * 1024
-const ConfigWorldSnapshotCacheSize = 10
+const ConfigTransitionResultCacheEntryCount = 10
+const ConfigTransitionResultCacheEntrySize = 1024 * 1024
 
 type manager struct {
 	// tx pool should be connected to transition for more than one branches.
@@ -42,7 +42,7 @@ type manager struct {
 	txReactor *TransactionReactor
 	cm        contract.ContractManager
 	eem       eeproxy.Manager
-	wsc       *worldSnapshotCache
+	trc       *transitionResultCache
 }
 
 func NewManager(chain module.Chain, nm module.NetworkManager,
@@ -71,7 +71,9 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 		chain:        chain,
 		cm:           cm,
 		eem:          eem,
-		wsc:          newWorldSnapshotCache(chain.Database(), ConfigWorldSnapshotCacheSize),
+		trc: newTransitionResultCache(chain.Database(),
+			ConfigTransitionResultCacheEntryCount,
+			ConfigTransitionResultCacheEntrySize),
 	}
 	if nm != nil {
 		mgr.txReactor = NewTransactionReactor(nm, mgr.patchTxPool, mgr.normalTxPool)
@@ -268,17 +270,12 @@ func (m *manager) ReceiptFromTransactionID(id []byte) module.Receipt {
 }
 
 // ReceiptListFromResult returns list of receipts from result.
-func (m *manager) ReceiptListFromResult(result []byte, g module.TransactionGroup) module.ReceiptList {
-	if tresult, err := newTransitionResultFromBytes(result); err == nil {
-		if g == module.TransactionGroupPatch {
-			return txresult.NewReceiptListFromHash(m.db, tresult.PatchReceiptHash)
-		} else {
-			return txresult.NewReceiptListFromHash(m.db, tresult.NormalReceiptHash)
-		}
+func (m *manager) ReceiptListFromResult(result []byte, g module.TransactionGroup) (module.ReceiptList, error) {
+	if rl, err := m.trc.GetReceipts(result, g); err != nil {
+		return nil, err
 	} else {
-		log.Printf("Fail to unmarshal result bytes err=%+v", err)
+		return rl, nil
 	}
-	return nil
 }
 
 func (m *manager) checkTransitionResult(t module.Transition) (*transition, error) {
@@ -358,8 +355,8 @@ func (m *manager) Call(resultHash []byte,
 	}
 
 	var wc state.WorldContext
-	if tresult, err := newTransitionResultFromBytes(resultHash); err == nil {
-		ws := state.NewReadOnlyWorldState(m.db, tresult.StateHash, vl)
+	if wss, err := m.trc.GetWorldSnapshot(resultHash, vl.Hash()); err == nil {
+		ws := state.NewReadOnlyWorldState(wss)
 		wc = state.NewWorldContext(ws, bi)
 	} else {
 		return nil, err
@@ -382,7 +379,7 @@ func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {
 }
 
 func (m *manager) GetBalance(result []byte, addr module.Address) (*big.Int, error) {
-	wss, err := m.wsc.GetWorldSnapshot(result)
+	wss, err := m.trc.GetWorldSnapshot(result, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -394,7 +391,7 @@ func (m *manager) GetBalance(result []byte, addr module.Address) (*big.Int, erro
 }
 
 func (m *manager) GetTotalSupply(result []byte) (*big.Int, error) {
-	wss, err := m.wsc.GetWorldSnapshot(result)
+	wss, err := m.trc.GetWorldSnapshot(result, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -409,7 +406,7 @@ func (m *manager) GetTotalSupply(result []byte) (*big.Int, error) {
 }
 
 func (m *manager) GetNetworkID(result []byte) (int64, error) {
-	wss, err := m.wsc.GetWorldSnapshot(result)
+	wss, err := m.trc.GetWorldSnapshot(result, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -426,7 +423,7 @@ func (m *manager) GetAPIInfo(result []byte, addr module.Address) (module.APIInfo
 	if !addr.IsContract() {
 		return nil, state.ErrNotContractAccount
 	}
-	wss, err := m.wsc.GetWorldSnapshot(result)
+	wss, err := m.trc.GetWorldSnapshot(result, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -439,7 +436,7 @@ func (m *manager) GetAPIInfo(result []byte, addr module.Address) (module.APIInfo
 }
 
 func (m *manager) GetMembers(result []byte) (module.MemberList, error) {
-	wss, err := m.wsc.GetWorldSnapshot(result)
+	wss, err := m.trc.GetWorldSnapshot(result, nil)
 	if err != nil {
 		return nil, err
 	}

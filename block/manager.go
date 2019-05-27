@@ -898,7 +898,10 @@ func (txInfo *transactionInfo) Transaction() module.Transaction {
 func (txInfo *transactionInfo) GetReceipt() module.Receipt {
 	rblock := txInfo._rBlock
 	if rblock != nil {
-		rl := txInfo._sm.ReceiptListFromResult(rblock.Result(), txInfo._group)
+		rl, err := txInfo._sm.ReceiptListFromResult(rblock.Result(), txInfo._group)
+		if err != nil {
+			return nil
+		}
 		if rct, err := rl.Get(int(txInfo._index)); err == nil {
 			return rct
 		}

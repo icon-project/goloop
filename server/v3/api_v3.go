@@ -1061,7 +1061,10 @@ func getProofForResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{
 	}
 
 	blockResult := block.Result()
-	receiptList := sm.ReceiptListFromResult(blockResult, module.TransactionGroupNormal)
+	receiptList, err := sm.ReceiptListFromResult(blockResult, module.TransactionGroupNormal)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
+	}
 	proofs, err := receiptList.GetProof(int(param.Index.Value()))
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
