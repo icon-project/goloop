@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"time"
+
+	"github.com/spf13/cobra"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
-	"github.com/spf13/cobra"
 )
 
 func mustParseAddress(arg string) module.Address {
@@ -98,8 +100,89 @@ func newGenesisGenCmd(c string) *cobra.Command {
 	return cmd
 }
 
+func newGenesisEditCmd(c string) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   fmt.Sprintf("%s [genesis file]", c),
+		Short: "Edit genesis transaction",
+		Args: cobra.ExactArgs(1),
+	}
+	flags := cmd.PersistentFlags()
+	god := flags.StringP("god", "g", "", "Address or keystore of GOD")
+	validators := flags.StringSliceP("validator", "v", nil, "Address or keystore of Validator, [Validator...]")
+
+	cmd.Run = func(cmd *cobra.Command, args []string) {
+		filePath := args[0]
+		raw, err := ioutil.ReadFile(filePath)
+		if err != nil {
+			log.Fatalf("Fail to open file=%s err=%+v", filePath, err)
+		}
+		genesis := make(map[string]interface{})
+		if err := json.Unmarshal(raw, &genesis); err != nil {
+			log.Fatalf("Fail to unmarshall file=%s err=%+v", raw, err)
+		}
+
+		updated := false
+
+		as, ok := genesis["accounts"].([]interface{})
+		if !ok {
+			log.Fatalf("Invalid genesis, must have 'accounts' array-node")
+		}
+		if *god != "" {
+			godAddr := mustParseAddress(*god)
+			ok := false
+			for i, ta := range as {
+				a, ok := ta.(map[string]interface{})
+				if !ok {
+					log.Fatalf("Invalid genesis, parse fail %#v child[%d] of 'accounts' array-node", i, ta)
+				}
+				if a["name"] == "god" {
+					a["address"] = godAddr
+					ok = true
+					break
+				}
+			}
+			if !ok {
+				log.Fatalf("Invalid genesis, must have 'god' node of 'accounts' array-node")
+			}
+			updated = true
+		}
+
+		c, ok := genesis["chain"].(map[string]interface{})
+		if !ok {
+			log.Fatalf("Invalid genesis, must have 'chain' node")
+		}
+		if len(*validators) > 0 {
+			validatorAddrs := make([]module.Address, len(*validators))
+			for i, validator := range *validators {
+				validatorAddrs[i] = mustParseAddress(validator)
+			}
+			c["validatorList"] = validatorAddrs
+			updated = true
+		}
+
+		if updated {
+			bs, err := json.MarshalIndent(genesis, "", "    ")
+			if err != nil {
+				log.Panicf("Fail to make genesis err=%+v", err)
+			}
+
+			fi, _ := os.Stat(filePath)
+			if err := ioutil.WriteFile(filePath, bs, fi.Mode().Perm()); err != nil {
+				log.Panicf("Fail to write genesis data to file %s err=%+v",
+					filePath, err)
+			}
+			fmt.Printf("Updated %s\n", filePath)
+		}else{
+			fmt.Printf("Nothing to update %s\n", filePath)
+		}
+
+	}
+	return cmd
+}
+
 func NewGenesisCmd(c string) *cobra.Command {
 	cmd := &cobra.Command{Use: c, Short: "Genesis transaction manipulation"}
 	cmd.AddCommand(newGenesisGenCmd("gen"))
+	cmd.AddCommand(newGenesisEditCmd("edit"))
 	return cmd
 }
