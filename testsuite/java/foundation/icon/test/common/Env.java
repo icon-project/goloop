@@ -189,6 +189,7 @@ public class Env {
         }
         Properties props = new Properties();
         try {
+            System.out.println("Current env.properties:"+env_file);
             FileInputStream fi = new FileInputStream(env_file);
             props.load(fi);
             fi.close();

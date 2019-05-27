@@ -5,7 +5,7 @@
   "seed_addr": "",
   "role": 2,
   "db_dir": "",
-  "db_type": "mapdb",
+  "db_type": "goleveldb",
   "db_name": "",
   "wal_dir": "",
   "contract_dir": "",

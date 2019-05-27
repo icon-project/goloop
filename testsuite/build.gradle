@@ -33,6 +33,7 @@ class ChainTest extends Test {
     String configFile = "./data/config.json"
     String logFile = "./chain.log"
     String envFile = "./data/env.properties"
+    String chainDir = ".chain/normal"
     String gsFile = null
     String gsDir = null
     Process process = null
@@ -42,6 +43,8 @@ class ChainTest extends Test {
         commands.add("../bin/gochain")
         commands.add("-config")
         commands.add(configFile)
+        commands.add("-chain_dir")
+        commands.add(chainDir)
         if ( gsFile != null ) {
             commands.add("-genesis_storage")
             commands.add(gsFile)
@@ -50,7 +53,7 @@ class ChainTest extends Test {
             commands.add(gsDir)
         }
 
-        Runtime.getRuntime().exec("rm -rf .chain")
+        Runtime.getRuntime().exec("rm -rf "+chainDir )
 
         ProcessBuilder pb = new ProcessBuilder(commands)
 
@@ -75,7 +78,7 @@ class ChainTest extends Test {
                 t.stopServer()
             }
         }))
-        System.setProperty("CHAIN_ENV", envFile)
+        systemProperty("CHAIN_ENV", envFile)
     }
 
     @TaskAction
@@ -114,8 +117,9 @@ task testGovernance(type: ChainTest, overwrite: true) {
         includeTags "governance"
     }
     configFile = "./data/govConfig.json"
+    chainDir = ".chain/governance"
     logFile = "./gov.log"
-    envFile = "./data/env.properties"
+    envFile = "./data/govEnv.properties"
     def audit = System.getProperty("AUDIT")
     if (audit == "true") {
         gsDir = "./data/genesisStorage/genesis_audit.json"
@@ -134,6 +138,7 @@ task testNormal(type: ChainTest, overwrite: true) {
     }
 
     configFile = "./data/config.json"
+    chainDir = ".chain/normal"
     logFile = "./normal.log"
     envFile = "./data/env.properties"
 
