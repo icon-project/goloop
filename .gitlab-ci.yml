@@ -121,9 +121,9 @@ pack:goloop:
   before_script:
     - env
     - cd testsuite
-    - sed -i "s/^node0\.url=.*/node0\.url=http:\/\/$(echo ${REPO_GOCHAIN//\//-}|cut -d ":" -f 1):9080/" $GOCHAIN_ENVFILE
+    - sed -i "s/localhost/$(echo ${REPO_GOCHAIN//\//-}|cut -d ":" -f 1)/" $GOCHAIN_ENVFILE
   script:
-    - ./gradlew test -DNO_SERVER="true"
+    - ./gradlew test -DNO_SERVER="true" -DCHAIN_ENV="$GOCHAIN_ENVFILE"
   after_script:
     - cp -r $GOCHAIN_DATA gochain_data
   cache:
