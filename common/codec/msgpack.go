@@ -28,5 +28,7 @@ func init() {
 	mh := new(ugorji.MsgpackHandle)
 	mh.StructToArray = true
 	mh.Canonical = true
+	mh.WriteExt = true
+	mh.PositiveIntUnsigned = true
 	mpCodecObject.handle = mh
 }
