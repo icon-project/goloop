@@ -102,12 +102,12 @@ func TestAddressEncodingDecoding(t *testing.T) {
 		{
 			"Case1",
 			args{"hx0000000000000000000000000000000000000000"},
-			"b5000000000000000000000000000000000000000000",
+			"000000000000000000000000000000000000000000",
 		},
 		{
 			"Case2",
 			args{"cx1908581ed9f09c45810405897123badefcbfefa0"},
-			"b5011908581ed9f09c45810405897123badefcbfefa0",
+			"011908581ed9f09c45810405897123badefcbfefa0",
 		},
 	}
 
@@ -118,21 +118,28 @@ func TestAddressEncodingDecoding(t *testing.T) {
 				log.Printf("Test(%s) want=%s illegal", tt.name, tt.want)
 				return
 			}
+			var b2 []byte
+			b2, err = codec.MarshalToBytes(want)
+			if err != nil {
+				log.Printf("Test(%s) fail to marshal bytes err=%+v",
+					tt.name, err)
+				return
+			}
 
 			a := NewAddressFromString(tt.args.s)
-			b, err := codec.MP.MarshalToBytes(a)
+			b, err := codec.MarshalToBytes(a)
 			if err != nil {
 				t.Error(err)
 				return
 			}
 			log.Printf("Encoded:[%x]", b)
-			log.Printf("Expect :[%x]", want)
-			if !bytes.Equal(b, want) {
-				t.Errorf("Encoded bytes are different exp=[%x] result=[%x]", want, b)
+			log.Printf("Expect :[%x]", b2)
+			if !bytes.Equal(b, b2) {
+				t.Errorf("Encoded bytes are different exp=[%x] result=[%x]", b2, b)
 			}
 
 			var a2 Address
-			_, err = codec.MP.UnmarshalFromBytes(b, &a2)
+			_, err = codec.UnmarshalFromBytes(b, &a2)
 			if err != nil {
 				t.Error(err)
 				return

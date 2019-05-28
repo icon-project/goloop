@@ -112,32 +112,32 @@ func TestHexInt_EncodingDecoding(t *testing.T) {
 		{
 			"Case1",
 			args{"0x439394"},
-			"a3439394",
+			"439394",
 		},
 		{
 			"Case2",
 			args{"0x2"},
-			"a102",
+			"02",
 		},
 		{
 			"Case3",
 			args{"-0x1"},
-			"a1ff",
+			"ff",
 		},
 		{
 			"Case4",
 			args{"-0x80"},
-			"a180",
+			"80",
 		},
 		{
 			"Case5",
 			args{"0x80"},
-			"a20080",
+			"0080",
 		},
 		{
 			"Case6",
 			args{"0x0"},
-			"a0",
+			"",
 		},
 	}
 
@@ -157,12 +157,14 @@ func TestHexInt_EncodingDecoding(t *testing.T) {
 			v1.Int.Sub(&v1.Int, &delta.Int)
 
 			var b []byte
-			b, err = codec.MP.MarshalToBytes(&v1)
+			b, err = codec.MarshalToBytes(&v1)
 			if err != nil {
 				t.Error(err)
 				return
 			}
-			if !bytes.Equal(want, b) {
+			var b2 []byte
+			b2, err = codec.MarshalToBytes(want)
+			if !bytes.Equal(b2, b) {
 				t.Errorf("Encoded = [%x] wanted = [%x]", b, want)
 			}
 
