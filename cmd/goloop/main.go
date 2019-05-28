@@ -218,6 +218,9 @@ func main() {
 				log.Panic(err)
 			}
 			if saveKeyStore != "" {
+				if err := os.MkdirAll(path.Dir(saveKeyStore), 0700); err != nil {
+					log.Panicf("Fail to create directory %s err=%+v", saveKeyStore, err)
+				}
 				ks := bytes.NewBuffer(nil)
 				if err := json.Indent(ks, cfg.KeyStoreData, "", "  "); err != nil {
 					log.Panicf("Fail to indenting key data err=%+v", err)

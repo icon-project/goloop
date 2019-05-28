@@ -285,7 +285,7 @@ func NewSystemCmd(cfg *GoLoopConfig) *cobra.Command {
 				v = new(string)
 				params.Add("format", format)
 			}
-			resp, err := hc.Get(node.UrlSystem, &v, params)
+			resp, err := hc.Get(node.UrlSystem, v, params)
 			if err != nil {
 				fmt.Println(err, resp)
 				return
