@@ -206,7 +206,7 @@ func main() {
 	serverFlags.StringVar(&flagCfg.KeyStorePass, "key_password", "", "Password for the KeyStore file")
 	serverFlags.IntVar(&flagCfg.EEInstances, "ee_instances", 1, "Number of execution engines")
 	serverFlags.StringVar(&nodeDir, "node_dir", "",
-		"Node data directory(default:<configuration file path>/.chain/<address>)")
+		"Node data directory(default:[configuration file path]/.chain/[ADDRESS])")
 	vc.BindPFlags(serverFlags)
 
 	saveCmd := &cobra.Command{
