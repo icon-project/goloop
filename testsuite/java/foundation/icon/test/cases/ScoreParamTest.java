@@ -10,6 +10,7 @@ import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
+import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.Score;
 import org.junit.jupiter.api.AfterAll;
@@ -42,6 +43,8 @@ public class ScoreParamTest {
     private static final int TYPE_INT = 2;
     private static final int TYPE_BYTES = 3;
     private static final int TYPE_STR = 4;
+
+    private static final boolean IGNORE_ADDITIONAL_PARAM = true;
 
     @BeforeAll
     public static void init() throws Exception {
@@ -424,6 +427,139 @@ public class ScoreParamTest {
             LOG.infoExiting();
             assertEquals(Constants.STATUS_FAIL, result.getStatus());
         }
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void callDefaultParam() throws Exception {
+        LOG.infoEntering( "callDefaultParam");
+        RpcObject params = new RpcObject.Builder()
+                .put("default_param", new RpcValue(new byte[]{0x10}))
+                .build();
+        LOG.infoEntering("invoke call_default_param with param");
+        TransactionResult result =
+                testScore.invokeAndWaitResult(callerWallet, "call_default_param",
+                        params, BigInteger.valueOf(0), BigInteger.valueOf(100));
+        LOG.infoExiting();
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        RpcItem item =
+                testScore.call(callerWallet.getAddress(), "check_default", null);
+        assertEquals("default", item.asString());
+
+        params = new RpcObject.Builder()
+                .build();
+        LOG.infoEntering("invoke call_default_param with no param");
+        result =
+                testScore.invokeAndWaitResult(callerWallet, "call_default_param",
+                        params, BigInteger.valueOf(0), BigInteger.valueOf(100));
+        LOG.infoExiting();
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        item = testScore.call(callerWallet.getAddress(), "check_default", null);
+        assertEquals("None", item.asString());
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void interCallDefaultParam() throws Exception {
+        LOG.infoEntering( "interCallDefaultParam");
+        RpcObject params = new RpcObject.Builder()
+                .put("default_param", new RpcValue(new byte[]{0x10}))
+                .build();
+        LOG.infoEntering("invoke call_default_param with param");
+        TransactionResult result =
+                interCallScore.invokeAndWaitResult(callerWallet, "call_default_param",
+                        params, BigInteger.valueOf(0), BigInteger.valueOf(100));
+        LOG.infoExiting();
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        RpcItem item =
+                interCallScore.call(callerWallet.getAddress(), "check_default", null);
+        assertEquals("default", item.asString());
+
+        params = new RpcObject.Builder()
+                .put("_to", new RpcValue(interCallScore.getAddress()))
+                .build();
+        LOG.infoEntering("invoke inter_call_default_param");
+        result = testScore.invokeAndWaitResult(callerWallet, "inter_call_default_param",
+                        params, BigInteger.valueOf(0), BigInteger.valueOf(100));
+        LOG.infoExiting();
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        item = interCallScore.call(callerWallet.getAddress(), "check_default", null);
+        assertEquals("None", item.asString());
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void interCallWithNull() throws Exception {
+        LOG.infoEntering( "interCallWithNull");
+        for(int t : new int[]{TYPE_BOOL, TYPE_ADDRESS, TYPE_INT, TYPE_BYTES, TYPE_STR}) {
+            RpcObject params = new RpcObject.Builder()
+                    .put("_to", new RpcValue(interCallScore.getAddress()))
+                    .put("ptype", new RpcValue(BigInteger.valueOf(t)))
+                    .build();
+            LOG.infoEntering("invoke inter_call_with_none");
+            TransactionResult result =
+                    testScore.invokeAndWaitResult(callerWallet, "inter_call_with_none",
+                            params, BigInteger.valueOf(0), BigInteger.valueOf(100));
+            LOG.infoExiting();
+            if(t == TYPE_ADDRESS || t == TYPE_BYTES) {
+                assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+                String method = null;
+                if(t == TYPE_ADDRESS) {
+                    method = "check_address";
+                }else {
+                    method = "check_bytes";
+                }
+                RpcItem item =
+                        interCallScore.call(callerWallet.getAddress(), method, null);
+                assertEquals("None", item.asString());
+            } else {
+                assertEquals(Constants.STATUS_FAIL, result.getStatus());
+            }
+        }
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void interCallWithMoreParams() throws Exception {
+        LOG.infoEntering( "interCallWithMore");
+        RpcObject params = new RpcObject.Builder()
+                .put("_to", new RpcValue(interCallScore.getAddress()))
+                .build();
+        LOG.infoEntering("invoke inter_call_with_more_params");
+        TransactionResult result =
+                testScore.invokeAndWaitResult(callerWallet, "inter_call_with_more_params",
+                        params, BigInteger.valueOf(0), BigInteger.valueOf(100));
+        LOG.infoExiting();
+        assertEquals(Constants.STATUS_FAIL, result.getStatus());
+        LOG.infoExiting();
+    }
+
+    /*
+    if it returns failure when undefined parameter passes to blockchain, below test returns success
+     */
+    @Test
+    public void invalidAddUndefinedParam() throws Exception {
+        LOG.infoEntering( "invalidAddUndefinedParam");
+        RpcObject params = new RpcObject.Builder()
+                .put("undefined1", new RpcValue(true))
+                .put("undefined2", new RpcValue(BigInteger.ONE))
+                .build();
+        LOG.infoEntering("invoke call_default_param");
+        boolean timeout = false;
+        TransactionResult result = null;
+        try {
+            result = testScore.invokeAndWaitResult(callerWallet, "call_default_param",
+                    params, BigInteger.valueOf(0), BigInteger.valueOf(100));
+        }
+        catch (ResultTimeoutException ex) {
+            timeout = true;
+        }
+        if(!IGNORE_ADDITIONAL_PARAM) {
+            assertEquals(true, timeout);
+        } else {
+            assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        }
+        LOG.infoExiting();
         LOG.infoExiting();
     }
 }

@@ -8,6 +8,7 @@ TYPE_INT = 2
 TYPE_BYTES = 3
 TYPE_STR = 4
 
+
 class InterCallInterface(InterfaceScore):
     @interface
     def call_bool(self, param: bool):
@@ -30,8 +31,13 @@ class InterCallInterface(InterfaceScore):
         pass
 
     @interface
+    def call_default_param(self, default_param: bytes = None) -> str:
+        pass
+
+    @interface
     def call_all(self, p_bool: bool, p_addr: Address, p_int: int, p_str: str, p_bytes: bytes):
         pass
+
 
 class CheckParams(IconScoreBase):
     _TYPE = 'types'
@@ -55,7 +61,9 @@ class CheckParams(IconScoreBase):
 
     @external
     def call_address(self, param: Address):
-        if isinstance(param, Address):
+        if param is None:
+            self._type_val['Address'] = "None"
+        elif isinstance(param, Address):
             self._type_val['Address'] = str(param)
         else:
             self._type_val['Address'] = "not address"
@@ -69,7 +77,9 @@ class CheckParams(IconScoreBase):
 
     @external
     def call_bytes(self, param: bytes):
-        if isinstance(param, bytes):
+        if param is None:
+            self._type_val['bytes'] = "None"
+        elif isinstance(param, bytes):
             self._type_val['bytes'] = str(param[0])
         else:
             self._type_val['bytes'] = "not bytes"
@@ -181,3 +191,42 @@ class CheckParams(IconScoreBase):
     @external(readonly=True)
     def check_all(self) -> str:
         return self._type_val['all']
+
+    @external
+    def call_default_param(self, default_param: bytes = None):
+        if default_param is None:
+            self._type_val['default'] = "None"
+        else:
+            self._type_val['default'] = "default"
+        return
+
+    @external(readonly=True)
+    def check_default(self) -> str:
+        return self._type_val['default']
+
+    @external
+    def inter_call_default_param(self, _to : Address):
+        recipient_score = self.create_interface_score(_to, InterCallInterface)
+        recipient_score.call_default_param()
+
+    @external
+    def inter_call_with_none(self, _to :Address, ptype: int):
+        recipient_score = self.create_interface_score(_to, InterCallInterface)
+        if ptype == TYPE_BOOL:
+            recipient_score.call_bool(None)
+        elif ptype == TYPE_ADDR:
+            recipient_score.call_address(None)
+        elif ptype == TYPE_BYTES:
+            recipient_score.call_bytes(None)
+        elif ptype == TYPE_INT:
+            recipient_score.call_int(None)
+        elif ptype == TYPE_STR:
+            recipient_score.call_str(None)
+        else:
+            raise Exception(f'IllegalPType{ptype})')
+
+    @external
+    def inter_call_with_more_params(self, _to :Address):
+        recipient_score = self.create_interface_score(_to, InterCallInterface)
+        recipient_score.call_bytes(bytes(12345), 123)
+
