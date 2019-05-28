@@ -11,6 +11,10 @@ import (
 	"log"
 )
 
+const (
+	IGNORE_ADDITIONAL_PARAM = true
+)
+
 type MethodType int
 
 const (
@@ -113,11 +117,11 @@ func (t DataType) Decode(bs []byte) interface{} {
 		}
 		return &i
 	case String:
-		if bs == nil {
-			return nil
-		}
 		return string(bs)
 	case Bytes:
+		if len(bs) == 0 {
+			return nil
+		}
 		return bs
 	case Bool:
 		if (len(bs) == 1 && bs[0] == 0) || len(bs) == 0 {
@@ -242,6 +246,9 @@ func validateInputType(inputType DataType, paramObj *codec.TypedObj) error {
 		return errors.Wrapf(errors.ErrIllegalArgument, "invalid input type. %v is not defined\n", inputType)
 	} else {
 		if t != paramObj.Type {
+			if paramObj.Type == codec.TypeNil && (t == codec.TypeBytes || t == common.TypeAddress) {
+				return nil
+			}
 			return errors.Wrapf(errors.ErrIllegalArgument, "invalid input type. %v but type %v\n", inputType, paramObj.Type)
 		}
 	}
@@ -251,6 +258,9 @@ func validateInputType(inputType DataType, paramObj *codec.TypedObj) error {
 func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedObj, error) {
 	if paramObj.Type == codec.TypeList {
 		tol := paramObj.Object.([]*codec.TypedObj)
+		if len(a.Inputs) < len(tol) {
+			return nil, errors.ErrIllegalArgument
+		}
 		for i, to := range tol {
 			if err := validateInputType(a.Inputs[i].Type, to); err != nil {
 				log.Printf("Fail validate input type. %s\n", err)
@@ -310,6 +320,10 @@ func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
 			return nil, scoreresult.Errorf(module.StatusInvalidParameter,
 				"MissingParam(param=%s)", input.Name)
 		}
+		if !IGNORE_ADDITIONAL_PARAM {
+			delete(params, input.Name)
+		}
+
 		switch input.Type {
 		case Integer:
 			var value common.HexInt
@@ -349,6 +363,19 @@ func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
 		default:
 			return nil, scoreresult.Errorf(module.StatusInvalidParameter,
 				"UnknownType(%d)", input.Type)
+		}
+	}
+
+	if !IGNORE_ADDITIONAL_PARAM {
+		if len(params) != 0 {
+			iParam := make([]string, len(params))
+			i := 0
+			for p := range params {
+				iParam[i] = p
+				i++
+			}
+			return nil, scoreresult.Errorf(module.StatusInvalidParameter,
+				"Not defined param [%v]\n", iParam)
 		}
 	}
 
