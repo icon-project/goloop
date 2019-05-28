@@ -204,7 +204,7 @@ func main() {
 		if err := json.Indent(ks, cfg.KeyStoreData, "", "  "); err != nil {
 			log.Panicf("Fail to indenting key data err=%+v", err)
 		}
-		if err := ioutil.WriteFile(saveKeyStore, ks.Bytes(), 0700); err != nil {
+		if err := ioutil.WriteFile(saveKeyStore, ks.Bytes(), 0600); err != nil {
 			log.Panicf("Fail to save key store to the file=%s err=%+v", saveKeyStore, err)
 		}
 	}

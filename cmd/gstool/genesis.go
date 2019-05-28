@@ -91,7 +91,7 @@ func newGenesisGenCmd(c string) *cobra.Command {
 		if err != nil {
 			log.Panicf("Fail to make genesis err=%+v", err)
 		}
-		if err := ioutil.WriteFile(*out, bs, 0700); err != nil {
+		if err := ioutil.WriteFile(*out, bs, 0600); err != nil {
 			log.Panicf("Fail to write genesis data to file %s err=%+v",
 				*out, err)
 		}

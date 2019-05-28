@@ -24,7 +24,7 @@ func newKeystoreGenCmd(c string) *cobra.Command {
 		if err != nil {
 			log.Panicf("Fail to generate keystore err=%+v", err)
 		}
-		if err := ioutil.WriteFile(*out, ks, 0700); err != nil {
+		if err := ioutil.WriteFile(*out, ks, 0600); err != nil {
 			log.Panicf("Fail to write keystore err=%+v", err)
 		}
 		fmt.Printf("%s ==> %s\n",
