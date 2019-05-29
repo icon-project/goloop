@@ -2,6 +2,9 @@ ARG PYTHON_VERSION=3.7.3
 FROM python:${PYTHON_VERSION}-alpine
 RUN apk add git
 
+#required by 'pip install secp256k1'
+RUN apk add --no-cache pkgconfig libffi-dev build-base autoconf automake libtool
+
 ARG GOLOOP_PYREQ_SHA
 LABEL GOLOOP_PYREQ_SHA="$GOLOOP_PYREQ_SHA"
 ADD requirements.txt /goloop/
