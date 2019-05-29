@@ -293,6 +293,7 @@ func getTransactionResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 	result["blockHash"] = "0x" + hex.EncodeToString(blk.ID())
 	result["blockHeight"] = "0x" + strconv.FormatInt(int64(blk.Height()), 16)
 	result["txIndex"] = "0x" + strconv.FormatInt(int64(txInfo.Index()), 16)
+	result["txHash"] = "0x" + hex.EncodeToString(txInfo.Transaction().ID())
 
 	return result, nil
 }
@@ -321,15 +322,15 @@ func getTransactionByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 
 	tx := txInfo.Transaction()
 
-	var result interface{}
+	var res interface{}
 	switch tx.Version() {
 	case module.TransactionVersion2:
-		result, err = tx.ToJSON(module.TransactionVersion2)
+		res, err = tx.ToJSON(module.TransactionVersion2)
 		if err != nil {
 			return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 		}
 	case module.TransactionVersion3:
-		result, err = tx.ToJSON(module.TransactionVersion3)
+		res, err = tx.ToJSON(module.TransactionVersion3)
 		if err != nil {
 			return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 		}
@@ -337,6 +338,12 @@ func getTransactionByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 		return nil, jsonrpc.ErrorCodeServer.Errorf(
 			"Unknown transaction version=%d", tx.Version())
 	}
+
+	blk := txInfo.Block()
+	result := res.(map[string]interface{})
+	result["blockHash"] = "0x" + hex.EncodeToString(blk.ID())
+	result["blockHeight"] = "0x" + strconv.FormatInt(int64(blk.Height()), 16)
+	result["txIndex"] = "0x" + strconv.FormatInt(int64(txInfo.Index()), 16)
 
 	return result, nil
 }
