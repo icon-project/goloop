@@ -33,7 +33,6 @@ type Rest struct {
 	n *Node
 }
 
-// swagger:model SystemView
 type SystemView struct {
 	BuildVersion  string `json:"buildVersion"`
 	BuildTags     string `json:"buildTags"`
@@ -47,7 +46,6 @@ type StatsView struct {
 	Timestamp time.Time                `json:"timestamp"`
 }
 
-// swagger:model JoinChainParam
 type JoinChainParam struct {
 	NID    int    `json:"nid"`
 	DBType string `json:"dbType"`
@@ -59,7 +57,6 @@ type JoinChainParam struct {
 	Channel string `json:"channel"`
 }
 
-// swagger:model ChainView
 type ChainView struct {
 	NID       int    `json:"nid"`
 	State     string `json:"state"`
@@ -67,11 +64,10 @@ type ChainView struct {
 	LastError string `json:"lastError"`
 }
 
-// swagger:model ChainInspectView
 type ChainInspectView struct {
 	*ChainView
 	GenesisTx json.RawMessage `json:"genesisTx"`
-	//TODO [TBD] define structure each module for inspect
+	// TODO [TBD] define structure each module for inspect
 	Module map[string]interface{} `json:"module"`
 }
 
@@ -97,7 +93,6 @@ func NewChainView(c module.Chain) *ChainView {
 	return v
 }
 
-// swagger:ignore
 type InspectFunc func(c module.Chain) map[string]interface{}
 
 var (
@@ -168,32 +163,6 @@ func (r *Rest) ChainInjector(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-// swagger:operation GET /admin/chain chain ChainList
-//
-// List chains
-//
-// Returns a list of chains
-//
-// ---
-// consumes:
-// - application/json
-//
-// produces:
-// - application/json
-//
-// responses:
-//   200:
-//     description: Success
-//     schema:
-//       type: array
-//       items:
-//         "$ref": "#/definitions/ChainView"
-//   204:
-//     description: No Content
-//   500:
-//     description: Internal Server Error
-//     schema:
-//       $ref: '#/definitions/ErrorResponse'
 func (r *Rest) GetChains(ctx echo.Context) error {
 	l := make([]*ChainView, 0)
 	for _, c := range r.n.GetChains() {
@@ -242,44 +211,6 @@ func GetFileMultipart(ctx echo.Context, fieldname string) ([]byte, error) {
 	return b, nil
 }
 
-// swagger:operation POST /admin/chain chain joinChain
-//
-// Join chain
-//
-// Join chain
-//
-// {
-// "nid": "1",
-// "role": "0",
-// "seedAddress": "http://localhost:8080"
-// }
-//
-// ---
-// consumes:
-// - multipart/form-data
-//
-// produces:
-// - application/json
-//
-// parameters:
-//   - name: json
-//     description: join chain param json
-//     in: formData
-//     required: true
-//     type: string
-//   - name: genesisZip
-//     description: genesis storage file
-//     in: formData
-//     required: true
-//     type: file
-//
-// responses:
-//   200:
-//     description: Success
-//   500:
-//     description: Internal Server Error
-//     schema:
-//       $ref: '#/definitions/ErrorResponse'
 func (r *Rest) JoinChain(ctx echo.Context) error {
 	var err error
 	p := &JoinChainParam{}
@@ -321,42 +252,6 @@ var (
 	defaultJsonTemplate = NewJsonTemplate("default")
 )
 
-// swagger:operation GET /admin/chain/{nid} chain getChain
-//
-// Get chain
-//
-// Get chain
-//
-// ---
-// consumes:
-// - application/json
-//
-// produces:
-// - application/json
-//
-// parameters:
-//   - name: nid
-//     description: chain network id
-//     in: path
-//     type: string
-//     required: true
-//
-// responses:
-//   200:
-//     description: Success
-//     schema:
-//       $ref: '#/definitions/ChainInspectView'
-//   404:
-//     description: Not Found
-//     schema:
-//       $ref: '#/definitions/ErrorResponse'
-//     examples:
-//       application/json:
-//         message: "Not Found : {nid}"
-//   500:
-//     description: Internal Server Error
-//     schema:
-//       $ref: '#/definitions/ErrorResponse'
 func (r *Rest) GetChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(module.Chain)
 	v := NewChainInspectView(c)
@@ -368,33 +263,6 @@ func (r *Rest) GetChain(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, v)
 }
 
-// swagger:operation DELETE /admin/chain/{nid} chain leaveChain
-//
-// Leave chain
-//
-// Leave chain
-//
-// ---
-// consumes:
-// - application/json
-//
-// produces:
-// - application/json
-//
-// parameters:
-//   - name: nid
-//     description: chain network id
-//     in: path
-//     type: string
-//     required: true
-//
-// responses:
-//   200:
-//     description: Success
-//   500:
-//     description: Internal Server Error
-//     schema:
-//       $ref: '#/definitions/ErrorResponse'
 func (r *Rest) LeaveChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(module.Chain)
 	if err := r.n.LeaveChain(c.NID()); err != nil {
@@ -403,33 +271,6 @@ func (r *Rest) LeaveChain(ctx echo.Context) error {
 	return ctx.String(http.StatusOK, "OK")
 }
 
-// swagger:operation POST /admin/chain/{nid}/start chain startChain
-//
-// Start chain
-//
-// Start chain
-//
-// ---
-// consumes:
-// - application/json
-//
-// produces:
-// - application/json
-//
-// parameters:
-//   - name: nid
-//     description: chain network id
-//     in: path
-//     type: string
-//     required: true
-//
-// responses:
-//   200:
-//     description: Success
-//   500:
-//     description: Internal Server Error
-//     schema:
-//       $ref: '#/definitions/ErrorResponse'
 func (r *Rest) StartChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(module.Chain)
 	if err := r.n.StartChain(c.NID()); err != nil {
@@ -438,33 +279,6 @@ func (r *Rest) StartChain(ctx echo.Context) error {
 	return ctx.String(http.StatusOK, "OK")
 }
 
-// swagger:operation POST /admin/chain/{nid}/stop chain stopChain
-//
-// Stop chain
-//
-// Stop chain
-//
-// ---
-// consumes:
-// - application/json
-//
-// produces:
-// - application/json
-//
-// parameters:
-//   - name: nid
-//     description: chain network id
-//     in: path
-//     type: string
-//     required: true
-//
-// responses:
-//   200:
-//     description: Success
-//   500:
-//     description: Internal Server Error
-//     schema:
-//       $ref: '#/definitions/ErrorResponse'
 func (r *Rest) StopChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(module.Chain)
 	if err := r.n.StopChain(c.NID()); err != nil {
@@ -473,33 +287,6 @@ func (r *Rest) StopChain(ctx echo.Context) error {
 	return ctx.String(http.StatusOK, "OK")
 }
 
-// swagger:operation POST /admin/chain/{nid}/reset chain resetChain
-//
-// Reset chain
-//
-// Reset chain
-//
-// ---
-// consumes:
-// - application/json
-//
-// produces:
-// - application/json
-//
-// parameters:
-//   - name: nid
-//     description: chain network id
-//     in: path
-//     type: string
-//     required: true
-//
-// responses:
-//   200:
-//     description: Success
-//   500:
-//     description: Internal Server Error
-//     schema:
-//       $ref: '#/definitions/ErrorResponse'
 func (r *Rest) ResetChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(module.Chain)
 	if err := r.n.ResetChain(c.NID()); err != nil {
@@ -508,33 +295,6 @@ func (r *Rest) ResetChain(ctx echo.Context) error {
 	return ctx.String(http.StatusOK, "OK")
 }
 
-// swagger:operation POST /chain/{nid}/verify chain verifyChain
-//
-// Verify chain
-//
-// Verify chain
-//
-// ---
-// consumes:
-// - application/json
-//
-// produces:
-// - application/json
-//
-// parameters:
-//   - name: nid
-//     description: chain network id
-//     in: path
-//     type: string
-//     required: true
-//
-// responses:
-//   200:
-//     description: Success
-//   500:
-//     description: Internal Server Error
-//     schema:
-//       $ref: '#/definitions/ErrorResponse'
 func (r *Rest) VerifyChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(module.Chain)
 	if err := r.n.VerifyChain(c.NID()); err != nil {
@@ -547,28 +307,6 @@ func (r *Rest) RegisterSystemHandlers(g *echo.Group) {
 	g.GET("", r.GetSystem)
 }
 
-// swagger:operation GET /admin/system node getNode
-//
-// View Node
-//
-// View Node
-//
-// ---
-// consumes:
-// - application/json
-//
-// produces:
-// - application/json
-//
-// responses:
-//   200:
-//     description: Success
-//     schema:
-//       $ref: '#/definitions/SystemView'
-//   500:
-//     description: Internal Server Error
-//     schema:
-//       $ref: '#/definitions/ErrorResponse'
 func (r *Rest) GetSystem(ctx echo.Context) error {
 	v := &SystemView{
 		BuildVersion:  r.n.cfg.BuildVersion,
@@ -699,7 +437,7 @@ func (t *JsonTemplate) Response(format string, v interface{}, resp *echo.Respons
 		return err
 	}
 
-	//resp.Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSONCharsetUTF8)
+	// resp.Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSONCharsetUTF8)
 	resp.Header().Set(echo.HeaderContentType, echo.MIMETextPlain)
 	resp.WriteHeader(http.StatusOK)
 	return nil

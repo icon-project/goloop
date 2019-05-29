@@ -57,20 +57,6 @@ make pyexec
 
 Output files are placed under `pyee/dist/` directory.
 
-### Build document
-
-```bash
-make doc
-```
-
-You may use generated swagger spec by yourself, but you may use the server
-which is provided by [go-swagger](https://github.com/go-swagger/go-swagger)
-
-```bash
-make doc-server
-```
-
-
 ## Quick start
 
 First step, you need to make a configuration for the node.

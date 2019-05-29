@@ -92,39 +92,6 @@ func (wm *wsSessionManager) StopSessionsForChain(chain module.Chain) {
 	}
 }
 
-// swagger:operation GET /api/v3/:channel/block websocket wsBlock
-//
-// Monitor Block
-//
-// Monitor Block Changes
-//
-// ---
-// consumes:
-//   - application/json
-//
-// produces:
-//   - application/json
-//
-// schemes:
-//   - ws
-//
-// parameters:
-//   - name: BlockRequest
-//     description: block request
-//     in: body
-//     required: true
-//     schema:
-//       $ref: '#/definitions/BlockRequest'
-//
-// responses:
-//   200:
-//     description: Success
-//     schema:
-//       $ref: '#/definitions/BlockNotification'
-//   500:
-//     description: Internal Server Error
-//     schema:
-//       $ref: '#/definitions/ErrorResponse'
 func (wm *wsSessionManager) RunBlockSession(ctx echo.Context) error {
 	chain, ok := ctx.Get("chain").(module.Chain)
 	if !ok {
@@ -184,39 +151,6 @@ loop:
 	return err
 }
 
-// swagger:operation GET /api/v3/:channel/event websocket wsEvent
-//
-// Monitor Events
-//
-// Monitor Events
-//
-// ---
-// consumes:
-//   - application/json
-//
-// produces:
-//   - application/json
-//
-// schemes:
-//   - ws
-//
-// parameters:
-//   - name: EventRequest
-//     description: event request
-//     in: body
-//     required: true
-//     schema:
-//       $ref: '#/definitions/EventRequest'
-//
-// responses:
-//   200:
-//     description: Success
-//     schema:
-//       $ref: '#/definitions/EventNotification'
-//   500:
-//     description: Internal Server Error
-//     schema:
-//       $ref: '#/definitions/ErrorResponse'
 func (wm *wsSessionManager) RunEventSession(ctx echo.Context) error {
 	chain, ok := ctx.Get("chain").(module.Chain)
 	if !ok {
@@ -310,12 +244,10 @@ loop:
 
 const configMaxSession = 10
 
-// swagger:model BlockRequest
 type BlockRequest struct {
 	Height common.HexInt64 `json:"height"`
 }
 
-// swagger:model EventRequest
 type EventRequest struct {
 	Height  common.HexInt64 `json:"height"`
 	Addr    *common.Address `json:"addr"`
@@ -324,13 +256,11 @@ type EventRequest struct {
 	dataBSs [][]byte
 }
 
-// swagger:model BlockNotification
 type BlockNotification struct {
 	Hash   common.HexBytes `json:"hash"`
 	Height common.HexInt64 `json:"height"`
 }
 
-// swagger:model EventNotification
 type EventNotification struct {
 	Hash   common.HexBytes `json:"hash"`
 	Height common.HexInt64 `json:"height"`
