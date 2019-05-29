@@ -14,7 +14,13 @@
 
 """ Default service packages for implementing ICON SCORE """
 
-from pyexec.base.address import Address, ZERO_SCORE_ADDRESS
+from abc import ABCMeta, abstractmethod, ABC
+from functools import wraps
+from inspect import isfunction
+
+from iconcommons.logger import Logger
+
+from pyexec.base.address import Address, AddressPrefix, ZERO_SCORE_ADDRESS
 from pyexec.base.exception import IconScoreException
 from pyexec.database.db import IconScoreDatabase
 from pyexec.icon_constant import IconServiceFlag
@@ -22,9 +28,4 @@ from pyexec.icon_constant import IconServiceFlag
 from pyexec.iconscore.icon_container_db import VarDB, DictDB, ArrayDB
 from pyexec.iconscore.icon_score_base import IconScoreBase, interface, eventlog, external, payable, isolated
 from pyexec.iconscore.icon_score_base2 import InterfaceScore, revert, sha3_256, json_loads, json_dumps
-
-from iconcommons.logger import Logger
-
-from inspect import isfunction
-from functools import wraps
-from abc import ABCMeta, abstractmethod, ABC
+from pyexec.iconscore.icon_score_base2 import recover_key, create_address_with_key

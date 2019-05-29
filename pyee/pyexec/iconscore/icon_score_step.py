@@ -145,17 +145,25 @@ class IconScoreStepCounter(object):
     def apply_step(self, step_type: StepType, count: int) -> int:
         """ Increases steps for given step cost
         """
-        step_to_apply = self._step_costs.get(step_type, 0) * count
-        if step_to_apply + self._step_used > self._step_limit:
+        step: int = self._step_costs.get(step_type, 0) * count
+        return self.consume_step(step_type, step)
+
+    def consume_step(self, step_type: StepType, step: int) -> int:
+        step_used: int = self._step_used + step
+
+        if step_used > self._step_limit:
             step_used = self._step_used
             self._step_used = self._step_limit
             raise OutOfStepException(
-                self._step_limit, step_used, step_to_apply, step_type)
+                self._step_limit, step_used, step, step_type)
 
-        self._step_used += step_to_apply
-        return self._step_used
+        self._step_used = step_used
+        return step_used
 
     def add_step(self, amount: int) -> int:
         # Assuming amount is always less than the current limit
         self._step_used += amount
         return self._step_used
+
+    def get_step_cost(self, step_type: StepType) -> int:
+        return self._step_costs.get(step_type, 0)
