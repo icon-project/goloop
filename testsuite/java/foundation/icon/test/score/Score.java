@@ -110,6 +110,7 @@ public class Score {
                 .nid(BigInteger.valueOf(chain.networkId))
                 .from(wallet.getAddress())
                 .to(this.scoreAddress)
+                .nonce(BigInteger.TEN)
                 .stepLimit(steps);
 
         if ((value != null) && value.bitLength() != 0) {

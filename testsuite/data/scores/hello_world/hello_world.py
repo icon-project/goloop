@@ -2,6 +2,7 @@ from iconservice import *
 
 TAG = 'HelloWorld'
 
+
 class HelloWorld(IconScoreBase):
     _BALANCES = 'balances'
 

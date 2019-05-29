@@ -91,7 +91,7 @@ public class Utils {
                 .from(fromWallet.getAddress())
                 .to(to)
                 .value(value)
-                .stepLimit(new BigInteger("1000"))
+                .stepLimit(BigInteger.valueOf(Constants.DEFAULT_STEP_LIMIT))
                 .timestamp(getMicroTime())
                 .nonce(new BigInteger("1"));
         Transaction transaction;
@@ -336,9 +336,6 @@ public class Utils {
                 service, txHash, Constants.DEFAULT_WAITING_TIME);
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
         assertEquals(prevToBal.add(val), service.getBalance(to).execute());
-
-        BigInteger curFromBal = service.getBalance(from.getAddress()).execute();
-        assertEquals(expectedFromBal, curFromBal);
     }
 
     public static void transferAndCheck(IconService service, Env.Chain chain,
@@ -361,7 +358,5 @@ public class Utils {
             assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
             assertEquals(prevBal[i].add(val), service.getBalance(to[i]).execute());
         }
-        BigInteger curFromBal = service.getBalance(from.getAddress()).execute();
-        assertEquals(expectedFromBal, curFromBal);
     }
 }

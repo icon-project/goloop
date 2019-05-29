@@ -44,6 +44,8 @@ public class ScoreParamTest {
     private static final int TYPE_BYTES = 3;
     private static final int TYPE_STR = 4;
 
+    // true if blockchain ignores undefined params
+    // false if blockhain returns failure when undefined params passes
     private static final boolean IGNORE_ADDITIONAL_PARAM = true;
 
     @BeforeAll
@@ -534,9 +536,6 @@ public class ScoreParamTest {
         LOG.infoExiting();
     }
 
-    /*
-    if it returns failure when undefined parameter passes to blockchain, below test returns success
-     */
     @Test
     public void invalidAddUndefinedParam() throws Exception {
         LOG.infoEntering( "invalidAddUndefinedParam");
@@ -560,6 +559,36 @@ public class ScoreParamTest {
             assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
         }
         LOG.infoExiting();
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void interCallWithEmptyString() throws Exception {
+        LOG.infoEntering( "interCallWithEmptyString");
+        RpcObject params = new RpcObject.Builder()
+                .put("_to", new RpcValue(interCallScore.getAddress()))
+                .build();
+        LOG.infoEntering("invoke inter_call_empty_str");
+        TransactionResult result =
+                testScore.invokeAndWaitResult(callerWallet, "inter_call_empty_str",
+                        params, BigInteger.valueOf(0), BigInteger.valueOf(100));
+        LOG.infoExiting();
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void interCallWithDefaultParam() throws Exception {
+        LOG.infoEntering( "interCallWithDefaultParam");
+        RpcObject params = new RpcObject.Builder()
+                .put("_to", new RpcValue(interCallScore.getAddress()))
+                .build();
+        LOG.infoEntering("invoke inter_call_with_default_param");
+        TransactionResult result =
+                testScore.invokeAndWaitResult(callerWallet, "inter_call_with_default_param",
+                        params, BigInteger.valueOf(0), BigInteger.valueOf(100));
+        LOG.infoExiting();
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
         LOG.infoExiting();
     }
 }

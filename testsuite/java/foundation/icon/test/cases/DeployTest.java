@@ -597,6 +597,7 @@ public class DeployTest {
         }
         catch(TransactionFailureException ex) {
             LOG.info("FAIL to depoly : expected result");
+            LOG.infoExiting();
         }
         LOG.infoExiting();
     }

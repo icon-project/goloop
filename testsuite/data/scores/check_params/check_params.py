@@ -226,7 +226,20 @@ class CheckParams(IconScoreBase):
             raise Exception(f'IllegalPType{ptype})')
 
     @external
+    def inter_call_with_default_param(self, _to: Address, p_bool: bool = True, p_addr: Address = None, p_int: int = 0, p_str: str = "", p_bytes: bytes = None):
+        recipient_score = self.create_interface_score(_to, InterCallInterface)
+        recipient_score.call_bool(p_bool)
+        recipient_score.call_address(p_addr)
+        recipient_score.call_int(p_int)
+        recipient_score.call_str(p_str)
+        recipient_score.call_bytes(p_bytes)
+
+    @external
     def inter_call_with_more_params(self, _to :Address):
         recipient_score = self.create_interface_score(_to, InterCallInterface)
         recipient_score.call_bytes(bytes(12345), 123)
 
+    @external
+    def inter_call_empty_str(self, _to: Address):
+        recipient_score = self.create_interface_score(_to, InterCallInterface)
+        recipient_score.call_str("")
