@@ -22,7 +22,7 @@ Summarize the document to following items.
 * A method to get votes for the block
     * API to get votes for the block
 * A method to detect events
-    * The block contains logbloom related to events.
+    * The block contains logsbloom related to events.
     * API to monitor events
 
 ## Monitor with Websocket
@@ -359,7 +359,7 @@ Core2 uses MsgPack and RLP for binary encoding and decoding.
 ||NextValidatorHash|MsgPack Bytes|32 bytes hash value|
 ||PatchTransactionHash|MsgPack Bytes|32 bytes hash value|
 ||NormalTransactionHash|MsgPack Bytes|32 bytes hash value|
-||LogBloom|MsgPack Bytes|N(1~256) bytes bloom log value|
+||LogsBloom|MsgPack Bytes|N(1~256) bytes bloom log value|
 ||Result|MsgPack Bytes|Result.Encode()<br/>After decoding BlockHeader, it should decode it again for NormalReceiptHash.|
 |Result     ||MsgPack List of followings||
 ||StateHash|MsgPack Bytes|Hash of world state (account information)|
@@ -422,7 +422,7 @@ Core2 uses MsgPack and RLP for binary encoding and decoding.
 ||CumulativeStepUsed|Integer|Cumulative step used|
 ||StepUsed|Integer|Step used|
 ||StepPrice|Integer|Step price in LOOP|
-||LogBloom|Integer|2048 bits without padding zeros<br/>So, if there is no bit, then it would be a byte with zero.|
+||LogsBloom|Integer|2048 bits without padding zeros<br/>So, if there is no bit, then it would be a byte with zero.|
 ||EventLogs|MsgPack List of EventLog||
 ||SCOREAddress|Address||
 |EventLog||MsgPack List of followings||

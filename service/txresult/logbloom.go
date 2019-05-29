@@ -15,42 +15,42 @@ import (
 )
 
 const (
-	LogBloomBits  = 2048
-	LogBloomBytes = LogBloomBits / 8
+	LogsBloomBits  = 2048
+	LogsBloomBytes = LogsBloomBits / 8
 )
 
 const (
-	configLogBloomSHA256      = false
-	configLogBloomIncludeAddr = true
+	configLogsBloomSHA256      = false
+	configLogsBloomIncludeAddr = true
 )
 
-// logBloom store blooms of logs.
-type LogBloom struct {
+// logsBloom store blooms of logs.
+type LogsBloom struct {
 	big.Int
 }
 
-func NewLogBloom(bs []byte) *LogBloom {
-	lb := &LogBloom{}
+func NewLogsBloom(bs []byte) *LogsBloom {
+	lb := &LogsBloom{}
 	lb.SetBytes(bs)
 	return lb
 }
 
-func (lb *LogBloom) String() string {
+func (lb *LogsBloom) String() string {
 	return "0x" + hex.EncodeToString(lb.LogBytes())
 }
-func (lb *LogBloom) LogBytes() []byte {
-	bs := make([]byte, LogBloomBytes)
+func (lb *LogsBloom) LogBytes() []byte {
+	bs := make([]byte, LogsBloomBytes)
 	ibs := lb.Int.Bytes()
-	copy(bs[LogBloomBytes-len(ibs):], ibs)
+	copy(bs[LogsBloomBytes-len(ibs):], ibs)
 	return bs
 }
 
-func (lb LogBloom) MarshalJSON() ([]byte, error) {
+func (lb LogsBloom) MarshalJSON() ([]byte, error) {
 	s := "0x" + hex.EncodeToString(lb.LogBytes())
 	return json.Marshal(s)
 }
 
-func (lb *LogBloom) UnmarshalJSON(data []byte) error {
+func (lb *LogsBloom) UnmarshalJSON(data []byte) error {
 	var s string
 	if err := json.Unmarshal(data, &s); err != nil {
 		return err
@@ -62,38 +62,38 @@ func (lb *LogBloom) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (lb *LogBloom) CodecEncodeSelf(e *codec.Encoder) {
+func (lb *LogsBloom) CodecEncodeSelf(e *codec.Encoder) {
 	b := lb.Bytes()
 	e.Encode(b)
 }
 
-func (lb *LogBloom) CodecDecodeSelf(d *codec.Decoder) {
+func (lb *LogsBloom) CodecDecodeSelf(d *codec.Decoder) {
 	var b []byte
 	d.Decode(&b)
 	lb.SetBytes(b)
 }
 
 // Merge bloom
-func (lb *LogBloom) Merge(lb2 module.LogBloom) {
+func (lb *LogsBloom) Merge(lb2 module.LogsBloom) {
 	if lb2 == nil {
 		return
 	}
-	var lb2Ptr *LogBloom
-	if ptr, ok := lb2.(*LogBloom); ok {
+	var lb2Ptr *LogsBloom
+	if ptr, ok := lb2.(*LogsBloom); ok {
 		lb2Ptr = ptr
 	} else {
-		lb2Ptr = new(LogBloom)
+		lb2Ptr = new(LogsBloom)
 		lb2Ptr.SetBytes(lb2.Bytes())
 	}
 	lb.Int.Or(&lb.Int, &lb2Ptr.Int)
 }
 
 // Contain checks whether it includes the bloom
-func (lb *LogBloom) Contain(mlb module.LogBloom) bool {
-	lb2, ok := mlb.(*LogBloom)
+func (lb *LogsBloom) Contain(mlb module.LogsBloom) bool {
+	lb2, ok := mlb.(*LogsBloom)
 	if !ok {
 		lbs := mlb.Bytes()
-		lb2 = new(LogBloom)
+		lb2 = new(LogsBloom)
 		lb2.SetBytes(lbs)
 	}
 	var r big.Int
@@ -101,19 +101,19 @@ func (lb *LogBloom) Contain(mlb module.LogBloom) bool {
 	return r.Cmp(&lb2.Int) == 0
 }
 
-func (lb *LogBloom) Equal(mlb module.LogBloom) bool {
+func (lb *LogsBloom) Equal(mlb module.LogsBloom) bool {
 	return bytes.Equal(lb.Bytes(), mlb.Bytes())
 }
 
-func (lb *LogBloom) addBit(idx uint16) {
+func (lb *LogsBloom) addBit(idx uint16) {
 	lb.Int.SetBit(&lb.Int, int(idx), 1)
 }
 
-func (lb *LogBloom) AddLog(addr module.Address, log [][]byte) {
+func (lb *LogsBloom) AddLog(addr module.Address, log [][]byte) {
 	if len(log) == 0 {
 		return
 	}
-	if configLogBloomIncludeAddr {
+	if configLogsBloomIncludeAddr {
 		lb.AddAddressOfLog(addr)
 	}
 	for i, b := range log {
@@ -121,44 +121,44 @@ func (lb *LogBloom) AddLog(addr module.Address, log [][]byte) {
 	}
 }
 
-func (lb *LogBloom) AddAddressOfLog(addr module.Address) {
+func (lb *LogsBloom) AddAddressOfLog(addr module.Address) {
 	bs := make([]byte, common.AddressBytes+1)
 	bs[0] = 0xff
 	copy(bs[1:], addr.Bytes())
 	lb.addLog(bs)
 }
 
-func (lb *LogBloom) AddIndexedOfLog(i int, b []byte) {
+func (lb *LogsBloom) AddIndexedOfLog(i int, b []byte) {
 	bs := make([]byte, len(b)+1)
 	bs[0] = byte(i)
 	copy(bs[1:], b)
 	lb.addLog(bs)
 }
 
-func (lb *LogBloom) addLog(log []byte) {
+func (lb *LogsBloom) addLog(log []byte) {
 	var h []byte
-	if configLogBloomSHA256 {
+	if configLogsBloomSHA256 {
 		h = crypto.SHASum256(log)
 		h = []byte(hex.EncodeToString(h))
 	} else {
 		h = crypto.SHA3Sum256(log)
 	}
 	for i := 0; i < 3; i++ {
-		lb.addBit(binary.BigEndian.Uint16(h[i*2:i*2+2]) & (LogBloomBits - 1))
+		lb.addBit(binary.BigEndian.Uint16(h[i*2:i*2+2]) & (LogsBloomBits - 1))
 	}
 }
 
-func NewLogBloomFromCompressed(bs []byte) *LogBloom {
-	lb := &LogBloom{}
+func NewLogsBloomFromCompressed(bs []byte) *LogsBloom {
+	lb := &LogsBloom{}
 	lb.SetCompressedBytes(bs)
 
 	return lb
 }
 
-func (lb *LogBloom) CompressedBytes() []byte {
+func (lb *LogsBloom) CompressedBytes() []byte {
 	return common.Compress(lb.Bytes())
 }
 
-func (lb *LogBloom) SetCompressedBytes(bs []byte) *big.Int {
+func (lb *LogsBloom) SetCompressedBytes(bs []byte) *big.Int {
 	return lb.SetBytes(common.Decompress(bs))
 }

@@ -63,7 +63,7 @@ type TransactionResult struct {
 	SCOREAddress       *common.Address     `json:"scoreAddress"`
 	StepUsed           common.HexInt       `json:"stepUsed"`
 	StepPrice          common.HexInt       `json:"stepPrice"`
-	LogBloom           txresult.LogBloom   `json:"logBloom"`
+	LogsBloom          txresult.LogsBloom  `json:"logsBloom"`
 }
 
 func (client *Client) GetTxResult(tid string, wait time.Duration) (*TransactionResult, error) {

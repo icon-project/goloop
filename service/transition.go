@@ -78,7 +78,7 @@ type transition struct {
 	worldSnapshot  state.WorldSnapshot
 	patchReceipts  module.ReceiptList
 	normalReceipts module.ReceiptList
-	logBloom       txresult.LogBloom
+	logsBloom      txresult.LogsBloom
 
 	transactionCount int
 	executeDuration  time.Duration
@@ -218,16 +218,16 @@ func (t *transition) NextValidators() module.ValidatorList {
 	return t.worldSnapshot.GetValidatorSnapshot()
 }
 
-// LogBloom returns log bloom filter for this transition.
+// LogsBloom returns log bloom filter for this transition.
 // It may return nil before cb.OnExecute is called back by Execute.
-func (t *transition) LogBloom() module.LogBloom {
+func (t *transition) LogsBloom() module.LogsBloom {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
 	if t.step != stepComplete {
 		return nil
 	}
-	return &t.logBloom
+	return &t.logsBloom
 }
 
 func (t *transition) newWorldContext() (state.WorldContext, error) {
@@ -356,7 +356,7 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	gatheredFee := big.NewInt(0)
 	fee := big.NewInt(0)
 
-	t.logBloom.SetInt64(0)
+	t.logsBloom.SetInt64(0)
 	for _, receipts := range [][]txresult.Receipt{patchReceipts, normalReceipts} {
 		for _, r := range receipts {
 			used := r.StepUsed()
@@ -366,7 +366,7 @@ func (t *transition) executeSync(alreadyValidated bool) {
 			fee.Mul(r.StepPrice(), used)
 			gatheredFee.Add(gatheredFee, fee)
 
-			t.logBloom.Merge(r.LogBloom())
+			t.logsBloom.Merge(r.LogsBloom())
 		}
 	}
 	t.patchReceipts = txresult.NewReceiptListFromSlice(t.db, patchReceipts)

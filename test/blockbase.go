@@ -49,7 +49,7 @@ func (_r *BlockBase) Proposer() module.Address {
 	panic("not implemented")
 }
 
-func (_r *BlockBase) LogBloom() module.LogBloom {
+func (_r *BlockBase) LogsBloom() module.LogsBloom {
 	panic("not implemented")
 }
 

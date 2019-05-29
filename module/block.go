@@ -21,7 +21,7 @@ type Block interface {
 	PatchTransactions() TransactionList
 	Timestamp() int64
 	Proposer() Address // can be nil. e.g. in genesis block.
-	LogBloom() LogBloom
+	LogsBloom() LogsBloom
 	Result() []byte
 
 	MarshalHeader(w io.Writer) error

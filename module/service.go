@@ -135,7 +135,7 @@ type Receipt interface {
 	SCOREAddress() Address
 	Check(r Receipt) error
 	ToJSON(int) (interface{}, error)
-	LogBloom() LogBloom
+	LogsBloom() LogsBloom
 	EventLogIterator() EventLogIterator
 }
 
@@ -174,9 +174,9 @@ type Transition interface {
 	// It may return nil before cb.OnExecute is called back by Execute.
 	NextValidators() ValidatorList
 
-	// LogBloom returns log bloom filter for this transition.
+	// LogsBloom returns log bloom filter for this transition.
 	// It may return nil before cb.OnExecute is called back by Execute.
-	LogBloom() LogBloom
+	LogsBloom() LogsBloom
 }
 
 type APIInfo interface {

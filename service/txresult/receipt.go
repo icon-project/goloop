@@ -90,7 +90,7 @@ type receiptData struct {
 	CumulativeStepUsed common.HexInt
 	StepUsed           common.HexInt
 	StepPrice          common.HexInt
-	LogBloom           LogBloom
+	LogsBloom          LogsBloom
 	EventLogs          []*eventLog
 	SCOREAddress       *common.Address
 }
@@ -149,8 +149,8 @@ func (r *receipt) Resolve(bd merkle.Builder) error {
 	return nil
 }
 
-func (r *receipt) LogBloom() module.LogBloom {
-	return &r.data.LogBloom
+func (r *receipt) LogsBloom() module.LogsBloom {
+	return &r.data.LogsBloom
 }
 
 func (r *receipt) EventLogIterator() module.EventLogIterator {
@@ -216,7 +216,7 @@ type receiptJSON struct {
 	SCOREAddress       *common.Address  `json:"scoreAddress,omitempty"`
 	Failure            *failureReason   `json:"failure,omitempty"`
 	EventLogs          []*eventLogJSON  `json:"eventLogs"`
-	LogBloom           LogBloom         `json:"logsBloom"`
+	LogsBloom          LogsBloom        `json:"logsBloom"`
 	Status             common.HexUint16 `json:"status"`
 }
 
@@ -237,7 +237,7 @@ func (r *receipt) ToJSON(version int) (interface{}, error) {
 			}
 		}
 		rjo.EventLogs = logs
-		rjo.LogBloom.SetBytes(r.data.LogBloom.Bytes())
+		rjo.LogsBloom.SetBytes(r.data.LogsBloom.Bytes())
 		if r.data.Status == module.StatusSuccess {
 			rjo.Status.Value = 1
 			rjo.SCOREAddress = r.data.SCOREAddress
@@ -252,7 +252,7 @@ func (r *receipt) ToJSON(version int) (interface{}, error) {
 		rjson["stepUsed"] = &rjo.StepUsed
 		rjson["stepPrice"] = &rjo.StepPrice
 		rjson["eventLogs"] = rjo.EventLogs
-		rjson["logBloom"] = &rjo.LogBloom
+		rjson["logsBloom"] = &rjo.LogsBloom
 		rjson["status"] = &rjo.Status
 		if rjo.Failure != nil {
 			rjson["failure"] = rjo.Failure
@@ -300,7 +300,7 @@ func (r *receipt) UnmarshalJSON(bs []byte) error {
 			}
 		}
 	}
-	data.LogBloom.SetBytes(rjson.LogBloom.Bytes())
+	data.LogsBloom.SetBytes(rjson.LogsBloom.Bytes())
 	return nil
 }
 
@@ -311,7 +311,7 @@ func (r *receipt) AddLog(addr module.Address, indexed, data [][]byte) {
 	log.eventLogData.Data = data
 
 	r.data.EventLogs = append(r.data.EventLogs, log)
-	r.data.LogBloom.AddLog(&log.eventLogData.Addr, log.eventLogData.Indexed)
+	r.data.LogsBloom.AddLog(&log.eventLogData.Addr, log.eventLogData.Indexed)
 }
 
 func (r *receipt) SetCumulativeStepUsed(cumulativeUsed *big.Int) {

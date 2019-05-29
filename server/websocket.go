@@ -266,7 +266,7 @@ loop:
 		case err = <-ech:
 			break loop
 		case blk := <-bch:
-			if !blk.LogBloom().Contain(lb) {
+			if !blk.LogsBloom().Contain(lb) {
 				h++
 				continue loop
 			}
@@ -280,7 +280,7 @@ loop:
 				if err != nil {
 					break loop
 				}
-				if r.LogBloom().Contain(lb) {
+				if r.LogsBloom().Contain(lb) {
 					for eit := r.EventLogIterator(); eit.Has(); eit.Next() {
 						e, err := eit.Get()
 						if err != nil {
@@ -341,8 +341,8 @@ func Upgrader() *websocket.Upgrader {
 	return &websocket.Upgrader{}
 }
 
-func (er *EventRequest) compile() (module.LogBloom, error) {
-	lb := txresult.NewLogBloom(nil)
+func (er *EventRequest) compile() (module.LogsBloom, error) {
+	lb := txresult.NewLogsBloom(nil)
 	if er.Addr != nil {
 		lb.AddAddressOfLog(er.Addr)
 	}

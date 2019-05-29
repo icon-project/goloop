@@ -63,7 +63,7 @@ func (e *testError) Error() string {
 type testTransactionEffect struct {
 	WorldState     []byte
 	NextValidators *testValidatorList
-	LogBloom       txresult.LogBloom
+	LogsBloom      txresult.LogsBloom
 }
 
 type testReceiptData struct {
@@ -122,7 +122,7 @@ func (r *testReceipt) ToJSON(int) (interface{}, error) {
 	panic("not implemented")
 }
 
-func (r *testReceipt) LogBloom() module.LogBloom {
+func (r *testReceipt) LogsBloom() module.LogsBloom {
 	panic("not implemented")
 }
 
@@ -249,7 +249,7 @@ func (l *testTransactionList) updateCache() {
 			if tx.Data.Effect.NextValidators != nil {
 				l._effect.NextValidators = tx.Data.Effect.NextValidators
 			}
-			l._effect.LogBloom.Merge(&tx.Data.Effect.LogBloom)
+			l._effect.LogsBloom.Merge(&tx.Data.Effect.LogsBloom)
 			l._receipts = append(l._receipts, &tx.Data.Receipt)
 		}
 	}
@@ -327,7 +327,7 @@ type testTransition struct {
 	normalTransactions *testTransactionList
 	baseValidators     *testValidatorList
 	_result            []byte
-	_logBloom          *txresult.LogBloom
+	_logsBloom         *txresult.LogsBloom
 
 	sync.Mutex
 	step     transitionStep
@@ -476,17 +476,17 @@ func (tr *testTransition) NextValidators() module.ValidatorList {
 	return nil
 }
 
-func (tr *testTransition) LogBloom() module.LogBloom {
+func (tr *testTransition) LogsBloom() module.LogsBloom {
 	tr.Lock()
 	defer tr.Unlock()
 
 	if tr.step == transitionStepSucceed {
-		if tr._logBloom == nil {
-			tr._logBloom = txresult.NewLogBloom(nil)
-			tr._logBloom.Merge(&tr.patchTransactions.effect().LogBloom)
-			tr._logBloom.Merge(&tr.normalTransactions.effect().LogBloom)
+		if tr._logsBloom == nil {
+			tr._logsBloom = txresult.NewLogsBloom(nil)
+			tr._logsBloom.Merge(&tr.patchTransactions.effect().LogsBloom)
+			tr._logsBloom.Merge(&tr.normalTransactions.effect().LogsBloom)
 		}
-		return tr._logBloom
+		return tr._logsBloom
 	}
 	return nil
 }

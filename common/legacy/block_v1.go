@@ -141,7 +141,7 @@ func (b *blockV1) Proposer() module.Address {
 	return nil
 }
 
-func (b *blockV1) LogBloom() module.LogBloom {
+func (b *blockV1) LogsBloom() module.LogsBloom {
 	return nil
 }
 
