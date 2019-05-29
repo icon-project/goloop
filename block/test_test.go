@@ -76,6 +76,7 @@ type testReceiptData struct {
 }
 
 type testReceipt struct {
+	test.ReceiptBase
 	Data testReceiptData
 }
 
@@ -118,18 +119,6 @@ func (r *testReceipt) Check(r2 module.Receipt) error {
 	return nil
 }
 
-func (r *testReceipt) ToJSON(int) (interface{}, error) {
-	panic("not implemented")
-}
-
-func (r *testReceipt) LogsBloom() module.LogsBloom {
-	panic("not implemented")
-}
-
-func (r *testReceipt) EventLogIterator() module.EventLogIterator {
-	panic("not implemented")
-}
-
 type testTransactionData struct {
 	Group                 module.TransactionGroup
 	CreateError           *testError
@@ -142,6 +131,7 @@ type testTransactionData struct {
 }
 
 type testTransaction struct {
+	test.TransactionBase
 	Data testTransactionData
 }
 
@@ -163,16 +153,8 @@ func (tx *testTransaction) ID() []byte {
 	return crypto.SHA3Sum256(tx.Bytes())
 }
 
-func (tx *testTransaction) From() module.Address {
-	panic("not implemented")
-}
-
 func (tx *testTransaction) Bytes() []byte {
 	return codec.MustMarshalToBytes(tx)
-}
-
-func (tx *testTransaction) Hash() []byte {
-	panic("not implemented")
 }
 
 func (tx *testTransaction) Verify() error {
@@ -181,10 +163,6 @@ func (tx *testTransaction) Verify() error {
 
 func (tx *testTransaction) Version() int {
 	return 0
-}
-
-func (tx *testTransaction) ToJSON(version int) (interface{}, error) {
-	panic("not implemented")
 }
 
 func (tx *testTransaction) ValidateNetwork(nid int) bool {
@@ -216,6 +194,7 @@ func (it *testTransactionIterator) Get() (module.Transaction, int, error) {
 }
 
 type testTransactionList struct {
+	test.TransactionListBase
 	Transactions []*testTransaction
 	_effect      *testTransactionEffect
 	_receipts    []*testReceipt
@@ -301,10 +280,6 @@ func (l *testTransactionList) Equal(l2 module.TransactionList) bool {
 			return false
 		}
 	}
-}
-
-func (l *testTransactionList) Flush() error {
-	panic("not implemented")
 }
 
 type transitionStep int
@@ -675,6 +650,7 @@ func (v *testValidator) Bytes() []byte {
 }
 
 type testValidatorList struct {
+	test.ValidatorListBase
 	Validators []*testValidator
 }
 
@@ -691,10 +667,6 @@ func (vl *testValidatorList) Hash() []byte {
 
 func (vl *testValidatorList) Bytes() []byte {
 	return codec.MustMarshalToBytes(vl)
-}
-
-func (vl *testValidatorList) Flush() error {
-	panic("not implemented")
 }
 
 func (vl *testValidatorList) IndexOf(addr module.Address) int {

@@ -59,7 +59,7 @@ func (b *tBlock) NextValidators() module.ValidatorList {
 }
 
 func (b *tBlock) Votes() module.CommitVoteSet {
-	return &tCommitVoteSet{b.Prev}
+	return &tCommitVoteSet{b: b.Prev}
 }
 
 func (b *tBlock) MarshalHeader(w io.Writer) error {
@@ -81,6 +81,7 @@ func (b *tBlock) Marshal(w io.Writer) error {
 }
 
 type tCommitVoteSet struct {
+	test.CommitVoteSetBase
 	b []byte
 }
 
@@ -94,14 +95,6 @@ func (vs *tCommitVoteSet) Verify(block module.Block, validators module.Validator
 
 func (vs *tCommitVoteSet) Bytes() []byte {
 	return vs.b
-}
-
-func (vs *tCommitVoteSet) Hash() []byte {
-	panic("not implemented")
-}
-
-func (vs *tCommitVoteSet) Timestamp() int64 {
-	panic("not implemented")
 }
 
 type tBlockManager struct {
