@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/labstack/echo/v4"
+
+	"github.com/icon-project/goloop/service/scoreresult"
 )
 
 type ErrorCode int

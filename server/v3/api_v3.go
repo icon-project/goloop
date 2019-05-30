@@ -315,7 +315,7 @@ func getTransactionByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 
 	txInfo, err := bm.GetTransactionInfo(param.Hash.Bytes())
 	if errors.NotFoundError.Equals(err) {
-		return nil, jsonrpc.ErrorCodeNotFound.New("Not Found")
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
 	} else if err != nil {
 		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
 	}
