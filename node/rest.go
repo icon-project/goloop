@@ -54,7 +54,9 @@ type JoinChainParam struct {
 	Role             uint   `json:"role"`
 	ConcurrencyLevel int    `json:"concurrency,omitempty"`
 
-	Channel string `json:"channel"`
+	Channel      string `json:"channel"`
+	SecureSuites string `json:"secureSuites"`
+	SecureAeads  string `json:"secureAeads"`
 }
 
 type ChainView struct {
@@ -66,9 +68,20 @@ type ChainView struct {
 
 type ChainInspectView struct {
 	*ChainView
-	GenesisTx json.RawMessage `json:"genesisTx"`
+	GenesisTx json.RawMessage        `json:"genesisTx"`
+	Config    ChainInspectViewConfig `json:"config"`
 	// TODO [TBD] define structure each module for inspect
 	Module map[string]interface{} `json:"module"`
+}
+
+type ChainInspectViewConfig struct {
+	DBType           string `json:"db_type"`
+	SeedAddr         string `json:"seed_addr"`
+	Role             uint   `json:"role"`
+	ConcurrencyLevel int    `json:"concurrency_level,omitempty"`
+	Channel          string `json:"channel"`
+	SecureSuites     string `json:"secureSuites"`
+	SecureAeads      string `json:"secureAeads"`
 }
 
 // TODO [TBD]move to module.Chain ?
@@ -76,12 +89,12 @@ type LastErrorReportor interface {
 	LastError() error
 }
 
-func NewChainView(c module.Chain) *ChainView {
+func NewChainView(c *Chain) *ChainView {
 	v := &ChainView{
 		NID:   c.NID(),
 		State: c.State(),
 	}
-	if r, ok := c.(LastErrorReportor); ok && r.LastError() != nil {
+	if r, ok := c.Chain.(LastErrorReportor); ok && r.LastError() != nil {
 		v.LastError = r.LastError().Error()
 	}
 
@@ -99,12 +112,21 @@ var (
 	inspectFuncs = make(map[string]InspectFunc)
 )
 
-func NewChainInspectView(c module.Chain) *ChainInspectView {
+func NewChainInspectView(c *Chain) *ChainInspectView {
 	v := &ChainInspectView{
 		ChainView: NewChainView(c),
 		GenesisTx: c.Genesis(),
+		Config: ChainInspectViewConfig{
+			DBType:           c.cfg.DBType,
+			SeedAddr:         c.cfg.SeedAddr,
+			Role:             c.cfg.Role,
+			ConcurrencyLevel: c.cfg.ConcurrencyLevel,
+			Channel:          c.cfg.Channel,
+			SecureSuites:     c.cfg.SecureSuites,
+			SecureAeads:      c.cfg.SecureAeads,
+		},
 	}
-	v.Module = make(map[string]interface{})
+		v.Module = make(map[string]interface{})
 	for name, f := range inspectFuncs {
 		v.Module[name] = f(c)
 	}
@@ -240,7 +262,7 @@ func (r *Rest) JoinChain(ctx echo.Context) error {
 	// 	log.Println("Warning", err)
 	// 	return err
 	// }
-	_, err = r.n.JoinChain(p.NID, p.SeedAddr, p.Role, p.DBType, p.ConcurrencyLevel, p.Channel, genesis)
+	_, err = r.n.JoinChain(p, genesis)
 	if err != nil {
 		log.Println("Warning", err)
 		return err
@@ -253,7 +275,7 @@ var (
 )
 
 func (r *Rest) GetChain(ctx echo.Context) error {
-	c := ctx.Get("chain").(module.Chain)
+	c := ctx.Get("chain").(*Chain)
 	v := NewChainInspectView(c)
 
 	format := ctx.QueryParam("format")
@@ -264,7 +286,7 @@ func (r *Rest) GetChain(ctx echo.Context) error {
 }
 
 func (r *Rest) LeaveChain(ctx echo.Context) error {
-	c := ctx.Get("chain").(module.Chain)
+	c := ctx.Get("chain").(*Chain)
 	if err := r.n.LeaveChain(c.NID()); err != nil {
 		return err
 	}
@@ -272,7 +294,7 @@ func (r *Rest) LeaveChain(ctx echo.Context) error {
 }
 
 func (r *Rest) StartChain(ctx echo.Context) error {
-	c := ctx.Get("chain").(module.Chain)
+	c := ctx.Get("chain").(*Chain)
 	if err := r.n.StartChain(c.NID()); err != nil {
 		return err
 	}
@@ -280,7 +302,7 @@ func (r *Rest) StartChain(ctx echo.Context) error {
 }
 
 func (r *Rest) StopChain(ctx echo.Context) error {
-	c := ctx.Get("chain").(module.Chain)
+	c := ctx.Get("chain").(*Chain)
 	if err := r.n.StopChain(c.NID()); err != nil {
 		return err
 	}
@@ -288,7 +310,7 @@ func (r *Rest) StopChain(ctx echo.Context) error {
 }
 
 func (r *Rest) ResetChain(ctx echo.Context) error {
-	c := ctx.Get("chain").(module.Chain)
+	c := ctx.Get("chain").(*Chain)
 	if err := r.n.ResetChain(c.NID()); err != nil {
 		return err
 	}
@@ -296,7 +318,7 @@ func (r *Rest) ResetChain(ctx echo.Context) error {
 }
 
 func (r *Rest) VerifyChain(ctx echo.Context) error {
-	c := ctx.Get("chain").(module.Chain)
+	c := ctx.Get("chain").(*Chain)
 	if err := r.n.VerifyChain(c.NID()); err != nil {
 		return err
 	}

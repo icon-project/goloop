@@ -91,11 +91,12 @@ func (cn *ChannelNegotiator) handleJoinResponse(pkt *Packet, p *Peer) {
 
 type Authenticator struct {
 	*peerHandler
-	wallet             module.Wallet
-	secureSuites       map[string][]SecureSuite
-	secureAeads        map[string][]SecureAeadSuite
-	secureKeyNum       int
-	mtx                sync.Mutex
+	wallet       module.Wallet
+	secureSuites map[string][]SecureSuite
+	secureAeads  map[string][]SecureAeadSuite
+	secureKeyNum int
+	secureMtx    sync.RWMutex
+	mtx          sync.Mutex
 }
 
 func newAuthenticator(w module.Wallet) *Authenticator {
@@ -104,11 +105,11 @@ func newAuthenticator(w module.Wallet) *Authenticator {
 		panic(err)
 	}
 	a := &Authenticator{
-		wallet:             w,
-		secureSuites:       make(map[string][]SecureSuite),
-		secureAeads:        make(map[string][]SecureAeadSuite),
-		secureKeyNum:       2,
-		peerHandler:        newPeerHandler(newLogger("Authenticator", "")),
+		wallet:       w,
+		secureSuites: make(map[string][]SecureSuite),
+		secureAeads:  make(map[string][]SecureAeadSuite),
+		secureKeyNum: 2,
+		peerHandler:  newPeerHandler(newLogger("Authenticator", "")),
 	}
 	return a
 }
@@ -172,6 +173,58 @@ func (a *Authenticator) VerifySignature(publicKey []byte, signature []byte, cont
 		err = errors.New("fail to verify signature")
 	}
 	return id, err
+}
+
+func (a *Authenticator) SetSecureSuites(channel string, ss []SecureSuite) error {
+	a.secureMtx.Lock()
+	defer a.secureMtx.Unlock()
+
+	for i, s := range ss {
+		for j := i + 1; j < len(ss); j++ {
+			if s == ss[j] {
+				return fmt.Errorf("duplicate set %s index:%d and %d", s, i, j)
+			}
+		}
+	}
+	a.secureSuites[channel] = ss
+	return nil
+}
+
+func (a *Authenticator) GetSecureSuites(channel string) []SecureSuite {
+	a.secureMtx.RLock()
+	defer a.secureMtx.RUnlock()
+
+	suites, ok := a.secureSuites[channel]
+	if !ok || len(suites) == 0 {
+		return DefaultSecureSuites
+	}
+	return suites
+}
+
+func (a *Authenticator) SetSecureAeads(channel string, sas []SecureAeadSuite) error {
+	a.secureMtx.Lock()
+	defer a.secureMtx.Unlock()
+
+	for i, sa := range sas {
+		for j := i + 1; j < len(sas); j++ {
+			if sa == sas[j] {
+				return fmt.Errorf("duplicate set %s index:%d and %d", sa, i, j)
+			}
+		}
+	}
+	a.secureAeads[channel] = sas
+	return nil
+}
+
+func (a *Authenticator) GetSecureAeads(channel string) []SecureAeadSuite {
+	a.secureMtx.RLock()
+	defer a.secureMtx.RUnlock()
+
+	aeads, ok := a.secureAeads[channel]
+	if !ok || len(aeads) == 0 {
+		return DefaultSecureAeadSuites
+	}
+	return aeads
 }
 
 type SecureRequest struct {

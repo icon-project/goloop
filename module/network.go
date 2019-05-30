@@ -65,6 +65,10 @@ type NetworkTransport interface {
 	Address() string
 	SetListenAddress(address string) error
 	GetListenAddress() string
+	SetSecureSuites(channel string, secureSuites string) error
+	GetSecureSuites(channel string) string
+	SetSecureAeads(channel string, secureAeads string) error
+	GetSecureAeads(channel string) string
 }
 
 //TODO remove interface and implement network.IsTemporaryError(error) bool

@@ -37,6 +37,8 @@ type Config struct {
 
 	//runtime
 	Channel string `json:"channel"`
+	SecureSuites string `json:"secureSuites"`
+	SecureAeads string `json:"secureAeads"`
 
 	GenesisStorage GenesisStorage  `json:"-"`
 	Genesis        json.RawMessage `json:"genesis"`

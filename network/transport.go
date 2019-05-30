@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net"
+	"strings"
 	"sync"
 
 	"github.com/ugorji/go/codec"
@@ -18,6 +19,7 @@ type transport struct {
 	address NetAddress
 	pd      *PeerDispatcher
 	dMap    map[string]*Dialer
+	a       *Authenticator
 	log     *logger
 }
 
@@ -28,7 +30,7 @@ func NewTransport(address string, w module.Wallet) module.NetworkTransport {
 	id := NewPeerIDFromAddress(w.Address())
 	pd := newPeerDispatcher(id, cn, a)
 	l := newListener(address, pd.onAccept)
-	t := &transport{l: l, address: na, pd: pd, dMap: make(map[string]*Dialer), log: newLogger("Transport", address)}
+	t := &transport{l: l, address: na, pd: pd, dMap: make(map[string]*Dialer), a: a, log: newLogger("Transport", address)}
 	return t
 }
 
@@ -67,6 +69,58 @@ func (t *transport) GetDialer(channel string) *Dialer {
 		t.dMap[channel] = d
 	}
 	return d
+}
+
+func (t *transport) SetSecureSuites(channel string, secureSuites string) error {
+	if secureSuites == "" {
+		return t.a.SetSecureSuites(channel, nil)
+	}
+	ss := strings.Split(secureSuites, ",")
+	suites := make([]SecureSuite, len(ss))
+	for i, s := range ss {
+		suite := SecureSuiteFromString(s)
+		if suite == SecureSuiteUnknown {
+			return fmt.Errorf("parse SecureSuite error from %s", s)
+		}
+		suites[i] = suite
+	}
+	return t.a.SetSecureSuites(channel, suites)
+}
+
+func (t *transport) GetSecureSuites(channel string) string {
+	suites := t.a.GetSecureSuites(channel)
+
+	s := make([]string, len(suites))
+	for i, suite := range suites {
+		s[i] = suite.String()
+	}
+	return strings.Join(s, ",")
+}
+
+func (t *transport) SetSecureAeads(channel string, secureAeads string) error {
+	if secureAeads == "" {
+		return t.a.SetSecureAeads(channel, nil)
+	}
+	ss := strings.Split(secureAeads, ",")
+	aeads := make([]SecureAeadSuite, len(ss))
+	for i, s := range ss {
+		aead := SecureAeadSuiteFromString(s)
+		if aead == SecureAeadSuiteUnknown {
+			return fmt.Errorf("parse SecureAeadSuite error from %s", s)
+		}
+		aeads[i] = aead
+	}
+	return t.a.SetSecureAeads(channel, aeads)
+}
+
+func (t *transport) GetSecureAeads(channel string) string {
+	aeads := t.a.GetSecureAeads(channel)
+
+	s := make([]string, len(aeads))
+	for i, aead := range aeads {
+		s[i] = aead.String()
+	}
+	return strings.Join(s, ",")
 }
 
 type Listener struct {

@@ -29,12 +29,17 @@ type Node struct {
 	pm  eeproxy.Manager
 	cfg NodeConfig
 
-	mtx      sync.RWMutex
-	//TODO add module.Chain.Channel() then remove channels and change chains map[string] to map[int]
-	chains   map[string]module.Chain
-	channels map[int]string
+	mtx sync.RWMutex
+
+	chains    map[string]*Chain
+	channels  map[int]string
 
 	cliSrv *UnixDomainSockHttpServer
+}
+
+type Chain struct {
+	module.Chain
+	cfg *chain.Config
 }
 
 func (n *Node) loadChainConfig(filename string) (*chain.Config, error) {
@@ -81,7 +86,14 @@ func (n *Node) _add(cfg *chain.Config) (module.Chain, error) {
 		return nil, fmt.Errorf("already joined chain channel:%s %v", channel, cfg)
 	}
 
-	c := chain.NewChain(n.w, n.nt, n.srv, n.pm, cfg)
+	if err := n.nt.SetSecureSuites(channel, cfg.SecureSuites); err != nil {
+		return nil, err
+	}
+	if err := n.nt.SetSecureAeads(channel, cfg.SecureAeads); err != nil {
+		return nil, err
+	}
+
+	c := &Chain{chain.NewChain(n.w, n.nt, n.srv, n.pm, cfg),cfg}
 	if err := c.Init(true); err != nil {
 		return nil, err
 	}
@@ -155,23 +167,19 @@ func (n *Node) Stop() {
 
 // TODO [TBD] using JoinChainParam struct
 func (n *Node) JoinChain(
-	nid int,
-	seed string,
-	role uint,
-	dbType string,
-	concurrencyLevel int,
-	channel string,
+	p *JoinChainParam,
 	genesis []byte,
 ) (module.Chain, error) {
 	defer n.mtx.Unlock()
 	n.mtx.Lock()
 
-	if _, ok := n.channels[nid]; ok {
-		return nil, fmt.Errorf("already joined chain nid:%d", nid)
+	if _, ok := n.channels[p.NID]; ok {
+		return nil, fmt.Errorf("already joined chain nid:%d", p.NID)
 	}
 
+	channel := p.Channel
 	if channel == "" {
-		channel = strconv.FormatInt(int64(nid), 16)
+		channel = strconv.FormatInt(int64(p.NID), 16)
 	}
 
 	if _, ok := n.chains[channel]; ok {
@@ -183,7 +191,7 @@ func (n *Node) JoinChain(
 		return nil, err
 	}
 
-	chainDir := n.ChainDir(nid)
+	chainDir := n.ChainDir(p.NID)
 	log.Println("ChainDir", chainDir)
 	if err := os.MkdirAll(chainDir, 0700); err != nil {
 		log.Panicf("Fail to create directory %s err=%+v", chainDir, err)
@@ -192,14 +200,16 @@ func (n *Node) JoinChain(
 	cfgFile, _ := filepath.Abs(path.Join(chainDir, ChainConfigFileName))
 
 	cfg := &chain.Config{
-		NID:            nid,
-		DBType:         dbType,
+		NID:            p.NID,
+		DBType:         p.DBType,
 		Channel:        channel,
-		SeedAddr:       seed,
-		Role:           role,
+		SecureSuites:   p.SecureSuites,
+		SecureAeads:    p.SecureAeads,
+		SeedAddr:       p.SeedAddr,
+		Role:           p.Role,
 		GenesisStorage: gs,
 		// GenesisDataPath: path.Join(chainDir, "genesis"),
-		ConcurrencyLevel: concurrencyLevel,
+		ConcurrencyLevel: p.ConcurrencyLevel,
 		FilePath:         cfgFile,
 	}
 
@@ -277,11 +287,11 @@ func (n *Node) VerifyChain(nid int) error {
 	return c.Verify(false)
 }
 
-func (n *Node) GetChains() []module.Chain {
+func (n *Node) GetChains() []*Chain {
 	defer n.mtx.RUnlock()
 	n.mtx.RLock()
 
-	l := make([]module.Chain, 0)
+	l := make([]*Chain, 0)
 	for _, v := range n.chains {
 		l = append(l, v)
 	}
@@ -291,14 +301,14 @@ func (n *Node) GetChains() []module.Chain {
 	return l
 }
 
-func (n *Node) GetChain(nid int) module.Chain {
+func (n *Node) GetChain(nid int) *Chain {
 	defer n.mtx.RUnlock()
 	n.mtx.RLock()
 
 	return n.chains[n.channels[nid]]
 }
 
-func (n *Node) GetChainByChannel(channel string) module.Chain {
+func (n *Node) GetChainByChannel(channel string) *Chain {
 	defer n.mtx.RUnlock()
 	n.mtx.RLock()
 
@@ -340,7 +350,7 @@ func NewNode(
 		srv:      srv,
 		pm:       pm,
 		cfg:      *cfg,
-		chains:   make(map[string]module.Chain),
+		chains:   make(map[string]*Chain),
 		channels: make(map[int]string),
 		cliSrv:   cliSrv,
 	}

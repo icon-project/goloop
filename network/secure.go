@@ -356,6 +356,32 @@ const (
 	SecureSuiteEcdhe
 )
 
+func (s SecureSuite) String() string {
+	switch s {
+	case SecureSuiteNone :
+		return "none"
+	case SecureSuiteTls:
+		return "tls"
+	case SecureSuiteEcdhe:
+		return "ecdhe"
+	default:
+		return "unknown"
+	}
+}
+
+func SecureSuiteFromString(s string) SecureSuite {
+	switch s {
+	case "none" :
+		return SecureSuiteNone
+	case "tls":
+		return SecureSuiteTls
+	case "ecdhe":
+		return SecureSuiteEcdhe
+	default:
+		return SecureSuiteUnknown
+	}
+}
+
 type SecureAeadSuite byte
 
 const (
@@ -364,6 +390,33 @@ const (
 	SecureAeadSuiteAes128Gcm
 	SecureAeadSuiteAes256Gcm
 )
+
+
+func (s SecureAeadSuite) String() string {
+	switch s {
+	case SecureAeadSuiteChaCha20Poly1305 :
+		return "chacha"
+	case SecureAeadSuiteAes128Gcm:
+		return "aes128"
+	case SecureAeadSuiteAes256Gcm:
+		return "aes256"
+	default:
+		return "unknown"
+	}
+}
+
+func SecureAeadSuiteFromString(s string) SecureAeadSuite {
+	switch s {
+	case "chacha" :
+		return SecureAeadSuiteChaCha20Poly1305
+	case "aes128":
+		return SecureAeadSuiteAes128Gcm
+	case "aes256":
+		return SecureAeadSuiteAes256Gcm
+	default:
+		return SecureAeadSuiteUnknown
+	}
+}
 
 type SecureError string
 

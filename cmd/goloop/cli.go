@@ -124,6 +124,11 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 	joinCmd.Flags().UintVar(&joinChainParam.Role, "role", 3, "[0:None, 1:Seed, 2:Validator, 3:Both]")
 	joinCmd.Flags().StringVar(&joinChainParam.DBType, "db_type", "goleveldb", "Name of database system(*badgerdb, goleveldb, boltdb, mapdb)")
 	joinCmd.Flags().IntVar(&joinChainParam.ConcurrencyLevel, "concurrency", 1, "Maximum number of executors to use for concurrency")
+	joinCmd.Flags().StringVar(&joinChainParam.Channel, "channel", "", "Channel")
+	joinCmd.Flags().StringVar(&joinChainParam.SecureSuites, "secure_suites", "none,tls,ecdhe",
+		"Supported Secure suites with order (none,tls,ecdhe) - Comma separated string")
+	joinCmd.Flags().StringVar(&joinChainParam.SecureAeads, "secure_aeads", "chacha,aes128,aes256",
+		"Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string")
 
 	leaveCmd := &cobra.Command{
 		Use:                   "leave NID",
