@@ -428,6 +428,9 @@ func (m *manager) GetAPIInfo(result []byte, addr module.Address) (module.APIInfo
 		return nil, err
 	}
 	ass := wss.GetAccountSnapshot(addr.ID())
+	if ass == nil {
+		return nil, state.ErrNoActiveContract
+	}
 	info := ass.APIInfo()
 	if info == nil {
 		return nil, state.ErrNoActiveContract
