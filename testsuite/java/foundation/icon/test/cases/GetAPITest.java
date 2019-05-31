@@ -2,11 +2,11 @@ package foundation.icon.test.cases;
 
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
-import foundation.icon.icx.data.Address;
-import foundation.icon.icx.data.Bytes;
-import foundation.icon.icx.data.ScoreApi;
-import foundation.icon.icx.data.TransactionResult;
+import foundation.icon.icx.data.*;
 import foundation.icon.icx.transport.http.HttpProvider;
+import foundation.icon.icx.transport.jsonrpc.RpcError;
+import foundation.icon.icx.transport.jsonrpc.RpcObject;
+import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.Utils;
@@ -15,15 +15,23 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.*;
 
-
+/*
+test methods
+    testGetAPIForStepCounter
+    validateGetScoreApi
+    notExistsScoreAddress
+    getApiWithEOA
+ */
 @Tag(Constants.TAG_NORMAL)
 public class GetAPITest {
     static Env.Chain chain;
@@ -182,9 +190,12 @@ public class GetAPITest {
         }
     }
 
-    @Test
-    public void checkScoreApi() throws Exception {
-        // expected type(function, eventlog, fallback), name, inputs(name, type, indexed), outputs(type), readonly, payable
+    public boolean checkApisForScoreApi(List<ScoreApi> apis) {
+        LOG.infoEntering("checkApis");
+        if(apis.size() == 0) {
+            LOG.warning("Size of apis is 0");
+            return false;
+        }
         Map<String, FuncInfo> expectedFuncMap = new HashMap<String, FuncInfo>() {{
             put("externalMethod", new FuncInfo(TYPE_FUNCTION, null, null, VALUE_FALSE,  VALUE_FALSE));
             put("externalReadonlyMethod", new FuncInfo(TYPE_FUNCTION, null, null, VALUE_TRUE, VALUE_FALSE));
@@ -215,6 +226,83 @@ public class GetAPITest {
             }, null, VALUE_FALSE, VALUE_FALSE));
         }};
 
+        for ( ScoreApi api : apis ) {
+            String funcName = api.getName();
+            FuncInfo fInfo = expectedFuncMap.get(funcName);
+            if(fInfo == null) {
+                LOG.warning(funcName + " not exists function");
+                return false;
+            }
+            if(fInfo.type.compareTo(api.getType()) != 0) {
+                LOG.warning("[" + funcName + "] is " + api.getType() + " but " + fInfo.type);
+                return false;
+            }
+            if(fInfo.readonly.equals(VALUE_TRUE)) {
+                if(fInfo.readonly.compareTo(api.getReadonly()) != 0) {
+                    LOG.warning("[" + funcName + "] is readonly but " + api.getReadonly());
+                    return false;
+                }
+            }
+            if(fInfo.payable.equals(VALUE_TRUE)) {
+                if(fInfo.payable.compareTo(api.getProperties().getItem("payable").asString()) != 0) {
+                    LOG.warning("[" + funcName + "] is payble but " + api.getProperties().getItem("payable").asString());
+                    return false;
+                }
+            }
+            for(ScoreApi.Param sParam : api.getInputs()) {
+                String pName = sParam.getName();
+                FuncInfo.Input fParam = fInfo.inputsMap.get(pName);
+                if(fParam == null) {
+                    LOG.warning("[" + funcName + "][" + pName + "] does not exist");
+                    return false;
+                }
+                if(fParam.type.compareTo(sParam.getType()) != 0) {
+                    LOG.warning("[" + funcName + "][" + pName + "] type is " + fParam.type + " but " + sParam.getType());
+                    return false;
+                }
+                if(fParam.indexed != null) {
+                    if(fParam.indexed.compareTo(sParam.getIndexed()) != 0) {
+                        LOG.warning("[" + funcName + "][" + pName + "] type is indexed [" + fParam.indexed + " but " + sParam.getIndexed());
+                        return false;
+                    }
+                }
+                fInfo.inputsMap.remove(sParam.getName());
+            }
+            if(fInfo.inputsMap.size() != 0) {
+                LOG.warning("Not received param [" + fInfo.inputsMap.keySet() + "]");
+                return false;
+            }
+            expectedFuncMap.remove(funcName);
+        }
+        if(expectedFuncMap.size() != 0) {
+            LOG.warning("NOT received [" + expectedFuncMap.keySet() + "]");
+            return false;
+        }
+        LOG.infoExiting();
+        return true;
+    }
+
+
+    @Test
+    public void validateGetScoreApi() throws Exception {
+        LOG.infoEntering("checkScoreApi");
+        String scorePath = Constants.SCORE_API_PATH;
+        LOG.infoEntering("deployScore");
+        Bytes txHash = Utils.deployScore(iconService, chain.networkId,
+                KeyWallet.create(), Constants.CHAINSCORE_ADDRESS, scorePath, null);
+        LOG.infoExiting();
+        TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+
+        Utils.acceptIfAuditEnabled(iconService, chain, txHash);
+        Address scoreAddr = new Address(result.getScoreAddress());
+        List<ScoreApi> apis = iconService.getScoreApi(scoreAddr).execute();
+        assertTrue(checkApisForScoreApi(apis));
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void notExistsScoreAddress() throws Exception {
         LOG.infoEntering("checkScoreApi");
         String scorePath = Constants.SCORE_API_PATH;
         Bytes txHash = Utils.deployScore(iconService, chain.networkId,
@@ -224,38 +312,63 @@ public class GetAPITest {
 
         Utils.acceptIfAuditEnabled(iconService, chain, txHash);
         Address scoreAddr = new Address(result.getScoreAddress());
-        List<ScoreApi> apis = iconService.getScoreApi(scoreAddr).execute();
-        for ( ScoreApi api : apis ) {
-            String funcName = api.getName();
-            FuncInfo fInfo = expectedFuncMap.get(funcName);
-            assertNotNull(fInfo);
-            assertEquals(fInfo.type, api.getType());
-            if(fInfo.readonly.equals(VALUE_TRUE)) {
-                assertEquals(fInfo.readonly, api.getReadonly());
-            }
-            if(fInfo.payable.equals(VALUE_TRUE)) {
-                assertEquals(fInfo.payable, api.getProperties().getItem("payable").asString());
-            }
-            for(ScoreApi.Param sParam : api.getInputs()) {
-                String pName = sParam.getName();
-                FuncInfo.Input fParam = fInfo.inputsMap.get(pName);
-                assertNotNull(fParam);
-                assertEquals(fParam.type, sParam.getType());
-                if(fParam.indexed != null) {
-                    assertEquals(fParam.indexed, sParam.getIndexed());
-                }
-                fInfo.inputsMap.remove(sParam.getName());
-            }
-            if(fInfo.inputsMap.size() != 0) {
-                LOG.warning("Not received param [" + fInfo.inputsMap.keySet() + "]");
-                fail();
-            }
-            expectedFuncMap.remove(funcName);
+
+        String addr = scoreAddr.toString();
+        LOG.info("addr = " + addr);
+        String newAddr;
+        if (addr.endsWith("f")) {
+            newAddr = addr.substring(0, addr.length() - 1) + "e";
+        } else {
+            newAddr = addr.substring(0, addr.length() - 1) + "f";
         }
-        if(expectedFuncMap.size() != 0) {
-            LOG.warning("NOT received [" + expectedFuncMap.keySet() + "]");
+        Address noScoreAddr = new Address(newAddr);
+
+
+        boolean bFailed = false;
+        List<ScoreApi> apis = iconService.getScoreApi(scoreAddr).execute();
+        assertTrue(checkApisForScoreApi(apis));
+        try {
+            iconService.getScoreApi(noScoreAddr).execute();
             fail();
         }
-        LOG.infoExiting();
+        catch (RpcError ex) {
+            bFailed = true;
+            LOG.info("ex : " + ex);
+        }
+        assertTrue(bFailed);
+    }
+
+    private List<ScoreApi> getScoreApi(String addr) throws IOException {
+        long requestId = System.currentTimeMillis();
+        RpcObject params = new RpcObject.Builder()
+                .put("address", new RpcValue(addr))
+                .build();
+        foundation.icon.icx.transport.jsonrpc.Request request = new foundation.icon.icx.transport.jsonrpc.Request(requestId, "icx_getScoreApi", params);
+        return new HttpProvider(Env.nodes[0].channels[0].getAPIUrl(Env.testApiVer)).request(request, Converters.SCORE_API_LIST).execute();
+    }
+
+    @Test
+    public void getApiWithEOA() throws Exception {
+        LOG.infoEntering("getApiWithEOA");
+        String scorePath = Constants.SCORE_API_PATH;
+        Bytes txHash = Utils.deployScore(iconService, chain.networkId,
+                KeyWallet.create(), Constants.CHAINSCORE_ADDRESS, scorePath, null);
+        TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        Utils.acceptIfAuditEnabled(iconService, chain, txHash);
+
+        List<ScoreApi> apis = getScoreApi(result.getScoreAddress());
+        assertTrue(checkApisForScoreApi(apis));
+
+        boolean bFailed = false;
+        try {
+            getScoreApi(KeyWallet.create().getAddress().toString());
+            fail();
+        }
+        catch (RpcError ex) {
+            bFailed = true;
+            LOG.info("ex : " + ex);
+        }
+        assertTrue(bFailed);
     }
 }

@@ -24,9 +24,31 @@ import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /*
-1. call with valid type parameter
-2. interCall with valid type parameter
-3.
+test methods
+    callInt
+    callStr
+    callBytes
+    callBool
+    callAddress
+    callAll
+    interCallBool
+    interCallAddress
+    interCallInt
+    interCallBytes
+    interCallStr
+    interCallAll
+    invalidInterCallBool
+    invalidInterCallAddress
+    invalidInterCallBytes
+    invalidInterCallStr
+    invalidInterCallInt
+    callDefaultParam
+    interCallDefaultParam
+    interCallWithNull
+    interCallWithMoreParams
+    invalidAddUndefinedParam
+    interCallWithEmptyString
+    interCallWithDefaultParam
  */
 @Tag(Constants.TAG_NORMAL)
 public class ScoreParamTest {
