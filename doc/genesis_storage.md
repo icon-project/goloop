@@ -31,6 +31,7 @@ Some utilities accept genesis template for genesis storage.
 
 You may use following directives in values of genesis transaction.
 
+:::  v-pre
 * `{{hash:<file>}}` <br>
   It will be replaced with hex decimals of hash value of
   specified file. And the file will be included into the storage automatically.
@@ -62,6 +63,7 @@ You may use following directives in values of genesis transaction.
 * `{{zip:<dir>}}` <br>
   It's very similar to `{{read:<file>}}` except that it accepts a directory
   for input and makes a zip archive for reading.
+:::
 
 You may use template in values of genesis transaction. You may use this
 scheme for making genesis storage from genesis transaction while it includes
@@ -70,4 +72,4 @@ other genesis data.
 **Note:**
 If you refer same directory in different positions, it may returns different
 hash value or bytes.
-     
+

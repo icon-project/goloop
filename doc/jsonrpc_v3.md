@@ -25,19 +25,24 @@ Below table shows the most common "VALUE types".
 
 ## Error Codes
 
-This chapter explains the error codes used in ICON JSON-RPC API response.
+This chapter explains the error codes used in Goloop JSON-RPC API response.
 
 Below table shows the default error messages for the error code. Actual message may vary depending on the implementation.
 
-| Error code | Message | Description |
-|:---------|:------|:-----|
-| -32700 | Parse error | Invalid JSON was received by the server. An error occurred on the server while parsing the JSON text. |
-| -32600 | Invalid Request | The JSON sent is not a valid Request object. |
-| -32601 | Method not found | The method does not exist / is not available. |
-| -32602 | Invalid params | Invalid method parameter(s). |
-| -32603 | Internal error | Internal JSON-RPC error. |
-| -32000 | Server error | IconServiceEngine internal error. |
-| -32100 | Score error | Score internal error. |
+| Category   | Error code | Message | Description |
+|:-----------|:---------|:------|:-----|
+|Json Parsing| -32700 | Parse error | Invalid JSON was received by the server.<br/>An error occurred on the server while parsing the JSON text. |
+|RPC Parsing | -32600 | Invalid Request | The JSON sent is not a valid Request object. |
+|            | -32601 | Method not found | The method does not exist / is not available. |
+|            | -32602 | Invalid params | Invalid method parameter(s). |
+|            | -32603 | Internal error | Internal JSON-RPC error. |
+|Server Error| -32000 ~ -32099 |  | Server error. |
+|System Error| -31000 | System Error | Unknown system error. |
+|            | -31001 | Pool Overflow | Transaction pool overflow. |
+|            | -31002 | Pending | Transaction is in the pool, but not included in the block. |
+|            | -31003 | Executing | Transaction is included in the block, but it doesn’t have confirmed result. |
+|            | -31004 | Not found | Requested data is not found. |
+|SCORE Error | -30000 ~ -30099 |  | Mapped error codes from Core2 Design - SCORE Result. |
 
 ## JSON-RPC Methods
 
