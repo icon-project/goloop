@@ -4,12 +4,12 @@ import (
 	"container/list"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"net"
 	"strings"
 	"sync"
 
-	"github.com/ugorji/go/codec"
-
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/metric"
 )
@@ -256,14 +256,12 @@ type PeerHandler interface {
 type peerHandler struct {
 	next PeerHandler
 	self module.PeerID
-	//codec
-	codecHandle codec.Handle
 	//log
 	log *logger
 }
 
 func newPeerHandler(log *logger) *peerHandler {
-	return &peerHandler{log: log, codecHandle: &codec.MsgpackHandle{}}
+	return &peerHandler{log: log}
 }
 
 func (ph *peerHandler) onPeer(p *Peer) {
@@ -310,14 +308,15 @@ func (ph *peerHandler) sendMessage(pi protocolInfo, m interface{}, p *Peer) {
 
 func (ph *peerHandler) encode(v interface{}) []byte {
 	b := make([]byte, DefaultPacketBufferSize)
-	enc := codec.NewEncoderBytes(&b, ph.codecHandle)
-	enc.MustEncode(v)
+	enc := codec.MP.NewEncoderBytes(&b)
+	if err := enc.Encode(v); err != nil {
+		log.Panicf("fail to encode object v=%+v err=%+v", v, err)
+	}
 	return b
 }
 
 func (ph *peerHandler) decode(b []byte, v interface{}) {
-	dec := codec.NewDecoderBytes(b, ph.codecHandle)
-	dec.MustDecode(v)
+	codec.MP.MustUnmarshalFromBytes(b, v)
 }
 
 type PeerDispatcher struct {
@@ -326,7 +325,7 @@ type PeerDispatcher struct {
 	p2pMap       map[string]*PeerToPeer
 	mtx          sync.RWMutex
 
-	mtr       *metric.NetworkMetric
+	mtr *metric.NetworkMetric
 }
 
 func newPeerDispatcher(id module.PeerID, peerHandlers ...PeerHandler) *PeerDispatcher {
@@ -334,7 +333,7 @@ func newPeerDispatcher(id module.PeerID, peerHandlers ...PeerHandler) *PeerDispa
 		peerHandlers: list.New(),
 		p2pMap:       make(map[string]*PeerToPeer),
 		peerHandler:  newPeerHandler(newLogger("PeerDispatcher", "")),
-		mtr: metric.NewNetworkMetric(metric.DefaultMetricContext()),
+		mtr:          metric.NewNetworkMetric(metric.DefaultMetricContext()),
 	}
 	// pd.peerHandler.codecHandle.MapType = reflect.TypeOf(map[string]interface{}(nil))
 	pd.setSelfPeerID(id)

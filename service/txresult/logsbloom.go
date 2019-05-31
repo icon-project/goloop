@@ -11,7 +11,7 @@ import (
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
-	"github.com/ugorji/go/codec"
+	"gopkg.in/vmihailenco/msgpack.v4"
 )
 
 const (
@@ -62,15 +62,17 @@ func (lb *LogsBloom) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (lb *LogsBloom) CodecEncodeSelf(e *codec.Encoder) {
-	b := lb.Bytes()
-	e.Encode(b)
+func (lb *LogsBloom) EncodeMsgpack(e *msgpack.Encoder) error {
+	return e.EncodeBytes(lb.Bytes())
 }
 
-func (lb *LogsBloom) CodecDecodeSelf(d *codec.Decoder) {
-	var b []byte
-	d.Decode(&b)
-	lb.SetBytes(b)
+func (lb *LogsBloom) DecodeMsgpack(d *msgpack.Decoder) error {
+	if b, err := d.DecodeBytes(); err != nil {
+		return err
+	} else {
+		lb.SetBytes(b)
+		return nil
+	}
 }
 
 // Merge bloom

@@ -26,7 +26,7 @@ require (
 	github.com/spf13/viper v1.3.2
 	github.com/stretchr/testify v1.3.0
 	github.com/syndtr/goleveldb v1.0.0
-	github.com/ugorji/go/codec v0.0.0-20181209151446-772ced7fd4c2
+	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	go.etcd.io/bbolt v1.3.2
 	go.opencensus.io v0.20.2
@@ -34,4 +34,5 @@ require (
 	golang.org/x/tools v0.0.0-20190312170243-e65039ee4138
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/go-playground/validator.v9 v9.28.0
+	gopkg.in/vmihailenco/msgpack.v4 v4.0.4
 )

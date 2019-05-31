@@ -633,15 +633,10 @@ func (d *rlpDecoder) Decode(o interface{}) error {
 	}
 }
 
-func (*rlpCodec) Marshal(w io.Writer, o interface{}) error {
-	e := rlpEncoder{Writer: w}
-	if err := e.Encode(o); err != nil {
-		return err
-	}
-	return e.flush()
+func (*rlpCodec) NewEncoder(w io.Writer) Encoder {
+	return &rlpEncoder{Writer: w}
 }
 
-func (*rlpCodec) Unmarshal(r io.Reader, o interface{}) error {
-	d := rlpDecoder{Reader: r}
-	return d.Decode(o)
+func (*rlpCodec) NewDecoder(r io.Reader) Decoder {
+	return &rlpDecoder{Reader: r}
 }

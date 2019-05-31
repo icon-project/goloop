@@ -3,12 +3,13 @@ package txresult
 import (
 	"encoding/hex"
 	"encoding/json"
-	"github.com/icon-project/goloop/service/state"
 	"log"
 	"math/big"
 	"reflect"
 	"regexp"
 	"strings"
+
+	"gopkg.in/vmihailenco/msgpack.v4"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -17,7 +18,7 @@ import (
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
-	ugorji "github.com/ugorji/go/codec"
+	"github.com/icon-project/goloop/service/state"
 )
 
 const (
@@ -133,16 +134,12 @@ func (r *receipt) Equal(o trie.Object) bool {
 	return false
 }
 
-func (r *receipt) CodecEncodeSelf(e *ugorji.Encoder) {
-	if err := e.Encode(&r.data); err != nil {
-		log.Panicf("FailOnEncodeReceipt err=%+v", err)
-	}
+func (r *receipt) EncodeMsgpack(e *msgpack.Encoder) error {
+	return e.Encode(&r.data)
 }
 
-func (r *receipt) CodecDecodeSelf(d *ugorji.Decoder) {
-	if err := d.Decode(&r.data); err != nil {
-		log.Panicf("FailOnDecodeReceipt err=%+v", err)
-	}
+func (r *receipt) DecodeMsgpack(d *msgpack.Decoder) error {
+	return d.Decode(&r.data)
 }
 
 func (r *receipt) Resolve(bd merkle.Builder) error {

@@ -7,10 +7,9 @@ import (
 	"log"
 	"reflect"
 
-	"github.com/icon-project/goloop/module"
-	"github.com/ugorji/go/codec"
-
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/module"
+	"gopkg.in/vmihailenco/msgpack.v4"
 )
 
 const (
@@ -159,13 +158,14 @@ func (a *Address) Equal(a2 module.Address) bool {
 	return bytes.Equal(a[:], a2.Bytes())
 }
 
-func (a *Address) CodecEncodeSelf(e *codec.Encoder) {
-	e.Encode([]byte(a[:]))
+func (a Address) EncodeMsgpack(e *msgpack.Encoder) error {
+	return e.EncodeBytes([]byte(a[:]))
 }
 
-func (a *Address) CodecDecodeSelf(d *codec.Decoder) {
-	var b []byte
-	if err := d.Decode(&b); err == nil {
-		a.SetBytes(b)
+func (a *Address) DecodeMsgpack(d *msgpack.Decoder) error {
+	if bs, err := d.DecodeBytes(); err != nil {
+		return err
+	} else {
+		return a.SetBytes(bs)
 	}
 }

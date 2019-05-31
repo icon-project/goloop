@@ -1,6 +1,7 @@
 package fastsync
 
 import (
+	"bufio"
 	"bytes"
 	"io"
 	"testing"
@@ -124,6 +125,7 @@ func (bm *tBlockManager) GetBlockByHeight(height int64) (module.Block, error) {
 
 func (bm *tBlockManager) NewBlockFromReader(r io.Reader) (module.Block, error) {
 	var bh tBlockHeader
+	r = bufio.NewReader(r)
 	err := codec.Unmarshal(r, &bh)
 	if err != nil {
 		return nil, err

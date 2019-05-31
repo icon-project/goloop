@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/ugorji/go/codec"
 
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
 )
@@ -45,7 +45,6 @@ var (
 type testReactor struct {
 	name         string
 	ph           module.ProtocolHandler
-	codecHandle  codec.Handle
 	log          *logger
 	t            *testing.T
 	nm           module.NetworkManager
@@ -56,7 +55,7 @@ type testReactor struct {
 }
 
 func newTestReactor(name string, nm module.NetworkManager, t *testing.T) *testReactor {
-	r := &testReactor{name: name, nm: nm, codecHandle: &codec.MsgpackHandle{}, log: newLogger("TestReactor", name), t: t}
+	r := &testReactor{name: name, nm: nm, log: newLogger("TestReactor", name), t: t}
 	ph, err := nm.RegisterReactor(name, r, testSubProtocols, testProtoPriority)
 	assert.NoError(t, err, "RegisterReactor")
 	r.ph = ph
@@ -171,14 +170,15 @@ func (r *testReactor) onEvent(evt string, p *Peer) {
 
 func (r *testReactor) encode(v interface{}) []byte {
 	b := make([]byte, DefaultPacketBufferSize)
-	enc := codec.NewEncoderBytes(&b, r.codecHandle)
-	enc.MustEncode(v)
+	enc := codec.MP.NewEncoderBytes(&b)
+	if err := enc.Encode(v); err != nil {
+		log.Panicf("Fail to encode err=%+v", err)
+	}
 	return b
 }
 
 func (r *testReactor) decode(b []byte, v interface{}) {
-	dec := codec.NewDecoderBytes(b, r.codecHandle)
-	dec.MustDecode(v)
+	codec.MP.MustUnmarshalFromBytes(b, v)
 }
 
 func (r *testReactor) p2pConn() string {
@@ -257,40 +257,41 @@ func (r *testReactor) Response(msg string, id module.PeerID) string {
 }
 
 type dummyChain struct {
-	nid int
+	nid       int
 	metricCtx context.Context
 }
-func (c *dummyChain) Database() db.Database                             {panic("not implemented")}
-func (c *dummyChain) Wallet() module.Wallet                             {panic("not implemented")}
+
+func (c *dummyChain) Database() db.Database                             { panic("not implemented") }
+func (c *dummyChain) Wallet() module.Wallet                             { panic("not implemented") }
 func (c *dummyChain) NID() int                                          { return c.nid }
-func (c *dummyChain) ConcurrencyLevel() int                             {panic("not implemented")}
-func (c *dummyChain) Genesis() []byte                                   {panic("not implemented")}
-func (c *dummyChain) GetGenesisData(key []byte) ([]byte, error)         {panic("not implemented")}
-func (c *dummyChain) CommitVoteSetDecoder() module.CommitVoteSetDecoder {panic("not implemented")}
+func (c *dummyChain) ConcurrencyLevel() int                             { panic("not implemented") }
+func (c *dummyChain) Genesis() []byte                                   { panic("not implemented") }
+func (c *dummyChain) GetGenesisData(key []byte) ([]byte, error)         { panic("not implemented") }
+func (c *dummyChain) CommitVoteSetDecoder() module.CommitVoteSetDecoder { panic("not implemented") }
 
-func (c *dummyChain) BlockManager() module.BlockManager {panic("not implemented")}
-func (c *dummyChain) Consensus() module.Consensus {panic("not implemented")}
-func (c *dummyChain) ServiceManager() module.ServiceManager {panic("not implemented")}
-func (c *dummyChain) NetworkManager() module.NetworkManager {panic("not implemented")}
-func (c *dummyChain) Regulator() module.Regulator {panic("not implemented")}
+func (c *dummyChain) BlockManager() module.BlockManager     { panic("not implemented") }
+func (c *dummyChain) Consensus() module.Consensus           { panic("not implemented") }
+func (c *dummyChain) ServiceManager() module.ServiceManager { panic("not implemented") }
+func (c *dummyChain) NetworkManager() module.NetworkManager { panic("not implemented") }
+func (c *dummyChain) Regulator() module.Regulator           { panic("not implemented") }
 
-func (c *dummyChain) Init(sync bool) error  {panic("not implemented")}
-func (c *dummyChain) Start(sync bool) error {panic("not implemented")}
-func (c *dummyChain) Stop(sync bool) error {panic("not implemented")}
-func (c *dummyChain) Term(sync bool) error {panic("not implemented")}
-func (c *dummyChain) State() string {panic("not implemented")}
+func (c *dummyChain) Init(sync bool) error  { panic("not implemented") }
+func (c *dummyChain) Start(sync bool) error { panic("not implemented") }
+func (c *dummyChain) Stop(sync bool) error  { panic("not implemented") }
+func (c *dummyChain) Term(sync bool) error  { panic("not implemented") }
+func (c *dummyChain) State() string         { panic("not implemented") }
 
-func (c *dummyChain) Reset(sync bool) error {panic("not implemented")}
-func (c *dummyChain) Verify(sync bool) error {panic("not implemented")}
+func (c *dummyChain) Reset(sync bool) error  { panic("not implemented") }
+func (c *dummyChain) Verify(sync bool) error { panic("not implemented") }
 
-func (c *dummyChain) MetricContext() context.Context {return c.metricCtx}
+func (c *dummyChain) MetricContext() context.Context { return c.metricCtx }
 
 func generateNetwork(name string, port int, n int, t *testing.T, roles ...module.Role) ([]*testReactor, int) {
 	arr := make([]*testReactor, n)
 	for i := 0; i < n; i++ {
 		w := walletFromGeneratedPrivateKey()
 		nt := NewTransport(fmt.Sprintf("127.0.0.1:%d", port+i), w)
-		c := &dummyChain{nid:i, metricCtx: context.Background()}
+		c := &dummyChain{nid: i, metricCtx: context.Background()}
 		nm := NewManager(c, nt, "", roles...)
 		r := newTestReactor(fmt.Sprintf("%s_%d", name, i), nm, t)
 		r.nt = nt
@@ -493,7 +494,7 @@ func dailByList(t *testing.T, arr []*testReactor, na NetAddress, delay time.Dura
 func listenerClose(t *testing.T, m map[string][]*testReactor) {
 	for _, arr := range m {
 		for _, r := range arr {
-			log.Println("Try stopping",r.name)
+			log.Println("Try stopping", r.name)
 			r.nm.Term()
 			assert.NoError(t, r.nt.Close(), "Close", r.name)
 		}
@@ -769,7 +770,7 @@ func Test_network_failure(t *testing.T) {
 	msg = m["TestValidator"][0].Broadcast("Test3")
 	go func() {
 		for i, p := range pArr {
-			log.Println("Close by testErrNotAvailable",i,len(pArr), p.id)
+			log.Println("Close by testErrNotAvailable", i, len(pArr), p.id)
 			tq := p.q.s[testProtoPriority].(*testQueue)
 			go func(tq *testQueue) {
 				tq.resume()

@@ -4,13 +4,12 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"reflect"
+	"log"
 	"sort"
 	"sync"
 	"time"
 
-	"github.com/ugorji/go/codec"
-
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/metric"
 )
@@ -54,8 +53,6 @@ type PeerToPeer struct {
 	allowedRoots *PeerIDSet
 	allowedSeeds *PeerIDSet
 	allowedPeers *PeerIDSet
-	//codec
-	mph *codec.MsgpackHandle
 
 	//log
 	log *logger
@@ -111,13 +108,10 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer, mtr *metric.NetworkMet
 		allowedSeeds: NewPeerIDSet(),
 		allowedPeers: NewPeerIDSet(),
 		//
-		mph: &codec.MsgpackHandle{},
-		//
 		log: newLogger("PeerToPeer", fmt.Sprintf("%s.%s", channel, hex.EncodeToString(self.id.Bytes()[:DefaultSimplePeerIDSize]))),
 		//
 		mtr: mtr,
 	}
-	p2p.mph.MapType = reflect.TypeOf(map[string]interface{}(nil))
 	p2p.allowedRoots.onUpdate = func() {
 		p2p.setRoleByAllowedSet()
 	}
@@ -444,14 +438,16 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 
 func (p2p *PeerToPeer) encodeMsgpack(v interface{}) []byte {
 	b := make([]byte, DefaultPacketBufferSize)
-	enc := codec.NewEncoderBytes(&b, p2p.mph)
-	enc.MustEncode(v)
+	enc := codec.MP.NewEncoderBytes(&b)
+	if err := enc.Encode(v); err != nil {
+		log.Panicf("Fail to encode err=%+v", err)
+	}
 	return b
 }
 
 func (p2p *PeerToPeer) decodeMsgpack(b []byte, v interface{}) error {
-	dec := codec.NewDecoderBytes(b, p2p.mph)
-	return dec.Decode(v)
+	_, err := codec.MP.UnmarshalFromBytes(b, v)
+	return err
 }
 
 //TODO timestamp or sequencenumber for validation (query,result pair)

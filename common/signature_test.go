@@ -16,12 +16,12 @@ func TestSignatureCoding(t *testing.T) {
 	if err != nil {
 		t.Fail()
 	}
-	sigBS, err := codec.MP.MarshalToBytes(sig)
+	sigBS, err := codec.MarshalToBytes(&sig)
 	if err != nil {
 		t.Fail()
 	}
 	var sig2 Signature
-	_, err = codec.MP.UnmarshalFromBytes(sigBS, &sig2)
+	_, err = codec.UnmarshalFromBytes(sigBS, &sig2)
 	if err != nil {
 		t.Fail()
 	}

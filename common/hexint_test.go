@@ -169,7 +169,7 @@ func TestHexInt_EncodingDecoding(t *testing.T) {
 			}
 
 			var v2 HexInt
-			if _, err := codec.MP.UnmarshalFromBytes(b, &v2); err != nil {
+			if _, err := codec.UnmarshalFromBytes(b, &v2); err != nil {
 				t.Error(err)
 				return
 			}
@@ -240,15 +240,15 @@ func TestHexInt16(t *testing.T) {
 				return
 			}
 
-			b, err := codec.MP.MarshalToBytes(v1)
+			b, err := codec.MarshalToBytes(&v1)
 			if err != nil {
-				t.Errorf("Encode fail with err=%v", err)
+				t.Errorf("Encode fail with err=%+v", err)
 				return
 			}
 
 			var v2 HexInt16
-			if _, err := codec.MP.UnmarshalFromBytes(b, &v2); err != nil {
-				t.Errorf("Decode fail with err=%v", err)
+			if _, err := codec.UnmarshalFromBytes(b, &v2); err != nil {
+				t.Errorf("Decode fail with err=%+v", err)
 				return
 			}
 
@@ -316,14 +316,14 @@ func TestHexInt32(t *testing.T) {
 				return
 			}
 
-			b, err := codec.MP.MarshalToBytes(v1)
+			b, err := codec.MarshalToBytes(&v1)
 			if err != nil {
 				t.Errorf("Encode fail with err=%v", err)
 				return
 			}
 
 			var v2 HexInt32
-			if _, err := codec.MP.UnmarshalFromBytes(b, &v2); err != nil {
+			if _, err := codec.UnmarshalFromBytes(b, &v2); err != nil {
 				t.Errorf("Decode fail with err=%v", err)
 				return
 			}
@@ -395,14 +395,14 @@ func TestHexInt64(t *testing.T) {
 				return
 			}
 
-			b, err := codec.MP.MarshalToBytes(v1)
+			b, err := codec.MarshalToBytes(&v1)
 			if err != nil {
 				t.Errorf("Encode fail with err=%v", err)
 				return
 			}
 
 			var v2 HexInt64
-			if _, err := codec.MP.UnmarshalFromBytes(b, &v2); err != nil {
+			if _, err := codec.UnmarshalFromBytes(b, &v2); err != nil {
 				t.Errorf("Decode fail with err=%v", err)
 				return
 			}
@@ -474,14 +474,14 @@ func TestHexUint16(t *testing.T) {
 				return
 			}
 
-			b, err := codec.MP.MarshalToBytes(v1)
+			b, err := codec.MarshalToBytes(&v1)
 			if err != nil {
-				t.Errorf("Encode fail with err=%v", err)
+				t.Errorf("Encode fail with err=%+v", err)
 				return
 			}
 
 			var v2 HexUint16
-			if _, err := codec.MP.UnmarshalFromBytes(b, &v2); err != nil {
+			if _, err := codec.UnmarshalFromBytes(b, &v2); err != nil {
 				t.Errorf("Decode fail with err=%v", err)
 				return
 			}
@@ -553,14 +553,14 @@ func TestHexUint32(t *testing.T) {
 				return
 			}
 
-			b, err := codec.MP.MarshalToBytes(v1)
+			b, err := codec.MarshalToBytes(&v1)
 			if err != nil {
 				t.Errorf("Encode fail with err=%v", err)
 				return
 			}
 
 			var v2 HexUint32
-			if _, err := codec.MP.UnmarshalFromBytes(b, &v2); err != nil {
+			if _, err := codec.UnmarshalFromBytes(b, &v2); err != nil {
 				t.Errorf("Decode fail with err=%v", err)
 				return
 			}
@@ -628,14 +628,14 @@ func TestHexUint64(t *testing.T) {
 				return
 			}
 
-			b, err := codec.MP.MarshalToBytes(v1)
+			b, err := codec.MarshalToBytes(&v1)
 			if err != nil {
 				t.Errorf("Encode fail with err=%v", err)
 				return
 			}
 
 			var v2 HexUint64
-			if _, err := codec.MP.UnmarshalFromBytes(b, &v2); err != nil {
+			if _, err := codec.UnmarshalFromBytes(b, &v2); err != nil {
 				t.Errorf("Decode fail with err=%v", err)
 				return
 			}

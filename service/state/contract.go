@@ -5,10 +5,10 @@ import (
 	"log"
 
 	"github.com/icon-project/goloop/common/merkle"
+	"gopkg.in/vmihailenco/msgpack.v4"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
-	ugorji "github.com/ugorji/go/codec"
 )
 
 type ContractState int
@@ -120,24 +120,45 @@ func (c *contractSnapshotImpl) Status() ContractState {
 	return c.state
 }
 
-func (c *contractSnapshotImpl) CodecEncodeSelf(e *ugorji.Encoder) {
-	e.MustEncode(c.state)
-	e.MustEncode(c.contentType)
-	e.MustEncode(c.eeType)
-	e.MustEncode(c.deployTxHash)
-	e.MustEncode(c.auditTxHash)
-	e.MustEncode(c.codeHash)
-	e.MustEncode(c.params)
+const (
+	contractSnapshotImplEntries = 7
+)
+
+func (c *contractSnapshotImpl) EncodeMsgpack(e *msgpack.Encoder) error {
+	if err := e.EncodeArrayLen(contractSnapshotImplEntries); err != nil {
+		return err
+	}
+	return e.EncodeMulti(
+		c.state,
+		c.contentType,
+		c.eeType,
+		c.deployTxHash,
+		c.auditTxHash,
+		c.codeHash,
+		c.params,
+	)
 }
 
-func (c *contractSnapshotImpl) CodecDecodeSelf(d *ugorji.Decoder) {
-	d.MustDecode(&c.state)
-	d.MustDecode(&c.contentType)
-	d.MustDecode(&c.eeType)
-	d.MustDecode(&c.deployTxHash)
-	d.MustDecode(&c.auditTxHash)
-	d.MustDecode(&c.codeHash)
-	d.MustDecode(&c.params)
+func (c *contractSnapshotImpl) DecodeMsgpack(d *msgpack.Decoder) error {
+	if n, err := d.DecodeArrayLen(); err != nil {
+		return err
+	} else {
+		if n != contractSnapshotImplEntries {
+			return errors.IllegalArgumentError.Errorf(
+				"contractSnapshotImpl: entries(%d) != %d",
+				n, contractSnapshotImplEntries)
+		}
+	}
+
+	return d.DecodeMulti(
+		&c.state,
+		&c.contentType,
+		&c.eeType,
+		&c.deployTxHash,
+		&c.auditTxHash,
+		&c.codeHash,
+		&c.params,
+	)
 }
 
 func (c *contractSnapshotImpl) flush() error {

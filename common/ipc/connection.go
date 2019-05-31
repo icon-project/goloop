@@ -1,11 +1,13 @@
 package ipc
 
 import (
-	"github.com/icon-project/goloop/common/codec"
-	codec2 "github.com/ugorji/go/codec"
+	"bufio"
+	"io"
 	"log"
 	"net"
 	"sync"
+
+	"github.com/icon-project/goloop/common/codec"
 )
 
 type MessageHandler interface {
@@ -28,6 +30,7 @@ type ConnectionHandler interface {
 type connection struct {
 	lock    sync.Mutex
 	conn    net.Conn
+	reader  io.Reader
 	handler map[uint]MessageHandler
 }
 
@@ -39,6 +42,7 @@ type messageToSend struct {
 func connectionFromConn(conn net.Conn) *connection {
 	c := &connection{
 		conn:    conn,
+		reader:  bufio.NewReader(conn),
 		handler: map[uint]MessageHandler{},
 	}
 	return c
@@ -55,11 +59,23 @@ func (c *connection) Send(msg uint, data interface{}) error {
 	return codec.MP.Marshal(c.conn, m)
 }
 
-type messageToReceive struct {
-	Msg  uint
-	Data codec2.Raw
+type rawMessage []byte
+
+func (m *rawMessage) UnmarshalMsgpack(bs []byte) error {
+	n := make([]byte, len(bs))
+	copy(n, bs)
+	*m = n
+	return nil
 }
 
+type messageToReceive struct {
+	Msg  uint
+	Data rawMessage
+}
+
+func (m *messageToReceive) RawData() []byte {
+	return m.Data
+}
 func (c *connection) SendAndReceive(msg uint, data interface{}, buffer interface{}) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -75,10 +91,10 @@ func (c *connection) SendAndReceive(msg uint, data interface{}, buffer interface
 	}
 
 	var m2 messageToReceive
-	if err := codec.MP.Unmarshal(c.conn, &m2); err != nil {
+	if err := codec.MP.Unmarshal(c.reader, &m2); err != nil {
 		return err
 	}
-	if _, err := codec.MP.UnmarshalFromBytes(m2.Data, buffer); err != nil {
+	if _, err := codec.MP.UnmarshalFromBytes(m2.RawData(), buffer); err != nil {
 		return err
 	}
 	return nil
@@ -86,7 +102,7 @@ func (c *connection) SendAndReceive(msg uint, data interface{}, buffer interface
 
 func (c *connection) HandleMessage() error {
 	var m messageToReceive
-	if err := codec.MP.Unmarshal(c.conn, &m); err != nil {
+	if err := codec.MP.Unmarshal(c.reader, &m); err != nil {
 		return err
 	}
 	c.lock.Lock()
@@ -99,7 +115,7 @@ func (c *connection) HandleMessage() error {
 		return nil
 	}
 
-	return handler.HandleMessage(c, m.Msg, m.Data)
+	return handler.HandleMessage(c, m.Msg, m.RawData())
 }
 
 func (c *connection) SetHandler(msg uint, handler MessageHandler) {

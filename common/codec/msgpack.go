@@ -3,32 +3,24 @@ package codec
 import (
 	"io"
 
-	"github.com/pkg/errors"
-	ugorji "github.com/ugorji/go/codec"
+	"gopkg.in/vmihailenco/msgpack.v4"
 )
 
-var mpCodecObject mpCodec
 var MP = bytesWrapper{&mpCodecObject}
 
+var mpCodecObject mpCodec
+
 type mpCodec struct {
-	handle *ugorji.MsgpackHandle
 }
 
-func (c *mpCodec) Marshal(w io.Writer, v interface{}) error {
-	e := ugorji.NewEncoder(w, c.handle)
-	return errors.WithStack(e.Encode(v))
+func (c *mpCodec) NewEncoder(w io.Writer) Encoder {
+	e := msgpack.NewEncoder(w)
+	e.UseCompactEncoding(true)
+	e.StructAsArray(true)
+	e.SortMapKeys(true)
+	return e
 }
 
-func (c *mpCodec) Unmarshal(r io.Reader, v interface{}) error {
-	e := ugorji.NewDecoder(r, c.handle)
-	return errors.WithStack(e.Decode(v))
-}
-
-func init() {
-	mh := new(ugorji.MsgpackHandle)
-	mh.StructToArray = true
-	mh.Canonical = true
-	mh.WriteExt = true
-	mh.PositiveIntUnsigned = true
-	mpCodecObject.handle = mh
+func (c *mpCodec) NewDecoder(r io.Reader) Decoder {
+	return msgpack.NewDecoder(r)
 }

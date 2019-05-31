@@ -10,7 +10,7 @@ import (
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
-	ugorji "github.com/ugorji/go/codec"
+	"gopkg.in/vmihailenco/msgpack.v4"
 )
 
 type validator struct {
@@ -18,21 +18,25 @@ type validator struct {
 	addr *common.Address
 }
 
-func (v *validator) CodecEncodeSelf(e *ugorji.Encoder) {
+func (v *validator) EncodeMsgpack(e *msgpack.Encoder) error {
 	if len(v.pub) == 0 {
-		e.Encode(v.addr)
+		return e.Encode(v.addr)
 	} else {
-		e.Encode(v.pub)
+		return e.Encode(v.pub)
 	}
 }
 
-func (v *validator) CodecDecodeSelf(d *ugorji.Decoder) {
+func (v *validator) DecodeMsgpack(d *msgpack.Decoder) error {
 	var bs []byte
-	d.Decode(&bs)
+	bs, err := d.DecodeBytes()
+	if err != nil {
+		return err
+	}
 	if len(bs) == common.AddressBytes {
 		v.addr = common.NewAddress(bs)
+		return nil
 	} else {
-		v.setPublicKey(bs)
+		return v.setPublicKey(bs)
 	}
 }
 

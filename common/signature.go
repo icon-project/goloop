@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/icon-project/goloop/common/crypto"
+	"gopkg.in/vmihailenco/msgpack.v4"
 )
 
 type Signature struct {
@@ -54,4 +55,20 @@ func (sig *Signature) UnmarshalBinary(s []byte) error {
 		sig.Signature = sig0
 	}
 	return err
+}
+
+func (sig *Signature) EncodeMsgpack(e *msgpack.Encoder) error {
+	if bs, err := sig.MarshalBinary(); err != nil {
+		return err
+	} else {
+		return e.EncodeBytes(bs)
+	}
+}
+
+func (sig *Signature) DecodeMsgpack(d *msgpack.Decoder) error {
+	bs, err := d.DecodeBytes()
+	if err != nil {
+		return err
+	}
+	return sig.UnmarshalBinary(bs)
 }

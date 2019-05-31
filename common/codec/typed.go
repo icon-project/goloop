@@ -2,8 +2,9 @@ package codec
 
 import (
 	"bytes"
+
 	"github.com/icon-project/goloop/common/errors"
-	ugorji "github.com/ugorji/go/codec"
+	"gopkg.in/vmihailenco/msgpack.v4"
 )
 
 const (
@@ -31,11 +32,6 @@ type typedObjBase struct {
 	Object interface{}
 }
 
-type typedObjDummy struct {
-	Type   uint8
-	Object ugorji.Raw
-}
-
 type TypedObj struct {
 	typedObjBase
 }
@@ -46,38 +42,63 @@ var Nil = &TypedObj{
 	},
 }
 
-func (o *TypedObj) CodecEncodeSelf(e *ugorji.Encoder) {
-	e.Encode(&o.typedObjBase)
+func (o *TypedObj) EncodeMsgpack(e *msgpack.Encoder) error {
+	return e.Encode(o.typedObjBase)
 }
 
-func (o *TypedObj) CodecDecodeSelf(d *ugorji.Decoder) {
-	var tmp typedObjDummy
-	d.Decode(&tmp)
-	o.Type = tmp.Type
-	switch o.Type {
+func (o *TypedObj) DecodeMsgpack(d *msgpack.Decoder) error {
+	if n, err := d.DecodeArrayLen(); err != nil {
+		return nil
+	} else {
+		if n != 2 {
+			return errors.IllegalArgumentError.Errorf("TypedObj(length:%d != 2)", n)
+		}
+	}
+
+	t, err := d.DecodeUint8()
+	if err != nil {
+		return err
+	}
+	o.Type = t
+	switch t {
 	case TypeNil:
-		return
+		return nil
 	case TypeDict:
 		var m map[string]*TypedObj
-		MP.UnmarshalFromBytes([]byte(tmp.Object), &m)
+		err = d.Decode(&m)
+		if err != nil {
+			return err
+		}
 		o.Object = m
 	case TypeList:
 		var l []*TypedObj
-		MP.UnmarshalFromBytes([]byte(tmp.Object), &l)
+		err = d.Decode(&l)
+		if err != nil {
+			return err
+		}
 		o.Object = l
 	case TypeString:
-		var s string
-		MP.UnmarshalFromBytes([]byte(tmp.Object), &s)
+		s, err := d.DecodeString()
+		if err != nil {
+			return err
+		}
 		o.Object = s
 	case TypeBool:
 		var bs []byte
-		MP.UnmarshalFromBytes([]byte(tmp.Object), &bs)
+		bs, err := d.DecodeBytes()
+		if err != nil {
+			return err
+		}
 		o.Object = bs
 	default:
 		var bs []byte
-		MP.UnmarshalFromBytes([]byte(tmp.Object), &bs)
+		bs, err := d.DecodeBytes()
+		if err != nil {
+			return err
+		}
 		o.Object = bs
 	}
+	return nil
 }
 
 func newTypedObj(t uint8, o interface{}) *TypedObj {

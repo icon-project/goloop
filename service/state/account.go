@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/service/scoreresult"
+	"gopkg.in/vmihailenco/msgpack.v4"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -16,7 +17,6 @@ import (
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreapi"
-	ugorji "github.com/ugorji/go/codec"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -145,7 +145,7 @@ func (s *accountSnapshotImpl) IsEmpty() bool {
 }
 
 func (s *accountSnapshotImpl) Bytes() []byte {
-	b, err := codec.MP.MarshalToBytes(s)
+	b, err := codec.MarshalToBytes(s)
 	if err != nil {
 		panic(err)
 	}
@@ -168,7 +168,7 @@ func (s *accountSnapshotImpl) NextContract() ContractSnapshot {
 
 func (s *accountSnapshotImpl) Reset(database db.Database, data []byte) error {
 	s.database = database
-	_, err := codec.MP.UnmarshalFromBytes(data, s)
+	_, err := codec.UnmarshalFromBytes(data, s)
 	return err
 }
 
@@ -268,44 +268,67 @@ func (s *accountSnapshotImpl) APIInfo() *scoreapi.Info {
 	return s.apiInfo
 }
 
-func (s *accountSnapshotImpl) CodecEncodeSelf(e *ugorji.Encoder) {
-	e.MustEncode(s.version)
-	e.MustEncode(s.balance)
-	e.MustEncode(s.fIsContract)
-	if s.store != nil {
-		e.MustEncode(s.store.Hash())
-	} else {
-		e.MustEncode(nil)
+const (
+	accountSnapshotImplEntries = 9
+)
+
+func (s *accountSnapshotImpl) EncodeMsgpack(e *msgpack.Encoder) (err error) {
+	if err := e.EncodeArrayLen(accountSnapshotImplEntries); err != nil {
+		return err
 	}
-	e.MustEncode(s.state)
-	e.MustEncode(s.contractOwner)
-	e.MustEncode(s.apiInfo)
-	e.MustEncode(s.curContract)
-	e.MustEncode(s.nextContract)
+
+	var storeHash []byte
+	if s.store != nil {
+		storeHash = s.store.Hash()
+	}
+
+	return e.EncodeMulti(
+		s.version,
+		&s.balance,
+		s.fIsContract,
+		storeHash,
+		s.state,
+		s.contractOwner,
+		s.apiInfo,
+		s.curContract,
+		s.nextContract,
+	)
 }
 
-func (s *accountSnapshotImpl) CodecDecodeSelf(d *ugorji.Decoder) {
-	d.MustDecode(&s.version)
-	d.MustDecode(&s.balance)
-	d.MustDecode(&s.fIsContract)
-	var hash []byte
-	d.MustDecode(&hash)
-	if len(hash) == 0 {
-		s.store = nil
+func (s *accountSnapshotImpl) DecodeMsgpack(d *msgpack.Decoder) error {
+	if n, err := d.DecodeArrayLen(); err != nil {
+		return err
 	} else {
-		s.store = trie_manager.NewImmutable(s.database, hash)
+		if n != accountSnapshotImplEntries {
+			return errors.IllegalArgumentError.Errorf("Unknown length")
+		}
 	}
-	d.MustDecode(&s.state)
-	d.MustDecode(&s.contractOwner)
-	d.MustDecode(&s.apiInfo)
-	d.MustDecode(&s.curContract)
+
+	var storeHash []byte
+	if err := d.DecodeMulti(
+		&s.version,
+		&s.balance,
+		&s.fIsContract,
+		&storeHash,
+		&s.state,
+		&s.contractOwner,
+		&s.apiInfo,
+		&s.curContract,
+		&s.nextContract,
+	); err != nil {
+		return err
+	}
+
+	if len(storeHash) > 0 {
+		s.store = trie_manager.NewImmutable(s.database, storeHash)
+	}
 	if s.curContract != nil {
 		s.curContract.bk, _ = s.database.GetBucket(db.BytesByHash)
 	}
-	d.MustDecode(&s.nextContract)
 	if s.nextContract != nil {
 		s.nextContract.bk, _ = s.database.GetBucket(db.BytesByHash)
 	}
+	return nil
 }
 
 type accountStateImpl struct {
