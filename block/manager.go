@@ -1,6 +1,7 @@
 package block
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -817,6 +818,7 @@ func (m *manager) NewBlockFromReader(r io.Reader) (module.Block, error) {
 }
 
 func (m *manager) newBlockFromReader(r io.Reader) (module.Block, error) {
+	r = bufio.NewReader(r)
 	// TODO handle v1
 	var blockFormat blockV2Format
 	err := v2Codec.Unmarshal(r, &blockFormat.blockV2HeaderFormat)
@@ -936,7 +938,7 @@ func (m *manager) getTransactionInfo(id []byte) (module.TransactionInfo, error) 
 		return nil, errors.InvalidStateError.Wrapf(err, "transaction i=%d not in block h=%d", loc.IndexInGroup, loc.BlockHeight)
 	}
 	var rblock module.Block
-	if m.finalized.block.Height() < loc.BlockHeight + 1 {
+	if m.finalized.block.Height() < loc.BlockHeight+1 {
 		rblock = nil
 	} else {
 		rblock, err = m.getBlockByHeight(loc.BlockHeight + 1)
