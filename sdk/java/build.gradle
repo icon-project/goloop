@@ -1,0 +1,19 @@
+plugins {
+    id 'com.gradle.build-scan' version '1.15.2'
+}
+
+allprojects {
+    group GROUP
+    version VERSION_NAME
+}
+
+subprojects {
+    repositories {
+        mavenCentral()
+    }
+}
+
+buildScan {
+    termsOfServiceUrl = 'https://gradle.com/terms-of-service'
+    termsOfServiceAgree = 'yes'
+}
