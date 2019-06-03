@@ -36,7 +36,7 @@ public class WSEventTest {
         Env.Channel channel = node.channels[0];
         chain = channel.chain;
         iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
-        apiURLBase = channel.getAPIUrl(Env.testApiVer) + "/";
+        apiURLBase = channel.getWSAPIUrl(Env.testApiVer) + "/";
     }
 
     private String recvBuffer;

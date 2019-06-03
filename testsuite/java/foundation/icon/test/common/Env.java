@@ -70,6 +70,14 @@ public class Env {
         public String getAPIUrl(int v) {
             return node.url + "/api/v" + v + "/" + name;
         }
+
+        public String getWSAPIUrl(int v) {
+            String api = getAPIUrl(v);
+            if (api.startsWith("http")) {
+                return "ws" + api.substring(4);
+            }
+            return api;
+        }
     }
 
     private static Map<String,Chain> readChains(Properties props) {
