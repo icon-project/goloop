@@ -140,6 +140,8 @@ pack:goloop:
     - docker
   dependencies:
     - pack:gochian
+  except:
+    - tags
 
 ITJ:gochain:normal:
   <<: *ITJ__gochain
