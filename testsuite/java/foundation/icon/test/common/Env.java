@@ -73,8 +73,10 @@ public class Env {
 
         public String getWSAPIUrl(int v) {
             String api = getAPIUrl(v);
-            if (api.startsWith("http")) {
-                return "ws" + api.substring(4);
+            if (api.startsWith("http:")) {
+                return "ws:" + api.substring(5);
+            } else if (api.startsWith("https:")) {
+                return "wss:" + api.substring(6);
             }
             return api;
         }
