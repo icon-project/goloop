@@ -289,7 +289,7 @@ func main() {
 		Short: "Print goloop version",
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Println("goloop version", version, build)
+			fmt.Println("goloop version", version, build)
 		},
 	})
 

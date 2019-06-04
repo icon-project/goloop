@@ -71,7 +71,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed JsonIntend resp=%+v, err=%+v", resp, err)
 			}
-			cmd.Println(s)
+			fmt.Println(s)
 			return nil
 		},
 	})
@@ -105,7 +105,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed POST %s param=%+v, resp=%+v, err=%+v", reqUrl, joinChainParam, resp, err)
 			}
-			cmd.Println(v)
+			fmt.Println(v)
 			return nil
 		},
 	}
@@ -134,7 +134,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed DELETE %s resp=%+v, err=%+v", node.UrlChain+"/"+args[0], resp, err)
 			}
-			cmd.Println(v)
+			fmt.Println(v)
 			return nil
 		},
 	}
@@ -165,10 +165,10 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("failed JsonIntend resp=%+v, err=%+v", resp, err)
 				}
-				cmd.Println(s)
+				fmt.Println(s)
 			} else {
 				s := v.(*string)
-				cmd.Println(*s)
+				fmt.Println(*s)
 			}
 			return nil
 		},
@@ -188,7 +188,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed POST %s resp=%+v, err=%+v", reqUrl, resp, err)
 			}
-			cmd.Println(v)
+			fmt.Println(v)
 			return nil
 		},
 	}
@@ -206,7 +206,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed POST %s resp=%+v, err=%+v", reqUrl, resp, err)
 			}
-			cmd.Println(v)
+			fmt.Println(v)
 			return nil
 		},
 	}
@@ -224,7 +224,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed POST %s resp=%+v, err=%+v", reqUrl, resp, err)
 			}
-			cmd.Println(v)
+			fmt.Println(v)
 			return nil
 		},
 	}
@@ -242,7 +242,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed POST %s resp=%+v, err=%+v", reqUrl, resp, err)
 			}
-			cmd.Println(v)
+			fmt.Println(v)
 			return nil
 		},
 	}
@@ -276,10 +276,10 @@ func NewSystemCmd(cfg *GoLoopConfig) *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("failed JsonIntend resp=%+v, err=%+v", resp, err)
 				}
-				cmd.Println(s)
+				fmt.Println(s)
 			} else {
 				s := v.(*string)
-				cmd.Println(*s)
+				fmt.Println(*s)
 			}
 			return nil
 		},
@@ -383,9 +383,9 @@ func NewStatsCmd(cfg *GoLoopConfig) *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("failed GET %s param=%+v, resp=%+v, err=%+v", reqUrl, params, resp, err)
 				}
-				cmd.Println(v.Timestamp)
+				fmt.Println(v.Timestamp)
 				table := StatsViewToTable(&v, 50)
-				cmd.Println(table)
+				fmt.Println(table)
 			} else {
 				g, guiTermCh := NewCui()
 				resp, err = hc.Stream(reqUrl, nil, &v, UpdateCuiByStatsViewStream(g), guiTermCh, params)
