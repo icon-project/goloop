@@ -64,11 +64,8 @@ function join(){
     if [ "${GOD_KEYSTORE}" != "" ] && [ ! -f ${GOD_KEYSTORE} ]; then
       mkdir -p $(dirname ${GOD_KEYSTORE})
       ${GSTOOL} ks gen -o ${GOD_KEYSTORE}
-      GSTOOL_CMD="${GSTOOL} gn --god ${GOD_KEYSTORE}"
-    else
-      GSTOOL_CMD="${GSTOOL} gn"
     fi
-    
+    GSTOOL_CMD="${GSTOOL} gn --god ${GOD_KEYSTORE}"
     # genesis
     if [ ! -f ${GENESIS_TEMPLATE} ];then
         mkdir -p $(dirname ${GENESIS_TEMPLATE})
