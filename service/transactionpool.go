@@ -113,7 +113,7 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 			// If returned error is critical(not usable in the future)
 			// then it should removed from the pool
 			// Otherwise, it remains in the pool
-			if err == state.ErrTimeOut || err == state.ErrNotEnoughStep {
+			if state.TimeOutError.Equals(err) || state.NotEnoughStepError.Equals(err) {
 				txs[invalidNum] = tx
 				invalidNum += 1
 			}

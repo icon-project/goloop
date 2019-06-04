@@ -211,17 +211,15 @@ func (tx *transactionV3) ValidateNetwork(nid int) bool {
 }
 
 func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
-	// TODO check if network ID is valid
-
 	// outdated or invalid timestamp?
 	if ConfigOnCheckingTimestamp {
 		tsDiff := wc.BlockTimeStamp() - tx.TimeStamp.Value
 		if tsDiff <= -ConfigTXTimestampBackwardMargin ||
 			tsDiff > ConfigTXTimestampForwardLimit {
-			return InvalidTxTime.Errorf("Timeout(block:%d, tx:%d)", wc.BlockTimeStamp(), tx.TimeStamp.Value)
+			return state.TimeOutError.Errorf("Timeout(block:%d, tx:%d)", wc.BlockTimeStamp(), tx.TimeStamp.Value)
 		}
 		if tsDiff > ConfigTXTimestampForwardMargin {
-			return InvalidTxTime.Errorf("FutureTxTime(block:%d, tx:%d)", wc.BlockTimeStamp(), tx.TimeStamp.Value)
+			return state.TimeOutError.Errorf("FutureTxTime(block:%d, tx:%d)", wc.BlockTimeStamp(), tx.TimeStamp.Value)
 		}
 	}
 
@@ -232,7 +230,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 	}
 	minStep := big.NewInt(wc.StepsFor(state.StepTypeDefault, 1) + wc.StepsFor(state.StepTypeInput, cnt))
 	if tx.StepLimit.Cmp(minStep) < 0 {
-		return scoreresult.ErrOutOfStep
+		return state.NotEnoughStepError.Errorf("NotEnoughStep(txStepLimit:%s, minStep:%s)\n", tx.StepLimit, minStep)
 	}
 
 	// balance >= (fee + value)
@@ -248,7 +246,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 	as1 := wc.GetAccountState(tx.From().ID())
 	balance1 := as1.GetBalance()
 	if balance1.Cmp(trans) < 0 {
-		return scoreresult.ErrOutOfBalance
+		return scoreresult.Errorf(module.StatusOutOfBalance, "OutOfBalance(balance:%s, value:%s)\n", balance1, trans)
 	}
 
 	// for cumulative balance check
