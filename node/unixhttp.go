@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"mime/multipart"
 	"net"
 	"net/http"
@@ -15,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -70,6 +70,24 @@ type UnixDomainSockHttpClient struct {
 	sockPath string
 }
 
+//socket path platform-specific length Mac&BSD:104, Linux:108
+//when net.Dial return error as
+//  (*net.OpError).Err.(*os.SyscallError).Err.(syscall.Errno) == syscall.EINVAL
+func resolveSocketPath(sockPath string) string {
+	wd, err := filepath.Abs(".")
+	if err != nil {
+		return sockPath
+	}
+	relPath, err := filepath.Rel(wd, sockPath)
+	if err != nil {
+		return sockPath
+	}
+	if len(relPath) > len(sockPath) {
+		return sockPath
+	}
+	return relPath
+}
+
 func NewUnixDomainSockHttpClient(sockPath string) *UnixDomainSockHttpClient {
 	c := &UnixDomainSockHttpClient{
 		sockPath: sockPath,
@@ -77,7 +95,8 @@ func NewUnixDomainSockHttpClient(sockPath string) *UnixDomainSockHttpClient {
 	hc := &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(_ context.Context, _, _ string) (conn net.Conn, e error) {
-				return net.Dial("unix", c.sockPath)
+				sockPath := resolveSocketPath(c.sockPath)
+				return net.Dial("unix", sockPath)
 			},
 		},
 	}
@@ -107,7 +126,6 @@ func (c *UnixDomainSockHttpClient) Do(method, reqUrl string, reqPtr, respPtr int
 		}
 		reqB = bytes.NewBuffer(b)
 	}
-	log.Println(reqUrl)
 	req, err := http.NewRequest(method, BaseUnixDomainSockHttpEndpoint+reqUrl, reqB)
 	if err != nil {
 		return
@@ -125,27 +143,28 @@ func (c *UnixDomainSockHttpClient) Do(method, reqUrl string, reqPtr, respPtr int
 	if err != nil {
 		return
 	}
+	err = decodeResponseBody(resp, respPtr)
+	return
+}
 
+func decodeResponseBody(resp *http.Response, respPtr interface{}) error {
 	if respPtr != nil {
 		defer resp.Body.Close()
 		switch ptr := respPtr.(type) {
 		case *string:
 			var b []byte
-			b, err = ioutil.ReadAll(resp.Body)
+			b, err := ioutil.ReadAll(resp.Body)
 			if err != nil {
-				log.Println("ioutil.ReadAll:",err)
-				return
+				return fmt.Errorf("failed read err=%+v", err)
 			}
 			*ptr = string(b)
 		default:
-			if err = json.NewDecoder(resp.Body).Decode(ptr); err != nil {
-				log.Println("json.NewDecoder:",err)
-				return
+			if err := json.NewDecoder(resp.Body).Decode(ptr); err != nil {
+				return fmt.Errorf("failed json decode err=%+v", err)
 			}
 		}
-
 	}
-	return
+	return nil
 }
 
 type StreamCallbackFunc func(respPtr interface{}) error
@@ -205,23 +224,23 @@ func (c *UnixDomainSockHttpClient) Stream(reqUrl string, reqPtr, respPtr interfa
 	return
 }
 
-func (c *UnixDomainSockHttpClient) Get(reqUrl string, ptr interface{}, reqParams ...*url.Values) (resp *http.Response, err error) {
-	return c.Do(http.MethodGet, UrlWithParams(reqUrl, reqParams...), nil, ptr)
+func (c *UnixDomainSockHttpClient) Get(reqUrl string, respPtr interface{}, reqParams ...*url.Values) (resp *http.Response, err error) {
+	return c.Do(http.MethodGet, UrlWithParams(reqUrl, reqParams...), nil, respPtr)
 }
-func (c *UnixDomainSockHttpClient) Post(reqUrl string) (resp *http.Response, err error) {
-	return c.Do(http.MethodPost, reqUrl, nil, nil)
+func (c *UnixDomainSockHttpClient) Post(reqUrl string, respPtr interface{}) (resp *http.Response, err error) {
+	return c.Do(http.MethodPost, reqUrl, nil, respPtr)
 }
-func (c *UnixDomainSockHttpClient) PostWithJson(reqUrl string, ptr interface{}) (resp *http.Response, err error) {
-	return c.Do(http.MethodPost, reqUrl, ptr, nil)
+func (c *UnixDomainSockHttpClient) PostWithJson(reqUrl string, reqPtr interface{}, respPtr interface{}) (resp *http.Response, err error) {
+	return c.Do(http.MethodPost, reqUrl, reqPtr, nil)
 }
 
-func (c *UnixDomainSockHttpClient) PostWithReader(reqUrl string, ptr interface{}, fieldname string, r io.Reader) (resp *http.Response, err error) {
+func (c *UnixDomainSockHttpClient) PostWithReader(reqUrl string, reqPtr interface{}, fieldName string, r io.Reader, respPtr interface{}) (resp *http.Response, err error) {
 	buf := &bytes.Buffer{}
 	mw := multipart.NewWriter(buf)
-	if err = MultipartCopy(mw, fieldname, r); err != nil {
+	if err = MultipartCopy(mw, fieldName, r); err != nil {
 		return
 	}
-	if err = MultipartJson(mw, "json", ptr); err != nil {
+	if err = MultipartJson(mw, "json", reqPtr); err != nil {
 		return
 	}
 	if err = mw.Close(); err != nil {
@@ -236,16 +255,17 @@ func (c *UnixDomainSockHttpClient) PostWithReader(reqUrl string, ptr interface{}
 	if err != nil {
 		return
 	}
+	err = decodeResponseBody(resp, respPtr)
 	return
 }
 
-func (c *UnixDomainSockHttpClient) PostWithFile(reqUrl string, ptr interface{}, fieldname, filename string) (resp *http.Response, err error) {
+func (c *UnixDomainSockHttpClient) PostWithFile(reqUrl string, reqPtr interface{}, fieldName, fileName string, respPtr interface{}) (resp *http.Response, err error) {
 	buf := &bytes.Buffer{}
 	mw := multipart.NewWriter(buf)
-	if err = MultipartFile(mw, fieldname, filename); err != nil {
+	if err = MultipartFile(mw, fieldName, fileName); err != nil {
 		return
 	}
-	if err = MultipartJson(mw, "json", ptr); err != nil {
+	if err = MultipartJson(mw, "json", reqPtr); err != nil {
 		return
 	}
 	if err = mw.Close(); err != nil {
@@ -260,10 +280,11 @@ func (c *UnixDomainSockHttpClient) PostWithFile(reqUrl string, ptr interface{}, 
 	if err != nil {
 		return
 	}
+	err = decodeResponseBody(resp, respPtr)
 	return
 }
-func (c *UnixDomainSockHttpClient) Delete(reqUrl string) (resp *http.Response, err error) {
-	return c.Do(http.MethodDelete, reqUrl, nil, nil)
+func (c *UnixDomainSockHttpClient) Delete(reqUrl string, respPtr interface{}) (resp *http.Response, err error) {
+	return c.Do(http.MethodDelete, reqUrl, nil, respPtr)
 }
 
 func UrlWithParams(reqUrl string, reqParams ...*url.Values) string {
@@ -280,10 +301,10 @@ func UrlWithParams(reqUrl string, reqParams ...*url.Values) string {
 	return reqUrlWithParams
 }
 
-func MultipartCopy(mw *multipart.Writer, fieldname string, r io.Reader) error {
+func MultipartCopy(mw *multipart.Writer, fieldName string, r io.Reader) error {
 	h := make(textproto.MIMEHeader)
 	h.Set("Content-Disposition",
-		fmt.Sprintf(`form-data; name="%s"; filename="blob"`, fieldname))
+		fmt.Sprintf(`form-data; name="%s"; filename="blob"`, fieldName))
 	h.Set("Content-Type", "application/zip")
 	pw, err := mw.CreatePart(h)
 	if err != nil {
@@ -295,14 +316,14 @@ func MultipartCopy(mw *multipart.Writer, fieldname string, r io.Reader) error {
 	return nil
 }
 
-func MultipartFile(mw *multipart.Writer, fieldname, filename string) error {
-	f, err := os.Open(filename)
+func MultipartFile(mw *multipart.Writer, fieldName, fileName string) error {
+	f, err := os.Open(fileName)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	pw, err := mw.CreateFormFile(fieldname, path.Base(filename))
+	pw, err := mw.CreateFormFile(fieldName, path.Base(fileName))
 	if err != nil {
 		return err
 	}
@@ -311,10 +332,10 @@ func MultipartFile(mw *multipart.Writer, fieldname, filename string) error {
 	}
 	return nil
 }
-func MultipartJson(mw *multipart.Writer, fieldname string, v interface{}) error {
+func MultipartJson(mw *multipart.Writer, fieldName string, v interface{}) error {
 	h := make(textproto.MIMEHeader)
 	h.Set("Content-Disposition",
-		fmt.Sprintf(`form-data; name="%s"; filename="blob"`, fieldname))
+		fmt.Sprintf(`form-data; name="%s"; filename="blob"`, fieldName))
 	h.Set("Content-Type", "application/json")
 	pw, err := mw.CreatePart(h)
 	if err != nil {

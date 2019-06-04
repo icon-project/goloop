@@ -296,7 +296,10 @@ func main() {
 	genMdCmd := NewGenerateMarkdownCommand()
 	genMdCmd.Hidden = true
 	rootCmd.AddCommand(genMdCmd)
-	rootCmd.Execute()
+	err := rootCmd.Execute()
+	if err != nil {
+		os.Exit(1)
+	}
 }
 
 // make sure that cfg.KeyStoreData always has valid value to let them

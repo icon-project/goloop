@@ -31,8 +31,8 @@ type Node struct {
 
 	mtx sync.RWMutex
 
-	chains    map[string]*Chain
-	channels  map[int]string
+	chains   map[string]*Chain
+	channels map[int]string
 
 	cliSrv *UnixDomainSockHttpServer
 }
@@ -93,7 +93,7 @@ func (n *Node) _add(cfg *chain.Config) (module.Chain, error) {
 		return nil, err
 	}
 
-	c := &Chain{chain.NewChain(n.w, n.nt, n.srv, n.pm, cfg),cfg}
+	c := &Chain{chain.NewChain(n.w, n.nt, n.srv, n.pm, cfg), cfg}
 	if err := c.Init(true); err != nil {
 		return nil, err
 	}
@@ -336,7 +336,7 @@ func NewNode(
 	eeSocket := cfg.ResolveAbsolute(cfg.EESocket)
 	pm, err := eeproxy.NewManager("unix", eeSocket, ee)
 	if err != nil {
-		log.Panicln("FAIL to start EEManager")
+		log.Panicf("FAIL to start EEManager err=%+v", err)
 	}
 	if err := pm.SetInstances(cfg.EEInstances, cfg.EEInstances, cfg.EEInstances); err != nil {
 		log.Panicf("FAIL to EEManager.SetInstances err=%+v", err)
