@@ -20,9 +20,9 @@ PRE_GOLOOP_VERSION=$(docker image inspect ${REPO_GOLOOP} -f "{{.Config.Labels.GO
 if [ "${GOLOOP_VERSION}" != "${PRE_GOLOOP_VERSION}" ]
 then
   echo "Build image ${REPO_GOLOOP} using ${REPO_PY_DEPS} with TAG_PY_DEPS:${TAG_PY_DEPS}"
-  mkdir dist
-  cp ../../pyee/dist/pyexec-*.whl ./dist/
-  cp ../../bin/goloop ./dist/
+  mkdir -p dist/pyee dist/bin
+  cp ../../pyee/dist/* ./dist/pyee/
+  cp ../../bin/* ./dist/bin/
   docker build \
     --build-arg REPO_PY_DEPS=${REPO_PY_DEPS} \
     ${BUILD_ARG_TAG_PY_DEPS} \

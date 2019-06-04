@@ -1,4 +1,0 @@
-#!/bin/sh
-source /goloop/venv/bin/activate
-
-exec "$@"
