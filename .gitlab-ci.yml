@@ -206,7 +206,7 @@ ITJ:gochain:governance:audit:
   tags:
     - docker-service
 
-ITJ:goloop:normal:
+.ITJ:goloop:normal:
   <<: *ITJ__goloop
   variables:
     GOLOOP_DOCKER_REPLICAS: 4
@@ -217,7 +217,7 @@ ITJ:goloop:normal:
   script:
     - ./gradlew testNormal -DNO_SERVER="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
 
-ITJ:goloop:governance:
+.ITJ:goloop:governance:
   <<: *ITJ__goloop
   variables:
     GOLOOP_DOCKER_REPLICAS: 4
@@ -228,7 +228,7 @@ ITJ:goloop:governance:
   script:
     - ./gradlew testGovernance -DNO_SERVER="true" -DAUDIT="false" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
 
-ITJ:goloop:governance:audit:
+.ITJ:goloop:governance:audit:
   <<: *ITJ__goloop
   variables:
     GOLOOP_DOCKER_REPLICAS: 4
