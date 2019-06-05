@@ -141,27 +141,36 @@ func ErrServer(message ...interface{}) *Error {
 }
 
 func ErrorHandler(re *Error, c echo.Context) {
-	req := c.Get("request").(*Request)
-	res := &Response{
-		ID:      req.ID,
-		Version: Version,
-		Error:   re,
-	}
-
+	var res *Response
 	status := 0
-	switch re.Code {
-	case ErrorCodeJsonParse, ErrorCodeInvalidRequest, ErrorCodeInvalidParams:
+
+	if re.Code == ErrorCodeJsonParse {
+		res = &Response{
+			Version: Version,
+			Error:   re,
+		}
 		status = http.StatusBadRequest
-	case ErrorCodeMethodNotFound, ErrorCodeNotFound:
-		status = http.StatusNotFound
-	case ErrorCodeServer, ErrorCodeInternal:
-		status = http.StatusInternalServerError
-	default:
-		switch {
-		case re.Code <= ErrorCodeScore && re.Code > ErrorCode(ErrorCodeScore-100):
-			status = http.StatusOK
-		default:
+	} else {
+		req := c.Get("request").(*Request)
+		res = &Response{
+			ID:      req.ID,
+			Version: Version,
+			Error:   re,
+		}
+		switch re.Code {
+		case ErrorCodeInvalidRequest, ErrorCodeInvalidParams:
+			status = http.StatusBadRequest
+		case ErrorCodeMethodNotFound, ErrorCodeNotFound:
+			status = http.StatusNotFound
+		case ErrorCodeServer, ErrorCodeInternal:
 			status = http.StatusInternalServerError
+		default:
+			switch {
+			case re.Code <= ErrorCodeScore && re.Code > ErrorCode(ErrorCodeScore-100):
+				status = http.StatusOK
+			default:
+				status = http.StatusInternalServerError
+			}
 		}
 	}
 

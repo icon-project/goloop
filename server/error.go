@@ -1,8 +1,9 @@
 package server
 
 import (
-	"github.com/icon-project/goloop/server/jsonrpc"
 	"github.com/labstack/echo/v4"
+
+	"github.com/icon-project/goloop/server/jsonrpc"
 )
 
 func HTTPErrorHandler(err error, c echo.Context) {
