@@ -60,6 +60,12 @@ func (tp *TransactionPool) RemoveOldTXs(bts int64) {
 		if tx.Timestamp() <= bts {
 			tp.list.Remove(iter)
 			direct := iter.ts != 0
+			if iter.err == nil {
+				log.Printf("DROP TX: id=0x%x reason=%v", tx.ID(), iter.err)
+			} else {
+				log.Printf("DROP TX: id=0x%x timeout %d <= %d",
+					tx.ID(), tx.Timestamp(), bts)
+			}
 			tp.monitor.OnDropTx(len(tx.Bytes()), direct)
 		}
 		iter = next
@@ -83,7 +89,7 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 		maxCount = configMaxTxCount
 	}
 
-	txs := make([]transaction.Transaction, 0, configDefaultTxSliceCapacity)
+	txs := make([]*txElement, 0, configDefaultTxSliceCapacity)
 	poolSize := tp.list.Len()
 	txSize := int(0)
 	for e := tp.list.Front(); e != nil && txSize < maxBytes && len(txs) < maxCount; e = e.Next() {
@@ -93,7 +99,7 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 			break
 		}
 		txSize += len(bs)
-		txs = append(txs, tx)
+		txs = append(txs, e)
 	}
 	tp.mutex.Unlock()
 
@@ -102,10 +108,12 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 	valNum := 0
 	invalidNum := 0
 	txSize = 0
-	for _, tx := range txs {
+	for _, e := range txs {
+		tx := e.Value()
 		// TODO need to check transaction in parent transitions.
 		if v, err := tp.txdb.Get(tx.ID()); err == nil && v != nil {
-			txs[invalidNum] = tx
+			e.err = errors.InvalidStateError.New("Already processed")
+			txs[invalidNum] = e
 			invalidNum += 1
 			continue
 		}
@@ -113,8 +121,9 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 			// If returned error is critical(not usable in the future)
 			// then it should removed from the pool
 			// Otherwise, it remains in the pool
+			e.err = err
 			if state.TimeOutError.Equals(err) || state.NotEnoughStepError.Equals(err) {
-				txs[invalidNum] = tx
+				txs[invalidNum] = e
 				invalidNum += 1
 			}
 			continue
@@ -125,15 +134,18 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 	}
 
 	if invalidNum > 0 {
-		go func(txs []transaction.Transaction) {
+		go func(txs []*txElement) {
 			tp.mutex.Lock()
 			defer tp.mutex.Unlock()
-			for _, tx := range txs {
-				if tx != nil {
-					if ok, ts := tp.list.RemoveTx(tx); ok {
-						direct := ts != 0
-						tp.monitor.OnDropTx(len(tx.Bytes()), direct)
+			for _, e := range txs {
+				if tp.list.Remove(e) {
+					tx := e.Value()
+					direct := e.ts != 0
+					if e.err != nil {
+						log.Printf("DROP TX: id=0x%x reason=%v",
+							tx.ID(), e.err)
 					}
+					tp.monitor.OnDropTx(len(tx.Bytes()), direct)
 				}
 			}
 		}(txs[0:invalidNum])

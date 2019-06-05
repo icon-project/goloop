@@ -27,6 +27,7 @@ type transactionList struct {
 type txElement struct {
 	value transaction.Transaction
 	ts    int64
+	err   error
 
 	list               *transactionList
 	listNext, listPrev *txElement
@@ -131,10 +132,7 @@ func (l *transactionList) RemoveTx(tx module.Transaction) (bool, int64) {
 }
 
 func (l *transactionList) Remove(t *txElement) bool {
-	if t.list == nil {
-		return true
-	}
-	if t.list != l {
+	if t.list == nil || t.list != l {
 		return false
 	}
 
