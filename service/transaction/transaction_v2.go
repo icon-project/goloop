@@ -77,7 +77,7 @@ func (tx *transactionV2) ValidateNetwork(nid int) bool {
 func (tx *transactionV2) PreValidate(wc state.WorldContext, update bool) error {
 	// outdated or invalid timestamp?
 	if ConfigOnCheckingTimestamp == true {
-		tsDiff := wc.BlockTimeStamp() - tx.TimeStamp.Value
+		tsDiff := tx.TimeStamp.Value - wc.BlockTimeStamp()
 		if tsDiff <= -ConfigTXTimestampBackwardMargin ||
 			tsDiff > ConfigTXTimestampForwardLimit {
 			return InvalidTxTime.Errorf("Timeout(block:%d, tx:%d)", wc.BlockTimeStamp(), tx.TimeStamp.Value)
