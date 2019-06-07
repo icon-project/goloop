@@ -18,10 +18,10 @@ repositories {
 sourceSets.test.java.srcDirs = ["java"]
 
 dependencies {
-    implementation "foundation.icon:icon-sdk:0.9.11"
     implementation "org.java-websocket:Java-WebSocket:1.4.0"
     compile "org.junit.jupiter:junit-jupiter:5.4.2"
     testRuntime "org.junit.jupiter:junit-jupiter-engine:5.4.2"
+    implementation project(':sdk')
 }
 
 compileTestJava {
@@ -72,10 +72,9 @@ class ChainTest extends Test {
         process = pb.start()
 
         // Hook shutdown for kill the process for sure
-        final ChainTest t = this
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
-            public void run() {
-                t.stopServer()
+            void run() {
+                stopServer()
             }
         }))
         systemProperty("CHAIN_ENV", envFile)

@@ -1,2 +1,4 @@
 rootProject.name = 'goloop-testsuite'
+include(':sdk')
+project(':sdk').projectDir = new File(settingsDir, '../sdk/java/library')
 
