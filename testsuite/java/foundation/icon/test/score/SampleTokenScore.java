@@ -54,7 +54,7 @@ public class SampleTokenScore extends Score {
             if (balance.equals(BigInteger.valueOf(0))) {
                 try {
                     if (limitTime < System.currentTimeMillis()) {
-                        throw new ResultTimeoutException(null);
+                        throw new ResultTimeoutException();
                     }
                     // wait until block confirmation
                     LOG.info(msg + "; Retry in 1 sec.");

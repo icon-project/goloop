@@ -67,7 +67,7 @@ public class Utils {
             String msg = "ICX balance of " + address + ": " + icxBalance;
             if (icxBalance.equals(oldValInt)) {
                 if (limitTime < System.currentTimeMillis()) {
-                    throw new ResultTimeoutException(null);
+                    throw new ResultTimeoutException();
                 }
                 try {
                     // wait until block confirmation
@@ -325,25 +325,27 @@ public class Utils {
     }
 
     public static void transferAndCheck(IconService service, Env.Chain chain,
-                                        KeyWallet from, Address to, BigInteger val) throws Exception{
-        BigInteger prevFromBal = service.getBalance(from.getAddress()).execute();
-        BigInteger expectedFromBal = prevFromBal.subtract(val);
-        assertTrue(expectedFromBal.signum() >= 0);
-
+                                        KeyWallet from, Address to, BigInteger val) throws Exception {
         BigInteger prevToBal = service.getBalance(to).execute();
         Bytes txHash = Utils.transfer(service, chain.networkId, from, to, val);
-        TransactionResult result = Utils.getTransactionResult(
-                service, txHash, Constants.DEFAULT_WAITING_TIME);
+
+        TransactionResult result = null;
+        try {
+            result = Utils.getTransactionResult(
+                    service, txHash, Constants.DEFAULT_WAITING_TIME);
+        }
+        catch (ResultTimeoutException ex) {
+            BigInteger bal = service.getBalance(from.getAddress()).execute();
+            if (bal.compareTo(val) < 0) {
+                throw new NotEnoughBalanceException(from.getAddress(), bal, val);
+            }
+        }
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
         assertEquals(prevToBal.add(val), service.getBalance(to).execute());
     }
 
     public static void transferAndCheck(IconService service, Env.Chain chain,
-                                        KeyWallet from, Address []to, BigInteger val) throws Exception{
-        BigInteger prevFromBal = service.getBalance(from.getAddress()).execute();
-        BigInteger expectedFromBal = prevFromBal.subtract(val.multiply(BigInteger.valueOf(to.length)));
-        assertTrue(expectedFromBal.signum() >= 0);
-
+                                        KeyWallet from, Address []to, BigInteger val) throws Exception {
         BigInteger []prevBal = new BigInteger[to.length];
         Bytes []txHash = new Bytes[to.length];
         for(int i = 0; i < to.length; i++) {
@@ -353,8 +355,17 @@ public class Utils {
         }
 
         for(int i = 0; i < to.length; i++) {
-            TransactionResult result = Utils.getTransactionResult(
-                    service, txHash[i], Constants.DEFAULT_WAITING_TIME);
+            TransactionResult result = null;
+            try {
+                result = Utils.getTransactionResult(
+                        service, txHash[i], Constants.DEFAULT_WAITING_TIME);
+            }
+            catch (ResultTimeoutException ex) {
+                BigInteger bal = service.getBalance(from.getAddress()).execute();
+                if (bal.compareTo(val) < 0) {
+                    throw new NotEnoughBalanceException(from.getAddress(), bal, val);
+                }
+            }
             assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
             assertEquals(prevBal[i].add(val), service.getBalance(to[i]).execute());
         }

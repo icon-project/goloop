@@ -43,8 +43,9 @@ public class ScoreTest {
     private static GovScore govScore;
     private static Score testScore;
     private static final String PATH = Constants.SCORE_HELLOWORLD_PATH;
-    private static final long testCCValue = 10;
-    private static final long testStepPrice = 1;
+    private static final long contractCallStep = 10;
+    private static final long defaultStep = 2;
+    private static final long stepPrice = 1;
 
     @BeforeAll
     public static void init() throws Exception {
@@ -70,8 +71,9 @@ public class ScoreTest {
         govScore = new GovScore(iconService, chain);
         govScore.setMaxStepLimit("invoke", BigInteger.valueOf(1000));
         govScore.setMaxStepLimit("query", BigInteger.valueOf(1000));
-        govScore.setStepCost("contractCall", BigInteger.valueOf(testCCValue));
-        govScore.setStepPrice(BigInteger.valueOf(testStepPrice));
+        govScore.setStepCost("contractCall", BigInteger.valueOf(contractCallStep));
+        govScore.setStepCost("default", BigInteger.valueOf(defaultStep));
+        govScore.setStepPrice(BigInteger.valueOf(stepPrice));
     }
 
     @AfterAll
@@ -130,8 +132,11 @@ public class ScoreTest {
     public void notEnoughStepLimit() throws Exception{
         LOG.infoEntering( "notEnoughStepLimit");
         KeyWallet testWallet = KeyWallet.create();
-        long needValue = testCCValue * testStepPrice;
-        for(long step : new long[]{testCCValue - 1, testCCValue}) {
+        long needStep = contractCallStep + defaultStep;
+        long needValue = needStep * stepPrice;
+        long preValidationFailureStep = defaultStep - 1;
+        // expected {prevalidation failure, transaction execution failre, transaction execution success}
+        for(long step : new long[]{preValidationFailureStep, needStep - 1, needStep}) {
             try {
                 BigInteger sub = BigInteger.valueOf(needValue).subtract(iconService.getBalance(testWallet.getAddress()).execute());
                 if(sub.compareTo(BigInteger.ZERO) > 0) {
@@ -141,13 +146,14 @@ public class ScoreTest {
                 TransactionResult result = testScore.invokeAndWaitResult(testWallet, "hello",
                         null, BigInteger.valueOf(0), BigInteger.valueOf(step));
                 LOG.infoExiting();
-                if(step < testCCValue) {
+                if(step < needStep) {
                     assertEquals(Constants.STATUS_FAIL, result.getStatus());
                 } else {
                     assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
                 }
             } catch (ResultTimeoutException ex) {
-                assertTrue(step < testCCValue);
+                LOG.infoExiting();
+                assertTrue(preValidationFailureStep == step);
             }
         }
         LOG.infoExiting();
@@ -157,13 +163,14 @@ public class ScoreTest {
     public void notEnoughBalance() throws Exception {
         LOG.infoEntering( "notEnoughBalance");
         KeyWallet testWallet = KeyWallet.create();
-        long needValue = testCCValue * testStepPrice;
+        long needStep = contractCallStep + defaultStep;
+        long needValue = needStep * stepPrice;
         long []values = {needValue, needValue - 1};
         for(long value : values) {
             Utils.transferAndCheck(iconService, chain, chain.godWallet, testWallet.getAddress(), BigInteger.valueOf(value));
             try {
                 TransactionResult result = testScore.invokeAndWaitResult(testWallet, "hello", null
-                        , BigInteger.valueOf(0), BigInteger.valueOf(testCCValue));
+                        , BigInteger.valueOf(0), BigInteger.valueOf(needStep));
                 assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
             } catch (ResultTimeoutException ex) {
                 assertTrue(value < needValue);
@@ -175,7 +182,8 @@ public class ScoreTest {
     @Test
     public void callWithValue() throws Exception {
         LOG.infoEntering( "callWithValue");
-        long needValue = testCCValue * testStepPrice ; // invoke & query
+        long needStep = contractCallStep + defaultStep;
+        long needValue = needStep * stepPrice;
         final long testVal = 10;
         KeyWallet testWallet;
         BigInteger expectedBal;
@@ -186,7 +194,7 @@ public class ScoreTest {
 
         Utils.transferAndCheck(iconService, chain, chain.godWallet, testWallet.getAddress(), BigInteger.valueOf(testVal + needValue));
         TransactionResult result = testScore.invokeAndWaitResult(testWallet, "transfer",
-                null, BigInteger.valueOf(testVal), BigInteger.valueOf(testCCValue));
+                null, BigInteger.valueOf(testVal), BigInteger.valueOf(needStep));
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
 
         RpcObject params = new RpcObject.Builder()

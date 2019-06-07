@@ -1,14 +1,11 @@
 package foundation.icon.test.common;
 
 import foundation.icon.icx.KeyWallet;
-
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-
-//import static org.junit.Assert.assertNotNull;
 
 public class Env {
     public static final Log LOG = Log.getGlobal();
