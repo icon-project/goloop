@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 
@@ -15,6 +16,10 @@ import (
 func JsonRpc(mr *jsonrpc.MethodRepository) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			ctype := c.Request().Header.Get(echo.HeaderContentType)
+			if strings.HasPrefix(ctype, echo.MIMETextPlain) {
+				c.Request().Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+			}
 			r := new(jsonrpc.Request)
 			if err := c.Bind(r); err != nil {
 				return jsonrpc.ErrParse()
