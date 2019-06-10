@@ -500,7 +500,8 @@ func getProofForResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{
 
 // convert TransactionList to []Transaction
 func convertTransactionList(txs module.TransactionList) ([]interface{}, error) {
-	list := new([]interface{})
+	list := []interface{}{}
+
 	for it := txs.Iterator(); it.Has(); it.Next() {
 		tx, _, err := it.Get()
 		if err != nil {
@@ -509,17 +510,17 @@ func convertTransactionList(txs module.TransactionList) ([]interface{}, error) {
 		switch tx.Version() {
 		case module.TransactionVersion2:
 			res, err := tx.ToJSON(module.TransactionVersion2)
-			*list = append(*list, res)
+			list = append(list, res)
 			if err != nil {
 				return nil, err
 			}
 		case module.TransactionVersion3:
 			res, err := tx.ToJSON(module.TransactionVersion3)
-			*list = append(*list, res)
+			list = append(list, res)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
-	return *list, nil
+	return list, nil
 }
