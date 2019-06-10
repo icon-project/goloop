@@ -100,6 +100,9 @@ func (srv *Manager) Start() {
 	// middleware
 	// srv.e.Use(middleware.Logger())
 	srv.e.Use(middleware.Recover())
+	srv.e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		MaxAge: 3600,
+	}))
 
 	// auth : hello test
 	srv.e.POST("/auth", authentication(srv.wallet))
@@ -115,7 +118,7 @@ func (srv *Manager) Start() {
 	// jsonrpc
 	g := srv.e.Group("/api")
 	// g.Use(JsonRpc(srv, mr), JsonRpcLogger(), Chunk())
-	g.Use(JsonRpc(mr), Chunk(), middleware.CORS())
+	g.Use(JsonRpc(mr), Chunk())
 	g.POST("/v3", mr.Handle, AnyChainInjector(srv))
 	g.POST("/v3/:channel", mr.Handle, ChainInjector(srv))
 
