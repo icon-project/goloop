@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/icon-project/goloop/server/jsonrpc"
 	"gopkg.in/vmihailenco/msgpack.v4"
 
 	"github.com/icon-project/goloop/common"
@@ -219,7 +220,7 @@ type receiptJSON struct {
 
 func (r *receipt) ToJSON(version int) (interface{}, error) {
 	switch version {
-	case module.TransactionVersion2, module.TransactionVersion3:
+	case jsonrpc.APIVersion2, jsonrpc.APIVersion3:
 		var rjo receiptJSON
 		rjo.To = r.data.To
 		rjo.CumulativeStepUsed.Set(&r.data.CumulativeStepUsed.Int)
@@ -264,7 +265,7 @@ func (r *receipt) ToJSON(version int) (interface{}, error) {
 }
 
 func (r *receipt) MarshalJSON() ([]byte, error) {
-	obj, err := r.ToJSON(module.TransactionVersion3)
+	obj, err := r.ToJSON(jsonrpc.APIVersionLast)
 	if err != nil {
 		return nil, err
 	}

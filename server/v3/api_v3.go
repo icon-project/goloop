@@ -14,7 +14,7 @@ import (
 	"github.com/icon-project/goloop/service"
 )
 
-const jsonRpcApiVersion = 3
+const jsonRpcApiVersion = jsonrpc.APIVersion3
 
 func MethodRepository() *jsonrpc.MethodRepository {
 	mr := jsonrpc.NewMethodRepository()
@@ -325,12 +325,12 @@ func getTransactionByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 	var res interface{}
 	switch tx.Version() {
 	case module.TransactionVersion2:
-		res, err = tx.ToJSON(module.TransactionVersion2)
+		res, err = tx.ToJSON(jsonrpc.APIVersion2)
 		if err != nil {
 			return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 		}
 	case module.TransactionVersion3:
-		res, err = tx.ToJSON(module.TransactionVersion3)
+		res, err = tx.ToJSON(jsonrpc.APIVersion3)
 		if err != nil {
 			return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 		}
@@ -509,13 +509,13 @@ func convertTransactionList(txs module.TransactionList) ([]interface{}, error) {
 		}
 		switch tx.Version() {
 		case module.TransactionVersion2:
-			res, err := tx.ToJSON(module.TransactionVersion2)
+			res, err := tx.ToJSON(jsonrpc.APIVersion2)
 			list = append(list, res)
 			if err != nil {
 				return nil, err
 			}
 		case module.TransactionVersion3:
-			res, err := tx.ToJSON(module.TransactionVersion3)
+			res, err := tx.ToJSON(jsonrpc.APIVersion3)
 			list = append(list, res)
 			if err != nil {
 				return nil, err

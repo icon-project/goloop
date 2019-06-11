@@ -12,6 +12,12 @@ import (
 
 const Version = "2.0"
 
+const (
+	APIVersion2    = 2
+	APIVersion3    = 3
+	APIVersionLast = APIVersion3
+)
+
 type Request struct {
 	Version string           `json:"jsonrpc" validate:"required,version"`
 	Method  string           `json:"method" validate:"required"`

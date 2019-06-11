@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/big"
 
+	"github.com/icon-project/goloop/server/jsonrpc"
 	"github.com/icon-project/goloop/service/scoreresult"
 
 	"github.com/icon-project/goloop/service/contract"
@@ -183,7 +184,7 @@ func (tx *transactionV2) Nonce() *big.Int {
 }
 
 func (tx *transactionV2) ToJSON(version int) (interface{}, error) {
-	if version == 2 {
+	if version == jsonrpc.APIVersion2 {
 		var jso map[string]interface{}
 		if err := json.Unmarshal(tx.raw, &jso); err != nil {
 			return nil, InvalidFormat.Errorf("Unmarshal FAILs(%s)", string(tx.raw))
