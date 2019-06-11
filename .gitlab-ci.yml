@@ -205,6 +205,8 @@ ITJ:gochain:governance:audit:
       - testsuite/build/reports
   tags:
     - docker-service
+  except:
+    - tags
 
 ITJ:goloop:normal:
   <<: *ITJ__goloop
