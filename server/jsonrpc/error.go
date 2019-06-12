@@ -167,7 +167,8 @@ func ErrorHandler(re *Error, c echo.Context) {
 		default:
 			switch {
 			case re.Code <= ErrorCodeScore && re.Code > ErrorCode(ErrorCodeScore-100):
-				status = http.StatusOK
+				// status = http.StatusOK
+				status = http.StatusInternalServerError
 			default:
 				status = http.StatusInternalServerError
 			}
