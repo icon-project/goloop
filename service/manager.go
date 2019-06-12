@@ -311,11 +311,11 @@ func (m *manager) SendTransaction(txi interface{}) ([]byte, error) {
 	}
 
 	if err := newTx.Verify(); err != nil {
-		return nil, InvalidTransactionError.Wrapf(err, "Failed to verify transaction")
+		return nil, InvalidTransactionError.Wrap(err, "Failed to verify transaction")
 	}
 	hash := newTx.ID()
 	if hash == nil {
-		return nil, InvalidTransactionError.Errorf("Failed to get hash")
+		return nil, InvalidTransactionError.New("Failed to get hash")
 	}
 
 	var txPool *TransactionPool
