@@ -253,9 +253,9 @@ public class ChainScoreTest{
             assertEquals(expect, object.getItem("status").asString());
 
             try {
-                Utils.sendTransactionWithCall(iconService, chain.networkId,
+                TransactionResult tr = Utils.sendTransactionWithCall(iconService, chain.networkId,
                         caller, scoreAddr, "hello", null, 0);
-                assertEquals(Constants.SCORE_STATUS_ACTIVE, expect);
+                assertEquals(expect.equals(Constants.SCORE_STATUS_ACTIVE), Constants.STATUS_SUCCESS.equals(tr.getStatus()));
             }
             catch(ResultTimeoutException ex) {
                 LOG.info("FAIL to get result by tx");
@@ -321,9 +321,8 @@ public class ChainScoreTest{
             assertEquals(status, expect);
 
             try {
-                Utils.sendTransactionWithCall(iconService, chain.networkId, caller, scoreAddr, "hello", null, 0);
-                // cannot reach here
-                fail();
+                TransactionResult tr = Utils.sendTransactionWithCall(iconService, chain.networkId, caller, scoreAddr, "hello", null, 0);
+                assertEquals(Constants.STATUS_FAIL,tr.getStatus());
             }
             catch(ResultTimeoutException ex) {
                 LOG.info("FAIL to get result by tx");
