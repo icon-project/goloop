@@ -11,10 +11,6 @@ import (
 	"log"
 )
 
-const (
-	IGNORE_ADDITIONAL_PARAM = true
-)
-
 type MethodType int
 
 const (
@@ -309,6 +305,7 @@ func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
 			return nil, scoreresult.WithStatus(err, module.StatusInvalidParameter)
 		}
 	}
+	matched := 0
 	inputs := make([]interface{}, len(a.Inputs))
 	for i, input := range a.Inputs {
 		param, ok := params[input.Name]
@@ -320,9 +317,8 @@ func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
 			return nil, scoreresult.Errorf(module.StatusInvalidParameter,
 				"MissingParam(param=%s)", input.Name)
 		}
-		if !IGNORE_ADDITIONAL_PARAM {
-			delete(params, input.Name)
-		}
+
+		matched += 1
 
 		switch input.Type {
 		case Integer:
@@ -366,17 +362,9 @@ func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
 		}
 	}
 
-	if !IGNORE_ADDITIONAL_PARAM {
-		if len(params) != 0 {
-			iParam := make([]string, len(params))
-			i := 0
-			for p := range params {
-				iParam[i] = p
-				i++
-			}
-			return nil, scoreresult.Errorf(module.StatusInvalidParameter,
-				"Not defined param [%v]\n", iParam)
-		}
+	if matched != len(params) {
+		return nil, scoreresult.Errorf(module.StatusInvalidParameter,
+			"UnexpectedParam(%v)\n", params)
 	}
 
 	if to, err := common.EncodeAny(inputs); err != nil {
