@@ -1,0 +1,246 @@
+openapi: 3.0.2
+info:
+  title: Node Management API
+  description: goloop management
+  version: 0.0.1
+servers:
+  - url: http://localhost:9080/admin
+tags:
+  - name: node
+    description: Node Management
+  - name: chain
+    description: Chain Management
+x-tagGroups:
+  - name: Node Management
+    tags:
+      - chain
+      - node
+paths:
+  /chain:
+    get:
+      operationId: listChain
+      tags:
+        - chain
+      summary: List Chains
+      description: Returns a list of chains
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Chain"
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+    post:
+      operationId: joinChain
+      tags:
+        - chain
+      summary: Join Chain
+      description: Join Chain
+      responses:
+        "200":
+          description: Success
+        "500":
+          description: Internal Server Error
+  /chain/{nid}:
+    get:
+      operationId: getChain
+      tags:
+        - chain
+      summary: Get Chain
+      description: Get Chain Infomation.
+      parameters:
+        - name: nid
+          in: path
+          description: Chain Network ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Chain"
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+    delete:
+      operationId: leaveChain
+      tags:
+        - chain
+      summary: Leave Chain
+      description: Leave Chain.
+      parameters:
+        - name: nid
+          in: path
+          description: Chain Network ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Success
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+  /chain/{nid}/start:
+    post:
+      operationId: startChain
+      tags:
+        - chain
+      summary: Start Chain
+      description: Start Chain.
+      parameters:
+        - name: nid
+          in: path
+          description: Chain Network ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Success
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+  /chain/{nid}/stop:
+    post:
+      operationId: stopChain
+      tags:
+        - chain
+      summary: Stop Chain
+      description: Stop Chain.
+      parameters:
+        - name: nid
+          in: path
+          description: Chain Network ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: Success
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+  # /chain/{nid}/reset:
+  #   post:
+  #     operationId: resetChain
+  #     tags:
+  #       - chain
+  #     summary: Reset Chain
+  #     description: Reset Chain.
+  #     parameters:
+  #       - name: nid
+  #         in: path
+  #         description: Chain Network ID
+  #         required: true
+  #         schema:
+  #           type: integer
+  #           format: int64
+  #     responses:
+  #       "200":
+  #         description: Success
+  #       "404":
+  #         description: Not Found
+  #       "500":
+  #         description: Internal Server Error
+  # /chain/{nid}/verify:
+  #   post:
+  #     operationId: verifyChain
+  #     tags:
+  #       - chain
+  #     summary: Verify Chain
+  #     description: Verify Chain.
+  #     parameters:
+  #       - name: nid
+  #         in: path
+  #         description: Chain Network ID
+  #         required: true
+  #         schema:
+  #           type: integer
+  #           format: int64
+  #     responses:
+  #       "200":
+  #         description: Success
+  #       "404":
+  #         description: Not Found
+  #       "500":
+  #         description: Internal Server Error
+  /system:
+    get:
+      operationId: getSystem
+      tags:
+        - node
+      summary: View System
+      description: Return System Infomation.
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/System"
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+components:
+  schemas:
+    Chain:
+      type: object
+      properties:
+        nid:
+          type: integer
+          format: int64
+          description: nid
+        height:
+          type: integer
+          format: int64
+          description: height
+        state:
+          type: string
+          description: state
+      example:
+        nid: 1
+        height: 100
+        state: "started"
+    System:
+      type: object
+      properties:
+        buildVersion:
+          type: string
+          description: buildVersion
+        buildTags:
+          type: string
+          description: buildTags
+        address:
+          type: string
+          description: address
+        p2p:
+          type: string
+          description: p2p address
+        p2pListen:
+          type: string
+          description: p2p listen address
+      example:
+        buildVersion: "release-gs/v0.1.1-2"
+        buildTags: "darwin/amd64 tags()-2019-05-31-13:51:28"
+        address: "hx4208599c8f58fed475db747504a80a311a3af63b"
+        p2p: "localhost:8080"
+        p2pListen: "localhost:8080"
