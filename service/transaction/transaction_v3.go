@@ -19,6 +19,7 @@ import (
 const (
 	txMaxDataSize                    = 512 * 1024 // 512kB
 	configUseInputCoutingCompactJSON = true
+	configCheckDataOnPreValidate     = false
 )
 
 type transactionV3Data struct {
@@ -263,7 +264,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 	}
 
 	// checkups by data types
-	if tx.DataType != nil {
+	if configCheckDataOnPreValidate && tx.DataType != nil {
 		switch *tx.DataType {
 		case DataTypeCall:
 			// check if contract is active and not blacklisted

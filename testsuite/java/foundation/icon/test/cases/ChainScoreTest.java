@@ -163,13 +163,11 @@ public class ChainScoreTest{
                 try {
                     LOG.infoEntering("method[hello], disabled[" + disabled + "]");
                     result = helloWorld.invokeHello(caller);
-                    assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+                    assertEquals(!disabled, Constants.STATUS_SUCCESS.equals(result.getStatus()));
                 }
                 catch (ResultTimeoutException ex) {
                     LOG.info("FAIL to get result by tx");
-                    if(from == helloWorldOwner) {
-                        assertEquals("disableScore", method);
-                    }
+                    assertTrue(disabled);
                 }
                 LOG.infoExiting();
             }
@@ -381,13 +379,11 @@ public class ChainScoreTest{
             LOG.infoEntering("method[hello], disabled[" + blocked + "]");
             try {
                 result = helloWorld.invokeHello(caller);
-                assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+                assertEquals(!blocked, Constants.STATUS_SUCCESS.equals(result.getStatus()));
             }
             catch (ResultTimeoutException ex) {
                 LOG.info("FAIL to get result by tx");
-                if(score.addr.equals(Constants.GOV_ADDRESS)) {
-                    assertEquals("blockScore", method);
-                }
+                assertTrue(blocked);
             }
             LOG.infoExiting();
         }

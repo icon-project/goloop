@@ -391,6 +391,10 @@ public class DeployTest {
             deploy(owner, KeyWallet.create().getAddress(), Constants.SCORE_HELLOWORLD_UPDATE_PATH, params, Constants.DEFAULT_STEP_LIMIT);
             LOG.infoExiting();
         }
+        catch (TransactionFailureException ex) {
+            LOG.infoExiting();
+            failEx = true;
+        }
         catch (ResultTimeoutException ex) {
             LOG.infoExiting();
             failEx = true;

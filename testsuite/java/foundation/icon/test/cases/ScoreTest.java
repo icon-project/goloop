@@ -97,7 +97,7 @@ public class ScoreTest {
                         testScore.invokeAndWaitResult(callerWallet, "helloWithName",
                                 params, BigInteger.valueOf(0), BigInteger.valueOf(100));
                 LOG.infoExiting();
-                assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+                assertEquals(Constants.STATUS_SUCCESS.equals(result.getStatus()), param.equals("name"));
             } catch (ResultTimeoutException ex) {
                 assertTrue(!param.equals("name"));
             }
