@@ -25,7 +25,7 @@ class HelloWorld(IconScoreBase):
         Logger.info('Hello, world!', TAG)
 
     @external
-    def helloWithName(self, name: str):
+    def helloWithName(self, name: str, age: str = None):
         Logger.info('Hello %s' % name,  TAG)
 
     @payable

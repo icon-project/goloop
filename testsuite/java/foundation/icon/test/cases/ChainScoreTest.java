@@ -106,6 +106,9 @@ public class ChainScoreTest{
     @AfterAll
     public static void destroy() throws Exception {
         String []cTypes = {"invoke", "query"};
+        BigInteger stepPrice = Utils.icxCall(iconService,
+                Constants.CHAINSCORE_ADDRESS, "getStepPrice", null).asInteger();
+        LOG.info("stepPrice = " + stepPrice);
         for(String cType : cTypes) {
             RpcObject.Builder builder = new RpcObject.Builder();
             builder.put("contextType", new RpcValue(cType));
@@ -113,6 +116,7 @@ public class ChainScoreTest{
             TransactionResult result = Utils.sendTransactionWithCall(iconService, chain.networkId,
                     KeyWallet.create(), Constants.GOV_ADDRESS, "setMaxStepLimit", builder.build(), 0);
             if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
+                LOG.info("result = " + result);
                 throw new Exception();
             }
         }
@@ -175,7 +179,7 @@ public class ChainScoreTest{
         LOG.infoExiting();
     }
 
-    @ParameterizedTest(name = "{0}")
+    @ParameterizedTest(name = "setRevision {0}")
     @EnumSource(TargetScore.class)
     public void setRevision(TargetScore score) throws Exception{
         LOG.infoEntering("setRevision");
@@ -216,7 +220,7 @@ public class ChainScoreTest{
         LOG.infoExiting();
     }
 
-    @ParameterizedTest(name = "{0}")
+    @ParameterizedTest(name = "acceptScore {0}")
     @EnumSource(TargetScore.class)
     public void acceptScore(TargetScore score) throws Exception {
         if (!Utils.isAudit(iconService)) {
@@ -282,7 +286,7 @@ public class ChainScoreTest{
         LOG.infoExiting();
     }
 
-    @ParameterizedTest(name = "{0}")
+    @ParameterizedTest(name = "rejectScore {0}")
     @EnumSource(TargetScore.class)
     public void rejectScore(TargetScore score) throws Exception {
         if (!Utils.isAudit(iconService)) {
@@ -348,7 +352,7 @@ public class ChainScoreTest{
         LOG.infoExiting();
     }
 
-    @ParameterizedTest(name = "{0}")
+    @ParameterizedTest(name = "blockUnblockScore {0}")
     @EnumSource(TargetScore.class)
     public void blockUnblockScore(TargetScore score) throws Exception {
         LOG.infoEntering("blockUnblockScore");
@@ -389,12 +393,13 @@ public class ChainScoreTest{
         LOG.infoExiting();
     }
 
-    @ParameterizedTest(name = "{0}")
+    @ParameterizedTest(name = "setStepPrice {0}")
     @EnumSource(TargetScore.class)
     public void setStepPrice(TargetScore score) throws Exception {
         LOG.infoEntering("setStepPrice");
         BigInteger originPrice = Utils.icxCall(iconService,
                 Constants.CHAINSCORE_ADDRESS, "getStepPrice", null).asInteger();
+        LOG.info("originPrice = " + originPrice);
         BigInteger newPrice = originPrice.add(BigInteger.valueOf(1));
         RpcObject params = new RpcObject.Builder()
                 .put("price", new RpcValue(newPrice.toString()))
@@ -414,10 +419,13 @@ public class ChainScoreTest{
         else {
             assertEquals(originPrice, resultPrice);
         }
+        BigInteger curPrice = Utils.icxCall(iconService,
+                Constants.CHAINSCORE_ADDRESS, "getStepPrice", null).asInteger();
+        LOG.info("revertedPrice = " + curPrice);
         LOG.infoExiting();
     }
 
-    @ParameterizedTest(name = "{0}")
+    @ParameterizedTest(name = "setStepCost {0}")
     @EnumSource(TargetScore.class)
     public void setStepCost(TargetScore score) throws Exception{
         LOG.infoEntering("setStepCost");
@@ -497,19 +505,19 @@ public class ChainScoreTest{
         LOG.infoExiting();
     }
 
-    @ParameterizedTest(name = "{0}")
+    @ParameterizedTest(name = "setMaxStepLimit {0}")
     @EnumSource(TargetScore.class)
     public void setMaxStepLimit(TargetScore score) throws Exception {
         LOG.infoEntering("setMaxStepLimit");
         for(String type : new String[]{"invoke", "query"}) {
-            RpcObject params = new RpcObject.Builder()
+            RpcObject qParams = new RpcObject.Builder()
                     .put("contextType", new RpcValue(type))
                     .build();
             BigInteger originLimit = Utils.icxCall(iconService,
-                    Constants.CHAINSCORE_ADDRESS, "getMaxStepLimit", params).asInteger();
+                    Constants.CHAINSCORE_ADDRESS, "getMaxStepLimit", qParams).asInteger();
 
             BigInteger newLimit = originLimit.add(BigInteger.valueOf(1));
-            params = new RpcObject.Builder()
+            RpcObject params = new RpcObject.Builder()
                     .put("contextType", new RpcValue(type))
                     .put("limit", new RpcValue(newLimit))
                     .build();
@@ -518,7 +526,7 @@ public class ChainScoreTest{
             LOG.infoExiting();
 
             BigInteger resultLimit = Utils.icxCall(iconService,
-                    Constants.CHAINSCORE_ADDRESS,"getMaxStepLimit", params).asInteger();
+                    Constants.CHAINSCORE_ADDRESS,"getMaxStepLimit", qParams).asInteger();
             if (score.addr.equals(Constants.GOV_ADDRESS)) {
                 assertEquals(newLimit, resultLimit);
                 params = new RpcObject.Builder()
@@ -578,7 +586,7 @@ public class ChainScoreTest{
         }
     }
 
-    @ParameterizedTest(name = "{0}")
+    @ParameterizedTest(name = "addRemoveMember {0}")
     @EnumSource(TargetScore.class)
     public void addRemoveMember(TargetScore score) throws Exception{
         LOG.infoEntering("addRemoveMember");
@@ -623,7 +631,7 @@ public class ChainScoreTest{
         LOG.infoExiting();
     }
 
-    @ParameterizedTest(name = "{0}")
+    @ParameterizedTest(name = "addRemoveDeployer {0}")
     @EnumSource(TargetScore.class)
     public void addRemoveDeployer(TargetScore score) throws Exception {
         LOG.infoEntering( "addRemoveDeployer");

@@ -68,7 +68,6 @@ public class ScoreParamTest {
 
     // true if blockchain ignores undefined params
     // false if blockhain returns failure when undefined params passes
-    private static final boolean IGNORE_ADDITIONAL_PARAM = true;
 
     @BeforeAll
     public static void init() throws Exception {
@@ -566,20 +565,15 @@ public class ScoreParamTest {
                 .put("undefined2", new RpcValue(BigInteger.ONE))
                 .build();
         LOG.infoEntering("invoke call_default_param");
-        boolean timeout = false;
         TransactionResult result = null;
         try {
             result = testScore.invokeAndWaitResult(callerWallet, "call_default_param",
                     params, BigInteger.valueOf(0), BigInteger.valueOf(100));
         }
         catch (ResultTimeoutException ex) {
-            timeout = true;
+            throw ex;
         }
-        if(!IGNORE_ADDITIONAL_PARAM) {
-            assertEquals(true, timeout);
-        } else {
-            assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-        }
+        assertEquals(Constants.STATUS_FAIL, result.getStatus());
         LOG.infoExiting();
         LOG.infoExiting();
     }

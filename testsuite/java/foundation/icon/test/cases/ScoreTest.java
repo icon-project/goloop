@@ -105,20 +105,21 @@ public class ScoreTest {
         LOG.infoExiting();
     }
 
-    public void invalidParamNum() throws Exception {
+    @Test
+    public void unexpectedParam() throws Exception {
         LOG.infoEntering( "invalidParamNum");
-        for(String []params : new String[][]{{}, {"name"}, {"name", "age"}}) {
+        String params[][] = new String[][]{{}, {"age"}, {"name"}, {"name", "age"}, {"name", "etc"}, {"name", "age", "etc"}};
+        for(int i = 0; i < params.length; i++) {
             try {
                 RpcObject.Builder builder = new RpcObject.Builder();
-                for(String param: params){
-                        builder.put(param, new RpcValue("ICONLOOP"));
+                for(String param: params[i]){
+                    builder.put(param, new RpcValue("ICONLOOP"));
                 }
                 RpcObject objParam = builder.build();
-                LOG.info("invoke param[" + params + "]");
+                LOG.infoEntering("invoke");
                 TransactionResult result = testScore.invokeAndWaitResult(callerWallet,
                         "helloWithName", objParam, BigInteger.valueOf(0), BigInteger.valueOf(100));
-                assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-                assertTrue(params.length == 1);
+                assertEquals(i == 2 || i == 3, Constants.STATUS_SUCCESS.equals(result.getStatus()));
                 LOG.infoExiting();
             } catch (ResultTimeoutException ex) {
                 assertTrue(params.length != 1);
