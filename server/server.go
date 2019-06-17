@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -117,7 +118,10 @@ func (srv *Manager) Start() {
 
 	// jsonrpc
 	g := srv.e.Group("/api")
-	// g.Use(JsonRpc(srv, mr), JsonRpcLogger(), Chunk())
+	g.Use(middleware.BodyDump(func(c echo.Context, reqBody []byte, resBody []byte) {
+		log.Printf("request=%s", reqBody)
+		log.Printf("respose=%s", resBody)
+	}))
 	g.Use(JsonRpc(mr), Chunk())
 	g.POST("/v3", mr.Handle, AnyChainInjector(srv))
 	g.POST("/v3/:channel", mr.Handle, ChainInjector(srv))
