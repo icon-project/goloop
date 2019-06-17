@@ -18,6 +18,7 @@ type NodeConfig struct {
 	P2PAddr       string `json:"p2p"`
 	P2PListenAddr string `json:"p2p_listen"`
 	RPCAddr       string `json:"rpc_addr"`
+	RPCDump       bool   `json:"rpc_dump"`
 	EESocket      string `json:"ee_socket"`
 	EEInstances   int    `json:"ee_instances"`
 

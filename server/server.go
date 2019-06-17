@@ -19,15 +19,16 @@ import (
 )
 
 type Manager struct {
-	e      *echo.Echo
-	addr   string
-	wallet module.Wallet
-	chains map[string]module.Chain // chain manager
-	wssm   *wsSessionManager
-	mtx    sync.RWMutex
+	e           *echo.Echo
+	addr        string
+	wallet      module.Wallet
+	chains      map[string]module.Chain // chain manager
+	wssm        *wsSessionManager
+	mtx         sync.RWMutex
+	jsonrpcDump bool
 }
 
-func NewManager(addr string, wallet module.Wallet) *Manager {
+func NewManager(addr string, jsonrpcDump bool, wallet module.Wallet) *Manager {
 
 	e := echo.New()
 
@@ -41,12 +42,13 @@ func NewManager(addr string, wallet module.Wallet) *Manager {
 	e.Validator = validator
 
 	return &Manager{
-		e:      e,
-		addr:   addr,
-		wallet: wallet,
-		chains: make(map[string]module.Chain),
-		wssm:   newWSSessionManager(),
-		mtx:    sync.RWMutex{},
+		e:           e,
+		addr:        addr,
+		wallet:      wallet,
+		chains:      make(map[string]module.Chain),
+		wssm:        newWSSessionManager(),
+		mtx:         sync.RWMutex{},
+		jsonrpcDump: jsonrpcDump,
 	}
 }
 
@@ -118,10 +120,12 @@ func (srv *Manager) Start() {
 
 	// jsonrpc
 	g := srv.e.Group("/api")
-	g.Use(middleware.BodyDump(func(c echo.Context, reqBody []byte, resBody []byte) {
-		log.Printf("request=%s", reqBody)
-		log.Printf("respose=%s", resBody)
-	}))
+	if srv.jsonrpcDump {
+		g.Use(middleware.BodyDump(func(c echo.Context, reqBody []byte, resBody []byte) {
+			log.Printf("request=%s", reqBody)
+			log.Printf("respose=%s", resBody)
+		}))
+	}
 	g.Use(JsonRpc(mr), Chunk())
 	g.POST("/v3", mr.Handle, AnyChainInjector(srv))
 	g.POST("/v3/:channel", mr.Handle, ChainInjector(srv))
