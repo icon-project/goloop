@@ -150,7 +150,19 @@ func (tx *transactionV3) Version() int {
 	return module.TransactionVersion3
 }
 
-func (tx *transactionV3) Verify() error {
+func (tx *transactionV3) Verify(ts int64) error {
+	if ConfigOnCheckingTimestamp {
+		if ts != 0 {
+			tsDiff := tx.TimeStamp.Value - ts
+			if tsDiff <= -ConfigTXTimestampBackwardMargin ||
+				tsDiff > ConfigTXTimestampForwardLimit {
+				return state.TimeOutError.Errorf("Timeout(cur:%d, tx:%d)", ts, tx.TimeStamp.Value)
+			}
+			if tsDiff > ConfigTXTimestampForwardMargin {
+				return state.TimeOutError.Errorf("FutureTxTime(cur:%d, tx:%d)", ts, tx.TimeStamp.Value)
+			}
+		}
+	}
 	// value >= 0
 	if tx.Value != nil && tx.Value.Sign() < 0 {
 		return InvalidTxValue.Errorf("InvalidTxValue(%s)", tx.Value.String())

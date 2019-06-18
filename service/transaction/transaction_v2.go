@@ -3,11 +3,10 @@ package transaction
 import (
 	"bytes"
 	"encoding/json"
-	"log"
-	"math/big"
-
 	"github.com/icon-project/goloop/server/jsonrpc"
 	"github.com/icon-project/goloop/service/scoreresult"
+	"log"
+	"math/big"
 
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
@@ -34,7 +33,20 @@ func (tx *transactionV2) Version() int {
 	return module.TransactionVersion2
 }
 
-func (tx *transactionV2) Verify() error {
+func (tx *transactionV2) Verify(ts int64) error {
+	if ConfigOnCheckingTimestamp {
+		if ts != 0 {
+			tsDiff := tx.TimeStamp.Value - ts
+			if tsDiff <= -ConfigTXTimestampBackwardMargin ||
+				tsDiff > ConfigTXTimestampForwardLimit {
+				return state.TimeOutError.Errorf("Timeout(cur:%d, tx:%d)", ts, tx.TimeStamp.Value)
+			}
+			if tsDiff > ConfigTXTimestampForwardMargin {
+				return state.TimeOutError.Errorf("FutureTxTime(cur:%d, tx:%d)", ts, tx.TimeStamp.Value)
+			}
+		}
+	}
+
 	// value >= 0
 	if tx.Value != nil && tx.Value.Sign() < 0 {
 		return InvalidTxValue.Errorf("InvalidTxValue(%s)", tx.Value.String())

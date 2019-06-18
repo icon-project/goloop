@@ -1,7 +1,9 @@
 package service
 
 import (
+	"github.com/icon-project/goloop/common"
 	"log"
+	"time"
 
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/transaction"
@@ -32,7 +34,7 @@ func (r *TransactionReactor) OnReceive(subProtocol module.ProtocolInfo, buf []by
 			return false, err
 		}
 
-		if err := tx.Verify(); err != nil {
+		if err := tx.Verify(common.UnixMicroFromTime(time.Now())); err != nil {
 			log.Printf("Failed to verify tx. err=%+v\n", err)
 			return false, err
 		}

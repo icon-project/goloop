@@ -416,6 +416,10 @@ func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext
 			return 0, errors.Wrap(err, "validateTxs: fail to get transaction")
 		}
 
+		if err := txi.(transaction.Transaction).Verify(0); err != nil {
+			return 0, err
+		}
+
 		if err := txi.(transaction.Transaction).PreValidate(wc, true); err != nil {
 			return 0, err
 		}

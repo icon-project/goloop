@@ -310,7 +310,7 @@ func (m *manager) SendTransaction(txi interface{}) ([]byte, error) {
 		return nil, ErrIllegalTransactionType
 	}
 
-	if err := newTx.Verify(); err != nil {
+	if err := newTx.Verify(common.UnixMicroFromTime(time.Now())); err != nil {
 		return nil, InvalidTransactionError.Wrap(err, "Failed to verify transaction")
 	}
 	hash := newTx.ID()
