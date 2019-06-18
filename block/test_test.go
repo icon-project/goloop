@@ -157,7 +157,7 @@ func (tx *testTransaction) Bytes() []byte {
 	return codec.MustMarshalToBytes(tx)
 }
 
-func (tx *testTransaction) Verify() error {
+func (tx *testTransaction) Verify(ts int64) error {
 	return nil
 }
 
@@ -329,6 +329,14 @@ func (tr *testTransition) NormalTransactions() module.TransactionList {
 	defer tr.Unlock()
 
 	return tr.normalTransactions
+}
+
+func (tr *testTransition) PatchReceipts() module.ReceiptList {
+	return nil
+}
+
+func (tr *testTransition) NormalReceipts() module.ReceiptList {
+	return nil
 }
 
 func (tr *testTransition) EffectiveTransactions() *testTransactionList {
