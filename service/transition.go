@@ -170,6 +170,13 @@ func (t *transition) NormalTransactions() module.TransactionList {
 	return t.normalTransactions
 }
 
+func (t *transition) PatchReceipts() module.ReceiptList {
+	return t.patchReceipts
+}
+func (t *transition) NormalReceipts() module.ReceiptList {
+	return t.normalReceipts
+}
+
 // Execute executes this transition.
 // The result is asynchronously notified by cb. canceler can be used
 // to cancel it after calling Execute. After canceler returns true,

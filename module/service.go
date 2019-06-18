@@ -157,6 +157,8 @@ type Transition interface {
 	PatchTransactions() TransactionList
 	NormalTransactions() TransactionList
 
+	PatchReceipts() ReceiptList
+	NormalReceipts() ReceiptList
 	// Execute executes this transition.
 	// The result is asynchronously notified by cb. canceler can be used
 	// to cancel it after calling Execute. After canceler returns true,
