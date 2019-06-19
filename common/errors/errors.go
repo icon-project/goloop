@@ -222,7 +222,7 @@ func (e *wrappedError) Format(f fmt.State, c rune) {
 		}
 		fallthrough
 	case 'q', 's':
-		fmt.Fprintf(f, "E%04d:%+v", e.code, e.error)
+		fmt.Fprintf(f, "E%04d:%s", e.code, e.error)
 	}
 }
 
