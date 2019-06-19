@@ -1,4 +1,5 @@
 .?*
+!doc/.vuepress
 __pycache__
 **/.DS_Store
 **/*.iml

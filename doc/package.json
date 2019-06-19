@@ -1,0 +1,14 @@
+{
+  "scripts": {
+    "doc:dev": "./node_modules/.bin/vuepress dev ./",
+    "doc:build": "./node_modules/.bin/vuepress build ./",
+    "doc:serve": "./node_modules/.bin/serve --single .vuepress/dist",
+    "api:gen": "./node_modules/.bin/widdershins -l --summary goloop_admin_api.yaml -o goloop_admin_api.md && ../bin/goloop doc goloop_cli.md"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "serve": "^11.0.0",
+    "vuepress": "^1.0.0-alpha.48",
+    "widdershins": "^3.6.7"
+  }
+}
