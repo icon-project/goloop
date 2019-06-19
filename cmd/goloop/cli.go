@@ -98,7 +98,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 				if err2 != nil {
 					return fmt.Errorf("fail to get NID for %s err=%+v", genesisZip, err2)
 				}
-				joinChainParam.NID = nid
+				joinChainParam.NID.Value = int32(nid)
 				resp, err = hc.PostWithFile(reqUrl, &joinChainParam, "genesisZip", genesisZip, &v)
 			} else if len(genesisPath) > 0 {
 				buf := bytes.NewBuffer(nil)
@@ -115,7 +115,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("fail to get NID for %s err=%+v", genesisZip, err)
 				}
-				joinChainParam.NID = nid
+				joinChainParam.NID.Value = int32(nid)
 				resp, err = hc.PostWithReader(reqUrl, &joinChainParam, "genesisZip", buf, &v)
 			} else {
 				return fmt.Errorf("required flag --genesis or --genesis_template")

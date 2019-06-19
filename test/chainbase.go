@@ -22,6 +22,10 @@ func (_r *ChainBase) NID() int {
 	panic("not implemented")
 }
 
+func (_r *ChainBase) Channel() string {
+	panic("not implemented")
+}
+
 func (_r *ChainBase) ConcurrencyLevel() int {
 	panic("not implemented")
 }

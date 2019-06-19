@@ -15,6 +15,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/server/metric"
@@ -47,8 +48,8 @@ type StatsView struct {
 }
 
 type JoinChainParam struct {
-	NID    int    `json:"nid"`
-	DBType string `json:"dbType"`
+	NID    common.HexInt32 `json:"nid"`
+	DBType string          `json:"dbType"`
 
 	SeedAddr         string `json:"seedAddress"`
 	Role             uint   `json:"role"`
@@ -60,10 +61,11 @@ type JoinChainParam struct {
 }
 
 type ChainView struct {
-	NID       int    `json:"nid"`
-	State     string `json:"state"`
-	Height    int64  `json:"height"`
-	LastError string `json:"lastError"`
+	NID       common.HexInt32 `json:"nid"`
+	Channel   string          `json:"channel"`
+	State     string          `json:"state"`
+	Height    int64           `json:"height"`
+	LastError string          `json:"lastError"`
 }
 
 type ChainInspectView struct {
@@ -91,8 +93,9 @@ type LastErrorReportor interface {
 
 func NewChainView(c *Chain) *ChainView {
 	v := &ChainView{
-		NID:   c.NID(),
-		State: c.State(),
+		NID:     common.HexInt32{Value: int32(c.NID())},
+		Channel: c.Channel(),
+		State:   c.State(),
 	}
 	if r, ok := c.Chain.(LastErrorReportor); ok && r.LastError() != nil {
 		v.LastError = r.LastError().Error()
@@ -172,11 +175,14 @@ func (r *Rest) RegisterChainHandlers(g *echo.Group) {
 
 func (r *Rest) ChainInjector(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(ctx echo.Context) error {
-		NID, err := strconv.ParseInt(ctx.Param(ParamNID), 0, 64)
-		if err != nil {
-			return ctx.NoContent(http.StatusNotFound)
+		var c *Chain
+		p := ctx.Param(ParamNID)
+		if nid, err := strconv.ParseInt(p, 0, 32); err == nil {
+			c = r.n.GetChain(int(nid))
+		} else {
+			c = r.n.GetChainByChannel(p)
 		}
-		c := r.n.GetChain(int(NID))
+
 		if c == nil {
 			return ctx.NoContent(http.StatusNotFound)
 		}
@@ -245,7 +251,7 @@ func (r *Rest) JoinChain(ctx echo.Context) error {
 		return err
 	}
 
-	if c := r.n.GetChain(p.NID); c != nil {
+	if c := r.n.GetChain(int(p.NID.Value)); c != nil {
 		return ctx.NoContent(http.StatusConflict)
 	}
 
@@ -267,7 +273,7 @@ func (r *Rest) JoinChain(ctx echo.Context) error {
 		log.Println("Warning", err)
 		return err
 	}
-	return ctx.String(http.StatusOK, fmt.Sprintf("%#x", p.NID))
+	return ctx.String(http.StatusOK, p.NID.String())
 }
 
 var (
@@ -401,7 +407,8 @@ func (r *Rest) ResponseStatsView(resp *echo.Response) error {
 	for _, c := range r.n.GetChains() {
 		m := metric.Inspect(c)
 		if c.State() == "started" {
-			m["nid"] = c.NID()
+			m["nid"] = common.HexInt32{Value: int32(c.NID())}
+			m["channel"] = c.Channel()
 			v.Chains = append(v.Chains, m)
 		}
 	}

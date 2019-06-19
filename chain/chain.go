@@ -36,9 +36,9 @@ type Config struct {
 	ConcurrencyLevel int    `json:"concurrency_level,omitempty"`
 
 	//runtime
-	Channel string `json:"channel"`
+	Channel      string `json:"channel"`
 	SecureSuites string `json:"secureSuites"`
-	SecureAeads string `json:"secureAeads"`
+	SecureAeads  string `json:"secureAeads"`
 
 	GenesisStorage GenesisStorage  `json:"-"`
 	Genesis        json.RawMessage `json:"genesis"`
@@ -154,6 +154,10 @@ func (c *singleChain) Wallet() module.Wallet {
 
 func (c *singleChain) NID() int {
 	return c.cfg.NID
+}
+
+func (c *singleChain) Channel() string {
+	return c.cfg.Channel
 }
 
 func (c *singleChain) Genesis() []byte {

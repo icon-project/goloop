@@ -17,6 +17,7 @@ type Chain interface {
 	Database() db.Database
 	Wallet() Wallet
 	NID() int
+	Channel() string
 	ConcurrencyLevel() int
 	Genesis() []byte
 	GetGenesisData(key []byte) ([]byte, error)

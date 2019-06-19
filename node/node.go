@@ -173,13 +173,14 @@ func (n *Node) JoinChain(
 	defer n.mtx.Unlock()
 	n.mtx.Lock()
 
-	if _, ok := n.channels[p.NID]; ok {
-		return nil, fmt.Errorf("already joined chain nid:%d", p.NID)
+	nid := int(p.NID.Value)
+	if _, ok := n.channels[nid]; ok {
+		return nil, fmt.Errorf("already joined chain nid:%s", p.NID)
 	}
 
 	channel := p.Channel
 	if channel == "" {
-		channel = strconv.FormatInt(int64(p.NID), 16)
+		channel = strconv.FormatInt(int64(nid), 16)
 	}
 
 	if _, ok := n.chains[channel]; ok {
@@ -191,7 +192,7 @@ func (n *Node) JoinChain(
 		return nil, err
 	}
 
-	chainDir := n.ChainDir(p.NID)
+	chainDir := n.ChainDir(nid)
 	log.Println("ChainDir", chainDir)
 	if err := os.MkdirAll(chainDir, 0700); err != nil {
 		log.Panicf("Fail to create directory %s err=%+v", chainDir, err)
@@ -200,7 +201,7 @@ func (n *Node) JoinChain(
 	cfgFile, _ := filepath.Abs(path.Join(chainDir, ChainConfigFileName))
 
 	cfg := &chain.Config{
-		NID:            p.NID,
+		NID:            nid,
 		DBType:         p.DBType,
 		Channel:        channel,
 		SecureSuites:   p.SecureSuites,
