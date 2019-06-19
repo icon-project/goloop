@@ -264,6 +264,7 @@ type dummyChain struct {
 func (c *dummyChain) Database() db.Database                             { panic("not implemented") }
 func (c *dummyChain) Wallet() module.Wallet                             { panic("not implemented") }
 func (c *dummyChain) NID() int                                          { return c.nid }
+func (c *dummyChain) Channel() string                            		{ panic("not implemented") }
 func (c *dummyChain) ConcurrencyLevel() int                             { panic("not implemented") }
 func (c *dummyChain) Genesis() []byte                                   { panic("not implemented") }
 func (c *dummyChain) GetGenesisData(key []byte) ([]byte, error)         { panic("not implemented") }
