@@ -1,6 +1,7 @@
 package foundation.icon.test.common;
 
 import foundation.icon.icx.KeyWallet;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
@@ -79,6 +80,16 @@ public class Env {
         }
     }
 
+    private static int parseInt(String s) {
+        if (s.startsWith("0x")) {
+            return Integer.parseInt(s.substring(2), 16);
+        } else if (s.startsWith("0") && s.length() > 1) {
+            return Integer.parseInt(s.substring(1), 8);
+        } else {
+            return Integer.parseInt(s);
+        }
+    }
+
     private static Map<String,Chain> readChains(Properties props) {
         Map<String, Chain> chainMap = new HashMap<>();
         for(int i = 0; ; i++) {
@@ -123,7 +134,7 @@ public class Env {
                     throw new IllegalArgumentException("FAIL to read governor wallet. path = " + govWalletPath);
                 }
             }
-            Chain chain = new Chain(props, chainName+".", Integer.parseInt(nid), godWallet, governorWallet);
+            Chain chain = new Chain(props, chainName+".", parseInt(nid), godWallet, governorWallet);
             chainMap.put(nid, chain);
         }
         return chainMap;

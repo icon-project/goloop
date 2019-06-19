@@ -81,7 +81,7 @@ function join(){
     ${GSTOOL} gs gen -i ${GENESIS_TEMPLATE} -o ${GOLOOP_GENESIS_STORAGE}
     
     for i in $(seq 0 $((${GOLOOP_DOCKER_REPLICAS}-1)));do 
-        docker exec ${GOLOOP_DOCKER_PREFIX}-${i} goloop chain join --genesis ${GOLOOP_GENESIS_STORAGE} --seed "${GOLOOP_DOCKER_PREFIX}-0":8080
+        docker exec ${GOLOOP_DOCKER_PREFIX}-${i} goloop chain join --genesis ${GOLOOP_GENESIS_STORAGE} --seed "${GOLOOP_DOCKER_PREFIX}-0":8080 --channel test
     done
 }
 
@@ -97,9 +97,9 @@ function env(){
     local GENESIS_NID=$(${GSTOOL} gs info -n ${GOLOOP_GENESIS_STORAGE})
     local ENVFILE=${1}
     cp ${ENVFILE} ${ENVFILE}.backup
-    grep "^chain" ${ENVFILE}.backup > ${ENVFILE}
+    grep "^chain" ${ENVFILE}.backup | sed -e "s/chain0.nid=.*/chain0.nid=${GENESIS_NID}/" > ${ENVFILE}
     for i in $(seq 0 $((${GOLOOP_DOCKER_REPLICAS}-1)));do
-        echo -e "\nnode${i}.url=http://${GOLOOP_DOCKER_PREFIX}-${i}:9080\nnode${i}.channel0.nid=${GENESIS_NID}\nnode${i}.channel0.name=${GENESIS_NID}" >> ${ENVFILE}
+        echo -e "\nnode${i}.url=http://${GOLOOP_DOCKER_PREFIX}-${i}:9080\nnode${i}.channel0.nid=${GENESIS_NID}\nnode${i}.channel0.name=test" >> ${ENVFILE}
     done
 }
 
