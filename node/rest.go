@@ -126,7 +126,7 @@ func NewChainInspectView(c *Chain) *ChainInspectView {
 			SecureAeads:      c.cfg.SecureAeads,
 		},
 	}
-		v.Module = make(map[string]interface{})
+	v.Module = make(map[string]interface{})
 	for name, f := range inspectFuncs {
 		v.Module[name] = f(c)
 	}
@@ -172,9 +172,9 @@ func (r *Rest) RegisterChainHandlers(g *echo.Group) {
 
 func (r *Rest) ChainInjector(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(ctx echo.Context) error {
-		NID, err := strconv.ParseInt(ctx.Param(ParamNID), 16, 64)
+		NID, err := strconv.ParseInt(ctx.Param(ParamNID), 0, 64)
 		if err != nil {
-			return err
+			return ctx.NoContent(http.StatusNotFound)
 		}
 		c := r.n.GetChain(int(NID))
 		if c == nil {
@@ -267,7 +267,7 @@ func (r *Rest) JoinChain(ctx echo.Context) error {
 		log.Println("Warning", err)
 		return err
 	}
-	return ctx.String(http.StatusOK, "OK")
+	return ctx.String(http.StatusOK, fmt.Sprintf("%#x", p.NID))
 }
 
 var (

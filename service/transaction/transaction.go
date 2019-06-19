@@ -42,6 +42,11 @@ type Transaction interface {
 	Nonce() *big.Int
 }
 
+type GenesisTransaction interface {
+	Transaction
+	NID() int
+}
+
 type transaction struct {
 	Transaction
 }
@@ -100,6 +105,10 @@ func (t *transaction) Resolve(builder merkle.Builder) error {
 	return nil
 }
 
+func (t *transaction) NID() int {
+	return t.Transaction.(GenesisTransaction).NID()
+}
+
 func NewTransaction(b []byte) (Transaction, error) {
 	if tx, err := newTransaction(b); err != nil {
 		return nil, err
@@ -108,7 +117,7 @@ func NewTransaction(b []byte) (Transaction, error) {
 	}
 }
 
-func NewGenesisTransaction(b []byte) (Transaction, error) {
+func NewGenesisTransaction(b []byte) (GenesisTransaction, error) {
 	if tx, err := newGenesisV3(b); err != nil {
 		return nil, err
 	} else {

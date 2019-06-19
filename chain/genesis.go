@@ -15,6 +15,7 @@ import (
 
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/service/transaction"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -23,18 +24,39 @@ const (
 )
 
 type GenesisStorage interface {
+	NID() (int, error)
 	Genesis() []byte
 	Get(key []byte) ([]byte, error)
 }
 
 type genesisStorageWithDataDir struct {
 	genesis  []byte
+	nid      int
 	dataPath string
 	dataMap  map[string]string
 }
 
+func GetNIDForGenesis(g []byte) (int, error) {
+	gtx, err := transaction.NewGenesisTransaction(g)
+	if err != nil {
+		return 0, err
+	}
+	return gtx.NID(), nil
+}
+
 func (gs *genesisStorageWithDataDir) Genesis() []byte {
 	return gs.genesis
+}
+
+func (gs *genesisStorageWithDataDir) NID() (int, error) {
+	if gs.nid == 0 {
+		if nid, err := GetNIDForGenesis(gs.Genesis()); err != nil {
+			return 0, err
+		} else {
+			gs.nid = nid
+		}
+	}
+	return gs.nid, nil
 }
 
 func (gs *genesisStorageWithDataDir) Get(key []byte) ([]byte, error) {
@@ -85,11 +107,23 @@ func SHA3Sum256WithReadCloser(rc io.ReadCloser) ([]byte, error) {
 
 type genesisStorageWithZip struct {
 	genesis []byte
+	nid     int
 	fileMap map[string]*zip.File
 }
 
 func (gs *genesisStorageWithZip) Genesis() []byte {
 	return gs.genesis
+}
+
+func (gs *genesisStorageWithZip) NID() (int, error) {
+	if gs.nid == 0 {
+		if nid, err := GetNIDForGenesis(gs.Genesis()); err != nil {
+			return 0, err
+		} else {
+			gs.nid = nid
+		}
+	}
+	return gs.nid, nil
 }
 
 func readAllOfZipFile(f *zip.File) ([]byte, error) {
@@ -205,15 +239,15 @@ func processTemplate(c *templateContext, s string) (r string, e error) {
 		key := s[m[2]:m[3]]
 		p := path.Join(c.path, s[m[4]:m[5]])
 		switch key {
-		case "read":
-			data, err := ioutil.ReadFile(p)
+		case "zip":
+			data, err := zipDirectory(p)
 			if err != nil {
 				return s, err
 			}
 			s = s[0:m[0]] + "0x" + hex.EncodeToString(data) + s[m[1]:]
 
-		case "zip":
-			data, err := zipDirectory(p)
+		case "read":
+			data, err := ioutil.ReadFile(p)
 			if err != nil {
 				return s, err
 			}
@@ -333,8 +367,20 @@ func WriteGenesisStorageFromPath(w io.Writer, p string) error {
 	return nil
 }
 
+func NewGenesisStorageFromFile(fd *os.File) (GenesisStorage, error) {
+	fi, err := fd.Stat()
+	if err != nil {
+		return nil, err
+	}
+	return newGenesisStorage(fd, fi.Size())
+}
+
 func NewGenesisStorage(data []byte) (GenesisStorage, error) {
-	reader, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	return newGenesisStorage(bytes.NewReader(data), int64(len(data)))
+}
+
+func newGenesisStorage(readerAt io.ReaderAt, size int64) (GenesisStorage, error) {
+	reader, err := zip.NewReader(readerAt, size)
 	if err != nil {
 		return nil, err
 	}

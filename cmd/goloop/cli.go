@@ -8,7 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"strconv"
+	"os"
 
 	"github.com/gosuri/uitable"
 	"github.com/jroimartin/gocui"
@@ -76,21 +76,29 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 		},
 	})
 	joinCmd := &cobra.Command{
-		Use:   "join NID",
+		Use:   "join",
 		Short: "Join chain",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			hc := GetUnixDomainSockHttpClient(cfg)
 			var err error
-			var nid int64
-			if nid, err = strconv.ParseInt(args[0], 16, 64); err != nil {
-				return fmt.Errorf("cannot parse NID err=%+v", err)
-			}
-			joinChainParam.NID = int(nid)
 			var v string
 			var resp *http.Response
 			reqUrl := node.UrlChain
 			if len(genesisZip) > 0 {
+				file, err2 := os.Open(genesisZip)
+				if err2 != nil {
+					return fmt.Errorf("fail to open %s err=%+v", genesisZip, err2)
+				}
+				gs, err2 := chain.NewGenesisStorageFromFile(file)
+				if err2 != nil {
+					return fmt.Errorf("fail to parse %s err=%+v", genesisZip, err2)
+				}
+				nid, err2 := gs.NID()
+				if err2 != nil {
+					return fmt.Errorf("fail to get NID for %s err=%+v", genesisZip, err2)
+				}
+				joinChainParam.NID = nid
 				resp, err = hc.PostWithFile(reqUrl, &joinChainParam, "genesisZip", genesisZip, &v)
 			} else if len(genesisPath) > 0 {
 				buf := bytes.NewBuffer(nil)
@@ -98,6 +106,16 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("failed WriteGenesisStorage err=%+v", err)
 				}
+				gs, err := chain.NewGenesisStorage(buf.Bytes())
+				if err != nil {
+					return fmt.Errorf("fail to parse %s err=%+v", genesisZip, err)
+				}
+				var nid int
+				nid, err = gs.NID()
+				if err != nil {
+					return fmt.Errorf("fail to get NID for %s err=%+v", genesisZip, err)
+				}
+				joinChainParam.NID = nid
 				resp, err = hc.PostWithReader(reqUrl, &joinChainParam, "genesisZip", buf, &v)
 			} else {
 				return fmt.Errorf("required flag --genesis or --genesis_template")

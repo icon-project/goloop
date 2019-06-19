@@ -109,6 +109,14 @@ And also you may use Genesis Template feature of
 ./bin/gstool gs gen -o gs.zip -i genesis.json
 ```
 
+You may check network ID of genesis storage with following command
+
+**Example**
+* genesis storage file : `gs.zip`
+```bash
+./bin/gstool gs info gs.zip
+```
+
 ### Join the chain
 
 Now, you need to join the chain. Before joining the chain, you need to specify
@@ -118,9 +126,9 @@ seed server address.
 * server configuration file : `server0.json`
 * genesis storage file : `gs.zip`
 * seed server host and port : `server0` `8080`
-* network ID   : `1`
+* network ID   : `0xabcdef`
 ```bash
-./bin/goloop -c server0.json chain join --genesis gs.zip --seed server0:8080 1
+./bin/goloop -c server0.json chain join --genesis gs.zip --seed server0:8080 0xabcdef
 ```
 
 You may check whether it's successfully added with following command.
@@ -135,7 +143,7 @@ You may check whether it's successfully added with following command.
 
 **Example**
 * server configuration file : `server0.json`
-* network ID : `1`
+* network ID   : `0xabcdef`
 ```bash
-./bin/goloop -c server0.json chain start 1
+./bin/goloop -c server0.json chain start 0xabcdef
 ```

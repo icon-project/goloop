@@ -65,6 +65,7 @@ func (g *genesisV3JSON) updateTxHash() error {
 type genesisV3 struct {
 	*genesisV3JSON
 	hash []byte
+	nid  int
 }
 
 func (g *genesisV3) From() module.Address {
@@ -128,8 +129,23 @@ func (g *genesisV3) GetHandler(contract.ContractManager) (TransactionHandler, er
 	return g, nil
 }
 
+func NIDForGenesisID(txid []byte) int {
+	return int(txid[2]) | int(txid[1])<<8 | int(txid[0])<<16
+}
+
+func (g *genesisV3) NID() int {
+	if g.nid == 0 {
+		if g.genesisV3JSON.NID == nil {
+			g.nid = NIDForGenesisID(g.ID())
+		} else {
+			g.nid = int(g.genesisV3JSON.NID.Value)
+		}
+	}
+	return g.nid
+}
+
 func (g *genesisV3) ValidateNetwork(nid int) bool {
-	return g.NID.Value == int64(nid)
+	return g.NID() == nid
 }
 
 func (g *genesisV3) Prepare(ctx contract.Context) (state.WorldContext, error) {
@@ -156,15 +172,7 @@ func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
 		totalSupply.Add(&totalSupply, &info.Balance.Int)
 	}
 
-	var nid int64
-	if g.NID == nil {
-		nid = state.DefaultNID
-	} else {
-		nid = g.NID.Value
-		if nid == 0 {
-			return nil, InvalidGenesisError.Errorf("IllegalNetworkID(%d)", nid)
-		}
-	}
+	nid := g.NID()
 	nidVar := scoredb.NewVarDB(as, state.VarNetwork)
 	nidVar.Set(nid)
 

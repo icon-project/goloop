@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
 PRE_PWD=$(pwd)
@@ -12,6 +12,7 @@ GOLOOP_DOCKER_NETWORK=${GOLOOP_DOCKER_NETWORK:-goloop_net}
 GOLOOP_DOCKER_VOLUME=${GOLOOP_DOCKER_VOLUME:-goloop_data}
 GOLOOP_DOCKER_MOUNT=${GOLOOP_DOCKER_MOUNT:-${GOLOOP_DATA}}
 GOLOOP_DOCKER_PREFIX=${GOLOOP_DOCKER_PREFIX:-goloop}
+GOLOOP_GENESIS_STORAGE=${GOLOOP_DATA}/gs.zip
 
 GSTOOL=${GSTOOL:-../../bin/gstool}
 
@@ -75,24 +76,30 @@ function join(){
     fi
     echo ${GSTOOL_CMD}
     ${GSTOOL_CMD}
+
+    echo ${GSTOOL} gs gen -i ${GENESIS_TEMPLATE} -o ${GOLOOP_GENESIS_STORAGE}
+    ${GSTOOL} gs gen -i ${GENESIS_TEMPLATE} -o ${GOLOOP_GENESIS_STORAGE}
     
     for i in $(seq 0 $((${GOLOOP_DOCKER_REPLICAS}-1)));do 
-        docker exec ${GOLOOP_DOCKER_PREFIX}-${i} goloop chain join --genesis_template ${GENESIS_TEMPLATE} --seed "${GOLOOP_DOCKER_PREFIX}-0":8080 1
+        docker exec ${GOLOOP_DOCKER_PREFIX}-${i} goloop chain join --genesis ${GOLOOP_GENESIS_STORAGE} --seed "${GOLOOP_DOCKER_PREFIX}-0":8080
     done
 }
 
 function start(){
+    local GENESIS_NID=$(${GSTOOL} gs info -n ${GOLOOP_GENESIS_STORAGE})
+
     for i in $(seq 0 $((${GOLOOP_DOCKER_REPLICAS}-1)));do 
-        docker exec ${GOLOOP_DOCKER_PREFIX}-${i} goloop chain start 1
+        docker exec ${GOLOOP_DOCKER_PREFIX}-${i} goloop chain start ${GENESIS_NID}
     done
 }
 
 function env(){
+    local GENESIS_NID=$(${GSTOOL} gs info -n ${GOLOOP_GENESIS_STORAGE})
     local ENVFILE=${1}
     cp ${ENVFILE} ${ENVFILE}.backup
     grep "^chain" ${ENVFILE}.backup > ${ENVFILE}
     for i in $(seq 0 $((${GOLOOP_DOCKER_REPLICAS}-1)));do
-        echo -e "\nnode${i}.url=http://${GOLOOP_DOCKER_PREFIX}-${i}:9080\nnode${i}.channel0.nid=1\nnode${i}.channel0.name=1" >> ${ENVFILE}
+        echo -e "\nnode${i}.url=http://${GOLOOP_DOCKER_PREFIX}-${i}:9080\nnode${i}.channel0.nid=${GENESIS_NID}\nnode${i}.channel0.name=${GENESIS_NID}" >> ${ENVFILE}
     done
 }
 
