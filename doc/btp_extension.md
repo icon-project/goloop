@@ -85,7 +85,7 @@ Summarize the document to following items.
 |height|T_INT|true| Start height |
 |addr|T_ADDR|false||
 |event|String|true| Event signature |
-|data|Array|true| Array of parameters to match. Its length shall be equal to the number of parameters of the event. If an element is `null`, the parameter is not matched. |
+|data|Array|false| Array of parameters to match. Its length shall be equal to the number of parameters of the event. If an element is `null`, the parameter is not matched. |
 
 > Example notifiaction
 
