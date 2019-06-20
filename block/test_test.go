@@ -45,6 +45,10 @@ func (c *testChain) Genesis() []byte {
 	return c.gtx.Bytes()
 }
 
+func (c *testChain) NID() int {
+	return 1
+}
+
 func (c *testChain) CommitVoteSetDecoder() module.CommitVoteSetDecoder {
 	return c.vld
 }
@@ -490,6 +494,10 @@ func newTestServiceManager(database db.Database) *testServiceManager {
 
 func (sm *testServiceManager) setTransitionExeChan(ch chan struct{}) {
 	sm.exeChan = ch
+}
+
+func (sm *testServiceManager) GetNetworkID(result []byte) (int64, error) {
+	return 1, nil
 }
 
 func (sm *testServiceManager) ProposeTransition(parent module.Transition, bi module.BlockInfo) (module.Transition, error) {
