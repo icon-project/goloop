@@ -117,16 +117,20 @@ task testGovernance(type: ChainTest, overwrite: true) {
     useJUnitPlatform {
         includeTags "governance"
     }
-    configFile = "./data/govConfig.json"
-    chainDir = ".chain/governance"
-    logFile = "./gov.log"
-    envFile = "./data/govEnv.properties"
     def audit = System.getProperty("AUDIT")
     if (audit == "true") {
         gsDir = "./data/genesisStorage/genesis_audit.json"
+        envFile = "./data/govEnvAudit.properties"
+        configFile = "./data/govConfigAudit.json"
+        logFile = "./gov_audit.log"
+        chainDir = ".chain/governance_audit"
     }
     else {
         gsDir = "./data/genesisStorage/genesis_normal.json"
+        envFile = "./data/govEnv.properties"
+        configFile = "./data/govConfig.json"
+        logFile = "./gov.log"
+        chainDir = ".chain/governance"
     }
 
     dependsOn cleanTest

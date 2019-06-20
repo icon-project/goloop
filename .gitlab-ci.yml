@@ -153,11 +153,11 @@ ITJ:gochain:governance:
 ITJ:gochain:governance:audit:
   <<: *ITJ__gochain
   variables:
-    GOCHAIN_CONFIG: "${CI_PROJECT_DIR}/testsuite/data/govConfig.json"
+    GOCHAIN_CONFIG: "${CI_PROJECT_DIR}/testsuite/data/govConfigAudit.json"
     GOCHAIN_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
     GOCHAIN_LOGFILE: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}/gochain.log"
     GOCHAIN_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_audit.json"
-    GOCHAIN_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/govEnv.properties"
+    GOCHAIN_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/govEnvAudit.properties"
   script:
     - ./gradlew testGovernance -DNO_SERVER="true" -DAUDIT="true" -DCHAIN_ENV="${GOCHAIN_ENVFILE}"
 
@@ -237,7 +237,7 @@ ITJ:goloop:governance:audit:
     GOLOOP_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
     GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_audit.json"
     GOLOOP_GOD_KEYSTORE: "${CI_PROJECT_DIR}/testsuite/data/keystore_god.json"
-    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/govEnv.properties"
+    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/govEnvAudit.properties"
   script:
     - ./gradlew testGovernance -DNO_SERVER="true" -DAUDIT="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
 

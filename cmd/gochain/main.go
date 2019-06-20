@@ -23,6 +23,7 @@ import (
 	"github.com/icon-project/goloop/server"
 	"github.com/icon-project/goloop/server/metric"
 	"github.com/icon-project/goloop/service/eeproxy"
+	"github.com/icon-project/goloop/service/transaction"
 )
 
 const (
@@ -83,7 +84,7 @@ func main() {
 	flag.StringVar(&cfg.Channel, "channel", "default", "Channel name for the chain")
 	flag.StringVar(&cfg.P2PAddr, "p2p", "127.0.0.1:8080", "Advertise ip-port of P2P")
 	flag.StringVar(&cfg.P2PListenAddr, "p2p_listen", "", "Listen ip-port of P2P")
-	flag.IntVar(&cfg.NID, "nid", 1, "Chain Network ID")
+	flag.IntVar(&cfg.NID, "nid", 0, "Chain Network ID")
 	flag.StringVar(&cfg.RPCAddr, "rpc", ":9080", "Listen ip-port of JSON-RPC")
 	flag.BoolVar(&cfg.RPCDump, "rpc_dump", false, "JSON-RPC Request, Response Dump flag")
 	flag.StringVar(&cfg.SeedAddr, "seed", "", "Ip-port of Seed")
@@ -198,7 +199,15 @@ func main() {
 			},
 			"message": "gochain generated genesis",
 		}
+		if cfg.NID != 0 {
+			genesis["nid"] = fmt.Sprintf("%#x", cfg.NID)
+		}
 		cfg.Genesis, _ = json.Marshal(genesis)
+	}
+
+	if cfg.NID == 0 {
+		gtx, _ := transaction.NewGenesisTransaction(cfg.Genesis)
+		cfg.NID = gtx.NID()
 	}
 
 	if len(saveKeyStore) > 0 {

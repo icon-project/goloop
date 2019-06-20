@@ -52,7 +52,7 @@ func newGStorageInfoCmd(c string) *cobra.Command {
 				if err != nil {
 					log.Panic(err)
 				}
-				fmt.Printf("0x%x", nid)
+				fmt.Printf("%#x\n", nid)
 			} else {
 				buf := bytes.NewBuffer(nil)
 				err = json.Indent(buf, gs.Genesis(), "", "    ")
@@ -64,7 +64,7 @@ func newGStorageInfoCmd(c string) *cobra.Command {
 				if err != nil {
 					log.Panicf("Fail to get NID for file=%s err=%+v", arg, err)
 				}
-				fmt.Printf("File       : %s\nNetwork ID : 0x%x\nGenesis TX\n%s\n",
+				fmt.Printf("File       : %s\nNetwork ID : %#x (%[2]d)\nGenesis TX\n%s\n",
 					arg, nid, buf.Bytes())
 			}
 		}

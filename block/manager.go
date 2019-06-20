@@ -412,6 +412,12 @@ func NewManager(chain module.Chain) (module.BlockManager, error) {
 	if err != nil {
 		return nil, err
 	}
+	if nid, err := m.sm.GetNetworkID(lastFinalized.Result()); err != nil {
+		return nil, err
+	} else if int(nid) != m.chain.NID() {
+		return nil, errors.InvalidNetworkError.Errorf(
+			"InvalidNetworkID Database.NID=%#x Chain.NID=%#x", nid, m.chain.NID())
+	}
 	mtr, _ := m.sm.CreateInitialTransition(lastFinalized.Result(), lastFinalized.NextValidators())
 	if mtr == nil {
 		return nil, err
@@ -549,6 +555,10 @@ func (m *manager) finalizeGenesisBlock(
 	gtx, err := m.sm.GenesisTransactionFromBytes(gtxbs, module.BlockVersion2)
 	if err != nil {
 		return nil, err
+	}
+	if !gtx.ValidateNetwork(m.chain.NID()) {
+		return nil, errors.InvalidNetworkError.Errorf(
+			"Invalid Network ID config=%#x genesis=%s", m.chain.NID(), gtxbs)
 	}
 	gtxl := m.sm.TransactionListFromSlice([]module.Transaction{gtx}, module.BlockVersion2)
 	m.syncer.begin()
