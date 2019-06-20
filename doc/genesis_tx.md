@@ -104,6 +104,14 @@ This document specifies the genesis file format.
     If it's empty, then it accepts all network connection.
     * member (T_ADDR_EOA)
 
+* `message` (T_STRING, default=`null`) <br>
+  A message to be recorded in the genesis. It's used to prevent having same
+  network ID from similar configuration.
+
+* `nid` (T_INT, default=`null`) <br>
+  Network ID for the network. Normally, it shouldn't be set. In that case, it
+  uses calculated network ID from genesis.
+
 
 ## Example
 

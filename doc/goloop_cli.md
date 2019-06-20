@@ -111,7 +111,7 @@ Inspect chain
 Join chain
 
 ### Usage
-` goloop chain join NID [flags] `
+` goloop chain join [flags] `
 
 ### Options
 |Name,shorthand | Default | Description|
