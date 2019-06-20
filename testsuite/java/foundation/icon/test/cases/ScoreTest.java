@@ -46,6 +46,7 @@ public class ScoreTest {
     private static final long contractCallStep = 10;
     private static final long defaultStep = 2;
     private static final long stepPrice = 1;
+    private static GovScore.Fee fee;
 
     @BeforeAll
     public static void init() throws Exception {
@@ -53,6 +54,8 @@ public class ScoreTest {
         Env.Channel channel = node.channels[0];
         chain = channel.chain;
         iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
+        govScore = new GovScore(iconService, chain);
+        fee = govScore.getFee();
         initScoreTest();
     }
 
@@ -68,7 +71,6 @@ public class ScoreTest {
         Address scoreAddr = Score.install(iconService, chain, ownerWallet, PATH, params);
         testScore = new Score(iconService, chain, scoreAddr);
 
-        govScore = new GovScore(iconService, chain);
         govScore.setMaxStepLimit("invoke", BigInteger.valueOf(1000));
         govScore.setMaxStepLimit("query", BigInteger.valueOf(1000));
         govScore.setStepCost("contractCall", BigInteger.valueOf(contractCallStep));
@@ -78,10 +80,7 @@ public class ScoreTest {
 
     @AfterAll
     public static void destroy() throws Exception {
-        // TODO set initial value not 0
-        govScore.setStepCost("contractCall", BigInteger.valueOf(0));
-        govScore.setStepPrice(BigInteger.valueOf(0));
-        govScore.setMaxStepLimit("invoke", BigInteger.valueOf(1000));
+        govScore.setFee(fee);
     }
 
     @Test

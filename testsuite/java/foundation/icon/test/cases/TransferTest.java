@@ -13,6 +13,7 @@ import foundation.icon.test.common.Env;
 import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.GovScore;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,7 @@ public class TransferTest {
     private static Env.Chain chain;
     private static final int testWalletNum = 10;
     private static GovScore govScore;
+    private static GovScore.Fee fee;
 
     @BeforeAll
     public static void init() throws Exception {
@@ -52,7 +54,13 @@ public class TransferTest {
         chain = channel.chain;
         iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
         govScore = new GovScore(iconService, chain);
+        fee = govScore.getFee();
         initTransfer();
+    }
+
+    @AfterAll
+    public static void destroy() throws Exception {
+        govScore.setFee(fee);
     }
 
     public static void initTransfer() throws Exception {

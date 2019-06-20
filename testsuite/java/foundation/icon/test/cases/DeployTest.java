@@ -53,9 +53,7 @@ public class DeployTest {
     private static final BigInteger stepCostCC = BigInteger.valueOf(10);
     private static final BigInteger stepPrice = BigInteger.valueOf(1);
     private static final BigInteger invokeMaxStepLimit = BigInteger.valueOf(100000);
-    private static BigInteger defStepCostCC;
-    private static BigInteger defMaxStepLimit;
-    private static BigInteger defStepPrice;
+    private static GovScore.Fee fee;
 
     @BeforeAll
     public static void init() throws Exception {
@@ -64,20 +62,11 @@ public class DeployTest {
         chain = channel.chain;
         iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
         govScore = new GovScore(iconService, chain);
+        fee = govScore.getFee();
         initDeploy();
     }
 
     public static void initDeploy() throws Exception {
-        RpcObject params = new RpcObject.Builder()
-                .put("contextType", new RpcValue("invoke"))
-                .build();
-        defMaxStepLimit = Utils.icxCall(iconService, Constants.CHAINSCORE_ADDRESS,
-                "getMaxStepLimit", params).asInteger();
-        defStepCostCC = Utils.icxCall(iconService, Constants.CHAINSCORE_ADDRESS,
-                "getStepCosts", null).asObject().getItem("contractCreate").asInteger();
-        defStepPrice = Utils.icxCall(iconService, Constants.CHAINSCORE_ADDRESS,
-                "getStepPrice", null).asInteger();
-
         Utils.transferAndCheck(iconService, chain, chain.godWallet, chain.governorWallet.getAddress(), new BigInteger("10000000000"));
         govScore.setMaxStepLimit("invoke", invokeMaxStepLimit);
         govScore.setStepCost("contractCreate", stepCostCC);
@@ -86,9 +75,7 @@ public class DeployTest {
 
     @AfterAll
     public static void destroy() throws Exception {
-        govScore.setMaxStepLimit("invoke", defMaxStepLimit);
-        govScore.setStepCost("contractCreate", defStepCostCC);
-        govScore.setStepPrice(defStepPrice);
+        govScore.setFee(fee);
     }
 
     private Address deploy(KeyWallet owner, Address to, String contentPath, RpcObject params, long stepLimit) throws Exception {

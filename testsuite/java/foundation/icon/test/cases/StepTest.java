@@ -42,6 +42,7 @@ public class StepTest {
     private static GovScore govScore;
     private static Map<String, BigInteger> defStepCosts = new HashMap<>();
     private static BigInteger defStepPrice;
+    private static GovScore.Fee fee;
 
     @BeforeAll
     public static void init() throws Exception {
@@ -50,13 +51,13 @@ public class StepTest {
         chain = channel.chain;
         iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
         govScore = new GovScore(iconService, chain);
+        fee = govScore.getFee();
         initTransfer();
     }
 
     @AfterAll
     public static void destroy() throws Exception {
-        govScore.setStepPrice(defStepPrice);
-        setSteps(defStepCosts);
+        govScore.setFee(fee);
     }
 
     public static void initTransfer() throws Exception {
@@ -86,32 +87,14 @@ public class StepTest {
         govScore.setMaxStepLimit("invoke", new BigInteger("10000000000"));
         govScore.setMaxStepLimit("query", new BigInteger("10000000000"));
         govScore.setStepPrice(BigInteger.ONE);
-        Map<String, BigInteger> steps = new HashMap<>();
-        steps.put("default", BigInteger.valueOf(100));
-        steps.put("input", BigInteger.valueOf(1));
-        steps.put("contractCreate", BigInteger.valueOf(1000));
-        steps.put("contractSet", BigInteger.valueOf(1));
-        steps.put("contractCall", BigInteger.valueOf(100));
-        setSteps(steps);
+        Map<String, BigInteger> stepCosts = new HashMap<>();
+        stepCosts.put("default", BigInteger.valueOf(100));
+        stepCosts.put("input", BigInteger.valueOf(1));
+        stepCosts.put("contractCreate", BigInteger.valueOf(1000));
+        stepCosts.put("contractSet", BigInteger.valueOf(1));
+        stepCosts.put("contractCall", BigInteger.valueOf(100));
+        govScore.setStepCosts(stepCosts);
         LOG.infoExiting();
-    }
-
-    private static void setSteps(Map<String, BigInteger> stepsMap) throws Exception {
-        List<Bytes> txList = new LinkedList<>();
-        for(String type : stepsMap.keySet()) {
-            RpcObject params = new RpcObject.Builder()
-                    .put("type", new RpcValue(type))
-                    .put("cost", new RpcValue(stepsMap.get(type)))
-                    .build();
-            txList.add(Utils.sendTransactionWithCall(iconService, chain.networkId,
-                    chain.governorWallet, Constants.GOV_ADDRESS, "setStepCost", params, 0, false));
-        }
-
-        for(Bytes tx : txList) {
-            TransactionResult result =
-                    Utils.getTransactionResult(iconService, tx, Constants.DEFAULT_WAITING_TIME);
-            assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-        }
     }
 
     class StepTransaction {
