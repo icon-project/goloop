@@ -46,8 +46,38 @@ func (lc *LoopChainDB) GetBlockJSONByHeight(height int) ([]byte, error) {
 	return blockjson, nil
 }
 
+func (lc *LoopChainDB) GetLastBlockJSON() ([]byte, error) {
+	bid, err := lc.blockbk.Get([]byte("last_block_key"), nil)
+	if err != nil {
+		if err == leveldb.ErrNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	blockjson, err := lc.blockbk.Get(bid, nil)
+	if err != nil {
+		if err == leveldb.ErrNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return blockjson, nil
+}
+
 func (lc *LoopChainDB) GetBlockByHeight(height int) (module.Block, error) {
 	if bs, err := lc.GetBlockJSONByHeight(height); err != nil {
+		return nil, err
+	} else {
+		b, err := ParseBlockV1(bs)
+		if err != nil {
+			log.Printf("Fail to parse block err=%+v blocks=%s", err, string(bs))
+		}
+		return b, err
+	}
+}
+
+func (lc *LoopChainDB) GetLastBlock() (module.Block, error) {
+	if bs, err := lc.GetLastBlockJSON(); err != nil {
 		return nil, err
 	} else {
 		b, err := ParseBlockV1(bs)
