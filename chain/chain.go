@@ -323,7 +323,7 @@ func (c *singleChain) _prepare() error {
 		return err
 	}
 	WALDir := path.Join(chainDir, DefaultWALDir)
-	c.cs = consensus.NewConsensus(c, WALDir)
+	c.cs = consensus.NewConsensus(c, WALDir, nil)
 	return nil
 }
 

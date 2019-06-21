@@ -61,21 +61,22 @@ type blockPartSet struct {
 type consensus struct {
 	hrs
 
-	logger    *log.Logger
-	debug     *log.Logger
-	nm        module.NetworkManager
-	bm        module.BlockManager
-	sm        module.ServiceManager
-	wallet    module.Wallet
-	ph        module.ProtocolHandler
-	rg        module.Regulator
-	mutex     common.Mutex
-	syncer    Syncer
-	walDir    string
-	wm        WALManager
-	roundWAL  *walMessageWriter
-	lockWAL   *walMessageWriter
-	commitWAL *walMessageWriter
+	logger          *log.Logger
+	debug           *log.Logger
+	nm              module.NetworkManager
+	bm              module.BlockManager
+	sm              module.ServiceManager
+	wallet          module.Wallet
+	ph              module.ProtocolHandler
+	rg              module.Regulator
+	mutex           common.Mutex
+	syncer          Syncer
+	walDir          string
+	wm              WALManager
+	roundWAL        *walMessageWriter
+	lockWAL         *walMessageWriter
+	commitWAL       *walMessageWriter
+	voteTimestamper func(h int64, ts int64) int64
 
 	lastBlock          module.Block
 	validators         module.ValidatorList
@@ -96,7 +97,7 @@ type consensus struct {
 	cancelBlockRequest func() bool
 
 	// commit cache
-	commitCache     *commitCache
+	commitCache *commitCache
 
 	// prefetch buffer
 	prefetchItems []fastsync.BlockResult
@@ -105,11 +106,11 @@ type consensus struct {
 	metric *metric.ConsensusMetric
 }
 
-func NewConsensus(c module.Chain, walDir string) module.Consensus {
-	return newConsensus(c, walDir, defaultWALManager)
+func NewConsensus(c module.Chain, walDir string, voteTimestamper func(int64, int64) int64) module.Consensus {
+	return newConsensus(c, walDir, defaultWALManager, voteTimestamper)
 }
 
-func newConsensus(c module.Chain, walDir string, wm WALManager) module.Consensus {
+func newConsensus(c module.Chain, walDir string, wm WALManager, voteTimestamper func(int64, int64) int64) module.Consensus {
 	cs := &consensus{
 		nm:              c.NetworkManager(),
 		bm:              c.BlockManager(),
@@ -120,6 +121,7 @@ func newConsensus(c module.Chain, walDir string, wm WALManager) module.Consensus
 		wm:              wm,
 		commitCache:     newCommitCache(configCommitCacheCap),
 		metric:          metric.NewConsensusMetric(c.MetricContext()),
+		voteTimestamper: voteTimestamper,
 	}
 	prefix := fmt.Sprintf("%x|CS|", cs.wallet.Address().Bytes()[1:3])
 	cs.logger = log.New(os.Stderr, prefix, log.Lshortfile|log.Lmicroseconds)
@@ -735,7 +737,9 @@ func (cs *consensus) enterCommit(precommits *voteSet, partSetID *PartSetID, roun
 
 	cs.nextProposeTime = time.Now()
 	if cs.consumedNonunicast || cs.validators.Len() == 1 {
-		cs.nextProposeTime = cs.nextProposeTime.Add(cs.rg.CommitTimeout())
+		if cs.voteTimestamper == nil {
+			cs.nextProposeTime = cs.nextProposeTime.Add(cs.rg.CommitTimeout())
+		}
 	}
 
 	if cs.currentBlockParts == nil || !cs.currentBlockParts.ID().Equal(partSetID) {
@@ -872,6 +876,9 @@ func (cs *consensus) voteTimestamp() int64 {
 	now := common.UnixMicroFromTime(time.Now())
 	if now > timestamp {
 		timestamp = now
+	}
+	if cs.voteTimestamper != nil {
+		timestamp = cs.voteTimestamper(cs.height, timestamp)
 	}
 	return timestamp
 }
