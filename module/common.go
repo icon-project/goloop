@@ -58,6 +58,11 @@ type LogsBloom interface {
 	Equal(lb2 LogsBloom) bool
 }
 
+type Timestamper interface {
+	GetVoteTimestamp(h, ts int64) int64
+	GetBlockTimestamp(h, ts int64) int64
+}
+
 type TransactionGroup int
 
 const (
