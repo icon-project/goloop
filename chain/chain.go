@@ -318,7 +318,7 @@ func (c *singleChain) _prepare() error {
 	if err != nil {
 		return err
 	}
-	c.bm, err = block.NewManager(c)
+	c.bm, err = block.NewManager(c, nil)
 	if err != nil {
 		return err
 	}

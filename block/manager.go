@@ -61,6 +61,7 @@ type manager struct {
 
 	finalized       *bnode
 	finalizationCBs []finalizationCB
+	timestamper     func(h, ts int64) int64
 }
 
 func (m *manager) db() db.Database {
@@ -344,6 +345,9 @@ func (pt *proposeTask) _onExecute(err error) {
 	}
 	height := pt.parentBlock.Height() + 1
 	timestamp := pt.votes.Timestamp()
+	if pt.manager.timestamper != nil {
+		timestamp = pt.manager.timestamper(height, timestamp)
+	}
 	tr, err := pt.in.propose(newBlockInfo(height, timestamp), nil)
 	if err != nil {
 		pt.stop()
@@ -379,7 +383,7 @@ func (pt *proposeTask) _onExecute(err error) {
 }
 
 // NewManager creates BlockManager.
-func NewManager(chain module.Chain) (module.BlockManager, error) {
+func NewManager(chain module.Chain, timestamper func(h, ts int64) int64) (module.BlockManager, error) {
 	prefix := fmt.Sprintf("%x|BM|", chain.Wallet().Address().Bytes()[1:3])
 	logger := log.New(os.Stderr, prefix, log.Lshortfile|log.Lmicroseconds)
 	// TODO if last block is v1 block
@@ -390,8 +394,9 @@ func NewManager(chain module.Chain) (module.BlockManager, error) {
 			logger:  logger,
 			running: true,
 		},
-		nmap:  make(map[string]*bnode),
-		cache: newCache(configCacheCap),
+		nmap:        make(map[string]*bnode),
+		cache:       newCache(configCacheCap),
+		timestamper: timestamper,
 	}
 	chainPropBucket, err := m.bucketFor(db.ChainProperty)
 	if err != nil {
