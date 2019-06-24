@@ -102,18 +102,17 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 				resp, err = hc.PostWithFile(reqUrl, &joinChainParam, "genesisZip", genesisZip, &v)
 			} else if len(genesisPath) > 0 {
 				buf := bytes.NewBuffer(nil)
-				err = chain.WriteGenesisStorageFromPath(buf, genesisPath)
-				if err != nil {
-					return fmt.Errorf("failed WriteGenesisStorage err=%+v", err)
+				err2 := chain.WriteGenesisStorageFromPath(buf, genesisPath)
+				if err2 != nil {
+					return fmt.Errorf("failed WriteGenesisStorage err=%+v", err2)
 				}
-				gs, err := chain.NewGenesisStorage(buf.Bytes())
-				if err != nil {
-					return fmt.Errorf("fail to parse %s err=%+v", genesisZip, err)
+				gs, err2 := chain.NewGenesisStorage(buf.Bytes())
+				if err2 != nil {
+					return fmt.Errorf("fail to parse genesis storage err=%+v", err2)
 				}
-				var nid int
-				nid, err = gs.NID()
-				if err != nil {
-					return fmt.Errorf("fail to get NID for %s err=%+v", genesisZip, err)
+				nid, err2 := gs.NID()
+				if err2 != nil {
+					return fmt.Errorf("fail to get NID for %s err=%+v", genesisPath, err2)
 				}
 				joinChainParam.NID.Value = int32(nid)
 				resp, err = hc.PostWithReader(reqUrl, &joinChainParam, "genesisZip", buf, &v)
