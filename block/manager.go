@@ -405,7 +405,7 @@ func NewManager(chain module.Chain, timestamper module.Timestamper) (module.Bloc
 
 	var height int64
 	err = chainPropBucket.get(raw(keyLastBlockHeight), &height)
-	if errors.NotFoundError.Equals(err) {
+	if errors.NotFoundError.Equals(err) || (err == nil && height == 0) {
 		if _, err := m.finalizeGenesisBlock(nil, 0, chain.CommitVoteSetDecoder()(nil)); err != nil {
 			return nil, err
 		}
