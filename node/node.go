@@ -134,7 +134,7 @@ func (n *Node) _get(nid int) (module.Chain, error) {
 	}
 	c, ok := n.chains[channel]
 	if !ok {
-		return nil, errors.Wrapf(ErrNotExists, "Network(channel=%s) not exists",nid)
+		return nil, errors.Wrapf(ErrNotExists, "Network(channel=%s) not exists",channel)
 	}
 	return c, nil
 }
