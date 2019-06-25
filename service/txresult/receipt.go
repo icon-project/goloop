@@ -97,6 +97,17 @@ type receiptData struct {
 	SCOREAddress       *common.Address
 }
 
+func (r *receiptData) Equal(r2 *receiptData) bool {
+	return r.Status == r2.Status &&
+		r.To.Equal(&r2.To) &&
+		r.CumulativeStepUsed.Cmp(&r2.CumulativeStepUsed.Int) == 0 &&
+		r.StepUsed.Cmp(&r2.StepUsed.Int) == 0 &&
+		r.StepPrice.Cmp(&r2.StepPrice.Int) == 0 &&
+		r.LogsBloom.Equal(&r2.LogsBloom) &&
+		reflect.DeepEqual(r.EventLogs, r2.EventLogs) &&
+		r.SCOREAddress.Equal(r2.SCOREAddress)
+}
+
 type receipt struct {
 	data receiptData
 }
@@ -352,7 +363,7 @@ func (r *receipt) Check(r2 module.Receipt) error {
 	if !ok {
 		return state.IllegalTypeError.New("IncompatibleReceipt")
 	}
-	if !reflect.DeepEqual(&r.data, &rct2.data) {
+	if !r.data.Equal(&rct2.data) {
 		return errors.InvalidStateError.New("DataIsn'tEqual")
 	}
 	return nil

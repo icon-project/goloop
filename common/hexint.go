@@ -12,9 +12,13 @@ import (
 
 var BigIntOne = big.NewInt(1)
 
+func BytesForZero() []byte {
+	return []byte{0}
+}
+
 func BigIntToBytes(i *big.Int) []byte {
 	if i == nil || i.Sign() == 0 {
-		return []byte{}
+		return BytesForZero()
 	} else if i.Sign() > 0 {
 		bl := i.BitLen()
 		if (bl % 8) == 0 {
@@ -45,7 +49,7 @@ func BigIntSetBytes(i *big.Int, bs []byte) *big.Int {
 
 func Uint64ToBytes(v uint64) []byte {
 	if v == 0 {
-		return []byte{}
+		return BytesForZero()
 	}
 	bs := make([]byte, 8)
 	for idx := 7; idx >= 0; idx-- {
@@ -86,7 +90,7 @@ func BytesToInt64(bs []byte) int64 {
 
 func Int64ToBytes(v int64) []byte {
 	if v == 0 {
-		return []byte{}
+		return BytesForZero()
 	}
 	bs := make([]byte, 8)
 
