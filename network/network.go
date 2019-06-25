@@ -76,6 +76,9 @@ func NewManager(c module.Chain, nt module.NetworkTransport, initialSeed string, 
 	}
 
 	m.log.Println("NewManager", channel)
+	m.log.excludes = []string{
+		"SetRole",
+	}
 	return m
 }
 
@@ -255,9 +258,11 @@ func (m *manager) _getPeerIDSetByRole(role module.Role) *PeerIDSet {
 
 func (m *manager) SetRole(version int64, role module.Role, peers ...module.PeerID) {
 	s := m._getPeerIDSetByRole(role)
-	if s.version > version {
+	if s.version < version {
 		s.version = version
 		s.ClearAndAdd(peers...)
+	} else {
+		m.log.Println("SetRole","ignore",version,"must greater than",s.version)
 	}
 }
 

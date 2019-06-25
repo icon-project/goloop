@@ -9,6 +9,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/icon-project/goloop/common"
@@ -24,21 +25,23 @@ type Peer struct {
 	netAddress NetAddress
 	secureKey  *secureKey
 	//
-	conn        net.Conn
-	reader      *PacketReader
-	writer      *PacketWriter
-	q           *PriorityQueue
-	onPacket    packetCbFunc
-	onError     errorCbFunc
-	onClose     closeCbFunc
-	timestamp   time.Time
-	pool        *TimestampPool
-	close       chan error
-	closed      bool
-	closeReason []string
-	closeErr    []error
-	mtx         sync.Mutex
-	once        sync.Once
+	conn         net.Conn
+	reader       *PacketReader
+	writer       *PacketWriter
+	q            *PriorityQueue
+	onPacket     packetCbFunc
+	onError      errorCbFunc
+	onClose      closeCbFunc
+	cbMtx        sync.RWMutex
+	timestamp    time.Time
+	pool         *TimestampPool
+	close        chan error
+	closed       int32
+	closeReason  []string
+	closeErr     []error
+	closeInfoMtx sync.RWMutex
+	mtx          sync.Mutex
+	once         sync.Once
 	//
 	incomming bool
 	channel   string
@@ -68,6 +71,7 @@ type PeerRTT struct {
 	avg  time.Duration
 	st   time.Time
 	et   time.Time
+	mtx  sync.RWMutex
 }
 
 func NewPeerRTT() *PeerRTT {
@@ -75,11 +79,17 @@ func NewPeerRTT() *PeerRTT {
 }
 
 func (r *PeerRTT) Start() time.Time {
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
+
 	r.st = time.Now()
 	return r.st
 }
 
 func (r *PeerRTT) Stop() time.Time {
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
+
 	r.et = time.Now()
 	r.last = r.et.Sub(r.st)
 
@@ -95,16 +105,25 @@ func (r *PeerRTT) Stop() time.Time {
 }
 
 func (r *PeerRTT) Last(d time.Duration) float64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
 	fv := float64(r.last) / float64(d)
 	return fv
 }
 
 func (r *PeerRTT) Avg(d time.Duration) float64 {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
 	fv := float64(r.avg) / float64(d)
 	return fv
 }
 
 func (r *PeerRTT) String() string {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
 	return fmt.Sprintf("{last:%v,avg:%v}", r.last.String(), r.avg.String())
 }
 
@@ -146,6 +165,8 @@ var (
 		"Nephew",
 		"Friend",
 	}
+	defaultOnError = func(err error, p *Peer, pkt *Packet) { p.CloseByError(err) }
+	defaultOnClose = func(p *Peer) {}
 )
 
 type PeerConnectionType byte
@@ -162,8 +183,8 @@ func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool) *Peer {
 		close:       make(chan error),
 		closeReason: make([]string, 0),
 		closeErr:    make([]error, 0),
-		onError:     func(err error, p *Peer, pkt *Packet) { p.CloseByError(err) },
-		onClose:     func(p *Peer) {},
+		onError:     defaultOnError,
+		onClose:     defaultOnClose,
 	}
 	p.setPacketCbFunc(cbFunc)
 
@@ -203,6 +224,9 @@ func (p *Peer) NetAddress() NetAddress {
 }
 
 func (p *Peer) setPacketCbFunc(cbFunc packetCbFunc) {
+	p.cbMtx.Lock()
+	defer p.cbMtx.Unlock()
+
 	p.onPacket = cbFunc
 	if cbFunc != nil {
 		p.once.Do(func() {
@@ -212,12 +236,39 @@ func (p *Peer) setPacketCbFunc(cbFunc packetCbFunc) {
 	}
 }
 
+func (p *Peer) getPacketCbFunc() packetCbFunc {
+	p.cbMtx.RLock()
+	defer p.cbMtx.RUnlock()
+
+	return p.onPacket
+}
+
 func (p *Peer) setErrorCbFunc(cbFunc errorCbFunc) {
+	p.cbMtx.Lock()
+	defer p.cbMtx.Unlock()
+
 	p.onError = cbFunc
 }
 
+func (p *Peer) getErrorCbFunc() errorCbFunc {
+	p.cbMtx.RLock()
+	defer p.cbMtx.RUnlock()
+
+	return p.onError
+}
+
 func (p *Peer) setCloseCbFunc(cbFunc closeCbFunc) {
+	p.cbMtx.Lock()
+	defer p.cbMtx.Unlock()
+
 	p.onClose = cbFunc
+}
+
+func (p *Peer) getCloseCbFunc() closeCbFunc {
+	p.cbMtx.RLock()
+	defer p.cbMtx.RUnlock()
+
+	return p.onClose
 }
 
 func (p *Peer) setRole(r PeerRoleFlag) {
@@ -241,21 +292,31 @@ func (p *Peer) compareRole(r PeerRoleFlag, equal bool) bool {
 
 func (p *Peer) _close(err error) {
 	if cerr := p.conn.Close(); cerr == nil {
-		p.closed = true
+		atomic.StoreInt32(&p.closed, 1)
 		if err != nil && !p.isCloseError(err) {
 			log.Printf("Warning Peer[%s].Close by error %+v", p.ConnString(), err)
 		}
 		close(p.close)
-		p.onClose(p)
+		if cbFunc := p.getCloseCbFunc(); cbFunc != nil {
+			cbFunc(p)
+		} else {
+			defaultOnClose(p)
+		}
 	}
 }
 
 func (p *Peer) Close(reason string) {
+	p.closeInfoMtx.Lock()
+	defer p.closeInfoMtx.Unlock()
+
 	p.closeReason = append(p.closeReason, reason)
 	p._close(nil)
 }
 
 func (p *Peer) CloseByError(err error) {
+	p.closeInfoMtx.Lock()
+	defer p.closeInfoMtx.Unlock()
+
 	p.closeErr = append(p.closeErr, err)
 	p._close(err)
 }
@@ -335,7 +396,11 @@ func (p *Peer) receiveRoutine() {
 				p.CloseByError(err)
 				return
 			}
-			p.onError(err, p, pkt)
+			if cbFunc := p.getErrorCbFunc(); cbFunc != nil {
+				cbFunc(err, p, pkt)
+			} else {
+				defaultOnError(err, p, pkt)
+			}
 			continue
 		}
 
@@ -345,7 +410,7 @@ func (p *Peer) receiveRoutine() {
 		if isLoggingPacket {
 			log.Println(p.id, "Peer", "receiveRoutine", p.connType, p.ConnString(), pkt)
 		}
-		if cbFunc := p.onPacket; cbFunc != nil {
+		if cbFunc := p.getPacketCbFunc(); cbFunc != nil {
 			cbFunc(pkt, p)
 		} else {
 			log.Printf("Warning Peer[%s].onPacket in nil, Drop %s", p.ConnString(), pkt.String())
@@ -380,7 +445,6 @@ Loop:
 		case <-p.q.Wait():
 			for {
 				ctx := p.q.Pop()
-				p.last = ctx
 				if ctx == nil {
 					break
 				}
@@ -396,7 +460,11 @@ Loop:
 						return
 					}
 					//TODO TemporaryError시의 failure는 어떻게 counting 할것인가?
-					p.onError(err, p, pkt)
+					if cbFunc := p.getErrorCbFunc(); cbFunc != nil {
+						cbFunc(err, p, pkt)
+					} else {
+						defaultOnError(err, p, pkt)
+					}
 				}
 				if isLoggingPacket {
 					log.Println(p.id, "Peer", "sendRoutine", p.connType, p.ConnString(), pkt)
@@ -429,13 +497,13 @@ func (p *Peer) isDuplicatedToSend(pkt *Packet) bool {
 }
 
 func (p *Peer) send(ctx context.Context) error {
-	if p == nil || p.closed {
+	if p == nil || atomic.LoadInt32(&p.closed) == 1 {
 		return ErrNotAvailable
 	}
 	c := ctx.Value(p2pContextKeyCounter).(*Counter)
 	c.peer++
 	pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
-	//TODO dequeue 전에 peer.send가 호출되면 duplication chech가 되지 않음.
+	//TODO dequeue 전에 peer.send가 호출되면 duplication check가 되지 않음.
 	if p.isDuplicatedToSend(pkt) {
 		c.duplicate++
 		return ErrDuplicatedPacket
@@ -449,7 +517,7 @@ func (p *Peer) send(ctx context.Context) error {
 }
 
 func (p *Peer) sendPacket(pkt *Packet) error {
-	if p == nil || p.closed {
+	if p == nil || atomic.LoadInt32(&p.closed) == 1 {
 		return ErrNotAvailable
 	}
 	ctx := context.WithValue(context.Background(), p2pContextKeyPacket, pkt)

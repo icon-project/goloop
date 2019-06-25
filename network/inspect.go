@@ -23,7 +23,7 @@ func inspectP2P(mgr *manager) map[string]interface{} {
 	m["seeds"] = mgr.p2p.seeds.Map()
 	m["roots"] = mgr.p2p.roots.Map()
 	m["friends"] = peerToMapArray(mgr.p2p.friends)
-	m["parent"] = peerToMap(mgr.p2p.parent)
+	m["parent"] = peerToMap(mgr.p2p.getParent())
 	m["children"] = peerToMapArray(mgr.p2p.children)
 	m["uncles"] = peerToMapArray(mgr.p2p.uncles)
 	m["nephews"] = peerToMapArray(mgr.p2p.nephews)

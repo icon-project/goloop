@@ -13,6 +13,7 @@ type Queue interface {
 	Available() int
 	IsEmpty() bool
 	Size() int
+	Last() context.Context
 }
 
 type queue struct {
@@ -24,6 +25,7 @@ type queue struct {
 	mtx     sync.RWMutex
 	wait    map[chan bool]interface{}
 	mtxWait sync.Mutex
+	last    context.Context
 }
 
 func NewQueue(size int) Queue {
@@ -68,6 +70,7 @@ func (q *queue) Pop() context.Context {
 	q.mtx.Lock()
 
 	if q.w == q.r {
+		q.last = nil
 		return nil
 	}
 	ctx := q.buf[q.r].(context.Context)
@@ -77,6 +80,7 @@ func (q *queue) Pop() context.Context {
 	} else {
 		q.r = 0
 	}
+	q.last = ctx
 	return ctx
 }
 
@@ -143,6 +147,12 @@ func (q *queue) Size() int {
 	return q.size
 }
 
+func (q *queue) Last() context.Context {
+	defer q.mtx.RUnlock()
+	q.mtx.RLock()
+	return q.last
+}
+
 type MultiQueue struct {
 	s       []Queue
 	nq      int
@@ -162,7 +172,7 @@ func NewMultiQueue(size int, numberOfQueue int) *MultiQueue {
 
 	mq := &MultiQueue{
 		s:    make([]Queue, numberOfQueue),
-		nq: numberOfQueue,
+		nq:   numberOfQueue,
 		size: size,
 		wait: make(map[chan bool]interface{}),
 	}
@@ -359,6 +369,7 @@ func (wq *WeightQueue) Clear() {
 type PriorityQueue struct {
 	*MultiQueue
 	maxPriority uint8
+	last        context.Context
 }
 
 func NewPriorityQueue(size int, maxPriority uint8) *PriorityQueue {
@@ -383,12 +394,20 @@ func (pq *PriorityQueue) Pop() context.Context {
 
 	for _, q := range pq.s {
 		if ctx := q.Pop(); ctx != nil {
+			pq.last = ctx
 			return ctx
 		}
 	}
+	pq.last = nil
 	return nil
 }
 
 func (pq *PriorityQueue) MaxPriority() int {
 	return int(pq.maxPriority)
+}
+
+func (pq *PriorityQueue) Last() context.Context {
+	defer pq.mtx.RUnlock()
+	pq.mtx.RLock()
+	return pq.last
 }

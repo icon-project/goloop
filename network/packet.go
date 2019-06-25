@@ -26,8 +26,8 @@ type Packet struct {
 	protocol        protocolInfo  //2byte
 	subProtocol     protocolInfo  //2byte
 	src             module.PeerID //20byte
-	dest byte
-	ttl byte
+	dest            byte
+	ttl             byte
 	lengthOfPayload uint32 //4byte
 	//footer
 	hashOfPacket uint64 //8byte
@@ -43,6 +43,7 @@ type Packet struct {
 	priority  uint8
 	timestamp time.Time
 	forceSend bool
+	mtx       sync.RWMutex
 }
 
 type packetDestInfo uint16
@@ -52,6 +53,7 @@ const (
 	p2pDestPeerGroup = 0x08
 	p2pDestPeer      = 0xFF
 )
+
 func newPacketDestInfo(dest byte, ttl byte) packetDestInfo {
 	return packetDestInfo(int(dest)<<8 | int(ttl))
 }
@@ -201,7 +203,7 @@ func (p *Packet) _hash(force bool) (hash.Hash64, error) {
 }
 
 func (p *Packet) headerToBytes(force bool) []byte {
-	if p.header == nil || force {
+	if force || p.header == nil {
 		p.header = make([]byte, packetHeaderSize)
 		tb := p.header[:]
 		binary.BigEndian.PutUint16(tb[:2], p.protocol.Uint16())
@@ -221,13 +223,18 @@ func (p *Packet) headerToBytes(force bool) []byte {
 }
 
 func (p *Packet) footerToBytes(force bool) []byte {
-	if p.footer == nil || force {
-		p.footer = make([]byte, packetFooterSize)
-		tb := p.footer[:]
+	p.mtx.Lock()
+	defer p.mtx.Unlock()
+	if force || p.footer == nil {
+		footer := make([]byte, packetFooterSize)
+		tb := footer[:]
 		binary.BigEndian.PutUint64(tb[:8], p.hashOfPacket)
 		tb = tb[8:]
 		binary.BigEndian.PutUint16(tb[:2], uint16(p.extendInfo))
 		tb = tb[2:]
+		//lock
+		p.footer = footer[:]
+		//unlock
 	}
 	return p.footer[:]
 }
