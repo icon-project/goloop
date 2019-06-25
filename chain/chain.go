@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/icon-project/goloop/common/errors"
 	"log"
 	"os"
 	"path"
@@ -12,6 +11,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/icon-project/goloop/common/errors"
 
 	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/common"
@@ -25,6 +26,12 @@ import (
 	"github.com/icon-project/goloop/service/eeproxy"
 )
 
+const (
+	ConfigDefaultNormalTxPoolSize = 5000
+	ConfigDefaultPatchTxPoolSize  = 1000
+	ConfigDefaultMaxBlockTxBytes  = 1024 * 1024
+)
+
 type Config struct {
 	//fixed
 	NID    int    `json:"nid"`
@@ -34,6 +41,9 @@ type Config struct {
 	SeedAddr         string `json:"seed_addr"`
 	Role             uint   `json:"role"`
 	ConcurrencyLevel int    `json:"concurrency_level,omitempty"`
+	NormalTxPoolSize int    `json:"normal_tx_pool,omitempty"`
+	PatchTxPoolSize  int    `json:"patch_tx_pool,omitempty"`
+	MaxBlockTxBytes  int    `json:"max_block_tx_bytes,omitempty"`
 
 	//runtime
 	Channel      string `json:"channel"`
@@ -220,6 +230,27 @@ func (c *singleChain) ConcurrencyLevel() int {
 	} else {
 		return 1
 	}
+}
+
+func (c *singleChain) NormalTxPoolSize() int {
+	if c.cfg.NormalTxPoolSize > 0 {
+		return c.cfg.NormalTxPoolSize
+	}
+	return ConfigDefaultNormalTxPoolSize
+}
+
+func (c *singleChain) PatchTxPoolSize() int {
+	if c.cfg.PatchTxPoolSize > 0 {
+		return c.cfg.PatchTxPoolSize
+	}
+	return ConfigDefaultPatchTxPoolSize
+}
+
+func (c *singleChain) MaxBlockTxBytes() int {
+	if c.cfg.MaxBlockTxBytes > 0 {
+		return c.cfg.MaxBlockTxBytes
+	}
+	return ConfigDefaultMaxBlockTxBytes
 }
 
 func (c *singleChain) State() string {

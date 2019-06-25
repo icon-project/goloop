@@ -30,6 +30,18 @@ func (_r *ChainBase) ConcurrencyLevel() int {
 	panic("not implemented")
 }
 
+func (_r *ChainBase) NormalTxPoolSize() int {
+	panic("not implemented")
+}
+
+func (_r *ChainBase) PatchTxPoolSize() int {
+	panic("not implemented")
+}
+
+func (_r *ChainBase) MaxBlockTxBytes() int {
+	panic("not implemented")
+}
+
 func (_r *ChainBase) Genesis() []byte {
 	panic("not implemented")
 }

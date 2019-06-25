@@ -13,7 +13,6 @@ import (
 )
 
 const (
-	configTxPoolSize             = 5000
 	configDefaultTxSliceCapacity = 1024
 	configMaxTxCount             = 1500
 )
@@ -27,6 +26,7 @@ type Monitor interface {
 
 type TransactionPool struct {
 	nid  int
+	size int
 	txdb db.Bucket
 
 	list *transactionList
@@ -36,9 +36,10 @@ type TransactionPool struct {
 	monitor Monitor
 }
 
-func NewTransactionPool(nid int, txdb db.Bucket, m Monitor) *TransactionPool {
+func NewTransactionPool(nid int, size int, txdb db.Bucket, m Monitor) *TransactionPool {
 	pool := &TransactionPool{
 		nid:     nid,
+		size:    size,
 		txdb:    txdb,
 		list:    newTransactionList(),
 		monitor: m,
@@ -175,7 +176,7 @@ func (tp *TransactionPool) Add(tx transaction.Transaction, direct bool) error {
 	tp.mutex.Lock()
 	defer tp.mutex.Unlock()
 
-	if tp.list.Len() >= configTxPoolSize {
+	if tp.list.Len() >= tp.size {
 		return ErrTransactionPoolOverFlow
 	}
 
@@ -224,4 +225,15 @@ func (tp *TransactionPool) HasTx(tid []byte) bool {
 	defer tp.mutex.Unlock()
 
 	return tp.list.HasTx(tid)
+}
+
+func (tp *TransactionPool) Size() int {
+	return tp.size
+}
+
+func (tp *TransactionPool) Used() int {
+	tp.mutex.Lock()
+	defer tp.mutex.Unlock()
+
+	return tp.list.Len()
 }

@@ -19,6 +19,9 @@ type Chain interface {
 	NID() int
 	Channel() string
 	ConcurrencyLevel() int
+	NormalTxPoolSize() int
+	PatchTxPoolSize() int
+	MaxBlockTxBytes() int
 	Genesis() []byte
 	GetGenesisData(key []byte) ([]byte, error)
 	CommitVoteSetDecoder() CommitVoteSetDecoder

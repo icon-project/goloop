@@ -101,6 +101,9 @@ func main() {
 	flag.StringVar(&chainDir, "chain_dir", "", "Chain data directory(default:.chain/<address>/<nid>")
 	flag.IntVar(&cfg.EEInstances, "ee_instances", 1, "Number of execution engines")
 	flag.IntVar(&cfg.ConcurrencyLevel, "concurrency", 1, "Maximum number of executors to use for concurrency")
+	flag.IntVar(&cfg.NormalTxPoolSize, "normal_tx_pool", 0, "Normal transaction pool size")
+	flag.IntVar(&cfg.PatchTxPoolSize, "patch_tx_pool", 0, "Patch transaction pool size")
+	flag.IntVar(&cfg.MaxBlockTxBytes, "max_block_tx_bytes", 0, "Maximum size of ransactions in a block")
 	flag.Parse()
 
 	if len(keyStoreFile) > 0 {

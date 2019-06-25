@@ -121,6 +121,9 @@ Join chain
 | --db_type | goleveldb | Name of database system(*badgerdb, goleveldb, boltdb, mapdb) |
 | --genesis |  | Genesis storage path |
 | --genesis_template |  | Genesis template directory or file |
+| --max_block_tx_bytes | 0 | Max size of transactions in a block |
+| --normal_tx_pool | 0 | Size of normal transaction pool |
+| --patch_tx_pool | 0 | Size of patch transaction pool |
 | --role | 3 | [0:None, 1:Seed, 2:Validator, 3:Both] |
 | --secure_aeads | chacha,aes128,aes256 | Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string |
 | --secure_suites | none,tls,ecdhe | Supported Secure suites with order (none,tls,ecdhe) - Comma separated string |

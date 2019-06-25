@@ -54,6 +54,9 @@ type JoinChainParam struct {
 	SeedAddr         string `json:"seedAddress"`
 	Role             uint   `json:"role"`
 	ConcurrencyLevel int    `json:"concurrency,omitempty"`
+	NormalTxPoolSize int    `json:"normal_tx_pool,omitempty"`
+	PatchTxPoolSize  int    `json:"patch_tx_pool,omitempty"`
+	MaxBlockTxBytes  int    `json:"max_block_tx_bytes,omitempty"`
 
 	Channel      string `json:"channel"`
 	SecureSuites string `json:"secureSuites"`
@@ -81,6 +84,9 @@ type ChainInspectViewConfig struct {
 	SeedAddr         string `json:"seed_addr"`
 	Role             uint   `json:"role"`
 	ConcurrencyLevel int    `json:"concurrency_level,omitempty"`
+	NormalTxPoolSize int    `json:"normal_tx_pool,omitempty"`
+	PatchTxPoolSize  int    `json:"patch_tx_pool,omitempty"`
+	MaxBlockTxBytes  int    `json:"max_block_tx_bytes,omitempty"`
 	Channel          string `json:"channel"`
 	SecureSuites     string `json:"secureSuites"`
 	SecureAeads      string `json:"secureAeads"`
@@ -124,6 +130,9 @@ func NewChainInspectView(c *Chain) *ChainInspectView {
 			SeedAddr:         c.cfg.SeedAddr,
 			Role:             c.cfg.Role,
 			ConcurrencyLevel: c.cfg.ConcurrencyLevel,
+			NormalTxPoolSize: c.cfg.NormalTxPoolSize,
+			PatchTxPoolSize:  c.cfg.PatchTxPoolSize,
+			MaxBlockTxBytes:  c.cfg.MaxBlockTxBytes,
 			Channel:          c.cfg.Channel,
 			SecureSuites:     c.cfg.SecureSuites,
 			SecureAeads:      c.cfg.SecureAeads,

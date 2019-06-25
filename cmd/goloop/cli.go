@@ -130,6 +130,9 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 	joinCmd.Flags().UintVar(&joinChainParam.Role, "role", 3, "[0:None, 1:Seed, 2:Validator, 3:Both]")
 	joinCmd.Flags().StringVar(&joinChainParam.DBType, "db_type", "goleveldb", "Name of database system(*badgerdb, goleveldb, boltdb, mapdb)")
 	joinCmd.Flags().IntVar(&joinChainParam.ConcurrencyLevel, "concurrency", 1, "Maximum number of executors to use for concurrency")
+	joinCmd.Flags().IntVar(&joinChainParam.NormalTxPoolSize, "normal_tx_pool", 0, "Size of normal transaction pool")
+	joinCmd.Flags().IntVar(&joinChainParam.PatchTxPoolSize, "patch_tx_pool", 0, "Size of patch transaction pool")
+	joinCmd.Flags().IntVar(&joinChainParam.MaxBlockTxBytes, "max_block_tx_bytes", 0, "Max size of transactions in a block")
 	joinCmd.Flags().StringVar(&joinChainParam.Channel, "channel", "", "Channel")
 	joinCmd.Flags().StringVar(&joinChainParam.SecureSuites, "secure_suites", "none,tls,ecdhe",
 		"Supported Secure suites with order (none,tls,ecdhe) - Comma separated string")

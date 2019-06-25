@@ -204,6 +204,9 @@ func (n *Node) JoinChain(
 		GenesisStorage: gs,
 		// GenesisDataPath: path.Join(chainDir, "genesis"),
 		ConcurrencyLevel: p.ConcurrencyLevel,
+		NormalTxPoolSize: p.NormalTxPoolSize,
+		PatchTxPoolSize:  p.PatchTxPoolSize,
+		MaxBlockTxBytes:  p.MaxBlockTxBytes,
 		FilePath:         cfgFile,
 	}
 

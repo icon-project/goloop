@@ -65,8 +65,8 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 	mgr := &manager{
 		patchMetric:  pMetric,
 		normalMetric: nMetric,
-		patchTxPool:  NewTransactionPool(chain.NID(), bk, pMetric),
-		normalTxPool: NewTransactionPool(chain.NID(), bk, nMetric),
+		patchTxPool:  NewTransactionPool(chain.NID(), chain.PatchTxPoolSize(), bk, pMetric),
+		normalTxPool: NewTransactionPool(chain.NID(), chain.NormalTxPoolSize(), bk, nMetric),
 		db:           chain.Database(),
 		chain:        chain,
 		cm:           cm,
@@ -112,7 +112,7 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 	wc := state.NewWorldContext(ws, bi)
 
 	maxTxCount := m.chain.Regulator().MaxTxCount()
-	txSizeInBlock := ConfigMaxTxBytesInABlock
+	txSizeInBlock := m.chain.MaxBlockTxBytes()
 
 	patchTxs, size := m.patchTxPool.Candidate(wc, txSizeInBlock, maxTxCount) // try to add all patches in the block
 	txSizeInBlock -= size
@@ -174,7 +174,7 @@ func (m *manager) GetPatches(parent module.Transition) module.TransactionList {
 	}
 
 	wc := state.NewWorldContext(ws, pt.bi)
-	txs, _ := m.patchTxPool.Candidate(wc, ConfigMaxTxBytesInABlock, 0)
+	txs, _ := m.patchTxPool.Candidate(wc, m.chain.MaxBlockTxBytes(), 0)
 	return transaction.NewTransactionListFromSlice(m.db, txs)
 }
 

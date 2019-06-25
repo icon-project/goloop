@@ -14,7 +14,7 @@ func Inspect(c module.Chain) map[string]interface{} {
 
 func inspectTxPool(p *TransactionPool) map[string]interface{} {
 	m := make(map[string]interface{})
-	m["size"] = configTxPoolSize
-	m["used"] = p.list.Len()
+	m["size"] = p.Size()
+	m["used"] = p.Used()
 	return m
 }
