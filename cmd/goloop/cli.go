@@ -23,7 +23,7 @@ var (
 	joinChainParam          node.JoinChainParam
 )
 
-func JsonIntend(v interface{}) (string, error) {
+func JosnIndent(v interface{}) (string, error) {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return "", nil
@@ -66,7 +66,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			s, err := JsonIntend(l)
+			s, err := JosnIndent(l)
 			if err != nil {
 				return fmt.Errorf("failed JsonIntend resp=%+v, err=%+v", resp, err)
 			}
@@ -179,7 +179,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 				return err
 			}
 			if format == "" {
-				s, err := JsonIntend(v)
+				s, err := JosnIndent(v)
 				if err != nil {
 					return fmt.Errorf("failed JsonIntend resp=%+v, err=%+v", resp, err)
 				}
@@ -289,7 +289,7 @@ func NewSystemCmd(cfg *GoLoopConfig) *cobra.Command {
 				return err
 			}
 			if format == "" {
-				s, err := JsonIntend(v)
+				s, err := JosnIndent(v)
 				if err != nil {
 					return fmt.Errorf("failed JsonIntend resp=%+v, err=%+v", resp, err)
 				}
