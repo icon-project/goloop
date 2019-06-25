@@ -337,7 +337,7 @@ func MultipartFile(mw *multipart.Writer, fieldName, fileName string) error {
 func MultipartJson(mw *multipart.Writer, fieldName string, v interface{}) error {
 	h := make(textproto.MIMEHeader)
 	h.Set("Content-Disposition",
-		fmt.Sprintf(`form-data; name="%s"; filename="blob"`, fieldName))
+		fmt.Sprintf(`form-data; name="%s"`, fieldName))
 	h.Set("Content-Type", "application/json")
 	pw, err := mw.CreatePart(h)
 	if err != nil {

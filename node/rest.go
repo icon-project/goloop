@@ -211,21 +211,8 @@ func (r *Rest) GetChains(ctx echo.Context) error {
 }
 
 func GetJsonMultipart(ctx echo.Context, ptr interface{}) error {
-	ff, err := ctx.FormFile("json")
-	if err != nil {
-		return err
-	}
-	f, err := ff.Open()
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	b, err := ioutil.ReadAll(f)
-	if err != nil {
-		return err
-	}
-	if err := json.Unmarshal(b, ptr); err != nil {
+	jsonStr := ctx.FormValue("json")
+	if err := json.Unmarshal([]byte(jsonStr), ptr); err != nil {
 		return err
 	}
 	return nil
