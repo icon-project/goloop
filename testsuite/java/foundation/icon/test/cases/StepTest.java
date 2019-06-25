@@ -165,7 +165,7 @@ public class StepTest {
             }
             else {
                 // add step for calling on_install
-                stepUsed = calcCallStep(tx);
+                stepUsed = calcTransactionStep(tx);
             }
             BigInteger codeLen = BigInteger.valueOf(content.length);
             if(update) {
