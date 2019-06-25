@@ -144,9 +144,11 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 	h.cc = cc
 
 	// Calculate steps
-	if !h.ApplySteps(cc, state.StepTypeContractCall, 1) {
-		h.cc.OnResult(module.StatusOutOfStep, h.StepUsed(), nil, nil)
-		return nil
+	if !h.forDeploy {
+		if !h.ApplySteps(cc, state.StepTypeContractCall, 1) {
+			h.cc.OnResult(module.StatusOutOfStep, h.StepUsed(), nil, nil)
+			return nil
+		}
 	}
 
 	// Prepare
