@@ -5,7 +5,7 @@ from .proxy import *
 class TestExecutionHandler(TestCase):
     def test_int_to_bytes(self):
         cases = [
-            (0, []),
+            (0, [0]),
             (0x80, [0x00, 0x80]),
             (-0x80, [0x80]),
             (-255, [0xff, 0x01]),
