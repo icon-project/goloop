@@ -23,8 +23,6 @@ TAG = 'Proxy'
 
 # Convert python int to bytes of golang big.Int.
 def int_to_bytes(v: int) -> bytes:
-    if v == 0:
-        return b''
     n_bytes = ((v + (v < 0)).bit_length() + 8) // 8
     return v.to_bytes(n_bytes, byteorder="big", signed=True)
 
@@ -60,6 +58,7 @@ class Info(object):
     TX_FROM = "T.from"
     TX_TIMESTAMP = "T.timestamp"
     TX_NONCE = "T.nonce"
+    REVISION = "Revision"
     STEP_COSTS = "StepCosts"
     CONTRACT_OWNER = "C.owner"
 

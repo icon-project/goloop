@@ -25,8 +25,6 @@ from ..icon_constant import BUILTIN_SCORE_ADDRESS_MAPPER
 
 
 def int_to_bytes(v: int) -> bytes:
-    if v == 0:
-        return b''
     n_bytes = byte_length_of_int(v)
     return v.to_bytes(n_bytes, byteorder="big", signed=True)
 

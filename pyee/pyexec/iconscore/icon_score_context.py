@@ -95,7 +95,7 @@ class IconScoreContext(object):
         self.owner: 'Address' = None
         self.step_counter: 'IconScoreStepCounter' = None
 
-        # self.revision: int = 0
+        self.revision: int = 0
         self.func_type: IconScoreFuncType = None
         self.event_logs: List['EventLog'] = None
 

@@ -115,11 +115,13 @@ class PyExecEngine(object):
         context.owner: Address = info.get(Info.CONTRACT_OWNER)
         context.step_counter = IconScoreStepCounter(info.get(Info.STEP_COSTS),
                                                     limit)
+        context.revision = info.get(Info.REVISION)
         Logger.info(f'[Transaction] {context.tx}', TAG)
         Logger.info(f'[Block] {context.block}', TAG)
         Logger.info(f'[Message] {context.msg}', TAG)
         Logger.info(f'[Owner] {context.owner}', TAG)
         Logger.info(f'[StepCounter] {context.step_counter}', TAG)
+        Logger.info(f'[Revision] {context.revision}', TAG)
         return ServiceEngine.invoke(context)
 
     def api_handler(self, code: str) -> Tuple[int, APIInfo]:

@@ -48,6 +48,7 @@ const (
 	InfoTxTimestamp    = "T.timestamp"
 	InfoTxNonce        = "T.nonce"
 	InfoTxFrom         = "T.from"
+	InfoRevision       = "Revision"
 	InfoStepCosts      = "StepCosts"
 	InfoContractOwner  = "C.owner"
 )
@@ -346,6 +347,7 @@ func (c *worldContext) GetInfo() map[string]interface{} {
 		m[InfoTxTimestamp] = c.txInfo.Timestamp
 		m[InfoTxNonce] = c.txInfo.Nonce
 		m[InfoTxFrom] = c.txInfo.From
+		m[InfoRevision] = c.Revision()
 		m[InfoStepCosts] = c.stepCostInfo()
 		m[InfoContractOwner] = c.contractInfo.Owner
 		c.info = m
