@@ -137,7 +137,7 @@ func TestHexInt_EncodingDecoding(t *testing.T) {
 		{
 			"Case6",
 			args{"0x0"},
-			"",
+			"00",
 		},
 	}
 
@@ -660,7 +660,7 @@ func TestBigIntToBytes(t *testing.T) {
 		{"T2", args{big.NewInt(-0x7f)}, []byte{0x81}},
 		{"T3", args{big.NewInt(0x80)}, []byte{0x00, 0x80}},
 		{"T4", args{big.NewInt(-0x80)}, []byte{0x80}},
-		{"T5", args{big.NewInt(0)}, []byte{}},
+		{"T5", args{big.NewInt(0)}, []byte{0x00}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -684,7 +684,7 @@ func TestInt64ToBytes(t *testing.T) {
 		{"T2", args{-0x7f}, []byte{0x81}},
 		{"T3", args{0x80}, []byte{0x00, 0x80}},
 		{"T4", args{-0x80}, []byte{0x80}},
-		{"T5", args{0}, []byte{}},
+		{"T5", args{0}, []byte{0x00}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
