@@ -62,6 +62,7 @@ var (
 
 type WorldContext interface {
 	WorldState
+	Revision() int
 	StepsFor(t StepType, n int) int64
 	StepPrice() *big.Int
 	BlockTimeStamp() int64
@@ -149,6 +150,7 @@ type systemStorageInfo struct {
 	sysConfig    int64
 	stepCostInfo *codec.TypedObj
 	deployer     map[string]bool
+	revision     int
 }
 
 func (c *worldContext) updateSystemInfo() {
@@ -158,6 +160,7 @@ func (c *worldContext) updateSystemInfo() {
 			c.systemInfo.ass = ass
 
 			as := scoredb.NewStateStoreWith(ass)
+			c.systemInfo.revision = int(scoredb.NewVarDB(as, VarRevision).Int64())
 
 			stepPrice := scoredb.NewVarDB(as, VarStepPrice).BigInt()
 			c.systemInfo.stepPrice = stepPrice
@@ -195,6 +198,11 @@ func (c *worldContext) updateSystemInfo() {
 		}
 		c.systemInfo.updated = true
 	}
+}
+
+func (c *worldContext) Revision() int {
+	c.updateSystemInfo()
+	return c.systemInfo.revision
 }
 
 func (c *worldContext) StepsFor(t StepType, n int) int64 {

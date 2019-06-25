@@ -108,7 +108,7 @@ func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, e
 	if !th.chandler.ApplySteps(ctx, state.StepTypeDefault, 1) {
 		status = module.StatusOutOfStep
 	} else {
-		cnt, err := countBytesOfData(th.data)
+		cnt, err := measureBytesOfData(ctx.Revision(), th.data)
 		if err != nil {
 			status = module.StatusSystemError
 		} else {

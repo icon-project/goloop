@@ -17,9 +17,8 @@ import (
 )
 
 const (
-	txMaxDataSize                    = 512 * 1024 // 512kB
-	configUseInputCoutingCompactJSON = true
-	configCheckDataOnPreValidate     = false
+	txMaxDataSize                = 512 * 1024 // 512kB
+	configCheckDataOnPreValidate = false
 )
 
 type transactionV3Data struct {
@@ -238,7 +237,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 	}
 
 	// stepLimit >= default step + input steps
-	cnt, err := countBytesOfData(tx.Data)
+	cnt, err := measureBytesOfData(wc.Revision(), tx.Data)
 	if err != nil {
 		return err
 	}
@@ -431,17 +430,13 @@ func newTransactionV3FromBytes(bs []byte) (Transaction, error) {
 	}
 }
 
-func countBytesOfData(data []byte) (int, error) {
+func measureBytesOfData(rev int, data []byte) (int, error) {
 	if data == nil {
 		return 0, nil
 	}
 
-	if configUseInputCoutingCompactJSON {
-		b := bytes.NewBuffer(nil)
-		if err := json.Compact(b, data); err != nil {
-			return 0, scoreresult.ErrInvalidParameter
-		}
-		return b.Len(), nil
+	if rev >= module.Revision3 {
+		return countBytesOfData(data)
 	} else {
 		var idata interface{}
 		if err := json.Unmarshal(data, &idata); err != nil {
@@ -450,6 +445,17 @@ func countBytesOfData(data []byte) (int, error) {
 			return countBytesOfDataValue(idata), nil
 		}
 	}
+}
+
+func countBytesOfData(data []byte) (int, error) {
+	if data == nil {
+		return 0, nil
+	}
+	b := bytes.NewBuffer(nil)
+	if err := json.Compact(b, data); err != nil {
+		return 0, scoreresult.ErrInvalidParameter
+	}
+	return b.Len(), nil
 }
 
 func countBytesOfDataValue(v interface{}) int {

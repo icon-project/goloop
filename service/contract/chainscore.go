@@ -244,6 +244,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 }
 
 type chain struct {
+	Revision                 common.HexInt32 `json:"revision"`
 	AuditEnabled             common.HexInt16 `json:"auditEnabled"`
 	DeployerWhiteListEnabled common.HexInt16 `json:"deployerWhiteListEnabled"`
 	Fee                      struct {
@@ -264,6 +265,17 @@ func (s *ChainScore) Install(param []byte) error {
 			return scoreresult.Errorf(module.StatusIllegalFormat, "FailToInstallChainScore")
 		}
 	}
+
+	as := s.cc.GetAccountState(state.SystemID)
+	revision := int(module.DefaultRevision)
+	if chain.Revision.Value != 0 {
+		revision = int(chain.Revision.Value)
+	}
+	if err := scoredb.NewVarDB(as, state.VarRevision).Set(revision); err != nil {
+		log.Printf("Failed to set revision. revision(%d), err(%s)", revision, err)
+		return err
+	}
+
 	confValue := 0
 	if chain.AuditEnabled.Value != 0 {
 		confValue |= state.SysConfigAudit
@@ -274,7 +286,6 @@ func (s *ChainScore) Install(param []byte) error {
 	if len(chain.MemberList) > 0 {
 		confValue |= state.SysConfigMembership
 	}
-	as := s.cc.GetAccountState(state.SystemID)
 	if err := scoredb.NewVarDB(as, state.VarServiceConfig).Set(confValue); err != nil {
 		log.Printf("Failed to set system config. err = %s", err)
 		return err

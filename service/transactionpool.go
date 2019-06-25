@@ -124,6 +124,8 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 			// Otherwise, it remains in the pool
 			if e.err == nil {
 				e.err = err
+				log.Printf("PENDING TX: id=%#x reason=%v",
+					tx.ID(), err)
 			}
 			if state.TimeOutError.Equals(err) || state.NotEnoughStepError.Equals(err) {
 				txs[invalidNum] = e

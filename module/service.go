@@ -76,6 +76,14 @@ const (
 	StatusUser = 32
 )
 
+const (
+	Revision1 = iota + 1
+	Revision2
+	Revision3
+	Revision4
+	DefaultRevision = Revision4
+)
+
 func (s Status) String() string {
 	switch s {
 	case StatusSuccess:
