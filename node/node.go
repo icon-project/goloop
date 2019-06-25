@@ -2,7 +2,6 @@ package node
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -13,11 +12,17 @@ import (
 	"sync"
 
 	"github.com/icon-project/goloop/chain"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/server"
 	"github.com/icon-project/goloop/server/metric"
 	"github.com/icon-project/goloop/service/eeproxy"
+)
+
+var (
+	ErrAlreadyExists = errors.New("already exists")
+	ErrNotExists = errors.New("not exists")
 )
 
 type Node struct {
@@ -77,11 +82,11 @@ func (n *Node) _add(cfg *chain.Config) (module.Chain, error) {
 	}
 
 	if _, ok := n.channels[nid]; ok {
-		return nil, fmt.Errorf("already joined chain nid:%d %v", nid, cfg)
+		return nil, errors.Wrapf(ErrAlreadyExists, "Network(id=%#x) already exists",nid)
 	}
 
 	if _, ok := n.chains[channel]; ok {
-		return nil, fmt.Errorf("already joined chain channel:%s %v", channel, cfg)
+		return nil, errors.Wrapf(ErrAlreadyExists, "Network(channel=%s) already exists",channel)
 	}
 
 	if err := n.nt.SetSecureSuites(channel, cfg.SecureSuites); err != nil {
@@ -107,7 +112,7 @@ func (n *Node) _remove(c module.Chain) error {
 
 	chainPath := n.ChainDir(c.NID())
 	if err := os.RemoveAll(chainPath); err != nil {
-		return fmt.Errorf("fail to remove dir %s err=%+v", chainPath, err)
+		return errors.Wrapf(err, "fail to remove dir %s", chainPath)
 	}
 
 	delete(n.chains, n.channels[c.NID()])
@@ -125,11 +130,11 @@ func (n *Node) ChainDir(nid int) string {
 func (n *Node) _get(nid int) (module.Chain, error) {
 	channel, ok := n.channels[nid]
 	if !ok {
-		return nil, fmt.Errorf("not joined chain %d", nid)
+		return nil, errors.Wrapf(ErrNotExists, "Network(id=%#x) not exists",nid)
 	}
 	c, ok := n.chains[channel]
 	if !ok {
-		return nil, fmt.Errorf("not joined chain %d", nid)
+		return nil, errors.Wrapf(ErrNotExists, "Network(channel=%s) not exists",nid)
 	}
 	return c, nil
 }
@@ -160,29 +165,25 @@ func (n *Node) Stop() {
 
 // TODO [TBD] using JoinChainParam struct
 func (n *Node) JoinChain(
-	p *JoinChainParam,
+	p *ChainConfig,
 	genesis []byte,
 ) (module.Chain, error) {
 	defer n.mtx.Unlock()
 	n.mtx.Lock()
 
-	nid := int(p.NID.Value)
-	if _, ok := n.channels[nid]; ok {
-		return nil, fmt.Errorf("already joined chain nid:%s", p.NID)
+	gs, err := chain.NewGenesisStorage(genesis)
+	if err != nil {
+		return nil, errors.Wrap(err, "fail to get genesis storage")
+	}
+
+	nid, err := gs.NID()
+	if err != nil {
+		return nil, errors.Wrap(err, "fail to get NID for genesis")
 	}
 
 	channel := p.Channel
 	if channel == "" {
 		channel = strconv.FormatInt(int64(nid), 16)
-	}
-
-	if _, ok := n.chains[channel]; ok {
-		return nil, fmt.Errorf("already joined chain channel:%s", channel)
-	}
-
-	gs, err := chain.NewGenesisStorage(genesis)
-	if err != nil {
-		return nil, err
 	}
 
 	chainDir := n.ChainDir(nid)
@@ -216,7 +217,7 @@ func (n *Node) JoinChain(
 	}
 
 	gsFile := path.Join(chainDir, ChainGenesisZipFileName)
-	if err := ioutil.WriteFile(gsFile, genesis, 0644); err != nil {
+	if err := ioutil.WriteFile(gsFile, gs.Genesis(), 0644); err != nil {
 		_ = os.RemoveAll(chainDir)
 		return nil, err
 	}

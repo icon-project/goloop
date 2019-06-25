@@ -20,7 +20,7 @@ import (
 
 var (
 	genesisZip, genesisPath string
-	joinChainParam          node.JoinChainParam
+	joinChainParam          node.ChainConfig
 )
 
 func JosnIndent(v interface{}) (string, error) {
@@ -92,11 +92,9 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 				if err2 != nil {
 					return fmt.Errorf("fail to parse %s err=%+v", genesisZip, err2)
 				}
-				nid, err2 := gs.NID()
-				if err2 != nil {
+				if _, err2 := gs.NID(); err2 != nil {
 					return fmt.Errorf("fail to get NID for %s err=%+v", genesisZip, err2)
 				}
-				joinChainParam.NID.Value = int32(nid)
 				_, err = hc.PostWithFile(reqUrl, &joinChainParam, "genesisZip", genesisZip, &v)
 			} else if len(genesisPath) > 0 {
 				buf := bytes.NewBuffer(nil)
@@ -108,11 +106,9 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 				if err2 != nil {
 					return fmt.Errorf("fail to parse genesis storage err=%+v", err2)
 				}
-				nid, err2 := gs.NID()
-				if err2 != nil {
-					return fmt.Errorf("fail to get NID for %s err=%+v", genesisPath, err2)
+				if _, err2 := gs.NID(); err2 != nil {
+					return fmt.Errorf("fail to get NID for %s err=%+v", genesisZip, err2)
 				}
-				joinChainParam.NID.Value = int32(nid)
 				_, err = hc.PostWithReader(reqUrl, &joinChainParam, "genesisZip", buf, &v)
 			} else {
 				return fmt.Errorf("required flag --genesis or --genesis_template")

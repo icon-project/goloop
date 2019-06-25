@@ -16,6 +16,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/server/metric"
@@ -47,22 +48,6 @@ type StatsView struct {
 	Timestamp time.Time                `json:"timestamp"`
 }
 
-type JoinChainParam struct {
-	NID    common.HexInt32 `json:"nid"`
-	DBType string          `json:"dbType"`
-
-	SeedAddr         string `json:"seedAddress"`
-	Role             uint   `json:"role"`
-	ConcurrencyLevel int    `json:"concurrency,omitempty"`
-	NormalTxPoolSize int    `json:"normal_tx_pool,omitempty"`
-	PatchTxPoolSize  int    `json:"patch_tx_pool,omitempty"`
-	MaxBlockTxBytes  int    `json:"max_block_tx_bytes,omitempty"`
-
-	Channel      string `json:"channel"`
-	SecureSuites string `json:"secureSuites"`
-	SecureAeads  string `json:"secureAeads"`
-}
-
 type ChainView struct {
 	NID       common.HexInt32 `json:"nid"`
 	Channel   string          `json:"channel"`
@@ -73,15 +58,15 @@ type ChainView struct {
 
 type ChainInspectView struct {
 	*ChainView
-	GenesisTx json.RawMessage        `json:"genesisTx"`
-	Config    ChainInspectViewConfig `json:"config"`
+	GenesisTx json.RawMessage `json:"genesisTx"`
+	Config    ChainConfig     `json:"config"`
 	// TODO [TBD] define structure each module for inspect
 	Module map[string]interface{} `json:"module"`
 }
 
-type ChainInspectViewConfig struct {
-	DBType           string `json:"db_type"`
-	SeedAddr         string `json:"seed_addr"`
+type ChainConfig struct {
+	DBType           string `json:"dbType"`
+	SeedAddr         string `json:"seedAddress"`
 	Role             uint   `json:"role"`
 	ConcurrencyLevel int    `json:"concurrency_level,omitempty"`
 	NormalTxPoolSize int    `json:"normal_tx_pool,omitempty"`
@@ -125,7 +110,7 @@ func NewChainInspectView(c *Chain) *ChainInspectView {
 	v := &ChainInspectView{
 		ChainView: NewChainView(c),
 		GenesisTx: c.Genesis(),
-		Config: ChainInspectViewConfig{
+		Config: ChainConfig{
 			DBType:           c.cfg.DBType,
 			SeedAddr:         c.cfg.SeedAddr,
 			Role:             c.cfg.Role,
@@ -194,7 +179,7 @@ func (r *Rest) ChainInjector(next echo.HandlerFunc) echo.HandlerFunc {
 
 		if c == nil {
 			return ctx.String(http.StatusNotFound,
-				fmt.Sprintf("Chain(nid=%s) not found", p))
+				fmt.Sprintf("Chain(%s: nid or channel) not found", p))
 		}
 		ctx.Set("chain", c)
 		return next(ctx)
@@ -237,41 +222,28 @@ func GetFileMultipart(ctx echo.Context, fieldname string) ([]byte, error) {
 }
 
 func (r *Rest) JoinChain(ctx echo.Context) error {
-	var err error
-	p := &JoinChainParam{}
-	// if err = ctx.Bind(p); err != nil {
-	// 	log.Println("Warning", err)
-	// 	return err
-	// }
-	if err = GetJsonMultipart(ctx, p); err != nil {
-		log.Println("Warning", err)
-		return err
-	}
+	p := &ChainConfig{}
 
-	if c := r.n.GetChain(int(p.NID.Value)); c != nil {
-		return ctx.String(http.StatusConflict,
-			fmt.Sprintf("Network(id=%#x) already exists", p.NID.Value))
+	if err := GetJsonMultipart(ctx, p); err != nil {
+		return errors.Wrap(err, "fail to get 'json' from multipart")
 	}
 
 	genesis, err := GetFileMultipart(ctx, "genesisZip")
 	if err != nil {
-		log.Println("Warning", err)
-		return err
+		return errors.Wrap(err, "fail to get 'genesisZip' from multipart")
 	}
 
-	// gs, err := chain.NewGenesisStorage(b)
-	//
-	// gs, err := chain.NewGenesisStorageWithDataDir(p.Genesis,"")
-	// if err != nil {
-	// 	log.Println("Warning", err)
-	// 	return err
-	// }
-	_, err = r.n.JoinChain(p, genesis)
+	c, err := r.n.JoinChain(p, genesis)
 	if err != nil {
-		log.Println("Warning", err)
-		return err
+		if we, ok := err.(errors.Unwrapper); ok {
+			switch we.Unwrap() {
+			case ErrAlreadyExists:
+				return ctx.String(http.StatusConflict, err.Error())
+			}
+		}
+		return errors.Wrap(err, "fail to join")
 	}
-	return ctx.String(http.StatusOK, p.NID.String())
+	return ctx.String(http.StatusOK, fmt.Sprintf("%#x", c.NID()))
 }
 
 var (

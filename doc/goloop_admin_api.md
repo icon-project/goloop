@@ -52,7 +52,6 @@ Return System Infomation.
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Success|[System](#schemasystem)|
-|204|[No Content](https://tools.ietf.org/html/rfc7231#section-6.3.5)|No Content|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal Server Error|None|
 
 <aside class="success">
@@ -80,9 +79,11 @@ Returns a list of chains
 ```json
 [
   {
-    "nid": 1,
+    "nid": "0x000000",
+    "channel": "000000",
     "height": 100,
-    "state": "started"
+    "state": "started",
+    "lastError": ""
   }
 ]
 ```
@@ -92,7 +93,6 @@ Returns a list of chains
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Success|Inline|
-|204|[No Content](https://tools.ietf.org/html/rfc7231#section-6.3.5)|No Content|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal Server Error|None|
 
 <h3 id="list-chains-responseschema">Response Schema</h3>
@@ -102,9 +102,11 @@ Status Code **200**
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |*anonymous*|[[Chain](#schemachain)]|false|none|none|
-|» nid|integer(int64)|false|none|nid|
-|» height|integer(int64)|false|none|height|
-|» state|string|false|none|state|
+|» nid|string("0x" + lowercase HEX string)|false|none|network-id of chain|
+|» channel|string|false|none|chain-alias of node|
+|» height|integer(int64)|false|none|block height of chain|
+|» state|string|false|none|state of chain|
+|» lastError|string|false|none|last error of chain|
 
 <aside class="success">
 This operation does not require authentication
@@ -120,11 +122,63 @@ This operation does not require authentication
 
 Join Chain
 
+> Body parameter
+
+```yaml
+json:
+  db_type: goleveldb
+  seed_addr: string
+  role: 3
+  concurrency_level: 1
+  channel: ''
+  secureSuites: 'none,tls,ecdhe'
+  secureAeads: 'chacha,aes128,aes256'
+genesisZip: string
+
+```
+
+<h3 id="join-chain-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|body|body|object|false|none|
+|» json|body|[ChainConfig](#schemachainconfig)|true|none|
+|»» db_type|body|string|false|Name of database system|
+|»» seed_addr|body|string|false|Ip-port of Seed|
+|»» role|body|integer|false|Role:|
+|»» concurrency_level|body|integer|false|Maximum number of executors to use for concurrency|
+|»» channel|body|string|false|Chain-alias of node|
+|»» secureSuites|body|string|false|Supported Secure suites with order (none,tls,ecdhe) - Comma separated string|
+|»» secureAeads|body|string|false|Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string|
+|» genesisZip|body|string(binary)|true|Genesis-Storage zip file|
+
+#### Detailed descriptions
+
+**»» role**: Role:
+ * `0` - None
+ * `1` - Seed
+ * `2` - Validator
+ * `3` - Seed and Validator
+
+#### Enumerated Values
+
+|Parameter|Value|
+|---|---|
+|»» db_type|badgerdb|
+|»» db_type|goleveldb|
+|»» db_type|boltdb|
+|»» db_type|mapdb|
+|»» role|0|
+|»» role|1|
+|»» role|2|
+|»» role|3|
+
 <h3 id="join-chain-responses">Responses</h3>
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Success|None|
+|409|[Conflict](https://tools.ietf.org/html/rfc7231#section-6.5.8)|Conflict|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal Server Error|None|
 
 <aside class="success">
@@ -145,7 +199,7 @@ Get Chain Infomation.
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|nid|path|integer(int64)|true|Chain Network ID|
+|nid|path|string("0x" + lowercase HEX string)|true|network-id of chain|
 
 > Example responses
 
@@ -153,9 +207,25 @@ Get Chain Infomation.
 
 ```json
 {
-  "nid": 1,
+  "nid": "0x000000",
+  "channel": "000000",
   "height": 100,
-  "state": "started"
+  "state": "started",
+  "lastError": "",
+  "genesisTx": {},
+  "config": {
+    "db_type": "goleveldb",
+    "seed_addr": "string",
+    "role": 3,
+    "concurrency_level": 1,
+    "channel": "",
+    "secureSuites": "none,tls,ecdhe",
+    "secureAeads": "chacha,aes128,aes256"
+  },
+  "module": {
+    "property1": {},
+    "property2": {}
+  }
 }
 ```
 
@@ -163,7 +233,7 @@ Get Chain Infomation.
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Success|[Chain](#schemachain)|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Success|[ChainInspect](#schemachaininspect)|
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Not Found|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal Server Error|None|
 
@@ -185,7 +255,7 @@ Leave Chain.
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|nid|path|integer(int64)|true|Chain Network ID|
+|nid|path|string("0x" + lowercase HEX string)|true|network-id of chain|
 
 <h3 id="leave-chain-responses">Responses</h3>
 
@@ -213,7 +283,7 @@ Start Chain.
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|nid|path|integer(int64)|true|Chain Network ID|
+|nid|path|string("0x" + lowercase HEX string)|true|network-id of chain|
 
 <h3 id="start-chain-responses">Responses</h3>
 
@@ -241,7 +311,7 @@ Stop Chain.
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|nid|path|integer(int64)|true|Chain Network ID|
+|nid|path|string("0x" + lowercase HEX string)|true|network-id of chain|
 
 <h3 id="stop-chain-responses">Responses</h3>
 
@@ -263,9 +333,11 @@ This operation does not require authentication
 
 ```json
 {
-  "nid": 1,
+  "nid": "0x000000",
+  "channel": "000000",
   "height": 100,
-  "state": "started"
+  "state": "started",
+  "lastError": ""
 }
 
 ```
@@ -274,9 +346,100 @@ This operation does not require authentication
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
-|nid|integer(int64)|false|none|nid|
-|height|integer(int64)|false|none|height|
-|state|string|false|none|state|
+|nid|string("0x" + lowercase HEX string)|false|none|network-id of chain|
+|channel|string|false|none|chain-alias of node|
+|height|integer(int64)|false|none|block height of chain|
+|state|string|false|none|state of chain|
+|lastError|string|false|none|last error of chain|
+
+<h2 id="tocSchaininspect">ChainInspect</h2>
+
+<a id="schemachaininspect"></a>
+
+```json
+{
+  "nid": "0x000000",
+  "channel": "000000",
+  "height": 100,
+  "state": "started",
+  "lastError": "",
+  "genesisTx": {},
+  "config": {
+    "db_type": "goleveldb",
+    "seed_addr": "string",
+    "role": 3,
+    "concurrency_level": 1,
+    "channel": "",
+    "secureSuites": "none,tls,ecdhe",
+    "secureAeads": "chacha,aes128,aes256"
+  },
+  "module": {
+    "property1": {},
+    "property2": {}
+  }
+}
+
+```
+
+### Properties
+
+*allOf*
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|*anonymous*|[Chain](#schemachain)|false|none|none|
+
+*and*
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|*anonymous*|object|false|none|none|
+|» genesisTx|object|false|none|none|
+|» config|[ChainConfig](#schemachainconfig)|false|none|none|
+|» module|object|false|none|none|
+|»» **additionalProperties**|object|false|none|none|
+
+<h2 id="tocSchainconfig">ChainConfig</h2>
+
+<a id="schemachainconfig"></a>
+
+```json
+{
+  "db_type": "goleveldb",
+  "seed_addr": "string",
+  "role": 3,
+  "concurrency_level": 1,
+  "channel": "",
+  "secureSuites": "none,tls,ecdhe",
+  "secureAeads": "chacha,aes128,aes256"
+}
+
+```
+
+### Properties
+
+|Name|Type|Required|Restrictions|Description|
+|---|---|---|---|---|
+|db_type|string|false|none|Name of database system|
+|seed_addr|string|false|none|Ip-port of Seed|
+|role|integer|false|none|Role:  * `0` - None  * `1` - Seed  * `2` - Validator  * `3` - Seed and Validator|
+|concurrency_level|integer|false|none|Maximum number of executors to use for concurrency|
+|channel|string|false|none|Chain-alias of node|
+|secureSuites|string|false|none|Supported Secure suites with order (none,tls,ecdhe) - Comma separated string|
+|secureAeads|string|false|none|Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string|
+
+#### Enumerated Values
+
+|Property|Value|
+|---|---|
+|db_type|badgerdb|
+|db_type|goleveldb|
+|db_type|boltdb|
+|db_type|mapdb|
+|role|0|
+|role|1|
+|role|2|
+|role|3|
 
 <h2 id="tocSsystem">System</h2>
 
@@ -297,9 +460,9 @@ This operation does not require authentication
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
-|buildVersion|string|false|none|buildVersion|
+|buildVersion|string|false|none|build version|
 |buildTags|string|false|none|buildTags|
-|address|string|false|none|address|
+|address|string|false|none|wallet address|
 |p2p|string|false|none|p2p address|
 |p2pListen|string|false|none|p2p listen address|
 
