@@ -23,7 +23,7 @@ func NewGenerateMarkdownCommand() *cobra.Command {
 			if len(args) > 0 {
 				filePath = args[0]
 			}
-			f, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+			f, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 			if err != nil {
 				log.Panicf("Fail to open file %s err=%+v", filePath, err)
 			}

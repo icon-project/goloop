@@ -54,7 +54,7 @@ func (n *Node) loadChainConfig(filename string) (*chain.Config, error) {
 
 func (n *Node) saveChainConfig(cfg *chain.Config, filename string) error {
 	f, err := os.OpenFile(filename,
-		os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+		os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
 	}
@@ -216,7 +216,7 @@ func (n *Node) JoinChain(
 	}
 
 	gsFile := path.Join(chainDir, ChainGenesisZipFileName)
-	if err := ioutil.WriteFile(gsFile, genesis, 0755); err != nil {
+	if err := ioutil.WriteFile(gsFile, genesis, 0644); err != nil {
 		_ = os.RemoveAll(chainDir)
 		return nil, err
 	}
