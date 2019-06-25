@@ -141,11 +141,6 @@ func (n *Node) Start() {
 	}
 
 	go n.srv.Start()
-	go func() {
-		if err := n.pm.Loop(); err != nil {
-			log.Panic(err)
-		}
-	}()
 
 	if err := n.cliSrv.Start(); err != nil {
 		log.Panic(err)
@@ -340,6 +335,11 @@ func NewNode(
 	if err := pm.SetInstances(cfg.EEInstances, cfg.EEInstances, cfg.EEInstances); err != nil {
 		log.Panicf("FAIL to EEManager.SetInstances err=%+v", err)
 	}
+	go func() {
+		if err := pm.Loop(); err != nil {
+			log.Panic(err)
+		}
+	}()
 
 	cliSrv := NewUnixDomainSockHttpServer(cfg.ResolveAbsolute(cfg.CliSocket), nil)
 
