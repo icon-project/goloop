@@ -21,12 +21,19 @@ Below table shows the most common "VALUE types".
 | <a id="T_INT">T_INT</a> | "0x" + lowercase HEX string | 0xa |
 | <a id="T_BIN_DATA">T_BIN_DATA</a> | "0x" + lowercase HEX string. Length must be even. | 0x34b2 |
 | <a id="T_SIG">T_SIG</a> | base64 encoded string | VAia7YZ2Ji6igKWzjR2YsGa2m53nKPrfK7uXYW78QLE+ATehAVZPC40szvAiA6NEU5gCYB4c4qaQzqDh2ugcHgA= |
-| <a id="T_DATA_TYPE">T_DATA_TYPE</a> | Type of data | call, deploy, or message |
+| <a id="T_DATA_TYPE">T_DATA_TYPE</a> | Type of data | call, deploy or message |
 
-## Error Codes
+### <a name="FailureObject">Failure Object</a>
 
-This chapter explains the error codes used in Goloop JSON-RPC API response.
+> Failure object example
+```json
+{
+  "code" : -32700,
+  "message": "Parse error"
+}
+```
 
+#### Error Codes
 Below table shows the default error messages for the error code. Actual message may vary depending on the implementation.
 
 | Category   | Error code | Message | Description |
@@ -253,9 +260,9 @@ Does not make state transition (i.e., read-only).
 | from | [T_ADDR_EOA](#T_ADDR_EOA) | Message sender's address. |
 | to | [T_ADDR_SCORE](#T_ADDR_SCORE) | SCORE address that will handle the message. |
 | dataType | [T_DATA_TYPE](#T_DATA_TYPE) | `call` is the only possible data type. |
-| data | T_DICT | See [Parameters - data](#sendtxparameterdata). |
-| data.method | String | Name of the function. |
-| data.params | T_DICT | Parameters to be passed to the function. |
+| data | JSON object | See [Parameters - data](#sendtxparameterdata). |
+| data.method | JSON string | Name of the function. |
+| data.params | JSON object | Parameters to be passed to the function. |
 
 > Example responses
 
@@ -484,7 +491,7 @@ Returns the transaction result requested by transaction hash.
 |:----|:----------|:-----|
 | status | [T_INT](#T_INT) | 1 on success, 0 on failure. |
 | to | [T_ADDR_EOA](#T_ADDR_EOA) or [T_ADDR_SCORE](#T_ADDR_SCORE) | Recipient address of the transaction |
-| failure | T_DICT | This field exists when status is 0. Contains code(str) and message(str). |
+| failure | JSON object | This field exists when status is 0. Please refer [failure object](#FailureObject) |
 | txHash | [T_HASH](#T_HASH) | Transaction hash |
 | txIndex | [T_INT](#T_INT) | Transaction index in the block |
 | blockHeight | [T_INT](#T_INT) | Height of the block that includes the transaction. |
@@ -562,7 +569,7 @@ Returns the transaction information requested by transaction hash.
 | blockHash | [T_HASH](#T_HASH) | Hash of the block where this transaction was in. Null when it is pending. |
 | signature | [T_SIG](#T_SIG) | Signature of the transaction. |
 | dataType | [T_DATA_TYPE](#T_DATA_TYPE) | Type of data. (call, deploy, or message) |
-| data | T_DICT or String | Contains various type of data depending on the dataType. See [Parameters - data](#sendtxparameterdata). |
+| data | JSON object | Contains various type of data depending on the dataType. See [Parameters - data](#sendtxparameterdata). |
 
 ### icx_sendTransaction
 
@@ -718,7 +725,7 @@ This function causes state transition.
 | nonce | [T_INT](#T_INT) | optional | An arbitrary number used to prevent transaction hash collision. |
 | signature | [T_SIG](#T_SIG) | required | Signature of the transaction. |
 | dataType | [T_DATA_TYPE](#T_DATA_TYPE) | optional | Type of data. (call, deploy, or message) |
-| data | T_DICT or String | optional | The content of data varies depending on the dataType. See [Parameters - data](#sendtxparameterdata). |
+| data | JSON object | optional | The content of data varies depending on the dataType. See [Parameters - data](#sendtxparameterdata). |
 
 #### <a id ="sendtxparameterdata">Parameters - data</a>
 `data` contains the following data in various formats depending on the dataType.
@@ -730,7 +737,7 @@ It is used when calling a function in SCORE, and `data` has dictionary value as 
 | KEY | VALUE type | Required | Description |
 |:----|:-----------|:--------:|:------------|
 | method | String | required | Name of the function to invoke in SCORE |
-| params | T_DICT | optional | Function parameters |
+| params | JSON object | optional | Function parameters |
 
 ##### dataType == deploy
 
@@ -740,7 +747,7 @@ It is used when installing or updating a SCORE, and `data` has dictionary value 
 |:----|:-----------|:--------:|:------------|
 | contentType | String | required | Mime-type of the content |
 | content | [T_BIN_DATA](#T_BIN_DATA) | required | Compressed SCORE data |
-| params | T_DICT | optional | Function parameters will be delivered to on_install() or on_update() |
+| params | JSON object | optional | Function parameters will be delivered to on_install() or on_update() |
 
 ##### dataType == message
 
