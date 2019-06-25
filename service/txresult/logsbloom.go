@@ -98,9 +98,21 @@ func (lb *LogsBloom) Contain(mlb module.LogsBloom) bool {
 		lb2 = new(LogsBloom)
 		lb2.SetBytes(lbs)
 	}
-	var r big.Int
-	r.And(&lb.Int, &lb2.Int)
-	return r.Cmp(&lb2.Int) == 0
+	words1 := lb.Bits()
+	words2 := lb2.Bits()
+	if len(words2) > len(words1) {
+		return false
+	}
+	for idx, word2 := range words2 {
+		if word2 == 0 {
+			continue
+		}
+		word1 := words1[idx]
+		if (word1 & word2) != word2 {
+			return false
+		}
+	}
+	return true
 }
 
 func (lb *LogsBloom) Equal(mlb module.LogsBloom) bool {
