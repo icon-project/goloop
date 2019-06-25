@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/icon-project/goloop/server"
 	"github.com/labstack/echo/v4"
 )
 
@@ -34,6 +35,7 @@ type UnixDomainSockHttpServer struct {
 func NewUnixDomainSockHttpServer(sockPath string, e *echo.Echo) *UnixDomainSockHttpServer {
 	if e == nil {
 		e = echo.New()
+		e.HTTPErrorHandler = server.HTTPErrorHandler
 	}
 	s := &UnixDomainSockHttpServer{
 		e:        e,
@@ -110,7 +112,7 @@ func (c *UnixDomainSockHttpClient) _do(req *http.Request) (resp *http.Response, 
 		return
 	}
 	if resp.StatusCode != http.StatusOK {
-		err = fmt.Errorf(resp.Status)
+		err = NewRestError(resp)
 		return
 	}
 	return
@@ -345,4 +347,36 @@ func MultipartJson(mw *multipart.Writer, fieldName string, v interface{}) error 
 		return err
 	}
 	return nil
+}
+
+type RestError struct {
+	status   int
+	response string
+	message  string
+}
+
+func (e *RestError) Error() string {
+	return e.message
+}
+
+func (e *RestError) StatusCode() int {
+	return e.status
+}
+
+func (e *RestError) Response() string {
+	return e.response
+}
+
+func NewRestError(r *http.Response) error {
+	var response string
+	if rb, err := ioutil.ReadAll(r.Body); err != nil {
+		response = fmt.Sprintf("Fail to read body err=%+v", err)
+	} else {
+		response = string(rb)
+	}
+	return &RestError{
+		status:   r.StatusCode,
+		message:  "HTTP " + r.Status,
+		response: response,
+	}
 }

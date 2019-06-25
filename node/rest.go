@@ -184,7 +184,8 @@ func (r *Rest) ChainInjector(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		if c == nil {
-			return ctx.NoContent(http.StatusNotFound)
+			return ctx.String(http.StatusNotFound,
+				fmt.Sprintf("Chain(nid=%s) not found", p))
 		}
 		ctx.Set("chain", c)
 		return next(ctx)
@@ -252,7 +253,8 @@ func (r *Rest) JoinChain(ctx echo.Context) error {
 	}
 
 	if c := r.n.GetChain(int(p.NID.Value)); c != nil {
-		return ctx.NoContent(http.StatusConflict)
+		return ctx.String(http.StatusConflict,
+			fmt.Sprintf("Network(id=%#x) already exists", p.NID.Value))
 	}
 
 	genesis, err := GetFileMultipart(ctx, "genesisZip")

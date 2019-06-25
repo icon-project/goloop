@@ -12,8 +12,6 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/labstack/echo/v4"
-
 	"github.com/icon-project/goloop/chain"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
@@ -343,7 +341,7 @@ func NewNode(
 		log.Panicf("FAIL to EEManager.SetInstances err=%+v", err)
 	}
 
-	cliSrv := NewUnixDomainSockHttpServer(cfg.ResolveAbsolute(cfg.CliSocket), echo.New())
+	cliSrv := NewUnixDomainSockHttpServer(cfg.ResolveAbsolute(cfg.CliSocket), nil)
 
 	n := &Node{
 		w:        w,

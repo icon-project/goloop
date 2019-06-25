@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"net/url"
 	"os"
 
@@ -65,7 +64,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 			reqUrl := node.UrlChain
 			resp, err := hc.Get(reqUrl, &l)
 			if err != nil {
-				return fmt.Errorf("failed GET %s resp=%+v, err=%+v", reqUrl, resp, err)
+				return err
 			}
 			s, err := JsonIntend(l)
 			if err != nil {
@@ -83,7 +82,6 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 			hc := GetUnixDomainSockHttpClient(cfg)
 			var err error
 			var v string
-			var resp *http.Response
 			reqUrl := node.UrlChain
 			if len(genesisZip) > 0 {
 				file, err2 := os.Open(genesisZip)
@@ -99,7 +97,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 					return fmt.Errorf("fail to get NID for %s err=%+v", genesisZip, err2)
 				}
 				joinChainParam.NID.Value = int32(nid)
-				resp, err = hc.PostWithFile(reqUrl, &joinChainParam, "genesisZip", genesisZip, &v)
+				_, err = hc.PostWithFile(reqUrl, &joinChainParam, "genesisZip", genesisZip, &v)
 			} else if len(genesisPath) > 0 {
 				buf := bytes.NewBuffer(nil)
 				err2 := chain.WriteGenesisStorageFromPath(buf, genesisPath)
@@ -115,12 +113,12 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 					return fmt.Errorf("fail to get NID for %s err=%+v", genesisPath, err2)
 				}
 				joinChainParam.NID.Value = int32(nid)
-				resp, err = hc.PostWithReader(reqUrl, &joinChainParam, "genesisZip", buf, &v)
+				_, err = hc.PostWithReader(reqUrl, &joinChainParam, "genesisZip", buf, &v)
 			} else {
 				return fmt.Errorf("required flag --genesis or --genesis_template")
 			}
 			if err != nil {
-				return fmt.Errorf("failed POST %s param=%+v, resp=%+v, err=%+v", reqUrl, joinChainParam, resp, err)
+				return err
 			}
 			fmt.Println(v)
 			return nil
@@ -147,9 +145,9 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 			hc := GetUnixDomainSockHttpClient(cfg)
 			reqUrl := node.UrlChain + "/" + args[0]
 			var v string
-			resp, err := hc.Delete(reqUrl, &v)
+			_, err := hc.Delete(reqUrl, &v)
 			if err != nil {
-				return fmt.Errorf("failed DELETE %s resp=%+v, err=%+v", node.UrlChain+"/"+args[0], resp, err)
+				return err
 			}
 			fmt.Println(v)
 			return nil
@@ -175,7 +173,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 			reqUrl := node.UrlChain + "/" + args[0]
 			resp, err := hc.Get(reqUrl, v, params)
 			if err != nil {
-				return fmt.Errorf("failed GET %s param=%+v, resp=%+v, err=%+v", reqUrl, params, resp, err)
+				return err
 			}
 			if format == "" {
 				s, err := JsonIntend(v)
@@ -201,9 +199,9 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 			hc := GetUnixDomainSockHttpClient(cfg)
 			reqUrl := node.UrlChain + "/" + args[0] + "/start"
 			var v string
-			resp, err := hc.Post(reqUrl, &v)
+			_, err := hc.Post(reqUrl, &v)
 			if err != nil {
-				return fmt.Errorf("failed POST %s resp=%+v, err=%+v", reqUrl, resp, err)
+				return err
 			}
 			fmt.Println(v)
 			return nil
@@ -219,9 +217,9 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 			hc := GetUnixDomainSockHttpClient(cfg)
 			reqUrl := node.UrlChain + "/" + args[0] + "/stop"
 			var v string
-			resp, err := hc.Post(reqUrl, &v)
+			_, err := hc.Post(reqUrl, &v)
 			if err != nil {
-				return fmt.Errorf("failed POST %s resp=%+v, err=%+v", reqUrl, resp, err)
+				return err
 			}
 			fmt.Println(v)
 			return nil
@@ -237,9 +235,9 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 			hc := GetUnixDomainSockHttpClient(cfg)
 			reqUrl := node.UrlChain + "/" + args[0] + "/reset"
 			var v string
-			resp, err := hc.Post(reqUrl, &v)
+			_, err := hc.Post(reqUrl, &v)
 			if err != nil {
-				return fmt.Errorf("failed POST %s resp=%+v, err=%+v", reqUrl, resp, err)
+				return err
 			}
 			fmt.Println(v)
 			return nil
@@ -255,9 +253,9 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 			hc := GetUnixDomainSockHttpClient(cfg)
 			reqUrl := node.UrlChain + "/" + args[0] + "/verify"
 			var v string
-			resp, err := hc.Post(reqUrl, &v)
+			_, err := hc.Post(reqUrl, &v)
 			if err != nil {
-				return fmt.Errorf("failed POST %s resp=%+v, err=%+v", reqUrl, resp, err)
+				return err
 			}
 			fmt.Println(v)
 			return nil
@@ -283,10 +281,9 @@ func NewSystemCmd(cfg *GoLoopConfig) *cobra.Command {
 				v = new(string)
 				params.Add("format", format)
 			}
-			reqUrl := node.UrlSystem
 			resp, err := hc.Get(node.UrlSystem, v, params)
 			if err != nil {
-				return fmt.Errorf("failed GET %s param=%+v, resp=%+v, err=%+v", reqUrl, params, resp, err)
+				return err
 			}
 			if format == "" {
 				s, err := JsonIntend(v)
@@ -391,23 +388,22 @@ func NewStatsCmd(cfg *GoLoopConfig) *cobra.Command {
 			params := &url.Values{}
 			params.Add("interval", fmt.Sprint(intervalSec))
 
-			var resp *http.Response
 			reqUrl := node.UrlStats
 			var err error
 			if noStream {
 				params.Add("stream", "false")
-				resp, err = hc.Get(reqUrl, &v, params)
+				_, err = hc.Get(reqUrl, &v, params)
 				if err != nil {
-					return fmt.Errorf("failed GET %s param=%+v, resp=%+v, err=%+v", reqUrl, params, resp, err)
+					return err
 				}
 				fmt.Println(v.Timestamp)
 				table := StatsViewToTable(&v, 50)
 				fmt.Println(table)
 			} else {
 				g, guiTermCh := NewCui()
-				resp, err = hc.Stream(reqUrl, nil, &v, UpdateCuiByStatsViewStream(g), guiTermCh, params)
+				_, err = hc.Stream(reqUrl, nil, &v, UpdateCuiByStatsViewStream(g), guiTermCh, params)
 				if err != nil && err != io.EOF {
-					return fmt.Errorf("failed Stream %s param=%+v, resp=%+v, err=%+v", reqUrl, params, resp, err)
+					return err
 				}
 				TermGui(g, guiTermCh)
 			}

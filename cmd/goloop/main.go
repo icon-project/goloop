@@ -297,8 +297,15 @@ func main() {
 	genMdCmd := NewGenerateMarkdownCommand()
 	genMdCmd.Hidden = true
 	rootCmd.AddCommand(genMdCmd)
+	rootCmd.SilenceUsage = true
 	err := rootCmd.Execute()
 	if err != nil {
+		if restErr, ok := err.(*node.RestError); ok {
+			response := restErr.Response()
+			if len(response) > 0 {
+				rootCmd.Println(response)
+			}
+		}
 		os.Exit(1)
 	}
 }
