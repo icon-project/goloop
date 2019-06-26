@@ -264,13 +264,6 @@ func (p2p *PeerToPeer) unsetEventCbFunc(k uint16) {
 //callback from PeerDispatcher.onPeer
 func (p2p *PeerToPeer) onPeer(p *Peer) {
 	p2p.log.Println("onPeer", p)
-	if !p.incomming {
-		raddr := p.conn.RemoteAddr().String()
-		if raddr != string(p.netAddress) {
-			//TODO TBD p.CloseByError(fmt.Errorf("mismatch address"))
-			p2p.log.Println("Warning", "onPeer mismatch address:", raddr, "expected:", p.netAddress) //p.netAddress
-		}
-	}
 	if !p2p.allowedPeers.IsEmpty() && !p2p.allowedPeers.Contains(p.id) {
 		p2p.onEvent(p2pEventNotAllowed, p)
 		p.CloseByError(fmt.Errorf("onPeer not allowed connection"))
