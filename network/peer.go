@@ -185,6 +185,7 @@ func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool) *Peer {
 		closeErr:    make([]error, 0),
 		onError:     defaultOnError,
 		onClose:     defaultOnClose,
+		children:    NewNetAddressSet(),
 	}
 	p.setPacketCbFunc(cbFunc)
 
