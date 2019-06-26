@@ -217,7 +217,7 @@ func (n *Node) JoinChain(
 	}
 
 	gsFile := path.Join(chainDir, ChainGenesisZipFileName)
-	if err := ioutil.WriteFile(gsFile, gs.Genesis(), 0644); err != nil {
+	if err := ioutil.WriteFile(gsFile, genesis, 0644); err != nil {
 		_ = os.RemoveAll(chainDir)
 		return nil, err
 	}
