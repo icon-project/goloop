@@ -274,6 +274,7 @@ pages:doc:
   <<: *pages
   variables:
     PAGES_PUBLIC: "${CI_PROJECT_PATH}/${CI_COMMIT_REF_SLUG}/doc"
+    PAGES_SOURCE: "doc/dist"
   script:
     - bin/goloop doc ./doc/goloop_cli.md
     - cd doc
@@ -281,7 +282,6 @@ pages:doc:
     - ./node_modules/.bin/widdershins -l --summary goloop_admin_api.yaml -o goloop_admin_api.md
     - sed -i "s/base:.*/base:'\/pages\/${PAGES_PUBLIC//\//\\\/}\/',/" ./.vuepress/config.js
     - ./node_modules/.bin/vuepress build --dest dist ./
-    - mv dist ../public
 
 pages:ITJ:gochain:normal:
   <<: *pages
