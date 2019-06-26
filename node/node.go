@@ -3,7 +3,6 @@ package node
 import (
 	"encoding/json"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/icon-project/goloop/chain"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/server"
@@ -22,7 +22,7 @@ import (
 
 var (
 	ErrAlreadyExists = errors.New("already exists")
-	ErrNotExists = errors.New("not exists")
+	ErrNotExists     = errors.New("not exists")
 )
 
 type Node struct {
@@ -31,6 +31,8 @@ type Node struct {
 	srv *server.Manager
 	pm  eeproxy.Manager
 	cfg NodeConfig
+
+	logger log.Logger
 
 	mtx sync.RWMutex
 
@@ -82,11 +84,11 @@ func (n *Node) _add(cfg *chain.Config) (module.Chain, error) {
 	}
 
 	if _, ok := n.channels[nid]; ok {
-		return nil, errors.Wrapf(ErrAlreadyExists, "Network(id=%#x) already exists",nid)
+		return nil, errors.Wrapf(ErrAlreadyExists, "Network(id=%#x) already exists", nid)
 	}
 
 	if _, ok := n.chains[channel]; ok {
-		return nil, errors.Wrapf(ErrAlreadyExists, "Network(channel=%s) already exists",channel)
+		return nil, errors.Wrapf(ErrAlreadyExists, "Network(channel=%s) already exists", channel)
 	}
 
 	if err := n.nt.SetSecureSuites(channel, cfg.SecureSuites); err != nil {
@@ -96,7 +98,7 @@ func (n *Node) _add(cfg *chain.Config) (module.Chain, error) {
 		return nil, err
 	}
 
-	c := &Chain{chain.NewChain(n.w, n.nt, n.srv, n.pm, cfg), cfg}
+	c := &Chain{chain.NewChain(n.w, n.nt, n.srv, n.pm, n.logger, cfg), cfg}
 	if err := c.Init(true); err != nil {
 		return nil, err
 	}
@@ -130,11 +132,11 @@ func (n *Node) ChainDir(nid int) string {
 func (n *Node) _get(nid int) (module.Chain, error) {
 	channel, ok := n.channels[nid]
 	if !ok {
-		return nil, errors.Wrapf(ErrNotExists, "Network(id=%#x) not exists",nid)
+		return nil, errors.Wrapf(ErrNotExists, "Network(id=%#x) not exists", nid)
 	}
 	c, ok := n.chains[channel]
 	if !ok {
-		return nil, errors.Wrapf(ErrNotExists, "Network(channel=%s) not exists",channel)
+		return nil, errors.Wrapf(ErrNotExists, "Network(channel=%s) not exists", channel)
 	}
 	return c, nil
 }
@@ -316,6 +318,7 @@ func (n *Node) GetChainByChannel(channel string) *Chain {
 func NewNode(
 	w module.Wallet,
 	cfg *NodeConfig,
+	logger log.Logger,
 ) *Node {
 	metric.Initialize(w)
 
@@ -352,6 +355,7 @@ func NewNode(
 		nt:       nt,
 		srv:      srv,
 		pm:       pm,
+		logger:   logger,
 		cfg:      *cfg,
 		chains:   make(map[string]*Chain),
 		channels: make(map[int]string),

@@ -3,6 +3,7 @@ package test
 
 import (
 	"context"
+	"log"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
@@ -103,5 +104,9 @@ func (_r *ChainBase) Verify(sync bool) error {
 }
 
 func (_r *ChainBase) MetricContext() context.Context {
+	panic("not implemented")
+}
+
+func (_r *ChainBase) Logger() log.Logger {
 	panic("not implemented")
 }

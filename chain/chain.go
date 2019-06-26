@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 
 	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/common"
@@ -90,6 +90,8 @@ type singleChain struct {
 
 	cfg Config
 	pm  eeproxy.Manager
+
+	logger log.Logger
 
 	regulator *regulator
 
@@ -532,20 +534,29 @@ func (c *singleChain) Reset(sync bool) error {
 	return c._execute(sync, f)
 }
 
+func (c *singleChain) Logger() log.Logger {
+	return c.logger
+}
+
 func NewChain(
 	wallet module.Wallet,
 	transport module.NetworkTransport,
 	srv *server.Manager,
 	pm eeproxy.Manager,
+	logger log.Logger,
 	cfg *Config,
 ) *singleChain {
+	chainLogger := logger.WithFields(log.Fields{
+		log.FieldKeyNID: strconv.FormatInt(int64(cfg.NID), 16),
+	})
 	c := &singleChain{
 		wallet:    wallet,
 		nt:        transport,
 		srv:       srv,
 		cfg:       *cfg,
 		pm:        pm,
-		regulator: NewRegulator(time.Second, 1000),
+		logger:    chainLogger,
+		regulator: NewRegulator(time.Second, 1000, chainLogger),
 		metricCtx: metric.GetMetricContextByNID(cfg.NID),
 	}
 	return c

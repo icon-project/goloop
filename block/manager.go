@@ -3,12 +3,10 @@ package block
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"io"
-	"log"
-	"os"
 
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/service/txresult"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -48,7 +46,7 @@ type chainContext struct {
 	syncer  syncer
 	chain   module.Chain
 	sm      module.ServiceManager
-	logger  *log.Logger
+	logger  log.Logger
 	running bool
 }
 
@@ -384,8 +382,9 @@ func (pt *proposeTask) _onExecute(err error) {
 
 // NewManager creates BlockManager.
 func NewManager(chain module.Chain, timestamper module.Timestamper) (module.BlockManager, error) {
-	prefix := fmt.Sprintf("%x|BM|", chain.Wallet().Address().Bytes()[1:3])
-	logger := log.New(os.Stderr, prefix, log.Lshortfile|log.Lmicroseconds)
+	logger := chain.Logger().WithFields(log.Fields{
+		log.FieldKeyModule: "BM",
+	})
 	// TODO if last block is v1 block
 	m := &manager{
 		chainContext: &chainContext{

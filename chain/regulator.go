@@ -1,9 +1,10 @@
 package chain
 
 import (
-	"log"
 	"sync"
 	"time"
+
+	"github.com/icon-project/goloop/common/log"
 )
 
 const (
@@ -38,6 +39,8 @@ type regulator struct {
 	currentIndex int
 
 	currentTxCount int
+
+	log log.Logger
 }
 
 func (r *regulator) SetCommitTimeout(d time.Duration) {
@@ -89,13 +92,14 @@ func (r *regulator) OnTxExecution(count int, ed time.Duration, fd time.Duration)
 	if r.currentTxCount < configMinimumTransactions {
 		r.currentTxCount = configMinimumTransactions
 	}
-	log.Printf("OnTxExecution: TxCount=%d Execution=%s Finalize=%s -> MaxTxCount=%d",
+	r.log.Printf("OnTxExecution: TxCount=%d Execution=%s Finalize=%s -> MaxTxCount=%d",
 		count, ed, fd, r.currentTxCount)
 }
 
-func NewRegulator(duration time.Duration, count int) *regulator {
+func NewRegulator(duration time.Duration, count int, logger log.Logger) *regulator {
 	return &regulator{
 		commitTimeout:  duration,
 		currentTxCount: count,
+		log:            logger,
 	}
 }

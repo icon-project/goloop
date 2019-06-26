@@ -2,10 +2,10 @@ package main
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/signal"
 	"path"
@@ -21,6 +21,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/node"
 )
@@ -271,11 +272,12 @@ func main() {
 			log.Panicf("Fail to create wallet err=%+v", err)
 		}
 
-		log.SetFlags(log.Lshortfile | log.Lmicroseconds)
-		prefix := fmt.Sprintf("%x|--|", w.Address().ID()[0:2])
-		log.SetPrefix(prefix)
+		logger := log.WithFields(log.Fields{
+			log.FieldKeyWallet: hex.EncodeToString(w.Address().ID()),
+		})
+		log.SetGlobalLogger(logger)
 
-		n := node.NewNode(w, &cfg.NodeConfig)
+		n := node.NewNode(w, &cfg.NodeConfig, logger)
 		n.Start()
 	}
 	serverCmd.AddCommand(startCmd)

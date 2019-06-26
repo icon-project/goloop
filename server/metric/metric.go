@@ -3,7 +3,6 @@ package metric
 import (
 	"context"
 	"encoding/hex"
-	"log"
 	"os"
 	"strconv"
 	"sync"
@@ -14,6 +13,7 @@ import (
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -64,7 +64,7 @@ func RegisterMetricView(m stats.Measure, a *view.Aggregation, tks []tag.Key) *vi
 		Aggregation: a,
 		TagKeys:     append(mKeys, tks...),
 	}
-	if err := view.Register(v);err != nil {
+	if err := view.Register(v); err != nil {
 		log.Fatalf("Fail RegisterMetricView view.Register %+v", err)
 	}
 	mViews[v.Name] = v
@@ -199,7 +199,7 @@ func ResetMetricViews() {
 	}
 	view.Unregister(vs...)
 
-	if err := view.Register(vs...);err != nil {
+	if err := view.Register(vs...); err != nil {
 		log.Fatalf("Fail ResetMetricViews view.Register %+v", err)
 	}
 

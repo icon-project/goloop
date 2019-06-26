@@ -2,7 +2,6 @@ package service
 
 import (
 	"encoding/json"
-	"log"
 	"math/big"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/eeproxy"
@@ -43,14 +43,19 @@ type manager struct {
 	cm        contract.ContractManager
 	eem       eeproxy.Manager
 	trc       *transitionResultCache
+
+	log log.Logger
 }
 
 func NewManager(chain module.Chain, nm module.NetworkManager,
 	eem eeproxy.Manager, chainRoot string,
 ) (module.ServiceManager, error) {
+	logger := chain.Logger().WithFields(log.Fields{
+		log.FieldKeyModule: "SV",
+	})
 	bk, err := chain.Database().GetBucket(db.TransactionLocatorByHash)
 	if err != nil {
-		log.Printf("FAIL to get bucket(%s) %v\n", db.TransactionLocatorByHash, err)
+		logger.Warnf("FAIL to get bucket(%s) %v\n", db.TransactionLocatorByHash, err)
 		return nil, err
 	}
 
@@ -58,7 +63,7 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 	nMetric := metric.NewTransactionMetric(chain.MetricContext(), metric.TxTypeNormal)
 	cm, err := contract.NewContractManager(chain.Database(), chainRoot)
 	if err != nil {
-		log.Printf("FAIL to create contractManager : %v\n", err)
+		logger.Warnf("FAIL to create contractManager : %v\n", err)
 		return nil, err
 	}
 
@@ -74,6 +79,7 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 		trc: newTransitionResultCache(chain.Database(),
 			ConfigTransitionResultCacheEntryCount,
 			ConfigTransitionResultCacheEntrySize),
+		log: logger,
 	}
 	if nm != nil {
 		mgr.txReactor = NewTransactionReactor(nm, mgr.patchTxPool, mgr.normalTxPool)
@@ -128,10 +134,7 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 	}
 
 	// create transition instance and return it
-	return newTransition(pt,
-			transaction.NewTransactionListFromSlice(m.db, patchTxs),
-			transaction.NewTransactionListFromSlice(m.db, normalTxs),
-			bi, true),
+	return newTransition(pt, transaction.NewTransactionListFromSlice(m.db, patchTxs), transaction.NewTransactionListFromSlice(m.db, normalTxs), bi, true, m.log),
 		nil
 }
 
@@ -140,7 +143,7 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 func (m *manager) CreateInitialTransition(result []byte,
 	valList module.ValidatorList,
 ) (module.Transition, error) {
-	return newInitTransition(m.db, result, valList, m.cm, m.eem, m.chain)
+	return newInitTransition(m.db, result, valList, m.cm, m.eem, m.chain, m.log)
 }
 
 // CreateTransition creates a Transition following parent Transition with txs
@@ -154,7 +157,7 @@ func (m *manager) CreateTransition(parent module.Transition,
 	if err != nil {
 		return nil, err
 	}
-	return newTransition(pt, nil, txList, bi, false), nil
+	return newTransition(pt, nil, txList, bi, false, m.log), nil
 }
 
 // GetPatches returns all patch transactions based on the parent transition.
@@ -164,13 +167,13 @@ func (m *manager) GetPatches(parent module.Transition) module.TransactionList {
 	// but add the following same as that of normal transaction.
 	pt, ok := parent.(*transition)
 	if !ok {
-		log.Panicf("Illegal transition for GetPatches type=%T", parent)
+		m.log.Panicf("Illegal transition for GetPatches type=%T", parent)
 		return nil
 	}
 
 	ws, err := state.WorldStateFromSnapshot(pt.worldSnapshot)
 	if err != nil {
-		log.Panicf("Fail to creating world state from snapshot")
+		m.log.Panicf("Fail to creating world state from snapshot")
 	}
 
 	wc := state.NewWorldContext(ws, pt.bi)
@@ -184,14 +187,14 @@ func (m *manager) PatchTransition(t module.Transition, patchTxList module.Transa
 ) module.Transition {
 	pt, ok := t.(*transition)
 	if !ok {
-		log.Panicf("Illegal transition for GetPatches type=%T", t)
+		m.log.Panicf("Illegal transition for GetPatches type=%T", t)
 		return nil
 	}
 
 	// If there is no way to validate patches, then set 'alreadyValidated' to
 	// true. It'll skip unnecessary validation for already validated normal
 	// transactions.
-	return newTransition(pt.parent, patchTxList, pt.normalTransactions, pt.bi, false)
+	return newTransition(pt.parent, patchTxList, pt.normalTransactions, pt.bi, false, m.log)
 }
 
 // Finalize finalizes data related to the transition. It usually stores
@@ -233,7 +236,7 @@ func (m *manager) Finalize(t module.Transition, opt int) error {
 func (m *manager) TransactionFromBytes(b []byte, blockVersion int) (module.Transaction, error) {
 	tx, err := transaction.NewTransaction(b)
 	if err != nil {
-		log.Printf("sm.TransactionFromBytes() fails with err=%+v", err)
+		m.log.Printf("sm.TransactionFromBytes() fails with err=%+v", err)
 	}
 	return tx, nil
 }
@@ -241,7 +244,7 @@ func (m *manager) TransactionFromBytes(b []byte, blockVersion int) (module.Trans
 func (m *manager) GenesisTransactionFromBytes(b []byte, blockVersion int) (module.Transaction, error) {
 	tx, err := transaction.NewGenesisTransaction(b)
 	if err != nil {
-		log.Printf("sm.GenesisTransactionFromBytes() fails with err=%+v", err)
+		m.log.Printf("sm.GenesisTransactionFromBytes() fails with err=%+v", err)
 	}
 	return tx, nil
 }
@@ -325,13 +328,13 @@ func (m *manager) SendTransaction(txi interface{}) ([]byte, error) {
 	case module.TransactionGroupPatch:
 		txPool = m.patchTxPool
 	default:
-		log.Panicf("Wrong TransactionGroup. %v", newTx.Group())
+		m.log.Panicf("Wrong TransactionGroup. %v", newTx.Group())
 	}
 
 	if err := txPool.Add(newTx, true); err == nil {
 		if err = m.txReactor.PropagateTransaction(ProtocolPropagateTransaction, newTx); err != nil {
 			if !network.NotAvailableError.Equals(err) {
-				log.Printf("FAIL to propagate tx err=%+v", err)
+				m.log.Printf("FAIL to propagate tx err=%+v", err)
 			}
 		}
 	} else {

@@ -2,13 +2,13 @@ package service
 
 import (
 	"fmt"
-	"log"
 	"math/big"
 	"sync"
 	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/transaction"
 
@@ -64,9 +64,11 @@ type transition struct {
 	normalTransactions module.TransactionList
 
 	db    db.Database
+	sm    *manager
 	cm    contract.ContractManager
 	eem   eeproxy.Manager
 	chain module.Chain
+	log   log.Logger
 
 	cb module.TransitionCallback
 
@@ -110,6 +112,7 @@ func (tr *transitionResult) Bytes() []byte {
 
 func newTransition(parent *transition, patchtxs module.TransactionList,
 	normaltxs module.TransactionList, bi module.BlockInfo, alreadyValidated bool,
+	logger log.Logger,
 ) *transition {
 	var step transitionStep
 	if alreadyValidated {
@@ -134,6 +137,7 @@ func newTransition(parent *transition, patchtxs module.TransactionList,
 		eem:                parent.eem,
 		step:               step,
 		chain:              parent.chain,
+		log:                logger,
 	}
 }
 
@@ -141,6 +145,7 @@ func newTransition(parent *transition, patchtxs module.TransactionList,
 func newInitTransition(db db.Database, result []byte,
 	validatorList module.ValidatorList, cm contract.ContractManager,
 	em eeproxy.Manager, chain module.Chain,
+	logger log.Logger,
 ) (*transition, error) {
 	var tresult transitionResult
 	if len(result) > 0 {
@@ -160,6 +165,7 @@ func newInitTransition(db db.Database, result []byte,
 		step:               stepComplete,
 		worldSnapshot:      ws.GetSnapshot(),
 		chain:              chain,
+		log:                logger,
 	}, nil
 }
 
@@ -255,7 +261,7 @@ func (t *transition) reportValidation(e error) bool {
 	locker := common.LockForAutoCall(&t.mutex)
 	defer locker.Unlock()
 
-	log.Printf("reportValidation(err=%+v)", e)
+	t.log.Printf("reportValidation(err=%+v)", e)
 
 	switch t.step {
 	case stepValidating, stepExecuting:
@@ -269,9 +275,9 @@ func (t *transition) reportValidation(e error) bool {
 		})
 		return true
 	case stepCanceled:
-		log.Printf("Ignore error err=%+v", e)
+		t.log.Printf("Ignore error err=%+v", e)
 	default:
-		log.Printf("Invalid state %s for err=%+v", t.step, e)
+		t.log.Printf("Invalid state %s for err=%+v", t.step, e)
 	}
 	return false
 }
@@ -280,12 +286,12 @@ func (t *transition) reportExecution(e error) bool {
 	locker := common.LockForAutoCall(&t.mutex)
 	defer locker.Unlock()
 
-	log.Printf("reportExecution(err=%+v)", e)
+	t.log.Printf("reportExecution(err=%+v)", e)
 
 	switch t.step {
 	case stepExecuting:
 		if e != nil {
-			log.Printf("Execution failed with err=%+v", e)
+			t.log.Printf("Execution failed with err=%+v", e)
 			t.step = stepError
 		} else {
 			t.step = stepComplete
@@ -295,9 +301,9 @@ func (t *transition) reportExecution(e error) bool {
 		})
 		return true
 	case stepCanceled:
-		log.Printf("Ignore error err=%+v", e)
+		t.log.Printf("Ignore error err=%+v", e)
 	default:
-		log.Printf("Invalid state %s for err=%+v", t.step, e)
+		t.log.Printf("Invalid state %s for err=%+v", t.step, e)
 	}
 	return false
 }
@@ -393,7 +399,7 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	t.executeDuration = txDuration
 
 	elapsedMS := float64(txDuration/time.Microsecond) / 1000
-	log.Printf("Transactions: %6d  Elapsed: %9.3f ms  PerTx: %7.1f µs  TPS: %9.2f",
+	t.log.Printf("Transactions: %6d  Elapsed: %9.3f ms  PerTx: %7.1f µs  TPS: %9.2f",
 		txCount, elapsedMS,
 		elapsedMS*1000/float64(txCount),
 		float64(txCount)/elapsedMS*1000)
@@ -480,7 +486,7 @@ func (t *transition) finalizeResult() error {
 	}
 	regulator.OnTxExecution(t.transactionCount, t.executeDuration, finalTS.Sub(startTS))
 
-	log.Printf("finalizeResult() total=%s world=%s receipts=%s",
+	t.log.Printf("finalizeResult() total=%s world=%s receipts=%s",
 		finalTS.Sub(startTS), worldTS.Sub(startTS), finalTS.Sub(worldTS))
 	return nil
 }

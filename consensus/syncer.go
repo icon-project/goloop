@@ -1,12 +1,10 @@
 package consensus
 
 import (
-	"fmt"
-	"log"
-	"os"
 	"time"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/consensus/internal/fastsync"
 	"github.com/icon-project/goloop/module"
 )
@@ -50,22 +48,22 @@ type peer struct {
 	id         module.PeerID
 	wakeUpChan chan struct{}
 	stopped    chan struct{}
-	logger     *log.Logger
-	debug      *log.Logger
+	logger     log.Logger
 
 	running bool
 	*peerRoundState
 }
 
 func newPeer(syncer *syncer, id module.PeerID) *peer {
-	prefix := fmt.Sprintf("%x|CS|%x|", syncer.addr.Bytes()[1:3], id.Bytes()[:2])
+	peerLogger := syncer.logger.WithFields(log.Fields{
+		"peer": id.String(),
+	})
 	return &peer{
 		syncer:     syncer,
 		id:         id,
 		wakeUpChan: make(chan struct{}, 1),
 		stopped:    make(chan struct{}),
-		logger:     log.New(os.Stderr, prefix, log.Lshortfile|log.Lmicroseconds),
-		debug:      log.New(debugWriter, prefix, log.Lshortfile|log.Lmicroseconds),
+		logger:     peerLogger,
 		running:    true, // TODO better way
 	}
 }
@@ -78,12 +76,12 @@ func (p *peer) setRoundState(prs *peerRoundState) {
 func (p *peer) doSync() (module.ProtocolInfo, message) {
 	e := p.engine
 	if p.peerRoundState == nil {
-		p.debug.Printf("nil peer round state\n")
+		p.logger.Tracef("nil peer round state\n")
 		return nil, nil
 	}
 
 	if !p.peerRoundState.Sync {
-		p.debug.Printf("peer round state: no sync\n")
+		p.logger.Tracef("peer round state: no sync\n")
 		return nil, nil
 	}
 
@@ -93,7 +91,7 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 			msg := newVoteListMessage()
 			msg.VoteList = vl
 			p.BlockPartsMask = newBitArray(e.GetCommitBlockParts(p.Height).Parts())
-			p.debug.Printf("PC for commit %v\n", p.Height)
+			p.logger.Tracef("PC for commit %v\n", p.Height)
 			return protoVoteList, msg
 		}
 		partSet := e.GetCommitBlockParts(p.Height)
@@ -102,7 +100,7 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 		mask.AssignAnd(partSet.GetMask())
 		idx := mask.PickRandom()
 		if idx < 0 {
-			p.debug.Printf("no bp to send: %v/%v\n", p.BlockPartsMask, partSet.GetMask())
+			p.logger.Tracef("no bp to send: %v/%v\n", p.BlockPartsMask, partSet.GetMask())
 			return nil, nil
 		}
 		part := partSet.GetPart(idx)
@@ -114,7 +112,7 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 		return protoBlockPart, msg
 	}
 	if p.Height > e.Height() {
-		p.debug.Printf("higher peer height %v > %v\n", p.Height, e.Height())
+		p.logger.Tracef("higher peer height %v > %v\n", p.Height, e.Height())
 		if p.Height > e.Height()+configFastSyncThreshold && p.syncer.fetchCanceler == nil {
 			blk, err := p.syncer.bm.GetBlockByHeight(e.Height() - 1)
 			if err != nil {
@@ -130,7 +128,7 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 		msg := newVoteListMessage()
 		msg.VoteList = vl
 		p.peerRoundState = nil
-		p.debug.Printf("PC for round %v\n", e.Round())
+		p.logger.Tracef("PC for round %v\n", e.Round())
 		return protoVoteList, msg
 	} else if p.Round < e.Round() {
 		// TODO: check peer step
@@ -138,11 +136,11 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 		msg := newVoteListMessage()
 		msg.VoteList = vl
 		p.peerRoundState = nil
-		p.debug.Printf("PC for round %v (prev round)\n", e.Round())
+		p.logger.Tracef("PC for round %v (prev round)\n", e.Round())
 		return protoVoteList, msg
 	} else if p.Round == e.Round() {
 		rs := e.GetRoundState()
-		p.debug.Printf("r=%v pv=%v/%v pc=%v/%v\n", e.Round(), p.PrevotesMask, rs.PrevotesMask, p.PrecommitsMask, rs.PrecommitsMask)
+		p.logger.Tracef("r=%v pv=%v/%v pc=%v/%v\n", e.Round(), p.PrevotesMask, rs.PrevotesMask, p.PrecommitsMask, rs.PrecommitsMask)
 		pv := p.PrevotesMask.Copy()
 		pv.Flip()
 		pc := p.PrecommitsMask.Copy()
@@ -156,7 +154,7 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 		}
 	}
 
-	p.debug.Printf("nothing to send\n")
+	p.logger.Tracef("nothing to send\n")
 	return nil, nil
 }
 
@@ -167,18 +165,18 @@ func (p *peer) sync() {
 	for {
 		<-p.wakeUpChan
 
-		p.debug.Printf("peer.wakeUp\n")
+		p.logger.Tracef("peer.wakeUp\n")
 		p.mutex.Lock()
 		if !p.running {
 			p.mutex.Unlock()
-			p.debug.Printf("peer is not running\n")
+			p.logger.Tracef("peer is not running\n")
 			p.stopped <- struct{}{}
 			break
 		}
 		now := time.Now()
 		if nextSendTime != nil && now.Before(*nextSendTime) {
 			p.mutex.Unlock()
-			p.debug.Printf("peer.now=%v nextSendTime=%v\n", now.Format(time.StampMicro), nextSendTime.Format(time.StampMicro))
+			p.logger.Tracef("peer.now=%v nextSendTime=%v\n", now.Format(time.StampMicro), nextSendTime.Format(time.StampMicro))
 			continue
 		}
 		proto, msg := p.doSync()
@@ -208,7 +206,7 @@ func (p *peer) sync() {
 		next := nextSendTime.Add(delta)
 		nextSendTime = &next
 		waitTime := nextSendTime.Sub(now)
-		p.debug.Printf("msg size=%v delta=%v waitTime=%v\n", len(msgBS), delta, waitTime)
+		p.logger.Tracef("msg size=%v delta=%v waitTime=%v\n", len(msgBS), delta, waitTime)
 		if waitTime > time.Duration(0) {
 			time.AfterFunc(waitTime, func() {
 				p.wakeUp()
@@ -236,8 +234,7 @@ func (p *peer) wakeUp() {
 
 type syncer struct {
 	engine Engine
-	logger *log.Logger
-	debug  *log.Logger
+	logger log.Logger
 	nm     module.NetworkManager
 	bm     module.BlockManager
 	mutex  *common.Mutex
@@ -252,7 +249,7 @@ type syncer struct {
 	fetchCanceler func() bool
 }
 
-func newSyncer(e Engine, logger *log.Logger, debug *log.Logger, nm module.NetworkManager, bm module.BlockManager, mutex *common.Mutex, addr module.Address) Syncer {
+func newSyncer(e Engine, logger log.Logger, nm module.NetworkManager, bm module.BlockManager, mutex *common.Mutex, addr module.Address) Syncer {
 	fsm, err := fastsync.NewManager(nm, bm)
 	if err != nil {
 		return nil
@@ -261,7 +258,6 @@ func newSyncer(e Engine, logger *log.Logger, debug *log.Logger, nm module.Networ
 	return &syncer{
 		engine: e,
 		logger: logger,
-		debug:  debug,
 		nm:     nm,
 		bm:     bm,
 		mutex:  mutex,
@@ -333,7 +329,7 @@ func (s *syncer) OnReceive(sp module.ProtocolInfo, bs []byte,
 			s.engine.ReceiveVoteMessage(m.VoteList.Get(i), true)
 		}
 		rs := s.engine.GetRoundState()
-		s.debug.Printf("roundState=%+v\n", *rs)
+		s.logger.Tracef("roundState=%+v\n", *rs)
 	default:
 		s.logger.Panicf("received unknown message %v\n", msg)
 	}

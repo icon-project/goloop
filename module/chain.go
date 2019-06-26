@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/log"
 )
 
 type Wallet interface {
@@ -42,6 +43,7 @@ type Chain interface {
 	Verify(sync bool) error
 
 	MetricContext() context.Context
+	Logger() log.Logger
 }
 
 type Regulator interface {

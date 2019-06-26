@@ -2,11 +2,11 @@ package main
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/signal"
 	"path"
@@ -18,6 +18,7 @@ import (
 
 	"github.com/icon-project/goloop/chain"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/server"
@@ -239,9 +240,10 @@ func main() {
 		os.Exit(0)
 	}
 
-	log.SetFlags(log.Lshortfile | log.Lmicroseconds)
-	prefix := fmt.Sprintf("%x|--|", wallet.Address().ID()[0:2])
-	log.SetPrefix(prefix)
+	logger := log.WithFields(log.Fields{
+		log.FieldKeyWallet: hex.EncodeToString(wallet.Address().ID()),
+	})
+	log.SetGlobalLogger(logger)
 
 	if chainDir != "" {
 		cfg.BaseDir = cfg.ResolveRelative(chainDir)
@@ -264,10 +266,10 @@ func main() {
 	if cpuProfile != "" {
 		f, err := os.Create(cpuProfile)
 		if err != nil {
-			log.Fatalf("Fail to create %s for profile err=%+v", cpuProfile, err)
+			log.Panicf("Fail to create %s for profile err=%+v", cpuProfile, err)
 		}
 		if err = pprof.StartCPUProfile(f); err != nil {
-			log.Fatalf("Fail to start profiling err=%+v", err)
+			log.Panicf("Fail to start profiling err=%+v", err)
 		}
 		defer func() {
 			pprof.StopCPUProfile()
@@ -305,10 +307,10 @@ func main() {
 		" \\____|\\___/ \\____|_| |_/_/   \\_\\___|_| \\_|",
 	}
 	for _, l := range logoLines {
-		log.Println(l)
+		log.Infoln(l)
 	}
-	log.Printf("Version : %s", version)
-	log.Printf("Build   : %s", build)
+	log.Infof("Version : %s", version)
+	log.Infof("Build   : %s", build)
 
 	metric.Initialize(wallet)
 	nt := network.NewTransport(cfg.P2PAddr, wallet)
@@ -336,7 +338,8 @@ func main() {
 
 	// TODO : server-chain setting
 	srv := server.NewManager(cfg.RPCAddr, cfg.RPCDump, wallet)
-	c := chain.NewChain(wallet, nt, srv, pm, &cfg.Config)
+	hex.EncodeToString(wallet.Address().ID())
+	c := chain.NewChain(wallet, nt, srv, pm, logger, &cfg.Config)
 	err = c.Init(true)
 	if err != nil {
 		log.Panicf("FAIL to initialize Chain err=%+v", err)

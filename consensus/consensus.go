@@ -3,15 +3,13 @@ package consensus
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
-	"log"
-	"os"
 	"path"
 	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/consensus/internal/fastsync"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
@@ -61,8 +59,7 @@ type blockPartSet struct {
 type consensus struct {
 	hrs
 
-	logger      *log.Logger
-	debug       *log.Logger
+	logger      log.Logger
 	nm          module.NetworkManager
 	bm          module.BlockManager
 	sm          module.ServiceManager
@@ -123,9 +120,9 @@ func newConsensus(c module.Chain, walDir string, wm WALManager, timestamper modu
 		metric:      metric.NewConsensusMetric(c.MetricContext()),
 		timestamper: timestamper,
 	}
-	prefix := fmt.Sprintf("%x|CS|", cs.wallet.Address().Bytes()[1:3])
-	cs.logger = log.New(os.Stderr, prefix, log.Lshortfile|log.Lmicroseconds)
-	cs.debug = log.New(debugWriter, prefix, log.Lshortfile|log.Lmicroseconds)
+	cs.logger = c.Logger().WithFields(log.Fields{
+		log.FieldKeyModule: "CS",
+	})
 
 	return cs
 }
@@ -238,7 +235,7 @@ func (cs *consensus) OnReceive(
 		cs.logger.Printf("OnReceive: %+v\n", err)
 		return false, err
 	}
-	cs.debug.Printf("OnReceive: %+v\n", msg)
+	cs.logger.Tracef("OnReceive: %+v\n", msg)
 	if err = msg.verify(); err != nil {
 		cs.logger.Printf("OnReceive: %+v\n", err)
 		return false, err
@@ -597,19 +594,19 @@ func (cs *consensus) enterPrecommit() {
 	partSetID, ok := prevotes.getOverTwoThirdsPartSetID()
 
 	if !ok {
-		cs.debug.Println("enterPrecommit: no +2/3 prevote")
+		cs.logger.Traceln("enterPrecommit: no +2/3 prevote")
 		cs.sendVote(voteTypePrecommit, nil)
 	} else if partSetID == nil {
-		cs.debug.Println("enterPrecommit: nil +2/3 prevote")
+		cs.logger.Traceln("enterPrecommit: nil +2/3 prevote")
 		cs.lockedRound = -1
 		cs.lockedBlockParts = nil
 		cs.sendVote(voteTypePrecommit, nil)
 	} else if cs.lockedBlockParts != nil && cs.lockedBlockParts.ID().Equal(partSetID) {
-		cs.debug.Println("enterPrecommit: update lock round")
+		cs.logger.Traceln("enterPrecommit: update lock round")
 		cs.lockedRound = cs.round
 		cs.sendVote(voteTypePrecommit, cs.lockedBlockParts)
 	} else if cs.currentBlockParts != nil && cs.currentBlockParts.ID().Equal(partSetID) && cs.currentBlockParts.validated {
-		cs.debug.Println("enterPrecommit: update lock")
+		cs.logger.Traceln("enterPrecommit: update lock")
 		cs.lockedRound = cs.round
 		cs.lockedBlockParts = cs.currentBlockParts
 		msg := newVoteListMessage()
@@ -632,7 +629,7 @@ func (cs *consensus) enterPrecommit() {
 		cs.sendVote(voteTypePrecommit, cs.lockedBlockParts)
 	} else {
 		// polka for a block we don't have
-		cs.debug.Println("enterPrecommit: polka for we don't have")
+		cs.logger.Traceln("enterPrecommit: polka for we don't have")
 		if cs.currentBlockParts == nil || !cs.currentBlockParts.ID().Equal(partSetID) {
 			cs.currentBlockParts = &blockPartSet{
 				PartSet: newPartSetFromID(partSetID),
@@ -672,7 +669,7 @@ func (cs *consensus) enterPrecommitWait() {
 	} else if ok && partSetID == nil {
 		cs.enterNewRound()
 	} else {
-		cs.debug.Println("enterPrecommitWait: start timer")
+		cs.logger.Traceln("enterPrecommitWait: start timer")
 		hrs := cs.hrs
 		cs.timer = time.AfterFunc(timeoutPrecommit, func() {
 			cs.mutex.Lock()
@@ -1009,7 +1006,7 @@ func (cs *consensus) applyRoundWAL() error {
 			if m.height() != cs.height {
 				continue
 			}
-			cs.debug.Printf("WAL: my proposal %v\n", m)
+			cs.logger.Tracef("WAL: my proposal %v\n", m)
 			if m.round() < round || (m.round() == round && rstep <= stepPropose) {
 				round = m.round()
 				rstep = stepPropose
@@ -1018,7 +1015,7 @@ func (cs *consensus) applyRoundWAL() error {
 			if m.height() != cs.height {
 				continue
 			}
-			cs.debug.Printf("WAL: my vote %v\n", m)
+			cs.logger.Tracef("WAL: my vote %v\n", m)
 			index := cs.validators.IndexOf(m.address())
 			if index < 0 {
 				continue
@@ -1040,7 +1037,7 @@ func (cs *consensus) applyRoundWAL() error {
 				if vmsg.height() != cs.height {
 					continue
 				}
-				cs.debug.Printf("WAL: round vote %v\n", vmsg)
+				cs.logger.Tracef("WAL: round vote %v\n", vmsg)
 				index := cs.validators.IndexOf(vmsg.address())
 				if index < 0 {
 					continue
@@ -1119,7 +1116,7 @@ func (cs *consensus) applyLockWAL() error {
 				if vmsg.height() != cs.height {
 					continue
 				}
-				cs.debug.Printf("WAL: round vote %v\n", vmsg)
+				cs.logger.Tracef("WAL: round vote %v\n", vmsg)
 				index := cs.validators.IndexOf(vmsg.address())
 				if index < 0 {
 					continue
@@ -1133,7 +1130,7 @@ func (cs *consensus) applyLockWAL() error {
 			prevotes := cs.hvs.votesFor(vmsg.Round, voteTypePrevote)
 			psid, ok := prevotes.getOverTwoThirdsPartSetID()
 			if ok && psid != nil {
-				cs.debug.Printf("WAL: POL R=%v psid=%v\n", vmsg.Round, psid)
+				cs.logger.Tracef("WAL: POL R=%v psid=%v\n", vmsg.Round, psid)
 				bpset = newPartSetFromID(psid)
 				bpsetLockRound = vmsg.Round
 			}
@@ -1163,11 +1160,11 @@ func (cs *consensus) applyLockWAL() error {
 				return err
 			}
 			err = bpset.AddPart(bp)
-			cs.debug.Printf("WAL: blockPart %v\n", m)
+			cs.logger.Tracef("WAL: blockPart %v\n", m)
 			if err == nil && bpset.IsComplete() {
 				lastBPSet = bpset
 				lastBPSetLockRound = bpsetLockRound
-				cs.debug.Printf("WAL: blockPart complete\n")
+				cs.logger.Tracef("WAL: blockPart complete\n")
 			}
 		}
 	}
@@ -1230,7 +1227,7 @@ func (cs *consensus) applyCommitWAL(prevValidators addressIndexer) error {
 				vs := newVoteSet(prevValidators.Len())
 				for i := 0; i < m.VoteList.Len(); i++ {
 					msg := m.VoteList.Get(i)
-					cs.debug.Printf("WAL: round vote %v\n", msg)
+					cs.logger.Tracef("WAL: round vote %v\n", msg)
 					index := prevValidators.IndexOf(msg.address())
 					if index < 0 {
 						return errors.Errorf("bad voter %v", msg.address())
@@ -1244,7 +1241,7 @@ func (cs *consensus) applyCommitWAL(prevValidators addressIndexer) error {
 			} else if m.VoteList.Get(0).height() == cs.height {
 				for i := 0; i < m.VoteList.Len(); i++ {
 					vmsg := m.VoteList.Get(i)
-					cs.debug.Printf("WAL: round vote %v\n", vmsg)
+					cs.logger.Tracef("WAL: round vote %v\n", vmsg)
 					index := cs.validators.IndexOf(vmsg.address())
 					if index < 0 {
 						continue
@@ -1362,7 +1359,7 @@ func (cs *consensus) Start() error {
 
 	cs.started = true
 	cs.logger.Printf("Consensus start wallet=%s", cs.wallet.Address())
-	cs.syncer = newSyncer(cs, cs.logger, cs.debug, cs.nm, cs.bm, &cs.mutex, cs.wallet.Address())
+	cs.syncer = newSyncer(cs, cs.logger, cs.nm, cs.bm, &cs.mutex, cs.wallet.Address())
 	cs.syncer.Start()
 	if cs.step == stepNewHeight {
 		cs.enterPropose()
@@ -1616,7 +1613,7 @@ func (w *walMessageWriter) writeMessage(msg message) error {
 	if err := codec.Marshal(writer, msg); err != nil {
 		return err
 	}
-	//cs.debug.Printf("write WAL: %+v\n", msg)
+	//cs.logger.Tracef("write WAL: %+v\n", msg)
 	_, err := w.WriteBytes(writer.Bytes())
 	return err
 }
@@ -1625,7 +1622,7 @@ func (w *walMessageWriter) writeMessageBytes(sp uint16, msg []byte) error {
 	bs := make([]byte, 2+len(msg))
 	binary.BigEndian.PutUint16(bs, sp)
 	copy(bs[2:], msg)
-	//cs.debug.Printf("write WAL: %x\n", bs)
+	//cs.logger.Tracef("write WAL: %x\n", bs)
 	_, err := w.WriteBytes(bs)
 	return err
 }
