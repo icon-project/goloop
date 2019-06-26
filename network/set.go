@@ -398,6 +398,10 @@ func (s *NetAddressSet) Array() []NetAddress {
 	}
 	return arr
 }
+func (s *NetAddressSet) ClearAndAdd(args ...NetAddress) {
+	s.Clear()
+	s.Merge(args...)
+}
 func (s *NetAddressSet) _map() map[NetAddress]string {
 	m := make(map[NetAddress]string)
 	for k, v := range s.Set.m {

@@ -49,7 +49,7 @@ type Peer struct {
 	connType  PeerConnectionType
 	role      PeerRoleFlag
 	roleMtx   sync.RWMutex
-	children  []NetAddress
+	children  *NetAddressSet
 	nephews   int
 	//
 	last context.Context
@@ -202,7 +202,7 @@ func (p *Peer) String() string {
 		return ""
 	}
 	return fmt.Sprintf("{id:%v, conn:%s, addr:%v, in:%v, channel:%v, role:%v, type:%v, rtt:%v, children:%d, nephews:%d}",
-		p.id, p.ConnString(), p.netAddress, p.incomming, p.channel, p.role, p.connType, p.rtt.String(), len(p.children), p.nephews)
+		p.id, p.ConnString(), p.netAddress, p.incomming, p.channel, p.getRole(), p.connType, p.rtt.String(), p.children.Len(), p.nephews)
 }
 func (p *Peer) ConnString() string {
 	if p == nil {

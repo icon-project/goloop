@@ -613,7 +613,7 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 	}
 	p2p.log.Println("handleQueryResult", qrm, p)
 	p.rtt.Stop()
-	p.children = qrm.Children
+	p.children.ClearAndAdd(qrm.Children...)
 	p.nephews = len(qrm.Nephews)
 	role := p2p.getRole()
 	if p2p.isAllowedRole(qrm.Role, p) {
@@ -1318,8 +1318,8 @@ func (p2p *PeerToPeer) discoverParent(pr PeerRoleFlag) {
 		return
 	}
 	sort.Slice(peers, func(i, j int) bool {
-		il := len(peers[i].children)
-		jl := len(peers[j].children)
+		il := peers[i].children.Len()
+		jl := peers[j].children.Len()
 		if il == jl {
 			return peers[i].rtt.avg < peers[j].rtt.avg
 		} else {
