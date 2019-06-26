@@ -4,6 +4,8 @@ stages:
   - build
   - pack
   - integration
+  - deploy
+  - cleanup
 
 variables:
   GOLANG_VERSION: "1.12.4"
@@ -121,6 +123,7 @@ pack:goloop:
   artifacts:
     expire_in: 1 day
     when: on_failure
+    name: "${CI_COMMIT_REF_SLUG}_${CI_PIPELINE_ID}_${CI_JOB_ID}"
     paths:
       - gochain_data
       - testsuite/build/reports
@@ -200,6 +203,7 @@ ITJ:gochain:governance:audit:
   artifacts:
     expire_in: 1 day
     when: on_failure
+    name: "${CI_COMMIT_REF_SLUG}_${CI_PIPELINE_ID}_${CI_JOB_ID}"
     paths:
       - goloop_data
       - testsuite/build/reports
@@ -240,6 +244,101 @@ ITJ:goloop:governance:audit:
     GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/govEnvAudit.properties"
   script:
     - ./gradlew testGovernance -DNO_SERVER="true" -DAUDIT="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
+
+.pages: &pages
+  image: node:lts-alpine
+  stage: deploy
+  variables:
+    PAGES_PUBLIC: "${CI_PROJECT_PATH}/${CI_COMMIT_REF_SLUG}"
+  before_script:
+    - env
+    - mkdir -p /public/${PAGES_PUBLIC}
+  after_script:
+    - if [ -d public ];then rm -rf /public/${PAGES_PUBLIC}/*;cp -r public/* /public/${PAGES_PUBLIC}/;fi
+    - echo "http://ci.arch.iconloop.com/pages/${PAGES_PUBLIC}"
+  cache:
+    key: "$CI_JOB_STAGE/$CI_COMMIT_REF_NAME"
+    paths:
+      - node_modules
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - public
+  tags:
+    - pages
+
+pages:doc:
+  <<: *pages
+  variables:
+    PAGES_PUBLIC: "${CI_PROJECT_PATH}/${CI_COMMIT_REF_SLUG}/doc"
+  script:
+    - bin/goloop doc ./doc/goloop_cli.md
+    - cd doc
+    - npm install
+    - ./node_modules/.bin/widdershins -l --summary goloop_admin_api.yaml -o goloop_admin_api.md
+    - sed -i "s/base:.*/base:'\/pages\/${PAGES_PUBLIC//\//\\\/}\/',/" ./.vuepress/config.js
+    - ./node_modules/.bin/vuepress build --dest dist ./
+    - mv dist ../public
+
+pages:ITJ:gochain:normal:
+  <<: *pages
+  variables:
+    PAGES_PUBLIC: "${CI_PROJECT_PATH}/${CI_COMMIT_REF_SLUG}/ITJ_gochain/normal"
+  script:
+    - mv testsuite/build/reports/tests/testNormal public
+  when: on_failure
+  dependencies:
+    - ITJ:gochain:normal
+
+pages:ITJ:gochain:governance:
+  <<: *pages
+  variables:
+    PAGES_PUBLIC: "${CI_PROJECT_PATH}/${CI_COMMIT_REF_SLUG}/ITJ_gochain/governance"
+  script:
+    - mv testsuite/build/reports/tests/testGovernance public
+  when: on_failure
+  dependencies:
+    - ITJ:gochain:governance
+
+pages:ITJ:gochain:governance:audit:
+  <<: *pages
+  variables:
+    PAGES_PUBLIC: "${CI_PROJECT_PATH}/${CI_COMMIT_REF_SLUG}/ITJ_gochain/governance_audit"
+  script:
+    - mv testsuite/build/reports/tests/testGovernance public
+  when: on_failure
+  dependencies:
+    - ITJ:gochain:governance:audit
+
+pages:ITJ:goloop:normal:
+  <<: *pages
+  variables:
+    PAGES_PUBLIC: "${CI_PROJECT_PATH}/${CI_COMMIT_REF_SLUG}/ITJ_goloop/normal"
+  script:
+    - mv testsuite/build/reports/tests/testNormal public
+  when: on_failure
+  dependencies:
+    - ITJ:goloop:normal
+
+pages:ITJ:goloop:governance:
+  <<: *pages
+  variables:
+    PAGES_PUBLIC: "${CI_PROJECT_PATH}/${CI_COMMIT_REF_SLUG}/ITJ_goloop/governance"
+  script:
+    - mv testsuite/build/reports/tests/testGovernance public
+  when: on_failure
+  dependencies:
+    - ITJ:goloop:governance
+
+pages:ITJ:goloop:governance:audit:
+  <<: *pages
+  variables:
+    PAGES_PUBLIC: "${CI_PROJECT_PATH}/${CI_COMMIT_REF_SLUG}/ITJ_goloop/governance_audit"
+  script:
+    - mv testsuite/build/reports/tests/testGovernance public
+  when: on_failure
+  dependencies:
+    - ITJ:goloop:governance:audit
 
 .cleanup:integration:
   image: docker:git

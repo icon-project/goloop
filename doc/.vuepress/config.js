@@ -1,4 +1,5 @@
 module.exports = {
+    base: '/doc/',
     title: 'Goloop Document',
     port: 10080,
     themeConfig: {
