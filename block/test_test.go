@@ -2,7 +2,6 @@ package block
 
 import (
 	"bytes"
-	"log"
 	"math/big"
 	"reflect"
 	"sync"
@@ -13,6 +12,7 @@ import (
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/txresult"
@@ -55,6 +55,10 @@ func (c *testChain) CommitVoteSetDecoder() module.CommitVoteSetDecoder {
 
 func (c *testChain) ServiceManager() module.ServiceManager {
 	return c.sm
+}
+
+func (c *testChain) Logger() log.Logger {
+	return log.GlobalLogger()
 }
 
 type testError struct {

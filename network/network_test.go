@@ -3,7 +3,6 @@ package network
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"testing"
 	"time"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -273,6 +273,7 @@ func (c *dummyChain) NormalTxPoolSize() int                             { panic(
 func (c *dummyChain) PatchTxPoolSize() int                              { panic("not implemented") }
 func (c *dummyChain) MaxBlockTxBytes() int                              { panic("not implemented") }
 func (c *dummyChain) Genesis() []byte                                   { panic("not implemented") }
+func (c *dummyChain) Logger() log.Logger                                { return log.GlobalLogger() }
 func (c *dummyChain) GetGenesisData(key []byte) ([]byte, error)         { panic("not implemented") }
 func (c *dummyChain) CommitVoteSetDecoder() module.CommitVoteSetDecoder { panic("not implemented") }
 
@@ -512,7 +513,6 @@ func Test_network_basic(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode.")
 	}
-	log.SetFlags(log.Lmicroseconds)
 	m := make(map[string][]*testReactor)
 	p := 8080
 	m["TestCitizen"], p = generateNetwork("TestCitizen", p, testNumCitizen, t)                              //8080~8083
@@ -706,7 +706,7 @@ func newTestQueue(size int) *testQueue {
 	return &testQueue{Queue: q}
 }
 
-func (q *testQueue) _ch() <-chan bool{
+func (q *testQueue) _ch() <-chan bool {
 	defer q.mtx.RUnlock()
 	q.mtx.RLock()
 	return q.ch
