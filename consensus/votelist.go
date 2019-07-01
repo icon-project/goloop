@@ -1,6 +1,8 @@
 package consensus
 
 import (
+	"fmt"
+
 	"github.com/icon-project/goloop/common"
 )
 
@@ -14,6 +16,19 @@ type VoteItem struct {
 type voteList struct {
 	Prototypes []voteBase
 	VoteItems  []VoteItem
+}
+
+func (vl voteList) String() string {
+	res := fmt.Sprintf("{Prototypes:%+v,VoteItems:[", vl.Prototypes)
+	for i, vi := range vl.VoteItems {
+		msg := vl.Get(i)
+		if i > 0 {
+			res += " "
+		}
+		res += fmt.Sprintf("{I:%v,T:%d,Addr:%v}", vi.PrototypeIndex, vi.Timestamp, common.HexPre(msg.address().ID()))
+	}
+	res += "]}"
+	return res
 }
 
 func (vl *voteList) AddVote(msg *voteMessage) {

@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
@@ -49,11 +50,8 @@ func (id *PartSetID) Equal(id2 *PartSetID) bool {
 	return id.Count == id2.Count && bytes.Equal(id.Hash, id2.Hash)
 }
 
-func (id *PartSetID) String() string {
-	if id == nil {
-		return "<nil>"
-	}
-	return fmt.Sprintf("PartSet(parts=%d,hash=%x)", id.Count, id.Hash)
+func (id PartSetID) String() string {
+	return fmt.Sprintf("{Count:%v,Hash:%v}", id.Count, common.HexPre(id.Hash))
 }
 
 // TODO need to prepare proofs for each parts.

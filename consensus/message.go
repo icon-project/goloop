@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 )
@@ -113,7 +114,7 @@ func (msg *proposalMessage) subprotocol() uint16 {
 }
 
 func (msg *proposalMessage) String() string {
-	return fmt.Sprintf("ProposalMessage[H=%d,R=%d,parts=%d,eoa=%s", msg.Height, msg.Round, msg.BlockPartSetID.Count, msg.address())
+	return fmt.Sprintf("ProposalMessage{H:%d R:%d BPSID:%v Addr:%v}", msg.Height, msg.Round, msg.BlockPartSetID, common.HexPre(msg.address().ID()))
 }
 
 type blockPartMessage struct {
@@ -140,7 +141,7 @@ func (msg *blockPartMessage) subprotocol() uint16 {
 }
 
 func (msg *blockPartMessage) String() string {
-	return fmt.Sprintf("BlockPartMessage[H=%d,I=%d]", msg.Height, msg.Index)
+	return fmt.Sprintf("BlockPartMessage{H:%d,I:%d}", msg.Height, msg.Index)
 }
 
 type voteType byte
@@ -175,6 +176,10 @@ func (v *voteBase) Equal(v2 *voteBase) bool {
 		v.BlockPartSetID.Equal(v2.BlockPartSetID)
 }
 
+func (vb voteBase) String() string {
+	return fmt.Sprintf("{%s H:%d R:%d BID:%v BPSID:%v}", vb.Type, vb.Height, vb.Round, common.HexPre(vb.BlockID), vb.BlockPartSetID)
+}
+
 type vote struct {
 	voteBase
 	Timestamp int64
@@ -193,7 +198,7 @@ func (v *vote) bytes() []byte {
 }
 
 func (v *vote) String() string {
-	return fmt.Sprintf("Vote[%s,H=%d,R=%d,bid=<%x>]", v.Type, v.Height, v.Round, v.BlockID)
+	return fmt.Sprintf("Vote{%s H=%d R=%d bid=%v}", v.Type, v.Height, v.Round, common.HexPre(v.BlockID))
 }
 
 type voteMessage struct {
@@ -222,7 +227,7 @@ func (msg *voteMessage) subprotocol() uint16 {
 }
 
 func (msg *voteMessage) String() string {
-	return fmt.Sprintf("VoteMessage[%s,H=%d,R=%d,bid=<%x>,sig=%s]", msg.Type, msg.Height, msg.Round, msg.BlockID, msg.address())
+	return fmt.Sprintf("VoteMessage{%s,H:%d,R:%d,BlockID:%v,Addr:%v}", msg.Type, msg.Height, msg.Round, common.HexPre(msg.BlockID), common.HexPre(msg.address().ID()))
 }
 
 type peerRoundState struct {
@@ -233,11 +238,8 @@ type peerRoundState struct {
 	Sync           bool
 }
 
-func (prs *peerRoundState) String() string {
-	if prs == nil {
-		return "peerRoundState=nil"
-	}
-	return fmt.Sprintf("H=%v,R=%v,PV=%v,PC=%v,BP=%v,S=%t", prs.Height, prs.Round, prs.PrevotesMask, prs.PrecommitsMask, prs.BlockPartsMask, prs.Sync)
+func (prs peerRoundState) String() string {
+	return fmt.Sprintf("PeerRoundState{H:%v R:%v PV:%v PC:%v BP:%v Sync:%t}", prs.Height, prs.Round, prs.PrevotesMask, prs.PrecommitsMask, prs.BlockPartsMask, prs.Sync)
 }
 
 type roundStateMessage struct {
@@ -246,8 +248,8 @@ type roundStateMessage struct {
 	// TODO: add LastMaskType, LastIndex
 }
 
-func (msg *roundStateMessage) String() string {
-	return fmt.Sprintf("RoundStateMessage:%v", msg.peerRoundState)
+func (msg roundStateMessage) String() string {
+	return fmt.Sprintf("PeerRoundStateMessage{H:%v R:%v PV:%v PC:%v BP:%v Sync:%t}", msg.Height, msg.Round, msg.PrevotesMask, msg.PrecommitsMask, msg.BlockPartsMask, msg.Sync)
 }
 
 func newRoundStateMessage() *roundStateMessage {
@@ -282,8 +284,8 @@ func (msg *voteListMessage) verify() error {
 	return nil
 }
 
-func (msg *voteListMessage) String() string {
-	return fmt.Sprintf("VoteListMessage:%v", msg.VoteList)
+func (msg voteListMessage) String() string {
+	return fmt.Sprintf("VoteListMessage%+v", msg.VoteList)
 }
 
 func (msg *voteListMessage) subprotocol() uint16 {

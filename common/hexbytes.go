@@ -3,6 +3,7 @@ package common
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 )
 
 type RawHexBytes []byte
@@ -80,4 +81,17 @@ func (hs HexBytes) String() string {
 		return ""
 	}
 	return "0x" + hex.EncodeToString(hs)
+}
+
+const PrefixLen = 4
+
+// HexPre returns hexadecimal string of prefix of byte slice bs.
+func HexPre(bs []byte) string {
+	if bs == nil {
+		return "<nil>"
+	}
+	if len(bs) > PrefixLen {
+		return fmt.Sprintf("%x..", bs[:PrefixLen])
+	}
+	return fmt.Sprintf("%x", bs)
 }
