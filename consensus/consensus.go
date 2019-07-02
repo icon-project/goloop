@@ -827,14 +827,17 @@ func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) error {
 	}
 	if err := cs.roundWAL.writeMessageBytes(msg.subprotocol(), msgBS); err != nil {
 		cs.logger.Errorf("fail to write WAL: sendProposal: %+v\n", err)
+		return err
 	}
 	if err := cs.roundWAL.Sync(); err != nil {
 		cs.logger.Errorf("fail to sync WAL: sendProposal: %+v\n", err)
+		return err
 	}
 	cs.logger.Debugf("sendProposal %v\n", msg)
 	err = cs.ph.Broadcast(protoProposal, msgBS, module.BROADCAST_ALL)
 	if err != nil {
 		cs.logger.Warnf("sendProposal: %+v\n", err)
+		return err
 	}
 
 	if polRound >= 0 {
@@ -850,6 +853,7 @@ func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) error {
 		err = cs.ph.Multicast(protoVoteList, vlmsgBS, module.ROLE_VALIDATOR)
 		if err != nil {
 			cs.logger.Warnf("sendVoteList: %+v\n", err)
+			return err
 		}
 	}
 
@@ -866,6 +870,7 @@ func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) error {
 		err = cs.ph.Broadcast(protoBlockPart, bpmsgBS, module.BROADCAST_ALL)
 		if err != nil {
 			cs.logger.Warnf("sendBlockPart: %+v\n", err)
+			return err
 		}
 	}
 
