@@ -441,6 +441,11 @@ func (s *syncer) sendRoundStateMessage() {
 	s.lastSendTime = time.Now()
 	if s.timer != nil {
 		s.timer.Stop()
+		s.timer = nil
+	}
+
+	if s.engine.Step() == stepNewHeight {
+		return
 	}
 
 	var timer *time.Timer
