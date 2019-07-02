@@ -2,12 +2,11 @@ package network
 
 import (
 	"fmt"
-	"log"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/metric"
 )
@@ -27,7 +26,7 @@ type manager struct {
 
 	pd *PeerDispatcher
 	//log
-	log *logger
+	logger log.Logger
 
 	//monitor
 	mtr *metric.NetworkMetric
@@ -38,16 +37,17 @@ func NewManager(c module.Chain, nt module.NetworkTransport, initialSeed string, 
 	self := &Peer{id: t.PeerID(), netAddress: NetAddress(t.Address())}
 	channel := strconv.FormatInt(int64(c.NID()), 16)
 	mtr := metric.NewNetworkMetric(c.MetricContext())
+	networkLogger := c.Logger().WithFields(log.Fields{log.FieldKeyModule: "NM"})
 	m := &manager{
 		channel:          channel,
-		p2p:              newPeerToPeer(channel, self, t.GetDialer(channel), mtr),
+		p2p:              newPeerToPeer(channel, self, t.GetDialer(channel), mtr, networkLogger),
 		roles:            make(map[module.Role]*PeerIDSet),
 		destByRole:       make(map[module.Role]byte),
 		roleByDest:       make(map[byte]module.Role),
 		protocolHandlers: make(map[string]*protocolHandler),
 		priority:         make(map[protocolInfo]uint8),
 		pd:               t.pd,
-		log:              newLogger("NetworkManager", channel),
+		logger:           networkLogger,
 		mtr:              mtr,
 	}
 
@@ -67,7 +67,7 @@ func NewManager(c module.Chain, nt module.NetworkTransport, initialSeed string, 
 		case module.ROLE_VALIDATOR:
 			role.SetFlag(p2pRoleRoot)
 		default:
-			m.log.Println("Warning", "NewManager", "ignored role", r)
+			m.logger.Infoln("NewManager", "ignored role", r)
 		}
 	}
 	m.p2p.setRole(role)
@@ -75,10 +75,7 @@ func NewManager(c module.Chain, nt module.NetworkTransport, initialSeed string, 
 		m.p2p.seeds.Add(NetAddress(initialSeed))
 	}
 
-	m.log.Println("NewManager", channel)
-	m.log.excludes = []string{
-		"SetRole",
-	}
+	m.logger.Debugln("NewManager", channel)
 	return m
 }
 
@@ -103,9 +100,9 @@ func (m *manager) Term() {
 	m.mtx.Lock()
 
 	_ = m._stop()
-	m.log.Println("Term protocolHandlers")
+	m.logger.Debugln("Term protocolHandlers")
 	for _, ph := range m.protocolHandlers {
-		m.log.Println("Term", ph.name)
+		m.logger.Debugln("Term", ph.name)
 		ph.Term()
 	}
 }
@@ -156,7 +153,7 @@ func (m *manager) RegisterReactor(name string, r module.Reactor, spiList []modul
 
 	//TODO protocolInfo management
 	pi := newProtocolInfo(byte(len(m.protocolHandlers))+1, 0)
-	ph := newProtocolHandler(m, pi, spiList, r, name, priority)
+	ph := newProtocolHandler(m, pi, spiList, r, name, priority, m.logger)
 	m.p2p.setCbFunc(pi, ph.onPacket, ph.onFailure, ph.onEvent, p2pEventJoin, p2pEventLeave, p2pEventDuplicate)
 
 	m.protocolHandlers[name] = ph
@@ -262,7 +259,7 @@ func (m *manager) SetRole(version int64, role module.Role, peers ...module.PeerI
 		s.version = version
 		s.ClearAndAdd(peers...)
 	} else {
-		m.log.Println("SetRole","ignore",version,"must greater than",s.version)
+		m.logger.Debugln("SetRole", "ignore", version, "must greater than", s.version)
 	}
 }
 
@@ -300,65 +297,6 @@ func (m *manager) Roles(id module.PeerID) []module.Role {
 
 func (m *manager) getRoleByDest(dest byte) module.Role {
 	return m.roleByDest[dest]
-}
-
-type logger struct {
-	name     string
-	prefix   string
-	excludes []string
-}
-
-func newLogger(name string, prefix string) *logger {
-	//l := log.New(os.Stdout, fmt.Sprintf("[%s] %s", prefix, name), log.LstdFlags)
-	l := &logger{name: name, excludes: make([]string, 0)}
-	l.SetPrefix(prefix)
-	return l
-}
-
-func (l *logger) SetPrefix(prefix string) {
-	if prefix == "" {
-		l.prefix = fmt.Sprintf("%s ", l.name)
-	} else {
-		l.prefix = fmt.Sprintf("[%s] %s ", prefix, l.name)
-	}
-}
-
-func (l *logger) printable(v interface{}) bool {
-	for _, e := range ExcludeLoggers {
-		if e == l.name {
-			return false
-		}
-	}
-
-	if len(l.excludes) < 1 {
-		return true
-	}
-	s, ok := v.(string)
-	if !ok {
-		return true
-	}
-	for _, e := range l.excludes {
-		if strings.HasPrefix(s, e) {
-			return false
-		}
-	}
-	return true
-}
-
-func (l *logger) Println(v ...interface{}) {
-	if v[0] == "Warning" || l.printable(v[0]) {
-		//%T : type //%#v
-		//w := make([]interface{}, len(v)+1)
-		//copy(w[1:], v)
-		//w[0] = l.prefix
-		_ = log.Output(2, l.prefix+fmt.Sprintln(v...))
-	}
-}
-
-func (l *logger) Printf(format string, v ...interface{}) {
-	if l.printable(format) {
-		_ = log.Output(2, fmt.Sprintf(l.prefix+format, v...))
-	}
 }
 
 type protocolInfo uint16

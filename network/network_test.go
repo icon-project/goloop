@@ -2,6 +2,7 @@ package network
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"sync"
 	"testing"
@@ -45,7 +46,7 @@ var (
 type testReactor struct {
 	name         string
 	ph           module.ProtocolHandler
-	log          *logger
+	logger       log.Logger
 	t            *testing.T
 	nm           module.NetworkManager
 	nt           module.NetworkTransport
@@ -55,7 +56,8 @@ type testReactor struct {
 }
 
 func newTestReactor(name string, nm module.NetworkManager, t *testing.T) *testReactor {
-	r := &testReactor{name: name, nm: nm, log: newLogger("TestReactor", name), t: t}
+	logger := nm.(*manager).logger.WithFields(log.Fields{"TestReactor": name})
+	r := &testReactor{name: name, nm: nm, logger: logger, t: t}
 	ph, err := nm.RegisterReactor(name, r, testSubProtocols, testProtoPriority)
 	assert.NoError(t, err, "RegisterReactor")
 	r.ph = ph
@@ -86,35 +88,35 @@ type testNetworkResponse struct {
 }
 
 func (r *testReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) (re bool, err error) {
-	r.log.Println("OnReceive", pi, b, id)
+	r.logger.Println("OnReceive", pi, b, id)
 	var msg string
 	switch pi {
 	case ProtoTestNetworkBroadcast:
 		rm := &testNetworkBroadcast{}
 		r.decode(b, rm)
 		msg = rm.Message
-		r.log.Println("handleProtoTestNetworkBroadcast", rm, id)
+		r.logger.Println("handleProtoTestNetworkBroadcast", rm, id)
 		r.t.Log(time.Now(), r.name, "OnReceive", rm, r.p2pConn())
 		re = true
 	case ProtoTestNetworkNeighbor:
 		rm := &testNetworkBroadcast{}
 		r.decode(b, rm)
 		msg = rm.Message
-		r.log.Println("handleProtoTestNetworkNeighbor", rm, id)
+		r.logger.Println("handleProtoTestNetworkNeighbor", rm, id)
 		r.t.Log(time.Now(), r.name, "OnReceive", rm, r.p2pConn())
 		re = false
 	case ProtoTestNetworkMulticast:
 		rm := &testNetworkMulticast{}
 		r.decode(b, rm)
 		msg = rm.Message
-		r.log.Println("handleProtoTestNetworkMulticast", rm, id)
+		r.logger.Println("handleProtoTestNetworkMulticast", rm, id)
 		r.t.Log(time.Now(), r.name, "OnReceive", rm, r.p2pConn())
 		re = true
 	case ProtoTestNetworkRequest:
 		rm := &testNetworkRequest{}
 		r.decode(b, rm)
 		msg = rm.Message
-		r.log.Println("handleProtoTestNetworkRequest", rm, id)
+		r.logger.Println("handleProtoTestNetworkRequest", rm, id)
 		r.t.Log(time.Now(), r.name, "OnReceive", rm)
 		if r.responseFunc != nil {
 			err = r.responseFunc(r, rm, id)
@@ -125,7 +127,7 @@ func (r *testReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.Peer
 		rm := &testNetworkResponse{}
 		r.decode(b, rm)
 		msg = rm.Message
-		r.log.Println("handleProtoTestNetworkResponse", rm, id)
+		r.logger.Println("handleProtoTestNetworkResponse", rm, id)
 		r.t.Log(time.Now(), r.name, "OnReceive", rm)
 	default:
 		re = false
@@ -150,17 +152,17 @@ func (r *testReactor) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
 	r.ch <- ctx
 }
 func (r *testReactor) OnJoin(id module.PeerID) {
-	r.log.Println("OnJoin", id)
+	r.logger.Println("OnJoin", id)
 	ctx := context.WithValue(context.Background(), "op", "join")
 	ctx = context.WithValue(ctx, "p2pConnInfo", newP2PConnInfo(r.p2p))
 	ctx = context.WithValue(ctx, "name", r.name)
 	r.ch <- ctx
 }
 func (r *testReactor) OnLeave(id module.PeerID) {
-	r.log.Println("OnLeave", id)
+	r.logger.Println("OnLeave", id)
 }
 func (r *testReactor) onEvent(evt string, p *Peer) {
-	r.log.Println("onEvent", evt, p.id)
+	r.logger.Println("onEvent", evt, p.id)
 	ctx := context.WithValue(context.Background(), "op", "event")
 	ctx = context.WithValue(ctx, "event", evt)
 	ctx = context.WithValue(ctx, "name", r.name)
@@ -219,7 +221,7 @@ func (r *testReactor) Broadcast(msg string) string {
 	r.t.Log(time.Now(), r.name, "Broadcast", m, r.p2pConn())
 	err := r.ph.Broadcast(ProtoTestNetworkBroadcast, r.encode(m), module.BROADCAST_ALL)
 	assert.NoError(r.t, err, m.Message)
-	r.log.Println("Broadcast", m)
+	r.logger.Println("Broadcast", m)
 	return m.Message
 }
 
@@ -228,7 +230,7 @@ func (r *testReactor) BroadcastNeighbor(msg string) string {
 	r.t.Log(time.Now(), r.name, "BroadcastNeighbor", m, r.p2pConn())
 	err := r.ph.Broadcast(ProtoTestNetworkNeighbor, r.encode(m), module.BROADCAST_NEIGHBOR)
 	assert.NoError(r.t, err, m.Message)
-	r.log.Println("BroadcastNeighbor", m)
+	r.logger.Println("BroadcastNeighbor", m)
 	return m.Message
 }
 
@@ -237,7 +239,7 @@ func (r *testReactor) Multicast(msg string) string {
 	r.t.Log(time.Now(), r.name, "Multicast", m, r.p2pConn())
 	err := r.ph.Multicast(ProtoTestNetworkMulticast, r.encode(m), module.ROLE_VALIDATOR)
 	assert.NoError(r.t, err, m.Message)
-	r.log.Println("Multicast", m)
+	r.logger.Println("Multicast", m)
 	return m.Message
 }
 
@@ -246,7 +248,7 @@ func (r *testReactor) Request(msg string, id module.PeerID) string {
 	r.t.Log(time.Now(), r.name, "Request", m, r.p2pConn())
 	err := r.ph.Unicast(ProtoTestNetworkRequest, r.encode(m), id)
 	assert.NoError(r.t, err, m.Message)
-	r.log.Println("Request", m, id)
+	r.logger.Println("Request", m, id)
 	return m.Message
 }
 
@@ -255,13 +257,14 @@ func (r *testReactor) Response(msg string, id module.PeerID) string {
 	r.t.Log(time.Now(), r.name, "Response", m, r.p2pConn())
 	err := r.ph.Unicast(ProtoTestNetworkResponse, r.encode(m), id)
 	assert.NoError(r.t, err, m.Message)
-	r.log.Println("Response", m, id)
+	r.logger.Println("Response", m, id)
 	return m.Message
 }
 
 type dummyChain struct {
 	nid       int
 	metricCtx context.Context
+	logger    log.Logger
 }
 
 func (c *dummyChain) Database() db.Database                             { panic("not implemented") }
@@ -273,7 +276,7 @@ func (c *dummyChain) NormalTxPoolSize() int                             { panic(
 func (c *dummyChain) PatchTxPoolSize() int                              { panic("not implemented") }
 func (c *dummyChain) MaxBlockTxBytes() int                              { panic("not implemented") }
 func (c *dummyChain) Genesis() []byte                                   { panic("not implemented") }
-func (c *dummyChain) Logger() log.Logger                                { return log.GlobalLogger() }
+func (c *dummyChain) Logger() log.Logger                                { return c.logger }
 func (c *dummyChain) GetGenesisData(key []byte) ([]byte, error)         { panic("not implemented") }
 func (c *dummyChain) CommitVoteSetDecoder() module.CommitVoteSetDecoder { panic("not implemented") }
 
@@ -298,8 +301,10 @@ func generateNetwork(name string, port int, n int, t *testing.T, roles ...module
 	arr := make([]*testReactor, n)
 	for i := 0; i < n; i++ {
 		w := walletFromGeneratedPrivateKey()
-		nt := NewTransport(fmt.Sprintf("127.0.0.1:%d", port+i), w)
-		c := &dummyChain{nid: 1, metricCtx: context.Background()}
+		nodeLogger := log.New().WithFields(log.Fields{log.FieldKeyWallet: hex.EncodeToString(w.Address().ID())})
+		nt := NewTransport(fmt.Sprintf("127.0.0.1:%d", port+i), w, nodeLogger)
+		chainLogger := nodeLogger.WithFields(log.Fields{log.FieldKeyNID: "1"})
+		c := &dummyChain{nid: 1, metricCtx: context.Background(), logger: chainLogger}
 		nm := NewManager(c, nt, "", roles...)
 		r := newTestReactor(fmt.Sprintf("%s_%d", name, i), nm, t)
 		r.nt = nt

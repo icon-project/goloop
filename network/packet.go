@@ -8,7 +8,6 @@ import (
 	"hash"
 	"hash/fnv"
 	"io"
-	"log"
 	"sync"
 	"time"
 
@@ -380,7 +379,6 @@ func (pw *PacketWriter) Reset(wr io.Writer) {
 func (pw *PacketWriter) WritePacket(pkt *Packet) error {
 	_, err := pkt.WriteTo(pw)
 	if err != nil {
-		log.Printf("PacketWriter.WritePacket fb %T %#v %s", err, err, err)
 		return err
 	}
 	return nil
@@ -394,7 +392,6 @@ func (pw *PacketWriter) Write(b []byte) (int, error) {
 		wn += n
 		if err != nil && err == io.ErrShortWrite && re < DefaultPacketRewriteLimit {
 			re++
-			log.Println("PacketWriter.Write io.ErrShortWrite", err)
 			time.Sleep(DefaultPacketRewriteDelay)
 			continue
 		} else {
@@ -409,7 +406,6 @@ func (pw *PacketWriter) Flush() error {
 		err := pw.Writer.Flush()
 		if err != nil && err == io.ErrShortWrite && re < DefaultPacketRewriteLimit {
 			re++
-			log.Println("PacketWriter.Flush io.ErrShortWrite", err)
 			time.Sleep(DefaultPacketRewriteDelay)
 			continue
 		} else {

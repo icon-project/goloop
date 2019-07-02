@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"strings"
 	"sync"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/metric"
 )
@@ -50,9 +50,12 @@ type Peer struct {
 	role      PeerRoleFlag
 	roleMtx   sync.RWMutex
 	children  *NetAddressSet
-	nephews   int
+	nephews   int32
 	//
 	last context.Context
+
+	//log
+	logger log.Logger
 
 	//monitor
 	mtr       *metric.NetworkMetric
@@ -171,7 +174,7 @@ var (
 
 type PeerConnectionType byte
 
-func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool) *Peer {
+func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool, l log.Logger) *Peer {
 	p := &Peer{
 		conn:        conn,
 		reader:      NewPacketReader(conn),
@@ -187,6 +190,7 @@ func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool) *Peer {
 		onClose:     defaultOnClose,
 		children:    NewNetAddressSet(),
 	}
+    p.logger = l.WithFields(log.Fields{"peer":p.id})
 	p.setPacketCbFunc(cbFunc)
 
 	return p
@@ -203,7 +207,8 @@ func (p *Peer) String() string {
 		return ""
 	}
 	return fmt.Sprintf("{id:%v, conn:%s, addr:%v, in:%v, channel:%v, role:%v, type:%v, rtt:%v, children:%d, nephews:%d}",
-		p.id, p.ConnString(), p.netAddress, p.incomming, p.channel, p.getRole(), p.connType, p.rtt.String(), p.children.Len(), p.nephews)
+		p.id, p.ConnString(), p.netAddress, p.incomming, p.channel, p.getRole(), p.connType, p.rtt.String(), p.children.Len(),
+		atomic.LoadInt32(&p.nephews))
 }
 func (p *Peer) ConnString() string {
 	if p == nil {
@@ -294,9 +299,6 @@ func (p *Peer) compareRole(r PeerRoleFlag, equal bool) bool {
 func (p *Peer) _close(err error) {
 	if cerr := p.conn.Close(); cerr == nil {
 		atomic.StoreInt32(&p.closed, 1)
-		if err != nil && !p.isCloseError(err) {
-			log.Printf("Warning Peer[%s].Close by error %+v", p.ConnString(), err)
-		}
 		close(p.close)
 		if cbFunc := p.getCloseCbFunc(); cbFunc != nil {
 			cbFunc(p)
@@ -347,7 +349,7 @@ func (p *Peer) CloseInfo() string {
 
 func (p *Peer) _recover() interface{} {
 	if err := recover(); err != nil {
-		log.Printf("Warning Peer[%s]._recover from %+v", p.ConnString(), err)
+		p.logger.Infof("Peer[%s]._recover from %+v", p.ConnString(), err)
 		p.CloseByError(fmt.Errorf("_recover from %+v", err))
 		return err
 	}
@@ -392,7 +394,7 @@ func (p *Peer) receiveRoutine() {
 		pkt, err := p.reader.ReadPacket()
 		if err != nil {
 			r := p.isTemporaryError(err)
-			// log.Printf("Peer.receiveRoutine Error isTemporary:{%v} error:{%+v} peer:%s", r, err, p.String())
+			p.logger.Tracef("Peer.receiveRoutine Error isTemporary:{%v} error:{%+v} peer:%s", r, err, p.String())
 			if !r {
 				p.CloseByError(err)
 				return
@@ -408,13 +410,14 @@ func (p *Peer) receiveRoutine() {
 		pkt.sender = p.id
 		p.pool.Put(pkt.hashOfPacket)
 		p.getMetric().OnRecv(pkt.dest, pkt.ttl, pkt.extendInfo.hint(), pkt.protocol.Uint16(), pkt.lengthOfPayload)
+		//TODO peer.packet_dump
 		if isLoggingPacket {
 			log.Println(p.id, "Peer", "receiveRoutine", p.connType, p.ConnString(), pkt)
 		}
 		if cbFunc := p.getPacketCbFunc(); cbFunc != nil {
 			cbFunc(pkt, p)
 		} else {
-			log.Printf("Warning Peer[%s].onPacket in nil, Drop %s", p.ConnString(), pkt.String())
+			p.logger.Infof("Peer[%s].onPacket in nil, Drop %s", p.ConnString(), pkt.String())
 		}
 	}
 }
@@ -452,21 +455,18 @@ Loop:
 				pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
 				if err := p.sendDirect(pkt); err != nil {
 					r := p.isTemporaryError(err)
-					log.Printf("Peer.sendRoutine Error isTemporary:{%v} error:{%+v} peer:%s", r, err, p.String())
+					p.logger.Tracef("Peer.sendRoutine Error isTemporary:{%v} error:{%+v} peer:%s", r, err, p.String())
 					if !r {
-						//c := ctx.Value(p2pContextKeyCounter).(*Counter)
-						//log.Printf("Peer.sendRoutine Error isTemporary:{%v} error:{%+v} peer:%s counter:%s", r, err, p.String(), c.String())
-						//TODO 전송실패시의 context를 peer에 저장해놓아야함.
 						p.CloseByError(err)
 						return
 					}
-					//TODO TemporaryError시의 failure는 어떻게 counting 할것인가?
 					if cbFunc := p.getErrorCbFunc(); cbFunc != nil {
 						cbFunc(err, p, pkt)
 					} else {
 						defaultOnError(err, p, pkt)
 					}
 				}
+				//TODO peer.packet_dump
 				if isLoggingPacket {
 					log.Println(p.id, "Peer", "sendRoutine", p.connType, p.ConnString(), pkt)
 				}
@@ -481,16 +481,13 @@ Loop:
 
 func (p *Peer) isDuplicatedToSend(pkt *Packet) bool {
 	if p.id.Equal(pkt.src) {
-		//log.Println(p.id, "Peer", "send", "Drop, Duplicated by src",p.ConnString(), pkt)
 		return true
 	}
 	if !pkt.forceSend {
 		if pkt.sender != nil && p.id.Equal(pkt.sender) {
-			//log.Println(p.id, "Peer", "send", "Drop, Duplicated by sender",p.ConnString(), pkt)
 			return true
 		}
 		if _ = pkt.updateHash(false); p.pool.Contains(pkt.hashOfPacket) {
-			//log.Println(p.id, "Peer", "send", "Drop, Duplicated by pool",p.ConnString(), pkt)
 			return true
 		}
 	}

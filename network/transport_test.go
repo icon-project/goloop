@@ -1,12 +1,15 @@
 package network
 
 import (
+	"encoding/hex"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/icon-project/goloop/common/wallet"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/common/wallet"
 
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
@@ -28,8 +31,8 @@ type testPeerHandler struct {
 	wg *sync.WaitGroup
 }
 
-func newTestPeerHandler(name string, t *testing.T, wg *sync.WaitGroup) *testPeerHandler {
-	return &testPeerHandler{newPeerHandler(newLogger(name, "")), t, wg}
+func newTestPeerHandler(name string, t *testing.T, wg *sync.WaitGroup, l log.Logger) *testPeerHandler {
+	return &testPeerHandler{newPeerHandler(l.WithFields(log.Fields{LoggerFieldKeySubModule: name})), t, wg}
 }
 
 type testTransportRequest struct {
@@ -41,30 +44,30 @@ type testTransportResponse struct {
 }
 
 func (ph *testPeerHandler) onPeer(p *Peer) {
-	ph.log.Println("onPeer", p)
+	ph.logger.Println("onPeer", p)
 	p.setPacketCbFunc(ph.onPacket)
 	if !p.incomming {
 		m := &testTransportRequest{Message: "Hello"}
 		ph.sendMessage(ProtoTestTransportRequest, m, p)
-		ph.log.Println("sendProtoTestTransportRequest", m, p)
+		ph.logger.Println("sendProtoTestTransportRequest", m, p)
 	}
 }
 
 func (ph *testPeerHandler) onError(err error, p *Peer, pkt *Packet) {
-	ph.log.Println("onError", err, p, pkt)
+	ph.logger.Println("onError", err, p, pkt)
 	ph.peerHandler.onError(err, p, pkt)
 	assert.Fail(ph.t, "TestPeerHandler.onError", err.Error(), p, pkt)
 }
 
 func (ph *testPeerHandler) onPacket(pkt *Packet, p *Peer) {
-	ph.log.Println("onPacket", pkt, p)
+	ph.logger.Println("onPacket", pkt, p)
 	switch pkt.protocol {
 	case PROTO_CONTOL:
 		switch pkt.subProtocol {
 		case ProtoTestTransportRequest:
 			rm := &testTransportRequest{}
 			ph.decode(pkt.payload, rm)
-			ph.log.Println("handleProtoTestTransportRequest", rm, p)
+			ph.logger.Println("handleProtoTestTransportRequest", rm, p)
 
 			m := &testTransportResponse{Message: "World"}
 			ph.sendMessage(ProtoTestTransportResponse, m, p)
@@ -73,7 +76,7 @@ func (ph *testPeerHandler) onPacket(pkt *Packet, p *Peer) {
 		case ProtoTestTransportResponse:
 			rm := &testTransportResponse{}
 			ph.decode(pkt.payload, rm)
-			ph.log.Println("handleProtoTestTransportResponse", rm, p)
+			ph.logger.Println("handleProtoTestTransportResponse", rm, p)
 
 			ph.nextOnPeer(p)
 			ph.wg.Done()
@@ -109,14 +112,21 @@ func walletFromGeneratedPrivateKey() module.Wallet {
 func Test_transport(t *testing.T) {
 	var wg sync.WaitGroup
 
-	ExcludeLoggers = []string{}
+	w1 := walletFromGeneratedPrivateKey()
+	l1 := log.WithFields(log.Fields{
+		log.FieldKeyWallet: hex.EncodeToString(w1.Address().ID()),
+	})
+	nt1 := NewTransport(testTransportRandomAddress, w1, l1)
 
-	nt1 := NewTransport(testTransportRandomAddress, walletFromGeneratedPrivateKey())
-	nt2 := NewTransport(testTransportRandomAddress, walletFromGeneratedPrivateKey())
+	w2 := walletFromGeneratedPrivateKey()
+	l2 := log.WithFields(log.Fields{
+		log.FieldKeyWallet: hex.EncodeToString(w2.Address().ID()),
+	})
+	nt2 := NewTransport(testTransportRandomAddress, w2, l2)
 
 	wg.Add(1)
-	tph1 := newTestPeerHandler("TestPeerHandler1", t, &wg)
-	tph2 := newTestPeerHandler("TestPeerHandler2", t, &wg)
+	tph1 := newTestPeerHandler("TestPeerHandler1", t, &wg, nt1.(*transport).logger)
+	tph2 := newTestPeerHandler("TestPeerHandler2", t, &wg, nt2.(*transport).logger)
 
 	nt1.(*transport).pd.registerPeerHandler(tph1, false)
 	nt2.(*transport).pd.registerPeerHandler(tph2, false)

@@ -318,17 +318,17 @@ func (n *Node) GetChainByChannel(channel string) *Chain {
 func NewNode(
 	w module.Wallet,
 	cfg *NodeConfig,
-	logger log.Logger,
+	l log.Logger,
 ) *Node {
 	metric.Initialize(w)
 
 	cfg.FillEmpty(w.Address())
 
-	nt := network.NewTransport(cfg.P2PAddr, w)
+	nt := network.NewTransport(cfg.P2PAddr, w, l)
 	if cfg.P2PListenAddr != "" {
 		_ = nt.SetListenAddress(cfg.P2PListenAddr)
 	}
-	srv := server.NewManager(cfg.RPCAddr, cfg.RPCDump, w)
+	srv := server.NewManager(cfg.RPCAddr, cfg.RPCDump, w, l)
 
 	ee, err := eeproxy.NewPythonEE()
 	if err != nil {
@@ -355,7 +355,7 @@ func NewNode(
 		nt:       nt,
 		srv:      srv,
 		pm:       pm,
-		logger:   logger,
+		logger:   l,
 		cfg:      *cfg,
 		chains:   make(map[string]*Chain),
 		channels: make(map[int]string),

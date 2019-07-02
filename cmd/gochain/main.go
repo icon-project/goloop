@@ -313,7 +313,7 @@ func main() {
 	log.Infof("Build   : %s", build)
 
 	metric.Initialize(wallet)
-	nt := network.NewTransport(cfg.P2PAddr, wallet)
+	nt := network.NewTransport(cfg.P2PAddr, wallet, logger)
 	if cfg.P2PListenAddr != "" {
 		_ = nt.SetListenAddress(cfg.P2PListenAddr)
 	}
@@ -337,7 +337,7 @@ func main() {
 	pm.SetInstances(cfg.EEInstances, cfg.EEInstances, cfg.EEInstances)
 
 	// TODO : server-chain setting
-	srv := server.NewManager(cfg.RPCAddr, cfg.RPCDump, wallet)
+	srv := server.NewManager(cfg.RPCAddr, cfg.RPCDump, wallet, logger)
 	hex.EncodeToString(wallet.Address().ID())
 	c := chain.NewChain(wallet, nt, srv, pm, logger, &cfg.Config)
 	err = c.Init(true)

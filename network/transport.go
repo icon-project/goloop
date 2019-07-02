@@ -2,14 +2,13 @@ package network
 
 import (
 	"container/list"
-	"encoding/hex"
 	"fmt"
-	"log"
 	"net"
 	"strings"
 	"sync"
 
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/metric"
 )
@@ -17,20 +16,29 @@ import (
 type transport struct {
 	l       *Listener
 	address NetAddress
+	a       *Authenticator
+	cn      *ChannelNegotiator
 	pd      *PeerDispatcher
 	dMap    map[string]*Dialer
-	a       *Authenticator
-	log     *logger
+	logger  log.Logger
 }
 
-func NewTransport(address string, w module.Wallet) module.NetworkTransport {
+func NewTransport(address string, w module.Wallet, l log.Logger) module.NetworkTransport {
 	na := NetAddress(address)
-	cn := newChannelNegotiator(na)
-	a := newAuthenticator(w)
-	id := NewPeerIDFromAddress(w.Address())
-	pd := newPeerDispatcher(id, cn, a)
-	l := newListener(address, pd.onAccept)
-	t := &transport{l: l, address: na, pd: pd, dMap: make(map[string]*Dialer), a: a, log: newLogger("Transport", address)}
+	transportLogger := l.WithFields(log.Fields{log.FieldKeyModule: "TP"})
+	a := newAuthenticator(w, transportLogger)
+	cn := newChannelNegotiator(na, transportLogger)
+	pd := newPeerDispatcher(NewPeerIDFromAddress(w.Address()), transportLogger, cn, a)
+	listener := newListener(address, pd.onAccept, transportLogger)
+	t := &transport{
+		l:       listener,
+		address: na,
+		a:       a,
+		cn:      cn,
+		pd:      pd,
+		dMap:    make(map[string]*Dialer),
+		logger:  transportLogger,
+	}
 	return t
 }
 
@@ -130,16 +138,16 @@ type Listener struct {
 	closeCh  chan bool
 	onAccept acceptCbFunc
 	//log
-	log *logger
+	logger log.Logger
 }
 
 type acceptCbFunc func(conn net.Conn)
 
-func newListener(address string, cbFunc acceptCbFunc) *Listener {
+func newListener(address string, cbFunc acceptCbFunc, l log.Logger) *Listener {
 	return &Listener{
 		address:  address,
 		onAccept: cbFunc,
-		log:      newLogger("Listener", address),
+		logger:   l.WithFields(log.Fields{LoggerFieldKeySubModule: "listener"}),
 	}
 }
 
@@ -160,7 +168,6 @@ func (l *Listener) SetAddress(address string) error {
 	}
 
 	l.address = address
-	l.log.SetPrefix(address)
 	return nil
 }
 
@@ -204,7 +211,7 @@ func (l *Listener) acceptRoutine() {
 	for {
 		conn, err := l.ln.Accept()
 		if err != nil {
-			l.log.Println("Warning", "acceptRoutine", err)
+			l.logger.Infoln("acceptRoutine", err)
 			return
 		}
 		l.onAccept(conn)
@@ -215,8 +222,6 @@ type Dialer struct {
 	onConnect connectCbFunc
 	channel   string
 	dialing   *Set
-	//log
-	log *logger
 }
 
 type connectCbFunc func(conn net.Conn, addr string, d *Dialer)
@@ -226,7 +231,6 @@ func newDialer(channel string, cbFunc connectCbFunc) *Dialer {
 		onConnect: cbFunc,
 		channel:   channel,
 		dialing:   NewSet(),
-		log:       newLogger("Dialer", channel),
 	}
 }
 
@@ -237,7 +241,6 @@ func (d *Dialer) Dial(addr string) error {
 	conn, err := net.DialTimeout(DefaultTransportNet, addr, DefaultDialTimeout)
 	_ = d.dialing.Remove(addr)
 	if err != nil {
-		//d.log.Println("Warning", "Dial", err)
 		return err
 	}
 	d.onConnect(conn, addr, d)
@@ -257,14 +260,15 @@ type peerHandler struct {
 	next PeerHandler
 	self module.PeerID
 	//log
-	log *logger
+	logger log.Logger
 }
 
-func newPeerHandler(log *logger) *peerHandler {
-	return &peerHandler{log: log}
+func newPeerHandler(l log.Logger) *peerHandler {
+	return &peerHandler{logger: l}
 }
 
 func (ph *peerHandler) onPeer(p *Peer) {
+	ph.logger.Traceln("onPeer", p)
 	ph.nextOnPeer(p)
 }
 
@@ -278,12 +282,12 @@ func (ph *peerHandler) nextOnPeer(p *Peer) {
 }
 
 func (ph *peerHandler) onError(err error, p *Peer, pkt *Packet) {
-	ph.log.Println("onError", err, p)
+	ph.logger.Traceln("onError", err, p)
 	p.CloseByError(err)
 }
 
 func (ph *peerHandler) onClose(p *Peer) {
-	ph.log.Println("onClose", p)
+	ph.logger.Traceln("onClose", p)
 }
 
 func (ph *peerHandler) setNext(next PeerHandler) {
@@ -292,17 +296,16 @@ func (ph *peerHandler) setNext(next PeerHandler) {
 
 func (ph *peerHandler) setSelfPeerID(id module.PeerID) {
 	ph.self = id
-	ph.log.SetPrefix(fmt.Sprintf("%s", hex.EncodeToString(ph.self.Bytes()[:DefaultSimplePeerIDSize])))
 }
 
 func (ph *peerHandler) sendMessage(pi protocolInfo, m interface{}, p *Peer) {
 	pkt := newPacket(pi, ph.encode(m), ph.self)
 	err := p.sendDirect(pkt)
 	if err != nil {
-		ph.log.Println("Warning", "sendMessage", err)
+		ph.logger.Infoln("sendMessage", err)
 		p.CloseByError(err)
 	} else {
-		ph.log.Println("sendMessage", m, p)
+		ph.logger.Traceln("sendMessage", m, p)
 	}
 }
 
@@ -328,11 +331,11 @@ type PeerDispatcher struct {
 	mtr *metric.NetworkMetric
 }
 
-func newPeerDispatcher(id module.PeerID, peerHandlers ...PeerHandler) *PeerDispatcher {
+func newPeerDispatcher(id module.PeerID, l log.Logger, peerHandlers ...PeerHandler) *PeerDispatcher {
 	pd := &PeerDispatcher{
 		peerHandlers: list.New(),
 		p2pMap:       make(map[string]*PeerToPeer),
-		peerHandler:  newPeerHandler(newLogger("PeerDispatcher", "")),
+		peerHandler:  newPeerHandler(l),
 		mtr:          metric.NewNetworkMetric(metric.DefaultMetricContext()),
 	}
 	// pd.peerHandler.codecHandle.MapType = reflect.TypeOf(map[string]interface{}(nil))
@@ -374,7 +377,7 @@ func (pd *PeerDispatcher) getPeerToPeer(channel string) *PeerToPeer {
 }
 
 func (pd *PeerDispatcher) registerPeerHandler(ph PeerHandler, pushBack bool) {
-	pd.log.Println("registerPeerHandler", ph, pushBack)
+	pd.logger.Traceln("registerPeerHandler", ph, pushBack)
 	if pushBack {
 		elm := pd.peerHandlers.PushBack(ph)
 		if prev := elm.Prev(); prev != nil {
@@ -394,15 +397,15 @@ func (pd *PeerDispatcher) registerPeerHandler(ph PeerHandler, pushBack bool) {
 
 //callback from Listener.acceptRoutine
 func (pd *PeerDispatcher) onAccept(conn net.Conn) {
-	pd.log.Println("onAccept", conn.LocalAddr(), "<-", conn.RemoteAddr())
-	p := newPeer(conn, nil, true)
+	pd.logger.Traceln("onAccept", conn.LocalAddr(), "<-", conn.RemoteAddr())
+	p := newPeer(conn, nil, true, pd.logger)
 	pd.dispatchPeer(p)
 }
 
 //callback from Dialer.Connect
 func (pd *PeerDispatcher) onConnect(conn net.Conn, addr string, d *Dialer) {
-	pd.log.Println("onConnect", conn.LocalAddr(), "->", conn.RemoteAddr())
-	p := newPeer(conn, nil, false)
+	pd.logger.Traceln("onConnect", conn.LocalAddr(), "->", conn.RemoteAddr())
+	p := newPeer(conn, nil, false, pd.logger)
 	p.channel = d.channel
 	p.netAddress = NetAddress(addr)
 	pd.dispatchPeer(p)
@@ -420,7 +423,7 @@ func (pd *PeerDispatcher) dispatchPeer(p *Peer) {
 
 //callback from PeerHandler.nextOnPeer
 func (pd *PeerDispatcher) onPeer(p *Peer) {
-	pd.log.Println("onPeer", p)
+	pd.logger.Traceln("onPeer", p)
 	if p2p := pd.getPeerToPeer(p.channel); p2p != nil {
 		p.setMetric(p2p.mtr)
 		p.setPacketCbFunc(p2p.onPacket)
@@ -439,7 +442,8 @@ func (pd *PeerDispatcher) onError(err error, p *Peer, pkt *Packet) {
 
 //callback from Peer.receiveRoutine
 func (pd *PeerDispatcher) onPacket(pkt *Packet, p *Peer) {
-	pd.log.Println("PeerDispatcher.onPacket", pkt)
+	//TODO dispatcher.message_dump
+	pd.logger.Traceln("onPacket", pkt)
 }
 
 func (pd *PeerDispatcher) onClose(p *Peer) {

@@ -42,17 +42,8 @@ var (
 	ErrIllegalArgument           = errors.ErrIllegalArgument
 )
 
-var (
-	ExcludeLoggers = []string{
-		"Listener",
-		"Dialer",
-		"PeerDispatcher",
-		"Authenticator",
-		"ChannelNegotiator",
-		//"PeerToPeer",
-		"ProtocolHandler",
-		"NetworkManager",
-	}
+const (
+	LoggerFieldKeySubModule = "sub"
 )
 
 const (

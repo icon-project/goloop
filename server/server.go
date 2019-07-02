@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/jsonrpc"
 	"github.com/icon-project/goloop/server/metric"
@@ -26,9 +26,10 @@ type Manager struct {
 	wssm        *wsSessionManager
 	mtx         sync.RWMutex
 	jsonrpcDump bool
+	logger      log.Logger
 }
 
-func NewManager(addr string, jsonrpcDump bool, wallet module.Wallet) *Manager {
+func NewManager(addr string, jsonrpcDump bool, wallet module.Wallet, l log.Logger) *Manager {
 
 	e := echo.New()
 
@@ -49,6 +50,7 @@ func NewManager(addr string, jsonrpcDump bool, wallet module.Wallet) *Manager {
 		wssm:        newWSSessionManager(),
 		mtx:         sync.RWMutex{},
 		jsonrpcDump: jsonrpcDump,
+		logger: l.WithFields(log.Fields{log.FieldKeyModule: "SR"}),
 	}
 }
 
@@ -99,7 +101,7 @@ func (srv *Manager) AnyChain() module.Chain {
 }
 
 func (srv *Manager) Start() {
-
+	srv.logger.Infoln("starting the server")
 	// middleware
 	// srv.e.Use(middleware.Logger())
 	srv.e.Use(middleware.Recover())
@@ -122,8 +124,8 @@ func (srv *Manager) Start() {
 	g := srv.e.Group("/api")
 	if srv.jsonrpcDump {
 		g.Use(middleware.BodyDump(func(c echo.Context, reqBody []byte, resBody []byte) {
-			log.Printf("request=%s", reqBody)
-			log.Printf("respose=%s", resBody)
+			srv.logger.Printf("request=%s", reqBody)
+			srv.logger.Printf("respose=%s", resBody)
 		}))
 	}
 	g.Use(JsonRpc(mr), Chunk())
@@ -146,7 +148,7 @@ func (srv *Manager) Start() {
 
 	// Start server : main loop
 	if err := srv.e.Start(srv.addr); err != nil {
-		srv.e.Logger.Info("shutting down the server")
+		srv.logger.Infoln("shutting down the server")
 	}
 }
 
