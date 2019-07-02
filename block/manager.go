@@ -185,10 +185,10 @@ func (it *importTask) cancel() bool {
 	case validatingOut:
 		it.stop()
 	default:
-		it.manager.logger.Printf("Cancel Import: Ignored\n")
+		it.manager.logger.Debugf("Cancel Import: Ignored\n")
 		return false
 	}
-	it.manager.logger.Printf("Cancel Import: OK\n")
+	it.manager.logger.Debugf("Cancel Import: OK\n")
 	return true
 }
 
@@ -308,10 +308,10 @@ func (pt *proposeTask) cancel() bool {
 	case executingIn:
 		pt.stop()
 	default:
-		pt.manager.logger.Printf("Cancel Propose: Ignored\n")
+		pt.manager.logger.Debugf("Cancel Propose: Ignored\n")
 		return false
 	}
-	pt.manager.logger.Printf("Cancel Propose: OK\n")
+	pt.manager.logger.Debugf("Cancel Propose: OK\n")
 	return true
 }
 
@@ -491,7 +491,7 @@ func (m *manager) Import(
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	m.logger.Printf("Import(%x)\n", r)
+	m.logger.Debugf("Import(%x)\n", r)
 
 	block, err := m.newBlockFromReader(r)
 	if err != nil {
@@ -515,7 +515,7 @@ func (m *manager) ImportBlock(
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	m.logger.Printf("ImportBlock(%x)\n", block.ID())
+	m.logger.Debugf("ImportBlock(%x)\n", block.ID())
 
 	it, err := m._import(block, cb)
 	if err != nil {
@@ -545,7 +545,7 @@ func (m *manager) finalizeGenesisBlock(
 	timestamp int64,
 	votes module.CommitVoteSet,
 ) (block module.Block, err error) {
-	m.logger.Printf("FinalizeGenesisBlock()\n")
+	m.logger.Debugf("FinalizeGenesisBlock()\n")
 	if m.finalized != nil {
 		return nil, errors.InvalidStateError.New("InvalidState")
 	}
@@ -617,7 +617,7 @@ func (m *manager) Propose(
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	m.logger.Printf("Propose(<%x>, %v)\n", parentID, votes)
+	m.logger.Debugf("Propose(<%x>, %v)\n", parentID, votes)
 
 	pt, err := m._propose(parentID, votes, cb)
 	if err != nil {
@@ -737,7 +737,7 @@ func (m *manager) finalize(bn *bnode) error {
 			return err
 		}
 	}
-	m.logger.Printf("Finalize(%x)\n", block.ID())
+	m.logger.Debugf("Finalize(%x)\n", block.ID())
 	for i := 0; i < len(m.finalizationCBs); {
 		cb := m.finalizationCBs[i]
 		if cb(block) {
