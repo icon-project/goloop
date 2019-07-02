@@ -39,6 +39,9 @@ type GoLoopConfig struct {
 	KeyStorePass string `json:"key_password"`
 
 	priK *crypto.PrivateKey
+
+	LogLevel     string `json:"log_level"`
+	ConsoleLevel string `json:"console_level"`
 }
 
 var memProfileCnt int32 = 0
@@ -209,6 +212,8 @@ func main() {
 	serverFlags.IntVar(&flagCfg.EEInstances, "ee_instances", 1, "Number of execution engines")
 	serverFlags.StringVar(&nodeDir, "node_dir", "",
 		"Node data directory(default:[configuration file path]/.chain/[ADDRESS])")
+	serverFlags.StringVar(&flagCfg.LogLevel, "log_level", "debug", "Global log level (trace,debug,info,warn,error,fatal,panic)")
+	serverFlags.StringVar(&flagCfg.ConsoleLevel, "console_level", "trace", "Console log level (trace,debug,info,warn,error,fatal,panic)")
 	vc.BindPFlags(serverFlags)
 
 	saveCmd := &cobra.Command{
@@ -235,6 +240,14 @@ func main() {
 				cfg.KeyStorePass = ""
 			}
 
+			if _, err := log.ParseLevel(cfg.LogLevel); err != nil {
+				log.Panicf("Invalid log_level=%s", cfg.LogLevel)
+			}
+
+			if _, err := log.ParseLevel(cfg.ConsoleLevel); err != nil {
+				log.Panicf("Invalid console_level=%s", cfg.ConsoleLevel)
+			}
+
 			saveFilePath := args[0]
 			if err := saveJsonFile(saveFilePath, &cfg); err != nil {
 				log.Panicf("Fail to save JSON %s err=%+v", saveFilePath, err)
@@ -249,20 +262,12 @@ func main() {
 		Use:   "start",
 		Short: "Start server",
 	}
-	startCmd.Run = func(cmd *cobra.Command, args []string) {
-		logoLines := []string{
-			"  ____  ___  _     ___   ___  ____",
-			" / ___|/ _ \\| |   / _ \\ / _ \\|  _ \\",
-			"| |  _| | | | |  | | | | | | | |_) |",
-			"| |_| | |_| | |__| |_| | |_| |  __/",
-			" \\____|\\___/|_____\\___/ \\___/|_|",
-		}
-		for _, l := range logoLines {
-			log.Println(l)
-		}
-		log.Printf("Version : %s", version)
-		log.Printf("Build   : %s", build)
+	startFlags := startCmd.Flags()
+	var modLevels map[string]string
+	startFlags.StringToStringVar(&modLevels, "mod_level", nil, "Set log level for ")
+	startFlags.MarkHidden("mod_level")
 
+	startCmd.Run = func(cmd *cobra.Command, args []string) {
 		if err := makeSureKeyStore(&cfg); err != nil {
 			log.Panic(err)
 		}
@@ -276,6 +281,39 @@ func main() {
 			log.FieldKeyWallet: hex.EncodeToString(w.Address().ID()),
 		})
 		log.SetGlobalLogger(logger)
+
+		if lv, err := log.ParseLevel(cfg.LogLevel); err != nil {
+			log.Panicf("Invalid log_level=%s", cfg.LogLevel)
+		} else {
+			logger.SetLevel(lv)
+		}
+		if lv, err := log.ParseLevel(cfg.ConsoleLevel); err != nil {
+			log.Panicf("Invalid console_level=%s", cfg.ConsoleLevel)
+		} else {
+			logger.SetConsoleLevel(lv)
+		}
+		if modLevels != nil {
+			for mod, lvStr := range modLevels {
+				if lv, err := log.ParseLevel(lvStr); err != nil {
+					log.Panicf("Invalid mod_level mod=%s level=%s", mod, lvStr)
+				} else {
+					logger.SetModuleLevel(mod, lv)
+				}
+			}
+		}
+
+		logoLines := []string{
+			"  ____  ___  _     ___   ___  ____",
+			" / ___|/ _ \\| |   / _ \\ / _ \\|  _ \\",
+			"| |  _| | | | |  | | | | | | | |_) |",
+			"| |_| | |_| | |__| |_| | |_| |  __/",
+			" \\____|\\___/|_____\\___/ \\___/|_|",
+		}
+		for _, l := range logoLines {
+			log.Println(l)
+		}
+		log.Printf("Version : %s", version)
+		log.Printf("Build   : %s", build)
 
 		n := node.NewNode(w, &cfg.NodeConfig, logger)
 		n.Start()

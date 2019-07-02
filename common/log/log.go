@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -48,6 +49,28 @@ func (l Level) String() string {
 		return "panic"
 	default:
 		return "unknown"
+	}
+}
+
+func ParseLevel(s string) (Level, error) {
+	switch strings.ToLower(s) {
+	case "panic":
+		return PanicLevel, nil
+	case "fatal":
+		return FatalLevel, nil
+	case "error":
+		return ErrorLevel, nil
+	case "warn":
+		return WarnLevel, nil
+	case "info":
+		return InfoLevel, nil
+	case "debug":
+		return DebugLevel, nil
+	case "trace":
+		return TraceLevel, nil
+	default:
+		return DebugLevel,
+			errors.IllegalArgumentError.Errorf("Invalid log level str=%s", s)
 	}
 }
 
