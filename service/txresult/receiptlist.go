@@ -1,8 +1,8 @@
 package txresult
 
 import (
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/service/state"
-	"log"
 	"reflect"
 
 	"github.com/icon-project/goloop/common/merkle"
@@ -87,7 +87,7 @@ func NewReceiptListFromSlice(database db.Database, list []Receipt) module.Receip
 		k, _ := codec.MP.MarshalToBytes(uint(idx))
 		err := mt.Set(k, r.(*receipt))
 		if err != nil {
-			log.Fatalf("NewTransanctionListFromSlice FAILs err=%+v", err)
+			log.Panicf("NewTransactionListFromSlice FAILs err=%+v", err)
 			return nil
 		}
 	}

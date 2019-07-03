@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"io/ioutil"
-	"log"
 	"math/big"
 	"os"
 	"path"
@@ -17,6 +16,7 @@ import (
 	"time"
 
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/service/state"
 
 	"github.com/icon-project/goloop/common/db"
@@ -60,6 +60,7 @@ type (
 		db           db.Database
 		storageCache map[string]*storageCache
 		storeRoot    string
+		log          log.Logger
 	}
 )
 
@@ -123,18 +124,18 @@ func (cm *contractManager) GetHandler(from, to module.Address, value,
 	stepLimit *big.Int, ctype int, data []byte,
 ) ContractHandler {
 	var handler ContractHandler
+	ch := newCommonHandler(from, to, value, stepLimit, cm.log)
 	switch ctype {
 	case CTypeTransfer:
-		handler = newTransferHandler(from, to, value, stepLimit)
+		handler = newTransferHandler(ch)
 	case CTypeCall:
-		handler = newCallHandler(newCommonHandler(from, to, value, stepLimit), data, false)
+		handler = newCallHandler(ch, data, false)
 	case CTypeDeploy:
-		handler = newDeployHandler(from, to, value, stepLimit, data, false)
+		handler = newDeployHandler(ch, data)
 	case CTypeTransferAndCall:
-		th := newTransferHandler(from, to, value, stepLimit)
 		handler = &TransferAndCallHandler{
-			th:          th,
-			CallHandler: newCallHandler(th.CommonHandler, data, false),
+			th:          newTransferHandler(ch),
+			CallHandler: newCallHandler(ch, data, false),
 		}
 	}
 	return handler
@@ -144,18 +145,19 @@ func (cm *contractManager) GetCallHandler(from, to module.Address,
 	value, stepLimit *big.Int, method string, paramObj *codec.TypedObj,
 ) ContractHandler {
 	if value != nil && value.Sign() == 1 { //value > 0
-		th := newTransferHandler(from, to, value, stepLimit)
+		ch := newCommonHandler(from, to, value, stepLimit, cm.log)
+		th := newTransferHandler(ch)
 		if to.IsContract() {
 			return &TransferAndCallHandler{
 				th:          th,
-				CallHandler: newCallHandlerFromTypedObj(th.CommonHandler, method, paramObj, false),
+				CallHandler: newCallHandlerFromTypedObj(ch, method, paramObj, false),
 			}
 		} else {
 			return th
 		}
 	} else {
 		return newCallHandlerFromTypedObj(
-			newCommonHandler(from, to, value, stepLimit),
+			newCommonHandler(from, to, value, stepLimit, cm.log),
 			method, paramObj, false)
 	}
 }
@@ -224,7 +226,7 @@ func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []
 				return "", errors.Wrap(err, "Fail to read zip file")
 			}
 			if err = ioutil.WriteFile(storePath, buf, 0755); err != nil {
-				log.Printf("Failed to write file. err = %s\n", err)
+				return "", errors.Wrapf(err, "Fail to write file. path(%s)\n", storePath)
 			}
 			err = reader.Close()
 			if err != nil {
@@ -306,7 +308,7 @@ func (cm *contractManager) PrepareContractStore(
 	return cs, nil
 }
 
-func NewContractManager(db db.Database, chainRoot string) (ContractManager, error) {
+func NewContractManager(db db.Database, chainRoot string, log log.Logger) (ContractManager, error) {
 	/*
 		contractManager has root path of each service manager's contract file
 		So contractManager has to be initialized
@@ -335,5 +337,6 @@ func NewContractManager(db db.Database, chainRoot string) (ContractManager, erro
 		os.RemoveAll(tmp)
 	}
 	return &contractManager{db: db, storeRoot: storeRoot,
-		storageCache: make(map[string]*storageCache)}, nil
+			storageCache: make(map[string]*storageCache), log: log},
+		nil
 }

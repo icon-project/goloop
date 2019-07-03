@@ -2,7 +2,7 @@ package state
 
 import (
 	"fmt"
-	"log"
+	"github.com/icon-project/goloop/common/log"
 	"sync"
 
 	"github.com/icon-project/goloop/common/merkle"

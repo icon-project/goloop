@@ -1,7 +1,7 @@
 package service
 
 import (
-	"log"
+	"github.com/icon-project/goloop/common/log"
 	"sync"
 	"time"
 
@@ -34,15 +34,17 @@ type TransactionPool struct {
 	mutex sync.Mutex
 
 	monitor Monitor
+	log     log.Logger
 }
 
-func NewTransactionPool(nid int, size int, txdb db.Bucket, m Monitor) *TransactionPool {
+func NewTransactionPool(nid int, size int, txdb db.Bucket, m Monitor, log log.Logger) *TransactionPool {
 	pool := &TransactionPool{
 		nid:     nid,
 		size:    size,
 		txdb:    txdb,
 		list:    newTransactionList(),
 		monitor: m,
+		log:     log,
 	}
 	return pool
 }
@@ -62,9 +64,9 @@ func (tp *TransactionPool) RemoveOldTXs(bts int64) {
 			tp.list.Remove(iter)
 			direct := iter.ts != 0
 			if iter.err == nil {
-				log.Printf("DROP TX: id=0x%x reason=%v", tx.ID(), iter.err)
+				tp.log.Debugf("DROP TX: id=0x%x reason=%v", tx.ID(), iter.err)
 			} else {
-				log.Printf("DROP TX: id=0x%x timeout %d <= %d",
+				tp.log.Debugf("DROP TX: id=0x%x timeout %d <= %d",
 					tx.ID(), tx.Timestamp(), bts)
 			}
 			tp.monitor.OnDropTx(len(tx.Bytes()), direct)
@@ -124,7 +126,7 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 			// Otherwise, it remains in the pool
 			if e.err == nil {
 				e.err = err
-				log.Printf("PENDING TX: id=%#x reason=%v",
+				tp.log.Debugf("PENDING TX: id=%#x reason=%v",
 					tx.ID(), err)
 			}
 			if state.TimeOutError.Equals(err) || state.NotEnoughStepError.Equals(err) {
@@ -147,7 +149,7 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 					tx := e.Value()
 					direct := e.ts != 0
 					if e.err != nil {
-						log.Printf("DROP TX: id=0x%x reason=%v",
+						tp.log.Debugf("DROP TX: id=0x%x reason=%v",
 							tx.ID(), e.err)
 					}
 					tp.monitor.OnDropTx(len(tx.Bytes()), direct)
@@ -156,7 +158,7 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 		}(txs[0:invalidNum])
 	}
 
-	log.Printf("TransactionPool.Candidate collected=%d removed=%d poolsize=%d duration=%s",
+	tp.log.Infof("TransactionPool.Candidate collected=%d removed=%d poolsize=%d duration=%s",
 		valNum, invalidNum, poolSize, time.Now().Sub(startTS))
 
 	return validTxs[:valNum], txSize
@@ -205,7 +207,7 @@ func (tp *TransactionPool) RemoveList(txs module.TransactionList) {
 	for i := txs.Iterator(); i.Has(); i.Next() {
 		t, _, err := i.Get()
 		if err != nil {
-			log.Printf("Failed to get transaction from iterator\n")
+			tp.log.Errorf("Failed to get transaction from iterator\n")
 			continue
 		}
 		if ok, ts := tp.list.RemoveTx(t); ok {

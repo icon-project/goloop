@@ -1,7 +1,7 @@
 package state
 
 import (
-	"log"
+	"github.com/icon-project/goloop/common/log"
 	"reflect"
 	"sync"
 
@@ -59,7 +59,7 @@ func (ws *worldSnapshotImpl) GetAccountSnapshot(id []byte) AccountSnapshot {
 	key := addressIDToKey(id)
 	obj, err := ws.accounts.Get(key)
 	if err != nil {
-		log.Panicf("Fail to get acount for %x err=%v", key, err)
+		log.Errorf("Fail to get account for %x err=%v", key, err)
 		return nil
 	}
 	if obj == nil {
@@ -68,7 +68,7 @@ func (ws *worldSnapshotImpl) GetAccountSnapshot(id []byte) AccountSnapshot {
 	if s, ok := obj.(*accountSnapshotImpl); ok {
 		return s
 	} else {
-		log.Panicf("Returned account isn't accountSnapshotImpl type=%T", obj)
+		log.Errorf("Returned account isn't accountSnapshotImpl type=%T", obj)
 		return nil
 	}
 }
@@ -102,7 +102,7 @@ func (ws *worldStateImpl) Reset(isnapshot WorldSnapshot) error {
 		key := addressIDToKey([]byte(id))
 		value, err := ws.accounts.Get(key)
 		if err != nil {
-			log.Panicf("Fail to read account value")
+			log.Errorf("Fail to read account value. err=%+v\n", err)
 		}
 		if value == nil {
 			as.Clear()
@@ -134,7 +134,7 @@ func (ws *worldStateImpl) GetAccountState(id []byte) AccountState {
 	key := addressIDToKey(id)
 	obj, err := ws.accounts.Get(key)
 	if err != nil {
-		log.Panicf("Fail to get acount for %x err=%+v", key, err)
+		log.Errorf("Fail to get account for %x err=%+v", key, err)
 		return nil
 	}
 	var as *accountSnapshotImpl
@@ -155,11 +155,11 @@ func (ws *worldStateImpl) ClearCache() {
 		s := as.GetSnapshot()
 		if s.IsEmpty() {
 			if err := ws.accounts.Delete(key); err != nil {
-				log.Panicf("Fail to delete account key = %x", key)
+				log.Errorf("Fail to delete account key = %x, err=%+v", key, err)
 			}
 		} else {
 			if err := ws.accounts.Set(key, s); err != nil {
-				log.Panicf("Fail to set snapshot for %x", key)
+				log.Errorf("Fail to set snapshot for %x, err=%+v", key, err)
 			}
 		}
 	}
@@ -177,7 +177,7 @@ func (ws *worldStateImpl) GetAccountSnapshot(id []byte) AccountSnapshot {
 	key := addressIDToKey(id)
 	obj, err := ws.accounts.Get(key)
 	if err != nil {
-		log.Panicf("Fail to get acount for %x err=%+v", key, err)
+		log.Errorf("Fail to get account for %x err=%+v", key, err)
 		return nil
 	}
 	if obj != nil {
@@ -198,11 +198,11 @@ func (ws *worldStateImpl) GetSnapshot() WorldSnapshot {
 		s := as.GetSnapshot()
 		if s.IsEmpty() {
 			if err := ws.accounts.Delete(key); err != nil {
-				log.Panicf("Fail to delete account key = %x", key)
+				log.Errorf("Fail to delete account key = %x, err=%+v", key, err)
 			}
 		} else {
 			if err := ws.accounts.Set(key, s); err != nil {
-				log.Panicf("Fail to set snapshot for %x", key)
+				log.Errorf("Fail to set snapshot for %x, err=%+v", key, err)
 			}
 		}
 	}

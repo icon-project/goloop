@@ -2,7 +2,6 @@ package contract
 
 import (
 	"encoding/json"
-	"log"
 	"math/big"
 	"strings"
 	"sync"
@@ -57,7 +56,7 @@ func newCallHandler(ch *CommonHandler, data []byte, forDeploy bool) *CallHandler
 	if data != nil {
 		var jso DataCallJSON
 		if err := json.Unmarshal(data, &jso); err != nil {
-			log.Println("FAIL to parse 'data' of transaction")
+			ch.log.Debugf("FAIL to parse 'data' of transaction err(%+v)\ndata(%s)\n", err, data)
 			return nil
 		}
 		h.method = jso.Method
@@ -173,7 +172,7 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 		if from == nil {
 			from = common.NewAddress(state.SystemID)
 		}
-		sScore, err := GetSystemScore(CID_CHAIN, from, cc)
+		sScore, err := GetSystemScore(CID_CHAIN, from, cc, h.log)
 		if err != nil {
 			return errors.Wrapc(err, errors.CodeOf(scoreresult.ErrSystemError), "FailToGetSystemScore")
 		}
@@ -207,6 +206,7 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 	}
 	path, err := h.cs.WaitResult()
 	if err != nil {
+		h.log.Errorf("FAIL to prepare contract. err=%+v\n", err)
 		return errors.Wrapc(err, PreparingContractError, "FAIL to prepare contract")
 	}
 
@@ -269,7 +269,8 @@ func (h *CallHandler) Dispose() {
 func (h *CallHandler) EEType() string {
 	c := h.contract(h.as)
 	if c == nil {
-		log.Println("No associated contract exists")
+		h.log.Debugf("No associated contract exists. forDeploy(%d), Active(%v), Next(%v)\n",
+			h.forDeploy, h.as.ActiveContract(), h.as.NextContract())
 		return ""
 	}
 	return c.EEType()
@@ -326,7 +327,7 @@ func (h *CallHandler) OnCall(from, to module.Address, value,
 }
 
 func (h *CallHandler) OnAPI(status uint16, obj *scoreapi.Info) {
-	log.Panicln("Unexpected OnAPI() call")
+	h.log.Panicln("Unexpected OnAPI() call")
 }
 
 type TransferAndCallHandler struct {

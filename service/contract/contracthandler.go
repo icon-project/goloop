@@ -1,6 +1,7 @@
 package contract
 
 import (
+	"github.com/icon-project/goloop/common/log"
 	"math/big"
 	"time"
 
@@ -50,12 +51,14 @@ type (
 type CommonHandler struct {
 	from, to                   module.Address
 	value, stepLimit, stepUsed *big.Int
+	log                        log.Logger
 }
 
-func newCommonHandler(from, to module.Address, value, stepLimit *big.Int) *CommonHandler {
+func newCommonHandler(from, to module.Address, value, stepLimit *big.Int, log log.Logger) *CommonHandler {
 	return &CommonHandler{
 		from: from, to: to, value: value, stepLimit: stepLimit,
-		stepUsed: big.NewInt(0)}
+		stepUsed: big.NewInt(0),
+		log:      log}
 }
 
 func (h *CommonHandler) StepLimit() *big.Int {

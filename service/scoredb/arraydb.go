@@ -3,7 +3,7 @@ package scoredb
 import (
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
-	"log"
+	"github.com/icon-project/goloop/common/log"
 )
 
 type ArrayDB struct {

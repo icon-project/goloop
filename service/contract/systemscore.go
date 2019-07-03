@@ -1,7 +1,7 @@
 package contract
 
 import (
-	"log"
+	"github.com/icon-project/goloop/common/log"
 	"math/big"
 	"reflect"
 	"strings"
@@ -189,7 +189,7 @@ func CheckMethod(obj SystemScore) error {
 func Invoke(score SystemScore, method string, paramObj *codec.TypedObj) (status module.Status, result *codec.TypedObj, steps *big.Int) {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Printf("Fail to sysCall method[%s]. err = %s\n", method, err)
+			log.Debugf("Fail to sysCall method[%s]. err=%+v\n", method, err)
 			status = module.StatusSystemError
 		}
 	}()
@@ -242,7 +242,7 @@ func Invoke(score SystemScore, method string, paramObj *codec.TypedObj) (status 
 		if i+1 == resultLen { // last output
 			if err := v.Interface(); err != nil {
 				if e, ok := err.(error); ok {
-					log.Printf("Method %s returns failure err=%v\n", method, e)
+					log.Debugf("Method %s returns failure err=%v\n", method, e)
 					status, _ = scoreresult.StatusOf(e)
 				} else {
 					status = module.StatusSystemError

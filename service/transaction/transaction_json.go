@@ -3,11 +3,11 @@ package transaction
 import (
 	"bytes"
 	"encoding/json"
-	"log"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 )
 
 type transactionV3JSON struct {
@@ -45,13 +45,6 @@ func (tx *transactionV3JSON) calcHash() ([]byte, error) {
 	return crypto.SHA3Sum256(bs), nil
 }
 
-func (tx *transactionV3JSON) ID() []byte {
-	if err := tx.updateTxHash(); err != nil {
-		log.Panicf("Fail to calculate TxHash err=%+v", err)
-	}
-	return tx.txHash
-}
-
 func (tx *transactionV3JSON) updateTxHash() error {
 	if tx.txHash == nil {
 		h, err := tx.calcHash()
@@ -61,6 +54,14 @@ func (tx *transactionV3JSON) updateTxHash() error {
 		tx.txHash = h
 	}
 	return nil
+}
+
+func (tx *transactionV3JSON) ID() []byte {
+	if err := tx.updateTxHash(); err != nil {
+		log.Debugf("Fail to calculate TxHash err=%+v", err)
+		return nil
+	}
+	return tx.txHash
 }
 
 func (tx *transactionV3JSON) verifySignature() error {

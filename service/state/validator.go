@@ -3,7 +3,7 @@ package state
 import (
 	"bytes"
 	"fmt"
-	"log"
+	"github.com/icon-project/goloop/common/log"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -61,7 +61,7 @@ func (v *validator) PublicKey() []byte {
 func (v *validator) Bytes() []byte {
 	bytes, err := codec.MP.MarshalToBytes(v)
 	if err != nil {
-		log.Panicf("Fail to convert validator to bytes")
+		log.Errorf("Fail to convert validator to bytes. err=%+v\n", err)
 		return nil
 	}
 	return bytes

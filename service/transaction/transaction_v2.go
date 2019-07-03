@@ -3,9 +3,9 @@ package transaction
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/server/jsonrpc"
 	"github.com/icon-project/goloop/service/scoreresult"
-	"log"
 	"math/big"
 
 	"github.com/icon-project/goloop/service/contract"

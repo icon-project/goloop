@@ -3,7 +3,6 @@ package transaction
 import (
 	"encoding/hex"
 	"encoding/json"
-	"log"
 	"math/big"
 	"strings"
 
@@ -178,12 +177,12 @@ func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
 
 	ts := scoredb.NewVarDB(as, state.VarTotalSupply)
 	if err := ts.Set(&totalSupply); err != nil {
-		log.Printf("Fail to store total supply err=%+v", err)
+		ctx.Logger().Errorf("Fail to store total supply err=%+v\n", err)
 		return nil, err
 	}
 
 	if err := g.deployPreInstall(ctx, r); err != nil {
-		log.Printf("Failed to install scores err=%s", err)
+		ctx.Logger().Errorf("Fail to install scores err=%+v\n", err)
 		return nil, err
 	}
 	r.SetResult(module.StatusSuccess, big.NewInt(0), big.NewInt(0), nil)
@@ -204,7 +203,7 @@ func (g *genesisV3) deployChainScore(ctx contract.Context, receipt txresult.Rece
 		return err
 	}
 	chainScore, err := contract.GetSystemScore(contract.CID_CHAIN,
-		common.NewContractAddress(state.SystemID), contract.NewCallContext(ctx, receipt, false))
+		common.NewContractAddress(state.SystemID), contract.NewCallContext(ctx, receipt, false), ctx.Logger())
 	if err != nil {
 		return err
 	}
@@ -220,8 +219,7 @@ func (g *genesisV3) deployChainScore(ctx contract.Context, receipt txresult.Rece
 
 func (g *genesisV3) deployPreInstall(ctx contract.Context, receipt txresult.Receipt) error {
 	if err := g.deployChainScore(ctx, receipt); err != nil {
-		log.Printf("FAIL to deploy ChainScore. %+v\n", err)
-		return InvalidGenesisError.Errorf("FAIL to deploy ChainScore")
+		return InvalidGenesisError.Wrapf(err, "FAIL to deploy ChainScore err=%+v\n", err)
 	}
 	for _, acc := range g.Accounts {
 		if acc.Score == nil {
@@ -235,7 +233,7 @@ func (g *genesisV3) deployPreInstall(ctx contract.Context, receipt txresult.Rece
 			}
 			data, _ := hex.DecodeString(score.Content)
 			handler := contract.NewDeployHandlerForPreInstall(score.Owner,
-				&acc.Address, score.ContentType, data, score.Params)
+				&acc.Address, score.ContentType, data, score.Params, ctx.Logger())
 			status, _, _, _ := cc.Call(handler)
 			if status != module.StatusSuccess {
 				return InvalidGenesisError.Errorf("FAIL to install pre-installed score."+
@@ -247,11 +245,11 @@ func (g *genesisV3) deployPreInstall(ctx contract.Context, receipt txresult.Rece
 				contentHash := strings.TrimPrefix(score.ContentID, contentIdHash)
 				content, err := ctx.GetPreInstalledScore(contentHash)
 				if err != nil {
-					return InvalidGenesisError.Errorf(
+					return InvalidGenesisError.Wrapf(err,
 						"Fail to get PreInstalledScore for ID=%s", contentHash)
 				}
 				handler := contract.NewDeployHandlerForPreInstall(score.Owner,
-					&acc.Address, score.ContentType, content, score.Params)
+					&acc.Address, score.ContentType, content, score.Params, ctx.Logger())
 				status, _, _, _ := cc.Call(handler)
 				if status != module.StatusSuccess {
 					return InvalidGenesisError.Errorf("FAIL to install pre-installed score."+

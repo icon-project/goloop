@@ -1,6 +1,7 @@
 package contract
 
 import (
+	"github.com/icon-project/goloop/common/log"
 	"math/big"
 	"sync"
 	"testing"
@@ -120,6 +121,7 @@ func newCallContext() CallContext {
 			nil,
 			nil,
 			nil,
+			log.New(),
 		),
 		nil,
 		false,

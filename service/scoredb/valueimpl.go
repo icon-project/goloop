@@ -1,7 +1,7 @@
 package scoredb
 
 import (
-	"log"
+	"github.com/icon-project/goloop/common/log"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -86,7 +86,7 @@ func ToBytes(v interface{}) []byte {
 	case []byte:
 		return obj
 	default:
-		log.Fatalf("UnknonwnType(%T)", v)
+		log.Panicf("UnknownType(%T)", v)
 		return []byte{}
 	}
 }

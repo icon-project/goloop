@@ -2,8 +2,8 @@ package contract
 
 import (
 	"container/list"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/service/scoreresult"
-	"log"
 	"math/big"
 	"reflect"
 	"sync"
@@ -53,6 +53,8 @@ type callContext struct {
 	lock   sync.Mutex
 	stack  list.List
 	waiter chan interface{}
+
+	log log.Logger
 }
 
 func NewCallContext(ctx Context, receipt txresult.Receipt, isQuery bool) CallContext {
@@ -63,6 +65,7 @@ func NewCallContext(ctx Context, receipt txresult.Receipt, isQuery bool) CallCon
 		// 0-buffered channel is fine, but it sets some number just in case of
 		// EE unexpectedly sends messages up to 8.
 		waiter: make(chan interface{}, 8),
+		log:    ctx.Logger(),
 	}
 }
 
@@ -124,12 +127,12 @@ func (cc *callContext) popFrame(e *list.Element, s module.Status) (*callFrame, *
 	current := cc.stack.Back()
 	if current == nil {
 		if e != nil {
-			log.Fatal("Fail to pop frame")
+			cc.log.Error("Fail to pop frame")
 		}
 		return nil, nil
 	}
 	if e != nil && e != current {
-		log.Panicf("Fail on onPostExecute")
+		cc.log.Error("Fail on onPostExecute")
 	}
 	cc.stack.Remove(current)
 
@@ -154,7 +157,7 @@ func (cc *callContext) popFrame(e *list.Element, s module.Status) (*callFrame, *
 		}
 	} else {
 		if err := cc.Reset(frame.snapshot); err != nil {
-			log.Panicf("Fail to revert err=%+v", err)
+			cc.log.Errorf("Fail to revert err=%+v", err)
 		}
 		if last != nil {
 			return frame, last.Value.(*callFrame)
@@ -208,14 +211,14 @@ func (cc *callContext) Call(handler ContractHandler) (module.Status, *big.Int, *
 
 		if err := handler.ExecuteAsync(cc); err != nil {
 			errStatus, ok := scoreresult.StatusOf(err)
-			log.Printf("scoreresult error(%t) error(%v)\n", ok, errStatus)
+			cc.log.Debugf("scoreresult error(%t) error(%v)\n", ok, errStatus)
 			cc.popFrame(e, errStatus)
 			handler.Dispose()
 			return errStatus, handler.StepLimit(), nil, nil
 		}
 		return cc.waitResult(handler.StepLimit())
 	default:
-		log.Panicln("Unknown handler type:", reflect.TypeOf(handler))
+		cc.log.Panicln("Unknown handler type:", reflect.TypeOf(handler))
 		return module.StatusSystemError, handler.StepLimit(), nil, nil
 	}
 }
@@ -252,7 +255,7 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (module.Status, *big.Int, 
 					cc.pushFrame(handler, true)
 					if err := handler.ExecuteAsync(cc); err != nil {
 						errStatus, ok := scoreresult.StatusOf(err)
-						log.Printf("scoreresult error(%t) error(%v)\n", ok, errStatus)
+						cc.log.Debugf("scoreresult error(%t) error(%v)\n", ok, errStatus)
 						if cc.handleResult(errStatus,
 							handler.StepLimit(), nil, nil) {
 							continue
@@ -263,7 +266,7 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (module.Status, *big.Int, 
 					}
 				}
 			default:
-				log.Printf("Invalid message=%[1]T %+[1]v", msg)
+				cc.log.Panicf("Invalid message=%[1]T %+[1]v", msg)
 			}
 		}
 	}
@@ -303,7 +306,7 @@ func (cc *callContext) handleResult(status module.Status,
 
 	currentFrame, lastFrame := cc.popFrame(nil, status)
 	if currentFrame == nil {
-		log.Fatal("Fail to pop frame")
+		cc.log.Error("Fail to pop frame")
 	}
 
 	if ach, ok := currentFrame.handler.(AsyncContractHandler); ok {
@@ -317,7 +320,7 @@ func (cc *callContext) handleResult(status module.Status,
 		// SyncContractHandler can't be queued by OnCall(), so don't consider it.
 		h := lastFrame.handler.(AsyncContractHandler)
 		if err := h.SendResult(status, stepUsed, result); err != nil {
-			log.Println("FAIL to SendResult(): ", err)
+			cc.log.Debugf("FAIL to SendResult(): err=%+v\n", err)
 			cc.OnResult(module.StatusSystemError, h.StepLimit(), nil, nil)
 		}
 		return true
@@ -339,7 +342,7 @@ func (cc *callContext) OnResult(status module.Status, stepUsed *big.Int,
 
 func (cc *callContext) OnCall(handler ContractHandler) {
 	if !cc.isInAsyncFrame() {
-		log.Panicln("OnCall() should be called in AsyncContractHandler frame")
+		cc.log.Panicln("OnCall() should be called in AsyncContractHandler frame")
 	}
 	cc.sendMessage(&callRequestMessage{handler})
 }
@@ -348,13 +351,13 @@ func (cc *callContext) sendMessage(msg interface{}) {
 	if cc.isInAsyncFrame() {
 		cc.waiter <- msg
 	} else {
-		log.Panicln("We are not in AsyncContractHandler frame")
+		cc.log.Panicln("We are not in AsyncContractHandler frame")
 	}
 }
 
 func (cc *callContext) OnEvent(addr module.Address, indexed, data [][]byte) {
 	if err := cc.addLogToFrame(addr, indexed, data); err != nil {
-		log.Fatalf("Fail to log err=%+v", err)
+		cc.log.Errorf("Fail to log err=%+v", err)
 	}
 }
 

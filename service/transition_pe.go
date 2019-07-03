@@ -1,7 +1,6 @@
 package service
 
 import (
-	"log"
 	"sync"
 
 	"github.com/icon-project/goloop/module"
@@ -62,21 +61,21 @@ func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, c
 
 		txi, _, err := i.Get()
 		if err != nil {
-			log.Printf("Fail to iterate transaction list err=%+v", err)
+			t.log.Errorf("Fail to iterate transaction list err=%+v", err)
 			return err
 		}
 		txo := txi.(transaction.Transaction)
 		txh, err := txo.GetHandler(t.cm)
 		if err != nil {
-			log.Printf("Fail to handle transaction for %+v", err)
+			t.log.Debugf("Fail to handle transaction for %+v", err)
 			return err
 		}
 		wc, err2 := txh.Prepare(ctx)
 		if err2 != nil {
-			log.Printf("Fail to prepare for %+v", err2)
+			t.log.Debugf("Fail to prepare for %+v", err2)
 			return err2
 		}
-		ctx = contract.NewContext(wc, t.cm, t.eem, t.chain)
+		ctx = contract.NewContext(wc, t.cm, t.eem, t.chain, nil)
 		ctx.SetTransactionInfo(&state.TransactionInfo{
 			Index:     int32(cnt),
 			Timestamp: txo.Timestamp(),
@@ -89,7 +88,7 @@ func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, c
 		go func(ctx contract.Context, rb *txresult.Receipt) {
 			wvs := ctx.WorldVirtualState()
 			if rct, err := txh.Execute(ctx); err != nil {
-				log.Printf("Fail to execute transaction err=%+v", err)
+				t.log.Debugf("Fail to execute transaction err=%+v", err)
 				ec.Report(err)
 			} else {
 				*rb = rct

@@ -2,7 +2,7 @@ package service
 
 import (
 	"container/list"
-	"log"
+	"github.com/icon-project/goloop/common/log"
 	"sync"
 
 	"github.com/icon-project/goloop/common/db"
@@ -34,6 +34,8 @@ type transitionResultCache struct {
 	database  db.Database
 	stateList *list.List
 	stateMap  map[string]*list.Element
+
+	log log.Logger
 }
 
 func (c *transitionResultCache) getItemInLock(result []byte) (*trCacheItem, error) {
@@ -45,7 +47,7 @@ func (c *transitionResultCache) getItemInLock(result []byte) (*trCacheItem, erro
 			c.stateList.MoveToBack(e)
 			return item, nil
 		}
-		log.Printf("TransitionResultCache() drop cache.size=%d by SIZE", item.Size())
+		c.log.Tracef("TransitionResultCache() drop cache.size=%d by SIZE", item.Size())
 		c.stateList.Remove(e)
 		delete(c.stateMap, item.result)
 	}
@@ -71,7 +73,7 @@ func (c *transitionResultCache) reclaimInLock() {
 		c.stateList.Remove(f)
 		toDel := f.Value.(*trCacheItem)
 		delete(c.stateMap, toDel.result)
-		log.Printf("TransitionResultCache() drop cache.size=%d by ENTRY", toDel.Size())
+		c.log.Tracef("TransitionResultCache() drop cache.size=%d by ENTRY", toDel.Size())
 	}
 }
 
@@ -133,12 +135,13 @@ func (c *transitionResultCache) GetWorldSnapshot(result []byte, vh []byte) (stat
 	return item.worldSnapshot, nil
 }
 
-func newTransitionResultCache(database db.Database, count int, size int) *transitionResultCache {
+func newTransitionResultCache(database db.Database, count int, size int, log log.Logger) *transitionResultCache {
 	return &transitionResultCache{
 		database:   database,
 		entryCount: count,
 		entrySize:  size,
 		stateList:  list.New(),
 		stateMap:   make(map[string]*list.Element),
+		log:        log,
 	}
 }

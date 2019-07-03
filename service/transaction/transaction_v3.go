@@ -3,7 +3,7 @@ package transaction
 import (
 	"bytes"
 	"encoding/json"
-	"log"
+	"github.com/icon-project/goloop/common/log"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
@@ -340,7 +340,7 @@ func (tx *transactionV3) Group() module.TransactionGroup {
 func (tx *transactionV3) Bytes() []byte {
 	if tx.bytes == nil {
 		if bs, err := codec.MarshalToBytes(&tx.transactionV3Data); err != nil {
-			log.Panicf("Fail to marshal transaction=%+v err=%+v", tx, err)
+			log.Errorf("Fail to marshal transaction=%+v err=%+v", tx, err)
 			return nil
 		} else {
 			tx.bytes = bs

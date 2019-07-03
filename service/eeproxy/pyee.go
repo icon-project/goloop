@@ -2,7 +2,7 @@ package eeproxy
 
 import (
 	"fmt"
-	"log"
+	"github.com/icon-project/goloop/common/log"
 	"os"
 	"os/exec"
 	"sync"
@@ -84,7 +84,7 @@ func (e *pythonExecutionEngine) SetInstances(n int) error {
 	e.target = n
 	for e.target > len(e.instances) {
 		if err := e.start(); err != nil {
-			log.Fatalf("Fail to start execution engine err=%+v", err)
+			log.Errorf("Fail to start execution engine err=%+v", err)
 			return err
 		}
 	}
@@ -114,17 +114,17 @@ func (e *pythonExecutionEngine) newCmd(uid string) *exec.Cmd {
 func (e *pythonExecutionEngine) run(is *pythonInstance) {
 	for true {
 		err := is.cmd.Wait()
-		log.Printf("Wait result uid=%s err=%+v\n", is.uid, err)
+		log.Tracef("Wait result uid=%s err=%+v\n", is.uid, err)
 
 		e.lock.Lock()
 		if is.status != instanceOnline {
-			log.Printf("Fail to get on-line uid=%s\n", is.uid)
+			log.Errorf("Fail to get on-line uid=%s\n", is.uid)
 			is.status = instanceError
 			e.lock.Unlock()
 			return
 		}
 		if len(e.instances) > e.target {
-			log.Printf("End the instance uid=%s\n", is.uid)
+			log.Tracef("End the instance uid=%s\n", is.uid)
 			delete(e.instances, is.uid)
 			e.lock.Unlock()
 			return
@@ -135,10 +135,10 @@ func (e *pythonExecutionEngine) run(is *pythonInstance) {
 		is.cmd = e.newCmd(is.uid)
 		e.instances[is.uid] = is
 
-		log.Printf("Restart the instance uid=%s\n", is.uid)
+		log.Tracef("Restart the instance uid=%s\n", is.uid)
 		if err := is.cmd.Start(); err != nil {
 			is.status = instanceError
-			log.Fatalf("Fail to start engine uid=%s err=%+v",
+			log.Errorf("Fail to start engine uid=%s err=%+v",
 				is.uid, err)
 		} else {
 			is.status = instanceStarted

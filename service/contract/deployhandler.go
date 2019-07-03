@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
-	"log"
+	"github.com/icon-project/goloop/common/log"
 	"math/big"
 	"sync"
 
@@ -30,8 +30,9 @@ type DeployHandler struct {
 	preDefinedAddr module.Address
 }
 
-func newDeployHandler(from, to module.Address, value, stepLimit *big.Int,
-	data []byte, force bool,
+func newDeployHandler(
+	ch *CommonHandler,
+	data []byte,
 ) *DeployHandler {
 	var dataJSON struct {
 		ContentType string          `json:"contentType"`
@@ -39,11 +40,11 @@ func newDeployHandler(from, to module.Address, value, stepLimit *big.Int,
 		Params      json.RawMessage `json:"params"`
 	}
 	if err := json.Unmarshal(data, &dataJSON); err != nil {
-		log.Println("FAIL to parse 'data' of transaction")
+		ch.log.Debugf("FAIL to parse 'data' of transaction, err=%v\ndata(%s)\n", err, data)
 		return nil
 	}
 	return &DeployHandler{
-		CommonHandler: newCommonHandler(from, to, value, stepLimit),
+		CommonHandler: ch,
 		content:       dataJSON.Content,
 		contentType:   dataJSON.ContentType,
 		// eeType is currently only python
@@ -54,7 +55,7 @@ func newDeployHandler(from, to module.Address, value, stepLimit *big.Int,
 }
 
 func NewDeployHandlerForPreInstall(owner, scoreAddr module.Address, contentType string,
-	content []byte, params *json.RawMessage,
+	content []byte, params *json.RawMessage, log log.Logger,
 ) *DeployHandler {
 	var zero big.Int
 	var p []byte
@@ -66,7 +67,7 @@ func NewDeployHandlerForPreInstall(owner, scoreAddr module.Address, contentType 
 	return &DeployHandler{
 		CommonHandler: newCommonHandler(owner,
 			common.NewContractAddress(state.SystemID),
-			&zero, &zero),
+			&zero, &zero, log),
 		content:        content,
 		contentType:    contentType,
 		preDefinedAddr: scoreAddr,
@@ -177,8 +178,7 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 
 	if cc.AuditEnabled() == false ||
 		cc.IsDeployer(h.from.String()) || h.preDefinedAddr != nil {
-		ah := newAcceptHandler(h.from, h.to,
-			nil, h.StepAvail(), h.txHash, h.txHash)
+		ah := newAcceptHandler(newCommonHandler(h.from, h.to, nil, h.StepAvail(), h.log), h.txHash, h.txHash)
 		status, acceptStepUsed, result, _ := ah.ExecuteSync(cc)
 		h.DeductSteps(acceptStepUsed)
 		if status != module.StatusSuccess {
@@ -195,9 +195,9 @@ type AcceptHandler struct {
 	auditTxHash []byte
 }
 
-func newAcceptHandler(from, to module.Address, value, stepLimit *big.Int, txHash []byte, auditTxHash []byte) *AcceptHandler {
+func newAcceptHandler(ch *CommonHandler, txHash []byte, auditTxHash []byte) *AcceptHandler {
 	return &AcceptHandler{
-		CommonHandler: newCommonHandler(from, to, value, stepLimit),
+		CommonHandler: ch,
 		txHash:        txHash, auditTxHash: auditTxHash}
 }
 
@@ -218,7 +218,7 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 	varDb := scoredb.NewVarDB(sysAs, h.txHash)
 	scoreAddr := varDb.Address()
 	if scoreAddr == nil {
-		log.Printf("Failed to get score address by txHash\n")
+		h.log.Debug("Failed to get score address by txHash\n")
 		msg, _ := common.EncodeAny("Score not found by tx hash")
 		return module.StatusContractNotFound, h.stepLimit, msg, nil
 	}
@@ -231,7 +231,7 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 		methodStr = deployUpdate
 	}
 	// GET API
-	cgah := newCallGetAPIHandler(newCommonHandler(h.from, scoreAddr, nil, h.StepAvail()))
+	cgah := newCallGetAPIHandler(newCommonHandler(h.from, scoreAddr, nil, h.StepAvail(), h.log))
 	// It ignores stepUsed intentionally because it's not proper to charge step for GetAPI().
 	status, _, result, _ := cc.Call(cgah)
 	if status != module.StatusSuccess {
@@ -253,7 +253,7 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 	handler := newCallHandlerFromTypedObj(
 		// NOTE : on_install or on_update should be invoked by score owner.
 		// 	self.msg.sender should be deployer(score owner) when on_install or on_update is invoked in SCORE
-		newCommonHandler(scoreAs.ContractOwner(), scoreAddr, big.NewInt(0), h.StepAvail()),
+		newCommonHandler(scoreAs.ContractOwner(), scoreAddr, big.NewInt(0), h.StepAvail(), h.log),
 		methodStr, typedObj, true)
 
 	// state -> active if failed to on_install, set inactive
@@ -291,7 +291,7 @@ func newCallGetAPIHandler(ch *CommonHandler) *callGetAPIHandler {
 
 // It's never called
 func (h *callGetAPIHandler) Prepare(ctx Context) (state.WorldContext, error) {
-	log.Panicf("SHOULD not reach here")
+	h.log.Panicf("SHOULD not reach here")
 	return nil, nil
 }
 
@@ -322,6 +322,7 @@ func (h *callGetAPIHandler) ExecuteAsync(cc CallContext) error {
 	}
 	path, err := h.cs.WaitResult()
 	if err != nil {
+		h.log.Errorf("FAIL to prepare contract. err=%+v\n", err)
 		return errors.Wrapc(err, PreparingContractError, "FAIL to prepare contract")
 	}
 
@@ -335,7 +336,7 @@ func (h *callGetAPIHandler) ExecuteAsync(cc CallContext) error {
 }
 
 func (h *callGetAPIHandler) SendResult(status module.Status, steps *big.Int, result *codec.TypedObj) error {
-	log.Panicln("Unexpected SendResult() call")
+	h.log.Panicln("Unexpected SendResult() call")
 	return nil
 }
 
@@ -351,47 +352,47 @@ func (h *callGetAPIHandler) Dispose() {
 func (h *callGetAPIHandler) EEType() string {
 	c := h.as.NextContract()
 	if c == nil {
-		log.Println("No associated contract exists")
+		h.log.Println("No associated contract exists")
 		return ""
 	}
 	return c.EEType()
 }
 
 func (h *callGetAPIHandler) GetValue(key []byte) ([]byte, error) {
-	log.Panicln("Unexpected GetValue() call")
+	h.log.Panicln("Unexpected GetValue() call")
 	return nil, nil
 }
 
 func (h *callGetAPIHandler) SetValue(key, value []byte) error {
-	log.Panicln("Unexpected SetValue() call")
+	h.log.Panicln("Unexpected SetValue() call")
 	return nil
 }
 
 func (h *callGetAPIHandler) DeleteValue(key []byte) error {
-	log.Panicln("Unexpected DeleteValue() call")
+	h.log.Panicln("Unexpected DeleteValue() call")
 	return nil
 }
 
 func (h *callGetAPIHandler) GetInfo() *codec.TypedObj {
-	log.Panicln("Unexpected GetInfo() call")
+	h.log.Panicln("Unexpected GetInfo() call")
 	return nil
 }
 
 func (h *callGetAPIHandler) GetBalance(addr module.Address) *big.Int {
-	log.Panicln("Unexpected GetBalance() call")
+	h.log.Panicln("Unexpected GetBalance() call")
 	return nil
 }
 
 func (h *callGetAPIHandler) OnEvent(addr module.Address, indexed, data [][]byte) {
-	log.Panicln("Unexpected OnEvent() call")
+	h.log.Panicln("Unexpected OnEvent() call")
 }
 
 func (h *callGetAPIHandler) OnResult(status uint16, steps *big.Int, result *codec.TypedObj) {
-	log.Panicln("Unexpected call OnResult() from GetAPI()")
+	h.log.Panicln("Unexpected call OnResult() from GetAPI()")
 }
 
 func (h *callGetAPIHandler) OnCall(from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj) {
-	log.Panicln("Unexpected call OnCall() from GetAPI()")
+	h.log.Panicln("Unexpected call OnCall() from GetAPI()")
 }
 
 func (h *callGetAPIHandler) OnAPI(status uint16, info *scoreapi.Info) {

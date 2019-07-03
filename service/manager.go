@@ -61,7 +61,7 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 
 	pMetric := metric.NewTransactionMetric(chain.MetricContext(), metric.TxTypePatch)
 	nMetric := metric.NewTransactionMetric(chain.MetricContext(), metric.TxTypeNormal)
-	cm, err := contract.NewContractManager(chain.Database(), chainRoot)
+	cm, err := contract.NewContractManager(chain.Database(), chainRoot, logger)
 	if err != nil {
 		logger.Warnf("FAIL to create contractManager : %v\n", err)
 		return nil, err
@@ -70,15 +70,16 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 	mgr := &manager{
 		patchMetric:  pMetric,
 		normalMetric: nMetric,
-		patchTxPool:  NewTransactionPool(chain.NID(), chain.PatchTxPoolSize(), bk, pMetric),
-		normalTxPool: NewTransactionPool(chain.NID(), chain.NormalTxPoolSize(), bk, nMetric),
+		patchTxPool:  NewTransactionPool(chain.NID(), chain.PatchTxPoolSize(), bk, pMetric, logger),
+		normalTxPool: NewTransactionPool(chain.NID(), chain.NormalTxPoolSize(), bk, nMetric, logger),
 		db:           chain.Database(),
 		chain:        chain,
 		cm:           cm,
 		eem:          eem,
 		trc: newTransitionResultCache(chain.Database(),
 			ConfigTransitionResultCacheEntryCount,
-			ConfigTransitionResultCacheEntrySize),
+			ConfigTransitionResultCacheEntrySize,
+			logger),
 		log: logger,
 	}
 	if nm != nil {
@@ -236,7 +237,7 @@ func (m *manager) Finalize(t module.Transition, opt int) error {
 func (m *manager) TransactionFromBytes(b []byte, blockVersion int) (module.Transaction, error) {
 	tx, err := transaction.NewTransaction(b)
 	if err != nil {
-		m.log.Printf("sm.TransactionFromBytes() fails with err=%+v", err)
+		m.log.Errorf("sm.TransactionFromBytes() fails with err=%+v", err)
 	}
 	return tx, nil
 }
@@ -244,7 +245,7 @@ func (m *manager) TransactionFromBytes(b []byte, blockVersion int) (module.Trans
 func (m *manager) GenesisTransactionFromBytes(b []byte, blockVersion int) (module.Transaction, error) {
 	tx, err := transaction.NewGenesisTransaction(b)
 	if err != nil {
-		m.log.Printf("sm.GenesisTransactionFromBytes() fails with err=%+v", err)
+		m.log.Errorf("sm.GenesisTransactionFromBytes() fails with err=%+v", err)
 	}
 	return tx, nil
 }
@@ -334,7 +335,7 @@ func (m *manager) SendTransaction(txi interface{}) ([]byte, error) {
 	if err := txPool.Add(newTx, true); err == nil {
 		if err = m.txReactor.PropagateTransaction(ProtocolPropagateTransaction, newTx); err != nil {
 			if !network.NotAvailableError.Equals(err) {
-				m.log.Printf("FAIL to propagate tx err=%+v", err)
+				m.log.Tracef("FAIL to propagate tx err=%+v", err)
 			}
 		}
 	} else {
@@ -369,7 +370,7 @@ func (m *manager) Call(resultHash []byte,
 	if err != nil {
 		return nil, err
 	}
-	status, result := qh.Query(contract.NewContext(wc, m.cm, m.eem, m.chain))
+	status, result := qh.Query(contract.NewContext(wc, m.cm, m.eem, m.chain, m.log))
 	if status != module.StatusSuccess {
 		return nil, scoreresult.NewBase(status, status.String())
 	}

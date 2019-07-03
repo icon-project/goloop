@@ -2,7 +2,7 @@ package state
 
 import (
 	"bytes"
-	"log"
+	"github.com/icon-project/goloop/common/log"
 	"math/big"
 
 	"github.com/icon-project/goloop/service/scoreresult"
@@ -404,7 +404,7 @@ func (s *accountStateImpl) IsContractOwner(owner module.Address) bool {
 
 func (s *accountStateImpl) InitContractAccount(address module.Address) bool {
 	if s.isContract == true {
-		log.Printf("already Contract account")
+		log.Debug("already Contract account")
 		return false
 	}
 	s.isContract = true
@@ -421,7 +421,7 @@ func (s *accountStateImpl) DeployContract(code []byte,
 	codeHash := sha3.Sum256(code)
 	bk, err := s.database.GetBucket(db.BytesByHash)
 	if err != nil {
-		log.Printf("Failed to get bucket")
+		log.Error("Failed to get bucket")
 		return
 	}
 	s.nextContract = &contractImpl{contractSnapshotImpl{
@@ -638,15 +638,15 @@ func (a *accountROState) NextContract() Contract {
 }
 
 func (a *accountROState) SetDisable(b bool) {
-	log.Panicf("accountROState().SetDisable() is invoked")
+	log.Panic("accountROState().SetDisable() is invoked")
 }
 
 func (a *accountROState) SetBlock(b bool) {
-	log.Panicf("accountROState().SetBlock() is invoked")
+	log.Panic("accountROState().SetBlock() is invoked")
 }
 
 func (a *accountROState) SetBalance(v *big.Int) {
-	log.Panicf("accountROState().SetBalance() is invoked")
+	log.Panic("accountROState().SetBalance() is invoked")
 }
 
 func (a *accountROState) SetValue(k, v []byte) error {
@@ -666,17 +666,17 @@ func (a *accountROState) Reset(snapshot AccountSnapshot) error {
 }
 
 func (a *accountROState) SetAPIInfo(*scoreapi.Info) {
-	log.Panicf("accountROState().SetApiInfo() is invoked")
+	log.Panic("accountROState().SetApiInfo() is invoked")
 }
 
 func (a *accountROState) InitContractAccount(address module.Address) bool {
-	log.Panicf("accountROState().InitContractAccount() is invoked")
+	log.Panic("accountROState().InitContractAccount() is invoked")
 	return false
 }
 
 func (a *accountROState) DeployContract(code []byte,
 	eeType string, contentType string, params []byte, txHash []byte) {
-	log.Panicf("accountROState().DeployContract() is invoked")
+	log.Panic("accountROState().DeployContract() is invoked")
 }
 
 func (a *accountROState) AcceptContract(

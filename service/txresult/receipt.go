@@ -3,7 +3,7 @@ package txresult
 import (
 	"encoding/hex"
 	"encoding/json"
-	"log"
+	"github.com/icon-project/goloop/common/log"
 	"math/big"
 	"reflect"
 	"regexp"
@@ -123,7 +123,7 @@ func (r *receipt) To() module.Address {
 func (r *receipt) Bytes() []byte {
 	bs, err := codec.MarshalToBytes(&r.data)
 	if err != nil {
-		log.Panicf("Fail to marshal object err=%+v", err)
+		log.Errorf("Fail to marshal object err=%+v\ndata=%+v\n", err, r.data)
 	}
 	return bs
 }

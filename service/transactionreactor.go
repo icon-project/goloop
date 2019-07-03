@@ -2,7 +2,7 @@ package service
 
 import (
 	"github.com/icon-project/goloop/common"
-	"log"
+	"github.com/icon-project/goloop/common/log"
 	"time"
 
 	"github.com/icon-project/goloop/module"
@@ -30,12 +30,12 @@ func (r *TransactionReactor) OnReceive(subProtocol module.ProtocolInfo, buf []by
 	case ProtocolPropagateTransaction:
 		tx, err := transaction.NewTransaction(buf)
 		if err != nil {
-			log.Printf("Failed to unmarshal transaction. buf=%x, err=%+v\n", buf, err)
+			log.Tracef("Failed to unmarshal transaction. buf=%x, err=%+v\n", buf, err)
 			return false, err
 		}
 
 		if err := tx.Verify(common.UnixMicroFromTime(time.Now())); err != nil {
-			log.Printf("Failed to verify tx. err=%+v\n", err)
+			log.Tracef("Failed to verify tx. err=%+v\n", err)
 			return false, err
 		}
 		if tx.Group() == module.TransactionGroupPatch {

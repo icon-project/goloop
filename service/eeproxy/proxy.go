@@ -1,7 +1,7 @@
 package eeproxy
 
 import (
-	"log"
+	"github.com/icon-project/goloop/common/log"
 	"math/big"
 	"sync"
 
@@ -195,7 +195,7 @@ func (p *proxy) Release() {
 	if p.frame == nil {
 		p.lock.Unlock()
 		if err := p.mgr.onReady(p.scoreType, p); err != nil {
-			log.Printf("Fail to make it ready err=%+v", err)
+			log.Errorf("Fail to make it ready err=%+v", err)
 			p.conn.Close()
 		}
 		return

@@ -2,6 +2,7 @@ package contract
 
 import (
 	"encoding/hex"
+	"github.com/icon-project/goloop/common/log"
 	"strings"
 
 	"github.com/icon-project/goloop/module"
@@ -14,6 +15,7 @@ type Context interface {
 	ContractManager() ContractManager
 	EEManager() eeproxy.Manager
 	GetPreInstalledScore(id string) ([]byte, error)
+	Logger() log.Logger
 }
 
 type context struct {
@@ -21,10 +23,11 @@ type context struct {
 	chain module.Chain
 	cm    ContractManager
 	eem   eeproxy.Manager
+	log   log.Logger
 }
 
-func NewContext(wc state.WorldContext, cm ContractManager, eem eeproxy.Manager, chain module.Chain) *context {
-	return &context{WorldContext: wc, cm: cm, eem: eem, chain: chain}
+func NewContext(wc state.WorldContext, cm ContractManager, eem eeproxy.Manager, chain module.Chain, log log.Logger) *context {
+	return &context{WorldContext: wc, cm: cm, eem: eem, chain: chain, log: log}
 }
 func (c *context) ContractManager() ContractManager {
 	return c.cm
@@ -43,4 +46,8 @@ func (c *context) GetPreInstalledScore(id string) ([]byte, error) {
 		return nil, err
 	}
 	return c.chain.GetGenesisData(hash)
+}
+
+func (c *context) Logger() log.Logger {
+	return c.log
 }

@@ -3,7 +3,7 @@ package transaction
 import (
 	"bytes"
 	"github.com/icon-project/goloop/common/errors"
-	"log"
+	"github.com/icon-project/goloop/common/log"
 	"reflect"
 
 	"github.com/icon-project/goloop/common/db"

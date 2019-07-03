@@ -103,7 +103,7 @@ func newTransitionResultFromBytes(bs []byte) (*transitionResult, error) {
 
 func (tr *transitionResult) Bytes() []byte {
 	if bs, err := codec.MarshalToBytes(tr); err != nil {
-		log.Printf("Fail to marshal transitionResult")
+		log.Debug("Fail to marshal transitionResult")
 		return nil
 	} else {
 		return bs
@@ -261,7 +261,7 @@ func (t *transition) reportValidation(e error) bool {
 	locker := common.LockForAutoCall(&t.mutex)
 	defer locker.Unlock()
 
-	t.log.Printf("reportValidation(err=%+v)", e)
+	t.log.Debugf("reportValidation(err=%+v)", e)
 
 	switch t.step {
 	case stepValidating, stepExecuting:
@@ -275,9 +275,9 @@ func (t *transition) reportValidation(e error) bool {
 		})
 		return true
 	case stepCanceled:
-		t.log.Printf("Ignore error err=%+v", e)
+		t.log.Tracef("Ignore error err=%+v", e)
 	default:
-		t.log.Printf("Invalid state %s for err=%+v", t.step, e)
+		t.log.Tracef("Invalid state %s for err=%+v", t.step, e)
 	}
 	return false
 }
@@ -286,12 +286,12 @@ func (t *transition) reportExecution(e error) bool {
 	locker := common.LockForAutoCall(&t.mutex)
 	defer locker.Unlock()
 
-	t.log.Printf("reportExecution(err=%+v)", e)
+	t.log.Debugf("reportExecution(err=%+v)", e)
 
 	switch t.step {
 	case stepExecuting:
 		if e != nil {
-			t.log.Printf("Execution failed with err=%+v", e)
+			t.log.Tracef("Execution failed with err=%+v", e)
 			t.step = stepError
 		} else {
 			t.step = stepComplete
@@ -301,9 +301,9 @@ func (t *transition) reportExecution(e error) bool {
 		})
 		return true
 	case stepCanceled:
-		t.log.Printf("Ignore error err=%+v", e)
+		t.log.Tracef("Ignore error err=%+v", e)
 	default:
-		t.log.Printf("Invalid state %s for err=%+v", t.step, e)
+		t.log.Tracef("Invalid state %s for err=%+v", t.step, e)
 	}
 	return false
 }
@@ -350,7 +350,7 @@ func (t *transition) executeSync(alreadyValidated bool) {
 		t.reportExecution(err)
 		return
 	}
-	ctx := contract.NewContext(wc, t.cm, t.eem, t.chain)
+	ctx := contract.NewContext(wc, t.cm, t.eem, t.chain, t.log)
 
 	startTime := time.Now()
 
@@ -399,7 +399,7 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	t.executeDuration = txDuration
 
 	elapsedMS := float64(txDuration/time.Microsecond) / 1000
-	t.log.Printf("Transactions: %6d  Elapsed: %9.3f ms  PerTx: %7.1f µs  TPS: %9.2f",
+	t.log.Infof("Transactions: %6d  Elapsed: %9.3f ms  PerTx: %7.1f µs  TPS: %9.2f",
 		txCount, elapsedMS,
 		elapsedMS*1000/float64(txCount),
 		float64(txCount)/elapsedMS*1000)
@@ -486,7 +486,7 @@ func (t *transition) finalizeResult() error {
 	}
 	regulator.OnTxExecution(t.transactionCount, t.executeDuration, finalTS.Sub(startTS))
 
-	t.log.Printf("finalizeResult() total=%s world=%s receipts=%s",
+	t.log.Infof("finalizeResult() total=%s world=%s receipts=%s",
 		finalTS.Sub(startTS), worldTS.Sub(startTS), finalTS.Sub(worldTS))
 	return nil
 }

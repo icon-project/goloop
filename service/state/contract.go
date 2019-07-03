@@ -2,7 +2,8 @@ package state
 
 import (
 	"bytes"
-	"log"
+	"fmt"
+	"github.com/icon-project/goloop/common/log"
 
 	"github.com/icon-project/goloop/common/merkle"
 	"gopkg.in/vmihailenco/msgpack.v4"
@@ -19,6 +20,21 @@ const (
 	CSPending
 	CSRejected
 )
+
+func (cs ContractState) String() string {
+	switch cs {
+	case CSInactive:
+		return "Success"
+	case CSActive:
+		return "SystemError"
+	case CSPending:
+		return "ContractNotFound"
+	case CSRejected:
+		return "MethodNotFound"
+	default:
+		return fmt.Sprintf("Unknown(state=%d)", cs)
+	}
+}
 
 const ASActive = 0
 const (

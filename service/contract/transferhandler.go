@@ -16,10 +16,8 @@ type TransferHandler struct {
 	*CommonHandler
 }
 
-func newTransferHandler(from, to module.Address, value, stepLimit *big.Int) *TransferHandler {
-	return &TransferHandler{
-		newCommonHandler(from, to, value, stepLimit),
-	}
+func newTransferHandler(ch *CommonHandler) *TransferHandler {
+	return &TransferHandler{ch}
 }
 
 func (h *TransferHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *codec.TypedObj, module.Address) {

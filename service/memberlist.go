@@ -1,7 +1,7 @@
 package service
 
 import (
-	"log"
+	"github.com/icon-project/goloop/common/log"
 	"sync"
 
 	"github.com/icon-project/goloop/common/errors"
@@ -57,14 +57,14 @@ func (m *memberList) Equal(m2 module.MemberList) bool {
 
 	members, err := m.getMembers()
 	if err != nil {
-		log.Printf("Fail to get members() err=%+v", err)
+		log.Errorf("Fail to get members() err=%+v", err)
 		return false
 	}
 
 	var index = int(0)
 	for itr := m2.Iterator(); itr.Has(); itr.Next() {
 		if addr, err := itr.Get(); err != nil {
-			log.Printf("Fail to iterating members err=%+v", err)
+			log.Errorf("Fail to iterating members err=%+v", err)
 			return false
 		} else {
 			if index >= len(members) {
@@ -106,12 +106,12 @@ func (m *memberList) equal(m2 *memberList) bool {
 
 	m1List, err := m.getMembers()
 	if err != nil {
-		log.Printf("Fail to get member list err=%+v", err)
+		log.Errorf("Fail to get member list err=%+v", err)
 		return false
 	}
 	m2List, err := m2.getMembers()
 	if err != nil {
-		log.Printf("Fail to get member list err=%+v", err)
+		log.Errorf("Fail to get member list err=%+v", err)
 		return false
 	}
 	if len(m1List) != len(m2List) {

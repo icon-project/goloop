@@ -2,7 +2,7 @@ package state
 
 import (
 	"github.com/icon-project/goloop/common/errors"
-	"log"
+	"github.com/icon-project/goloop/common/log"
 	"sort"
 	"sync"
 )

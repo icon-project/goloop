@@ -6,9 +6,9 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreresult"
-	"log"
 )
 
 type MethodType int
@@ -259,7 +259,6 @@ func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedO
 		}
 		for i, to := range tol {
 			if err := validateInputType(a.Inputs[i].Type, to); err != nil {
-				log.Printf("Fail validate input type. %s\n", err)
 				return nil, err
 			}
 		}
@@ -278,7 +277,6 @@ func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedO
 	for i, input := range a.Inputs {
 		if obj, ok := params[input.Name]; ok {
 			if err := validateInputType(input.Type, obj); err != nil {
-				log.Printf("Fail validate input type. %s\n", err)
 				return nil, err
 			}
 			inputs[i] = obj
