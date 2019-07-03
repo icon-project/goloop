@@ -22,18 +22,20 @@ const (
 )
 
 func (cs ContractState) String() string {
+	var status string
 	switch cs {
 	case CSInactive:
-		return "Success"
+		status = "inactive"
 	case CSActive:
-		return "SystemError"
+		status = "active"
 	case CSPending:
-		return "ContractNotFound"
+		status = "pending"
 	case CSRejected:
-		return "MethodNotFound"
+		status = "rejected"
 	default:
-		return fmt.Sprintf("Unknown(state=%d)", cs)
+		status = fmt.Sprintf("Unknown(state=%d)", cs)
 	}
+	return status
 }
 
 const ASActive = 0
