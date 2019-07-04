@@ -45,6 +45,7 @@ const (
 	ErrorCodePending        ErrorCode = -31002
 	ErrorCodeExecuting      ErrorCode = -31003
 	ErrorCodeNotFound       ErrorCode = -31004
+	ErrorLackOfResource     ErrorCode = -31005
 )
 
 type Error struct {
