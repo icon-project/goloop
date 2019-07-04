@@ -125,6 +125,9 @@ public class WSEventTest {
         LOG.infoExiting();
 
         WebSocketClient cc = newWSClient("event");
+        LOG.infoEntering("wait", "response");
+        assertTrue(waitForMessage());
+        LOG.infoExiting();
 
         recvBuffer = null;
         LOG.infoEntering("invoke", "generate");
