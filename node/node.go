@@ -330,7 +330,7 @@ func NewNode(
 	}
 	srv := server.NewManager(cfg.RPCAddr, cfg.RPCDump, w, l)
 
-	ee, err := eeproxy.NewPythonEE()
+	ee, err := eeproxy.NewPythonEE(l)
 	if err != nil {
 		log.Panicf("FAIL to create PythonEE err=%+v", err)
 	}

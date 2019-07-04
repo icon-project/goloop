@@ -2,12 +2,13 @@ package eeproxy
 
 import (
 	"fmt"
-	"github.com/icon-project/goloop/common/log"
+	"io"
 	"os"
 	"os/exec"
 	"sync"
 
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 )
 
 type InstanceStatus int
@@ -38,6 +39,7 @@ type pythonInstance struct {
 	uid    string
 	cmd    *exec.Cmd
 	status InstanceStatus
+	out    io.WriteCloser
 }
 
 type pythonExecutionEngine struct {
@@ -47,6 +49,7 @@ type pythonExecutionEngine struct {
 	target    int
 	instances map[string]*pythonInstance
 	net, addr string
+	logger    log.Logger
 }
 
 func (e *pythonExecutionEngine) Type() string {
@@ -83,7 +86,7 @@ func (e *pythonExecutionEngine) SetInstances(n int) error {
 
 	e.target = n
 	for e.target > len(e.instances) {
-		if err := e.start(); err != nil {
+		if err := e.startNew(); err != nil {
 			log.Errorf("Fail to start execution engine err=%+v", err)
 			return err
 		}
@@ -102,12 +105,12 @@ func (e *pythonExecutionEngine) OnAttach(uid string) bool {
 	return false
 }
 
-func (e *pythonExecutionEngine) newCmd(uid string) *exec.Cmd {
+func (e *pythonExecutionEngine) newCmd(uid string, stdout, stderr io.WriteCloser) *exec.Cmd {
 	args := append(e.args, "-s", e.addr, "-u", uid)
 	cmd := exec.Command(e.python, args...)
 	cmd.Env = append([]string{"PYTHONPATH=./pyee"}, os.Environ()...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
 	return cmd
 }
 
@@ -118,55 +121,71 @@ func (e *pythonExecutionEngine) run(is *pythonInstance) {
 
 		e.lock.Lock()
 		if is.status != instanceOnline {
-			log.Errorf("Fail to get on-line uid=%s\n", is.uid)
-			is.status = instanceError
+			e.logger.Warnf("It's not correctly started status=%s err=%+v",
+				is.status, err)
+			e.term(is)
 			e.lock.Unlock()
 			return
 		}
 		if len(e.instances) > e.target {
-			log.Tracef("End the instance uid=%s\n", is.uid)
-			delete(e.instances, is.uid)
+			e.logger.Tracef("End the instance uid=%s\n", is.uid)
+			e.term(is)
 			e.lock.Unlock()
 			return
 		}
+		e.logger.Warnf("It's abnormally terminated err=%+v", err)
+		e.term(is)
 
-		delete(e.instances, is.uid)
-		is.uid = newUID()
-		is.cmd = e.newCmd(is.uid)
-		e.instances[is.uid] = is
-
-		log.Tracef("Restart the instance uid=%s\n", is.uid)
-		if err := is.cmd.Start(); err != nil {
-			is.status = instanceError
-			log.Errorf("Fail to start engine uid=%s err=%+v",
-				is.uid, err)
-		} else {
-			is.status = instanceStarted
+		e.init(is)
+		if err := e.start(is); err != nil {
+			e.logger.Errorf("Fail to start instance err=%+v", err)
+			e.term(is)
+			e.lock.Unlock()
+			return
 		}
 		e.lock.Unlock()
 	}
 }
 
-func (e *pythonExecutionEngine) start() error {
-	uid := newUID()
-	cmd := e.newCmd(uid)
-	if err := cmd.Start(); err != nil {
+func (e *pythonExecutionEngine) init(i *pythonInstance) {
+	i.uid = newUID()
+	i.out = e.logger.WithFields(log.Fields{
+		log.FieldKeyEID: i.uid,
+	}).WriterLevel(log.DebugLevel)
+	e.instances[i.uid] = i
+	i.cmd = e.newCmd(i.uid, i.out, i.out)
+	i.status = instanceStopped
+}
+
+func (e *pythonExecutionEngine) start(i *pythonInstance) error {
+	if err := i.cmd.Start(); err != nil {
 		return err
 	}
-	is := &pythonInstance{
-		uid:    uid,
-		status: instanceStarted,
-		cmd:    cmd,
-	}
-	e.instances[uid] = is
-	go e.run(is)
+	i.status = instanceStarted
 	return nil
 }
 
-func NewPythonEE() (Engine, error) {
+func (e *pythonExecutionEngine) term(i *pythonInstance) {
+	_ = i.out.Close()
+	delete(e.instances, i.uid)
+}
+
+func (e *pythonExecutionEngine) startNew() error {
+	i := new(pythonInstance)
+	e.init(i)
+	if err := e.start(i); err != nil {
+		e.term(i)
+		return err
+	}
+	go e.run(i)
+	return nil
+}
+
+func NewPythonEE(logger log.Logger) (Engine, error) {
 	var e pythonExecutionEngine
 	e.instances = make(map[string]*pythonInstance)
 	e.python = "python3"
 	e.args = []string{"-u", "-m", "pyexec"}
+	e.logger = logger.WithFields(log.Fields{log.FieldKeyModule: "pyee"})
 	return &e, nil
 }

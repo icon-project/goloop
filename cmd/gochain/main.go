@@ -323,7 +323,7 @@ func main() {
 	}
 	defer nt.Close()
 
-	ee, err := eeproxy.NewPythonEE()
+	ee, err := eeproxy.NewPythonEE(logger)
 	if err != nil {
 		log.Panicf("FAIL to create PythonEE err=%+v", err)
 	}
