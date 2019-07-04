@@ -38,7 +38,7 @@ func newClientTestSetUp(t *testing.T, n int) *clientTestSetUp {
 		}
 	}
 	var err error
-	s.m, err = newManager(s.nms[0], s.bm)
+	s.m, err = NewManager(s.nms[0], s.bm)
 	assert.Nil(t, err)
 	s.cb = newTFetchCallback()
 	return s

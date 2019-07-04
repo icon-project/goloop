@@ -95,10 +95,6 @@ func (m *manager) FetchBlocks(
 }
 
 func NewManager(nm module.NetworkManager, bm module.BlockManager) (Manager, error) {
-	return newManager(nm, bm)
-}
-
-func newManager(nm module.NetworkManager, bm module.BlockManager) (Manager, error) {
 	m := &manager{}
 	ph, err := nm.RegisterReactorForStreams("fastsync", m, protocols, configFastSyncPriority)
 	if err != nil {
