@@ -37,6 +37,12 @@ func (customFormatter) Format(e *logrus.Entry) ([]byte, error) {
 			fmt.Fprint(buf, "--|")
 		}
 	}
+	if v, ok := e.Data[FieldKeyEID]; ok {
+		fmt.Fprint(buf, v, "|")
+	}
+	if v, ok := e.Data[FieldKeyPrefix]; ok {
+		fmt.Fprint(buf, v)
+	}
 	if e.HasCaller() {
 		fmt.Fprint(buf, path.Base(e.Caller.File), ":", e.Caller.Line, " ")
 	}

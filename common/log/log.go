@@ -10,12 +10,6 @@ import (
 )
 
 const (
-	TextFormatter = iota
-	JSONFormatter
-	LogrusText
-)
-
-const (
 	LogTimeLayout = "15:04:05.000000"
 )
 
@@ -78,12 +72,16 @@ const (
 	FieldKeyWallet = "wallet"
 	FieldKeyModule = "module"
 	FieldKeyNID    = "nid"
+	FieldKeyPrefix = "prefix"
+	FieldKeyEID    = "eid"
 )
 
 var systemFields = map[string]bool{
 	FieldKeyWallet: true,
 	FieldKeyModule: true,
 	FieldKeyNID:    true,
+	FieldKeyEID:    true,
+	FieldKeyPrefix: true,
 }
 
 var Trace, Print, Debug, Info, Warn, Error, Panic, Fatal func(args ...interface{})
@@ -131,6 +129,7 @@ type Logger interface {
 	SetConsoleLevel(lv Level)
 	SetModuleLevel(mod string, lv Level)
 	Writer() *io.PipeWriter
+	WriterLevel(lv Level) *io.PipeWriter
 }
 
 type entryWrapper struct {
@@ -163,6 +162,10 @@ func (w entryWrapper) Writer() *io.PipeWriter {
 	return w.Entry.Writer()
 }
 
+func (w entryWrapper) WriterLevel(lv Level) *io.PipeWriter {
+	return w.Entry.WriterLevel(logrus.Level(lv))
+}
+
 type loggerWrapper struct {
 	*logrus.Logger
 }
@@ -187,6 +190,10 @@ func (w loggerWrapper) SetModuleLevel(mod string, lv Level) {
 
 func (w loggerWrapper) Writer() *io.PipeWriter {
 	return w.Logger.Writer()
+}
+
+func (w loggerWrapper) WriterLevel(lv Level) *io.PipeWriter {
+	return w.Logger.WriterLevel(logrus.Level(lv))
 }
 
 func getPackageName(f string) string {
