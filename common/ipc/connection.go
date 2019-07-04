@@ -3,11 +3,11 @@ package ipc
 import (
 	"bufio"
 	"io"
-	"log"
 	"net"
 	"sync"
 
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/log"
 )
 
 type MessageHandler interface {

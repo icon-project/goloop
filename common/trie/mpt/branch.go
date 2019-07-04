@@ -2,8 +2,8 @@ package mpt
 
 import (
 	"fmt"
-	"log"
 
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie"
 )
 

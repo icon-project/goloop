@@ -1,11 +1,12 @@
 package common
 
 import (
+	"math/big"
+
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
-	"log"
-	"math/big"
 )
 
 const (

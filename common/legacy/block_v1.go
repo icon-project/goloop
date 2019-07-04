@@ -8,8 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/service/transaction"
 
 	"github.com/icon-project/goloop/common"
@@ -93,8 +93,8 @@ func (b *blockV1) Verify() error {
 	bhash := crypto.SHA3Sum256(bs)
 
 	if bytes.Compare(bhash, b.BlockHash) != 0 {
-		log.Println("RECORDED  ", b.BlockHash)
-		log.Println("CALCULATED", hex.EncodeToString(bhash))
+		log.Warnln("RECORDED  ", b.BlockHash)
+		log.Warnln("CALCULATED", hex.EncodeToString(bhash))
 		return errors.New("HASH is incorrect")
 	}
 
@@ -102,8 +102,8 @@ func (b *blockV1) Verify() error {
 		if pk, err := b.Signature.RecoverPublicKey(bhash); err == nil {
 			addr := common.NewAccountAddressFromPublicKey(pk).String()
 			if addr != b.PeerID {
-				log.Println("PEERID    ", b.PeerID)
-				log.Println("SIGNER    ", addr)
+				log.Warnln("PEERID    ", b.PeerID)
+				log.Warnln("SIGNER    ", addr)
 				return errors.New("SIGNER is different from PEERID")
 			}
 		} else {
@@ -114,8 +114,8 @@ func (b *blockV1) Verify() error {
 
 	mrh := b.NormalTransactions().Hash()
 	if bytes.Compare(mrh, b.MerkleTreeRootHash) != 0 {
-		log.Println("MerkleRootHash STORE", hex.EncodeToString(b.MerkleTreeRootHash))
-		log.Println("MerkleRootHash CALC ", hex.EncodeToString(mrh))
+		log.Warnln("MerkleRootHash STORE", hex.EncodeToString(b.MerkleTreeRootHash))
+		log.Warnln("MerkleRootHash CALC ", hex.EncodeToString(mrh))
 		return errors.New("MerkleTreeRootHash is different")
 	}
 	return nil

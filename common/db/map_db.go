@@ -2,9 +2,9 @@ package db
 
 import (
 	"fmt"
-	"log"
 	"sync"
 
+	"github.com/icon-project/goloop/common/log"
 	"github.com/pkg/errors"
 )
 

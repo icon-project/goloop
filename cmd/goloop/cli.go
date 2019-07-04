@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/url"
 	"os"
 
@@ -15,6 +14,7 @@ import (
 
 	"github.com/icon-project/goloop/chain"
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/node"
 )
 

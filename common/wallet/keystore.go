@@ -7,11 +7,11 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"io"
-	"log"
 
 	"github.com/gofrs/uuid"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/scrypt"
@@ -189,7 +189,7 @@ func DecryptKeyStore(data, pw []byte) (*crypto.PrivateKey, error) {
 	public := secret.PublicKey()
 	address := common.NewAccountAddressFromPublicKey(public)
 	if !address.Equal(&ksData.Address) {
-		log.Printf("Recovered address %s != keyStore address %s",
+		log.Warnf("Recovered address %s != keyStore address %s",
 			address.String(), ksData.Address.String())
 	}
 	return secret, nil

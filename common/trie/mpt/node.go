@@ -2,9 +2,9 @@ package mpt
 
 import (
 	"bytes"
-	"log"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
 	"golang.org/x/crypto/sha3"

@@ -3,7 +3,8 @@ package codec
 import (
 	"bytes"
 	"io"
-	"log"
+
+	"github.com/icon-project/goloop/common/log"
 )
 
 type Encoder interface {

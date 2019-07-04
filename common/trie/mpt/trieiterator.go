@@ -2,8 +2,9 @@ package mpt
 
 import (
 	"errors"
+
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie"
-	"log"
 )
 
 func (m *mpt) initIterator(iter *iteratorImpl) {

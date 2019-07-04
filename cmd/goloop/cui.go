@@ -1,8 +1,7 @@
 package main
 
 import (
-	"log"
-
+	"github.com/icon-project/goloop/common/log"
 	"github.com/jroimartin/gocui"
 )
 

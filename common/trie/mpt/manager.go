@@ -1,10 +1,10 @@
 package mpt
 
 import (
-	"log"
 	"reflect"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie"
 )
 

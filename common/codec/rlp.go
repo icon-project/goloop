@@ -5,9 +5,9 @@ import (
 	"encoding"
 	"io"
 	"io/ioutil"
-	"log"
 	"reflect"
 
+	"github.com/icon-project/goloop/common/log"
 	"github.com/pkg/errors"
 )
 

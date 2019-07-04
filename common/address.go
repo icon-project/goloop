@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"log"
 	"reflect"
 
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"gopkg.in/vmihailenco/msgpack.v4"
 )

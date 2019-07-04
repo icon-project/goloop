@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
 	"regexp"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/service/transaction"
 	"golang.org/x/crypto/sha3"
 )
@@ -395,7 +395,7 @@ func newGenesisStorage(readerAt io.ReaderAt, size int64) (GenesisStorage, error)
 		} else {
 			key, err := hex.DecodeString(f.Name)
 			if err != nil {
-				log.Printf("InvalidFileName(fname=%s)", f.Name)
+				log.Warnf("InvalidFileName(name=%s)", f.Name)
 				continue
 			}
 			m[string(key)] = f

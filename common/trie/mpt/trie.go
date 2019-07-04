@@ -3,10 +3,10 @@ package mpt
 import (
 	"bytes"
 	"errors"
-	"log"
 	"reflect"
 	"sync"
 
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 
 	"github.com/icon-project/goloop/common"
@@ -171,7 +171,7 @@ func (m *mpt) Hash() []byte {
 		return m.root.hash()
 	}
 	if err := m.evaluateTrie(pool); err != nil {
-		log.Printf("err : %s\n", err)
+		log.Warnf("m.evaluateTrie() fails err=%+v", err)
 		return nil
 	}
 	h := m.root.hash()

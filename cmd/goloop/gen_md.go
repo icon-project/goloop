@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strings"
 
+	"github.com/icon-project/goloop/common/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )

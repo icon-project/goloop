@@ -1,11 +1,12 @@
 package ipc
 
 import (
-	"log"
 	"net"
 	"os"
 	"path"
 	"sync"
+
+	"github.com/icon-project/goloop/common/log"
 )
 
 type Server interface {

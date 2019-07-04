@@ -5,15 +5,15 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
-	"log"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/txresult"
-	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/opt"
@@ -70,7 +70,7 @@ func (lc *LoopChainDB) GetBlockByHeight(height int) (module.Block, error) {
 	} else {
 		b, err := ParseBlockV1(bs)
 		if err != nil {
-			log.Printf("Fail to parse block err=%+v blocks=%s", err, string(bs))
+			log.Warnf("Fail to parse block err=%+v blocks=%s", err, string(bs))
 		}
 		return b, err
 	}
@@ -82,7 +82,7 @@ func (lc *LoopChainDB) GetLastBlock() (module.Block, error) {
 	} else {
 		b, err := ParseBlockV1(bs)
 		if err != nil {
-			log.Printf("Fail to parse block err=%+v blocks=%s", err, string(bs))
+			log.Warnf("Fail to parse block err=%+v blocks=%s", err, string(bs))
 		}
 		return b, err
 	}
@@ -284,7 +284,7 @@ func OpenDatabase(blockdir, scoredir string) (*LoopChainDB, error) {
 	}
 	if scoredir != "" {
 		if scorebk, err := leveldb.OpenFile(scoredir, opt); err != nil {
-			log.Printf("Fail to open SCORE DB err=%+v (ignore)", err)
+			log.Warnf("Fail to open SCORE DB err=%+v (ignore)", err)
 		} else {
 			lcdb.scorebk = scorebk
 		}

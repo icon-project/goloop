@@ -3,10 +3,10 @@ package ompt
 import (
 	"bytes"
 	"fmt"
-	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/merkle"
-	"log"
 
+	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
 )
 
