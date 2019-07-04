@@ -44,6 +44,30 @@ Summarize the document to following items.
 |---|---|---|---|
 |height|T_INT|true| Start height |
 
+> Success Responses
+
+```json
+{
+  "code": 0
+}
+```
+
+> Failure Response
+
+```json
+{
+  "code": -32602,
+  "message": "Bad params"
+}
+```
+
+#### Responses
+
+|Name|Type|Required|Description|
+|---|---|---|---|
+|code|integer|true| 0 or JSON RPC error code. 0 means success. |
+|message|String|false| error message. |
+
 > Example notification
 
 ```json
@@ -86,6 +110,31 @@ Summarize the document to following items.
 |addr|T_ADDR|false||
 |event|String|true| Event signature |
 |data|Array|false| Array of parameters to match. Its length shall be equal to the number of parameters of the event. If an element is `null`, the parameter is not matched. |
+
+> Success Responses
+
+```json
+{
+  "code": 0
+}
+```
+
+> Failure Response
+
+```json
+{
+  "code": -32602,
+  "message": "Bad params"
+}
+```
+
+#### Responses
+
+|Name|Type|Required|Description|
+|---|---|---|---|
+|code|T_INT|true| 0 or JSON RPC error code. 0 means success. |
+|message|String|false| error message. |
+
 
 > Example notifiaction
 
