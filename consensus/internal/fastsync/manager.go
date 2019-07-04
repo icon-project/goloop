@@ -3,6 +3,7 @@ package fastsync
 import (
 	"math"
 
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -94,13 +95,13 @@ func (m *manager) FetchBlocks(
 	}, nil
 }
 
-func NewManager(nm module.NetworkManager, bm module.BlockManager) (Manager, error) {
+func NewManager(nm module.NetworkManager, bm module.BlockManager, logger log.Logger) (Manager, error) {
 	m := &manager{}
 	ph, err := nm.RegisterReactorForStreams("fastsync", m, protocols, configFastSyncPriority)
 	if err != nil {
 		return nil, err
 	}
-	m.server = newServer(nm, ph, bm)
-	m.client = newClient(nm, ph, bm)
+	m.server = newServer(nm, ph, bm, logger)
+	m.client = newClient(nm, ph, bm, logger)
 	return m, nil
 }

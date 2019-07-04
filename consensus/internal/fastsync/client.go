@@ -3,12 +3,12 @@ package fastsync
 import (
 	"bytes"
 	"io"
-	"log"
 	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -21,9 +21,10 @@ const (
 
 type client struct {
 	common.Mutex
-	nm module.NetworkManager
-	ph module.ProtocolHandler
-	bm module.BlockManager
+	nm     module.NetworkManager
+	ph     module.ProtocolHandler
+	bm     module.BlockManager
+	logger log.Logger
 
 	fetchID uint16
 	fr      *fetchRequest
@@ -86,11 +87,12 @@ type fetchRequest struct {
 }
 
 func newClient(nm module.NetworkManager, ph module.ProtocolHandler,
-	bm module.BlockManager) *client {
+	bm module.BlockManager, logger log.Logger) *client {
 	cl := &client{}
 	cl.nm = nm
 	cl.ph = ph
 	cl.bm = bm
+	cl.logger = logger
 	return cl
 }
 
@@ -236,18 +238,16 @@ func (cl *client) onResult(f *fetcher, err error, blk module.Block, votes module
 	defer cl.Unlock()
 
 	if isNoBlock(err) {
-		log.Printf("onResult %v\n", err)
+		cl.logger.Debugf("onResult %v\n", err)
 	} else if err != nil {
-		log.Printf("onResult %+v\n", err)
+		cl.logger.Debugf("onResult %+v\n", err)
 	} else {
-		log.Printf("onResult %d\n", blk.Height())
+		cl.logger.Debugf("onResult %d\n", blk.Height())
 	}
 
 	fr := cl.fr
 	if fr != f.fr {
-		if logDebug {
-			log.Printf("onResult: fr %p != f.fr %p\n", fr, f.fr)
-		}
+		cl.logger.Tracef("onResult: fr %p != f.fr %p\n", fr, f.fr)
 		return
 	}
 
@@ -286,9 +286,7 @@ func (cl *client) onResult(f *fetcher, err error, blk module.Block, votes module
 	if p == nil {
 		return
 	}
-	if logDebug {
-		log.Printf("height=%d consumeOffset=%d\n", f.height, fr.consumeOffset)
-	}
+	cl.logger.Tracef("height=%d consumeOffset=%d\n", f.height, fr.consumeOffset)
 	fr.pendingResults[f.height-fr.consumeOffset] = &blockResult{
 		id:    f.id,
 		blk:   blk,
@@ -321,7 +319,7 @@ func (cl *client) onResult(f *fetcher, err error, blk module.Block, votes module
 					fr.heightSet.add(fr.pendingResults[j].blk.Height())
 				}
 			}
-			log.Printf("onResult: %+v\n", err)
+			cl.logger.Tracef("onResult: %+v\n", err)
 			break
 		}
 		prevBlock = ri.blk
@@ -333,9 +331,7 @@ func (cl *client) onResult(f *fetcher, err error, blk module.Block, votes module
 	fr.notifyOffset = fr.notifyOffset + int64(cnt)
 	fr.prevBlock = prevBlock
 	fr._reschedule()
-	if logDebug {
-		log.Printf("onResult: %d block(s) notification\n", cnt)
-	}
+	cl.logger.Tracef("onResult: %d block(s) notification\n", cnt)
 	if cnt > 0 {
 		cb := fr.cb
 		cl.CallAfterUnlock(func() {
@@ -366,7 +362,7 @@ const (
 	fstepSend fstep = iota
 	fstepWaitResp
 	fstepWaitData
-	fstepFin // canceled or succeeded
+	fstepFin  // canceled or succeeded
 )
 
 type fetcher struct {
@@ -421,7 +417,7 @@ func (f *fetcher) _doSend() {
 	msg.RequestID = f.requestID
 	msg.Height = f.height
 	bs := codec.MustMarshalToBytes(&msg)
-	log.Printf("Request %d, %d\n", f.requestID, f.height)
+	f.cl.logger.Debugf("Request RequestID:%d, Height:%d\n", f.requestID, f.height)
 	if f.timer != nil {
 		f.timer.Stop()
 		f.timer = nil
@@ -506,9 +502,7 @@ func (f *fetcher) onReceive(pi module.ProtocolInfo, b []byte) {
 		if msg.RequestID != f.requestID {
 			return
 		}
-		if logDebug {
-			log.Printf("onReceive BlockMetadata rid=%d, len=%d\n", msg.RequestID, msg.BlockLength)
-		}
+		f.cl.logger.Tracef("onReceive BlockMetadata rid=%d, len=%d\n", msg.RequestID, msg.BlockLength)
 		if msg.BlockLength < 0 {
 			f.step = fstepFin
 			if f.timer != nil {
@@ -537,9 +531,7 @@ func (f *fetcher) onReceive(pi module.ProtocolInfo, b []byte) {
 		}
 		f.dataList = append(f.dataList, msg.Data)
 		f.left -= int32(len(msg.Data))
-		if logDebug {
-			log.Printf("onReceive BlockData rid=%d, data len=%d left=%d\n", msg.RequestID, len(msg.Data), f.left)
-		}
+		f.cl.logger.Tracef("onReceive BlockData rid=%d, data len=%d left=%d\n", msg.RequestID, len(msg.Data), f.left)
 		if f.left == 0 {
 			f.step = fstepFin
 			if f.timer != nil {

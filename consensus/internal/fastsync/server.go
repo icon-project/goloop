@@ -3,11 +3,11 @@ package fastsync
 import (
 	"bytes"
 	"io"
-	"log"
 	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -29,19 +29,21 @@ type speer struct {
 
 type server struct {
 	common.Mutex
-	nm    module.NetworkManager
-	ph    module.ProtocolHandler
-	bm    module.BlockManager
-	peers []*speer
+	nm     module.NetworkManager
+	ph     module.ProtocolHandler
+	bm     module.BlockManager
+	logger log.Logger
+	peers  []*speer
 
 	running bool
 }
 
-func newServer(nm module.NetworkManager, ph module.ProtocolHandler, bm module.BlockManager) *server {
+func newServer(nm module.NetworkManager, ph module.ProtocolHandler, bm module.BlockManager, logger log.Logger) *server {
 	s := &server{
-		nm: nm,
-		ph: ph,
-		bm: bm,
+		nm:     nm,
+		ph:     ph,
+		bm:     bm,
+		logger: logger,
 	}
 	return s
 }
@@ -67,7 +69,7 @@ func (s *server) _addPeer(id module.PeerID) {
 		stoppedCh: make(chan struct{}),
 	}
 	s.peers = append(s.peers, speer)
-	h := newSConHandler(speer.msgCh, speer.cancelCh, speer.stoppedCh, speer.id, s.ph, s.bm)
+	h := newSConHandler(speer.msgCh, speer.cancelCh, speer.stoppedCh, speer.id, s.ph, s.bm, s.logger)
 	go h.handle()
 }
 
@@ -150,6 +152,7 @@ type sconHandler struct {
 	id        module.PeerID
 	ph        module.ProtocolHandler
 	bm        module.BlockManager
+	logger    log.Logger
 
 	nextItems []*BlockRequest
 	buf       *bytes.Buffer
@@ -165,6 +168,7 @@ func newSConHandler(
 	id module.PeerID,
 	ph module.ProtocolHandler,
 	bm module.BlockManager,
+	logger log.Logger,
 ) *sconHandler {
 	h := &sconHandler{
 		msgCh:     msgCh,
@@ -173,6 +177,9 @@ func newSConHandler(
 		id:        id,
 		ph:        ph,
 		bm:        bm,
+		logger: logger.WithFields(log.Fields{
+			"peer": common.HexPre(id.Bytes()),
+		}),
 	}
 	return h
 }
@@ -238,7 +245,7 @@ func (h *sconHandler) updateNextMsg() {
 		return
 	} else {
 		// n==0 && err!=io.EOF
-		log.Panicf("n=%d, err=%+v\n", n, err)
+		h.logger.Panicf("n=%d, err=%+v\n", n, err)
 	}
 	var msg BlockData
 	msg.RequestID = h.requestID
@@ -255,9 +262,7 @@ func (h *sconHandler) processRequestMsg(msgItem *MessageItem) {
 			// TODO log
 			return
 		}
-		if logMsg {
-			log.Printf("Received BlockRequest %d\n", msg.Height)
-		}
+		h.logger.Debugf("Received BlockRequest %d\n", msg.Height)
 		h.nextItems = append(h.nextItems, &msg)
 	}
 }
@@ -284,9 +289,7 @@ loop:
 				h.nextMsg = nil
 				h.updateNextMsg()
 			} else if !isTemporary(err) {
-				if logMsg {
-					log.Printf("error=%+v\n", err)
-				}
+				h.logger.Warnf("unicast error %+v\n", err)
 				h.cancelAllRequests()
 			}
 		}

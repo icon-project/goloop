@@ -250,7 +250,7 @@ type syncer struct {
 }
 
 func newSyncer(e Engine, logger log.Logger, nm module.NetworkManager, bm module.BlockManager, mutex *common.Mutex, addr module.Address) Syncer {
-	fsm, err := fastsync.NewManager(nm, bm)
+	fsm, err := fastsync.NewManager(nm, bm, logger)
 	if err != nil {
 		return nil
 	}

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/consensus/internal/test"
 	"github.com/stretchr/testify/assert"
@@ -38,7 +39,7 @@ func newClientTestSetUp(t *testing.T, n int) *clientTestSetUp {
 		}
 	}
 	var err error
-	s.m, err = NewManager(s.nms[0], s.bm)
+	s.m, err = NewManager(s.nms[0], s.bm, log.New())
 	assert.Nil(t, err)
 	s.cb = newTFetchCallback()
 	return s
