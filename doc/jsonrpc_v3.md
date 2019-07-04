@@ -49,6 +49,7 @@ Below table shows the default error messages for the error code. Actual message 
 |            | -31002 | Pending | Transaction is in the pool, but not included in the block. |
 |            | -31003 | Executing | Transaction is included in the block, but it doesn’t have confirmed result. |
 |            | -31004 | Not found | Requested data is not found. |
+|            | -31005 | Lack of resource | Resource is not available. |
 |SCORE Error | -30000 ~ -30099 |  | Mapped error codes from Core2 Design - SCORE Result. |
 
 ## JSON-RPC Methods
