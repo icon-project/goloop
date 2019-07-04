@@ -7,11 +7,11 @@ import (
 	"sync"
 
 	"github.com/gorilla/websocket"
-	"github.com/labstack/echo/v4"
-
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/server/jsonrpc"
 	"github.com/icon-project/goloop/service/txresult"
+	"github.com/labstack/echo/v4"
 )
 
 type wsSession struct {
@@ -104,10 +104,14 @@ func (wm *wsSessionManager) RunBlockSession(ctx echo.Context) error {
 		return err
 	}
 
+	var wsResponse WSResponse
 	wss := wm.NewSession(c, chain)
 	if wss == nil {
+		wsResponse.Code = int(jsonrpc.ErrorLackOfResource)
+		wsResponse.Message = "too many monitor"
+		c.WriteJSON(&wsResponse)
 		c.Close()
-		return echo.NewHTTPError(http.StatusTooManyRequests, "too many stream sessions")
+		return nil
 	}
 	defer func() {
 		wm.StopSession(wss)
@@ -115,12 +119,19 @@ func (wm *wsSessionManager) RunBlockSession(ctx echo.Context) error {
 
 	_, msgBS, err := c.ReadMessage()
 	if err != nil {
-		return err
+		ctx.Logger().Error(err)
+		return nil
 	}
 	var blockRequest BlockRequest
 	if err := json.Unmarshal(msgBS, &blockRequest); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "bad block request")
+		wsResponse.Code = int(jsonrpc.ErrorCodeJsonParse)
+		wsResponse.Message = "bad block request"
+		c.WriteJSON(&wsResponse)
+		return nil
 	}
+
+	wsResponse.Code = 0
+	c.WriteJSON(&wsResponse)
 
 	ech := make(chan error)
 	go readLoop(c, ech)
@@ -131,6 +142,9 @@ loop:
 	for {
 		bch, err = chain.BlockManager().WaitForBlock(h)
 		if err != nil {
+			wsResponse.Code = int(jsonrpc.ErrorCodeSystem)
+			wsResponse.Message = err.Error()
+			c.WriteJSON(&wsResponse)
 			break loop
 		}
 		select {
@@ -148,7 +162,7 @@ loop:
 		h++
 	}
 	ctx.Logger().Error(err)
-	return err
+	return nil
 }
 
 func (wm *wsSessionManager) RunEventSession(ctx echo.Context) error {
@@ -163,10 +177,13 @@ func (wm *wsSessionManager) RunEventSession(ctx echo.Context) error {
 		return err
 	}
 
+	var wsResponse WSResponse
 	wss := wm.NewSession(c, chain)
 	if wss == nil {
+		wsResponse.Code = int(jsonrpc.ErrorLackOfResource)
+		wsResponse.Message = "too many monitor"
+		c.WriteJSON(&wsResponse)
 		c.Close()
-		return echo.NewHTTPError(http.StatusTooManyRequests, "too many stream sessions")
 	}
 	defer func() {
 		wm.StopSession(wss)
@@ -174,16 +191,26 @@ func (wm *wsSessionManager) RunEventSession(ctx echo.Context) error {
 
 	_, msgBS, err := c.ReadMessage()
 	if err != nil {
-		return err
+		ctx.Logger().Error(err)
+		return nil
 	}
 	var er EventRequest
 	if err := json.Unmarshal(msgBS, &er); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "bad event request")
+		wsResponse.Code = int(jsonrpc.ErrorCodeJsonParse)
+		wsResponse.Message = "bad event request"
+		c.WriteJSON(&wsResponse)
+		return nil
 	}
 	lb, err := er.compile()
 	if err != nil {
-		return err
+		wsResponse.Code = int(jsonrpc.ErrorCodeInvalidParams)
+		wsResponse.Message = "bad event request parameter"
+		c.WriteJSON(&wsResponse)
+		return nil
 	}
+
+	wsResponse.Code = 0
+	c.WriteJSON(&wsResponse)
 
 	ech := make(chan error)
 	go readLoop(c, ech)
@@ -194,6 +221,9 @@ loop:
 	for {
 		bch, err = chain.BlockManager().WaitForBlock(h)
 		if err != nil {
+			wsResponse.Code = int(jsonrpc.ErrorCodeSystem)
+			wsResponse.Message = err.Error()
+			c.WriteJSON(&wsResponse)
 			break loop
 		}
 		select {
@@ -206,18 +236,27 @@ loop:
 			}
 			rl, err := chain.ServiceManager().ReceiptListFromResult(blk.Result(), module.TransactionGroupNormal)
 			if err != nil {
+				wsResponse.Code = int(jsonrpc.ErrorCodeSystem)
+				wsResponse.Message = err.Error()
+				c.WriteJSON(&wsResponse)
 				break loop
 			}
 			index := int32(0)
 			for rit := rl.Iterator(); rit.Has(); rit.Next() {
 				r, err := rit.Get()
 				if err != nil {
+					wsResponse.Code = int(jsonrpc.ErrorCodeSystem)
+					wsResponse.Message = err.Error()
+					c.WriteJSON(&wsResponse)
 					break loop
 				}
 				if r.LogsBloom().Contain(lb) {
 					for eit := r.EventLogIterator(); eit.Has(); eit.Next() {
 						e, err := eit.Get()
 						if err != nil {
+							wsResponse.Code = int(jsonrpc.ErrorCodeSystem)
+							wsResponse.Message = err.Error()
+							c.WriteJSON(&wsResponse)
 							break loop
 						}
 						if er.match(e) {
@@ -239,7 +278,7 @@ loop:
 		h++
 	}
 	ctx.Logger().Error(err)
-	return err
+	return nil
 }
 
 const configMaxSession = 10
@@ -254,6 +293,11 @@ type EventRequest struct {
 	Event   string          `json:"event"`
 	Data    []interface{}   `json:"data"`
 	dataBSs [][]byte
+}
+
+type WSResponse struct {
+	Code    int    `json:"code"`
+	Message string `json:"message,omitempty"`
 }
 
 type BlockNotification struct {
