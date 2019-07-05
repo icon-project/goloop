@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -427,12 +426,10 @@ func (t *JsonTemplate) Response(format string, v interface{}, resp *echo.Respons
 	}
 	nt, err = nt.Parse(format)
 	if err != nil {
-		log.Println(err)
 		return err
 	}
 	err = nt.Execute(resp, v)
 	if err != nil {
-		log.Println(err)
 		return err
 	}
 

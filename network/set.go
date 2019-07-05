@@ -3,7 +3,6 @@ package network
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"math/rand"
 	"sync"
 	"time"
@@ -340,7 +339,6 @@ func (s *NetAddressSet) PutByPeer(p *Peer) (old string, removed NetAddress) {
 		if a != p.netAddress && v == d {
 			s._remove(k)
 			removed = k.(NetAddress)
-			log.Println("NetAddressSet.PutByPeer remove", removed, v)
 		}
 	}
 	if od != nil {
