@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"strconv"
+	"unsafe"
 
 	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/common"
@@ -77,6 +78,10 @@ func getBlockByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}
 	if err := params.Convert(&param); err != nil {
 		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
 	}
+	height, err := param.Height.ParseInt(64)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
 
 	chain, err := ctx.Chain()
 	if err != nil {
@@ -85,7 +90,7 @@ func getBlockByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}
 
 	bm := chain.BlockManager()
 
-	block, err := bm.GetBlockByHeight(param.Height.Value())
+	block, err := bm.GetBlockByHeight(height)
 	if errors.NotFoundError.Equals(err) {
 		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
 	} else if err != nil {
@@ -414,6 +419,10 @@ func getBlockHeaderByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (inter
 	if err := params.Convert(&param); err != nil {
 		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
 	}
+	height, err := param.Height.ParseInt(64)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
 
 	chain, err := ctx.Chain()
 	if err != nil {
@@ -422,7 +431,7 @@ func getBlockHeaderByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (inter
 
 	bm := chain.BlockManager()
 
-	block, err := bm.GetBlockByHeight(param.Height.Value())
+	block, err := bm.GetBlockByHeight(height)
 	if errors.NotFoundError.Equals(err) {
 		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
 	} else if err != nil {
@@ -444,6 +453,10 @@ func getVotesByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}
 	if err := params.Convert(&param); err != nil {
 		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
 	}
+	height, err := param.Height.ParseInt(64)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
 
 	chain, err := ctx.Chain()
 	if err != nil {
@@ -452,7 +465,7 @@ func getVotesByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}
 
 	cs := chain.Consensus()
 
-	votes, err := cs.GetVotesByHeight(param.Height.Value())
+	votes, err := cs.GetVotesByHeight(height)
 	if errors.NotFoundError.Equals(err) {
 		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
 	} else if err != nil {
@@ -468,6 +481,12 @@ func getProofForResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{
 	var param ProofResultParam
 	if err := params.Convert(&param); err != nil {
 		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+	var idx int
+	if v64, err := param.Index.ParseInt(int(unsafe.Sizeof(idx)) * 8); err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	} else {
+		idx = int(v64)
 	}
 
 	chain, err := ctx.Chain()
@@ -490,7 +509,7 @@ func getProofForResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
-	proofs, err := receiptList.GetProof(int(param.Index.Value()))
+	proofs, err := receiptList.GetProof(idx)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}

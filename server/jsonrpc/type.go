@@ -16,6 +16,10 @@ func (hs HexBytes) Bytes() []byte {
 
 type HexInt string
 
+func (i HexInt) ParseInt(bits int) (int64, error) {
+	return common.ParseInt(string(i), bits)
+}
+
 func (i HexInt) Value() int64 {
 	v, err := common.ParseInt(string(i), 64)
 	if err != nil {
