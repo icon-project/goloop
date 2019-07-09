@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	stdlog "log"
 	"os"
 	"os/signal"
 	"path"
@@ -244,6 +245,7 @@ func main() {
 		log.FieldKeyWallet: hex.EncodeToString(wallet.Address().ID()),
 	})
 	log.SetGlobalLogger(logger)
+	stdlog.SetOutput(logger.WriterLevel(log.WarnLevel))
 
 	if chainDir != "" {
 		cfg.BaseDir = cfg.ResolveRelative(chainDir)

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	stdlog "log"
 	"os"
 	"os/signal"
 	"path"
@@ -281,6 +282,7 @@ func main() {
 			log.FieldKeyWallet: hex.EncodeToString(w.Address().ID()),
 		})
 		log.SetGlobalLogger(logger)
+		stdlog.SetOutput(logger.WriterLevel(log.WarnLevel))
 
 		if lv, err := log.ParseLevel(cfg.LogLevel); err != nil {
 			log.Panicf("Invalid log_level=%s", cfg.LogLevel)
