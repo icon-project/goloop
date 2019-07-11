@@ -3,6 +3,7 @@ package foundation.icon.test.score;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.Wallet;
 import foundation.icon.icx.data.Address;
+import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
@@ -50,7 +51,17 @@ public class EventGen extends Score {
         );
     }
 
-    public TransactionResult invokeGenerate(Wallet from, Address addr, BigInteger i, byte[] bytes) throws ResultTimeoutException, IOException{
+    public Bytes invokeGenerate(Wallet from, Address addr, BigInteger i, byte[] bytes) throws IOException{
+        RpcObject params = new RpcObject.Builder()
+                .put("_addr", new RpcValue(addr))
+                .put("_int", new RpcValue(i))
+                .put("_bytes", new RpcValue(bytes))
+                .build();
+        return invoke(from, "generate", params,
+                BigInteger.valueOf(0), BigInteger.valueOf(100));
+    }
+
+    public TransactionResult invokeGenerateAndWait(Wallet from, Address addr, BigInteger i, byte[] bytes) throws ResultTimeoutException, IOException{
         RpcObject params = new RpcObject.Builder()
                 .put("_addr", new RpcValue(addr))
                 .put("_int", new RpcValue(i))
