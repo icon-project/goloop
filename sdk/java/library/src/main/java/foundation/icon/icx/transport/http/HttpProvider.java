@@ -18,19 +18,20 @@
 package foundation.icon.icx.transport.http;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import foundation.icon.icx.transport.monitor.Monitor;
+import foundation.icon.icx.transport.monitor.MonitorSpec;
 import foundation.icon.icx.Request;
 import foundation.icon.icx.Provider;
-import foundation.icon.icx.transport.jsonrpc.RpcConverter;
-import foundation.icon.icx.transport.jsonrpc.RpcItem;
-import foundation.icon.icx.transport.jsonrpc.RpcItemSerializer;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.RequestBody;
+import foundation.icon.icx.transport.jsonrpc.*;
+import okhttp3.*;
+import okhttp3.Response;
 import okio.BufferedSink;
 
 import java.io.IOException;
+import java.util.Map;
 
 /**
  * The {@code HttpProvider} class transports JSON-RPC payloads through HTTP.
@@ -79,5 +80,160 @@ public class HttpProvider implements Provider {
                 .build();
 
         return new HttpCall<>(httpClient.newCall(httpRequest), converter);
+    }
+
+    private enum WsState {
+        WS_INIT,
+        WS_REQUEST,
+        WS_CONNECT,
+        WS_START,
+        WS_STOP
+    }
+
+    private class HttpMonitor<T> implements Monitor {
+        Monitor.Listener<T> listener;
+        MonitorSpec spec;
+        WsState state = WsState.WS_INIT;
+        okhttp3.WebSocket ws;
+        Object condVar = new Object();
+        RpcConverter<T> rpcConverter;
+
+        HttpMonitor(MonitorSpec spec, RpcConverter<T> converter) {
+            this.spec = spec;
+            this.rpcConverter = converter;
+        }
+
+        private class WebSocketListenerImpl extends WebSocketListener {
+            private String request;
+            WebSocketListenerImpl(String request) {
+                this.request = request;
+            }
+
+            @Override
+            public void onOpen(okhttp3.WebSocket webSocket, Response response) {
+                super.onOpen(webSocket, response);
+                synchronized (condVar) {
+                    state = WsState.WS_CONNECT;
+                }
+                webSocket.send(request);
+            }
+
+            @Override
+            public void onMessage(okhttp3.WebSocket webSocket, String message) {
+                super.onMessage(webSocket, message);
+                synchronized (condVar) {
+                    ObjectMapper mapper = new ObjectMapper();
+                    switch(state) {
+                        case WS_CONNECT:
+                            try {
+                                RpcError error = mapper.readValue(message, RpcError.class);
+                                if (error.getCode() == 0) {
+                                    state = WsState.WS_START;
+                                    listener.onStart();
+                                } else {
+                                    listener.onError(error.getCode());
+                                }
+                            }
+                            catch (IOException ex) {
+                                listener.onError(100);
+                            }
+                            condVar.notify();
+                            break;
+                        case WS_START:
+                            try {
+                                Map<String, String> map = mapper.readValue(message, Map.class);
+                                RpcObject.Builder builder = new RpcObject.Builder();
+                                for(String key : map.keySet()) {
+                                    builder.put(key, new RpcValue(map.get(key)));
+                                }
+                                T obj = rpcConverter.convertTo(builder.build());
+                                listener.onEvent(obj);
+                            }
+                            catch (IOException ex) {
+                                listener.onError(100);
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(WebSocket webSocket, Throwable t, Response response) {
+                listener.onError(0);
+            }
+
+            @Override
+            public void onClosed(okhttp3.WebSocket webSocket, int code, String reason) {
+                listener.onClose();
+            }
+        }
+
+        private okhttp3.WebSocket newWebSocket(String request) {
+            okhttp3.Request httpRequest = new okhttp3.Request.Builder()
+                    .url(url + "/" + spec.getPath())
+                    .build();
+            return httpClient.newWebSocket(httpRequest, new WebSocketListenerImpl(request));
+        }
+
+        @Override
+        public boolean start(Listener listener) {
+            synchronized (condVar) {
+                switch(state) {
+                    case WS_INIT:
+                    case WS_STOP:
+                        state = WsState.WS_REQUEST;
+                        break;
+                    default:
+                        throw new IllegalStateException();
+                }
+            }
+            this.listener = listener;
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
+            SimpleModule module = new SimpleModule();
+            module.addSerializer(RpcItem.class, new RpcItemSerializer());
+            mapper.registerModule(module);
+
+            String request;
+            try {
+                request = mapper.writeValueAsString(spec.getParams());
+            }
+            catch(JsonProcessingException ex) {
+                throw new IllegalArgumentException();
+            }
+
+            ws = newWebSocket(request);
+            try {
+                synchronized (condVar) {
+                    condVar.wait(3000);
+                }
+            } catch (InterruptedException ex) {
+                throw new IllegalStateException();
+            }
+            return state == WsState.WS_START;
+        }
+
+        @Override
+        public void stop() {
+            synchronized (condVar) {
+                switch(state) {
+                    case WS_INIT:
+                    case WS_STOP:
+                        throw new IllegalStateException(state.toString());
+                    default:
+                        ws.close(1000, null);
+                        ws = null;
+                        state = WsState.WS_STOP;
+                        break;
+                }
+            }
+        }
+    }
+
+    @Override
+    public <T> Monitor<T> monitor(MonitorSpec spec, RpcConverter<T> converter) {
+        return new HttpMonitor(spec, converter);
     }
 }

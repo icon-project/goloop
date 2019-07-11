@@ -18,6 +18,8 @@
 package foundation.icon.icx;
 
 import foundation.icon.icx.transport.jsonrpc.RpcConverter;
+import foundation.icon.icx.transport.monitor.Monitor;
+import foundation.icon.icx.transport.monitor.MonitorSpec;
 
 /**
  * The {@code Provider} class transports the request and receives the response.
@@ -32,5 +34,16 @@ public interface Provider {
      * @param <T>       the return type
      * @return a {@code Request} object to be executed
      */
-    <T> Request<T> request(foundation.icon.icx.transport.jsonrpc.Request request, RpcConverter<T> converter);
+    <T> Request<T> request(foundation.icon.icx.transport.jsonrpc.Request request, RpcConverter<T> converter) ;
+
+    /**
+     *
+     * @param spec
+     * @param converter
+     * @param <T>
+     * @return
+     */
+    default <T> Monitor<T> monitor(MonitorSpec spec, RpcConverter<T> converter) {
+        throw new UnsupportedOperationException();
+    }
 }

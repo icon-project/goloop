@@ -153,6 +153,63 @@ public final class Converters {
         }
     };
 
+    public static final RpcConverter<BlockNotification> BLOCK_NOTIFICATION
+            = new RpcConverter<BlockNotification>() {
+        @Override
+        public BlockNotification convertTo(RpcItem object) {
+            return new BlockNotification(object.asObject());
+        }
+
+        @Override
+        public RpcItem convertFrom(BlockNotification object) {
+            return RpcItemCreator.create(object);
+        }
+    };
+
+    public static final RpcConverter<EventNotification> EVENT_NOTIFICATION
+            = new RpcConverter<EventNotification>() {
+        @Override
+        public EventNotification convertTo(RpcItem object) {
+            return new EventNotification(object.asObject());
+        }
+
+        @Override
+        public RpcItem convertFrom(EventNotification object) {
+            return RpcItemCreator.create(object);
+        }
+    };
+
+    public static final RpcConverter<Base64[]> BASE64_ARRAY
+            = new RpcConverter<Base64[]>() {
+        @Override
+        public Base64[] convertTo(RpcItem rpcItem) {
+            RpcArray array = rpcItem.asArray();
+            Base64[] base64Array = new Base64[array.size()];
+            for (int i = 0; i < array.size(); i++) {
+                base64Array[i] = new Base64(array.get(i).asString());
+            }
+            return base64Array;
+        }
+
+        @Override
+        public RpcItem convertFrom(Base64[] object) {
+            return RpcItemCreator.create(object);
+        }
+    };
+
+    public static final RpcConverter BASE64
+            = new RpcConverter<Base64>() {
+        @Override
+        public Base64 convertTo(RpcItem rpcItem) {
+            return new Base64(rpcItem.asString());
+        }
+
+        @Override
+        public RpcItem convertFrom(Base64 object) {
+            return RpcItemCreator.create(object);
+        }
+    };
+
     public static final RpcConverter<List<ScoreApi>> SCORE_API_LIST
             = new RpcConverter<List<ScoreApi>>() {
 
