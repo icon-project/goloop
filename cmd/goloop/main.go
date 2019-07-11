@@ -265,7 +265,7 @@ func main() {
 	}
 	startFlags := startCmd.Flags()
 	var modLevels map[string]string
-	startFlags.StringToStringVar(&modLevels, "mod_level", nil, "Set log level for ")
+	startFlags.StringToStringVar(&modLevels, "mod_level", nil, "Set log level for specific module (<mod>=<level>,...)")
 	startFlags.MarkHidden("mod_level")
 
 	startCmd.Run = func(cmd *cobra.Command, args []string) {

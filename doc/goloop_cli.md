@@ -363,11 +363,13 @@ Server management
 ### Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --console_level | trace | Console log level (trace,debug,info,warn,error,fatal,panic) |
 | --ee_instances | 1 | Number of execution engines |
 | --ee_socket |  | Execution engine socket path |
 | --key_password |  | Password for the KeyStore file |
 | --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
+| --log_level | debug | Global log level (trace,debug,info,warn,error,fatal,panic) |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --p2p | 127.0.0.1:8080 | Advertise ip-port of P2P |
 | --p2p_listen |  | Listen ip-port of P2P |
@@ -419,12 +421,14 @@ Save configuration
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
+| --console_level | trace | Console log level (trace,debug,info,warn,error,fatal,panic) |
 | --cpuprofile |  | CPU Profiling data file |
 | --ee_instances | 1 | Number of execution engines |
 | --ee_socket |  | Execution engine socket path |
 | --key_password |  | Password for the KeyStore file |
 | --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
+| --log_level | debug | Global log level (trace,debug,info,warn,error,fatal,panic) |
 | --memprofile |  | Memory Profiling data file |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
@@ -452,16 +456,23 @@ Start server
 ### Usage
 ` goloop server start `
 
+### Options
+|Name,shorthand | Default | Description|
+|---|---|---|
+| --mod_level | [] | Set log level for specific module (<mod>=<level>,...) |
+
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
+| --console_level | trace | Console log level (trace,debug,info,warn,error,fatal,panic) |
 | --cpuprofile |  | CPU Profiling data file |
 | --ee_instances | 1 | Number of execution engines |
 | --ee_socket |  | Execution engine socket path |
 | --key_password |  | Password for the KeyStore file |
 | --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
+| --log_level | debug | Global log level (trace,debug,info,warn,error,fatal,panic) |
 | --memprofile |  | Memory Profiling data file |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
