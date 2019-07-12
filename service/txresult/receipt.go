@@ -439,10 +439,7 @@ func EventDataStringToBytesByType(t string, v string) ([]byte, error) {
 	case "str":
 		return []byte(v), nil
 	case "bytes":
-		if len(v) < 3 {
-			return []byte{}, nil
-		}
-		if v[0:2] != "0x" {
+		if len(v) < 2 || v[0:2] != "0x" {
 			return nil, errors.Errorf("IllegalFormatForBytes(%s)", v)
 		}
 		return hex.DecodeString(v[2:])
