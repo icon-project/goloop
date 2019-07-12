@@ -65,7 +65,7 @@ Summarize the document to following items.
 
 |Name|Type|Required|Description|
 |---|---|---|---|
-|code|integer|true| 0 or JSON RPC error code. 0 means success. |
+|code|Number|true| 0 or JSON RPC error code. 0 means success. |
 |message|String|false| error message. |
 
 > Example notification
@@ -81,8 +81,8 @@ Summarize the document to following items.
 
 |Name|Type|Required|Description|
 |---|---|---|---|
-|hash|T_HASH|true||
-|height|T_INT|true||
+|hash|T_HASH|true|The hash of the new block|
+|height|T_INT|true|The height of the new block|
 
 ### Events
 
@@ -93,12 +93,13 @@ Summarize the document to following items.
 ```json
 {
   "height": "0x10",
-  "addr": "cx12ab...",
-  "event": "Event(int,bytes)",
+  "addr": "cx49894fa5aec4d662e49934f297673cf08dd9f382",
+  "event": "Event(int,bytes,int,Address)",
   "data": [
       null,
-      "data2",
-      ...
+      "0xda12",
+      "0x2",
+      "hxb51a65420ce5199e538f21fc614eacf4234454fe"
   ]
 }
 ```
@@ -109,7 +110,7 @@ Summarize the document to following items.
 |height|T_INT|true| Start height |
 |addr|T_ADDR|false||
 |event|String|true| Event signature |
-|data|Array|false| Array of parameters to match. Its length shall be equal to the number of parameters of the event. If an element is `null`, the parameter is not matched. |
+|data|Array|false| Array of parameters to match. Its length shall be equal to the number of parameters of the event. `null` matches any value. |
 
 > Success Responses
 
@@ -132,7 +133,7 @@ Summarize the document to following items.
 
 |Name|Type|Required|Description|
 |---|---|---|---|
-|code|T_INT|true| 0 or JSON RPC error code. 0 means success. |
+|code|Number|true| 0 or JSON RPC error code. 0 means success. |
 |message|String|false| error message. |
 
 
@@ -150,9 +151,14 @@ Summarize the document to following items.
 
 |Name|Type|Required|Description|
 |---|---|---|---|
-|hash|T_HASH|true||
-|height|T_INT|true||
-|index|T_INT|true||
+|hash|T_HASH|true|Hash of the block including the events|
+|height|T_INT|true|Height of the block including the events|
+|index|T_INT|true|Index of the result including the events in the block|
+
+
+You may use `hash` and `index` to get proof of the result including
+the events(`icx_getProofForResult`).
+
 
 ## Extended JSON-RPC Methods
 
@@ -340,7 +346,7 @@ Currently, Core2 uses Merkle Patricia Trie to store receipt, so the last leaf no
   "jsonrpc": "2.0",
   "method": "icx_getProofForResult",
   "params": {
-      "hash": "0x10",
+      "hash": "0xc7fae616bd1d377a92c48a35e33e7a072e5e2be155c000088dbdd42a3e31bb74",
       "index": "0x0"
   }
 }
@@ -353,21 +359,19 @@ Currently, Core2 uses Merkle Patricia Trie to store receipt, so the last leaf no
 |index|T_INT|true|Index of the receipt in the block.<br/> 0 for the first.|
 
 > Example responses
-
 ```json
 {
-  "id": 1001,
-  "jsonrpc": "2.0",
-  "result": [
-      "",
-      "",
-      ...
-  ]
+   "id": 1001,
+   "jsonrpc": "2.0",
+   "result": [
+     "+QExoJezi7p+Q6Sj6RP1PYooLRlGqEz/UWwr0/VryoVpsmVAoLNM357mKnozSX9XP5PASGC4bq+QLpEY3Sg8xdIE7zD3oKIIH/jyDGldEmFNolkwa+3cxEJdrXWItDra84U66s9NoIfRLI8juWLG+6Z/xGVX1g3+J4yDEeInX0gABWGti5euoJrK+4GdphdGbxY4WsLIrflkcfrcqYGmazXClEtYjQ37oIiIPWzA4QFh/R/W1cuHM46RipVLzsSOdLPaFPOeBajToCXRQQ4GVjQiKXMgCTPPaqs30SMfDTTQpMiu9EWhB7wzoKxysxQEI6koHy7gnF5ob9nZYP7QDF/zV7MHU7Ut6NuRgICAgKDdQ/iagBv+CtzgCh1ju+SjVjZgOVeu6BZfBaAs5hYDo4CAgIA=",
+     "+QIRoJM2lLiv1hugUrj98X/c2Q8IWwOOjY5X5hoXhJWxYt9HoCIc9dReCXYR967Ll8MBSUxzksWDY2BnoQi9Wd/7oEoWoPkCx+uBkmGXMdfppwKUS/jaqLBEcxWj4bVoq/WpxFRzoJBir1eJCOvvqV9urYfxHvZ9E4MTcrb9Or7uLXyOQN78oB9ED5ht8egUlm/SGXX1UlpRFz+VwwgN6EY2TH8LJUT7oKsA5iI9WcteAH3ApzQCwO9BGpSHECr7Od0DEGf9/IxAoOsZFmn1IS2/EGAB97IbYRQGIy3j19DS2Y0jWyNmyT5XoERkVHKeInAzSMZcSm22AIIawXF/ibDdskyEDabbdnO5oCxrQAjl/71HrhhG7jokBsviGC3RYglC34NbtOWzZaoHoJMWXQn5I+cRmWg76pmT8VrDO0DSWGMyv1X3GbkPo8w/oPEBG9Q+RjtCMovVi9K6XG08khJpsPtcHB6YkOlHTLa8oPPEZm2q+9Cssdo5l0YzKH7/+cV1h5pxp8baWeUUUssFoBIHc9BwAGJDsArHrh9kkvS6K8B6xmOzRDR0eKfzC9NcoFHqm63YUFSq9I+9gVJB+VDPGWvp6ZV1AejoXwXS/8rkoJM2lLiv1hugUrj98X/c2Q8IWwOOjY5X5hoXhJWxYt9HoJl4/9qlwu2vrYvpyQ8ayLvfMOd3Tmc3KZT7FTTfJjJ3gA==",
+     "6CCmmADEFQCrJP7Wvhjk9aBRoZai37jZw23jIMQBAMQBAMQBAMQAwMA="
+   ]
 }
 ```
 
-> default Response
-
+> Failure Response
 ```json
 {
   "id": 1001,
@@ -383,7 +387,7 @@ Currently, Core2 uses Merkle Patricia Trie to store receipt, so the last leaf no
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
-|200|OK|Success|List of encoded proof and receipt|
+|200|OK|Success|List of base64 encoded proof including the receipt|
 |default|Default|JSON-RPC Error|Error Response|
 
 
