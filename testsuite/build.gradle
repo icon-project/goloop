@@ -18,6 +18,7 @@ repositories {
 sourceSets.test.java.srcDirs = ["java"]
 
 dependencies {
+    implementation "org.bouncycastle:bcprov-jdk15on:1.60"
     implementation "org.msgpack:jackson-dataformat-msgpack:0.8.16"
     implementation "org.java-websocket:Java-WebSocket:1.4.0"
     compile "org.junit.jupiter:junit-jupiter:5.4.2"

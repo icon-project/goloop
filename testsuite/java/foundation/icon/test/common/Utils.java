@@ -370,4 +370,13 @@ public class Utils {
             assertEquals(prevBal[i].add(val), service.getBalance(to[i]).execute());
         }
     }
+
+    public static String byteArrayToHex(byte[] array) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("0x");
+        for(byte v : array) {
+            sb.append(String.format("%02x", v));
+        }
+        return sb.toString();
+    }
 }
