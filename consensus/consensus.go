@@ -1445,6 +1445,9 @@ func (cs *consensus) GetVotesByHeight(height int64) (module.CommitVoteSet, error
 	defer cs.mutex.Unlock()
 
 	c, err := cs.getCommit(height)
+	if c.commitVotes == nil {
+		err = errors.NotFoundError.New("Not found")
+	}
 	if err != nil {
 		return nil, err
 	}
