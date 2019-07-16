@@ -2,7 +2,6 @@ package network
 
 import (
 	"crypto/elliptic"
-	"math"
 	"os"
 	"time"
 
@@ -51,7 +50,7 @@ const (
 	DefaultDialTimeout          = 5 * time.Second
 	DefaultReceiveQueueSize     = 1000
 	DefaultPacketBufferSize     = 4096 //bufio.defaultBufSize=4096
-	DefaultPacketPayloadMax     = math.MaxInt32
+	DefaultPacketPayloadMax     = 1024 * 1024
 	DefaultPacketPoolNumBucket  = 20
 	DefaultPacketPoolBucketLen  = 500
 	DefaultDiscoveryPeriod      = 2 * time.Second
