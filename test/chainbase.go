@@ -87,6 +87,10 @@ func (_r *ChainBase) Stop(sync bool) error {
 	panic("not implemented")
 }
 
+func (_r *ChainBase) Import(src string, sync bool) error {
+	panic("not implemented")
+}
+
 func (_r *ChainBase) Term(sync bool) error {
 	panic("not implemented")
 }

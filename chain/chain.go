@@ -11,12 +11,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/common/log"
-
 	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/chain/imports"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
@@ -123,6 +123,8 @@ const (
 	StateTerminated
 	StateVerifying
 	StateVerifyFailed
+	StateImporting
+	StateImportFailed
 	StateReseting
 	StateResetFailed
 )
@@ -151,6 +153,10 @@ func (s State) String() string {
 		return "terminating"
 	case StateTerminated:
 		return "terminated"
+	case StateImporting:
+		return "importing"
+	case StateImportFailed:
+		return "import failed"
 	default:
 		return "unknown"
 	}
@@ -347,16 +353,17 @@ func (c *singleChain) _prepare() error {
 	chainDir := c.cfg.ResolveAbsolute(c.cfg.BaseDir)
 	ContractDir := path.Join(chainDir, DefaultContractDir)
 	var err error
+	var ts module.Timestamper
 	c.sm, err = service.NewManager(c, c.nm, c.pm, ContractDir)
 	if err != nil {
 		return err
 	}
-	c.bm, err = block.NewManager(c, nil)
+	c.bm, err = block.NewManager(c, ts)
 	if err != nil {
 		return err
 	}
 	WALDir := path.Join(chainDir, DefaultWALDir)
-	c.cs = consensus.NewConsensus(c, WALDir, nil)
+	c.cs = consensus.NewConsensus(c, WALDir, ts)
 	return nil
 }
 
@@ -392,6 +399,34 @@ func (c *singleChain) _stop() {
 		c.nm.Term()
 		c.nm = nil
 	}
+}
+
+func (c *singleChain) _import(src string) error {
+	c.nm = network.NewManager(c, c.nt, c.cfg.SeedAddr, toRoles(c.cfg.Role)...)
+	//TODO [TBD] is service/contract.ContractManager owner of ContractDir ?
+	chainDir := c.cfg.ResolveAbsolute(c.cfg.BaseDir)
+	ContractDir := path.Join(chainDir, DefaultContractDir)
+	var err error
+	var ts module.Timestamper
+	c.sm, ts, err = imports.NewManagerForMigration(c, c.nm, c.pm, ContractDir, src)
+	if err != nil {
+		return err
+	}
+	c.bm, err = block.NewManager(c, ts)
+	if err != nil {
+		return err
+	}
+	WALDir := path.Join(chainDir, DefaultWALDir)
+	c.cs = consensus.NewConsensus(c, WALDir, ts)
+
+	if err := c.nm.Start(); err != nil {
+		return err
+	}
+	if err := c.cs.Start(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *singleChain) _execute(sync bool, f func()) error {
@@ -444,13 +479,31 @@ func (c *singleChain) Start(sync bool) error {
 }
 
 func (c *singleChain) Stop(sync bool) error {
-	if err := c._transit(StateStopping, StateStarted); err != nil {
+	if err := c._transit(StateStopping, StateStarted, StateImporting); err != nil {
 		return err
 	}
 	f := func() {
 		c._stop()
 		c._prepare()
 		c._setState(StateStopped, nil)
+	}
+	return c._execute(sync, f)
+}
+
+func (c *singleChain) Import(src string, sync bool) error {
+	if err := c._transit(StateImporting, StateStopped); err != nil {
+		return err
+	}
+	f := func() {
+		c._stop()
+		s := StateStopped
+		err := c._import(src)
+		if err != nil {
+			s = StateImportFailed
+			c._stop()
+			c._prepare()
+		}
+		c._setState(s, err)
 	}
 	return c._execute(sync, f)
 }
