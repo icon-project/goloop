@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/icon-project/goloop/test"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 )
@@ -262,39 +262,14 @@ func (r *testReactor) Response(msg string, id module.PeerID) string {
 }
 
 type dummyChain struct {
+	test.ChainBase
 	nid       int
 	metricCtx context.Context
 	logger    log.Logger
 }
 
-func (c *dummyChain) Database() db.Database                             { panic("not implemented") }
-func (c *dummyChain) Wallet() module.Wallet                             { panic("not implemented") }
 func (c *dummyChain) NID() int                                          { return c.nid }
-func (c *dummyChain) Channel() string                                   { panic("not implemented") }
-func (c *dummyChain) ConcurrencyLevel() int                             { panic("not implemented") }
-func (c *dummyChain) NormalTxPoolSize() int                             { panic("not implemented") }
-func (c *dummyChain) PatchTxPoolSize() int                              { panic("not implemented") }
-func (c *dummyChain) MaxBlockTxBytes() int                              { panic("not implemented") }
-func (c *dummyChain) Genesis() []byte                                   { panic("not implemented") }
 func (c *dummyChain) Logger() log.Logger                                { return c.logger }
-func (c *dummyChain) GetGenesisData(key []byte) ([]byte, error)         { panic("not implemented") }
-func (c *dummyChain) CommitVoteSetDecoder() module.CommitVoteSetDecoder { panic("not implemented") }
-
-func (c *dummyChain) BlockManager() module.BlockManager     { panic("not implemented") }
-func (c *dummyChain) Consensus() module.Consensus           { panic("not implemented") }
-func (c *dummyChain) ServiceManager() module.ServiceManager { panic("not implemented") }
-func (c *dummyChain) NetworkManager() module.NetworkManager { panic("not implemented") }
-func (c *dummyChain) Regulator() module.Regulator           { panic("not implemented") }
-
-func (c *dummyChain) Init(sync bool) error  { panic("not implemented") }
-func (c *dummyChain) Start(sync bool) error { panic("not implemented") }
-func (c *dummyChain) Stop(sync bool) error  { panic("not implemented") }
-func (c *dummyChain) Term(sync bool) error  { panic("not implemented") }
-func (c *dummyChain) State() string         { panic("not implemented") }
-
-func (c *dummyChain) Reset(sync bool) error  { panic("not implemented") }
-func (c *dummyChain) Verify(sync bool) error { panic("not implemented") }
-
 func (c *dummyChain) MetricContext() context.Context { return c.metricCtx }
 
 func generateNetwork(name string, port int, n int, t *testing.T, roles ...module.Role) ([]*testReactor, int) {
