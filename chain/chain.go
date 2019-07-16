@@ -408,7 +408,7 @@ func (c *singleChain) _import(src string) error {
 	ContractDir := path.Join(chainDir, DefaultContractDir)
 	var err error
 	var ts module.Timestamper
-	c.sm, ts, err = imports.NewManagerForMigration(c, c.nm, c.pm, ContractDir, src)
+	c.sm, ts, err = imports.NewServiceManagerForImport(c, c.nm, c.pm, ContractDir, src)
 	if err != nil {
 		return err
 	}
