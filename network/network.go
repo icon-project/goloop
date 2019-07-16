@@ -195,6 +195,9 @@ func (m *manager) unicast(pi protocolInfo, spi protocolInfo, bytes []byte, id mo
 	if !m.hasProtocolHandler(pi) {
 		return ErrNotRegisteredReactor
 	}
+	if DefaultPacketPayloadMax < len(bytes) {
+		return ErrIllegalArgument
+	}
 	pkt := NewPacket(pi, spi, bytes)
 	pkt.protocol = pi
 	pkt.dest = p2pDestPeer
@@ -214,6 +217,9 @@ func (m *manager) multicast(pi protocolInfo, spi protocolInfo, bytes []byte, rol
 	if _, ok := m.roles[role]; !ok {
 		return ErrNotRegisteredRole
 	}
+	if DefaultPacketPayloadMax < len(bytes) {
+		return ErrIllegalArgument
+	}
 	pkt := NewPacket(pi, spi, bytes)
 	pkt.dest = m.destByRole[role]
 	pkt.ttl = 0
@@ -224,6 +230,9 @@ func (m *manager) multicast(pi protocolInfo, spi protocolInfo, bytes []byte, rol
 func (m *manager) broadcast(pi protocolInfo, spi protocolInfo, bytes []byte, bt module.BroadcastType) error {
 	if !m.hasProtocolHandler(pi) {
 		return ErrNotRegisteredReactor
+	}
+	if DefaultPacketPayloadMax < len(bytes) {
+		return ErrIllegalArgument
 	}
 	pkt := NewPacket(pi, spi, bytes)
 	pkt.dest = p2pDestAny

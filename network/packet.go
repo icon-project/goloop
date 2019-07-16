@@ -94,13 +94,16 @@ func (i packetExtendInfo) String() string {
 	return fmt.Sprintf("{hint:%d,len:%d}", i.hint(), i.len())
 }
 
-//TODO check DefaultPacketPayloadMax
 func NewPacket(pi protocolInfo, spi protocolInfo, payload []byte) *Packet {
+	lengthOfPayload := len(payload)
+	if lengthOfPayload > DefaultPacketPayloadMax {
+		lengthOfPayload = DefaultPacketPayloadMax
+	}
 	return &Packet{
 		protocol:        pi,
 		subProtocol:     spi,
-		lengthOfPayload: uint32(len(payload)),
-		payload:         payload[:],
+		lengthOfPayload: uint32(lengthOfPayload),
+		payload:         payload[:lengthOfPayload],
 		timestamp:       time.Now(),
 	}
 }
