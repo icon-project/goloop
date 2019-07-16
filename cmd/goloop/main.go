@@ -150,6 +150,9 @@ func initConfig() {
 		cfg.EESocket = cfg.ResolveRelative(eeSocket)
 	}
 
+	if cpuProfile == "" {
+		cpuProfile = vc.GetString("cpuprofile")
+	}
 	if cpuProfile != "" {
 		f, err := os.Create(cpuProfile)
 		if err != nil {
@@ -169,6 +172,9 @@ func initConfig() {
 		}(c)
 	}
 
+	if memProfile == "" {
+		memProfile = vc.GetString("memprofile")
+	}
 	if memProfile != "" {
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, syscall.SIGHUP)
