@@ -172,7 +172,8 @@ func (r *Rest) ChainInjector(next echo.HandlerFunc) echo.HandlerFunc {
 		p := ctx.Param(ParamNID)
 		if nid, err := strconv.ParseInt(p, 0, 32); err == nil {
 			c = r.n.GetChain(int(nid))
-		} else {
+		}
+		if c == nil {
 			c = r.n.GetChainByChannel(p)
 		}
 
