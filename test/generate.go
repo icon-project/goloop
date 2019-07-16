@@ -4,7 +4,7 @@ package test
 
 //go:generate goimpl blockbase.go test BlockBase module.Block
 //go:generate goimpl blockmanagerbase.go test BlockManagerBase module.BlockManager
-//go:generate goimpl chainbase.go test ChainBase module.Chain
+//go:generate goimpl chainbase.go test ChainBase module.Chain "\"github.com/icon-project/goloop/common/log\""
 //go:generate goimpl regulatorbase.go test RegulatorBase module.Regulator
 //go:generate goimpl networkmanagerbase.go test NetworkManagerBase module.NetworkManager
 //go:generate goimpl servicemanagerbase.go test ServiceManagerBase module.ServiceManager
