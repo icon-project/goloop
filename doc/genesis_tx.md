@@ -104,8 +104,22 @@ This document specifies the genesis file format.
     If it's empty, then it accepts all network connection.
     * member (T_ADDR_EOA)
     
-  * `commitTimeout` (T_INT, default=`0x3e8`) <br>
-    Commit timeout in msec for the block. Default timeout is 1000ms (a second).
+  * `blockInterval` (T_INT) <br>
+    Block generation interval in msec
+    
+  * `commitTimeout` (T_INT) <br>
+    Commit timeout (timeout before propose after commit) in msec
+    
+    If `blockInterval` is specified, then it assumes `commitTimeout` as
+    minimum commit timeout value. If minimum commit timeout value is
+    bigger than `blockInterval`, then it uses value of `blockInterval`.
+    Default value of minimum commit timeout is 200ms.
+    
+    Otherwise, it uses `commitTimeout` as block interval and
+    minimum commit timeout. If both of them are not specified, then
+    it uses system default values
+    (1000ms for block interval, 200ms for minimum commit timeout).
+    
 
   * `timestampThreshold` (T_INT) <br>
     Allowed timestamp threshold in msec between the block and the transaction.

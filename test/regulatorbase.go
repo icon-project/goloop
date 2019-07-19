@@ -17,6 +17,6 @@ func (_r *RegulatorBase) OnTxExecution(count int, ed time.Duration, fd time.Dura
 	panic("not implemented")
 }
 
-func (_r *RegulatorBase) SetCommitTimeout(d time.Duration) {
+func (_r *RegulatorBase) SetCommitTimeout(i time.Duration, d time.Duration) {
 	panic("not implemented")
 }

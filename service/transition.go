@@ -485,8 +485,11 @@ func (t *transition) finalizeResult() error {
 	if ass != nil {
 		as := scoredb.NewStateStoreWith(ass)
 		timeout := scoredb.NewVarDB(as, state.VarCommitTimeout).Int64()
-		if timeout > 0 {
-			regulator.SetCommitTimeout(time.Duration(timeout) * time.Millisecond)
+		interval := scoredb.NewVarDB(as, state.VarBlockInterval).Int64()
+		if timeout > 0 || interval > 0 {
+			regulator.SetBlockInterval(
+				time.Duration(interval)*time.Millisecond,
+				time.Duration(timeout)*time.Millisecond)
 		}
 
 		tsThreshold := scoredb.NewVarDB(as, state.VarTimestampThreshold).Int64()

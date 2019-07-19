@@ -8,9 +8,11 @@ import (
 )
 
 const (
-	configMinimumTransactions  = 100
-	ConfigDefaultTransactions  = 1000
-	ConfigDefaultCommitTimeout = time.Second
+	configMinimumTransactions     = 100
+	ConfigDefaultTransactions     = 1000
+	ConfigDefaultCommitTimeout    = time.Second
+	ConfigDefaultBlockInterval    = time.Second
+	ConfigDefaultMinCommitTimeout = 200 * time.Millisecond
 )
 
 type txExecutionEntry struct {
@@ -34,7 +36,9 @@ func (e *txExecutionEntry) Add(e2 *txExecutionEntry) {
 type regulator struct {
 	lock sync.Mutex
 
-	commitTimeout time.Duration
+	proposeTime      time.Time
+	blockInterval    time.Duration
+	minCommitTimeout time.Duration
 
 	history      [30]txExecutionEntry
 	sum          txExecutionEntry
@@ -45,25 +49,55 @@ type regulator struct {
 	log log.Logger
 }
 
-func (r *regulator) SetCommitTimeout(d time.Duration) {
+func (r *regulator) SetBlockInterval(blockInterval time.Duration, commitTimeout time.Duration) {
+	if blockInterval == 0 {
+		blockInterval = commitTimeout
+	} else if commitTimeout == 0 {
+		commitTimeout = ConfigDefaultMinCommitTimeout
+	}
+	if commitTimeout > blockInterval {
+		commitTimeout = blockInterval
+	}
+
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	if r.commitTimeout == d {
+	if r.minCommitTimeout == commitTimeout && r.blockInterval == blockInterval {
 		return
 	}
-	r.log.Printf("Regulator.SetCommitTimeout(%s)", d)
 
-	txCount := int(d * time.Duration(r.currentTxCount) / r.commitTimeout)
-	r.commitTimeout = d
+	r.log.Printf("Regulator.SetCommitTimeout(interval=%s,timeout=%s)", blockInterval, commitTimeout)
+
+	txCount := int(blockInterval * time.Duration(r.currentTxCount) / r.blockInterval)
+	r.blockInterval = blockInterval
+	r.minCommitTimeout = commitTimeout
 	r.currentTxCount = txCount
+}
+
+func (r *regulator) OnPropose(now time.Time) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	r.proposeTime = now
 }
 
 func (r *regulator) CommitTimeout() time.Duration {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	return r.commitTimeout
+	timeout := r.blockInterval - time.Now().Sub(r.proposeTime)
+	if timeout < r.minCommitTimeout {
+		timeout = r.minCommitTimeout
+	}
+
+	return timeout
+}
+
+func (r *regulator) MinCommitTimeout() time.Duration {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	return r.minCommitTimeout
 }
 
 func (r *regulator) MaxTxCount() int {
@@ -90,7 +124,7 @@ func (r *regulator) OnTxExecution(count int, ed time.Duration, fd time.Duration)
 
 	// For target duration
 	r.currentTxCount =
-		int(time.Duration(r.sum.count) * r.commitTimeout / (r.sum.execution + (r.sum.finalize * 2)))
+		int(time.Duration(r.sum.count) * r.blockInterval / (r.sum.execution + (r.sum.finalize * 2)))
 	if r.currentTxCount < configMinimumTransactions {
 		r.currentTxCount = configMinimumTransactions
 	}
@@ -100,8 +134,9 @@ func (r *regulator) OnTxExecution(count int, ed time.Duration, fd time.Duration)
 
 func NewRegulator(logger log.Logger) *regulator {
 	return &regulator{
-		commitTimeout:  ConfigDefaultCommitTimeout,
-		currentTxCount: ConfigDefaultTransactions,
-		log:            logger,
+		blockInterval:    ConfigDefaultBlockInterval,
+		minCommitTimeout: ConfigDefaultMinCommitTimeout,
+		currentTxCount:   ConfigDefaultTransactions,
+		log:              logger,
 	}
 }

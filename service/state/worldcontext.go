@@ -24,10 +24,11 @@ const (
 	VarMembers        = "members"
 	VarDeployers      = "deployers"
 	VarLicenses       = "licenses"
-	VarCommitTimeout  = "commitTimeout"
 	VarTotalSupply    = "total_supply"
 
 	VarTimestampThreshold = "timestamp_threshold"
+	VarBlockInterval      = "block_interval"
+	VarCommitTimeout      = "commit_timeout"
 )
 
 const (

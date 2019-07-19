@@ -252,6 +252,7 @@ type chain struct {
 	} `json:"fee"`
 	ValidatorList      []*common.Address `json:"validatorList"`
 	MemberList         []*common.Address `json:"memberList"`
+	BlockInterval      *common.HexInt64  `json:"blockInterval"`
 	CommitTimeout      *common.HexInt64  `json:"commitTimeout"`
 	TimestampThreshold *common.HexInt64  `json:"timestampThreshold"`
 }
@@ -285,6 +286,13 @@ func (s *ChainScore) Install(param []byte) error {
 	}
 	if err := scoredb.NewVarDB(as, state.VarServiceConfig).Set(confValue); err != nil {
 		return scoreresult.Errorf(module.StatusSystemError, "Failed to set system config. err(%+v)\n", err)
+	}
+
+	if chain.BlockInterval != nil {
+		blockInterval := chain.BlockInterval.Value
+		if err := scoredb.NewVarDB(as, state.VarBlockInterval).Set(blockInterval); err != nil {
+			return scoreresult.Errorf(module.StatusSystemError, "Failed to set newHeightTimeout. err(%+v)\n", err)
+		}
 	}
 
 	if chain.CommitTimeout != nil {

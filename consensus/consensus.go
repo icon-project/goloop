@@ -458,11 +458,13 @@ func (cs *consensus) processPrefetchItems() {
 func (cs *consensus) enterPropose() {
 	cs.resetForNewStep(stepPropose)
 
+	now := time.Now()
 	if int(cs.round) > cs.validators.Len()*configRoundTimeoutThresholdFactor {
-		cs.nextProposeTime = time.Now().Add(timeoutNewRound)
+		cs.nextProposeTime = now.Add(timeoutNewRound)
 	} else {
-		cs.nextProposeTime = time.Now()
+		cs.nextProposeTime = now
 	}
+	cs.rg.OnPropose(now)
 
 	hrs := cs.hrs
 	cs.timer = time.AfterFunc(timeoutPropose, func() {
@@ -879,7 +881,7 @@ func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) error {
 
 func (cs *consensus) voteTimestamp() int64 {
 	var timestamp int64
-	blockIota := int64(cs.rg.CommitTimeout() / time.Microsecond)
+	blockIota := int64(cs.rg.MinCommitTimeout() / time.Microsecond)
 	if cs.lockedBlockParts != nil && cs.lockedBlockParts.block != nil {
 		timestamp = cs.lockedBlockParts.block.Timestamp() + blockIota
 	} else if cs.currentBlockParts != nil && cs.currentBlockParts.block != nil {

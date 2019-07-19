@@ -49,7 +49,9 @@ type Chain interface {
 
 type Regulator interface {
 	MaxTxCount() int
+	OnPropose(now time.Time)
 	CommitTimeout() time.Duration
+	MinCommitTimeout() time.Duration
 	OnTxExecution(count int, ed time.Duration, fd time.Duration)
-	SetCommitTimeout(d time.Duration)
+	SetBlockInterval(i time.Duration, d time.Duration)
 }

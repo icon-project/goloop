@@ -13,7 +13,7 @@ module.exports = {
                 ]
             },
             {
-                title: 'Genesis Transaction',
+                title: 'Genesis',
                 children: [
                     '/genesis_tx',
                     '/genesis_storage',
