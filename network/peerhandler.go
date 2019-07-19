@@ -497,6 +497,9 @@ func (a *Authenticator) handleSignatureRequest(pkt *Packet, p *Peer) {
 	if err != nil {
 		m = &SignatureResponse{Error: err.Error()}
 	}
+	if id.Equal(a.self) {
+		m = &SignatureResponse{Error: "selfAddress"}
+	}
 	p.id = id
 	a.sendMessage(PROTO_AUTH_SIGN_RESP, m, p)
 
