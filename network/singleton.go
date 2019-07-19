@@ -22,6 +22,7 @@ const (
 	NotStartedError
 	QueueOverflowError
 	DuplicatedPacketError
+	DuplicatedPeerError
 )
 
 var (
@@ -38,6 +39,7 @@ var (
 	ErrNotStarted                = errors.NewBase(NotStartedError, "NotStarted")
 	ErrQueueOverflow             = errors.NewBase(QueueOverflowError, "QueueOverflow")
 	ErrDuplicatedPacket          = errors.NewBase(DuplicatedPacketError, "DuplicatedPacket")
+	ErrDuplicatedPeer            = errors.NewBase(DuplicatedPeerError, "DuplicatedPeer")
 	ErrIllegalArgument           = errors.ErrIllegalArgument
 )
 
@@ -74,6 +76,7 @@ const (
 	DefaultSelectiveFloodingAdd = 1
 	DefaultSimplePeerIDSize     = 4
 	UsingSelectiveFlooding      = true
+	DefaultDuplicatedPeerTime   = 1 * time.Second
 )
 
 var (

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -41,7 +42,6 @@ type PeerToPeer struct {
 	//Discovery
 	discoveryTicker *time.Ticker
 	seedTicker      *time.Ticker
-	duplicated      *Set
 
 	//Addresses
 	seeds *NetAddressSet
@@ -101,7 +101,6 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer, mtr *metric.NetworkMet
 		reject:          NewPeerSet(),
 		discoveryTicker: time.NewTicker(DefaultDiscoveryPeriod),
 		seedTicker:      time.NewTicker(DefaultSeedPeriod),
-		duplicated:      NewSet(),
 		//
 		seeds:         NewNetAddressSet(),
 		roots:         NewNetAddressSet(),
@@ -250,16 +249,21 @@ func (p2p *PeerToPeer) onPeer(p *Peer) {
 		return
 	}
 	if dp := p2p.getPeer(p.id, false); dp != nil {
-		if p2p.removePeer(dp) {
-			p2p.onEvent(p2pEventDuplicate, p)
+		p2p.onEvent(p2pEventDuplicate, p)
+
+		//'b' is higher (ex : 'b' > 'a'), disconnect lower.outgoing
+		higher := strings.Compare(p2p.self.id.String(), p.id.String()) > 0
+		diff := p.timestamp.Sub(dp.timestamp)
+
+		if diff < DefaultDuplicatedPeerTime && dp.incomming != p.incomming && higher == p.incomming {
+			//close new which is lower's outgoing
+			p.CloseByError(ErrDuplicatedPeer)
+			p2p.logger.Infoln("Already exists connected Peer, close new", p, diff)
+			return
 		}
-		p2p.duplicated.Add(dp)
-		if dp.incomming == p.incomming {
-			dp.CloseByError(fmt.Errorf("onPeer duplicated peer"))
-			p2p.logger.Infoln("Already exists connected Peer, close duplicated peer", dp, p.incomming)
-		} else {
-			dp.Close("onPeer duplicated peer")
-		}
+		//close old
+		dp.CloseByError(ErrDuplicatedPeer)
+		p2p.logger.Infoln("Already exists connected Peer, close old", dp, diff)
 	}
 	p2p.orphanages.Add(p)
 	if !p.incomming {
@@ -328,10 +332,7 @@ func (p2p *PeerToPeer) onFailure(err error, pkt *Packet, c *Counter) {
 }
 
 func (p2p *PeerToPeer) removePeer(p *Peer) (isLeave bool) {
-	if p2p.duplicated.Remove(p) {
-		return
-	}
-
+	isLeave = false
 	if p.compareRole(p2pRoleSeed, false) {
 		p2p.removeSeed(p)
 		p2p.seeds.Add(p.netAddress)

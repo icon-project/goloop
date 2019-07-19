@@ -209,7 +209,7 @@ func (ph *protocolHandler) eventRoutine() {
 				case p2pEventLeave:
 					ph.reactor.OnLeave(p.ID())
 				case p2pEventDuplicate:
-					ph.reactor.OnLeave(p.ID())
+					ph.logger.Traceln("p2pEventDuplicate", p.ID())
 				}
 			}
 		}
