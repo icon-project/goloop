@@ -435,7 +435,7 @@ Core2 uses MsgPack and RLP for binary encoding and decoding.
 ||BlockPartSetID|PartSetID|If it doesn’t use PartSetID, it should be empty list.|
 ||Items|MsgPack List of VoteItem||
 |VoteItem||MsgPack List of followings||
-||Timestamp|MsgPack Int||
+||Timestamp|MsgPack Int|Voted time in micro-seconds|
 ||Signature|Signature||
 |PartSetID||MsgPack List of followings||
 ||Count|MsgPack Unsigned Int|Number of block parts|
@@ -447,7 +447,7 @@ Core2 uses MsgPack and RLP for binary encoding and decoding.
 ||Type|MsgPack Int|0 ← PreVote ( only for consensus )<br/>1 ← PreCommit ( for vote check )|
 ||BlockID|MsgPack Bytes|SHA3Sum256(BlockHeader)|
 ||BlockPartSetID|PartSetID|Votes.BlockPartSetID.|
-||Timestamp|MsgPack Int||
+||Timestamp|MsgPack Int|VoteItem.Timestamp|
 
 ### Proof
 
