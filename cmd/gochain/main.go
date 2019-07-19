@@ -44,6 +44,9 @@ type GoChainConfig struct {
 	Key          []byte          `json:"key,omitempty"`
 	KeyStoreData json.RawMessage `json:"key_store"`
 	KeyStorePass string          `json:"key_password"`
+
+	LogLevel     string `json:"log_level"`
+	ConsoleLevel string `json:"console_level"`
 }
 
 func (config *GoChainConfig) String() string {
@@ -106,6 +109,8 @@ func main() {
 	flag.IntVar(&cfg.NormalTxPoolSize, "normal_tx_pool", 0, "Normal transaction pool size")
 	flag.IntVar(&cfg.PatchTxPoolSize, "patch_tx_pool", 0, "Patch transaction pool size")
 	flag.IntVar(&cfg.MaxBlockTxBytes, "max_block_tx_bytes", 0, "Maximum size of ransactions in a block")
+	flag.StringVar(&cfg.LogLevel, "log_level", "debug", "Main log level")
+	flag.StringVar(&cfg.ConsoleLevel, "console_level", "trace", "Console log level")
 	flag.Parse()
 
 	if len(keyStoreFile) > 0 {
@@ -246,6 +251,18 @@ func main() {
 	})
 	log.SetGlobalLogger(logger)
 	stdlog.SetOutput(logger.WriterLevel(log.WarnLevel))
+
+	if lv, err := log.ParseLevel(cfg.LogLevel); err != nil {
+		log.Panicf("Fail to parse loglevel level=%s", cfg.LogLevel)
+	} else {
+		logger.SetLevel(lv)
+	}
+
+	if lv, err := log.ParseLevel(cfg.ConsoleLevel); err != nil {
+		log.Panicf("Fail to parse loglevel level=%s", cfg.ConsoleLevel)
+	} else {
+		logger.SetConsoleLevel(lv)
+	}
 
 	if chainDir != "" {
 		cfg.BaseDir = cfg.ResolveRelative(chainDir)
