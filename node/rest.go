@@ -12,6 +12,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/icon-project/goloop/chain"
 	"github.com/labstack/echo/v4"
 
 	"github.com/icon-project/goloop/common"
@@ -376,7 +377,7 @@ func (r *Rest) ResponseStatsView(resp *echo.Response) error {
 	}
 	for _, c := range r.n.GetChains() {
 		m := metric.Inspect(c)
-		if c.State() == "started" {
+		if c.State() != chain.StateStopped.String() {
 			m["nid"] = common.HexInt32{Value: int32(c.NID())}
 			m["channel"] = c.Channel()
 			v.Chains = append(v.Chains, m)
