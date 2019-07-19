@@ -8,7 +8,9 @@ import (
 )
 
 const (
-	configMinimumTransactions = 100
+	configMinimumTransactions  = 100
+	ConfigDefaultTransactions  = 1000
+	ConfigDefaultCommitTimeout = time.Second
 )
 
 type txExecutionEntry struct {
@@ -96,10 +98,10 @@ func (r *regulator) OnTxExecution(count int, ed time.Duration, fd time.Duration)
 		count, ed, fd, r.currentTxCount)
 }
 
-func NewRegulator(duration time.Duration, count int, logger log.Logger) *regulator {
+func NewRegulator(logger log.Logger) *regulator {
 	return &regulator{
-		commitTimeout:  duration,
-		currentTxCount: count,
+		commitTimeout:  ConfigDefaultCommitTimeout,
+		currentTxCount: ConfigDefaultTransactions,
 		log:            logger,
 	}
 }

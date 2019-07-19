@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
-	"time"
 
 	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/chain/imports"
@@ -609,7 +608,7 @@ func NewChain(
 		cfg:       *cfg,
 		pm:        pm,
 		logger:    chainLogger,
-		regulator: NewRegulator(time.Second, 1000, chainLogger),
+		regulator: NewRegulator(chainLogger),
 		metricCtx: metric.GetMetricContextByNID(cfg.NID),
 	}
 	return c
