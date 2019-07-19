@@ -43,6 +43,7 @@ type manager struct {
 	cm        contract.ContractManager
 	eem       eeproxy.Manager
 	trc       *transitionResultCache
+	tsc       *TxTimestampChecker
 
 	log log.Logger
 }
@@ -81,9 +82,10 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 			ConfigTransitionResultCacheEntrySize,
 			logger),
 		log: logger,
+		tsc: NewTimestampChecker(),
 	}
 	if nm != nil {
-		mgr.txReactor = NewTransactionReactor(nm, mgr.patchTxPool, mgr.normalTxPool)
+		mgr.txReactor = NewTransactionReactor(nm, mgr.patchTxPool, mgr.normalTxPool, mgr.tsc)
 	}
 	return mgr, nil
 }
@@ -144,7 +146,7 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 func (m *manager) CreateInitialTransition(result []byte,
 	valList module.ValidatorList,
 ) (module.Transition, error) {
-	return newInitTransition(m.db, result, valList, m.cm, m.eem, m.chain, m.log)
+	return newInitTransition(m.db, result, valList, m.cm, m.eem, m.chain, m.log, m.tsc)
 }
 
 // CreateTransition creates a Transition following parent Transition with txs
@@ -210,14 +212,14 @@ func (m *manager) Finalize(t module.Transition, opt int) error {
 			// Because transactionlist for transition is made only through peer and SendTransaction() call
 			// transactionlist has slice of transactions in case that finalize() is called
 			m.normalTxPool.RemoveList(tst.normalTransactions)
-			m.normalTxPool.RemoveOldTXs(tst.bi.Timestamp() - transaction.ConfigTXTimestampBackwardMargin)
+			m.normalTxPool.RemoveOldTXs(tst.bi.Timestamp() - m.tsc.Threshold())
 		}
 		if opt&module.FinalizePatchTransaction == module.FinalizePatchTransaction {
 			if err := tst.finalizePatchTransaction(); err != nil {
 				return err
 			}
 			m.patchTxPool.RemoveList(tst.patchTransactions)
-			m.patchTxPool.RemoveOldTXs(tst.bi.Timestamp() - transaction.ConfigTXTimestampBackwardMargin)
+			m.patchTxPool.RemoveOldTXs(tst.bi.Timestamp() - m.tsc.Threshold())
 		}
 		if opt&module.FinalizeResult == module.FinalizeResult {
 			if err := tst.finalizeResult(); err != nil {
@@ -314,7 +316,11 @@ func (m *manager) SendTransaction(txi interface{}) ([]byte, error) {
 		return nil, ErrIllegalTransactionType
 	}
 
-	if err := newTx.Verify(common.UnixMicroFromTime(time.Now())); err != nil {
+	if err := m.tsc.CheckWithCurrent(newTx); err != nil {
+		return nil, err
+	}
+
+	if err := newTx.Verify(); err != nil {
 		return nil, InvalidTransactionError.Wrap(err, "Failed to verify transaction")
 	}
 	hash := newTx.ID()

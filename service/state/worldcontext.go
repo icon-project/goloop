@@ -26,6 +26,8 @@ const (
 	VarLicenses       = "licenses"
 	VarCommitTimeout  = "commitTimeout"
 	VarTotalSupply    = "total_supply"
+
+	VarTimestampThreshold = "timestamp_threshold"
 )
 
 const (
@@ -85,6 +87,7 @@ type WorldContext interface {
 	DeployWhiteListEnabled() bool
 	PackageValidatorEnabled() bool
 	MembershipEnabled() bool
+	TransactionTimestampThreshold() int64
 }
 
 type BlockInfo struct {
@@ -152,6 +155,7 @@ type systemStorageInfo struct {
 	stepCostInfo *codec.TypedObj
 	deployer     map[string]bool
 	revision     int
+	tsThreshold  int64
 }
 
 func (c *worldContext) updateSystemInfo() {
@@ -196,6 +200,8 @@ func (c *worldContext) updateSystemInfo() {
 					c.systemInfo.deployer[addr] = true
 				}
 			}
+
+			c.systemInfo.tsThreshold = scoredb.NewVarDB(as, VarTimestampThreshold).Int64()
 		}
 		c.systemInfo.updated = true
 	}
@@ -267,6 +273,11 @@ func (c *worldContext) MembershipEnabled() bool {
 		return false
 	}
 	return true
+}
+
+func (c *worldContext) TransactionTimestampThreshold() int64 {
+	c.updateSystemInfo()
+	return c.systemInfo.tsThreshold
 }
 
 func (c *worldContext) IsDeployer(addr string) bool {

@@ -33,20 +33,7 @@ func (tx *transactionV2) Version() int {
 	return module.TransactionVersion2
 }
 
-func (tx *transactionV2) Verify(ts int64) error {
-	if ConfigOnCheckingTimestamp {
-		if ts != 0 {
-			tsDiff := tx.TimeStamp.Value - ts
-			if tsDiff <= -ConfigTXTimestampBackwardMargin ||
-				tsDiff > ConfigTXTimestampForwardLimit {
-				return state.TimeOutError.Errorf("Timeout(cur:%d, tx:%d)", ts, tx.TimeStamp.Value)
-			}
-			if tsDiff > ConfigTXTimestampForwardMargin {
-				return state.TimeOutError.Errorf("FutureTxTime(cur:%d, tx:%d)", ts, tx.TimeStamp.Value)
-			}
-		}
-	}
-
+func (tx *transactionV2) Verify() error {
 	// value >= 0
 	if tx.Value != nil && tx.Value.Sign() < 0 {
 		return InvalidTxValue.Errorf("InvalidTxValue(%s)", tx.Value.String())
@@ -88,18 +75,6 @@ func (tx *transactionV2) ValidateNetwork(nid int) bool {
 }
 
 func (tx *transactionV2) PreValidate(wc state.WorldContext, update bool) error {
-	// outdated or invalid timestamp?
-	if ConfigOnCheckingTimestamp == true {
-		tsDiff := tx.TimeStamp.Value - wc.BlockTimeStamp()
-		if tsDiff <= -ConfigTXTimestampBackwardMargin ||
-			tsDiff > ConfigTXTimestampForwardLimit {
-			return InvalidTxTime.Errorf("Timeout(block:%d, tx:%d)", wc.BlockTimeStamp(), tx.TimeStamp.Value)
-		}
-		if tsDiff > ConfigTXTimestampForwardMargin {
-			return InvalidTxTime.Errorf("FutureTxTime(block:%d, tx:%d)", wc.BlockTimeStamp(), tx.TimeStamp.Value)
-		}
-	}
-
 	// balance >= (fee + value)
 	trans := new(big.Int)
 	trans.Set(&tx.Value.Int)

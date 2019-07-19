@@ -64,7 +64,6 @@ type transition struct {
 	normalTransactions module.TransactionList
 
 	db    db.Database
-	sm    *manager
 	cm    contract.ContractManager
 	eem   eeproxy.Manager
 	chain module.Chain
@@ -85,6 +84,7 @@ type transition struct {
 	transactionCount int
 	executeDuration  time.Duration
 	flushDuration    time.Duration
+	tsc              *TxTimestampChecker
 }
 
 type transitionResult struct {
@@ -134,6 +134,7 @@ func newTransition(parent *transition, patchtxs module.TransactionList,
 		normalTransactions: normaltxs,
 		db:                 parent.db,
 		cm:                 parent.cm,
+		tsc:                parent.tsc,
 		eem:                parent.eem,
 		step:               step,
 		chain:              parent.chain,
@@ -146,6 +147,7 @@ func newInitTransition(db db.Database, result []byte,
 	validatorList module.ValidatorList, cm contract.ContractManager,
 	em eeproxy.Manager, chain module.Chain,
 	logger log.Logger,
+	tsc *TxTimestampChecker,
 ) (*transition, error) {
 	var tresult transitionResult
 	if len(result) > 0 {
@@ -166,6 +168,7 @@ func newInitTransition(db db.Database, result []byte,
 		worldSnapshot:      ws.GetSnapshot(),
 		chain:              chain,
 		log:                logger,
+		tsc:                tsc,
 	}, nil
 }
 
@@ -428,12 +431,15 @@ func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext
 		if err != nil {
 			return 0, errors.Wrap(err, "validateTxs: fail to get transaction")
 		}
+		tx := txi.(transaction.Transaction)
 
-		if err := txi.(transaction.Transaction).Verify(0); err != nil {
+		if err := tx.Verify(); err != nil {
 			return 0, err
 		}
-
-		if err := txi.(transaction.Transaction).PreValidate(wc, true); err != nil {
+		if err := CheckTxTimestamp(wc, tx); err != nil {
+			return 0, err
+		}
+		if err := tx.PreValidate(wc, true); err != nil {
 			return 0, err
 		}
 		cnt += 1
@@ -477,12 +483,16 @@ func (t *transition) finalizeResult() error {
 	regulator := t.chain.Regulator()
 	ass := t.worldSnapshot.GetAccountSnapshot(state.SystemID)
 	if ass != nil {
-		commitTimeout := scoredb.NewVarDB(scoredb.NewStateStoreWith(ass), state.VarCommitTimeout)
-		timeout := commitTimeout.Int64()
-		if timeout <= 0 {
-			timeout = 1000
+		as := scoredb.NewStateStoreWith(ass)
+		timeout := scoredb.NewVarDB(as, state.VarCommitTimeout).Int64()
+		if timeout > 0 {
+			regulator.SetCommitTimeout(time.Duration(timeout) * time.Millisecond)
 		}
-		regulator.SetCommitTimeout(time.Millisecond * time.Duration(timeout))
+
+		tsThreshold := scoredb.NewVarDB(as, state.VarTimestampThreshold).Int64()
+		if tsThreshold > 0 {
+			t.tsc.SetThreshold(time.Duration(tsThreshold) * time.Millisecond)
+		}
 	}
 	regulator.OnTxExecution(t.transactionCount, t.executeDuration, finalTS.Sub(startTS))
 

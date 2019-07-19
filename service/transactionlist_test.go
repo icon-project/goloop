@@ -38,7 +38,7 @@ func (*mockTransaction) Hash() []byte {
 	panic("implement me")
 }
 
-func (*mockTransaction) Verify(ts int64) error {
+func (*mockTransaction) Verify() error {
 	panic("implement me")
 }
 

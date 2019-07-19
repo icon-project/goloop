@@ -3,20 +3,17 @@ package contract
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/icon-project/goloop/common/log"
 	"math/big"
 	"strconv"
 	"strings"
 
-	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/service/scoreresult"
-
 	"github.com/icon-project/goloop/common"
-
-	"github.com/icon-project/goloop/service/scoreapi"
-
+	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoreapi"
 	"github.com/icon-project/goloop/service/scoredb"
+	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 )
 
@@ -253,9 +250,10 @@ type chain struct {
 		StepLimit *json.RawMessage `json:"stepLimit"`
 		StepCosts *json.RawMessage `json:"stepCosts"`
 	} `json:"fee"`
-	ValidatorList []*common.Address `json:"validatorList"`
-	MemberList    []*common.Address `json:"memberList"`
-	CommitTimeout *common.HexInt64  `json:"commitTimeout"`
+	ValidatorList      []*common.Address `json:"validatorList"`
+	MemberList         []*common.Address `json:"memberList"`
+	CommitTimeout      *common.HexInt64  `json:"commitTimeout"`
+	TimestampThreshold *common.HexInt64  `json:"timestampThreshold"`
 }
 
 func (s *ChainScore) Install(param []byte) error {
@@ -289,12 +287,18 @@ func (s *ChainScore) Install(param []byte) error {
 		return scoreresult.Errorf(module.StatusSystemError, "Failed to set system config. err(%+v)\n", err)
 	}
 
-	timeout := int64(1000)
 	if chain.CommitTimeout != nil {
-		timeout = chain.CommitTimeout.Value
+		timeout := chain.CommitTimeout.Value
+		if err := scoredb.NewVarDB(as, state.VarCommitTimeout).Set(timeout); err != nil {
+			return scoreresult.Errorf(module.StatusSystemError, "Failed to set newHeightTimeout. err(%+v)\n", err)
+		}
 	}
-	if err := scoredb.NewVarDB(as, state.VarCommitTimeout).Set(timeout); err != nil {
-		return scoreresult.Errorf(module.StatusSystemError, "Failed to set newHeightTimeout. err(%+v)\n", err)
+
+	if chain.TimestampThreshold != nil {
+		tsThreshold := chain.TimestampThreshold.Value
+		if err := scoredb.NewVarDB(as, state.VarTimestampThreshold).Set(tsThreshold); err != nil {
+			return scoreresult.Errorf(module.StatusSystemError, "Failed to set timestamp threshold. err(%+v)\n", err)
+		}
 	}
 
 	price := chain.Fee

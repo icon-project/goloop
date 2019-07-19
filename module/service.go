@@ -27,7 +27,7 @@ type Transaction interface {
 	From() Address
 	Bytes() []byte
 	Hash() []byte
-	Verify(ts int64) error
+	Verify() error
 	Version() int
 	ToJSON(version int) (interface{}, error)
 	ValidateNetwork(nid int) bool

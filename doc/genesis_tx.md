@@ -103,7 +103,15 @@ This document specifies the genesis file format.
     the list of addresses participating in the network.
     If it's empty, then it accepts all network connection.
     * member (T_ADDR_EOA)
+    
+  * `commitTimeout` (T_INT, default=`0x3e8`) <br>
+    Commit timeout in msec for the block. Default timeout is 1000ms (a second).
 
+  * `timestampThreshold` (T_INT) <br>
+    Allowed timestamp threshold in msec between the block and the transaction.
+    If it's not specified, it uses system default value. system default
+    can be updated when the node is updated.
+    
 * `message` (T_STRING, default=`null`) <br>
   A message to be recorded in the genesis. It's used to prevent having same
   network ID from similar configuration.

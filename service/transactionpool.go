@@ -50,9 +50,6 @@ func NewTransactionPool(nid int, size int, txdb db.Bucket, m Monitor, log log.Lo
 }
 
 func (tp *TransactionPool) RemoveOldTXs(bts int64) {
-	if !transaction.ConfigOnCheckingTimestamp {
-		return
-	}
 	tp.mutex.Lock()
 	defer tp.mutex.Unlock()
 
@@ -120,16 +117,26 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 			invalidNum += 1
 			continue
 		}
+		if err := CheckTxTimestamp(wc, tx); err != nil {
+			if e.err == nil {
+				e.err = err
+				tp.log.Debugf("CHECKTS FAIL: id=%#x reason=%v",
+					tx.ID(), err)
+			}
+			txs[invalidNum] = e
+			invalidNum += 1
+			continue
+		}
 		if err := tx.PreValidate(wc, true); err != nil {
 			// If returned error is critical(not usable in the future)
 			// then it should removed from the pool
 			// Otherwise, it remains in the pool
 			if e.err == nil {
 				e.err = err
-				tp.log.Debugf("PENDING TX: id=%#x reason=%v",
+				tp.log.Debugf("PREVALIDATE FAIL: id=%#x reason=%v",
 					tx.ID(), err)
 			}
-			if state.TimeOutError.Equals(err) || state.NotEnoughStepError.Equals(err) {
+			if state.NotEnoughStepError.Equals(err) {
 				txs[invalidNum] = e
 				invalidNum += 1
 			}

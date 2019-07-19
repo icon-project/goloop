@@ -1,10 +1,7 @@
 package service
 
 import (
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/log"
-	"time"
-
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/transaction"
 )
@@ -14,6 +11,7 @@ type TransactionReactor struct {
 	membership module.ProtocolHandler
 	normalPool *TransactionPool
 	patchPool  *TransactionPool
+	tsc        *TxTimestampChecker
 }
 
 const (
@@ -34,8 +32,12 @@ func (r *TransactionReactor) OnReceive(subProtocol module.ProtocolInfo, buf []by
 			return false, err
 		}
 
-		if err := tx.Verify(common.UnixMicroFromTime(time.Now())); err != nil {
+		if err := tx.Verify(); err != nil {
 			log.Tracef("Failed to verify tx. err=%+v\n", err)
+			return false, err
+		}
+		if err := r.tsc.CheckWithCurrent(tx); err != nil {
+			log.Tracef("Invalid timestamp tx. err=%+v\n", err)
 			return false, err
 		}
 		if tx.Group() == module.TransactionGroupPatch {
@@ -79,11 +81,12 @@ func (r *TransactionReactor) Stop() {
 	_ = r.nm.UnregisterReactor(r)
 }
 
-func NewTransactionReactor(nm module.NetworkManager, patch *TransactionPool, normal *TransactionPool) *TransactionReactor {
+func NewTransactionReactor(nm module.NetworkManager, patch *TransactionPool, normal *TransactionPool, tsc *TxTimestampChecker) *TransactionReactor {
 	ra := &TransactionReactor{
 		patchPool:  patch,
 		normalPool: normal,
 		nm:         nm,
+		tsc:        tsc,
 	}
 	return ra
 }

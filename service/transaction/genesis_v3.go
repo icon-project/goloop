@@ -103,7 +103,7 @@ func (g *genesisV3) ToJSON(version int) (interface{}, error) {
 	return jso, nil
 }
 
-func (g *genesisV3) Verify(ts int64) error {
+func (g *genesisV3) Verify() error {
 	acs := map[string]*accountInfo{}
 	for _, ac := range g.genesisV3JSON.Accounts {
 		acs[ac.Name] = &ac

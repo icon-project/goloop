@@ -165,7 +165,7 @@ func (tx *testTransaction) Bytes() []byte {
 	return codec.MustMarshalToBytes(tx)
 }
 
-func (tx *testTransaction) Verify(ts int64) error {
+func (tx *testTransaction) Verify() error {
 	return nil
 }
 

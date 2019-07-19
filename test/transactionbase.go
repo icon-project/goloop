@@ -25,7 +25,7 @@ func (_r *TransactionBase) Hash() []byte {
 	panic("not implemented")
 }
 
-func (_r *TransactionBase) Verify(ts int64) error {
+func (_r *TransactionBase) Verify() error {
 	panic("not implemented")
 }
 
