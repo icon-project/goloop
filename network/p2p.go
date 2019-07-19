@@ -384,6 +384,8 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 				p2p.handleP2PConnectionRequest(pkt, p)
 			case PROTO_P2P_CONN_RESP:
 				p2p.handleP2PConnectionResponse(pkt, p)
+			default:
+				p.CloseByError(ErrNotRegisteredProtocol)
 			}
 		}
 	} else {
@@ -416,6 +418,8 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 			} else {
 				p2p.logger.Traceln("onPacket", "Drop, Duplicated by footer", pkt.protocol, pkt.subProtocol, pkt.hashOfPacket, p.id)
 			}
+		} else {
+			p.CloseByError(ErrNotRegisteredProtocol)
 		}
 	}
 }

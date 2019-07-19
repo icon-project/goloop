@@ -127,6 +127,7 @@ func (ph *protocolHandler) onPacket(pkt *Packet, p *Peer) {
 			ph.logger.Infoln("onPacket", "receiveQueue Push failure", ph.name, pkt.protocol, pkt.subProtocol, p.ID())
 		}
 	} else {
+		p.CloseByError(ErrNotRegisteredProtocol)
 		ph.logger.Infoln("onPacket", "not registered protocol", ph.name, pkt.protocol, pkt.subProtocol, p.ID())
 	}
 }

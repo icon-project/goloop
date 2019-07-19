@@ -48,6 +48,8 @@ func (cn *ChannelNegotiator) onPacket(pkt *Packet, p *Peer) {
 			cn.handleJoinRequest(pkt, p)
 		case PROTO_CHAN_JOIN_RESP:
 			cn.handleJoinResponse(pkt, p)
+		default:
+			p.CloseByError(ErrNotRegisteredProtocol)
 		}
 	}
 }
@@ -144,6 +146,8 @@ func (a *Authenticator) onPacket(pkt *Packet, p *Peer) {
 			a.handleSignatureRequest(pkt, p)
 		case PROTO_AUTH_SIGN_RESP:
 			a.handleSignatureResponse(pkt, p)
+		default:
+			p.CloseByError(ErrNotRegisteredProtocol)
 		}
 	default:
 		//ignore
