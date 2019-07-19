@@ -187,6 +187,7 @@ func (cl *client) onLeave(id module.PeerID) {
 			fr.validPeers = fr.validPeers[:last]
 			if p.f != nil {
 				p.f.cancel()
+				fr.nActivePeers--
 				fr._reschedule()
 			}
 			return
