@@ -483,8 +483,8 @@ func listenerClose(t *testing.T, m map[string][]*testReactor) {
 	for _, arr := range m {
 		for _, r := range arr {
 			log.Println("Try stopping", r.name)
-			r.nm.Term()
 			assert.NoError(t, r.nt.Close(), "Close", r.name)
+			r.nm.Term()
 		}
 	}
 }

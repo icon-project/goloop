@@ -124,7 +124,7 @@ const (
 	StateVerifyFailed
 	StateImporting
 	StateImportFailed
-	StateReseting
+	StateResetting
 	StateResetFailed
 )
 
@@ -152,10 +152,18 @@ func (s State) String() string {
 		return "terminating"
 	case StateTerminated:
 		return "terminated"
+	case StateVerifying:
+		return "verifying"
+	case StateVerifyFailed:
+		return "verify failed"
 	case StateImporting:
 		return "importing"
 	case StateImportFailed:
 		return "import failed"
+	case StateResetting:
+		return "resetting"
+	case StateResetFailed:
+		return "reset failed"
 	default:
 		return "unknown"
 	}
@@ -568,7 +576,7 @@ func (c *singleChain) _reset() error {
 }
 
 func (c *singleChain) Reset(sync bool) error {
-	if err := c._transit(StateReseting, StateStopped); err != nil {
+	if err := c._transit(StateResetting, StateStopped); err != nil {
 		return err
 	}
 

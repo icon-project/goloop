@@ -171,8 +171,8 @@ func (p2p *PeerToPeer) Stop() {
 	Loop:
 		for {
 			ps := p2p.getPeers(false)
+			p2p.logger.Debugln("Stop", "try close Peers",len(ps))
 			for _, p := range ps {
-				p2p.logger.Debugln("Stop", "try Peer.Close", p)
 				p.Close("stopCh")
 			}
 			if len(ps) < 1 {
@@ -787,6 +787,7 @@ Loop:
 	for {
 		select {
 		case <-p2p.stopCh:
+			p2p.logger.Debugln("sendRoutine", "stop")
 			break Loop
 		case <-p2p.sendQueue.Wait():
 			for {
@@ -881,6 +882,7 @@ Loop:
 	for {
 		select {
 		case <-p2p.stopCh:
+			p2p.logger.Debugln("alternateSendRoutine", "stop")
 			break Loop
 		case <-p2p.alternateQueue.Wait():
 			for {
@@ -1158,6 +1160,7 @@ Loop:
 	for {
 		select {
 		case <-p2p.stopCh:
+			p2p.logger.Debugln("discoverRoutine", "stop")
 			break Loop
 		case <-p2p.seedTicker.C:
 			seeds := p2p.orphanages.GetByRoleAndIncomming(p2pRoleSeed, true, false)
@@ -1464,7 +1467,7 @@ func (p2p *PeerToPeer) sendP2PConnectionRequest(connType PeerConnectionType, p *
 	if err != nil {
 		p2p.logger.Infoln("sendP2PConnectionRequest", err, p)
 	} else {
-		p2p.logger.Debugln("sendP2PConnectionRequest", m, p)
+		p2p.logger.Traceln("sendP2PConnectionRequest", m, p)
 	}
 }
 func (p2p *PeerToPeer) handleP2PConnectionRequest(pkt *Packet, p *Peer) {
