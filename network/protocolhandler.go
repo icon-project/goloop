@@ -248,11 +248,11 @@ func (ph *protocolHandler) Unicast(pi module.ProtocolInfo, b []byte, id module.P
 //TxMessage,PrevoteMessage, Send to Validators
 func (ph *protocolHandler) Multicast(pi module.ProtocolInfo, b []byte, role module.Role) error {
 	if !ph.IsRun() {
-		return ErrAlreadyClosed
+		return NewMulticastError(ErrAlreadyClosed, role)
 	}
 	spi := protocolInfo(pi.Uint16())
 	if _, ok := ph.subProtocols[spi]; !ok {
-		return ErrNotRegisteredProtocol
+		return NewMulticastError(ErrNotRegisteredProtocol, role)
 	}
 
 	ph.logger.Traceln("Multicast", pi, len(b), role)
@@ -265,11 +265,11 @@ func (ph *protocolHandler) Multicast(pi module.ProtocolInfo, b []byte, role modu
 //ProposeMessage,PrecommitMessage,BlockMessage, Send to Citizen
 func (ph *protocolHandler) Broadcast(pi module.ProtocolInfo, b []byte, bt module.BroadcastType) error {
 	if !ph.IsRun() {
-		return ErrAlreadyClosed
+		return NewBroadcastError(ErrAlreadyClosed, bt)
 	}
 	spi := protocolInfo(pi.Uint16())
 	if _, ok := ph.subProtocols[spi]; !ok {
-		return ErrNotRegisteredProtocol
+		return NewBroadcastError(ErrNotRegisteredProtocol, bt)
 	}
 
 	ph.logger.Traceln("Broadcast", pi, len(b), bt)
