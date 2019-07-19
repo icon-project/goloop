@@ -52,7 +52,7 @@ func (r *regulator) SetCommitTimeout(d time.Duration) {
 	if r.commitTimeout == d {
 		return
 	}
-	log.Printf("Regulator.SetCommitTimeout(%s)", d)
+	r.log.Printf("Regulator.SetCommitTimeout(%s)", d)
 
 	txCount := int(d * time.Duration(r.currentTxCount) / r.commitTimeout)
 	r.commitTimeout = d
