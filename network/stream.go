@@ -78,7 +78,7 @@ func (r *reactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) 
 
 		s := r.streamForPeer(id)
 		if s == nil {
-			panic("cannot happen")
+			return true
 		}
 		sm := &streamMessage{}
 		_, e := codec.UnmarshalFromBytes(b, sm)
