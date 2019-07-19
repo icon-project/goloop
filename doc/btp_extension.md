@@ -171,7 +171,7 @@ It can be used to retrieve data based on the hash algorithm (SHA3-256).
 Following data can be retrieved by a hash.
 
 * BlockHeader with the hash of the block
-* Validators with BlockHeader.NextValidatorHash
+* Validators with BlockHeader.NextValidatorsHash
 * Votes with BlockHeader.VotesHash
 * etc…
 
@@ -409,9 +409,9 @@ Core2 uses MsgPack and RLP for binary encoding and decoding.
 ||Proposer|Address|Height of the block.<br/>0 means genesis block.|
 ||PrevID|MsgPack Bytes|32 bytes hash value|
 ||VotesHash|MsgPack Bytes|32 bytes hash value|
-||NextValidatorHash|MsgPack Bytes|32 bytes hash value|
-||PatchTransactionHash|MsgPack Bytes|32 bytes hash value|
-||NormalTransactionHash|MsgPack Bytes|32 bytes hash value|
+||NextValidatorsHash|MsgPack Bytes|32 bytes hash value|
+||PatchTransactionsHash|MsgPack Bytes|32 bytes hash value|
+||NormalTransactionsHash|MsgPack Bytes|32 bytes hash value|
 ||LogsBloom|MsgPack Bytes|N(1~256) bytes bloom log value|
 ||Result|MsgPack Bytes|Result.Encode()<br/>After decoding BlockHeader, it should decode it again for NormalReceiptHash.|
 |Result     ||MsgPack List of followings||

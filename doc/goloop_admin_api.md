@@ -99,9 +99,11 @@ Returns a list of chains
 
 Status Code **200**
 
+*array of chains*
+
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
-|*anonymous*|[[Chain](#schemachain)]|false|none|none|
+|*anonymous*|[[Chain](#schemachain)]|false|none|array of chains|
 |» nid|string("0x" + lowercase HEX string)|false|none|network-id of chain|
 |» channel|string|false|none|chain-alias of node|
 |» height|integer(int64)|false|none|block height of chain|
@@ -130,6 +132,9 @@ json:
   seed_addr: string
   role: 3
   concurrency_level: 1
+  normal_tx_pool: 1
+  patch_tx_pool: 1
+  max_block_tx_bytes: 1
   channel: ''
   secureSuites: 'none,tls,ecdhe'
   secureAeads: 'chacha,aes128,aes256'
@@ -141,16 +146,19 @@ genesisZip: string
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|body|body|object|false|none|
-|» json|body|[ChainConfig](#schemachainconfig)|true|none|
+|body|body|object|true|Genesis-Storage zip file and json encoded chain-configuration for join chain using multipart|
+|» json|body|[ChainConfig](#schemachainconfig)|true|json encoded chain-configuration, using multipart 'Content-Disposition: name=json'|
 |»» db_type|body|string|false|Name of database system|
 |»» seed_addr|body|string|false|Ip-port of Seed|
 |»» role|body|integer|false|Role:|
 |»» concurrency_level|body|integer|false|Maximum number of executors to use for concurrency|
+|»» normal_tx_pool|body|integer|false|Maximum number of executors to use for concurrency|
+|»» patch_tx_pool|body|integer|false|Maximum number of executors to use for concurrency|
+|»» max_block_tx_bytes|body|integer|false|Maximum number of executors to use for concurrency|
 |»» channel|body|string|false|Chain-alias of node|
 |»» secureSuites|body|string|false|Supported Secure suites with order (none,tls,ecdhe) - Comma separated string|
 |»» secureAeads|body|string|false|Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string|
-|» genesisZip|body|string(binary)|true|Genesis-Storage zip file|
+|» genesisZip|body|string(binary)|true|Genesis-Storage zip file, using multipart 'Content-Disposition: name=genesisZip'|
 
 #### Detailed descriptions
 
@@ -218,6 +226,9 @@ Get Chain Infomation.
     "seed_addr": "string",
     "role": 3,
     "concurrency_level": 1,
+    "normal_tx_pool": 1,
+    "patch_tx_pool": 1,
+    "max_block_tx_bytes": 1,
     "channel": "",
     "secureSuites": "none,tls,ecdhe",
     "secureAeads": "chacha,aes128,aes256"
@@ -369,6 +380,9 @@ This operation does not require authentication
     "seed_addr": "string",
     "role": 3,
     "concurrency_level": 1,
+    "normal_tx_pool": 1,
+    "patch_tx_pool": 1,
+    "max_block_tx_bytes": 1,
     "channel": "",
     "secureSuites": "none,tls,ecdhe",
     "secureAeads": "chacha,aes128,aes256"
@@ -409,6 +423,9 @@ This operation does not require authentication
   "seed_addr": "string",
   "role": 3,
   "concurrency_level": 1,
+  "normal_tx_pool": 1,
+  "patch_tx_pool": 1,
+  "max_block_tx_bytes": 1,
   "channel": "",
   "secureSuites": "none,tls,ecdhe",
   "secureAeads": "chacha,aes128,aes256"
@@ -424,6 +441,9 @@ This operation does not require authentication
 |seed_addr|string|false|none|Ip-port of Seed|
 |role|integer|false|none|Role:  * `0` - None  * `1` - Seed  * `2` - Validator  * `3` - Seed and Validator|
 |concurrency_level|integer|false|none|Maximum number of executors to use for concurrency|
+|normal_tx_pool|integer|false|none|Maximum number of executors to use for concurrency|
+|patch_tx_pool|integer|false|none|Maximum number of executors to use for concurrency|
+|max_block_tx_bytes|integer|false|none|Maximum number of executors to use for concurrency|
 |channel|string|false|none|Chain-alias of node|
 |secureSuites|string|false|none|Supported Secure suites with order (none,tls,ecdhe) - Comma separated string|
 |secureAeads|string|false|none|Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string|

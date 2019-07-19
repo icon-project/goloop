@@ -197,7 +197,7 @@ func main() {
 	vc.AutomaticEnv()
 
 	cobra.OnInitialize(initConfig)
-	rootCmd := &cobra.Command{Use: "goloop"}
+	rootCmd := &cobra.Command{Use: "goloop",Short: "Goloop CLI",}
 	rootPFlags := rootCmd.PersistentFlags()
 	rootPFlags.StringVarP(&cfg.FilePath, "config", "c", "", "Parsing configuration file")
 	rootPFlags.StringVarP(&cliSocket, "node_sock", "s", "",

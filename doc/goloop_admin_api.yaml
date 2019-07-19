@@ -39,6 +39,7 @@ paths:
             application/json:
               schema:
                 type: array
+                description: "array of chains"
                 items:
                   $ref: "#/components/schemas/Chain"
         "500":
@@ -50,17 +51,21 @@ paths:
       summary: Join Chain
       description: Join Chain
       requestBody:
+        description: "Genesis-Storage zip file and json encoded chain-configuration for join chain using multipart"
+        required: true
         content:
           multipart/form-data:
             schema:
               type: object
               properties:
                 json:
-                  $ref: "#/components/schemas/ChainConfig"
+                  allOf:
+                    - $ref: "#/components/schemas/ChainConfig"
+                  description: "json encoded chain-configuration, using multipart 'Content-Disposition: name=json'"
                 genesisZip:
                   type: string
                   format: binary
-                  description: Genesis-Storage zip file
+                  description: "Genesis-Storage zip file, using multipart 'Content-Disposition: name=genesisZip'"
               required:
                 - json
                 - genesisZip
@@ -171,8 +176,22 @@ paths:
   #         description: Not Found
   #       "500":
   #         description: Internal Server Error
-
-  # /stats:
+  # /chain/{nid}/import:
+  #   post:
+  #     operationId: importChain
+  #     tags:
+  #       - chain
+  #     summary: Import Chain
+  #     description: Import Chain.
+  #     parameters:
+  #       - <<: *path__nid
+  #     responses:
+  #       "200":
+  #         description: Success
+  #       "404":
+  #         description: Not Found
+  #       "500":
+  #         description: Internal Server Error
 
   /system:
     get:
@@ -256,6 +275,18 @@ components:
           type: integer
           default: 1
           description: "Maximum number of executors to use for concurrency"
+        normal_tx_pool:
+          type: integer
+          default: 0
+          description: "Size of normal transaction pool"
+        patch_tx_pool:
+          type: integer
+          default: 0
+          description: "Size of patch transaction pool"
+        max_block_tx_bytes:
+          type: integer
+          default: 0
+          description: "Max size of transactions in a block"
         channel:
           type: string
           default: ""

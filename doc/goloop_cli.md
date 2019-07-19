@@ -3,7 +3,7 @@
 ## goloop
 
 ### Description
-
+Goloop CLI
 
 ### Usage
 ` goloop [flags] `
@@ -56,7 +56,7 @@ Manage chains
 ### Parent command
 |Command | Description|
 |---|---|
-| [goloop](#goloop) |  |
+| [goloop](#goloop) | Goloop CLI |
 
 ### Related commands
 |Command | Description|
@@ -393,7 +393,7 @@ Server management
 ### Parent command
 |Command | Description|
 |---|---|
-| [goloop](#goloop) |  |
+| [goloop](#goloop) | Goloop CLI |
 
 ### Related commands
 |Command | Description|
@@ -517,7 +517,7 @@ Display a live streams of chains metric-statistics
 ### Parent command
 |Command | Description|
 |---|---|
-| [goloop](#goloop) |  |
+| [goloop](#goloop) | Goloop CLI |
 
 ### Related commands
 |Command | Description|
@@ -552,7 +552,7 @@ System info
 ### Parent command
 |Command | Description|
 |---|---|
-| [goloop](#goloop) |  |
+| [goloop](#goloop) | Goloop CLI |
 
 ### Related commands
 |Command | Description|
@@ -582,7 +582,7 @@ Print goloop version
 ### Parent command
 |Command | Description|
 |---|---|
-| [goloop](#goloop) |  |
+| [goloop](#goloop) | Goloop CLI |
 
 ### Related commands
 |Command | Description|
