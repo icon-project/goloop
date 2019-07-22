@@ -171,8 +171,9 @@ func (tx *transactionV3) Verify() error {
 			if tx.Data == nil {
 				return InvalidTxValue.Errorf("TxData for call is NIL")
 			}
-			_, err := ParseCallData(tx.Data)
-			return err
+			if _, err := ParseCallData(tx.Data); err != nil {
+				return err
+			}
 		case DataTypeDeploy:
 			// element check
 			if tx.Data == nil {
