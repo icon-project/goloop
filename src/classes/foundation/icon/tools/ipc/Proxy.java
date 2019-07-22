@@ -30,17 +30,17 @@ import static org.msgpack.value.ValueType.ARRAY;
 
 public class Proxy {
 
-    class MsgType {
-        static final int VERSION = 0;
-        static final int INVOKE = 1;
-        static final int RESULT = 2;
-        static final int GETVALUE = 3;
-        static final int SETVALUE = 4;
-        static final int CALL = 5;
-        static final int EVENT = 6;
-        static final int GETINFO = 7;
-        static final int GETBALANCE = 8;
-        static final int GETAPI = 9;
+    public class MsgType {
+        public static final int VERSION = 0;
+        public static final int INVOKE = 1;
+        public static final int RESULT = 2;
+        public static final int GETVALUE = 3;
+        public static final int SETVALUE = 4;
+        public static final int CALL = 5;
+        public static final int EVENT = 6;
+        public static final int GETINFO = 7;
+        public static final int GETBALANCE = 8;
+        public static final int GETAPI = 9;
     }
 
     class Message {
@@ -97,12 +97,12 @@ public class Proxy {
     private final Client client;
     private final MessageUnpacker unpacker;
 
-    private Proxy(Client client) {
+    public Proxy(Client client) {
         this.client = client;
         unpacker = MessagePack.newDefaultUnpacker(client.getInputStream());
     }
 
-    private void sendMessage(int msgType, Object ... args) throws IOException {
+    public void sendMessage(int msgType, Object... args) throws IOException {
         MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
         packer.packArrayHeader(2);
         packer.packInt(msgType);
@@ -141,7 +141,7 @@ public class Proxy {
         return m;
     }
 
-    private void handleMessages() throws IOException {
+    public void handleMessages() throws IOException {
         while (true) {
             Message msg = getNextMessage();
             switch (msg.type) {
@@ -168,24 +168,5 @@ public class Proxy {
     // DEBUG: dummy for test
     private APIInfo getApiInfo(String path) {
         return null;
-    }
-
-    public static void main(String[] args) throws IOException {
-        System.out.println("=== Proxy ===");
-
-        if (args.length == 2) {
-            try {
-                Client client = Client.connect(args[0]);
-                Proxy proxy = new Proxy(client);
-                proxy.sendMessage(MsgType.VERSION, 1, args[1], "java");
-                proxy.handleMessages();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        } else {
-            System.out.println("Usage: Proxy <socket addr> <uuid>");
-        }
-
-        System.out.println("=== END ===");
     }
 }
