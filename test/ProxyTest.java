@@ -16,7 +16,6 @@
 
 import foundation.icon.tools.ipc.Client;
 import foundation.icon.tools.ipc.Proxy;
-import foundation.icon.tools.ipc.Proxy.MsgType;
 
 import java.io.IOException;
 
@@ -29,7 +28,7 @@ public class ProxyTest {
             try {
                 Client client = Client.connect(args[0]);
                 Proxy proxy = new Proxy(client);
-                proxy.sendMessage(MsgType.VERSION, 1, args[1], "java");
+                proxy.connect(args[1]);
                 proxy.handleMessages();
             } catch (IOException e) {
                 e.printStackTrace();

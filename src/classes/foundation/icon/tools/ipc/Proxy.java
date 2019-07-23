@@ -23,24 +23,22 @@ import org.msgpack.value.ArrayValue;
 import org.msgpack.value.Value;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 import static org.msgpack.value.ValueType.ARRAY;
 
 public class Proxy {
 
-    public class MsgType {
-        public static final int VERSION = 0;
-        public static final int INVOKE = 1;
-        public static final int RESULT = 2;
-        public static final int GETVALUE = 3;
-        public static final int SETVALUE = 4;
-        public static final int CALL = 5;
-        public static final int EVENT = 6;
-        public static final int GETINFO = 7;
-        public static final int GETBALANCE = 8;
-        public static final int GETAPI = 9;
+    class MsgType {
+        static final int VERSION = 0;
+        static final int INVOKE = 1;
+        static final int RESULT = 2;
+        static final int GETVALUE = 3;
+        static final int SETVALUE = 4;
+        static final int CALL = 5;
+        static final int EVENT = 6;
+        static final int GETINFO = 7;
+        static final int GETBALANCE = 8;
+        static final int GETAPI = 9;
     }
 
     class Message {
@@ -74,26 +72,6 @@ public class Proxy {
         }
     }
 
-    class APIInfo {
-        List<List<TypedObj>> methods = new ArrayList<>();
-
-        void addFunction() {
-
-        }
-
-        void addFallback() {
-
-        }
-
-        void addEvent() {
-
-        }
-
-        List getData() {
-            return methods;
-        }
-    }
-
     private final Client client;
     private final MessageUnpacker unpacker;
 
@@ -102,7 +80,27 @@ public class Proxy {
         unpacker = MessagePack.newDefaultUnpacker(client.getInputStream());
     }
 
-    public void sendMessage(int msgType, Object... args) throws IOException {
+    public void connect(String uuid) throws IOException {
+        sendMessage(MsgType.VERSION, 1, uuid, "java");
+    }
+
+    public void handleMessages() throws IOException {
+        while (true) {
+            Message msg = getNextMessage();
+            switch (msg.type) {
+                case MsgType.GETAPI:
+                    String path = msg.value.asStringValue().asString();
+                    System.out.println("[GETAPI] path=" + path);
+                    handleGetApi(path);
+                    break;
+                case MsgType.INVOKE:
+                    System.out.println("[INVOKE]");
+                    break;
+            }
+        }
+    }
+
+    private void sendMessage(int msgType, Object... args) throws IOException {
         MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
         packer.packArrayHeader(2);
         packer.packInt(msgType);
@@ -112,8 +110,14 @@ public class Proxy {
                 packer.packInt((int) arg);
             } else if (arg instanceof String) {
                 packer.packString((String) arg);
+            } else if (arg instanceof Method[]) {
+                Method[] methods = (Method[]) arg;
+                packer.packArrayHeader(methods.length);
+                for (Method m : methods) {
+                    m.accept(packer);
+                }
             } else {
-                throw new IOException("not yet supported");
+                throw new IOException("not yet supported: " + arg);
             }
         }
         packer.close();
@@ -141,32 +145,52 @@ public class Proxy {
         return m;
     }
 
-    public void handleMessages() throws IOException {
-        while (true) {
-            Message msg = getNextMessage();
-            switch (msg.type) {
-                case MsgType.GETAPI:
-                    String path = msg.value.asStringValue().asString();
-                    System.out.println("[GETAPI] path=" + path);
-                    handleGetApi(path);
-                    break;
-                case MsgType.INVOKE:
-                    System.out.println("[INVOKE]");
-                    break;
-            }
-        }
-    }
-
     private void handleGetApi(String path) throws IOException {
         // FIXME: invoke the real method
-        APIInfo info = getApiInfo(path);
-        if (info != null) {
-            sendMessage(MsgType.GETAPI, info.getData());
+        Method[] methods = dummyApiInfo(path);
+        if (methods != null) {
+            sendMessage(MsgType.GETAPI, 0, methods);
         }
     }
 
     // DEBUG: dummy for test
-    private APIInfo getApiInfo(String path) {
-        return null;
+    private Method[] dummyApiInfo(String path) {
+        return new Method[] {
+            Method.newFunction(
+                "balanceOf",
+                Method.Flags.READONLY | Method.Flags.EXTERNAL,
+                new Method.Parameter[] {
+                    new Method.Parameter("_owner", Method.DataType.ADDRESS)
+                },
+                Method.DataType.INTEGER
+            ),
+            Method.newFunction(
+                "name",
+                Method.Flags.READONLY | Method.Flags.EXTERNAL,
+                null,
+                Method.DataType.STRING
+            ),
+            Method.newFunction(
+                "transfer",
+                Method.Flags.EXTERNAL,
+                new Method.Parameter[] {
+                    new Method.Parameter("_to", Method.DataType.ADDRESS),
+                    new Method.Parameter("_value", Method.DataType.INTEGER),
+                    new Method.Parameter("_data", Method.DataType.BYTES)
+                },
+                Method.DataType.NONE
+            ),
+            Method.newFallback(),
+            Method.newEvent(
+                "Transfer",
+                3,
+                new Method.Parameter[] {
+                    new Method.Parameter("_from", Method.DataType.ADDRESS),
+                    new Method.Parameter("_to", Method.DataType.ADDRESS),
+                    new Method.Parameter("_value", Method.DataType.INTEGER),
+                    new Method.Parameter("_data", Method.DataType.BYTES)
+                }
+            ),
+        };
     }
 }
