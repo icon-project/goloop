@@ -142,9 +142,6 @@ loop:
 	for {
 		bch, err = chain.BlockManager().WaitForBlock(h)
 		if err != nil {
-			wsResponse.Code = int(jsonrpc.ErrorCodeSystem)
-			wsResponse.Message = err.Error()
-			c.WriteJSON(&wsResponse)
 			break loop
 		}
 		select {
@@ -221,9 +218,6 @@ loop:
 	for {
 		bch, err = chain.BlockManager().WaitForBlock(h)
 		if err != nil {
-			wsResponse.Code = int(jsonrpc.ErrorCodeSystem)
-			wsResponse.Message = err.Error()
-			c.WriteJSON(&wsResponse)
 			break loop
 		}
 		select {
@@ -236,27 +230,18 @@ loop:
 			}
 			rl, err := chain.ServiceManager().ReceiptListFromResult(blk.Result(), module.TransactionGroupNormal)
 			if err != nil {
-				wsResponse.Code = int(jsonrpc.ErrorCodeSystem)
-				wsResponse.Message = err.Error()
-				c.WriteJSON(&wsResponse)
 				break loop
 			}
 			index := int32(0)
 			for rit := rl.Iterator(); rit.Has(); rit.Next() {
 				r, err := rit.Get()
 				if err != nil {
-					wsResponse.Code = int(jsonrpc.ErrorCodeSystem)
-					wsResponse.Message = err.Error()
-					c.WriteJSON(&wsResponse)
 					break loop
 				}
 				if r.LogsBloom().Contain(lb) {
 					for eit := r.EventLogIterator(); eit.Has(); eit.Next() {
 						e, err := eit.Get()
 						if err != nil {
-							wsResponse.Code = int(jsonrpc.ErrorCodeSystem)
-							wsResponse.Message = err.Error()
-							c.WriteJSON(&wsResponse)
 							break loop
 						}
 						if er.match(e) {
