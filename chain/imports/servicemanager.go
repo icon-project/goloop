@@ -47,7 +47,7 @@ func NewServiceManagerForImport(chain module.Chain, nm module.NetworkManager,
 }
 
 func (m *managerForImport) GetVoteTimestamp(h, ts int64) int64 {
-	if h == m.lastHeight {
+	if h >= m.lastHeight {
 		return ts
 	}
 	blk, err := m.bdb.GetBlockByHeight(int(h + 1))
