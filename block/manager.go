@@ -350,6 +350,7 @@ func (pt *proposeTask) _onExecute(err error) {
 	if err != nil {
 		pt.stop()
 		pt.cb(nil, err)
+		return
 	}
 	pmtr := pt.in.mtransition()
 	mtr := tr.mtransition()
