@@ -31,6 +31,8 @@ public class Proxy {
 
     private static final boolean DEBUG = true;
 
+    private OnGetApiListener mOnGetApiListener;
+
     class MsgType {
         static final int VERSION = 0;
         static final int INVOKE = 1;
@@ -52,6 +54,11 @@ public class Proxy {
             this.type = type;
             this.value = value;
         }
+    }
+
+    class Status {
+        static final int SUCCESS = 0;
+        static final int FAILURE = 1;
     }
 
     static class TypedObj {
@@ -149,7 +156,9 @@ public class Proxy {
         packer.packInt(msgType);
         packer.packArrayHeader(args.length);
         for (Object arg : args) {
-            if (arg instanceof Integer) {
+            if (arg == null) {
+                packer.packNil();
+            } else if (arg instanceof Integer) {
                 packer.packInt((int) arg);
             } else if (arg instanceof String) {
                 packer.packString((String) arg);
@@ -188,53 +197,23 @@ public class Proxy {
         return m;
     }
 
-    private void handleGetApi(String path) throws IOException {
-        // FIXME: invoke the real method
-        Method[] methods = dummyApiInfo(path);
-        if (methods != null) {
-            sendMessage(MsgType.GETAPI, 0, methods);
-        }
+    public interface OnGetApiListener {
+        Method[] onGetApi(String path);
     }
 
-    // DEBUG: dummy for test
-    private Method[] dummyApiInfo(String path) {
-        return new Method[] {
-            Method.newFunction(
-                "balanceOf",
-                Method.Flags.READONLY | Method.Flags.EXTERNAL,
-                new Method.Parameter[] {
-                    new Method.Parameter("_owner", Method.DataType.ADDRESS)
-                },
-                Method.DataType.INTEGER
-            ),
-            Method.newFunction(
-                "name",
-                Method.Flags.READONLY | Method.Flags.EXTERNAL,
-                null,
-                Method.DataType.STRING
-            ),
-            Method.newFunction(
-                "transfer",
-                Method.Flags.EXTERNAL,
-                new Method.Parameter[] {
-                    new Method.Parameter("_to", Method.DataType.ADDRESS),
-                    new Method.Parameter("_value", Method.DataType.INTEGER),
-                    new Method.Parameter("_data", Method.DataType.BYTES)
-                },
-                Method.DataType.NONE
-            ),
-            Method.newFallback(),
-            Method.newEvent(
-                "Transfer",
-                3,
-                new Method.Parameter[] {
-                    new Method.Parameter("_from", Method.DataType.ADDRESS),
-                    new Method.Parameter("_to", Method.DataType.ADDRESS),
-                    new Method.Parameter("_value", Method.DataType.INTEGER),
-                    new Method.Parameter("_data", Method.DataType.BYTES)
-                }
-            ),
-        };
+    public void setOnGetApiListener(OnGetApiListener listener) {
+        mOnGetApiListener = listener;
+    }
+
+    private void handleGetApi(String path) throws IOException {
+        if (mOnGetApiListener != null) {
+            Method[] methods = mOnGetApiListener.onGetApi(path);
+            if (methods != null) {
+                sendMessage(MsgType.GETAPI, Status.SUCCESS, methods);
+                return;
+            }
+        }
+        sendMessage(MsgType.GETAPI, Status.FAILURE, null);
     }
 
     private void handleGetInvoke(Value raw) throws IOException {

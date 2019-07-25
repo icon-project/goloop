@@ -20,7 +20,7 @@ import org.msgpack.core.MessageBufferPacker;
 
 import java.io.IOException;
 
-class Method {
+public class Method {
 
     class MethodType {
         static final int FUNCTION = 0;
@@ -28,27 +28,27 @@ class Method {
         static final int EVENT = 2;
     }
 
-    class Flags {
-        static final int READONLY = 1;
-        static final int EXTERNAL = 2;
-        static final int PAYABLE = 4;
-        static final int ISOLATED = 8;
+    public class Flags {
+        public static final int READONLY = 1;
+        public static final int EXTERNAL = 2;
+        public static final int PAYABLE = 4;
+        public static final int ISOLATED = 8;
     }
 
-    class DataType {
-        static final int NONE = 0;
-        static final int INTEGER = 1;
-        static final int STRING = 2;
-        static final int BYTES = 3;
-        static final int BOOL = 4;
-        static final int ADDRESS = 5;
+    public class DataType {
+        public static final int NONE = 0;
+        public static final int INTEGER = 1;
+        public static final int STRING = 2;
+        public static final int BYTES = 3;
+        public static final int BOOL = 4;
+        public static final int ADDRESS = 5;
     }
 
-    static class Parameter {
+    public static class Parameter {
         String name;
         int type;
 
-        Parameter(String name, int type) {
+        public Parameter(String name, int type) {
             this.name = name;
             this.type = type;
         }
@@ -70,16 +70,16 @@ class Method {
         this.output = output;
     }
 
-    static Method newFunction(String name, int flags, Parameter[] inputs, int output) {
+    public static Method newFunction(String name, int flags, Parameter[] inputs, int output) {
         return new Method(MethodType.FUNCTION, name, flags,
                 (inputs != null) ? inputs.length : 0, inputs, output);
     }
 
-    static Method newFallback() {
+    public static Method newFallback() {
         return new Method(MethodType.FALLBACK, "fallback", Flags.PAYABLE, 0, null, 0);
     }
 
-    static Method newEvent(String name, int indexed, Parameter[] inputs) {
+    public static Method newEvent(String name, int indexed, Parameter[] inputs) {
         return new Method(MethodType.EVENT, name, 0, indexed, inputs, 0);
     }
 
