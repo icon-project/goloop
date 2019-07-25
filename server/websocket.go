@@ -8,6 +8,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/jsonrpc"
 	"github.com/icon-project/goloop/service/txresult"
@@ -22,12 +23,14 @@ type wsSession struct {
 type wsSessionManager struct {
 	sync.Mutex
 	maxSession int
+	logger     log.Logger
 	sessions   []*wsSession
 }
 
-func newWSSessionManager() *wsSessionManager {
+func newWSSessionManager(logger log.Logger) *wsSessionManager {
 	return &wsSessionManager{
 		maxSession: configMaxSession,
+		logger:     logger,
 	}
 }
 
@@ -119,7 +122,7 @@ func (wm *wsSessionManager) RunBlockSession(ctx echo.Context) error {
 
 	_, msgBS, err := c.ReadMessage()
 	if err != nil {
-		ctx.Logger().Error(err)
+		wm.logger.Warnf("%+v\n", err)
 		return nil
 	}
 	var blockRequest BlockRequest
@@ -158,7 +161,7 @@ loop:
 		}
 		h++
 	}
-	ctx.Logger().Error(err)
+	wm.logger.Warnf("%+v\n", err)
 	return nil
 }
 
@@ -188,7 +191,7 @@ func (wm *wsSessionManager) RunEventSession(ctx echo.Context) error {
 
 	_, msgBS, err := c.ReadMessage()
 	if err != nil {
-		ctx.Logger().Error(err)
+		wm.logger.Warnf("%+v\n", err)
 		return nil
 	}
 	var er EventRequest
@@ -262,7 +265,7 @@ loop:
 		}
 		h++
 	}
-	ctx.Logger().Error(err)
+	wm.logger.Warnf("%+v\n", err)
 	return nil
 }
 

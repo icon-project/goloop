@@ -41,16 +41,17 @@ func NewManager(addr string, jsonrpcDump bool, wallet module.Wallet, l log.Logge
 
 	e.HTTPErrorHandler = HTTPErrorHandler
 	e.Validator = validator
+	logger := l.WithFields(log.Fields{log.FieldKeyModule: "SR"})
 
 	return &Manager{
 		e:           e,
 		addr:        addr,
 		wallet:      wallet,
 		chains:      make(map[string]module.Chain),
-		wssm:        newWSSessionManager(),
+		wssm:        newWSSessionManager(logger),
 		mtx:         sync.RWMutex{},
 		jsonrpcDump: jsonrpcDump,
-		logger: l.WithFields(log.Fields{log.FieldKeyModule: "SR"}),
+		logger:      logger,
 	}
 }
 
