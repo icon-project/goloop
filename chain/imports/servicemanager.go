@@ -42,7 +42,7 @@ func NewServiceManagerForImport(chain module.Chain, nm module.NetworkManager,
 		bdb:            bdb,
 		lastHeight:     blk.Height(),
 	}
-	log.Printf("lastHeight=%d\n", m.lastHeight)
+	log.Debugf("NewServiceManagerForImport lastHeight=%d\n", m.lastHeight)
 	return m, m, nil
 }
 
@@ -88,7 +88,7 @@ func (bi blockInfo) Timestamp() int64 {
 func (m *managerForImport) ProposeTransition(parent module.Transition, bi module.BlockInfo) (module.Transition, error) {
 	blk, err := m.bdb.GetBlockByHeight(int(bi.Height()))
 	if err != nil {
-		log.Printf("%+v\n", err)
+		log.Warnf("%+v\n", err)
 		return nil, err
 	}
 	if bi.Height() == 1 {
@@ -174,7 +174,7 @@ func (t *transitionForImport) OnValidate(tr module.Transition, e error) {
 	}
 	blk, err := t.m.bdb.GetBlockByHeight(int(t.bi.Height()))
 	if err != nil {
-		log.Printf("%+v\n", err)
+		log.Warnf("%+v\n", err)
 		t.cb.OnValidate(t, err)
 		t.canceler()
 		return
@@ -205,7 +205,7 @@ func (t *transitionForImport) OnExecute(tr module.Transition, e error) {
 	}
 	blk, err := t.m.bdb.GetBlockByHeight(int(t.bi.Height()))
 	if err != nil {
-		log.Printf("%+v\n", err)
+		log.Warnf("%+v\n", err)
 		t.cb.OnExecute(t, err)
 		t.canceler()
 		return
@@ -214,7 +214,7 @@ func (t *transitionForImport) OnExecute(tr module.Transition, e error) {
 	t.m.Finalize(t, module.FinalizeNormalTransaction|module.FinalizePatchTransaction|module.FinalizeResult)
 	rl, err := t.m.ReceiptListFromResult(tr.Result(), module.TransactionGroupNormal)
 	if err != nil {
-		log.Printf("%+v\n", err)
+		log.Warnf("%+v\n", err)
 		t.cb.OnExecute(t, err)
 		t.canceler()
 		return
@@ -223,21 +223,21 @@ func (t *transitionForImport) OnExecute(tr module.Transition, e error) {
 	for i := txl.Iterator(); i.Has(); i.Next() {
 		tx, _, err := i.Get()
 		if err != nil {
-			log.Printf("Fail to get transaction err=%+v", err)
+			log.Warnf("Fail to get transaction err=%+v", err)
 			t.cb.OnExecute(t, err)
 			t.canceler()
 			return
 		}
 		rct, err := t.m.bdb.GetReceiptByTransaction(tx.ID())
 		if err != nil {
-			log.Printf("%+v\n", err)
+			log.Warnf("%+v\n", err)
 			t.cb.OnExecute(t, err)
 			t.canceler()
 			return
 		}
 		nrct, err := rit.Get()
 		if err != nil {
-			log.Printf("%+v\n", err)
+			log.Warnf("%+v\n", err)
 			t.cb.OnExecute(t, err)
 			t.canceler()
 			return
@@ -252,9 +252,9 @@ func (t *transitionForImport) OnExecute(tr module.Transition, e error) {
 		delete(mnrjsn, "failure")
 		nrjbs, _ := json.Marshal(mnrjsn)
 		if !bytes.Equal(rjbs, nrjbs) {
-			log.Printf("different receipt\n")
-			log.Printf("lc: %s\n", rjbs)
-			log.Printf("gc: %s\n", nrjbs)
+			log.Warnf("different receipt\n")
+			log.Warnf("lc: %s\n", rjbs)
+			log.Warnf("gc: %s\n", nrjbs)
 			t.cb.OnExecute(t, err)
 			t.canceler()
 			return
