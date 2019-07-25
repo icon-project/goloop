@@ -493,7 +493,9 @@ func (cs *consensus) enterPropose() {
 					}
 
 					if err != nil {
-						cs.logger.Panicf("propose cb error: %+v\n", err)
+						cs.logger.Warnf("propose cb error: %+v\n", err)
+						cs.enterPrevote()
+						return
 					}
 
 					psb := newPartSetBuffer(configBlockPartSize)
