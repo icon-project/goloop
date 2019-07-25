@@ -5,15 +5,15 @@ import (
 	"bytes"
 	"container/list"
 	"encoding/hex"
-	"github.com/icon-project/goloop/service/scoreresult"
 	"io/ioutil"
 	"math/big"
 	"os"
-	"path"
 	"path/filepath"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/icon-project/goloop/service/scoreresult"
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/log"
@@ -66,7 +66,6 @@ type (
 
 const (
 	tmpRoot                        = "tmp"
-	contractRoot                   = "contract"
 	contractPythonRootFile         = "package.json"
 	csInProgress           cStatus = iota
 	csComplete
@@ -168,7 +167,7 @@ const tryTmpNum = 10
 func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []byte, sc *storageCache) (string, error) {
 	var path string
 	defer sc.timer.Stop()
-	contractDir := "hx" + hex.EncodeToString(codeHash)
+	contractDir := "0x" + hex.EncodeToString(codeHash)
 	path = filepath.Join(cm.storeRoot, contractDir)
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		return path, nil
@@ -316,20 +315,19 @@ func NewContractManager(db db.Database, chainRoot string, log log.Logger) (Contr
 	*/
 	// To manage separate contract store for each chain, add chain ID to
 	// parameter here and add it to storeRoot.
-	contractDir := path.Join(chainRoot, contractRoot)
 	var storeRoot string
-	if !filepath.IsAbs(contractDir) {
+	if !filepath.IsAbs(chainRoot) {
 		var err error
-		storeRoot, err = filepath.Abs(contractDir)
+		storeRoot, err = filepath.Abs(chainRoot)
 		if err != nil {
-			return nil, errors.UnknownError.Wrapf(err, "FAIL to get abs(%s)", contractDir)
+			return nil, errors.UnknownError.Wrapf(err, "FAIL to get abs(%s)", chainRoot)
 		}
 	} else {
-		storeRoot = contractDir
+		storeRoot = chainRoot
 	}
 	if _, err := os.Stat(storeRoot); os.IsNotExist(err) {
 		if err := os.MkdirAll(storeRoot, 0755); err != nil {
-			return nil, errors.UnknownError.Wrapf(err, "FAIL to make dir(%s)", contractDir)
+			return nil, errors.UnknownError.Wrapf(err, "FAIL to make dir(%s)", chainRoot)
 		}
 	}
 	tmp := filepath.Join(storeRoot, tmpRoot)
