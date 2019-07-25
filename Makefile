@@ -13,15 +13,16 @@
 # limitations under the License.
 
 TARGET:=client
-TARGET_JAR=$(TARGET).jar
-TARGET_SO=lib$(TARGET).so
+TARGET_JAR=$(BUILD_DIR)/$(TARGET).jar
+TARGET_SO=$(BUILD_DIR)/lib$(TARGET).so
 
 JAVA_HOME ?= /opt/jdk-11.0.2
+JAVA=$(JAVA_HOME)/bin/java
 JAVAC=$(JAVA_HOME)/bin/javac
 JAR=$(JAVA_HOME)/bin/jar
 
 BUILD_DIR:=./build
-LIB_JARS=lib/msgpack-core-0.8.17.jar
+LIB_JARS=$(patsubst %:,%,$(shell find lib -name "*.jar" | tr '\n' ':'))
 
 TARGET_CC:=gcc
 CC_ARCH_FLAGS = \
@@ -56,3 +57,7 @@ $(TARGET_SO): $(TARGET_OBJS)
 
 $(BUILD_DIR)/%.class: test/%.java
 	$(JAVAC) -cp $(TARGET_JAR):$(LIB_JARS) -d $(BUILD_DIR) $<
+
+run: $(TARGET_JAR) $(TARGET_SO) $(TEST_CLASSES)
+	$(JAVA) -cp $(TARGET_JAR):$(LIB_JARS):$(BUILD_DIR) -Djava.library.path=$(BUILD_DIR) \
+	    ProxyTest /tmp/ee.socket uuid1234

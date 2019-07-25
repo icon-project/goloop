@@ -5,4 +5,3 @@ build/
 *.class
 *.o
 *.so
-*.jar

@@ -84,7 +84,6 @@ class Method {
     }
 
     void accept(MessageBufferPacker packer) throws IOException {
-        System.out.println("--- accept: " + name);
         packer.packArrayHeader(6);
         packer.packInt(type);
         packer.packString(name);
