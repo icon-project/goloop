@@ -16,6 +16,7 @@
 
 package foundation.icon.tools.ipc;
 
+import foundation.icon.common.Address;
 import foundation.icon.common.Bytes;
 import org.msgpack.core.MessageBufferPacker;
 import org.msgpack.core.MessagePack;
@@ -24,6 +25,7 @@ import org.msgpack.value.ArrayValue;
 import org.msgpack.value.Value;
 
 import java.io.IOException;
+import java.math.BigInteger;
 
 import static org.msgpack.value.ValueType.ARRAY;
 
@@ -32,6 +34,7 @@ public class Proxy {
     private static final boolean DEBUG = true;
 
     private OnGetApiListener mOnGetApiListener;
+    private OnInvokeListener mOnInvokeListener;
 
     class MsgType {
         static final int VERSION = 0;
@@ -61,7 +64,7 @@ public class Proxy {
         static final int FAILURE = 1;
     }
 
-    static class TypedObj {
+    public static class TypedObj {
         static final int NIL = 0;
         static final int DICT = 1;
         static final int LIST = 2;
@@ -107,6 +110,23 @@ public class Proxy {
             }
         }
 
+        public static TypedObj encodeAny(Object obj) throws IOException {
+            if (obj == null) {
+                return new TypedObj(NIL, null);
+            } else if (obj instanceof byte[]) {
+                return new TypedObj(BYTES, obj);
+            } else if (obj instanceof String) {
+                return new TypedObj(STRING, obj);
+            } else if (obj instanceof Boolean) {
+                return new TypedObj(BOOL, obj);
+            } else if (obj instanceof Address) {
+                return new TypedObj(ADDRESS, ((Address)obj).toByteArray());
+            } else if (obj instanceof BigInteger) {
+                return new TypedObj(INT, ((BigInteger)obj).toByteArray());
+            }
+            throw new IOException("not supported type: " + obj);
+        }
+
         public String toString() {
             String str;
             if (type == STRING) {
@@ -118,6 +138,27 @@ public class Proxy {
                 str = "NIL";
             }
             return type + "@" + str;
+        }
+
+        void accept(MessageBufferPacker packer) throws IOException {
+            System.out.println("=== TypedObj.accept() ===");
+            System.out.println("  type: " + type);
+            System.out.println("  value: " + value);
+            packer.packArrayHeader(2);
+            packer.packInt(type);
+            if (type == NIL) {
+                packer.packNil();
+            } else if (type == STRING) {
+                packer.packString((String) value);
+            } else if (type == BOOL) {
+                packer.packBoolean((Boolean) value);
+            } else if (type == BYTES || type == ADDRESS || type == INT) {
+                byte[] ba = (byte[]) value;
+                packer.packBinaryHeader(ba.length);
+                packer.writePayload(ba);
+            } else {
+                throw new IOException("not supported type: " + type);
+            }
         }
     }
 
@@ -162,14 +203,25 @@ public class Proxy {
                 packer.packInt((int) arg);
             } else if (arg instanceof String) {
                 packer.packString((String) arg);
+            } else if (arg instanceof byte[]) {
+                byte[] ba = (byte[]) arg;
+                packer.packBinaryHeader(ba.length);
+                packer.writePayload(ba);
+            } else if (arg instanceof BigInteger) {
+                byte[] ba = ((BigInteger) arg).toByteArray();
+                packer.packBinaryHeader(ba.length);
+                packer.writePayload(ba);
             } else if (arg instanceof Method[]) {
                 Method[] methods = (Method[]) arg;
                 packer.packArrayHeader(methods.length);
                 for (Method m : methods) {
                     m.accept(packer);
                 }
+            } else if (arg instanceof TypedObj) {
+                TypedObj obj = (TypedObj) arg;
+                obj.accept(packer);
             } else {
-                throw new IOException("not yet supported: " + arg);
+                throw new IOException("not yet supported: " + arg.getClass());
             }
         }
         packer.close();
@@ -216,30 +268,33 @@ public class Proxy {
         sendMessage(MsgType.GETAPI, Status.FAILURE, null);
     }
 
+    public interface OnInvokeListener {
+        InvokeResult onInvoke(String code, boolean isQuery, Address from, Address to,
+                              BigInteger value, BigInteger limit, String method, TypedObj[] params) throws IOException;
+    }
+
+    public void setOnInvokeListener(OnInvokeListener listener) {
+        mOnInvokeListener = listener;
+    }
+
     private void handleGetInvoke(Value raw) throws IOException {
         ArrayValue data = raw.asArrayValue();
-//        if (DEBUG) {
-//            int i = 0;
-//            for (Value v : data) {
-//                System.out.println("v[" + i++ + "]=" + v + " type=" + v.getValueType());
-//            }
-//        }
         String code = data.get(0).asStringValue().asString();
         boolean isQuery = data.get(1).asBooleanValue().getBoolean();
-        byte[] from = data.get(2).asRawValue().asByteArray();
-        byte[] to = data.get(3).asRawValue().asByteArray();
-        byte[] value = data.get(4).asRawValue().asByteArray();
-        byte[] limit = data.get(5).asRawValue().asByteArray();
+        Address from = new Address(data.get(2).asRawValue().asByteArray());
+        Address to = new Address(data.get(3).asRawValue().asByteArray());
+        BigInteger value = new BigInteger(data.get(4).asRawValue().asByteArray());
+        BigInteger limit = new BigInteger(data.get(5).asRawValue().asByteArray());
         String method = data.get(6).asStringValue().asString();
         TypedObj[] params = TypedObj.decodeList(data.get(7).asArrayValue());
 
         if (DEBUG) {
             System.out.println(">>> code=" + code);
             System.out.println("    isQuery=" + isQuery);
-            System.out.println("    from=" + Bytes.toHexString(from));
-            System.out.println("      to=" + Bytes.toHexString(to));
-            System.out.println("    value=" + Bytes.toHexString(value));
-            System.out.println("    limit=" + Bytes.toHexString(limit));
+            System.out.println("    from=" + from);
+            System.out.println("      to=" + to);
+            System.out.println("    value=" + value);
+            System.out.println("    limit=" + limit);
             System.out.println("    method=" + method);
             System.out.println("    params={");
             int i = 0;
@@ -247,6 +302,13 @@ public class Proxy {
                 System.out.printf("       [%d]=%s\n", i++, p);
             }
             System.out.println("    }");
+        }
+
+        if (mOnInvokeListener != null) {
+            InvokeResult result = mOnInvokeListener.onInvoke(code, isQuery, from, to, value, limit, method, params);
+            sendMessage(MsgType.RESULT, result.getStatus(), result.getStepUsed(), result.getResult());
+        } else {
+            throw new IOException("no invoke handler");
         }
     }
 }

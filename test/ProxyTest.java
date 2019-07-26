@@ -14,16 +14,19 @@
  * limitations under the License.
  */
 
+import foundation.icon.common.Address;
+import foundation.icon.tools.ipc.InvokeResult;
 import foundation.icon.tools.ipc.Client;
 import foundation.icon.tools.ipc.Method;
 import foundation.icon.tools.ipc.Proxy;
 
 import java.io.IOException;
+import java.math.BigInteger;
 
 public class ProxyTest {
 
     public static void main(String[] args) {
-        System.out.println("=== Proxy ===");
+        System.out.println("=== ProxyTest ===");
 
         if (args.length == 2) {
             try {
@@ -66,13 +69,21 @@ public class ProxyTest {
                                 }
                         ),
                 });
+                proxy.setOnInvokeListener(new Proxy.OnInvokeListener() {
+                    @Override
+                    public InvokeResult onInvoke(String code, boolean isQuery, Address from, Address to,
+                                                 BigInteger value, BigInteger limit, String method,
+                                                 Proxy.TypedObj[] params) throws IOException {
+                        return new InvokeResult(0, BigInteger.ZERO, Proxy.TypedObj.encodeAny("Test"));
+                    }
+                });
                 proxy.connect(args[1]);
                 proxy.handleMessages();
             } catch (IOException e) {
                 e.printStackTrace();
             }
         } else {
-            System.out.println("Usage: Proxy <socket addr> <uuid>");
+            System.out.println("Usage: ProxyTest <socket addr> <uuid>");
         }
 
         System.out.println("=== END ===");
