@@ -750,7 +750,10 @@ func (s *ChainScore) Ex_getStepPrice() (int64, error) {
 func (s *ChainScore) Ex_getStepCost(t string) (int64, error) {
 	as := s.cc.GetAccountState(state.SystemID)
 	stepCostDB := scoredb.NewDictDB(as, state.VarStepCosts, 1)
-	return stepCostDB.Get(t).Int64(), nil
+	if v := stepCostDB.Get(t); v != nil {
+		return v.Int64(), nil
+	}
+	return 0, nil
 }
 
 func (s *ChainScore) Ex_getStepCosts() (map[string]interface{}, error) {
@@ -769,22 +772,11 @@ func (s *ChainScore) Ex_getStepCosts() (map[string]interface{}, error) {
 
 func (s *ChainScore) Ex_getMaxStepLimit(contextType string) (int64, error) {
 	as := s.cc.GetAccountState(state.SystemID)
-	stepLimitTypes := scoredb.NewArrayDB(as, state.VarStepLimitTypes)
-	tcount := stepLimitTypes.Size()
-	found := false
-	for i := 0; i < tcount; i++ {
-		if stepLimitTypes.Get(i).String() == contextType {
-			found = true
-			break
-		}
-	}
-
-	if found == false {
-		return 0, nil
-	}
-
 	stepLimitDB := scoredb.NewDictDB(as, state.VarStepLimit, 1)
-	return stepLimitDB.Get(contextType).Int64(), nil
+	if v := stepLimitDB.Get(contextType); v != nil {
+		return v.Int64(), nil
+	}
+	return 0, nil
 }
 
 func (s *ChainScore) Ex_getScoreStatus(address module.Address) (map[string]interface{}, error) {
