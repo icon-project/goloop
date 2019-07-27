@@ -26,6 +26,8 @@ import org.msgpack.value.Value;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.msgpack.value.ValueType.ARRAY;
 
@@ -64,6 +66,18 @@ public class Proxy {
         static final int FAILURE = 1;
     }
 
+    public class Info {
+        public static final String BLOCK_TIMESTAMP = "B.timestamp";
+        public static final String BLOCK_HEIGHT = "B.height";
+        public static final String TX_HASH = "T.hash";
+        public static final String TX_INDEX = "T.index";
+        public static final String TX_FROM = "T.from";
+        public static final String TX_TIMESTAMP = "T.timestamp";
+        public static final String TX_NONCE = "T.nonce";
+        public static final String STEP_COSTS = "StepCosts";
+        public static final String CONTRACT_OWNER = "C.owner";
+    }
+
     public static class TypedObj {
         static final int NIL = 0;
         static final int DICT = 1;
@@ -76,37 +90,54 @@ public class Proxy {
         static final int ADDRESS = CUSTOM;
         static final int INT = CUSTOM + 1;
 
-        final int type;
-        final Object value;
+        private final int type;
+        private final Object obj;
 
         TypedObj(int type, Object value) {
             this.type = type;
-            this.value = value;
+            this.obj = value;
         }
 
-        static TypedObj[] decodeList(ArrayValue data) throws IOException {
+        static Object decodeAny(Value raw) throws IOException {
+            ArrayValue data = raw.asArrayValue();
             int tag = data.get(0).asIntegerValue().asInt();
-            if (tag == LIST) {
-                ArrayValue arr = data.get(1).asArrayValue();
-                TypedObj[] typed = new TypedObj[arr.size()];
+            Value val = data.get(1);
+            if (tag == DICT) {
+                Map<String, Object> map = new HashMap<>();
+                for (Map.Entry<Value, Value> pair : val.asMapValue().entrySet()) {
+                    map.put(pair.getKey().asStringValue().asString(),
+                            decodeAny(pair.getValue()));
+                }
+                return map;
+            } else if (tag == LIST) {
+                ArrayValue arr = val.asArrayValue();
+                Object[] list = new Object[arr.size()];
                 int i = 0;
                 for (Value v : arr) {
-                    System.out.println(" -- " + v);
-                    ArrayValue v2 = v.asArrayValue();
-                    tag = v2.get(0).asIntegerValue().asInt();
-                    typed[i++] = new TypedObj(tag, decode(tag, v2.get(1)));
+                    list[i++] = decodeAny(v);
                 }
-                return typed;
+                return list;
             } else {
-                throw new IOException("not supported tag: " + tag);
+                return decode(tag, val);
             }
         }
 
-        static Object decode(int tag, Value value) {
-            if (tag == STRING) {
-                return value.asStringValue().asString();
-            } else {
+        static Object decode(int tag, Value value) throws IOException {
+            if (tag == NIL) {
+                return null;
+            } else if (tag == BYTES) {
                 return value.asRawValue().asByteArray();
+            } else if (tag == STRING) {
+                return value.asStringValue().asString();
+            } else if (tag == BOOL) {
+                byte[] ba = value.asRawValue().asByteArray();
+                return ba[0] != 0;
+            } else if (tag == ADDRESS) {
+                return new Address(value.asRawValue().asByteArray());
+            } else if (tag == INT) {
+                return new BigInteger(value.asRawValue().asByteArray());
+            } else {
+                throw new IOException("not supported tag: " + tag);
             }
         }
 
@@ -128,32 +159,44 @@ public class Proxy {
         }
 
         public String toString() {
-            String str;
-            if (type == STRING) {
-                str = (String) value;
+            if (type == NIL) {
+                return "nil";
+            } else if (type == LIST) {
+                Object[] arr = (Object[]) obj;
+                if (arr.length == 0) {
+                    return "[]";
+                } else {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("[");
+                    sb.append((arr[0] != null) ? arr[0].toString() : null);
+                    for (int i = 1; i < arr.length; i++) {
+                        sb.append(", ");
+                        sb.append((arr[i] != null) ? arr[i].toString() : null);
+                    }
+                    sb.append("]");
+                    return sb.toString();
+                }
+            } else if (type == STRING) {
+                return (String) obj;
             } else {
-                str = Bytes.toHexString(((byte[]) value));
+                return Bytes.toHexString(((byte[]) obj));
             }
-            if (str.equals("")) {
-                str = "NIL";
-            }
-            return type + "@" + str;
         }
 
         void accept(MessageBufferPacker packer) throws IOException {
             System.out.println("=== TypedObj.accept() ===");
             System.out.println("  type: " + type);
-            System.out.println("  value: " + value);
+            System.out.println("  obj: " + obj);
             packer.packArrayHeader(2);
             packer.packInt(type);
             if (type == NIL) {
                 packer.packNil();
             } else if (type == STRING) {
-                packer.packString((String) value);
+                packer.packString((String) obj);
             } else if (type == BOOL) {
-                packer.packBoolean((Boolean) value);
+                packer.packBoolean((Boolean) obj);
             } else if (type == BYTES || type == ADDRESS || type == INT) {
-                byte[] ba = (byte[]) value;
+                byte[] ba = (byte[]) obj;
                 packer.packBinaryHeader(ba.length);
                 packer.writePayload(ba);
             } else {
@@ -189,6 +232,16 @@ public class Proxy {
                     break;
             }
         }
+    }
+
+    public Object getInfo() throws IOException {
+        sendMessage(MsgType.GETINFO, (Object)null);
+        Message msg = getNextMessage();
+        if (msg.type != MsgType.GETINFO) {
+            throw new IOException("Invalid message: GETINFO expected.");
+        }
+        System.out.println("[GETINFO]");
+        return TypedObj.decodeAny(msg.value);
     }
 
     private void sendMessage(int msgType, Object... args) throws IOException {
@@ -239,7 +292,6 @@ public class Proxy {
         Message m = new Message(type, value);
 
         if (DEBUG) {
-            System.out.println("Array size: " + a.size());
             System.out.println("[MsgType] " + m.type);
             for (Value e : a) {
                 System.out.println("-- type: " + e.getValueType());
@@ -270,7 +322,7 @@ public class Proxy {
 
     public interface OnInvokeListener {
         InvokeResult onInvoke(String code, boolean isQuery, Address from, Address to,
-                              BigInteger value, BigInteger limit, String method, TypedObj[] params) throws IOException;
+                              BigInteger value, BigInteger limit, String method, Object[] params) throws IOException;
     }
 
     public void setOnInvokeListener(OnInvokeListener listener) {
@@ -286,23 +338,7 @@ public class Proxy {
         BigInteger value = new BigInteger(data.get(4).asRawValue().asByteArray());
         BigInteger limit = new BigInteger(data.get(5).asRawValue().asByteArray());
         String method = data.get(6).asStringValue().asString();
-        TypedObj[] params = TypedObj.decodeList(data.get(7).asArrayValue());
-
-        if (DEBUG) {
-            System.out.println(">>> code=" + code);
-            System.out.println("    isQuery=" + isQuery);
-            System.out.println("    from=" + from);
-            System.out.println("      to=" + to);
-            System.out.println("    value=" + value);
-            System.out.println("    limit=" + limit);
-            System.out.println("    method=" + method);
-            System.out.println("    params={");
-            int i = 0;
-            for (TypedObj p : params) {
-                System.out.printf("       [%d]=%s\n", i++, p);
-            }
-            System.out.println("    }");
-        }
+        Object[] params = (Object[]) TypedObj.decodeAny(data.get(7));
 
         if (mOnInvokeListener != null) {
             InvokeResult result = mOnInvokeListener.onInvoke(code, isQuery, from, to, value, limit, method, params);
