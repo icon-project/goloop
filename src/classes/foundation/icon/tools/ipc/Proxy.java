@@ -138,11 +138,11 @@ public class Proxy {
                 Method[] methods = (Method[]) arg;
                 packer.packArrayHeader(methods.length);
                 for (Method m : methods) {
-                    m.accept(packer);
+                    m.writeTo(packer);
                 }
             } else if (arg instanceof TypedObj) {
                 TypedObj obj = (TypedObj) arg;
-                obj.accept(packer);
+                obj.writeTo(packer);
             } else {
                 throw new IOException("not yet supported: " + arg.getClass());
             }

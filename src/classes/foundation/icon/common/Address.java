@@ -37,8 +37,6 @@ public class Address {
     public byte[] toByteArray() {
         byte[] ba = new byte[21];
         ba[0] = prefix;
-        System.out.println("=== toByteArray() ===");
-        System.out.println("  body.length = " + body.length);
         System.arraycopy(body, 0, ba, 1, body.length);
         return ba;
     }

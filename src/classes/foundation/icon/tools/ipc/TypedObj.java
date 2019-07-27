@@ -51,7 +51,9 @@ public class TypedObj {
         ArrayValue data = raw.asArrayValue();
         int tag = data.get(0).asIntegerValue().asInt();
         Value val = data.get(1);
-        if (tag == DICT) {
+        if (tag == NIL) {
+            return null;
+        } else if (tag == DICT) {
             Map<String, Object> map = new HashMap<>();
             for (Map.Entry<Value, Value> pair : val.asMapValue().entrySet()) {
                 map.put(pair.getKey().asStringValue().asString(),
@@ -66,25 +68,17 @@ public class TypedObj {
                 list[i++] = decodeAny(v);
             }
             return list;
-        } else {
-            return decode(tag, val);
-        }
-    }
-
-    public static Object decode(int tag, Value value) throws IOException {
-        if (tag == NIL) {
-            return null;
         } else if (tag == BYTES) {
-            return value.asRawValue().asByteArray();
+            return val.asRawValue().asByteArray();
         } else if (tag == STRING) {
-            return value.asStringValue().asString();
+            return val.asStringValue().asString();
         } else if (tag == BOOL) {
-            byte[] ba = value.asRawValue().asByteArray();
+            byte[] ba = val.asRawValue().asByteArray();
             return ba[0] != 0;
         } else if (tag == ADDRESS) {
-            return new Address(value.asRawValue().asByteArray());
+            return new Address(val.asRawValue().asByteArray());
         } else if (tag == INT) {
-            return new BigInteger(value.asRawValue().asByteArray());
+            return new BigInteger(val.asRawValue().asByteArray());
         } else {
             throw new IOException("not supported tag: " + tag);
         }
@@ -93,6 +87,21 @@ public class TypedObj {
     public static TypedObj encodeAny(Object obj) throws IOException {
         if (obj == null) {
             return new TypedObj(NIL, null);
+        } else if (obj instanceof Map) {
+            Map<String, Object> map = (Map) obj;
+            Map<String, Object> typedMap = new HashMap<>();
+            for (Map.Entry<String, Object> pair : map.entrySet()) {
+                typedMap.put(pair.getKey(), encodeAny(pair.getValue()));
+            }
+            return new TypedObj(DICT, typedMap);
+        } else if (obj instanceof Object[]) {
+            Object[] arr = (Object[]) obj;
+            Object[] list = new Object[arr.length];
+            int i = 0;
+            for (Object o : arr) {
+                list[i++] = encodeAny(o);
+            }
+            return new TypedObj(LIST, list);
         } else if (obj instanceof byte[]) {
             return new TypedObj(BYTES, obj);
         } else if (obj instanceof String) {
@@ -132,14 +141,30 @@ public class TypedObj {
         }
     }
 
-    void accept(MessageBufferPacker packer) throws IOException {
-        System.out.println("=== TypedObj.accept() ===");
-        System.out.println("  type: " + type);
-        System.out.println("  obj: " + obj);
+    void writeTo(MessageBufferPacker packer) throws IOException {
         packer.packArrayHeader(2);
         packer.packInt(type);
         if (type == NIL) {
             packer.packNil();
+        } else if (type == DICT) {
+            Map<String, Object> map = (Map) obj;
+            packer.packMapHeader(map.size());
+            for (Map.Entry<String, Object> pair : map.entrySet()) {
+                packer.packString(pair.getKey());
+                TypedObj to = (TypedObj) pair.getValue();
+                to.writeTo(packer);
+            }
+        } else if (type == LIST) {
+            Object[] arr = (Object[]) obj;
+            if (arr.length == 0) {
+                packer.packArrayHeader(0);
+            } else {
+                packer.packArrayHeader(arr.length);
+                for (Object o : arr) {
+                    TypedObj to = (TypedObj) o;
+                    to.writeTo(packer);
+                }
+            }
         } else if (type == STRING) {
             packer.packString((String) obj);
         } else if (type == BOOL) {

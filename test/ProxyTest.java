@@ -116,7 +116,8 @@ public class ProxyTest {
                 System.out.println("  contractOwner=" + info.get(Proxy.Info.CONTRACT_OWNER));
                 System.out.println("  stepCosts=" + info.get(Proxy.Info.STEP_COSTS));
             }
-            return new InvokeResult(0, BigInteger.ZERO, TypedObj.encodeAny("Test"));
+            return new InvokeResult(0, BigInteger.ZERO,
+                    TypedObj.encodeAny(info.get(Proxy.Info.STEP_COSTS)));
         });
     }
 }

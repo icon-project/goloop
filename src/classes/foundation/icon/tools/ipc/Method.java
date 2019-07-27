@@ -83,7 +83,7 @@ public class Method {
         return new Method(MethodType.EVENT, name, 0, indexed, inputs, 0);
     }
 
-    void accept(MessageBufferPacker packer) throws IOException {
+    void writeTo(MessageBufferPacker packer) throws IOException {
         packer.packArrayHeader(6);
         packer.packInt(type);
         packer.packString(name);
