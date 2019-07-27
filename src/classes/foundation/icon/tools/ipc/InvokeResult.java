@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 ICON Foundation
+ * Copyright 2019 ICON Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,9 +22,9 @@ public class InvokeResult {
 
     private final int status;
     private final BigInteger stepUsed;
-    private final Proxy.TypedObj result;
+    private final TypedObj result;
 
-    public InvokeResult(int status, BigInteger stepUsed, Proxy.TypedObj result) {
+    public InvokeResult(int status, BigInteger stepUsed, TypedObj result) {
         this.status = status;
         this.stepUsed = stepUsed;
         this.result = result;
@@ -38,7 +38,7 @@ public class InvokeResult {
         return stepUsed;
     }
 
-    Proxy.TypedObj getResult() {
+    TypedObj getResult() {
         return result;
     }
 }

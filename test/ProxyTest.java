@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 ICON Foundation
+ * Copyright 2019 ICON Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,7 @@
  * limitations under the License.
  */
 
-import foundation.icon.common.Address;
-import foundation.icon.tools.ipc.Client;
-import foundation.icon.tools.ipc.InvokeResult;
-import foundation.icon.tools.ipc.Method;
-import foundation.icon.tools.ipc.Proxy;
+import foundation.icon.tools.ipc.*;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -120,7 +116,7 @@ public class ProxyTest {
                 System.out.println("  contractOwner=" + info.get(Proxy.Info.CONTRACT_OWNER));
                 System.out.println("  stepCosts=" + info.get(Proxy.Info.STEP_COSTS));
             }
-            return new InvokeResult(0, BigInteger.ZERO, Proxy.TypedObj.encodeAny("Test"));
+            return new InvokeResult(0, BigInteger.ZERO, TypedObj.encodeAny("Test"));
         });
     }
 }
