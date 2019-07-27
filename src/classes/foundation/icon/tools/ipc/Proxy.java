@@ -98,7 +98,7 @@ public class Proxy {
                     break;
                 case MsgType.INVOKE:
                     System.out.println("[INVOKE]");
-                    handleGetInvoke(msg.value);
+                    handleInvoke(msg.value);
                     break;
             }
         }
@@ -199,7 +199,7 @@ public class Proxy {
         mOnInvokeListener = listener;
     }
 
-    private void handleGetInvoke(Value raw) throws IOException {
+    private void handleInvoke(Value raw) throws IOException {
         ArrayValue data = raw.asArrayValue();
         String code = data.get(0).asStringValue().asString();
         boolean isQuery = data.get(1).asBooleanValue().getBoolean();
