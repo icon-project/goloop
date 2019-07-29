@@ -49,7 +49,7 @@ type manager struct {
 }
 
 func NewManager(chain module.Chain, nm module.NetworkManager,
-	eem eeproxy.Manager, chainRoot string,
+	eem eeproxy.Manager, contractDir string,
 ) (module.ServiceManager, error) {
 	logger := chain.Logger().WithFields(log.Fields{
 		log.FieldKeyModule: "SV",
@@ -62,7 +62,7 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 
 	pMetric := metric.NewTransactionMetric(chain.MetricContext(), metric.TxTypePatch)
 	nMetric := metric.NewTransactionMetric(chain.MetricContext(), metric.TxTypeNormal)
-	cm, err := contract.NewContractManager(chain.Database(), chainRoot, logger)
+	cm, err := contract.NewContractManager(chain.Database(), contractDir, logger)
 	if err != nil {
 		logger.Warnf("FAIL to create contractManager : %v\n", err)
 		return nil, err

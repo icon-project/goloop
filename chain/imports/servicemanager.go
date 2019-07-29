@@ -23,9 +23,9 @@ type managerForImport struct {
 //const lcDBDir = "../migdata/node1/storage3/db_192.168.160.82:7100_ch_test"
 
 func NewServiceManagerForImport(chain module.Chain, nm module.NetworkManager,
-	eem eeproxy.Manager, chainRoot string, lcDBDir string,
+	eem eeproxy.Manager, contractDir string, lcDBDir string,
 ) (module.ServiceManager, module.Timestamper, error) {
-	manager, err := service.NewManager(chain, nm, eem, chainRoot)
+	manager, err := service.NewManager(chain, nm, eem, contractDir)
 	if err != nil {
 		return nil, nil, err
 	}
