@@ -6,6 +6,7 @@ import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.ConfirmedTransaction;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
+import foundation.icon.icx.transport.jsonrpc.RpcError;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
@@ -18,7 +19,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;
@@ -189,7 +189,7 @@ public class TransferTest {
             try {
                 iconService.sendTransaction(signedTransaction).execute();
             }
-            catch(IOException ex) {
+            catch(RpcError ex) {
                 continue;
             }
             fail();

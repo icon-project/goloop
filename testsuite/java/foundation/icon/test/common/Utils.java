@@ -17,6 +17,7 @@
 package foundation.icon.test.common;
 
 import foundation.icon.icx.*;
+import foundation.icon.icx.crypto.IconKeys;
 import foundation.icon.icx.crypto.KeystoreException;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
@@ -27,6 +28,14 @@ import foundation.icon.icx.transport.jsonrpc.RpcError;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.test.score.GovScore;
+import org.bouncycastle.asn1.x9.X9ECParameters;
+import org.bouncycastle.asn1.x9.X9IntegerConverter;
+import org.bouncycastle.crypto.ec.CustomNamedCurves;
+import org.bouncycastle.crypto.params.ECDomainParameters;
+import org.bouncycastle.jcajce.provider.digest.SHA3;
+import org.bouncycastle.math.ec.ECAlgorithms;
+import org.bouncycastle.math.ec.ECPoint;
+import org.bouncycastle.math.ec.custom.sec.SecP256K1Curve;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -378,5 +387,61 @@ public class Utils {
             sb.append(String.format("%02x", v));
         }
         return sb.toString();
+    }
+
+    public static Address getAddressByTxHash(IconService service, Env.Chain chain, Bytes txHash)
+            throws TransactionFailureException, ResultTimeoutException, IOException  {
+        TransactionResult result = Utils.getTransactionResult(service, txHash, Constants.DEFAULT_WAITING_TIME);
+        if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
+            throw new TransactionFailureException(result.getFailure());
+        }
+
+        try {
+            Utils.acceptIfAuditEnabled(service, chain, txHash);
+        }
+        catch(TransactionFailureException ex) {
+            throw ex;
+        }
+        return new Address(result.getScoreAddress());
+    }
+
+    public static byte[] getHash(byte[] data) {
+        return new SHA3.Digest256().digest(data);
+    }
+
+    // below codes are from foundation.icon.icx.crypto.ECDSASignature
+    private final static X9ECParameters curveParams = CustomNamedCurves.getByName("secp256k1");
+    private final static ECDomainParameters curve = new ECDomainParameters(
+            curveParams.getCurve(), curveParams.getG(), curveParams.getN(), curveParams.getH());
+    private static ECPoint decompressKey(BigInteger xBN, boolean yBit) {
+        X9IntegerConverter x9 = new X9IntegerConverter();
+        byte[] compEnc = x9.integerToBytes(xBN, 1 + x9.getByteLength(curve.getCurve()));
+        compEnc[0] = (byte) (yBit ? 0x03 : 0x02);
+        return curve.getCurve().decodePoint(compEnc);
+    }
+    public static byte[] recoverFromSignature(int recId, BigInteger[] sig, byte[] message) {
+        BigInteger r = sig[0];
+        BigInteger s = sig[1];
+
+        BigInteger n = curve.getN();  // Curve order.
+        BigInteger i = BigInteger.valueOf((long) recId / 2);
+        BigInteger x = r.add(i.multiply(n));
+        BigInteger prime = SecP256K1Curve.q;
+        if (x.compareTo(prime) >= 0) {
+            return null;
+        }
+        ECPoint ecPoint = decompressKey(x, (recId & 1) == 1);
+        if (!ecPoint.multiply(n).isInfinity()) {
+            return null;
+        }
+        BigInteger e = new BigInteger(1, message);
+        BigInteger eInv = BigInteger.ZERO.subtract(e).mod(n);
+        BigInteger rInv = r.modInverse(n);
+        BigInteger srInv = rInv.multiply(s).mod(n);
+        BigInteger eInvrInv = rInv.multiply(eInv).mod(n);
+        ECPoint q = ECAlgorithms.sumOfTwoMultiplies(curve.getG(), eInvrInv, ecPoint, srInv);
+
+        byte [] encoded = q.getEncoded(false);
+        return IconKeys.getAddressHash(encoded);
     }
 }

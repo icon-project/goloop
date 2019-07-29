@@ -1,10 +1,10 @@
 package foundation.icon.test.cases;
 
-import foundation.icon.icx.IconService;
-import foundation.icon.icx.KeyWallet;
+import foundation.icon.icx.*;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
+import foundation.icon.icx.transport.jsonrpc.RpcError;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
@@ -21,8 +21,7 @@ import org.junit.jupiter.api.Test;
 import java.math.BigInteger;
 
 import static foundation.icon.test.common.Env.LOG;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 /*
 test methods
@@ -47,6 +46,7 @@ public class ScoreTest {
     private static final long defaultStep = 2;
     private static final long stepPrice = 1;
     private static GovScore.Fee fee;
+    private static Address scoreAddr;
 
     @BeforeAll
     public static void init() throws Exception {
@@ -68,8 +68,9 @@ public class ScoreTest {
         RpcObject params = new RpcObject.Builder()
                 .put("name", new RpcValue("HelloWorld"))
                 .build();
-        Address scoreAddr = Score.install(iconService, chain, ownerWallet, PATH, params);
-        testScore = new Score(iconService, chain, scoreAddr);
+        Address sAddr = Score.install(iconService, chain, ownerWallet, PATH, params);
+        testScore = new Score(iconService, chain, sAddr);
+        scoreAddr = sAddr;
 
         govScore.setMaxStepLimit("invoke", BigInteger.valueOf(1000));
         govScore.setMaxStepLimit("query", BigInteger.valueOf(1000));
@@ -207,7 +208,7 @@ public class ScoreTest {
     }
 
     @Test
-    public void timeout() throws Exception {
+    public void timeoutCallInfiniteLoop() throws Exception {
         LOG.infoEntering( "timeout");
         LOG.infoEntering( "invoke");
         TransactionResult result =
@@ -218,4 +219,76 @@ public class ScoreTest {
         LOG.infoExiting();
     }
 
+    @Test
+    public void infiniteInterCall() throws Exception {
+        LOG.infoEntering( "infiniteInterCall");
+        LOG.infoEntering( "deploy 2 score with same source");
+        Score[] scores = new Score[2];
+        KeyWallet[] wallets = new KeyWallet[2];
+        for(int i = 0; i < scores.length; i++) {
+            RpcObject params = new RpcObject.Builder()
+                    .put("name", new RpcValue("HelloWorld"))
+                    .build();
+            wallets[i] = ownerWallet;
+            Address sAddr = Score.install(iconService, chain, wallets[i], PATH, params);
+            scores[i] = new Score(iconService, chain, sAddr);
+        }
+        LOG.infoExiting();
+
+        KeyWallet sender = KeyWallet.create();
+        Utils.transferAndCheck(iconService, chain, chain.godWallet, sender.getAddress(), Constants.DEFAULT_BALANCE);
+
+        BigInteger []limits = {Constants.DEFAULT_BALANCE, BigInteger.valueOf(10)};
+        for(BigInteger l : limits) {
+            LOG.infoEntering( "sendTransaction with (" + l + ") stepLimit");
+            RpcObject params = new RpcObject.Builder()
+                    .put("_to", new RpcValue(scores[1].getAddress().toString()))
+                    .put("call_cnt", new RpcValue(BigInteger.ZERO))
+                    .build();
+            TransactionResult result =
+                    scores[0].invokeAndWaitResult(sender, "infinite_intercall",
+                            params, BigInteger.valueOf(0), l);
+            LOG.infoExiting();
+            // Maximum recursion depth exceeded and OutOfStep are expected
+            LOG.info("result : " + result);
+            assertEquals(Constants.STATUS_FAIL, result.getStatus());
+        }
+        BigInteger bal = iconService.getBalance(sender.getAddress()).execute();
+        LOG.info("sender's balance : " + bal);
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void invalidSignature() throws Exception {
+        LOG.infoEntering( "invalidSignature");
+        KeyWallet []testWallets = new KeyWallet[10];
+        for(int i = 0; i < testWallets.length; i++) {
+            testWallets[i] = KeyWallet.create();
+            Utils.transferAndCheck(iconService, chain, chain.godWallet, testWallets[i].getAddress(), BigInteger.ONE);
+        }
+
+        for(int i = 0; i < testWallets.length; i++) {
+            KeyWallet wallet = testWallets[i];
+            Transaction t = TransactionBuilder.newBuilder()
+                    .nid(BigInteger.valueOf(chain.networkId))
+                    .from(wallet.getAddress())
+                    .to(scoreAddr)
+                    .nonce(BigInteger.TEN)
+                    .stepLimit(BigInteger.valueOf(10))
+                    .call("transfer").build();
+
+            try {
+                iconService
+                        .sendTransaction(new SignedTransaction(t, testWallets[0]))
+                        .execute();
+                assertEquals(0, i);
+            }
+            catch (RpcError ex) {
+                assertNotEquals(0, i);
+                continue;
+            }
+        }
+        LOG.infoExiting();
+
+    }
 }

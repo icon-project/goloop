@@ -79,23 +79,8 @@ public class DeployTest {
     }
 
     private Address deploy(KeyWallet owner, Address to, String contentPath, RpcObject params, long stepLimit) throws Exception {
-        LOG.infoEntering("deploy to " + to);
         Bytes txHash = Utils.deployScore(iconService, chain.networkId, owner, to, contentPath, params, stepLimit);
-        TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
-        if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
-            LOG.infoExiting();
-            throw new TransactionFailureException(result.getFailure());
-        }
-
-        try {
-            Utils.acceptIfAuditEnabled(iconService, chain, txHash);
-        }
-        catch(TransactionFailureException ex) {
-            LOG.infoExiting();
-            throw ex;
-        }
-        LOG.infoExiting();
-        return new Address(result.getScoreAddress());
+        return Utils.getAddressByTxHash(iconService, chain, txHash);
     }
 
     private void invoke(KeyWallet from, Address to, String method, RpcObject params) throws Exception {
@@ -637,6 +622,50 @@ public class DeployTest {
                 .build();
         invoke(owner, scoreAddr, "helloWithName", params);
         LOG.infoExiting();
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void invalidSignature() throws Exception {
+        LOG.infoEntering( "invalidSignature");
+        KeyWallet testWallets[] = new KeyWallet[10];
+        Address testAddr[] = new Address[10];
+        LOG.infoEntering( "transfer for test");
+
+        for(int i = 0; i < testWallets.length; i++) {
+            testWallets[i] = KeyWallet.create();
+            testAddr[i] = testWallets[i].getAddress();
+        }
+        Utils.transferAndCheck(iconService, chain, chain.godWallet, testAddr, Constants.DEFAULT_BALANCE);
+        LOG.infoExiting();
+        byte[] content = Utils.zipContent(Constants.SCORE_HELLOWORLD_PATH);
+        RpcObject params = new RpcObject.Builder()
+                .put("name", new RpcValue("HelloWorld"))
+                .build();
+        for(int i = 0; i < testWallets.length; i++) { //            Transaction transaction = TransactionBuilder.newBuilder()
+            Transaction transaction = TransactionBuilder.newBuilder()
+                    .nid(BigInteger.valueOf(chain.networkId))
+                    .from(testWallets[i].getAddress())
+                    .to(Constants.CHAINSCORE_ADDRESS)
+                    .stepLimit(BigInteger.valueOf(Constants.DEFAULT_STEP_LIMIT))
+                    .timestamp(Utils.getMicroTime())
+                    .nonce(new BigInteger("1"))
+                    .deploy(Constants.CONTENT_TYPE, content)
+                    .params(params)
+                    .build();
+
+            SignedTransaction signedTransaction = new SignedTransaction(transaction, testWallets[0]);
+            try {
+                Bytes txHash = iconService.sendTransaction(signedTransaction).execute();
+                assertEquals(0, i);
+                Address addr = Utils.getAddressByTxHash(iconService, chain, txHash);
+                invoke(testWallets[0], addr, "hello", null);
+            }
+            catch(RpcError ex) {
+                assertNotEquals(0, i);
+                continue;
+            }
+        }
         LOG.infoExiting();
     }
 }

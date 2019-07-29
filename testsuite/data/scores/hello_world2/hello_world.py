@@ -2,6 +2,7 @@ from iconservice import *
 
 TAG = 'HelloWorld'
 
+
 class HelloWorld(IconScoreBase):
 
     def __init__(self, db: IconScoreDatabase) -> None:
