@@ -44,6 +44,18 @@ func (f *logFilter) SetModuleLevel(module string, level Level) {
 	f.moduleLevels[module] = level
 }
 
+func (f *logFilter) GetModuleLevel(module string) Level {
+	if lv, ok := f.moduleLevels[module]; ok {
+		return lv
+	} else {
+		return f.defaultLevel
+	}
+}
+
 func (f *logFilter) SetDefaultLevel(level Level) {
 	f.defaultLevel = level
+}
+
+func (f *logFilter) GetDefaultLevel() Level {
+	return f.defaultLevel
 }

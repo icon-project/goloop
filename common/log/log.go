@@ -126,8 +126,11 @@ type Logger interface {
 	WithFields(Fields) Logger
 	SetReportCaller(yn bool)
 	SetLevel(lv Level)
+	GetLevel() Level
 	SetConsoleLevel(lv Level)
+	GetConsoleLevel() Level
 	SetModuleLevel(mod string, lv Level)
+	GetModuleLevel(mod string) Level
 	Writer() *io.PipeWriter
 	WriterLevel(lv Level) *io.PipeWriter
 }
@@ -150,12 +153,24 @@ func (w entryWrapper) SetLevel(lv Level) {
 	w.Entry.Logger.SetLevel(logrus.Level(lv))
 }
 
+func (w entryWrapper) GetLevel() Level {
+	return Level(w.Entry.Logger.GetLevel())
+}
+
 func (w entryWrapper) SetConsoleLevel(lv Level) {
 	w.Logger.Formatter.(*logFilter).SetDefaultLevel(lv)
 }
 
+func (w entryWrapper) GetConsoleLevel() Level {
+	return w.Logger.Formatter.(*logFilter).GetDefaultLevel()
+}
+
 func (w entryWrapper) SetModuleLevel(mod string, lv Level) {
 	w.Logger.Formatter.(*logFilter).SetModuleLevel(mod, lv)
+}
+
+func (w entryWrapper) GetModuleLevel(mod string) Level {
+	return w.Logger.Formatter.(*logFilter).GetModuleLevel(mod)
 }
 
 func (w entryWrapper) Writer() *io.PipeWriter {
@@ -180,12 +195,24 @@ func (w loggerWrapper) SetLevel(lv Level) {
 	w.Logger.SetLevel(logrus.Level(lv))
 }
 
+func (w loggerWrapper) GetLevel() Level {
+	return Level(w.Logger.GetLevel())
+}
+
 func (w loggerWrapper) SetConsoleLevel(lv Level) {
 	w.Logger.Formatter.(*logFilter).SetDefaultLevel(lv)
 }
 
+func (w loggerWrapper) GetConsoleLevel() Level {
+	return w.Logger.Formatter.(*logFilter).GetDefaultLevel()
+}
+
 func (w loggerWrapper) SetModuleLevel(mod string, lv Level) {
 	w.Logger.Formatter.(*logFilter).SetModuleLevel(mod, lv)
+}
+
+func (w loggerWrapper) GetModuleLevel(mod string) Level {
+	return w.Logger.Formatter.(*logFilter).GetModuleLevel(mod)
 }
 
 func (w loggerWrapper) Writer() *io.PipeWriter {
