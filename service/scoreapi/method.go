@@ -329,9 +329,9 @@ func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
 		case String:
 			inputs[i] = param
 		case Bytes:
-			if param[0:2] != "0x" {
+			if len(param) < 3 || param[0:2] != "0x" {
 				return nil, scoreresult.Errorf(module.StatusInvalidParameter,
-					"InvalidPrefix(prefix=%s)", param[0:2])
+					"InvalidParam(param=%s)", param)
 			}
 			value, err := hex.DecodeString(param[2:])
 			if err != nil {
