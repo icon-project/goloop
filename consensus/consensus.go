@@ -210,7 +210,7 @@ func isValidTransition(from step, to step) bool {
 	case stepNewHeight:
 		return from != stepNewRound
 	case stepNewRound:
-		return from > stepNewRound
+		return true
 	default:
 		return from < to
 	}
