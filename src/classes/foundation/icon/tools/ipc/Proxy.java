@@ -22,6 +22,8 @@ import org.msgpack.core.MessagePack;
 import org.msgpack.core.MessageUnpacker;
 import org.msgpack.value.ArrayValue;
 import org.msgpack.value.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -29,8 +31,7 @@ import java.math.BigInteger;
 import static org.msgpack.value.ValueType.ARRAY;
 
 public class Proxy {
-
-    private static final boolean DEBUG = true;
+    private static final Logger logger = LoggerFactory.getLogger(Proxy.class);
 
     private OnGetApiListener mOnGetApiListener;
     private OnInvokeListener mOnInvokeListener;
@@ -93,11 +94,11 @@ public class Proxy {
             switch (msg.type) {
                 case MsgType.GETAPI:
                     String path = msg.value.asStringValue().asString();
-                    System.out.println("[GETAPI] path=" + path);
+                    logger.debug("[GETAPI] path={}", path);
                     handleGetApi(path);
                     break;
                 case MsgType.INVOKE:
-                    System.out.println("[INVOKE]");
+                    logger.debug("[INVOKE]");
                     handleInvoke(msg.value);
                     break;
             }
@@ -110,7 +111,7 @@ public class Proxy {
         if (msg.type != MsgType.GETINFO) {
             throw new IOException("Invalid message: GETINFO expected.");
         }
-        System.out.println("[GETINFO]");
+        logger.debug("[GETINFO]");
         return TypedObj.decodeAny(msg.value);
     }
 
@@ -161,11 +162,11 @@ public class Proxy {
         Value value = a.get(1);
         Message m = new Message(type, value);
 
-        if (DEBUG) {
-            System.out.println("[MsgType] " + m.type);
+        if (logger.isDebugEnabled()) {
+            logger.debug("[MsgType] {}", m.type);
             for (Value e : a) {
-                System.out.println("-- type: " + e.getValueType());
-                System.out.println("   value: " + e);
+                logger.debug("-- type: {}", e.getValueType());
+                logger.debug("   value: {}", e);
             }
         }
         return m;

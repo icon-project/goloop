@@ -14,19 +14,20 @@
  * limitations under the License.
  */
 
+import foundation.icon.common.Bytes;
 import foundation.icon.tools.ipc.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.HashMap;
 
 public class ProxyTest {
-
-    private static final boolean DEBUG = true;
+    private static final Logger logger = LoggerFactory.getLogger(ProxyTest.class);
 
     public static void main(String[] args) {
-        System.out.println("=== ProxyTest ===");
-
+        logger.info("=== ProxyTest ===");
         if (args.length == 2) {
             try {
                 Client client = Client.connect(args[0]);
@@ -39,10 +40,8 @@ public class ProxyTest {
                 e.printStackTrace();
             }
         } else {
-            System.out.println("Usage: ProxyTest <socket addr> <uuid>");
+            logger.info("Usage: ProxyTest <socket addr> <uuid>");
         }
-
-        System.out.println("=== END ===");
     }
 
     private static void setGetApiHandler(Proxy proxy) {
@@ -87,34 +86,34 @@ public class ProxyTest {
 
     private static void setInvokeHandler(Proxy proxy) {
         proxy.setOnInvokeListener((code, isQuery, from, to, value, limit, method, params) -> {
-            if (DEBUG) {
-                System.out.println(">>> code=" + code);
-                System.out.println("    isQuery=" + isQuery);
-                System.out.println("    from=" + from);
-                System.out.println("      to=" + to);
-                System.out.println("    value=" + value);
-                System.out.println("    limit=" + limit);
-                System.out.println("    method=" + method);
+            if (logger.isDebugEnabled()) {
+                logger.debug(">>> code={}", code);
+                logger.debug("    isQuery={}", isQuery);
+                logger.debug("    from={}", from);
+                logger.debug("      to={}", to);
+                logger.debug("    value={}", value);
+                logger.debug("    limit={}", limit);
+                logger.debug("    method={}", method);
 
-                System.out.println("    params=[");
+                logger.debug("    params=[");
                 for (Object p : params) {
-                    System.out.println("     - " + p);
+                    logger.debug("     - {}", p);
                 }
-                System.out.println("    ]");
+                logger.debug("    ]");
             }
 
             HashMap info = (HashMap) proxy.getInfo();
-            if (DEBUG) {
-                System.out.println(">>> getInfo: info=" + info);
-                System.out.println("  txHash=" + info.get(Proxy.Info.TX_HASH));
-                System.out.println("  txIndex=" + info.get(Proxy.Info.TX_INDEX));
-                System.out.println("  txFrom=" + info.get(Proxy.Info.TX_FROM));
-                System.out.println("  txTimestamp=" + info.get(Proxy.Info.TX_TIMESTAMP));
-                System.out.println("  txNonce=" + info.get(Proxy.Info.TX_NONCE));
-                System.out.println("  blockHeight=" + info.get(Proxy.Info.BLOCK_HEIGHT));
-                System.out.println("  blockTimestamp=" + info.get(Proxy.Info.BLOCK_TIMESTAMP));
-                System.out.println("  contractOwner=" + info.get(Proxy.Info.CONTRACT_OWNER));
-                System.out.println("  stepCosts=" + info.get(Proxy.Info.STEP_COSTS));
+            if (logger.isDebugEnabled()) {
+                logger.debug(">>> getInfo: info={}", info);
+                logger.debug("  txHash={}", Bytes.toHexString((byte[]) info.get(Proxy.Info.TX_HASH)));
+                logger.debug("  txIndex={}", info.get(Proxy.Info.TX_INDEX));
+                logger.debug("  txFrom={}", info.get(Proxy.Info.TX_FROM));
+                logger.debug("  txTimestamp={}", info.get(Proxy.Info.TX_TIMESTAMP));
+                logger.debug("  txNonce={}", info.get(Proxy.Info.TX_NONCE));
+                logger.debug("  blockHeight={}", info.get(Proxy.Info.BLOCK_HEIGHT));
+                logger.debug("  blockTimestamp={}", info.get(Proxy.Info.BLOCK_TIMESTAMP));
+                logger.debug("  contractOwner={}", info.get(Proxy.Info.CONTRACT_OWNER));
+                logger.debug("  stepCosts={}", info.get(Proxy.Info.STEP_COSTS));
             }
             return new InvokeResult(0, BigInteger.ZERO,
                     TypedObj.encodeAny(info.get(Proxy.Info.STEP_COSTS)));
