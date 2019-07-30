@@ -208,7 +208,7 @@ func (cs *consensus) endStep() {
 func isValidTransition(from step, to step) bool {
 	switch to {
 	case stepNewHeight:
-		return from != stepNewRound
+		return from == stepNewHeight || from == stepCommit
 	case stepNewRound:
 		return true
 	default:
