@@ -176,14 +176,14 @@ public class BtpApiTest {
         byte []votesHash = (byte[])dBlkHeader.get(VOTESHASH_INDEX);
 
         // get votes by hash of the votes
-        Base64 votes1 = iconService.getDataByHash(new Bytes(votesHash)).execute();
-        byte[] vote1Hash = Utils.getHash(votes1.decode());
-        if (!Arrays.equals(votesHash, vote1Hash)) {
+        Base64 votes = iconService.getDataByHash(new Bytes(votesHash)).execute();
+        byte[] voteHash2 = Utils.getHash(votes.decode());
+        if (!Arrays.equals(votesHash, voteHash2)) {
             LOG.info("blkHeight (" + resBlkHeight + ")");
             LOG.info("headerBytes (" + Utils.byteArrayToHex(resHeaderBytes) + ")");
-            LOG.info("votes (" + Utils.byteArrayToHex(votes1.decode()) + ")");
+            LOG.info("votes (" + Utils.byteArrayToHex(votes.decode()) + ")");
             LOG.info("votesHash (" + Utils.byteArrayToHex(votesHash) + ")");
-            LOG.info("vote1Hash (" + Utils.byteArrayToHex(vote1Hash) + ")");
+            LOG.info("vote1Hash (" + Utils.byteArrayToHex(voteHash2) + ")");
             throw new Exception();
         }
 
@@ -196,17 +196,6 @@ public class BtpApiTest {
             LOG.info("votesHash (" + Utils.byteArrayToHex(votesHash) + ")");
             LOG.info("vHash (" + Utils.byteArrayToHex(vHash) + ")");
             LOG.info("nextValidatorHash (" + Utils.byteArrayToHex(nextValidatorHash) + ")");
-            LOG.infoExiting();
-            throw new Exception();
-        }
-
-        Base64 votes2 = iconService.getVotesByHeight(resBlkHeight.subtract(BigInteger.ONE)).execute();
-        if (!Arrays.equals(votes1.decode(), votes2.decode())) {
-            LOG.info("blkHeight (" + resBlkHeight + ")");
-            LOG.info("headerBytes (" + Utils.byteArrayToHex(resHeaderBytes) + ")");
-            LOG.info("votesHash (" + Utils.byteArrayToHex(votesHash) + ")");
-            LOG.info("votes1 (" + Utils.byteArrayToHex(votes1.decode()) + ")");
-            LOG.info("votes2 (" + Utils.byteArrayToHex(votes2.decode()) + ")");
             LOG.infoExiting();
             throw new Exception();
         }
