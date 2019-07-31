@@ -197,7 +197,7 @@ func main() {
 	vc.AutomaticEnv()
 
 	cobra.OnInitialize(initConfig)
-	rootCmd := &cobra.Command{Use: "goloop",Short: "Goloop CLI",}
+	rootCmd := &cobra.Command{Use: "goloop", Short: "Goloop CLI"}
 	rootPFlags := rootCmd.PersistentFlags()
 	rootPFlags.StringVarP(&cfg.FilePath, "config", "c", "", "Parsing configuration file")
 	rootPFlags.StringVarP(&cliSocket, "node_sock", "s", "",
@@ -272,7 +272,7 @@ func main() {
 	}
 	startFlags := startCmd.Flags()
 	var modLevels map[string]string
-	startFlags.StringToStringVar(&modLevels, "mod_level", nil, "Set log level for specific module (<mod>=<level>,...)")
+	startFlags.StringToStringVar(&modLevels, "mod_level", nil, "Set console log level for specific module (<mod>=<level>,...)")
 	startFlags.MarkHidden("mod_level")
 
 	startCmd.Run = func(cmd *cobra.Command, args []string) {

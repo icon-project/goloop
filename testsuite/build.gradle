@@ -43,15 +43,15 @@ class ChainTest extends Test {
     void startServer() {
         List<String> commands = new LinkedList<String>()
         commands.add("../bin/gochain")
-        commands.add("-config")
+        commands.add("--config")
         commands.add(configFile)
-        commands.add("-chain_dir")
+        commands.add("--chain_dir")
         commands.add(chainDir)
         if ( gsFile != null ) {
-            commands.add("-genesis_storage")
+            commands.add("--genesis_storage")
             commands.add(gsFile)
         } else if ( gsDir != null) {
-            commands.add("-genesis")
+            commands.add("--genesis")
             commands.add(gsDir)
         }
 

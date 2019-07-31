@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	stdlog "log"
@@ -26,6 +25,7 @@ import (
 	"github.com/icon-project/goloop/server/metric"
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/transaction"
+	"github.com/spf13/cobra"
 )
 
 const (
@@ -74,16 +74,23 @@ var (
 	build   = "unknown"
 )
 
-func main() {
-	var genesisStorage, genesisPath string
-	var keyStoreFile, keyStoreSecret string
-	var saveFile, saveKeyStore string
-	var cfg GoChainConfig
-	var cpuProfile, memProfile string
-	var chainDir string
-	var eeSocket string
+var genesisStorage, genesisPath string
+var keyStoreFile, keyStoreSecret string
+var saveFile, saveKeyStore string
+var cfg GoChainConfig
+var cpuProfile, memProfile string
+var chainDir string
+var eeSocket string
+var modLevels map[string]string
 
-	flag.Var(&cfg, "config", "Parsing configuration file")
+func main() {
+	cmd := &cobra.Command{
+		Use:  os.Args[0],
+		Args: cobra.ExactArgs(0),
+	}
+	flag := cmd.PersistentFlags()
+
+	flag.VarP(&cfg, "config", "c", "Configuration file path")
 	flag.StringVar(&saveFile, "save", "", "File path for storing current configuration(it exits after save)")
 	flag.StringVar(&saveKeyStore, "save_key_store", "", "File path for storing current KeyStore")
 	flag.StringVar(&cfg.Channel, "channel", "default", "Channel name for the chain")
@@ -97,7 +104,7 @@ func main() {
 	flag.StringVar(&genesisPath, "genesis", "", "Genesis template directory or file")
 	flag.StringVar(&cfg.DBType, "db_type", "goleveldb", "Name of database system(badgerdb, *goleveldb, boltdb, mapdb)")
 	flag.UintVar(&cfg.Role, "role", 2, "[0:None, 1:Seed, 2:Validator, 3:Both]")
-	flag.StringVar(&eeSocket, "ee_socket", "", "Execution engine socket path(default:.chain/<address>/ee.sock")
+	flag.StringVarP(&eeSocket, "ee_socket", "s", "", "Execution engine socket path(default:.chain/<address>/ee.sock")
 	flag.StringVar(&keyStoreFile, "key_store", "", "KeyStore file for wallet")
 	flag.StringVar(&keyStoreSecret, "key_secret", "", "Secret(password) file for KeyStore")
 	flag.StringVar(&cfg.KeyStorePass, "key_password", "", "Password for the KeyStore file")
@@ -111,8 +118,13 @@ func main() {
 	flag.IntVar(&cfg.MaxBlockTxBytes, "max_block_tx_bytes", 0, "Maximum size of ransactions in a block")
 	flag.StringVar(&cfg.LogLevel, "log_level", "debug", "Main log level")
 	flag.StringVar(&cfg.ConsoleLevel, "console_level", "trace", "Console log level")
-	flag.Parse()
+	flag.StringToStringVar(&modLevels, "mod_level", nil, "Console log level for specific module (<mod>=<level>,...)")
 
+	cmd.Run = Execute
+	cmd.Execute()
+}
+
+func Execute(cmd *cobra.Command, args []string) {
 	if len(keyStoreFile) > 0 {
 		if ks, err := ioutil.ReadFile(keyStoreFile); err != nil {
 			log.Panicf("Fail to open KeyStore file=%s err=%+v", keyStoreFile, err)
@@ -262,6 +274,17 @@ func main() {
 		log.Panicf("Fail to parse loglevel level=%s", cfg.ConsoleLevel)
 	} else {
 		logger.SetConsoleLevel(lv)
+	}
+
+	if len(modLevels) > 0 {
+		for mod, lvString := range modLevels {
+			if lv, err := log.ParseLevel(lvString); err != nil {
+				log.Panicf("Log level(%s) for %s isn't valid err=%+v",
+					lvString, mod, err)
+			} else {
+				logger.SetModuleLevel(mod, lv)
+			}
+		}
 	}
 
 	if chainDir != "" {

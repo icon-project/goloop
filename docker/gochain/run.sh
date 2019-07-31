@@ -49,23 +49,23 @@ if [ ! -d ${GOCHAIN_DATA} ] ; then
     mkdir -p ${GOCHAIN_DATA} || exit -1
 fi
 
-GOCHAIN_OPTIONS="-chain_dir ${GOCHAIN_DATA}"
-GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS -ee_socket /tmp/socket"
-GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS -db_type goleveldb"
-GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS -role 3"
+GOCHAIN_OPTIONS="--chain_dir ${GOCHAIN_DATA}"
+GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS --ee_socket /tmp/socket"
+GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS --db_type goleveldb"
+GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS --role 3"
 
 if [ "${GOCHAIN_GENESIS}" != "" ] ; then
-    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS -genesis ${GOCHAIN_GENESIS}"
+    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS --genesis ${GOCHAIN_GENESIS}"
 fi
 
 if [ "${GOCHAIN_GENESIS_DATA}" != "" ] ; then
-    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS -genesis_data ${GOCHAIN_GENESIS_DATA}"
+    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS --genesis_data ${GOCHAIN_GENESIS_DATA}"
 fi
 
 if [ -r "${GOCHAIN_KEYSTORE}" ] ; then
-    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS -key_store ${GOCHAIN_KEYSTORE}"
+    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS --key_store ${GOCHAIN_KEYSTORE}"
 else
-    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS -save_key_store ${GOCHAIN_KEYSTORE}"
+    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS --save_key_store ${GOCHAIN_KEYSTORE}"
 fi
 
 if [ "${GOCHAIN_KEYAUTO}" == "1" ] ; then
@@ -78,19 +78,19 @@ if [ "${GOCHAIN_KEYAUTO}" == "1" ] ; then
 fi
 
 if [ "${GOCHAIN_KEYSECRET}" != "" ] ; then
-    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS -key_secret ${GOCHAIN_KEYSECRET}"
+    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS --key_secret ${GOCHAIN_KEYSECRET}"
 fi
 
 if [ "${GOCHAIN_ADDRESS}" != "" ] ; then
-    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS -p2p ${GOCHAIN_ADDRESS}"
+    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS --p2p ${GOCHAIN_ADDRESS}"
 else
-    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS -p2p ${HOST}:8080"
+    GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS --p2p ${HOST}:8080"
 fi
-GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS -p2p_listen :8080"
+GOCHAIN_OPTIONS="$GOCHAIN_OPTIONS --p2p_listen :8080"
 
 if [ ! -r "${GOCHAIN_CONFIG}" ] ; then
     echo "[!] Generate config path=[${GOCHAIN_CONFIG}]"
-    ${GOCHAIN} ${GOCHAIN_OPTIONS} -save ${GOCHAIN_CONFIG} || exit 1
+    ${GOCHAIN} ${GOCHAIN_OPTIONS} --save ${GOCHAIN_CONFIG} || exit 1
 fi
 
 if [ "${GOCHAIN_LOGFILE}" != "" ] ; then
@@ -98,7 +98,7 @@ if [ "${GOCHAIN_LOGFILE}" != "" ] ; then
   if [ ! -d "${GOCHAIN_LOGDIR}" ] ; then
     mkdir -p ${GOCHAIN_LOGDIR}
   fi
-  ${GOCHAIN} -config ${GOCHAIN_CONFIG} ${GOCHAIN_OPTIONS} 2>&1 | tee -a ${GOCHAIN_LOGFILE}
+  ${GOCHAIN} --config ${GOCHAIN_CONFIG} ${GOCHAIN_OPTIONS} 2>&1 | tee -a ${GOCHAIN_LOGFILE}
 else
-  ${GOCHAIN} -config ${GOCHAIN_CONFIG} ${GOCHAIN_OPTIONS}
+  ${GOCHAIN} --config ${GOCHAIN_CONFIG} ${GOCHAIN_OPTIONS}
 fi

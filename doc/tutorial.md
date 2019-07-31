@@ -26,7 +26,7 @@ make gstool
 You need to make a configuration for the node.
 
 ```bash
-./bin/gochain -save_key_store wallet.json -save config.json
+./bin/gochain --save_key_store wallet.json --save config.json
 ```
 
 It stores generated configuration(`config.json`) along with wallet keystore
@@ -36,7 +36,7 @@ password of the keystore. You may apply more options while it generates.
 Now, you may start the server with it.
 
 ```bash
-./bin/gochain -config config.json
+./bin/gochain --config config.json
 ```
 
 You may send transaction with the wallet (`wallet.json`) for initial balance
