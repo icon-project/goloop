@@ -212,6 +212,7 @@ func main() {
 	serverFlags.StringVar(&flagCfg.P2PListenAddr, "p2p_listen", "", "Listen ip-port of P2P")
 	serverFlags.StringVar(&flagCfg.RPCAddr, "rpc_addr", ":9080", "Listen ip-port of JSON-RPC")
 	serverFlags.BoolVar(&flagCfg.RPCDump, "rpc_dump", false, "JSON-RPC Request, Response Dump flag")
+	serverFlags.StringVar(&flagCfg.RPCDefaultChannel, "rpc_default_channel", "", "JSON-RPC Default Channel")
 	serverFlags.StringVar(&eeSocket, "ee_socket", "", "Execution engine socket path")
 	serverFlags.StringVar(&keyStoreFile, "key_store", "", "KeyStore file for wallet")
 	serverFlags.StringVar(&keyStoreSecret, "key_secret", "", "Secret(password) file for KeyStore")

@@ -38,19 +38,6 @@ func JsonRpc(mr *jsonrpc.MethodRepository) echo.MiddlewareFunc {
 	}
 }
 
-func AnyChainInjector(srv *Manager) echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(ctx echo.Context) error {
-			c := srv.AnyChain()
-			if c == nil {
-				return jsonrpc.ErrorCodeServer.New("not exists chain")
-			}
-			ctx.Set("chain", c)
-			return next(ctx)
-		}
-	}
-}
-
 func ChainInjector(srv *Manager) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(ctx echo.Context) error {

@@ -36,11 +36,12 @@ type Rest struct {
 }
 
 type SystemView struct {
-	BuildVersion  string `json:"buildVersion"`
-	BuildTags     string `json:"buildTags"`
-	Address       string `json:"address"`
-	P2PAddr       string `json:"p2p"`
-	P2PListenAddr string `json:"p2pListen"`
+	BuildVersion      string `json:"buildVersion"`
+	BuildTags         string `json:"buildTags"`
+	Address           string `json:"address"`
+	P2PAddr           string `json:"p2p"`
+	P2PListenAddr     string `json:"p2pListen"`
+	RPCDefaultChannel string `json:"rpc_default_channel,omitempty"`
 }
 
 type StatsView struct {
@@ -313,6 +314,7 @@ func (r *Rest) GetSystem(ctx echo.Context) error {
 		Address:       r.n.w.Address().String(),
 		P2PAddr:       r.n.nt.Address(),
 		P2PListenAddr: r.n.nt.GetListenAddress(),
+		RPCDefaultChannel: r.n.cfg.RPCDefaultChannel,
 	}
 
 	format := ctx.QueryParam("format")

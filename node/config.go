@@ -14,13 +14,14 @@ const (
 
 type NodeConfig struct {
 	// static
-	CliSocket     string `json:"node_sock"` // relative path
-	P2PAddr       string `json:"p2p"`
-	P2PListenAddr string `json:"p2p_listen"`
-	RPCAddr       string `json:"rpc_addr"`
-	RPCDump       bool   `json:"rpc_dump"`
-	EESocket      string `json:"ee_socket"`
-	EEInstances   int    `json:"ee_instances"`
+	CliSocket         string `json:"node_sock"` // relative path
+	P2PAddr           string `json:"p2p"`
+	P2PListenAddr     string `json:"p2p_listen"`
+	RPCAddr           string `json:"rpc_addr"`
+	RPCDump           bool   `json:"rpc_dump"`
+	RPCDefaultChannel string `json:"rpc_default_channel,omitempty"`
+	EESocket          string `json:"ee_socket"`
+	EEInstances       int    `json:"ee_instances"`
 
 	BaseDir  string `json:"node_dir"`
 	FilePath string `json:"-"` // absolute path

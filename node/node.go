@@ -328,7 +328,7 @@ func NewNode(
 	if cfg.P2PListenAddr != "" {
 		_ = nt.SetListenAddress(cfg.P2PListenAddr)
 	}
-	srv := server.NewManager(cfg.RPCAddr, cfg.RPCDump, w, l)
+	srv := server.NewManager(cfg.RPCAddr, cfg.RPCDump, cfg.RPCDefaultChannel, w, l)
 
 	ee, err := eeproxy.NewPythonEE(l)
 	if err != nil {

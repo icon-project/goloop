@@ -19,17 +19,18 @@ import (
 )
 
 type Manager struct {
-	e           *echo.Echo
-	addr        string
-	wallet      module.Wallet
-	chains      map[string]module.Chain // chain manager
-	wssm        *wsSessionManager
-	mtx         sync.RWMutex
-	jsonrpcDump bool
-	logger      log.Logger
+	e                     *echo.Echo
+	addr                  string
+	wallet                module.Wallet
+	chains                map[string]module.Chain // chain manager
+	wssm                  *wsSessionManager
+	mtx                   sync.RWMutex
+	jsonrpcDump           bool
+	jsonrpcDefaultChannel string
+	logger                log.Logger
 }
 
-func NewManager(addr string, jsonrpcDump bool, wallet module.Wallet, l log.Logger) *Manager {
+func NewManager(addr string, jsonrpcDump bool, jsonrpcDefaultChannel string, wallet module.Wallet, l log.Logger) *Manager {
 
 	e := echo.New()
 
@@ -51,6 +52,7 @@ func NewManager(addr string, jsonrpcDump bool, wallet module.Wallet, l log.Logge
 		wssm:        newWSSessionManager(logger),
 		mtx:         sync.RWMutex{},
 		jsonrpcDump: jsonrpcDump,
+		jsonrpcDefaultChannel: jsonrpcDefaultChannel,
 		logger:      logger,
 	}
 }
@@ -84,21 +86,16 @@ func (srv *Manager) Chain(channel string) module.Chain {
 	srv.mtx.RLock()
 
 	if channel == "" {
-		for _, v := range srv.chains {
-			return v
+
+		if srv.jsonrpcDefaultChannel == "" && len(srv.chains) == 1 {
+			for k := range srv.chains {
+				channel = k
+			}
+		} else {
+			channel = srv.jsonrpcDefaultChannel
 		}
 	}
 	return srv.chains[channel]
-}
-
-func (srv *Manager) AnyChain() module.Chain {
-	defer srv.mtx.RUnlock()
-	srv.mtx.RLock()
-
-	for _, v := range srv.chains {
-		return v
-	}
-	return nil
 }
 
 func (srv *Manager) Start() {
@@ -130,7 +127,7 @@ func (srv *Manager) Start() {
 		}))
 	}
 	g.Use(JsonRpc(mr), Chunk())
-	g.POST("/v3", mr.Handle, AnyChainInjector(srv))
+	g.POST("/v3", mr.Handle, ChainInjector(srv))
 	g.POST("/v3/:channel", mr.Handle, ChainInjector(srv))
 
 	// websocket
