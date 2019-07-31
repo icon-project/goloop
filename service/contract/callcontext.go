@@ -341,9 +341,6 @@ func (cc *callContext) OnResult(status module.Status, stepUsed *big.Int,
 }
 
 func (cc *callContext) OnCall(handler ContractHandler) {
-	if !cc.isInAsyncFrame() {
-		cc.log.Panicln("OnCall() should be called in AsyncContractHandler frame")
-	}
 	cc.sendMessage(&callRequestMessage{handler})
 }
 
