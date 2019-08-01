@@ -78,6 +78,11 @@ type ChainConfig struct {
 	SecureAeads      string `json:"secureAeads"`
 }
 
+type ChainImportParam struct {
+	DBPath           string `json:"dbPath"`
+	Height           int64 `json:"height"`
+}
+
 // TODO [TBD]move to module.Chain ?
 type LastErrorReportor interface {
 	LastError() error
@@ -166,6 +171,7 @@ func (r *Rest) RegisterChainHandlers(g *echo.Group) {
 	g.POST(UrlChainRes+"/stop", r.StopChain, r.ChainInjector)
 	g.POST(UrlChainRes+"/reset", r.ResetChain, r.ChainInjector)
 	g.POST(UrlChainRes+"/verify", r.VerifyChain, r.ChainInjector)
+	g.POST(UrlChainRes+"/import", r.ImportChain, r.ChainInjector)
 }
 
 func (r *Rest) ChainInjector(next echo.HandlerFunc) echo.HandlerFunc {
@@ -305,8 +311,11 @@ func (r *Rest) VerifyChain(ctx echo.Context) error {
 
 func (r *Rest) ImportChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(*Chain)
-	// TODO need to define and parse parameters, and pass it to the method.
-	if err := r.n.ImportChain(c.NID(), "", 0); err != nil {
+	param := &ChainImportParam{}
+	if err := ctx.Bind(param); err != nil {
+		return echo.ErrBadRequest
+	}
+	if err := r.n.ImportChain(c.NID(), param.DBPath, param.Height); err != nil {
 		return err
 	}
 	return ctx.String(http.StatusOK, "OK")

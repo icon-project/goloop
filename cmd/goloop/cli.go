@@ -21,6 +21,7 @@ import (
 var (
 	genesisZip, genesisPath string
 	joinChainParam          node.ChainConfig
+	importChainParam        node.ChainImportParam
 )
 
 func JosnIndent(v interface{}) (string, error) {
@@ -261,6 +262,29 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 		},
 	}
 	rootCmd.AddCommand(verifyCmd)
+	importCmd := &cobra.Command{
+		Use:                   "import NID",
+		Short:                 "Chain data verify",
+		Args:                  cobra.ExactArgs(1),
+		DisableFlagsInUseLine: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			hc := GetUnixDomainSockHttpClient(cfg)
+			reqUrl := node.UrlChain + "/" + args[0] + "/import"
+			var v string
+			_, err := hc.PostWithJson(reqUrl, &importChainParam, &v)
+			if err != nil {
+				return err
+			}
+			fmt.Println(v)
+			return nil
+		},
+	}
+	rootCmd.AddCommand(importCmd)
+	importCmd.Flags().StringVar(&importChainParam.DBPath, "db_path", "","Database path")
+	importCmd.Flags().Int64Var(&importChainParam.Height, "height", 0,"Block Height")
+	importCmd.MarkFlagRequired("db_path")
+	importCmd.MarkFlagRequired("height")
+
 	return rootCmd
 }
 
