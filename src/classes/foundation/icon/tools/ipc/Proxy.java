@@ -59,9 +59,9 @@ public class Proxy {
         }
     }
 
-    class Status {
-        static final int SUCCESS = 0;
-        static final int FAILURE = 1;
+    public class Status {
+        public static final int SUCCESS = 0;
+        public static final int FAILURE = 1;
     }
 
     public class Info {

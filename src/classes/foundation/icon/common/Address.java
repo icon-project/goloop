@@ -19,11 +19,12 @@ package foundation.icon.common;
 import java.util.Arrays;
 
 public class Address {
+    private static final int LENGTH = 21;
     private byte prefix;
     private byte[] body;
 
     public Address(byte[] input) {
-        if (input.length != 21) {
+        if (input.length != LENGTH) {
             throw new IllegalArgumentException("Illegal format");
         }
         this.prefix = input[0];
@@ -35,7 +36,7 @@ public class Address {
     }
 
     public byte[] toByteArray() {
-        byte[] ba = new byte[21];
+        byte[] ba = new byte[LENGTH];
         ba[0] = prefix;
         System.arraycopy(body, 0, ba, 1, body.length);
         return ba;

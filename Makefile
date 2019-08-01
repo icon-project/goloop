@@ -61,4 +61,4 @@ $(BUILD_DIR)/%.class: test/%.java
 run: $(TARGET_JAR) $(TARGET_SO) $(TEST_CLASSES)
 	$(JAVA) -cp $(TARGET_JAR):$(LIB_JARS):$(BUILD_DIR) -Djava.library.path=$(BUILD_DIR) \
 	    -Dorg.slf4j.simpleLogger.defaultLogLevel=DEBUG \
-	    ProxyTest /tmp/ee.socket uuid1234
+	    TransactionExecutorTest /tmp/ee.socket uuid1234
