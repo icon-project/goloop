@@ -120,9 +120,11 @@ const (
 	StateStopped
 	StateTerminating
 	StateTerminated
-	StateVerifying
+	StateVerifyStarting
+	StateVerifyStarted
 	StateVerifyFailed
-	StateImporting
+	StateImportStarting
+	StateImportStarted
 	StateImportFailed
 	StateResetting
 	StateResetFailed
@@ -152,12 +154,16 @@ func (s State) String() string {
 		return "terminating"
 	case StateTerminated:
 		return "terminated"
-	case StateVerifying:
-		return "verifying"
+	case StateVerifyStarting:
+		return "verify Starting"
+	case StateVerifyStarted:
+		return "verify started"
 	case StateVerifyFailed:
 		return "verify failed"
-	case StateImporting:
-		return "importing"
+	case StateImportStarting:
+		return "import starting"
+	case StateImportStarted:
+		return "import started"
 	case StateImportFailed:
 		return "import failed"
 	case StateResetting:
@@ -408,7 +414,7 @@ func (c *singleChain) _stop() {
 	}
 }
 
-func (c *singleChain) _import(src string) error {
+func (c *singleChain) _import(src string, height int64) error {
 	c.nm = network.NewManager(c, c.nt, c.cfg.SeedAddr, toRoles(c.cfg.Role)...)
 	//TODO [TBD] is service/contract.ContractManager owner of ContractDir ?
 	chainDir := c.cfg.ResolveAbsolute(c.cfg.BaseDir)
@@ -486,7 +492,7 @@ func (c *singleChain) Start(sync bool) error {
 }
 
 func (c *singleChain) Stop(sync bool) error {
-	if err := c._transit(StateStopping, StateStarted, StateImporting); err != nil {
+	if err := c._transit(StateStopping, StateStarted, StateImportStarted); err != nil {
 		return err
 	}
 	f := func() {
@@ -497,18 +503,18 @@ func (c *singleChain) Stop(sync bool) error {
 	return c._execute(sync, f)
 }
 
-func (c *singleChain) Import(src string, sync bool) error {
-	if err := c._transit(StateImporting, StateStopped); err != nil {
+func (c *singleChain) Import(src string, height int64, sync bool) error {
+	if err := c._transit(StateImportStarting, StateStopped); err != nil {
 		return err
 	}
 	f := func() {
 		c._stop()
-		s := StateStopped
-		err := c._import(src)
+		err := c._import(src, height)
+		s := StateImportStarted
 		if err != nil {
-			s = StateImportFailed
 			c._stop()
 			c._prepare()
+			s = StateImportFailed
 		}
 		c._setState(s, err)
 	}
@@ -533,19 +539,20 @@ func (c *singleChain) Term(sync bool) error {
 }
 
 func (c *singleChain) _verify() error {
-	//verify code here
+	// TODO start verifying operation
 	return fmt.Errorf("not implemented")
 }
 
 func (c *singleChain) Verify(sync bool) error {
-	if err := c._transit(StateVerifying, StateStopped); err != nil {
+	if err := c._transit(StateVerifyStarting, StateStopped); err != nil {
 		return err
 	}
 
 	f := func() {
-		s := StateStopped
+		s := StateVerifyStarted
 		err := c._verify()
 		if err != nil {
+			// TODO need to cleanup on failure.
 			s = StateVerifyFailed
 		}
 		c._setState(s, err)

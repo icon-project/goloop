@@ -303,17 +303,26 @@ func (r *Rest) VerifyChain(ctx echo.Context) error {
 	return ctx.String(http.StatusOK, "OK")
 }
 
+func (r *Rest) ImportChain(ctx echo.Context) error {
+	c := ctx.Get("chain").(*Chain)
+	// TODO need to define and parse parameters, and pass it to the method.
+	if err := r.n.ImportChain(c.NID(), "", 0); err != nil {
+		return err
+	}
+	return ctx.String(http.StatusOK, "OK")
+}
+
 func (r *Rest) RegisterSystemHandlers(g *echo.Group) {
 	g.GET("", r.GetSystem)
 }
 
 func (r *Rest) GetSystem(ctx echo.Context) error {
 	v := &SystemView{
-		BuildVersion:  r.n.cfg.BuildVersion,
-		BuildTags:     r.n.cfg.BuildTags,
-		Address:       r.n.w.Address().String(),
-		P2PAddr:       r.n.nt.Address(),
-		P2PListenAddr: r.n.nt.GetListenAddress(),
+		BuildVersion:      r.n.cfg.BuildVersion,
+		BuildTags:         r.n.cfg.BuildTags,
+		Address:           r.n.w.Address().String(),
+		P2PAddr:           r.n.nt.Address(),
+		P2PListenAddr:     r.n.nt.GetListenAddress(),
 		RPCDefaultChannel: r.n.cfg.RPCDefaultChannel,
 	}
 

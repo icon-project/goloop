@@ -36,7 +36,7 @@ type Chain interface {
 	Init(sync bool) error
 	Start(sync bool) error
 	Stop(sync bool) error
-	Import(src string, sync bool) error
+	Import(src string, height int64, sync bool) error
 	Term(sync bool) error
 	State() string
 

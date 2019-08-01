@@ -284,7 +284,18 @@ func (n *Node) VerifyChain(nid int) error {
 	if err != nil {
 		return err
 	}
-	return c.Verify(false)
+	return c.Verify(true)
+}
+
+func (n *Node) ImportChain(nid int, s string, height int64) error {
+	defer n.mtx.RUnlock()
+	n.mtx.RLock()
+
+	c, err := n._get(nid)
+	if err != nil {
+		return err
+	}
+	return c.Import(s, height, true)
 }
 
 func (n *Node) GetChains() []*Chain {
