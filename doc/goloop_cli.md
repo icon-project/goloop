@@ -44,6 +44,7 @@ Manage chains
 ### Child commands
 |Command | Description|
 |---|---|
+| [goloop chain import](#goloop-chain-import) | Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) | Inspect chain |
 | [goloop chain join](#goloop-chain-join) | Join chain |
 | [goloop chain leave](#goloop-chain-leave) | Leave chain |
@@ -66,6 +67,46 @@ Manage chains
 | [goloop stats](#goloop-stats) | Display a live streams of chains metric-statistics |
 | [goloop system](#goloop-system) | System info |
 | [goloop version](#goloop-version) | Print goloop version |
+
+## goloop chain import
+
+### Description
+Start to import legacy database
+
+### Usage
+` goloop chain import NID `
+
+### Options
+|Name,shorthand | Default | Description|
+|---|---|---|
+| --db_path |  | Database path |
+| --height | 0 | Block Height |
+
+### Inherited Options
+|Name,shorthand | Default | Description|
+|---|---|---|
+| --config, -c |  | Parsing configuration file |
+| --cpuprofile |  | CPU Profiling data file |
+| --memprofile |  | Memory Profiling data file |
+| --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop chain](#goloop-chain) | Manage chains |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop chain import](#goloop-chain-import) | Start to import legacy database |
+| [goloop chain inspect](#goloop-chain-inspect) | Inspect chain |
+| [goloop chain join](#goloop-chain-join) | Join chain |
+| [goloop chain leave](#goloop-chain-leave) | Leave chain |
+| [goloop chain ls](#goloop-chain-ls) | List chains |
+| [goloop chain reset](#goloop-chain-reset) | Chain data reset |
+| [goloop chain start](#goloop-chain-start) | Chain start |
+| [goloop chain stop](#goloop-chain-stop) | Chain stop |
+| [goloop chain verify](#goloop-chain-verify) | Chain data verify |
 
 ## goloop chain inspect
 
@@ -96,6 +137,7 @@ Inspect chain
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain import](#goloop-chain-import) | Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) | Inspect chain |
 | [goloop chain join](#goloop-chain-join) | Join chain |
 | [goloop chain leave](#goloop-chain-leave) | Leave chain |
@@ -145,6 +187,7 @@ Join chain
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain import](#goloop-chain-import) | Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) | Inspect chain |
 | [goloop chain join](#goloop-chain-join) | Join chain |
 | [goloop chain leave](#goloop-chain-leave) | Leave chain |
@@ -178,6 +221,7 @@ Leave chain
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain import](#goloop-chain-import) | Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) | Inspect chain |
 | [goloop chain join](#goloop-chain-join) | Join chain |
 | [goloop chain leave](#goloop-chain-leave) | Leave chain |
@@ -211,6 +255,7 @@ List chains
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain import](#goloop-chain-import) | Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) | Inspect chain |
 | [goloop chain join](#goloop-chain-join) | Join chain |
 | [goloop chain leave](#goloop-chain-leave) | Leave chain |
@@ -244,6 +289,7 @@ Chain data reset
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain import](#goloop-chain-import) | Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) | Inspect chain |
 | [goloop chain join](#goloop-chain-join) | Join chain |
 | [goloop chain leave](#goloop-chain-leave) | Leave chain |
@@ -277,6 +323,7 @@ Chain start
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain import](#goloop-chain-import) | Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) | Inspect chain |
 | [goloop chain join](#goloop-chain-join) | Join chain |
 | [goloop chain leave](#goloop-chain-leave) | Leave chain |
@@ -310,6 +357,7 @@ Chain stop
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain import](#goloop-chain-import) | Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) | Inspect chain |
 | [goloop chain join](#goloop-chain-join) | Join chain |
 | [goloop chain leave](#goloop-chain-leave) | Leave chain |
@@ -343,6 +391,7 @@ Chain data verify
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain import](#goloop-chain-import) | Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) | Inspect chain |
 | [goloop chain join](#goloop-chain-join) | Join chain |
 | [goloop chain leave](#goloop-chain-leave) | Leave chain |
@@ -374,6 +423,7 @@ Server management
 | --p2p | 127.0.0.1:8080 | Advertise ip-port of P2P |
 | --p2p_listen |  | Listen ip-port of P2P |
 | --rpc_addr | :9080 | Listen ip-port of JSON-RPC |
+| --rpc_default_channel |  | JSON-RPC Default Channel |
 | --rpc_dump | false | JSON-RPC Request, Response Dump flag |
 
 ### Inherited Options
@@ -435,6 +485,7 @@ Save configuration
 | --p2p | 127.0.0.1:8080 | Advertise ip-port of P2P |
 | --p2p_listen |  | Listen ip-port of P2P |
 | --rpc_addr | :9080 | Listen ip-port of JSON-RPC |
+| --rpc_default_channel |  | JSON-RPC Default Channel |
 | --rpc_dump | false | JSON-RPC Request, Response Dump flag |
 
 ### Parent command
@@ -459,7 +510,7 @@ Start server
 ### Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --mod_level | [] | Set log level for specific module (<mod>=<level>,...) |
+| --mod_level | [] | Set console log level for specific module (<mod>=<level>,...) |
 
 ### Inherited Options
 |Name,shorthand | Default | Description|
@@ -479,6 +530,7 @@ Start server
 | --p2p | 127.0.0.1:8080 | Advertise ip-port of P2P |
 | --p2p_listen |  | Listen ip-port of P2P |
 | --rpc_addr | :9080 | Listen ip-port of JSON-RPC |
+| --rpc_default_channel |  | JSON-RPC Default Channel |
 | --rpc_dump | false | JSON-RPC Request, Response Dump flag |
 
 ### Parent command

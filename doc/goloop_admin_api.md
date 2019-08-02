@@ -132,9 +132,9 @@ json:
   seed_addr: string
   role: 3
   concurrency_level: 1
-  normal_tx_pool: 1
-  patch_tx_pool: 1
-  max_block_tx_bytes: 1
+  normal_tx_pool: 0
+  patch_tx_pool: 0
+  max_block_tx_bytes: 0
   channel: ''
   secureSuites: 'none,tls,ecdhe'
   secureAeads: 'chacha,aes128,aes256'
@@ -152,9 +152,9 @@ genesisZip: string
 |»» seed_addr|body|string|false|Ip-port of Seed|
 |»» role|body|integer|false|Role:|
 |»» concurrency_level|body|integer|false|Maximum number of executors to use for concurrency|
-|»» normal_tx_pool|body|integer|false|Maximum number of executors to use for concurrency|
-|»» patch_tx_pool|body|integer|false|Maximum number of executors to use for concurrency|
-|»» max_block_tx_bytes|body|integer|false|Maximum number of executors to use for concurrency|
+|»» normal_tx_pool|body|integer|false|Size of normal transaction pool|
+|»» patch_tx_pool|body|integer|false|Size of patch transaction pool|
+|»» max_block_tx_bytes|body|integer|false|Max size of transactions in a block|
 |»» channel|body|string|false|Chain-alias of node|
 |»» secureSuites|body|string|false|Supported Secure suites with order (none,tls,ecdhe) - Comma separated string|
 |»» secureAeads|body|string|false|Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string|
@@ -226,9 +226,9 @@ Get Chain Infomation.
     "seed_addr": "string",
     "role": 3,
     "concurrency_level": 1,
-    "normal_tx_pool": 1,
-    "patch_tx_pool": 1,
-    "max_block_tx_bytes": 1,
+    "normal_tx_pool": 0,
+    "patch_tx_pool": 0,
+    "max_block_tx_bytes": 0,
     "channel": "",
     "secureSuites": "none,tls,ecdhe",
     "secureAeads": "chacha,aes128,aes256"
@@ -380,9 +380,9 @@ This operation does not require authentication
     "seed_addr": "string",
     "role": 3,
     "concurrency_level": 1,
-    "normal_tx_pool": 1,
-    "patch_tx_pool": 1,
-    "max_block_tx_bytes": 1,
+    "normal_tx_pool": 0,
+    "patch_tx_pool": 0,
+    "max_block_tx_bytes": 0,
     "channel": "",
     "secureSuites": "none,tls,ecdhe",
     "secureAeads": "chacha,aes128,aes256"
@@ -423,9 +423,9 @@ This operation does not require authentication
   "seed_addr": "string",
   "role": 3,
   "concurrency_level": 1,
-  "normal_tx_pool": 1,
-  "patch_tx_pool": 1,
-  "max_block_tx_bytes": 1,
+  "normal_tx_pool": 0,
+  "patch_tx_pool": 0,
+  "max_block_tx_bytes": 0,
   "channel": "",
   "secureSuites": "none,tls,ecdhe",
   "secureAeads": "chacha,aes128,aes256"
@@ -441,9 +441,9 @@ This operation does not require authentication
 |seed_addr|string|false|none|Ip-port of Seed|
 |role|integer|false|none|Role:  * `0` - None  * `1` - Seed  * `2` - Validator  * `3` - Seed and Validator|
 |concurrency_level|integer|false|none|Maximum number of executors to use for concurrency|
-|normal_tx_pool|integer|false|none|Maximum number of executors to use for concurrency|
-|patch_tx_pool|integer|false|none|Maximum number of executors to use for concurrency|
-|max_block_tx_bytes|integer|false|none|Maximum number of executors to use for concurrency|
+|normal_tx_pool|integer|false|none|Size of normal transaction pool|
+|patch_tx_pool|integer|false|none|Size of patch transaction pool|
+|max_block_tx_bytes|integer|false|none|Max size of transactions in a block|
 |channel|string|false|none|Chain-alias of node|
 |secureSuites|string|false|none|Supported Secure suites with order (none,tls,ecdhe) - Comma separated string|
 |secureAeads|string|false|none|Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string|
