@@ -115,41 +115,14 @@ public class Proxy {
         return TypedObj.decodeAny(msg.value);
     }
 
-    private void sendMessage(int msgType, Object... args) throws IOException {
-        MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
-        packer.packArrayHeader(2);
-        packer.packInt(msgType);
-        packer.packArrayHeader(args.length);
-        for (Object arg : args) {
-            if (arg == null) {
-                packer.packNil();
-            } else if (arg instanceof Integer) {
-                packer.packInt((int) arg);
-            } else if (arg instanceof String) {
-                packer.packString((String) arg);
-            } else if (arg instanceof byte[]) {
-                byte[] ba = (byte[]) arg;
-                packer.packBinaryHeader(ba.length);
-                packer.writePayload(ba);
-            } else if (arg instanceof BigInteger) {
-                byte[] ba = ((BigInteger) arg).toByteArray();
-                packer.packBinaryHeader(ba.length);
-                packer.writePayload(ba);
-            } else if (arg instanceof Method[]) {
-                Method[] methods = (Method[]) arg;
-                packer.packArrayHeader(methods.length);
-                for (Method m : methods) {
-                    m.writeTo(packer);
-                }
-            } else if (arg instanceof TypedObj) {
-                TypedObj obj = (TypedObj) arg;
-                obj.writeTo(packer);
-            } else {
-                throw new IOException("not yet supported: " + arg.getClass());
-            }
+    public BigInteger getBalance(Address addr) throws IOException {
+        sendMessage(MsgType.GETBALANCE, addr);
+        Message msg = getNextMessage();
+        if (msg.type != MsgType.GETBALANCE) {
+            throw new IOException("Invalid message: GETBALANCE expected.");
         }
-        packer.close();
-        client.send(packer.toByteArray());
+        logger.debug("[GETBALANCE] {}", msg.value);
+        return new BigInteger(getValueAsByteArray(msg.value));
     }
 
     private Message getNextMessage() throws IOException {
@@ -170,6 +143,58 @@ public class Proxy {
             }
         }
         return m;
+    }
+
+    private void sendMessage(int msgType, Object... args) throws IOException {
+        MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
+        packer.packArrayHeader(2);
+        packer.packInt(msgType);
+        if (args.length == 1) {
+            packObject(args[0], packer);
+        } else {
+            packer.packArrayHeader(args.length);
+            for (Object obj : args) {
+                packObject(obj, packer);
+            }
+        }
+        packer.close();
+        client.send(packer.toByteArray());
+    }
+
+    private void packObject(Object obj, MessageBufferPacker packer) throws IOException {
+        if (obj == null) {
+            packer.packNil();
+        } else if (obj instanceof Integer) {
+            packer.packInt((int) obj);
+        } else if (obj instanceof String) {
+            packer.packString((String) obj);
+        } else if (obj instanceof byte[]) {
+            packByteArray((byte[]) obj, packer);
+        } else if (obj instanceof BigInteger) {
+            packByteArray(((BigInteger) obj).toByteArray(), packer);
+        } else if (obj instanceof Address) {
+            packByteArray(((Address) obj).toByteArray(), packer);
+        } else if (obj instanceof Method[]) {
+            Method[] methods = (Method[]) obj;
+            packer.packArrayHeader(methods.length);
+            for (Method m : methods) {
+                m.writeTo(packer);
+            }
+        } else if (obj instanceof TypedObj) {
+            TypedObj to = (TypedObj) obj;
+            to.writeTo(packer);
+        } else {
+            throw new IOException("not yet supported: " + obj.getClass());
+        }
+    }
+
+    private void packByteArray(byte[] ba, MessageBufferPacker packer) throws IOException {
+        packer.packBinaryHeader(ba.length);
+        packer.writePayload(ba);
+    }
+
+    private byte[] getValueAsByteArray(Value value) {
+        return value.asRawValue().asByteArray();
     }
 
     public interface OnGetApiListener {
@@ -204,10 +229,10 @@ public class Proxy {
         ArrayValue data = raw.asArrayValue();
         String code = data.get(0).asStringValue().asString();
         boolean isQuery = data.get(1).asBooleanValue().getBoolean();
-        Address from = new Address(data.get(2).asRawValue().asByteArray());
-        Address to = new Address(data.get(3).asRawValue().asByteArray());
-        BigInteger value = new BigInteger(data.get(4).asRawValue().asByteArray());
-        BigInteger limit = new BigInteger(data.get(5).asRawValue().asByteArray());
+        Address from = new Address(getValueAsByteArray(data.get(2)));
+        Address to = new Address(getValueAsByteArray(data.get(3)));
+        BigInteger value = new BigInteger(getValueAsByteArray(data.get(4)));
+        BigInteger limit = new BigInteger(getValueAsByteArray(data.get(5)));
         String method = data.get(6).asStringValue().asString();
         Object[] params = (Object[]) TypedObj.decodeAny(data.get(7));
 
