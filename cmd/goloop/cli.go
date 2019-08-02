@@ -264,7 +264,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 	rootCmd.AddCommand(verifyCmd)
 	importCmd := &cobra.Command{
 		Use:                   "import NID",
-		Short:                 "Chain data verify",
+		Short:                 "Start to import legacy database",
 		Args:                  cobra.ExactArgs(1),
 		DisableFlagsInUseLine: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -280,8 +280,8 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 		},
 	}
 	rootCmd.AddCommand(importCmd)
-	importCmd.Flags().StringVar(&importChainParam.DBPath, "db_path", "","Database path")
-	importCmd.Flags().Int64Var(&importChainParam.Height, "height", 0,"Block Height")
+	importCmd.Flags().StringVar(&importChainParam.DBPath, "db_path", "", "Database path")
+	importCmd.Flags().Int64Var(&importChainParam.Height, "height", 0, "Block Height")
 	importCmd.MarkFlagRequired("db_path")
 	importCmd.MarkFlagRequired("height")
 
