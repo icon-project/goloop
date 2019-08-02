@@ -1,9 +1,10 @@
 package eeproxy
 
 import (
-	"github.com/icon-project/goloop/common/log"
 	"math/big"
 	"sync"
+
+	"github.com/icon-project/goloop/common/log"
 
 	"github.com/gofrs/uuid"
 	"github.com/icon-project/goloop/common"
@@ -27,11 +28,11 @@ const (
 	msgGETINFO    = 7
 	msgGETBALANCE = 8
 	msgGETAPI     = 9
+	msgLOG        = 10
 )
 
 const (
-	configEnableDebugLog   = false
-	configEnableDebugValue = false
+	ModuleName = "eeproxy"
 )
 
 type CallContext interface {
@@ -76,6 +77,8 @@ type proxy struct {
 	version   uint16
 	uid       string
 	scoreType string
+
+	log log.Logger
 
 	frame *callFrame
 
@@ -129,6 +132,11 @@ type getAPIMessage struct {
 	Info   *scoreapi.Info
 }
 
+type logMessage struct {
+	Level   log.Level
+	Message string
+}
+
 func (p *proxy) Invoke(ctx CallContext, code string, isQuery bool, from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj) error {
 	var m invokeMessage
 	m.Code = code
@@ -142,10 +150,7 @@ func (p *proxy) Invoke(ctx CallContext, code string, isQuery bool, from, to modu
 	m.Method = method
 	m.Params = params
 
-	if configEnableDebugLog {
-		log.Printf("Proxy[%p].Invoke code=%s query=%v from=%v to=%v value=%v limit=%v method=%s\n",
-			p, code, isQuery, from, to, value, limit, method)
-	}
+	p.log.Tracef("Proxy[%p].Invoke code=%s query=%v from=%v to=%v value=%v limit=%v method=%s\n", p, code, isQuery, from, to, value, limit, method)
 
 	p.lock.Lock()
 	defer p.lock.Unlock()
@@ -195,7 +200,7 @@ func (p *proxy) Release() {
 	if p.frame == nil {
 		p.lock.Unlock()
 		if err := p.mgr.onReady(p.scoreType, p); err != nil {
-			log.Errorf("Fail to make it ready err=%+v", err)
+			p.log.Warnf("Fail to make it ready err=%+v", err)
 			p.conn.Close()
 		}
 		return
@@ -204,9 +209,7 @@ func (p *proxy) Release() {
 }
 
 func (p *proxy) SendResult(ctx CallContext, status uint16, steps *big.Int, result *codec.TypedObj) error {
-	if configEnableDebugLog {
-		log.Printf("Proxy[%p].SendResult status=%d steps=%v\n", p, status, steps)
-	}
+	p.log.Tracef("Proxy[%p].SendResult status=%s steps=%v", p, module.Status(status), steps)
 	var m resultMessage
 	m.Status = status
 	m.StepUsed.Set(steps)
@@ -215,6 +218,27 @@ func (p *proxy) SendResult(ctx CallContext, status uint16, steps *big.Int, resul
 	}
 	m.Result = result
 	return p.conn.Send(msgRESULT, &m)
+}
+
+func (p *proxy) popFrame() *callFrame {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	frame := p.frame
+	p.frame = frame.prev
+
+	return frame
+}
+
+func (p *proxy) tryToBeReady() error {
+	p.lock.Lock()
+	if p.frame == nil && !p.reserved {
+		p.lock.Unlock()
+		return p.mgr.onReady(p.scoreType, p)
+	} else {
+		p.lock.Unlock()
+	}
+	return nil
 }
 
 func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
@@ -228,32 +252,26 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		p.uid = m.UID
 		p.scoreType = m.Type
 
-		return p.mgr.onReady(p.scoreType, p)
+		if err := p.mgr.onReady(p.scoreType, p); err != nil {
+			return err
+		}
+		p.log = p.log.WithFields(log.Fields{
+			log.FieldKeyEID: p.uid,
+		})
+		return nil
 
 	case msgRESULT:
 		var m resultMessage
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
 			return err
 		}
-		p.lock.Lock()
-		frame := p.frame
-		p.frame = frame.prev
-		p.lock.Unlock()
+		p.log.Tracef("Proxy[%p].OnResult status=%s steps=%v", p, module.Status(m.Status), &m.StepUsed.Int)
 
-		if configEnableDebugLog {
-			log.Printf("Proxy[%p].OnResult status=%d steps=%v\n", p, m.Status, &m.StepUsed.Int)
-		}
+		frame := p.popFrame()
+
 		frame.ctx.OnResult(m.Status, &m.StepUsed.Int, m.Result)
 
-		p.lock.Lock()
-		if p.frame == nil && !p.reserved {
-			p.lock.Unlock()
-			return p.mgr.onReady(p.scoreType, p)
-		} else {
-			p.lock.Unlock()
-		}
-		return nil
-
+		return p.tryToBeReady()
 	case msgGETVALUE:
 		var key []byte
 		if _, err := codec.MP.UnmarshalFromBytes(data, &key); err != nil {
@@ -261,9 +279,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		}
 		var m getValueMessage
 		if value, err := p.frame.ctx.GetValue(key); err != nil {
-			if configEnableDebugValue {
-				log.Printf("Proxy[%p].GetValue key=<%x> err=%+v\n", p, key, err)
-			}
+			p.log.Tracef("Proxy[%p].GetValue key=<%x> err=%+v", p, key, err)
 			return err
 		} else {
 			if value != nil {
@@ -273,9 +289,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 				m.Success = false
 				m.Value = nil
 			}
-			if configEnableDebugValue {
-				log.Printf("Proxy[%p].GetValue key=<%x> value=<%x>\n", p, key, value)
-			}
+			p.log.Tracef("Proxy[%p].GetValue key=<%x> value=<%x>", p, key, value)
 		}
 		return p.conn.Send(msgGETVALUE, &m)
 
@@ -285,14 +299,10 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 			return err
 		}
 		if m.IsDelete {
-			if configEnableDebugValue {
-				log.Printf("Proxy[%p].Delete key=<%x>\n", p, m.Key)
-			}
+			p.log.Tracef("Proxy[%p].Delete key=<%x>", p, m.Key)
 			return p.frame.ctx.DeleteValue(m.Key)
 		} else {
-			if configEnableDebugValue {
-				log.Printf("Proxy[%p].SetValue key=<%x> value=<%x>\n", p, m.Key, m.Value)
-			}
+			p.log.Tracef("Proxy[%p].SetValue key=<%x> value=<%x>", p, m.Key, m.Value)
 			return p.frame.ctx.SetValue(m.Key, m.Value)
 		}
 
@@ -301,10 +311,8 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
 			return err
 		}
-		if configEnableDebugLog {
-			log.Printf("Proxy[%p].OnCall from=%v to=%v value=%v steplimit=%v method=%s\n",
-				p, p.frame.addr, &m.To, &m.Value.Int, &m.Limit.Int, m.Method)
-		}
+		p.log.Tracef("Proxy[%p].OnCall from=%v to=%v value=%v steplimit=%v method=%s\n",
+			p, p.frame.addr, &m.To, &m.Value.Int, &m.Limit.Int, m.Method)
 		p.frame.ctx.OnCall(p.frame.addr,
 			&m.To, &m.Value.Int, &m.Limit.Int, m.Method, m.Params)
 		return nil
@@ -314,14 +322,13 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
 			return err
 		}
-		if configEnableDebugLog {
-			log.Printf("Proxy[%p].OnEvent from=%v indexed=%v data=%v\n",
-				p, p.frame.addr, m.Indexed, m.Data)
-		}
+		p.log.Tracef("Proxy[%p].OnEvent from=%v indexed=%v data=%v",
+			p, p.frame.addr, m.Indexed, m.Data)
 		p.frame.ctx.OnEvent(p.frame.addr, m.Indexed, m.Data)
 		return nil
 
 	case msgGETINFO:
+		p.log.Tracef("Proxy[%p].GetInfo()", p)
 		v := p.frame.ctx.GetInfo()
 		eo, err := common.EncodeAny(v)
 		if err != nil {
@@ -336,29 +343,37 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		}
 		var balance common.HexInt
 		balance.Set(p.frame.ctx.GetBalance(&addr))
+		p.log.Tracef("Proxy[%p].GetBalance(%s) -> %s",
+			p, &addr, &balance)
 		return p.conn.Send(msgGETBALANCE, &balance)
 
 	case msgGETAPI:
 		var m getAPIMessage
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
 			return err
-		} else {
-			p.lock.Lock()
-			frame := p.frame
-			p.frame = frame.prev
-			p.lock.Unlock()
-
-			frame.ctx.OnAPI(m.Status, m.Info)
-
-			p.lock.Lock()
-			if p.frame == nil && !p.reserved {
-				p.lock.Unlock()
-				return p.mgr.onReady(p.scoreType, p)
-			} else {
-				p.lock.Unlock()
-			}
-			return nil
 		}
+		p.log.Tracef("Proxy[%p].OnAPI status=%s, info=%s",
+			p, module.Status(m.Status), m.Info)
+
+		frame := p.popFrame()
+		frame.ctx.OnAPI(m.Status, m.Info)
+		return p.tryToBeReady()
+
+	case msgLOG:
+		var m logMessage
+		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
+			return err
+		}
+
+		p.lock.Lock()
+		defer p.lock.Unlock()
+
+		if p.frame != nil && p.frame.addr != nil {
+			p.log.Log(m.Level, p.scoreType, "|", p.frame.addr, "|", m.Message)
+		} else {
+			p.log.Log(m.Level, p.scoreType, "|", m.Message)
+		}
+		return nil
 	default:
 		return errors.Errorf("UnknownMessage(%d)", msg)
 	}
@@ -397,10 +412,11 @@ func (p *proxy) attachTo(r **proxy) {
 	*r = p
 }
 
-func newConnection(m proxyManager, c ipc.Connection) (*proxy, error) {
+func newConnection(m proxyManager, c ipc.Connection, l log.Logger) (*proxy, error) {
 	p := &proxy{
 		mgr:  m,
 		conn: c,
+		log:  l,
 	}
 	c.SetHandler(msgVERSION, p)
 	c.SetHandler(msgRESULT, p)
@@ -411,6 +427,7 @@ func newConnection(m proxyManager, c ipc.Connection) (*proxy, error) {
 	c.SetHandler(msgGETINFO, p)
 	c.SetHandler(msgGETBALANCE, p)
 	c.SetHandler(msgGETAPI, p)
+	c.SetHandler(msgLOG, p)
 	return p, nil
 }
 

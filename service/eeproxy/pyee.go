@@ -20,6 +20,10 @@ const (
 	instanceError
 )
 
+const (
+	PythonEE = "pyee"
+)
+
 func (s InstanceStatus) String() string {
 	switch s {
 	case instanceStarted:
@@ -181,11 +185,24 @@ func (e *pythonExecutionEngine) startNew() error {
 	return nil
 }
 
+// getModuleLevel get log level of the module considering log level.
+func getModuleLevel(logger log.Logger, m string) log.Level {
+	lv := logger.GetLevel()
+	if modLv := logger.GetModuleLevel(m); modLv < lv {
+		return modLv
+	} else {
+		return lv
+	}
+}
+
 func NewPythonEE(logger log.Logger) (Engine, error) {
 	var e pythonExecutionEngine
 	e.instances = make(map[string]*pythonInstance)
 	e.python = "python3"
 	e.args = []string{"-u", "-m", "pyexec"}
-	e.logger = logger.WithFields(log.Fields{log.FieldKeyModule: "pyee"})
+	e.logger = logger.WithFields(log.Fields{log.FieldKeyModule: PythonEE})
+	if getModuleLevel(e.logger, PythonEE) >= log.TraceLevel {
+		e.args = append(e.args, "-v")
+	}
 	return &e, nil
 }

@@ -370,7 +370,7 @@ func Execute(cmd *cobra.Command, args []string) {
 		log.Panicf("FAIL to create PythonEE err=%+v", err)
 	}
 
-	pm, err := eeproxy.NewManager("unix", cfg.EESocket, ee)
+	pm, err := eeproxy.NewManager("unix", cfg.EESocket, logger, ee)
 	if err != nil {
 		log.Panicln("FAIL to start EEManager")
 	}

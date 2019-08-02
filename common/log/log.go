@@ -123,6 +123,10 @@ type Logger interface {
 	Fatalf(format string, args ...interface{})
 	Fatalln(args ...interface{})
 
+	Log(level Level, args ...interface{})
+	Logf(level Level, format string, args ...interface{})
+	Logln(level Level, args ...interface{})
+
 	WithFields(Fields) Logger
 	SetReportCaller(yn bool)
 	SetLevel(lv Level)
@@ -181,6 +185,18 @@ func (w entryWrapper) WriterLevel(lv Level) *io.PipeWriter {
 	return w.Entry.WriterLevel(logrus.Level(lv))
 }
 
+func (w entryWrapper) Log(lv Level, args ...interface{}) {
+	w.Entry.Log(logrus.Level(lv), args...)
+}
+
+func (w entryWrapper) Logln(lv Level, args ...interface{}) {
+	w.Entry.Logln(logrus.Level(lv), args...)
+}
+
+func (w entryWrapper) Logf(lv Level, format string, args ...interface{}) {
+	w.Entry.Logf(logrus.Level(lv), format, args...)
+}
+
 type loggerWrapper struct {
 	*logrus.Logger
 }
@@ -221,6 +237,18 @@ func (w loggerWrapper) Writer() *io.PipeWriter {
 
 func (w loggerWrapper) WriterLevel(lv Level) *io.PipeWriter {
 	return w.Logger.WriterLevel(logrus.Level(lv))
+}
+
+func (w loggerWrapper) Log(lv Level, args ...interface{}) {
+	w.Logger.Log(logrus.Level(lv), args...)
+}
+
+func (w loggerWrapper) Logln(lv Level, args ...interface{}) {
+	w.Logger.Logln(logrus.Level(lv), args...)
+}
+
+func (w loggerWrapper) Logf(lv Level, format string, args ...interface{}) {
+	w.Logger.Logf(logrus.Level(lv), format, args...)
 }
 
 func getPackageName(f string) string {

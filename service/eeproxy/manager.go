@@ -5,6 +5,7 @@ import (
 
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/ipc"
+	"github.com/icon-project/goloop/common/log"
 )
 
 type RequestPriority int
@@ -85,6 +86,8 @@ type executorManager struct {
 
 	executorLimit  int
 	executorStates [numberOfPriorities]executorState
+
+	log log.Logger
 }
 
 func (em *executorManager) onReady(t string, p *proxy) error {
@@ -133,7 +136,7 @@ func (em *executorManager) kill(u string) error {
 }
 
 func (em *executorManager) OnConnect(c ipc.Connection) error {
-	_, err := newConnection(em, c)
+	_, err := newConnection(em, c, em.log)
 	return err
 }
 
@@ -243,28 +246,30 @@ func (em *executorManager) Loop() error {
 	return em.server.Loop()
 }
 
-func NewManager(net, addr string, engines ...Engine) (Manager, error) {
+func NewManager(net, addr string, l log.Logger, engines ...Engine) (Manager, error) {
 	srv := ipc.NewServer()
 	err := srv.Listen(net, addr)
 	if err != nil {
 		return nil, err
 	}
-	im := new(executorManager)
-	srv.SetHandler(im)
-	im.server = srv
 
-	for i := 0; i < len(im.executorStates); i++ {
-		im.executorStates[i].waiter = sync.NewCond(&im.lock)
+	em := new(executorManager)
+	srv.SetHandler(em)
+	em.server = srv
+	em.log = l.WithFields(log.Fields{log.FieldKeyModule: "eeproxy"})
+
+	for i := 0; i < len(em.executorStates); i++ {
+		em.executorStates[i].waiter = sync.NewCond(&em.lock)
 	}
 
-	im.engines = make([]*engine, len(engines))
-	im.typeMap = make(map[string]int)
+	em.engines = make([]*engine, len(engines))
+	em.typeMap = make(map[string]int)
 	for i, e := range engines {
 		if err := e.Init(net, addr); err != nil {
 			return nil, err
 		}
-		im.engines[i] = &engine{engine: e}
-		im.typeMap[e.Type()] = i
+		em.engines[i] = &engine{engine: e}
+		em.typeMap[e.Type()] = i
 	}
-	return im, nil
+	return em, nil
 }

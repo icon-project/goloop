@@ -2,13 +2,13 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"math/big"
 	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/scoreapi"
@@ -130,7 +130,8 @@ func (e *pythonEngine) Kill(uid string) (bool, error) {
 func main() {
 	var err error
 
-	mgr, err := eeproxy.NewManager("unix", "/tmp/ee.socket", new(pythonEngine))
+	logger := log.New()
+	mgr, err := eeproxy.NewManager("unix", "/tmp/ee.socket", logger, new(pythonEngine))
 	if err != nil {
 		log.Panicf("Fail to make EEProxy err=%+v", err)
 	}

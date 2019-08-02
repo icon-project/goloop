@@ -1,4 +1,5 @@
 from unittest import TestCase
+
 from .proxy import *
 
 
@@ -31,3 +32,50 @@ class TestExecutionHandler(TestCase):
             c_out = bytes_to_int(bs)
             if c_out != c:
                 self.fail()
+
+    def test_log_level_conversion(self):
+        cases = [
+            Log.PANIC,
+            Log.FATAL,
+            Log.WARN,
+            Log.INFO,
+            Log.DEBUG,
+            Log.TRACE,
+        ]
+
+        for c in cases:
+            s = Log.to_string(c)
+            if type(s) is not str:
+                self.fail(f"Type of returned {s} isn't string")
+            lv = Log.from_string(s)
+            if c != lv:
+                self.fail(f"Level={c} to {s}, and to {lv}")
+
+    def test_log_invalid_to_string(self):
+        cases = [
+            Log.PANIC-1,
+            Log.TRACE+1,
+            "1",
+            None
+        ]
+        for c in cases:
+            try:
+                s = Log.to_string(c)
+                self.fail(f"to_string({c}) returns {s} (exception expected)")
+            except Exception:
+                pass
+
+    def test_log_invalid_from_string(self):
+        cases = [
+            "panic2",
+            "test",
+            "1",
+            None
+        ]
+        for c in cases:
+            try:
+                s = Log.from_string(c)
+                self.fail(f"from_string({c}) returns {s} (exception expected)")
+            except Exception:
+                pass
+

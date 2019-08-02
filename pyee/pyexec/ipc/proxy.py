@@ -15,7 +15,6 @@
 import traceback
 from abc import ABCMeta, abstractmethod
 from typing import Any, Tuple, List, Union, Callable
-from iconcommons import Logger
 from .client import Client
 
 TAG = 'Proxy'
@@ -43,6 +42,30 @@ class Message(object):
     GETINFO = 7
     GETBALANCE = 8
     GETAPI = 9
+    LOG = 10
+
+
+class Log(object):
+    PANIC = 0
+    FATAL = 1
+    ERROR = 2
+    WARN = 3
+    INFO = 4
+    DEBUG = 5
+    TRACE = 6
+
+    __levels = ["panic", "fatal", "error", "warn", "info", "debug", "trace"]
+
+    @classmethod
+    def from_string(cls, name: str) -> int:
+        idx = cls.__levels.index(name)
+        if idx < 0:
+            raise Exception(f"unknown log level name={name}")
+        return idx
+
+    @classmethod
+    def to_string(cls, level: int) -> str:
+        return cls.__levels[level]
 
 
 class Status(object):
@@ -314,20 +337,17 @@ class ServiceManagerProxy:
     def __handle_get_api(self, data):
         try:
             code = self.decode(TypeTag.STRING, data)
-            Logger.info(f"EEProxy.GETAPI(code={code})", TAG)
             status, obj = self.__get_api(code)
             if status == Status.SUCCESS:
                 if isinstance(obj, APIInfo):
-                    Logger.info(f"EEProxy.GETAPI result={obj}", TAG)
                     self.__client.send(Message.GETAPI, [Status.SUCCESS, obj.get_data()])
                 else:
-                    Logger.info(f"EEProxy.GETAPI Invalid Type result={obj}", TAG)
                     self.__client.send(Message.GETAPI, [Status.SYSTEM_FAILURE, None])
             else:
-                Logger.info(f"EEProxy.GETAPI returns failure status={status}", TAG)
                 self.__client.send(Message.GETAPI, [status, None])
-        except:
-            traceback.print_exc()
+        except Exception:
+            e_str = traceback.format_exec()
+            self.debug(f"Handle GETAPI catch exception={e_str}", TAG)
             self.__client.send(Message.GETAPI, [Status.SYSTEM_FAILURE, None])
 
     def loop(self):
@@ -341,7 +361,6 @@ class ServiceManagerProxy:
     def call(self, to: 'Address', value: int,
              step_limit: int, method: str,
              params: Any) -> Tuple[int, int, Any]:
-        Logger.info(f"EEProxy.CALL value={value} method={method} params={params}", TAG)
         self.__client.send(Message.CALL, [
             self.encode(to), self.encode(value), self.encode(step_limit),
             self.encode(method), self.encode_any(params)
@@ -392,3 +411,10 @@ class ServiceManagerProxy:
             [self.encode(v) for v in indexed],
             [self.encode(v) for v in data]
         ])
+
+    def log(self, level: int, msg: str) -> None:
+        self.__client.send(Message.LOG, [int(level), str(msg)])
+
+    def debug(self, msg: str, tag: str = 'LOG') -> None:
+        self.log(Log.DEBUG, f"[{tag}] {msg}")
+

@@ -26,7 +26,7 @@ func (customFormatter) Format(e *logrus.Entry) ([]byte, error) {
 	if v, ok := e.Data[FieldKeyNID]; ok {
 		fmt.Fprint(buf, v, "|")
 	} else {
-		buf.WriteString("------|")
+		buf.WriteString("-|")
 	}
 	if v, ok := e.Data[FieldKeyModule]; ok {
 		fmt.Fprint(buf, v, "|")

@@ -346,7 +346,7 @@ func NewNode(
 		log.Panicf("FAIL to create PythonEE err=%+v", err)
 	}
 	eeSocket := cfg.ResolveAbsolute(cfg.EESocket)
-	pm, err := eeproxy.NewManager("unix", eeSocket, ee)
+	pm, err := eeproxy.NewManager("unix", eeSocket, l, ee)
 	if err != nil {
 		log.Panicf("FAIL to start EEManager err=%+v", err)
 	}
