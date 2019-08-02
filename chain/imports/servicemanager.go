@@ -6,16 +6,21 @@ import (
 
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/legacy"
-	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/eeproxy"
 )
 
+type ImportCallback interface {
+	OnError(err error)
+	OnEnd()
+}
+
 type managerForImport struct {
 	module.ServiceManager
 	bdb        *legacy.LoopChainDB
 	lastHeight int64
+	cb         ImportCallback
 }
 
 //const lcDBDir = "../migdata/node1/storage1/db_192.168.160.82:7100_ch_mvoting" // height : 24550
@@ -24,6 +29,7 @@ type managerForImport struct {
 
 func NewServiceManagerForImport(chain module.Chain, nm module.NetworkManager,
 	eem eeproxy.Manager, contractDir string, lcDBDir string,
+	height int64, cb ImportCallback,
 ) (module.ServiceManager, module.Timestamper, error) {
 	manager, err := service.NewManager(chain, nm, eem, contractDir)
 	if err != nil {
@@ -34,15 +40,15 @@ func NewServiceManagerForImport(chain module.Chain, nm module.NetworkManager,
 		return nil, nil, err
 	}
 	blk, err := bdb.GetLastBlock()
-	if err != nil {
-		log.Panic(err)
+	if err != nil || blk.Height() < height {
+		return nil, nil, err
 	}
 	m := &managerForImport{
 		ServiceManager: manager,
 		bdb:            bdb,
-		lastHeight:     blk.Height(),
+		lastHeight:     height,
+		cb:             cb,
 	}
-	log.Debugf("NewServiceManagerForImport lastHeight=%d\n", m.lastHeight)
 	return m, m, nil
 }
 
@@ -52,7 +58,8 @@ func (m *managerForImport) GetVoteTimestamp(h, ts int64) int64 {
 	}
 	blk, err := m.bdb.GetBlockByHeight(int(h + 1))
 	if err != nil {
-		log.Panic(err)
+		m.cb.OnError(err)
+		return ts
 	}
 	return blk.Timestamp()
 }
@@ -61,7 +68,8 @@ func (m *managerForImport) GetBlockTimestamp(h, ts int64) int64 {
 	if h == 1 {
 		blk, err := m.bdb.GetBlockByHeight(int(h))
 		if err != nil {
-			log.Panic(err)
+			m.cb.OnError(err)
+			return ts
 		}
 		ts = blk.Timestamp()
 	}
@@ -88,7 +96,7 @@ func (bi blockInfo) Timestamp() int64 {
 func (m *managerForImport) ProposeTransition(parent module.Transition, bi module.BlockInfo) (module.Transition, error) {
 	blk, err := m.bdb.GetBlockByHeight(int(bi.Height()))
 	if err != nil {
-		log.Warnf("%+v\n", err)
+		m.cb.OnError(err)
 		return nil, err
 	}
 	if bi.Height() == 1 {
@@ -152,6 +160,19 @@ func (m *managerForImport) PatchTransition(transition module.Transition, patches
 }
 
 func (m *managerForImport) Finalize(transition module.Transition, opt int) error {
+	if opt&module.FinalizeNormalTransaction != 0 {
+		h := transition.(*transitionForImport).bi.Height()
+		if h >= m.lastHeight {
+			cb := m.cb
+			go func() {
+				cb.OnEnd()
+			}()
+		}
+	}
+	return m.finalize(transition, opt)
+}
+
+func (m *managerForImport) finalize(transition module.Transition, opt int) error {
 	return m.ServiceManager.Finalize(unwrap(transition), opt)
 }
 
@@ -174,7 +195,7 @@ func (t *transitionForImport) OnValidate(tr module.Transition, e error) {
 	}
 	blk, err := t.m.bdb.GetBlockByHeight(int(t.bi.Height()))
 	if err != nil {
-		log.Warnf("%+v\n", err)
+		t.m.cb.OnError(err)
 		t.cb.OnValidate(t, err)
 		t.canceler()
 		return
@@ -205,16 +226,16 @@ func (t *transitionForImport) OnExecute(tr module.Transition, e error) {
 	}
 	blk, err := t.m.bdb.GetBlockByHeight(int(t.bi.Height()))
 	if err != nil {
-		log.Warnf("%+v\n", err)
+		t.m.cb.OnError(err)
 		t.cb.OnExecute(t, err)
 		t.canceler()
 		return
 	}
 	txl := blk.NormalTransactions()
-	t.m.Finalize(t, module.FinalizeNormalTransaction|module.FinalizePatchTransaction|module.FinalizeResult)
+	t.m.finalize(t, module.FinalizeNormalTransaction|module.FinalizePatchTransaction|module.FinalizeResult)
 	rl, err := t.m.ReceiptListFromResult(tr.Result(), module.TransactionGroupNormal)
 	if err != nil {
-		log.Warnf("%+v\n", err)
+		t.m.cb.OnError(err)
 		t.cb.OnExecute(t, err)
 		t.canceler()
 		return
@@ -223,21 +244,21 @@ func (t *transitionForImport) OnExecute(tr module.Transition, e error) {
 	for i := txl.Iterator(); i.Has(); i.Next() {
 		tx, _, err := i.Get()
 		if err != nil {
-			log.Warnf("Fail to get transaction err=%+v", err)
+			t.m.cb.OnError(err)
 			t.cb.OnExecute(t, err)
 			t.canceler()
 			return
 		}
 		rct, err := t.m.bdb.GetReceiptByTransaction(tx.ID())
 		if err != nil {
-			log.Warnf("%+v\n", err)
+			t.m.cb.OnError(err)
 			t.cb.OnExecute(t, err)
 			t.canceler()
 			return
 		}
 		nrct, err := rit.Get()
 		if err != nil {
-			log.Warnf("%+v\n", err)
+			t.m.cb.OnError(err)
 			t.cb.OnExecute(t, err)
 			t.canceler()
 			return
@@ -252,9 +273,8 @@ func (t *transitionForImport) OnExecute(tr module.Transition, e error) {
 		delete(mnrjsn, "failure")
 		nrjbs, _ := json.Marshal(mnrjsn)
 		if !bytes.Equal(rjbs, nrjbs) {
-			log.Warnf("different receipt\n")
-			log.Warnf("lc: %s\n", rjbs)
-			log.Warnf("gc: %s\n", nrjbs)
+			err = errors.Errorf("cannot agree with receipt lc:%s gc:%s", rjbs, nrjbs)
+			t.m.cb.OnError(err)
 			t.cb.OnExecute(t, err)
 			t.canceler()
 			return

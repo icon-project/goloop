@@ -125,6 +125,7 @@ const (
 	StateVerifyFailed
 	StateImportStarting
 	StateImportStarted
+	StateImportStopping
 	StateImportFailed
 	StateResetting
 	StateResetFailed
@@ -164,6 +165,8 @@ func (s State) String() string {
 		return "import starting"
 	case StateImportStarted:
 		return "import started"
+	case StateImportStopping:
+		return "import stopping"
 	case StateImportFailed:
 		return "import failed"
 	case StateResetting:
@@ -414,6 +417,29 @@ func (c *singleChain) _stop() {
 	}
 }
 
+type importCallback struct {
+	c          *singleChain
+	lastHeight int64
+}
+
+func (ic *importCallback) OnError(err error) {
+	if err := ic.c._transit(StateImportStopping, StateImportStarted); err != nil {
+		return
+	}
+	ic.c._stop()
+	log.Errorf("Import failed : %+v\n", err)
+	ic.c._setState(StateImportFailed, err)
+}
+
+func (ic *importCallback) OnEnd() {
+	if err := ic.c._transit(StateStopping, StateImportStarted); err != nil {
+		return
+	}
+	ic.c._stop()
+	ic.c._prepare()
+	ic.c._setState(StateStopped, nil)
+}
+
 func (c *singleChain) _import(src string, height int64) error {
 	c.nm = network.NewManager(c, c.nt, c.cfg.SeedAddr, toRoles(c.cfg.Role)...)
 	//TODO [TBD] is service/contract.ContractManager owner of ContractDir ?
@@ -421,7 +447,7 @@ func (c *singleChain) _import(src string, height int64) error {
 	ContractDir := path.Join(chainDir, DefaultContractDir)
 	var err error
 	var ts module.Timestamper
-	c.sm, ts, err = imports.NewServiceManagerForImport(c, c.nm, c.pm, ContractDir, src)
+	c.sm, ts, err = imports.NewServiceManagerForImport(c, c.nm, c.pm, ContractDir, src, height, &importCallback{c, height})
 	if err != nil {
 		return err
 	}
@@ -429,6 +455,14 @@ func (c *singleChain) _import(src string, height int64) error {
 	if err != nil {
 		return err
 	}
+	blk, err := c.bm.GetLastBlock()
+	if err != nil {
+		return err
+	}
+	if blk.Height() >= height {
+		return errors.Errorf("chain already have height %d\n", blk.Height())
+	}
+
 	WALDir := path.Join(chainDir, DefaultWALDir)
 	c.cs = consensus.NewConsensus(c, WALDir, ts)
 
@@ -507,14 +541,15 @@ func (c *singleChain) Import(src string, height int64, sync bool) error {
 	if err := c._transit(StateImportStarting, StateStopped); err != nil {
 		return err
 	}
+	log.Infof("Import src:%s height:%d\n", src, height)
 	f := func() {
 		c._stop()
 		err := c._import(src, height)
 		s := StateImportStarted
 		if err != nil {
 			c._stop()
-			c._prepare()
 			s = StateImportFailed
+			log.Errorf("Import failed %+v\n", err)
 		}
 		c._setState(s, err)
 	}
