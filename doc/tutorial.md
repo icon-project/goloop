@@ -126,9 +126,8 @@ seed server address.
 * server configuration file : `server0.json`
 * genesis storage file : `gs.zip`
 * seed server host and port : `server0` `8080`
-* network ID   : `0xabcdef`
 ```bash
-./bin/goloop -c server0.json chain join --genesis gs.zip --seed server0:8080 0xabcdef
+./bin/goloop -c server0.json chain join --genesis gs.zip --seed server0:8080
 ```
 
 You may check whether it's successfully added with following command.
