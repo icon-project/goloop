@@ -1,5 +1,7 @@
 package org.aion.types;
 
+import foundation.icon.common.Bytes;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -100,7 +102,7 @@ public final class TransactionResult {
         return "TransactionResult { "
             + "status = " + this.transactionStatus
             + ", energy used = " + this.energyUsed
-            + ", output = " + ((this.output == null) ? "null" : this.output)
+            + ", output = " + ((this.output == null) ? "null" : Bytes.toHexString(this.output))
             + ", logs = " + this.logs
             + ", internal transactions = " + this.internalTransactions
             + " }";

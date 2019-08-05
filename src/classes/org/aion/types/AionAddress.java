@@ -38,6 +38,12 @@ public final class AionAddress {
         System.arraycopy(bytes, 0, this.raw, 0, bytes.length);
     }
 
+    public Address toAddress() {
+        byte[] bytes = new byte[21];
+        System.arraycopy(this.raw, 0, bytes, 0, bytes.length);
+        return new Address(bytes);
+    }
+
     /**
      * Converts the receiver to a new byte array.
      *

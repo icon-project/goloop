@@ -135,11 +135,11 @@ public class Proxy {
         Value value = a.get(1);
         Message m = new Message(type, value);
 
-        if (logger.isDebugEnabled()) {
-            logger.debug("[MsgType] {}", m.type);
+        if (logger.isTraceEnabled()) {
+            logger.trace("[MsgType] {}", m.type);
             for (Value e : a) {
-                logger.debug("-- type: {}", e.getValueType());
-                logger.debug("   value: {}", e);
+                logger.trace("-- type: {}", e.getValueType());
+                logger.trace("   value: {}", e);
             }
         }
         return m;
