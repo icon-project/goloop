@@ -13,13 +13,13 @@
 # limitations under the License.
 
 from typing import TYPE_CHECKING, Optional, Any
-from iconcommons import Logger
 
 from ..base.address import Address
 from ..base.exception import ExceptionCode, IconServiceBaseException, IconScoreException
 from ..icon_constant import Status
 from ..iconscore.icon_score_constant import STR_FALLBACK
 from ..iconscore.icon_score_step import StepType
+from ..logger import Logger
 
 if TYPE_CHECKING:
     from .icon_score_context import IconScoreContext
@@ -50,10 +50,10 @@ class InternalCall(object):
                      kw_params: Optional[dict] = None) -> Any:
         if func_name is None:
             func_name = STR_FALLBACK
-        Logger.info(f'[InterCall] from={addr_from} to={addr_to} amount={amount} func_name={func_name}', TAG)
-        Logger.info(f'arg_params={arg_params}, kw_params={kw_params}', TAG)
+        Logger.debug(f'>>> from={addr_from} to={addr_to} amount={amount} func_name={func_name}', TAG)
+        Logger.debug(f'    arg_params={arg_params}, kw_params={kw_params}', TAG)
         new_limit = context.step_counter.check_step_remained(StepType.CONTRACT_CALL)
-        Logger.info(f'new_limit={new_limit}', TAG)
+        Logger.debug(f'    new_limit={new_limit}', TAG)
         if arg_params is not None:
             params = arg_params
         elif kw_params is not None:
@@ -62,7 +62,7 @@ class InternalCall(object):
             params = []
         status, step_used, result = \
             cls._proxy.call(addr_to, amount, new_limit, func_name, params)
-        Logger.info(f'[InterCall] Result: {status}, {step_used}, {result}', TAG)
+        Logger.debug(f'<<< Result: {status}, {step_used}, {result}', TAG)
 
         if step_used > new_limit:
             context.step_counter.add_step(new_limit)

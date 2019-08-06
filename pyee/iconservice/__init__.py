@@ -18,7 +18,7 @@ from abc import ABCMeta, abstractmethod, ABC
 from functools import wraps
 from inspect import isfunction
 
-from iconcommons.logger import Logger
+from pyexec.logger import Logger
 
 from pyexec.base.address import Address, AddressPrefix, ZERO_SCORE_ADDRESS
 from pyexec.base.exception import IconScoreException

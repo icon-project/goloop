@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from logging import Handler
 from typing import Tuple, Any, Union, List
-from iconcommons import Logger
 
-from .icon_constant import IconScoreContextType, Status
 from .base.address import Address
 from .base.block import Block
 from .base.message import Message
 from .base.transaction import Transaction
-from .service_engine import ServiceEngine, IconScoreContext
+from .icon_constant import IconScoreContextType, Status
 from .iconscore.icon_score_step import IconScoreStepCounter
-from .ipc.proxy import ServiceManagerProxy, Codec, TypeTag, APIInfo, APIType, DataType, Info
+from .ipc.proxy import ServiceManagerProxy, Codec, TypeTag, APIInfo, APIType, DataType, Info, Log
+from .logger import Logger
+from .service_engine import ServiceEngine, IconScoreContext
 
 TAG = 'PyExec'
 version_number = 1
@@ -39,6 +40,22 @@ class EECodec(Codec):
             return Address.from_bytes(b)
         else:
             raise Exception(f"UnknownType: {type(t)}")
+
+
+class ProxyStreamHandler(Handler):
+    def __init__(self, proxy):
+        Handler.__init__(self)
+        self._proxy = proxy
+
+    def emit(self, record):
+        try:
+            msg = self.format(record)
+            self.write(record.levelname, msg)
+        except Exception:
+            self.handleError(record)
+
+    def write(self, levelname, msg):
+        self._proxy.log(Log.from_py_level(levelname), msg)
 
 
 def convert_data_type(typ: str) -> DataType:
@@ -95,10 +112,13 @@ class PyExecEngine(object):
         proxy.set_api_handler(self.api_handler)
         ServiceEngine.open(self)
 
+    def init_logger(self, config: dict):
+        Logger.load_config(config, ProxyStreamHandler(self.__proxy))
+
     def invoke_handler(self, code: str, is_query: bool, _from: 'Address', to: 'Address',
                        value: int, limit: int, method: str, params: Any) -> Tuple[int, int, Any]:
-        Logger.info(f'[invoke_handle] code={repr(code)},is_query={is_query},from={_from},to={to},' +
-                    f'value={value},limit={limit},method={repr(method)},params={params}', TAG)
+        Logger.debug(f'[invoke_handle] code={repr(code)},is_query={is_query},from={_from},to={to},' +
+                     f'value={value},limit={limit},method={repr(method)},params={params}', TAG)
         context = IconScoreContext(IconScoreContextType.QUERY if is_query
                                    else IconScoreContextType.INVOKE)
         context.set_invoke_params(code, to, method, params)
@@ -112,22 +132,22 @@ class PyExecEngine(object):
         context.block = Block(info.get(Info.BLOCK_HEIGHT),
                               info.get(Info.BLOCK_TIMESTAMP))
         context.msg = Message(sender=_from, value=value)
-        context.owner: Address = info.get(Info.CONTRACT_OWNER)
+        context.owner = info.get(Info.CONTRACT_OWNER)
         context.step_counter = IconScoreStepCounter(info.get(Info.STEP_COSTS),
                                                     limit)
         context.revision = info.get(Info.REVISION)
-        Logger.info(f'[Transaction] {context.tx}', TAG)
-        Logger.info(f'[Block] {context.block}', TAG)
-        Logger.info(f'[Message] {context.msg}', TAG)
-        Logger.info(f'[Owner] {context.owner}', TAG)
-        Logger.info(f'[StepCounter] {context.step_counter}', TAG)
-        Logger.info(f'[Revision] {context.revision}', TAG)
+        Logger.debug(f'[Transaction] {context.tx}', TAG)
+        Logger.debug(f'[Block] {context.block}', TAG)
+        Logger.debug(f'[Message] {context.msg}', TAG)
+        Logger.debug(f'[Owner] {context.owner}', TAG)
+        Logger.debug(f'[StepCounter] {context.step_counter}', TAG)
+        Logger.debug(f'[Revision] {context.revision}', TAG)
         return ServiceEngine.invoke(context)
 
     def api_handler(self, code: str) -> Tuple[int, APIInfo]:
-        Logger.info(f'[api_handler] code={code}', TAG)
+        Logger.debug(f'[api_handler] code={code}', TAG)
         status, apis = ServiceEngine.get_score_api(code)
-        Logger.info(f"get_api({code}) -> {status} {apis}", TAG)
+        Logger.debug(f"get_api({code}) -> {status} {apis}", TAG)
         info = APIInfo(self.__proxy)
         if status == Status.SUCCESS:
             for api in apis:
@@ -142,13 +162,14 @@ class PyExecEngine(object):
         return status, info
 
     def connect(self, addr: str, uuid: str):
-        Logger.info(f"connect({addr}, {uuid})", TAG)
         self.__proxy.connect(addr)
         self.__proxy.send_version(version_number, uuid, "python")
+        # Logger should be invoked after connect
+        Logger.info(f"connect({addr}, {uuid})", TAG)
 
     def get_info(self) -> Any:
         info = self.__proxy.get_info()
-        Logger.info(f"get_info() -> {info}", TAG)
+        Logger.debug(f"get_info() -> {info}", TAG)
         return info
 
     def call(self, to: Address, value: int, limit: int,
@@ -157,20 +178,20 @@ class PyExecEngine(object):
 
     def get_value(self, k: bytes) -> Union[bytes, None]:
         ret = self.__proxy.get_value(k)
-        Logger.info(f"get_value({repr(k)}) -> {repr(ret)}", TAG)
+        Logger.debug(f"get_value({repr(k)}) -> {repr(ret)}", TAG)
         return ret
 
     def set_value(self, k: bytes, v: Union[bytes, None]):
-        Logger.info(f"set_value({repr(k)},{repr(v)})", TAG)
+        Logger.debug(f"set_value({repr(k)},{repr(v)})", TAG)
         self.__proxy.set_value(k, v)
 
     def get_balance(self, addr: Address) -> int:
         ret = self.__proxy.get_balance(addr)
-        Logger.info(f"get_balance({repr(addr)}) -> {ret}", TAG)
+        Logger.debug(f"get_balance({repr(addr)}) -> {ret}", TAG)
         return ret
 
     def send_event(self, indexed: List[Any], data: List[Any]):
-        Logger.info(f"send_event({indexed},{data})", TAG)
+        Logger.debug(f"send_event({indexed},{data})", TAG)
         self.__proxy.send_event(indexed, data)
 
     def process(self):

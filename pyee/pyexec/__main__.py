@@ -14,31 +14,27 @@
 
 import argparse
 import sys
-from iconcommons import IconConfig, Logger
 
+from .ipc.proxy import ServiceManagerProxy, Log
 from .pyexec import PyExecEngine
-from .ipc.proxy import ServiceManagerProxy
 
 default_address = '/tmp/ee.socket'
 default_log_config = {
     "log": {
         "logger": "pyexec",
         "level": "info",
-        "colorLog": True,
-        "outputType": "console",
+        "outputType": "custom",
+        "format": "%(filename)s:%(lineno)s %(message)s"
     }
 }
-
-
-def init_logger():
-    conf = IconConfig("", default_log_config)
-    Logger.load_config(conf)
 
 
 def main():
     parser = argparse.ArgumentParser(prog='pyexec', description='Python Executor for ICON SCORE')
     parser.add_argument('-v', '--verbose', dest='verbose', action='store_true',
-                        help='verbose mode')
+                        help='verbose mode (deprecated)')
+    parser.add_argument('-d', '--debug', dest='log_level',
+                        help='debugging log level')
     parser.add_argument('-s', '--socket', dest='socket',
                         help='a UNIX domain socket address for connection')
     parser.add_argument('-u', '--uuid', dest='uuid', required=True,
@@ -50,10 +46,16 @@ def main():
     else:
         server_address = default_address
 
-    if args.verbose:
-        init_logger()
+    if args.log_level:
+        log_level = args.log_level
+    elif args.verbose:
+        log_level = "debug"
+    else:
+        log_level = "info"
+    default_log_config["log"]["level"] = Log.to_py_level(log_level)
 
     engine = PyExecEngine(ServiceManagerProxy())
+    engine.init_logger(default_log_config)
     engine.connect(server_address, args.uuid)
     engine.process()
 

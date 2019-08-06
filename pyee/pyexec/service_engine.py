@@ -12,19 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from iconcommons import Logger
-
 from .base.address import Address, GETAPI_DUMMY_ADDRESS
 from .base.exception import *
 from .base.type_converter import TypeConverter
 from .database.factory import ContextDatabaseFactory
-
 from .icon_constant import Status
 from .iconscore.icon_score_base import IconScoreBase
 from .iconscore.icon_score_context import ContextContainer, IconScoreContext
 from .iconscore.icon_score_eventlog import EventLogEmitter
 from .iconscore.icon_score_mapper import IconScoreMapper
 from .iconscore.internal_call import InternalCall
+from .logger import Logger
 
 TAG = 'ServiceEngine'
 
@@ -59,13 +57,13 @@ class ServiceEngine(ContextContainer):
 
     @classmethod
     def invoke(cls, context: IconScoreContext):
-        Logger.info(f'[invoke] {context.method}, {context.params}', TAG)
+        Logger.debug(f'[invoke] {context.method}, {context.params}', TAG)
 
         cls._push_context(context)
         status, step_used, ret = cls._handle_invoke(context)
         cls._pop_context()
 
-        Logger.info(f'*** RESULT: {status}, {step_used}, {ret}', TAG)
+        Logger.debug(f'*** RESULT: {status}, {step_used}, {ret}', TAG)
         return status, step_used, ret
 
     @classmethod
@@ -108,10 +106,10 @@ class ServiceEngine(ContextContainer):
             arg_params = []
             params: dict = decode_params(context.params)
             kw_params = cls._convert_score_params_by_annotations(icon_score, func_name, params)
-            Logger.info(f'kw_params: {kw_params}', TAG)
+            Logger.debug(f'kw_params: {kw_params}', TAG)
         elif isinstance(context.params, list):
             arg_params: list = context.params
-            Logger.info(f'arg_params: {arg_params}', TAG)
+            Logger.debug(f'arg_params: {arg_params}', TAG)
             kw_params = {}
         else:
             raise InvalidParamsException('Unknown params type')

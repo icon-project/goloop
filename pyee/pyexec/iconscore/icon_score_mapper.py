@@ -15,15 +15,14 @@
 import hashlib
 from threading import Lock
 from typing import Optional
-from iconcommons import Logger
 
+from .icon_score_base import IconScoreBase
+from .icon_score_loader import IconScoreLoader
 from ..base.address import Address
 from ..base.exception import InvalidParamsException
-from ..database.factory import ContextDatabaseFactory
 from ..database.db import IconScoreDatabase
-
-from .icon_score_loader import IconScoreLoader
-from .icon_score_base import IconScoreBase
+from ..database.factory import ContextDatabaseFactory
+from ..logger import Logger
 
 TAG = 'ScoreMapper'
 
@@ -118,7 +117,7 @@ class IconScoreMapper(object):
         :param code_path:
         :return: IconScoreBase object
         """
-        Logger.info(f'[get_icon_score] address={address} code_path={code_path}', TAG)
+        Logger.debug(f'[get_icon_score] address={address} code_path={code_path}', TAG)
         key = hashlib.sha3_256(code_path.encode()).digest()
         score_info: IconScoreInfo = self.get(key)
 
@@ -131,11 +130,11 @@ class IconScoreMapper(object):
             score_class = score_info.score_class
             # i = 0
             # for k, v in self._objects.items():
-            #     Logger.info(f'  == {i} == {v.score_class} {v.code_path}', TAG)
+            #     Logger.debug(f'  == {i} == {v.score_class} {v.code_path}', TAG)
             #     i += 1
 
         score_db = self._create_icon_score_database(address)
-        Logger.info(f'score_db: {score_db}', TAG)
+        Logger.debug(f'score_db: {score_db}', TAG)
         return score_class(score_db)
 
     def put_score_info(self,

@@ -56,6 +56,17 @@ class Log(object):
 
     __levels = ["panic", "fatal", "error", "warn", "info", "debug", "trace"]
 
+    __py_levels = ["", "", "error", "warning", "", "info", "debug"]
+    __to_py_levels = {
+        "panic": "error",
+        "fatal": "error",
+        "error": "error",
+        "warn": "warning",
+        "info": "info",
+        "debug": "info",
+        "trace": "debug"
+    }
+
     @classmethod
     def from_string(cls, name: str) -> int:
         idx = cls.__levels.index(name)
@@ -66,6 +77,17 @@ class Log(object):
     @classmethod
     def to_string(cls, level: int) -> str:
         return cls.__levels[level]
+
+    @classmethod
+    def from_py_level(cls, name: str):
+        idx = cls.__py_levels.index(name.lower())
+        if idx < 0:
+            raise Exception(f"unknown log level name={name}")
+        return idx
+
+    @classmethod
+    def to_py_level(cls, level: str) -> str:
+        return cls.__to_py_levels.get(level, "info")
 
 
 class Status(object):

@@ -14,10 +14,10 @@
 
 from typing import TYPE_CHECKING, Optional
 
-from iconcommons.logger import Logger
 from ..base.exception import DatabaseException, InvalidParamsException
 from ..icon_constant import ICON_DB_LOG_TAG, IconScoreContextType, IconScoreFuncType
 from ..iconscore.icon_score_context import ContextGetter
+from ..logger import Logger
 from ..utils import sha3_256
 
 if TYPE_CHECKING:
