@@ -75,7 +75,7 @@ func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, c
 			t.log.Debugf("Fail to prepare for %+v", err2)
 			return err2
 		}
-		ctx = contract.NewContext(wc, t.cm, t.eem, t.chain, nil)
+		ctx = contract.NewContext(wc, t.cm, t.eem, t.chain, t.log)
 		ctx.SetTransactionInfo(&state.TransactionInfo{
 			Index:     int32(cnt),
 			Timestamp: txo.Timestamp(),
