@@ -30,6 +30,10 @@ func main() {
 	cli.NewSystemCmd(rootCmd, rootVc)
 	cli.NewStatsCmd(rootCmd, rootVc)
 	cli.NewRpcCmd(rootCmd, nil)
+	rootCmd.AddCommand(
+		cli.NewGStorageCmd("gs"),
+		cli.NewGenesisCmd("gn"),
+		cli.NewKeystoreCmd("ks"))
 
 	genMdCmd := cli.NewGenerateMarkdownCommand(rootCmd)
 	genMdCmd.Hidden = true
