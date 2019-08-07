@@ -5,9 +5,8 @@ import (
 	"errors"
 	"reflect"
 
-	"github.com/labstack/echo/v4"
-
 	"github.com/icon-project/goloop/module"
+	"github.com/labstack/echo/v4"
 )
 
 const Version = "2.0"
@@ -19,17 +18,17 @@ const (
 )
 
 type Request struct {
-	Version string           `json:"jsonrpc" validate:"required,version"`
-	Method  string           `json:"method" validate:"required"`
-	Params  *json.RawMessage `json:"params,omitempty"`
-	ID      *json.RawMessage `json:"id"`
+	Version string          `json:"jsonrpc" validate:"required,version"`
+	Method  string          `json:"method" validate:"required"`
+	Params  json.RawMessage `json:"params,omitempty"`
+	ID      interface{}     `json:"id"`
 }
 
 type Response struct {
-	Version string           `json:"jsonrpc"`
-	Result  interface{}      `json:"result,omitempty"`
-	Error   *Error           `json:"error,omitempty"`
-	ID      *json.RawMessage `json:"id,omitempty"`
+	Version string      `json:"jsonrpc"`
+	Result  interface{} `json:"result,omitempty"`
+	Error   *Error      `json:"error,omitempty"`
+	ID      interface{} `json:"id,omitempty"`
 }
 
 type Context struct {
@@ -53,7 +52,7 @@ func (ctx *Context) IncludeDebug() bool {
 }
 
 type Params struct {
-	rawMessage *json.RawMessage
+	rawMessage json.RawMessage
 	validator  echo.Validator
 }
 
@@ -65,7 +64,7 @@ func (p *Params) Convert(v interface{}) error {
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
 		return errors.New("v is not pointer type or v is nil")
 	}
-	if err := json.Unmarshal(*p.rawMessage, v); err != nil {
+	if err := json.Unmarshal(p.rawMessage, v); err != nil {
 		return err
 	}
 	if err := p.validator.Validate(v); err != nil {
