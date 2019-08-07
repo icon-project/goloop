@@ -12,7 +12,7 @@ import (
 	"github.com/jroimartin/gocui"
 	"github.com/spf13/cobra"
 
-	"github.com/icon-project/goloop/chain"
+	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/node"
@@ -89,7 +89,7 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 				if err2 != nil {
 					return fmt.Errorf("fail to open %s err=%+v", genesisZip, err2)
 				}
-				gs, err2 := chain.NewGenesisStorageFromFile(file)
+				gs, err2 := gs.NewFromFile(file)
 				if err2 != nil {
 					return fmt.Errorf("fail to parse %s err=%+v", genesisZip, err2)
 				}
@@ -99,11 +99,11 @@ func NewChainCmd(cfg *GoLoopConfig) *cobra.Command {
 				_, err = hc.PostWithFile(reqUrl, &joinChainParam, "genesisZip", genesisZip, &v)
 			} else if len(genesisPath) > 0 {
 				buf := bytes.NewBuffer(nil)
-				err2 := chain.WriteGenesisStorageFromPath(buf, genesisPath)
+				err2 := gs.WriteFromPath(buf, genesisPath)
 				if err2 != nil {
 					return fmt.Errorf("failed WriteGenesisStorage err=%+v", err2)
 				}
-				gs, err2 := chain.NewGenesisStorage(buf.Bytes())
+				gs, err2 := gs.New(buf.Bytes())
 				if err2 != nil {
 					return fmt.Errorf("fail to parse genesis storage err=%+v", err2)
 				}

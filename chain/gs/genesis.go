@@ -1,4 +1,4 @@
-package chain
+package gs
 
 import (
 	"archive/zip"
@@ -16,7 +16,6 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/service/transaction"
-	"golang.org/x/crypto/sha3"
 )
 
 const (
@@ -36,7 +35,7 @@ type genesisStorageWithDataDir struct {
 	dataMap  map[string]string
 }
 
-func GetNIDForGenesis(g []byte) (int, error) {
+func getNIDForGenesis(g []byte) (int, error) {
 	gtx, err := transaction.NewGenesisTransaction(g)
 	if err != nil {
 		return 0, err
@@ -50,7 +49,7 @@ func (gs *genesisStorageWithDataDir) Genesis() []byte {
 
 func (gs *genesisStorageWithDataDir) NID() (int, error) {
 	if gs.nid == 0 {
-		if nid, err := GetNIDForGenesis(gs.Genesis()); err != nil {
+		if nid, err := getNIDForGenesis(gs.Genesis()); err != nil {
 			return 0, err
 		} else {
 			gs.nid = nid
@@ -85,26 +84,6 @@ const (
 	GenesisChunkSize = 1024 * 10
 )
 
-func SHA3Sum256WithReadCloser(rc io.ReadCloser) ([]byte, error) {
-	s := sha3.New256()
-	buf := make([]byte, GenesisChunkSize)
-	for {
-		r, err := rc.Read(buf)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			rc.Close()
-			return nil, err
-		}
-		s.Write(buf[0:r])
-	}
-	if err := rc.Close(); err != nil {
-		return nil, err
-	}
-	return s.Sum([]byte{}), nil
-}
-
 type genesisStorageWithZip struct {
 	genesis []byte
 	nid     int
@@ -117,7 +96,7 @@ func (gs *genesisStorageWithZip) Genesis() []byte {
 
 func (gs *genesisStorageWithZip) NID() (int, error) {
 	if gs.nid == 0 {
-		if nid, err := GetNIDForGenesis(gs.Genesis()); err != nil {
+		if nid, err := getNIDForGenesis(gs.Genesis()); err != nil {
 			return 0, err
 		} else {
 			gs.nid = nid
@@ -313,7 +292,7 @@ func processContent(c *templateContext, o interface{}) (interface{}, error) {
 // WriteGenesisStorageFromPath write genesis data from the template.
 // You may specify directory containing genesis.json. Or specify template
 // file itself.
-func WriteGenesisStorageFromPath(w io.Writer, p string) error {
+func WriteFromPath(w io.Writer, p string) error {
 	var genesisDir, genesisTemplate string
 
 	st, err := os.Stat(p)
@@ -367,7 +346,15 @@ func WriteGenesisStorageFromPath(w io.Writer, p string) error {
 	return nil
 }
 
-func NewGenesisStorageFromFile(fd *os.File) (GenesisStorage, error) {
+func NewFromTx(tx []byte) GenesisStorage {
+	return &genesisStorageWithDataDir{
+		genesis:  tx,
+		dataMap:  nil,
+		dataPath: "",
+	}
+}
+
+func NewFromFile(fd *os.File) (GenesisStorage, error) {
 	fi, err := fd.Stat()
 	if err != nil {
 		return nil, err
@@ -375,7 +362,7 @@ func NewGenesisStorageFromFile(fd *os.File) (GenesisStorage, error) {
 	return newGenesisStorage(fd, fi.Size())
 }
 
-func NewGenesisStorage(data []byte) (GenesisStorage, error) {
+func New(data []byte) (GenesisStorage, error) {
 	return newGenesisStorage(bytes.NewReader(data), int64(len(data)))
 }
 

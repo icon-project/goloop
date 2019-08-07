@@ -17,6 +17,7 @@ import (
 	"syscall"
 
 	"github.com/icon-project/goloop/chain"
+	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/wallet"
@@ -186,17 +187,17 @@ func Execute(cmd *cobra.Command, args []string) {
 		if err != nil {
 			log.Panicf("Fail to open genesisStorage=%s err=%+v\n", genesisStorage, err)
 		}
-		cfg.GenesisStorage, err = chain.NewGenesisStorage(storage)
+		cfg.GenesisStorage, err = gs.New(storage)
 		if err != nil {
 			log.Panicf("Failed to load genesisStorage\n")
 		}
 	} else if len(genesisPath) > 0 {
 		storage := bytes.NewBuffer(nil)
-		if err := chain.WriteGenesisStorageFromPath(storage, genesisPath); err != nil {
+		if err := gs.WriteFromPath(storage, genesisPath); err != nil {
 			log.Printf("FAIL to generate gs. err = %s, path = %s\n", err, genesisPath)
 		}
 		var err error
-		cfg.GenesisStorage, err = chain.NewGenesisStorage(storage.Bytes())
+		cfg.GenesisStorage, err = gs.New(storage.Bytes())
 		if err != nil {
 			log.Panicf("Failed to load genesisStorage\n")
 		}

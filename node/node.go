@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/icon-project/goloop/chain"
+	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
@@ -173,7 +174,7 @@ func (n *Node) JoinChain(
 	defer n.mtx.Unlock()
 	n.mtx.Lock()
 
-	gs, err := chain.NewGenesisStorage(genesis)
+	gs, err := gs.New(genesis)
 	if err != nil {
 		return nil, errors.Wrap(err, "fail to get genesis storage")
 	}
@@ -398,7 +399,7 @@ func NewNode(
 			if err != nil {
 				log.Panicf("Fail to read chain genesis zip file %s err=%+v", gsFile, err)
 			}
-			gs, err := chain.NewGenesisStorage(genesis)
+			gs, err := gs.New(genesis)
 			if err != nil {
 				log.Panicf("Fail to parse chain genesis zip file %s err=%+v", gsFile, err)
 			}

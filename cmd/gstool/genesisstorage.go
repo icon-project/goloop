@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/icon-project/goloop/chain"
+	"github.com/icon-project/goloop/chain/gs"
 	"github.com/spf13/cobra"
 )
 
@@ -25,7 +25,7 @@ func newGStorageGenCmd(c string) *cobra.Command {
 			log.Panicf("Fail to open %s for write err=%+v", *out, err)
 		}
 		defer f.Close()
-		if err := chain.WriteGenesisStorageFromPath(f, *input); err != nil {
+		if err := gs.WriteFromPath(f, *input); err != nil {
 			log.Panicf("Fail to write genesis storage err=%+v", err)
 		}
 	}
@@ -34,7 +34,7 @@ func newGStorageGenCmd(c string) *cobra.Command {
 
 func newGStorageInfoCmd(c string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   c,
+		Use:   fmt.Sprintf("%s genesis_storage.zip", c),
 		Short: "Show genesis storage information",
 		Args:  cobra.MinimumNArgs(1),
 	}
@@ -46,7 +46,7 @@ func newGStorageInfoCmd(c string) *cobra.Command {
 			if err != nil {
 				log.Panicf("Fail to open file=%s err=%+v", arg, err)
 			}
-			gs, err := chain.NewGenesisStorageFromFile(f)
+			gs, err := gs.NewFromFile(f)
 			if *nidOnly {
 				nid, err := gs.NID()
 				if err != nil {

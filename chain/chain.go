@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/icon-project/goloop/block"
+	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/chain/imports"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
@@ -49,8 +50,8 @@ type Config struct {
 	SecureSuites string `json:"secureSuites"`
 	SecureAeads  string `json:"secureAeads"`
 
-	GenesisStorage GenesisStorage  `json:"-"`
-	Genesis        json.RawMessage `json:"genesis"`
+	GenesisStorage gs.GenesisStorage `json:"-"`
+	Genesis        json.RawMessage   `json:"genesis"`
 
 	BaseDir  string `json:"chain_dir"`
 	FilePath string `json:"-"` //absolute path
@@ -345,11 +346,7 @@ func (c *singleChain) _init() error {
 		if len(c.cfg.Genesis) == 0 {
 			return errors.IllegalArgumentError.Errorf("FAIL to generate GenesisStorage")
 		}
-		c.cfg.GenesisStorage = &genesisStorageWithDataDir{
-			genesis:  c.cfg.Genesis,
-			dataMap:  nil,
-			dataPath: "",
-		}
+		c.cfg.GenesisStorage = gs.NewFromTx(c.cfg.Genesis)
 	}
 
 	if cdb, err := db.Open(DBDir, c.cfg.DBType, DBName); err != nil {
