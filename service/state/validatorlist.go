@@ -340,7 +340,7 @@ func ValidatorSnapshotFromSlice(database db.Database, vl []module.Validator) (Va
 		if vo, ok := v.(*validator); ok {
 			vList[i] = vo
 		} else {
-			return nil, ErrIllegalType
+			return nil, errors.ErrIllegalArgument
 		}
 	}
 	vss.validators = vList

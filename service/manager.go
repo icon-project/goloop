@@ -431,7 +431,7 @@ func (m *manager) GetNetworkID(result []byte) (int64, error) {
 
 func (m *manager) GetAPIInfo(result []byte, addr module.Address) (module.APIInfo, error) {
 	if !addr.IsContract() {
-		return nil, state.ErrNotContractAccount
+		return nil, state.ErrNotContractAddress
 	}
 	wss, err := m.trc.GetWorldSnapshot(result, nil)
 	if err != nil {

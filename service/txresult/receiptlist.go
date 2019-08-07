@@ -2,7 +2,6 @@ package txresult
 
 import (
 	"github.com/icon-project/goloop/common/log"
-	"github.com/icon-project/goloop/service/state"
 	"reflect"
 
 	"github.com/icon-project/goloop/common/merkle"
@@ -29,12 +28,7 @@ func (i *receiptIterator) Get() (module.Receipt, error) {
 	if err != nil {
 		return nil, err
 	}
-	rct, ok := obj.(module.Receipt)
-	if ok {
-		return rct, nil
-	} else {
-		return nil, state.IllegalTypeError.Errorf("InvalidReceiptObject:%T", obj)
-	}
+	return obj.(module.Receipt), nil
 }
 
 func (l *receiptList) Iterator() module.ReceiptIterator {
@@ -50,10 +44,7 @@ func (l *receiptList) Get(n int) (module.Receipt, error) {
 	if err != nil {
 		return nil, err
 	}
-	if tx, ok := obj.(module.Receipt); ok {
-		return tx, nil
-	}
-	return nil, state.IllegalTypeError.Errorf("IllegalObjectType(%T)", obj)
+	return obj.(module.Receipt), nil
 }
 
 func (l *receiptList) GetProof(n int) ([][]byte, error) {

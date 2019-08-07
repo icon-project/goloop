@@ -19,7 +19,6 @@ import (
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/service/state"
 )
 
 const (
@@ -361,7 +360,7 @@ func (r *receipt) Status() module.Status {
 func (r *receipt) Check(r2 module.Receipt) error {
 	rct2, ok := r2.(*receipt)
 	if !ok {
-		return state.IllegalTypeError.New("IncompatibleReceipt")
+		return errors.IllegalArgumentError.New("IncompatibleReceipt")
 	}
 	if !r.data.Equal(&rct2.data) {
 		return errors.InvalidStateError.New("DataIsn'tEqual")

@@ -90,10 +90,7 @@ func (ws *worldStateImpl) Reset(isnapshot WorldSnapshot) error {
 	ws.mutex.Lock()
 	defer ws.mutex.Unlock()
 
-	snapshot, ok := isnapshot.(*worldSnapshotImpl)
-	if !ok {
-		return IllegalTypeError.New("InvalidSnapshot")
-	}
+	snapshot := isnapshot.(*worldSnapshotImpl)
 	if ws.database != snapshot.database {
 		return errors.InvalidStateError.New("InvalidSnapshotWithDifferentDB")
 	}

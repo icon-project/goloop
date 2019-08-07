@@ -174,10 +174,7 @@ func (wvs *worldVirtualState) GetSnapshot() WorldSnapshot {
 }
 
 func (wvs *worldVirtualState) Reset(snapshot WorldSnapshot) error {
-	wvss, ok := snapshot.(*worldVirtualSnapshot)
-	if !ok {
-		return IllegalTypeError.New("InvalidSnapshot")
-	}
+	wvss := snapshot.(*worldVirtualSnapshot)
 	if wvs != wvss.origin {
 		return errors.InvalidStateError.New("InvalidSnapshot")
 	}
