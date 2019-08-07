@@ -281,10 +281,9 @@ pages:doc:
     - npm install
     - ./node_modules/.bin/widdershins -l --summary goloop_admin_api.yaml -o goloop_admin_api.md
     - sed -i "s/base:.*/base:'\/pages\/${PAGES_PUBLIC//\//\\\/}\/',/" .vuepress/config.js
-    - sed -i "s/\/\/EndOfSidebar/["documentation","Documentation"],\n\/\/EndOfSidebar/" .vuepress/config.js
+    - sed -i 's/\/\/EndOfSidebar/["documentation","Documentation"],\n\/\/EndOfSidebar/' .vuepress/config.js
     - mv README.md documentation.md
-    - echo -e "---\nhome: true\nheroText: Goloop Document\ntagline: Goloop Document\nactionText: Get Started →\nactionLink: /build\n---" > README.md
-    - cat ../README.md > README.md && sed -i "s/doc\///g" README.md
+    - cat .vuepress/hometags ../README.md > README.md && sed -i "s/doc\///g" README.md
     - ./node_modules/.bin/vuepress build --dest dist ./
 
 pages:ITJ:gochain:normal:
