@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This document describe how to setup the blockchain network with provided tools
+This document describe how to setup the blockchain network with provided tools.
 We provides two kinds of server.
 
 | Name                  | gochain | goloop |

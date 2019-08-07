@@ -18,19 +18,20 @@ Support Goloop document site based on [Vuepress](https://v1.vuepress.vuejs.org).
     ```
     brew install node
     ```
+
 * yarn install
 
-   **Mac OSX**
-   ```
-   brew install yarn
-   ```
+    **Mac OSX**
+    ```
+    brew install yarn
+    ```
 
 * package install
 
     ```
     yarn install
     ```
-  
+
 ## Scripts
 
 * `doc:dev` : start a development server
@@ -52,7 +53,7 @@ Support Goloop document site based on [Vuepress](https://v1.vuepress.vuejs.org).
     yarn doc:serve
     ```
     - serve `.vuepress/dist` dir
-    
+
 * `api:gen` : generate api documents
     
     ```

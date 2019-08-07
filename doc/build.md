@@ -16,6 +16,7 @@
     brew install python
     pip install virtualenv setuptools wheel
     ```
+
 ## Environment
 
 ### Source checkout
@@ -33,10 +34,9 @@ virtualenv -p python3 venv
 ```
 
 ### Install required packages
-```bas
+```bash
 pip install -r pyee/requirements.txt
 ```
-
 
 ## Build
 
@@ -62,7 +62,7 @@ Output files are placed under `pyee/dist/` directory.
 First step, you need to make a configuration for the node.
 
 ```bash
-./bin/gochain -save_key_store wallet.json -save config.json
+./bin/gochain --save_key_store wallet.json --save config.json
 ```
 
 It stores generated configuration(`config.json`) along with wallet keystore
