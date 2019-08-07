@@ -36,6 +36,7 @@ module.exports = {
                     ['/goloop_cli', "Goloop CLI"],
                 ]
             },
+            //EndOfSidebar
         ],
         lastUpdated: 'Last Updated', // string | boolean
     },
