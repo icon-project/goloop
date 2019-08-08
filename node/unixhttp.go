@@ -233,7 +233,7 @@ func (c *UnixDomainSockHttpClient) Post(reqUrl string, respPtr interface{}) (res
 	return c.Do(http.MethodPost, reqUrl, nil, respPtr)
 }
 func (c *UnixDomainSockHttpClient) PostWithJson(reqUrl string, reqPtr interface{}, respPtr interface{}) (resp *http.Response, err error) {
-	return c.Do(http.MethodPost, reqUrl, reqPtr, nil)
+	return c.Do(http.MethodPost, reqUrl, reqPtr, respPtr)
 }
 
 func (c *UnixDomainSockHttpClient) PostWithReader(reqUrl string, reqPtr interface{}, fieldName string, r io.Reader, respPtr interface{}) (resp *http.Response, err error) {

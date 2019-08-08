@@ -29,7 +29,7 @@ func AdminPersistentPreRunE(vc *viper.Viper, adminClient *node.UnixDomainSockHtt
 			}
 			if cfg.CliSocket == "" {
 				if cfg.priK == nil {
-					return errors.Errorf("not exists keyStore on config %s",cfgFilePath)
+					return errors.Errorf("not exists keyStore on config %s", cfgFilePath)
 				}
 				addr := common.NewAccountAddressFromPublicKey(cfg.priK.PublicKey())
 				cfg.FillEmpty(addr)
@@ -144,7 +144,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	joinFlags := joinCmd.Flags()
 	joinFlags.String("genesis", "", "Genesis storage path")
 	joinFlags.String("genesis_template", "", "Genesis template directory or file")
-	joinFlags.String("seed", "", "Ip-port of Seed")
+	joinFlags.StringSlice("seed", nil, "Ip-port of Seed")
 	joinFlags.Uint("role", 3, "[0:None, 1:Seed, 2:Validator, 3:Both]")
 	joinFlags.String("db_type", "goleveldb", "Name of database system(*badgerdb, goleveldb, boltdb, mapdb)")
 	joinFlags.Int("concurrency", 1, "Maximum number of executors to use for concurrency")
@@ -285,33 +285,60 @@ func NewSystemCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comma
 	rootCmd.PersistentPreRunE = AdminPersistentPreRunE(vc, &adminClient)
 	AddAdminRequiredFlags(rootCmd)
 	BindPFlags(vc, rootCmd.PersistentFlags())
-	rootCmd.Flags().StringP("format", "f", "", "Format the output using the given Go template")
 
-	rootCmd.RunE = func(cmd *cobra.Command, args []string) error {
-		format := cmd.Flag("format").Value.String()
-		var v interface{}
-		params := &url.Values{}
-		if format == "" {
-			v = new(node.SystemView)
-		} else {
-			v = new(string)
-			params.Add("format", format)
-		}
-		resp, err := adminClient.Get(node.UrlSystem, v, params)
-		if err != nil {
-			return err
-		}
-		if format == "" {
-			if err = JsonPrettyPrintln(os.Stdout, v); err != nil {
-				return errors.Errorf("failed JsonIntend resp=%+v, err=%+v", resp, err)
+	infoCmd := &cobra.Command{
+		Use:                   "info",
+		Short:                 "Get system information",
+		Args:                  cobra.ExactArgs(0),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			format := cmd.Flag("format").Value.String()
+			var v interface{}
+			params := &url.Values{}
+			if format == "" {
+				v = new(node.SystemView)
+			} else {
+				v = new(string)
+				params.Add("format", format)
+			}
+			resp, err := adminClient.Get(node.UrlSystem, v, params)
+			if err != nil {
+				return err
+			}
+			if format == "" {
+				if err = JsonPrettyPrintln(os.Stdout, v); err != nil {
+					return errors.Errorf("failed JsonIntend resp=%+v, err=%+v", resp, err)
+				}
+				return nil
+			} else {
+				s := v.(*string)
+				fmt.Println(*s)
 			}
 			return nil
-		} else {
-			s := v.(*string)
-			fmt.Println(*s)
-		}
-		return nil
+		},
 	}
+	rootCmd.AddCommand(infoCmd)
+	infoCmd.Flags().StringP("format", "f", "", "Format the output using the given Go template")
+
+	configCmd := &cobra.Command{
+		Use:                   "config KEY VALUE",
+		Short:                 "Configure system",
+		Args:                  cobra.ExactArgs(2),
+		DisableFlagsInUseLine: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			param := &node.ConfigureParam{
+				Key: args[0],
+				Value: args[1],
+			}
+			var v string
+			if _, err := adminClient.PostWithJson(node.UrlSystem+"/configure", param, &v); err != nil {
+				return err
+			}
+			fmt.Println(v)
+			return nil
+		},
+	}
+	rootCmd.AddCommand(configCmd)
+
 	return rootCmd, vc
 }
 

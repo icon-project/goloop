@@ -19,7 +19,7 @@ import (
 )
 
 type ServerConfig struct {
-	node.Config
+	node.StaticConfig
 
 	Key           []byte          `json:"key,omitempty"`
 	KeyStoreData  json.RawMessage `json:"key_store"`
@@ -72,7 +72,6 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 	rootPFlags.String("rpc_default_channel", "", "JSON-RPC Default Channel")
 	rootPFlags.String("ee_socket", "", "Execution engine socket path")
 	rootPFlags.String("key_password", "", "Password for the KeyStore file")
-	rootPFlags.Int("ee_instances", 1, "Number of execution engines")
 	rootPFlags.String("log_level", "debug", "Global log level (trace,debug,info,warn,error,fatal,panic)")
 	rootPFlags.String("console_level", "trace", "Console log level (trace,debug,info,warn,error,fatal,panic)")
 	rootPFlags.String("node_dir", "",
@@ -158,14 +157,13 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 				}
 			}
 
-
 			for _, l := range logoLines {
 				log.Println(l)
 			}
 			log.Printf("Version : %s", version)
 			log.Printf("Build   : %s", build)
 
-			n := node.NewNode(w, &cfg.Config, logger)
+			n := node.NewNode(w, &cfg.StaticConfig, logger)
 			n.Start()
 			return nil
 		},
@@ -206,7 +204,7 @@ func MergeWithViper(vc *viper.Viper, cfg *ServerConfig) error {
 	if err := vc.Unmarshal(cfg, ViperDecodeOptJson); err != nil {
 		return errors.Errorf("fail to unmarshall server config from env err=%+v", err)
 	}
-	if err := vc.Unmarshal(&cfg.Config, ViperDecodeOptJson); err != nil {
+	if err := vc.Unmarshal(&cfg.StaticConfig, ViperDecodeOptJson); err != nil {
 		return errors.Errorf("fail to unmarshall node config from env err=%+v", err)
 	}
 

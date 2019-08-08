@@ -36,12 +36,19 @@ type Rest struct {
 }
 
 type SystemView struct {
-	BuildVersion      string `json:"buildVersion"`
-	BuildTags         string `json:"buildTags"`
-	Address           string `json:"address"`
-	P2PAddr           string `json:"p2p"`
-	P2PListenAddr     string `json:"p2pListen"`
-	RPCDefaultChannel string `json:"rpc_default_channel,omitempty"`
+	BuildVersion string `json:"buildVersion"`
+	BuildTags    string `json:"buildTags"`
+	Config       struct {
+		Static struct {
+			Address       string `json:"address"`
+			P2PAddr       string `json:"p2p"`
+			P2PListenAddr string `json:"p2pListen"`
+			RPCAddr       string `json:"rpcAddr"`
+			RPCDump       bool   `json:"rpcDump"`
+		} `json:"static"`
+		Runtime interface{} `json:"runtime"`
+	} `json:"config"`
+	RuntimeConfig interface{} `json:"runtimeConfig"`
 }
 
 type StatsView struct {
@@ -69,18 +76,23 @@ type ChainConfig struct {
 	DBType           string `json:"dbType"`
 	SeedAddr         string `json:"seedAddress"`
 	Role             uint   `json:"role"`
-	ConcurrencyLevel int    `json:"concurrency_level,omitempty"`
-	NormalTxPoolSize int    `json:"normal_tx_pool,omitempty"`
-	PatchTxPoolSize  int    `json:"patch_tx_pool,omitempty"`
-	MaxBlockTxBytes  int    `json:"max_block_tx_bytes,omitempty"`
+	ConcurrencyLevel int    `json:"concurrencyLevel,omitempty"`
+	NormalTxPoolSize int    `json:"normalTxPool,omitempty"`
+	PatchTxPoolSize  int    `json:"patchTxPool,omitempty"`
+	MaxBlockTxBytes  int    `json:"maxBlockTxBytes,omitempty"`
 	Channel          string `json:"channel"`
 	SecureSuites     string `json:"secureSuites"`
 	SecureAeads      string `json:"secureAeads"`
 }
 
 type ChainImportParam struct {
-	DBPath           string `json:"dbPath"`
-	Height           int64 `json:"height"`
+	DBPath string `json:"dbPath"`
+	Height int64  `json:"height"`
+}
+
+type ConfigureParam struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 // TODO [TBD]move to module.Chain ?
@@ -323,23 +335,38 @@ func (r *Rest) ImportChain(ctx echo.Context) error {
 
 func (r *Rest) RegisterSystemHandlers(g *echo.Group) {
 	g.GET("", r.GetSystem)
+	g.POST("/configure", r.ConfigureSystem)
 }
 
 func (r *Rest) GetSystem(ctx echo.Context) error {
 	v := &SystemView{
-		BuildVersion:      r.n.cfg.BuildVersion,
-		BuildTags:         r.n.cfg.BuildTags,
-		Address:           r.n.w.Address().String(),
-		P2PAddr:           r.n.nt.Address(),
-		P2PListenAddr:     r.n.nt.GetListenAddress(),
-		RPCDefaultChannel: r.n.cfg.RPCDefaultChannel,
+		BuildVersion: r.n.cfg.BuildVersion,
+		BuildTags:    r.n.cfg.BuildTags,
 	}
+	v.Config.Static.Address = r.n.w.Address().String()
+	v.Config.Static.P2PAddr = r.n.nt.Address()
+	v.Config.Static.P2PListenAddr = r.n.nt.GetListenAddress()
+	v.Config.Static.RPCAddr = r.n.cfg.RPCAddr
+	v.Config.Static.RPCDump = r.n.cfg.RPCDump
+	v.Config.Runtime = r.n.rcfg
 
 	format := ctx.QueryParam("format")
 	if format != "" {
 		return defaultJsonTemplate.Response(format, v, ctx.Response())
 	}
 	return ctx.JSON(http.StatusOK, v)
+}
+
+func (r *Rest) ConfigureSystem(ctx echo.Context) error {
+	p := &ConfigureParam{}
+	if err := ctx.Bind(p); err != nil {
+		return err
+	}
+
+	if err := r.n.Configure(p.Key, p.Value); err != nil {
+		return err
+	}
+	return ctx.String(http.StatusOK, "OK")
 }
 
 func (r *Rest) RegisterStatsHandlers(g *echo.Group) {

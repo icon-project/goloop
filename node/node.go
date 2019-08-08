@@ -27,11 +27,12 @@ var (
 )
 
 type Node struct {
-	w   module.Wallet
-	nt  module.NetworkTransport
-	srv *server.Manager
-	pm  eeproxy.Manager
-	cfg Config
+	w    module.Wallet
+	nt   module.NetworkTransport
+	srv  *server.Manager
+	pm   eeproxy.Manager
+	cfg  StaticConfig
+	rcfg *RuntimeConfig
 
 	logger log.Logger
 
@@ -327,20 +328,51 @@ func (n *Node) GetChainByChannel(channel string) *Chain {
 	return n.chains[channel]
 }
 
+func (n *Node) Configure(key string, value string) error {
+	defer n.mtx.RUnlock()
+	n.mtx.RLock()
+	var err error
+	switch key {
+	case "ee_instances":
+		n.rcfg.EEInstances, err = strconv.Atoi(value)
+		if err != nil {
+			return errors.Wrapf(err, "invalid value type")
+		}
+		if err = n.pm.SetInstances(n.rcfg.EEInstances, n.rcfg.EEInstances, n.rcfg.EEInstances); err != nil {
+			return err
+		}
+	case "rpc_default_channel":
+		n.rcfg.RPCDefaultChannel = value
+		n.srv.SetDefaultChannel(n.rcfg.RPCDefaultChannel)
+	default:
+		return errors.Errorf("not found key")
+	}
+	if err = n.rcfg.save(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func NewNode(
 	w module.Wallet,
-	cfg *Config,
+	cfg *StaticConfig,
 	l log.Logger,
 ) *Node {
 	metric.Initialize(w)
 
 	cfg.FillEmpty(w.Address())
+	nodeDir := cfg.ResolveAbsolute(cfg.BaseDir)
+	log.Println("NodeDir :", nodeDir)
+	rcfg, err := loadRuntimeConfig(nodeDir)
+	if err != nil {
+		log.Panicf("FAIL to load runtime config err=%+v", err)
+	}
 
 	nt := network.NewTransport(cfg.P2PAddr, w, l)
 	if cfg.P2PListenAddr != "" {
 		_ = nt.SetListenAddress(cfg.P2PListenAddr)
 	}
-	srv := server.NewManager(cfg.RPCAddr, cfg.RPCDump, cfg.RPCDefaultChannel, w, l)
+	srv := server.NewManager(cfg.RPCAddr, cfg.RPCDump, rcfg.RPCDefaultChannel, w, l)
 
 	ee, err := eeproxy.NewPythonEE(l)
 	if err != nil {
@@ -351,7 +383,8 @@ func NewNode(
 	if err != nil {
 		log.Panicf("FAIL to start EEManager err=%+v", err)
 	}
-	if err := pm.SetInstances(cfg.EEInstances, cfg.EEInstances, cfg.EEInstances); err != nil {
+
+	if err := pm.SetInstances(rcfg.EEInstances, rcfg.EEInstances, rcfg.EEInstances); err != nil {
 		log.Panicf("FAIL to EEManager.SetInstances err=%+v", err)
 	}
 	go func() {
@@ -369,13 +402,13 @@ func NewNode(
 		pm:       pm,
 		logger:   l,
 		cfg:      *cfg,
+		rcfg:     rcfg,
 		chains:   make(map[string]*Chain),
 		channels: make(map[int]string),
 		cliSrv:   cliSrv,
 	}
 
 	// Load chains
-	nodeDir := cfg.ResolveAbsolute(cfg.BaseDir)
 	if err := os.MkdirAll(nodeDir, 0700); err != nil {
 		log.Panicf("Fail to create directory %s err=%+v", cfg.BaseDir, err)
 	}

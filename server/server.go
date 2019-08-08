@@ -86,7 +86,6 @@ func (srv *Manager) Chain(channel string) module.Chain {
 	srv.mtx.RLock()
 
 	if channel == "" {
-
 		if srv.jsonrpcDefaultChannel == "" && len(srv.chains) == 1 {
 			for k := range srv.chains {
 				channel = k
@@ -96,6 +95,13 @@ func (srv *Manager) Chain(channel string) module.Chain {
 		}
 	}
 	return srv.chains[channel]
+}
+
+func (srv *Manager) SetDefaultChannel(jsonrpcDefaultChannel string) {
+	defer srv.mtx.Unlock()
+	srv.mtx.Lock()
+
+	srv.jsonrpcDefaultChannel = jsonrpcDefaultChannel
 }
 
 func (srv *Manager) Start() {
