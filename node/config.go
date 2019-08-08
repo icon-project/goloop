@@ -12,7 +12,7 @@ const (
 	ChainGenesisZipFileName = "genesis.zip"
 )
 
-type NodeConfig struct {
+type Config struct {
 	// static
 	CliSocket         string `json:"node_sock"` // relative path
 	P2PAddr           string `json:"p2p"`
@@ -31,7 +31,7 @@ type NodeConfig struct {
 	BuildTags    string `json:"-"`
 }
 
-func (c *NodeConfig) ResolveAbsolute(targetPath string) string {
+func (c *Config) ResolveAbsolute(targetPath string) string {
 	if filepath.IsAbs(targetPath) {
 		return targetPath
 	}
@@ -42,7 +42,7 @@ func (c *NodeConfig) ResolveAbsolute(targetPath string) string {
 	return filepath.Clean(path.Join(filepath.Dir(c.FilePath), targetPath))
 }
 
-func (c *NodeConfig) ResolveRelative(targetPath string) string {
+func (c *Config) ResolveRelative(targetPath string) string {
 	absPath, _ := filepath.Abs(targetPath)
 	base := filepath.Dir(c.FilePath)
 	base, _ = filepath.Abs(base)
@@ -50,7 +50,7 @@ func (c *NodeConfig) ResolveRelative(targetPath string) string {
 	return r
 }
 
-func (c *NodeConfig) FillEmpty(addr module.Address) {
+func (c *Config) FillEmpty(addr module.Address) {
 	if c.BaseDir == "" {
 		c.BaseDir = path.Join(".", ".chain", addr.String())
 	}

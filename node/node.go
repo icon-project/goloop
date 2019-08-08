@@ -31,7 +31,7 @@ type Node struct {
 	nt  module.NetworkTransport
 	srv *server.Manager
 	pm  eeproxy.Manager
-	cfg NodeConfig
+	cfg Config
 
 	logger log.Logger
 
@@ -329,7 +329,7 @@ func (n *Node) GetChainByChannel(channel string) *Chain {
 
 func NewNode(
 	w module.Wallet,
-	cfg *NodeConfig,
+	cfg *Config,
 	l log.Logger,
 ) *Node {
 	metric.Initialize(w)

@@ -19,7 +19,7 @@ import (
 )
 
 type ServerConfig struct {
-	node.NodeConfig
+	node.Config
 
 	Key           []byte          `json:"key,omitempty"`
 	KeyStoreData  json.RawMessage `json:"key_store"`
@@ -165,7 +165,7 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 			log.Printf("Version : %s", version)
 			log.Printf("Build   : %s", build)
 
-			n := node.NewNode(w, &cfg.NodeConfig, logger)
+			n := node.NewNode(w, &cfg.Config, logger)
 			n.Start()
 			return nil
 		},
@@ -206,7 +206,7 @@ func MergeWithViper(vc *viper.Viper, cfg *ServerConfig) error {
 	if err := vc.Unmarshal(cfg, ViperDecodeOptJson); err != nil {
 		return errors.Errorf("fail to unmarshall server config from env err=%+v", err)
 	}
-	if err := vc.Unmarshal(&cfg.NodeConfig, ViperDecodeOptJson); err != nil {
+	if err := vc.Unmarshal(&cfg.Config, ViperDecodeOptJson); err != nil {
 		return errors.Errorf("fail to unmarshall node config from env err=%+v", err)
 	}
 
