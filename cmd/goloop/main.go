@@ -25,7 +25,15 @@ func main() {
 		},
 	})
 
-	NewServerCmd(rootCmd, rootVc, version, build)
+	logoLines := []string{
+		"  ____  ___  _     ___   ___  ____",
+		" / ___|/ _ \\| |   / _ \\ / _ \\|  _ \\",
+		"| |  _| | | | |  | | | | | | | |_) |",
+		"| |_| | |_| | |__| |_| | |_| |  __/",
+		" \\____|\\___/|_____\\___/ \\___/|_|",
+	}
+
+	cli.NewServerCmd(rootCmd, rootVc, version, build, logoLines)
 	cli.NewChainCmd(rootCmd, rootVc)
 	cli.NewSystemCmd(rootCmd, rootVc)
 	cli.NewStatsCmd(rootCmd, rootVc)

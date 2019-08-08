@@ -33,6 +33,7 @@ Manage chains
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
+| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Child commands
@@ -84,6 +85,7 @@ Start to import legacy database
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
+| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command
@@ -121,6 +123,7 @@ Inspect chain
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
+| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command
@@ -169,6 +172,7 @@ Join chain
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
+| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command
@@ -201,6 +205,7 @@ Leave chain
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
+| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command
@@ -233,6 +238,7 @@ List chains
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
+| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command
@@ -265,6 +271,7 @@ Chain data reset
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
+| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command
@@ -297,6 +304,7 @@ Chain start
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
+| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command
@@ -329,6 +337,7 @@ Chain stop
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
+| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command
@@ -361,6 +370,7 @@ Chain data verify
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
+| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command
@@ -1649,6 +1659,7 @@ Display a live streams of chains metric-statistics
 | --config, -c |  | Parsing configuration file |
 | --interval | 1 | Pull interval |
 | --no-stream | false | Only pull the first metric-statistics |
+| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command
@@ -1682,6 +1693,7 @@ System info
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
 | --format, -f |  | Format the output using the given Go template |
+| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command

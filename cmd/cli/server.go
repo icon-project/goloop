@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"encoding/hex"
@@ -8,7 +8,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/icon-project/goloop/cmd/cli"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
@@ -19,7 +18,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-type GoLoopConfig struct {
+type ServerConfig struct {
 	node.NodeConfig
 
 	Key           []byte          `json:"key,omitempty"`
@@ -36,10 +35,10 @@ const (
 	DefaultKeyStorePass = "gochain"
 )
 
-func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, build string) (*cobra.Command, *viper.Viper) {
-	rootCmd, vc := cli.NewCommand(parentCmd, parentVc, "server", "Server management")
+func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, build string, logoLines []string) (*cobra.Command, *viper.Viper) {
+	rootCmd, vc := NewCommand(parentCmd, parentVc, "server", "Server management")
 
-	cfg := &GoLoopConfig{}
+	cfg := &ServerConfig{}
 	cfg.BuildVersion = version
 	cfg.BuildTags = build
 
@@ -84,7 +83,7 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 	//
 	rootPFlags.String("key_store", "", "KeyStore file for wallet")
 	rootPFlags.String("key_secret", "", "Secret(password) file for KeyStore")
-	cli.BindPFlags(vc, rootCmd.PersistentFlags())
+	BindPFlags(vc, rootCmd.PersistentFlags())
 
 	saveCmd := &cobra.Command{
 		Use:   "save [file]",
@@ -97,13 +96,13 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			saveFilePath := args[0]
-			if err := cli.JsonPrettySaveFile(saveFilePath, 0644, cfg); err != nil {
+			if err := JsonPrettySaveFile(saveFilePath, 0644, cfg); err != nil {
 				return err
 			}
 			log.Println("Save configuration to", saveFilePath)
 
 			if saveKeyStore, _ := cmd.Flags().GetString("save_key_store"); saveKeyStore != "" {
-				if err := cli.JsonPrettySaveFile(saveKeyStore, 0600, cfg.KeyStoreData); err != nil {
+				if err := JsonPrettySaveFile(saveKeyStore, 0600, cfg.KeyStoreData); err != nil {
 					return err
 				}
 			}
@@ -149,23 +148,17 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 			}
 
 			if cpuProfile := vc.GetString("cpuprofile"); cpuProfile != "" {
-				if err := cli.StartCPUProfile(cpuProfile); err != nil {
+				if err := StartCPUProfile(cpuProfile); err != nil {
 					log.Fatalf(err.Error())
 				}
 			}
 			if memProfile := vc.GetString("memprofile"); memProfile != "" {
-				if err := cli.StartMemoryProfile(memProfile); err != nil {
+				if err := StartMemoryProfile(memProfile); err != nil {
 					log.Fatalf(err.Error())
 				}
 			}
 
-			logoLines := []string{
-				"  ____  ___  _     ___   ___  ____",
-				" / ___|/ _ \\| |   / _ \\ / _ \\|  _ \\",
-				"| |  _| | | | |  | | | | | | | |_) |",
-				"| |_| | |_| | |__| |_| | |_| |  __/",
-				" \\____|\\___/|_____\\___/ \\___/|_|",
-			}
+
 			for _, l := range logoLines {
 				log.Println(l)
 			}
@@ -183,12 +176,12 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 	startFlags.String("cpuprofile", "", "CPU Profiling data file")
 	startFlags.String("memprofile", "", "Memory Profiling data file")
 	startFlags.MarkHidden("mod_level")
-	cli.BindPFlags(vc, rootCmd.PersistentFlags())
+	BindPFlags(vc, rootCmd.PersistentFlags())
 
 	return rootCmd, vc
 }
 
-func MergeWithViper(vc *viper.Viper, cfg *GoLoopConfig) error {
+func MergeWithViper(vc *viper.Viper, cfg *ServerConfig) error {
 	if vc.GetString("key_secret") != "" || vc.GetString("key_password") != "" {
 		cfg.isPresentPass = true
 	}
@@ -210,12 +203,10 @@ func MergeWithViper(vc *viper.Viper, cfg *GoLoopConfig) error {
 		}
 	}
 
-	err := vc.Unmarshal(cfg, cli.ViperDecodeOptJson)
-	if err != nil {
-		return errors.Errorf("fail to unmarshall goloop config from env err=%+v", err)
+	if err := vc.Unmarshal(cfg, ViperDecodeOptJson); err != nil {
+		return errors.Errorf("fail to unmarshall server config from env err=%+v", err)
 	}
-	err = vc.Unmarshal(&cfg.NodeConfig, cli.ViperDecodeOptJson)
-	if err != nil {
+	if err := vc.Unmarshal(&cfg.NodeConfig, ViperDecodeOptJson); err != nil {
 		return errors.Errorf("fail to unmarshall node config from env err=%+v", err)
 	}
 
@@ -248,6 +239,7 @@ func MergeWithViper(vc *viper.Viper, cfg *GoLoopConfig) error {
 	//overwrite config.KeyStoreData
 	//overwrite read(env.KeyStore)
 	//overwrite read(flag.KeyStore)
+	var err error
 	if len(cfg.KeyStoreData) > 0 {
 		if cfg.KeyStorePass == "" {
 			return errors.Errorf("there is no password information for the KeyStore")

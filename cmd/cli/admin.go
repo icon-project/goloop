@@ -9,6 +9,7 @@ import (
 
 	"github.com/gosuri/uitable"
 	"github.com/icon-project/goloop/chain/gs"
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/node"
 	"github.com/jroimartin/gocui"
@@ -18,15 +19,21 @@ import (
 
 func AdminPersistentPreRunE(vc *viper.Viper, adminClient *node.UnixDomainSockHttpClient) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		if cfgFilePath := vc.GetString("config"); cfgFilePath != "" {
-			f, err := os.Open(cfgFilePath)
-			if err != nil {
-				return errors.Errorf("fail to open config file=%s err=%+v", cfgFilePath, err)
+		nodeSock := vc.GetString("node_sock")
+		cfgFilePath := vc.GetString("config")
+		if nodeSock == "" && cfgFilePath != "" {
+			cfg := &ServerConfig{}
+			if err := MergeWithViper(vc, cfg); err != nil {
+				return err
 			}
-			vc.SetConfigType("json")
-			err = vc.ReadConfig(f)
-			if err != nil {
-				return errors.Errorf("fail to read config file=%s err=%+v", cfgFilePath, err)
+
+			if vc.GetString("node_sock") == "" {
+				if cfg.priK == nil {
+					return errors.Errorf("not exists keyStore on config %s",cfgFilePath)
+				}
+				addr := common.NewAccountAddressFromPublicKey(cfg.priK.PublicKey())
+				cfg.FillEmpty(addr)
+				vc.Set("node_sock", cfg.ResolveAbsolute(cfg.CliSocket))
 			}
 		}
 		if err := ValidateFlagsWithViper(vc, cmd.Flags()); err != nil {
@@ -39,6 +46,8 @@ func AdminPersistentPreRunE(vc *viper.Viper, adminClient *node.UnixDomainSockHtt
 
 func AddAdminRequiredFlags(c *cobra.Command) {
 	pFlags := c.PersistentFlags()
+	pFlags.String("node_dir", "",
+		"Node data directory(default:[configuration file path]/.chain/[ADDRESS])")
 	pFlags.StringP("node_sock", "s", "",
 		"Node Command Line Interface socket path(default:[node_dir]/cli.sock)")
 	pFlags.StringP("config", "c", "", "Parsing configuration file")
