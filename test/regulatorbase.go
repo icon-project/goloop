@@ -9,7 +9,15 @@ func (_r *RegulatorBase) MaxTxCount() int {
 	panic("not implemented")
 }
 
+func (_r *RegulatorBase) OnPropose(now time.Time) {
+	panic("not implemented")
+}
+
 func (_r *RegulatorBase) CommitTimeout() time.Duration {
+	panic("not implemented")
+}
+
+func (_r *RegulatorBase) MinCommitTimeout() time.Duration {
 	panic("not implemented")
 }
 
@@ -17,6 +25,6 @@ func (_r *RegulatorBase) OnTxExecution(count int, ed time.Duration, fd time.Dura
 	panic("not implemented")
 }
 
-func (_r *RegulatorBase) SetCommitTimeout(i time.Duration, d time.Duration) {
+func (_r *RegulatorBase) SetBlockInterval(i time.Duration, d time.Duration) {
 	panic("not implemented")
 }

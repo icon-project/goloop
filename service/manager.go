@@ -461,6 +461,14 @@ func (m *manager) HasTransaction(id []byte) bool {
 	return m.normalTxPool.HasTx(id) || m.patchTxPool.HasTx(id)
 }
 
+func (m *manager) WaitForTransaction(
+	parent module.Transition,
+	bi module.BlockInfo,
+	cb func(),
+) bool {
+	return false
+}
+
 type blockInfo struct {
 	height    int64
 	timestamp int64

@@ -56,3 +56,7 @@ func (_r *BlockManagerBase) GetTransactionInfo(id []byte) (module.TransactionInf
 func (_r *BlockManagerBase) Term() {
 	panic("not implemented")
 }
+
+func (_r *BlockManagerBase) WaitForTransaction(parentID []byte, cb func()) bool {
+	panic("not implemented")
+}

@@ -66,6 +66,12 @@ type BlockManager interface {
 
 	GetTransactionInfo(id []byte) (TransactionInfo, error)
 	Term()
+
+	// WaitTransaction waits for a transaction with timestamp between
+	// bi.Timestamp() - TimestampThreshold and current time +
+	// TimestampThreshold. If such a transaction is available now, the function
+	// returns false and callback cb is not called.
+	WaitForTransaction(parentID []byte, cb func()) bool
 }
 
 type TransactionInfo interface {

@@ -96,3 +96,7 @@ func (_r *ServiceManagerBase) GetMembers(result []byte) (module.MemberList, erro
 func (_r *ServiceManagerBase) HasTransaction(id []byte) bool {
 	panic("not implemented")
 }
+
+func (_r *ServiceManagerBase) WaitForTransaction(parent module.Transition, bi module.BlockInfo, cb func()) bool {
+	panic("not implemented")
+}

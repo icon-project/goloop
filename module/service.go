@@ -287,4 +287,10 @@ type ServiceManager interface {
 
 	// HasTransaction returns whether it has specified transaction in the pool
 	HasTransaction(id []byte) bool
+
+	// WaitTransaction waits for a transaction with timestamp between
+	// bi.Timestamp() - TimestampThreshold and current time +
+	// TimestampThreshold. If such a transaction is available now, the function
+	// returns false and callback cb is not called.
+	WaitForTransaction(parent Transition, bi BlockInfo, cb func()) bool
 }

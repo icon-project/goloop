@@ -1027,3 +1027,14 @@ func (m *manager) WaitForBlock(height int64) (<-chan module.Block, error) {
 	})
 	return bch, nil
 }
+
+func (m *manager) WaitForTransaction(parentID []byte, cb func())bool {
+	m.syncer.begin()
+	defer m.syncer.end()
+
+	bn := m.nmap[string(parentID)]
+	if bn == nil {
+		return false
+	}
+	return m.sm.WaitForTransaction(bn.in.mtransition(), bn.block, cb)
+}
