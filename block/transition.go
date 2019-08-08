@@ -181,7 +181,7 @@ func (ti *transitionImpl) patch(
 			return c._newTransition(cb), nil
 		}
 	}
-	c := ti._children[len(ti._children)-1]
+	c := ti._parent._children[len(ti._parent._children)-1]
 	pmtr := ti._chainContext.sm.PatchTransition(c._mtransition, patches)
 	return ti._parent._addChild(pmtr, cb)
 }
