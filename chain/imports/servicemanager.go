@@ -23,10 +23,6 @@ type managerForImport struct {
 	cb         ImportCallback
 }
 
-//const lcDBDir = "../migdata/node1/storage1/db_192.168.160.82:7100_ch_mvoting" // height : 24550
-//const lcDBDir = "../migdata/node1/storage2/db_192.168.160.82:7100_ch_usedcar" //height : 9282
-//const lcDBDir = "../migdata/node1/storage3/db_192.168.160.82:7100_ch_test"
-
 func NewServiceManagerForImport(chain module.Chain, nm module.NetworkManager,
 	eem eeproxy.Manager, contractDir string, lcDBDir string,
 	height int64, cb ImportCallback,
