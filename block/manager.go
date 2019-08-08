@@ -383,7 +383,6 @@ func NewManager(chain module.Chain, timestamper module.Timestamper) (module.Bloc
 		log.FieldKeyModule: "BM",
 	})
 	logger.Debugf("NewBlockManager\n")
-	// TODO if last block is v1 block
 	m := &manager{
 		chainContext: &chainContext{
 			chain:   chain,
@@ -465,7 +464,6 @@ func (m *manager) getBlock(id []byte) (module.Block, error) {
 }
 
 func (m *manager) doGetBlock(id []byte) (module.Block, error) {
-	// TODO handle v1
 	hb, err := m.bucketFor(db.BytesByHash)
 	if err != nil {
 		return nil, err
@@ -749,7 +747,6 @@ func (m *manager) finalize(bn *bnode) error {
 		}
 		i++
 	}
-	// TODO update DB for v1 : blockV1, trLocatorByHash
 	return nil
 }
 
@@ -833,7 +830,6 @@ func (m *manager) NewBlockFromReader(r io.Reader) (module.Block, error) {
 
 func (m *manager) newBlockFromReader(r io.Reader) (module.Block, error) {
 	r = bufio.NewReader(r)
-	// TODO handle v1
 	var blockFormat blockV2Format
 	err := v2Codec.Unmarshal(r, &blockFormat.blockV2HeaderFormat)
 	if err != nil {
@@ -933,7 +929,6 @@ func (m *manager) GetTransactionInfo(id []byte) (module.TransactionInfo, error) 
 }
 
 func (m *manager) getTransactionInfo(id []byte) (module.TransactionInfo, error) {
-	// TODO handle V1 in GetTransactionInfo
 	tlb, err := m.bucketFor(db.TransactionLocatorByHash)
 	if err != nil {
 		return nil, err
