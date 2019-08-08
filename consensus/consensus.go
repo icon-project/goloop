@@ -109,10 +109,12 @@ type consensus struct {
 }
 
 func NewConsensus(c module.Chain, walDir string, timestamper module.Timestamper) module.Consensus {
-	return newConsensus(c, walDir, defaultWALManager, timestamper)
+	cs := newConsensus(c, walDir, defaultWALManager, timestamper)
+	cs.logger.Debugf("NewConsensus\n")
+	return cs
 }
 
-func newConsensus(c module.Chain, walDir string, wm WALManager, timestamper module.Timestamper) module.Consensus {
+func newConsensus(c module.Chain, walDir string, wm WALManager, timestamper module.Timestamper) *consensus {
 	cs := &consensus{
 		nm:          c.NetworkManager(),
 		bm:          c.BlockManager(),

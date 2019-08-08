@@ -382,6 +382,7 @@ func NewManager(chain module.Chain, timestamper module.Timestamper) (module.Bloc
 	logger := chain.Logger().WithFields(log.Fields{
 		log.FieldKeyModule: "BM",
 	})
+	logger.Debugf("NewBlockManager\n")
 	// TODO if last block is v1 block
 	m := &manager{
 		chainContext: &chainContext{
@@ -440,6 +441,8 @@ func NewManager(chain module.Chain, timestamper module.Timestamper) (module.Bloc
 func (m *manager) Term() {
 	m.syncer.begin()
 	defer m.syncer.end()
+
+	m.logger.Debugf("Term block manager\n")
 
 	m.removeNode(m.finalized)
 	m.finalized = nil
