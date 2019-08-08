@@ -1377,7 +1377,7 @@ func (cs *consensus) Start() error {
 	cs.commitWAL = &walMessageWriter{ww}
 
 	cs.started = true
-	cs.logger.Printf("Start consensus wallet:%v", common.HexPre(cs.wallet.Address().ID()))
+	cs.logger.Infof("Start consensus wallet:%v", common.HexPre(cs.wallet.Address().ID()))
 	cs.syncer = newSyncer(cs, cs.logger, cs.nm, cs.bm, &cs.mutex, cs.wallet.Address())
 	cs.syncer.Start()
 	if cs.step == stepNewHeight {
