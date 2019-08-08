@@ -23,23 +23,24 @@ func AdminPersistentPreRunE(vc *viper.Viper, adminClient *node.UnixDomainSockHtt
 		cfgFilePath := vc.GetString("config")
 		if nodeSock == "" && cfgFilePath != "" {
 			cfg := &ServerConfig{}
+			cfg.FilePath = cfgFilePath
 			if err := MergeWithViper(vc, cfg); err != nil {
 				return err
 			}
-
-			if vc.GetString("node_sock") == "" {
+			if cfg.CliSocket == "" {
 				if cfg.priK == nil {
 					return errors.Errorf("not exists keyStore on config %s",cfgFilePath)
 				}
 				addr := common.NewAccountAddressFromPublicKey(cfg.priK.PublicKey())
 				cfg.FillEmpty(addr)
-				vc.Set("node_sock", cfg.ResolveAbsolute(cfg.CliSocket))
 			}
+			nodeSock = cfg.ResolveAbsolute(cfg.CliSocket)
+			vc.Set("node_sock", nodeSock)
 		}
 		if err := ValidateFlagsWithViper(vc, cmd.Flags()); err != nil {
 			return err
 		}
-		*adminClient = *node.NewUnixDomainSockHttpClient(vc.GetString("node_sock"))
+		*adminClient = *node.NewUnixDomainSockHttpClient(nodeSock)
 		return nil
 	}
 }
