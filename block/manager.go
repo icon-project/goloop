@@ -357,7 +357,7 @@ func (pt *proposeTask) _onExecute(err error) {
 		prevID:             pt.parentBlock.ID(),
 		logsBloom:          pmtr.LogsBloom(),
 		result:             pmtr.Result(),
-		patchTransactions:  mtr.PatchTransactions(),
+		patchTransactions:  pmtr.PatchTransactions(),
 		normalTransactions: mtr.NormalTransactions(),
 		nextValidators:     pmtr.NextValidators(),
 		votes:              pt.votes,
