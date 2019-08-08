@@ -428,9 +428,20 @@ func (ic *importCallback) OnError(err error) {
 	ic.c._setState(StateImportFailed, err)
 }
 
-func (ic *importCallback) OnEnd() {
+func (ic *importCallback) OnEnd(errCh <-chan error) {
 	if err := ic.c._transit(StateStopping, StateImportStarted); err != nil {
 		return
+	}
+
+	if ic.c.cs != nil {
+		ic.c.cs.Term()
+		ic.c.cs = nil
+	}
+	err := <-errCh
+	if err != nil {
+		ic.c._stop()
+		log.Errorf("Import failed : %+v\n", err)
+		ic.c._setState(StateImportFailed, err)
 	}
 	ic.c._stop()
 	ic.c._prepare()
@@ -456,7 +467,7 @@ func (c *singleChain) _import(src string, height int64) error {
 	if err != nil {
 		return err
 	}
-	if blk.Height() >= height {
+	if blk.Height() > height {
 		return errors.Errorf("chain already have height %d\n", blk.Height())
 	}
 

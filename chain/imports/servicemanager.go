@@ -13,7 +13,7 @@ import (
 
 type ImportCallback interface {
 	OnError(err error)
-	OnEnd()
+	OnEnd(errCh <-chan error)
 }
 
 type managerForImport struct {
@@ -90,6 +90,11 @@ func (bi blockInfo) Timestamp() int64 {
 }
 
 func (m *managerForImport) ProposeTransition(parent module.Transition, bi module.BlockInfo) (module.Transition, error) {
+	if bi.Height() > m.lastHeight {
+		err := errors.Errorf("height:%d > lastHeight:%d\n", bi.Height(), m.lastHeight)
+		m.cb.OnError(err)
+		return nil, err
+	}
 	blk, err := m.bdb.GetBlockByHeight(int(bi.Height()))
 	if err != nil {
 		m.cb.OnError(err)
@@ -113,6 +118,7 @@ func (m *managerForImport) ProposeTransition(parent module.Transition, bi module
 		Transition: otr,
 		m:          m,
 		bi:         bi,
+		errCh:      make(chan error),
 	}, nil
 }
 
@@ -124,6 +130,7 @@ func (m *managerForImport) CreateInitialTransition(result []byte, nextValidators
 	return &transitionForImport{
 		Transition: otr,
 		m:          m,
+		errCh:      make(chan error),
 	}, nil
 }
 
@@ -136,6 +143,7 @@ func (m *managerForImport) CreateTransition(parent module.Transition, txs module
 		Transition: otr,
 		m:          m,
 		bi:         bi,
+		errCh:      make(chan error),
 	}, nil
 }
 
@@ -152,16 +160,19 @@ func (m *managerForImport) PatchTransition(transition module.Transition, patches
 		Transition: otr,
 		m:          m,
 		bi:         transition.(*transitionForImport).bi,
+		errCh:      make(chan error),
 	}
 }
 
 func (m *managerForImport) Finalize(transition module.Transition, opt int) error {
 	if opt&module.FinalizeNormalTransaction != 0 {
-		h := transition.(*transitionForImport).bi.Height()
+		tr := transition.(*transitionForImport)
+		h := tr.bi.Height()
 		if h >= m.lastHeight {
 			cb := m.cb
+			errCh := tr.errCh
 			go func() {
-				cb.OnEnd()
+				cb.OnEnd(errCh)
 			}()
 		}
 	}
@@ -176,6 +187,7 @@ type transitionForImport struct {
 	module.Transition
 	m        *managerForImport
 	bi       module.BlockInfo
+	errCh    chan error
 	cb       module.TransitionCallback
 	canceler func() bool
 }
@@ -214,16 +226,19 @@ func (t *transitionForImport) OnValidate(tr module.Transition, e error) {
 func (t *transitionForImport) OnExecute(tr module.Transition, e error) {
 	if t.bi.Height() == 0 {
 		t.cb.OnExecute(t, e)
+		t.errCh <- e
 		return
 	}
 	if e != nil {
 		t.cb.OnExecute(t, e)
+		t.errCh <- e
 		return
 	}
 	blk, err := t.m.bdb.GetBlockByHeight(int(t.bi.Height()))
 	if err != nil {
 		t.m.cb.OnError(err)
 		t.cb.OnExecute(t, err)
+		t.errCh <- err
 		t.canceler()
 		return
 	}
@@ -233,6 +248,7 @@ func (t *transitionForImport) OnExecute(tr module.Transition, e error) {
 	if err != nil {
 		t.m.cb.OnError(err)
 		t.cb.OnExecute(t, err)
+		t.errCh <- err
 		t.canceler()
 		return
 	}
@@ -242,6 +258,7 @@ func (t *transitionForImport) OnExecute(tr module.Transition, e error) {
 		if err != nil {
 			t.m.cb.OnError(err)
 			t.cb.OnExecute(t, err)
+			t.errCh <- err
 			t.canceler()
 			return
 		}
@@ -249,6 +266,7 @@ func (t *transitionForImport) OnExecute(tr module.Transition, e error) {
 		if err != nil {
 			t.m.cb.OnError(err)
 			t.cb.OnExecute(t, err)
+			t.errCh <- err
 			t.canceler()
 			return
 		}
@@ -256,6 +274,7 @@ func (t *transitionForImport) OnExecute(tr module.Transition, e error) {
 		if err != nil {
 			t.m.cb.OnError(err)
 			t.cb.OnExecute(t, err)
+			t.errCh <- err
 			t.canceler()
 			return
 		}
@@ -272,12 +291,14 @@ func (t *transitionForImport) OnExecute(tr module.Transition, e error) {
 			err = errors.Errorf("cannot agree with receipt lc:%s gc:%s tx:%x", rjbs, nrjbs, tx.ID())
 			t.m.cb.OnError(err)
 			t.cb.OnExecute(t, err)
+			t.errCh <- err
 			t.canceler()
 			return
 		}
 		rit.Next()
 	}
 	t.cb.OnExecute(t, nil)
+	t.errCh <- nil
 }
 
 func (t *transitionForImport) Execute(cb module.TransitionCallback) (canceler func() bool, err error) {
