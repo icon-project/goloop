@@ -16,10 +16,6 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-// TODO overall error handling log? return error?
-// TODO import, finalize V1
-// TODO wait for transaction available
-
 var dbCodec = codec.MP
 
 const (
