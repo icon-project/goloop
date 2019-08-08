@@ -38,7 +38,7 @@ import java.util.Map;
 
 public class TransactionExecutor {
     private static final Logger logger = LoggerFactory.getLogger(TransactionExecutor.class);
-    private static final String INSTALL = "<install>";
+    private static final String CMD_DEPLOY = "<install>";
 
     private final Proxy proxy;
     private final String uuid;
@@ -105,12 +105,14 @@ public class TransactionExecutor {
                 logger.debug("    stepCosts={}", info.get(Proxy.Info.STEP_COSTS));
             }
 
+            boolean isDeploy = CMD_DEPLOY.equals(method);
             BigInteger blockNumber = (BigInteger) info.get(Proxy.Info.BLOCK_HEIGHT);
+            BigInteger blockTimestamp = (BigInteger) info.get(Proxy.Info.BLOCK_TIMESTAMP);
             byte[] txHash = (byte[]) info.get(Proxy.Info.TX_HASH);
 
-            ExternalState kernel = new ExternalState(proxy, code, blockNumber);
+            ExternalState kernel = new ExternalState(proxy, code, blockNumber, blockTimestamp);
             Transaction[] contexts = new Transaction[] {
-                    getTransactionData(code, from, to, value, limit, method, params, txHash)
+                    getTransactionData(isDeploy, code, from, to, value, limit, method, params, txHash)
             };
 
             AvmConfiguration config = new AvmConfiguration();
@@ -122,31 +124,30 @@ public class TransactionExecutor {
             AvmImpl avm = CommonAvmFactory.buildAvmInstanceForConfiguration(new StandardCapabilities(), config);
             try {
                 FutureResult[] futures = avm.run(kernel, contexts, ExecutionType.ASSUME_MAINCHAIN, blockNumber.longValue() - 1);
-                TransactionResult r = futures[0].getResult();
-                logger.debug("<<< [Result] {}", r);
-                return new InvokeResult(Proxy.Status.SUCCESS, BigInteger.ZERO, TypedObj.encodeAny("SUCCESS"));
+                ResultWrapper result = new ResultWrapper(futures[0].getResult());
+                logger.debug("<<< [Result] {}", result);
+                Object retVal;
+                if (isDeploy) {
+                    retVal = result.getContractAddress();
+                } else {
+                    retVal = result.getDecodedReturnData();
+                }
+                return new InvokeResult((result.isSuccess()) ? Proxy.Status.SUCCESS : Proxy.Status.FAILURE,
+                        result.getEnergyUsed(), TypedObj.encodeAny(retVal));
             } catch (Exception e) {
                 e.printStackTrace();
-                return new InvokeResult(Proxy.Status.FAILURE, BigInteger.ZERO, TypedObj.encodeAny("FAILURE"));
+                return new InvokeResult(Proxy.Status.FAILURE, BigInteger.ZERO, TypedObj.encodeAny(e.getMessage()));
             } finally {
                 avm.shutdown();
             }
         });
     }
 
-    private Transaction getTransactionData(String code, Address from, Address to,
+    private Transaction getTransactionData(boolean isDeploy, String code, Address from, Address to,
                                            BigInteger value, BigInteger limit,
                                            String method, Object[] params, byte[] txHash) throws IOException {
-        boolean isDeploy = INSTALL.equals(method);
         if (isDeploy) {
-            Path path = Paths.get(code);
-            byte[] jarBytes;
-            try {
-                jarBytes = Files.readAllBytes(path);
-            } catch (IOException e){
-                throw new IOException("JAR read error: " + e.getMessage());
-            }
-            byte[] txData = new CodeAndArguments(jarBytes, null).encodeToBytes();
+            byte[] txData = new CodeAndArguments(readFile(code), null).encodeToBytes();
             return Transaction.contractCreateTransaction(
                     new AionAddress(from),
                     txHash,
@@ -156,7 +157,7 @@ public class TransactionExecutor {
                     limit.longValue(),
                     1L);
         } else {
-            byte[] txData = ABIUtil.encodeMethodArguments(method);
+            byte[] txData = ABIUtil.encodeMethodArguments(method, params);
             return Transaction.contractCallTransaction(
                     new AionAddress(from),
                     new AionAddress(to),
@@ -166,6 +167,53 @@ public class TransactionExecutor {
                     txData,
                     limit.longValue(),
                     1L);
+        }
+    }
+
+    private byte[] readFile(String code) throws IOException {
+        Path path = Paths.get(code);
+        byte[] jarBytes;
+        try {
+            jarBytes = Files.readAllBytes(path);
+        } catch (IOException e) {
+            throw new IOException("JAR read error: " + e.getMessage());
+        }
+        return jarBytes;
+    }
+
+    private static class ResultWrapper {
+        private final TransactionResult result;
+
+        ResultWrapper(TransactionResult result) {
+            this.result = result;
+        }
+
+        boolean isSuccess() {
+            return result.transactionStatus.isSuccess();
+        }
+
+        BigInteger getEnergyUsed() {
+            return BigInteger.valueOf(result.energyUsed);
+        }
+
+        Address getContractAddress() {
+            if (!result.transactionStatus.isSuccess()) {
+                System.out.println("Contract deployment failed with error " + result.transactionStatus.causeOfError);
+                return null;
+            }
+            return new AionAddress(result.copyOfTransactionOutput().orElseThrow()).toAddress();
+        }
+
+        Object getDecodedReturnData() {
+            if (!result.transactionStatus.isSuccess()) {
+                System.out.println("Contract call failed with error " + result.transactionStatus.causeOfError);
+                return null;
+            }
+            return ABIUtil.decodeOneObject(result.copyOfTransactionOutput().orElseThrow());
+        }
+
+        public String toString() {
+            return result.toString();
         }
     }
 }

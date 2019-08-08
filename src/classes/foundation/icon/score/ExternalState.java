@@ -27,110 +27,137 @@ import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class ExternalState implements IExternalState {
     private static final Logger logger = LoggerFactory.getLogger(ExternalState.class);
+    private static final String TRANSFORMED_JAR = "transformed.jar";
+    private static final String OBJECT_GRAPH = "graph";
 
     private final Proxy proxy;
     private final Path jarPath;
-    private final Path parentPath;
     private final long blockNumber;
+    private final long blockTimestamp;
+    private final Path parentPath;
 
-    ExternalState(Proxy proxy, String code, BigInteger blockNumber) {
+    ExternalState(Proxy proxy, String code, BigInteger blockNumber, BigInteger blockTimestamp) {
         this.proxy = proxy;
         this.jarPath = Paths.get(code);
         this.blockNumber = blockNumber.longValue();
+        this.blockTimestamp = blockTimestamp.longValue();
         this.parentPath = jarPath.getParent();
     }
 
-    @Override
-    public void commit() {
-        logger.debug("[commit]");
-    }
-
-    @Override
-    public void commitTo(IExternalState externalState) {
-        logger.debug("[commitTo] {}", externalState);
-    }
-
-    @Override
-    public IExternalState newChildExternalState() {
-        logger.debug("[newChildExternalState]");
-        return null;
-    }
-
-    @Override
-    public void createAccount(AionAddress address) {
-        logger.debug("[createAccount] {}", address);
-    }
-
-    @Override
-    public boolean hasAccountState(AionAddress address) {
-        logger.debug("[hasAccountState] {}", address);
-        return false;
-    }
-
-    @Override
-    public byte[] getCode(AionAddress address) {
-        logger.debug("[getCode] {}", address);
-        //return new byte[0];
-        throw new RuntimeException("not implemented");
-    }
-
-    @Override
-    public void putCode(AionAddress address, byte[] code) {
-        logger.debug("[putCode] {} len={}", address, code.length);
-    }
-
-    @Override
-    public byte[] getTransformedCode(AionAddress address) {
-        logger.debug("[getTransformedCode] {}", address);
-        return new byte[0];
-    }
-
-    @Override
-    public void setTransformedCode(AionAddress address, byte[] code) {
-        logger.debug("[setTransformedCode] {} len={}", address, code.length);
-        Path out = new File(parentPath.toFile(), "transformed.jar").toPath();
+    private void writeFile(String filename, byte[] data) {
+        Path outFile = new File(parentPath.toFile(), filename).toPath();
         try {
-            Files.write(out, code);
+            Files.write(outFile, data);
+        } catch (IOException e) {
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+
+    private byte[] readFile(String filename) {
+        Path inFile = new File(parentPath.toFile(), filename).toPath();
+        try {
+            return Files.readAllBytes(inFile);
+        } catch (NoSuchFileException e) {
+            throw new RuntimeException("No such file: " + e.getMessage());
         } catch (IOException e) {
             throw new RuntimeException(e.getMessage());
         }
     }
 
     @Override
-    public void putObjectGraph(AionAddress address, byte[] objectGraph) {
-        logger.debug("[putObjectGraph] {} len={}", address, objectGraph.length);
+    public void commit() {
+        logger.debug("[commit]");
+        throw new RuntimeException("not implemented");
+    }
+
+    @Override
+    public void commitTo(IExternalState externalState) {
+        logger.debug("[commitTo] {}", externalState);
+        throw new RuntimeException("not implemented");
+    }
+
+    @Override
+    public IExternalState newChildExternalState() {
+        logger.debug("[newChildExternalState]");
+        throw new RuntimeException("not implemented");
+    }
+
+    @Override
+    public void createAccount(AionAddress address) {
+        logger.debug("[createAccount] {}", address);
+        throw new RuntimeException("not implemented");
+    }
+
+    @Override
+    public boolean hasAccountState(AionAddress address) {
+        logger.debug("[hasAccountState] {}", address);
+        throw new RuntimeException("not implemented");
+    }
+
+    @Override
+    public byte[] getCode(AionAddress address) {
+        logger.debug("[getCode] {}", address);
+        throw new RuntimeException("not implemented");
+    }
+
+    @Override
+    public void putCode(AionAddress address, byte[] code) {
+        logger.debug("[putCode] {} len={}", address, code.length);
+        // just ignore this
+    }
+
+    @Override
+    public byte[] getTransformedCode(AionAddress address) {
+        logger.debug("[getTransformedCode] {}", address);
+        return readFile(TRANSFORMED_JAR);
+    }
+
+    @Override
+    public void setTransformedCode(AionAddress address, byte[] code) {
+        logger.debug("[setTransformedCode] {} len={}", address, code.length);
+        writeFile(TRANSFORMED_JAR, code);
     }
 
     @Override
     public byte[] getObjectGraph(AionAddress address) {
         logger.debug("[getObjectGraph] {} ", address);
-        return new byte[0];
+        return readFile(OBJECT_GRAPH);
+    }
+
+    @Override
+    public void putObjectGraph(AionAddress address, byte[] objectGraph) {
+        logger.debug("[putObjectGraph] {} len={}", address, objectGraph.length);
+        writeFile(OBJECT_GRAPH, objectGraph);
     }
 
     @Override
     public void putStorage(AionAddress address, byte[] key, byte[] value) {
         logger.debug("[putStorage] {}, key={} value={}", address, key, value);
+        throw new RuntimeException("not implemented");
     }
 
     @Override
     public void removeStorage(AionAddress address, byte[] key) {
         logger.debug("[removeStorage] {}, key={}", address, key);
+        throw new RuntimeException("not implemented");
     }
 
     @Override
     public byte[] getStorage(AionAddress address, byte[] key) {
         logger.debug("[getStorage] {}, key={}", address, key);
-        return new byte[0];
+        throw new RuntimeException("not implemented");
     }
 
     @Override
     public void deleteAccount(AionAddress address) {
         logger.debug("[deleteStorage] {}", address);
+        throw new RuntimeException("not implemented");
     }
 
     @Override
@@ -148,38 +175,43 @@ public class ExternalState implements IExternalState {
     @Override
     public void adjustBalance(AionAddress address, BigInteger amount) {
         logger.debug("[adjustBalance] {} amount={}", address, amount);
+        // just ignore this
     }
 
     @Override
     public BigInteger getNonce(AionAddress address) {
         logger.debug("[getNonce] {}", address);
-        return null;
+        throw new RuntimeException("not implemented");
     }
 
     @Override
     public void incrementNonce(AionAddress address) {
         logger.debug("[incrementNonce] {}", address);
+        // just ignore this
     }
 
     @Override
     public void deductEnergyCost(AionAddress address, BigInteger cost) {
         logger.debug("[deductEnergyCost] {} cost={}", address, cost);
+        throw new RuntimeException("not implemented");
     }
 
     @Override
     public void refundAccount(AionAddress address, BigInteger refund) {
         logger.debug("[refundAccount] {} refund={}", address, refund);
+        throw new RuntimeException("not implemented");
     }
 
     @Override
     public void payMiningFee(AionAddress address, BigInteger fee) {
         logger.debug("[payMiningFee] {} fee={}", address, fee);
+        throw new RuntimeException("not implemented");
     }
 
     @Override
     public byte[] getBlockHashByNumber(long blockNumber) {
         logger.debug("[getBlockHashByNumber] blockNumber={}", blockNumber);
-        return new byte[0];
+        throw new RuntimeException("not implemented");
     }
 
     @Override
@@ -209,7 +241,7 @@ public class ExternalState implements IExternalState {
     @Override
     public boolean destinationAddressIsSafeForThisVM(AionAddress address) {
         logger.debug("[destinationAddressIsSafeForThisVM] {}", address);
-        return false;
+        throw new RuntimeException("not implemented");
     }
 
     @Override
@@ -220,8 +252,8 @@ public class ExternalState implements IExternalState {
 
     @Override
     public long getBlockTimestamp() {
-        logger.debug("[getBlockTimestamp] ret={}", 0);
-        return 0;
+        logger.debug("[getBlockTimestamp] ret={}", blockTimestamp);
+        return blockTimestamp;
     }
 
     @Override
@@ -238,7 +270,7 @@ public class ExternalState implements IExternalState {
 
     @Override
     public AionAddress getMinerAddress() {
-        AionAddress miner = Helpers.randomAddress();
+        AionAddress miner = Helpers.address(170); //0xaa
         logger.debug("[getMinerAddress] ret={}", miner);
         return miner;
     }
