@@ -269,7 +269,7 @@ func (t *transitionForImport) OnExecute(tr module.Transition, e error) {
 		delete(mnrjsn, "failure")
 		nrjbs, _ := json.Marshal(mnrjsn)
 		if !bytes.Equal(rjbs, nrjbs) {
-			err = errors.Errorf("cannot agree with receipt lc:%s gc:%s", rjbs, nrjbs)
+			err = errors.Errorf("cannot agree with receipt lc:%s gc:%s tx:%x", rjbs, nrjbs, tx.ID())
 			t.m.cb.OnError(err)
 			t.cb.OnExecute(t, err)
 			t.canceler()
