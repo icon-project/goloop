@@ -35,6 +35,7 @@ type Value interface {
 	Address() module.Address
 	Bytes() []byte
 	String() string
+	Bool() bool
 }
 
 type WritableValue interface {

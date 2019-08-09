@@ -1,10 +1,10 @@
 package scoredb
 
 import (
-	"github.com/icon-project/goloop/common/log"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -105,9 +105,11 @@ func (e *valueImpl) BigInt() *big.Int {
 }
 
 func (e *valueImpl) Int64() int64 {
-	if bs := e.Bytes(); bs != nil {
+	if bs := e.Bytes(); len(bs) != 0 {
 		if len(bs) <= 8 {
 			return common.BytesToInt64(bs)
+		} else {
+			return common.BytesToInt64(bs[len(bs)-8:])
 		}
 	}
 	return 0
@@ -132,10 +134,12 @@ func (e *valueImpl) String() string {
 }
 
 func (e *valueImpl) Bool() bool {
-	if bs := e.Bytes(); len(bs) > 1 || bs[0] != 0 {
-		return true
+	if bs := e.Bytes(); len(bs) <= 1 {
+		return common.BytesToInt64(bs) != 0
+	} else {
+		var value big.Int
+		return common.BigIntSetBytes(&value, bs).Sign() != 0
 	}
-	return false
 }
 
 func (e *valueImpl) Set(v interface{}) error {
