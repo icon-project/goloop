@@ -44,8 +44,9 @@ type PeerToPeer struct {
 	seedTicker      *time.Ticker
 
 	//Addresses
-	seeds *NetAddressSet
-	roots *NetAddressSet //For seed, root
+	trustSeeds *NetAddressSet
+	seeds      *NetAddressSet
+	roots      *NetAddressSet //For seed, root
 	//[TBD] 2hop peers of current tree for status change
 	grandParent   NetAddress
 	grandChildren *NetAddressSet
@@ -102,6 +103,7 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer, mtr *metric.NetworkMet
 		discoveryTicker: time.NewTicker(DefaultDiscoveryPeriod),
 		seedTicker:      time.NewTicker(DefaultSeedPeriod),
 		//
+		trustSeeds:    NewNetAddressSet(),
 		seeds:         NewNetAddressSet(),
 		roots:         NewNetAddressSet(),
 		grandChildren: NewNetAddressSet(),
@@ -171,7 +173,7 @@ func (p2p *PeerToPeer) Stop() {
 	Loop:
 		for {
 			ps := p2p.getPeers(false)
-			p2p.logger.Debugln("Stop", "try close Peers",len(ps))
+			p2p.logger.Debugln("Stop", "try close Peers", len(ps))
 			for _, p := range ps {
 				p.Close("stopCh")
 			}
@@ -1164,18 +1166,12 @@ Loop:
 			break Loop
 		case <-p2p.seedTicker.C:
 			seeds := p2p.orphanages.GetByRoleAndIncomming(p2pRoleSeed, true, false)
-			minSeed := DefaultMinSeed
-			if p2p.seeds.Contains(p2p.self.netAddress) {
-				minSeed++
-			}
 			if p2p.syncSeeds() {
 				for _, s := range p2p.seeds.Array() {
 					if !p2p.hasNetAddresse(s) {
 						p2p.logger.Debugln("discoverRoutine", "seedTicker", "dial to p2pRoleSeed", s)
 						if err := p2p.dial(s); err != nil {
-							if p2p.seeds.Len() > minSeed {
-								p2p.seeds.Remove(s)
-							}
+							p2p.seeds.Remove(s)
 						}
 					}
 				}
@@ -1234,8 +1230,24 @@ Loop:
 
 func (p2p *PeerToPeer) syncSeeds() (connectAndQuery bool) {
 	role := p2p.getRole()
+
+	//check trustSeeds
+	if role.Has(p2pRoleSeed) {
+		for _, ts := range p2p.trustSeeds.Array() {
+			if !p2p.seeds.Contains(ts) &&
+				!p2p.orphanages.HasNetAddresse(ts) {
+				p2p.dial(ts)
+			}
+		}
+	} else {
+		if p2p.seeds.Len() == 0 {
+			p2p.seeds.Merge(p2p.trustSeeds.Array()...)
+		}
+	}
+
 	if role.Has(p2pRoleRoot) {
-		if (p2p.children.Len() + p2p.nephews.Len()) < 1 {
+		numOfFailureNode := (p2p.allowedRoots.Len() - 1) / 3
+		if (2 * numOfFailureNode) > p2p.friends.Len() || ((p2p.children.Len() + p2p.nephews.Len()) < 1) {
 			connectAndQuery = true
 		}
 		for _, p := range p2p.friends.Array() {

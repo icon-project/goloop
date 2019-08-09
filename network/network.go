@@ -3,6 +3,7 @@ package network
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/icon-project/goloop/common/errors"
@@ -32,7 +33,7 @@ type manager struct {
 	mtr *metric.NetworkMetric
 }
 
-func NewManager(c module.Chain, nt module.NetworkTransport, initialSeed string, roles ...module.Role) module.NetworkManager {
+func NewManager(c module.Chain, nt module.NetworkTransport, trustSeeds string, roles ...module.Role) module.NetworkManager {
 	t := nt.(*transport)
 	self := &Peer{id: t.PeerID(), netAddress: NetAddress(t.Address())}
 	channel := strconv.FormatInt(int64(c.NID()), 16)
@@ -71,9 +72,7 @@ func NewManager(c module.Chain, nt module.NetworkTransport, initialSeed string, 
 		}
 	}
 	m.p2p.setRole(role)
-	if initialSeed != "" {
-		m.p2p.seeds.Add(NetAddress(initialSeed))
-	}
+	m.SetTrustSeeds(trustSeeds)
 
 	m.logger.Debugln("NewManager", channel)
 	return m
@@ -306,6 +305,20 @@ func (m *manager) Roles(id module.PeerID) []module.Role {
 
 func (m *manager) getRoleByDest(dest byte) module.Role {
 	return m.roleByDest[dest]
+}
+
+func (m *manager) SetTrustSeeds(seeds string) {
+	if seeds != "" {
+		seeds := strings.Split(seeds, ",")
+		for _, seed := range seeds {
+			if seed != "" {
+				na := NetAddress(seed)
+				if na != m.p2p.self.netAddress {
+					m.p2p.trustSeeds.Add(na)
+				}
+			}
+		}
+	}
 }
 
 type protocolInfo uint16

@@ -175,7 +175,7 @@ Join chain
 | --role | 3 | [0:None, 1:Seed, 2:Validator, 3:Both] |
 | --secure_aeads | chacha,aes128,aes256 | Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string |
 | --secure_suites | none,tls,ecdhe | Supported Secure suites with order (none,tls,ecdhe) - Comma separated string |
-| --seed | [] | Ip-port of Seed |
+| --seed |  | List of trust-seed ip-port, Comma separated string |
 
 ### Inherited Options
 |Name,shorthand | Default | Description|
