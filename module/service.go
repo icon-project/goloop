@@ -208,7 +208,7 @@ const (
 	FinalizeWriteReceiptIndex
 )
 
-// ServiceManager provides Service APIs.
+// TransitionManager provides Transition APIs.
 // For a block proposal, it is usually called as follows:
 // 		1. GetPatches
 //		2. if any changes of patches exist from GetPatches
@@ -223,7 +223,7 @@ const (
 //		2. create Transaction instances by TransactionFromBytes
 //		3. CreateTransition with TransactionList
 //		4. Transition.Execute
-type ServiceManager interface {
+type TransitionManager interface {
 	// ProposeTransition proposes a Transition following the parent Transition.
 	// Returned Transition always passes validation.
 	ProposeTransition(parent Transition, bi BlockInfo) (Transition, error)
@@ -235,16 +235,24 @@ type ServiceManager interface {
 	GetPatches(parent Transition, bi BlockInfo) TransactionList
 	// PatchTransition creates a Transition by overwriting patches on the transition.
 	PatchTransition(transition Transition, patches TransactionList) Transition
+	// Finalize finalizes data related to the transition. It usually stores
+	// data to a persistent storage. opt indicates which data are finalized.
+	// It should be called for every transition.
+	Finalize(transition Transition, opt int) error
+	// WaitTransaction waits for a transaction with timestamp between
+	// bi.Timestamp() - TimestampThreshold and current time +
+	// TimestampThreshold. If such a transaction is available now, the function
+	// returns false and callback cb is not called.
+	WaitForTransaction(parent Transition, bi BlockInfo, cb func()) bool
+}
+
+type ServiceManager interface {
+	TransitionManager
 
 	// Start starts service module.
 	Start()
 	// Term terminates serviceManager instance.
 	Term()
-
-	// Finalize finalizes data related to the transition. It usually stores
-	// data to a persistent storage. opt indicates which data are finalized.
-	// It should be called for every transition.
-	Finalize(transition Transition, opt int) error
 
 	// TransactionFromBytes returns a Transaction instance from bytes.
 	TransactionFromBytes(b []byte, blockVersion int) (Transaction, error)
@@ -299,10 +307,4 @@ type ServiceManager interface {
 
 	// HasTransaction returns whether it has specified transaction in the pool
 	HasTransaction(id []byte) bool
-
-	// WaitTransaction waits for a transaction with timestamp between
-	// bi.Timestamp() - TimestampThreshold and current time +
-	// TimestampThreshold. If such a transaction is available now, the function
-	// returns false and callback cb is not called.
-	WaitForTransaction(parent Transition, bi BlockInfo, cb func()) bool
 }

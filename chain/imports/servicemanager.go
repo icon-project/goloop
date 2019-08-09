@@ -17,6 +17,7 @@ type ImportCallback interface {
 }
 
 type managerForImport struct {
+	module.TransitionManager // to force overriding of TransitionManager methods
 	module.ServiceManager
 	bdb        *legacy.LoopChainDB
 	lastHeight int64
@@ -149,6 +150,10 @@ func (m *managerForImport) CreateTransition(parent module.Transition, txs module
 
 func (m *managerForImport) GetPatches(parent module.Transition, bi module.BlockInfo) module.TransactionList {
 	return m.ServiceManager.GetPatches(unwrap(parent), bi)
+}
+
+func (m *managerForImport) WaitForTransaction(parent module.Transition, bi module.BlockInfo, cb func()) bool {
+	return m.ServiceManager.WaitForTransaction(unwrap(parent), bi, cb)
 }
 
 func (m *managerForImport) PatchTransition(transition module.Transition, patches module.TransactionList) module.Transition {
