@@ -816,6 +816,7 @@ func (cs *consensus) enterTransactionWait() {
 			return
 		}
 	}
+	cs.notifySyncer()
 	cs.enterPropose()
 }
 
