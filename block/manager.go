@@ -1044,7 +1044,7 @@ func (m *manager) WaitForBlock(height int64) (<-chan module.Block, error) {
 	return bch, nil
 }
 
-func (m *manager) WaitForTransaction(parentID []byte, cb func())bool {
+func (m *manager) WaitForTransaction(parentID []byte, cb func()) bool {
 	m.syncer.begin()
 	defer m.syncer.end()
 
