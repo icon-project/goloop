@@ -409,7 +409,11 @@ func (s *syncer) OnEngineStepChange() {
 			}
 		}
 	}
-	if e.Step() == stepPropose || e.Step() == stepCommit {
+
+	send := e.Step() == stepTransactionWait ||
+		(e.Round() > 0 && e.Step() == stepPropose) ||
+		e.Step() == stepCommit
+	if send {
 		s.sendRoundStateMessage()
 	}
 }
