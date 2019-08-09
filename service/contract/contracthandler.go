@@ -1,11 +1,11 @@
 package contract
 
 import (
-	"github.com/icon-project/goloop/common/log"
 	"math/big"
 	"time"
 
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/state"
@@ -19,6 +19,7 @@ const (
 	CTypeNone     = iota
 	CTypeDeploy
 	CTypeCall
+	CTypePatch
 	CTypeTransferAndCall = CTypeTransfer | CTypeCall
 )
 

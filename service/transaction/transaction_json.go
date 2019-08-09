@@ -6,7 +6,6 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
-	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 )
 
@@ -67,13 +66,13 @@ func (tx *transactionV3JSON) ID() []byte {
 func (tx *transactionV3JSON) verifySignature() error {
 	pk, err := tx.Signature.RecoverPublicKey(tx.txHash)
 	if err != nil {
-		return errors.WithCode(err, InvalidSignatureError)
+		return InvalidSignatureError.Wrap(err, "fail to recover public key")
 	}
 	addr := common.NewAccountAddressFromPublicKey(pk)
 	if addr.Equal(&tx.From) {
 		return nil
 	}
-	return ErrInvalidSignature
+	return InvalidSignatureError.New("fail to verify signature")
 }
 
 func (tx *transactionV3JSON) Timestamp() int64 {
@@ -83,7 +82,7 @@ func (tx *transactionV3JSON) Timestamp() int64 {
 func newTransactionV2V3FromJSON(js []byte) (Transaction, error) {
 	b := bytes.NewBuffer(nil)
 	if err := json.Compact(b, js); err != nil {
-		return nil, err
+		return nil, InvalidFormat.Wrap(err, "Fail on json.Compact")
 	} else {
 		js = b.Bytes()
 	}

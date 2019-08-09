@@ -551,7 +551,7 @@ func (sm *testServiceManager) CreateTransition(parent module.Transition, txs mod
 	return nil, errors.Errorf("bad type")
 }
 
-func (sm *testServiceManager) GetPatches(parent module.Transition) module.TransactionList {
+func (sm *testServiceManager) GetPatches(transition module.Transition, bi module.BlockInfo) module.TransactionList {
 	return newTestTransactionList(sm.transactions[module.TransactionGroupPatch])
 }
 

@@ -5,6 +5,6 @@ import (
 )
 
 const (
-	InvalidContractError = iota + errors.CodeService + 200
-	PreparingContractError
+	PreparingContractError = iota + errors.CodeService + 200
+	NoAvailableProxy
 )

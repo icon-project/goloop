@@ -73,6 +73,7 @@ const (
 	StatusOutOfBalance
 	StatusTimeout
 	StatusStackOverflow
+	StatusSkipTransaction
 	StatusUser = 32
 )
 
@@ -112,6 +113,8 @@ func (s Status) String() string {
 		return "OutOfBalance"
 	case StatusStackOverflow:
 		return "StackOverflow"
+	case StatusSkipTransaction:
+		return "SkipTransaction"
 	default:
 		if int(s) >= StatusUser {
 			return fmt.Sprintf("User(%d)", s-StatusUser)
@@ -229,7 +232,7 @@ type ServiceManager interface {
 	// CreateTransition creates a Transition following parent Transition.
 	CreateTransition(parent Transition, txs TransactionList, bi BlockInfo) (Transition, error)
 	// GetPatches returns all patch transactions based on the parent transition.
-	GetPatches(parent Transition) TransactionList
+	GetPatches(parent Transition, bi BlockInfo) TransactionList
 	// PatchTransition creates a Transition by overwriting patches on the transition.
 	PatchTransition(transition Transition, patches TransactionList) Transition
 
@@ -264,6 +267,9 @@ type ServiceManager interface {
 	// SendTransaction adds transaction to a transaction pool.
 	SendTransaction(tx interface{}) ([]byte, error)
 
+	// SendPatch sends a patch
+	SendPatch(patch Patch) error
+
 	// Call handles read-only contract API call.
 	Call(result []byte, vl ValidatorList, js []byte, bi BlockInfo) (interface{}, error)
 
@@ -284,6 +290,9 @@ type ServiceManager interface {
 
 	// GetMembers returns network member list
 	GetMembers(result []byte) (MemberList, error)
+
+	// GetRoundLimit returns round limit
+	GetRoundLimit(result []byte) int64
 
 	// HasTransaction returns whether it has specified transaction in the pool
 	HasTransaction(id []byte) bool

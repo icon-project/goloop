@@ -358,7 +358,7 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	startTime := time.Now()
 
 	patchReceipts := make([]txresult.Receipt, patchCount)
-	if err := t.executeTxs(t.patchTransactions, ctx, patchReceipts); err != nil {
+	if err := t.executeTxsSequential(t.patchTransactions, ctx, patchReceipts); err != nil {
 		t.reportExecution(err)
 		return
 	}
@@ -449,6 +449,26 @@ func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext
 
 func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, rctBuf []txresult.Receipt) error {
 	if l == nil {
+		return nil
+	}
+	if ctx.SkipTransactionEnabled() {
+		fakeBuf := make([]txresult.Receipt, len(rctBuf))
+		wss := ctx.GetSnapshot()
+		err := t.executeTxsSequential(l, ctx, fakeBuf)
+		if err != nil {
+			t.log.Warnf("It fails to execute transactions err=%v", err)
+			t.log.Debugf("Failed reason err=%+v", err)
+			return err
+		}
+		// TODO dump result for survey
+		ctx.Reset(wss)
+		for idx := 0; idx < len(rctBuf); idx++ {
+			rct := txresult.NewReceipt(fakeBuf[idx].To())
+			zero := big.NewInt(0)
+			rct.SetResult(module.StatusSkipTransaction, zero, zero, nil)
+			rct.SetCumulativeStepUsed(zero)
+			rctBuf[idx] = rct
+		}
 		return nil
 	}
 	if cc := t.chain.ConcurrencyLevel(); cc > 1 {

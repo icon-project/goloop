@@ -81,6 +81,7 @@ type singleChain struct {
 
 	database db.Database
 	vld      module.CommitVoteSetDecoder
+	pd       module.PatchDecoder
 	sm       module.ServiceManager
 	bm       module.BlockManager
 	cs       module.Consensus
@@ -205,6 +206,10 @@ func (c *singleChain) GetGenesisData(key []byte) ([]byte, error) {
 
 func (c *singleChain) CommitVoteSetDecoder() module.CommitVoteSetDecoder {
 	return c.vld
+}
+
+func (c *singleChain) PatchDecoder() module.PatchDecoder {
+	return c.pd
 }
 
 func (c *singleChain) EEProxyManager() eeproxy.Manager {
@@ -356,6 +361,7 @@ func (c *singleChain) _init() error {
 	}
 
 	c.vld = consensus.NewCommitVoteSetFromBytes
+	c.pd = consensus.DecodePatch
 	c.metricCtx = metric.GetMetricContextByNID(c.NID())
 	return nil
 }

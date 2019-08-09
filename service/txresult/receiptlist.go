@@ -1,6 +1,7 @@
 package txresult
 
 import (
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/log"
 	"reflect"
 
@@ -44,7 +45,11 @@ func (l *receiptList) Get(n int) (module.Receipt, error) {
 	if err != nil {
 		return nil, err
 	}
-	return obj.(module.Receipt), nil
+	if rct, ok := obj.(module.Receipt); !ok {
+		return nil, common.ErrNotFound
+	} else {
+		return rct, nil
+	}
 }
 
 func (l *receiptList) GetProof(n int) ([][]byte, error) {

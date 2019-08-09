@@ -147,8 +147,8 @@ func (m *managerForImport) CreateTransition(parent module.Transition, txs module
 	}, nil
 }
 
-func (m *managerForImport) GetPatches(parent module.Transition) module.TransactionList {
-	return m.ServiceManager.GetPatches(unwrap(parent))
+func (m *managerForImport) GetPatches(parent module.Transition, bi module.BlockInfo) module.TransactionList {
+	return m.ServiceManager.GetPatches(unwrap(parent), bi)
 }
 
 func (m *managerForImport) PatchTransition(transition module.Transition, patches module.TransactionList) module.Transition {

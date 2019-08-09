@@ -21,7 +21,7 @@ func (_r *ServiceManagerBase) CreateTransition(parent module.Transition, txs mod
 	panic("not implemented")
 }
 
-func (_r *ServiceManagerBase) GetPatches(parent module.Transition) module.TransactionList {
+func (_r *ServiceManagerBase) GetPatches(parent module.Transition, bi module.BlockInfo) module.TransactionList {
 	panic("not implemented")
 }
 
@@ -65,6 +65,10 @@ func (_r *ServiceManagerBase) SendTransaction(tx interface{}) ([]byte, error) {
 	panic("not implemented")
 }
 
+func (_r *ServiceManagerBase) SendPatch(patch module.Patch) error {
+	panic("not implemented")
+}
+
 func (_r *ServiceManagerBase) Call(result []byte, vl module.ValidatorList, js []byte, bi module.BlockInfo) (interface{}, error) {
 	panic("not implemented")
 }
@@ -90,6 +94,10 @@ func (_r *ServiceManagerBase) GetAPIInfo(result []byte, addr module.Address) (mo
 }
 
 func (_r *ServiceManagerBase) GetMembers(result []byte) (module.MemberList, error) {
+	panic("not implemented")
+}
+
+func (_r *ServiceManagerBase) GetRoundLimit(result []byte) int64 {
 	panic("not implemented")
 }
 

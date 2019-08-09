@@ -26,6 +26,7 @@ type Chain interface {
 	Genesis() []byte
 	GetGenesisData(key []byte) ([]byte, error)
 	CommitVoteSetDecoder() CommitVoteSetDecoder
+	PatchDecoder() PatchDecoder
 
 	BlockManager() BlockManager
 	Consensus() Consensus

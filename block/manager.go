@@ -283,7 +283,8 @@ func (m *manager) _propose(
 		votes:       votes,
 	}
 	pt.state = executingIn
-	patches := m.sm.GetPatches(bn.in.mtransition())
+	// TODO need to fill block information to build new
+	patches := m.sm.GetPatches(bn.in.mtransition(), nil)
 	var err error
 	pt.in, err = bn.preexe.patch(patches, pt)
 	if err != nil {
@@ -916,6 +917,8 @@ func (txInfo *transactionInfo) GetReceipt() (module.Receipt, error) {
 		}
 		if rct, err := rl.Get(int(txInfo._index)); err == nil {
 			return rct, nil
+		} else {
+			return nil, err
 		}
 	}
 	return nil, ErrResultNotFinalized
@@ -942,18 +945,31 @@ func (m *manager) getTransactionInfo(id []byte) (module.TransactionInfo, error) 
 	if err != nil {
 		return nil, errors.InvalidStateError.Wrapf(err, "block h=%d not found", loc.BlockHeight)
 	}
-	mtr, err := block.NormalTransactions().Get(loc.IndexInGroup)
+
+	var txs module.TransactionList
+	if loc.TransactionGroup == module.TransactionGroupNormal {
+		txs = block.NormalTransactions()
+	} else {
+		txs = block.PatchTransactions()
+	}
+	mtr, err := txs.Get(loc.IndexInGroup)
 	if err != nil {
-		return nil, errors.InvalidStateError.Wrapf(err, "transaction i=%d not in block h=%d", loc.IndexInGroup, loc.BlockHeight)
+		return nil, errors.InvalidStateError.Wrapf(err,
+			"transaction group=%d i=%d not in block h=%d",
+			loc.TransactionGroup, loc.IndexInGroup, loc.BlockHeight)
 	}
 	var rblock module.Block
-	if m.finalized.block.Height() < loc.BlockHeight+1 {
-		rblock = nil
-	} else {
-		rblock, err = m.getBlockByHeight(loc.BlockHeight + 1)
-		if err != nil {
-			return nil, err
+	if loc.TransactionGroup == module.TransactionGroupNormal {
+		if m.finalized.block.Height() < loc.BlockHeight+1 {
+			rblock = nil
+		} else {
+			rblock, err = m.getBlockByHeight(loc.BlockHeight + 1)
+			if err != nil {
+				return nil, err
+			}
 		}
+	} else {
+		rblock = block
 	}
 	return &transactionInfo{
 		_sm:      m.sm,

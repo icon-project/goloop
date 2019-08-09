@@ -4,20 +4,19 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
-	"github.com/icon-project/goloop/common/log"
 	"math/big"
 	"sync"
 
-	"github.com/icon-project/goloop/service/scoreresult"
-	"github.com/icon-project/goloop/service/state"
+	"golang.org/x/crypto/sha3"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreapi"
 	"github.com/icon-project/goloop/service/scoredb"
-	"golang.org/x/crypto/sha3"
+	"github.com/icon-project/goloop/service/scoreresult"
+	"github.com/icon-project/goloop/service/state"
 )
 
 type DeployHandler struct {
@@ -300,18 +299,19 @@ func (h *callGetAPIHandler) ExecuteAsync(cc CallContext) error {
 
 	h.as = cc.GetAccountState(h.to.ID())
 	if !h.as.IsContract() {
-		return InvalidContractError.New("NotAContractAccount")
+		return scoreresult.Errorf(module.StatusContractNotFound, "Account(%s) is't contract", h.to)
 	}
 
 	conn := h.cc.GetProxy(h.EEType())
 	if conn == nil {
-		return errors.InvalidStateError.Errorf(
+		return NoAvailableProxy.Errorf(
 			"FAIL to get connection of (" + h.EEType() + ")")
 	}
 
 	c := h.as.NextContract()
 	if c == nil {
-		return errors.InvalidStateError.Errorf("No pending contract")
+		return scoreresult.New(module.StatusContractNotFound,
+			"No pending contract")
 	}
 	var err error
 	h.lock.Lock()
@@ -323,7 +323,7 @@ func (h *callGetAPIHandler) ExecuteAsync(cc CallContext) error {
 	path, err := h.cs.WaitResult()
 	if err != nil {
 		h.log.Errorf("FAIL to prepare contract. err=%+v\n", err)
-		return errors.Wrapc(err, PreparingContractError, "FAIL to prepare contract")
+		return PreparingContractError.New("FAIL to prepare contract")
 	}
 
 	h.lock.Lock()

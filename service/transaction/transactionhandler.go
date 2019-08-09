@@ -16,6 +16,7 @@ const (
 	DataTypeMessage = "message"
 	DataTypeCall    = "call"
 	DataTypeDeploy  = "deploy"
+	DataTypePatch   = "patch"
 )
 
 type TransactionHandler interface {
@@ -73,6 +74,8 @@ func NewTransactionHandler(cm contract.ContractManager, from, to module.Address,
 			} else {
 				ctype = contract.CTypeCall
 			}
+		case DataTypePatch:
+			ctype = contract.CTypePatch
 		default:
 			return nil, InvalidFormat.Errorf("IllegalDataType(type=%s)", *dataType)
 		}

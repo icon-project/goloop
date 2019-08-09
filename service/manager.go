@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"math/big"
+	"sync/atomic"
 	"time"
 
 	"github.com/icon-project/goloop/network"
@@ -46,6 +47,8 @@ type manager struct {
 	tsc       *TxTimestampChecker
 
 	log log.Logger
+
+	skipTxPatch atomic.Value
 }
 
 func NewManager(chain module.Chain, nm module.NetworkManager,
@@ -122,22 +125,10 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 
 	maxTxCount := m.chain.Regulator().MaxTxCount()
 	txSizeInBlock := m.chain.MaxBlockTxBytes()
-
-	patchTxs, size := m.patchTxPool.Candidate(wc, txSizeInBlock, maxTxCount) // try to add all patches in the block
-	txSizeInBlock -= size
-	maxTxCount -= len(patchTxs)
-
-	var normalTxs []module.Transaction
-	if txSizeInBlock > 0 && maxTxCount > 0 {
-		normalTxs, _ = m.normalTxPool.Candidate(wc, txSizeInBlock, maxTxCount)
-	} else {
-		// what if patches already exceed the limit of transactions? It usually
-		// doesn't happen but...
-		normalTxs = make([]module.Transaction, 0)
-	}
+	normalTxs, _ := m.normalTxPool.Candidate(wc, txSizeInBlock, maxTxCount)
 
 	// create transition instance and return it
-	return newTransition(pt, transaction.NewTransactionListFromSlice(m.db, patchTxs), transaction.NewTransactionListFromSlice(m.db, normalTxs), bi, true, m.log),
+	return newTransition(pt, transaction.NewTransactionListFromSlice(m.db, nil), transaction.NewTransactionListFromSlice(m.db, normalTxs), bi, true, m.log),
 		nil
 }
 
@@ -163,9 +154,18 @@ func (m *manager) CreateTransition(parent module.Transition,
 	return newTransition(pt, nil, txList, bi, false, m.log), nil
 }
 
+func (m *manager) SendPatch(data module.Patch) error {
+	if data.Type() == module.PatchTypeSkipTransaction {
+		m.skipTxPatch.Store(data.(module.SkipTransactionPatch))
+		return nil
+	} else {
+		return InvalidPatchDataError.New("UnknownPatch")
+	}
+}
+
 // GetPatches returns all patch transactions based on the parent transition.
 // If it doesn't have any patches, it returns nil.
-func (m *manager) GetPatches(parent module.Transition) module.TransactionList {
+func (m *manager) GetPatches(parent module.Transition, bi module.BlockInfo) module.TransactionList {
 	// In fact, state is not necessary for patch transaction candidate validation,
 	// but add the following same as that of normal transaction.
 	pt, ok := parent.(*transition)
@@ -177,10 +177,31 @@ func (m *manager) GetPatches(parent module.Transition) module.TransactionList {
 	ws, err := state.WorldStateFromSnapshot(pt.worldSnapshot)
 	if err != nil {
 		m.log.Panicf("Fail to creating world state from snapshot")
+		return nil
 	}
 
-	wc := state.NewWorldContext(ws, pt.bi)
-	txs, _ := m.patchTxPool.Candidate(wc, m.chain.MaxBlockTxBytes(), 0)
+	// TODO need to remove
+	if bi == nil {
+		bi = pt.bi
+	}
+	wc := state.NewWorldContext(ws, bi)
+
+	txs, size := m.patchTxPool.Candidate(wc, m.chain.MaxBlockTxBytes(), 0)
+
+	p, _ := m.skipTxPatch.Load().(module.SkipTransactionPatch)
+	if p != nil {
+		m.log.Debugf("GetPatches() skipTxPatch=%+v wc.BlockHeight()=%d", p, wc.BlockHeight())
+		if bi == nil || p.Height()+1 == wc.BlockHeight() {
+			tx, err := transaction.NewPatchTransaction(
+				p, m.chain.NID(), wc.BlockTimeStamp(), m.chain.Wallet())
+			if err != nil {
+				m.log.Panicf("Fail to make transaction from patch err=%+v", err)
+			}
+			size += len(tx.Bytes())
+			txs = append(txs, tx)
+		}
+	}
+	m.log.Debugf("GetPatches() pl = %+v", txs)
 	return transaction.NewTransactionListFromSlice(m.db, txs)
 }
 
@@ -193,6 +214,7 @@ func (m *manager) PatchTransition(t module.Transition, patchTxList module.Transa
 		m.log.Panicf("Illegal transition for GetPatches type=%T", t)
 		return nil
 	}
+	m.log.Debugf("PatchTransition(patchTxs=<%x>)", patchTxList.Hash())
 
 	// If there is no way to validate patches, then set 'alreadyValidated' to
 	// true. It'll skip unnecessary validation for already validated normal
@@ -313,7 +335,7 @@ func (m *manager) SendTransaction(txi interface{}) ([]byte, error) {
 	case transaction.Transaction:
 		newTx = txo
 	default:
-		return nil, ErrIllegalTransactionType
+		return nil, InvalidTransactionError.Errorf("UnknownType(%T)", txi)
 	}
 
 	if err := m.tsc.CheckWithCurrent(newTx); err != nil {
@@ -361,7 +383,10 @@ func (m *manager) Call(resultHash []byte,
 
 	var jso callJSON
 	if json.Unmarshal(js, &jso) != nil {
-		return nil, InvalidTransactionError.Errorf("FailToParse(%s)", string(js))
+		return nil, InvalidQueryError.Errorf("FailToParse(%s)", string(js))
+	}
+	if jso.DataType == nil || *jso.DataType != transaction.DataTypeCall {
+		return nil, InvalidQueryError.New("InvalidDataType")
 	}
 
 	var wc state.WorldContext
@@ -372,10 +397,7 @@ func (m *manager) Call(resultHash []byte,
 		return nil, err
 	}
 
-	qh, err := NewQueryHandler(m.cm, &jso.To, jso.DataType, jso.Data)
-	if err != nil {
-		return nil, err
-	}
+	qh := NewQueryHandler(m.cm, &jso.To, jso.Data)
 	status, result := qh.Query(contract.NewContext(wc, m.cm, m.eem, m.chain, m.log))
 	if status != module.StatusSuccess {
 		return nil, scoreresult.NewBase(status, status.String())
@@ -431,7 +453,7 @@ func (m *manager) GetNetworkID(result []byte) (int64, error) {
 
 func (m *manager) GetAPIInfo(result []byte, addr module.Address) (module.APIInfo, error) {
 	if !addr.IsContract() {
-		return nil, state.ErrNotContractAddress
+		return nil, NotContractAddressError.Errorf("Given Address(%s) isn't contract", addr)
 	}
 	wss, err := m.trc.GetWorldSnapshot(result, nil)
 	if err != nil {
@@ -439,11 +461,11 @@ func (m *manager) GetAPIInfo(result []byte, addr module.Address) (module.APIInfo
 	}
 	ass := wss.GetAccountSnapshot(addr.ID())
 	if ass == nil {
-		return nil, state.ErrNoActiveContract
+		return nil, NoActiveContractError.Errorf("No account for %s", addr)
 	}
 	info := ass.APIInfo()
 	if info == nil {
-		return nil, state.ErrNoActiveContract
+		return nil, NoActiveContractError.Errorf("Account(%s) doesn't have active contract", addr)
 	}
 	return info, nil
 }
@@ -455,6 +477,21 @@ func (m *manager) GetMembers(result []byte) (module.MemberList, error) {
 	}
 	ass := wss.GetAccountSnapshot(state.SystemID)
 	return newMemberList(ass), nil
+}
+
+func (m *manager) GetRoundLimit(result []byte) int64 {
+	wss, err := m.trc.GetWorldSnapshot(result, nil)
+	if err != nil {
+		return 0
+	}
+	ass := wss.GetAccountSnapshot(state.SystemID)
+	vss := wss.GetValidatorSnapshot()
+	as := scoredb.NewStateStoreWith(ass)
+	factor := scoredb.NewVarDB(as, state.VarRoundLimitFactor).Int64()
+	if factor == 0 {
+		return 0
+	}
+	return contract.RoundLimitFactorToRound(vss.Len(), factor)
 }
 
 func (m *manager) HasTransaction(id []byte) bool {

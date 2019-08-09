@@ -52,14 +52,9 @@ func (qh *QueryHandler) Query(ctx contract.Context) (module.Status, interface{})
 	return status, value
 }
 
-func NewQueryHandler(cm contract.ContractManager, to module.Address, dataType *string, data []byte) (*QueryHandler, error) {
-	if *dataType != transaction.DataTypeCall {
-		return nil, transaction.InvalidTxValue.Errorf("IllegalDataType(type=%s)", *dataType)
-	}
-
-	qh := &QueryHandler{
+func NewQueryHandler(cm contract.ContractManager, to module.Address, data []byte) *QueryHandler {
+	return &QueryHandler{
 		to:   to,
 		data: data,
 	}
-	return qh, nil
 }

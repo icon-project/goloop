@@ -29,6 +29,7 @@ const (
 	VarTimestampThreshold = "timestamp_threshold"
 	VarBlockInterval      = "block_interval"
 	VarCommitTimeout      = "commit_timeout"
+	VarRoundLimitFactor   = "round_limit_factor"
 )
 
 const (
@@ -89,6 +90,9 @@ type WorldContext interface {
 	PackageValidatorEnabled() bool
 	MembershipEnabled() bool
 	TransactionTimestampThreshold() int64
+
+	EnableSkipTransaction()
+	SkipTransactionEnabled() bool
 }
 
 type BlockInfo struct {
@@ -122,6 +126,8 @@ type worldContext struct {
 	contractInfo ContractInfo
 
 	info map[string]interface{}
+
+	skipTransaction bool
 }
 
 func (c *worldContext) WorldVirtualState() WorldVirtualState {
@@ -365,6 +371,14 @@ func (c *worldContext) GetInfo() map[string]interface{} {
 		c.info = m
 	}
 	return c.info
+}
+
+func (c *worldContext) EnableSkipTransaction() {
+	c.skipTransaction = true
+}
+
+func (c *worldContext) SkipTransactionEnabled() bool {
+	return c.skipTransaction
 }
 
 func NewWorldContext(ws WorldState, bi module.BlockInfo) WorldContext {

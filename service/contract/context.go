@@ -2,9 +2,9 @@ package contract
 
 import (
 	"encoding/hex"
-	"github.com/icon-project/goloop/common/log"
 	"strings"
 
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/state"
@@ -16,6 +16,7 @@ type Context interface {
 	EEManager() eeproxy.Manager
 	GetPreInstalledScore(id string) ([]byte, error)
 	Logger() log.Logger
+	PatchDecoder() module.PatchDecoder
 }
 
 type context struct {
@@ -35,6 +36,10 @@ func (c *context) ContractManager() ContractManager {
 
 func (c *context) EEManager() eeproxy.Manager {
 	return c.eem
+}
+
+func (c *context) PatchDecoder() module.PatchDecoder {
+	return c.chain.PatchDecoder()
 }
 
 func (c *context) GetPreInstalledScore(id string) ([]byte, error) {

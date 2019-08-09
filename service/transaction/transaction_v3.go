@@ -3,12 +3,12 @@ package transaction
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/icon-project/goloop/common/log"
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/jsonrpc"
 	"github.com/icon-project/goloop/service/contract"
@@ -116,13 +116,13 @@ func (tx *transactionV3) Timestamp() int64 {
 func (tx *transactionV3) verifySignature() error {
 	pk, err := tx.Signature.RecoverPublicKey(tx.TxHash())
 	if err != nil {
-		return InvalidSignatureError.Wrap(err, "FAIL to recover public key")
+		return InvalidSignatureError.Wrap(err, "fail to recover public key")
 	}
 	addr := common.NewAccountAddressFromPublicKey(pk)
 	if addr.Equal(tx.From()) {
 		return nil
 	}
-	return ErrInvalidSignature
+	return InvalidSignatureError.New("fail to verify signature")
 }
 
 func (tx *transactionV3) TxHash() []byte {
@@ -194,6 +194,14 @@ func (tx *transactionV3) Verify() error {
 			if tx.Value != nil && tx.Value.Sign() != 0 {
 				return InvalidTxValue.Errorf("InvalidTxValue(%s)", tx.Value.String())
 			}
+		case DataTypePatch:
+			if tx.Data == nil {
+				return InvalidTxValue.New("TxData for patch is NIL")
+			}
+			var data contract.Patch
+			if err := json.Unmarshal(tx.Data, &data); err != nil {
+				return InvalidTxValue.Wrap(err, "TxData is invalid")
+			}
 		}
 	}
 
@@ -220,7 +228,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 	}
 	minStep := big.NewInt(wc.StepsFor(state.StepTypeDefault, 1) + wc.StepsFor(state.StepTypeInput, cnt))
 	if tx.StepLimit.Cmp(minStep) < 0 {
-		return state.NotEnoughStepError.Errorf("NotEnoughStep(txStepLimit:%s, minStep:%s)\n", tx.StepLimit, minStep)
+		return NotEnoughStepError.Errorf("NotEnoughStep(txStepLimit:%s, minStep:%s)\n", tx.StepLimit, minStep)
 	}
 
 	// balance >= (fee + value)
@@ -236,7 +244,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 	as1 := wc.GetAccountState(tx.From().ID())
 	balance1 := as1.GetBalance()
 	if balance1.Cmp(trans) < 0 {
-		return scoreresult.Errorf(module.StatusOutOfBalance, "OutOfBalance(balance:%s, value:%s)\n", balance1, trans)
+		return NotEnoughBalanceError.Errorf("OutOfBalance(balance:%s, value:%s)\n", balance1, trans)
 	}
 
 	// for cumulative balance check
@@ -249,47 +257,6 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 		balance1.Sub(balance1, trans)
 		as1.SetBalance(balance1)
 		as2.SetBalance(balance2)
-	}
-
-	// checkups by data types
-	if configCheckDataOnPreValidate && tx.DataType != nil {
-		switch *tx.DataType {
-		case DataTypeCall:
-			// check if contract is active and not blacklisted
-			as := wc.GetAccountState(tx.To.ID())
-			if !as.IsContract() {
-				return contract.InvalidContractError.New("NotAContractAccount")
-			}
-			if as.ActiveContract() == nil {
-				return contract.InvalidContractError.Errorf(
-					"NotActiveContract(blocked(%t), disabled(%t))", as.IsBlocked(), as.IsDisabled())
-			}
-
-			// check method and parameters
-			if info := as.APIInfo(); info == nil {
-				return state.ErrNoActiveContract
-			} else {
-				jso, _ := ParseCallData(tx.Data) // Already checked at Verify(). It can't be nil.
-				if _, err = info.ConvertParamsToTypedObj(jso.Method, jso.Params); err != nil {
-					return err
-				}
-			}
-		case DataTypeDeploy:
-			// update case: check if contract is active and from is its owner
-			if !bytes.Equal(tx.To.ID(), state.SystemID) { // update
-				as := wc.GetAccountState(tx.To.ID())
-				if !as.IsContract() {
-					return contract.InvalidContractError.New("NotAContractAccount")
-				}
-				if as.ActiveContract() == nil {
-					return contract.InvalidContractError.Errorf(
-						"NotActiveContract(blocked(%t), disabled(%t))", as.IsBlocked(), as.IsDisabled())
-				}
-				if !as.IsContractOwner(tx.From()) {
-					return scoreresult.New(module.StatusAccessDenied, "NotContractOwner")
-				}
-			}
-		}
 	}
 	return nil
 }
@@ -311,6 +278,9 @@ func (tx *transactionV3) GetHandler(cm contract.ContractManager) (TransactionHan
 }
 
 func (tx *transactionV3) Group() module.TransactionGroup {
+	if tx.DataType != nil && *tx.DataType == DataTypePatch {
+		return module.TransactionGroupPatch
+	}
 	return module.TransactionGroupNormal
 }
 
@@ -329,7 +299,7 @@ func (tx *transactionV3) Bytes() []byte {
 func (tx *transactionV3) SetBytes(bs []byte) error {
 	_, err := codec.UnmarshalFromBytes(bs, &tx.transactionV3Data)
 	if err != nil {
-		return ErrInvalidFormat
+		return InvalidFormat.Wrap(err, "fail to parse transaction bytes")
 	}
 	if tx.transactionV3Data.Version.Value != module.TransactionVersion3 {
 		return InvalidVersion.Errorf("NotTxVersion3(%d)", tx.transactionV3Data.Version.Value)

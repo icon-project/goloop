@@ -1,9 +1,10 @@
 package service
 
 import (
-	"github.com/icon-project/goloop/common/log"
 	"sync"
 	"time"
+
+	"github.com/icon-project/goloop/common/log"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
@@ -136,7 +137,7 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 				tp.log.Debugf("PREVALIDATE FAIL: id=%#x reason=%v",
 					tx.ID(), err)
 			}
-			if state.NotEnoughStepError.Equals(err) {
+			if !transaction.NotEnoughBalanceError.Equals(err) {
 				txs[invalidNum] = e
 				invalidNum += 1
 			}

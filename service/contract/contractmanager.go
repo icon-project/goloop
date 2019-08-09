@@ -131,6 +131,8 @@ func (cm *contractManager) GetHandler(from, to module.Address, value,
 		handler = newCallHandler(ch, data, false)
 	case CTypeDeploy:
 		handler = newDeployHandler(ch, data)
+	case CTypePatch:
+		handler = newPatchHandler(ch, data)
 	case CTypeTransferAndCall:
 		handler = &TransferAndCallHandler{
 			th:          newTransferHandler(ch),

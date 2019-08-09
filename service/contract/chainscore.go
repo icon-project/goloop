@@ -255,6 +255,7 @@ type chain struct {
 	BlockInterval      *common.HexInt64  `json:"blockInterval"`
 	CommitTimeout      *common.HexInt64  `json:"commitTimeout"`
 	TimestampThreshold *common.HexInt64  `json:"timestampThreshold"`
+	RoundLimitFactor   *common.HexInt64  `json:"roundLimitFactor"`
 }
 
 func (s *ChainScore) Install(param []byte) error {
@@ -306,6 +307,13 @@ func (s *ChainScore) Install(param []byte) error {
 		tsThreshold := chain.TimestampThreshold.Value
 		if err := scoredb.NewVarDB(as, state.VarTimestampThreshold).Set(tsThreshold); err != nil {
 			return scoreresult.Errorf(module.StatusSystemError, "Failed to set timestamp threshold. err(%+v)\n", err)
+		}
+	}
+
+	if chain.RoundLimitFactor != nil {
+		factor := chain.RoundLimitFactor.Value
+		if err := scoredb.NewVarDB(as, state.VarRoundLimitFactor).Set(factor); err != nil {
+			return scoreresult.Errorf(module.StatusSystemError, "Failed to set round limit factor. err(%+v)\n", err)
 		}
 	}
 

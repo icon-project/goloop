@@ -55,6 +55,10 @@ func (_r *ChainBase) CommitVoteSetDecoder() module.CommitVoteSetDecoder {
 	panic("not implemented")
 }
 
+func (_r *ChainBase) PatchDecoder() module.PatchDecoder {
+	panic("not implemented")
+}
+
 func (_r *ChainBase) BlockManager() module.BlockManager {
 	panic("not implemented")
 }

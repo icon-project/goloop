@@ -17,6 +17,10 @@ import (
 
 const jsonRpcApiVersion = jsonrpc.APIVersion3
 
+const (
+	ConfigShowPatchTransaction = false
+)
+
 func MethodRepository() *jsonrpc.MethodRepository {
 	mr := jsonrpc.NewMethodRepository()
 
@@ -39,6 +43,27 @@ func MethodRepository() *jsonrpc.MethodRepository {
 	return mr
 }
 
+func fillTransactions(blockJson interface{}, b module.Block) error {
+	result := blockJson.(map[string]interface{})
+
+	if ConfigShowPatchTransaction {
+		if txs, err := convertTransactionList(b.PatchTransactions()); err != nil {
+			return err
+		} else {
+			if len(txs) > 0 {
+				result["patch_transaction_list"] = txs
+			}
+		}
+	}
+
+	if txs, err := convertTransactionList(b.NormalTransactions()); err != nil {
+		return err
+	} else {
+		result["confirmed_transaction_list"] = txs
+	}
+	return nil
+}
+
 func getLastBlock(ctx *jsonrpc.Context, _ *jsonrpc.Params) (interface{}, error) {
 	debug := ctx.IncludeDebug()
 
@@ -59,16 +84,10 @@ func getLastBlock(ctx *jsonrpc.Context, _ *jsonrpc.Params) (interface{}, error) 
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 
-	result := blockJson.(map[string]interface{})
-	txList := result["confirmed_transaction_list"].(module.TransactionList)
-	confirmedTxList, err := convertTransactionList(txList)
-	if err != nil {
+	if err := fillTransactions(blockJson, block); err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
-
-	result["confirmed_transaction_list"] = confirmedTxList
-
-	return result, nil
+	return blockJson, nil
 }
 
 func getBlockByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
@@ -102,16 +121,10 @@ func getBlockByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 
-	result := blockJson.(map[string]interface{})
-	txList := result["confirmed_transaction_list"].(module.TransactionList)
-	confirmedTxList, err := convertTransactionList(txList)
-	if err != nil {
+	if err := fillTransactions(blockJson, block); err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
-
-	result["confirmed_transaction_list"] = confirmedTxList
-
-	return result, nil
+	return blockJson, nil
 }
 
 func getBlockByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
@@ -141,16 +154,10 @@ func getBlockByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, 
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 
-	result := blockJson.(map[string]interface{})
-	txList := result["confirmed_transaction_list"].(module.TransactionList)
-	confirmedTxList, err := convertTransactionList(txList)
-	if err != nil {
+	if err := fillTransactions(blockJson, block); err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
-
-	result["confirmed_transaction_list"] = confirmedTxList
-
-	return result, nil
+	return blockJson, nil
 }
 
 func call(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
