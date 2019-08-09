@@ -101,7 +101,7 @@ func (_r *ServiceManagerBase) GetRoundLimit(result []byte) int64 {
 	panic("not implemented")
 }
 
-func (_r *ServiceManagerBase) GetMinimizeEmptyBlock(result []byte) bool {
+func (_r *ServiceManagerBase) GetMinimizeBlockGen(result []byte) bool {
 	panic("not implemented")
 }
 

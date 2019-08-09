@@ -83,7 +83,7 @@ type consensus struct {
 	lastBlock          module.Block
 	validators         module.ValidatorList
 	members            module.MemberList
-	minimizeEmptyBlock bool
+	minimizeBlockGen   bool
 	votes              *commitVoteList
 	hvs                heightVoteSet
 	nextProposeTime    time.Time
@@ -161,7 +161,7 @@ func (cs *consensus) _resetForNewHeight(prevBlock module.Block, votes *commitVot
 			cs.nm.SetRole(cs.height, module.ROLE_NORMAL, peerIDs...)
 		}
 	}
-	cs.minimizeEmptyBlock = cs.sm.GetMinimizeEmptyBlock(cs.lastBlock.Result())
+	cs.minimizeBlockGen = cs.sm.GetMinimizeBlockGen(cs.lastBlock.Result())
 	cs.votes = votes
 	cs.hvs.reset(cs.validators.Len())
 	cs.lockedRound = -1
@@ -794,7 +794,7 @@ func (cs *consensus) enterNewRound() {
 func (cs *consensus) enterTransactionWait() {
 	cs.resetForNewStep(stepTransactionWait)
 
-	waitTx := cs.minimizeEmptyBlock
+	waitTx := cs.minimizeBlockGen
 	if len(cs.lastBlock.NormalTransactions().Hash()) > 0 {
 		waitTx = false
 	}

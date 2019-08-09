@@ -119,13 +119,20 @@ This document specifies the genesis file format.
     minimum commit timeout. If both of them are not specified, then
     it uses system default values
     (1000ms for block interval, 200ms for minimum commit timeout).
-    
 
   * `timestampThreshold` (T_INT) <br>
     Allowed timestamp threshold in msec between the block and the transaction.
     If it's not specified, it uses system default value. system default
     can be updated when the node is updated.
-    
+
+  * `minimizeBlockGen` (T_BOOL, default=`0x0`) <br>
+    If it's set as true(`0x1`), generation of empty block will be minimized.
+
+  * `roundLimitFactor` (T_INT, default=`0x0`) <br>
+    If it's set as non-zero value, it tries to skip execution of transactions
+    of previous block when consensus round of the height exceeds round limit.
+    Round limit is (`roundLimitFactor` * validators + 2 ) / 3
+
 * `message` (T_STRING, default=`null`) <br>
   A message to be recorded in the genesis. It's used to prevent having same
   network ID from similar configuration.

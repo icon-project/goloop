@@ -32,6 +32,7 @@ const ConfigTransitionResultCacheEntrySize = 1024 * 1024
 type manager struct {
 	// tx pool should be connected to transition for more than one branches.
 	// Currently, it doesn't allow another branch, so add tx pool here.
+	tm           *TransactionManager
 	patchTxPool  *TransactionPool
 	normalTxPool *TransactionPool
 
@@ -70,12 +71,17 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 		logger.Warnf("FAIL to create contractManager : %v\n", err)
 		return nil, err
 	}
+	pTxPool := NewTransactionPool(chain.PatchTxPoolSize(), bk, pMetric, logger)
+	nTxPool := NewTransactionPool(chain.NormalTxPoolSize(), bk, nMetric, logger)
+	tsc := NewTimestampChecker()
+	tm := NewTransactionManager(chain.NID(), tsc, pTxPool, nTxPool, logger)
 
 	mgr := &manager{
 		patchMetric:  pMetric,
 		normalMetric: nMetric,
-		patchTxPool:  NewTransactionPool(chain.NID(), chain.PatchTxPoolSize(), bk, pMetric, logger),
-		normalTxPool: NewTransactionPool(chain.NID(), chain.NormalTxPoolSize(), bk, nMetric, logger),
+		patchTxPool:  pTxPool,
+		normalTxPool: nTxPool,
+		tm:           tm,
 		db:           chain.Database(),
 		chain:        chain,
 		cm:           cm,
@@ -85,10 +91,10 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 			ConfigTransitionResultCacheEntrySize,
 			logger),
 		log: logger,
-		tsc: NewTimestampChecker(),
+		tsc: tsc,
 	}
 	if nm != nil {
-		mgr.txReactor = NewTransactionReactor(nm, mgr.patchTxPool, mgr.normalTxPool, mgr.tsc)
+		mgr.txReactor = NewTransactionReactor(nm, tm)
 	}
 	return mgr, nil
 }
@@ -338,38 +344,16 @@ func (m *manager) SendTransaction(txi interface{}) ([]byte, error) {
 		return nil, InvalidTransactionError.Errorf("UnknownType(%T)", txi)
 	}
 
-	if err := m.tsc.CheckWithCurrent(newTx); err != nil {
+	if err := m.tm.Add(newTx, true); err != nil {
 		return nil, err
 	}
 
-	if err := newTx.Verify(); err != nil {
-		return nil, InvalidTransactionError.Wrap(err, "Failed to verify transaction")
-	}
-	hash := newTx.ID()
-	if hash == nil {
-		return nil, InvalidTransactionError.New("Failed to get hash")
-	}
-
-	var txPool *TransactionPool
-	switch newTx.Group() {
-	case module.TransactionGroupNormal:
-		txPool = m.normalTxPool
-	case module.TransactionGroupPatch:
-		txPool = m.patchTxPool
-	default:
-		m.log.Panicf("Wrong TransactionGroup. %v", newTx.Group())
-	}
-
-	if err := txPool.Add(newTx, true); err == nil {
-		if err = m.txReactor.PropagateTransaction(ProtocolPropagateTransaction, newTx); err != nil {
-			if !network.NotAvailableError.Equals(err) {
-				m.log.Tracef("FAIL to propagate tx err=%+v", err)
-			}
+	if err := m.txReactor.PropagateTransaction(ProtocolPropagateTransaction, newTx); err != nil {
+		if !network.NotAvailableError.Equals(err) {
+			m.log.Tracef("FAIL to propagate tx err=%+v", err)
 		}
-	} else {
-		return hash, err
 	}
-	return hash, nil
+	return newTx.ID(), nil
 }
 
 func (m *manager) Call(resultHash []byte,
@@ -494,8 +478,14 @@ func (m *manager) GetRoundLimit(result []byte) int64 {
 	return contract.RoundLimitFactorToRound(vss.Len(), factor)
 }
 
-func (m *manager) GetMinimizeEmptyBlock(result []byte) bool {
-	return false
+func (m *manager) GetMinimizeBlockGen(result []byte) bool {
+	wss, err := m.trc.GetWorldSnapshot(result, nil)
+	if err != nil {
+		return false
+	}
+	ass := wss.GetAccountSnapshot(state.SystemID)
+	as := scoredb.NewStateStoreWith(ass)
+	return scoredb.NewVarDB(as, state.VarMinimizeBlockGen).Bool()
 }
 
 func (m *manager) HasTransaction(id []byte) bool {
@@ -507,7 +497,11 @@ func (m *manager) WaitForTransaction(
 	bi module.BlockInfo,
 	cb func(),
 ) bool {
-	return false
+	pt := parent.(*transition)
+	ws, _ := state.WorldStateFromSnapshot(pt.worldSnapshot)
+	wc := state.NewWorldContext(ws, bi)
+
+	return m.tm.Wait(wc, cb)
 }
 
 type blockInfo struct {

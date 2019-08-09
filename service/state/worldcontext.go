@@ -30,6 +30,7 @@ const (
 	VarBlockInterval      = "block_interval"
 	VarCommitTimeout      = "commit_timeout"
 	VarRoundLimitFactor   = "round_limit_factor"
+	VarMinimizeBlockGen   = "minimize_block_gen"
 )
 
 const (

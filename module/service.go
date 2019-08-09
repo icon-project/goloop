@@ -303,7 +303,7 @@ type ServiceManager interface {
 	GetRoundLimit(result []byte) int64
 
 	// GetMinimizeEmptyBlock returns minimize empty block generation flag
-	GetMinimizeEmptyBlock(result []byte) bool
+	GetMinimizeBlockGen(result []byte) bool
 
 	// HasTransaction returns whether it has specified transaction in the pool
 	HasTransaction(id []byte) bool

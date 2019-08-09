@@ -9,8 +9,7 @@ import (
 type TransactionReactor struct {
 	nm         module.NetworkManager
 	membership module.ProtocolHandler
-	normalPool *TransactionPool
-	patchPool  *TransactionPool
+	tm         *TransactionManager
 	tsc        *TxTimestampChecker
 }
 
@@ -32,22 +31,8 @@ func (r *TransactionReactor) OnReceive(subProtocol module.ProtocolInfo, buf []by
 			return false, err
 		}
 
-		if err := tx.Verify(); err != nil {
-			log.Tracef("Failed to verify tx. err=%+v\n", err)
+		if err := r.tm.Add(tx, false); err != nil {
 			return false, err
-		}
-		if err := r.tsc.CheckWithCurrent(tx); err != nil {
-			log.Tracef("Invalid timestamp tx. err=%+v\n", err)
-			return false, err
-		}
-		if tx.Group() == module.TransactionGroupPatch {
-			if err := r.patchPool.Add(tx, false); err != nil {
-				return false, err
-			}
-		} else {
-			if err := r.normalPool.Add(tx, false); err != nil {
-				return false, err
-			}
 		}
 		return true, nil
 	}
@@ -81,12 +66,10 @@ func (r *TransactionReactor) Stop() {
 	_ = r.nm.UnregisterReactor(r)
 }
 
-func NewTransactionReactor(nm module.NetworkManager, patch *TransactionPool, normal *TransactionPool, tsc *TxTimestampChecker) *TransactionReactor {
+func NewTransactionReactor(nm module.NetworkManager, tm *TransactionManager) *TransactionReactor {
 	ra := &TransactionReactor{
-		patchPool:  patch,
-		normalPool: normal,
-		nm:         nm,
-		tsc:        tsc,
+		tm: tm,
+		nm: nm,
 	}
 	return ra
 }

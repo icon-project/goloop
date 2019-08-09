@@ -9,6 +9,10 @@ import (
 	"github.com/icon-project/goloop/service/transaction"
 )
 
+const (
+	ConfigTXTimestampThresholdDefault = int64(5 * time.Minute / time.Microsecond)
+)
+
 type TxTimestampChecker struct {
 	threshold int64
 }
@@ -20,7 +24,7 @@ func (c *TxTimestampChecker) CheckWithCurrent(tx transaction.Transaction) error 
 func (c *TxTimestampChecker) CheckWith(tx transaction.Transaction, base int64) error {
 	th := atomic.LoadInt64(&c.threshold)
 	if th == 0 {
-		th = transaction.ConfigTXTimestampThresholdDefault
+		th = ConfigTXTimestampThresholdDefault
 	}
 	diff := tx.Timestamp() - base
 	if diff <= -th {
@@ -51,18 +55,22 @@ func DurationToTimestamp(d time.Duration) int64 {
 
 func NewTimestampChecker() *TxTimestampChecker {
 	return &TxTimestampChecker{
-		threshold: transaction.ConfigTXTimestampThresholdDefault,
+		threshold: ConfigTXTimestampThresholdDefault,
 	}
 }
 
-func CheckTxTimestamp(c state.WorldContext, tx transaction.Transaction) error {
-	th := c.TransactionTimestampThreshold()
+func TransactionTimestampThreshold(wc state.WorldContext) int64 {
+	th := wc.TransactionTimestampThreshold()
 	if th == 0 {
-		th = transaction.ConfigTXTimestampThresholdDefault
+		th = ConfigTXTimestampThresholdDefault
 	}
+	return th
+}
+
+func CheckTxTimestamp(c state.WorldContext, tx transaction.Transaction) error {
+	th := TransactionTimestampThreshold(c)
 	diff := tx.Timestamp() - c.BlockTimeStamp()
 	if diff <= -th {
-		log.Infof("Diff=%s Threshold=%s", TimestampToDuration(diff), TimestampToDuration(th))
 		return ExpiredTransactionError.Errorf("Expired(diff=%s)", time.Duration(diff*1000))
 	} else if diff > th {
 		return InvalidTransactionError.Errorf("FutureTx(diff=%s)", time.Duration(diff*1000))

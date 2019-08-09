@@ -38,9 +38,8 @@ type TransactionPool struct {
 	log     log.Logger
 }
 
-func NewTransactionPool(nid int, size int, txdb db.Bucket, m Monitor, log log.Logger) *TransactionPool {
+func NewTransactionPool(size int, txdb db.Bucket, m Monitor, log log.Logger) *TransactionPool {
 	pool := &TransactionPool{
-		nid:     nid,
 		size:    size,
 		txdb:    txdb,
 		list:    newTransactionList(),
@@ -172,6 +171,24 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 	return validTxs[:valNum], txSize
 }
 
+func (tp *TransactionPool) CheckTxs(wc state.WorldContext) bool {
+	tp.mutex.Lock()
+	defer tp.mutex.Unlock()
+
+	if tp.list.Len() == 0 {
+		return false
+	}
+
+	t := wc.BlockTimeStamp() - TransactionTimestampThreshold(wc)
+	for e := tp.list.Front(); e != nil; e = e.Next() {
+		tx := e.Value()
+		if tx.Timestamp() > t {
+			return true
+		}
+	}
+	return false
+}
+
 /*
 	return nil if tx is nil or tx is added to pool
 	return ErrTransactionPoolOverFlow if pool is full
@@ -181,9 +198,6 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 func (tp *TransactionPool) Add(tx transaction.Transaction, direct bool) error {
 	if tx == nil {
 		return nil
-	}
-	if !tx.ValidateNetwork(tp.nid) {
-		return errors.InvalidNetworkError.Errorf("Invalid Network ID(%d)", tp.nid)
 	}
 	tp.mutex.Lock()
 	defer tp.mutex.Unlock()

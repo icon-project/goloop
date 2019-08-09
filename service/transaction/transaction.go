@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"math/big"
-	"time"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
@@ -13,12 +12,6 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
-)
-
-const (
-	ConfigTXTimestampBackwardMargin = int64(5 * time.Minute / time.Microsecond)
-
-	ConfigTXTimestampThresholdDefault = int64(5 * time.Minute / time.Microsecond)
 )
 
 const (
