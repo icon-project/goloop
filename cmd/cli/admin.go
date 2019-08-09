@@ -150,7 +150,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	joinFlags := joinCmd.Flags()
 	joinFlags.String("genesis", "", "Genesis storage path")
 	joinFlags.String("genesis_template", "", "Genesis template directory or file")
-	joinFlags.StringSlice("seed", nil, "Ip-port of Seed")
+	joinFlags.String("seed", "", "Ip-port of Seed")
 	joinFlags.Uint("role", 3, "[0:None, 1:Seed, 2:Validator, 3:Both]")
 	joinFlags.String("db_type", "goleveldb", "Name of database system(*badgerdb, goleveldb, boltdb, mapdb)")
 	joinFlags.Int("concurrency", 1, "Maximum number of executors to use for concurrency")
