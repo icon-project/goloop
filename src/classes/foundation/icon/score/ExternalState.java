@@ -46,7 +46,7 @@ public class ExternalState implements IExternalState {
         this.proxy = proxy;
         this.jarPath = Paths.get(code);
         this.blockNumber = blockNumber.longValue();
-        this.blockTimestamp = blockTimestamp.longValue();
+        this.blockTimestamp = blockTimestamp.longValue() / 1000; // micro to milli conversion
         this.parentPath = jarPath.getParent();
     }
 
