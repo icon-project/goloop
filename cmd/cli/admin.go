@@ -6,16 +6,16 @@ import (
 	"io"
 	"net/url"
 	"os"
-	"path/filepath"
 
 	"github.com/gosuri/uitable"
+	"github.com/jroimartin/gocui"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
 	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/node"
-	"github.com/jroimartin/gocui"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 func AdminPersistentPreRunE(vc *viper.Viper, adminClient *node.UnixDomainSockHttpClient) func(cmd *cobra.Command, args []string) error {
@@ -24,7 +24,7 @@ func AdminPersistentPreRunE(vc *viper.Viper, adminClient *node.UnixDomainSockHtt
 		cfgFilePath := vc.GetString("config")
 		if nodeSock == "" && cfgFilePath != "" {
 			cfg := &ServerConfig{}
-			cfg.FilePath,_ = filepath.Abs(cfgFilePath)
+			cfg.FilePath = cfgFilePath
 			if err := MergeWithViper(vc, cfg); err != nil {
 				return err
 			}

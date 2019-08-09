@@ -6,8 +6,10 @@ import (
 	"io/ioutil"
 	stdlog "log"
 	"os"
-	"path/filepath"
 	"strings"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
@@ -15,8 +17,6 @@ import (
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/node"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 type ServerConfig struct {
@@ -44,7 +44,7 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 	cfg.BuildTags = build
 
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		cfg.FilePath, _ = filepath.Abs(vc.GetString("config"))
+		cfg.FilePath = vc.GetString("config")
 		if err := MergeWithViper(vc, cfg); err != nil {
 			return err
 		}
