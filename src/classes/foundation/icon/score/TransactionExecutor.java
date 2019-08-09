@@ -147,7 +147,8 @@ public class TransactionExecutor {
                                            BigInteger value, BigInteger limit,
                                            String method, Object[] params, byte[] txHash) throws IOException {
         if (isDeploy) {
-            byte[] txData = new CodeAndArguments(readFile(code), null).encodeToBytes();
+            byte[] args = ABIUtil.encodeDeploymentArguments(params);
+            byte[] txData = new CodeAndArguments(readFile(code), args).encodeToBytes();
             return Transaction.contractCreateTransaction(
                     new AionAddress(from),
                     txHash,
