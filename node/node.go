@@ -362,6 +362,9 @@ func NewNode(
 
 	cfg.FillEmpty(w.Address())
 	nodeDir := cfg.ResolveAbsolute(cfg.BaseDir)
+	if err := os.MkdirAll(nodeDir, 0700); err != nil {
+		log.Panicf("Fail to create directory %s err=%+v", cfg.BaseDir, err)
+	}
 	log.Println("NodeDir :", nodeDir)
 	rcfg, err := loadRuntimeConfig(nodeDir)
 	if err != nil {
@@ -409,9 +412,6 @@ func NewNode(
 	}
 
 	// Load chains
-	if err := os.MkdirAll(nodeDir, 0700); err != nil {
-		log.Panicf("Fail to create directory %s err=%+v", cfg.BaseDir, err)
-	}
 	fs, err := ioutil.ReadDir(nodeDir)
 	if err != nil {
 		log.Panicf("Fail to read directory %s err=%+v", cfg.BaseDir, err)

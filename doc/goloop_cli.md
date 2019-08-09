@@ -33,6 +33,9 @@ Manage chains
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
+| --key_password |  | Password for the KeyStore file |
+| --key_secret |  | Secret(password) file for KeyStore |
+| --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
@@ -85,6 +88,9 @@ Start to import legacy database
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
+| --key_password |  | Password for the KeyStore file |
+| --key_secret |  | Secret(password) file for KeyStore |
+| --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
@@ -123,6 +129,9 @@ Inspect chain
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
+| --key_password |  | Password for the KeyStore file |
+| --key_secret |  | Secret(password) file for KeyStore |
+| --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
@@ -166,12 +175,15 @@ Join chain
 | --role | 3 | [0:None, 1:Seed, 2:Validator, 3:Both] |
 | --secure_aeads | chacha,aes128,aes256 | Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string |
 | --secure_suites | none,tls,ecdhe | Supported Secure suites with order (none,tls,ecdhe) - Comma separated string |
-| --seed |  | Ip-port of Seed |
+| --seed | [] | Ip-port of Seed |
 
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
+| --key_password |  | Password for the KeyStore file |
+| --key_secret |  | Secret(password) file for KeyStore |
+| --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
@@ -205,6 +217,9 @@ Leave chain
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
+| --key_password |  | Password for the KeyStore file |
+| --key_secret |  | Secret(password) file for KeyStore |
+| --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
@@ -238,6 +253,9 @@ List chains
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
+| --key_password |  | Password for the KeyStore file |
+| --key_secret |  | Secret(password) file for KeyStore |
+| --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
@@ -271,6 +289,9 @@ Chain data reset
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
+| --key_password |  | Password for the KeyStore file |
+| --key_secret |  | Secret(password) file for KeyStore |
+| --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
@@ -304,6 +325,9 @@ Chain start
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
+| --key_password |  | Password for the KeyStore file |
+| --key_secret |  | Secret(password) file for KeyStore |
+| --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
@@ -337,6 +361,9 @@ Chain stop
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
+| --key_password |  | Password for the KeyStore file |
+| --key_secret |  | Secret(password) file for KeyStore |
+| --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
@@ -370,6 +397,9 @@ Chain data verify
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
+| --key_password |  | Password for the KeyStore file |
+| --key_secret |  | Secret(password) file for KeyStore |
+| --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
@@ -1519,7 +1549,6 @@ Server management
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
 | --console_level | trace | Console log level (trace,debug,info,warn,error,fatal,panic) |
-| --ee_instances | 1 | Number of execution engines |
 | --ee_socket |  | Execution engine socket path |
 | --key_password |  | Password for the KeyStore file |
 | --key_secret |  | Secret(password) file for KeyStore |
@@ -1575,7 +1604,6 @@ Save configuration
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
 | --console_level | trace | Console log level (trace,debug,info,warn,error,fatal,panic) |
-| --ee_instances | 1 | Number of execution engines |
 | --ee_socket |  | Execution engine socket path |
 | --key_password |  | Password for the KeyStore file |
 | --key_secret |  | Secret(password) file for KeyStore |
@@ -1620,7 +1648,6 @@ Start server
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
 | --console_level | trace | Console log level (trace,debug,info,warn,error,fatal,panic) |
-| --ee_instances | 1 | Number of execution engines |
 | --ee_socket |  | Execution engine socket path |
 | --key_password |  | Password for the KeyStore file |
 | --key_secret |  | Secret(password) file for KeyStore |
@@ -1658,6 +1685,9 @@ Display a live streams of chains metric-statistics
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
 | --interval | 1 | Pull interval |
+| --key_password |  | Password for the KeyStore file |
+| --key_secret |  | Secret(password) file for KeyStore |
+| --key_store |  | KeyStore file for wallet |
 | --no-stream | false | Only pull the first metric-statistics |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
@@ -1686,15 +1716,23 @@ Display a live streams of chains metric-statistics
 System info
 
 ### Usage
-` goloop system [flags] `
+` goloop system `
 
 ### Options
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
-| --format, -f |  | Format the output using the given Go template |
+| --key_password |  | Password for the KeyStore file |
+| --key_secret |  | Secret(password) file for KeyStore |
+| --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+
+### Child commands
+|Command | Description|
+|---|---|
+| [goloop system config](#goloop-system-config) |  Configure system |
+| [goloop system info](#goloop-system-info) |  Get system information |
 
 ### Parent command
 |Command | Description|
@@ -1713,6 +1751,69 @@ System info
 | [goloop stats](#goloop-stats) |  Display a live streams of chains metric-statistics |
 | [goloop system](#goloop-system) |  System info |
 | [goloop version](#goloop-version) |  Print goloop version |
+
+## goloop system config
+
+### Description
+Configure system
+
+### Usage
+` goloop system config KEY VALUE `
+
+### Inherited Options
+|Name,shorthand | Default | Description|
+|---|---|---|
+| --config, -c |  | Parsing configuration file |
+| --key_password |  | Password for the KeyStore file |
+| --key_secret |  | Secret(password) file for KeyStore |
+| --key_store |  | KeyStore file for wallet |
+| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop system](#goloop-system) |  System info |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop system config](#goloop-system-config) |  Configure system |
+| [goloop system info](#goloop-system-info) |  Get system information |
+
+## goloop system info
+
+### Description
+Get system information
+
+### Usage
+` goloop system info [flags] `
+
+### Options
+|Name,shorthand | Default | Description|
+|---|---|---|
+| --format, -f |  | Format the output using the given Go template |
+
+### Inherited Options
+|Name,shorthand | Default | Description|
+|---|---|---|
+| --config, -c |  | Parsing configuration file |
+| --key_password |  | Password for the KeyStore file |
+| --key_secret |  | Secret(password) file for KeyStore |
+| --key_store |  | KeyStore file for wallet |
+| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop system](#goloop-system) |  System info |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop system config](#goloop-system-config) |  Configure system |
+| [goloop system info](#goloop-system-info) |  Get system information |
 
 ## goloop version
 

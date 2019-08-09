@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"path/filepath"
 
 	"github.com/gosuri/uitable"
 	"github.com/icon-project/goloop/chain/gs"
@@ -23,7 +24,7 @@ func AdminPersistentPreRunE(vc *viper.Viper, adminClient *node.UnixDomainSockHtt
 		cfgFilePath := vc.GetString("config")
 		if nodeSock == "" && cfgFilePath != "" {
 			cfg := &ServerConfig{}
-			cfg.FilePath = cfgFilePath
+			cfg.FilePath,_ = filepath.Abs(cfgFilePath)
 			if err := MergeWithViper(vc, cfg); err != nil {
 				return err
 			}
@@ -34,6 +35,7 @@ func AdminPersistentPreRunE(vc *viper.Viper, adminClient *node.UnixDomainSockHtt
 				addr := common.NewAccountAddressFromPublicKey(cfg.priK.PublicKey())
 				cfg.FillEmpty(addr)
 			}
+
 			nodeSock = cfg.ResolveAbsolute(cfg.CliSocket)
 			vc.Set("node_sock", nodeSock)
 		}
@@ -52,7 +54,11 @@ func AddAdminRequiredFlags(c *cobra.Command) {
 	pFlags.StringP("node_sock", "s", "",
 		"Node Command Line Interface socket path(default:[node_dir]/cli.sock)")
 	pFlags.StringP("config", "c", "", "Parsing configuration file")
+	pFlags.String("key_store", "", "KeyStore file for wallet")
+	pFlags.String("key_secret", "", "Secret(password) file for KeyStore")
+	pFlags.String("key_password", "", "Password for the KeyStore file")
 	MarkAnnotationCustom(pFlags, "node_sock")
+	MarkAnnotationHidden(pFlags, "node_dir","config","key_store","key_secret","key_password")
 }
 
 func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command, *viper.Viper) {

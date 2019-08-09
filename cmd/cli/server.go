@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	stdlog "log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/icon-project/goloop/common"
@@ -43,7 +44,7 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 	cfg.BuildTags = build
 
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-		cfg.FilePath = vc.GetString("config")
+		cfg.FilePath, _ = filepath.Abs(vc.GetString("config"))
 		if err := MergeWithViper(vc, cfg); err != nil {
 			return err
 		}

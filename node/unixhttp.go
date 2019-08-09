@@ -75,6 +75,7 @@ type UnixDomainSockHttpClient struct {
 //socket path platform-specific length Mac&BSD:104, Linux:108
 //when net.Dial return error as
 //  (*net.OpError).Err.(*os.SyscallError).Err.(syscall.Errno) == syscall.EINVAL
+//[TBD] symbolic link cannot resolved
 func resolveSocketPath(sockPath string) string {
 	wd, err := filepath.Abs(".")
 	if err != nil {
