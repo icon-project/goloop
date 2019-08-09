@@ -83,6 +83,7 @@ type consensus struct {
 	lastBlock          module.Block
 	validators         module.ValidatorList
 	members            module.MemberList
+	minimizeEmptyBlock bool
 	votes              *commitVoteList
 	hvs                heightVoteSet
 	nextProposeTime    time.Time
@@ -160,6 +161,7 @@ func (cs *consensus) _resetForNewHeight(prevBlock module.Block, votes *commitVot
 			cs.nm.SetRole(cs.height, module.ROLE_NORMAL, peerIDs...)
 		}
 	}
+	cs.minimizeEmptyBlock = cs.sm.GetMinimizeEmptyBlock(cs.lastBlock.Result())
 	cs.votes = votes
 	cs.hvs.reset(cs.validators.Len())
 	cs.lockedRound = -1
@@ -789,6 +791,33 @@ func (cs *consensus) enterNewRound() {
 	}
 }
 
+func (cs *consensus) enterTransactionWait() {
+	cs.resetForNewStep(stepTransactionWait)
+
+	waitTx := cs.minimizeEmptyBlock
+	if len(cs.lastBlock.NormalTransactions().Hash()) > 0 {
+		waitTx = false
+	}
+
+	if waitTx {
+		hrs := cs.hrs
+		callback := cs.bm.WaitForTransaction(cs.lastBlock.ID(), func() {
+			cs.mutex.Lock()
+			defer cs.mutex.Unlock()
+
+			if cs.hrs != hrs || !cs.started {
+				return
+			}
+
+			cs.enterPropose()
+		})
+		if callback {
+			return
+		}
+	}
+	cs.enterPropose()
+}
+
 func (cs *consensus) enterNewHeight() {
 	votes := cs.hvs.votesFor(cs.commitRound, voteTypePrecommit).commitVoteListForOverTwoThirds()
 	cs.resetForNewHeight(cs.currentBlockParts.block, votes)
@@ -805,14 +834,14 @@ func (cs *consensus) enterNewHeight() {
 				return
 			}
 			cs.processPrefetchItems()
-			if cs.step < stepPropose {
-				cs.enterPropose()
+			if cs.step <= stepTransactionWait {
+				cs.enterTransactionWait()
 			}
 		})
 	} else {
 		cs.processPrefetchItems()
-		if cs.step < stepPropose {
-			cs.enterPropose()
+		if cs.step <= stepTransactionWait {
+			cs.enterTransactionWait()
 		}
 	}
 }
