@@ -6,6 +6,7 @@ type step int
 
 const (
 	stepNewHeight step = iota
+	stepTransactionWait
 	stepNewRound
 	stepPropose
 	stepPrevote
@@ -19,6 +20,8 @@ func (step step) String() string {
 	switch step {
 	case stepNewHeight:
 		return "stepNewHeight"
+	case stepTransactionWait:
+		return "stepTransactionWait"
 	case stepNewRound:
 		return "stepNewRound"
 	case stepPropose:
