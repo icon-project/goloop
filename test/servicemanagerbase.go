@@ -101,6 +101,10 @@ func (_r *ServiceManagerBase) GetRoundLimit(result []byte) int64 {
 	panic("not implemented")
 }
 
+func (_r *ServiceManagerBase) GetMinimizeEmptyBlock(result []byte) bool {
+	panic("not implemented")
+}
+
 func (_r *ServiceManagerBase) HasTransaction(id []byte) bool {
 	panic("not implemented")
 }

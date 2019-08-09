@@ -494,6 +494,10 @@ func (m *manager) GetRoundLimit(result []byte) int64 {
 	return contract.RoundLimitFactorToRound(vss.Len(), factor)
 }
 
+func (m *manager) GetMinimizeEmptyBlock(result []byte) bool {
+	return false
+}
+
 func (m *manager) HasTransaction(id []byte) bool {
 	return m.normalTxPool.HasTx(id) || m.patchTxPool.HasTx(id)
 }
