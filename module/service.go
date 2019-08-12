@@ -300,7 +300,7 @@ type ServiceManager interface {
 	GetMembers(result []byte) (MemberList, error)
 
 	// GetRoundLimit returns round limit
-	GetRoundLimit(result []byte) int64
+	GetRoundLimit(result []byte, vl int) int64
 
 	// GetMinimizeEmptyBlock returns minimize empty block generation flag
 	GetMinimizeBlockGen(result []byte) bool

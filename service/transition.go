@@ -110,6 +110,25 @@ func (tr *transitionResult) Bytes() []byte {
 	}
 }
 
+func patchTransition(t *transition, patchTXs module.TransactionList) *transition {
+	if patchTXs == nil {
+		patchTXs = transaction.NewTransactionListFromSlice(t.db, nil)
+	}
+	return &transition{
+		parent:             t.parent,
+		bi:                 t.bi,
+		patchTransactions:  patchTXs,
+		normalTransactions: t.normalTransactions,
+		db:                 t.db,
+		cm:                 t.cm,
+		eem:                t.eem,
+		chain:              t.chain,
+		log:                t.log,
+		step:               stepInited,
+		tsc:                t.tsc,
+	}
+}
+
 func newTransition(parent *transition, patchtxs module.TransactionList,
 	normaltxs module.TransactionList, bi module.BlockInfo, alreadyValidated bool,
 	logger log.Logger,

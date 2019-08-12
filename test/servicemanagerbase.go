@@ -97,7 +97,7 @@ func (_r *ServiceManagerBase) GetMembers(result []byte) (module.MemberList, erro
 	panic("not implemented")
 }
 
-func (_r *ServiceManagerBase) GetRoundLimit(result []byte) int64 {
+func (_r *ServiceManagerBase) GetRoundLimit(result []byte, vl int) int64 {
 	panic("not implemented")
 }
 

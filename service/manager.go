@@ -162,7 +162,15 @@ func (m *manager) CreateTransition(parent module.Transition,
 
 func (m *manager) SendPatch(data module.Patch) error {
 	if data.Type() == module.PatchTypeSkipTransaction {
-		m.skipTxPatch.Store(data.(module.SkipTransactionPatch))
+		patch, ok := data.(module.SkipTransactionPatch)
+		if !ok {
+			return InvalidPatchDataError.New("Invalid Skip Transaction Patch Data")
+		}
+		if patch.Height() < 1 {
+			return InvalidPatchDataError.Errorf(
+				"InvalidHeightValue(height=%d)", patch.Height())
+		}
+		m.skipTxPatch.Store(patch)
 		return nil
 	} else {
 		return InvalidPatchDataError.New("UnknownPatch")
@@ -186,10 +194,6 @@ func (m *manager) GetPatches(parent module.Transition, bi module.BlockInfo) modu
 		return nil
 	}
 
-	// TODO need to remove
-	if bi == nil {
-		bi = pt.bi
-	}
 	wc := state.NewWorldContext(ws, bi)
 
 	txs, size := m.patchTxPool.Candidate(wc, m.chain.MaxBlockTxBytes(), 0)
@@ -197,7 +201,7 @@ func (m *manager) GetPatches(parent module.Transition, bi module.BlockInfo) modu
 	p, _ := m.skipTxPatch.Load().(module.SkipTransactionPatch)
 	if p != nil {
 		m.log.Debugf("GetPatches() skipTxPatch=%+v wc.BlockHeight()=%d", p, wc.BlockHeight())
-		if bi == nil || p.Height()+1 == wc.BlockHeight() {
+		if p.Height()+1 == wc.BlockHeight() {
 			tx, err := transaction.NewPatchTransaction(
 				p, m.chain.NID(), wc.BlockTimeStamp(), m.chain.Wallet())
 			if err != nil {
@@ -225,7 +229,7 @@ func (m *manager) PatchTransition(t module.Transition, patchTxList module.Transa
 	// If there is no way to validate patches, then set 'alreadyValidated' to
 	// true. It'll skip unnecessary validation for already validated normal
 	// transactions.
-	return newTransition(pt.parent, patchTxList, pt.normalTransactions, pt.bi, false, m.log)
+	return patchTransition(pt, patchTxList)
 }
 
 // Finalize finalizes data related to the transition. It usually stores
@@ -463,19 +467,21 @@ func (m *manager) GetMembers(result []byte) (module.MemberList, error) {
 	return newMemberList(ass), nil
 }
 
-func (m *manager) GetRoundLimit(result []byte) int64 {
+func (m *manager) GetRoundLimit(result []byte, vl int) int64 {
 	wss, err := m.trc.GetWorldSnapshot(result, nil)
 	if err != nil {
 		return 0
 	}
 	ass := wss.GetAccountSnapshot(state.SystemID)
-	vss := wss.GetValidatorSnapshot()
 	as := scoredb.NewStateStoreWith(ass)
 	factor := scoredb.NewVarDB(as, state.VarRoundLimitFactor).Int64()
 	if factor == 0 {
 		return 0
 	}
-	return contract.RoundLimitFactorToRound(vss.Len(), factor)
+	limit := contract.RoundLimitFactorToRound(vl, factor)
+	m.log.Debugf("Validators:%d RoundLimitFactor:%d --> RoundLimit:%d",
+		vl, factor, limit)
+	return limit
 }
 
 func (m *manager) GetMinimizeBlockGen(result []byte) bool {

@@ -166,7 +166,7 @@ func (cs *consensus) _resetForNewHeight(prevBlock module.Block, votes *commitVot
 		}
 	}
 	cs.minimizeBlockGen = cs.sm.GetMinimizeBlockGen(cs.lastBlock.Result())
-	cs.roundLimit = int32(cs.sm.GetRoundLimit(cs.lastBlock.Result()))
+	cs.roundLimit = int32(cs.sm.GetRoundLimit(cs.lastBlock.Result(), cs.validators.Len()))
 	cs.sentPatch = false
 	cs.votes = votes
 	cs.hvs.reset(cs.validators.Len())

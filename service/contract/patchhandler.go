@@ -63,11 +63,11 @@ func (h *patchHandler) handleSkipTransaction(cc CallContext) module.Status {
 		return module.StatusInvalidParameter
 	}
 	p := pd.(module.SkipTransactionPatch)
-	// if cc.BlockHeight() != p.Height() {
-	// 	h.log.Warnf("PatchHandler: height mismatch block.height=%d patch.height=%d",
-	// 		cc.BlockHeight(), p.Height())
-	// 	return module.StatusInvalidParameter
-	// }
+	if cc.BlockHeight() != p.Height() || p.Height() < 1 {
+		h.log.Warnf("PatchHandler: invalid height block.height=%d patch.height=%d",
+			cc.BlockHeight(), p.Height())
+		return module.StatusInvalidParameter
+	}
 	if !h.verifySkipTransactionPatch(cc, p) {
 		return module.StatusInvalidParameter
 	}
