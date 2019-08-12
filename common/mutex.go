@@ -76,3 +76,28 @@ func LockForAutoCall(locker sync.Locker) *AutoCallLocker {
 	locker.Lock()
 	return &AutoCallLocker{locker: locker}
 }
+
+type AutoLock struct {
+	locker sync.Locker
+	locked bool
+}
+
+func NewAutoLock(l sync.Locker) *AutoLock {
+	l.Lock()
+	return &AutoLock{
+		locker: l,
+		locked: true,
+	}
+}
+
+func (l *AutoLock) Unlock() {
+	if l.locked {
+		l.locked = false
+		l.locker.Unlock()
+	}
+}
+
+func (l *AutoLock) Lock() {
+	l.locker.Lock()
+	l.locked = true
+}
