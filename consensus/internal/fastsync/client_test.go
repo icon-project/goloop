@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/log"
-	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/consensus/internal/test"
-	"github.com/stretchr/testify/assert"
+	"github.com/icon-project/goloop/module"
 )
 
 type clientTestSetUp struct {

@@ -6,11 +6,12 @@ import (
 	"io"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/test"
-	"github.com/stretchr/testify/assert"
 )
 
 type tBlockHeader struct {

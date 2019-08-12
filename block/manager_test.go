@@ -5,9 +5,10 @@ import (
 	"io"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
-	"github.com/stretchr/testify/assert"
 )
 
 func assertHasValidGenesisBlock(t *testing.T, bm module.BlockManager) {

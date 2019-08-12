@@ -2,13 +2,15 @@ package fastsync
 
 import (
 	"crypto/rand"
+	"testing"
+
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/consensus/internal/test"
-	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
-	"github.com/stretchr/testify/assert"
 )
 
 const tNumLongBlocks = 1

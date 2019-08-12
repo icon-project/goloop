@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/test"
-	"github.com/stretchr/testify/assert"
 )
 
 type tBlock struct {
