@@ -9,7 +9,7 @@ import (
 )
 
 type skipPatch struct {
-	voteList voteList
+	VoteList voteList
 }
 
 func (s *skipPatch) Type() string {
@@ -21,25 +21,25 @@ func (s *skipPatch) Data() []byte {
 }
 
 func (s *skipPatch) Height() int64 {
-	if s.voteList.Len() == 0 {
+	if s.VoteList.Len() == 0 {
 		return -1
 	}
-	return s.voteList.Get(0).Height - 1
+	return s.VoteList.Get(0).Height - 1
 }
 
 func (s *skipPatch) Verify(vl module.ValidatorList, roundLimit int64, nid int) error {
 	vset := make([]bool, vl.Len())
 	nidBytes := codec.MustMarshalToBytes(nid)
-	l := s.voteList.Len()
+	l := s.VoteList.Len()
 	if l == 0 {
 		return errors.Errorf("votes(%d) <= 2/3 of validators(%d)", l, vl.Len())
 	}
-	round := s.voteList.Get(0).Round
+	round := s.VoteList.Get(0).Round
 	if round < int32(roundLimit) {
 		return errors.Errorf("bad round %d roundLimit %d", round, roundLimit)
 	}
 	for i := 0; i < l; i++ {
-		msg := s.voteList.Get(i)
+		msg := s.VoteList.Get(i)
 		index := vl.IndexOf(msg.address())
 		if index < 0 {
 			return errors.Errorf("bad voter %v at index %d in vote list", msg.address(), i)
@@ -66,7 +66,7 @@ func (s *skipPatch) Verify(vl module.ValidatorList, roundLimit int64, nid int) e
 }
 
 func newSkipPatch(vl *voteList) *skipPatch {
-	return &skipPatch{voteList: *vl}
+	return &skipPatch{VoteList: *vl}
 }
 
 func DecodePatch(t string, bs []byte) (module.Patch, error) {
