@@ -494,9 +494,11 @@ func (cs *consensus) enterPropose() {
 		} else {
 			if cs.height > 1 && cs.roundLimit > 0 && cs.round > cs.roundLimit && !cs.sentPatch {
 				roundEvidences := cs.hvs.getRoundEvidences(cs.roundLimit, cs.nid)
-				err := cs.sm.SendPatch(newSkipPatch(roundEvidences))
-				if err != nil {
-					cs.sentPatch = true
+				if roundEvidences != nil {
+					err := cs.sm.SendPatch(newSkipPatch(roundEvidences))
+					if err != nil {
+						cs.sentPatch = true
+					}
 				}
 			}
 			var err error
