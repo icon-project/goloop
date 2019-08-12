@@ -283,8 +283,10 @@ func (m *manager) _propose(
 		votes:       votes,
 	}
 	pt.state = executingIn
-	// TODO need to fill block information to build new
-	patches := m.sm.GetPatches(bn.in.mtransition(), nil)
+	patches := m.sm.GetPatches(
+		bn.in.mtransition(),
+		newBlockInfo(bn.block.Height()+1, votes.Timestamp()),
+	)
 	var err error
 	pt.in, err = bn.preexe.patch(patches, pt)
 	if err != nil {
