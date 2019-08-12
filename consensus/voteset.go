@@ -1,5 +1,7 @@
 package consensus
 
+import "bytes"
+
 type counter struct {
 	partsID *PartSetID
 	count   int
@@ -121,6 +123,25 @@ func (vs *voteSet) voteList() *voteList {
 	return rvl
 }
 
+func (vs *voteSet) getRoundEvidences(minRound int32, nid []byte) *voteList {
+	rvl := newVoteList()
+	l := len(vs.msgs)
+	f := l / 3
+	for _, msg := range vs.msgs {
+		evidence := msg != nil &&
+			msg.Round >= minRound &&
+			msg.BlockPartSetID == nil &&
+			bytes.Equal(nid, msg.BlockID)
+		if evidence {
+			rvl.AddVote(msg)
+		}
+	}
+	if rvl.Len() > f {
+		return rvl
+	}
+	return nil
+}
+
 // shall not modify returned array. invalidated if a vote is added.
 func (vs *voteSet) getMask() *bitArray {
 	return vs.mask
@@ -176,4 +197,16 @@ func (hvs *heightVoteSet) getVoteListForMask(round int32, prevotesMask *bitArray
 		}
 	}
 	return rvl
+}
+
+func (hvs *heightVoteSet) getRoundEvidences(minRound int32, nid []byte) *voteList {
+	for round := range hvs._votes {
+		if round >= minRound {
+			evidences := hvs.votesFor(round, voteTypePrevote).getRoundEvidences(minRound, nid)
+			if evidences != nil {
+				return evidences
+			}
+		}
+	}
+	return nil
 }
