@@ -79,11 +79,14 @@ type consensus struct {
 	lockWAL     *walMessageWriter
 	commitWAL   *walMessageWriter
 	timestamper module.Timestamper
+	nid         []byte
 
 	lastBlock          module.Block
 	validators         module.ValidatorList
 	members            module.MemberList
 	minimizeBlockGen   bool
+	roundLimit         int32
+	sentPatch          bool
 	votes              *commitVoteList
 	hvs                heightVoteSet
 	nextProposeTime    time.Time
@@ -127,6 +130,7 @@ func newConsensus(c module.Chain, walDir string, wm WALManager, timestamper modu
 		commitCache: newCommitCache(configCommitCacheCap),
 		metric:      metric.NewConsensusMetric(c.MetricContext()),
 		timestamper: timestamper,
+		nid:         codec.MustMarshalToBytes(c.NID()),
 	}
 	cs.logger = c.Logger().WithFields(log.Fields{
 		log.FieldKeyModule: "CS",
@@ -162,6 +166,8 @@ func (cs *consensus) _resetForNewHeight(prevBlock module.Block, votes *commitVot
 		}
 	}
 	cs.minimizeBlockGen = cs.sm.GetMinimizeBlockGen(cs.lastBlock.Result())
+	cs.roundLimit = int32(cs.sm.GetRoundLimit(cs.lastBlock.Result()))
+	cs.sentPatch = false
 	cs.votes = votes
 	cs.hvs.reset(cs.validators.Len())
 	cs.lockedRound = -1
@@ -486,6 +492,13 @@ func (cs *consensus) enterPropose() {
 			cs.sendProposal(cs.lockedBlockParts, cs.lockedRound)
 			cs.currentBlockParts = cs.lockedBlockParts
 		} else {
+			if cs.round > cs.roundLimit && !cs.sentPatch {
+				roundEvidences := cs.hvs.getRoundEvidences(cs.roundLimit, cs.nid)
+				err := cs.sm.SendPatch(newSkipPatch(roundEvidences))
+				if err != nil {
+					cs.sentPatch = true
+				}
+			}
 			var err error
 			cs.cancelBlockRequest, err = cs.bm.Propose(cs.lastBlock.ID(), cs.votes,
 				func(blk module.Block, err error) {
@@ -946,7 +959,7 @@ func (cs *consensus) sendVote(vt voteType, blockParts *blockPartSet) error {
 		msg.BlockID = blockParts.block.ID()
 		msg.BlockPartSetID = blockParts.ID()
 	} else {
-		msg.BlockID = nil
+		msg.BlockID = cs.nid
 		msg.BlockPartSetID = nil
 	}
 	msg.Timestamp = cs.voteTimestamp()
