@@ -309,7 +309,7 @@ func (cs *consensus) ReceiveProposalMessage(msg *proposalMessage, unicast bool) 
 		PartSet: newPartSetFromID(msg.proposal.BlockPartSetID),
 	}
 
-	if cs.step == stepPropose && cs.isProposalAndPOLPrevotesComplete() {
+	if (cs.step == stepTransactionWait || cs.step == stepPropose) && cs.isProposalAndPOLPrevotesComplete() {
 		cs.enterPrevote()
 	}
 	return nil
@@ -342,7 +342,7 @@ func (cs *consensus) ReceiveBlockPartMessage(msg *blockPartMessage, unicast bool
 		}
 	}
 
-	if cs.step == stepPropose && cs.isProposalAndPOLPrevotesComplete() {
+	if (cs.step == stepTransactionWait || cs.step == stepPropose) && cs.isProposalAndPOLPrevotesComplete() {
 		cs.enterPrevote()
 	} else if cs.step == stepCommit && cs.currentBlockParts.IsComplete() {
 		cs.commitAndEnterNewHeight()
