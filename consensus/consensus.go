@@ -492,7 +492,7 @@ func (cs *consensus) enterPropose() {
 			cs.sendProposal(cs.lockedBlockParts, cs.lockedRound)
 			cs.currentBlockParts = cs.lockedBlockParts
 		} else {
-			if cs.round > cs.roundLimit && !cs.sentPatch {
+			if cs.roundLimit > 0 && cs.round > cs.roundLimit && !cs.sentPatch {
 				roundEvidences := cs.hvs.getRoundEvidences(cs.roundLimit, cs.nid)
 				err := cs.sm.SendPatch(newSkipPatch(roundEvidences))
 				if err != nil {
