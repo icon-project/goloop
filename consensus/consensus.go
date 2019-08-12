@@ -1413,7 +1413,9 @@ func (cs *consensus) Start() error {
 	cs.logger.Infof("Start consensus wallet:%v", common.HexPre(cs.wallet.Address().ID()))
 	cs.syncer = newSyncer(cs, cs.logger, cs.nm, cs.bm, &cs.mutex, cs.wallet.Address())
 	cs.syncer.Start()
-	if cs.step == stepNewHeight {
+	if cs.step == stepNewHeight && cs.round == 0 {
+		cs.enterTransactionWait()
+	} else if cs.step == stepNewHeight && cs.round > 0 {
 		cs.enterPropose()
 	} else if cs.step == stepPropose {
 		cs.enterPrevote()
