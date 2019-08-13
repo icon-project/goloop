@@ -29,15 +29,23 @@ func (_r *ServiceManagerBase) PatchTransition(transition module.Transition, patc
 	panic("not implemented")
 }
 
+func (_r *ServiceManagerBase) CreateSyncTransition(transition module.Transition, result []byte) module.Transition {
+	panic("not implemented")
+}
+
+func (_r *ServiceManagerBase) Finalize(transition module.Transition, opt int) error {
+	panic("not implemented")
+}
+
+func (_r *ServiceManagerBase) WaitForTransaction(parent module.Transition, bi module.BlockInfo, cb func()) bool {
+	panic("not implemented")
+}
+
 func (_r *ServiceManagerBase) Start() {
 	panic("not implemented")
 }
 
 func (_r *ServiceManagerBase) Term() {
-	panic("not implemented")
-}
-
-func (_r *ServiceManagerBase) Finalize(transition module.Transition, opt int) error {
 	panic("not implemented")
 }
 
@@ -106,9 +114,5 @@ func (_r *ServiceManagerBase) GetMinimizeBlockGen(result []byte) bool {
 }
 
 func (_r *ServiceManagerBase) HasTransaction(id []byte) bool {
-	panic("not implemented")
-}
-
-func (_r *ServiceManagerBase) WaitForTransaction(parent module.Transition, bi module.BlockInfo, cb func()) bool {
 	panic("not implemented")
 }

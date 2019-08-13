@@ -169,6 +169,19 @@ func (m *managerForImport) PatchTransition(transition module.Transition, patches
 	}
 }
 
+func (m *managerForImport) CreateSyncTransition(transition module.Transition, result []byte) module.Transition {
+	otr := m.ServiceManager.CreateSyncTransition(unwrap(transition), result)
+	if otr == nil {
+		return nil
+	}
+	return &transitionForImport{
+		Transition: otr,
+		m:          m,
+		bi:         transition.(*transitionForImport).bi,
+		errCh:      make(chan error),
+	}
+}
+
 func (m *managerForImport) Finalize(transition module.Transition, opt int) error {
 	if opt&module.FinalizeNormalTransaction != 0 {
 		tr := transition.(*transitionForImport)

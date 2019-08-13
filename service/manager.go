@@ -232,6 +232,10 @@ func (m *manager) PatchTransition(t module.Transition, patchTxList module.Transa
 	return patchTransition(pt, patchTxList)
 }
 
+func (m *manager) CreateSyncTransition(t module.Transition, result []byte) module.Transition {
+	return nil
+}
+
 // Finalize finalizes data related to the transition. It usually stores
 // data to a persistent storage. opt indicates which data are finalized.
 // It should be called for every transition.
