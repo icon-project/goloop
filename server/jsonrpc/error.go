@@ -114,7 +114,7 @@ func ErrInternal(message ...interface{}) *Error {
 }
 
 func AttachDebug(je *Error, err error) {
-	// TODO attach additional information for debug from err.
+	je.Data = fmt.Sprintf("%+v", err)
 }
 
 func NewError(code ErrorCode, err error, debug bool) *Error {
