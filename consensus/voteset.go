@@ -11,6 +11,7 @@ type voteSet struct {
 	msgs     []*voteMessage
 	maxIndex int
 	mask     *bitArray
+	round    int32
 
 	counters []counter
 	count    int
@@ -56,12 +57,17 @@ func (vs *voteSet) add(index int, v *voteMessage) bool {
 	vs.count++
 	vs.maxIndex = -1
 	vs.mask.Set(index)
+	vs.round = v.Round
 	return true
 }
 
 // returns true if has +2/3 votes
 func (vs *voteSet) hasOverTwoThirds() bool {
 	return vs.count > len(vs.msgs)*2/3
+}
+
+func (vs *voteSet) getRound() int32 {
+	return vs.round
 }
 
 // returns true if has +2/3 for nil or a block
@@ -86,6 +92,10 @@ func (vs *voteSet) getOverTwoThirdsPartSetID() (*PartSetID, bool) {
 }
 
 func (vs *voteSet) commitVoteListForOverTwoThirds() *commitVoteList {
+	if len(vs.msgs) == 0 {
+		return newCommitVoteList(nil)
+	}
+
 	partSetID, ok := vs.getOverTwoThirdsPartSetID()
 	if !ok {
 		return nil
@@ -111,6 +121,20 @@ func (vs *voteSet) voteListForOverTwoThirds() *voteList {
 		}
 	}
 	return rvl
+}
+
+func (vs *voteSet) voteSetForOverTwoThird() *voteSet {
+	partSetID, ok := vs.getOverTwoThirdsPartSetID()
+	if !ok {
+		return nil
+	}
+	rvs := newVoteSet(len(vs.msgs))
+	for i, msg := range vs.msgs {
+		if msg != nil && msg.BlockPartSetID.Equal(partSetID) {
+			rvs.add(i, msg)
+		}
+	}
+	return rvs
 }
 
 func (vs *voteSet) voteList() *voteList {
@@ -152,6 +176,7 @@ func newVoteSet(nValidators int) *voteSet {
 		msgs:     make([]*voteMessage, nValidators),
 		maxIndex: -1,
 		mask:     newBitArray(nValidators),
+		round:    -1,
 	}
 }
 
