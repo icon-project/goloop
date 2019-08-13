@@ -571,6 +571,7 @@ func (cs *consensus) enterPrevote() {
 			var err error
 			cs.cancelBlockRequest, err = cs.bm.ImportBlock(
 				cs.currentBlockParts.block,
+				0,
 				func(blk module.Block, err error) {
 					cs.mutex.Lock()
 					defer cs.mutex.Unlock()
@@ -740,6 +741,7 @@ func (cs *consensus) commitAndEnterNewHeight() {
 		hrs := cs.hrs
 		_, err := cs.bm.ImportBlock(
 			cs.currentBlockParts.block,
+			module.ImportByForce,
 			func(blk module.Block, err error) {
 				cs.mutex.Lock()
 				defer cs.mutex.Unlock()

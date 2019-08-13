@@ -30,6 +30,7 @@ type transitionImpl struct {
 	_nRef         int             // count only transactions
 	_parent       *transitionImpl // nil if parent is not accessible
 	_children     []*transitionImpl
+	_sync         bool // true if sync transition
 }
 
 type transition struct {
@@ -176,6 +177,12 @@ func (ti *transitionImpl) patch(
 	patches module.TransactionList,
 	cb transitionCallback,
 ) (*transition, error) {
+	// a sync transition has higher priority
+	for _, c := range ti._parent._children {
+		if c._sync && c._mtransition.PatchTransactions().Equal(patches) {
+			return c._newTransition(cb), nil
+		}
+	}
 	for _, c := range ti._parent._children {
 		if c._mtransition.PatchTransactions().Equal(patches) {
 			return c._newTransition(cb), nil
@@ -204,6 +211,19 @@ func (ti *transitionImpl) propose(bi module.BlockInfo, cb transitionCallback) (*
 		return nil, err
 	}
 	return ti._addChild(cmtr, cb)
+}
+
+func (ti *transitionImpl) sync(result []byte, cb transitionCallback) (*transition, error) {
+	cmtr := ti._chainContext.sm.CreateSyncTransition(ti._mtransition, result)
+	if cmtr == nil {
+		return nil, errors.New("fail to createSyncTransition")
+	}
+	res, err := ti._parent._addChild(cmtr, cb)
+	if err != nil {
+		return nil, err
+	}
+	res._ti._sync = true
+	return res, nil
 }
 
 func (ti *transitionImpl) verifyResult(block module.Block) error {
@@ -283,6 +303,13 @@ func (tr *transition) propose(bi module.BlockInfo, cb transitionCallback) (*tran
 		return nil, nil
 	}
 	return tr._ti.propose(bi, cb)
+}
+
+func (tr *transition) sync(result []byte, cb transitionCallback) (*transition, error) {
+	if tr._ti == nil {
+		return nil, nil
+	}
+	return tr._ti.sync(result, cb)
 }
 
 func (tr *transition) newTransition(cb transitionCallback) *transition {

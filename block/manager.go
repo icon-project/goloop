@@ -82,6 +82,7 @@ type importTask struct {
 	task
 	out   *transition
 	block module.Block
+	flags int
 }
 
 type proposeTask struct {
@@ -129,6 +130,7 @@ func (t *task) cb(block module.Block, err error) {
 
 func (m *manager) _import(
 	block module.Block,
+	flags int,
 	cb func(module.Block, error),
 ) (*importTask, error) {
 	bn := m.nmap[string(block.PrevID())]
@@ -150,6 +152,7 @@ func (m *manager) _import(
 	}
 	it := &importTask{
 		block: block,
+		flags: flags,
 		task: task{
 			manager: m,
 			_cb:     cb,
@@ -237,6 +240,15 @@ func (it *importTask) _onExecute(err error) {
 		}
 		err = it.in.verifyResult(it.block)
 		if err != nil {
+			// verification cannot fail in forced sync case
+			if it.flags&module.ImportByForce > 0 {
+				it.stop()
+				it.in, err = it.in.sync(it.block.Result(), it)
+				if err != nil {
+					it.cb(nil, err)
+					return
+				}
+			}
 			it.stop()
 			it.cb(nil, err)
 			return
@@ -487,6 +499,7 @@ func (m *manager) doGetBlock(id []byte) (module.Block, error) {
 
 func (m *manager) Import(
 	r io.Reader,
+	flags int,
 	cb func(module.Block, error),
 ) (func() bool, error) {
 	m.syncer.begin()
@@ -498,7 +511,7 @@ func (m *manager) Import(
 	if err != nil {
 		return nil, err
 	}
-	it, err := m._import(block, cb)
+	it, err := m._import(block, flags, cb)
 	if err != nil {
 		return nil, err
 	}
@@ -511,6 +524,7 @@ func (m *manager) Import(
 
 func (m *manager) ImportBlock(
 	block module.Block,
+	flags int,
 	cb func(module.Block, error),
 ) (func() bool, error) {
 	m.syncer.begin()
@@ -518,7 +532,7 @@ func (m *manager) ImportBlock(
 
 	m.logger.Debugf("ImportBlock(%x)\n", block.ID())
 
-	it, err := m._import(block, cb)
+	it, err := m._import(block, flags, cb)
 	if err != nil {
 		return nil, err
 	}

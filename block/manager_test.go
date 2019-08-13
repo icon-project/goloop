@@ -156,7 +156,7 @@ func proposeSync(bm module.BlockManager, pid []byte, vs module.CommitVoteSet) *b
 
 func importSync(bm module.BlockManager, r io.Reader) *blockResult {
 	ch := make(chan cbResult)
-	_, err := bm.Import(r, func(blk module.Block, err error) {
+	_, err := bm.Import(r, 0, func(blk module.Block, err error) {
 		ch <- cbResult{blk, err}
 	})
 	if err != nil {
@@ -294,7 +294,7 @@ func TestBlockManager_Import_Cancel(t *testing.T) {
 	ec := make(chan struct{})
 	r := s.bg.getReaderForBlock(1)
 	s.sm.setTransitionExeChan(ec)
-	canceler, err := s.bm.Import(r, func(blk module.Block, err error) {
+	canceler, err := s.bm.Import(r, 0, func(blk module.Block, err error) {
 		assert.Fail(t, "canceled import cb was called")
 	})
 	assert.Nil(t, err, "import return error")

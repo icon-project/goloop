@@ -31,6 +31,12 @@ type Block interface {
 	ToJSON(rcpVersion int) (interface{}, error)
 }
 
+// ImportXXX is used as flag value of BlockManager.Import and
+// BlockManager.ImportBlock.
+const (
+	ImportByForce = 0x1
+)
+
 type BlockManager interface {
 	GetBlockByHeight(height int64) (Block, error)
 	GetLastBlock() (Block, error)
@@ -56,8 +62,8 @@ type BlockManager interface {
 	//	operation. canceler returns true and cb is not called if the
 	//	cancellation was successful. Imported block can be Commited or
 	//	Finalized.
-	Import(r io.Reader, cb func(Block, error)) (canceler func() bool, err error)
-	ImportBlock(blk Block, cb func(Block, error)) (canceler func() bool, err error)
+	Import(r io.Reader, flags int, cb func(Block, error)) (canceler func() bool, err error)
+	ImportBlock(blk Block, flags int, cb func(Block, error)) (canceler func() bool, err error)
 
 	Commit(Block) error
 

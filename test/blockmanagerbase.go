@@ -33,11 +33,11 @@ func (_r *BlockManagerBase) Propose(parentID []byte, votes module.CommitVoteSet,
 	panic("not implemented")
 }
 
-func (_r *BlockManagerBase) Import(r io.Reader, cb func(module.Block, error)) (canceler func() bool, err error) {
+func (_r *BlockManagerBase) Import(r io.Reader, flags int, cb func(module.Block, error)) (canceler func() bool, err error) {
 	panic("not implemented")
 }
 
-func (_r *BlockManagerBase) ImportBlock(blk module.Block, cb func(module.Block, error)) (canceler func() bool, err error) {
+func (_r *BlockManagerBase) ImportBlock(blk module.Block, flags int, cb func(module.Block, error)) (canceler func() bool, err error) {
 	panic("not implemented")
 }
 
