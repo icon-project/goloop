@@ -88,7 +88,7 @@ type consensus struct {
 	minimizeBlockGen   bool
 	roundLimit         int32
 	sentPatch          bool
-	votes              *voteSet
+	lastVotes          *voteSet
 	hvs                heightVoteSet
 	nextProposeTime    time.Time
 	lockedRound        int32
@@ -170,7 +170,7 @@ func (cs *consensus) _resetForNewHeight(prevBlock module.Block, votes *voteSet) 
 	cs.minimizeBlockGen = cs.sm.GetMinimizeBlockGen(cs.lastBlock.Result())
 	cs.roundLimit = int32(cs.sm.GetRoundLimit(cs.lastBlock.Result(), cs.validators.Len()))
 	cs.sentPatch = false
-	cs.votes = votes
+	cs.lastVotes = votes
 	cs.hvs.reset(cs.validators.Len())
 	cs.lockedRound = -1
 	cs.lockedBlockParts = nil
@@ -359,18 +359,18 @@ func (cs *consensus) ReceiveBlockPartMessage(msg *blockPartMessage, unicast bool
 }
 
 func (cs *consensus) ReceiveVoteMessage(msg *voteMessage, unicast bool) (int, error) {
-	psid, ok := cs.votes.getOverTwoThirdsPartSetID()
+	psid, ok := cs.lastVotes.getOverTwoThirdsPartSetID()
 	lastPC := ok &&
 		msg.Height == cs.height-1 &&
 		cs.step <= stepTransactionWait &&
 		msg.Type == voteTypePrecommit &&
-		msg.Round == cs.votes.getRound() &&
+		msg.Round == cs.lastVotes.getRound() &&
 		msg.BlockPartSetID.Equal(psid)
 	if lastPC {
 		if cs.prevValidators != nil {
 			index := cs.prevValidators.IndexOf(msg.address())
 			if index >= 0 {
-				cs.votes.add(index, msg)
+				cs.lastVotes.add(index, msg)
 			}
 		}
 	}
@@ -520,7 +520,7 @@ func (cs *consensus) enterPropose() {
 				}
 			}
 			var err error
-			cvl := cs.votes.commitVoteListForOverTwoThirds()
+			cvl := cs.lastVotes.commitVoteListForOverTwoThirds()
 			cs.cancelBlockRequest, err = cs.bm.Propose(cs.lastBlock.ID(), cvl,
 				func(blk module.Block, err error) {
 					cs.mutex.Lock()
@@ -1322,7 +1322,7 @@ func (cs *consensus) applyCommitWAL(prevValidators addressIndexer) error {
 				}
 				psid, ok := vs.getOverTwoThirdsPartSetID()
 				if ok && psid != nil {
-					cs.votes = vs.voteSetForOverTwoThird()
+					cs.lastVotes = vs.voteSetForOverTwoThird()
 				}
 			} else if m.VoteList.Get(0).height() == cs.height {
 				for i := 0; i < m.VoteList.Len(); i++ {
@@ -1563,7 +1563,7 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 		}
 		var cvl *commitVoteList
 		if h == cs.height-1 {
-			cvl = cs.votes.commitVoteListForOverTwoThirds()
+			cvl = cs.lastVotes.commitVoteListForOverTwoThirds()
 		} else {
 			nb, err := cs.bm.GetBlockByHeight(h + 1)
 			if err != nil {
