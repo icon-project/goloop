@@ -25,17 +25,17 @@ func RpcPersistentPreRunE(vc *viper.Viper, rpcClient *client.ClientV3) func(cmd 
 		if err := ValidateFlagsWithViper(vc, cmd.Flags()); err != nil {
 			return err
 		}
-		*rpcClient = *client.NewClientV3(vc.GetString("endpoint"))
+		*rpcClient = *client.NewClientV3(vc.GetString("uri"))
 		return nil
 	}
 }
 
 func AddRpcRequiredFlags(c *cobra.Command) {
 	pFlags := c.PersistentFlags()
-	pFlags.String("endpoint", "", "Server endpoint")
+	pFlags.String("uri", "http://127.0.0.1:9080/api/v3", "URI of JSON-RPC API")
 	//TODO dump jsonrpc message
 	//pFlags.Bool("dump", false, "Print JSON-RPC Request and Response")
-	MarkAnnotationCustom(pFlags, "endpoint")
+	MarkAnnotationCustom(pFlags, "uri")
 }
 
 func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command, *viper.Viper) {
