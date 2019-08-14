@@ -175,7 +175,7 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 	startFlags.String("cpuprofile", "", "CPU Profiling data file")
 	startFlags.String("memprofile", "", "Memory Profiling data file")
 	startFlags.MarkHidden("mod_level")
-	BindPFlags(vc, rootCmd.PersistentFlags())
+	BindPFlags(vc, startFlags)
 
 	return rootCmd, vc
 }
