@@ -402,7 +402,7 @@ func StartCPUProfile(filename string) error {
 func StartMemoryProfile(filename string) error {
 	if filename != "" {
 		c := make(chan os.Signal, 1)
-		signal.Notify(c, syscall.SIGHUP)
+		signal.Notify(c, syscall.SIGUSR1)
 		go func(c chan os.Signal) {
 			var memProfileCnt int32 = 0
 			for {
@@ -457,13 +457,13 @@ func JsonPrettySaveFile(filename string, perm os.FileMode, v interface{}) error 
 }
 
 func HttpResponsePrettyPrintln(w io.Writer, resp *http.Response) error {
-	if _, err := fmt.Fprintln(w,"Status", resp.Status); err != nil {
+	if _, err := fmt.Fprintln(w, "Status", resp.Status); err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintln(w,"Header", resp.Header); err != nil {
+	if _, err := fmt.Fprintln(w, "Header", resp.Header); err != nil {
 		return err
 	}
-	if _, err := fmt.Fprintln(w,"Response"); err != nil {
+	if _, err := fmt.Fprintln(w, "Response"); err != nil {
 		return err
 	}
 	respB, err := ioutil.ReadAll(resp.Body)
@@ -471,7 +471,7 @@ func HttpResponsePrettyPrintln(w io.Writer, resp *http.Response) error {
 	if err != nil {
 		return fmt.Errorf("failed read err=%+v", err)
 	}
-	_, err = fmt.Fprintln(w,string(respB))
+	_, err = fmt.Fprintln(w, string(respB))
 	return err
 }
 
