@@ -2,7 +2,7 @@ package network
 
 import (
 	"crypto/elliptic"
-	"os"
+	"io"
 	"time"
 
 	"github.com/icon-project/goloop/common/errors"
@@ -110,5 +110,5 @@ var (
 		SecureAeadSuiteAes128Gcm,
 		SecureAeadSuiteAes256Gcm,
 	}
-	DefaultSecureKeyLogWriter = os.Stdout
+	DefaultSecureKeyLogWriter io.Writer
 )
