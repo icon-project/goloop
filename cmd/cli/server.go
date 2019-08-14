@@ -205,7 +205,6 @@ func MergeWithViper(vc *viper.Viper, cfg *ServerConfig) error {
 	eeSocket := vc.GetString("ee_socket")
 
 	if cfg.FilePath != "" {
-		stdlog.Printf("Read config file=%s", cfg.FilePath)
 		f, err := os.Open(cfg.FilePath)
 		if err != nil {
 			return errors.Errorf("fail to open config file=%s err=%+v", cfg.FilePath, err)
