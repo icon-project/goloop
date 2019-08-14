@@ -47,6 +47,21 @@ function create(){
           --env GOLOOP_LOGFILE=${GOLOOP_LOGFILE} \
           --env GOLOOP_P2P=${GOLOOP_DOCKER_PREFIX}-${i}:8080 \
           ${REPO_GOLOOP}
+
+        set +e
+        MAX_RETRY=10
+        echo -n "waiting for start server "
+        for i in $(seq 1 $MAX_RETRY);do
+          RESULT=$(docker exec ${GOLOOP_DOCKER_PREFIX}-${i} goloop system info 2>&1)
+          if [ "$?" == "0" ];then
+            echo "ok"
+            break
+          fi
+          echo -n "."
+          sleep 0.5
+        done
+        echo $RESULT
+        set -e
     done
 }
 
