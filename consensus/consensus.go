@@ -64,13 +64,9 @@ type blockPartSet struct {
 type consensus struct {
 	hrs
 
+	c           module.Chain
 	logger      log.Logger
-	nm          module.NetworkManager
-	bm          module.BlockManager
-	sm          module.ServiceManager
-	wallet      module.Wallet
 	ph          module.ProtocolHandler
-	rg          module.Regulator
 	mutex       common.Mutex
 	syncer      Syncer
 	walDir      string
@@ -121,11 +117,7 @@ func NewConsensus(c module.Chain, walDir string, timestamper module.Timestamper)
 
 func newConsensus(c module.Chain, walDir string, wm WALManager, timestamper module.Timestamper) *consensus {
 	cs := &consensus{
-		nm:          c.NetworkManager(),
-		bm:          c.BlockManager(),
-		sm:          c.ServiceManager(),
-		wallet:      c.Wallet(),
-		rg:          c.Regulator(),
+		c:           c,
 		walDir:      walDir,
 		wm:          wm,
 		commitCache: newCommitCache(configCommitCacheCap),
@@ -151,9 +143,9 @@ func (cs *consensus) _resetForNewHeight(prevBlock module.Block, votes *voteSet) 
 			v, _ := cs.validators.Get(i)
 			peerIDs[i] = network.NewPeerIDFromAddress(v.Address())
 		}
-		cs.nm.SetRole(cs.height, module.ROLE_VALIDATOR, peerIDs...)
+		cs.c.NetworkManager().SetRole(cs.height, module.ROLE_VALIDATOR, peerIDs...)
 	}
-	nextMembers, err := cs.sm.GetMembers(cs.lastBlock.Result())
+	nextMembers, err := cs.c.ServiceManager().GetMembers(cs.lastBlock.Result())
 	if err != nil {
 		cs.logger.Warnf("cannot get members. error:%+v\n", err)
 	} else {
@@ -164,11 +156,11 @@ func (cs *consensus) _resetForNewHeight(prevBlock module.Block, votes *voteSet) 
 				addr, _ := it.Get()
 				peerIDs = append(peerIDs, network.NewPeerIDFromAddress(addr))
 			}
-			cs.nm.SetRole(cs.height, module.ROLE_NORMAL, peerIDs...)
+			cs.c.NetworkManager().SetRole(cs.height, module.ROLE_NORMAL, peerIDs...)
 		}
 	}
-	cs.minimizeBlockGen = cs.sm.GetMinimizeBlockGen(cs.lastBlock.Result())
-	cs.roundLimit = int32(cs.sm.GetRoundLimit(cs.lastBlock.Result(), cs.validators.Len()))
+	cs.minimizeBlockGen = cs.c.ServiceManager().GetMinimizeBlockGen(cs.lastBlock.Result())
+	cs.roundLimit = int32(cs.c.ServiceManager().GetRoundLimit(cs.lastBlock.Result(), cs.validators.Len()))
 	cs.sentPatch = false
 	cs.lastVotes = votes
 	cs.hvs.reset(cs.validators.Len())
@@ -342,7 +334,7 @@ func (cs *consensus) ReceiveBlockPartMessage(msg *blockPartMessage, unicast bool
 		return -1, err
 	}
 	if cs.currentBlockParts.IsComplete() {
-		block, err := cs.bm.NewBlockFromReader(cs.currentBlockParts.NewReader())
+		block, err := cs.c.BlockManager().NewBlockFromReader(cs.currentBlockParts.NewReader())
 		if err != nil {
 			cs.logger.Warnf("failed to create block. %+v\n", err)
 		} else {
@@ -492,7 +484,7 @@ func (cs *consensus) enterPropose() {
 	} else {
 		cs.nextProposeTime = now
 	}
-	cs.rg.OnPropose(now)
+	cs.c.Regulator().OnPropose(now)
 
 	hrs := cs.hrs
 	cs.timer = time.AfterFunc(timeoutPropose, func() {
@@ -513,7 +505,7 @@ func (cs *consensus) enterPropose() {
 			if cs.height > 1 && cs.roundLimit > 0 && cs.round > cs.roundLimit && !cs.sentPatch {
 				roundEvidences := cs.hvs.getRoundEvidences(cs.roundLimit, cs.nid)
 				if roundEvidences != nil {
-					err := cs.sm.SendPatch(newSkipPatch(roundEvidences))
+					err := cs.c.ServiceManager().SendPatch(newSkipPatch(roundEvidences))
 					if err != nil {
 						cs.sentPatch = true
 					}
@@ -521,7 +513,7 @@ func (cs *consensus) enterPropose() {
 			}
 			var err error
 			cvl := cs.lastVotes.commitVoteListForOverTwoThirds()
-			cs.cancelBlockRequest, err = cs.bm.Propose(cs.lastBlock.ID(), cvl,
+			cs.cancelBlockRequest, err = cs.c.BlockManager().Propose(cs.lastBlock.ID(), cvl,
 				func(blk module.Block, err error) {
 					cs.mutex.Lock()
 					defer cs.mutex.Unlock()
@@ -569,7 +561,7 @@ func (cs *consensus) enterPrevote() {
 			cs.sendVote(voteTypePrevote, cs.currentBlockParts)
 		} else {
 			var err error
-			cs.cancelBlockRequest, err = cs.bm.ImportBlock(
+			cs.cancelBlockRequest, err = cs.c.BlockManager().ImportBlock(
 				cs.currentBlockParts.block,
 				0,
 				func(blk module.Block, err error) {
@@ -739,7 +731,7 @@ func (cs *consensus) enterPrecommitWait() {
 func (cs *consensus) commitAndEnterNewHeight() {
 	if !cs.currentBlockParts.validated {
 		hrs := cs.hrs
-		_, err := cs.bm.ImportBlock(
+		_, err := cs.c.BlockManager().ImportBlock(
 			cs.currentBlockParts.block,
 			module.ImportByForce,
 			func(blk module.Block, err error) {
@@ -754,7 +746,7 @@ func (cs *consensus) commitAndEnterNewHeight() {
 					cs.logger.Panicf("commitAndEnterNewHeight: %+v\n", err)
 				}
 				cs.currentBlockParts.validated = true
-				err = cs.bm.Finalize(cs.currentBlockParts.block)
+				err = cs.c.BlockManager().Finalize(cs.currentBlockParts.block)
 				if err != nil {
 					cs.logger.Panicf("commitAndEnterNewHeight: %+v\n", err)
 				}
@@ -765,7 +757,7 @@ func (cs *consensus) commitAndEnterNewHeight() {
 			cs.logger.Panicf("commitAndEnterNewHeight: %+v\n", err)
 		}
 	} else {
-		err := cs.bm.Finalize(cs.currentBlockParts.block)
+		err := cs.c.BlockManager().Finalize(cs.currentBlockParts.block)
 		if err != nil {
 			cs.logger.Panicf("commitAndEnterNewHeight: %+v\n", err)
 		}
@@ -789,7 +781,7 @@ func (cs *consensus) enterCommit(precommits *voteSet, partSetID *PartSetID, roun
 	cs.nextProposeTime = time.Now()
 	if cs.consumedNonunicast || cs.validators.Len() == 1 {
 		if cs.timestamper == nil {
-			cs.nextProposeTime = cs.nextProposeTime.Add(cs.rg.CommitTimeout())
+			cs.nextProposeTime = cs.nextProposeTime.Add(cs.c.Regulator().CommitTimeout())
 		}
 	}
 
@@ -837,7 +829,7 @@ func (cs *consensus) enterTransactionWait() {
 
 	if waitTx {
 		hrs := cs.hrs
-		callback := cs.bm.WaitForTransaction(cs.lastBlock.ID(), func() {
+		callback := cs.c.BlockManager().WaitForTransaction(cs.lastBlock.ID(), func() {
 			cs.mutex.Lock()
 			defer cs.mutex.Unlock()
 
@@ -890,7 +882,7 @@ func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) error {
 	msg.Round = cs.round
 	msg.BlockPartSetID = blockParts.ID()
 	msg.POLRound = polRound
-	err := msg.sign(cs.wallet)
+	err := msg.sign(cs.c.Wallet())
 	if err != nil {
 		return err
 	}
@@ -952,7 +944,7 @@ func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) error {
 
 func (cs *consensus) voteTimestamp() int64 {
 	var timestamp int64
-	blockIota := int64(cs.rg.MinCommitTimeout() / time.Microsecond)
+	blockIota := int64(cs.c.Regulator().MinCommitTimeout() / time.Microsecond)
 	if cs.lockedBlockParts != nil && cs.lockedBlockParts.block != nil {
 		timestamp = cs.lockedBlockParts.block.Timestamp() + blockIota
 	} else if cs.currentBlockParts != nil && cs.currentBlockParts.block != nil {
@@ -969,7 +961,7 @@ func (cs *consensus) voteTimestamp() int64 {
 }
 
 func (cs *consensus) sendVote(vt voteType, blockParts *blockPartSet) error {
-	if cs.validators.IndexOf(cs.wallet.Address()) < 0 {
+	if cs.validators.IndexOf(cs.c.Wallet().Address()) < 0 {
 		return nil
 	}
 
@@ -987,7 +979,7 @@ func (cs *consensus) sendVote(vt voteType, blockParts *blockPartSet) error {
 	}
 	msg.Timestamp = cs.voteTimestamp()
 
-	err := msg.sign(cs.wallet)
+	err := msg.sign(cs.c.Wallet())
 	if err != nil {
 		return err
 	}
@@ -1032,7 +1024,7 @@ func (cs *consensus) isProposerFor(height int64, round int32) bool {
 	if v == nil {
 		return false
 	}
-	return v.Address().Equal(cs.wallet.Address())
+	return v.Address().Equal(cs.c.Wallet().Address())
 }
 
 func (cs *consensus) isProposer() bool {
@@ -1257,7 +1249,7 @@ func (cs *consensus) applyLockWAL() error {
 		}
 	}
 	if lastBPSet != nil {
-		blk, err := cs.bm.NewBlockFromReader(lastBPSet.NewReader())
+		blk, err := cs.c.BlockManager().NewBlockFromReader(lastBPSet.NewReader())
 		if err != nil {
 			return err
 		}
@@ -1393,13 +1385,13 @@ func (cs *consensus) Start() error {
 	cs.mutex.Lock()
 	defer cs.mutex.Unlock()
 
-	lastBlock, err := cs.bm.GetLastBlock()
+	lastBlock, err := cs.c.BlockManager().GetLastBlock()
 	if err != nil {
 		return err
 	}
 	var validators addressIndexer
 	if lastBlock.Height() > 0 {
-		prevBlock, err := cs.bm.GetBlockByHeight(lastBlock.Height() - 1)
+		prevBlock, err := cs.c.BlockManager().GetBlockByHeight(lastBlock.Height() - 1)
 		if err != nil {
 			return err
 		}
@@ -1408,7 +1400,7 @@ func (cs *consensus) Start() error {
 		validators = &emptyAddressIndexer{}
 	}
 
-	cs.ph, err = cs.nm.RegisterReactor("consensus", cs, csProtocols, configEnginePriority)
+	cs.ph, err = cs.c.NetworkManager().RegisterReactor("consensus", cs, csProtocols, configEnginePriority)
 	if err != nil {
 		return err
 	}
@@ -1447,8 +1439,8 @@ func (cs *consensus) Start() error {
 	cs.commitWAL = &walMessageWriter{ww}
 
 	cs.started = true
-	cs.logger.Infof("Start consensus wallet:%v", common.HexPre(cs.wallet.Address().ID()))
-	cs.syncer = newSyncer(cs, cs.logger, cs.nm, cs.bm, &cs.mutex, cs.wallet.Address())
+	cs.logger.Infof("Start consensus wallet:%v", common.HexPre(cs.c.Wallet().Address().ID()))
+	cs.syncer = newSyncer(cs, cs.logger, cs.c.NetworkManager(), cs.c.BlockManager(), &cs.mutex, cs.c.Wallet().Address())
 	cs.syncer.Start()
 	if cs.step == stepNewHeight && cs.round == 0 {
 		cs.enterTransactionWait()
@@ -1476,7 +1468,7 @@ func (cs *consensus) Term() {
 
 	cs.started = false
 
-	cs.nm.UnregisterReactor(cs)
+	cs.c.NetworkManager().UnregisterReactor(cs)
 	if cs.syncer != nil {
 		cs.syncer.Stop()
 	}
@@ -1559,7 +1551,7 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 			blockPartSet: cs.currentBlockParts,
 		}
 	} else {
-		b, err := cs.bm.GetBlockByHeight(h)
+		b, err := cs.c.BlockManager().GetBlockByHeight(h)
 		if err != nil {
 			return nil, err
 		}
@@ -1567,7 +1559,7 @@ func (cs *consensus) getCommit(h int64) (*commit, error) {
 		if h == cs.height-1 {
 			cvl = cs.lastVotes.commitVoteListForOverTwoThirds()
 		} else {
-			nb, err := cs.bm.GetBlockByHeight(h + 1)
+			nb, err := cs.c.BlockManager().GetBlockByHeight(h + 1)
 			if err != nil {
 				return nil, err
 			}
