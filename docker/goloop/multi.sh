@@ -56,7 +56,7 @@ function join(){
     
     # collect node addresses
     for i in $(seq 0 $((${GOLOOP_DOCKER_REPLICAS}-1)));do 
-        ADDRESS=$(docker exec ${GOLOOP_DOCKER_PREFIX}-${i} goloop system info --format "{{.Setting.Address}}")
+        ADDRESS=$(docker exec ${GOLOOP_DOCKER_PREFIX}-${i} goloop system info --format "{{.Config.Static.Address}}")
         VALIDATORS="${VALIDATORS} -v ${ADDRESS}"
         ADDRESSES="${ADDRESSES} ${ADDRESS}"
     done
