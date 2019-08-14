@@ -6,30 +6,57 @@ import (
 	"io/ioutil"
 	stdlog "log"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/wallet"
+	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/node"
 )
 
 type ServerConfig struct {
 	node.StaticConfig
 
-	Key           []byte          `json:"key,omitempty"`
 	KeyStoreData  json.RawMessage `json:"key_store"`
 	KeyStorePass  string          `json:"key_password,omitempty"`
 	isPresentPass bool
 	priK          *crypto.PrivateKey
+	addr          module.Address
 
 	LogLevel     string `json:"log_level"`
 	ConsoleLevel string `json:"console_level"`
+}
+
+func (cfg *ServerConfig) MakesureKeyStore() error {
+	var err error
+	if len(cfg.KeyStoreData) > 0 {
+		if cfg.KeyStorePass == "" {
+			return errors.Errorf("there is no password information for the KeyStore")
+		}
+		if cfg.priK, err = wallet.DecryptKeyStore(cfg.KeyStoreData, []byte(cfg.KeyStorePass)); err != nil {
+			return errors.Errorf("fail to decrypt KeyStore err=%+v", err)
+		}
+	}
+
+	if cfg.priK == nil {
+		cfg.priK, _ = crypto.GenerateKeyPair()
+		if len(cfg.KeyStorePass) == 0 {
+			cfg.KeyStorePass = DefaultKeyStorePass
+		}
+	}
+	// make sure that cfg.KeyStoreData always has valid value to let them
+	// be stored with --save_key_store option even though the key is
+	// provided by cfg.Key value.
+	if ks, err := wallet.EncryptKeyAsKeyStore(cfg.priK, []byte(cfg.KeyStorePass)); err != nil {
+		return errors.Errorf("fail to encrypt private key err=%+v", err)
+	} else {
+		cfg.KeyStoreData = ks
+	}
+	return err
 }
 
 const (
@@ -48,20 +75,8 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 		if err := MergeWithViper(vc, cfg); err != nil {
 			return err
 		}
-		if cfg.priK == nil {
-			cfg.priK, _ = crypto.GenerateKeyPair()
-			log.Println("Generated KeyPair", common.NewAccountAddressFromPublicKey(cfg.priK.PublicKey()).String())
-			if len(cfg.KeyStorePass) == 0 {
-				cfg.KeyStorePass = DefaultKeyStorePass
-			}
-		}
-		// make sure that cfg.KeyStoreData always has valid value to let them
-		// be stored with --save_key_store option even though the key is
-		// provided by cfg.Key value.
-		if ks, err := wallet.EncryptKeyAsKeyStore(cfg.priK, []byte(cfg.KeyStorePass)); err != nil {
-			return errors.Errorf("fail to encrypt private key err=%+v", err)
-		} else {
-			cfg.KeyStoreData = ks
+		if err := cfg.MakesureKeyStore(); err != nil {
+			return err
 		}
 		return nil
 	}
@@ -99,7 +114,7 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 			if err := JsonPrettySaveFile(saveFilePath, 0644, cfg); err != nil {
 				return err
 			}
-			log.Println("Save configuration to", saveFilePath)
+			stdlog.Println("Save configuration to", saveFilePath)
 
 			if saveKeyStore, _ := cmd.Flags().GetString("save_key_store"); saveKeyStore != "" {
 				if err := JsonPrettySaveFile(saveKeyStore, 0600, cfg.KeyStoreData); err != nil {
@@ -190,7 +205,7 @@ func MergeWithViper(vc *viper.Viper, cfg *ServerConfig) error {
 	eeSocket := vc.GetString("ee_socket")
 
 	if cfg.FilePath != "" {
-		log.Printf("Read config file=%s", cfg.FilePath)
+		stdlog.Printf("Read config file=%s", cfg.FilePath)
 		f, err := os.Open(cfg.FilePath)
 		if err != nil {
 			return errors.Errorf("fail to open config file=%s err=%+v", cfg.FilePath, err)
@@ -228,7 +243,7 @@ func MergeWithViper(vc *viper.Viper, cfg *ServerConfig) error {
 		if ksp, err := ioutil.ReadFile(keyStoreSecret); err != nil {
 			return errors.Errorf("fail to open KeySecret file=%s err=%+v", keyStoreSecret, err)
 		} else {
-			cfg.KeyStorePass = strings.TrimSpace(string(ksp))
+			cfg.KeyStorePass = string(ksp)
 		}
 	}
 
@@ -238,17 +253,11 @@ func MergeWithViper(vc *viper.Viper, cfg *ServerConfig) error {
 	//overwrite config.KeyStoreData
 	//overwrite read(env.KeyStore)
 	//overwrite read(flag.KeyStore)
-	var err error
 	if len(cfg.KeyStoreData) > 0 {
-		if cfg.KeyStorePass == "" {
-			return errors.Errorf("there is no password information for the KeyStore")
-		}
-		if cfg.priK, err = wallet.DecryptKeyStore(cfg.KeyStoreData, []byte(cfg.KeyStorePass)); err != nil {
-			return errors.Errorf("fail to decrypt KeyStore err=%+v", err)
-		}
-	} else if len(cfg.Key) > 0 {
-		if cfg.priK, err = crypto.ParsePrivateKey(cfg.Key); err != nil {
-			return errors.Errorf("illegal key data=[%x]", cfg.Key)
+		if addr, err := wallet.ReadAddressFromKeyStore(cfg.KeyStoreData); err != nil {
+			return errors.Errorf("fail to unmarshall keyStore from config err=%+v", err)
+		} else {
+			cfg.addr = addr
 		}
 	}
 	return nil

@@ -13,7 +13,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/icon-project/goloop/chain/gs"
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/node"
 )
@@ -29,11 +28,10 @@ func AdminPersistentPreRunE(vc *viper.Viper, adminClient *node.UnixDomainSockHtt
 				return err
 			}
 			if cfg.CliSocket == "" {
-				if cfg.priK == nil {
+				if cfg.addr == nil {
 					return errors.Errorf("not exists keyStore on config %s", cfgFilePath)
 				}
-				addr := common.NewAccountAddressFromPublicKey(cfg.priK.PublicKey())
-				cfg.FillEmpty(addr)
+				cfg.FillEmpty(cfg.addr)
 			}
 
 			nodeSock = cfg.ResolveAbsolute(cfg.CliSocket)
@@ -55,10 +53,7 @@ func AddAdminRequiredFlags(c *cobra.Command) {
 		"Node Command Line Interface socket path(default:[node_dir]/cli.sock)")
 	pFlags.StringP("config", "c", "", "Parsing configuration file")
 	pFlags.String("key_store", "", "KeyStore file for wallet")
-	pFlags.String("key_secret", "", "Secret(password) file for KeyStore")
-	pFlags.String("key_password", "", "Password for the KeyStore file")
 	MarkAnnotationCustom(pFlags, "node_sock")
-	MarkAnnotationHidden(pFlags, "node_dir","config","key_store","key_secret","key_password")
 }
 
 func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command, *viper.Viper) {
