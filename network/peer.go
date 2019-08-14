@@ -1,7 +1,6 @@
 package network
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -11,8 +10,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/metric"
@@ -533,44 +530,4 @@ func (p *Peer) getMetric() *metric.NetworkMetric {
 	p.metricMtx.RLock()
 	defer p.metricMtx.RUnlock()
 	return p.mtr
-}
-
-const (
-	peerIDSize = 20 //common.AddressIDBytes
-)
-
-type peerID struct {
-	*common.Address
-}
-
-func NewPeerID(b []byte) module.PeerID {
-	return &peerID{common.NewAccountAddress(b)}
-}
-
-func NewPeerIDFromAddress(a module.Address) module.PeerID {
-	return NewPeerID(a.ID())
-}
-
-func NewPeerIDFromPublicKey(k *crypto.PublicKey) module.PeerID {
-	return &peerID{common.NewAccountAddressFromPublicKey(k)}
-}
-
-func NewPeerIDFromString(s string) module.PeerID {
-	a := common.NewAddressFromString(s)
-	if a.IsContract() {
-		panic("PeerId must be AccountAddress")
-	}
-	return &peerID{a}
-}
-
-func (pi *peerID) Bytes() []byte {
-	return pi.Address.ID()
-}
-
-func (pi *peerID) Equal(a module.PeerID) bool {
-	return bytes.Equal(pi.Bytes(), a.Bytes())
-}
-
-func (pi *peerID) String() string {
-	return pi.Address.String()
 }
