@@ -179,12 +179,16 @@ func (ti *transitionImpl) patch(
 ) (*transition, error) {
 	// a sync transition has higher priority
 	for _, c := range ti._parent._children {
-		if c._sync && c._mtransition.PatchTransactions().Equal(patches) {
+		same := c._mtransition.NormalTransactions().Equal(ti._mtransition.NormalTransactions()) &&
+			c._mtransition.PatchTransactions().Equal(patches)
+		if c._sync && same {
 			return c._newTransition(cb), nil
 		}
 	}
 	for _, c := range ti._parent._children {
-		if c._mtransition.PatchTransactions().Equal(patches) {
+		same := c._mtransition.NormalTransactions().Equal(ti._mtransition.NormalTransactions()) &&
+			c._mtransition.PatchTransactions().Equal(patches)
+		if same {
 			return c._newTransition(cb), nil
 		}
 	}
