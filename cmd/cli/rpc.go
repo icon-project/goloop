@@ -342,7 +342,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 	rootPFlags.String("key_store", "", "KeyStore file for wallet")
 	rootPFlags.String("key_secret", "", "Secret(password) file for KeyStore")
 	rootPFlags.String("key_password", "", "Password for the KeyStore file")
-	rootPFlags.BytesHex("nid", nil, "Network ID, HexString")
+	rootPFlags.String("nid", "", "Network ID")
 	rootPFlags.Int64("step_limit", 0, "StepLimit")
 	MarkAnnotationCustom(rootPFlags, "key_store", "nid", "step_limit")
 	BindPFlags(vc, rootCmd.PersistentFlags())
@@ -391,7 +391,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 	}
 	rootCmd.AddCommand(rawCmd)
 	rawFlags := rawCmd.Flags()
-	rawFlags.BytesHex("nid", nil, "Network ID, HexString")
+	rawFlags.String("nid", "", "Network ID")
 	rawFlags.Int64("step_limit", 0, "StepLimit")
 
 	transferCmd := &cobra.Command{
