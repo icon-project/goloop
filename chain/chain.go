@@ -342,7 +342,7 @@ func (c *singleChain) _init() error {
 	}
 	if c.cfg.DBType != "mapdb" {
 		if err := os.MkdirAll(DBDir, 0700); err != nil {
-			return err
+			return errors.Wrapf(err, "fail to make directory dir=%s", DBDir)
 		}
 	}
 	DBName := strconv.FormatInt(int64(c.cfg.NID), 16)
@@ -355,7 +355,8 @@ func (c *singleChain) _init() error {
 	}
 
 	if cdb, err := db.Open(DBDir, c.cfg.DBType, DBName); err != nil {
-		return err
+		return errors.Wrapf(err,
+			"fail to open database dir=%s type=%s name=%s", DBDir, c.cfg.DBType, DBName)
 	} else {
 		c.database = cdb
 	}
