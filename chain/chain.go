@@ -613,10 +613,17 @@ func (c *singleChain) _reset() error {
 	if err := c.database.Close(); err != nil {
 		return err
 	}
+	c.database = nil
 	chainDir := c.cfg.ResolveAbsolute(c.cfg.BaseDir)
 	DBDir := path.Join(chainDir, DefaultDBDir)
 	if err := os.RemoveAll(DBDir); err != nil {
 		return err
+	}
+	DBName := strconv.FormatInt(int64(c.cfg.NID), 16)
+	if cdb, err := db.Open(DBDir, c.cfg.DBType, DBName); err != nil {
+		return err
+	} else {
+		c.database = cdb
 	}
 
 	WALDir := path.Join(chainDir, DefaultWALDir)
