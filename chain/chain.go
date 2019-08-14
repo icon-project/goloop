@@ -240,20 +240,6 @@ func (c *singleChain) MetricContext() context.Context {
 	return c.metricCtx
 }
 
-func toRoles(r uint) []module.Role {
-	roles := make([]module.Role, 0)
-	switch r {
-	case 1:
-		roles = append(roles, module.ROLE_SEED)
-	case 2:
-		roles = append(roles, module.ROLE_VALIDATOR)
-	case 3:
-		roles = append(roles, module.ROLE_VALIDATOR)
-		roles = append(roles, module.ROLE_SEED)
-	}
-	return roles
-}
-
 func (c *singleChain) ConcurrencyLevel() int {
 	if c.cfg.ConcurrencyLevel > 1 {
 		return c.cfg.ConcurrencyLevel
@@ -368,7 +354,8 @@ func (c *singleChain) _init() error {
 }
 
 func (c *singleChain) _prepare() error {
-	c.nm = network.NewManager(c, c.nt, c.cfg.SeedAddr, toRoles(c.cfg.Role)...)
+	pr := network.PeerRoleFlag(c.cfg.Role)
+	c.nm = network.NewManager(c, c.nt, c.cfg.SeedAddr, pr.ToRoles()...)
 	//TODO [TBD] is service/contract.ContractManager owner of ContractDir ?
 	chainDir := c.cfg.ResolveAbsolute(c.cfg.BaseDir)
 	ContractDir := path.Join(chainDir, DefaultContractDir)
@@ -456,7 +443,8 @@ func (ic *importCallback) OnEnd(errCh <-chan error) {
 }
 
 func (c *singleChain) _import(src string, height int64) error {
-	c.nm = network.NewManager(c, c.nt, c.cfg.SeedAddr, toRoles(c.cfg.Role)...)
+	pr := network.PeerRoleFlag(c.cfg.Role)
+	c.nm = network.NewManager(c, c.nt, c.cfg.SeedAddr, pr.ToRoles()...)
 	//TODO [TBD] is service/contract.ContractManager owner of ContractDir ?
 	chainDir := c.cfg.ResolveAbsolute(c.cfg.BaseDir)
 	ContractDir := path.Join(chainDir, DefaultContractDir)

@@ -146,6 +146,16 @@ func (pr *PeerRoleFlag) SetFlag(o PeerRoleFlag) {
 func (pr *PeerRoleFlag) UnSetFlag(o PeerRoleFlag) {
 	*pr &= ^o
 }
+func (pr *PeerRoleFlag) ToRoles() []module.Role {
+	roles := make([]module.Role, 0)
+	if pr.Has(p2pRoleSeed) {
+		roles = append(roles, module.ROLE_SEED)
+	}
+	if pr.Has(p2pRoleRoot) {
+		roles = append(roles, module.ROLE_VALIDATOR)
+	}
+	return roles
+}
 
 const (
 	p2pConnTypeNone = iota
