@@ -268,8 +268,8 @@ type dummyChain struct {
 	logger    log.Logger
 }
 
-func (c *dummyChain) NID() int                                          { return c.nid }
-func (c *dummyChain) Logger() log.Logger                                { return c.logger }
+func (c *dummyChain) NID() int                       { return c.nid }
+func (c *dummyChain) Logger() log.Logger             { return c.logger }
 func (c *dummyChain) MetricContext() context.Context { return c.metricCtx }
 
 func generateNetwork(name string, port int, n int, t *testing.T, roles ...module.Role) ([]*testReactor, int) {
@@ -644,28 +644,35 @@ func Test_network_allowedPeer(t *testing.T) {
 }
 
 var (
-	zeroQueue = &queue{
-		buf:  make([]context.Context, 1),
-		w:    0,
-		r:    0,
-		size: 0,
-		len:  1,
-		wait: make(map[chan bool]interface{}),
-	}
+	// TODO Need to update test code
+	// zeroQueue = &queue{
+	// 	buf:  make([]context.Context, 1),
+	// 	w:    0,
+	// 	r:    0,
+	// 	size: 0,
+	// 	len:  1,
+	// 	wait: make(map[chan bool]interface{}),
+	// }
+	zeroQueue = Queue(nil)
 )
 
 func replacePeerQueue(pq *PriorityQueue, priority int, q Queue) Queue {
-	pq.mtx.Lock()
-	defer pq.mtx.Unlock()
-	prev := pq.s[priority]
-	pq.s[priority] = q
-	return prev
+	// TODO Need to update test code
+	// pq.mtx.Lock()
+	// defer pq.mtx.Unlock()
+	// prev := pq.s[priority]
+	// pq.s[priority] = q
+	// return prev
+	panic("need to implement")
 }
 
 func getPeerQueue(pq *PriorityQueue, priority int) Queue {
-	pq.mtx.RLock()
-	defer pq.mtx.RUnlock()
-	return pq.s[priority]
+	// TODO Need to update test code
+	// pq.mtx.RLock()
+	// defer pq.mtx.RUnlock()
+	// return pq.s[priority]
+	panic("need to implement")
+	return nil
 }
 
 type testQueue struct {
@@ -675,15 +682,18 @@ type testQueue struct {
 }
 
 func newTestQueue(size int) *testQueue {
-	q := &queue{
-		buf:  make([]context.Context, size+1),
-		w:    0,
-		r:    0,
-		size: size,
-		len:  size + 1,
-		wait: make(map[chan bool]interface{}),
-	}
-	return &testQueue{Queue: q}
+	// TODO Need to update test code
+	// q := &queue{
+	// 	buf:  make([]context.Context, size+1),
+	// 	w:    0,
+	// 	r:    0,
+	// 	size: size,
+	// 	len:  size + 1,
+	// 	wait: make(map[chan bool]interface{}),
+	// }
+	// return &testQueue{Queue: q}
+	panic("need to implement")
+	return nil
 }
 
 func (q *testQueue) _ch() <-chan bool {

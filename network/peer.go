@@ -190,7 +190,7 @@ func newPeer(conn net.Conn, cbFunc packetCbFunc, incomming bool, l log.Logger) *
 		onClose:     defaultOnClose,
 		children:    NewNetAddressSet(),
 	}
-    p.logger = l.WithFields(log.Fields{"peer":p.id})
+	p.logger = l.WithFields(log.Fields{"peer": p.id})
 	p.setPacketCbFunc(cbFunc)
 
 	return p
@@ -506,7 +506,7 @@ func (p *Peer) send(ctx context.Context) error {
 		c.duplicate++
 		return ErrDuplicatedPacket
 	}
-	if ok := p.q.Push(ctx, pkt.priority); !ok {
+	if ok := p.q.Push(ctx, int(pkt.priority)); !ok {
 		c.overflow++
 		return ErrQueueOverflow
 	}

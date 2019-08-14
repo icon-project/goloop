@@ -9,405 +9,289 @@ type Queue interface {
 	Push(ctx context.Context) bool
 	Pop() context.Context
 	Wait() <-chan bool
-	Clear()
 	Available() int
-	IsEmpty() bool
-	Size() int
-	Last() context.Context
+	Close()
 }
 
-type queue struct {
-	buf     []context.Context
-	w       int
-	r       int
-	len     int
-	size    int
-	mtx     sync.RWMutex
-	wait    map[chan bool]interface{}
-	mtxWait sync.Mutex
-	last    context.Context
+type ChannelQueue struct {
+	buffer chan context.Context
 }
 
-func NewQueue(size int) Queue {
-	if size < 1 {
-		panic("queue size must be greater than zero")
-	}
-	q := &queue{
-		buf:  make([]context.Context, size+1),
-		w:    0,
-		r:    0,
-		size: size,
-		len:  size + 1,
-		wait: make(map[chan bool]interface{}),
-	}
-	return q
-}
-
-func (q *queue) Push(ctx context.Context) bool {
-	defer q.mtx.Unlock()
-	q.mtx.Lock()
-	if ctx == nil {
+func (q *ChannelQueue) Push(c context.Context) bool {
+	select {
+	case q.buffer <- c:
+		return true
+	default:
 		return false
 	}
-	w := q.w
-	if q.len > (w + 1) {
-		w++
-	} else {
-		w = 0
+}
+
+func (q *ChannelQueue) Wait() <-chan context.Context {
+	return q.buffer
+}
+
+func (q *ChannelQueue) Pop() context.Context {
+	select {
+	case c := <-q.buffer:
+		return c
+	default:
+		return nil
 	}
-	if q.r == w {
+}
+
+func newChannelQueue(size int) *ChannelQueue {
+	return &ChannelQueue{
+		buffer: make(chan context.Context, size),
+	}
+}
+
+type sliceQueue struct {
+	buffer      []context.Context
+	read, write int
+	size, len   int
+}
+
+func (q *sliceQueue) init(size int) {
+	q.size = size
+	// q.buffer = make([]context.Context, size)
+}
+
+func (q *sliceQueue) push(c context.Context) bool {
+	if q.len == q.size {
 		return false
 	}
-	q.buf[q.w] = ctx
-	q.w = w
-
-	q._wakeup(nil)
+	if q.buffer == nil {
+		q.buffer = make([]context.Context, q.size)
+	}
+	q.buffer[q.write] = c
+	q.len += 1
+	q.write = (q.write + 1) % q.size
 	return true
 }
 
-func (q *queue) Pop() context.Context {
-	defer q.mtx.Unlock()
-	q.mtx.Lock()
+func (q *sliceQueue) pop() (context.Context, bool) {
+	if q.len < 1 {
+		return nil, false
+	}
+	v := q.buffer[q.read]
+	q.buffer[q.read] = nil
+	q.len -= 1
+	q.read = (q.read + 1) % q.size
+	return v, true
+}
 
-	if q.w == q.r {
-		q.last = nil
-		return nil
+func (q *sliceQueue) available() int {
+	return q.size - q.len
+}
+
+type singleQueue struct {
+	sliceQueue
+
+	lock sync.Mutex
+	out  chan bool
+}
+
+func (q *singleQueue) notify() {
+	select {
+	case q.out <- true:
+	default:
 	}
-	ctx := q.buf[q.r].(context.Context)
-	q.buf[q.r] = nil
-	if q.len > (q.r + 1) {
-		q.r++
-	} else {
-		q.r = 0
+}
+
+func (q *singleQueue) Push(c context.Context) bool {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+
+	r := q.push(c)
+	if r && q.len == 1 {
+		q.notify()
 	}
-	q.last = ctx
+	return r
+}
+
+func (q *singleQueue) Pop() context.Context {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+
+	ctx, ok := q.pop()
+	if ok && q.len > 0 {
+		q.notify()
+	}
 	return ctx
 }
 
-func (q *queue) _wait() chan bool {
-	defer q.mtxWait.Unlock()
-	q.mtxWait.Lock()
-	ch := make(chan bool)
-	q.wait[ch] = true
-	return ch
+func (q *singleQueue) Available() int {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+
+	return q.size - q.len
 }
-func (q *queue) _wakeup(ch chan bool) bool {
-	defer q.mtxWait.Unlock()
-	q.mtxWait.Lock()
-	if ch == nil && len(q.wait) > 0 {
-		for k := range q.wait {
-			close(k)
-			delete(q.wait, k)
-		}
-		return true
+
+func (q *singleQueue) Wait() <-chan bool {
+	return q.out
+}
+
+func (q *singleQueue) Close() {
+	close(q.out)
+}
+
+func NewQueue(size int) Queue {
+	q := new(singleQueue)
+	q.init(size)
+	q.out = make(chan bool, 1)
+	return q
+}
+
+type multiQueue struct {
+	queues []sliceQueue
+	len    int
+
+	lock      sync.Mutex
+	out       chan bool
+	fetchFunc func() (context.Context, bool)
+}
+
+func (q *multiQueue) init(size int, cnt int) {
+	queues := make([]sliceQueue, cnt)
+	for i := 0; i < cnt; i++ {
+		queues[i].init(size)
 	}
-	if ch != nil {
-		close(ch)
-		delete(q.wait, ch)
-		return true
-	}
-	return false
+	q.queues = queues
+	q.out = make(chan bool, 1)
 }
 
-func (q *queue) Wait() <-chan bool {
-	defer q.mtx.RUnlock()
-	q.mtx.RLock()
-	ch := q._wait()
-	if q.w != q.r {
-		q._wakeup(ch)
-	}
-	return ch
-}
+func (q *multiQueue) Push(c context.Context, idx int) bool {
+	q.lock.Lock()
+	defer q.lock.Unlock()
 
-func (q *queue) Clear() {
-	defer q.mtx.Unlock()
-	q.mtx.Lock()
-	for q._wakeup(nil) {
-	}
-	q.r = 0
-	q.w = 0
-	q.buf = make([]context.Context, q.size+1)
-}
-
-func (q *queue) Available() int {
-	defer q.mtx.RUnlock()
-	q.mtx.RLock()
-	if q.w < q.r {
-		return q.size - q.r + q.w
-	}
-	return q.w - q.r
-}
-func (q *queue) IsEmpty() bool {
-	defer q.mtx.RUnlock()
-	q.mtx.RLock()
-	return q.w == q.r
-}
-
-func (q *queue) Size() int {
-	return q.size
-}
-
-func (q *queue) Last() context.Context {
-	defer q.mtx.RUnlock()
-	q.mtx.RLock()
-	return q.last
-}
-
-type MultiQueue struct {
-	s       []Queue
-	nq      int
-	size    int
-	mtx     sync.RWMutex
-	wait    map[chan bool]interface{}
-	mtxWait sync.Mutex
-}
-
-func NewMultiQueue(size int, numberOfQueue int) *MultiQueue {
-	if size < 1 {
-		panic("queue size must be greater than zero")
-	}
-	if numberOfQueue < 1 {
-		panic("number Of queue must be greater than zero")
-	}
-
-	mq := &MultiQueue{
-		s:    make([]Queue, numberOfQueue),
-		nq:   numberOfQueue,
-		size: size,
-		wait: make(map[chan bool]interface{}),
-	}
-	for i := 0; i < numberOfQueue; i++ {
-		mq.s[i] = NewQueue(size)
-	}
-	return mq
-}
-
-func (mq *MultiQueue) Push(ctx context.Context, queueIndex int) bool {
-	defer mq.mtx.Unlock()
-	mq.mtx.Lock()
-
-	if queueIndex >= mq.nq || queueIndex < 0 {
+	if idx < 0 || idx >= len(q.queues) {
 		return false
 	}
-
-	q := mq.s[queueIndex]
-	if !q.Push(ctx) {
+	if ok := q.queues[idx].push(c); !ok {
 		return false
 	}
-
-	mq._wakeup(nil)
+	q.len += 1
+	q.notify()
 	return true
 }
 
-func (mq *MultiQueue) Pop(queueIndex int) context.Context {
-	defer mq.mtx.Unlock()
-	mq.mtx.Lock()
+func (q *multiQueue) notify() {
+	select {
+	case q.out <- true:
+	default:
+	}
+}
 
-	if queueIndex >= mq.nq || queueIndex < 0 {
+func (q *multiQueue) term() {
+	close(q.out)
+}
+
+func (q *multiQueue) Pop() context.Context {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+
+	if q.len < 1 {
 		return nil
 	}
 
-	q := mq.s[queueIndex]
-	return q.Pop()
-}
-
-func (mq *MultiQueue) _wait() chan bool {
-	defer mq.mtxWait.Unlock()
-	mq.mtxWait.Lock()
-
-	ch := make(chan bool)
-	mq.wait[ch] = true
-	return ch
-}
-func (mq *MultiQueue) _wakeup(ch chan bool) bool {
-	defer mq.mtxWait.Unlock()
-	mq.mtxWait.Lock()
-	if ch == nil && len(mq.wait) > 0 {
-		for k := range mq.wait {
-			close(k)
-			delete(mq.wait, k)
-		}
-		return true
-	}
-	if ch != nil {
-		close(ch)
-		delete(mq.wait, ch)
-		return true
-	}
-	return false
-}
-
-func (mq *MultiQueue) _empty() bool {
-	for _, q := range mq.s {
-		if !q.IsEmpty() {
-			return false
+	ctx, ok := q.fetchFunc()
+	if ok {
+		q.len -= 1
+		if q.len > 0 {
+			q.notify()
 		}
 	}
-	return true
+	return ctx
 }
 
-func (mq *MultiQueue) Wait() <-chan bool {
-	defer mq.mtx.RUnlock()
-	mq.mtx.RLock()
-	ch := mq._wait()
+func (q *multiQueue) Wait() <-chan bool {
+	return q.out
+}
 
-	if !mq._empty() {
-		mq._wakeup(ch)
+func (q *multiQueue) Available(idx int) int {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+	if idx < 0 || idx >= len(q.queues) {
+		return 0
 	}
-	return ch
-}
-
-func (mq *MultiQueue) _clear() {
-	for mq._wakeup(nil) {
-	}
-	for _, q := range mq.s {
-		q.Clear()
-	}
-}
-
-func (mq *MultiQueue) Clear() {
-	defer mq.mtx.Unlock()
-	mq.mtx.Lock()
-	mq._clear()
-}
-
-func (mq *MultiQueue) Available(queueIndex int) int {
-	defer mq.mtx.RUnlock()
-	mq.mtx.RLock()
-
-	if queueIndex >= mq.nq || queueIndex < 0 {
-		return -1
-	}
-
-	q := mq.s[queueIndex]
-	return q.Available()
-}
-
-func (mq *MultiQueue) IsEmpty() bool {
-	defer mq.mtx.RUnlock()
-	mq.mtx.RLock()
-	return mq._empty()
-}
-func (mq *MultiQueue) Size() int {
-	return mq.size
-}
-func (mq *MultiQueue) NumberOfQueue() int {
-	return mq.nq
-}
-
-type WeightQueue struct {
-	*MultiQueue
-	w []int
-	t []int
-}
-
-func NewWeightQueue(size int, numberOfQueue int) *WeightQueue {
-	wq := &WeightQueue{
-		MultiQueue: NewMultiQueue(size, numberOfQueue),
-		w:          make([]int, numberOfQueue),
-		t:          make([]int, numberOfQueue),
-	}
-	for i := 0; i < numberOfQueue; i++ {
-		wq.w[i] = 1
-		wq.t[i] = 1
-	}
-	return wq
-}
-
-func (wq *WeightQueue) SetWeight(queueIndex int, weight int) error {
-	defer wq.mtx.Unlock()
-	wq.mtx.Lock()
-
-	if queueIndex >= wq.nq || queueIndex < 0 || weight < 1 {
-		return ErrIllegalArgument
-	}
-
-	wq.w[queueIndex] = weight
-	wq.t[queueIndex] = weight
-	return nil
-}
-
-func (wq *WeightQueue) Weight(queueIndex int) int {
-	return wq.w[queueIndex]
-}
-
-func (wq *WeightQueue) _pop() context.Context {
-	for i, q := range wq.s {
-		if t := wq.t[i]; t > 0 {
-			if ctx := q.Pop(); ctx != nil {
-				wq.t[i]--
-				return ctx
-			}
-		}
-	}
-	return nil
-}
-
-func (wq *WeightQueue) Pop() context.Context {
-	defer wq.mtx.Unlock()
-	wq.mtx.Lock()
-
-	if ctx := wq._pop(); ctx != nil {
-		return ctx
-	}
-	for i, w := range wq.w {
-		wq.t[i] = w
-	}
-	return wq._pop()
-}
-
-func (wq *WeightQueue) Clear() {
-	defer wq.mtx.Unlock()
-	wq.mtx.Lock()
-
-	wq.MultiQueue._clear()
-	for i, w := range wq.w {
-		wq.t[i] = w
-	}
+	return q.queues[idx].available()
 }
 
 type PriorityQueue struct {
-	*MultiQueue
-	maxPriority uint8
-	last        context.Context
+	multiQueue
 }
 
-func NewPriorityQueue(size int, maxPriority uint8) *PriorityQueue {
-	if maxPriority < 0 {
-		panic("max priority must be positive number")
-	}
-	l := int(maxPriority) + 1
-	pq := &PriorityQueue{
-		MultiQueue:  NewMultiQueue(size, l),
-		maxPriority: maxPriority,
-	}
-	return pq
-}
-
-func (pq *PriorityQueue) Push(ctx context.Context, priority uint8) bool {
-	return pq.MultiQueue.Push(ctx, int(priority))
-}
-
-func (pq *PriorityQueue) Pop() context.Context {
-	defer pq.mtx.Unlock()
-	pq.mtx.Lock()
-
-	for _, q := range pq.s {
-		if ctx := q.Pop(); ctx != nil {
-			pq.last = ctx
-			return ctx
+func (q *PriorityQueue) fetch() (context.Context, bool) {
+	for i := 0; i < len(q.queues); i++ {
+		if ctx, ok := q.queues[i].pop(); ok {
+			return ctx, true
 		}
 	}
-	pq.last = nil
+	return nil, false
+}
+
+func (q *PriorityQueue) Close() {
+	q.term()
+}
+
+// DEPRECATED
+func (q *PriorityQueue) Last() context.Context {
 	return nil
 }
 
-func (pq *PriorityQueue) MaxPriority() int {
-	return int(pq.maxPriority)
+func NewPriorityQueue(size int, maxPriority int) *PriorityQueue {
+	q := &PriorityQueue{}
+	q.init(size, maxPriority+1)
+	q.fetchFunc = q.fetch
+	return q
 }
 
-func (pq *PriorityQueue) Last() context.Context {
-	defer pq.mtx.RUnlock()
-	pq.mtx.RLock()
-	return pq.last
+type WeightQueue struct {
+	multiQueue
+	weights []int
+	current []int
+	idx     int
+}
+
+func (q *WeightQueue) fetch() (context.Context, bool) {
+	s := len(q.queues)
+	for i := 0; i < s; i++ {
+		idx := (q.idx + i) % s
+		if ctx, ok := q.queues[idx].pop(); ok {
+			q.current[idx] += 1
+			if q.current[idx] >= q.weights[idx] {
+				q.current[idx] = 0
+				idx = (idx + 1) % s
+			}
+			q.idx = idx
+			return ctx, true
+		} else {
+			q.current[idx] = 0
+		}
+	}
+	return nil, false
+}
+
+func (q *WeightQueue) SetWeight(idx int, weight int) error {
+	if idx < 0 || idx >= len(q.weights) || weight < 1 {
+		return ErrIllegalArgument
+	}
+	q.weights[idx] = weight
+	return nil
+}
+
+func (q *WeightQueue) Close() {
+	q.term()
+}
+
+func NewWeightQueue(size int, nq int) *WeightQueue {
+	q := new(WeightQueue)
+	q.init(size, nq)
+	q.fetchFunc = q.fetch
+	q.weights = make([]int, nq)
+	for i := 0; i < nq; i++ {
+		q.weights[i] = 1
+	}
+	q.current = make([]int, nq)
+	return q
 }

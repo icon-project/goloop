@@ -2,171 +2,108 @@ package network
 
 import (
 	"context"
+	"log"
 	"sync"
 	"testing"
-	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
-func Test_queue(t *testing.T) {
-	q := NewQueue(2)
-	for i := 0; i < q.Size(); i++ {
-		ctx := context.WithValue(context.Background(), "i", i)
-		assert.True(t, q.Push(ctx), "true")
-	}
-	assert.Equal(t, q.Size(), q.Available(), "size")
+func TestPriorityQueue_Pop(t *testing.T) {
+	priorities := 4
+	rounds := 20
+	q := NewPriorityQueue(rounds, priorities-1)
 
-	ctx := context.WithValue(context.Background(), "i", q.Size())
-	assert.False(t, q.Push(ctx), "false")
-
-	select {
-	case <-q.Wait():
-		for i := 0; i < q.Size(); i++ {
-			ctx := q.Pop()
-			if ctx == nil {
-				assert.FailNow(t, "queue pop fail")
-			}
-			ri := ctx.Value("i").(int)
-			assert.Equal(t, i, ri, "sequence fail")
-		}
-		assert.Nil(t, q.Pop(), "nil")
-	case <-time.After(1 * time.Millisecond):
-		assert.Fail(t, "queue wait fail", "when has elements")
-	}
-
-	var wg sync.WaitGroup
-	wg.Add(2)
-	st := make(chan bool)
-
-	l := q.Size() * 2
-	var push int
+	var exit sync.WaitGroup
+	exit.Add(1)
+	var event sync.WaitGroup
 	go func() {
-		<-st
-		for ; push < l; push++ {
-			ctx := context.WithValue(context.Background(), "i", push)
-			if !q.Push(ctx) {
-				time.Sleep(time.Millisecond)
-				assert.True(t, q.Push(ctx), "true")
-			}
-		}
-		wg.Done()
-	}()
-
-	var pop int
-	go func() {
-		<-st
-	Loop:
-		for ; pop < l; {
+		closed := false
+		log.Println("WAIT for items")
+		for !closed {
 			select {
-			case <-q.Wait():
-			LoopWait:
-				for {
-					ctx := q.Pop()
-					if ctx == nil {
-						break LoopWait
-					}
-					ri := ctx.Value("i").(int)
-					assert.Equal(t, pop, ri, "sequence fail")
-					pop++
+			case _, ok := <-q.Wait():
+				if !ok {
+					closed = true
+					log.Println("Queue CLOSED")
+					break
 				}
-			case <-time.After(time.Second):
-				t.Log("Timeout")
-				break Loop
+				ctx := q.Pop()
+				if ctx != nil {
+					log.Printf("ITEM(priority=%d,round=%d)",
+						ctx.Value("priority"),
+						ctx.Value("round"))
+					event.Done()
+				} else {
+					t.FailNow()
+					return
+				}
 			}
 		}
-		wg.Done()
+		exit.Done()
 	}()
 
-	close(st)
-	wg.Wait()
-	assert.Equal(t, l, pop, "pop")
+	log.Println("SEND items to the queue")
+	for i := 0; i < rounds; i++ {
+		for p := 0; p < priorities; p++ {
+			event.Add(1)
+			ctx := context.WithValue(context.Background(), "priority", int(p))
+			ctx = context.WithValue(ctx, "round", int(i))
+			q.Push(ctx, p)
+		}
+	}
+	log.Println("WAIT util all items are received")
+	event.Wait()
+	log.Println("CLOSE Queue")
+	q.Close()
+	exit.Wait()
 }
 
-func Test_queue_WeightQueue(t *testing.T) {
-	q := NewWeightQueue(10, 2)
-	assert.NoError(t, q.SetWeight(1, 2), "NoError q.SetWeight")
-	for qi := 0; qi < q.NumberOfQueue(); qi++ {
-		w := q.Weight(qi)
-		for i := 0; i < q.Size(); i++ {
-			ctx := context.WithValue(context.Background(), "qi", qi)
-			ctx = context.WithValue(ctx, "w", w)
-			ctx = context.WithValue(ctx, "i", i)
-			assert.True(t, q.Push(ctx, qi), "true")
-		}
-		assert.Equal(t, q.Size(), q.Available(qi), "size")
-		ctx := context.WithValue(context.Background(), "qi", qi)
-		ctx = context.WithValue(ctx, "w", w)
-		ctx = context.WithValue(ctx, "i", q.Size())
-		assert.False(t, q.Push(ctx, qi), "false")
-	}
+func TestWeightQueue_Pop(t *testing.T) {
+	queueCount := 4
+	rounds := 20
+	q := NewWeightQueue(rounds, queueCount)
+	q.SetWeight(0, 2)
 
-	select {
-	case <-q.Wait():
-		li := make([]int, q.NumberOfQueue())
-		tn := q.Size() * q.NumberOfQueue()
-		qi := 0
-		w := q.Weight(0)
-		wi := 0
-		for i := 0; i < tn; i++ {
-			ctx := q.Pop()
-			if ctx == nil {
-				assert.FailNow(t, "queue pop fail")
-			}
-			rqi := ctx.Value("qi").(int)
-			rw := ctx.Value("w").(int)
-			assert.Equal(t, q.Weight(rqi), rw, "weight")
-			ri := ctx.Value("i").(int)
-			assert.Equal(t, li[rqi], ri, "sequence fail")
-			li[rqi] = ri + 1
-			if qi != rqi {
-				assert.Equal(t, w, wi, "weight fail")
-				qi = rqi
-				w = rw
-				wi = 0
-			}
-			w = li[rqi] % w
-			if w == 0 {
-				w = rw
-			}
-			wi++
-		}
-		assert.Nil(t, q.Pop(), "nil")
-	case <-time.After(1 * time.Millisecond):
-		assert.Fail(t, "queue wait fail", "when has elements")
-	}
-}
-
-func Test_queue_PriorityQueue(t *testing.T) {
-	q := NewPriorityQueue(10, 1)
-	for p := q.MaxPriority(); p >= 0; p-- {
-		for i := 0; i < q.Size(); i++ {
-			ctx := context.WithValue(context.Background(), "p", p)
-			ctx = context.WithValue(ctx, "i", i)
-			assert.True(t, q.Push(ctx, uint8(p)), "true")
-		}
-		assert.Equal(t, q.Size(), q.Available(p), "size")
-		ctx := context.WithValue(context.Background(), "p", p)
-		ctx = context.WithValue(ctx, "i", q.Size())
-		assert.False(t, q.Push(ctx, uint8(p)), "false")
-	}
-
-	select {
-	case <-q.Wait():
-		for p := 0; p <= q.MaxPriority(); p++ {
-			for i := 0; i < q.Size(); i++ {
-				ctx := q.Pop()
-				if ctx == nil {
-					assert.FailNow(t, "queue pop fail")
+	var exit sync.WaitGroup
+	exit.Add(1)
+	var event sync.WaitGroup
+	go func() {
+		closed := false
+		log.Println("WAIT for items")
+		for !closed {
+			select {
+			case _, ok := <-q.Wait():
+				if !ok {
+					closed = true
+					log.Println("Queue CLOSED")
+					break
 				}
-				rp := ctx.Value("p").(int)
-				ri := ctx.Value("i").(int)
-				assert.Equal(t, p, rp, "priority fail")
-				assert.Equal(t, i, ri, "priority fail")
+				ctx := q.Pop()
+				if ctx != nil {
+					log.Printf("ITEM(index=%d,round=%d)",
+						ctx.Value("index"),
+						ctx.Value("round"))
+					event.Done()
+				} else {
+					t.FailNow()
+					return
+				}
 			}
 		}
-		assert.Nil(t, q.Pop(), "nil")
-	case <-time.After(1 * time.Millisecond):
-		assert.Fail(t, "queue wait fail", "when has elements")
+		exit.Done()
+	}()
+
+	log.Println("SEND items to the queue")
+	for i := 0; i < rounds; i++ {
+		for idx := 0; idx < queueCount; idx++ {
+			event.Add(1)
+			ctx := context.WithValue(context.Background(), "index", int(idx))
+			ctx = context.WithValue(ctx, "round", int(i))
+			q.Push(ctx, idx)
+		}
 	}
+	log.Println("WAIT util all items are received")
+	event.Wait()
+	log.Println("CLOSE Queue")
+	q.Close()
+	exit.Wait()
 }
