@@ -118,6 +118,11 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 			continue
 		}
 		if err := CheckTxTimestamp(wc, tx); err != nil {
+			// not dropping transaction recently received
+			// Block.TS + Threshold <= TX.TS < Now + Threshold
+			if FutureTransactionError.Equals(err) {
+				continue
+			}
 			if e.err == nil {
 				e.err = err
 				tp.log.Debugf("CHECKTS FAIL: id=%#x reason=%v",

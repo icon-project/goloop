@@ -73,7 +73,7 @@ func CheckTxTimestamp(c state.WorldContext, tx transaction.Transaction) error {
 	if diff <= -th {
 		return ExpiredTransactionError.Errorf("Expired(diff=%s)", time.Duration(diff*1000))
 	} else if diff > th {
-		return InvalidTransactionError.Errorf("FutureTx(diff=%s)", time.Duration(diff*1000))
+		return FutureTransactionError.Errorf("FutureTx(diff=%s)", time.Duration(diff*1000))
 	}
 	return nil
 }

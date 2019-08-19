@@ -6,6 +6,7 @@ const (
 	DuplicateTransactionError errors.Code = iota + errors.CodeService
 	TransactionPoolOverflowError
 	ExpiredTransactionError
+	FutureTransactionError
 	TransitionInterruptedError
 	InvalidTransactionError
 	InvalidQueryError
