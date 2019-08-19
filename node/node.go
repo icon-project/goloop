@@ -331,23 +331,31 @@ func (n *Node) GetChainByChannel(channel string) *Chain {
 func (n *Node) Configure(key string, value string) error {
 	defer n.mtx.RUnlock()
 	n.mtx.RLock()
-	var err error
+
 	switch key {
-	case "ee_instances":
-		n.rcfg.EEInstances, err = strconv.Atoi(value)
-		if err != nil {
+	case "eeInstances":
+		if intVal, err := strconv.Atoi(value); err != nil {
 			return errors.Wrapf(err, "invalid value type")
+		} else {
+			n.rcfg.EEInstances = intVal
 		}
-		if err = n.pm.SetInstances(n.rcfg.EEInstances, n.rcfg.EEInstances, n.rcfg.EEInstances); err != nil {
+		if err := n.pm.SetInstances(n.rcfg.EEInstances, n.rcfg.EEInstances, n.rcfg.EEInstances); err != nil {
 			return err
 		}
-	case "rpc_default_channel":
+	case "rpcDefaultChannel":
 		n.rcfg.RPCDefaultChannel = value
 		n.srv.SetDefaultChannel(n.rcfg.RPCDefaultChannel)
+	case "rpcIncludeDebug":
+		if boolVal, err := strconv.ParseBool(value); err != nil {
+			return errors.Wrapf(err, "invalid value type")
+		} else {
+			n.rcfg.RPCIncludeDebug = boolVal
+		}
+		n.srv.SetIncludeDebug(n.rcfg.RPCIncludeDebug)
 	default:
 		return errors.Errorf("not found key")
 	}
-	if err = n.rcfg.save(); err != nil {
+	if err := n.rcfg.save(); err != nil {
 		return err
 	}
 	return nil
@@ -375,7 +383,7 @@ func NewNode(
 	if cfg.P2PListenAddr != "" {
 		_ = nt.SetListenAddress(cfg.P2PListenAddr)
 	}
-	srv := server.NewManager(cfg.RPCAddr, cfg.RPCDump, rcfg.RPCDefaultChannel, w, l)
+	srv := server.NewManager(cfg.RPCAddr, cfg.RPCDump, rcfg.RPCIncludeDebug, rcfg.RPCDefaultChannel, w, l)
 
 	ee, err := eeproxy.NewPythonEE(l)
 	if err != nil {

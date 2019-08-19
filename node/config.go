@@ -69,8 +69,9 @@ const (
 )
 
 type RuntimeConfig struct {
-	EEInstances       int    `json:"ee_instances"`
-	RPCDefaultChannel string `json:"rpc_default_channel"`
+	EEInstances       int    `json:"eeInstances"`
+	RPCDefaultChannel string `json:"rpcDefaultChannel"`
+	RPCIncludeDebug   bool   `json:"rpcIncludeDebug"`
 
 	FilePath string `json:"-"` // absolute path
 }
@@ -104,12 +105,11 @@ func (c *RuntimeConfig) save() error {
 
 func loadRuntimeConfig(baseDir string) (*RuntimeConfig, error) {
 	cfg := &RuntimeConfig{
+		EEInstances : DefaultEEInstances,
 		FilePath: path.Join(baseDir, "rconfig.json"),
 	}
 	if err := cfg.load(); err != nil {
 		if os.IsNotExist(err) {
-			//save default
-			cfg.EEInstances = DefaultEEInstances
 			if err = cfg.save(); err != nil {
 				return nil, err
 			}

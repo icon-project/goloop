@@ -38,17 +38,14 @@ type Rest struct {
 type SystemView struct {
 	BuildVersion string `json:"buildVersion"`
 	BuildTags    string `json:"buildTags"`
-	Config       struct {
-		Static struct {
-			Address       string `json:"address"`
-			P2PAddr       string `json:"p2p"`
-			P2PListenAddr string `json:"p2pListen"`
-			RPCAddr       string `json:"rpcAddr"`
-			RPCDump       bool   `json:"rpcDump"`
-		} `json:"static"`
-		Runtime interface{} `json:"runtime"`
-	} `json:"config"`
-	RuntimeConfig interface{} `json:"runtimeConfig"`
+	Setting      struct {
+		Address       string `json:"address"`
+		P2PAddr       string `json:"p2p"`
+		P2PListenAddr string `json:"p2pListen"`
+		RPCAddr       string `json:"rpcAddr"`
+		RPCDump       bool   `json:"rpcDump"`
+	} `json:"setting"`
+	Config interface{} `json:"config"`
 }
 
 type StatsView struct {
@@ -343,12 +340,12 @@ func (r *Rest) GetSystem(ctx echo.Context) error {
 		BuildVersion: r.n.cfg.BuildVersion,
 		BuildTags:    r.n.cfg.BuildTags,
 	}
-	v.Config.Static.Address = r.n.w.Address().String()
-	v.Config.Static.P2PAddr = r.n.nt.Address()
-	v.Config.Static.P2PListenAddr = r.n.nt.GetListenAddress()
-	v.Config.Static.RPCAddr = r.n.cfg.RPCAddr
-	v.Config.Static.RPCDump = r.n.cfg.RPCDump
-	v.Config.Runtime = r.n.rcfg
+	v.Setting.Address = r.n.w.Address().String()
+	v.Setting.P2PAddr = r.n.nt.Address()
+	v.Setting.P2PListenAddr = r.n.nt.GetListenAddress()
+	v.Setting.RPCAddr = r.n.cfg.RPCAddr
+	v.Setting.RPCDump = r.n.cfg.RPCDump
+	v.Config = r.n.rcfg
 
 	format := ctx.QueryParam("format")
 	if format != "" {

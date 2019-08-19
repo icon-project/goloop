@@ -3,10 +3,15 @@ package jsonrpc
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net/http"
 	"reflect"
+	"strconv"
+	"strings"
+
+	"github.com/labstack/echo/v4"
 
 	"github.com/icon-project/goloop/module"
-	"github.com/labstack/echo/v4"
 )
 
 const Version = "2.0"
@@ -31,8 +36,76 @@ type Response struct {
 	ID      interface{} `json:"id,omitempty"`
 }
 
+const (
+	HeaderKeyIconOptions = "Icon-Options"
+	IconOptionsDebug     = "debug"
+)
+
+type IconOptions map[string]string
+
+func (opts IconOptions) Set(key, value string) {
+	opts[key] = value
+}
+func (opts IconOptions) Get(key string) string {
+	if opts == nil {
+		return ""
+	}
+	v := opts[key]
+	if len(v) == 0 {
+		return ""
+	}
+	return v
+}
+func (opts IconOptions) Del(key string) {
+	delete(opts, key)
+}
+func (opts IconOptions) SetBool(key string, value bool) {
+	opts.Set(key, strconv.FormatBool(value))
+}
+func (opts IconOptions) GetBool(key string) (bool, error) {
+	return strconv.ParseBool(opts.Get(key))
+}
+func (opts IconOptions) ToHeaderValue() string {
+	if opts == nil {
+		return ""
+	}
+	strs := make([]string, len(opts))
+	i := 0
+	for k, v := range opts {
+		strs[i] = fmt.Sprintf("%s=%s", k, v)
+		i++
+	}
+	return strings.Join(strs, ",")
+}
+
+func NewIconOptionsByHeader(h http.Header) IconOptions {
+	s := h.Get(HeaderKeyIconOptions)
+	if s != "" {
+		kvs := strings.Split(s, ",")
+		m := make(map[string]string)
+		for _, kv := range kvs {
+			if kv != "" {
+				idx := strings.Index(kv, "=")
+				if idx > 0 {
+					m[kv[:idx]] = kv[(idx + 1):]
+				} else {
+					m[kv] = ""
+				}
+			}
+		}
+		return m
+	}
+	return nil
+}
+
 type Context struct {
 	echo.Context
+	opts IconOptions
+}
+
+func NewContext(c echo.Context) *Context {
+	ctx := &Context{Context: c, opts: NewIconOptionsByHeader(c.Request().Header)}
+	return ctx
 }
 
 func (ctx *Context) Chain() (module.Chain, error) {
@@ -44,11 +117,9 @@ func (ctx *Context) Chain() (module.Chain, error) {
 }
 
 func (ctx *Context) IncludeDebug() bool {
-	if debug, ok := ctx.Get("debug").(bool); ok {
-		return debug
-	} else {
-		return false
-	}
+	serverDebug := ctx.Get("includeDebug").(bool)
+	v, _ := ctx.opts.GetBool(IconOptionsDebug)
+	return v && serverDebug
 }
 
 type Params struct {

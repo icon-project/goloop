@@ -179,7 +179,7 @@ func call(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	block, err := bm.GetLastBlock()
 	result, err := sm.Call(block.Result(), block.NextValidators(), params.RawMessage(), block)
 	if err != nil {
-		return nil, jsonrpc.ErrScore(err, false)
+		return nil, jsonrpc.ErrScore(err, debug)
 	} else {
 		return result, nil
 	}

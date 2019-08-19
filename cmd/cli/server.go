@@ -85,7 +85,6 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 	rootPFlags.String("p2p_listen", "", "Listen ip-port of P2P")
 	rootPFlags.String("rpc_addr", ":9080", "Listen ip-port of JSON-RPC")
 	rootPFlags.Bool("rpc_dump", false, "JSON-RPC Request, Response Dump flag")
-	rootPFlags.String("rpc_default_channel", "", "JSON-RPC Default Channel")
 	rootPFlags.String("ee_socket", "", "Execution engine socket path")
 	rootPFlags.String("key_password", "", "Password for the KeyStore file")
 	rootPFlags.String("log_level", "debug", "Global log level (trace,debug,info,warn,error,fatal,panic)")

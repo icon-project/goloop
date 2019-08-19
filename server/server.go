@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -18,6 +19,11 @@ import (
 	"github.com/icon-project/goloop/server/v3"
 )
 
+const (
+	flagENABLE  int32 = 1
+	flagDISABLE int32 = 0
+)
+
 type Manager struct {
 	e                     *echo.Echo
 	addr                  string
@@ -25,12 +31,18 @@ type Manager struct {
 	chains                map[string]module.Chain // chain manager
 	wssm                  *wsSessionManager
 	mtx                   sync.RWMutex
-	jsonrpcDump           bool
 	jsonrpcDefaultChannel string
+	jsonrpcMessageDump    int32
+	jsonrpcIncludeDebug   int32
 	logger                log.Logger
 }
 
-func NewManager(addr string, jsonrpcDump bool, jsonrpcDefaultChannel string, wallet module.Wallet, l log.Logger) *Manager {
+func NewManager(addr string,
+	jsonrpcDump bool,
+	jsonrpcIncludeDebug bool,
+	jsonrpcDefaultChannel string,
+	wallet module.Wallet,
+	l log.Logger) *Manager {
 
 	e := echo.New()
 
@@ -44,20 +56,21 @@ func NewManager(addr string, jsonrpcDump bool, jsonrpcDefaultChannel string, wal
 	e.Validator = validator
 	logger := l.WithFields(log.Fields{log.FieldKeyModule: "SR"})
 
-	return &Manager{
-		e:           e,
-		addr:        addr,
-		wallet:      wallet,
-		chains:      make(map[string]module.Chain),
-		wssm:        newWSSessionManager(logger),
-		mtx:         sync.RWMutex{},
-		jsonrpcDump: jsonrpcDump,
+	m := &Manager{
+		e:                     e,
+		addr:                  addr,
+		wallet:                wallet,
+		chains:                make(map[string]module.Chain),
+		wssm:                  newWSSessionManager(logger),
+		mtx:                   sync.RWMutex{},
 		jsonrpcDefaultChannel: jsonrpcDefaultChannel,
-		logger:      logger,
+		logger:                logger,
 	}
+	m.SetMessageDump(jsonrpcDump)
+	m.SetIncludeDebug(jsonrpcIncludeDebug)
+	return m
 }
 
-// TODO : channel-chain
 func (srv *Manager) SetChain(channel string, chain module.Chain) {
 	defer srv.mtx.Unlock()
 	srv.mtx.Lock()
@@ -104,6 +117,37 @@ func (srv *Manager) SetDefaultChannel(jsonrpcDefaultChannel string) {
 	srv.jsonrpcDefaultChannel = jsonrpcDefaultChannel
 }
 
+func atomicStore(addr *int32, enable bool) {
+	v := flagDISABLE
+	if enable {
+		v = flagENABLE
+	}
+	atomic.StoreInt32(addr, v)
+}
+
+func atomicLoad(addr *int32) bool {
+	if atomic.LoadInt32(addr) == flagENABLE {
+		return true
+	}
+	return false
+}
+
+func (srv *Manager) SetMessageDump(enable bool) {
+	atomicStore(&srv.jsonrpcMessageDump, enable)
+}
+
+func (srv *Manager) MessageDump() bool {
+	return atomicLoad(&srv.jsonrpcMessageDump)
+}
+
+func (srv *Manager) SetIncludeDebug(enable bool) {
+	atomicStore(&srv.jsonrpcIncludeDebug, enable)
+}
+
+func (srv *Manager) IncludeDebug() bool {
+	return atomicLoad(&srv.jsonrpcIncludeDebug)
+}
+
 func (srv *Manager) Start() {
 	srv.logger.Infoln("starting the server")
 	// middleware
@@ -126,12 +170,18 @@ func (srv *Manager) Start() {
 
 	// jsonrpc
 	g := srv.e.Group("/api")
-	if srv.jsonrpcDump {
-		g.Use(middleware.BodyDump(func(c echo.Context, reqBody []byte, resBody []byte) {
+	g.Use(middleware.BodyDump(func(c echo.Context, reqBody []byte, resBody []byte) {
+		if srv.MessageDump() {
 			srv.logger.Printf("request=%s", reqBody)
 			srv.logger.Printf("respose=%s", resBody)
-		}))
-	}
+		}
+	}))
+	g.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(ctx echo.Context) error {
+			ctx.Set("includeDebug", srv.IncludeDebug())
+			return next(ctx)
+		}
+	})
 	g.Use(JsonRpc(mr), Chunk())
 	g.POST("/v3", mr.Handle, ChainInjector(srv))
 	g.POST("/v3/:channel", mr.Handle, ChainInjector(srv))

@@ -40,6 +40,7 @@ type GoChainConfig struct {
 	EESocket      string `json:"ee_socket"`
 	RPCAddr       string `json:"rpc_addr"`
 	RPCDump       bool   `json:"rpc_dump"`
+	RPCDebug      bool   `json:"rpc_debug"`
 	EEInstances   int    `json:"ee_instances"`
 
 	Key          []byte          `json:"key,omitempty"`
@@ -100,6 +101,7 @@ func main() {
 	flag.IntVar(&cfg.NID, "nid", 0, "Chain Network ID")
 	flag.StringVar(&cfg.RPCAddr, "rpc", ":9080", "Listen ip-port of JSON-RPC")
 	flag.BoolVar(&cfg.RPCDump, "rpc_dump", false, "JSON-RPC Request, Response Dump flag")
+	flag.BoolVar(&cfg.RPCDebug, "rpc_debug", false, "JSON-RPC Debug enable")
 	flag.StringVar(&cfg.SeedAddr, "seed", "", "Ip-port of Seed")
 	flag.StringVar(&genesisStorage, "genesis_storage", "", "Genesis storage path")
 	flag.StringVar(&genesisPath, "genesis", "", "Genesis template directory or file")
@@ -380,7 +382,7 @@ func Execute(cmd *cobra.Command, args []string) {
 	pm.SetInstances(cfg.EEInstances, cfg.EEInstances, cfg.EEInstances)
 
 	// TODO : server-chain setting
-	srv := server.NewManager(cfg.RPCAddr, cfg.RPCDump, "", wallet, logger)
+	srv := server.NewManager(cfg.RPCAddr, cfg.RPCDump, cfg.RPCDebug,"", wallet, logger)
 	hex.EncodeToString(wallet.Address().ID())
 	c := chain.NewChain(wallet, nt, srv, pm, logger, &cfg.Config)
 	err = c.Init(true)

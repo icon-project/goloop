@@ -17,7 +17,7 @@ type JsonRpcClient struct {
 }
 
 func NewJsonRpcClient(hc *http.Client, endpoint string) *JsonRpcClient {
-	return &JsonRpcClient{hc: hc, Endpoint: endpoint}
+	return &JsonRpcClient{hc: hc, Endpoint: endpoint, CustomHeader: make(map[string]string)}
 }
 
 func (c *JsonRpcClient) _do(req *http.Request) (resp *http.Response, err error) {

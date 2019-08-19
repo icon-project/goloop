@@ -8,6 +8,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
 	"github.com/icon-project/goloop/client"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
@@ -16,8 +19,6 @@ import (
 	"github.com/icon-project/goloop/server"
 	"github.com/icon-project/goloop/server/jsonrpc"
 	v3 "github.com/icon-project/goloop/server/v3"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 func RpcPersistentPreRunE(vc *viper.Viper, rpcClient *client.ClientV3) func(cmd *cobra.Command, args []string) error {
@@ -26,6 +27,11 @@ func RpcPersistentPreRunE(vc *viper.Viper, rpcClient *client.ClientV3) func(cmd 
 			return err
 		}
 		*rpcClient = *client.NewClientV3(vc.GetString("uri"))
+		if vc.GetBool("debug") {
+			opts := jsonrpc.IconOptions{}
+			opts.SetBool(jsonrpc.IconOptionsDebug, true)
+			rpcClient.CustomHeader[jsonrpc.HeaderKeyIconOptions] = opts.ToHeaderValue()
+		}
 		return nil
 	}
 }
@@ -33,6 +39,7 @@ func RpcPersistentPreRunE(vc *viper.Viper, rpcClient *client.ClientV3) func(cmd 
 func AddRpcRequiredFlags(c *cobra.Command) {
 	pFlags := c.PersistentFlags()
 	pFlags.String("uri", "http://127.0.0.1:9080/api/v3", "URI of JSON-RPC API")
+	pFlags.Bool("debug", false, "JSON-RPC Response with detail information")
 	//TODO dump jsonrpc message
 	//pFlags.Bool("dump", false, "Print JSON-RPC Request and Response")
 	MarkAnnotationCustom(pFlags, "uri")

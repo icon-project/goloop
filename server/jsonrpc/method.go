@@ -48,13 +48,13 @@ func (mr *MethodRepository) TakeMethod(r *Request) (Handler, error) {
 func (mr *MethodRepository) InvokeMethod(c echo.Context, r *Request) (interface{}, error) {
 	h := c.Get("method").(Handler)
 
-	ctx := Context{c}
+	ctx := NewContext(c)
 	param := Params{
 		rawMessage: r.Params,
 		validator:  c.Echo().Validator,
 	}
 
-	return h(&ctx, &param)
+	return h(ctx, &param)
 }
 
 func (mr *MethodRepository) Handle(c echo.Context) (err error) {
