@@ -85,51 +85,6 @@ public class ScoreTest {
     }
 
     @Test
-    public void invalidParamName() throws Exception {
-        LOG.infoEntering( "invalidParamName");
-        for(String param : new String[]{"name", "nami"}) {
-            try {
-                RpcObject params = new RpcObject.Builder()
-                        .put(param, new RpcValue("ICONLOOP"))
-                        .build();
-                LOG.infoEntering( "invoke");
-                TransactionResult result =
-                        testScore.invokeAndWaitResult(callerWallet, "helloWithName",
-                                params, BigInteger.valueOf(0), BigInteger.valueOf(100));
-                LOG.infoExiting();
-                assertEquals(Constants.STATUS_SUCCESS.equals(result.getStatus()), param.equals("name"));
-            } catch (ResultTimeoutException ex) {
-                assertTrue(!param.equals("name"));
-            }
-        }
-        LOG.infoExiting();
-    }
-
-    @Test
-    public void unexpectedParam() throws Exception {
-        LOG.infoEntering( "invalidParamNum");
-        String params[][] = new String[][]{{}, {"age"}, {"name"}, {"name", "age"}, {"name", "etc"}, {"name", "age", "etc"}};
-        for(int i = 0; i < params.length; i++) {
-            try {
-                RpcObject.Builder builder = new RpcObject.Builder();
-                for(String param: params[i]){
-                    builder.put(param, new RpcValue("ICONLOOP"));
-                }
-                RpcObject objParam = builder.build();
-                LOG.infoEntering("invoke");
-                TransactionResult result = testScore.invokeAndWaitResult(callerWallet,
-                        "helloWithName", objParam, BigInteger.valueOf(0), BigInteger.valueOf(100));
-                assertEquals(i == 2 || i == 3, Constants.STATUS_SUCCESS.equals(result.getStatus()));
-                LOG.infoExiting();
-            } catch (ResultTimeoutException ex) {
-                assertTrue(params.length != 1);
-                LOG.infoExiting();
-            }
-        }
-        LOG.infoExiting();
-    }
-
-    @Test
     public void notEnoughStepLimit() throws Exception{
         LOG.infoEntering( "notEnoughStepLimit");
         KeyWallet testWallet = KeyWallet.create();
