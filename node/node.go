@@ -175,12 +175,12 @@ func (n *Node) JoinChain(
 	defer n.mtx.Unlock()
 	n.mtx.Lock()
 
-	gs, err := gs.New(genesis)
+	genesisStorage, err := gs.New(genesis)
 	if err != nil {
 		return nil, errors.Wrap(err, "fail to get genesis storage")
 	}
 
-	nid, err := gs.NID()
+	nid, err := genesisStorage.NID()
 	if err != nil {
 		return nil, errors.Wrap(err, "fail to get NID for genesis")
 	}
@@ -206,7 +206,7 @@ func (n *Node) JoinChain(
 		SecureAeads:    p.SecureAeads,
 		SeedAddr:       p.SeedAddr,
 		Role:           p.Role,
-		GenesisStorage: gs,
+		GenesisStorage: genesisStorage,
 		// GenesisDataPath: path.Join(chainDir, "genesis"),
 		ConcurrencyLevel: p.ConcurrencyLevel,
 		NormalTxPoolSize: p.NormalTxPoolSize,
@@ -432,11 +432,11 @@ func NewNode(
 			if err != nil {
 				log.Panicf("Fail to read chain genesis zip file %s err=%+v", gsFile, err)
 			}
-			gs, err := gs.New(genesis)
+			genesisStorage, err := gs.New(genesis)
 			if err != nil {
 				log.Panicf("Fail to parse chain genesis zip file %s err=%+v", gsFile, err)
 			}
-			ccfg.GenesisStorage = gs
+			ccfg.GenesisStorage = genesisStorage
 			if _, err := n._add(ccfg); err != nil {
 				log.Panicf("Fail to join chain %v err=%+v", ccfg, err)
 			}
