@@ -15,7 +15,7 @@ type Block interface {
 	Height() int64
 	PrevID() []byte
 	NextValidators() ValidatorList
-	// voters are subset of previous preivous block's next validators
+	// voters are subset of previous previous block's next validators
 	Votes() CommitVoteSet
 	NormalTransactions() TransactionList
 	PatchTransactions() TransactionList
