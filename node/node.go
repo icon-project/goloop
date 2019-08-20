@@ -47,6 +47,7 @@ type Node struct {
 type Chain struct {
 	module.Chain
 	cfg *chain.Config
+	refresh bool
 }
 
 func (n *Node) loadChainConfig(filename string) (*chain.Config, error) {
@@ -100,7 +101,7 @@ func (n *Node) _add(cfg *chain.Config) (module.Chain, error) {
 		return nil, err
 	}
 
-	c := &Chain{chain.NewChain(n.w, n.nt, n.srv, n.pm, n.logger, cfg), cfg}
+	c := &Chain{chain.NewChain(n.w, n.nt, n.srv, n.pm, n.logger, cfg), cfg, false}
 	if err := c.Init(true); err != nil {
 		return nil, err
 	}
@@ -114,15 +115,31 @@ func (n *Node) _remove(c module.Chain) error {
 		return err
 	}
 
-	chainPath := n.ChainDir(c.NID())
-	if err := os.RemoveAll(chainPath); err != nil {
-		return errors.Wrapf(err, "fail to remove dir %s", chainPath)
-	}
-
 	delete(n.chains, n.channels[c.NID()])
 	delete(n.channels, c.NID())
 	metric.ResetMetricViews()
 	return nil
+}
+
+func (n *Node) _refresh(c *Chain) (*Chain, error) {
+	if err := n._remove(c); err != nil {
+		return nil, errors.Wrapf(err, "fail to refresh on remove")
+	}
+	if nc, err := n._add(c.cfg); err != nil {
+		err = errors.Wrapf(err, "fail to recreate on add")
+		if cfg, lerr := n.loadChainConfig(c.cfg.FilePath); lerr != nil {
+			err = errors.Wrapf(err, "fail to loadChainConfig on rollback err=%+v", lerr)
+			return nil, err
+		} else {
+			if _, aerr := n._add(cfg); aerr != nil {
+				err = errors.Wrapf(err, "fail to add on rollback err=%+v", aerr)
+				return nil, err
+			}
+		}
+		return nil, errors.Wrapf(err, "fail to refresh on add")
+	} else {
+		return nc.(*Chain), nil
+	}
 }
 
 func (n *Node) ChainDir(nid int) string {
@@ -131,7 +148,7 @@ func (n *Node) ChainDir(nid int) string {
 	return chainDir
 }
 
-func (n *Node) _get(nid int) (module.Chain, error) {
+func (n *Node) _get(nid int) (*Chain, error) {
 	channel, ok := n.channels[nid]
 	if !ok {
 		return nil, errors.Wrapf(ErrNotExists, "Network(id=%#x) not exists", nid)
@@ -242,7 +259,16 @@ func (n *Node) LeaveChain(nid int) error {
 	if err != nil {
 		return err
 	}
-	return n._remove(c)
+	err = n._remove(c)
+	if err != nil {
+		return err
+	}
+
+	chainPath := n.ChainDir(c.NID())
+	if err := os.RemoveAll(chainPath); err != nil {
+		return errors.Wrapf(err, "fail to remove dir %s", chainPath)
+	}
+	return nil
 }
 
 func (n *Node) StartChain(nid int) error {
@@ -252,6 +278,12 @@ func (n *Node) StartChain(nid int) error {
 	c, err := n._get(nid)
 	if err != nil {
 		return err
+	}
+	if c.refresh {
+		if c, err = n._refresh(c); err != nil {
+			log.Println(err)
+			return err
+		}
 	}
 	return c.Start(false)
 }
@@ -298,6 +330,101 @@ func (n *Node) ImportChain(nid int, s string, height int64) error {
 		return err
 	}
 	return c.Import(s, height, true)
+}
+
+func (n *Node) ConfigureChain(nid int, key string, value string) error {
+	defer n.mtx.RUnlock()
+	n.mtx.RLock()
+
+	c, err := n._get(nid)
+	if err != nil {
+		return err
+	}
+
+	hit := false
+	if c.State() == chain.StateStarted.String() {
+		switch key {
+		case "seedAddress":
+			c.cfg.SeedAddr = value
+			c.NetworkManager().SetTrustSeeds(c.cfg.SeedAddr)
+		case "role":
+			if uintVal, err := strconv.ParseUint(value, 0, 32); err != nil {
+				return errors.Wrapf(err, "invalid value type")
+			} else {
+				c.cfg.Role = uint(uintVal)
+			}
+			pr := network.PeerRoleFlag(c.cfg.Role)
+			c.NetworkManager().SetInitialRoles(pr.ToRoles()...)
+		default:
+			return errors.ErrInvalidState
+		}
+		hit = true
+
+	}
+	if c.State() == chain.StateStopped.String() {
+		switch key {
+		case "concurrencyLevel":
+			if intVal, err := strconv.Atoi(value); err != nil {
+				return errors.Wrapf(err, "invalid value type")
+			} else {
+				c.cfg.ConcurrencyLevel = intVal
+			}
+		case "normalTxPool":
+			if intVal, err := strconv.Atoi(value); err != nil {
+				return errors.Wrapf(err, "invalid value type")
+			} else {
+				c.cfg.NormalTxPoolSize = intVal
+			}
+		case "patchTxPool":
+			if intVal, err := strconv.Atoi(value); err != nil {
+				return errors.Wrapf(err, "invalid value type")
+			} else {
+				c.cfg.PatchTxPoolSize = intVal
+			}
+		case "maxBlockTxBytes":
+			if intVal, err := strconv.Atoi(value); err != nil {
+				return errors.Wrapf(err, "invalid value type")
+			} else {
+				c.cfg.MaxBlockTxBytes = intVal
+			}
+		case "channel":
+			if _, ok := n.chains[value]; ok {
+				return errors.Wrapf(ErrAlreadyExists, "Network(channel=%s) already exists", value)
+			}
+			c.cfg.Channel = value
+		case "secureSuites":
+			if err := n.nt.SetSecureSuites(c.cfg.Channel, value); err != nil {
+				return err
+			}
+			c.cfg.SecureSuites = value
+		case "secureAeads":
+			if err := n.nt.SetSecureAeads(c.cfg.Channel, value); err != nil {
+				return err
+			}
+			c.cfg.SecureAeads = value
+		case "seedAddress":
+			c.cfg.SeedAddr = value
+		case "role":
+			if uintVal, err := strconv.ParseUint(value, 0, 32); err != nil {
+				return errors.Wrapf(err, "invalid value type")
+			} else {
+				c.cfg.Role = uint(uintVal)
+			}
+		default:
+			return errors.Errorf("not found key %s",key)
+		}
+		hit = true
+	}
+
+	if hit {
+		c.refresh = true
+		if err = n.saveChainConfig(c.cfg, c.cfg.FilePath); err != nil {
+			return err
+		}
+		return nil
+	} else {
+		return errors.ErrInvalidState
+	}
 }
 
 func (n *Node) GetChains() []*Chain {

@@ -277,6 +277,29 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	importFlags.String("db_path", "", "Database path")
 	importFlags.Int64("height", 0, "Block Height")
 	MarkAnnotationRequired(importFlags, "db_path", "height")
+
+	configCmd := &cobra.Command{
+		Use:                   "config NID KEY VALUE",
+		Short:                 "Configure chain",
+		Args:                  cobra.ExactArgs(3),
+		DisableFlagsInUseLine: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			param := &node.ConfigureParam{
+				Key: args[1],
+				Value: args[2],
+			}
+			var v string
+			reqUrl := node.UrlChain + "/" + args[0] + "/configure"
+			_, err := adminClient.PostWithJson(reqUrl, param, &v)
+			if err != nil {
+				return err
+			}
+			fmt.Println(v)
+			return nil
+		},
+	}
+	rootCmd.AddCommand(configCmd)
+
 	return rootCmd, vc
 }
 

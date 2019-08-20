@@ -16,6 +16,9 @@ type NetworkManager interface {
 	RemoveRole(role Role, peers ...PeerID)
 	HasRole(role Role, id PeerID) bool
 	Roles(id PeerID) []Role
+
+    SetTrustSeeds(seeds string)
+	SetInitialRoles(roles ...Role)
 }
 
 type Reactor interface {

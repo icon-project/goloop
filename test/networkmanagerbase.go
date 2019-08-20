@@ -52,3 +52,11 @@ func (_r *NetworkManagerBase) HasRole(role module.Role, id module.PeerID) bool {
 func (_r *NetworkManagerBase) Roles(id module.PeerID) []module.Role {
 	panic("not implemented")
 }
+
+func (_r *NetworkManagerBase) SetTrustSeeds(seeds string) {
+	panic("not implemented")
+}
+
+func (_r *NetworkManagerBase) SetInitialRoles(roles ...module.Role) {
+	panic("not implemented")
+}

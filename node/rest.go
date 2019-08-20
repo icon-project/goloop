@@ -181,6 +181,7 @@ func (r *Rest) RegisterChainHandlers(g *echo.Group) {
 	g.POST(UrlChainRes+"/reset", r.ResetChain, r.ChainInjector)
 	g.POST(UrlChainRes+"/verify", r.VerifyChain, r.ChainInjector)
 	g.POST(UrlChainRes+"/import", r.ImportChain, r.ChainInjector)
+	g.POST(UrlChainRes+"/configure", r.ConfigureChain, r.ChainInjector)
 }
 
 func (r *Rest) ChainInjector(next echo.HandlerFunc) echo.HandlerFunc {
@@ -325,6 +326,18 @@ func (r *Rest) ImportChain(ctx echo.Context) error {
 		return echo.ErrBadRequest
 	}
 	if err := r.n.ImportChain(c.NID(), param.DBPath, param.Height); err != nil {
+		return err
+	}
+	return ctx.String(http.StatusOK, "OK")
+}
+
+func (r *Rest) ConfigureChain(ctx echo.Context) error {
+	c := ctx.Get("chain").(*Chain)
+	p := &ConfigureParam{}
+	if err := ctx.Bind(p); err != nil {
+		return err
+	}
+	if err := r.n.ConfigureChain(c.NID(), p.Key, p.Value); err != nil {
 		return err
 	}
 	return ctx.String(http.StatusOK, "OK")

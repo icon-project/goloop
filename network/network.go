@@ -60,18 +60,7 @@ func NewManager(c module.Chain, nt module.NetworkTransport, trustSeeds string, r
 	m.destByRole[module.ROLE_VALIDATOR] = p2pRoleRoot
 	m.destByRole[module.ROLE_NORMAL] = p2pRoleNone //same as broadcast
 
-	role := PeerRoleFlag(p2pRoleNone)
-	for _, r := range roles {
-		switch r {
-		case module.ROLE_SEED:
-			role.SetFlag(p2pRoleSeed)
-		case module.ROLE_VALIDATOR:
-			role.SetFlag(p2pRoleRoot)
-		default:
-			m.logger.Infoln("NewManager", "ignored role", r)
-		}
-	}
-	m.p2p.setRole(role)
+	m.SetInitialRoles(roles...)
 	m.SetTrustSeeds(trustSeeds)
 
 	m.logger.Debugln("NewManager", channel)
@@ -308,17 +297,32 @@ func (m *manager) getRoleByDest(dest byte) module.Role {
 }
 
 func (m *manager) SetTrustSeeds(seeds string) {
-	if seeds != "" {
-		seeds := strings.Split(seeds, ",")
-		for _, seed := range seeds {
-			if seed != "" {
-				na := NetAddress(seed)
-				if na != m.p2p.self.netAddress {
-					m.p2p.trustSeeds.Add(na)
-				}
+	ss := strings.Split(seeds, ",")
+	nas := make([]NetAddress,0)
+	for _, s := range ss {
+		if s != "" {
+			na := NetAddress(s)
+			if na != m.p2p.self.netAddress {
+				nas = append(nas, na)
 			}
 		}
 	}
+	m.p2p.trustSeeds.ClearAndAdd(nas...)
+}
+
+func (m *manager) SetInitialRoles(roles ...module.Role) {
+	role := PeerRoleFlag(p2pRoleNone)
+	for _, r := range roles {
+		switch r {
+		case module.ROLE_SEED:
+			role.SetFlag(p2pRoleSeed)
+		case module.ROLE_VALIDATOR:
+			role.SetFlag(p2pRoleRoot)
+		default:
+			m.logger.Infoln("SetRoles", "ignored role", r)
+		}
+	}
+	m.p2p.setRole(role)
 }
 
 type protocolInfo uint16
