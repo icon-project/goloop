@@ -209,7 +209,8 @@ func (c *worldContext) updateSystemInfo() {
 				}
 			}
 
-			c.systemInfo.tsThreshold = scoredb.NewVarDB(as, VarTimestampThreshold).Int64()
+			tshInMS := scoredb.NewVarDB(as, VarTimestampThreshold).Int64()
+			c.systemInfo.tsThreshold = tshInMS * 1000
 		}
 		c.systemInfo.updated = true
 	}

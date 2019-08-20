@@ -67,13 +67,32 @@ func TransactionTimestampThreshold(wc state.WorldContext) int64 {
 	return th
 }
 
-func CheckTxTimestamp(c state.WorldContext, tx transaction.Transaction) error {
-	th := TransactionTimestampThreshold(c)
-	diff := tx.Timestamp() - c.BlockTimeStamp()
-	if diff <= -th {
-		return ExpiredTransactionError.Errorf("Expired(diff=%s)", time.Duration(diff*1000))
-	} else if diff > th {
-		return FutureTransactionError.Errorf("FutureTx(diff=%s)", time.Duration(diff*1000))
+type TimestampRange interface {
+	CheckTx(tx transaction.Transaction) error
+}
+
+type timestampRange struct {
+	base, threshold int64
+}
+
+func (r *timestampRange) CheckTx(tx transaction.Transaction) error {
+	ts := tx.Timestamp()
+	diff := ts - r.base
+	if diff <= -r.threshold {
+		return ExpiredTransactionError.Errorf("Expired(diff=%s)",
+			time.Duration(diff)*time.Microsecond)
+	} else if diff > r.threshold {
+		return FutureTransactionError.Errorf("FutureTx(diff=%s)",
+			time.Duration(diff)*time.Microsecond)
 	}
 	return nil
+}
+
+func NewTimestampRange(c state.WorldContext) TimestampRange {
+	th := TransactionTimestampThreshold(c)
+	bts := c.BlockTimeStamp()
+	return &timestampRange{
+		base:      bts,
+		threshold: th,
+	}
 }

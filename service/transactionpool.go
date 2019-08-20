@@ -108,6 +108,7 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 	valNum := 0
 	invalidNum := 0
 	txSize = 0
+	tsRange := NewTimestampRange(wc)
 	for _, e := range txs {
 		tx := e.Value()
 		// TODO need to check transaction in parent transitions.
@@ -117,7 +118,7 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 			invalidNum += 1
 			continue
 		}
-		if err := CheckTxTimestamp(wc, tx); err != nil {
+		if err := tsRange.CheckTx(tx); err != nil {
 			// not dropping transaction recently received
 			// Block.TS + Threshold <= TX.TS < Now + Threshold
 			if FutureTransactionError.Equals(err) {
