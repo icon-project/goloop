@@ -40,6 +40,7 @@ Manage chains
 ### Child commands
 |Command | Description|
 |---|---|
+| [goloop chain config](#goloop-chain-config) |  Configure chain |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
 | [goloop chain join](#goloop-chain-join) |  Join chain |
@@ -67,6 +68,41 @@ Manage chains
 | [goloop stats](#goloop-stats) |  Display a live streams of chains metric-statistics |
 | [goloop system](#goloop-system) |  System info |
 | [goloop version](#goloop-version) |  Print goloop version |
+
+## goloop chain config
+
+### Description
+Configure chain
+
+### Usage
+` goloop chain config NID KEY VALUE `
+
+### Inherited Options
+|Name,shorthand | Default | Description|
+|---|---|---|
+| --config, -c |  | Parsing configuration file |
+| --key_store |  | KeyStore file for wallet |
+| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop chain](#goloop-chain) |  Manage chains |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop chain config](#goloop-chain-config) |  Configure chain |
+| [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
+| [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
+| [goloop chain join](#goloop-chain-join) |  Join chain |
+| [goloop chain leave](#goloop-chain-leave) |  Leave chain |
+| [goloop chain ls](#goloop-chain-ls) |  List chains |
+| [goloop chain reset](#goloop-chain-reset) |  Chain data reset |
+| [goloop chain start](#goloop-chain-start) |  Chain start |
+| [goloop chain stop](#goloop-chain-stop) |  Chain stop |
+| [goloop chain verify](#goloop-chain-verify) |  Chain data verify |
 
 ## goloop chain import
 
@@ -98,6 +134,7 @@ Start to import legacy database
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain config](#goloop-chain-config) |  Configure chain |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
 | [goloop chain join](#goloop-chain-join) |  Join chain |
@@ -137,6 +174,7 @@ Inspect chain
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain config](#goloop-chain-config) |  Configure chain |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
 | [goloop chain join](#goloop-chain-join) |  Join chain |
@@ -187,6 +225,7 @@ Join chain
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain config](#goloop-chain-config) |  Configure chain |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
 | [goloop chain join](#goloop-chain-join) |  Join chain |
@@ -221,6 +260,7 @@ Leave chain
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain config](#goloop-chain-config) |  Configure chain |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
 | [goloop chain join](#goloop-chain-join) |  Join chain |
@@ -255,6 +295,7 @@ List chains
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain config](#goloop-chain-config) |  Configure chain |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
 | [goloop chain join](#goloop-chain-join) |  Join chain |
@@ -289,6 +330,7 @@ Chain data reset
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain config](#goloop-chain-config) |  Configure chain |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
 | [goloop chain join](#goloop-chain-join) |  Join chain |
@@ -323,6 +365,7 @@ Chain start
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain config](#goloop-chain-config) |  Configure chain |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
 | [goloop chain join](#goloop-chain-join) |  Join chain |
@@ -357,6 +400,7 @@ Chain stop
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain config](#goloop-chain-config) |  Configure chain |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
 | [goloop chain join](#goloop-chain-join) |  Join chain |
@@ -391,6 +435,7 @@ Chain data verify
 ### Related commands
 |Command | Description|
 |---|---|
+| [goloop chain config](#goloop-chain-config) |  Configure chain |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
 | [goloop chain join](#goloop-chain-join) |  Join chain |
@@ -632,6 +677,7 @@ JSON-RPC API
 ### Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --debug | false | JSON-RPC Response with detail information |
 | --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Child commands
@@ -683,6 +729,7 @@ GetBalance
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --debug | false | JSON-RPC Response with detail information |
 | --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
@@ -721,6 +768,7 @@ GetBlockByHash
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --debug | false | JSON-RPC Response with detail information |
 | --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
@@ -759,6 +807,7 @@ GetBlockByHeight
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --debug | false | JSON-RPC Response with detail information |
 | --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
@@ -797,6 +846,7 @@ GetBlockHeaderByHeight
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --debug | false | JSON-RPC Response with detail information |
 | --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
@@ -844,6 +894,7 @@ Call
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --debug | false | JSON-RPC Response with detail information |
 | --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
@@ -882,6 +933,7 @@ GetDataByHash
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --debug | false | JSON-RPC Response with detail information |
 | --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
@@ -920,6 +972,7 @@ GetLastBlock
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --debug | false | JSON-RPC Response with detail information |
 | --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
@@ -962,6 +1015,7 @@ Monitor
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --debug | false | JSON-RPC Response with detail information |
 | --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Child commands
@@ -1006,6 +1060,7 @@ MonitorBlock
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --debug | false | JSON-RPC Response with detail information |
 | --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
@@ -1037,6 +1092,7 @@ MonitorEvent
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --debug | false | JSON-RPC Response with detail information |
 | --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
@@ -1061,6 +1117,7 @@ GetProofForResult
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --debug | false | JSON-RPC Response with detail information |
 | --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
@@ -1099,6 +1156,7 @@ Rpc with raw json file
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --debug | false | JSON-RPC Response with detail information |
 | --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
@@ -1137,6 +1195,7 @@ GetScoreApi
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --debug | false | JSON-RPC Response with detail information |
 | --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
@@ -1184,6 +1243,7 @@ SendTransaction
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --debug | false | JSON-RPC Response with detail information |
 | --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Child commands
@@ -1237,6 +1297,7 @@ SmartContract Call Transaction
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --debug | false | JSON-RPC Response with detail information |
 | --key_password |  | Password for the KeyStore file |
 | --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
@@ -1275,6 +1336,7 @@ Deploy Transaction
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --debug | false | JSON-RPC Response with detail information |
 | --key_password |  | Password for the KeyStore file |
 | --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
@@ -1306,6 +1368,7 @@ Send transaction with json file
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --debug | false | JSON-RPC Response with detail information |
 | --key_password |  | Password for the KeyStore file |
 | --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
@@ -1344,6 +1407,7 @@ Coin Transfer Transaction
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --debug | false | JSON-RPC Response with detail information |
 | --key_password |  | Password for the KeyStore file |
 | --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
@@ -1375,6 +1439,7 @@ GetTotalSupply
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --debug | false | JSON-RPC Response with detail information |
 | --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
@@ -1413,6 +1478,7 @@ GetTransactionByHash
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --debug | false | JSON-RPC Response with detail information |
 | --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
@@ -1451,6 +1517,7 @@ GetTransactionResult
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --debug | false | JSON-RPC Response with detail information |
 | --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
@@ -1489,6 +1556,7 @@ GetVotesByHeight
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --debug | false | JSON-RPC Response with detail information |
 | --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
@@ -1539,7 +1607,6 @@ Server management
 | --p2p | 127.0.0.1:8080 | Advertise ip-port of P2P |
 | --p2p_listen |  | Listen ip-port of P2P |
 | --rpc_addr | :9080 | Listen ip-port of JSON-RPC |
-| --rpc_default_channel |  | JSON-RPC Default Channel |
 | --rpc_dump | false | JSON-RPC Request, Response Dump flag |
 
 ### Child commands
@@ -1594,7 +1661,6 @@ Save configuration
 | --p2p | 127.0.0.1:8080 | Advertise ip-port of P2P |
 | --p2p_listen |  | Listen ip-port of P2P |
 | --rpc_addr | :9080 | Listen ip-port of JSON-RPC |
-| --rpc_default_channel |  | JSON-RPC Default Channel |
 | --rpc_dump | false | JSON-RPC Request, Response Dump flag |
 
 ### Parent command
@@ -1638,7 +1704,6 @@ Start server
 | --p2p | 127.0.0.1:8080 | Advertise ip-port of P2P |
 | --p2p_listen |  | Listen ip-port of P2P |
 | --rpc_addr | :9080 | Listen ip-port of JSON-RPC |
-| --rpc_default_channel |  | JSON-RPC Default Channel |
 | --rpc_dump | false | JSON-RPC Request, Response Dump flag |
 
 ### Parent command
