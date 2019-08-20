@@ -46,7 +46,7 @@ type Node struct {
 
 type Chain struct {
 	module.Chain
-	cfg *chain.Config
+	cfg     *chain.Config
 	refresh bool
 }
 
@@ -281,7 +281,6 @@ func (n *Node) StartChain(nid int) error {
 	}
 	if c.refresh {
 		if c, err = n._refresh(c); err != nil {
-			log.Println(err)
 			return err
 		}
 	}
@@ -342,6 +341,7 @@ func (n *Node) ConfigureChain(nid int, key string, value string) error {
 	}
 
 	hit := false
+	refreshNow := false
 	if c.State() == chain.StateStarted.String() {
 		switch key {
 		case "seedAddress":
@@ -359,7 +359,6 @@ func (n *Node) ConfigureChain(nid int, key string, value string) error {
 			return errors.ErrInvalidState
 		}
 		hit = true
-
 	}
 	if c.State() == chain.StateStopped.String() {
 		switch key {
@@ -392,6 +391,7 @@ func (n *Node) ConfigureChain(nid int, key string, value string) error {
 				return errors.Wrapf(ErrAlreadyExists, "Network(channel=%s) already exists", value)
 			}
 			c.cfg.Channel = value
+			refreshNow = true
 		case "secureSuites":
 			if err := n.nt.SetSecureSuites(c.cfg.Channel, value); err != nil {
 				return err
@@ -411,13 +411,19 @@ func (n *Node) ConfigureChain(nid int, key string, value string) error {
 				c.cfg.Role = uint(uintVal)
 			}
 		default:
-			return errors.Errorf("not found key %s",key)
+			return errors.Errorf("not found key %s", key)
 		}
 		hit = true
 	}
 
 	if hit {
-		c.refresh = true
+		if refreshNow {
+			if c, err = n._refresh(c); err != nil {
+				return err
+			}
+		} else {
+			c.refresh = true
+		}
 		if err = n.saveChainConfig(c.cfg, c.cfg.FilePath); err != nil {
 			return err
 		}
