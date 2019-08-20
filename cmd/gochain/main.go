@@ -330,7 +330,7 @@ func Execute(cmd *cobra.Command, args []string) {
 
 	if memProfile != "" {
 		c := make(chan os.Signal, 1)
-		signal.Notify(c, syscall.SIGHUP)
+		signal.Notify(c, syscall.SIGUSR1)
 		go func(c chan os.Signal) {
 			for {
 				<-c
@@ -382,7 +382,7 @@ func Execute(cmd *cobra.Command, args []string) {
 	pm.SetInstances(cfg.EEInstances, cfg.EEInstances, cfg.EEInstances)
 
 	// TODO : server-chain setting
-	srv := server.NewManager(cfg.RPCAddr, cfg.RPCDump, cfg.RPCDebug,"", wallet, logger)
+	srv := server.NewManager(cfg.RPCAddr, cfg.RPCDump, cfg.RPCDebug, "", wallet, logger)
 	hex.EncodeToString(wallet.Address().ID())
 	c := chain.NewChain(wallet, nt, srv, pm, logger, &cfg.Config)
 	err = c.Init(true)
