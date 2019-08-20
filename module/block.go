@@ -14,6 +14,7 @@ type Block interface {
 	ID() []byte
 	Height() int64
 	PrevID() []byte
+	NextValidatorsHash() []byte
 	NextValidators() ValidatorList
 	// voters are subset of previous previous block's next validators
 	Votes() CommitVoteSet

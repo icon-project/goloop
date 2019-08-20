@@ -577,8 +577,11 @@ func VerifyBlock(
 	if !bytes.Equal(b.PrevID(), prev.ID()) {
 		return errors.New("bad prev ID")
 	}
-	if err := vote.Verify(b, prev.NextValidators()); err != nil {
-		return err
+	vl := prev.NextValidators()
+	if vl != nil {
+		if err := vote.Verify(b, vl); err != nil {
+			return err
+		}
 	}
 	return nil
 }

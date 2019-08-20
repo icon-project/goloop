@@ -79,6 +79,10 @@ func (b *blockV1) Votes() module.CommitVoteSet {
 	return nil
 }
 
+func (b *blockV1) NextValidatorsHash() []byte {
+	return nil
+}
+
 func (b *blockV1) NextValidators() module.ValidatorList {
 	return nil
 }

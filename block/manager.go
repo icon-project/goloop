@@ -210,9 +210,14 @@ func (it *importTask) _onValidate(err error) {
 			it.cb(nil, err)
 			return
 		}
-		if _, ok := it.manager.nmap[string(it.block.ID())]; !ok {
-			bn := &bnode{
-				block:  it.block,
+		var bn *bnode
+		var ok bool
+		if bn, ok = it.manager.nmap[string(it.block.ID())]; !ok {
+			blockV2 := it.block.(*blockV2)
+			validatedBlock := *blockV2
+			validatedBlock._nextValidators = it.in.mtransition().NextValidators()
+			bn = &bnode{
+				block:  &validatedBlock,
 				in:     it.in.newTransition(nil),
 				preexe: it.out.newTransition(nil),
 			}
@@ -221,7 +226,7 @@ func (it *importTask) _onValidate(err error) {
 		}
 		it.stop()
 		it.state = validatedOut
-		it.cb(it.block, err)
+		it.cb(bn.block, err)
 	}
 }
 
@@ -374,7 +379,8 @@ func (pt *proposeTask) _onExecute(err error) {
 		result:             pmtr.Result(),
 		patchTransactions:  pmtr.PatchTransactions(),
 		normalTransactions: mtr.NormalTransactions(),
-		nextValidators:     pmtr.NextValidators(),
+		nextValidatorsHash: pmtr.NextValidators().Hash(),
+		_nextValidators:    pmtr.NextValidators(),
 		votes:              pt.votes,
 	}
 	if _, ok := pt.manager.nmap[string(block.ID())]; !ok {
@@ -609,7 +615,8 @@ func (m *manager) finalizeGenesisBlock(
 		result:             mtr.Result(),
 		patchTransactions:  gtr.mtransition().PatchTransactions(),
 		normalTransactions: gtr.mtransition().NormalTransactions(),
-		nextValidators:     gtr.mtransition().NextValidators(),
+		nextValidatorsHash: gtr.mtransition().NextValidators().Hash(),
+		_nextValidators:    gtr.mtransition().NextValidators(),
 		votes:              votes,
 	}
 	m.nmap[string(bn.block.ID())] = bn
@@ -818,7 +825,8 @@ func (m *manager) newBlockFromHeaderReader(r io.Reader) (module.Block, error) {
 		result:             header.Result,
 		patchTransactions:  patches,
 		normalTransactions: normalTxs,
-		nextValidators:     nextValidators,
+		nextValidatorsHash: nextValidators.Hash(),
+		_nextValidators:    nextValidators,
 		votes:              votes,
 	}, nil
 }
@@ -876,10 +884,8 @@ func (m *manager) newBlockFromReader(r io.Reader) (module.Block, error) {
 	if !bytes.Equal(normalTxs.Hash(), blockFormat.NormalTransactionsHash) {
 		return nil, errors.New("bad normal transactions hash")
 	}
+	// nextValidators may be nil
 	nextValidators := m.sm.ValidatorListFromHash(blockFormat.NextValidatorsHash)
-	if nextValidators == nil {
-		return nil, errors.New("bad validator list hash")
-	}
 	votes := m.chain.CommitVoteSetDecoder()(blockFormat.Votes)
 	if !bytes.Equal(votes.Hash(), blockFormat.VotesHash) {
 		return nil, errors.New("bad vote list hash")
@@ -893,7 +899,8 @@ func (m *manager) newBlockFromReader(r io.Reader) (module.Block, error) {
 		result:             blockFormat.Result,
 		patchTransactions:  patches,
 		normalTransactions: normalTxs,
-		nextValidators:     nextValidators,
+		nextValidatorsHash: blockFormat.NextValidatorsHash,
+		_nextValidators:     nextValidators,
 		votes:              votes,
 	}, nil
 }

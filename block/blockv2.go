@@ -49,7 +49,8 @@ type blockV2 struct {
 	result             []byte
 	patchTransactions  module.TransactionList
 	normalTransactions module.TransactionList
-	nextValidators     module.ValidatorList
+	nextValidatorsHash []byte
+	_nextValidators    module.ValidatorList
 	votes              module.CommitVoteSet
 	_id                []byte
 }
@@ -79,8 +80,12 @@ func (b *blockV2) Votes() module.CommitVoteSet {
 	return b.votes
 }
 
+func (b *blockV2) NextValidatorsHash() []byte {
+	return b.nextValidatorsHash
+}
+
 func (b *blockV2) NextValidators() module.ValidatorList {
-	return b.nextValidators
+	return b._nextValidators
 }
 
 func (b *blockV2) NormalTransactions() module.TransactionList {
@@ -138,7 +143,7 @@ func (b *blockV2) _headerFormat() *blockV2HeaderFormat {
 		Proposer:               proposerBS,
 		PrevID:                 b.prevID,
 		VotesHash:              b.votes.Hash(),
-		NextValidatorsHash:     b.nextValidators.Hash(),
+		NextValidatorsHash:     b.nextValidatorsHash,
 		PatchTransactionsHash:  b.patchTransactions.Hash(),
 		NormalTransactionsHash: b.normalTransactions.Hash(),
 		LogsBloom:              b.logsBloom.CompressedBytes(),

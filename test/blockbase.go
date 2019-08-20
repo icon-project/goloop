@@ -25,6 +25,10 @@ func (_r *BlockBase) PrevID() []byte {
 	panic("not implemented")
 }
 
+func (_r *BlockBase) NextValidatorsHash() []byte {
+	panic("not implemented")
+}
+
 func (_r *BlockBase) NextValidators() module.ValidatorList {
 	panic("not implemented")
 }

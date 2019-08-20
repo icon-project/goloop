@@ -136,7 +136,7 @@ func (cs *consensus) _resetForNewHeight(prevBlock module.Block, votes *voteSet) 
 	cs.height = prevBlock.Height() + 1
 	cs.lastBlock = prevBlock
 	cs.prevValidators = cs.validators
-	if cs.validators == nil || !bytes.Equal(cs.validators.Hash(), cs.lastBlock.NextValidators().Hash()) {
+	if cs.validators == nil || !bytes.Equal(cs.validators.Hash(), cs.lastBlock.NextValidatorsHash()) {
 		cs.validators = cs.lastBlock.NextValidators()
 		peerIDs := make([]module.PeerID, cs.validators.Len())
 		for i := 0; i < cs.validators.Len(); i++ {
@@ -573,6 +573,7 @@ func (cs *consensus) enterPrevote() {
 					}
 
 					if err == nil {
+						cs.currentBlockParts.block = blk
 						cs.currentBlockParts.validated = true
 						cs.sendVote(voteTypePrevote, cs.currentBlockParts)
 					} else {
@@ -745,6 +746,7 @@ func (cs *consensus) commitAndEnterNewHeight() {
 				if err != nil {
 					cs.logger.Panicf("commitAndEnterNewHeight: %+v\n", err)
 				}
+				cs.currentBlockParts.block = blk
 				cs.currentBlockParts.validated = true
 				err = cs.c.BlockManager().Finalize(cs.currentBlockParts.block)
 				if err != nil {
