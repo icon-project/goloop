@@ -230,7 +230,7 @@ func (ti *transitionImpl) sync(result []byte, cb transitionCallback) (*transitio
 	return res, nil
 }
 
-func (ti *transitionImpl) verifyResult(block module.Block) error {
+func (ti *transitionImpl) verifyResult(block module.BlockData) error {
 	mtr := ti._mtransition
 	if !bytes.Equal(mtr.Result(), block.Result()) {
 		return errors.New("bad result")
@@ -323,7 +323,7 @@ func (tr *transition) newTransition(cb transitionCallback) *transition {
 	return tr._ti._newTransition(cb)
 }
 
-func (tr *transition) verifyResult(block module.Block) error {
+func (tr *transition) verifyResult(block module.BlockData) error {
 	if tr._ti == nil {
 		return nil
 	}

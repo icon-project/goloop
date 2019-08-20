@@ -47,7 +47,7 @@ func newClientTestSetUp(t *testing.T, n int) *clientTestSetUp {
 }
 
 type tOnBlockEvent struct {
-	blk module.Block
+	blk module.BlockData
 	vs  module.CommitVoteSet
 	br  BlockResult
 }

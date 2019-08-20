@@ -17,7 +17,7 @@ type ServerCallback interface {
 }
 
 type BlockResult interface {
-	Block() module.Block
+	Block() module.BlockData
 	Votes() module.CommitVoteSet
 	Consume()
 }

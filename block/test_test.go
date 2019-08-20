@@ -731,7 +731,7 @@ func newCommitVoteSet(pass bool) module.CommitVoteSet {
 	return &testCommitVoteSet{Pass: pass}
 }
 
-func (vs *testCommitVoteSet) Verify(block module.Block, validators module.ValidatorList) error {
+func (vs *testCommitVoteSet) Verify(block module.BlockData, validators module.ValidatorList) error {
 	if block.Height() == 0 && vs.zero {
 		return nil
 	}

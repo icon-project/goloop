@@ -81,7 +81,7 @@ type task struct {
 type importTask struct {
 	task
 	out   *transition
-	block module.Block
+	block module.BlockData
 	flags int
 }
 
@@ -129,7 +129,7 @@ func (t *task) cb(block module.Block, err error) {
 }
 
 func (m *manager) _import(
-	block module.Block,
+	block module.BlockData,
 	flags int,
 	cb func(module.Block, error),
 ) (*importTask, error) {
@@ -513,7 +513,7 @@ func (m *manager) Import(
 
 	m.logger.Debugf("Import(%x)\n", r)
 
-	block, err := m.newBlockFromReader(r)
+	block, err := m.newBlockDataFromReader(r)
 	if err != nil {
 		return nil, err
 	}
@@ -529,7 +529,7 @@ func (m *manager) Import(
 }
 
 func (m *manager) ImportBlock(
-	block module.Block,
+	block module.BlockData,
 	flags int,
 	cb func(module.Block, error),
 ) (func() bool, error) {
@@ -846,14 +846,14 @@ func (m *manager) newTransactionListFromBSS(
 	return m.sm.TransactionListFromSlice(ts, version), nil
 }
 
-func (m *manager) NewBlockFromReader(r io.Reader) (module.Block, error) {
+func (m *manager) NewBlockDataFromReader(r io.Reader) (module.BlockData, error) {
 	m.syncer.begin()
 	defer m.syncer.end()
 
-	return m.newBlockFromReader(r)
+	return m.newBlockDataFromReader(r)
 }
 
-func (m *manager) newBlockFromReader(r io.Reader) (module.Block, error) {
+func (m *manager) newBlockDataFromReader(r io.Reader) (module.BlockData, error) {
 	r = bufio.NewReader(r)
 	var blockFormat blockV2Format
 	err := v2Codec.Unmarshal(r, &blockFormat.blockV2HeaderFormat)

@@ -57,8 +57,10 @@ func (hrs hrs) String() string {
 
 type blockPartSet struct {
 	PartSet
-	block     module.Block // nil if partset is incomplete or invalid block
-	validated bool
+
+	// nil if partset is incomplete
+	block          module.BlockData
+	validatedBlock module.Block
 }
 
 type consensus struct {
@@ -334,7 +336,7 @@ func (cs *consensus) ReceiveBlockPartMessage(msg *blockPartMessage, unicast bool
 		return -1, err
 	}
 	if cs.currentBlockParts.IsComplete() {
-		block, err := cs.c.BlockManager().NewBlockFromReader(cs.currentBlockParts.NewReader())
+		block, err := cs.c.BlockManager().NewBlockDataFromReader(cs.currentBlockParts.NewReader())
 		if err != nil {
 			cs.logger.Warnf("failed to create block. %+v\n", err)
 		} else {
@@ -535,9 +537,9 @@ func (cs *consensus) enterPropose() {
 
 					cs.sendProposal(bps, -1)
 					cs.currentBlockParts = &blockPartSet{
-						PartSet:   bps,
-						block:     blk,
-						validated: true,
+						PartSet:        bps,
+						block:          blk,
+						validatedBlock: blk,
 					}
 					cs.enterPrevote()
 				},
@@ -557,7 +559,7 @@ func (cs *consensus) enterPrevote() {
 		cs.sendVote(voteTypePrevote, cs.lockedBlockParts)
 	} else if cs.currentBlockParts != nil && cs.currentBlockParts.IsComplete() {
 		hrs := cs.hrs
-		if cs.currentBlockParts.validated {
+		if cs.currentBlockParts.validatedBlock != nil {
 			cs.sendVote(voteTypePrevote, cs.currentBlockParts)
 		} else {
 			var err error
@@ -573,8 +575,7 @@ func (cs *consensus) enterPrevote() {
 					}
 
 					if err == nil {
-						cs.currentBlockParts.block = blk
-						cs.currentBlockParts.validated = true
+						cs.currentBlockParts.validatedBlock = blk
 						cs.sendVote(voteTypePrevote, cs.currentBlockParts)
 					} else {
 						cs.logger.Warnf("import cb error: %+v\n", err)
@@ -651,7 +652,7 @@ func (cs *consensus) enterPrecommit() {
 		cs.logger.Traceln("enterPrecommit: update lock round")
 		cs.lockedRound = cs.round
 		cs.sendVote(voteTypePrecommit, cs.lockedBlockParts)
-	} else if cs.currentBlockParts != nil && cs.currentBlockParts.ID().Equal(partSetID) && cs.currentBlockParts.validated {
+	} else if cs.currentBlockParts != nil && cs.currentBlockParts.ID().Equal(partSetID) && cs.currentBlockParts.validatedBlock != nil {
 		cs.logger.Traceln("enterPrecommit: update lock")
 		cs.lockedRound = cs.round
 		cs.lockedBlockParts = cs.currentBlockParts
@@ -730,7 +731,7 @@ func (cs *consensus) enterPrecommitWait() {
 }
 
 func (cs *consensus) commitAndEnterNewHeight() {
-	if !cs.currentBlockParts.validated {
+	if cs.currentBlockParts.validatedBlock == nil {
 		hrs := cs.hrs
 		_, err := cs.c.BlockManager().ImportBlock(
 			cs.currentBlockParts.block,
@@ -746,9 +747,8 @@ func (cs *consensus) commitAndEnterNewHeight() {
 				if err != nil {
 					cs.logger.Panicf("commitAndEnterNewHeight: %+v\n", err)
 				}
-				cs.currentBlockParts.block = blk
-				cs.currentBlockParts.validated = true
-				err = cs.c.BlockManager().Finalize(cs.currentBlockParts.block)
+				cs.currentBlockParts.validatedBlock = blk
+				err = cs.c.BlockManager().Finalize(cs.currentBlockParts.validatedBlock)
 				if err != nil {
 					cs.logger.Panicf("commitAndEnterNewHeight: %+v\n", err)
 				}
@@ -759,7 +759,7 @@ func (cs *consensus) commitAndEnterNewHeight() {
 			cs.logger.Panicf("commitAndEnterNewHeight: %+v\n", err)
 		}
 	} else {
-		err := cs.c.BlockManager().Finalize(cs.currentBlockParts.block)
+		err := cs.c.BlockManager().Finalize(cs.currentBlockParts.validatedBlock)
 		if err != nil {
 			cs.logger.Panicf("commitAndEnterNewHeight: %+v\n", err)
 		}
@@ -852,7 +852,7 @@ func (cs *consensus) enterTransactionWait() {
 
 func (cs *consensus) enterNewHeight() {
 	votes := cs.hvs.votesFor(cs.commitRound, voteTypePrecommit)
-	cs.resetForNewHeight(cs.currentBlockParts.block, votes)
+	cs.resetForNewHeight(cs.currentBlockParts.validatedBlock, votes)
 	cs.notifySyncer()
 
 	now := time.Now()
@@ -1251,14 +1251,13 @@ func (cs *consensus) applyLockWAL() error {
 		}
 	}
 	if lastBPSet != nil {
-		blk, err := cs.c.BlockManager().NewBlockFromReader(lastBPSet.NewReader())
+		blk, err := cs.c.BlockManager().NewBlockDataFromReader(lastBPSet.NewReader())
 		if err != nil {
 			return err
 		}
 		cs.currentBlockParts = &blockPartSet{
-			PartSet:   lastBPSet,
-			block:     blk,
-			validated: false,
+			PartSet: lastBPSet,
+			block:   blk,
 		}
 		cs.lockedBlockParts = cs.currentBlockParts
 		cs.lockedRound = lastBPSetLockRound
@@ -1673,14 +1672,14 @@ func (cs *consensus) processBlock(br fastsync.BlockResult) {
 	precommits := cs.hvs.votesFor(votes.Round, voteTypePrecommit)
 	id, _ := precommits.getOverTwoThirdsPartSetID()
 	bps := newPartSetFromID(id)
-	validated := false
+	var validatedBlock module.Block
 	if cs.currentBlockParts != nil && cs.currentBlockParts.ID().Equal(id) {
-		validated = cs.currentBlockParts.validated
+		validatedBlock = cs.currentBlockParts.validatedBlock
 	}
 	cs.currentBlockParts = &blockPartSet{
-		PartSet:   bps,
-		block:     blk,
-		validated: validated,
+		PartSet:        bps,
+		block:          blk,
+		validatedBlock: validatedBlock,
 	}
 	cs.syncing = false
 	if cs.step < stepCommit {

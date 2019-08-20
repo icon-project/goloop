@@ -26,7 +26,7 @@ type commitVoteList struct {
 	Items          []commitVoteItem
 }
 
-func (vl *commitVoteList) Verify(block module.Block, validators module.ValidatorList) error {
+func (vl *commitVoteList) Verify(block module.BlockData, validators module.ValidatorList) error {
 	if block.Height() == 0 {
 		if len(vl.Items) == 0 {
 			return nil

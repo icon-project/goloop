@@ -9,13 +9,12 @@ const (
 	BlockVersion2
 )
 
-type Block interface {
+type BlockData interface {
 	Version() int
 	ID() []byte
 	Height() int64
 	PrevID() []byte
 	NextValidatorsHash() []byte
-	NextValidators() ValidatorList
 	// voters are subset of previous previous block's next validators
 	Votes() CommitVoteSet
 	NormalTransactions() TransactionList
@@ -30,6 +29,11 @@ type Block interface {
 	Marshal(w io.Writer) error
 
 	ToJSON(rcpVersion int) (interface{}, error)
+}
+
+type Block interface {
+	BlockData
+	NextValidators() ValidatorList
 }
 
 // ImportXXX is used as flag value of BlockManager.Import and
@@ -47,9 +51,9 @@ type BlockManager interface {
 	// height.
 	WaitForBlock(height int64) (<-chan Block, error)
 
-	//  NewBlockFromReader creates a Block from reader. The returned block
+	//  NewBlockDataFromReader creates a BlockData from reader. The returned block
 	//	shall be imported by ImportBlock before it is Committed or Finalized.
-	NewBlockFromReader(r io.Reader) (Block, error)
+	NewBlockDataFromReader(r io.Reader) (BlockData, error)
 
 	//	Propose proposes a Block following the parent Block.
 	//	The result is asynchronously notified by cb. canceler cancels the
@@ -64,7 +68,7 @@ type BlockManager interface {
 	//	cancellation was successful. Imported block can be Commited or
 	//	Finalized.
 	Import(r io.Reader, flags int, cb func(Block, error)) (canceler func() bool, err error)
-	ImportBlock(blk Block, flags int, cb func(Block, error)) (canceler func() bool, err error)
+	ImportBlock(blk BlockData, flags int, cb func(Block, error)) (canceler func() bool, err error)
 
 	Commit(Block) error
 

@@ -29,10 +29,6 @@ func (_r *BlockBase) NextValidatorsHash() []byte {
 	panic("not implemented")
 }
 
-func (_r *BlockBase) NextValidators() module.ValidatorList {
-	panic("not implemented")
-}
-
 func (_r *BlockBase) Votes() module.CommitVoteSet {
 	panic("not implemented")
 }
@@ -74,5 +70,9 @@ func (_r *BlockBase) Marshal(w io.Writer) error {
 }
 
 func (_r *BlockBase) ToJSON(rcpVersion int) (interface{}, error) {
+	panic("not implemented")
+}
+
+func (_r *BlockBase) NextValidators() module.ValidatorList {
 	panic("not implemented")
 }

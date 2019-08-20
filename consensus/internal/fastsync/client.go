@@ -32,13 +32,13 @@ type client struct {
 
 type blockResult struct {
 	id    module.PeerID
-	blk   module.Block
+	blk   module.BlockData
 	votes module.CommitVoteSet
 	cl    *client
 	fr    *fetchRequest
 }
 
-func (br *blockResult) Block() module.Block {
+func (br *blockResult) Block() module.BlockData {
 	return br.blk
 }
 
@@ -80,7 +80,7 @@ type fetchRequest struct {
 
 	validPeers     []*peer
 	nActivePeers   int
-	prevBlock      module.Block
+	prevBlock      module.BlockData
 	consumeOffset  int64
 	notifyOffset   int64
 	pendingResults []*blockResult
@@ -234,7 +234,7 @@ func (cl *client) _findPeerByFetcher(f *fetcher) (int, *peer) {
 	return -1, nil
 }
 
-func (cl *client) onResult(f *fetcher, err error, blk module.Block, votes module.CommitVoteSet) {
+func (cl *client) onResult(f *fetcher, err error, blk module.BlockData, votes module.CommitVoteSet) {
 	cl.Lock()
 	defer cl.Unlock()
 
@@ -545,7 +545,7 @@ func (f *fetcher) onReceive(pi module.ProtocolInfo, b []byte) {
 					bufs[i] = bytes.NewReader(d)
 				}
 				r := io.MultiReader(bufs...)
-				blk, err := f.cl.bm.NewBlockFromReader(r)
+				blk, err := f.cl.bm.NewBlockDataFromReader(r)
 				if err != nil {
 					f.cl.onResult(f, err, nil, nil)
 				} else if blk.Height() != f.height {
@@ -570,18 +570,12 @@ func (f *fetcher) onReceive(pi module.ProtocolInfo, b []byte) {
 }
 
 func VerifyBlock(
-	b module.Block,
-	prev module.Block,
+	b module.BlockData,
+	prev module.BlockData,
 	vote module.CommitVoteSet,
 ) error {
 	if !bytes.Equal(b.PrevID(), prev.ID()) {
 		return errors.New("bad prev ID")
-	}
-	vl := prev.NextValidators()
-	if vl != nil {
-		if err := vote.Verify(b, vl); err != nil {
-			return err
-		}
 	}
 	return nil
 }

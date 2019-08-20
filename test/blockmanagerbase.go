@@ -25,7 +25,7 @@ func (_r *BlockManagerBase) WaitForBlock(height int64) (<-chan module.Block, err
 	panic("not implemented")
 }
 
-func (_r *BlockManagerBase) NewBlockFromReader(r io.Reader) (module.Block, error) {
+func (_r *BlockManagerBase) NewBlockDataFromReader(r io.Reader) (module.BlockData, error) {
 	panic("not implemented")
 }
 
@@ -37,7 +37,7 @@ func (_r *BlockManagerBase) Import(r io.Reader, flags int, cb func(module.Block,
 	panic("not implemented")
 }
 
-func (_r *BlockManagerBase) ImportBlock(blk module.Block, flags int, cb func(module.Block, error)) (canceler func() bool, err error) {
+func (_r *BlockManagerBase) ImportBlock(blk module.BlockData, flags int, cb func(module.Block, error)) (canceler func() bool, err error) {
 	panic("not implemented")
 }
 

@@ -91,7 +91,7 @@ func newTCommitVoteSet(b []byte) module.CommitVoteSet {
 	return &tCommitVoteSet{b: b}
 }
 
-func (vs *tCommitVoteSet) Verify(block module.Block, validators module.ValidatorList) error {
+func (vs *tCommitVoteSet) Verify(block module.BlockData, validators module.ValidatorList) error {
 	return nil
 }
 
@@ -124,7 +124,7 @@ func (bm *tBlockManager) GetBlockByHeight(height int64) (module.Block, error) {
 	return blk, nil
 }
 
-func (bm *tBlockManager) NewBlockFromReader(r io.Reader) (module.Block, error) {
+func (bm *tBlockManager) NewBlockDataFromReader(r io.Reader) (module.BlockData, error) {
 	var bh tBlockHeader
 	r = bufio.NewReader(r)
 	err := codec.Unmarshal(r, &bh)

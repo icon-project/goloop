@@ -7,7 +7,7 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-func verifyBlock(b module.Block, prev module.Block, validators module.ValidatorList) error {
+func verifyBlock(b module.BlockData, prev module.BlockData, validators module.ValidatorList) error {
 	if b.Height() != prev.Height()+1 {
 		return errors.New("bad height")
 	}
