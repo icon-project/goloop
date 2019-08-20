@@ -33,8 +33,6 @@ Manage chains
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
-| --key_password |  | Password for the KeyStore file |
-| --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
@@ -88,8 +86,6 @@ Start to import legacy database
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
-| --key_password |  | Password for the KeyStore file |
-| --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
@@ -129,8 +125,6 @@ Inspect chain
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
-| --key_password |  | Password for the KeyStore file |
-| --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
@@ -181,8 +175,6 @@ Join chain
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
-| --key_password |  | Password for the KeyStore file |
-| --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
@@ -217,8 +209,6 @@ Leave chain
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
-| --key_password |  | Password for the KeyStore file |
-| --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
@@ -253,8 +243,6 @@ List chains
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
-| --key_password |  | Password for the KeyStore file |
-| --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
@@ -289,8 +277,6 @@ Chain data reset
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
-| --key_password |  | Password for the KeyStore file |
-| --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
@@ -325,8 +311,6 @@ Chain start
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
-| --key_password |  | Password for the KeyStore file |
-| --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
@@ -361,8 +345,6 @@ Chain stop
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
-| --key_password |  | Password for the KeyStore file |
-| --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
@@ -397,8 +379,6 @@ Chain data verify
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
-| --key_password |  | Password for the KeyStore file |
-| --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
@@ -652,7 +632,7 @@ JSON-RPC API
 ### Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --endpoint |  | Server endpoint |
+| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Child commands
 |Command | Description|
@@ -703,7 +683,7 @@ GetBalance
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --endpoint |  | Server endpoint |
+| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -741,7 +721,7 @@ GetBlockByHash
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --endpoint |  | Server endpoint |
+| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -779,7 +759,7 @@ GetBlockByHeight
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --endpoint |  | Server endpoint |
+| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -817,7 +797,7 @@ GetBlockHeaderByHeight
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --endpoint |  | Server endpoint |
+| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -864,7 +844,7 @@ Call
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --endpoint |  | Server endpoint |
+| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -902,7 +882,7 @@ GetDataByHash
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --endpoint |  | Server endpoint |
+| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -940,7 +920,7 @@ GetLastBlock
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --endpoint |  | Server endpoint |
+| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -982,7 +962,7 @@ Monitor
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --endpoint |  | Server endpoint |
+| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Child commands
 |Command | Description|
@@ -1026,7 +1006,7 @@ MonitorBlock
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --endpoint |  | Server endpoint |
+| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1057,7 +1037,7 @@ MonitorEvent
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --endpoint |  | Server endpoint |
+| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1081,7 +1061,7 @@ GetProofForResult
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --endpoint |  | Server endpoint |
+| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1119,7 +1099,7 @@ Rpc with raw json file
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --endpoint |  | Server endpoint |
+| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1157,7 +1137,7 @@ GetScoreApi
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --endpoint |  | Server endpoint |
+| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1198,13 +1178,13 @@ SendTransaction
 | --key_password |  | Password for the KeyStore file |
 | --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
-| --nid |  | Network ID, HexString |
+| --nid |  | Network ID |
 | --step_limit | 0 | StepLimit |
 
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --endpoint |  | Server endpoint |
+| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Child commands
 |Command | Description|
@@ -1257,12 +1237,12 @@ SmartContract Call Transaction
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --endpoint |  | Server endpoint |
 | --key_password |  | Password for the KeyStore file |
 | --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
-| --nid |  | Network ID, HexString |
+| --nid |  | Network ID |
 | --step_limit | 0 | StepLimit |
+| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1295,12 +1275,12 @@ Deploy Transaction
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --endpoint |  | Server endpoint |
 | --key_password |  | Password for the KeyStore file |
 | --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
-| --nid |  | Network ID, HexString |
+| --nid |  | Network ID |
 | --step_limit | 0 | StepLimit |
+| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1326,12 +1306,12 @@ Send transaction with json file
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --endpoint |  | Server endpoint |
 | --key_password |  | Password for the KeyStore file |
 | --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
-| --nid |  | Network ID, HexString |
+| --nid |  | Network ID |
 | --step_limit | 0 | StepLimit |
+| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1364,12 +1344,12 @@ Coin Transfer Transaction
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --endpoint |  | Server endpoint |
 | --key_password |  | Password for the KeyStore file |
 | --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
-| --nid |  | Network ID, HexString |
+| --nid |  | Network ID |
 | --step_limit | 0 | StepLimit |
+| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1395,7 +1375,7 @@ GetTotalSupply
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --endpoint |  | Server endpoint |
+| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1433,7 +1413,7 @@ GetTransactionByHash
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --endpoint |  | Server endpoint |
+| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1471,7 +1451,7 @@ GetTransactionResult
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --endpoint |  | Server endpoint |
+| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1509,7 +1489,7 @@ GetVotesByHeight
 ### Inherited Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --endpoint |  | Server endpoint |
+| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1685,8 +1665,6 @@ Display a live streams of chains metric-statistics
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
 | --interval | 1 | Pull interval |
-| --key_password |  | Password for the KeyStore file |
-| --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
 | --no-stream | false | Only pull the first metric-statistics |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
@@ -1722,8 +1700,6 @@ System info
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
-| --key_password |  | Password for the KeyStore file |
-| --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
@@ -1764,8 +1740,6 @@ Configure system
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
-| --key_password |  | Password for the KeyStore file |
-| --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
@@ -1798,8 +1772,6 @@ Get system information
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --config, -c |  | Parsing configuration file |
-| --key_password |  | Password for the KeyStore file |
-| --key_secret |  | Secret(password) file for KeyStore |
 | --key_store |  | KeyStore file for wallet |
 | --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
