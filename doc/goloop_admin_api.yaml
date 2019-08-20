@@ -23,6 +23,12 @@ x-pathParameters:nid: &path__nid
     schema:
       type: string
       format: "\"0x\" + lowercase HEX string"
+x-queryParameters:format: &query__format
+  - name: format
+    in: query
+    description: "Format the output using the given Go template"
+    schema:
+      type: string
 
 paths:
   /chain:
@@ -72,6 +78,10 @@ paths:
       responses:
         "200":
           description: Success
+          content:
+            text/plain:
+              schema:
+                $ref: "#/components/schemas/NetworkID"
         "409":
           description: Conflict
         "500":
@@ -82,10 +92,11 @@ paths:
       operationId: getChain
       tags:
         - chain
-      summary: Get Chain
-      description: Get Chain Infomation.
+      summary: Inspect Chain
+      description: Return low-level information about a chain.
       parameters:
         - <<: *path__nid
+        - <<: *query__format
       responses:
         "200":
           description: Success
@@ -144,62 +155,92 @@ paths:
           description: Not Found
         "500":
           description: Internal Server Error
-  # /chain/{nid}/reset:
-  #   post:
-  #     operationId: resetChain
-  #     tags:
-  #       - chain
-  #     summary: Reset Chain
-  #     description: Reset Chain.
-  #     parameters:
-  #       - <<: *path__nid
-  #     responses:
-  #       "200":
-  #         description: Success
-  #       "404":
-  #         description: Not Found
-  #       "500":
-  #         description: Internal Server Error
-  # /chain/{nid}/verify:
-  #   post:
-  #     operationId: verifyChain
-  #     tags:
-  #       - chain
-  #     summary: Verify Chain
-  #     description: Verify Chain.
-  #     parameters:
-  #       - <<: *path__nid
-  #     responses:
-  #       "200":
-  #         description: Success
-  #       "404":
-  #         description: Not Found
-  #       "500":
-  #         description: Internal Server Error
-  # /chain/{nid}/import:
-  #   post:
-  #     operationId: importChain
-  #     tags:
-  #       - chain
-  #     summary: Import Chain
-  #     description: Import Chain.
-  #     parameters:
-  #       - <<: *path__nid
-  #     responses:
-  #       "200":
-  #         description: Success
-  #       "404":
-  #         description: Not Found
-  #       "500":
-  #         description: Internal Server Error
-
+  /chain/{nid}/reset:
+    post:
+      operationId: resetChain
+      tags:
+        - chain
+      summary: Reset Chain
+      description: Reset Chain.
+      parameters:
+        - <<: *path__nid
+      responses:
+        "200":
+          description: Success
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+  #   /chain/{nid}/verify:
+  #     post:
+  #       operationId: verifyChain
+  #       tags:
+  #         - chain
+  #       summary: Verify Chain
+  #       description: Verify Chain.
+  #       parameters:
+  #         - <<: *path__nid
+  #       responses:
+  #         "200":
+  #           description: Success
+  #         "404":
+  #           description: Not Found
+  #         "500":
+  #           description: Internal Server Error
+  /chain/{nid}/import:
+    post:
+      operationId:  importChain
+      tags:
+        - chain
+      summary: Import Chain
+      description: Import a chain from legacy database.
+      parameters:
+        - <<: *path__nid
+      requestBody:
+        required: true
+        content:
+          'application/json':
+            schema:
+              $ref: "#/components/schemas/ChainImportParam"
+      responses:
+        "200":
+          description: Success
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+  /chain/{nid}/configure:
+    post:
+      operationId: configureChain
+      tags:
+        - chain
+      summary: Configure chain
+      description: Configure chain.
+      parameters:
+        - <<: *path__nid
+      requestBody:
+        required: true
+        description: refer ChainConfig properties
+        content:
+          'application/json':
+            schema:
+              $ref: "#/components/schemas/ConfigureParam"
+      responses:
+        "200":
+          description: Success
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
   /system:
     get:
       operationId: getSystem
       tags:
         - node
-      summary: View System
+      summary: View system
       description: Return System Infomation.
+      parameters:
+        - <<: *query__format
       responses:
         "200":
           description: Success
@@ -209,8 +250,33 @@ paths:
                 $ref: "#/components/schemas/System"
         "500":
           description: Internal Server Error
+  /system/configure:
+    post:
+      operationId: configureSystem
+      tags:
+        - chain
+      summary: Configure system
+      description: Configure system
+      parameters:
+        - <<: *path__nid
+      requestBody:
+        required: true
+        description: refer SystemConfig properties
+        content:
+          'application/json':
+            schema:
+              $ref: "#/components/schemas/ConfigureParam"
+      responses:
+        "200":
+          description: Success
+        "500":
+          description: Internal Server Error
 components:
   schemas:
+    NetworkID:
+      type: string
+      description: "network-id of chain, \"0x\" + lowercase HEX string"
+      example: "0x000000"
     Chain:
       type: object
       properties:
@@ -234,8 +300,8 @@ components:
       example:
         nid: "0x000000"
         channel: "000000"
-        height: 100
         state: "started"
+        height: 100
         lastError: ""
     ChainInspect:
       allOf:
@@ -244,6 +310,7 @@ components:
           properties:
             genesisTx:
               type: object
+              description: "Genesis Transaction"
             config:
               $ref: "#/components/schemas/ChainConfig"
             module:
@@ -253,14 +320,14 @@ components:
     ChainConfig:
       type: object
       properties:
-        db_type:
+        dbType:
           type: string
           enum: [badgerdb, goleveldb, boltdb, mapdb]
           default: "goleveldb"
           description: "Name of database system"
-        seed_addr:
+        seedAddress:
           type: string
-          description: "Ip-port of Seed"
+          description: "List of Seed ip-port, Comma separated string"
         role:
           type: integer
           enum: [0,1,2,3]
@@ -271,19 +338,19 @@ components:
              * `1` - Seed
              * `2` - Validator
              * `3` - Seed and Validator
-        concurrency_level:
+        concurrencyLevel:
           type: integer
           default: 1
           description: "Maximum number of executors to use for concurrency"
-        normal_tx_pool:
+        normalTxPool:
           type: integer
           default: 0
           description: "Size of normal transaction pool"
-        patch_tx_pool:
+        patchTxPool:
           type: integer
           default: 0
           description: "Size of patch transaction pool"
-        max_block_tx_bytes:
+        maxBlockTxBytes:
           type: integer
           default: 0
           description: "Max size of transactions in a block"
@@ -299,6 +366,32 @@ components:
           type: string
           default: "chacha,aes128,aes256"
           description: "Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string"
+      example:
+        dbType: "goleveldb"
+        seedAddress: "localhost:8080"
+        role: 3
+        concurrencyLevel: 1
+        normalTxPool: 5000
+        patchTxPool: 5000
+        maxBlockTxBytes: 1048576
+        channel: "000000"
+        secureSuites: "none,tls,ecdhe"
+        secureAeads: "chacha,aes128,aes256"
+    ChainImportParam:
+      type: object
+      properties:
+        dbPath:
+          type: string
+          description: "Database path"
+        height:
+          type: int64
+          description: "Block Height"
+      required:
+        - dbPath
+        - height
+      example:
+        dbPath: "/path/to/database"
+        height: 1
     System:
       type: object
       properties:
@@ -308,19 +401,59 @@ components:
         buildTags:
           type: string
           description: "buildTags"
-        address:
-          type: string
-          pattern: "\"hx\" + 40 digit HEX string"
-          description: "wallet address"
-        p2p:
-          type: string
-          description: "p2p address"
-        p2pListen:
-          type: string
-          description: "p2p listen address"
+        setting:
+          type: object
+          properties:
+            address:
+              type: string
+              pattern: "\"hx\" + 40 digit HEX string"
+              description: "wallet address"
+            p2p:
+              type: string
+              description: "p2p address"
+            p2pListen:
+              type: string
+              description: "p2p listen address"
+        config:
+          $ref: "#/components/schemas/SystemConfig"
       example:
-        buildVersion: "release-gs/v0.1.1-2"
-        buildTags: "darwin/amd64 tags()-2019-05-31-13:51:28"
-        address: "hx4208599c8f58fed475db747504a80a311a3af63b"
-        p2p: "localhost:8080"
-        p2pListen: "localhost:8080"
+        buildVersion: "v0.1.7"
+        buildTags: "linux/amd64 tags()-2019-08-20-09:39:15"
+        setting:
+          address: "hx4208599c8f58fed475db747504a80a311a3af63b"
+          p2p: "localhost:8080"
+          p2pListen: "localhost:8080"
+          rpcAddr: ":9080"
+          rpcDump: false
+        config:
+          eeInstances: 1
+          rpcDefaultChannel: ""
+          rpcIncludeDebug: false
+    SystemConfig:
+      type: object
+      properties:
+        eeInstances:
+          type: integer
+          description: "eeInstances"
+        rpcDefaultChannel:
+          type: string
+          description: "default channel for legacy api"
+        rpcIncludeDebug:
+          type: boolean
+          description: "JSON-RPC Response with detail information"
+      example:
+        eeInstances: 1
+        rpcDefaultChannel: ""
+        rpcIncludeDebug: false
+    ConfigureParam:
+      type: object
+      properties:
+        key:
+          type: string
+          description: "configuration field name"
+        value:
+          type: string
+          description: "configuration value"
+      required:
+        - key
+        - value
