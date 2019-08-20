@@ -246,36 +246,26 @@ func (s *PeerSet) GetByID(id module.PeerID) *Peer {
 	return nil
 }
 
-func (s *PeerSet) _getByRole(role PeerRoleFlag, equal bool) []*Peer {
+func (s *PeerSet) GetByRole(r PeerRoleFlag, has bool) []*Peer {
+	defer s.Set.mtx.RUnlock()
+	s.Set.mtx.RLock()
+
 	l := make([]*Peer, 0, len(s.Set.m))
 	for k := range s.Set.m {
-		if p := k.(*Peer); p.compareRole(role, equal) {
+		if p := k.(*Peer); has == p.hasRole(r, false) {
 			l = append(l, p)
 		}
 	}
 	return l
 }
 
-func (s *PeerSet) GetByRole(role PeerRoleFlag, equal bool) []*Peer {
+func (s *PeerSet) GetBy(role PeerRoleFlag, has bool, in bool) []*Peer {
 	defer s.Set.mtx.RUnlock()
 	s.Set.mtx.RLock()
 
 	l := make([]*Peer, 0, len(s.Set.m))
 	for k := range s.Set.m {
-		if p := k.(*Peer); p.compareRole(role, equal) {
-			l = append(l, p)
-		}
-	}
-	return l
-}
-
-func (s *PeerSet) GetByRoleAndIncomming(role PeerRoleFlag, equal bool, in bool) []*Peer {
-	defer s.Set.mtx.RUnlock()
-	s.Set.mtx.RLock()
-
-	l := make([]*Peer, 0, len(s.Set.m))
-	for k := range s.Set.m {
-		if p := k.(*Peer); p.incomming == in && p.compareRole(role, equal) {
+		if p := k.(*Peer); p.incomming == in && has == p.hasRole(role, false) {
 			l = append(l, p)
 		}
 	}
@@ -416,11 +406,11 @@ func (s *NetAddressSet) Map() map[NetAddress]string {
 type PeerIDSet struct {
 	*Set
 	version int64
-	onUpdate func()
+	onUpdate func(*PeerIDSet)
 }
 
 func NewPeerIDSet() *PeerIDSet {
-	s := &PeerIDSet{Set: NewSet(), onUpdate: func() {}}
+	s := &PeerIDSet{Set: NewSet(), onUpdate: func(*PeerIDSet) {}}
 	return s
 }
 
@@ -439,7 +429,7 @@ func NewPeerIDSetFromBytes(b []byte) (*PeerIDSet, []byte) {
 
 func (s *PeerIDSet) _update() {
 	if s.onUpdate != nil {
-		s.onUpdate()
+		s.onUpdate(s)
 	}
 }
 

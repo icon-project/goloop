@@ -116,20 +116,14 @@ func newPeerToPeer(channel string, self *Peer, d *Dialer, mtr *metric.NetworkMet
 		//
 		mtr: mtr,
 	}
-	p2p.allowedRoots.onUpdate = func() {
-		p2p.setRoleByAllowedSet()
+	p2p.allowedRoots.onUpdate = func(s *PeerIDSet) {
+		p2p.onAllowedPeerIDSetUpdate(s, p2pRoleRoot)
 	}
-	p2p.allowedSeeds.onUpdate = func() {
-		p2p.setRoleByAllowedSet()
+	p2p.allowedSeeds.onUpdate = func(s *PeerIDSet) {
+		p2p.onAllowedPeerIDSetUpdate(s, p2pRoleSeed)
 	}
-	p2p.allowedPeers.onUpdate = func() {
-		peers := p2p.getPeers(false)
-		for _, p := range peers {
-			if !p2p.allowedPeers.Contains(p.ID()) {
-				p2p.onEvent(p2pEventNotAllowed, p)
-				p.CloseByError(fmt.Errorf("onUpdate not allowed connection"))
-			}
-		}
+	p2p.allowedPeers.onUpdate = func(s *PeerIDSet) {
+		p2p.onAllowedPeerIDSetUpdate(s, p2pRoleNone)
 	}
 
 	return p2p
@@ -335,11 +329,11 @@ func (p2p *PeerToPeer) onFailure(err error, pkt *Packet, c *Counter) {
 
 func (p2p *PeerToPeer) removePeer(p *Peer) (isLeave bool) {
 	isLeave = false
-	if p.compareRole(p2pRoleSeed, false) {
+	if p.hasRole(p2pRoleSeed, false) {
 		p2p.removeSeed(p)
 		p2p.seeds.Add(p.netAddress)
 	}
-	if p.compareRole(p2pRoleRoot, false) {
+	if p.hasRole(p2pRoleRoot, false) {
 		p2p.removeRoot(p)
 		p2p.roots.Add(p.netAddress)
 	}
@@ -409,7 +403,7 @@ func (p2p *PeerToPeer) onPacket(pkt *Packet, p *Peer) {
 		}
 
 		isBroadcast := pkt.dest == p2pDestAny && pkt.ttl != 1
-		if isBroadcast && isSourcePeer && !p.compareRole(p2pRoleRoot, false) {
+		if isBroadcast && isSourcePeer && !p.hasRole(p2pRoleRoot, false) {
 			p2p.logger.Infoln("onPacket", "Drop, Not authorized", p.id, pkt.protocol, pkt.subProtocol)
 			return
 		}
@@ -500,28 +494,48 @@ func (p2p *PeerToPeer) applyPeerRole(p *Peer) {
 	}
 }
 
-func (p2p *PeerToPeer) setRole(r PeerRoleFlag) bool {
-	if !p2p.self.compareRole(r, true) {
-		p2p.self.setRole(r)
-		p2p.applyPeerRole(p2p.self)
-		return true
+func (p2p *PeerToPeer) setRole(r PeerRoleFlag) {
+	rr := p2p.resolveRole(r, p2p.self.id, false)
+	if rr != r {
+		msg := fmt.Sprintf("not equal resolved role %d, expected %d", rr, r)
+		p2p.logger.Debugln("setRole", msg)
 	}
-	return false
+	if !p2p.self.hasRole(rr, true) {
+		p2p.self.setRole(rr)
+		p2p.applyPeerRole(p2p.self)
+	}
 }
 
-func (p2p *PeerToPeer) setRoleByAllowedSet() PeerRoleFlag {
-	r := p2pRoleNone
-	if p2p.isAllowedRole(p2pRoleRoot, p2p.self) {
-		r |= p2pRoleRoot
+func (p2p *PeerToPeer) onAllowedPeerIDSetUpdate(s *PeerIDSet, r PeerRoleFlag) {
+	peers := p2p.getPeers(false)
+	switch r {
+	case p2pRoleNone:
+		for _, p := range peers {
+			if !s.Contains(p.ID()) {
+				p2p.onEvent(p2pEventNotAllowed, p)
+				p.CloseByError(fmt.Errorf("onUpdate not allowed connection"))
+			}
+		}
+	default:
+		for _, p := range peers {
+			if p.hasRole(r, false) && !s.Contains(p.ID()) {
+				p.removeRole(r)
+				p2p.applyPeerRole(p)
+			}
+		}
+
+		if s.Contains(p2p.self.id) {
+			if !p2p.self.hasRole(r, false) {
+				p2p.self.addRole(r)
+				p2p.applyPeerRole(p2p.self)
+			}
+		} else {
+			if p2p.self.hasRole(r, false) {
+				p2p.self.removeRole(r)
+				p2p.applyPeerRole(p2p.self)
+			}
+		}
 	}
-	if p2p.isAllowedRole(p2pRoleSeed, p2p.self) {
-		r |= p2pRoleSeed
-	}
-	role := PeerRoleFlag(r)
-	p2p.setRole(role)
-	//TODO disconnect invalid peer case p2pRoleRoot, p2pRoleSeed
-	p2p.logger.Debugln("setRoleByAllowedSet", p2p.getRole(), p2p.allowedRoots.Len(), p2p.allowedSeeds.Len(), p2p.allowedPeers.Len())
-	return role
 }
 
 func (p2p *PeerToPeer) getRole() PeerRoleFlag {
@@ -563,28 +577,40 @@ func (p2p *PeerToPeer) handleQuery(pkt *Packet, p *Peer) {
 		return
 	}
 	p2p.logger.Traceln("handleQuery", qm, p)
-	m := &QueryResultMessage{}
-	m.Role = p2p.getRole()
-	if p2p.isAllowedRole(qm.Role, p) {
-		p.setRole(qm.Role)
-		p2p.applyPeerRole(p)
-		m.Seeds = p2p.seeds.Array()
-		m.Children = p2p.children.NetAddresses()
-		m.Nephews = p2p.nephews.NetAddresses()
-		if qm.Role.Has(p2pRoleSeed) || qm.Role.Has(p2pRoleRoot) {
-			m.Roots = p2p.roots.Array()
-		} else {
-			if m.Role.Has(p2pRoleRoot) && !m.Role.Has(p2pRoleSeed) {
-				p2p.logger.Infoln("handleQuery", "p2pRoleNone cannot query to p2pRoleRoot", p)
-				m.Message = "not allowed to query"
-				m.Seeds = nil
-				m.Children = nil
-				m.Nephews = nil
-			}
-		}
-	} else {
-		m.Message = "not exists allowedlist"
+
+	r := p2p.getRole()
+	m := &QueryResultMessage{
+		Role:     r,
+		Seeds:    p2p.seeds.Array(),
+		Children: p2p.children.NetAddresses(),
+		Nephews:  p2p.nephews.NetAddresses(),
 	}
+	rr := p2p.resolveRole(qm.Role, p.id, true)
+	if rr != qm.Role {
+		m.Message = fmt.Sprintf("not equal resolved role %d, expected %d", rr, qm.Role)
+		p2p.logger.Infoln("handleQuery", m.Message, p)
+	}
+
+	if !p.hasRole(rr, true) {
+		p.setRole(rr)
+		p2p.applyPeerRole(p)
+	}
+	if rr.Has(p2pRoleSeed) || rr.Has(p2pRoleRoot) {
+		m.Roots = p2p.roots.Array()
+	} else {
+		if r.Has(p2pRoleRoot) && !r.Has(p2pRoleSeed) {
+			m.Message = fmt.Sprintf("not allowed to query %d", rr)
+			m.Seeds = nil
+			m.Children = nil
+			m.Nephews = nil
+			p2p.logger.Infoln("handleQuery", m.Message, p)
+		}
+	}
+	if rr != qm.Role {
+		m.Message = fmt.Sprintf("not equal resolved role %d, expected %d", rr, qm.Role)
+		p2p.logger.Infoln("handleQuery", m.Message, p)
+	}
+
 	rpkt := newPacket(PROTO_P2P_QUERY_RESULT, p2p.encodeMsgpack(m), p2p.self.id)
 	rpkt.destPeer = p.id
 	err = p.sendPacket(rpkt)
@@ -607,20 +633,27 @@ func (p2p *PeerToPeer) handleQueryResult(pkt *Packet, p *Peer) {
 	p.rtt.Stop()
 	p.children.ClearAndAdd(qrm.Children...)
 	atomic.StoreInt32(&p.nephews, int32(len(qrm.Nephews)))
-	role := p2p.getRole()
-	if p2p.isAllowedRole(qrm.Role, p) {
-		p.setRole(qrm.Role)
+
+	rr := p2p.resolveRole(qrm.Role, p.id, true)
+	if rr != qrm.Role {
+		msg := fmt.Sprintf("not equal resolved role %d, expected %d", rr, qrm.Role)
+		p2p.logger.Infoln("handleQueryResult", msg, p)
+	}
+	if !p.hasRole(rr, true) {
+		p.setRole(rr)
 		p2p.applyPeerRole(p)
-		if role.Has(p2pRoleSeed) || role.Has(p2pRoleRoot) {
-			p2p.seeds.Merge(qrm.Seeds...)
-			p2p.roots.Merge(qrm.Roots...)
-		} else {
-			p2p.seeds.Merge(qrm.Seeds...)
-		}
-	} else {
-		p2p.logger.Traceln("handleQueryResult", "not exists allowedlist", p)
-		p.CloseByError(fmt.Errorf("handleQueryResult not exists allowedlist"))
+	}
+	if !rr.Has(p2pRoleSeed) && !rr.Has(p2pRoleRoot) {
+		p.CloseByError(fmt.Errorf("handleQueryResult invalid query, resolved role %d", rr))
 		return
+	}
+
+	r := p2p.getRole()
+	if r.Has(p2pRoleSeed) || r.Has(p2pRoleRoot) {
+		p2p.seeds.Merge(qrm.Seeds...)
+		p2p.roots.Merge(qrm.Roots...)
+	} else {
+		p2p.seeds.Merge(qrm.Seeds...)
 	}
 
 	m := &RttMessage{Last: p.rtt.last, Average: p.rtt.avg}
@@ -962,14 +995,14 @@ func (p2p *PeerToPeer) Send(pkt *Packet) error {
 
 	if pkt.dest == p2pDestAny && pkt.ttl != 1 &&
 		p2p.self.id.Equal(pkt.src) &&
-		!p2p.self.compareRole(p2pRoleRoot, false) {
+		!p2p.self.hasRole(p2pRoleRoot, false) {
 		//BROADCAST_ALL && not relay && not has p2pRoleRoot
 		return ErrNotAuthorized
 	}
 
 	if !p2p.available(pkt) {
 		if pkt.dest == p2pDestAny && pkt.ttl != 1 &&
-			p2p.self.compareRole(p2pRoleNone, true) {
+			p2p.self.hasRole(p2pRoleNone, true) {
 			return nil
 		}
 		//p2p.logger.Infoln("Send", "Not Available", pkt.dest, pkt.protocol, pkt.subProtocol)
@@ -1141,19 +1174,27 @@ func (p2p *PeerToPeer) available(pkt *Packet) bool {
 	return true
 }
 
-func (p2p *PeerToPeer) isAllowedRole(role PeerRoleFlag, p *Peer) bool {
-	switch role {
-	case p2pRoleSeed:
-		//p2p.logger.Debugln("isAllowedRole p2pRoleSeed", p2p.allowedSeeds)
-		return p2p.allowedSeeds.IsEmpty() || p2p.allowedSeeds.Contains(p.id)
-	case p2pRoleRoot:
-		//p2p.logger.Debugln("isAllowedRole p2pRoleRoot", p2p.allowedRoots)
-		return p2p.allowedRoots.IsEmpty() || p2p.allowedRoots.Contains(p.id)
-	case p2pRoleRootSeed:
-		return p2p.isAllowedRole(p2pRoleRoot, p) && p2p.isAllowedRole(p2pRoleSeed, p)
-	default:
-		return true
+func (p2p *PeerToPeer) resolveRole(r PeerRoleFlag, id module.PeerID, onlyUnSet bool) PeerRoleFlag {
+	if onlyUnSet {
+		if r.Has(p2pRoleRoot) && !p2p.allowedRoots.IsEmpty() && !p2p.allowedRoots.Contains(id) {
+			r.UnSetFlag(p2pRoleRoot)
+		}
+		if r.Has(p2pRoleSeed) && !p2p.allowedSeeds.IsEmpty() && !p2p.allowedSeeds.Contains(id) {
+			r.UnSetFlag(p2pRoleRoot)
+		}
+	} else {
+		if p2p.allowedRoots.Contains(id) {
+			r.SetFlag(p2pRoleRoot)
+		} else if r.Has(p2pRoleRoot) && !p2p.allowedSeeds.IsEmpty() {
+			r.UnSetFlag(p2pRoleRoot)
+		}
+		if p2p.allowedSeeds.Contains(id) {
+			r.SetFlag(p2pRoleSeed)
+		} else if r.Has(p2pRoleSeed) && !p2p.allowedSeeds.IsEmpty() {
+			r.UnSetFlag(p2pRoleSeed)
+		}
 	}
+	return r
 }
 
 //Dial to seeds, roots, nodes and create p2p connection
@@ -1165,7 +1206,7 @@ Loop:
 			p2p.logger.Debugln("discoverRoutine", "stop")
 			break Loop
 		case <-p2p.seedTicker.C:
-			seeds := p2p.orphanages.GetByRoleAndIncomming(p2pRoleSeed, true, false)
+			seeds := p2p.orphanages.GetBy(p2pRoleSeed, true, false)
 			if p2p.syncSeeds() {
 				for _, s := range p2p.seeds.Array() {
 					if !p2p.hasNetAddresse(s) {
@@ -1180,8 +1221,10 @@ Loop:
 				}
 			} else {
 				for _, p := range seeds {
-					p2p.logger.Debugln("discoverRoutine", "seedTicker", "no need outgoing p2pRoleSeed connection")
-					p.Close("discoverRoutine no need outgoing p2pRoleSeed connection")
+					if !p.hasRole(p2pRoleRoot, false) {
+						p2p.logger.Debugln("discoverRoutine", "seedTicker", "no need outgoing p2pRoleSeed connection")
+						p.Close("discoverRoutine no need outgoing p2pRoleSeed connection")
+					}
 				}
 			}
 		case <-p2p.discoveryTicker.C:
@@ -1247,7 +1290,7 @@ func (p2p *PeerToPeer) syncSeeds() (connectAndQuery bool) {
 
 	if role.Has(p2pRoleRoot) {
 		numOfFailureNode := (p2p.allowedRoots.Len() - 1) / 3
-		if (2 * numOfFailureNode) > p2p.friends.Len() || ((p2p.children.Len() + p2p.nephews.Len()) < 1) {
+		if (2*numOfFailureNode) > p2p.friends.Len() || ((p2p.children.Len() + p2p.nephews.Len()) < 1) {
 			connectAndQuery = true
 		}
 		for _, p := range p2p.friends.Array() {
@@ -1268,7 +1311,7 @@ func (p2p *PeerToPeer) syncSeeds() (connectAndQuery bool) {
 		}
 
 		if role == p2pRoleSeed {
-			roots := p2p.orphanages.GetByRoleAndIncomming(p2pRoleRoot, false, false)
+			roots := p2p.orphanages.GetBy(p2pRoleRoot, true, false)
 			for _, p := range roots {
 				p2p.sendQuery(p)
 			}
@@ -1278,18 +1321,18 @@ func (p2p *PeerToPeer) syncSeeds() (connectAndQuery bool) {
 }
 
 func (p2p *PeerToPeer) discoverFriends() {
-	nones := p2p.friends.GetByRole(p2pRoleNone, true)
-	for _, p := range nones {
-		p2p.logger.Traceln("discoverFriends", "not allowed connection from p2pRoleNone", p.id)
-		p.Close("discoverFriends not allowed connection from p2pRoleNone")
+	ps := p2p.friends.GetByRole(p2pRoleRoot, false)
+	for _, p := range ps {
+		if p.hasRole(p2pRoleSeed, false) {
+			p2p.logger.Traceln("discoverFriends", "not allowed friend connection", p.id)
+			p2p.updatePeerConnectionType(p, p2pConnTypeNone)
+		} else {
+			p2p.logger.Traceln("discoverFriends", "not allowed connection", p.id)
+			p.Close("discoverFriends not allowed connection")
+		}
 	}
-	seeds := p2p.friends.GetByRole(p2pRoleSeed, true)
-	for _, p := range seeds {
-		p2p.updatePeerConnectionType(p, p2pConnTypeNone)
-	}
-	//in_roots := p2p.orphanages.GetByRoleAndIncomming(p2pRoleRoot, false, true)
-	//out_roots := p2p.orphanages.GetByRoleAndIncomming(p2pRoleRoot, false, false)
-	roots := p2p.orphanages.GetByRole(p2pRoleRoot, false)
+
+	roots := p2p.orphanages.GetByRole(p2pRoleRoot, true)
 	for _, p := range roots {
 		p2p.logger.Traceln("discoverFriends", "p2pConnTypeFriend", p.id)
 		p2p.updatePeerConnectionType(p, p2pConnTypeFriend)
@@ -1318,9 +1361,9 @@ func (p2p *PeerToPeer) discoverParent(pr PeerRoleFlag) {
 		return
 	}
 
-	peers := p2p.orphanages.GetByRoleAndIncomming(pr, false, false)
+	peers := p2p.orphanages.GetBy(pr, true, false)
 	if len(peers) < 1 {
-		peers = p2p.uncles.GetByRoleAndIncomming(pr, false, false)
+		peers = p2p.uncles.GetBy(pr, true, false)
 	}
 	if len(peers) < 1 {
 		return
@@ -1356,7 +1399,7 @@ func (p2p *PeerToPeer) discoverUncle(ur PeerRoleFlag) {
 		return
 	}
 
-	peers := p2p.orphanages.GetByRoleAndIncomming(ur, false, false)
+	peers := p2p.orphanages.GetBy(ur, true, false)
 	if len(peers) < 1 {
 		return
 	}
