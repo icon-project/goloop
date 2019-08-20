@@ -53,6 +53,9 @@ class SystemInterface(InterfaceScore):
     @interface
     def removeLicense(self, contentId: str):
         pass
+    @interface
+    def setTimestampThreshold(self, threshold: int):
+        pass
 
 class Governance(IconScoreBase):
 
@@ -81,7 +84,7 @@ class Governance(IconScoreBase):
         Called when anyone sends funds to the SCORE.
         This SCORE regards it as a contribution.
         """
-        Logger.debug(f'FundTransfer({self.msg.sender}, {amount}, True)', TAG)
+        Logger.debug(f'FundTransfer({self.msg.sender}, {self.msg.value}, True)', TAG)
 
     @external
     def setRevision(self, code: int):
@@ -144,3 +147,6 @@ class Governance(IconScoreBase):
     def removeLicense(self, contentId: str):
         self.system_score.removeLicense(contentId)
 
+    @external
+    def setTimestampThreshold(self, threshold: int):
+        self.system_score.setTimestampThreshold(threshold)

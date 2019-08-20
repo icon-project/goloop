@@ -158,6 +158,14 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			nil,
 		},
+		{
+			scoreapi.Function, "setTimestampThreshold",
+			scoreapi.FlagExternal, 0,
+			[]scoreapi.Parameter{
+				{"threshold", scoreapi.Integer, nil},
+			},
+			nil,
+		},
 		{scoreapi.Function, "getRevision",
 			scoreapi.FlagReadOnly, 0,
 			nil,
@@ -717,6 +725,15 @@ func (s *ChainScore) Ex_removeDeployer(address module.Address) error {
 		}
 	}
 	return nil
+}
+
+func (s *ChainScore) Ex_setTimestampThreshold(threshold *common.HexInt) error {
+	if !s.fromGovernance() {
+		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
+	}
+	as := s.cc.GetAccountState(state.SystemID)
+	db := scoredb.NewVarDB(as, state.VarTimestampThreshold)
+	return db.Set(threshold)
 }
 
 func (s *ChainScore) Ex_addLicense(contentId string) error {
