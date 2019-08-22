@@ -34,6 +34,7 @@ module.exports = {
                 children: [
                     '/goloop_admin_api',
                     ['/goloop_cli', "Goloop CLI"],
+                    ['/metric', "Metric"],
                 ]
             },
             //EndOfSidebar
