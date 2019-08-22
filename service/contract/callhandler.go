@@ -114,8 +114,9 @@ func (h *CallHandler) prepareContractStore(ctx Context, wc state.WorldContext, c
 	h.lock.Lock()
 	defer h.lock.Unlock()
 	if cs, err := ctx.ContractManager().PrepareContractStore(wc, c); err != nil {
-		h.cs = cs
 		return err
+	} else {
+		h.cs = cs
 	}
 	return nil
 }
