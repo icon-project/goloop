@@ -1,13 +1,14 @@
 package state
 
 import (
-	"github.com/icon-project/goloop/common/log"
 	"reflect"
 	"sync"
 
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 )
@@ -255,4 +256,34 @@ func WorldStateFromSnapshot(wss WorldSnapshot) (WorldState, error) {
 		return ws, nil
 	}
 	return nil, errors.ErrIllegalArgument
+}
+
+type validatorSnapshotRequester struct {
+	ws *worldSnapshotImpl
+	vh []byte
+}
+
+func (r *validatorSnapshotRequester) OnData(value []byte, builder merkle.Builder) error {
+	if vs, err := ValidatorSnapshotFromHash(builder.Database(), r.vh); err != nil {
+		return err
+	} else {
+		r.ws.validators = vs
+	}
+	return nil
+}
+
+func NewWorldSnapshotWithBuilder(builder merkle.Builder, sh []byte, vh []byte) (WorldSnapshot, error) {
+	ws := new(worldSnapshotImpl)
+	ws.database = builder.Database()
+	ws.accounts = trie_manager.NewImmutableForObject(ws.database, sh,
+		reflect.TypeOf((*accountSnapshotImpl)(nil)))
+	if err := ws.accounts.Resolve(builder); err != nil {
+		return nil, err
+	}
+	if vs, err := ValidatorSnapshotFromHash(builder.Database(), vh); err == nil {
+		ws.validators = vs
+	} else {
+		builder.RequestData(db.BytesByHash, vh, &validatorSnapshotRequester{ws: ws, vh: vh})
+	}
+	return ws, nil
 }
