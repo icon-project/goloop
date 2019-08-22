@@ -909,7 +909,7 @@ func (m *manager) newBlockDataFromReader(r io.Reader) (module.BlockData, error) 
 		patchTransactions:  patches,
 		normalTransactions: normalTxs,
 		nextValidatorsHash: blockFormat.NextValidatorsHash,
-		_nextValidators:     nextValidators,
+		_nextValidators:    nextValidators,
 		votes:              votes,
 	}, nil
 }
