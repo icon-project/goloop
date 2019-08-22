@@ -248,14 +248,13 @@ func (m *manager) Finalize(t module.Transition, opt int) error {
 			// Because transactionlist for transition is made only through peer and SendTransaction() call
 			// transactionlist has slice of transactions in case that finalize() is called
 			m.normalTxPool.RemoveList(tst.normalTransactions)
-			m.normalTxPool.RemoveOldTXs(tst.bi.Timestamp() - m.tsc.Threshold())
+			m.tm.RemoveOldTxByBlockTS(tst.bi.Timestamp())
 		}
 		if opt&module.FinalizePatchTransaction == module.FinalizePatchTransaction {
 			if err := tst.finalizePatchTransaction(); err != nil {
 				return err
 			}
 			m.patchTxPool.RemoveList(tst.patchTransactions)
-			m.patchTxPool.RemoveOldTXs(tst.bi.Timestamp() - m.tsc.Threshold())
 		}
 		if opt&module.FinalizeResult == module.FinalizeResult {
 			if err := tst.finalizeResult(); err != nil {

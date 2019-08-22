@@ -108,7 +108,7 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 	valNum := 0
 	invalidNum := 0
 	txSize = 0
-	tsRange := NewTimestampRange(wc)
+	tsRange := NewTimestampRangeFor(wc)
 	for _, e := range txs {
 		tx := e.Value()
 		// TODO need to check transaction in parent transitions.

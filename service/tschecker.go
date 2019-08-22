@@ -13,27 +13,24 @@ const (
 	ConfigTXTimestampThresholdDefault = int64(5 * time.Minute / time.Microsecond)
 )
 
+func CheckTxTimestamp(min, max int64, tx transaction.Transaction) error {
+	ts := tx.Timestamp()
+	if ts <= min {
+		return ExpiredTransactionError.Errorf("Expired(min-%s)",
+			time.Duration(min-ts)*time.Microsecond)
+	} else if ts > max {
+		return FutureTransactionError.Errorf("FutureTx(max+%s)",
+			time.Duration(ts-max)*time.Microsecond)
+	}
+	return nil
+}
+
 type TxTimestampChecker struct {
 	threshold int64
 }
 
-func (c *TxTimestampChecker) CheckWithCurrent(tx transaction.Transaction) error {
-	return c.CheckWith(tx, time.Now().UnixNano()/1000)
-}
-
-func (c *TxTimestampChecker) CheckWith(tx transaction.Transaction, base int64) error {
-	th := atomic.LoadInt64(&c.threshold)
-	if th == 0 {
-		th = ConfigTXTimestampThresholdDefault
-	}
-	diff := tx.Timestamp() - base
-	if diff <= -th {
-		log.Infof("Diff=%s Threshold=%s", TimestampToDuration(diff), TimestampToDuration(th))
-		return ExpiredTransactionError.Errorf("ExpiredTx(diff=%s)", TimestampToDuration(diff))
-	} else if diff > th {
-		return InvalidTransactionError.Errorf("FutureTx(diff=%s)", TimestampToDuration(diff))
-	}
-	return nil
+func (c *TxTimestampChecker) CheckWithCurrent(min int64, tx transaction.Transaction) error {
+	return CheckTxTimestamp(min, (time.Now().UnixNano()/1000)+c.Threshold(), tx)
 }
 
 func (c *TxTimestampChecker) SetThreshold(d time.Duration) {
@@ -72,27 +69,18 @@ type TimestampRange interface {
 }
 
 type timestampRange struct {
-	base, threshold int64
+	min, max int64
 }
 
 func (r *timestampRange) CheckTx(tx transaction.Transaction) error {
-	ts := tx.Timestamp()
-	diff := ts - r.base
-	if diff <= -r.threshold {
-		return ExpiredTransactionError.Errorf("Expired(diff=%s)",
-			time.Duration(diff)*time.Microsecond)
-	} else if diff > r.threshold {
-		return FutureTransactionError.Errorf("FutureTx(diff=%s)",
-			time.Duration(diff)*time.Microsecond)
-	}
-	return nil
+	return CheckTxTimestamp(r.min, r.max, tx)
 }
 
-func NewTimestampRange(c state.WorldContext) TimestampRange {
+func NewTimestampRangeFor(c state.WorldContext) TimestampRange {
 	th := TransactionTimestampThreshold(c)
 	bts := c.BlockTimeStamp()
 	return &timestampRange{
-		base:      bts,
-		threshold: th,
+		min: bts - th,
+		max: bts + th,
 	}
 }

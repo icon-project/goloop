@@ -2,6 +2,7 @@ package service
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
@@ -20,6 +21,8 @@ type TransactionManager struct {
 	normalTxPool *TransactionPool
 
 	callback func()
+
+	lastTS int64
 }
 
 func (m *TransactionManager) getTxPool(g module.TransactionGroup) *TransactionPool {
@@ -34,6 +37,13 @@ func (m *TransactionManager) getTxPool(g module.TransactionGroup) *TransactionPo
 	}
 }
 
+func (m *TransactionManager) RemoveOldTxByBlockTS(bts int64) {
+	ts := bts - m.tsc.Threshold()
+	atomic.StoreInt64(&m.lastTS, ts)
+	m.patchTxPool.RemoveOldTXs(ts)
+	m.normalTxPool.RemoveOldTXs(ts)
+}
+
 func (m *TransactionManager) Add(tx transaction.Transaction, direct bool) error {
 	if tx == nil {
 		return nil
@@ -42,7 +52,8 @@ func (m *TransactionManager) Add(tx transaction.Transaction, direct bool) error 
 		return errors.InvalidNetworkError.Errorf(
 			"ValidateNetwork(nid=%#x) fail", m.nid)
 	}
-	if err := m.tsc.CheckWithCurrent(tx); err != nil {
+	lastTS := atomic.LoadInt64(&m.lastTS)
+	if err := m.tsc.CheckWithCurrent(lastTS, tx); err != nil {
 		return err
 	}
 	if err := tx.Verify(); err != nil {

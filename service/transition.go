@@ -441,7 +441,7 @@ func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext
 		return 0, nil
 	}
 	cnt := 0
-	tsRange := NewTimestampRange(wc)
+	tsRange := NewTimestampRangeFor(wc)
 	for i := l.Iterator(); i.Has(); i.Next() {
 		if t.canceled() {
 			return 0, ErrTransitionInterrupted
