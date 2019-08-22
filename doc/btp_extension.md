@@ -63,10 +63,10 @@ Summarize the document to following items.
 
 #### Responses
 
-|Name|Type|Required|Description|
-|---|---|---|---|
-|code|Number|true| 0 or JSON RPC error code. 0 means success. |
-|message|String|false| error message. |
+| Name    | Type   | Required | Description                                |
+|:--------|:-------|:---------|:-------------------------------------------|
+| code    | Number | true     | 0 or JSON RPC error code. 0 means success. |
+| message | String | false    | error message.                             |
 
 > Example notification
 
@@ -79,10 +79,10 @@ Summarize the document to following items.
 
 #### Notification
 
-|Name|Type|Required|Description|
-|---|---|---|---|
-|hash|T_HASH|true|The hash of the new block|
-|height|T_INT|true|The height of the new block|
+| Name   | Type   | Required | Description                 |
+|:-------|:-------|:---------|:----------------------------|
+| hash   | T_HASH | true     | The hash of the new block   |
+| height | T_INT  | true     | The height of the new block |
 
 ### Events
 
@@ -105,12 +105,12 @@ Summarize the document to following items.
 ```
 #### Parameters
 
-|Name|Type|Required|Description|
-|---|---|---|---|
-|height|T_INT|true| Start height |
-|addr|T_ADDR|false||
-|event|String|true| Event signature |
-|data|Array|false| Array of parameters to match. Its length shall be equal to the number of parameters of the event. `null` matches any value. |
+| Name   | Type   | Required | Description                                                                                                                 |
+|:-------|:-------|:---------|:----------------------------------------------------------------------------------------------------------------------------|
+| height | T_INT  | true     | Start height                                                                                                                |
+| addr   | T_ADDR | false                                                                                                                                 ||
+| event  | String | true     | Event signature                                                                                                             |
+| data   | Array  | false    | Array of parameters to match. Its length shall be equal to the number of parameters of the event. `null` matches any value. |
 
 > Success Responses
 
@@ -131,10 +131,10 @@ Summarize the document to following items.
 
 #### Responses
 
-|Name|Type|Required|Description|
-|---|---|---|---|
-|code|Number|true| 0 or JSON RPC error code. 0 means success. |
-|message|String|false| error message. |
+| Name    | Type   | Required | Description                                |
+|:--------|:-------|:---------|:-------------------------------------------|
+| code    | Number | true     | 0 or JSON RPC error code. 0 means success. |
+| message | String | false    | error message.                             |
 
 
 > Example notifiaction
@@ -149,11 +149,11 @@ Summarize the document to following items.
 
 #### Notification
 
-|Name|Type|Required|Description|
-|---|---|---|---|
-|hash|T_HASH|true|Hash of the block including the events|
-|height|T_INT|true|Height of the block including the events|
-|index|T_INT|true|Index of the result including the events in the block|
+| Name   | Type   | Required | Description                                           |
+|:-------|:-------|:---------|:------------------------------------------------------|
+| hash   | T_HASH | true     | Hash of the block including the events                |
+| height | T_INT  | true     | Height of the block including the events              |
+| index  | T_INT  | true     | Index of the result including the events in the block |
 
 
 You may use `hash` and `index` to get proof of the result including
@@ -189,9 +189,9 @@ Following data can be retrieved by a hash.
 ```
 #### Parameters
 
-|Name|Type|Required|Description|
-|---|---|---|---|
-|hash|T_HASH|true|The hash value of the data to retrieve.|
+| Name | Type   | Required | Description                             |
+|:-----|:-------|:---------|:----------------------------------------|
+| hash | T_HASH | true     | The hash value of the data to retrieve. |
 
 
 > Example responses
@@ -219,10 +219,10 @@ Following data can be retrieved by a hash.
 
 #### Responses
 
-|Status|Meaning|Description|Schema|
-|---|---|---|---|
-|200|OK|Success|Data : base64 encoded bytes|
-|default|Default|JSON-RPC Error|Error Response|
+| Status  | Meaning | Description    | Schema                      |
+|:--------|:--------|:---------------|:----------------------------|
+| 200     | OK      | Success        | Data : base64 encoded bytes |
+| default | Default | JSON-RPC Error | Error Response              |
 
 ### icx_getBlockHeaderByHeight
 
@@ -242,9 +242,9 @@ Get block header for specified height.
 ```
 #### Parameters
 
-|Name|Type|Required|Description|
-|---|---|---|---|
-|height|T_INT|true|The height of the block in hex string.|
+| Name   | Type  | Required | Description                            |
+|:-------|:------|:---------|:---------------------------------------|
+| height | T_INT | true     | The height of the block in hex string. |
 
 > Example responses
 
@@ -271,10 +271,10 @@ Get block header for specified height.
 
 #### Responses
 
-|Status|Meaning|Description|Schema|
-|---|---|---|---|
-|200|OK|Success|Data : base64 encoded bytes|
-|default|Default|JSON-RPC Error|Error Response|
+| Status  | Meaning | Description    | Schema                      |
+|:--------|:--------|:---------------|:----------------------------|
+| 200     | OK      | Success        | Data : base64 encoded bytes |
+| default | Default | JSON-RPC Error | Error Response              |
 
 ### icx_getVotesByHeight
 
@@ -297,9 +297,9 @@ Normally votes for the block are included in the next. So, even though the block
 ```
 #### Parameters
 
-|Name|Type|Required|Description|
-|---|---|---|---|
-|height|T_INT|true|The height of the block for votes.|
+| Name   | Type  | Required | Description                        |
+|:-------|:------|:---------|:-----------------------------------|
+| height | T_INT | true     | The height of the block for votes. |
 
 > Example responses
 
@@ -326,10 +326,10 @@ Normally votes for the block are included in the next. So, even though the block
 
 #### Responses
 
-|Status|Meaning|Description|Schema|
-|---|---|---|---|
-|200|OK|Success|Encoded votes|
-|default|Default|JSON-RPC Error|Error Response|
+| Status  | Meaning | Description    | Schema         |
+|:--------|:--------|:---------------|:---------------|
+| 200     | OK      | Success        | Encoded votes  |
+| default | Default | JSON-RPC Error | Error Response |
 
 ### icx_getProofForResult
 
@@ -353,10 +353,10 @@ Currently, Core2 uses Merkle Patricia Trie to store receipt, so the last leaf no
 ```
 #### Parameters
 
-|Name|Type|Required|Description|
-|---|---|---|---|
-|hash|T_HASH|true|The hash value of the block including the result.|
-|index|T_INT|true|Index of the receipt in the block.<br/> 0 for the first.|
+| Name  | Type   | Required | Description                                              |
+|:------|:-------|:---------|:---------------------------------------------------------|
+| hash  | T_HASH | true     | The hash value of the block including the result.        |
+| index | T_INT  | true     | Index of the receipt in the block.<br/> 0 for the first. |
 
 > Example responses
 ```json
@@ -385,10 +385,10 @@ Currently, Core2 uses Merkle Patricia Trie to store receipt, so the last leaf no
 
 #### Responses
 
-|Status|Meaning|Description|Schema|
-|---|---|---|---|
-|200|OK|Success|List of base64 encoded proof including the receipt|
-|default|Default|JSON-RPC Error|Error Response|
+| Status  | Meaning | Description    | Schema                                             |
+|:--------|:--------|:---------------|:---------------------------------------------------|
+| 200     | OK      | Success        | List of base64 encoded proof including the receipt |
+| default | Default | JSON-RPC Error | Error Response                                     |
 
 
 ## Binary format
@@ -400,88 +400,88 @@ Core2 uses MsgPack and RLP for binary encoding and decoding.
 
 ### Block Header
 
-|Name|Field|Type|Description|
-|---|---|---|---|
-|BlockHeader||MsgPack List of followings||
-||Version|MsgPack Int|1 ← Version 1 (legacy)<br/>2 ← Version 2 (core2 beta)|
-||Height|MsgPack Int|Height of the block.<br/>0 means genesis block.|
-||Timestamp|MsgPack Int|Micro-seconds after EPOCH.|
-||Proposer|Address|Height of the block.<br/>0 means genesis block.|
-||PrevID|MsgPack Bytes|32 bytes hash value|
-||VotesHash|MsgPack Bytes|32 bytes hash value|
-||NextValidatorsHash|MsgPack Bytes|32 bytes hash value|
-||PatchTransactionsHash|MsgPack Bytes|32 bytes hash value|
-||NormalTransactionsHash|MsgPack Bytes|32 bytes hash value|
-||LogsBloom|MsgPack Bytes|N(1~256) bytes bloom log value|
-||Result|MsgPack Bytes|Result.Encode()<br/>After decoding BlockHeader, it should decode it again for NormalReceiptHash.|
-|Result     ||MsgPack List of followings||
-||StateHash|MsgPack Bytes|Hash of world state (account information)|
-||PatchReceiptHash|MsgPack Bytes|Root Hash of patch receipts|
-||NormalReceiptHash|MsgPack Bytes|Root Hash of normal receipts|
+| Name | Field                  | Type          | Description                                                                                      |
+|:-----|:-----------------------|:--------------|:-------------------------------------------------------------------------------------------------|
+| BlockHeader                  || MsgPack List of followings                                                                                      ||
+|      | Version                | MsgPack Int   | 1 ← Version 1 (legacy)<br/>2 ← Version 2 (core2 beta)                                            |
+|      | Height                 | MsgPack Int   | Height of the block.<br/>0 means genesis block.                                                  |
+|      | Timestamp              | MsgPack Int   | Micro-seconds after EPOCH.                                                                       |
+|      | Proposer               | Address       | Height of the block.<br/>0 means genesis block.                                                  |
+|      | PrevID                 | MsgPack Bytes | 32 bytes hash value                                                                              |
+|      | VotesHash              | MsgPack Bytes | 32 bytes hash value                                                                              |
+|      | NextValidatorsHash     | MsgPack Bytes | 32 bytes hash value                                                                              |
+|      | PatchTransactionsHash  | MsgPack Bytes | 32 bytes hash value                                                                              |
+|      | NormalTransactionsHash | MsgPack Bytes | 32 bytes hash value                                                                              |
+|      | LogsBloom              | MsgPack Bytes | N(1~256) bytes bloom log value                                                                   |
+|      | Result                 | MsgPack Bytes | Result.Encode()<br/>After decoding BlockHeader, it should decode it again for NormalReceiptHash. |
+| Result                       || MsgPack List of followings                                                                                      ||
+|      | StateHash              | MsgPack Bytes | Hash of world state (account information)                                                        |
+|      | PatchReceiptHash       | MsgPack Bytes | Root Hash of patch receipts                                                                      |
+|      | NormalReceiptHash      | MsgPack Bytes | Root Hash of normal receipts                                                                     |
 
 ### Validators
 
-|Name|Field|Type|Description|
-|---|---|---|---|
-|Validators||MsgPack List of Vadidator||
-|Validator||MsgPack Bytes|21 bytes → same as Address<br/>Other bytes → public key|
+| Name | Field | Type          | Description                                             |
+|:-----|:------|:--------------|:--------------------------------------------------------|
+| Validators  || MsgPack List of Vadidator                                              ||
+| Validator   || MsgPack Bytes | 21 bytes → same as Address<br/>Other bytes → public key |
 
 ### Votes
 
-|Name|Field|Type|Description|
-|---|---|---|---|
-|Votes||MsgPack List of followings||
-||Round|MsgPack Int|Round for votes.<br/>If consensus doesn’t use round, it should be 0(zero).|
-||BlockPartSetID|PartSetID|If it doesn’t use PartSetID, it should be empty list.|
-||Items|MsgPack List of VoteItem||
-|VoteItem||MsgPack List of followings||
-||Timestamp|MsgPack Int|Voted time in micro-seconds|
-||Signature|Signature||
-|PartSetID||MsgPack List of followings||
-||Count|MsgPack Unsigned Int|Number of block parts|
-||Hash|MsgPack Bytes|Hash of block parts|
-|Signature||MsgPack Bytes|RSV format signature for VoteMessage|
-|VoteMessage||MsgPack List of followings||
-||Height|MsgPack Int|BlockHeader.Height|
-||Round|MsgPack Int|Votes.Round|
-||Type|MsgPack Int|0 ← PreVote ( only for consensus )<br/>1 ← PreCommit ( for vote check )|
-||BlockID|MsgPack Bytes|SHA3Sum256(BlockHeader)|
-||BlockPartSetID|PartSetID|Votes.BlockPartSetID.|
-||Timestamp|MsgPack Int|VoteItem.Timestamp|
+| Name | Field          | Type                 | Description                                                                |
+|:-----|:---------------|:---------------------|:---------------------------------------------------------------------------|
+| Votes                || MsgPack List of followings                                                                       ||
+|      | Round          | MsgPack Int          | Round for votes.<br/>If consensus doesn’t use round, it should be 0(zero). |
+|      | BlockPartSetID | PartSetID            | If it doesn’t use PartSetID, it should be empty list.                      |
+|      | Items          | MsgPack List of VoteItem                                                                         ||
+| VoteItem             || MsgPack List of followings                                                                       ||
+|      | Timestamp      | MsgPack Int          | Voted time in micro-seconds                                                |
+|      | Signature      | Signature                                                                                        ||
+| PartSetID            || MsgPack List of followings                                                                       ||
+|      | Count          | MsgPack Unsigned Int | Number of block parts                                                      |
+|      | Hash           | MsgPack Bytes        | Hash of block parts                                                        |
+| Signature            || MsgPack Bytes        | RSV format signature for VoteMessage                                       |
+| VoteMessage          || MsgPack List of followings                                                                       ||
+|      | Height         | MsgPack Int          | BlockHeader.Height                                                         |
+|      | Round          | MsgPack Int          | Votes.Round                                                                |
+|      | Type           | MsgPack Int          | 0 ← PreVote ( only for consensus )<br/>1 ← PreCommit ( for vote check )    |
+|      | BlockID        | MsgPack Bytes        | SHA3Sum256(BlockHeader)                                                    |
+|      | BlockPartSetID | PartSetID            | Votes.BlockPartSetID.                                                      |
+|      | Timestamp      | MsgPack Int          | VoteItem.Timestamp                                                         |
 
 ### Proof
 
-|Name|Field|Type|Description|
-|---|---|---|---|
-|Proof||MPT Node||
-|MPT Node||MPT Leaf<br/>MPT Extension<br/>MPT Branch|If the number of elements is 17, then it’s MPT Branch.<br/>It differentiates MPT Leaf from MPT Extension with a prefix in a header.|
-|MPT Leaf||RLP List of followings||
-||Header|RLP Bytes|N bytes ( Prefix + Nibbles )|
-||Value|RLP Bytes|N bytes ( Receipt )|
-|MPT Extension||RLP List of followings||
-||Header|RLP Bytes|N bytes ( Prefix + Nibbles )|
-||Link|RLP Bytes<br/>MPT Node|If encoded MPT Node is shorter than 32, then it’s embedded.<br/>Otherwise, it uses RLP Bytes for sha3sum256 value|
-|MPT Branch||RLP List of followings||
-||Link x 16|RLP Bytes<br/>MPT Node|If encoded MPT Node is shorter than 32, then it’s embedded.<br/>Otherwise, it uses RLP Bytes for sha3sum256 value|
-||Value|RLP Bytes|N bytes ( Data )|
+| Name | Field     | Type                                      | Description                                                                                                                         |
+|:-----|:----------|:------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------|
+| Proof           || MPT Node                                                                                                                                                                       ||
+| MPT Node        || MPT Leaf<br/>MPT Extension<br/>MPT Branch | If the number of elements is 17, then it’s MPT Branch.<br/>It differentiates MPT Leaf from MPT Extension with a prefix in a header. |
+| MPT Leaf        || RLP List of followings                                                                                                                                                         ||
+|      | Header    | RLP Bytes                                 | N bytes ( Prefix + Nibbles )                                                                                                        |
+|      | Value     | RLP Bytes                                 | N bytes ( Receipt )                                                                                                                 |
+| MPT Extension   || RLP List of followings                                                                                                                                                         ||
+|      | Header    | RLP Bytes                                 | N bytes ( Prefix + Nibbles )                                                                                                        |
+|      | Link      | RLP Bytes<br/>MPT Node                    | If encoded MPT Node is shorter than 32, then it’s embedded.<br/>Otherwise, it uses RLP Bytes for sha3sum256 value                   |
+| MPT Branch      || RLP List of followings                                                                                                                                                         ||
+|      | Link x 16 | RLP Bytes<br/>MPT Node                    | If encoded MPT Node is shorter than 32, then it’s embedded.<br/>Otherwise, it uses RLP Bytes for sha3sum256 value                   |
+|      | Value     | RLP Bytes                                 | N bytes ( Data )                                                                                                                    |
 
 ### Receipt
 
-|Name|Field|Type|Description|
-|---|---|---|---|
-|Receipt||MsgPack List of followings||
-||Status|MsgPack Int|Result status<br/>0 ← SUCCESS<br/>N ← FAILURE ( N is failure code )|
-||To|Address|The target address of the transaction|
-||CumulativeStepUsed|Integer|Cumulative step used|
-||StepUsed|Integer|Step used|
-||StepPrice|Integer|Step price in LOOP|
-||LogsBloom|Integer|2048 bits without padding zeros<br/>So, if there is no bit, then it would be a byte with zero.|
-||EventLogs|MsgPack List of EventLog||
-||SCOREAddress|Address||
-|EventLog||MsgPack List of followings||
-||Addr|Address|SCORE producing this event log|
-||Indexed|MsgPack List of MsgPack Bytes|Indexed data.|
-||Data|MsgPack List of MsgPack Bytes|Remaining data.|
-|Address||MsgPack Bytes|1 byte<br/>- 0x00 ← EOA<br/>- 0x01 ← SCORE<br/>20 bytes : Identifier|
-|Integer||MsgPack Bytes|N bytes of integer representation.<br/>ex)<br/>0x00 → [ 0x00 ]<br/>0x80 → [ 0x00 0x80 ]<br/>-0x01 → [ 0xff ]<br/>-0x80 → [ 0x80 ]|
+| Name | Field              | Type                          | Description                                                                                                                       |
+|:-----|:-------------------|:------------------------------|:----------------------------------------------------------------------------------------------------------------------------------|
+| Receipt                  || MsgPack List of followings                                                                                                                                       ||
+|      | Status             | MsgPack Int                   | Result status<br/>0 ← SUCCESS<br/>N ← FAILURE ( N is failure code )                                                               |
+|      | To                 | Address                       | The target address of the transaction                                                                                             |
+|      | CumulativeStepUsed | Integer                       | Cumulative step used                                                                                                              |
+|      | StepUsed           | Integer                       | Step used                                                                                                                         |
+|      | StepPrice          | Integer                       | Step price in LOOP                                                                                                                |
+|      | LogsBloom          | Integer                       | 2048 bits without padding zeros<br/>So, if there is no bit, then it would be a byte with zero.                                    |
+|      | EventLogs          | MsgPack List of EventLog                                                                                                                                         ||
+|      | SCOREAddress       | Address                                                                                                                                                          ||
+| EventLog                 || MsgPack List of followings                                                                                                                                       ||
+|      | Addr               | Address                       | SCORE producing this event log                                                                                                    |
+|      | Indexed            | MsgPack List of MsgPack Bytes | Indexed data.                                                                                                                     |
+|      | Data               | MsgPack List of MsgPack Bytes | Remaining data.                                                                                                                   |
+| Address                  || MsgPack Bytes                 | 1 byte<br/>- 0x00 ← EOA<br/>- 0x01 ← SCORE<br/>20 bytes : Identifier                                                              |
+| Integer                  || MsgPack Bytes                 | N bytes of integer representation.<br/>ex)<br/>0x00 → [ 0x00 ]<br/>0x80 → [ 0x00 0x80 ]<br/>-0x01 → [ 0xff ]<br/>-0x80 → [ 0x80 ] |
 

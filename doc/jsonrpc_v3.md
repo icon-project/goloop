@@ -13,15 +13,15 @@ This document explains JSON-RPC APIs (version 3) available to interact with Golo
 Basically, every VALUE in JSON-RPC message is string.
 Below table shows the most common "VALUE types".
 
-| VALUE type | Description | Example |
-|:----------|:----|:----|
-| <a id="T_ADDR_EOA">T_ADDR_EOA</a> | "hx" + 40 digit HEX string | hxbe258ceb872e08851f1f59694dac2558708ece11 |
-| <a id="T_ADDR_SCORE">T_ADDR_SCORE</a> | "cx" + 40 digit HEX string | cxb0776ee37f5b45bfaea8cff1d8232fbb6122ec32 |
-| <a id="T_HASH">T_HASH</a> | "0x" + 64 digit HEX string | 0xc71303ef8543d04b5dc1ba6579132b143087c68db1b2168786408fcbce568238 |
-| <a id="T_INT">T_INT</a> | "0x" + lowercase HEX string | 0xa |
-| <a id="T_BIN_DATA">T_BIN_DATA</a> | "0x" + lowercase HEX string. Length must be even. | 0x34b2 |
-| <a id="T_SIG">T_SIG</a> | base64 encoded string | VAia7YZ2Ji6igKWzjR2YsGa2m53nKPrfK7uXYW78QLE+ATehAVZPC40szvAiA6NEU5gCYB4c4qaQzqDh2ugcHgA= |
-| <a id="T_DATA_TYPE">T_DATA_TYPE</a> | Type of data | call, deploy or message |
+| VALUE type                            | Description                                       | Example                                                                                  |
+|:--------------------------------------|:--------------------------------------------------|:-----------------------------------------------------------------------------------------|
+| <a id="T_ADDR_EOA">T_ADDR_EOA</a>     | "hx" + 40 digit HEX string                        | hxbe258ceb872e08851f1f59694dac2558708ece11                                               |
+| <a id="T_ADDR_SCORE">T_ADDR_SCORE</a> | "cx" + 40 digit HEX string                        | cxb0776ee37f5b45bfaea8cff1d8232fbb6122ec32                                               |
+| <a id="T_HASH">T_HASH</a>             | "0x" + 64 digit HEX string                        | 0xc71303ef8543d04b5dc1ba6579132b143087c68db1b2168786408fcbce568238                       |
+| <a id="T_INT">T_INT</a>               | "0x" + lowercase HEX string                       | 0xa                                                                                      |
+| <a id="T_BIN_DATA">T_BIN_DATA</a>     | "0x" + lowercase HEX string. Length must be even. | 0x34b2                                                                                   |
+| <a id="T_SIG">T_SIG</a>               | base64 encoded string                             | VAia7YZ2Ji6igKWzjR2YsGa2m53nKPrfK7uXYW78QLE+ATehAVZPC40szvAiA6NEU5gCYB4c4qaQzqDh2ugcHgA= |
+| <a id="T_DATA_TYPE">T_DATA_TYPE</a>   | Type of data                                      | call, deploy or message                                                                  |
 
 ### <a name="FailureObject">Failure Object</a>
 
@@ -36,21 +36,21 @@ Below table shows the most common "VALUE types".
 #### Error Codes
 Below table shows the default error messages for the error code. Actual message may vary depending on the implementation.
 
-| Category   | Error code | Message | Description |
-|:-----------|:---------|:------|:-----|
-|Json Parsing| -32700 | Parse error | Invalid JSON was received by the server.<br/>An error occurred on the server while parsing the JSON text. |
-|RPC Parsing | -32600 | Invalid Request | The JSON sent is not a valid Request object. |
-|            | -32601 | Method not found | The method does not exist / is not available. |
-|            | -32602 | Invalid params | Invalid method parameter(s). |
-|            | -32603 | Internal error | Internal JSON-RPC error. |
-|Server Error| -32000 ~ -32099 |  | Server error. |
-|System Error| -31000 | System Error | Unknown system error. |
-|            | -31001 | Pool Overflow | Transaction pool overflow. |
-|            | -31002 | Pending | Transaction is in the pool, but not included in the block. |
-|            | -31003 | Executing | Transaction is included in the block, but it doesn’t have confirmed result. |
-|            | -31004 | Not found | Requested data is not found. |
-|            | -31005 | Lack of resource | Resource is not available. |
-|SCORE Error | -30000 ~ -30099 |  | Mapped error codes from Core2 Design - SCORE Result. |
+| Category     | Error code      | Message          | Description                                                                                               |
+|:-------------|:----------------|:-----------------|:----------------------------------------------------------------------------------------------------------|
+| Json Parsing | -32700          | Parse error      | Invalid JSON was received by the server.<br/>An error occurred on the server while parsing the JSON text. |
+| RPC Parsing  | -32600          | Invalid Request  | The JSON sent is not a valid Request object.                                                              |
+|              | -32601          | Method not found | The method does not exist / is not available.                                                             |
+|              | -32602          | Invalid params   | Invalid method parameter(s).                                                                              |
+|              | -32603          | Internal error   | Internal JSON-RPC error.                                                                                  |
+| Server Error | -32000 ~ -32099 |                  | Server error.                                                                                             |
+| System Error | -31000          | System Error     | Unknown system error.                                                                                     |
+|              | -31001          | Pool Overflow    | Transaction pool overflow.                                                                                |
+|              | -31002          | Pending          | Transaction is in the pool, but not included in the block.                                                |
+|              | -31003          | Executing        | Transaction is included in the block, but it doesn’t have confirmed result.                               |
+|              | -31004          | Not found        | Requested data is not found.                                                                              |
+|              | -31005          | Lack of resource | Resource is not available.                                                                                |
+| SCORE Error  | -30000 ~ -30099 |                  | Mapped error codes from Core2 Design - SCORE Result.                                                      |
 
 ## JSON-RPC Methods
 
@@ -104,9 +104,9 @@ None
 ```
 #### Responses
 
-|Status|Meaning|Description|Schema|
-|---|---|---|---|
-|200|OK|Success|Block|
+| Status | Meaning | Description | Schema |
+|:-------|:--------|:------------|:-------|
+| 200    | OK      | Success     | Block  |
 
 ### icx_getBlockByHeight
 
@@ -126,8 +126,8 @@ Returns block information by block height.
 ```
 #### Parameters
 
-| KEY | VALUE type | Description |
-|:----|:-----------|:-----|
+| KEY    | VALUE type      | Description               |
+|:-------|:----------------|:--------------------------|
 | height | [T_INT](#T_INT) | Integer of a block height |
 
 > Example responses
@@ -164,9 +164,9 @@ Returns block information by block height.
 
 #### Responses
 
-|Status|Meaning|Description|Schema|
-|---|---|---|---|
-|200|OK|Success|Block|
+| Status | Meaning | Description | Schema |
+|:-------|:--------|:------------|:-------|
+| 200    | OK      | Success     | Block  |
 
 ### icx_getBlockByHash
 
@@ -186,8 +186,8 @@ Returns block information by block hash.
 ```
 #### Parameters
 
-| KEY | VALUE type | Description |
-|:----|:-----------|:-----|
+| KEY  | VALUE type        | Description     |
+|:-----|:------------------|:----------------|
 | hash | [T_HASH](#T_HASH) | Hash of a block |
 
 > Example responses
@@ -224,9 +224,9 @@ Returns block information by block hash.
 
 #### Responses
 
-|Status|Meaning|Description|Schema|
-|---|---|---|---|
-|200|OK|Success|Block|
+| Status | Meaning | Description | Schema |
+|:-------|:--------|:------------|:-------|
+| 200    | OK      | Success     | Block  |
 
 ### icx_call
 
@@ -256,14 +256,14 @@ Does not make state transition (i.e., read-only).
 ```
 #### Parameters
 
-| KEY | VALUE type | Description |
-|:----|:-----------|:------------|
-| from | [T_ADDR_EOA](#T_ADDR_EOA) | Message sender's address. |
-| to | [T_ADDR_SCORE](#T_ADDR_SCORE) | SCORE address that will handle the message. |
-| dataType | [T_DATA_TYPE](#T_DATA_TYPE) | `call` is the only possible data type. |
-| data | JSON object | See [Parameters - data](#sendtxparameterdata). |
-| data.method | JSON string | Name of the function. |
-| data.params | JSON object | Parameters to be passed to the function. |
+| KEY         | VALUE type                    | Description                                    |
+|:------------|:------------------------------|:-----------------------------------------------|
+| from        | [T_ADDR_EOA](#T_ADDR_EOA)     | Message sender's address.                      |
+| to          | [T_ADDR_SCORE](#T_ADDR_SCORE) | SCORE address that will handle the message.    |
+| dataType    | [T_DATA_TYPE](#T_DATA_TYPE)   | `call` is the only possible data type.         |
+| data        | JSON object                   | See [Parameters - data](#sendtxparameterdata). |
+| data.method | JSON string                   | Name of the function.                          |
+| data.params | JSON object                   | Parameters to be passed to the function.       |
 
 > Example responses
 
@@ -277,9 +277,9 @@ Does not make state transition (i.e., read-only).
 
 #### Responses
 
-|Status|Meaning|Description|Schema|
-|---|---|---|---|
-|200|OK|Success||
+| Status | Meaning | Description | Schema |
+|:-------|:--------|:------------|:-------|
+| 200    | OK      | Success             ||
 
 ### icx_getBalance
 
@@ -299,8 +299,8 @@ Returns the ICX balance of the given EOA or SCORE.
 ```
 #### Parameters
 
-| KEY | VALUE type | Description |
-|:----|:-----------|:-----|
+| KEY     | VALUE type                                                 | Description             |
+|:--------|:-----------------------------------------------------------|:------------------------|
 | address | [T_ADDR_EOA](#T_ADDR_EOA) or [T_ADDR_SCORE](#T_ADDR_SCORE) | Address of EOA or SCORE |
 
 > Example responses
@@ -314,9 +314,9 @@ Returns the ICX balance of the given EOA or SCORE.
 ```
 #### Responses
 
-|Status|Meaning|Description|Schema|
-|---|---|---|---|
-|200|OK|Success||
+| Status | Meaning | Description | Schema |
+|:-------|:--------|:------------|:-------|
+| 200    | OK      | Success             ||
 
 ### icx_getScoreApi
 
@@ -336,8 +336,8 @@ Returns SCORE's external API list.
 ```
 #### Parameters
 
-| KEY | VALUE type | Description |
-|:----|:-----------|:-----|
+| KEY     | VALUE type                    | Description                  |
+|:--------|:------------------------------|:-----------------------------|
 | address | [T_ADDR_SCORE](#T_ADDR_SCORE) | SCORE adress to be examined. |
 
 > Example responses
@@ -390,9 +390,9 @@ Returns SCORE's external API list.
 ```
 #### Responses
 
-|Status|Meaning|Description|Schema|
-|---|---|---|---|
-|200|OK|Success||
+| Status | Meaning | Description | Schema |
+|:-------|:--------|:------------|:-------|
+| 200    | OK      | Success             ||
 
 * Fields containing information about the function
     - type : `function`, `fallback`, or `eventlog`
@@ -435,9 +435,9 @@ None
 
 #### Responses
 
-|Status|Meaning|Description|Schema|
-|---|---|---|---|
-|200|OK|Success||
+| Status | Meaning | Description | Schema |
+|:-------|:--------|:------------|:-------|
+| 200    | OK      | Success             ||
 
 ### icx_getTransactionResult
 
@@ -457,8 +457,8 @@ Returns the transaction result requested by transaction hash.
 ```
 #### Parameters
 
-| KEY | VALUE type | Description |
-|:----|:----------|:----- |
+| KEY    | VALUE type        | Description             |
+|:-------|:------------------|:------------------------|
 | txHash | [T_HASH](#T_HASH) | Hash of the transaction |
 
 > Example responses
@@ -484,25 +484,25 @@ Returns the transaction result requested by transaction hash.
 ```
 #### Responses
 
-|Status|Meaning|Description|Schema|
-|---|---|---|---|
-|200|OK|Success|Block|
+| Status | Meaning | Description | Schema |
+|:-------|:--------|:------------|:-------|
+| 200    | OK      | Success     | Block  |
 
-| KEY | VALUE type | Description |
-|:----|:----------|:-----|
-| status | [T_INT](#T_INT) | 1 on success, 0 on failure. |
-| to | [T_ADDR_EOA](#T_ADDR_EOA) or [T_ADDR_SCORE](#T_ADDR_SCORE) | Recipient address of the transaction |
-| failure | JSON object | This field exists when status is 0. Please refer [failure object](#FailureObject) |
-| txHash | [T_HASH](#T_HASH) | Transaction hash |
-| txIndex | [T_INT](#T_INT) | Transaction index in the block |
-| blockHeight | [T_INT](#T_INT) | Height of the block that includes the transaction. |
-| blockHash | [T_HASH](#T_HASH) | Hash of the block that includes the transation. |
-| cumulativeStepUsed | [T_INT](#T_INT) | Sum of stepUsed by this transaction and all preceeding transactions in the same block. |
-| stepUsed | [T_INT](#T_INT) | The amount of step used by this transaction. |
-| stepPrice | [T_INT](#T_INT) | The step price used by this transaction. |
-| scoreAddress | [T_ADDR_SCORE](#T_ADDR_SCORE) | SCORE address if the transaction created a new SCORE. (optional) |
-| eventLogs | [T_ARRAY](#T_ARRAY) | Array of eventlogs, which this transaction generated. |
-| logsBloom | [T_BIN_DATA](#T_BIN_DATA) | Bloom filter to quickly retrieve related eventlogs. |
+| KEY                | VALUE type                                                 | Description                                                                            |
+|:-------------------|:-----------------------------------------------------------|:---------------------------------------------------------------------------------------|
+| status             | [T_INT](#T_INT)                                            | 1 on success, 0 on failure.                                                            |
+| to                 | [T_ADDR_EOA](#T_ADDR_EOA) or [T_ADDR_SCORE](#T_ADDR_SCORE) | Recipient address of the transaction                                                   |
+| failure            | JSON object                                                | This field exists when status is 0. Please refer [failure object](#FailureObject)      |
+| txHash             | [T_HASH](#T_HASH)                                          | Transaction hash                                                                       |
+| txIndex            | [T_INT](#T_INT)                                            | Transaction index in the block                                                         |
+| blockHeight        | [T_INT](#T_INT)                                            | Height of the block that includes the transaction.                                     |
+| blockHash          | [T_HASH](#T_HASH)                                          | Hash of the block that includes the transation.                                        |
+| cumulativeStepUsed | [T_INT](#T_INT)                                            | Sum of stepUsed by this transaction and all preceeding transactions in the same block. |
+| stepUsed           | [T_INT](#T_INT)                                            | The amount of step used by this transaction.                                           |
+| stepPrice          | [T_INT](#T_INT)                                            | The step price used by this transaction.                                               |
+| scoreAddress       | [T_ADDR_SCORE](#T_ADDR_SCORE)                              | SCORE address if the transaction created a new SCORE. (optional)                       |
+| eventLogs          | [T_ARRAY](#T_ARRAY)                                        | Array of eventlogs, which this transaction generated.                                  |
+| logsBloom          | [T_BIN_DATA](#T_BIN_DATA)                                  | Bloom filter to quickly retrieve related eventlogs.                                    |
 
 ### icx_getTransactionByHash
 
@@ -522,8 +522,8 @@ Returns the transaction information requested by transaction hash.
 ```
 #### Parameters
 
-| KEY | VALUE type | Description |
-|:----|:----------|:----- |
+| KEY    | VALUE type        | Description             |
+|:-------|:------------------|:------------------------|
 | txHash | [T_HASH](#T_HASH) | Hash of the transaction |
 
 > Example responses
@@ -550,27 +550,27 @@ Returns the transaction information requested by transaction hash.
 ```
 #### Responses
 
-|Status|Meaning|Description|Schema|
-|---|---|---|---|
-|200|OK|Success|Block|
+| Status | Meaning | Description | Schema |
+|:-------|:--------|:------------|:-------|
+| 200    | OK      | Success     | Block  |
 
-| KEY | VALUE type | Description |
-|:----|:----------|:-----|
-| version | [T_INT](#T_INT) | Protocol version ("0x3" for V3) |
-| from | [T_ADDR_EOA](#T_ADDR_EOA) | EOA address that created the transaction |
-| to | [T_ADDR_EOA](#T_ADDR_EOA) or [T_ADDR_SCORE](#T_ADDR_SCORE) | EOA address to receive coins, or SCORE address to execute the transaction. |
-| value | [T_INT](#T_INT) | Amount of ICX coins in loop to transfer. When ommitted, assumes 0. (1 icx = 1 ^ 18 loop) |
-| stepLimit |[T_INT](#T_INT) | Maximum step allowance that can be used by the transaction. |
-| timestamp | [T_INT](#T_INT) | Transaction creation time. timestamp is in microsecond. |
-| nid | [T_INT](#T_INT) |  Network ID |
-| nonce | [T_INT](#T_INT) | An arbitrary number used to prevent transaction hash collision. |
-| txHash | [T_HASH](#T_HASH) | Transaction hash |
-| txIndex | [T_INT](#T_INT) | Transaction index in a block. Null when it is pending. |
-| blockHeight | [T_INT](#T_INT) | Block height where this transaction was in. Null when it is pending. |
-| blockHash | [T_HASH](#T_HASH) | Hash of the block where this transaction was in. Null when it is pending. |
-| signature | [T_SIG](#T_SIG) | Signature of the transaction. |
-| dataType | [T_DATA_TYPE](#T_DATA_TYPE) | Type of data. (call, deploy, or message) |
-| data | JSON object | Contains various type of data depending on the dataType. See [Parameters - data](#sendtxparameterdata). |
+| KEY         | VALUE type                                                 | Description                                                                                             |
+|:------------|:-----------------------------------------------------------|:--------------------------------------------------------------------------------------------------------|
+| version     | [T_INT](#T_INT)                                            | Protocol version ("0x3" for V3)                                                                         |
+| from        | [T_ADDR_EOA](#T_ADDR_EOA)                                  | EOA address that created the transaction                                                                |
+| to          | [T_ADDR_EOA](#T_ADDR_EOA) or [T_ADDR_SCORE](#T_ADDR_SCORE) | EOA address to receive coins, or SCORE address to execute the transaction.                              |
+| value       | [T_INT](#T_INT)                                            | Amount of ICX coins in loop to transfer. When ommitted, assumes 0. (1 icx = 1 ^ 18 loop)                |
+| stepLimit   | [T_INT](#T_INT)                                            | Maximum step allowance that can be used by the transaction.                                             |
+| timestamp   | [T_INT](#T_INT)                                            | Transaction creation time. timestamp is in microsecond.                                                 |
+| nid         | [T_INT](#T_INT)                                            | Network ID                                                                                              |
+| nonce       | [T_INT](#T_INT)                                            | An arbitrary number used to prevent transaction hash collision.                                         |
+| txHash      | [T_HASH](#T_HASH)                                          | Transaction hash                                                                                        |
+| txIndex     | [T_INT](#T_INT)                                            | Transaction index in a block. Null when it is pending.                                                  |
+| blockHeight | [T_INT](#T_INT)                                            | Block height where this transaction was in. Null when it is pending.                                    |
+| blockHash   | [T_HASH](#T_HASH)                                          | Hash of the block where this transaction was in. Null when it is pending.                               |
+| signature   | [T_SIG](#T_SIG)                                            | Signature of the transaction.                                                                           |
+| dataType    | [T_DATA_TYPE](#T_DATA_TYPE)                                | Type of data. (call, deploy, or message)                                                                |
+| data        | JSON object                                                | Contains various type of data depending on the dataType. See [Parameters - data](#sendtxparameterdata). |
 
 ### icx_sendTransaction
 
@@ -714,19 +714,19 @@ This function causes state transition.
 
 #### Parameters
 
-| KEY | VALUE type | Required | Description |
-|:----|:----------|:----:|:-----|
-| version | [T_INT](#T_INT) | required | Protocol version ("0x3" for V3) |
-| from | [T_ADDR_EOA](#T_ADDR_EOA) | required | EOA address that created the transaction |
-| to | [T_ADDR_EOA](#T_ADDR_EOA) or [T_ADDR_SCORE](#T_ADDR_SCORE) | required | EOA address to receive coins, or SCORE address to execute the transaction. |
-| value | [T_INT](#T_INT) | optional | Amount of ICX coins in loop to transfer. When ommitted, assumes 0. (1 icx = 1 ^ 18 loop) |
-| stepLimit |[T_INT](#T_INT) | required | Maximum step allowance that can be used by the transaction. |
-| timestamp | [T_INT](#T_INT) | required | Transaction creation time. timestamp is in microsecond. |
-| nid | [T_INT](#T_INT) | required | Network ID ("0x1" for Mainnet, "0x2" for Testnet, etc) |
-| nonce | [T_INT](#T_INT) | optional | An arbitrary number used to prevent transaction hash collision. |
-| signature | [T_SIG](#T_SIG) | required | Signature of the transaction. |
-| dataType | [T_DATA_TYPE](#T_DATA_TYPE) | optional | Type of data. (call, deploy, or message) |
-| data | JSON object | optional | The content of data varies depending on the dataType. See [Parameters - data](#sendtxparameterdata). |
+| KEY       | VALUE type                                                 | Required | Description                                                                                          |
+|:----------|:-----------------------------------------------------------|:--------:|:-----------------------------------------------------------------------------------------------------|
+| version   | [T_INT](#T_INT)                                            | required | Protocol version ("0x3" for V3)                                                                      |
+| from      | [T_ADDR_EOA](#T_ADDR_EOA)                                  | required | EOA address that created the transaction                                                             |
+| to        | [T_ADDR_EOA](#T_ADDR_EOA) or [T_ADDR_SCORE](#T_ADDR_SCORE) | required | EOA address to receive coins, or SCORE address to execute the transaction.                           |
+| value     | [T_INT](#T_INT)                                            | optional | Amount of ICX coins in loop to transfer. When ommitted, assumes 0. (1 icx = 1 ^ 18 loop)             |
+| stepLimit | [T_INT](#T_INT)                                            | required | Maximum step allowance that can be used by the transaction.                                          |
+| timestamp | [T_INT](#T_INT)                                            | required | Transaction creation time. timestamp is in microsecond.                                              |
+| nid       | [T_INT](#T_INT)                                            | required | Network ID ("0x1" for Mainnet, "0x2" for Testnet, etc)                                               |
+| nonce     | [T_INT](#T_INT)                                            | optional | An arbitrary number used to prevent transaction hash collision.                                      |
+| signature | [T_SIG](#T_SIG)                                            | required | Signature of the transaction.                                                                        |
+| dataType  | [T_DATA_TYPE](#T_DATA_TYPE)                                | optional | Type of data. (call, deploy, or message)                                                             |
+| data      | JSON object                                                | optional | The content of data varies depending on the dataType. See [Parameters - data](#sendtxparameterdata). |
 
 #### <a id ="sendtxparameterdata">Parameters - data</a>
 `data` contains the following data in various formats depending on the dataType.
@@ -735,20 +735,20 @@ This function causes state transition.
 
 It is used when calling a function in SCORE, and `data` has dictionary value as follows.
 
-| KEY | VALUE type | Required | Description |
-|:----|:-----------|:--------:|:------------|
-| method | String | required | Name of the function to invoke in SCORE |
-| params | JSON object | optional | Function parameters |
+| KEY    | VALUE type  | Required | Description                             |
+|:-------|:------------|:--------:|:----------------------------------------|
+| method | String      | required | Name of the function to invoke in SCORE |
+| params | JSON object | optional | Function parameters                     |
 
 ##### dataType == deploy
 
 It is used when installing or updating a SCORE, and `data` has dictionary value as follows.
 
-| KEY | VALUE type | Required | Description |
-|:----|:-----------|:--------:|:------------|
-| contentType | String | required | Mime-type of the content |
-| content | [T_BIN_DATA](#T_BIN_DATA) | required | Compressed SCORE data |
-| params | JSON object | optional | Function parameters will be delivered to on_install() or on_update() |
+| KEY         | VALUE type                | Required | Description                                                          |
+|:------------|:--------------------------|:--------:|:---------------------------------------------------------------------|
+| contentType | String                    | required | Mime-type of the content                                             |
+| content     | [T_BIN_DATA](#T_BIN_DATA) | required | Compressed SCORE data                                                |
+| params      | JSON object               | optional | Function parameters will be delivered to on_install() or on_update() |
 
 ##### dataType == message
 
@@ -766,9 +766,9 @@ It is used when transfering a message, and `data` has a HEX string.
 
 #### Responses
 
-|Status|Meaning|Description|Schema|
-|---|---|---|---|
-|200|OK|Success|Block|
+| Status | Meaning | Description | Schema |
+|:-------|:--------|:------------|:-------|
+| 200    | OK      | Success     | Block  |
 
 * Transaction hash ([T_HASH](#T_HASH)) on success
 * Error code and message on failure

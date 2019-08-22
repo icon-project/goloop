@@ -5,12 +5,12 @@
 This document describe how to setup the blockchain network with provided tools.
 We provides two kinds of server.
 
-| Name                  | gochain | goloop |
-| -----                 | :-----: | :----: |
-| JSON RPC              | YES     | YES    |
-| Monitoring            | YES     | YES    |
-| Multi-channel         | NO      | YES    |
-| Management API,CLI    | NO      | YES    |
+| Name               | gochain | goloop |
+|:-------------------|:-------:|:------:|
+| JSON RPC           |   YES   |  YES   |
+| Monitoring         |   YES   |  YES   |
+| Multi-channel      |   NO    |  YES   |
+| Management API,CLI |   NO    |  YES   |
 
 ## Tools
 

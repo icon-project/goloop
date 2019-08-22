@@ -5,17 +5,17 @@ This document specifies the genesis file format.
 
 ## Value Types
 
-| Value type       | Description                 | Example                                      |
-| ----------       | -----------                 | -------                                      |
-| T_ADDR_EOA       | "hx" + 40-digit HEX string  | `"hxbe258ceb872e08851f1f59694dac2558708ece11"` |
-| T_ADDR_SCORE     | "cx" + 40-digit HEX string  | `"cxb0776ee37f5b45bfaea8cff1d8232fbb6122ec32"` |
-| T_HASH           | "0x" + 64-digit HEX string  | `"0xc71303ef8543d04b5dc1ba6579132b143087c68db1b2168786408fcbce568238"` |
-| T_INT            | "0x" + lowercase HEX string | `"0xa"` |
-| T_ARRAY          | json arrays                 | ` [ “0x1234567890”, “0x2345678990” ] ` |
-| T_BOOLEAN        | "0x1" or "0x0"              | `"0x1"` |
-| T_STRING         | json string                 | `"test string"` |
-| T_BYTES          | "0x" + lowercase HEX string | `"0x112233445566..."` |
-| T_DICT           | json dictionary             | `{ "supply": "0x1" }` |
+| Value type   | Description                 | Example                                                                |
+|:-------------|:----------------------------|:-----------------------------------------------------------------------|
+| T_ADDR_EOA   | "hx" + 40-digit HEX string  | `"hxbe258ceb872e08851f1f59694dac2558708ece11"`                         |
+| T_ADDR_SCORE | "cx" + 40-digit HEX string  | `"cxb0776ee37f5b45bfaea8cff1d8232fbb6122ec32"`                         |
+| T_HASH       | "0x" + 64-digit HEX string  | `"0xc71303ef8543d04b5dc1ba6579132b143087c68db1b2168786408fcbce568238"` |
+| T_INT        | "0x" + lowercase HEX string | `"0xa"`                                                                |
+| T_ARRAY      | json arrays                 | ` [ “0x1234567890”, “0x2345678990” ] `                                 |
+| T_BOOLEAN    | "0x1" or "0x0"              | `"0x1"`                                                                |
+| T_STRING     | json string                 | `"test string"`                                                        |
+| T_BYTES      | "0x" + lowercase HEX string | `"0x112233445566..."`                                                  |
+| T_DICT       | json dictionary             | `{ "supply": "0x1" }`                                                  |
 
 
 ## Params
@@ -48,10 +48,10 @@ This document specifies the genesis file format.
       * `contentId` (T_STRING, replace `content`) <br>
         contentId is the content URI.
       
-        | Prefix  | Description                      | Sample |
-        | ------- | ------                           | -----  |
-        | `hash:` | Used for hashable SCORE.         | `"hash:0x1234567890abcdef...e"` |
-        | `cid:`  | Used for system SCORE.           | `"cid:multisig/r1"` |
+        | Prefix  | Description              | Sample                          |
+        |:--------|:-------------------------|:--------------------------------|
+        | `hash:` | Used for hashable SCORE. | `"hash:0x1234567890abcdef...e"` |
+        | `cid:`  | Used for system SCORE.   | `"cid:multisig/r1"`             |
 
       * `content` (T_BYTES, replace `contentId`) <br>
         Hex string contains bytes of compressed codes.
