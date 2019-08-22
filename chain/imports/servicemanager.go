@@ -169,8 +169,8 @@ func (m *managerForImport) PatchTransition(transition module.Transition, patches
 	}
 }
 
-func (m *managerForImport) CreateSyncTransition(transition module.Transition, result []byte) module.Transition {
-	otr := m.ServiceManager.CreateSyncTransition(unwrap(transition), result)
+func (m *managerForImport) CreateSyncTransition(transition module.Transition, result []byte, vlHash []byte) module.Transition {
+	otr := m.ServiceManager.CreateSyncTransition(unwrap(transition), result, vlHash)
 	if otr == nil {
 		return nil
 	}

@@ -232,7 +232,7 @@ func (m *manager) PatchTransition(t module.Transition, patchTxList module.Transa
 	return patchTransition(pt, patchTxList)
 }
 
-func (m *manager) CreateSyncTransition(t module.Transition, result []byte) module.Transition {
+func (m *manager) CreateSyncTransition(transition module.Transition, result []byte, vlHash []byte) module.Transition {
 	return nil
 }
 

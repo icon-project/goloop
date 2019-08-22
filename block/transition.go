@@ -217,8 +217,8 @@ func (ti *transitionImpl) propose(bi module.BlockInfo, cb transitionCallback) (*
 	return ti._addChild(cmtr, cb)
 }
 
-func (ti *transitionImpl) sync(result []byte, cb transitionCallback) (*transition, error) {
-	cmtr := ti._chainContext.sm.CreateSyncTransition(ti._mtransition, result)
+func (ti *transitionImpl) sync(result []byte, vlHash []byte, cb transitionCallback) (*transition, error) {
+	cmtr := ti._chainContext.sm.CreateSyncTransition(ti._mtransition, result, vlHash)
 	if cmtr == nil {
 		return nil, errors.New("fail to createSyncTransition")
 	}
@@ -309,11 +309,11 @@ func (tr *transition) propose(bi module.BlockInfo, cb transitionCallback) (*tran
 	return tr._ti.propose(bi, cb)
 }
 
-func (tr *transition) sync(result []byte, cb transitionCallback) (*transition, error) {
+func (tr *transition) sync(result []byte, vlHash []byte, cb transitionCallback) (*transition, error) {
 	if tr._ti == nil {
 		return nil, nil
 	}
-	return tr._ti.sync(result, cb)
+	return tr._ti.sync(result, vlHash, cb)
 }
 
 func (tr *transition) newTransition(cb transitionCallback) *transition {

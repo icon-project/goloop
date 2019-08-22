@@ -29,7 +29,7 @@ func (_r *ServiceManagerBase) PatchTransition(transition module.Transition, patc
 	panic("not implemented")
 }
 
-func (_r *ServiceManagerBase) CreateSyncTransition(transition module.Transition, result []byte) module.Transition {
+func (_r *ServiceManagerBase) CreateSyncTransition(transition module.Transition, result []byte, vlHash []byte) module.Transition {
 	panic("not implemented")
 }
 

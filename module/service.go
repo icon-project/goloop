@@ -235,7 +235,7 @@ type TransitionManager interface {
 	GetPatches(parent Transition, bi BlockInfo) TransactionList
 	// PatchTransition creates a Transition by overwriting patches on the transition.
 	PatchTransition(transition Transition, patches TransactionList) Transition
-	CreateSyncTransition(transition Transition, result []byte) Transition
+	CreateSyncTransition(transition Transition, result []byte, vlHash []byte) Transition
 	// Finalize finalizes data related to the transition. It usually stores
 	// data to a persistent storage. opt indicates which data are finalized.
 	// It should be called for every transition.
