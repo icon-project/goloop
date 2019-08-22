@@ -239,6 +239,15 @@ func (it *importTask) onExecute(err error) {
 func (it *importTask) _onExecute(err error) {
 	if it.state == executingIn {
 		if err != nil {
+			if it.flags&module.ImportByForce > 0 {
+				it.stop()
+				it.in, err = it.in.sync(it.block.Result(), it.block.NextValidatorsHash(), it)
+				if err != nil {
+					it.cb(nil, err)
+					return
+				}
+				return
+			}
 			it.stop()
 			it.cb(nil, err)
 			return
