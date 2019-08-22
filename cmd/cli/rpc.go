@@ -38,7 +38,7 @@ func RpcPersistentPreRunE(vc *viper.Viper, rpcClient *client.ClientV3) func(cmd 
 
 func AddRpcRequiredFlags(c *cobra.Command) {
 	pFlags := c.PersistentFlags()
-	pFlags.String("uri", "http://127.0.0.1:9080/api/v3", "URI of JSON-RPC API")
+	pFlags.String("uri", "", "URI of JSON-RPC API")
 	pFlags.Bool("debug", false, "JSON-RPC Response with detail information")
 	//TODO dump jsonrpc message
 	//pFlags.Bool("dump", false, "Print JSON-RPC Request and Response")
