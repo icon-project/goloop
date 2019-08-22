@@ -110,23 +110,24 @@ func (h *CallHandler) prepareWorldContextAndAccount(ctx Context) (state.WorldCon
 	return wc, as
 }
 
+func (h *CallHandler) prepareContractStore(ctx Context, wc state.WorldContext, c state.Contract) error {
+	h.lock.Lock()
+	defer h.lock.Unlock()
+	if cs, err := ctx.ContractManager().PrepareContractStore(wc, c); err != nil {
+		h.cs = cs
+		return err
+	}
+	return nil
+}
+
 func (h *CallHandler) Prepare(ctx Context) (state.WorldContext, error) {
 	wc, as := h.prepareWorldContextAndAccount(ctx)
 
 	c := h.contract(as)
 	if c == nil {
-		return nil, scoreresult.New(module.StatusContractNotFound, "NotActiveContract")
+		return wc, nil
 	}
-
-	var err error
-	h.lock.Lock()
-	if h.cs == nil {
-		h.cs, err = ctx.ContractManager().PrepareContractStore(wc, c)
-	}
-	h.lock.Unlock()
-	if err != nil {
-		return nil, scoreresult.WithStatus(err, module.StatusContractNotFound)
-	}
+	h.prepareContractStore(ctx, wc, c)
 
 	return wc, nil
 }
@@ -195,14 +196,8 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 		return scoreresult.Errorf(module.StatusSystemError,
 			"FAIL to get connection of ("+h.EEType()+")")
 	}
-	h.lock.Lock()
-	var err error
-	if h.cs == nil {
-		h.cs, err = cc.ContractManager().PrepareContractStore(cc, c)
-	}
-	h.lock.Unlock()
-	if err != nil {
-		return err
+	if err := h.prepareContractStore(cc, cc, c); err != nil {
+		return errors.Wrapc(err, PreparingContractError, "FAIL to prepare contract")
 	}
 	path, err := h.cs.WaitResult()
 	if err != nil {
