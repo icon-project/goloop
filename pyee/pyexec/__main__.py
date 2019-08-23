@@ -58,6 +58,7 @@ def main():
     engine.init_logger(default_log_config)
     engine.connect(server_address, args.uuid)
     engine.process()
+    engine.close()
 
 
 if __name__ == "__main__":

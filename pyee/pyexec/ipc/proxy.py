@@ -15,6 +15,7 @@
 import traceback
 from abc import ABCMeta, abstractmethod
 from typing import Any, Tuple, List, Union, Callable
+
 from .client import Client
 
 TAG = 'Proxy'
@@ -43,6 +44,7 @@ class Message(object):
     GETBALANCE = 8
     GETAPI = 9
     LOG = 10
+    CLOSE = 11
 
 
 class Log(object):
@@ -379,6 +381,8 @@ class ServiceManagerProxy:
                 self.__handle_invoke(data)
             elif msg == Message.GETAPI:
                 self.__handle_get_api(data)
+            elif msg == Message.CLOSE:
+                return
 
     def call(self, to: 'Address', value: int,
              step_limit: int, method: str,
@@ -439,4 +443,7 @@ class ServiceManagerProxy:
 
     def debug(self, msg: str, tag: str = 'LOG') -> None:
         self.log(Log.DEBUG, f"[{tag}] {msg}")
+
+    def close(self):
+        self.__client.close()
 

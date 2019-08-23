@@ -196,3 +196,6 @@ class PyExecEngine(object):
 
     def process(self):
         self.__proxy.loop()
+
+    def close(self):
+        self.__proxy.close()

@@ -29,6 +29,7 @@ const (
 	msgGETBALANCE = 8
 	msgGETAPI     = 9
 	msgLOG        = 10
+	msgCLOSE      = 11
 )
 
 const (
@@ -200,8 +201,7 @@ func (p *proxy) Release() {
 	if p.frame == nil {
 		p.lock.Unlock()
 		if err := p.mgr.onReady(p.scoreType, p); err != nil {
-			p.log.Warnf("Fail to make it ready err=%+v", err)
-			p.conn.Close()
+			p.close()
 		}
 		return
 	}
@@ -375,11 +375,13 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		}
 		return nil
 	default:
-		return errors.Errorf("UnknownMessage(%d)", msg)
+		p.log.Warnf("UnknownMessage(%d)", msg)
+		return errors.ErrIllegalArgument
 	}
 }
 
 func (p *proxy) close() error {
+	p.conn.Send(msgCLOSE, nil)
 	return p.conn.Close()
 }
 

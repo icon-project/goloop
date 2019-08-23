@@ -55,3 +55,6 @@ class Client:
 
     def receive(self) -> Tuple[int, Any]:
         return self._recv()
+
+    def close(self):
+        return self.conn.close()

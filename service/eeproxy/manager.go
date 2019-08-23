@@ -18,6 +18,13 @@ const (
 	numberOfPriorities = 2
 )
 
+const (
+	errorBase                  = errors.CodeService + 300
+	ScaleDownError errors.Code = iota + errorBase
+	InvalidUUIDError
+	InvalidAppTypeError
+)
+
 type Manager interface {
 	GetExecutor(pr RequestPriority) *Executor
 	SetInstances(total, tx, query int) error
@@ -96,19 +103,23 @@ func (em *executorManager) onReady(t string, p *proxy) error {
 
 	i, ok := em.typeMap[t]
 	if !ok {
-		return errors.Errorf("InvalidApplicationType:%s", t)
+		em.log.Warnf("InvalidApplicationType(%s)", t)
+		return InvalidAppTypeError.Errorf("InvalidApplicationType:%s", t)
 	}
 
 	e := em.engines[i]
 
 	if !e.engine.OnAttach(p.uid) {
-		return errors.Errorf("InvalidUID(uid=%s)", p.uid)
+		em.log.Warnf("InvalidUUID(uid=%s)", p.uid)
+		return InvalidUUIDError.Errorf("InvalidUID(uid=%s)", p.uid)
 	}
 
 	if p.detach() {
 		if e.active > em.executorLimit {
 			e.active -= 1
-			return errors.Errorf("ScalingDown(target=%d,active=%d)",
+			em.log.Infof("Stop proxy=%s-%s (target=%d,active=%d)",
+				t, p.uid, em.executorLimit, e.active)
+			return ScaleDownError.Errorf("ScalingDown(target=%d,active=%d)",
 				em.executorLimit, e.active)
 		}
 	} else {
@@ -120,7 +131,7 @@ func (em *executorManager) onReady(t string, p *proxy) error {
 		s := em.executorStates[i]
 		if s.assigned < s.limit && s.waiting > 0 {
 			s.waiter.Signal()
-			return nil
+			break
 		}
 	}
 	return nil
@@ -232,6 +243,9 @@ func (em *executorManager) SetInstances(total, tx, query int) error {
 
 	for _, e := range em.engines {
 		for e.ready != nil && e.active > em.executorLimit {
+			em.log.Infof("Stop proxy=%s-%s (active=%d > limit=%d)",
+				e.engine.Type(), e.ready.uid,
+				e.active, em.executorLimit)
 			item := e.ready
 			item.detach()
 			item.close()
