@@ -18,6 +18,7 @@ import (
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/service/eeproxy"
+	ssync "github.com/icon-project/goloop/service/sync"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
@@ -85,6 +86,8 @@ type transition struct {
 	executeDuration  time.Duration
 	flushDuration    time.Duration
 	tsc              *TxTimestampChecker
+
+	syncer ssync.Syncer
 }
 
 type transitionResult struct {
@@ -224,7 +227,12 @@ func (t *transition) Execute(cb module.TransitionCallback) (canceler func() bool
 		return nil, errors.InvalidStateError.Errorf("Invalid transition state: %s", t.step)
 	}
 	t.cb = cb
-	go t.executeSync(t.step == stepExecuting)
+	if t.syncer == nil {
+		go t.executeSync(t.step == stepExecuting)
+	} else {
+		//	// TODO : stepSyncing
+		go t.forceSync()
+	}
 
 	return t.cancelExecution, nil
 }
@@ -334,6 +342,31 @@ func (t *transition) canceled() bool {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	return t.step == stepCanceled
+}
+
+func (t *transition) forceSync() {
+	// TODO skip t.cb.OnValidate()
+	t.log.Debugf("syncer = %v\n", t.syncer)
+
+	sr := t.syncer.ForceSync()
+	t.logsBloom.SetInt64(0)
+	for _, receipts := range []module.ReceiptList{sr.PatchReceipts, sr.NormalReceipts} {
+		for itr := receipts.Iterator(); itr.Has(); itr.Next() {
+			r, _ := itr.Get()
+			t.logsBloom.Merge(r.LogsBloom())
+		}
+	}
+
+	t.patchReceipts = sr.PatchReceipts
+	t.normalReceipts = sr.NormalReceipts
+	t.worldSnapshot = sr.Wss
+	tresult := transitionResult{
+		t.worldSnapshot.StateHash(),
+		t.patchReceipts.Hash(),
+		t.normalReceipts.Hash(),
+	}
+	t.result = tresult.Bytes()
+	t.reportExecution(nil)
 }
 
 func (t *transition) executeSync(alreadyValidated bool) {
@@ -506,18 +539,29 @@ func (t *transition) finalizePatchTransaction() error {
 }
 
 func (t *transition) finalizeResult() error {
+	// TODO check worldTS
+	var worldTS time.Time
 	startTS := time.Now()
-	if err := t.worldSnapshot.Flush(); err != nil {
-		return err
+	if t.syncer != nil {
+		log.Debugf("finalizeResult with syncer\n")
+		if err := t.syncer.Finalize(); err != nil {
+			log.Errorf("Failed to finalize with state syncer err(%+v)\n", err)
+			return err
+		}
+		return nil
+	} else {
+		if err := t.worldSnapshot.Flush(); err != nil {
+			return err
+		}
+		worldTS = time.Now()
+		if err := t.patchReceipts.Flush(); err != nil {
+			return err
+		}
+		if err := t.normalReceipts.Flush(); err != nil {
+			return err
+		}
+		t.parent = nil
 	}
-	worldTS := time.Now()
-	if err := t.patchReceipts.Flush(); err != nil {
-		return err
-	}
-	if err := t.normalReceipts.Flush(); err != nil {
-		return err
-	}
-	t.parent = nil
 	finalTS := time.Now()
 
 	regulator := t.chain.Regulator()

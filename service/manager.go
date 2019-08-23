@@ -8,6 +8,7 @@ import (
 
 	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/service/scoreresult"
+	ssync "github.com/icon-project/goloop/service/sync"
 
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/server/metric"
@@ -46,6 +47,7 @@ type manager struct {
 	eem       eeproxy.Manager
 	trc       *transitionResultCache
 	tsc       *TxTimestampChecker
+	syncer    *ssync.Manager
 
 	log log.Logger
 
@@ -75,6 +77,7 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 	nTxPool := NewTransactionPool(chain.NormalTxPoolSize(), bk, nMetric, logger)
 	tsc := NewTimestampChecker()
 	tm := NewTransactionManager(chain.NID(), tsc, pTxPool, nTxPool, logger)
+	syncm := ssync.NewSyncManager(chain.Database(), chain.NetworkManager(), logger)
 
 	mgr := &manager{
 		patchMetric:  pMetric,
@@ -86,6 +89,7 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 		chain:        chain,
 		cm:           cm,
 		eem:          eem,
+		syncer:       syncm,
 		trc: newTransitionResultCache(chain.Database(),
 			ConfigTransitionResultCacheEntryCount,
 			ConfigTransitionResultCacheEntrySize,
@@ -232,8 +236,20 @@ func (m *manager) PatchTransition(t module.Transition, patchTxList module.Transa
 	return patchTransition(pt, patchTxList)
 }
 
-func (m *manager) CreateSyncTransition(transition module.Transition, result []byte, vlHash []byte) module.Transition {
-	return nil
+func (m *manager) CreateSyncTransition(t module.Transition, result []byte, vlHash []byte) module.Transition {
+	m.log.Debugf("CreateSyncTransition result(%#x), vlHash(%#x)\n", result, vlHash)
+	tr, ok := t.(*transition)
+	if !ok {
+		m.log.Panicf("Illegal transition for CreateSyncTransition type=%T", t)
+		return nil
+	}
+	ntr := newTransition(
+		tr.parent, tr.patchTransactions, tr.normalTransactions, tr.bi, true, m.log)
+	r, _ := newTransitionResultFromBytes(result)
+	ntr.syncer = m.syncer.NewSyncer(r.StateHash,
+		r.PatchReceiptHash, r.NormalReceiptHash, vlHash)
+	ntr.result = result
+	return ntr
 }
 
 // Finalize finalizes data related to the transition. It usually stores
