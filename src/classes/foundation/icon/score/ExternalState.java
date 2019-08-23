@@ -191,20 +191,8 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public void deductEnergyCost(AionAddress address, BigInteger cost) {
-        logger.debug("[deductEnergyCost] {} cost={}", address, cost);
-        throw new RuntimeException("not implemented");
-    }
-
-    @Override
     public void refundAccount(AionAddress address, BigInteger refund) {
         logger.debug("[refundAccount] {} refund={}", address, refund);
-        throw new RuntimeException("not implemented");
-    }
-
-    @Override
-    public void payMiningFee(AionAddress address, BigInteger fee) {
-        logger.debug("[payMiningFee] {} fee={}", address, fee);
         throw new RuntimeException("not implemented");
     }
 
@@ -270,7 +258,7 @@ public class ExternalState implements IExternalState {
 
     @Override
     public AionAddress getMinerAddress() {
-        AionAddress miner = Helpers.address(170); //0xaa
+        AionAddress miner = Helpers.address(0xaa);
         logger.debug("[getMinerAddress] ret={}", miner);
         return miner;
     }

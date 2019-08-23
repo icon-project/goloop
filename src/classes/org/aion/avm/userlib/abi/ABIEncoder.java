@@ -2,6 +2,8 @@ package org.aion.avm.userlib.abi;
 
 import avm.Address;
 
+import java.math.BigInteger;
+
 /**
  * Utility class for AVM ABI encoding.
  *
@@ -422,6 +424,36 @@ public final class ABIEncoder {
     }
 
     /**
+     * Encodes one BigInteger as a serialized extent
+     * Null is encoded as the two identifiers: NULL, followed by BIGINT.
+     *
+     * @param data one BigInteger.
+     * @return the byte array that contains the argument descriptor and the encoded data.
+     */
+    public static byte[] encodeOneBigInteger(BigInteger data) {
+        byte[] result;
+        if (null == data) {
+            result = new byte[2];
+            result[0] = ABIToken.NULL;
+            result[1] = ABIToken.BIGINT;
+        } else {
+            byte[] bigIntegerBytes = data.toByteArray();
+            // maximum size of a BigInteger value accepted by AVM is 32 bytes
+            if (bigIntegerBytes.length > 32) {
+                throw new ABIException("BigInteger value exceeds the limit of 32 bytes");
+            }
+
+            int length = bigIntegerBytes.length;
+            result = new byte[length + 1 + 1];
+            result[0] = ABIToken.BIGINT;
+            result[1] = (byte) length;
+
+            System.arraycopy(bigIntegerBytes, 0, result, 2, length);
+        }
+        return result;
+    }
+
+    /**
      * Encodes one 2D byte array as a serialized extent.
      * Null is encoded as the three identifiers: NULL, followed by ARRAY, followed by A_BYTE.
      * @param data one 2D byte array.
@@ -667,6 +699,32 @@ public final class ABIEncoder {
                 length += encodedArrays[i].length;
             }
             result = flatten2DEncoding(encodedArrays, length, ABIToken.ADDRESS);
+        }
+        return result;
+    }
+
+    /**
+     * Encodes one BigInteger array as a serialized extent.
+     * Null is encoded as the three identifiers: NULL, followed by ARRAY, followed by BIGINT.
+     *
+     * @param data one BigInteger array.
+     * @return the byte array that contains the argument descriptor and the encoded data.
+     */
+    public static byte[] encodeOneBigIntegerArray(BigInteger[] data) {
+        byte[] result;
+        if (null == data) {
+            result = new byte[3];
+            result[0] = ABIToken.NULL;
+            result[1] = ABIToken.ARRAY;
+            result[2] = ABIToken.BIGINT;
+        } else {
+            int length = Short.BYTES + 2;
+            byte[][] encodedArrays = new byte[data.length][];
+            for (int i = 0; i < data.length; i++) {
+                encodedArrays[i] = encodeOneBigInteger(data[i]);
+                length += encodedArrays[i].length;
+            }
+            result = flatten2DEncoding(encodedArrays, length, ABIToken.BIGINT);
         }
         return result;
     }

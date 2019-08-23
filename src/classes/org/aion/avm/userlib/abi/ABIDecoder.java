@@ -2,6 +2,8 @@ package org.aion.avm.userlib.abi;
 
 import avm.Address;
 
+import java.math.BigInteger;
+
 /**
  * Utility class for AVM ABI decoding.
  *
@@ -489,6 +491,37 @@ public class ABIDecoder {
     }
 
     /**
+     * Decode an BigInteger from the data field.
+     *
+     * @return the decoded BigInteger.
+     */
+    public BigInteger decodeOneBigInteger() {
+        checkNullEmptyData();
+        checkMinLengthForObject();
+
+        BigInteger bigInteger = null;
+        if (data[position] == ABIToken.NULL && data[position + 1] == ABIToken.BIGINT) {
+            position += 2;
+        } else {
+            if (data[position++] != ABIToken.BIGINT) {
+                throw new ABIException("Next element in data field is not a BigInteger.");
+            }
+            if (data.length - position < Byte.BYTES) {
+                throw new ABIException("Data field does not have enough bytes left to read BigInteger length.");
+            }
+            int bigIntegerLength = data[position++];
+            if (data.length - position < bigIntegerLength) {
+                throw new ABIException("Data field does not have enough bytes left to read a BigInteger.");
+            }
+            byte[] bigIntegerBytes = new byte[bigIntegerLength];
+            System.arraycopy(data, position, bigIntegerBytes, 0, bigIntegerLength);
+            position += bigIntegerLength;
+            bigInteger = new BigInteger(bigIntegerBytes);
+        }
+        return bigInteger;
+    }
+
+    /**
      * Decode a 2D byte array from the data field.
      * @return the decoded 2D byte array.
      */
@@ -796,6 +829,37 @@ public class ABIDecoder {
             }
         }
         return addressArray;
+    }
+
+    /**
+     * Decode a BigInteger array from the data field.
+     * @return the decoded BigInteger array.
+     */
+    public BigInteger[] decodeOneBigIntegerArray() {
+        checkNullEmptyData();
+        checkMinLengthForObjectArray();
+
+        BigInteger[] bigIntegerArray = null;
+        if (data[position] == ABIToken.NULL && data[position + 1] == ABIToken.ARRAY && data[position + 2] == ABIToken.BIGINT) {
+            position  += 3;
+        } else {
+            if (data[position++] != ABIToken.ARRAY || data[position++] != ABIToken.BIGINT) {
+                throw new ABIException("Next element in data field is not a BigInteger array.");
+            }
+
+            // 2 bytes is the smallest a bigInteger element can be, since null arrays are NULL followed by BIGINT
+            int arrayLength = getLength(2);
+
+            bigIntegerArray = new BigInteger[arrayLength];
+            try {
+                for (int i = 0; i < arrayLength; i++) {
+                    bigIntegerArray[i] = decodeOneBigInteger();
+                }
+            } catch (ABIException e) {
+                throw new ABIException("Could not decode a BigInteger array");
+            }
+        }
+        return bigIntegerArray;
     }
 
     private void checkNullEmptyData() {

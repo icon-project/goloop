@@ -12,4 +12,10 @@ public class ABIException extends RuntimeException {
     public ABIException(String message) {
         super(message);
     }
+
+    // only used for jar optimization
+    public ABIException() {
+        super();
+    }
+
 }

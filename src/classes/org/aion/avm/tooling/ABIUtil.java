@@ -1,6 +1,8 @@
 package org.aion.avm.tooling;
 
 import avm.Address;
+
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import org.aion.avm.userlib.abi.ABIDecoder;
 import org.aion.avm.userlib.abi.ABIEncoder;
@@ -121,6 +123,8 @@ public class ABIUtil {
                 return decodeAnArray(data);
             } else if (identifier == ABIToken.NULL) {
                 return null;
+            } else if (identifier == ABIToken.BIGINT) {
+                return decoder.decodeOneBigInteger();
             } else {
                 throw new ABIException("Unsupported ABI type");
             }
@@ -172,8 +176,10 @@ public class ABIUtil {
             return ABIEncoder.encodeOneString((String) data);
         } else if (clazz == Address.class) {
             return ABIEncoder.encodeOneAddress((Address) data);
+        } else if (clazz == BigInteger.class) {
+            return ABIEncoder.encodeOneBigInteger((BigInteger) data);
         } else if (clazz == byte[][].class) {
-        return ABIEncoder.encodeOne2DByteArray((byte[][]) data);
+            return ABIEncoder.encodeOne2DByteArray((byte[][]) data);
         } else if (clazz == boolean[][].class) {
             return ABIEncoder.encodeOne2DBooleanArray((boolean[][]) data);
         } else if (clazz == char[][].class) {
@@ -192,6 +198,8 @@ public class ABIUtil {
             return ABIEncoder.encodeOneStringArray((String[]) data);
         } else if (clazz == Address[].class) {
             return ABIEncoder.encodeOneAddressArray((Address[]) data);
+        } else if (clazz == BigInteger[].class) {
+            return ABIEncoder.encodeOneBigIntegerArray((BigInteger[]) data);
         } else {
             throw new ABIException("Unsupported ABI type");
         }
@@ -223,6 +231,8 @@ public class ABIUtil {
             return decoder.decodeOneStringArray();
         } else if (elementIdentifier == ABIToken.ADDRESS) {
             return decoder.decodeOneAddressArray();
+        } else if (elementIdentifier == ABIToken.BIGINT) {
+            return decoder.decodeOneBigIntegerArray();
         } else {
             throw new ABIException("Invalid array encoding");
         }

@@ -24,6 +24,7 @@ public final  class ABIToken {
 
     public static final byte STRING = (byte) 0x21;
     public static final byte ADDRESS = (byte) 0x22;
+    public static final byte BIGINT = (byte) 0x23;
     public static final byte ARRAY = (byte) 0x31;
     public static final byte NULL = (byte) 0x32;
 }
