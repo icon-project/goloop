@@ -1,6 +1,7 @@
 package ipc
 
 import (
+	"io"
 	"net"
 	"os"
 	"path"
@@ -68,7 +69,7 @@ func (s *server) handleConnection(conn net.Conn) {
 	handler := s.handler
 	if handler != nil {
 		if err := handler.OnConnect(co); err != nil {
-			log.Printf("Fail on OnConnect() err=%+v", err)
+			log.Warnf("Fail on OnConnect() err=%+v", err)
 			co.Close()
 			return
 		}
@@ -77,15 +78,15 @@ func (s *server) handleConnection(conn net.Conn) {
 	for {
 		err := co.HandleMessage()
 		if err != nil {
-			log.Printf("Fail to handle message err=%+v", err)
+			if err != io.EOF {
+				log.Debugf("Fail to handle message err=%+v", err)
+			}
 			break
 		}
 	}
 
 	if handler != nil {
-		if err := handler.OnClose(co); err != nil {
-			log.Printf("Fail on OnClose() err=%+v", err)
-		}
+		handler.OnClose(co)
 	}
 	co.Close()
 }

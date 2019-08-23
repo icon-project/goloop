@@ -140,7 +140,7 @@ func (em *executorManager) OnConnect(c ipc.Connection) error {
 	return err
 }
 
-func (em *executorManager) OnClose(c ipc.Connection) error {
+func (em *executorManager) OnClose(c ipc.Connection) {
 	em.lock.Lock()
 	defer em.lock.Unlock()
 
@@ -149,18 +149,17 @@ func (em *executorManager) OnClose(c ipc.Connection) error {
 			if p.conn == c {
 				p.detach()
 				e.active -= 1
-				return nil
+				return
 			}
 		}
 		for p := e.using; p != nil; p = p.next {
 			if p.conn == c {
 				p.detach()
 				e.active -= 1
-				return nil
+				return
 			}
 		}
 	}
-	return errors.New("UnknownConnection")
 }
 
 func (em *executorManager) Close() error {

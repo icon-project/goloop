@@ -2,12 +2,12 @@ package ipc
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"net"
 	"sync"
 
 	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/common/log"
 )
 
 type MessageHandler interface {
@@ -24,7 +24,7 @@ type Connection interface {
 
 type ConnectionHandler interface {
 	OnConnect(c Connection) error
-	OnClose(c Connection) error
+	OnClose(c Connection)
 }
 
 type connection struct {
@@ -32,6 +32,7 @@ type connection struct {
 	conn    net.Conn
 	reader  io.Reader
 	handler map[uint]MessageHandler
+	closed  bool
 }
 
 type messageToSend struct {
@@ -100,19 +101,27 @@ func (c *connection) SendAndReceive(msg uint, data interface{}, buffer interface
 	return nil
 }
 
+func (c *connection) getHandler(msg uint) MessageHandler {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	if handler, ok := c.handler[msg]; ok {
+		return handler
+	}
+	return nil
+}
+
 func (c *connection) HandleMessage() error {
 	var m messageToReceive
 	if err := codec.MP.Unmarshal(c.reader, &m); err != nil {
+		if c.closed {
+			return io.EOF
+		}
 		return err
 	}
-	c.lock.Lock()
 
-	handler := c.handler[m.Msg]
-	c.lock.Unlock()
-
+	handler := c.getHandler(m.Msg)
 	if handler == nil {
-		log.Printf("Unknown message msg=%d\n", m.Msg)
-		return nil
+		return fmt.Errorf("UnknownMessage(msg=%d)", m.Msg)
 	}
 
 	return handler.HandleMessage(c, m.Msg, m.RawData())
@@ -126,6 +135,7 @@ func (c *connection) SetHandler(msg uint, handler MessageHandler) {
 }
 
 func (c *connection) Close() error {
+	c.closed = true
 	return c.conn.Close()
 }
 
