@@ -33,7 +33,7 @@ type client struct {
 type blockResult struct {
 	id    module.PeerID
 	blk   module.BlockData
-	votes module.CommitVoteSet
+	votes []byte
 	cl    *client
 	fr    *fetchRequest
 }
@@ -42,7 +42,7 @@ func (br *blockResult) Block() module.BlockData {
 	return br.blk
 }
 
-func (br *blockResult) Votes() module.CommitVoteSet {
+func (br *blockResult) Votes() []byte {
 	return br.votes
 }
 
@@ -51,18 +51,69 @@ func (br *blockResult) Consume() {
 	defer br.cl.Unlock()
 
 	cl := br.cl
+	cl.logger.Tracef("Consume %d\n", br.blk.Height())
 	fr := br.fr
 	if cl.fr != fr {
 		return
 	}
 
-	cnt := br.blk.Height() - fr.consumeOffset
-	fr.consumeOffset = fr.consumeOffset + cnt
-	copy(fr.pendingResults, fr.pendingResults[cnt:])
-	for i := len(fr.pendingResults) - int(cnt); i < len(fr.pendingResults); i++ {
-		fr.pendingResults[i] = nil
-	}
+	fr.consumeOffset++
+	copy(fr.pendingResults, fr.pendingResults[1:])
+	fr.pendingResults[len(fr.pendingResults)-1] = nil
 	fr._reschedule()
+	if fr.consumeOffset > fr.heightSet.end || fr.nActivePeers == 0 && fr.pendingResults[0] == nil {
+		cb := fr.cb
+		cl.logger.Tracef("OnEnd Consume %d nActivePeers:%d pendingResult[0]:%p\n", br.blk.Height(), fr.nActivePeers, fr.pendingResults[0])
+		fr._cancel()
+		go cb.OnEnd(nil)
+		return
+	}
+	if fr.pendingResults[0] != nil {
+		cl.notifyBlockResult()
+	}
+}
+
+func (br *blockResult) Reject() {
+	br.cl.Lock()
+	defer br.cl.Unlock()
+
+	cl := br.cl
+	cl.logger.Tracef("Reject %d\n", br.blk.Height())
+	fr := br.fr
+	if cl.fr != fr {
+		return
+	}
+
+	for i, p := range fr.validPeers {
+		if p.id.Equal(br.id) {
+			last := len(fr.validPeers) - 1
+			fr.validPeers[i] = fr.validPeers[last]
+			fr.validPeers[last] = nil
+			fr.validPeers = fr.validPeers[:last]
+			if p.f != nil {
+				p.f.cancel()
+				fr.nActivePeers--
+				fr._reschedule()
+			}
+			break
+		}
+	}
+	fr.pendingResults[0] = nil
+	fr.heightSet.add(br.blk.Height())
+	for j := 1; j < len(fr.pendingResults); j++ {
+		if fr.pendingResults[j] != nil && fr.pendingResults[j].id.Equal(br.id) {
+			fr.pendingResults[j] = nil
+			fr.heightSet.add(fr.pendingResults[j].blk.Height())
+		}
+	}
+	if fr.nActivePeers != 0 {
+		fr._reschedule()
+	} else {
+		cb := fr.cb
+		cl.logger.Tracef("OnEnd Reject %d\n", br.blk.Height())
+		fr._cancel()
+		go cb.OnEnd(nil)
+	}
 }
 
 type peer struct {
@@ -72,17 +123,14 @@ type peer struct {
 }
 
 type fetchRequest struct {
-	cl         *client
-	heightSet  *heightSet
-	cb         FetchCallback
-	cvsDecoder module.CommitVoteSetDecoder
-	maxActive  int
+	cl        *client
+	heightSet *heightSet
+	cb        FetchCallback
+	maxActive int
 
 	validPeers     []*peer
 	nActivePeers   int
-	prevBlock      module.BlockData
 	consumeOffset  int64
-	notifyOffset   int64
 	pendingResults []*blockResult
 }
 
@@ -99,14 +147,15 @@ func newClient(nm module.NetworkManager, ph module.ProtocolHandler,
 func (cl *client) fetchBlocks(
 	begin int64,
 	end int64,
-	prev module.Block,
-	f module.CommitVoteSetDecoder,
 	cb FetchCallback,
 ) (*fetchRequest, error) {
 	cl.Lock()
 	defer cl.Unlock()
 
+	cl.logger.Debugf("fetchBlocks begin:%d end:%d\n", begin, end)
+
 	if cl.fr != nil {
+		cl.logger.Debugf("fetchBlocks begin:%d end:%d - already in use\n", begin, end)
 		return nil, errors.New("already in use")
 	}
 
@@ -115,7 +164,6 @@ func (cl *client) fetchBlocks(
 	fr.cl = cl
 	fr.heightSet = newHeightSet(begin, end)
 	fr.cb = cb
-	fr.cvsDecoder = f
 	fr.maxActive = configMaxActive
 
 	peerIDs := cl.nm.GetPeers()
@@ -124,9 +172,7 @@ func (cl *client) fetchBlocks(
 		fr.validPeers[i] = &peer{id, 0, nil}
 	}
 	fr.nActivePeers = 0
-	fr.prevBlock = prev
 	fr.consumeOffset = begin
-	fr.notifyOffset = begin
 	fr.pendingResults = make([]*blockResult, configMaxPendingResults)
 	fr._reschedule()
 	cl.fr = fr
@@ -234,7 +280,7 @@ func (cl *client) _findPeerByFetcher(f *fetcher) (int, *peer) {
 	return -1, nil
 }
 
-func (cl *client) onResult(f *fetcher, err error, blk module.BlockData, votes module.CommitVoteSet) {
+func (cl *client) onResult(f *fetcher, err error, blk module.BlockData, votes []byte) {
 	cl.Lock()
 	defer cl.Unlock()
 
@@ -264,8 +310,7 @@ func (cl *client) onResult(f *fetcher, err error, blk module.BlockData, votes mo
 		fr.validPeers = fr.validPeers[:last]
 		fr.heightSet.add(f.height)
 		if !isNoBlock(err) {
-			start := fr.notifyOffset - fr.consumeOffset
-			for i := start; i < int64(len(fr.pendingResults)); i++ {
+			for i := 1; i < len(fr.pendingResults); i++ {
 				ri := fr.pendingResults[i]
 				if fr.pendingResults[i] != nil && fr.pendingResults[i].id.Equal(f.id) {
 					fr.pendingResults[i] = nil
@@ -275,20 +320,23 @@ func (cl *client) onResult(f *fetcher, err error, blk module.BlockData, votes mo
 		}
 		if fr.nActivePeers != 0 {
 			fr._reschedule()
-		} else {
+		} else if fr.pendingResults[0] == nil {
 			cb := fr.cb
+			fr._cancel()
 			cl.CallAfterUnlock(func() {
+				cl.logger.Tracef("OnEnd onResult\n")
 				cb.OnEnd(nil)
 			})
 		}
 		return
 	}
-	pi, p := cl._findPeerByFetcher(f)
+	_, p := cl._findPeerByFetcher(f)
 	if p == nil {
 		return
 	}
 	cl.logger.Tracef("height=%d consumeOffset=%d\n", f.height, fr.consumeOffset)
-	fr.pendingResults[f.height-fr.consumeOffset] = &blockResult{
+	offset := f.height - fr.consumeOffset
+	fr.pendingResults[offset] = &blockResult{
 		id:    f.id,
 		blk:   blk,
 		votes: votes,
@@ -298,57 +346,18 @@ func (cl *client) onResult(f *fetcher, err error, blk module.BlockData, votes mo
 	fr.nActivePeers--
 	p.f = nil
 
-	offset := int(fr.notifyOffset - fr.consumeOffset)
-	i := offset
-	prevBlock := fr.prevBlock // last notified block
-	for ; i < len(fr.pendingResults); i++ {
-		ri := fr.pendingResults[i]
-		if ri == nil {
-			break
-		}
-		err := VerifyBlock(ri.blk, prevBlock, ri.votes)
-		if err != nil {
-			last := len(fr.validPeers) - 1
-			fr.validPeers[pi] = fr.validPeers[last]
-			fr.validPeers[last] = nil
-			fr.validPeers = fr.validPeers[:last]
-			fr.pendingResults[i] = nil
-			fr.heightSet.add(ri.blk.Height())
-			for j := i + 1; j < len(fr.pendingResults); j++ {
-				if fr.pendingResults[j] != nil && fr.pendingResults[j].id.Equal(f.id) {
-					fr.pendingResults[j] = nil
-					fr.heightSet.add(fr.pendingResults[j].blk.Height())
-				}
-			}
-			cl.logger.Tracef("onResult: %+v\n", err)
-			break
-		}
-		prevBlock = ri.blk
-	}
-
-	cnt := i - offset
-	notifyItems := make([]*blockResult, cnt)
-	copy(notifyItems, fr.pendingResults[offset:i])
-	fr.notifyOffset = fr.notifyOffset + int64(cnt)
-	fr.prevBlock = prevBlock
 	fr._reschedule()
-	cl.logger.Tracef("onResult: %d block(s) notification\n", cnt)
-	if cnt > 0 {
-		cb := fr.cb
-		cl.CallAfterUnlock(func() {
-			for _, ni := range notifyItems {
-				cb.OnBlock(ni)
-			}
-		})
+	if offset == 0 {
+		cl.notifyBlockResult()
 	}
-	if fr.notifyOffset > fr.heightSet.end {
-		cb := fr.cb
-		cl.CallAfterUnlock(func() {
-			// TODO: notify order
-			cb.OnEnd(nil)
-		})
-	}
-	return
+}
+
+func (cl *client) notifyBlockResult() {
+	fr := cl.fr
+	br := fr.pendingResults[0]
+	cl.logger.Tracef("onResult: block notification\n")
+	cb := fr.cb
+	go cb.OnBlock(br)
 }
 
 var errNoBlock = errors.New("errNoBlock")
@@ -396,10 +405,7 @@ func (fr *fetchRequest) newFetcher(id module.PeerID, height int64, requestID uin
 	return f
 }
 
-func (fr *fetchRequest) cancel() bool {
-	fr.cl.Lock()
-	defer fr.cl.Unlock()
-
+func (fr *fetchRequest) _cancel() bool {
 	if fr.cl.fr == fr {
 		fr.cl.fr = nil
 	}
@@ -411,6 +417,13 @@ func (fr *fetchRequest) cancel() bool {
 	}
 
 	return false
+}
+
+func (fr *fetchRequest) cancel() bool {
+	fr.cl.Lock()
+	defer fr.cl.Unlock()
+
+	return fr._cancel()
 }
 
 func (f *fetcher) _doSend() {
@@ -551,8 +564,7 @@ func (f *fetcher) onReceive(pi module.ProtocolInfo, b []byte) {
 				} else if blk.Height() != f.height {
 					f.cl.onResult(f, errors.Errorf("bad Height"), nil, nil)
 				} else {
-					vs := f.fr.cvsDecoder(f.voteList)
-					f.cl.onResult(f, nil, blk, vs)
+					f.cl.onResult(f, nil, blk, f.voteList)
 				}
 			})
 		} else if f.left < 0 {
@@ -567,17 +579,6 @@ func (f *fetcher) onReceive(pi module.ProtocolInfo, b []byte) {
 			})
 		}
 	}
-}
-
-func VerifyBlock(
-	b module.BlockData,
-	prev module.BlockData,
-	vote module.CommitVoteSet,
-) error {
-	if !bytes.Equal(b.PrevID(), prev.ID()) {
-		return errors.New("bad prev ID")
-	}
-	return nil
 }
 
 func isTemporary(err error) bool {

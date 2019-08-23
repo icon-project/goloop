@@ -18,8 +18,9 @@ type ServerCallback interface {
 
 type BlockResult interface {
 	Block() module.BlockData
-	Votes() module.CommitVoteSet
+	Votes() []byte
 	Consume()
+	Reject()
 }
 
 type FetchCallback interface {
@@ -33,8 +34,6 @@ type Manager interface {
 	FetchBlocks(
 		begin int64,
 		end int64,
-		prevBlock module.Block,
-		f module.CommitVoteSetDecoder,
 		cb FetchCallback,
 	) (canceler func() bool, err error)
 }
@@ -79,14 +78,12 @@ func (m *manager) StopServer() {
 func (m *manager) FetchBlocks(
 	begin int64,
 	end int64,
-	prev module.Block,
-	f module.CommitVoteSetDecoder,
 	cb FetchCallback,
 ) (canceler func() bool, err error) {
 	if end < 0 {
 		end = math.MaxInt64
 	}
-	fr, err := m.client.fetchBlocks(begin, end, prev, f, cb)
+	fr, err := m.client.fetchBlocks(begin, end, cb)
 	if err != nil {
 		return nil, err
 	}

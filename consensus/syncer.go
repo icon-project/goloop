@@ -114,11 +114,7 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 	if p.Height > e.Height() {
 		p.logger.Tracef("higher peer height %v > %v\n", p.Height, e.Height())
 		if p.Height > e.Height()+configFastSyncThreshold && p.syncer.fetchCanceler == nil {
-			blk, err := p.syncer.bm.GetBlockByHeight(e.Height() - 1)
-			if err != nil {
-				return nil, nil
-			}
-			p.syncer.fetchCanceler, _ = p.syncer.fsm.FetchBlocks(e.Height(), -1, blk, NewCommitVoteSetFromBytes, p.syncer)
+			p.syncer.fetchCanceler, _ = p.syncer.fsm.FetchBlocks(e.Height(), -1, p.syncer)
 		}
 		return nil, nil
 	}

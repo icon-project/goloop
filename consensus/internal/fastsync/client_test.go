@@ -18,9 +18,9 @@ type clientTestSetUp struct {
 	nms []*test.NetworkManager
 	phs []module.ProtocolHandler
 
-	reactors  []*tReactor
-	m         Manager
-	cb        *tFetchCallback
+	reactors []*tReactor
+	m        Manager
+	cb       *tFetchCallback
 }
 
 func newClientTestSetUp(t *testing.T, n int) *clientTestSetUp {
@@ -48,7 +48,7 @@ func newClientTestSetUp(t *testing.T, n int) *clientTestSetUp {
 
 type tOnBlockEvent struct {
 	blk module.BlockData
-	vs  module.CommitVoteSet
+	vs  []byte
 	br  BlockResult
 }
 
@@ -126,7 +126,7 @@ func (s *clientTestSetUp) assertNoEvent(ch chan interface{}) {
 
 func TestClient_Success(t *testing.T) {
 	s := newClientTestSetUp(t, 2)
-	_, err := s.m.FetchBlocks(1, 10, s.blks[0], newTCommitVoteSet, s.cb)
+	_, err := s.m.FetchBlocks(1, 10, s.cb)
 	assert.Nil(t, err)
 	ev := <-s.reactors[1].ch
 	s.assertEqualReceiveEvent(protoBlockRequest, &BlockRequest{0x10000, 1}, s.nms[0].ID, ev)
@@ -140,7 +140,7 @@ func TestClient_Success(t *testing.T) {
 
 func TestClient_SuccessMulti(t *testing.T) {
 	s := newClientTestSetUp(t, 3)
-	_, err := s.m.FetchBlocks(1, 3, s.blks[0], newTCommitVoteSet, s.cb)
+	_, err := s.m.FetchBlocks(1, 3, s.cb)
 	assert.Nil(t, err)
 
 	ev := <-s.reactors[1].ch

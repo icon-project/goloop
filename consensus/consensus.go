@@ -1656,21 +1656,37 @@ func (cs *consensus) processBlock(br fastsync.BlockResult) {
 		cs.logger.Panicf("shall not happen\n")
 	}
 
-	br.Consume()
-
 	blk := br.Block()
 	cs.logger.Debugf("processBlock Height:%d\n", blk.Height())
 
-	votes := br.Votes().(*commitVoteList)
+	cvl := NewCommitVoteSetFromBytes(br.Votes())
+	if cvl==nil {
+		br.Reject()
+		return
+	}
+
+	votes := cvl.(*commitVoteList)
 	vl := votes.voteList(blk.Height(), blk.ID())
 	for i := 0; i < vl.Len(); i++ {
 		m := vl.Get(i)
 		index := cs.validators.IndexOf(m.address())
-		cs.hvs.add(index, m)
+		if index < 0 {
+			br.Reject()
+			return
+		}
+		ok, _ := cs.hvs.add(index, m)
+		if !ok {
+			br.Reject()
+			return
+		}
 	}
 
 	precommits := cs.hvs.votesFor(votes.Round, voteTypePrecommit)
-	id, _ := precommits.getOverTwoThirdsPartSetID()
+	id, ok := precommits.getOverTwoThirdsPartSetID()
+	if !ok {
+		br.Reject()
+		return
+	}
 	bps := newPartSetFromID(id)
 	var validatedBlock module.Block
 	if cs.currentBlockParts != nil && cs.currentBlockParts.ID().Equal(id) {
@@ -1682,6 +1698,7 @@ func (cs *consensus) processBlock(br fastsync.BlockResult) {
 		validatedBlock: validatedBlock,
 	}
 	cs.syncing = false
+	br.Consume()
 	if cs.step < stepCommit {
 		cs.enterCommit(precommits, id, votes.Round)
 	} else {
