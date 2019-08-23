@@ -176,6 +176,9 @@ public class ABIUtil {
             return ABIEncoder.encodeOneString((String) data);
         } else if (clazz == Address.class) {
             return ABIEncoder.encodeOneAddress((Address) data);
+        } else if (clazz == foundation.icon.common.Address.class) {
+            foundation.icon.common.Address address = (foundation.icon.common.Address) data;
+            return ABIEncoder.encodeOneAddress(new Address(address.toByteArray()));
         } else if (clazz == BigInteger.class) {
             return ABIEncoder.encodeOneBigInteger((BigInteger) data);
         } else if (clazz == byte[][].class) {

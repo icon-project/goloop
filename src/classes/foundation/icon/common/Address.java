@@ -19,7 +19,7 @@ package foundation.icon.common;
 import java.util.Arrays;
 
 public class Address {
-    private static final int LENGTH = 21;
+    public static final int LENGTH = 21;
     private byte prefix;
     private byte[] body;
 

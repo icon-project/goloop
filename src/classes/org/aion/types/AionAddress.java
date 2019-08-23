@@ -12,7 +12,7 @@ public final class AionAddress {
     /**
      * The length of an address.
      */
-    public static final int LENGTH = 32;
+    public static final int LENGTH = Address.LENGTH;
 
     private final byte[] raw = new byte[LENGTH];
 
@@ -27,7 +27,8 @@ public final class AionAddress {
         if (raw == null) {
             throw new NullPointerException();
         }
-        if (raw.length != LENGTH) {
+        // TODO: temporarily accept the 32-byte address form
+        if (raw.length != LENGTH && raw.length != 32) {
             throw new IllegalArgumentException();
         }
         System.arraycopy(raw, 0, this.raw, 0, LENGTH);
@@ -39,7 +40,7 @@ public final class AionAddress {
     }
 
     public Address toAddress() {
-        byte[] bytes = new byte[21];
+        byte[] bytes = new byte[Address.LENGTH];
         System.arraycopy(this.raw, 0, bytes, 0, bytes.length);
         return new Address(bytes);
     }
