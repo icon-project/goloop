@@ -115,7 +115,7 @@ func NewChainView(c *Chain) *ChainView {
 	return v
 }
 
-type InspectFunc func(c module.Chain) map[string]interface{}
+type InspectFunc func(c module.Chain, informal bool) map[string]interface{}
 
 var (
 	inspectFuncs = make(map[string]InspectFunc)
@@ -127,9 +127,6 @@ func NewChainInspectView(c *Chain) *ChainInspectView {
 		GenesisTx: c.Genesis(),
 		Config:    NewChainConfig(c.cfg),
 	}
-	v.Module = make(map[string]interface{})
-	for name, f := range inspectFuncs {
-		v.Module[name] = f(c)
 	return v
 }
 
@@ -277,6 +274,13 @@ func (r *Rest) GetChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(*Chain)
 	v := NewChainInspectView(c)
 
+	informal, _ := strconv.ParseBool(ctx.QueryParam("informal"))
+	v.Module = make(map[string]interface{})
+	for name, f := range inspectFuncs {
+		if m := f(c, informal); m != nil {
+			v.Module[name] = m
+		}
+	}
 	format := ctx.QueryParam("format")
 	if format != "" {
 		return defaultJsonTemplate.Response(format, v, ctx.Response())
@@ -448,7 +452,7 @@ func (r *Rest) ResponseStatsView(resp *echo.Response) error {
 		Timestamp: time.Now(),
 	}
 	for _, c := range r.n.GetChains() {
-		m := metric.Inspect(c)
+		m := metric.Inspect(c, false)
 		if c.State() != chain.StateStopped.String() {
 			m["nid"] = common.HexInt32{Value: int32(c.NID())}
 			m["channel"] = c.Channel()

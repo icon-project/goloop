@@ -165,7 +165,7 @@ func ParseMetricData(r *view.Row) interface{} {
 	return nil
 }
 
-func Inspect(c module.Chain) map[string]interface{} {
+func Inspect(c module.Chain, informal bool) map[string]interface{} {
 	mViewMtx.RLock()
 	defer mViewMtx.RUnlock()
 

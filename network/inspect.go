@@ -9,27 +9,31 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-func Inspect(c module.Chain) map[string]interface{} {
+func Inspect(c module.Chain, informal bool) map[string]interface{} {
 	mgr := c.NetworkManager().(*manager)
 	m := make(map[string]interface{})
-	m["p2p"] = inspectP2P(mgr)
-	m["protocol"] = inspectProtocol(mgr)
+	m["p2p"] = inspectP2P(mgr, informal)
+	if informal {
+		m["protocol"] = inspectProtocol(mgr)
+	}
 	return m
 }
 
-func inspectP2P(mgr *manager) map[string]interface{} {
+func inspectP2P(mgr *manager, informal bool) map[string]interface{} {
 	m := make(map[string]interface{})
-	m["self"] = peerToMap(mgr.p2p.self)
+	m["self"] = peerToMap(mgr.p2p.self, informal)
 	m["seeds"] = mgr.p2p.seeds.Map()
 	m["roots"] = mgr.p2p.roots.Map()
-	m["friends"] = peerToMapArray(mgr.p2p.friends)
-	m["parent"] = peerToMap(mgr.p2p.getParent())
-	m["children"] = peerToMapArray(mgr.p2p.children)
-	m["uncles"] = peerToMapArray(mgr.p2p.uncles)
-	m["nephews"] = peerToMapArray(mgr.p2p.nephews)
-	m["orphanages"] = peerToMapArray(mgr.p2p.orphanages)
-	m["pre"] = peerToMapArray(mgr.p2p.pre)
-	m["reject"] = peerToMapArray(mgr.p2p.reject)
+	m["friends"] = peerSetToMapArray(mgr.p2p.friends, informal)
+	m["parent"] = peerToMap(mgr.p2p.getParent(), informal)
+	m["children"] = peerSetToMapArray(mgr.p2p.children, informal)
+	m["uncles"] = peerSetToMapArray(mgr.p2p.uncles, informal)
+	m["nephews"] = peerSetToMapArray(mgr.p2p.nephews, informal)
+	m["orphanages"] = peerSetToMapArray(mgr.p2p.orphanages, informal)
+	if informal {
+		m["pre"] = peerSetToMapArray(mgr.p2p.pre, informal)
+		m["reject"] = peerSetToMapArray(mgr.p2p.reject, informal)
+	}
 	return m
 }
 
@@ -41,32 +45,34 @@ func inspectProtocol(mgr *manager) map[string]interface{} {
 	return m
 }
 
-func peerToMapArray(s *PeerSet) []map[string]interface{} {
+func peerSetToMapArray(s *PeerSet, informal bool) []map[string]interface{} {
 	rarr := make([]map[string]interface{}, s.Len())
 	for i, v := range s.Array() {
-		rarr[i] = peerToMap(v)
+		rarr[i] = peerToMap(v, informal)
 	}
-	sort.Slice(rarr, func(i int, j int) bool{
+	sort.Slice(rarr, func(i int, j int) bool {
 		return rarr[i]["addr"].(string) < rarr[j]["addr"].(string)
 	})
 	return rarr
 }
-func peerToMap(p *Peer) map[string]interface{} {
+func peerToMap(p *Peer, informal bool) map[string]interface{} {
 	m := make(map[string]interface{})
 	if p != nil {
 		m["id"] = p.id.String()
 		m["addr"] = string(p.netAddress)
 		m["in"] = p.incomming
-		m["channel"] = p.channel
 		m["role"] = p.role
-		m["conn"] = p.connType
-		m["rtt"] = p.rtt.String()
-		if p.q != nil {
-			sq := make([]string,DefaultSendQueueMaxPriority)
-			for i:=0;i<DefaultSendQueueMaxPriority;i++{
-				sq[i] = strconv.Itoa(p.q.Available(i))
+		if informal {
+			m["channel"] = p.channel
+			m["conn"] = p.connType
+			m["rtt"] = p.rtt.String()
+			if p.q != nil {
+				sq := make([]string, DefaultSendQueueMaxPriority)
+				for i := 0; i < DefaultSendQueueMaxPriority; i++ {
+					sq[i] = strconv.Itoa(p.q.Available(i))
+				}
+				m["sendQueue"] = strings.Join(sq, ",")
 			}
-			m["sendQueue"] = strings.Join(sq,",")
 		}
 	}
 	return m

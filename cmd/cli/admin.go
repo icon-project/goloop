@@ -189,6 +189,9 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 				v = new(string)
 				params.Add("format", format)
 			}
+			if informal, err := cmd.Flags().GetBool("informal"); informal && err == nil {
+				params.Add("informal", strconv.FormatBool(informal))
+			}
 			reqUrl := node.UrlChain + "/" + args[0]
 			resp, err := adminClient.Get(reqUrl, v, params)
 			if err != nil {
@@ -208,6 +211,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	}
 	rootCmd.AddCommand(inspectCmd)
 	inspectCmd.Flags().StringP("format", "f", "", "Format the output using the given Go template")
+	inspectCmd.Flags().Bool("informal", false, "Inspect with informal data")
 
 	opFunc := func(op string) func(cmd *cobra.Command, args []string) error {
 		return func(cmd *cobra.Command, args []string) error {

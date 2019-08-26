@@ -4,7 +4,7 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-func Inspect(c module.Chain) map[string]interface{} {
+func Inspect(c module.Chain, informal bool) map[string]interface{} {
 	mgr := c.ServiceManager().(*manager)
 	m := make(map[string]interface{})
 	m["normalTxPool"] = inspectTxPool(mgr.tm.normalTxPool)
