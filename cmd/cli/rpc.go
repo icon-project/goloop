@@ -59,7 +59,7 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 		&cobra.Command{
 			Use:   "lastblock",
 			Short: "GetLastBlock",
-			Args:  cobra.ExactArgs(0),
+			Args:  cobra.NoArgs,
 			RunE: func(cmd *cobra.Command, args []string) error {
 				blk, err := rpcClient.GetLastBlock()
 				if err != nil {
@@ -71,7 +71,7 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 		&cobra.Command{
 			Use:   "blockbyheight HEIGHT",
 			Short: "GetBlockByHeight",
-			Args:  cobra.ExactArgs(1),
+			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				height, err := common.ParseInt(args[0], 64)
 				if err != nil {
@@ -88,7 +88,7 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 		&cobra.Command{
 			Use:   "blockbyhash HASH",
 			Short: "GetBlockByHash",
-			Args:  cobra.ExactArgs(1),
+			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				param := &v3.BlockHashParam{Hash: jsonrpc.HexBytes(args[0])}
 				blk, err := rpcClient.GetBlockByHash(param)
@@ -101,7 +101,7 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 		&cobra.Command{
 			Use:   "balance ADDRESS",
 			Short: "GetBalance",
-			Args:  cobra.ExactArgs(1),
+			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				param := &v3.AddressParam{Address: jsonrpc.Address(args[0])}
 				balance, err := rpcClient.GetBalance(param)
@@ -114,7 +114,7 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 		&cobra.Command{
 			Use:   "scoreapi ADDRESS",
 			Short: "GetScoreApi",
-			Args:  cobra.ExactArgs(1),
+			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				param := &v3.ScoreAddressParam{Address: jsonrpc.Address(args[0])}
 				scoreApi, err := rpcClient.GetScoreApi(param)
@@ -127,7 +127,7 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 		&cobra.Command{
 			Use:   "totalsupply",
 			Short: "GetTotalSupply",
-			Args:  cobra.ExactArgs(0),
+			Args:  cobra.NoArgs,
 			RunE: func(cmd *cobra.Command, args []string) error {
 				supply, err := rpcClient.GetTotalSupply()
 				if err != nil {
@@ -139,7 +139,7 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 		&cobra.Command{
 			Use:   "txresult HASH",
 			Short: "GetTransactionResult",
-			Args:  cobra.ExactArgs(1),
+			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				param := &v3.TransactionHashParam{Hash: jsonrpc.HexBytes(args[0])}
 				txResult, err := rpcClient.GetTransactionResult(param)
@@ -152,7 +152,7 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 		&cobra.Command{
 			Use:   "txbyhash HASH",
 			Short: "GetTransactionByHash",
-			Args:  cobra.ExactArgs(1),
+			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				param := &v3.TransactionHashParam{Hash: jsonrpc.HexBytes(args[0])}
 				tx, err := rpcClient.GetTransactionByHash(param)
@@ -165,7 +165,7 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 	callCmd := &cobra.Command{
 		Use:   "call",
 		Short: "Call",
-		Args:  cobra.ExactArgs(0),
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			param := &v3.CallParam{
 				FromAddress: jsonrpc.Address(cmd.Flag("from").Value.String()),
@@ -221,7 +221,7 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 	rawCmd := &cobra.Command{
 		Use:   "raw FILE",
 		Short: "Rpc with raw json file",
-		Args:  cobra.ExactArgs(1),
+		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			b, err := ioutil.ReadFile(args[0])
 			if err != nil {
@@ -240,7 +240,7 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 		&cobra.Command{
 			Use:   "databyhash HASH",
 			Short: "GetDataByHash",
-			Args:  cobra.ExactArgs(1),
+			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				param := &v3.DataHashParam{Hash: jsonrpc.HexBytes(args[0])}
 				raw, err := rpcClient.GetDataByHash(param)
@@ -253,7 +253,7 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 		&cobra.Command{
 			Use:   "blockheaderbyheight HEIGHT",
 			Short: "GetBlockHeaderByHeight",
-			Args:  cobra.ExactArgs(1),
+			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				height, err := common.ParseInt(args[0], 64)
 				if err != nil {
@@ -270,7 +270,7 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 		&cobra.Command{
 			Use:   "votesbyheight HEIGHT",
 			Short: "GetVotesByHeight",
-			Args:  cobra.ExactArgs(1),
+			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				height, err := common.ParseInt(args[0], 64)
 				if err != nil {
@@ -287,7 +287,7 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 		&cobra.Command{
 			Use:   "proofforresult HASH INDEX",
 			Short: "GetProofForResult",
-			Args:  cobra.ExactArgs(2),
+			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(2)),
 			RunE: func(cmd *cobra.Command, args []string) error {
 				idx, err := common.ParseInt(args[1], 64)
 				if err != nil {
@@ -365,7 +365,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 	rawCmd := &cobra.Command{
 		Use:   "raw FILE",
 		Short: "Send transaction with json file",
-		Args:  cobra.ExactArgs(1),
+		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			b, err := ioutil.ReadFile(args[0])
 			if err != nil {
@@ -404,7 +404,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 	transferCmd := &cobra.Command{
 		Use:   "transfer",
 		Short: "Coin Transfer Transaction",
-		Args:  cobra.ExactArgs(0),
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			val, err := cmd.Flags().GetInt64("value")
 			if err != nil {
@@ -451,7 +451,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 	callCmd := &cobra.Command{
 		Use:   "call",
 		Short: "SmartContract Call Transaction",
-		Args:  cobra.ExactArgs(0),
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			stepLimit := vc.GetInt64("step_limit")
 			nid, err := common.ParseInt(vc.GetString("nid"), 64)
@@ -494,7 +494,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 	deployCmd := &cobra.Command{
 		Use:   "deploy SCORE_ZIP_FILE",
 		Short: "Deploy Transaction",
-		Args:  cobra.ExactArgs(1),
+		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			stepLimit := vc.GetInt64("step_limit")
 			nid, err := common.ParseInt(vc.GetString("nid"), 64)
@@ -564,7 +564,7 @@ func NewMonitorCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comma
 	monitorBlockCmd := &cobra.Command{
 		Use:   "block HEIGHT",
 		Short: "MonitorBlock",
-		Args:  cobra.ExactArgs(1),
+		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			height, err := common.ParseInt(args[0], 64)
 			if err != nil {
@@ -585,7 +585,7 @@ func NewMonitorCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comma
 	monitorEventCmd := &cobra.Command{
 		Use:   "event HEIGHT",
 		Short: "MonitorEvent",
-		Args:  cobra.ExactArgs(1),
+		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			height, err := common.ParseInt(args[0], 64)
 			if err != nil {

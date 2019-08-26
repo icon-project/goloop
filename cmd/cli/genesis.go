@@ -104,7 +104,7 @@ func newGenesisEditCmd(c string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   fmt.Sprintf("%s [genesis file]", c),
 		Short: "Edit genesis transaction",
-		Args: cobra.ExactArgs(1),
+		Args: ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 	}
 	flags := cmd.PersistentFlags()
 	god := flags.StringP("god", "g", "", "Address or keystore of GOD")

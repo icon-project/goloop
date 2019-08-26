@@ -32,6 +32,7 @@ const (
 
 func NewCommand(parentCmd *cobra.Command, parentVc *viper.Viper, use, short string) (*cobra.Command, *viper.Viper) {
 	c := &cobra.Command{Use: use, Short: short}
+	c.SetFlagErrorFunc(DefaultFlagErrorFunc)
 	if parentCmd != nil {
 		parentCmd.AddCommand(c)
 	}
@@ -167,6 +168,49 @@ func ViperDecodeOptJson(c *mapstructure.DecoderConfig) {
 			return input, nil
 		},
 		c.DecodeHook)
+}
+
+func OrArgs(pArgs ...cobra.PositionalArgs) cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error {
+		var err error
+		for _, pArg := range pArgs {
+			if err = pArg(cmd, args); err == nil {
+				return nil
+			}
+		}
+		return err
+	}
+}
+
+func ArgsWithErrorFunc(arg cobra.PositionalArgs,
+	errFunc func(cmd *cobra.Command, err error) error) cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error {
+		if err := arg(cmd, args); err != nil {
+			return errFunc(cmd, err)
+		}
+		return nil
+	}
+}
+
+func ArgsWithDefaultErrorFunc(arg cobra.PositionalArgs) cobra.PositionalArgs {
+	return ArgsWithErrorFunc(arg, DefaultArgErrorFunc)
+}
+func DefaultArgErrorFunc(cmd *cobra.Command, err error) error {
+	cmd.Println("Usage: " + cmd.UseLine())
+	return err
+}
+
+func DefaultFlagErrorFunc(cmd *cobra.Command, err error) error {
+	names := make([]string,0)
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		name := "--"+f.Name
+		if f.Shorthand != "" {
+			name = name + " or -"+f.Shorthand
+		}
+		names = append(names, name)
+	})
+	cmd.Println("Available Flags: " + strings.Join(names,", "))
+	return err
 }
 
 func NewGenerateMarkdownCommand(parentCmd *cobra.Command) *cobra.Command {
@@ -421,20 +465,8 @@ func StartMemoryProfile(filename string) error {
 	return nil
 }
 
-func JosnMarshalAndIndent(v interface{}, indent string) ([]byte, error) {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return nil, err
-	}
-	var buf bytes.Buffer
-	if err := json.Indent(&buf, b, "", indent); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
 func JsonPrettyPrintln(w io.Writer, v interface{}) error {
-	b, err := JosnMarshalAndIndent(v, "  ")
+	b, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return errors.Errorf("failed JsonPrettyPrintln v=%+v, err=%+v", v, err)
 	}
@@ -443,7 +475,7 @@ func JsonPrettyPrintln(w io.Writer, v interface{}) error {
 }
 
 func JsonPrettySaveFile(filename string, perm os.FileMode, v interface{}) error {
-	b, err := JosnMarshalAndIndent(v, "  ")
+	b, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return errors.Errorf("failed JsonPrettySaveFile v=%+v, err=%+v", v, err)
 	}

@@ -12,9 +12,9 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/icon-project/goloop/chain"
 	"github.com/labstack/echo/v4"
 
+	"github.com/icon-project/goloop/chain"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
@@ -64,7 +64,7 @@ type ChainView struct {
 type ChainInspectView struct {
 	*ChainView
 	GenesisTx json.RawMessage `json:"genesisTx"`
-	Config    ChainConfig     `json:"config"`
+	Config    *ChainConfig    `json:"config"`
 	// TODO [TBD] define structure each module for inspect
 	Module map[string]interface{} `json:"module"`
 }
@@ -125,22 +125,26 @@ func NewChainInspectView(c *Chain) *ChainInspectView {
 	v := &ChainInspectView{
 		ChainView: NewChainView(c),
 		GenesisTx: c.Genesis(),
-		Config: ChainConfig{
-			DBType:           c.cfg.DBType,
-			SeedAddr:         c.cfg.SeedAddr,
-			Role:             c.cfg.Role,
-			ConcurrencyLevel: c.cfg.ConcurrencyLevel,
-			NormalTxPoolSize: c.cfg.NormalTxPoolSize,
-			PatchTxPoolSize:  c.cfg.PatchTxPoolSize,
-			MaxBlockTxBytes:  c.cfg.MaxBlockTxBytes,
-			Channel:          c.cfg.Channel,
-			SecureSuites:     c.cfg.SecureSuites,
-			SecureAeads:      c.cfg.SecureAeads,
-		},
+		Config:    NewChainConfig(c.cfg),
 	}
 	v.Module = make(map[string]interface{})
 	for name, f := range inspectFuncs {
 		v.Module[name] = f(c)
+	return v
+}
+
+func NewChainConfig(cfg *chain.Config) *ChainConfig {
+	v := &ChainConfig{
+		DBType:           cfg.DBType,
+		SeedAddr:         cfg.SeedAddr,
+		Role:             cfg.Role,
+		ConcurrencyLevel: cfg.ConcurrencyLevel,
+		NormalTxPoolSize: cfg.NormalTxPoolSize,
+		PatchTxPoolSize:  cfg.PatchTxPoolSize,
+		MaxBlockTxBytes:  cfg.MaxBlockTxBytes,
+		Channel:          cfg.Channel,
+		SecureSuites:     cfg.SecureSuites,
+		SecureAeads:      cfg.SecureAeads,
 	}
 	return v
 }
@@ -181,6 +185,7 @@ func (r *Rest) RegisterChainHandlers(g *echo.Group) {
 	g.POST(UrlChainRes+"/reset", r.ResetChain, r.ChainInjector)
 	g.POST(UrlChainRes+"/verify", r.VerifyChain, r.ChainInjector)
 	g.POST(UrlChainRes+"/import", r.ImportChain, r.ChainInjector)
+	g.GET(UrlChainRes+"/configure", r.GetChainConfig, r.ChainInjector)
 	g.POST(UrlChainRes+"/configure", r.ConfigureChain, r.ChainInjector)
 }
 
@@ -331,6 +336,11 @@ func (r *Rest) ImportChain(ctx echo.Context) error {
 	return ctx.String(http.StatusOK, "OK")
 }
 
+func (r *Rest) GetChainConfig(ctx echo.Context) error {
+	c := ctx.Get("chain").(*Chain)
+	return ctx.JSON(http.StatusOK, NewChainConfig(c.cfg))
+}
+
 func (r *Rest) ConfigureChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(*Chain)
 	p := &ConfigureParam{}
@@ -345,6 +355,7 @@ func (r *Rest) ConfigureChain(ctx echo.Context) error {
 
 func (r *Rest) RegisterSystemHandlers(g *echo.Group) {
 	g.GET("", r.GetSystem)
+	g.GET("/configure", r.GetSystemConfig)
 	g.POST("/configure", r.ConfigureSystem)
 }
 
@@ -365,6 +376,10 @@ func (r *Rest) GetSystem(ctx echo.Context) error {
 		return defaultJsonTemplate.Response(format, v, ctx.Response())
 	}
 	return ctx.JSON(http.StatusOK, v)
+}
+
+func (r *Rest) GetSystemConfig(ctx echo.Context) error {
+	return ctx.JSON(http.StatusOK, r.n.rcfg)
 }
 
 func (r *Rest) ConfigureSystem(ctx echo.Context) error {

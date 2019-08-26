@@ -102,7 +102,7 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 	saveCmd := &cobra.Command{
 		Use:   "save [file]",
 		Short: "Save configuration",
-		Args:  cobra.ExactArgs(1),
+		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 		PreRun: func(cmd *cobra.Command, args []string) {
 			if cfg.isPresentPass {
 				cfg.KeyStorePass = ""

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"strconv"
 
 	"github.com/gosuri/uitable"
 	"github.com/jroimartin/gocui"
@@ -64,10 +65,9 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	BindPFlags(vc, rootCmd.PersistentFlags())
 
 	rootCmd.AddCommand(&cobra.Command{
-		Use:                   "ls",
-		Short:                 "List chains",
-		Args:                  cobra.ExactArgs(0),
-		DisableFlagsInUseLine: true,
+		Use:   "ls",
+		Short: "List chains",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			l := make([]*node.ChainView, 0)
 			reqUrl := node.UrlChain
@@ -84,7 +84,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	joinCmd := &cobra.Command{
 		Use:   "join",
 		Short: "Join chain",
-		Args:  cobra.ExactArgs(0),
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fs := cmd.Flags()
 			genesisZip, _ := fs.GetString("genesis")
@@ -159,10 +159,9 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 		"Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string")
 
 	leaveCmd := &cobra.Command{
-		Use:                   "leave NID",
-		Short:                 "Leave chain",
-		Args:                  cobra.ExactArgs(1),
-		DisableFlagsInUseLine: true,
+		Use:   "leave NID",
+		Short: "Leave chain",
+		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reqUrl := node.UrlChain + "/" + args[0]
 			var v string
@@ -179,7 +178,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	inspectCmd := &cobra.Command{
 		Use:   "inspect NID",
 		Short: "Inspect chain",
-		Args:  cobra.ExactArgs(1),
+		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			format := cmd.Flag("format").Value.String()
 			var v interface{}
@@ -224,38 +223,34 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	}
 	rootCmd.AddCommand(
 		&cobra.Command{
-			Use:                   "start NID",
-			Short:                 "Chain start",
-			Args:                  cobra.ExactArgs(1),
-			DisableFlagsInUseLine: true,
-			RunE:                  opFunc("start"),
+			Use:   "start NID",
+			Short: "Chain start",
+			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
+			RunE:  opFunc("start"),
 		},
 		&cobra.Command{
-			Use:                   "stop NID",
-			Short:                 "Chain stop",
-			Args:                  cobra.ExactArgs(1),
-			DisableFlagsInUseLine: true,
-			RunE:                  opFunc("stop"),
+			Use:   "stop NID",
+			Short: "Chain stop",
+			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
+			RunE:  opFunc("stop"),
 		},
 		&cobra.Command{
-			Use:                   "reset NID",
-			Short:                 "Chain data reset",
-			Args:                  cobra.ExactArgs(1),
-			DisableFlagsInUseLine: true,
-			RunE:                  opFunc("reset"),
+			Use:   "reset NID",
+			Short: "Chain data reset",
+			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
+			RunE:  opFunc("reset"),
 		},
 		&cobra.Command{
-			Use:                   "verify NID",
-			Short:                 "Chain data verify",
-			Args:                  cobra.ExactArgs(1),
-			DisableFlagsInUseLine: true,
-			RunE:                  opFunc("verify"),
+			Use:   "verify NID",
+			Short: "Chain data verify",
+			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
+			RunE:  opFunc("verify"),
 		})
 
 	importCmd := &cobra.Command{
 		Use:   "import NID",
 		Short: "Start to import legacy database",
-		Args:  cobra.ExactArgs(1),
+		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			fs := cmd.Flags()
 			param := &node.ChainImportParam{}
@@ -279,27 +274,37 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	MarkAnnotationRequired(importFlags, "db_path", "height")
 
 	configCmd := &cobra.Command{
-		Use:                   "config NID KEY VALUE",
-		Short:                 "Configure chain",
-		Args:                  cobra.ExactArgs(3),
-		DisableFlagsInUseLine: true,
+		Use:   "config NID KEY VALUE",
+		Short: "Configure chain",
+		Args:  ArgsWithDefaultErrorFunc(OrArgs(cobra.ExactArgs(1), cobra.ExactArgs(3))),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			param := &node.ConfigureParam{
-				Key: args[1],
-				Value: args[2],
-			}
-			var v string
 			reqUrl := node.UrlChain + "/" + args[0] + "/configure"
-			_, err := adminClient.PostWithJson(reqUrl, param, &v)
-			if err != nil {
-				return err
+			if len(args) == 1 {
+				v := &node.ChainConfig{}
+				resp, err := adminClient.Get(reqUrl, v)
+				if err != nil {
+					return err
+				}
+				if err = JsonPrettyPrintln(os.Stdout, v); err != nil {
+					return errors.Errorf("failed JsonIntend resp=%+v, err=%+v", resp, err)
+				}
+			} else {
+				param := &node.ConfigureParam{
+					Key:   args[1],
+					Value: args[2],
+				}
+				var v string
+				reqUrl := node.UrlChain + "/" + args[0] + "/configure"
+				_, err := adminClient.PostWithJson(reqUrl, param, &v)
+				if err != nil {
+					return err
+				}
+				fmt.Println(v)
 			}
-			fmt.Println(v)
 			return nil
 		},
 	}
 	rootCmd.AddCommand(configCmd)
-
 	return rootCmd, vc
 }
 
@@ -311,9 +316,9 @@ func NewSystemCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comma
 	BindPFlags(vc, rootCmd.PersistentFlags())
 
 	infoCmd := &cobra.Command{
-		Use:                   "info",
-		Short:                 "Get system information",
-		Args:                  cobra.ExactArgs(0),
+		Use:   "info",
+		Short: "Get system information",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			format := cmd.Flag("format").Value.String()
 			var v interface{}
@@ -344,20 +349,31 @@ func NewSystemCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comma
 	infoCmd.Flags().StringP("format", "f", "", "Format the output using the given Go template")
 
 	configCmd := &cobra.Command{
-		Use:                   "config KEY VALUE",
-		Short:                 "Configure system",
-		Args:                  cobra.ExactArgs(2),
-		DisableFlagsInUseLine: true,
+		Use:   "config KEY VALUE",
+		Short: "Configure system",
+		Args:  ArgsWithDefaultErrorFunc(OrArgs(cobra.ExactArgs(0), cobra.ExactArgs(2))),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			param := &node.ConfigureParam{
-				Key: args[0],
-				Value: args[1],
+			reqUrl := node.UrlSystem + "/configure"
+			if len(args) == 0 {
+				v := &node.RuntimeConfig{}
+				resp, err := adminClient.Get(reqUrl, v)
+				if err != nil {
+					return err
+				}
+				if err = JsonPrettyPrintln(os.Stdout, v); err != nil {
+					return errors.Errorf("failed JsonIntend resp=%+v, err=%+v", resp, err)
+				}
+			} else {
+				param := &node.ConfigureParam{
+					Key:   args[0],
+					Value: args[1],
+				}
+				var v string
+				if _, err := adminClient.PostWithJson(reqUrl, param, &v); err != nil {
+					return err
+				}
+				fmt.Println(v)
 			}
-			var v string
-			if _, err := adminClient.PostWithJson(node.UrlSystem+"/configure", param, &v); err != nil {
-				return err
-			}
-			fmt.Println(v)
 			return nil
 		},
 	}
