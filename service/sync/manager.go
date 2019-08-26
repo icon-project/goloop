@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	configSyncPriority = 4
+	configSyncPriority = 3
 	configExpiredTime  = 300 // in millisecond
 )
 
@@ -115,7 +115,7 @@ func NewSyncManager(db db.Database, nm module.NetworkManager, logger log.Logger)
 	logger.Info("NewSyncManager\n")
 	m := new(Manager)
 	ph, err := nm.RegisterReactorForStreams(
-		"stateSync", m, protocol, configSyncPriority)
+		"statesync", m, protocol, configSyncPriority)
 	if err != nil {
 		log.Panicf("Failed to register reactor for stateSync\n")
 		return nil
