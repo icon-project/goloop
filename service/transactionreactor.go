@@ -14,8 +14,9 @@ type TransactionReactor struct {
 }
 
 const (
-	ReactorName                  = "TransactionReactor"
+	ReactorName                  = "transaction"
 	ProtocolPropagateTransaction = protocolInfo(0x1001)
+	ReactorPriority              = 4
 )
 
 var (
@@ -59,7 +60,7 @@ func (r *TransactionReactor) OnLeave(id module.PeerID) {
 }
 
 func (r *TransactionReactor) Start() {
-	r.membership, _ = r.nm.RegisterReactor(ReactorName, r, subProtocols, 2)
+	r.membership, _ = r.nm.RegisterReactor(ReactorName, r, subProtocols, ReactorPriority)
 }
 
 func (r *TransactionReactor) Stop() {
