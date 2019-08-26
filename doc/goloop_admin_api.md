@@ -31,7 +31,7 @@ Node Management
 
 `GET /system`
 
-Return System Infomation.
+Return system infomation.
 
 <h3 id="view-system-parameters">Parameters</h3>
 
@@ -67,6 +67,82 @@ Return System Infomation.
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Success|[System](#schemasystem)|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal Server Error|None|
+
+<aside class="success">
+This operation does not require authentication
+</aside>
+
+## View system configuration
+
+<a id="opIdgetSystemConfiguration"></a>
+
+> Code samples
+
+`GET /system/configure`
+
+Return system configuration.
+
+<h3 id="view-system-configuration-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|nid|path|string("0x" + lowercase HEX string)|true|network-id of chain|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "eeInstances": 1,
+  "rpcDefaultChannel": "",
+  "rpcIncludeDebug": false
+}
+```
+
+<h3 id="view-system-configuration-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Success|[SystemConfig](#schemasystemconfig)|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal Server Error|None|
+
+<aside class="success">
+This operation does not require authentication
+</aside>
+
+## Configure system
+
+<a id="opIdconfigureSystem"></a>
+
+> Code samples
+
+`POST /system/configure`
+
+Configure system, configurable properties refer to [SystemConfig](#schemasystemconfig)
+
+> Body parameter
+
+```json
+{
+  "key": "string",
+  "value": "string"
+}
+```
+
+<h3 id="configure-system-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|nid|path|string("0x" + lowercase HEX string)|true|network-id of chain|
+|body|body|[ConfigureParam](#schemaconfigureparam)|true|key-value to configure|
+
+<h3 id="configure-system-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Success|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal Server Error|None|
 
 <aside class="success">
@@ -148,7 +224,7 @@ json:
   role: 3
   concurrencyLevel: 1
   normalTxPool: 5000
-  patchTxPool: 5000
+  patchTxPool: 1000
   maxBlockTxBytes: 1048576
   channel: '000000'
   secureSuites: 'none,tls,ecdhe'
@@ -228,6 +304,7 @@ Return low-level information about a chain.
 |---|---|---|---|---|
 |nid|path|string("0x" + lowercase HEX string)|true|network-id of chain|
 |format|query|string|false|Format the output using the given Go template|
+|informal|query|boolean|false|Inspect with informal data|
 
 > Example responses
 
@@ -247,7 +324,7 @@ Return low-level information about a chain.
     "role": 3,
     "concurrencyLevel": 1,
     "normalTxPool": 5000,
-    "patchTxPool": 5000,
+    "patchTxPool": 1000,
     "maxBlockTxBytes": 1048576,
     "channel": "000000",
     "secureSuites": "none,tls,ecdhe",
@@ -422,6 +499,53 @@ Import a chain from legacy database.
 This operation does not require authentication
 </aside>
 
+## View chain configuration
+
+<a id="opIdgetChainConfiguration"></a>
+
+> Code samples
+
+`GET /chain/{nid}/configure`
+
+Return chain configuration.
+
+<h3 id="view-chain-configuration-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|nid|path|string("0x" + lowercase HEX string)|true|network-id of chain|
+
+> Example responses
+
+> 200 Response
+
+```json
+{
+  "dbType": "goleveldb",
+  "seedAddress": "localhost:8080",
+  "role": 3,
+  "concurrencyLevel": 1,
+  "normalTxPool": 5000,
+  "patchTxPool": 1000,
+  "maxBlockTxBytes": 1048576,
+  "channel": "000000",
+  "secureSuites": "none,tls,ecdhe",
+  "secureAeads": "chacha,aes128,aes256"
+}
+```
+
+<h3 id="view-chain-configuration-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Success|[ChainConfig](#schemachainconfig)|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Not Found|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal Server Error|None|
+
+<aside class="success">
+This operation does not require authentication
+</aside>
+
 ## Configure chain
 
 <a id="opIdconfigureChain"></a>
@@ -430,7 +554,7 @@ This operation does not require authentication
 
 `POST /chain/{nid}/configure`
 
-Configure chain.
+Configure chain, configurable properties refer to [ChainConfig](#schemachainconfig)
 
 > Body parameter
 
@@ -446,7 +570,7 @@ Configure chain.
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
 |nid|path|string("0x" + lowercase HEX string)|true|network-id of chain|
-|body|body|[ConfigureParam](#schemaconfigureparam)|true|refer ChainConfig properties|
+|body|body|[ConfigureParam](#schemaconfigureparam)|true|key-value to configure|
 
 <h3 id="configure-chain-responses">Responses</h3>
 
@@ -454,43 +578,6 @@ Configure chain.
 |---|---|---|---|
 |200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Success|None|
 |404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Not Found|None|
-|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal Server Error|None|
-
-<aside class="success">
-This operation does not require authentication
-</aside>
-
-## Configure system
-
-<a id="opIdconfigureSystem"></a>
-
-> Code samples
-
-`POST /system/configure`
-
-Configure system
-
-> Body parameter
-
-```json
-{
-  "key": "string",
-  "value": "string"
-}
-```
-
-<h3 id="configure-system-parameters">Parameters</h3>
-
-|Name|In|Type|Required|Description|
-|---|---|---|---|---|
-|nid|path|string("0x" + lowercase HEX string)|true|network-id of chain|
-|body|body|[ConfigureParam](#schemaconfigureparam)|true|refer SystemConfig properties|
-
-<h3 id="configure-system-responses">Responses</h3>
-
-|Status|Meaning|Description|Schema|
-|---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Success|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal Server Error|None|
 
 <aside class="success">
@@ -559,7 +646,7 @@ This operation does not require authentication
     "role": 3,
     "concurrencyLevel": 1,
     "normalTxPool": 5000,
-    "patchTxPool": 5000,
+    "patchTxPool": 1000,
     "maxBlockTxBytes": 1048576,
     "channel": "000000",
     "secureSuites": "none,tls,ecdhe",
@@ -602,7 +689,7 @@ This operation does not require authentication
   "role": 3,
   "concurrencyLevel": 1,
   "normalTxPool": 5000,
-  "patchTxPool": 5000,
+  "patchTxPool": 1000,
   "maxBlockTxBytes": 1048576,
   "channel": "000000",
   "secureSuites": "none,tls,ecdhe",
@@ -692,6 +779,8 @@ This operation does not require authentication
 |» address|string|false|none|wallet address|
 |» p2p|string|false|none|p2p address|
 |» p2pListen|string|false|none|p2p listen address|
+|» rpcAddr|string|false|none|Listen ip-port of JSON-RPC|
+|» rpcDump|boolean|false|none|JSON-RPC Request, Response Dump flag|
 |config|[SystemConfig](#schemasystemconfig)|false|none|none|
 
 <h2 id="tocSsystemconfig">SystemConfig</h2>

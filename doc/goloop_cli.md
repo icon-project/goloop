@@ -157,6 +157,7 @@ Inspect chain
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --format, -f |  | Format the output using the given Go template |
+| --informal | false | Inspect with informal data |
 
 ### Inherited Options
 |Name,shorthand | Default | Description|
@@ -678,7 +679,7 @@ JSON-RPC API
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --debug | false | JSON-RPC Response with detail information |
-| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
+| --uri |  | URI of JSON-RPC API |
 
 ### Child commands
 |Command | Description|
@@ -730,7 +731,7 @@ GetBalance
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --debug | false | JSON-RPC Response with detail information |
-| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
+| --uri |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -769,7 +770,7 @@ GetBlockByHash
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --debug | false | JSON-RPC Response with detail information |
-| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
+| --uri |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -808,7 +809,7 @@ GetBlockByHeight
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --debug | false | JSON-RPC Response with detail information |
-| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
+| --uri |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -847,7 +848,7 @@ GetBlockHeaderByHeight
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --debug | false | JSON-RPC Response with detail information |
-| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
+| --uri |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -895,7 +896,7 @@ Call
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --debug | false | JSON-RPC Response with detail information |
-| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
+| --uri |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -934,7 +935,7 @@ GetDataByHash
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --debug | false | JSON-RPC Response with detail information |
-| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
+| --uri |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -973,7 +974,7 @@ GetLastBlock
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --debug | false | JSON-RPC Response with detail information |
-| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
+| --uri |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1016,7 +1017,7 @@ Monitor
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --debug | false | JSON-RPC Response with detail information |
-| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
+| --uri |  | URI of JSON-RPC API |
 
 ### Child commands
 |Command | Description|
@@ -1061,7 +1062,7 @@ MonitorBlock
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --debug | false | JSON-RPC Response with detail information |
-| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
+| --uri |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1093,7 +1094,7 @@ MonitorEvent
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --debug | false | JSON-RPC Response with detail information |
-| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
+| --uri |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1118,7 +1119,7 @@ GetProofForResult
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --debug | false | JSON-RPC Response with detail information |
-| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
+| --uri |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1157,7 +1158,7 @@ Rpc with raw json file
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --debug | false | JSON-RPC Response with detail information |
-| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
+| --uri |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1196,7 +1197,7 @@ GetScoreApi
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --debug | false | JSON-RPC Response with detail information |
-| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
+| --uri |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1244,7 +1245,7 @@ SendTransaction
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --debug | false | JSON-RPC Response with detail information |
-| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
+| --uri |  | URI of JSON-RPC API |
 
 ### Child commands
 |Command | Description|
@@ -1303,7 +1304,7 @@ SmartContract Call Transaction
 | --key_store |  | KeyStore file for wallet |
 | --nid |  | Network ID |
 | --step_limit | 0 | StepLimit |
-| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
+| --uri |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1342,7 +1343,7 @@ Deploy Transaction
 | --key_store |  | KeyStore file for wallet |
 | --nid |  | Network ID |
 | --step_limit | 0 | StepLimit |
-| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
+| --uri |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1374,7 +1375,7 @@ Send transaction with json file
 | --key_store |  | KeyStore file for wallet |
 | --nid |  | Network ID |
 | --step_limit | 0 | StepLimit |
-| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
+| --uri |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1413,7 +1414,7 @@ Coin Transfer Transaction
 | --key_store |  | KeyStore file for wallet |
 | --nid |  | Network ID |
 | --step_limit | 0 | StepLimit |
-| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
+| --uri |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1440,7 +1441,7 @@ GetTotalSupply
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --debug | false | JSON-RPC Response with detail information |
-| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
+| --uri |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1479,7 +1480,7 @@ GetTransactionByHash
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --debug | false | JSON-RPC Response with detail information |
-| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
+| --uri |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1518,7 +1519,7 @@ GetTransactionResult
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --debug | false | JSON-RPC Response with detail information |
-| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
+| --uri |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1557,7 +1558,7 @@ GetVotesByHeight
 |Name,shorthand | Default | Description|
 |---|---|---|
 | --debug | false | JSON-RPC Response with detail information |
-| --uri | http://127.0.0.1:9080/api/v3 | URI of JSON-RPC API |
+| --uri |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|

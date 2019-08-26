@@ -97,6 +97,11 @@ paths:
       parameters:
         - <<: *path__nid
         - <<: *query__format
+        - name: informal
+          in: query
+          description: "Inspect with informal data"
+          schema:
+            type: boolean
       responses:
         "200":
           description: Success
@@ -210,21 +215,42 @@ paths:
         "500":
           description: Internal Server Error
   /chain/{nid}/configure:
+    get:
+      operationId: getChainConfiguration
+      tags:
+        - chain
+      summary: View chain configuration
+      description: Return chain configuration.
+      parameters:
+        - <<: *path__nid
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChainConfig"
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
     post:
       operationId: configureChain
       tags:
         - chain
       summary: Configure chain
-      description: Configure chain.
+      description: Configure chain, configurable properties refer to [ChainConfig](#schemachainconfig)
       parameters:
         - <<: *path__nid
       requestBody:
         required: true
-        description: refer ChainConfig properties
+        description: key-value to configure
         content:
           'application/json':
             schema:
               $ref: "#/components/schemas/ConfigureParam"
+        links:
+          getChainConfiguration
       responses:
         "200":
           description: Success
@@ -238,7 +264,7 @@ paths:
       tags:
         - node
       summary: View system
-      description: Return System Infomation.
+      description: Return system infomation.
       parameters:
         - <<: *query__format
       responses:
@@ -251,17 +277,34 @@ paths:
         "500":
           description: Internal Server Error
   /system/configure:
+    get:
+      operationId: getSystemConfiguration
+      tags:
+        - node
+      summary: View system configuration
+      description: Return system configuration.
+      parameters:
+        - <<: *path__nid
+      responses:
+        "200":
+          description: Success
+          content:
+            'application/json':
+              schema:
+                $ref: "#/components/schemas/SystemConfig"
+        "500":
+          description: Internal Server Error
     post:
       operationId: configureSystem
       tags:
-        - chain
+        - node
       summary: Configure system
-      description: Configure system
+      description: Configure system, configurable properties refer to [SystemConfig](#schemasystemconfig)
       parameters:
         - <<: *path__nid
       requestBody:
         required: true
-        description: refer SystemConfig properties
+        description: key-value to configure
         content:
           'application/json':
             schema:
@@ -372,7 +415,7 @@ components:
         role: 3
         concurrencyLevel: 1
         normalTxPool: 5000
-        patchTxPool: 5000
+        patchTxPool: 1000
         maxBlockTxBytes: 1048576
         channel: "000000"
         secureSuites: "none,tls,ecdhe"
@@ -414,6 +457,12 @@ components:
             p2pListen:
               type: string
               description: "p2p listen address"
+            rpcAddr:
+              type: string
+              description: "Listen ip-port of JSON-RPC"
+            rpcDump:
+              type: boolean
+              description: "JSON-RPC Request, Response Dump flag"
         config:
           $ref: "#/components/schemas/SystemConfig"
       example:
