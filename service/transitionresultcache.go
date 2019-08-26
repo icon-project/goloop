@@ -135,6 +135,31 @@ func (c *transitionResultCache) GetWorldSnapshot(result []byte, vh []byte) (stat
 	return item.worldSnapshot, nil
 }
 
+func (c *transitionResultCache) Count() int {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	return c.stateList.Len()
+}
+
+func (c *transitionResultCache) MaxCount() int {
+	return c.entryCount
+}
+
+func (c *transitionResultCache) MaxSize() int {
+	return c.entrySize
+}
+
+func (c *transitionResultCache) TotalBytes() int {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	var total int
+	for item := c.stateList.Front(); item != nil; item = item.Next() {
+		ci := item.Value.(*trCacheItem)
+		total += ci.Size()
+	}
+	return total
+}
+
 func newTransitionResultCache(database db.Database, count int, size int, log log.Logger) *transitionResultCache {
 	return &transitionResultCache{
 		database:   database,

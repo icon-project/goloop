@@ -9,6 +9,15 @@ func Inspect(c module.Chain) map[string]interface{} {
 	m := make(map[string]interface{})
 	m["normalTxPool"] = inspectTxPool(mgr.tm.normalTxPool)
 	m["patchTxPool"] = inspectTxPool(mgr.tm.patchTxPool)
+	m["resultCache"] = inspectResultCache(mgr.trc)
+	return m
+}
+
+func inspectResultCache(tsc *transitionResultCache) map[string]interface{} {
+	m := make(map[string]interface{})
+	m["used"] = tsc.Count()
+	m["size"] = tsc.MaxCount()
+	m["bytes"] = tsc.TotalBytes()
 	return m
 }
 
