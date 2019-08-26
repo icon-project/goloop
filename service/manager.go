@@ -82,8 +82,6 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 	mgr := &manager{
 		patchMetric:  pMetric,
 		normalMetric: nMetric,
-		patchTxPool:  pTxPool,
-		normalTxPool: nTxPool,
 		tm:           tm,
 		db:           chain.Database(),
 		chain:        chain,
@@ -135,7 +133,7 @@ func (m *manager) ProposeTransition(parent module.Transition, bi module.BlockInf
 
 	maxTxCount := m.chain.Regulator().MaxTxCount()
 	txSizeInBlock := m.chain.MaxBlockTxBytes()
-	normalTxs, _ := m.normalTxPool.Candidate(wc, txSizeInBlock, maxTxCount)
+	normalTxs, _ := m.tm.Candidate(module.TransactionGroupNormal, wc, txSizeInBlock, maxTxCount)
 
 	// create transition instance and return it
 	return newTransition(pt, transaction.NewTransactionListFromSlice(m.db, nil), transaction.NewTransactionListFromSlice(m.db, normalTxs), bi, true, m.log),
@@ -200,7 +198,7 @@ func (m *manager) GetPatches(parent module.Transition, bi module.BlockInfo) modu
 
 	wc := state.NewWorldContext(ws, bi)
 
-	txs, size := m.patchTxPool.Candidate(wc, m.chain.MaxBlockTxBytes(), 0)
+	txs, size := m.tm.Candidate(module.TransactionGroupPatch, wc, m.chain.MaxBlockTxBytes(), 0)
 
 	p, _ := m.skipTxPatch.Load().(module.SkipTransactionPatch)
 	if p != nil {
@@ -263,14 +261,14 @@ func (m *manager) Finalize(t module.Transition, opt int) error {
 			}
 			// Because transactionlist for transition is made only through peer and SendTransaction() call
 			// transactionlist has slice of transactions in case that finalize() is called
-			m.normalTxPool.RemoveList(tst.normalTransactions)
+			m.tm.RemoveTxs(module.TransactionGroupNormal, tst.normalTransactions)
 			m.tm.RemoveOldTxByBlockTS(tst.bi.Timestamp())
 		}
 		if opt&module.FinalizePatchTransaction == module.FinalizePatchTransaction {
 			if err := tst.finalizePatchTransaction(); err != nil {
 				return err
 			}
-			m.patchTxPool.RemoveList(tst.patchTransactions)
+			m.tm.RemoveTxs(module.TransactionGroupPatch, tst.patchTransactions)
 		}
 		if opt&module.FinalizeResult == module.FinalizeResult {
 			if err := tst.finalizeResult(); err != nil {
@@ -514,7 +512,7 @@ func (m *manager) GetMinimizeBlockGen(result []byte) bool {
 }
 
 func (m *manager) HasTransaction(id []byte) bool {
-	return m.normalTxPool.HasTx(id) || m.patchTxPool.HasTx(id)
+	return m.tm.HasTx(id)
 }
 
 func (m *manager) WaitForTransaction(

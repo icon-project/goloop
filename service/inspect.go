@@ -7,8 +7,8 @@ import (
 func Inspect(c module.Chain) map[string]interface{} {
 	mgr := c.ServiceManager().(*manager)
 	m := make(map[string]interface{})
-	m["normalTxPool"] = inspectTxPool(mgr.normalTxPool)
-	m["patchTxPool"] = inspectTxPool(mgr.patchTxPool)
+	m["normalTxPool"] = inspectTxPool(mgr.tm.normalTxPool)
+	m["patchTxPool"] = inspectTxPool(mgr.tm.patchTxPool)
 	return m
 }
 

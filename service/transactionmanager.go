@@ -44,6 +44,22 @@ func (m *TransactionManager) RemoveOldTxByBlockTS(bts int64) {
 	m.normalTxPool.RemoveOldTXs(ts)
 }
 
+func (m *TransactionManager) HasTx(id []byte) bool {
+	return m.normalTxPool.HasTx(id) || m.patchTxPool.HasTx(id)
+}
+
+func (m *TransactionManager) RemoveTxs(
+	g module.TransactionGroup, l module.TransactionList,
+) {
+	m.getTxPool(g).RemoveList(l)
+}
+
+func (m *TransactionManager) Candidate(
+	g module.TransactionGroup, wc state.WorldContext, maxBytes, maxCount int,
+) ([]module.Transaction, int) {
+	return m.getTxPool(g).Candidate(wc, maxBytes, maxCount)
+}
+
 func (m *TransactionManager) Add(tx transaction.Transaction, direct bool) error {
 	if tx == nil {
 		return nil
