@@ -102,8 +102,8 @@ func (br *blockResult) Reject() {
 	fr.heightSet.add(br.blk.Height())
 	for j := 1; j < len(fr.pendingResults); j++ {
 		if fr.pendingResults[j] != nil && fr.pendingResults[j].id.Equal(br.id) {
-			fr.pendingResults[j] = nil
 			fr.heightSet.add(fr.pendingResults[j].blk.Height())
+			fr.pendingResults[j] = nil
 		}
 	}
 	if fr.nActivePeers != 0 {
