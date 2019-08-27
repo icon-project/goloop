@@ -100,10 +100,10 @@ func (br *blockResult) Reject() {
 	}
 	fr.pendingResults[0] = nil
 	fr.heightSet.add(br.blk.Height())
-	for j := 1; j < len(fr.pendingResults); j++ {
-		if fr.pendingResults[j] != nil && fr.pendingResults[j].id.Equal(br.id) {
-			fr.heightSet.add(fr.pendingResults[j].blk.Height())
-			fr.pendingResults[j] = nil
+	for i := 1; i < len(fr.pendingResults); i++ {
+		if fr.pendingResults[i] != nil && fr.pendingResults[i].id.Equal(br.id) {
+			fr.heightSet.add(fr.pendingResults[i].blk.Height())
+			fr.pendingResults[i] = nil
 		}
 	}
 	if fr.nActivePeers != 0 {
