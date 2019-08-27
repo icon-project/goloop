@@ -18,7 +18,7 @@ TARGET_SO=$(BUILD_DIR)/lib$(TARGET).so
 
 JAVA_HOME ?= /opt/jdk-11.0.2
 JAVA=$(JAVA_HOME)/bin/java
-JAVAC=$(JAVA_HOME)/bin/javac
+JAVAC=$(JAVA_HOME)/bin/javac --release 10
 JAR=$(JAVA_HOME)/bin/jar
 
 BUILD_DIR:=./build

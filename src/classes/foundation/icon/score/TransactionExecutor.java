@@ -158,7 +158,7 @@ public class TransactionExecutor {
                     limit.longValue(),
                     1L);
         } else {
-            byte[] txData = ABIUtil.encodeMethodArguments(method, params);
+            byte[] txData = ABIUtil.encodeMethodArguments(method, getConvertedParams(params));
             return Transaction.contractCallTransaction(
                     new AionAddress(from),
                     new AionAddress(to),
@@ -180,6 +180,20 @@ public class TransactionExecutor {
             throw new IOException("JAR read error: " + e.getMessage());
         }
         return jarBytes;
+    }
+
+    private Object[] getConvertedParams(Object[] params) {
+        Object[] convertedParams = new Object[params.length];
+        for (int i = 0; i < params.length; i++) {
+            Object obj = params[i];
+            if (obj instanceof Address) {
+                Address address = (Address) obj;
+                convertedParams[i] = new avm.Address(address.toByteArray());
+            } else {
+                convertedParams[i] = obj;
+            }
+        }
+        return convertedParams;
     }
 
     private static class ResultWrapper {

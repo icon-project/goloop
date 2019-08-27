@@ -1,9 +1,21 @@
-# Run Proxy test
+# Run TransactionExecutorTest
 
-```
+```bash
 make run
 ```
 or
+
+```bash
+java -cp ./build/client.jar:$(echo lib/* | tr ' ' ':'):./build \
+    -Djava.library.path=./build \
+    -Dorg.slf4j.simpleLogger.defaultLogLevel=DEBUG \
+    TransactionExecutorTest /tmp/ee.socket uuid1234
 ```
-java -cp build/client.jar:lib/msgpack-core-0.8.17.jar:lib/bcprov-jdk15on-1.60.jar:build -Djava.library.path=build ProxyTest /tmp/ee.socket uuid1234
+
+# Run DAppCompier
+
+```bash
+java -cp ./build/client.jar:$(echo lib/* | tr ' ' ':'):./build \
+    -Dorg.slf4j.simpleLogger.defaultLogLevel=DEBUG \
+    DAppCompiler ./dapp.jar
 ```

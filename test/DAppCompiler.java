@@ -1,0 +1,66 @@
+/*
+ * Copyright 2019 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import org.aion.avm.tooling.deploy.OptimizedJarBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+public class DAppCompiler {
+    private static final int ABI_VERSION = 1;
+    private static final boolean DEBUG_MODE = false;
+    private static final String OPTIMIZED_JAR = "./optimized.jar";
+
+    public static void main(String[] args) throws IOException {
+        Logger logger = LoggerFactory.getLogger(DAppCompiler.class);
+        logger.info("=== DAppCompiler ===");
+        if (args.length == 1) {
+            byte[] optimizedJar = new OptimizedJarBuilder(DEBUG_MODE, readFile(args[0]), ABI_VERSION)
+                    .withUnreachableMethodRemover()
+                    .withRenamer()
+                    .withConstantRemover()
+                    .getOptimizedBytes();
+            writeFile(OPTIMIZED_JAR, optimizedJar);
+            logger.info("Generated {}", OPTIMIZED_JAR);
+        } else {
+            logger.info("Usage: DAppCompiler <jarFile>");
+        }
+    }
+
+    private static byte[] readFile(String jarFile) throws IOException {
+        Path path = Paths.get(jarFile);
+        byte[] jarBytes;
+        try {
+            jarBytes = Files.readAllBytes(path);
+        } catch (IOException e) {
+            throw new IOException("JAR read error: " + e.getMessage());
+        }
+        return jarBytes;
+    }
+
+    private static void writeFile(String filePath, byte[] data) {
+        Path outFile = Paths.get(filePath);
+        try {
+            Files.write(outFile, data);
+        } catch (IOException e) {
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+}
