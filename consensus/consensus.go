@@ -1674,11 +1674,7 @@ func (cs *consensus) processBlock(br fastsync.BlockResult) {
 			br.Reject()
 			return
 		}
-		ok, _ := cs.hvs.add(index, m)
-		if !ok {
-			br.Reject()
-			return
-		}
+		cs.hvs.add(index, m)
 	}
 
 	precommits := cs.hvs.votesFor(votes.Round, voteTypePrecommit)
