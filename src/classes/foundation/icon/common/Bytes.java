@@ -20,6 +20,9 @@ import org.bouncycastle.util.encoders.Hex;
 
 public class Bytes {
     public static String toHexString(byte[] to) {
-        return Hex.toHexString(to);
+        if (to != null) {
+            return Hex.toHexString(to);
+        }
+        return "null";
     }
 }

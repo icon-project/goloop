@@ -16,6 +16,7 @@
 
 package foundation.icon.score;
 
+import foundation.icon.common.Bytes;
 import foundation.icon.tools.ipc.Proxy;
 import org.aion.avm.core.IExternalState;
 import org.aion.avm.core.util.Helpers;
@@ -138,20 +139,34 @@ public class ExternalState implements IExternalState {
 
     @Override
     public void putStorage(AionAddress address, byte[] key, byte[] value) {
-        logger.debug("[putStorage] {}, key={} value={}", address, key, value);
-        throw new RuntimeException("not implemented");
+        logger.debug("[putStorage] key={} value={}", Bytes.toHexString(key), Bytes.toHexString(value));
+        try {
+            proxy.setValue(key, value);
+        } catch (IOException e) {
+            logger.error("[putStorage] {}", e.getMessage());
+        }
     }
 
     @Override
     public void removeStorage(AionAddress address, byte[] key) {
-        logger.debug("[removeStorage] {}, key={}", address, key);
-        throw new RuntimeException("not implemented");
+        logger.debug("[removeStorage] key={}", Bytes.toHexString(key));
+        try {
+            proxy.setValue(key, null);
+        } catch (IOException e) {
+            logger.error("[removeStorage] {}", e.getMessage());
+        }
     }
 
     @Override
     public byte[] getStorage(AionAddress address, byte[] key) {
-        logger.debug("[getStorage] {}, key={}", address, key);
-        throw new RuntimeException("not implemented");
+        try {
+            byte[] value = proxy.getValue(key);
+            logger.debug("[getStorage] key={} value={}", Bytes.toHexString(key), Bytes.toHexString(value));
+            return value;
+        } catch (IOException e) {
+            logger.error("[getStorage] {}", e.getMessage());
+            return null;
+        }
     }
 
     @Override

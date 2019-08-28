@@ -36,7 +36,7 @@ public class Proxy {
     private OnGetApiListener mOnGetApiListener;
     private OnInvokeListener mOnInvokeListener;
 
-    class MsgType {
+    static class MsgType {
         static final int VERSION = 0;
         static final int INVOKE = 1;
         static final int RESULT = 2;
@@ -49,7 +49,7 @@ public class Proxy {
         static final int GETAPI = 9;
     }
 
-    class Message {
+    static class Message {
         final int type;
         final Value value;
 
@@ -59,12 +59,12 @@ public class Proxy {
         }
     }
 
-    public class Status {
+    public static class Status {
         public static final int SUCCESS = 0;
         public static final int FAILURE = 1;
     }
 
-    public class Info {
+    public static class Info {
         public static final String BLOCK_TIMESTAMP = "B.timestamp";
         public static final String BLOCK_HEIGHT = "B.height";
         public static final String TX_HASH = "T.hash";
@@ -121,8 +121,31 @@ public class Proxy {
         if (msg.type != MsgType.GETBALANCE) {
             throw new IOException("Invalid message: GETBALANCE expected.");
         }
-        logger.debug("[GETBALANCE] {}", msg.value);
-        return new BigInteger(getValueAsByteArray(msg.value));
+        BigInteger balance = new BigInteger(getValueAsByteArray(msg.value));
+        logger.debug("[GETBALANCE] {}", balance);
+        return balance;
+    }
+
+    public byte[] getValue(byte[] key) throws IOException {
+        sendMessage(MsgType.GETVALUE, (Object) key);
+        Message msg = getNextMessage();
+        if (msg.type != MsgType.GETVALUE) {
+            throw new IOException("Invalid message: GETVALUE expected.");
+        }
+        ArrayValue data = msg.value.asArrayValue();
+        if (data.get(0).asBooleanValue().getBoolean()) {
+            return getValueAsByteArray(data.get(1));
+        } else {
+            return null;
+        }
+    }
+
+    public void setValue(byte[] key, byte[] value) throws IOException {
+        if (value == null) {
+            sendMessage(MsgType.SETVALUE, key, true, null);
+        } else {
+            sendMessage(MsgType.SETVALUE, key, false, value);
+        }
     }
 
     private Message getNextMessage() throws IOException {
@@ -164,6 +187,8 @@ public class Proxy {
     private void packObject(Object obj, MessageBufferPacker packer) throws IOException {
         if (obj == null) {
             packer.packNil();
+        } else if (obj instanceof Boolean) {
+            packer.packBoolean((boolean) obj);
         } else if (obj instanceof Integer) {
             packer.packInt((int) obj);
         } else if (obj instanceof String) {
