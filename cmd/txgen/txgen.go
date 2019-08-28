@@ -169,15 +169,17 @@ func (ctx *Context) sendRequests(wg sync.WaitGroup, client *Client) {
 		for {
 			r, err := client.Call("icx_sendTransaction", tx)
 			if err != nil {
-				log.Panicf("Fail to send TX err=%+v", err)
+				js, _ := json.MarshalIndent(tx, "", "  ")
+				log.Panicf("Fail to send TX err=%+v tx=%s", err, js)
 			}
 			if r.Error != nil {
 				if rpc.ErrorCode(r.Error.Code) == rpc.ErrorCodeTxPoolOverflow {
 					time.Sleep(ctx.delay)
 					continue
 				}
-				log.Panicf("Get ERROR on icx_sendTransaction Code=%d Msg=%s\n",
-					r.Error.Code, r.Error.Message)
+				js, _ := json.MarshalIndent(tx, "", "  ")
+				log.Panicf("Get ERROR on icx_sendTransaction Code=%d Msg=%s TX=%s",
+					r.Error.Code, r.Error.Message, js)
 			}
 			break
 		}

@@ -13,12 +13,14 @@ import (
 func main() {
 	var keyStoreFile string
 	var keyStorePass string
-	var tokenSrc string
+	var scorePath string
 	var tps int
 	var concurrent int
 	var walletCount int
 	var nid int64
 	var methodName string
+	var params map[string]string
+	var installParams map[string]string
 
 	cmd := &cobra.Command{
 		Use: fmt.Sprintf("%s [urls]", os.Args[0]),
@@ -30,8 +32,10 @@ func main() {
 	flags.IntVarP(&concurrent, "concurrent", "c", 2, "Number of subroutines(threads)")
 	flags.IntVarP(&walletCount, "wallets", "w", 1000, "Number of temporal wallets")
 	flags.Int64VarP(&nid, "nid", "n", 1, "Network ID of URLs")
-	flags.StringVarP(&tokenSrc, "score", "s", "", "Path to SCORE source directory")
+	flags.StringVarP(&scorePath, "score", "s", "", "Path to SCORE source directory")
 	flags.StringVarP(&methodName, "method", "m", "transfer", "Method name to be used for transfer")
+	flags.StringToStringVar(&params, "param", nil, "Parameters for the call")
+	flags.StringToStringVar(&installParams, "installParam", make(map[string]string), "Install parameters")
 
 	cmd.Run = func(cmd *cobra.Command, urls []string) {
 		if len(urls) == 0 {
@@ -53,11 +57,21 @@ func main() {
 		}
 
 		var maker TransactionMaker
-		if len(tokenSrc) > 0 {
+		if len(scorePath) > 0 && params != nil {
+			maker = &CallMaker{
+				NID:           nid,
+				SourcePath:    scorePath,
+				InstallParams: installParams,
+				Method:        methodName,
+				CallParams:    params,
+				god:           godWallet,
+				index:         0,
+			}
+		} else if len(scorePath) > 0 {
 			maker = &TokenTransferMaker{
 				NID:         nid,
 				WalletCount: walletCount,
-				SourcePath:  tokenSrc,
+				SourcePath:  scorePath,
 				Method:      methodName,
 			}
 		} else {
