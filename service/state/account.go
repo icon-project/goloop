@@ -332,7 +332,9 @@ func (s *accountSnapshotImpl) DecodeMsgpack(d *msgpack.Decoder) error {
 }
 
 func (s *accountSnapshotImpl) ClearCache() {
-	s.store.ClearCache()
+	if s.store != nil {
+		s.store.ClearCache()
+	}
 }
 
 type accountStateImpl struct {
@@ -604,7 +606,9 @@ func (s *accountStateImpl) NextContract() Contract {
 }
 
 func (s *accountStateImpl) ClearCache() {
-	s.store.ClearCache()
+	if s.store != nil {
+		s.store.ClearCache()
+	}
 }
 
 func newAccountState(database db.Database, snapshot *accountSnapshotImpl) AccountState {
