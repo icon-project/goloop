@@ -147,6 +147,10 @@ func (v byteValue) Resolve(builder merkle.Builder) error {
 	panic("Imeplement me")
 }
 
+func (v byteValue) ClearCache() {
+	// do nothing
+}
+
 func calcHash(data ...[]byte) []byte {
 	if trie.ConfigUseKeccak256 {
 		sha := sha3.NewLegacyKeccak256()

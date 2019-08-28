@@ -514,6 +514,10 @@ func (m *mpt) Resolve(builder merkle.Builder) error {
 	panic("Implement me")
 }
 
+func (m *mpt) ClearCache() {
+	// TODO if it required, you need to implement this.
+}
+
 func newMptFromImmutable(immutable trie.Immutable) *mpt {
 	if m, ok := immutable.(*mpt); ok {
 		mpt := newMpt(m.db, m.bk, m.source.committedHash, m.objType)

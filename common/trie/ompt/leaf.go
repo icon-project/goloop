@@ -255,3 +255,16 @@ func (n *leaf) resolve(m *mpt, bd merkle.Builder) error {
 	}
 	return nil
 }
+
+func (n *leaf) compact() node {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
+	if n.state < stateFlushed {
+		n.value.ClearCache()
+		return n
+	}
+	return &hash{
+		value: n.hashValue,
+	}
+}

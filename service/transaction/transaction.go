@@ -101,6 +101,10 @@ func (t *transaction) NID() int {
 	return t.Transaction.(GenesisTransaction).NID()
 }
 
+func (t *transaction) ClearCache() {
+	// nothing to do
+}
+
 func NewTransaction(b []byte) (Transaction, error) {
 	if tx, err := newTransaction(b); err != nil {
 		return nil, err

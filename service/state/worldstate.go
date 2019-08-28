@@ -161,6 +161,7 @@ func (ws *worldStateImpl) ClearCache() {
 			}
 		}
 	}
+	ws.accounts.ClearCache()
 	ws.mutableAccounts = make(map[string]AccountState)
 }
 

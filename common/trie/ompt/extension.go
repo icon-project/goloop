@@ -269,3 +269,16 @@ func (n *extension) resolve(m *mpt, bd merkle.Builder) error {
 
 	return m.resolve(bd, &n.next)
 }
+
+func (n *extension) compact() node {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
+	if n.state < stateFlushed {
+		n.next = n.next.compact()
+		return n
+	}
+	return &hash{
+		value: n.hashValue,
+	}
+}

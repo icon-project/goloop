@@ -82,6 +82,10 @@ func (o *TestObject) OnData(bs []byte, builder merkle.Builder) error {
 	return nil
 }
 
+func (o *TestObject) ClearCache() {
+	// do nothing
+}
+
 func NewTestObject(dbase db.Database, bs []byte) *TestObject {
 	bucket, err := dbase.GetBucket(db.BytesByHash)
 	if err != nil {

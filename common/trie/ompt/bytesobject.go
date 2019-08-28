@@ -41,3 +41,7 @@ func (o bytesObject) Equal(n trie.Object) bool {
 func (o bytesObject) Resolve(builder merkle.Builder) error {
 	return nil
 }
+
+func (o bytesObject) ClearCache() {
+	// nothing to do, because it doesn't have belonging objects.
+}

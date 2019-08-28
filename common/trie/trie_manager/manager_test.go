@@ -726,6 +726,10 @@ func (o *Obj) Resolve(bd merkle.Builder) error {
 	return nil
 }
 
+func (o *Obj) ClearCache() {
+	// do nothing
+}
+
 func TestObject(t *testing.T) {
 	manager := New(db.NewMapDB())
 	mutable := manager.NewMutable(nil)
@@ -773,6 +777,10 @@ func (e *testObject) Equal(o trie.Object) bool {
 
 func (e *testObject) Resolve(bd merkle.Builder) error {
 	return nil
+}
+
+func (e *testObject) ClearCache() {
+	// do nothing
 }
 
 func TestObjectFlush(t *testing.T) {

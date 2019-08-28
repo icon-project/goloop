@@ -325,6 +325,9 @@ func (e *testObject) Equal(o trie.Object) bool {
 func (e *testObject) Resolve(builder merkle.Builder) error {
 	return nil
 }
+func (e *testObject) ClearCache() {
+	// do nothing
+}
 
 func TestObjectTest(t *testing.T) {
 	tests := [][]string{

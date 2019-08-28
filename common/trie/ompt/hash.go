@@ -114,3 +114,7 @@ func (h *hash) resolve(m *mpt, bd merkle.Builder) error {
 	panic("It should not be called.")
 	return nil
 }
+
+func (h *hash) compact() node {
+	return h
+}

@@ -32,6 +32,7 @@ type (
 		getProof(m *mpt, keys []byte, proofs [][]byte) (node, [][]byte, error)
 		prove(m *mpt, keys []byte, proofs [][]byte) (node, trie.Object, error)
 		resolve(m *mpt, bd merkle.Builder) error
+		compact() node
 	}
 )
 

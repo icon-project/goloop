@@ -20,6 +20,7 @@ type (
 		Equal(immutable Immutable, exact bool) bool
 		Prove(k []byte, p [][]byte) ([]byte, error)
 		Resolve(builder merkle.Builder) error
+		ClearCache()
 	}
 
 	Snapshot interface {
@@ -39,6 +40,7 @@ type (
 		Delete(k []byte) error
 		GetSnapshot() Snapshot
 		Reset(d Immutable) error
+		ClearCache()
 	}
 
 	Object interface {
@@ -47,6 +49,7 @@ type (
 		Flush() error
 		Equal(Object) bool
 		Resolve(builder merkle.Builder) error
+		ClearCache()
 	}
 
 	IteratorForObject interface {
@@ -64,6 +67,7 @@ type (
 		Equal(object ImmutableForObject, exact bool) bool
 		Prove(k []byte, p [][]byte) (Object, error)
 		Resolve(builder merkle.Builder) error
+		ClearCache()
 	}
 
 	SnapshotForObject interface {
@@ -77,6 +81,7 @@ type (
 		Delete(k []byte) error
 		GetSnapshot() SnapshotForObject
 		Reset(s ImmutableForObject)
+		ClearCache()
 	}
 
 	Manager interface {

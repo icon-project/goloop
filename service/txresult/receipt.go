@@ -145,6 +145,10 @@ func (r *receipt) Equal(o trie.Object) bool {
 	return false
 }
 
+func (r *receipt) ClearCache() {
+	// nothing to do
+}
+
 func (r *receipt) EncodeMsgpack(e *msgpack.Encoder) error {
 	return e.Encode(&r.data)
 }

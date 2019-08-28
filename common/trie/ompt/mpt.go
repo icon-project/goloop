@@ -182,6 +182,15 @@ func (m *mpt) Reset(s trie.ImmutableForObject) {
 	}
 }
 
+func (m *mpt) ClearCache() {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	if m.root != nil {
+		m.root = m.root.compact()
+	}
+}
+
 type iteratorItem struct {
 	k string
 	n node

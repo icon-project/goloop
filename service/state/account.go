@@ -331,6 +331,10 @@ func (s *accountSnapshotImpl) DecodeMsgpack(d *msgpack.Decoder) error {
 	return nil
 }
 
+func (s *accountSnapshotImpl) ClearCache() {
+	s.store.ClearCache()
+}
+
 type accountStateImpl struct {
 	version    int
 	database   db.Database
@@ -597,6 +601,10 @@ func (s *accountStateImpl) NextContract() Contract {
 		return nil
 	}
 	return s.nextContract
+}
+
+func (s *accountStateImpl) ClearCache() {
+	s.store.ClearCache()
 }
 
 func newAccountState(database db.Database, snapshot *accountSnapshotImpl) AccountState {

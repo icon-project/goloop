@@ -365,3 +365,24 @@ func (n *branch) resolve(m *mpt, bd merkle.Builder) error {
 	}
 	return nil
 }
+
+func (n *branch) compact() node {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
+	if n.state < stateFlushed {
+		for i := range n.children {
+			node := n.children[i]
+			if node != nil {
+				n.children[i] = node.compact()
+			}
+		}
+		if n.value != nil {
+			n.value.ClearCache()
+		}
+		return n
+	}
+	return &hash{
+		value: n.hashValue,
+	}
+}
