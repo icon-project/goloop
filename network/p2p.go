@@ -1241,6 +1241,13 @@ Loop:
 			if r.Has(p2pRoleRoot) {
 				p2p.discoverFriends()
 			} else {
+				if p2p.friends.Len() > 0 {
+					ps := p2p.friends.Array()
+					for _, p := range ps {
+						p2p.updatePeerConnectionType(p, p2pConnTypeNone)
+					}
+				}
+
 				p2p.discoverParent(pr)
 				if p2p.getParent() != nil {
 					p2p.discoverUncle(pr)
