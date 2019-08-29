@@ -1088,6 +1088,9 @@ func (cs *consensus) applyRoundWAL() error {
 			if m.height() != cs.height {
 				continue
 			}
+			if !m.address().Equal(cs.c.Wallet().Address()) {
+				continue
+			}
 			cs.logger.Tracef("WAL: my proposal %v\n", m)
 			if m.round() < round || (m.round() == round && rstep <= stepPropose) {
 				round = m.round()
@@ -1095,6 +1098,9 @@ func (cs *consensus) applyRoundWAL() error {
 			}
 		case *voteMessage:
 			if m.height() != cs.height {
+				continue
+			}
+			if !m.address().Equal(cs.c.Wallet().Address()) {
 				continue
 			}
 			cs.logger.Tracef("WAL: my vote %v\n", m)
