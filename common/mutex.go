@@ -77,27 +77,22 @@ func LockForAutoCall(locker sync.Locker) *AutoCallLocker {
 	return &AutoCallLocker{locker: locker}
 }
 
-type AutoLock struct {
+type AutoUnlock struct {
 	locker sync.Locker
-	locked bool
 }
 
-func NewAutoLock(l sync.Locker) *AutoLock {
+// Lock lock the locker and return handle for unlock to be used for
+// deferred unlock.
+func Lock(l sync.Locker) AutoUnlock {
 	l.Lock()
-	return &AutoLock{
+	return AutoUnlock{
 		locker: l,
-		locked: true,
 	}
 }
 
-func (l *AutoLock) Unlock() {
-	if l.locked {
-		l.locked = false
+func (l *AutoUnlock) Unlock() {
+	if l.locker != nil {
 		l.locker.Unlock()
+		l.locker = nil
 	}
-}
-
-func (l *AutoLock) Lock() {
-	l.locker.Lock()
-	l.locked = true
 }
