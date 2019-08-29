@@ -202,7 +202,7 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 	}
 	path, err := h.cs.WaitResult()
 	if err != nil {
-		h.log.Errorf("FAIL to prepare contract. err=%+v\n", err)
+		h.log.Warnf("FAIL to prepare contract. err=%+v\n", err)
 		return errors.Wrapc(err, PreparingContractError, "FAIL to prepare contract")
 	}
 

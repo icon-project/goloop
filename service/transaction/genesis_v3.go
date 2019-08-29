@@ -182,7 +182,7 @@ func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
 	}
 
 	if err := g.deployPreInstall(ctx, r); err != nil {
-		ctx.Logger().Errorf("Fail to install scores err=%+v\n", err)
+		ctx.Logger().Warnf("Fail to install scores err=%+v\n", err)
 		return nil, err
 	}
 	r.SetResult(module.StatusSuccess, big.NewInt(0), big.NewInt(0), nil)

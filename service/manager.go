@@ -288,7 +288,7 @@ func (m *manager) Finalize(t module.Transition, opt int) error {
 func (m *manager) TransactionFromBytes(b []byte, blockVersion int) (module.Transaction, error) {
 	tx, err := transaction.NewTransaction(b)
 	if err != nil {
-		m.log.Errorf("sm.TransactionFromBytes() fails with err=%+v", err)
+		m.log.Warnf("sm.TransactionFromBytes() fails with err=%+v", err)
 	}
 	return tx, nil
 }
@@ -296,7 +296,7 @@ func (m *manager) TransactionFromBytes(b []byte, blockVersion int) (module.Trans
 func (m *manager) GenesisTransactionFromBytes(b []byte, blockVersion int) (module.Transaction, error) {
 	tx, err := transaction.NewGenesisTransaction(b)
 	if err != nil {
-		m.log.Errorf("sm.GenesisTransactionFromBytes() fails with err=%+v", err)
+		m.log.Warnf("sm.GenesisTransactionFromBytes() fails with err=%+v", err)
 	}
 	return tx, nil
 }
