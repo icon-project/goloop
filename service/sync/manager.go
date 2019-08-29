@@ -17,7 +17,6 @@ const (
 
 const (
 	receiveMsg = iota
-	receiveCancled
 	receiveTimeExpired
 )
 
@@ -45,12 +44,14 @@ type Result struct {
 	NormalReceipts module.ReceiptList
 }
 
-func (m *Manager) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) (bool, error) {
+func (m *Manager) OnReceive(pi module.ProtocolInfo, b []byte,
+	id module.PeerID) (bool, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
+	m.log.Debugf("OnReceive pi(%s), id(%s), syncing(%t)\n", pi, id, m.syncing)
 	p := m.pool.getPeer(id)
-	m.log.Debugf("SyncManager OnReceive pi(%s), id(%s), p(%s)\n", pi, id, p)
 	if p == nil {
+		m.log.Debugf("peer(%s) is not valid\n", id)
 		return false, nil
 	}
 	switch pi {
@@ -65,14 +66,18 @@ func (m *Manager) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) 
 }
 
 func (m *Manager) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
-	m.log.Debug("Manager OnFailure")
+	m.log.Debugf("Manager OnFailure err(%+v), pi(%s)\n", err, pi)
 }
 
 func (m *Manager) OnJoin(id module.PeerID) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	m.log.Debugf("Manager OnJoin syncing(%d)\n", m.syncing)
-	np := m.pool.push(id, nil)
+	m.log.Debugf("Manager OnJoin syncing(%t)\n", m.syncing)
+	np := &peer{
+		id:    id,
+		reqID: 0,
+	}
+	m.pool.push(np)
 	if m.syncing {
 		m.syncer.onJoin(np)
 	}
@@ -81,7 +86,7 @@ func (m *Manager) OnJoin(id module.PeerID) {
 func (m *Manager) OnLeave(id module.PeerID) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	m.log.Debug("Manager OnLeave")
+	m.log.Debugf("Manager OnLeave id(%s)\n", id)
 	p := m.pool.getPeer(id)
 	if p == nil {
 		return
@@ -94,8 +99,7 @@ func (m *Manager) OnLeave(id module.PeerID) {
 
 func (m *Manager) NewSyncer(ah, prh, nrh, vh []byte) Syncer {
 	m.log.Debugf(
-		"NewSyncer accountHash(%#x), prh(%#x), "+
-			"nrh(%#x), vlh(%#x)\n",
+		"NewSyncer accountHash(%#x), prh(%#x), nrh(%#x), vlh(%#x)\n",
 		ah, prh, nrh, vh)
 	m.syncer = newSyncer(
 		m.db, m.client, m.pool,

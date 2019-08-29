@@ -11,14 +11,6 @@ import (
 	"github.com/icon-project/goloop/service/txresult"
 )
 
-/*
-pool management
-pool - all peers connected are in this
-vpool - push peer to vpool after peer is removed from sentReq when status of OnResult is NoError
-ivpool
-sentReq - push peer to sentReq after call client.XXX and remove the peer from the pool which the peer was in
-*/
-
 type syncType int
 
 const (
@@ -26,6 +18,10 @@ const (
 	syncPatchReceipts
 	syncNormalReceipts
 	end
+)
+
+const (
+	configMaxRequestHash = 20
 )
 
 func (s syncType) toIndex() int {
@@ -60,7 +56,7 @@ func (s syncType) isValid() bool {
 
 const (
 	syncComplete         = int(syncWorldState | syncPatchReceipts | syncNormalReceipts)
-	configMaxPeerForSync = 5
+	configMaxPeerForSync = 10
 )
 
 type syncer struct {
@@ -75,9 +71,9 @@ type syncer struct {
 	vpool   *peerPool
 	ivpool  *peerPool
 	sentReq map[module.PeerID]*peer
-	reqKey  map[string]bool
 
 	builder [3]merkle.Builder
+	bMutex  [3]sync.Mutex
 
 	ah  []byte
 	vlh []byte
@@ -87,11 +83,12 @@ type syncer struct {
 	finishCh chan syncType
 	log      log.Logger
 
-	wss      state.WorldSnapshot
-	prl      module.ReceiptList
-	nrl      module.ReceiptList
+	wss state.WorldSnapshot
+	prl module.ReceiptList
+	nrl module.ReceiptList
+	cb  func(syncing bool)
+
 	complete int
-	cb       func(syncing bool)
 }
 
 type Request struct {
@@ -102,77 +99,188 @@ type Request struct {
 type Callback interface {
 	onResult(status errCode, p *peer)
 	onNodeData(p *peer, status errCode, t syncType, data [][]byte)
+	onReceive(pi module.ProtocolInfo, b []byte, p *peer)
 }
 
-func (s *syncer) onResult(status errCode, p *peer) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	log.Debugf("OnResult : status(%d), p(%s)\n", status, p)
-	if status == NoError {
-		s.vpool.push(p.id, p)
-		if s.vpool.size() == 1 {
-			s.cond.Signal()
+func (s *syncer) _reqUnresolvedNode(st syncType, builder merkle.Builder,
+	peers []*peer) (bool, int, []*peer) {
+	unresolved := builder.UnresolvedCount()
+	s.log.Debugf("_reqUnresolvedNode unresolved(%d) for (%s) len(peers) = %d\n",
+		unresolved, st, len(peers))
+	if unresolved == 0 {
+		return true, 0, peers
+	}
+	req := builder.Requests()
+
+	keyMap := make(map[string]bool)
+	var keys [][]byte
+	reqNum := 0
+	for req.Next() {
+		key := req.Key()
+		if keyMap[string(key)] == false {
+			keyMap[string(key)] = true
+			keys = append(keys, key)
+			reqNum++
 		}
-	} else {
-		s._requestIfNotEnough(p)
+	}
+
+	need := reqNum/configMaxRequestHash + 1
+	var unusedPeers []*peer
+	peerNum := len(peers)
+
+	if need > peerNum {
+		need = peerNum
+	}
+
+	result := false
+	i := 0
+	pIndex := 0
+	for j, p := range peers {
+		offset := (reqNum * i) / need
+		end := (reqNum * (i + 1)) / need
+		pIndex = j
+		s.log.Debugf("requestNodeData for (%d) -> (%d) reqNum(%d)\n", offset, end, reqNum)
+		if err := s.client.requestNodeData(p, keys[offset:end], st, s.processMsg); err != nil {
+			s.log.Debugf("Failed to request node\n")
+			unusedPeers = append(unusedPeers, p)
+			continue
+		}
+		i++
+		if result == false {
+			result = true
+		}
+		if need == i {
+			break
+		}
+	}
+	for ; pIndex+1 < peerNum; pIndex++ {
+		unusedPeers = append(unusedPeers, peers[pIndex+1])
+	}
+	// return unused peers
+	s.log.Debugf("requestNodeData unusedPeers(%d)\n", len(unusedPeers))
+	return result, 1, unusedPeers
+}
+
+func (s *syncer) _onNodeData(builder merkle.Builder, data [][]byte) int {
+	if len(data) != 0 {
+		s.log.Debugf("Received len(data) (%d)\n", len(data))
+	}
+	for _, d := range data {
+		s.log.Debugf("receive node(%#x)\n", d)
+		if err := builder.OnData(d); err != nil {
+			s.log.Infof("Failed to OnData to builder data(%#x), err(%+v)\n", d, err)
+		}
+	}
+	return builder.UnresolvedCount()
+}
+
+func (s *syncer) reqUnresolved(st syncType, builder merkle.Builder, need int) {
+	f := func(need int) []*peer {
+		s.mutex.Lock()
+		defer s.mutex.Unlock()
+		var peers []*peer
+		for {
+			s.log.Debugf("Wait for valid peer st(%s)\n", st)
+			peers = s._getValidPeers(need)
+			if peers != nil {
+				break
+			}
+			s.cond.Wait()
+			if s.complete&int(st) == int(st) {
+				return nil
+			}
+			s.log.Debugf("Wake up for valid peer st(%s)\n", st)
+		}
+		return peers
+	}
+
+	mutex := &s.bMutex[st.toIndex()]
+	for {
+		peers := f(need)
+		if len(peers) == 0 {
+			return
+		}
+		mutex.Lock()
+		b, unresolved, unused := s._reqUnresolvedNode(st, builder, peers)
+		mutex.Unlock()
+		if b == false {
+			s.mutex.Lock()
+			s._returnValidPeers(unused)
+			s.mutex.Unlock()
+			continue
+		} else {
+			s.mutex.Lock()
+			size := s.vpool.size()
+			if len(unused) > 0 {
+				s._returnValidPeers(unused)
+			}
+			s.log.Debugf("WorldSate size(%d), unused(%d), unresolved(%d)\n",
+				size, len(unused), unresolved)
+			if unresolved == 0 {
+				if s.complete&int(st) != int(st) {
+					s.finishCh <- st
+				}
+			}
+			if size == 0 && len(unused) > 0 && s.complete != syncComplete {
+				s.cond.Signal()
+			}
+			s.mutex.Unlock()
+			break
+		}
 	}
 }
 
-func (s *syncer) onNodeData(p *peer, status errCode, t syncType, data [][]byte) {
-	s.log.Debugf("OnNodeData p(%s), status(%d), t(%d), data(%#x)\n", p, status, t, data)
+func (s *syncer) onNodeData(p *peer, status errCode, st syncType, data [][]byte) {
 	s.mutex.Lock()
-	s.vpool.push(p.id, p)
+	s.vpool.push(p)
 	if s.vpool.size() == 1 {
 		s.cond.Signal()
 	}
+	s.mutex.Unlock()
 
-	if t.isValid() == false {
-		s.log.Warnf("Wrong syncType. (%d)\n", t)
-		s.mutex.Unlock()
+	if st.isValid() == false {
+		s.log.Warnf("Wrong syncType. (%d)\n", st)
 		return
 	}
 
-	builder := s.builder[t.toIndex()]
-	if status != NoError {
-		s._requestIfNotEnough(p)
-		s.mutex.Unlock()
-	} else {
-		s.mutex.Unlock()
-		for _, d := range data {
-			s.log.Debugf("receive node(%#x)\n", d)
-			if err := builder.OnData(d); err != nil {
-				s.log.Infof("Failed to OnData to builder data(%#x), err(%+v)\n", d, err)
-			}
-		}
-	}
+	bIndex := st.toIndex()
+	builder := s.builder[bIndex]
 
-	if s._reqUnresolvedNode(t, builder) == 0 {
+	s.bMutex[bIndex].Lock()
+	unresolved := s._onNodeData(builder, data)
+	s.bMutex[bIndex].Unlock()
+
+	if unresolved == 0 {
 		s.mutex.Lock()
-		s.finishCh <- t
+		if s.complete&int(st) != int(st) {
+			s.complete |= int(st)
+			s.finishCh <- st
+		}
 		s.mutex.Unlock()
+
 	}
+	need := unresolved/configMaxRequestHash + 1
+	s.reqUnresolved(st, builder, need)
 }
 
-func (s *syncer) onReceive(pi module.ProtocolInfo, b []byte, p *peer) (bool, error) {
-	s.log.Debugf("syncer onReceive pi(%s), b(%#x), p(%s)\n", pi, b, p)
+func (s *syncer) onReceive(pi module.ProtocolInfo, b []byte, p *peer) {
 	s.processMsg(receiveMsg, pi, b, p)
-	return false, nil
 }
 
 func (s *syncer) onJoin(p *peer) {
-	log.Debugf("syncer.onJoin peer(%s)\n", p)
+	log.Debugf("onJoin peer(%s)\n", p)
 	p.cb = s
 	s.mutex.Lock()
-	defer s.mutex.Unlock()
 	s._requestIfNotEnough(p)
+	s.mutex.Unlock()
 }
 
 func (s *syncer) onLeave(id module.PeerID) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
+	log.Debugf("onLeave id(%s)\n", id)
 	p := s.vpool.getPeer(id)
 	if p == nil {
-		// TODO remove rp then remove cancleCh do stop(rp.timer)
 		if rp := s.sentReq[id]; rp != nil {
 			rp.timer.Stop()
 			delete(s.sentReq, id)
@@ -187,34 +295,45 @@ func (s *syncer) processMsg(msgType int, pi module.ProtocolInfo, b []byte, p *pe
 	defer s.mutex.Unlock()
 	rp := s.sentReq[p.id]
 	if rp == nil {
-		// already consumed request
+		log.Debugf("peer(%s) for (%s) is already received\n", p, pi)
 		return
-	}
-	var i interface{}
-	var reqID uint32
-	var err error
-	switch pi {
-	case protoResult:
-		data := new(result)
-		_, err = c.UnmarshalFromBytes(b, data)
-		reqID = data.ReqID
-		i = data
-	case protoNodeData:
-		data := new(nodeData)
-		_, err = c.UnmarshalFromBytes(b, data)
-		reqID = data.ReqID
-		i = data
-	default:
-		log.Info("Invalid protocol received(%d)\n", pi)
 	}
 
-	if err != nil || reqID != p.reqID {
-		s.log.Infof("Failed onReceive. err(%v), receivedReqID(%d), p.reqID(%d), pi(%s)\n", err, reqID, p.reqID, pi)
-		return
+	var i interface{}
+	if msgType == receiveMsg {
+		var reqID uint32
+		var err error
+		switch pi {
+		case protoResult:
+			data := new(result)
+			_, err = c.UnmarshalFromBytes(b, data)
+			reqID = data.ReqID
+			i = data
+		case protoNodeData:
+			data := new(nodeData)
+			_, err = c.UnmarshalFromBytes(b, data)
+			reqID = data.ReqID
+			i = data
+		default:
+			log.Info("Invalid protocol received(%d)\n", pi)
+			return
+		}
+
+		if err != nil || reqID != p.reqID {
+			s.log.Infof(
+				"Failed onReceive. err(%v), receivedReqID(%d), p.reqID(%d), pi(%s), byte(%#x)\n",
+				err, reqID, p.reqID, pi, b)
+			return
+		}
 	}
+	p.timer.Stop()
 	delete(s.sentReq, p.id)
 
-	go p.onReceive(msgType, pi, i)
+	go func() {
+		if p.onReceive(msgType, pi, i) == false {
+			s.vpool.push(p)
+		}
+	}()
 }
 
 func (s *syncer) stop() {
@@ -223,24 +342,22 @@ func (s *syncer) stop() {
 	for k, p := range s.sentReq {
 		delete(s.sentReq, k)
 		p.timer.Stop()
-		s.vpool.push(p.id, p)
+		s.vpool.push(p)
 	}
 	s.cond.Broadcast()
 	close(s.finishCh)
 }
 
 func (s *syncer) _updateValidPool() {
-	// TODO increase configMaxPeerForSync
-	// This call means validpool is not enough
 	if s.ivpool.size() == 0 {
 		return
 	}
 
 	var failedList []*peer
-	for p := s.ivpool.pop(); p != nil; {
+	for p := s.ivpool.pop(); p != nil; p = s.ivpool.pop() {
 		err := s.client.hasNode(
 			p, s.ah, s.prh,
-			s.nrh, s.vlh)
+			s.nrh, s.vlh, s.processMsg)
 		if err != nil {
 			failedList = append(failedList, p)
 		}
@@ -248,93 +365,90 @@ func (s *syncer) _updateValidPool() {
 	}
 
 	for _, p := range failedList {
-		s.ivpool.push(p.id, p)
+		s.ivpool.push(p)
 	}
 }
 
 func (s *syncer) _requestIfNotEnough(p *peer) {
 	log.Debugf("vpool(%d), pool(%d)\n", s.vpool.size(), s.pool.size())
 	if s.vpool.size() < configMaxPeerForSync && s.vpool.size() != s.pool.size() {
-		go func() {
-			s.mutex.Lock()
-			defer s.mutex.Unlock()
-			err := s.client.hasNode(
-				p, s.ah, s.prh,
-				s.nrh, s.vlh)
-			if err != nil {
-				log.Info("Failed to request hasNode to %s, err(%+v)\n", p, err)
-				s.ivpool.push(p.id, p)
-			} else {
-				s.sentReq[p.id] = p
-			}
-		}()
+		err := s.client.hasNode(
+			p, s.ah, s.prh,
+			s.nrh, s.vlh, s.processMsg)
+		if err != nil {
+			log.Info("Failed to request hasNode to %s, err(%+v)\n", p, err)
+			s.ivpool.push(p)
+		} else {
+			s.sentReq[p.id] = p
+		}
 	} else {
-		s.ivpool.push(p.id, p)
+		s.ivpool.push(p)
 	}
 }
 
-func (s *syncer) _getValidPeer() *peer {
-	var p *peer
-	for p = s.vpool.pop(); p == nil; p = s.vpool.pop() {
-		s._updateValidPool()
-		s.log.Debug("_reqUnresolvedNode waiting for valid peer\n")
-		s.cond.Wait()
-		s.log.Debug("_reqUnresolvedNode wake up \n")
+func (s *syncer) _returnValidPeers(peers []*peer) {
+	prev := s.vpool.size()
+	for _, peer := range peers {
+		delete(s.sentReq, peer.id)
+		s.vpool.push(peer)
 	}
-	return p
+
+	if prev == 0 && s.vpool.size() > 0 {
+		s.cond.Signal()
+	}
 }
 
-func (s *syncer) _reqUnresolvedNode(t syncType, builder merkle.Builder) int {
-	unresolved := builder.UnresolvedCount()
-	s.log.Debugf("_reqUnresolvedNode unresolved(%d)\n", unresolved)
-	if unresolved == 0 {
+func (s *syncer) _getValidPeers(need int) []*peer {
+	if s.vpool.size() == 0 {
+		go s._updateValidPool()
+		s.log.Debugf("_getValidPeers size = %d\n", s.vpool.size())
+		return nil
+	}
+	size := s.vpool.size()
+	if size > need {
+		size = need
+	}
+	peers := make([]*peer, size)
+	for i := 0; i < size; i++ {
+		peer := s.vpool.pop()
+		s.sentReq[peer.id] = peer
+		peers[i] = peer
+	}
+	s.log.Debugf("_getValidPeers size = %d, peers = %v\n", size, peers)
+	return peers
+}
+
+func (s *syncer) onResult(status errCode, p *peer) {
+	log.Debugf("OnResult : status(%d), p(%s)\n", status, p)
+	if status == NoError {
 		s.mutex.Lock()
-		s.finishCh <- t
+		s.vpool.push(p)
+		if s.vpool.size() == 1 {
+			s.cond.Signal()
+		}
 		s.mutex.Unlock()
-		return 0
+	} else {
+		s.mutex.Lock()
+		s._requestIfNotEnough(p)
+		s.mutex.Unlock()
 	}
-	req := builder.Requests()
-
-	var keys [][]byte
-	s.mutex.Lock()
-	for req.Next() {
-		key := req.Key()
-		s.log.Debugf("request node(%#x)\n", key)
-		keys = append(keys, key)
-		s.reqKey[string(key)] = true
-	}
-	p := s._getValidPeer()
-	s.mutex.Unlock()
-	if err := s.client.requestNodeData(p, keys, t, s.processMsg); err != nil {
-		// TODO request node data with another
-	}
-	s.mutex.Lock()
-	s.sentReq[p.id] = p
-	s.mutex.Unlock()
-	return unresolved
 }
 
-func (s *syncer) start() {
+func (s *syncer) ForceSync() *Result {
+	s.log.Debugf("ForceSync")
 	s.cb(true)
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
 
 	pl := s.pool.peerList()
+	s.mutex.Lock()
 	for _, p := range pl {
 		p.cb = s
-		err := s.client.hasNode(p, s.ah, s.prh, s.nrh, s.vlh)
+		err := s.client.hasNode(p, s.ah, s.prh, s.nrh, s.vlh, s.processMsg)
 		if err != nil {
 			s.log.Info("Failed to request hasNode to %s, err(%+v)\n", p, err)
 		}
 		s.sentReq[p.id] = p
 	}
-
-	f := func(t syncType, builder merkle.Builder) {
-		s.log.Debugf("start sync for (%s)\n", t)
-		if s._reqUnresolvedNode(t, builder) == 0 {
-			s.finishCh <- t
-		}
-	}
+	s.mutex.Unlock()
 
 	builder := merkle.NewBuilder(s.database)
 	s.builder[syncWorldState.toIndex()] = builder
@@ -343,50 +457,45 @@ func (s *syncer) start() {
 	} else {
 		s.log.Panicf("Failed to call NewWorldSnapshotWithBuilder, ah(%#x), vlh(%#x)\n", s.ah, s.vlh)
 	}
-	go f(syncWorldState, builder)
+	go s.reqUnresolved(syncWorldState, builder, 1)
 
-	rf := func(t syncType, rl *module.ReceiptList) {
+	rf := func(t syncType, rl *module.ReceiptList, rh []byte) {
 		if s.nrh != nil {
 			builder := merkle.NewBuilder(s.database)
 			s.builder[t.toIndex()] = builder
-			*rl = txresult.NewReceiptListWithBuilder(builder, s.nrh)
-			go f(t, builder)
+			*rl = txresult.NewReceiptListWithBuilder(builder, rh)
+			go s.reqUnresolved(t, builder, 1)
 		} else {
 			s.nrl = txresult.NewReceiptListFromSlice(s.database, []txresult.Receipt{})
+			s.mutex.Lock()
 			s.complete |= int(t)
+			s.mutex.Unlock()
 		}
 	}
 
-	rf(syncPatchReceipts, &s.prl)
-	rf(syncNormalReceipts, &s.nrl)
-}
+	rf(syncPatchReceipts, &s.prl, s.prh)
+	rf(syncNormalReceipts, &s.nrl, s.nrh)
 
-func (s *syncer) done() *Result {
-	end := s.complete
-	for end != syncComplete {
+	for s.complete != syncComplete {
 		c := <-s.finishCh
-		end |= int(c)
-		s.log.Infof("done sync (%d) / (%d)\n", c, end)
+		s.mutex.Lock()
+		s.complete |= int(c)
+		s.log.Debugf("complete (%b) / (%b)\n", c, s.complete)
+		s.mutex.Unlock()
 	}
 	s.cb(false)
 	return &Result{s.wss, s.prl, s.nrl}
 }
 
-func (s *syncer) ForceSync() *Result {
-	s.start()
-	r := s.done()
-	return r
-}
-
 func (s *syncer) Finalize() error {
 	s.log.Debugf("Finalize :  ah(%#x), patchHash(%#x), normalHash(%#x), vlh(%#x)\n",
 		s.ah, s.prh, s.nrh, s.vlh)
-	//for i, builder := range []merkle.Builder{s.wsBuilder, s.prBuilder, s.nrBuilder} {
 	for i, t := range []syncType{syncWorldState, syncPatchReceipts, syncNormalReceipts} {
 		builder := s.builder[t.toIndex()]
 		if builder == nil {
 			continue
 		} else {
+			s.log.Debugf("Flush %s\n", t)
 			if err := builder.Flush(true); err != nil {
 				s.log.Errorf("Failed to flush for %d builder err(%+v)\n", i, err)
 				return err
@@ -397,8 +506,10 @@ func (s *syncer) Finalize() error {
 }
 
 func newSyncer(database db.Database, c *client, p *peerPool,
-	accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash []byte, log log.Logger, cb func(syncing bool)) *syncer {
-	log.Debugf("newSyncer ah(%#x), pReceiptsHash(%#x), nReceiptsHash(%#x), vlh(%#x)\n", accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash)
+	accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash []byte,
+	log log.Logger, cb func(syncing bool)) *syncer {
+	log.Debugf("newSyncer ah(%#x), pReceiptsHash(%#x), nReceiptsHash(%#x), vlh(%#x)\n",
+		accountsHash, pReceiptsHash, nReceiptsHash, validatorListHash)
 
 	s := &syncer{
 		database: database,
@@ -411,8 +522,7 @@ func newSyncer(database db.Database, c *client, p *peerPool,
 		prh:      pReceiptsHash,
 		nrh:      nReceiptsHash,
 		vlh:      validatorListHash,
-		reqKey:   make(map[string]bool),
-		finishCh: make(chan syncType),
+		finishCh: make(chan syncType, 1),
 		log:      log,
 		cb:       cb,
 	}

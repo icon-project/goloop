@@ -3,7 +3,6 @@ package sync
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"math/big"
 	"testing"
 
@@ -134,110 +133,6 @@ func createAPeerID() module.PeerID {
 	return network.NewPeerIDFromAddress(wallet.New().Address())
 }
 
-type tReceiveEvent struct {
-	PI module.ProtocolInfo
-	B  []byte
-	ID module.PeerID
-}
-
-/*type tReceiveStreamMessageEvent struct {
-	PI module.ProtocolInfo
-	B  []byte
-	ID module.PeerID
-	SM streamMessage
-}
-*/
-type tFailureEvent struct {
-	Err error
-	PI  module.ProtocolInfo
-	B   []byte
-}
-
-type tJoinEvent struct {
-	ID module.PeerID
-}
-
-type tLeaveEvent struct {
-	ID module.PeerID
-}
-
-type tReactor struct {
-	useStreamMessageEvent bool
-	ch                    chan interface{}
-}
-
-//func newTReactor() *tReactor {
-//	return &tReactor{ch: make(chan interface{}, 5)}
-//}
-//
-//func (r *tReactor) OnReceive(pi module.ProtocolInfo, b []byte, id module.PeerID) (bool, error) {
-//	if r.useStreamMessageEvent {
-//		sm := &streamMessage{}
-//		codec.UnmarshalFromBytes(b, sm)
-//		r.ch <- tReceiveStreamMessageEvent{pi, b, id, *sm}
-//	} else {
-//		r.ch <- tReceiveEvent{pi, b, id}
-//	}
-//	return false, nil
-//}
-//
-//func (r *tReactor) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
-//	r.ch <- tFailureEvent{err, pi, b}
-//}
-//
-//func (r *tReactor) OnJoin(id module.PeerID) {
-//	r.ch <- tJoinEvent{id}
-//}
-//
-//func (r *tReactor) OnLeave(id module.PeerID) {
-//	r.ch <- tLeaveEvent{id}
-//}
-//
-//const (
-//	pi0 protocolInfo = iota
-//	pi1
-//)
-//
-//var pis = []module.ProtocolInfo{pi0, pi1}
-//
-//type streamTestSetUp struct {
-//	nm *tNetworkManager
-//	r  *tReactor
-//	ph module.ProtocolHandler
-//
-//	// for non stream
-//	nm2 *tNetworkManager
-//	r2  *tReactor
-//	ph2 module.ProtocolHandler
-//
-//	clock    *common.TestClock
-//	payloads [][]byte
-//	tick     time.Duration
-//}
-//
-//func newStreamTestSetUp(t *testing.T) *streamTestSetUp {
-//	s := &streamTestSetUp{}
-//	s.clock = &common.TestClock{}
-//	s.nm = newTNetworkManager(createAPeerID())
-//	s.nm2 = newTNetworkManager(createAPeerID())
-//	s.nm.join(s.nm2)
-//	s.r = newTReactor()
-//	var err error
-//	s.ph, err = s.nm.RegisterReactorForStreams("reactorA", s.r, pis, 1)
-//	assert.Nil(t, err)
-//	s.r2 = newTReactor()
-//	s.ph2, err = s.nm2.RegisterReactor("reactorA", s.r2, pis, 1)
-//	assert.Nil(t, err)
-//	s.r2.useStreamMessageEvent = true
-//
-//	const NUM_PAYLOADS = 10
-//	for i := 0; i < NUM_PAYLOADS; i++ {
-//		s.payloads = append(s.payloads, []byte{byte(i + 1)})
-//	}
-//	s.tick = configPeerAckTimeout / 10
-//	return s
-//}
-
 type testValidator struct {
 	addr module.Address
 }
@@ -283,23 +178,18 @@ func TestSync_SimpleAccountSync(t *testing.T) {
 	ws.GetSnapshot().Flush()
 	vh := ws.GetValidatorState().GetSnapshot().Hash()
 
-	//r := syncm2.ForceSync(acHash, nil, nil, vlh)
 	syncer1 := syncm2.NewSyncer(acHash, nil, nil, vh)
 	r := syncer1.ForceSync()
 
+	log.Printf("END\n")
 	as := r.Wss.GetAccountSnapshot([]byte("ABC"))
 	v, err := as.GetValue([]byte("ABC"))
-	//for it := r.wss.Iterator(); it.Has(); it.Next() {
-	//	o, k, _ := it.Get()
-	//	log.Printf("iterator : o (%v), key(%#x)\n", o, k)
-	//}
-	//
-	//v, err := r.Accounts.Get(crypto.SHA3Sum256([]byte("ABC")))
 	if err != nil {
 		t.Fatalf("err = %v\n", err)
 	}
 
 	log.Printf("v = %v\n", v)
+	log.Printf("END OF TestSync_SimpleAccountSync\n")
 }
 
 func TestSync_AccountSync(t *testing.T) {
@@ -346,21 +236,13 @@ func TestSync_AccountSync(t *testing.T) {
 		}
 	}
 
-	finish := make(chan *Result)
-	var results [cSyncPeers]*Result
 	for i := 0; i < cSyncPeers; i++ {
-		go func(index int) {
-			r := syncM[cPeers-cSyncPeers+index].
+		func(index int) {
+			syncM[cPeers-cSyncPeers+index].
 				NewSyncer(prevHash, nil, nil, nil).
 				ForceSync()
-			finish <- r
+			log.Printf("Finish (%d)\n", index)
 		}(i)
-	}
-	finishCnt := 0
-
-	for finishCnt != cSyncPeers {
-		results[finishCnt] = <-finish
-		finishCnt++
 	}
 	log.Printf("FINISH\n")
 }
@@ -376,15 +258,15 @@ func TestSync_ReceiptsSync(t *testing.T) {
 
 	nm.join(nm2)
 
-	receiptsNum := 100
+	receiptsNum := 2
 	patchReceipts := make([]txresult.Receipt, receiptsNum)
 	normalReceipts := make([]txresult.Receipt, receiptsNum)
 
-	for _, re := range [][]txresult.Receipt{patchReceipts, normalReceipts} {
+	for j, re := range [][]txresult.Receipt{patchReceipts, normalReceipts} {
 		for i := 0; i < receiptsNum; i++ {
 			addr := common.NewAddressFromString("cx0000000000000000000000000000000000000001")
 			r := txresult.NewReceipt(addr)
-			r.SetResult(module.StatusSuccess, big.NewInt(100*int64(i)), big.NewInt(1000), nil)
+			r.SetResult(module.StatusSuccess, big.NewInt(100*int64(i+j)), big.NewInt(1000), nil)
 			r.SetCumulativeStepUsed(big.NewInt(100 * int64(i)))
 			jso, err := r.ToJSON(jsonrpc.APIVersionLast)
 			if err != nil {
@@ -392,7 +274,7 @@ func TestSync_ReceiptsSync(t *testing.T) {
 			}
 			jb, err := json.MarshalIndent(jso, "", "    ")
 
-			fmt.Printf("JSON: %s\n", jb)
+			//fmt.Printf("JSON: %s\n", jb)
 
 			r2, err := txresult.NewReceiptFromJSON(jb, jsonrpc.APIVersionLast)
 			if err != nil {
@@ -409,11 +291,34 @@ func TestSync_ReceiptsSync(t *testing.T) {
 	nHash := normalReceiptsList.Hash()
 	normalReceiptsList.Flush()
 
-	syncm2.NewSyncer(nil, pHash, nHash, nil).ForceSync()
+	syncer := syncm2.NewSyncer(nil, pHash, nHash, nil)
+	syncer.ForceSync()
+	syncer.Finalize()
 
-	patchReceiptsList = txresult.NewReceiptListFromSlice(db2, patchReceipts)
-	for it := patchReceiptsList.Iterator(); it.Has(); it.Next() {
-		v, _ := it.Get()
+	patchReceiptsListByHash := txresult.NewReceiptListFromHash(db2, pHash)
+	log.Printf("pHash = %v, patchReceiptsListByHash = %v\n", pHash, patchReceiptsListByHash)
+
+	i := 0
+	for it := patchReceiptsListByHash.Iterator(); it.Has(); it.Next() {
+		v, err := it.Get()
+		if err != nil {
+			log.Errorf("err = %s\n", err)
+		}
+		log.Printf("i = %d, p(%v)\n", i, patchReceipts[i].Bytes())
 		log.Printf("v = %v\n", v)
+		if bytes.Compare(patchReceipts[i].Bytes(), v.Bytes()) != 0 {
+			t.Errorf("Diff pr %v, v %v\n", patchReceipts[i].Bytes(), v.Bytes())
+		}
+		i++
+	}
+
+	normalReceiptsListByHash := txresult.NewReceiptListFromHash(db2, nHash)
+	i = 0
+	for it := normalReceiptsListByHash.Iterator(); it.Has(); it.Next() {
+		v, _ := it.Get()
+		if bytes.Compare(normalReceipts[i].Bytes(), v.Bytes()) != 0 {
+			t.Errorf("Diff pr %v, v %v\n", normalReceipts[i].Bytes(), v.Bytes())
+		}
+		i++
 	}
 }

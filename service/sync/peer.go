@@ -14,9 +14,10 @@ type peer struct {
 	reqID uint32
 	timer *time.Timer
 	cb    Callback
+	log   log.Logger
 }
 
-func (p *peer) onReceive(r int, pi module.ProtocolInfo, data interface{}) {
+func (p *peer) onReceive(r int, pi module.ProtocolInfo, data interface{}) bool {
 	log.Debugf("peer.onReceive result(%d), pi(%s), p(%s)\n", r, pi, p)
 	var status errCode
 	var t syncType
@@ -36,11 +37,15 @@ func (p *peer) onReceive(r int, pi module.ProtocolInfo, data interface{}) {
 			state = rd.Data
 		}
 		p.cb.onNodeData(p, status, t, state)
+	default:
+		p.log.Info("Received wrong type (%s)\n", pi)
+		return false
 	}
+	return true
 }
 
 func (p *peer) String() string {
-	return fmt.Sprintf("peer id(%s), reqID(%d)\n", p.id, p.reqID)
+	return fmt.Sprintf("peer id(%s), reqID(%d)", p.id, p.reqID)
 }
 
 type peerPool struct {
@@ -57,23 +62,16 @@ func newPeerPool() *peerPool {
 	}
 }
 
-func (pp *peerPool) push(id module.PeerID, p *peer) *peer {
+func (pp *peerPool) push(p *peer) {
+	id := p.id
 	if e, ok := pp.peers[id]; ok == true {
 		pp.pList.Remove(e)
 		delete(pp.peers, id)
 	}
 
-	np := p
-	if p == nil {
-		np = &peer{
-			id:    id,
-			reqID: 0,
-		}
-	}
-	e := pp.pList.PushBack(np)
+	e := pp.pList.PushBack(p)
 	pp.peers[id] = e
-	log.Debugf("peerPool push(%s), len(%d)\n", np, pp.pList.Len())
-	return np
+	log.Debugf("peerPool push(%s), len(%d)\n", p, pp.pList.Len())
 }
 
 func (pp *peerPool) size() int {

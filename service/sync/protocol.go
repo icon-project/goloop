@@ -46,7 +46,7 @@ type hasNode struct {
 }
 
 func (r *hasNode) String() string {
-	return fmt.Sprintf("ReqID(%d), StateHash(%#x), ValidatorHash(%#x), patchHash(%#x), NormalHash(%#x)\n",
+	return fmt.Sprintf("ReqID(%d), StateHash(%#x), ValidatorHash(%#x), patchHash(%#x), NormalHash(%#x)",
 		r.ReqID, r.StateHash, r.ValidatorHash, r.PatchHash, r.NormalHash)
 }
 
@@ -56,7 +56,7 @@ type result struct {
 }
 
 func (r *result) String() string {
-	return fmt.Sprintf("ReqID(%d), Status(%d)\n",
+	return fmt.Sprintf("ReqID(%d), Status(%d)",
 		r.ReqID, r.Status)
 }
 
@@ -67,7 +67,7 @@ type requestNodeData struct {
 }
 
 func (r *requestNodeData) String() string {
-	return fmt.Sprintf("ReqID(%d), Hashes(%#x)\n",
+	return fmt.Sprintf("ReqID(%d), Hashes(%#x)",
 		r.ReqID, r.Hashes)
 }
 
@@ -79,6 +79,6 @@ type nodeData struct {
 }
 
 func (r *nodeData) String() string {
-	return fmt.Sprintf("ReqID(%d), Status(%d), Data(%#x)\n",
+	return fmt.Sprintf("ReqID(%d), Status(%d), Data(%#x)",
 		r.ReqID, r.Status, r.Data)
 }

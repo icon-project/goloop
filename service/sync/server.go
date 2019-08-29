@@ -37,9 +37,8 @@ func (s *server) hasNode(msg []byte, p *peer) {
 		if len(hash) == 0 {
 			continue
 		}
-		// TODO check cache
 		if v, err := s.merkleTrie.Get(hash); err != nil || v == nil {
-			log.Printf("hasNode NoData err(%v), v(%v) hash(%#x)\n", err, v, hash)
+			s.log.Debugf("hasNode NoData err(%v), v(%v) hash(%#x)\n", err, v, hash)
 			status = ErrNoData
 			break
 		}
@@ -47,7 +46,7 @@ func (s *server) hasNode(msg []byte, p *peer) {
 
 	if hr.ValidatorHash != nil {
 		if v, err := s.bytesByHash.Get(hr.ValidatorHash); err != nil || v == nil {
-			log.Printf("hasNode NoData err(%v), v(%v) hash(%#x)\n", err, v, hr.ValidatorHash)
+			s.log.Debugf("hasNode NoData err(%v), v(%v) hash(%#x)\n", err, v, hr.ValidatorHash)
 			status = ErrNoData
 		}
 	}
@@ -62,6 +61,7 @@ func (s *server) hasNode(msg []byte, p *peer) {
 }
 
 func (s *server) _resolveNode(hashes [][]byte) (errCode, [][]byte) {
+	s.log.Debugf("_resolveNode len(%d)\n", len(hashes))
 	values := make([][]byte, len(hashes))
 	for i, hash := range hashes {
 		var err error
@@ -86,6 +86,7 @@ func (s *server) requestNode(msg []byte, p *peer) {
 	}
 
 	status, values := s._resolveNode(req.Hashes)
+	s.log.Debugf("responseNode node(%d), status(%d), peer(%s)\n", len(values), status, p)
 	res := &nodeData{req.ReqID, status, req.Type, values}
 	b, err := c.MarshalToBytes(res)
 	if err != nil {
