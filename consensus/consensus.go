@@ -1660,7 +1660,7 @@ func (cs *consensus) processBlock(br fastsync.BlockResult) {
 	cs.logger.Debugf("processBlock Height:%d\n", blk.Height())
 
 	cvl := NewCommitVoteSetFromBytes(br.Votes())
-	if cvl==nil {
+	if cvl == nil {
 		br.Reject()
 		return
 	}
