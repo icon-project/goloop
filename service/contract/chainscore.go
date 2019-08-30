@@ -27,6 +27,11 @@ func NewChainScore(from module.Address, cc CallContext, log log.Logger) SystemSc
 	return &ChainScore{from, cc, log}
 }
 
+const (
+	StatusIllegalArgument = module.StatusUser + iota
+	StatusNotFound
+)
+
 func (s *ChainScore) GetAPI() *scoreapi.Info {
 	methods := []*scoreapi.Method{
 		{scoreapi.Function, "disableScore",
@@ -458,7 +463,7 @@ func (s *ChainScore) Update(param []byte) error {
 func (s *ChainScore) Ex_disableScore(address module.Address) error {
 	as := s.cc.GetAccountState(address.ID())
 	if as.IsContract() == false {
-		return scoreresult.ErrContractNotFound
+		return scoreresult.New(StatusIllegalArgument, "NoContract")
 	}
 	if as.IsContractOwner(s.from) == false {
 		return scoreresult.New(module.StatusAccessDenied, "NotContractOwner")
@@ -527,7 +532,7 @@ func (s *ChainScore) Ex_rejectScore(txHash []byte) error {
 	varDb := scoredb.NewVarDB(sysAs, txHash)
 	scoreAddr := varDb.Address()
 	if scoreAddr == nil {
-		return scoreresult.Errorf(module.StatusInvalidParameter,
+		return scoreresult.Errorf(StatusNotFound,
 			"Fail to find score by txHash[%x]\n", txHash)
 	}
 	scoreAs := s.cc.GetAccountState(scoreAddr.ID())
@@ -603,12 +608,28 @@ func (s *ChainScore) Ex_setMaxStepLimit(contextType string, cost *common.HexInt)
 }
 
 func (s *ChainScore) Ex_grantValidator(address module.Address) error {
-	if address.IsContract() {
-		return scoreresult.New(module.StatusInvalidParameter, "address should be EOA")
-	}
 	if !s.fromGovernance() {
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
+	if address.IsContract() {
+		return scoreresult.New(StatusIllegalArgument, "address should be EOA")
+	}
+
+	if s.cc.MembershipEnabled() {
+		found := false
+		as := s.cc.GetAccountState(state.SystemID)
+		db := scoredb.NewArrayDB(as, state.VarMembers)
+		for i := 0; i < db.Size(); i++ {
+			if db.Get(i).Address().Equal(address) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return scoreresult.New(StatusIllegalArgument, "address should be one of members")
+		}
+	}
+
 	if v, err := state.ValidatorFromAddress(address); err == nil {
 		return s.cc.GetValidatorState().Add(v)
 	} else {
@@ -617,14 +638,16 @@ func (s *ChainScore) Ex_grantValidator(address module.Address) error {
 }
 
 func (s *ChainScore) Ex_revokeValidator(address module.Address) error {
-	if address.IsContract() {
-		return scoreresult.New(module.StatusInvalidParameter, "address should be EOA")
-	}
 	if !s.fromGovernance() {
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
+	if address.IsContract() {
+		return scoreresult.New(StatusIllegalArgument, "address should be EOA")
+	}
 	if v, err := state.ValidatorFromAddress(address); err == nil {
-		s.cc.GetValidatorState().Remove(v)
+		if ok := s.cc.GetValidatorState().Remove(v); !ok {
+			return scoreresult.New(StatusNotFound, "NotFound")
+		}
 		return nil
 	} else {
 		return err
@@ -645,11 +668,11 @@ func (s *ChainScore) Ex_getValidators() ([]interface{}, error) {
 }
 
 func (s *ChainScore) Ex_addMember(address module.Address) error {
-	if address.IsContract() {
-		return scoreresult.New(module.StatusInvalidParameter, "address should be EOA")
-	}
 	if !s.fromGovernance() {
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
+	}
+	if address.IsContract() {
+		return scoreresult.New(StatusIllegalArgument, "address should be EOA")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
 	db := scoredb.NewArrayDB(as, state.VarMembers)
@@ -662,18 +685,17 @@ func (s *ChainScore) Ex_addMember(address module.Address) error {
 }
 
 func (s *ChainScore) Ex_removeMember(address module.Address) error {
-	if address.IsContract() {
-		return scoreresult.New(module.StatusInvalidParameter, "address should be EOA")
-	}
-
 	if !s.fromGovernance() {
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
+	}
+	if address.IsContract() {
+		return scoreresult.New(StatusIllegalArgument, "address must be EOA")
 	}
 
 	// If membership system is on, first check if the member is not a validator
 	if s.cc.MembershipEnabled() {
 		if s.cc.GetValidatorState().IndexOf(address) >= 0 {
-			return scoreresult.New(module.StatusSystemError, "Should revoke validator before removing the member")
+			return scoreresult.New(StatusNotFound, "Should revoke validator before removing the member")
 		}
 	}
 
@@ -814,9 +836,12 @@ func (s *ChainScore) Ex_getMaxStepLimit(contextType string) (int64, error) {
 }
 
 func (s *ChainScore) Ex_getScoreStatus(address module.Address) (map[string]interface{}, error) {
+	if !address.IsContract() {
+		return nil, scoreresult.New(StatusIllegalArgument, "address must be contract")
+	}
 	as := s.cc.GetAccountState(address.ID())
-	if as == nil {
-		return nil, scoreresult.ErrContractNotFound
+	if as == nil || !as.IsContract() {
+		return nil, scoreresult.New(StatusNotFound, "ContractNotFound")
 	}
 	scoreStatus := make(map[string]interface{})
 	if cur := as.Contract(); cur != nil {
