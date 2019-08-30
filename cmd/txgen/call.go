@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"os"
 	"sync/atomic"
 	"text/template"
 	"time"
 
 	"github.com/pkg/errors"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
 )
@@ -69,22 +71,30 @@ func (m *CallMaker) Prepare(client *Client) error {
 		return errors.New("Coin Transfer FAIL")
 	}
 
-	deploy, err := makeDeploy(m.NID, m.owner, m.SourcePath,
-		m.InstallParams)
-	if err != nil {
-		return err
-	}
+	if _, err := os.Stat(m.SourcePath); err == nil {
+		deploy, err := makeDeploy(m.NID, m.owner, m.SourcePath,
+			m.InstallParams)
+		if err != nil {
+			return err
+		}
 
-	r, err = client.SendTxAndGetResult(deploy, time.Second*3)
-	if err != nil {
-		js, _ := json.MarshalIndent(deploy, "", "  ")
-		log.Printf("Transaction FAIL : tx=%s", js)
-		return err
+		r, err = client.SendTxAndGetResult(deploy, time.Second*3)
+		if err != nil {
+			js, _ := json.MarshalIndent(deploy, "", "  ")
+			log.Printf("Transaction FAIL : tx=%s", js)
+			return err
+		}
+		if r.Status.Value != 1 {
+			return errors.New("DeployFailed")
+		}
+		m.contract = r.SCOREAddress
+	} else {
+		addr := new(common.Address)
+		if err := addr.SetString(m.SourcePath); err != nil {
+			return err
+		}
+		m.contract = addr
 	}
-	if r.Status.Value != 1 {
-		return errors.New("DeployFailed")
-	}
-	m.contract = r.SCOREAddress
 	m.index = 0
 
 	return nil
