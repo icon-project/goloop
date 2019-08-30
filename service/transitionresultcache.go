@@ -2,10 +2,11 @@ package service
 
 import (
 	"container/list"
-	"github.com/icon-project/goloop/common/log"
 	"sync"
 
+	"github.com/icon-project/goloop/common/cache"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
@@ -16,7 +17,6 @@ type trCacheItem struct {
 	database          *databaseAdaptor
 	transactionResult *transitionResult
 	worldSnapshot     state.WorldSnapshot
-	validatorSnapshot state.ValidatorSnapshot
 	normalReceipts    module.ReceiptList
 	patchReceipts     module.ReceiptList
 }
@@ -35,7 +35,23 @@ type transitionResultCache struct {
 	stateList *list.List
 	stateMap  map[string]*list.Element
 
+	vssCache *cache.LRUCache
+
 	log log.Logger
+}
+
+func (c *transitionResultCache) GetValidatorSnapshot(vh []byte) (state.ValidatorSnapshot, error) {
+	vhs := string(vh)
+	if vs, err := c.vssCache.Get(vhs); err != nil {
+		return nil, err
+	} else {
+		return vs.(state.ValidatorSnapshot), nil
+	}
+}
+
+func (c *transitionResultCache) createValidatorSnapshot(vhs string) (interface{}, error) {
+	vs, err := state.ValidatorSnapshotFromHash(c.database, []byte(vhs))
+	return vs, err
 }
 
 func (c *transitionResultCache) getItemInLock(result []byte) (*trCacheItem, error) {
@@ -110,27 +126,21 @@ func (c *transitionResultCache) GetWorldSnapshot(result []byte, vh []byte) (stat
 	if err != nil {
 		return nil, err
 	}
-
-	if item.validatorSnapshot == nil && len(vh) > 0 {
-		vl, err := state.ValidatorSnapshotFromHash(item.database, vh)
-		if err != nil {
-			return nil, err
-		}
-		item.validatorSnapshot = vl
-
-		if item.worldSnapshot != nil {
-			item.worldSnapshot = state.UpdateWorldSnapshotValidators(item.database, item.worldSnapshot, item.validatorSnapshot)
-		}
-	}
-
 	if item.worldSnapshot == nil && len(item.transactionResult.StateHash) > 0 {
 		item.worldSnapshot = state.NewWorldSnapshot(
 			item.database,
 			item.transactionResult.StateHash,
-			item.validatorSnapshot)
+			nil)
 	}
-
 	c.reclaimInLock()
+
+	if len(vh) > 0 {
+		vss, err := c.GetValidatorSnapshot(vh)
+		if err != nil {
+			return nil, err
+		}
+		return state.NewWorldSnapshotWithNewValidators(item.database, item.worldSnapshot, vss), nil
+	}
 
 	return item.worldSnapshot, nil
 }
@@ -161,7 +171,7 @@ func (c *transitionResultCache) TotalBytes() int {
 }
 
 func newTransitionResultCache(database db.Database, count int, size int, log log.Logger) *transitionResultCache {
-	return &transitionResultCache{
+	trc := &transitionResultCache{
 		database:   database,
 		entryCount: count,
 		entrySize:  size,
@@ -169,4 +179,6 @@ func newTransitionResultCache(database db.Database, count int, size int, log log
 		stateMap:   make(map[string]*list.Element),
 		log:        log,
 	}
+	trc.vssCache = cache.NewLRUCache(size, trc.createValidatorSnapshot)
+	return trc
 }

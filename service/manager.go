@@ -411,7 +411,7 @@ func (m *manager) Call(resultHash []byte,
 }
 
 func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {
-	valList, _ := state.ValidatorSnapshotFromHash(m.db, hash)
+	valList, _ := m.trc.GetValidatorSnapshot(hash)
 	return valList
 }
 

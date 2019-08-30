@@ -238,12 +238,15 @@ func NewWorldSnapshot(dbase db.Database, stateHash []byte, vs ValidatorSnapshot)
 	return ws
 }
 
-func UpdateWorldSnapshotValidators(dbase db.Database, snapshot WorldSnapshot, vs ValidatorSnapshot) WorldSnapshot {
+func NewWorldSnapshotWithNewValidators(dbase db.Database, snapshot WorldSnapshot, vss ValidatorSnapshot) WorldSnapshot {
 	if ws, ok := snapshot.(*worldSnapshotImpl); ok {
-		ws.validators = vs
-		return ws
+		return &worldSnapshotImpl{
+			database:   ws.database,
+			accounts:   ws.accounts,
+			validators: vss,
+		}
 	} else {
-		return NewWorldSnapshot(dbase, snapshot.StateHash(), vs)
+		return NewWorldSnapshot(dbase, snapshot.StateHash(), vss)
 	}
 }
 
