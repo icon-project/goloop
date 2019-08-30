@@ -2,8 +2,8 @@ package block
 
 import (
 	"bytes"
-	"errors"
 
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -76,6 +76,7 @@ func (ti *transitionImpl) _newTransition(cb transitionCallback) *transition {
 	if ti.running() {
 		ti._cbs = append(ti._cbs, tr)
 	}
+	traceRef(ti)
 	return tr
 }
 
@@ -100,6 +101,7 @@ func (ti *transitionImpl) cancel(tncb transitionCallback) bool {
 
 func (ti *transitionImpl) unref() {
 	ti._nRef--
+	traceUnref(ti)
 	if ti._nRef == 0 {
 		for _, c := range ti._children {
 			c._parent = nil
@@ -170,6 +172,7 @@ func (ti *transitionImpl) _addChild(
 		return nil, err
 	}
 	ti._children = append(ti._children, cti)
+	traceNewTransitionImpl(cti)
 	return tr, nil
 }
 
@@ -353,5 +356,6 @@ func newInitialTransition(
 		_ti: ti,
 		_cb: nil,
 	}
+	traceNewTransitionImpl(ti)
 	return tr
 }
