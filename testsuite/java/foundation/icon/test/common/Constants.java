@@ -41,6 +41,7 @@ public class Constants {
 
     public static final String SCORE_MULTISIG_PATH = Constants.SCORE_ROOT + "multisig_wallet";
     public static final String SCORE_STEPCOUNTER_PATH = Constants.SCORE_ROOT + "step_counter";
+    public static final String SCORE_DB_STEP_PATH = Constants.SCORE_ROOT + "db_step";
     public static final String SCORE_CROWDSALE_PATH = Constants.SCORE_ROOT + "crowdsale";
     public static final String SCORE_SAMPLETOKEN_PATH = Constants.SCORE_ROOT + "sample_token";
     public static final String SCORE_HELLOWORLD_PATH = Constants.SCORE_ROOT + "hello_world";
