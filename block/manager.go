@@ -379,7 +379,8 @@ func (pt *proposeTask) _onExecute(err error) {
 	}
 	pmtr := pt.in.mtransition()
 	mtr := tr.mtransition()
-	block := &blockV2{
+	var block module.Block
+	block = &blockV2{
 		height:             height,
 		timestamp:          timestamp,
 		proposer:           pt.manager.chain.Wallet().Address(),
@@ -392,14 +393,17 @@ func (pt *proposeTask) _onExecute(err error) {
 		_nextValidators:    pmtr.NextValidators(),
 		votes:              pt.votes,
 	}
-	if _, ok := pt.manager.nmap[string(block.ID())]; !ok {
-		bn := &bnode{
+	if bn, ok := pt.manager.nmap[string(block.ID())]; !ok {
+		nbn := &bnode{
 			block:  block,
 			in:     pt.in.newTransition(nil),
 			preexe: tr,
 		}
 		pbn := pt.manager.nmap[string(block.PrevID())]
-		pt.manager.addNode(pbn, bn)
+		pt.manager.addNode(pbn, nbn)
+	} else {
+		tr.dispose()
+		block = bn.block
 	}
 	pt.stop()
 	pt.state = validatedOut
