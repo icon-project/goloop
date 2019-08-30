@@ -118,11 +118,15 @@ func (msg *proposalMessage) String() string {
 }
 
 type blockPartMessage struct {
+	// V1 Fields
 	// for debugging
 	Height int64
 	Index  uint16
 
 	BlockPart []byte
+
+	// V2 Fields
+	Nonce int32
 }
 
 func newBlockPartMessage() *blockPartMessage {

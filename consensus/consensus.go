@@ -929,6 +929,7 @@ func (cs *consensus) sendProposal(blockParts PartSet, polRound int32) error {
 	for i := 0; i < blockParts.Parts(); i++ {
 		bpmsg.BlockPart = blockParts.GetPart(i).Bytes()
 		bpmsg.Index = uint16(i)
+		bpmsg.Nonce = cs.round
 		bpmsgBS, err := msgCodec.MarshalToBytes(bpmsg)
 		if err != nil {
 			return err
