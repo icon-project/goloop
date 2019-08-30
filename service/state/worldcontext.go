@@ -161,9 +161,7 @@ type systemStorageInfo struct {
 	stepLimit    map[string]int64
 	sysConfig    int64
 	stepCostInfo *codec.TypedObj
-	deployer     map[string]bool
 	revision     int
-	tsThreshold  int64
 }
 
 func (c *worldContext) updateSystemInfo() {
@@ -200,17 +198,6 @@ func (c *worldContext) updateSystemInfo() {
 			c.systemInfo.stepLimit = stepLimit
 
 			c.systemInfo.sysConfig = scoredb.NewVarDB(as, VarServiceConfig).Int64()
-			db := scoredb.NewArrayDB(as, VarDeployers)
-			if db.Size() > 0 {
-				c.systemInfo.deployer = make(map[string]bool)
-				for i := 0; i < db.Size(); i++ {
-					addr := db.Get(i).Address().String()
-					c.systemInfo.deployer[addr] = true
-				}
-			}
-
-			tshInMS := scoredb.NewVarDB(as, VarTimestampThreshold).Int64()
-			c.systemInfo.tsThreshold = tshInMS * 1000
 		}
 		c.systemInfo.updated = true
 	}
@@ -285,16 +272,24 @@ func (c *worldContext) MembershipEnabled() bool {
 }
 
 func (c *worldContext) TransactionTimestampThreshold() int64 {
-	c.updateSystemInfo()
-	return c.systemInfo.tsThreshold
+	ass := c.GetAccountSnapshot(SystemID)
+	as := scoredb.NewStateStoreWith(ass)
+	tshInMS := scoredb.NewVarDB(as, VarTimestampThreshold).Int64()
+	return tshInMS * 1000
 }
 
 func (c *worldContext) IsDeployer(addr string) bool {
-	if c.systemInfo.deployer == nil {
-		return false
+	ass := c.GetAccountSnapshot(SystemID)
+	as := scoredb.NewStateStoreWith(ass)
+	db := scoredb.NewArrayDB(as, VarDeployers)
+	if db.Size() > 0 {
+		for i := 0; i < db.Size(); i++ {
+			if addr == db.Get(i).Address().String() {
+				return true
+			}
+		}
 	}
-	_, ok := c.systemInfo.deployer[addr]
-	return ok
+	return false
 }
 
 func (c *worldContext) BlockTimeStamp() int64 {
