@@ -3,6 +3,7 @@ package scoreapi
 import (
 	"encoding/hex"
 	"encoding/json"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
@@ -169,7 +170,7 @@ func (a *Method) IsReadOnly() bool {
 }
 
 func (a *Method) IsExternal() bool {
-	return a.Type == Function && (a.Flags&FlagExternal) != 0
+	return a.Type == Function && (a.Flags&(FlagExternal|FlagReadOnly)) != 0
 }
 
 func (a *Method) IsIsolated() bool {

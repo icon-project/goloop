@@ -46,7 +46,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 				},
 				nil,
 			},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{&scoreapi.Method{scoreapi.Function, "enableScore",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
@@ -54,7 +54,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			nil,
 		},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{&scoreapi.Method{scoreapi.Function, "setRevision",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
@@ -62,7 +62,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			nil,
 		},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{&scoreapi.Method{scoreapi.Function, "acceptScore",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
@@ -70,7 +70,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			nil,
 		},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{&scoreapi.Method{scoreapi.Function, "rejectScore",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
@@ -78,7 +78,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			nil,
 		},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{&scoreapi.Method{scoreapi.Function, "blockScore",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
@@ -86,7 +86,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			nil,
 		},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{&scoreapi.Method{scoreapi.Function, "unblockScore",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
@@ -94,7 +94,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			nil,
 		},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{&scoreapi.Method{scoreapi.Function, "setStepPrice",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
@@ -102,7 +102,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			nil,
 		},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{&scoreapi.Method{scoreapi.Function, "setStepCost",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
@@ -111,7 +111,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			nil,
 		},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{&scoreapi.Method{scoreapi.Function, "setMaxStepLimit",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
@@ -120,7 +120,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			nil,
 		},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		// TODO add setValidators(addresses)
 		{&scoreapi.Method{scoreapi.Function, "grantValidator",
 			scoreapi.FlagExternal, 0,
@@ -129,7 +129,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			nil,
 		},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{&scoreapi.Method{scoreapi.Function, "revokeValidator",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
@@ -137,7 +137,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			nil,
 		},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{&scoreapi.Method{scoreapi.Function, "addMember",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
@@ -145,7 +145,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			nil,
 		},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{&scoreapi.Method{scoreapi.Function, "removeMember",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
@@ -153,7 +153,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			nil,
 		},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{&scoreapi.Method{scoreapi.Function, "addDeployer",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
@@ -161,7 +161,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			nil,
 		},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{&scoreapi.Method{scoreapi.Function, "removeDeployer",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
@@ -169,7 +169,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			nil,
 		},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{&scoreapi.Method{scoreapi.Function, "addLicense",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
@@ -177,7 +177,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			nil,
 		},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{&scoreapi.Method{scoreapi.Function, "removeLicense",
 			scoreapi.FlagExternal, 0,
 			[]scoreapi.Parameter{
@@ -185,7 +185,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			nil,
 		},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{&scoreapi.Method{
 			scoreapi.Function, "setTimestampThreshold",
 			scoreapi.FlagExternal, 0,
@@ -194,7 +194,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 			},
 			nil,
 		},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{&scoreapi.Method{scoreapi.Function, "getRevision",
 			scoreapi.FlagReadOnly, 0,
 			nil,
@@ -202,7 +202,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 				scoreapi.Integer,
 			},
 		},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{&scoreapi.Method{scoreapi.Function, "getStepPrice",
 			scoreapi.FlagReadOnly, 0,
 			nil,
@@ -210,7 +210,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 				scoreapi.Integer,
 			},
 		},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{&scoreapi.Method{scoreapi.Function, "getStepCost",
 			scoreapi.FlagReadOnly, 0,
 			[]scoreapi.Parameter{
@@ -220,7 +220,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 				scoreapi.Integer,
 			},
 		},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{&scoreapi.Method{scoreapi.Function, "getStepCosts",
 			scoreapi.FlagReadOnly, 0,
 			nil,
@@ -228,7 +228,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 				scoreapi.Dict,
 			},
 		},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{
 			&scoreapi.Method{scoreapi.Function, "getMaxStepLimit",
 				scoreapi.FlagReadOnly, 0,
@@ -239,7 +239,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 					scoreapi.Integer,
 				},
 			},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{
 			&scoreapi.Method{scoreapi.Function, "getScoreStatus",
 				scoreapi.FlagReadOnly, 0,
@@ -250,7 +250,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 					scoreapi.Dict,
 				},
 			},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{
 			&scoreapi.Method{scoreapi.Function, "getMembers",
 				scoreapi.FlagReadOnly, 0,
@@ -259,7 +259,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 					scoreapi.List,
 				},
 			},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{
 			&scoreapi.Method{scoreapi.Function, "getValidators",
 				scoreapi.FlagReadOnly, 0,
@@ -268,7 +268,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 					scoreapi.List,
 				},
 			},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{
 			&scoreapi.Method{scoreapi.Function, "isDeployer",
 				scoreapi.FlagReadOnly, 0,
@@ -279,7 +279,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 					scoreapi.Integer,
 				},
 			},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 		{
 			&scoreapi.Method{scoreapi.Function, "getServiceConfig",
 				scoreapi.FlagReadOnly, 0,
@@ -288,7 +288,7 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 					scoreapi.Integer,
 				},
 			},
-			module.Revision1, module.DefaultRevision},
+			0, 0},
 	}
 
 	ass := s.cc.GetAccountSnapshot(state.SystemID)
@@ -296,10 +296,9 @@ func (s *ChainScore) GetAPI() *scoreapi.Info {
 	revision := int(scoredb.NewVarDB(as, state.VarRevision).Int64())
 	mLen := len(cMethods)
 	methods := make([]*scoreapi.Method, mLen)
-	s.log.Debugf("GetAPI on ChainScore revision(%d)\n", revision)
 	j := 0
 	for _, m := range cMethods {
-		if m.minVer <= revision && revision <= m.maxVer {
+		if m.minVer <= revision && (m.maxVer == 0 || revision <= m.maxVer) {
 			methods[j] = m.Method
 			j += 1
 		}
@@ -547,10 +546,15 @@ func (s *ChainScore) Ex_setRevision(code *common.HexInt) error {
 	if !s.fromGovernance() {
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
+	if module.LastRevision < code.Int64() {
+		return scoreresult.Errorf(StatusIllegalArgument,
+			"Can't set code. last : %d, passed : %d\n", module.LastRevision, code)
+	}
+
 	as := s.cc.GetAccountState(state.SystemID)
 	r := scoredb.NewVarDB(as, state.VarRevision).Int64()
 	if code.Int64() <= r {
-		return scoreresult.Errorf(module.StatusInvalidParameter,
+		return scoreresult.Errorf(StatusIllegalArgument,
 			"Can't set code. cur : %d, passed : %d\n", r, code)
 	}
 

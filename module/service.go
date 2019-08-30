@@ -82,7 +82,12 @@ const (
 	Revision2
 	Revision3
 	Revision4
+	RevisionReserved
+)
+
+const (
 	DefaultRevision = Revision4
+	LastRevision    = RevisionReserved - 1
 )
 
 func (s Status) String() string {
