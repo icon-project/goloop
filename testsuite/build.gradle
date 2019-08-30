@@ -61,7 +61,6 @@ class ChainTest extends Test {
 
         // adding PYTHONPATH for using pyee directly.
         def env = pb.environment()
-        def sep = System.getProperties().getProperty("path.separator")
         env.put("PYTHONPATH", "../pyee")
 
         // set working directory
@@ -151,14 +150,13 @@ task testNormal(type: ChainTest, overwrite: true) {
 
     dependsOn cleanTest
     testLogging.showStandardStreams = true
-    
+
     def forks = System.getProperty("FORKS")
-    if(forks == null || !forks.isInteger()) {
-        forks = 1
+    if(forks != null && forks.isInteger()) {
+        maxParallelForks = Integer.valueOf(forks)
     }
-    maxParallelForks = forks
 }
 
 task test(overwrite: true) {
-    dependsOn testNormal, testGovernance
+    dependsOn 'testNormal', 'testGovernance'
 }
