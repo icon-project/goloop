@@ -641,10 +641,10 @@ func (cs *consensus) enterPrecommit() {
 	partSetID, ok := prevotes.getOverTwoThirdsPartSetID()
 
 	if !ok {
-		cs.logger.Traceln("enterPrecommit: no +2/3 prevote")
+		cs.logger.Traceln("enterPrecommit: no +2/3 precommit")
 		cs.sendVote(voteTypePrecommit, nil)
 	} else if partSetID == nil {
-		cs.logger.Traceln("enterPrecommit: nil +2/3 prevote")
+		cs.logger.Traceln("enterPrecommit: nil +2/3 precommit")
 		cs.lockedRound = -1
 		cs.lockedBlockParts = nil
 		cs.sendVote(voteTypePrecommit, nil)
