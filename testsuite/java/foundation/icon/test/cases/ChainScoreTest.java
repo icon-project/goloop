@@ -29,6 +29,7 @@ import java.util.Map;
 
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /*
 test methods
@@ -542,13 +543,16 @@ public class ChainScoreTest{
         LOG.infoExiting();
     }
 
+    @ParameterizedTest(name = "grantRevokeValidator {0}")
+    @EnumSource(TargetScore.class)
     public void grantRevokeValidator(TargetScore score) throws Exception {
+        assumeTrue(score.addr.equals(Constants.CHAINSCORE_ADDRESS) || Env.nodes.length >= 3);
         KeyWallet wallet = testWallets[0];
         RpcObject params = new RpcObject.Builder()
                 .put("address", new RpcValue(wallet.getAddress()))
                 .build();
         RpcItem item = Utils.icxCall(iconService,
-                Constants.CHAINSCORE_ADDRESS, "getValidators", params);
+                Constants.CHAINSCORE_ADDRESS, "getValidators", null);
         RpcArray rpcArray = item.asArray();
         for(int i = 0; i < rpcArray.size(); i++) {
             if(rpcArray.get(i).asAddress().equals(wallet)) {
@@ -562,7 +566,7 @@ public class ChainScoreTest{
             sendGovCallTx(score.addr, method, builder.build());
 
             item = Utils.icxCall(iconService, Constants.CHAINSCORE_ADDRESS,
-                    "getValidators", params);
+                    "getValidators", null);
             boolean bFound = false;
             rpcArray = item.asArray();
             for(int i = 0; i < rpcArray.size(); i++) {
