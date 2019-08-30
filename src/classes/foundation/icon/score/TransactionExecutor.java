@@ -59,6 +59,7 @@ public class TransactionExecutor {
     public void connectAndRunLoop() throws IOException {
         proxy.connect(uuid);
         proxy.handleMessages();
+        proxy.close();
     }
 
     private void setGetApiHandler() {

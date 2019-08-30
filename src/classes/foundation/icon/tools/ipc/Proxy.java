@@ -47,6 +47,8 @@ public class Proxy {
         static final int GETINFO = 7;
         static final int GETBALANCE = 8;
         static final int GETAPI = 9;
+        static final int LOG = 10;
+        static final int CLOSE = 11;
     }
 
     static class Message {
@@ -88,6 +90,10 @@ public class Proxy {
         sendMessage(MsgType.VERSION, 1, uuid, "java");
     }
 
+    public void close() throws IOException {
+        this.client.close();
+    }
+
     public void handleMessages() throws IOException {
         while (true) {
             Message msg = getNextMessage();
@@ -101,6 +107,9 @@ public class Proxy {
                     logger.debug("[INVOKE]");
                     handleInvoke(msg.value);
                     break;
+                case MsgType.CLOSE:
+                    logger.debug("[CLOSE]");
+                    return; // exit loop
             }
         }
     }
