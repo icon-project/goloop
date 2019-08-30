@@ -1,10 +1,13 @@
 package contract
 
 import (
-	"github.com/icon-project/goloop/common/log"
 	"math/big"
 	"reflect"
 	"strings"
+
+	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/service/txresult"
 
 	"github.com/icon-project/goloop/service/scoreresult"
 
@@ -257,4 +260,27 @@ func Invoke(score SystemScore, method string, paramObj *codec.TypedObj) (status 
 	result, _ = common.EncodeAny(output)
 	// TODO apply used step
 	return status, result, steps
+}
+
+func InstallSystemScore(addr []byte, cid string, param []byte, ctx Context, receipt txresult.Receipt, txHash []byte) error {
+	sas := ctx.GetAccountState(addr)
+	sas.InitContractAccount(nil)
+	sas.DeployContract(nil, "system", state.CTAppSystem,
+		nil, nil)
+	if err := sas.AcceptContract(txHash, nil); err != nil {
+		return err
+	}
+	sysScore, err := GetSystemScore(cid,
+		common.NewContractAddress(addr), NewCallContext(ctx, receipt, false), ctx.Logger())
+	if err != nil {
+		return err
+	}
+	if err := sysScore.Install(param); err != nil {
+		return err
+	}
+	if err := CheckMethod(sysScore); err != nil {
+		return err
+	}
+	sas.SetAPIInfo(sysScore.GetAPI())
+	return nil
 }

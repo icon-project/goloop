@@ -194,31 +194,9 @@ const (
 	contentIdCid  = "cid:"
 )
 
-func (g *genesisV3) deployChainScore(ctx contract.Context, receipt txresult.Receipt) error {
-	sas := ctx.GetAccountState(state.SystemID)
-	sas.InitContractAccount(nil)
-	sas.DeployContract(nil, "system", state.CTAppSystem,
-		nil, nil)
-	if err := sas.AcceptContract(nil, nil); err != nil {
-		return err
-	}
-	chainScore, err := contract.GetSystemScore(contract.CID_CHAIN,
-		common.NewContractAddress(state.SystemID), contract.NewCallContext(ctx, receipt, false), ctx.Logger())
-	if err != nil {
-		return err
-	}
-	if err := contract.CheckMethod(chainScore); err != nil {
-		return err
-	}
-	sas.SetAPIInfo(chainScore.GetAPI())
-	if err := chainScore.Install(g.Chain); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (g *genesisV3) deployPreInstall(ctx contract.Context, receipt txresult.Receipt) error {
-	if err := g.deployChainScore(ctx, receipt); err != nil {
+	if err := contract.InstallSystemScore(state.SystemID,
+		contract.CID_CHAIN, g.Chain, ctx, receipt, nil); err != nil {
 		return InvalidGenesisError.Wrapf(err, "FAIL to deploy ChainScore err=%+v\n", err)
 	}
 	for _, acc := range g.Accounts {
