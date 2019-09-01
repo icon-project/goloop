@@ -43,6 +43,7 @@ func newGenesisGenCmd(c string) *cobra.Command {
 	god := flags.StringP("god", "g", "", "Address or keystore of GOD")
 	supply := flags.StringP("supply", "s", "0x2961fff8ca4a62327800000", "Total supply of the chain")
 	treasury := flags.StringP("treasury", "t", "hx1000000000000000000000000000000000000000", "Treasury address")
+	configs := flags.StringToStringP("config", "c", nil, "Chain configuration")
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		var godAddr module.Address
@@ -60,6 +61,17 @@ func newGenesisGenCmd(c string) *cobra.Command {
 			log.Panicf("Total supply value=%s is invalid", *supply)
 		}
 
+		chainConfig := make(map[string]interface{})
+		if module.LastRevision != module.DefaultRevision {
+			chainConfig["revision"] = &common.HexInt32{Value: module.LastRevision}
+		}
+		for k, v := range *configs {
+			if len(v) == 0 {
+				delete(chainConfig, k)
+			} else {
+				chainConfig[k] = v
+			}
+		}
 		validators := make([]module.Address, len(args))
 		for i, arg := range args {
 			validators[i] = mustParseAddress(arg)
@@ -67,6 +79,7 @@ func newGenesisGenCmd(c string) *cobra.Command {
 				godAddr = validators[i]
 			}
 		}
+		chainConfig["validatorList"] = validators
 
 		genesis := map[string]interface{}{
 			"accounts": []interface{}{
@@ -81,9 +94,7 @@ func newGenesisGenCmd(c string) *cobra.Command {
 					"balance": "0x0",
 				},
 			},
-			"chain": map[string]interface{}{
-				"validatorList": validators,
-			},
+			"chain":   chainConfig,
 			"message": fmt.Sprintf("generated %s", time.Now()),
 		}
 
@@ -104,7 +115,7 @@ func newGenesisEditCmd(c string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   fmt.Sprintf("%s [genesis file]", c),
 		Short: "Edit genesis transaction",
-		Args: ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
+		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 	}
 	flags := cmd.PersistentFlags()
 	god := flags.StringP("god", "g", "", "Address or keystore of GOD")
@@ -172,7 +183,7 @@ func newGenesisEditCmd(c string) *cobra.Command {
 					filePath, err)
 			}
 			fmt.Printf("Updated %s\n", filePath)
-		}else{
+		} else {
 			fmt.Printf("Nothing to update %s\n", filePath)
 		}
 
