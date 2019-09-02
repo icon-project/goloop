@@ -51,7 +51,10 @@ type TransactionIterator interface {
 type TransactionList interface {
 	Get(int) (Transaction, error)
 	Iterator() TransactionIterator
+
+	// length if Hash() is 0 iff empty
 	Hash() []byte
+
 	Equal(TransactionList) bool
 	Flush() error
 }
