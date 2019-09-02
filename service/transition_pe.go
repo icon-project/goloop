@@ -83,6 +83,8 @@ func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, c
 			Hash:      txo.ID(),
 			From:      txo.From(),
 		})
+		ctx.UpdateSystemInfo()
+		ctx.ClearCache()
 
 		ec.Ready()
 		go func(ctx contract.Context, rb *txresult.Receipt) {

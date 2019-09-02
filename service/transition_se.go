@@ -33,6 +33,7 @@ func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract
 			From:      txo.From(),
 		})
 		t.log.Tracef("START TX <0x%x>", txo.ID())
+		ctx.UpdateSystemInfo()
 		ctx.ClearCache()
 		if rct, err := txh.Execute(ctx); err != nil {
 			txh.Dispose()

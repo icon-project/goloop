@@ -83,6 +83,7 @@ type WorldContext interface {
 	SetTransactionInfo(ti *TransactionInfo)
 	GetTransactionInfo(ti *TransactionInfo)
 	SetContractInfo(si *ContractInfo)
+	UpdateSystemInfo()
 
 	IsDeployer(addr string) bool
 	FeeEnabled() bool
@@ -154,7 +155,6 @@ func (c *worldContext) GetFuture(lq []LockRequest) WorldContext {
 
 // TODO What if some values such as deployer don't use cache here and are resolved on demand.
 type systemStorageInfo struct {
-	updated      bool
 	ass          AccountSnapshot
 	stepPrice    *big.Int
 	stepCosts    map[string]int64
@@ -164,52 +164,50 @@ type systemStorageInfo struct {
 	revision     int
 }
 
-func (c *worldContext) updateSystemInfo() {
-	if !c.systemInfo.updated {
-		ass := c.GetAccountSnapshot(SystemID)
-		if c.systemInfo.ass == nil || ass.StorageChangedAfter(c.systemInfo.ass) {
-			c.systemInfo.ass = ass
-
-			as := scoredb.NewStateStoreWith(ass)
-			c.systemInfo.revision = int(scoredb.NewVarDB(as, VarRevision).Int64())
-
-			stepPrice := scoredb.NewVarDB(as, VarStepPrice).BigInt()
-			c.systemInfo.stepPrice = stepPrice
-
-			stepCosts := make(map[string]int64)
-			stepTypes := scoredb.NewArrayDB(as, VarStepTypes)
-			stepCostDB := scoredb.NewDictDB(as, VarStepCosts, 1)
-			tcount := stepTypes.Size()
-			for i := 0; i < tcount; i++ {
-				tname := stepTypes.Get(i).String()
-				stepCosts[tname] = stepCostDB.Get(tname).Int64()
-			}
-			c.systemInfo.stepCosts = stepCosts
-			c.systemInfo.stepCostInfo = nil
-
-			stepLimit := make(map[string]int64)
-			stepLimitTypes := scoredb.NewArrayDB(as, VarStepLimitTypes)
-			stepLimitDB := scoredb.NewDictDB(as, VarStepLimit, 1)
-			tcount = stepLimitTypes.Size()
-			for i := 0; i < tcount; i++ {
-				tname := stepLimitTypes.Get(i).String()
-				stepLimit[tname] = stepLimitDB.Get(tname).Int64()
-			}
-			c.systemInfo.stepLimit = stepLimit
-
-			c.systemInfo.sysConfig = scoredb.NewVarDB(as, VarServiceConfig).Int64()
-		}
-		c.systemInfo.updated = true
+func (si *systemStorageInfo) Update(wc *worldContext) bool {
+	ass := wc.GetAccountSnapshot(SystemID)
+	if si.ass != nil && !ass.StorageChangedAfter(si.ass) {
+		return false
 	}
+
+	si.ass = ass
+
+	as := scoredb.NewStateStoreWith(ass)
+	si.revision = int(scoredb.NewVarDB(as, VarRevision).Int64())
+
+	stepPrice := scoredb.NewVarDB(as, VarStepPrice).BigInt()
+	si.stepPrice = stepPrice
+
+	stepCosts := make(map[string]int64)
+	stepTypes := scoredb.NewArrayDB(as, VarStepTypes)
+	stepCostDB := scoredb.NewDictDB(as, VarStepCosts, 1)
+	tcount := stepTypes.Size()
+	for i := 0; i < tcount; i++ {
+		tname := stepTypes.Get(i).String()
+		stepCosts[tname] = stepCostDB.Get(tname).Int64()
+	}
+	si.stepCosts = stepCosts
+	si.stepCostInfo = nil
+
+	stepLimit := make(map[string]int64)
+	stepLimitTypes := scoredb.NewArrayDB(as, VarStepLimitTypes)
+	stepLimitDB := scoredb.NewDictDB(as, VarStepLimit, 1)
+	tcount = stepLimitTypes.Size()
+	for i := 0; i < tcount; i++ {
+		tname := stepLimitTypes.Get(i).String()
+		stepLimit[tname] = stepLimitDB.Get(tname).Int64()
+	}
+	si.stepLimit = stepLimit
+
+	si.sysConfig = scoredb.NewVarDB(as, VarServiceConfig).Int64()
+	return true
 }
 
 func (c *worldContext) Revision() int {
-	c.updateSystemInfo()
 	return c.systemInfo.revision
 }
 
 func (c *worldContext) StepsFor(t StepType, n int) int64 {
-	c.updateSystemInfo()
 	if v, ok := c.systemInfo.stepCosts[string(t)]; ok {
 		return v * int64(n)
 	} else {
@@ -218,12 +216,10 @@ func (c *worldContext) StepsFor(t StepType, n int) int64 {
 }
 
 func (c *worldContext) StepPrice() *big.Int {
-	c.updateSystemInfo()
 	return c.systemInfo.stepPrice
 }
 
 func (c *worldContext) GetStepLimit(t string) *big.Int {
-	c.updateSystemInfo()
 	if v, ok := c.systemInfo.stepLimit[t]; ok {
 		return big.NewInt(v)
 	} else {
@@ -232,7 +228,6 @@ func (c *worldContext) GetStepLimit(t string) *big.Int {
 }
 
 func (c *worldContext) FeeEnabled() bool {
-	c.updateSystemInfo()
 	if c.systemInfo.sysConfig&SysConfigFee == 0 {
 		return false
 	}
@@ -240,7 +235,6 @@ func (c *worldContext) FeeEnabled() bool {
 }
 
 func (c *worldContext) AuditEnabled() bool {
-	c.updateSystemInfo()
 	if c.systemInfo.sysConfig&SysConfigAudit == 0 {
 		return false
 	}
@@ -248,7 +242,6 @@ func (c *worldContext) AuditEnabled() bool {
 }
 
 func (c *worldContext) DeployWhiteListEnabled() bool {
-	c.updateSystemInfo()
 	if c.systemInfo.sysConfig&SysConfigDeployerWhiteList == 0 {
 		return false
 	}
@@ -256,7 +249,6 @@ func (c *worldContext) DeployWhiteListEnabled() bool {
 }
 
 func (c *worldContext) PackageValidatorEnabled() bool {
-	c.updateSystemInfo()
 	if c.systemInfo.sysConfig&SysConfigScorePackageValidator == 0 {
 		return false
 	}
@@ -264,7 +256,6 @@ func (c *worldContext) PackageValidatorEnabled() bool {
 }
 
 func (c *worldContext) MembershipEnabled() bool {
-	c.updateSystemInfo()
 	if c.systemInfo.sysConfig&SysConfigMembership == 0 {
 		return false
 	}
@@ -326,7 +317,6 @@ func (c *worldContext) WorldStateChanged(ws WorldState) WorldContext {
 		systemInfo:   c.systemInfo,
 		blockInfo:    c.blockInfo,
 	}
-	wc.systemInfo.updated = false
 	return wc
 }
 
@@ -345,7 +335,6 @@ func (c *worldContext) SetContractInfo(si *ContractInfo) {
 }
 
 func (c *worldContext) stepCostInfo() interface{} {
-	c.updateSystemInfo()
 	if c.systemInfo.stepCostInfo == nil {
 		c.systemInfo.stepCostInfo = common.MustEncodeAny(c.systemInfo.stepCosts)
 	}
@@ -378,6 +367,12 @@ func (c *worldContext) SkipTransactionEnabled() bool {
 	return c.skipTransaction
 }
 
+func (c *worldContext) UpdateSystemInfo() {
+	if c.systemInfo.Update(c) {
+		c.info = nil
+	}
+}
+
 func NewWorldContext(ws WorldState, bi module.BlockInfo) WorldContext {
 	var governance, treasury module.Address
 	ass := ws.GetAccountSnapshot(SystemID)
@@ -392,11 +387,13 @@ func NewWorldContext(ws WorldState, bi module.BlockInfo) WorldContext {
 	if governance == nil {
 		governance = common.NewAddressFromString("cx0000000000000000000000000000000000000001")
 	}
-	return &worldContext{
+	wc := &worldContext{
 		WorldState:   ws,
 		virtualState: tryVirtualState(ws),
 		treasury:     treasury,
 		governance:   governance,
 		blockInfo:    BlockInfo{Timestamp: bi.Timestamp(), Height: bi.Height()},
 	}
+	wc.UpdateSystemInfo()
+	return wc
 }
