@@ -21,6 +21,16 @@ type BlockInfo interface {
 	Timestamp() int64
 }
 
+func EqualBlockInfo(bi1 BlockInfo, bi2 BlockInfo) bool {
+	if bi1 == bi2 {
+		return true
+	}
+	if bi1 == nil || bi2 == nil {
+		return false
+	}
+	return bi1.Timestamp() == bi2.Timestamp() && bi1.Height() == bi2.Height()
+}
+
 type Transaction interface {
 	Group() TransactionGroup
 	ID() []byte
