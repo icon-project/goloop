@@ -256,6 +256,7 @@ type TransitionManager interface {
 	// CreateTransition creates a Transition following parent Transition.
 	CreateTransition(parent Transition, txs TransactionList, bi BlockInfo) (Transition, error)
 	// GetPatches returns all patch transactions based on the parent transition.
+	// bi is the block info of the block that will contain the patches
 	GetPatches(parent Transition, bi BlockInfo) TransactionList
 	// PatchTransition creates a Transition by overwriting patches on the transition.
 	// bi is the block info of the block that contains the patches,
