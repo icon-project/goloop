@@ -156,8 +156,12 @@ func (m *managerForImport) WaitForTransaction(parent module.Transition, bi modul
 	return m.ServiceManager.WaitForTransaction(unwrap(parent), bi, cb)
 }
 
-func (m *managerForImport) PatchTransition(transition module.Transition, patches module.TransactionList) module.Transition {
-	otr := m.ServiceManager.PatchTransition(unwrap(transition), patches)
+func (m *managerForImport) PatchTransition(
+	transition module.Transition,
+	patches module.TransactionList,
+	bi module.BlockInfo,
+) module.Transition {
+	otr := m.ServiceManager.PatchTransition(unwrap(transition), patches, bi)
 	if otr == nil {
 		return nil
 	}

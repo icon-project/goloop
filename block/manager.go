@@ -160,7 +160,7 @@ func (m *manager) _import(
 	}
 	it.state = executingIn
 	var err error
-	it.in, err = bn.preexe.patch(it.block.PatchTransactions(), it)
+	it.in, err = bn.preexe.patch(it.block.PatchTransactions(), block, it)
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +314,7 @@ func (m *manager) _propose(
 		newBlockInfo(bn.block.Height()+1, votes.Timestamp()),
 	)
 	var err error
-	pt.in, err = bn.preexe.patch(patches, pt)
+	pt.in, err = bn.preexe.patch(patches, nil, pt)
 	if err != nil {
 		return nil, err
 	}

@@ -563,7 +563,10 @@ func (sm *testServiceManager) GetPatches(transition module.Transition, bi module
 	return newTestTransactionList(sm.transactions[module.TransactionGroupPatch])
 }
 
-func (sm *testServiceManager) PatchTransition(transition module.Transition, patches module.TransactionList) module.Transition {
+func (sm *testServiceManager) PatchTransition(transition module.Transition,
+	patches module.TransactionList,
+	bi module.BlockInfo,
+) module.Transition {
 	var ttxl *testTransactionList
 	var ttr *testTransition
 	var ok bool

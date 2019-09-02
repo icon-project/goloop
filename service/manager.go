@@ -220,6 +220,7 @@ func (m *manager) GetPatches(parent module.Transition, bi module.BlockInfo) modu
 // PatchTransition creates a Transition by overwriting patches on the transition.
 // It doesn't return same instance as transition, but new Transition instance.
 func (m *manager) PatchTransition(t module.Transition, patchTxList module.TransactionList,
+	bi module.BlockInfo,
 ) module.Transition {
 	pt, ok := t.(*transition)
 	if !ok {

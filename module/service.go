@@ -254,7 +254,9 @@ type TransitionManager interface {
 	// GetPatches returns all patch transactions based on the parent transition.
 	GetPatches(parent Transition, bi BlockInfo) TransactionList
 	// PatchTransition creates a Transition by overwriting patches on the transition.
-	PatchTransition(transition Transition, patches TransactionList) Transition
+	// bi is the block info of the block that contains the patches,
+	// or nil if the patches are already prevalidated.
+	PatchTransition(transition Transition, patches TransactionList, bi BlockInfo) Transition
 	CreateSyncTransition(transition Transition, result []byte, vlHash []byte) Transition
 	// Finalize finalizes data related to the transition. It usually stores
 	// data to a persistent storage. opt indicates which data are finalized.

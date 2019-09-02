@@ -178,6 +178,7 @@ func (ti *transitionImpl) _addChild(
 
 func (ti *transitionImpl) patch(
 	patches module.TransactionList,
+	bi module.BlockInfo,
 	cb transitionCallback,
 ) (*transition, error) {
 	// a sync transition has higher priority
@@ -196,7 +197,7 @@ func (ti *transitionImpl) patch(
 		}
 	}
 	c := ti._parent._children[len(ti._parent._children)-1]
-	pmtr := ti._chainContext.sm.PatchTransition(c._mtransition, patches)
+	pmtr := ti._chainContext.sm.PatchTransition(c._mtransition, patches, bi)
 	return ti._parent._addChild(pmtr, cb)
 }
 
@@ -286,12 +287,13 @@ func (tr *transition) cancel() bool {
 
 func (tr *transition) patch(
 	patches module.TransactionList,
+	bi module.BlockInfo,
 	cb transitionCallback,
 ) (*transition, error) {
 	if tr._ti == nil {
 		return nil, nil
 	}
-	return tr._ti.patch(patches, cb)
+	return tr._ti.patch(patches, bi, cb)
 }
 
 func (tr *transition) transit(

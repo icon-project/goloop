@@ -25,7 +25,7 @@ func (_r *ServiceManagerBase) GetPatches(parent module.Transition, bi module.Blo
 	panic("not implemented")
 }
 
-func (_r *ServiceManagerBase) PatchTransition(transition module.Transition, patches module.TransactionList) module.Transition {
+func (_r *ServiceManagerBase) PatchTransition(transition module.Transition, patches module.TransactionList, bi module.BlockInfo) module.Transition {
 	panic("not implemented")
 }
 
