@@ -311,6 +311,7 @@ type testTransition struct {
 	baseValidators     *testValidatorList
 	_result            []byte
 	_logsBloom         *txresult.LogsBloom
+	_bi                module.BlockInfo
 
 	sync.Mutex
 	step     transitionStep
@@ -482,6 +483,10 @@ func (tr *testTransition) LogsBloom() module.LogsBloom {
 	return nil
 }
 
+func (tr *testTransition) BlockInfo() module.BlockInfo {
+	return tr._bi
+}
+
 type testServiceManager struct {
 	test.ServiceManagerBase
 	transactions [][]*testTransaction
@@ -509,6 +514,7 @@ func (sm *testServiceManager) ProposeTransition(parent module.Transition, bi mod
 	tr.baseValidators = parent.NextValidators().(*testValidatorList)
 	tr.patchTransactions = newTestTransactionList(sm.transactions[module.TransactionGroupPatch])
 	tr.normalTransactions = newTestTransactionList(sm.transactions[module.TransactionGroupNormal])
+	tr._bi = bi
 	if sm.exeChan != nil {
 		tr.setExeChan(sm.exeChan)
 	}
@@ -528,6 +534,7 @@ func (sm *testServiceManager) CreateInitialTransition(result []byte, nextValidat
 	tr.normalTransactions = newTestTransactionList(nil)
 	tr.normalTransactions._effect.WorldState = result
 	tr.normalTransactions._effect.NextValidators = nvl
+	tr._bi = newBlockInfo(0, 0)
 	tr.step = transitionStepSucceed
 	return tr, nil
 }
@@ -543,6 +550,7 @@ func (sm *testServiceManager) CreateTransition(parent module.Transition, txs mod
 		tr.baseValidators = parent.NextValidators().(*testValidatorList)
 		tr.patchTransactions = newTestTransactionList(nil)
 		tr.normalTransactions = ttxl
+		tr._bi = bi
 		if sm.exeChan != nil {
 			tr.setExeChan(sm.exeChan)
 		}

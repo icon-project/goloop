@@ -198,6 +198,8 @@ type Transition interface {
 	// LogsBloom returns log bloom filter for this transition.
 	// It may return nil before cb.OnExecute is called back by Execute.
 	LogsBloom() LogsBloom
+
+	BlockInfo() BlockInfo
 }
 
 type APIInfo interface {

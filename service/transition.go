@@ -273,6 +273,10 @@ func (t *transition) LogsBloom() module.LogsBloom {
 	return &t.logsBloom
 }
 
+func (t *transition) BlockInfo() module.BlockInfo {
+	return t.bi
+}
+
 func (t *transition) newWorldContext() (state.WorldContext, error) {
 	var ws state.WorldState
 	if t.parent != nil {
