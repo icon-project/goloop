@@ -57,7 +57,15 @@ func (m *TransactionManager) RemoveTxs(
 func (m *TransactionManager) Candidate(
 	g module.TransactionGroup, wc state.WorldContext, maxBytes, maxCount int,
 ) ([]module.Transaction, int) {
-	return m.getTxPool(g).Candidate(wc, maxBytes, maxCount)
+	if g == module.TransactionGroupPatch {
+		return m.patchTxPool.Candidate(wc,
+			NewTimestampRange(wc.BlockTimeStamp(), ConfigPatchTimestampThreshold),
+			maxBytes, maxCount)
+	} else {
+		return m.normalTxPool.Candidate(wc,
+			NewTimestampRangeFor(wc),
+			maxBytes, maxCount)
+	}
 }
 
 func (m *TransactionManager) Add(tx transaction.Transaction, direct bool) error {

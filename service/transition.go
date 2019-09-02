@@ -60,6 +60,7 @@ func (s transitionStep) String() string {
 type transition struct {
 	parent *transition
 	bi     module.BlockInfo
+	pbi    module.BlockInfo
 
 	patchTransactions  module.TransactionList
 	normalTransactions module.TransactionList
@@ -120,6 +121,7 @@ func patchTransition(t *transition, patchTXs module.TransactionList) *transition
 	return &transition{
 		parent:             t.parent,
 		bi:                 t.bi,
+		pbi:                nil,
 		patchTransactions:  patchTXs,
 		normalTransactions: t.normalTransactions,
 		db:                 t.db,
@@ -381,12 +383,19 @@ func (t *transition) executeSync(alreadyValidated bool) {
 			t.reportValidation(err)
 			return
 		}
-		patchCount, err = t.validateTxs(t.patchTransactions, wc)
+		var tsr TimestampRange
+		if t.pbi != nil {
+			tsr = NewTimestampRange(t.pbi.Timestamp(), ConfigPatchTimestampThreshold)
+		} else {
+			tsr = NewDummyTimeStampRange()
+		}
+		patchCount, err = t.validateTxs(t.patchTransactions, wc, tsr)
 		if err != nil {
 			t.reportValidation(err)
 			return
 		}
-		normalCount, err = t.validateTxs(t.normalTransactions, wc)
+		tsr = NewTimestampRangeFor(wc)
+		normalCount, err = t.validateTxs(t.normalTransactions, wc, tsr)
 		if err != nil {
 			t.reportValidation(err)
 			return
@@ -473,12 +482,11 @@ func (t *transition) executeSync(alreadyValidated bool) {
 	t.reportExecution(nil)
 }
 
-func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext) (int, error) {
+func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext, tsr TimestampRange) (int, error) {
 	if l == nil {
 		return 0, nil
 	}
 	cnt := 0
-	tsRange := NewTimestampRangeFor(wc)
 	for i := l.Iterator(); i.Has(); i.Next() {
 		if t.canceled() {
 			return 0, ErrTransitionInterrupted
@@ -493,7 +501,7 @@ func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext
 		if err := tx.Verify(); err != nil {
 			return 0, err
 		}
-		if err := tsRange.CheckTx(tx); err != nil {
+		if err := tsr.CheckTx(tx); err != nil {
 			return 0, err
 		}
 		if err := tx.PreValidate(wc, true); err != nil {

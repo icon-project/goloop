@@ -73,7 +73,9 @@ func (tp *TransactionPool) RemoveOldTXs(bts int64) {
 }
 
 // It returns all candidates for a negative integer n.
-func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCount int) ([]module.Transaction, int) {
+func (tp *TransactionPool) Candidate(wc state.WorldContext, tsr TimestampRange, maxBytes int, maxCount int) (
+	[]module.Transaction, int,
+) {
 	lock := common.Lock(&tp.mutex)
 	defer lock.Unlock()
 
@@ -90,14 +92,13 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 		maxCount = configMaxTxCount
 	}
 
-	tsRange := NewTimestampRangeFor(wc)
 	txs := make([]*txElement, 0, configDefaultTxSliceCapacity)
 	expired := make([]*txElement, 0, configDefaultTxSliceCapacity)
 	poolSize := tp.list.Len()
 	txSize := int(0)
 	for e := tp.list.Front(); e != nil && txSize < maxBytes && len(txs) < maxCount; e = e.Next() {
 		tx := e.Value()
-		if err := tsRange.CheckTx(tx); err != nil {
+		if err := tsr.CheckTx(tx); err != nil {
 			if ExpiredTransactionError.Equals(err) {
 				if e.err == nil {
 					e.err = err

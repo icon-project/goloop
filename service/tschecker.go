@@ -11,6 +11,7 @@ import (
 
 const (
 	ConfigTXTimestampThresholdDefault = int64(5 * time.Minute / time.Microsecond)
+	ConfigPatchTimestampThreshold     = int64(1 * time.Minute / time.Microsecond)
 )
 
 func CheckTxTimestamp(min, max int64, tx transaction.Transaction) error {
@@ -74,6 +75,23 @@ type timestampRange struct {
 
 func (r *timestampRange) CheckTx(tx transaction.Transaction) error {
 	return CheckTxTimestamp(r.min, r.max, tx)
+}
+
+func NewTimestampRange(bts int64, th int64) TimestampRange {
+	return &timestampRange{
+		min: bts - th,
+		max: bts + th,
+	}
+}
+
+type dummyTimestampRange struct{}
+
+func (d dummyTimestampRange) CheckTx(tx transaction.Transaction) error {
+	return nil
+}
+
+func NewDummyTimeStampRange() TimestampRange {
+	return dummyTimestampRange{}
 }
 
 func NewTimestampRangeFor(c state.WorldContext) TimestampRange {
