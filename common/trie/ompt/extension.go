@@ -278,6 +278,9 @@ func (n *extension) compact() node {
 		n.next = n.next.compact()
 		return n
 	}
+	if n.hashValue == nil {
+		return n
+	}
 	return &hash{
 		value: n.hashValue,
 	}

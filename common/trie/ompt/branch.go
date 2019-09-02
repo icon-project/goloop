@@ -382,6 +382,9 @@ func (n *branch) compact() node {
 		}
 		return n
 	}
+	if n.hashValue == nil {
+		return n
+	}
 	return &hash{
 		value: n.hashValue,
 	}

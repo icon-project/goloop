@@ -264,6 +264,9 @@ func (n *leaf) compact() node {
 		n.value.ClearCache()
 		return n
 	}
+	if n.hashValue == nil {
+		return n
+	}
 	return &hash{
 		value: n.hashValue,
 	}
