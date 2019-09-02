@@ -205,6 +205,18 @@ func (ti *transitionImpl) transit(
 	if err != nil {
 		return nil, err
 	}
+	// a sync transition has higher priority
+	for _, c := range ti._children {
+		if c._sync && cmtr.Equal(c._mtransition) {
+			return c._newTransition(cb), nil
+		}
+	}
+	for _, c := range ti._children {
+		if cmtr.Equal(c._mtransition) {
+			return c._newTransition(cb), nil
+		}
+	}
+
 	return ti._addChild(cmtr, cb)
 }
 
@@ -212,6 +224,17 @@ func (ti *transitionImpl) propose(bi module.BlockInfo, cb transitionCallback) (*
 	cmtr, err := ti._chainContext.sm.ProposeTransition(ti._mtransition, bi)
 	if err != nil {
 		return nil, err
+	}
+	// a sync transition has higher priority
+	for _, c := range ti._children {
+		if c._sync && cmtr.Equal(c._mtransition) {
+			return c._newTransition(cb), nil
+		}
+	}
+	for _, c := range ti._children {
+		if cmtr.Equal(c._mtransition) {
+			return c._newTransition(cb), nil
+		}
 	}
 	return ti._addChild(cmtr, cb)
 }
