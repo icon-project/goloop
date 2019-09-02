@@ -181,24 +181,19 @@ func (ti *transitionImpl) patch(
 	bi module.BlockInfo,
 	cb transitionCallback,
 ) (*transition, error) {
+	nmtr := ti._chainContext.sm.PatchTransition(ti._mtransition, patches, bi)
 	// a sync transition has higher priority
-	for _, c := range ti._parent._children {
-		same := c._mtransition.NormalTransactions().Equal(ti._mtransition.NormalTransactions()) &&
-			c._mtransition.PatchTransactions().Equal(patches)
-		if c._sync && same {
-			return c._newTransition(cb), nil
+	for _, s := range ti._parent._children {
+		if s._sync && nmtr.Equal(s._mtransition) {
+			return s._newTransition(cb), nil
 		}
 	}
-	for _, c := range ti._parent._children {
-		same := c._mtransition.NormalTransactions().Equal(ti._mtransition.NormalTransactions()) &&
-			c._mtransition.PatchTransactions().Equal(patches)
-		if same {
-			return c._newTransition(cb), nil
+	for _, s := range ti._parent._children {
+		if nmtr.Equal(s._mtransition) {
+			return s._newTransition(cb), nil
 		}
 	}
-	c := ti._parent._children[len(ti._parent._children)-1]
-	pmtr := ti._chainContext.sm.PatchTransition(c._mtransition, patches, bi)
-	return ti._parent._addChild(pmtr, cb)
+	return ti._parent._addChild(nmtr, cb)
 }
 
 func (ti *transitionImpl) transit(
