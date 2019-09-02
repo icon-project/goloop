@@ -1,9 +1,12 @@
-FROM python:3.7.2-alpine3.9
+FROM golang:1.12.9-alpine3.9
 MAINTAINER t_arch@icon.foundation
 
 # extra packages
-RUN apk add bash make libc-dev go
+RUN apk add bash make libc-dev git
+WORKDIR /work
+ADD go.mod /work
+ADD go.sum /work
+RUN go mod download
 
 # python tools to build whl file.
-RUN python3 -m pip install setuptools wheel
 CMD ["/bin/bash"]
