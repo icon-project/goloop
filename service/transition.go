@@ -610,3 +610,27 @@ func (t *transition) cancelExecution() bool {
 	}
 	return true
 }
+
+func equalBlockInfo(bi1 module.BlockInfo, bi2 module.BlockInfo) bool {
+	if bi1 == nil && bi2 == nil {
+		return true
+	}
+	if bi1 == nil || bi2 == nil {
+		return false
+	}
+	return bi1.Timestamp() == bi2.Timestamp() && bi1.Height() == bi2.Height()
+}
+
+func (t *transition) Equal(tr module.Transition) bool {
+	t2 := tr.(*transition)
+
+	if t == t2 {
+		return true
+	}
+
+	return t.patchTransactions.Equal(t2.patchTransactions) &&
+		t.normalTransactions.Equal(t2.normalTransactions) &&
+		equalBlockInfo(t.bi, t2.bi) &&
+		equalBlockInfo(t.pbi, t2.pbi) &&
+		t.parent.Equal(t2.parent)
+}

@@ -209,7 +209,11 @@ type Transition interface {
 	// It may return nil before cb.OnExecute is called back by Execute.
 	LogsBloom() LogsBloom
 
+	// BlockInfo returns block information for the normal transaction.
 	BlockInfo() BlockInfo
+
+	// Equal check equality of inputs of transition.
+	Equal(Transition) bool
 }
 
 type APIInfo interface {
