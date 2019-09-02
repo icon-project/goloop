@@ -26,6 +26,13 @@ func (s *syncer) end() {
 	for _, cb := range lcbs {
 		cb()
 	}
+	for s.lcbs != nil {
+		lcbs = s.lcbs
+		s.lcbs = nil
+		for _, cb := range lcbs {
+			cb()
+		}
+	}
 	cbs := s.cbs
 	s.cbs = nil
 	s.mutex.Unlock()
