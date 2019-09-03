@@ -19,7 +19,7 @@ import org.aion.avm.RuntimeMethodFeeSchedule;
  */
 public final class Address extends Object {
     // Runtime-facing implementation.
-    public static final int avm_LENGTH = foundation.icon.common.Address.LENGTH;
+    public static final int avm_LENGTH = foundation.icon.ee.types.Address.LENGTH;
 
     // Note that we always contain an internal byte[] and we serialize that, specially.
     private final byte[] internalArray = new byte[avm_LENGTH];

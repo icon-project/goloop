@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package foundation.icon.score;
+package foundation.icon.ee.score;
 
-import foundation.icon.common.Address;
-import foundation.icon.common.Bytes;
-import foundation.icon.tools.ipc.*;
+import foundation.icon.ee.ipc.*;
+import foundation.icon.ee.types.Address;
+import foundation.icon.ee.types.Bytes;
 import org.aion.avm.core.*;
 import org.aion.avm.embed.StandardCapabilities;
 import org.aion.avm.tooling.ABIUtil;

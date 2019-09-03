@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package foundation.icon.tools.ipc;
+package foundation.icon.ee.ipc;
 
-import foundation.icon.common.Address;
+import foundation.icon.ee.types.Address;
 import org.msgpack.core.MessageBufferPacker;
 import org.msgpack.core.MessagePack;
 import org.msgpack.core.MessageUnpacker;

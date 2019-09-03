@@ -14,15 +14,31 @@
  * limitations under the License.
  */
 
-package foundation.icon.common;
+package foundation.icon.ee.ipc;
 
-import org.bouncycastle.util.encoders.Hex;
+import java.math.BigInteger;
 
-public class Bytes {
-    public static String toHexString(byte[] to) {
-        if (to != null) {
-            return Hex.toHexString(to);
-        }
-        return "null";
+public class InvokeResult {
+
+    private final int status;
+    private final BigInteger stepUsed;
+    private final TypedObj result;
+
+    public InvokeResult(int status, BigInteger stepUsed, TypedObj result) {
+        this.status = status;
+        this.stepUsed = stepUsed;
+        this.result = result;
+    }
+
+    int getStatus() {
+        return status;
+    }
+
+    BigInteger getStepUsed() {
+        return stepUsed;
+    }
+
+    TypedObj getResult() {
+        return result;
     }
 }

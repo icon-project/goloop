@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import foundation.icon.score.TransactionExecutor;
+import foundation.icon.ee.score.TransactionExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package foundation.icon.tools.ipc;
+package foundation.icon.ee.ipc;
 
-import foundation.icon.common.Address;
-import foundation.icon.common.Bytes;
+import foundation.icon.ee.types.Address;
+import foundation.icon.ee.types.Bytes;
 import org.msgpack.core.MessageBufferPacker;
 import org.msgpack.value.ArrayValue;
 import org.msgpack.value.Value;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package foundation.icon.tools.ipc;
+package foundation.icon.ee.ipc;
 
 import org.msgpack.core.MessageBufferPacker;
 

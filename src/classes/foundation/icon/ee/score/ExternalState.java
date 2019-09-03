@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package foundation.icon.score;
+package foundation.icon.ee.score;
 
-import foundation.icon.common.Bytes;
-import foundation.icon.tools.ipc.Proxy;
+import foundation.icon.ee.ipc.Proxy;
+import foundation.icon.ee.types.Bytes;
 import org.aion.avm.core.IExternalState;
 import org.aion.avm.core.util.Helpers;
 import org.aion.types.AionAddress;

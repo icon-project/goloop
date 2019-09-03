@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package foundation.icon.tools.ipc;
+package foundation.icon.ee.ipc;
 
 import java.io.InputStream;
 import java.io.IOException;

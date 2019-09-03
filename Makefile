@@ -16,12 +16,11 @@ TARGET:=client
 TARGET_JAR=$(BUILD_DIR)/$(TARGET).jar
 TARGET_SO=$(BUILD_DIR)/lib$(TARGET).so
 
-unames = $(shell uname -s)
-ifneq (, $(findstring Darwin, $(unames)))
+ifneq (, $(findstring Darwin, $(shell uname -s)))
   JAVA_HOME = /Library/Java/JavaVirtualMachines/adoptopenjdk-11.jdk/Contents/Home
   OS_DIR = darwin
 else
-  JAVA_HOME = /opt/jdk-11.0.2
+  JAVA_HOME ?= /opt/jdk-11.0.2
   OS_DIR = linux
 endif
 

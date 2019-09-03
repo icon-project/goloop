@@ -1,6 +1,6 @@
 package org.aion.types;
 
-import foundation.icon.common.Bytes;
+import foundation.icon.ee.types.Bytes;
 
 import java.util.Arrays;
 import java.util.Collections;

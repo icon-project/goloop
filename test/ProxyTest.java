@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import foundation.icon.common.Bytes;
-import foundation.icon.tools.ipc.*;
+import foundation.icon.ee.ipc.*;
+import foundation.icon.ee.types.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

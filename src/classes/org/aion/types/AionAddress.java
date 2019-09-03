@@ -1,6 +1,6 @@
 package org.aion.types;
 
-import foundation.icon.common.Address;
+import foundation.icon.ee.types.Address;
 
 import java.util.Arrays;
 

@@ -8,7 +8,7 @@ public class Address {
     /**
      * The length of an address.
      */
-    public static final int LENGTH = foundation.icon.common.Address.LENGTH;
+    public static final int LENGTH = foundation.icon.ee.types.Address.LENGTH;
 
     private final byte[] raw = new byte[LENGTH];
 

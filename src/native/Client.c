@@ -17,7 +17,7 @@
 #include <sys/stat.h>
 #include <sys/un.h>
 
-#include "foundation_icon_tools_ipc_Client.h"
+#include "foundation_icon_ee_ipc_Client.h"
 
 #define RESTARTABLE(_cmd, _result) do { \
   do { \
@@ -70,11 +70,11 @@ JNU_ThrowByNameWithLastError(JNIEnv *env, const char *name,
 }
 
 /*
- * Class:     foundation_icon_tools_ipc_Client
+ * Class:     foundation_icon_ee_ipc_Client
  * Method:    socket
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_foundation_icon_tools_ipc_Client_socket
+JNIEXPORT jint JNICALL Java_foundation_icon_ee_ipc_Client_socket
   (JNIEnv *env, jclass cls)
 {
     int fd = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -85,11 +85,11 @@ JNIEXPORT jint JNICALL Java_foundation_icon_tools_ipc_Client_socket
 }
 
 /*
- * Class:     foundation_icon_tools_ipc_Client
+ * Class:     foundation_icon_ee_ipc_Client
  * Method:    connect
  * Signature: (ILjava/lang/String;)V
  */
-JNIEXPORT void JNICALL Java_foundation_icon_tools_ipc_Client_connect
+JNIEXPORT void JNICALL Java_foundation_icon_ee_ipc_Client_connect
   (JNIEnv *env, jclass cls, jint fd, jstring path)
 {
     jboolean isCopy;
@@ -129,11 +129,11 @@ JNIEXPORT void JNICALL Java_foundation_icon_tools_ipc_Client_connect
 }
 
 /*
- * Class:     foundation_icon_tools_ipc_Client
+ * Class:     foundation_icon_ee_ipc_Client
  * Method:    close
  * Signature: (I)V
  */
-JNIEXPORT void JNICALL Java_foundation_icon_tools_ipc_Client_close
+JNIEXPORT void JNICALL Java_foundation_icon_ee_ipc_Client_close
   (JNIEnv *env, jclass cls, jint fd)
 {
     int res;
@@ -141,11 +141,11 @@ JNIEXPORT void JNICALL Java_foundation_icon_tools_ipc_Client_close
 }
 
 /*
- * Class:     foundation_icon_tools_ipc_Client
+ * Class:     foundation_icon_ee_ipc_Client
  * Method:    read
  * Signature: (I[BII)I
  */
-JNIEXPORT jint JNICALL Java_foundation_icon_tools_ipc_Client_read
+JNIEXPORT jint JNICALL Java_foundation_icon_ee_ipc_Client_read
   (JNIEnv *env, jclass cls, jint fd, jbyteArray ba, jint off, jint baLen)
 {
     unsigned char buf[128];
@@ -171,11 +171,11 @@ JNIEXPORT jint JNICALL Java_foundation_icon_tools_ipc_Client_read
 }
 
 /*
- * Class:     foundation_icon_tools_ipc_Client
+ * Class:     foundation_icon_ee_ipc_Client
  * Method:    write
  * Signature: (I[BII)V
  */
-JNIEXPORT void JNICALL Java_foundation_icon_tools_ipc_Client_write
+JNIEXPORT void JNICALL Java_foundation_icon_ee_ipc_Client_write
   (JNIEnv *env, jclass cls, jint fd, jbyteArray ba, jint off, jint bufLen)
 {
     size_t remaining = bufLen;

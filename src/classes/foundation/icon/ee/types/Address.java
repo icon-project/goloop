@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package foundation.icon.common;
+package foundation.icon.ee.types;
 
 import java.util.Arrays;
 
