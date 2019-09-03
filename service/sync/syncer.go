@@ -88,7 +88,8 @@ type syncer struct {
 	nrl module.ReceiptList
 	cb  func(syncing bool)
 
-	complete int
+	waitingPeerCnt int
+	complete       int
 }
 
 type Request struct {
@@ -185,7 +186,9 @@ func (s *syncer) reqUnresolved(st syncType, builder merkle.Builder, need int) {
 			if peers != nil {
 				break
 			}
+			s.waitingPeerCnt++
 			s.cond.Wait()
+			s.waitingPeerCnt--
 			if s.complete&int(st) == int(st) {
 				return nil
 			}
@@ -214,8 +217,8 @@ func (s *syncer) reqUnresolved(st syncType, builder merkle.Builder, need int) {
 			if len(unused) > 0 {
 				s._returnValidPeers(unused)
 			}
-			s.log.Debugf("WorldSate size(%d), unused(%d), unresolved(%d)\n",
-				size, len(unused), unresolved)
+			s.log.Debugf("st(%s), size(%d), unused(%d), unresolved(%d)\n",
+				st, size, len(unused), unresolved)
 			if unresolved == 0 {
 				if s.complete&int(st) != int(st) {
 					s.finishCh <- st
@@ -233,7 +236,7 @@ func (s *syncer) reqUnresolved(st syncType, builder merkle.Builder, need int) {
 func (s *syncer) onNodeData(p *peer, status errCode, st syncType, data [][]byte) {
 	s.mutex.Lock()
 	s.vpool.push(p)
-	if s.vpool.size() == 1 {
+	if s.waitingPeerCnt > 0 {
 		s.cond.Signal()
 	}
 	s.mutex.Unlock()
@@ -387,13 +390,12 @@ func (s *syncer) _requestIfNotEnough(p *peer) {
 }
 
 func (s *syncer) _returnValidPeers(peers []*peer) {
-	prev := s.vpool.size()
 	for _, peer := range peers {
 		delete(s.sentReq, peer.id)
 		s.vpool.push(peer)
 	}
 
-	if prev == 0 && s.vpool.size() > 0 {
+	if s.waitingPeerCnt > 0 {
 		s.cond.Signal()
 	}
 }
@@ -423,7 +425,7 @@ func (s *syncer) onResult(status errCode, p *peer) {
 	if status == NoError {
 		s.mutex.Lock()
 		s.vpool.push(p)
-		if s.vpool.size() == 1 {
+		if s.waitingPeerCnt > 0 {
 			s.cond.Signal()
 		}
 		s.mutex.Unlock()
@@ -460,13 +462,13 @@ func (s *syncer) ForceSync() *Result {
 	go s.reqUnresolved(syncWorldState, builder, 1)
 
 	rf := func(t syncType, rl *module.ReceiptList, rh []byte) {
-		if s.nrh != nil {
+		if len(rh) != 0 {
 			builder := merkle.NewBuilder(s.database)
 			s.builder[t.toIndex()] = builder
 			*rl = txresult.NewReceiptListWithBuilder(builder, rh)
 			go s.reqUnresolved(t, builder, 1)
 		} else {
-			s.nrl = txresult.NewReceiptListFromSlice(s.database, []txresult.Receipt{})
+			*rl = txresult.NewReceiptListFromSlice(s.database, []txresult.Receipt{})
 			s.mutex.Lock()
 			s.complete |= int(t)
 			s.mutex.Unlock()

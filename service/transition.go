@@ -232,7 +232,6 @@ func (t *transition) Execute(cb module.TransitionCallback) (canceler func() bool
 	if t.syncer == nil {
 		go t.executeSync(t.step == stepExecuting)
 	} else {
-		//	// TODO : stepSyncing
 		go t.forceSync()
 	}
 
@@ -351,8 +350,7 @@ func (t *transition) canceled() bool {
 }
 
 func (t *transition) forceSync() {
-	// TODO skip t.cb.OnValidate()
-	t.log.Debugf("syncer = %v\n", t.syncer)
+	t.reportValidation(nil)
 
 	sr := t.syncer.ForceSync()
 	t.logsBloom.SetInt64(0)
