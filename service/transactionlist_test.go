@@ -19,7 +19,7 @@ type mockTransaction struct {
 }
 
 func (*mockTransaction) Group() module.TransactionGroup {
-	panic("implement me")
+	return module.TransactionGroupNormal
 }
 
 func (t *mockTransaction) ID() []byte {
