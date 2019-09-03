@@ -16,7 +16,15 @@ TARGET:=client
 TARGET_JAR=$(BUILD_DIR)/$(TARGET).jar
 TARGET_SO=$(BUILD_DIR)/lib$(TARGET).so
 
-JAVA_HOME ?= /opt/jdk-11.0.2
+unames = $(shell uname -s)
+ifneq (, $(findstring Darwin, $(unames)))
+  JAVA_HOME = /Library/Java/JavaVirtualMachines/adoptopenjdk-11.jdk/Contents/Home
+  OS_DIR = darwin
+else
+  JAVA_HOME = /opt/jdk-11.0.2
+  OS_DIR = linux
+endif
+
 JAVA=$(JAVA_HOME)/bin/java
 JAVAC=$(JAVA_HOME)/bin/javac --release 10
 JAR=$(JAVA_HOME)/bin/jar
@@ -27,7 +35,7 @@ LIB_JARS=$(patsubst %:,%,$(shell find lib -name "*.jar" | tr '\n' ':'))
 TARGET_CC:=gcc
 CC_ARCH_FLAGS = \
       -O3 -fPIC -Wall \
-      -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux -I$(BUILD_DIR)/include
+      -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/$(OS_DIR) -I$(BUILD_DIR)/include
 
 JAVA_FILES:=$(shell find src/classes -name "*.java")
 
@@ -39,6 +47,7 @@ TEST_JAVA:=$(shell find test -name "*.java")
 TEST_CLASSES:=$(patsubst test/%.java,$(BUILD_DIR)/%.class,$(TEST_JAVA))
 
 all: $(TARGET_JAR) $(TARGET_SO) $(TEST_CLASSES)
+
 clean:
 	rm -rf $(BUILD_DIR) $(TARGET_JAR) $(TARGET_SO)
 

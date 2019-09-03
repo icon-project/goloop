@@ -12,7 +12,7 @@ java -cp ./build/client.jar:$(echo lib/* | tr ' ' ':'):./build \
     TransactionExecutorTest /tmp/ee.socket uuid1234
 ```
 
-# Run DAppCompier
+# Run DAppCompiler
 
 ```bash
 java -cp ./build/client.jar:$(echo lib/* | tr ' ' ':'):./build \
