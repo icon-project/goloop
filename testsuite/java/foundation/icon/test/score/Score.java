@@ -88,7 +88,7 @@ public class Score {
                 .stepLimit(BigInteger.valueOf(steps));
 
         if (value != 0) {
-            builder = builder.value(BigInteger.valueOf(value));
+            builder.value(BigInteger.valueOf(value));
         }
 
         Transaction t = null;
@@ -114,7 +114,7 @@ public class Score {
                 .stepLimit(steps);
 
         if ((value != null) && value.bitLength() != 0) {
-            builder = builder.value(value);
+            builder.value(value);
         }
 
         Transaction t;

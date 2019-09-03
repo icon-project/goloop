@@ -47,15 +47,15 @@ class ChainTest extends Test {
         commands.add(configFile)
         commands.add("--chain_dir")
         commands.add(chainDir)
-        if ( gsFile != null ) {
+        if (gsFile != null) {
             commands.add("--genesis_storage")
             commands.add(gsFile)
-        } else if ( gsDir != null) {
+        } else if (gsDir != null) {
             commands.add("--genesis")
             commands.add(gsDir)
         }
 
-        Runtime.getRuntime().exec("rm -rf "+chainDir )
+        Runtime.getRuntime().exec("rm -rf " + chainDir)
 
         ProcessBuilder pb = new ProcessBuilder(commands)
 
@@ -94,7 +94,7 @@ class ChainTest extends Test {
                 logging.println("GSFile: ${gsFile}")
             }
             startServer()
-        }else{
+        } else {
             systemProperty("CHAIN_ENV", System.getProperty("CHAIN_ENV"))
         }
         try {
@@ -152,7 +152,7 @@ task testNormal(type: ChainTest, overwrite: true) {
     testLogging.showStandardStreams = true
 
     def forks = System.getProperty("FORKS")
-    if(forks != null && forks.isInteger()) {
+    if (forks != null && forks.isInteger()) {
         maxParallelForks = Integer.valueOf(forks)
     }
 }

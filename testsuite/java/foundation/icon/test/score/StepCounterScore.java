@@ -61,17 +61,17 @@ public class StepCounterScore extends Score {
                 "setStepOf",
                 (new RpcObject.Builder())
                     .put("step", new RpcValue(step))
-                    .put( "addr", new RpcValue(target))
+                    .put("addr", new RpcValue(target))
                     .build(),
                 null, STEPS);
     }
 
-    public TransactionResult trySetStepWith(Wallet wallet, Address target, BigInteger step) throws ResultTimeoutException, IOException{
+    public TransactionResult trySetStepWith(Wallet wallet, Address target, BigInteger step) throws ResultTimeoutException, IOException {
         return this.invokeAndWaitResult(wallet,
                 "trySetStepWith",
                 (new RpcObject.Builder())
                         .put("step", new RpcValue(step))
-                        .put( "addr", new RpcValue(target))
+                        .put("addr", new RpcValue(target))
                         .build(),
                 null, STEPS);
     }
