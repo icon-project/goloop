@@ -41,10 +41,6 @@ func (_r *BlockManagerBase) ImportBlock(blk module.BlockData, flags int, cb func
 	panic("not implemented")
 }
 
-func (_r *BlockManagerBase) Drop(blk module.Block) {
-	panic("not implemented")
-}
-
 func (_r *BlockManagerBase) Commit(module.Block) error {
 	panic("not implemented")
 }

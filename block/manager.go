@@ -562,9 +562,6 @@ func (m *manager) ImportBlock(
 	}, nil
 }
 
-func (m *manager) Drop(blk module.Block) {
-}
-
 type channelingCB struct {
 	ch chan<- error
 }
