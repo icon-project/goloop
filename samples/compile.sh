@@ -15,10 +15,8 @@ MAIN_CLASS=$2
 
 TOPDIR=$(dirname $(realpath $0))
 PARENTDIR=$TOPDIR/..
-BUILDDIR=$TOPDIR/$PROJECT/build
-SRCDIR=$TOPDIR/$PROJECT/src
 
-CLASSPATH=$PARENTDIR/build/client.jar:$(echo $PARENTDIR/lib/org-*.jar | tr ' ' ':')
+CLASSPATH=$PARENTDIR/rt/build/libs/rt.jar:$PARENTDIR/lib/org-aion-avm-tooling.jar
 
 # Determine the Java command to use to start the JVM
 if [[ -n "$JAVA_HOME" ]] && [[ -x "$JAVA_HOME/bin/javac" ]]; then
