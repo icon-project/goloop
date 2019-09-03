@@ -549,6 +549,7 @@ public class ChainScoreTest{
     @ParameterizedTest(name = "grantRevokeValidator {0}")
     @EnumSource(TargetScore.class)
     public void grantRevokeValidator(TargetScore score) throws Exception {
+        LOG.infoEntering("grantRevokeValidator");
         assumeTrue(score.addr.equals(Constants.CHAINSCORE_ADDRESS) || Env.nodes.length >= 3);
         KeyWallet wallet = testWallets[0];
         RpcObject params = new RpcObject.Builder()
@@ -566,7 +567,9 @@ public class ChainScoreTest{
         for (String method : methods) {
             RpcObject.Builder builder = new RpcObject.Builder();
             builder.put("address", new RpcValue(wallet.getAddress().toString()));
+            LOG.infoEntering("method[" + method + "]");
             sendGovCallTx(score.addr, method, builder.build());
+            LOG.infoExiting();
 
             item = Utils.icxCall(iconService, Constants.CHAINSCORE_ADDRESS,
                     "getValidators", null);
@@ -591,6 +594,7 @@ public class ChainScoreTest{
                 }
             }
         }
+        LOG.infoExiting();
     }
 
     @ParameterizedTest(name = "addRemoveMember {0}")
