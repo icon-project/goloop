@@ -22,7 +22,7 @@ from .iconscore.icon_score_context import ContextContainer, IconScoreContext
 from .iconscore.icon_score_eventlog import EventLogEmitter
 from .iconscore.icon_score_mapper import IconScoreMapper
 from .iconscore.internal_call import InternalCall
-from .logger import Logger
+from .logger import Logger, SystemLogger
 
 TAG = 'ServiceEngine'
 
@@ -129,15 +129,15 @@ class ServiceEngine(ContextContainer):
     def _get_status_from_exception(cls, e: BaseException):
         if isinstance(e, IconServiceBaseException):
             if e.code >= ExceptionCode.SCORE_ERROR or isinstance(e, IconScoreException):
-                Logger.warning(e.message, TAG)
+                tag = 'ScoreException'
             else:
-                Logger.exception(e.message, TAG)
+                tag = 'SystemException'
+            Logger.exception(e.message, tag)
 
             code = e.code
             message = e.message
         else:
-            Logger.exception(e, TAG)
-            Logger.error(e, TAG)
+            SystemLogger.exception(e, 'SystemError')
 
             code = ExceptionCode.SYSTEM_ERROR
             message = str(e)

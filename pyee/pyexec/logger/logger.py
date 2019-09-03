@@ -46,29 +46,33 @@ class Logger(object):
         LoggerUtil.print_config(default_logger, config)
 
     @classmethod
-    def debug(cls, msg: str, tag: str = "LOG"):
+    def debug(cls, msg: str, tag: str = "DEBUG"):
         if default_logger.isEnabledFor(DEBUG):
             cls._log(DEBUG, LoggerUtil.make_log_msg(tag, msg))
 
     @classmethod
-    def info(cls, msg: str, tag: str = "LOG"):
+    def info(cls, msg: str, tag: str = "INFO"):
         if default_logger.isEnabledFor(INFO):
             cls._log(INFO, LoggerUtil.make_log_msg(tag, msg))
 
     @classmethod
-    def warning(cls, msg: str, tag: str = "LOG"):
+    def warning(cls, msg: str, tag: str = "WARN"):
         if default_logger.isEnabledFor(WARNING):
-            cls._log(WARNING, LoggerUtil.make_log_msg(tag, msg))
+            # redirect warning to info
+            cls.info(msg, tag)
 
     @classmethod
-    def error(cls, msg: str, tag: str = "LOG"):
+    def error(cls, msg: str, tag: str = "ERROR"):
         if default_logger.isEnabledFor(ERROR):
-            cls._log(ERROR, LoggerUtil.make_log_msg(tag, msg))
+            # redirect error to info
+            cls.info(msg, tag)
 
     @classmethod
     def exception(cls, msg: str, tag: str = "LOG"):
-        if default_logger.isEnabledFor(ERROR):
-            cls._log(ERROR, LoggerUtil.make_log_msg(tag, msg), exc_info=True)
+        if default_logger.isEnabledFor(DEBUG):
+            cls._log(INFO, LoggerUtil.make_log_msg(tag, msg), exc_info=True)
+        elif default_logger.isEnabledFor(INFO):
+            cls._log(INFO, LoggerUtil.make_log_msg(tag, msg))
 
     @classmethod
     def _log(cls, level, msg, args=None, exc_info=None, extra=None):
@@ -115,3 +119,10 @@ class Logger(object):
             rv = (co.co_filename, f.f_lineno, co.co_name)
             break
         return rv
+
+
+class SystemLogger(Logger):
+    @classmethod
+    def exception(cls, msg: str, tag: str = "LOG"):
+        if default_logger.isEnabledFor(WARNING):
+            cls._log(WARNING, LoggerUtil.make_log_msg(tag, msg), exc_info=True)
