@@ -1,0 +1,25 @@
+dependencies {
+    implementation 'org.msgpack:msgpack-core:0.8.17'
+    implementation 'org.slf4j:slf4j-api:1.7.26'
+
+    implementation project(':rt')
+    implementation files("$rootDir/lib/org-aion-avm-core.jar")
+    implementation files("$rootDir/lib/org-aion-avm-tooling.jar")
+}
+
+task compileNative(type: Exec) {
+    workingDir 'src/native'
+    commandLine 'make'
+}
+
+def outputNative = "$buildDir/native"
+if (file(outputNative).exists()) {
+    compileNative.enabled = false
+}
+
+sourceSets {
+    main {
+        output.dir(outputNative, builtBy: 'compileNative')
+    }
+}
+

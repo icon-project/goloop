@@ -1,0 +1,21 @@
+dependencies {
+    implementation 'org.bouncycastle:bcprov-jdk15on:1.60'
+
+    implementation files("$rootDir/lib/org-aion-avm-core.jar")
+    implementation files("$rootDir/lib/org-aion-avm-rt.jar")
+    implementation files("$rootDir/lib/org-aion-avm-tooling.jar")
+}
+
+sourceSets {
+    avm {
+        java {
+            srcDirs = ['avm/src/java']
+        }
+    }
+}
+
+jar {
+    from (sourceSets.avm.output, {
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    })
+}

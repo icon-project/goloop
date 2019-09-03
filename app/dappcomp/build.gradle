@@ -1,0 +1,16 @@
+apply plugin: 'application'
+
+dependencies {
+    implementation 'org.slf4j:slf4j-api:1.7.26'
+    implementation project(':rt')
+    implementation files("$rootDir/lib/org-aion-avm-tooling.jar")
+
+    runtimeOnly 'org.slf4j:slf4j-simple:1.7.26'
+    runtimeOnly 'org.ow2.asm:asm:6.2.1'
+    runtimeOnly 'org.ow2.asm:asm-commons:6.2.1'
+    runtimeOnly 'org.ow2.asm:asm-tree:6.2.1'
+}
+
+application {
+    mainClassName = 'DAppCompiler'
+}
