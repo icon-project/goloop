@@ -22,8 +22,6 @@ type TransactionManager struct {
 	lastTS       [2]int64
 
 	callback func()
-
-	lastTS int64
 }
 
 func (m *TransactionManager) getTxPool(g module.TransactionGroup) *TransactionPool {
