@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/transaction"
 )
@@ -43,6 +44,14 @@ func (c *TxTimestampChecker) Threshold() int64 {
 	return atomic.LoadInt64(&c.threshold)
 }
 
+func (c *TxTimestampChecker) TransactionThreshold(group module.TransactionGroup) int64 {
+	if group == module.TransactionGroupNormal {
+		return c.Threshold()
+	} else {
+		return ConfigPatchTimestampThreshold
+	}
+}
+
 func TimestampToDuration(t int64) time.Duration {
 	return time.Duration(t) * time.Microsecond
 }
@@ -57,12 +66,16 @@ func NewTimestampChecker() *TxTimestampChecker {
 	}
 }
 
-func TransactionTimestampThreshold(wc state.WorldContext) int64 {
-	th := wc.TransactionTimestampThreshold()
-	if th == 0 {
-		th = ConfigTXTimestampThresholdDefault
+func TransactionTimestampThreshold(wc state.WorldContext, g module.TransactionGroup) int64 {
+	if g == module.TransactionGroupNormal {
+		th := wc.TransactionTimestampThreshold()
+		if th == 0 {
+			th = ConfigTXTimestampThresholdDefault
+		}
+		return th
+	} else {
+		return ConfigPatchTimestampThreshold
 	}
-	return th
 }
 
 type TimestampRange interface {
@@ -94,8 +107,8 @@ func NewDummyTimeStampRange() TimestampRange {
 	return dummyTimestampRange{}
 }
 
-func NewTimestampRangeFor(c state.WorldContext) TimestampRange {
-	th := TransactionTimestampThreshold(c)
+func NewTxTimestampRangeFor(c state.WorldContext, g module.TransactionGroup) TimestampRange {
+	th := TransactionTimestampThreshold(c, g)
 	bts := c.BlockTimeStamp()
 	return &timestampRange{
 		min: bts - th,

@@ -73,8 +73,10 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 		logger.Warnf("FAIL to create contractManager : %v\n", err)
 		return nil, err
 	}
-	pTxPool := NewTransactionPool(chain.PatchTxPoolSize(), bk, pMetric, logger)
-	nTxPool := NewTransactionPool(chain.NormalTxPoolSize(), bk, nMetric, logger)
+	pTxPool := NewTransactionPool(module.TransactionGroupPatch,
+		chain.PatchTxPoolSize(), bk, pMetric, logger)
+	nTxPool := NewTransactionPool(module.TransactionGroupNormal,
+		chain.NormalTxPoolSize(), bk, nMetric, logger)
 	tsc := NewTimestampChecker()
 	tm := NewTransactionManager(chain.NID(), tsc, pTxPool, nTxPool, logger)
 	syncm := ssync.NewSyncManager(chain.Database(), chain.NetworkManager(), logger)
@@ -263,13 +265,14 @@ func (m *manager) Finalize(t module.Transition, opt int) error {
 			// Because transactionlist for transition is made only through peer and SendTransaction() call
 			// transactionlist has slice of transactions in case that finalize() is called
 			m.tm.RemoveTxs(module.TransactionGroupNormal, tst.normalTransactions)
-			m.tm.RemoveOldTxByBlockTS(tst.bi.Timestamp())
+			m.tm.RemoveOldTxByBlockTS(module.TransactionGroupNormal, tst.bi.Timestamp())
 		}
 		if opt&module.FinalizePatchTransaction == module.FinalizePatchTransaction {
 			if err := tst.finalizePatchTransaction(); err != nil {
 				return err
 			}
 			m.tm.RemoveTxs(module.TransactionGroupPatch, tst.patchTransactions)
+			m.tm.RemoveOldTxByBlockTS(module.TransactionGroupPatch, tst.bi.Timestamp())
 		}
 		if opt&module.FinalizeResult == module.FinalizeResult {
 			if err := tst.finalizeResult(); err != nil {

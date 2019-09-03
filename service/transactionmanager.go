@@ -19,6 +19,7 @@ type TransactionManager struct {
 
 	patchTxPool  *TransactionPool
 	normalTxPool *TransactionPool
+	lastTS       [2]int64
 
 	callback func()
 
@@ -37,11 +38,10 @@ func (m *TransactionManager) getTxPool(g module.TransactionGroup) *TransactionPo
 	}
 }
 
-func (m *TransactionManager) RemoveOldTxByBlockTS(bts int64) {
-	ts := bts - m.tsc.Threshold()
-	atomic.StoreInt64(&m.lastTS, ts)
-	m.patchTxPool.RemoveOldTXs(ts)
-	m.normalTxPool.RemoveOldTXs(ts)
+func (m *TransactionManager) RemoveOldTxByBlockTS(group module.TransactionGroup, bts int64) {
+	ts := bts - m.tsc.TransactionThreshold(group)
+	atomic.StoreInt64(&m.lastTS[group], ts)
+	m.getTxPool(group).RemoveOldTXs(ts)
 }
 
 func (m *TransactionManager) HasTx(id []byte) bool {
@@ -57,15 +57,7 @@ func (m *TransactionManager) RemoveTxs(
 func (m *TransactionManager) Candidate(
 	g module.TransactionGroup, wc state.WorldContext, maxBytes, maxCount int,
 ) ([]module.Transaction, int) {
-	if g == module.TransactionGroupPatch {
-		return m.patchTxPool.Candidate(wc,
-			NewTimestampRange(wc.BlockTimeStamp(), ConfigPatchTimestampThreshold),
-			maxBytes, maxCount)
-	} else {
-		return m.normalTxPool.Candidate(wc,
-			NewTimestampRangeFor(wc),
-			maxBytes, maxCount)
-	}
+	return m.getTxPool(g).Candidate(wc, maxBytes, maxCount)
 }
 
 func (m *TransactionManager) Add(tx transaction.Transaction, direct bool) error {
@@ -76,7 +68,7 @@ func (m *TransactionManager) Add(tx transaction.Transaction, direct bool) error 
 		return errors.InvalidNetworkError.Errorf(
 			"ValidateNetwork(nid=%#x) fail", m.nid)
 	}
-	lastTS := atomic.LoadInt64(&m.lastTS)
+	lastTS := atomic.LoadInt64(&m.lastTS[tx.Group()])
 	if err := m.tsc.CheckWithCurrent(lastTS, tx); err != nil {
 		return err
 	}

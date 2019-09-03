@@ -383,7 +383,8 @@ func (t *transition) executeSync(alreadyValidated bool) {
 		}
 		var tsr TimestampRange
 		if t.pbi != nil {
-			tsr = NewTimestampRange(t.pbi.Timestamp(), ConfigPatchTimestampThreshold)
+			tsr = NewTimestampRange(t.pbi.Timestamp(),
+				TransactionTimestampThreshold(wc, module.TransactionGroupPatch))
 		} else {
 			tsr = NewDummyTimeStampRange()
 		}
@@ -392,7 +393,7 @@ func (t *transition) executeSync(alreadyValidated bool) {
 			t.reportValidation(err)
 			return
 		}
-		tsr = NewTimestampRangeFor(wc)
+		tsr = NewTxTimestampRangeFor(wc, module.TransactionGroupNormal)
 		normalCount, err = t.validateTxs(t.normalTransactions, wc, tsr)
 		if err != nil {
 			t.reportValidation(err)

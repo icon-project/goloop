@@ -26,7 +26,8 @@ type Monitor interface {
 }
 
 type TransactionPool struct {
-	nid  int
+	group module.TransactionGroup
+
 	size int
 	txdb db.Bucket
 
@@ -38,8 +39,12 @@ type TransactionPool struct {
 	log     log.Logger
 }
 
-func NewTransactionPool(size int, txdb db.Bucket, m Monitor, log log.Logger) *TransactionPool {
+func NewTransactionPool(
+	group module.TransactionGroup, size int,
+	txdb db.Bucket, m Monitor, log log.Logger,
+) *TransactionPool {
 	pool := &TransactionPool{
+		group:   group,
 		size:    size,
 		txdb:    txdb,
 		list:    newTransactionList(),
@@ -73,7 +78,7 @@ func (tp *TransactionPool) RemoveOldTXs(bts int64) {
 }
 
 // It returns all candidates for a negative integer n.
-func (tp *TransactionPool) Candidate(wc state.WorldContext, tsr TimestampRange, maxBytes int, maxCount int) (
+func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCount int) (
 	[]module.Transaction, int,
 ) {
 	lock := common.Lock(&tp.mutex)
@@ -92,6 +97,7 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, tsr TimestampRange, 
 		maxCount = configMaxTxCount
 	}
 
+	tsr := NewTxTimestampRangeFor(wc, tp.group)
 	txs := make([]*txElement, 0, configDefaultTxSliceCapacity)
 	expired := make([]*txElement, 0, configDefaultTxSliceCapacity)
 	poolSize := tp.list.Len()
@@ -187,7 +193,7 @@ func (tp *TransactionPool) CheckTxs(wc state.WorldContext) bool {
 		return false
 	}
 
-	t := wc.BlockTimeStamp() - TransactionTimestampThreshold(wc)
+	t := wc.BlockTimeStamp() - TransactionTimestampThreshold(wc, tp.group)
 	for e := tp.list.Front(); e != nil; e = e.Next() {
 		tx := e.Value()
 		if tx.Timestamp() > t {
