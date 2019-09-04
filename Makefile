@@ -70,7 +70,7 @@ GOLOOP_DOCKER_DIR = $(BUILD_ROOT)/build/goloop
 PYDEPS_IMAGE = goloop/py-deps:$(GL_TAG)
 PYDEPS_DOCKER_DIR = $(BUILD_ROOT)/build/pydeps
 
-GOLOOP_WORK_DIR = /goloop
+GOLOOP_WORK_DIR = /work
 
 goloop-env-image :
 	@ \
