@@ -93,7 +93,7 @@ func (s *server) requestNode(msg []byte, p *peer) {
 		s.log.Warnf("Failed to marshal for nodeData(%v)\n", res)
 		return
 	}
-	s.log.Debugf("responseNode (%s) to peer(%s)\n", res, p)
+	s.log.Debugf("responseNode ReqID(%d), Status(%d), Type(%d) to peer(%s)\n", res.ReqID, res.Status, res.Type, p)
 	if err = s.ph.Unicast(protoNodeData, b, p.id); err != nil {
 		s.log.Info("Failed to send data peerID(%s)\n", p.id)
 	}
@@ -106,7 +106,7 @@ func newServer(database db.Database, ph module.ProtocolHandler, log log.Logger) 
 	}
 	bb, err := database.GetBucket(db.BytesByHash)
 	if err != nil {
-		log.Panicf("Failed to get bucket for BytesByHash eerr(%s)\n", err)
+		log.Panicf("Failed to get bucket for BytesByHash err(%s)\n", err)
 	}
 	s := &server{
 		database:    database,

@@ -25,6 +25,7 @@ type errCode int
 
 const (
 	NoError errCode = iota
+	ErrTimeExpired
 	ErrNoData
 )
 

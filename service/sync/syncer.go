@@ -2,6 +2,7 @@ package sync
 
 import (
 	"sync"
+	"time"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
@@ -17,11 +18,10 @@ const (
 	syncWorldState syncType = 1 << iota
 	syncPatchReceipts
 	syncNormalReceipts
-	end
 )
 
 const (
-	configMaxRequestHash = 20
+	configMaxRequestHash = 50
 )
 
 func (s syncType) toIndex() int {
@@ -51,7 +51,7 @@ func (s syncType) String() string {
 }
 
 func (s syncType) isValid() bool {
-	return s < end
+	return int(syncWorldState|syncPatchReceipts|syncNormalReceipts)|int(s) != 0
 }
 
 const (
@@ -60,7 +60,6 @@ const (
 )
 
 type syncer struct {
-	// mutex is used for vpool, ivpool and sentReq
 	mutex sync.Mutex
 	cond  *sync.Cond
 
@@ -90,6 +89,7 @@ type syncer struct {
 
 	waitingPeerCnt int
 	complete       int
+	startTime      time.Time
 }
 
 type Request struct {
@@ -114,7 +114,7 @@ func (s *syncer) _reqUnresolvedNode(st syncType, builder merkle.Builder,
 	req := builder.Requests()
 
 	keyMap := make(map[string]bool)
-	var keys [][]byte
+	keys := make([][]byte, 0, 100)
 	reqNum := 0
 	for req.Next() {
 		key := req.Key()
@@ -133,6 +133,12 @@ func (s *syncer) _reqUnresolvedNode(st syncType, builder merkle.Builder,
 		need = peerNum
 	}
 
+	maxRequestHash := need * configMaxRequestHash
+	if reqNum > maxRequestHash {
+		s.log.Debugf("unresolved(%d) request(%d)\n", reqNum, maxRequestHash)
+		reqNum = maxRequestHash
+	}
+
 	result := false
 	i := 0
 	pIndex := 0
@@ -140,7 +146,7 @@ func (s *syncer) _reqUnresolvedNode(st syncType, builder merkle.Builder,
 		offset := (reqNum * i) / need
 		end := (reqNum * (i + 1)) / need
 		pIndex = j
-		s.log.Debugf("requestNodeData for (%d) -> (%d) reqNum(%d)\n", offset, end, reqNum)
+		s.log.Debugf("requestNodeData for %s, (%d) -> (%d) reqNum(%d)\n", st, offset, end, reqNum)
 		if err := s.client.requestNodeData(p, keys[offset:end], st, s.processMsg); err != nil {
 			s.log.Debugf("Failed to request node\n")
 			unusedPeers = append(unusedPeers, p)
@@ -167,7 +173,6 @@ func (s *syncer) _onNodeData(builder merkle.Builder, data [][]byte) int {
 		s.log.Debugf("Received len(data) (%d)\n", len(data))
 	}
 	for _, d := range data {
-		s.log.Debugf("receive node(%#x)\n", d)
 		if err := builder.OnData(d); err != nil {
 			s.log.Infof("Failed to OnData to builder data(%#x), err(%+v)\n", d, err)
 		}
@@ -181,18 +186,18 @@ func (s *syncer) reqUnresolved(st syncType, builder merkle.Builder, need int) {
 		defer s.mutex.Unlock()
 		var peers []*peer
 		for {
-			s.log.Debugf("Wait for valid peer st(%s)\n", st)
 			peers = s._getValidPeers(need)
 			if peers != nil {
 				break
 			}
 			s.waitingPeerCnt++
+			s.log.Debugf("Wait for valid peer st(%s)\n", st)
 			s.cond.Wait()
+			s.log.Debugf("Wake up for valid peer st(%s) waitingPeerCnt(%d)\n", st, s.waitingPeerCnt)
 			s.waitingPeerCnt--
 			if s.complete&int(st) == int(st) {
 				return nil
 			}
-			s.log.Debugf("Wake up for valid peer st(%s)\n", st)
 		}
 		return peers
 	}
@@ -213,19 +218,15 @@ func (s *syncer) reqUnresolved(st syncType, builder merkle.Builder, need int) {
 			continue
 		} else {
 			s.mutex.Lock()
-			size := s.vpool.size()
 			if len(unused) > 0 {
 				s._returnValidPeers(unused)
 			}
-			s.log.Debugf("st(%s), size(%d), unused(%d), unresolved(%d)\n",
-				st, size, len(unused), unresolved)
+			s.log.Debugf("reqUnresolved st(%s), unused(%d), unresolved(%d)\n",
+				st, len(unused), unresolved)
 			if unresolved == 0 {
 				if s.complete&int(st) != int(st) {
 					s.finishCh <- st
 				}
-			}
-			if size == 0 && len(unused) > 0 && s.complete != syncComplete {
-				s.cond.Signal()
 			}
 			s.mutex.Unlock()
 			break
@@ -267,7 +268,7 @@ func (s *syncer) onNodeData(p *peer, status errCode, st syncType, data [][]byte)
 }
 
 func (s *syncer) onReceive(pi module.ProtocolInfo, b []byte, p *peer) {
-	s.processMsg(receiveMsg, pi, b, p)
+	s.processMsg(pi, b, p)
 }
 
 func (s *syncer) onJoin(p *peer) {
@@ -293,7 +294,7 @@ func (s *syncer) onLeave(id module.PeerID) {
 	s.vpool.remove(id)
 }
 
-func (s *syncer) processMsg(msgType int, pi module.ProtocolInfo, b []byte, p *peer) {
+func (s *syncer) processMsg(pi module.ProtocolInfo, b []byte, p *peer) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	rp := s.sentReq[p.id]
@@ -303,37 +304,35 @@ func (s *syncer) processMsg(msgType int, pi module.ProtocolInfo, b []byte, p *pe
 	}
 
 	var i interface{}
-	if msgType == receiveMsg {
-		var reqID uint32
-		var err error
-		switch pi {
-		case protoResult:
-			data := new(result)
-			_, err = c.UnmarshalFromBytes(b, data)
-			reqID = data.ReqID
-			i = data
-		case protoNodeData:
-			data := new(nodeData)
-			_, err = c.UnmarshalFromBytes(b, data)
-			reqID = data.ReqID
-			i = data
-		default:
-			log.Info("Invalid protocol received(%d)\n", pi)
-			return
-		}
+	var reqID uint32
+	var err error
+	switch pi {
+	case protoResult:
+		data := new(result)
+		_, err = c.UnmarshalFromBytes(b, data)
+		reqID = data.ReqID
+		i = data
+	case protoNodeData:
+		data := new(nodeData)
+		_, err = c.UnmarshalFromBytes(b, data)
+		reqID = data.ReqID
+		i = data
+	default:
+		log.Info("Invalid protocol received(%d)\n", pi)
+		return
+	}
 
-		if err != nil || reqID != p.reqID {
-			s.log.Infof(
-				"Failed onReceive. err(%v), receivedReqID(%d), p.reqID(%d), pi(%s), byte(%#x)\n",
-				err, reqID, p.reqID, pi, b)
-			return
-		}
+	if err != nil || reqID != p.reqID {
+		s.log.Infof(
+			"Failed onReceive. err(%v), receivedReqID(%d), p.reqID(%d), pi(%s), byte(%#x)\n",
+			err, reqID, p.reqID, pi, b)
+		return
 	}
 	p.timer.Stop()
 	delete(s.sentReq, p.id)
 
 	go func() {
-		if p.onReceive(msgType, pi, i) == false {
+		if p.onReceive(pi, i) == false {
 			s.vpool.push(p)
 		}
 	}()
@@ -438,6 +437,8 @@ func (s *syncer) onResult(status errCode, p *peer) {
 
 func (s *syncer) ForceSync() *Result {
 	s.log.Debugf("ForceSync")
+	startTime := time.Now()
+	s.startTime = startTime
 	s.cb(true)
 
 	pl := s.pool.peerList()
@@ -486,6 +487,9 @@ func (s *syncer) ForceSync() *Result {
 		s.mutex.Unlock()
 	}
 	s.cb(false)
+	syncDuration := time.Now().Sub(startTime)
+	elapsedMS := float64(syncDuration/time.Microsecond) / 1000
+	s.log.Infof("ForceSync : Elapsed: %9.3f ms\n", elapsedMS)
 	return &Result{s.wss, s.prl, s.nrl}
 }
 
@@ -504,6 +508,9 @@ func (s *syncer) Finalize() error {
 			}
 		}
 	}
+	syncDuration := time.Now().Sub(s.startTime)
+	elapsedMS := float64(syncDuration/time.Microsecond) / 1000
+	s.log.Infof("Finalize : Elapsed: %9.3f ms\n", elapsedMS)
 	return nil
 }
 

@@ -15,7 +15,7 @@ type client struct {
 }
 
 func (cl *client) hasNode(p *peer, wsHash, prHash, nrHash, vh []byte,
-	expired func(msgType int, pi module.ProtocolInfo, b []byte, p *peer)) error {
+	expiredCb func(pi module.ProtocolInfo, b []byte, p *peer)) error {
 	reqID := p.reqID + 1
 	msg := &hasNode{reqID, wsHash, vh, prHash, nrHash}
 	b, _ := c.MarshalToBytes(msg)
@@ -25,14 +25,16 @@ func (cl *client) hasNode(p *peer, wsHash, prHash, nrHash, vh []byte,
 	}
 	p.reqID = reqID
 	p.timer = time.AfterFunc(time.Millisecond*configExpiredTime, func() {
+		r := &result{p.reqID, ErrTimeExpired}
+		b, _ := c.MarshalToBytes(r)
 		cl.log.Debugf("hasNode time expired for p(%s)\n", p)
-		expired(receiveTimeExpired, protoResult, nil, p)
+		expiredCb(protoResult, b, p)
 	})
 	return nil
 }
 
 func (cl *client) requestNodeData(p *peer, hash [][]byte, t syncType,
-	expired func(msgType int, pi module.ProtocolInfo, b []byte, p *peer)) error {
+	expiredCb func(pi module.ProtocolInfo, b []byte, p *peer)) error {
 	reqID := p.reqID + 1
 	msg := &requestNodeData{reqID, t, hash}
 	b, _ := c.MarshalToBytes(msg)
@@ -43,8 +45,10 @@ func (cl *client) requestNodeData(p *peer, hash [][]byte, t syncType,
 
 	p.reqID = reqID
 	p.timer = time.AfterFunc(time.Millisecond*configExpiredTime, func() {
+		nd := &nodeData{p.reqID, ErrTimeExpired, t, nil}
+		b, _ := c.MarshalToBytes(nd)
 		cl.log.Debugf("requestNodeData time expired, peer(%s)\n", p)
-		expired(receiveTimeExpired, protoNodeData, nil, p)
+		expiredCb(protoNodeData, b, p)
 	})
 	return nil
 }

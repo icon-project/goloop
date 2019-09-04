@@ -17,25 +17,21 @@ type peer struct {
 	log   log.Logger
 }
 
-func (p *peer) onReceive(r int, pi module.ProtocolInfo, data interface{}) bool {
-	log.Debugf("peer.onReceive result(%d), pi(%s), p(%s)\n", r, pi, p)
+func (p *peer) onReceive(pi module.ProtocolInfo, data interface{}) bool {
+	log.Debugf("peer.onReceive pi(%s), p(%s)\n", pi, p)
 	var status errCode
 	var t syncType
 	switch pi {
 	case protoResult:
-		if r == receiveMsg {
-			r := data.(*result)
-			status = r.Status
-		}
+		r := data.(*result)
+		status = r.Status
 		p.cb.onResult(status, p)
 	case protoNodeData:
 		var state [][]byte
-		if r == receiveMsg {
-			rd := data.(*nodeData)
-			status = rd.Status
-			t = rd.Type
-			state = rd.Data
-		}
+		rd := data.(*nodeData)
+		status = rd.Status
+		t = rd.Type
+		state = rd.Data
 		p.cb.onNodeData(p, status, t, state)
 	default:
 		p.log.Info("Received wrong type (%s)\n", pi)

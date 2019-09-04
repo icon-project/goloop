@@ -15,11 +15,6 @@ const (
 	configExpiredTime  = 300 // in millisecond
 )
 
-const (
-	receiveMsg = iota
-	receiveTimeExpired
-)
-
 var c = codec.MP
 
 type Syncer interface {
