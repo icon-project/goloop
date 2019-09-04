@@ -9,6 +9,7 @@ import s.java.lang.Object;
 import s.java.lang.String;
 import i.IInstrumentation;
 import org.aion.avm.RuntimeMethodFeeSchedule;
+import org.aion.types.AionAddress;
 
 /**
  * The address has a very specific meaning, within the environment, so we wrap a ByteArray to produce this more specific type.
@@ -19,7 +20,7 @@ import org.aion.avm.RuntimeMethodFeeSchedule;
  */
 public final class Address extends Object {
     // Runtime-facing implementation.
-    public static final int avm_LENGTH = foundation.icon.ee.types.Address.LENGTH;
+    public static final int avm_LENGTH = AionAddress.LENGTH;
 
     // Note that we always contain an internal byte[] and we serialize that, specially.
     private final byte[] internalArray = new byte[avm_LENGTH];

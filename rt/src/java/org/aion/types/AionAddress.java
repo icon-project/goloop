@@ -27,13 +27,16 @@ public final class AionAddress {
         if (raw == null) {
             throw new NullPointerException();
         }
-        // TODO: temporarily accept the 32-byte address form
-        if (raw.length != LENGTH && raw.length != 32) {
+        // TODO: temporarily accept both Aion and ICON address forms
+        if (raw.length != 32 && raw.length != Address.LENGTH) {
             throw new IllegalArgumentException();
         }
         System.arraycopy(raw, 0, this.raw, 0, LENGTH);
     }
 
+    /*
+     * Convert address between Aion and ICON
+     */
     public AionAddress(Address from) {
         byte[] bytes = from.toByteArray();
         System.arraycopy(bytes, 0, this.raw, 0, bytes.length);

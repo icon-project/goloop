@@ -189,7 +189,7 @@ public class TransactionExecutor {
             Object obj = params[i];
             if (obj instanceof Address) {
                 Address address = (Address) obj;
-                convertedParams[i] = new avm.Address(address.toByteArray());
+                convertedParams[i] = new avm.Address(new AionAddress(address).toByteArray());
             } else {
                 convertedParams[i] = obj;
             }
