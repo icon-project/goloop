@@ -63,6 +63,7 @@ type chainContext struct {
 	sm      module.ServiceManager
 	logger  log.Logger
 	running bool
+	trtr    RefTracer
 }
 
 type finalizationCB = func(module.Block) bool
@@ -517,6 +518,9 @@ func NewManager(chain module.Chain, timestamper module.Timestamper) (module.Bloc
 	}
 	m.bntr.Logger = chain.Logger().WithFields(log.Fields{
 		log.FieldKeyModule: "BM|BNODE",
+	})
+	m.chainContext.trtr.Logger = chain.Logger().WithFields(log.Fields{
+		log.FieldKeyModule: "BM|TRANS",
 	})
 	chainPropBucket, err := m.bucketFor(db.ChainProperty)
 	if err != nil {

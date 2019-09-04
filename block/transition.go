@@ -2,9 +2,14 @@ package block
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
+)
+
+const (
+	configTraceTransition = false
 )
 
 type exeState int
@@ -31,6 +36,18 @@ type transitionImpl struct {
 	_parent       *transitionImpl // nil if parent is not accessible
 	_children     []*transitionImpl
 	_sync         bool // true if sync transition
+}
+
+func (ti *transitionImpl) RefCount() int {
+	return ti._nRef
+}
+
+func (ti *transitionImpl) String() string {
+	bi := ti._mtransition.BlockInfo()
+	if bi != nil {
+		return fmt.Sprintf("%p{nRef:%d H:%d}", ti, ti._nRef, bi.Height())
+	}
+	return fmt.Sprintf("%p{nRef:%d}", ti, ti._nRef)
 }
 
 type transition struct {
@@ -76,7 +93,9 @@ func (ti *transitionImpl) _newTransition(cb transitionCallback) *transition {
 	if ti.running() {
 		ti._cbs = append(ti._cbs, tr)
 	}
-	traceRef(ti)
+	if configTraceTransition {
+		ti._chainContext.trtr.TraceRef(ti)
+	}
 	return tr
 }
 
@@ -101,7 +120,9 @@ func (ti *transitionImpl) cancel(tncb transitionCallback) bool {
 
 func (ti *transitionImpl) unref() {
 	ti._nRef--
-	traceUnref(ti)
+	if configTraceTransition {
+		ti._chainContext.trtr.TraceUnref(ti)
+	}
 	if ti._nRef == 0 {
 		for _, c := range ti._children {
 			c._parent = nil
@@ -172,7 +193,9 @@ func (ti *transitionImpl) _addChild(
 		return nil, err
 	}
 	ti._children = append(ti._children, cti)
-	traceNewTransitionImpl(cti)
+	if configTraceTransition {
+		ti._chainContext.trtr.TraceNew(cti)
+	}
 	return tr, nil
 }
 
@@ -376,6 +399,8 @@ func newInitialTransition(
 		_ti: ti,
 		_cb: nil,
 	}
-	traceNewTransitionImpl(ti)
+	if configTraceTransition {
+		ti._chainContext.trtr.TraceNew(ti)
+	}
 	return tr
 }
