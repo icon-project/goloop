@@ -201,15 +201,15 @@ func DefaultArgErrorFunc(cmd *cobra.Command, err error) error {
 }
 
 func DefaultFlagErrorFunc(cmd *cobra.Command, err error) error {
-	names := make([]string,0)
+	names := make([]string, 0)
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
-		name := "--"+f.Name
+		name := "--" + f.Name
 		if f.Shorthand != "" {
-			name = name + " or -"+f.Shorthand
+			name = name + " or -" + f.Shorthand
 		}
 		names = append(names, name)
 	})
-	cmd.Println("Available Flags: " + strings.Join(names,", "))
+	cmd.Println("Available Flags: " + strings.Join(names, ", "))
 	return err
 }
 
@@ -419,23 +419,40 @@ func IsDirectory(p string) (bool, error) {
 	return fi.IsDir(), nil
 }
 
+var cpuProfileCnt int32 = 0
+
+func startCPUProfile(name string) (*os.File, error) {
+	cnt := atomic.AddInt32(&cpuProfileCnt, 1)
+	filename := fmt.Sprintf("%s.%03d", name, cnt)
+	f, err := os.Create(filename)
+	if err != nil {
+		return nil, errors.Errorf("fail to create %s for profile err=%+v", filename, err)
+	}
+	if err = pprof.StartCPUProfile(f); err != nil {
+		return nil, errors.Errorf("fail to start profiling err=%+v", err)
+	}
+	return f, nil
+}
+
 func StartCPUProfile(filename string) error {
 	if filename != "" {
-		f, err := os.Create(filename)
+		fd, err := startCPUProfile(filename)
 		if err != nil {
-			return errors.Errorf("fail to create %s for profile err=%+v", filename, err)
+			return err
 		}
-		if err = pprof.StartCPUProfile(f); err != nil {
-			return errors.Errorf("fail to start profiling err=%+v", err)
-		}
-		defer func() {
-			pprof.StopCPUProfile()
-		}()
 		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt)
+		signal.Notify(c, syscall.SIGUSR2)
 		go func(c chan os.Signal) {
-			<-c
-			pprof.StopCPUProfile()
+			for {
+				<-c
+				pprof.StopCPUProfile()
+				fd.Close()
+
+				fd, err = startCPUProfile(filename)
+				if err != nil {
+					log.Panicf("Fail to start CPU Profile err=%+v", err)
+				}
+			}
 		}(c)
 	} else {
 		return errors.Errorf("filename cannot be empty string")
