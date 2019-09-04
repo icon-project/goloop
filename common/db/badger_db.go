@@ -75,7 +75,7 @@ func (bucket *badgerBucket) Get(key []byte) ([]byte, error) {
 				return nil
 			}
 		}
-		value, err = item.Value()
+		value, err = item.ValueCopy(nil)
 		return err
 	})
 	return value, err
