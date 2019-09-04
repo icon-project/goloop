@@ -316,23 +316,31 @@ func (c *singleChain) _transit(to State, froms ...State) error {
 	return nil
 }
 
-func (c *singleChain) _init() error {
-	if c.cfg.Channel == "" {
-		c.cfg.Channel = strconv.FormatInt(int64(c.cfg.NID), 16)
-	}
-	chainDir := c.cfg.ResolveAbsolute(c.cfg.BaseDir)
-	log.Println("ConfigFilepath", c.cfg.FilePath, "BaseDir", c.cfg.BaseDir, "ChainDir", chainDir)
+func (c *singleChain) _openDatabase(chainDir string) error {
 	DBDir := path.Join(chainDir, DefaultDBDir)
-	if c.cfg.DBType == "" {
-		c.cfg.DBType = string(db.GoLevelDBBackend)
-	}
 	if c.cfg.DBType != "mapdb" {
+		c.logger.Infof("prepare a directory %s for database", DBDir)
 		if err := os.MkdirAll(DBDir, 0700); err != nil {
 			return errors.Wrapf(err, "fail to make directory dir=%s", DBDir)
 		}
 	}
 	DBName := strconv.FormatInt(int64(c.cfg.NID), 16)
+	if cdb, err := db.Open(DBDir, c.cfg.DBType, DBName); err != nil {
+		return errors.Wrapf(err,
+			"fail to open database dir=%s type=%s name=%s", DBDir, c.cfg.DBType, DBName)
+	} else {
+		c.database = cdb
+	}
+	return nil
+}
 
+func (c *singleChain) _init() error {
+	if c.cfg.Channel == "" {
+		c.cfg.Channel = strconv.FormatInt(int64(c.cfg.NID), 16)
+	}
+	if c.cfg.DBType == "" {
+		c.cfg.DBType = string(db.GoLevelDBBackend)
+	}
 	if c.cfg.GenesisStorage == nil {
 		if len(c.cfg.Genesis) == 0 {
 			return errors.IllegalArgumentError.Errorf("FAIL to generate GenesisStorage")
@@ -340,11 +348,11 @@ func (c *singleChain) _init() error {
 		c.cfg.GenesisStorage = gs.NewFromTx(c.cfg.Genesis)
 	}
 
-	if cdb, err := db.Open(DBDir, c.cfg.DBType, DBName); err != nil {
-		return errors.Wrapf(err,
-			"fail to open database dir=%s type=%s name=%s", DBDir, c.cfg.DBType, DBName)
-	} else {
-		c.database = cdb
+	chainDir := c.cfg.ResolveAbsolute(c.cfg.BaseDir)
+	log.Println("ConfigFilepath", c.cfg.FilePath, "BaseDir", c.cfg.BaseDir, "ChainDir", chainDir)
+
+	if err := c._openDatabase(chainDir); err != nil {
+		return err
 	}
 
 	c.vld = consensus.NewCommitVoteSetFromBytes
@@ -608,11 +616,9 @@ func (c *singleChain) _reset() error {
 	if err := os.RemoveAll(DBDir); err != nil {
 		return err
 	}
-	DBName := strconv.FormatInt(int64(c.cfg.NID), 16)
-	if cdb, err := db.Open(DBDir, c.cfg.DBType, DBName); err != nil {
+
+	if err := c._openDatabase(chainDir); err != nil {
 		return err
-	} else {
-		c.database = cdb
 	}
 
 	WALDir := path.Join(chainDir, DefaultWALDir)
