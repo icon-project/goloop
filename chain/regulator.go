@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	configMinimumTransactions     = 100
+	configMinimumTransactions     = 10
 	ConfigDefaultTransactions     = 1000
 	ConfigDefaultCommitTimeout    = time.Second
 	ConfigDefaultBlockInterval    = time.Second
