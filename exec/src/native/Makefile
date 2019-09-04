@@ -13,14 +13,16 @@
 # limitations under the License.
 
 TARGET:=client
-TARGET_SO=$(BUILD_DIR)/lib$(TARGET).so
+TARGET_SO=$(BUILD_DIR)/lib$(TARGET).$(LIB_SUFFIX)
 
 ifneq (, $(findstring Darwin, $(shell uname -s)))
-  JAVA_HOME = /Library/Java/JavaVirtualMachines/adoptopenjdk-11.jdk/Contents/Home
+  JAVA_HOME ?= /Library/Java/JavaVirtualMachines/adoptopenjdk-11.jdk/Contents/Home
   OS_DIR = darwin
+  LIB_SUFFIX = dylib
 else
   JAVA_HOME ?= /opt/jdk-11.0.2
   OS_DIR = linux
+  LIB_SUFFIX = so
 endif
 
 BUILD_DIR:=../../build/native
