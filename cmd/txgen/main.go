@@ -21,6 +21,7 @@ func main() {
 	var methodName string
 	var params map[string]string
 	var installParams map[string]string
+	var index int64
 
 	cmd := &cobra.Command{
 		Use: fmt.Sprintf("%s [urls]", os.Args[0]),
@@ -36,6 +37,7 @@ func main() {
 	flags.StringVarP(&methodName, "method", "m", "transfer", "Method name to be used for transfer")
 	flags.StringToStringVar(&params, "param", nil, "Parameters for the call")
 	flags.StringToStringVar(&installParams, "installParam", make(map[string]string), "Install parameters")
+	flags.Int64VarP(&index, "index", "i", 0, "Initial index value to be used for generating transaction")
 
 	cmd.Run = func(cmd *cobra.Command, urls []string) {
 		if len(urls) == 0 {
@@ -65,7 +67,7 @@ func main() {
 				Method:        methodName,
 				CallParams:    params,
 				god:           godWallet,
-				index:         0,
+				index:         index,
 			}
 		} else if len(scorePath) > 0 {
 			maker = &TokenTransferMaker{
