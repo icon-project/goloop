@@ -3,6 +3,7 @@ package block
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 
 	"github.com/icon-project/goloop/common/errors"
@@ -14,6 +15,10 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/module"
+)
+
+const (
+	configTraceBnode = false
 )
 
 var dbCodec = codec.MP
@@ -30,12 +35,26 @@ type transactionLocator struct {
 	IndexInGroup     int
 }
 
+// can be disposed either automatically or by force.
 type bnode struct {
 	parent   *bnode
 	children []*bnode
 	block    module.Block
 	in       *transition
 	preexe   *transition
+
+	// a block candidate has a ref.
+	// a child bnode has a ref to parent.
+	// manager has a ref to finalized.
+	nRef int
+}
+
+func (bn *bnode) RefCount() int {
+	return bn.nRef
+}
+
+func (bn *bnode) String() string {
+	return fmt.Sprintf("%p{nRef:%d ID:%s}", bn, bn.nRef, common.HexPre(bn.block.ID()))
 }
 
 type chainContext struct {
@@ -50,6 +69,7 @@ type finalizationCB = func(module.Block) bool
 
 type manager struct {
 	*chainContext
+	bntr  RefTracer
 	nmap  map[string]*bnode
 	cache *cache
 
@@ -73,7 +93,7 @@ const (
 
 type task struct {
 	manager *manager
-	_cb     func(module.Block, error)
+	_cb     func(module.BlockCandidate, error)
 	in      *transition
 	state   taskState
 }
@@ -94,16 +114,71 @@ type proposeTask struct {
 func (m *manager) addNode(par *bnode, bn *bnode) {
 	par.children = append(par.children, bn)
 	bn.parent = par
+	par.nRef++
+	if configTraceBnode {
+		m.bntr.TraceRef(par)
+	}
 	m.nmap[string(bn.block.ID())] = bn
 }
 
-func (m *manager) removeNode(bn *bnode) {
+func (m *manager) newCandidate(bn *bnode) *blockCandidate {
+	bn.nRef++
+	if configTraceBnode {
+		m.bntr.TraceRef(bn)
+	}
+	return &blockCandidate{
+		Block: bn.block,
+		m:     m,
+	}
+}
+
+func (m *manager) unrefNode(bn *bnode) {
+	bn.nRef--
+	if configTraceBnode {
+		m.bntr.TraceUnref(bn)
+	}
+	if bn.nRef == 0 {
+		par := bn.parent
+		m.removeNode(bn)
+		if par != nil {
+			for i, c := range par.children {
+				if c == bn {
+					last := len(par.children) - 1
+					par.children[i] = par.children[last]
+					par.children[last] = nil
+					par.children = par.children[:last]
+				}
+			}
+		}
+	}
+}
+
+func (m *manager) _removeNode(bn *bnode) {
 	for _, c := range bn.children {
-		m.removeNode(c)
+		m._removeNode(c)
 	}
 	bn.in.dispose()
 	bn.preexe.dispose()
 	bn.parent = nil
+	if configTraceBnode {
+		m.bntr.TraceDispose(bn)
+	}
+	delete(m.nmap, string(bn.block.ID()))
+}
+
+func (m *manager) removeNode(bn *bnode) {
+	for _, c := range bn.children {
+		m._removeNode(c)
+	}
+	bn.in.dispose()
+	bn.preexe.dispose()
+	if bn.parent != nil {
+		m.unrefNode(bn.parent)
+		bn.parent = nil
+	}
+	if configTraceBnode {
+		m.bntr.TraceDispose(bn)
+	}
 	delete(m.nmap, string(bn.block.ID()))
 }
 
@@ -112,16 +187,22 @@ func (m *manager) removeNodeExcept(bn *bnode, except *bnode) {
 		if c == except {
 			c.parent = nil
 		} else {
-			m.removeNode(c)
+			m._removeNode(c)
 		}
 	}
 	bn.in.dispose()
 	bn.preexe.dispose()
-	bn.parent = nil
+	if bn.parent != nil {
+		m.unrefNode(bn.parent)
+		bn.parent = nil
+	}
+	if configTraceBnode {
+		m.bntr.TraceDispose(bn)
+	}
 	delete(m.nmap, string(bn.block.ID()))
 }
 
-func (t *task) cb(block module.Block, err error) {
+func (t *task) cb(block module.BlockCandidate, err error) {
 	cb := t._cb
 	t.manager.syncer.callLater(func() {
 		cb(block, err)
@@ -131,7 +212,7 @@ func (t *task) cb(block module.Block, err error) {
 func (m *manager) _import(
 	block module.BlockData,
 	flags int,
-	cb func(module.Block, error),
+	cb func(module.BlockCandidate, error),
 ) (*importTask, error) {
 	bn := m.nmap[string(block.PrevID())]
 	if bn == nil {
@@ -221,12 +302,15 @@ func (it *importTask) _onValidate(err error) {
 				in:     it.in.newTransition(nil),
 				preexe: it.out.newTransition(nil),
 			}
+			if configTraceBnode {
+				it.manager.bntr.TraceNew(bn)
+			}
 			pbn := it.manager.nmap[string(it.block.PrevID())]
 			it.manager.addNode(pbn, bn)
 		}
 		it.stop()
 		it.state = validatedOut
-		it.cb(bn.block, err)
+		it.cb(it.manager.newCandidate(bn), err)
 	}
 }
 
@@ -281,7 +365,7 @@ func (it *importTask) _onExecute(err error) {
 func (m *manager) _propose(
 	parentID []byte,
 	votes module.CommitVoteSet,
-	cb func(module.Block, error),
+	cb func(module.BlockCandidate, error),
 ) (*proposeTask, error) {
 	bn := m.nmap[string(parentID)]
 	if bn == nil {
@@ -379,8 +463,7 @@ func (pt *proposeTask) _onExecute(err error) {
 	}
 	pmtr := pt.in.mtransition()
 	mtr := tr.mtransition()
-	var block module.Block
-	block = &blockV2{
+	block := &blockV2{
 		height:             height,
 		timestamp:          timestamp,
 		proposer:           pt.manager.chain.Wallet().Address(),
@@ -393,21 +476,25 @@ func (pt *proposeTask) _onExecute(err error) {
 		_nextValidators:    pmtr.NextValidators(),
 		votes:              pt.votes,
 	}
-	if bn, ok := pt.manager.nmap[string(block.ID())]; !ok {
-		nbn := &bnode{
+	var bn *bnode
+	var ok bool
+	if bn, ok = pt.manager.nmap[string(block.ID())]; !ok {
+		bn = &bnode{
 			block:  block,
 			in:     pt.in.newTransition(nil),
 			preexe: tr,
 		}
+		if configTraceBnode {
+			pt.manager.bntr.TraceNew(bn)
+		}
 		pbn := pt.manager.nmap[string(block.PrevID())]
-		pt.manager.addNode(pbn, nbn)
+		pt.manager.addNode(pbn, bn)
 	} else {
 		tr.dispose()
-		block = bn.block
 	}
 	pt.stop()
 	pt.state = validatedOut
-	pt.cb(block, nil)
+	pt.cb(pt.manager.newCandidate(bn), nil)
 	return
 }
 
@@ -428,6 +515,9 @@ func NewManager(chain module.Chain, timestamper module.Timestamper) (module.Bloc
 		cache:       newCache(configCacheCap),
 		timestamper: timestamper,
 	}
+	m.bntr.Logger = chain.Logger().WithFields(log.Fields{
+		log.FieldKeyModule: "BM|BNODE",
+	})
 	chainPropBucket, err := m.bucketFor(db.ChainProperty)
 	if err != nil {
 		return nil, err
@@ -467,6 +557,10 @@ func NewManager(chain module.Chain, timestamper module.Timestamper) (module.Bloc
 		return nil, err
 	}
 	m.finalized = bn
+	bn.nRef++
+	if configTraceBnode {
+		m.bntr.TraceNew(bn)
+	}
 	m.nmap[string(lastFinalized.ID())] = bn
 	return m, nil
 }
@@ -519,7 +613,7 @@ func (m *manager) doGetBlock(id []byte) (module.Block, error) {
 func (m *manager) Import(
 	r io.Reader,
 	flags int,
-	cb func(module.Block, error),
+	cb func(module.BlockCandidate, error),
 ) (func() bool, error) {
 	m.syncer.begin()
 	defer m.syncer.end()
@@ -544,7 +638,7 @@ func (m *manager) Import(
 func (m *manager) ImportBlock(
 	block module.BlockData,
 	flags int,
-	cb func(module.Block, error),
+	cb func(module.BlockCandidate, error),
 ) (func() bool, error) {
 	m.syncer.begin()
 	defer m.syncer.end()
@@ -632,6 +726,9 @@ func (m *manager) finalizeGenesisBlock(
 		_nextValidators:    gtr.mtransition().NextValidators(),
 		votes:              votes,
 	}
+	if configTraceBnode {
+		m.bntr.TraceNew(bn)
+	}
 	m.nmap[string(bn.block.ID())] = bn
 	err = m.finalize(bn)
 	if err != nil {
@@ -647,7 +744,7 @@ func (m *manager) finalizeGenesisBlock(
 func (m *manager) Propose(
 	parentID []byte,
 	votes module.CommitVoteSet,
-	cb func(module.Block, error),
+	cb func(module.BlockCandidate, error),
 ) (canceler func() bool, err error) {
 	m.syncer.begin()
 	defer m.syncer.end()
@@ -666,7 +763,7 @@ func (m *manager) Propose(
 	}, nil
 }
 
-func (m *manager) Commit(block module.Block) error {
+func (m *manager) Commit(block module.BlockCandidate) error {
 	return nil
 }
 
@@ -681,7 +778,7 @@ func (m *manager) bucketFor(id db.BucketID) (*bucket, error) {
 	}, nil
 }
 
-func (m *manager) Finalize(block module.Block) error {
+func (m *manager) Finalize(block module.BlockCandidate) error {
 	m.syncer.begin()
 	defer m.syncer.end()
 
@@ -713,6 +810,10 @@ func (m *manager) finalize(bn *bnode) error {
 	}
 
 	m.finalized = bn
+	bn.nRef++
+	if configTraceBnode {
+		m.bntr.TraceRef(bn)
+	}
 
 	if blockV2, ok := block.(*blockV2); ok {
 		hb, err := m.bucketFor(db.BytesByHash)
@@ -1089,4 +1190,30 @@ func (m *manager) WaitForTransaction(parentID []byte, cb func()) bool {
 		return false
 	}
 	return m.sm.WaitForTransaction(bn.in.mtransition(), bn.block, cb)
+}
+
+func (m *manager) DupBlockCandidate(bc *blockCandidate) *blockCandidate {
+	m.syncer.begin()
+	defer m.syncer.end()
+
+	bn := m.nmap[string(bc.ID())]
+	if bn != nil {
+		bn.nRef++
+		if configTraceBnode {
+			m.bntr.TraceRef(bn)
+		}
+	}
+	res := *bc
+	return &res
+}
+
+func (m *manager) DisposeBlockCandidate(bc *blockCandidate) {
+	m.syncer.begin()
+	defer m.syncer.end()
+
+	bn := m.nmap[string(bc.ID())]
+	if bn == nil {
+		return
+	}
+	m.unrefNode(bn)
 }

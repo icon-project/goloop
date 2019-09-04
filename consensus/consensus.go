@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"math/rand"
 	"path"
 	"time"
 
@@ -15,6 +16,10 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
 	"github.com/icon-project/goloop/server/metric"
+)
+
+const (
+	configRandomImportFail = false
 )
 
 var csProtocols = []module.ProtocolInfo{
@@ -60,13 +65,16 @@ type blockPartSet struct {
 
 	// nil if partset is incomplete
 	block          module.BlockData
-	validatedBlock module.Block
+	validatedBlock module.BlockCandidate
 }
 
 func (bps *blockPartSet) Zerofy() {
 	bps.PartSet = nil
 	bps.block = nil
-	bps.validatedBlock = nil
+	if bps.validatedBlock != nil {
+		bps.validatedBlock.Dispose()
+		bps.validatedBlock = nil
+	}
 }
 
 func (bps *blockPartSet) ID() *PartSetID {
@@ -82,6 +90,34 @@ func (bps *blockPartSet) IsZero() bool {
 
 func (bps *blockPartSet) IsComplete() bool {
 	return bps.block != nil
+}
+
+func (bps *blockPartSet) Assign(oth *blockPartSet) {
+	bps.PartSet = oth.PartSet
+	bps.block = oth.block
+	if bps.validatedBlock == oth.validatedBlock {
+		return
+	}
+	if bps.validatedBlock != nil {
+		bps.validatedBlock.Dispose()
+	}
+	if oth.validatedBlock == nil {
+		bps.validatedBlock = nil
+	} else {
+		bps.validatedBlock = oth.validatedBlock.Dup()
+	}
+}
+
+func (bps *blockPartSet) Set(ps PartSet, blk module.BlockData, bc module.BlockCandidate) {
+	bps.PartSet = ps
+	bps.block = blk
+	if bps.validatedBlock == bc {
+		return
+	}
+	if bps.validatedBlock != nil {
+		bps.validatedBlock.Dispose()
+	}
+	bps.validatedBlock = bc
 }
 
 type consensus struct {
@@ -328,9 +364,7 @@ func (cs *consensus) ReceiveProposalMessage(msg *proposalMessage, unicast bool) 
 		return nil
 	}
 	cs.proposalPOLRound = msg.proposal.POLRound
-	cs.currentBlockParts = blockPartSet{
-		PartSet: newPartSetFromID(msg.proposal.BlockPartSetID),
-	}
+	cs.currentBlockParts.Set(newPartSetFromID(msg.proposal.BlockPartSetID), nil, nil)
 
 	if (cs.step == stepTransactionWait || cs.step == stepPropose) && cs.isProposalAndPOLPrevotesComplete() {
 		cs.enterPrevote()
@@ -428,9 +462,7 @@ func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) {
 			cs.lockedBlockParts.Zerofy()
 		}
 		if cs.round == msg.Round && partSetID != nil && !cs.currentBlockParts.ID().Equal(partSetID) {
-			cs.currentBlockParts = blockPartSet{
-				PartSet: newPartSetFromID(partSetID),
-			}
+			cs.currentBlockParts.Set(newPartSetFromID(partSetID), nil, nil)
 		}
 	}
 
@@ -523,7 +555,7 @@ func (cs *consensus) enterPropose() {
 	if cs.isProposer() {
 		if !cs.lockedBlockParts.IsZero() {
 			cs.sendProposal(cs.lockedBlockParts.PartSet, cs.lockedRound)
-			cs.currentBlockParts = cs.lockedBlockParts
+			cs.currentBlockParts.Assign(&cs.lockedBlockParts)
 		} else {
 			if cs.height > 1 && cs.roundLimit > 0 && cs.round > cs.roundLimit && !cs.sentPatch {
 				roundEvidences := cs.hvs.getRoundEvidences(cs.roundLimit, cs.nid)
@@ -537,7 +569,7 @@ func (cs *consensus) enterPropose() {
 			var err error
 			cvl := cs.lastVotes.commitVoteListForOverTwoThirds()
 			cs.cancelBlockRequest, err = cs.c.BlockManager().Propose(cs.lastBlock.ID(), cvl,
-				func(blk module.Block, err error) {
+				func(blk module.BlockCandidate, err error) {
 					cs.mutex.Lock()
 					defer cs.mutex.Unlock()
 
@@ -557,11 +589,7 @@ func (cs *consensus) enterPropose() {
 					bps := psb.PartSet()
 
 					cs.sendProposal(bps, -1)
-					cs.currentBlockParts = blockPartSet{
-						PartSet:        bps,
-						block:          blk,
-						validatedBlock: blk,
-					}
+					cs.currentBlockParts.Set(bps, blk, blk)
 					cs.enterPrevote()
 				},
 			)
@@ -587,12 +615,17 @@ func (cs *consensus) enterPrevote() {
 			cs.cancelBlockRequest, err = cs.c.BlockManager().ImportBlock(
 				cs.currentBlockParts.block,
 				0,
-				func(blk module.Block, err error) {
+				func(blk module.BlockCandidate, err error) {
 					cs.mutex.Lock()
 					defer cs.mutex.Unlock()
 
 					if cs.hrs != hrs || !cs.started {
 						return
+					}
+
+					if configRandomImportFail && rand.Int31n(3) > 0 {
+						err = errors.New("bad luck")
+						blk.Dispose()
 					}
 
 					if err == nil {
@@ -676,7 +709,7 @@ func (cs *consensus) enterPrecommit() {
 	} else if cs.currentBlockParts.ID().Equal(partSetID) && cs.currentBlockParts.validatedBlock != nil {
 		cs.logger.Traceln("enterPrecommit: update lock")
 		cs.lockedRound = cs.round
-		cs.lockedBlockParts = cs.currentBlockParts
+		cs.lockedBlockParts.Assign(&cs.currentBlockParts)
 		msg := newVoteListMessage()
 		msg.VoteList = prevotes.voteList()
 		if err := cs.lockWAL.writeMessage(msg); err != nil {
@@ -699,9 +732,7 @@ func (cs *consensus) enterPrecommit() {
 		// polka for a block we don't have
 		cs.logger.Traceln("enterPrecommit: polka for we don't have")
 		if !cs.currentBlockParts.ID().Equal(partSetID) {
-			cs.currentBlockParts = blockPartSet{
-				PartSet: newPartSetFromID(partSetID),
-			}
+			cs.currentBlockParts.Set(newPartSetFromID(partSetID), nil, nil)
 		}
 		cs.lockedRound = -1
 		cs.lockedBlockParts.Zerofy()
@@ -757,7 +788,7 @@ func (cs *consensus) commitAndEnterNewHeight() {
 		_, err := cs.c.BlockManager().ImportBlock(
 			cs.currentBlockParts.block,
 			module.ImportByForce,
-			func(blk module.Block, err error) {
+			func(blk module.BlockCandidate, err error) {
 				cs.mutex.Lock()
 				defer cs.mutex.Unlock()
 
@@ -809,9 +840,7 @@ func (cs *consensus) enterCommit(precommits *voteSet, partSetID *PartSetID, roun
 	}
 
 	if !cs.currentBlockParts.ID().Equal(partSetID) {
-		cs.currentBlockParts = blockPartSet{
-			PartSet: newPartSetFromID(partSetID),
-		}
+		cs.currentBlockParts.Set(newPartSetFromID(partSetID), nil, nil)
 	}
 
 	cs.notifySyncer()
@@ -1283,11 +1312,8 @@ func (cs *consensus) applyLockWAL() error {
 		if err != nil {
 			return err
 		}
-		cs.currentBlockParts = blockPartSet{
-			PartSet: lastBPSet,
-			block:   blk,
-		}
-		cs.lockedBlockParts = cs.currentBlockParts
+		cs.currentBlockParts.Set(lastBPSet, blk, nil)
+		cs.lockedBlockParts.Assign(&cs.currentBlockParts)
 		cs.lockedRound = lastBPSetLockRound
 	}
 	return nil
@@ -1712,15 +1738,11 @@ func (cs *consensus) processBlock(br fastsync.BlockResult) {
 		return
 	}
 	bps := newPartSetFromID(id)
-	var validatedBlock module.Block
+	var validatedBlock module.BlockCandidate
 	if cs.currentBlockParts.ID().Equal(id) {
 		validatedBlock = cs.currentBlockParts.validatedBlock
 	}
-	cs.currentBlockParts = blockPartSet{
-		PartSet:        bps,
-		block:          blk,
-		validatedBlock: validatedBlock,
-	}
+	cs.currentBlockParts.Set(bps, blk, validatedBlock)
 	cs.syncing = false
 	br.Consume()
 	if cs.step < stepCommit {

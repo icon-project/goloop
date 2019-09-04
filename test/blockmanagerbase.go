@@ -29,23 +29,23 @@ func (_r *BlockManagerBase) NewBlockDataFromReader(r io.Reader) (module.BlockDat
 	panic("not implemented")
 }
 
-func (_r *BlockManagerBase) Propose(parentID []byte, votes module.CommitVoteSet, cb func(module.Block, error)) (canceler func() bool, err error) {
+func (_r *BlockManagerBase) Propose(parentID []byte, votes module.CommitVoteSet, cb func(module.BlockCandidate, error)) (canceler func() bool, err error) {
 	panic("not implemented")
 }
 
-func (_r *BlockManagerBase) Import(r io.Reader, flags int, cb func(module.Block, error)) (canceler func() bool, err error) {
+func (_r *BlockManagerBase) Import(r io.Reader, flags int, cb func(module.BlockCandidate, error)) (canceler func() bool, err error) {
 	panic("not implemented")
 }
 
-func (_r *BlockManagerBase) ImportBlock(blk module.BlockData, flags int, cb func(module.Block, error)) (canceler func() bool, err error) {
+func (_r *BlockManagerBase) ImportBlock(blk module.BlockData, flags int, cb func(module.BlockCandidate, error)) (canceler func() bool, err error) {
 	panic("not implemented")
 }
 
-func (_r *BlockManagerBase) Commit(module.Block) error {
+func (_r *BlockManagerBase) Commit(module.BlockCandidate) error {
 	panic("not implemented")
 }
 
-func (_r *BlockManagerBase) Finalize(module.Block) error {
+func (_r *BlockManagerBase) Finalize(module.BlockCandidate) error {
 	panic("not implemented")
 }
 

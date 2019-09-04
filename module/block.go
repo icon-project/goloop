@@ -36,6 +36,12 @@ type Block interface {
 	NextValidators() ValidatorList
 }
 
+type BlockCandidate interface {
+	Block
+	Dup() BlockCandidate
+	Dispose()
+}
+
 // ImportXXX is used as flag value of BlockManager.Import and
 // BlockManager.ImportBlock.
 const (
@@ -60,20 +66,20 @@ type BlockManager interface {
 	//	operation. canceler returns true and cb is not called if the
 	//	cancellation was successful. Proposed block can be Commited or
 	// 	Finalized.
-	Propose(parentID []byte, votes CommitVoteSet, cb func(Block, error)) (canceler func() bool, err error)
+	Propose(parentID []byte, votes CommitVoteSet, cb func(BlockCandidate, error)) (canceler func() bool, err error)
 
 	//	Import creates a Block from blockBytes and verifies the block.
 	//	The result is asynchronously notified by cb. canceler cancels the
 	//	operation. canceler returns true and cb is not called if the
 	//	cancellation was successful. Imported block can be Commited or
 	//	Finalized.
-	Import(r io.Reader, flags int, cb func(Block, error)) (canceler func() bool, err error)
-	ImportBlock(blk BlockData, flags int, cb func(Block, error)) (canceler func() bool, err error)
+	Import(r io.Reader, flags int, cb func(BlockCandidate, error)) (canceler func() bool, err error)
+	ImportBlock(blk BlockData, flags int, cb func(BlockCandidate, error)) (canceler func() bool, err error)
 
-	Commit(Block) error
+	Commit(BlockCandidate) error
 
-	//	Finalize updates world state according to Block block and removes non-finalized committed blocks with the same height as block from persistent storage.
-	Finalize(Block) error
+	//	Finalize updates world state according to BlockCandidate and removes non-finalized committed blocks with the same height as block from persistent storage.
+	Finalize(BlockCandidate) error
 
 	GetTransactionInfo(id []byte) (TransactionInfo, error)
 	Term()

@@ -68,7 +68,7 @@ func (bg *blockGenerator) generateUntil(n int64) {
 		pid := blk.ID()
 		br := proposeSync(bg.bm, pid, newCommitVoteSet(true))
 		blk = br.blk
-		err := bg.bm.Finalize(blk)
+		err := bg.bm.Finalize(br.blk)
 		assert.Nil(bg.t, err, "Finalize")
 	}
 }
@@ -110,7 +110,7 @@ func getBadBlockID(t *testing.T, bm module.BlockManager) []byte {
 }
 
 type blockResult struct {
-	blk      module.Block
+	blk      module.BlockCandidate
 	err      error
 	cberr    error
 	cbCalled bool
@@ -138,13 +138,13 @@ func (br *blockResult) assertCBError(t *testing.T) {
 }
 
 type cbResult struct {
-	blk module.Block
+	blk module.BlockCandidate
 	err error
 }
 
 func proposeSync(bm module.BlockManager, pid []byte, vs module.CommitVoteSet) *blockResult {
 	ch := make(chan cbResult)
-	_, err := bm.Propose(pid, vs, func(blk module.Block, err error) {
+	_, err := bm.Propose(pid, vs, func(blk module.BlockCandidate, err error) {
 		ch <- cbResult{blk, err}
 	})
 	if err != nil {
@@ -156,7 +156,7 @@ func proposeSync(bm module.BlockManager, pid []byte, vs module.CommitVoteSet) *b
 
 func importSync(bm module.BlockManager, r io.Reader) *blockResult {
 	ch := make(chan cbResult)
-	_, err := bm.Import(r, 0, func(blk module.Block, err error) {
+	_, err := bm.Import(r, 0, func(blk module.BlockCandidate, err error) {
 		ch <- cbResult{blk, err}
 	})
 	if err != nil {
@@ -264,7 +264,7 @@ func TestBlockManager_Propose_Cancel(t *testing.T) {
 	blk := br.blk
 	pid = blk.ID()
 
-	canceler, err := s.bm.Propose(pid, newCommitVoteSet(true), func(blk module.Block, err error) {
+	canceler, err := s.bm.Propose(pid, newCommitVoteSet(true), func(blk module.BlockCandidate, err error) {
 		assert.Fail(t, "canceled proposal cb was called")
 	})
 	assert.Nil(t, err, "propose return error")
@@ -294,7 +294,7 @@ func TestBlockManager_Import_Cancel(t *testing.T) {
 	ec := make(chan struct{})
 	r := s.bg.getReaderForBlock(1)
 	s.sm.setTransitionExeChan(ec)
-	canceler, err := s.bm.Import(r, 0, func(blk module.Block, err error) {
+	canceler, err := s.bm.Import(r, 0, func(blk module.BlockCandidate, err error) {
 		assert.Fail(t, "canceled import cb was called")
 	})
 	assert.Nil(t, err, "import return error")
