@@ -551,7 +551,8 @@ func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 		return nil
 	}
 	if s.store == nil {
-		s.store = trie_manager.NewMutable(s.database, nil)
+		s.store = trie_manager.MutableFromImmutable(snapshot.store)
+		return nil
 	}
 	if err := s.store.Reset(snapshot.store); err != nil {
 		log.Panicf("Fail to make accountStateImpl err=%v", err)
