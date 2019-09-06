@@ -95,6 +95,7 @@ const (
 	Revision2
 	Revision3
 	Revision4
+	Revision5
 	RevisionReserved
 )
 
