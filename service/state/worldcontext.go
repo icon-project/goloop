@@ -31,6 +31,7 @@ const (
 	VarCommitTimeout      = "commit_timeout"
 	VarRoundLimitFactor   = "round_limit_factor"
 	VarMinimizeBlockGen   = "minimize_block_gen"
+	VarTxHashToAddress    = "tx_to_address"
 )
 
 const (

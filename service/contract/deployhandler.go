@@ -180,9 +180,16 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 		}
 	}
 	scoreAddr := common.NewContractAddress(contractID)
-	as.DeployContract(h.content, h.eeType, h.contentType, h.params, h.txHash)
-	scoreDB := scoredb.NewVarDB(sysAs, h.txHash)
-	_ = scoreDB.Set(scoreAddr)
+	oldTx, err := as.DeployContract(h.content, h.eeType, h.contentType, h.params, h.txHash)
+	if err != nil {
+		msg, _ := common.EncodeAny(err.Error())
+		return module.StatusSystemError, h.StepUsed(), msg, nil
+	}
+	h2a := scoredb.NewDictDB(sysAs, state.VarTxHashToAddress, 1)
+	h2a.Set(h.txHash, scoreAddr)
+	if len(oldTx) > 0 {
+		h2a.Delete(oldTx)
+	}
 
 	if cc.AuditEnabled() == false ||
 		cc.IsDeployer(h.from.String()) || h.preDefinedAddr != nil {
@@ -223,12 +230,13 @@ const (
 func (h *AcceptHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *codec.TypedObj, module.Address) {
 	// 1. call GetAPI
 	sysAs := cc.GetAccountState(state.SystemID)
-	varDb := scoredb.NewVarDB(sysAs, h.txHash)
-	scoreAddr := varDb.Address()
+	h2a := scoredb.NewDictDB(sysAs, state.VarTxHashToAddress, 1)
+	scoreAddr := h2a.Get(h.txHash).Address()
 	if scoreAddr == nil {
 		msg, _ := common.EncodeAny("Score not found by tx hash")
 		return module.StatusContractNotFound, h.stepLimit, msg, nil
 	}
+	h2a.Delete(h.txHash)
 	scoreAs := cc.GetAccountState(scoreAddr.ID())
 
 	var methodStr string
@@ -275,7 +283,6 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 		msg, _ := common.EncodeAny(err.Error())
 		return status, h.StepUsed(), msg, nil
 	}
-	varDb.Delete()
 
 	return status, h.StepUsed(), nil, nil
 }
