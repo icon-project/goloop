@@ -1,9 +1,11 @@
 dependencies {
     implementation 'org.bouncycastle:bcprov-jdk15on:1.60'
+    implementation 'org.ow2.asm:asm:6.2.1'
+    implementation 'org.ow2.asm:asm-commons:6.2.1'
+    implementation 'org.ow2.asm:asm-tree:6.2.1'
 
     implementation files("$rootDir/lib/org-aion-avm-core.jar")
     implementation files("$rootDir/lib/org-aion-avm-rt.jar")
-    implementation files("$rootDir/lib/org-aion-avm-tooling.jar")
 }
 
 sourceSets {
