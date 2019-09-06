@@ -405,12 +405,10 @@ func NewMPT(d db.Database, h []byte, t reflect.Type) *mpt {
 
 func MPTFromImmutable(immutable trie.ImmutableForObject) *mpt {
 	if m, ok := immutable.(*mpt); ok {
-		nm := new(mpt)
-		nm.db = m.db
-		nm.bucket = m.bucket
-		nm.objectType = m.objectType
-		nm.root = m.root
-		return nm
+		return &mpt{
+			mptBase: m.mptBase,
+			root:    m.root,
+		}
 	}
 	return nil
 }
