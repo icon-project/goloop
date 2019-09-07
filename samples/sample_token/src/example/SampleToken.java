@@ -56,10 +56,10 @@ public class SampleToken
     private static SampleToken token;
 
     @OnInstall
-    public static void init(String name,
-                            String symbol,
-                            BigInteger decimals,
-                            BigInteger initialSupply) {
+    public static void onInstall(String name,
+                                 String symbol,
+                                 BigInteger decimals,
+                                 BigInteger initialSupply) {
         token = new SampleToken(name, symbol, decimals, initialSupply);
     }
 

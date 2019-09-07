@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import org.aion.avm.tooling.deploy.OptimizedJarBuilder;
+import foundation.icon.ee.tooling.deploy.OptimizedJarBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,13 +25,16 @@ import java.nio.file.Paths;
 
 public class DAppCompiler {
     private static final int ABI_VERSION = 1;
-    private static final boolean DEBUG_MODE = false;
     private static final String OPTIMIZED_JAR = "./optimized.jar";
+    private static boolean DEBUG_MODE = false;
 
     public static void main(String[] args) throws IOException {
         Logger logger = LoggerFactory.getLogger(DAppCompiler.class);
         logger.info("=== DAppCompiler ===");
-        if (args.length == 1) {
+        if (args.length > 0 && args.length <= 2) {
+            if (args.length == 2) {
+                DEBUG_MODE = "-debug".equals(args[1]);
+            }
             byte[] optimizedJar = new OptimizedJarBuilder(DEBUG_MODE, readFile(args[0]), ABI_VERSION)
                     .withUnreachableMethodRemover()
                     .withRenamer()
@@ -40,7 +43,7 @@ public class DAppCompiler {
             writeFile(OPTIMIZED_JAR, optimizedJar);
             logger.info("Generated {}", OPTIMIZED_JAR);
         } else {
-            logger.info("Usage: DAppCompiler <jarFile>");
+            logger.info("Usage: DAppCompiler <jarFile> (-debug)");
         }
     }
 

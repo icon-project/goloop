@@ -1,4 +1,9 @@
-package org.aion.avm.tooling.abi;
+/*
+ * Copyright 2019 ICON Foundation
+ * Copyright (c) 2018 Aion Foundation https://aion.network/
+ */
+
+package foundation.icon.ee.tooling.abi;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataOutputStream;
@@ -11,6 +16,7 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.Arrays;
 
+import org.aion.avm.tooling.abi.ABIUtils;
 import org.aion.avm.tooling.util.JarBuilder;
 import org.aion.avm.tooling.util.Utilities;
 import org.aion.avm.userlib.*;
@@ -81,7 +87,6 @@ public class ABICompiler {
         System.out.println("Usage: ABICompiler <DApp jar path> <abi version number>");
     }
 
-
     public static ABICompiler compileJar(InputStream byteReader) {
         return initCompilerAndCompile(byteReader, DEFAULT_VERSION_NUMBER);
     }
@@ -120,16 +125,15 @@ public class ABICompiler {
 
         ClassReader reader = new ClassReader(mainClassBytes);
         ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-        ABICompilerClassVisitor classVisitor = new ABICompilerClassVisitor(classWriter, version) {};
+        ABICompilerClassVisitor classVisitor = new ABICompilerClassVisitor(classWriter, version);
         reader.accept(classVisitor, 0);
 
         callables = classVisitor.getCallableSignatures();
         initializables = classVisitor.getInitializableTypes();
         mainClassBytes = classWriter.toByteArray();
 
-
         Class<?>[] missingUserlib = getMissingUserlibClasses(this.classMap);
-        outputJarFile = JarBuilder.buildJarForExplicitClassNamesAndBytecode(mainClassName, mainClassBytes, this.classMap, missingUserlib); 
+        outputJarFile = JarBuilder.buildJarForExplicitClassNamesAndBytecode(mainClassName, mainClassBytes, this.classMap, missingUserlib);
     }
 
     public void writeAbi(OutputStream rawStream, int version) {
@@ -162,6 +166,9 @@ public class ABICompiler {
         classMap = Utilities.extractClasses(jarReader, Utilities.NameStyle.DOT_NAME);
         mainClassName = Utilities.extractMainClassName(jarReader, Utilities.NameStyle.DOT_NAME);
         mainClassBytes = classMap.get(mainClassName);
+        if (mainClassBytes == null) {
+            throw new ABICompilerException("Cannot find main class: " + mainClassName);
+        }
         classMap.remove(mainClassName);
     }
 
@@ -172,7 +179,7 @@ public class ABICompiler {
             String fullyQualifiedName = clazz.getName();
             String internalName = Utilities.fulllyQualifiedNameToInternalName(fullyQualifiedName);
             byte[] expectedBytes = Utilities.loadRequiredResourceAsBytes(internalName + ".class");
-            
+
             if (originalClassMap.containsKey(fullyQualifiedName)) {
                 if (!Arrays.equals(expectedBytes, originalClassMap.get(fullyQualifiedName))) {
                     throw new ABICompilerException("Input jar contains class " + fullyQualifiedName + " but does not have expect contents");

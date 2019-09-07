@@ -1,11 +1,18 @@
-package org.aion.avm.tooling.abi;
+/*
+ * Copyright 2019 ICON Foundation
+ * Copyright (c) 2018 Aion Foundation https://aion.network/
+ */
+
+package foundation.icon.ee.tooling.abi;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
 import avm.Address;
+import org.aion.avm.tooling.abi.ABIConfig;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.FieldVisitor;
@@ -22,7 +29,6 @@ public class ABICompilerClassVisitor extends ClassVisitor {
     private boolean hasClinit = false;
     private String className;
     private String fallbackMethodName = "";
-    private List<ABICompilerFieldVisitor> fieldVisitors = new ArrayList<>();
     private List<ABICompilerMethodVisitor> methodVisitors = new ArrayList<>();
     private List<ABICompilerMethodVisitor> callableMethodVisitors = new ArrayList<>();
     private MethodNode clinitNode;
@@ -51,38 +57,6 @@ public class ABICompilerClassVisitor extends ClassVisitor {
         return callableMethodVisitors;
     }
 
-    private void postProcess() {
-        boolean foundFallback = false;
-
-        // We have to make a second pass to create the list of callables
-        Set<String> callableNames = new HashSet<String>();
-        for (ABICompilerMethodVisitor mv : methodVisitors) {
-            if (mv.isCallable()) {
-                callableSignatures.add(mv.getPublicStaticMethodSignature());
-                callableMethodVisitors.add(mv);
-                if(callableNames.contains(mv.getMethodName())) {
-                    throw new ABICompilerException("Multiple @Callable methods with the same name", mv.getMethodName());
-                } else {
-                    callableNames.add(mv.getMethodName());
-                }
-            }
-            if (mv.isFallback()) {
-                if(!foundFallback) {
-                    fallbackMethodName = mv.getMethodName();
-                    foundFallback = true;
-                }
-                else {
-                    throw new ABICompilerException("Only one function can be marked @Fallback", mv.getMethodName());
-                }
-            }
-        }
-        for (ABICompilerFieldVisitor fv : fieldVisitors) {
-            if (fv.isInitializable()) {
-                initializableFieldVisitors.add(fv);
-            }
-        }
-    }
-
     @Override
     public void visit(int version, int access, java.lang.String name, java.lang.String signature, java.lang.String superName, java.lang.String[] interfaces) {
         this.className = name;
@@ -91,11 +65,9 @@ public class ABICompilerClassVisitor extends ClassVisitor {
 
     @Override
     public FieldVisitor visitField(
-        int access, String name, String descriptor, String signature, Object value) {
-        ABICompilerFieldVisitor fv = new ABICompilerFieldVisitor(access, name, descriptor,
-            super.visitField(access, name, descriptor, signature, value));
-        fieldVisitors.add(fv);
-        return fv;
+            int access, String name, String descriptor, String signature, Object value) {
+        return new ABICompilerFieldVisitor(access, name, descriptor,
+                super.visitField(access, name, descriptor, signature, value));
     }
 
     @Override
@@ -109,9 +81,8 @@ public class ABICompilerClassVisitor extends ClassVisitor {
             if (name.equals("main") && ((access & Opcodes.ACC_PUBLIC) != 0)) {
                 hasMainMethod = true;
             }
-
             ABICompilerMethodVisitor mv = new ABICompilerMethodVisitor(access, name, descriptor,
-                super.visitMethod(access, name, descriptor, signature, exceptions));
+                    super.visitMethod(access, name, descriptor, signature, exceptions));
             methodVisitors.add(mv);
             return mv;
         }
@@ -120,50 +91,47 @@ public class ABICompilerClassVisitor extends ClassVisitor {
     @Override
     public void visitEnd() {
         postProcess();
-        if (!initializableFieldVisitors.isEmpty() || hasClinit) {
-            addStaticInitializers();
-        }
         if (!hasMainMethod) {
             addMainMethod();
         }
         super.visitEnd();
     }
 
-    private boolean hasFallback() {
-        return !fallbackMethodName.isEmpty();
+    private void postProcess() {
+        boolean foundOnInstall = false;
+
+        // We have to make a second pass to create the list of external methods
+        Set<String> callableNames = new HashSet<>();
+        for (ABICompilerMethodVisitor mv : methodVisitors) {
+            if (mv.isExternal()) {
+                callableSignatures.add(mv.getPublicStaticMethodSignature());
+                callableMethodVisitors.add(mv);
+                if (callableNames.contains(mv.getMethodName())) {
+                    throw new ABICompilerException("Multiple @External methods with the same name", mv.getMethodName());
+                } else {
+                    callableNames.add(mv.getMethodName());
+                }
+            }
+            if (mv.isOnInstall()) {
+                if (!foundOnInstall) {
+                    foundOnInstall = true;
+                    callableSignatures.add(mv.getPublicStaticMethodSignature());
+                    callableMethodVisitors.add(mv);
+                } else {
+                    throw new ABICompilerException("Only one method can be marked @OnInstall", mv.getMethodName());
+                }
+            }
+            if (mv.isPayable()) {
+                //TODO
+            }
+            if (mv.isEventLog()) {
+                //TODO
+            }
+        }
     }
 
-    private void addStaticInitializers() {
-        MethodVisitor methodVisitor =
-            super.visitMethod(ACC_STATIC, "<clinit>", "()V", null, null);
-        methodVisitor.visitCode();
-
-        if (!initializableFieldVisitors.isEmpty()) {
-            // ABIDecoder decoder = new ABIDecoder(Blockchain.getData())
-
-            methodVisitor.visitTypeInsn(NEW, "org/aion/avm/userlib/abi/ABIDecoder");
-            methodVisitor.visitInsn(DUP);
-            methodVisitor.visitMethodInsn(INVOKESTATIC, "avm/Blockchain", "getData", "()[B", false);
-            methodVisitor
-                .visitMethodInsn(INVOKESPECIAL, "org/aion/avm/userlib/abi/ABIDecoder", "<init>",
-                    "([B)V", false);
-
-            for (ABICompilerFieldVisitor fv : initializableFieldVisitors) {
-                methodVisitor.visitInsn(DUP);
-                callTheDecoder(methodVisitor, Type.getType(fv.getFieldDescriptor()));
-                methodVisitor
-                    .visitFieldInsn(PUTSTATIC, className, fv.getFieldName(),
-                        fv.getFieldDescriptor());
-            }
-            methodVisitor.visitInsn(POP);
-        }
-        if (null != clinitNode) {
-            clinitNode.accept(methodVisitor);
-        } else {
-            methodVisitor.visitInsn(RETURN);
-            methodVisitor.visitMaxs(0, 0);
-            methodVisitor.visitEnd();
-        }
+    private boolean hasFallback() {
+        return !fallbackMethodName.isEmpty();
     }
 
     private void addMainMethod() {

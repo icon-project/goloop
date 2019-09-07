@@ -1,4 +1,9 @@
-package org.aion.avm.tooling.abi;
+/*
+ * Copyright 2019 ICON Foundation
+ * Copyright (c) 2018 Aion Foundation https://aion.network/
+ */
+
+package foundation.icon.ee.tooling.abi;
 
 public class ABICompilerException extends RuntimeException {
 

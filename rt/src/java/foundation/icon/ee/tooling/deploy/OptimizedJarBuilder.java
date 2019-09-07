@@ -1,6 +1,12 @@
-package org.aion.avm.tooling.deploy;
+/*
+ * Copyright 2019 ICON Foundation
+ * Copyright (c) 2018 Aion Foundation https://aion.network/
+ */
 
-import org.aion.avm.tooling.abi.ABICompiler;
+package foundation.icon.ee.tooling.deploy;
+
+import foundation.icon.ee.tooling.abi.ABICompiler;
+import org.aion.avm.tooling.deploy.JarOptimizer;
 import org.aion.avm.tooling.deploy.eliminator.ConstantRemover;
 import org.aion.avm.tooling.deploy.eliminator.UnreachableMethodRemover;
 import org.aion.avm.tooling.deploy.renamer.Renamer;
@@ -21,7 +27,9 @@ public class OptimizedJarBuilder {
      */
     public OptimizedJarBuilder(boolean debugModeEnabled, byte[] jarBytes, int abiVersion) {
         this.debugModeEnabled = debugModeEnabled;
-        dappBytes = ABICompiler.compileJarBytes(jarBytes, abiVersion).getJarFileBytes();
+        ABICompiler compiler = ABICompiler.compileJarBytes(jarBytes, abiVersion);
+        dappBytes = compiler.getJarFileBytes();
+        compiler.writeAbi(System.out, abiVersion); // debug print
     }
 
     /**
@@ -70,8 +78,8 @@ public class OptimizedJarBuilder {
             try {
                 optimizedDappBytes = UnreachableMethodRemover.optimize(optimizedDappBytes);
 
-		//Run class removal optimization again to ensure classes without any referenced methods are removed
-        	optimizedDappBytes = jarOptimizer.optimize(optimizedDappBytes);
+                // Run class removal optimization again to ensure classes without any referenced methods are removed
+                optimizedDappBytes = jarOptimizer.optimize(optimizedDappBytes);
             } catch (Exception exception) {
                 System.err.println("UnreachableMethodRemover crashed, packaging code without this optimization");
             }
