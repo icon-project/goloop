@@ -54,6 +54,10 @@ class ChainTest extends Test {
             commands.add("--genesis")
             commands.add(gsDir)
         }
+        def logLevel = System.getProperty("LOG_LEVEL")
+        if (logLevel != null && logLevel.length() != 0) {
+            commands.add("--log_level=" + logLevel)
+        }
 
         Runtime.getRuntime().exec("rm -rf " + chainDir)
 
