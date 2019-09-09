@@ -49,6 +49,8 @@ public class Constants {
     public static final String SCORE_CHECKPARAMS_PATH = Constants.SCORE_ROOT + "check_params";
     public static final String SCORE_RECEIPT_PATH = Constants.SCORE_ROOT + "receipt";
     public static final String SCORE_API_PATH = Constants.SCORE_ROOT + "score_api";
+    public static final String SCORE_GOV_PATH = "./data/genesisStorage/" + "governance";
+    public static final String SCORE_GOV_UPDATE_PATH = Constants.SCORE_ROOT + "governance";
     public static final BigInteger DEFAULT_BALANCE = new BigInteger("100000000");
     public static final long DEFAULT_STEP_LIMIT = 9000000;
     public static final String SCORE_PYTHON_ROOT = "package.json";

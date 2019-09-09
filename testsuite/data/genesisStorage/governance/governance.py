@@ -150,3 +150,7 @@ class Governance(IconScoreBase):
     @external
     def setTimestampThreshold(self, threshold: int):
         self.system_score.setTimestampThreshold(threshold)
+
+    @external(readonly=True)
+    def updated(self) -> bool:
+        return False

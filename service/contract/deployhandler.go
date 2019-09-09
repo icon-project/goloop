@@ -121,7 +121,6 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 	sysAs := cc.GetAccountState(state.SystemID)
 
 	update := false
-	var contractID []byte
 	info := cc.GetInfo()
 	if info == nil {
 		msg, _ := common.EncodeAny("no GetInfo()")
@@ -129,6 +128,9 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 	} else {
 		h.txHash = info[state.InfoTxHash].([]byte)
 	}
+
+	var contractID []byte
+	var as state.AccountState
 	if bytes.Equal(h.to.ID(), state.SystemID) { // install
 		// preDefinedAddr is not nil, it is pre-installed score.
 		if h.preDefinedAddr != nil {
@@ -136,15 +138,23 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 		} else {
 			contractID = genContractAddr(h.from, info[state.InfoTxTimestamp].(int64), info[state.InfoTxNonce].(*big.Int))
 		}
+		as = cc.GetAccountState(contractID)
 	} else { // deploy for update
 		contractID = h.to.ID()
-		update = true
+		as = cc.GetAccountState(contractID)
+		if h.to.Equal(cc.Governance()) && as.IsContract() == false {
+			update = false
+		} else {
+			update = true
+		}
 	}
 
 	// calculate stepUsed and apply it
-	st := state.StepType(state.StepTypeContractCreate)
+	var st state.StepType
 	if update {
 		st = state.StepTypeContractUpdate
+	} else {
+		st = state.StepTypeContractCreate
 	}
 	codeLen := len(h.content)
 	if !h.ApplySteps(cc, st, 1) ||
@@ -154,7 +164,6 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 	}
 
 	// store ScoreDeployInfo and ScoreDeployTXParams
-	as := cc.GetAccountState(contractID)
 	if update == false {
 		if as.InitContractAccount(h.from) == false {
 			msg, _ := common.EncodeAny("Already deployed contract")
@@ -217,7 +226,6 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 	varDb := scoredb.NewVarDB(sysAs, h.txHash)
 	scoreAddr := varDb.Address()
 	if scoreAddr == nil {
-		h.log.Debug("Failed to get score address by txHash\n")
 		msg, _ := common.EncodeAny("Score not found by tx hash")
 		return module.StatusContractNotFound, h.stepLimit, msg, nil
 	}

@@ -668,4 +668,50 @@ public class DeployTest {
         }
         LOG.infoExiting();
     }
+
+    @Test
+    public void deployGovScore() throws Exception {
+        LOG.infoEntering("setGovernance");
+        final String guPath = Constants.SCORE_GOV_UPDATE_PATH;
+        // deploy tx to governance address
+        boolean updated = Utils.icxCall(iconService, Constants.GOV_ADDRESS,
+                "updated",null).asBoolean();
+        assertTrue(!updated);
+
+        // Update with not owner
+        LOG.infoEntering("update governance score with not governor");
+        RpcObject govParams = new RpcObject.Builder()
+                .put("name", new RpcValue("HelloWorld"))
+                .put("value", new RpcValue("0x1"))
+                .build();
+        Bytes txHash = Utils.deployScore(iconService, chain.networkId,
+                chain.godWallet, Constants.GOV_ADDRESS, guPath, govParams);
+        TransactionResult result = Utils.getTransactionResult(iconService,
+                txHash, Constants.DEFAULT_WAITING_TIME);
+        LOG.infoExiting("result : " + result);
+        assertEquals(Constants.STATUS_FAIL, result.getStatus());
+
+        // Update with governor
+        LOG.infoEntering("update governance score with governor");
+        KeyWallet govWallet = chain.governorWallet;
+        txHash = Utils.deployScore(iconService, chain.networkId,
+                govWallet, Constants.GOV_ADDRESS, guPath, null);
+        result = Utils.getTransactionResult(iconService,
+                txHash, Constants.DEFAULT_WAITING_TIME);
+
+        try {
+            Utils.acceptIfAuditEnabled(iconService, chain, txHash);
+        }
+        catch(TransactionFailureException ex) {
+            LOG.infoExiting();
+            throw ex;
+        }
+        LOG.infoExiting("result : " + result);
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+
+        LOG.info("result : " + result);
+        updated = Utils.icxCall(iconService, Constants.GOV_ADDRESS, "updated",null).asBoolean();
+        assertTrue(updated);
+        LOG.infoExiting();
+    }
 }

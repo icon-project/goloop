@@ -118,7 +118,7 @@ public class Env {
             KeyWallet governorWallet = null;
             if(govWalletPath == null) {
                 try {
-                    governorWallet = KeyWallet.create();
+                   governorWallet = KeyWallet.create();
                 }
                 catch(Exception ex) {
                     System.out.println("FAIL to create wallet for governor!");
@@ -127,10 +127,10 @@ public class Env {
             }
             else {
                 try {
-                    Utils.readWalletFromFile(govWalletPath, govPassword);
+                    governorWallet = Utils.readWalletFromFile(dataPath + govWalletPath, govPassword);
                 }
                 catch (IOException ex) {
-                    System.out.println("FAIL to read governor wallet. path = " + govWalletPath);
+                    System.out.println("FAIL to read governor wallet. path = " + dataPath + govWalletPath);
                     throw new IllegalArgumentException("FAIL to read governor wallet. path = " + govWalletPath);
                 }
             }
