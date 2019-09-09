@@ -249,7 +249,6 @@ func (m *manager) CreateSyncTransition(t module.Transition, result []byte, vlHas
 	r, _ := newTransitionResultFromBytes(result)
 	ntr.syncer = m.syncer.NewSyncer(r.StateHash,
 		r.PatchReceiptHash, r.NormalReceiptHash, vlHash)
-	ntr.result = result
 	return ntr
 }
 

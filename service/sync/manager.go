@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	configSyncPriority = 3
-	configExpiredTime  = 300 // in millisecond
+	configSyncPriority   = 3
+	configExpiredTime    = 500  // in millisecond
+	configMaxExpiredTime = 1200 // in millisecond
 )
 
 var c = codec.MP
@@ -43,10 +44,10 @@ func (m *Manager) OnReceive(pi module.ProtocolInfo, b []byte,
 	id module.PeerID) (bool, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	m.log.Debugf("OnReceive pi(%s), id(%s), syncing(%t)\n", pi, id, m.syncing)
+	m.log.Tracef("OnReceive pi(%s), id(%s), syncing(%t)\n", pi, id, m.syncing)
 	p := m.pool.getPeer(id)
 	if p == nil {
-		m.log.Debugf("peer(%s) is not valid\n", id)
+		m.log.Tracef("peer(%s) is not valid\n", id)
 		return false, nil
 	}
 	switch pi {
@@ -61,16 +62,17 @@ func (m *Manager) OnReceive(pi module.ProtocolInfo, b []byte,
 }
 
 func (m *Manager) OnFailure(err error, pi module.ProtocolInfo, b []byte) {
-	m.log.Debugf("Manager OnFailure err(%+v), pi(%s)\n", err, pi)
+	m.log.Tracef("Manager OnFailure err(%+v), pi(%s)\n", err, pi)
 }
 
 func (m *Manager) OnJoin(id module.PeerID) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	m.log.Debugf("Manager OnJoin syncing(%t)\n", m.syncing)
+	m.log.Tracef("Manager OnJoin syncing(%t)\n", m.syncing)
 	np := &peer{
-		id:    id,
-		reqID: 0,
+		id:      id,
+		reqID:   0,
+		expired: configExpiredTime,
 	}
 	m.pool.push(np)
 	if m.syncing {
@@ -81,7 +83,7 @@ func (m *Manager) OnJoin(id module.PeerID) {
 func (m *Manager) OnLeave(id module.PeerID) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	m.log.Debugf("Manager OnLeave id(%s)\n", id)
+	m.log.Tracef("Manager OnLeave id(%s)\n", id)
 	p := m.pool.getPeer(id)
 	if p == nil {
 		return
@@ -111,7 +113,7 @@ func (m *Manager) NewSyncer(ah, prh, nrh, vh []byte) Syncer {
 }
 
 func NewSyncManager(db db.Database, nm module.NetworkManager, logger log.Logger) *Manager {
-	logger.Info("NewSyncManager\n")
+	logger.Debugln("NewSyncManager")
 	m := new(Manager)
 	ph, err := nm.RegisterReactorForStreams(
 		"statesync", m, protocol, configSyncPriority)

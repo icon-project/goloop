@@ -28,7 +28,7 @@ func (s *server) onReceive(pi module.ProtocolInfo, b []byte, p *peer) {
 func (s *server) hasNode(msg []byte, p *peer) {
 	hr := new(hasNode)
 	if _, err := c.UnmarshalFromBytes(msg, &hr); err != nil {
-		s.log.Debugf("Failed to unmarshal data (%#x)\n", msg)
+		s.log.Tracef("Failed to unmarshal data (%#x)\n", msg)
 		return
 	}
 
@@ -38,7 +38,7 @@ func (s *server) hasNode(msg []byte, p *peer) {
 			continue
 		}
 		if v, err := s.merkleTrie.Get(hash); err != nil || v == nil {
-			s.log.Debugf("hasNode NoData err(%v), v(%v) hash(%#x)\n", err, v, hash)
+			s.log.Tracef("hasNode NoData err(%v), v(%v) hash(%#x)\n", err, v, hash)
 			status = ErrNoData
 			break
 		}
@@ -46,13 +46,13 @@ func (s *server) hasNode(msg []byte, p *peer) {
 
 	if hr.ValidatorHash != nil {
 		if v, err := s.bytesByHash.Get(hr.ValidatorHash); err != nil || v == nil {
-			s.log.Debugf("hasNode NoData err(%v), v(%v) hash(%#x)\n", err, v, hr.ValidatorHash)
+			s.log.Tracef("hasNode NoData err(%v), v(%v) hash(%#x)\n", err, v, hr.ValidatorHash)
 			status = ErrNoData
 		}
 	}
 
 	r := &result{hr.ReqID, status}
-	s.log.Debugf("responseResult(%s) to peer(%s)\n", r, p)
+	s.log.Tracef("responseResult(%s) to peer(%s)\n", r, p)
 	if b, err := c.MarshalToBytes(r); err != nil {
 		s.log.Warnf("Failed to marshal result error(%+v)\n", err)
 	} else if err = s.ph.Unicast(protoResult, b, p.id); err != nil {
@@ -61,7 +61,7 @@ func (s *server) hasNode(msg []byte, p *peer) {
 }
 
 func (s *server) _resolveNode(hashes [][]byte) (errCode, [][]byte) {
-	s.log.Debugf("_resolveNode len(%d)\n", len(hashes))
+	s.log.Tracef("_resolveNode len(%d)\n", len(hashes))
 	values := make([][]byte, len(hashes))
 	for i, hash := range hashes {
 		var err error
@@ -71,7 +71,7 @@ func (s *server) _resolveNode(hashes [][]byte) (errCode, [][]byte) {
 				values[i] = v
 				break
 			}
-			s.log.Debugf("Cannot find value for (%#x) in (%d) bucket\n", hash, j)
+			s.log.Tracef("Cannot find value for (%#x) in (%d) bucket\n", hash, j)
 			return ErrNoData, nil
 		}
 	}
@@ -86,14 +86,14 @@ func (s *server) requestNode(msg []byte, p *peer) {
 	}
 
 	status, values := s._resolveNode(req.Hashes)
-	s.log.Debugf("responseNode node(%d), status(%d), peer(%s)\n", len(values), status, p)
+	s.log.Tracef("responseNode node(%d), status(%d), peer(%s)\n", len(values), status, p)
 	res := &nodeData{req.ReqID, status, req.Type, values}
 	b, err := c.MarshalToBytes(res)
 	if err != nil {
 		s.log.Warnf("Failed to marshal for nodeData(%v)\n", res)
 		return
 	}
-	s.log.Debugf("responseNode ReqID(%d), Status(%d), Type(%d) to peer(%s)\n", res.ReqID, res.Status, res.Type, p)
+	s.log.Tracef("responseNode ReqID(%d), Status(%d), Type(%d) to peer(%s)\n", res.ReqID, res.Status, res.Type, p)
 	if err = s.ph.Unicast(protoNodeData, b, p.id); err != nil {
 		s.log.Info("Failed to send data peerID(%s)\n", p.id)
 	}

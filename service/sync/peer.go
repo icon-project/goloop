@@ -10,15 +10,16 @@ import (
 )
 
 type peer struct {
-	id    module.PeerID
-	reqID uint32
-	timer *time.Timer
-	cb    Callback
-	log   log.Logger
+	id      module.PeerID
+	reqID   uint32
+	expired time.Duration
+	timer   *time.Timer
+	cb      Callback
+	log     log.Logger
 }
 
 func (p *peer) onReceive(pi module.ProtocolInfo, data interface{}) bool {
-	log.Debugf("peer.onReceive pi(%s), p(%s)\n", pi, p)
+	log.Tracef("peer.onReceive pi(%s), p(%s)\n", pi, p)
 	var status errCode
 	var t syncType
 	switch pi {
@@ -65,9 +66,22 @@ func (pp *peerPool) push(p *peer) {
 		delete(pp.peers, id)
 	}
 
-	e := pp.pList.PushBack(p)
-	pp.peers[id] = e
-	log.Debugf("peerPool push(%s), len(%d)\n", p, pp.pList.Len())
+	var ne *list.Element
+	pushed := false
+	for e := pp.pList.Front(); e != nil; e = e.Next() {
+		lp := e.Value.(*peer)
+		if p.expired < lp.expired {
+			ne = pp.pList.InsertBefore(p, e)
+			pushed = true
+			break
+		}
+	}
+	if !pushed {
+		ne = pp.pList.PushBack(p)
+	}
+
+	pp.peers[id] = ne
+	log.Tracef("peerPool push(%s), len(%d)\n", p, pp.pList.Len())
 }
 
 func (pp *peerPool) size() int {
@@ -108,6 +122,6 @@ func (pp *peerPool) peerList() []*peer {
 		pList[i] = e.Value.(*peer)
 		i++
 	}
-	log.Debugf("peerList len(%d)\n", pp.pList.Len())
+	log.Tracef("peerList len(%d)\n", pp.pList.Len())
 	return pList
 }

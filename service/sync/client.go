@@ -24,10 +24,14 @@ func (cl *client) hasNode(p *peer, wsHash, prHash, nrHash, vh []byte,
 		return err
 	}
 	p.reqID = reqID
-	p.timer = time.AfterFunc(time.Millisecond*configExpiredTime, func() {
-		r := &result{p.reqID, ErrTimeExpired}
+	cl.log.Tracef("hasNode reqID = %d\n", reqID)
+	p.timer = time.AfterFunc(time.Millisecond*p.expired, func() {
+		r := &result{reqID, ErrTimeExpired}
 		b, _ := c.MarshalToBytes(r)
-		cl.log.Debugf("hasNode time expired for p(%s)\n", p)
+		cl.log.Tracef("hasNode time expired for p(%s)\n", p)
+		if p.expired < configMaxExpiredTime {
+			p.expired += 1000
+		}
 		expiredCb(protoResult, b, p)
 	})
 	return nil
@@ -44,10 +48,14 @@ func (cl *client) requestNodeData(p *peer, hash [][]byte, t syncType,
 	}
 
 	p.reqID = reqID
-	p.timer = time.AfterFunc(time.Millisecond*configExpiredTime, func() {
+	cl.log.Tracef("requestNodeData with peer(%s)\n", p)
+	p.timer = time.AfterFunc(time.Millisecond*p.expired, func() {
 		nd := &nodeData{p.reqID, ErrTimeExpired, t, nil}
 		b, _ := c.MarshalToBytes(nd)
-		cl.log.Debugf("requestNodeData time expired, peer(%s)\n", p)
+		cl.log.Tracef("requestNodeData time expired, peer(%s)\n", p)
+		if p.expired < configMaxExpiredTime {
+			p.expired += 1000
+		}
 		expiredCb(protoNodeData, b, p)
 	})
 	return nil

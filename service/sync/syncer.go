@@ -21,7 +21,7 @@ const (
 )
 
 const (
-	configMaxRequestHash = 50
+	configMaxRequestHash = 2
 )
 
 func (s syncType) toIndex() int {
@@ -106,7 +106,7 @@ type Callback interface {
 func (s *syncer) _reqUnresolvedNode(st syncType, builder merkle.Builder,
 	peers []*peer) (bool, int, []*peer) {
 	unresolved := builder.UnresolvedCount()
-	s.log.Debugf("_reqUnresolvedNode unresolved(%d) for (%s) len(peers) = %d\n",
+	s.log.Tracef("_reqUnresolvedNode unresolved(%d) for (%s) len(peers) = %d\n",
 		unresolved, st, len(peers))
 	if unresolved == 0 {
 		return true, 0, peers
@@ -135,7 +135,7 @@ func (s *syncer) _reqUnresolvedNode(st syncType, builder merkle.Builder,
 
 	maxRequestHash := need * configMaxRequestHash
 	if reqNum > maxRequestHash {
-		s.log.Debugf("unresolved(%d) request(%d)\n", reqNum, maxRequestHash)
+		s.log.Tracef("unresolved(%d) request(%d)\n", reqNum, maxRequestHash)
 		reqNum = maxRequestHash
 	}
 
@@ -146,9 +146,9 @@ func (s *syncer) _reqUnresolvedNode(st syncType, builder merkle.Builder,
 		offset := (reqNum * i) / need
 		end := (reqNum * (i + 1)) / need
 		pIndex = j
-		s.log.Debugf("requestNodeData for %s, (%d) -> (%d) reqNum(%d)\n", st, offset, end, reqNum)
+		s.log.Tracef("requestNodeData for %s, (%d) -> (%d) reqNum(%d)\n", st, offset, end, reqNum)
 		if err := s.client.requestNodeData(p, keys[offset:end], st, s.processMsg); err != nil {
-			s.log.Debugf("Failed to request node\n")
+			s.log.Tracef("Failed to request node\n")
 			unusedPeers = append(unusedPeers, p)
 			continue
 		}
@@ -164,7 +164,7 @@ func (s *syncer) _reqUnresolvedNode(st syncType, builder merkle.Builder,
 		unusedPeers = append(unusedPeers, peers[pIndex+1])
 	}
 	// return unused peers
-	s.log.Debugf("requestNodeData unusedPeers(%d)\n", len(unusedPeers))
+	s.log.Tracef("requestNodeData unusedPeers(%d)\n", len(unusedPeers))
 	return result, 1, unusedPeers
 }
 
@@ -181,30 +181,9 @@ func (s *syncer) _onNodeData(builder merkle.Builder, data [][]byte) int {
 }
 
 func (s *syncer) reqUnresolved(st syncType, builder merkle.Builder, need int) {
-	f := func(need int) []*peer {
-		s.mutex.Lock()
-		defer s.mutex.Unlock()
-		var peers []*peer
-		for {
-			peers = s._getValidPeers(need)
-			if peers != nil {
-				break
-			}
-			s.waitingPeerCnt++
-			s.log.Debugf("Wait for valid peer st(%s)\n", st)
-			s.cond.Wait()
-			s.log.Debugf("Wake up for valid peer st(%s) waitingPeerCnt(%d)\n", st, s.waitingPeerCnt)
-			s.waitingPeerCnt--
-			if s.complete&int(st) == int(st) {
-				return nil
-			}
-		}
-		return peers
-	}
-
 	mutex := &s.bMutex[st.toIndex()]
 	for {
-		peers := f(need)
+		peers := s._reservePeers(need, st)
 		if len(peers) == 0 {
 			return
 		}
@@ -212,36 +191,28 @@ func (s *syncer) reqUnresolved(st syncType, builder merkle.Builder, need int) {
 		b, unresolved, unused := s._reqUnresolvedNode(st, builder, peers)
 		mutex.Unlock()
 		if b == false {
-			s.mutex.Lock()
-			s._returnValidPeers(unused)
-			s.mutex.Unlock()
+			s._returnPeers(unused)
 			continue
 		} else {
-			s.mutex.Lock()
 			if len(unused) > 0 {
-				s._returnValidPeers(unused)
+				s._returnPeers(unused)
 			}
 			s.log.Debugf("reqUnresolved st(%s), unused(%d), unresolved(%d)\n",
 				st, len(unused), unresolved)
 			if unresolved == 0 {
+				s.mutex.Lock()
 				if s.complete&int(st) != int(st) {
 					s.finishCh <- st
 				}
+				s.mutex.Unlock()
 			}
-			s.mutex.Unlock()
 			break
 		}
 	}
 }
 
 func (s *syncer) onNodeData(p *peer, status errCode, st syncType, data [][]byte) {
-	s.mutex.Lock()
-	s.vpool.push(p)
-	if s.waitingPeerCnt > 0 {
-		s.cond.Signal()
-	}
-	s.mutex.Unlock()
-
+	s._returnPeer(p)
 	if st.isValid() == false {
 		s.log.Warnf("Wrong syncType. (%d)\n", st)
 		return
@@ -272,17 +243,15 @@ func (s *syncer) onReceive(pi module.ProtocolInfo, b []byte, p *peer) {
 }
 
 func (s *syncer) onJoin(p *peer) {
-	log.Debugf("onJoin peer(%s)\n", p)
+	log.Tracef("onJoin peer(%s)\n", p)
 	p.cb = s
-	s.mutex.Lock()
 	s._requestIfNotEnough(p)
-	s.mutex.Unlock()
 }
 
 func (s *syncer) onLeave(id module.PeerID) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	log.Debugf("onLeave id(%s)\n", id)
+	log.Tracef("onLeave id(%s)\n", id)
 	p := s.vpool.getPeer(id)
 	if p == nil {
 		if rp := s.sentReq[id]; rp != nil {
@@ -299,7 +268,7 @@ func (s *syncer) processMsg(pi module.ProtocolInfo, b []byte, p *peer) {
 	defer s.mutex.Unlock()
 	rp := s.sentReq[p.id]
 	if rp == nil {
-		log.Debugf("peer(%s) for (%s) is already received\n", p, pi)
+		log.Tracef("peer(%s) for (%s) is already received\n", p, pi)
 		return
 	}
 
@@ -324,8 +293,8 @@ func (s *syncer) processMsg(pi module.ProtocolInfo, b []byte, p *peer) {
 
 	if err != nil || reqID != p.reqID {
 		s.log.Infof(
-			"Failed onReceive. err(%v), receivedReqID(%d), p.reqID(%d), pi(%s), byte(%#x)\n",
-			err, reqID, p.reqID, pi, b)
+			"Failed onReceive. err(%v), receivedReqID(%d), p.reqID(%d), pi(%s)\n",
+			err, reqID, p.reqID, pi)
 		return
 	}
 	p.timer.Stop()
@@ -372,7 +341,9 @@ func (s *syncer) _updateValidPool() {
 }
 
 func (s *syncer) _requestIfNotEnough(p *peer) {
-	log.Debugf("vpool(%d), pool(%d)\n", s.vpool.size(), s.pool.size())
+	log.Tracef("vpool(%d), pool(%d)\n", s.vpool.size(), s.pool.size())
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	if s.vpool.size() < configMaxPeerForSync && s.vpool.size() != s.pool.size() {
 		err := s.client.hasNode(
 			p, s.ah, s.prh,
@@ -388,10 +359,23 @@ func (s *syncer) _requestIfNotEnough(p *peer) {
 	}
 }
 
-func (s *syncer) _returnValidPeers(peers []*peer) {
-	for _, peer := range peers {
-		delete(s.sentReq, peer.id)
-		s.vpool.push(peer)
+func (s *syncer) _returnPeer(p *peer) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	delete(s.sentReq, p.id)
+	s.vpool.push(p)
+
+	if s.waitingPeerCnt > 0 {
+		s.cond.Signal()
+	}
+}
+
+func (s *syncer) _returnPeers(peers []*peer) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	for _, p := range peers {
+		delete(s.sentReq, p.id)
+		s.vpool.push(p)
 	}
 
 	if s.waitingPeerCnt > 0 {
@@ -399,44 +383,54 @@ func (s *syncer) _returnValidPeers(peers []*peer) {
 	}
 }
 
-func (s *syncer) _getValidPeers(need int) []*peer {
-	if s.vpool.size() == 0 {
-		go s._updateValidPool()
-		s.log.Debugf("_getValidPeers size = %d\n", s.vpool.size())
-		return nil
+func (s *syncer) _reservePeers(need int, st syncType) []*peer {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	var peers []*peer
+	var size int
+	s.waitingPeerCnt += 1
+	for {
+		if s.complete&int(st) == int(st) {
+			s.waitingPeerCnt -= 1
+			return nil
+		}
+
+		size = s.vpool.size()
+		if size == 0 {
+			go s._updateValidPool()
+			s.log.Tracef("_reservePeers size = %d\n", s.vpool.size())
+			s.cond.Wait()
+			s.log.Tracef("_reservePeers Wake up peers !!\n")
+			continue
+		}
+
+		if size > need {
+			size = need
+		}
+		peers = make([]*peer, size)
+		for i := 0; i < size; i++ {
+			peer := s.vpool.pop()
+			s.sentReq[peer.id] = peer
+			peers[i] = peer
+		}
+		s.waitingPeerCnt -= 1
+		break
 	}
-	size := s.vpool.size()
-	if size > need {
-		size = need
-	}
-	peers := make([]*peer, size)
-	for i := 0; i < size; i++ {
-		peer := s.vpool.pop()
-		s.sentReq[peer.id] = peer
-		peers[i] = peer
-	}
-	s.log.Debugf("_getValidPeers size = %d, peers = %v\n", size, peers)
+
+	s.log.Tracef("_reservePeers size = %d, peers = %v\n", size, peers)
 	return peers
 }
 
 func (s *syncer) onResult(status errCode, p *peer) {
-	log.Debugf("OnResult : status(%d), p(%s)\n", status, p)
 	if status == NoError {
-		s.mutex.Lock()
-		s.vpool.push(p)
-		if s.waitingPeerCnt > 0 {
-			s.cond.Signal()
-		}
-		s.mutex.Unlock()
+		s._returnPeer(p)
 	} else {
-		s.mutex.Lock()
 		s._requestIfNotEnough(p)
-		s.mutex.Unlock()
 	}
 }
 
 func (s *syncer) ForceSync() *Result {
-	s.log.Debugf("ForceSync")
+	s.log.Debugln("ForceSync")
 	startTime := time.Now()
 	s.startTime = startTime
 	s.cb(true)
@@ -494,14 +488,14 @@ func (s *syncer) ForceSync() *Result {
 }
 
 func (s *syncer) Finalize() error {
-	s.log.Debugf("Finalize :  ah(%#x), patchHash(%#x), normalHash(%#x), vlh(%#x)\n",
+	s.log.Debugf("Finalize :  ah(%#x), prh(%#x), nrh(%#x), vlh(%#x)\n",
 		s.ah, s.prh, s.nrh, s.vlh)
 	for i, t := range []syncType{syncWorldState, syncPatchReceipts, syncNormalReceipts} {
 		builder := s.builder[t.toIndex()]
 		if builder == nil {
 			continue
 		} else {
-			s.log.Debugf("Flush %s\n", t)
+			s.log.Tracef("Flush %s\n", t)
 			if err := builder.Flush(true); err != nil {
 				s.log.Errorf("Failed to flush for %d builder err(%+v)\n", i, err)
 				return err
