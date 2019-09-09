@@ -369,7 +369,8 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		defer p.lock.Unlock()
 
 		if p.frame != nil && p.frame.addr != nil {
-			p.log.Log(m.Level, p.scoreType, "|", p.frame.addr, "|", m.Message)
+			p.log.Log(m.Level, p.scoreType, "|",
+				common.StrLeft(10, p.frame.addr.String()), "|", m.Message)
 		} else {
 			p.log.Log(m.Level, p.scoreType, "|", m.Message)
 		}

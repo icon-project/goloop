@@ -38,7 +38,8 @@ func (customFormatter) Format(e *logrus.Entry) ([]byte, error) {
 		}
 	}
 	if v, ok := e.Data[FieldKeyEID]; ok {
-		fmt.Fprint(buf, v, "|")
+		s := string(([]byte(fmt.Sprint(v)))[0:8])
+		fmt.Fprint(buf, s, "|")
 	}
 	if v, ok := e.Data[FieldKeyPrefix]; ok {
 		fmt.Fprint(buf, v)
