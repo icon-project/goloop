@@ -740,8 +740,8 @@ func (s *ChainScore) Ex_rejectScore(txHash []byte) error {
 	}
 
 	sysAs := s.cc.GetAccountState(state.SystemID)
-	varDb := scoredb.NewVarDB(sysAs, txHash)
-	scoreAddr := varDb.Address()
+	h2a := scoredb.NewDictDB(sysAs, state.VarTxHashToAddress, 1)
+	scoreAddr := h2a.Get(txHash).Address()
 	if scoreAddr == nil {
 		return scoreresult.Errorf(StatusNotFound,
 			"Fail to find score by txHash[%x]\n", txHash)
@@ -750,7 +750,7 @@ func (s *ChainScore) Ex_rejectScore(txHash []byte) error {
 	// NOTE : cannot change from reject to accept state because data with address mapped txHash is deleted from DB
 	info := s.cc.GetInfo()
 	auditTxHash := info[state.InfoTxHash].([]byte)
-	if err := varDb.Delete(); err != nil {
+	if err := h2a.Delete(txHash); err != nil {
 		return scoreresult.WithStatus(err, module.StatusSystemError)
 	}
 	return scoreAs.RejectContract(txHash, auditTxHash)
