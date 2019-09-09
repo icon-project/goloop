@@ -121,7 +121,7 @@ func (e *pythonExecutionEngine) newCmd(uid string, stdout, stderr io.WriteCloser
 func (e *pythonExecutionEngine) run(is *pythonInstance) {
 	for true {
 		err := is.cmd.Wait()
-		log.Tracef("Wait result uid=%s err=%+v\n", is.uid, err)
+		e.logger.Tracef("Wait result uid=%s err=%+v\n", is.uid, err)
 
 		e.lock.Lock()
 		if is.status != instanceOnline {
@@ -162,6 +162,7 @@ func (e *pythonExecutionEngine) init(i *pythonInstance) {
 }
 
 func (e *pythonExecutionEngine) start(i *pythonInstance) error {
+	e.logger.Infof("start instance uid=%s", i.uid)
 	if err := i.cmd.Start(); err != nil {
 		return err
 	}
