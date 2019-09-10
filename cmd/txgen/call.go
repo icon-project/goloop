@@ -95,7 +95,6 @@ func (m *CallMaker) Prepare(client *Client) error {
 		}
 		m.contract = addr
 	}
-	m.index = 0
 
 	return nil
 }
