@@ -235,3 +235,13 @@ func (hvs *heightVoteSet) getRoundEvidences(minRound int32, nid []byte) *voteLis
 	}
 	return nil
 }
+
+// remove votes.
+func (hvs *heightVoteSet) removeLowerRoundExcept(lower int32, except int32) {
+	for round := range hvs._votes {
+		if round < lower && round != except {
+			// safe to delete map entry in range iteration
+			delete(hvs._votes, round)
+		}
+	}
+}

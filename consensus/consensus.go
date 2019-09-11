@@ -242,6 +242,7 @@ func (cs *consensus) _resetForNewRound(round int32) {
 	cs.proposalPOLRound = -1
 	cs.currentBlockParts.Zerofy()
 	cs.round = round
+	cs.hvs.removeLowerRoundExcept(cs.round-1, cs.lockedRound)
 	cs.logger.Infof("enter round Height:%d Round:%d\n", cs.height, cs.round)
 	cs.metric.OnRound(cs.round)
 }
