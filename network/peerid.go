@@ -57,6 +57,7 @@ func (c *peerIDCache) remove(p *peerID) {
 }
 
 func (c *peerIDCache) add(p *peerID) {
+	*c.pLast = p
 	p.pPrev = c.pLast
 	c.pLast = &p.next
 	c.len += 1
