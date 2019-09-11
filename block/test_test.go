@@ -487,16 +487,6 @@ func (tr *testTransition) BlockInfo() module.BlockInfo {
 	return tr._bi
 }
 
-func equalBlockInfo(bi1 module.BlockInfo, bi2 module.BlockInfo) bool {
-	if bi1 == nil && bi2 == nil {
-		return true
-	}
-	if bi1 == nil || bi2 == nil {
-		return false
-	}
-	return bi1.Timestamp() == bi2.Timestamp() && bi1.Height() == bi2.Height()
-}
-
 func (tr *testTransition) Equal(t2 module.Transition) bool {
 	tr2 := t2.(*testTransition)
 	if tr == tr2 {
@@ -504,7 +494,7 @@ func (tr *testTransition) Equal(t2 module.Transition) bool {
 	}
 	return tr.patchTransactions.Equal(tr2.patchTransactions) &&
 		tr.normalTransactions.Equal(tr2.normalTransactions) &&
-		equalBlockInfo(tr._bi, tr2._bi)
+		module.EqualBlockInfo(tr._bi, tr2._bi)
 }
 
 type testServiceManager struct {
