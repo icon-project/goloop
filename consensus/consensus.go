@@ -317,13 +317,7 @@ func (cs *consensus) OnReceive(
 	case *voteMessage:
 		_, err = cs.ReceiveVoteMessage(m, false)
 	case *voteListMessage:
-		for i := 0; i < m.VoteList.Len(); i++ {
-			vmsg := m.VoteList.Get(i)
-			if _, e := cs.ReceiveVoteMessage(vmsg, false); e != nil {
-				cs.logger.Warnf("bad vote in vote list. VoteMessage:%v Error:%+v\n", vmsg, e)
-				err = errors.Errorf("bad vote in VoteList. LastError: %+v", e)
-			}
-		}
+		err = cs.ReceiveVoteListMessage(m, false)
 	default:
 		err = errors.Errorf("unexpected broadcast message %v", m)
 	}
@@ -448,6 +442,18 @@ func (cs *consensus) ReceiveVoteMessage(msg *voteMessage, unicast bool) (int, er
 		cs.handlePrecommitMessage(msg, votes)
 	}
 	return index, nil
+}
+
+func (cs *consensus) ReceiveVoteListMessage(msg *voteListMessage, unicast bool) error {
+	var err error
+	for i := 0; i < msg.VoteList.Len(); i++ {
+		vmsg := msg.VoteList.Get(i)
+		if _, e := cs.ReceiveVoteMessage(vmsg, unicast); e != nil {
+			cs.logger.Warnf("bad vote in vote list. VoteMessage:%v Error:%+v\n", vmsg, e)
+			err = errors.Errorf("bad vote in VoteList. LastError: %+v", e)
+		}
+	}
+	return err
 }
 
 func (cs *consensus) handlePrevoteMessage(msg *voteMessage, prevotes *voteSet) {

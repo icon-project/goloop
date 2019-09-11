@@ -27,7 +27,7 @@ type Engine interface {
 	Step() step
 
 	ReceiveBlockPartMessage(msg *blockPartMessage, unicast bool) (int, error)
-	ReceiveVoteMessage(msg *voteMessage, unicast bool) (int, error)
+	ReceiveVoteListMessage(msg *voteListMessage, unicast bool) error
 	ReceiveBlock(br fastsync.BlockResult)
 }
 
@@ -321,9 +321,7 @@ func (s *syncer) OnReceive(sp module.ProtocolInfo, bs []byte,
 			}
 		}
 	case *voteListMessage:
-		for i := 0; i < m.VoteList.Len(); i++ {
-			s.engine.ReceiveVoteMessage(m.VoteList.Get(i), true)
-		}
+		s.engine.ReceiveVoteListMessage(m, true)
 		rs := s.engine.GetRoundState()
 		s.logger.Tracef("roundState=%+v\n", *rs)
 	default:
