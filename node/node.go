@@ -202,9 +202,17 @@ func (n *Node) JoinChain(
 		return nil, errors.Wrap(err, "fail to get NID for genesis")
 	}
 
+	if _, ok := n.channels[nid]; ok {
+		return nil, errors.Wrapf(ErrAlreadyExists, "Network(id=%#x) already exists", nid)
+	}
+
 	channel := p.Channel
 	if channel == "" {
 		channel = strconv.FormatInt(int64(nid), 16)
+	}
+
+	if _, ok := n.chains[channel]; ok {
+		return nil, errors.Wrapf(ErrAlreadyExists, "Network(channel=%s) already exists", channel)
 	}
 
 	chainDir := n.ChainDir(nid)
@@ -216,15 +224,14 @@ func (n *Node) JoinChain(
 	cfgFile, _ := filepath.Abs(path.Join(chainDir, ChainConfigFileName))
 
 	cfg := &chain.Config{
-		NID:            nid,
-		DBType:         p.DBType,
-		Channel:        channel,
-		SecureSuites:   p.SecureSuites,
-		SecureAeads:    p.SecureAeads,
-		SeedAddr:       p.SeedAddr,
-		Role:           p.Role,
-		GenesisStorage: genesisStorage,
-		// GenesisDataPath: path.Join(chainDir, "genesis"),
+		NID:              nid,
+		DBType:           p.DBType,
+		Channel:          channel,
+		SecureSuites:     p.SecureSuites,
+		SecureAeads:      p.SecureAeads,
+		SeedAddr:         p.SeedAddr,
+		Role:             p.Role,
+		GenesisStorage:   genesisStorage,
 		ConcurrencyLevel: p.ConcurrencyLevel,
 		NormalTxPoolSize: p.NormalTxPoolSize,
 		PatchTxPoolSize:  p.PatchTxPoolSize,
