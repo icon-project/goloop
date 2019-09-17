@@ -7,7 +7,9 @@ import (
 	"os/exec"
 	"sync"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/ipc"
 	"github.com/icon-project/goloop/common/log"
 )
 
@@ -184,6 +186,14 @@ func (e *pythonExecutionEngine) startNew() error {
 	}
 	go e.run(i)
 	return nil
+}
+
+func (e *pythonExecutionEngine) OnConnect(conn ipc.Connection, version uint16) error {
+	return common.ErrUnsupported
+}
+
+func (e *pythonExecutionEngine) OnClose(conn ipc.Connection) bool {
+	return false
 }
 
 func NewPythonEE(logger log.Logger) (Engine, error) {

@@ -7,6 +7,7 @@ import (
 	"github.com/icon-project/goloop/common/log"
 
 	"github.com/gofrs/uuid"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
@@ -243,23 +244,6 @@ func (p *proxy) tryToBeReady() error {
 
 func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 	switch msg {
-	case msgVERSION:
-		var m versionMessage
-		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
-			return err
-		}
-		p.version = m.Version
-		p.uid = m.UID
-		p.scoreType = m.Type
-
-		if err := p.mgr.onReady(p.scoreType, p); err != nil {
-			return err
-		}
-		p.log = p.log.WithFields(log.Fields{
-			log.FieldKeyEID: p.uid,
-		})
-		return nil
-
 	case msgRESULT:
 		var m resultMessage
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
@@ -415,13 +399,16 @@ func (p *proxy) attachTo(r **proxy) {
 	*r = p
 }
 
-func newConnection(m proxyManager, c ipc.Connection, l log.Logger) (*proxy, error) {
+func newProxy(m proxyManager, c ipc.Connection, l log.Logger, t string, v uint16, uid string) (*proxy, error) {
 	p := &proxy{
 		mgr:  m,
 		conn: c,
 		log:  l,
+
+		scoreType: t,
+		version:   v,
+		uid:       uid,
 	}
-	c.SetHandler(msgVERSION, p)
 	c.SetHandler(msgRESULT, p)
 	c.SetHandler(msgGETVALUE, p)
 	c.SetHandler(msgSETVALUE, p)
@@ -431,6 +418,13 @@ func newConnection(m proxyManager, c ipc.Connection, l log.Logger) (*proxy, erro
 	c.SetHandler(msgGETBALANCE, p)
 	c.SetHandler(msgGETAPI, p)
 	c.SetHandler(msgLOG, p)
+
+	if err := m.onReady(t, p); err != nil {
+		return nil, err
+	}
+	p.log = p.log.WithFields(log.Fields{
+		log.FieldKeyEID: p.uid,
+	})
 	return p, nil
 }
 

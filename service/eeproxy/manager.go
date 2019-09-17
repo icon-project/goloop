@@ -38,6 +38,8 @@ type Engine interface {
 	SetInstances(n int) error
 	OnAttach(uid string) bool
 	Kill(uid string) (bool, error)
+	OnConnect(conn ipc.Connection, version uint16) error
+	OnClose(conn ipc.Connection) bool
 }
 
 type Executor struct {
@@ -147,8 +149,8 @@ func (em *executorManager) kill(u string) error {
 }
 
 func (em *executorManager) OnConnect(c ipc.Connection) error {
-	_, err := newConnection(em, c, em.log)
-	return err
+	_ = newEEConnection(em, em.log, c)
+	return nil
 }
 
 func (em *executorManager) OnClose(c ipc.Connection) {
@@ -169,6 +171,9 @@ func (em *executorManager) OnClose(c ipc.Connection) {
 				e.active -= 1
 				return
 			}
+		}
+		if e.engine.OnClose(c) {
+			return
 		}
 	}
 }
@@ -257,6 +262,27 @@ func (em *executorManager) SetInstances(total, tx, query int) error {
 
 func (em *executorManager) Loop() error {
 	return em.server.Loop()
+}
+
+// onEEMConnect handle a connection from Execution Environment Manager
+func (em *executorManager) onEEMConnect(conn ipc.Connection, t string, v uint16) error {
+	em.lock.Lock()
+	defer em.lock.Unlock()
+
+	for _, e := range em.engines {
+		if e.engine.Type() == t {
+			return e.engine.OnConnect(conn, v)
+		}
+	}
+	return errors.NotFoundError.Errorf("UnknownType(%s)", t)
+}
+
+// onEEConnect handle a connection from Execution Environment
+func (em *executorManager) onEEConnect(conn ipc.Connection, t string, v uint16, uid string) error {
+	if _, err := newProxy(em, conn, em.log, t, v, uid); err != nil {
+		return err
+	}
+	return nil
 }
 
 func NewManager(net, addr string, l log.Logger, engines ...Engine) (Manager, error) {

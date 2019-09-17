@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/ipc"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
@@ -101,6 +103,14 @@ func makeTransactions(cc *callContext, mgr eeproxy.Manager) {
 }
 
 type pythonEngine struct {
+}
+
+func (e *pythonEngine) OnConnect(conn ipc.Connection, version uint16) error {
+	return errors.New("NotSupported")
+}
+
+func (e *pythonEngine) OnClose(conn ipc.Connection) bool {
+	return false
 }
 
 func (e *pythonEngine) Type() string {
