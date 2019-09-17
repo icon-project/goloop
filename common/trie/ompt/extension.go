@@ -266,8 +266,8 @@ func (n *extension) prove(m *mpt, keys []byte, proof [][]byte) (nn node, obj tri
 func (n *extension) resolve(m *mpt, bd merkle.Builder) error {
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
-
-	return m.resolve(bd, &n.next)
+	m.resolve(bd, &n.next)
+	return nil
 }
 
 func (n *extension) compact() node {

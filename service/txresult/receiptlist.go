@@ -1,9 +1,10 @@
 package txresult
 
 import (
+	"reflect"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/log"
-	"reflect"
 
 	"github.com/icon-project/goloop/common/merkle"
 
@@ -98,8 +99,6 @@ func NewReceiptListFromHash(database db.Database, h []byte) module.ReceiptList {
 func NewReceiptListWithBuilder(builder merkle.Builder, h []byte) module.ReceiptList {
 	database := builder.Database()
 	snapshot := trie_manager.NewImmutableForObject(database, h, receiptType)
-	if err := snapshot.Resolve(builder); err != nil {
-		return nil
-	}
+	snapshot.Resolve(builder)
 	return &receiptList{snapshot}
 }

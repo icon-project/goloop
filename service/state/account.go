@@ -2,8 +2,9 @@ package state
 
 import (
 	"bytes"
-	"github.com/icon-project/goloop/common/log"
 	"math/big"
+
+	"github.com/icon-project/goloop/common/log"
 
 	"github.com/icon-project/goloop/service/scoreresult"
 	"gopkg.in/vmihailenco/msgpack.v4"
@@ -225,9 +226,7 @@ func (s *accountSnapshotImpl) Equal(object trie.Object) bool {
 
 func (s *accountSnapshotImpl) Resolve(bd merkle.Builder) error {
 	if s.store != nil {
-		if err := s.store.Resolve(bd); err != nil {
-			return err
-		}
+		s.store.Resolve(bd)
 	}
 	if s.curContract != nil {
 		if err := s.curContract.Resolve(bd); err != nil {

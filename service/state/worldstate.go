@@ -281,9 +281,7 @@ func NewWorldSnapshotWithBuilder(builder merkle.Builder, sh []byte, vh []byte) (
 	ws.database = builder.Database()
 	ws.accounts = trie_manager.NewImmutableForObject(ws.database, sh,
 		reflect.TypeOf((*accountSnapshotImpl)(nil)))
-	if err := ws.accounts.Resolve(builder); err != nil {
-		return nil, err
-	}
+	ws.accounts.Resolve(builder)
 	if vs, err := ValidatorSnapshotFromHash(builder.Database(), vh); err == nil {
 		ws.validators = vs
 	} else {

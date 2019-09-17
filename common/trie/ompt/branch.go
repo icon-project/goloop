@@ -347,9 +347,7 @@ func (n *branch) resolve(m *mpt, bd merkle.Builder) error {
 	defer n.mutex.Unlock()
 
 	for i := range n.children {
-		if err := m.resolve(bd, &n.children[i]); err != nil {
-			return err
-		}
+		m.resolve(bd, &n.children[i])
 	}
 	if n.value != nil {
 		value, changed, err := m.getObject(n.value)

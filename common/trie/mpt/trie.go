@@ -510,7 +510,7 @@ func (m *mpt) Empty() bool {
 	return len(pool) == 0 && m.root == nil
 }
 
-func (m *mpt) Resolve(builder merkle.Builder) error {
+func (m *mpt) Resolve(builder merkle.Builder) {
 	panic("Implement me")
 }
 

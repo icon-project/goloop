@@ -19,7 +19,7 @@ type (
 		Iterator() Iterator
 		Equal(immutable Immutable, exact bool) bool
 		Prove(k []byte, p [][]byte) ([]byte, error)
-		Resolve(builder merkle.Builder) error
+		Resolve(builder merkle.Builder)
 		ClearCache()
 	}
 
@@ -66,7 +66,7 @@ type (
 		Iterator() IteratorForObject
 		Equal(object ImmutableForObject, exact bool) bool
 		Prove(k []byte, p [][]byte) (Object, error)
-		Resolve(builder merkle.Builder) error
+		Resolve(builder merkle.Builder)
 		ClearCache()
 	}
 
