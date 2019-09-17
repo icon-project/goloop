@@ -131,6 +131,10 @@ func (c *connection) SetHandler(msg uint, handler MessageHandler) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
+	if handler == nil {
+		delete(c.handler, msg)
+		return
+	}
 	c.handler[msg] = handler
 }
 
