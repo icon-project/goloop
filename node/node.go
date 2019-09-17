@@ -163,24 +163,25 @@ func (n *Node) _get(nid int) (*Chain, error) {
 func (n *Node) Start() {
 	err := n.nt.Listen()
 	if err != nil {
-		log.Panicf("FAIL to P2P listen err=%+v", err)
+		log.Panicf("fail to P2P listen err=%+v", err)
 	}
 
 	go n.srv.Start()
 
 	if err := n.cliSrv.Start(); err != nil {
-		log.Panic(err)
+		log.Panicf("fail to cli server start err=%+v", err)
 	}
 
 }
 
 func (n *Node) Stop() {
 	if err := n.nt.Close(); err != nil {
-		log.Panicf("FAIL to P2P close err=%+v", err)
+		log.Panicf("fail to P2P close err=%+v", err)
+	}
 	}
 	n.srv.Stop()
 	if err := n.cliSrv.Stop(); err != nil {
-		log.Panic(err)
+		log.Panicf("fail to cli server close err=%+v", err)
 	}
 }
 
@@ -516,7 +517,7 @@ func NewNode(
 	log.Println("NodeDir :", nodeDir)
 	rcfg, err := loadRuntimeConfig(nodeDir)
 	if err != nil {
-		log.Panicf("FAIL to load runtime config err=%+v", err)
+		log.Panicf("fail to load runtime config err=%+v", err)
 	}
 
 	nt := network.NewTransport(cfg.P2PAddr, w, l)
@@ -527,16 +528,16 @@ func NewNode(
 
 	ee, err := eeproxy.NewPythonEE(l)
 	if err != nil {
-		log.Panicf("FAIL to create PythonEE err=%+v", err)
+		log.Panicf("fail to create PythonEE err=%+v", err)
 	}
 	eeSocket := cfg.ResolveAbsolute(cfg.EESocket)
 	pm, err := eeproxy.NewManager("unix", eeSocket, l, ee)
 	if err != nil {
-		log.Panicf("FAIL to start EEManager err=%+v", err)
+		log.Panicf("fail to start EEManager err=%+v", err)
 	}
 
 	if err := pm.SetInstances(rcfg.EEInstances, rcfg.EEInstances, rcfg.EEInstances); err != nil {
-		log.Panicf("FAIL to EEManager.SetInstances err=%+v", err)
+		log.Panicf("fail to EEManager.SetInstances err=%+v", err)
 	}
 	go func() {
 		if err := pm.Loop(); err != nil {
