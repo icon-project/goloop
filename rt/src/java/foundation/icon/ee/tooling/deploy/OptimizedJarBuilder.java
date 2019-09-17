@@ -6,10 +6,13 @@
 package foundation.icon.ee.tooling.deploy;
 
 import foundation.icon.ee.tooling.abi.ABICompiler;
+import foundation.icon.ee.types.Method;
 import org.aion.avm.tooling.deploy.JarOptimizer;
 import org.aion.avm.tooling.deploy.eliminator.ConstantRemover;
 import org.aion.avm.tooling.deploy.eliminator.UnreachableMethodRemover;
 import org.aion.avm.tooling.deploy.renamer.Renamer;
+
+import java.util.List;
 
 public class OptimizedJarBuilder {
 
@@ -18,6 +21,7 @@ public class OptimizedJarBuilder {
     private boolean classAndFieldRenamerEnabled;
     private boolean constantRemoverEnabled;
     private byte[] dappBytes;
+    private List<Method> callables;
 
     /**
      * Initializes a new instance of OptimizedJarBuilder, which allows desired optimization steps to be enabled and performed
@@ -29,7 +33,7 @@ public class OptimizedJarBuilder {
         this.debugModeEnabled = debugModeEnabled;
         ABICompiler compiler = ABICompiler.compileJarBytes(jarBytes, abiVersion);
         dappBytes = compiler.getJarFileBytes();
-        compiler.writeAbi(System.out, abiVersion); // debug print
+        callables = compiler.getCallables();
     }
 
     /**
@@ -94,5 +98,11 @@ public class OptimizedJarBuilder {
             }
         }
         return optimizedDappBytes;
+    }
+
+    public void writeAbi() {
+        for (Method m : callables) {
+            System.out.println(m);
+        }
     }
 }

@@ -27,7 +27,6 @@ public class ABICompilerFieldVisitor extends FieldVisitor {
         String[] annotations = new String[] {
                 EventLog.class.getName(),
                 External.class.getName(),
-                OnInstall.class.getName(),
                 Payable.class.getName(),
         };
         for (String annotation : annotations) {

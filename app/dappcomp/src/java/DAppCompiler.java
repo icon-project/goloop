@@ -25,7 +25,6 @@ import java.nio.file.Paths;
 
 public class DAppCompiler {
     private static final int ABI_VERSION = 1;
-    private static final String OPTIMIZED_JAR = "./optimized.jar";
     private static boolean DEBUG_MODE = false;
 
     public static void main(String[] args) throws IOException {
@@ -35,15 +34,27 @@ public class DAppCompiler {
             if (args.length == 2) {
                 DEBUG_MODE = "-debug".equals(args[1]);
             }
-            byte[] optimizedJar = new OptimizedJarBuilder(DEBUG_MODE, readFile(args[0]), ABI_VERSION)
+            OptimizedJarBuilder jarBuilder = new OptimizedJarBuilder(DEBUG_MODE, readFile(args[0]), ABI_VERSION)
                     .withUnreachableMethodRemover()
                     .withRenamer()
-                    .withConstantRemover()
-                    .getOptimizedBytes();
-            writeFile(OPTIMIZED_JAR, optimizedJar);
-            logger.info("Generated {}", OPTIMIZED_JAR);
+                    .withConstantRemover();
+            byte[] optimizedJar = jarBuilder.getOptimizedBytes();
+            jarBuilder.writeAbi();
+            String outputName = getJarFilename(args[0], DEBUG_MODE);
+            writeFile(outputName, optimizedJar);
+            logger.info("Generated {}", outputName);
         } else {
             logger.info("Usage: DAppCompiler <jarFile> (-debug)");
+        }
+    }
+
+    private static String getJarFilename(String input, boolean debugMode) {
+        int len = input.lastIndexOf("/") + 1;
+        String prefix = input.substring(0, len) + "optimized";
+        if (debugMode) {
+            return prefix + "-debug.jar";
+        } else {
+            return prefix + ".jar";
         }
     }
 

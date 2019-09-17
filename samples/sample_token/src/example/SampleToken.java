@@ -5,15 +5,9 @@ import avm.Blockchain;
 
 import foundation.icon.ee.tooling.abi.EventLog;
 import foundation.icon.ee.tooling.abi.External;
-import foundation.icon.ee.tooling.abi.OnInstall;
 import foundation.icon.ee.tooling.abi.Payable;
 
 import java.math.BigInteger;
-
-//@InterfaceScore
-//interface TokenFallbackInterface {
-//    void tokenFallback(Address from, BigInteger value, byte[] data);
-//}
 
 public class SampleToken
 {
@@ -55,7 +49,6 @@ public class SampleToken
 
     private static SampleToken token;
 
-    @OnInstall
     public static void onInstall(String name,
                                  String symbol,
                                  BigInteger decimals,
@@ -104,15 +97,6 @@ public class SampleToken
 
         TokenStore.putBalance(_from, fromBalance.subtract(_value));
         TokenStore.putBalance(_to, toBalance.add(_value));
-
-        /*
-         * If the recipient is SCORE,
-         *   then calls `tokenFallback` to hand over control.
-        if (_to.isContract()) {
-            TokenFallbackInterface recipientScore = Blockchain.getInterfaceScore(_to, TokenFallbackInterface.class)
-            recipientScore.tokenFallback(_from, _value, _data)
-        }
-         */
 
         Transfer(_from, _to, _value, "Some data".getBytes());
     }

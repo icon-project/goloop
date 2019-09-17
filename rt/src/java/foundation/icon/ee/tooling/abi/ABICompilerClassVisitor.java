@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Set;
 
 import avm.Address;
+import foundation.icon.ee.types.Method;
 import org.aion.avm.tooling.abi.ABIConfig;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
@@ -20,20 +21,14 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
-import org.objectweb.asm.tree.MethodNode;
 
 import static org.objectweb.asm.Opcodes.*;
 
 public class ABICompilerClassVisitor extends ClassVisitor {
-    private boolean hasMainMethod = false;
-    private boolean hasClinit = false;
     private String className;
-    private String fallbackMethodName = "";
     private List<ABICompilerMethodVisitor> methodVisitors = new ArrayList<>();
     private List<ABICompilerMethodVisitor> callableMethodVisitors = new ArrayList<>();
-    private MethodNode clinitNode;
-    private List<ABICompilerFieldVisitor> initializableFieldVisitors = new ArrayList<>();
-    private List<String> callableSignatures = new ArrayList<>();
+    private List<Method> callableInfo = new ArrayList<>();
     private int compileVersion;
 
     public ABICompilerClassVisitor(ClassWriter cw, int version) {
@@ -41,16 +36,8 @@ public class ABICompilerClassVisitor extends ClassVisitor {
         this.compileVersion = version;
     }
 
-    public List<String> getCallableSignatures() {
-        return callableSignatures;
-    }
-
-    public List<Type> getInitializableTypes() {
-        List<Type> initializableTypes = new ArrayList<>();
-        for (ABICompilerFieldVisitor fv : initializableFieldVisitors) {
-            initializableTypes.add(Type.getType(fv.getFieldDescriptor()));
-        }
-        return initializableTypes;
+    public List<Method> getCallableInfo() {
+        return callableInfo;
     }
 
     public List<ABICompilerMethodVisitor> getCallableMethodVisitors() {
@@ -73,65 +60,51 @@ public class ABICompilerClassVisitor extends ClassVisitor {
     @Override
     public MethodVisitor visitMethod(
             int access, String name, String descriptor, String signature, String[] exceptions) {
-        if (name.equals("<clinit>")) {
-            clinitNode = new MethodNode(access, name, descriptor, signature, exceptions);
-            hasClinit = true;
-            return clinitNode;
-        } else {
-            if (name.equals("main") && ((access & Opcodes.ACC_PUBLIC) != 0)) {
-                hasMainMethod = true;
-            }
-            ABICompilerMethodVisitor mv = new ABICompilerMethodVisitor(access, name, descriptor,
-                    super.visitMethod(access, name, descriptor, signature, exceptions));
-            methodVisitors.add(mv);
-            return mv;
+        if (name.equals("main") && ((access & Opcodes.ACC_PUBLIC) != 0)) {
+            throw new ABICompilerException("main method cannot be defined", name);
         }
+        ABICompilerMethodVisitor mv = new ABICompilerMethodVisitor(access, name, descriptor,
+                super.visitMethod(access, name, descriptor, signature, exceptions));
+        methodVisitors.add(mv);
+        return mv;
     }
 
     @Override
     public void visitEnd() {
         postProcess();
-        if (!hasMainMethod) {
-            addMainMethod();
-        }
+        addMainMethod();
         super.visitEnd();
     }
 
     private void postProcess() {
         boolean foundOnInstall = false;
-
-        // We have to make a second pass to create the list of external methods
         Set<String> callableNames = new HashSet<>();
+        Set<String> eventsNames = new HashSet<>();
         for (ABICompilerMethodVisitor mv : methodVisitors) {
             if (mv.isExternal()) {
-                callableSignatures.add(mv.getPublicStaticMethodSignature());
-                callableMethodVisitors.add(mv);
                 if (callableNames.contains(mv.getMethodName())) {
                     throw new ABICompilerException("Multiple @External methods with the same name", mv.getMethodName());
-                } else {
-                    callableNames.add(mv.getMethodName());
                 }
-            }
-            if (mv.isOnInstall()) {
-                if (!foundOnInstall) {
-                    foundOnInstall = true;
-                    callableSignatures.add(mv.getPublicStaticMethodSignature());
-                    callableMethodVisitors.add(mv);
-                } else {
-                    throw new ABICompilerException("Only one method can be marked @OnInstall", mv.getMethodName());
+                callableNames.add(mv.getMethodName());
+                callableInfo.add(mv.getCallableMethodInfo());
+                callableMethodVisitors.add(mv);
+            } else if (mv.isOnInstall()) {
+                if (foundOnInstall) {
+                    throw new ABICompilerException("Multiple onInstall methods", mv.getMethodName());
                 }
-            }
-            if (mv.isPayable()) {
-                //TODO
-            }
-            if (mv.isEventLog()) {
-                //TODO
+                foundOnInstall = true;
+                callableInfo.add(mv.getCallableMethodInfo());
+                callableMethodVisitors.add(mv);
+            } else if (mv.isEventLog()) {
+                if (eventsNames.contains(mv.getMethodName())) {
+                    throw new ABICompilerException("Multiple @EventLog methods with the same name", mv.getMethodName());
+                }
+                eventsNames.add(mv.getMethodName());
+                callableInfo.add(mv.getCallableMethodInfo());
+            } else if (mv.isFallback()) {
+                callableInfo.add(mv.getCallableMethodInfo());
             }
         }
-    }
-
-    private boolean hasFallback() {
-        return !fallbackMethodName.isEmpty();
     }
 
     private void addMainMethod() {
@@ -158,10 +131,6 @@ public class ABICompilerClassVisitor extends ClassVisitor {
 
         methodVisitor.visitVarInsn(ALOAD, 1);
         methodVisitor.visitJumpInsn(IFNONNULL, methodNameNotNullLabel);
-        if(hasFallback()) {
-            methodVisitor.visitMethodInsn(
-                INVOKESTATIC, className, fallbackMethodName, "()V", false);
-        }
         methodVisitor.visitInsn(ICONST_0);
         methodVisitor.visitIntInsn(NEWARRAY, T_BYTE);
         methodVisitor.visitInsn(ARETURN);
@@ -273,17 +242,9 @@ public class ABICompilerClassVisitor extends ClassVisitor {
         // else we revert the transaction
         methodVisitor.visitLabel(latestLabel);
         methodVisitor.visitFrame(Opcodes.F_APPEND, 3, new Object[]{"[B", "java/lang/String", "[Ljava/lang/Object;"}, 0, null);
-        if (hasFallback()) {
-            methodVisitor.visitMethodInsn(
-                    INVOKESTATIC, className, fallbackMethodName, "()V", false);
-            methodVisitor.visitInsn(ICONST_0);
-            methodVisitor.visitIntInsn(NEWARRAY, T_BYTE);
-            methodVisitor.visitInsn(ARETURN);
-        } else {
-            methodVisitor.visitMethodInsn(INVOKESTATIC, "avm/Blockchain", "revert", "()V", false);
-            methodVisitor.visitInsn(ACONST_NULL);
-            methodVisitor.visitInsn(ARETURN);
-        }
+        methodVisitor.visitMethodInsn(INVOKESTATIC, "avm/Blockchain", "revert", "()V", false);
+        methodVisitor.visitInsn(ACONST_NULL);
+        methodVisitor.visitInsn(ARETURN);
 
         methodVisitor.visitMaxs(0, 0);
         methodVisitor.visitEnd();
@@ -384,9 +345,5 @@ public class ABICompilerClassVisitor extends ClassVisitor {
             throw new ABICompilerException("BigInteger is supported as an ABI type after version 1.");
         }
         return isBigIntegerType;
-    }
-
-    public boolean addedMainMethod() {
-        return !hasMainMethod;
     }
 }
