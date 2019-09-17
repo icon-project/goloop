@@ -148,7 +148,7 @@ func (srv *Manager) IncludeDebug() bool {
 	return atomicLoad(&srv.jsonrpcIncludeDebug)
 }
 
-func (srv *Manager) Start() {
+func (srv *Manager) Start() error {
 	srv.logger.Infoln("starting the server")
 	// middleware
 	// srv.e.Use(middleware.Logger())
@@ -201,18 +201,16 @@ func (srv *Manager) Start() {
 	// srv.e.File("doc/swagger.yaml", "./doc/swagger.yaml")
 
 	// Start server : main loop
-	if err := srv.e.Start(srv.addr); err != nil {
-		srv.logger.Infoln("shutting down the server")
-	}
+	return srv.e.Start(srv.addr)
 }
 
-func (srv *Manager) Stop() {
+func (srv *Manager) Stop() error {
+	srv.logger.Infoln("shutting down the server")
+
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 	srv.wssm.StopAllSessions()
-	if err := srv.e.Shutdown(ctx); err != nil {
-		srv.e.Logger.Fatal(err)
-	}
+	return srv.e.Shutdown(ctx)
 }
 
 func (srv *Manager) AdminEchoGroup() *echo.Group {

@@ -166,7 +166,12 @@ func (n *Node) Start() {
 		log.Panicf("fail to P2P listen err=%+v", err)
 	}
 
-	go n.srv.Start()
+	go func(){
+		if err := n.srv.Start(); err != nil {
+			log.Panicf("fail to server close err=%+v", err)
+		}
+	}()
+
 
 	if err := n.cliSrv.Start(); err != nil {
 		log.Panicf("fail to cli server start err=%+v", err)
@@ -178,8 +183,9 @@ func (n *Node) Stop() {
 	if err := n.nt.Close(); err != nil {
 		log.Panicf("fail to P2P close err=%+v", err)
 	}
+	if err := n.srv.Stop(); err != nil {
+		log.Panicf("fail to server close err=%+v", err)
 	}
-	n.srv.Stop()
 	if err := n.cliSrv.Stop(); err != nil {
 		log.Panicf("fail to cli server close err=%+v", err)
 	}
