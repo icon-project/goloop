@@ -12,6 +12,8 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.StringJoiner;
@@ -20,6 +22,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
     private int access;
     private String methodName;
     private String methodDescriptor;
+    private List<String> paramNames= new ArrayList<>();
     private int flags;
     private int indexed;
     private boolean isOnInstall = false;
@@ -62,6 +65,13 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
                 throw new ABICompilerException("fallback method cannot take arguments", methodName);
             }
             isFallback = true;
+        }
+    }
+
+    @Override
+    public void visitParameter(String name, int access) {
+        if (access == 0) {
+            paramNames.add(name);
         }
     }
 
@@ -122,6 +132,11 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
         }
         if (isEventLog() && this.flags != 0) {
             throw new ABICompilerException("Method annotated @EventLog cannot have other annotations", methodName);
+        }
+        if ((isOnInstall() || isExternal() || isEventLog()) &&
+                paramNames.size() != Type.getArgumentTypes(methodDescriptor).length) {
+            throw new ABICompilerException(
+                    "Method parameters size mismatch (must compile with \'-parameters\')", methodName);
         }
         super.visitEnd();
     }
@@ -191,7 +206,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
             int index = 0;
             for (Type type : types) {
                 params[index] = new Method.Parameter(
-                        "param" + index, getDataType(type));
+                        paramNames.get(index), getDataType(type));
                 index++;
             }
         }

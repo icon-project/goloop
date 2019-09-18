@@ -26,6 +26,7 @@ else
     echo "ERROR: No javac found in your system!"
     exit 2
 fi
+JAVAC_OPTIONS='-parameters --release 10'
 
 # cd to project and clean the previous build
 cd $TOPDIR/$PROJECT || die "Could not change directory to $PROJECT"
@@ -35,7 +36,7 @@ rm -fr "./build"
 # compile
 echo "Compiling the source code..."
 SOURCE_FILES=$(find ./src -name *.java)
-$JAVAC --release 10 -cp $CLASSPATH -d "./build" $SOURCE_FILES || exit 3
+$JAVAC $JAVAC_OPTIONS -cp $CLASSPATH -d "./build" $SOURCE_FILES || exit 3
 
 # assemble the jar
 echo "Assembling the final jar..."
