@@ -60,15 +60,41 @@ func (c *JsonRpcClient) Do(method string, reqPtr, respPtr interface{}) (jrResp *
 		req.Header.Set(k, v)
 	}
 
+	var dErr error
 	resp, err := c._do(req)
 	if err != nil {
 		if resp != nil {
-			jrResp, _ = decodeResponseBody(resp, nil)
-			err = fmt.Errorf("resp:%+v,err:%+v", jrResp, err)
+			if jrResp, dErr = decodeResponseBody(resp); dErr != nil {
+				err = fmt.Errorf("fail to decode response body err:%+v, httpErr:%+v, httpResp:%+v",
+					dErr, err, resp)
+				return
+			}
+			err = jrResp.Error
+			return
 		}
 		return
 	}
-	jrResp, err = decodeResponseBody(resp, respPtr)
+
+	if jrResp, dErr = decodeResponseBody(resp); dErr != nil {
+		err = fmt.Errorf("fail to decode response body err:%+v, jsonrpcResp:%+v",
+			dErr, resp)
+		return
+	}
+	if jrResp.Error != nil {
+		err = jrResp.Error
+		return
+	}
+	if respPtr != nil {
+		rb, mErr := json.Marshal(jrResp.Result)
+		if mErr != nil {
+			err = mErr
+			return
+		}
+		err = json.Unmarshal(rb, respPtr)
+		if err != nil {
+			return
+		}
+	}
 	return
 }
 
@@ -86,22 +112,8 @@ func (c *JsonRpcClient) Raw(reqB []byte) (resp *http.Response, err error) {
 	return c._do(req)
 }
 
-func decodeResponseBody(resp *http.Response, respPtr interface{}) (jrResp *jsonrpc.Response, err error) {
+func decodeResponseBody(resp *http.Response) (jrResp *jsonrpc.Response, err error) {
 	defer resp.Body.Close()
-	if err = json.NewDecoder(resp.Body).Decode(&jrResp); err != nil {
-		return
-	}
-	if respPtr != nil {
-		rb, mErr := json.Marshal(jrResp.Result)
-		if mErr != nil {
-			err = mErr
-			return
-		}
-		err = json.Unmarshal(rb, respPtr)
-		if err != nil {
-			return
-		}
-	}
+	err = json.NewDecoder(resp.Body).Decode(&jrResp)
 	return
 }
-

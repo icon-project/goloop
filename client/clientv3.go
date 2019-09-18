@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
+
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
@@ -25,11 +26,12 @@ import (
 //response schema Block, ConfirmedTransaction, TransactionResult{EventLog, Failure}, ScoreApi,
 type ClientV3 struct {
 	*JsonRpcClient
-	conns []*websocket.Conn
+	conns map[string]*websocket.Conn
 }
 
 func NewClientV3(endpoint string) *ClientV3 {
-	return &ClientV3{JsonRpcClient: NewJsonRpcClient(&http.Client{}, endpoint)}
+	return &ClientV3{JsonRpcClient: NewJsonRpcClient(&http.Client{}, endpoint),
+		conns: make(map[string]*websocket.Conn),}
 }
 
 //refer block/blockv2.go blockv2.ToJSON
@@ -238,7 +240,6 @@ func (c *ClientV3) GetVotesByHeight(param *v3.BlockHeightParam) ([]byte, error) 
 	return result, nil
 }
 
-
 //refer common/trie/ompt/mtp.go mpt.GetProof(index)
 func (c *ClientV3) GetProofForResult(param *v3.ProofResultParam) ([][]byte, error) {
 	var result [][]byte
@@ -269,37 +270,17 @@ func (c *ClientV3) MonitorEvent(param *server.EventRequest, cb func(v *server.Ev
 
 func (c *ClientV3) Monitor(reqUrl string, reqPtr, respPtr interface{},
 	cb func(v interface{}), cancelCh <-chan bool) error {
-	endpoint := strings.Replace(c.Endpoint, "http", "ws", 1)
-	conn, _, err := WSConnect(endpoint+reqUrl, nil, reqPtr)
+	if cb == nil {
+		return fmt.Errorf("callback function cannot be nil")
+	}
+	conn, _, err := c.wsConnect(reqUrl, nil, reqPtr)
 	if err != nil {
 		return err
 	}
-	if cb != nil {
-		WSReadJSONLoop(conn, respPtr, cb, cancelCh)
-	}
-	return nil
-}
-
-func WSReadJSONLoop(c *websocket.Conn, respPtr interface{}, cb func(v interface{}), cancelCh <-chan bool) {
-	ch := make(chan interface{})
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer func() {
-			close(ch)
-			wg.Done()
-		}()
-		for {
-			if err := c.ReadJSON(respPtr); err != nil {
-				cb(err)
-				return
-			}
-			cb(respPtr)
-		}
-	}()
 	if cancelCh != nil {
+		ch := make(chan interface{})
 		go func() {
-			defer c.Close()
+			defer c.wsClose(conn)
 			for {
 				select {
 				case <-cancelCh:
@@ -309,45 +290,82 @@ func WSReadJSONLoop(c *websocket.Conn, respPtr interface{}, cb func(v interface{
 				}
 			}
 		}()
+		go func() {
+			defer func() {
+				close(ch)
+			}()
+			c.wsReadJSONLoop(conn, respPtr, cb)
+		}()
 	} else {
-		wg.Wait()
-		_ = c.Close()
+		defer c.wsClose(conn)
+		c.wsReadJSONLoop(conn, respPtr, cb)
+	}
+	return nil
+}
+
+func (c *ClientV3) Cleanup() {
+	for _, conn := range c.conns {
+		c.wsClose(conn)
 	}
 }
 
-func WSConnect(urlStr string, reqHeader http.Header, reqPtr interface{}) (c *websocket.Conn, wsResp *server.WSResponse, err error) {
+func (c *ClientV3) wsConnect(reqUrl string, reqHeader http.Header, reqPtr interface{}) (*websocket.Conn, *server.WSResponse, error) {
 	if reqPtr == nil {
-		err = fmt.Errorf("reqPtr cannot be nil")
-		return
+		return nil, nil, fmt.Errorf("reqPtr cannot be nil")
 	}
-	var httpResp *http.Response
-	c, httpResp, err = websocket.DefaultDialer.Dial(urlStr, reqHeader)
+	wsResp := &server.WSResponse{}
+	wsEndpoint := strings.Replace(c.Endpoint, "http", "ws", 1)
+	conn, httpResp, err := websocket.DefaultDialer.Dial(wsEndpoint+reqUrl, reqHeader)
 	if err != nil {
 		fmt.Printf("Dial fail %+v", err)
 		if httpResp != nil {
 			defer httpResp.Body.Close()
-			wsResp = &server.WSResponse{}
 			if dErr := json.NewDecoder(httpResp.Body).Decode(wsResp); dErr != nil {
-				wsResp = nil
-				err = fmt.Errorf("resp:%v, err:%+v", httpResp, err)
-				return
+				return nil, nil, fmt.Errorf("resp:%v, err:%+v", httpResp, err)
 			}
+			return nil, wsResp, err
 		}
-		return
+		return nil, nil, err
 	}
-	if err = c.WriteJSON(reqPtr); err == nil {
-		wsResp = &server.WSResponse{}
-		if err = c.ReadJSON(wsResp); err == nil {
-			if wsResp.Code == 0 {
-				return
-			}
-			err = fmt.Errorf("receive WSResponse.Code is not zero")
-		} else {
-			fmt.Printf("ReadJSON err:%+v", err)
-			wsResp = nil
+
+	if err = conn.WriteJSON(reqPtr); err != nil {
+		conn.Close()
+		return nil, nil, fmt.Errorf("fail to WriteJSON err:%+v", err)
+	}
+
+	if err = conn.ReadJSON(wsResp); err != nil {
+		conn.Close()
+		return nil, nil, fmt.Errorf("fail to ReadJSON err:%+v", err)
+	}
+
+	if wsResp.Code != 0 {
+		conn.Close()
+		return nil, wsResp, fmt.Errorf("invalid WSResponse code:%d, message:%s", wsResp.Code, wsResp.Message)
+	}
+	la := conn.LocalAddr().String()
+	c.conns[la] = conn
+	return conn, wsResp, nil
+}
+
+func (c *ClientV3) wsClose(conn *websocket.Conn) {
+	la := conn.LocalAddr().String()
+	_, ok := c.conns[la]
+	if ok {
+		delete(c.conns, la)
+	}
+	conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+	conn.Close()
+}
+
+func (c *ClientV3) wsReadJSONLoop(conn *websocket.Conn, respPtr interface{}, cb func(v interface{})) {
+	elem := reflect.ValueOf(respPtr).Elem()
+	for {
+		v := reflect.New(elem.Type())
+		ptr := v.Interface()
+		if err := conn.ReadJSON(ptr); err != nil {
+			cb(err)
+			return
 		}
+		cb(ptr)
 	}
-	fmt.Printf("WriteJSON err:%+v", err)
-	c.Close()
-	return
 }
