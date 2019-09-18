@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -174,7 +175,7 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 			}
 
 			dataM := make(map[string]interface{})
-			if dataJson := cmd.Flag("data").Value.String(); dataJson != "" {
+			if dataJson := cmd.Flag("raw").Value.String(); dataJson != "" {
 				var dataBytes []byte
 				if strings.HasPrefix(strings.TrimSpace(dataJson), "{") {
 					dataBytes = []byte(dataJson)
@@ -189,10 +190,10 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 				}
 			}
 
-			if dataMethod := cmd.Flag("data_method").Value.String(); dataMethod != "" {
+			if dataMethod := cmd.Flag("method").Value.String(); dataMethod != "" {
 				dataM["method"] = dataMethod
 			}
-			if dataParams, err := cmd.Flags().GetStringToString("data_param"); err == nil && len(dataParams) > 0 {
+			if dataParams, err := cmd.Flags().GetStringToString("param"); err == nil && len(dataParams) > 0 {
 				dataM["params"] = dataParams
 			}
 			if len(dataM) > 0 {
@@ -212,10 +213,11 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 	callFlags := callCmd.Flags()
 	callFlags.String("from", "", "FromAddress")
 	callFlags.String("to", "", "ToAddress")
-	callFlags.String("data", "", "Data (JSON string or file)")
-	callFlags.String("data_method", "", "Method of Data, will overwrite")
-	callFlags.StringToString("data_param", nil,
-		"Params of Data, key=value pair, will overwrite")
+	callFlags.String("method", "",
+		"Name of the function to invoke in SCORE, if '--raw' used, will overwrite")
+	callFlags.StringToString("param", nil,
+		"key=value, Function parameters, if '--raw' used, will overwrite")
+	callFlags.String("raw", "", "call with 'data' using raw json file or json-string")
 	MarkAnnotationRequired(callFlags, "to")
 
 	rawCmd := &cobra.Command{
@@ -344,6 +346,47 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 		}
 		return nil
 	}
+	rootCmd.PersistentPostRunE = func(cmd *cobra.Command, args []string) error {
+		txHash, ok := vc.Get("txHash").(*jsonrpc.HexBytes)
+		waitInterval := time.Duration(vc.GetInt("wait_interval")) * time.Millisecond
+		if vc.GetBool("wait") && ok && txHash != nil {
+			param := &v3.TransactionHashParam{Hash: *txHash}
+			waitTimeout := time.Duration(vc.GetInt("wait_timeout")) * time.Second
+			expireTime := time.Now().Add(waitTimeout)
+			toCh := time.After(waitTimeout)
+			done := make(chan interface{})
+			go func() {
+				for {
+					if txResult, err := rpcClient.GetTransactionResult(param); err != nil {
+						if time.Now().After(expireTime) {
+							done <- fmt.Errorf("timeout %v", waitTimeout)
+							return
+						}
+						if _, ok := err.(*jsonrpc.Error); ok {
+							time.Sleep(waitInterval)
+							continue
+						}
+						done <- err
+						return
+					} else {
+						done <- txResult
+						return
+					}
+				}
+			}()
+
+			select {
+			case <-toCh:
+				return fmt.Errorf("timeout %v", waitTimeout)
+			case v := <-done:
+				if err, ok := v.(error); ok {
+					return err
+				}
+				return JsonPrettyPrintln(os.Stdout, v)
+			}
+		}
+		return nil
+	}
 	AddRpcRequiredFlags(rootCmd)
 	rootPFlags := rootCmd.PersistentFlags()
 	rootPFlags.String("key_store", "", "KeyStore file for wallet")
@@ -351,8 +394,12 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 	rootPFlags.String("key_password", "", "Password for the KeyStore file")
 	rootPFlags.String("nid", "", "Network ID")
 	rootPFlags.Int64("step_limit", 0, "StepLimit")
+	rootPFlags.Bool("wait", false, "Wait transaction result")
+	rootPFlags.Int("wait_interval", 1000, "Polling interval(msec) for wait transaction result")
+	rootPFlags.Int("wait_timeout", 10, "Timeout(sec) for wait transaction result")
 	MarkAnnotationCustom(rootPFlags, "key_store", "nid", "step_limit")
 	BindPFlags(vc, rootCmd.PersistentFlags())
+	MarkAnnotationHidden(rootPFlags, "wait", "wait_interval", "wait_timeout")
 
 	//fixed protocol
 	//rootPFlags.String("version", "", "Version")
@@ -375,13 +422,18 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 			if err := json.Unmarshal(b, param); err != nil {
 				return err
 			}
-
-			stepLimit := vc.GetInt64("step_limit")
-			if stepLimit == 0 {
+			if param.Version == "" {
+				param.Version = jsonrpc.HexInt(common.FormatInt(jsonrpc.APIVersion3))
+			}
+			if param.FromAddress == "" {
+				param.FromAddress = jsonrpc.Address(rpcWallet.Address().String())
+			}
+			if param.StepLimit == "" {
+				stepLimit := vc.GetInt64("step_limit")
 				param.StepLimit = jsonrpc.HexInt(common.FormatInt(stepLimit))
 			}
-			strNid := vc.GetString("nid")
-			if strNid != "" {
+			if param.NetworkID == "" {
+				strNid := vc.GetString("nid")
 				nid, err := common.ParseInt(strNid, 64)
 				if err != nil {
 					return err
@@ -393,6 +445,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 			if err != nil {
 				return err
 			}
+			vc.Set("txhash", txHash)
 			return JsonPrettyPrintln(os.Stdout, txHash)
 		},
 	}
@@ -438,6 +491,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 			if err != nil {
 				return err
 			}
+			vc.Set("txhash", txHash)
 			return JsonPrettyPrintln(os.Stdout, txHash)
 		},
 	}
@@ -469,7 +523,24 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 				DataType: "call",
 			}
 			dataM := make(map[string]interface{})
-			dataM["method"] = cmd.Flag("method").Value.String()
+			if dataJson := cmd.Flag("raw").Value.String(); dataJson != "" {
+				var dataBytes []byte
+				if strings.HasPrefix(strings.TrimSpace(dataJson), "{") {
+					dataBytes = []byte(dataJson)
+				} else {
+					var err error
+					if dataBytes, err = ioutil.ReadFile(dataJson); err != nil {
+						return err
+					}
+				}
+				if err := json.Unmarshal(dataBytes, &dataM); err != nil {
+					return err
+				}
+			}
+
+			if dataMethod := cmd.Flag("method").Value.String(); dataMethod != "" {
+				dataM["method"] = dataMethod
+			}
 			if dataParams, err := cmd.Flags().GetStringToString("param"); err == nil && len(dataParams) > 0 {
 				dataM["params"] = dataParams
 			}
@@ -481,14 +552,18 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 			if err != nil {
 				return err
 			}
+			vc.Set("txhash", txHash)
 			return JsonPrettyPrintln(os.Stdout, txHash)
 		},
 	}
 	rootCmd.AddCommand(callCmd)
 	callFlags := callCmd.Flags()
 	callFlags.String("to", "", "ToAddress")
-	callFlags.String("method", "", "Name of the function to invoke in SCORE")
-	callFlags.StringToString("param", nil, "key=value, Function parameters")
+	callFlags.String("method", "",
+		"Name of the function to invoke in SCORE, if '--raw' used, will overwrite")
+	callFlags.StringToString("param", nil,
+		"key=value, Function parameters, if '--raw' used, will overwrite")
+	callFlags.String("raw", "", "call with 'data' using raw json file or json-string")
 	MarkAnnotationRequired(callFlags, "to", "method")
 
 	deployCmd := &cobra.Command{
@@ -540,6 +615,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 			if err != nil {
 				return err
 			}
+			vc.Set("txhash", txHash)
 			return JsonPrettyPrintln(os.Stdout, txHash)
 		},
 	}
