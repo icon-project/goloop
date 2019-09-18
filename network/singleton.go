@@ -67,8 +67,8 @@ const (
 	DefaultPeerSendQueueSize    = 1000
 	DefaultPeerPoolExpireSecond = 5
 	DefaultUncleLimit           = 1
-	DefaultChildrenLimit        = 1
-	DefaultNephewLimit          = 1
+	DefaultChildrenLimit        = 10
+	DefaultNephewLimit          = 10
 	DefaultPacketRewriteLimit   = 10
 	DefaultPacketRewriteDelay   = 100 * time.Millisecond
 	DefaultRttAccuracy          = 10 * time.Millisecond
