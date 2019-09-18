@@ -51,6 +51,14 @@ public class Method {
             this.type = type;
         }
 
+        public String getName() {
+            return name;
+        }
+
+        public int getType() {
+            return type;
+        }
+
         @Override
         public String toString() {
             return "Parameter{" +
@@ -87,6 +95,30 @@ public class Method {
 
     public static Method newEvent(String name, int indexed, Parameter[] inputs) {
         return new Method(MethodType.EVENT, name, 0, indexed, inputs, 0);
+    }
+
+    public int getType() {
+        return type;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public int getFlags() {
+        return flags;
+    }
+
+    public int getIndexed() {
+        return indexed;
+    }
+
+    public Parameter[] getInputs() {
+        return inputs;
+    }
+
+    public int getOutput() {
+        return output;
     }
 
     @Override

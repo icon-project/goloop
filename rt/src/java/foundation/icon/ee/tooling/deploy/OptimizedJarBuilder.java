@@ -100,6 +100,10 @@ public class OptimizedJarBuilder {
         return optimizedDappBytes;
     }
 
+    public List<Method> getCallables() {
+        return callables;
+    }
+
     public void writeAbi() {
         for (Method m : callables) {
             System.out.println(m);

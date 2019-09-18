@@ -17,6 +17,7 @@
 package foundation.icon.ee.ipc;
 
 import foundation.icon.ee.types.Address;
+import foundation.icon.ee.types.Method;
 import org.msgpack.core.MessageBufferPacker;
 import org.msgpack.core.MessagePack;
 import org.msgpack.core.MessageUnpacker;
@@ -212,7 +213,7 @@ public class Proxy {
             Method[] methods = (Method[]) obj;
             packer.packArrayHeader(methods.length);
             for (Method m : methods) {
-                m.writeTo(packer);
+                MethodPacker.writeTo(m, packer);
             }
         } else if (obj instanceof TypedObj) {
             TypedObj to = (TypedObj) obj;
@@ -232,7 +233,7 @@ public class Proxy {
     }
 
     public interface OnGetApiListener {
-        Method[] onGetApi(String path);
+        Method[] onGetApi(String path) throws IOException;
     }
 
     public void setOnGetApiListener(OnGetApiListener listener) {

@@ -16,6 +16,7 @@
 
 import foundation.icon.ee.ipc.*;
 import foundation.icon.ee.types.Bytes;
+import foundation.icon.ee.types.Method;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

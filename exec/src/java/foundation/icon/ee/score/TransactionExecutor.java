@@ -16,9 +16,14 @@
 
 package foundation.icon.ee.score;
 
-import foundation.icon.ee.ipc.*;
+import foundation.icon.ee.ipc.Client;
+import foundation.icon.ee.ipc.InvokeResult;
+import foundation.icon.ee.ipc.Proxy;
+import foundation.icon.ee.ipc.TypedObj;
+import foundation.icon.ee.tooling.deploy.OptimizedJarBuilder;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Bytes;
+import foundation.icon.ee.types.Method;
 import org.aion.avm.core.*;
 import org.aion.avm.embed.StandardCapabilities;
 import org.aion.avm.tooling.ABIUtil;
@@ -39,6 +44,7 @@ import java.util.Map;
 public class TransactionExecutor {
     private static final Logger logger = LoggerFactory.getLogger(TransactionExecutor.class);
     private static final String CMD_DEPLOY = "<install>";
+    private static final boolean DEBUG_MODE = true;
 
     private final Proxy proxy;
     private final String uuid;
@@ -63,15 +69,13 @@ public class TransactionExecutor {
     }
 
     private void setGetApiHandler() {
-        proxy.setOnGetApiListener(path -> new Method[] {
-                Method.newFunction(
-                        "balanceOf",
-                        Method.Flags.READONLY | Method.Flags.EXTERNAL,
-                        new Method.Parameter[] {
-                                new Method.Parameter("_owner", Method.DataType.ADDRESS)
-                        },
-                        Method.DataType.INTEGER
-                ),
+        proxy.setOnGetApiListener(path -> {
+            OptimizedJarBuilder builder = new OptimizedJarBuilder(DEBUG_MODE, readFile(path), 1)
+                    .withUnreachableMethodRemover()
+                    .withRenamer()
+                    .withConstantRemover();
+            writeFile(getOutputName(path, DEBUG_MODE), builder.getOptimizedBytes());
+            return builder.getCallables().toArray(new Method[0]);
         });
     }
 
@@ -181,6 +185,25 @@ public class TransactionExecutor {
             throw new IOException("JAR read error: " + e.getMessage());
         }
         return jarBytes;
+    }
+
+    private static void writeFile(String filePath, byte[] data) {
+        Path outFile = Paths.get(filePath);
+        try {
+            Files.write(outFile, data);
+        } catch (IOException e) {
+            throw new RuntimeException(e.getMessage());
+        }
+    }
+
+    private static String getOutputName(String input, boolean debugMode) {
+        int len = input.lastIndexOf("/") + 1;
+        String prefix = input.substring(0, len) + "optimized";
+        if (debugMode) {
+            return prefix + "-debug.jar";
+        } else {
+            return prefix + ".jar";
+        }
     }
 
     private Object[] getConvertedParams(Object[] params) {
