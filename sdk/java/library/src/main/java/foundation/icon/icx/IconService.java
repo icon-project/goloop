@@ -300,7 +300,7 @@ public class IconService {
      * @return
      */
     public Monitor<BlockNotification> monitorBlocks(BigInteger height) {
-        MonitorSpec ms = new BlockMonitorSpec(height);
+        MonitorSpec ms = new BlockMonitorSpec(height, null);
         return provider.monitor(ms, findConverter(BlockNotification.class));
     }
 
@@ -312,8 +312,8 @@ public class IconService {
      * @param data
      * @return
      */
-    public Monitor<EventNotification> monitorEvents(BigInteger height, String event, Address addr, String[] data) {
-        MonitorSpec ms = new EventMonitorSpec(height, event, addr, data);
+    public Monitor<EventNotification> monitorEvents(BigInteger height, String event, Address addr, String[] indexed, String[] data) {
+        MonitorSpec ms = new EventMonitorSpec(height, event, addr, indexed, data);
         return provider.monitor(ms, findConverter(EventNotification.class));
     }
 

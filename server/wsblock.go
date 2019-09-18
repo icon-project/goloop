@@ -106,9 +106,6 @@ loop:
 }
 
 func (r *BlockRequest) compile() error {
-	if len(r.EventFilters) < 1 {
-		return fmt.Errorf("event filters cannot empty")
-	}
 	for i, f := range r.EventFilters {
 		if err := f.compile(); err != nil {
 			return fmt.Errorf("fail to compile idx:%d, err:%v", i, err)

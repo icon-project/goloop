@@ -149,7 +149,7 @@ func (f *EventFilter) match(r module.Receipt) bool {
 						continue loop
 					}
 					if f.numOfArgs > 0 {
-						if (len(el.Indexed()) - 1 + len(el.Data())) <= f.numOfArgs {
+						if (len(el.Indexed()) + len(el.Data())) <= f.numOfArgs {
 							continue loop
 						}
 

@@ -160,7 +160,7 @@ public class WSEventTest {
             2. monitor with event and address
             3. monitor with event, address and data
              */
-            Monitor<EventNotification> em = iconService.monitorEvents(lastBlk.getHeight(), event, addrs[i], data[i]);
+            Monitor<EventNotification> em = iconService.monitorEvents(lastBlk.getHeight(), event, addrs[i], data[i], null);
             boolean started = em.start(new Monitor.Listener<EventNotification>() {
                 boolean stop = false;
 
