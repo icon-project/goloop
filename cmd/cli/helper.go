@@ -572,3 +572,12 @@ func TermGui(g *gocui.Gui, termCh <-chan bool) {
 	}
 	g.Close()
 }
+
+func OnInterrupt(cb func()) {
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt)
+	go func() {
+		<-ch
+		cb()
+	}()
+}

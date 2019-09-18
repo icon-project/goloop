@@ -515,6 +515,7 @@ Generate genesis transaction
 ### Options
 |Name,shorthand | Default | Description|
 |---|---|---|
+| --config, -c | [] | Chain configuration |
 | --god, -g |  | Address or keystore of GOD |
 | --out, -o | genesis.json | Output file path |
 | --supply, -s | 0x2961fff8ca4a62327800000 | Total supply of the chain |
@@ -886,10 +887,10 @@ Call
 ### Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --data |  | Data (JSON string or file) |
-| --data_method |  | Method of Data, will overwrite |
-| --data_param | [] | Params of Data, key=value pair, will overwrite |
 | --from |  | FromAddress |
+| --method |  | Name of the function to invoke in SCORE, if '--raw' used, will overwrite |
+| --param | [] | key=value, Function parameters, if '--raw' used, will overwrite |
+| --raw |  | call with 'data' using raw json file or json-string |
 | --to |  | ToAddress |
 
 ### Inherited Options
@@ -1056,7 +1057,12 @@ Monitor
 MonitorBlock
 
 ### Usage
-` goloop rpc monitor block HEIGHT `
+` goloop rpc monitor block HEIGHT [flags] `
+
+### Options
+|Name,shorthand | Default | Description|
+|---|---|---|
+| --filter | [] | EventFilter raw json file or json string |
 
 ### Inherited Options
 |Name,shorthand | Default | Description|
@@ -1086,9 +1092,11 @@ MonitorEvent
 ### Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --addr |  | Addr |
-| --data | [] | Data |
-| --event |  | Event |
+| --addr |  | SCORE Address |
+| --data | [] | Not indexed Arguments of Event, comma-separated string |
+| --event |  | Signature of Event |
+| --indexed | [] | Indexed Arguments of Event, comma-separated string |
+| --raw |  | EventFilter raw json file or json-string |
 
 ### Inherited Options
 |Name,shorthand | Default | Description|
@@ -1240,6 +1248,9 @@ SendTransaction
 | --key_store |  | KeyStore file for wallet |
 | --nid |  | Network ID |
 | --step_limit | 0 | StepLimit |
+| --wait | false | Wait transaction result |
+| --wait_interval | 1000 | Polling interval(msec) for wait transaction result |
+| --wait_timeout | 10 | Timeout(sec) for wait transaction result |
 
 ### Inherited Options
 |Name,shorthand | Default | Description|
@@ -1291,8 +1302,9 @@ SmartContract Call Transaction
 ### Options
 |Name,shorthand | Default | Description|
 |---|---|---|
-| --method |  | Name of the function to invoke in SCORE |
-| --param | [] | key=value, Function parameters |
+| --method |  | Name of the function to invoke in SCORE, if '--raw' used, will overwrite |
+| --param | [] | key=value, Function parameters, if '--raw' used, will overwrite |
+| --raw |  | call with 'data' using raw json file or json-string |
 | --to |  | ToAddress |
 
 ### Inherited Options
@@ -1305,6 +1317,9 @@ SmartContract Call Transaction
 | --nid |  | Network ID |
 | --step_limit | 0 | StepLimit |
 | --uri |  | URI of JSON-RPC API |
+| --wait | false | Wait transaction result |
+| --wait_interval | 1000 | Polling interval(msec) for wait transaction result |
+| --wait_timeout | 10 | Timeout(sec) for wait transaction result |
 
 ### Parent command
 |Command | Description|
@@ -1344,6 +1359,9 @@ Deploy Transaction
 | --nid |  | Network ID |
 | --step_limit | 0 | StepLimit |
 | --uri |  | URI of JSON-RPC API |
+| --wait | false | Wait transaction result |
+| --wait_interval | 1000 | Polling interval(msec) for wait transaction result |
+| --wait_timeout | 10 | Timeout(sec) for wait transaction result |
 
 ### Parent command
 |Command | Description|
@@ -1376,6 +1394,9 @@ Send transaction with json file
 | --nid |  | Network ID |
 | --step_limit | 0 | StepLimit |
 | --uri |  | URI of JSON-RPC API |
+| --wait | false | Wait transaction result |
+| --wait_interval | 1000 | Polling interval(msec) for wait transaction result |
+| --wait_timeout | 10 | Timeout(sec) for wait transaction result |
 
 ### Parent command
 |Command | Description|
@@ -1415,6 +1436,9 @@ Coin Transfer Transaction
 | --nid |  | Network ID |
 | --step_limit | 0 | StepLimit |
 | --uri |  | URI of JSON-RPC API |
+| --wait | false | Wait transaction result |
+| --wait_interval | 1000 | Polling interval(msec) for wait transaction result |
+| --wait_timeout | 10 | Timeout(sec) for wait transaction result |
 
 ### Parent command
 |Command | Description|

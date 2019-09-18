@@ -35,14 +35,29 @@ Summarize the document to following items.
 
 ```json
 {
-  "height": "0x10"
+  "height": "0x10",
+  "eventFilters": [
+    {
+      "addr": "cx49894fa5aec4d662e49934f297673cf08dd9f382",
+      "event": "Event(int,bytes,int,Address)",
+      "indexed": [
+        null,
+        "0xda12"
+      ],
+      "data": [
+        "0x2",
+        "hxb51a65420ce5199e538f21fc614eacf4234454fe"
+      ]
+    }
+  ]
 }
 ```
 #### Parameters
 
-|Name|Type|Required|Description|
-|---|---|---|---|
-|height|T_INT|true| Start height |
+| Name         | Type  | Required | Description                                                                                              |
+|:-------------|:------|:---------|:---------------------------------------------------------------------------------------------------------|
+| height       | T_INT | true     | Start height                                                                                             |
+| eventFilters | Array | false    | Array of EventFilter(JSON Object type, see [Events Parameters](#eventsparameters))                       |
 
 > Success Responses
 
@@ -73,16 +88,23 @@ Summarize the document to following items.
 ```json
 {
   "hash": "0xabc...",
-  "height": "0x10"
+  "height": "0x10",
+  "indexes": [
+    [
+      "0x0"
+    ]
+  ]
 }
 ```
 
 #### Notification
 
-| Name   | Type   | Required | Description                 |
-|:-------|:-------|:---------|:----------------------------|
-| hash   | T_HASH | true     | The hash of the new block   |
-| height | T_INT  | true     | The height of the new block |
+| Name    | Type   | Required | Description                                                                                                                  |
+|:--------|:-------|:---------|:-----------------------------------------------------------------------------------------------------------------------------|
+| hash    | T_HASH | true     | The hash of the new block                                                                                                    |
+| height  | T_INT  | true     | The height of the new block                                                                                                  |
+| indexes | Array  | false    | Array of IndexList(Array type, list of [index](#eventsindex) which is filtered events in the block), same ordered as EventFilter of Request. |
+
 
 ### Events
 
@@ -95,22 +117,27 @@ Summarize the document to following items.
   "height": "0x10",
   "addr": "cx49894fa5aec4d662e49934f297673cf08dd9f382",
   "event": "Event(int,bytes,int,Address)",
-  "data": [
+  "indexed": [
       null,
-      "0xda12",
+      "0xda12"
+  ],
+  "data": [
       "0x2",
       "hxb51a65420ce5199e538f21fc614eacf4234454fe"
   ]
 }
 ```
-#### Parameters
+#### <a id="eventsparameters">Parameters</a>
 
-| Name   | Type   | Required | Description                                                                                                                 |
-|:-------|:-------|:---------|:----------------------------------------------------------------------------------------------------------------------------|
-| height | T_INT  | true     | Start height                                                                                                                |
-| addr   | T_ADDR | false                                                                                                                                 ||
-| event  | String | true     | Event signature                                                                                                             |
-| data   | Array  | false    | Array of parameters to match. Its length shall be equal to the number of parameters of the event. `null` matches any value. |
+| Name                              | Type   | Required | Description                                                                                                                                                                        |
+|:----------------------------------|:-------|:---------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| height                            | T_INT  | true     | Start height                                                                                                                                                                       |
+| addr                              | T_ADDR | false    | SCORE address of Event                                                                                                                                                             |
+| event                             | String | true     | Event signature                                                                                                                                                                    |
+| <a id="eventsindexed">indexed</a> | Array  | false    | Array of arguments to match with indexed parameters of event. null matches any value.                                                                                              |
+| data                              | Array  | false    | Array of arguments to match with not indexed parameters of event. null matches any value. If indexed parameters of event are exists, require ['indexed'](#eventsindexed) parameter |
+
+
 
 > Success Responses
 
@@ -143,17 +170,17 @@ Summarize the document to following items.
 {
   "hash": "0xdbc...",
   "height": "0x11",
-  "index":  "0"
+  "index":  "0x0"
 }
 ```
 
 #### Notification
 
-| Name   | Type   | Required | Description                                           |
-|:-------|:-------|:---------|:------------------------------------------------------|
-| hash   | T_HASH | true     | Hash of the block including the events                |
-| height | T_INT  | true     | Height of the block including the events              |
-| index  | T_INT  | true     | Index of the result including the events in the block |
+| Name                          | Type   | Required | Description                                           |
+|:------------------------------|:-------|:---------|:------------------------------------------------------|
+| hash                          | T_HASH | true     | Hash of the block including the events                |
+| height                        | T_INT  | true     | Height of the block including the events              |
+| <a id="eventsindex">index</a> | T_INT  | true     | Index of the result including the events in the block |
 
 
 You may use `hash` and `index` to get proof of the result including

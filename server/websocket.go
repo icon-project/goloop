@@ -1,18 +1,16 @@
 package server
 
 import (
-	"bytes"
 	"encoding/json"
-	"net/http"
+	"errors"
 	"sync"
 
 	"github.com/gorilla/websocket"
-	"github.com/icon-project/goloop/common"
+	"github.com/labstack/echo/v4"
+
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/jsonrpc"
-	"github.com/icon-project/goloop/service/txresult"
-	"github.com/labstack/echo/v4"
 )
 
 type wsSession struct {
@@ -95,257 +93,75 @@ func (wm *wsSessionManager) StopSessionsForChain(chain module.Chain) {
 	}
 }
 
-func (wm *wsSessionManager) RunBlockSession(ctx echo.Context) error {
-	chain, ok := ctx.Get("chain").(module.Chain)
-	if !ok {
-		return echo.NewHTTPError(http.StatusBadRequest, "bad chain name")
-	}
-
-	upgrader := Upgrader()
-	c, err := upgrader.Upgrade(ctx.Response(), ctx.Request(), nil)
+func (wm *wsSessionManager) initSession(ctx echo.Context, reqPtr interface{}) (*wsSession, error) {
+	u := Upgrader()
+	c, err := u.Upgrade(ctx.Response(), ctx.Request(), nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	var wsResponse WSResponse
-	wss := wm.NewSession(c, chain)
-	if wss == nil {
-		wsResponse.Code = int(jsonrpc.ErrorLackOfResource)
-		wsResponse.Message = "too many monitor"
-		c.WriteJSON(&wsResponse)
-		c.Close()
-		return nil
+	chain, err := wm.chain(ctx)
+	if err != nil {
+		return nil, err
 	}
-	defer func() {
-		wm.StopSession(wss)
-	}()
 
 	_, msgBS, err := c.ReadMessage()
 	if err != nil {
 		wm.logger.Warnf("%+v\n", err)
-		return nil
+		return nil, err
 	}
-	var blockRequest BlockRequest
-	if err := json.Unmarshal(msgBS, &blockRequest); err != nil {
-		wsResponse.Code = int(jsonrpc.ErrorCodeJsonParse)
-		wsResponse.Message = "bad block request"
+	if err := json.Unmarshal(msgBS, reqPtr); err != nil {
+		wsResponse := WSResponse{
+			Code:    int(jsonrpc.ErrorCodeJsonParse),
+			Message: "bad event request",
+		}
 		c.WriteJSON(&wsResponse)
-		return nil
+		c.Close()
+		return nil, err
 	}
 
-	wsResponse.Code = 0
-	c.WriteJSON(&wsResponse)
-
-	ech := make(chan error)
-	go readLoop(c, ech)
-
-	h := blockRequest.Height.Value
-	var bch <-chan module.Block
-loop:
-	for {
-		bch, err = chain.BlockManager().WaitForBlock(h)
-		if err != nil {
-			break loop
+	wss := wm.NewSession(c, chain)
+	if wss == nil {
+		wsResponse := WSResponse{
+			Code:    int(jsonrpc.ErrorLackOfResource),
+			Message: "too many monitor",
 		}
-		select {
-		case err = <-ech:
-			break loop
-		case blk := <-bch:
-			var blockNotification BlockNotification
-			blockNotification.Height.Value = h
-			blockNotification.Hash = blk.ID()
-			err := c.WriteJSON(&blockNotification)
-			if err != nil {
-				break loop
-			}
-		}
-		h++
+		c.WriteJSON(&wsResponse)
+		c.Close()
+		return nil, err
 	}
-	wm.logger.Warnf("%+v\n", err)
-	return nil
+	return wss, nil
 }
 
-func (wm *wsSessionManager) RunEventSession(ctx echo.Context) error {
-	chain, ok := ctx.Get("chain").(module.Chain)
+func (wm *wsSessionManager) chain(ctx echo.Context) (module.Chain, error) {
+	c, ok := ctx.Get("chain").(module.Chain)
 	if !ok {
-		return echo.NewHTTPError(http.StatusBadRequest, "bad chain name")
+		return nil, errors.New("chain is not contained in this context")
 	}
+	return c, nil
+}
 
-	upgrader := Upgrader()
-	c, err := upgrader.Upgrade(ctx.Response(), ctx.Request(), nil)
-	if err != nil {
-		return err
+func (wss *wsSession) response(code int, msg string) error {
+	wsResponse := WSResponse{
+		Code:    code,
+		Message: msg,
 	}
+	return wss.WriteJSON(&wsResponse)
+}
 
-	var wsResponse WSResponse
-	wss := wm.NewSession(c, chain)
-	if wss == nil {
-		wsResponse.Code = int(jsonrpc.ErrorLackOfResource)
-		wsResponse.Message = "too many monitor"
-		c.WriteJSON(&wsResponse)
-		c.Close()
-	}
-	defer func() {
-		wm.StopSession(wss)
-	}()
-
-	_, msgBS, err := c.ReadMessage()
-	if err != nil {
-		wm.logger.Warnf("%+v\n", err)
-		return nil
-	}
-	var er EventRequest
-	if err := json.Unmarshal(msgBS, &er); err != nil {
-		wsResponse.Code = int(jsonrpc.ErrorCodeJsonParse)
-		wsResponse.Message = "bad event request"
-		c.WriteJSON(&wsResponse)
-		return nil
-	}
-	lb, err := er.compile()
-	if err != nil {
-		wsResponse.Code = int(jsonrpc.ErrorCodeInvalidParams)
-		wsResponse.Message = "bad event request parameter"
-		c.WriteJSON(&wsResponse)
-		return nil
-	}
-
-	wsResponse.Code = 0
-	c.WriteJSON(&wsResponse)
-
-	ech := make(chan error)
-	go readLoop(c, ech)
-
-	h := er.Height.Value
-	var bch <-chan module.Block
-loop:
-	for {
-		bch, err = chain.BlockManager().WaitForBlock(h)
-		if err != nil {
-			break loop
-		}
-		select {
-		case err = <-ech:
-			break loop
-		case blk := <-bch:
-			if !blk.LogsBloom().Contain(lb) {
-				h++
-				continue loop
-			}
-			rl, err := chain.ServiceManager().ReceiptListFromResult(blk.Result(), module.TransactionGroupNormal)
-			if err != nil {
-				break loop
-			}
-			index := int32(0)
-			for rit := rl.Iterator(); rit.Has(); rit.Next() {
-				r, err := rit.Get()
-				if err != nil {
-					break loop
-				}
-				if r.LogsBloom().Contain(lb) {
-					for eit := r.EventLogIterator(); eit.Has(); eit.Next() {
-						e, err := eit.Get()
-						if err != nil {
-							break loop
-						}
-						if er.match(e) {
-							var eventNotification EventNotification
-							eventNotification.Height.Value = h
-							eventNotification.Hash = blk.ID()
-							eventNotification.Index.Value = index
-							err := c.WriteJSON(&eventNotification)
-							if err != nil {
-								break loop
-							}
-							break
-						}
-					}
-				}
-				index++
-			}
-		}
-		h++
-	}
-	wm.logger.Warnf("%+v\n", err)
-	return nil
+func (wss *wsSession) WriteJSON(v interface{}) error {
+	return wss.c.WriteJSON(v)
 }
 
 const configMaxSession = 10
-
-type BlockRequest struct {
-	Height common.HexInt64 `json:"height"`
-}
-
-type EventRequest struct {
-	Height  common.HexInt64 `json:"height"`
-	Addr    *common.Address `json:"addr"`
-	Event   string          `json:"event"`
-	Data    []interface{}   `json:"data"`
-	dataBSs [][]byte
-}
 
 type WSResponse struct {
 	Code    int    `json:"code"`
 	Message string `json:"message,omitempty"`
 }
 
-type BlockNotification struct {
-	Hash   common.HexBytes `json:"hash"`
-	Height common.HexInt64 `json:"height"`
-}
-
-type EventNotification struct {
-	Hash   common.HexBytes `json:"hash"`
-	Height common.HexInt64 `json:"height"`
-	Index  common.HexInt32 `json:"index"`
-}
-
 func Upgrader() *websocket.Upgrader {
 	return &websocket.Upgrader{}
-}
-
-func (er *EventRequest) compile() (module.LogsBloom, error) {
-	lb := txresult.NewLogsBloom(nil)
-	if er.Addr != nil {
-		lb.AddAddressOfLog(er.Addr)
-	}
-	name, typeStr := txresult.DecomposeEventSignature(er.Event)
-	if len(name) == 0 || typeStr == nil || len(typeStr) < len(er.Data) {
-		return nil, echo.NewHTTPError(http.StatusBadRequest, "bad event request")
-	}
-	lb.AddIndexedOfLog(0, []byte(er.Event))
-	er.dataBSs = make([][]byte, len(er.Data))
-	for i, d := range er.Data {
-		if d != nil {
-			dStr := d.(string)
-			bs, err := txresult.EventDataStringToBytesByType(typeStr[i], dStr)
-			if err != nil {
-				return nil, echo.NewHTTPError(http.StatusBadRequest, "bad event data")
-			}
-			lb.AddIndexedOfLog(i+1, bs)
-			er.dataBSs[i] = bs
-		}
-	}
-	return lb, nil
-}
-
-func (er *EventRequest) match(el module.EventLog) bool {
-	if !bytes.Equal([]byte(er.Event), el.Indexed()[0]) {
-		return false
-	}
-	if er.Addr != nil && !el.Address().Equal(er.Addr) {
-		return false
-	}
-	for i, d := range er.Data {
-		if d != nil {
-			if len(el.Indexed()) <= i+1 {
-				return false
-			}
-			if !bytes.Equal(er.dataBSs[i], el.Indexed()[i+1]) {
-				return false
-			}
-		}
-	}
-	return true
 }
 
 func readLoop(c *websocket.Conn, ech chan<- error) {

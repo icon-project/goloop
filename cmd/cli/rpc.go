@@ -647,6 +647,27 @@ func NewMonitorCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comma
 				return err
 			}
 			param := &server.BlockRequest{Height: common.HexInt64{Value: height}}
+			fs, err := cmd.Flags().GetStringArray("filter")
+			if err != nil {
+				return err
+			}
+			for _, f := range fs {
+				ef := &server.EventFilter{}
+				var efBytes []byte
+				if strings.HasPrefix(strings.TrimSpace(f), "{") {
+					efBytes = []byte(f)
+				} else {
+					var err error
+					if efBytes, err = ioutil.ReadFile(f); err != nil {
+						return err
+					}
+				}
+				if err := json.Unmarshal(efBytes, ef); err != nil {
+					return fmt.Errorf("fail to unmarshal from %s, err:%+v", f, err)
+				}
+				param.EventFilters = append(param.EventFilters, ef)
+			}
+			OnInterrupt(rpcClient.Cleanup)
 			err = rpcClient.MonitorBlock(param, func(v *server.BlockNotification) {
 				JsonPrettyPrintln(os.Stdout, v)
 			}, nil)
@@ -657,32 +678,65 @@ func NewMonitorCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comma
 		},
 	}
 	rootCmd.AddCommand(monitorBlockCmd)
+	monitorBlockFlags := monitorBlockCmd.Flags()
+	monitorBlockFlags.StringArray("filter", nil,
+		"EventFilter raw json file or json string")
 
 	monitorEventCmd := &cobra.Command{
 		Use:   "event HEIGHT",
 		Short: "MonitorEvent",
-		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
+		Args:  ArgsWithDefaultErrorFunc(cobra.MaximumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			height, err := common.ParseInt(args[0], 64)
-			if err != nil {
-				return err
-			}
-			param := &server.EventRequest{
-				Height: common.HexInt64{Value: height},
-				Event:  cmd.Flag("event").Value.String(),
-			}
-			addr := cmd.Flag("addr").Value.String()
-			if addr != "" {
-				param.Addr = common.NewAddressFromString(addr)
-			}
-
-			if datas, err := cmd.Flags().GetStringSlice("data"); err != nil && len(datas) > 0 {
-				param.Data = make([]interface{}, len(datas))
-				for i, v := range datas {
-					param.Data[i] = v
+			param := &server.EventRequest{}
+			if rawJson := cmd.Flag("raw").Value.String(); rawJson != "" {
+				var dataBytes []byte
+				if strings.HasPrefix(strings.TrimSpace(rawJson), "{") {
+					dataBytes = []byte(rawJson)
+				} else {
+					var err error
+					if dataBytes, err = ioutil.ReadFile(rawJson); err != nil {
+						return err
+					}
+				}
+				if err := json.Unmarshal(dataBytes, param); err != nil {
+					return err
+				}
+			} else {
+				if err := cobra.ExactArgs(1)(cmd, args); err != nil {
+					return err
+				}
+				if err := ValidateFlags(cmd.Flags(), "event"); err != nil {
+					return err
 				}
 			}
-			err = rpcClient.MonitorEvent(param, func(v *server.EventNotification) {
+			if len(args) > 0 {
+				height, err := common.ParseInt(args[0], 64)
+				if err != nil {
+					return err
+				}
+				param.Height = common.HexInt64{Value: height}
+			}
+
+			if sig := cmd.Flag("event").Value.String(); sig != "" {
+				param.Signature = sig
+			}
+			if addr := cmd.Flag("addr").Value.String(); addr != "" {
+				param.Addr = common.NewAddressFromString(addr)
+			}
+			if evtIndexed, err := cmd.Flags().GetStringSlice("indexed"); err == nil && len(evtIndexed) > 0 {
+				param.Indexed = make([]*string, len(evtIndexed))
+				for i, v := range evtIndexed {
+					param.Indexed[i] = &v
+				}
+			}
+			if evtData, err := cmd.Flags().GetStringSlice("data"); err == nil && len(evtData) > 0 {
+				param.Data = make([]*string, len(evtData))
+				for i, v := range evtData {
+					param.Data[i] = &v
+				}
+			}
+			OnInterrupt(rpcClient.Cleanup)
+			err := rpcClient.MonitorEvent(param, func(v *server.EventNotification) {
 				JsonPrettyPrintln(os.Stdout, v)
 			}, nil)
 			if err != nil {
@@ -691,12 +745,13 @@ func NewMonitorCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comma
 			return nil
 		},
 	}
+
 	rootCmd.AddCommand(monitorEventCmd)
 	monitorEventFlags := monitorEventCmd.Flags()
-	monitorEventFlags.String("addr", "", "Addr")
-	monitorEventFlags.String("event", "", "Event")
-	monitorEventFlags.StringSlice("data", nil, "Data")
-	MarkAnnotationRequired(monitorEventFlags, "event")
-	//interactive ()
+	monitorEventFlags.String("addr", "", "SCORE Address")
+	monitorEventFlags.String("event", "", "Signature of Event")
+	monitorEventFlags.StringSlice("indexed", nil, "Indexed Arguments of Event, comma-separated string")
+	monitorEventFlags.StringSlice("data", nil, "Not indexed Arguments of Event, comma-separated string")
+	monitorEventFlags.String("raw", "", "EventFilter raw json file or json-string")
 	return rootCmd
 }
