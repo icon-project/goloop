@@ -266,9 +266,9 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public long getBlockDifficulty() {
+    public BigInteger getBlockDifficulty() {
         logger.debug("[getBlockDifficulty] ret={}", 0);
-        return 0;
+        return BigInteger.ZERO;
     }
 
     @Override

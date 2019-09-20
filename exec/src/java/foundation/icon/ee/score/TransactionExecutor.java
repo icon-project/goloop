@@ -82,32 +82,12 @@ public class TransactionExecutor {
     private void setInvokeHandler() {
         proxy.setOnInvokeListener((code, isQuery, from, to, value, limit, method, params) -> {
             if (logger.isDebugEnabled()) {
-                logger.debug(">>> code={}", code);
-                logger.debug("    isQuery={}", isQuery);
-                logger.debug("    from={}", from);
-                logger.debug("      to={}", to);
-                logger.debug("    value={}", value);
-                logger.debug("    limit={}", limit);
-                logger.debug("    method={}", method);
-                logger.debug("    params=[");
-                for (Object p : params) {
-                    logger.debug("     - {}", p);
-                }
-                logger.debug("    ]");
+                printInvokeParams(code, isQuery, from, to, value, limit, method, params);
             }
 
             Map info = (Map) proxy.getInfo();
             if (logger.isDebugEnabled()) {
-                logger.debug(">>> getInfo: info={}", info);
-                logger.debug("    txHash={}", Bytes.toHexString((byte[]) info.get(Proxy.Info.TX_HASH)));
-                logger.debug("    txIndex={}", info.get(Proxy.Info.TX_INDEX));
-                logger.debug("    txFrom={}", info.get(Proxy.Info.TX_FROM));
-                logger.debug("    txTimestamp={}", info.get(Proxy.Info.TX_TIMESTAMP));
-                logger.debug("    txNonce={}", info.get(Proxy.Info.TX_NONCE));
-                logger.debug("    blockHeight={}", info.get(Proxy.Info.BLOCK_HEIGHT));
-                logger.debug("    blockTimestamp={}", info.get(Proxy.Info.BLOCK_TIMESTAMP));
-                logger.debug("    contractOwner={}", info.get(Proxy.Info.CONTRACT_OWNER));
-                logger.debug("    stepCosts={}", info.get(Proxy.Info.STEP_COSTS));
+                printGetInfo(info);
             }
 
             boolean isDeploy = CMD_DEPLOY.equals(method);
@@ -254,5 +234,34 @@ public class TransactionExecutor {
         public String toString() {
             return result.toString();
         }
+    }
+
+    private void printInvokeParams(String code, boolean isQuery, Address from, Address to, BigInteger value,
+                                   BigInteger limit, String method, Object[] params) {
+        logger.debug(">>> code={}", code);
+        logger.debug("    isQuery={}", isQuery);
+        logger.debug("    from={}", from);
+        logger.debug("      to={}", to);
+        logger.debug("    value={}", value);
+        logger.debug("    limit={}", limit);
+        logger.debug("    method={}", method);
+        logger.debug("    params=[");
+        for (Object p : params) {
+            logger.debug("     - {}", p);
+        }
+        logger.debug("    ]");
+    }
+
+    private void printGetInfo(Map info) {
+        logger.debug(">>> getInfo: info={}", info);
+        logger.debug("    txHash={}", Bytes.toHexString((byte[]) info.get(Proxy.Info.TX_HASH)));
+        logger.debug("    txIndex={}", info.get(Proxy.Info.TX_INDEX));
+        logger.debug("    txFrom={}", info.get(Proxy.Info.TX_FROM));
+        logger.debug("    txTimestamp={}", info.get(Proxy.Info.TX_TIMESTAMP));
+        logger.debug("    txNonce={}", info.get(Proxy.Info.TX_NONCE));
+        logger.debug("    blockHeight={}", info.get(Proxy.Info.BLOCK_HEIGHT));
+        logger.debug("    blockTimestamp={}", info.get(Proxy.Info.BLOCK_TIMESTAMP));
+        logger.debug("    contractOwner={}", info.get(Proxy.Info.CONTRACT_OWNER));
+        logger.debug("    stepCosts={}", info.get(Proxy.Info.STEP_COSTS));
     }
 }

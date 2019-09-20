@@ -1,9 +1,6 @@
 package org.aion.avm.tooling.deploy.eliminator;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class ClassInfo {
 
@@ -40,11 +37,31 @@ public class ClassInfo {
         return superInfo;
     }
 
-    // Given a method identifier, this method walks up the class hierarchy finding the first concrete implementation of that method,
-    // and returns the corresponding MethodInfp
+    // Given a method identifier, this method returns the matching declaration in the class hierarchy
+    // If the class itself declares the method, it returns that methodInfo
+    // If not, it walks up the *class* hierarchy, and returns the closest matching methodInfo
+    // If not, it simply goes through the parent interfaces, and returns the first matching methodInfo it finds.
+    // It should not return null on any legal code
     public MethodInfo getDeclaration(String methodId) {
+
+        // Does the class itself declare this method?
         MethodInfo methodInfo = methodMap.get(methodId);
-        return (null != methodInfo) ? methodInfo : superInfo.getDeclaration(methodId);
+
+        // Class didn't have the method, walk up the superclasses
+        if (null == methodInfo && null != superInfo) {
+            methodInfo = superInfo.getDeclaration(methodId);
+        }
+
+        // Superclasses didn't have the method, try the interfaces now
+        // If multiple parent interfaces declare this method, there is no guarantee about which one will be returned
+        for (Iterator<ClassInfo> iterator = parents.iterator(); iterator.hasNext() && null == methodInfo; ) {
+            ClassInfo parentInfo = iterator.next();
+            if (parentInfo.isInterface()) {
+                methodInfo = parentInfo.getMethodMap().get(methodId);
+            }
+        }
+
+        return methodInfo;
     }
 
     public void addToParents(ClassInfo parent) {

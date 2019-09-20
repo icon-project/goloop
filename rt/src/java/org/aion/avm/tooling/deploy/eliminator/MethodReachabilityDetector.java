@@ -84,7 +84,11 @@ public class MethodReachabilityDetector {
 
         // Enqueue the declaration of this method
         MethodInfo methodInfo = classInfo.getDeclaration(methodId);
-        enqueue(methodInfo);
+        if (null == methodInfo) {
+            throw new IllegalArgumentException("No declaration found for " + methodId + ", corrupt jar suspected");
+        } else {
+            enqueue(methodInfo);
+        }
 
         if (!methodInfo.isStatic) {
             // For each child, enqueue the concrete implementation that the child uses
