@@ -12,12 +12,6 @@ We provides two kinds of server.
 | Multi-channel      |   NO    |  YES   |
 | Management API,CLI |   NO    |  YES   |
 
-## Tools
-
-`gstool` makes keystore, genesis and genesis storage.
-```bash
-make gstool
-```
 
 ## GOCHAIN
 
@@ -83,7 +77,7 @@ one of key stores of servers for it.
 **Example**
 * key store of god : `god.js`
 ```bash
-./bin/gstool ks gen -o god.js
+./bin/goloop ks gen -o god.js
 ```
 
 Then, we may make genesis for the chain with the key stores of validators.
@@ -94,7 +88,7 @@ You may use addresses of validators instead of key stores.
 * key store of god : `god.js`
 * key stores of validators : `ks0.js` `ks1.js` `ks2.js` `ks3.js`
 ```bash
-./bin/gstool gn gen -o genesis.json -g god.js ks0.js ks1.js ks2.js ks3.js
+./bin/goloop gn gen -o genesis.json -g god.js ks0.js ks1.js ks2.js ks3.js
 ```
 
 Then you may modify `genesis.json` according to your favour.
@@ -106,7 +100,7 @@ And also you may use Genesis Template feature of
 * output file : `gs.zip`
 * genesis template or transaction file : `genesis.json`
 ```bash
-./bin/gstool gs gen -o gs.zip -i genesis.json
+./bin/goloop gs gen -o gs.zip -i genesis.json
 ```
 
 You may check network ID of genesis storage with following command
@@ -114,7 +108,7 @@ You may check network ID of genesis storage with following command
 **Example**
 * genesis storage file : `gs.zip`
 ```bash
-./bin/gstool gs info gs.zip
+./bin/goloop gs info gs.zip
 ```
 
 ### Join the chain
