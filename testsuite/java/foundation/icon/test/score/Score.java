@@ -155,6 +155,10 @@ public class Score {
         return this.scoreAddress;
     }
 
+    public void setAddress(Address addr) {
+        this.scoreAddress = addr;
+    }
+
     @Override
     public String toString() {
         return "SCORE(" + this.scoreAddress.toString() + ")";

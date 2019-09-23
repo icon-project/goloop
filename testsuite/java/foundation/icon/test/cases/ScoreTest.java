@@ -85,6 +85,62 @@ public class ScoreTest {
     }
 
     @Test
+    public void invalidScoreAddr() throws Exception {
+        LOG.infoEntering( "invalidParamName");
+        String param = "name";
+        TransactionResult result = callHelloWithName(callerWallet, param, BigInteger.valueOf(100));
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        Address scoreAddr = testScore.getAddress();
+        testScore.setAddress(KeyWallet.create().getAddress());
+
+        result = callHelloWithName(callerWallet, param, BigInteger.valueOf(100));
+        assertEquals(Constants.STATUS_FAIL, result.getStatus());
+        testScore.setAddress(scoreAddr);
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void invalidParamName() throws Exception {
+        LOG.infoEntering( "invalidParamName");
+        for(String param : new String[]{"name", "nami"}) {
+            TransactionResult result = callHelloWithName(callerWallet, param, BigInteger.valueOf(100));
+            if (param.equals("name")) {
+                assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+            } else {
+                assertEquals(Constants.STATUS_FAIL, result.getStatus());
+            }
+        }
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void unexpectedParam() throws Exception {
+        LOG.infoEntering( "invalidParamNum");
+        String params[][] = new String[][]{{}, {"age"}, {"name"}, {"name", "age"}, {"name", "etc"}, {"name", "age", "etc"}};
+        for(int i = 0; i < params.length; i++) {
+            try {
+                RpcObject.Builder builder = new RpcObject.Builder();
+                for(String param: params[i]){
+                    builder.put(param, new RpcValue("ICONLOOP"));
+                }
+                RpcObject objParam = builder.build();
+                LOG.infoEntering("invoke");
+                TransactionResult result = testScore.invokeAndWaitResult(callerWallet,
+                        "helloWithName", objParam, BigInteger.valueOf(0), BigInteger.valueOf(100));
+                if (i == 2 || i == 3) {
+                    assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+                } else {
+                    assertEquals(Constants.STATUS_FAIL, result.getStatus());
+                }
+                LOG.infoExiting();
+            } catch (ResultTimeoutException ex) {
+                LOG.infoExiting();
+            }
+        }
+        LOG.infoExiting();
+    }
+
+    @Test
     public void notEnoughStepLimit() throws Exception{
         LOG.infoEntering( "notEnoughStepLimit");
         KeyWallet testWallet = KeyWallet.create();
@@ -109,7 +165,7 @@ public class ScoreTest {
                 }
             } catch (ResultTimeoutException ex) {
                 LOG.infoExiting();
-                assertTrue(preValidationFailureStep == step);
+                assertEquals(preValidationFailureStep, step);
             }
         }
         LOG.infoExiting();
@@ -231,7 +287,6 @@ public class ScoreTest {
                     .nonce(BigInteger.TEN)
                     .stepLimit(BigInteger.valueOf(10))
                     .call("transfer").build();
-
             try {
                 iconService
                         .sendTransaction(new SignedTransaction(t, testWallets[0]))
@@ -244,6 +299,44 @@ public class ScoreTest {
             }
         }
         LOG.infoExiting();
+    }
 
+    TransactionResult callHelloWithName(KeyWallet wallet, String param, BigInteger limit) throws Exception {
+        RpcObject params = new RpcObject.Builder()
+                .put(param, new RpcValue("ICONLOOP"))
+                .build();
+        LOG.infoEntering( "invoke");
+        TransactionResult result =
+                testScore.invokeAndWaitResult(wallet, "helloWithName",
+                        params, BigInteger.valueOf(0), limit);
+        LOG.infoExiting();
+        return result;
+    }
+
+    // edge case for call tx
+    @Test
+    public void notEnoughBalToCall() throws Exception {
+        LOG.infoEntering("edgeCall");
+        BigInteger prevBal = iconService.getBalance(callerWallet.getAddress()).execute();
+        String param = "name";
+        TransactionResult tr = callHelloWithName(callerWallet, "name", BigInteger.valueOf(100));
+        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
+
+        BigInteger curBal = iconService.getBalance(callerWallet.getAddress()).execute();
+        BigInteger cost = prevBal.subtract(curBal);
+        LOG.info("cost " + cost);
+
+        KeyWallet testWallet = KeyWallet.create();
+        BigInteger testValue = cost.subtract(BigInteger.ONE);
+        Utils.transferAndCheck(iconService, chain, chain.godWallet, testWallet.getAddress(), testValue);
+        BigInteger tBal = iconService.getBalance(testWallet.getAddress()).execute();
+        assertEquals(tBal.compareTo(testValue), 0);
+
+        tr = callHelloWithName(testWallet, "name", testValue);
+        assertEquals(Constants.STATUS_FAIL, tr.getStatus());
+        tBal = iconService.getBalance(testWallet.getAddress()).execute();
+        assertEquals(tBal.compareTo(BigInteger.ZERO), 0);
+
+        LOG.infoExiting();
     }
 }
