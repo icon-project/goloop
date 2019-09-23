@@ -30,12 +30,12 @@ Manage chains
 ` goloop chain `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --config, -c |  | Parsing configuration file |
-| --key_store |  | KeyStore file for wallet |
-| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
-| --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Child commands
 |Command | Description|
@@ -78,12 +78,12 @@ Configure chain
 ` goloop chain config NID KEY VALUE `
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --config, -c |  | Parsing configuration file |
-| --key_store |  | KeyStore file for wallet |
-| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
-| --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command
 |Command | Description|
@@ -113,18 +113,18 @@ Start to import legacy database
 ` goloop chain import NID [flags] `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --db_path |  | Database path |
-| --height | 0 | Block Height |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --db_path |  |  | Database path |
+| --height |  | 0 | Block Height |
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --config, -c |  | Parsing configuration file |
-| --key_store |  | KeyStore file for wallet |
-| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
-| --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command
 |Command | Description|
@@ -154,18 +154,18 @@ Inspect chain
 ` goloop chain inspect NID [flags] `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --format, -f |  | Format the output using the given Go template |
-| --informal | false | Inspect with informal data |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --format, -f |  |  | Format the output using the given Go template |
+| --informal |  | false | Inspect with informal data |
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --config, -c |  | Parsing configuration file |
-| --key_store |  | KeyStore file for wallet |
-| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
-| --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command
 |Command | Description|
@@ -195,28 +195,28 @@ Join chain
 ` goloop chain join [flags] `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --channel |  | Channel |
-| --concurrency | 1 | Maximum number of executors to use for concurrency |
-| --db_type | goleveldb | Name of database system(*badgerdb, goleveldb, boltdb, mapdb) |
-| --genesis |  | Genesis storage path |
-| --genesis_template |  | Genesis template directory or file |
-| --max_block_tx_bytes | 0 | Max size of transactions in a block |
-| --normal_tx_pool | 0 | Size of normal transaction pool |
-| --patch_tx_pool | 0 | Size of patch transaction pool |
-| --role | 3 | [0:None, 1:Seed, 2:Validator, 3:Both] |
-| --secure_aeads | chacha,aes128,aes256 | Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string |
-| --secure_suites | none,tls,ecdhe | Supported Secure suites with order (none,tls,ecdhe) - Comma separated string |
-| --seed |  | List of trust-seed ip-port, Comma separated string |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --channel |  |  | Channel |
+| --concurrency |  | 1 | Maximum number of executors to use for concurrency |
+| --db_type |  | goleveldb | Name of database system(*badgerdb, goleveldb, boltdb, mapdb) |
+| --genesis |  |  | Genesis storage path |
+| --genesis_template |  |  | Genesis template directory or file |
+| --max_block_tx_bytes |  | 0 | Max size of transactions in a block |
+| --normal_tx_pool |  | 0 | Size of normal transaction pool |
+| --patch_tx_pool |  | 0 | Size of patch transaction pool |
+| --role |  | 3 | [0:None, 1:Seed, 2:Validator, 3:Both] |
+| --secure_aeads |  | chacha,aes128,aes256 | Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string |
+| --secure_suites |  | none,tls,ecdhe | Supported Secure suites with order (none,tls,ecdhe) - Comma separated string |
+| --seed |  |  | List of trust-seed ip-port, Comma separated string |
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --config, -c |  | Parsing configuration file |
-| --key_store |  | KeyStore file for wallet |
-| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
-| --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command
 |Command | Description|
@@ -246,12 +246,12 @@ Leave chain
 ` goloop chain leave NID `
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --config, -c |  | Parsing configuration file |
-| --key_store |  | KeyStore file for wallet |
-| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
-| --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command
 |Command | Description|
@@ -281,12 +281,12 @@ List chains
 ` goloop chain ls `
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --config, -c |  | Parsing configuration file |
-| --key_store |  | KeyStore file for wallet |
-| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
-| --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command
 |Command | Description|
@@ -316,12 +316,12 @@ Chain data reset
 ` goloop chain reset NID `
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --config, -c |  | Parsing configuration file |
-| --key_store |  | KeyStore file for wallet |
-| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
-| --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command
 |Command | Description|
@@ -351,12 +351,12 @@ Chain start
 ` goloop chain start NID `
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --config, -c |  | Parsing configuration file |
-| --key_store |  | KeyStore file for wallet |
-| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
-| --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command
 |Command | Description|
@@ -386,12 +386,12 @@ Chain stop
 ` goloop chain stop NID `
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --config, -c |  | Parsing configuration file |
-| --key_store |  | KeyStore file for wallet |
-| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
-| --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command
 |Command | Description|
@@ -421,12 +421,12 @@ Chain data verify
 ` goloop chain verify NID `
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --config, -c |  | Parsing configuration file |
-| --key_store |  | KeyStore file for wallet |
-| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
-| --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command
 |Command | Description|
@@ -488,10 +488,10 @@ Edit genesis transaction
 ` goloop gn edit [genesis file] `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --god, -g |  | Address or keystore of GOD |
-| --validator, -v | [] | Address or keystore of Validator, [Validator...] |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --god, -g |  |  | Address or keystore of GOD |
+| --validator, -v |  | [] | Address or keystore of Validator, [Validator...] |
 
 ### Parent command
 |Command | Description|
@@ -513,13 +513,13 @@ Generate genesis transaction
 ` goloop gn gen [address or keystore...] `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --config, -c | [] | Chain configuration |
-| --god, -g |  | Address or keystore of GOD |
-| --out, -o | genesis.json | Output file path |
-| --supply, -s | 0x2961fff8ca4a62327800000 | Total supply of the chain |
-| --treasury, -t | hx1000000000000000000000000000000000000000 | Treasury address |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c |  | [] | Chain configuration |
+| --god, -g |  |  | Address or keystore of GOD |
+| --out, -o |  | genesis.json | Output file path |
+| --supply, -s |  | 0x2961fff8ca4a62327800000 | Total supply of the chain |
+| --treasury, -t |  | hx1000000000000000000000000000000000000000 | Treasury address |
 
 ### Parent command
 |Command | Description|
@@ -573,10 +573,10 @@ Create genesis storage from the template
 ` goloop gs gen `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --input, -i | genesis.json | Input file or directory path |
-| --out, -o | gs.zip | Output file path |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --input, -i |  | genesis.json | Input file or directory path |
+| --out, -o |  | gs.zip | Output file path |
 
 ### Parent command
 |Command | Description|
@@ -598,9 +598,9 @@ Show genesis storage information
 ` goloop gs info genesis_storage.zip [flags] `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --nid_only, -n | false | Showing network ID only |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --nid_only, -n |  | false | Showing network ID only |
 
 ### Parent command
 |Command | Description|
@@ -653,10 +653,10 @@ Generate keystore
 ` goloop ks gen `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --out, -o | keystore.json | Output file path |
-| --password, -p | gochain | Password for the keystore |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --out, -o |  | keystore.json | Output file path |
+| --password, -p |  | gochain | Password for the keystore |
 
 ### Parent command
 |Command | Description|
@@ -677,10 +677,10 @@ JSON-RPC API
 ` goloop rpc `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --debug | false | JSON-RPC Response with detail information |
-| --uri |  | URI of JSON-RPC API |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | JSON-RPC Response with detail information |
+| --uri | GOLOOP_RPC_URI |  | URI of JSON-RPC API |
 
 ### Child commands
 |Command | Description|
@@ -729,10 +729,10 @@ GetBalance
 ` goloop rpc balance ADDRESS `
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --debug | false | JSON-RPC Response with detail information |
-| --uri |  | URI of JSON-RPC API |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | JSON-RPC Response with detail information |
+| --uri | GOLOOP_RPC_URI |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -768,10 +768,10 @@ GetBlockByHash
 ` goloop rpc blockbyhash HASH `
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --debug | false | JSON-RPC Response with detail information |
-| --uri |  | URI of JSON-RPC API |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | JSON-RPC Response with detail information |
+| --uri | GOLOOP_RPC_URI |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -807,10 +807,10 @@ GetBlockByHeight
 ` goloop rpc blockbyheight HEIGHT `
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --debug | false | JSON-RPC Response with detail information |
-| --uri |  | URI of JSON-RPC API |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | JSON-RPC Response with detail information |
+| --uri | GOLOOP_RPC_URI |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -846,10 +846,10 @@ GetBlockHeaderByHeight
 ` goloop rpc blockheaderbyheight HEIGHT `
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --debug | false | JSON-RPC Response with detail information |
-| --uri |  | URI of JSON-RPC API |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | JSON-RPC Response with detail information |
+| --uri | GOLOOP_RPC_URI |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -885,19 +885,19 @@ Call
 ` goloop rpc call [flags] `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --from |  | FromAddress |
-| --method |  | Name of the function to invoke in SCORE, if '--raw' used, will overwrite |
-| --param | [] | key=value, Function parameters, if '--raw' used, will overwrite |
-| --raw |  | call with 'data' using raw json file or json-string |
-| --to |  | ToAddress |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --from |  |  | FromAddress |
+| --method |  |  | Name of the function to invoke in SCORE, if '--raw' used, will overwrite |
+| --param |  | [] | key=value, Function parameters, if '--raw' used, will overwrite |
+| --raw |  |  | call with 'data' using raw json file or json-string |
+| --to |  |  | ToAddress |
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --debug | false | JSON-RPC Response with detail information |
-| --uri |  | URI of JSON-RPC API |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | JSON-RPC Response with detail information |
+| --uri | GOLOOP_RPC_URI |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -933,10 +933,10 @@ GetDataByHash
 ` goloop rpc databyhash HASH `
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --debug | false | JSON-RPC Response with detail information |
-| --uri |  | URI of JSON-RPC API |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | JSON-RPC Response with detail information |
+| --uri | GOLOOP_RPC_URI |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -972,10 +972,10 @@ GetLastBlock
 ` goloop rpc lastblock `
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --debug | false | JSON-RPC Response with detail information |
-| --uri |  | URI of JSON-RPC API |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | JSON-RPC Response with detail information |
+| --uri | GOLOOP_RPC_URI |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1011,14 +1011,14 @@ Monitor
 ` goloop rpc monitor `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --debug | false | JSON-RPC Response with detail information |
-| --uri |  | URI of JSON-RPC API |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | JSON-RPC Response with detail information |
+| --uri | GOLOOP_RPC_URI |  | URI of JSON-RPC API |
 
 ### Child commands
 |Command | Description|
@@ -1060,15 +1060,15 @@ MonitorBlock
 ` goloop rpc monitor block HEIGHT [flags] `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --filter | [] | EventFilter raw json file or json string |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --filter |  | [] | EventFilter raw json file or json string |
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --debug | false | JSON-RPC Response with detail information |
-| --uri |  | URI of JSON-RPC API |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | JSON-RPC Response with detail information |
+| --uri | GOLOOP_RPC_URI |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1090,19 +1090,19 @@ MonitorEvent
 ` goloop rpc monitor event HEIGHT [flags] `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --addr |  | SCORE Address |
-| --data | [] | Not indexed Arguments of Event, comma-separated string |
-| --event |  | Signature of Event |
-| --indexed | [] | Indexed Arguments of Event, comma-separated string |
-| --raw |  | EventFilter raw json file or json-string |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --addr |  |  | SCORE Address |
+| --data |  | [] | Not indexed Arguments of Event, comma-separated string |
+| --event |  |  | Signature of Event |
+| --indexed |  | [] | Indexed Arguments of Event, comma-separated string |
+| --raw |  |  | EventFilter raw json file or json-string |
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --debug | false | JSON-RPC Response with detail information |
-| --uri |  | URI of JSON-RPC API |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | JSON-RPC Response with detail information |
+| --uri | GOLOOP_RPC_URI |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1124,10 +1124,10 @@ GetProofForResult
 ` goloop rpc proofforresult HASH INDEX `
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --debug | false | JSON-RPC Response with detail information |
-| --uri |  | URI of JSON-RPC API |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | JSON-RPC Response with detail information |
+| --uri | GOLOOP_RPC_URI |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1163,10 +1163,10 @@ Rpc with raw json file
 ` goloop rpc raw FILE `
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --debug | false | JSON-RPC Response with detail information |
-| --uri |  | URI of JSON-RPC API |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | JSON-RPC Response with detail information |
+| --uri | GOLOOP_RPC_URI |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1202,10 +1202,10 @@ GetScoreApi
 ` goloop rpc scoreapi ADDRESS `
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --debug | false | JSON-RPC Response with detail information |
-| --uri |  | URI of JSON-RPC API |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | JSON-RPC Response with detail information |
+| --uri | GOLOOP_RPC_URI |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1241,22 +1241,22 @@ SendTransaction
 ` goloop rpc sendtx `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --key_password |  | Password for the KeyStore file |
-| --key_secret |  | Secret(password) file for KeyStore |
-| --key_store |  | KeyStore file for wallet |
-| --nid |  | Network ID |
-| --step_limit | 0 | StepLimit |
-| --wait | false | Wait transaction result |
-| --wait_interval | 1000 | Polling interval(msec) for wait transaction result |
-| --wait_timeout | 10 | Timeout(sec) for wait transaction result |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --key_password | GOLOOP_RPC_KEY_PASSWORD |  | Password for the KeyStore file |
+| --key_secret | GOLOOP_RPC_KEY_SECRET |  | Secret(password) file for KeyStore |
+| --key_store | GOLOOP_RPC_KEY_STORE |  | KeyStore file for wallet |
+| --nid | GOLOOP_RPC_NID |  | Network ID |
+| --step_limit | GOLOOP_RPC_STEP_LIMIT | 0 | StepLimit |
+| --wait | GOLOOP_RPC_WAIT | false | Wait transaction result |
+| --wait_interval | GOLOOP_RPC_WAIT_INTERVAL | 1000 | Polling interval(msec) for wait transaction result |
+| --wait_timeout | GOLOOP_RPC_WAIT_TIMEOUT | 10 | Timeout(sec) for wait transaction result |
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --debug | false | JSON-RPC Response with detail information |
-| --uri |  | URI of JSON-RPC API |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | JSON-RPC Response with detail information |
+| --uri | GOLOOP_RPC_URI |  | URI of JSON-RPC API |
 
 ### Child commands
 |Command | Description|
@@ -1300,26 +1300,26 @@ SmartContract Call Transaction
 ` goloop rpc sendtx call [flags] `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --method |  | Name of the function to invoke in SCORE, if '--raw' used, will overwrite |
-| --param | [] | key=value, Function parameters, if '--raw' used, will overwrite |
-| --raw |  | call with 'data' using raw json file or json-string |
-| --to |  | ToAddress |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --method |  |  | Name of the function to invoke in SCORE, if '--raw' used, will overwrite |
+| --param |  | [] | key=value, Function parameters, if '--raw' used, will overwrite |
+| --raw |  |  | call with 'data' using raw json file or json-string |
+| --to |  |  | ToAddress |
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --debug | false | JSON-RPC Response with detail information |
-| --key_password |  | Password for the KeyStore file |
-| --key_secret |  | Secret(password) file for KeyStore |
-| --key_store |  | KeyStore file for wallet |
-| --nid |  | Network ID |
-| --step_limit | 0 | StepLimit |
-| --uri |  | URI of JSON-RPC API |
-| --wait | false | Wait transaction result |
-| --wait_interval | 1000 | Polling interval(msec) for wait transaction result |
-| --wait_timeout | 10 | Timeout(sec) for wait transaction result |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | JSON-RPC Response with detail information |
+| --key_password | GOLOOP_RPC_KEY_PASSWORD |  | Password for the KeyStore file |
+| --key_secret | GOLOOP_RPC_KEY_SECRET |  | Secret(password) file for KeyStore |
+| --key_store | GOLOOP_RPC_KEY_STORE |  | KeyStore file for wallet |
+| --nid | GOLOOP_RPC_NID |  | Network ID |
+| --step_limit | GOLOOP_RPC_STEP_LIMIT | 0 | StepLimit |
+| --uri | GOLOOP_RPC_URI |  | URI of JSON-RPC API |
+| --wait | GOLOOP_RPC_WAIT | false | Wait transaction result |
+| --wait_interval | GOLOOP_RPC_WAIT_INTERVAL | 1000 | Polling interval(msec) for wait transaction result |
+| --wait_timeout | GOLOOP_RPC_WAIT_TIMEOUT | 10 | Timeout(sec) for wait transaction result |
 
 ### Parent command
 |Command | Description|
@@ -1343,25 +1343,25 @@ Deploy Transaction
 ` goloop rpc sendtx deploy SCORE_ZIP_FILE [flags] `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --content_type | application/zip | Mime-type of the content |
-| --param | [] | key=value, Function parameters will be delivered to on_install() or on_update() |
-| --to | cx0000000000000000000000000000000000000000 | ToAddress |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --content_type |  | application/zip | Mime-type of the content |
+| --param |  | [] | key=value, Function parameters will be delivered to on_install() or on_update() |
+| --to |  | cx0000000000000000000000000000000000000000 | ToAddress |
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --debug | false | JSON-RPC Response with detail information |
-| --key_password |  | Password for the KeyStore file |
-| --key_secret |  | Secret(password) file for KeyStore |
-| --key_store |  | KeyStore file for wallet |
-| --nid |  | Network ID |
-| --step_limit | 0 | StepLimit |
-| --uri |  | URI of JSON-RPC API |
-| --wait | false | Wait transaction result |
-| --wait_interval | 1000 | Polling interval(msec) for wait transaction result |
-| --wait_timeout | 10 | Timeout(sec) for wait transaction result |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | JSON-RPC Response with detail information |
+| --key_password | GOLOOP_RPC_KEY_PASSWORD |  | Password for the KeyStore file |
+| --key_secret | GOLOOP_RPC_KEY_SECRET |  | Secret(password) file for KeyStore |
+| --key_store | GOLOOP_RPC_KEY_STORE |  | KeyStore file for wallet |
+| --nid | GOLOOP_RPC_NID |  | Network ID |
+| --step_limit | GOLOOP_RPC_STEP_LIMIT | 0 | StepLimit |
+| --uri | GOLOOP_RPC_URI |  | URI of JSON-RPC API |
+| --wait | GOLOOP_RPC_WAIT | false | Wait transaction result |
+| --wait_interval | GOLOOP_RPC_WAIT_INTERVAL | 1000 | Polling interval(msec) for wait transaction result |
+| --wait_timeout | GOLOOP_RPC_WAIT_TIMEOUT | 10 | Timeout(sec) for wait transaction result |
 
 ### Parent command
 |Command | Description|
@@ -1385,18 +1385,18 @@ Send transaction with json file
 ` goloop rpc sendtx raw FILE [flags] `
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --debug | false | JSON-RPC Response with detail information |
-| --key_password |  | Password for the KeyStore file |
-| --key_secret |  | Secret(password) file for KeyStore |
-| --key_store |  | KeyStore file for wallet |
-| --nid |  | Network ID |
-| --step_limit | 0 | StepLimit |
-| --uri |  | URI of JSON-RPC API |
-| --wait | false | Wait transaction result |
-| --wait_interval | 1000 | Polling interval(msec) for wait transaction result |
-| --wait_timeout | 10 | Timeout(sec) for wait transaction result |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | JSON-RPC Response with detail information |
+| --key_password | GOLOOP_RPC_KEY_PASSWORD |  | Password for the KeyStore file |
+| --key_secret | GOLOOP_RPC_KEY_SECRET |  | Secret(password) file for KeyStore |
+| --key_store | GOLOOP_RPC_KEY_STORE |  | KeyStore file for wallet |
+| --nid | GOLOOP_RPC_NID |  | Network ID |
+| --step_limit | GOLOOP_RPC_STEP_LIMIT | 0 | StepLimit |
+| --uri | GOLOOP_RPC_URI |  | URI of JSON-RPC API |
+| --wait | GOLOOP_RPC_WAIT | false | Wait transaction result |
+| --wait_interval | GOLOOP_RPC_WAIT_INTERVAL | 1000 | Polling interval(msec) for wait transaction result |
+| --wait_timeout | GOLOOP_RPC_WAIT_TIMEOUT | 10 | Timeout(sec) for wait transaction result |
 
 ### Parent command
 |Command | Description|
@@ -1420,25 +1420,25 @@ Coin Transfer Transaction
 ` goloop rpc sendtx transfer [flags] `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --message |  | Message |
-| --to |  | ToAddress |
-| --value | 0 | Value |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --message |  |  | Message |
+| --to |  |  | ToAddress |
+| --value |  | 0 | Value |
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --debug | false | JSON-RPC Response with detail information |
-| --key_password |  | Password for the KeyStore file |
-| --key_secret |  | Secret(password) file for KeyStore |
-| --key_store |  | KeyStore file for wallet |
-| --nid |  | Network ID |
-| --step_limit | 0 | StepLimit |
-| --uri |  | URI of JSON-RPC API |
-| --wait | false | Wait transaction result |
-| --wait_interval | 1000 | Polling interval(msec) for wait transaction result |
-| --wait_timeout | 10 | Timeout(sec) for wait transaction result |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | JSON-RPC Response with detail information |
+| --key_password | GOLOOP_RPC_KEY_PASSWORD |  | Password for the KeyStore file |
+| --key_secret | GOLOOP_RPC_KEY_SECRET |  | Secret(password) file for KeyStore |
+| --key_store | GOLOOP_RPC_KEY_STORE |  | KeyStore file for wallet |
+| --nid | GOLOOP_RPC_NID |  | Network ID |
+| --step_limit | GOLOOP_RPC_STEP_LIMIT | 0 | StepLimit |
+| --uri | GOLOOP_RPC_URI |  | URI of JSON-RPC API |
+| --wait | GOLOOP_RPC_WAIT | false | Wait transaction result |
+| --wait_interval | GOLOOP_RPC_WAIT_INTERVAL | 1000 | Polling interval(msec) for wait transaction result |
+| --wait_timeout | GOLOOP_RPC_WAIT_TIMEOUT | 10 | Timeout(sec) for wait transaction result |
 
 ### Parent command
 |Command | Description|
@@ -1462,10 +1462,10 @@ GetTotalSupply
 ` goloop rpc totalsupply `
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --debug | false | JSON-RPC Response with detail information |
-| --uri |  | URI of JSON-RPC API |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | JSON-RPC Response with detail information |
+| --uri | GOLOOP_RPC_URI |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1501,10 +1501,10 @@ GetTransactionByHash
 ` goloop rpc txbyhash HASH `
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --debug | false | JSON-RPC Response with detail information |
-| --uri |  | URI of JSON-RPC API |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | JSON-RPC Response with detail information |
+| --uri | GOLOOP_RPC_URI |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1540,10 +1540,10 @@ GetTransactionResult
 ` goloop rpc txresult HASH `
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --debug | false | JSON-RPC Response with detail information |
-| --uri |  | URI of JSON-RPC API |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | JSON-RPC Response with detail information |
+| --uri | GOLOOP_RPC_URI |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1579,10 +1579,10 @@ GetVotesByHeight
 ` goloop rpc votesbyheight HEIGHT `
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --debug | false | JSON-RPC Response with detail information |
-| --uri |  | URI of JSON-RPC API |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --debug | GOLOOP_RPC_DEBUG | false | JSON-RPC Response with detail information |
+| --uri | GOLOOP_RPC_URI |  | URI of JSON-RPC API |
 
 ### Parent command
 |Command | Description|
@@ -1618,21 +1618,21 @@ Server management
 ` goloop server `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --config, -c |  | Parsing configuration file |
-| --console_level | trace | Console log level (trace,debug,info,warn,error,fatal,panic) |
-| --ee_socket |  | Execution engine socket path |
-| --key_password |  | Password for the KeyStore file |
-| --key_secret |  | Secret(password) file for KeyStore |
-| --key_store |  | KeyStore file for wallet |
-| --log_level | debug | Global log level (trace,debug,info,warn,error,fatal,panic) |
-| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
-| --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
-| --p2p | 127.0.0.1:8080 | Advertise ip-port of P2P |
-| --p2p_listen |  | Listen ip-port of P2P |
-| --rpc_addr | :9080 | Listen ip-port of JSON-RPC |
-| --rpc_dump | false | JSON-RPC Request, Response Dump flag |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --console_level | GOLOOP_CONSOLE_LEVEL | trace | Console log level (trace,debug,info,warn,error,fatal,panic) |
+| --ee_socket | GOLOOP_EE_SOCKET |  | Execution engine socket path |
+| --key_password | GOLOOP_KEY_PASSWORD |  | Password for the KeyStore file |
+| --key_secret | GOLOOP_KEY_SECRET |  | Secret(password) file for KeyStore |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --log_level | GOLOOP_LOG_LEVEL | debug | Global log level (trace,debug,info,warn,error,fatal,panic) |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+| --p2p | GOLOOP_P2P | 127.0.0.1:8080 | Advertise ip-port of P2P |
+| --p2p_listen | GOLOOP_P2P_LISTEN |  | Listen ip-port of P2P |
+| --rpc_addr | GOLOOP_RPC_ADDR | :9080 | Listen ip-port of JSON-RPC |
+| --rpc_dump | GOLOOP_RPC_DUMP | false | JSON-RPC Request, Response Dump flag |
 
 ### Child commands
 |Command | Description|
@@ -1667,26 +1667,26 @@ Save configuration
 ` goloop server save [file] [flags] `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --save_key_store |  | KeyStore File path to save |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --save_key_store |  |  | KeyStore File path to save |
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --config, -c |  | Parsing configuration file |
-| --console_level | trace | Console log level (trace,debug,info,warn,error,fatal,panic) |
-| --ee_socket |  | Execution engine socket path |
-| --key_password |  | Password for the KeyStore file |
-| --key_secret |  | Secret(password) file for KeyStore |
-| --key_store |  | KeyStore file for wallet |
-| --log_level | debug | Global log level (trace,debug,info,warn,error,fatal,panic) |
-| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
-| --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
-| --p2p | 127.0.0.1:8080 | Advertise ip-port of P2P |
-| --p2p_listen |  | Listen ip-port of P2P |
-| --rpc_addr | :9080 | Listen ip-port of JSON-RPC |
-| --rpc_dump | false | JSON-RPC Request, Response Dump flag |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --console_level | GOLOOP_CONSOLE_LEVEL | trace | Console log level (trace,debug,info,warn,error,fatal,panic) |
+| --ee_socket | GOLOOP_EE_SOCKET |  | Execution engine socket path |
+| --key_password | GOLOOP_KEY_PASSWORD |  | Password for the KeyStore file |
+| --key_secret | GOLOOP_KEY_SECRET |  | Secret(password) file for KeyStore |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --log_level | GOLOOP_LOG_LEVEL | debug | Global log level (trace,debug,info,warn,error,fatal,panic) |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+| --p2p | GOLOOP_P2P | 127.0.0.1:8080 | Advertise ip-port of P2P |
+| --p2p_listen | GOLOOP_P2P_LISTEN |  | Listen ip-port of P2P |
+| --rpc_addr | GOLOOP_RPC_ADDR | :9080 | Listen ip-port of JSON-RPC |
+| --rpc_dump | GOLOOP_RPC_DUMP | false | JSON-RPC Request, Response Dump flag |
 
 ### Parent command
 |Command | Description|
@@ -1708,28 +1708,28 @@ Start server
 ` goloop server start [flags] `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --cpuprofile |  | CPU Profiling data file |
-| --memprofile |  | Memory Profiling data file |
-| --mod_level | [] | Set console log level for specific module ('mod'='level',...) |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --cpuprofile |  |  | CPU Profiling data file |
+| --memprofile |  |  | Memory Profiling data file |
+| --mod_level |  | [] | Set console log level for specific module ('mod'='level',...) |
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --config, -c |  | Parsing configuration file |
-| --console_level | trace | Console log level (trace,debug,info,warn,error,fatal,panic) |
-| --ee_socket |  | Execution engine socket path |
-| --key_password |  | Password for the KeyStore file |
-| --key_secret |  | Secret(password) file for KeyStore |
-| --key_store |  | KeyStore file for wallet |
-| --log_level | debug | Global log level (trace,debug,info,warn,error,fatal,panic) |
-| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
-| --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
-| --p2p | 127.0.0.1:8080 | Advertise ip-port of P2P |
-| --p2p_listen |  | Listen ip-port of P2P |
-| --rpc_addr | :9080 | Listen ip-port of JSON-RPC |
-| --rpc_dump | false | JSON-RPC Request, Response Dump flag |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --console_level | GOLOOP_CONSOLE_LEVEL | trace | Console log level (trace,debug,info,warn,error,fatal,panic) |
+| --ee_socket | GOLOOP_EE_SOCKET |  | Execution engine socket path |
+| --key_password | GOLOOP_KEY_PASSWORD |  | Password for the KeyStore file |
+| --key_secret | GOLOOP_KEY_SECRET |  | Secret(password) file for KeyStore |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --log_level | GOLOOP_LOG_LEVEL | debug | Global log level (trace,debug,info,warn,error,fatal,panic) |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+| --p2p | GOLOOP_P2P | 127.0.0.1:8080 | Advertise ip-port of P2P |
+| --p2p_listen | GOLOOP_P2P_LISTEN |  | Listen ip-port of P2P |
+| --rpc_addr | GOLOOP_RPC_ADDR | :9080 | Listen ip-port of JSON-RPC |
+| --rpc_dump | GOLOOP_RPC_DUMP | false | JSON-RPC Request, Response Dump flag |
 
 ### Parent command
 |Command | Description|
@@ -1751,14 +1751,14 @@ Display a live streams of chains metric-statistics
 ` goloop stats `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --config, -c |  | Parsing configuration file |
-| --interval | 1 | Pull interval |
-| --key_store |  | KeyStore file for wallet |
-| --no-stream | false | Only pull the first metric-statistics |
-| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
-| --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --interval | GOLOOP_INTERVAL | 1 | Pull interval |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --no-stream | GOLOOP_NO-STREAM | false | Only pull the first metric-statistics |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command
 |Command | Description|
@@ -1787,12 +1787,12 @@ System info
 ` goloop system `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --config, -c |  | Parsing configuration file |
-| --key_store |  | KeyStore file for wallet |
-| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
-| --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Child commands
 |Command | Description|
@@ -1827,12 +1827,12 @@ Configure system
 ` goloop system config KEY VALUE `
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --config, -c |  | Parsing configuration file |
-| --key_store |  | KeyStore file for wallet |
-| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
-| --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command
 |Command | Description|
@@ -1854,17 +1854,17 @@ Get system information
 ` goloop system info [flags] `
 
 ### Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --format, -f |  | Format the output using the given Go template |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --format, -f |  |  | Format the output using the given Go template |
 
 ### Inherited Options
-|Name,shorthand | Default | Description|
-|---|---|---|
-| --config, -c |  | Parsing configuration file |
-| --key_store |  | KeyStore file for wallet |
-| --node_dir |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
-| --node_sock, -s |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
 
 ### Parent command
 |Command | Description|

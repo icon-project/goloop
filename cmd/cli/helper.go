@@ -51,8 +51,38 @@ func NewCommand(parentCmd *cobra.Command, parentVc *viper.Viper, use, short stri
 	if pFlags != nil {
 		BindPFlags(vc, pFlags)
 	}
+	if parentVc != nil {
+		vc.Set("_parentvc_", parentVc)
+		parentVc.Set("_childvc_"+use, vc)
+	} else {
+		viper.Set("_globalvc_"+c.CommandPath(), vc)
+	}
 
 	return c, vc
+}
+
+func getViper(cmd *cobra.Command, parentVc *viper.Viper) *viper.Viper {
+	if parentVc != nil {
+		if vc, ok := parentVc.Get("_childvc_"+cmd.Use).(*viper.Viper); ok {
+			return vc
+		}
+	}
+	if vc, ok := viper.Get("_globalvc_"+cmd.CommandPath()).(*viper.Viper); ok {
+		return vc
+	}
+	return nil
+}
+
+func getVipers(vc *viper.Viper) []*viper.Viper {
+	vcs := make([]*viper.Viper, 0)
+	if vc != nil {
+		if parentVc, ok := vc.Get("_parentvc_").(*viper.Viper); ok {
+			vcs = append(getVipers(parentVc), vc)
+		} else {
+			vcs = append(vcs, vc)
+		}
+	}
+	return vcs
 }
 
 func NewViper(envPrefix string) *viper.Viper {
@@ -213,7 +243,7 @@ func DefaultFlagErrorFunc(cmd *cobra.Command, err error) error {
 	return err
 }
 
-func NewGenerateMarkdownCommand(parentCmd *cobra.Command) *cobra.Command {
+func NewGenerateMarkdownCommand(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Command {
 	rootCmd := &cobra.Command{Use: "doc FILE", Short: "generate markdown for CommandLineInterface"}
 	if parentCmd != nil {
 		parentCmd.AddCommand(rootCmd)
@@ -228,7 +258,7 @@ func NewGenerateMarkdownCommand(parentCmd *cobra.Command) *cobra.Command {
 			return err
 		}
 		defer f.Close()
-		GenerateMarkdown(cmd.Root(), f)
+		GenerateMarkdown(cmd.Root(), parentVc, f)
 		return nil
 	}
 	return rootCmd
@@ -241,10 +271,12 @@ func isIgnoreCommand(cmd *cobra.Command) bool {
 	return false
 }
 
-func GenerateMarkdown(cmd *cobra.Command, w io.Writer) {
+func GenerateMarkdown(cmd *cobra.Command, parentVc *viper.Viper, w io.Writer) {
 	if isIgnoreCommand(cmd) {
 		return
 	}
+
+	vc := getViper(cmd, parentVc)
 
 	buf := new(bytes.Buffer)
 	if !cmd.HasParent() {
@@ -274,18 +306,17 @@ func GenerateMarkdown(cmd *cobra.Command, w io.Writer) {
 
 	if cmd.HasLocalFlags() || cmd.HasPersistentFlags() {
 		buf.WriteString(fmt.Sprintln("###", "Options"))
-		buf.WriteString(fmt.Sprintln("|Name,shorthand | Default | Description|"))
-		buf.WriteString(fmt.Sprintln("|---|---|---|"))
-		cmd.NonInheritedFlags().VisitAll(FlagToMarkdown(buf))
-
+		buf.WriteString(fmt.Sprintln("|Name,shorthand | Environment Variable | Default | Description|"))
+		buf.WriteString(fmt.Sprintln("|---|---|---|---|"))
+		cmd.NonInheritedFlags().VisitAll(FlagToMarkdown(buf, vc))
 		buf.WriteString("\n")
 	}
 
 	if cmd.HasInheritedFlags() {
 		buf.WriteString(fmt.Sprintln("###", "Inherited Options"))
-		buf.WriteString(fmt.Sprintln("|Name,shorthand | Default | Description|"))
-		buf.WriteString(fmt.Sprintln("|---|---|---|"))
-		cmd.InheritedFlags().VisitAll(FlagToMarkdown(buf))
+		buf.WriteString(fmt.Sprintln("|Name,shorthand | Environment Variable | Default | Description|"))
+		buf.WriteString(fmt.Sprintln("|---|---|---|---|"))
+		cmd.InheritedFlags().VisitAll(FlagToMarkdown(buf, getVipers(parentVc)...))
 		buf.WriteString("\n")
 	}
 
@@ -318,7 +349,7 @@ func GenerateMarkdown(cmd *cobra.Command, w io.Writer) {
 
 	if cmd.HasAvailableSubCommands() {
 		for _, childCmd := range cmd.Commands() {
-			GenerateMarkdown(childCmd, w)
+			GenerateMarkdown(childCmd, vc, w)
 		}
 	}
 }
@@ -336,7 +367,7 @@ func CommandPathToMarkdown(buf *bytes.Buffer, cmd *cobra.Command) {
 	buf.WriteString(fmt.Sprintln("|", cPath, "|", deprecated, cmd.Short, "|"))
 }
 
-func FlagToMarkdown(buf *bytes.Buffer) func(f *pflag.Flag) {
+func FlagToMarkdown(buf *bytes.Buffer, vcs ...*viper.Viper) func(f *pflag.Flag) {
 	return func(f *pflag.Flag) {
 		name := ""
 		if f.Shorthand != "" && f.ShorthandDeprecated == "" {
@@ -344,7 +375,19 @@ func FlagToMarkdown(buf *bytes.Buffer) func(f *pflag.Flag) {
 		} else {
 			name = fmt.Sprintf("--%s", f.Name)
 		}
-		buf.WriteString(fmt.Sprintln("|", name, "|", f.DefValue, "|", f.Usage, "|"))
+		envKey := ""
+		for _, vc := range vcs {
+			if vc != nil {
+				if v := vc.Get("pflags"); v != nil {
+					if bindPFlags, ok := v.(*pflag.FlagSet); ok {
+						if bindPFlags.Lookup(f.Name) != nil {
+							envKey = strings.ToUpper(vc.GetString("env_prefix") + "_" + f.Name)
+						}
+					}
+				}
+			}
+		}
+		buf.WriteString(fmt.Sprintln("|", name, "|", envKey, "|", f.DefValue, "|", f.Usage, "|"))
 	}
 }
 

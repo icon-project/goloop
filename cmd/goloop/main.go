@@ -43,7 +43,7 @@ func main() {
 		cli.NewGenesisCmd("gn"),
 		cli.NewKeystoreCmd("ks"))
 
-	genMdCmd := cli.NewGenerateMarkdownCommand(rootCmd)
+	genMdCmd := cli.NewGenerateMarkdownCommand(rootCmd, nil)
 	genMdCmd.Hidden = true
 
 	rootCmd.SilenceUsage = true
