@@ -62,18 +62,19 @@ func (s *server) hasNode(msg []byte, p *peer) {
 
 func (s *server) _resolveNode(hashes [][]byte) (errCode, [][]byte) {
 	s.log.Tracef("_resolveNode len(%d)\n", len(hashes))
-	values := make([][]byte, len(hashes))
-	for i, hash := range hashes {
+	values := make([][]byte, 0, len(hashes))
+	for _, hash := range hashes {
 		var err error
 		var v []byte
-		for j, bucket := range []db.Bucket{s.merkleTrie, s.bytesByHash} {
+		for _, bucket := range []db.Bucket{s.merkleTrie, s.bytesByHash} {
 			if v, err = bucket.Get(hash); err == nil && v != nil {
-				values[i] = v
+				values = append(values, v)
 				break
 			}
-			s.log.Tracef("Cannot find value for (%#x) in (%d) bucket\n", hash, j)
-			return ErrNoData, nil
 		}
+	}
+	if len(values) == 0 {
+		return ErrNoData, nil
 	}
 	return NoError, values
 }

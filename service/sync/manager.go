@@ -73,6 +73,7 @@ func (m *Manager) OnJoin(id module.PeerID) {
 		id:      id,
 		reqID:   0,
 		expired: configExpiredTime,
+		log:     m.log,
 	}
 	m.pool.push(np)
 	if m.syncing {
@@ -129,6 +130,6 @@ func NewSyncManager(db db.Database, nm module.NetworkManager, logger log.Logger)
 
 	client := newClient(ph, logger)
 	m.client = client
-	m.pool = newPeerPool()
+	m.pool = newPeerPool(logger)
 	return m
 }

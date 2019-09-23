@@ -19,7 +19,7 @@ type peer struct {
 }
 
 func (p *peer) onReceive(pi module.ProtocolInfo, data interface{}) bool {
-	log.Tracef("peer.onReceive pi(%s), p(%s)\n", pi, p)
+	p.log.Tracef("peer.onReceive pi(%s), p(%s)\n", pi, p)
 	var status errCode
 	var t syncType
 	switch pi {
@@ -49,13 +49,15 @@ type peerPool struct {
 	ch    chan module.PeerID
 	peers map[module.PeerID]*list.Element
 	pList *list.List //peer
+	log   log.Logger
 }
 
-func newPeerPool() *peerPool {
+func newPeerPool(log log.Logger) *peerPool {
 	return &peerPool{
 		ch:    make(chan module.PeerID),
 		peers: make(map[module.PeerID]*list.Element),
 		pList: list.New(),
+		log:   log,
 	}
 }
 
@@ -81,7 +83,7 @@ func (pp *peerPool) push(p *peer) {
 	}
 
 	pp.peers[id] = ne
-	log.Tracef("peerPool push(%s), len(%d)\n", p, pp.pList.Len())
+	p.log.Tracef("peerPool push(%s), len(%d)\n", p, pp.pList.Len())
 }
 
 func (pp *peerPool) size() int {
@@ -122,6 +124,6 @@ func (pp *peerPool) peerList() []*peer {
 		pList[i] = e.Value.(*peer)
 		i++
 	}
-	log.Tracef("peerList len(%d)\n", pp.pList.Len())
+	pp.log.Tracef("peerList len(%d)\n", pp.pList.Len())
 	return pList
 }

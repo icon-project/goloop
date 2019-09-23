@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
@@ -21,7 +22,7 @@ const (
 )
 
 const (
-	configMaxRequestHash = 2
+	configMaxRequestHash = 50
 )
 
 func (s syncType) toIndex() int {
@@ -60,19 +61,21 @@ const (
 )
 
 type syncer struct {
-	mutex sync.Mutex
+	mutex sync.Mutex // for peer management and complete status
 	cond  *sync.Cond
 
 	client   *client
 	database db.Database
 
-	pool    *peerPool
-	vpool   *peerPool
-	ivpool  *peerPool
-	sentReq map[module.PeerID]*peer
+	pool     *peerPool
+	vpool    *peerPool
+	ivpool   *peerPool
+	sentReq  map[module.PeerID]*peer
+	reqValue [3]map[string]bool
 
-	builder [3]merkle.Builder
-	bMutex  [3]sync.Mutex
+	builder  [3]merkle.Builder
+	bMutex   [3]sync.Mutex // for builder
+	rPeerCnt [3]int
 
 	ah  []byte
 	vlh []byte
@@ -104,80 +107,98 @@ type Callback interface {
 }
 
 func (s *syncer) _reqUnresolvedNode(st syncType, builder merkle.Builder,
-	peers []*peer) (bool, int, []*peer) {
+	peers []*peer) (int, []*peer) {
 	unresolved := builder.UnresolvedCount()
-	s.log.Tracef("_reqUnresolvedNode unresolved(%d) for (%s) len(peers) = %d\n",
+	s.log.Debugf("_reqUnresolvedNode unresolved(%d) for (%s) len(peers) = %d\n",
 		unresolved, st, len(peers))
 	if unresolved == 0 {
-		return true, 0, peers
+		return 0, peers
 	}
-	req := builder.Requests()
 
-	keyMap := make(map[string]bool)
+	peerNum := 0
+	if need := unresolved/configMaxRequestHash + 1; need > len(peers) {
+		peerNum = len(peers)
+	} else {
+		peerNum = need
+	}
+
+	if mrh := peerNum * configMaxRequestHash; unresolved > mrh {
+		unresolved = mrh
+	}
+
+	req := builder.Requests()
 	keys := make([][]byte, 0, 100)
+	reqValue := s.reqValue[st.toIndex()]
 	reqNum := 0
-	for req.Next() {
+	for reqNum < unresolved && req.Next() {
 		key := req.Key()
-		if keyMap[string(key)] == false {
-			keyMap[string(key)] = true
+		if b := reqValue[string(key)]; b == false {
+			reqValue[string(key)] = true
 			keys = append(keys, key)
 			reqNum++
 		}
 	}
 
-	need := reqNum/configMaxRequestHash + 1
+	if len(keys) == 0 && len(reqValue) != 0 {
+		if s.rPeerCnt[st.toIndex()] > 0 { // another peer is running for reqValue
+			s.log.Debugf("_reqUnresolvedNode keys(%d), reqValue(%d)\n", len(keys), len(reqValue))
+			return unresolved, peers
+		}
+	}
+
 	var unusedPeers []*peer
-	peerNum := len(peers)
-
-	if need > peerNum {
-		need = peerNum
-	}
-
-	maxRequestHash := need * configMaxRequestHash
-	if reqNum > maxRequestHash {
-		s.log.Tracef("unresolved(%d) request(%d)\n", reqNum, maxRequestHash)
-		reqNum = maxRequestHash
-	}
-
-	result := false
 	i := 0
-	pIndex := 0
+	index := 0
 	for j, p := range peers {
-		offset := (reqNum * i) / need
-		end := (reqNum * (i + 1)) / need
-		pIndex = j
-		s.log.Tracef("requestNodeData for %s, (%d) -> (%d) reqNum(%d)\n", st, offset, end, reqNum)
+		offset := (reqNum * i) / peerNum
+		end := (reqNum * (i + 1)) / peerNum
+		index = j
+		s.log.Debugf("requestNodeData for %s, (%d) -> (%d) reqNum(%d)\n", st, offset, end, reqNum)
 		if err := s.client.requestNodeData(p, keys[offset:end], st, s.processMsg); err != nil {
 			s.log.Tracef("Failed to request node\n")
+			for k := offset; k < end; k++ {
+				delete(reqValue, string(keys[k]))
+			}
 			unusedPeers = append(unusedPeers, p)
 			continue
 		}
+		s.rPeerCnt[st.toIndex()] += 1
 		i++
-		if result == false {
-			result = true
-		}
-		if need == i {
+		if peerNum == i {
 			break
 		}
 	}
-	for ; pIndex+1 < peerNum; pIndex++ {
-		unusedPeers = append(unusedPeers, peers[pIndex+1])
-	}
-	// return unused peers
+	unusedPeers = append(unusedPeers, peers[index+1:]...)
 	s.log.Tracef("requestNodeData unusedPeers(%d)\n", len(unusedPeers))
-	return result, 1, unusedPeers
+	return unresolved, unusedPeers
 }
 
-func (s *syncer) _onNodeData(builder merkle.Builder, data [][]byte) int {
+func (s *syncer) _onNodeData(builder merkle.Builder, reqValue map[string]bool, data [][]byte, st syncType) int {
 	if len(data) != 0 {
-		s.log.Debugf("Received len(data) (%d)\n", len(data))
+		s.log.Debugf("Received len(%d) for (%s)\n", len(data), st)
 	}
+	s.rPeerCnt[st.toIndex()] -= 1
 	for _, d := range data {
-		if err := builder.OnData(d); err != nil {
-			s.log.Infof("Failed to OnData to builder data(%#x), err(%+v)\n", d, err)
+		key := crypto.SHA3Sum256(d)
+		if reqValue[string(key)] == true {
+			if err := builder.OnData(d); err != nil {
+				s.log.Infof("Failed to OnData to builder data(%#x), err(%+v)\n", d, err)
+			}
+			delete(reqValue, string(key))
+		} else {
+			s.log.Infof("cannot find key(%#x) in map\n", key)
 		}
 	}
 	return builder.UnresolvedCount()
+}
+
+func (s *syncer) Complete(st syncType) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	if s.complete&int(st) != int(st) {
+		s.complete |= int(st)
+		s.finishCh <- st
+	}
 }
 
 func (s *syncer) reqUnresolved(st syncType, builder merkle.Builder, need int) {
@@ -185,17 +206,22 @@ func (s *syncer) reqUnresolved(st syncType, builder merkle.Builder, need int) {
 	for {
 		peers := s._reservePeers(need, st)
 		if len(peers) == 0 {
+			s.log.Debugf("reqUnresolved peers is 0. st(%s)\n", st)
 			return
 		}
 		mutex.Lock()
-		b, unresolved, unused := s._reqUnresolvedNode(st, builder, peers)
+		unresolved, unused := s._reqUnresolvedNode(st, builder, peers)
 		mutex.Unlock()
-		if b == false {
-			s._returnPeers(unused)
+		s.log.Debugf("reqUnresolved Unlock << st(%s)\n", st)
+		if len(unused) == len(peers) {
+			s._returnPeers(unused...)
+			if unresolved == 0 {
+				s.Complete(st)
+			}
 			continue
 		} else {
 			if len(unused) > 0 {
-				s._returnPeers(unused)
+				s._returnPeers(unused...)
 			}
 			s.log.Debugf("reqUnresolved st(%s), unused(%d), unresolved(%d)\n",
 				st, len(unused), unresolved)
@@ -212,27 +238,40 @@ func (s *syncer) reqUnresolved(st syncType, builder merkle.Builder, need int) {
 }
 
 func (s *syncer) onNodeData(p *peer, status errCode, st syncType, data [][]byte) {
-	s._returnPeer(p)
+	s._returnPeers(p)
 	if st.isValid() == false {
 		s.log.Warnf("Wrong syncType. (%d)\n", st)
 		return
 	}
 
-	bIndex := st.toIndex()
-	builder := s.builder[bIndex]
+	if status == ErrTimeExpired {
+		log.Debug("onNodeData TimeExpired!!\n")
+		np := s._reservePeers(1, st)
+		if np == nil {
+			return
+		}
+		if err := s.client.requestNodeData(np[0], data, st, s.processMsg); err == nil {
+			return
+		} else {
+			s._returnPeers(np...)
+			s.log.Infof("Failed to request node data err(%s)\n", err)
+		}
+	}
 
+	bIndex := st.toIndex()
 	s.bMutex[bIndex].Lock()
-	unresolved := s._onNodeData(builder, data)
+	if status == ErrTimeExpired {
+		for k, _ := range s.reqValue {
+			delete(s.reqValue[bIndex], string(k))
+		}
+	}
+	builder := s.builder[bIndex]
+	unresolved := s._onNodeData(builder, s.reqValue[bIndex], data, st)
+	s.log.Debugf("onNodeData unresolved(%d), for (%s)\n", unresolved, st)
 	s.bMutex[bIndex].Unlock()
 
 	if unresolved == 0 {
-		s.mutex.Lock()
-		if s.complete&int(st) != int(st) {
-			s.complete |= int(st)
-			s.finishCh <- st
-		}
-		s.mutex.Unlock()
-
+		s.Complete(st)
 	}
 	need := unresolved/configMaxRequestHash + 1
 	s.reqUnresolved(st, builder, need)
@@ -359,18 +398,7 @@ func (s *syncer) _requestIfNotEnough(p *peer) {
 	}
 }
 
-func (s *syncer) _returnPeer(p *peer) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	delete(s.sentReq, p.id)
-	s.vpool.push(p)
-
-	if s.waitingPeerCnt > 0 {
-		s.cond.Signal()
-	}
-}
-
-func (s *syncer) _returnPeers(peers []*peer) {
+func (s *syncer) _returnPeers(peers ...*peer) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	for _, p := range peers {
@@ -392,6 +420,9 @@ func (s *syncer) _reservePeers(need int, st syncType) []*peer {
 	for {
 		if s.complete&int(st) == int(st) {
 			s.waitingPeerCnt -= 1
+			if s.waitingPeerCnt > 0 {
+				s.cond.Signal()
+			}
 			return nil
 		}
 
@@ -423,7 +454,7 @@ func (s *syncer) _reservePeers(need int, st syncType) []*peer {
 
 func (s *syncer) onResult(status errCode, p *peer) {
 	if status == NoError {
-		s._returnPeer(p)
+		s._returnPeers(p)
 	} else {
 		s._requestIfNotEnough(p)
 	}
@@ -449,6 +480,7 @@ func (s *syncer) ForceSync() *Result {
 
 	builder := merkle.NewBuilder(s.database)
 	s.builder[syncWorldState.toIndex()] = builder
+	s.reqValue[syncWorldState.toIndex()] = make(map[string]bool)
 	if wss, err := state.NewWorldSnapshotWithBuilder(builder, s.ah, s.vlh); err == nil {
 		s.wss = wss
 	} else {
@@ -460,6 +492,7 @@ func (s *syncer) ForceSync() *Result {
 		if len(rh) != 0 {
 			builder := merkle.NewBuilder(s.database)
 			s.builder[t.toIndex()] = builder
+			s.reqValue[t.toIndex()] = make(map[string]bool)
 			*rl = txresult.NewReceiptListWithBuilder(builder, rh)
 			go s.reqUnresolved(t, builder, 1)
 		} else {
@@ -518,8 +551,8 @@ func newSyncer(database db.Database, c *client, p *peerPool,
 		database: database,
 		pool:     p,
 		client:   c,
-		vpool:    newPeerPool(),
-		ivpool:   newPeerPool(),
+		vpool:    newPeerPool(log),
+		ivpool:   newPeerPool(log),
 		sentReq:  make(map[module.PeerID]*peer),
 		ah:       accountsHash,
 		prh:      pReceiptsHash,
