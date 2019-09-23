@@ -176,8 +176,8 @@ ITJ:gochain:governance:audit:
   before_script:
     - env
     - export SELF_CONTAINER=$(docker ps --filter label=com.gitlab.gitlab-runner.job.id=${CI_JOB_ID} --format {{.ID}});
-      export GOLOOP_DOCKER_MOUNT="/builds/${CI_PROJECT_NAMESPACE}";
-      FORMAT_MOUNT_NAME="{{range .Mounts}}{{if eq .Destination \"/builds/$CI_PROJECT_NAMESPACE\"}}{{.Name}}{{end}}{{end}}";
+      export GOLOOP_DOCKER_MOUNT="/builds";
+      FORMAT_MOUNT_NAME="{{range .Mounts}}{{if eq .Destination \"/builds\"}}{{.Name}}{{end}}{{end}}";
       export GOLOOP_DOCKER_VOLUME=$(docker inspect ${SELF_CONTAINER} --format "${FORMAT_MOUNT_NAME}");
       export GOLOOP_DOCKER_NETWORK=${GOLOOP_DOCKER_NETWORK:-goloop_${CI_JOB_ID}_net};
       export GOLOOP_DOCKER_PREFIX=${GOLOOP_DOCKER_PREFIX:-goloop-${CI_JOB_ID}};
