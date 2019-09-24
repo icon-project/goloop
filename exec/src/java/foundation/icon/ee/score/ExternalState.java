@@ -273,7 +273,7 @@ public class ExternalState implements IExternalState {
 
     @Override
     public AionAddress getMinerAddress() {
-        AionAddress miner = Helpers.address(0xaa);
+        AionAddress miner = Helpers.address(0x0);
         logger.debug("[getMinerAddress] ret={}", miner);
         return miner;
     }
