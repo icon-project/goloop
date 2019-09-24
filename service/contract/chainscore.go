@@ -688,9 +688,9 @@ func (s *ChainScore) Ex_setRevision(code *common.HexInt) error {
 	if !s.fromGovernance() {
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
-	if module.LastRevision < code.Int64() {
+	if module.MaxRevision < code.Int64() {
 		return scoreresult.Errorf(StatusIllegalArgument,
-			"Can't set code. last : %d, passed : %d\n", module.LastRevision, code)
+			"IllegalArgument(max=%#x,new=%s)", module.MaxRevision, code)
 	}
 
 	as := s.cc.GetAccountState(state.SystemID)

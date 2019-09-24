@@ -101,7 +101,8 @@ const (
 
 const (
 	DefaultRevision = Revision4
-	LastRevision    = RevisionReserved - 1
+	MaxRevision     = RevisionReserved - 1
+	LatestRevision  = Revision4
 )
 
 func (s Status) String() string {

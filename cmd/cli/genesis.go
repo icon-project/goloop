@@ -62,8 +62,8 @@ func newGenesisGenCmd(c string) *cobra.Command {
 		}
 
 		chainConfig := make(map[string]interface{})
-		if module.LastRevision != module.DefaultRevision {
-			chainConfig["revision"] = &common.HexInt32{Value: module.LastRevision}
+		if module.LatestRevision != module.DefaultRevision {
+			chainConfig["revision"] = &common.HexInt32{Value: module.LatestRevision}
 		}
 		for k, v := range *configs {
 			if len(v) == 0 {
