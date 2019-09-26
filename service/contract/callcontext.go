@@ -210,11 +210,11 @@ func (cc *callContext) Call(handler ContractHandler) (module.Status, *big.Int, *
 		e := cc.pushFrame(handler, false)
 
 		if err := handler.ExecuteAsync(cc); err != nil {
-			errStatus, ok := scoreresult.StatusOf(err)
-			cc.log.Debugf("scoreresult error(%t) error(%v)\n", ok, errStatus)
-			cc.popFrame(e, errStatus)
+			status, _ := scoreresult.StatusOf(err)
+			result := common.MustEncodeAny(err.Error())
+			cc.popFrame(e, status)
 			handler.Dispose()
-			return errStatus, handler.StepLimit(), nil, nil
+			return status, handler.StepLimit(), result, nil
 		}
 		return cc.waitResult(handler.StepLimit())
 	default:
@@ -321,7 +321,8 @@ func (cc *callContext) handleResult(status module.Status,
 		h := lastFrame.handler.(AsyncContractHandler)
 		if err := h.SendResult(status, stepUsed, result); err != nil {
 			cc.log.Debugf("FAIL to SendResult(): err=%+v\n", err)
-			cc.OnResult(module.StatusSystemError, h.StepLimit(), nil, nil)
+			result = common.MustEncodeAny(err.Error())
+			cc.OnResult(module.StatusSystemFailure, h.StepUsed(), result, nil)
 		}
 		return true
 	} else {

@@ -197,7 +197,7 @@ const (
 func (g *genesisV3) deployPreInstall(ctx contract.Context, receipt txresult.Receipt) error {
 	if err := contract.InstallSystemScore(state.SystemID,
 		contract.CID_CHAIN, g.Chain, ctx, receipt, nil); err != nil {
-		return InvalidGenesisError.Wrapf(err, "FAIL to deploy ChainScore err=%+v\n", err)
+		return InvalidGenesisError.Wrapf(err, "FAIL to deploy ChainScore")
 	}
 	for _, acc := range g.Accounts {
 		if acc.Score == nil {
@@ -212,10 +212,11 @@ func (g *genesisV3) deployPreInstall(ctx contract.Context, receipt txresult.Rece
 			data, _ := hex.DecodeString(score.Content)
 			handler := contract.NewDeployHandlerForPreInstall(score.Owner,
 				&acc.Address, score.ContentType, data, score.Params, ctx.Logger())
-			status, _, _, _ := cc.Call(handler)
+			status, _, result, _ := cc.Call(handler)
 			if status != module.StatusSuccess {
+				reason := common.DecodeAsString(result, "")
 				return InvalidGenesisError.Errorf("FAIL to install pre-installed score."+
-					"status : %d, addr : %v\n", status, acc.Address)
+					"status=%d, msg=%q, addr=%s", status, reason, acc.Address)
 			}
 			cc.Dispose()
 		} else if score.ContentID != "" {
@@ -228,10 +229,11 @@ func (g *genesisV3) deployPreInstall(ctx contract.Context, receipt txresult.Rece
 				}
 				handler := contract.NewDeployHandlerForPreInstall(score.Owner,
 					&acc.Address, score.ContentType, content, score.Params, ctx.Logger())
-				status, _, _, _ := cc.Call(handler)
+				status, _, result, _ := cc.Call(handler)
 				if status != module.StatusSuccess {
+					reason := common.DecodeAsString(result, "")
 					return InvalidGenesisError.Errorf("FAIL to install pre-installed score."+
-						"status : %d, addr : %v\n", status, acc.Address)
+						"status=%d, msg=%q, addr=%s", status, reason, acc.Address)
 				}
 				cc.Dispose()
 			} else if strings.HasPrefix(score.ContentID, contentIdCid) == true {
