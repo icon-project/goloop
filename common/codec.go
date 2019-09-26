@@ -83,6 +83,13 @@ func DecodeAny(o *codec.TypedObj) (interface{}, error) {
 	return codec.DecodeAny(TypeCodec, o)
 }
 
+func DecodeAsString(o *codec.TypedObj, s string) string {
+	if o != nil && o.Type == codec.TypeString {
+		return o.Object.(string)
+	}
+	return s
+}
+
 func MustDecodeAny(o *codec.TypedObj) interface{} {
 	if obj, err := codec.DecodeAny(TypeCodec, o); err != nil {
 		log.Panicf("Fail on codec.DecodeAny() err=%+v", err)
