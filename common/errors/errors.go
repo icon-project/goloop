@@ -162,6 +162,9 @@ func Errorcf(code Code, f string, args ...interface{}) error {
 }
 
 func WithCode(err error, code Code) error {
+	if err == nil {
+		return nil
+	}
 	if _, ok := CoderOf(err); ok {
 		return Wrapc(err, code, err.Error())
 	}
