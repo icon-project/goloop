@@ -45,10 +45,17 @@ public class Method {
     public static class Parameter {
         String name;
         int type;
+        boolean optional;
 
         public Parameter(String name, int type) {
             this.name = name;
             this.type = type;
+        }
+
+        public Parameter(String name, int type, boolean optional) {
+            this.name = name;
+            this.type = type;
+            this.optional = optional;
         }
 
         public String getName() {
@@ -59,11 +66,16 @@ public class Method {
             return type;
         }
 
+        public boolean isOptional() {
+            return optional;
+        }
+
         @Override
         public String toString() {
             return "Parameter{" +
                     "name='" + name + '\'' +
                     ", type=" + type +
+                    ", optional=" + optional +
                     '}';
         }
     }
@@ -87,6 +99,14 @@ public class Method {
     public static Method newFunction(String name, int flags, Parameter[] inputs, int output) {
         return new Method(MethodType.FUNCTION, name, flags,
                 (inputs != null) ? inputs.length : 0, inputs, output);
+    }
+
+    public static Method newFunction(String name, int flags, int optional, Parameter[] inputs, int output) {
+        if (optional > 0) {
+            return new Method(MethodType.FUNCTION, name, flags,
+                    inputs.length - optional, inputs, output);
+        }
+        return newFunction(name, flags, inputs, output);
     }
 
     public static Method newFallback() {

@@ -20,6 +20,7 @@ import foundation.icon.ee.types.Method;
 import org.msgpack.core.MessageBufferPacker;
 
 import java.io.IOException;
+import java.math.BigInteger;
 
 class MethodPacker {
 
@@ -35,7 +36,11 @@ class MethodPacker {
                 packer.packArrayHeader(3);
                 packer.packString(p.getName());
                 packer.packInt(p.getType());
-                packer.packNil();
+                if (p.isOptional()) {
+                    packDefaultValue(packer, p.getType());
+                } else {
+                    packer.packNil();
+                }
             }
         } else {
             packer.packArrayHeader(0);
@@ -45,6 +50,17 @@ class MethodPacker {
             packer.packInt(m.getOutput());
         } else {
             packer.packArrayHeader(0);
+        }
+    }
+
+    private static void packDefaultValue(MessageBufferPacker packer, int type) throws IOException {
+        if (type == Method.DataType.INTEGER) {
+            packer.packBigInteger(BigInteger.ZERO);
+        } else if (type == Method.DataType.BOOL) {
+            packer.packBoolean(false);
+        } else {
+            // empty byte array
+            packer.packBinaryHeader(0);
         }
     }
 }

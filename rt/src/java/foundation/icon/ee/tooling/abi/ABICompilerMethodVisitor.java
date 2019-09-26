@@ -22,7 +22,8 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
     private int access;
     private String methodName;
     private String methodDescriptor;
-    private List<String> paramNames= new ArrayList<>();
+    private List<String> paramNames = new ArrayList<>();
+    private boolean[] optional;
     private int flags;
     private int indexed;
     private boolean isOnInstall = false;
@@ -123,6 +124,19 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
     }
 
     @Override
+    public void visitAnnotableParameterCount(int parameterCount, boolean visible) {
+        optional = new boolean[parameterCount];
+    }
+
+    @Override
+    public AnnotationVisitor visitParameterAnnotation(int parameter, String descriptor, boolean visible) {
+        if (Type.getType(descriptor).getClassName().equals(Optional.class.getName())) {
+            optional[parameter] = true;
+        }
+        return null;
+    }
+
+    @Override
     public void visitEnd() {
         if (isOnInstall() && this.flags != 0) {
             throw new ABICompilerException("onInstall method cannot be annotated", methodName);
@@ -183,7 +197,18 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
             if (type != Type.VOID_TYPE) {
                 output = getDataType(type);
             }
-            return Method.newFunction(methodName, flags, getMethodParameters(), output);
+            int optionalCount = 0;
+            if (optional != null) {
+                for (int i = optional.length - 1; i >= 0; i--) {
+                    if (optional[i]) {
+                        if (i < optional.length - 1 && !optional[i + 1]) {
+                            throw new ABICompilerException("Non-optional parameter follows @Optional parameter", methodName);
+                        }
+                        optionalCount++;
+                    }
+                }
+            }
+            return Method.newFunction(methodName, flags, optionalCount, getMethodParameters(), output);
         }
         if (isFallback() && isPayable()) {
             return Method.newFallback();
@@ -203,11 +228,10 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
         Method.Parameter[] params = null;
         if (types.length > 0) {
             params = new Method.Parameter[types.length];
-            int index = 0;
-            for (Type type : types) {
-                params[index] = new Method.Parameter(
-                        paramNames.get(index), getDataType(type));
-                index++;
+            for (int i = 0; i < types.length; i++) {
+                params[i] = new Method.Parameter(
+                        paramNames.get(i), getDataType(types[i]),
+                        optional != null && optional[i]);
             }
         }
         return params;

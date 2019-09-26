@@ -5,6 +5,7 @@ import avm.Blockchain;
 
 import foundation.icon.ee.tooling.abi.EventLog;
 import foundation.icon.ee.tooling.abi.External;
+import foundation.icon.ee.tooling.abi.Optional;
 import foundation.icon.ee.tooling.abi.Payable;
 
 import java.math.BigInteger;
@@ -86,7 +87,7 @@ public class SampleToken
     }
 
     @External
-    public static void transfer(Address _to, BigInteger _value) {
+    public static void transfer(Address _to, BigInteger _value, @Optional byte[] _data) {
         Address _from = Blockchain.getCaller();
         BigInteger fromBalance = TokenStore.getBalance(_from);
         BigInteger toBalance = TokenStore.getBalance(_to);
@@ -98,9 +99,9 @@ public class SampleToken
         TokenStore.putBalance(_from, fromBalance.subtract(_value));
         TokenStore.putBalance(_to, toBalance.add(_value));
 
-        Transfer(_from, _to, _value, "Some data".getBytes());
+        Transfer(_from, _to, _value, _data);
     }
 
     @EventLog(indexed=3)
-    private static void Transfer(Address from, Address to, BigInteger value, byte[] data) {}
+    private static void Transfer(Address _from, Address _to, BigInteger _value, byte[] _data) {}
 }
