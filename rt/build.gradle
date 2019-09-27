@@ -3,21 +3,5 @@ dependencies {
     implementation 'org.ow2.asm:asm:6.2.1'
     implementation 'org.ow2.asm:asm-commons:6.2.1'
     implementation 'org.ow2.asm:asm-tree:6.2.1'
-
-    implementation files("$rootDir/lib/org-aion-avm-core.jar")
-    implementation files("$rootDir/lib/org-aion-avm-rt.jar")
-}
-
-sourceSets {
-    avm {
-        java {
-            srcDirs = ['avm/src/java']
-        }
-    }
-}
-
-jar {
-    from (sourceSets.avm.output, {
-        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    })
+    implementation 'org.ow2.asm:asm-util:6.2.1'
 }
