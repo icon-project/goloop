@@ -31,6 +31,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 
 public class ExternalState implements IExternalState {
     private static final Logger logger = LoggerFactory.getLogger(ExternalState.class);
@@ -273,7 +274,10 @@ public class ExternalState implements IExternalState {
 
     @Override
     public AionAddress getMinerAddress() {
-        AionAddress miner = Helpers.address(0x0);
+        byte[] arr = new byte[AionAddress.LENGTH];
+        Arrays.fill(arr, (byte) 0xaa);
+        arr[0] = (byte) 0x0; // EOA
+        AionAddress miner = new AionAddress(arr);
         logger.debug("[getMinerAddress] ret={}", miner);
         return miner;
     }

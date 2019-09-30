@@ -33,7 +33,6 @@ import java.util.Set;
 public class Helpers {
 
     private static final char[] hexArray = "0123456789abcdef".toCharArray();
-    public static final AionAddress ZERO_ADDRESS = address(0);
 
     /**
      * Converts byte array into its hex string representation.
@@ -244,7 +243,7 @@ public class Helpers {
 
     // for test suites only
     public static AionAddress address(int n) {
-        byte[] arr = new byte[32];
+        byte[] arr = new byte[AionAddress.LENGTH];
         for (int i = 0; i < arr.length; i++) {
             arr[i] = (byte) n;
         }

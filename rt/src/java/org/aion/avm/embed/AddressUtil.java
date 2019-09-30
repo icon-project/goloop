@@ -19,6 +19,8 @@ public class AddressUtil {
         ByteBuffer buffer = ByteBuffer.allocate(32 + 8).put(tx.senderAddress.toByteArray()).putLong(nonceAsLong);
         byte[] hash = HashUtils.sha256(buffer.array());
         hash[0] = CONTRACT_PREFIX;
-        return new AionAddress(hash);
+        byte[] bytes = new byte[AionAddress.LENGTH];
+        System.arraycopy(hash, 0, bytes, 0, bytes.length);
+        return new AionAddress(bytes);
     }
 }

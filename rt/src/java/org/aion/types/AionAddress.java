@@ -27,8 +27,7 @@ public final class AionAddress {
         if (raw == null) {
             throw new NullPointerException();
         }
-        // TODO: temporarily accept both Aion and ICON address forms
-        if (raw.length != 32 && raw.length != Address.LENGTH) {
+        if (raw.length != LENGTH) {
             throw new IllegalArgumentException();
         }
         System.arraycopy(raw, 0, this.raw, 0, LENGTH);
