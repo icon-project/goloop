@@ -271,30 +271,27 @@ func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedO
 	}
 	params, ok := paramObj.Object.(map[string]*codec.TypedObj)
 	if !ok {
-		return nil, scoreresult.Errorf(module.StatusInvalidParameter,
+		return nil, scoreresult.InvalidParameterError.Errorf(
 			"FailToCastDictToMap(type=%[1]T, obj=%+[1]v)", paramObj.Object)
 	}
 	inputs := make([]interface{}, len(a.Inputs))
 	for i, input := range a.Inputs {
 		if obj, ok := params[input.Name]; ok {
 			if err := validateInputType(input.Type, obj); err != nil {
-				return nil, err
+				return nil, scoreresult.InvalidParameterError.Wrapf(err,
+					"InvalidParameter(exp=%s, value=%T)", input.Type, obj)
 			}
 			inputs[i] = obj
 		} else {
 			if i >= a.Indexed {
 				inputs[i] = input.Type.Decode(input.Default)
 			} else {
-				return nil, scoreresult.Errorf(module.StatusInvalidParameter,
+				return nil, scoreresult.InvalidParameterError.Errorf(
 					"MissingParameter(name=%s)", input.Name)
 			}
 		}
 	}
-	if obj, err := common.EncodeAny(inputs); err != nil {
-		return nil, scoreresult.WithStatus(err, module.StatusSystemError)
-	} else {
-		return obj, nil
-	}
+	return common.MustEncodeAny(inputs), nil
 }
 
 func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {

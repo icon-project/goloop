@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/icon-project/goloop/network"
-	"github.com/icon-project/goloop/service/scoreresult"
 	ssync "github.com/icon-project/goloop/service/sync"
 
 	"github.com/icon-project/goloop/common/errors"
@@ -407,8 +406,8 @@ func (m *manager) Call(resultHash []byte,
 
 	qh := NewQueryHandler(m.cm, &jso.To, jso.Data)
 	status, result := qh.Query(contract.NewContext(wc, m.cm, m.eem, m.chain, m.log))
-	if status != module.StatusSuccess {
-		return nil, scoreresult.NewBase(status, status.String())
+	if status != nil {
+		return nil, status
 	}
 	return result, nil
 }

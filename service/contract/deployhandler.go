@@ -11,6 +11,7 @@ import (
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreapi"
@@ -117,14 +118,13 @@ func (h *DeployHandler) Prepare(ctx Context) (state.WorldContext, error) {
 	return ctx.GetFuture(lq), nil
 }
 
-func (h *DeployHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *codec.TypedObj, module.Address) {
+func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.TypedObj, module.Address) {
 	sysAs := cc.GetAccountState(state.SystemID)
 
 	update := false
 	info := cc.GetInfo()
 	if info == nil {
-		msg, _ := common.EncodeAny("no GetInfo()")
-		return module.StatusSystemError, h.StepUsed(), msg, nil
+		return errors.CriticalUnknownError.New("APIInfoIsEmpty"), h.StepUsed(), nil, nil
 	} else {
 		h.txHash = info[state.InfoTxHash].([]byte)
 	}
@@ -159,32 +159,28 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 	codeLen := len(h.content)
 	if !h.ApplySteps(cc, st, 1) ||
 		!h.ApplySteps(cc, state.StepTypeContractSet, codeLen) {
-		msg, _ := common.EncodeAny("Not enough step limit")
-		return module.StatusOutOfStep, h.StepUsed(), msg, nil
+		return scoreresult.ErrOutOfStep, h.StepUsed(), nil, nil
 	}
 
 	// store ScoreDeployInfo and ScoreDeployTXParams
 	if update == false {
 		if as.InitContractAccount(h.from) == false {
-			msg, _ := common.EncodeAny("Already deployed contract")
-			return module.StatusSystemError, h.StepUsed(), msg, nil
+			return errors.ErrExecutionFail, h.StepUsed(), nil, nil
 		}
 	} else {
 		if as.IsContract() == false {
-			msg, _ := common.EncodeAny("Not a contract account")
-			return module.StatusContractNotFound, h.StepUsed(), msg, nil
+			return scoreresult.ErrContractNotFound, h.StepUsed(), nil, nil
 		}
 		if as.IsContractOwner(h.from) == false {
-			msg, _ := common.EncodeAny("Not a contract owner")
-			return module.StatusAccessDenied, h.StepUsed(), msg, nil
+			return scoreresult.ErrAccessDenied, h.StepUsed(), nil, nil
 		}
 	}
 	scoreAddr := common.NewContractAddress(contractID)
 	oldTx, err := as.DeployContract(h.content, h.eeType, h.contentType, h.params, h.txHash)
 	if err != nil {
-		msg, _ := common.EncodeAny(err.Error())
-		return module.StatusSystemError, h.StepUsed(), msg, nil
+		return err, h.StepUsed(), nil, nil
 	}
+
 	h2a := scoredb.NewDictDB(sysAs, state.VarTxHashToAddress, 1)
 	h2a.Set(h.txHash, scoreAddr)
 	if len(oldTx) > 0 {
@@ -194,14 +190,14 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 	if cc.AuditEnabled() == false ||
 		cc.IsDeployer(h.from.String()) || h.preDefinedAddr != nil {
 		ah := newAcceptHandler(newCommonHandler(h.from, h.to, nil, h.StepAvail(), h.log), h.txHash, h.txHash)
-		status, acceptStepUsed, result, _ := ah.ExecuteSync(cc)
+		status, acceptStepUsed, _, _ := ah.ExecuteSync(cc)
 		h.DeductSteps(acceptStepUsed)
-		if status != module.StatusSuccess {
-			return status, h.StepUsed(), result, nil
+		if status != nil {
+			return status, h.StepUsed(), nil, nil
 		}
 	}
 
-	return module.StatusSuccess, h.StepUsed(), nil, scoreAddr
+	return nil, h.StepUsed(), nil, scoreAddr
 }
 
 type AcceptHandler struct {
@@ -227,14 +223,14 @@ const (
 	deployUpdate  = "on_update"
 )
 
-func (h *AcceptHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *codec.TypedObj, module.Address) {
+func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.TypedObj, module.Address) {
 	// 1. call GetAPI
 	sysAs := cc.GetAccountState(state.SystemID)
 	h2a := scoredb.NewDictDB(sysAs, state.VarTxHashToAddress, 1)
 	scoreAddr := h2a.Get(h.txHash).Address()
 	if scoreAddr == nil {
-		msg, _ := common.EncodeAny("Score not found by tx hash")
-		return module.StatusContractNotFound, h.stepLimit, msg, nil
+		err := scoreresult.ContractNotFoundError.New("NoSCOREForTx")
+		return err, h.stepLimit, nil, nil
 	}
 	h2a.Delete(h.txHash)
 	scoreAs := cc.GetAccountState(scoreAddr.ID())
@@ -248,17 +244,15 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 	// GET API
 	cgah := newCallGetAPIHandler(newCommonHandler(h.from, scoreAddr, nil, h.StepAvail(), h.log))
 	// It ignores stepUsed intentionally because it's not proper to charge step for GetAPI().
-	status, _, result, _ := cc.Call(cgah)
-	if status != module.StatusSuccess {
-		return status, h.StepUsed(), result, nil
+	status, _, _, _ := cc.Call(cgah)
+	if status != nil {
+		return status, h.StepUsed(), nil, nil
 	}
 	apiInfo := scoreAs.APIInfo()
 	typedObj, err := apiInfo.ConvertParamsToTypedObj(
 		methodStr, scoreAs.NextContract().Params())
 	if err != nil {
-		status, _ := scoreresult.StatusOf(err)
-		msg, _ := common.EncodeAny(err.Error())
-		return status, h.StepUsed(), msg, nil
+		return err, h.StepUsed(), nil, nil
 	}
 
 	// 2. call on_install or on_update of the contract
@@ -275,16 +269,13 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *c
 	// on_install or on_update
 	status, stepUsed2, _, _ := cc.Call(handler)
 	h.DeductSteps(stepUsed2)
-	if status != module.StatusSuccess {
+	if status != nil {
 		return status, h.StepUsed(), nil, nil
 	}
 	if err = scoreAs.AcceptContract(h.txHash, h.auditTxHash); err != nil {
-		status, _ := scoreresult.StatusOf(err)
-		msg, _ := common.EncodeAny(err.Error())
-		return status, h.StepUsed(), msg, nil
+		return err, h.StepUsed(), nil, nil
 	}
-
-	return status, h.StepUsed(), nil, nil
+	return nil, h.StepUsed(), nil, nil
 }
 
 type callGetAPIHandler struct {
@@ -350,7 +341,7 @@ func (h *callGetAPIHandler) ExecuteAsync(cc CallContext) error {
 	return err
 }
 
-func (h *callGetAPIHandler) SendResult(status module.Status, steps *big.Int, result *codec.TypedObj) error {
+func (h *callGetAPIHandler) SendResult(status error, steps *big.Int, result *codec.TypedObj) error {
 	h.log.Panicln("Unexpected SendResult() call")
 	return nil
 }
@@ -402,7 +393,7 @@ func (h *callGetAPIHandler) OnEvent(addr module.Address, indexed, data [][]byte)
 	h.log.Panicln("Unexpected OnEvent() call")
 }
 
-func (h *callGetAPIHandler) OnResult(status uint16, steps *big.Int, result *codec.TypedObj) {
+func (h *callGetAPIHandler) OnResult(status error, steps *big.Int, result *codec.TypedObj) {
 	h.log.Panicln("Unexpected call OnResult() from GetAPI()")
 }
 
@@ -410,10 +401,9 @@ func (h *callGetAPIHandler) OnCall(from, to module.Address, value, limit *big.In
 	h.log.Panicln("Unexpected call OnCall() from GetAPI()")
 }
 
-func (h *callGetAPIHandler) OnAPI(status uint16, info *scoreapi.Info) {
-	s := module.Status(status)
-	if s == module.StatusSuccess {
+func (h *callGetAPIHandler) OnAPI(status error, info *scoreapi.Info) {
+	if status == nil {
 		h.as.SetAPIInfo(info)
 	}
-	h.cc.OnResult(s, new(big.Int), nil, nil)
+	h.cc.OnResult(status, new(big.Int), nil, nil)
 }

@@ -3,9 +3,8 @@ package contract
 import (
 	"math/big"
 
+	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/txresult"
-
-	"github.com/icon-project/goloop/common"
 
 	"github.com/icon-project/goloop/common/codec"
 
@@ -20,12 +19,11 @@ func newTransferHandler(ch *CommonHandler) *TransferHandler {
 	return &TransferHandler{ch}
 }
 
-func (h *TransferHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *codec.TypedObj, module.Address) {
+func (h *TransferHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.TypedObj, module.Address) {
 	as1 := cc.GetAccountState(h.from.ID())
 	bal1 := as1.GetBalance()
 	if bal1.Cmp(h.value) < 0 {
-		msg, _ := common.EncodeAny(string(module.StatusOutOfBalance))
-		return module.StatusOutOfBalance, h.StepUsed(), msg, nil
+		return scoreresult.ErrOutOfBalance, h.StepUsed(), nil, nil
 	}
 	bal1.Sub(bal1, h.value)
 	as1.SetBalance(bal1)
@@ -44,7 +42,7 @@ func (h *TransferHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, 
 		cc.OnEvent(h.from, indexed, make([][]byte, 0))
 	}
 
-	return module.StatusSuccess, h.StepUsed(), nil, nil
+	return nil, h.StepUsed(), nil, nil
 }
 
 type TransferAndMessageHandler struct {

@@ -6,6 +6,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
+	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/transaction"
 )
 
@@ -14,26 +15,26 @@ type QueryHandler struct {
 	data []byte
 }
 
-func (qh *QueryHandler) Query(ctx contract.Context) (module.Status, interface{}) {
+func (qh *QueryHandler) Query(ctx contract.Context) (error, interface{}) {
 	// check if function is read-only
 	jso, err := transaction.ParseCallData(qh.data)
 	if err != nil {
-		return module.StatusMethodNotFound, nil
+		return scoreresult.ErrMethodNotFound, nil
 	}
 	as := ctx.GetAccountSnapshot(qh.to.ID())
 	if as == nil {
-		return module.StatusContractNotFound, nil
+		return scoreresult.ErrContractNotFound, nil
 	}
 	apiInfo := as.APIInfo()
 	if apiInfo == nil {
-		return module.StatusContractNotFound, nil
+		return scoreresult.ErrContractNotFound, nil
 	} else {
 		m := apiInfo.GetMethod(jso.Method)
 		if m == nil {
-			return module.StatusMethodNotFound, nil
+			return scoreresult.ErrMethodNotFound, nil
 		}
 		if !m.IsReadOnly() {
-			return module.StatusMethodNotFound, nil
+			return scoreresult.ErrMethodNotFound, nil
 		}
 	}
 
@@ -45,11 +46,11 @@ func (qh *QueryHandler) Query(ctx contract.Context) (module.Status, interface{})
 	// Execute
 	status, _, result, _ := cc.Call(handler)
 	cc.Dispose()
-	if status != module.StatusSuccess {
+	if status != nil {
 		return status, nil
 	}
-	value, _ := common.DecodeAny(result)
-	return status, value
+	value, err := common.DecodeAny(result)
+	return err, value
 }
 
 func NewQueryHandler(cm contract.ContractManager, to module.Address, data []byte) *QueryHandler {

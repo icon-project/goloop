@@ -147,7 +147,8 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 	// Calculate steps
 	if !h.forDeploy {
 		if !h.ApplySteps(cc, state.StepTypeContractCall, 1) {
-			h.cc.OnResult(module.StatusOutOfStep, h.StepUsed(), nil, nil)
+			status := scoreresult.OutOfStepError.New("FailToApplyContractCall")
+			h.cc.OnResult(status, h.StepUsed(), nil, nil)
 			return nil
 		}
 	}
@@ -168,7 +169,7 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 	if strings.Compare(c.ContentType(), state.CTAppSystem) == 0 {
 		h.isSysCall = true
 
-		var status module.Status
+		var status error
 		var result *codec.TypedObj
 		from := h.from
 		if from == nil {
@@ -176,7 +177,7 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 		}
 		sScore, err := GetSystemScore(CID_CHAIN, from, cc, h.log)
 		if err != nil {
-			return errors.Wrapc(err, errors.CodeOf(scoreresult.ErrSystemError), "FailToGetSystemScore")
+			return err
 		}
 		err = h.ensureParamObj()
 		if err == nil {
@@ -184,26 +185,26 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 			status, result, step = Invoke(sScore, h.method, h.paramObj)
 			h.DeductSteps(step)
 			go func() {
-				cc.OnResult(module.Status(status), h.StepUsed(), result, nil)
+				cc.OnResult(status, h.StepUsed(), result, nil)
 			}()
 		}
-		// TODO define error
 		return err
 	}
 
 	h.cm = cc.ContractManager()
 	h.conn = cc.GetProxy(h.EEType())
 	if h.conn == nil {
-		return scoreresult.Errorf(module.StatusSystemError,
-			"FAIL to get connection of ("+h.EEType()+")")
+		return errors.ExecutionFailError.Errorf(
+			"FAIL to get connection for (%s)", h.EEType())
 	}
 	if err := h.prepareContractStore(cc, cc, c); err != nil {
-		return errors.Wrapc(err, PreparingContractError, "FAIL to prepare contract")
+		h.log.Warnf("FAIL to prepare contract. err=%+v\n", err)
+		return errors.CriticalIOError.Wrap(err, "FAIL to prepare contract")
 	}
 	path, err := h.cs.WaitResult()
 	if err != nil {
 		h.log.Warnf("FAIL to prepare contract. err=%+v\n", err)
-		return errors.Wrapc(err, PreparingContractError, "FAIL to prepare contract")
+		return errors.CriticalIOError.Wrap(err, "FAIL to prepare contract")
 	}
 
 	// Execute
@@ -239,16 +240,16 @@ func (h *CallHandler) ensureParamObj() error {
 	return err
 }
 
-func (h *CallHandler) SendResult(status module.Status, steps *big.Int, result *codec.TypedObj) error {
+func (h *CallHandler) SendResult(status error, steps *big.Int, result *codec.TypedObj) error {
 	if !h.isSysCall {
 		if h.conn == nil {
-			return scoreresult.Errorf(module.StatusSystemError,
-				"Don't have a connection of ("+h.EEType()+")")
+			return errors.ExecutionFailError.Errorf(
+				"Don't have a connection for (%s)", h.EEType())
 		}
-		return h.conn.SendResult(h, uint16(status), steps, result)
+		return h.conn.SendResult(h, status, steps, result)
 	} else {
 		h.DeductSteps(steps)
-		h.cc.OnResult(module.Status(status), h.StepUsed(), result, nil)
+		h.cc.OnResult(status, h.StepUsed(), result, nil)
 		return nil
 	}
 }
@@ -276,8 +277,8 @@ func (h *CallHandler) GetValue(key []byte) ([]byte, error) {
 	if h.as != nil {
 		return h.as.GetValue(key)
 	} else {
-		return nil, scoreresult.Errorf(module.StatusSystemError,
-			"GetValue: No Account("+h.to.String()+") exists")
+		return nil, errors.CriticalUnknownError.Errorf(
+			"GetValue: No Account(%s) exists", h.to)
 	}
 }
 
@@ -285,8 +286,8 @@ func (h *CallHandler) SetValue(key, value []byte) error {
 	if h.as != nil {
 		return h.as.SetValue(key, value)
 	} else {
-		return scoreresult.Errorf(module.StatusSystemError,
-			"SetValue: No Account("+h.to.String()+") exists")
+		return errors.CriticalUnknownError.Errorf(
+			"SetValue: No Account(%s) exists", h.to)
 	}
 }
 
@@ -294,8 +295,8 @@ func (h *CallHandler) DeleteValue(key []byte) error {
 	if h.as != nil {
 		return h.as.DeleteValue(key)
 	} else {
-		return scoreresult.Errorf(module.StatusSystemError,
-			"DeleteValue: No Account("+h.to.String()+") exists")
+		return errors.CriticalUnknownError.Errorf(
+			"DeleteValue: No Account(%s) exists", h.to)
 	}
 }
 
@@ -311,9 +312,9 @@ func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) {
 	h.cc.OnEvent(addr, indexed, data)
 }
 
-func (h *CallHandler) OnResult(status uint16, steps *big.Int, result *codec.TypedObj) {
+func (h *CallHandler) OnResult(status error, steps *big.Int, result *codec.TypedObj) {
 	h.DeductSteps(steps)
-	h.cc.OnResult(module.Status(status), h.StepUsed(), result, nil)
+	h.cc.OnResult(status, h.StepUsed(), result, nil)
 }
 
 func (h *CallHandler) OnCall(from, to module.Address, value,
@@ -322,7 +323,7 @@ func (h *CallHandler) OnCall(from, to module.Address, value,
 	h.cc.OnCall(h.cm.GetCallHandler(from, to, value, limit, method, params))
 }
 
-func (h *CallHandler) OnAPI(status uint16, obj *scoreapi.Info) {
+func (h *CallHandler) OnAPI(status error, info *scoreapi.Info) {
 	h.log.Panicln("Unexpected OnAPI() call")
 }
 
@@ -357,12 +358,11 @@ func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) error {
 	}
 
 	status, stepUsed, result, addr := h.th.ExecuteSync(cc)
-	if status == module.StatusSuccess {
+	if status == nil {
 		return h.CallHandler.ExecuteAsync(cc)
 	}
-
 	go func() {
-		cc.OnResult(module.Status(status), stepUsed, result, addr)
+		cc.OnResult(status, stepUsed, result, addr)
 	}()
 	return nil
 }

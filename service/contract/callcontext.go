@@ -2,8 +2,6 @@ package contract
 
 import (
 	"container/list"
-	"github.com/icon-project/goloop/common/log"
-	"github.com/icon-project/goloop/service/scoreresult"
 	"math/big"
 	"reflect"
 	"sync"
@@ -12,8 +10,10 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
+	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
 )
@@ -22,8 +22,8 @@ type (
 	CallContext interface {
 		Context
 		QueryMode() bool
-		Call(ContractHandler) (module.Status, *big.Int, *codec.TypedObj, module.Address)
-		OnResult(status module.Status, stepUsed *big.Int, result *codec.TypedObj, addr module.Address)
+		Call(ContractHandler) (error, *big.Int, *codec.TypedObj, module.Address)
+		OnResult(status error, stepUsed *big.Int, result *codec.TypedObj, addr module.Address)
 		OnCall(ContractHandler)
 		OnEvent(addr module.Address, indexed, data [][]byte)
 		GetBalance(module.Address) *big.Int
@@ -32,7 +32,7 @@ type (
 		Dispose()
 	}
 	callResultMessage struct {
-		status   module.Status
+		status   error
 		stepUsed *big.Int
 		result   *codec.TypedObj
 		addr     module.Address
@@ -120,7 +120,7 @@ func (cc *callContext) pushFrame(h ContractHandler, byOnCall bool) *list.Element
 	return cc.stack.PushBack(frame)
 }
 
-func (cc *callContext) popFrame(e *list.Element, s module.Status) (*callFrame, *callFrame) {
+func (cc *callContext) popFrame(e *list.Element, revert bool) (*callFrame, *callFrame) {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
 
@@ -146,7 +146,7 @@ func (cc *callContext) popFrame(e *list.Element, s module.Status) (*callFrame, *
 		return frame, nil
 	}
 
-	if s == module.StatusSuccess {
+	if !revert {
 		if last != nil {
 			lastFrame := last.Value.(*callFrame)
 			frame.ReturnToFrame(lastFrame)
@@ -197,33 +197,31 @@ func (cc *callContext) addLogToFrame(address module.Address, indexed [][]byte, d
 	return nil
 }
 
-func (cc *callContext) Call(handler ContractHandler) (module.Status, *big.Int, *codec.TypedObj, module.Address) {
+func (cc *callContext) Call(handler ContractHandler) (error, *big.Int, *codec.TypedObj, module.Address) {
 	switch handler := handler.(type) {
 	case SyncContractHandler:
 		e := cc.pushFrame(handler, false)
 
 		status, stepUsed, result, scoreAddr := handler.ExecuteSync(cc)
 
-		cc.popFrame(e, status)
+		cc.popFrame(e, status != nil)
 		return status, stepUsed, result, scoreAddr
 	case AsyncContractHandler:
 		e := cc.pushFrame(handler, false)
 
 		if err := handler.ExecuteAsync(cc); err != nil {
-			status, _ := scoreresult.StatusOf(err)
-			result := common.MustEncodeAny(err.Error())
-			cc.popFrame(e, status)
+			cc.popFrame(e, true)
 			handler.Dispose()
-			return status, handler.StepLimit(), result, nil
+			return err, handler.StepLimit(), nil, nil
 		}
 		return cc.waitResult(handler.StepLimit())
 	default:
 		cc.log.Panicln("Unknown handler type:", reflect.TypeOf(handler))
-		return module.StatusSystemError, handler.StepLimit(), nil, nil
+		return nil, nil, nil, nil
 	}
 }
 
-func (cc *callContext) waitResult(stepLimit *big.Int) (module.Status, *big.Int, *codec.TypedObj, module.Address) {
+func (cc *callContext) waitResult(stepLimit *big.Int) (error, *big.Int, *codec.TypedObj, module.Address) {
 	// It checks transaction timeout after the first call to EE
 	if cc.timer == nil {
 		cc.timer = time.After(transactionTimeLimit)
@@ -232,16 +230,16 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (module.Status, *big.Int, 
 	for {
 		select {
 		case <-cc.timer:
-			cc.handleTimeout()
-			return module.StatusTimeout, stepLimit, nil, nil
+			cc.cleanUpFrames(scoreresult.ErrTimeout)
+			return scoreresult.ErrTimeout, stepLimit, nil, nil
 		case msg := <-cc.waiter:
 			switch msg := msg.(type) {
 			case *callResultMessage:
-				if cc.handleResult(module.Status(msg.status), msg.stepUsed,
+				if cc.handleResult(msg.status, msg.stepUsed,
 					msg.result, msg.addr) {
 					continue
 				}
-				return msg.status, msg.stepUsed, msg.result, nil
+				return msg.status, msg.stepUsed, msg.result, msg.addr
 			case *callRequestMessage:
 				switch handler := msg.handler.(type) {
 				case SyncContractHandler:
@@ -254,13 +252,10 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (module.Status, *big.Int, 
 				case AsyncContractHandler:
 					cc.pushFrame(handler, true)
 					if err := handler.ExecuteAsync(cc); err != nil {
-						errStatus, ok := scoreresult.StatusOf(err)
-						cc.log.Debugf("scoreresult error(%t) error(%v)\n", ok, errStatus)
-						if cc.handleResult(errStatus,
-							handler.StepLimit(), nil, nil) {
+						if cc.handleResult(err, handler.StepLimit(), nil, nil) {
 							continue
 						}
-						return errStatus, handler.StepLimit(), nil, nil
+						return err, handler.StepLimit(), nil, nil
 					} else {
 						continue
 					}
@@ -272,8 +267,9 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (module.Status, *big.Int, 
 	}
 }
 
-func (cc *callContext) handleTimeout() {
-	cc.lock.Lock()
+func (cc *callContext) cleanUpFrames(err error) {
+	cc.log.Warnf("cleanUpFrames() TX=<%#x> err=%+v", cc.GetInfo()[state.InfoTxHash], err)
+	l := common.Lock(&cc.lock)
 	var frame *callFrame
 	achs := make([]AsyncContractHandler, 0, cc.stack.Len())
 	for e := cc.stack.Back(); e != nil; e = cc.stack.Back() {
@@ -283,7 +279,7 @@ func (cc *callContext) handleTimeout() {
 		}
 		cc.stack.Remove(e)
 	}
-	cc.lock.Unlock()
+	l.Unlock()
 
 	if frame != nil {
 		cc.Reset(frame.snapshot)
@@ -292,19 +288,20 @@ func (cc *callContext) handleTimeout() {
 		h.Dispose()
 	}
 
-	cc.executor.Kill()
-	cc.executor = nil
+	if cc.executor != nil {
+		cc.executor.Kill()
+		cc.executor = nil
+	}
 }
 
-func (cc *callContext) handleResult(status module.Status,
-	stepUsed *big.Int, result *codec.TypedObj, addr module.Address,
-) bool {
-	if status == module.StatusTimeout {
-		cc.handleTimeout()
+func (cc *callContext) handleResult(status error, stepUsed *big.Int, result *codec.TypedObj, addr module.Address) bool {
+	if code := errors.CodeOf(status); code == scoreresult.TimeoutError ||
+		code == errors.ExecutionFailError || errors.IsCriticalCode(code) {
+		cc.cleanUpFrames(status)
 		return false
 	}
 
-	currentFrame, lastFrame := cc.popFrame(nil, status)
+	currentFrame, lastFrame := cc.popFrame(nil, status != nil)
 	if currentFrame == nil {
 		cc.log.Error("Fail to pop frame")
 	}
@@ -320,9 +317,7 @@ func (cc *callContext) handleResult(status module.Status,
 		// SyncContractHandler can't be queued by OnCall(), so don't consider it.
 		h := lastFrame.handler.(AsyncContractHandler)
 		if err := h.SendResult(status, stepUsed, result); err != nil {
-			cc.log.Debugf("FAIL to SendResult(): err=%+v\n", err)
-			result = common.MustEncodeAny(err.Error())
-			cc.OnResult(module.StatusSystemFailure, h.StepUsed(), result, nil)
+			cc.OnResult(err, h.StepUsed(), nil, nil)
 		}
 		return true
 	} else {
@@ -330,9 +325,7 @@ func (cc *callContext) handleResult(status module.Status,
 	}
 }
 
-func (cc *callContext) OnResult(status module.Status, stepUsed *big.Int,
-	result *codec.TypedObj, addr module.Address,
-) {
+func (cc *callContext) OnResult(status error, stepUsed *big.Int, result *codec.TypedObj, addr module.Address) {
 	cc.sendMessage(&callResultMessage{
 		status:   status,
 		stepUsed: stepUsed,
@@ -345,12 +338,12 @@ func (cc *callContext) OnCall(handler ContractHandler) {
 	cc.sendMessage(&callRequestMessage{handler})
 }
 
-func (cc *callContext) sendMessage(msg interface{}) {
-	if cc.isInAsyncFrame() {
-		cc.waiter <- msg
-	} else {
-		cc.log.Panicln("We are not in AsyncContractHandler frame")
+func (cc *callContext) sendMessage(msg interface{}) error {
+	if !cc.isInAsyncFrame() {
+		return nil
 	}
+	cc.waiter <- msg
+	return nil
 }
 
 func (cc *callContext) OnEvent(addr module.Address, indexed, data [][]byte) {
@@ -376,6 +369,13 @@ func (cc *callContext) ReserveExecutor() error {
 		cc.executor = cc.EEManager().GetExecutor(priority)
 	}
 	return nil
+}
+
+func (cc *callContext) KillExecutor() {
+	if cc.executor != nil {
+		cc.executor.Kill()
+		cc.executor = nil
+	}
 }
 
 func (cc *callContext) GetProxy(eeType string) eeproxy.Proxy {

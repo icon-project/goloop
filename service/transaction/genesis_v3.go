@@ -212,11 +212,10 @@ func (g *genesisV3) deployPreInstall(ctx contract.Context, receipt txresult.Rece
 			data, _ := hex.DecodeString(score.Content)
 			handler := contract.NewDeployHandlerForPreInstall(score.Owner,
 				&acc.Address, score.ContentType, data, score.Params, ctx.Logger())
-			status, _, result, _ := cc.Call(handler)
-			if status != module.StatusSuccess {
-				reason := common.DecodeAsString(result, "")
-				return InvalidGenesisError.Errorf("FAIL to install pre-installed score."+
-					"status=%d, msg=%q, addr=%s", status, reason, acc.Address)
+			status, _, _, _ := cc.Call(handler)
+			if status != nil {
+				return InvalidGenesisError.Wrapf(status,
+					"FAIL to install pre-installed score addr=%s", acc.Address)
 			}
 			cc.Dispose()
 		} else if score.ContentID != "" {
@@ -229,16 +228,15 @@ func (g *genesisV3) deployPreInstall(ctx contract.Context, receipt txresult.Rece
 				}
 				handler := contract.NewDeployHandlerForPreInstall(score.Owner,
 					&acc.Address, score.ContentType, content, score.Params, ctx.Logger())
-				status, _, result, _ := cc.Call(handler)
-				if status != module.StatusSuccess {
-					reason := common.DecodeAsString(result, "")
-					return InvalidGenesisError.Errorf("FAIL to install pre-installed score."+
-						"status=%d, msg=%q, addr=%s", status, reason, acc.Address)
+				status, _, _, _ := cc.Call(handler)
+				if status != nil {
+					return InvalidGenesisError.Wrapf(status,
+						"FAIL to install pre-installed score. addr=%s", acc.Address)
 				}
 				cc.Dispose()
 			} else if strings.HasPrefix(score.ContentID, contentIdCid) == true {
 				// TODO implement for contentCid
-				return errors.UnsupportedError.New("CID prefix is't Unsupported")
+				return InvalidGenesisError.New("CID prefix is't Unsupported")
 			} else {
 				return InvalidGenesisError.Errorf("SCORE<%s> Invalid contentId=%q", &acc.Address, score.ContentID)
 			}

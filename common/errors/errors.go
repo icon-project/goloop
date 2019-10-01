@@ -9,17 +9,21 @@ import (
 
 type Code int
 
+const CodeSegment = 1000
+
 const (
-	CodeGeneral Code = iota * 1000
-	CodeSCORE
+	CodeSCORE Code = iota * CodeSegment
+	CodeGeneral
 	CodeService
 	CodeConsensus
 	CodeNetwork
 	CodeBlock
 	CodeServer
+	CodeCritical
 )
 
 const (
+	Success      Code = 0
 	UnknownError Code = CodeGeneral + iota
 	IllegalArgumentError
 	UnsupportedError
@@ -27,6 +31,7 @@ const (
 	NotFoundError
 	InvalidNetworkError
 	TimeoutError
+	ExecutionFailError
 )
 
 var (
@@ -37,7 +42,21 @@ var (
 	ErrNotFound        = NewBase(NotFoundError, "NotFound")
 	ErrInvalidNetwork  = NewBase(InvalidNetworkError, "InvalidNetwork")
 	ErrTimeout         = NewBase(TimeoutError, "Timeout")
+	ErrExecutionFail   = NewBase(ExecutionFailError, "ExecutionFail")
 )
+
+const (
+	CriticalUnknownError = CodeCritical + iota
+	CriticalIOError
+)
+
+func IsCriticalCode(c Code) bool {
+	return c >= CodeCritical && c < CodeCritical+CodeSegment
+}
+
+func IsCritical(e error) bool {
+	return IsCriticalCode(CodeOf(e))
+}
 
 func (c Code) New(msg string) error {
 	return Errorc(c, msg)
@@ -53,6 +72,10 @@ func (c Code) Wrap(e error, msg string) error {
 
 func (c Code) Wrapf(e error, f string, args ...interface{}) error {
 	return Wrapcf(e, c, f, args...)
+}
+
+func (c Code) AttachTo(e error) error {
+	return WithCode(e, c)
 }
 
 func (c Code) Equals(e error) bool {
@@ -107,9 +130,6 @@ func (e *baseError) Format(f fmt.State, c rune) {
 }
 
 func (e *baseError) Equals(err error) bool {
-	if err == nil {
-		return false
-	}
 	return CodeOf(err) == e.code
 }
 
@@ -269,6 +289,9 @@ func CoderOf(e error) (ErrorCoder, bool) {
 }
 
 func CodeOf(e error) Code {
+	if e == nil {
+		return Success
+	}
 	if coder, ok := CoderOf(e); ok {
 		return coder.ErrorCode()
 	}

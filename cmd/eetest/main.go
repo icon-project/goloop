@@ -71,7 +71,7 @@ func (cc *callContext) OnEvent(score module.Address, indexed, data [][]byte) {
 	fmt.Printf("CallContext.OnEvent(%s,%+v,%+v)\n", score, indexed, data)
 }
 
-func (cc *callContext) OnResult(status uint16, steps *big.Int, result *codec.TypedObj) {
+func (cc *callContext) OnResult(status error, steps *big.Int, result *codec.TypedObj) {
 	fmt.Printf("CallContext.OnResult(%d,%s,[%+v])\n",
 		status, steps.String(), common.MustDecodeAny(result))
 }
@@ -81,8 +81,8 @@ func (cc *callContext) OnCall(from, to module.Address, value, limit *big.Int, me
 		from, to, value, limit, method, params)
 }
 
-func (cc *callContext) OnAPI(status uint16, obj *scoreapi.Info) {
-	fmt.Printf("CallContext.OnAPI(%d,%+v)\n", status, obj)
+func (cc *callContext) OnAPI(status error, info *scoreapi.Info) {
+	fmt.Printf("CallContext.OnAPI(%d,%+v)\n", status, info)
 }
 
 func makeTransactions(cc *callContext, mgr eeproxy.Manager) {

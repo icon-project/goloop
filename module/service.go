@@ -73,7 +73,7 @@ type Status int
 
 const (
 	StatusSuccess Status = iota
-	StatusSystemError
+	StatusUnknownFailure
 	StatusContractNotFound
 	StatusMethodNotFound
 	StatusMethodNotPayable
@@ -87,7 +87,7 @@ const (
 	StatusTimeout
 	StatusStackOverflow
 	StatusSkipTransaction
-	StatusUser = 32
+	StatusReverted Status = 32
 )
 
 const (
@@ -109,8 +109,8 @@ func (s Status) String() string {
 	switch s {
 	case StatusSuccess:
 		return "Success"
-	case StatusSystemError:
-		return "SystemError"
+	case StatusUnknownFailure:
+		return "UnknownFailure"
 	case StatusContractNotFound:
 		return "ContractNotFound"
 	case StatusMethodNotFound:
@@ -136,8 +136,8 @@ func (s Status) String() string {
 	case StatusSkipTransaction:
 		return "SkipTransaction"
 	default:
-		if int(s) >= StatusUser {
-			return fmt.Sprintf("User(%d)", s-StatusUser)
+		if s >= StatusReverted {
+			return fmt.Sprintf("Reverted(%d)", s-StatusReverted)
 		} else {
 			return fmt.Sprintf("Unknown(code=%d)", s)
 		}

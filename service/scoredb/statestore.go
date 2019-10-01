@@ -62,3 +62,7 @@ func NewStateStoreWith(s ReadOnlyStore) StateStore {
 	}
 	return &readonlyStateStore{s}
 }
+
+func must(e error) error {
+	return errors.WithCode(e, errors.CriticalIOError)
+}

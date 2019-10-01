@@ -3,6 +3,7 @@ package service
 import (
 	"sync"
 
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
@@ -71,34 +72,52 @@ func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, c
 			return err
 		}
 		wc, err2 := txh.Prepare(ctx)
+		ctx = contract.NewContext(wc, t.cm, t.eem, t.chain, t.log)
 		if err2 != nil {
 			t.log.Debugf("Fail to prepare for %+v", err2)
 			return err2
 		}
-		ctx = contract.NewContext(wc, t.cm, t.eem, t.chain, t.log)
-		ctx.SetTransactionInfo(&state.TransactionInfo{
-			Index:     int32(cnt),
-			Timestamp: txo.Timestamp(),
-			Nonce:     txo.Nonce(),
-			Hash:      txo.ID(),
-			From:      txo.From(),
-		})
-		ctx.UpdateSystemInfo()
-		ctx.ClearCache()
 
 		ec.Ready()
-		go func(ctx contract.Context, rb *txresult.Receipt) {
+		go func(ctx contract.Context, wc state.WorldContext, txo transaction.Transaction, cnt int, rb *txresult.Receipt) {
+			ctx.SetTransactionInfo(&state.TransactionInfo{
+				Index:     int32(cnt),
+				Timestamp: txo.Timestamp(),
+				Nonce:     txo.Nonce(),
+				Hash:      txo.ID(),
+				From:      txo.From(),
+			})
+			ctx.UpdateSystemInfo()
+			ctx.ClearCache()
 			wvs := ctx.WorldVirtualState()
-			if rct, err := txh.Execute(ctx); err != nil {
-				t.log.Debugf("Fail to execute transaction err=%+v", err)
-				ec.Report(err)
-			} else {
-				*rb = rct
+			for trials := RetryCount + 1; trials > 0; trials -= 1 {
+				rct, err := txh.Execute(ctx)
+				txh.Dispose()
+
+				if err == nil {
+					*rb = rct
+					break
+				}
+
+				if !errors.ExecutionFailError.Equals(err) || trials <= 1 {
+					t.log.Debugf("Fail to execute transaction err=%+v", err)
+					ec.Report(err)
+					break
+				}
+
+				t.log.Warnf("RETRY TX <%#x> for err=%+v", txo.ID(), err)
+
+				txh, err = txo.GetHandler(t.cm)
+				if err != nil {
+					t.log.Debugf("Fail to get handler err=%+v", err)
+					ec.Report(err)
+					break
+				}
+				ctx = contract.NewContext(wc, t.cm, t.eem, t.chain, t.log)
 			}
-			txh.Dispose()
 			wvs.Commit()
 			ec.Done()
-		}(ctx, &rctBuf[cnt])
+		}(ctx, wc, txo, cnt, &rctBuf[cnt])
 
 		cnt++
 	}

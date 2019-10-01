@@ -4,9 +4,9 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/icon-project/goloop/common/log"
-
 	"github.com/gofrs/uuid"
+
+	"github.com/icon-project/goloop/common/log"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -33,6 +33,16 @@ const (
 	msgCLOSE      = 11
 )
 
+type proxyState int
+
+const (
+	stateIdle proxyState = iota
+	stateReady
+	stateReserved
+	stateStopped
+	stateClosed
+)
+
 const (
 	ModuleName = "eeproxy"
 )
@@ -44,14 +54,14 @@ type CallContext interface {
 	GetInfo() *codec.TypedObj
 	GetBalance(addr module.Address) *big.Int
 	OnEvent(addr module.Address, indexed, data [][]byte)
-	OnResult(status uint16, steps *big.Int, result *codec.TypedObj)
+	OnResult(status error, steps *big.Int, result *codec.TypedObj)
 	OnCall(from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj)
-	OnAPI(status uint16, obj *scoreapi.Info)
+	OnAPI(status error, info *scoreapi.Info)
 }
 
 type Proxy interface {
 	Invoke(ctx CallContext, code string, isQuery bool, from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj) error
-	SendResult(ctx CallContext, status uint16, steps *big.Int, result *codec.TypedObj) error
+	SendResult(ctx CallContext, status error, steps *big.Int, result *codec.TypedObj) error
 	GetAPI(ctx CallContext, code string) error
 	Release()
 	Kill() error
@@ -70,9 +80,9 @@ type callFrame struct {
 }
 
 type proxy struct {
-	lock     sync.Mutex
-	reserved bool
-	mgr      proxyManager
+	lock  sync.Mutex
+	state proxyState
+	mgr   proxyManager
 
 	conn ipc.Connection
 
@@ -130,7 +140,7 @@ type eventMessage struct {
 }
 
 type getAPIMessage struct {
-	Status uint16
+	Status errors.Code
 	Info   *scoreapi.Info
 }
 
@@ -176,7 +186,7 @@ func (p *proxy) GetAPI(ctx CallContext, code string) error {
 }
 
 type resultMessage struct {
-	Status   uint16
+	Status   errors.Code
 	StepUsed common.HexInt
 	Result   *codec.TypedObj
 }
@@ -185,39 +195,41 @@ func (p *proxy) reserve() bool {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	if p.reserved {
-		return false
+	if p.state == stateReady {
+		p.state = stateReserved
+		return true
 	}
-	p.reserved = true
-	return true
+	return false
 }
 
 func (p *proxy) Release() {
-	p.lock.Lock()
-	if !p.reserved {
-		p.lock.Unlock()
+	l := common.LockForAutoCall(&p.lock)
+	defer l.Unlock()
+	if p.state != stateReserved {
 		return
 	}
-	p.reserved = false
-	if p.frame == nil {
-		p.lock.Unlock()
-		if err := p.mgr.onReady(p.scoreType, p); err != nil {
-			p.close()
-		}
-		return
+	p.state = stateIdle
+	if p.tryToBeReadyInLock() {
+		l.CallAfterUnlock(func() {
+			p.mgr.onReady(p.scoreType, p)
+		})
 	}
-	p.lock.Unlock()
 }
 
-func (p *proxy) SendResult(ctx CallContext, status uint16, steps *big.Int, result *codec.TypedObj) error {
-	p.log.Tracef("Proxy[%p].SendResult status=%s steps=%v", p, module.Status(status), steps)
+func (p *proxy) SendResult(ctx CallContext, status error, steps *big.Int, result *codec.TypedObj) error {
+	p.log.Tracef("Proxy[%p].SendResult status=%v steps=%v", p, status, steps)
 	var m resultMessage
-	m.Status = status
 	m.StepUsed.Set(steps)
-	if result == nil {
-		result = codec.Nil
+	if status == nil {
+		m.Status = errors.Success
+		if result == nil {
+			result = codec.Nil
+		}
+		m.Result = result
+	} else {
+		m.Status = errors.CodeOf(status)
+		m.Result = common.MustEncodeAny(status.Error())
 	}
-	m.Result = result
 	return p.conn.Send(msgRESULT, &m)
 }
 
@@ -225,21 +237,33 @@ func (p *proxy) popFrame() *callFrame {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	frame := p.frame
-	p.frame = frame.prev
-
-	return frame
+	if p.frame != nil {
+		frame := p.frame
+		p.frame = frame.prev
+		return frame
+	}
+	return nil
 }
 
 func (p *proxy) tryToBeReady() error {
-	p.lock.Lock()
-	if p.frame == nil && !p.reserved {
-		p.lock.Unlock()
-		return p.mgr.onReady(p.scoreType, p)
-	} else {
-		p.lock.Unlock()
+	l := common.LockForAutoCall(&p.lock)
+	defer l.Unlock()
+	if p.state >= stateStopped {
+		return common.ErrInvalidState
+	}
+	if p.tryToBeReadyInLock() {
+		l.CallAfterUnlock(func() {
+			p.mgr.onReady(p.scoreType, p)
+		})
 	}
 	return nil
+}
+
+func (p *proxy) tryToBeReadyInLock() bool {
+	if p.frame == nil && p.state == stateIdle {
+		p.state = stateReady
+	}
+	return p.state == stateReady
 }
 
 func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
@@ -252,8 +276,21 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		p.log.Tracef("Proxy[%p].OnResult status=%s steps=%v", p, module.Status(m.Status), &m.StepUsed.Int)
 
 		frame := p.popFrame()
+		if frame == nil {
+			return errors.InvalidStateError.New("Empty frame")
+		}
 
-		frame.ctx.OnResult(m.Status, &m.StepUsed.Int, m.Result)
+		var status error
+		var result *codec.TypedObj
+		if m.Status == errors.Success {
+			status = nil
+			result = m.Result
+		} else {
+			msg := common.DecodeAsString(m.Result, "")
+			status = m.Status.New(msg)
+			result = nil
+		}
+		frame.ctx.OnResult(status, &m.StepUsed.Int, result)
 
 		return p.tryToBeReady()
 	case msgGETVALUE:
@@ -340,7 +377,15 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 			p, module.Status(m.Status), m.Info)
 
 		frame := p.popFrame()
-		frame.ctx.OnAPI(m.Status, m.Info)
+		if frame == nil {
+			return errors.InvalidStateError.New("Empty frame")
+		}
+
+		var status error
+		if m.Status != errors.Success {
+			status = m.Status.New("")
+		}
+		frame.ctx.OnAPI(status, m.Info)
 		return p.tryToBeReady()
 
 	case msgLOG:
@@ -360,20 +405,47 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		}
 		return nil
 	default:
-		p.log.Warnf("UnknownMessage(%d)", msg)
+		p.log.Warnf("Proxy[%p].HandleMessage(msg=%d) UnknownMessage", msg)
 		return errors.ErrIllegalArgument
 	}
 }
 
+func (p *proxy) setState(s proxyState) {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+	p.state = s
+}
+
 func (p *proxy) close() error {
-	p.conn.Send(msgCLOSE, nil)
-	return p.conn.Close()
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	if p.state != stateClosed {
+		p.state = stateClosed
+		p.conn.Send(msgCLOSE, nil)
+		return p.conn.Close()
+	}
+	return nil
+}
+
+func (p *proxy) OnClose() {
+	l := common.LockForAutoCall(&p.lock)
+	defer l.Unlock()
+
+	if p.frame != nil && p.state == stateReserved {
+		frame := p.frame
+		status := errors.ExecutionFailError.New("ProxyIsClosed")
+		l.CallAfterUnlock(func() {
+			frame.ctx.OnResult(status, new(big.Int), nil)
+		})
+	}
 }
 
 func (p *proxy) Kill() error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
+	p.log.Warnf("Proxy[%p].Kill() type=%s uid=%s", p, p.scoreType, p.uid)
 	return p.mgr.kill(p.uid)
 }
 
@@ -408,6 +480,7 @@ func newProxy(m proxyManager, c ipc.Connection, l log.Logger, t string, v uint16
 		scoreType: t,
 		version:   v,
 		uid:       uid,
+		state:     stateIdle,
 	}
 	c.SetHandler(msgRESULT, p)
 	c.SetHandler(msgGETVALUE, p)
@@ -419,12 +492,14 @@ func newProxy(m proxyManager, c ipc.Connection, l log.Logger, t string, v uint16
 	c.SetHandler(msgGETAPI, p)
 	c.SetHandler(msgLOG, p)
 
-	if err := m.onReady(t, p); err != nil {
-		return nil, err
-	}
 	p.log = p.log.WithFields(log.Fields{
 		log.FieldKeyEID: p.uid,
 	})
+	if err := m.onReady(t, p); err != nil {
+		p.state = stateStopped
+		return nil, err
+	}
+	p.state = stateReady
 	return p, nil
 }
 

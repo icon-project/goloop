@@ -24,6 +24,10 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
+const (
+	RetryCount = 2
+)
+
 type transitionStep int
 
 const (

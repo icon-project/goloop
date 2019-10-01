@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/state"
@@ -20,30 +21,35 @@ func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract
 			return err
 		}
 		txo := txi.(transaction.Transaction)
-		txh, err := txo.GetHandler(t.cm)
-		if err != nil {
-			t.log.Errorf("Fail to GetHandler err=%+v", err)
-			return err
-		}
-		ctx.SetTransactionInfo(&state.TransactionInfo{
-			Index:     int32(cnt),
-			Timestamp: txo.Timestamp(),
-			Nonce:     txo.Nonce(),
-			Hash:      txo.ID(),
-			From:      txo.From(),
-		})
 		t.log.Tracef("START TX <0x%x>", txo.ID())
-		ctx.UpdateSystemInfo()
-		ctx.ClearCache()
-		if rct, err := txh.Execute(ctx); err != nil {
+		for trial := RetryCount + 1; trial > 0; trial-- {
+			txh, err := txo.GetHandler(t.cm)
+			if err != nil {
+				t.log.Errorf("Fail to GetHandler err=%+v", err)
+				return err
+			}
+			ctx.SetTransactionInfo(&state.TransactionInfo{
+				Index:     int32(cnt),
+				Timestamp: txo.Timestamp(),
+				Nonce:     txo.Nonce(),
+				Hash:      txo.ID(),
+				From:      txo.From(),
+			})
+			ctx.UpdateSystemInfo()
+			ctx.ClearCache()
+			rct, err := txh.Execute(ctx)
 			txh.Dispose()
-			t.log.Debugf("Fail to execute transaction err=%+v\n", err)
-			return err
-		} else {
-			rctBuf[cnt] = rct
+			if err == nil {
+				rctBuf[cnt] = rct
+				break
+			}
+			if !errors.ExecutionFailError.Equals(err) {
+				t.log.Debugf("Fail to execute transaction err=%+v\n", err)
+				return err
+			}
+			t.log.Infof("RETRY TX <%#x> for err=%+v", txo.ID(), err)
 		}
 		t.log.Tracef("END   TX <0x%x>", txo.ID())
-		txh.Dispose()
 		cnt++
 	}
 	return nil

@@ -139,7 +139,8 @@ func (e *pythonExecutionEngine) run(is *pythonInstance) {
 			e.lock.Unlock()
 			return
 		}
-		e.logger.Warnf("It's abnormally terminated err=%+v", err)
+		e.logger.Warnf("Instance uid=%s is killed err=%+v",
+			is.uid, err)
 		e.term(is)
 
 		e.init(is)

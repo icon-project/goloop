@@ -11,7 +11,7 @@ func codeForStatus(s module.Status) errors.Code {
 
 func statusForCode(c errors.Code) (module.Status, bool) {
 	if c <= errors.CodeSCORE || c >= (errors.CodeSCORE+1000) {
-		return module.StatusSystemError, false
+		return module.StatusUnknownFailure, false
 	} else {
 		return module.Status(c - errors.CodeSCORE), true
 	}
@@ -29,6 +29,14 @@ func Errorf(s module.Status, format string, args ...interface{}) error {
 	return errors.Errorcf(codeForStatus(s), format, args...)
 }
 
+func Wrapf(e error, s module.Status, format string, args ...interface{}) error {
+	return errors.Wrapcf(e, codeForStatus(s), format, args...)
+}
+
+func Wrap(e error, s module.Status, msg string) error {
+	return errors.Wrapc(e, codeForStatus(s), msg)
+}
+
 func StatusOf(e error) (module.Status, bool) {
 	if e == nil {
 		return module.StatusSuccess, true
@@ -40,19 +48,39 @@ func WithStatus(e error, s module.Status) error {
 	return errors.WithCode(e, codeForStatus(s))
 }
 
+const (
+	Success = errors.CodeSCORE + errors.Code(module.StatusSuccess) + iota
+	UnknownFailureError
+	ContractNotFoundError
+	MethodNotFoundError
+	MethodNotPayableError
+	IllegalFormatError
+	InvalidParameterError
+	InvalidInstanceError
+	InvalidContainerAccessError
+	AccessDeniedError
+	OutOfStepError
+	OutOfBalanceError
+	TimeoutError
+	StackOverflowError
+	SkipTransactionError
+	RevertedError = errors.CodeSCORE + errors.Code(module.StatusReverted)
+)
+
 var (
-	ErrSystemError            = NewBase(module.StatusSystemError, "StatusSystemError")
-	ErrContractNotFound       = NewBase(module.StatusContractNotFound, "StatusContractNotFound")
-	ErrMethodNotFound         = NewBase(module.StatusMethodNotFound, "StatusMethodNotFound")
-	ErrMethodNotPayable       = NewBase(module.StatusMethodNotPayable, "StatusMethodNotPayable")
-	ErrIllegalFormat          = NewBase(module.StatusIllegalFormat, "StatusIllegalFormat")
-	ErrInvalidParameter       = NewBase(module.StatusInvalidParameter, "StatusInvalidParameter")
-	ErrInvalidInstance        = NewBase(module.StatusInvalidInstance, "StatusInvalidInstance")
-	ErrInvalidContainerAccess = NewBase(module.StatusInvalidContainerAccess, "StatusInvalidContainerAccess")
-	ErrAccessDenied           = NewBase(module.StatusAccessDenied, "StatusAccessDenied")
-	ErrOutOfStep              = NewBase(module.StatusOutOfStep, "StatusOutOfStep")
-	ErrOutOfBalance           = NewBase(module.StatusOutOfBalance, "StatusOutOfBalance")
-	ErrTimeout                = NewBase(module.StatusTimeout, "StatusTimeout")
-	ErrStackOverflow          = NewBase(module.StatusStackOverflow, "StatusStackOverflow")
-	ErrUser                   = NewBase(module.StatusUser, "StatusUser")
+	ErrUnknownFailure         = errors.NewBase(UnknownFailureError, "UnknownFailure")
+	ErrContractNotFound       = errors.NewBase(ContractNotFoundError, "ContractNotFound")
+	ErrMethodNotFound         = errors.NewBase(MethodNotFoundError, "MethodNotFound")
+	ErrMethodNotPayable       = errors.NewBase(MethodNotPayableError, "MethodNotPayable")
+	ErrIllegalFormat          = errors.NewBase(IllegalFormatError, "IllegalFormat")
+	ErrInvalidParameter       = errors.NewBase(InvalidParameterError, "InvalidParameter")
+	ErrInvalidInstance        = errors.NewBase(InvalidInstanceError, "InvalidInstance")
+	ErrInvalidContainerAccess = errors.NewBase(InvalidContainerAccessError, "InvalidContainerAccess")
+	ErrAccessDenied           = errors.NewBase(AccessDeniedError, "AccessDenied")
+	ErrOutOfStep              = errors.NewBase(OutOfStepError, "OutOfStep")
+	ErrOutOfBalance           = errors.NewBase(OutOfBalanceError, "OutOfBalance")
+	ErrTimeout                = errors.NewBase(TimeoutError, "Timeout")
+	ErrStackOverflow          = errors.NewBase(StackOverflowError, "StackOverflow")
+	ErrSkipTransaction        = errors.NewBase(SkipTransactionError, "SkipTransaction")
+	ErrReverted               = errors.NewBase(RevertedError, "Reverted")
 )

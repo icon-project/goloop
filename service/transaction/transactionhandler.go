@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/service/contract"
+	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/txresult"
 
@@ -104,28 +105,32 @@ func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, e
 	}
 
 	// Calculate common steps
-	var status module.Status
+	var status error
 	var addr module.Address
-	status = module.StatusSuccess
 
 	if !th.chandler.ApplySteps(ctx, state.StepTypeDefault, 1) {
-		status = module.StatusOutOfStep
+		status = scoreresult.ErrOutOfStep
 	} else {
 		cnt, err := measureBytesOfData(ctx.Revision(), th.data)
 		if err != nil {
-			status = module.StatusSystemError
+			return nil, err
 		} else {
 			if !th.chandler.ApplySteps(ctx, state.StepTypeInput, cnt) {
-				status = module.StatusOutOfStep
+				status = scoreresult.ErrOutOfStep
 			}
 
 			// Execute
-			if status == module.StatusSuccess {
+			if status == nil {
 				status, _, _, addr = th.cc.Call(th.chandler)
 
 				// If it's not successful, roll back the state.
-				if status != module.StatusSuccess {
+				if status != nil {
 					ctx.Reset(wcs)
+				}
+
+				// If it fails for system failure, then it needs to re-run this.
+				if code := errors.CodeOf(status); code == errors.ExecutionFailError || errors.IsCriticalCode(code) {
+					return nil, status
 				}
 			}
 		}
@@ -138,9 +143,9 @@ func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, e
 	as := ctx.GetAccountState(th.from.ID())
 	bal := as.GetBalance()
 	for bal.Cmp(fee) < 0 {
-		if status == module.StatusSuccess {
+		if status == nil {
 			// rollback all changes
-			status = module.StatusOutOfBalance
+			status = scoreresult.ErrOutOfBalance
 			ctx.Reset(wcs)
 			bal = as.GetBalance()
 
@@ -154,7 +159,8 @@ func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, e
 	as.SetBalance(bal)
 
 	// Make a receipt
-	th.receipt.SetResult(status, th.chandler.StepUsed(), stepPrice, addr)
+	s, _ := scoreresult.StatusOf(status)
+	th.receipt.SetResult(s, th.chandler.StepUsed(), stepPrice, addr)
 
 	return th.receipt, nil
 }

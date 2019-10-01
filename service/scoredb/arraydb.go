@@ -2,8 +2,8 @@ package scoredb
 
 import (
 	"github.com/icon-project/goloop/common/crypto"
-	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/service/scoreresult"
 )
 
 type ArrayDB struct {
@@ -43,14 +43,14 @@ func (a *ArrayDB) Get(i int) Value {
 
 func (a *ArrayDB) Set(i int, v interface{}) error {
 	if i < 0 || i >= a.Size() {
-		return errors.ErrIllegalArgument
+		return scoreresult.ErrInvalidContainerAccess
 	}
-	return a.store.SetValue(a.keyHashForIndex(i), ToBytes(v))
+	return must(a.store.SetValue(a.keyHashForIndex(i), ToBytes(v)))
 }
 
 func (a *ArrayDB) Put(v interface{}) error {
 	idx := a.Size()
-	if err := a.store.SetValue(a.keyHashForIndex(idx), ToBytes(v)); err != nil {
+	if err := must(a.store.SetValue(a.keyHashForIndex(idx), ToBytes(v))); err != nil {
 		return err
 	}
 	return a.size.Set(idx + 1)

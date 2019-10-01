@@ -188,15 +188,15 @@ func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []
 		}
 	}
 	if i == tryTmpNum {
-		return "", scoreresult.Errorf(module.StatusSystemError, "Fail to create temporary directory")
+		return "", errors.CriticalIOError.Errorf("Fail to create temporary directory")
 	}
 	if err := os.MkdirAll(tmpPath, 0755); err != nil {
-		return "", scoreresult.WithStatus(err, module.StatusSystemError)
+		return "", errors.WithCode(err, errors.CriticalIOError)
 	}
 	zipReader, err :=
 		zip.NewReader(bytes.NewReader(code), int64(len(code)))
 	if err != nil {
-		return "", scoreresult.WithStatus(err, module.StatusSystemError)
+		return "", errors.WithCode(err, errors.CriticalIOError)
 	}
 
 	switch eeType {
@@ -219,24 +219,24 @@ func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []
 			}
 			reader, err := zipFile.Open()
 			if err != nil {
-				return "", errors.Wrap(err, "Fail to open zip file")
+				return "", scoreresult.IllegalFormatError.Wrap(err, "Fail to open zip file")
 			}
 			buf, err := ioutil.ReadAll(reader)
 			if err != nil {
-				err = reader.Close()
-				return "", errors.Wrap(err, "Fail to read zip file")
+				reader.Close()
+				return "", scoreresult.IllegalFormatError.Wrap(err, "Fail to read zip file")
 			}
 			if err = ioutil.WriteFile(storePath, buf, 0755); err != nil {
-				return "", errors.Wrapf(err, "Fail to write file. path(%s)\n", storePath)
+				return "", errors.CriticalIOError.Wrapf(err, "FailToWriteFile(name=%s)", storePath)
 			}
 			err = reader.Close()
 			if err != nil {
-				return "", errors.Wrap(err, "Fail to close zip file")
+				return "", errors.CriticalIOError.Wrap(err, "Fail to close zip file")
 			}
 		}
 		if findRoot == false {
 			os.RemoveAll(tmpPath)
-			return "", scoreresult.Errorf(module.StatusIllegalFormat,
+			return "", scoreresult.IllegalFormatError.Errorf(
 				"Root file does not exist(required:%s)\n", contractPythonRootFile)
 		}
 		contractRoot := filepath.Join(tmpPath, rootDir)
@@ -248,8 +248,7 @@ func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []
 		}
 		sc.lock.Unlock()
 		if err := os.Rename(contractRoot, path); err != nil {
-			return "", errors.Wrap(err, "Fail to rename")
-
+			return "", errors.CriticalIOError.Wrapf(err, "FailToRenameTo(path=%s)", path)
 		}
 		os.RemoveAll(tmpPath)
 	default:

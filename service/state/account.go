@@ -425,7 +425,7 @@ func (s *accountStateImpl) DeployContract(code []byte, eeType string, contentTyp
 	codeHash := sha3.Sum256(code)
 	bk, err := s.database.GetBucket(db.BytesByHash)
 	if err != nil {
-		log.Error("Failed to get bucket")
+		err = errors.CriticalIOError.Wrap(err, "FailToGetBucket")
 		return nil, err
 	}
 	var old []byte

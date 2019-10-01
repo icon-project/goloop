@@ -144,7 +144,7 @@ func (e *valueImpl) Bool() bool {
 
 func (e *valueImpl) Set(v interface{}) error {
 	bs := ToBytes(v)
-	return e.SetBytes(bs)
+	return must(e.SetBytes(bs))
 }
 
 type bytesEntry []byte
@@ -174,11 +174,11 @@ type storeEntry struct {
 }
 
 func (e *storeEntry) Delete() error {
-	return e.store.DeleteValue(e.key)
+	return must(e.store.DeleteValue(e.key))
 }
 
 func (e *storeEntry) SetBytes(bs []byte) error {
-	return e.store.SetValue(e.key, bs)
+	return must(e.store.SetValue(e.key, bs))
 }
 
 func (e *storeEntry) Bytes() []byte {

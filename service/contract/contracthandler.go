@@ -35,13 +35,13 @@ type (
 
 	SyncContractHandler interface {
 		ContractHandler
-		ExecuteSync(cc CallContext) (module.Status, *big.Int, *codec.TypedObj, module.Address)
+		ExecuteSync(cc CallContext) (error, *big.Int, *codec.TypedObj, module.Address)
 	}
 
 	AsyncContractHandler interface {
 		ContractHandler
 		ExecuteAsync(cc CallContext) error
-		SendResult(status module.Status, steps *big.Int, result *codec.TypedObj) error
+		SendResult(status error, steps *big.Int, result *codec.TypedObj) error
 		Dispose()
 
 		EEType() string

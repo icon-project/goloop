@@ -371,7 +371,7 @@ func newTransactionV3FromJSONObject(jso *transactionV3JSON) (Transaction, error)
 func newTransactionV3FromBytes(bs []byte) (Transaction, error) {
 	tx := new(transactionV3)
 	if err := tx.SetBytes(bs); err != nil {
-		return nil, scoreresult.WithStatus(err, module.StatusIllegalFormat)
+		return nil, err
 	} else {
 		return tx, nil
 	}
@@ -387,7 +387,7 @@ func measureBytesOfData(rev int, data []byte) (int, error) {
 	} else {
 		var idata interface{}
 		if err := json.Unmarshal(data, &idata); err != nil {
-			return 0, scoreresult.WithStatus(err, module.StatusIllegalFormat)
+			return 0, scoreresult.InvalidParameterError.Wrap(err, "InvalidDataField")
 		} else {
 			return countBytesOfDataValue(idata), nil
 		}
@@ -400,7 +400,7 @@ func countBytesOfData(data []byte) (int, error) {
 	}
 	b := bytes.NewBuffer(nil)
 	if err := json.Compact(b, data); err != nil {
-		return 0, scoreresult.ErrInvalidParameter
+		return 0, scoreresult.InvalidParameterError.Wrap(err, "InvalidDataField")
 	}
 	return b.Len(), nil
 }

@@ -3,6 +3,7 @@ package eeproxy
 import (
 	"sync"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/ipc"
 	"github.com/icon-project/goloop/common/log"
@@ -111,11 +112,6 @@ func (em *executorManager) onReady(t string, p *proxy) error {
 
 	e := em.engines[i]
 
-	if !e.engine.OnAttach(p.uid) {
-		em.log.Warnf("InvalidUUID(uid=%s)", p.uid)
-		return InvalidUUIDError.Errorf("InvalidUID(uid=%s)", p.uid)
-	}
-
 	if p.detach() {
 		if e.active > em.executorLimit {
 			e.active -= 1
@@ -125,6 +121,10 @@ func (em *executorManager) onReady(t string, p *proxy) error {
 				em.executorLimit, e.active)
 		}
 	} else {
+		if !e.engine.OnAttach(p.uid) {
+			em.log.Warnf("InvalidUUID(uid=%s)", p.uid)
+			return InvalidUUIDError.Errorf("InvalidUID(uid=%s)", p.uid)
+		}
 		e.active += 1
 	}
 	p.attachTo(&e.ready)
@@ -154,8 +154,8 @@ func (em *executorManager) OnConnect(c ipc.Connection) error {
 }
 
 func (em *executorManager) OnClose(c ipc.Connection) {
-	em.lock.Lock()
-	defer em.lock.Unlock()
+	l := common.LockForAutoCall(&em.lock)
+	defer l.Unlock()
 
 	for _, e := range em.engines {
 		for p := e.ready; p != nil; p = p.next {
@@ -168,6 +168,9 @@ func (em *executorManager) OnClose(c ipc.Connection) {
 		for p := e.using; p != nil; p = p.next {
 			if p.conn == c {
 				p.detach()
+				l.CallAfterUnlock(func() {
+					p.OnClose()
+				})
 				e.active -= 1
 				return
 			}
@@ -266,6 +269,7 @@ func (em *executorManager) Loop() error {
 
 // onEEMConnect handle a connection from Execution Environment Manager
 func (em *executorManager) onEEMConnect(conn ipc.Connection, t string, v uint16) error {
+	em.log.Infof("ExecutorManager.onEEMConnect(type=%s,version=%d)", t, v)
 	em.lock.Lock()
 	defer em.lock.Unlock()
 
@@ -279,6 +283,7 @@ func (em *executorManager) onEEMConnect(conn ipc.Connection, t string, v uint16)
 
 // onEEConnect handle a connection from Execution Environment
 func (em *executorManager) onEEConnect(conn ipc.Connection, t string, v uint16, uid string) error {
+	em.log.Infof("ExecutorManager.onEEConnect(type=%s,version=%d,uid=%s)", t, v, uid)
 	if _, err := newProxy(em, conn, em.log, t, v, uid); err != nil {
 		return err
 	}

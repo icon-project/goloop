@@ -2,7 +2,7 @@ package scoredb
 
 import (
 	"github.com/icon-project/goloop/common/crypto"
-	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/service/scoreresult"
 )
 
 type DictDB struct {
@@ -54,21 +54,21 @@ func (d *DictDB) Get(keys ...interface{}) Value {
 
 func (d *DictDB) Set(params ...interface{}) error {
 	if len(params) != d.depth+1 {
-		return errors.ErrIllegalArgument
+		return scoreresult.ErrInvalidContainerAccess
 	}
 
 	kbytes := d.keyBytesForKeys(params[:len(params)-1]...)
 	v := params[len(params)-1]
 
-	return d.store.SetValue(crypto.SHA3Sum256(kbytes), ToBytes(v))
+	return must(d.store.SetValue(crypto.SHA3Sum256(kbytes), ToBytes(v)))
 }
 
 func (d *DictDB) Delete(kv ...interface{}) error {
 	if len(kv) != d.depth {
-		return errors.New("IllegalArgument")
+		return scoreresult.ErrInvalidContainerAccess
 	}
 
 	kbytes := d.keyBytesForKeys(kv...)
 
-	return d.store.DeleteValue(crypto.SHA3Sum256(kbytes))
+	return must(d.store.DeleteValue(crypto.SHA3Sum256(kbytes)))
 }

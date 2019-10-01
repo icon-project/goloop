@@ -32,7 +32,7 @@ func NewChainScore(from module.Address, cc CallContext, log log.Logger) SystemSc
 }
 
 const (
-	StatusIllegalArgument = module.StatusUser + iota
+	StatusIllegalArgument = module.StatusReverted + iota
 	StatusNotFound
 )
 
@@ -475,7 +475,7 @@ func (s *ChainScore) Install(param []byte) error {
 		revision = int(chain.Revision.Value)
 	}
 	if err := scoredb.NewVarDB(as, state.VarRevision).Set(revision); err != nil {
-		return scoreresult.Errorf(module.StatusSystemError, "Failed to set revision. revision(%d), err(%+v)", revision, err)
+		return err
 	}
 
 	confValue := 0
@@ -489,48 +489,47 @@ func (s *ChainScore) Install(param []byte) error {
 		confValue |= state.SysConfigMembership
 	}
 	if err := scoredb.NewVarDB(as, state.VarServiceConfig).Set(confValue); err != nil {
-		return scoreresult.Errorf(module.StatusSystemError, "Failed to set system config. err(%+v)\n", err)
+		return err
 	}
 
 	if chain.BlockInterval != nil {
 		blockInterval := chain.BlockInterval.Value
 		if err := scoredb.NewVarDB(as, state.VarBlockInterval).Set(blockInterval); err != nil {
-			return scoreresult.Errorf(module.StatusSystemError, "Failed to set newHeightTimeout. err(%+v)\n", err)
+			return err
 		}
 	}
 
 	if chain.CommitTimeout != nil {
 		timeout := chain.CommitTimeout.Value
 		if err := scoredb.NewVarDB(as, state.VarCommitTimeout).Set(timeout); err != nil {
-			return scoreresult.Errorf(module.StatusSystemError, "Failed to set newHeightTimeout. err(%+v)\n", err)
+			return err
 		}
 	}
 
 	if chain.TimestampThreshold != nil {
 		tsThreshold := chain.TimestampThreshold.Value
 		if err := scoredb.NewVarDB(as, state.VarTimestampThreshold).Set(tsThreshold); err != nil {
-			return scoreresult.Errorf(module.StatusSystemError, "Failed to set timestamp threshold. err(%+v)\n", err)
+			return err
 		}
 	}
 
 	if chain.RoundLimitFactor != nil {
 		factor := chain.RoundLimitFactor.Value
 		if err := scoredb.NewVarDB(as, state.VarRoundLimitFactor).Set(factor); err != nil {
-			return scoreresult.Errorf(module.StatusSystemError, "Failed to set round limit factor. err(%+v)\n", err)
+			return err
 		}
 	}
 
 	if chain.MinimizeBlockGen != nil {
 		yn := chain.MinimizeBlockGen.Value != 0
 		if err := scoredb.NewVarDB(as, state.VarMinimizeBlockGen).Set(yn); err != nil {
-			return scoreresult.Errorf(module.StatusSystemError, "Failed to set %s err(%+v)\n",
-				state.VarMinimizeBlockGen, err)
+			return err
 		}
 	}
 
 	price := chain.Fee
 	if err := scoredb.NewVarDB(as, state.VarStepPrice).Set(&price.StepPrice.Int); err != nil {
-		return scoreresult.Errorf(module.StatusSystemError, "Failed to set stepPrice. err(%+v)\n", err)
+		return err
 	}
 	stepLimitTypes := scoredb.NewArrayDB(as, state.VarStepLimitTypes)
 	stepLimitDB := scoredb.NewDictDB(as, state.VarStepLimit, 1)
@@ -542,27 +541,28 @@ func (s *ChainScore) Install(param []byte) error {
 		for _, k := range state.AllStepLimitTypes {
 			cost := stepLimitsMap[k]
 			if err := stepLimitTypes.Put(k); err != nil {
-				return scoreresult.Errorf(module.StatusSystemError, "Failed to put stepLimit. err(%+v)\n", err)
+				return err
 			}
 			var icost int64
 			if cost != "" {
 				var err error
 				icost, err = strconv.ParseInt(cost, 0, 64)
 				if err != nil {
-					return scoreresult.Errorf(module.StatusSystemError, "Failed to parse %s to integer. err(%+v)\n", cost, err)
+					return scoreresult.InvalidParameterError.Errorf(
+						"Failed to parse %s to integer. err(%+v)\n", cost, err)
 				}
 			}
 			if err := stepLimitDB.Set(k, icost); err != nil {
-				return scoreresult.Errorf(module.StatusSystemError, "Failed to Set stepLimit. err(%+v)\n", err)
+				return err
 			}
 		}
 	} else {
 		for _, k := range state.AllStepLimitTypes {
 			if err := stepLimitTypes.Put(k); err != nil {
-				return scoreresult.Errorf(module.StatusSystemError, "Failed to put steLimitTypes. err(%+v)\n", err)
+				return err
 			}
 			if err := stepLimitDB.Set(k, 0); err != nil {
-				return scoreresult.Errorf(module.StatusSystemError, "Failed to set stepLimit. err(%+v)\n", err)
+				return err
 			}
 		}
 	}
@@ -577,27 +577,27 @@ func (s *ChainScore) Install(param []byte) error {
 		for _, k := range state.AllStepTypes {
 			cost := stepTypesMap[k]
 			if err := stepTypes.Put(k); err != nil {
-				return scoreresult.Errorf(module.StatusSystemError, "Failed to put stepTypes. err(%+v)\n", err)
+				return err
 			}
 			var icost int64
 			if cost != "" {
 				var err error
 				icost, err = strconv.ParseInt(cost, 0, 64)
 				if err != nil {
-					return scoreresult.Errorf(module.StatusSystemError, "Failed to parse %s to integer. err(%+v)\n", cost, err)
+					return err
 				}
 			}
 			if err := stepCostDB.Set(k, icost); err != nil {
-				return scoreresult.Errorf(module.StatusSystemError, "Failed to set stepCost. err(%+v)\n", err)
+				return err
 			}
 		}
 	} else {
 		for _, k := range state.AllStepTypes {
 			if err := stepTypes.Put(k); err != nil {
-				return scoreresult.Errorf(module.StatusSystemError, "Failed to put stepTypes. err(%+v)\n", err)
+				return err
 			}
 			if err := stepCostDB.Set(k, 0); err != nil {
-				return scoreresult.Errorf(module.StatusSystemError, "Failed to set stepCost. err(%+v)\n", err)
+				return err
 			}
 		}
 	}
@@ -606,7 +606,7 @@ func (s *ChainScore) Install(param []byte) error {
 		validators[i], _ = state.ValidatorFromAddress(validator)
 	}
 	if err := s.cc.GetValidatorState().Set(validators); err != nil {
-		return scoreresult.Errorf(module.StatusSystemError, "Failed to set validator. err(%+v)\n", err)
+		return errors.CriticalUnknownError.Wrap(err, "FailToSetValidators")
 	}
 
 	if len(chain.MemberList) > 0 {
@@ -655,7 +655,7 @@ func (s *ChainScore) Ex_disableScore(address module.Address) error {
 	}
 	as := s.cc.GetAccountState(address.ID())
 	if as.IsContract() == false {
-		return scoreresult.New(StatusIllegalArgument, "NoContract")
+		return scoreresult.New(StatusNotFound, "NoContract")
 	}
 	if as.IsContractOwner(s.from) == false {
 		return scoreresult.New(module.StatusAccessDenied, "NotContractOwner")
@@ -670,7 +670,7 @@ func (s *ChainScore) Ex_enableScore(address module.Address) error {
 	}
 	as := s.cc.GetAccountState(address.ID())
 	if as.IsContract() == false {
-		return scoreresult.ErrContractNotFound
+		return scoreresult.New(StatusNotFound, "NoContract")
 	}
 	if as.IsContractOwner(s.from) == false {
 		return scoreresult.New(module.StatusAccessDenied, "NotContractOwner")
@@ -697,7 +697,7 @@ func (s *ChainScore) Ex_setRevision(code *common.HexInt) error {
 	r := scoredb.NewVarDB(as, state.VarRevision).Int64()
 	if code.Int64() <= r {
 		return scoreresult.Errorf(StatusIllegalArgument,
-			"Can't set code. cur : %d, passed : %d\n", r, code)
+			"IllegalArgument(current=%#x,new=%s)", r, code)
 	}
 
 	if err := scoredb.NewVarDB(as, state.VarRevision).Set(code); err != nil {
@@ -719,16 +719,13 @@ func (s *ChainScore) Ex_acceptScore(txHash []byte) error {
 
 	v, err := s.Ex_getMaxStepLimit(state.StepLimitTypeInvoke)
 	if err != nil {
-		return scoreresult.WithStatus(err, module.StatusSystemError)
+		return err
 	}
 	ch := newCommonHandler(s.from, common.NewAddress(state.SystemID),
 		nil, big.NewInt(v), s.log)
 	ah := newAcceptHandler(ch, txHash, auditTxHash)
 	status, _, _, _ := ah.ExecuteSync(s.cc)
-	if status != module.StatusSuccess {
-		return scoreresult.New(status, "Fail to execute acceptHandler")
-	}
-	return nil
+	return status
 }
 
 func (s *ChainScore) Ex_rejectScore(txHash []byte) error {
@@ -743,15 +740,14 @@ func (s *ChainScore) Ex_rejectScore(txHash []byte) error {
 	h2a := scoredb.NewDictDB(sysAs, state.VarTxHashToAddress, 1)
 	scoreAddr := h2a.Get(txHash).Address()
 	if scoreAddr == nil {
-		return scoreresult.Errorf(StatusNotFound,
-			"Fail to find score by txHash[%x]\n", txHash)
+		return scoreresult.Errorf(StatusNotFound, "NoPendingTx")
 	}
 	scoreAs := s.cc.GetAccountState(scoreAddr.ID())
 	// NOTE : cannot change from reject to accept state because data with address mapped txHash is deleted from DB
 	info := s.cc.GetInfo()
 	auditTxHash := info[state.InfoTxHash].([]byte)
 	if err := h2a.Delete(txHash); err != nil {
-		return scoreresult.WithStatus(err, module.StatusSystemError)
+		return err
 	}
 	return scoreAs.RejectContract(txHash, auditTxHash)
 }
@@ -803,7 +799,7 @@ func (s *ChainScore) Ex_setStepCost(costType string, cost *common.HexInt) error 
 	if stepCostDB.Get(costType) == nil {
 		stepTypes := scoredb.NewArrayDB(as, state.VarStepTypes)
 		if err := stepTypes.Put(costType); err != nil {
-			return scoreresult.WithStatus(err, module.StatusSystemError)
+			return err
 		}
 	}
 	return stepCostDB.Set(costType, cost)
@@ -818,13 +814,16 @@ func (s *ChainScore) Ex_setMaxStepLimit(contextType string, cost *common.HexInt)
 	if stepLimitDB.Get(contextType) == nil {
 		stepLimitTypes := scoredb.NewArrayDB(as, state.VarStepLimitTypes)
 		if err := stepLimitTypes.Put(contextType); err != nil {
-			return scoreresult.WithStatus(err, module.StatusSystemError)
+			return err
 		}
 	}
 	return stepLimitDB.Set(contextType, cost)
 }
 
 func (s *ChainScore) Ex_grantValidator(address module.Address) error {
+	if address == nil {
+		return scoreresult.ErrInvalidParameter
+	}
 	if !s.fromGovernance() {
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
@@ -843,7 +842,7 @@ func (s *ChainScore) Ex_grantValidator(address module.Address) error {
 			}
 		}
 		if !found {
-			return scoreresult.New(StatusIllegalArgument, "address should be one of members")
+			return scoreresult.New(StatusIllegalArgument, "NotInMembers")
 		}
 	}
 
@@ -855,11 +854,14 @@ func (s *ChainScore) Ex_grantValidator(address module.Address) error {
 }
 
 func (s *ChainScore) Ex_revokeValidator(address module.Address) error {
+	if address == nil {
+		return scoreresult.ErrInvalidParameter
+	}
 	if !s.fromGovernance() {
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 	if address.IsContract() {
-		return scoreresult.New(StatusIllegalArgument, "address should be EOA")
+		return scoreresult.New(StatusIllegalArgument, "AddressIsContract")
 	}
 	if v, err := state.ValidatorFromAddress(address); err == nil {
 		if ok := s.cc.GetValidatorState().Remove(v); !ok {
@@ -878,7 +880,7 @@ func (s *ChainScore) Ex_getValidators() ([]interface{}, error) {
 		if v, ok := vs.Get(i); ok {
 			validators[i] = v.Address()
 		} else {
-			return nil, scoreresult.New(module.StatusSystemError, "Unexpected access failure")
+			return nil, errors.CriticalUnknownError.New("Unexpected access failure")
 		}
 	}
 	return validators, nil
@@ -889,7 +891,7 @@ func (s *ChainScore) Ex_addMember(address module.Address) error {
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 	if address.IsContract() {
-		return scoreresult.New(StatusIllegalArgument, "address should be EOA")
+		return scoreresult.New(StatusIllegalArgument, "AddressIsContract")
 	}
 	as := s.cc.GetAccountState(state.SystemID)
 	db := scoredb.NewArrayDB(as, state.VarMembers)
@@ -906,13 +908,13 @@ func (s *ChainScore) Ex_removeMember(address module.Address) error {
 		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
 	}
 	if address.IsContract() {
-		return scoreresult.New(StatusIllegalArgument, "address must be EOA")
+		return scoreresult.New(StatusIllegalArgument, "AddressIsContract")
 	}
 
 	// If membership system is on, first check if the member is not a validator
 	if s.cc.MembershipEnabled() {
 		if s.cc.GetValidatorState().IndexOf(address) >= 0 {
-			return scoreresult.New(StatusNotFound, "Should revoke validator before removing the member")
+			return scoreresult.New(StatusIllegalArgument, "RevokeValidatorFirst")
 		}
 	}
 
@@ -925,8 +927,8 @@ func (s *ChainScore) Ex_removeMember(address module.Address) error {
 				if err := db.Set(i, rAddr); err != nil {
 					return err
 				}
-				break
 			}
+			break
 		}
 	}
 	return nil
@@ -959,8 +961,8 @@ func (s *ChainScore) Ex_removeDeployer(address module.Address) error {
 				if err := db.Set(i, rAddr); err != nil {
 					return err
 				}
-				break
 			}
+			break
 		}
 	}
 	return nil
@@ -1008,8 +1010,8 @@ func (s *ChainScore) Ex_removeLicense(contentId string) error {
 				if err := db.Set(i, id); err != nil {
 					return err
 				}
-				break
 			}
+			break
 		}
 	}
 	return nil
