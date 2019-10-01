@@ -127,6 +127,11 @@ func (e *pythonEngine) SetInstances(n int) error {
 	return nil
 }
 
+func (e *pythonEngine) OnEnd(uid string) bool {
+	fmt.Printf("PythonEngine.OnEnd(uid=%s)\n", uid)
+	return true
+}
+
 func (e *pythonEngine) OnAttach(uid string) bool {
 	fmt.Printf("PythonEngine.OnAttach(uid=%s)\n", uid)
 	return true
