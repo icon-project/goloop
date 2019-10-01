@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import foundation.icon.ee.ipc.ExecutorManager;
 import foundation.icon.ee.score.TransactionExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,15 +22,19 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 
 public class TransactionExecutorTest {
-
     public static void main(String[] args) throws IOException {
         Logger logger = LoggerFactory.getLogger(TransactionExecutorTest.class);
         logger.info("=== TransactionExecutorTest ===");
         if (args.length == 2) {
             TransactionExecutor executor = TransactionExecutor.newInstance(args[0], args[1]);
             executor.connectAndRunLoop();
+        }
+        else if (args.length == 1) {
+            String sockAddr = args[0];
+            ExecutorManager executorManager = new ExecutorManager(sockAddr);
+            executorManager.run();
         } else {
-            logger.info("Usage: TransactionExecutorTest <socket addr> <uuid>");
+            logger.info("Failed to run manager");
         }
     }
 }

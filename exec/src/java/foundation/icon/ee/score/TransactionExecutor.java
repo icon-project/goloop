@@ -17,8 +17,8 @@
 package foundation.icon.ee.score;
 
 import foundation.icon.ee.ipc.Client;
+import foundation.icon.ee.ipc.EEProxy;
 import foundation.icon.ee.ipc.InvokeResult;
-import foundation.icon.ee.ipc.Proxy;
 import foundation.icon.ee.ipc.TypedObj;
 import foundation.icon.ee.tooling.deploy.OptimizedJarBuilder;
 import foundation.icon.ee.types.Address;
@@ -46,12 +46,12 @@ public class TransactionExecutor {
     private static final String CMD_DEPLOY = "<install>";
     private static final boolean DEBUG_MODE = true;
 
-    private final Proxy proxy;
+    private final EEProxy proxy;
     private final String uuid;
 
     private TransactionExecutor(String sockAddr, String uuid) throws IOException {
         Client client = Client.connect(sockAddr);
-        this.proxy = new Proxy(client);
+        this.proxy = new EEProxy(client);
         this.uuid = uuid;
     }
 
@@ -65,6 +65,10 @@ public class TransactionExecutor {
     public void connectAndRunLoop() throws IOException {
         proxy.connect(uuid);
         proxy.handleMessages();
+        proxy.close();
+    }
+
+    public void disconnect() throws IOException {
         proxy.close();
     }
 
@@ -91,9 +95,9 @@ public class TransactionExecutor {
             }
 
             boolean isDeploy = CMD_DEPLOY.equals(method);
-            BigInteger blockNumber = (BigInteger) info.get(Proxy.Info.BLOCK_HEIGHT);
-            BigInteger blockTimestamp = (BigInteger) info.get(Proxy.Info.BLOCK_TIMESTAMP);
-            byte[] txHash = (byte[]) info.get(Proxy.Info.TX_HASH);
+            BigInteger blockNumber = (BigInteger) info.get(EEProxy.Info.BLOCK_HEIGHT);
+            BigInteger blockTimestamp = (BigInteger) info.get(EEProxy.Info.BLOCK_TIMESTAMP);
+            byte[] txHash = (byte[]) info.get(EEProxy.Info.TX_HASH);
 
             ExternalState kernel = new ExternalState(proxy, code, blockNumber, blockTimestamp);
             Transaction[] contexts = new Transaction[] {
@@ -110,18 +114,17 @@ public class TransactionExecutor {
             try {
                 FutureResult[] futures = avm.run(kernel, contexts, ExecutionType.ASSUME_MAINCHAIN, blockNumber.longValue() - 1);
                 ResultWrapper result = new ResultWrapper(futures[0].getResult());
-                logger.debug("<<< [Result] {}", result);
                 Object retVal;
                 if (isDeploy) {
                     retVal = result.getContractAddress();
                 } else {
                     retVal = result.getDecodedReturnData();
                 }
-                return new InvokeResult((result.isSuccess()) ? Proxy.Status.SUCCESS : Proxy.Status.FAILURE,
+                return new InvokeResult((result.isSuccess()) ? EEProxy.Status.SUCCESS : EEProxy.Status.FAILURE,
                         result.getEnergyUsed(), TypedObj.encodeAny(retVal));
             } catch (Exception e) {
                 e.printStackTrace();
-                return new InvokeResult(Proxy.Status.FAILURE, BigInteger.ZERO, TypedObj.encodeAny(e.getMessage()));
+                return new InvokeResult(EEProxy.Status.FAILURE, BigInteger.ZERO, TypedObj.encodeAny(e.getMessage()));
             } finally {
                 avm.shutdown();
             }
@@ -254,14 +257,14 @@ public class TransactionExecutor {
 
     private void printGetInfo(Map info) {
         logger.debug(">>> getInfo: info={}", info);
-        logger.debug("    txHash={}", Bytes.toHexString((byte[]) info.get(Proxy.Info.TX_HASH)));
-        logger.debug("    txIndex={}", info.get(Proxy.Info.TX_INDEX));
-        logger.debug("    txFrom={}", info.get(Proxy.Info.TX_FROM));
-        logger.debug("    txTimestamp={}", info.get(Proxy.Info.TX_TIMESTAMP));
-        logger.debug("    txNonce={}", info.get(Proxy.Info.TX_NONCE));
-        logger.debug("    blockHeight={}", info.get(Proxy.Info.BLOCK_HEIGHT));
-        logger.debug("    blockTimestamp={}", info.get(Proxy.Info.BLOCK_TIMESTAMP));
-        logger.debug("    contractOwner={}", info.get(Proxy.Info.CONTRACT_OWNER));
-        logger.debug("    stepCosts={}", info.get(Proxy.Info.STEP_COSTS));
+        logger.debug("    txHash={}", Bytes.toHexString((byte[]) info.get(EEProxy.Info.TX_HASH)));
+        logger.debug("    txIndex={}", info.get(EEProxy.Info.TX_INDEX));
+        logger.debug("    txFrom={}", info.get(EEProxy.Info.TX_FROM));
+        logger.debug("    txTimestamp={}", info.get(EEProxy.Info.TX_TIMESTAMP));
+        logger.debug("    txNonce={}", info.get(EEProxy.Info.TX_NONCE));
+        logger.debug("    blockHeight={}", info.get(EEProxy.Info.BLOCK_HEIGHT));
+        logger.debug("    blockTimestamp={}", info.get(EEProxy.Info.BLOCK_TIMESTAMP));
+        logger.debug("    contractOwner={}", info.get(EEProxy.Info.CONTRACT_OWNER));
+        logger.debug("    stepCosts={}", info.get(EEProxy.Info.STEP_COSTS));
     }
 }

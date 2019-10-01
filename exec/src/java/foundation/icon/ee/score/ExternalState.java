@@ -16,7 +16,7 @@
 
 package foundation.icon.ee.score;
 
-import foundation.icon.ee.ipc.Proxy;
+import foundation.icon.ee.ipc.EEProxy;
 import foundation.icon.ee.types.Bytes;
 import org.aion.avm.core.IExternalState;
 import org.aion.avm.core.util.Helpers;
@@ -38,13 +38,13 @@ public class ExternalState implements IExternalState {
     private static final String TRANSFORMED_JAR = "transformed.jar";
     private static final String OBJECT_GRAPH = "graph";
 
-    private final Proxy proxy;
+    private final EEProxy proxy;
     private final Path jarPath;
     private final long blockNumber;
     private final long blockTimestamp;
     private final Path parentPath;
 
-    ExternalState(Proxy proxy, String code, BigInteger blockNumber, BigInteger blockTimestamp) {
+    ExternalState(EEProxy proxy, String code, BigInteger blockNumber, BigInteger blockTimestamp) {
         this.proxy = proxy;
         this.jarPath = Paths.get(code);
         this.blockNumber = blockNumber.longValue();
