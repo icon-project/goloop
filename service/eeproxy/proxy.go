@@ -446,6 +446,7 @@ func (p *proxy) Kill() error {
 	defer p.lock.Unlock()
 
 	p.log.Warnf("Proxy[%p].Kill() type=%s uid=%s", p, p.scoreType, p.uid)
+	p.state = stateStopped
 	return p.mgr.kill(p.uid)
 }
 

@@ -38,6 +38,7 @@ type Engine interface {
 	Init(net, addr string) error
 	SetInstances(n int) error
 	OnAttach(uid string) bool
+	OnEnd(uid string) bool
 	Kill(uid string) (bool, error)
 	OnConnect(conn ipc.Connection, version uint16) error
 	OnClose(conn ipc.Connection) bool

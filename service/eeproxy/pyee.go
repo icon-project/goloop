@@ -111,6 +111,10 @@ func (e *pythonExecutionEngine) OnAttach(uid string) bool {
 	return false
 }
 
+func (e *pythonExecutionEngine) OnEnd(uid string) bool {
+	return true
+}
+
 func (e *pythonExecutionEngine) newCmd(uid string, stdout, stderr io.WriteCloser) *exec.Cmd {
 	args := append(e.args, "-s", e.addr, "-u", uid)
 	cmd := exec.Command(e.python, args...)
