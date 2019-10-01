@@ -31,7 +31,7 @@ import org.slf4j.Logger;
 import static org.msgpack.value.ValueType.ARRAY;
 
 public abstract class Proxy {
-    protected final Client client;
+    private final Client client;
     private final Logger logger;
     private final MessageUnpacker unpacker;
 
@@ -45,10 +45,14 @@ public abstract class Proxy {
         }
     }
 
-    public Proxy(Client client, Logger logger) {
+    protected Proxy(Client client, Logger logger) {
         this.client = client;
         this.logger = logger;
         unpacker = MessagePack.newDefaultUnpacker(client.getInputStream());
+    }
+
+    protected void close() throws IOException {
+        this.client.close();
     }
 
     protected Message getNextMessage() throws IOException {
@@ -84,7 +88,6 @@ public abstract class Proxy {
             }
         }
         packer.close();
-
         client.send(packer.toByteArray());
     }
 

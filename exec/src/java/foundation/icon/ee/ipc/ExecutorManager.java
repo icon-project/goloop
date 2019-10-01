@@ -36,15 +36,7 @@ public class ExecutorManager {
         execSockAddr = sockAddr;
         execMap = new HashMap<>();
 
-        setRunHandler();
-        setKillHandler();
-    }
-
-    private void setRunHandler() {
         proxy.setOnRunListener(this::runExecutor);
-    }
-
-    private void setKillHandler() {
         proxy.setOnKillListener(this::killExecutor);
     }
 
@@ -52,17 +44,17 @@ public class ExecutorManager {
         logger.debug("[killExecutor]");
         TransactionExecutor executor = execMap.remove(uuid);
         if (executor != null) {
-            logger.debug("disconnect executor{}", uuid);
+            logger.debug("disconnect executor uuid={}", uuid);
             executor.disconnect();
         }
     }
 
     private void runExecutor(String uuid) throws IOException {
-        TransactionExecutor exec = TransactionExecutor.newInstance(execSockAddr, uuid);
         if (execMap.get(uuid) != null) {
             logger.info(uuid + " already exists");
             return;
         }
+        TransactionExecutor exec = TransactionExecutor.newInstance(execSockAddr, uuid);
         execMap.put(uuid, exec);
         Thread th = new Thread(() -> {
             try {

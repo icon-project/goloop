@@ -73,7 +73,7 @@ public class EEProxy extends Proxy {
     }
 
     public void close() throws IOException {
-        this.client.close();
+        super.close();
     }
 
     public void handleMessages() throws IOException {
@@ -168,7 +168,7 @@ public class EEProxy extends Proxy {
         mOnInvokeListener = listener;
     }
 
-    protected byte[] getValueAsByteArray(Value value) {
+    private byte[] getValueAsByteArray(Value value) {
         return value.asRawValue().asByteArray();
     }
 

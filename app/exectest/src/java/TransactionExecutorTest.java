@@ -28,13 +28,11 @@ public class TransactionExecutorTest {
         if (args.length == 2) {
             TransactionExecutor executor = TransactionExecutor.newInstance(args[0], args[1]);
             executor.connectAndRunLoop();
-        }
-        else if (args.length == 1) {
-            String sockAddr = args[0];
-            ExecutorManager executorManager = new ExecutorManager(sockAddr);
+        } else if (args.length == 1) {
+            ExecutorManager executorManager = new ExecutorManager(args[0]);
             executorManager.run();
         } else {
-            logger.info("Failed to run manager");
+            logger.info("Usage: TransactionExecutorTest <socket addr> (<uuid>)");
         }
     }
 }
