@@ -45,6 +45,31 @@ public class Deserializer {
         return nextHashCode;
     }
 
+    public static Object deserializeObject(ByteBuffer inputBuffer, IGlobalResolver resolver, SortedFieldCache cache, IPersistenceNameMapper classNameMapper) {
+        // We define the storage as big-endian.
+        RuntimeAssertionError.assertTrue(ByteOrder.BIG_ENDIAN == inputBuffer.order());
+
+        // Create the pre-pass deserializer, just to walk consistently.
+        ByteBufferObjectDeserializer prePassDeserializer = new ByteBufferObjectDeserializer(inputBuffer, null, cache, resolver, classNameMapper);
+
+        Object val = prePassDeserializer.readObject();
+
+        // Now, walk the rest of the data, deserializing each object, but this is just to find out the instance types and advance through the buffer, consistently.
+        List<Object> instanceList = createAllInstancesFromBuffer(prePassDeserializer, null, cache, classNameMapper, true);
+
+        // Now, we have enough information to build the graph.
+        // Reset the buffer and read it again.
+        inputBuffer.rewind();
+
+        ByteBufferObjectDeserializer objectDeserializer = new ByteBufferObjectDeserializer(inputBuffer, instanceList, cache, resolver, classNameMapper);
+
+        val = objectDeserializer.readObject();
+
+        // We can now use the real deserializer to populate all instance fields and connections.
+        populateAllInstancesFromBuffer(objectDeserializer, instanceList, cache);
+        return val;
+    }
+
     public static void cleanClassStatics(SortedFieldCache cache, Class<?>[] sortedRoots, Class<?> constantClass) {
         cleanOneClass(cache, constantClass);
         for (Class<?> clazz : sortedRoots) {
@@ -105,6 +130,10 @@ public class Deserializer {
     }
 
     private static List<Object> createAllInstancesFromBuffer(ByteBufferObjectDeserializer objectDeserializer, List<Object> existingObjectIndex, SortedFieldCache cache, IPersistenceNameMapper classNameMapper) {
+        return createAllInstancesFromBuffer(objectDeserializer, existingObjectIndex, cache, classNameMapper, false);
+    }
+
+    private static List<Object> createAllInstancesFromBuffer(ByteBufferObjectDeserializer objectDeserializer, List<Object> existingObjectIndex, SortedFieldCache cache, IPersistenceNameMapper classNameMapper, boolean singleObject) {
         Method deserializeSelfMethod = cache.getDeserializeSelfMethod();
         List<Object> instanceList = new ArrayList<>();
         // We want to tell each instance which index we read them as - this is useful in the case of reentrant calls so we can track the
@@ -133,7 +162,7 @@ public class Deserializer {
                     // Even if there is a different object instance we want to re-use, we still need to create the instance in order to advance the stream.
                     Object instance = (isDeserializingIntoCallerObjects && (null != existingObjectIndex.get(readIndex)))
                             ? existingObjectIndex.get(readIndex)
-                            : cache.getNewInstance(internalClassName, isDeserializingIntoCallerObjects ? -1 : readIndex);
+                            : cache.getNewInstance(internalClassName, isDeserializingIntoCallerObjects || singleObject ? -1 : readIndex);
                     deserializeSelfMethod.invoke(instance, null, objectDeserializer);
                     instanceList.add(instance);
                     readIndex += 1;

@@ -39,7 +39,20 @@ public class Serializer {
         serializeGraphFromWorkQueue(out_instanceIndex, out_calleeToCallerIndexMap, objectSerializer, cache, toProcessQueue);
     }
 
+    public static void serializeObject(ByteBuffer outputBuffer, Object val, IGlobalResolver resolver, SortedFieldCache cache, IPersistenceNameMapper classNameMapper) {
+        // We define the storage as big-endian.
+        RuntimeAssertionError.assertTrue(ByteOrder.BIG_ENDIAN == outputBuffer.order());
 
+        // We are going to perform a breadth-first traversal so we need a queue.
+        Queue<Object> toProcessQueue = new LinkedList<>();
+        // Create the object serializer (it maintains the state of the serialization and can also be passed in to objects to request that they serialize).
+        ByteBufferObjectSerializer objectSerializer = new ByteBufferObjectSerializer(outputBuffer, toProcessQueue, cache, resolver, classNameMapper);
+
+        objectSerializer.writeObject(val);
+
+        // Finally, we serialize the rest of the graph.
+        serializeGraphFromWorkQueue(null, null, objectSerializer, cache, toProcessQueue);
+    }
 
     private static void serializeClassStatics(ByteBufferObjectSerializer objectSerializer, SortedFieldCache cache, Class<?>[] sortedRoots, Class<?> constantClass) {
         try {
