@@ -26,6 +26,15 @@ public class HashUtils {
         }
     }
 
+    public static byte[] sha3_256(byte[] msg) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA3-256");
+            return digest.digest(msg);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     /**
      * Computes the blake2b-256 hash of the given input.
      *
