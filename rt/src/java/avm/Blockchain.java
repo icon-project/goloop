@@ -394,4 +394,16 @@ public final class Blockchain {
     public static boolean edVerify(byte[] data, byte[] signature, byte[] publicKey) throws IllegalArgumentException {
         return true;
     }
+
+    public static <K, V> DictDB<K, V> newDictDB(String id) {
+        return null;
+    }
+
+    public static <V> ArrayDB<V> newArrayDB(String id) {
+        return null;
+    }
+
+    public static <V> VarDB<V> newVarDB(String id) {
+        return null;
+    }
 }

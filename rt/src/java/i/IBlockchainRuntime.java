@@ -1,7 +1,6 @@
 package i;
 
-import p.avm.Address;
-import p.avm.Result;
+import p.avm.*;
 import a.ByteArray;
 import s.java.math.BigInteger;
 import s.java.lang.String;
@@ -242,4 +241,10 @@ public interface IBlockchainRuntime {
      * @return result
      */
     boolean avm_edVerify(ByteArray data, ByteArray signature, ByteArray publicKey) throws IllegalArgumentException;
+
+    DictDB avm_newDictDB(String id);
+
+    ArrayDB avm_newArrayDB(String id);
+
+    VarDB avm_newVarDB(String id);
 }

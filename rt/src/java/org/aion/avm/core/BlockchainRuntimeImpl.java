@@ -4,9 +4,8 @@ import java.util.Arrays;
 import org.aion.avm.core.util.TransactionResultUtil;
 import org.aion.types.AionAddress;
 import org.aion.types.Transaction;
+import p.avm.*;
 import s.java.math.BigInteger;
-import p.avm.Address;
-import p.avm.Result;
 import i.*;
 import a.ByteArray;
 import org.aion.types.InternalTransaction;
@@ -489,5 +488,17 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
         byte[] output = newResult.output();
         return new Result(newResult.isSuccess(), output == null ? null : new ByteArray(output));
+    }
+
+    public DictDB avm_newDictDB(s.java.lang.String id) {
+        return null;
+    }
+
+    public ArrayDB avm_newArrayDB(s.java.lang.String id) {
+        return null;
+    }
+
+    public VarDB avm_newVarDB(s.java.lang.String id) {
+        return null;
     }
 }
