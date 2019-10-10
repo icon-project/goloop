@@ -39,7 +39,6 @@ public class DAppCompiler {
                     .withRenamer()
                     .withConstantRemover();
             byte[] optimizedJar = jarBuilder.getOptimizedBytes();
-            jarBuilder.writeAbi();
             String outputName = getJarFilename(args[0], DEBUG_MODE);
             writeFile(outputName, optimizedJar);
             logger.info("Generated {}", outputName);

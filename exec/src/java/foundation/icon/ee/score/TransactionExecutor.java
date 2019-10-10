@@ -20,10 +20,10 @@ import foundation.icon.ee.ipc.Client;
 import foundation.icon.ee.ipc.EEProxy;
 import foundation.icon.ee.ipc.InvokeResult;
 import foundation.icon.ee.ipc.TypedObj;
-import foundation.icon.ee.tooling.deploy.OptimizedJarBuilder;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Bytes;
 import foundation.icon.ee.types.Method;
+import foundation.icon.ee.utils.MethodUnpacker;
 import org.aion.avm.core.*;
 import org.aion.avm.embed.StandardCapabilities;
 import org.aion.avm.tooling.ABIUtil;
@@ -34,17 +34,21 @@ import org.aion.types.TransactionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
+import java.util.jar.JarEntry;
+import java.util.jar.JarInputStream;
 
 public class TransactionExecutor {
     private static final Logger logger = LoggerFactory.getLogger(TransactionExecutor.class);
+    private static final String CODE_JAR = "code.jar";
     private static final String CMD_DEPLOY = "<install>";
-    private static final boolean DEBUG_MODE = true;
+    private static final String APIS_NAME = "META-INF/APIS";
 
     private final EEProxy proxy;
     private final String uuid;
@@ -53,13 +57,13 @@ public class TransactionExecutor {
         Client client = Client.connect(sockAddr);
         this.proxy = new EEProxy(client);
         this.uuid = uuid;
+
+        proxy.setOnGetApiListener(this::handleGetApi);
+        proxy.setOnInvokeListener(this::handleInvoke);
     }
 
     public static TransactionExecutor newInstance(String sockAddr, String uuid) throws IOException {
-        TransactionExecutor exec = new TransactionExecutor(sockAddr, uuid);
-        exec.setGetApiHandler();
-        exec.setInvokeHandler();
-        return exec;
+        return new TransactionExecutor(sockAddr, uuid);
     }
 
     public void connectAndRunLoop() throws IOException {
@@ -72,63 +76,67 @@ public class TransactionExecutor {
         proxy.close();
     }
 
-    private void setGetApiHandler() {
-        proxy.setOnGetApiListener(path -> {
-            OptimizedJarBuilder builder = new OptimizedJarBuilder(DEBUG_MODE, readFile(path), 1)
-                    .withUnreachableMethodRemover()
-                    .withRenamer()
-                    .withConstantRemover();
-            writeFile(getOutputName(path, DEBUG_MODE), builder.getOptimizedBytes());
-            return builder.getCallables().toArray(new Method[0]);
-        });
+    private Method[] handleGetApi(String path) throws IOException {
+        logger.debug(">>> path={}", path);
+        byte[] jarBytes = readFile(path);
+        JarInputStream jis = new JarInputStream(new ByteArrayInputStream(jarBytes), true);
+        JarEntry entry;
+        while ((entry = jis.getNextJarEntry()) != null) {
+            if (entry.getName().equals(APIS_NAME)) {
+                byte[] buffer = jis.readAllBytes();
+                return MethodUnpacker.readFrom(buffer);
+            }
+        }
+        logger.debug("No API info found!");
+        return null;
     }
 
-    private void setInvokeHandler() {
-        proxy.setOnInvokeListener((code, isQuery, from, to, value, limit, method, params) -> {
-            if (logger.isDebugEnabled()) {
-                printInvokeParams(code, isQuery, from, to, value, limit, method, params);
-            }
+    private InvokeResult handleInvoke(String code, boolean isQuery, Address from, Address to,
+                                      BigInteger value, BigInteger limit,
+                                      String method, Object[] params) throws IOException {
+        if (logger.isDebugEnabled()) {
+            printInvokeParams(code, isQuery, from, to, value, limit, method, params);
+        }
 
-            Map info = (Map) proxy.getInfo();
-            if (logger.isDebugEnabled()) {
-                printGetInfo(info);
-            }
+        Map info = (Map) proxy.getInfo();
+        if (logger.isDebugEnabled()) {
+            printGetInfo(info);
+        }
 
-            boolean isDeploy = CMD_DEPLOY.equals(method);
-            BigInteger blockNumber = (BigInteger) info.get(EEProxy.Info.BLOCK_HEIGHT);
-            BigInteger blockTimestamp = (BigInteger) info.get(EEProxy.Info.BLOCK_TIMESTAMP);
-            byte[] txHash = (byte[]) info.get(EEProxy.Info.TX_HASH);
+        boolean isDeploy = CMD_DEPLOY.equals(method);
+        BigInteger blockNumber = (BigInteger) info.get(EEProxy.Info.BLOCK_HEIGHT);
+        BigInteger blockTimestamp = (BigInteger) info.get(EEProxy.Info.BLOCK_TIMESTAMP);
+        byte[] txHash = (byte[]) info.get(EEProxy.Info.TX_HASH);
 
-            ExternalState kernel = new ExternalState(proxy, code, blockNumber, blockTimestamp);
-            Transaction[] contexts = new Transaction[] {
-                    getTransactionData(isDeploy, code, from, to, value, limit, method, params, txHash)
-            };
+        ExternalState kernel = new ExternalState(proxy, code, blockNumber, blockTimestamp);
+        Transaction[] contexts = new Transaction[] {
+                getTransactionData(isDeploy, code, from, to, value, limit, method, params, txHash)
+        };
 
-            AvmConfiguration config = new AvmConfiguration();
-            config.threadCount = 1; // we need only one thread per executor
-            if (logger.isDebugEnabled()) {
-                config.enableVerboseConcurrentExecutor = true;
-                config.enableVerboseContractErrors = true;
+        AvmConfiguration config = new AvmConfiguration();
+        config.threadCount = 1; // we need only one thread per executor
+        if (logger.isDebugEnabled()) {
+            config.enableVerboseConcurrentExecutor = true;
+            config.enableVerboseContractErrors = true;
+        }
+        AvmImpl avm = CommonAvmFactory.buildAvmInstanceForConfiguration(new StandardCapabilities(), config);
+        try {
+            FutureResult[] futures = avm.run(kernel, contexts, ExecutionType.ASSUME_MAINCHAIN, blockNumber.longValue() - 1);
+            ResultWrapper result = new ResultWrapper(futures[0].getResult());
+            Object retVal;
+            if (isDeploy) {
+                retVal = result.getContractAddress();
+            } else {
+                retVal = result.getDecodedReturnData();
             }
-            AvmImpl avm = CommonAvmFactory.buildAvmInstanceForConfiguration(new StandardCapabilities(), config);
-            try {
-                FutureResult[] futures = avm.run(kernel, contexts, ExecutionType.ASSUME_MAINCHAIN, blockNumber.longValue() - 1);
-                ResultWrapper result = new ResultWrapper(futures[0].getResult());
-                Object retVal;
-                if (isDeploy) {
-                    retVal = result.getContractAddress();
-                } else {
-                    retVal = result.getDecodedReturnData();
-                }
-                return new InvokeResult((result.isSuccess()) ? EEProxy.Status.SUCCESS : EEProxy.Status.FAILURE,
-                        result.getEnergyUsed(), TypedObj.encodeAny(retVal));
-            } catch (Exception e) {
-                e.printStackTrace();
-                return new InvokeResult(EEProxy.Status.FAILURE, BigInteger.ZERO, TypedObj.encodeAny(e.getMessage()));
-            } finally {
-                avm.shutdown();
-            }
-        });
+            return new InvokeResult((result.isSuccess()) ? EEProxy.Status.SUCCESS : EEProxy.Status.FAILURE,
+                    result.getEnergyUsed(), TypedObj.encodeAny(retVal));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new InvokeResult(EEProxy.Status.FAILURE, BigInteger.ZERO, TypedObj.encodeAny(e.getMessage()));
+        } finally {
+            avm.shutdown();
+        }
     }
 
     private Transaction getTransactionData(boolean isDeploy, String code, Address from, Address to,
@@ -160,7 +168,7 @@ public class TransactionExecutor {
     }
 
     private byte[] readFile(String code) throws IOException {
-        Path path = Paths.get(code);
+        Path path = Paths.get(code, CODE_JAR);
         byte[] jarBytes;
         try {
             jarBytes = Files.readAllBytes(path);
@@ -168,25 +176,6 @@ public class TransactionExecutor {
             throw new IOException("JAR read error: " + e.getMessage());
         }
         return jarBytes;
-    }
-
-    private static void writeFile(String filePath, byte[] data) {
-        Path outFile = Paths.get(filePath);
-        try {
-            Files.write(outFile, data);
-        } catch (IOException e) {
-            throw new RuntimeException(e.getMessage());
-        }
-    }
-
-    private static String getOutputName(String input, boolean debugMode) {
-        int len = input.lastIndexOf("/") + 1;
-        String prefix = input.substring(0, len) + "optimized";
-        if (debugMode) {
-            return prefix + "-debug.jar";
-        } else {
-            return prefix + ".jar";
-        }
     }
 
     private Object[] getConvertedParams(Object[] params) {

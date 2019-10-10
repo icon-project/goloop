@@ -7,12 +7,21 @@ package foundation.icon.ee.tooling.deploy;
 
 import foundation.icon.ee.tooling.abi.ABICompiler;
 import foundation.icon.ee.types.Method;
+import foundation.icon.ee.utils.MethodPacker;
 import org.aion.avm.tooling.deploy.JarOptimizer;
 import org.aion.avm.tooling.deploy.eliminator.ConstantRemover;
 import org.aion.avm.tooling.deploy.eliminator.UnreachableMethodRemover;
 import org.aion.avm.tooling.deploy.renamer.Renamer;
+import org.aion.avm.tooling.util.JarBuilder;
+import org.aion.avm.tooling.util.Utilities;
+import org.msgpack.core.MessageBufferPacker;
+import org.msgpack.core.MessagePack;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
+import java.util.jar.JarInputStream;
 
 public class OptimizedJarBuilder {
 
@@ -97,6 +106,12 @@ public class OptimizedJarBuilder {
                 System.err.println("Renaming crashed, packaging code without this optimization");
             }
         }
+        // Add API info into the Jar
+        try {
+            optimizedDappBytes = writeApi(optimizedDappBytes);
+        } catch (Exception e) {
+            System.err.println("Writing API info failed.");
+        }
         return optimizedDappBytes;
     }
 
@@ -104,9 +119,21 @@ public class OptimizedJarBuilder {
         return callables;
     }
 
-    public void writeAbi() {
+    private byte[] writeApi(byte[] jarBytes) throws IOException {
+        MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
+        packer.packArrayHeader(callables.size());
         for (Method m : callables) {
-            System.out.println(m);
+            if (debugModeEnabled) {
+                System.out.println(m);
+            }
+            MethodPacker.writeTo(m, packer);
         }
+        packer.close();
+
+        JarInputStream jis = new JarInputStream(new ByteArrayInputStream(jarBytes), true);
+        Map<String, byte[]> classMap = Utilities.extractClasses(jis, Utilities.NameStyle.DOT_NAME);
+        String mainClassName = Utilities.extractMainClassName(jis, Utilities.NameStyle.DOT_NAME);
+        byte[] mainClassBytes = classMap.remove(mainClassName);
+        return JarBuilder.buildJarWithApiInfo(mainClassName, mainClassBytes, packer.toByteArray(), classMap);
     }
 }

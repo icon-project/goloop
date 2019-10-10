@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package foundation.icon.ee.ipc;
+package foundation.icon.ee.utils;
 
 import foundation.icon.ee.types.Method;
 import org.msgpack.core.MessageBufferPacker;
@@ -22,9 +22,9 @@ import org.msgpack.core.MessageBufferPacker;
 import java.io.IOException;
 import java.math.BigInteger;
 
-class MethodPacker {
+public class MethodPacker {
 
-    static void writeTo(Method m, MessageBufferPacker packer) throws IOException {
+    public static void writeTo(Method m, MessageBufferPacker packer) throws IOException {
         packer.packArrayHeader(6);
         packer.packInt(m.getType());
         packer.packString(m.getName());

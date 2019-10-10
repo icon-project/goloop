@@ -20,10 +20,10 @@ import java.util.Arrays;
 
 public class Method {
 
-    static class MethodType {
-        static final int FUNCTION = 0;
-        static final int FALLBACK = 1;
-        static final int EVENT = 2;
+    public static class MethodType {
+        public static final int FUNCTION = 0;
+        public static final int FALLBACK = 1;
+        public static final int EVENT = 2;
     }
 
     public static class Flags {

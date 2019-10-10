@@ -24,6 +24,8 @@ public class JarBuilder {
     // were written and some of them assume compressed size).
     private static long FIXED_TIMESTAMP = 1_000_000_000_000L;
 
+    // The API Info file name
+    private static final String APIS_NAME = "META-INF/APIS";
 
     /**
      * Creates the in-memory representation of a JAR with the given class names and direct bytes.
@@ -54,6 +56,20 @@ public class JarBuilder {
             }
             for (Class<?> clazz : otherClasses) {
                 builder.addClassAndInners(clazz);
+            }
+        } catch (IOException e) {
+            // Can't happen - in-memory.
+            throw new AssertionError(e);
+        }
+        return builder.toBytes();
+    }
+
+    public static byte[] buildJarWithApiInfo(String mainClassName, byte[] mainClassBytes, byte[] apiInfo, Map<String, byte[]> classMap) {
+        JarBuilder builder = new JarBuilder(null, mainClassName, apiInfo);
+        try {
+            builder.saveClassToStream(mainClassName, mainClassBytes);
+            for (Map.Entry<String, byte[]> entry : classMap.entrySet()) {
+                builder.saveClassToStream(entry.getKey(), entry.getValue());
             }
         } catch (IOException e) {
             // Can't happen - in-memory.
@@ -104,13 +120,27 @@ public class JarBuilder {
         }
     }
 
+    private JarBuilder(Class<?> mainClass, String mainClassName, byte[] apiInfo) {
+        this(mainClass, mainClassName);
+        try {
+            JarEntry entry = new JarEntry(APIS_NAME);
+            entry.setTime(FIXED_TIMESTAMP);
+            this.jarStream.putNextEntry(entry);
+            this.jarStream.write(apiInfo);
+            this.jarStream.closeEntry();
+        } catch (IOException e) {
+            // We are using a byte array so this can't happen.
+            throw new AssertionError(e);
+        }
+    }
+
     /**
      * Loads the given class, any declared classes (named inner classes), and any anonymous inner classes.
      * 
      * @param clazz The class to load.
      * @return this, for easy chaining.
      */
-    public JarBuilder addClassAndInners(Class<?> clazz) {
+    private JarBuilder addClassAndInners(Class<?> clazz) {
         try {
             // Load everything related to this class.
             loadClassAndAnonymous(clazz);
@@ -163,7 +193,7 @@ public class JarBuilder {
         this.entriesInJar.add(internalName);
     }
 
-    public byte[] toBytes() {
+    private byte[] toBytes() {
         try {
             this.jarStream.finish();
             this.jarStream.close();

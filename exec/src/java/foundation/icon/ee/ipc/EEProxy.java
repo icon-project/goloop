@@ -175,7 +175,6 @@ public class EEProxy extends Proxy {
     private void handleInvoke(Value raw) throws IOException {
         ArrayValue data = raw.asArrayValue();
         String code = data.get(0).asStringValue().asString();
-        System.out.println("code = " + code);
         boolean isQuery = data.get(1).asBooleanValue().getBoolean();
         Address from = new Address(getValueAsByteArray(data.get(2)));
         Address to = new Address(getValueAsByteArray(data.get(3)));
