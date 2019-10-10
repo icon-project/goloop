@@ -68,8 +68,10 @@ public class DAppExecutor {
         ReentrantDAppStack.ReentrantState thisState = new ReentrantDAppStack.ReentrantState(dappAddress, dapp, nextHashCode, initialClassWrappers);
         task.getReentrantDAppStack().pushState(thisState);
 
-        InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.energyLimit - result.energyUsed(), nextHashCode, initialClassWrappers);
-        IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(new BlockchainRuntimeImpl(capabilities, externalState, avm, thisState, task, tx, tx.copyOfTransactionData(), dapp.runtimeSetup, enableBlockchainPrintln));
+        IBlockchainRuntime br = new BlockchainRuntimeImpl(capabilities, externalState, avm, thisState, task, tx, tx.copyOfTransactionData(), dapp.runtimeSetup, enableBlockchainPrintln);
+        FrameContextImpl fc = new FrameContextImpl(dapp, initialClassWrappers, br);
+        InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.energyLimit - result.energyUsed(), nextHashCode, initialClassWrappers, fc);
+        IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(br);
 
         try {
             // It is now safe for us to bill for the cost of loading the graph (the cost is the same, whether this came from the caller or the disk).

@@ -223,9 +223,12 @@ public class DAppCreator {
             
             // We start the nextHashCode at 1.
             int nextHashCode = 1;
-            InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.energyLimit - result.energyUsed(), nextHashCode, new InternedClasses());
+            InternedClasses icm = new InternedClasses();
+            IBlockchainRuntime br = new BlockchainRuntimeImpl(capabilities, externalState, avm, null, task, tx, codeAndArguments.arguments, dapp.runtimeSetup, enableBlockchainPrintln);
+            FrameContextImpl fc = new FrameContextImpl(dapp, icm, br);
+            InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.energyLimit - result.energyUsed(), nextHashCode, icm, fc);
             // (we pass a null reentrant state since we haven't finished initializing yet - nobody can call into us).
-            IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(new BlockchainRuntimeImpl(capabilities, externalState, avm, null, task, tx, codeAndArguments.arguments, dapp.runtimeSetup, enableBlockchainPrintln));
+            IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(br);
 
             // We have just created this dApp, there should be no previous runtime associated with it.
             RuntimeAssertionError.assertTrue(previousRuntime == null);

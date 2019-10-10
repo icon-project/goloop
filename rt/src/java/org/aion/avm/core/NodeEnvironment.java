@@ -345,7 +345,7 @@ public class NodeEnvironment {
                 throw RuntimeAssertionError.unreachable("Nobody should be calling this");
             }
             @Override
-            public void enterNewFrame(ClassLoader contractLoader, long energyLeft, int nextHashCode, InternedClasses classWrappers) {
+            public void enterNewFrame(ClassLoader contractLoader, long energyLeft, int nextHashCode, InternedClasses classWrappers, FrameContext frameContext) {
                 throw RuntimeAssertionError.unreachable("Nobody should be calling this");
             }
             @Override
@@ -355,6 +355,10 @@ public class NodeEnvironment {
             @Override
             public boolean isLoadedByCurrentClassLoader(java.lang.Class userClass) {
                 throw RuntimeAssertionError.unreachable("Not expected here.");
+            }
+            @Override
+            public FrameContext getFrameContext() {
+                throw RuntimeAssertionError.unreachable("Nobody should be calling this");
             }
         };
 

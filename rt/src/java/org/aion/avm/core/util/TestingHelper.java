@@ -1,10 +1,6 @@
 package org.aion.avm.core.util;
 
-import i.IInstrumentation;
-import i.InstrumentationHelpers;
-import i.InternedClasses;
-import i.OutOfEnergyException;
-import i.RuntimeAssertionError;
+import i.*;
 import s.java.lang.Class;
 
 
@@ -85,7 +81,7 @@ public class TestingHelper implements IInstrumentation {
         throw RuntimeAssertionError.unreachable("Shouldn't be called in the testing code");
     }
     @Override
-    public void enterNewFrame(ClassLoader contractLoader, long energyLeft, int nextHashCode, InternedClasses classWrappers) {
+    public void enterNewFrame(ClassLoader contractLoader, long energyLeft, int nextHashCode, InternedClasses classWrappers, FrameContext frameContext) {
         throw RuntimeAssertionError.unreachable("Shouldn't be called in the testing code");
     }
     @Override
@@ -135,5 +131,9 @@ public class TestingHelper implements IInstrumentation {
     @Override
     public boolean isLoadedByCurrentClassLoader(java.lang.Class userClass) {
         throw RuntimeAssertionError.unreachable("Not expected in this test");
+    }
+    @Override
+    public FrameContext getFrameContext() {
+        throw RuntimeAssertionError.unreachable("Shouldn't be called in the testing code");
     }
 }

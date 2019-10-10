@@ -11,7 +11,7 @@ public interface IInstrumentation {
     // The instrumentation instance associated with the given thread and also installed into the Helper of the currently-running DApp.
     public static final ThreadLocal<IInstrumentation> attachedThreadInstrumentation = new ThreadLocal<>();
 
-    void enterNewFrame(ClassLoader contractLoader, long energyLeft, int nextHashCode, InternedClasses classWrappers);
+    void enterNewFrame(ClassLoader contractLoader, long energyLeft, int nextHashCode, InternedClasses classWrappers, FrameContext frameContext);
     void exitCurrentFrame();
 
     <T> s.java.lang.Class<T> wrapAsClass(Class<T> input);
@@ -55,4 +55,6 @@ public interface IInstrumentation {
      * @return id the class has been loaded by the classloader associated to stackFrame
      */
     boolean isLoadedByCurrentClassLoader(Class userClass);
+
+    FrameContext getFrameContext();
 }

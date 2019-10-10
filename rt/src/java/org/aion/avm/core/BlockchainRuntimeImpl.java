@@ -40,6 +40,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     private Address blockCoinBaseCache;
     private BigInteger blockDifficultyCache;
 
+    private DBStorage dbStorage;
 
     public BlockchainRuntimeImpl(IExternalCapabilities capabilities, IExternalState externalState, AvmInternal avm, ReentrantDAppStack.ReentrantState reentrantState, TransactionTask task, Transaction tx, byte[] dAppData, IRuntimeSetup thisDAppSetup, boolean enablePrintln) {
         this.capabilities = capabilities;
@@ -60,6 +61,8 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         this.valueCache = null;
         this.blockCoinBaseCache = null;
         this.blockDifficultyCache = null;
+
+        this.dbStorage = new DBStorage(externalState);
     }
 
     @Override
@@ -491,14 +494,22 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     public DictDB avm_newDictDB(s.java.lang.String id) {
-        return null;
+        return new CollectionDBImpl(dbStorage, id);
     }
 
     public ArrayDB avm_newArrayDB(s.java.lang.String id) {
-        return null;
+        return new CollectionDBImpl(dbStorage, id);
     }
 
     public VarDB avm_newVarDB(s.java.lang.String id) {
-        return null;
+        return new VarDBImpl(dbStorage, id);
+    }
+
+    public DBStorage getDBStorage() {
+        return dbStorage;
+    }
+
+    public IExternalState getExternalState() {
+        return externalState;
     }
 }

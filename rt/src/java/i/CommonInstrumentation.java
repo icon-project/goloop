@@ -20,13 +20,14 @@ public class CommonInstrumentation implements IInstrumentation {
         this.abortState = false;
     }
 
-    public void enterNewFrame(ClassLoader contractLoader, long energyLeft, int nextHashCode, InternedClasses classWrappers) {
+    public void enterNewFrame(ClassLoader contractLoader, long energyLeft, int nextHashCode, InternedClasses classWrappers, FrameContext frameContext) {
         RuntimeAssertionError.assertTrue(null != contractLoader);
         FrameState newFrame = new FrameState();
         newFrame.lateLoader = contractLoader;
 
         newFrame.energyLeft = energyLeft;
         newFrame.nextHashCode = nextHashCode;
+        newFrame.frameContext = frameContext;
 
         // Reset our interning state.
         // Note that we want to fail on any attempt to use the interned string map which isn't the initial call (since <clinit> needs it but any
@@ -285,6 +286,11 @@ public class CommonInstrumentation implements IInstrumentation {
         return (s.java.lang.Throwable)shadowClass.getConstructor(s.java.lang.String.class, s.java.lang.Throwable.class).newInstance(message, cause);
     }
 
+    @Override
+    public FrameContext getFrameContext() {
+        return this.currentFrame.frameContext;
+    }
+
 
     /**
      * The CommonInstrumentation contains the logic to operate on state and the state which is shared for the entire stack of DApp
@@ -315,5 +321,6 @@ public class CommonInstrumentation implements IInstrumentation {
 
         // Set forceExitState to non-null to re-throw at the entry to every block (forces the contract to exit).
         private AvmThrowable forceExitState;
+        private FrameContext frameContext;
     }
 }
