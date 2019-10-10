@@ -1,7 +1,5 @@
 package p.avm;
 
-import avm.PrimitiveBuffer;
-
 public interface VarDB<V> {
     void avm_putValue(V value);
 
