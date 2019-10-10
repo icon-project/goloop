@@ -11,6 +11,7 @@ import java.util.List;
 
 import java.util.Set;
 import org.aion.avm.NameStyle;
+import org.aion.avm.StorageFees;
 import org.aion.avm.core.ClassRenamer;
 import org.aion.avm.core.ClassRenamerBuilder;
 import org.aion.avm.core.types.CommonType;
@@ -160,6 +161,13 @@ public class LoadedDApp {
         return nextHashCode;
     }
 
+    public Object deserializeObject(InternedClasses internedClassMap, byte[] rawGraphData) {
+        ByteBuffer inputBuffer = ByteBuffer.wrap(rawGraphData);
+        StandardGlobalResolver resolver = new StandardGlobalResolver(internedClassMap, this.loader);
+        StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
+        return Deserializer.deserializeObject(inputBuffer, resolver, this.fieldCache, classNameMapper);
+    }
+
     /**
      * Requests that the Classes in the receiver be walked and all referenced objects be serialized into a graph.
      * NOTE:  The caller is expected to manage billing - none of that is done in here.
@@ -176,6 +184,20 @@ public class LoadedDApp {
         StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
         Serializer.serializeEntireGraph(outputBuffer, out_instanceIndex, out_calleeToCallerIndexMap, resolver, this.fieldCache, classNameMapper, nextHashCode, this.sortedUserClasses, this.constantClass);
         
+        byte[] finalBytes = new byte[outputBuffer.position()];
+        System.arraycopy(outputBuffer.array(), 0, finalBytes, 0, finalBytes.length);
+        return finalBytes;
+    }
+
+    public byte[] serializeObject(Object v) {
+        return serializeObject(v, StorageFees.MAX_GRAPH_SIZE);
+    }
+
+    public byte[] serializeObject(Object v, int maximumSizeInBytes) {
+        ByteBuffer outputBuffer = ByteBuffer.allocate(maximumSizeInBytes);
+        StandardGlobalResolver resolver = new StandardGlobalResolver(null, this.loader);
+        StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
+        Serializer.serializeObject(outputBuffer, v, resolver, this.fieldCache, classNameMapper);
         byte[] finalBytes = new byte[outputBuffer.position()];
         System.arraycopy(outputBuffer.array(), 0, finalBytes, 0, finalBytes.length);
         return finalBytes;
