@@ -1,4 +1,4 @@
-package org.aion.avm.core;
+package i;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;

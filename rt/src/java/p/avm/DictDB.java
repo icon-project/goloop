@@ -1,12 +1,14 @@
 package p.avm;
 
-public interface DictDB<K, V> {
-    void avm_putValue(K key, V value);
+import i.IObject;
 
-    V avm_get(K key);
+public interface DictDB {
+    void avm_putValue(IObject key, IObject value);
 
-    V avm_getValue(K key);
+    IObject avm_get(IObject key);
 
-    PrimitiveBuffer avm_getValue(K key, PrimitiveBuffer out);
+    IObject avm_getValue(IObject key);
+
+    PrimitiveBuffer avm_getValue(IObject key, PrimitiveBuffer out);
 }
 

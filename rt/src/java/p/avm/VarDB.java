@@ -1,9 +1,11 @@
 package p.avm;
 
-public interface VarDB<V> {
-    void avm_putValue(V value);
+import i.IObject;
 
-    V avm_getValue();
+public interface VarDB {
+    void avm_putValue(IObject value);
+
+    IObject avm_getValue();
 
     PrimitiveBuffer avm_getValue(PrimitiveBuffer out);
 }

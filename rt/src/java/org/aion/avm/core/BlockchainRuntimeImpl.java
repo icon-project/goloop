@@ -422,7 +422,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     @Override
     public void avm_println(s.java.lang.String message) {
         if (this.enablePrintln) {
-            task.outputPrintln(message.toString());
+            task.outputPrintln(message!=null ? message.toString() : null);
         }
     }
 
@@ -494,22 +494,22 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     public DictDB avm_newDictDB(s.java.lang.String id) {
-        return new CollectionDBImpl(dbStorage, id);
+        return new CollectionDBImpl(id);
     }
 
     public ArrayDB avm_newArrayDB(s.java.lang.String id) {
-        return new CollectionDBImpl(dbStorage, id);
+        return new CollectionDBImpl(id);
     }
 
     public VarDB avm_newVarDB(s.java.lang.String id) {
-        return new VarDBImpl(dbStorage, id);
-    }
-
-    public DBStorage getDBStorage() {
-        return dbStorage;
+        return new p.avm.VarDBImpl(id);
     }
 
     public IExternalState getExternalState() {
         return externalState;
+    }
+
+    public IDBStorage getDBStorage() {
+        return dbStorage;
     }
 }
