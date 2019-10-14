@@ -94,11 +94,11 @@ public class SampleToken
         Address _from = Blockchain.getCaller();
         BigInteger fromBalance = token.balances.getValue(_from);
         if (fromBalance==null) {
-            fromBalance = BigInteger.valueOf(0);
+            fromBalance = BigInteger.ZERO;
         }
         BigInteger toBalance = token.balances.getValue(_to);
         if (toBalance==null) {
-            toBalance = BigInteger.valueOf(0);
+            toBalance = BigInteger.ZERO;
         }
 
         // check some basic requirements
