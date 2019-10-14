@@ -18,6 +18,7 @@ package foundation.icon.ee.ipc;
 
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Method;
+import foundation.icon.ee.types.ObjectGraph;
 import org.msgpack.value.ArrayValue;
 import org.msgpack.value.Value;
 import org.slf4j.Logger;
@@ -45,6 +46,9 @@ public class EEProxy extends Proxy {
         static final int GETAPI = 9;
         static final int LOG = 10;
         static final int CLOSE = 11;
+        static final int SETCODE = 12;
+        static final int GETOBJGRAPH = 13;
+        static final int SETOBJGRAPH = 14;
     }
 
     public static class Status {
@@ -138,6 +142,32 @@ public class EEProxy extends Proxy {
         } else {
             sendMessage(MsgType.SETVALUE, key, false, value);
         }
+    }
+
+    public void setCode(byte[] code) throws IOException {
+        sendMessage(MsgType.SETCODE, code);
+    }
+
+    public ObjectGraph getObjGraph(boolean flag) throws IOException {
+        sendMessage(MsgType.GETOBJGRAPH, flag ? 1 : 0);
+        Message msg = getNextMessage();
+        if (msg.type != MsgType.GETOBJGRAPH) {
+            throw new IOException("Invalid message: GETOBJGRAPH expected.");
+        }
+        ArrayValue data = msg.value.asArrayValue();
+        int nextHash = data.get(0).asIntegerValue().asInt();
+        byte[] graphHash = getValueAsByteArray(data.get(1));
+        byte[] graphData = getValueAsByteArray(data.get(2));
+        logger.debug("[GETOBJGRAPH] nextHash {}, graphHash {}, objGraph {} ",
+                nextHash, graphHash == null ? null : graphHash.length, graphData == null ? null : graphData.length);
+        return new ObjectGraph(nextHash, graphHash, graphData);
+    }
+
+    public void setObjGraph(boolean flags, ObjectGraph objectGraph) throws IOException {
+        logger.debug("[SETOBJGRAPH] flags {}, ObjectGraph {} ", flags, objectGraph);
+        System.out.println("setObjGraph " + objectGraph);
+        sendMessage(MsgType.SETOBJGRAPH, flags ? 1 : 0,
+                objectGraph.getNextHash(), objectGraph.getGraphData());
     }
 
     public interface OnGetApiListener {
