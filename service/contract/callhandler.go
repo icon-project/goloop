@@ -327,6 +327,22 @@ func (h *CallHandler) OnAPI(status error, info *scoreapi.Info) {
 	h.log.Panicln("Unexpected OnAPI() call")
 }
 
+func (h *CallHandler) SetCode(code []byte) error {
+	if h.forDeploy == false {
+		return errors.InvalidStateError.New("Unexpected call SetCode()")
+	}
+	c := h.contract(h.as)
+	return c.SetCode(code)
+}
+
+func (h *CallHandler) GetObjGraph(flags bool) (error, int, []byte, []byte) {
+	return h.as.GetObjGraph(flags)
+}
+
+func (h *CallHandler) SetObjGraph(flags bool, nextHash int, objGraph []byte) error {
+	return h.as.SetObjGraph(flags, nextHash, objGraph)
+}
+
 type TransferAndCallHandler struct {
 	th *TransferHandler
 	*CallHandler

@@ -1,10 +1,11 @@
 package contract
 
 import (
-	"github.com/icon-project/goloop/common/log"
 	"math/big"
 	"sync"
 	"testing"
+
+	"github.com/icon-project/goloop/common/log"
 
 	"github.com/icon-project/goloop/common/db"
 
@@ -226,6 +227,18 @@ func (h *asyncHandler) OnCall(from, to module.Address, value, limit *big.Int, me
 }
 
 func (h *asyncHandler) OnAPI(status error, info *scoreapi.Info) {
+	panic("implement me")
+}
+
+func (h *asyncHandler) SetCode(code []byte) error {
+	panic("implement me")
+}
+
+func (h *asyncHandler) GetObjGraph(bool) (error, int, []byte, []byte) {
+	panic("implement me")
+}
+
+func (h *asyncHandler) SetObjGraph(flags bool, nextHash int, objGraph []byte) error {
 	panic("implement me")
 }
 

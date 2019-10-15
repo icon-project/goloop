@@ -19,18 +19,21 @@ import (
 type Message uint
 
 const (
-	msgVERSION    = 0
-	msgINVOKE     = 1
-	msgRESULT     = 2
-	msgGETVALUE   = 3
-	msgSETVALUE   = 4
-	msgCALL       = 5
-	msgEVENT      = 6
-	msgGETINFO    = 7
-	msgGETBALANCE = 8
-	msgGETAPI     = 9
-	msgLOG        = 10
-	msgCLOSE      = 11
+	msgVERSION     = 0
+	msgINVOKE      = 1
+	msgRESULT      = 2
+	msgGETVALUE    = 3
+	msgSETVALUE    = 4
+	msgCALL        = 5
+	msgEVENT       = 6
+	msgGETINFO     = 7
+	msgGETBALANCE  = 8
+	msgGETAPI      = 9
+	msgLOG         = 10
+	msgCLOSE       = 11
+	msgSETCODE     = 12
+	msgGETOBJGRAPH = 13
+	msgSETOBJGRAPH = 14
 )
 
 type proxyState int
@@ -57,6 +60,9 @@ type CallContext interface {
 	OnResult(status error, steps *big.Int, result *codec.TypedObj)
 	OnCall(from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj)
 	OnAPI(status error, info *scoreapi.Info)
+	SetCode(code []byte) error
+	GetObjGraph(bool) (error, int, []byte, []byte)
+	SetObjGraph(flags bool, nextHash int, objGraph []byte) error
 }
 
 type Proxy interface {
@@ -147,6 +153,18 @@ type getAPIMessage struct {
 type logMessage struct {
 	Level   log.Level
 	Message string
+}
+
+type getObjGraphMessage struct {
+	NextHash    int
+	GraphHash   []byte
+	ObjectGraph []byte
+}
+
+type setObjGraphMessage struct {
+	Flags       int
+	NextHash    int
+	ObjectGraph []byte
 }
 
 func (p *proxy) Invoke(ctx CallContext, code string, isQuery bool, from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj) error {
@@ -404,6 +422,39 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 			p.log.Log(m.Level, p.scoreType, "|", m.Message)
 		}
 		return nil
+
+	case msgSETCODE:
+		var code []byte
+		if _, err := codec.MP.UnmarshalFromBytes(data, &code); err != nil {
+			return err
+		}
+		return p.frame.ctx.SetCode(code)
+
+	case msgGETOBJGRAPH:
+		var flags int
+		if _, err := codec.MP.UnmarshalFromBytes(data, &flags); err != nil {
+			p.log.Debugf("Failed to UnmarshalFromBytes err(%s)\n", err)
+			return err
+		}
+		err, nextHash, graphHash, objGraph := p.frame.ctx.GetObjGraph(flags == 1)
+		if err != nil {
+			p.log.Debugf("Failed to getObjGraph err(%s)\n", err)
+			return err
+		}
+		m := getObjGraphMessage{
+			NextHash:    nextHash,
+			GraphHash:   graphHash,
+			ObjectGraph: objGraph,
+		}
+		return p.conn.Send(msgGETOBJGRAPH, &m)
+
+	case msgSETOBJGRAPH:
+		var m setObjGraphMessage
+		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
+			return err
+		}
+		return p.frame.ctx.SetObjGraph(m.Flags == 1, m.NextHash, m.ObjectGraph)
+
 	default:
 		p.log.Warnf("Proxy[%p].HandleMessage(msg=%d) UnknownMessage", msg)
 		return errors.ErrIllegalArgument
@@ -492,6 +543,9 @@ func newProxy(m proxyManager, c ipc.Connection, l log.Logger, t string, v uint16
 	c.SetHandler(msgGETBALANCE, p)
 	c.SetHandler(msgGETAPI, p)
 	c.SetHandler(msgLOG, p)
+	c.SetHandler(msgSETCODE, p)
+	c.SetHandler(msgGETOBJGRAPH, p)
+	c.SetHandler(msgSETOBJGRAPH, p)
 
 	p.log = p.log.WithFields(log.Fields{
 		log.FieldKeyEID: p.uid,

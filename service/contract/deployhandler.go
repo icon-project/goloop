@@ -407,3 +407,18 @@ func (h *callGetAPIHandler) OnAPI(status error, info *scoreapi.Info) {
 	}
 	h.cc.OnResult(status, new(big.Int), nil, nil)
 }
+
+func (h *callGetAPIHandler) SetCode(code []byte) error {
+	h.log.Errorf("Unexpected call SetCode() from GetAPI()")
+	return nil
+}
+
+func (h *callGetAPIHandler) GetObjGraph(flags bool) (error, int, []byte, []byte) {
+	h.log.Errorf("Unexpected call GetObjGraph() from GetAPI()")
+	return nil, 0, nil, nil
+}
+
+func (h *callGetAPIHandler) SetObjGraph(flags bool, nextHash int, objGraph []byte) error {
+	h.log.Errorf("Unexpected call SetObjGraph() from GetAPI()")
+	return nil
+}

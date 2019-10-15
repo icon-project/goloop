@@ -85,6 +85,21 @@ func (cc *callContext) OnAPI(status error, info *scoreapi.Info) {
 	fmt.Printf("CallContext.OnAPI(%d,%+v)\n", status, info)
 }
 
+func (h *callContext) SetCode(code []byte) error {
+	fmt.Println("CallContext.SetCode")
+	return nil
+}
+
+func (h *callContext) GetObjGraph(flags bool) (error, int, []byte, []byte) {
+	fmt.Printf("CallContext.GetObjGraph(%t)\n", flags)
+	return nil, 0, nil, nil
+}
+
+func (h *callContext) SetObjGraph(flags bool, nextHash int, objGraph []byte) error {
+	fmt.Printf("CallContext.SetObjGraph(%t,%d,%#x)\n", flags, nextHash, objGraph)
+	return nil
+}
+
 func makeTransactions(cc *callContext, mgr eeproxy.Manager) {
 	paramObj := []interface{}{"Test"}
 	paramAny := common.MustEncodeAny(paramObj)

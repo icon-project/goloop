@@ -45,6 +45,8 @@ type AccountSnapshot interface {
 	IsDisabled() bool
 	IsBlocked() bool
 	ContractOwner() module.Address
+
+	GetObjGraph(flags bool) (error, int, []byte, []byte)
 }
 
 // AccountState represents mutable account state.
@@ -79,6 +81,9 @@ type AccountState interface {
 	SetBlock(b bool)
 	IsBlocked() bool
 	ContractOwner() module.Address
+
+	GetObjGraph(flags bool) (error, int, []byte, []byte)
+	SetObjGraph(flags bool, nextHash int, objGraph []byte) error
 }
 
 type accountSnapshotImpl struct {
@@ -93,6 +98,8 @@ type accountSnapshotImpl struct {
 	apiInfo       *scoreapi.Info
 	curContract   *contractSnapshotImpl
 	nextContract  *contractSnapshotImpl
+
+	objGraph *objectGraph
 }
 
 func (s *accountSnapshotImpl) ContractOwner() module.Address {
@@ -184,6 +191,11 @@ func (s *accountSnapshotImpl) Flush() error {
 			return err
 		}
 	}
+	if s.objGraph != nil {
+		if err := s.objGraph.flush(); err != nil {
+			return err
+		}
+	}
 	if sp, ok := s.store.(trie.Snapshot); ok {
 		return sp.Flush()
 	}
@@ -267,12 +279,48 @@ func (s *accountSnapshotImpl) APIInfo() *scoreapi.Info {
 	return s.apiInfo
 }
 
+func (s *accountSnapshotImpl) GetObjGraph(flags bool) (error, int, []byte, []byte) {
+	var obj *objectGraph
+	obj = s.objGraph
+	if flags == false {
+		return nil, obj.nextHash, obj.graphHash, nil
+	} else {
+		if obj.graphData == nil && obj.graphHash != nil {
+			bk, err := s.database.GetBucket(db.BytesByHash)
+			if err != nil {
+				err = errors.CriticalIOError.Wrap(err, "FailToGetBucket")
+				return err, 0, nil, nil
+			}
+			v, err := bk.Get(obj.graphHash)
+			if err != nil {
+				return err, 0, nil, nil
+			}
+			if len(v) == 0 {
+				return errors.NotFoundError.Errorf(
+					"FAIL to find graphData by graphHash(%x)", obj.graphHash), 0, nil, nil
+			}
+			obj.graphData = v
+		}
+	}
+	log.Tracef("GetObjGraph flag(%t), nextHash(%d), graphHash(%#x), lenOfObjGraph(%d)\n",
+		flags, obj.nextHash, obj.graphHash, len(obj.graphData))
+
+	return nil, obj.nextHash, obj.graphHash, obj.graphData
+}
+
 const (
-	accountSnapshotImplEntries = 9
+	accountSnapshotImplEntries     = 9
+	accountSnapshotIncludeObjGraph = 11 // include object graph
 )
 
 func (s *accountSnapshotImpl) EncodeMsgpack(e *msgpack.Encoder) (err error) {
-	if err := e.EncodeArrayLen(accountSnapshotImplEntries); err != nil {
+	var entiryNum int
+	if s.objGraph == nil {
+		entiryNum = accountSnapshotImplEntries
+	} else {
+		entiryNum = accountSnapshotIncludeObjGraph
+	}
+	if err := e.EncodeArrayLen(entiryNum); err != nil {
 		return err
 	}
 
@@ -281,7 +329,7 @@ func (s *accountSnapshotImpl) EncodeMsgpack(e *msgpack.Encoder) (err error) {
 		storeHash = s.store.Hash()
 	}
 
-	return e.EncodeMulti(
+	err = e.EncodeMulti(
 		s.version,
 		&s.balance,
 		s.fIsContract,
@@ -292,30 +340,52 @@ func (s *accountSnapshotImpl) EncodeMsgpack(e *msgpack.Encoder) (err error) {
 		s.curContract,
 		s.nextContract,
 	)
+	if err == nil && s.objGraph != nil {
+		err = e.EncodeMulti(s.objGraph.nextHash, s.objGraph.graphHash)
+	}
+	return err
 }
 
 func (s *accountSnapshotImpl) DecodeMsgpack(d *msgpack.Decoder) error {
+	var storeHash []byte
 	if n, err := d.DecodeArrayLen(); err != nil {
 		return err
 	} else {
-		if n != accountSnapshotImplEntries {
+		if n == accountSnapshotImplEntries {
+			if err := d.DecodeMulti(
+				&s.version,
+				&s.balance,
+				&s.fIsContract,
+				&storeHash,
+				&s.state,
+				&s.contractOwner,
+				&s.apiInfo,
+				&s.curContract,
+				&s.nextContract,
+			); err != nil {
+				return err
+			}
+		} else if n == accountSnapshotIncludeObjGraph {
+			var objGraph objectGraph
+			s.objGraph = &objGraph
+			if err := d.DecodeMulti(
+				&s.version,
+				&s.balance,
+				&s.fIsContract,
+				&storeHash,
+				&s.state,
+				&s.contractOwner,
+				&s.apiInfo,
+				&s.curContract,
+				&s.nextContract,
+				&s.objGraph.nextHash,
+				&s.objGraph.graphHash,
+			); err != nil {
+				return err
+			}
+		} else {
 			return errors.IllegalArgumentError.Errorf("Unknown length")
 		}
-	}
-
-	var storeHash []byte
-	if err := d.DecodeMulti(
-		&s.version,
-		&s.balance,
-		&s.fIsContract,
-		&storeHash,
-		&s.state,
-		&s.contractOwner,
-		&s.apiInfo,
-		&s.curContract,
-		&s.nextContract,
-	); err != nil {
-		return err
 	}
 
 	if len(storeHash) > 0 {
@@ -348,6 +418,85 @@ type accountStateImpl struct {
 	curContract   *contractImpl
 	nextContract  *contractImpl
 	store         trie.Mutable
+
+	objGraph *objectGraph
+}
+
+type objectGraph struct {
+	bk        db.Bucket
+	nextHash  int
+	graphHash []byte
+	graphData []byte
+}
+
+func (o *objectGraph) flush() error {
+	if o.bk == nil || o.graphData == nil {
+		return nil
+	}
+
+	graphData, err := o.bk.Get(o.graphHash)
+	if err != nil {
+		return err
+	}
+	// already exists
+	if len(graphData) != 0 {
+		return nil
+	}
+	if err := o.bk.Set(o.graphHash, o.graphData); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *accountStateImpl) GetObjGraph(flags bool) (error, int, []byte, []byte) {
+	var obj *objectGraph
+	obj = s.objGraph
+	if flags == false {
+		return nil, obj.nextHash, obj.graphHash, nil
+	} else {
+		if obj.graphData == nil && obj.graphHash != nil {
+			bk, err := s.database.GetBucket(db.BytesByHash)
+			if err != nil {
+				err = errors.CriticalIOError.Wrap(err, "FailToGetBucket")
+				return err, 0, nil, nil
+			}
+			v, err := bk.Get(obj.graphHash)
+			if err != nil {
+				return err, 0, nil, nil
+			}
+			if len(v) == 0 {
+				return errors.NotFoundError.Errorf(
+					"FAIL to find graphData by graphHash(%x)", obj.graphHash), 0, nil, nil
+			}
+			obj.graphData = v
+		}
+	}
+	log.Tracef("GetObjGraph flag(%t), nextHash(%d), graphHash(%#x), lenOfObjGraph(%d)\n",
+		flags, obj.nextHash, obj.graphHash, len(obj.graphData))
+
+	return nil, obj.nextHash, obj.graphHash, obj.graphData
+}
+
+func (s *accountStateImpl) SetObjGraph(flags bool, nextHash int, graphData []byte) error {
+	log.Tracef("SetObjGraph flags(%t), nextHash(%d), lenOfObjGraph(%d)\n", flags, nextHash, len(graphData))
+	if flags {
+		hash := sha3.Sum256(graphData)
+		bk, err := s.database.GetBucket(db.BytesByHash)
+		if err != nil {
+			return errors.CriticalIOError.Wrap(err, "FailToGetBucket")
+		}
+		s.objGraph = &objectGraph{
+			bk:        bk,
+			nextHash:  nextHash,
+			graphHash: hash[:],
+			graphData: graphData,
+		}
+	} else {
+		s.objGraph = &objectGraph{
+			nextHash: nextHash,
+		}
+	}
+	return nil
 }
 
 func (s *accountStateImpl) ContractOwner() module.Address {
@@ -523,6 +672,7 @@ func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
 		apiInfo:       s.apiInfo,
 		curContract:   curContract,
 		nextContract:  nextContract,
+		objGraph:      s.objGraph,
 	}
 }
 
@@ -553,6 +703,7 @@ func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 		s.store = nil
 		return nil
 	}
+	s.objGraph = snapshot.objGraph
 	if s.store == nil {
 		s.store = trie_manager.MutableFromImmutable(snapshot.store)
 		return nil
@@ -707,6 +858,10 @@ func (a *accountROState) RejectContract(
 
 func (a *accountROState) Clear() {
 	// nothing to do
+}
+
+func (a *accountROState) SetObjGraph(flags bool, nextHash int, objGraph []byte) error {
+	return nil
 }
 
 func newAccountROState(snapshot AccountSnapshot) AccountState {

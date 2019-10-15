@@ -3,6 +3,9 @@ package state
 import (
 	"bytes"
 	"fmt"
+
+	"golang.org/x/crypto/sha3"
+
 	"github.com/icon-project/goloop/common/log"
 
 	"github.com/icon-project/goloop/common/merkle"
@@ -52,6 +55,7 @@ const (
 type ContractSnapshot interface {
 	CodeHash() []byte
 	Code() ([]byte, error)
+	SetCode([]byte) error
 	EEType() string
 	ContentType() string
 	DeployTxHash() []byte
@@ -112,6 +116,13 @@ func (c *contractSnapshotImpl) Code() ([]byte, error) {
 		c.code = code
 	}
 	return c.code, nil
+}
+
+func (c *contractSnapshotImpl) SetCode(code []byte) error {
+	c.code = code
+	codeHash := sha3.Sum256(code)
+	c.codeHash = codeHash[:]
+	return nil
 }
 
 func (c *contractSnapshotImpl) EEType() string {
