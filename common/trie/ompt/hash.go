@@ -37,7 +37,7 @@ func (h *hash) dump() {
 	log.Println(h.toString())
 }
 
-func (h *hash) flush(m *mpt) error {
+func (h *hash) flush(m *mpt, nibs []byte) error {
 	return nil
 }
 
@@ -47,38 +47,35 @@ func (h *hash) serialize() []byte {
 }
 
 func (h *hash) realize(m *mpt) (node, error) {
-	serialized, err := m.bucket.Get(h.value)
-	if err != nil {
-		return nil, err
-	}
-	if serialized == nil {
-		return nil, fmt.Errorf("ErrorKeyNotFound(key=%x)", h.value)
-	}
-	return deserialize(h.value, serialized, stateFlushed)
+	return m.realize(h.value, nil)
 }
 
-func (h *hash) get(m *mpt, keys []byte) (node, trie.Object, error) {
-	n, err := h.realize(m)
+func (h *hash) realizeWithCache(m *mpt, nibs []byte) (node, error) {
+	return m.realize(h.value, nibs)
+}
+
+func (h *hash) get(m *mpt, nibs []byte, depth int) (node, trie.Object, error) {
+	n, err := h.realizeWithCache(m, nibs[:depth])
 	if err != nil || n == nil {
 		return h, nil, err
 	}
-	return n.get(m, keys)
+	return n.get(m, nibs, depth)
 }
 
-func (h *hash) set(m *mpt, keys []byte, o trie.Object) (node, bool, error) {
-	n, err := h.realize(m)
+func (h *hash) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, error) {
+	n, err := h.realizeWithCache(m, nibs[:depth])
 	if err != nil || n == nil {
 		return h, false, err
 	}
-	return n.set(m, keys, o)
+	return n.set(m, nibs, depth, o)
 }
 
-func (h *hash) delete(m *mpt, keys []byte) (node, bool, error) {
-	n, err := h.realize(m)
+func (h *hash) delete(m *mpt, nibs []byte, depth int) (node, bool, error) {
+	n, err := h.realizeWithCache(m, nibs[:depth])
 	if err != nil || n == nil {
 		return h, false, err
 	}
-	return n.delete(m, keys)
+	return n.delete(m, nibs, depth)
 }
 
 func (h *hash) traverse(m *mpt, k string, v nodeScheduler) (string, trie.Object, error) {

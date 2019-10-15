@@ -61,7 +61,7 @@ func (n *leaf) freeze() {
 	n.state = stateFrozen
 }
 
-func (n *leaf) flush(m *mpt) error {
+func (n *leaf) flush(m *mpt, nibs []byte) error {
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
 	if n.state == stateFlushed {
@@ -73,7 +73,7 @@ func (n *leaf) flush(m *mpt) error {
 	if err := n.value.Flush(); err != nil {
 		return err
 	}
-	if err := n.nodeBase.flushBaseInLock(m); err != nil {
+	if err := n.nodeBase.flushBaseInLock(m, nil); err != nil {
 		return err
 	}
 	return nil
@@ -98,7 +98,8 @@ func (n *leaf) getChanged(keys []byte, o trie.Object) *leaf {
 	return &leaf{keys: keys, value: o}
 }
 
-func (n *leaf) set(m *mpt, keys []byte, o trie.Object) (node, bool, error) {
+func (n *leaf) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, error) {
+	keys := nibs[depth:]
 	cnt, match := compareKeys(keys, n.keys)
 
 	n.mutex.Lock()
@@ -157,16 +158,16 @@ func (n *leaf) getKeyPrepended(k []byte) *leaf {
 	return n.getChanged(nk, n.value)
 }
 
-func (n *leaf) delete(m *mpt, keys []byte) (node, bool, error) {
-	_, match := compareKeys(keys, n.keys)
+func (n *leaf) delete(m *mpt, nibs []byte, depth int) (node, bool, error) {
+	_, match := compareKeys(nibs[depth:], n.keys)
 	if match {
 		return nil, true, nil
 	}
 	return n, false, nil
 }
 
-func (n *leaf) get(m *mpt, keys []byte) (node, trie.Object, error) {
-	_, match := compareKeys(keys, n.keys)
+func (n *leaf) get(m *mpt, nibs []byte, depth int) (node, trie.Object, error) {
+	_, match := compareKeys(nibs[depth:], n.keys)
 	if !match {
 		return n, nil, nil
 	}

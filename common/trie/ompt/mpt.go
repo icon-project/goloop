@@ -3,6 +3,7 @@ package ompt
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"reflect"
 	"sync"
 
@@ -23,6 +24,7 @@ type (
 		db         db.Database
 		bucket     db.Bucket
 		objectType reflect.Type
+		cache      *NodeCache
 	}
 	mpt struct {
 		mptBase
@@ -31,28 +33,28 @@ type (
 	}
 )
 
-func (m *mpt) get(n node, keys []byte) (node, trie.Object, error) {
+func (m *mpt) get(n node, nibs []byte, depth int) (node, trie.Object, error) {
 	if n == nil {
 		return nil, nil, nil
 	}
-	return n.get(m, keys)
+	return n.get(m, nibs, depth)
 }
 
-func (m *mpt) set(n node, keys []byte, o trie.Object) (node, bool, error) {
+func (m *mpt) set(n node, nibs []byte, depth int, o trie.Object) (node, bool, error) {
 	if n == nil {
 		return &leaf{
-			keys:  keys,
+			keys:  nibs[depth:],
 			value: o,
 		}, true, nil
 	}
-	return n.set(m, keys, o)
+	return n.set(m, nibs, depth, o)
 }
 
-func (m *mpt) delete(n node, keys []byte) (node, bool, error) {
+func (m *mpt) delete(n node, nibs []byte, depth int) (node, bool, error) {
 	if n == nil {
 		return nil, false, nil
 	}
-	return n.delete(m, keys)
+	return n.delete(m, nibs, depth)
 }
 
 func (m *mpt) getObject(o trie.Object) (trie.Object, bool, error) {
@@ -74,10 +76,29 @@ func (m *mpt) getObject(o trie.Object) (trie.Object, bool, error) {
 	return nobj, true, nil
 }
 
+func (m *mpt) realize(h []byte, nibs []byte) (node, error) {
+	serialized, cache := m.cache.get(nibs, h)
+	if len(serialized) == 0 {
+		var err error
+		serialized, err = m.bucket.Get(h)
+		if err != nil {
+			return nil, err
+		}
+		if serialized == nil {
+			return nil, fmt.Errorf("ErrorKeyNotFound(key=%x)", h)
+		}
+	}
+
+	if cache {
+		m.cache.put(nibs, h, serialized)
+	}
+	return deserialize(h, serialized, stateFlushed)
+}
+
 func (m *mpt) Get(k []byte) (trie.Object, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	root, obj, err := m.get(m.root, bytesToKeys(k))
+	root, obj, err := m.get(m.root, bytesToNibs(k), 0)
 	m.root = root
 	return obj, err
 }
@@ -99,7 +120,7 @@ func (m *mpt) Flush() error {
 		// Before flush node data to Database, We need to make sure that it
 		// builds required  data for dumping data.
 		m.root.getLink(true)
-		return m.root.flush(m)
+		return m.root.flush(m, make([]byte, 0, hashSize*2))
 	}
 	return nil
 }
@@ -136,7 +157,7 @@ func (m *mpt) Set(k []byte, o trie.Object) error {
 	if debugPrint {
 		log.Printf("mpt%p.Set(%x,%v)", m, k, o)
 	}
-	root, _, err := m.set(m.root, bytesToKeys(k), o)
+	root, _, err := m.set(m.root, bytesToNibs(k), 0, o)
 	m.root = root
 	if debugDump && root != nil {
 		root.dump()
@@ -150,7 +171,7 @@ func (m *mpt) Delete(k []byte) error {
 	if debugPrint {
 		log.Printf("mpt%p.Delete(%x)", m, k)
 	}
-	root, dirty, err := m.delete(m.root, bytesToKeys(k))
+	root, dirty, err := m.delete(m.root, bytesToNibs(k), 0)
 	if dirty {
 		m.root = root
 		if debugDump && root != nil {
@@ -280,7 +301,7 @@ func (m *mpt) GetProof(k []byte) [][]byte {
 	// make sure that it's hashed.
 	m.root.getLink(true)
 
-	nibbles := bytesToKeys(k)
+	nibbles := bytesToNibs(k)
 	proofs := [][]byte(nil)
 
 	root, proofs, err := m.root.getProof(m, nibbles, proofs)
@@ -303,7 +324,7 @@ func (m *mpt) Prove(k []byte, proofs [][]byte) (trie.Object, error) {
 	if m.root == nil {
 		return nil, common.ErrIllegalArgument
 	}
-	nibbles := bytesToKeys(k)
+	nibbles := bytesToNibs(k)
 	root, obj, err := m.root.prove(m, nibbles, proofs)
 	if root != m.root {
 		m.root = root

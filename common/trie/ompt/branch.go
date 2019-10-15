@@ -95,17 +95,17 @@ func (n *branch) freeze() {
 	n.state = stateFrozen
 }
 
-func (n *branch) flush(m *mpt) error {
+func (n *branch) flush(m *mpt, nibs []byte) error {
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
 	if n.state == stateFlushed {
 		return nil
 	}
-	for _, child := range n.children {
+	for i, child := range n.children {
 		if child == nil {
 			continue
 		}
-		if err := child.flush(m); err != nil {
+		if err := child.flush(m, append(nibs, byte(i))); err != nil {
 			return err
 		}
 	}
@@ -114,7 +114,7 @@ func (n *branch) flush(m *mpt) error {
 			return err
 		}
 	}
-	if err := n.nodeBase.flushBaseInLock(m); err != nil {
+	if err := n.nodeBase.flushBaseInLock(m, nibs); err != nil {
 		return err
 	}
 	return nil
@@ -127,7 +127,8 @@ func (n *branch) getChangable() *branch {
 	return &branch{children: n.children, value: n.value}
 }
 
-func (n *branch) set(m *mpt, keys []byte, o trie.Object) (node, bool, error) {
+func (n *branch) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, error) {
+	keys := nibs[depth:]
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
 
@@ -141,7 +142,7 @@ func (n *branch) set(m *mpt, keys []byte, o trie.Object) (node, bool, error) {
 	}
 	idx := keys[0]
 	child := n.children[idx]
-	nchild, dirty, err := m.set(child, keys[1:], o)
+	nchild, dirty, err := m.set(child, nibs, depth+1, o)
 	if dirty {
 		br := n.getChangable()
 		br.children[idx] = nchild
@@ -153,7 +154,8 @@ func (n *branch) set(m *mpt, keys []byte, o trie.Object) (node, bool, error) {
 	return n, false, err
 }
 
-func (n *branch) delete(m *mpt, keys []byte) (node, bool, error) {
+func (n *branch) delete(m *mpt, nibs []byte, depth int) (node, bool, error) {
+	keys := nibs[depth:]
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
 
@@ -170,7 +172,7 @@ func (n *branch) delete(m *mpt, keys []byte) (node, bool, error) {
 		if child == nil {
 			return n, false, nil
 		}
-		nchild, dirty, err := child.delete(m, keys[1:])
+		nchild, dirty, err := child.delete(m, nibs, depth+1)
 		if !dirty {
 			if nchild != child {
 				n.children[idx] = nchild
@@ -220,7 +222,8 @@ func (n *branch) delete(m *mpt, keys []byte) (node, bool, error) {
 	return br, true, nil
 }
 
-func (n *branch) get(m *mpt, keys []byte) (node, trie.Object, error) {
+func (n *branch) get(m *mpt, nibs []byte, depth int) (node, trie.Object, error) {
+	keys := nibs[depth:]
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
 
@@ -237,7 +240,7 @@ func (n *branch) get(m *mpt, keys []byte) (node, trie.Object, error) {
 	if child == nil {
 		return n, nil, nil
 	}
-	nchild, o, err := child.get(m, keys[1:])
+	nchild, o, err := child.get(m, nibs, depth+1)
 	if nchild != child {
 		n.children[idx] = nchild
 	}

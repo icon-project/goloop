@@ -73,16 +73,16 @@ func (n *extension) freeze() {
 	n.state = stateFrozen
 }
 
-func (n *extension) flush(m *mpt) error {
+func (n *extension) flush(m *mpt, nibs []byte) error {
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
 	if n.state == stateFlushed {
 		return nil
 	}
-	if err := n.next.flush(m); err != nil {
+	if err := n.next.flush(m, append(nibs, n.keys...)); err != nil {
 		return err
 	}
-	if err := n.nodeBase.flushBaseInLock(m); err != nil {
+	if err := n.nodeBase.flushBaseInLock(m, nil); err != nil {
 		return err
 	}
 	return nil
@@ -97,7 +97,8 @@ func (n *extension) getChanged(keys []byte, next node) *extension {
 	return &extension{keys: keys, next: next}
 }
 
-func (n *extension) set(m *mpt, keys []byte, o trie.Object) (node, bool, error) {
+func (n *extension) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, error) {
+	keys := nibs[depth:]
 	cnt, _ := compareKeys(keys, n.keys)
 
 	n.mutex.Lock()
@@ -133,7 +134,7 @@ func (n *extension) set(m *mpt, keys []byte, o trie.Object) (node, bool, error) 
 		}
 		return n.getChanged(n.keys[:cnt], br), true, nil
 	default:
-		next, dirty, err := n.next.set(m, keys[cnt:], o)
+		next, dirty, err := n.next.set(m, nibs, depth+cnt, o)
 		if dirty {
 			return n.getChanged(n.keys, next), true, err
 		} else {
@@ -155,7 +156,9 @@ func (n *extension) getKeyPrepended(k []byte) *extension {
 	return n.getChanged(nk, n.next)
 }
 
-func (n *extension) delete(m *mpt, keys []byte) (node, bool, error) {
+func (n *extension) delete(m *mpt, nibs []byte, depth int) (node, bool, error) {
+	keys := nibs[depth:]
+
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
 
@@ -163,7 +166,7 @@ func (n *extension) delete(m *mpt, keys []byte) (node, bool, error) {
 	if cnt < len(n.keys) {
 		return n, false, nil
 	}
-	next, dirty, err := n.next.delete(m, keys[cnt:])
+	next, dirty, err := n.next.delete(m, nibs, depth+cnt)
 	if dirty {
 		if next == nil {
 			return nil, true, err
@@ -183,14 +186,15 @@ func (n *extension) delete(m *mpt, keys []byte) (node, bool, error) {
 	return n, false, nil
 }
 
-func (n *extension) get(m *mpt, keys []byte) (node, trie.Object, error) {
+func (n *extension) get(m *mpt, nibs []byte, depth int) (node, trie.Object, error) {
+	keys := nibs[depth:]
 	cnt, _ := compareKeys(keys, n.keys)
 	if cnt < len(n.keys) {
 		return n, nil, nil
 	}
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
-	next, obj, err := n.next.get(m, keys[cnt:])
+	next, obj, err := n.next.get(m, nibs, depth+cnt)
 	n.next = next
 	return n, obj, err
 }

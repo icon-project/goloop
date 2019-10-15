@@ -21,12 +21,12 @@ type (
 		hash() []byte
 		getLink(forceHash bool) []byte
 		freeze()
-		flush(m *mpt) error
+		flush(m *mpt, nibs []byte) error
 		toString() string
 		dump()
-		set(m *mpt, keys []byte, o trie.Object) (node, bool, error)
-		delete(m *mpt, keys []byte) (node, bool, error)
-		get(m *mpt, keys []byte) (node, trie.Object, error)
+		set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, error)
+		delete(m *mpt, nibs []byte, depth int) (node, bool, error)
+		get(m *mpt, nibs []byte, depth int) (node, trie.Object, error)
 		realize(m *mpt) (node, error)
 		traverse(m *mpt, nibs string, v nodeScheduler) (string, trie.Object, error)
 		getProof(m *mpt, keys []byte, proofs [][]byte) (node, [][]byte, error)
@@ -99,7 +99,7 @@ func (n *nodeBase) getLink(n2 node, forceHash bool) []byte {
 	}
 }
 
-func (n *nodeBase) flushBaseInLock(m *mpt) error {
+func (n *nodeBase) flushBaseInLock(m *mpt, nibs []byte) error {
 	if n.state < stateHashed {
 		panic("It's not hashed yet.")
 	}
@@ -107,12 +107,13 @@ func (n *nodeBase) flushBaseInLock(m *mpt) error {
 		if err := m.bucket.Set(n.hashValue, n.serialized); err != nil {
 			return err
 		}
+		m.cache.put(nibs, n.hashValue, n.serialized)
 	}
 	n.state = stateFlushed
 	return nil
 }
 
-func bytesToKeys(b []byte) []byte {
+func bytesToNibs(b []byte) []byte {
 	nibbles := make([]byte, len(b)*2)
 	for i, v := range b {
 		nibbles[i*2] = (v >> 4) & 0x0F
