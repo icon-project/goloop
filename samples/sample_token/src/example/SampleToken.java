@@ -47,7 +47,7 @@ public class SampleToken
         }
 
         // set the initial balance of the owner
-        this.balances = Blockchain.<Address, BigInteger>newDictDB("balances");
+        this.balances = Blockchain.newDictDB("balances");
         this.balances.putValue(Blockchain.getOrigin(), this.totalSupply);
     }
 
