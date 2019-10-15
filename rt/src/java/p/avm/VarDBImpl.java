@@ -15,17 +15,17 @@ public class VarDBImpl extends DBImplBase implements VarDB {
         super(ignore, readIndex);
     }
 
-    public void avm_putValue(IObject value) {
+    public void avm_set(IObject value) {
         IDBStorage s = getDBStorage(RuntimeMethodFeeSchedule.VarDB_avm_putValue);
         s.setValue(getStorageKey(), value);
     }
 
-    public IObject avm_getValue() {
+    public IObject avm_get() {
         IDBStorage s = getDBStorage(RuntimeMethodFeeSchedule.VarDB_avm_getValue);
         return s.getValue(getStorageKey());
     }
 
-    public PrimitiveBuffer avm_getValue(PrimitiveBuffer out) {
+    public PrimitiveBuffer avm_get(PrimitiveBuffer out) {
         IDBStorage s = getDBStorage(RuntimeMethodFeeSchedule.VarDB_avm_getValue);
         return s.getValue(getStorageKey(), out);
     }

@@ -48,7 +48,7 @@ public class SampleToken
 
         // set the initial balance of the owner
         this.balances = Blockchain.newDictDB("balances");
-        this.balances.putValue(Blockchain.getOrigin(), this.totalSupply);
+        this.balances.set(Blockchain.getOrigin(), this.totalSupply);
     }
 
     private static SampleToken token;
@@ -86,17 +86,17 @@ public class SampleToken
 
     @External(readonly=true)
     public static BigInteger balanceOf(Address _owner) {
-        return token.balances.getValue(_owner);
+        return token.balances.get(_owner);
     }
 
     @External
     public static void transfer(Address _to, BigInteger _value, @Optional byte[] _data) {
         Address _from = Blockchain.getCaller();
-        BigInteger fromBalance = token.balances.getValue(_from);
+        BigInteger fromBalance = token.balances.get(_from);
         if (fromBalance==null) {
             fromBalance = BigInteger.ZERO;
         }
-        BigInteger toBalance = token.balances.getValue(_to);
+        BigInteger toBalance = token.balances.get(_to);
         if (toBalance==null) {
             toBalance = BigInteger.ZERO;
         }
@@ -105,8 +105,8 @@ public class SampleToken
         Blockchain.require(_value.compareTo(BigInteger.ZERO) >= 0);
         Blockchain.require(fromBalance.compareTo(_value) >= 0);
 
-        token.balances.putValue(_from, fromBalance.subtract(_value));
-        token.balances.putValue(_to, toBalance.add(_value));
+        token.balances.set(_from, fromBalance.subtract(_value));
+        token.balances.set(_to, toBalance.add(_value));
 
         Transfer(_from, _to, _value, _data);
     }

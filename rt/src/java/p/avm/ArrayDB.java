@@ -3,19 +3,19 @@ package p.avm;
 import i.IObject;
 
 public interface ArrayDB {
-    void avm_addValue(IObject value);
+    void avm_add(IObject value);
 
-    void avm_setValue(int index, IObject value);
+    void avm_set(int index, IObject value);
 
     void avm_removeLast();
 
-    IObject avm_getValue(int index);
+    IObject avm_get(int index);
 
-    PrimitiveBuffer avm_getValue(int index, PrimitiveBuffer out);
+    PrimitiveBuffer avm_get(int index, PrimitiveBuffer out);
 
     int avm_size();
 
-    IObject avm_popValue();
+    IObject avm_pop();
 
-    PrimitiveBuffer avm_popValue(PrimitiveBuffer out);
+    PrimitiveBuffer avm_pop(PrimitiveBuffer out);
 }

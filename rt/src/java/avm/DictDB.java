@@ -12,7 +12,7 @@ public interface DictDB<K, V> {
      * @param key
      * @param value
      */
-    void putValue(K key, V value);
+    void set(K key, V value);
 
     /**
      * Returns Collection for the key. This method shall be called only if
@@ -21,13 +21,13 @@ public interface DictDB<K, V> {
      * @param key
      * @return
      */
-    V get(K key);
+    V at(K key);
 
     /**
      * @param key
      * @return
      */
-    V getValue(K key);
+    V get(K key);
 
-    PrimitiveBuffer getValue(K key, PrimitiveBuffer out);
+    PrimitiveBuffer get(K key, PrimitiveBuffer out);
 }

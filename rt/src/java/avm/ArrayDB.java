@@ -1,23 +1,23 @@
 package avm;
 
 public interface ArrayDB<E> {
-    void addValue(E value);
+    void add(E value);
 
-    void setValue(int index, E value);
+    void set(int index, E value);
 
     void removeLast();
 
-    E getValue(int index);
+    E get(int index);
 
-    PrimitiveBuffer getValue(int index, PrimitiveBuffer out);
+    PrimitiveBuffer get(int index, PrimitiveBuffer out);
 
     int size();
 
     // Do not shrink if decoding fails.
-    E popValue();
+    E pop();
 
-    PrimitiveBuffer popValue(PrimitiveBuffer out);
+    PrimitiveBuffer pop(PrimitiveBuffer out);
 
-//    E get(int index);
-//    E add();
+//    E at(int index);
+//    E addCollection();
 }

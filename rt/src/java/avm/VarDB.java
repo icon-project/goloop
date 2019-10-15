@@ -1,9 +1,9 @@
 package avm;
 
 public interface VarDB<V> {
-    void putValue(V value);
+    void set(V value);
 
-    V getValue();
+    V get();
 
-    PrimitiveBuffer getValue(PrimitiveBuffer out);
+    PrimitiveBuffer get(PrimitiveBuffer out);
 }
