@@ -18,8 +18,8 @@ package foundation.icon.ee.score;
 
 import foundation.icon.ee.ipc.EEProxy;
 import foundation.icon.ee.types.Bytes;
+import foundation.icon.ee.types.ObjectGraph;
 import org.aion.avm.core.IExternalState;
-import org.aion.avm.core.util.Helpers;
 import org.aion.types.AionAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,34 +35,24 @@ import java.util.Arrays;
 
 public class ExternalState implements IExternalState {
     private static final Logger logger = LoggerFactory.getLogger(ExternalState.class);
-    private static final String TRANSFORMED_JAR = "transformed.jar";
+    private static final String CODE_JAR = "code.jar";
     private static final String OBJECT_GRAPH = "graph";
 
     private final EEProxy proxy;
-    private final Path jarPath;
+    private final Path codePath;
     private final long blockNumber;
     private final long blockTimestamp;
-    private final Path parentPath;
+    private byte[] codeCache;
 
     ExternalState(EEProxy proxy, String code, BigInteger blockNumber, BigInteger blockTimestamp) {
         this.proxy = proxy;
-        this.jarPath = Paths.get(code);
+        this.codePath = Paths.get(code);
         this.blockNumber = blockNumber.longValue();
         this.blockTimestamp = blockTimestamp.longValue() / 1000; // micro to milli conversion
-        this.parentPath = jarPath.getParent();
-    }
-
-    private void writeFile(String filename, byte[] data) {
-        Path outFile = new File(parentPath.toFile(), filename).toPath();
-        try {
-            Files.write(outFile, data);
-        } catch (IOException e) {
-            throw new RuntimeException(e.getMessage());
-        }
     }
 
     private byte[] readFile(String filename) {
-        Path inFile = new File(parentPath.toFile(), filename).toPath();
+        Path inFile = new File(codePath.toFile(), filename).toPath();
         try {
             return Files.readAllBytes(inFile);
         } catch (NoSuchFileException e) {
@@ -110,32 +100,51 @@ public class ExternalState implements IExternalState {
 
     @Override
     public void putCode(AionAddress address, byte[] code) {
-        logger.debug("[putCode] {} len={}", address, code.length);
-        // just ignore this
+        throw new RuntimeException("should not be called");
     }
 
     @Override
     public byte[] getTransformedCode(AionAddress address) {
         logger.debug("[getTransformedCode] {}", address);
-        return readFile(TRANSFORMED_JAR);
+        if (codeCache != null) {
+            logger.debug("  -- return from codeCache");
+            return codeCache;
+        }
+        return readFile(CODE_JAR);
     }
 
     @Override
     public void setTransformedCode(AionAddress address, byte[] code) {
         logger.debug("[setTransformedCode] {} len={}", address, code.length);
-        writeFile(TRANSFORMED_JAR, code);
+        try {
+            proxy.setCode(code);
+            codeCache = code;
+        } catch (IOException e) {
+            logger.error("[setTransformedCode] {}", e.getMessage());
+        }
     }
 
     @Override
     public byte[] getObjectGraph(AionAddress address) {
-        logger.debug("[getObjectGraph] {} ", address);
-        return readFile(OBJECT_GRAPH);
+        try {
+            ObjectGraph graph = proxy.getObjGraph(true);
+            logger.debug("[getObjectGraph] len={}", graph.getGraphData().length);
+            return graph.getGraphData();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     @Override
-    public void putObjectGraph(AionAddress address, byte[] objectGraph) {
-        logger.debug("[putObjectGraph] {} len={}", address, objectGraph.length);
-        writeFile(OBJECT_GRAPH, objectGraph);
+    public void putObjectGraph(AionAddress address, byte[] data) {
+        logger.debug("[putObjectGraph] len={}", data.length);
+        try {
+            ObjectGraph graph = new ObjectGraph(0, data);
+            proxy.setObjGraph(true, graph);
+        } catch (IOException e) {
+            logger.error("[putObjectGraph] {}", e.getMessage());
+        }
     }
 
     @Override

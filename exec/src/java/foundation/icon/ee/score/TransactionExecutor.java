@@ -24,7 +24,8 @@ import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Bytes;
 import foundation.icon.ee.types.Method;
 import foundation.icon.ee.utils.MethodUnpacker;
-import org.aion.avm.core.*;
+import org.aion.avm.core.AvmConfiguration;
+import org.aion.avm.core.CommonAvmFactory;
 import org.aion.avm.embed.StandardCapabilities;
 import org.aion.avm.tooling.ABIUtil;
 import org.aion.avm.userlib.CodeAndArguments;
@@ -47,7 +48,7 @@ import java.util.jar.JarInputStream;
 public class TransactionExecutor {
     private static final Logger logger = LoggerFactory.getLogger(TransactionExecutor.class);
     private static final String CODE_JAR = "code.jar";
-    private static final String CMD_DEPLOY = "<install>";
+    private static final String CMD_INSTALL = "onInstall";
     private static final String APIS_NAME = "META-INF/APIS";
 
     private final EEProxy proxy;
@@ -103,46 +104,50 @@ public class TransactionExecutor {
             printGetInfo(info);
         }
 
-        boolean isDeploy = CMD_DEPLOY.equals(method);
+        boolean isInstall = CMD_INSTALL.equals(method);
         BigInteger blockNumber = (BigInteger) info.get(EEProxy.Info.BLOCK_HEIGHT);
         BigInteger blockTimestamp = (BigInteger) info.get(EEProxy.Info.BLOCK_TIMESTAMP);
         byte[] txHash = (byte[]) info.get(EEProxy.Info.TX_HASH);
 
         ExternalState kernel = new ExternalState(proxy, code, blockNumber, blockTimestamp);
         Transaction[] contexts = new Transaction[] {
-                getTransactionData(isDeploy, code, from, to, value, limit, method, params, txHash)
+                getTransactionData(isInstall, code, from, to, value, limit, method, params, txHash)
         };
 
         AvmConfiguration config = new AvmConfiguration();
         config.threadCount = 1; // we need only one thread per executor
         if (logger.isDebugEnabled()) {
-            config.enableVerboseConcurrentExecutor = true;
             config.enableVerboseContractErrors = true;
         }
-        AvmImpl avm = CommonAvmFactory.buildAvmInstanceForConfiguration(new StandardCapabilities(), config);
+        AvmExecutor executor = CommonAvmFactory.getAvmInstance(new StandardCapabilities(), config);
         try {
-            FutureResult[] futures = avm.run(kernel, contexts, ExecutionType.ASSUME_MAINCHAIN, blockNumber.longValue() - 1);
-            ResultWrapper result = new ResultWrapper(futures[0].getResult());
-            Object retVal;
-            if (isDeploy) {
-                retVal = result.getContractAddress();
-            } else {
-                retVal = result.getDecodedReturnData();
+            if (isInstall) {
+                TransactionResult rawResult = executor.run(kernel, contexts, blockNumber.longValue() - 1);
+                ResultWrapper result = new ResultWrapper(rawResult);
+                if (!result.isSuccess()) {
+                    throw new RuntimeException("Failed to install SCORE");
+                }
+                contexts = new Transaction[] {
+                        getTransactionData(false, code, from, to, value, limit, method, params, txHash)
+                };
             }
+            TransactionResult rawResult = executor.run(kernel, contexts, blockNumber.longValue() - 1);
+            ResultWrapper result = new ResultWrapper(rawResult);
+            Object retVal = result.getDecodedReturnData();
             return new InvokeResult((result.isSuccess()) ? EEProxy.Status.SUCCESS : EEProxy.Status.FAILURE,
                     result.getEnergyUsed(), TypedObj.encodeAny(retVal));
         } catch (Exception e) {
             e.printStackTrace();
             return new InvokeResult(EEProxy.Status.FAILURE, BigInteger.ZERO, TypedObj.encodeAny(e.getMessage()));
         } finally {
-            avm.shutdown();
+            executor.shutdown();
         }
     }
 
-    private Transaction getTransactionData(boolean isDeploy, String code, Address from, Address to,
+    private Transaction getTransactionData(boolean isInstall, String code, Address from, Address to,
                                            BigInteger value, BigInteger limit,
                                            String method, Object[] params, byte[] txHash) throws IOException {
-        if (isDeploy) {
+        if (isInstall) {
             byte[] args = ABIUtil.encodeDeploymentArguments(params);
             byte[] txData = new CodeAndArguments(readFile(code), args).encodeToBytes();
             return Transaction.contractCreateTransaction(

@@ -1,5 +1,6 @@
 package org.aion.avm.core;
 
+import foundation.icon.ee.score.AvmExecutor;
 import i.CommonInstrumentation;
 import i.IInstrumentation;
 import i.IInstrumentationFactory;
@@ -22,6 +23,14 @@ public class CommonAvmFactory {
         return NodeEnvironment.singleton.buildAvmInstance(factory, capabilities, configuration);
     }
 
+    public static AvmExecutor getAvmInstance(IExternalCapabilities capabilities, AvmConfiguration config) {
+        // Ensure that NodeEnvironment has been initialized
+        NodeEnvironment node = NodeEnvironment.getInstance();
+        IInstrumentationFactory factory = new CommonInstrumentationFactory();
+        AvmExecutor executor = new AvmExecutor(factory, capabilities, config);
+        executor.start();
+        return executor;
+    }
 
     private static class CommonInstrumentationFactory implements IInstrumentationFactory {
         @Override

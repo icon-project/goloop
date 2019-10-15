@@ -241,8 +241,6 @@ public class DAppCreator {
 
             ImmortalDappModule immortalDapp = ImmortalDappModule.fromImmortalClasses(immortalClasses, transformedDapp.mainClass);
 
-            // store deployed code
-            externalState.putCode(dappAddress, codeAndArguments.code);
             // store transformed dapp
             byte[] immortalDappJar = immortalDapp.createJar(externalState.getBlockTimestamp());
             externalState.setTransformedCode(dappAddress, immortalDappJar);

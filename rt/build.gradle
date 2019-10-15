@@ -1,16 +1,18 @@
 dependencies {
     implementation 'org.bouncycastle:bcprov-jdk15on:1.60'
+    implementation 'org.slf4j:slf4j-api:1.7.26'
     implementation 'org.ow2.asm:asm:6.2.1'
     implementation 'org.ow2.asm:asm-commons:6.2.1'
     implementation 'org.ow2.asm:asm-tree:6.2.1'
     implementation 'org.ow2.asm:asm-util:6.2.1'
+
     testImplementation(
-            'junit:junit:4.12',
-            'org.junit.jupiter:junit-jupiter-api:5.4.2'
+        'junit:junit:4.12',
+        'org.junit.jupiter:junit-jupiter-api:5.4.2'
     )
     testRuntime(
-            'org.junit.jupiter:junit-jupiter-engine:5.4.2',
-            'org.junit.vintage:junit-vintage-engine:5.4.2'
+        'org.junit.jupiter:junit-jupiter-engine:5.4.2',
+        'org.junit.vintage:junit-vintage-engine:5.4.2'
     )
 }
 

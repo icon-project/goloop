@@ -199,6 +199,10 @@ public class NodeEnvironment {
         this.shadowClassSlashNameMethodDescriptorMap = Collections.unmodifiableMap(getShadowClassSlashNameMethodDescriptorMap());
     }
 
+    public static NodeEnvironment getInstance() {
+        return singleton;
+    }
+
     // This is an example of the more "factory-like" nature of the NodeEnvironment.
     public AvmClassLoader createInvocationClassLoader(Map<String, byte[]> finalContractClasses) {
         return new AvmClassLoader(this.sharedClassLoader, finalContractClasses);
