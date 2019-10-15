@@ -2,7 +2,6 @@ package p.avm;
 
 import i.*;
 import org.aion.avm.RuntimeMethodFeeSchedule;
-import org.aion.avm.embed.hash.HashUtils;
 import s.java.lang.String;
 
 public class CollectionDBImpl extends DBImplBase implements DictDB, ArrayDB {
