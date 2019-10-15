@@ -247,6 +247,4 @@ public interface IBlockchainRuntime {
     ArrayDB avm_newArrayDB(String id);
 
     VarDB avm_newVarDB(String id);
-
-    IDBStorage getDBStorage();
 }

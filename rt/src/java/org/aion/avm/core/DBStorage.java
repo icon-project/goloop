@@ -2,15 +2,28 @@ package org.aion.avm.core;
 
 import i.*;
 import org.aion.avm.StorageFees;
+import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.types.AionAddress;
 import p.avm.PrimitiveBuffer;
 import s.java.lang.Integer;
 
 public class DBStorage implements IDBStorage {
     private IExternalState ctx;
+    private LoadedDApp dapp;
+    private InternedClasses icm;
 
-    public DBStorage(IExternalState ctx) {
+    public DBStorage(IExternalState ctx, LoadedDApp dapp, InternedClasses icm) {
         this.ctx = ctx;
+        this.dapp = dapp;
+        this.icm = icm;
+    }
+
+    private Object deserializeObject(byte[] rawGraphData) {
+        return dapp.deserializeObject(icm, rawGraphData);
+    }
+
+    private byte[] serializeObject(Object v) {
+        return dapp.serializeObject(v);
     }
 
     public void setArrayLength(byte[] key, int l) {
@@ -18,7 +31,7 @@ public class DBStorage implements IDBStorage {
         if (l==0) {
             v = null;
         } else {
-            v = ValueCodec.encodeValue(Integer.valueOf(l));
+            v = serializeObject(Integer.valueOf(l));
         }
         ctx.putStorage(getAddress(), key, v);
     }
@@ -27,7 +40,7 @@ public class DBStorage implements IDBStorage {
         var bs = ctx.getStorage(getAddress(), key);
         if (bs==null)
             return 0;
-        Integer i = (Integer) ValueCodec.decodeValue(bs);
+        Integer i = (Integer) deserializeObject(bs);
         return i.getUnderlying();
     }
 
@@ -51,7 +64,7 @@ public class DBStorage implements IDBStorage {
         assumeValidValue(value);
         byte[] v = null;
         if (value!=null) {
-            v = ValueCodec.encodeValue(value);
+            v = serializeObject(value);
             charge(v.length * StorageFees.WRITE_PRICE_PER_BYTE);
         }
         ctx.putStorage(getAddress(), key, v);
@@ -62,7 +75,7 @@ public class DBStorage implements IDBStorage {
         if (v==null)
             return null;
         charge(v.length * StorageFees.READ_PRICE_PER_BYTE);
-        return (IObject) ValueCodec.decodeValue(v);
+        return (IObject) deserializeObject(v);
     }
 
     public PrimitiveBuffer getValue(byte[] key, PrimitiveBuffer out) {

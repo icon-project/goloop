@@ -53,7 +53,7 @@ public class DBImplBase extends s.java.lang.Object {
     public IDBStorage getDBStorage(long cost) {
         IInstrumentation ins = IInstrumentation.attachedThreadInstrumentation.get();
         ins.chargeEnergy(cost);
-        return ins.getFrameContext().getBlockchainRuntime().getDBStorage();
+        return ins.getFrameContext().getDBStorage();
     }
 
     public byte[] getStorageKey() {

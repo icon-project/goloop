@@ -225,7 +225,7 @@ public class DAppCreator {
             int nextHashCode = 1;
             InternedClasses icm = new InternedClasses();
             IBlockchainRuntime br = new BlockchainRuntimeImpl(capabilities, externalState, avm, null, task, tx, codeAndArguments.arguments, dapp.runtimeSetup, enableBlockchainPrintln);
-            FrameContextImpl fc = new FrameContextImpl(dapp, icm, br);
+            FrameContextImpl fc = new FrameContextImpl(externalState, dapp, icm, br);
             InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.energyLimit - result.energyUsed(), nextHashCode, icm, fc);
             // (we pass a null reentrant state since we haven't finished initializing yet - nobody can call into us).
             IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(br);

@@ -2,29 +2,24 @@ package org.aion.avm.core;
 
 import i.FrameContext;
 import i.IBlockchainRuntime;
+import i.IDBStorage;
 import i.InternedClasses;
 import org.aion.avm.core.persistence.LoadedDApp;
 
 public class FrameContextImpl implements FrameContext {
-    private LoadedDApp dapp;
-    private InternedClasses icm;
+    private IDBStorage dbs;
     private IBlockchainRuntime br;
 
-    FrameContextImpl(LoadedDApp dapp, InternedClasses icm, IBlockchainRuntime br) {
-        this.dapp = dapp;
-        this.icm = icm;
+    FrameContextImpl(IExternalState ctx, LoadedDApp dapp, InternedClasses icm, IBlockchainRuntime br) {
+        this.dbs = new DBStorage(ctx, dapp, icm );
         this.br = br;
-    }
-
-    public Object deserializeObject(byte[] rawGraphData) {
-        return dapp.deserializeObject(icm, rawGraphData);
-    }
-
-    public byte[] serializeObject(Object v) {
-        return dapp.serializeObject(v);
     }
 
     public IBlockchainRuntime getBlockchainRuntime() {
         return br;
+    }
+
+    public IDBStorage getDBStorage() {
+        return dbs;
     }
 }

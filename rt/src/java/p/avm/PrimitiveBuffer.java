@@ -1,8 +1,6 @@
 package p.avm;
 
-import i.ValueCodec;
 import s.java.lang.Object;
-import s.java.lang.Byte;
 
 public class PrimitiveBuffer extends Object {
     private byte[] raw;
@@ -18,8 +16,7 @@ public class PrimitiveBuffer extends Object {
     }
 
     public byte avm_toByte() {
-        Byte v = (Byte) ValueCodec.decodeValue(raw);
-        return v.getUnderlying();
+        return (byte) 0;
     }
 
     public void setShort(byte v) {

@@ -69,7 +69,7 @@ public class DAppExecutor {
         task.getReentrantDAppStack().pushState(thisState);
 
         IBlockchainRuntime br = new BlockchainRuntimeImpl(capabilities, externalState, avm, thisState, task, tx, tx.copyOfTransactionData(), dapp.runtimeSetup, enableBlockchainPrintln);
-        FrameContextImpl fc = new FrameContextImpl(dapp, initialClassWrappers, br);
+        FrameContextImpl fc = new FrameContextImpl(externalState, dapp, initialClassWrappers, br);
         InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.energyLimit - result.energyUsed(), nextHashCode, initialClassWrappers, fc);
         IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(br);
 
