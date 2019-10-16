@@ -41,3 +41,5 @@ require (
 	gopkg.in/go-playground/validator.v9 v9.28.0
 	gopkg.in/vmihailenco/msgpack.v4 v4.0.4
 )
+
+go 1.13

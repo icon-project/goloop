@@ -63,11 +63,11 @@ func NewCommand(parentCmd *cobra.Command, parentVc *viper.Viper, use, short stri
 
 func getViper(cmd *cobra.Command, parentVc *viper.Viper) *viper.Viper {
 	if parentVc != nil {
-		if vc, ok := parentVc.Get("_childvc_"+cmd.Use).(*viper.Viper); ok {
+		if vc, ok := parentVc.Get("_childvc_" + cmd.Use).(*viper.Viper); ok {
 			return vc
 		}
 	}
-	if vc, ok := viper.Get("_globalvc_"+cmd.CommandPath()).(*viper.Viper); ok {
+	if vc, ok := viper.Get("_globalvc_" + cmd.CommandPath()).(*viper.Viper); ok {
 		return vc
 	}
 	return nil
@@ -102,6 +102,7 @@ func BindPFlags(vc *viper.Viper, pFlags *pflag.FlagSet) error {
 		vc.Set("pflags", bindPFlags)
 	}
 	bindPFlags.AddFlagSet(pFlags)
+
 	return vc.BindPFlags(pFlags)
 }
 
