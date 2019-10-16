@@ -110,9 +110,7 @@ public class TransactionExecutor {
         byte[] txHash = (byte[]) info.get(EEProxy.Info.TX_HASH);
 
         ExternalState kernel = new ExternalState(proxy, code, blockNumber, blockTimestamp);
-        Transaction[] contexts = new Transaction[] {
-                getTransactionData(isInstall, code, from, to, value, limit, method, params, txHash)
-        };
+        Transaction tx = getTransactionData(isInstall, code, from, to, value, limit, method, params, txHash);
 
         AvmConfiguration config = new AvmConfiguration();
         config.threadCount = 1; // we need only one thread per executor
@@ -120,25 +118,30 @@ public class TransactionExecutor {
             config.enableVerboseContractErrors = true;
         }
         AvmExecutor executor = CommonAvmFactory.getAvmInstance(new StandardCapabilities(), config);
+        BigInteger energyUsed = BigInteger.ZERO;
         try {
             if (isInstall) {
-                TransactionResult rawResult = executor.run(kernel, contexts, blockNumber.longValue() - 1);
-                ResultWrapper result = new ResultWrapper(rawResult);
+                // The following is for transformation
+                ResultWrapper result = new ResultWrapper(
+                        executor.run(kernel, tx, blockNumber.longValue() - 1)
+                );
+                energyUsed = result.getEnergyUsed();
                 if (!result.isSuccess()) {
-                    throw new RuntimeException("Failed to install SCORE");
+                    throw new RuntimeException(result.getErrorMessage());
                 }
-                contexts = new Transaction[] {
-                        getTransactionData(false, code, from, to, value, limit, method, params, txHash)
-                };
+                // Prepare another transaction for 'onInstall' itself
+                tx = getTransactionData(false, code, from, to, value, limit, method, params, txHash);
             }
-            TransactionResult rawResult = executor.run(kernel, contexts, blockNumber.longValue() - 1);
-            ResultWrapper result = new ResultWrapper(rawResult);
+            // Actual execution of the transaction
+            ResultWrapper result = new ResultWrapper(
+                    executor.run(kernel, tx, blockNumber.longValue() - 1), energyUsed
+            );
             Object retVal = result.getDecodedReturnData();
             return new InvokeResult((result.isSuccess()) ? EEProxy.Status.SUCCESS : EEProxy.Status.FAILURE,
                     result.getEnergyUsed(), TypedObj.encodeAny(retVal));
         } catch (Exception e) {
-            e.printStackTrace();
-            return new InvokeResult(EEProxy.Status.FAILURE, BigInteger.ZERO, TypedObj.encodeAny(e.getMessage()));
+            logger.warn("Execution failure", e);
+            return new InvokeResult(EEProxy.Status.FAILURE, energyUsed, TypedObj.encodeAny(e.getMessage()));
         } finally {
             executor.shutdown();
         }
@@ -199,9 +202,15 @@ public class TransactionExecutor {
 
     private static class ResultWrapper {
         private final TransactionResult result;
+        private final long energyUsed;
 
         ResultWrapper(TransactionResult result) {
+            this(result, BigInteger.ZERO);
+        }
+
+        ResultWrapper(TransactionResult result, BigInteger energyUsed) {
             this.result = result;
+            this.energyUsed = energyUsed.longValue();
         }
 
         boolean isSuccess() {
@@ -209,23 +218,19 @@ public class TransactionExecutor {
         }
 
         BigInteger getEnergyUsed() {
-            return BigInteger.valueOf(result.energyUsed);
-        }
-
-        Address getContractAddress() {
-            if (!result.transactionStatus.isSuccess()) {
-                System.out.println("Contract deployment failed with error " + result.transactionStatus.causeOfError);
-                return null;
-            }
-            return new AionAddress(result.copyOfTransactionOutput().orElseThrow()).toAddress();
+            return BigInteger.valueOf(result.energyUsed + this.energyUsed);
         }
 
         Object getDecodedReturnData() {
-            if (!result.transactionStatus.isSuccess()) {
-                System.out.println("Contract call failed with error " + result.transactionStatus.causeOfError);
+            if (!isSuccess()) {
+                logger.debug("Contract call failed with error: {}", getErrorMessage());
                 return null;
             }
             return ABIUtil.decodeOneObject(result.copyOfTransactionOutput().orElseThrow());
+        }
+
+        String getErrorMessage() {
+            return result.transactionStatus.causeOfError;
         }
 
         public String toString() {

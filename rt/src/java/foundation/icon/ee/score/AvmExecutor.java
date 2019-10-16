@@ -72,18 +72,12 @@ public class AvmExecutor implements AvmInternal {
         InstrumentationHelpers.attachThread(instrumentation);
     }
 
-    public TransactionResult run(IExternalState kernel, Transaction[] transactions, long blockNumber) {
+    public TransactionResult run(IExternalState kernel, Transaction transaction, long blockNumber) {
         // Clear the states of resources
         this.resourceMonitor.clear();
-
-        // Create tasks for these new transactions
-        TransactionTask[] tasks = new TransactionTask[transactions.length];
-        for (int i = 0; i < transactions.length; i++) {
-            tasks[i] = new TransactionTask(kernel, transactions[i], i, transactions[i].senderAddress,
-                    ExecutionType.ASSUME_MAINCHAIN, blockNumber);
-        }
         // Get the first task
-        TransactionTask incomingTask = tasks[0];
+        TransactionTask incomingTask = new TransactionTask(kernel, transaction, 0, transaction.senderAddress,
+                                                           ExecutionType.ASSUME_MAINCHAIN, blockNumber);
         logger.debug("=== Start task ===");
 
         // Attach the IInstrumentation helper to the task to support asynchronous abort
