@@ -137,10 +137,16 @@ type Logger interface {
 	GetModuleLevel(mod string) Level
 	Writer() *io.PipeWriter
 	WriterLevel(lv Level) *io.PipeWriter
+
+	addHook(hook logrus.Hook)
 }
 
 type entryWrapper struct {
 	*logrus.Entry
+}
+
+func (w entryWrapper) addHook(hook logrus.Hook) {
+	w.Logger.AddHook(hook)
 }
 
 func (w entryWrapper) WithFields(fields Fields) Logger {
@@ -199,6 +205,10 @@ func (w entryWrapper) Logf(lv Level, format string, args ...interface{}) {
 
 type loggerWrapper struct {
 	*logrus.Logger
+}
+
+func (w loggerWrapper) addHook(hook logrus.Hook) {
+	w.Logger.AddHook(hook)
 }
 
 func (w loggerWrapper) WithFields(fields Fields) Logger {

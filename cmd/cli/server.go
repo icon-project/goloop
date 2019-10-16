@@ -3,12 +3,11 @@ package cli
 import (
 	"encoding/hex"
 	"encoding/json"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"io/ioutil"
 	stdlog "log"
 	"os"
-
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
@@ -29,6 +28,8 @@ type ServerConfig struct {
 
 	LogLevel     string `json:"log_level"`
 	ConsoleLevel string `json:"console_level"`
+
+	*log.GoLoopFluentConfig `json:"fluent_log,omitempty"`
 }
 
 func (cfg *ServerConfig) MakesureKeyStore() error {
@@ -97,6 +98,9 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 	//
 	rootPFlags.String("key_store", "", "KeyStore file for wallet")
 	rootPFlags.String("key_secret", "", "Secret(password) file for KeyStore")
+
+	rootPFlags.StringToString("fluent", nil, "Fluent server configuration (<cfg>=<value>,...)")
+
 	BindPFlags(vc, rootCmd.PersistentFlags())
 
 	saveCmd := &cobra.Command{
@@ -109,6 +113,14 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 			}
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+
+			if fluent, _ := cmd.Flags().GetStringToString("fluent"); fluent != nil && len(fluent) > 0 {
+				cfg.GoLoopFluentConfig = new(log.GoLoopFluentConfig)
+				if err := log.SetFluentConfig(fluent, cfg.GoLoopFluentConfig); err != nil {
+					return err
+				}
+			}
+
 			saveFilePath := args[0]
 			if err := JsonPrettySaveFile(saveFilePath, 0644, cfg); err != nil {
 				return err
@@ -161,6 +173,17 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 				}
 			}
 
+			if fluent, _ := cmd.Flags().GetStringToString("fluent"); fluent != nil {
+				if err := log.SetReFluentConfig(fluent, cfg.GoLoopFluentConfig); err != nil {
+					return err
+				}
+			}
+
+			if cfg.GoLoopFluentConfig != nil {
+				if err := log.SetFluentHook(cfg.GoLoopFluentConfig); err != nil {
+					return err
+				}
+			}
 			if cpuProfile := vc.GetString("cpuprofile"); cpuProfile != "" {
 				if err := StartCPUProfile(cpuProfile); err != nil {
 					log.Fatalf(err.Error())
@@ -189,6 +212,7 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 	startFlags.String("cpuprofile", "", "CPU Profiling data file")
 	startFlags.String("memprofile", "", "Memory Profiling data file")
 	startFlags.MarkHidden("mod_level")
+
 	BindPFlags(vc, startFlags)
 
 	return rootCmd, vc

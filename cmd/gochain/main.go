@@ -49,6 +49,8 @@ type GoChainConfig struct {
 
 	LogLevel     string `json:"log_level"`
 	ConsoleLevel string `json:"console_level"`
+
+	*log.GoLoopFluentConfig `json:"fluent_log,omitempty"`
 }
 
 func (config *GoChainConfig) String() string {
@@ -84,6 +86,7 @@ var cpuProfile, memProfile string
 var chainDir string
 var eeSocket string
 var modLevels map[string]string
+var fluent map[string]string
 
 func main() {
 	cmd := &cobra.Command{
@@ -122,12 +125,14 @@ func main() {
 	flag.StringVar(&cfg.LogLevel, "log_level", "debug", "Main log level")
 	flag.StringVar(&cfg.ConsoleLevel, "console_level", "trace", "Console log level")
 	flag.StringToStringVar(&modLevels, "mod_level", nil, "Console log level for specific module (<mod>=<level>,...)")
+	flag.StringToStringVar(&fluent, "fluent", nil, "Fluent server configuration (<cfg>=<value>,...)")
 
 	cmd.Run = Execute
 	cmd.Execute()
 }
 
 func Execute(cmd *cobra.Command, args []string) {
+
 	if len(keyStoreFile) > 0 {
 		if ks, err := ioutil.ReadFile(keyStoreFile); err != nil {
 			log.Panicf("Fail to open KeyStore file=%s err=%+v", keyStoreFile, err)
@@ -245,6 +250,13 @@ func Execute(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	if fluent != nil && len(fluent) > 0 {
+		cfg.GoLoopFluentConfig = new(log.GoLoopFluentConfig)
+		if err := log.SetFluentConfig(fluent, cfg.GoLoopFluentConfig); err != nil {
+			log.Panic(err)
+		}
+	}
+
 	if saveFile != "" {
 		f, err := os.OpenFile(saveFile,
 			os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
@@ -287,6 +299,12 @@ func Execute(cmd *cobra.Command, args []string) {
 			} else {
 				logger.SetModuleLevel(mod, lv)
 			}
+		}
+	}
+
+	if cfg.GoLoopFluentConfig != nil {
+		if err := log.SetFluentHook(cfg.GoLoopFluentConfig); err != nil {
+			log.Panic(err)
 		}
 	}
 
