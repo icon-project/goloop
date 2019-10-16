@@ -194,7 +194,7 @@ public class TransactionTask implements Comparable<TransactionTask>{
 
     public int getResetStorageKeyCount(){ return resetStorageKeys.size(); }
 
-    void outputFlush(){
+    public void outputFlush() {
         if (this.outBuffer.length() > 0) {
             System.out.println("Output from transaction " + Helpers.bytesToHexString(externalTransaction.copyOfTransactionHash()));
             System.out.println(this.outBuffer);

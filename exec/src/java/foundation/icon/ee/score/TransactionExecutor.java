@@ -113,7 +113,6 @@ public class TransactionExecutor {
         Transaction tx = getTransactionData(isInstall, code, from, to, value, limit, method, params, txHash);
 
         AvmConfiguration config = new AvmConfiguration();
-        config.threadCount = 1; // we need only one thread per executor
         if (logger.isDebugEnabled()) {
             config.enableVerboseContractErrors = true;
         }

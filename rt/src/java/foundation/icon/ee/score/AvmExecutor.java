@@ -169,6 +169,7 @@ public class AvmExecutor implements AvmInternal {
 
         if (!result.isAborted()){
             result = TransactionResultUtil.setExternalState(result, task.getThisTransactionalKernel());
+            task.outputFlush();
         }
         return result;
     }
