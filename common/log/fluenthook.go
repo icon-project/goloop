@@ -99,39 +99,6 @@ func SetFluentConfig(fluent map[string]string, cfg *GoLoopFluentConfig) error {
 	return nil
 }
 
-func SetReFluentConfig(fluent map[string]string, cfg *GoLoopFluentConfig) error {
-
-	if host, ok := fluent["host"]; ok { // 127.0.0.1
-		cfg.Host = host
-	}
-	if port, ok := fluent["port"]; ok { // 24224
-		cfg.Port, _ = strconv.Atoi(port)
-	}
-	if level, ok := fluent["level"]; ok { // info
-		cfg.Level = level
-	}
-	if tag, ok := fluent["tag"]; ok { // fluent.tag
-		cfg.DefaultTag = tag
-	}
-	if msgFiled, ok := fluent["msg_filed"]; ok { // msg
-		cfg.DefaultMessageField = msgFiled
-	}
-	if maxRetry, ok := fluent["max_retry"]; ok { // 1
-		cfg.MaxRetry, _ = strconv.Atoi(maxRetry)
-	}
-	if timeout, ok := fluent["timeout"]; ok { // 3 * time.Second
-		cfg.Timeout, _ = time.ParseDuration(timeout)
-	}
-	if writeTimeout, ok := fluent["write_timeout"]; ok { // time.Duration(0)
-		cfg.WriteTimeout, _ = time.ParseDuration(writeTimeout)
-	}
-	if retryWait, ok := fluent["retry_wait"]; ok { // 500
-		cfg.RetryWait, _ = strconv.Atoi(retryWait)
-	}
-
-	return nil
-}
-
 func SetFluentHook(cfg *GoLoopFluentConfig) error {
 
 	fConfig := logrus_fluent.Config{

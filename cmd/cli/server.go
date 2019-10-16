@@ -173,12 +173,6 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 				}
 			}
 
-			if fluent, _ := cmd.Flags().GetStringToString("fluent"); fluent != nil {
-				if err := log.SetReFluentConfig(fluent, cfg.GoLoopFluentConfig); err != nil {
-					return err
-				}
-			}
-
 			if cfg.GoLoopFluentConfig != nil {
 				if err := log.SetFluentHook(cfg.GoLoopFluentConfig); err != nil {
 					return err
