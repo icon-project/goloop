@@ -109,8 +109,9 @@ public class TransactionExecutor {
         BigInteger blockTimestamp = (BigInteger) info.get(EEProxy.Info.BLOCK_TIMESTAMP);
         byte[] txHash = (byte[]) info.get(EEProxy.Info.TX_HASH);
 
-        ExternalState kernel = new ExternalState(proxy, code, blockNumber, blockTimestamp);
-        Transaction tx = getTransactionData(isInstall, code, from, to, value, limit, method, params, txHash);
+        byte[] codeBytes = readFile(code);
+        ExternalState kernel = new ExternalState(proxy, codeBytes, blockNumber, blockTimestamp);
+        Transaction tx = getTransactionData(isInstall, codeBytes, from, to, value, limit, method, params, txHash);
 
         AvmConfiguration config = new AvmConfiguration();
         if (logger.isDebugEnabled()) {
@@ -129,7 +130,7 @@ public class TransactionExecutor {
                     throw new RuntimeException(result.getErrorMessage());
                 }
                 // Prepare another transaction for 'onInstall' itself
-                tx = getTransactionData(false, code, from, to, value, limit, method, params, txHash);
+                tx = getTransactionData(false, null, from, to, value, limit, method, params, txHash);
             }
             // Actual execution of the transaction
             ResultWrapper result = new ResultWrapper(
@@ -146,12 +147,12 @@ public class TransactionExecutor {
         }
     }
 
-    private Transaction getTransactionData(boolean isInstall, String code, Address from, Address to,
+    private Transaction getTransactionData(boolean isInstall, byte[] codeBytes, Address from, Address to,
                                            BigInteger value, BigInteger limit,
-                                           String method, Object[] params, byte[] txHash) throws IOException {
+                                           String method, Object[] params, byte[] txHash) {
         if (isInstall) {
             byte[] args = ABIUtil.encodeDeploymentArguments(params);
-            byte[] txData = new CodeAndArguments(readFile(code), args).encodeToBytes();
+            byte[] txData = new CodeAndArguments(codeBytes, args).encodeToBytes();
             return Transaction.contractCreateTransaction(
                     new AionAddress(from),
                     txHash,

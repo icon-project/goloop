@@ -24,42 +24,23 @@ import org.aion.types.AionAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Arrays;
 
 public class ExternalState implements IExternalState {
     private static final Logger logger = LoggerFactory.getLogger(ExternalState.class);
-    private static final String CODE_JAR = "code.jar";
-    private static final String OBJECT_GRAPH = "graph";
 
     private final EEProxy proxy;
-    private final Path codePath;
     private final long blockNumber;
     private final long blockTimestamp;
     private byte[] codeCache;
 
-    ExternalState(EEProxy proxy, String code, BigInteger blockNumber, BigInteger blockTimestamp) {
+    ExternalState(EEProxy proxy, byte[] codeBytes, BigInteger blockNumber, BigInteger blockTimestamp) {
         this.proxy = proxy;
-        this.codePath = Paths.get(code);
+        this.codeCache = codeBytes;
         this.blockNumber = blockNumber.longValue();
         this.blockTimestamp = blockTimestamp.longValue() / 1000; // micro to milli conversion
-    }
-
-    private byte[] readFile(String filename) {
-        Path inFile = new File(codePath.toFile(), filename).toPath();
-        try {
-            return Files.readAllBytes(inFile);
-        } catch (NoSuchFileException e) {
-            throw new RuntimeException("No such file: " + e.getMessage());
-        } catch (IOException e) {
-            throw new RuntimeException(e.getMessage());
-        }
     }
 
     @Override
@@ -106,11 +87,10 @@ public class ExternalState implements IExternalState {
     @Override
     public byte[] getTransformedCode(AionAddress address) {
         logger.debug("[getTransformedCode] {}", address);
-        if (codeCache != null) {
-            logger.debug("  -- return from codeCache");
-            return codeCache;
+        if (codeCache == null) {
+            throw new RuntimeException("transformed code not found");
         }
-        return readFile(CODE_JAR);
+        return codeCache;
     }
 
     @Override
