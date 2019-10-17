@@ -1,6 +1,6 @@
 package avm;
 
-public class PrimitiveBuffer {
+public class ValueBuffer {
     public byte toByte() {
         return (byte) 0;
     }

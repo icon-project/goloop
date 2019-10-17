@@ -7,5 +7,5 @@ public interface VarDB {
 
     IObject avm_get();
 
-    PrimitiveBuffer avm_get(PrimitiveBuffer out);
+    ValueBuffer avm_get(ValueBuffer out);
 }

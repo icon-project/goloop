@@ -9,14 +9,14 @@ public interface ArrayDB<E> {
 
     E get(int index);
 
-    PrimitiveBuffer get(int index, PrimitiveBuffer out);
+    ValueBuffer get(int index, ValueBuffer out);
 
     int size();
 
     // Do not shrink if decoding fails.
     E pop();
 
-    PrimitiveBuffer pop(PrimitiveBuffer out);
+    ValueBuffer pop(ValueBuffer out);
 
 //    E at(int index);
 //    E addCollection();

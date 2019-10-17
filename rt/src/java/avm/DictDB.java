@@ -29,5 +29,5 @@ public interface DictDB<K, V> {
      */
     V get(K key);
 
-    PrimitiveBuffer get(K key, PrimitiveBuffer out);
+    ValueBuffer get(K key, ValueBuffer out);
 }

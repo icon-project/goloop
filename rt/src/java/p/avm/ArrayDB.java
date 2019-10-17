@@ -11,11 +11,11 @@ public interface ArrayDB {
 
     IObject avm_get(int index);
 
-    PrimitiveBuffer avm_get(int index, PrimitiveBuffer out);
+    ValueBuffer avm_get(int index, ValueBuffer out);
 
     int avm_size();
 
     IObject avm_pop();
 
-    PrimitiveBuffer avm_pop(PrimitiveBuffer out);
+    ValueBuffer avm_pop(ValueBuffer out);
 }

@@ -38,7 +38,7 @@ public class CollectionDBImpl extends DBImplBase implements DictDB, ArrayDB {
         return s.getValue(getStorageKey(key));
     }
 
-    public PrimitiveBuffer avm_get(IObject key, PrimitiveBuffer out) {
+    public ValueBuffer avm_get(IObject key, ValueBuffer out) {
         IDBStorage s = getDBStorage(RuntimeMethodFeeSchedule.DictDB_avm_getValue);
         return s.getValue(getStorageKey(key), out);
     }
@@ -80,7 +80,7 @@ public class CollectionDBImpl extends DBImplBase implements DictDB, ArrayDB {
         return v;
     }
 
-    public PrimitiveBuffer avm_pop(PrimitiveBuffer out) {
+    public ValueBuffer avm_pop(ValueBuffer out) {
         IDBStorage s = getDBStorage(RuntimeMethodFeeSchedule.ArrayDB_avm_popValue);
         int sz = s.getArrayLength(getStorageKey());
         if (sz <= 0) {
@@ -100,7 +100,7 @@ public class CollectionDBImpl extends DBImplBase implements DictDB, ArrayDB {
         return s.getValue(getStorageKey(index));
     }
 
-    public PrimitiveBuffer avm_get(int index, PrimitiveBuffer out) {
+    public ValueBuffer avm_get(int index, ValueBuffer out) {
         IDBStorage s = getDBStorage(RuntimeMethodFeeSchedule.ArrayDB_avm_getValue);
         int sz = s.getArrayLength(getStorageKey());
         if (index >= sz || index < 0) {

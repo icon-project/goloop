@@ -2,10 +2,10 @@ package p.avm;
 
 import s.java.lang.Object;
 
-public class PrimitiveBuffer extends Object {
+public class ValueBuffer extends Object {
     private byte[] raw;
 
-    public PrimitiveBuffer() {
+    public ValueBuffer() {
     }
 
     public void set(byte[] raw) {

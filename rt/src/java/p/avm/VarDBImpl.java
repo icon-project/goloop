@@ -25,7 +25,7 @@ public class VarDBImpl extends DBImplBase implements VarDB {
         return s.getValue(getStorageKey());
     }
 
-    public PrimitiveBuffer avm_get(PrimitiveBuffer out) {
+    public ValueBuffer avm_get(ValueBuffer out) {
         IDBStorage s = getDBStorage(RuntimeMethodFeeSchedule.VarDB_avm_getValue);
         return s.getValue(getStorageKey(), out);
     }

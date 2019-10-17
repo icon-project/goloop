@@ -4,7 +4,7 @@ import i.*;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.types.AionAddress;
-import p.avm.PrimitiveBuffer;
+import p.avm.ValueBuffer;
 import s.java.lang.Integer;
 
 public class DBStorage implements IDBStorage {
@@ -78,10 +78,10 @@ public class DBStorage implements IDBStorage {
         return (IObject) deserializeObject(v);
     }
 
-    public PrimitiveBuffer getValue(byte[] key, PrimitiveBuffer out) {
+    public ValueBuffer getValue(byte[] key, ValueBuffer out) {
         var v = ctx.getStorage(getAddress(), key);
         if (out==null)
-            out = new PrimitiveBuffer();
+            out = new ValueBuffer();
         out.set(v);
         if (v!=null)
             charge(v.length);

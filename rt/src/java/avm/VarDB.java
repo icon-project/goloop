@@ -5,5 +5,5 @@ public interface VarDB<V> {
 
     V get();
 
-    PrimitiveBuffer get(PrimitiveBuffer out);
+    ValueBuffer get(ValueBuffer out);
 }

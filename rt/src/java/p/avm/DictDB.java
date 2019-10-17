@@ -9,6 +9,6 @@ public interface DictDB {
 
     IObject avm_get(IObject key);
 
-    PrimitiveBuffer avm_get(IObject key, PrimitiveBuffer out);
+    ValueBuffer avm_get(IObject key, ValueBuffer out);
 }
 
