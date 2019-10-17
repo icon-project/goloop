@@ -32,10 +32,10 @@ public final class Transaction {
         , byte[] transactionData
         , boolean isCreate
     ) {
-        if (null == senderAddress) {
+        if (null == senderAddress && transactionHash != null) {
             throw new NullPointerException("No sender");
         }
-        if (null == transactionHash) {
+        if (null == transactionHash && senderAddress != null) {
             throw new NullPointerException("No transaction hash");
         }
         if (null == value) {
@@ -62,8 +62,12 @@ public final class Transaction {
 
         this.senderAddress = senderAddress;
         this.destinationAddress = destinationAddress;
-        this.transactionHash = new byte[transactionHash.length];
-        System.arraycopy(transactionHash, 0, this.transactionHash, 0, transactionHash.length);
+        if (transactionHash != null) {
+            this.transactionHash = new byte[transactionHash.length];
+            System.arraycopy(transactionHash, 0, this.transactionHash, 0, transactionHash.length);
+        } else {
+            this.transactionHash = null;
+        }
         this.value = value;
         this.nonce = nonce;
         this.energyPrice = energyPrice;
@@ -110,6 +114,9 @@ public final class Transaction {
     }
 
     public byte[] copyOfTransactionHash() {
+        if (transactionHash == null) {
+            return null;
+        }
         byte[] transactionHashCopy = new byte[transactionHash.length];
         System.arraycopy(transactionHash, 0, transactionHashCopy, 0, transactionHash.length);
         return transactionHashCopy;
@@ -129,7 +136,7 @@ public final class Transaction {
             return false;
         } else {
             Transaction otherObject = (Transaction) obj;
-            return this.senderAddress.equals(otherObject.senderAddress)
+            return Objects.equals(this.senderAddress, otherObject.senderAddress)
                     && Objects.equals(this.destinationAddress, otherObject.destinationAddress)
                     && this.value.equals(otherObject.value)
                     && this.nonce.equals(otherObject.nonce)
@@ -166,7 +173,9 @@ public final class Transaction {
         int result = Objects
             .hash(senderAddress, destinationAddress, value, nonce, energyPrice, energyLimit,
                 isCreate);
-        result = 31 * result + Arrays.hashCode(transactionHash);
+        if (transactionHash != null) {
+            result = 31 * result + Arrays.hashCode(transactionHash);
+        }
         result = 31 * result + Arrays.hashCode(transactionData);
         return result;
     }

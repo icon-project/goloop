@@ -52,7 +52,9 @@ public class TransactionTask implements Comparable<TransactionTask>{
         this.threadOwningTask = null;
         this.reentrantDAppStack = new ReentrantDAppStack();
         this.outBuffer = new StringBuffer();
-        this.origin = new Address(origin.toByteArray());
+        if(origin != null) {
+            this.origin = new Address(origin.toByteArray());
+        }
         this.depth = 0;
         this.sideEffectsStack = new Stack<>();
         this.sideEffectsStack.push(new SideEffects());

@@ -199,6 +199,9 @@ public class EEProxy extends Proxy {
     }
 
     private byte[] getValueAsByteArray(Value value) {
+        if (value.isNilValue()) {
+            return null;
+        }
         return value.asRawValue().asByteArray();
     }
 
@@ -206,7 +209,12 @@ public class EEProxy extends Proxy {
         ArrayValue data = raw.asArrayValue();
         String code = data.get(0).asStringValue().asString();
         boolean isQuery = data.get(1).asBooleanValue().getBoolean();
-        Address from = new Address(getValueAsByteArray(data.get(2)));
+
+        Address from = null;
+        byte[] val;
+        if ((val = getValueAsByteArray(data.get(2))) != null){
+            from = new Address(val);
+        }
         Address to = new Address(getValueAsByteArray(data.get(3)));
         BigInteger value = new BigInteger(getValueAsByteArray(data.get(4)));
         BigInteger limit = new BigInteger(getValueAsByteArray(data.get(5)));

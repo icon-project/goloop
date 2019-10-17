@@ -164,7 +164,7 @@ public class TransactionExecutor {
         } else {
             byte[] txData = ABIUtil.encodeMethodArguments(method, getConvertedParams(params));
             return Transaction.contractCallTransaction(
-                    new AionAddress(from),
+                    from == null ? null : new AionAddress(from),
                     new AionAddress(to),
                     txHash,
                     BigInteger.valueOf(1),

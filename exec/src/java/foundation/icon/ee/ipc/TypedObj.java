@@ -69,6 +69,9 @@ public class TypedObj {
             }
             return list;
         } else if (tag == BYTES) {
+            if (val.isNilValue()) {
+                return null;
+            }
             return val.asRawValue().asByteArray();
         } else if (tag == STRING) {
             return val.asStringValue().asString();
