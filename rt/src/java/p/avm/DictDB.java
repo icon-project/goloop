@@ -3,12 +3,10 @@ package p.avm;
 import i.IObject;
 
 public interface DictDB {
-    void avm_set(IObject key, IObject value);
+    void avm_set(IObject key, Value value);
 
-    IObject avm_at(IObject key);
+    Value avm_get(IObject key, ValueBuffer out);
 
-    IObject avm_get(IObject key);
-
-    ValueBuffer avm_get(IObject key, ValueBuffer out);
+    Value avm_get(IObject key);
 }
 

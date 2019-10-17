@@ -5,29 +5,18 @@ package avm;
  *
  * @param <K> Key type. It shall be integral wrapper type, BigInteger, String,
  *            Address or byte[].
- * @param <V> Value type.
  */
-public interface DictDB<K, V> {
+public interface DictDB<K> {
     /**
      * @param key
      * @param value
      */
-    void set(K key, V value);
-
-    /**
-     * Returns Collection for the key. This method shall be called only if
-     * type of V is DictDB or ArrayDB.
-     *
-     * @param key
-     * @return
-     */
-    V at(K key);
+    void set(K key, Value value);
 
     /**
      * @param key
      * @return
      */
-    V get(K key);
-
-    ValueBuffer get(K key, ValueBuffer out);
+    Value get(K key, ValueBuffer out);
+    Value get(K key);
 }

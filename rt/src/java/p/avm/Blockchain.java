@@ -243,14 +243,9 @@ public final class Blockchain extends Object {
         return blockchainRuntime.avm_edVerify(data, signature, publicKey);
     }
 
-    public static DictDB avm_newDictDB(String id) {
+    public static CollectionDB avm_newCollectionDB(String id) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_newDictDB);
-        return blockchainRuntime.avm_newDictDB(id);
-    }
-
-    public static ArrayDB avm_newArrayDB(String id) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_newArrayDB);
-        return blockchainRuntime.avm_newArrayDB(id);
+        return blockchainRuntime.avm_newCollectionDB(id);
     }
 
     public static VarDB avm_newVarDB(String id) {

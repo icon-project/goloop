@@ -489,11 +489,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         return new Result(newResult.isSuccess(), output == null ? null : new ByteArray(output));
     }
 
-    public DictDB avm_newDictDB(s.java.lang.String id) {
-        return new CollectionDBImpl(id);
-    }
-
-    public ArrayDB avm_newArrayDB(s.java.lang.String id) {
+    public CollectionDB avm_newCollectionDB(s.java.lang.String id) {
         return new CollectionDBImpl(id);
     }
 

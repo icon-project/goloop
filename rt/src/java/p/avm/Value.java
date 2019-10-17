@@ -17,5 +17,4 @@ public interface Value {
     Address avm_asAddress();
     String avm_asString();
     ByteArray avm_asByteArray();
-    byte[] asByteArray();
 }

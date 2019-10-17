@@ -17,6 +17,8 @@ import java.util.stream.Stream;
 import p.avm.Address;
 import p.avm.Blockchain;
 import p.avm.Result;
+import p.avm.Value;
+import p.avm.ValueBuffer;
 
 /**
  * Represents the long-lived global state of a specific "node" instance.
@@ -59,6 +61,8 @@ public class NodeEnvironment {
                 Address.class,
                 Blockchain.class,
                 Result.class,
+                ValueBuffer.class,
+                Value.class,
             };
 
             this.arraywrapperClasses = new Class<?>[] {

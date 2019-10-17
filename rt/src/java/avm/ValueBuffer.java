@@ -1,5 +1,6 @@
 package avm;
 
+
 import java.math.BigInteger;
 
 public class ValueBuffer implements Value {
@@ -42,84 +43,96 @@ public class ValueBuffer implements Value {
     public ValueBuffer(byte[] v) {
     }
 
-    public void set(byte v) {
+    public ValueBuffer set(byte v) {
+        return null;
     }
 
     public byte asByte() {
         return (byte) 0;
     }
 
-    public void set(short v) {
+    public ValueBuffer set(short v) {
+        return null;
     }
 
     public short asShort() {
         return (short) 0;
     }
 
-    public void set(int v) {
+    public ValueBuffer set(int v) {
+        return null;
     }
 
     public int asInt() {
         return 0;
     }
 
-    public void set(long v) {
+    public ValueBuffer set(long v) {
+        return null;
     }
 
     public long asLong() {
         return 0;
     }
 
-    public void set(float v) {
+    public ValueBuffer set(float v) {
+        return null;
     }
 
     public float asFloat() {
         return 0;
     }
 
-    public void set(double v) {
+    public ValueBuffer set(double v) {
+        return null;
     }
 
     public double asDouble() {
         return 0;
     }
 
-    public void set(char v) {
+    public ValueBuffer set(char v) {
+        return null;
     }
 
     public char asChar() {
         return 0;
     }
 
-    public void set(boolean v) {
+    public ValueBuffer set(boolean v) {
+        return null;
     }
 
     public boolean asBoolean() {
         return false;
     }
 
-    public void set(BigInteger v) {
+    public ValueBuffer set(BigInteger v) {
+        return null;
     }
 
     public BigInteger asBigInteger() {
         return null;
     }
 
-    public void set(Address v) {
+    public ValueBuffer set(Address v) {
+        return null;
     }
 
     public Address asAddress() {
         return null;
     }
 
-    public void set(String v) {
+    public ValueBuffer set(String v) {
+        return null;
     }
 
     public String asString() {
         return null;
     }
 
-    public void set(byte[] v) {
+    public ValueBuffer set(byte[] v) {
+        return null;
     }
 
     public byte[] asByteArray() {

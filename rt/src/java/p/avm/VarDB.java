@@ -3,9 +3,9 @@ package p.avm;
 import i.IObject;
 
 public interface VarDB {
-    void avm_set(IObject value);
+    void avm_set(Value value);
 
-    IObject avm_get();
+    Value avm_get(ValueBuffer out);
 
-    ValueBuffer avm_get(ValueBuffer out);
+    Value avm_get();
 }

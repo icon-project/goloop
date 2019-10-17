@@ -395,15 +395,11 @@ public final class Blockchain {
         return true;
     }
 
-    public static <K, V> DictDB<K, V> newDictDB(String id) {
+    public static<K, V> CollectionDB<K, V> newCollectionDB(String id) {
         return null;
     }
 
-    public static <V> ArrayDB<V> newArrayDB(String id) {
-        return null;
-    }
-
-    public static <V> VarDB<V> newVarDB(String id) {
+    public static VarDB newVarDB(String id) {
         return null;
     }
 }

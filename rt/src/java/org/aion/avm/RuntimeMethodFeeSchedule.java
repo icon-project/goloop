@@ -721,4 +721,8 @@ public class RuntimeMethodFeeSchedule {
     public static final long TimeUnit_avm_toNanos = RT_METHOD_FEE_LEVEL_1;
     public static final long TimeUnit_avm_values = RT_METHOD_FEE_LEVEL_3;
     public static final long TimeUnit_avm_valueOf = RT_METHOD_FEE_LEVEL_2;
+
+    public static final long ValueBuffer_avm_constructor = RT_METHOD_FEE_LEVEL_1;
+    public static final long ValueBuffer_avm_set = RT_METHOD_FEE_LEVEL_1;
+    public static final long ValueBuffer_avm_get = RT_METHOD_FEE_LEVEL_1;
 }

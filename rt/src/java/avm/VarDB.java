@@ -1,9 +1,9 @@
 package avm;
 
-public interface VarDB<V> {
-    void set(V value);
+public interface VarDB {
+    void set(Value value);
 
-    V get();
+    Value get(ValueBuffer out);
 
-    ValueBuffer get(ValueBuffer out);
+    Value get();
 }

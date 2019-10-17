@@ -4,8 +4,8 @@ import i.*;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.types.AionAddress;
+import p.avm.Value;
 import p.avm.ValueBuffer;
-import s.java.lang.Integer;
 
 public class DBStorage implements IDBStorage {
     private IExternalState ctx;
@@ -31,7 +31,9 @@ public class DBStorage implements IDBStorage {
         if (l==0) {
             v = null;
         } else {
-            v = serializeObject(Integer.valueOf(l));
+            var vb = new ValueBuffer();
+            vb.set(l);
+            v = vb.asByteArray();
         }
         ctx.putStorage(getAddress(), key, v);
     }
@@ -40,8 +42,9 @@ public class DBStorage implements IDBStorage {
         var bs = ctx.getStorage(getAddress(), key);
         if (bs==null)
             return 0;
-        Integer i = (Integer) deserializeObject(bs);
-        return i.getUnderlying();
+        var vb = new ValueBuffer();
+        vb.set(bs);
+        return vb.asInt();
     }
 
     private AionAddress getAddress() {
@@ -60,7 +63,7 @@ public class DBStorage implements IDBStorage {
         }
     }
 
-    public void setValue(byte[] key, IObject value) {
+    public void setTyped(byte[] key, IObject value) {
         assumeValidValue(value);
         byte[] v = null;
         if (value!=null) {
@@ -70,7 +73,7 @@ public class DBStorage implements IDBStorage {
         ctx.putStorage(getAddress(), key, v);
     }
 
-    public IObject getValue(byte[] key) {
+    public IObject getTyped(byte[] key) {
         var v = ctx.getStorage(getAddress(), key);
         if (v==null)
             return null;
@@ -78,13 +81,27 @@ public class DBStorage implements IDBStorage {
         return (IObject) deserializeObject(v);
     }
 
-    public ValueBuffer getValue(byte[] key, ValueBuffer out) {
+    public void setValue(byte[] key, Value value) {
+        byte[] v = null;
+        if (value!=null) {
+            if (value instanceof ValueBuffer) {
+                v = ((ValueBuffer)value).asByteArray();
+            } else {
+                v = value.avm_asByteArray().getUnderlying();
+            }
+            charge(v.length * StorageFees.WRITE_PRICE_PER_BYTE);
+        }
+        ctx.putStorage(getAddress(), key, v);
+    }
+
+    public Value getValue(byte[] key, ValueBuffer out) {
         var v = ctx.getStorage(getAddress(), key);
+        if (v==null)
+            return null;
+        charge(v.length);
         if (out==null)
             out = new ValueBuffer();
         out.set(v);
-        if (v!=null)
-            charge(v.length);
         return out;
     }
 

@@ -4,6 +4,8 @@ import avm.Address;
 import avm.Blockchain;
 
 import avm.DictDB;
+import avm.Value;
+import avm.ValueBuffer;
 import foundation.icon.ee.tooling.abi.EventLog;
 import foundation.icon.ee.tooling.abi.External;
 import foundation.icon.ee.tooling.abi.Optional;
@@ -17,7 +19,7 @@ public class SampleToken
     private final String symbol;
     private final int decimals;
     private final BigInteger totalSupply;
-    private DictDB<Address, BigInteger> balances;
+    private DictDB<Address> balances;
 
     private SampleToken(String name, String symbol, BigInteger decimals, BigInteger initialSupply) {
         this.name = name;
@@ -47,8 +49,8 @@ public class SampleToken
         }
 
         // set the initial balance of the owner
-        this.balances = Blockchain.newDictDB("balances");
-        this.balances.set(Blockchain.getOrigin(), this.totalSupply);
+        this.balances = Blockchain.newCollectionDB("balances");
+        this.balances.set(Blockchain.getOrigin(), new ValueBuffer(this.totalSupply));
     }
 
     private static SampleToken token;
@@ -86,27 +88,26 @@ public class SampleToken
 
     @External(readonly=true)
     public static BigInteger balanceOf(Address _owner) {
-        return token.balances.get(_owner);
+        return token.balances.get(_owner).asBigInteger();
     }
 
     @External
     public static void transfer(Address _to, BigInteger _value, @Optional byte[] _data) {
         Address _from = Blockchain.getCaller();
-        BigInteger fromBalance = token.balances.get(_from);
-        if (fromBalance==null) {
-            fromBalance = BigInteger.ZERO;
-        }
-        BigInteger toBalance = token.balances.get(_to);
-        if (toBalance==null) {
-            toBalance = BigInteger.ZERO;
-        }
+        var vb = new ValueBuffer();
+        Value v = token.balances.get(_from, vb);
+        BigInteger fromBalance = v!=null ? v.asBigInteger() : BigInteger.ZERO;
+        v = token.balances.get(_to, vb);
+        BigInteger toBalance = v!=null ? v.asBigInteger() : BigInteger.ZERO;
 
         // check some basic requirements
         Blockchain.require(_value.compareTo(BigInteger.ZERO) >= 0);
         Blockchain.require(fromBalance.compareTo(_value) >= 0);
 
-        token.balances.set(_from, fromBalance.subtract(_value));
-        token.balances.set(_to, toBalance.add(_value));
+        vb.set(fromBalance.subtract(_value));
+        token.balances.set(_from, vb);
+        vb.set(toBalance.subtract(_value));
+        token.balances.set(_to, vb);
 
         Transfer(_from, _to, _value, _data);
     }
