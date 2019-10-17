@@ -87,11 +87,11 @@ func (m *mpt) realize(h []byte, nibs []byte) (node, error) {
 		if serialized == nil {
 			return nil, fmt.Errorf("ErrorKeyNotFound(key=%x)", h)
 		}
+		if cache {
+			m.cache.put(nibs, h, serialized)
+		}
 	}
 
-	if cache {
-		m.cache.put(nibs, h, serialized)
-	}
 	return deserialize(h, serialized, stateFlushed)
 }
 
