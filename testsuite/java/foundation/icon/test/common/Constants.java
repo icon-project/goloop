@@ -25,8 +25,10 @@ public class Constants {
     public static final String TAG_NORMAL = "normal";
     public static final BigInteger STATUS_SUCCESS = BigInteger.ONE;
     public static final BigInteger STATUS_FAIL = BigInteger.ZERO;
-    public static final String CONTENT_TYPE = "application/zip";
+    public static final String CONTENT_TYPE_ZIP = "application/zip";
+    public static final String CONTENT_TYPE_JAVA = "application/java";
     public static final String SCORE_ROOT = "./data/scores/";
+    public static final String JAVA_SCORE_ROOT = "./data/scores/java/";
     public static final long DEFAULT_WAITING_TIME = 7000; // millisecond
     public static final Address CHAINSCORE_ADDRESS
             = new Address("cx0000000000000000000000000000000000000000");
@@ -39,19 +41,24 @@ public class Constants {
     public static final String SCORE_STATUS_ACTIVE = "active";
     public static final String SCORE_STATUS_REJECT = "rejected";
 
-    public static final String SCORE_MULTISIG_PATH = Constants.SCORE_ROOT + "multisig_wallet";
-    public static final String SCORE_STEPCOUNTER_PATH = Constants.SCORE_ROOT + "step_counter";
-    public static final String SCORE_DB_STEP_PATH = Constants.SCORE_ROOT + "db_step";
-    public static final String SCORE_CROWDSALE_PATH = Constants.SCORE_ROOT + "crowdsale";
-    public static final String SCORE_SAMPLETOKEN_PATH = Constants.SCORE_ROOT + "sample_token";
-    public static final String SCORE_HELLOWORLD_PATH = Constants.SCORE_ROOT + "hello_world";
-    public static final String SCORE_HELLOWORLD_UPDATE_PATH = Constants.SCORE_ROOT + "hello_world2";
-    public static final String SCORE_CHECKPARAMS_PATH = Constants.SCORE_ROOT + "check_params";
-    public static final String SCORE_RECEIPT_PATH = Constants.SCORE_ROOT + "receipt";
-    public static final String SCORE_API_PATH = Constants.SCORE_ROOT + "score_api";
+    public static final String SCORE_MULTISIG_PATH = SCORE_ROOT + "multisig_wallet";
+    public static final String SCORE_STEPCOUNTER_PATH = SCORE_ROOT + "step_counter";
+    public static final String SCORE_DB_STEP_PATH = SCORE_ROOT + "db_step";
+    public static final String SCORE_CROWDSALE_PATH = SCORE_ROOT + "crowdsale";
+    public static final String SCORE_SAMPLETOKEN_PATH = SCORE_ROOT + "sample_token";
+    public static final String SCORE_HELLOWORLD_PATH = SCORE_ROOT + "hello_world";
+    public static final String SCORE_HELLOWORLD_UPDATE_PATH = SCORE_ROOT + "hello_world2";
+    public static final String SCORE_CHECKPARAMS_PATH = SCORE_ROOT + "check_params";
+    public static final String SCORE_RECEIPT_PATH = SCORE_ROOT + "receipt";
+    public static final String SCORE_API_PATH = SCORE_ROOT + "score_api";
     public static final String SCORE_GOV_PATH = "./data/genesisStorage/" + "governance";
-    public static final String SCORE_GOV_UPDATE_PATH = Constants.SCORE_ROOT + "governance";
+    public static final String SCORE_GOV_UPDATE_PATH = SCORE_ROOT + "governance";
     public static final BigInteger DEFAULT_BALANCE = new BigInteger("100000000");
     public static final long DEFAULT_STEP_LIMIT = 9000000;
+    public static final String JSCORE_MYSAMPLETOKEN = JAVA_SCORE_ROOT + "sampleToken.jar";
     public static final String SCORE_PYTHON_ROOT = "package.json";
+//    public static final long DEFAULT_STEP_LIMIT = 10000000;
+//    public static final String SCORE_RECEIPT_PATH = Constants.SCORE_ROOT + "receipt.zip";
+// TODO TEST
+//    public static final String SCORE_CHECKPARAMS_PATH = Constants.SCORE_ROOT + "check_params.zip";
 }

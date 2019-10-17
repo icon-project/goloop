@@ -428,7 +428,7 @@ public class DeployTest {
                 .stepLimit(BigInteger.valueOf(3000))
                 .timestamp(Utils.getMicroTime())
                 .nonce(new BigInteger("1"))
-                .deploy(Constants.CONTENT_TYPE, content);
+                .deploy(Constants.CONTENT_TYPE_ZIP, content);
         if(params != null) {
             builder = builder.params(params);
         }
@@ -650,7 +650,7 @@ public class DeployTest {
                     .stepLimit(BigInteger.valueOf(Constants.DEFAULT_STEP_LIMIT))
                     .timestamp(Utils.getMicroTime())
                     .nonce(new BigInteger("1"))
-                    .deploy(Constants.CONTENT_TYPE, content)
+                    .deploy(Constants.CONTENT_TYPE_ZIP, content)
                     .params(params)
                     .build();
 
