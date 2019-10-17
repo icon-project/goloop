@@ -36,7 +36,7 @@ func BenchmarkTrend(b *testing.B) {
 	}
 
 	mpt := NewMPTForBytes(d, nil)
-	mpt.cache = NewNodeCache(5)
+	mpt.cache = NewNodeCache(5,1,".cache")
 
 	blockUnit := 1000
 	txUnit := 10
