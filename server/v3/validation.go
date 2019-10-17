@@ -10,7 +10,7 @@ import (
 
 var (
 	hexString          = regexp.MustCompile("^0x[0-9a-f]+$")
-	deployContentTypes = []string{"application/zip"}
+	deployContentTypes = []string{"application/zip", "application/java"}
 )
 
 func RegisterValidationRule(v *jsonrpc.Validator) {

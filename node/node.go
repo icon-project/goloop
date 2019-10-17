@@ -166,12 +166,11 @@ func (n *Node) Start() {
 		log.Panicf("fail to P2P listen err=%+v", err)
 	}
 
-	go func(){
+	go func() {
 		if err := n.srv.Start(); err != nil {
 			log.Panicf("fail to server close err=%+v", err)
 		}
 	}()
-
 
 	if err := n.cliSrv.Start(); err != nil {
 		log.Panicf("fail to cli server start err=%+v", err)
@@ -536,8 +535,12 @@ func NewNode(
 	if err != nil {
 		log.Panicf("fail to create PythonEE err=%+v", err)
 	}
+	jee, err := eeproxy.NewJavaEE(l)
+	if err != nil {
+		log.Panicf("fail to create JavaEE err=%+v", err)
+	}
 	eeSocket := cfg.ResolveAbsolute(cfg.EESocket)
-	pm, err := eeproxy.NewManager("unix", eeSocket, l, ee)
+	pm, err := eeproxy.NewManager("unix", eeSocket, l, ee, jee)
 	if err != nil {
 		log.Panicf("fail to start EEManager err=%+v", err)
 	}

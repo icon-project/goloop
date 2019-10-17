@@ -198,6 +198,7 @@ func Execute(cmd *cobra.Command, args []string) {
 		if err != nil {
 			log.Panicf("Failed to load genesisStorage\n")
 		}
+		cfg.Genesis, _ = json.Marshal(cfg.GenesisStorage.Genesis())
 	} else if len(genesisPath) > 0 {
 		storage := bytes.NewBuffer(nil)
 		if err := gs.WriteFromPath(storage, genesisPath); err != nil {
@@ -236,7 +237,7 @@ func Execute(cmd *cobra.Command, args []string) {
 	}
 
 	if cfg.NID == 0 {
-		gtx, _ := transaction.NewGenesisTransaction(cfg.Genesis)
+		gtx, _ := transaction.NewGenesisTransaction(cfg.GenesisStorage.Genesis())
 		cfg.NID = gtx.NID()
 	}
 
@@ -391,7 +392,12 @@ func Execute(cmd *cobra.Command, args []string) {
 		log.Panicf("FAIL to create PythonEE err=%+v", err)
 	}
 
-	pm, err := eeproxy.NewManager("unix", cfg.EESocket, logger, ee)
+	jee, err := eeproxy.NewJavaEE(logger)
+	if err != nil {
+		log.Panicf("FAIL to create JavaEE err=%+v", err)
+	}
+
+	pm, err := eeproxy.NewManager("unix", cfg.EESocket, logger, ee, jee)
 	if err != nil {
 		log.Panicln("FAIL to start EEManager")
 	}

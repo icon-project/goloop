@@ -30,6 +30,20 @@ type DeployHandler struct {
 	preDefinedAddr module.Address
 }
 
+// Only "application/zip" and "application/java" are allowed as contentType by server validator.
+func getEEType(contentType string) string {
+	eeType := ""
+	switch contentType {
+	case state.CTAppZip:
+		eeType = "python"
+	case state.CTAppJava:
+		eeType = "java"
+	default:
+		log.Errorf("Unexpected contentType(%s)\n", contentType)
+	}
+	return eeType
+}
+
 func newDeployHandler(
 	ch *CommonHandler,
 	data []byte,
@@ -47,10 +61,8 @@ func newDeployHandler(
 		CommonHandler: ch,
 		content:       dataJSON.Content,
 		contentType:   dataJSON.ContentType,
-		// eeType is currently only python
-		// but it should be checked later by json element
-		eeType: "python",
-		params: dataJSON.Params,
+		eeType:        getEEType(dataJSON.ContentType),
+		params:        dataJSON.Params,
 	}
 }
 
@@ -71,10 +83,8 @@ func NewDeployHandlerForPreInstall(owner, scoreAddr module.Address, contentType 
 		content:        content,
 		contentType:    contentType,
 		preDefinedAddr: scoreAddr,
-		// eeType is currently only for python
-		// but it should be checked later by json element
-		eeType: "python",
-		params: p,
+		eeType:         getEEType(contentType),
+		params:         p,
 	}
 }
 
@@ -219,8 +229,7 @@ func (h *AcceptHandler) Prepare(ctx Context) (state.WorldContext, error) {
 }
 
 const (
-	deployInstall = "on_install"
-	deployUpdate  = "on_update"
+	deployUpdate = "on_update"
 )
 
 func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.TypedObj, module.Address) {
@@ -237,7 +246,7 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.Typ
 
 	var methodStr string
 	if scoreAs.Contract() == nil {
-		methodStr = deployInstall
+		methodStr = state.EEType(scoreAs.NextContract().EEType()).InstallMethod()
 	} else {
 		methodStr = deployUpdate
 	}
