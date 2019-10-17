@@ -131,6 +131,7 @@ pack:goloop:
     - docker
   except:
     - tags
+    - feature-javaee
 
 ITJ:gochain:normal:
   <<: *ITJ__gochain
@@ -211,6 +212,7 @@ ITJ:gochain:governance:audit:
     - docker-service
   except:
     - tags
+    - feature-javaee
 
 ITJ:goloop:normal:
   <<: *ITJ__goloop
@@ -269,6 +271,10 @@ ITJ:goloop:governance:audit:
       - public
   tags:
     - pages
+  only:
+    - dev
+    - master
+    - tags
 
 pages:doc:
   <<: *pages
