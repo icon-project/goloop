@@ -8,7 +8,7 @@ import s.java.lang.String;
 
 public class VarDBImpl extends DBImplBase implements VarDB {
     public VarDBImpl(String id) {
-        super(id);
+        super(TYPE_VAR_DB, id);
     }
 
     public VarDBImpl(Void ignore, int readIndex) {

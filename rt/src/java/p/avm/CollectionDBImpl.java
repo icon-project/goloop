@@ -5,8 +5,8 @@ import org.aion.avm.RuntimeMethodFeeSchedule;
 import s.java.lang.String;
 
 public class CollectionDBImpl extends DBImplBase implements CollectionDB {
-    public CollectionDBImpl(String id) {
-        super(id);
+    public CollectionDBImpl(int type, String id) {
+        super(type, id);
     }
 
     public CollectionDBImpl(byte[] id) {

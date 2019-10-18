@@ -242,7 +242,7 @@ public interface IBlockchainRuntime {
      */
     boolean avm_edVerify(ByteArray data, ByteArray signature, ByteArray publicKey) throws IllegalArgumentException;
 
-    CollectionDB avm_newCollectionDB(String id);
+    CollectionDB avm_newCollectionDB(int type, String id);
 
     VarDB avm_newVarDB(String id);
 }

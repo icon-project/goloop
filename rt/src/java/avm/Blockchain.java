@@ -395,7 +395,15 @@ public final class Blockchain {
         return true;
     }
 
-    public static<K, V> CollectionDB<K, V> newCollectionDB(String id) {
+    public static<K, V> NestingDictDB<K, V> newNestingDictDB(String id) {
+        return null;
+    }
+
+    public static<K> DictDB<K> newDictDB(String id) {
+        return null;
+    }
+
+    public static ArrayDB newArrayDB(String id) {
         return null;
     }
 

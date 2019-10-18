@@ -39,7 +39,7 @@ public class CollectionTest
         s = vdb.get().asString();
         expectEquals(s, "test");
 
-        DictDB<Integer> ddb = Blockchain.newCollectionDB("ddb");
+        DictDB<Integer> ddb = Blockchain.newDictDB("ddb");
         ddb.set(10, vb.set("10"));
         ddb.set(20, vb.set("20"));
         s = ddb.get(10).asString();
@@ -47,7 +47,7 @@ public class CollectionTest
         s = ddb.get(20).asString();
         expectEquals(s, "20");
 
-        ArrayDB adb = Blockchain.newCollectionDB("adb");
+        ArrayDB adb = Blockchain.newArrayDB("adb");
         adb.add(vb.set("0"));
         adb.add(vb.set("1"));
         adb.add(vb.set("2"));
@@ -66,7 +66,7 @@ public class CollectionTest
         expectEquals(s, "0");
         expectEquals(adb.size(), 0);
 
-        NestingDictDB<Integer, DictDB<Integer>> dddb = Blockchain.newCollectionDB("dddb");
+        NestingDictDB<Integer, DictDB<Integer>> dddb = Blockchain.newNestingDictDB("dddb");
         dddb.at(0).set(1, vb.set("0, 1"));
         dddb.at(1).set(2, vb.set("1, 2"));
         s = dddb.at(0).get(1).asString();
@@ -74,7 +74,7 @@ public class CollectionTest
         s = dddb.at(1).get(2).asString();
         expectEquals(s, "1, 2");
 
-        NestingDictDB<Integer, ArrayDB> dadb = Blockchain.newCollectionDB("dadb");
+        NestingDictDB<Integer, ArrayDB> dadb = Blockchain.newNestingDictDB("dadb");
         dadb.at(0).add(vb.set("a0"));
         dadb.at(0).add(vb.set("a1"));
         s = dadb.at(0).get(0).asString();

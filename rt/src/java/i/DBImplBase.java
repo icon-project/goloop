@@ -6,11 +6,15 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 public class DBImplBase extends s.java.lang.Object {
+    public static final int TYPE_ARRAY_DB = 0;
+    public static final int TYPE_DICT_DB = 1;
+    public static final int TYPE_VAR_DB = 2;
+
     byte[] id;
     byte[] hash;
 
-    public DBImplBase(s.java.lang.String id) {
-        this.id = encodeKey(id);
+    public DBImplBase(int type, s.java.lang.String id) {
+        this.id = catEncodedKey(new byte[]{(byte)type}, id);
     }
 
     public DBImplBase(byte[] id) {

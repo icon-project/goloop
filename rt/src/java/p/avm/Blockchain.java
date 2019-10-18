@@ -1,5 +1,6 @@
 package p.avm;
 
+import i.DBImplBase;
 import org.aion.avm.StorageFees;
 import a.ByteArray;
 import i.IBlockchainRuntime;
@@ -243,9 +244,19 @@ public final class Blockchain extends Object {
         return blockchainRuntime.avm_edVerify(data, signature, publicKey);
     }
 
-    public static CollectionDB avm_newCollectionDB(String id) {
+    public static NestingDictDB avm_newNestingDictDB(String id) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_newDictDB);
-        return blockchainRuntime.avm_newCollectionDB(id);
+        return blockchainRuntime.avm_newCollectionDB(DBImplBase.TYPE_DICT_DB, id);
+    }
+
+    public static DictDB avm_newDictDB(String id) {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_newDictDB);
+        return blockchainRuntime.avm_newCollectionDB(DBImplBase.TYPE_DICT_DB, id);
+    }
+
+    public static ArrayDB avm_newArrayDB(String id) {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_newArrayDB);
+        return blockchainRuntime.avm_newCollectionDB(DBImplBase.TYPE_ARRAY_DB, id);
     }
 
     public static VarDB avm_newVarDB(String id) {
