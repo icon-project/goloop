@@ -106,7 +106,7 @@ public class SampleToken
 
         vb.set(fromBalance.subtract(_value));
         token.balances.set(_from, vb);
-        vb.set(toBalance.subtract(_value));
+        vb.set(toBalance.add(_value));
         token.balances.set(_to, vb);
 
         Transfer(_from, _to, _value, _data);
