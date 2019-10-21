@@ -19,6 +19,7 @@ package foundation.icon.ee.ipc;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Method;
 import foundation.icon.ee.types.ObjectGraph;
+import org.msgpack.core.MessageTypeCastException;
 import org.msgpack.value.ArrayValue;
 import org.msgpack.value.Value;
 import org.slf4j.Logger;
@@ -200,33 +201,38 @@ public class EEProxy extends Proxy {
     }
 
     private byte[] getValueAsByteArray(Value value) {
-        if (value.isNilValue()) {
-            return null;
-        }
         return value.asRawValue().asByteArray();
     }
 
-    private void handleInvoke(Value raw) throws IOException {
-        ArrayValue data = raw.asArrayValue();
-        String code = data.get(0).asStringValue().asString();
-        boolean isQuery = data.get(1).asBooleanValue().getBoolean();
-
-        Address from = null;
-        byte[] val;
-        if ((val = getValueAsByteArray(data.get(2))) != null){
-            from = new Address(val);
+    private Address getValueAsAddress(Value value) {
+        if (!value.isNilValue()) {
+            return new Address(getValueAsByteArray(value));
         }
-        Address to = new Address(getValueAsByteArray(data.get(3)));
-        BigInteger value = new BigInteger(getValueAsByteArray(data.get(4)));
-        BigInteger limit = new BigInteger(getValueAsByteArray(data.get(5)));
-        String method = data.get(6).asStringValue().asString();
-        Object[] params = (Object[]) TypedObj.decodeAny(data.get(7));
+        return null;
+    }
 
-        if (mOnInvokeListener != null) {
-            InvokeResult result = mOnInvokeListener.onInvoke(code, isQuery, from, to, value, limit, method, params);
-            sendMessage(MsgType.RESULT, result.getStatus(), result.getStepUsed(), result.getResult());
-        } else {
-            throw new IOException("no invoke handler");
+    private void handleInvoke(Value raw) throws IOException {
+        try {
+            ArrayValue data = raw.asArrayValue();
+            String code = data.get(0).asStringValue().asString();
+            boolean isQuery = data.get(1).asBooleanValue().getBoolean();
+            Address from = getValueAsAddress(data.get(2));
+            Address to = getValueAsAddress(data.get(3));
+            BigInteger value = new BigInteger(getValueAsByteArray(data.get(4)));
+            BigInteger limit = new BigInteger(getValueAsByteArray(data.get(5)));
+            String method = data.get(6).asStringValue().asString();
+            Object[] params = (Object[]) TypedObj.decodeAny(data.get(7));
+
+            if (mOnInvokeListener != null) {
+                InvokeResult result = mOnInvokeListener.onInvoke(code, isQuery, from, to, value, limit, method, params);
+                sendMessage(MsgType.RESULT, result.getStatus(), result.getStepUsed(), result.getResult());
+            } else {
+                throw new IOException("no invoke handler");
+            }
+        } catch (MessageTypeCastException e) {
+            String errMsg = "MessagePack casting error";
+            logger.warn(errMsg, e);
+            sendMessage(MsgType.RESULT, Status.FAILURE, BigInteger.ZERO, TypedObj.encodeAny(errMsg));
         }
     }
 }

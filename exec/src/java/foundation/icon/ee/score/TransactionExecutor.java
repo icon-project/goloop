@@ -140,8 +140,12 @@ public class TransactionExecutor {
             return new InvokeResult((result.isSuccess()) ? EEProxy.Status.SUCCESS : EEProxy.Status.FAILURE,
                     result.getEnergyUsed(), TypedObj.encodeAny(retVal));
         } catch (Exception e) {
+            String errMsg = e.getMessage();
+            if (errMsg == null) {
+                errMsg = e.getClass().getName() + " occurred";
+            }
             logger.warn("Execution failure", e);
-            return new InvokeResult(EEProxy.Status.FAILURE, energyUsed, TypedObj.encodeAny(e.getMessage()));
+            return new InvokeResult(EEProxy.Status.FAILURE, energyUsed, TypedObj.encodeAny(errMsg));
         } finally {
             executor.shutdown();
         }
