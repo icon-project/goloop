@@ -101,7 +101,7 @@ public class EEProxy extends Proxy {
     }
 
     public Object getInfo() throws IOException {
-        sendMessage(MsgType.GETINFO, (Object)null);
+        sendMessage(MsgType.GETINFO, (Object) null);
         Message msg = getNextMessage();
         if (msg.type != MsgType.GETINFO) {
             throw new IOException("Invalid message: GETINFO expected.");
@@ -145,7 +145,7 @@ public class EEProxy extends Proxy {
     }
 
     public void setCode(byte[] code) throws IOException {
-        sendMessage(MsgType.SETCODE, code);
+        sendMessage(MsgType.SETCODE, (Object) code);
     }
 
     public ObjectGraph getObjGraph(boolean flag) throws IOException {
@@ -157,17 +157,18 @@ public class EEProxy extends Proxy {
         ArrayValue data = msg.value.asArrayValue();
         int nextHash = data.get(0).asIntegerValue().asInt();
         byte[] graphHash = getValueAsByteArray(data.get(1));
-        byte[] graphData = getValueAsByteArray(data.get(2));
-        logger.debug("[GETOBJGRAPH] nextHash {}, graphHash {}, objGraph {} ",
-                nextHash, graphHash == null ? null : graphHash.length, graphData == null ? null : graphData.length);
-        return new ObjectGraph(nextHash, graphHash, graphData);
+        byte[] graphData = flag ? getValueAsByteArray(data.get(2)) : null;
+        ObjectGraph objGraph = new ObjectGraph(nextHash, graphHash, graphData);
+        logger.debug("[GETOBJGRAPH] {}", objGraph);
+        return objGraph;
     }
 
     public void setObjGraph(boolean flags, ObjectGraph objectGraph) throws IOException {
-        logger.debug("[SETOBJGRAPH] flags {}, ObjectGraph {} ", flags, objectGraph);
-        System.out.println("setObjGraph " + objectGraph);
-        sendMessage(MsgType.SETOBJGRAPH, flags ? 1 : 0,
-                objectGraph.getNextHash(), objectGraph.getGraphData());
+        logger.debug("[SETOBJGRAPH] {}, {}", flags, objectGraph);
+        sendMessage(MsgType.SETOBJGRAPH,
+                flags ? 1 : 0,
+                objectGraph.getNextHash(),
+                flags ? objectGraph.getGraphData() : null);
     }
 
     public interface OnGetApiListener {

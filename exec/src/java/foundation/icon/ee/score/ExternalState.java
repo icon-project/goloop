@@ -35,6 +35,7 @@ public class ExternalState implements IExternalState {
     private final long blockNumber;
     private final long blockTimestamp;
     private byte[] codeCache;
+    private ObjectGraph graphCache;
 
     ExternalState(EEProxy proxy, byte[] codeBytes, BigInteger blockNumber, BigInteger blockTimestamp) {
         this.proxy = proxy;
@@ -107,9 +108,21 @@ public class ExternalState implements IExternalState {
     @Override
     public byte[] getObjectGraph(AionAddress address) {
         try {
-            ObjectGraph graph = proxy.getObjGraph(true);
-            logger.debug("[getObjectGraph] len={}", graph.getGraphData().length);
-            return graph.getGraphData();
+            ObjectGraph objGraph = null;
+            boolean requestFull = true;
+            if (graphCache != null) {
+                objGraph = proxy.getObjGraph(false);
+                if (graphCache.compareTo(objGraph)) {
+                    objGraph = graphCache;
+                    requestFull = false;
+                }
+            }
+            if (requestFull) {
+                objGraph = proxy.getObjGraph(true);
+                graphCache = objGraph;
+            }
+            logger.debug("[getObjectGraph] len={}", objGraph.getGraphData().length);
+            return objGraph.getRawData();
         } catch (IOException e) {
             e.printStackTrace();
             return null;
@@ -120,8 +133,13 @@ public class ExternalState implements IExternalState {
     public void putObjectGraph(AionAddress address, byte[] data) {
         logger.debug("[putObjectGraph] len={}", data.length);
         try {
-            ObjectGraph graph = new ObjectGraph(0, data);
-            proxy.setObjGraph(true, graph);
+            boolean includeGraph = true;
+            ObjectGraph objGraph = ObjectGraph.getInstance(data);
+            if (graphCache != null && graphCache.compareTo(objGraph)) {
+                includeGraph = false;
+            }
+            proxy.setObjGraph(includeGraph, objGraph);
+            graphCache = objGraph;
         } catch (IOException e) {
             logger.error("[putObjectGraph] {}", e.getMessage());
         }
