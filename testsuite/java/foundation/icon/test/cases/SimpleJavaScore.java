@@ -36,9 +36,6 @@ public class SimpleJavaScore {
     private static GovScore govScore;
     private static Score testScore;
     private static final String PATH = Constants.JSCORE_MYSAMPLETOKEN;
-    private static final long contractCallStep = 10;
-    private static final long defaultStep = 2;
-    private static final long stepPrice = 1;
     private static GovScore.Fee fee;
 
     @BeforeAll
@@ -61,9 +58,6 @@ public class SimpleJavaScore {
 
         govScore.setMaxStepLimit("invoke", BigInteger.valueOf(1000000));
         govScore.setMaxStepLimit("query", BigInteger.valueOf(1000000));
-        govScore.setStepCost("contractCall", BigInteger.valueOf(contractCallStep));
-        govScore.setStepCost("default", BigInteger.valueOf(defaultStep));
-        govScore.setStepPrice(BigInteger.valueOf(stepPrice));
     }
 
     @AfterAll
@@ -92,7 +86,7 @@ public class SimpleJavaScore {
         LOG.infoEntering("getBalance");
         BigInteger initialSupply = BigInteger.valueOf(0x3e8).pow(4);
         BigInteger bal = callBalanceOf(ownerWallet.getAddress()).asInteger();
-        LOG.info("expected (" + initialSupply + "result (" + bal + ")");
+        LOG.info("expected (" + initialSupply + "), result (" + bal + ")");
         assertTrue(initialSupply.equals(bal));
         LOG.infoExiting();
 
