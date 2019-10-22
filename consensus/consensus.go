@@ -635,7 +635,11 @@ func (cs *consensus) enterPrevote() {
 						cs.cancelBlockRequest = nil
 					}
 
-					if cs.hrs != hrs || !cs.started {
+					late := cs.hrs.height != hrs.height ||
+						cs.hrs.round != hrs.round ||
+						cs.hrs.step >= stepCommit ||
+						!cs.started
+					if late {
 						return
 					}
 
@@ -646,10 +650,14 @@ func (cs *consensus) enterPrevote() {
 
 					if err == nil {
 						cs.currentBlockParts.validatedBlock = blk
-						cs.sendVote(voteTypePrevote, &cs.currentBlockParts)
+						if cs.hrs.step <= stepPrevoteWait {
+							cs.sendVote(voteTypePrevote, &cs.currentBlockParts)
+						}
 					} else {
 						cs.logger.Warnf("import cb error: %+v\n", err)
-						cs.sendVote(voteTypePrevote, nil)
+						if cs.hrs.step <= stepPrevoteWait {
+							cs.sendVote(voteTypePrevote, nil)
+						}
 					}
 				},
 			)
