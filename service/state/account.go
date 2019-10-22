@@ -495,9 +495,9 @@ func (s *accountStateImpl) SetObjGraph(flags bool, nextHash int, graphData []byt
 			graphData: graphData,
 		}
 	} else {
-		s.objGraph = &objectGraph{
-			nextHash: nextHash,
-		}
+		tmp := *s.objGraph
+		tmp.nextHash = nextHash
+		s.objGraph = &tmp
 	}
 	return nil
 }
@@ -712,11 +712,11 @@ func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 		s.nextContract = new(contractImpl)
 		s.nextContract.reset(snapshot.nextContract)
 	}
+	s.objGraph = snapshot.objGraph
 	if snapshot.store == nil {
 		s.store = nil
 		return nil
 	}
-	s.objGraph = snapshot.objGraph
 	if s.store == nil {
 		s.store = trie_manager.NewMutableFromImmutable(snapshot.store)
 		s.attachCacheForStore()
