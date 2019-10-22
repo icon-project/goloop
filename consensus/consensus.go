@@ -585,6 +585,9 @@ func (cs *consensus) enterPropose() {
 					defer cs.mutex.Unlock()
 
 					if cs.hrs != hrs || !cs.started {
+						if blk != nil {
+							blk.Dispose()
+						}
 						return
 					}
 
@@ -640,6 +643,9 @@ func (cs *consensus) enterPrevote() {
 						cs.hrs.step >= stepCommit ||
 						!cs.started
 					if late {
+						if blk != nil {
+							blk.Dispose()
+						}
 						return
 					}
 
@@ -822,6 +828,9 @@ func (cs *consensus) commitAndEnterNewHeight() {
 				defer cs.mutex.Unlock()
 
 				if cs.hrs != hrs || !cs.started {
+					if blk != nil {
+						blk.Dispose()
+					}
 					return
 				}
 
