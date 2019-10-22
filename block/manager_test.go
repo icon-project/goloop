@@ -268,7 +268,7 @@ func TestBlockManager_Propose_Cancel(t *testing.T) {
 		assert.Fail(t, "canceled proposal cb was called")
 	})
 	assert.Nil(t, err, "propose return error")
-	res := canceler()
+	res := canceler.Cancel()
 	assert.Equal(t, true, res, "canceler result")
 }
 
@@ -298,7 +298,7 @@ func TestBlockManager_Import_Cancel(t *testing.T) {
 		assert.Fail(t, "canceled import cb was called")
 	})
 	assert.Nil(t, err, "import return error")
-	res := canceler()
+	res := canceler.Cancel()
 	assert.Equal(t, true, res, "canceler result")
 }
 

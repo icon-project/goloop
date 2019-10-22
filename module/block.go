@@ -66,15 +66,15 @@ type BlockManager interface {
 	//	operation. canceler returns true and cb is not called if the
 	//	cancellation was successful. Proposed block can be Commited or
 	// 	Finalized.
-	Propose(parentID []byte, votes CommitVoteSet, cb func(BlockCandidate, error)) (canceler func() bool, err error)
+	Propose(parentID []byte, votes CommitVoteSet, cb func(BlockCandidate, error)) (canceler Canceler, err error)
 
 	//	Import creates a Block from blockBytes and verifies the block.
 	//	The result is asynchronously notified by cb. canceler cancels the
 	//	operation. canceler returns true and cb is not called if the
 	//	cancellation was successful. Imported block can be Commited or
 	//	Finalized.
-	Import(r io.Reader, flags int, cb func(BlockCandidate, error)) (canceler func() bool, err error)
-	ImportBlock(blk BlockData, flags int, cb func(BlockCandidate, error)) (canceler func() bool, err error)
+	Import(r io.Reader, flags int, cb func(BlockCandidate, error)) (canceler Canceler, err error)
+	ImportBlock(blk BlockData, flags int, cb func(BlockCandidate, error)) (canceler Canceler, err error)
 
 	Commit(BlockCandidate) error
 

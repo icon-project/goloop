@@ -259,7 +259,10 @@ func (it *importTask) stop() {
 	it.state = stopped
 }
 
-func (it *importTask) cancel() bool {
+func (it *importTask) Cancel() bool {
+	it.manager.syncer.begin()
+	defer it.manager.syncer.end()
+
 	switch it.state {
 	case executingIn:
 		it.stop()
@@ -413,7 +416,10 @@ func (pt *proposeTask) stop() {
 	pt.state = stopped
 }
 
-func (pt *proposeTask) cancel() bool {
+func (pt *proposeTask) Cancel() bool {
+	pt.manager.syncer.begin()
+	defer pt.manager.syncer.end()
+
 	switch pt.state {
 	case executingIn:
 		pt.stop()
@@ -618,7 +624,7 @@ func (m *manager) Import(
 	r io.Reader,
 	flags int,
 	cb func(module.BlockCandidate, error),
-) (func() bool, error) {
+) (module.Canceler, error) {
 	m.syncer.begin()
 	defer m.syncer.end()
 
@@ -632,18 +638,14 @@ func (m *manager) Import(
 	if err != nil {
 		return nil, err
 	}
-	return func() bool {
-		m.syncer.begin()
-		defer m.syncer.end()
-		return it.cancel()
-	}, nil
+	return it, nil;
 }
 
 func (m *manager) ImportBlock(
 	block module.BlockData,
 	flags int,
 	cb func(module.BlockCandidate, error),
-) (func() bool, error) {
+) (module.Canceler, error) {
 	m.syncer.begin()
 	defer m.syncer.end()
 
@@ -653,11 +655,7 @@ func (m *manager) ImportBlock(
 	if err != nil {
 		return nil, err
 	}
-	return func() bool {
-		m.syncer.begin()
-		defer m.syncer.end()
-		return it.cancel()
-	}, nil
+	return it, nil
 }
 
 type channelingCB struct {
@@ -749,7 +747,7 @@ func (m *manager) Propose(
 	parentID []byte,
 	votes module.CommitVoteSet,
 	cb func(module.BlockCandidate, error),
-) (canceler func() bool, err error) {
+) (canceler module.Canceler, err error) {
 	m.syncer.begin()
 	defer m.syncer.end()
 
@@ -759,12 +757,7 @@ func (m *manager) Propose(
 	if err != nil {
 		return nil, err
 	}
-	return func() bool {
-		m.syncer.begin()
-		defer m.syncer.end()
-
-		return pt.cancel()
-	}, nil
+	return pt, nil
 }
 
 func (m *manager) Commit(block module.BlockCandidate) error {
