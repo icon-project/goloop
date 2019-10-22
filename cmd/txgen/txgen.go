@@ -22,6 +22,10 @@ const (
 	ClearLine = "\x1b[2K"
 )
 
+var (
+	ErrEndOfTransaction = errors.New("EndOfTransaction")
+)
+
 type Client struct {
 	jsonrpc.RPCClient
 }
@@ -85,8 +89,8 @@ func (client *Client) GetTxResult(tid string, wait time.Duration) (*TransactionR
 			}
 		}
 		if time.Now().Sub(startTime) > wait {
-			return nil, errors.Errorf("RPC Error code=%d msg=%s",
-				r.Error.Code, r.Error.Message)
+			return nil, errors.Errorf("RPC Error timeout=%s code=%d msg=%s",
+				wait, r.Error.Code, r.Error.Message)
 		}
 		time.Sleep(time.Millisecond * 100)
 	}
@@ -147,7 +151,7 @@ func NewContext(concurrent int, tps int64, maker TransactionMaker) *Context {
 	}
 }
 
-func (ctx *Context) sendRequests(wg sync.WaitGroup, client *Client) {
+func (ctx *Context) sendRequests(wg *sync.WaitGroup, client *Client) {
 	nextTs := time.Now()
 	defer wg.Done()
 	for {
@@ -162,7 +166,9 @@ func (ctx *Context) sendRequests(wg sync.WaitGroup, client *Client) {
 		ctx.OnRequest()
 		tx, err := ctx.maker.MakeOne()
 		if err != nil {
-			log.Printf("Fail to make transaction err=%+v", err)
+			if err != ErrEndOfTransaction {
+				log.Printf("Fail to make transaction err=%+v", err)
+			}
 			return
 		}
 
@@ -231,11 +237,12 @@ func (ctx *Context) Run(urls []string) error {
 		for i := 0; i < ctx.concurrent; i++ {
 			wg.Add(1)
 			client := &Client{jsonrpc.NewClient(url)}
-			go ctx.sendRequests(wg, client)
+			go ctx.sendRequests(&wg, client)
 			time.Sleep(ctx.delay)
 		}
 	}
 	wg.Wait()
+	log.Println("\n[#] End of transaction generation")
 	return nil
 }
 

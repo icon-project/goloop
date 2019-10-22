@@ -37,7 +37,7 @@ type CallMaker struct {
 	owner    module.Wallet
 	contract module.Address
 
-	index int64
+	index, last int64
 }
 
 var (
@@ -61,7 +61,7 @@ func (m *CallMaker) Prepare(client *Client) error {
 	if err != nil {
 		return err
 	}
-	r, err := client.SendTxAndGetResult(tx1, time.Second*3)
+	r, err := client.SendTxAndGetResult(tx1, time.Second*5)
 	if err != nil {
 		js, _ := json.MarshalIndent(tx1, "", "  ")
 		log.Printf("Transaction FAIL : tx=%s", js)
@@ -100,7 +100,10 @@ func (m *CallMaker) Prepare(client *Client) error {
 }
 
 func (m *CallMaker) MakeOne() (interface{}, error) {
-	index := atomic.AddInt64(&m.index, 1)
+	index := atomic.AddInt64(&m.index, 1) - 1
+	if m.last != 0 && index >= m.last {
+		return nil, ErrEndOfTransaction
+	}
 	context := map[string]interface{}{
 		"owner": m.owner.Address(),
 		"index": index,
