@@ -1,6 +1,6 @@
 package i;
 
-public class InvalidDBAccessException extends AvmError {
+public class InvalidDBAccessException extends AvmException {
     public InvalidDBAccessException() {
     }
 
