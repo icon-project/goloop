@@ -5,8 +5,6 @@ import a.CharArray;
 import i.IObject;
 import i.IObjectDeserializer;
 import i.IObjectSerializer;
-import s.java.lang.Object;
-import s.java.lang.String;
 import i.IInstrumentation;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 import org.aion.types.AionAddress;
@@ -18,7 +16,7 @@ import org.aion.types.AionAddress;
  * There is a good chance that we will convert this into an interface so that our implementation can provide a richer interface to
  * our AVM code than we want to support for the contract.
  */
-public final class Address extends Object {
+public final class Address extends s.java.lang.Object {
     // Runtime-facing implementation.
     public static final int avm_LENGTH = AionAddress.LENGTH;
 
@@ -66,13 +64,22 @@ public final class Address extends Object {
     }
 
     @Override
-    public String avm_toString() {
+    public s.java.lang.String avm_toString() {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Address_avm_toString);
         lazyLoad();
-        return toHexString(this.internalArray);
+        char[] hexChars = toHexChars(this.internalArray);
+        return new s.java.lang.String(new CharArray(hexChars));
     }
 
-    private static String toHexString(byte[] bytes) {
+    @Override
+    public String toString() {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Address_avm_toString);
+        lazyLoad();
+        char[] hexChars = toHexChars(this.internalArray);
+        return new String(hexChars);
+    }
+
+    private static char[] toHexChars(byte[] bytes) {
         int length = bytes.length;
 
         char[] hexChars = new char[length * 2];
@@ -81,7 +88,7 @@ public final class Address extends Object {
             hexChars[i * 2] = hexArray[v >>> 4];
             hexChars[i * 2 + 1] = hexArray[v & 0x0F];
         }
-        return new String(new CharArray(hexChars));
+        return hexChars;
     }
 
     private static final char[] hexArray = "0123456789abcdef".toCharArray();

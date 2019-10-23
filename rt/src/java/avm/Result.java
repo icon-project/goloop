@@ -1,5 +1,7 @@
 package avm;
 
+import java.util.Arrays;
+
 /**
  * Represents an cross-call invocation result.
  */
@@ -40,7 +42,10 @@ public class Result {
 
     @Override
     public String toString() {
-        return "success:" + this.success + ", returnData:" + toHexString(this.returnData);
+        String returnDataString = (null != this.returnData)
+                ? toHexString(this.returnData)
+                : null;
+        return "success:" + this.success + ", returnData:" + returnDataString;
     }
 
     private static String toHexString(byte[] bytes) {
@@ -62,14 +67,8 @@ public class Result {
         boolean isEqual = this == obj;
         if (!isEqual && (obj instanceof Result)) {
             Result other = (Result) obj;
-            if (this.returnData.length == other.returnData.length) {
-                isEqual = true;
-                for (int i = 0; isEqual && (i < other.returnData.length); ++i) {
-                    isEqual = (this.returnData[i] == other.returnData[i]);
-                }
-            }
-
-            isEqual = isEqual && (this.success == other.success);
+            isEqual = (this.success == other.success)
+                    && Arrays.equals(this.returnData, other.returnData);
         }
         return isEqual;
     }

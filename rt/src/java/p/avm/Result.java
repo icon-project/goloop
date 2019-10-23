@@ -35,7 +35,10 @@ public final class Result extends Object {
     public String avm_toString() {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Result_avm_toString);
         lazyLoad();
-        return  new String("success:" + this.success + ", returnData:" + toHexString(this.returnData.getUnderlying()));
+        String returnDataString = (null != this.returnData)
+                ? toHexString(this.returnData.getUnderlying())
+                : null;
+        return new String("success:" + this.success + ", returnData:" + returnDataString);
     }
 
     private static String toHexString(byte[] bytes) {
