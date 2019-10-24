@@ -282,7 +282,7 @@ func (t *transition) BlockInfo() module.BlockInfo {
 	return t.bi
 }
 
-func (t *transition) newWorldContext() (state.WorldContext, error) {
+func (t *transition) newWorldContext(execution bool) (state.WorldContext, error) {
 	var ws state.WorldState
 	if t.parent != nil {
 		var err error
@@ -292,6 +292,9 @@ func (t *transition) newWorldContext() (state.WorldContext, error) {
 		}
 	} else {
 		ws = state.NewWorldState(t.db, nil, nil)
+	}
+	if execution {
+		ws.EnableNodeCache()
 	}
 	return state.NewWorldContext(ws, t.bi), nil
 }
@@ -380,7 +383,7 @@ func (t *transition) forceSync() {
 func (t *transition) executeSync(alreadyValidated bool) {
 	var normalCount, patchCount int
 	if !alreadyValidated {
-		wc, err := t.newWorldContext()
+		wc, err := t.newWorldContext(false)
 		if err != nil {
 			t.reportValidation(err)
 			return
@@ -416,12 +419,13 @@ func (t *transition) executeSync(alreadyValidated bool) {
 		return
 	}
 
-	wc, err := t.newWorldContext()
+	wc, err := t.newWorldContext(true)
 	if err != nil {
 		t.reportExecution(err)
 		return
 	}
 	ctx := contract.NewContext(wc, t.cm, t.eem, t.chain, t.log)
+	ctx.ClearCache()
 
 	startTime := time.Now()
 

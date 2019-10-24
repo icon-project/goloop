@@ -10,7 +10,7 @@ import (
 
 func TestAccountSnapshot_Equal(t *testing.T) {
 	database := db.NewMapDB()
-	as := newAccountState(database, nil)
+	as := newAccountState(database, nil, nil)
 
 	s1 := as.GetSnapshot()
 	if !s1.Equal(s1) {
@@ -51,7 +51,7 @@ func TestAccountSnapshot_Equal(t *testing.T) {
 
 func TestAccountSnapshot_Bytes(t *testing.T) {
 	database := db.NewMapDB()
-	as := newAccountState(database, nil)
+	as := newAccountState(database, nil, nil)
 	v1 := big.NewInt(3000)
 	as.SetBalance(v1)
 	tv := []byte("Puha")

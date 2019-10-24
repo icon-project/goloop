@@ -9,6 +9,7 @@ import (
 	"golang.org/x/crypto/sha3"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/trie/cache"
 )
 
 var definedValue = []byte("abcdefghijklmnopqrstuvwxyz")
@@ -24,7 +25,12 @@ func makeKeyValue(i int) (key, value []byte) {
 	return
 }
 
-func BenchmarkTrend(b *testing.B) {
+func BenchmarkTrendNoCache(b *testing.B) { benchmarkTrend(0, 0, b) }
+func BenchmarkTrend5(b *testing.B)       { benchmarkTrend(5, 0, b) }
+func BenchmarkTrend6(b *testing.B)       { benchmarkTrend(6, 0, b) }
+func BenchmarkTrend51(b *testing.B)      { benchmarkTrend(5, 1, b) }
+
+func benchmarkTrend(depth, fdepth int, b *testing.B) {
 	b.StopTimer()
 	dbType := "goleveldb"
 	dbPath := ".db"
@@ -36,7 +42,9 @@ func BenchmarkTrend(b *testing.B) {
 	}
 
 	mpt := NewMPTForBytes(d, nil)
-	mpt.cache = NewNodeCache(5,1,".cache")
+	if depth > 0 || fdepth > 0 {
+		mpt.cache = cache.NewNodeCache(depth, fdepth, ".cache."+b.Name())
+	}
 
 	blockUnit := 1000
 	txUnit := 10
@@ -55,7 +63,7 @@ func BenchmarkTrend(b *testing.B) {
 		// on block end
 		if i%blockUnit == 0 {
 			ss := mpt.GetSnapshot()
-			ss.ClearCache()
+			mpt.ClearCache()
 			ss.Flush()
 			end := time.Now()
 			dur := end.Sub(begin)

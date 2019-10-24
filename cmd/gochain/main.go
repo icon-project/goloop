@@ -16,6 +16,8 @@ import (
 	"sync/atomic"
 	"syscall"
 
+	"github.com/spf13/cobra"
+
 	"github.com/icon-project/goloop/chain"
 	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common/crypto"
@@ -26,7 +28,6 @@ import (
 	"github.com/icon-project/goloop/server/metric"
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/transaction"
-	"github.com/spf13/cobra"
 )
 
 const (
@@ -122,6 +123,7 @@ func main() {
 	flag.IntVar(&cfg.NormalTxPoolSize, "normal_tx_pool", 0, "Normal transaction pool size")
 	flag.IntVar(&cfg.PatchTxPoolSize, "patch_tx_pool", 0, "Patch transaction pool size")
 	flag.IntVar(&cfg.MaxBlockTxBytes, "max_block_tx_bytes", 0, "Maximum size of ransactions in a block")
+	flag.StringVar(&cfg.NodeCache, "node_cache", chain.NodeCacheDefault, "Node cache(none,small,large)")
 	flag.StringVar(&cfg.LogLevel, "log_level", "debug", "Main log level")
 	flag.StringVar(&cfg.ConsoleLevel, "console_level", "trace", "Console log level")
 	flag.StringToStringVar(&modLevels, "mod_level", nil, "Console log level for specific module (<mod>=<level>,...)")

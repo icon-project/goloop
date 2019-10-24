@@ -166,12 +166,11 @@ func (n *Node) Start() {
 		log.Panicf("fail to P2P listen err=%+v", err)
 	}
 
-	go func(){
+	go func() {
 		if err := n.srv.Start(); err != nil {
 			log.Panicf("fail to server close err=%+v", err)
 		}
 	}()
-
 
 	if err := n.cliSrv.Start(); err != nil {
 		log.Panicf("fail to cli server start err=%+v", err)
@@ -243,6 +242,7 @@ func (n *Node) JoinChain(
 		NormalTxPoolSize: p.NormalTxPoolSize,
 		PatchTxPoolSize:  p.PatchTxPoolSize,
 		MaxBlockTxBytes:  p.MaxBlockTxBytes,
+		NodeCache:        p.NodeCache,
 		FilePath:         cfgFile,
 	}
 
@@ -400,6 +400,11 @@ func (n *Node) ConfigureChain(nid int, key string, value string) error {
 			} else {
 				c.cfg.MaxBlockTxBytes = intVal
 			}
+		case "nodeCache":
+			if !chain.IsNodeCacheOption(value) {
+				return errors.Errorf("InvalidNodeCacheOption(%s)", value)
+			}
+			c.cfg.NodeCache = value
 		case "channel":
 			if _, ok := n.chains[value]; ok {
 				return errors.Wrapf(ErrAlreadyExists, "Network(channel=%s) already exists", value)

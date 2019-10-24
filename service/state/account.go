@@ -4,21 +4,22 @@ import (
 	"bytes"
 	"math/big"
 
-	"github.com/icon-project/goloop/common/log"
-
-	"github.com/icon-project/goloop/service/scoreresult"
+	"golang.org/x/crypto/sha3"
 	"gopkg.in/vmihailenco/msgpack.v4"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
+	"github.com/icon-project/goloop/common/trie/cache"
+	"github.com/icon-project/goloop/common/trie/ompt"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreapi"
-	"golang.org/x/crypto/sha3"
+	"github.com/icon-project/goloop/service/scoreresult"
 )
 
 const (
@@ -407,6 +408,8 @@ func (s *accountSnapshotImpl) ClearCache() {
 }
 
 type accountStateImpl struct {
+	cacheID []byte
+
 	version    int
 	database   db.Database
 	balance    common.HexInt
@@ -676,6 +679,16 @@ func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
 	}
 }
 
+// ensureCache set cache of the store if cacheID is specified.
+// If it didn't enable cache of the accounts, cacheID would be nil.
+func (s *accountStateImpl) attachCacheForStore() {
+	if s.cacheID != nil && s.store != nil {
+		if cache := cache.AccountNodeCacheOf(s.database, s.cacheID); cache != nil {
+			ompt.SetCacheOfMutable(s.store, cache)
+		}
+	}
+}
+
 func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 	snapshot, ok := isnapshot.(*accountSnapshotImpl)
 	if !ok {
@@ -705,7 +718,8 @@ func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 	}
 	s.objGraph = snapshot.objGraph
 	if s.store == nil {
-		s.store = trie_manager.MutableFromImmutable(snapshot.store)
+		s.store = trie_manager.NewMutableFromImmutable(snapshot.store)
+		s.attachCacheForStore()
 		return nil
 	}
 	if err := s.store.Reset(snapshot.store); err != nil {
@@ -735,6 +749,7 @@ func (s *accountStateImpl) GetValue(k []byte) ([]byte, error) {
 func (s *accountStateImpl) SetValue(k, v []byte) error {
 	if s.store == nil {
 		s.store = trie_manager.NewMutable(s.database, nil)
+		s.attachCacheForStore()
 	}
 	return s.store.Set(k, v)
 }
@@ -766,9 +781,11 @@ func (s *accountStateImpl) ClearCache() {
 	}
 }
 
-func newAccountState(database db.Database, snapshot *accountSnapshotImpl) AccountState {
-	s := new(accountStateImpl)
-	s.database = database
+func newAccountState(database db.Database, snapshot *accountSnapshotImpl, cacheID []byte) AccountState {
+	s := &accountStateImpl{
+		cacheID:  cacheID,
+		database: database,
+	}
 	if snapshot != nil {
 		if err := s.Reset(snapshot); err != nil {
 			return nil

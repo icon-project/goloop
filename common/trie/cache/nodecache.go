@@ -1,4 +1,4 @@
-package ompt
+package cache
 
 import (
 	"bytes"
@@ -12,6 +12,7 @@ import (
 )
 
 const (
+	hashSize          = 32
 	dataMaxSize       = 532
 	cacheItemSize     = hashSize + dataMaxSize
 	fileCacheItemSize = cacheItemSize + 2
@@ -40,7 +41,7 @@ func sizeByDepth(d int) int {
 	return ((1 << uint(4*d)) - 1) / 15
 }
 
-func (c *NodeCache) get(nibs []byte, h []byte) ([]byte, bool) {
+func (c *NodeCache) Get(nibs []byte, h []byte) ([]byte, bool) {
 	if c == nil || nibs == nil {
 		return nil, false
 	}
@@ -58,7 +59,7 @@ func (c *NodeCache) get(nibs []byte, h []byte) ([]byte, bool) {
 	} else {
 		node = c.read(idx)
 		if node == nil {
-			return nil, false
+			return nil, true
 		}
 	}
 	if bytes.Equal(node[0], h) {
@@ -67,7 +68,7 @@ func (c *NodeCache) get(nibs []byte, h []byte) ([]byte, bool) {
 	return nil, true
 }
 
-func (c *NodeCache) put(nibs []byte, h []byte, serialized []byte) {
+func (c *NodeCache) Put(nibs []byte, h []byte, serialized []byte) {
 	if c == nil || nibs == nil || len(serialized) > dataMaxSize {
 		return
 	}
@@ -80,10 +81,7 @@ func (c *NodeCache) put(nibs []byte, h []byte, serialized []byte) {
 	}
 
 	if idx < c.offset {
-		node := c.nodes[idx]
-		node[0] = h
-		node[1] = serialized
-		c.nodes[idx] = node
+		c.nodes[idx] = [2][]byte{h, serialized}
 	} else {
 		c.write(idx, h, serialized)
 	}
@@ -107,6 +105,9 @@ func (c *NodeCache) read(idx int) [][]byte {
 		return nil
 	}
 	vl := binary.BigEndian.Uint16(b[:2])
+	if vl < hashSize {
+		return nil
+	}
 	l := 2 + int(vl)
 	if n < l {
 		//return nil, fmt.Errorf("fail to read n:%d, expected:%d",n,l)
@@ -119,35 +120,15 @@ func (c *NodeCache) read(idx int) [][]byte {
 }
 
 func (c *NodeCache) write(idx int, h []byte, serialized []byte) {
-	at, err := c.f.Seek(int64((idx-c.offset)*fileCacheItemSize), 0)
-	if err != nil {
-		//return nil, fmt.Errorf("fail to seek err:%+v", err)
-		return
-	}
+	at := int64((idx - c.offset) * fileCacheItemSize)
 	vl := hashSize + len(serialized)
-	b := make([]byte, 2)
+	b := make([]byte, 2, 2+vl)
 	binary.BigEndian.PutUint16(b[:2], uint16(vl))
 	b = append(b, h...)
 	b = append(b, serialized...)
-	n := 0
-	l := len(b)
-	for {
-		n, err = c.f.WriteAt(b, at)
-		if err != nil {
-			//fmt.Errorf("fail to write err:%+v", err)
-			return
-		}
-		if n < l {
-			if n == 0 {
-				//fmt.Errorf("fail to write n:%d, expected:%d",n,l)
-				return
-			}
-			b = b[n:]
-			at += int64(n)
-			l -= n
-			continue
-		}
-		break
+	if _, err := c.f.WriteAt(b, at); err != nil {
+		c.size = c.offset
+		c.f.Close()
 	}
 }
 
@@ -182,11 +163,11 @@ func NewNodeCache(depth int, fdepth int, path string) *NodeCache {
 	if fdepth > 0 {
 		var err error
 		if f, err = openfile(path); err != nil {
-			log.Infof("NodeCache fdepth:%d will be ignored, err:%+v",fdepth, err)
+			log.Infof("NodeCache fdepth:%d will be ignored, err:%+v", fdepth, err)
 			size = offset
 		} else {
-			abs,_ := filepath.Abs(f.Name())
-			log.Debugf("NodeCache using fdepth:%d path:%s",fdepth, abs)
+			abs, _ := filepath.Abs(f.Name())
+			log.Debugf("NodeCache using fdepth:%d path:%s", fdepth, abs)
 		}
 	}
 	return &NodeCache{

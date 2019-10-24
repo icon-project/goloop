@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/icon-project/goloop/chain"
 	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/node"
@@ -97,6 +98,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 			param.NormalTxPoolSize, _ = fs.GetInt("normal_tx_pool")
 			param.PatchTxPoolSize, _ = fs.GetInt("patch_tx_pool")
 			param.MaxBlockTxBytes, _ = fs.GetInt("max_block_tx_bytes")
+			param.NodeCache, _ = fs.GetString("node_cache")
 			param.Channel, _ = fs.GetString("channel")
 			param.SecureSuites, _ = fs.GetString("secure_suites")
 			param.SecureAeads, _ = fs.GetString("secure_aeads")
@@ -152,6 +154,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	joinFlags.Int("normal_tx_pool", 0, "Size of normal transaction pool")
 	joinFlags.Int("patch_tx_pool", 0, "Size of patch transaction pool")
 	joinFlags.Int("max_block_tx_bytes", 0, "Max size of transactions in a block")
+	joinFlags.String("node_cache", chain.NodeCacheDefault, "Node cache (none,small,large)")
 	joinFlags.String("channel", "", "Channel")
 	joinFlags.String("secure_suites", "none,tls,ecdhe",
 		"Supported Secure suites with order (none,tls,ecdhe) - Comma separated string")

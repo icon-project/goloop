@@ -6,30 +6,43 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"sync/atomic"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
+	"github.com/icon-project/goloop/common/trie/cache"
 )
 
 const (
 	debugPrint = false
 	debugDump  = false
+	logStatics = false
 )
 
 type (
+	mptAccess struct {
+		get, set    int32
+		cache, read int32
+	}
+	mptStatics struct {
+		mptAccess
+		back  *mptAccess
+		write int32
+	}
 	mptBase struct {
 		db         db.Database
 		bucket     db.Bucket
 		objectType reflect.Type
-		cache      *NodeCache
 	}
 	mpt struct {
 		mptBase
+		cache *cache.NodeCache
 		root  node
 		mutex sync.Mutex
+		s     *mptStatics
 	}
 )
 
@@ -77,7 +90,7 @@ func (m *mpt) getObject(o trie.Object) (trie.Object, bool, error) {
 }
 
 func (m *mpt) realize(h []byte, nibs []byte) (node, error) {
-	serialized, cache := m.cache.get(nibs, h)
+	serialized, cache := m.cache.Get(nibs, h)
 	if len(serialized) == 0 {
 		var err error
 		serialized, err = m.bucket.Get(h)
@@ -87,8 +100,15 @@ func (m *mpt) realize(h []byte, nibs []byte) (node, error) {
 		if serialized == nil {
 			return nil, fmt.Errorf("ErrorKeyNotFound(key=%x)", h)
 		}
+		if logStatics {
+			atomic.AddInt32(&m.s.read, 1)
+		}
 		if cache {
-			m.cache.put(nibs, h, serialized)
+			m.cache.Put(nibs, h, serialized)
+		}
+	} else {
+		if logStatics {
+			atomic.AddInt32(&m.s.cache, 1)
 		}
 	}
 
@@ -98,6 +118,9 @@ func (m *mpt) realize(h []byte, nibs []byte) (node, error) {
 func (m *mpt) Get(k []byte) (trie.Object, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
+	if logStatics {
+		atomic.AddInt32(&m.s.get, 1)
+	}
 	root, obj, err := m.get(m.root, bytesToNibs(k), 0)
 	m.root = root
 	return obj, err
@@ -120,7 +143,25 @@ func (m *mpt) Flush() error {
 		// Before flush node data to Database, We need to make sure that it
 		// builds required  data for dumping data.
 		m.root.getLink(true)
-		return m.root.flush(m, make([]byte, 0, hashSize*2))
+		err := m.root.flush(m, make([]byte, 0, hashSize*2))
+		if logStatics {
+			if m.s.back == nil {
+				m.s = &mptStatics{
+					back:  &m.s.mptAccess,
+					write: m.s.write,
+				}
+			}
+			a := m.s.back
+			log.Infof("MPT(%p,%s).Flush() get=%d set=%d cache=%d read=%d write=%d",
+				m.s, m.objectType,
+				atomic.SwapInt32(&a.get, 0),
+				atomic.SwapInt32(&a.set, 0),
+				atomic.SwapInt32(&a.cache, 0),
+				atomic.SwapInt32(&a.read, 0),
+				atomic.SwapInt32(&m.s.write, 0),
+			)
+		}
+		return err
 	}
 	return nil
 }
@@ -147,7 +188,9 @@ func (m *mpt) GetSnapshot() trie.SnapshotForObject {
 	}
 	return &mpt{
 		mptBase: m.mptBase,
+		cache:   m.cache,
 		root:    m.root,
+		s:       m.s,
 	}
 }
 
@@ -156,6 +199,9 @@ func (m *mpt) Set(k []byte, o trie.Object) error {
 	defer m.mutex.Unlock()
 	if debugPrint {
 		log.Printf("mpt%p.Set(%x,%v)", m, k, o)
+	}
+	if logStatics {
+		atomic.AddInt32(&m.s.set, 1)
 	}
 	root, _, err := m.set(m.root, bytesToNibs(k), 0, o)
 	m.root = root
@@ -170,6 +216,9 @@ func (m *mpt) Delete(k []byte) error {
 	defer m.mutex.Unlock()
 	if debugPrint {
 		log.Printf("mpt%p.Delete(%x)", m, k)
+	}
+	if logStatics {
+		atomic.AddInt32(&m.s.set, 1)
 	}
 	root, dirty, err := m.delete(m.root, bytesToNibs(k), 0)
 	if dirty {
@@ -209,6 +258,13 @@ func (m *mpt) ClearCache() {
 
 	if m.root != nil {
 		m.root = m.root.compact()
+	}
+	if logStatics {
+		if m.s.back == nil {
+			m.s = &mptStatics{
+				back: &m.s.mptAccess,
+			}
+		}
 	}
 }
 
@@ -405,6 +461,19 @@ func (m *mpt) resolve(d merkle.Builder, pNode *node) {
 	}
 }
 
+func newMPTStatics(s *mptStatics) *mptStatics {
+	if logStatics {
+		if s == nil {
+			return &mptStatics{}
+		} else {
+			return &mptStatics{
+				mptAccess: s.mptAccess,
+			}
+		}
+	}
+	return nil
+}
+
 func NewMPT(d db.Database, h []byte, t reflect.Type) *mpt {
 	bk, err := d.GetBucket(db.MerkleTrie)
 	if err != nil {
@@ -416,6 +485,7 @@ func NewMPT(d db.Database, h []byte, t reflect.Type) *mpt {
 			bucket:     bk,
 			objectType: t,
 		},
+		s:    newMPTStatics(nil),
 		root: nodeFromHash(h),
 	}
 }
@@ -425,6 +495,7 @@ func MPTFromImmutable(immutable trie.ImmutableForObject) *mpt {
 		return &mpt{
 			mptBase: m.mptBase,
 			root:    m.root,
+			s:       newMPTStatics(m.s),
 		}
 	}
 	return nil

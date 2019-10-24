@@ -3,11 +3,13 @@ package ompt
 import (
 	"strconv"
 	"sync"
+	"sync/atomic"
+
+	"golang.org/x/crypto/sha3"
 
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
-	"golang.org/x/crypto/sha3"
 )
 
 type (
@@ -104,10 +106,13 @@ func (n *nodeBase) flushBaseInLock(m *mpt, nibs []byte) error {
 		panic("It's not hashed yet.")
 	}
 	if n.hashValue != nil && n.state < stateWritten {
+		if logStatics {
+			atomic.AddInt32(&m.s.write, 1)
+		}
 		if err := m.bucket.Set(n.hashValue, n.serialized); err != nil {
 			return err
 		}
-		m.cache.put(nibs, n.hashValue, n.serialized)
+		m.cache.Put(nibs, n.hashValue, n.serialized)
 	}
 	n.state = stateFlushed
 	return nil

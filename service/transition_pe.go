@@ -88,7 +88,6 @@ func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, c
 				From:      txo.From(),
 			})
 			ctx.UpdateSystemInfo()
-			ctx.ClearCache()
 			wvs := ctx.WorldVirtualState()
 			for trials := RetryCount + 1; trials > 0; trials -= 1 {
 				rct, err := txh.Execute(ctx)

@@ -50,6 +50,14 @@ func (ws *readOnlyWorldState) ClearCache() {
 	// nothing to do
 }
 
+func (ws *readOnlyWorldState) EnableNodeCache() {
+	// nothing to do
+}
+
+func (ws *readOnlyWorldState) NodeCacheEnabled() bool {
+	return false
+}
+
 type readonlyValidatorState struct {
 	ValidatorSnapshot
 }
