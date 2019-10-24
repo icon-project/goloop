@@ -193,9 +193,8 @@ public class DAppCreator {
                                                      boolean preserveDebuggability,
                                                      boolean verboseErrors,
                                                      boolean enableBlockchainPrintln) {
-        // Expose the DApp outside the try so we can detach from it, when we exit.
-        LoadedDApp dapp = null;
-        IInstrumentation threadInstrumentation = null;
+        // We hold onto the runtimeSetup that we are pushing onto the stack in here so that we can pop it back off in the finally block.
+        IRuntimeSetup runtimeSetup = null;
         AvmWrappedTransactionResult result = internalResult;
         try {
             // read dapp module
@@ -229,11 +228,13 @@ public class DAppCreator {
             Map<String, byte[]> transformedClasses = transformClasses(rawDapp.classes, dappClassesForest, rawDapp.classHierarchy, rawDapp.classRenamer, preserveDebuggability);
             TransformedDappModule transformedDapp = TransformedDappModule.fromTransformedClasses(transformedClasses, rawDapp.mainClass);
 
-            dapp = DAppLoader.fromTransformed(transformedDapp, preserveDebuggability);
-            
+            LoadedDApp dapp = DAppLoader.fromTransformed(transformedDapp, preserveDebuggability);
+            runtimeSetup = dapp.runtimeSetup;
+
             // We start the nextHashCode at 1.
             int nextHashCode = 1;
             InternedClasses icm = new InternedClasses();
+            // we pass a null re-entrant state since we haven't finished initializing yet - nobody can call into us.
             IBlockchainRuntime br = new BlockchainRuntimeImpl(capabilities,
                                                               externalState,
                                                               avm,
@@ -243,17 +244,16 @@ public class DAppCreator {
                                                               dappAddress,
                                                               tx,
                                                               codeAndArguments.arguments,
-                                                              dapp.runtimeSetup,
+                                                              runtimeSetup,
                                                               enableBlockchainPrintln);
             FrameContextImpl fc = new FrameContextImpl(externalState, dapp, icm, br);
-            InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.energyLimit - result.energyUsed(), nextHashCode, icm, fc);
-            // (we pass a null reentrant state since we haven't finished initializing yet - nobody can call into us).
+            InstrumentationHelpers.pushNewStackFrame(runtimeSetup, dapp.loader, tx.energyLimit - result.energyUsed(), nextHashCode, icm, fc);
             IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(br);
 
             // We have just created this dApp, there should be no previous runtime associated with it.
             RuntimeAssertionError.assertTrue(previousRuntime == null);
 
-            threadInstrumentation = IInstrumentation.attachedThreadInstrumentation.get();
+            IInstrumentation threadInstrumentation = IInstrumentation.attachedThreadInstrumentation.get();
             threadInstrumentation.chargeEnergy(BillingRules.getDeploymentFee(rawDapp.numberOfClasses, rawDapp.bytecodeSize));
 
             // Create the immortal version of the transformed DApp code by stripping the <clinit>.
@@ -266,69 +266,13 @@ public class DAppCreator {
             externalState.setTransformedCode(dappAddress, immortalDappJar);
 
             // Force the classes in the dapp to initialize so that the <clinit> is run (since we already saved the version without).
-            dapp.forceInitializeAllClasses();
-
-            // Save back the state before we return.
-            byte[] rawGraphData = dapp.saveEntireGraph(threadInstrumentation.peekNextHashCode(), StorageFees.MAX_GRAPH_SIZE);
-            // Bill for writing this size.
-            threadInstrumentation.chargeEnergy(StorageFees.WRITE_PRICE_PER_BYTE * rawGraphData.length);
-            externalState.putObjectGraph(dappAddress, rawGraphData);
-
-            long refund = 0;
-            long energyUsed = tx.energyLimit - threadInstrumentation.energyLeft();
-            if (task.getTransactionStackDepth() == 0) {
-                // refund is calculated for the transaction if it included a selfdestruct operation or it set the storage value from nonzero to zero
-                long selfDestructRefund = 0l;
-                long resetStorageRefund = 0l;
-
-                if (task.getSelfDestructAddressCount() > 0) {
-                    selfDestructRefund = task.getSelfDestructAddressCount() * RuntimeMethodFeeSchedule.BlockchainRuntime_avm_selfDestruct_refund;
-                }
-                if (task.getResetStorageKeyCount() > 0) {
-                    resetStorageRefund = task.getResetStorageKeyCount() * RuntimeMethodFeeSchedule.BlockchainRuntime_avm_deleteStorage_refund;
-                }
-                // refund is capped at half the energy used for the whole transaction
-                refund = Math.min(energyUsed / 2, selfDestructRefund + resetStorageRefund);
-            }
-
-            // Return data of a CREATE transaction is the new DApp address.
-            result = TransactionResultUtil.newSuccessfulResultWithEnergyUsedAndOutput(energyUsed - refund, dappAddress.toByteArray());
+            result = runClinitAndBillSender(verboseErrors, dapp, threadInstrumentation, externalState, task, result, dappAddress, tx.energyLimit);
         } catch (OutOfEnergyException e) {
             if (verboseErrors) {
                 System.err.println("DApp deployment failed due to Out-of-Energy EXCEPTION: \"" + e.getMessage() + "\"");
                 e.printStackTrace(System.err);
             }
             result = TransactionResultUtil.setNonRevertedFailureAndEnergyUsed(result, AvmInternalError.FAILED_OUT_OF_ENERGY, tx.energyLimit);
-
-        } catch (OutOfStackException e) {
-            if (verboseErrors) {
-                System.err.println("DApp deployment failed due to stack overflow EXCEPTION: \"" + e.getMessage() + "\"");
-                e.printStackTrace(System.err);
-            }
-            result = TransactionResultUtil.setNonRevertedFailureAndEnergyUsed(result, AvmInternalError.FAILED_OUT_OF_STACK, tx.energyLimit);
-
-        } catch (CallDepthLimitExceededException e) {
-            if (verboseErrors) {
-                System.err.println("DApp deployment failed due to call depth limit EXCEPTION: \"" + e.getMessage() + "\"");
-                e.printStackTrace(System.err);
-            }
-            result = TransactionResultUtil.setNonRevertedFailureAndEnergyUsed(result, AvmInternalError.FAILED_CALL_DEPTH_LIMIT, tx.energyLimit);
-
-        } catch (RevertException e) {
-            if (verboseErrors) {
-                System.err.println("DApp deployment to REVERT due to uncaught EXCEPTION: \"" + e.getMessage() + "\"");
-                e.printStackTrace(System.err);
-            }
-            // We can never be a situation where a revert is triggered but the threadInstrumentation is null - if we are here we know we executed code.
-            RuntimeAssertionError.assertTrue(threadInstrumentation != null);
-            result = TransactionResultUtil.setRevertedFailureAndEnergyUsed(result, tx.energyLimit - threadInstrumentation.energyLeft());
-
-        } catch (InvalidException e) {
-            if (verboseErrors) {
-                System.err.println("DApp deployment INVALID due to uncaught EXCEPTION: \"" + e.getMessage() + "\"");
-                e.printStackTrace(System.err);
-            }
-            result = TransactionResultUtil.setNonRevertedFailureAndEnergyUsed(result, AvmInternalError.FAILED_INVALID, tx.energyLimit);
 
         } catch (UncaughtException e) {
             if (verboseErrors) {
@@ -370,8 +314,8 @@ public class DAppCreator {
             result = DAppExceptionHandler.handle(e, result, tx.energyLimit, verboseErrors);
         } finally {
             // Once we are done running this, no matter how it ended, we want to detach our thread from the DApp.
-            if (null != dapp) {
-                InstrumentationHelpers.popExistingStackFrame(dapp.runtimeSetup);
+            if (null != runtimeSetup) {
+                InstrumentationHelpers.popExistingStackFrame(runtimeSetup);
             }
         }
         return result;
@@ -428,5 +372,86 @@ public class DAppCreator {
         // Before we return, make sure we didn't exceed the instance variable limits (will throw RejectedClassException on failure).
         manager.verifyAllCounts();
         return safeClasses;
+    }
+
+    /**
+     * Initializes all of the classes in the dapp by running their clinit code and then bills the
+     * sender for writing the create data to the blockchain and refunds them accordingly.
+     *
+     * This method handles the following exceptions and ensures that if any of them are thrown
+     * that they will be represented by the returned result (any other exceptions thrown here will
+     * not be handled):
+     * {@link OutOfStackException}, {@link CallDepthLimitExceededException}, {@link RevertException},
+     * and {@link InvalidException}.
+     *
+     * @param verboseErrors Whether or not to report errors to stderr.
+     * @param dapp The dapp to run.
+     * @param threadInstrumentation The thread instrumentation.
+     * @param externalState The state of the world.
+     * @param task The transaction task.
+     * @param currentResultState The current result of the create operation when entering this method.
+     * @param dappAddress The address of the contract.
+     * @param energyLimit The energy limit of this create transaction.
+     * @return the result of initializing and billing the sender.
+     */
+    private static AvmWrappedTransactionResult runClinitAndBillSender(boolean verboseErrors, LoadedDApp dapp, IInstrumentation threadInstrumentation, IExternalState externalState, TransactionTask task, AvmWrappedTransactionResult currentResultState, AionAddress dappAddress, long energyLimit) throws Throwable {
+        AvmWrappedTransactionResult resultToReturn;
+
+        try {
+            dapp.forceInitializeAllClasses();
+
+            // Save back the state before we return.
+            byte[] rawGraphData = dapp.saveEntireGraph(threadInstrumentation.peekNextHashCode(), StorageFees.MAX_GRAPH_SIZE);
+            // Bill for writing this size.
+            threadInstrumentation.chargeEnergy(StorageFees.WRITE_PRICE_PER_BYTE * rawGraphData.length);
+            externalState.putObjectGraph(dappAddress, rawGraphData);
+
+            long refund = 0;
+            long energyUsed = energyLimit - threadInstrumentation.energyLeft();
+            if (task.getTransactionStackDepth() == 0) {
+                // refund is calculated for the transaction if it included a selfdestruct operation or it set the storage value from nonzero to zero
+                long selfDestructRefund = 0l;
+                long resetStorageRefund = 0l;
+
+                if (task.getSelfDestructAddressCount() > 0) {
+                    selfDestructRefund = task.getSelfDestructAddressCount() * RuntimeMethodFeeSchedule.BlockchainRuntime_avm_selfDestruct_refund;
+                }
+                if (task.getResetStorageKeyCount() > 0) {
+                    resetStorageRefund = task.getResetStorageKeyCount() * RuntimeMethodFeeSchedule.BlockchainRuntime_avm_deleteStorage_refund;
+                }
+                // refund is capped at half the energy used for the whole transaction
+                refund = Math.min(energyUsed / 2, selfDestructRefund + resetStorageRefund);
+            }
+
+            // Return data of a CREATE transaction is the new DApp address.
+            resultToReturn = TransactionResultUtil.newSuccessfulResultWithEnergyUsedAndOutput(energyUsed - refund, dappAddress.toByteArray());
+
+        } catch (OutOfStackException e) {
+            if (verboseErrors) {
+                System.err.println("DApp deployment failed due to stack overflow EXCEPTION: \"" + e.getMessage() + "\"");
+                e.printStackTrace(System.err);
+            }
+            resultToReturn = TransactionResultUtil.setNonRevertedFailureAndEnergyUsed(currentResultState, AvmInternalError.FAILED_OUT_OF_STACK, energyLimit);
+        } catch (CallDepthLimitExceededException e) {
+            if (verboseErrors) {
+                System.err.println("DApp deployment failed due to call depth limit EXCEPTION: \"" + e.getMessage() + "\"");
+                e.printStackTrace(System.err);
+            }
+            resultToReturn = TransactionResultUtil.setNonRevertedFailureAndEnergyUsed(currentResultState, AvmInternalError.FAILED_CALL_DEPTH_LIMIT, energyLimit);
+        } catch (RevertException e) {
+            if (verboseErrors) {
+                System.err.println("DApp deployment to REVERT due to uncaught EXCEPTION: \"" + e.getMessage() + "\"");
+                e.printStackTrace(System.err);
+            }
+            resultToReturn = TransactionResultUtil.setRevertedFailureAndEnergyUsed(currentResultState, energyLimit - threadInstrumentation.energyLeft());
+        } catch (InvalidException e) {
+            if (verboseErrors) {
+                System.err.println("DApp deployment INVALID due to uncaught EXCEPTION: \"" + e.getMessage() + "\"");
+                e.printStackTrace(System.err);
+            }
+            resultToReturn = TransactionResultUtil.setNonRevertedFailureAndEnergyUsed(currentResultState, AvmInternalError.FAILED_INVALID, energyLimit);
+        }
+
+        return resultToReturn;
     }
 }
