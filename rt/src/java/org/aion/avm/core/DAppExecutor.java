@@ -1,26 +1,48 @@
 package org.aion.avm.core;
 
-import org.aion.avm.core.util.TransactionResultUtil;
-import org.aion.kernel.AvmWrappedTransactionResult;
-import org.aion.kernel.AvmWrappedTransactionResult.AvmInternalError;
-import org.aion.types.AionAddress;
-import org.aion.types.Transaction;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.avm.core.persistence.ReentrantGraph;
 import org.aion.avm.core.util.Helpers;
-import i.*;
+import org.aion.avm.core.util.TransactionResultUtil;
+import org.aion.kernel.AvmWrappedTransactionResult;
+import org.aion.kernel.AvmWrappedTransactionResult.AvmInternalError;
 import org.aion.parallel.TransactionTask;
+import org.aion.types.AionAddress;
+import org.aion.types.Transaction;
+
+import i.AvmException;
+import i.CallDepthLimitExceededException;
+import i.EarlyAbortException;
+import i.IBlockchainRuntime;
+import i.IInstrumentation;
+import i.InstrumentationHelpers;
+import i.InternedClasses;
+import i.InvalidException;
+import i.JvmError;
+import i.OutOfEnergyException;
+import i.OutOfStackException;
+import i.RevertException;
+import i.UncaughtException;
 
 
 public class DAppExecutor {
-    public static AvmWrappedTransactionResult call(IExternalCapabilities capabilities, IExternalState externalState, AvmInternal avm, LoadedDApp dapp,
-                            ReentrantDAppStack.ReentrantState stateToResume, TransactionTask task,
-                            Transaction tx, AvmWrappedTransactionResult internalResult, boolean verboseErrors, boolean readFromCache, boolean enableBlockchainPrintln) {
+    public static AvmWrappedTransactionResult call(IExternalCapabilities capabilities,
+                                                   IExternalState externalState,
+                                                   AvmInternal avm,
+                                                   LoadedDApp dapp,
+                                                   ReentrantDAppStack.ReentrantState stateToResume,
+                                                   TransactionTask task,
+                                                   AionAddress senderAddress,
+                                                   AionAddress dappAddress,
+                                                   Transaction tx,
+                                                   AvmWrappedTransactionResult internalResult,
+                                                   boolean verboseErrors,
+                                                   boolean readFromCache,
+                                                   boolean enableBlockchainPrintln) {
         AvmWrappedTransactionResult result = internalResult;
-        AionAddress dappAddress = tx.destinationAddress;
-        
+
         // If this is a reentrant call, we need to serialize the graph of the parent frame.  This is required to both copy-back our changes but also
         // is required in case we want to revert the state.
         ReentrantGraph callerState = (null != stateToResume)
@@ -60,7 +82,6 @@ public class DAppExecutor {
             rawGraphDataLength = rawGraphData.length;
         }
 
-
         // Note that we need to store the state of this invocation on the reentrant stack in case there is another call into the same app.
         // This is required so that the call() mechanism can access it to save/reload its ContractEnvironmentState and so that the underlying
         // instance loader (ReentrantGraphProcessor/ReflectionStructureCodec) can be notified when it becomes active/inactive (since it needs
@@ -68,7 +89,17 @@ public class DAppExecutor {
         ReentrantDAppStack.ReentrantState thisState = new ReentrantDAppStack.ReentrantState(dappAddress, dapp, nextHashCode, initialClassWrappers);
         task.getReentrantDAppStack().pushState(thisState);
 
-        IBlockchainRuntime br = new BlockchainRuntimeImpl(capabilities, externalState, avm, thisState, task, tx, tx.copyOfTransactionData(), dapp.runtimeSetup, enableBlockchainPrintln);
+        IBlockchainRuntime br = new BlockchainRuntimeImpl(capabilities,
+                                                          externalState,
+                                                          avm,
+                                                          thisState,
+                                                          task,
+                                                          senderAddress,
+                                                          dappAddress,
+                                                          tx,
+                                                          tx.copyOfTransactionData(),
+                                                          dapp.runtimeSetup,
+                                                          enableBlockchainPrintln);
         FrameContextImpl fc = new FrameContextImpl(externalState, dapp, initialClassWrappers, br);
         InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.energyLimit - result.energyUsed(), nextHashCode, initialClassWrappers, fc);
         IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(br);

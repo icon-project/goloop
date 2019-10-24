@@ -182,13 +182,22 @@ public class DAppCreator {
         return processedClasses;
     }
 
-    public static AvmWrappedTransactionResult create(IExternalCapabilities capabilities, IExternalState externalState, AvmInternal avm, TransactionTask task, Transaction tx, AvmWrappedTransactionResult internalResult, boolean preserveDebuggability, boolean verboseErrors, boolean enableBlockchainPrintln) {
+    public static AvmWrappedTransactionResult create(IExternalCapabilities capabilities,
+                                                     IExternalState externalState,
+                                                     AvmInternal avm,
+                                                     TransactionTask task,
+                                                     AionAddress senderAddress,
+                                                     AionAddress dappAddress,
+                                                     Transaction tx,
+                                                     AvmWrappedTransactionResult internalResult,
+                                                     boolean preserveDebuggability,
+                                                     boolean verboseErrors,
+                                                     boolean enableBlockchainPrintln) {
         // Expose the DApp outside the try so we can detach from it, when we exit.
         LoadedDApp dapp = null;
         AvmWrappedTransactionResult result = internalResult;
         try {
             // read dapp module
-            AionAddress dappAddress = (tx.isCreate) ? capabilities.generateContractAddress(tx) : tx.destinationAddress;
             CodeAndArguments codeAndArguments = CodeAndArguments.decodeFromBytes(tx.copyOfTransactionData());
             if (codeAndArguments == null) {
                 if (verboseErrors) {
@@ -224,7 +233,17 @@ public class DAppCreator {
             // We start the nextHashCode at 1.
             int nextHashCode = 1;
             InternedClasses icm = new InternedClasses();
-            IBlockchainRuntime br = new BlockchainRuntimeImpl(capabilities, externalState, avm, null, task, tx, codeAndArguments.arguments, dapp.runtimeSetup, enableBlockchainPrintln);
+            IBlockchainRuntime br = new BlockchainRuntimeImpl(capabilities,
+                                                              externalState,
+                                                              avm,
+                                                              null,
+                                                              task,
+                                                              senderAddress,
+                                                              dappAddress,
+                                                              tx,
+                                                              codeAndArguments.arguments,
+                                                              dapp.runtimeSetup,
+                                                              enableBlockchainPrintln);
             FrameContextImpl fc = new FrameContextImpl(externalState, dapp, icm, br);
             InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.energyLimit - result.energyUsed(), nextHashCode, icm, fc);
             // (we pass a null reentrant state since we haven't finished initializing yet - nobody can call into us).

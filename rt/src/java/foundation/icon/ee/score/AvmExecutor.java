@@ -131,12 +131,15 @@ public class AvmExecutor implements AvmInternal {
         // start with the successful result
         AvmWrappedTransactionResult result = TransactionResultUtil.newSuccessfulResultWithEnergyUsed(0);
 
+        AionAddress senderAddress = tx.senderAddress;
+        AionAddress recipient = (tx.isCreate) ? capabilities.generateContractAddress(tx) : tx.destinationAddress;
+
         if (tx.isCreate) {
             logger.debug("=== DAppCreator ===");
-            result = DAppCreator.create(this.capabilities, thisTransactionKernel, this, task, tx, result,
+            result = DAppCreator.create(this.capabilities, thisTransactionKernel, this, task,
+                    senderAddress, recipient, tx, result,
                     this.preserveDebuggability, this.enableVerboseContractErrors, this.enableBlockchainPrintln);
         } else {
-            AionAddress recipient = tx.destinationAddress;
             LoadedDApp dapp;
 
             // See if this call is trying to reenter one already on this call-stack.  If so, we will need to partially resume its state.
@@ -147,7 +150,8 @@ public class AvmExecutor implements AvmInternal {
                 dapp = stateToResume.dApp;
                 // Call directly and don't interact with DApp cache (we are reentering the state, not the origin of it).
                 logger.debug("=== DAppExecutor === call 1");
-                result = DAppExecutor.call(this.capabilities, thisTransactionKernel, this, dapp, stateToResume, task, tx, result,
+                result = DAppExecutor.call(this.capabilities, thisTransactionKernel, this, dapp, stateToResume, task,
+                        senderAddress, recipient, tx, result,
                         this.enableVerboseContractErrors, true, this.enableBlockchainPrintln);
             } else {
                 try {
@@ -156,7 +160,8 @@ public class AvmExecutor implements AvmInternal {
                     throw RuntimeAssertionError.unexpected(e);
                 }
                 logger.debug("=== DAppExecutor === call 2");
-                result = DAppExecutor.call(this.capabilities, thisTransactionKernel, this, dapp, stateToResume, task, tx, result,
+                result = DAppExecutor.call(this.capabilities, thisTransactionKernel, this, dapp, stateToResume, task,
+                        senderAddress, recipient, tx, result,
                         this.enableVerboseContractErrors, false, this.enableBlockchainPrintln);
             }
         }

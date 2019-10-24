@@ -395,21 +395,22 @@ public class AvmImpl implements AvmInternal {
 
         AvmWrappedTransactionResult result = TransactionResultUtil.newSuccessfulResultWithEnergyUsed(transactionBaseCost);
 
+        AionAddress senderAddress = tx.senderAddress;
         // grab the recipient address as either the new contract address or the given account address.
         AionAddress recipient = (tx.isCreate) ? capabilities.generateContractAddress(tx) : tx.destinationAddress;
 
         // conduct value transfer
         BigInteger value = tx.value;
-        thisTransactionKernel.adjustBalance(tx.senderAddress, value.negate());
+        thisTransactionKernel.adjustBalance(senderAddress, value.negate());
         thisTransactionKernel.adjustBalance(recipient, value);
 
         // At this stage, transaction can no longer be rejected.
         // The nonce increment will be done regardless of the transaction result.
-        task.getThisTransactionalKernel().incrementNonce(tx.senderAddress);
+        task.getThisTransactionalKernel().incrementNonce(senderAddress);
 
         // do nothing for balance transfers of which the recipient is not a DApp address.
         if (tx.isCreate) {
-            result = DAppCreator.create(this.capabilities, thisTransactionKernel, this, task, tx, result, this.preserveDebuggability, this.enableVerboseContractErrors, this.enableBlockchainPrintln);
+            result = DAppCreator.create(this.capabilities, thisTransactionKernel, this, task, senderAddress, recipient, tx, result, this.preserveDebuggability, this.enableVerboseContractErrors, this.enableBlockchainPrintln);
         } else { // call
             // See if this call is trying to reenter one already on this call-stack.  If so, we will need to partially resume its state.
             ReentrantDAppStack.ReentrantState stateToResume = task.getReentrantDAppStack().tryShareState(recipient);
@@ -421,7 +422,9 @@ public class AvmImpl implements AvmInternal {
             if ((null != stateToResume) && (null != transformedCode)) {
                 dapp = stateToResume.dApp;
                 // Call directly and don't interact with DApp cache (we are reentering the state, not the origin of it).
-                result = DAppExecutor.call(this.capabilities, thisTransactionKernel, this, dapp, stateToResume, task, tx, result, this.enableVerboseContractErrors, true, this.enableBlockchainPrintln);
+                result = DAppExecutor.call(this.capabilities, thisTransactionKernel, this, dapp, stateToResume, task,
+                        senderAddress, recipient, tx, result,
+                        this.enableVerboseContractErrors, true, this.enableBlockchainPrintln);
             } else {
                 long currentBlockNumber = parentKernel.getBlockNumber();
 
@@ -512,7 +515,9 @@ public class AvmImpl implements AvmInternal {
                 }
 
                 if (null != dapp) {
-                    result = DAppExecutor.call(this.capabilities, thisTransactionKernel, this, dapp, stateToResume, task, tx, result, this.enableVerboseContractErrors, readFromDataCacheEnabled, this.enableBlockchainPrintln);
+                    result = DAppExecutor.call(this.capabilities, thisTransactionKernel, this, dapp, stateToResume, task,
+                            senderAddress, recipient, tx, result,
+                            this.enableVerboseContractErrors, readFromDataCacheEnabled, this.enableBlockchainPrintln);
 
                     if (writeToCacheEnabled) {
                         if (result.isSuccess() && updateDataCache) {

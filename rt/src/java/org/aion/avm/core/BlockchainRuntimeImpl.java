@@ -1,11 +1,13 @@
 package org.aion.avm.core;
 
-import java.util.Arrays;
 import org.aion.avm.core.util.TransactionResultUtil;
 import org.aion.types.AionAddress;
 import org.aion.types.Transaction;
-import p.avm.*;
-import s.java.math.BigInteger;
+import p.avm.Address;
+import p.avm.CollectionDB;
+import p.avm.CollectionDBImpl;
+import p.avm.Result;
+import p.avm.VarDB;
 import i.*;
 import a.ByteArray;
 import org.aion.types.InternalTransaction;
@@ -14,6 +16,7 @@ import org.aion.kernel.*;
 import org.aion.parallel.TransactionTask;
 import org.aion.types.Log;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -25,10 +28,11 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     private final AvmInternal avm;
     private final ReentrantDAppStack.ReentrantState reentrantState;
 
-    private Transaction tx;
+    private final TransactionTask task;
+    private final AionAddress transactionSender;
     private final AionAddress transactionDestination;
+    private final Transaction tx;
     private final byte[] dAppData;
-    private TransactionTask task;
     private final IRuntimeSetup thisDAppSetup;
     private final boolean enablePrintln;
 
@@ -36,19 +40,31 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     private Address addressCache;
     private Address callerCache;
     private Address originCache;
-    private BigInteger valueCache;
+    private s.java.math.BigInteger valueCache;
     private Address blockCoinBaseCache;
-    private BigInteger blockDifficultyCache;
+    private s.java.math.BigInteger blockDifficultyCache;
 
-    public BlockchainRuntimeImpl(IExternalCapabilities capabilities, IExternalState externalState, AvmInternal avm, ReentrantDAppStack.ReentrantState reentrantState, TransactionTask task, Transaction tx, byte[] dAppData, IRuntimeSetup thisDAppSetup, boolean enablePrintln) {
+    public BlockchainRuntimeImpl(IExternalCapabilities capabilities,
+                                 IExternalState externalState,
+                                 AvmInternal avm,
+                                 ReentrantDAppStack.ReentrantState reentrantState,
+                                 TransactionTask task,
+                                 AionAddress transactionSender,
+                                 AionAddress transactionDestination,
+                                 Transaction tx,
+                                 byte[] dAppData,
+                                 IRuntimeSetup thisDAppSetup,
+                                 boolean enablePrintln) {
         this.capabilities = capabilities;
         this.externalState = externalState;
         this.avm = avm;
         this.reentrantState = reentrantState;
-        this.tx = tx;
-        this.transactionDestination = (tx.isCreate) ? capabilities.generateContractAddress(tx) : tx.destinationAddress;
-        this.dAppData = dAppData;
         this.task = task;
+        this.transactionSender = transactionSender;
+        // Note that transactionDestination will be the address of the deployed contract, if this is a create.
+        this.transactionDestination = transactionDestination;
+        this.tx = tx;
+        this.dAppData = dAppData;
         this.thisDAppSetup = thisDAppSetup;
         this.enablePrintln = enablePrintln;
 
@@ -73,7 +89,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     @Override
     public Address avm_getCaller() {
         if (null == this.callerCache) {
-            this.callerCache = new Address(tx.senderAddress.toByteArray());
+            this.callerCache = new Address(this.transactionSender.toByteArray());
         }
 
         return this.callerCache;
@@ -118,7 +134,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
         return this.dAppDataCache;
     }
-
 
     @Override
     public long avm_getBlockTimestamp() {
