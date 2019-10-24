@@ -5,13 +5,13 @@ import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
+
 /**
  * A class visitor that convert array from field/method signature into array wrapper.
  */
+public class ArraysWithKnownTypesClassVisitor extends ClassToolchain.ToolChainClassVisitor {
 
-public class ArrayWrappingClassAdapter extends ClassToolchain.ToolChainClassVisitor {
-
-    public ArrayWrappingClassAdapter() {
+    public ArraysWithKnownTypesClassVisitor() {
         super(Opcodes.ASM6);
     }
 
@@ -44,7 +44,7 @@ public class ArrayWrappingClassAdapter extends ClassToolchain.ToolChainClassVisi
 
         MethodVisitor mv = super.visitMethod(access, name, desc, signature, exceptions);
 
-        return new ArrayWrappingMethodAdapter(mv, access, name, desc);
+        return new ArraysWithKnownTypesAdapter(mv, access, name, desc);
     }
 
 }

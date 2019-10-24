@@ -7,8 +7,8 @@ import org.aion.types.Transaction;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.ClassRenamer.ArrayType;
-import org.aion.avm.core.arraywrapping.ArrayWrappingClassAdapter;
-import org.aion.avm.core.arraywrapping.ArrayWrappingClassAdapterRef;
+import org.aion.avm.core.arraywrapping.ArraysWithKnownTypesClassVisitor;
+import org.aion.avm.core.arraywrapping.ArraysRequiringAnalysisClassVisitor;
 import org.aion.avm.core.exceptionwrapping.ExceptionWrapping;
 import org.aion.avm.core.instrument.ClassMetering;
 import org.aion.avm.core.instrument.HeapMemoryCostCalculator;
@@ -143,8 +143,8 @@ public class DAppCreator {
                     .build()
                     .runAndGetBytecode();
             bytecode = new ClassToolchain.Builder(bytecode, parsingOptions)
-                    .addNextVisitor(new ArrayWrappingClassAdapterRef(classHierarchy))
-                    .addNextVisitor(new ArrayWrappingClassAdapter())
+                    .addNextVisitor(new ArraysRequiringAnalysisClassVisitor(classHierarchy))
+                    .addNextVisitor(new ArraysWithKnownTypesClassVisitor())
                     .addWriter(new TypeAwareClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS, classHierarchy, classRenamer))
                     .build()
                     .runAndGetBytecode();

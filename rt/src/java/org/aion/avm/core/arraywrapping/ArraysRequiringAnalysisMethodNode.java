@@ -18,35 +18,37 @@ import org.objectweb.asm.tree.analysis.AnalyzerException;
 import org.objectweb.asm.tree.analysis.BasicValue;
 import org.objectweb.asm.tree.analysis.Frame;
 
+
 /**
  * A method visitor that replace access bytecode
  *
- * AALOAD
- * AASTORE
- * BALOAD
- * BASTORE
+ * AALOAD -> INVOKEINTERFACE + CHECKCAST
+ * AASTORE -> CHECKCAST + INVOKEINTERFACE
+ * BALOAD -> INVOKEVIRTUAL
+ * BASTORE -> INVOKEVIRTUAL
  *
- * with corresponding array wrapper virtual call.
+ * Opcodes associated with the other types are handled in {@link org.aion.avm.core.arraywrapping.ArraysWithKnownTypesClassVisitor}.
  *
  * Static analysis is required with {@link org.aion.avm.core.arraywrapping.ArrayWrappingInterpreter} so it can perform
  * type inference.
  *
+ * Note that this static analysis is the reason why only these bytecodes are handled here - they are the only ones which
+ * require additional type knowledge not associated 1-to-1 with the specific opcode.
  */
-
-class ArrayWrappingMethodAdapterRef extends MethodNode implements Opcodes {
+class ArraysRequiringAnalysisMethodNode extends MethodNode {
     private final ClassHierarchy hierarchy;
 
     private String className;
     private MethodVisitor mv;
 
-    public ArrayWrappingMethodAdapterRef(final int access,
-                                         final String name,
-                                         final String descriptor,
-                                         final String signature,
-                                         final String[] exceptions,
-                                         MethodVisitor mv,
-                                         String className,
-                                         ClassHierarchy hierarchy)
+    public ArraysRequiringAnalysisMethodNode(final int access,
+                                             final String name,
+                                             final String descriptor,
+                                             final String signature,
+                                             final String[] exceptions,
+                                             MethodVisitor mv,
+                                             String className,
+                                             ClassHierarchy hierarchy)
     {
         super(Opcodes.ASM6, access, name, descriptor, signature, exceptions);
         this.className = className;

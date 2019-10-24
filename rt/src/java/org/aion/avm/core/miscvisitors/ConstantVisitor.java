@@ -19,11 +19,15 @@ import org.objectweb.asm.tree.MethodNode;
  *
  * A class visitor which replaces the "ConstantValue" static final String constants with a "ldc+putstatic" pair in the &lt;clinit&gt;
  * (much like Class constants).
+ * Assumes that all directly loaded String constants ("ldc", not an initialized static field) have already been found with an earlier
+ * pass and that the map resolving those constants to field names in the constant class has been provided (along with the constant
+ * class name).
  * This should be one of the earliest visitors in the chain since the transformation produces code with no special assumptions,
  * the re-write needs to happen before shadowing and metering, and it depends on nothing other than this being valid bytecode.
  * Note that ASM defines that visitField is called before visitMethod so we can collect the constants we need to re-write before
  * we will see the method we need to modify.
  * If the &lt;clinit&gt; exists, we will prepend this ldc+pustatic pairs.  If it doesn't, we will generate it last.
+ * Also responsible for converting "ldc" of String constants to "getstatic" of the corresponding static in the constants class.
  */
 public class ConstantVisitor extends ClassToolchain.ToolChainClassVisitor {
     private static final String kClinitName = "<clinit>";

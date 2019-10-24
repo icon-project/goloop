@@ -13,7 +13,7 @@ import org.objectweb.asm.tree.analysis.BasicValue;
 /**
  * A bytecode interpreter used for array type inference.
  *
- * See {@link org.aion.avm.core.arraywrapping.ArrayWrappingClassAdapterRef} for its usage.
+ * See {@link org.aion.avm.core.arraywrapping.ArraysRequiringAnalysisClassVisitor} for its usage.
  */
 
 public class ArrayWrappingInterpreter extends BasicInterpreter{

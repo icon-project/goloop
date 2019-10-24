@@ -11,6 +11,7 @@ import org.objectweb.asm.commons.Method;
 
 import java.util.Set;
 
+
 /**
  * A method visitor that replace access bytecode
  *
@@ -40,11 +41,9 @@ import java.util.Set;
  * BALOAD
  * BASTORE
  *
- * are handled by {@link org.aion.avm.core.arraywrapping.ArrayWrappingClassAdapterRef}
- *
+ * are handled by {@link org.aion.avm.core.arraywrapping.ArraysRequiringAnalysisClassVisitor}
  */
-
-class ArrayWrappingMethodAdapter extends AdviceAdapter implements Opcodes {
+class ArraysWithKnownTypesAdapter extends AdviceAdapter {
     static private Pattern PRIMITIVE_ARRAY_FORMAT = Pattern.compile("[\\$\\[]+[IJZBSDFC]");
 
     private Type typeA = Type.getType(a.IArray.class);
@@ -63,7 +62,7 @@ class ArrayWrappingMethodAdapter extends AdviceAdapter implements Opcodes {
     });
 
 
-    ArrayWrappingMethodAdapter(final MethodVisitor mv, final int access, final String name, final String desc)
+    ArraysWithKnownTypesAdapter(final MethodVisitor mv, final int access, final String name, final String desc)
     {
         super(Opcodes.ASM6, mv, access, name, desc);
     }

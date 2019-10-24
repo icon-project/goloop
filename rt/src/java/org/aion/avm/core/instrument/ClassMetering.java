@@ -9,6 +9,13 @@ import i.RuntimeAssertionError;
 import java.util.List;
 import java.util.Map;
 
+
+/**
+ * Responsible for handling metering of individual code blocks within user code.
+ * Internally, this activity is applied on a per-method basis, creating sub-visitors which perform the read and write operations:
+ * -BlockBuildingMethodVisitor:  reads the bytecode, finding the basic blocks within each method, and using this to construct a billing total (algorithm internal to this class)
+ * -ChargeEnergyInjectionVisitor:  reads the bytecode again, using the basic blocks from the previous step to inject a billing call at the beginning of each block
+ */
 public class ClassMetering extends ClassToolchain.ToolChainClassVisitor {
     private Map<String, Integer> objectSizes;
     private final BytecodeFeeScheduler bytecodeFeeScheduler;
@@ -32,6 +39,8 @@ public class ClassMetering extends ClassToolchain.ToolChainClassVisitor {
         // Capture the visitor which actually constitutes the pipeline - we will need to do another pass before this one.
         MethodVisitor realVisitor = super.visitMethod(access, name, descriptor, signature, exceptions);
         
+        // We use a MethodNode since we want to capture the bytecode to walk it twice.
+        // The actual final write is done on the realVisitor.
         return new MethodNode(Opcodes.ASM6, access, name, descriptor, signature, exceptions) {
             @Override
             public void visitEnd() {
@@ -49,8 +58,8 @@ public class ClassMetering extends ClassToolchain.ToolChainClassVisitor {
                     block.setEnergyCost(feeForBlock);
                 }
 
-                // We can now build the arraywrapper over the real visitor, and accept it in order to add the instrumentation.
-                BlockInstrumentationVisitor instrumentingVisitor = new BlockInstrumentationVisitor(realVisitor, blocks);
+                // We can now build the injection visitor over the real visitor, and accept it in order to add the instrumentation.
+                ChargeEnergyInjectionVisitor instrumentingVisitor = new ChargeEnergyInjectionVisitor(realVisitor, blocks);
                 this.accept(instrumentingVisitor);
             }
         };

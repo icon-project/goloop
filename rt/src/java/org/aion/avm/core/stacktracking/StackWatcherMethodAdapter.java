@@ -12,13 +12,30 @@ import org.objectweb.asm.tree.MethodNode;
 
 import java.util.ArrayList;
 
-class StackWatcherMethodAdapter extends AdviceAdapter implements Opcodes {
 
-    private int idxDep = -1;    //LVT index of stack depth
-    private int idxSize = -1;   //LVT index of stack size
-    private int maxL = 0;       //maxLocals for current method
-    private int maxS = 0;       //maxStack for current method
-    private int tc = 0;         //number of try catch block for current method
+/**
+ * Created by StackWatcherClassAdapter to instrument methods for deterministic stack overflow detection.
+ * This instrumentation involves the calls to the following helper methods:
+ * -enterMethod
+ * -exitMethod
+ * -getCurStackDepth
+ * -getCurStackSize
+ * -enterCatchBlock
+ *
+ * The total flow of this is complicated so is worth explaining:
+ * 1) Enter method is called on entering method, to increment the stack depth.
+ * 2) On exit, exit method is called to decrement this.
+ * (those are the obvious cases, exception handling is more complex)
+ * 3) If there are any exception handlers in the method, the stack depth is captured into a local variable.
+ * 4) In all exception handlers, the stack depth is forced back to the value stored in this local.
+ * This means that the depth is reset to the same value when entering the method or returning to it via exception handler.
+ */
+class StackWatcherMethodAdapter extends AdviceAdapter {
+    private int stackDepthLocalVariableIndex = -1;
+    private int stackSizeLocalVariableIndex = -1;
+    private int maxLocals = 0;
+    private int maxStack = 0;
+    private int tryCatchBlockCount = 0;
 
     // These values represent the upper bound of additional locals & stack space our instrumented code
     // uses. The ClassWriter overwrites the max-locals and max-stack in the end since we always specify
@@ -43,19 +60,19 @@ class StackWatcherMethodAdapter extends AdviceAdapter implements Opcodes {
     }
 
     public void setMax(MethodNode node, int l, int s){
-        this.maxL = l;
-        this.maxS = s;
+        this.maxLocals = l;
+        this.maxStack = s;
     }
 
     @Override
     public void visitMaxs(int maxStack, int maxLocals) {
-        RuntimeAssertionError.assertTrue(maxStack == this.maxS);
-        RuntimeAssertionError.assertTrue(maxLocals == this.maxL);
+        RuntimeAssertionError.assertTrue(maxStack == this.maxStack);
+        RuntimeAssertionError.assertTrue(maxLocals == this.maxLocals);
         super.visitMaxs(maxStack + NUM_INSTRUMENTED_STACK, maxLocals + NUM_INSTRUMENTED_LOCALS);
     }
 
     public void setTryCatchBlockNum(int l){
-        this.tc = l;
+        this.tryCatchBlockCount = l;
     }
 
     @Override
@@ -64,22 +81,22 @@ class StackWatcherMethodAdapter extends AdviceAdapter implements Opcodes {
 
         // Push the current stack size to operand stack and invoke AVMStackWatcher.enterMethod(int)
         Method m1 = Method.getMethod("void enterMethod(int)");
-        visitLdcInsn(this.maxL + this.maxS);
+        visitLdcInsn(this.maxLocals + this.maxStack);
         invokeStatic(typeHelper, m1);
 
         // If current method has at least one try catch block, we need to generate a StackWacher stamp.
-        if (this.tc > 0){
-            //invoke AVMStackWatcher.getCurStackDepth() and put the result into LVT
+        if (this.tryCatchBlockCount > 0){
+            //invoke AVMStackWatcher.getCurStackDepth() and put the result into local variable
             Method m2 = Method.getMethod("int getCurStackDepth()");
             invokeStatic(typeHelper, m2);
-            idxDep = newLocal(typeInt);
-            storeLocal(idxDep, typeInt);
+            this.stackDepthLocalVariableIndex = newLocal(typeInt);
+            storeLocal(this.stackDepthLocalVariableIndex, typeInt);
 
-            //invoke AVMStackWatcher.getCurStackSize() and put the result into LVT
+            //invoke AVMStackWatcher.getCurStackSize() and put the result into local variable
             Method m3 = Method.getMethod("int getCurStackSize()");
             invokeStatic(typeHelper, m3);
-            idxSize = newLocal(typeInt);
-            storeLocal(idxSize, typeInt);
+            this.stackSizeLocalVariableIndex = newLocal(typeInt);
+            storeLocal(this.stackSizeLocalVariableIndex, typeInt);
         }
     }
 
@@ -87,7 +104,7 @@ class StackWatcherMethodAdapter extends AdviceAdapter implements Opcodes {
     protected void onMethodExit(int opcode){
         // Push the current stack size to operand stack and invoke AVMStackWatcher.exitMethod(int)
         Method m1 = Method.getMethod("void exitMethod(int)");
-        visitLdcInsn(this.maxL + this.maxS);
+        visitLdcInsn(this.maxLocals + this.maxStack);
         invokeStatic(typeHelper, m1);
     }
 
@@ -106,8 +123,8 @@ class StackWatcherMethodAdapter extends AdviceAdapter implements Opcodes {
         // We instrument the code (start of catch block) if the label we are visiting is an exception handler
         if (catchBlockList.contains(label)){
             // Load the stamp from LVT
-            loadLocal(this.idxDep, typeInt);
-            loadLocal(this.idxSize, typeInt);
+            loadLocal(this.stackDepthLocalVariableIndex, typeInt);
+            loadLocal(this.stackSizeLocalVariableIndex, typeInt);
             Method m1 = Method.getMethod("void enterCatchBlock(int, int)");
             invokeStatic(typeHelper, m1);
         }

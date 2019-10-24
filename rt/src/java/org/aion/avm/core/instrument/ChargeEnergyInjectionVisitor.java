@@ -10,28 +10,22 @@ import org.objectweb.asm.Opcodes;
 
 
 /**
- * A visitor responsible for re-writing the methods with the various call-outs and other manipulations.
- * 
- * Prepending instrumentation is one of the more complex ASM interactions, so it warrants some explanation:
- * -we will advance through the block list we were given while walking the blocks, much like BlockMethodReader.
- * -when we reach the beginning of a new block, we will inject the energy accounting helper before passing the
- * method through to the writer.
- * 
- * Array allocation replacement is also one the more complex cases, worth explaining:
- * -newarray - call to special static helpers, based on underlying native:  no change to stack shape
- * -anewarray - call to special static helper, requires pushing the associated class constant onto the stack
- * -multianewarray - call to special static helpers, requires pushing the associated class constant onto the stack
- * Only anewarray is done without argument introspection.  Note that multianewarray can be called for any [2..255]
- * dimension array.
- * A maximum limit of 3 will be imposed later on arrays (in ArrayWrappingClassGenerator)
- * Note that this was adapted from the ClassRewriter.MethodInstrumentationVisitor.
+ * The visitor responsible for injecting the "Helper.chargeEnergy(int)" calls.
+ *
+ * This is done per-block, so the in-order list of BasicBlock objects generated during a pre-pass must be provided.
+ *
+ * The general approach is to walk over the bytecode, injecting a call-out immediately before the first bytecode
+ * which comes after a label (as a BasicBlock is defined as starting after a label).
+ *
+ * The actual value charged is expected to be set on the BasicBlock elsewhere as this class doesn't know where the
+ * number came from, just how to inject the call.
  */
-public class BlockInstrumentationVisitor extends MethodVisitor {
+public class ChargeEnergyInjectionVisitor extends MethodVisitor {
     private final List<BasicBlock> blocks;
     private boolean scanningToNewBlockStart;
     private int nextBlockIndexToWrite;
 
-    public BlockInstrumentationVisitor(MethodVisitor target, List<BasicBlock> blocks) {
+    public ChargeEnergyInjectionVisitor(MethodVisitor target, List<BasicBlock> blocks) {
         super(Opcodes.ASM6, target);
         this.blocks = blocks;
     }
@@ -65,7 +59,7 @@ public class BlockInstrumentationVisitor extends MethodVisitor {
     public void visitInsn(int opcode) {
         checkInject();
         super.visitInsn(opcode);
-        
+
         // Note that this could be an athrow, in which case we should handle this as a label.
         // (this, like the jump case, shouldn't normally matter since there shouldn't be unreachable code after it).
         if (Opcodes.ATHROW == opcode) {
@@ -76,14 +70,12 @@ public class BlockInstrumentationVisitor extends MethodVisitor {
     public void visitIntInsn(int opcode, int operand) {
         checkInject();
         super.visitIntInsn(opcode, operand);
-
     }
-
     @Override
     public void visitJumpInsn(int opcode, Label label) {
         checkInject();
         super.visitJumpInsn(opcode, label);
-        
+
         // Jump is the end of a block so emit the label.
         // (note that this is also where if statements show up).
         this.scanningToNewBlockStart = true;
@@ -124,7 +116,6 @@ public class BlockInstrumentationVisitor extends MethodVisitor {
     public void visitTypeInsn(int opcode, String type) {
         checkInject();
         super.visitTypeInsn(opcode, type);
-
     }
     @Override
     public void visitVarInsn(int opcode, int var) {
@@ -135,19 +126,22 @@ public class BlockInstrumentationVisitor extends MethodVisitor {
     public void visitMaxs(int maxStack, int maxLocals) {
         super.visitMaxs(maxStack, maxLocals);
     }
+
     /**
      * Common state machine advancing call.  Called at every instruction to see if we need to inject and/or advance
      * the state machine.
      */
     private void checkInject() {
         if (this.scanningToNewBlockStart) {
-            // We were witing for this so see if we have to do anything.
+            // We were waiting for this so make sure that this block has some associated cost.
             BasicBlock currentBlock = this.blocks.get(this.nextBlockIndexToWrite);
-            if (currentBlock.getEnergyCost() > 0) {
-                // Inject the bytecodes.
-                super.visitLdcInsn(Long.valueOf(currentBlock.getEnergyCost()));
-                super.visitMethodInsn(Opcodes.INVOKESTATIC, Helper.RUNTIME_HELPER_NAME, "chargeEnergy", "(J)V", false);
-            }
+            // We should never encounter a block with a zero/negative cost.
+            RuntimeAssertionError.assertTrue(currentBlock.getEnergyCost() > 0);
+
+            // Inject the bytecodes.
+            super.visitLdcInsn(Long.valueOf(currentBlock.getEnergyCost()));
+            super.visitMethodInsn(Opcodes.INVOKESTATIC, Helper.RUNTIME_HELPER_NAME, "chargeEnergy", "(J)V", false);
+
             // Reset the state machine for the next block.
             this.scanningToNewBlockStart = false;
             this.nextBlockIndexToWrite += 1;
