@@ -12,8 +12,10 @@ import (
 )
 
 const (
-	stepsForCoinTransfer = 1000
-	initialCoinBalance   = 10 * 1000 * 1000
+	stepLimitForCoinTransfer = 1000
+	initialCoinBalance       = 10 * 1000 * 1000
+
+	timeoutForCoinTransfer = 5 * time.Second
 )
 
 type CoinTransferMaker struct {
@@ -72,7 +74,7 @@ func makeCoinTransfer(nid int64, from module.Wallet, to module.Address, value *b
 		"to":        to,
 		"value":     fmt.Sprintf("0x%x", value),
 		"nid":       fmt.Sprintf("0x%x", nid),
-		"stepLimit": fmt.Sprintf("0x%x", stepsForCoinTransfer),
+		"stepLimit": fmt.Sprintf("0x%x", stepLimitForCoinTransfer),
 		"timestamp": TimeStampNow(),
 	}
 	if err := SignTx(from, tx); err != nil {

@@ -67,9 +67,9 @@ func main() {
 				InstallParams: installParams,
 				Method:        methodName,
 				CallParams:    params,
-				god:           godWallet,
-				index:         index,
-				last:          last,
+				GOD:           godWallet,
+				Index:         index,
+				Last:          last,
 			}
 		} else if len(scorePath) > 0 {
 			maker = &TokenTransferMaker{
@@ -77,6 +77,8 @@ func main() {
 				WalletCount: walletCount,
 				SourcePath:  scorePath,
 				Method:      methodName,
+				GOD:         godWallet,
+				Last:        last,
 			}
 		} else {
 			maker = &CoinTransferMaker{

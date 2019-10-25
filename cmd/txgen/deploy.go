@@ -9,10 +9,17 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"time"
 
 	"github.com/pkg/errors"
 
 	"github.com/icon-project/goloop/module"
+)
+
+const (
+	stepLimitForDeploy = 100000
+
+	timeoutForDeploy = 5 * time.Second
 )
 
 func addDirectoryToZip(zipWriter *zip.Writer, base, uri string) error {
@@ -75,7 +82,7 @@ func makeDeploy(nid int64, from module.Wallet, src string, params interface{}) (
 		"from":      from.Address(),
 		"to":        "cx0000000000000000000000000000000000000000",
 		"nid":       fmt.Sprintf("0x%x", nid),
-		"stepLimit": fmt.Sprintf("0x%x", stepsForTokenTransfer),
+		"stepLimit": fmt.Sprintf("0x%x", stepLimitForDeploy),
 		"timestamp": TimeStampNow(),
 		"dataType":  "deploy",
 		"data": map[string]interface{}{

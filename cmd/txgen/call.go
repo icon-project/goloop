@@ -32,12 +32,11 @@ type CallMaker struct {
 	Method        string
 	CallParams    map[string]string
 	CallTemplates map[string]*template.Template
+	Index, Last   int64
+	GOD           module.Wallet
 
-	god      module.Wallet
 	owner    module.Wallet
 	contract module.Address
-
-	index, last int64
 }
 
 var (
@@ -57,7 +56,7 @@ func (m *CallMaker) Prepare(client *Client) error {
 	}
 	m.CallTemplates = ts
 
-	tx1, err := makeCoinTransfer(m.NID, m.god, m.owner.Address(), callInitialBalance)
+	tx1, err := makeCoinTransfer(m.NID, m.GOD, m.owner.Address(), callInitialBalance)
 	if err != nil {
 		return err
 	}
@@ -100,8 +99,8 @@ func (m *CallMaker) Prepare(client *Client) error {
 }
 
 func (m *CallMaker) MakeOne() (interface{}, error) {
-	index := atomic.AddInt64(&m.index, 1) - 1
-	if m.last != 0 && index >= m.last {
+	index := atomic.AddInt64(&m.Index, 1) - 1
+	if m.Last != 0 && index >= m.Last {
 		return nil, ErrEndOfTransaction
 	}
 	context := map[string]interface{}{
@@ -128,7 +127,7 @@ func makeCallTx(nid int64, from module.Wallet,
 		"from":      from.Address(),
 		"to":        contract,
 		"nid":       fmt.Sprintf("0x%x", nid),
-		"stepLimit": fmt.Sprintf("0x%x", stepsForCoinTransfer),
+		"stepLimit": fmt.Sprintf("0x%x", stepLimitForCoinTransfer),
 		"timestamp": TimeStampNow(),
 		"dataType":  "call",
 		"data": map[string]interface{}{
