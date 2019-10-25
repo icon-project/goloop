@@ -8,18 +8,15 @@ import (
 	"io/ioutil"
 	stdlog "log"
 	"os"
-	"os/signal"
 	"path"
 	"path/filepath"
-	"runtime/pprof"
 	"strconv"
-	"sync/atomic"
-	"syscall"
 
 	"github.com/spf13/cobra"
 
 	"github.com/icon-project/goloop/chain"
 	"github.com/icon-project/goloop/chain/gs"
+	"github.com/icon-project/goloop/cmd/cli"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/wallet"
@@ -329,39 +326,15 @@ func Execute(cmd *cobra.Command, args []string) {
 	}
 
 	if cpuProfile != "" {
-		f, err := os.Create(cpuProfile)
-		if err != nil {
-			log.Panicf("Fail to create %s for profile err=%+v", cpuProfile, err)
+		if err := cli.StartCPUProfile(cpuProfile); err != nil {
+			log.Panicf("Fail to start cpu profiling err=%+v", err)
 		}
-		if err = pprof.StartCPUProfile(f); err != nil {
-			log.Panicf("Fail to start profiling err=%+v", err)
-		}
-		defer func() {
-			pprof.StopCPUProfile()
-		}()
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt)
-		go func(c chan os.Signal) {
-			<-c
-			pprof.StopCPUProfile()
-			os.Exit(128 + int(syscall.SIGINT))
-		}(c)
 	}
 
 	if memProfile != "" {
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, syscall.SIGUSR1)
-		go func(c chan os.Signal) {
-			for {
-				<-c
-				cnt := atomic.AddInt32(&memProfileCnt, 1)
-				fileName := fmt.Sprintf("%s.%03d", memProfile, cnt)
-				if f, err := os.Create(fileName); err == nil {
-					pprof.WriteHeapProfile(f)
-					f.Close()
-				}
-			}
-		}(c)
+		if err := cli.StartMemoryProfile(memProfile); err != nil {
+			log.Panicf("Fail to start memory profiling err=%+v", err)
+		}
 	}
 
 	logoLines := []string{
