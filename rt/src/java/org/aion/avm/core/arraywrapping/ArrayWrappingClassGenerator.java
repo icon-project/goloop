@@ -210,8 +210,7 @@ public class ArrayWrappingClassGenerator implements Opcodes {
         mv.visitVarInsn(ILOAD, 0);
         mv.visitIntInsn(BIPUSH, (int) ArrayElement.REF.getEnergy());
         mv.visitInsn(IMUL);
-        mv.visitInsn(I2L);
-        mv.visitMethodInsn(INVOKESTATIC, SHADOW_ARRAY, "chargeEnergy", "(J)V", false);
+        mv.visitMethodInsn(INVOKESTATIC, SHADOW_ARRAY, "chargeEnergy", "(I)V", false);
 
         mv.visitInsn(ARETURN);
         mv.visitMaxs(3, 1);
@@ -245,8 +244,7 @@ public class ArrayWrappingClassGenerator implements Opcodes {
             mv.visitVarInsn(ILOAD, 0);
             mv.visitIntInsn(BIPUSH, (int) ArrayElement.REF.getEnergy());
             mv.visitInsn(IMUL);
-            mv.visitInsn(I2L);
-            mv.visitMethodInsn(INVOKESTATIC, SHADOW_ARRAY, "chargeEnergy", "(J)V", false);
+            mv.visitMethodInsn(INVOKESTATIC, SHADOW_ARRAY, "chargeEnergy", "(I)V", false);
 
             // Wrapper OBJ to return
             // Now LVT[0] ~ LVT[d-1] hold all dimension data, LVT[d] hold wrapper object.
@@ -377,10 +375,9 @@ public class ArrayWrappingClassGenerator implements Opcodes {
         methodVisitor.visitLdcInsn(RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR);
         methodVisitor.visitVarInsn(ALOAD, 0);
         methodVisitor.visitMethodInsn(INVOKEVIRTUAL, wrapper, "length", "()I", false);
-        methodVisitor.visitInsn(I2L);
-        methodVisitor.visitInsn(LMUL);
-        methodVisitor.visitInsn(LADD);
-        methodVisitor.visitMethodInsn(INVOKESTATIC, SHADOW_ARRAY, "chargeEnergy", "(J)V", false);
+        methodVisitor.visitInsn(IMUL);
+        methodVisitor.visitInsn(IADD);
+        methodVisitor.visitMethodInsn(INVOKESTATIC, SHADOW_ARRAY, "chargeEnergy", "(I)V", false);
 
         // lazyLoad
         methodVisitor.visitVarInsn(ALOAD, 0);

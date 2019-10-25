@@ -250,7 +250,11 @@ public class DAppCreator {
             RuntimeAssertionError.assertTrue(previousRuntime == null);
 
             IInstrumentation threadInstrumentation = IInstrumentation.attachedThreadInstrumentation.get();
-            threadInstrumentation.chargeEnergy(BillingRules.getDeploymentFee(rawDapp.numberOfClasses, rawDapp.bytecodeSize));
+            long deploymentFee = BillingRules.getDeploymentFee(rawDapp.numberOfClasses, rawDapp.bytecodeSize);
+            // Deployment fee must be a positive integer.
+            RuntimeAssertionError.assertTrue(deploymentFee > 0L);
+            RuntimeAssertionError.assertTrue(deploymentFee <= (long)Integer.MAX_VALUE);
+            threadInstrumentation.chargeEnergy((int)deploymentFee);
 
             // Create the immortal version of the transformed DApp code by stripping the <clinit>.
             Map<String, byte[]> immortalClasses = stripClinitFromClasses(transformedClasses);

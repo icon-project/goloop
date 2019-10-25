@@ -39,7 +39,7 @@ public class Helper implements IRuntimeSetup {
         return target.wrapAsThrowable(arg);
     }
 
-    public static void chargeEnergy(long cost) throws OutOfEnergyException {
+    public static void chargeEnergy(int cost) throws OutOfEnergyException {
         target.chargeEnergy(cost);
     }
 

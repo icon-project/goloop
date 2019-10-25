@@ -282,7 +282,7 @@ public class NodeEnvironment {
         // Create the fake IInstrumentation.
         IInstrumentation instrumentation = new IInstrumentation() {
             @Override
-            public void chargeEnergy(long cost) throws OutOfEnergyException {
+            public void chargeEnergy(int cost) throws OutOfEnergyException {
                 // Shadow enum class will create array wrapper with <clinit>
                 // Ignore the charge energy request in this case
             }

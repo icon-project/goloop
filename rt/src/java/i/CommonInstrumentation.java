@@ -148,7 +148,7 @@ public class CommonInstrumentation implements IInstrumentation {
     }
 
     @Override
-    public void chargeEnergy(long cost) throws OutOfEnergyException {
+    public void chargeEnergy(int cost) throws OutOfEnergyException {
         // This is called at the beginning of a block so see if we are being asked to exit.
         if (null != this.currentFrame.forceExitState) {
             throw this.currentFrame.forceExitState;

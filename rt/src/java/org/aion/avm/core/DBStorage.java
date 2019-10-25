@@ -53,11 +53,11 @@ public class DBStorage implements IDBStorage {
         return new AionAddress(addr.toByteArray());
     }
 
-    private void charge(long cost) {
+    private void charge(int cost) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(cost);
     }
 
-    void assumeValidValue(Object value) {
+    private void assumeValidValue(Object value) {
         if (value instanceof DBImplBase) {
             throw new InvalidDBAccessException();
         }

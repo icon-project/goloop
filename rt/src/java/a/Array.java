@@ -32,7 +32,7 @@ public abstract class Array extends Object implements Cloneable, IArray {
      * 
      * @param cost The energy cost to charge the current DApp.
      */
-    static protected void chargeEnergy(long cost){
+    static protected void chargeEnergy(int cost){
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(cost);
     }
 }

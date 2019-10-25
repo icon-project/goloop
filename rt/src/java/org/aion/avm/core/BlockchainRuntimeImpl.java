@@ -495,8 +495,17 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
             currentThreadInstrumentation.forceNextHashCode(this.reentrantState.getNextHashCode());
         }
 
-        // charge energy consumed
-        currentThreadInstrumentation.chargeEnergy(newResult.energyUsed());
+        // Note that we can only meaningfully charge energy if the transaction was NOT aborted and it actually ran something (balance transfers report zero energy used, here).
+        if (isAcquired) {
+            // charge energy consumed
+            long energyUsed = newResult.energyUsed();
+            if (0L != energyUsed) {
+                // We know that this must be a positive integer.
+                RuntimeAssertionError.assertTrue(energyUsed > 0L);
+                RuntimeAssertionError.assertTrue(energyUsed <= (long)Integer.MAX_VALUE);
+                currentThreadInstrumentation.chargeEnergy((int)energyUsed);
+            }
+        }
 
         task.decrementTransactionStackDepth();
 

@@ -16,15 +16,15 @@ public enum ArrayElement {
     // Reference type
     REF(8);
 
-    static final long COST_PER_BYTE = 3;
+    static final int COST_PER_BYTE = 3;
 
-    private final long energy;
+    private final int energy;
 
-    ArrayElement(long size) {
+    ArrayElement(int size) {
         this.energy = size * COST_PER_BYTE;
     }
 
-    public long getEnergy() {
+    public int getEnergy() {
         return energy;
     }
 }
