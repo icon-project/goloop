@@ -59,25 +59,18 @@ public class DAppCreator {
      * @return The look-up map of the sizes of user objects
      * Class name is in the JVM internal name format, see {@link org.aion.avm.core.util.Helpers#fulllyQualifiedNameToInternalName(String)}
      */
-    public static Map<String, Integer> computeUserObjectSizes(Forest<String, ClassInfo> classHierarchy, Map<String, Integer> rootObjectSizes)
+    public static Map<String, Integer> computeUserObjectSizes(Forest<String, ClassInfo> classHierarchy)
     {
         HeapMemoryCostCalculator objectSizeCalculator = new HeapMemoryCostCalculator();
 
         // compute the user object sizes
-        objectSizeCalculator.calcClassesInstanceSize(classHierarchy, rootObjectSizes);
+        objectSizeCalculator.calcClassesInstanceSize(classHierarchy);
 
-        // copy over the user object sizes
-        Map<String, Integer> userObjectSizes = new HashMap<>();
-        objectSizeCalculator.getClassHeapSizeMap().forEach((k, v) -> {
-            if (!rootObjectSizes.containsKey(k)) {
-                userObjectSizes.put(k, v);
-            }
-        });
-        return userObjectSizes;
+        return objectSizeCalculator.getClassHeapSizeMap();
     }
 
     private static Map<String, Integer> computeAllPostRenameObjectSizes(Forest<String, ClassInfo> forest, boolean preserveDebuggability) {
-        Map<String, Integer> preRenameUserObjectSizes = computeUserObjectSizes(forest, NodeEnvironment.singleton.preRenameRuntimeObjectSizeMap);
+        Map<String, Integer> preRenameUserObjectSizes = computeUserObjectSizes(forest);
 
         Map<String, Integer> postRenameObjectSizes = new HashMap<>(NodeEnvironment.singleton.postRenameRuntimeObjectSizeMap);
         preRenameUserObjectSizes.forEach((k, v) -> postRenameObjectSizes.put(DebugNameResolver.getUserPackageSlashPrefix(k, preserveDebuggability), v));

@@ -1,11 +1,13 @@
 package org.aion.avm.core.instrument;
 
+import org.aion.avm.core.NodeEnvironment;
 import org.aion.avm.core.types.ClassInfo;
 import org.aion.avm.core.types.Forest;
 import org.aion.avm.core.types.Forest.Node;
 import org.aion.avm.core.util.DescriptorParser;
 import org.aion.avm.core.util.Helpers;
 import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
 
@@ -30,20 +32,20 @@ public class HeapMemoryCostCalculator {
      * Enum - class field size based on the descriptor / type.
      * Size in bits.
      */
-    public enum FieldTypeSizeInBits {
-        BYTE        (8),
-        CHAR        (16),
-        SHORT       (16),
-        INT         (32),
-        LONG        (64),
-        FLOAT       (32),
-        DOUBLE      (64),
+    public enum FieldTypeSizeInBytes {
+        BYTE        (Byte.BYTES),
+        CHAR        (Character.BYTES),
+        SHORT       (Short.BYTES),
+        INT         (Integer.BYTES),
+        LONG        (Long.BYTES),
+        FLOAT       (Float.BYTES),
+        DOUBLE      (Double.BYTES),
         BOOLEAN     (1),
-        OBJECTREF   (64);
+        OBJECTREF   (8);
 
-        private final long val;
+        private final int val;
 
-        FieldTypeSizeInBits(long val) {
+        FieldTypeSizeInBytes(int val) {
             this.val = val;
         }
 
@@ -58,12 +60,14 @@ public class HeapMemoryCostCalculator {
      * Value - the instance/heap size of the class
      */
     private Map<String, Integer> classHeapSizeMap;
+    private Map<String, Integer> rootHeapSizeMap;
 
     /**
      * Constructor
      */
     public HeapMemoryCostCalculator() {
         classHeapSizeMap = new HashMap<>();
+        rootHeapSizeMap = new HashMap<>();
     }
 
     /**
@@ -98,94 +102,102 @@ public class HeapMemoryCostCalculator {
 
         // calculate it if not in the classHeapInfoMap
         int heapSize = 0;
+        int superClassSize;
 
         // get the parent classes, copy the fieldsMap
-        if (classHeapSizeMap.containsKey(classNode.superName)) {
-            if (classHeapSizeMap.get(classNode.superName) != null) {
-                heapSize += classHeapSizeMap.get(classNode.superName) * 8; // convert back to number of bits
-            }
-            else {
-                throw new IllegalStateException("A parent class does not have the size in HeapMemoryCostCalculator: " + classNode.superName);
-            }
-        }
-        else {
+        if (rootHeapSizeMap.containsKey(classNode.superName)) {
+            superClassSize = rootHeapSizeMap.get(classNode.superName);
+        } else if (classHeapSizeMap.containsKey(classNode.superName)) {
+            superClassSize = classHeapSizeMap.get(classNode.superName);
+        } else {
             throw new IllegalStateException("A parent class is not processed by HeapMemoryCostCalculator: " + classNode.superName);
         }
+
+        heapSize += superClassSize;
 
         // read the declared fields in the current class, add the size of each according to the FieldType
         List<FieldNode> fieldNodes = classNode.fields;
         for (FieldNode fieldNode : fieldNodes) {
-            // ArrayType Note:  class object creation only allocates a ref in the heap;
-            // and later the bytecode "NEWARRAY / ANEWARRAY" allocates the memory for each element.
-            if (fieldNode.name.startsWith("avm_")) {
+            // only calculate heap size for non static fields
+            if ((fieldNode.access & Opcodes.ACC_STATIC) == 0) {
+                // ArrayType Note:  class object creation only allocates a ref in the heap;
+                // and later the bytecode "NEWARRAY / ANEWARRAY" allocates the memory for each element.
                 heapSize += DescriptorParser.parse(fieldNode.desc, new DescriptorParser.TypeOnlyCallbacks<Long>() {
                     @Override
                     public Long readObject(int arrayDimensions, String type, Long userData) {
-                        return FieldTypeSizeInBits.OBJECTREF.getVal();
+                        return FieldTypeSizeInBytes.OBJECTREF.getVal();
                     }
+
                     @Override
                     public Long readBoolean(int arrayDimensions, Long userData) {
                         return (0 == arrayDimensions)
-                                ? FieldTypeSizeInBits.BOOLEAN.getVal()
-                                : FieldTypeSizeInBits.OBJECTREF.getVal();
+                                ? FieldTypeSizeInBytes.BOOLEAN.getVal()
+                                : FieldTypeSizeInBytes.OBJECTREF.getVal();
                     }
+
                     @Override
                     public Long readShort(int arrayDimensions, Long userData) {
                         return (0 == arrayDimensions)
-                                ? FieldTypeSizeInBits.SHORT.getVal()
-                                : FieldTypeSizeInBits.OBJECTREF.getVal();
+                                ? FieldTypeSizeInBytes.SHORT.getVal()
+                                : FieldTypeSizeInBytes.OBJECTREF.getVal();
                     }
+
                     @Override
                     public Long readLong(int arrayDimensions, Long userData) {
                         return (0 == arrayDimensions)
-                                ? FieldTypeSizeInBits.LONG.getVal()
-                                : FieldTypeSizeInBits.OBJECTREF.getVal();
+                                ? FieldTypeSizeInBytes.LONG.getVal()
+                                : FieldTypeSizeInBytes.OBJECTREF.getVal();
                     }
+
                     @Override
                     public Long readInteger(int arrayDimensions, Long userData) {
                         return (0 == arrayDimensions)
-                                ? FieldTypeSizeInBits.INT.getVal()
-                                : FieldTypeSizeInBits.OBJECTREF.getVal();
+                                ? FieldTypeSizeInBytes.INT.getVal()
+                                : FieldTypeSizeInBytes.OBJECTREF.getVal();
                     }
+
                     @Override
                     public Long readFloat(int arrayDimensions, Long userData) {
                         return (0 == arrayDimensions)
-                                ? FieldTypeSizeInBits.FLOAT.getVal()
-                                : FieldTypeSizeInBits.OBJECTREF.getVal();
+                                ? FieldTypeSizeInBytes.FLOAT.getVal()
+                                : FieldTypeSizeInBytes.OBJECTREF.getVal();
                     }
+
                     @Override
                     public Long readDouble(int arrayDimensions, Long userData) {
                         return (0 == arrayDimensions)
-                                ? FieldTypeSizeInBits.DOUBLE.getVal()
-                                : FieldTypeSizeInBits.OBJECTREF.getVal();
+                                ? FieldTypeSizeInBytes.DOUBLE.getVal()
+                                : FieldTypeSizeInBytes.OBJECTREF.getVal();
                     }
+
                     @Override
                     public Long readChar(int arrayDimensions, Long userData) {
                         return (0 == arrayDimensions)
-                                ? FieldTypeSizeInBits.CHAR.getVal()
-                                : FieldTypeSizeInBits.OBJECTREF.getVal();
+                                ? FieldTypeSizeInBytes.CHAR.getVal()
+                                : FieldTypeSizeInBytes.OBJECTREF.getVal();
                     }
+
                     @Override
                     public Long readByte(int arrayDimensions, Long userData) {
                         return (0 == arrayDimensions)
-                                ? FieldTypeSizeInBits.BYTE.getVal()
-                                : FieldTypeSizeInBits.OBJECTREF.getVal();
+                                ? FieldTypeSizeInBytes.BYTE.getVal()
+                                : FieldTypeSizeInBytes.OBJECTREF.getVal();
                     }
                 }, null);
             }
         }
 
-        // convert the size to number of bytes and add to classHeapSizeMap
-        classHeapSizeMap.put(classNode.name, heapSize / 8);
+        classHeapSizeMap.put(classNode.name, heapSize);
     }
 
     /**
      * Calculate the instance sizes of classes and record them in the "classHeapInfoMap".
      * This method is called to calculate the heap size of classes that belong to one Dapp, at the deployment time.
      * @param classHierarchy the pre-constructed class hierarchy forest
-     * @param rootClassObjectSizes the pre-constructed map of the runtime and java.lang.* classes to their instance size
      */
-    public void calcClassesInstanceSize(Forest<String, ClassInfo> classHierarchy, Map<String, Integer> rootClassObjectSizes) {
+    public void calcClassesInstanceSize(Forest<String, ClassInfo> classHierarchy) {
+        //the pre-constructed map of the runtime and java.lang.* classes to their instance size
+        Map<String, Integer> rootClassObjectSizes = NodeEnvironment.singleton.preRenameRuntimeObjectSizeMap;
         // get the root nodes list of the class hierarchy
         Collection<Node<String, ClassInfo>> rootClasses = classHierarchy.getRoots();
 
@@ -194,7 +206,7 @@ public class HeapMemoryCostCalculator {
             // 'rootClassObjectSizes' map already has the root class object size.
             // copy rootClass size to classHeapSizeMap
             final String slashName = Helpers.fulllyQualifiedNameToInternalName(rootClass.getId());
-            classHeapSizeMap.put(slashName, rootClassObjectSizes.get(slashName));
+            rootHeapSizeMap.put(slashName, rootClassObjectSizes.get(slashName));
         }
         final var visitor = new Forest.Visitor<String, ClassInfo>() {
             @Override
