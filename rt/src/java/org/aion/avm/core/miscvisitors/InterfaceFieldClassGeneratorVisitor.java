@@ -116,7 +116,8 @@ public class InterfaceFieldClassGeneratorVisitor extends ClassToolchain.ToolChai
 
     @Override
     public void visitEnd() {
-        if (isInterface) {
+        // generate the class only if interface has declared fields
+        if (isInterface && fields.size() > 0) {
             /* AKI-329: Previously generated classes using InterfaceFieldMappingVisitor had the FIELDS suffix. To deserialize classes correctly and in
              the same order, this suffix is kept for re-transformation. However, this name can collide with any interface inner class called FIELDS.
              So all the inner class names starting with FIELDS are collected so that the generated class name will not collide with any preexisting user classes.
