@@ -119,6 +119,7 @@ type invokeMessage struct {
 	Limit  common.HexInt   `codec:"limit"`
 	Method string          `codec:"method"`
 	Params *codec.TypedObj `codec:"params"`
+	Info   *codec.TypedObj `codec:"info"`
 }
 
 type getValueMessage struct {
@@ -179,6 +180,13 @@ func (p *proxy) Invoke(ctx CallContext, code string, isQuery bool, from, to modu
 	m.Limit.Set(limit)
 	m.Method = method
 	m.Params = params
+
+	v := ctx.GetInfo()
+	if eo, err := common.EncodeAny(v); err != nil {
+		return err
+	} else {
+		m.Info = eo
+	}
 
 	p.log.Tracef("Proxy[%p].Invoke code=%s query=%v from=%v to=%v value=%v limit=%v method=%s\n", p, code, isQuery, from, to, value, limit, method)
 
@@ -365,15 +373,6 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 			p, p.frame.addr, m.Indexed, m.Data)
 		p.frame.ctx.OnEvent(p.frame.addr, m.Indexed, m.Data)
 		return nil
-
-	case msgGETINFO:
-		p.log.Tracef("Proxy[%p].GetInfo()", p)
-		v := p.frame.ctx.GetInfo()
-		eo, err := common.EncodeAny(v)
-		if err != nil {
-			return err
-		}
-		return p.conn.Send(msgGETINFO, eo)
 
 	case msgGETBALANCE:
 		var addr common.Address

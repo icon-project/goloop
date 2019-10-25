@@ -337,12 +337,15 @@ class ServiceManagerProxy:
         params = data[7]
         if isinstance(params, list):
             params = self.decode_any(params)
+        info = data[8]
+        if isinstance(info, list):
+            info = self.decode_any(info)
 
         try:
             self.__readonly_stack.append(self.__readonly)
             self.__readonly = is_query
             status, step_used, result = self.__invoke(
-                code, is_query, _from, _to, value, limit, method, params)
+                code, is_query, _from, _to, value, limit, method, params, info)
 
             self.__client.send(Message.RESULT, [
                 status,

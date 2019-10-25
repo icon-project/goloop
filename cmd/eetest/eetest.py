@@ -74,10 +74,9 @@ class TestEE(object):
         proxy.set_api_handler(self.api_handler)
 
     def invoke_handler(self, code: str, is_query: bool, _from: 'Address', _to: 'Address',
-                       value: int, limit: int, method: str, params: Any) -> Tuple[int, int, Any]:
+                       value: int, limit: int, method: str, params: Any, info: Any) -> Tuple[int, int, Any]:
         print(f'invoke_handler(code={repr(code)},is_query={is_query},from={_from},to={_to},' +
-              f'value={value},limit={limit},method={repr(method)},params={params})')
-        self.get_info()
+              f'value={value},limit={limit},method={repr(method)},params={params},info={info})')
         self.set_value(b"hello", b"world")
         self.get_value(b'hello')
         self.set_value(b'foo', None)

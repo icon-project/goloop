@@ -116,14 +116,12 @@ class PyExecEngine(object):
         Logger.load_config(config, ProxyStreamHandler(self.__proxy))
 
     def invoke_handler(self, code: str, is_query: bool, _from: 'Address', to: 'Address',
-                       value: int, limit: int, method: str, params: Any) -> Tuple[int, int, Any]:
+                       value: int, limit: int, method: str, params: Any, info: Any) -> Tuple[int, int, Any]:
         Logger.debug(f'[invoke_handle] code={repr(code)},is_query={is_query},from={_from},to={to},' +
-                     f'value={value},limit={limit},method={repr(method)},params={params}', TAG)
+                     f'value={value},limit={limit},method={repr(method)},params={params},info={info}', TAG)
         context = IconScoreContext(IconScoreContextType.QUERY if is_query
                                    else IconScoreContextType.INVOKE)
         context.set_invoke_params(code, to, method, params)
-        # Get transaction info and set the context
-        info = self.get_info()
         context.tx = Transaction(tx_hash=info.get(Info.TX_HASH),
                                  index=info.get(Info.TX_INDEX),
                                  origin=info.get(Info.TX_FROM),
