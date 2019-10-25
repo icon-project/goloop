@@ -9,10 +9,7 @@ import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldNode;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Heap memory is allocated at the new object creation. This class provides a map of every class' instance size.
@@ -75,19 +72,6 @@ public class HeapMemoryCostCalculator {
      */
     public Map<String, Integer> getClassHeapSizeMap() {
         return classHeapSizeMap;
-    }
-
-    /**
-     * add a class name and heap size pair to the internal map
-     * @param className the JVM internal name of a class, see {@link org.aion.avm.core.util.Helpers#fulllyQualifiedNameToInternalName(String)}
-     * @param heapSize the heap size of the class
-     */
-    public void addClassHeapSizeToMap(String className, Integer heapSize) {
-        if (classHeapSizeMap == null) {
-            throw new IllegalStateException("HeapMemoryCostCalculator does not have the classHeapSizeMap.");
-        }
-
-        classHeapSizeMap.put(className, heapSize);
     }
 
     /**
@@ -209,8 +193,8 @@ public class HeapMemoryCostCalculator {
         for (Node<String, ClassInfo> rootClass : rootClasses) {
             // 'rootClassObjectSizes' map already has the root class object size.
             // copy rootClass size to classHeapSizeMap
-            final String splashName = Helpers.fulllyQualifiedNameToInternalName(rootClass.getId());
-            classHeapSizeMap.put(splashName, rootClassObjectSizes.get(splashName));
+            final String slashName = Helpers.fulllyQualifiedNameToInternalName(rootClass.getId());
+            classHeapSizeMap.put(slashName, rootClassObjectSizes.get(slashName));
         }
         final var visitor = new Forest.Visitor<String, ClassInfo>() {
             @Override

@@ -46,6 +46,9 @@ public class CommonGenerators {
     // Both class names are in the shadowed version.
     public static Map<String, String> parentClassMap;
 
+    // Note that the calculating allocation sizes for generated exceptions (JCLAndAPIHeapInstanceSize}) assumes that
+    // generated exceptions do not declare any fields, and do not inherit from an Exception class with fields other than Throwable.
+    // Thus, the default allocation size for each class is 32 bytes.
     public static Map<String, byte[]> generateShadowJDK() {
         Map<String, byte[]> shadowJDK = new HashMap<>();
 

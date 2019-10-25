@@ -4,6 +4,7 @@ import org.aion.avm.core.classgeneration.CommonGenerators;
 import org.aion.avm.core.classloading.AvmClassLoader;
 import org.aion.avm.core.classloading.AvmSharedClassLoader;
 import org.aion.avm.core.dappreading.LoadedJar;
+import org.aion.avm.core.instrument.JCLAndAPIHeapInstanceSize;
 import org.aion.avm.core.types.*;
 import org.aion.avm.core.util.MethodDescriptorCollector;
 import org.aion.avm.core.util.Helpers;
@@ -181,6 +182,9 @@ public class NodeEnvironment {
 
         // create the object size look-up maps
         Map<String, Integer> rtObjectSizeMap = computeRuntimeObjectSizes(generatedShadowJDK);
+        // This is to ensure the JCLAndAPIHeapInstanceSize is updated with the correct instance size of a newly added JCL or API class
+        RuntimeAssertionError.assertTrue(rtObjectSizeMap.size() == 97);
+
         this.shadowObjectSizeMap = new HashMap<>();
         this.apiObjectSizeMap = new HashMap<>();
         this.preRenameRuntimeObjectSizeMap = new HashMap<>();
@@ -201,6 +205,7 @@ public class NodeEnvironment {
         this.postRenameRuntimeObjectSizeMap.putAll(apiObjectSizeMap);
 
         this.shadowClassSlashNameMethodDescriptorMap = Collections.unmodifiableMap(getShadowClassSlashNameMethodDescriptorMap());
+        this.classHierarchy = buildJCLAndAPIClassHierarchy();
     }
 
     public static NodeEnvironment getInstance() {
@@ -411,7 +416,28 @@ public class NodeEnvironment {
      * Class name is in the JVM internal name format, see {@link org.aion.avm.core.util.Helpers#fulllyQualifiedNameToInternalName(String)}
      */
     protected Map<String, Integer> computeRuntimeObjectSizes(Map<String, byte[]> generatedShadowJDK) {
-        // create a fake jar from API and shadow classes
+        List<String> classNames = new ArrayList<>();
+        classNames.addAll(getShadowApiClasses().stream().map(c -> Helpers.fulllyQualifiedNameToInternalName(c.getName())).collect(Collectors.toList()));
+        classNames.addAll(getShadowClasses().stream().map(c -> Helpers.fulllyQualifiedNameToInternalName(c.getName())).collect(Collectors.toList()));
+
+        Map<String, Integer> objectHeapSizeMap = new HashMap<>();
+        for(String name: classNames){
+            objectHeapSizeMap.put(name, JCLAndAPIHeapInstanceSize.getAllocationSizeForJCLAndAPISlashClass(name));
+        }
+
+        // add the generated classes, i.e., exceptions in the generated shadow JDK
+        for (String generatedClassName : generatedShadowJDK.keySet()) {
+            // User cannot create the exception wrappers, so not to include them
+            if (!generatedClassName.startsWith(PackageConstants.kExceptionWrapperDotPrefix)) {
+                String internalClassName = Helpers.fulllyQualifiedNameToInternalName(generatedClassName);
+                objectHeapSizeMap.put(internalClassName, JCLAndAPIHeapInstanceSize.getAllocationSizeForGeneratedExceptionSlashClass());
+            }
+        }
+
+        return objectHeapSizeMap;
+    }
+
+    private ClassHierarchy buildJCLAndAPIClassHierarchy() {
         Map<String, byte[]> classBytesByQualifiedNames = new HashMap<>();
         String mainClassName = "java.lang.Object";
 
@@ -429,52 +455,13 @@ public class NodeEnvironment {
         }
         LoadedJar runtimeJar = new LoadedJar(classBytesByQualifiedNames, mainClassName);
 
-        // get the forest and prune it to include only the "java.lang.Object" and "java.lang.Throwable" derived classes, as shown in the forest
-        ClassHierarchyForest rtClassesForest = null;
-        try {
-            rtClassesForest = ClassHierarchyForest.createForestFrom(runtimeJar);
+        // Construct the full class hierarchy.
+        ClassInformationFactory classInfoFactory = new ClassInformationFactory();
+        Set<ClassInformation> classInfos = classInfoFactory.fromPostRenameJar(runtimeJar);
 
-            // Construct the full class hierarchy.
-            ClassInformationFactory classInfoFactory = new ClassInformationFactory();
-            Set<ClassInformation> classInfos = classInfoFactory.fromPostRenameJar(runtimeJar);
-
-            this.classHierarchy = new ClassHierarchyBuilder()
+        return new ClassHierarchyBuilder()
                 .addPostRenameNonUserDefinedClasses(classInfos)
                 .build();
-
-        } catch (IOException e) {
-            // If the RT jar being something we can't process, our installation is clearly corrupt.
-            throw RuntimeAssertionError.unexpected(e);
-        }
-        List<Forest.Node<String, ClassInfo>> newRoots = new ArrayList<>();
-        newRoots.add(rtClassesForest.getNodeById("java.lang.Object"));
-        newRoots.add(rtClassesForest.getNodeById("java.lang.Throwable"));
-        rtClassesForest.prune(newRoots);
-
-        // add the generated classes, i.e., exceptions in the generated shadow JDK
-        for (String generatedClassName : generatedShadowJDK.keySet()) {
-            // User cannot create the exception wrappers, so not to include them
-            if (!generatedClassName.startsWith(PackageConstants.kExceptionWrapperDotPrefix)) {
-                String parentName = CommonGenerators.parentClassMap.get(generatedClassName);
-                byte[] parentClass;
-                if (parentName == null) {
-                    parentName = PackageConstants.kShadowDotPrefix + "java.lang.Throwable";
-                    parentClass = rtClassesForest.getNodeById(parentName).getContent().getBytes();
-                } else {
-                    parentClass = generatedShadowJDK.get(parentName);
-                }
-                rtClassesForest.add(new Forest.Node<>(parentName, new ClassInfo(false, parentClass)),
-                        new Forest.Node<>(generatedClassName, new ClassInfo(false, generatedShadowJDK.get(generatedClassName))));
-            }
-        }
-
-        // compute the object sizes in the pruned forest
-        Map<String, Integer> rootObjectSizes = new HashMap<>();
-        // "java.lang.Object" and "java.lang.Throwable" object sizes, measured with Instrumentation.getObjectSize() method (java.lang.Instrument).
-        // A bare "java.lang.Object" has no fields and takes 16 bytes for 64-bit JDK. A "java.lang.Throwable" takes 40 bytes.
-        rootObjectSizes.put("java/lang/Object", 16);
-        rootObjectSizes.put("java/lang/Throwable", 40);
-        return DAppCreator.computeUserObjectSizes(rtClassesForest, rootObjectSizes);
     }
 
     private Map<String, List<String>> getShadowClassSlashNameMethodDescriptorMap(){
