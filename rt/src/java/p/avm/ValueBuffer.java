@@ -73,8 +73,12 @@ public class ValueBuffer extends Object implements Value {
         set(v);
     }
 
-    public ValueBuffer(byte[] v) {
+    public ValueBuffer(ByteArray v) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.ValueBuffer_avm_constructor);
+        set(v);
+    }
+
+    private ValueBuffer(byte[] v) {
         set(v);
     }
 
