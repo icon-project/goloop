@@ -245,4 +245,6 @@ public interface IBlockchainRuntime {
     CollectionDB avm_newCollectionDB(int type, String id);
 
     VarDB avm_newVarDB(String id);
+
+    void avm_log(IObjectArray indexed, IObjectArray data);
 }

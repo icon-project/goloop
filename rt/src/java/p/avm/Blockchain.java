@@ -1,6 +1,8 @@
 package p.avm;
 
+import a.ObjectArray;
 import i.DBImplBase;
+import i.IObjectArray;
 import org.aion.avm.StorageFees;
 import a.ByteArray;
 import i.IBlockchainRuntime;
@@ -262,5 +264,16 @@ public final class Blockchain extends Object {
     public static VarDB avm_newVarDB(String id) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_newVarDB);
         return blockchainRuntime.avm_newVarDB(id);
+    }
+
+    public static void avm_log(IObjectArray indexed, IObjectArray data) {
+        avm_println(new String("Blockchain.log indxed.len=" + indexed.length() + " data.len=" + data.length()));
+        for (int i=0; i<indexed.length(); i++) {
+            avm_println(new String("indexed["+i+"] " + ((Value)indexed.get(i)).avm_asByteArray()));
+        }
+        for (int i=0; i<data.length(); i++) {
+            avm_println(new String("data["+i+"] " + ((Value)data.get(i)).avm_asByteArray()));
+        }
+        blockchainRuntime.avm_log(indexed, data);
     }
 }

@@ -7,6 +7,8 @@ import p.avm.Address;
 import p.avm.CollectionDB;
 import p.avm.CollectionDBImpl;
 import p.avm.Result;
+import p.avm.Value;
+import p.avm.ValueBuffer;
 import p.avm.VarDB;
 import i.*;
 import a.ByteArray;
@@ -519,5 +521,27 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
     public VarDB avm_newVarDB(s.java.lang.String id) {
         return new p.avm.VarDBImpl(id);
+    }
+
+    public void avm_log(IObjectArray indexed, IObjectArray data) {
+        byte[][] bindexed = new byte[indexed.length()][];
+        for (int i=0; i<bindexed.length; i++) {
+            Value v = (Value)indexed.get(i);
+            if (v instanceof ValueBuffer) {
+                bindexed[i] = ((ValueBuffer)v).asByteArray();
+            } else {
+                bindexed[i] = v.avm_asByteArray().getUnderlying();
+            }
+        }
+        byte[][] bdata = new byte[data.length()][];
+        for (int i=0; i<bdata.length; i++) {
+            Value v = (Value)data.get(i);
+            if (v instanceof ValueBuffer) {
+                bdata[i] = ((ValueBuffer)v).asByteArray();
+            } else {
+                bdata[i] = v.avm_asByteArray().getUnderlying();
+            }
+        }
+        externalState.log(bindexed, bdata);
     }
 }

@@ -410,4 +410,11 @@ public final class Blockchain {
     public static VarDB newVarDB(String id) {
         return null;
     }
+
+    /**
+     * @param indexed This shall be array of Value type.
+     * @param data This shall be array of Value type.
+     */
+    public static void log(Object[] indexed, Object[] data) {
+    }
 }
