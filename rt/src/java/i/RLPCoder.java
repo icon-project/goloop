@@ -13,7 +13,6 @@ import s.java.lang.Character;
 import p.avm.Address;
 
 import java.math.BigInteger;
-import java.util.Arrays;
 
 public class RLPCoder {
     private ByteArrayOutputStream bos;
@@ -71,8 +70,6 @@ public class RLPCoder {
         } else if (v instanceof Character) {
             var vv = ((Character) v).getUnderlying();
             var bs = BigInteger.valueOf(vv).toByteArray();
-            if (bs.length>1 && bs[0]==0)
-                bs = Arrays.copyOfRange(bs, 1, bs.length);
             encode(bs);
         } else {
             throw new InvalidDBAccessException("bad key type :" + v.getClass());
