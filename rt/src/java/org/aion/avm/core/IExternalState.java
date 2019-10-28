@@ -291,4 +291,6 @@ public interface IExternalState {
      * @return the address of the miner.
      */
     public AionAddress getMinerAddress();
+
+    public void log(byte[][] indexed, byte[][]data);
 }

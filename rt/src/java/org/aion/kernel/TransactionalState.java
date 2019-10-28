@@ -332,4 +332,8 @@ public class TransactionalState implements IExternalState {
     public AionAddress getMinerAddress() {
         return blockCoinbase;
     }
+
+    public void log(byte[][] indexed, byte[][] data) {
+        parent.log(indexed, data);
+    }
 }

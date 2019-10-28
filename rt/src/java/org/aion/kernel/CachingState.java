@@ -213,4 +213,8 @@ public class CachingState implements IExternalState {
         BigInteger start = account.getBalance();
         account.setBalance(start.add(delta));
     }
+
+    public void log(byte[][] indexed, byte[][] data) {
+        throw RuntimeAssertionError.unreachable("This class does not implement this method.");
+    }
 }

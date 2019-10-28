@@ -286,4 +286,7 @@ public class TestingState implements IExternalState {
                 ? account.getTransformedCode()
                 : null;
     }
+
+    public void log(byte[][] indexed, byte[][] data) {
+    }
 }

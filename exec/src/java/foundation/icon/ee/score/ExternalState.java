@@ -288,4 +288,14 @@ public class ExternalState implements IExternalState {
         logger.debug("[getMinerAddress] ret={}", miner);
         return miner;
     }
+
+    public void log(byte[][] indexed, byte[][] data) {
+        try {
+            proxy.log(indexed, data);
+            logger.debug("[logEvent] {} {}", indexed, data);
+        } catch (IOException e) {
+            logger.error("[logEvent] {}", e.getMessage());
+            e.printStackTrace();
+        }
+    }
 }
