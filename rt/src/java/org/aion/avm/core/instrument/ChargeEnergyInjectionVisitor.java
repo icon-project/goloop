@@ -4,6 +4,7 @@ import java.util.List;
 
 import i.Helper;
 import i.RuntimeAssertionError;
+import org.objectweb.asm.Handle;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
@@ -125,6 +126,12 @@ public class ChargeEnergyInjectionVisitor extends MethodVisitor {
     @Override
     public void visitMaxs(int maxStack, int maxLocals) {
         super.visitMaxs(maxStack, maxLocals);
+    }
+
+    @Override
+    public void visitInvokeDynamicInsn(String name, String descriptor, Handle bootstrapMethodHandle, Object... bootstrapMethodArguments) {
+        checkInject();
+        super.visitInvokeDynamicInsn(name, descriptor, bootstrapMethodHandle, bootstrapMethodArguments);
     }
 
     /**
