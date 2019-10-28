@@ -37,16 +37,12 @@ public class NodeEnvironment {
     // mechanisms can map from this primitive identity into the actual instances.
     private final Map<Integer, s.java.lang.Object> constantMap;
 
-    private Class<?>[] shadowApiClasses;
+    private final Class<?>[] shadowApiClasses;
     // contains all the shadow classes except the exception classes that are generated automatically; used for computing runtime object sizes
-    private Class<?>[] shadowClasses;
-    private Class<?>[] arraywrapperClasses;
-    private Class<?>[] exceptionwrapperClasses;
+    private final Class<?>[] shadowClasses;
     // contains all the supported jcl class names (slash type)
-    private Set<String> jclClassNames;
+    private final Set<String> jclClassNames;
 
-    public final Map<String, Integer> shadowObjectSizeMap;  // pre-rename; shadow objects and exceptions
-    public final Map<String, Integer> apiObjectSizeMap;     // post-rename; API objects
     public final Map<String, Integer> preRenameRuntimeObjectSizeMap;     // pre-rename; runtime objects including shadow objects, exceptions and API objects
     public final Map<String, Integer> postRenameRuntimeObjectSizeMap;    // post-rename; runtime objects including shadow objects, exceptions and API objects
 
@@ -66,7 +62,7 @@ public class NodeEnvironment {
                 Value.class,
             };
 
-            this.arraywrapperClasses = new Class<?>[] {
+            Class<?>[] arraywrapperClasses = new Class<?>[]{
                     a.IArray.class
                     , a.Array.class
                     , a.ArrayElement.class
@@ -81,8 +77,8 @@ public class NodeEnvironment {
                     , a.ShortArray.class
             };
 
-            this.exceptionwrapperClasses = new Class<?>[] {
-                e.s.java.lang.Throwable.class
+            Class<?>[] exceptionwrapperClasses = new Class<?>[]{
+                    e.s.java.lang.Throwable.class
             };
 
             this.shadowClasses = new Class<?>[] {
@@ -163,12 +159,12 @@ public class NodeEnvironment {
             // Finish the initialization of shared class loader
 
             // Inject pre generated wrapper class into shared classloader enable more optimization opportunities for us
-            this.sharedClassLoader.putIntoDynamicCache(this.arraywrapperClasses);
+            this.sharedClassLoader.putIntoDynamicCache(arraywrapperClasses);
 
             // Inject shadow and api class into shared classloader so we can build a static cache
             this.sharedClassLoader.putIntoStaticCache(this.shadowClasses);
             this.sharedClassLoader.putIntoStaticCache(this.shadowApiClasses);
-            this.sharedClassLoader.putIntoStaticCache(this.exceptionwrapperClasses);
+            this.sharedClassLoader.putIntoStaticCache(exceptionwrapperClasses);
             this.sharedClassLoader.finishInitialization();
 
         } catch (ClassNotFoundException e) {
@@ -181,28 +177,32 @@ public class NodeEnvironment {
         RuntimeAssertionError.assertTrue(this.constantMap.size() == 34);
 
         // create the object size look-up maps
-        Map<String, Integer> rtObjectSizeMap = computeRuntimeObjectSizes(generatedShadowJDK);
+        Map<String, Integer> rtObjectSizeMap = computeRuntimeObjectSizes();
         // This is to ensure the JCLAndAPIHeapInstanceSize is updated with the correct instance size of a newly added JCL or API class
         RuntimeAssertionError.assertTrue(rtObjectSizeMap.size() == 97);
 
-        this.shadowObjectSizeMap = new HashMap<>();
-        this.apiObjectSizeMap = new HashMap<>();
-        this.preRenameRuntimeObjectSizeMap = new HashMap<>();
-        this.postRenameRuntimeObjectSizeMap = new HashMap<>();
+        Map<String, Integer> shadowObjectSizeMap = new HashMap<>(); // pre-rename; shadow objects and exceptions
+        Map<String, Integer> apiObjectSizeMap = new HashMap<>(); // post-rename; API objects
+
+        Map<String, Integer> preRenameObjectSizes = new HashMap<>();
+        Map<String, Integer> postRenameObjectSizes = new HashMap<>();
         rtObjectSizeMap.forEach((k, v) -> {
             // the shadowed object sizes; and change the class name to the non-shadowed version
             if (k.startsWith(PackageConstants.kShadowSlashPrefix)) {
-                this.shadowObjectSizeMap.put(k.substring(PackageConstants.kShadowSlashPrefix.length()), v);
-                this.postRenameRuntimeObjectSizeMap.put(k, v);
+                shadowObjectSizeMap.put(k.substring(PackageConstants.kShadowSlashPrefix.length()), v);
+                postRenameObjectSizes.put(k, v);
             }
             // the object size of API classes
             if (k.startsWith(PackageConstants.kShadowApiSlashPrefix)) {
-                this.apiObjectSizeMap.put(k, v);
-                this.preRenameRuntimeObjectSizeMap.put(k.substring(PackageConstants.kShadowApiSlashPrefix.length()), v);
+                apiObjectSizeMap.put(k, v);
+                preRenameObjectSizes.put(k.substring(PackageConstants.kShadowApiSlashPrefix.length()), v);
             }
         });
-        this.preRenameRuntimeObjectSizeMap.putAll(shadowObjectSizeMap);
-        this.postRenameRuntimeObjectSizeMap.putAll(apiObjectSizeMap);
+        preRenameObjectSizes.putAll(shadowObjectSizeMap);
+        postRenameObjectSizes.putAll(apiObjectSizeMap);
+
+        this.preRenameRuntimeObjectSizeMap = Collections.unmodifiableMap(preRenameObjectSizes);
+        this.postRenameRuntimeObjectSizeMap = Collections.unmodifiableMap(postRenameObjectSizes);
 
         this.shadowClassSlashNameMethodDescriptorMap = Collections.unmodifiableMap(getShadowClassSlashNameMethodDescriptorMap());
         this.classHierarchy = buildJCLAndAPIClassHierarchy();
@@ -241,23 +241,6 @@ public class NodeEnvironment {
     public List<String> getJclSlashClassNames() {
         List<String> jclClassNamesCopy = new ArrayList<>(this.jclClassNames);
         return jclClassNamesCopy;
-    }
-
-    /**
-     * Returns the API classes.
-     *
-     * @return a list of class objects
-     */
-    public List<Class<?>> getShadowApiClasses() {
-        return Arrays.asList(shadowApiClasses);
-    }
-
-    /**
-     * Returns the shadow classes. Note this does not include the exceptions.
-     * @return
-     */
-    public List<Class<?>> getShadowClasses() {
-        return Arrays.asList(shadowClasses);
     }
 
     /**
@@ -415,10 +398,10 @@ public class NodeEnvironment {
      * <p>
      * Class name is in the JVM internal name format, see {@link org.aion.avm.core.util.Helpers#fulllyQualifiedNameToInternalName(String)}
      */
-    protected Map<String, Integer> computeRuntimeObjectSizes(Map<String, byte[]> generatedShadowJDK) {
+    private Map<String, Integer> computeRuntimeObjectSizes() {
         List<String> classNames = new ArrayList<>();
-        classNames.addAll(getShadowApiClasses().stream().map(c -> Helpers.fulllyQualifiedNameToInternalName(c.getName())).collect(Collectors.toList()));
-        classNames.addAll(getShadowClasses().stream().map(c -> Helpers.fulllyQualifiedNameToInternalName(c.getName())).collect(Collectors.toList()));
+        classNames.addAll(Arrays.stream(this.shadowApiClasses).map(c -> Helpers.fulllyQualifiedNameToInternalName(c.getName())).collect(Collectors.toList()));
+        classNames.addAll(Arrays.stream(this.shadowClasses).map(c -> Helpers.fulllyQualifiedNameToInternalName(c.getName())).collect(Collectors.toList()));
 
         Map<String, Integer> objectHeapSizeMap = new HashMap<>();
         for(String name: classNames){
@@ -426,14 +409,10 @@ public class NodeEnvironment {
         }
 
         // add the generated classes, i.e., exceptions in the generated shadow JDK
-        for (String generatedClassName : generatedShadowJDK.keySet()) {
-            // User cannot create the exception wrappers, so not to include them
-            if (!generatedClassName.startsWith(PackageConstants.kExceptionWrapperDotPrefix)) {
-                String internalClassName = Helpers.fulllyQualifiedNameToInternalName(generatedClassName);
-                objectHeapSizeMap.put(internalClassName, JCLAndAPIHeapInstanceSize.getAllocationSizeForGeneratedExceptionSlashClass());
-            }
-        }
-
+        Stream.of(CommonGenerators.kExceptionClassNames)
+                .filter(s -> !CommonGenerators.kHandWrittenExceptionClassNames.contains(s))
+                .map(name -> Helpers.fulllyQualifiedNameToInternalName(PackageConstants.kShadowDotPrefix + name))
+                .forEach(s -> objectHeapSizeMap.put(s, JCLAndAPIHeapInstanceSize.getAllocationSizeForGeneratedExceptionSlashClass()));
         return objectHeapSizeMap;
     }
 
@@ -442,8 +421,8 @@ public class NodeEnvironment {
         String mainClassName = "java.lang.Object";
 
         List<Class<?>> classes = new ArrayList<>();
-        classes.addAll(getShadowApiClasses());
-        classes.addAll(getShadowClasses());
+        classes.addAll(Arrays.asList(this.shadowApiClasses));
+        classes.addAll(Arrays.asList(this.shadowClasses));
         for (Class<?> clazz : classes) {
             try {
                 String name = clazz.getName();
