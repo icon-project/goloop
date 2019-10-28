@@ -172,6 +172,11 @@ public class EEProxy extends Proxy {
                 flags ? objectGraph.getGraphData() : null);
     }
 
+    public void log(byte[][]indexed, byte[][] data) throws IOException {
+        logger.debug("[LOGEVENT] {}, {}", indexed, data);
+        sendMessage(MsgType.EVENT, indexed, data);
+    }
+
     public interface OnGetApiListener {
         Method[] onGetApi(String path) throws IOException;
     }
