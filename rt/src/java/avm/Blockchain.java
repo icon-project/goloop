@@ -415,6 +415,6 @@ public final class Blockchain {
      * @param indexed This shall be array of Value type.
      * @param data This shall be array of Value type.
      */
-    public static void log(Object[] indexed, Object[] data) {
+    public static void log(Value[] indexed, Value[] data) {
     }
 }
