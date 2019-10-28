@@ -43,6 +43,8 @@ func (m *databaseWithCacheManager) getAccountNodeCache(id []byte) *NodeCache {
 	}
 }
 
+// WorldNodeCacheOf get node cache of the world if it has.
+// If node cache for world state is not enabled, it returns nil.
 func WorldNodeCacheOf(database db.Database) *NodeCache {
 	if m, ok := database.(*databaseWithCacheManager); ok {
 		return m.getWorldNodeCache()
@@ -50,6 +52,8 @@ func WorldNodeCacheOf(database db.Database) *NodeCache {
 	return nil
 }
 
+// AccountNodeCacheOf get node cache of the account specified by *id*.
+// If node cache for the account is not enabled, it returns nil.
 func AccountNodeCacheOf(database db.Database, id []byte) *NodeCache {
 	if m, ok := database.(*databaseWithCacheManager); ok {
 		return m.getAccountNodeCache(id)
@@ -57,6 +61,10 @@ func AccountNodeCacheOf(database db.Database, id []byte) *NodeCache {
 	return nil
 }
 
+// AttachManager attach cache manager to the database, and return it.
+// dir is root directory for storing files for cache.
+// mem is number of levels of tree items to store in the memory.
+// file is number of levels of tree items to store in files.
 func AttachManager(database db.Database, dir string, mem, file int) db.Database {
 	return &databaseWithCacheManager{
 		Database: database,
