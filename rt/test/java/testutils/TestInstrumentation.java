@@ -38,7 +38,7 @@ public class TestInstrumentation implements IInstrumentation {
         throw RuntimeAssertionError.unreachable("Not expected in this test");
     }
     @Override
-    public void chargeEnergy(long cost) throws OutOfEnergyException {
+    public void chargeEnergy(int cost) throws OutOfEnergyException {
         // Allocating a new array incurs an energy charge, so we need to allow that.
     }
     @Override
