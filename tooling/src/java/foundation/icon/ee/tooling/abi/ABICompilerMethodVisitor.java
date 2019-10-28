@@ -6,12 +6,17 @@
 package foundation.icon.ee.tooling.abi;
 
 import foundation.icon.ee.types.Method;
+import i.RuntimeAssertionError;
 import org.aion.avm.tooling.abi.ABIUtils;
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
+import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.util.ASMifier;
+import org.objectweb.asm.util.TraceMethodVisitor;
 
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +34,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
     private boolean isOnInstall = false;
     private boolean isFallback = false;
     private boolean isEventLog = false;
+    private MethodVisitor pmv = null;
 
     private static final int MAX_INDEXED_COUNT = 3;
     private static final Set<String> reservedEventNames = Set.of(
@@ -110,6 +116,12 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
             if (reservedEventNames.contains(methodName)) {
                 throw new ABICompilerException("Reserved event log name", methodName);
             }
+            var args = Type.getArgumentTypes(methodDescriptor);
+            for (Type t : args) {
+                if (!dataTypeMap.containsKey(t.getDescriptor())) {
+                    throw new ABICompilerException("Bad argument type for @EventLog method", methodName);
+                }
+            }
             isEventLog = true;
             return new AnnotationVisitor(Opcodes.ASM6) {
                 @Override
@@ -137,6 +149,135 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
     }
 
     @Override
+    public void visitCode() {
+        super.visitCode();
+        if (isEventLog()) {
+            pmv = mv;
+            mv = null;
+        }
+    }
+
+    private void emitSetArrayElementString(int index, String value) {
+        super.visitInsn(Opcodes.DUP);
+        if (index <= 5) {
+            super.visitInsn(Opcodes.ICONST_0 + index);
+        } else {
+            super.visitIntInsn(Opcodes.BIPUSH, index);
+        }
+        super.visitTypeInsn(Opcodes.NEW, "avm/ValueBuffer");
+        super.visitInsn(Opcodes.DUP);
+        super.visitLdcInsn(value);
+        super.visitMethodInsn(Opcodes.INVOKESPECIAL, "avm/ValueBuffer", "<init>", "(Ljava/lang/String;)V", false);
+        super.visitInsn(Opcodes.AASTORE);
+    }
+
+    private void emitSetArrayElementByArg(int index, Type argType, int argPos) {
+        super.visitInsn(Opcodes.DUP);
+        if (index <= 5) {
+            super.visitInsn(Opcodes.ICONST_0 + index);
+        } else {
+            super.visitIntInsn(Opcodes.BIPUSH, index);
+        }
+        super.visitTypeInsn(Opcodes.NEW, "avm/ValueBuffer");
+        super.visitInsn(Opcodes.DUP);
+        switch (argType.getSort()) {
+        case Type.BYTE:
+        case Type.SHORT:
+        case Type.INT:
+        case Type.CHAR:
+        case Type.BOOLEAN:
+            super.visitVarInsn(Opcodes.ILOAD, argPos);
+            break;
+        case Type.LONG:
+            super.visitVarInsn(Opcodes.LLOAD, argPos);
+            break;
+        case Type.ARRAY:
+        case Type.OBJECT:
+            super.visitVarInsn(Opcodes.ALOAD, argPos);
+            break;
+        default:
+            RuntimeAssertionError.unreachable("bad param type "+argType+" for @EventLog");
+        }
+        super.visitMethodInsn(Opcodes.INVOKESPECIAL, "avm/ValueBuffer", "<init>", "("+argType.getDescriptor()+")V", false);
+        super.visitInsn(Opcodes.AASTORE);
+    }
+
+    private static String getEventParamType(Type type) {
+        switch (type.getSort()) {
+        case Type.BYTE:
+        case Type.SHORT:
+        case Type.INT:
+        case Type.CHAR:
+        case Type.LONG:
+            return "int";
+        case Type.BOOLEAN:
+            return "bool";
+        case Type.ARRAY:
+            if (type.getDescriptor().equals("[B")) {
+                return "bytes";
+            }
+        case Type.OBJECT:
+            if (type.getDescriptor().equals("Ljava/lang/String;")) {
+                return "str";
+            } else if (type.getDescriptor().equals("Ljava/math/BigInteger;")) {
+                return "int";
+            } else if (type.getDescriptor().equals("Lavm/Address;")) {
+                return "Address";
+            }
+        default:
+            RuntimeAssertionError.unreachable("bad param type "+type+" for @EventLog");
+        }
+        return null;
+    }
+
+    private String getEventSignature(Type[] args) {
+        StringBuffer sb = new StringBuffer();
+        sb.append(methodName);
+        sb.append("(");
+        for (int i=0; i<args.length; i++) {
+            if (i>0) {
+                sb.append(",");
+            }
+            sb.append(getEventParamType(args[i]));
+        }
+        sb.append(")");
+        return sb.toString();
+    }
+
+    private void emitEventLogBody(Type[] args, int argsSize) {
+        int argPos = 0;
+        // Value[] indexedArr = new Value[${indexed+1}];
+        super.visitIntInsn(Opcodes.BIPUSH, indexed+1);
+        super.visitTypeInsn(Opcodes.ANEWARRAY, "avm/Value");
+        // indexedArr[0] = ${event signature};
+        emitSetArrayElementString(0, getEventSignature(args));
+        for (int i=0; i<indexed; i++) {
+            // indexedArr[${i+1}] = ValueBuffer.of(${args[i]});
+            emitSetArrayElementByArg(i+1, args[i], argPos);
+            argPos += args[i].getSize();
+        }
+        super.visitVarInsn(Opcodes.ASTORE, argsSize);
+
+        // Value[] dataArr = new Value[${args.len-indexed}];
+        super.visitIntInsn(Opcodes.BIPUSH, args.length-indexed);
+        super.visitTypeInsn(Opcodes.ANEWARRAY, "avm/Value");
+        for (int i=0; i<args.length-indexed; i++) {
+            // dataArr[$i] = ValueBuffer.of(${args[indexed+i]});
+            emitSetArrayElementByArg(i, args[indexed+i], argPos);
+            argPos += args[indexed+i].getSize();
+        }
+        super.visitVarInsn(Opcodes.ASTORE, argsSize+1);
+
+        // Blockchain.log(indexedArr, dataArr);
+        super.visitVarInsn(Opcodes.ALOAD, argsSize);
+        super.visitVarInsn(Opcodes.ALOAD, argsSize+1);
+        //super.visitMethodInsn(Opcodes.INVOKESTATIC, "avm/Blockchain", "log", "([Lavm/Value;[Lavm/Value;)V", false);
+        super.visitMethodInsn(Opcodes.INVOKESTATIC, "avm/Blockchain", "log", "([Ljava/lang/Object;[Ljava/lang/Object;)V", false);
+        super.visitInsn(Opcodes.RETURN);
+        super.visitMaxs(0, 0);
+    }
+
+    @Override
     public void visitEnd() {
         if (isOnInstall() && this.flags != 0) {
             throw new ABICompilerException("onInstall method cannot be annotated", methodName);
@@ -151,6 +292,36 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
                 paramNames.size() != Type.getArgumentTypes(methodDescriptor).length) {
             throw new ABICompilerException(
                     "Method parameters size mismatch (must compile with \'-parameters\')", methodName);
+        }
+        if (pmv != null) {
+            mv = pmv;
+            pmv = null;
+        }
+        if (isEventLog()) {
+            final boolean TRACE = false;
+            MethodNode node;
+            if (TRACE) {
+                node = new MethodNode(Opcodes.ASM6);
+                pmv = mv;
+                mv = node;
+            }
+            var args = Type.getArgumentTypes(methodDescriptor);
+            if (args.length >= Byte.MAX_VALUE) {
+                throw new ABICompilerException("Too many args in @EventLog method", methodName);
+            }
+            var argsSize = (Type.getArgumentsAndReturnSizes(methodDescriptor)>>2)-1;
+            emitEventLogBody(args, argsSize);
+
+            if (TRACE) {
+                var asmifier = new ASMifier();
+                node.accept(new TraceMethodVisitor(asmifier));
+                var pw = new PrintWriter(System.out);
+                asmifier.print(pw);
+                pw.flush();
+                node.accept(pmv);
+                mv = pmv;
+                pmv = null;
+            }
         }
         super.visitEnd();
     }
