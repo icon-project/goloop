@@ -356,10 +356,15 @@ public class DAppCreator {
                 // Read the class to check our static geometry limits before running this through our high-level ASM rejection pipeline.
                 // (note that this processing is done for HistogramDataCollector, back in AvmImpl, but this duplication isn't a large concern since that is disabled, by default).
                 ClassFileInfoBuilder.ClassFileInfo classFileInfo = ClassFileInfoBuilder.getDirectClassFileInfo(classBytecode);
+
                 // Impose class-level restrictions.
                 if (classFileInfo.definedMethods.size() > ConsensusLimitConstants.MAX_METHOD_COUNT) {
                     throw RejectedClassException.maximumMethodCountExceeded(name);
                 }
+                if (classFileInfo.constantPoolEntryCount > ConsensusLimitConstants.MAX_CONSTANT_POOL_ENTRIES) {
+                    throw RejectedClassException.maximumConstantPoolEntriesExceeded(name);
+                }
+
                 // Impose method-level restrictions.
                 for (ClassFileInfoBuilder.MethodCode methodCode : classFileInfo.definedMethods) {
                     if (methodCode.codeLength > ConsensusLimitConstants.MAX_METHOD_BYTE_LENGTH) {

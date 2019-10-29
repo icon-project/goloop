@@ -89,6 +89,10 @@ public class RejectedClassException extends AvmException {
         throw new RejectedClassException("Class exceeds maximum number of methods: " + className);
     }
 
+    public static RejectedClassException maximumConstantPoolEntriesExceeded(String className) {
+        throw new RejectedClassException("Class exceeds maximum number of constant pool entries: " + className);
+    }
+
     public RejectedClassException(String message) {
         super(message);
     }

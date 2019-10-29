@@ -59,4 +59,10 @@ public class ConsensusLimitConstants {
      * This also puts a tighter restriction on what would be required to implement the AVM natively.
      */
     public static final int MAX_METHOD_COUNT = 511;
+    /*
+     * We impose a maximum on the number of constant pool entries to ensure that our bytecode instrumentation implementation
+     * details cannot be observed at the level of consensus.
+     * This also puts a tighter restriction on what would be required to implement the AVM natively.
+     */
+    public static final int MAX_CONSTANT_POOL_ENTRIES = 4095;
 }
