@@ -143,10 +143,10 @@ public class RLPCoderTest {
 
 
                 new ObjectCase(Character.avm_valueOf((char)0x7f), bytes(0x7f)),
-                new ObjectCase(Character.avm_valueOf((char)0x80), bytes(0x81, 0x80)),
+                new ObjectCase(Character.avm_valueOf((char)0x80), bytes(0x82, 0x00, 0x80)),
                 new ObjectCase(Character.avm_valueOf((char)0x7fff), bytes(0x82, 0x7f, 0xff)),
-                new ObjectCase(Character.avm_valueOf((char)0x8000), bytes(0x82, 0x80, 0x00)),
-                new ObjectCase(Character.avm_valueOf((char)0xffff), bytes(0x82, 0xff, 0xff)),
+                new ObjectCase(Character.avm_valueOf((char)0x8000), bytes(0x83, 0x00, 0x80, 0x00)),
+                new ObjectCase(Character.avm_valueOf((char)0xffff), bytes(0x83, 0x00, 0xff, 0xff)),
 
                 new ObjectCase(new Address(bytesL(21)), bytesL(22, 0x80+21)),
 
