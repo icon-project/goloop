@@ -364,6 +364,9 @@ public class DAppCreator {
                     if (methodCode.exceptionTableSize > ConsensusLimitConstants.MAX_EXCEPTION_TABLE_ENTRIES) {
                         throw RejectedClassException.maximumExceptionTableEntriesExceeded(name);
                     }
+                    if (methodCode.maxStack > ConsensusLimitConstants.MAX_OPERAND_STACK_DEPTH) {
+                        throw RejectedClassException.maximumOperandStackDepthExceeded(name);
+                    }
                 }
 
                 // Now, proceed with the ASM pipeline for high-level rejection and renaming.

@@ -77,6 +77,10 @@ public class RejectedClassException extends AvmException {
         throw new RejectedClassException("Class exceeds maximum exception table size for a method: " + className);
     }
 
+    public static RejectedClassException maximumOperandStackDepthExceeded(String className) {
+        throw new RejectedClassException("Class exceeds maximum operand stack depth for a method: " + className);
+    }
+
     public RejectedClassException(String message) {
         super(message);
     }
