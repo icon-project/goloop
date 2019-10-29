@@ -3,6 +3,7 @@ package s.java.lang;
 import a.Array;
 import i.IInstrumentation;
 import i.IObject;
+import org.aion.avm.EnergyCalculator;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 
 
@@ -19,7 +20,7 @@ public final class System extends Object{
                                      IObject dest, int destPos,
                                      int length)
     {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.System_avm_arraycopy + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_1 * java.lang.Math.max(length, 0));
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(RuntimeMethodFeeSchedule.System_avm_arraycopy, java.lang.Math.max(length, 0)));
         if(src == null || dest == null){
             throw new NullPointerException();
         } else if (!((src instanceof Array) && (dest instanceof Array))){

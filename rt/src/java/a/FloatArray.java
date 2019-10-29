@@ -3,6 +3,7 @@ package a;
 import i.*;
 import java.util.Arrays;
 
+import org.aion.avm.EnergyCalculator;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 
 public class FloatArray extends Array {
@@ -20,7 +21,7 @@ public class FloatArray extends Array {
      * @return New empty float array wrapper
      */
     public static FloatArray initArray(int size){
-        chargeEnergy(size * ArrayElement.FLOAT.getEnergy());
+        chargeEnergyInitArray(size, ArrayElement.FLOAT.getEnergy());
         return new FloatArray(size);
     }
 
@@ -42,7 +43,7 @@ public class FloatArray extends Array {
 
     @Override
     public IObject avm_clone() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.FloatArray_avm_clone + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * length());
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.FloatArray_avm_clone, length()));
         lazyLoad();
         return new FloatArray(Arrays.copyOf(underlying, underlying.length));
     }

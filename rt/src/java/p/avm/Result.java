@@ -3,6 +3,7 @@ package p.avm;
 import a.ByteArray;
 import a.CharArray;
 import i.IObject;
+import org.aion.avm.EnergyCalculator;
 import s.java.lang.Object;
 import i.IInstrumentation;
 import org.aion.avm.RuntimeMethodFeeSchedule;
@@ -36,7 +37,7 @@ public final class Result extends Object {
         int lengthForBilling = null != this.returnData
                 ? this.returnData.length()
                 : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Result_avm_toString + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * lengthForBilling);
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.Result_avm_toString, lengthForBilling));
         lazyLoad();
         String returnDataString = (null != this.returnData)
                 ? toHexString(this.returnData.getUnderlying())
@@ -64,7 +65,7 @@ public final class Result extends Object {
                 ? java.lang.Math.min(((Result) obj).returnData.length(), this.returnData.length())
                 : 0;
         // Billing is done similar to Arrays.equals()
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Result_avm_equals + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * lengthForBilling);
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.Result_avm_equals, lengthForBilling));
         boolean isEqual = this == obj;
         if (!isEqual && (obj instanceof Result)) {
             Result other = (Result) obj;
@@ -90,7 +91,7 @@ public final class Result extends Object {
                 ?this.returnData.getUnderlying().length
                 :0;
         // Billing is done similar to Arrays.hashcode()
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Result_avm_hashCode + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * lengthForBilling);
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.Result_avm_hashCode, lengthForBilling));
         lazyLoad();
         // Just a really basic implementation.
         int code = 0;

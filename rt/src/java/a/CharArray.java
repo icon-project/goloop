@@ -3,6 +3,7 @@ package a;
 import i.*;
 import java.util.Arrays;
 
+import org.aion.avm.EnergyCalculator;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 
 public class CharArray extends Array {
@@ -20,7 +21,7 @@ public class CharArray extends Array {
      * @return New empty char array wrapper
      */
     public static CharArray initArray(int size){
-        chargeEnergy(size * ArrayElement.CHAR.getEnergy());
+        chargeEnergyInitArray(size, ArrayElement.CHAR.getEnergy());
         return new CharArray(size);
     }
 
@@ -42,7 +43,7 @@ public class CharArray extends Array {
 
     @Override
     public IObject avm_clone() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.CharArray_avm_clone + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * length());
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.CharArray_avm_clone, length()));
         lazyLoad();
         return new CharArray(Arrays.copyOf(underlying, underlying.length));
     }

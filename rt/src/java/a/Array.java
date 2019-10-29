@@ -2,6 +2,7 @@ package a;
 
 import i.IInstrumentation;
 import i.IObject;
+import org.aion.avm.EnergyCalculator;
 import s.java.lang.Cloneable;
 import s.java.lang.Object;
 
@@ -27,12 +28,28 @@ public abstract class Array extends Object implements Cloneable, IArray {
     public abstract IObject avm_clone();
 
     /**
-     * Note that this helper exists primarily so it can be called by generated/instrumented code.
-     * Since the array code is not generally in the same class loader of the DApp, it can't call the runtime class, directly.
-     * 
-     * @param cost The energy cost to charge the current DApp.
+     * Note that this helper exists primarily to calculate the energy cost for initArray operation.
+     * Energy charged equals length * perElementFee
+     *
+     * @param length        length of the array.
+     * @param perElementFee energy to be charged per element depending on type.
      */
-    static protected void chargeEnergy(int cost){
+    static protected void chargeEnergyInitArray(int length, int perElementFee) {
+        int cost = EnergyCalculator.multiply(length, perElementFee);
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(cost);
+    }
+
+    /**
+     * Note that this helper exists primarily so it can be called by generated/instrumented code
+     * to calculate and charge energy for array clone operation.
+     * Energy charged equals baseFee + length * RT_METHOD_FEE_FACTOR_LEVEL_2
+     * Since the array code is not generally in the same class loader of the DApp, it can't call the runtime class, directly.
+     *
+     * @param baseFee cloning base fee
+     * @param length  length of array
+     */
+    static protected void chargeEnergyClone(int baseFee, int length) {
+        int cost = EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(baseFee, length);
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(cost);
     }
 }

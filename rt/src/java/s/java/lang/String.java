@@ -10,6 +10,7 @@ import i.IObjectSerializer;
 
 import java.nio.charset.StandardCharsets;
 
+import org.aion.avm.EnergyCalculator;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 import s.java.io.Serializable;
 
@@ -34,17 +35,17 @@ public final class String extends Object implements Comparable<String>, CharSequ
         int lengthForBilling = (null != value)
                 ? value.length()
                 : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_constructor_2 + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * lengthForBilling);
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_constructor_2, lengthForBilling));
         this.v = new java.lang.String(value.getUnderlying());
     }
 
     public String(CharArray value, int offset, int count) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_constructor_3 + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * java.lang.Math.max(count, 0));
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_constructor_3, java.lang.Math.max(count, 0)));
         this.v = new java.lang.String(value.getUnderlying(), offset, count);
     }
 
     public String(ByteArray bytes, int offset, int length){
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_constructor_7 + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * java.lang.Math.max(length, 0));
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_constructor_7, java.lang.Math.max(length, 0)));
         this.v = new java.lang.String(bytes.getUnderlying(), offset, length);
     }
 
@@ -52,7 +53,7 @@ public final class String extends Object implements Comparable<String>, CharSequ
         int lengthForBilling = (null != bytes)
                 ? bytes.length()
                 : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_constructor_8 + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * lengthForBilling);
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_constructor_8, lengthForBilling));
         this.v = new java.lang.String(bytes.getUnderlying());
     }
 
@@ -60,7 +61,7 @@ public final class String extends Object implements Comparable<String>, CharSequ
         int lengthForBilling = (null != buffer)
                 ? buffer.internalLength()
                 : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_constructor_9 + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * lengthForBilling);
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_constructor_9, lengthForBilling));
         this.v = new java.lang.String(buffer.getUnderlying());
     }
 
@@ -68,7 +69,7 @@ public final class String extends Object implements Comparable<String>, CharSequ
         int lengthForBilling = (null != builder)
                 ? builder.internalLength()
                 : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_constructor_10 + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * lengthForBilling);
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_constructor_10, lengthForBilling));
         this.v = new java.lang.String(builder.getUnderlying());
     }
 
@@ -90,13 +91,13 @@ public final class String extends Object implements Comparable<String>, CharSequ
     }
 
     public void avm_getChars(int srcBegin, int srcEnd, CharArray dst, int dstBegin) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_getChars + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * java.lang.Math.max(srcEnd - srcBegin, 0));
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_getChars, java.lang.Math.max(srcEnd - srcBegin, 0)));
         lazyLoad();
         this.v.getChars(srcBegin, srcEnd, dst.getUnderlying(), dstBegin);
     }
 
     public ByteArray avm_getBytes(){
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_getBytes_1 + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * internalLength());
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_getBytes_1, internalLength()));
         lazyLoad();
         return new ByteArray(this.v.getBytes(StandardCharsets.UTF_8));
     }
@@ -105,7 +106,7 @@ public final class String extends Object implements Comparable<String>, CharSequ
         int otherLength = (anObject instanceof String)
                 ? ((String) anObject).internalLength()
                 : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_equals + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * java.lang.Math.min(otherLength, internalLength()));
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_equals, java.lang.Math.min(otherLength, internalLength())));
         if (!(anObject instanceof String)){
             return false;
         }
@@ -121,7 +122,7 @@ public final class String extends Object implements Comparable<String>, CharSequ
         int otherLength = (sb != null)
                 ? sb.internalLength()
                 : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_contentEquals + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * java.lang.Math.min(otherLength, internalLength()));
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_contentEquals, java.lang.Math.min(otherLength, internalLength())));
         lazyLoad();
         return this.v.contentEquals(sb.getUnderlying());
     }
@@ -130,7 +131,7 @@ public final class String extends Object implements Comparable<String>, CharSequ
         int otherLength = (null != cs)
                 ? cs.avm_length()
                 : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_contentEquals_1 + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * java.lang.Math.min(otherLength, internalLength()));
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_contentEquals_1, java.lang.Math.min(otherLength, internalLength())));
         lazyLoad();
         return this.v.contentEquals(cs.avm_toString().getUnderlying());
     }
@@ -139,7 +140,7 @@ public final class String extends Object implements Comparable<String>, CharSequ
         int otherLength = (anotherString != null)
                 ? anotherString.internalLength()
                 : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_equalsIgnoreCase + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * java.lang.Math.min(otherLength, internalLength()));
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_equalsIgnoreCase, java.lang.Math.min(otherLength, internalLength())));
         lazyLoad();
         java.lang.String underlying = (null != anotherString)
                 ? anotherString.getUnderlying()
@@ -151,7 +152,7 @@ public final class String extends Object implements Comparable<String>, CharSequ
         int otherLength = (anotherString != null)
                 ? anotherString.internalLength()
                 : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_compareTo + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * java.lang.Math.min(otherLength, internalLength()));
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_compareTo, java.lang.Math.min(otherLength, internalLength())));
         lazyLoad();
         return this.v.compareTo(anotherString.getUnderlying());
     }
@@ -160,19 +161,19 @@ public final class String extends Object implements Comparable<String>, CharSequ
         int otherLength = (str != null)
                 ? str.internalLength()
                 : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_compareToIgnoreCase + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * java.lang.Math.min(otherLength, internalLength()));
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_compareToIgnoreCase, java.lang.Math.min(otherLength, internalLength())));
         lazyLoad();
         return this.v.compareToIgnoreCase(str.v);
     }
 
     public boolean avm_regionMatches(int toffset, String other, int ooffset, int len) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_regionMatches + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * java.lang.Math.max(len, 0));
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_regionMatches, java.lang.Math.max(len, 0)));
         lazyLoad();
         return this.v.regionMatches(toffset, other.v, ooffset, len);
     }
 
     public boolean avm_regionMatches(boolean ignoreCase, int toffset, String other, int ooffset, int len) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_regionMatches_1 + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * java.lang.Math.max(len, 0));
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_regionMatches_1, java.lang.Math.max(len, 0)));
         lazyLoad();
         return this.v.regionMatches(ignoreCase, toffset, other.v, ooffset, len);
     }
@@ -181,7 +182,7 @@ public final class String extends Object implements Comparable<String>, CharSequ
         int lengthForBilling = (null != prefix)
                 ? prefix.internalLength()
                 : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_startsWith + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * lengthForBilling);
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_startsWith, lengthForBilling));
         lazyLoad();
         return this.v.startsWith(prefix.v, toffset);
     }
@@ -190,7 +191,7 @@ public final class String extends Object implements Comparable<String>, CharSequ
         int lengthForBilling = (null != prefix)
                 ? prefix.internalLength()
                 : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_startsWith_1 + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * lengthForBilling);
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_startsWith_1, lengthForBilling));
         lazyLoad();
         return this.v.startsWith(prefix.v);
     }
@@ -199,110 +200,110 @@ public final class String extends Object implements Comparable<String>, CharSequ
         int lengthForBilling = (null != prefix)
                 ? prefix.internalLength()
                 : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_endsWith + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * lengthForBilling);
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_endsWith, lengthForBilling));
         lazyLoad();
         return this.v.endsWith(prefix.v);
     }
 
     @Override
     public int avm_hashCode() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_hashCode + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * internalLength());
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_hashCode, internalLength()));
         lazyLoad();
         return this.v.hashCode();
     }
 
     public int avm_indexOf(int ch) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_indexOf + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * internalLength());
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_indexOf, internalLength()));
         lazyLoad();
         return this.v.indexOf(ch);
     }
 
     public int avm_indexOf(int ch, int fromIndex) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_indexOf_1 + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * java.lang.Math.max(internalLength() - fromIndex, 0));
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_indexOf_1, java.lang.Math.max(internalLength() - fromIndex, 0)));
         lazyLoad();
         return this.v.indexOf(ch, fromIndex);
     }
 
     public int avm_lastIndexOf(int ch) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_lastIndexOf + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * internalLength());
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_lastIndexOf, internalLength()));
         lazyLoad();
         return this.v.lastIndexOf(ch);
     }
 
     public int avm_lastIndexOf(int ch, int fromIndex) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_lastIndexOf_1 + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * java.lang.Math.max(internalLength() - fromIndex, 0));
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_lastIndexOf_1, java.lang.Math.max(internalLength() - fromIndex, 0)));
         lazyLoad();
         return this.v.lastIndexOf(ch, fromIndex);
     }
 
     public int avm_indexOf(String str) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_indexOf_2 + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * internalLength());
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_indexOf_2, internalLength()));
         lazyLoad();
         str.lazyLoad();
         return this.v.indexOf(str.v);
     }
 
     public int avm_lastIndexOf(String str) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_lastIndexOf_2 + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * internalLength());
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_lastIndexOf_2, internalLength()));
         lazyLoad();
         str.lazyLoad();
         return this.v.lastIndexOf(str.v);
     }
 
     public int avm_lastIndexOf(String str, int fromIndex) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_lastIndexOf_3 + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * java.lang.Math.max(internalLength() - fromIndex, 0));
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_lastIndexOf_3, java.lang.Math.max(internalLength() - fromIndex, 0)));
         lazyLoad();
         str.lazyLoad();
         return this.v.lastIndexOf(str.v, fromIndex);
     }
 
     public String avm_substring(int beginIndex) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_substring + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * java.lang.Math.max(internalLength() - beginIndex, 0));
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_substring, java.lang.Math.max(internalLength() - beginIndex, 0)));
         lazyLoad();
         return new String(this.v.substring(beginIndex));
     }
 
     public String avm_substring(int beginIndex, int endIndex) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_substring_1 + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * java.lang.Math.max(endIndex - beginIndex, 0));
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_substring_1, java.lang.Math.max(endIndex - beginIndex, 0)));
         lazyLoad();
         return new String(this.v.substring(beginIndex, endIndex));
     }
 
     public CharSequence avm_subSequence(int beginIndex, int endIndex){
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_subSequence + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * java.lang.Math.max(endIndex - beginIndex, 0));
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_subSequence, java.lang.Math.max(endIndex - beginIndex, 0)));
         lazyLoad();
         return new String(this.v.subSequence(beginIndex, endIndex).toString());
     }
 
     public String avm_concat(String str){
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_concat + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * (str.internalLength() + internalLength()));
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_concat, (str.internalLength() + internalLength())));
         lazyLoad();
         str.lazyLoad();
         return new String(this.v.concat(str.v));
     }
 
     public String avm_replace(char oldChar, char newChar) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_replace + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * internalLength());
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_replace, internalLength()));
         lazyLoad();
         return new String(this.v.replace(oldChar, newChar));
     }
 
     public boolean avm_matches(String regex){
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_matches + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * internalLength());
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_matches, internalLength()));
         lazyLoad();
         regex.lazyLoad();
         return this.v.matches(regex.v);
     }
 
     public boolean avm_contains(CharSequence s){
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_contains + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * internalLength());
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_contains, internalLength()));
         lazyLoad();
         ((Object)s).lazyLoad();
         return this.v.indexOf(s.avm_toString().getUnderlying()) >= 0;
     }
 
     public String avm_replaceFirst(String regex, String replacement){
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_replaceFirst + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * internalLength());
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_replaceFirst, internalLength()));
         lazyLoad();
         regex.lazyLoad();
         replacement.lazyLoad();
@@ -310,7 +311,7 @@ public final class String extends Object implements Comparable<String>, CharSequ
     }
 
     public String avm_replaceAll(String regex, String replacement) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_replaceAll + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * internalLength());
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_replaceAll, internalLength()));
         lazyLoad();
         regex.lazyLoad();
         replacement.lazyLoad();
@@ -318,7 +319,7 @@ public final class String extends Object implements Comparable<String>, CharSequ
     }
 
     public String avm_replace(CharSequence target, CharSequence replacement){
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_replace_1 + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * internalLength());
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_replace_1, internalLength()));
         lazyLoad();
         ((Object)target).lazyLoad();
         ((Object)replacement).lazyLoad();
@@ -331,19 +332,19 @@ public final class String extends Object implements Comparable<String>, CharSequ
     //public String[] split(String regex){}
 
     public String avm_toLowerCase(){
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_toLowerCase + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * internalLength());
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_toLowerCase, internalLength()));
         lazyLoad();
         return new String(this.v.toLowerCase());
     }
 
     public String avm_toUpperCase(){
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_toUpperCase + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * internalLength());
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_toUpperCase, internalLength()));
         lazyLoad();
         return new String(this.v.toUpperCase());
     }
 
     public String avm_trim() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_trim + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * internalLength());
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_trim, internalLength()));
         lazyLoad();
         return new String(this.v.trim());
     }
@@ -354,7 +355,7 @@ public final class String extends Object implements Comparable<String>, CharSequ
     }
 
     public CharArray avm_toCharArray() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_toCharArray + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * internalLength());
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_toCharArray, internalLength()));
         lazyLoad();
         return new CharArray(this.v.toCharArray());
     }
@@ -370,19 +371,19 @@ public final class String extends Object implements Comparable<String>, CharSequ
         int lengthForBilling = (null != a)
                 ? a.length()
                 : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_valueOf_1 + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * lengthForBilling);
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_valueOf_1, lengthForBilling));
         a.lazyLoad();
         return new String(java.lang.String.valueOf(a.getUnderlying()));
     }
 
     public static String avm_valueOf(CharArray data, int offset, int count){
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_valueOf_2 + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * java.lang.Math.max(count, 0));
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_valueOf_2, java.lang.Math.max(count, 0)));
         data.lazyLoad();
         return new String(java.lang.String.valueOf(data.getUnderlying(), offset, count));
     }
 
     public static String avm_copyValueOf(CharArray data, int offset, int count){
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_copyValueOf + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * java.lang.Math.max(count, 0));
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_copyValueOf, java.lang.Math.max(count, 0)));
         data.lazyLoad();
         return new String(java.lang.String.copyValueOf(data.getUnderlying(), offset, count));
     }
@@ -391,7 +392,7 @@ public final class String extends Object implements Comparable<String>, CharSequ
         int lengthForBilling = (null != a)
                 ? a.length()
                 : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.String_avm_copyValueOf_1 + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * lengthForBilling);
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_copyValueOf_1, lengthForBilling));
         a.lazyLoad();
         return new String(java.lang.String.copyValueOf(a.getUnderlying()));
     }

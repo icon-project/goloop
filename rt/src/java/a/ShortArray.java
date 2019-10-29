@@ -3,6 +3,7 @@ package a;
 import i.*;
 import java.util.Arrays;
 
+import org.aion.avm.EnergyCalculator;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 
 public class ShortArray extends Array {
@@ -20,7 +21,7 @@ public class ShortArray extends Array {
      * @return New empty short array wrapper
      */
     public static ShortArray initArray(int size){
-        chargeEnergy(size * ArrayElement.SHORT.getEnergy());
+        chargeEnergyInitArray(size, ArrayElement.SHORT.getEnergy());
         return new ShortArray(size);
     }
 
@@ -48,7 +49,7 @@ public class ShortArray extends Array {
 
     @Override
     public IObject avm_clone() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.ShortArray_avm_clone + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * length());
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.ShortArray_avm_clone, length()));
         lazyLoad();
         return new ShortArray(Arrays.copyOf(underlying, underlying.length));
     }
