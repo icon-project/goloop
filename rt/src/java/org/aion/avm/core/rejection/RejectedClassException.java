@@ -81,6 +81,10 @@ public class RejectedClassException extends AvmException {
         throw new RejectedClassException("Class exceeds maximum operand stack depth for a method: " + className);
     }
 
+    public static RejectedClassException maximumLocalVariableCountExceeded(String className) {
+        throw new RejectedClassException("Class exceeds maximum number of local variables for a method: " + className);
+    }
+
     public RejectedClassException(String message) {
         super(message);
     }

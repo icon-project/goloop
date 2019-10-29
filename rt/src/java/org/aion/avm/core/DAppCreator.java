@@ -367,6 +367,9 @@ public class DAppCreator {
                     if (methodCode.maxStack > ConsensusLimitConstants.MAX_OPERAND_STACK_DEPTH) {
                         throw RejectedClassException.maximumOperandStackDepthExceeded(name);
                     }
+                    if (methodCode.maxLocals > ConsensusLimitConstants.MAX_LOCAL_VARIABLES) {
+                        throw RejectedClassException.maximumLocalVariableCountExceeded(name);
+                    }
                 }
 
                 // Now, proceed with the ASM pipeline for high-level rejection and renaming.
