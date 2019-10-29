@@ -73,7 +73,6 @@ public final class Address extends s.java.lang.Object {
 
     @Override
     public String toString() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Address_avm_toString);
         lazyLoad();
         char[] hexChars = toHexChars(this.internalArray);
         return new String(hexChars);

@@ -33,7 +33,10 @@ public final class Result extends Object {
 
     @Override
     public String avm_toString() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Result_avm_toString);
+        int lengthForBilling = null != this.returnData
+                ? this.returnData.length()
+                : 0;
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Result_avm_toString + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * lengthForBilling);
         lazyLoad();
         String returnDataString = (null != this.returnData)
                 ? toHexString(this.returnData.getUnderlying())
@@ -57,20 +60,23 @@ public final class Result extends Object {
 
     @Override
     public boolean avm_equals(IObject obj) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Result_avm_equals);
-
+        int lengthForBilling = (obj instanceof Result && ((Result) obj).returnData != null && this.returnData != null)
+                ? java.lang.Math.min(((Result) obj).returnData.length(), this.returnData.length())
+                : 0;
+        // Billing is done similar to Arrays.equals()
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Result_avm_equals + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * lengthForBilling);
         boolean isEqual = this == obj;
         if (!isEqual && (obj instanceof Result)) {
-            Result other = (Result)obj;
+            Result other = (Result) obj;
             lazyLoad();
             other.lazyLoad();
-            if (this.returnData.length() == other.returnData.length()) {
+
+            if (this.returnData == null && other.returnData == null) {
                 isEqual = true;
-                byte[] us = this.returnData.getUnderlying();
-                byte[] them = other.returnData.getUnderlying();
-                for (int i = 0; isEqual && (i < us.length); ++i) {
-                    isEqual = (us[i] == them[i]);
-                }
+            } else if (this.returnData != null && other.returnData != null) {
+                isEqual = returnData.equals(other.returnData);
+            } else {
+                isEqual = false;
             }
 
             isEqual = isEqual && (this.success == other.success);
@@ -80,12 +86,18 @@ public final class Result extends Object {
 
     @Override
     public int avm_hashCode() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Result_avm_hashCode);
+        int lengthForBilling = this.returnData != null
+                ?this.returnData.getUnderlying().length
+                :0;
+        // Billing is done similar to Arrays.hashcode()
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Result_avm_hashCode + RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2 * lengthForBilling);
         lazyLoad();
         // Just a really basic implementation.
         int code = 0;
-        for (byte elt : this.returnData.getUnderlying()) {
-            code += (int)elt;
+        if (this.returnData != null) {
+            for (byte elt : this.returnData.getUnderlying()) {
+                code += (int) elt;
+            }
         }
 
         code += this.success ? 1 : 0;

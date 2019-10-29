@@ -53,6 +53,7 @@ public final class RoundingMode extends Enum<RoundingMode>{
     }
 
     public static RoundingMode avm_valueOf(String request){
+        // This fee matches Enum's avm_valueOf
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.RoundingMode_avm_valueOf);
         return internalValueOf(request);
     }

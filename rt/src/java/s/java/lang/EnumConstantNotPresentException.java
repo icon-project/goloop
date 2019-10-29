@@ -1,6 +1,7 @@
 package s.java.lang;
 
 import i.IInstrumentation;
+import org.aion.avm.RuntimeMethodFeeSchedule;
 
 
 /**
@@ -27,11 +28,13 @@ public class EnumConstantNotPresentException extends RuntimeException {
     }
 
     public String avm_constantName() {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Throwable_Hierarchy_Base_Fee);
         lazyLoad();
         return this.constantName;
     }
 
     public Class<? extends Enum> avm_enumType() {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Throwable_Hierarchy_Base_Fee);
         lazyLoad();
         return this.enumType;
     }

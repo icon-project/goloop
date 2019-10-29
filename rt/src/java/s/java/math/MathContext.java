@@ -53,6 +53,7 @@ public final class MathContext extends Object implements Serializable {
     }
 
     public RoundingMode avm_getRoundingMode() {
+        // This fee matches Enum's avm_valueOf
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.MathContext_avm_getRoundingMode);
         lazyLoad();
         return RoundingMode.internalValueOf(new String(this.v.getRoundingMode().name()));
@@ -71,6 +72,7 @@ public final class MathContext extends Object implements Serializable {
     }
 
     public int avm_hashCode() {
+        // This fee matches Enum's avm_valueOf
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.MathContext_avm_hashCode);
         lazyLoad();
         RoundingMode roundingMode = RoundingMode.internalValueOf(new String(this.v.getRoundingMode().name()));

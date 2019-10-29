@@ -16,6 +16,7 @@ public final class Long extends Number implements Comparable<Long> {
     public static final Class<Long> avm_TYPE = new Class(java.lang.Long.TYPE, new ConstantToken(ShadowClassConstantId.Long_avm_TYPE));
 
     public static String avm_toString(long i, int radix) {
+        // Billing associated with this method is set to level 4 because of slow execution time of radix 2
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Long_avm_toString);
         return new String(java.lang.Long.toString(i, radix));
     }

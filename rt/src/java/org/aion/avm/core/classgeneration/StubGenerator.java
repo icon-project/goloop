@@ -114,6 +114,7 @@ public class StubGenerator {
         {
             // NOTE:  These methods need to exist with the UserClassMappingVisitor.mapMethodName("" prefixes, since the shadow library is post-shadow.
             String returnThrowable = "()L" + PackageConstants.kShadowSlashPrefix + "java/lang/Throwable;";
+            // This method does not require a charge energy call since it's calling avm_getCause and the billing is done there
             MethodVisitor methodVisitor = out.visitMethod(Opcodes.ACC_PUBLIC, NamespaceMapper.mapMethodName("getException"), returnThrowable, null, null);
             methodVisitor.visitCode();
             methodVisitor.visitVarInsn(Opcodes.ALOAD, 0);

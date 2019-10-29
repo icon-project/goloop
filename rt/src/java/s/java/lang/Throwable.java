@@ -2,6 +2,7 @@ package s.java.lang;
 
 import org.aion.avm.ClassNameExtractor;
 import i.IInstrumentation;
+import org.aion.avm.RuntimeMethodFeeSchedule;
 import s.java.io.Serializable;
 
 /**
@@ -50,27 +51,32 @@ public class Throwable extends Object implements Serializable {
     }
 
     public String avm_getMessage() {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Throwable_Hierarchy_Base_Fee);
         lazyLoad();
         return this.message;
     }
 
     public String avm_getLocalizedMessage() {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Throwable_Hierarchy_Base_Fee);
         lazyLoad();
         return this.message;
     }
 
     public Throwable avm_getCause() {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Throwable_Hierarchy_Base_Fee);
         lazyLoad();
         return this.cause;
     }
 
     public Throwable avm_initCause(Throwable cause) {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Throwable_Hierarchy_Base_Fee);
         lazyLoad();
         this.cause = cause;
         return this;
     }
 
     public String avm_toString() {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Throwable_avm_toString);
         lazyLoad();
         String s = new String(ClassNameExtractor.getOriginalClassName(getClass().getName()));
         return (this.message != null) ? new String(s + ": " + this.message) : s;

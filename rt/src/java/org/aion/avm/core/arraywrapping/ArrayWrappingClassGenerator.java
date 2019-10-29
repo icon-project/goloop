@@ -373,7 +373,7 @@ public class ArrayWrappingClassGenerator implements Opcodes {
 
         // energy charge
         methodVisitor.visitLdcInsn(RuntimeMethodFeeSchedule.ObjectArray_avm_clone);
-        methodVisitor.visitLdcInsn(RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR);
+        methodVisitor.visitLdcInsn(RuntimeMethodFeeSchedule.RT_METHOD_FEE_FACTOR_LEVEL_2);
         methodVisitor.visitVarInsn(ALOAD, 0);
         methodVisitor.visitMethodInsn(INVOKEVIRTUAL, wrapper, "length", "()I", false);
         methodVisitor.visitInsn(IMUL);

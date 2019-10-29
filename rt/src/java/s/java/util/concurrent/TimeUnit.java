@@ -79,6 +79,7 @@ public final class TimeUnit extends Enum<TimeUnit> {
     }
 
     public static TimeUnit avm_valueOf(String request) {
+        // This fee matches Enum's avm_valueOf
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.TimeUnit_avm_valueOf);
         return Enum.internalValueOf(new Class<>(TimeUnit.class), request);
     }
