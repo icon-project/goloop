@@ -46,7 +46,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 
 public class TransactionExecutor {
-    private static final Logger logger = LoggerFactory.getLogger(TransactionExecutor.class);
+    private final Logger logger = LoggerFactory.getLogger(TransactionExecutor.class);
     private static final String CODE_JAR = "code.jar";
     private static final String CMD_INSTALL = "onInstall";
     private static final String APIS_NAME = "META-INF/APIS";
@@ -227,7 +227,6 @@ public class TransactionExecutor {
 
         Object getDecodedReturnData() {
             if (!isSuccess()) {
-                logger.debug("Contract call failed with error: {}", getErrorMessage());
                 return null;
             }
             return ABIUtil.decodeOneObject(result.copyOfTransactionOutput().orElseThrow());

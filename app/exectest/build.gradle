@@ -4,7 +4,8 @@ dependencies {
     implementation 'org.slf4j:slf4j-api:1.7.26'
     implementation project(':exec')
 
-    runtimeOnly 'org.slf4j:slf4j-simple:1.7.26'
+//    runtimeOnly 'org.slf4j:slf4j-simple:1.7.26'
+    runtimeOnly project(':logger')
     runtimeOnly 'org.ow2.asm:asm-analysis:6.2.1'
 }
 
@@ -12,6 +13,6 @@ application {
     mainClassName = 'TransactionExecutorTest'
     applicationDefaultJvmArgs = [
         '-Djava.library.path=' + project(':exec').buildDir + '/native',
-        '-Dorg.slf4j.simpleLogger.defaultLogLevel=DEBUG'
+        '-Dfoundation.icon.ee.logger.defaultLogLevel=debug'
     ]
 }

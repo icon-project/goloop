@@ -29,7 +29,16 @@ import java.io.IOException;
 import java.math.BigInteger;
 
 public class EEProxy extends Proxy {
-    private static final Logger logger = LoggerFactory.getLogger(EEProxy.class);
+    private final Logger logger = LoggerFactory.getLogger(EEProxy.class);
+    private static ThreadLocal<EEProxy> threadLocal = new ThreadLocal<>();
+
+    public static final int LOG_PANIC = 0;
+    public static final int LOG_FATAL = 1;
+    public static final int LOG_ERROR = 2;
+    public static final int LOG_WARN = 3;
+    public static final int LOG_INFO = 4;
+    public static final int LOG_DEBUG = 5;
+    public static final int LOG_TRACE = 6;
 
     private OnGetApiListener mOnGetApiListener;
     private OnInvokeListener mOnInvokeListener;
@@ -70,7 +79,12 @@ public class EEProxy extends Proxy {
     }
 
     public EEProxy(Client client) {
-        super(client, logger);
+        super(client);
+        threadLocal.set(this);
+    }
+
+    public static EEProxy getProxy() {
+        return threadLocal.get();
     }
 
     public void connect(String uuid) throws IOException {
@@ -170,6 +184,10 @@ public class EEProxy extends Proxy {
                 flags ? 1 : 0,
                 objectGraph.getNextHash(),
                 flags ? objectGraph.getGraphData() : null);
+    }
+
+    public void log(int level, String msg) throws IOException {
+        sendMessage(MsgType.LOG, level, msg);
     }
 
     public void log(byte[][]indexed, byte[][] data) throws IOException {

@@ -28,12 +28,13 @@ import org.msgpack.value.Value;
 import java.io.IOException;
 import java.math.BigInteger;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.msgpack.value.ValueType.ARRAY;
 
 public abstract class Proxy {
     private final Client client;
-    private final Logger logger;
+    private final Logger logger = LoggerFactory.getLogger(Proxy.class);
     private final MessageUnpacker unpacker;
 
     static class Message {
@@ -46,9 +47,8 @@ public abstract class Proxy {
         }
     }
 
-    protected Proxy(Client client, Logger logger) {
+    protected Proxy(Client client) {
         this.client = client;
-        this.logger = logger;
         unpacker = MessagePack.newDefaultUnpacker(client.getInputStream());
     }
 

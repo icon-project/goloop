@@ -2,6 +2,8 @@ rootProject.name = 'goloop-javaee'
 include 'rt',
     'exec',
     'tooling',
+    'logger',
     'app:proxytest',
     'app:exectest',
     'app:dappcomp'
+

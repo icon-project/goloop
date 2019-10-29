@@ -48,7 +48,7 @@ public class Client {
     private void initialize() throws IOException {
         File f = new File(path);
         if (!f.exists()) {
-            throw new IOException("Unable to open socket file");
+            throw new IOException("Unable to open socket file(" + path + ")");
         }
 
         // Connect to the target

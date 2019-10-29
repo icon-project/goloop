@@ -24,10 +24,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ExecutorManager {
-    private static final Logger logger = LoggerFactory.getLogger(ExecutorManager.class);
+    private final Logger logger = LoggerFactory.getLogger(ExecutorManager.class);
     private Map<String, TransactionExecutor> execMap;
     private ManagerProxy proxy;
-
     private String execSockAddr;
 
     public ExecutorManager(String sockAddr) throws IOException {
@@ -54,10 +53,10 @@ public class ExecutorManager {
             logger.info(uuid + " already exists");
             return;
         }
-        TransactionExecutor exec = TransactionExecutor.newInstance(execSockAddr, uuid);
-        execMap.put(uuid, exec);
         Thread th = new Thread(() -> {
             try {
+                TransactionExecutor exec = TransactionExecutor.newInstance(execSockAddr, uuid);
+                execMap.put(uuid, exec);
                 exec.connectAndRunLoop();
             } catch (IOException e) {
                 logger.warn("executor terminated ", e);
