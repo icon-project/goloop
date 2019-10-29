@@ -54,7 +54,7 @@ public class DBImplBase extends s.java.lang.Object {
         }
     }
 
-    public IDBStorage getDBStorage(int cost) {
+    public IDBStorage chargeAndGetDBStorage(int cost) {
         IInstrumentation ins = IInstrumentation.attachedThreadInstrumentation.get();
         ins.chargeEnergy(cost);
         return ins.getFrameContext().getDBStorage();
