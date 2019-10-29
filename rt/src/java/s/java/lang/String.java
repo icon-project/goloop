@@ -288,34 +288,11 @@ public final class String extends Object implements Comparable<String>, CharSequ
         return new String(this.v.replace(oldChar, newChar));
     }
 
-    public boolean avm_matches(String regex){
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_matches, internalLength()));
-        lazyLoad();
-        regex.lazyLoad();
-        return this.v.matches(regex.v);
-    }
-
     public boolean avm_contains(CharSequence s){
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_contains, internalLength()));
         lazyLoad();
         ((Object)s).lazyLoad();
         return this.v.indexOf(s.avm_toString().getUnderlying()) >= 0;
-    }
-
-    public String avm_replaceFirst(String regex, String replacement){
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_replaceFirst, internalLength()));
-        lazyLoad();
-        regex.lazyLoad();
-        replacement.lazyLoad();
-        return new String(this.v.replaceFirst(regex.v, replacement.v));
-    }
-
-    public String avm_replaceAll(String regex, String replacement) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.String_avm_replaceAll, internalLength()));
-        lazyLoad();
-        regex.lazyLoad();
-        replacement.lazyLoad();
-        return new String(this.v.replaceAll(regex.v, replacement.v));
     }
 
     public String avm_replace(CharSequence target, CharSequence replacement){

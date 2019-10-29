@@ -18,11 +18,6 @@ public final class StringBuffer extends Object implements CharSequence, Serializ
         this.v = new java.lang.StringBuffer();
     }
 
-    public StringBuffer(int capacity) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_constructor_1, java.lang.Math.max(capacity, 0)));
-        this.v = new java.lang.StringBuffer(capacity);
-    }
-
     public StringBuffer(String str) {
         int lengthForBilling = (null != str)
                 ? str.internalLength()
@@ -43,16 +38,6 @@ public final class StringBuffer extends Object implements CharSequence, Serializ
     public int avm_length() {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_length);
         return internalLength();
-    }
-
-    public int avm_capacity() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_capacity);
-        return this.v.capacity();
-    }
-
-    public void avm_ensureCapacity(int minimumCapacity){
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_ensureCapacity);
-        this.v.ensureCapacity(minimumCapacity);
     }
 
     public void avm_trimToSize() {
