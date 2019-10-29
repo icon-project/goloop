@@ -85,6 +85,10 @@ public class RejectedClassException extends AvmException {
         throw new RejectedClassException("Class exceeds maximum number of local variables for a method: " + className);
     }
 
+    public static RejectedClassException maximumMethodCountExceeded(String className) {
+        throw new RejectedClassException("Class exceeds maximum number of methods: " + className);
+    }
+
     public RejectedClassException(String message) {
         super(message);
     }

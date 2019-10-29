@@ -53,4 +53,10 @@ public class ConsensusLimitConstants {
      * This also puts a tighter restriction on what would be required to implement the AVM natively.
      */
     public static final int MAX_LOCAL_VARIABLES = 63;
+    /*
+     * We impose a maximum on the number of methods to ensure that our bytecode instrumentation implementation
+     * details cannot be observed at the level of consensus.
+     * This also puts a tighter restriction on what would be required to implement the AVM natively.
+     */
+    public static final int MAX_METHOD_COUNT = 511;
 }
