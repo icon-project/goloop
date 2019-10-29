@@ -18,7 +18,7 @@ public class EnumConstantNotPresentException extends RuntimeException {
     private String constantName;
 
     public EnumConstantNotPresentException(Class<? extends Enum> enumType, String constantName) {
-        super(new String(enumType.avm_getName() + "." + constantName));
+        super(new String(enumType.getName() + "." + constantName));
         this.enumType = enumType;
         this.constantName  = constantName;
     }

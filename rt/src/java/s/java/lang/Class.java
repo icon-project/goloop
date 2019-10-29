@@ -69,12 +69,12 @@ public final class Class<T> extends Object implements Serializable {
             ObjectArray universe = getEnumConstantsShared();
             if (universe == null)
                 throw new IllegalArgumentException(
-                        avm_getName() + " is not an enum type");
+                        getName() + " is not an enum type");
             directory = new HashMap<>(2 * universe.length());
             for (int i = 0; i < universe.length(); i++){
                 @SuppressWarnings("unchecked")
                 T constant = (T) universe.get(i);
-                directory.put(((Enum<?>)constant).avm_name(), constant);
+                directory.put(((Enum<?>)constant).getName(), constant);
             }
             enumConstantDirectory = directory;
         }

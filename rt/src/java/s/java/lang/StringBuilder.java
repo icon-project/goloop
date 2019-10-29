@@ -36,15 +36,22 @@ public final class StringBuilder extends Object implements CharSequence, Seriali
     }
 
     public StringBuilder(CharSequence seq){
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuilder_avm_constructor_3);
+        int lengthForBilling = (null != seq)
+                ? seq.avm_length()
+                : 0;
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuilder_avm_constructor_3, lengthForBilling));
         this.v = new java.lang.StringBuilder();
-        avm_append(seq);
+        internalAppend(seq);
     }
 
     public StringBuilder avm_append(IObject obj) {
+        String str = String.internalValueOfObject(obj);
         // Note that we want to convert this to a string, at our level, so we can call avm_toString() - the lower-level will call toString().
-        // delegating the call to avm_append
-        this.avm_append(String.internalValueOfObject(obj));
+        int lengthForBilling = (null != str)
+                ? str.internalLength()
+                : 0;
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuilder_avm_append, lengthForBilling));
+        internalAppend(str);
         return this;
     }
 
@@ -53,10 +60,7 @@ public final class StringBuilder extends Object implements CharSequence, Seriali
                 ? str.internalLength()
                 : 0;
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuilder_avm_append_1, lengthForBilling));
-        java.lang.String underlying = (null != str)
-                ? str.getUnderlying()
-                : null;
-        this.v.append(underlying);
+        internalAppend(str);
         return this;
     }
 
@@ -100,10 +104,7 @@ public final class StringBuilder extends Object implements CharSequence, Seriali
                 ? s.avm_length()
                 : 0;
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuilder_avm_append_5, lengthForBilling));
-        java.lang.String asString = (null != s)
-                ? s.avm_toString().getUnderlying()
-                : null;
-        this.v.append(asString);
+        internalAppend(s);
         return this;
     }
 
@@ -348,6 +349,19 @@ public final class StringBuilder extends Object implements CharSequence, Seriali
         return new String(new java.lang.String(getUnderlying()));
     }
 
+    private void internalAppend(CharSequence s) {
+        java.lang.String asString = (null != s)
+                ? s.avm_toString().getUnderlying()
+                : null;
+        this.v.append(asString);
+    }
+
+    private void internalAppend(String str) {
+        java.lang.String underlying = (null != str)
+                ? str.getUnderlying()
+                : null;
+        this.v.append(underlying);
+    }
     //========================================================
     // Methods below are deprecated
     //========================================================

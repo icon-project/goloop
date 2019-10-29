@@ -1,7 +1,6 @@
 package p.avm;
 
 import a.ByteArray;
-import a.CharArray;
 import i.IObject;
 import i.IObjectDeserializer;
 import i.IObjectSerializer;
@@ -68,7 +67,7 @@ public final class Address extends s.java.lang.Object {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Address_avm_toString);
         lazyLoad();
         char[] hexChars = toHexChars(this.internalArray);
-        return new s.java.lang.String(new CharArray(hexChars));
+        return new s.java.lang.String(new java.lang.String(hexChars));
     }
 
     @Override

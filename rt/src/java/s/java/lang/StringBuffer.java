@@ -32,9 +32,12 @@ public final class StringBuffer extends Object implements CharSequence, Serializ
     }
 
     public StringBuffer(CharSequence seq) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.StringBuffer_avm_constructor_3);
+        int lengthForBilling = (null != seq)
+                ? seq.avm_length()
+                : 0;
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_constructor_3, lengthForBilling));
         this.v = new java.lang.StringBuffer();
-        avm_append(seq);
+        internalAppend(seq);
     }
 
     public int avm_length() {
@@ -80,8 +83,12 @@ public final class StringBuffer extends Object implements CharSequence, Serializ
     }
 
     public StringBuffer avm_append(IObject obj) {
-        //delegating the call to avm_append
-        this.avm_append(String.internalValueOfObject(obj));
+        String str = String.internalValueOfObject(obj);
+        int lengthForBilling = (null != str)
+                ? str.internalLength()
+                : 0;
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_append, lengthForBilling));
+        this.internalAppend(str);
         return this;
     }
 
@@ -90,10 +97,7 @@ public final class StringBuffer extends Object implements CharSequence, Serializ
                 ? str.internalLength()
                 : 0;
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_append_1, lengthForBilling));
-        java.lang.String underlying = (null != str)
-                ? str.getUnderlying()
-                : null;
-        this.v = this.v.append(underlying);
+        this.internalAppend(str);
         return this;
     }
 
@@ -114,10 +118,7 @@ public final class StringBuffer extends Object implements CharSequence, Serializ
                 ? s.avm_length()
                 : 0;
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_append_3, lengthForBilling));
-        java.lang.String underlying = (null != s)
-                ? s.avm_toString().getUnderlying()
-                : null;
-        this.v = this.v.append(underlying);
+        internalAppend(s);
         return this;
     }
 
@@ -336,7 +337,7 @@ public final class StringBuffer extends Object implements CharSequence, Serializ
 
     public String avm_toString() {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(EnergyCalculator.multiplyLinearValueByMethodFeeLevel2AndAddBase(RuntimeMethodFeeSchedule.StringBuffer_avm_toString, internalLength()));
-        return new String(this);
+        return internalToString();
     }
 
     //========================================================
@@ -370,6 +371,24 @@ public final class StringBuffer extends Object implements CharSequence, Serializ
 
     public int internalLength(){
         return this.v.length();
+    }
+
+    private String internalToString(){
+        return new String(new java.lang.String(this.v));
+    }
+
+    private void internalAppend(CharSequence s) {
+        java.lang.String underlying = (null != s)
+                ? s.avm_toString().getUnderlying()
+                : null;
+        this.v.append(underlying);
+    }
+
+    private void internalAppend(String str) {
+        java.lang.String underlying = (null != str)
+                ? str.getUnderlying()
+                : null;
+        this.v.append(underlying);
     }
     //========================================================
     // Methods below are deprecated

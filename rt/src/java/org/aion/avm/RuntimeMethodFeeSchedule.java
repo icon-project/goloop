@@ -436,7 +436,8 @@ public class RuntimeMethodFeeSchedule {
     public static final int StringBuilder_avm_constructor = RT_METHOD_FEE_LEVEL_2; // totalCost - 391; // byte code cost - 291; invoked methods cost - 100;
     public static final int StringBuilder_avm_constructor_1 = RT_METHOD_FEE_LEVEL_2; // totalCost - 579; // byte code cost - 351; invoked methods cost - 228;
     public static final int StringBuilder_avm_constructor_2 = RT_METHOD_FEE_LEVEL_3; // totalCost - 639; // byte code cost - 411; invoked methods cost - 228;
-    public static final int StringBuilder_avm_constructor_3 = RT_METHOD_FEE_LEVEL_2;
+    public static final int StringBuilder_avm_constructor_3 = RT_METHOD_FEE_LEVEL_3;
+    public static final int StringBuilder_avm_append = RT_METHOD_FEE_LEVEL_2;
     public static final int StringBuilder_avm_append_1 = RT_METHOD_FEE_LEVEL_2; // totalCost - 424; // byte code cost - 196; invoked methods cost - 228;
     public static final int StringBuilder_avm_append_2 = RT_METHOD_FEE_LEVEL_2; // totalCost - 358; // byte code cost - 196; invoked methods cost - 162;
     public static final int StringBuilder_avm_append_3 = RT_METHOD_FEE_LEVEL_2; // totalCost - 424; // byte code cost - 196; invoked methods cost - 228;
@@ -478,7 +479,7 @@ public class RuntimeMethodFeeSchedule {
     public static final int StringBuffer_avm_constructor = RT_METHOD_FEE_LEVEL_2; // totalCost - 391; // byte code cost - 291; invoked methods cost - 100;
     public static final int StringBuffer_avm_constructor_1 = RT_METHOD_FEE_LEVEL_2; // totalCost - 579; // byte code cost - 351; invoked methods cost - 228;
     public static final int StringBuffer_avm_constructor_2 = RT_METHOD_FEE_LEVEL_3; // totalCost - 265;
-    public static final int StringBuffer_avm_constructor_3 = RT_METHOD_FEE_LEVEL_2; // totalCost - 265;
+    public static final int StringBuffer_avm_constructor_3 = RT_METHOD_FEE_LEVEL_3; // totalCost - 265;
     public static final int StringBuffer_avm_length = RT_METHOD_FEE_LEVEL_1; // totalCost - 222; // byte code cost - 122; invoked methods cost - 100;
     public static final int StringBuffer_avm_capacity = RT_METHOD_FEE_LEVEL_2; // totalCost - 222; // byte code cost - 122; invoked methods cost - 100;
     public static final int StringBuffer_avm_ensureCapacity = RT_METHOD_FEE_LEVEL_2; // totalCost - 228; // byte code cost - 128; invoked methods cost - 100;
@@ -487,6 +488,7 @@ public class RuntimeMethodFeeSchedule {
     public static final int StringBuffer_avm_charAt = RT_METHOD_FEE_LEVEL_2; // totalCost - 228; // byte code cost - 128; invoked methods cost - 100;
     public static final int StringBuffer_avm_getChars = RT_METHOD_FEE_LEVEL_2; // totalCost - 246; // byte code cost - 146; invoked methods cost - 100;
     public static final int StringBuffer_avm_setCharAt = RT_METHOD_FEE_LEVEL_2; // totalCost - 234; // byte code cost - 134; invoked methods cost - 100;
+    public static final int StringBuffer_avm_append = RT_METHOD_FEE_LEVEL_2;
     public static final int StringBuffer_avm_append_1 = RT_METHOD_FEE_LEVEL_2; // totalCost - 243; // byte code cost - 143; invoked methods cost - 100;
     public static final int StringBuffer_avm_append_2 = RT_METHOD_FEE_LEVEL_2; // totalCost - 249; // byte code cost - 149; invoked methods cost - 100;
     public static final int StringBuffer_avm_append_3 = RT_METHOD_FEE_LEVEL_2; // totalCost - 303; // byte code cost - 203; invoked methods cost - 100;

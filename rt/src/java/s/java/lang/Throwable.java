@@ -41,7 +41,7 @@ public class Throwable extends Object implements Serializable {
     }
 
     public Throwable(Throwable cause) {
-        this.message = (cause == null ? null : cause.avm_toString());
+        this.message = (cause == null ? null : cause.internalToString());
         this.cause = cause;
     }
 
@@ -78,8 +78,7 @@ public class Throwable extends Object implements Serializable {
     public String avm_toString() {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Throwable_avm_toString);
         lazyLoad();
-        String s = new String(ClassNameExtractor.getOriginalClassName(getClass().getName()));
-        return (this.message != null) ? new String(s + ": " + this.message) : s;
+        return internalToString();
     }
 
     //=======================================================
@@ -90,5 +89,10 @@ public class Throwable extends Object implements Serializable {
     public java.lang.String toString() {
         lazyLoad();
         return getClass().getName() + ": " + this.message;
+    }
+
+    private String internalToString(){
+        String s = new String(ClassNameExtractor.getOriginalClassName(getClass().getName()));
+        return (this.message != null) ? new String(s + ": " + this.message) : s;
     }
 }

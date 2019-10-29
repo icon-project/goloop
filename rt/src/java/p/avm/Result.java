@@ -1,7 +1,6 @@
 package p.avm;
 
 import a.ByteArray;
-import a.CharArray;
 import i.IObject;
 import org.aion.avm.EnergyCalculator;
 import s.java.lang.Object;
@@ -54,7 +53,7 @@ public final class Result extends Object {
             hexChars[i * 2] = hexArray[v >>> 4];
             hexChars[i * 2 + 1] = hexArray[v & 0x0F];
         }
-        return new String(new CharArray(hexChars));
+        return new String(new java.lang.String(hexChars));
     }
 
     private static final char[] hexArray = "0123456789abcdef".toCharArray();
