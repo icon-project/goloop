@@ -1,6 +1,7 @@
 package org.aion.avm.core.types;
 
-import org.aion.avm.core.util.Helpers;
+import org.aion.avm.utilities.Utilities;
+
 import i.RuntimeAssertionError;
 import org.objectweb.asm.Attribute;
 import org.objectweb.asm.ClassVisitor;
@@ -30,15 +31,15 @@ public class ClassInfoVisitor extends ClassVisitor {
 
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
-        String parentQualifiedName = (superName == null) ? null : Helpers.internalNameToFulllyQualifiedName(superName);
+        String parentQualifiedName = (superName == null) ? null : Utilities.internalNameToFulllyQualifiedName(superName);
         String[] interfaceQualifiedNames = toQualifiedNames(interfaces);
         boolean isInterface = Opcodes.ACC_INTERFACE == (access & Opcodes.ACC_INTERFACE);
 
         // Mark the class info correctly depending on whether or not this is renamed.
         if (this.isRenamed) {
-            this.classInfo = ClassInformation.postRenameInfoFor(isInterface, Helpers.internalNameToFulllyQualifiedName(name), parentQualifiedName, interfaceQualifiedNames);
+            this.classInfo = ClassInformation.postRenameInfoFor(isInterface, Utilities.internalNameToFulllyQualifiedName(name), parentQualifiedName, interfaceQualifiedNames);
         } else {
-            this.classInfo = ClassInformation.preRenameInfoFor(isInterface, Helpers.internalNameToFulllyQualifiedName(name), parentQualifiedName, interfaceQualifiedNames);
+            this.classInfo = ClassInformation.preRenameInfoFor(isInterface, Utilities.internalNameToFulllyQualifiedName(name), parentQualifiedName, interfaceQualifiedNames);
         }
     }
 
@@ -70,7 +71,7 @@ public class ClassInfoVisitor extends ClassVisitor {
 
         String[] qualifiedNames = new String[classNames.length];
         for (int i = 0; i < classNames.length; i++) {
-            qualifiedNames[i] = Helpers.internalNameToFulllyQualifiedName(classNames[i]);
+            qualifiedNames[i] = Utilities.internalNameToFulllyQualifiedName(classNames[i]);
         }
         return qualifiedNames;
     }

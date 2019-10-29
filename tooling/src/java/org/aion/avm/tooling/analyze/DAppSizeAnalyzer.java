@@ -1,12 +1,13 @@
 package org.aion.avm.tooling.analyze;
 
-import org.aion.avm.tooling.util.Utilities;
-
 import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Map;
 import java.util.jar.JarInputStream;
+
+import org.aion.avm.utilities.Utilities;
+import org.aion.avm.utilities.analyze.ConstantPoolBuilder;
 
 public class DAppSizeAnalyzer {
 

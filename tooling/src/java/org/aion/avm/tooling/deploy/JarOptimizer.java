@@ -1,7 +1,7 @@
 package org.aion.avm.tooling.deploy;
 
-import org.aion.avm.tooling.util.JarBuilder;
-import org.aion.avm.tooling.util.Utilities;
+import org.aion.avm.utilities.JarBuilder;
+import org.aion.avm.utilities.Utilities;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;

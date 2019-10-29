@@ -11,7 +11,8 @@ import java.util.jar.JarInputStream;
 import java.util.jar.Manifest;
 import java.util.zip.ZipException;
 
-import org.aion.avm.core.util.Helpers;
+import org.aion.avm.utilities.Utilities;
+
 import i.RuntimeAssertionError;
 
 
@@ -76,7 +77,7 @@ public class LoadedJar {
                 ) {
                     // replaceAll gives us the regex so we use "$".
                     String internalClassName = name.replaceAll(".class$", "");
-                    String qualifiedClassName = Helpers.internalNameToFulllyQualifiedName(internalClassName);
+                    String qualifiedClassName = Utilities.internalNameToFulllyQualifiedName(internalClassName);
                     int readSize = jarReader.readNBytes(tempReadingBuffer, 0, tempReadingBuffer.length);
                     // Now, copy this part of the array as a correctly-sized classBytes.
                     byte[] classBytes = new byte[readSize];

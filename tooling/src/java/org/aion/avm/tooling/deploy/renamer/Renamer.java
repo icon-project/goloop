@@ -2,8 +2,8 @@ package org.aion.avm.tooling.deploy.renamer;
 
 import org.aion.avm.tooling.deploy.eliminator.ClassInfo;
 import org.aion.avm.tooling.deploy.eliminator.MethodReachabilityDetector;
-import org.aion.avm.tooling.util.JarBuilder;
-import org.aion.avm.tooling.util.Utilities;
+import org.aion.avm.utilities.JarBuilder;
+import org.aion.avm.utilities.Utilities;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.commons.ClassRemapper;

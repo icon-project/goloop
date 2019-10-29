@@ -40,6 +40,7 @@ import org.aion.avm.core.util.Helpers;
 import org.aion.avm.core.util.TransactionResultUtil;
 import org.aion.avm.core.verification.Verifier;
 import org.aion.avm.userlib.CodeAndArguments;
+import org.aion.avm.utilities.Utilities;
 import org.aion.kernel.AvmWrappedTransactionResult;
 import org.aion.kernel.AvmWrappedTransactionResult.AvmInternalError;
 import org.aion.types.AionAddress;
@@ -107,7 +108,7 @@ public class DAppCreator {
         // We also want to expose this type to the class writer so it can compute common superclasses.
         GeneratedClassConsumer generatedClassesSink = (superClassSlashName, classSlashName, bytecode) -> {
             // Note that the processed classes are expected to use .-style names.
-            String classDotName = Helpers.internalNameToFulllyQualifiedName(classSlashName);
+            String classDotName = Utilities.internalNameToFulllyQualifiedName(classSlashName);
             processedClasses.put(classDotName, bytecode);
         };
         Map<String, Integer> postRenameObjectSizes = computeAllPostRenameObjectSizes(oldPreRenameForest, preserveDebuggability);

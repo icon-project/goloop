@@ -1,7 +1,7 @@
 package org.aion.avm.tooling.deploy.eliminator;
 
-import org.aion.avm.tooling.util.JarBuilder;
-import org.aion.avm.tooling.util.Utilities;
+import org.aion.avm.utilities.JarBuilder;
+import org.aion.avm.utilities.Utilities;
 import org.aion.avm.userlib.abi.ABIDecoder;
 import org.aion.avm.userlib.abi.ABIEncoder;
 import org.aion.avm.userlib.abi.ABIException;

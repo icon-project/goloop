@@ -1,7 +1,8 @@
 package org.aion.avm.core;
 
 import org.aion.avm.core.miscvisitors.StringConstantCollectorVisitor;
-import org.aion.avm.core.util.Helpers;
+import org.aion.avm.utilities.Utilities;
+
 import i.Helper;
 import i.PackageConstants;
 import org.objectweb.asm.ClassReader;
@@ -71,7 +72,7 @@ public class ConstantClassBuilder {
         String signature = null;
         // We implement no interfaces.
         String[] interfaces = new String[0];
-        out.visit(classVersion, classAccess, className, signature, Helpers.fulllyQualifiedNameToInternalName(Object.class.getName()), interfaces);
+        out.visit(classVersion, classAccess, className, signature, Utilities.fulllyQualifiedNameToInternalName(Object.class.getName()), interfaces);
         
         // Generate the static fields - not final since we need to load these from storage.
         int fieldAccess = Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC;

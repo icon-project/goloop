@@ -1,4 +1,4 @@
-package org.aion.avm.tooling.analyze;
+package org.aion.avm.utilities.analyze;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -68,11 +68,11 @@ public class ConstantPoolBuilder {
     }
 
 
-    static class ClassConstantSizeInfo {
-        int bytecodeLength;
-        Map<String, Integer> constantTypeCount;
-        int totalUtf8Length;
-        int totalConstantPoolSize;
+    public static class ClassConstantSizeInfo {
+        public final int bytecodeLength;
+        public final Map<String, Integer> constantTypeCount;
+        public final int totalUtf8Length;
+        public final int totalConstantPoolSize;
 
         ClassConstantSizeInfo(int bytecodeLength, Map<String, Integer> constantTypeCount, int totalUtf8Length, int totalConstantPoolSize) {
             this.bytecodeLength = bytecodeLength;

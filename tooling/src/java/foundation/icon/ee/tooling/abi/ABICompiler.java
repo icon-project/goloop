@@ -6,8 +6,8 @@
 package foundation.icon.ee.tooling.abi;
 
 import foundation.icon.ee.types.Method;
-import org.aion.avm.tooling.util.JarBuilder;
-import org.aion.avm.tooling.util.Utilities;
+import org.aion.avm.utilities.JarBuilder;
+import org.aion.avm.utilities.Utilities;
 import org.aion.avm.userlib.*;
 import org.aion.avm.userlib.abi.*;
 import org.objectweb.asm.ClassReader;

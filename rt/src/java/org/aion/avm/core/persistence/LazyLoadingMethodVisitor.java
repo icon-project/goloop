@@ -1,7 +1,8 @@
 package org.aion.avm.core.persistence;
 
 import org.aion.avm.core.util.DescriptorParser;
-import org.aion.avm.core.util.Helpers;
+import org.aion.avm.utilities.Utilities;
+
 import i.RuntimeAssertionError;
 import org.objectweb.asm.Handle;
 import org.objectweb.asm.Label;
@@ -21,7 +22,7 @@ import org.objectweb.asm.Opcodes;
  * methods, but this is a later consideration.
  */
 public class LazyLoadingMethodVisitor extends MethodVisitor {
-    private static final String SHADOW_OBJECT_NAME = Helpers.fulllyQualifiedNameToInternalName(s.java.lang.Object.class.getName());
+    private static final String SHADOW_OBJECT_NAME = Utilities.fulllyQualifiedNameToInternalName(s.java.lang.Object.class.getName());
     private static final String LAZY_LOAD_NAME = "lazyLoad";
     private static final String LAZY_LOAD_DESCRIPTOR = "()V";
 

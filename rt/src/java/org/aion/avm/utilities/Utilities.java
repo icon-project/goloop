@@ -1,4 +1,4 @@
-package org.aion.avm.tooling.util;
+package org.aion.avm.utilities;
 
 import java.io.IOException;
 import java.io.InputStream;

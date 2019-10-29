@@ -1,4 +1,4 @@
-package org.aion.avm.tooling.analyze;
+package org.aion.avm.utilities.analyze;
 
 import java.nio.ByteBuffer;
 

@@ -4,7 +4,8 @@ import a.BooleanArray;
 import a.ByteArray;
 import org.aion.avm.core.rejection.RejectedClassException;
 import org.aion.avm.core.types.ClassHierarchy;
-import org.aion.avm.core.util.Helpers;
+import org.aion.avm.utilities.Utilities;
+
 import i.IObjectArray;
 import i.RuntimeAssertionError;
 import org.objectweb.asm.MethodVisitor;
@@ -95,7 +96,7 @@ class ArraysRequiringAnalysisMethodNode extends MethodNode {
 
                 MethodInsnNode invokeVNode =
                     new MethodInsnNode(Opcodes.INVOKEINTERFACE,
-                                        Helpers.fulllyQualifiedNameToInternalName(IObjectArray.class.getName()),
+                            Utilities.fulllyQualifiedNameToInternalName(IObjectArray.class.getName()),
                                         "get",
                                         "(I)Ljava/lang/Object;",
                                         true);
@@ -121,7 +122,7 @@ class ArraysRequiringAnalysisMethodNode extends MethodNode {
 
                 MethodInsnNode invokeVNode =
                         new MethodInsnNode(Opcodes.INVOKEINTERFACE,
-                                Helpers.fulllyQualifiedNameToInternalName(IObjectArray.class.getName()),
+                                Utilities.fulllyQualifiedNameToInternalName(IObjectArray.class.getName()),
                                 "set",
                                 "(ILjava/lang/Object;)V",
                                 true);
@@ -145,13 +146,13 @@ class ArraysRequiringAnalysisMethodNode extends MethodNode {
                 MethodInsnNode invokeVNode;
                 if (targetDesc.equals("[Z")) {
                         invokeVNode = new MethodInsnNode(Opcodes.INVOKEVIRTUAL,
-                                        Helpers.fulllyQualifiedNameToInternalName(BooleanArray.class.getName()),
+                                        Utilities.fulllyQualifiedNameToInternalName(BooleanArray.class.getName()),
                                         "get",
                                         "(I)Z",
                                         false);
                 } else {
                         invokeVNode = new MethodInsnNode(Opcodes.INVOKEVIRTUAL,
-                                        Helpers.fulllyQualifiedNameToInternalName(ByteArray.class.getName()),
+                                        Utilities.fulllyQualifiedNameToInternalName(ByteArray.class.getName()),
                                         "get",
                                         "(I)B",
                                         false);
@@ -170,13 +171,13 @@ class ArraysRequiringAnalysisMethodNode extends MethodNode {
                 MethodInsnNode invokeVNode;
                 if (targetDesc.equals("[Z")) {
                         invokeVNode = new MethodInsnNode(Opcodes.INVOKEVIRTUAL,
-                                        Helpers.fulllyQualifiedNameToInternalName(BooleanArray.class.getName()),
+                                        Utilities.fulllyQualifiedNameToInternalName(BooleanArray.class.getName()),
                                         "set",
                                         "(IZ)V",
                                         false);
                     } else {
                         invokeVNode = new MethodInsnNode(Opcodes.INVOKEVIRTUAL,
-                                        Helpers.fulllyQualifiedNameToInternalName(ByteArray.class.getName()),
+                                        Utilities.fulllyQualifiedNameToInternalName(ByteArray.class.getName()),
                                         "set",
                                         "(IB)V",
                                         false);

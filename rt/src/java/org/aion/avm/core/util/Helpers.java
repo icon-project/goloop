@@ -7,6 +7,8 @@ import i.IRuntimeSetup;
 import org.aion.avm.core.ClassToolchain;
 import org.aion.avm.core.classloading.AvmClassLoader;
 import org.aion.avm.core.miscvisitors.ClassRenameVisitor;
+import org.aion.avm.utilities.Utilities;
+
 import i.CommonInstrumentation;
 import i.Helper;
 import i.RuntimeAssertionError;
@@ -29,6 +31,7 @@ import java.util.Set;
 /**
  * Common utilities we often want to use in various tests (either temporarily or permanently).
  * These are kept here just to avoid duplication.
+ * Note that, over time, these helpers are likely to be generalized into org.aion.avm.utilities.Utilities.
  */
 public class Helpers {
 
@@ -113,26 +116,6 @@ public class Helpers {
         return b;
     }
 
-    /**
-     * A helper which will attempt to load the given resource path as bytes.
-     * Returns null if the resource could not be found.
-     *
-     * @param resourcePath The path to this resource, within the parent class loader.
-     * @return The resource as bytes, or null if not found.
-     */
-    public static byte[] loadRequiredResourceAsBytes(String resourcePath) {
-        InputStream stream = Helpers.class.getClassLoader().getResourceAsStream(resourcePath);
-        byte[] raw = null;
-        if (null != stream) {
-            try {
-                raw = stream.readAllBytes();
-            } catch (IOException e) {
-                throw RuntimeAssertionError.unexpected(e);
-            }
-        }
-        return raw;
-    }
-
     private static SecureRandom secureRandom = new SecureRandom();
 
     public static AionAddress randomAddress() {
@@ -154,28 +137,8 @@ public class Helpers {
         return bytes;
     }
 
-    /**
-     * Converts a fully qualified class name into it's JVM internal form.
-     *
-     * @param fullyQualifiedName
-     * @return
-     */
-    public static String fulllyQualifiedNameToInternalName(String fullyQualifiedName) {
-        return fullyQualifiedName.replaceAll("\\.", "/");
-    }
-
-    /**
-     * Converts a JVM internal class name into a fully qualified name.
-     *
-     * @param internalName
-     * @return
-     */
-    public static String internalNameToFulllyQualifiedName(String internalName) {
-        return internalName.replaceAll("/", ".");
-    }
-
     private static String blockchainRuntimeClassName = Blockchain.class.getName();
-    private static byte[] blockchainRuntimeBytes = Helpers.loadRequiredResourceAsBytes(blockchainRuntimeClassName.replaceAll("\\.", "/") + ".class");
+    private static byte[] blockchainRuntimeBytes = Utilities.loadRequiredResourceAsBytes(blockchainRuntimeClassName.replaceAll("\\.", "/") + ".class");
 
     /**
      * A common helper used to construct a map of visible class bytecode for an AvmClassLoader instance.
@@ -202,8 +165,8 @@ public class Helpers {
 
     public static byte[] loadDefaultHelperBytecode() {
         String helperName = Helper.class.getName();
-        String helperResourcePath = Helpers.fulllyQualifiedNameToInternalName(helperName) + ".class";
-        return Helpers.loadRequiredResourceAsBytes(helperResourcePath);
+        String helperResourcePath = Utilities.fulllyQualifiedNameToInternalName(helperName) + ".class";
+        return Utilities.loadRequiredResourceAsBytes(helperResourcePath);
     }
 
     /**

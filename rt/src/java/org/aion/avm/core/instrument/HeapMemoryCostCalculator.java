@@ -5,7 +5,7 @@ import org.aion.avm.core.types.ClassInfo;
 import org.aion.avm.core.types.Forest;
 import org.aion.avm.core.types.Forest.Node;
 import org.aion.avm.core.util.DescriptorParser;
-import org.aion.avm.core.util.Helpers;
+import org.aion.avm.utilities.Utilities;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
@@ -205,7 +205,7 @@ public class HeapMemoryCostCalculator {
         for (Node<String, ClassInfo> rootClass : rootClasses) {
             // 'rootClassObjectSizes' map already has the root class object size.
             // copy rootClass size to classHeapSizeMap
-            final String slashName = Helpers.fulllyQualifiedNameToInternalName(rootClass.getId());
+            final String slashName = Utilities.fulllyQualifiedNameToInternalName(rootClass.getId());
             rootHeapSizeMap.put(slashName, rootClassObjectSizes.get(slashName));
         }
         final var visitor = new Forest.Visitor<String, ClassInfo>() {

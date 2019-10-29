@@ -4,7 +4,8 @@ import org.aion.avm.RuntimeMethodFeeSchedule;
 
 import java.util.*;
 import a.ArrayElement;
-import org.aion.avm.core.util.Helpers;
+import org.aion.avm.utilities.Utilities;
+
 import i.PackageConstants;
 import i.RuntimeAssertionError;
 import org.objectweb.asm.ClassWriter;
@@ -45,7 +46,7 @@ public class ArrayWrappingClassGenerator implements Opcodes {
             System.out.println("requestInterface : " + requestInterface);
         }
 
-        String wrapperInterfaceSlashName = Helpers.fulllyQualifiedNameToInternalName(requestInterface);
+        String wrapperInterfaceSlashName = Utilities.fulllyQualifiedNameToInternalName(requestInterface);
         // Get element class and array dim
         String elementInterfaceSlashName = wrapperInterfaceSlashName.substring((PackageConstants.kArrayWrapperUnifyingSlashPrefix).length());
         int dim = ArrayNameMapper.getPrefixSize(elementInterfaceSlashName, '_');
@@ -63,7 +64,7 @@ public class ArrayWrappingClassGenerator implements Opcodes {
         List<String> elementInterfaceWrapperNames = new ArrayList<>();
         for (Class<?> curI : superInterfaceClasses){
             String superInterfaceDotName = ArrayNameMapper.buildArrayDescriptor(dim, typeDescriptorForClass(curI));
-            String superInterfaceSlashName = Helpers.fulllyQualifiedNameToInternalName(superInterfaceDotName);
+            String superInterfaceSlashName = Utilities.fulllyQualifiedNameToInternalName(superInterfaceDotName);
             String superInterfaceWrapperSlashName = ArrayNameMapper.getInterfaceWrapper(superInterfaceSlashName);
             elementInterfaceWrapperNames.add(superInterfaceWrapperSlashName);
         }
@@ -72,7 +73,7 @@ public class ArrayWrappingClassGenerator implements Opcodes {
         if (!elementClass.isInterface() && !elementClass.getName().equals("java.lang.Object")) {
             Class<?> elementSuperClass = elementClass.getSuperclass();
             String superClassDotName = ArrayNameMapper.buildArrayDescriptor(dim, typeDescriptorForClass(elementSuperClass));
-            String slashName = Helpers.fulllyQualifiedNameToInternalName(superClassDotName);
+            String slashName = Utilities.fulllyQualifiedNameToInternalName(superClassDotName);
             elementInterfaceWrapperNames.add(ArrayNameMapper.getInterfaceWrapper(slashName));
         }
 
@@ -124,7 +125,7 @@ public class ArrayWrappingClassGenerator implements Opcodes {
         }
 
         // Class name in bytecode
-        String wrapperClassSlashName = Helpers.fulllyQualifiedNameToInternalName(requestClass);
+        String wrapperClassSlashName = Utilities.fulllyQualifiedNameToInternalName(requestClass);
 
         // Get element class and array dim
         String elementClassSlashName = wrapperClassSlashName.substring(PackageConstants.kArrayWrapperDotPrefix.length());
@@ -146,7 +147,7 @@ public class ArrayWrappingClassGenerator implements Opcodes {
 
             // All of these ObjectArray classes are of the same shape:  subclass ObjectArray and implement their own single interface wrapper.
             String interfaceDotName = ArrayNameMapper.buildArrayDescriptor(dim, typeDescriptorForClass(elementClass));
-            String interfaceSlashName = Helpers.fulllyQualifiedNameToInternalName(interfaceDotName);
+            String interfaceSlashName = Utilities.fulllyQualifiedNameToInternalName(interfaceDotName);
             String interfaceWrapperSlashName = ArrayNameMapper.getInterfaceWrapper(interfaceSlashName);
 
             String superClassSlashName = PackageConstants.kArrayWrapperSlashPrefix + "ObjectArray";

@@ -2,7 +2,8 @@ package org.aion.avm.core.shadowing;
 
 import org.aion.avm.core.ClassToolchain;
 import org.aion.avm.core.ClassWhiteList;
-import org.aion.avm.core.util.Helpers;
+import org.aion.avm.utilities.Utilities;
+
 import i.Helper;
 import i.IObject;
 import i.RuntimeAssertionError;
@@ -49,7 +50,7 @@ public class ClassShadowing extends ClassToolchain.ToolChainClassVisitor {
         Stream<String> replacedInterfaces = Stream.of(interfaces).map((oldName) -> replacer.replaceType(oldName, true));
         // If this is an interface, we need to add our "root interface" so that we have a unification point between the interface and our shadow Object.
         if (isInterface) {
-            String rootInterfaceName = Helpers.fulllyQualifiedNameToInternalName(IObject.class.getName());
+            String rootInterfaceName = Utilities.fulllyQualifiedNameToInternalName(IObject.class.getName());
             replacedInterfaces = Stream.concat(replacedInterfaces, Stream.of(rootInterfaceName));
         }
 

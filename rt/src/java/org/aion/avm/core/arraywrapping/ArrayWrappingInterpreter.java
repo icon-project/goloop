@@ -2,7 +2,7 @@ package org.aion.avm.core.arraywrapping;
 
 import org.aion.avm.core.types.ClassHierarchy;
 import org.aion.avm.core.types.CommonType;
-import org.aion.avm.core.util.Helpers;
+import org.aion.avm.utilities.Utilities;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
@@ -138,11 +138,11 @@ public class ArrayWrappingInterpreter extends BasicInterpreter{
             int dimension2 = getArrayDimension(cleanDescriptor2);
 
             if (dimension1 == 0 || dimension2 == 0) {
-                return new BasicValue(Type.getType("[L" + Helpers.fulllyQualifiedNameToInternalName(CommonType.SHADOW_OBJECT.dotName) + ";"));
+                return new BasicValue(Type.getType("[L" + Utilities.fulllyQualifiedNameToInternalName(CommonType.SHADOW_OBJECT.dotName) + ";"));
             }
 
             if (dimension1 != dimension2) {
-                return new BasicValue(Type.getType("[L" + Helpers.fulllyQualifiedNameToInternalName(CommonType.I_OBJECT_ARRAY.dotName) + ";"));
+                return new BasicValue(Type.getType("[L" + Utilities.fulllyQualifiedNameToInternalName(CommonType.I_OBJECT_ARRAY.dotName) + ";"));
             }
 
             // Strip the leading array signifiers (the '[' characters)
@@ -154,12 +154,12 @@ public class ArrayWrappingInterpreter extends BasicInterpreter{
 
             // If we have object arrays, since we know they must differ, we return IObjectArray
             if (!descriptor1isObject && !descriptor2isObject) {
-                return new BasicValue(Type.getType("[L" + Helpers.fulllyQualifiedNameToInternalName(CommonType.I_OBJECT_ARRAY.dotName) + ";"));
+                return new BasicValue(Type.getType("[L" + Utilities.fulllyQualifiedNameToInternalName(CommonType.I_OBJECT_ARRAY.dotName) + ";"));
             }
 
             // If we have one object array and one non-object array then we return object.
             if ((descriptor1isObject && !descriptor2isObject) || (!descriptor1isObject && descriptor2isObject)) {
-                return new BasicValue(Type.getType("[L" + Helpers.fulllyQualifiedNameToInternalName(CommonType.SHADOW_OBJECT.dotName) + ";"));
+                return new BasicValue(Type.getType("[L" + Utilities.fulllyQualifiedNameToInternalName(CommonType.SHADOW_OBJECT.dotName) + ";"));
             }
 
             // Strip the 'L' character.
@@ -171,18 +171,18 @@ public class ArrayWrappingInterpreter extends BasicInterpreter{
             cleanDescriptor2 = cleanDescriptor2.substring(0, cleanDescriptor2.length() - 1);
 
             // Finally, convert them to dot-style names.
-            cleanDescriptor1 = Helpers.internalNameToFulllyQualifiedName(cleanDescriptor1);
-            cleanDescriptor2 = Helpers.internalNameToFulllyQualifiedName(cleanDescriptor2);
+            cleanDescriptor1 = Utilities.internalNameToFulllyQualifiedName(cleanDescriptor1);
+            cleanDescriptor2 = Utilities.internalNameToFulllyQualifiedName(cleanDescriptor2);
 
             // Find the common super class.
             String commonSuper = this.hierarchy.getTightestCommonSuperClass(cleanDescriptor1, cleanDescriptor2);
 
             // If the super class is ambiguous return IObject, otherwise return it.
             if (commonSuper == null) {
-                commonSuper = Helpers.fulllyQualifiedNameToInternalName(CommonType.I_OBJECT.dotName);
+                commonSuper = Utilities.fulllyQualifiedNameToInternalName(CommonType.I_OBJECT.dotName);
             } else {
                 // Convert back to slash-style and re-add the characters we stripped.
-                commonSuper = Helpers.fulllyQualifiedNameToInternalName(commonSuper);
+                commonSuper = Utilities.fulllyQualifiedNameToInternalName(commonSuper);
             }
 
             // Re-construct the descriptor that we took apart and return it.

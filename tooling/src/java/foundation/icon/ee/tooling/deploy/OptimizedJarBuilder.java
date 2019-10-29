@@ -12,8 +12,8 @@ import org.aion.avm.tooling.deploy.JarOptimizer;
 import org.aion.avm.tooling.deploy.eliminator.ConstantRemover;
 import org.aion.avm.tooling.deploy.eliminator.UnreachableMethodRemover;
 import org.aion.avm.tooling.deploy.renamer.Renamer;
-import org.aion.avm.tooling.util.JarBuilder;
-import org.aion.avm.tooling.util.Utilities;
+import org.aion.avm.utilities.JarBuilder;
+import org.aion.avm.utilities.Utilities;
 import org.msgpack.core.MessageBufferPacker;
 import org.msgpack.core.MessagePack;
 

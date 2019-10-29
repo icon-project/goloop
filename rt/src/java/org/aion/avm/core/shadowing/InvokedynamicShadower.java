@@ -3,7 +3,8 @@ package org.aion.avm.core.shadowing;
 import org.aion.avm.core.ClassToolchain;
 import org.aion.avm.core.miscvisitors.NamespaceMapper;
 import org.aion.avm.core.rejection.RejectedClassException;
-import org.aion.avm.core.util.Helpers;
+import org.aion.avm.utilities.Utilities;
+
 import i.RuntimeAssertionError;
 import org.objectweb.asm.Handle;
 import org.objectweb.asm.MethodVisitor;
@@ -26,8 +27,8 @@ public class InvokedynamicShadower extends ClassToolchain.ToolChainClassVisitor 
     private final String postRenameLambdaFactory;
 
     // AKI-130: We currently only support metafactory calls which construct Runnable and Function (these are post-rename).
-    private static final String RUNNABLE_DESCRIPTOR = "()L" + Helpers.fulllyQualifiedNameToInternalName(s.java.lang.Runnable.class.getName()) + ";";
-    private static final String FUNCTION_DESCRIPTOR = "()L" + Helpers.fulllyQualifiedNameToInternalName(s.java.util.function.Function.class.getName()) + ";";
+    private static final String RUNNABLE_DESCRIPTOR = "()L" + Utilities.fulllyQualifiedNameToInternalName(s.java.lang.Runnable.class.getName()) + ";";
+    private static final String FUNCTION_DESCRIPTOR = "()L" + Utilities.fulllyQualifiedNameToInternalName(s.java.util.function.Function.class.getName()) + ";";
 
     public InvokedynamicShadower(String shadowPackage) {
         super(Opcodes.ASM6);

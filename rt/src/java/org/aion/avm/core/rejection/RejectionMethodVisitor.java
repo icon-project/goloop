@@ -4,7 +4,7 @@ import org.aion.avm.core.NodeEnvironment;
 import org.aion.avm.core.miscvisitors.NamespaceMapper;
 import org.aion.avm.core.miscvisitors.PreRenameClassAccessRules;
 import org.aion.avm.core.util.MethodDescriptorCollector;
-import org.aion.avm.core.util.Helpers;
+import org.aion.avm.utilities.Utilities;
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.Attribute;
 import org.objectweb.asm.Handle;
@@ -185,7 +185,7 @@ public class RejectionMethodVisitor extends MethodVisitor {
     private boolean checkJclMethodExists(String owner, String name, String descriptor) {
         boolean didMatch = false;
         // Map the owner, name, and descriptor into the shadow space, look up the corresponding class, reflect, and see if this method exists.
-        String mappedOwnerSlashName = Helpers.internalNameToFulllyQualifiedName(this.namespaceMapper.mapType(owner, this.preserveDebuggability));
+        String mappedOwnerSlashName = Utilities.internalNameToFulllyQualifiedName(this.namespaceMapper.mapType(owner, this.preserveDebuggability));
         String mappedMethodName = NamespaceMapper.mapMethodName(name);
         String mappedDescriptor = this.namespaceMapper.mapDescriptor(descriptor, this.preserveDebuggability);
 
