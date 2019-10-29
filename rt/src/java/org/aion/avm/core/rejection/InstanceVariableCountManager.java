@@ -9,9 +9,6 @@ import i.RuntimeAssertionError;
  * Manages the logic around counting instance variables and imposing our limit.
  */
 public class InstanceVariableCountManager {
-    // We limit this to 31 since that avoids certain contrived cases where large objects can cause performance and billing problems.
-    // (we only limit on the number of variables to keep the heuristic simple)
-    private static final int MAX_INSTANCE_VARIABLES = 31;
     private final Map<String, Integer> nameToDeclaredCount = new HashMap<>();
     private final Map<String, String> nameToSuperClassName = new HashMap<>();
 
@@ -24,7 +21,7 @@ public class InstanceVariableCountManager {
         Map<String, Integer> cache = new HashMap<>();
         for (String className : this.nameToDeclaredCount.keySet()) {
             int thisSize = populateAndCacheSize(cache, className);
-            if (thisSize > MAX_INSTANCE_VARIABLES) {
+            if (thisSize > ConsensusLimitConstants.MAX_TOTAL_INSTANCE_VARIABLES) {
                 throw RejectedClassException.tooManyInstanceVariables(className);
             } else {
                 // Verify that the other method cached this.

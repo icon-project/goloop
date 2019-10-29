@@ -25,17 +25,6 @@ import org.objectweb.asm.TypePath;
  * When a violation is detected, throws the RejectedClassException.
  */
 public class RejectionClassVisitor extends ClassToolchain.ToolChainClassVisitor {
-    // This will probably change, in the future, but we currently will only parse Java10 (version 54) classes.
-    private static final int SUPPORTED_CLASS_VERSION = 54;
-    /*
-     * This limit could probably be larger, since it really just needs to account for a type name length in 1 byte:
-     * -probably 255 - 1 (for "L" prefix) - 3 (maximum array dimensions)
-     * However, we want to leave this additional space for some potential future uses and we also don't expect that
-     * these types will usually be longer than a few bytes long (API type references will probably be the longest)
-     * because deployment tooling to shrink these identifiers reduces the deployment cost the user pays.
-     */
-    private static final int MAX_UTF8_NAME_LENGTH = 127;
-
     // The names of the classes that the user defined in their JAR (note:  this does NOT include interfaces).
     private final PreRenameClassAccessRules preRenameClassAccessRules;
     private final NamespaceMapper namespaceMapper;
@@ -51,10 +40,10 @@ public class RejectionClassVisitor extends ClassToolchain.ToolChainClassVisitor 
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
         // Make sure that this is the version we can understand.
-        if (SUPPORTED_CLASS_VERSION != version) {
+        if (ConsensusLimitConstants.SUPPORTED_CLASS_VERSION != version) {
             RejectedClassException.unsupportedClassVersion(version);
         }
-        if (name.getBytes(StandardCharsets.UTF_8).length > MAX_UTF8_NAME_LENGTH) {
+        if (name.getBytes(StandardCharsets.UTF_8).length > ConsensusLimitConstants.MAX_CLASS_NAME_UTF8_BYTES_LENGTH) {
             RejectedClassException.nameTooLong(name);
         }
         if (!this.preRenameClassAccessRules.canUserSubclass(superName)) {
