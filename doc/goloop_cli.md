@@ -203,6 +203,7 @@ Join chain
 | --genesis |  |  | Genesis storage path |
 | --genesis_template |  |  | Genesis template directory or file |
 | --max_block_tx_bytes |  | 0 | Max size of transactions in a block |
+| --node_cache |  | none | Node cache (none,small,large) |
 | --normal_tx_pool |  | 0 | Size of normal transaction pool |
 | --patch_tx_pool |  | 0 | Size of patch transaction pool |
 | --role |  | 3 | [0:None, 1:Seed, 2:Validator, 3:Both] |
@@ -1626,6 +1627,11 @@ Server management
 | --key_password | GOLOOP_KEY_PASSWORD |  | Password for the KeyStore file |
 | --key_secret | GOLOOP_KEY_SECRET |  | Secret(password) file for KeyStore |
 | --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --log_forwarder_address | GOLOOP_LOG_FORWARDER_ADDRESS |  | LogForwarder address |
+| --log_forwarder_level | GOLOOP_LOG_FORWARDER_LEVEL | info | LogForwarder level |
+| --log_forwarder_name | GOLOOP_LOG_FORWARDER_NAME |  | LogForwarder name |
+| --log_forwarder_options | GOLOOP_LOG_FORWARDER_OPTIONS | [] | LogForwarder options, comma-separated 'key=value' |
+| --log_forwarder_vendor | GOLOOP_LOG_FORWARDER_VENDOR |  | LogForwarder vendor (fluentd,logstash) |
 | --log_level | GOLOOP_LOG_LEVEL | debug | Global log level (trace,debug,info,warn,error,fatal,panic) |
 | --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
@@ -1680,6 +1686,11 @@ Save configuration
 | --key_password | GOLOOP_KEY_PASSWORD |  | Password for the KeyStore file |
 | --key_secret | GOLOOP_KEY_SECRET |  | Secret(password) file for KeyStore |
 | --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --log_forwarder_address | GOLOOP_LOG_FORWARDER_ADDRESS |  | LogForwarder address |
+| --log_forwarder_level | GOLOOP_LOG_FORWARDER_LEVEL | info | LogForwarder level |
+| --log_forwarder_name | GOLOOP_LOG_FORWARDER_NAME |  | LogForwarder name |
+| --log_forwarder_options | GOLOOP_LOG_FORWARDER_OPTIONS | [] | LogForwarder options, comma-separated 'key=value' |
+| --log_forwarder_vendor | GOLOOP_LOG_FORWARDER_VENDOR |  | LogForwarder vendor (fluentd,logstash) |
 | --log_level | GOLOOP_LOG_LEVEL | debug | Global log level (trace,debug,info,warn,error,fatal,panic) |
 | --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
@@ -1723,6 +1734,11 @@ Start server
 | --key_password | GOLOOP_KEY_PASSWORD |  | Password for the KeyStore file |
 | --key_secret | GOLOOP_KEY_SECRET |  | Secret(password) file for KeyStore |
 | --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --log_forwarder_address | GOLOOP_LOG_FORWARDER_ADDRESS |  | LogForwarder address |
+| --log_forwarder_level | GOLOOP_LOG_FORWARDER_LEVEL | info | LogForwarder level |
+| --log_forwarder_name | GOLOOP_LOG_FORWARDER_NAME |  | LogForwarder name |
+| --log_forwarder_options | GOLOOP_LOG_FORWARDER_OPTIONS | [] | LogForwarder options, comma-separated 'key=value' |
+| --log_forwarder_vendor | GOLOOP_LOG_FORWARDER_VENDOR |  | LogForwarder vendor (fluentd,logstash) |
 | --log_level | GOLOOP_LOG_LEVEL | debug | Global log level (trace,debug,info,warn,error,fatal,panic) |
 | --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
 | --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |

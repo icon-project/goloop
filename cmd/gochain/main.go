@@ -45,10 +45,9 @@ type GoChainConfig struct {
 	KeyStoreData json.RawMessage `json:"key_store"`
 	KeyStorePass string          `json:"key_password"`
 
-	LogLevel     string `json:"log_level"`
-	ConsoleLevel string `json:"console_level"`
-
-	*log.GoLoopFluentConfig `json:"fluent_log,omitempty"`
+	LogLevel     string               `json:"log_level"`
+	ConsoleLevel string               `json:"console_level"`
+	LogForwarder *log.ForwarderConfig `json:"log_forwarder,omitempty"`
 }
 
 func (config *GoChainConfig) String() string {
@@ -84,7 +83,7 @@ var cpuProfile, memProfile string
 var chainDir string
 var eeSocket string
 var modLevels map[string]string
-var fluent map[string]string
+var lfCfg log.ForwarderConfig
 
 func main() {
 	cmd := &cobra.Command{
@@ -124,7 +123,11 @@ func main() {
 	flag.StringVar(&cfg.LogLevel, "log_level", "debug", "Main log level")
 	flag.StringVar(&cfg.ConsoleLevel, "console_level", "trace", "Console log level")
 	flag.StringToStringVar(&modLevels, "mod_level", nil, "Console log level for specific module (<mod>=<level>,...)")
-	flag.StringToStringVar(&fluent, "fluent", nil, "Fluent server configuration (<cfg>=<value>,...)")
+	flag.StringVar(&lfCfg.Vendor, "log_forwarder_vendor", "", "LogForwarder vendor (fluentd,logstash)")
+	flag.StringVar(&lfCfg.Address, "log_forwarder_address", "", "LogForwarder address")
+	flag.StringVar(&lfCfg.Level, "log_forwarder_level", "info", "LogForwarder level")
+	flag.StringVar(&lfCfg.Name, "log_forwarder_name", "", "LogForwarder name")
+	flag.StringToString("log_forwarder_options", nil, "LogForwarder options, comma-separated 'key=value'")
 
 	cmd.Run = Execute
 	cmd.Execute()
@@ -249,11 +252,40 @@ func Execute(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	if fluent != nil && len(fluent) > 0 {
-		cfg.GoLoopFluentConfig = new(log.GoLoopFluentConfig)
-		if err := log.SetFluentConfig(fluent, cfg.GoLoopFluentConfig); err != nil {
-			log.Panic(err)
+	var tLfCfg log.ForwarderConfig
+	if cfg.LogForwarder != nil {
+		tLfCfg = *cfg.LogForwarder
+	}
+	if lfCfg.Vendor == "" {
+		lfCfg.Vendor = tLfCfg.Vendor
+	}
+	if lfCfg.Address == "" {
+		lfCfg.Address = tLfCfg.Address
+	}
+	if lfCfg.Level == "" {
+		lfCfg.Level = tLfCfg.Level
+	}
+	if lfCfg.Name == "" {
+		lfCfg.Name = tLfCfg.Name
+	}
+	if lfOpts, err := cli.GetStringMap(cmd.Flag("log_forwarder_options")); err != nil {
+		log.Panicf("Failed to parse LogForwarderOptions\n")
+	} else {
+		lfCfg.Options = lfOpts
+	}
+	if len(tLfCfg.Options) > 0 {
+		if lfCfg.Options == nil {
+			lfCfg.Options = tLfCfg.Options
+		} else {
+			for k, v := range tLfCfg.Options {
+				if _, ok := lfCfg.Options[k]; !ok {
+					lfCfg.Options[k] = v
+				}
+			}
 		}
+	}
+	if lfCfg.Vendor != "" {
+		cfg.LogForwarder = &lfCfg
 	}
 
 	if saveFile != "" {
@@ -301,9 +333,9 @@ func Execute(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	if cfg.GoLoopFluentConfig != nil {
-		if err := log.SetFluentHook(cfg.GoLoopFluentConfig); err != nil {
-			log.Panic(err)
+	if cfg.LogForwarder != nil {
+		if err := log.AddForwarder(cfg.LogForwarder); err != nil {
+			log.Fatalf("Invalid log_forwarder err:%+v", err)
 		}
 	}
 
