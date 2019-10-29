@@ -55,12 +55,14 @@ func (e *javaExecutionEngine) runEE(uid string) error {
 }
 
 func (e *javaExecutionEngine) start() error {
-	e.cmd = e.newCmd()
+	out := e.logger.
+		WriterLevel(log.DebugLevel)
+	e.cmd = e.newCmd(out, out)
 	if err := e.cmd.Start(); err != nil {
 		e.logger.Error("Failed to start JAVA EEManager")
 		return err
 	}
-	e.timer = time.AfterFunc(time.Second*20, func() {
+	e.timer = time.AfterFunc(time.Second*10, func() {
 		e.logger.Panic("Failed to execute Execution Engine Manager")
 	})
 	e.logger.Debugf("start JavaEE addr(%s), PID(%d), state(%p), \n", e.addr, e.cmd.Process.Pid, e.cmd.ProcessState)
@@ -220,9 +222,11 @@ func (e *javaExecutionEngine) OnClose(conn ipc.Connection) bool {
 	return true
 }
 
-func (e *javaExecutionEngine) newCmd() *exec.Cmd {
+func (e *javaExecutionEngine) newCmd(stdout, stderr io.WriteCloser) *exec.Cmd {
 	args := append(e.args, e.addr)
 	cmd := exec.Command(e.java, args...)
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
 	return cmd
 }
 
@@ -231,8 +235,9 @@ func NewJavaEE(logger log.Logger) (Engine, error) {
 	e.instances = make(map[string]*javaInstance)
 	// TODO change java & args
 	e.java = "/bin/sh"
+	// TODO add VM param for log level
+	//logParam := "-Dfoundation.icon.ee.logger.defaultLogLevel=" + logger.GetLevel().String()
 	e.args = []string{os.ExpandEnv("$JAVAEE_BIN")}
 	e.logger = logger.WithFields(log.Fields{log.FieldKeyModule: JavaEE})
-	// TODO set loglevel
 	return &e, nil
 }
