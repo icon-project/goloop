@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.jar.JarInputStream;
 
 import org.aion.avm.utilities.Utilities;
-import org.aion.avm.utilities.analyze.ConstantPoolBuilder;
+import org.aion.avm.utilities.analyze.ClassFileInfoBuilder;
 
 public class DAppSizeAnalyzer {
 
@@ -33,7 +33,7 @@ public class DAppSizeAnalyzer {
             JarInputStream jarReader = new JarInputStream(new ByteArrayInputStream(jarBytes), true);
             classMap = Utilities.extractClasses(jarReader, Utilities.NameStyle.SLASH_NAME);
             for (Map.Entry<String, byte[]> classEntry : classMap.entrySet()) {
-                ConstantPoolBuilder.ClassConstantSizeInfo info = ConstantPoolBuilder.getConstantPoolInfo(classEntry.getValue());
+                ClassFileInfoBuilder.ClassFileInfo info = ClassFileInfoBuilder.getClassFileInfo(classEntry.getValue());
                 printResult(classEntry.getKey(), info);
             }
 
@@ -43,14 +43,18 @@ public class DAppSizeAnalyzer {
         }
     }
 
-    private static void printResult(String className, ConstantPoolBuilder.ClassConstantSizeInfo info) {
+    private static void printResult(String className, ClassFileInfoBuilder.ClassFileInfo info) {
         System.out.format("*****************************************************************************%n");
 
         System.out.format("%-20s %-70s %n", "Class Name:", className);
-        System.out.format("%-20s %-70s %n %n", "ByteCode Length:", info.bytecodeLength);
+        System.out.format("%-20s %-70s %n %n", "Class File Length:", info.classFileLength);
 
-        System.out.format("%-20s %-70s %n", "Constant Pool size: ", info.totalConstantPoolSize);
-        System.out.format("%-20s %-70s %n %n", "Total Utf8 Length: ", info.totalUtf8Length);
+        System.out.format("%-20s %-70s %n", "Instance Field Count: ", info.instanceFieldCount);
+        System.out.format("%-20s %-70s %n %n", "Defined Method Count: ", info.definedMethods.size());
+
+        System.out.format("%-20s %-70s %n", "Constant Pool Entry Count: ", info.constantPoolEntryCount);
+        System.out.format("%-20s %-70s %n", "Constant Pool Byte Size: ", info.totalConstantPoolByteSize);
+        System.out.format("%-20s %-70s %n %n", "Total Utf8 Byte Length: ", info.totalUtf8ByteLength);
 
         System.out.format("-----------------------------%n");
         System.out.format("%-20s | %-10s %n", "Constant Type", "Count");
