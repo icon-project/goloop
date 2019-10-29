@@ -20,6 +20,7 @@ import org.aion.avm.core.miscvisitors.StrictFPVisitor;
 import org.aion.avm.core.miscvisitors.UserClassMappingVisitor;
 import org.aion.avm.core.persistence.AutomaticGraphVisitor;
 import org.aion.avm.core.persistence.LoadedDApp;
+import org.aion.avm.core.rejection.ConsensusLimitConstants;
 import org.aion.avm.core.rejection.InstanceVariableCountManager;
 import org.aion.avm.core.rejection.InstanceVariableCountingVisitor;
 import org.aion.avm.core.rejection.MainMethodChecker;
@@ -41,6 +42,7 @@ import org.aion.avm.core.util.TransactionResultUtil;
 import org.aion.avm.core.verification.Verifier;
 import org.aion.avm.userlib.CodeAndArguments;
 import org.aion.avm.utilities.Utilities;
+import org.aion.avm.utilities.analyze.ClassFileInfoBuilder;
 import org.aion.kernel.AvmWrappedTransactionResult;
 import org.aion.kernel.AvmWrappedTransactionResult.AvmInternalError;
 import org.aion.types.AionAddress;
@@ -95,15 +97,15 @@ public class DAppCreator {
         Verifier.verifyUntrustedClasses(inputClasses);
         // We need to run our rejection filter and static rename pass.
         Map<String, byte[]> safeClasses = rejectionAndRenameInputClasses(inputClasses, classHierarchy, classRenamer, preserveDebuggability);
-        
+
         ConstantClassBuilder.ConstantClassInfo constantClass = ConstantClassBuilder.buildConstantClassBytecodeForClasses(PackageConstants.kConstantClassName, safeClasses.values());
-        
+
         // merge the generated classes and processed classes, assuming the package spaces do not conflict.
         Map<String, byte[]> processedClasses = new HashMap<>();
-        
+
         // Start by adding the constant class.
         processedClasses.put(PackageConstants.kConstantClassName, constantClass.bytecode);
-        
+
         // merge the generated classes and processed classes, assuming the package spaces do not conflict.
         // We also want to expose this type to the class writer so it can compute common superclasses.
         GeneratedClassConsumer generatedClassesSink = (superClassSlashName, classSlashName, bytecode) -> {
@@ -343,15 +345,27 @@ public class DAppCreator {
 
         PreRenameClassAccessRules preRenameClassAccessRules = new PreRenameClassAccessRules(preRenameUserDefinedClasses, preRenameUserClassAndInterfaceSet);
         NamespaceMapper namespaceMapper = new NamespaceMapper(preRenameClassAccessRules);
-        
+
         for (String name : inputClasses.keySet()) {
             // Note that transformClasses requires that the input class names by the .-style names.
             RuntimeAssertionError.assertTrue(-1 == name.indexOf("/"));
 
             int parsingOptions = preserveDebuggability ? 0: ClassReader.SKIP_DEBUG;
             try {
+                byte[] classBytecode = inputClasses.get(name);
+                // Read the class to check our static geometry limits before running this through our high-level ASM rejection pipeline.
+                // (note that this processing is done for HistogramDataCollector, back in AvmImpl, but this duplication isn't a large concern since that is disabled, by default).
+                ClassFileInfoBuilder.ClassFileInfo classFileInfo = ClassFileInfoBuilder.getDirectClassFileInfo(classBytecode);
+                // Impose our maximum method size bytecode size.
+                for (ClassFileInfoBuilder.MethodCode methodCode : classFileInfo.definedMethods) {
+                    if (methodCode.codeLength > ConsensusLimitConstants.MAX_METHOD_BYTE_LENGTH) {
+                        throw RejectedClassException.maximumMethodSizeExceeded(name);
+                    }
+                }
+
+                // Now, proceed with the ASM pipeline for high-level rejection and renaming.
                 InstanceVariableCountingVisitor variableCounter = new InstanceVariableCountingVisitor(manager);
-                byte[] bytecode = new ClassToolchain.Builder(inputClasses.get(name), parsingOptions)
+                byte[] bytecode = new ClassToolchain.Builder(classBytecode, parsingOptions)
                     .addNextVisitor(new RejectionClassVisitor(preRenameClassAccessRules, namespaceMapper, preserveDebuggability))
                     .addNextVisitor(new LoopingExceptionStrippingVisitor())
                     .addNextVisitor(variableCounter)

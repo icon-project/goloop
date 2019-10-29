@@ -69,6 +69,10 @@ public class RejectedClassException extends AvmException {
         throw new RejectedClassException("Class exceeds instance variable limit: " + className);
     }
 
+    public static RejectedClassException maximumMethodSizeExceeded(String className) {
+        throw new RejectedClassException("Class exceeds maximum method size: " + className);
+    }
+
     public RejectedClassException(String message) {
         super(message);
     }

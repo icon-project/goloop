@@ -23,4 +23,13 @@ public class ConsensusLimitConstants {
      * Note that this is the TOTAL instance variables across all super-classes, not just defined within the one class.
      */
     public static final int MAX_TOTAL_INSTANCE_VARIABLES = 31;
+    /*
+     * We impose a maximum code size to ensure that our bytecode instrumentation implementation details cannot be observed at the
+     * level of consensus.
+     * The JVM imposes a maximum length of 65535 bytes (with some special concerns around exception handlers at that size) so
+     * capping this at 4095 means we have an overhead limit of 15 bytes per byte of input user code.
+     * Given that a Java method larger than even 1KiB is quite rare, and that things need to be kept small for deployment, this
+     * limit is unlikely to cause an issue.
+     */
+    public static final int MAX_METHOD_BYTE_LENGTH = 4095;
 }
