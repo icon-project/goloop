@@ -73,6 +73,10 @@ public class RejectedClassException extends AvmException {
         throw new RejectedClassException("Class exceeds maximum method size: " + className);
     }
 
+    public static RejectedClassException maximumExceptionTableEntriesExceeded(String className) {
+        throw new RejectedClassException("Class exceeds maximum exception table size for a method: " + className);
+    }
+
     public RejectedClassException(String message) {
         super(message);
     }

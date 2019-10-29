@@ -32,4 +32,13 @@ public class ConsensusLimitConstants {
      * limit is unlikely to cause an issue.
      */
     public static final int MAX_METHOD_BYTE_LENGTH = 4095;
+    /*
+     * We impose a maximum on the number of exception table entries to ensure that our bytecode instrumentation implementation
+     * details cannot be observed at the level of consensus.
+     * Exception handlers typically require heavier instrumentation than other parts of the code, due to how exceptions interact
+     * with control flow, so imposing a limit here avoids certain contrived cases where implementation details could be observed.
+     * Given that a Java method with more than just a few exception table entries is quite rare, this limit is unlikely to cause
+     * an issue.
+     */
+    public static final int MAX_EXCEPTION_TABLE_ENTRIES = 15;
 }
