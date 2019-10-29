@@ -85,6 +85,9 @@ public class LoadedDApp {
     private long loadedDataBlockNum;
     private long loadedCodeBlockNum;
 
+    // Note that we track the interned classes here since they have the same lifecycle as the LoadedDApp (including for reentrant calls).
+    public final InternedClasses internedClasses;
+
     private final ClassRenamer classRenamer;
     private final boolean preserveDebuggability;
 
@@ -142,6 +145,7 @@ public class LoadedDApp {
         }
         loadedDataBlockNum = -1;
         loadedCodeBlockNum = -1;
+        this.internedClasses = new InternedClasses();
     }
 
     /**

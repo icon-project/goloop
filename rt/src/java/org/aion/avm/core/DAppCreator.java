@@ -227,7 +227,6 @@ public class DAppCreator {
 
             // We start the nextHashCode at 1.
             int nextHashCode = 1;
-            InternedClasses icm = new InternedClasses();
             // we pass a null re-entrant state since we haven't finished initializing yet - nobody can call into us.
             IBlockchainRuntime br = new BlockchainRuntimeImpl(capabilities,
                                                               externalState,
@@ -240,8 +239,8 @@ public class DAppCreator {
                                                               codeAndArguments.arguments,
                                                               runtimeSetup,
                                                               enableBlockchainPrintln);
-            FrameContextImpl fc = new FrameContextImpl(externalState, dapp, icm, br);
-            InstrumentationHelpers.pushNewStackFrame(runtimeSetup, dapp.loader, tx.energyLimit - result.energyUsed(), nextHashCode, icm, fc);
+            FrameContextImpl fc = new FrameContextImpl(externalState, dapp, dapp.internedClasses, br);
+            InstrumentationHelpers.pushNewStackFrame(runtimeSetup, dapp.loader, tx.energyLimit - result.energyUsed(), nextHashCode, dapp.internedClasses, fc);
             IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(br);
 
             // We have just created this dApp, there should be no previous runtime associated with it.

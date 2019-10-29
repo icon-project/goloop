@@ -5,7 +5,6 @@ import java.util.Deque;
 
 import org.aion.types.AionAddress;
 import org.aion.avm.core.persistence.LoadedDApp;
-import i.InternedClasses;
 import i.RuntimeAssertionError;
 
 
@@ -13,6 +12,7 @@ import i.RuntimeAssertionError;
  * Contains the state of DApps currently running within the current logical thread (DApps calling DApps) to ensure that we can properly manage
  * the state when a call back into one of these is made (since reentrant calls are permitted and must inherit the state the DApp was left in).
  * NOTE:  This is only intended to be manipulated within a single callstack.  Sharing across unrelated call stacks will cause undefined behaviour.
+ * Over time, the contents stored in the ReentrantState may be moved into the LoadedDApp, since their lifecycles are closely aligned.
  */
 public class ReentrantDAppStack {
     private final Deque<ReentrantState> stack = new ArrayDeque<>();
@@ -67,21 +67,15 @@ public class ReentrantDAppStack {
         public final AionAddress address;
         public final LoadedDApp dApp;
         private int nextHashCode;
-        private InternedClasses internedClassWrappers;
 
-        public ReentrantState(AionAddress address, LoadedDApp dApp, int nextHashCode, InternedClasses internedClassWrappers) {
+        public ReentrantState(AionAddress address, LoadedDApp dApp, int nextHashCode) {
             this.address = address;
             this.dApp = dApp;
             this.nextHashCode = nextHashCode;
-            this.internedClassWrappers = internedClassWrappers;
         }
         
         public int getNextHashCode() {
             return this.nextHashCode;
-        }
-
-        public InternedClasses getInternedClassWrappers() {
-            return this.internedClassWrappers;
         }
 
         public void updateNextHashCode(int nextHashCode) {

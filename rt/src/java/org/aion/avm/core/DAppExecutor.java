@@ -53,9 +53,7 @@ public class DAppExecutor {
         IInstrumentation threadInstrumentation = IInstrumentation.attachedThreadInstrumentation.get();
         
         // We need to get the interned classes before load the graph since it might need to instantiate class references.
-        InternedClasses initialClassWrappers = (null != stateToResume)
-            ? stateToResume.getInternedClassWrappers()
-            : new InternedClasses();
+        InternedClasses initialClassWrappers = dapp.internedClasses;
 
         // Note that we can't do any billing until after we install the InstrumentationHelpers new stack frame
         int nextHashCode;
@@ -86,7 +84,7 @@ public class DAppExecutor {
         // This is required so that the call() mechanism can access it to save/reload its ContractEnvironmentState and so that the underlying
         // instance loader (ReentrantGraphProcessor/ReflectionStructureCodec) can be notified when it becomes active/inactive (since it needs
         // to know if it is loading an instance
-        ReentrantDAppStack.ReentrantState thisState = new ReentrantDAppStack.ReentrantState(dappAddress, dapp, nextHashCode, initialClassWrappers);
+        ReentrantDAppStack.ReentrantState thisState = new ReentrantDAppStack.ReentrantState(dappAddress, dapp, nextHashCode);
         task.getReentrantDAppStack().pushState(thisState);
 
         IBlockchainRuntime br = new BlockchainRuntimeImpl(capabilities,
