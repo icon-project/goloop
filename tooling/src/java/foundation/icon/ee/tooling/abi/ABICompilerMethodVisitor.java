@@ -157,7 +157,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
         }
     }
 
-    private void emitSetArrayElementString(int index, String value) {
+    private void emitSetValueArrayElementString(int index, String value) {
         super.visitInsn(Opcodes.DUP);
         if (index <= 5) {
             super.visitInsn(Opcodes.ICONST_0 + index);
@@ -171,7 +171,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
         super.visitInsn(Opcodes.AASTORE);
     }
 
-    private void emitSetArrayElementByArg(int index, Type argType, int argPos) {
+    private void emitSetValueArrayElementByArg(int index, Type argType, int argPos) {
         super.visitInsn(Opcodes.DUP);
         if (index <= 5) {
             super.visitInsn(Opcodes.ICONST_0 + index);
@@ -250,10 +250,10 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
         super.visitIntInsn(Opcodes.BIPUSH, indexed+1);
         super.visitTypeInsn(Opcodes.ANEWARRAY, "avm/Value");
         // indexedArr[0] = ${event signature};
-        emitSetArrayElementString(0, getEventSignature(args));
+        emitSetValueArrayElementString(0, getEventSignature(args));
         for (int i=0; i<indexed; i++) {
             // indexedArr[${i+1}] = ValueBuffer.of(${args[i]});
-            emitSetArrayElementByArg(i+1, args[i], argPos);
+            emitSetValueArrayElementByArg(i+1, args[i], argPos);
             argPos += args[i].getSize();
         }
         super.visitVarInsn(Opcodes.ASTORE, argsSize);
@@ -263,7 +263,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
         super.visitTypeInsn(Opcodes.ANEWARRAY, "avm/Value");
         for (int i=0; i<args.length-indexed; i++) {
             // dataArr[$i] = ValueBuffer.of(${args[indexed+i]});
-            emitSetArrayElementByArg(i, args[indexed+i], argPos);
+            emitSetValueArrayElementByArg(i, args[indexed+i], argPos);
             argPos += args[indexed+i].getSize();
         }
         super.visitVarInsn(Opcodes.ASTORE, argsSize+1);
