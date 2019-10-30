@@ -24,7 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ExecutorManager {
-    private final Logger logger = LoggerFactory.getLogger(ExecutorManager.class);
+    private static final Logger logger = LoggerFactory.getLogger(ExecutorManager.class);
     private Map<String, TransactionExecutor> execMap;
     private ManagerProxy proxy;
     private String execSockAddr;

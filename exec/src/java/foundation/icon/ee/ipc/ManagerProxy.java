@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 
 public class ManagerProxy extends Proxy {
-    private final Logger logger = LoggerFactory.getLogger(ManagerProxy.class);
+    private static final Logger logger = LoggerFactory.getLogger(ManagerProxy.class);
     private static final int VERSION = 1;
 
     private OnRunListener mOnRunListener;

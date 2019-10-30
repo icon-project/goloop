@@ -34,7 +34,7 @@ import static org.msgpack.value.ValueType.ARRAY;
 
 public abstract class Proxy {
     private final Client client;
-    private final Logger logger = LoggerFactory.getLogger(Proxy.class);
+    private static final Logger logger = LoggerFactory.getLogger(Proxy.class);
     private final MessageUnpacker unpacker;
 
     static class Message {

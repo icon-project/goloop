@@ -29,7 +29,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 
 public class EEProxy extends Proxy {
-    private final Logger logger = LoggerFactory.getLogger(EEProxy.class);
+    private static final Logger logger = LoggerFactory.getLogger(EEProxy.class);
     private static ThreadLocal<EEProxy> threadLocal = new ThreadLocal<>();
 
     public static final int LOG_PANIC = 0;

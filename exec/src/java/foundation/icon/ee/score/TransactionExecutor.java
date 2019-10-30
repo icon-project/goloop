@@ -46,7 +46,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 
 public class TransactionExecutor {
-    private final Logger logger = LoggerFactory.getLogger(TransactionExecutor.class);
+    private static final Logger logger = LoggerFactory.getLogger(TransactionExecutor.class);
     private static final String CODE_JAR = "code.jar";
     private static final String CMD_INSTALL = "onInstall";
     private static final String APIS_NAME = "META-INF/APIS";
