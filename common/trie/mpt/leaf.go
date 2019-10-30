@@ -80,7 +80,6 @@ func (l *leaf) hash() []byte {
 }
 
 func (l *leaf) addChild(m *mpt, k []byte, v trie.Object) (node, nodeState) {
-	//fmt.Println("leaf addChild : k ", k, ", v : ", v)
 	match, same := compareHex(k, l.keyEnd)
 	// case 1 : match = 0 -> new branch
 	switch {

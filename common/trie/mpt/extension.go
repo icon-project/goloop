@@ -2,6 +2,7 @@ package mpt
 
 import (
 	"fmt"
+
 	"github.com/icon-project/goloop/common/trie"
 )
 
@@ -114,10 +115,12 @@ func (ex *extension) addChild(m *mpt, k []byte, v trie.Object) (node, nodeState)
 		newExt := &extension{sharedNibbles: k[:match], next: newBranch, nodeBase: nodeBase{state: dirtyNode}}
 		if match+1 == len(ex.sharedNibbles) {
 			newBranch.nibbles[ex.sharedNibbles[match]] = ex.next
+			ex.sharedNibbles = ex.sharedNibbles[match+1:]
 		} else {
 			newBranch.nibbles[ex.sharedNibbles[match]] = ex
 			ex.sharedNibbles = ex.sharedNibbles[match+1:]
 		}
+		ex.changeState(dirtyNode)
 		newBranch.addChild(m, k[match:], v)
 		return newExt, dirtyNode
 	// case 3 : match < len(k) && len(ex.sharedNibbles) < len(k) -> go to next
