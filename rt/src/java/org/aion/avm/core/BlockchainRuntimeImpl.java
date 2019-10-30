@@ -3,6 +3,8 @@ package org.aion.avm.core;
 import org.aion.avm.core.util.TransactionResultUtil;
 import org.aion.types.AionAddress;
 import org.aion.types.Transaction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import p.avm.Address;
 import p.avm.CollectionDB;
 import p.avm.CollectionDBImpl;
@@ -25,6 +27,7 @@ import java.util.List;
  * The implementation of IBlockchainRuntime which is appropriate for exposure as a shadow Object instance within a DApp.
  */
 public class BlockchainRuntimeImpl implements IBlockchainRuntime {
+    private static final Logger logger = LoggerFactory.getLogger(BlockchainRuntimeImpl.class);
     private final IExternalCapabilities capabilities;
     private final IExternalState externalState;
     private final AvmInternal avm;
@@ -524,6 +527,21 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     public void avm_log(IObjectArray indexed, IObjectArray data) {
+        if (logger.isTraceEnabled()) {
+            logger.trace("Blockchain.log indxed.len={} data.len={}", indexed.length(), data.length());
+            for (int i=0; i<indexed.length(); i++) {
+                var v = indexed.get(i);
+                if (v instanceof ValueBuffer) {
+                    logger.trace("indexed[{}]={}", i, ((ValueBuffer)v).asByteArray());
+                }
+            }
+            for (int i=0; i<data.length(); i++) {
+                var v = data.get(i);
+                if (v instanceof ValueBuffer) {
+                    logger.trace("data[{}]={}", i, ((ValueBuffer)v).asByteArray());
+                }
+            }
+        }
         byte[][] bindexed = new byte[indexed.length()][];
         for (int i=0; i<bindexed.length; i++) {
             Value v = (Value)indexed.get(i);

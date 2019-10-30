@@ -267,13 +267,6 @@ public final class Blockchain extends Object {
     }
 
     public static void avm_log(IObjectArray indexed, IObjectArray data) {
-        avm_println(new String("Blockchain.log indxed.len=" + indexed.length() + " data.len=" + data.length()));
-        for (int i=0; i<indexed.length(); i++) {
-            avm_println(new String("indexed["+i+"] " + ((Value)indexed.get(i)).avm_asByteArray()));
-        }
-        for (int i=0; i<data.length(); i++) {
-            avm_println(new String("data["+i+"] " + ((Value)data.get(i)).avm_asByteArray()));
-        }
         blockchainRuntime.avm_log(indexed, data);
     }
 }
