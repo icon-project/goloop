@@ -101,10 +101,6 @@ public final class Integer extends Number implements Comparable<Integer> {
         return new Integer(i);
     }
 
-    public static Integer valueOf(int i) {
-        return new Integer(i);
-    }
-
     // These are the constructors provided in the JDK but we mark them private since they are deprecated.
     // (in the future, we may change these to not exist - depends on the kind of error we want to give the user).
     private Integer(int v) {
