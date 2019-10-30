@@ -8,7 +8,7 @@ import org.aion.avm.core.arraywrapping.ArraysWithKnownTypesClassVisitor;
 import org.aion.avm.core.exceptionwrapping.ExceptionWrapping;
 import org.aion.avm.core.instrument.ClassMetering;
 import org.aion.avm.core.instrument.HeapMemoryCostCalculator;
-import org.aion.avm.core.miscvisitors.MapAPIClassVisitor;
+import org.aion.avm.core.miscvisitors.APIRemapClassVisitor;
 import org.aion.avm.core.miscvisitors.ClinitStrippingVisitor;
 import org.aion.avm.core.miscvisitors.ConstantVisitor;
 import org.aion.avm.core.miscvisitors.InterfaceFieldClassGeneratorVisitor;
@@ -142,7 +142,7 @@ public class DAppCreator {
             bytecode = new ClassToolchain.Builder(bytecode, parsingOptions)
                     .addNextVisitor(new ArraysRequiringAnalysisClassVisitor(classHierarchy))
                     .addNextVisitor(new ArraysWithKnownTypesClassVisitor())
-                    .addNextVisitor(new MapAPIClassVisitor())
+                    .addNextVisitor(new APIRemapClassVisitor())
                     .addWriter(new TypeAwareClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS, classHierarchy, classRenamer))
                     .build()
                     .runAndGetBytecode();

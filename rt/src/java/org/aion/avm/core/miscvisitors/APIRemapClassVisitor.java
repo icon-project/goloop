@@ -4,9 +4,9 @@ import org.aion.avm.core.ClassToolchain;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
-public class MapAPIClassVisitor extends ClassToolchain.ToolChainClassVisitor {
+public class APIRemapClassVisitor extends ClassToolchain.ToolChainClassVisitor {
 
-    public MapAPIClassVisitor() {
+    public APIRemapClassVisitor() {
         super(Opcodes.ASM6);
     }
 
