@@ -271,8 +271,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
         // Blockchain.log(indexedArr, dataArr);
         super.visitVarInsn(Opcodes.ALOAD, argsSize);
         super.visitVarInsn(Opcodes.ALOAD, argsSize+1);
-        //super.visitMethodInsn(Opcodes.INVOKESTATIC, "avm/Blockchain", "log", "([Lavm/Value;[Lavm/Value;)V", false);
-        super.visitMethodInsn(Opcodes.INVOKESTATIC, "avm/Blockchain", "log", "([Ljava/lang/Object;[Ljava/lang/Object;)V", false);
+        super.visitMethodInsn(Opcodes.INVOKESTATIC, "avm/Blockchain", "log", "([Lavm/Value;[Lavm/Value;)V", false);
         super.visitInsn(Opcodes.RETURN);
         super.visitMaxs(0, 0);
     }

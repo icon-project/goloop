@@ -24,9 +24,9 @@ public class MapAPIClassVisitor extends ClassToolchain.ToolChainClassVisitor {
                 if (opcode==Opcodes.INVOKESTATIC &&
                         owner.equals("p/avm/Blockchain") &&
                         name.equals("avm_log") &&
-                        descriptor.equals("(Lw/_p/avm/Value;Lw/_p/avm/Value;)V") &&
+                        descriptor.equals("(Lw/_Lp/avm/Value;Lw/_Lp/avm/Value;)V") &&
                         !isInterface) {
-                    descriptor = "([Li/ObjectArray;Li/ObjectArray;)V";
+                    descriptor = "(Li/IObjectArray;Li/IObjectArray;)V";
                 }
                 super.visitMethodInsn(opcode, owner, name, descriptor, isInterface);
             }
