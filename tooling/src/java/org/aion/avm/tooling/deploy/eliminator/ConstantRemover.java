@@ -1,11 +1,11 @@
 package org.aion.avm.tooling.deploy.eliminator;
 
-import org.aion.avm.utilities.JarBuilder;
-import org.aion.avm.utilities.Utilities;
 import org.aion.avm.userlib.abi.ABIDecoder;
 import org.aion.avm.userlib.abi.ABIEncoder;
 import org.aion.avm.userlib.abi.ABIException;
 import org.aion.avm.userlib.abi.ABIStreamingEncoder;
+import org.aion.avm.utilities.JarBuilder;
+import org.aion.avm.utilities.Utilities;
 import org.objectweb.asm.*;
 
 import java.io.ByteArrayInputStream;

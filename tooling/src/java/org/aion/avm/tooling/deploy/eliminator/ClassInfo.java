@@ -44,13 +44,7 @@ public class ClassInfo {
     // It should not return null on any legal code
     public MethodInfo getDeclaration(String methodId) {
 
-        // Does the class itself declare this method?
-        MethodInfo methodInfo = methodMap.get(methodId);
-
-        // Class didn't have the method, walk up the superclasses
-        if (null == methodInfo && null != superInfo) {
-            methodInfo = superInfo.getDeclaration(methodId);
-        }
+        MethodInfo methodInfo = getConcreteImplementation(methodId);
 
         // Superclasses didn't have the method, try the interfaces now
         // If multiple parent interfaces declare this method, there is no guarantee about which one will be returned
@@ -59,6 +53,22 @@ public class ClassInfo {
             if (parentInfo.isInterface()) {
                 methodInfo = parentInfo.getMethodMap().get(methodId);
             }
+        }
+
+        return methodInfo;
+    }
+
+    // Given a method identifier, this method returns the matching declaration in the class hierarchy
+    // If the class itself declares the method, it returns that methodInfo
+    // If not, it walks up the *class* hierarchy, and returns the closest matching methodInfo
+    public MethodInfo getConcreteImplementation(String methodId) {
+
+        // Does the class itself declare this method?
+        MethodInfo methodInfo = methodMap.get(methodId);
+
+        // Class didn't have the method, walk up the superclass
+        if (null == methodInfo && null != superInfo) {
+            methodInfo = superInfo.getConcreteImplementation(methodId);
         }
 
         return methodInfo;

@@ -79,6 +79,26 @@ public class MethodReachabilityDetector {
         }
     }
 
+    /* The logic about what should be marked reachable when we've tried to invoke method M in structure S (which can be a class or an interface)
+     is a two-step process.
+
+    Step 1) First, we try to find M in S. If it's present, we mark it reachable. If not, we walk up all of S's super classes
+    up to Object, looking for M. If we find it, we enqueue it.
+    If we still haven't found it, we can say that
+        a) S must be an interface or an abstract class, and
+        b) M must be declared in one of the interfaces that S implements / extends.
+    We hence search through the parent interfaces to find a declaration of M.
+
+    Step 2) We now need to think about S's children only if M is NOT static. For each child C,
+        a) If C implements M, we must immediately mark M as reachable in C.
+        b) We also have to consider the odd pattern that arises when S is an interface, and method M is implemented
+            by an abstract class A, that concrete class C extends. Note that A does NOT implement S in this case.
+            In this case, we walk up C's super classes searching for the concrete implementation that it uses, and mark that as reachable.
+
+            Note that we only have to do this if S is an interface. If S is an abstract class, we will mark the appropriate
+            concrete implementation as reachable in step 2 a.
+     */
+
     // should only be called on methods that aren't constructors
     private void enqueueSelfAndChildren(ClassInfo classInfo, String methodId) {
 
@@ -103,7 +123,11 @@ public class MethodReachabilityDetector {
                 // - the child we are examining is a non-abstract class
                 else if (classInfo.isInterface() && !childClassInfo.isInterface() && !childClassInfo
                     .isAbstract()) {
-                    enqueue(childClassInfo.getDeclaration(methodId));
+                    MethodInfo concreteImplInfo = childClassInfo.getConcreteImplementation(methodId);
+                    if (null == concreteImplInfo) {
+                        throw new IllegalArgumentException("No implementation found for " + methodId + ", corrupt jar suspected");
+                    }
+                    enqueue(concreteImplInfo);
                 }
             }
         }
