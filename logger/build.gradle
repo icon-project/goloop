@@ -1,18 +1,4 @@
-plugins {
-    id 'java'
-}
-
-version 'unspecified'
-
-sourceCompatibility = 1.8
-
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     implementation 'org.slf4j:slf4j-api:1.7.26'
     implementation project(':exec')
-
-    testCompile group: 'junit', name: 'junit', version: '4.12'
 }

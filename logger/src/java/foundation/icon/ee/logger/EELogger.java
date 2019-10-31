@@ -1,3 +1,19 @@
+/*
+ * Copyright 2019 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package foundation.icon.ee.logger;
 
 import foundation.icon.ee.ipc.EEProxy;
@@ -5,7 +21,9 @@ import org.slf4j.helpers.FormattingTuple;
 import org.slf4j.helpers.MarkerIgnoringBase;
 import org.slf4j.helpers.MessageFormatter;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.Map;
 
 public class EELogger extends MarkerIgnoringBase {
@@ -30,7 +48,7 @@ public class EELogger extends MarkerIgnoringBase {
         "panic", LOG_LEVEL_ERROR
     );
 
-    Map<Integer, Integer> PROXY_LOG_MAP = Map.of(
+    private Map<Integer, Integer> PROXY_LOG_MAP = Map.of(
         LOG_LEVEL_TRACE, EEProxy.LOG_TRACE,
         LOG_LEVEL_DEBUG, EEProxy.LOG_DEBUG,
         LOG_LEVEL_INFO, EEProxy.LOG_INFO,
@@ -40,7 +58,7 @@ public class EELogger extends MarkerIgnoringBase {
 
     private static int currentLogLevel = initLogLevel();
     private static int initLogLevel() {
-        return  LOG_MAP.getOrDefault(String.valueOf(System.getProperty(LOG_LEVEL_KEY)), LOG_LEVEL_INFO);
+        return LOG_MAP.getOrDefault(String.valueOf(System.getProperty(LOG_LEVEL_KEY)), LOG_LEVEL_INFO);
     }
 
     /**
@@ -104,13 +122,33 @@ public class EELogger extends MarkerIgnoringBase {
         }
 
         EEProxy proxy;
-        if((proxy = EEProxy.getProxy()) != null) {
+        if ((proxy = EEProxy.getProxy()) != null) {
             try {
                 proxy.log(PROXY_LOG_MAP.getOrDefault(level, EEProxy.LOG_INFO), strBuilder.toString());
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        } else {
+            // use System.err for main thread
+            System.err.printf("%s %s\n", renderLevel(level), strBuilder.toString());
+            System.err.flush();
         }
+    }
+
+    protected String renderLevel(int level) {
+        switch (level) {
+            case LOG_LEVEL_TRACE:
+                return "TRACE";
+            case LOG_LEVEL_DEBUG:
+                return ("DEBUG");
+            case LOG_LEVEL_INFO:
+                return "INFO";
+            case LOG_LEVEL_WARN:
+                return "WARN";
+            case LOG_LEVEL_ERROR:
+                return "ERROR";
+        }
+        throw new IllegalStateException("Unrecognized level [" + level + "]");
     }
 
     @Override
@@ -143,7 +181,6 @@ public class EELogger extends MarkerIgnoringBase {
         formatAndLog(LOG_LEVEL_TRACE, format, arguments);
     }
 
-    // TODO check below
     @Override
     public void trace(String msg, Throwable t) {
         log(LOG_LEVEL_TRACE, msg, t);
