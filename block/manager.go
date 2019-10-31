@@ -206,7 +206,7 @@ func (m *manager) removeNodeExcept(bn *bnode, except *bnode) {
 func (t *task) cb(block module.BlockCandidate, err error) {
 	cb := t._cb
 	t.manager.syncer.callLater(func() {
-		cb(block, err)
+		go cb(block, err)
 	})
 }
 
