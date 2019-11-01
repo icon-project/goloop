@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/bin/sh
 
-BASE_DIR=${0%/*}
+BASE_DIR=$(dirname $0)
 GOLANG_VERSION=${GOLANG_VERSION:-1.12.4}
 
 get_hash_of_image() {
@@ -36,7 +36,9 @@ update_image() {
 	fi
 
 	cp ${SRC_DIR}/go.sum ${SRC_DIR}/go.mod ${BUILD_DIR}/
-	pushd ${BUILD_DIR}
+
+        CDIR=$(pwd)
+	cd ${BUILD_DIR}
 
 	echo "Building image ${TAG} for ${GOLOOP_GOMOD_SHA}"
 	docker build \
@@ -46,7 +48,7 @@ update_image() {
 	local result=$?
 
 	rm -f go.sum go.mod
-	popd
+	cd ${CDIR}
 
 	return $result
     else
