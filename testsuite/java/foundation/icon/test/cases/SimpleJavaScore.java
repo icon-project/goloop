@@ -87,7 +87,7 @@ public class SimpleJavaScore {
         BigInteger initialSupply = BigInteger.valueOf(0x3e8).pow(4);
         BigInteger bal = callBalanceOf(ownerWallet.getAddress()).asInteger();
         LOG.info("expected (" + initialSupply + "), result (" + bal + ")");
-        assertTrue(initialSupply.equals(bal));
+        assertEquals(initialSupply, bal);
         LOG.infoExiting();
 
         // 3. transfer
@@ -102,14 +102,14 @@ public class SimpleJavaScore {
         LOG.infoEntering("getBalanceOf caller");
         bal = callBalanceOf(callerWallet.getAddress()).asInteger();
         LOG.info("expected (" + val + "), result (" + bal + ")");
-        assertTrue(val.equals(bal));
+        assertEquals(val, bal);
         LOG.infoExiting();
 
         // 5. getBalanceOf - check balance of User
         LOG.infoEntering("getBalanceOf caller");
         bal = callBalanceOf(ownerWallet.getAddress()).asInteger();
         LOG.info("expected (" + initialSupply.subtract(val) + "), result (" + bal + ")");
-        assertTrue(initialSupply.subtract(val).equals(bal));
+        assertEquals(initialSupply.subtract(val), bal);
         LOG.infoExiting();
     }
 

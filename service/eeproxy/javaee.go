@@ -31,7 +31,6 @@ type javaExecutionEngine struct {
 	instances    map[string]*javaInstance
 	net, addr    string
 	cmd          *exec.Cmd
-	out          io.WriteCloser
 	timer        *time.Timer
 
 	conn   ipc.Connection
@@ -55,8 +54,7 @@ func (e *javaExecutionEngine) runEE(uid string) error {
 }
 
 func (e *javaExecutionEngine) start() error {
-	out := e.logger.
-		WriterLevel(log.DebugLevel)
+	out := e.logger.WriterLevel(log.DebugLevel)
 	e.cmd = e.newCmd(out, out)
 	if err := e.cmd.Start(); err != nil {
 		e.logger.Error("Failed to start JAVA EEManager")
@@ -91,8 +89,7 @@ func (e *javaExecutionEngine) Init(net, addr string) error {
 }
 
 func (e *javaExecutionEngine) runInstances() error {
-	e.logger.Debugf("runInstances e.target(%d), e.instances(%d)\n",
-		e.target, e.instances)
+	e.logger.Debugf("runInstances e.target(%d), e.instances(%d)\n", e.target, e.instances)
 	for e.target > len(e.instances) {
 		uid := newUID()
 		e.logger.Debugf("runInstances with uid(%s)\n", uid)
