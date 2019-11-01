@@ -116,24 +116,25 @@ func (h *HookWrapper) Levels() []logrus.Level {
 }
 
 func (h *HookWrapper) Fire(e *logrus.Entry) error {
+	d := e.Data
+	defer func() {
+		e.Data = d
+	}()
+	e.Data = make(map[string]interface{}, len(d)+2)
+	for k, v := range d {
+		e.Data[k] = v
+	}
+
 	e.Data["logtime"] = e.Time.UnixNano()
 
-	var hasModule, hasSource bool
+	var hasModule bool
 	if e.Caller != nil {
 		if _, hasModule = e.Data[FieldKeyModule]; !hasModule {
 			e.Data[FieldKeyModule] = getPackageName(e.Caller.Function)
 		}
 		e.Data["src"] = fmt.Sprintf("%s:%d", path.Base(e.Caller.File), e.Caller.Line)
-		hasSource = true
 	}
 	err := h.h.Fire(e)
-	delete(e.Data, "logtime")
-	if !hasModule {
-		delete(e.Data, FieldKeyModule)
-	}
-	if hasSource {
-		delete(e.Data, "src")
-	}
 	return err
 }
 
@@ -199,10 +200,10 @@ func fluentHookCreater(c *ForwarderConfig) (logrus.Hook, error) {
 		MaxRetry     int           `json:"max_retry"`
 	}{
 		//default values from https://github.com/fluent/fluent-logger-golang/blob/master/fluent/fluent.go
-		Timeout: 3 * time.Second,
+		Timeout:      3 * time.Second,
 		WriteTimeout: time.Duration(0), // Write() will not time out
-		RetryWait: 500,
-		MaxRetry: 13,
+		RetryWait:    500,
+		MaxRetry:     13,
 	}
 	if err = c.UnmarshalByOptions(&opt); err != nil {
 		return nil, err
