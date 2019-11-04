@@ -352,7 +352,9 @@ class ServiceManagerProxy:
                 self.encode(step_used),
                 self.encode_any(result)
             ])
-        except BaseException as e:
+        except Exception:
+            e_str = traceback.format_exc()
+            self.debug(f"Exception in INVOKE:\n{e_str}", TAG)
             self.__client.send(Message.RESULT, [
                 Status.SYSTEM_FAILURE,
                 self.encode(limit),
@@ -373,8 +375,8 @@ class ServiceManagerProxy:
             else:
                 self.__client.send(Message.GETAPI, [status, None])
         except Exception:
-            e_str = traceback.format_exec()
-            self.debug(f"Handle GETAPI catch exception={e_str}", TAG)
+            e_str = traceback.format_exc()
+            self.debug(f"Exception in GETAPI:\n{e_str}", TAG)
             self.__client.send(Message.GETAPI, [Status.SYSTEM_FAILURE, None])
 
     def loop(self):

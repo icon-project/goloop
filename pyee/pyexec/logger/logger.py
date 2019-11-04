@@ -46,6 +46,10 @@ class Logger(object):
         LoggerUtil.print_config(default_logger, config)
 
     @classmethod
+    def isDebugEnabled(cls) -> bool:
+        return default_logger.isEnabledFor(DEBUG)
+
+    @classmethod
     def debug(cls, msg: str, tag: str = "DEBUG"):
         if default_logger.isEnabledFor(DEBUG):
             cls._log(DEBUG, LoggerUtil.make_log_msg(tag, msg))

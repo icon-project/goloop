@@ -28,7 +28,6 @@ TAG = 'InternalCall'
 
 
 class InternalCall(object):
-
     _proxy = None
 
     @classmethod
@@ -50,16 +49,16 @@ class InternalCall(object):
                      kw_params: Optional[dict] = None) -> Any:
         if func_name is None:
             func_name = STR_FALLBACK
-        Logger.debug(f'>>> from={addr_from} to={addr_to} amount={amount} func_name={func_name}', TAG)
-        Logger.debug(f'    arg_params={arg_params}, kw_params={kw_params}', TAG)
         new_limit = context.step_counter.check_step_remained(StepType.CONTRACT_CALL)
-        Logger.debug(f'    new_limit={new_limit}', TAG)
         if arg_params is not None:
             params = arg_params
         elif kw_params is not None:
             params = kw_params
         else:
             params = []
+        if Logger.isDebugEnabled():
+            Logger.debug(f'>>> from={addr_from} to={addr_to} amount={amount} func_name={func_name}', TAG)
+            Logger.debug(f'    new_limit={new_limit}, params={params}', TAG)
         status, step_used, result = \
             cls._proxy.call(addr_to, amount, new_limit, func_name, params)
         Logger.debug(f'<<< Result: {status}, {step_used}, {result}', TAG)
