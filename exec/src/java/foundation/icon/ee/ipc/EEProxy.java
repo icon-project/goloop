@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.Map;
 
 public class EEProxy extends Proxy {
     private static final Logger logger = LoggerFactory.getLogger(EEProxy.class);
@@ -113,16 +114,6 @@ public class EEProxy extends Proxy {
                     return; // exit loop
             }
         }
-    }
-
-    public Object getInfo() throws IOException {
-        sendMessage(MsgType.GETINFO, (Object) null);
-        Message msg = getNextMessage();
-        if (msg.type != MsgType.GETINFO) {
-            throw new IOException("Invalid message: GETINFO expected.");
-        }
-        logger.debug("[GETINFO]");
-        return TypedObj.decodeAny(msg.value);
     }
 
     public BigInteger getBalance(Address addr) throws IOException {
@@ -216,7 +207,8 @@ public class EEProxy extends Proxy {
 
     public interface OnInvokeListener {
         InvokeResult onInvoke(String code, boolean isQuery, Address from, Address to,
-                              BigInteger value, BigInteger limit, String method, Object[] params) throws IOException;
+                              BigInteger value, BigInteger limit,
+                              String method, Object[] params, Map info) throws IOException;
     }
 
     public void setOnInvokeListener(OnInvokeListener listener) {
@@ -245,9 +237,11 @@ public class EEProxy extends Proxy {
             BigInteger limit = new BigInteger(getValueAsByteArray(data.get(5)));
             String method = data.get(6).asStringValue().asString();
             Object[] params = (Object[]) TypedObj.decodeAny(data.get(7));
+            Map info = (Map) TypedObj.decodeAny(data.get(8));
 
             if (mOnInvokeListener != null) {
-                InvokeResult result = mOnInvokeListener.onInvoke(code, isQuery, from, to, value, limit, method, params);
+                InvokeResult result = mOnInvokeListener.onInvoke(
+                        code, isQuery, from, to, value, limit, method, params, info);
                 sendMessage(MsgType.RESULT, result.getStatus(), result.getStepUsed(), result.getResult());
             } else {
                 throw new IOException("no invoke handler");

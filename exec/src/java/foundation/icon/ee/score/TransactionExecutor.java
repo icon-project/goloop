@@ -94,16 +94,11 @@ public class TransactionExecutor {
 
     private InvokeResult handleInvoke(String code, boolean isQuery, Address from, Address to,
                                       BigInteger value, BigInteger limit,
-                                      String method, Object[] params) throws IOException {
+                                      String method, Object[] params, Map info) throws IOException {
         if (logger.isDebugEnabled()) {
             printInvokeParams(code, isQuery, from, to, value, limit, method, params);
-        }
-
-        Map info = (Map) proxy.getInfo();
-        if (logger.isDebugEnabled()) {
             printGetInfo(info);
         }
-
         boolean isInstall = CMD_INSTALL.equals(method);
         BigInteger blockNumber = (BigInteger) info.get(EEProxy.Info.BLOCK_HEIGHT);
         BigInteger blockTimestamp = (BigInteger) info.get(EEProxy.Info.BLOCK_TIMESTAMP);

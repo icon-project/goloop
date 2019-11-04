@@ -22,7 +22,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.util.HashMap;
 
 public class ProxyTest {
     private static final Logger logger = LoggerFactory.getLogger(ProxyTest.class);
@@ -86,7 +85,7 @@ public class ProxyTest {
     }
 
     private static void setInvokeHandler(EEProxy proxy) {
-        proxy.setOnInvokeListener((code, isQuery, from, to, value, limit, method, params) -> {
+        proxy.setOnInvokeListener((code, isQuery, from, to, value, limit, method, params, info) -> {
             if (logger.isDebugEnabled()) {
                 logger.debug(">>> code={}", code);
                 logger.debug("    isQuery={}", isQuery);
@@ -103,7 +102,6 @@ public class ProxyTest {
                 logger.debug("    ]");
             }
 
-            HashMap info = (HashMap) proxy.getInfo();
             if (logger.isDebugEnabled()) {
                 logger.debug(">>> getInfo: info={}", info);
                 logger.debug("  txHash={}", Bytes.toHexString((byte[]) info.get(EEProxy.Info.TX_HASH)));
