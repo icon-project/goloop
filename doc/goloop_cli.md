@@ -200,9 +200,11 @@ Join chain
 | --channel |  |  | Channel |
 | --concurrency |  | 1 | Maximum number of executors to use for concurrency |
 | --db_type |  | goleveldb | Name of database system(*badgerdb, goleveldb, boltdb, mapdb) |
+| --default_wait_timeout |  | 0 | Default wait timeout in milli-second (0: disable) |
 | --genesis |  |  | Genesis storage path |
 | --genesis_template |  |  | Genesis template directory or file |
 | --max_block_tx_bytes |  | 0 | Max size of transactions in a block |
+| --max_wait_timeout |  | 0 | Max wait timeout in milli-second (0:uses same value of default_wait_timeout) |
 | --node_cache |  | none | Node cache (none,small,large) |
 | --normal_tx_pool |  | 0 | Size of normal transaction pool |
 | --patch_tx_pool |  | 0 | Size of patch transaction pool |

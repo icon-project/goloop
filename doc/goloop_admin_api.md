@@ -249,6 +249,9 @@ genesisZip: string
 |»» channel|body|string|false|Chain-alias of node|
 |»» secureSuites|body|string|false|Supported Secure suites with order (none,tls,ecdhe) - Comma separated string|
 |»» secureAeads|body|string|false|Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string|
+|»» nodeCache|body|string|false|Node cache:|
+|»» defaultWaitTimeout|body|integer|false|Default wait timeout in milli-second(0:disable)|
+|»» maxWaitTimeout|body|integer|false|Max wait timeout in milli-second(0:uses same value of defaultWaitTimeout)|
 |» genesisZip|body|string(binary)|true|Genesis-Storage zip file, using multipart 'Content-Disposition: name=genesisZip'|
 
 #### Detailed descriptions
@@ -258,6 +261,11 @@ genesisZip: string
  * `1` - Seed
  * `2` - Validator
  * `3` - Seed and Validator
+
+**»» nodeCache**: Node cache:
+ * `none` - No cache
+ * `small` - Memory Lv1 ~ Lv5 for all
+ * `large` - Memory Lv1 ~ Lv5 for all and File Lv6 for store
 
 #### Enumerated Values
 
@@ -271,6 +279,9 @@ genesisZip: string
 |»» role|1|
 |»» role|2|
 |»» role|3|
+|»» nodeCache|none|
+|»» nodeCache|small|
+|»» nodeCache|large|
 
 > Example responses
 
@@ -712,6 +723,9 @@ This operation does not require authentication
 |channel|string|false|none|Chain-alias of node|
 |secureSuites|string|false|none|Supported Secure suites with order (none,tls,ecdhe) - Comma separated string|
 |secureAeads|string|false|none|Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string|
+|nodeCache|string|false|none|Node cache:  * `none` - No cache  * `small` - Memory Lv1 ~ Lv5 for all  * `large` - Memory Lv1 ~ Lv5 for all and File Lv6 for store|
+|defaultWaitTimeout|integer|false|none|Default wait timeout in milli-second(0:disable)|
+|maxWaitTimeout|integer|false|none|Max wait timeout in milli-second(0:uses same value of defaultWaitTimeout)|
 
 #### Enumerated Values
 
@@ -725,6 +739,9 @@ This operation does not require authentication
 |role|1|
 |role|2|
 |role|3|
+|nodeCache|none|
+|nodeCache|small|
+|nodeCache|large|
 
 <h2 id="tocSchainimportparam">ChainImportParam</h2>
 

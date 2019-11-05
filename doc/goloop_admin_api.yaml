@@ -409,6 +409,23 @@ components:
           type: string
           default: "chacha,aes128,aes256"
           description: "Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string"
+        nodeCache:
+          type: string
+          enum: [none,small,large]
+          default: none
+          description: >
+            Node cache:
+             * `none` - No cache
+             * `small` - Memory Lv1 ~ Lv5 for all
+             * `large` - Memory Lv1 ~ Lv5 for all and File Lv6 for store
+        defaultWaitTimeout:
+          type: integer
+          default: 0
+          description: "Default wait timeout in milli-second(0:disable)"
+        maxWaitTimeout:
+          type: integer
+          default: 0
+          description: "Max wait timeout in milli-second(0:uses same value of defaultWaitTimeout)"
       example:
         dbType: "goleveldb"
         seedAddress: "localhost:8080"

@@ -22,8 +22,31 @@ Below table shows the most common "VALUE types".
 | <a id="T_BIN_DATA">T_BIN_DATA</a>     | "0x" + lowercase HEX string. Length must be even. | 0x34b2                                                                                   |
 | <a id="T_SIG">T_SIG</a>               | base64 encoded string                             | VAia7YZ2Ji6igKWzjR2YsGa2m53nKPrfK7uXYW78QLE+ATehAVZPC40szvAiA6NEU5gCYB4c4qaQzqDh2ugcHgA= |
 | <a id="T_DATA_TYPE">T_DATA_TYPE</a>   | Type of data                                      | call, deploy or message                                                                  |
+| <a id="T_STRING">T_STRING</a>         | normal string                                     | test, hello, ...                                                                         |
 
-### <a name="FailureObject">Failure Object</a>
+## Failure Code
+
+Following is a list of failure codes.
+
+| Name                      | Value      | Description                                                                 |
+|:--------------------------|:-----------|:----------------------------------------------------------------------------|
+| UNKNOWN_FAILURE           | 1          | An uncategorized internal system error occurred.                            |
+| CONTRACT_NOT_FOUND        | 2          | There is no valid contract on the target address.                           |
+| METHOD_NOT_FOUND          | 3          | The specified method does not exist or is not usable.                       |
+| METHOD_NOT_PAYABLE        | 4          | The specified method is not payable.                                        |
+| ILLEGAL_FORMAT            | 5          | An Illegal method parameter or decorator has been declared.                 |
+| INVALID_PARAMETER         | 6          | An invalid parameter has been passed to a method.                           |
+| INVALID_INSTANCE          | 7          | An object has not been derived from the appropriate base class.             |
+| INVALID_CONTAINER_ACCESS  | 8          | Invalid container access occurred.                                          |
+| ACCESS_DENIED             | 9          | Access operation is denied, typically due to a database permission check.   |
+| OUT_OF_STEP               | 10         | Out of step                                                                 |
+| OUT_OF_BALANCE            | 11         | Out of balance                                                              |
+| TIMEOUT_ERROR             | 12         | Timeout error                                                               |
+| STACK_OVERFLOW            | 13         | Too deep inter-call                                                         |
+| SKIP_TARANSACTION         | 14         | The transaction is not executed.                                            |
+| REVERTED                  | 32 ~ 99    | End with revert request                                                     |
+
+## JSON-RPC Failure
 
 > Failure object example
 ```json
@@ -33,7 +56,21 @@ Below table shows the most common "VALUE types".
 }
 ```
 
+> Timeout object example
+```json
+{
+  "code" : -31006,
+  "message": "Timeout",
+  "data": "0x402b630c5ed80d1b8f0d89ca14a091084bcc0f6a98bc52329bccc045415bc0bd"
+}
+```
+
+`icx_sendTransactionAndWait` and `icx_waitTransactionResult` may return one of timeout errors.
+In those cases, it would have transaction hash in `data` field.
+
+
 #### Error Codes
+
 Below table shows the default error messages for the error code. Actual message may vary depending on the implementation.
 
 | Category     | Error code      | Message          | Description                                                                                               |
@@ -50,7 +87,24 @@ Below table shows the default error messages for the error code. Actual message 
 |              | -31003          | Executing        | Transaction is included in the block, but it doesn’t have confirmed result.                               |
 |              | -31004          | Not found        | Requested data is not found.                                                                              |
 |              | -31005          | Lack of resource | Resource is not available.                                                                                |
-| SCORE Error  | -30000 ~ -30099 |                  | Mapped error codes from Core2 Design - SCORE Result.                                                      |
+|              | -31006          | Timeout          | Fail to get result of transaction in specified timeout                                                    |
+|              | -31007          | System timeout   | Fail to get result of transaction in system timeout (short time than specified)                           |
+| SCORE Error  | -30000 ~ -30099 |                  | Mapped errors from [Failure code](#failure-code) ( = -30000 - `value` )                                   |
+
+
+## JSON-RPC HTTP Header
+
+You may set HTTP header for extension data of the request.
+
+**HTTP Header name** : `Icon-Options`
+
+
+| Option       | Description                          | Allowed APIs |
+|:-------------|:-------------------------------------|:-------------|
+| timeout      | Timeout for waiting in milli-second  | icx_sendTransactionAndWait <br/> icx_waitTransactionResult |
+
+
+
 
 ## JSON-RPC Methods
 
@@ -488,11 +542,13 @@ Returns the transaction result requested by transaction hash.
 |:-------|:--------|:------------|:-------|
 | 200    | OK      | Success     | Block  |
 
+<a id="T_RESULT">Transaction Result</a>
+
 | KEY                | VALUE type                                                 | Description                                                                            |
 |:-------------------|:-----------------------------------------------------------|:---------------------------------------------------------------------------------------|
 | status             | [T_INT](#T_INT)                                            | 1 on success, 0 on failure.                                                            |
 | to                 | [T_ADDR_EOA](#T_ADDR_EOA) or [T_ADDR_SCORE](#T_ADDR_SCORE) | Recipient address of the transaction                                                   |
-| failure            | JSON object                                                | This field exists when status is 0. Please refer [failure object](#FailureObject)      |
+| failure            | JSON object                                                | This field exists when status is 0. Please refer [failure object](#T_FAILURE)      |
 | txHash             | [T_HASH](#T_HASH)                                          | Transaction hash                                                                       |
 | txIndex            | [T_INT](#T_INT)                                            | Transaction index in the block                                                         |
 | blockHeight        | [T_INT](#T_INT)                                            | Height of the block that includes the transaction.                                     |
@@ -503,6 +559,14 @@ Returns the transaction result requested by transaction hash.
 | scoreAddress       | [T_ADDR_SCORE](#T_ADDR_SCORE)                              | SCORE address if the transaction created a new SCORE. (optional)                       |
 | eventLogs          | [T_ARRAY](#T_ARRAY)                                        | Array of eventlogs, which this transaction generated.                                  |
 | logsBloom          | [T_BIN_DATA](#T_BIN_DATA)                                  | Bloom filter to quickly retrieve related eventlogs.                                    |
+
+
+<a id="T_FAILURE">Failure object</a>
+
+| KEY                | VALUE type                                                 | Description                                                                            |
+|:-------------------|:-----------------------------------------------------------|:---------------------------------------------------------------------------------------|
+| code               | [T_INT](#T_INT)                                            | [Failure code](#failure-code).                                                         |
+| message            | [T_STRING](#T_STRING)                                      | Message for the failure.                                                               |
 
 ### icx_getTransactionByHash
 
@@ -772,3 +836,42 @@ It is used when transfering a message, and `data` has a HEX string.
 
 * Transaction hash ([T_HASH](#T_HASH)) on success
 * Error code and message on failure
+
+
+### icx_sendTransactionAndWait
+
+It sends a transaction like `icx_sendTransaction`, then it will wait for the
+result of it for specified time. If the timeout isn't set by user, it uses
+`defaultWaitTimeout`.
+
+It's disabled by default. It can be enabled by setting `defaultWaitTimeout` as none-zero value.
+
+#### Responses
+
+
+| Status | Meaning | Description | Schema |
+|:-------|:--------|:------------|:-------|
+| 200    | OK      | Success     | Block  |
+
+* Same response value([Transaction Result](#T_RESULT)) as `icx_getTransactionResult` on success
+* Error code, message and data on failure
+* `data` field of failure will be transaction hash([T_HASH](#T_HASH)) on timeout
+
+
+### icx_waitTransactionResult
+
+It will wait for the result of the transaction for specified time.
+If the timeout isn't set by user, it uses `defaultWaitTimeout`.
+
+It's disabled by default. It can be enabled by setting `defaultWaitTimeout` as none-zero value.
+
+#### Responses
+
+
+| Status | Meaning | Description | Schema |
+|:-------|:--------|:------------|:-------|
+| 200    | OK      | Success     | Block  |
+
+* Same response value([Transaction Result](#T_RESULT)) as `icx_getTransactionResult` on success
+* Error code, message and data on failure
+* `data` field of failure will be transaction hash([T_HASH](#T_HASH)) on timeout
