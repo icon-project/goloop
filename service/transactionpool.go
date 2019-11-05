@@ -184,7 +184,7 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 				if tp.list.Remove(e) {
 					tx := e.Value()
 					direct := e.ts != 0
-					if e.err != nil {
+					if e.err == nil {
 						tp.log.Panicf("No reason to drop the tx=<%#x>", tx.ID())
 					}
 					tp.log.Debugf("DROP TX: id=0x%x reason=%v", tx.ID(), e.err)
