@@ -25,6 +25,22 @@ type Monitor interface {
 	OnCommit(id []byte, ts time.Time, d time.Duration)
 }
 
+type TxManager interface {
+	OnDrop(id []byte, err error)
+	OnCommit(id []byte)
+}
+
+type dummyTxManager struct {
+}
+
+func (d dummyTxManager) OnDrop(id []byte, err error) {
+	// do nothing
+}
+
+func (d dummyTxManager) OnCommit(id []byte) {
+	// do nothing
+}
+
 type TransactionPool struct {
 	group module.TransactionGroup
 
@@ -35,19 +51,18 @@ type TransactionPool struct {
 
 	mutex sync.Mutex
 
+	txm     TxManager
 	monitor Monitor
 	log     log.Logger
 }
 
-func NewTransactionPool(
-	group module.TransactionGroup, size int,
-	txdb db.Bucket, m Monitor, log log.Logger,
-) *TransactionPool {
+func NewTransactionPool(group module.TransactionGroup, size int, txdb db.Bucket, m Monitor, log log.Logger) *TransactionPool {
 	pool := &TransactionPool{
 		group:   group,
 		size:    size,
 		txdb:    txdb,
 		list:    newTransactionList(),
+		txm:     dummyTxManager{},
 		monitor: m,
 		log:     log,
 	}
@@ -65,12 +80,12 @@ func (tp *TransactionPool) RemoveOldTXs(bts int64) {
 		if tx.Timestamp() <= bts {
 			tp.list.Remove(iter)
 			direct := iter.ts != 0
-			if iter.err != nil {
-				tp.log.Debugf("DROP TX: id=0x%x reason=%v", tx.ID(), iter.err)
-			} else {
-				tp.log.Debugf("DROP TX: id=0x%x timeout diff=%s",
-					tx.ID(), TimestampToDuration(bts-tx.Timestamp()))
+			if iter.err == nil {
+				iter.err = ExpiredTransactionError.Errorf(
+					"ExpiredTransaction(diff=%s)", TimestampToDuration(bts-tx.Timestamp()))
 			}
+			tp.log.Debugf("DROP TX: id=0x%x reason=%v", tx.ID(), iter.err)
+			tp.txm.OnDrop(tx.ID(), iter.err)
 			tp.monitor.OnDropTx(len(tx.Bytes()), direct)
 		}
 		iter = next
@@ -170,9 +185,10 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 					tx := e.Value()
 					direct := e.ts != 0
 					if e.err != nil {
-						tp.log.Debugf("DROP TX: id=0x%x reason=%v",
-							tx.ID(), e.err)
+						tp.log.Panicf("No reason to drop the tx=<%#x>", tx.ID())
 					}
+					tp.log.Debugf("DROP TX: id=0x%x reason=%v", tx.ID(), e.err)
+					tp.txm.OnDrop(tx.ID(), e.err)
 					tp.monitor.OnDropTx(len(tx.Bytes()), direct)
 				}
 			}
@@ -274,4 +290,11 @@ func (tp *TransactionPool) Used() int {
 	defer tp.mutex.Unlock()
 
 	return tp.list.Len()
+}
+
+func (tp *TransactionPool) SetTxManager(tm *TransactionManager) {
+	tp.mutex.Lock()
+	defer tp.mutex.Unlock()
+
+	tp.txm = tm
 }

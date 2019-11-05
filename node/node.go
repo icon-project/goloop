@@ -243,6 +243,8 @@ func (n *Node) JoinChain(
 		PatchTxPoolSize:  p.PatchTxPoolSize,
 		MaxBlockTxBytes:  p.MaxBlockTxBytes,
 		NodeCache:        p.NodeCache,
+		DefWaitTimeout:   p.DefWaitTimeout,
+		MaxWaitTimeout:   p.MaxWaitTimeout,
 		FilePath:         cfgFile,
 	}
 
@@ -405,6 +407,18 @@ func (n *Node) ConfigureChain(nid int, key string, value string) error {
 				return errors.Errorf("InvalidNodeCacheOption(%s)", value)
 			}
 			c.cfg.NodeCache = value
+		case "defaultWaitTimeout":
+			if intVal, err := strconv.ParseInt(value, 0, 64); err != nil {
+				return errors.Wrapf(err, "invalid value type")
+			} else {
+				c.cfg.DefWaitTimeout = intVal
+			}
+		case "maxWaitTimeout":
+			if intVal, err := strconv.ParseInt(value, 0, 64); err != nil {
+				return errors.Wrapf(err, "invalid value type")
+			} else {
+				c.cfg.MaxWaitTimeout = intVal
+			}
 		case "channel":
 			if _, ok := n.chains[value]; ok {
 				return errors.Wrapf(ErrAlreadyExists, "Network(channel=%s) already exists", value)

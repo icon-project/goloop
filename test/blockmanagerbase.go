@@ -60,3 +60,11 @@ func (_r *BlockManagerBase) Term() {
 func (_r *BlockManagerBase) WaitForTransaction(parentID []byte, cb func()) bool {
 	panic("not implemented")
 }
+
+func (_r *BlockManagerBase) SendTransactionAndWait(txi interface{}) (tid []byte, rc <-chan interface{}, err error) {
+	panic("not implemented")
+}
+
+func (_r *BlockManagerBase) WaitTransactionResult(id []byte) (rc <-chan interface{}, err error) {
+	panic("not implemented")
+}

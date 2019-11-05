@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -31,6 +32,14 @@ type testChain struct {
 	gtx      *testTransaction
 	vld      module.CommitVoteSetDecoder
 	sm       *testServiceManager
+}
+
+func (c *testChain) DefaultWaitTimeout() time.Duration {
+	return 0
+}
+
+func (c *testChain) MaxWaitTimeout() time.Duration {
+	return 0
 }
 
 func (c *testChain) Database() db.Database {

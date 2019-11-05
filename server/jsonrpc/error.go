@@ -22,6 +22,14 @@ func (c ErrorCode) New(msg string) *Error {
 	}
 }
 
+func (c ErrorCode) NewWithData(msg string, data interface{}) *Error {
+	return &Error{
+		Code:    c,
+		Message: msg,
+		Data:    data,
+	}
+}
+
 func (c ErrorCode) Errorf(f string, args ...interface{}) *Error {
 	return &Error{
 		Code:    c,
@@ -46,6 +54,8 @@ const (
 	ErrorCodeExecuting      ErrorCode = -31003
 	ErrorCodeNotFound       ErrorCode = -31004
 	ErrorLackOfResource     ErrorCode = -31005
+	ErrorCodeTimeout        ErrorCode = -31006
+	ErrorCodeSystemTimeout  ErrorCode = -31007
 )
 
 type Error struct {

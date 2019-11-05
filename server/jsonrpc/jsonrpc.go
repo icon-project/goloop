@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v4"
 
@@ -39,6 +40,7 @@ type Response struct {
 const (
 	HeaderKeyIconOptions = "Icon-Options"
 	IconOptionsDebug     = "debug"
+	IconOptionsTimeout   = "timeout"
 )
 
 type IconOptions map[string]string
@@ -64,6 +66,12 @@ func (opts IconOptions) SetBool(key string, value bool) {
 }
 func (opts IconOptions) GetBool(key string) (bool, error) {
 	return strconv.ParseBool(opts.Get(key))
+}
+func (opts IconOptions) SetInt(key string, v int64) {
+	opts.Set(key, strconv.FormatInt(v, 10))
+}
+func (opts IconOptions) GetInt(key string) (int64, error) {
+	return strconv.ParseInt(opts.Get(key), 10, 64)
 }
 func (opts IconOptions) ToHeaderValue() string {
 	if opts == nil {
@@ -120,6 +128,14 @@ func (ctx *Context) IncludeDebug() bool {
 	serverDebug := ctx.Get("includeDebug").(bool)
 	v, _ := ctx.opts.GetBool(IconOptionsDebug)
 	return v && serverDebug
+}
+
+func (ctx *Context) GetTimeout(t time.Duration) time.Duration {
+	if v, err := ctx.opts.GetInt(IconOptionsTimeout); err != nil {
+		return t
+	} else {
+		return time.Duration(v) * time.Millisecond
+	}
 }
 
 type Params struct {

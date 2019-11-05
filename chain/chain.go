@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/chain/gs"
@@ -59,9 +60,11 @@ type Config struct {
 	NodeCache        string `json:"node_cache,omitempty"`
 
 	//runtime
-	Channel      string `json:"channel"`
-	SecureSuites string `json:"secureSuites"`
-	SecureAeads  string `json:"secureAeads"`
+	Channel        string `json:"channel"`
+	SecureSuites   string `json:"secureSuites"`
+	SecureAeads    string `json:"secureAeads"`
+	DefWaitTimeout int64  `json:"waitTimeout"`
+	MaxWaitTimeout int64  `json:"maxTimeout"`
 
 	GenesisStorage gs.GenesisStorage `json:"-"`
 	Genesis        json.RawMessage   `json:"genesis"`
@@ -281,6 +284,23 @@ func (c *singleChain) MaxBlockTxBytes() int {
 		return c.cfg.MaxBlockTxBytes
 	}
 	return ConfigDefaultMaxBlockTxBytes
+}
+
+func (c *singleChain) DefaultWaitTimeout() time.Duration {
+	if c.cfg.DefWaitTimeout > 0 {
+		return time.Duration(c.cfg.DefWaitTimeout) * time.Millisecond
+	}
+	return 0
+}
+
+func (c *singleChain) MaxWaitTimeout() time.Duration {
+	if c.cfg.DefWaitTimeout > 0 {
+		if c.cfg.MaxWaitTimeout > c.cfg.DefWaitTimeout {
+			return time.Duration(c.cfg.MaxWaitTimeout) * time.Millisecond
+		}
+		return time.Duration(c.cfg.DefWaitTimeout) * time.Millisecond
+	}
+	return 0
 }
 
 func (c *singleChain) State() string {

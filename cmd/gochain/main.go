@@ -128,6 +128,8 @@ func main() {
 	flag.StringVar(&lfCfg.Level, "log_forwarder_level", "info", "LogForwarder level")
 	flag.StringVar(&lfCfg.Name, "log_forwarder_name", "", "LogForwarder name")
 	flag.StringToString("log_forwarder_options", nil, "LogForwarder options, comma-separated 'key=value'")
+	flag.Int64Var(&cfg.DefWaitTimeout, "default_wait_timeout", 0, "Default wait timeout in milli-second (0: disable)")
+	flag.Int64Var(&cfg.MaxWaitTimeout, "max_wait_timeout", 0, "Max wait timeout in milli-second (0:uses same value of default_wait_timeout)")
 
 	cmd.Run = Execute
 	cmd.Execute()

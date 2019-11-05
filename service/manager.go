@@ -77,7 +77,7 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 	nTxPool := NewTransactionPool(module.TransactionGroupNormal,
 		chain.NormalTxPoolSize(), bk, nMetric, logger)
 	tsc := NewTimestampChecker()
-	tm := NewTransactionManager(chain.NID(), tsc, pTxPool, nTxPool, logger)
+	tm := NewTransactionManager(chain.NID(), tsc, pTxPool, nTxPool, bk, logger)
 	syncm := ssync.NewSyncManager(chain.Database(), chain.NetworkManager(), logger)
 
 	mgr := &manager{
@@ -276,6 +276,7 @@ func (m *manager) Finalize(t module.Transition, opt int) error {
 			if err := tst.finalizeResult(); err != nil {
 				return err
 			}
+			m.tm.NotifyFinalized(tst.patchTransactions, tst.patchReceipts, tst.normalTransactions, tst.normalReceipts)
 			now := time.Now()
 			m.patchMetric.OnFinalize(tst.patchTransactions.Hash(), now)
 			m.normalMetric.OnFinalize(tst.normalTransactions.Hash(), now)
@@ -346,25 +347,54 @@ func (m *manager) checkTransitionResult(t module.Transition) (*transition, error
 	return tst, nil
 }
 
-func (m *manager) SendTransaction(txi interface{}) ([]byte, error) {
-	var newTx transaction.Transaction
+func newTransaction(txi interface{}) (transaction.Transaction, error) {
 	switch txo := txi.(type) {
 	case []byte:
 		ntx, err := transaction.NewTransactionFromJSON(txo)
 		if err != nil {
 			return nil, errors.WithCode(err, InvalidTransactionError)
 		}
-		newTx = ntx.(transaction.Transaction)
+		return ntx.(transaction.Transaction), nil
 	case string:
 		ntx, err := transaction.NewTransactionFromJSON([]byte(txo))
 		if err != nil {
 			return nil, errors.WithCode(err, InvalidTransactionError)
 		}
-		newTx = ntx.(transaction.Transaction)
+		return ntx.(transaction.Transaction), nil
 	case transaction.Transaction:
-		newTx = txo
+		return txo, nil
 	default:
 		return nil, InvalidTransactionError.Errorf("UnknownType(%T)", txi)
+	}
+}
+
+func (m *manager) SendTransactionAndWait(txi interface{}) ([]byte, <-chan interface{}, error) {
+	newTx, err := newTransaction(txi)
+	if err != nil {
+		return nil, nil, err
+	}
+	chn, err := m.tm.AddAndWait(newTx)
+	if err == nil {
+		if err := m.txReactor.PropagateTransaction(ProtocolPropagateTransaction, newTx); err != nil {
+			if !network.NotAvailableError.Equals(err) {
+				m.log.Tracef("FAIL to propagate tx err=%+v", err)
+			}
+		}
+	}
+	if err == nil || err == ErrCommittedTransaction {
+		return newTx.ID(), chn, err
+	}
+	return nil, nil, err
+}
+
+func (m *manager) WaitTransactionResult(id []byte) (<-chan interface{}, error) {
+	return m.tm.WaitResult(id)
+}
+
+func (m *manager) SendTransaction(txi interface{}) ([]byte, error) {
+	newTx, err := newTransaction(txi)
+	if err != nil {
+		return nil, err
 	}
 
 	if err := m.tm.Add(newTx, true); err != nil {

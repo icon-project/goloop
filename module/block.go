@@ -89,6 +89,14 @@ type BlockManager interface {
 	// TimestampThreshold. If such a transaction is available now, the function
 	// returns false and callback cb is not called.
 	WaitForTransaction(parentID []byte, cb func()) bool
+
+	// SendAndWaitTransaction sends a transaction, and get a channel to
+	// to wait for the result of it.
+	SendTransactionAndWait(txi interface{}) (tid []byte, rc <-chan interface{}, err error)
+
+	// WaitTransactionResult check whether it knows about the transaction
+	// and wait for the result.
+	WaitTransactionResult(id []byte) (rc <-chan interface{}, err error)
 }
 
 type TransactionInfo interface {

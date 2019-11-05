@@ -3,7 +3,9 @@ package v3
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"strconv"
+	"time"
 	"unsafe"
 
 	"github.com/icon-project/goloop/block"
@@ -34,6 +36,8 @@ func MethodRepository() *jsonrpc.MethodRepository {
 	mr.RegisterMethod("icx_getTransactionResult", getTransactionResult)
 	mr.RegisterMethod("icx_getTransactionByHash", getTransactionByHash)
 	mr.RegisterMethod("icx_sendTransaction", sendTransaction)
+	mr.RegisterMethod("icx_sendTransactionAndWait", sendTransactionAndWait)
+	mr.RegisterMethod("icx_waitTransactionResult", waitTransactionResult)
 
 	mr.RegisterMethod("icx_getDataByHash", getDataByHash)
 	mr.RegisterMethod("icx_getBlockHeaderByHeight", getBlockHeaderByHeight)
@@ -549,4 +553,146 @@ func convertTransactionList(txs module.TransactionList) ([]interface{}, error) {
 		}
 	}
 	return list, nil
+}
+
+func sendTransactionAndWait(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
+	debug := ctx.IncludeDebug()
+
+	chain, err := ctx.Chain()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
+	}
+
+	dt := chain.DefaultWaitTimeout()
+	if dt <= 0 {
+		return nil, jsonrpc.ErrorCodeMethodNotFound.Errorf("NotEnabled(waitTimeout=%d)", dt)
+	}
+
+	ut := ctx.GetTimeout(dt)
+	if ut <= 0 {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Errorf("InvalidTimeout(%d)", ut)
+	}
+	mt := chain.MaxWaitTimeout()
+	timeout := ut
+	maxLimit := false
+	if timeout > mt {
+		timeout = mt
+		maxLimit = true
+	}
+
+	var param TransactionParam
+	if err := params.Convert(&param); err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+
+	bm := chain.BlockManager()
+
+	hash, fc, err := bm.SendTransactionAndWait(params.RawMessage())
+	if err != nil {
+		if service.TransactionPoolOverflowError.Equals(err) {
+			return nil, jsonrpc.ErrorCodeTxPoolOverflow.Wrap(err, debug)
+		}
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+
+	return waitTransactionResultOnChannel(ctx, bm, hash, debug, timeout, maxLimit, fc)
+}
+
+func waitTransactionResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
+	debug := ctx.IncludeDebug()
+
+	chain, err := ctx.Chain()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
+	}
+
+	dt := chain.DefaultWaitTimeout()
+	if dt <= 0 {
+		return nil, jsonrpc.ErrorCodeMethodNotFound.Errorf("NotEnabled(defaultWaitTimeout=%d)", dt)
+	}
+
+	ut := ctx.GetTimeout(dt)
+	if ut <= 0 {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Errorf("InvalidTimeout(%d)", ut)
+	}
+	mt := chain.MaxWaitTimeout()
+	timeout := ut
+	maxLimit := false
+	if timeout > mt {
+		timeout = mt
+		maxLimit = true
+	}
+
+	var param TransactionHashParam
+	if err := params.Convert(&param); err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+
+	bm := chain.BlockManager()
+
+	hash := param.Hash.Bytes()
+	fc, err := bm.WaitTransactionResult(hash)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+
+	return waitTransactionResultOnChannel(ctx, bm, hash, debug, timeout, maxLimit, fc)
+}
+
+func waitTransactionResultOnChannel(ctx *jsonrpc.Context, bm module.BlockManager,
+	id []byte, debug bool, timeout time.Duration, maxLimit bool,
+	fc <-chan interface{},
+) (interface{}, error) {
+	tc := time.After(timeout)
+
+	var err error
+	var txInfo module.TransactionInfo
+	var receipt module.Receipt
+	select {
+	case result := <-fc:
+		switch ro := result.(type) {
+		case error:
+			return nil, jsonrpc.ErrorCodeSystem.Wrap(ro, debug)
+		case module.TransactionInfo:
+			txInfo = ro
+			receipt, err = txInfo.GetReceipt()
+			if err != nil {
+				return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+			}
+		case module.Receipt:
+			txInfo, err = bm.GetTransactionInfo(id)
+			if err != nil {
+				return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+			}
+			receipt = ro
+		default:
+			return nil, jsonrpc.ErrorCodeSystem.New("Unknown resulting object")
+		}
+	case <-tc:
+		if maxLimit {
+			return nil, jsonrpc.ErrorCodeSystemTimeout.NewWithData(
+				fmt.Sprintf("SystemTimeout(dur=%s)", timeout),
+				"0x"+hex.EncodeToString(id),
+			)
+		}
+		return nil, jsonrpc.ErrorCodeTimeout.NewWithData(
+			fmt.Sprintf("Timeout(dur=%s)", timeout),
+			"0x"+hex.EncodeToString(id),
+		)
+	case <-ctx.Request().Context().Done():
+		return nil, nil
+	}
+
+	res, err := receipt.ToJSON(jsonRpcApiVersion)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	result := res.(map[string]interface{})
+	blk := txInfo.Block()
+	result["blockHash"] = "0x" + hex.EncodeToString(blk.ID())
+	result["blockHeight"] = "0x" + strconv.FormatInt(int64(blk.Height()), 16)
+	result["txIndex"] = "0x" + strconv.FormatInt(int64(txInfo.Index()), 16)
+	result["txHash"] = "0x" + hex.EncodeToString(id)
+
+	return result, nil
 }

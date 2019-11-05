@@ -116,3 +116,11 @@ func (_r *ServiceManagerBase) GetMinimizeBlockGen(result []byte) bool {
 func (_r *ServiceManagerBase) HasTransaction(id []byte) bool {
 	panic("not implemented")
 }
+
+func (_r *ServiceManagerBase) SendTransactionAndWait(tx interface{}) ([]byte, <-chan interface{}, error) {
+	panic("not implemented")
+}
+
+func (_r *ServiceManagerBase) WaitTransactionResult(id []byte) (<-chan interface{}, error) {
+	panic("not implemented")
+}

@@ -4,6 +4,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
@@ -11,17 +12,38 @@ import (
 	"github.com/icon-project/goloop/service/transaction"
 )
 
+const (
+	hashSize = 32
+)
+
+type hashValue [hashSize]byte
+
 type TransactionManager struct {
 	nid  int
 	tsc  *TxTimestampChecker
 	log  log.Logger
 	lock sync.Mutex
 
+	txBucket     db.Bucket
 	patchTxPool  *TransactionPool
 	normalTxPool *TransactionPool
 	lastTS       [2]int64
 
 	callback func()
+
+	txWaiters map[hashValue][]chan<- interface{}
+}
+
+func (m *TransactionManager) OnDrop(id []byte, err error) {
+	if err == nil {
+		m.log.Panic("No reason to drop the tx=<%#x>", id)
+		return
+	}
+	m.notifyFailure(id, err)
+}
+
+func (m *TransactionManager) OnCommit(id []byte) {
+	// do nothing
 }
 
 func (m *TransactionManager) getTxPool(g module.TransactionGroup) *TransactionPool {
@@ -58,7 +80,117 @@ func (m *TransactionManager) Candidate(
 	return m.getTxPool(g).Candidate(wc, maxBytes, maxCount)
 }
 
+func (m *TransactionManager) NotifyFinalized(
+	l1 module.TransactionList, r1 module.ReceiptList,
+	l2 module.TransactionList, r2 module.ReceiptList,
+) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	w1 := len(m.txWaiters)
+	if w1 > 0 {
+		m.notifyFinalizedInLock(l1, r1)
+		m.notifyFinalizedInLock(l2, r2)
+	}
+	w2 := len(m.txWaiters)
+	m.log.WithFields(log.Fields{
+		"waiters_before": w1,
+		"waiters_after":  w2,
+	}).Debugf("TM.NotifyFinalized")
+	// m.log.Debugf("TM.NotifyFinalized:%5d -> %5d (%5d)", w1, w2, w1-w2)
+}
+
+func (m *TransactionManager) notifyFinalizedInLock(l module.TransactionList, r module.ReceiptList) {
+	if l == nil || r == nil {
+		return
+	}
+	for itr := l.Iterator(); itr.Has(); itr.Next() {
+		tx, idx, err := itr.Get()
+		if err != nil {
+			m.log.Errorf("Fail to get transaction err=%+v", err)
+			return
+		}
+		rct, err := r.Get(idx)
+		if err != nil {
+			m.log.Errorf("Fail to get receipt err=%+v", err)
+			return
+		}
+		ws := m.removeWaitersInLock(tx.ID())
+		for _, c := range ws {
+			c <- rct
+			close(c)
+		}
+	}
+}
+
+func (m *TransactionManager) addWaiterInLock(id []byte, rc chan<- interface{}) {
+	var hv hashValue
+	copy(hv[:], id)
+	ws, _ := m.txWaiters[hv]
+	m.txWaiters[hv] = append(ws, rc)
+}
+
+func (m *TransactionManager) removeWaitersInLock(id []byte) []chan<- interface{} {
+	var hv hashValue
+	copy(hv[:], id)
+	if ws, ok := m.txWaiters[hv]; ok {
+		delete(m.txWaiters, hv)
+		return ws
+	}
+	return nil
+}
+
+func (m *TransactionManager) removeWaiters(id []byte) []chan<- interface{} {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	return m.removeWaitersInLock(id)
+}
+
+func (m *TransactionManager) notifyFailure(id []byte, err error) {
+	ws := m.removeWaiters(id)
+	for _, c := range ws {
+		c <- err
+		close(c)
+	}
+}
+
+func (m *TransactionManager) AddAndWait(tx transaction.Transaction) (
+	<-chan interface{}, error,
+) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	if err := m.addInLock(tx, true); err != nil {
+		if err != ErrDuplicateTransaction {
+			return nil, err
+		}
+	}
+	rc := make(chan interface{}, 1)
+	m.addWaiterInLock(tx.ID(), rc)
+	return rc, nil
+}
+
+func (m *TransactionManager) WaitResult(id []byte) (<-chan interface{}, error) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	if m.normalTxPool.HasTx(id) || m.patchTxPool.HasTx(id) {
+		rc := make(chan interface{}, 1)
+		m.addWaiterInLock(id, rc)
+		return rc, nil
+	}
+
+	if m.txBucket.Has(id) {
+		return nil, ErrCommittedTransaction
+	}
+	return nil, errors.ErrNotFound
+}
+
 func (m *TransactionManager) Add(tx transaction.Transaction, direct bool) error {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	return m.addInLock(tx, direct)
+}
+func (m *TransactionManager) addInLock(tx transaction.Transaction, direct bool) error {
 	if tx == nil {
 		return nil
 	}
@@ -74,9 +206,10 @@ func (m *TransactionManager) Add(tx transaction.Transaction, direct bool) error 
 		return InvalidTransactionError.Wrap(err,
 			"Failed to verify transaction")
 	}
+	if m.txBucket.Has(tx.ID()) {
+		return ErrCommittedTransaction
+	}
 
-	m.lock.Lock()
-	defer m.lock.Unlock()
 	pool := m.getTxPool(tx.Group())
 	if err := pool.Add(tx, direct); err != nil {
 		return err
@@ -99,12 +232,17 @@ func (m *TransactionManager) Wait(wc state.WorldContext, cb func()) bool {
 	return true
 }
 
-func NewTransactionManager(nid int, tsc *TxTimestampChecker, ptp *TransactionPool, ntp *TransactionPool, logger log.Logger) *TransactionManager {
-	return &TransactionManager{
+func NewTransactionManager(nid int, tsc *TxTimestampChecker, ptp *TransactionPool, ntp *TransactionPool, bk db.Bucket, logger log.Logger) *TransactionManager {
+	txm := &TransactionManager{
 		nid:          nid,
 		tsc:          tsc,
 		patchTxPool:  ptp,
 		normalTxPool: ntp,
+		txBucket:     bk,
 		log:          logger,
+		txWaiters:    map[hashValue][]chan<- interface{}{},
 	}
+	ptp.SetTxManager(txm)
+	ntp.SetTxManager(txm)
+	return txm
 }
