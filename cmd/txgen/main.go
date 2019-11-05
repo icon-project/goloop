@@ -22,6 +22,7 @@ func main() {
 	var params map[string]string
 	var installParams map[string]string
 	var index, last int64
+	var waitTimeout int64
 
 	cmd := &cobra.Command{
 		Use: fmt.Sprintf("%s [urls]", os.Args[0]),
@@ -39,6 +40,7 @@ func main() {
 	flags.StringToStringVar(&installParams, "installParam", make(map[string]string), "Install parameters")
 	flags.Int64VarP(&index, "index", "i", 0, "Initial index value to be used for generating transaction")
 	flags.Int64VarP(&last, "last", "l", 0, "Last index vlaue to be used for generating transaction")
+	flags.Int64Var(&waitTimeout, "wait", 0, "Wait for specific time (in ms) for each TX(enable to use sendAndWait)")
 
 	cmd.Run = func(cmd *cobra.Command, urls []string) {
 		if len(urls) == 0 {
@@ -88,7 +90,7 @@ func main() {
 			}
 		}
 
-		ctx := NewContext(concurrent, int64(tps), maker)
+		ctx := NewContext(concurrent, int64(tps), maker, waitTimeout)
 		ctx.Run(urls)
 	}
 
