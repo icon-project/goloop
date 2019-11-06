@@ -6,7 +6,6 @@
 package foundation.icon.ee.tooling.abi;
 
 import foundation.icon.ee.types.Method;
-import i.RuntimeAssertionError;
 import org.aion.avm.tooling.abi.ABIUtils;
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.MethodVisitor;
@@ -196,7 +195,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
             super.visitVarInsn(Opcodes.ALOAD, argPos);
             break;
         default:
-            RuntimeAssertionError.unreachable("bad param type "+argType+" for @EventLog");
+            assert false : "bad param type "+argType+" for @EventLog";
         }
         super.visitMethodInsn(Opcodes.INVOKESPECIAL, "avm/ValueBuffer", "<init>", "("+argType.getDescriptor()+")V", false);
         super.visitInsn(Opcodes.AASTORE);
@@ -225,7 +224,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
                 return "Address";
             }
         default:
-            RuntimeAssertionError.unreachable("bad param type "+type+" for @EventLog");
+            assert false : "bad param type "+type+" for @EventLog";
         }
         return null;
     }
