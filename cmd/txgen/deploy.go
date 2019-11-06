@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -17,7 +18,7 @@ import (
 )
 
 const (
-	stepLimitForDeploy = 100000
+	stepLimitForDeploy = 1000000
 
 	timeoutForDeploy = 5 * time.Second
 )
@@ -71,11 +72,23 @@ func zipDirectory(fd io.Writer, p string) error {
 }
 
 func makeDeploy(nid int64, from module.Wallet, src string, params interface{}) (interface{}, error) {
-	buf := bytes.NewBuffer(nil)
-	if err := zipDirectory(buf, src); err != nil {
-		return nil, err
+	contentType := ""
+	content := ""
+	if strings.HasSuffix(src, ".jar") {
+		contentType = "application/java"
+		data, err := ioutil.ReadFile(src)
+		if err != nil {
+			return nil, err
+		}
+		content = "0x" + hex.EncodeToString(data)
+	} else {
+		contentType = "application/zip"
+		buf := bytes.NewBuffer(nil)
+		if err := zipDirectory(buf, src); err != nil {
+			return nil, err
+		}
+		content = "0x" + hex.EncodeToString(buf.Bytes())
 	}
-	content := "0x" + hex.EncodeToString(buf.Bytes())
 
 	tx := map[string]interface{}{
 		"version":   "0x3",
@@ -86,7 +99,7 @@ func makeDeploy(nid int64, from module.Wallet, src string, params interface{}) (
 		"timestamp": TimeStampNow(),
 		"dataType":  "deploy",
 		"data": map[string]interface{}{
-			"contentType": "application/zip",
+			"contentType": contentType,
 			"content":     content,
 			"params":      params,
 		},

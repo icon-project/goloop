@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -16,7 +17,7 @@ import (
 )
 
 const (
-	stepLimitForTokenTransfer      = 1000
+	stepLimitForTokenTransfer      = 100000
 	initialTokenBalanceOfUser      = 10 * 1000 * 1000
 	initialCoinBalanceOfTokenOwner = 10 * 1000 * 1000
 	tokenForTransfer               = 10
@@ -61,8 +62,10 @@ func (m *TokenTransferMaker) Prepare(client *Client) error {
 
 	deploy, err := makeDeploy(m.NID, m.owner, m.SourcePath,
 		map[string]interface{}{
-			"_initialSupply": fmt.Sprintf("0x%x", 1000),
+			"_name":          "MySampleToken",
+			"_symbol":        "MST",
 			"_decimals":      fmt.Sprintf("0x%x", 18),
+			"_initialSupply": fmt.Sprintf("0x%x", 1000),
 		})
 	if err != nil {
 		return err
@@ -133,6 +136,7 @@ func makeTokenTransfer(nid int64, contract module.Address, method string, from m
 			"params": map[string]interface{}{
 				"_to":    to,
 				"_value": fmt.Sprintf("0x%x", value),
+				"_data":  fmt.Sprintf("0x%s", hex.EncodeToString([]byte("Hello"))),
 			},
 		},
 	}
