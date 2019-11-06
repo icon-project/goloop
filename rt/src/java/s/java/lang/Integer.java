@@ -298,6 +298,10 @@ public final class Integer extends Number implements Comparable<Integer> {
         return this.v;
     }
 
+    public static Integer valueOf(int v) {
+        return new Integer(v);
+    }
+
     //========================================================
     // Methods below are excluded from shadowing
     //========================================================

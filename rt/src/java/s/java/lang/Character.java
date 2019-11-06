@@ -170,6 +170,10 @@ public final class Character extends Object implements Serializable, Comparable<
         return this.v;
     }
 
+    public static Character valueOf(char v) {
+        return new Character(v);
+    }
+
     //========================================================
     // Methods below are excluded from shadowing
     //========================================================

@@ -132,6 +132,9 @@ public final class Boolean extends Object implements Serializable, Comparable<Bo
         return this.v;
     }
 
+    public static Boolean valueOf(boolean b) {
+        return b ? avm_TRUE : avm_FALSE;
+    }
     //========================================================
     // Methods below are excluded from shadowing
     //========================================================

@@ -302,6 +302,10 @@ public final class Long extends Number implements Comparable<Long> {
         return this.v;
     }
 
+    public static Long valueOf(long v) {
+        return new Long(v);
+    }
+
     //========================================================
     // Methods below are excluded from shadowing
     //========================================================

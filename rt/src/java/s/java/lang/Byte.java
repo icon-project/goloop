@@ -192,6 +192,9 @@ public final class Byte extends Number implements Comparable<Byte> {
         return this.v;
     }
 
+    public static Byte valueOf(byte v) {
+        return new Byte(v);
+    }
     //========================================================
     // Methods below are excluded from shadowing
     //========================================================

@@ -191,6 +191,10 @@ public final class Short extends Number implements Comparable<Short> {
         return this.v;
     }
 
+    public static Short valueOf(short v) {
+        return new Short(v);
+    }
+
     //========================================================
     // Methods below are excluded from shadowing
     //========================================================
