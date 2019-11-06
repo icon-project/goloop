@@ -78,7 +78,7 @@ public class TransactionExecutor {
     }
 
     private Method[] handleGetApi(String path) throws IOException {
-        logger.debug(">>> path={}", path);
+        logger.trace(">>> path={}", path);
         byte[] jarBytes = readFile(path);
         JarInputStream jis = new JarInputStream(new ByteArrayInputStream(jarBytes), true);
         JarEntry entry;
@@ -95,7 +95,7 @@ public class TransactionExecutor {
     private InvokeResult handleInvoke(String code, boolean isQuery, Address from, Address to,
                                       BigInteger value, BigInteger limit,
                                       String method, Object[] params, Map info) throws IOException {
-        if (logger.isDebugEnabled()) {
+        if (logger.isTraceEnabled()) {
             printInvokeParams(code, isQuery, from, to, value, limit, method, params);
             printGetInfo(info);
         }
@@ -238,30 +238,30 @@ public class TransactionExecutor {
 
     private void printInvokeParams(String code, boolean isQuery, Address from, Address to, BigInteger value,
                                    BigInteger limit, String method, Object[] params) {
-        logger.debug(">>> code={}", code);
-        logger.debug("    isQuery={}", isQuery);
-        logger.debug("    from={}", from);
-        logger.debug("      to={}", to);
-        logger.debug("    value={}", value);
-        logger.debug("    limit={}", limit);
-        logger.debug("    method={}", method);
-        logger.debug("    params=[");
+        logger.trace(">>> code={}", code);
+        logger.trace("    isQuery={}", isQuery);
+        logger.trace("    from={}", from);
+        logger.trace("      to={}", to);
+        logger.trace("    value={}", value);
+        logger.trace("    limit={}", limit);
+        logger.trace("    method={}", method);
+        logger.trace("    params=[");
         for (Object p : params) {
-            logger.debug("     - {}", p);
+            logger.trace("     - {}", p);
         }
-        logger.debug("    ]");
+        logger.trace("    ]");
     }
 
     private void printGetInfo(Map info) {
-        logger.debug(">>> getInfo: info={}", info);
-        logger.debug("    txHash={}", Bytes.toHexString((byte[]) info.get(EEProxy.Info.TX_HASH)));
-        logger.debug("    txIndex={}", info.get(EEProxy.Info.TX_INDEX));
-        logger.debug("    txFrom={}", info.get(EEProxy.Info.TX_FROM));
-        logger.debug("    txTimestamp={}", info.get(EEProxy.Info.TX_TIMESTAMP));
-        logger.debug("    txNonce={}", info.get(EEProxy.Info.TX_NONCE));
-        logger.debug("    blockHeight={}", info.get(EEProxy.Info.BLOCK_HEIGHT));
-        logger.debug("    blockTimestamp={}", info.get(EEProxy.Info.BLOCK_TIMESTAMP));
-        logger.debug("    contractOwner={}", info.get(EEProxy.Info.CONTRACT_OWNER));
-        logger.debug("    stepCosts={}", info.get(EEProxy.Info.STEP_COSTS));
+        logger.trace(">>> getInfo: info={}", info);
+        logger.trace("    txHash={}", Bytes.toHexString((byte[]) info.get(EEProxy.Info.TX_HASH)));
+        logger.trace("    txIndex={}", info.get(EEProxy.Info.TX_INDEX));
+        logger.trace("    txFrom={}", info.get(EEProxy.Info.TX_FROM));
+        logger.trace("    txTimestamp={}", info.get(EEProxy.Info.TX_TIMESTAMP));
+        logger.trace("    txNonce={}", info.get(EEProxy.Info.TX_NONCE));
+        logger.trace("    blockHeight={}", info.get(EEProxy.Info.BLOCK_HEIGHT));
+        logger.trace("    blockTimestamp={}", info.get(EEProxy.Info.BLOCK_TIMESTAMP));
+        logger.trace("    contractOwner={}", info.get(EEProxy.Info.CONTRACT_OWNER));
+        logger.trace("    stepCosts={}", info.get(EEProxy.Info.STEP_COSTS));
     }
 }

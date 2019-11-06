@@ -102,29 +102,28 @@ public class EEProxy extends Proxy {
             switch (msg.type) {
                 case MsgType.GETAPI:
                     String path = msg.value.asStringValue().asString();
-                    logger.debug("[GETAPI] path={}", path);
+                    logger.trace("[GETAPI] path={}", path);
                     handleGetApi(path);
                     break;
                 case MsgType.INVOKE:
-                    logger.debug("[INVOKE]");
+                    logger.trace("[INVOKE]");
                     handleInvoke(msg.value);
                     break;
                 case MsgType.CLOSE:
-                    logger.debug("[CLOSE]");
+                    logger.trace("[CLOSE]");
                     return; // exit loop
             }
         }
     }
 
     public BigInteger getBalance(Address addr) throws IOException {
-        logger.debug("sendMessage to get balance : " + addr);
         sendMessage(MsgType.GETBALANCE, addr);
         Message msg = getNextMessage();
         if (msg.type != MsgType.GETBALANCE) {
             throw new IOException("Invalid message: GETBALANCE expected.");
         }
         BigInteger balance = new BigInteger(getValueAsByteArray(msg.value));
-        logger.debug("[GETBALANCE] {}", balance);
+        logger.trace("[GETBALANCE] {}", balance);
         return balance;
     }
 
@@ -165,12 +164,12 @@ public class EEProxy extends Proxy {
         byte[] graphHash = getValueAsByteArray(data.get(1));
         byte[] graphData = flag ? getValueAsByteArray(data.get(2)) : null;
         ObjectGraph objGraph = new ObjectGraph(nextHash, graphHash, graphData);
-        logger.debug("[GETOBJGRAPH] {}", objGraph);
+        logger.trace("[GETOBJGRAPH] {}", objGraph);
         return objGraph;
     }
 
     public void setObjGraph(boolean flags, ObjectGraph objectGraph) throws IOException {
-        logger.debug("[SETOBJGRAPH] {}, {}", flags, objectGraph);
+        logger.trace("[SETOBJGRAPH] {}, {}", flags, objectGraph);
         sendMessage(MsgType.SETOBJGRAPH,
                 flags ? 1 : 0,
                 objectGraph.getNextHash(),
@@ -182,7 +181,7 @@ public class EEProxy extends Proxy {
     }
 
     public void log(byte[][]indexed, byte[][] data) throws IOException {
-        logger.debug("[LOGEVENT] {}, {}", indexed, data);
+        logger.trace("[LOGEVENT] {}, {}", indexed, data);
         sendMessage(MsgType.EVENT, indexed, data);
     }
 

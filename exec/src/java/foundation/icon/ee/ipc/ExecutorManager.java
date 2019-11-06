@@ -40,10 +40,10 @@ public class ExecutorManager {
     }
 
     private void killExecutor(String uuid) throws IOException {
-        logger.debug("[killExecutor]");
+        logger.trace("[killExecutor]");
         TransactionExecutor executor = execMap.remove(uuid);
         if (executor != null) {
-            logger.debug("disconnect executor uuid={}", uuid);
+            logger.trace("disconnect executor uuid={}", uuid);
             executor.disconnect();
         }
     }

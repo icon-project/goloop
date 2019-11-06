@@ -45,12 +45,12 @@ public class ManagerProxy extends Proxy {
             switch (msg.type) {
                 case MsgType.RUN:
                     String uuid = msg.value.asStringValue().asString();
-                    logger.debug("[RUN] uuid={}", uuid);
+                    logger.trace("[RUN] uuid={}", uuid);
                     handleRun(uuid);
                     break;
                 case MsgType.KILL:
                     String uuid2 = msg.value.asStringValue().asString();
-                    logger.debug("[KILL] uuid={}", uuid2);
+                    logger.trace("[KILL] uuid={}", uuid2);
                     handleKill(uuid2);
                     break;
                 default:

@@ -46,37 +46,37 @@ public class ExternalState implements IExternalState {
 
     @Override
     public void commit() {
-        logger.debug("[commit]");
+        logger.trace("[commit]");
         throw new RuntimeException("not implemented");
     }
 
     @Override
     public void commitTo(IExternalState externalState) {
-        logger.debug("[commitTo] {}", externalState);
+        logger.trace("[commitTo] {}", externalState);
         throw new RuntimeException("not implemented");
     }
 
     @Override
     public IExternalState newChildExternalState() {
-        logger.debug("[newChildExternalState]");
+        logger.trace("[newChildExternalState]");
         throw new RuntimeException("not implemented");
     }
 
     @Override
     public void createAccount(AionAddress address) {
-        logger.debug("[createAccount] {}", address);
+        logger.trace("[createAccount] {}", address);
         throw new RuntimeException("not implemented");
     }
 
     @Override
     public boolean hasAccountState(AionAddress address) {
-        logger.debug("[hasAccountState] {}", address);
+        logger.trace("[hasAccountState] {}", address);
         throw new RuntimeException("not implemented");
     }
 
     @Override
     public byte[] getCode(AionAddress address) {
-        logger.debug("[getCode] {}", address);
+        logger.trace("[getCode] {}", address);
         throw new RuntimeException("not implemented");
     }
 
@@ -87,7 +87,7 @@ public class ExternalState implements IExternalState {
 
     @Override
     public byte[] getTransformedCode(AionAddress address) {
-        logger.debug("[getTransformedCode] {}", address);
+        logger.trace("[getTransformedCode] {}", address);
         if (codeCache == null) {
             throw new RuntimeException("transformed code not found");
         }
@@ -96,12 +96,12 @@ public class ExternalState implements IExternalState {
 
     @Override
     public void setTransformedCode(AionAddress address, byte[] code) {
-        logger.debug("[setTransformedCode] {} len={}", address, code.length);
+        logger.trace("[setTransformedCode] {} len={}", address, code.length);
         try {
             proxy.setCode(code);
             codeCache = code;
         } catch (IOException e) {
-            logger.error("[setTransformedCode] {}", e.getMessage());
+            logger.debug("[setTransformedCode] {}", e.getMessage());
         }
     }
 
@@ -121,17 +121,17 @@ public class ExternalState implements IExternalState {
                 objGraph = proxy.getObjGraph(true);
                 graphCache = objGraph;
             }
-            logger.debug("[getObjectGraph] len={}", objGraph.getGraphData().length);
+            logger.trace("[getObjectGraph] len={}", objGraph.getGraphData().length);
             return objGraph.getRawData();
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.debug("[getObjectGraph] {}", e.getMessage());
             return null;
         }
     }
 
     @Override
     public void putObjectGraph(AionAddress address, byte[] data) {
-        logger.debug("[putObjectGraph] len={}", data.length);
+        logger.trace("[putObjectGraph] len={}", data.length);
         try {
             boolean includeGraph = true;
             ObjectGraph objGraph = ObjectGraph.getInstance(data);
@@ -141,27 +141,27 @@ public class ExternalState implements IExternalState {
             proxy.setObjGraph(includeGraph, objGraph);
             graphCache = objGraph;
         } catch (IOException e) {
-            logger.error("[putObjectGraph] {}", e.getMessage());
+            logger.debug("[putObjectGraph] {}", e.getMessage());
         }
     }
 
     @Override
     public void putStorage(AionAddress address, byte[] key, byte[] value) {
-        logger.debug("[putStorage] key={} value={}", Bytes.toHexString(key), Bytes.toHexString(value));
+        logger.trace("[putStorage] key={} value={}", Bytes.toHexString(key), Bytes.toHexString(value));
         try {
             proxy.setValue(key, value);
         } catch (IOException e) {
-            logger.error("[putStorage] {}", e.getMessage());
+            logger.debug("[putStorage] {}", e.getMessage());
         }
     }
 
     @Override
     public void removeStorage(AionAddress address, byte[] key) {
-        logger.debug("[removeStorage] key={}", Bytes.toHexString(key));
+        logger.trace("[removeStorage] key={}", Bytes.toHexString(key));
         try {
             proxy.setValue(key, null);
         } catch (IOException e) {
-            logger.error("[removeStorage] {}", e.getMessage());
+            logger.debug("[removeStorage] {}", e.getMessage());
         }
     }
 
@@ -169,17 +169,17 @@ public class ExternalState implements IExternalState {
     public byte[] getStorage(AionAddress address, byte[] key) {
         try {
             byte[] value = proxy.getValue(key);
-            logger.debug("[getStorage] key={} value={}", Bytes.toHexString(key), Bytes.toHexString(value));
+            logger.trace("[getStorage] key={} value={}", Bytes.toHexString(key), Bytes.toHexString(value));
             return value;
         } catch (IOException e) {
-            logger.error("[getStorage] {}", e.getMessage());
+            logger.debug("[getStorage] {}", e.getMessage());
             return null;
         }
     }
 
     @Override
     public void deleteAccount(AionAddress address) {
-        logger.debug("[deleteStorage] {}", address);
+        logger.trace("[deleteStorage] {}", address);
         throw new RuntimeException("not implemented");
     }
 
@@ -187,95 +187,95 @@ public class ExternalState implements IExternalState {
     public BigInteger getBalance(AionAddress address) {
         try {
             BigInteger balance = proxy.getBalance(address.toAddress());
-            logger.debug("[getBalance] {} balance={}", address, balance);
+            logger.trace("[getBalance] {} balance={}", address, balance);
             return balance;
         } catch (IOException e) {
-            logger.error("[getBalance] {}", e.getMessage());
+            logger.debug("[getBalance] {}", e.getMessage());
             return BigInteger.ZERO;
         }
     }
 
     @Override
     public void adjustBalance(AionAddress address, BigInteger amount) {
-        logger.debug("[adjustBalance] {} amount={}", address, amount);
+        logger.trace("[adjustBalance] {} amount={}", address, amount);
         // just ignore this
     }
 
     @Override
     public BigInteger getNonce(AionAddress address) {
-        logger.debug("[getNonce] {}", address);
+        logger.trace("[getNonce] {}", address);
         throw new RuntimeException("not implemented");
     }
 
     @Override
     public void incrementNonce(AionAddress address) {
-        logger.debug("[incrementNonce] {}", address);
+        logger.trace("[incrementNonce] {}", address);
         // just ignore this
     }
 
     @Override
     public void refundAccount(AionAddress address, BigInteger refund) {
-        logger.debug("[refundAccount] {} refund={}", address, refund);
+        logger.trace("[refundAccount] {} refund={}", address, refund);
         throw new RuntimeException("not implemented");
     }
 
     @Override
     public byte[] getBlockHashByNumber(long blockNumber) {
-        logger.debug("[getBlockHashByNumber] blockNumber={}", blockNumber);
+        logger.trace("[getBlockHashByNumber] blockNumber={}", blockNumber);
         throw new RuntimeException("not implemented");
     }
 
     @Override
     public boolean accountNonceEquals(AionAddress address, BigInteger nonce) {
-        logger.debug("[accountNonceEquals] {} nonce={}", address, nonce);
+        logger.trace("[accountNonceEquals] {} nonce={}", address, nonce);
         return true;
     }
 
     @Override
     public boolean accountBalanceIsAtLeast(AionAddress address, BigInteger amount) {
-        logger.debug("[accountBalanceIsAtLeast] {} amount={}", address, amount);
+        logger.trace("[accountBalanceIsAtLeast] {} amount={}", address, amount);
         return true;
     }
 
     @Override
     public boolean isValidEnergyLimitForCreate(long limit) {
-        logger.debug("[isValidEnergyLimitForCreate] limit={}", limit);
+        logger.trace("[isValidEnergyLimitForCreate] limit={}", limit);
         return true;
     }
 
     @Override
     public boolean isValidEnergyLimitForNonCreate(long limit) {
-        logger.debug("[isValidEnergyLimitForNonCreate] limit={}", limit);
+        logger.trace("[isValidEnergyLimitForNonCreate] limit={}", limit);
         return true;
     }
 
     @Override
     public boolean destinationAddressIsSafeForThisVM(AionAddress address) {
-        logger.debug("[destinationAddressIsSafeForThisVM] {}", address);
+        logger.trace("[destinationAddressIsSafeForThisVM] {}", address);
         throw new RuntimeException("not implemented");
     }
 
     @Override
     public long getBlockNumber() {
-        logger.debug("[getBlockNumber] ret={}", blockNumber);
+        logger.trace("[getBlockNumber] ret={}", blockNumber);
         return blockNumber;
     }
 
     @Override
     public long getBlockTimestamp() {
-        logger.debug("[getBlockTimestamp] ret={}", blockTimestamp);
+        logger.trace("[getBlockTimestamp] ret={}", blockTimestamp);
         return blockTimestamp;
     }
 
     @Override
     public long getBlockEnergyLimit() {
-        logger.debug("[getBlockEnergyLimit] ret={}", 0);
+        logger.trace("[getBlockEnergyLimit] ret={}", 0);
         return 0;
     }
 
     @Override
     public BigInteger getBlockDifficulty() {
-        logger.debug("[getBlockDifficulty] ret={}", 0);
+        logger.trace("[getBlockDifficulty] ret={}", 0);
         return BigInteger.ZERO;
     }
 
@@ -285,17 +285,16 @@ public class ExternalState implements IExternalState {
         Arrays.fill(arr, (byte) 0xaa);
         arr[0] = (byte) 0x0; // EOA
         AionAddress miner = new AionAddress(arr);
-        logger.debug("[getMinerAddress] ret={}", miner);
+        logger.trace("[getMinerAddress] ret={}", miner);
         return miner;
     }
 
     public void log(byte[][] indexed, byte[][] data) {
         try {
             proxy.log(indexed, data);
-            logger.debug("[logEvent] {} {}", indexed, data);
+            logger.trace("[logEvent] {} {}", indexed, data);
         } catch (IOException e) {
-            logger.error("[logEvent] {}", e.getMessage());
-            e.printStackTrace();
+            logger.debug("[logEvent] {}", e.getMessage());
         }
     }
 }

@@ -78,7 +78,6 @@ public class AvmExecutor implements AvmInternal {
         // Get the first task
         TransactionTask incomingTask = new TransactionTask(kernel, transaction, 0, transaction.senderAddress,
                                                            ExecutionType.ASSUME_MAINCHAIN, blockNumber);
-        logger.debug("=== Start task ===");
 
         // Attach the IInstrumentation helper to the task to support asynchronous abort
         // Instrumentation helper will abort the execution of the transaction by throwing an exception during chargeEnergy call
@@ -93,9 +92,9 @@ public class AvmExecutor implements AvmInternal {
             // this is the point where that is "handled".
             // Note that this is safe to do here since the instrumentation isn't exposed to any other threads.
             instrumentation.clearAbortState();
-            logger.debug("Abort " + incomingTask.getIndex());
+            logger.trace("Abort " + incomingTask.getIndex());
         }
-        logger.debug("=== Finish task === " + result);
+        logger.trace("{}", result);
         return result.unwrap();
     }
 
@@ -135,7 +134,7 @@ public class AvmExecutor implements AvmInternal {
         AionAddress recipient = (tx.isCreate) ? capabilities.generateContractAddress(tx) : tx.destinationAddress;
 
         if (tx.isCreate) {
-            logger.debug("=== DAppCreator ===");
+            logger.trace("=== DAppCreator ===");
             result = DAppCreator.create(this.capabilities, thisTransactionKernel, this, task,
                     senderAddress, recipient, tx, result,
                     this.preserveDebuggability, this.enableVerboseContractErrors, this.enableBlockchainPrintln);
@@ -149,7 +148,7 @@ public class AvmExecutor implements AvmInternal {
             if ((null != stateToResume) && (null != transformedCode)) {
                 dapp = stateToResume.dApp;
                 // Call directly and don't interact with DApp cache (we are reentering the state, not the origin of it).
-                logger.debug("=== DAppExecutor === call 1");
+                logger.trace("=== DAppExecutor === call 1");
                 result = DAppExecutor.call(this.capabilities, thisTransactionKernel, this, dapp, stateToResume, task,
                         senderAddress, recipient, tx, result,
                         this.enableVerboseContractErrors, true, this.enableBlockchainPrintln);
@@ -159,7 +158,7 @@ public class AvmExecutor implements AvmInternal {
                 } catch (IOException e) {
                     throw RuntimeAssertionError.unexpected(e);
                 }
-                logger.debug("=== DAppExecutor === call 2");
+                logger.trace("=== DAppExecutor === call 2");
                 result = DAppExecutor.call(this.capabilities, thisTransactionKernel, this, dapp, stateToResume, task,
                         senderAddress, recipient, tx, result,
                         this.enableVerboseContractErrors, false, this.enableBlockchainPrintln);
@@ -191,7 +190,6 @@ public class AvmExecutor implements AvmInternal {
 
     @Override
     public AddressResourceMonitor getResourceMonitor() {
-        logger.debug("[getResourceMonitor] is called");
         return resourceMonitor;
     }
 }
