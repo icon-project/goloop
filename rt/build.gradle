@@ -1,5 +1,6 @@
 dependencies {
     implementation 'org.bouncycastle:bcprov-jdk15on:1.60'
+    implementation 'org.msgpack:msgpack-core:0.8.17'
     implementation 'org.slf4j:slf4j-api:1.7.26'
     implementation 'org.ow2.asm:asm:6.2.1'
     implementation 'org.ow2.asm:asm-commons:6.2.1'
