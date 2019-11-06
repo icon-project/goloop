@@ -19,12 +19,14 @@ public class SampleTokenScore extends Score {
     private static final String PATH = Constants.SCORE_SAMPLETOKEN_PATH;
 
     public static SampleTokenScore mustDeploy(IconService service, Env.Chain chain, Wallet wallet,
-                                              BigInteger initialSupply, int decimals)
+                                              String name, String symbol, int decimals, BigInteger initialSupply)
             throws ResultTimeoutException, TransactionFailureException, IOException
     {
         RpcObject params = new RpcObject.Builder()
-                .put("_initialSupply", new RpcValue(initialSupply))
+                .put("_name", new RpcValue(name))
+                .put("_symbol", new RpcValue(symbol))
                 .put("_decimals", new RpcValue(BigInteger.valueOf(decimals)))
+                .put("_initialSupply", new RpcValue(initialSupply))
                 .build();
         return new SampleTokenScore(
                 service,
