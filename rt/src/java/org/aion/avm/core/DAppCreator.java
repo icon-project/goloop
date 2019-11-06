@@ -41,6 +41,7 @@ import org.aion.avm.core.util.Helpers;
 import org.aion.avm.core.util.TransactionResultUtil;
 import org.aion.avm.core.verification.Verifier;
 import org.aion.avm.userlib.CodeAndArguments;
+import org.aion.avm.utilities.JarBuilder;
 import org.aion.avm.utilities.Utilities;
 import org.aion.avm.utilities.analyze.ClassFileInfoBuilder;
 import org.aion.kernel.AvmWrappedTransactionResult;
@@ -200,6 +201,14 @@ public class DAppCreator {
                 return TransactionResultUtil.newResultWithNonRevertedFailureAndEnergyUsed(AvmInternalError.FAILED_INVALID_DATA, tx.energyLimit);
             }
 
+            byte[] apisBytes = JarBuilder.getAPIsBytesFromJAR(codeAndArguments.code);
+            if (apisBytes == null) {
+                if (verboseErrors) {
+                    System.err.println("DApp deployment failed due to bad external methods info");
+                }
+                return TransactionResultUtil.newResultWithNonRevertedFailureAndEnergyUsed(AvmInternalError.FAILED_INVALID_DATA, tx.energyLimit);
+            }
+
             RawDappModule rawDapp = RawDappModule.readFromJar(codeAndArguments.code, preserveDebuggability, verboseErrors);
             if (rawDapp == null) {
                 if (verboseErrors) {
@@ -209,9 +218,9 @@ public class DAppCreator {
             }
 
             // Verify that the DApp contains the main class they listed and that it has a "public static byte[] main()" method.
-            if (!rawDapp.classes.containsKey(rawDapp.mainClass) || !MainMethodChecker.checkForMain(rawDapp.classes.get(rawDapp.mainClass))) {
+            if (!rawDapp.classes.containsKey(rawDapp.mainClass)) {
                 if (verboseErrors) {
-                    String explanation = !rawDapp.classes.containsKey(rawDapp.mainClass) ? "missing Main class" : "missing main() method";
+                    String explanation = "missing Main class";
                     System.err.println("DApp deployment failed due to " + explanation);
                 }
                 return TransactionResultUtil.newResultWithNonRevertedFailureAndEnergyUsed(AvmInternalError.FAILED_INVALID_DATA, tx.energyLimit);
@@ -222,7 +231,17 @@ public class DAppCreator {
             Map<String, byte[]> transformedClasses = transformClasses(rawDapp.classes, dappClassesForest, rawDapp.classHierarchy, rawDapp.classRenamer, preserveDebuggability);
             TransformedDappModule transformedDapp = TransformedDappModule.fromTransformedClasses(transformedClasses, rawDapp.mainClass);
 
-            LoadedDApp dapp = DAppLoader.fromTransformed(transformedDapp, preserveDebuggability);
+            LoadedDApp dapp = DAppLoader.fromTransformed(transformedDapp, apisBytes, preserveDebuggability);
+            try {
+                dapp.verifyExternalMethods();
+            } catch (Exception e) {
+                if (verboseErrors) {
+                    String explanation = "missing External methods";
+                    System.err.println("DApp deployment failed due to " + explanation + " exception:" + e);
+                    e.printStackTrace();
+                }
+                return TransactionResultUtil.newResultWithNonRevertedFailureAndEnergyUsed(AvmInternalError.FAILED_INVALID_DATA, tx.energyLimit);
+            }
             runtimeSetup = dapp.runtimeSetup;
 
             // We start the nextHashCode at 1.
@@ -256,7 +275,7 @@ public class DAppCreator {
             // Create the immortal version of the transformed DApp code by stripping the <clinit>.
             Map<String, byte[]> immortalClasses = stripClinitFromClasses(transformedClasses);
 
-            ImmortalDappModule immortalDapp = ImmortalDappModule.fromImmortalClasses(immortalClasses, transformedDapp.mainClass);
+            ImmortalDappModule immortalDapp = ImmortalDappModule.fromImmortalClasses(immortalClasses, transformedDapp.mainClass, apisBytes);
 
             // store transformed dapp
             byte[] immortalDappJar = immortalDapp.createJar(externalState.getBlockTimestamp());

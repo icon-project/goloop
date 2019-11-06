@@ -2,10 +2,8 @@ package org.aion.types;
 
 import foundation.icon.ee.types.Bytes;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * A class that represents the end result of executing a transaction.
@@ -23,7 +21,7 @@ public final class TransactionResult {
     public final List<InternalTransaction> internalTransactions;
     public final List<Log> logs;
     public final long energyUsed;
-    private final byte[] output;
+    private final Object output;
 
     /**
      * Constructs a new transaction result.
@@ -34,7 +32,7 @@ public final class TransactionResult {
      * @param energyUsed The amount of energy used during the executin of the transaction.
      * @param output The output of the transaction.
      */
-    public TransactionResult(TransactionStatus transactionStatus, List<Log> logs, List<InternalTransaction> internalTransactions, long energyUsed, byte[] output) {
+    public TransactionResult(TransactionStatus transactionStatus, List<Log> logs, List<InternalTransaction> internalTransactions, long energyUsed, Object output) {
         if (transactionStatus == null) {
             throw new NullPointerException("Cannot construct TransactionResult with null transactionStatus!");
         }
@@ -52,7 +50,7 @@ public final class TransactionResult {
         this.logs = Collections.unmodifiableList(logs);
         this.internalTransactions = Collections.unmodifiableList(internalTransactions);
         this.energyUsed = energyUsed;
-        this.output = (output == null) ? null : copyOf(output);
+        this.output = copyOfOutput(output);
     }
 
     /**
@@ -60,8 +58,8 @@ public final class TransactionResult {
      *
      * @return the transaction output.
      */
-    public Optional<byte[]> copyOfTransactionOutput() {
-        return (this.output == null) ? Optional.empty() : Optional.of(copyOf(this.output));
+    public Object copyOfTransactionOutput() {
+        return copyOfOutput(output);
     }
 
     /**
@@ -85,7 +83,14 @@ public final class TransactionResult {
             && this.logs.equals(otherResult.logs)
             && this.internalTransactions.equals(otherResult.internalTransactions)
             && (this.energyUsed == otherResult.energyUsed)
-            && Arrays.equals(this.output, otherResult.output);
+            && equalOutput(this.output, otherResult.output);
+    }
+
+    private static boolean equalOutput(Object a, Object b) {
+        if (a==null) {
+            return b==null;
+        }
+        return a.equals(b);
     }
 
     @Override
@@ -94,7 +99,7 @@ public final class TransactionResult {
             + this.logs.hashCode()
             + this.internalTransactions.hashCode()
             + ((int) this.energyUsed)
-            + Arrays.hashCode(this.output);
+            + (this.output != null ? this.output.hashCode() : 7);
     }
 
     @Override
@@ -102,13 +107,16 @@ public final class TransactionResult {
         return "TransactionResult { "
             + "status = " + this.transactionStatus
             + ", energy used = " + this.energyUsed
-            + ", output = " + ((this.output == null) ? "null" : Bytes.toHexString(this.output))
+            + ", output = " + ((this.output == null) ? "null" : this.output)
             + ", logs = " + this.logs
             + ", internal transactions = " + this.internalTransactions
             + " }";
     }
 
-    private static byte[] copyOf(byte[] bytes) {
-        return Arrays.copyOf(bytes, bytes.length);
+    private static Object copyOfOutput(Object output) {
+        if (output instanceof byte[]) {
+            return ((byte[])output).clone();
+        }
+        return output;
     }
 }

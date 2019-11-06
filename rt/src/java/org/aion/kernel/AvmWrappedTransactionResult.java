@@ -132,8 +132,8 @@ public final class AvmWrappedTransactionResult {
      *
      * @return transaction output or null.
      */
-    public byte[] output() {
-        return this.result.copyOfTransactionOutput().orElse(null);
+    public Object output() {
+        return this.result.copyOfTransactionOutput();
     }
 
     /**

@@ -33,8 +33,9 @@ public class MethodPacker {
         if (m.getInputs() != null) {
             packer.packArrayHeader(m.getInputs().length);
             for (Method.Parameter p : m.getInputs()) {
-                packer.packArrayHeader(3);
+                packer.packArrayHeader(4);
                 packer.packString(p.getName());
+                packer.packString(p.getDescriptor());
                 packer.packInt(p.getType());
                 if (p.isOptional()) {
                     packDefaultValue(packer, p.getType());

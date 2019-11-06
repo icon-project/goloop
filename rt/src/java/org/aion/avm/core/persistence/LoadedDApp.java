@@ -1,15 +1,21 @@
 package org.aion.avm.core.persistence;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
+import java.util.Map;
 import java.util.Set;
+
+import foundation.icon.ee.utils.MethodUnpacker;
+import foundation.icon.ee.utils.Unshadower;
 import org.aion.avm.NameStyle;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.ClassRenamer;
@@ -52,6 +58,8 @@ import i.UncaughtException;
  * such that it is fully usable.  Attempting to eagerly interact with it before then might not be safe.
  */
 public class LoadedDApp {
+    private static final String METHOD_PREFIX = "avm_";
+
     private static final Method SERIALIZE_SELF;
     private static final Method DESERIALIZE_SELF;
     private static final Field FIELD_READ_INDEX;
@@ -74,6 +82,7 @@ public class LoadedDApp {
     private final Class<?> constantClass;
     private final String originalMainClassName;
     private final SortedFieldCache fieldCache;
+    private final Map<String, foundation.icon.ee.types.Method> nameToMethod;
 
     // Other caches of specific pieces of data which are lazily built.
     private final Class<?> helperClass;
@@ -105,7 +114,7 @@ public class LoadedDApp {
      * @param originalMainClassName The pre-translation name of the user's main class.
      * @param preserveDebuggability True if we should preserve debuggability by not renaming classes.
      */
-    public LoadedDApp(ClassLoader loader, Class<?>[] userClasses, Class<?> constantClass, String originalMainClassName, boolean preserveDebuggability) {
+    public LoadedDApp(ClassLoader loader, Class<?>[] userClasses, Class<?> constantClass, String originalMainClassName, byte[] apis, boolean preserveDebuggability) {
         this.loader = loader;
         // Note that the storage system defines the classes as being sorted alphabetically.
         this.sortedUserClasses = Arrays.stream(userClasses)
@@ -146,6 +155,33 @@ public class LoadedDApp {
         loadedDataBlockNum = -1;
         loadedCodeBlockNum = -1;
         this.internedClasses = new InternedClasses();
+        nameToMethod = new HashMap<>();
+        try {
+            var methods = MethodUnpacker.readFrom(apis);
+            for (var m : methods) {
+                nameToMethod.put(m.getName(), m);
+            }
+        } catch (IOException e) {
+            throw RuntimeAssertionError.unexpected(e);
+        }
+    }
+
+    public Method getExternalMethod(foundation.icon.ee.types.Method m) throws ReflectiveOperationException  {
+        var paramClasses = m.getParameterClasses();
+        Class<?> clazz = loadMainClass();
+        return clazz.getMethod(METHOD_PREFIX + m.getName(), paramClasses);
+    }
+
+    public void verifyExternalMethods() throws ReflectiveOperationException {
+        Class<?> clazz = loadMainClass();
+        for (var m : nameToMethod.entrySet()) {
+            if (m.getValue().getType() != foundation.icon.ee.types.Method.MethodType.EVENT) {
+                Method method = getExternalMethod(m.getValue());
+                if (!Modifier.isStatic(method.getModifiers())) {
+                    throw new NoSuchMethodException(String.format("method %s is not static", m.getKey()));
+                }
+            }
+        }
     }
 
     /**
@@ -255,24 +291,17 @@ public class LoadedDApp {
         }
     }
 
-    /**
-     * Calls the actual entry-point, running the whatever was setup in the attached blockchain runtime as a transaction and return the result.
-     * 
-     * @return The data returned from the transaction (might be null).
-     * @throws OutOfEnergyException The transaction failed since the permitted energy was consumed.
-     * @throws Exception Something unexpected went wrong with the invocation.
-     */
-    public byte[] callMain() throws Throwable {
+    public Object callMethod(String methodName, Object[] params) throws Throwable {
         try {
-            Method method = getMainMethod();
-            if (!Modifier.isStatic(method.getModifiers())) {
-                throw new MethodAccessException("main method not static");
+            var m = nameToMethod.get(methodName);
+            if (m==null) {
+                throw new NoSuchMethodException(String.format("method %s is not in APIS", methodName));
             }
-
-            ByteArray rawResult = (ByteArray) method.invoke(null);
-            return (null != rawResult)
-                    ? rawResult.getUnderlying()
-                    : null;
+            Method method = getExternalMethod(m);
+            Object sres = method.invoke(null, (Object[])m.convertParameters(params));
+            Object res = Unshadower.unshadow((s.java.lang.Object)sres);
+            assert sres==null || res!=null : "bad shadow type";
+            return res;
         } catch (ClassNotFoundException | SecurityException | ExceptionInInitializerError e) {
             // should have been handled during CREATE.
             RuntimeAssertionError.unexpected(e);
@@ -390,16 +419,6 @@ public class LoadedDApp {
             this.runtimeBlockchainRuntimeField = runtimeBlockchainRuntimeField;
         }
         return runtimeBlockchainRuntimeField;
-    }
-
-    private Method getMainMethod() throws ClassNotFoundException, NoSuchMethodException, SecurityException {
-        Method mainMethod = this.mainMethod;
-        if (null == mainMethod) {
-            Class<?> clazz = loadMainClass();
-            mainMethod = clazz.getMethod("avm_main");
-            this.mainMethod = mainMethod;
-        }
-        return mainMethod;
     }
 
     /**

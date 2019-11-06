@@ -171,7 +171,7 @@ public final class TransactionResultUtil {
      * @param output The new output.
      * @return the new result.
      */
-    public static AvmWrappedTransactionResult setSuccessfulOutput(AvmWrappedTransactionResult result, byte[] output) {
+    public static AvmWrappedTransactionResult setSuccessfulOutput(AvmWrappedTransactionResult result, Object output) {
         TransactionResult transactionResult = new TransactionResult(TransactionStatus.successful(), result.logs(), result.internalTransactions(), result.energyUsed(), output);
         return new AvmWrappedTransactionResult(transactionResult, result.exception,  result.externalState, AvmInternalError.NONE);
     }

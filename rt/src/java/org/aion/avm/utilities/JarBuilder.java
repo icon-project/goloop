@@ -1,5 +1,6 @@
 package org.aion.avm.utilities;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.HashSet;
@@ -8,6 +9,7 @@ import java.util.Set;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.jar.JarInputStream;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
 import java.util.zip.ZipEntry;
@@ -92,6 +94,17 @@ public class JarBuilder {
             throw new AssertionError(e);
         }
         return builder.toBytes();
+    }
+
+    public static byte[] getAPIsBytesFromJAR(byte[] jarBytes) throws IOException {
+        JarInputStream jis = new JarInputStream(new ByteArrayInputStream(jarBytes), true);
+        JarEntry entry;
+        while ((entry = jis.getNextJarEntry()) != null) {
+            if (entry.getName().equals(APIS_NAME)) {
+                return jis.readAllBytes();
+            }
+        }
+        return null;
     }
 
     private final ByteArrayOutputStream byteStream;

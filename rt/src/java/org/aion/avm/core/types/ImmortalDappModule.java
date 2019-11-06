@@ -1,5 +1,6 @@
 package org.aion.avm.core.types;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.attribute.FileTime;
@@ -7,10 +8,13 @@ import java.util.Map;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.jar.JarInputStream;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
 
 import java.util.zip.ZipEntry;
+
+import org.aion.avm.utilities.JarBuilder;
 import org.aion.types.AionAddress;
 import org.aion.avm.core.dappreading.LoadedJar;
 
@@ -24,6 +28,7 @@ import org.aion.avm.core.dappreading.LoadedJar;
 public class ImmortalDappModule {
     // Note that we currently limit the size of an in-memory JAR to 1 MiB.
     private static final int MAX_JAR_BYTES = 1024 * 1024;
+    private static final String APIS_NAME = "META-INF/APIS";
 
     /**
      * Reads the Dapp module from JAR bytes, in memory.
@@ -37,23 +42,27 @@ public class ImmortalDappModule {
         LoadedJar loadedJar = LoadedJar.fromBytes(jar);
         Map<String, byte[]> classes = loadedJar.classBytesByQualifiedNames;
         String mainClass = loadedJar.mainClassName;
+        byte[] apis = JarBuilder.getAPIsBytesFromJAR(jar);
+
         // To be a valid Dapp, this must specify a main class and have at least one class.
-        return ((null != mainClass) && !classes.isEmpty())
-                ? new ImmortalDappModule(classes, mainClass)
+        return ((null != mainClass) && !classes.isEmpty() && null != apis)
+                ? new ImmortalDappModule(classes, mainClass, apis)
                 : null;
     }
 
-    public static ImmortalDappModule fromImmortalClasses(Map<String, byte[]> classes, String mainClass)  {
-        return new ImmortalDappModule(classes, mainClass);
+    public static ImmortalDappModule fromImmortalClasses(Map<String, byte[]> classes, String mainClass, byte[] apis)  {
+        return new ImmortalDappModule(classes, mainClass, apis);
     }
 
 
     public final Map<String, byte[]> classes;
     public final String mainClass;
+    public final byte[] apis;
 
-    private ImmortalDappModule(Map<String, byte[]> classes, String mainClass) {
+    private ImmortalDappModule(Map<String, byte[]> classes, String mainClass, byte[] apis) {
         this.classes = classes;
         this.mainClass = mainClass;
+        this.apis = apis;
     }
 
     /**
@@ -91,6 +100,15 @@ public class ImmortalDappModule {
                 entry.setCreationTime(timestamp);
                 target.putNextEntry(entry);
                 target.write(this.classes.get(clazz));
+                target.closeEntry();
+            }
+            if (null != apis) {
+                JarEntry entry = new JarEntry(APIS_NAME);
+                entry.setLastModifiedTime(timestamp);
+                entry.setLastAccessTime(timestamp);
+                entry.setCreationTime(timestamp);
+                target.putNextEntry(entry);
+                target.write(apis);
                 target.closeEntry();
             }
         }

@@ -394,14 +394,18 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
 
     private Method.Parameter[] getMethodParameters() {
         Type[] types = Type.getArgumentTypes(this.methodDescriptor);
-        Method.Parameter[] params = null;
+        Method.Parameter[] params;
         if (types.length > 0) {
             params = new Method.Parameter[types.length];
             for (int i = 0; i < types.length; i++) {
                 params[i] = new Method.Parameter(
-                        paramNames.get(i), getDataType(types[i]),
+                        paramNames.get(i),
+                        types[i].getDescriptor(),
+                        getDataType(types[i]),
                         optional != null && optional[i]);
             }
+        } else {
+            params = new Method.Parameter[0];
         }
         return params;
     }

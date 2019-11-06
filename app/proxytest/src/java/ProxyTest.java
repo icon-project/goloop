@@ -44,13 +44,16 @@ public class ProxyTest {
         }
     }
 
+    private static final String DESC_ADDRESS = "Lavm/Address;";
+    private static final String DESC_BIG_INTEGER = "Ljava.math.BigInteger;";
+
     private static void setGetApiHandler(EEProxy proxy) {
         proxy.setOnGetApiListener(path -> new Method[] {
                 Method.newFunction(
                         "balanceOf",
                         Method.Flags.READONLY | Method.Flags.EXTERNAL,
                         new Method.Parameter[] {
-                                new Method.Parameter("_owner", Method.DataType.ADDRESS)
+                                new Method.Parameter("_owner", DESC_ADDRESS, Method.DataType.ADDRESS)
                         },
                         Method.DataType.INTEGER
                 ),
@@ -64,9 +67,9 @@ public class ProxyTest {
                         "transfer",
                         Method.Flags.EXTERNAL,
                         new Method.Parameter[] {
-                                new Method.Parameter("_to", Method.DataType.ADDRESS),
-                                new Method.Parameter("_value", Method.DataType.INTEGER),
-                                new Method.Parameter("_data", Method.DataType.BYTES)
+                                new Method.Parameter("_to", DESC_ADDRESS, Method.DataType.ADDRESS),
+                                new Method.Parameter("_value", DESC_BIG_INTEGER, Method.DataType.INTEGER),
+                                new Method.Parameter("_data", "[B", Method.DataType.BYTES)
                         },
                         Method.DataType.NONE
                 ),
@@ -75,10 +78,10 @@ public class ProxyTest {
                         "Transfer",
                         3,
                         new Method.Parameter[] {
-                                new Method.Parameter("_from", Method.DataType.ADDRESS),
-                                new Method.Parameter("_to", Method.DataType.ADDRESS),
-                                new Method.Parameter("_value", Method.DataType.INTEGER),
-                                new Method.Parameter("_data", Method.DataType.BYTES)
+                                new Method.Parameter("_from", DESC_ADDRESS, Method.DataType.ADDRESS),
+                                new Method.Parameter("_to", DESC_ADDRESS, Method.DataType.ADDRESS),
+                                new Method.Parameter("_value", DESC_BIG_INTEGER, Method.DataType.INTEGER),
+                                new Method.Parameter("_data", "[B", Method.DataType.BYTES)
                         }
                 ),
         });

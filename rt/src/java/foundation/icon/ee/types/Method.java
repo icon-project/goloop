@@ -16,7 +16,9 @@
 
 package foundation.icon.ee.types;
 
+import java.math.BigInteger;
 import java.util.Arrays;
+import java.util.Map;
 
 public class Method {
 
@@ -44,22 +46,29 @@ public class Method {
 
     public static class Parameter {
         String name;
+        String descriptor;
         int type;
         boolean optional;
 
-        public Parameter(String name, int type) {
+        public Parameter(String name, String descriptor, int type) {
             this.name = name;
+            this.descriptor = descriptor;
             this.type = type;
         }
 
-        public Parameter(String name, int type, boolean optional) {
+        public Parameter(String name, String descriptor, int type, boolean optional) {
             this.name = name;
+            this.descriptor = descriptor;
             this.type = type;
             this.optional = optional;
         }
 
         public String getName() {
             return name;
+        }
+
+        public String getDescriptor() {
+            return descriptor;
         }
 
         public int getType() {
@@ -74,6 +83,7 @@ public class Method {
         public String toString() {
             return "Parameter{" +
                     "name='" + name + '\'' +
+                    ", descriptor=" + descriptor +
                     ", type=" + type +
                     ", optional=" + optional +
                     '}';
@@ -110,7 +120,7 @@ public class Method {
     }
 
     public static Method newFallback() {
-        return new Method(MethodType.FALLBACK, "fallback", Flags.PAYABLE, 0, null, 0);
+        return new Method(MethodType.FALLBACK, "fallback", Flags.PAYABLE, 0, new Parameter[0], 0);
     }
 
     public static Method newEvent(String name, int indexed, Parameter[] inputs) {
@@ -151,5 +161,77 @@ public class Method {
                 ", inputs=" + Arrays.toString(inputs) +
                 ", output=" + output +
                 '}';
+    }
+
+    private static final Map<String, Class<?>> descToClass = Map.of(
+            "Z", boolean.class,
+            "C", char.class,
+            "B", byte.class,
+            "S", short.class,
+            "I", int.class,
+            "J", long.class,
+            "Ljava/math/BigInteger;", s.java.math.BigInteger.class,
+            "Ljava/lang/String;", s.java.lang.String.class,
+            "[B", a.ByteArray.class,
+            "Lavm/Address;", p.avm.Address.class
+    );
+
+    public boolean hasValidParams() {
+        for (Parameter p: inputs) {
+            if (!descToClass.containsKey(p.getDescriptor()))
+                return false;
+        }
+        return true;
+    }
+
+    public Class<?>[] getParameterClasses() {
+        Class<?>[] out = new Class<?>[inputs.length];
+        for (int i=0; i<inputs.length; i++) {
+            out[i] = descToClass.get(inputs[i].getDescriptor());
+        }
+        return out;
+    }
+
+    public s.java.lang.Object[] convertParameters(Object[] params) {
+        assert params.length == inputs.length : String.format("bad param length=%d input length=%d", params.length, inputs.length);
+
+        s.java.lang.Object[] out = new s.java.lang.Object[inputs.length];
+        for (int i=0; i<inputs.length; i++) {
+            var d = inputs[i].getDescriptor();
+            if (d.equals("Z")) {
+                Boolean p = (Boolean) params[i];
+                out[i] = s.java.lang.Boolean.valueOf(p.booleanValue());
+            } else if (d.equals("C")) {
+                BigInteger p = (BigInteger) params[i];
+                out[i] = s.java.lang.Character.valueOf((char)p.intValue());
+            } else if (d.equals("B")) {
+                BigInteger p = (BigInteger) params[i];
+                out[i] = s.java.lang.Byte.valueOf(p.byteValue());
+            } else if (d.equals("S")) {
+                BigInteger p = (BigInteger) params[i];
+                out[i] = s.java.lang.Short.valueOf(p.shortValue());
+            } else if (d.equals("I")) {
+                BigInteger p = (BigInteger) params[i];
+                out[i] = s.java.lang.Integer.valueOf(p.intValue());
+            } else if (d.equals("J")) {
+                BigInteger p = (BigInteger) params[i];
+                out[i] = s.java.lang.Long.valueOf(p.longValue());
+            } else if (d.equals("Ljava/math/BigInteger;")) {
+                BigInteger p = (BigInteger) params[i];
+                out[i] = new s.java.math.BigInteger(p);
+            } else if (d.equals("Ljava/lang/String;")) {
+                String p = (String) params[i];
+                out[i] = new s.java.lang.String(p);
+            } else if (d.equals("[B")) {
+                byte[] p = (byte[]) params[i];
+                out[i] = new a.ByteArray(p);
+            } else if (d.equals("Lavm/Address;")) {
+                Address p = (Address) params[i];
+                out[i] = new p.avm.Address(p.toByteArray());
+            } else {
+                assert false : String.format("bad %d-th param type %s", i, params[i].getClass().getName());
+            }
+        }
+        return out;
     }
 }

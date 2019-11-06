@@ -10,6 +10,7 @@ import org.aion.avm.core.types.ImmortalDappModule;
 import org.aion.avm.core.types.TransformedDappModule;
 import org.aion.avm.core.util.Helpers;
 import i.PackageConstants;
+import org.aion.avm.utilities.JarBuilder;
 
 
 /**
@@ -46,7 +47,10 @@ public class DAppLoader {
 
         // We now have all the information to describe the LoadedDApp.
         SplitClasses splitClasses = SplitClasses.splitAllSavedClasses(aphabeticalContractClasses);
-        return new LoadedDApp(classLoader, splitClasses.sortedUserClasses, splitClasses.constantClass, app.mainClass, preserveDebuggability);
+        byte[] apis = JarBuilder.getAPIsBytesFromJAR(immortalDappJar);
+        if (apis == null)
+            return null;
+        return new LoadedDApp(classLoader, splitClasses.sortedUserClasses, splitClasses.constantClass, app.mainClass, apis, preserveDebuggability);
     }
 
     /**
@@ -55,7 +59,7 @@ public class DAppLoader {
      * @param app The transformed module.
      * @return The DApp instance.
      */
-    public static LoadedDApp fromTransformed(TransformedDappModule app, boolean preserveDebuggability) {
+    public static LoadedDApp fromTransformed(TransformedDappModule app, byte[] apis, boolean preserveDebuggability) {
         // We now need all the classes which will loaded within the class loader for this DApp (includes Helper and userlib classes we add).
         Map<String, byte[]> allClasses = Helpers.mapIncludingHelperBytecode(app.classes, Helpers.loadDefaultHelperBytecode());
         
@@ -68,7 +72,7 @@ public class DAppLoader {
 
         // We now have all the information to describe the LoadedDApp.
         SplitClasses splitClasses = SplitClasses.splitAllSavedClasses(aphabeticalContractClasses);
-        return new LoadedDApp(classLoader, splitClasses.sortedUserClasses, splitClasses.constantClass, app.mainClass, preserveDebuggability);
+        return new LoadedDApp(classLoader, splitClasses.sortedUserClasses, splitClasses.constantClass, app.mainClass, apis, preserveDebuggability);
     }
 
 

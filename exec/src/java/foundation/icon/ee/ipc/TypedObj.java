@@ -115,6 +115,18 @@ public class TypedObj {
             return new TypedObj(ADDRESS, ((Address)obj).toByteArray());
         } else if (obj instanceof BigInteger) {
             return new TypedObj(INT, ((BigInteger)obj).toByteArray());
+        } else if (obj instanceof Byte) {
+            var o  = (Byte) obj;
+            return new TypedObj(INT, BigInteger.valueOf(o.byteValue()));
+        } else if (obj instanceof Short) {
+            var o  = (Short) obj;
+            return new TypedObj(INT, BigInteger.valueOf(o.shortValue()));
+        } else if (obj instanceof Integer) {
+            var o  = (Integer) obj;
+            return new TypedObj(INT, BigInteger.valueOf(o.intValue()));
+        } else if (obj instanceof Long) {
+            var o  = (Long) obj;
+            return new TypedObj(INT, BigInteger.valueOf(o.longValue()));
         }
         throw new IOException("not supported type: " + obj);
     }

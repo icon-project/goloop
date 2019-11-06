@@ -10,13 +10,15 @@ public class AvmTransactionUtil {
     /**
      * Factory method to create a 'call' Transaction.
      */
-    public static Transaction call(AionAddress sender, AionAddress destination, BigInteger nonce, BigInteger value, byte[] data, long energyLimit, long energyPrice) {
+    public static Transaction call(AionAddress sender, AionAddress destination, BigInteger nonce, BigInteger value, byte[] data, String method, Object[] params, long energyLimit, long energyPrice) {
         return Transaction.contractCallTransaction(sender
             , destination
             , new byte[32]
             , nonce
             , value
             , data
+            , method
+            , params
             , energyLimit
             , energyPrice
         );
@@ -25,12 +27,14 @@ public class AvmTransactionUtil {
     /**
      * Factory method to create a 'create' Transaction.
      */
-    public static Transaction create(AionAddress sender, BigInteger nonce, BigInteger value, byte[] data, long energyLimit, long energyPrice) {
+    public static Transaction create(AionAddress sender, BigInteger nonce, BigInteger value, byte[] data, String method, Object[] params, long energyLimit, long energyPrice) {
         return Transaction.contractCreateTransaction(sender
             , new byte[32]
             , nonce
             , value
             , data
+            , method
+            , params
             , energyLimit
             , energyPrice
         );
@@ -44,12 +48,15 @@ public class AvmTransactionUtil {
      * @throws IllegalArgumentException If any elements of external are statically invalid.
      */
     public static Transaction fromInternalTransaction(InternalTransaction internalTransaction) {
+        // TODO: pass method and params
         if (internalTransaction.isCreate) {
             return Transaction.contractCreateTransaction(internalTransaction.sender
                     , new byte[32]
                     , internalTransaction.senderNonce
                     , internalTransaction.value
                     , internalTransaction.copyOfData()
+                    , null
+                    , null
                     , internalTransaction.energyLimit
                     , internalTransaction.energyPrice
             );
@@ -60,6 +67,8 @@ public class AvmTransactionUtil {
                     , internalTransaction.senderNonce
                     , internalTransaction.value
                     , internalTransaction.copyOfData()
+                    , null
+                    , null
                     , internalTransaction.energyLimit
                     , internalTransaction.energyPrice
             );

@@ -514,7 +514,8 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
         task.decrementTransactionStackDepth();
 
-        byte[] output = newResult.output();
+        // TODO
+        byte[] output = new byte[0];
         return new Result(newResult.isSuccess(), output == null ? null : new ByteArray(output));
     }
 

@@ -108,7 +108,7 @@ public class DAppExecutor {
             threadInstrumentation.chargeEnergy(StorageFees.READ_PRICE_PER_BYTE * rawGraphDataLength);
             
             // Call the main within the DApp.
-            byte[] ret = dapp.callMain();
+            Object ret = dapp.callMethod(tx.method, tx.getParams());
 
             // Save back the state before we return.
             if (null != stateToResume) {

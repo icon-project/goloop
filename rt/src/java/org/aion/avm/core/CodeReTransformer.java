@@ -25,7 +25,7 @@ public class CodeReTransformer {
             if (canRetransform(rawDapp)) {
                 Map<String, byte[]> transformedClasses = DAppCreator.transformClasses(rawDapp.classes, rawDapp.classHierarchyForest, rawDapp.classHierarchy, rawDapp.classRenamer, preserveDebuggability);
                 Map<String, byte[]> immortalClasses = DAppCreator.stripClinitFromClasses(transformedClasses);
-                ImmortalDappModule immortalDapp = ImmortalDappModule.fromImmortalClasses(immortalClasses, rawDapp.mainClass);
+                ImmortalDappModule immortalDapp = ImmortalDappModule.fromImmortalClasses(immortalClasses, rawDapp.mainClass, null);
                 transformedCode = immortalDapp.createJar(blockTimeStamp);
             }
 

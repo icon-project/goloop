@@ -29,21 +29,19 @@ import org.aion.avm.core.CommonAvmFactory;
 import org.aion.avm.embed.StandardCapabilities;
 import org.aion.avm.tooling.ABIUtil;
 import org.aion.avm.userlib.CodeAndArguments;
+import org.aion.avm.utilities.JarBuilder;
 import org.aion.types.AionAddress;
 import org.aion.types.Transaction;
 import org.aion.types.TransactionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
-import java.util.jar.JarEntry;
-import java.util.jar.JarInputStream;
 
 public class TransactionExecutor {
     private static final Logger logger = LoggerFactory.getLogger(TransactionExecutor.class);
@@ -80,13 +78,9 @@ public class TransactionExecutor {
     private Method[] handleGetApi(String path) throws IOException {
         logger.trace(">>> path={}", path);
         byte[] jarBytes = readFile(path);
-        JarInputStream jis = new JarInputStream(new ByteArrayInputStream(jarBytes), true);
-        JarEntry entry;
-        while ((entry = jis.getNextJarEntry()) != null) {
-            if (entry.getName().equals(APIS_NAME)) {
-                byte[] buffer = jis.readAllBytes();
-                return MethodUnpacker.readFrom(buffer);
-            }
+        byte[] apis = JarBuilder.getAPIsBytesFromJAR(jarBytes);
+        if (null!=apis) {
+            return MethodUnpacker.readFrom(apis);
         }
         logger.debug("No API info found!");
         return null;
@@ -158,6 +152,8 @@ public class TransactionExecutor {
                     BigInteger.valueOf(1),
                     value,
                     txData,
+                    method,
+                    params,
                     limit.longValue(),
                     1L);
         } else {
@@ -169,6 +165,8 @@ public class TransactionExecutor {
                     BigInteger.valueOf(1),
                     value,
                     txData,
+                    method,
+                    params,
                     limit.longValue(),
                     1L);
         }
@@ -224,7 +222,7 @@ public class TransactionExecutor {
             if (!isSuccess()) {
                 return null;
             }
-            return ABIUtil.decodeOneObject(result.copyOfTransactionOutput().orElseThrow());
+            return result.copyOfTransactionOutput();
         }
 
         String getErrorMessage() {

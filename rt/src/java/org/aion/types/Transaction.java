@@ -21,6 +21,8 @@ public final class Transaction {
     public final long energyLimit;
     public final boolean isCreate;
     private final byte[] transactionData;
+    public final String method;
+    private final Object[] params;
 
     private Transaction(AionAddress senderAddress
         , AionAddress destinationAddress
@@ -30,6 +32,8 @@ public final class Transaction {
         , long energyLimit
         , long energyPrice
         , byte[] transactionData
+        , String method
+        , Object[] params
         , boolean isCreate
     ) {
         if (null == senderAddress && transactionHash != null) {
@@ -59,6 +63,12 @@ public final class Transaction {
         if (null == transactionData) {
             throw new NullPointerException("Null data");
         }
+        if (null == method && !isCreate) {
+            throw new NullPointerException("Null method for call transaction");
+        }
+        if (null == params) {
+            throw new NullPointerException("Null params");
+        }
 
         this.senderAddress = senderAddress;
         this.destinationAddress = destinationAddress;
@@ -75,6 +85,9 @@ public final class Transaction {
         this.isCreate = isCreate;
         this.transactionData = new byte[transactionData.length];
         System.arraycopy(transactionData, 0, this.transactionData, 0, transactionData.length);
+        this.method = method;
+        // take ownership of params
+        this.params = params;
     }
 
     /**
@@ -88,8 +101,8 @@ public final class Transaction {
      * @param energyPrice The price per unit of energy to be charged.
      * @return a new transaction.
      */
-    public static Transaction contractCreateTransaction(AionAddress sender, byte[] transactionHash, BigInteger senderNonce, BigInteger value, byte[] data, long energyLimit, long energyPrice) {
-        return new Transaction(sender, null, transactionHash, value, senderNonce, energyLimit, energyPrice, data, true);
+    public static Transaction contractCreateTransaction(AionAddress sender, byte[] transactionHash, BigInteger senderNonce, BigInteger value, byte[] data, String method, Object[] params, long energyLimit, long energyPrice) {
+        return new Transaction(sender, null, transactionHash, value, senderNonce, energyLimit, energyPrice, data, method, params, true);
     }
 
     /**
@@ -105,12 +118,12 @@ public final class Transaction {
      * @param energyPrice The price per unit of energy to be charged.
      * @return a new transaction.
      */
-    public static Transaction contractCallTransaction(AionAddress sender, AionAddress destination, byte[] transactionHash, BigInteger senderNonce, BigInteger value, byte[] data, long energyLimit, long energyPrice) {
+    public static Transaction contractCallTransaction(AionAddress sender, AionAddress destination, byte[] transactionHash, BigInteger senderNonce, BigInteger value, byte[] data, String method, Object[] params, long energyLimit, long energyPrice) {
         if (destination == null) {
             throw new NullPointerException("Cannot create Call Transaction with null destination!");
         }
 
-        return new Transaction(sender, destination, transactionHash, value, senderNonce, energyLimit, energyPrice,  data,false);
+        return new Transaction(sender, destination, transactionHash, value, senderNonce, energyLimit, energyPrice,  data,method, params, false);
     }
 
     public byte[] copyOfTransactionHash() {
@@ -122,10 +135,17 @@ public final class Transaction {
         return transactionHashCopy;
     }
 
+    // TODO: remove method
     public byte[] copyOfTransactionData() {
         byte[] transactionDataCopy = new byte[transactionData.length];
         System.arraycopy(transactionData, 0, transactionDataCopy, 0, transactionData.length);
         return transactionDataCopy;
+    }
+
+    public Object[] getParams() {
+        Object[] paramsCopy = new Object[params.length];
+        System.arraycopy(params, 0, paramsCopy, 0, params.length);
+        return paramsCopy;
     }
 
     @Override
@@ -136,6 +156,7 @@ public final class Transaction {
             return false;
         } else {
             Transaction otherObject = (Transaction) obj;
+            // compare method and params on transactionData field removal
             return Objects.equals(this.senderAddress, otherObject.senderAddress)
                     && Objects.equals(this.destinationAddress, otherObject.destinationAddress)
                     && this.value.equals(otherObject.value)

@@ -39,9 +39,8 @@ public class MethodUnpacker {
             if (indexed > inputSize) {
                 throw new IOException("Invalid indexed: " + indexed);
             }
-            Method.Parameter[] params = null;
+            Method.Parameter[] params = new Method.Parameter[inputSize];
             if (inputSize > 0) {
-                params = new Method.Parameter[inputSize];
                 for (int j = 0; j < indexed; j++) {
                     params[j] = getParameter(unpacker, false);
                 }
@@ -71,10 +70,11 @@ public class MethodUnpacker {
     }
 
     private static Method.Parameter getParameter(MessageUnpacker unpacker, boolean optional) throws IOException {
-        unpacker.unpackArrayHeader(); // 3
+        unpacker.unpackArrayHeader(); // 4
         String paramName = unpacker.unpackString();
+        String paramDescriptor = unpacker.unpackString();
         int paramType = unpacker.unpackInt();
         unpacker.unpackValue(); // value ignored
-        return new Method.Parameter(paramName, paramType, optional);
+        return new Method.Parameter(paramName, paramDescriptor, paramType, optional);
     }
 }
