@@ -111,7 +111,7 @@ public abstract class Proxy {
             Method[] methods = (Method[]) obj;
             packer.packArrayHeader(methods.length);
             for (Method m : methods) {
-                MethodPacker.writeTo(m, packer);
+                MethodPacker.writeTo(m, packer, false);
             }
         } else if (obj instanceof TypedObj) {
             TypedObj to = (TypedObj) obj;

@@ -24,7 +24,7 @@ import java.math.BigInteger;
 
 public class MethodPacker {
 
-    public static void writeTo(Method m, MessageBufferPacker packer) throws IOException {
+    public static void writeTo(Method m, MessageBufferPacker packer, boolean longForm) throws IOException {
         packer.packArrayHeader(6);
         packer.packInt(m.getType());
         packer.packString(m.getName());
@@ -33,9 +33,14 @@ public class MethodPacker {
         if (m.getInputs() != null) {
             packer.packArrayHeader(m.getInputs().length);
             for (Method.Parameter p : m.getInputs()) {
-                packer.packArrayHeader(4);
-                packer.packString(p.getName());
-                packer.packString(p.getDescriptor());
+                if (longForm) {
+                    packer.packArrayHeader(4);
+                    packer.packString(p.getName());
+                    packer.packString(p.getDescriptor());
+                } else {
+                    packer.packArrayHeader(3);
+                    packer.packString(p.getName());
+                }
                 packer.packInt(p.getType());
                 if (p.isOptional()) {
                     packDefaultValue(packer, p.getType());

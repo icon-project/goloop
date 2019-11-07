@@ -126,7 +126,7 @@ public class OptimizedJarBuilder {
             if (debugModeEnabled) {
                 System.out.println(m);
             }
-            MethodPacker.writeTo(m, packer);
+            MethodPacker.writeTo(m, packer, true);
         }
         packer.close();
 
