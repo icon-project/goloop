@@ -55,13 +55,15 @@ public class ProxyTest {
                         new Method.Parameter[] {
                                 new Method.Parameter("_owner", DESC_ADDRESS, Method.DataType.ADDRESS)
                         },
-                        Method.DataType.INTEGER
+                        Method.DataType.INTEGER,
+                        "Ljava.math.BigInteger;"
                 ),
                 Method.newFunction(
                         "name",
                         Method.Flags.READONLY | Method.Flags.EXTERNAL,
                         null,
-                        Method.DataType.STRING
+                        Method.DataType.STRING,
+                        "Ljava.lang.String;"
                 ),
                 Method.newFunction(
                         "transfer",
@@ -71,7 +73,8 @@ public class ProxyTest {
                                 new Method.Parameter("_value", DESC_BIG_INTEGER, Method.DataType.INTEGER),
                                 new Method.Parameter("_data", "[B", Method.DataType.BYTES)
                         },
-                        Method.DataType.NONE
+                        Method.DataType.NONE,
+                        "V"
                 ),
                 Method.newFallback(),
                 Method.newEvent(

@@ -377,7 +377,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
                     }
                 }
             }
-            return Method.newFunction(methodName, flags, optionalCount, getMethodParameters(), output);
+            return Method.newFunction(methodName, flags, optionalCount, getMethodParameters(), output, type.getDescriptor());
         }
         if (isFallback() && isPayable()) {
             return Method.newFallback();

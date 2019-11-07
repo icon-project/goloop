@@ -87,9 +87,14 @@ public class OptimizedJarBuilder {
                 System.err.println("Constant Remover crashed, packaging code without this optimization");
             }
         }
+        String[] roots = new String[callables.size()];
+        for (int i=0; i<roots.length; i++) {
+            var c = callables.get(i);
+            roots[i] = c.getName() + c.getDescriptor();
+        }
         if (unreachableMethodRemoverEnabled) {
             try {
-                optimizedDappBytes = UnreachableMethodRemover.optimize(optimizedDappBytes);
+                optimizedDappBytes = UnreachableMethodRemover.optimize(optimizedDappBytes, roots);
 
                 // Run class removal optimization again to ensure classes without any referenced methods are removed
                 optimizedDappBytes = jarOptimizer.optimize(optimizedDappBytes);
@@ -101,9 +106,10 @@ public class OptimizedJarBuilder {
         // Only field and method renaming can work correctly in debug mode, but the new names may cause confusion for users.
         if (classAndFieldRenamerEnabled && !debugModeEnabled) {
             try {
-                optimizedDappBytes = Renamer.rename(optimizedDappBytes);
+                optimizedDappBytes = Renamer.rename(optimizedDappBytes, roots);
             } catch (Exception exception) {
                 System.err.println("Renaming crashed, packaging code without this optimization");
+                exception.printStackTrace();
             }
         }
         // Add API info into the Jar

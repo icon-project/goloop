@@ -54,6 +54,8 @@ public class MethodPacker {
         if (m.getOutput() != 0) {
             packer.packArrayHeader(1);
             packer.packInt(m.getOutput());
+            if (longForm)
+                packer.packString(m.getOutputDescriptor());
         } else {
             packer.packArrayHeader(0);
         }

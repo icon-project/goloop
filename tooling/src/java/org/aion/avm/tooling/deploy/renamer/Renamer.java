@@ -1,5 +1,6 @@
 package org.aion.avm.tooling.deploy.renamer;
 
+import foundation.icon.ee.types.Method;
 import org.aion.avm.tooling.deploy.eliminator.ClassInfo;
 import org.aion.avm.tooling.deploy.eliminator.MethodReachabilityDetector;
 import org.aion.avm.utilities.JarBuilder;
@@ -11,9 +12,11 @@ import org.objectweb.asm.commons.SimpleRemapper;
 import org.objectweb.asm.tree.ClassNode;
 
 import java.io.*;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.jar.JarInputStream;
 import java.util.stream.Collectors;
@@ -21,13 +24,14 @@ import java.util.stream.Collectors;
 public class Renamer {
 
     public static void main(String[] args) {
-        if (args.length != 1) {
+        if (args.length < 1) {
             System.err.println("Input the path to the jar file.");
             System.exit(0);
         }
+        String[] roots = Arrays.copyOfRange(args, 1, args.length);
 
         try (FileInputStream fileInputStream = new FileInputStream(args[0])) {
-            byte[] renamedJarBytes = rename(fileInputStream.readAllBytes());
+            byte[] renamedJarBytes = rename(fileInputStream.readAllBytes(), roots);
             int pathLength = args[0].lastIndexOf("/") + 1;
             String outputJarName = args[0].substring(0, pathLength) + "renamed_" + args[0].substring(pathLength);
             writeOptimizedJar(outputJarName, renamedJarBytes);
@@ -37,12 +41,12 @@ public class Renamer {
         }
     }
 
-    public static byte[] rename(byte[] jarBytes) throws Exception {
+    public static byte[] rename(byte[] jarBytes, String[] roots) throws Exception {
         JarInputStream jarReader = new JarInputStream(new ByteArrayInputStream(jarBytes), true);
         String mainClassName = Utilities.extractMainClassName(jarReader, Utilities.NameStyle.SLASH_NAME);
         Map<String, ClassNode> sortedClassMap = sortBasedOnInnerClassLevel(extractClasses(jarReader));
 
-        Map<String, ClassNode> renamedNodes = renameClassNodes(sortedClassMap, mainClassName);
+        Map<String, ClassNode> renamedNodes = renameClassNodes(sortedClassMap, mainClassName, roots);
 
         Map<String, byte[]> classNameByteCodeMap = getClassBytes(renamedNodes);
         String newMainClassName = NameGenerator.getNewMainClassName();
@@ -61,15 +65,15 @@ public class Renamer {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
     }
 
-    private static Map<String, ClassNode> renameClassNodes(Map<String, ClassNode> sortedClassMap, String mainClassName) throws Exception {
+    private static Map<String, ClassNode> renameClassNodes(Map<String, ClassNode> sortedClassMap, String mainClassName, String[] roots) throws Exception {
         //rename classes
         Map<String, String> mappedNames = ClassRenamer.renameClasses(sortedClassMap, mainClassName);
         Map<String, ClassNode> newClassNameMap = applyMapping(sortedClassMap, mappedNames);
 
         //rename methods
         String newMainClassName = mappedNames.get(mainClassName);
-        Map<String, ClassInfo> classInfoMap = MethodReachabilityDetector.getClassInfoMap(newMainClassName, getClassBytes(newClassNameMap));
-        mappedNames = MethodRenamer.renameMethods(newClassNameMap, classInfoMap);
+        Map<String, ClassInfo> classInfoMap = MethodReachabilityDetector.getClassInfoMap(newMainClassName, getClassBytes(newClassNameMap), roots);
+        mappedNames = MethodRenamer.renameMethods(newClassNameMap, classInfoMap, newMainClassName, roots);
         Map<String, ClassNode> newMethodNameMap = applyMapping(newClassNameMap, mappedNames);
 
         //rename fields

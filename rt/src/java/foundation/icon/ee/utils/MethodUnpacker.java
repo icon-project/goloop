@@ -49,11 +49,13 @@ public class MethodUnpacker {
                 }
             }
             int output = unpacker.unpackArrayHeader();
+            String outputDescriptor = "V";
             if (output != 0) {
                 output = unpacker.unpackInt();
+                outputDescriptor = unpacker.unpackString();
             }
             if (type == MethodType.FUNCTION) {
-                methods[i] = Method.newFunction(name, flags, inputSize - indexed, params, output);
+                methods[i] = Method.newFunction(name, flags, inputSize - indexed, params, output, outputDescriptor);
             } else if (type == MethodType.FALLBACK) {
                 if ("fallback".equals(name)) {
                     methods[i] = Method.newFallback();

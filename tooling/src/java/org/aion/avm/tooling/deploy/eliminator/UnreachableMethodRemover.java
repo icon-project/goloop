@@ -2,9 +2,11 @@ package org.aion.avm.tooling.deploy.eliminator;
 
 import java.io.ByteArrayInputStream;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.jar.JarInputStream;
 
+import foundation.icon.ee.types.Method;
 import org.aion.avm.utilities.JarBuilder;
 import org.aion.avm.utilities.Utilities;
 import org.objectweb.asm.ClassReader;
@@ -12,7 +14,7 @@ import org.objectweb.asm.ClassWriter;
 
 public class UnreachableMethodRemover {
 
-    public static byte[] optimize(byte[] jarBytes) throws Exception {
+    public static byte[] optimize(byte[] jarBytes, String[] roots) throws Exception {
 
         Map<String, byte[]> inputClassMap;
         Map<String, byte[]> outputClassMap = new HashMap<>();
@@ -24,7 +26,7 @@ public class UnreachableMethodRemover {
         inputClassMap = Utilities.extractClasses(jarReader, Utilities.NameStyle.SLASH_NAME);
 
         // Use the MethodReachabilityDetector to get the information about reachability
-        Map<String, ClassInfo> classInfoMap = MethodReachabilityDetector.getClassInfoMap(mainClassName, inputClassMap);
+        Map<String, ClassInfo> classInfoMap = MethodReachabilityDetector.getClassInfoMap(mainClassName, inputClassMap, roots);
 
         for (Map.Entry<String, byte[]> entry : inputClassMap.entrySet()) {
             ClassReader reader = new ClassReader(entry.getValue());

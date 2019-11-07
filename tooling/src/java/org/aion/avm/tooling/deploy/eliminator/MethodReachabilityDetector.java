@@ -1,8 +1,11 @@
 package org.aion.avm.tooling.deploy.eliminator;
 
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+
+import foundation.icon.ee.types.Method;
 import org.objectweb.asm.Opcodes;
 
 public class MethodReachabilityDetector {
@@ -10,13 +13,13 @@ public class MethodReachabilityDetector {
     private final Map<String, ClassInfo> classInfoMap;
     private final Queue<MethodInfo> methodQueue;
 
-    public static Map<String, ClassInfo> getClassInfoMap(String mainClassName, Map<String, byte[]> classMap)
+    public static Map<String, ClassInfo> getClassInfoMap(String mainClassName, Map<String, byte[]> classMap, String[] roots)
         throws Exception {
-        MethodReachabilityDetector detector = new MethodReachabilityDetector(mainClassName, classMap);
+        MethodReachabilityDetector detector = new MethodReachabilityDetector(mainClassName, classMap, roots);
         return detector.getClassInfoMap();
     }
 
-    private MethodReachabilityDetector(String mainClassName, Map<String, byte[]> classMap)
+    private MethodReachabilityDetector(String mainClassName, Map<String, byte[]> classMap, String[] roots)
         throws Exception {
 
         // Use the JarDependencyCollector to build the classInfos we need
@@ -28,15 +31,16 @@ public class MethodReachabilityDetector {
         if (null == mainClassInfo) {
             throw new Exception("Main class info not found for class " + mainClassName);
         }
-        MethodInfo mainMethodInfo = mainClassInfo.getMethodMap().get("main()[B");
-        if (null == mainMethodInfo) {
-            throw new Exception("Main method info not found!");
-        }
 
         methodQueue = new LinkedList<>();
-
-        mainMethodInfo.isReachable = true;
-        methodQueue.add(mainMethodInfo);
+        for (var m : roots) {
+            MethodInfo mi = mainClassInfo.getMethodMap().get(m);
+            if (null == mi) {
+                throw new Exception(String.format("Method info %s not found!", m));
+            }
+            mi.isReachable = true;
+            methodQueue.add(mi);
+        }
 
         for (ClassInfo classInfo : classInfoMap.values()) {
             methodQueue.addAll(classInfo.getAlwaysReachables());

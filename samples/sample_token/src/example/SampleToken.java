@@ -51,6 +51,7 @@ public class SampleToken
         // set the initial balance of the owner
         this.balances = Blockchain.newDictDB("balances");
         this.balances.set(Blockchain.getOrigin(), new ValueBuffer(this.totalSupply));
+        helper();
     }
 
     private static SampleToken token;
@@ -114,4 +115,8 @@ public class SampleToken
 
     @EventLog(indexed=3)
     private static void Transfer(Address _from, Address _to, BigInteger _value, byte[] _data) {}
+
+    // Just to see method renaming is working
+    private void helper() {
+    }
 }

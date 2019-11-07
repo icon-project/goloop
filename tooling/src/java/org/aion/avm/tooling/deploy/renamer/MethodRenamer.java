@@ -16,7 +16,7 @@ public class MethodRenamer {
     private static Set<String> restrictions = Set.of(new String[]{"main", "hashcode", "equals", "<init>", "<clinit>", "toString"});
     private static Set<String> jclMethods;
 
-    public static Map<String, String> renameMethods(Map<String, ClassNode> classMap, Map<String, ClassInfo> classInfoMap) {
+    public static Map<String, String> renameMethods(Map<String, ClassNode> classMap, Map<String, ClassInfo> classInfoMap, String mainClass, String[] externalMethods) {
         // populate a list of all the method names in non-final jcl classes that are used in the jar
         jclMethods = getUsedJclMethodList(classInfoMap);
 
@@ -24,12 +24,16 @@ public class MethodRenamer {
         Map<String, String> newMethodNames = new HashMap<>();
         NameGenerator generator = new NameGenerator();
 
+        List<String> externalMethodList = Arrays.asList(externalMethods);
+
         for (Map.Entry<String, ClassNode> e : classMap.entrySet()) {
             String className = e.getKey();
             List<MethodNode> methodNodes = e.getValue().methods;
             ClassInfo currentClassInfo = classInfoMap.get(className);
 
             for (MethodNode m : methodNodes) {
+                if (className.equals(mainClass) && externalMethodList.contains(m.name+m.desc))
+                    continue;
                 // handle enums
                 if ((e.getValue().superName.equals("java/lang/Enum")) && (m.name.equals("values") || m.name.equals("valueOf"))) {
                     printInfo(e.getKey(), m.name, newMethodMappingsForRemapper.get(makeMethodFullName(className, m)));

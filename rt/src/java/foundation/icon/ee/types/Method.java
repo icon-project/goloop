@@ -96,35 +96,38 @@ public class Method {
     private int indexed;
     private Parameter[] inputs;
     private int output;
+    private String outputDescriptor;
 
-    private Method(int type, String name, int flags, int indexed, Parameter[] inputs, int output) {
+    private Method(int type, String name, int flags, int indexed, Parameter[] inputs, int output, String outputDescriptor) {
         this.type = type;
         this.name = name;
         this.flags = flags;
         this.indexed = indexed;
         this.inputs = inputs;
         this.output = output;
+        this.outputDescriptor = outputDescriptor;
     }
 
-    public static Method newFunction(String name, int flags, Parameter[] inputs, int output) {
+    public static Method newFunction(String name, int flags, Parameter[] inputs, int output, String outputDescriptor) {
         return new Method(MethodType.FUNCTION, name, flags,
-                (inputs != null) ? inputs.length : 0, inputs, output);
+                (inputs != null) ? inputs.length : 0, inputs, output,
+                outputDescriptor);
     }
 
-    public static Method newFunction(String name, int flags, int optional, Parameter[] inputs, int output) {
+    public static Method newFunction(String name, int flags, int optional, Parameter[] inputs, int output, String outputDescriptor) {
         if (optional > 0) {
             return new Method(MethodType.FUNCTION, name, flags,
-                    inputs.length - optional, inputs, output);
+                    inputs.length - optional, inputs, output, outputDescriptor);
         }
-        return newFunction(name, flags, inputs, output);
+        return newFunction(name, flags, inputs, output, outputDescriptor);
     }
 
     public static Method newFallback() {
-        return new Method(MethodType.FALLBACK, "fallback", Flags.PAYABLE, 0, new Parameter[0], 0);
+        return new Method(MethodType.FALLBACK, "fallback", Flags.PAYABLE, 0, new Parameter[0], 0, "V");
     }
 
     public static Method newEvent(String name, int indexed, Parameter[] inputs) {
-        return new Method(MethodType.EVENT, name, 0, indexed, inputs, 0);
+        return new Method(MethodType.EVENT, name, 0, indexed, inputs, 0, "V");
     }
 
     public int getType() {
@@ -160,6 +163,7 @@ public class Method {
                 ", indexed=" + indexed +
                 ", inputs=" + Arrays.toString(inputs) +
                 ", output=" + output +
+                ", outputDescriptor=" + outputDescriptor +
                 '}';
     }
 
@@ -233,5 +237,20 @@ public class Method {
             }
         }
         return out;
+    }
+
+    public String getOutputDescriptor() {
+        return outputDescriptor;
+    }
+
+    public String getDescriptor() {
+        var sb = new StringBuffer();
+        sb.append('(');
+        for (var p : inputs) {
+            sb.append(p.getDescriptor());
+        }
+        sb.append(')');
+        sb.append(getOutputDescriptor());
+        return sb.toString();
     }
 }
