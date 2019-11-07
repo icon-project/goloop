@@ -1,11 +1,9 @@
 package org.aion.avm.tooling.deploy.eliminator;
 
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 
-import foundation.icon.ee.types.Method;
 import org.objectweb.asm.Opcodes;
 
 public class MethodReachabilityDetector {

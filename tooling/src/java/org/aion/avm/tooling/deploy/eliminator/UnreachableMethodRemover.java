@@ -2,11 +2,9 @@ package org.aion.avm.tooling.deploy.eliminator;
 
 import java.io.ByteArrayInputStream;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.jar.JarInputStream;
 
-import foundation.icon.ee.types.Method;
 import org.aion.avm.utilities.JarBuilder;
 import org.aion.avm.utilities.Utilities;
 import org.objectweb.asm.ClassReader;

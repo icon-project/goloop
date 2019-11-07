@@ -1,6 +1,5 @@
 package org.aion.avm.tooling.deploy.renamer;
 
-import foundation.icon.ee.types.Method;
 import org.aion.avm.tooling.deploy.eliminator.ClassInfo;
 import org.aion.avm.tooling.deploy.eliminator.MethodReachabilityDetector;
 import org.aion.avm.utilities.JarBuilder;
@@ -16,7 +15,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.jar.JarInputStream;
 import java.util.stream.Collectors;
