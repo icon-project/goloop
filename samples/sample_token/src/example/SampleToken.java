@@ -55,11 +55,11 @@ public class SampleToken
 
     private static SampleToken token;
 
-    public static void onInstall(String name,
-                                 String symbol,
-                                 BigInteger decimals,
-                                 BigInteger initialSupply) {
-        token = new SampleToken(name, symbol, decimals, initialSupply);
+    public static void onInstall(String _name,
+                                 String _symbol,
+                                 BigInteger _decimals,
+                                 BigInteger _initialSupply) {
+        token = new SampleToken(_name, _symbol, _decimals, _initialSupply);
     }
 
     @Payable
@@ -96,9 +96,9 @@ public class SampleToken
         Address _from = Blockchain.getCaller();
         var vb = new ValueBuffer();
         Value v = token.balances.get(_from, vb);
-        BigInteger fromBalance = v!=null ? v.asBigInteger() : BigInteger.ZERO;
+        BigInteger fromBalance = (v != null) ? v.asBigInteger() : BigInteger.ZERO;
         v = token.balances.get(_to, vb);
-        BigInteger toBalance = v!=null ? v.asBigInteger() : BigInteger.ZERO;
+        BigInteger toBalance = (v != null) ? v.asBigInteger() : BigInteger.ZERO;
 
         // check some basic requirements
         Blockchain.require(_value.compareTo(BigInteger.ZERO) >= 0);
