@@ -80,7 +80,14 @@ public class TransactionExecutor {
         byte[] jarBytes = readFile(path);
         byte[] apis = JarBuilder.getAPIsBytesFromJAR(jarBytes);
         if (null!=apis) {
-            return MethodUnpacker.readFrom(apis);
+            Method[] methods = MethodUnpacker.readFrom(apis);
+            for (var m : methods) {
+                if (!m.hasValidParams()) {
+                    logger.debug("Bad param of API {}!", m.getName());
+                    return null;
+                }
+            }
+            return methods;
         }
         logger.debug("No API info found!");
         return null;
