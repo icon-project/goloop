@@ -31,20 +31,20 @@ type ClientV3 struct {
 
 func NewClientV3(endpoint string) *ClientV3 {
 	return &ClientV3{JsonRpcClient: NewJsonRpcClient(&http.Client{}, endpoint),
-		conns: make(map[string]*websocket.Conn),}
+		conns: make(map[string]*websocket.Conn)}
 }
 
 //refer block/blockv2.go blockv2.ToJSON
 type Block struct {
-	BlockHash              jsonrpc.HexBytes    `json:"block_hash" validate:"required,t_hash"`
-	Version                jsonrpc.HexInt      `json:"version" validate:"required,t_int"`
-	Height                 int64               `json:"height" validate:"required,t_int"`
-	Timestamp              int64               `json:"time_stamp" validate:"required,t_int"`
-	Proposer               jsonrpc.HexBytes    `json:"peer_id" validate:"optional,t_addr_eoa"`
-	PrevID                 jsonrpc.HexBytes    `json:"prev_block_hash" validate:"required,t_hash"`
-	NormalTransactionsHash jsonrpc.HexBytes    `json:"merkle_tree_root_hash" validate:"required,t_hash"`
-	Signature              jsonrpc.HexBytes    `json:"signature" validate:"optional,t_hash"`
-	NormalTransations      []NormalTransaction `json:"confirmed_transaction_list" `
+	BlockHash              jsonrpc.HexBytes  `json:"block_hash" validate:"required,t_hash"`
+	Version                jsonrpc.HexInt    `json:"version" validate:"required,t_int"`
+	Height                 int64             `json:"height" validate:"required,t_int"`
+	Timestamp              int64             `json:"time_stamp" validate:"required,t_int"`
+	Proposer               jsonrpc.HexBytes  `json:"peer_id" validate:"optional,t_addr_eoa"`
+	PrevID                 jsonrpc.HexBytes  `json:"prev_block_hash" validate:"required,t_hash"`
+	NormalTransactionsHash jsonrpc.HexBytes  `json:"merkle_tree_root_hash" validate:"required,t_hash"`
+	Signature              jsonrpc.HexBytes  `json:"signature" validate:"optional,t_hash"`
+	NormalTransactions     []json.RawMessage `json:"confirmed_transaction_list" `
 }
 
 //refer service/transaction/transaction_v3.go:24 transactionV3Data, transactionV3.ToJSON
