@@ -14,6 +14,7 @@ import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.Utils;
+import foundation.icon.test.score.SampleTokenScore;
 import foundation.icon.test.score.StepCounterScore;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -63,8 +64,11 @@ class GetAPITest {
 
     @Test
     void testGetAPIForStepCounter() throws Exception {
-        LOG.infoEntering("testGetAPIForStepCounter");
+        LOG.infoEntering("deployScore", "StepCounterScore");
         StepCounterScore score = StepCounterScore.mustDeploy(iconService, chain, chain.godWallet);
+        LOG.infoExiting();
+
+        LOG.infoEntering("testGetAPIForStepCounter");
         List<ScoreApi> apis = iconService.getScoreApi(score.getAddress()).execute();
         for (ScoreApi api : apis) {
             String name = api.getName();
@@ -155,6 +159,32 @@ class GetAPITest {
                 assertNull(p2.getIndexed());
             } else {
                 throw new Exception("Unexpected method:"+api.toString());
+            }
+        }
+        LOG.infoExiting();
+    }
+
+    @Test
+    void testCheckDefaultParam() throws Exception {
+        LOG.infoEntering("deployScore", "SampleToken");
+        SampleTokenScore score = SampleTokenScore.mustDeploy(iconService, chain, chain.godWallet,
+                "MySampleToken", "MST", 18, BigInteger.valueOf(1000));
+        LOG.infoExiting();
+
+        LOG.infoEntering("checkDefaultParam");
+        List<ScoreApi> apis = iconService.getScoreApi(score.getAddress()).execute();
+        for (ScoreApi api: apis) {
+            if (api.getName().equals("transfer")) {
+                for (ScoreApi.Param p : api.getInputs()) {
+                    if (p.getName().equals("_data")) {
+                        String raw = p.toString();
+                        int startIndex = raw.indexOf("default");
+                        int endIndex = raw.indexOf(",", startIndex);
+                        String actual = raw.substring(startIndex, endIndex);
+                        assertEquals("default=null", actual);
+                        break;
+                    }
+                }
             }
         }
         LOG.infoExiting();
@@ -287,7 +317,7 @@ class GetAPITest {
     @Test
     void validateGetScoreApi() throws Exception {
         String scorePath = Constants.SCORE_API_PATH;
-        LOG.infoEntering("deployScore");
+        LOG.infoEntering("deployScore", "ScoreApi");
         Bytes txHash = Utils.deployScore(iconService, chain.networkId,
                 KeyWallet.create(), Constants.CHAINSCORE_ADDRESS, scorePath, null);
         TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
