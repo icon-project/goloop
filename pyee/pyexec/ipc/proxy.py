@@ -260,7 +260,7 @@ class ServiceManagerProxy:
 
     def encode(self, o: Any) -> bytes:
         if o is None:
-            return bytes([])
+            return None
         if isinstance(o, str):
             return o.encode('utf-8')
         elif isinstance(o, bytes):
@@ -298,7 +298,7 @@ class ServiceManagerProxy:
 
     def encode_any(self, o: Any) -> Tuple[int, Any]:
         if o is None:
-            return TypeTag.NIL, b''
+            return TypeTag.NIL, None
         elif isinstance(o, dict):
             m = {}
             for k, v in o.items():
