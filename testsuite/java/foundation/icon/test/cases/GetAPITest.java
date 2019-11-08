@@ -2,7 +2,11 @@ package foundation.icon.test.cases;
 
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
-import foundation.icon.icx.data.*;
+import foundation.icon.icx.data.Address;
+import foundation.icon.icx.data.Bytes;
+import foundation.icon.icx.data.Converters;
+import foundation.icon.icx.data.ScoreApi;
+import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.icx.transport.jsonrpc.RpcError;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
@@ -28,45 +32,43 @@ import static org.junit.jupiter.api.Assertions.*;
 test methods
     testGetAPIForStepCounter
     validateGetScoreApi
-    notExistsScoreAddress
-    getApiWithEOA
  */
 @Tag(Constants.TAG_NORMAL)
-public class GetAPITest {
-    static Env.Chain chain;
-    static IconService iconService;
-    static StepCounterScore score;
+class GetAPITest {
+    private static Env.Chain chain;
+    private static IconService iconService;
 
     @BeforeAll
-    public static void init() throws Exception {
+    static void init() {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
         chain = channel.chain;
         iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
-        score = StepCounterScore.mustDeploy(iconService, chain, chain.godWallet);
     }
 
-    static final String TYPE_FUNCTION = "function";
-    static final String TYPE_FALLBACK = "fallback";
-    static final String TYPE_EVENTLOG = "eventlog";
+    private static final String TYPE_FUNCTION = "function";
+    private static final String TYPE_FALLBACK = "fallback";
+    private static final String TYPE_EVENTLOG = "eventlog";
 
-    static final String TYPE_INT = "int";
-    static final String TYPE_STRING = "str";
-    static final String TYPE_BYTES = "bytes";
-    static final String TYPE_BOOL = "bool";
-    static final String TYPE_ADDRESS = "Address";
-    static final String TYPE_LIST = "list";
-    static final String TYPE_DICT = "dict";
+    private static final String TYPE_INT = "int";
+    private static final String TYPE_STRING = "str";
+    private static final String TYPE_BYTES = "bytes";
+    private static final String TYPE_BOOL = "bool";
+    private static final String TYPE_ADDRESS = "Address";
+    private static final String TYPE_LIST = "list";
+    private static final String TYPE_DICT = "dict";
 
-    static final String VALUE_TRUE = "0x1";
-    static final String VALUE_FALSE = "0x0";
+    private static final String VALUE_TRUE = "0x1";
+    private static final String VALUE_FALSE = "0x0";
 
     @Test
-    public void testGetAPIForStepCounter() throws Exception {
+    void testGetAPIForStepCounter() throws Exception {
+        LOG.infoEntering("testGetAPIForStepCounter");
+        StepCounterScore score = StepCounterScore.mustDeploy(iconService, chain, chain.godWallet);
         List<ScoreApi> apis = iconService.getScoreApi(score.getAddress()).execute();
-        for ( ScoreApi api : apis ) {
-            String name = api.getName().intern();
-            if ( name == "getStep" ) {
+        for (ScoreApi api : apis) {
+            String name = api.getName();
+            if (name.equals("getStep")) {
                 assertEquals(api.getType(), TYPE_FUNCTION);
                 assertEquals(api.getInputs().size(), 0);
                 assertEquals(api.getReadonly(), VALUE_TRUE);
@@ -76,7 +78,7 @@ public class GetAPITest {
 
                 ScoreApi.Param o1 = outputs.get(0);
                 assertEquals(o1.getType(), TYPE_INT);
-            } else if ( name == "setStep" || name == "resetStep" ) {
+            } else if (name.equals("setStep") || name.equals("resetStep")) {
                 assertEquals(api.getType(), TYPE_FUNCTION);
                 assertNull(api.getReadonly());
 
@@ -86,13 +88,13 @@ public class GetAPITest {
                 ScoreApi.Param p1 = inputs.get(0);
                 assertEquals(p1.getName(), "step");
                 assertEquals(p1.getType(), "int");
-            } else if ( name == "increaseStep" ) {
+            } else if (name.equals("increaseStep")) {
                 assertEquals(TYPE_FUNCTION, api.getType());
                 assertNull(api.getReadonly());
 
                 List<ScoreApi.Param> inputs = api.getInputs();
                 assertEquals(inputs.size(), 0);
-            } else if ( name == "ExternalProgress" ) {
+            } else if (name.equals("ExternalProgress")) {
                 assertEquals(api.getType(), "eventlog");
                 assertNull(api.getReadonly());
 
@@ -108,7 +110,7 @@ public class GetAPITest {
                 assertEquals(p2.getName(), "step");
                 assertEquals(p2.getType(), "int");
                 assertEquals(p2.getIndexed(), BigInteger.ONE);
-            } else if ( name == "OnStep" ) {
+            } else if (name.equals("OnStep")) {
                 assertEquals(api.getType(), "eventlog");
                 assertNull(api.getReadonly());
 
@@ -119,7 +121,7 @@ public class GetAPITest {
                 assertEquals(p1.getName(), "step");
                 assertEquals(p1.getType(), "int");
                 assertEquals(p1.getIndexed(), BigInteger.ONE);
-            } else if ( name == "trySetStepWith" || name == "setStepOf" ) {
+            } else if (name.equals("trySetStepWith") || name.equals("setStepOf")) {
                 assertEquals(api.getType(), TYPE_FUNCTION);
                 assertNull(api.getReadonly());
 
@@ -135,7 +137,7 @@ public class GetAPITest {
                 assertEquals(p2.getName(), "step");
                 assertEquals(p2.getType(), TYPE_INT);
                 assertNull(p2.getIndexed());
-            } else if ( name == "increaseStepWith") {
+            } else if (name.equals("increaseStepWith")) {
                 assertEquals(api.getType(), TYPE_FUNCTION);
                 assertNull(api.getReadonly());
 
@@ -155,6 +157,7 @@ public class GetAPITest {
                 throw new Exception("Unexpected method:"+api.toString());
             }
         }
+        LOG.infoExiting();
     }
 
     static class FuncInfo {
@@ -181,7 +184,7 @@ public class GetAPITest {
             this.readonly = readonly;
             this.payable = payable;
             inputsMap = new HashMap<>();
-            if(inputs != null) {
+            if (inputs != null) {
                 for(Input param : inputs) {
                     inputsMap.put(param.name, param);
                 }
@@ -189,9 +192,9 @@ public class GetAPITest {
         }
     }
 
-    public boolean checkApisForScoreApi(List<ScoreApi> apis) {
+    boolean checkApisForScoreApi(List<ScoreApi> apis) {
         LOG.infoEntering("checkApis");
-        if(apis.size() == 0) {
+        if (apis.size() == 0) {
             LOG.warning("Size of apis is 0");
             return false;
         }
@@ -225,55 +228,55 @@ public class GetAPITest {
             }, null, VALUE_FALSE, VALUE_FALSE));
         }};
 
-        for ( ScoreApi api : apis ) {
+        for (ScoreApi api : apis) {
             String funcName = api.getName();
             FuncInfo fInfo = expectedFuncMap.get(funcName);
-            if(fInfo == null) {
+            if (fInfo == null) {
                 LOG.warning(funcName + " not exists function");
                 return false;
             }
-            if(fInfo.type.compareTo(api.getType()) != 0) {
+            if (fInfo.type.compareTo(api.getType()) != 0) {
                 LOG.warning("[" + funcName + "] is " + api.getType() + " but " + fInfo.type);
                 return false;
             }
-            if(fInfo.readonly.equals(VALUE_TRUE)) {
+            if (fInfo.readonly.equals(VALUE_TRUE)) {
                 if(fInfo.readonly.compareTo(api.getReadonly()) != 0) {
                     LOG.warning("[" + funcName + "] is readonly but " + api.getReadonly());
                     return false;
                 }
             }
-            if(fInfo.payable.equals(VALUE_TRUE)) {
-                if(fInfo.payable.compareTo(api.getProperties().getItem("payable").asString()) != 0) {
-                    LOG.warning("[" + funcName + "] is payble but " + api.getProperties().getItem("payable").asString());
+            if (fInfo.payable.equals(VALUE_TRUE)) {
+                if (fInfo.payable.compareTo(api.getProperties().getItem("payable").asString()) != 0) {
+                    LOG.warning("[" + funcName + "] is payable but " + api.getProperties().getItem("payable").asString());
                     return false;
                 }
             }
-            for(ScoreApi.Param sParam : api.getInputs()) {
+            for (ScoreApi.Param sParam : api.getInputs()) {
                 String pName = sParam.getName();
                 FuncInfo.Input fParam = fInfo.inputsMap.get(pName);
-                if(fParam == null) {
+                if (fParam == null) {
                     LOG.warning("[" + funcName + "][" + pName + "] does not exist");
                     return false;
                 }
-                if(fParam.type.compareTo(sParam.getType()) != 0) {
+                if (fParam.type.compareTo(sParam.getType()) != 0) {
                     LOG.warning("[" + funcName + "][" + pName + "] type is " + fParam.type + " but " + sParam.getType());
                     return false;
                 }
-                if(fParam.indexed != null) {
-                    if(fParam.indexed.compareTo(sParam.getIndexed()) != 0) {
+                if (fParam.indexed != null) {
+                    if (fParam.indexed.compareTo(sParam.getIndexed()) != 0) {
                         LOG.warning("[" + funcName + "][" + pName + "] type is indexed [" + fParam.indexed + " but " + sParam.getIndexed());
                         return false;
                     }
                 }
                 fInfo.inputsMap.remove(sParam.getName());
             }
-            if(fInfo.inputsMap.size() != 0) {
+            if (fInfo.inputsMap.size() != 0) {
                 LOG.warning("Not received param [" + fInfo.inputsMap.keySet() + "]");
                 return false;
             }
             expectedFuncMap.remove(funcName);
         }
-        if(expectedFuncMap.size() != 0) {
+        if (expectedFuncMap.size() != 0) {
             LOG.warning("NOT received [" + expectedFuncMap.keySet() + "]");
             return false;
         }
@@ -281,60 +284,45 @@ public class GetAPITest {
         return true;
     }
 
-
     @Test
-    public void validateGetScoreApi() throws Exception {
-        LOG.infoEntering("checkScoreApi");
+    void validateGetScoreApi() throws Exception {
         String scorePath = Constants.SCORE_API_PATH;
         LOG.infoEntering("deployScore");
         Bytes txHash = Utils.deployScore(iconService, chain.networkId,
                 KeyWallet.create(), Constants.CHAINSCORE_ADDRESS, scorePath, null);
-        LOG.infoExiting();
         TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-
         Utils.acceptIfAuditEnabled(iconService, chain, txHash);
+        LOG.infoExiting();
+
+        LOG.infoEntering("validateGetScoreApi");
         Address scoreAddr = new Address(result.getScoreAddress());
         List<ScoreApi> apis = iconService.getScoreApi(scoreAddr).execute();
         assertTrue(checkApisForScoreApi(apis));
         LOG.infoExiting();
-    }
 
-    @Test
-    public void notExistsScoreAddress() throws Exception {
-        LOG.infoEntering("checkScoreApi");
-        String scorePath = Constants.SCORE_API_PATH;
-        Bytes txHash = Utils.deployScore(iconService, chain.networkId,
-                KeyWallet.create(), Constants.CHAINSCORE_ADDRESS, scorePath, null);
-        TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
-        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-
-        Utils.acceptIfAuditEnabled(iconService, chain, txHash);
-        Address scoreAddr = new Address(result.getScoreAddress());
-
-        String addr = scoreAddr.toString();
-        LOG.info("addr = " + addr);
-        String newAddr;
-        if (addr.endsWith("f")) {
-            newAddr = addr.substring(0, addr.length() - 1) + "e";
-        } else {
-            newAddr = addr.substring(0, addr.length() - 1) + "f";
-        }
-        Address noScoreAddr = new Address(newAddr);
-
-
-        boolean bFailed = false;
-        List<ScoreApi> apis = iconService.getScoreApi(scoreAddr).execute();
-        assertTrue(checkApisForScoreApi(apis));
+        LOG.infoEntering("notExistsScoreAddress");
+        String newAddr = KeyWallet.create().getAddress().toString();
+        Address noScoreAddr = new Address("cx" + newAddr.substring(2));
         try {
             iconService.getScoreApi(noScoreAddr).execute();
             fail();
         }
         catch (RpcError ex) {
-            bFailed = true;
-            LOG.info("ex : " + ex);
+            LOG.info("Expected exception: " + ex);
         }
-        assertTrue(bFailed);
+        LOG.infoExiting();
+
+        LOG.infoEntering("getApiWithEOA");
+        try {
+            // we use custom rpc requester to get the server response directly
+            getScoreApi(KeyWallet.create().getAddress().toString());
+            fail();
+        }
+        catch (RpcError ex) {
+            LOG.info("Expected exception: " + ex);
+        }
+        LOG.infoExiting();
     }
 
     private List<ScoreApi> getScoreApi(String addr) throws IOException {
@@ -344,30 +332,5 @@ public class GetAPITest {
                 .build();
         foundation.icon.icx.transport.jsonrpc.Request request = new foundation.icon.icx.transport.jsonrpc.Request(requestId, "icx_getScoreApi", params);
         return new HttpProvider(Env.nodes[0].channels[0].getAPIUrl(Env.testApiVer)).request(request, Converters.SCORE_API_LIST).execute();
-    }
-
-    @Test
-    public void getApiWithEOA() throws Exception {
-        LOG.infoEntering("getApiWithEOA");
-        String scorePath = Constants.SCORE_API_PATH;
-        Bytes txHash = Utils.deployScore(iconService, chain.networkId,
-                KeyWallet.create(), Constants.CHAINSCORE_ADDRESS, scorePath, null);
-        TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
-        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-        Utils.acceptIfAuditEnabled(iconService, chain, txHash);
-
-        List<ScoreApi> apis = getScoreApi(result.getScoreAddress());
-        assertTrue(checkApisForScoreApi(apis));
-
-        boolean bFailed = false;
-        try {
-            getScoreApi(KeyWallet.create().getAddress().toString());
-            fail();
-        }
-        catch (RpcError ex) {
-            bFailed = true;
-            LOG.info("ex : " + ex);
-        }
-        assertTrue(bFailed);
     }
 }
