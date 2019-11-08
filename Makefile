@@ -85,13 +85,8 @@ gorun-% : godeps-image
 	    make "GL_VERSION=$(GL_VERSION)" $(patsubst gorun-%,%,$@)
 pydeps-image:
 	@ \
-	if [ "`docker images -q $(PYDEPS_IMAGE)`" == "" ] ; then \
-	    rm -rf $(PYDEPS_DOCKER_DIR) ; \
-	    mkdir -p $(PYDEPS_DOCKER_DIR) ; \
-	    cp $(BUILD_ROOT)/docker/py-deps/* $(PYDEPS_DOCKER_DIR) ; \
-	    cp $(BUILD_ROOT)/pyee/requirements.txt $(PYDEPS_DOCKER_DIR) ; \
-	    docker build -t $(PYDEPS_IMAGE) $(PYDEPS_DOCKER_DIR) ; \
-	fi
+	$(BUILD_ROOT)/docker/py-deps/update.sh \
+	    $(PYDEPS_IMAGE) $(BUILD_ROOT) $(PYDEPS_DOCKER_DIR)
 
 pyrun-% : pydeps-image
 	@ \
@@ -127,6 +122,7 @@ gochain-image: pyrun-pyexec gorun-gochain-linux
 	@ cp $(BUILD_ROOT)/linux/gochain $(GOCHAIN_DOCKER_DIR)/dist
 	@ docker build -t $(GOCHAIN_IMAGE) \
 	    --build-arg TAG_PY_DEPS=$(GL_TAG) \
+	    --build-arg GOCHAIN_VERSION=$(GL_VERSION) \
 	    $(GOCHAIN_DOCKER_DIR)
 
 .PHONY: test
