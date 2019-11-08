@@ -56,7 +56,7 @@ class DbStep(IconScoreBase):
             self._var_addr.set(v_addr)
         elif v_bytes is not None:
             self._var_bytes.set(bytes(v_bytes))
-        elif v_str is not "":
+        elif v_str is not None:
             self._var_str.set(str(v_str))
         else:
             self._var_int.set(int(v_int))
