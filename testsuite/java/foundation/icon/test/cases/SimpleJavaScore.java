@@ -5,6 +5,7 @@ import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.Wallet;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
+import foundation.icon.icx.data.ScoreApi;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
@@ -21,39 +22,37 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigInteger;
+import java.util.List;
 
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
-// TODO SKip if audit enabled
 @Tag(Constants.TAG_GOVERNANCE)
-public class SimpleJavaScore {
+class SimpleJavaScore {
     private static IconService iconService;
     private static Env.Chain chain;
     private static KeyWallet ownerWallet;
-    private static KeyWallet callerWallet;
+    private static KeyWallet calleeWallet;
     private static GovScore govScore;
     private static Score testScore;
     private static final String PATH = Constants.JSCORE_MYSAMPLETOKEN;
     private static GovScore.Fee fee;
 
     @BeforeAll
-    public static void init() throws Exception {
+    static void init() throws Exception {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
         chain = channel.chain;
         iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
         govScore = new GovScore(iconService, chain);
-        Thread.sleep(10000);
         fee = govScore.getFee();
         initScoreTest();
     }
 
     private static void initScoreTest() throws Exception {
         ownerWallet = KeyWallet.create();
-        callerWallet = KeyWallet.create();
-        Address []addrs = {ownerWallet.getAddress(), callerWallet.getAddress(), chain.governorWallet.getAddress()};
+        calleeWallet = KeyWallet.create();
+        Address[] addrs = {ownerWallet.getAddress(), calleeWallet.getAddress(), chain.governorWallet.getAddress()};
         Utils.transferAndCheck(iconService, chain, chain.godWallet, addrs, Constants.DEFAULT_BALANCE);
 
         govScore.setMaxStepLimit("invoke", BigInteger.valueOf(1000000));
@@ -61,66 +60,95 @@ public class SimpleJavaScore {
     }
 
     @AfterAll
-    public static void destroy() throws Exception {
+    static void destroy() throws Exception {
         govScore.setFee(fee);
     }
 
     @Test
-    public void tokenSample() throws Exception {
-        // TODO
-        // 1. deploy
-        LOG.infoEntering("deploy");
-        RpcObject params = new RpcObject.Builder()
-                .put("name", new RpcValue("MySampleToken"))
-                .put("symbol", new RpcValue("MySampleToken"))
-                .put("decimals", new RpcValue("0x9"))
-                .put("initialSupply", new RpcValue("0x3E8"))
-                .build();
+    void testCheckDefaultParam() throws Exception {
+        Address scoreAddr = deploySampleToken(BigInteger.valueOf(18), BigInteger.valueOf(1000));
 
-        Address scoreAddr = Score.install(iconService, chain, ownerWallet, PATH, params, 10000000, Constants.CONTENT_TYPE_JAVA);
-        LOG.info("scoreAddr " + scoreAddr);
-        testScore = new Score(iconService, chain, scoreAddr);
+        LOG.infoEntering("checkDefaultParam");
+        List<ScoreApi> apis = iconService.getScoreApi(scoreAddr).execute();
+        for (ScoreApi api: apis) {
+            if (api.getName().equals("transfer")) {
+                for (ScoreApi.Param p : api.getInputs()) {
+                    if (p.getName().equals("_data")) {
+                        String raw = p.toString();
+                        int startIndex = raw.indexOf("default");
+                        int endIndex = raw.indexOf(",", startIndex);
+                        String actual = raw.substring(startIndex, endIndex);
+                        assertEquals("default=null", actual);
+                        break;
+                    }
+                }
+            }
+        }
         LOG.infoExiting();
+    }
 
-        // 2. getBalanceOf
-        LOG.infoEntering("getBalance");
-        BigInteger initialSupply = BigInteger.valueOf(0x3e8).pow(4);
+    @Test
+    void testSampleToken() throws Exception {
+        // 1. deploy
+        BigInteger decimals = BigInteger.valueOf(18);
+        BigInteger initialSupply = BigInteger.valueOf(1000);
+        Address scoreAddr = deploySampleToken(decimals, initialSupply);
+
+        // 2. balanceOf
+        LOG.infoEntering("balanceOf", "owner (initial)");
+        BigInteger oneToken = BigInteger.TEN.pow(decimals.intValue());
+        BigInteger totalSupply = oneToken.multiply(initialSupply);
         BigInteger bal = callBalanceOf(ownerWallet.getAddress()).asInteger();
-        LOG.info("expected (" + initialSupply + "), result (" + bal + ")");
-        assertEquals(initialSupply, bal);
+        LOG.info("expected (" + totalSupply + "), result (" + bal + ")");
+        assertEquals(totalSupply, bal);
         LOG.infoExiting();
 
         // 3. transfer
         LOG.infoEntering("transfer");
-        BigInteger val = BigInteger.ONE;
-        TransactionResult result = invokeTransfer(scoreAddr, ownerWallet, callerWallet.getAddress(), val);
+        TransactionResult result = invokeTransfer(scoreAddr, ownerWallet, calleeWallet.getAddress(), oneToken);
         LOG.info("result(" + result + ")");
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
         LOG.infoExiting();
 
-        // 4. getBalanceOf - check balance of caller
-        LOG.infoEntering("getBalanceOf caller");
-        bal = callBalanceOf(callerWallet.getAddress()).asInteger();
-        LOG.info("expected (" + val + "), result (" + bal + ")");
-        assertEquals(val, bal);
+        // 4. check balance of callee
+        LOG.infoEntering("balanceOf", "callee");
+        bal = callBalanceOf(calleeWallet.getAddress()).asInteger();
+        LOG.info("expected (" + oneToken + "), result (" + bal + ")");
+        assertEquals(oneToken, bal);
         LOG.infoExiting();
 
-        // 5. getBalanceOf - check balance of User
-        LOG.infoEntering("getBalanceOf caller");
+        // 5. check balance of owner
+        LOG.infoEntering("balanceOf", "owner");
         bal = callBalanceOf(ownerWallet.getAddress()).asInteger();
-        LOG.info("expected (" + initialSupply.subtract(val) + "), result (" + bal + ")");
-        assertEquals(initialSupply.subtract(val), bal);
+        LOG.info("expected (" + totalSupply.subtract(oneToken) + "), result (" + bal + ")");
+        assertEquals(totalSupply.subtract(oneToken), bal);
         LOG.infoExiting();
+    }
+
+    private Address deploySampleToken(BigInteger decimals, BigInteger initialSupply) throws Exception {
+        LOG.infoEntering("deploy", "SampleToken");
+        RpcObject params = new RpcObject.Builder()
+                .put("_name", new RpcValue("MySampleToken"))
+                .put("_symbol", new RpcValue("MST"))
+                .put("_decimals", new RpcValue(decimals))
+                .put("_initialSupply", new RpcValue(initialSupply))
+                .build();
+        Address scoreAddr = Score.install(iconService, chain, ownerWallet, PATH,
+                                          params, 10000000, Constants.CONTENT_TYPE_JAVA);
+        LOG.info("scoreAddr " + scoreAddr);
+        testScore = new Score(iconService, chain, scoreAddr);
+        LOG.infoExiting();
+        return scoreAddr;
     }
 
     private RpcItem callBalanceOf(Address addr) throws Exception {
-        RpcObject.Builder builder = new RpcObject.Builder();
-        builder.put("_owner", new RpcValue(addr.toString()));
-        return testScore.call(KeyWallet.create().getAddress(), "balanceOf", builder.build());
+        RpcObject params = new RpcObject.Builder()
+                .put("_owner", new RpcValue(addr.toString()))
+                .build();
+        return testScore.call(KeyWallet.create().getAddress(), "balanceOf", params);
     }
 
     private TransactionResult invokeTransfer(Address score, Wallet from, Address to, BigInteger value) throws Exception {
-        //address _to, integer _value, byte
         RpcObject params = new RpcObject.Builder()
                 .put("_to", new RpcValue(to))
                 .put("_value", new RpcValue(value))
