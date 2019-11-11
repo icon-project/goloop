@@ -54,21 +54,21 @@ public class MethodPacker {
         if (m.getOutput() != 0) {
             packer.packArrayHeader(1);
             packer.packInt(m.getOutput());
-            if (longForm)
+            if (longForm) {
                 packer.packString(m.getOutputDescriptor());
+            }
         } else {
             packer.packArrayHeader(0);
         }
     }
 
     private static void packDefaultValue(MessageBufferPacker packer, int type) throws IOException {
-        if (type == Method.DataType.INTEGER) {
-            packer.packBigInteger(BigInteger.ZERO);
-        } else if (type == Method.DataType.BOOL) {
-            packer.packBoolean(false);
+        if (type == Method.DataType.INTEGER || type == Method.DataType.BOOL) {
+            byte[] ba = BigInteger.valueOf(0).toByteArray();
+            packer.packBinaryHeader(ba.length);
+            packer.writePayload(ba);
         } else {
-            // empty byte array
-            packer.packBinaryHeader(0);
+            packer.packNil();
         }
     }
 }
