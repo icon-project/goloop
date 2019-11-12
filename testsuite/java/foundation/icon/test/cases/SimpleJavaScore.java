@@ -4,7 +4,6 @@ import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.Wallet;
 import foundation.icon.icx.data.Address;
-import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.ScoreApi;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
@@ -103,25 +102,34 @@ class SimpleJavaScore {
         assertEquals(totalSupply, bal);
         LOG.infoExiting();
 
-        // 3. transfer
-        LOG.infoEntering("transfer");
-        TransactionResult result = invokeTransfer(scoreAddr, ownerWallet, calleeWallet.getAddress(), oneToken);
+        // 3. transfer #1
+        LOG.infoEntering("transfer", "#1");
+        TransactionResult result = invokeTransfer(scoreAddr, ownerWallet, calleeWallet.getAddress(), oneToken, true);
+        LOG.info("result(" + result + ")");
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        LOG.infoExiting();
+
+        // 3.1 transfer #2
+        LOG.infoEntering("transfer", "#2");
+        result = invokeTransfer(scoreAddr, ownerWallet, calleeWallet.getAddress(), oneToken, false);
         LOG.info("result(" + result + ")");
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
         LOG.infoExiting();
 
         // 4. check balance of callee
         LOG.infoEntering("balanceOf", "callee");
+        BigInteger expected = oneToken.add(oneToken);
         bal = callBalanceOf(calleeWallet.getAddress()).asInteger();
-        LOG.info("expected (" + oneToken + "), result (" + bal + ")");
-        assertEquals(oneToken, bal);
+        LOG.info("expected (" + expected + "), result (" + bal + ")");
+        assertEquals(expected, bal);
         LOG.infoExiting();
 
         // 5. check balance of owner
         LOG.infoEntering("balanceOf", "owner");
+        expected = totalSupply.subtract(expected);
         bal = callBalanceOf(ownerWallet.getAddress()).asInteger();
-        LOG.info("expected (" + totalSupply.subtract(oneToken) + "), result (" + bal + ")");
-        assertEquals(totalSupply.subtract(oneToken), bal);
+        LOG.info("expected (" + expected + "), result (" + bal + ")");
+        assertEquals(expected, bal);
         LOG.infoExiting();
     }
 
@@ -148,13 +156,15 @@ class SimpleJavaScore {
         return testScore.call(KeyWallet.create().getAddress(), "balanceOf", params);
     }
 
-    private TransactionResult invokeTransfer(Address score, Wallet from, Address to, BigInteger value) throws Exception {
-        RpcObject params = new RpcObject.Builder()
+    private TransactionResult invokeTransfer(Address score, Wallet from, Address to, BigInteger value,
+                                             boolean includeData) throws Exception {
+        RpcObject.Builder builder = new RpcObject.Builder()
                 .put("_to", new RpcValue(to))
-                .put("_value", new RpcValue(value))
-                .put("_data", new RpcValue(new Bytes(BigInteger.ONE)))
-                .build();
+                .put("_value", new RpcValue(value));
+        if (includeData) {
+            builder.put("_data", new RpcValue("Hello".getBytes()));
+        }
         return Utils.sendTransactionWithCall(iconService, chain.networkId,
-                    from, score, "transfer", params);
+                    from, score, "transfer", builder.build());
     }
 }
