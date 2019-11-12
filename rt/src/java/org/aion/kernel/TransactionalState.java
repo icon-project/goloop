@@ -33,7 +33,6 @@ public class TransactionalState implements IExternalState {
     private long blockNumber;
     private long blockTimestamp;
     private long blockNrgLimit;
-    private AionAddress blockCoinbase;
 
     public TransactionalState(IExternalState parent) {
         this.parent = parent;
@@ -45,7 +44,6 @@ public class TransactionalState implements IExternalState {
         this.blockNumber = parent.getBlockNumber();
         this.blockTimestamp = parent.getBlockTimestamp();
         this.blockNrgLimit = parent.getBlockEnergyLimit();
-        this.blockCoinbase = parent.getMinerAddress();
         this.deletedStorageKeys = new HashSet<>();
     }
 
@@ -329,10 +327,6 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public AionAddress getMinerAddress() {
-        return blockCoinbase;
-    }
-
     public void log(byte[][] indexed, byte[][] data) {
         parent.log(indexed, data);
     }

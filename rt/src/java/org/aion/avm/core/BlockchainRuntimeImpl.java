@@ -153,15 +153,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     @Override
-    public Address avm_getBlockCoinbase() {
-        if (null == this.blockCoinBaseCache) {
-            this.blockCoinBaseCache = new Address(externalState.getMinerAddress().toByteArray());
-        }
-
-        return this.blockCoinBaseCache;
-    }
-
-    @Override
     public s.java.math.BigInteger avm_getBlockDifficulty() {
         if (null == this.blockDifficultyCache) {
             this.blockDifficultyCache = new s.java.math.BigInteger(externalState.getBlockDifficulty());

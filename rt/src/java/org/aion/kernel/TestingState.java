@@ -259,11 +259,6 @@ public class TestingState implements IExternalState {
     }
 
     @Override
-    public AionAddress getMinerAddress() {
-        return new AionAddress(blockCoinbase.toByteArray());
-    }
-
-    @Override
     public void refundAccount(AionAddress address, BigInteger amount) {
         // This method may have special logic in the kernel. Here it is just adjustBalance.
         internalAdjustBalance(address, amount);
@@ -287,6 +282,7 @@ public class TestingState implements IExternalState {
                 : null;
     }
 
+    @Override
     public void log(byte[][] indexed, byte[][] data) {
     }
 }

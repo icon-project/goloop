@@ -286,11 +286,7 @@ public interface IExternalState {
     public BigInteger getBlockDifficulty();
 
     /**
-     * Returns the address of the miner.
-     *
-     * @return the address of the miner.
+     * Emits events log
      */
-    public AionAddress getMinerAddress();
-
     public void log(byte[][] indexed, byte[][]data);
 }

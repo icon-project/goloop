@@ -190,11 +190,6 @@ public class CachingState implements IExternalState {
     }
 
     @Override
-    public AionAddress getMinerAddress() {
-        throw RuntimeAssertionError.unreachable("This class does not implement this method.");
-    }
-
-    @Override
     public void refundAccount(AionAddress address, BigInteger amount) {
         // This method may have special logic in the kernel. Here it is just adjustBalance.
         internalAdjustBalance(address, amount);
@@ -214,6 +209,7 @@ public class CachingState implements IExternalState {
         account.setBalance(start.add(delta));
     }
 
+    @Override
     public void log(byte[][] indexed, byte[][] data) {
         throw RuntimeAssertionError.unreachable("This class does not implement this method.");
     }

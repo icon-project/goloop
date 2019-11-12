@@ -70,11 +70,6 @@ public final class Blockchain extends Object {
         return blockchainRuntime.avm_getBlockEnergyLimit();
     }
 
-    public static Address avm_getBlockCoinbase() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getBlockCoinbase);
-        return blockchainRuntime.avm_getBlockCoinbase();
-    }
-
     public static BigInteger avm_getBlockDifficulty() {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getBlockDifficulty);
         return blockchainRuntime.avm_getBlockDifficulty();

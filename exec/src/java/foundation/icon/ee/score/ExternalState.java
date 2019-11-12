@@ -26,7 +26,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.util.Arrays;
 
 public class ExternalState implements IExternalState {
     private static final Logger logger = LoggerFactory.getLogger(ExternalState.class);
@@ -283,15 +282,6 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public AionAddress getMinerAddress() {
-        byte[] arr = new byte[AionAddress.LENGTH];
-        Arrays.fill(arr, (byte) 0xaa);
-        arr[0] = (byte) 0x0; // EOA
-        AionAddress miner = new AionAddress(arr);
-        logger.trace("[getMinerAddress] ret={}", miner);
-        return miner;
-    }
-
     public void log(byte[][] indexed, byte[][] data) {
         try {
             proxy.log(indexed, data);

@@ -76,13 +76,6 @@ public interface IBlockchainRuntime {
     long avm_getBlockEnergyLimit();
 
     /**
-     * Block coinbase address
-     *
-     * @return the miner address of the block
-     */
-    Address avm_getBlockCoinbase();
-
-    /**
      * Block difficulty
      *
      * @return the difficulty of the block.

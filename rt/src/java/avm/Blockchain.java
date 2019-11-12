@@ -120,15 +120,6 @@ public final class Blockchain {
     }
 
     /**
-     * Returns the block coinbase.
-     *
-     * @return the miner's address of the block.
-     */
-    public static Address getBlockCoinbase() {
-        return null;
-    }
-
-    /**
      * Returns the block difficulty.
      *
      * @return the PoW difficulty of the block.
