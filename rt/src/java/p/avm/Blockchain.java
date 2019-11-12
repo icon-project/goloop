@@ -1,17 +1,15 @@
 package p.avm;
 
-import a.ObjectArray;
-import i.DBImplBase;
-import i.IObjectArray;
-import org.aion.avm.StorageFees;
 import a.ByteArray;
+import i.DBImplBase;
 import i.IBlockchainRuntime;
+import i.IInstrumentation;
+import i.IObjectArray;
+import org.aion.avm.RuntimeMethodFeeSchedule;
+import org.aion.avm.StorageFees;
 import s.java.lang.Object;
 import s.java.lang.String;
 import s.java.math.BigInteger;
-
-import i.IInstrumentation;
-import org.aion.avm.RuntimeMethodFeeSchedule;
 
 
 public final class Blockchain extends Object {
@@ -56,7 +54,6 @@ public final class Blockchain extends Object {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getData);
         return blockchainRuntime.avm_getData();
     }
-
 
     public static long avm_getBlockTimestamp() {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getBlockTimestamp);
@@ -120,17 +117,6 @@ public final class Blockchain extends Object {
         return blockchainRuntime.avm_getBalance(address);
     }
 
-    public static BigInteger avm_getBalanceOfThisContract() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getBalanceOfThisContract);
-        return blockchainRuntime.avm_getBalanceOfThisContract();
-    }
-
-    public static int avm_getCodeSize(Address address) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getCodeSize);
-        return blockchainRuntime.avm_getCodeSize(address);
-    }
-
-
     public static long avm_getRemainingEnergy() {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getRemainingEnergy);
         return blockchainRuntime.avm_getRemainingEnergy();
@@ -144,11 +130,6 @@ public final class Blockchain extends Object {
     public static Result avm_create(BigInteger value, ByteArray data, long energyLimit) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_create);
         return blockchainRuntime.avm_create(value, data, energyLimit);
-    }
-
-    public static void avm_selfDestruct(Address beneficiary) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_selfDestruct);
-        blockchainRuntime.avm_selfDestruct(beneficiary);
     }
 
     public static void avm_log(ByteArray data) {

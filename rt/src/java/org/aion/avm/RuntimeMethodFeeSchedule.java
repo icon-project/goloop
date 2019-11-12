@@ -316,13 +316,9 @@ public class RuntimeMethodFeeSchedule {
     public static final int BlockchainRuntime_avm_resetStorage = 5000; // Paid for a putStorage operation when the storage value's zeroness is unchanged or is set to 0;
     public static final int BlockchainRuntime_avm_deleteStorage_refund = 15000; // Refund given when the storage value is set to zero from non-zero.
     public static final int BlockchainRuntime_avm_getBalance = RT_METHOD_FEE_LEVEL_2; // totalCost - 122;
-    public static final int BlockchainRuntime_avm_getBalanceOfThisContract = RT_METHOD_FEE_LEVEL_2;
-    public static final int BlockchainRuntime_avm_getCodeSize = RT_METHOD_FEE_LEVEL_1; // totalCost - 122;
     public static final int BlockchainRuntime_avm_getRemainingEnergy = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
     public static final int BlockchainRuntime_avm_call = 5000; // totalCost - 140;
     public static final int BlockchainRuntime_avm_create = 5000; // totalCost - 134;
-    public static final int BlockchainRuntime_avm_selfDestruct = 5000; // totalCost - 122;
-    public static final int BlockchainRuntime_avm_selfDestruct_refund = 24000;
 
     public static final int BlockchainRuntime_avm_log_base = 375; // totalCost - 122;
 

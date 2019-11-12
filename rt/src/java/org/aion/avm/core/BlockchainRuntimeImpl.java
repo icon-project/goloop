@@ -30,7 +30,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     private static final Logger logger = LoggerFactory.getLogger(BlockchainRuntimeImpl.class);
     private final IExternalCapabilities capabilities;
     private final IExternalState externalState;
-    private final AvmInternal avm;
     private final ReentrantDAppStack.ReentrantState reentrantState;
 
     private final TransactionTask task;
@@ -51,7 +50,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
     public BlockchainRuntimeImpl(IExternalCapabilities capabilities,
                                  IExternalState externalState,
-                                 AvmInternal avm,
                                  ReentrantDAppStack.ReentrantState reentrantState,
                                  TransactionTask task,
                                  AionAddress transactionSender,
@@ -62,7 +60,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                                  boolean enablePrintln) {
         this.capabilities = capabilities;
         this.externalState = externalState;
-        this.avm = avm;
         this.reentrantState = reentrantState;
         this.task = task;
         this.transactionSender = transactionSender;
@@ -186,8 +183,8 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         } else {
             externalState.putStorage(this.transactionDestination, keyCopy, valueCopy);
         }
-        if(requiresRefund){
-            task.addResetStoragekey(this.transactionDestination, keyCopy);
+        if (requiresRefund){
+            task.addResetStorageKey(this.transactionDestination, keyCopy);
         }
     }
 
@@ -205,31 +202,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     @Override
     public s.java.math.BigInteger avm_getBalance(Address address) {
         require(null != address, "Address can't be NULL");
-
-        // Acquire resource before reading
-        // Returned result of acquire is not checked, since an abort exception will be thrown by IInstrumentation during chargeEnergy if the task has been aborted
-        avm.getResourceMonitor().acquire(address.toByteArray(), this.task);
         return new s.java.math.BigInteger(this.externalState.getBalance(new AionAddress(address.toByteArray())));
-    }
-
-    @Override
-    public s.java.math.BigInteger avm_getBalanceOfThisContract() {
-        // This method can be called inside clinit so CREATE is a valid context.
-        // Acquire resource before reading
-        // Returned result of acquire is not checked, since an abort exception will be thrown by IInstrumentation during chargeEnergy if the task has been aborted
-        avm.getResourceMonitor().acquire(this.transactionDestination.toByteArray(), this.task);
-        return new s.java.math.BigInteger(this.externalState.getBalance(this.transactionDestination));
-    }
-
-    @Override
-    public int avm_getCodeSize(Address address) {
-        require(null != address, "Address can't be NULL");
-
-        // Acquire resource before reading
-        // Returned result of acquire is not checked, since an abort exception will be thrown by IInstrumentation during chargeEnergy if the task has been aborted
-        avm.getResourceMonitor().acquire(address.toByteArray(), this.task);
-        byte[] vc = this.externalState.getCode(new AionAddress(address.toByteArray()));
-        return vc == null ? 0 : vc.length;
     }
 
     @Override
@@ -304,28 +277,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         if (!condition) {
             throw new IllegalArgumentException(message);
         }
-    }
-
-    @Override
-    public void avm_selfDestruct(Address beneficiary) {
-        require(null != beneficiary, "Beneficiary can't be NULL");
-
-        // Acquire beneficiary address, the address of current contract is already locked at this stage.
-        // Returned result of acquire is not checked, since an abort exception will be thrown by IInstrumentation during chargeEnergy if the task has been aborted
-        this.avm.getResourceMonitor().acquire(beneficiary.toByteArray(), this.task);
-
-        // Value transfer
-        java.math.BigInteger balanceToTransfer = this.externalState.getBalance(this.transactionDestination);
-        this.externalState.adjustBalance(this.transactionDestination, balanceToTransfer.negate());
-        this.externalState
-            .adjustBalance(new AionAddress(beneficiary.toByteArray()), balanceToTransfer);
-
-        // Delete Account
-        // Note that the account being deleted means it will still run but no DApp which sees this delete
-        // (the current one and any callers, or any later transactions, assuming this commits) will be able
-        // to invoke it (the code will be missing).
-        this.externalState.deleteAccount(this.transactionDestination);
-        task.addSelfDestructAddress(this.transactionDestination);
     }
 
     @Override
@@ -478,13 +429,13 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
         // Acquire the target of the internal transaction
         AionAddress destination = (transaction.isCreate) ? this.capabilities.generateContractAddress(transaction) : transaction.destinationAddress;
-        boolean isAcquired = avm.getResourceMonitor().acquire(destination.toByteArray(), task);
+        boolean isAcquired = false; //avm.getResourceMonitor().acquire(destination.toByteArray(), task);
 
         // execute the internal transaction
         AvmWrappedTransactionResult newResult = null;
         try {
             if(isAcquired) {
-                newResult = this.avm.runInternalTransaction(this.externalState, this.task, transaction);
+                //newResult = this.avm.runInternalTransaction(this.externalState, this.task, transaction);
             } else {
                 // Unsuccessful acquire means transaction task has been aborted.
                 // In abort case, internal transaction will not be executed.

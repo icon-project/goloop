@@ -173,26 +173,6 @@ public final class Blockchain {
         return BigInteger.ZERO;
     }
 
-    /**
-     * Returns the balance of the contract in which this method was invoked.
-     *
-     * @return the contract balance.
-     */
-    public static BigInteger getBalanceOfThisContract() {
-        return BigInteger.ZERO;
-    }
-
-    /**
-     * Returns the size of the code, of the given account.
-     *
-     * @param address the account address.
-     * @return the code size in bytes, or 0 if no contract is deployed at that address
-     * @throws IllegalArgumentException when the argument is invalid, e.g. NULL address.
-     */
-    public static int getCodeSize(Address address) throws IllegalArgumentException {
-        return 0;
-    }
-
     //===================
     // System
     //===================
@@ -238,15 +218,6 @@ public final class Blockchain {
      */
     public static Result create(BigInteger value, byte[] data, long energyLimit) throws IllegalArgumentException {
         return null;
-    }
-
-    /**
-     * Destroys this dapp and refund all balance to the beneficiary address.
-     *
-     * @param beneficiary the beneficiary's address
-     * @throws IllegalArgumentException when the arguments are invalid, e.g. NULL address.
-     */
-    public static void selfDestruct(Address beneficiary) throws IllegalArgumentException {
     }
 
     /**

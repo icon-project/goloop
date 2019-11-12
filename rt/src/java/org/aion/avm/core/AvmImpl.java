@@ -417,7 +417,7 @@ public class AvmImpl implements AvmInternal {
 
         // do nothing for balance transfers of which the recipient is not a DApp address.
         if (tx.isCreate) {
-            result = DAppCreator.create(this.capabilities, thisTransactionKernel, this, task, senderAddress, recipient, tx, result, this.preserveDebuggability, this.enableVerboseContractErrors, this.enableBlockchainPrintln);
+            result = DAppCreator.create(this.capabilities, thisTransactionKernel, task, senderAddress, recipient, tx, result, this.preserveDebuggability, this.enableVerboseContractErrors, this.enableBlockchainPrintln);
         } else { // call
             // See if this call is trying to reenter one already on this call-stack.  If so, we will need to partially resume its state.
             ReentrantDAppStack.ReentrantState stateToResume = task.getReentrantDAppStack().tryShareState(recipient);
@@ -429,7 +429,7 @@ public class AvmImpl implements AvmInternal {
             if ((null != stateToResume) && (null != transformedCode)) {
                 dapp = stateToResume.dApp;
                 // Call directly and don't interact with DApp cache (we are reentering the state, not the origin of it).
-                result = DAppExecutor.call(this.capabilities, thisTransactionKernel, this, dapp, stateToResume, task,
+                result = DAppExecutor.call(this.capabilities, thisTransactionKernel, dapp, stateToResume, task,
                         senderAddress, recipient, tx, result,
                         this.enableVerboseContractErrors, true, this.enableBlockchainPrintln);
             } else {
@@ -550,7 +550,7 @@ public class AvmImpl implements AvmInternal {
                 }
 
                 if (null != dapp) {
-                    result = DAppExecutor.call(this.capabilities, thisTransactionKernel, this, dapp, stateToResume, task,
+                    result = DAppExecutor.call(this.capabilities, thisTransactionKernel, dapp, stateToResume, task,
                             senderAddress, recipient, tx, result,
                             this.enableVerboseContractErrors, readFromDataCacheEnabled, this.enableBlockchainPrintln);
 

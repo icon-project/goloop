@@ -38,7 +38,6 @@ public class TransactionTask implements Comparable<TransactionTask>{
     private Stack<SideEffects> sideEffectsStack;
     private Address origin;
     private int depth;
-    private Set<AionAddress> selfDestructedAddresses;
     private Set<Pair<AionAddress, ByteArrayWrapper>> resetStorageKeys;
     public final ExecutionType executionType;
     public final long commonMainchainBlockNumber;
@@ -58,7 +57,6 @@ public class TransactionTask implements Comparable<TransactionTask>{
         this.depth = 0;
         this.sideEffectsStack = new Stack<>();
         this.sideEffectsStack.push(new SideEffects());
-        this.selfDestructedAddresses = new HashSet<>();
         this.resetStorageKeys = new HashSet<>();
         this.executionType = executionType;
         this.commonMainchainBlockNumber = commonMainchainBlockNumber;
@@ -188,11 +186,7 @@ public class TransactionTask implements Comparable<TransactionTask>{
         depth--;
     }
 
-    public void addSelfDestructAddress(AionAddress address){ selfDestructedAddresses.add(address); }
-
-    public int getSelfDestructAddressCount(){ return selfDestructedAddresses.size(); }
-
-    public void addResetStoragekey(AionAddress address, byte[] key){ resetStorageKeys.add(Pair.of(address, new ByteArrayWrapper(key))); }
+    public void addResetStorageKey(AionAddress address, byte[] key){ resetStorageKeys.add(Pair.of(address, new ByteArrayWrapper(key))); }
 
     public int getResetStorageKeyCount(){ return resetStorageKeys.size(); }
 

@@ -21,7 +21,6 @@ import i.IInstrumentationFactory;
 import i.InstrumentationHelpers;
 import i.RuntimeAssertionError;
 import org.aion.avm.core.AvmConfiguration;
-import org.aion.avm.core.AvmInternal;
 import org.aion.avm.core.DAppCreator;
 import org.aion.avm.core.DAppExecutor;
 import org.aion.avm.core.DAppLoader;
@@ -34,7 +33,6 @@ import org.aion.avm.core.util.TransactionResultUtil;
 import org.aion.kernel.AvmWrappedTransactionResult;
 import org.aion.kernel.AvmWrappedTransactionResult.AvmInternalError;
 import org.aion.kernel.TransactionalState;
-import org.aion.parallel.AddressResourceMonitor;
 import org.aion.parallel.TransactionTask;
 import org.aion.types.AionAddress;
 import org.aion.types.Transaction;
@@ -45,7 +43,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.math.BigInteger;
 
-public class AvmExecutor implements AvmInternal {
+public class AvmExecutor {
     private static final Logger logger = LoggerFactory.getLogger(AvmExecutor.class);
 
     private final IInstrumentationFactory instrumentationFactory;
@@ -53,7 +51,6 @@ public class AvmExecutor implements AvmInternal {
     private final boolean preserveDebuggability;
     private final boolean enableVerboseContractErrors;
     private final boolean enableBlockchainPrintln;
-    private AddressResourceMonitor resourceMonitor;
     private IInstrumentation instrumentation;
 
     public AvmExecutor(IInstrumentationFactory factory, IExternalCapabilities capabilities, AvmConfiguration config) {
@@ -65,16 +62,11 @@ public class AvmExecutor implements AvmInternal {
     }
 
     public void start() {
-        RuntimeAssertionError.assertTrue(null == this.resourceMonitor);
-        this.resourceMonitor = new AddressResourceMonitor();
-
         instrumentation = instrumentationFactory.createInstrumentation();
         InstrumentationHelpers.attachThread(instrumentation);
     }
 
     public TransactionResult run(IExternalState kernel, Transaction transaction, long blockNumber) {
-        // Clear the states of resources
-        this.resourceMonitor.clear();
         // Get the first task
         TransactionTask incomingTask = new TransactionTask(kernel, transaction, 0, transaction.senderAddress,
                                                            ExecutionType.ASSUME_MAINCHAIN, blockNumber);
@@ -135,7 +127,7 @@ public class AvmExecutor implements AvmInternal {
 
         if (tx.isCreate) {
             logger.trace("=== DAppCreator ===");
-            result = DAppCreator.create(this.capabilities, thisTransactionKernel, this, task,
+            result = DAppCreator.create(this.capabilities, thisTransactionKernel, task,
                     senderAddress, recipient, tx, result,
                     this.preserveDebuggability, this.enableVerboseContractErrors, this.enableBlockchainPrintln);
         } else {
@@ -149,7 +141,7 @@ public class AvmExecutor implements AvmInternal {
                 dapp = stateToResume.dApp;
                 // Call directly and don't interact with DApp cache (we are reentering the state, not the origin of it).
                 logger.trace("=== DAppExecutor === call 1");
-                result = DAppExecutor.call(this.capabilities, thisTransactionKernel, this, dapp, stateToResume, task,
+                result = DAppExecutor.call(this.capabilities, thisTransactionKernel, dapp, stateToResume, task,
                         senderAddress, recipient, tx, result,
                         this.enableVerboseContractErrors, true, this.enableBlockchainPrintln);
             } else {
@@ -159,7 +151,7 @@ public class AvmExecutor implements AvmInternal {
                     throw RuntimeAssertionError.unexpected(e);
                 }
                 logger.trace("=== DAppExecutor === call 2");
-                result = DAppExecutor.call(this.capabilities, thisTransactionKernel, this, dapp, stateToResume, task,
+                result = DAppExecutor.call(this.capabilities, thisTransactionKernel, dapp, stateToResume, task,
                         senderAddress, recipient, tx, result,
                         this.enableVerboseContractErrors, false, this.enableBlockchainPrintln);
             }
@@ -181,15 +173,5 @@ public class AvmExecutor implements AvmInternal {
     public void shutdown() {
         InstrumentationHelpers.detachThread(instrumentation);
         instrumentationFactory.destroyInstrumentation(instrumentation);
-    }
-
-    @Override
-    public AvmWrappedTransactionResult runInternalTransaction(IExternalState parentKernel, TransactionTask task, Transaction tx) {
-        return null;
-    }
-
-    @Override
-    public AddressResourceMonitor getResourceMonitor() {
-        return resourceMonitor;
     }
 }

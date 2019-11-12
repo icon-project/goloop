@@ -30,7 +30,6 @@ import i.UncaughtException;
 public class DAppExecutor {
     public static AvmWrappedTransactionResult call(IExternalCapabilities capabilities,
                                                    IExternalState externalState,
-                                                   AvmInternal avm,
                                                    LoadedDApp dapp,
                                                    ReentrantDAppStack.ReentrantState stateToResume,
                                                    TransactionTask task,
@@ -89,7 +88,6 @@ public class DAppExecutor {
 
         IBlockchainRuntime br = new BlockchainRuntimeImpl(capabilities,
                                                           externalState,
-                                                          avm,
                                                           thisState,
                                                           task,
                                                           senderAddress,
@@ -137,20 +135,15 @@ public class DAppExecutor {
             long energyUsed = tx.energyLimit - threadInstrumentation.energyLeft();
             //refund is only calculated for the external transaction
             if (task.getTransactionStackDepth() == 0) {
-                // refund is calculated for the transaction if it included a selfdestruct operation or it set the storage value from nonzero to zero
-                long selfDestructRefund = 0l;
-                long resetStorageRefund = 0l;
+                // refund is calculated for the transaction if it set the storage value from nonzero to zero
+                long resetStorageRefund = 0L;
 
-                if (task.getSelfDestructAddressCount() > 0) {
-                    selfDestructRefund = task.getSelfDestructAddressCount() * RuntimeMethodFeeSchedule.BlockchainRuntime_avm_selfDestruct_refund;
-                }
                 if (task.getResetStorageKeyCount() > 0) {
                     resetStorageRefund = task.getResetStorageKeyCount() * RuntimeMethodFeeSchedule.BlockchainRuntime_avm_deleteStorage_refund;
                 }
                 // refund is capped at half the energy used for the whole transaction
-                refund = Math.min(energyUsed / 2, selfDestructRefund + resetStorageRefund);
+                refund = Math.min(energyUsed / 2, resetStorageRefund);
             }
-
             result = TransactionResultUtil.setEnergyUsed(result, energyUsed - refund);
         } catch (OutOfEnergyException e) {
             if (verboseErrors) {

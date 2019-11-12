@@ -117,21 +117,6 @@ public interface IBlockchainRuntime {
      */
     BigInteger avm_getBalance(Address address) throws IllegalArgumentException;
 
-    /**
-     * Returns the balance of the contract in which this method is invoked.
-     *
-     * @return the balance of the contract.
-     */
-    BigInteger avm_getBalanceOfThisContract();
-
-    /**
-     * Returns the code size of an account.
-     *
-     * @param address account address
-     * @return the code size of the account
-     */
-    int avm_getCodeSize(Address address) throws IllegalArgumentException;
-
     //================
     // System
     //================
@@ -156,13 +141,6 @@ public interface IBlockchainRuntime {
     Result avm_call(Address targetAddress, BigInteger value, ByteArray data, long energyLimit) throws IllegalArgumentException;
 
     Result avm_create(BigInteger value, ByteArray data, long energyLimit) throws IllegalArgumentException;
-
-    /**
-     * Destructs this Dapp and refund all balance to the beneficiary.
-     *
-     * @param beneficiary
-     */
-    void avm_selfDestruct(Address beneficiary) throws IllegalArgumentException;
 
     /**
      * Logs information for offline analysis or external listening.
