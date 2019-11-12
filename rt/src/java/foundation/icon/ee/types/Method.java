@@ -225,13 +225,13 @@ public class Method {
                 out[i] = new s.java.math.BigInteger(p);
             } else if (d.equals("Ljava/lang/String;")) {
                 String p = (String) params[i];
-                out[i] = new s.java.lang.String(p);
+                out[i] = (p != null) ? new s.java.lang.String(p) : null;
             } else if (d.equals("[B")) {
                 byte[] p = (byte[]) params[i];
-                out[i] = new a.ByteArray(p);
+                out[i] = (p != null) ? new a.ByteArray(p) : null;
             } else if (d.equals("Lavm/Address;")) {
                 Address p = (Address) params[i];
-                out[i] = new p.avm.Address(p.toByteArray());
+                out[i] = (p != null) ? new p.avm.Address(p.toByteArray()) : null;
             } else {
                 assert false : String.format("bad %d-th param type %s", i, params[i].getClass().getName());
             }
@@ -244,7 +244,7 @@ public class Method {
     }
 
     public String getDescriptor() {
-        var sb = new StringBuffer();
+        var sb = new StringBuilder();
         sb.append('(');
         for (var p : inputs) {
             sb.append(p.getDescriptor());

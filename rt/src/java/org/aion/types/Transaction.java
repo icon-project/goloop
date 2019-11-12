@@ -20,7 +20,6 @@ public final class Transaction {
     public final long energyPrice;
     public final long energyLimit;
     public final boolean isCreate;
-    private final byte[] transactionData;
     public final String method;
     private final Object[] params;
 
@@ -31,7 +30,6 @@ public final class Transaction {
         , BigInteger nonce
         , long energyLimit
         , long energyPrice
-        , byte[] transactionData
         , String method
         , Object[] params
         , boolean isCreate
@@ -60,9 +58,6 @@ public final class Transaction {
         if (energyLimit < 0) {
             throw new IllegalArgumentException("Negative energy limit");
         }
-        if (null == transactionData) {
-            throw new NullPointerException("Null data");
-        }
         if (null == method && !isCreate) {
             throw new NullPointerException("Null method for call transaction");
         }
@@ -83,8 +78,6 @@ public final class Transaction {
         this.energyPrice = energyPrice;
         this.energyLimit = energyLimit;
         this.isCreate = isCreate;
-        this.transactionData = new byte[transactionData.length];
-        System.arraycopy(transactionData, 0, this.transactionData, 0, transactionData.length);
         this.method = method;
         // take ownership of params
         this.params = params;
@@ -101,8 +94,8 @@ public final class Transaction {
      * @param energyPrice The price per unit of energy to be charged.
      * @return a new transaction.
      */
-    public static Transaction contractCreateTransaction(AionAddress sender, byte[] transactionHash, BigInteger senderNonce, BigInteger value, byte[] data, String method, Object[] params, long energyLimit, long energyPrice) {
-        return new Transaction(sender, null, transactionHash, value, senderNonce, energyLimit, energyPrice, data, method, params, true);
+    public static Transaction contractCreateTransaction(AionAddress sender, byte[] transactionHash, BigInteger senderNonce, BigInteger value, String method, Object[] params, long energyLimit, long energyPrice) {
+        return new Transaction(sender, null, transactionHash, value, senderNonce, energyLimit, energyPrice, method, params, true);
     }
 
     /**
@@ -118,12 +111,11 @@ public final class Transaction {
      * @param energyPrice The price per unit of energy to be charged.
      * @return a new transaction.
      */
-    public static Transaction contractCallTransaction(AionAddress sender, AionAddress destination, byte[] transactionHash, BigInteger senderNonce, BigInteger value, byte[] data, String method, Object[] params, long energyLimit, long energyPrice) {
+    public static Transaction contractCallTransaction(AionAddress sender, AionAddress destination, byte[] transactionHash, BigInteger senderNonce, BigInteger value, String method, Object[] params, long energyLimit, long energyPrice) {
         if (destination == null) {
             throw new NullPointerException("Cannot create Call Transaction with null destination!");
         }
-
-        return new Transaction(sender, destination, transactionHash, value, senderNonce, energyLimit, energyPrice,  data,method, params, false);
+        return new Transaction(sender, destination, transactionHash, value, senderNonce, energyLimit, energyPrice,  method, params, false);
     }
 
     public byte[] copyOfTransactionHash() {
@@ -133,13 +125,6 @@ public final class Transaction {
         byte[] transactionHashCopy = new byte[transactionHash.length];
         System.arraycopy(transactionHash, 0, transactionHashCopy, 0, transactionHash.length);
         return transactionHashCopy;
-    }
-
-    // TODO: remove method
-    public byte[] copyOfTransactionData() {
-        byte[] transactionDataCopy = new byte[transactionData.length];
-        System.arraycopy(transactionData, 0, transactionDataCopy, 0, transactionData.length);
-        return transactionDataCopy;
     }
 
     public Object[] getParams() {
@@ -164,8 +149,7 @@ public final class Transaction {
                     && this.energyPrice == otherObject.energyPrice
                     && this.energyLimit == otherObject.energyLimit
                     && this.isCreate == otherObject.isCreate
-                    && Arrays.equals(this.transactionHash, otherObject.transactionHash)
-                    && Arrays.equals(this.transactionData, otherObject.transactionData);
+                    && Arrays.equals(this.transactionHash, otherObject.transactionHash);
         }
     }
 
@@ -173,15 +157,13 @@ public final class Transaction {
     public String toString() {
         return "TransactionData ["
             + "hash="
-            + transactionHash
+            + Arrays.toString(transactionHash)
             + ", nonce="
             + nonce
             + ", destinationAddress="
             + destinationAddress
             + ", value="
             + value
-            + ", data="
-            + transactionData
             + ", energyLimit="
             + this.energyLimit
             + ", energyPrice="
@@ -197,7 +179,6 @@ public final class Transaction {
         if (transactionHash != null) {
             result = 31 * result + Arrays.hashCode(transactionHash);
         }
-        result = 31 * result + Arrays.hashCode(transactionData);
         return result;
     }
 }

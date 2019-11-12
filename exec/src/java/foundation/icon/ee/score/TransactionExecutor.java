@@ -27,8 +27,6 @@ import foundation.icon.ee.utils.MethodUnpacker;
 import org.aion.avm.core.AvmConfiguration;
 import org.aion.avm.core.CommonAvmFactory;
 import org.aion.avm.embed.StandardCapabilities;
-import org.aion.avm.tooling.ABIUtil;
-import org.aion.avm.userlib.CodeAndArguments;
 import org.aion.avm.utilities.JarBuilder;
 import org.aion.types.AionAddress;
 import org.aion.types.Transaction;
@@ -47,7 +45,6 @@ public class TransactionExecutor {
     private static final Logger logger = LoggerFactory.getLogger(TransactionExecutor.class);
     private static final String CODE_JAR = "code.jar";
     private static final String CMD_INSTALL = "onInstall";
-    private static final String APIS_NAME = "META-INF/APIS";
 
     private final EEProxy proxy;
     private final String uuid;
@@ -107,7 +104,7 @@ public class TransactionExecutor {
 
         byte[] codeBytes = readFile(code);
         ExternalState kernel = new ExternalState(proxy, codeBytes, blockNumber, blockTimestamp);
-        Transaction tx = getTransactionData(isInstall, codeBytes, from, to, value, limit, method, params, txHash);
+        Transaction tx = getTransactionData(isInstall, from, to, value, limit, method, params, txHash);
 
         AvmConfiguration config = new AvmConfiguration();
         if (logger.isDebugEnabled()) {
@@ -126,7 +123,7 @@ public class TransactionExecutor {
                     throw new RuntimeException(result.getErrorMessage());
                 }
                 // Prepare another transaction for 'onInstall' itself
-                tx = getTransactionData(false, null, from, to, value, limit, method, params, txHash);
+                tx = getTransactionData(false, from, to, value, limit, method, params, txHash);
             }
             // Actual execution of the transaction
             ResultWrapper result = new ResultWrapper(
@@ -147,31 +144,26 @@ public class TransactionExecutor {
         }
     }
 
-    private Transaction getTransactionData(boolean isInstall, byte[] codeBytes, Address from, Address to,
+    private Transaction getTransactionData(boolean isInstall, Address from, Address to,
                                            BigInteger value, BigInteger limit,
                                            String method, Object[] params, byte[] txHash) {
         if (isInstall) {
-            byte[] args = ABIUtil.encodeDeploymentArguments(params);
-            byte[] txData = new CodeAndArguments(codeBytes, args).encodeToBytes();
             return Transaction.contractCreateTransaction(
                     new AionAddress(from),
                     txHash,
                     BigInteger.valueOf(1),
                     value,
-                    txData,
                     method,
                     params,
                     limit.longValue(),
                     1L);
         } else {
-            byte[] txData = ABIUtil.encodeMethodArguments(method, getConvertedParams(params));
             return Transaction.contractCallTransaction(
                     from == null ? null : new AionAddress(from),
                     new AionAddress(to),
                     txHash,
                     BigInteger.valueOf(1),
                     value,
-                    txData,
                     method,
                     params,
                     limit.longValue(),

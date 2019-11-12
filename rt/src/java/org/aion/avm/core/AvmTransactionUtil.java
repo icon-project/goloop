@@ -16,7 +16,6 @@ public class AvmTransactionUtil {
             , new byte[32]
             , nonce
             , value
-            , data
             , method
             , params
             , energyLimit
@@ -32,7 +31,6 @@ public class AvmTransactionUtil {
             , new byte[32]
             , nonce
             , value
-            , data
             , method
             , params
             , energyLimit
@@ -54,7 +52,6 @@ public class AvmTransactionUtil {
                     , new byte[32]
                     , internalTransaction.senderNonce
                     , internalTransaction.value
-                    , internalTransaction.copyOfData()
                     , null
                     , null
                     , internalTransaction.energyLimit
@@ -66,7 +63,6 @@ public class AvmTransactionUtil {
                     , new byte[32]
                     , internalTransaction.senderNonce
                     , internalTransaction.value
-                    , internalTransaction.copyOfData()
                     , null
                     , null
                     , internalTransaction.energyLimit

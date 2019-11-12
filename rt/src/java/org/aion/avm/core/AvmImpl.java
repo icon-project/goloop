@@ -355,7 +355,7 @@ public class AvmImpl implements AvmInternal {
         long energyLimit = tx.energyLimit;
         BigInteger transactionValue = tx.value;
 
-        long basicTransactionCost = BillingRules.getBasicTransactionCost(tx.copyOfTransactionData());
+        long basicTransactionCost = 0L; //BillingRules.getBasicTransactionCost(tx.copyOfTransactionData());
         BigInteger balanceRequired = BigInteger.valueOf(energyLimit).multiply(BigInteger.valueOf(energyPrice)).add(transactionValue);
 
         if (basicTransactionCost > energyLimit) {

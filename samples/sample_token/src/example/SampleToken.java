@@ -33,17 +33,10 @@ public class SampleToken
         // initialSupply must be larger than 0
         Blockchain.require(initialSupply.compareTo(BigInteger.ZERO) >= 0);
 
+        // calculate totalSupply
         if (initialSupply.compareTo(BigInteger.ZERO) > 0) {
-            //*** NOTE: #pow() is not implemented in the shadow BigInteger
-            //#ORIG
-            //this.totalSupply = initialSupply.multiply(BigInteger.TEN.pow(this.decimals));
-            //#TEMP
-            BigInteger exp = BigInteger.ONE;
-            for (int i = 0; i < this.decimals; i++) {
-                exp = exp.multiply(BigInteger.TEN);
-            }
-            this.totalSupply = initialSupply.multiply(exp);
-            //#
+            BigInteger oneToken = pow(BigInteger.TEN, this.decimals);
+            this.totalSupply = oneToken.multiply(initialSupply);
         } else {
             this.totalSupply = BigInteger.ZERO;
         }
@@ -51,7 +44,16 @@ public class SampleToken
         // set the initial balance of the owner
         this.balances = Blockchain.newDictDB("balances");
         this.balances.set(Blockchain.getOrigin(), new ValueBuffer(this.totalSupply));
-        helper();
+    }
+
+    // BigInteger#pow() is not implemented in the shadow BigInteger.
+    // we need to use our implementation for that.
+    private static BigInteger pow(BigInteger base, int exponent) {
+        BigInteger result = BigInteger.ONE;
+        for (int i = 0; i < exponent; i++) {
+            result = result.multiply(base);
+        }
+        return result;
     }
 
     private static SampleToken token;
@@ -110,13 +112,10 @@ public class SampleToken
         vb.set(toBalance.add(_value));
         token.balances.set(_to, vb);
 
-        Transfer(_from, _to, _value, _data);
+        // emit Transfer event
+        Transfer(_from, _to, _value, (_data == null) ? new byte[0] : _data);
     }
 
     @EventLog(indexed=3)
     private static void Transfer(Address _from, Address _to, BigInteger _value, byte[] _data) {}
-
-    // Just to see method renaming is working
-    private void helper() {
-    }
 }

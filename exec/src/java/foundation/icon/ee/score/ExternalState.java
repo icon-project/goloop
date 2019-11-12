@@ -77,7 +77,10 @@ public class ExternalState implements IExternalState {
     @Override
     public byte[] getCode(AionAddress address) {
         logger.trace("[getCode] {}", address);
-        throw new RuntimeException("not implemented");
+        if (codeCache == null) {
+            throw new RuntimeException("code not found");
+        }
+        return codeCache;
     }
 
     @Override

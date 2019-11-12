@@ -23,7 +23,6 @@ import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.avm.core.rejection.ConsensusLimitConstants;
 import org.aion.avm.core.rejection.InstanceVariableCountManager;
 import org.aion.avm.core.rejection.InstanceVariableCountingVisitor;
-import org.aion.avm.core.rejection.MainMethodChecker;
 import org.aion.avm.core.rejection.RejectedClassException;
 import org.aion.avm.core.rejection.RejectionClassVisitor;
 import org.aion.avm.core.shadowing.ClassShadowing;
@@ -40,7 +39,6 @@ import org.aion.avm.core.util.DebugNameResolver;
 import org.aion.avm.core.util.Helpers;
 import org.aion.avm.core.util.TransactionResultUtil;
 import org.aion.avm.core.verification.Verifier;
-import org.aion.avm.userlib.CodeAndArguments;
 import org.aion.avm.utilities.JarBuilder;
 import org.aion.avm.utilities.Utilities;
 import org.aion.avm.utilities.analyze.ClassFileInfoBuilder;
@@ -192,16 +190,8 @@ public class DAppCreator {
         IRuntimeSetup runtimeSetup = null;
         AvmWrappedTransactionResult result = internalResult;
         try {
-            // read dapp module
-            CodeAndArguments codeAndArguments = CodeAndArguments.decodeFromBytes(tx.copyOfTransactionData());
-            if (codeAndArguments == null) {
-                if (verboseErrors) {
-                    System.err.println("DApp deployment failed due to incorrectly packaged JAR and initialization arguments");
-                }
-                return TransactionResultUtil.newResultWithNonRevertedFailureAndEnergyUsed(AvmInternalError.FAILED_INVALID_DATA, tx.energyLimit);
-            }
-
-            byte[] apisBytes = JarBuilder.getAPIsBytesFromJAR(codeAndArguments.code);
+            final byte[] codeBytes = externalState.getCode(dappAddress);
+            byte[] apisBytes = JarBuilder.getAPIsBytesFromJAR(codeBytes);
             if (apisBytes == null) {
                 if (verboseErrors) {
                     System.err.println("DApp deployment failed due to bad external methods info");
@@ -209,7 +199,7 @@ public class DAppCreator {
                 return TransactionResultUtil.newResultWithNonRevertedFailureAndEnergyUsed(AvmInternalError.FAILED_INVALID_DATA, tx.energyLimit);
             }
 
-            RawDappModule rawDapp = RawDappModule.readFromJar(codeAndArguments.code, preserveDebuggability, verboseErrors);
+            RawDappModule rawDapp = RawDappModule.readFromJar(codeBytes, preserveDebuggability, verboseErrors);
             if (rawDapp == null) {
                 if (verboseErrors) {
                     System.err.println("DApp deployment failed due to corrupt JAR data");
@@ -255,7 +245,7 @@ public class DAppCreator {
                                                               senderAddress,
                                                               dappAddress,
                                                               tx,
-                                                              codeAndArguments.arguments,
+                                                              null,
                                                               runtimeSetup,
                                                               enableBlockchainPrintln);
             FrameContextImpl fc = new FrameContextImpl(externalState, dapp, dapp.internedClasses, br);
