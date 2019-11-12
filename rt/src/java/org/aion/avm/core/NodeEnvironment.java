@@ -250,22 +250,6 @@ public class NodeEnvironment {
         return this.constantMap;
     }
 
-    /**
-     * Creates a new long-lived AVM instance.  The intention is that only one AVM instance will be created and reused for each transaction.
-     * NOTE:  This is only in the NodeEnvironment since it is a long-lived singleton but this method has no strong connection to it so it
-     * could be moved in the future.
-     *
-     * @param instrumentationFactory The factory to build IInstrumentation instances for the AVM's threads.
-     * @param capabilities The external capabilities which this AVM instance can use.
-     * @param configuration The configuration options for this new AVM instance.
-     * @return The long-lived AVM instance.
-     */
-    public AvmImpl buildAvmInstance(IInstrumentationFactory instrumentationFactory, IExternalCapabilities capabilities, AvmConfiguration configuration) {
-        AvmImpl avm = new AvmImpl(instrumentationFactory, capabilities, configuration);
-        avm.start();
-        return avm;
-    }
-
     private static Set<String> loadShadowClasses(ClassLoader loader, Class<?>[] shadowClasses) throws ClassNotFoundException {
         // Create the fake IInstrumentation.
         IInstrumentation instrumentation = new IInstrumentation() {

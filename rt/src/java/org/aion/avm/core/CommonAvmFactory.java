@@ -13,16 +13,11 @@ import i.IInstrumentationFactory;
 public class CommonAvmFactory {
     /**
      * Creates an AVM instance based on the given configuration object.
-     * 
+     *
      * @param capabilities The external capabilities which this AVM instance can use.
-     * @param configuration The configuration to use when assembling the AVM instance.
-     * @return An AVM instance.
+     * @param config The configuration to use when assembling the AVM instance.
+     * @return An AVM executor
      */
-    public static AvmImpl buildAvmInstanceForConfiguration(IExternalCapabilities capabilities, AvmConfiguration configuration) {
-        IInstrumentationFactory factory = new CommonInstrumentationFactory();
-        return NodeEnvironment.singleton.buildAvmInstance(factory, capabilities, configuration);
-    }
-
     public static AvmExecutor getAvmInstance(IExternalCapabilities capabilities, AvmConfiguration config) {
         // Ensure that NodeEnvironment has been initialized
         NodeEnvironment node = NodeEnvironment.getInstance();
