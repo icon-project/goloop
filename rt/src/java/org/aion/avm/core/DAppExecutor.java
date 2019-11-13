@@ -1,17 +1,5 @@
 package org.aion.avm.core;
 
-import org.aion.avm.RuntimeMethodFeeSchedule;
-import org.aion.avm.StorageFees;
-import org.aion.avm.core.persistence.LoadedDApp;
-import org.aion.avm.core.persistence.ReentrantGraph;
-import org.aion.avm.core.util.Helpers;
-import org.aion.avm.core.util.TransactionResultUtil;
-import org.aion.kernel.AvmWrappedTransactionResult;
-import org.aion.kernel.AvmWrappedTransactionResult.AvmInternalError;
-import org.aion.parallel.TransactionTask;
-import org.aion.types.AionAddress;
-import org.aion.types.Transaction;
-
 import i.AvmException;
 import i.CallDepthLimitExceededException;
 import i.EarlyAbortException;
@@ -25,11 +13,20 @@ import i.OutOfEnergyException;
 import i.OutOfStackException;
 import i.RevertException;
 import i.UncaughtException;
-
+import org.aion.avm.RuntimeMethodFeeSchedule;
+import org.aion.avm.StorageFees;
+import org.aion.avm.core.persistence.LoadedDApp;
+import org.aion.avm.core.persistence.ReentrantGraph;
+import org.aion.avm.core.util.Helpers;
+import org.aion.avm.core.util.TransactionResultUtil;
+import org.aion.kernel.AvmWrappedTransactionResult;
+import org.aion.kernel.AvmWrappedTransactionResult.AvmInternalError;
+import org.aion.parallel.TransactionTask;
+import org.aion.types.AionAddress;
+import org.aion.types.Transaction;
 
 public class DAppExecutor {
-    public static AvmWrappedTransactionResult call(IExternalCapabilities capabilities,
-                                                   IExternalState externalState,
+    public static AvmWrappedTransactionResult call(IExternalState externalState,
                                                    LoadedDApp dapp,
                                                    ReentrantDAppStack.ReentrantState stateToResume,
                                                    TransactionTask task,
@@ -86,8 +83,7 @@ public class DAppExecutor {
         ReentrantDAppStack.ReentrantState thisState = new ReentrantDAppStack.ReentrantState(dappAddress, dapp, nextHashCode);
         task.getReentrantDAppStack().pushState(thisState);
 
-        IBlockchainRuntime br = new BlockchainRuntimeImpl(capabilities,
-                                                          externalState,
+        IBlockchainRuntime br = new BlockchainRuntimeImpl(externalState,
                                                           thisState,
                                                           task,
                                                           senderAddress,

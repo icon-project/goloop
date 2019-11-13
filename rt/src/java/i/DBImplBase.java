@@ -1,7 +1,5 @@
 package i;
 
-import org.aion.avm.embed.hash.HashUtils;
-
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 

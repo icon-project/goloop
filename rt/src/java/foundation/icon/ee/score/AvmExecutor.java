@@ -25,7 +25,6 @@ import org.aion.avm.core.DAppCreator;
 import org.aion.avm.core.DAppExecutor;
 import org.aion.avm.core.DAppLoader;
 import org.aion.avm.core.ExecutionType;
-import org.aion.avm.core.IExternalCapabilities;
 import org.aion.avm.core.IExternalState;
 import org.aion.avm.core.ReentrantDAppStack;
 import org.aion.avm.core.persistence.LoadedDApp;
@@ -47,15 +46,13 @@ public class AvmExecutor {
     private static final Logger logger = LoggerFactory.getLogger(AvmExecutor.class);
 
     private final IInstrumentationFactory instrumentationFactory;
-    private final IExternalCapabilities capabilities;
     private final boolean preserveDebuggability;
     private final boolean enableVerboseContractErrors;
     private final boolean enableBlockchainPrintln;
     private IInstrumentation instrumentation;
 
-    public AvmExecutor(IInstrumentationFactory factory, IExternalCapabilities capabilities, AvmConfiguration config) {
+    public AvmExecutor(IInstrumentationFactory factory, AvmConfiguration config) {
         this.instrumentationFactory = factory;
-        this.capabilities = capabilities;
         this.preserveDebuggability = config.preserveDebuggability;
         this.enableVerboseContractErrors = config.enableVerboseContractErrors;
         this.enableBlockchainPrintln = config.enableBlockchainPrintln;
@@ -127,7 +124,7 @@ public class AvmExecutor {
 
         if (tx.isCreate) {
             logger.trace("=== DAppCreator ===");
-            result = DAppCreator.create(this.capabilities, thisTransactionKernel, task,
+            result = DAppCreator.create(thisTransactionKernel, task,
                     senderAddress, recipient, tx, result,
                     this.preserveDebuggability, this.enableVerboseContractErrors, this.enableBlockchainPrintln);
         } else {
@@ -141,7 +138,7 @@ public class AvmExecutor {
                 dapp = stateToResume.dApp;
                 // Call directly and don't interact with DApp cache (we are reentering the state, not the origin of it).
                 logger.trace("=== DAppExecutor === call 1");
-                result = DAppExecutor.call(this.capabilities, thisTransactionKernel, dapp, stateToResume, task,
+                result = DAppExecutor.call(thisTransactionKernel, dapp, stateToResume, task,
                         senderAddress, recipient, tx, result,
                         this.enableVerboseContractErrors, true, this.enableBlockchainPrintln);
             } else {
@@ -151,7 +148,7 @@ public class AvmExecutor {
                     throw RuntimeAssertionError.unexpected(e);
                 }
                 logger.trace("=== DAppExecutor === call 2");
-                result = DAppExecutor.call(this.capabilities, thisTransactionKernel, dapp, stateToResume, task,
+                result = DAppExecutor.call(thisTransactionKernel, dapp, stateToResume, task,
                         senderAddress, recipient, tx, result,
                         this.enableVerboseContractErrors, false, this.enableBlockchainPrintln);
             }

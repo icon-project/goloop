@@ -26,7 +26,6 @@ import foundation.icon.ee.types.Method;
 import foundation.icon.ee.utils.MethodUnpacker;
 import org.aion.avm.core.AvmConfiguration;
 import org.aion.avm.core.CommonAvmFactory;
-import org.aion.avm.embed.StandardCapabilities;
 import org.aion.avm.utilities.JarBuilder;
 import org.aion.types.AionAddress;
 import org.aion.types.Transaction;
@@ -111,7 +110,7 @@ public class TransactionExecutor {
         if (logger.isDebugEnabled()) {
             config.enableVerboseContractErrors = true;
         }
-        AvmExecutor executor = CommonAvmFactory.getAvmInstance(new StandardCapabilities(), config);
+        AvmExecutor executor = CommonAvmFactory.getAvmInstance(config);
         BigInteger energyUsed = BigInteger.ZERO;
         try {
             if (isInstall) {

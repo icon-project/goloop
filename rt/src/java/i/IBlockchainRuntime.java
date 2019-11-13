@@ -146,30 +146,6 @@ public interface IBlockchainRuntime {
     void avm_log(ByteArray topic1, ByteArray topic2, ByteArray topic3, ByteArray topic4, ByteArray data) throws IllegalArgumentException;
 
     /**
-     * Computes the Blake2b digest of the given data.
-     *
-     * @param data The data to hash.
-     * @return The 32-byte digest.
-     */
-    ByteArray avm_blake2b(ByteArray data) throws IllegalArgumentException;
-
-    /**
-     * Computes the sha256 digest of the given data.
-     *
-     * @param data The data to hash.
-     * @return The 32-byte digest.
-     */
-    ByteArray avm_sha256(ByteArray data);
-
-    /**
-     * Computes the keccak256 digest of the given data.
-     *
-     * @param data The data to hash.
-     * @return The 32-byte digest.
-     */
-    ByteArray avm_keccak256(ByteArray data);
-
-    /**
      * Stop the current execution, rollback any state changes, and refund the remaining energy to caller.
      */
     void avm_revert();
@@ -199,18 +175,17 @@ public interface IBlockchainRuntime {
     void avm_println(String message);
 
     /**
-     * Verify that the given data is signed by providing the public key and the signed signature.
-     *
-     * @param data byte array representation of the data
-     * @param signature of the signed data
-     * @param publicKey of the signed data
-     * @return result
+     * Returns a new collection DB instance
      */
-    boolean avm_edVerify(ByteArray data, ByteArray signature, ByteArray publicKey) throws IllegalArgumentException;
-
     CollectionDB avm_newCollectionDB(int type, String id);
 
+    /**
+     * Returns a new var DB instance
+     */
     VarDB avm_newVarDB(String id);
 
+    /**
+     * Emits event logs
+     */
     void avm_log(IObjectArray indexed, IObjectArray data);
 }

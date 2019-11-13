@@ -258,39 +258,6 @@ public final class Blockchain {
     }
 
     /**
-     * Calculates the blake2b digest of the input data.
-     *
-     * @param data the input data
-     * @return the hash digest
-     * @throws IllegalArgumentException when the arguments are invalid, e.g. data is NULL.
-     */
-    public static byte[] blake2b(byte[] data) throws IllegalArgumentException {
-        return null;
-    }
-
-    /**
-     * Calculates the sha256 digest of the input data.
-     *
-     * @param data the input data
-     * @return the hash digest
-     * @throws IllegalArgumentException when the arguments are invalid, e.g. data is NULL.
-     */
-    public static byte[] sha256(byte[] data) throws IllegalArgumentException {
-        return null;
-    }
-
-    /**
-     * Calculates the keccak256 digest of the input data.
-     *
-     * @param data the input data
-     * @return the hash digest
-     * @throws IllegalArgumentException when the arguments are invalid, e.g. data is NULL.
-     */
-    public static byte[] keccak256(byte[] data) throws IllegalArgumentException {
-        return null;
-    }
-
-    /**
      * Stop the current execution and roll back all state changes.
      * <p>
      * the remaining energy will be refunded.
@@ -335,18 +302,9 @@ public final class Blockchain {
 
     }
 
-    /**
-     * Verify that the given data is signed by providing the public key and the signed signature.
-     *
-     * @param data message to be signed
-     * @param signature signature of the message
-     * @param publicKey public key of the keypair used to sign the message
-     * @return result
-     * @throws IllegalArgumentException thrown when an input parameter has the wrong size
-     */
-    public static boolean edVerify(byte[] data, byte[] signature, byte[] publicKey) throws IllegalArgumentException {
-        return true;
-    }
+    //===================
+    // Collection DB
+    //===================
 
     public static<K, V> NestingDictDB<K, V> newNestingDictDB(String id) {
         return null;

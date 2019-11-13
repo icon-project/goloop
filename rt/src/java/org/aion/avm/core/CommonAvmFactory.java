@@ -18,11 +18,11 @@ public class CommonAvmFactory {
      * @param config The configuration to use when assembling the AVM instance.
      * @return An AVM executor
      */
-    public static AvmExecutor getAvmInstance(IExternalCapabilities capabilities, AvmConfiguration config) {
+    public static AvmExecutor getAvmInstance(AvmConfiguration config) {
         // Ensure that NodeEnvironment has been initialized
         NodeEnvironment node = NodeEnvironment.getInstance();
         IInstrumentationFactory factory = new CommonInstrumentationFactory();
-        AvmExecutor executor = new AvmExecutor(factory, capabilities, config);
+        AvmExecutor executor = new AvmExecutor(factory, config);
         executor.start();
         return executor;
     }

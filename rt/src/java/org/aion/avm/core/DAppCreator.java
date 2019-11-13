@@ -175,8 +175,7 @@ public class DAppCreator {
         return processedClasses;
     }
 
-    public static AvmWrappedTransactionResult create(IExternalCapabilities capabilities,
-                                                     IExternalState externalState,
+    public static AvmWrappedTransactionResult create(IExternalState externalState,
                                                      TransactionTask task,
                                                      AionAddress senderAddress,
                                                      AionAddress dappAddress,
@@ -236,8 +235,7 @@ public class DAppCreator {
             // We start the nextHashCode at 1.
             int nextHashCode = 1;
             // we pass a null re-entrant state since we haven't finished initializing yet - nobody can call into us.
-            IBlockchainRuntime br = new BlockchainRuntimeImpl(capabilities,
-                                                              externalState,
+            IBlockchainRuntime br = new BlockchainRuntimeImpl(externalState,
                                                               null,
                                                               task,
                                                               senderAddress,

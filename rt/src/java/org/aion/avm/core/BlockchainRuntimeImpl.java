@@ -1,7 +1,22 @@
 package org.aion.avm.core;
 
+import a.ByteArray;
+import i.CallDepthLimitExceededException;
+import i.IBlockchainRuntime;
+import i.IInstrumentation;
+import i.IObjectArray;
+import i.IRuntimeSetup;
+import i.InstrumentationHelpers;
+import i.InvalidException;
+import i.RevertException;
+import i.RuntimeAssertionError;
+import org.aion.avm.core.util.LogSizeUtils;
 import org.aion.avm.core.util.TransactionResultUtil;
+import org.aion.kernel.AvmWrappedTransactionResult;
+import org.aion.parallel.TransactionTask;
 import org.aion.types.AionAddress;
+import org.aion.types.InternalTransaction;
+import org.aion.types.Log;
 import org.aion.types.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,13 +27,6 @@ import p.avm.Result;
 import p.avm.Value;
 import p.avm.ValueBuffer;
 import p.avm.VarDB;
-import i.*;
-import a.ByteArray;
-import org.aion.types.InternalTransaction;
-import org.aion.avm.core.util.LogSizeUtils;
-import org.aion.kernel.*;
-import org.aion.parallel.TransactionTask;
-import org.aion.types.Log;
 
 import java.util.Arrays;
 import java.util.List;
@@ -28,7 +36,6 @@ import java.util.List;
  */
 public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     private static final Logger logger = LoggerFactory.getLogger(BlockchainRuntimeImpl.class);
-    private final IExternalCapabilities capabilities;
     private final IExternalState externalState;
     private final ReentrantDAppStack.ReentrantState reentrantState;
 
@@ -47,8 +54,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     private s.java.math.BigInteger valueCache;
     private s.java.math.BigInteger blockDifficultyCache;
 
-    public BlockchainRuntimeImpl(IExternalCapabilities capabilities,
-                                 IExternalState externalState,
+    public BlockchainRuntimeImpl(IExternalState externalState,
                                  ReentrantDAppStack.ReentrantState reentrantState,
                                  TransactionTask task,
                                  AionAddress transactionSender,
@@ -57,12 +63,10 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                                  byte[] dAppData,
                                  IRuntimeSetup thisDAppSetup,
                                  boolean enablePrintln) {
-        this.capabilities = capabilities;
         this.externalState = externalState;
         this.reentrantState = reentrantState;
         this.task = task;
         this.transactionSender = transactionSender;
-        // Note that transactionDestination will be the address of the deployed contract, if this is a create.
         this.transactionDestination = transactionDestination;
         this.tx = tx;
         this.dAppData = dAppData;
@@ -82,7 +86,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         if (null == this.addressCache) {
             this.addressCache = new Address(this.transactionDestination.toByteArray());
         }
-
         return this.addressCache;
     }
 
@@ -91,7 +94,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         if (null == this.callerCache) {
             this.callerCache = new Address(this.transactionSender.toByteArray());
         }
-
         return this.callerCache;
     }
 
@@ -100,7 +102,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         if (null == this.originCache) {
             this.originCache = new Address(task.getOriginAddress().toByteArray());
         }
-
         return this.originCache;
     }
 
@@ -115,7 +116,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
             java.math.BigInteger value = tx.value;
             this.valueCache = new s.java.math.BigInteger(value);
         }
-
         return this.valueCache;
     }
 
@@ -126,7 +126,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                     ? new ByteArray(this.dAppData.clone())
                     : null;
         }
-
         return this.dAppDataCache;
     }
 
@@ -150,7 +149,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         if (null == this.blockDifficultyCache) {
             this.blockDifficultyCache = new s.java.math.BigInteger(externalState.getBlockDifficulty());
         }
-
         return this.blockDifficultyCache;
     }
 
@@ -326,27 +324,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     @Override
-    public ByteArray avm_blake2b(ByteArray data) {
-        require(null != data, "Input data can't be NULL");
-
-        return new ByteArray(this.capabilities.blake2b(data.getUnderlying()));
-    }
-
-    @Override
-    public ByteArray avm_sha256(ByteArray data){
-        require(null != data, "Input data can't be NULL");
-
-        return new ByteArray(this.capabilities.sha256(data.getUnderlying()));
-    }
-
-    @Override
-    public ByteArray avm_keccak256(ByteArray data){
-        require(null != data, "Input data can't be NULL");
-
-        return new ByteArray(this.capabilities.keccak256(data.getUnderlying()));
-    }
-
-    @Override
     public void avm_revert() {
         throw new RevertException();
     }
@@ -375,15 +352,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         if (this.enablePrintln) {
             task.outputPrintln(message!=null ? message.toString() : null);
         }
-    }
-
-    @Override
-    public boolean avm_edVerify(ByteArray data, ByteArray signature, ByteArray publicKey) throws IllegalArgumentException {
-        require(null != data, "Input data can't be NULL");
-        require(null != signature, "Input signature can't be NULL");
-        require(null != publicKey, "Input public key can't be NULL");
-
-        return this.capabilities.verifyEdDSA(data.getUnderlying(), signature.getUnderlying(), publicKey.getUnderlying());
     }
 
     private long restrictEnergyLimit(long energyLimit) {

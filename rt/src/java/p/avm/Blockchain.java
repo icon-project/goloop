@@ -166,27 +166,6 @@ public final class Blockchain extends Object {
         blockchainRuntime.avm_log(topic1, topic2, topic3, topic4, data);
     }
 
-    public static ByteArray avm_blake2b(ByteArray data) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(
-                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_blake2b_base
-                        + RuntimeMethodFeeSchedule.BlockchainRuntime_avm_blake2b_per_10_bytes * (data != null ? (int) Math.ceil((double) data.length()/10) : 0));
-        return blockchainRuntime.avm_blake2b(data);
-    }
-
-    public static ByteArray avm_sha256(ByteArray data) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(
-                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha256_base
-                    + RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha256_per_10_bytes * (data != null ?  (int) Math.ceil((double) data.length()/10) : 0));
-        return blockchainRuntime.avm_sha256(data);
-    }
-
-    public static ByteArray avm_keccak256(ByteArray data){
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(
-                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_keccak256_base
-                    + RuntimeMethodFeeSchedule.BlockchainRuntime_avm_keccak256_per_10_bytes * (data != null ?  (int) Math.ceil((double) data.length()/10) : 0));
-        return blockchainRuntime.avm_keccak256(data);
-    }
-
     public static void avm_revert() {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_revert);
         blockchainRuntime.avm_revert();
@@ -210,11 +189,6 @@ public final class Blockchain extends Object {
     public static void avm_println(String message) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_println);
         blockchainRuntime.avm_println(message);
-    }
-
-    public static boolean avm_edVerify(ByteArray data, ByteArray signature, ByteArray publicKey) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_edverify);
-        return blockchainRuntime.avm_edVerify(data, signature, publicKey);
     }
 
     public static NestingDictDB avm_newNestingDictDB(String id) {
