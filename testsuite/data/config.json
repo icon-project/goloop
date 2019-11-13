@@ -1,5 +1,5 @@
 {
-  "nid": 7952032,
+  "nid": 1,
   "channel": "default",
   "rpc_addr": ":9080",
   "seed_addr": "",
@@ -27,7 +27,8 @@
         "hxb6b5791be0b5ef67063b3c10b840fb81514db2fd"
       ]
     },
-    "message": "gochain generated genesis"
+    "message": "gochain generated genesis",
+    "nid": "0x1"
   },
   "p2p": "127.0.0.1:8080",
   "p2p_listen": "",

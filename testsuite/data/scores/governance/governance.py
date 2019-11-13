@@ -56,6 +56,10 @@ class SystemInterface(InterfaceScore):
     @interface
     def setTimestampThreshold(self, threshold: int):
         pass
+    @interface
+    def setRoundLimitFactor(self, factor: int):
+        pass
+
 
 class Governance(IconScoreBase):
 
@@ -150,6 +154,10 @@ class Governance(IconScoreBase):
     @external
     def setTimestampThreshold(self, threshold: int):
         self.system_score.setTimestampThreshold(threshold)
+
+    @external
+    def setRoundLimitFactor(self, factor: int):
+        self.system_score.setRoundLimitFactor(factor)
 
     @external(readonly=True)
     def updated(self) -> bool:
