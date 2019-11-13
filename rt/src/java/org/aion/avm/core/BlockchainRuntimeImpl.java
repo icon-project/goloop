@@ -45,7 +45,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     private Address callerCache;
     private Address originCache;
     private s.java.math.BigInteger valueCache;
-    private Address blockCoinBaseCache;
     private s.java.math.BigInteger blockDifficultyCache;
 
     public BlockchainRuntimeImpl(IExternalCapabilities capabilities,
@@ -75,7 +74,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         this.callerCache = null;
         this.originCache = null;
         this.valueCache = null;
-        this.blockCoinBaseCache = null;
         this.blockDifficultyCache = null;
     }
 
@@ -109,11 +107,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     @Override
     public long avm_getEnergyLimit() {
         return tx.energyLimit;
-    }
-
-    @Override
-    public long avm_getEnergyPrice() {
-        return tx.energyPrice;
     }
 
     @Override
@@ -230,7 +223,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                 underlyingValue,
                 data.getUnderlying(),
                 restrictEnergyLimit(energyLimit),
-                tx.energyPrice);
+                0L);
         
         // Call the common run helper.
         return runInternalCall(internalTx);
@@ -258,7 +251,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                 underlyingValue,
                 data.getUnderlying(),
                 restrictEnergyLimit(energyLimit),
-                tx.energyPrice);
+                0L);
         
         // Call the common run helper.
         return runInternalCall(internalTx);
@@ -416,10 +409,10 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         InstrumentationHelpers.temporarilyExitFrame(this.thisDAppSetup);
 
         // Create the Transaction.
-        Transaction transaction = AvmTransactionUtil.fromInternalTransaction(internalTx);
+//        Transaction transaction = AvmTransactionUtil.fromInternalTransaction(internalTx);
 
         // Acquire the target of the internal transaction
-        AionAddress destination = (transaction.isCreate) ? this.capabilities.generateContractAddress(transaction) : transaction.destinationAddress;
+//        AionAddress destination = (transaction.isCreate) ? this.capabilities.generateContractAddress(transaction) : transaction.destinationAddress;
         boolean isAcquired = false; //avm.getResourceMonitor().acquire(destination.toByteArray(), task);
 
         // execute the internal transaction

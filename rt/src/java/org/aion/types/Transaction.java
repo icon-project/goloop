@@ -5,7 +5,7 @@ import java.util.Arrays;
 import java.util.Objects;
 
 /**
- * Represents an "external" transaction on the Aion Network.
+ * Represents an "external" transaction.
  * An external transaction is a tx whose sender is NOT a contract.
  *
  * This class is immutable,
@@ -17,23 +17,20 @@ public final class Transaction {
     private final byte[] transactionHash;
     public final BigInteger value;
     public final BigInteger nonce;
-    public final long energyPrice;
     public final long energyLimit;
     public final boolean isCreate;
     public final String method;
     private final Object[] params;
 
-    private Transaction(AionAddress senderAddress
-        , AionAddress destinationAddress
-        , byte[] transactionHash
-        , BigInteger value
-        , BigInteger nonce
-        , long energyLimit
-        , long energyPrice
-        , String method
-        , Object[] params
-        , boolean isCreate
-    ) {
+    private Transaction(AionAddress senderAddress,
+                        AionAddress destinationAddress,
+                        byte[] transactionHash,
+                        BigInteger value,
+                        BigInteger nonce,
+                        long energyLimit,
+                        String method,
+                        Object[] params,
+                        boolean isCreate) {
         if (null == senderAddress && transactionHash != null) {
             throw new NullPointerException("No sender");
         }
@@ -51,9 +48,6 @@ public final class Transaction {
         }
         if (nonce.compareTo(BigInteger.ZERO) < 0) {
             throw new IllegalArgumentException("Negative nonce");
-        }
-        if (energyPrice < 0) {
-            throw new IllegalArgumentException("Negative energy price");
         }
         if (energyLimit < 0) {
             throw new IllegalArgumentException("Negative energy limit");
@@ -75,7 +69,6 @@ public final class Transaction {
         }
         this.value = value;
         this.nonce = nonce;
-        this.energyPrice = energyPrice;
         this.energyLimit = energyLimit;
         this.isCreate = isCreate;
         this.method = method;
@@ -84,38 +77,23 @@ public final class Transaction {
     }
 
     /**
-     * Constructs a new transaction that will attempt to create/deploy a new contract.
-     *
-     * @param sender The sender of the transaction.
-     * @param senderNonce The nonce of the sender.
-     * @param value The amount of value to be transferred from the sender to the destination.
-     * @param data The transaction data.
-     * @param energyLimit The maximum amount of energy to be used by the transaction.
-     * @param energyPrice The price per unit of energy to be charged.
-     * @return a new transaction.
-     */
-    public static Transaction contractCreateTransaction(AionAddress sender, byte[] transactionHash, BigInteger senderNonce, BigInteger value, String method, Object[] params, long energyLimit, long energyPrice) {
-        return new Transaction(sender, null, transactionHash, value, senderNonce, energyLimit, energyPrice, method, params, true);
-    }
-
-    /**
-     * Constructs a new internal transaction that will be a contract-call transaction (this is a
-     * call to a contract or a balance transfer).
+     * Creates a new transaction.
      *
      * @param sender The sender of the transaction.
      * @param destination The contract to be called or account to have value transferred to.
-     * @param senderNonce The nonce of the sender.
+     * @param transactionHash The hash of the transaction.
      * @param value The amount of value to be transferred from the sender to the destination.
-     * @param data The transaction data.
+     * @param nonce The nonce of the sender.
+     * @param method The name of method.
+     * @param params The list of parameters for the method.
      * @param energyLimit The maximum amount of energy to be used by the transaction.
-     * @param energyPrice The price per unit of energy to be charged.
-     * @return a new transaction.
+     * @param isCreate True if this transaction is for contract creation.
+     * @return a Transaction object
      */
-    public static Transaction contractCallTransaction(AionAddress sender, AionAddress destination, byte[] transactionHash, BigInteger senderNonce, BigInteger value, String method, Object[] params, long energyLimit, long energyPrice) {
-        if (destination == null) {
-            throw new NullPointerException("Cannot create Call Transaction with null destination!");
-        }
-        return new Transaction(sender, destination, transactionHash, value, senderNonce, energyLimit, energyPrice,  method, params, false);
+    public static Transaction newTransaction(AionAddress sender, AionAddress destination,
+                                             byte[] transactionHash, BigInteger value, BigInteger nonce,
+                                             String method, Object[] params, long energyLimit, boolean isCreate) {
+        return new Transaction(sender, destination, transactionHash, value, nonce, energyLimit,  method, params, isCreate);
     }
 
     public byte[] copyOfTransactionHash() {
@@ -146,7 +124,6 @@ public final class Transaction {
                     && Objects.equals(this.destinationAddress, otherObject.destinationAddress)
                     && this.value.equals(otherObject.value)
                     && this.nonce.equals(otherObject.nonce)
-                    && this.energyPrice == otherObject.energyPrice
                     && this.energyLimit == otherObject.energyLimit
                     && this.isCreate == otherObject.isCreate
                     && Arrays.equals(this.transactionHash, otherObject.transactionHash);
@@ -166,16 +143,12 @@ public final class Transaction {
             + value
             + ", energyLimit="
             + this.energyLimit
-            + ", energyPrice="
-            + this.energyPrice
             + "]";
     }
 
     @Override
     public int hashCode() {
-        int result = Objects
-            .hash(senderAddress, destinationAddress, value, nonce, energyPrice, energyLimit,
-                isCreate);
+        int result = Objects.hash(senderAddress, destinationAddress, value, nonce, energyLimit, isCreate);
         if (transactionHash != null) {
             result = 31 * result + Arrays.hashCode(transactionHash);
         }

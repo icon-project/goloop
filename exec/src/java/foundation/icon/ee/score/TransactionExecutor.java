@@ -100,11 +100,12 @@ public class TransactionExecutor {
         boolean isInstall = CMD_INSTALL.equals(method);
         BigInteger blockNumber = (BigInteger) info.get(EEProxy.Info.BLOCK_HEIGHT);
         BigInteger blockTimestamp = (BigInteger) info.get(EEProxy.Info.BLOCK_TIMESTAMP);
+        BigInteger nonce = (BigInteger) info.get(EEProxy.Info.TX_NONCE);
         byte[] txHash = (byte[]) info.get(EEProxy.Info.TX_HASH);
 
         byte[] codeBytes = readFile(code);
         ExternalState kernel = new ExternalState(proxy, codeBytes, blockNumber, blockTimestamp);
-        Transaction tx = getTransactionData(isInstall, from, to, value, limit, method, params, txHash);
+        Transaction tx = getTransactionData(isInstall, from, to, value, nonce, limit, method, params, txHash);
 
         AvmConfiguration config = new AvmConfiguration();
         if (logger.isDebugEnabled()) {
@@ -123,7 +124,7 @@ public class TransactionExecutor {
                     throw new RuntimeException(result.getErrorMessage());
                 }
                 // Prepare another transaction for 'onInstall' itself
-                tx = getTransactionData(false, from, to, value, limit, method, params, txHash);
+                tx = getTransactionData(false, from, to, value, nonce, limit, method, params, txHash);
             }
             // Actual execution of the transaction
             ResultWrapper result = new ResultWrapper(
@@ -145,30 +146,21 @@ public class TransactionExecutor {
     }
 
     private Transaction getTransactionData(boolean isInstall, Address from, Address to,
-                                           BigInteger value, BigInteger limit,
+                                           BigInteger value, BigInteger nonce, BigInteger limit,
                                            String method, Object[] params, byte[] txHash) {
-        if (isInstall) {
-            return Transaction.contractCreateTransaction(
-                    new AionAddress(from),
-                    txHash,
-                    BigInteger.valueOf(1),
-                    value,
-                    method,
-                    params,
-                    limit.longValue(),
-                    1L);
-        } else {
-            return Transaction.contractCallTransaction(
-                    from == null ? null : new AionAddress(from),
-                    new AionAddress(to),
-                    txHash,
-                    BigInteger.valueOf(1),
-                    value,
-                    method,
-                    params,
-                    limit.longValue(),
-                    1L);
+        if (to == null) {
+            throw new NullPointerException("Cannot create Transaction with null destination!");
         }
+        return Transaction.newTransaction(
+                from == null ? null : new AionAddress(from),
+                new AionAddress(to),
+                txHash,
+                value,
+                nonce,
+                method,
+                params,
+                limit.longValue(),
+                isInstall);
     }
 
     private byte[] readFile(String code) throws IOException {
@@ -180,20 +172,6 @@ public class TransactionExecutor {
             throw new IOException("JAR read error: " + e.getMessage());
         }
         return jarBytes;
-    }
-
-    private Object[] getConvertedParams(Object[] params) {
-        Object[] convertedParams = new Object[params.length];
-        for (int i = 0; i < params.length; i++) {
-            Object obj = params[i];
-            if (obj instanceof Address) {
-                Address address = (Address) obj;
-                convertedParams[i] = new avm.Address(new AionAddress(address).toByteArray());
-            } else {
-                convertedParams[i] = obj;
-            }
-        }
-        return convertedParams;
     }
 
     private static class ResultWrapper {

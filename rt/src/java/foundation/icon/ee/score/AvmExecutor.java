@@ -123,7 +123,7 @@ public class AvmExecutor {
         AvmWrappedTransactionResult result = TransactionResultUtil.newSuccessfulResultWithEnergyUsed(0);
 
         AionAddress senderAddress = tx.senderAddress;
-        AionAddress recipient = (tx.isCreate) ? capabilities.generateContractAddress(tx) : tx.destinationAddress;
+        AionAddress recipient = tx.destinationAddress;
 
         if (tx.isCreate) {
             logger.trace("=== DAppCreator ===");

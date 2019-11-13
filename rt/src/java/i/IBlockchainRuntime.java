@@ -35,11 +35,6 @@ public interface IBlockchainRuntime {
     long avm_getEnergyLimit();
 
     /**
-     * Returns the energy price.
-     */
-    long avm_getEnergyPrice();
-
-    /**
      * Returns the value being transferred along the transaction.
      */
     BigInteger avm_getValue();

@@ -62,15 +62,6 @@ public final class Blockchain {
     }
 
     /**
-     * Returns the energy price specified in the transaction.
-     *
-     * @return energy price.
-     */
-    public static long getEnergyPrice() {
-        return 0;
-    }
-
-    /**
      * Returns the value being transferred to this dapp.
      *
      * @return the value in 10^-18 Aion
