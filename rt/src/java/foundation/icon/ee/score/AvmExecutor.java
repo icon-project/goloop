@@ -16,6 +16,7 @@
 
 package foundation.icon.ee.score;
 
+import foundation.icon.ee.types.Address;
 import i.IInstrumentation;
 import i.IInstrumentationFactory;
 import i.InstrumentationHelpers;
@@ -24,7 +25,6 @@ import org.aion.avm.core.AvmConfiguration;
 import org.aion.avm.core.DAppCreator;
 import org.aion.avm.core.DAppExecutor;
 import org.aion.avm.core.DAppLoader;
-import org.aion.avm.core.ExecutionType;
 import org.aion.avm.core.IExternalState;
 import org.aion.avm.core.ReentrantDAppStack;
 import org.aion.avm.core.persistence.LoadedDApp;
@@ -63,10 +63,10 @@ public class AvmExecutor {
         InstrumentationHelpers.attachThread(instrumentation);
     }
 
-    public TransactionResult run(IExternalState kernel, Transaction transaction, long blockNumber) {
+    public TransactionResult run(IExternalState kernel, Transaction transaction, Address origin) {
         // Get the first task
-        TransactionTask incomingTask = new TransactionTask(kernel, transaction, 0, transaction.senderAddress,
-                                                           ExecutionType.ASSUME_MAINCHAIN, blockNumber);
+        TransactionTask incomingTask = new TransactionTask(kernel, transaction, 0,
+                                                           origin != null ? new AionAddress(origin) : null);
 
         // Attach the IInstrumentation helper to the task to support asynchronous abort
         // Instrumentation helper will abort the execution of the transaction by throwing an exception during chargeEnergy call

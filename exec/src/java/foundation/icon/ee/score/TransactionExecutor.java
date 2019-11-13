@@ -101,6 +101,7 @@ public class TransactionExecutor {
         BigInteger blockTimestamp = (BigInteger) info.get(EEProxy.Info.BLOCK_TIMESTAMP);
         BigInteger nonce = (BigInteger) info.get(EEProxy.Info.TX_NONCE);
         byte[] txHash = (byte[]) info.get(EEProxy.Info.TX_HASH);
+        Address origin = (Address) info.get(EEProxy.Info.TX_FROM);
 
         byte[] codeBytes = readFile(code);
         ExternalState kernel = new ExternalState(proxy, codeBytes, blockNumber, blockTimestamp);
@@ -116,7 +117,7 @@ public class TransactionExecutor {
             if (isInstall) {
                 // The following is for transformation
                 ResultWrapper result = new ResultWrapper(
-                        executor.run(kernel, tx, blockNumber.longValue() - 1)
+                        executor.run(kernel, tx, origin)
                 );
                 energyUsed = result.getEnergyUsed();
                 if (!result.isSuccess()) {
@@ -127,7 +128,7 @@ public class TransactionExecutor {
             }
             // Actual execution of the transaction
             ResultWrapper result = new ResultWrapper(
-                    executor.run(kernel, tx, blockNumber.longValue() - 1), energyUsed
+                    executor.run(kernel, tx, origin), energyUsed
             );
             Object retVal = result.getDecodedReturnData();
             return new InvokeResult((result.isSuccess()) ? EEProxy.Status.SUCCESS : EEProxy.Status.FAILURE,

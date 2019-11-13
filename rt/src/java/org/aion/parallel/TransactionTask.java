@@ -1,23 +1,21 @@
 package org.aion.parallel;
 
 import avm.Address;
-
-import java.util.HashSet;
-import java.util.Set;
-import java.util.Stack;
-
-import org.aion.avm.core.ExecutionType;
+import i.IInstrumentation;
+import i.RuntimeAssertionError;
 import org.aion.avm.core.IExternalState;
-import org.aion.types.AionAddress;
-import org.aion.types.Transaction;
 import org.aion.avm.core.ReentrantDAppStack;
 import org.aion.avm.core.types.Pair;
 import org.aion.avm.core.util.ByteArrayWrapper;
 import org.aion.avm.core.util.Helpers;
-import i.IInstrumentation;
-import i.RuntimeAssertionError;
-import org.aion.kernel.*;
+import org.aion.kernel.SideEffects;
+import org.aion.kernel.TransactionalState;
+import org.aion.types.AionAddress;
+import org.aion.types.Transaction;
 
+import java.util.HashSet;
+import java.util.Set;
+import java.util.Stack;
 
 /**
  * A TransactionTask represent a complete transaction chain started from an external transaction. It represents the logical ordering of the block to be passed to the concurrent executor.
@@ -26,7 +24,7 @@ import org.aion.kernel.*;
  * If both addresses can be acquired, the TransactionTask will be the owner of both Address resources,
  * preventing other transactions with the same address to be processed while this task is being executed
  */
-public class TransactionTask implements Comparable<TransactionTask>{
+public class TransactionTask implements Comparable<TransactionTask> {
     private final IExternalState parentKernel;
     private Transaction externalTransaction;
     private volatile boolean abortState;
@@ -39,11 +37,8 @@ public class TransactionTask implements Comparable<TransactionTask>{
     private Address origin;
     private int depth;
     private Set<Pair<AionAddress, ByteArrayWrapper>> resetStorageKeys;
-    public final ExecutionType executionType;
-    public final long commonMainchainBlockNumber;
 
-
-    public TransactionTask(IExternalState parentKernel, Transaction tx, int index, AionAddress origin, ExecutionType executionType, long commonMainchainBlockNumber){
+    public TransactionTask(IExternalState parentKernel, Transaction tx, int index, AionAddress origin) {
         this.parentKernel = parentKernel;
         this.externalTransaction = tx;
         this.index = index;
@@ -51,15 +46,13 @@ public class TransactionTask implements Comparable<TransactionTask>{
         this.threadOwningTask = null;
         this.reentrantDAppStack = new ReentrantDAppStack();
         this.outBuffer = new StringBuffer();
-        if(origin != null) {
+        if (origin != null) {
             this.origin = new Address(origin.toByteArray());
         }
         this.depth = 0;
         this.sideEffectsStack = new Stack<>();
         this.sideEffectsStack.push(new SideEffects());
         this.resetStorageKeys = new HashSet<>();
-        this.executionType = executionType;
-        this.commonMainchainBlockNumber = commonMainchainBlockNumber;
     }
 
     public void startNewTransaction() {
@@ -151,7 +144,7 @@ public class TransactionTask implements Comparable<TransactionTask>{
     }
 
     public void outputPrintln(String toPrint){
-        this.outBuffer.append(toPrint + "\n");
+        this.outBuffer.append(toPrint).append("\n");
     }
 
     public void pushSideEffects(SideEffects se) {
