@@ -5,35 +5,25 @@
 
 package foundation.icon.ee.tooling.abi;
 
-import java.math.BigInteger;
+import foundation.icon.ee.types.Method;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.FieldVisitor;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import avm.Address;
-import foundation.icon.ee.types.Method;
-import org.aion.avm.tooling.abi.ABIConfig;
-import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.FieldVisitor;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
-
-import static org.objectweb.asm.Opcodes.*;
-
 public class ABICompilerClassVisitor extends ClassVisitor {
-    private String className;
     private List<ABICompilerMethodVisitor> methodVisitors = new ArrayList<>();
     private List<ABICompilerMethodVisitor> callableMethodVisitors = new ArrayList<>();
     private List<Method> callableInfo = new ArrayList<>();
-    private int compileVersion;
 
-    public ABICompilerClassVisitor(ClassWriter cw, int version) {
+    public ABICompilerClassVisitor(ClassWriter cw) {
         super(Opcodes.ASM6, cw);
-        this.compileVersion = version;
     }
 
     public List<Method> getCallableInfo() {
@@ -46,7 +36,6 @@ public class ABICompilerClassVisitor extends ClassVisitor {
 
     @Override
     public void visit(int version, int access, java.lang.String name, java.lang.String signature, java.lang.String superName, java.lang.String[] interfaces) {
-        this.className = name;
         super.visit(version, access, name, signature, superName, interfaces);
     }
 

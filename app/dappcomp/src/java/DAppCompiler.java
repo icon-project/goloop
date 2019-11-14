@@ -24,7 +24,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class DAppCompiler {
-    private static final int ABI_VERSION = 1;
     private static boolean DEBUG_MODE = false;
 
     public static void main(String[] args) throws IOException {
@@ -34,10 +33,9 @@ public class DAppCompiler {
             if (args.length == 2) {
                 DEBUG_MODE = "-debug".equals(args[1]);
             }
-            OptimizedJarBuilder jarBuilder = new OptimizedJarBuilder(DEBUG_MODE, readFile(args[0]), ABI_VERSION)
+            OptimizedJarBuilder jarBuilder = new OptimizedJarBuilder(DEBUG_MODE, readFile(args[0]))
                     .withUnreachableMethodRemover()
-                    .withRenamer()
-                    .withConstantRemover();
+                    .withRenamer();
             byte[] optimizedJar = jarBuilder.getOptimizedBytes();
             String outputName = getJarFilename(args[0], DEBUG_MODE);
             writeFile(outputName, optimizedJar);

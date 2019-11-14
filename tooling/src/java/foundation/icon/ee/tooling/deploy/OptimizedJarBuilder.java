@@ -9,7 +9,6 @@ import foundation.icon.ee.tooling.abi.ABICompiler;
 import foundation.icon.ee.types.Method;
 import foundation.icon.ee.utils.MethodPacker;
 import org.aion.avm.tooling.deploy.JarOptimizer;
-import org.aion.avm.tooling.deploy.eliminator.ConstantRemover;
 import org.aion.avm.tooling.deploy.eliminator.UnreachableMethodRemover;
 import org.aion.avm.tooling.deploy.renamer.Renamer;
 import org.aion.avm.utilities.JarBuilder;
@@ -28,7 +27,6 @@ public class OptimizedJarBuilder {
     private boolean debugModeEnabled;
     private boolean unreachableMethodRemoverEnabled;
     private boolean classAndFieldRenamerEnabled;
-    private boolean constantRemoverEnabled;
     private byte[] dappBytes;
     private List<Method> callables;
 
@@ -38,9 +36,9 @@ public class OptimizedJarBuilder {
      * @param jarBytes Byte array corresponding to the jar
      * @param abiVersion Version of ABI compiler to use
      */
-    public OptimizedJarBuilder(boolean debugModeEnabled, byte[] jarBytes, int abiVersion) {
+    public OptimizedJarBuilder(boolean debugModeEnabled, byte[] jarBytes) {
         this.debugModeEnabled = debugModeEnabled;
-        ABICompiler compiler = ABICompiler.compileJarBytes(jarBytes, abiVersion);
+        ABICompiler compiler = ABICompiler.compileJarBytes(jarBytes);
         dappBytes = compiler.getJarFileBytes();
         callables = compiler.getCallables();
     }
@@ -64,15 +62,6 @@ public class OptimizedJarBuilder {
     }
 
     /**
-     * Removes ABIException messages from the contract to reduce number of string constants
-     * @return OptimizedJarBuilder
-     */
-    public OptimizedJarBuilder withConstantRemover() {
-        constantRemoverEnabled = true;
-        return this;
-    }
-
-    /**
      * Performs selected optimization steps.
      * Unreferenced classes are removed from the Jar for all cases.
      * @return optimized jar bytes
@@ -80,15 +69,9 @@ public class OptimizedJarBuilder {
     public byte[] getOptimizedBytes() {
         JarOptimizer jarOptimizer = new JarOptimizer(debugModeEnabled);
         byte[] optimizedDappBytes = jarOptimizer.optimize(dappBytes);
-        if (constantRemoverEnabled) {
-            try {
-                optimizedDappBytes = ConstantRemover.removeABIExceptionMessages(optimizedDappBytes);
-            } catch (Exception exception) {
-                System.err.println("Constant Remover crashed, packaging code without this optimization");
-            }
-        }
+        // Do not rename external methods
         String[] roots = new String[callables.size()];
-        for (int i=0; i<roots.length; i++) {
+        for (int i = 0; i < roots.length; i++) {
             var c = callables.get(i);
             roots[i] = c.getName() + c.getDescriptor();
         }
