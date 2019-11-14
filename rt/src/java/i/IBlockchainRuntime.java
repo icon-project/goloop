@@ -57,11 +57,11 @@ public interface IBlockchainRuntime {
     long avm_getBlockTimestamp();
 
     /**
-     * Block number.
+     * Block height.
      *
-     * @return The number of the current block.
+     * @return The height of the current block.
      */
-    long avm_getBlockNumber();
+    long avm_getBlockHeight();
 
     /**
      * Block energy limit

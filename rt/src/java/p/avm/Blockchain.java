@@ -55,9 +55,9 @@ public final class Blockchain extends Object {
         return blockchainRuntime.avm_getBlockTimestamp();
     }
 
-    public static long avm_getBlockNumber() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getBlockNumber);
-        return blockchainRuntime.avm_getBlockNumber();
+    public static long avm_getBlockHeight() {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getBlockHeight);
+        return blockchainRuntime.avm_getBlockHeight();
     }
 
     public static long avm_getBlockEnergyLimit() {

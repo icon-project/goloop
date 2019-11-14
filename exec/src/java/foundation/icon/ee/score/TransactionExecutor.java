@@ -97,14 +97,14 @@ public class TransactionExecutor {
             printGetInfo(info);
         }
         boolean isInstall = CMD_INSTALL.equals(method);
-        BigInteger blockNumber = (BigInteger) info.get(EEProxy.Info.BLOCK_HEIGHT);
+        BigInteger blockHeight = (BigInteger) info.get(EEProxy.Info.BLOCK_HEIGHT);
         BigInteger blockTimestamp = (BigInteger) info.get(EEProxy.Info.BLOCK_TIMESTAMP);
         BigInteger nonce = (BigInteger) info.get(EEProxy.Info.TX_NONCE);
         byte[] txHash = (byte[]) info.get(EEProxy.Info.TX_HASH);
         Address origin = (Address) info.get(EEProxy.Info.TX_FROM);
 
         byte[] codeBytes = readFile(code);
-        ExternalState kernel = new ExternalState(proxy, codeBytes, blockNumber, blockTimestamp);
+        ExternalState kernel = new ExternalState(proxy, codeBytes, blockHeight, blockTimestamp);
         Transaction tx = getTransactionData(isInstall, from, to, value, nonce, limit, method, params, txHash);
 
         AvmConfiguration config = new AvmConfiguration();

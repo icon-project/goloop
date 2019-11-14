@@ -31,15 +31,15 @@ public class ExternalState implements IExternalState {
     private static final Logger logger = LoggerFactory.getLogger(ExternalState.class);
 
     private final EEProxy proxy;
-    private final long blockNumber;
+    private final long blockHeight;
     private final long blockTimestamp;
     private byte[] codeCache;
     private ObjectGraph graphCache;
 
-    ExternalState(EEProxy proxy, byte[] codeBytes, BigInteger blockNumber, BigInteger blockTimestamp) {
+    ExternalState(EEProxy proxy, byte[] codeBytes, BigInteger blockHeight, BigInteger blockTimestamp) {
         this.proxy = proxy;
         this.codeCache = codeBytes;
-        this.blockNumber = blockNumber.longValue();
+        this.blockHeight = blockHeight.longValue();
         this.blockTimestamp = blockTimestamp.longValue() / 1000; // micro to milli conversion
     }
 
@@ -222,8 +222,8 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public byte[] getBlockHashByNumber(long blockNumber) {
-        logger.trace("[getBlockHashByNumber] blockNumber={}", blockNumber);
+    public byte[] getBlockHashByHeight(long blockHeight) {
+        logger.trace("[getBlockHashByHeight] blockHeight={}", blockHeight);
         throw new RuntimeException("not implemented");
     }
 
@@ -258,9 +258,9 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public long getBlockNumber() {
-        logger.trace("[getBlockNumber] ret={}", blockNumber);
-        return blockNumber;
+    public long getBlockHeight() {
+        logger.trace("[getBlockHeight] ret={}", blockHeight);
+        return blockHeight;
     }
 
     @Override

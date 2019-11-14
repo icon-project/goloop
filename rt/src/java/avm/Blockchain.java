@@ -93,11 +93,11 @@ public final class Blockchain {
     }
 
     /**
-     * Returns the block number.
+     * Returns the block height.
      *
-     * @return the number of the block, in which the transaction is included
+     * @return the height of the block, in which the transaction is included
      */
-    public static long getBlockNumber() {
+    public static long getBlockHeight() {
         return 0;
     }
 

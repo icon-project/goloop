@@ -305,7 +305,7 @@ public class RuntimeMethodFeeSchedule {
     public static final int BlockchainRuntime_avm_getValue = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
     public static final int BlockchainRuntime_avm_getData = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
     public static final int BlockchainRuntime_avm_getBlockTimestamp = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
-    public static final int BlockchainRuntime_avm_getBlockNumber = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
+    public static final int BlockchainRuntime_avm_getBlockHeight = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
     public static final int BlockchainRuntime_avm_getBlockEnergyLimit = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
     public static final int BlockchainRuntime_avm_getBlockDifficulty = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
     // These are based on Ethereum storage operation costs.

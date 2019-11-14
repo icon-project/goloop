@@ -38,7 +38,7 @@ public class CachingState implements IExternalState {
     }
 
     @Override
-    public byte[] getBlockHashByNumber(long blockNumber) {
+    public byte[] getBlockHashByHeight(long blockHeight) {
         throw RuntimeAssertionError.unreachable("No equivalent concept in the Avm.");
     }
 
@@ -170,7 +170,7 @@ public class CachingState implements IExternalState {
     }
 
     @Override
-    public long getBlockNumber() {
+    public long getBlockHeight() {
         throw RuntimeAssertionError.unreachable("This class does not implement this method.");
     }
 

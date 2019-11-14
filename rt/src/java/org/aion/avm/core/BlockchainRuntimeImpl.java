@@ -135,8 +135,8 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     @Override
-    public long avm_getBlockNumber() {
-        return externalState.getBlockNumber();
+    public long avm_getBlockHeight() {
+        return externalState.getBlockHeight();
     }
 
     @Override

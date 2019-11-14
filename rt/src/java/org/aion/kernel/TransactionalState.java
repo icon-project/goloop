@@ -30,7 +30,7 @@ public class TransactionalState implements IExternalState {
 
 
     private BigInteger blockDifficulty;
-    private long blockNumber;
+    private long blockHeight;
     private long blockTimestamp;
     private long blockNrgLimit;
 
@@ -41,7 +41,7 @@ public class TransactionalState implements IExternalState {
         this.deletedAccountProjection = new HashSet<>();
         this.cachedAccountBalances = new HashSet<>();
         this.blockDifficulty = parent.getBlockDifficulty();
-        this.blockNumber = parent.getBlockNumber();
+        this.blockHeight = parent.getBlockHeight();
         this.blockTimestamp = parent.getBlockTimestamp();
         this.blockNrgLimit = parent.getBlockEnergyLimit();
         this.deletedStorageKeys = new HashSet<>();
@@ -285,7 +285,7 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public byte[] getBlockHashByNumber(long blockNumber) {
+    public byte[] getBlockHashByHeight(long blockHeight) {
         throw new AssertionError("No equivalent concept in the Avm.");
     }
 
@@ -307,8 +307,8 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public long getBlockNumber() {
-        return blockNumber;
+    public long getBlockHeight() {
+        return blockHeight;
     }
 
     @Override

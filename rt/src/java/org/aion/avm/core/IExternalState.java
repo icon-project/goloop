@@ -190,15 +190,15 @@ public interface IExternalState {
     public void refundAccount(AionAddress address, BigInteger refund);
 
     /**
-     * Returns the hash of the block whose number is the specified number.
+     * Returns the hash of the block whose height is the specified number.
      *
-     * Returns {@code null} if the specified block number does not exist and therefore no block hash
+     * Returns {@code null} if the specified block height does not exist and therefore no block hash
      * exists.
      *
-     * @param blockNumber The block number whose hash is to be returned.
+     * @param blockHeight The block height whose hash is to be returned.
      * @return the hash of the specified block or null.
      */
-    public byte[] getBlockHashByNumber(long blockNumber);
+    public byte[] getBlockHashByHeight(long blockHeight);
 
     /**
      * Returns {@code true} only if the given address has a nonce equal to the specified nonce.
@@ -258,16 +258,16 @@ public interface IExternalState {
     public boolean destinationAddressIsSafeForThisVM(AionAddress address);
 
     /**
-     * Returns the block number of the current best block.
+     * Returns the block height of the current block.
      *
-     * @return the current best block number.
+     * @return the current block height.
      */
-    public long getBlockNumber();
+    public long getBlockHeight();
 
     /**
-     * Returns the timestamp of the current best block.
+     * Returns the timestamp of the current block.
      *
-     * @return the current best block timestamp.
+     * @return the current block timestamp.
      */
     public long getBlockTimestamp();
 
