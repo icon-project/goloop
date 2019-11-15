@@ -301,20 +301,15 @@ public class RuntimeMethodFeeSchedule {
     public static final int BlockchainRuntime_avm_getAddress = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
     public static final int BlockchainRuntime_avm_getCaller = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
     public static final int BlockchainRuntime_avm_getOrigin = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
-    public static final int BlockchainRuntime_avm_getEnergyLimit = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
     public static final int BlockchainRuntime_avm_getValue = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
-    public static final int BlockchainRuntime_avm_getData = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
     public static final int BlockchainRuntime_avm_getBlockTimestamp = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
     public static final int BlockchainRuntime_avm_getBlockHeight = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
-    public static final int BlockchainRuntime_avm_getBlockEnergyLimit = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
-    public static final int BlockchainRuntime_avm_getBlockDifficulty = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
     // These are based on Ethereum storage operation costs.
     public static final int BlockchainRuntime_avm_getStorage = 200;
     public static final int BlockchainRuntime_avm_setStorage = 20000; // Paid for a putStorage operation when the storage value is set to non-zero from zero;
     public static final int BlockchainRuntime_avm_resetStorage = 5000; // Paid for a putStorage operation when the storage value's zeroness is unchanged or is set to 0;
     public static final int BlockchainRuntime_avm_deleteStorage_refund = 15000; // Refund given when the storage value is set to zero from non-zero.
     public static final int BlockchainRuntime_avm_getBalance = RT_METHOD_FEE_LEVEL_2; // totalCost - 122;
-    public static final int BlockchainRuntime_avm_getRemainingEnergy = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
     public static final int BlockchainRuntime_avm_call = 5000; // totalCost - 140;
     public static final int BlockchainRuntime_avm_create = 5000; // totalCost - 134;
 

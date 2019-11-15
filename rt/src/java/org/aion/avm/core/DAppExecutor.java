@@ -89,7 +89,6 @@ public class DAppExecutor {
                                                           senderAddress,
                                                           dappAddress,
                                                           tx,
-                                                          null,
                                                           dapp.runtimeSetup,
                                                           enableBlockchainPrintln);
         FrameContextImpl fc = new FrameContextImpl(externalState, dapp, initialClassWrappers, br);

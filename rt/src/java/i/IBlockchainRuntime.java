@@ -1,21 +1,23 @@
 package i;
 
-import p.avm.*;
 import a.ByteArray;
+import p.avm.Address;
+import p.avm.CollectionDB;
+import p.avm.Result;
+import p.avm.VarDB;
 import s.java.math.BigInteger;
 import s.java.lang.String;
-
 
 /**
  * Represents the hub of AVM runtime.
  */
 public interface IBlockchainRuntime {
     //================
-    // transaction
+    // Transaction
     //================
 
     /**
-     * Returns the owner's address, whose state is being accessed.
+     * Returns the address of the currently-running SCORE.
      */
     Address avm_getAddress();
 
@@ -30,23 +32,12 @@ public interface IBlockchainRuntime {
     Address avm_getOrigin();
 
     /**
-     * Returns the energy limit.
-     */
-    long avm_getEnergyLimit();
-
-    /**
      * Returns the value being transferred along the transaction.
      */
     BigInteger avm_getValue();
 
-    /**
-     * Returns the transaction data.
-     */
-    ByteArray avm_getData();
-
-
     //================
-    // block
+    // Block
     //================
 
     /**
@@ -63,22 +54,8 @@ public interface IBlockchainRuntime {
      */
     long avm_getBlockHeight();
 
-    /**
-     * Block energy limit
-     *
-     * @return The block energy limit
-     */
-    long avm_getBlockEnergyLimit();
-
-    /**
-     * Block difficulty
-     *
-     * @return the difficulty of the block.
-     */
-    BigInteger avm_getBlockDifficulty();
-
     //================
-    // State
+    // Storage
     //================
 
     /**
@@ -108,13 +85,6 @@ public interface IBlockchainRuntime {
     //================
     // System
     //================
-
-    /**
-     * Checks the current remaining energy.
-     *
-     * @return the remaining energy.
-     */
-    long avm_getRemainingEnergy();
 
     /**
      * Calls the contract denoted by the targetAddress, sending payload data and energyLimit for the invocation.  Returns the response of the contract.

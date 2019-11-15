@@ -180,16 +180,6 @@ public class CachingState implements IExternalState {
     }
 
     @Override
-    public long getBlockEnergyLimit() {
-        throw RuntimeAssertionError.unreachable("This class does not implement this method.");
-    }
-
-    @Override
-    public BigInteger getBlockDifficulty() {
-        throw RuntimeAssertionError.unreachable("This class does not implement this method.");
-    }
-
-    @Override
     public void refundAccount(AionAddress address, BigInteger amount) {
         // This method may have special logic in the kernel. Here it is just adjustBalance.
         internalAdjustBalance(address, amount);

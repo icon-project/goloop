@@ -272,20 +272,6 @@ public interface IExternalState {
     public long getBlockTimestamp();
 
     /**
-     * Returns the energy limit of the current best block.
-     *
-     * @return the current best block energy limit.
-     */
-    public long getBlockEnergyLimit();
-
-    /**
-     * Returns the difficulty of the current best block.
-     *
-     * @return the current best block's difficulty.
-     */
-    public BigInteger getBlockDifficulty();
-
-    /**
      * Emits events log
      */
     public void log(byte[][] indexed, byte[][]data);

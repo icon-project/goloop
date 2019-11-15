@@ -3,7 +3,7 @@ package avm;
 import java.math.BigInteger;
 
 /**
- * Every DApp has an associated <code>Blockchain</code> which allows
+ * Every SCORE has an associated <code>Blockchain</code> which allows
  * the application to interface with the environment the app is running.
  * <p>
  * Typically, it includes the transaction and block context, and other blockchain
@@ -19,8 +19,7 @@ public final class Blockchain {
     //===================
 
     /**
-     * Returns the owner's address, whose state is being accessed.
-     * That is, the address of the currently-running DApp.
+     * Returns the address of the currently-running SCORE.
      *
      * @return an address
      */
@@ -29,9 +28,9 @@ public final class Blockchain {
     }
 
     /**
-     * Returns the callers's address.
+     * Returns the caller's address.
      * Note that the caller and the origin may be the same but differ in cross-calls: the origin is the sender
-     * of the "first" invocation in the chain while the caller is whoever directly called the current DApp.
+     * of the "first" invocation in the chain while the caller is whoever directly called the current SCORE.
      *
      * @return an address
      */
@@ -42,7 +41,7 @@ public final class Blockchain {
     /**
      * Returns the originator's address.
      * Note that the caller and the origin may be the same but differ in cross-calls: the origin is the sender
-     * of the "first" invocation in the chain while the caller is whoever directly called the current DApp.
+     * of the "first" invocation in the chain while the caller is whoever directly called the current SCORE.
      * Also, the origin never has associated code.
      *
      * @return an address
@@ -52,31 +51,12 @@ public final class Blockchain {
     }
 
     /**
-     * Returns the energy limit for this current invocation.
-     * Note that this is the total limit for the entire invocation, not just what is remaining.
+     * Returns the value being transferred to this SCORE.
      *
-     * @return the max consumable energy
-     */
-    public static long getEnergyLimit() {
-        return 0;
-    }
-
-    /**
-     * Returns the value being transferred to this dapp.
-     *
-     * @return the value in 10^-18 Aion
+     * @return the value in 10^-18 loop
      */
     public static BigInteger getValue() {
         return BigInteger.ZERO;
-    }
-
-    /**
-     * Returns the data passed to this dapp.
-     *
-     * @return an byte array, non-NULL.
-     */
-    public static byte[] getData() {
-        return null;
     }
 
     //===================
@@ -99,24 +79,6 @@ public final class Blockchain {
      */
     public static long getBlockHeight() {
         return 0;
-    }
-
-    /**
-     * Returns the block energy limit.
-     *
-     * @return the energy cap of the block.
-     */
-    public static long getBlockEnergyLimit() {
-        return 0;
-    }
-
-    /**
-     * Returns the block difficulty.
-     *
-     * @return the PoW difficulty of the block.
-     */
-    public static BigInteger getBlockDifficulty() {
-        return null;
     }
 
     //===================
@@ -160,16 +122,7 @@ public final class Blockchain {
     //===================
 
     /**
-     * Returns the remaining energy, at the moment this method is being called.
-     *
-     * @return the remaining energy
-     */
-    public static long getRemainingEnergy() {
-        return 0;
-    }
-
-    /**
-     * Calls another account, whether it's normal account or dapp.
+     * Calls another account, whether it's normal account or SCORE.
      *
      * In terms of the provided {@code targetAddress}, a call is legitimate only if:
      *   1. The targetAddress has no code (ie. it is not a contract)

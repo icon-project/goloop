@@ -241,7 +241,6 @@ public class DAppCreator {
                                                               senderAddress,
                                                               dappAddress,
                                                               tx,
-                                                              null,
                                                               runtimeSetup,
                                                               enableBlockchainPrintln);
             FrameContextImpl fc = new FrameContextImpl(externalState, dapp, dapp.internedClasses, br);

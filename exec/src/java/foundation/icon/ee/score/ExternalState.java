@@ -270,18 +270,6 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public long getBlockEnergyLimit() {
-        logger.trace("[getBlockEnergyLimit] ret={}", 0);
-        return 0;
-    }
-
-    @Override
-    public BigInteger getBlockDifficulty() {
-        logger.trace("[getBlockDifficulty] ret={}", 0);
-        return BigInteger.ZERO;
-    }
-
-    @Override
     public void log(byte[][] indexed, byte[][] data) {
         try {
             proxy.log(indexed, data);

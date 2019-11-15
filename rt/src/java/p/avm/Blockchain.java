@@ -35,19 +35,9 @@ public final class Blockchain extends Object {
         return blockchainRuntime.avm_getOrigin();
     }
 
-    public static long avm_getEnergyLimit() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getEnergyLimit);
-        return blockchainRuntime.avm_getEnergyLimit();
-    }
-
     public static BigInteger avm_getValue() {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getValue);
         return blockchainRuntime.avm_getValue();
-    }
-
-    public static ByteArray avm_getData() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getData);
-        return blockchainRuntime.avm_getData();
     }
 
     public static long avm_getBlockTimestamp() {
@@ -58,16 +48,6 @@ public final class Blockchain extends Object {
     public static long avm_getBlockHeight() {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getBlockHeight);
         return blockchainRuntime.avm_getBlockHeight();
-    }
-
-    public static long avm_getBlockEnergyLimit() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getBlockEnergyLimit);
-        return blockchainRuntime.avm_getBlockEnergyLimit();
-    }
-
-    public static BigInteger avm_getBlockDifficulty() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getBlockDifficulty);
-        return blockchainRuntime.avm_getBlockDifficulty();
     }
 
     public static void avm_putStorage(ByteArray key, ByteArray value) {
@@ -105,11 +85,6 @@ public final class Blockchain extends Object {
     public static BigInteger avm_getBalance(Address address) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getBalance);
         return blockchainRuntime.avm_getBalance(address);
-    }
-
-    public static long avm_getRemainingEnergy() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getRemainingEnergy);
-        return blockchainRuntime.avm_getRemainingEnergy();
     }
 
     public static Result avm_call(Address targetAddress, BigInteger value, ByteArray data, long energyLimit) {

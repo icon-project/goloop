@@ -28,11 +28,8 @@ public class TransactionalState implements IExternalState {
     private final Set<ByteArrayWrapper> cachedAccountBalances;
     private final Set<Pair<AionAddress, ByteArrayWrapper>> deletedStorageKeys;
 
-
-    private BigInteger blockDifficulty;
     private long blockHeight;
     private long blockTimestamp;
-    private long blockNrgLimit;
 
     public TransactionalState(IExternalState parent) {
         this.parent = parent;
@@ -40,10 +37,8 @@ public class TransactionalState implements IExternalState {
         this.writeLog = new ArrayList<>();
         this.deletedAccountProjection = new HashSet<>();
         this.cachedAccountBalances = new HashSet<>();
-        this.blockDifficulty = parent.getBlockDifficulty();
         this.blockHeight = parent.getBlockHeight();
         this.blockTimestamp = parent.getBlockTimestamp();
-        this.blockNrgLimit = parent.getBlockEnergyLimit();
         this.deletedStorageKeys = new HashSet<>();
     }
 
@@ -314,16 +309,6 @@ public class TransactionalState implements IExternalState {
     @Override
     public long getBlockTimestamp() {
         return blockTimestamp;
-    }
-
-    @Override
-    public long getBlockEnergyLimit() {
-        return blockNrgLimit;
-    }
-
-    @Override
-    public BigInteger getBlockDifficulty() {
-        return blockDifficulty;
     }
 
     @Override

@@ -43,16 +43,13 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     private final AionAddress transactionSender;
     private final AionAddress transactionDestination;
     private final Transaction tx;
-    private final byte[] dAppData;
     private final IRuntimeSetup thisDAppSetup;
     private final boolean enablePrintln;
 
-    private ByteArray dAppDataCache;
     private Address addressCache;
     private Address callerCache;
     private Address originCache;
     private s.java.math.BigInteger valueCache;
-    private s.java.math.BigInteger blockDifficultyCache;
 
     public BlockchainRuntimeImpl(IExternalState externalState,
                                  ReentrantDAppStack.ReentrantState reentrantState,
@@ -60,7 +57,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                                  AionAddress transactionSender,
                                  AionAddress transactionDestination,
                                  Transaction tx,
-                                 byte[] dAppData,
                                  IRuntimeSetup thisDAppSetup,
                                  boolean enablePrintln) {
         this.externalState = externalState;
@@ -69,16 +65,13 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         this.transactionSender = transactionSender;
         this.transactionDestination = transactionDestination;
         this.tx = tx;
-        this.dAppData = dAppData;
         this.thisDAppSetup = thisDAppSetup;
         this.enablePrintln = enablePrintln;
 
-        this.dAppDataCache = null;
         this.addressCache = null;
         this.callerCache = null;
         this.originCache = null;
         this.valueCache = null;
-        this.blockDifficultyCache = null;
     }
 
     @Override
@@ -106,27 +99,12 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     @Override
-    public long avm_getEnergyLimit() {
-        return tx.energyLimit;
-    }
-
-    @Override
     public s.java.math.BigInteger avm_getValue() {
         if (null == this.valueCache) {
             java.math.BigInteger value = tx.value;
             this.valueCache = new s.java.math.BigInteger(value);
         }
         return this.valueCache;
-    }
-
-    @Override
-    public ByteArray avm_getData() {
-        if (null == this.dAppDataCache) {
-            this.dAppDataCache = (null != this.dAppData)
-                    ? new ByteArray(this.dAppData.clone())
-                    : null;
-        }
-        return this.dAppDataCache;
     }
 
     @Override
@@ -137,19 +115,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     @Override
     public long avm_getBlockHeight() {
         return externalState.getBlockHeight();
-    }
-
-    @Override
-    public long avm_getBlockEnergyLimit() {
-        return externalState.getBlockEnergyLimit();
-    }
-
-    @Override
-    public s.java.math.BigInteger avm_getBlockDifficulty() {
-        if (null == this.blockDifficultyCache) {
-            this.blockDifficultyCache = new s.java.math.BigInteger(externalState.getBlockDifficulty());
-        }
-        return this.blockDifficultyCache;
     }
 
     @Override
@@ -185,11 +150,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     public s.java.math.BigInteger avm_getBalance(Address address) {
         require(null != address, "Address can't be NULL");
         return new s.java.math.BigInteger(this.externalState.getBalance(new AionAddress(address.toByteArray())));
-    }
-
-    @Override
-    public long avm_getRemainingEnergy() {
-        return IInstrumentation.attachedThreadInstrumentation.get().energyLeft();
     }
 
     @Override
