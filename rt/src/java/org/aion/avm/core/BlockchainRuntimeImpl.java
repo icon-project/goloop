@@ -49,6 +49,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     private Address addressCache;
     private Address callerCache;
     private Address originCache;
+    private Address ownerCache;
     private s.java.math.BigInteger valueCache;
 
     public BlockchainRuntimeImpl(IExternalState externalState,
@@ -67,11 +68,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         this.tx = tx;
         this.thisDAppSetup = thisDAppSetup;
         this.enablePrintln = enablePrintln;
-
-        this.addressCache = null;
-        this.callerCache = null;
-        this.originCache = null;
-        this.valueCache = null;
     }
 
     @Override
@@ -96,6 +92,14 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
             this.originCache = new Address(task.getOriginAddress().toByteArray());
         }
         return this.originCache;
+    }
+
+    @Override
+    public Address avm_getOwner() {
+        if (null == this.ownerCache) {
+            this.ownerCache = new Address(this.externalState.getOwner().toByteArray());
+        }
+        return this.ownerCache;
     }
 
     @Override

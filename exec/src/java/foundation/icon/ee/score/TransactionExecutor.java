@@ -101,10 +101,11 @@ public class TransactionExecutor {
         BigInteger blockTimestamp = (BigInteger) info.get(EEProxy.Info.BLOCK_TIMESTAMP);
         BigInteger nonce = (BigInteger) info.get(EEProxy.Info.TX_NONCE);
         byte[] txHash = (byte[]) info.get(EEProxy.Info.TX_HASH);
+        Address owner = (Address) info.get(EEProxy.Info.CONTRACT_OWNER);
         Address origin = (Address) info.get(EEProxy.Info.TX_FROM);
 
         byte[] codeBytes = readFile(code);
-        ExternalState kernel = new ExternalState(proxy, codeBytes, blockHeight, blockTimestamp);
+        ExternalState kernel = new ExternalState(proxy, codeBytes, blockHeight, blockTimestamp, owner);
         Transaction tx = getTransactionData(isInstall, from, to, value, nonce, limit, method, params, txHash);
 
         AvmConfiguration config = new AvmConfiguration();

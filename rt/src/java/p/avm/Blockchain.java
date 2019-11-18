@@ -35,6 +35,11 @@ public final class Blockchain extends Object {
         return blockchainRuntime.avm_getOrigin();
     }
 
+    public static Address avm_getOwner() {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getOwner);
+        return blockchainRuntime.avm_getOwner();
+    }
+
     public static BigInteger avm_getValue() {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getValue);
         return blockchainRuntime.avm_getValue();

@@ -17,6 +17,7 @@
 package foundation.icon.ee.score;
 
 import foundation.icon.ee.ipc.EEProxy;
+import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Bytes;
 import foundation.icon.ee.types.ObjectGraph;
 import org.aion.avm.core.IExternalState;
@@ -33,14 +34,16 @@ public class ExternalState implements IExternalState {
     private final EEProxy proxy;
     private final long blockHeight;
     private final long blockTimestamp;
+    private final AionAddress owner;
     private byte[] codeCache;
     private ObjectGraph graphCache;
 
-    ExternalState(EEProxy proxy, byte[] codeBytes, BigInteger blockHeight, BigInteger blockTimestamp) {
+    ExternalState(EEProxy proxy, byte[] codeBytes, BigInteger blockHeight, BigInteger blockTimestamp, Address owner) {
         this.proxy = proxy;
         this.codeCache = codeBytes;
         this.blockHeight = blockHeight.longValue();
         this.blockTimestamp = blockTimestamp.longValue() / 1000; // micro to milli conversion
+        this.owner = new AionAddress(owner); // owner cannot be null
     }
 
     @Override
@@ -267,6 +270,12 @@ public class ExternalState implements IExternalState {
     public long getBlockTimestamp() {
         logger.trace("[getBlockTimestamp] ret={}", blockTimestamp);
         return blockTimestamp;
+    }
+
+    @Override
+    public AionAddress getOwner() {
+        logger.trace("[getOwner] ret={}", owner);
+        return owner;
     }
 
     @Override

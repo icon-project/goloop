@@ -32,6 +32,11 @@ public interface IBlockchainRuntime {
     Address avm_getOrigin();
 
     /**
+     * Returns the address of the account who deployed the contract.
+     */
+    Address avm_getOwner();
+
+    /**
      * Returns the value being transferred along the transaction.
      */
     BigInteger avm_getValue();

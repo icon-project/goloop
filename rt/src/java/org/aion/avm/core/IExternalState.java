@@ -272,6 +272,13 @@ public interface IExternalState {
     public long getBlockTimestamp();
 
     /**
+     * Returns the address of the contract owner
+     *
+     * @return the owner address
+     */
+    public AionAddress getOwner();
+
+    /**
      * Emits events log
      */
     public void log(byte[][] indexed, byte[][]data);

@@ -51,6 +51,15 @@ public final class Blockchain {
     }
 
     /**
+     * Returns the address of the account who deployed the contract.
+     *
+     * @return an address
+     */
+    public static Address getOwner() {
+        return null;
+    }
+
+    /**
      * Returns the value being transferred to this SCORE.
      *
      * @return the value in 10^-18 loop

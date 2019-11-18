@@ -312,6 +312,11 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
+    public AionAddress getOwner() {
+        return parent.getOwner();
+    }
+
+    @Override
     public void log(byte[][] indexed, byte[][] data) {
         parent.log(indexed, data);
     }
