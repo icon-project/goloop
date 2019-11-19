@@ -413,9 +413,9 @@ func (h *callGetAPIHandler) SetCode(code []byte) error {
 	return nil
 }
 
-func (h *callGetAPIHandler) GetObjGraph(flags bool) (error, int, []byte, []byte) {
+func (h *callGetAPIHandler) GetObjGraph(flags bool) (int, []byte, []byte, error) {
 	h.log.Errorf("Unexpected call GetObjGraph() from GetAPI()")
-	return nil, 0, nil, nil
+	return 0, nil, nil, nil
 }
 
 func (h *callGetAPIHandler) SetObjGraph(flags bool, nextHash int, objGraph []byte) error {

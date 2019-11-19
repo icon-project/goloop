@@ -61,7 +61,7 @@ type CallContext interface {
 	OnCall(from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj)
 	OnAPI(status error, info *scoreapi.Info)
 	SetCode(code []byte) error
-	GetObjGraph(bool) (error, int, []byte, []byte)
+	GetObjGraph(bool) (int, []byte, []byte, error)
 	SetObjGraph(flags bool, nextHash int, objGraph []byte) error
 }
 
@@ -435,7 +435,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 			p.log.Debugf("Failed to UnmarshalFromBytes err(%s)\n", err)
 			return err
 		}
-		err, nextHash, graphHash, objGraph := p.frame.ctx.GetObjGraph(flags == 1)
+		nextHash, graphHash, objGraph, err := p.frame.ctx.GetObjGraph(flags == 1)
 		if err != nil {
 			p.log.Debugf("Failed to getObjGraph err(%s)\n", err)
 			return err

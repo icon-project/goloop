@@ -335,7 +335,7 @@ func (h *CallHandler) SetCode(code []byte) error {
 	return c.SetCode(code)
 }
 
-func (h *CallHandler) GetObjGraph(flags bool) (error, int, []byte, []byte) {
+func (h *CallHandler) GetObjGraph(flags bool) (int, []byte, []byte, error) {
 	return h.as.GetObjGraph(flags)
 }
 

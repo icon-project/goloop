@@ -90,9 +90,9 @@ func (h *callContext) SetCode(code []byte) error {
 	return nil
 }
 
-func (h *callContext) GetObjGraph(flags bool) (error, int, []byte, []byte) {
+func (h *callContext) GetObjGraph(flags bool) (int, []byte, []byte, error) {
 	fmt.Printf("CallContext.GetObjGraph(%t)\n", flags)
-	return nil, 0, nil, nil
+	return 0, nil, nil, nil
 }
 
 func (h *callContext) SetObjGraph(flags bool, nextHash int, objGraph []byte) error {

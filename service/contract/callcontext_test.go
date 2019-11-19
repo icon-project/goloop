@@ -234,7 +234,7 @@ func (h *asyncHandler) SetCode(code []byte) error {
 	panic("implement me")
 }
 
-func (h *asyncHandler) GetObjGraph(bool) (error, int, []byte, []byte) {
+func (h *asyncHandler) GetObjGraph(bool) (int, []byte, []byte, error) {
 	panic("implement me")
 }
 
