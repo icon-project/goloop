@@ -1,7 +1,5 @@
 package org.aion.types;
 
-import foundation.icon.ee.types.Bytes;
-
 import java.util.Collections;
 import java.util.List;
 

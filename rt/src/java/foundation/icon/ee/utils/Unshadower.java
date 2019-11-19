@@ -1,6 +1,6 @@
 package foundation.icon.ee.utils;
 
-import avm.Address;
+import foundation.icon.ee.types.Address;
 
 public class Unshadower {
     public static Object unshadow(s.java.lang.Object so) {
