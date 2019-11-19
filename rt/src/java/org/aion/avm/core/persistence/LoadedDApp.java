@@ -90,7 +90,6 @@ public class LoadedDApp {
     private Class<?> blockchainRuntimeClass;
     private Class<?> mainClass;
     private Field runtimeBlockchainRuntimeField;
-    private Method mainMethod;
     private long loadedDataBlockNum;
     private long loadedCodeBlockNum;
 
