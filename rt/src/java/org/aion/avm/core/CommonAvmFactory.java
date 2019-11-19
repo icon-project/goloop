@@ -22,7 +22,6 @@ public class CommonAvmFactory {
         NodeEnvironment node = NodeEnvironment.getInstance();
         IInstrumentationFactory factory = new CommonInstrumentationFactory();
         AvmExecutor executor = new AvmExecutor(factory, config);
-        executor.start();
         return executor;
     }
 

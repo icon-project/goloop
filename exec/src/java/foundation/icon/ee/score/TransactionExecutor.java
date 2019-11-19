@@ -44,9 +44,17 @@ public class TransactionExecutor {
     private static final Logger logger = LoggerFactory.getLogger(TransactionExecutor.class);
     private static final String CODE_JAR = "code.jar";
     private static final String CMD_INSTALL = "onInstall";
+    private static final AvmConfiguration avmConfig = new AvmConfiguration();
+
+    static {
+        if (logger.isDebugEnabled()) {
+            avmConfig.enableVerboseContractErrors = true;
+        }
+    }
 
     private final EEProxy proxy;
     private final String uuid;
+    private final AvmExecutor avmExecutor;
 
     private TransactionExecutor(String sockAddr, String uuid) throws IOException {
         Client client = Client.connect(sockAddr);
@@ -55,6 +63,7 @@ public class TransactionExecutor {
 
         proxy.setOnGetApiListener(this::handleGetApi);
         proxy.setOnInvokeListener(this::handleInvoke);
+        avmExecutor = CommonAvmFactory.getAvmInstance(avmConfig);
     }
 
     public static TransactionExecutor newInstance(String sockAddr, String uuid) throws IOException {
@@ -62,9 +71,14 @@ public class TransactionExecutor {
     }
 
     public void connectAndRunLoop() throws IOException {
-        proxy.connect(uuid);
-        proxy.handleMessages();
-        proxy.close();
+        avmExecutor.start();
+        try {
+            proxy.connect(uuid);
+            proxy.handleMessages();
+            proxy.close();
+        } finally {
+            avmExecutor.shutdown();
+        }
     }
 
     public void disconnect() throws IOException {
@@ -108,17 +122,12 @@ public class TransactionExecutor {
         ExternalState kernel = new ExternalState(proxy, codeBytes, blockHeight, blockTimestamp, owner);
         Transaction tx = getTransactionData(isInstall, from, to, value, nonce, limit, method, params, txHash);
 
-        AvmConfiguration config = new AvmConfiguration();
-        if (logger.isDebugEnabled()) {
-            config.enableVerboseContractErrors = true;
-        }
-        AvmExecutor executor = CommonAvmFactory.getAvmInstance(config);
         BigInteger energyUsed = BigInteger.ZERO;
         try {
             if (isInstall) {
                 // The following is for transformation
                 ResultWrapper result = new ResultWrapper(
-                        executor.run(kernel, tx, origin)
+                        avmExecutor.run(kernel, tx, origin)
                 );
                 energyUsed = result.getEnergyUsed();
                 if (!result.isSuccess()) {
@@ -129,7 +138,7 @@ public class TransactionExecutor {
             }
             // Actual execution of the transaction
             ResultWrapper result = new ResultWrapper(
-                    executor.run(kernel, tx, origin), energyUsed
+                    avmExecutor.run(kernel, tx, origin), energyUsed
             );
             Object retVal = result.getDecodedReturnData();
             return new InvokeResult((result.isSuccess()) ? EEProxy.Status.SUCCESS : EEProxy.Status.FAILURE,
@@ -141,8 +150,6 @@ public class TransactionExecutor {
             }
             logger.warn("Execution failure", e);
             return new InvokeResult(EEProxy.Status.FAILURE, energyUsed, TypedObj.encodeAny(errMsg));
-        } finally {
-            executor.shutdown();
         }
     }
 
