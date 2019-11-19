@@ -80,7 +80,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
     @Override
     public Address avm_getCaller() {
-        if (null == this.callerCache) {
+        if (null == this.callerCache && this.transactionSender != null) {
             this.callerCache = new Address(this.transactionSender.toByteArray());
         }
         return this.callerCache;
@@ -88,7 +88,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
     @Override
     public Address avm_getOrigin() {
-        if (null == this.originCache) {
+        if (null == this.originCache && task.getOriginAddress() != null) {
             this.originCache = new Address(task.getOriginAddress().toByteArray());
         }
         return this.originCache;
