@@ -14,7 +14,6 @@ public class CommonAvmFactory {
     /**
      * Creates an AVM instance based on the given configuration object.
      *
-     * @param capabilities The external capabilities which this AVM instance can use.
      * @param config The configuration to use when assembling the AVM instance.
      * @return An AVM executor
      */
