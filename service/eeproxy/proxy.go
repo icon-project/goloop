@@ -61,7 +61,7 @@ type CallContext interface {
 	OnCall(from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj)
 	OnAPI(status error, info *scoreapi.Info)
 	SetCode(code []byte) error
-	GetObjGraph(bool) (error, int, []byte, []byte)
+	GetObjGraph(bool) (int, []byte, []byte, error)
 	SetObjGraph(flags bool, nextHash int, objGraph []byte) error
 }
 
@@ -119,6 +119,7 @@ type invokeMessage struct {
 	Limit  common.HexInt   `codec:"limit"`
 	Method string          `codec:"method"`
 	Params *codec.TypedObj `codec:"params"`
+	Info   *codec.TypedObj `codec:"info"`
 }
 
 type getValueMessage struct {
@@ -179,6 +180,13 @@ func (p *proxy) Invoke(ctx CallContext, code string, isQuery bool, from, to modu
 	m.Limit.Set(limit)
 	m.Method = method
 	m.Params = params
+
+	v := ctx.GetInfo()
+	if eo, err := common.EncodeAny(v); err != nil {
+		return err
+	} else {
+		m.Info = eo
+	}
 
 	p.log.Tracef("Proxy[%p].Invoke code=%s query=%v from=%v to=%v value=%v limit=%v method=%s\n", p, code, isQuery, from, to, value, limit, method)
 
@@ -366,15 +374,6 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		p.frame.ctx.OnEvent(p.frame.addr, m.Indexed, m.Data)
 		return nil
 
-	case msgGETINFO:
-		p.log.Tracef("Proxy[%p].GetInfo()", p)
-		v := p.frame.ctx.GetInfo()
-		eo, err := common.EncodeAny(v)
-		if err != nil {
-			return err
-		}
-		return p.conn.Send(msgGETINFO, eo)
-
 	case msgGETBALANCE:
 		var addr common.Address
 		if _, err := codec.MP.UnmarshalFromBytes(data, &addr); err != nil {
@@ -436,7 +435,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 			p.log.Debugf("Failed to UnmarshalFromBytes err(%s)\n", err)
 			return err
 		}
-		err, nextHash, graphHash, objGraph := p.frame.ctx.GetObjGraph(flags == 1)
+		nextHash, graphHash, objGraph, err := p.frame.ctx.GetObjGraph(flags == 1)
 		if err != nil {
 			p.log.Debugf("Failed to getObjGraph err(%s)\n", err)
 			return err

@@ -3,6 +3,7 @@ package cli
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,17 +14,19 @@ import (
 	"path"
 	"reflect"
 	"runtime/pprof"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"syscall"
 
-	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/common/log"
 	"github.com/jroimartin/gocui"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+
+	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 )
 
 const (
@@ -185,6 +188,48 @@ func ValidateFlagsWithViper(vc *viper.Viper, fs *pflag.FlagSet, flagNames ...str
 	return nil
 }
 
+func GetStringMap(f *pflag.Flag) (map[string]interface{}, error) {
+	return stringToStringConv(f.Value.String())
+}
+
+func stringToStringConv(val string) (map[string]interface{}, error) {
+	if strings.HasPrefix(val, "{") {
+		out := make(map[string]interface{})
+		if err := json.Unmarshal([]byte(val), &out); err != nil {
+			return nil, err
+		}
+		return out, nil
+	}
+	if strings.HasPrefix(val, "[") {
+		val = strings.Trim(val, "[]")
+	}
+	// An empty string would cause an empty map
+	if len(val) == 0 {
+		return map[string]interface{}{}, nil
+	}
+	r := csv.NewReader(strings.NewReader(val))
+	ss, err := r.Read()
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]interface{}, len(ss))
+	for _, pair := range ss {
+		kv := strings.SplitN(pair, "=", 2)
+		if len(kv) != 2 {
+			return nil, fmt.Errorf("%s must be formatted as key=value", pair)
+		}
+		s := kv[1]
+		if iv, err := strconv.ParseInt(s, 0, 64); err == nil {
+			out[kv[0]] = iv
+		} else if fv, err := strconv.ParseFloat(s, 64); err == nil {
+			out[kv[0]] = fv
+		} else {
+			out[kv[0]] = s
+		}
+	}
+	return out, nil
+}
+
 func ViperDecodeOptJson(c *mapstructure.DecoderConfig) {
 	c.TagName = "json"
 	c.DecodeHook = mapstructure.ComposeDecodeHookFunc(
@@ -195,6 +240,18 @@ func ViperDecodeOptJson(c *mapstructure.DecoderConfig) {
 				} else if inputValType.Kind() == reflect.String && input != "" {
 					return ioutil.ReadFile(input.(string))
 				}
+			} else if inputValType.Kind() == reflect.String && outValType.Kind() == reflect.Map {
+				m, err := stringToStringConv(input.(string))
+				if outValType.Key().Kind() == reflect.String && outValType.Elem().Name() == "RawMessage" {
+					m2 := make(map[string]json.RawMessage)
+					for k, v := range m {
+						if s, ok := v.(string); ok {
+							m2[k] = json.RawMessage(s)
+						}
+					}
+					return m2, nil
+				}
+				return m, err
 			}
 			return input, nil
 		},

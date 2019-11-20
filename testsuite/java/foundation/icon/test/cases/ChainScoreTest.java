@@ -671,4 +671,36 @@ public class ChainScoreTest{
         }
         LOG.infoExiting();
     }
+
+    @ParameterizedTest(name = "setRoundLimitFactor {0}")
+    @EnumSource(TargetScore.class)
+    public void setRoundLimitFactor(TargetScore score) throws Exception {
+        LOG.infoEntering("setRoundLimitFactor");
+
+        int old = Utils.icxCall(iconService, Constants.CHAINSCORE_ADDRESS,
+                "getRoundLimitFactor", null)
+                .asInteger().intValue();
+
+        int target = 3;
+        RpcObject params = new RpcObject.Builder()
+                .put("factor", new RpcValue(BigInteger.valueOf(target)))
+                .build();
+
+        sendGovCallTx(score.addr, "setRoundLimitFactor", params);
+
+        if (score == TargetScore.TO_GOVSCORE) {
+            int factor = Utils.icxCall(iconService, Constants.CHAINSCORE_ADDRESS,
+                    "getRoundLimitFactor", null)
+                    .asInteger().intValue();
+
+            assertEquals(target, factor);
+
+            params = new RpcObject.Builder()
+                    .put("factor", new RpcValue(BigInteger.valueOf(old)))
+                    .build();
+            sendGovCallTx(score.addr, "setRoundLimitFactor", params);
+        }
+
+        LOG.infoExiting();
+    }
 }

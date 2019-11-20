@@ -2,7 +2,7 @@ ARG REPO_PY_DEPS=goloop/py-deps
 ARG TAG_PY_DEPS=latest
 FROM ${REPO_PY_DEPS}:${TAG_PY_DEPS}
 #[deprecated 'MAINTAINER']
-MAINTAINER t_arch@icon.foundation
+MAINTAINER t_arch@iconloop.com
 
 ARG GOLOOP_VERSION
 LABEL GOLOOP_VERSION="$GOLOOP_VERSION"

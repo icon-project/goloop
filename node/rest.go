@@ -77,9 +77,12 @@ type ChainConfig struct {
 	NormalTxPoolSize int    `json:"normalTxPool,omitempty"`
 	PatchTxPoolSize  int    `json:"patchTxPool,omitempty"`
 	MaxBlockTxBytes  int    `json:"maxBlockTxBytes,omitempty"`
+	NodeCache        string `json:"nodeCache,omitempty"`
 	Channel          string `json:"channel"`
 	SecureSuites     string `json:"secureSuites"`
 	SecureAeads      string `json:"secureAeads"`
+	DefWaitTimeout   int64  `json:"defaultWaitTimeout"`
+	MaxWaitTimeout   int64  `json:"maxWaitTimeout"`
 }
 
 type ChainImportParam struct {
@@ -139,9 +142,12 @@ func NewChainConfig(cfg *chain.Config) *ChainConfig {
 		NormalTxPoolSize: cfg.NormalTxPoolSize,
 		PatchTxPoolSize:  cfg.PatchTxPoolSize,
 		MaxBlockTxBytes:  cfg.MaxBlockTxBytes,
+		NodeCache:        cfg.NodeCache,
 		Channel:          cfg.Channel,
 		SecureSuites:     cfg.SecureSuites,
 		SecureAeads:      cfg.SecureAeads,
+		DefWaitTimeout:   cfg.DefWaitTimeout,
+		MaxWaitTimeout:   cfg.MaxWaitTimeout,
 	}
 	return v
 }

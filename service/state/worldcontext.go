@@ -185,7 +185,9 @@ func (si *systemStorageInfo) Update(wc *worldContext) bool {
 	tcount := stepTypes.Size()
 	for i := 0; i < tcount; i++ {
 		tname := stepTypes.Get(i).String()
-		stepCosts[tname] = stepCostDB.Get(tname).Int64()
+		if value := stepCostDB.Get(tname).Int64(); value != 0 {
+			stepCosts[tname] = value
+		}
 	}
 	si.stepCosts = stepCosts
 	si.stepCostInfo = nil
@@ -196,7 +198,9 @@ func (si *systemStorageInfo) Update(wc *worldContext) bool {
 	tcount = stepLimitTypes.Size()
 	for i := 0; i < tcount; i++ {
 		tname := stepLimitTypes.Get(i).String()
-		stepLimit[tname] = stepLimitDB.Get(tname).Int64()
+		if value := stepLimitDB.Get(tname).Int64(); value != 0 {
+			stepLimit[tname] = value
+		}
 	}
 	si.stepLimit = stepLimit
 

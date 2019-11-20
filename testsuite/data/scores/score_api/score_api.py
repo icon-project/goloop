@@ -1,6 +1,7 @@
 from iconservice import *
 
-TAG = 'HelloWorld'
+TAG = 'ScoreApi'
+
 
 class ScoreApi(IconScoreBase):
 
@@ -36,16 +37,6 @@ class ScoreApi(IconScoreBase):
     def externalPayableMethod(self) -> str:
         return "externalPayableMethod"
 
-    # @external
-    # @payable
-    # def externalPayableMethod(self, param1: int, param2: str) -> int:
-    #     return 10
-    #
-    # @external
-    # @payable
-    # def externalPayableMethod(self, param1: int) -> int:
-    #     return 10
-
     @external(readonly=False)
     def externalReadonlyFalseMethod(self) -> str:
         return "externalReadonlyFalseMethod"
@@ -80,11 +71,11 @@ class ScoreApi(IconScoreBase):
 
     @external(readonly=True)
     def return_dict(self) -> dict:
-        return {"1":"1"}
+        return {"1": "1"}
 
     @payable
     def fallback(self):
-        print("fallback")
+        Logger.debug("fallback", TAG)
 
     @eventlog(indexed=1)
     def eventlog_index1(self, param1: int, param2: str):

@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
 	"math/big"
 	"math/rand"
+	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
@@ -15,8 +17,12 @@ import (
 )
 
 const (
-	stepsForTokenTransfer = 1000
-	initialTokenBalance   = 10 * 1000 * 1000
+	stepLimitForTokenTransfer      = 100000
+	initialTokenBalanceOfUser      = 10 * 1000 * 1000
+	initialCoinBalanceOfTokenOwner = 10 * 1000 * 1000
+	tokenForTransfer               = 10
+
+	timeoutForTokenTransfer = 5 * time.Second
 )
 
 type TokenTransferMaker struct {
@@ -24,29 +30,47 @@ type TokenTransferMaker struct {
 	WalletCount int
 	SourcePath  string
 	Method      string
+	GOD         module.Wallet
+	Last        int64
 
 	owner    module.Wallet
 	wallets  []module.Wallet
 	contract module.Address
+	index    int64
 }
 
 var (
-	tokenInitialBalance = big.NewInt(initialTokenBalance)
-	tokenTransferAmount = big.NewInt(10)
+	tokenOwnerInitialBalance = big.NewInt(initialCoinBalanceOfTokenOwner)
+	tokenInitialBalance      = big.NewInt(initialTokenBalanceOfUser)
+	tokenValueForTransfer    = big.NewInt(tokenForTransfer)
 )
 
 func (m *TokenTransferMaker) Prepare(client *Client) error {
 	m.owner = wallet.New()
 
+	tr, err := makeCoinTransfer(m.NID, m.GOD, m.owner.Address(), tokenOwnerInitialBalance)
+	if err != nil {
+		return err
+	}
+	if r, err := client.SendTxAndGetResult(tr, timeoutForCoinTransfer); err != nil {
+		return err
+	} else {
+		if r.Status.Value != 1 {
+			return errors.Errorf("FailToFundingOwner(failre=%+v)", r.Failure)
+		}
+	}
+
 	deploy, err := makeDeploy(m.NID, m.owner, m.SourcePath,
 		map[string]interface{}{
-			"_initialSupply": fmt.Sprintf("0x%x", 1000),
+			"_name":          "MySampleToken",
+			"_symbol":        "MST",
 			"_decimals":      fmt.Sprintf("0x%x", 18),
+			"_initialSupply": fmt.Sprintf("0x%x", 1000),
 		})
 	if err != nil {
 		return err
 	}
-	r, err := client.SendTxAndGetResult(deploy, time.Second*3)
+	r, err := client.SendTxAndGetResult(deploy, timeoutForDeploy)
 	if err != nil {
 		js, _ := json.MarshalIndent(deploy, "", "  ")
 		log.Printf("Transaction FAIL : tx=%s", js)
@@ -74,24 +98,28 @@ func (m *TokenTransferMaker) Prepare(client *Client) error {
 	}
 
 	for _, tid := range tids {
-		r, err := client.GetTxResult(tid, time.Second*5)
+		r, err := client.GetTxResult(tid, timeoutForTokenTransfer)
 		if err != nil {
 			return err
 		}
 		if r.Status.Value != 1 {
-			return errors.Errorf("Fail to transfer initial balance")
+			return errors.Errorf("Fail to transfer initial balance %+v", r.Failure)
 		}
 	}
 	return nil
 }
 
 func (m *TokenTransferMaker) MakeOne() (interface{}, error) {
+	index := atomic.AddInt64(&m.index, 1)
+	if m.Last != 0 && index >= m.Last {
+		return nil, ErrEndOfTransaction
+	}
 	fromIndex := rand.Intn(m.WalletCount)
 	toIndex := (fromIndex + rand.Intn(m.WalletCount-1)) % m.WalletCount
 	from := m.wallets[fromIndex]
 	to := m.wallets[toIndex]
 
-	return makeTokenTransfer(m.NID, m.contract, m.Method, from, to.Address(), tokenTransferAmount)
+	return makeTokenTransfer(m.NID, m.contract, m.Method, from, to.Address(), tokenValueForTransfer)
 }
 
 func makeTokenTransfer(nid int64, contract module.Address, method string, from module.Wallet, to module.Address, value *big.Int) (interface{}, error) {
@@ -100,7 +128,7 @@ func makeTokenTransfer(nid int64, contract module.Address, method string, from m
 		"from":      from.Address(),
 		"to":        contract,
 		"nid":       fmt.Sprintf("0x%x", nid),
-		"stepLimit": fmt.Sprintf("0x%x", stepsForCoinTransfer),
+		"stepLimit": fmt.Sprintf("0x%x", stepLimitForTokenTransfer),
 		"timestamp": TimeStampNow(),
 		"dataType":  "call",
 		"data": map[string]interface{}{
@@ -108,6 +136,7 @@ func makeTokenTransfer(nid int64, contract module.Address, method string, from m
 			"params": map[string]interface{}{
 				"_to":    to,
 				"_value": fmt.Sprintf("0x%x", value),
+				"_data":  fmt.Sprintf("0x%s", hex.EncodeToString([]byte("Hello"))),
 			},
 		},
 	}

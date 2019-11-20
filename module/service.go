@@ -102,7 +102,7 @@ const (
 const (
 	DefaultRevision = Revision4
 	MaxRevision     = RevisionReserved - 1
-	LatestRevision  = Revision4
+	LatestRevision  = Revision5
 )
 
 func (s Status) String() string {
@@ -337,4 +337,10 @@ type ServiceManager interface {
 
 	// HasTransaction returns whether it has specified transaction in the pool
 	HasTransaction(id []byte) bool
+
+	// SendTransactionAndWait send transaction and return channel for result
+	SendTransactionAndWait(tx interface{}) ([]byte, <-chan interface{}, error)
+
+	// WaitTransactionResult return channel for result.
+	WaitTransactionResult(id []byte) (<-chan interface{}, error)
 }

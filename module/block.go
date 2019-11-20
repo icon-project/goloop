@@ -66,15 +66,15 @@ type BlockManager interface {
 	//	operation. canceler returns true and cb is not called if the
 	//	cancellation was successful. Proposed block can be Commited or
 	// 	Finalized.
-	Propose(parentID []byte, votes CommitVoteSet, cb func(BlockCandidate, error)) (canceler func() bool, err error)
+	Propose(parentID []byte, votes CommitVoteSet, cb func(BlockCandidate, error)) (canceler Canceler, err error)
 
 	//	Import creates a Block from blockBytes and verifies the block.
 	//	The result is asynchronously notified by cb. canceler cancels the
 	//	operation. canceler returns true and cb is not called if the
 	//	cancellation was successful. Imported block can be Commited or
 	//	Finalized.
-	Import(r io.Reader, flags int, cb func(BlockCandidate, error)) (canceler func() bool, err error)
-	ImportBlock(blk BlockData, flags int, cb func(BlockCandidate, error)) (canceler func() bool, err error)
+	Import(r io.Reader, flags int, cb func(BlockCandidate, error)) (canceler Canceler, err error)
+	ImportBlock(blk BlockData, flags int, cb func(BlockCandidate, error)) (canceler Canceler, err error)
 
 	Commit(BlockCandidate) error
 
@@ -89,6 +89,14 @@ type BlockManager interface {
 	// TimestampThreshold. If such a transaction is available now, the function
 	// returns false and callback cb is not called.
 	WaitForTransaction(parentID []byte, cb func()) bool
+
+	// SendAndWaitTransaction sends a transaction, and get a channel to
+	// to wait for the result of it.
+	SendTransactionAndWait(txi interface{}) (tid []byte, rc <-chan interface{}, err error)
+
+	// WaitTransactionResult check whether it knows about the transaction
+	// and wait for the result.
+	WaitTransactionResult(id []byte) (rc <-chan interface{}, err error)
 }
 
 type TransactionInfo interface {

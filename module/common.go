@@ -63,6 +63,10 @@ type Timestamper interface {
 	GetBlockTimestamp(h, ts int64) int64
 }
 
+type Canceler interface {
+	Cancel() bool
+}
+
 type TransactionGroup int
 
 const (

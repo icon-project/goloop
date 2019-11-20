@@ -424,6 +424,22 @@ var chainMethods = []*chainMethod{
 			scoreapi.Integer,
 		},
 	}, module.Revision5, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setRoundLimitFactor",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"factor", scoreapi.Integer, nil},
+		},
+		nil,
+	}, module.Revision5, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getRoundLimitFactor",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Integer,
+		},
+	}, module.Revision5, 0},
 }
 
 func (s *ChainScore) GetAPI() *scoreapi.Info {
@@ -1124,4 +1140,21 @@ func (s *ChainScore) Ex_getMembers() ([]interface{}, error) {
 		members[i] = db.Get(i).Address()
 	}
 	return members, nil
+}
+
+func (s *ChainScore) Ex_getRoundLimitFactor() (int64, error) {
+	as := s.cc.GetAccountState(state.SystemID)
+	return scoredb.NewVarDB(as, state.VarRoundLimitFactor).Int64(), nil
+}
+
+func (s *ChainScore) Ex_setRoundLimitFactor(f *common.HexInt) error {
+	if !s.fromGovernance() {
+		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
+	}
+	if f.Sign() < 0 {
+		return scoreresult.New(StatusIllegalArgument, "IllegalArgument")
+	}
+	as := s.cc.GetAccountState(state.SystemID)
+	factor := scoredb.NewVarDB(as, state.VarRoundLimitFactor)
+	return factor.Set(f)
 }

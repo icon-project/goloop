@@ -5,6 +5,7 @@ import (
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/trie"
+	"github.com/icon-project/goloop/common/trie/cache"
 )
 
 func NewImmutableForObject(db db.Database, h []byte, t reflect.Type) trie.ImmutableForObject {
@@ -27,7 +28,7 @@ func NewMutable(database db.Database, h []byte) trie.Mutable {
 	return NewMPTForBytes(database, h)
 }
 
-func MutableFromImmutable(immutable trie.Immutable) trie.Mutable {
+func NewMutableFromImmutable(immutable trie.Immutable) trie.Mutable {
 	return MPTFromImmutableForBytes(immutable)
 }
 
@@ -53,4 +54,14 @@ func (m *manager) NewMutable(h []byte) trie.Mutable {
 
 func NewManager(db db.Database) trie.Manager {
 	return &manager{db}
+}
+
+func SetCacheOfMutable(mutable trie.Mutable, cache *cache.NodeCache) {
+	m := mutable.(*mptForBytes)
+	m.cache = cache
+}
+
+func SetCacheOfMutableForObject(mutable trie.MutableForObject, cache *cache.NodeCache) {
+	m := mutable.(*mpt)
+	m.cache = cache
 }

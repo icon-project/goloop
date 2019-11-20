@@ -23,6 +23,8 @@ type Chain interface {
 	NormalTxPoolSize() int
 	PatchTxPoolSize() int
 	MaxBlockTxBytes() int
+	DefaultWaitTimeout() time.Duration
+	MaxWaitTimeout() time.Duration
 	Genesis() []byte
 	GetGenesisData(key []byte) ([]byte, error)
 	CommitVoteSetDecoder() CommitVoteSetDecoder

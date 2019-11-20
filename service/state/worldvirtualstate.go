@@ -49,6 +49,8 @@ type worldVirtualState struct {
 
 	accountStates map[string]*lockedAccountState
 	worldLock     int
+
+	nodeCacheEnabled bool
 }
 
 func (wvs *worldVirtualState) GetValidatorState() ValidatorState {
@@ -145,6 +147,7 @@ func (wvs *worldVirtualState) GetSnapshot() WorldSnapshot {
 
 	wvss := new(worldVirtualSnapshot)
 	wvss.origin = wvs
+	wvss.nodeCacheEnabled = wvs.nodeCacheEnabled
 
 	// If we have final snapshot, we can use it.
 	if wvs.committed != nil {
@@ -311,6 +314,7 @@ func (wvs *worldVirtualState) GetFuture(reqs []LockRequest) WorldVirtualState {
 	nwvs.waiter = sync.NewCond(&nwvs.mutex)
 	nwvs.base = wvs.committed
 	nwvs.parent = wvs
+	nwvs.nodeCacheEnabled = wvs.nodeCacheEnabled
 	applyLockRequests(nwvs, reqs)
 	return nwvs
 }
@@ -417,6 +421,14 @@ func (wvs *worldVirtualState) ClearCache() {
 	// So, we don't need to support this features.
 }
 
+func (wvs *worldVirtualState) EnableNodeCache() {
+	panic("EnableNodeCache() should not be called.")
+}
+
+func (wvs *worldVirtualState) NodeCacheEnabled() bool {
+	return wvs.nodeCacheEnabled
+}
+
 func (wvs *worldVirtualState) Ensure() {
 	wvs.mutex.Lock()
 	defer wvs.mutex.Unlock()
@@ -444,6 +456,7 @@ func NewWorldVirtualState(ws WorldState, reqs []LockRequest) WorldVirtualState {
 		nwvs.waiter = sync.NewCond(&nwvs.mutex)
 		applyLockRequests(nwvs, reqs)
 	}
+	nwvs.nodeCacheEnabled = ws.NodeCacheEnabled()
 	return nwvs
 }
 
@@ -451,6 +464,7 @@ type worldVirtualSnapshot struct {
 	origin           *worldVirtualState
 	base             WorldSnapshot
 	accountSnapshots map[string]AccountSnapshot
+	nodeCacheEnabled bool
 }
 
 func (wvss *worldVirtualSnapshot) GetAccountSnapshot(id []byte) AccountSnapshot {
@@ -474,6 +488,9 @@ func (wvss *worldVirtualSnapshot) realize() error {
 		ws, err := WorldStateFromSnapshot(wvss.base)
 		if err != nil {
 			return err
+		}
+		if wvss.nodeCacheEnabled {
+			ws.EnableNodeCache()
 		}
 		for id, ass := range wvss.accountSnapshots {
 			as := ws.GetAccountState([]byte(id))

@@ -260,7 +260,7 @@ class ServiceManagerProxy:
 
     def encode(self, o: Any) -> bytes:
         if o is None:
-            return bytes([])
+            return None
         if isinstance(o, str):
             return o.encode('utf-8')
         elif isinstance(o, bytes):
@@ -298,7 +298,7 @@ class ServiceManagerProxy:
 
     def encode_any(self, o: Any) -> Tuple[int, Any]:
         if o is None:
-            return TypeTag.NIL, b''
+            return TypeTag.NIL, None
         elif isinstance(o, dict):
             m = {}
             for k, v in o.items():
@@ -337,19 +337,24 @@ class ServiceManagerProxy:
         params = data[7]
         if isinstance(params, list):
             params = self.decode_any(params)
+        info = data[8]
+        if isinstance(info, list):
+            info = self.decode_any(info)
 
         try:
             self.__readonly_stack.append(self.__readonly)
             self.__readonly = is_query
             status, step_used, result = self.__invoke(
-                code, is_query, _from, _to, value, limit, method, params)
+                code, is_query, _from, _to, value, limit, method, params, info)
 
             self.__client.send(Message.RESULT, [
                 status,
                 self.encode(step_used),
                 self.encode_any(result)
             ])
-        except BaseException as e:
+        except Exception:
+            e_str = traceback.format_exc()
+            self.debug(f"Exception in INVOKE:\n{e_str}", TAG)
             self.__client.send(Message.RESULT, [
                 Status.SYSTEM_FAILURE,
                 self.encode(limit),
@@ -370,8 +375,8 @@ class ServiceManagerProxy:
             else:
                 self.__client.send(Message.GETAPI, [status, None])
         except Exception:
-            e_str = traceback.format_exec()
-            self.debug(f"Handle GETAPI catch exception={e_str}", TAG)
+            e_str = traceback.format_exc()
+            self.debug(f"Exception in GETAPI:\n{e_str}", TAG)
             self.__client.send(Message.GETAPI, [Status.SYSTEM_FAILURE, None])
 
     def loop(self):

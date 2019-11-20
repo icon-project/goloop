@@ -2,6 +2,7 @@ module github.com/icon-project/goloop
 
 require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190306092124-e2d15f34fcf9 // indirect
+	github.com/bshuster-repo/logrus-logstash-hook v0.4.1
 	github.com/dgraph-io/badger v1.5.4
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dgryski/go-farm v0.0.0-20190416075124-e1214b5e05dc // indirect
@@ -14,7 +15,6 @@ require (
 	github.com/gorilla/websocket v1.4.0
 	github.com/gosuri/uitable v0.0.0-20160404203958-36ee7e946282
 	github.com/haltingstate/secp256k1-go v0.0.0-20151224084235-572209b26df6
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/josharian/impl v0.0.0-20180228163738-3d0f908298c4 // indirect
 	github.com/jroimartin/gocui v0.4.0
 	github.com/labstack/echo/v4 v4.0.0
@@ -25,7 +25,7 @@ require (
 	github.com/philhofer/fwd v1.0.0 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/sirupsen/logrus v1.4.2
-	github.com/spf13/cobra v0.0.3
+	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.3
 	github.com/spf13/viper v1.3.2
 	github.com/stretchr/testify v1.3.0

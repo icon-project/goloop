@@ -19,9 +19,9 @@ public class MultiSigWalletScore extends Score {
     public static MultiSigWalletScore mustDeploy(IconService service, Env.Chain chain, Wallet wallet,
                                                  Address[] walletOwners, int required)
             throws IOException, TransactionFailureException, ResultTimeoutException {
-        StringBuffer buf = new StringBuffer();
-        for (int i = 0; i < walletOwners.length; i++) {
-            buf.append(walletOwners[i].toString()).append(",");
+        StringBuilder buf = new StringBuilder();
+        for (Address walletOwner : walletOwners) {
+            buf.append(walletOwner.toString()).append(",");
         }
         String str = buf.substring(0, buf.length() - 1);
         RpcObject params = new RpcObject.Builder()

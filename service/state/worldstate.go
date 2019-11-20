@@ -10,6 +10,8 @@ import (
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
+	"github.com/icon-project/goloop/common/trie/cache"
+	"github.com/icon-project/goloop/common/trie/ompt"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 )
 
@@ -31,6 +33,8 @@ type WorldState interface {
 	GetValidatorState() ValidatorState
 	Reset(snapshot WorldSnapshot) error
 	ClearCache()
+	EnableNodeCache()
+	NodeCacheEnabled() bool
 }
 
 type worldSnapshotImpl struct {
@@ -81,6 +85,8 @@ type worldStateImpl struct {
 	accounts        trie.MutableForObject
 	mutableAccounts map[string]AccountState
 	validators      ValidatorState
+
+	nodeCacheEnabled bool
 }
 
 func (ws *worldStateImpl) GetValidatorState() ValidatorState {
@@ -139,7 +145,11 @@ func (ws *worldStateImpl) GetAccountState(id []byte) AccountState {
 	if obj != nil {
 		as = obj.(*accountSnapshotImpl)
 	}
-	ac := newAccountState(ws.database, as)
+	var cacheID []byte
+	if ws.nodeCacheEnabled {
+		cacheID = id
+	}
+	ac := newAccountState(ws.database, as, cacheID)
 	ws.mutableAccounts[ids] = ac
 	return ac
 }
@@ -163,6 +173,17 @@ func (ws *worldStateImpl) ClearCache() {
 	}
 	ws.accounts.ClearCache()
 	ws.mutableAccounts = make(map[string]AccountState)
+}
+
+func (ws *worldStateImpl) EnableNodeCache() {
+	ws.nodeCacheEnabled = true
+	if cache := cache.WorldNodeCacheOf(ws.database); cache != nil {
+		ompt.SetCacheOfMutableForObject(ws.accounts, cache)
+	}
+}
+
+func (ws *worldStateImpl) NodeCacheEnabled() bool {
+	return ws.nodeCacheEnabled
 }
 
 func (ws *worldStateImpl) GetAccountSnapshot(id []byte) AccountSnapshot {

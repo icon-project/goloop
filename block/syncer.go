@@ -21,13 +21,8 @@ func (s *syncer) callLaterInLock(cb func()) {
 }
 
 func (s *syncer) end() {
-	lcbs := s.lcbs
-	s.lcbs = nil
-	for _, cb := range lcbs {
-		cb()
-	}
 	for s.lcbs != nil {
-		lcbs = s.lcbs
+		lcbs := s.lcbs
 		s.lcbs = nil
 		for _, cb := range lcbs {
 			cb()
@@ -36,9 +31,7 @@ func (s *syncer) end() {
 	cbs := s.cbs
 	s.cbs = nil
 	s.mutex.Unlock()
-	go func() {
-		for _, cb := range cbs {
-			cb()
-		}
-	}()
+	for _, cb := range cbs {
+		cb()
+	}
 }

@@ -13,6 +13,7 @@ const (
 	NoActiveContractError
 	NotContractAddressError
 	InvalidPatchDataError
+	CommittedTransactionError
 )
 
 var (
@@ -21,4 +22,5 @@ var (
 	ErrExpiredTransaction      = errors.NewBase(ExpiredTransactionError, "ExpiredTransaction")
 	ErrTransitionInterrupted   = errors.NewBase(TransitionInterruptedError, "TransitionInterrupted")
 	ErrInvalidTransaction      = errors.NewBase(InvalidTransactionError, "InvalidTransaction")
+	ErrCommittedTransaction    = errors.NewBase(CommittedTransactionError, "CommittedTransaction")
 )

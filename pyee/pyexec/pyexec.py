@@ -116,14 +116,13 @@ class PyExecEngine(object):
         Logger.load_config(config, ProxyStreamHandler(self.__proxy))
 
     def invoke_handler(self, code: str, is_query: bool, _from: 'Address', to: 'Address',
-                       value: int, limit: int, method: str, params: Any) -> Tuple[int, int, Any]:
-        Logger.debug(f'[invoke_handle] code={repr(code)},is_query={is_query},from={_from},to={to},' +
-                     f'value={value},limit={limit},method={repr(method)},params={params}', TAG)
+                       value: int, limit: int, method: str, params: Any, info: Any) -> Tuple[int, int, Any]:
+        if Logger.isDebugEnabled():
+            Logger.debug(f'[invoke_handle] code={repr(code)},is_query={is_query},from={_from},to={to},' +
+                         f'value={value},limit={limit},method={repr(method)},params={params},info={info}', TAG)
         context = IconScoreContext(IconScoreContextType.QUERY if is_query
                                    else IconScoreContextType.INVOKE)
         context.set_invoke_params(code, to, method, params)
-        # Get transaction info and set the context
-        info = self.get_info()
         context.tx = Transaction(tx_hash=info.get(Info.TX_HASH),
                                  index=info.get(Info.TX_INDEX),
                                  origin=info.get(Info.TX_FROM),
@@ -136,12 +135,13 @@ class PyExecEngine(object):
         context.step_counter = IconScoreStepCounter(info.get(Info.STEP_COSTS),
                                                     limit)
         context.revision = info.get(Info.REVISION)
-        Logger.debug(f'[Transaction] {context.tx}', TAG)
-        Logger.debug(f'[Block] {context.block}', TAG)
-        Logger.debug(f'[Message] {context.msg}', TAG)
-        Logger.debug(f'[Owner] {context.owner}', TAG)
-        Logger.debug(f'[StepCounter] {context.step_counter}', TAG)
-        Logger.debug(f'[Revision] {context.revision}', TAG)
+        if Logger.isDebugEnabled():
+            Logger.debug(f'[Transaction] {context.tx}', TAG)
+            Logger.debug(f'[Block] {context.block}', TAG)
+            Logger.debug(f'[Message] {context.msg}', TAG)
+            Logger.debug(f'[Owner] {context.owner}', TAG)
+            Logger.debug(f'[StepCounter] {context.step_counter}', TAG)
+            Logger.debug(f'[Revision] {context.revision}', TAG)
         return ServiceEngine.invoke(context)
 
     def api_handler(self, code: str) -> Tuple[int, APIInfo]:
@@ -191,7 +191,7 @@ class PyExecEngine(object):
         return ret
 
     def send_event(self, indexed: List[Any], data: List[Any]):
-        Logger.debug(f"send_event({indexed},{data})", TAG)
+        Logger.debug(f"send_event({indexed}, {data})", TAG)
         self.__proxy.send_event(indexed, data)
 
     def process(self):

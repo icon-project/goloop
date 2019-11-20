@@ -1,10 +1,10 @@
 package mpt
 
 import (
-	"io"
 	"reflect"
 
 	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/trie"
 )
 
@@ -56,10 +56,14 @@ func encodeList(data ...[]byte) []byte {
 	return append(makePrefix(len(r), 0xc0), r...)
 }
 
-// TODO: have to modify. ethereum code
+var (
+	errRLPNotEnoughBytes  = errors.New("RLP:Not enough bytes to decode")
+	errRLPInvalidEncoding = errors.New("RLP:Invalid encoding")
+)
+
 func readSize(b []byte, slen byte) (uint64, error) {
 	if int(slen) > len(b) {
-		return 0, io.ErrUnexpectedEOF
+		return 0, errRLPInvalidEncoding
 	}
 	var s uint64
 	switch slen {
@@ -81,15 +85,14 @@ func readSize(b []byte, slen byte) (uint64, error) {
 		s = uint64(b[0])<<56 | uint64(b[1])<<48 | uint64(b[2])<<40 | uint64(b[3])<<32 | uint64(b[4])<<24 | uint64(b[5])<<16 | uint64(b[6])<<8 | uint64(b[7])
 	}
 	if s < 56 || b[0] == 0 {
-		return 0, nil // TODO: define proper error
+		return 0, errRLPInvalidEncoding
 	}
 	return s, nil
 }
 
-// TODO: have to modify. ethereum code
 func getContentSize(buf []byte) (uint64, uint64, error) {
 	if len(buf) == 0 {
-		return 0, 0, nil // TODO: define proper error
+		return 0, 0, errRLPNotEnoughBytes
 	}
 	b := buf[0]
 	var tagsize uint64
@@ -102,9 +105,8 @@ func getContentSize(buf []byte) (uint64, uint64, error) {
 	case b < 0xB8:
 		tagsize = 1
 		contentsize = uint64(b - 0x80)
-		// Reject strings that should've been single bytes.
 		if contentsize == 1 && len(buf) > 1 && buf[1] < 128 {
-			return 0, 0, nil // TODO: define proper error
+			return 0, 0, errRLPInvalidEncoding
 		}
 	case b < 0xC0:
 		tagsize = uint64(b-0xB7) + 1
@@ -119,18 +121,14 @@ func getContentSize(buf []byte) (uint64, uint64, error) {
 	if err != nil {
 		return 0, 0, err
 	}
-	// Reject values larger than the input slice.
+
 	if contentsize > uint64(len(buf))-tagsize {
-		return 0, 0, nil
+		return 0, 0, errRLPNotEnoughBytes
 	}
 	return tagsize, contentsize, err
 }
 
 func decodeValue(buf []byte, t reflect.Type, db db.Database) trie.Object {
-	if t == nil || len(buf) == 0 {
-		return nil
-	}
-
 	if t == reflect.TypeOf([]byte{}) {
 		return byteValue(buf)
 	}
@@ -153,50 +151,29 @@ func decodeBranch(buf []byte, t reflect.Type, db db.Database) node {
 	// child is leaf, hash or nil(128)
 	newBranch := &branch{nodeBase: nodeBase{state: committedNode, serializedValue: buf}}
 	for i, valueIndex := tagSize, 0; i < tagSize+contentSize; valueIndex++ {
-		// if list, call decoderLeaf
-		// if single byte
-		b := buf[i]
-		if b < 0x80 { // hash or value if valueIndex is 16
-			if valueIndex == 16 {
-				newBranch.value = decodeValue(buf[i:], t, db)
+		tagSize, contentSize, _ := getContentSize(buf[i:])
+		buf := buf[i:]
+		if valueIndex == 16 {
+			// value of branch is not hashed
+			if contentSize == 0 {
+				newBranch.value = nil
 			} else {
-				newBranch.nibbles[valueIndex] = nil
-			}
-			i++
-		} else if b < 0xb8 {
-			tagSize, contentSize, _ := getContentSize(buf[i:])
-			buf := buf[i:]
-			if valueIndex == 16 {
-				// value of branch is not hashed
 				newBranch.value = decodeValue(buf[tagSize:tagSize+contentSize], t, db)
+			}
+		} else {
+			// hash node
+			if contentSize == 0 {
+				newBranch.nibbles[valueIndex] = nil
 			} else {
-				// hash node
-				if contentSize == 0 {
-					newBranch.nibbles[valueIndex] = nil
+				if hashableSize == contentSize {
+					newBranch.nibbles[valueIndex] = hash(buf[tagSize : tagSize+contentSize])
 				} else {
-					if hashableSize == contentSize {
-						newBranch.nibbles[valueIndex] = hash(buf[tagSize : tagSize+contentSize])
-					} else {
-						newBranch.nibbles[valueIndex] = deserialize(buf[tagSize:tagSize+contentSize], t, db)
-					}
+					newBranch.nibbles[valueIndex] = deserialize(buf[tagSize:tagSize+contentSize], t, db)
 				}
 			}
-
-			i += tagSize + contentSize
-		} else if b < 0xf8 {
-			tagSize, contentSize, _ := getContentSize(buf[i:])
-			if valueIndex == 16 {
-				newBranch.value = decodeValue(buf[i+tagSize:], t, db)
-			} else {
-				newBranch.nibbles[valueIndex] = deserialize(buf[i:i+tagSize+contentSize], t, db)
-			}
-			i += tagSize + contentSize
-		} else {
-			tagSize = uint64(b-0xF7) + 1
-			tagSize, contentSize, _ = getContentSize(buf[i:])
-			newBranch.nibbles[valueIndex] = deserialize(buf[i:i+tagSize+contentSize], t, db)
-			i += tagSize + contentSize
 		}
+
+		i += tagSize + contentSize
 	}
 	return newBranch
 }
@@ -242,7 +219,6 @@ func deserialize(b []byte, t reflect.Type, db db.Database) node {
 	var keyBuf []byte
 	var valBuf []byte
 
-	//noHashedBranch := false
 	for i := 0; len(list) > 0; i++ {
 		// 1. list(0xC0) exists
 		// 2. loop count is bigger than 2
@@ -260,7 +236,6 @@ func deserialize(b []byte, t reflect.Type, db db.Database) node {
 		} else {
 			if 0xC0 <= list[0] {
 				valBuf = list[:tagsize+size]
-				//noHashedBranch = true
 			} else {
 				valBuf = list[tagsize : tagsize+size]
 			}

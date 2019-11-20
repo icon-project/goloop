@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/icon-project/goloop/block"
 	"github.com/icon-project/goloop/chain/gs"
@@ -17,6 +18,7 @@ import (
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/common/trie/cache"
 	"github.com/icon-project/goloop/consensus"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
@@ -32,6 +34,17 @@ const (
 	ConfigDefaultMaxBlockTxBytes  = 1024 * 1024
 )
 
+const (
+	NodeCacheNone    = "none"
+	NodeCacheSmall   = "small"
+	NodeCacheLarge   = "large"
+	NodeCacheDefault = NodeCacheNone
+)
+
+var NodeCacheOptions = [...]string{
+	NodeCacheNone, NodeCacheSmall, NodeCacheLarge,
+}
+
 type Config struct {
 	//fixed
 	NID    int    `json:"nid"`
@@ -44,11 +57,14 @@ type Config struct {
 	NormalTxPoolSize int    `json:"normal_tx_pool,omitempty"`
 	PatchTxPoolSize  int    `json:"patch_tx_pool,omitempty"`
 	MaxBlockTxBytes  int    `json:"max_block_tx_bytes,omitempty"`
+	NodeCache        string `json:"node_cache,omitempty"`
 
 	//runtime
-	Channel      string `json:"channel"`
-	SecureSuites string `json:"secureSuites"`
-	SecureAeads  string `json:"secureAeads"`
+	Channel        string `json:"channel"`
+	SecureSuites   string `json:"secureSuites"`
+	SecureAeads    string `json:"secureAeads"`
+	DefWaitTimeout int64  `json:"waitTimeout"`
+	MaxWaitTimeout int64  `json:"maxTimeout"`
 
 	GenesisStorage gs.GenesisStorage `json:"-"`
 	Genesis        json.RawMessage   `json:"genesis"`
@@ -109,6 +125,7 @@ const (
 	DefaultDBDir       = "db"
 	DefaultWALDir      = "wal"
 	DefaultContractDir = "contract"
+	DefaultCacheDir    = "cache"
 )
 
 const (
@@ -269,6 +286,23 @@ func (c *singleChain) MaxBlockTxBytes() int {
 	return ConfigDefaultMaxBlockTxBytes
 }
 
+func (c *singleChain) DefaultWaitTimeout() time.Duration {
+	if c.cfg.DefWaitTimeout > 0 {
+		return time.Duration(c.cfg.DefWaitTimeout) * time.Millisecond
+	}
+	return 0
+}
+
+func (c *singleChain) MaxWaitTimeout() time.Duration {
+	if c.cfg.DefWaitTimeout > 0 {
+		if c.cfg.MaxWaitTimeout > c.cfg.DefWaitTimeout {
+			return time.Duration(c.cfg.MaxWaitTimeout) * time.Millisecond
+		}
+		return time.Duration(c.cfg.DefWaitTimeout) * time.Millisecond
+	}
+	return 0
+}
+
 func (c *singleChain) State() string {
 	return c._state().String()
 }
@@ -329,7 +363,28 @@ func (c *singleChain) _openDatabase(chainDir string) error {
 		return errors.Wrapf(err,
 			"fail to open database dir=%s type=%s name=%s", DBDir, c.cfg.DBType, DBName)
 	} else {
-		c.database = cdb
+		if len(c.cfg.NodeCache) == 0 {
+			c.cfg.NodeCache = NodeCacheDefault
+		}
+
+		var mLevel, fLevel int
+		switch c.cfg.NodeCache {
+		case NodeCacheNone:
+		case NodeCacheSmall:
+			mLevel = 5
+		case NodeCacheLarge:
+			mLevel = 5
+			fLevel = 1
+		default:
+			cdb.Close()
+			return errors.Errorf("Unknown cache strategy:%s", c.cfg.NodeCache)
+		}
+		if mLevel > 0 || fLevel > 0 {
+			cacheDir := path.Join(chainDir, DefaultCacheDir)
+			c.database = cache.AttachManager(cdb, cacheDir, mLevel, fLevel)
+		} else {
+			c.database = cdb
+		}
 	}
 	return nil
 }
@@ -616,6 +671,10 @@ func (c *singleChain) _reset() error {
 	if err := os.RemoveAll(DBDir); err != nil {
 		return err
 	}
+	CacheDir := path.Join(chainDir, DefaultCacheDir)
+	if err := os.RemoveAll(CacheDir); err != nil {
+		return err
+	}
 
 	if err := c._openDatabase(chainDir); err != nil {
 		return err
@@ -678,4 +737,13 @@ func NewChain(
 		metricCtx: metric.GetMetricContextByNID(cfg.NID),
 	}
 	return c
+}
+
+func IsNodeCacheOption(s string) bool {
+	for _, k := range NodeCacheOptions {
+		if k == s {
+			return true
+		}
+	}
+	return false
 }

@@ -9,10 +9,18 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 
 	"github.com/icon-project/goloop/module"
+)
+
+const (
+	stepLimitForDeploy = 1000000
+
+	timeoutForDeploy = 5 * time.Second
 )
 
 func addDirectoryToZip(zipWriter *zip.Writer, base, uri string) error {
@@ -64,22 +72,34 @@ func zipDirectory(fd io.Writer, p string) error {
 }
 
 func makeDeploy(nid int64, from module.Wallet, src string, params interface{}) (interface{}, error) {
-	buf := bytes.NewBuffer(nil)
-	if err := zipDirectory(buf, src); err != nil {
-		return nil, err
+	contentType := ""
+	content := ""
+	if strings.HasSuffix(src, ".jar") {
+		contentType = "application/java"
+		data, err := ioutil.ReadFile(src)
+		if err != nil {
+			return nil, err
+		}
+		content = "0x" + hex.EncodeToString(data)
+	} else {
+		contentType = "application/zip"
+		buf := bytes.NewBuffer(nil)
+		if err := zipDirectory(buf, src); err != nil {
+			return nil, err
+		}
+		content = "0x" + hex.EncodeToString(buf.Bytes())
 	}
-	content := "0x" + hex.EncodeToString(buf.Bytes())
 
 	tx := map[string]interface{}{
 		"version":   "0x3",
 		"from":      from.Address(),
 		"to":        "cx0000000000000000000000000000000000000000",
 		"nid":       fmt.Sprintf("0x%x", nid),
-		"stepLimit": fmt.Sprintf("0x%x", stepsForTokenTransfer),
+		"stepLimit": fmt.Sprintf("0x%x", stepLimitForDeploy),
 		"timestamp": TimeStampNow(),
 		"dataType":  "deploy",
 		"data": map[string]interface{}{
-			"contentType": "application/zip",
+			"contentType": contentType,
 			"content":     content,
 			"params":      params,
 		},

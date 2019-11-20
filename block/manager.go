@@ -8,6 +8,7 @@ import (
 
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/txresult"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -206,7 +207,7 @@ func (m *manager) removeNodeExcept(bn *bnode, except *bnode) {
 func (t *task) cb(block module.BlockCandidate, err error) {
 	cb := t._cb
 	t.manager.syncer.callLater(func() {
-		cb(block, err)
+		go cb(block, err)
 	})
 }
 
@@ -259,7 +260,10 @@ func (it *importTask) stop() {
 	it.state = stopped
 }
 
-func (it *importTask) cancel() bool {
+func (it *importTask) Cancel() bool {
+	it.manager.syncer.begin()
+	defer it.manager.syncer.end()
+
 	switch it.state {
 	case executingIn:
 		it.stop()
@@ -413,7 +417,10 @@ func (pt *proposeTask) stop() {
 	pt.state = stopped
 }
 
-func (pt *proposeTask) cancel() bool {
+func (pt *proposeTask) Cancel() bool {
+	pt.manager.syncer.begin()
+	defer pt.manager.syncer.end()
+
 	switch pt.state {
 	case executingIn:
 		pt.stop()
@@ -618,7 +625,7 @@ func (m *manager) Import(
 	r io.Reader,
 	flags int,
 	cb func(module.BlockCandidate, error),
-) (func() bool, error) {
+) (module.Canceler, error) {
 	m.syncer.begin()
 	defer m.syncer.end()
 
@@ -632,18 +639,14 @@ func (m *manager) Import(
 	if err != nil {
 		return nil, err
 	}
-	return func() bool {
-		m.syncer.begin()
-		defer m.syncer.end()
-		return it.cancel()
-	}, nil
+	return it, nil
 }
 
 func (m *manager) ImportBlock(
 	block module.BlockData,
 	flags int,
 	cb func(module.BlockCandidate, error),
-) (func() bool, error) {
+) (module.Canceler, error) {
 	m.syncer.begin()
 	defer m.syncer.end()
 
@@ -653,11 +656,7 @@ func (m *manager) ImportBlock(
 	if err != nil {
 		return nil, err
 	}
-	return func() bool {
-		m.syncer.begin()
-		defer m.syncer.end()
-		return it.cancel()
-	}, nil
+	return it, nil
 }
 
 type channelingCB struct {
@@ -749,7 +748,7 @@ func (m *manager) Propose(
 	parentID []byte,
 	votes module.CommitVoteSet,
 	cb func(module.BlockCandidate, error),
-) (canceler func() bool, err error) {
+) (canceler module.Canceler, err error) {
 	m.syncer.begin()
 	defer m.syncer.end()
 
@@ -759,12 +758,7 @@ func (m *manager) Propose(
 	if err != nil {
 		return nil, err
 	}
-	return func() bool {
-		m.syncer.begin()
-		defer m.syncer.end()
-
-		return pt.cancel()
-	}, nil
+	return pt, nil
 }
 
 func (m *manager) Commit(block module.BlockCandidate) error {
@@ -1024,13 +1018,12 @@ func (m *manager) newBlockDataFromReader(r io.Reader) (module.BlockData, error) 
 }
 
 type transactionInfo struct {
-	_sm      module.ServiceManager
 	_txID    []byte
 	_txBlock module.Block
 	_index   int
 	_group   module.TransactionGroup
 	_mtr     module.Transaction
-	_rBlock  module.Block
+	_rct     module.Receipt
 }
 
 func (txInfo *transactionInfo) Block() module.Block {
@@ -1050,17 +1043,8 @@ func (txInfo *transactionInfo) Transaction() module.Transaction {
 }
 
 func (txInfo *transactionInfo) GetReceipt() (module.Receipt, error) {
-	rblock := txInfo._rBlock
-	if rblock != nil {
-		rl, err := txInfo._sm.ReceiptListFromResult(rblock.Result(), txInfo._group)
-		if err != nil {
-			return nil, err
-		}
-		if rct, err := rl.Get(int(txInfo._index)); err == nil {
-			return rct, nil
-		} else {
-			return nil, err
-		}
+	if txInfo._rct != nil {
+		return txInfo._rct, nil
 	}
 	return nil, ErrResultNotFinalized
 }
@@ -1112,15 +1096,108 @@ func (m *manager) getTransactionInfo(id []byte) (module.TransactionInfo, error) 
 	} else {
 		rblock = block
 	}
+	var rct module.Receipt
+	if rblock != nil {
+		rl, err := m.sm.ReceiptListFromResult(
+			rblock.Result(), loc.TransactionGroup)
+		if err == nil {
+			rct, _ = rl.Get(loc.IndexInGroup)
+		}
+	}
 	return &transactionInfo{
-		_sm:      m.sm,
 		_txID:    id,
 		_txBlock: block,
 		_index:   loc.IndexInGroup,
 		_group:   loc.TransactionGroup,
 		_mtr:     mtr,
-		_rBlock:  rblock,
+		_rct:     rct,
 	}, nil
+}
+
+func (m *manager) getTransactionLocator(id []byte) (*transactionLocator, error) {
+	tlb, err := m.bucketFor(db.TransactionLocatorByHash)
+	if err != nil {
+		return nil, err
+	}
+	loc := new(transactionLocator)
+	err = tlb.get(raw(id), loc)
+	if err != nil {
+		return nil, errors.NotFoundError.New("Not found")
+	}
+	return loc, nil
+}
+
+func (m *manager) SendTransactionAndWait(txi interface{}) ([]byte, <-chan interface{}, error) {
+	m.syncer.begin()
+	defer m.syncer.end()
+
+	id, rc, err := m.sm.SendTransactionAndWait(txi)
+	if err == nil {
+		return id, rc, nil
+	}
+
+	if err != service.ErrCommittedTransaction {
+		return nil, nil, err
+	}
+
+	c, err := m.waitTransactionResult(id)
+	return id, c, err
+}
+
+func (m *manager) WaitTransactionResult(id []byte) (<-chan interface{}, error) {
+	m.syncer.begin()
+	defer m.syncer.end()
+
+	ch, err := m.sm.WaitTransactionResult(id)
+	if err == nil {
+		return ch, nil
+	}
+	if err != service.ErrCommittedTransaction {
+		return nil, err
+	}
+	return m.waitTransactionResult(id)
+}
+
+func (m *manager) waitTransactionResult(id []byte) (<-chan interface{}, error) {
+	tlb, err := m.bucketFor(db.TransactionLocatorByHash)
+	if err != nil {
+		return nil, err
+	}
+	loc := new(transactionLocator)
+	err = tlb.get(raw(id), loc)
+	if err != nil {
+		return nil, errors.NotFoundError.Wrap(err, "Not found")
+	}
+	var rBlockHeight int64
+	if loc.TransactionGroup == module.TransactionGroupNormal {
+		rBlockHeight = loc.BlockHeight + 1
+	} else {
+		rBlockHeight = loc.BlockHeight
+	}
+
+	fc := make(chan interface{}, 1)
+	if rBlockHeight > m.finalized.block.Height() {
+		m.finalizationCBs = append(m.finalizationCBs, func(blk module.Block) bool {
+			if blk.Height() == rBlockHeight {
+				if info, err := m.getTransactionInfo(id); err != nil {
+					fc <- err
+				} else {
+					fc <- info
+				}
+				return true
+			}
+			return false
+		})
+		return fc, nil
+	}
+	ti, err := m.getTransactionInfo(id)
+	if err != nil {
+		fc <- err
+	} else {
+		fc <- ti
+	}
+	close(fc)
+	return fc, nil
 }
 
 func (m *manager) GetBlockByHeight(height int64) (module.Block, error) {

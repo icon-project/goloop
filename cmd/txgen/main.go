@@ -21,7 +21,8 @@ func main() {
 	var methodName string
 	var params map[string]string
 	var installParams map[string]string
-	var index int64
+	var index, last int64
+	var waitTimeout int64
 
 	cmd := &cobra.Command{
 		Use: fmt.Sprintf("%s [urls]", os.Args[0]),
@@ -38,6 +39,8 @@ func main() {
 	flags.StringToStringVar(&params, "param", nil, "Parameters for the call")
 	flags.StringToStringVar(&installParams, "installParam", make(map[string]string), "Install parameters")
 	flags.Int64VarP(&index, "index", "i", 0, "Initial index value to be used for generating transaction")
+	flags.Int64VarP(&last, "last", "l", 0, "Last index vlaue to be used for generating transaction")
+	flags.Int64Var(&waitTimeout, "wait", 0, "Wait for specific time (in ms) for each TX(enable to use sendAndWait)")
 
 	cmd.Run = func(cmd *cobra.Command, urls []string) {
 		if len(urls) == 0 {
@@ -66,8 +69,9 @@ func main() {
 				InstallParams: installParams,
 				Method:        methodName,
 				CallParams:    params,
-				god:           godWallet,
-				index:         index,
+				GOD:           godWallet,
+				Index:         index,
+				Last:          last,
 			}
 		} else if len(scorePath) > 0 {
 			maker = &TokenTransferMaker{
@@ -75,6 +79,8 @@ func main() {
 				WalletCount: walletCount,
 				SourcePath:  scorePath,
 				Method:      methodName,
+				GOD:         godWallet,
+				Last:        last,
 			}
 		} else {
 			maker = &CoinTransferMaker{
@@ -84,7 +90,7 @@ func main() {
 			}
 		}
 
-		ctx := NewContext(concurrent, int64(tps), maker)
+		ctx := NewContext(concurrent, int64(tps), maker, waitTimeout)
 		ctx.Run(urls)
 	}
 

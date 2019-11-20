@@ -5,8 +5,8 @@ import java.util.Stack;
 
 public class Log {
     private static final String[] PREFIX_LEVELS = {null, "[S]", "[W]", null, null};
-    private static final String PREFIX_STEP_IN = "-->";
-    private static final String PREFIX_STEP_OUT = "<--";
+    private static final String PREFIX_STEP_IN = "--> ";
+    private static final String PREFIX_STEP_OUT = "<-- ";
     private static final String DEPTH_STRING = "   ";
 
     private static final int LEVEL_START = 0;
@@ -53,8 +53,7 @@ public class Log {
         if (msg == null) {
             msg = "";
         }
-
-        StringBuffer buf = new StringBuffer(5 + taskName.length() + msg.length());
+        StringBuilder buf = new StringBuilder(5 + taskName.length() + msg.length());
         buf.append(PREFIX_STEP_IN).append(taskName);
         if (msg.length() > 0) {
             buf.append(": ").append(msg);
@@ -73,7 +72,7 @@ public class Log {
         }
         try {
             String taskName = frames.pop();
-            StringBuffer buf = new StringBuffer(5 + taskName.length() + msg.length());
+            StringBuilder buf = new StringBuilder(5 + taskName.length() + msg.length());
             buf.append(PREFIX_STEP_OUT).append(taskName);
             if (msg.length() > 0) {
                 buf.append(": ").append(msg);
@@ -95,7 +94,7 @@ public class Log {
     public void log(int level, String msg) {
         if (msg != null && isLoggable(level)) {
             if (PREFIX_LEVELS[level] != null || !frames.empty()) {
-                StringBuffer buf = new StringBuffer(msg.length() + frames.size() * 3 + 3);
+                StringBuilder buf = new StringBuilder(msg.length() + frames.size() * 3 + 3);
                 for (int i = frames.size(); i > 0; i--) {
                     buf.append(DEPTH_STRING);
                 }

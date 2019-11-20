@@ -4,21 +4,22 @@ import (
 	"bytes"
 	"math/big"
 
-	"github.com/icon-project/goloop/common/log"
-
-	"github.com/icon-project/goloop/service/scoreresult"
+	"golang.org/x/crypto/sha3"
 	"gopkg.in/vmihailenco/msgpack.v4"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
+	"github.com/icon-project/goloop/common/trie/cache"
+	"github.com/icon-project/goloop/common/trie/ompt"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreapi"
-	"golang.org/x/crypto/sha3"
+	"github.com/icon-project/goloop/service/scoreresult"
 )
 
 const (
@@ -46,7 +47,7 @@ type AccountSnapshot interface {
 	IsBlocked() bool
 	ContractOwner() module.Address
 
-	GetObjGraph(flags bool) (error, int, []byte, []byte)
+	GetObjGraph(flags bool) (int, []byte, []byte, error)
 }
 
 // AccountState represents mutable account state.
@@ -82,7 +83,7 @@ type AccountState interface {
 	IsBlocked() bool
 	ContractOwner() module.Address
 
-	GetObjGraph(flags bool) (error, int, []byte, []byte)
+	GetObjGraph(flags bool) (int, []byte, []byte, error)
 	SetObjGraph(flags bool, nextHash int, objGraph []byte) error
 }
 
@@ -223,6 +224,9 @@ func (s *accountSnapshotImpl) Equal(object trie.Object) bool {
 		if s.nextContract.Equal(s2.nextContract) == false {
 			return false
 		}
+		if s.objGraph.Equal(s2.objGraph) == false {
+			return false
+		}
 		if s.store == s2.store {
 			return true
 		}
@@ -279,25 +283,25 @@ func (s *accountSnapshotImpl) APIInfo() *scoreapi.Info {
 	return s.apiInfo
 }
 
-func (s *accountSnapshotImpl) GetObjGraph(flags bool) (error, int, []byte, []byte) {
+func (s *accountSnapshotImpl) GetObjGraph(flags bool) (int, []byte, []byte, error) {
 	var obj *objectGraph
 	obj = s.objGraph
 	if flags == false {
-		return nil, obj.nextHash, obj.graphHash, nil
+		return obj.nextHash, obj.graphHash, nil, nil
 	} else {
 		if obj.graphData == nil && obj.graphHash != nil {
 			bk, err := s.database.GetBucket(db.BytesByHash)
 			if err != nil {
 				err = errors.CriticalIOError.Wrap(err, "FailToGetBucket")
-				return err, 0, nil, nil
+				return 0, nil, nil, err
 			}
 			v, err := bk.Get(obj.graphHash)
 			if err != nil {
-				return err, 0, nil, nil
+				return 0, nil, nil, err
 			}
-			if len(v) == 0 {
-				return errors.NotFoundError.Errorf(
-					"FAIL to find graphData by graphHash(%x)", obj.graphHash), 0, nil, nil
+			if v == nil {
+				return 0, nil, nil, errors.NotFoundError.Errorf(
+					"FAIL to find graphData by graphHash(%x)", obj.graphHash)
 			}
 			obj.graphData = v
 		}
@@ -305,7 +309,7 @@ func (s *accountSnapshotImpl) GetObjGraph(flags bool) (error, int, []byte, []byt
 	log.Tracef("GetObjGraph flag(%t), nextHash(%d), graphHash(%#x), lenOfObjGraph(%d)\n",
 		flags, obj.nextHash, obj.graphHash, len(obj.graphData))
 
-	return nil, obj.nextHash, obj.graphHash, obj.graphData
+	return obj.nextHash, obj.graphHash, obj.graphData, nil
 }
 
 const (
@@ -314,13 +318,13 @@ const (
 )
 
 func (s *accountSnapshotImpl) EncodeMsgpack(e *msgpack.Encoder) (err error) {
-	var entiryNum int
+	var entryNum int
 	if s.objGraph == nil {
-		entiryNum = accountSnapshotImplEntries
+		entryNum = accountSnapshotImplEntries
 	} else {
-		entiryNum = accountSnapshotIncludeObjGraph
+		entryNum = accountSnapshotIncludeObjGraph
 	}
-	if err := e.EncodeArrayLen(entiryNum); err != nil {
+	if err := e.EncodeArrayLen(entryNum); err != nil {
 		return err
 	}
 
@@ -407,6 +411,8 @@ func (s *accountSnapshotImpl) ClearCache() {
 }
 
 type accountStateImpl struct {
+	cacheID []byte
+
 	version    int
 	database   db.Database
 	balance    common.HexInt
@@ -433,13 +439,12 @@ func (o *objectGraph) flush() error {
 	if o.bk == nil || o.graphData == nil {
 		return nil
 	}
-
-	graphData, err := o.bk.Get(o.graphHash)
+	prevData, err := o.bk.Get(o.graphHash)
 	if err != nil {
 		return err
 	}
 	// already exists
-	if len(graphData) != 0 {
+	if prevData != nil {
 		return nil
 	}
 	if err := o.bk.Set(o.graphHash, o.graphData); err != nil {
@@ -448,25 +453,41 @@ func (o *objectGraph) flush() error {
 	return nil
 }
 
-func (s *accountStateImpl) GetObjGraph(flags bool) (error, int, []byte, []byte) {
+func (o *objectGraph) Equal(o2 *objectGraph) bool {
+	if o == o2 {
+		return true
+	}
+	if o == nil || o2 == nil {
+		return false
+	}
+	if o.nextHash != o2.nextHash {
+		return false
+	}
+	if !bytes.Equal(o.graphHash, o2.graphHash) {
+		return false
+	}
+	return true
+}
+
+func (s *accountStateImpl) GetObjGraph(flags bool) (int, []byte, []byte, error) {
 	var obj *objectGraph
 	obj = s.objGraph
 	if flags == false {
-		return nil, obj.nextHash, obj.graphHash, nil
+		return obj.nextHash, obj.graphHash, nil, nil
 	} else {
 		if obj.graphData == nil && obj.graphHash != nil {
 			bk, err := s.database.GetBucket(db.BytesByHash)
 			if err != nil {
 				err = errors.CriticalIOError.Wrap(err, "FailToGetBucket")
-				return err, 0, nil, nil
+				return 0, nil, nil, err
 			}
 			v, err := bk.Get(obj.graphHash)
 			if err != nil {
-				return err, 0, nil, nil
+				return 0, nil, nil, err
 			}
-			if len(v) == 0 {
-				return errors.NotFoundError.Errorf(
-					"FAIL to find graphData by graphHash(%x)", obj.graphHash), 0, nil, nil
+			if v == nil {
+				return 0, nil, nil, errors.NotFoundError.Errorf(
+					"FAIL to find graphData by graphHash(%x)", obj.graphHash)
 			}
 			obj.graphData = v
 		}
@@ -474,7 +495,7 @@ func (s *accountStateImpl) GetObjGraph(flags bool) (error, int, []byte, []byte) 
 	log.Tracef("GetObjGraph flag(%t), nextHash(%d), graphHash(%#x), lenOfObjGraph(%d)\n",
 		flags, obj.nextHash, obj.graphHash, len(obj.graphData))
 
-	return nil, obj.nextHash, obj.graphHash, obj.graphData
+	return obj.nextHash, obj.graphHash, obj.graphData, nil
 }
 
 func (s *accountStateImpl) SetObjGraph(flags bool, nextHash int, graphData []byte) error {
@@ -492,9 +513,9 @@ func (s *accountStateImpl) SetObjGraph(flags bool, nextHash int, graphData []byt
 			graphData: graphData,
 		}
 	} else {
-		s.objGraph = &objectGraph{
-			nextHash: nextHash,
-		}
+		tmp := *s.objGraph
+		tmp.nextHash = nextHash
+		s.objGraph = &tmp
 	}
 	return nil
 }
@@ -676,6 +697,16 @@ func (s *accountStateImpl) GetSnapshot() AccountSnapshot {
 	}
 }
 
+// ensureCache set cache of the store if cacheID is specified.
+// If it didn't enable cache of the accounts, cacheID would be nil.
+func (s *accountStateImpl) attachCacheForStore() {
+	if s.cacheID != nil && s.store != nil {
+		if cache := cache.AccountNodeCacheOf(s.database, s.cacheID); cache != nil {
+			ompt.SetCacheOfMutable(s.store, cache)
+		}
+	}
+}
+
 func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 	snapshot, ok := isnapshot.(*accountSnapshotImpl)
 	if !ok {
@@ -699,13 +730,14 @@ func (s *accountStateImpl) Reset(isnapshot AccountSnapshot) error {
 		s.nextContract = new(contractImpl)
 		s.nextContract.reset(snapshot.nextContract)
 	}
+	s.objGraph = snapshot.objGraph
 	if snapshot.store == nil {
 		s.store = nil
 		return nil
 	}
-	s.objGraph = snapshot.objGraph
 	if s.store == nil {
-		s.store = trie_manager.MutableFromImmutable(snapshot.store)
+		s.store = trie_manager.NewMutableFromImmutable(snapshot.store)
+		s.attachCacheForStore()
 		return nil
 	}
 	if err := s.store.Reset(snapshot.store); err != nil {
@@ -735,6 +767,7 @@ func (s *accountStateImpl) GetValue(k []byte) ([]byte, error) {
 func (s *accountStateImpl) SetValue(k, v []byte) error {
 	if s.store == nil {
 		s.store = trie_manager.NewMutable(s.database, nil)
+		s.attachCacheForStore()
 	}
 	return s.store.Set(k, v)
 }
@@ -766,9 +799,11 @@ func (s *accountStateImpl) ClearCache() {
 	}
 }
 
-func newAccountState(database db.Database, snapshot *accountSnapshotImpl) AccountState {
-	s := new(accountStateImpl)
-	s.database = database
+func newAccountState(database db.Database, snapshot *accountSnapshotImpl, cacheID []byte) AccountState {
+	s := &accountStateImpl{
+		cacheID:  cacheID,
+		database: database,
+	}
 	if snapshot != nil {
 		if err := s.Reset(snapshot); err != nil {
 			return nil

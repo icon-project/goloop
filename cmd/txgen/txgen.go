@@ -4,39 +4,50 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
 	"strconv"
 	"sync"
+	"sync/atomic"
+	"syscall"
 	"time"
 
+	"github.com/pkg/errors"
+
+	"github.com/icon-project/goloop/client"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
-	rpc "github.com/icon-project/goloop/server/jsonrpc"
+	"github.com/icon-project/goloop/server/jsonrpc"
 	"github.com/icon-project/goloop/service/transaction"
 	"github.com/icon-project/goloop/service/txresult"
-	"github.com/pkg/errors"
-	"github.com/ybbus/jsonrpc"
 )
 
 const (
 	ClearLine = "\x1b[2K"
 )
 
+var (
+	ErrEndOfTransaction = errors.New("EndOfTransaction")
+)
+
 type Client struct {
-	jsonrpc.RPCClient
+	*client.JsonRpcClient
 }
 
-func (client *Client) SendTx(tx interface{}) (string, error) {
+func (c *Client) SendTx(tx interface{}) (string, error) {
 	for {
-		r, err := client.Call("icx_sendTransaction", tx)
+		r, err := c.Do("icx_sendTransaction", tx, nil)
 		if err != nil {
-			return "", err
-		}
-		if r.Error != nil {
-			if rpc.ErrorCode(r.Error.Code) == rpc.ErrorCodeTxPoolOverflow {
-				continue
+			if re, ok := err.(*jsonrpc.Error); ok {
+				if re.Code == jsonrpc.ErrorCodeTxPoolOverflow {
+					continue
+				}
+				return "", errors.Errorf("RPC Server Error code=%d msg=%s", r.Error.Code, r.Error.Message)
 			}
-			return "", errors.Errorf("RPC Server Error code=%d msg=%s", r.Error.Code, r.Error.Message)
+			return "", err
 		}
 		txHash, ok := r.Result.(string)
 		if !ok {
@@ -66,29 +77,26 @@ type TransactionResult struct {
 	LogsBloom          txresult.LogsBloom  `json:"logsBloom"`
 }
 
-func (client *Client) GetTxResult(tid string, wait time.Duration) (*TransactionResult, error) {
+func (c *Client) GetTxResult(tid string, wait time.Duration) (*TransactionResult, error) {
 	params := map[string]interface{}{
 		"txHash": tid,
 	}
 	startTime := time.Now()
 	for {
-		r, err := client.Call("icx_getTransactionResult", params)
+		result := new(TransactionResult)
+		_, err := c.Do("icx_getTransactionResult", params, result)
 		if err != nil {
+			if re, ok := err.(*jsonrpc.Error); ok {
+				if time.Now().Sub(startTime) > wait {
+					return nil, errors.Errorf("RPC Error timeout=%s code=%d msg=%s",
+						wait, re.Code, re.Message)
+				}
+				time.Sleep(time.Millisecond * 100)
+				continue
+			}
 			return nil, err
 		}
-		if r.Error == nil {
-			var result TransactionResult
-			if err := r.GetObject(&result); err != nil {
-				return nil, err
-			} else {
-				return &result, nil
-			}
-		}
-		if time.Now().Sub(startTime) > wait {
-			return nil, errors.Errorf("RPC Error code=%d msg=%s",
-				r.Error.Code, r.Error.Message)
-		}
-		time.Sleep(time.Millisecond * 100)
+		return result, nil
 	}
 }
 
@@ -112,12 +120,12 @@ func SignTx(from module.Wallet, tx map[string]interface{}) error {
 	return nil
 }
 
-func (client *Client) SendTxAndGetResult(tx interface{}, wait time.Duration) (*TransactionResult, error) {
-	tid, err := client.SendTx(tx)
+func (c *Client) SendTxAndGetResult(tx interface{}, wait time.Duration) (*TransactionResult, error) {
+	tid, err := c.SendTx(tx)
 	if err != nil {
 		return nil, err
 	}
-	return client.GetTxResult(tid, wait)
+	return c.GetTxResult(tid, wait)
 }
 
 type TransactionMaker interface {
@@ -129,25 +137,33 @@ type Context struct {
 	concurrent int
 	tps        int64
 	delay      time.Duration
+	timeout    time.Duration
 
 	lock           sync.Mutex
 	firstTime      time.Time
 	lastTime       time.Time
 	lastTxCount    int64
 	currentTxCount int64
+	resetCount     int64
 
 	maker TransactionMaker
 }
 
-func NewContext(concurrent int, tps int64, maker TransactionMaker) *Context {
+func NewContext(concurrent int, tps int64, maker TransactionMaker, timeout int64) *Context {
 	return &Context{
 		tps:        tps,
 		concurrent: concurrent,
 		maker:      maker,
+		timeout:    time.Duration(timeout) * time.Millisecond,
 	}
 }
 
-func (ctx *Context) sendRequests(wg sync.WaitGroup, client *Client) {
+func (ctx *Context) sendRequests(wg *sync.WaitGroup, client *Client) {
+	method := "icx_sendTransaction"
+	if ctx.timeout > 0 {
+		method = "icx_sendTransactionAndWait"
+	}
+
 	nextTs := time.Now()
 	defer wg.Done()
 	for {
@@ -162,24 +178,38 @@ func (ctx *Context) sendRequests(wg sync.WaitGroup, client *Client) {
 		ctx.OnRequest()
 		tx, err := ctx.maker.MakeOne()
 		if err != nil {
-			log.Printf("Fail to make transaction err=%+v", err)
+			if err != ErrEndOfTransaction {
+				log.Printf("Fail to make transaction err=%+v", err)
+			}
 			return
 		}
 
 		for {
-			r, err := client.Call("icx_sendTransaction", tx)
+			r, err := client.Do(method, tx, nil)
 			if err != nil {
-				js, _ := json.MarshalIndent(tx, "", "  ")
-				log.Panicf("Fail to send TX err=%+v tx=%s", err, js)
-			}
-			if r.Error != nil {
-				if rpc.ErrorCode(r.Error.Code) == rpc.ErrorCodeTxPoolOverflow {
-					time.Sleep(ctx.delay)
-					continue
+				if re, ok := err.(*jsonrpc.Error); ok {
+					if re.Code == jsonrpc.ErrorCodeTxPoolOverflow {
+						time.Sleep(ctx.delay / 3)
+						continue
+					}
+					if re.Code == jsonrpc.ErrorCodeTimeout || re.Code == jsonrpc.ErrorCodeSystemTimeout {
+						time.Sleep(ctx.delay / 3)
+						continue
+					}
+					js, _ := json.MarshalIndent(tx, "", "  ")
+					log.Panicf("Get ERROR on %s Code=%d Msg=%s TX=%s",
+						method, r.Error.Code, r.Error.Message, js)
+				}
+				if ue, ok := err.(*url.Error); ok {
+					if ne, ok := ue.Err.(*net.OpError); ok {
+						if se, ok := ne.Err.(*os.SyscallError); ok && se.Err == syscall.ECONNRESET {
+							atomic.AddInt64(&ctx.resetCount, 1)
+							continue
+						}
+					}
 				}
 				js, _ := json.MarshalIndent(tx, "", "  ")
-				log.Panicf("Get ERROR on icx_sendTransaction Code=%d Msg=%s TX=%s",
-					r.Error.Code, r.Error.Message, js)
+				log.Panicf("Fail to send TX err=%+v tx=%s", err, js)
 			}
 			break
 		}
@@ -203,7 +233,10 @@ func (ctx *Context) OnRequest() {
 		now := time.Now()
 		tps := calcTPS(now.Sub(ctx.lastTime), ctx.currentTxCount-ctx.lastTxCount)
 		avgTps := calcTPS(now.Sub(ctx.firstTime), ctx.currentTxCount)
-		fmt.Printf("%scurrent_TPS [%8.2f] average_TPS [%8.2f] TX=%6d\r", ClearLine, tps, avgTps, ctx.currentTxCount)
+		resetCnt := atomic.LoadInt64(&ctx.resetCount)
+		fmt.Printf("%scurrent_TPS [%8.2f] average_TPS [%8.2f] reset_CNT [%4d] TX=%6d \r",
+			ClearLine, tps, avgTps, resetCnt,
+			ctx.currentTxCount)
 
 		ctx.lastTxCount = ctx.currentTxCount
 		ctx.lastTime = now
@@ -214,9 +247,15 @@ func (ctx *Context) Run(urls []string) error {
 	ctx.delay = (time.Second * time.Duration(ctx.concurrent*len(urls))) /
 		time.Duration(ctx.tps)
 
-	client := &Client{jsonrpc.NewClient(urls[0])}
+	headers := map[string]string{}
+	if ctx.timeout > 0 {
+		iconOpts := jsonrpc.IconOptions{}
+		iconOpts.SetInt(jsonrpc.IconOptionsTimeout, int64(ctx.timeout/time.Millisecond))
+		headers[jsonrpc.HeaderKeyIconOptions] = iconOpts.ToHeaderValue()
+	}
 
-	if err := ctx.maker.Prepare(client); err != nil {
+	c := &Client{client.NewJsonRpcClient(&http.Client{}, urls[0])}
+	if err := ctx.maker.Prepare(c); err != nil {
 		log.Printf("Fail to prepare err=%+v", err)
 		return err
 	}
@@ -230,12 +269,14 @@ func (ctx *Context) Run(urls []string) error {
 	for _, url := range urls {
 		for i := 0; i < ctx.concurrent; i++ {
 			wg.Add(1)
-			client := &Client{jsonrpc.NewClient(url)}
-			go ctx.sendRequests(wg, client)
-			time.Sleep(ctx.delay)
+			c := &Client{client.NewJsonRpcClient(&http.Client{}, url)}
+			c.CustomHeader = headers
+			go ctx.sendRequests(&wg, c)
+			time.Sleep(ctx.delay / time.Duration(ctx.concurrent))
 		}
 	}
 	wg.Wait()
+	log.Println("\n[#] End of transaction generation")
 	return nil
 }
 

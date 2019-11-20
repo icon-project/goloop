@@ -8,16 +8,15 @@ import (
 	"io/ioutil"
 	stdlog "log"
 	"os"
-	"os/signal"
 	"path"
 	"path/filepath"
-	"runtime/pprof"
 	"strconv"
-	"sync/atomic"
-	"syscall"
+
+	"github.com/spf13/cobra"
 
 	"github.com/icon-project/goloop/chain"
 	"github.com/icon-project/goloop/chain/gs"
+	"github.com/icon-project/goloop/cmd/cli"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/wallet"
@@ -26,7 +25,6 @@ import (
 	"github.com/icon-project/goloop/server/metric"
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/transaction"
-	"github.com/spf13/cobra"
 )
 
 const (
@@ -47,10 +45,9 @@ type GoChainConfig struct {
 	KeyStoreData json.RawMessage `json:"key_store"`
 	KeyStorePass string          `json:"key_password"`
 
-	LogLevel     string `json:"log_level"`
-	ConsoleLevel string `json:"console_level"`
-
-	*log.GoLoopFluentConfig `json:"fluent_log,omitempty"`
+	LogLevel     string               `json:"log_level"`
+	ConsoleLevel string               `json:"console_level"`
+	LogForwarder *log.ForwarderConfig `json:"log_forwarder,omitempty"`
 }
 
 func (config *GoChainConfig) String() string {
@@ -86,7 +83,7 @@ var cpuProfile, memProfile string
 var chainDir string
 var eeSocket string
 var modLevels map[string]string
-var fluent map[string]string
+var lfCfg log.ForwarderConfig
 
 func main() {
 	cmd := &cobra.Command{
@@ -122,10 +119,17 @@ func main() {
 	flag.IntVar(&cfg.NormalTxPoolSize, "normal_tx_pool", 0, "Normal transaction pool size")
 	flag.IntVar(&cfg.PatchTxPoolSize, "patch_tx_pool", 0, "Patch transaction pool size")
 	flag.IntVar(&cfg.MaxBlockTxBytes, "max_block_tx_bytes", 0, "Maximum size of ransactions in a block")
+	flag.StringVar(&cfg.NodeCache, "node_cache", chain.NodeCacheDefault, "Node cache(none,small,large)")
 	flag.StringVar(&cfg.LogLevel, "log_level", "debug", "Main log level")
 	flag.StringVar(&cfg.ConsoleLevel, "console_level", "trace", "Console log level")
 	flag.StringToStringVar(&modLevels, "mod_level", nil, "Console log level for specific module (<mod>=<level>,...)")
-	flag.StringToStringVar(&fluent, "fluent", nil, "Fluent server configuration (<cfg>=<value>,...)")
+	flag.StringVar(&lfCfg.Vendor, "log_forwarder_vendor", "", "LogForwarder vendor (fluentd,logstash)")
+	flag.StringVar(&lfCfg.Address, "log_forwarder_address", "", "LogForwarder address")
+	flag.StringVar(&lfCfg.Level, "log_forwarder_level", "info", "LogForwarder level")
+	flag.StringVar(&lfCfg.Name, "log_forwarder_name", "", "LogForwarder name")
+	flag.StringToString("log_forwarder_options", nil, "LogForwarder options, comma-separated 'key=value'")
+	flag.Int64Var(&cfg.DefWaitTimeout, "default_wait_timeout", 0, "Default wait timeout in milli-second (0: disable)")
+	flag.Int64Var(&cfg.MaxWaitTimeout, "max_wait_timeout", 0, "Max wait timeout in milli-second (0:uses same value of default_wait_timeout)")
 
 	cmd.Run = Execute
 	cmd.Execute()
@@ -251,11 +255,40 @@ func Execute(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	if fluent != nil && len(fluent) > 0 {
-		cfg.GoLoopFluentConfig = new(log.GoLoopFluentConfig)
-		if err := log.SetFluentConfig(fluent, cfg.GoLoopFluentConfig); err != nil {
-			log.Panic(err)
+	var tLfCfg log.ForwarderConfig
+	if cfg.LogForwarder != nil {
+		tLfCfg = *cfg.LogForwarder
+	}
+	if lfCfg.Vendor == "" {
+		lfCfg.Vendor = tLfCfg.Vendor
+	}
+	if lfCfg.Address == "" {
+		lfCfg.Address = tLfCfg.Address
+	}
+	if lfCfg.Level == "" {
+		lfCfg.Level = tLfCfg.Level
+	}
+	if lfCfg.Name == "" {
+		lfCfg.Name = tLfCfg.Name
+	}
+	if lfOpts, err := cli.GetStringMap(cmd.Flag("log_forwarder_options")); err != nil {
+		log.Panicf("Failed to parse LogForwarderOptions\n")
+	} else {
+		lfCfg.Options = lfOpts
+	}
+	if len(tLfCfg.Options) > 0 {
+		if lfCfg.Options == nil {
+			lfCfg.Options = tLfCfg.Options
+		} else {
+			for k, v := range tLfCfg.Options {
+				if _, ok := lfCfg.Options[k]; !ok {
+					lfCfg.Options[k] = v
+				}
+			}
 		}
+	}
+	if lfCfg.Vendor != "" {
+		cfg.LogForwarder = &lfCfg
 	}
 
 	if saveFile != "" {
@@ -303,9 +336,9 @@ func Execute(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	if cfg.GoLoopFluentConfig != nil {
-		if err := log.SetFluentHook(cfg.GoLoopFluentConfig); err != nil {
-			log.Panic(err)
+	if cfg.LogForwarder != nil {
+		if err := log.AddForwarder(cfg.LogForwarder); err != nil {
+			log.Fatalf("Invalid log_forwarder err:%+v", err)
 		}
 	}
 
@@ -328,39 +361,15 @@ func Execute(cmd *cobra.Command, args []string) {
 	}
 
 	if cpuProfile != "" {
-		f, err := os.Create(cpuProfile)
-		if err != nil {
-			log.Panicf("Fail to create %s for profile err=%+v", cpuProfile, err)
+		if err := cli.StartCPUProfile(cpuProfile); err != nil {
+			log.Panicf("Fail to start cpu profiling err=%+v", err)
 		}
-		if err = pprof.StartCPUProfile(f); err != nil {
-			log.Panicf("Fail to start profiling err=%+v", err)
-		}
-		defer func() {
-			pprof.StopCPUProfile()
-		}()
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt)
-		go func(c chan os.Signal) {
-			<-c
-			pprof.StopCPUProfile()
-			os.Exit(128 + int(syscall.SIGINT))
-		}(c)
 	}
 
 	if memProfile != "" {
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, syscall.SIGUSR1)
-		go func(c chan os.Signal) {
-			for {
-				<-c
-				cnt := atomic.AddInt32(&memProfileCnt, 1)
-				fileName := fmt.Sprintf("%s.%03d", memProfile, cnt)
-				if f, err := os.Create(fileName); err == nil {
-					pprof.WriteHeapProfile(f)
-					f.Close()
-				}
-			}
-		}(c)
+		if err := cli.StartMemoryProfile(memProfile); err != nil {
+			log.Panicf("Fail to start memory profiling err=%+v", err)
+		}
 	}
 
 	logoLines := []string{

@@ -114,9 +114,12 @@ func (t DataType) Decode(bs []byte) interface{} {
 		}
 		return &i
 	case String:
+		if bs == nil {
+			return nil
+		}
 		return string(bs)
 	case Bytes:
-		if len(bs) == 0 {
+		if bs == nil {
 			return nil
 		}
 		return bs

@@ -3,6 +3,7 @@ package test
 
 import (
 	"context"
+	"time"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/log"
@@ -40,6 +41,14 @@ func (_r *ChainBase) PatchTxPoolSize() int {
 }
 
 func (_r *ChainBase) MaxBlockTxBytes() int {
+	panic("not implemented")
+}
+
+func (_r *ChainBase) DefaultWaitTimeout() time.Duration {
+	panic("not implemented")
+}
+
+func (_r *ChainBase) MaxWaitTimeout() time.Duration {
 	panic("not implemented")
 }
 

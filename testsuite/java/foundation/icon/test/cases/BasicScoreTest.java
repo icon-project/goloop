@@ -57,7 +57,7 @@ public class BasicScoreTest {
         LOG.infoEntering("deploy", "sample token SCORE");
         long initialSupply = 1000;
         SampleTokenScore sampleTokenScore = SampleTokenScore.mustDeploy(iconService, chain, ownerWallet,
-                BigInteger.valueOf(initialSupply), 18);
+                "MySampleToken", "MST", 18, BigInteger.valueOf(initialSupply));
         LOG.infoExiting();
 
         // deploy crowd sale

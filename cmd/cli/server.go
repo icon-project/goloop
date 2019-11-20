@@ -3,11 +3,12 @@ package cli
 import (
 	"encoding/hex"
 	"encoding/json"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"io/ioutil"
 	stdlog "log"
 	"os"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
@@ -26,10 +27,9 @@ type ServerConfig struct {
 	priK          *crypto.PrivateKey
 	addr          module.Address
 
-	LogLevel     string `json:"log_level"`
-	ConsoleLevel string `json:"console_level"`
-
-	*log.GoLoopFluentConfig `json:"fluent_log,omitempty"`
+	LogLevel     string               `json:"log_level"`
+	ConsoleLevel string               `json:"console_level"`
+	LogForwarder *log.ForwarderConfig `json:"log_forwarder,omitempty"`
 }
 
 func (cfg *ServerConfig) MakesureKeyStore() error {
@@ -98,8 +98,12 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 	//
 	rootPFlags.String("key_store", "", "KeyStore file for wallet")
 	rootPFlags.String("key_secret", "", "Secret(password) file for KeyStore")
-
-	rootPFlags.StringToString("fluent", nil, "Fluent server configuration (<cfg>=<value>,...)")
+	//
+	rootPFlags.String("log_forwarder_vendor", "", "LogForwarder vendor (fluentd,logstash)")
+	rootPFlags.String("log_forwarder_address", "", "LogForwarder address")
+	rootPFlags.String("log_forwarder_level", "info", "LogForwarder level")
+	rootPFlags.String("log_forwarder_name", "", "LogForwarder name")
+	rootPFlags.StringToString("log_forwarder_options", nil, "LogForwarder options, comma-separated 'key=value'")
 
 	BindPFlags(vc, rootCmd.PersistentFlags())
 
@@ -113,14 +117,6 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 			}
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-
-			if fluent, _ := cmd.Flags().GetStringToString("fluent"); fluent != nil && len(fluent) > 0 {
-				cfg.GoLoopFluentConfig = new(log.GoLoopFluentConfig)
-				if err := log.SetFluentConfig(fluent, cfg.GoLoopFluentConfig); err != nil {
-					return err
-				}
-			}
-
 			saveFilePath := args[0]
 			if err := JsonPrettySaveFile(saveFilePath, 0644, cfg); err != nil {
 				return err
@@ -173,9 +169,9 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 				}
 			}
 
-			if cfg.GoLoopFluentConfig != nil {
-				if err := log.SetFluentHook(cfg.GoLoopFluentConfig); err != nil {
-					return err
+			if cfg.LogForwarder != nil {
+				if err := log.AddForwarder(cfg.LogForwarder); err != nil {
+					log.Fatalf("Invalid log_forwarder err:%+v", err)
 				}
 			}
 			if cpuProfile := vc.GetString("cpuprofile"); cpuProfile != "" {
@@ -231,6 +227,15 @@ func MergeWithViper(vc *viper.Viper, cfg *ServerConfig) error {
 		if err != nil {
 			return errors.Errorf("fail to read config file=%s err=%+v", cfg.FilePath, err)
 		}
+		if lfVc := vc.Sub("log_forwarder"); lfVc != nil {
+			m := make(map[string]interface{})
+			for _, k := range lfVc.AllKeys() {
+				m["log_forwarder_"+k] = lfVc.Get(k)
+			}
+			if err := vc.MergeConfigMap(m); err != nil {
+				return errors.Errorf("fail to merge config file=%s err=%+v", cfg.FilePath, err)
+			}
+		}
 	}
 
 	if err := vc.Unmarshal(cfg, ViperDecodeOptJson); err != nil {
@@ -238,6 +243,34 @@ func MergeWithViper(vc *viper.Viper, cfg *ServerConfig) error {
 	}
 	if err := vc.Unmarshal(&cfg.StaticConfig, ViperDecodeOptJson); err != nil {
 		return errors.Errorf("fail to unmarshall node config from env err=%+v", err)
+	}
+
+	var lfOpts map[string]interface{}
+	switch v := vc.Get("log_forwarder_options").(type) {
+	case string:
+		if m, err := stringToStringConv(v); err != nil {
+			return errors.Errorf("fail to stringToStringConv config from env err=%+v", err)
+		} else {
+			lfOpts = m
+		}
+	case map[string]interface{}:
+		lfOpts = v
+	}
+	if cfg.LogForwarder != nil && cfg.LogForwarder.Options != nil {
+		for k, v := range lfOpts {
+			cfg.LogForwarder.Options[k] = v
+		}
+		lfOpts = cfg.LogForwarder.Options
+	}
+	lfCfg := &log.ForwarderConfig{
+		Vendor:  vc.GetString("log_forwarder_vendor"),
+		Address: vc.GetString("log_forwarder_address"),
+		Level:   vc.GetString("log_forwarder_level"),
+		Name:    vc.GetString("log_forwarder_name"),
+		Options: lfOpts,
+	}
+	if lfCfg.Vendor != "" {
+		cfg.LogForwarder = lfCfg
 	}
 
 	if nodeDir != "" {
@@ -276,5 +309,6 @@ func MergeWithViper(vc *viper.Viper, cfg *ServerConfig) error {
 			cfg.addr = addr
 		}
 	}
+
 	return nil
 }

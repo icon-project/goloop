@@ -342,7 +342,7 @@ func traversalCommit(db db.Bucket, n node, cnt int) error {
 	default:
 		return nil
 	}
-	if len(n.serialize()) < hashableSize && cnt != 0 { // root hash has to save hash
+	if len(n.serialize()) < hashableSize && cnt != 0 {
 		return nil
 	}
 
@@ -507,11 +507,11 @@ func (m *mpt) Empty() bool {
 		}
 		return nilCnt == len(pool)
 	}
-	return len(pool) == 0 && m.root == nil
+	return false
 }
 
 func (m *mpt) Resolve(builder merkle.Builder) {
-	panic("Implement me")
+	// TODO if it required, you need to implement this.
 }
 
 func (m *mpt) ClearCache() {

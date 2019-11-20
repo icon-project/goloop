@@ -154,9 +154,9 @@ type consensus struct {
 	commitRound        int32
 	syncing            bool
 	started            bool
+	cancelBlockRequest module.Canceler
 
-	timer              *time.Timer
-	cancelBlockRequest func() bool
+	timer *time.Timer
 
 	// commit cache
 	commitCache *commitCache
@@ -245,6 +245,10 @@ func (cs *consensus) _resetForNewRound(round int32) {
 	cs.hvs.removeLowerRoundExcept(cs.round-1, cs.lockedRound)
 	cs.logger.Infof("enter round Height:%d Round:%d\n", cs.height, cs.round)
 	cs.metric.OnRound(cs.round)
+	if cs.cancelBlockRequest != nil {
+		cs.cancelBlockRequest.Cancel()
+		cs.cancelBlockRequest = nil
+	}
 }
 
 func (cs *consensus) resetForNewRound(round int32) {
@@ -259,8 +263,8 @@ func (cs *consensus) resetForNewStep(step step) {
 }
 
 func (cs *consensus) endStep() {
-	if cs.cancelBlockRequest != nil {
-		cs.cancelBlockRequest()
+	if (cs.step == stepPropose || cs.step == stepCommit) && cs.cancelBlockRequest != nil {
+		cs.cancelBlockRequest.Cancel()
 		cs.cancelBlockRequest = nil
 	}
 	if cs.timer != nil {
@@ -581,6 +585,9 @@ func (cs *consensus) enterPropose() {
 					defer cs.mutex.Unlock()
 
 					if cs.hrs != hrs || !cs.started {
+						if blk != nil {
+							blk.Dispose()
+						}
 						return
 					}
 
@@ -619,14 +626,26 @@ func (cs *consensus) enterPrevote() {
 			cs.sendVote(voteTypePrevote, &cs.currentBlockParts)
 		} else {
 			var err error
-			cs.cancelBlockRequest, err = cs.c.BlockManager().ImportBlock(
+			var canceler module.Canceler
+			canceler, err = cs.c.BlockManager().ImportBlock(
 				cs.currentBlockParts.block,
 				0,
 				func(blk module.BlockCandidate, err error) {
 					cs.mutex.Lock()
 					defer cs.mutex.Unlock()
 
-					if cs.hrs != hrs || !cs.started {
+					if cs.cancelBlockRequest == canceler {
+						cs.cancelBlockRequest = nil
+					}
+
+					late := cs.hrs.height != hrs.height ||
+						cs.hrs.round != hrs.round ||
+						cs.hrs.step >= stepCommit ||
+						!cs.started
+					if late {
+						if blk != nil {
+							blk.Dispose()
+						}
 						return
 					}
 
@@ -637,10 +656,14 @@ func (cs *consensus) enterPrevote() {
 
 					if err == nil {
 						cs.currentBlockParts.validatedBlock = blk
-						cs.sendVote(voteTypePrevote, &cs.currentBlockParts)
+						if cs.hrs.step <= stepPrevoteWait {
+							cs.sendVote(voteTypePrevote, &cs.currentBlockParts)
+						}
 					} else {
 						cs.logger.Warnf("import cb error: %+v\n", err)
-						cs.sendVote(voteTypePrevote, nil)
+						if cs.hrs.step <= stepPrevoteWait {
+							cs.sendVote(voteTypePrevote, nil)
+						}
 					}
 				},
 			)
@@ -649,6 +672,7 @@ func (cs *consensus) enterPrevote() {
 				cs.sendVote(voteTypePrevote, nil)
 				return
 			}
+			cs.cancelBlockRequest = canceler
 		}
 	} else {
 		cs.sendVote(voteTypePrevote, nil)
@@ -792,6 +816,10 @@ func (cs *consensus) enterPrecommitWait() {
 func (cs *consensus) commitAndEnterNewHeight() {
 	if cs.currentBlockParts.validatedBlock == nil {
 		hrs := cs.hrs
+		if cs.cancelBlockRequest != nil {
+			cs.cancelBlockRequest.Cancel();
+			cs.cancelBlockRequest = nil;
+		}
 		_, err := cs.c.BlockManager().ImportBlock(
 			cs.currentBlockParts.block,
 			module.ImportByForce,
@@ -800,6 +828,9 @@ func (cs *consensus) commitAndEnterNewHeight() {
 				defer cs.mutex.Unlock()
 
 				if cs.hrs != hrs || !cs.started {
+					if blk != nil {
+						blk.Dispose()
+					}
 					return
 				}
 
@@ -1539,7 +1570,8 @@ func (cs *consensus) Term() {
 		cs.timer.Stop()
 	}
 	if cs.cancelBlockRequest != nil {
-		cs.cancelBlockRequest()
+		cs.cancelBlockRequest.Cancel()
+		cs.cancelBlockRequest = nil;
 	}
 	if cs.roundWAL != nil {
 		cs.roundWAL.Close()

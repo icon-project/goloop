@@ -57,12 +57,11 @@ BUILD_TARGETS += goloop
 
 linux : $(addsuffix -linux,$(BUILD_TARGETS))
 
-DOCKER_IMAGE_TAG ?= latest
-GOLOOP_ENV_IMAGE = goloop-env:$(GL_TAG)
-GOENV_DOCKER_DIR = $(BUILD_ROOT)/build/goenv
+GODEPS_IMAGE = goloop/go-deps:$(GL_TAG)
+GODEPS_DOCKER_DIR = $(BUILD_ROOT)/build/godeps
 
 GOCHAIN_IMAGE = gochain:$(GL_TAG)
-GOCHAIN_DOCKER_DIR = $(BUILD_ROOT)/build/gochain/
+GOCHAIN_DOCKER_DIR = $(BUILD_ROOT)/build/gochain
 
 GOLOOP_IMAGE = goloop:$(GL_TAG)
 GOLOOP_DOCKER_DIR = $(BUILD_ROOT)/build/goloop
@@ -72,32 +71,22 @@ PYDEPS_DOCKER_DIR = $(BUILD_ROOT)/build/pydeps
 
 GOLOOP_WORK_DIR = /work
 
-goloop-env-image :
+godeps-image :
 	@ \
-	if [ "`docker images -q $(GOLOOP_ENV_IMAGE)`" == "" ] ; then \
-	    rm -rf $(GOENV_DOCKER_DIR) ; \
-	    mkdir -p $(GOENV_DOCKER_DIR) ; \
-	    cp ./go.mod ./go.sum $(GOENV_DOCKER_DIR) ; \
-	    cp ./docker/goloop-env/* $(GOENV_DOCKER_DIR) ; \
-	    docker build -t $(GOLOOP_ENV_IMAGE) $(GOENV_DOCKER_DIR) ; \
-	fi
+	$(BUILD_ROOT)/docker/go-deps/update.sh \
+	    $(GODEPS_IMAGE) $(BUILD_ROOT) $(GODEPS_DOCKER_DIR)
 
-run-% : goloop-env-image
+gorun-% : godeps-image
 	@ \
 	docker run -it --rm \
 	    -v $(BUILD_ROOT):$(GOLOOP_WORK_DIR) \
 	    -w $(GOLOOP_WORK_DIR) \
-	    $(GOLOOP_ENV_IMAGE) \
-	    make "GL_VERSION=$(GL_VERSION)" $(patsubst run-%,%,$@)
-pydeps-image: 
+	    $(GODEPS_IMAGE) \
+	    make "GL_VERSION=$(GL_VERSION)" $(patsubst gorun-%,%,$@)
+pydeps-image:
 	@ \
-	if [ "`docker images -q $(PYDEPS_IMAGE)`" == "" ] ; then \
-	    rm -rf $(PYDEPS_DOCKER_DIR) ; \
-	    mkdir -p $(PYDEPS_DOCKER_DIR) ; \
-	    cp $(BUILD_ROOT)/docker/py-deps/* $(PYDEPS_DOCKER_DIR) ; \
-	    cp $(BUILD_ROOT)/pyee/requirements.txt $(PYDEPS_DOCKER_DIR) ; \
-	    docker build -t $(PYDEPS_IMAGE) $(PYDEPS_DOCKER_DIR) ; \
-	fi
+	$(BUILD_ROOT)/docker/py-deps/update.sh \
+	    $(PYDEPS_IMAGE) $(BUILD_ROOT) $(PYDEPS_DOCKER_DIR)
 
 pyrun-% : pydeps-image
 	@ \
@@ -113,7 +102,7 @@ pyexec:
 	rm -rf build dist ; \
 	python3 setup.py bdist_wheel
 
-goloop-image: pyrun-pyexec run-goloop-linux
+goloop-image: pyrun-pyexec gorun-goloop-linux
 	@ rm -rf $(GOLOOP_DOCKER_DIR)
 	@ mkdir -p $(GOLOOP_DOCKER_DIR)/dist/pyee
 	@ mkdir -p $(GOLOOP_DOCKER_DIR)/dist/bin
@@ -122,9 +111,10 @@ goloop-image: pyrun-pyexec run-goloop-linux
 	@ cp $(BUILD_ROOT)/linux/goloop $(GOLOOP_DOCKER_DIR)/dist/bin
 	@ docker build -t $(GOLOOP_IMAGE) \
 	    --build-arg TAG_PY_DEPS=$(GL_TAG) \
+	    --build-arg GOLOOP_VERSION=$(GL_VERSION) \
 	    $(GOLOOP_DOCKER_DIR)
 
-gochain-image: pyrun-pyexec run-gochain-linux
+gochain-image: pyrun-pyexec gorun-gochain-linux
 	@ rm -rf $(GOCHAIN_DOCKER_DIR)
 	@ mkdir -p $(GOCHAIN_DOCKER_DIR)/dist
 	@ cp $(BUILD_ROOT)/docker/gochain/* $(GOCHAIN_DOCKER_DIR)
@@ -132,6 +122,7 @@ gochain-image: pyrun-pyexec run-gochain-linux
 	@ cp $(BUILD_ROOT)/linux/gochain $(GOCHAIN_DOCKER_DIR)/dist
 	@ docker build -t $(GOCHAIN_IMAGE) \
 	    --build-arg TAG_PY_DEPS=$(GL_TAG) \
+	    --build-arg GOCHAIN_VERSION=$(GL_VERSION) \
 	    $(GOCHAIN_DOCKER_DIR)
 
 .PHONY: test
