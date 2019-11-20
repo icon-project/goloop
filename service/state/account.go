@@ -224,6 +224,9 @@ func (s *accountSnapshotImpl) Equal(object trie.Object) bool {
 		if s.nextContract.Equal(s2.nextContract) == false {
 			return false
 		}
+		if s.objGraph.Equal(s2.objGraph) == false {
+			return false
+		}
 		if s.store == s2.store {
 			return true
 		}
@@ -448,6 +451,22 @@ func (o *objectGraph) flush() error {
 		return err
 	}
 	return nil
+}
+
+func (o *objectGraph) Equal(o2 *objectGraph) bool {
+	if o == o2 {
+		return true
+	}
+	if o == nil || o2 == nil {
+		return false
+	}
+	if o.nextHash != o2.nextHash {
+		return false
+	}
+	if !bytes.Equal(o.graphHash, o2.graphHash) {
+		return false
+	}
+	return true
 }
 
 func (s *accountStateImpl) GetObjGraph(flags bool) (int, []byte, []byte, error) {
