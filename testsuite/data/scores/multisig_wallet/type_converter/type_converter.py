@@ -30,7 +30,7 @@ def params_type_converter(param_type: str, value: any):
         param = _convert_value_bytes(value)
     else:
         raise IconScoreException(
-            f"{param_type} is not supported type(only int, str, bool, Address, bytes are supported)")
+            f"{param_type} is not supported type (only int, str, bool, Address, bytes are supported)")
     return param
 
 
