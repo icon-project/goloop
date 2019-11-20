@@ -32,9 +32,15 @@ type Request struct {
 
 type Response struct {
 	Version string      `json:"jsonrpc"`
-	Result  interface{} `json:"result,omitempty"`
+	Result  interface{} `json:"result"`
 	Error   *Error      `json:"error,omitempty"`
-	ID      interface{} `json:"id,omitempty"`
+	ID      interface{} `json:"id"`
+}
+
+type ErrorResponse struct {
+	Version string      `json:"jsonrpc"`
+	Error   *Error      `json:"error"`
+	ID      interface{} `json:"id"`
 }
 
 const (
