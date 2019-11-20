@@ -33,9 +33,8 @@ class SimpleJavaScore {
     private static KeyWallet ownerWallet;
     private static KeyWallet calleeWallet;
     private static GovScore govScore;
-    private static Score testScore;
-    private static final String PATH = Constants.JSCORE_MYSAMPLETOKEN;
     private static GovScore.Fee fee;
+    private static Score testScore;
 
     @BeforeAll
     static void init() throws Exception {
@@ -141,9 +140,9 @@ class SimpleJavaScore {
                 .put("_decimals", new RpcValue(decimals))
                 .put("_initialSupply", new RpcValue(initialSupply))
                 .build();
-        Address scoreAddr = Score.install(iconService, chain, ownerWallet, PATH,
-                                          params, 10000000, Constants.CONTENT_TYPE_JAVA);
-        LOG.info("scoreAddr " + scoreAddr);
+        Address scoreAddr = Score.install(iconService, chain, ownerWallet, Constants.JSCORE_MYSAMPLETOKEN,
+                                          params, 1000000, Constants.CONTENT_TYPE_JAVA);
+        LOG.info("scoreAddr = " + scoreAddr);
         testScore = new Score(iconService, chain, scoreAddr);
         LOG.infoExiting();
         return scoreAddr;
@@ -166,5 +165,66 @@ class SimpleJavaScore {
         }
         return Utils.sendTransactionWithCall(iconService, chain.networkId,
                     from, score, "transfer", builder.build());
+    }
+
+    @Test
+    void testScoreAPITest() throws Exception {
+        LOG.infoEntering("deploy", "apiTest");
+        Address scoreAddr = Score.install(iconService, chain, ownerWallet, Constants.JSCORE_APITEST,
+                                          null, 1000000, Constants.CONTENT_TYPE_JAVA);
+        LOG.info("scoreAddr = " + scoreAddr);
+        testScore = new Score(iconService, chain, scoreAddr);
+        LOG.infoExiting();
+
+        // getAddress
+        LOG.infoEntering("getAddress", "invoke");
+        KeyWallet caller = KeyWallet.create();
+        TransactionResult tr = testScore.invokeAndWaitResult(caller, "getAddress", null, 0, 100000);
+        assertEquals(BigInteger.ONE, tr.getStatus());
+        LOG.infoExiting();
+
+        LOG.infoEntering("getAddress", "query");
+        caller = KeyWallet.create();
+        RpcItem result = testScore.call(caller.getAddress(), "getAddressQuery", null);
+        LOG.info("expected (" + scoreAddr + "), result (" + result.asAddress() + ")");
+        assertEquals(scoreAddr, result.asAddress());
+        LOG.infoExiting();
+
+        // getCaller
+        LOG.infoEntering("getCaller", "invoke");
+        tr = testScore.invokeAndWaitResult(caller, "getCaller", null, 0, 100000);
+        assertEquals(BigInteger.ONE, tr.getStatus());
+        LOG.infoExiting();
+
+//        LOG.infoEntering("getCaller", "query");
+//        caller = KeyWallet.create();
+//        result = testScore.call(caller.getAddress(), "getCallerQuery", null);
+//        LOG.info("expected (" + caller.getAddress() + "), result (" + result.asAddress() + ")");
+//        assertEquals(scoreAddr, result.asAddress());
+//        LOG.infoExiting();
+
+        // getOrigin
+        LOG.infoEntering("getOrigin", "invoke");
+        tr = testScore.invokeAndWaitResult(caller, "getOrigin", null, 0, 100000);
+        assertEquals(BigInteger.ONE, tr.getStatus());
+        LOG.infoExiting();
+
+//        LOG.infoEntering("getOrigin", "query");
+//        result = testScore.call(caller.getAddress(), "getOriginQuery", null);
+//        LOG.info("expected (" + caller.getAddress() + "), result (" + result.asAddress() + ")");
+//        assertEquals(caller.getAddress(), result.asAddress());
+//        LOG.infoExiting();
+
+        // getOwner
+        LOG.infoEntering("getOwner", "invoke");
+        tr = testScore.invokeAndWaitResult(caller, "getOwner", null, 0, 100000);
+        assertEquals(BigInteger.ONE, tr.getStatus());
+        LOG.infoExiting();
+
+        LOG.infoEntering("getOwnerQuery", "query");
+        result = testScore.call(caller.getAddress(), "getOwnerQuery", null);
+        LOG.info("expected (" + ownerWallet.getAddress() + "), result (" + result.asAddress() + ")");
+        assertEquals(ownerWallet.getAddress(), result.asAddress());
+        LOG.infoExiting();
     }
 }
