@@ -7,6 +7,7 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
+	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
 )
 
@@ -51,43 +52,44 @@ func (h *patchHandler) verifySkipTransactionPatch(cc CallContext, p module.SkipT
 	return true
 }
 
-func (h *patchHandler) handleSkipTransaction(cc CallContext) module.Status {
+func (h *patchHandler) handleSkipTransaction(cc CallContext) error {
 	decode := cc.PatchDecoder()
 	if decode == nil {
 		h.log.Warn("PatchHandler: patch decoder isn't set")
-		return module.StatusInvalidParameter
+		return scoreresult.InvalidParameterError.New("PatchDecoderIsNil")
 	}
 	pd, err := decode(h.data.Type, h.data.Data)
 	if err != nil {
 		h.log.Warnf("PatchHandler: decode fail err=%+v", err)
-		return module.StatusInvalidParameter
+		return scoreresult.InvalidParameterError.Wrap(err, "DecodeFail")
 	}
 	p := pd.(module.SkipTransactionPatch)
 	if cc.BlockHeight() != p.Height() || p.Height() < 1 {
 		h.log.Warnf("PatchHandler: invalid height block.height=%d patch.height=%d",
 			cc.BlockHeight(), p.Height())
-		return module.StatusInvalidParameter
+		return scoreresult.InvalidParameterError.Errorf("InvalidHeight(bh=%d,ph=%d)",
+			cc.BlockHeight(), p.Height())
 	}
 	if !h.verifySkipTransactionPatch(cc, p) {
-		return module.StatusInvalidParameter
+		return scoreresult.InvalidParameterError.New("VerifySkipTransactionPatchFail")
 	}
 	cc.EnableSkipTransaction()
 	h.log.Warnf("PatchHandler: SKIP TRANSACTION height=%d", p.Height())
-	return module.StatusSuccess
+	return nil
 }
 
-func (h *patchHandler) ExecuteSync(cc CallContext) (module.Status, *big.Int, *codec.TypedObj, module.Address) {
+func (h *patchHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.TypedObj, module.Address) {
 	vs := cc.GetValidatorState()
 	if idx := vs.IndexOf(h.from); idx < 0 {
 		h.log.Warnf("PatchHandler: %s isn't validator", h.from)
-		return module.StatusAccessDenied, big.NewInt(0), nil, nil
+		return scoreresult.AccessDeniedError.Errorf("InvalidProposer(%s)", h.from), big.NewInt(0), nil, nil
 	}
 	switch h.data.Type {
 	case module.PatchTypeSkipTransaction:
 		s := h.handleSkipTransaction(cc)
 		return s, big.NewInt(0), nil, nil
 	default:
-		return module.StatusInvalidParameter, big.NewInt(0), nil, nil
+		return scoreresult.InvalidParameterError.Errorf("InvalidDataType(%s)", h.data.Type), big.NewInt(0), nil, nil
 	}
 }
 
