@@ -79,7 +79,7 @@ func (a *Address) ID() []byte {
 }
 
 func (a *Address) SetBytes(b []byte) error {
-	if b == nil {
+	if len(b) == 0 {
 		return ErrIllegalArgument
 	}
 	switch b[0] {
