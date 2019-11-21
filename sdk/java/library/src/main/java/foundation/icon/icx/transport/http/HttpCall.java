@@ -20,13 +20,13 @@ package foundation.icon.icx.transport.http;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import foundation.icon.icx.Request;
 import foundation.icon.icx.Callback;
-import foundation.icon.icx.transport.jsonrpc.RpcItemDeserializer;
+import foundation.icon.icx.Request;
 import foundation.icon.icx.transport.jsonrpc.Response;
 import foundation.icon.icx.transport.jsonrpc.RpcConverter;
 import foundation.icon.icx.transport.jsonrpc.RpcError;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
+import foundation.icon.icx.transport.jsonrpc.RpcItemDeserializer;
 import okhttp3.ResponseBody;
 
 import java.io.IOException;
@@ -72,9 +72,8 @@ public class HttpCall<T> implements Request<T> {
         });
     }
 
-    // converts the response data from the okhttp response
-    private T convertResponse(okhttp3.Response httpResponse)
-            throws IOException {
+    // Converts the response data from the OkHttp response
+    private T convertResponse(okhttp3.Response httpResponse) throws IOException {
         ResponseBody body = httpResponse.body();
         if (body != null) {
             ObjectMapper mapper = new ObjectMapper();
@@ -85,11 +84,10 @@ public class HttpCall<T> implements Request<T> {
             if (converter == null) {
                 throw new IllegalArgumentException("There is no converter for response:'" + content + "'");
             }
-            if (response.getResult() != null) {
-                return converter.convertTo(response.getResult());
-            } else {
+            if (response.getError() != null) {
                 throw response.getError();
             }
+            return converter.convertTo(response.getResult());
         } else {
             throw new RpcError(httpResponse.code(), httpResponse.message());
         }
