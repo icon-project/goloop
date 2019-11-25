@@ -25,6 +25,8 @@ import java.util.List;
 
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Tag(Constants.TAG_GOVERNANCE)
 class SimpleJavaScore {
@@ -72,12 +74,9 @@ class SimpleJavaScore {
             if (api.getName().equals("transfer")) {
                 for (ScoreApi.Param p : api.getInputs()) {
                     if (p.getName().equals("_data")) {
-                        String raw = p.toString();
-                        int startIndex = raw.indexOf("default");
-                        int endIndex = raw.indexOf(",", startIndex);
-                        String actual = raw.substring(startIndex, endIndex);
-                        assertEquals("default=null", actual);
-                        break;
+                        assertTrue(p.getDefault().isNull());
+                    } else {
+                        assertNull(p.getDefault());
                     }
                 }
             }
@@ -196,12 +195,12 @@ class SimpleJavaScore {
         assertEquals(BigInteger.ONE, tr.getStatus());
         LOG.infoExiting();
 
-//        LOG.infoEntering("getCaller", "query");
-//        caller = KeyWallet.create();
-//        result = testScore.call(caller.getAddress(), "getCallerQuery", null);
-//        LOG.info("expected (" + caller.getAddress() + "), result (" + result.asAddress() + ")");
-//        assertEquals(scoreAddr, result.asAddress());
-//        LOG.infoExiting();
+        LOG.infoEntering("getCaller", "query");
+        caller = KeyWallet.create();
+        result = testScore.call(caller.getAddress(), "getCallerQuery", null);
+        LOG.info("expected (" + "null" + "), result (" + result + ")");
+        assertNull(result);
+        LOG.infoExiting();
 
         // getOrigin
         LOG.infoEntering("getOrigin", "invoke");
@@ -209,11 +208,11 @@ class SimpleJavaScore {
         assertEquals(BigInteger.ONE, tr.getStatus());
         LOG.infoExiting();
 
-//        LOG.infoEntering("getOrigin", "query");
-//        result = testScore.call(caller.getAddress(), "getOriginQuery", null);
-//        LOG.info("expected (" + caller.getAddress() + "), result (" + result.asAddress() + ")");
-//        assertEquals(caller.getAddress(), result.asAddress());
-//        LOG.infoExiting();
+        LOG.infoEntering("getOrigin", "query");
+        result = testScore.call(caller.getAddress(), "getOriginQuery", null);
+        LOG.info("expected (" + "null" + "), result (" + result + ")");
+        assertNull(result);
+        LOG.infoExiting();
 
         // getOwner
         LOG.infoEntering("getOwner", "invoke");
