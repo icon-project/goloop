@@ -41,6 +41,12 @@ public class RpcValue implements RpcItem {
         this.value = value.toString();
     }
 
+    private RpcValue() {
+        value = null;
+    }
+
+    public final static RpcValue NULL = new RpcValue();
+
     public RpcValue(String value) {
         this.value = value;
     }
@@ -69,6 +75,11 @@ public class RpcValue implements RpcItem {
     @Override
     public boolean isEmpty() {
         return value == null || value.isEmpty();
+    }
+
+    @Override
+    public boolean isNull() {
+        return value == null;
     }
 
     /**

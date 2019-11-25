@@ -65,7 +65,7 @@ public class RpcItemDeserializer extends JsonDeserializer<RpcItem> {
             } else if (n.isBoolean()) {
                 return new RpcValue(n.asBoolean());
             } else if (n.isNull()) {
-                return null;
+                return RpcValue.NULL;
             }
             return new RpcValue(n.asText());
         }

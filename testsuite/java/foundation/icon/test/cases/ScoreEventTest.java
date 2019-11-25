@@ -20,7 +20,8 @@ import org.junit.jupiter.api.Test;
 import java.math.BigInteger;
 
 import static foundation.icon.test.common.Env.LOG;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Tag(Constants.TAG_NORMAL)
 class ScoreEventTest {
@@ -86,7 +87,7 @@ class ScoreEventTest {
                         v = el.getData().get(j - 3);
                     }
                     if (i == j) {
-                        assertNull(v);
+                        assertTrue(v.isNull());
                     } else {
                         assertEquals(expects[j], v.asString());
                     }
