@@ -253,4 +253,13 @@ public class Method {
         sb.append(getOutputDescriptor());
         return sb.toString();
     }
+
+    private static final String validPrimitives = "ZCBSIJ";
+
+    public boolean hasValidPrimitiveReturnType() {
+        if (outputDescriptor.length()!=1) {
+            return false;
+        }
+        return validPrimitives.indexOf(outputDescriptor.charAt(0)) >= 0;
+    }
 }

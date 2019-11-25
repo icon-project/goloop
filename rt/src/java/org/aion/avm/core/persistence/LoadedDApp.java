@@ -298,8 +298,13 @@ public class LoadedDApp {
             }
             Method method = getExternalMethod(m);
             Object sres = method.invoke(null, (Object[])m.convertParameters(params));
-            Object res = Unshadower.unshadow((s.java.lang.Object)sres);
-            assert sres==null || res!=null : "bad shadow type";
+            Object res;
+            if (m.hasValidPrimitiveReturnType()) {
+                res = sres;
+            } else {
+                res = Unshadower.unshadow((s.java.lang.Object)sres);
+                assert sres==null || res!=null : "bad shadow type";
+            }
             return res;
         } catch (ClassNotFoundException | SecurityException | ExceptionInInitializerError e) {
             // should have been handled during CREATE.
