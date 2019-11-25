@@ -309,6 +309,12 @@ func (h *CallHandler) GetBalance(addr module.Address) *big.Int {
 }
 
 func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) {
+	err := h.as.APIInfo().CheckEventData(indexed, data)
+	if err != nil {
+		h.log.Warnf("DROP InvalidEventData(%s,%+v,%+v) err=%+v",
+			addr, indexed, data, err)
+		return
+	}
 	h.cc.OnEvent(addr, indexed, data)
 }
 

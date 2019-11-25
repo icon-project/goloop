@@ -3,6 +3,9 @@ package scoreapi
 import (
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -37,7 +40,8 @@ func (t MethodType) String() string {
 type DataType int
 
 const (
-	Integer DataType = iota + 1
+	Unknown DataType = iota
+	Integer
 	String
 	Bytes
 	Bool
@@ -68,23 +72,18 @@ func (t DataType) String() string {
 	}
 }
 
-func (t DataType) ConvertToJSON(bs []byte) interface{} {
+func (t DataType) DecodeForJSON(bs []byte) interface{} {
+	if bs == nil {
+		return nil
+	}
 	switch t {
 	case Integer:
 		var i common.HexInt
-		if len(bs) > 0 {
-			i.SetBytes(bs)
-		}
+		i.SetBytes(bs)
 		return &i
 	case String:
-		if bs == nil {
-			return nil
-		}
 		return string(bs)
 	case Bytes:
-		if bs == nil {
-			return nil
-		}
 		return common.HexBytes(bs)
 	case Bool:
 		if (len(bs) == 1 && bs[0] == 0) || len(bs) == 0 {
@@ -93,11 +92,10 @@ func (t DataType) ConvertToJSON(bs []byte) interface{} {
 			return "0x1"
 		}
 	case Address:
-		if len(bs) == 0 {
+		addr := new(common.Address)
+		if err := addr.SetBytes(bs); err != nil {
 			return nil
 		}
-		addr := new(common.Address)
-		addr.SetBytes(bs)
 		return addr
 	default:
 		log.Panicf("Unknown DataType=%d", t)
@@ -106,6 +104,9 @@ func (t DataType) ConvertToJSON(bs []byte) interface{} {
 }
 
 func (t DataType) Decode(bs []byte) interface{} {
+	if bs == nil {
+		return nil
+	}
 	switch t {
 	case Integer:
 		var i common.HexInt
@@ -114,14 +115,8 @@ func (t DataType) Decode(bs []byte) interface{} {
 		}
 		return &i
 	case String:
-		if bs == nil {
-			return nil
-		}
 		return string(bs)
 	case Bytes:
-		if bs == nil {
-			return nil
-		}
 		return bs
 	case Bool:
 		if (len(bs) == 1 && bs[0] == 0) || len(bs) == 0 {
@@ -130,15 +125,88 @@ func (t DataType) Decode(bs []byte) interface{} {
 			return true
 		}
 	case Address:
-		if len(bs) == 0 {
+		addr := new(common.Address)
+		if err := addr.SetBytes(bs); err != nil {
 			return nil
 		}
-		addr := new(common.Address)
-		addr.SetBytes(bs)
 		return addr
 	default:
 		log.Panicf("Unknown DataType=%d", t)
 		return nil
+	}
+}
+
+func (t DataType) ValidateBytes(bs []byte) error {
+	if bs == nil {
+		return nil
+	}
+	switch t {
+	case Integer:
+		if len(bs) == 0 {
+			return errors.IllegalArgumentError.New("InvalidIntegerBytes")
+		}
+	case Bool:
+		if len(bs) != 1 {
+			return errors.IllegalArgumentError.Errorf("InvalidBoolBytes(bs=<%#x>)", bs)
+		}
+		if bs[0] > 1 {
+			return errors.IllegalArgumentError.Errorf("InvalidBoolBytes(bs=<%#x>)", bs)
+		}
+	case Address:
+		var addr common.Address
+		if err := addr.SetBytes(bs); err != nil {
+			return errors.IllegalArgumentError.New("InvalidAddressBytes")
+		}
+	case String:
+		if !utf8.Valid(bs) {
+			return errors.IllegalArgumentError.New("InvalidUTF8Chars")
+		}
+	}
+	return nil
+}
+
+var typeTagMap = map[DataType]uint8{
+	Integer: common.TypeInt,
+	String:  codec.TypeString,
+	Bytes:   codec.TypeBytes,
+	Bool:    codec.TypeBool,
+	Address: common.TypeAddress,
+}
+
+func (t DataType) ValidateTypeObj(obj *codec.TypedObj, nullable bool) error {
+	if typeTag, ok := typeTagMap[t]; !ok {
+		return errors.IllegalArgumentError.Errorf("UnknownType(%d)", t)
+	} else {
+		if typeTag == obj.Type {
+			return nil
+		}
+		if obj.Type == codec.TypeNil && nullable {
+			return nil
+		}
+		return errors.IllegalArgumentError.Errorf(
+			"InvalidType(exp=%s,type=%d)", t, typeTag)
+	}
+}
+
+// DataTypeOf returns type for the specified name.
+func DataTypeOf(s string) DataType {
+	switch s {
+	case "bool":
+		return Bool
+	case "int":
+		return Integer
+	case "str":
+		return String
+	case "bytes":
+		return Bytes
+	case "Address":
+		return Address
+	case "list":
+		return List
+	case "dict":
+		return Dict
+	default:
+		return Unknown
 	}
 }
 
@@ -207,7 +275,7 @@ func (a *Method) ToJSON(version int) (interface{}, error) {
 			}
 		} else {
 			if i >= a.Indexed {
-				io["default"] = input.Type.ConvertToJSON(input.Default)
+				io["default"] = input.Type.DecodeForJSON(input.Default)
 			}
 		}
 		inputs[i] = io
@@ -233,39 +301,32 @@ func (a *Method) ToJSON(version int) (interface{}, error) {
 	return m, nil
 }
 
-var typeMap = map[DataType]uint8{
-	Integer: common.TypeInt,
-	String:  codec.TypeString,
-	Bytes:   codec.TypeBytes,
-	Bool:    codec.TypeBool,
-	Address: common.TypeAddress,
-}
-
-func validateInputType(inputType DataType, paramObj *codec.TypedObj) error {
-	if t, ok := typeMap[inputType]; !ok {
-		return errors.Wrapf(errors.ErrIllegalArgument, "invalid input type. %v is not defined\n", inputType)
-	} else {
-		if t != paramObj.Type {
-			if paramObj.Type == codec.TypeNil && (t == codec.TypeBytes || t == common.TypeAddress) {
-				return nil
-			}
-			return errors.Wrapf(errors.ErrIllegalArgument, "invalid input type. %v but type %v\n", inputType, paramObj.Type)
-		}
-	}
-	return nil
-}
-
 func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedObj, error) {
 	if paramObj.Type == codec.TypeList {
 		tol := paramObj.Object.([]*codec.TypedObj)
-		if len(a.Inputs) < len(tol) {
-			return nil, errors.ErrIllegalArgument
+		if len(tol) < a.Indexed {
+			return nil, scoreresult.InvalidParameterError.Errorf(
+				"NotEnoughParameters(given=%d,required=%d)", len(tol), a.Indexed)
 		}
-		for i, to := range tol {
-			if err := validateInputType(a.Inputs[i].Type, to); err != nil {
-				return nil, err
+		if len(tol) > len(a.Inputs) {
+			return nil, scoreresult.InvalidParameterError.Errorf(
+				"TooManyParameters(given=%d,all=%d)", len(tol), len(a.Inputs))
+		}
+		tolNew := tol
+		for i, input := range a.Inputs {
+			inputType := a.Inputs[i].Type
+			if i < len(tol) {
+				to := tol[i]
+				nullable := (i >= a.Indexed) && input.Default == nil
+				if err := inputType.ValidateTypeObj(to, nullable); err != nil {
+					return nil, err
+				}
+			} else {
+				tolNew = append(tolNew,
+					common.MustEncodeAny(inputType.Decode(input.Default)))
 			}
 		}
+		paramObj.Object = tolNew
 		return paramObj, nil
 	}
 
@@ -280,7 +341,8 @@ func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedO
 	inputs := make([]interface{}, len(a.Inputs))
 	for i, input := range a.Inputs {
 		if obj, ok := params[input.Name]; ok {
-			if err := validateInputType(input.Type, obj); err != nil {
+			nullable := (i >= a.Indexed) && input.Default == nil
+			if err := input.Type.ValidateTypeObj(obj, nullable); err != nil {
 				return nil, scoreresult.InvalidParameterError.Wrapf(err,
 					"InvalidParameter(exp=%s, value=%T)", input.Type, obj)
 			}
@@ -295,6 +357,40 @@ func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedO
 		}
 	}
 	return common.MustEncodeAny(inputs), nil
+}
+
+func (a *Method) Signature() string {
+	args := make([]string, len(a.Inputs))
+	for i := 0; i < len(args); i++ {
+		args[i] = a.Inputs[i].Type.String()
+	}
+	return fmt.Sprintf("%s(%s)", a.Name, strings.Join(args, ","))
+}
+
+func (a *Method) CheckEventData(indexed [][]byte, data [][]byte) error {
+	if len(indexed)+len(data) != len(a.Inputs)+1 {
+		return IllegalEventError.Errorf(
+			"InvalidEventData(exp=%d,given=%d)",
+			len(a.Inputs)+1, len(indexed)+len(data))
+	}
+	if len(indexed) != a.Indexed+1 {
+		return IllegalEventError.Errorf(
+			"InvalidIndexCount(exp=%d,given=%d)", a.Indexed, len(indexed)-1)
+	}
+	for i, p := range a.Inputs {
+		var input []byte
+		if i < len(indexed)-1 {
+			input = indexed[i+1]
+		} else {
+			input = data[i+1-len(indexed)]
+		}
+		if err := p.Type.ValidateBytes(input); err != nil {
+			return IllegalEventError.Wrapf(err,
+				"IllegalEvent(sig=%s,idx=%d,data=0x%#x)",
+				a.Signature(), i, input)
+		}
+	}
+	return nil
 }
 
 func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
