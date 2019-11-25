@@ -177,6 +177,8 @@ class GetAPITest {
             if (api.getName().equals("transfer")) {
                 for (ScoreApi.Param p : api.getInputs()) {
                     if (p.getName().equals("_data")) {
+                        assertTrue(p.getDefault().isNull());
+                    } else {
                         assertNull(p.getDefault());
                     }
                 }
