@@ -646,7 +646,7 @@ class ScoreParamTest {
                     if ((i & (1 << idx)) != 0) {
                         assertEquals(values[idx].asString(), val.asString());
                     } else {
-                        assertNull(val);
+                        assertTrue(val.isNull());
                     }
                 }
                 checked = true;
@@ -685,9 +685,9 @@ class ScoreParamTest {
             }
             assertEquals("0x1", el.getData().get(0).asString());
             assertEquals("0xa", el.getData().get(1).asString());
-            assertNull(el.getData().get(2));
-            assertNull(el.getData().get(3));
-            assertNull(el.getData().get(4));
+            assertTrue(el.getData().get(2).isNull());
+            assertTrue(el.getData().get(3).isNull());
+            assertTrue(el.getData().get(4).isNull());
             checked = true;
         }
         assertTrue(checked);
