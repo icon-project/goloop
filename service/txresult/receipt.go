@@ -3,22 +3,23 @@ package txresult
 import (
 	"encoding/hex"
 	"encoding/json"
-	"github.com/icon-project/goloop/common/log"
 	"math/big"
 	"reflect"
 	"regexp"
 	"strings"
 
-	"github.com/icon-project/goloop/server/jsonrpc"
 	"gopkg.in/vmihailenco/msgpack.v4"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/server/jsonrpc"
+	"github.com/icon-project/goloop/service/scoreapi"
 )
 
 const (
@@ -27,8 +28,8 @@ const (
 
 type eventLogJSON struct {
 	Addr    common.Address `json:"scoreAddress"`
-	Indexed []string       `json:"indexed"`
-	Data    []string       `json:"data"`
+	Indexed []interface{}  `json:"indexed"`
+	Data    []interface{}  `json:"data"`
 }
 
 type eventLogData struct {
@@ -61,13 +62,13 @@ func (log *eventLog) ToJSON(v int) (*eventLogJSON, error) {
 
 	eljson := new(eventLogJSON)
 	eljson.Addr = log.eventLogData.Addr
-	eljson.Indexed = make([]string, len(log.eventLogData.Indexed))
-	eljson.Data = make([]string, len(log.eventLogData.Data))
+	eljson.Indexed = make([]interface{}, len(log.eventLogData.Indexed))
+	eljson.Data = make([]interface{}, len(log.eventLogData.Data))
 
 	aidx := 0
 	eljson.Indexed[0] = string(log.eventLogData.Indexed[0])
 	for i, v := range log.eventLogData.Indexed[1:] {
-		if s, err := EventDataBytesToStringByType(pts[aidx], v); err != nil {
+		if s, err := DecodeForJSONByType(pts[aidx], v); err != nil {
 			return nil, err
 		} else {
 			eljson.Indexed[i+1] = s
@@ -75,7 +76,7 @@ func (log *eventLog) ToJSON(v int) (*eventLogJSON, error) {
 		}
 	}
 	for i, v := range log.eventLogData.Data {
-		if s, err := EventDataBytesToStringByType(pts[aidx], v); err != nil {
+		if s, err := DecodeForJSONByType(pts[aidx], v); err != nil {
 			return nil, err
 		} else {
 			eljson.Data[i] = s
@@ -398,33 +399,12 @@ func DecomposeEventSignature(s string) (string, []string) {
 	return matches[1], strings.Split(matches[2], ",")
 }
 
-func EventDataBytesToStringByType(t string, v []byte) (string, error) {
-	switch t {
-	case "Address":
-		var addr common.Address
-		if err := addr.SetBytes(v); err != nil {
-			return "", err
-		}
-		return addr.String(), nil
-	case "int":
-		var ivalue common.HexInt
-		ivalue.SetBytes(v)
-		return ivalue.String(), nil
-	case "str":
-		return string(v), nil
-	case "bytes":
-		return "0x" + hex.EncodeToString(v), nil
-	case "bool":
-		var ivalue common.HexInt
-		ivalue.SetBytes(v)
-		if ivalue.Sign() == 0 {
-			return "0x0", nil
-		} else {
-			return "0x1", nil
-		}
-	default:
-		return "", errors.Errorf("UnknownType(%s)For(<% x>)", t, v)
+func DecodeForJSONByType(t string, v []byte) (interface{}, error) {
+	dt := scoreapi.DataTypeOf(t)
+	if dt == scoreapi.Unknown {
+		return nil, errors.Errorf("UnknownType(%s)For(<% x>)", t, v)
 	}
+	return dt.DecodeForJSON(v), nil
 }
 
 func EventDataStringToBytesByType(t string, v string) ([]byte, error) {
@@ -456,22 +436,35 @@ func EventDataStringToBytesByType(t string, v string) ([]byte, error) {
 	}
 }
 
+func EventDataToBytesByType(t string, v interface{}) ([]byte, error) {
+	if v == nil {
+		return nil, nil
+	} else {
+		if s, ok := v.(string); ok {
+			return EventDataStringToBytesByType(t, s)
+		} else {
+			return nil, errors.IllegalArgumentError.Errorf("InvalidJSON(%+v)", v)
+		}
+	}
+}
+
 func eventLogFromJSON(e *eventLogJSON) (*eventLog, error) {
 	el := new(eventLog)
 	el.eventLogData.Addr = e.Addr
 	el.eventLogData.Indexed = make([][]byte, len(e.Indexed))
 	el.eventLogData.Data = make([][]byte, len(e.Data))
-	_, pts := DecomposeEventSignature(e.Indexed[0])
+	sig := e.Indexed[0].(string)
+	_, pts := DecomposeEventSignature(sig)
 
 	if len(pts)+1 != len(e.Indexed)+len(e.Data) {
 		return nil, errors.InvalidStateError.New("InvalidSignatureCount")
 	}
 
-	el.eventLogData.Indexed[0] = []byte(e.Indexed[0])
+	el.eventLogData.Indexed[0] = []byte(sig)
 
 	aidx := 0
 	for i, is := range e.Indexed[1:] {
-		if bs, err := EventDataStringToBytesByType(pts[aidx], is); err != nil {
+		if bs, err := EventDataToBytesByType(pts[aidx], is); err != nil {
 			return nil, err
 		} else {
 			el.eventLogData.Indexed[i+1] = bs
@@ -480,7 +473,7 @@ func eventLogFromJSON(e *eventLogJSON) (*eventLog, error) {
 	}
 
 	for i, is := range e.Data {
-		if bs, err := EventDataStringToBytesByType(pts[aidx], is); err != nil {
+		if bs, err := EventDataToBytesByType(pts[aidx], is); err != nil {
 			return nil, err
 		} else {
 			el.eventLogData.Data[i] = bs

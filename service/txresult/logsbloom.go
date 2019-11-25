@@ -131,6 +131,9 @@ func (lb *LogsBloom) AddLog(addr module.Address, log [][]byte) {
 		lb.AddAddressOfLog(addr)
 	}
 	for i, b := range log {
+		if b == nil {
+			continue
+		}
 		lb.AddIndexedOfLog(i, b)
 	}
 }

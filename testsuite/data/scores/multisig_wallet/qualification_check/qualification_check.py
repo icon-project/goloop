@@ -19,13 +19,12 @@ from iconservice import *
 
 def only_wallet(func):
     if not isfunction(func):
-        revert(f"{func} isn't function.")
+        revert(f"{func} is not a function.")
 
     @wraps(func)
     def __wrapper(calling_obj: object, *args, **kwargs):
         if calling_obj.msg.sender != calling_obj.address:
-            calling_obj.revert(
-                f"{func} method only can be called by wallet SCORE(address: {calling_obj.address})")
+            revert(f"{func} method can be called only by the wallet SCORE (address: {calling_obj.address})")
 
         return func(calling_obj, *args, **kwargs)
     return __wrapper

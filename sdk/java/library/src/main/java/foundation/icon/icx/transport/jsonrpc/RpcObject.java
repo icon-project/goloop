@@ -85,7 +85,9 @@ public class RpcObject implements RpcItem {
         }
 
         public Builder put(String key, RpcItem item) {
-            if (!items.containsKey(key) && !isNullOrEmpty(item)) items.put(key, item);
+            if (item != null) {
+                items.put(key, item);
+            }
             return this;
         }
 

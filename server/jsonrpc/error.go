@@ -152,18 +152,18 @@ func ErrServer(message ...interface{}) *Error {
 }
 
 func ErrorHandler(re *Error, c echo.Context) {
-	var res *Response
+	var res *ErrorResponse
 	status := 0
 
 	if re.Code == ErrorCodeJsonParse {
-		res = &Response{
+		res = &ErrorResponse{
 			Version: Version,
 			Error:   re,
 		}
 		status = http.StatusBadRequest
 	} else {
 		req := c.Get("request").(*Request)
-		res = &Response{
+		res = &ErrorResponse{
 			ID:      req.ID,
 			Version: Version,
 			Error:   re,

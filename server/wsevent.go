@@ -14,7 +14,7 @@ import (
 
 type EventRequest struct {
 	EventFilter
-	Height  common.HexInt64 `json:"height"`
+	Height common.HexInt64 `json:"height"`
 }
 
 type EventFilter struct {
@@ -105,7 +105,7 @@ func (f *EventFilter) compile() error {
 	if f.Addr != nil {
 		lb.AddAddressOfLog(f.Addr)
 	}
-	f.numOfArgs = len(f.Indexed)+len(f.Data)
+	f.numOfArgs = len(f.Indexed) + len(f.Data)
 	name, pts := txresult.DecomposeEventSignature(f.Signature)
 	if len(name) == 0 || pts == nil || len(pts) < f.numOfArgs {
 		return errors.NewBase(errors.IllegalArgumentError, "bad event signature")
@@ -139,6 +139,18 @@ func (f *EventFilter) compile() error {
 	return nil
 }
 
+// bytesEqual check equality of byte slice.
+// But it doesn't assume nil as empty bytes.
+func bytesEqual(b1 []byte, b2 []byte) bool {
+	if b1 == nil && b2 == nil {
+		return true
+	}
+	if b1 == nil || b2 == nil {
+		return false
+	}
+	return bytes.Equal(b1, b2)
+}
+
 func (f *EventFilter) match(r module.Receipt) bool {
 	if r.LogsBloom().Contain(f.lb) {
 	loop:
@@ -154,12 +166,12 @@ func (f *EventFilter) match(r module.Receipt) bool {
 						}
 
 						for i, arg := range f.indexedBSs {
-							if len(arg) > 0 && !bytes.Equal(arg, el.Indexed()[i+1]) {
+							if arg != nil && !bytesEqual(arg, el.Indexed()[i+1]) {
 								continue loop
 							}
 						}
 						for i, arg := range f.dataBSs {
-							if len(arg) > 0 && !bytes.Equal(arg, el.Data()[i]) {
+							if arg != nil && !bytesEqual(arg, el.Data()[i]) {
 								continue loop
 							}
 						}

@@ -84,8 +84,8 @@ type TransactionResult struct {
 //refer service/txresult/receipt.go:29 eventLogJSON
 type EventLog struct {
 	Addr    jsonrpc.Address `json:"scoreAddress"`
-	Indexed []string        `json:"indexed"`
-	Data    []string        `json:"data"`
+	Indexed []*string       `json:"indexed"`
+	Data    []*string       `json:"data"`
 }
 
 //refer service/txresult/receipt.go:193 failureReason

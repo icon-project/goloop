@@ -99,6 +99,10 @@ public class ScoreApi {
             return item != null ? item.asInteger() : null;
         }
 
+        public RpcItem getDefault() {
+            return properties.getItem("default");
+        }
+
         @Override
         public String toString() {
             return "Param{" +

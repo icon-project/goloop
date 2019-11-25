@@ -177,12 +177,7 @@ class GetAPITest {
             if (api.getName().equals("transfer")) {
                 for (ScoreApi.Param p : api.getInputs()) {
                     if (p.getName().equals("_data")) {
-                        String raw = p.toString();
-                        int startIndex = raw.indexOf("default");
-                        int endIndex = raw.indexOf(",", startIndex);
-                        String actual = raw.substring(startIndex, endIndex);
-                        assertEquals("default=null", actual);
-                        break;
+                        assertNull(p.getDefault());
                     }
                 }
             }

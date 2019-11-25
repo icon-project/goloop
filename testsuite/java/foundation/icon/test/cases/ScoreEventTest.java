@@ -1,0 +1,108 @@
+package foundation.icon.test.cases;
+
+import foundation.icon.icx.IconService;
+import foundation.icon.icx.KeyWallet;
+import foundation.icon.icx.data.Address;
+import foundation.icon.icx.data.Bytes;
+import foundation.icon.icx.data.TransactionResult;
+import foundation.icon.icx.transport.http.HttpProvider;
+import foundation.icon.icx.transport.jsonrpc.RpcItem;
+import foundation.icon.icx.transport.jsonrpc.RpcObject;
+import foundation.icon.icx.transport.jsonrpc.RpcValue;
+import foundation.icon.test.common.Constants;
+import foundation.icon.test.common.Env;
+import foundation.icon.test.common.Utils;
+import foundation.icon.test.score.EventGen;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+
+import java.math.BigInteger;
+
+import static foundation.icon.test.common.Env.LOG;
+import static org.junit.jupiter.api.Assertions.*;
+
+@Tag(Constants.TAG_NORMAL)
+class ScoreEventTest {
+    private static Env.Chain chain;
+    private static IconService iconService;
+    private static KeyWallet ownerWallet;
+    private static EventGen testScore;
+
+    @BeforeAll
+    static void init() throws Exception {
+        Env.Node node = Env.nodes[0];
+        Env.Channel channel = node.channels[0];
+        chain = channel.chain;
+        iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
+        initScore();
+    }
+
+    private static void initScore() throws Exception {
+        ownerWallet = KeyWallet.create();
+        Address[] addrs = {ownerWallet.getAddress()};
+        Utils.transferAndCheck(iconService, chain, chain.godWallet, addrs, Constants.DEFAULT_BALANCE);
+
+        RpcObject params = new RpcObject.Builder()
+                .put("name", new RpcValue("HelloWorld"))
+                .build();
+        testScore = EventGen.install(iconService, chain, ownerWallet, params, Constants.DEFAULT_STEP_LIMIT);
+    }
+
+    @Test
+    void generateNullByIndex() throws Exception {
+        LOG.infoEntering("generateNullByIndex");
+        final int NUM = 5;
+
+        String[] expects = {"0x1", "0x1", "test", "hx0000000000000000000000000000000000000000", "0x01"};
+
+        Bytes[] ids = new Bytes[NUM];
+        for (int i = 0; i < NUM; i++) {
+            RpcObject params = new RpcObject.Builder()
+                    .put("_idx", new RpcValue(BigInteger.valueOf(i)))
+                    .build();
+            ids[i] = testScore.invoke(ownerWallet, "generateNullByIndex", params,
+                    0, Constants.DEFAULT_STEP_LIMIT);
+        }
+
+        String[] blooms = new String[NUM];
+        for (int i = 0; i < NUM; i++) {
+            TransactionResult result = testScore.waitResult(ids[i]);
+            assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+
+            blooms[i] = result.getLogsBloom();
+
+            boolean checked = false;
+            for (TransactionResult.EventLog el : result.getEventLogs()) {
+                String sig = el.getIndexed().get(0).asString();
+                if (!"EventEx(bool,int,str,Address,bytes)".equals(sig)) {
+                    continue;
+                }
+                for (int j = 0; j < NUM; j++) {
+                    RpcItem v;
+                    if (j < 3) {
+                        v = el.getIndexed().get(j + 1);
+                    } else {
+                        v = el.getData().get(j - 3);
+                    }
+                    if (i == j) {
+                        assertNull(v);
+                    } else {
+                        assertEquals(expects[j], v.asString());
+                    }
+                }
+                checked = true;
+            }
+            assertTrue(checked);
+        }
+
+        assertEquals(blooms[3], blooms[4]);
+        BigInteger base = new BigInteger(blooms[3].substring(2), 16);
+        for (int i = 0; i < 3; i++) {
+            BigInteger bloom = new BigInteger(blooms[i].substring(2), 16);
+            assertEquals(bloom.and(base), bloom);
+        }
+
+        LOG.infoExiting();
+    }
+}

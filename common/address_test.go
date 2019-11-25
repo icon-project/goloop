@@ -228,3 +228,59 @@ func TestAddress_Equal(t *testing.T) {
 		})
 	}
 }
+
+func TestAddress_SetBytes(t *testing.T) {
+	type args struct {
+		b []byte
+	}
+	tests := []struct {
+		name    string
+		a       Address
+		args    args
+		wantErr bool
+	}{
+		{
+			name:    "Nil",
+			a:       Address{},
+			args:    args{nil},
+			wantErr: true,
+		},
+		{
+			name:    "Empty",
+			a:       Address{},
+			args:    args{[]byte{}},
+			wantErr: true,
+		},
+		{
+			name:    "ContractNoID",
+			a:       Address{},
+			args:    args{[]byte{1}},
+			wantErr: false,
+		},
+		{
+			name:    "EOANoID",
+			a:       Address{},
+			args:    args{[]byte{0}},
+			wantErr: false,
+		},
+		{
+			name:    "EOAWithID20",
+			a:       Address{},
+			args:    args{[]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}},
+			wantErr: false,
+		},
+		{
+			name:    "EOAWithID21",
+			a:       Address{},
+			args:    args{[]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1}},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.a.SetBytes(tt.args.b); (err != nil) != tt.wantErr {
+				t.Errorf("SetBytes() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}

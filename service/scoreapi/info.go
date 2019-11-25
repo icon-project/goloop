@@ -3,9 +3,11 @@ package scoreapi
 import (
 	"encoding/json"
 
-	"github.com/icon-project/goloop/common/codec"
-	"github.com/icon-project/goloop/service/scoreresult"
 	"gopkg.in/vmihailenco/msgpack.v4"
+
+	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/service/scoreresult"
 )
 
 type Info struct {
@@ -32,7 +34,11 @@ func (info *Info) Bytes() ([]byte, error) {
 func (info *Info) buildMethodMap() {
 	m := make(map[string]*Method)
 	for _, method := range info.methods {
-		m[method.Name] = method
+		if method.IsEvent() {
+			m[method.Signature()] = method
+		} else {
+			m[method.Name] = method
+		}
 	}
 	info.methodMap = m
 }
@@ -67,6 +73,18 @@ func (info *Info) ConvertParamsToTypedObj(method string, params []byte) (*codec.
 		return nil, scoreresult.ErrMethodNotFound
 	}
 	return m.ConvertParamsToTypedObj(params)
+}
+
+func (info *Info) CheckEventData(indexed [][]byte, data [][]byte) error {
+	if len(indexed) < 1 {
+		return ErrNoSignature
+	}
+	s := string(indexed[0])
+	m := info.GetMethod(s)
+	if m == nil {
+		return errors.ErrNotFound
+	}
+	return m.CheckEventData(indexed, data)
 }
 
 func (info *Info) ToJSON(v int) (interface{}, error) {

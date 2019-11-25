@@ -97,7 +97,9 @@ public class RpcValue implements RpcItem {
             throw new RpcValueException(
                     "The hex value is not bytes format.");
         }
-
+        if (value.length()==2) {
+            return new byte[]{};
+        }
         return new Bytes(value).toByteArray();
     }
 
