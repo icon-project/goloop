@@ -117,16 +117,19 @@ public class TypedObj {
             return new TypedObj(INT, ((BigInteger)obj).toByteArray());
         } else if (obj instanceof Byte) {
             var o  = (Byte) obj;
-            return new TypedObj(INT, BigInteger.valueOf(o.byteValue()));
+            return new TypedObj(INT, BigInteger.valueOf(o.byteValue()).toByteArray());
         } else if (obj instanceof Short) {
             var o  = (Short) obj;
-            return new TypedObj(INT, BigInteger.valueOf(o.shortValue()));
+            return new TypedObj(INT, BigInteger.valueOf(o.shortValue()).toByteArray());
         } else if (obj instanceof Integer) {
             var o  = (Integer) obj;
-            return new TypedObj(INT, BigInteger.valueOf(o.intValue()));
+            return new TypedObj(INT, BigInteger.valueOf(o.intValue()).toByteArray());
         } else if (obj instanceof Long) {
             var o  = (Long) obj;
-            return new TypedObj(INT, BigInteger.valueOf(o.longValue()));
+            return new TypedObj(INT, BigInteger.valueOf(o.longValue()).toByteArray());
+        } else if (obj instanceof Character) {
+            var o  = (Character) obj;
+            return new TypedObj(INT, BigInteger.valueOf(o.charValue()).toByteArray());
         }
         throw new IOException("not supported type: " + obj);
     }
