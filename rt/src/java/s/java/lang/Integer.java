@@ -17,7 +17,8 @@ public final class Integer extends Number implements Comparable<Integer> {
 
     public static final int avm_BYTES = java.lang.Integer.BYTES;
 
-    public static final Class<Integer> avm_TYPE = new Class(java.lang.Integer.TYPE, new ConstantToken(ShadowClassConstantId.Integer_avm_TYPE));
+    // Note that this type is actually NOT "java.lang.Integer" but "int" - the underlying JDK does an incorrect cast and we are inheriting it.
+    public static final Class<java.lang.Integer> avm_TYPE = new Class<java.lang.Integer>(java.lang.Integer.TYPE, new ConstantToken(ShadowClassConstantId.Integer_avm_TYPE));
 
     public static String avm_toString(int i, int radix) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Integer_avm_toString);

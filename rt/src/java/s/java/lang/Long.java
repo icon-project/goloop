@@ -13,7 +13,8 @@ public final class Long extends Number implements Comparable<Long> {
 
     public static final long avm_MAX_VALUE = 0x7fffffffffffffffL;
 
-    public static final Class<Long> avm_TYPE = new Class(java.lang.Long.TYPE, new ConstantToken(ShadowClassConstantId.Long_avm_TYPE));
+    // Note that this type is actually NOT "java.lang.Long" but "long" - the underlying JDK does an incorrect cast and we are inheriting it.
+    public static final Class<java.lang.Long> avm_TYPE = new Class<java.lang.Long>(java.lang.Long.TYPE, new ConstantToken(ShadowClassConstantId.Long_avm_TYPE));
 
     public static String avm_toString(long i, int radix) {
         // Billing associated with this method is set to level 4 because of slow execution time of radix 2

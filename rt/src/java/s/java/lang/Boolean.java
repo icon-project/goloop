@@ -14,10 +14,12 @@ public final class Boolean extends Object implements Serializable, Comparable<Bo
 
     public static final Boolean avm_FALSE = new Boolean(false, new ConstantToken(ShadowClassConstantId.Boolean_avm_FALSE));
 
-    public static final Class<Boolean> avm_TYPE = new Class(java.lang.Boolean.TYPE, new ConstantToken(ShadowClassConstantId.Boolean_avm_TYPE));
+    // Note that this type is actually NOT "java.lang.Boolean" but "boolean" - the underlying JDK does an incorrect cast and we are inheriting it.
+    public static final Class<java.lang.Boolean> avm_TYPE = new Class<java.lang.Boolean>(java.lang.Boolean.TYPE, new ConstantToken(ShadowClassConstantId.Boolean_avm_TYPE));
 
     // These are the constructors provided in the JDK but we mark them private since they are deprecated.
     // (in the future, we may change these to not exist - depends on the kind of error we want to give the user).
+    @SuppressWarnings("unused")
     private Boolean(boolean b) {
         this.v = b;
     }

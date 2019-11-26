@@ -15,6 +15,15 @@ import java.util.Map;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 import s.java.io.Serializable;
 
+/**
+ * Note that the shadow Class wraps the instance of the actual class being used for all cases.
+ * While this seems clear for user-defined classes, JDK and API classes allow for some confusion, as there are original and shadow variants
+ * of their classes.
+ * To be clear, the shadow Class will always wrap an instance of the SHADOW VARIANT (that is, "s.java.lang.Byte", not "java.lang.Byte"), as
+ * that is the type actually being instantiated.
+ * The ONLY exception to this is primitive pseudo-classes, such as "Byte.TYPE", where the underlying JDK Class instance is wrapped, directly.
+ * This is because these types cannot be instantiated so they would be a special-case, either way.
+ */
 public final class Class<T> extends Object implements Serializable {
     static {
         // Shadow classes MUST be loaded during bootstrap phase.

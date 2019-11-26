@@ -40,7 +40,8 @@ public final class Double extends Number implements Comparable<Double>{
 
     public static final int avm_SIZE = java.lang.Double.SIZE;
 
-    public static final Class avm_TYPE = new Class(java.lang.Double.TYPE, new ConstantToken(ShadowClassConstantId.Double_avm_TYPE));
+    // Note that this type is actually NOT "java.lang.Double" but "double" - the underlying JDK does an incorrect cast and we are inheriting it.
+    public static final Class<java.lang.Double> avm_TYPE = new Class<java.lang.Double>(java.lang.Double.TYPE, new ConstantToken(ShadowClassConstantId.Double_avm_TYPE));
 
     public static String avm_toHexString(double a)
     {

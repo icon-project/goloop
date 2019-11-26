@@ -13,7 +13,8 @@ public final class Short extends Number implements Comparable<Short> {
 
     public static final short avm_MAX_VALUE = java.lang.Short.MAX_VALUE;
 
-    public static final Class<Short> avm_TYPE = new Class(java.lang.Short.TYPE, new ConstantToken(ShadowClassConstantId.Short_avm_TYPE));
+    // Note that this type is actually NOT "java.lang.Short" but "short" - the underlying JDK does an incorrect cast and we are inheriting it.
+    public static final Class<java.lang.Short> avm_TYPE = new Class<java.lang.Short>(java.lang.Short.TYPE, new ConstantToken(ShadowClassConstantId.Short_avm_TYPE));
 
     public static String avm_toString(short s) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Short_avm_toString);

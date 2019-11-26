@@ -13,7 +13,8 @@ public final class Byte extends Number implements Comparable<Byte> {
 
     public static final byte avm_MAX_VALUE = java.lang.Byte.MAX_VALUE;
 
-    public static final Class<Byte> avm_TYPE = new Class(java.lang.Byte.TYPE, new ConstantToken(ShadowClassConstantId.Byte_avm_TYPE));
+    // Note that this type is actually NOT "java.lang.Byte" but "byte" - the underlying JDK does an incorrect cast and we are inheriting it.
+    public static final Class<java.lang.Byte> avm_TYPE = new Class<java.lang.Byte>(java.lang.Byte.TYPE, new ConstantToken(ShadowClassConstantId.Byte_avm_TYPE));
 
     public static String avm_toString(byte b) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Byte_avm_toString);

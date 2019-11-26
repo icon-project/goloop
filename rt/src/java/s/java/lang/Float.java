@@ -29,7 +29,8 @@ public final class Float extends Number implements Comparable<Float> {
 
     public static final int avm_BYTES = java.lang.Float.BYTES;
 
-    public static final Class<Float> avm_TYPE = new Class(java.lang.Float.TYPE, new ConstantToken(ShadowClassConstantId.Float_avm_TYPE));
+    // Note that this type is actually NOT "java.lang.Float" but "float" - the underlying JDK does an incorrect cast and we are inheriting it.
+    public static final Class<java.lang.Float> avm_TYPE = new Class<java.lang.Float>(java.lang.Float.TYPE, new ConstantToken(ShadowClassConstantId.Float_avm_TYPE));
 
     // These are the constructors provided in the JDK but we mark them private since they are deprecated.
     // (in the future, we may change these to not exist - depends on the kind of error we want to give the user).
