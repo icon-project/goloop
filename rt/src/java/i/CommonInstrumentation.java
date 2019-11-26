@@ -262,7 +262,7 @@ public class CommonInstrumentation implements IInstrumentation {
     }
 
     @Override
-    public boolean isLoadedByCurrentClassLoader(Class userClass) {
+    public boolean isLoadedByCurrentClassLoader(Class<?> userClass) {
         // If this is the same classloader, they will both be obviously the same instance.
         return (userClass.getClassLoader() == this.currentFrame.lateLoader);
     }

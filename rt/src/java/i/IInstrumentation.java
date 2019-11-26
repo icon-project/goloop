@@ -54,7 +54,7 @@ public interface IInstrumentation {
     /**
      * @return id the class has been loaded by the classloader associated to stackFrame
      */
-    boolean isLoadedByCurrentClassLoader(Class userClass);
+    boolean isLoadedByCurrentClassLoader(Class<?> userClass);
 
     FrameContext getFrameContext();
 }

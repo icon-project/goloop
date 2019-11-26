@@ -129,7 +129,7 @@ public class TestingHelper implements IInstrumentation {
         throw RuntimeAssertionError.unreachable("Shouldn't be called in the testing code");
     }
     @Override
-    public boolean isLoadedByCurrentClassLoader(java.lang.Class userClass) {
+    public boolean isLoadedByCurrentClassLoader(java.lang.Class<?> userClass) {
         throw RuntimeAssertionError.unreachable("Not expected in this test");
     }
     @Override

@@ -92,7 +92,7 @@ public class TestInstrumentation implements IInstrumentation {
     }
 
     @Override
-    public boolean isLoadedByCurrentClassLoader(java.lang.Class userClass) {
+    public boolean isLoadedByCurrentClassLoader(java.lang.Class<?> userClass) {
         throw RuntimeAssertionError.unreachable("Not expected in this test");
     }
 

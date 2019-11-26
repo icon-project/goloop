@@ -170,7 +170,7 @@ public class Forest<I, C> {
 
         @Override
         public boolean equals(Object that) {
-            return (that instanceof Node) && id.equals(((Node) that).id);
+            return (that instanceof Node) && id.equals(((Node<?, ?>) that).id);
         }
     }
 

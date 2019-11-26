@@ -140,7 +140,7 @@ public class InterfaceFieldClassGeneratorVisitor extends ClassToolchain.ToolChai
                 MethodVisitor mv = cw.visitMethod(ACC_PRIVATE, "<init>", "()V", null, null);
                 mv.visitCode();
                 mv.visitVarInsn(ALOAD, 0); //load the first local variable: this
-                mv.visitMethodInsn(INVOKESPECIAL, javaLangObject, "<init>", "()V");
+                mv.visitMethodInsn(INVOKESPECIAL, javaLangObject, "<init>", "()V", false);
                 mv.visitInsn(RETURN);
                 mv.visitMaxs(1, 1);
                 mv.visitEnd();

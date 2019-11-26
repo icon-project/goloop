@@ -123,7 +123,7 @@ public final class InternalFunction extends s.java.lang.Object implements s.java
         try {
             Object result;
             if (target instanceof Constructor) {
-                result = ((Constructor) target).newInstance(mapInputToParameterType(input, this.parameterType));
+                result = ((Constructor<?>) target).newInstance(mapInputToParameterType(input, this.parameterType));
             } else {
                 if (parameterType == null) {
                     // invokeVirtual and invokeInterface case
@@ -177,7 +177,7 @@ public final class InternalFunction extends s.java.lang.Object implements s.java
         } else if (obj instanceof s.java.lang.Object) {
             ret = (s.java.lang.Object) obj;
         } else {
-            Class argClass = obj.getClass();
+            Class<?> argClass = obj.getClass();
             if (argClass.equals(java.lang.Short.class)) {
                 ret = Short.avm_valueOf(((java.lang.Short) obj));
             } else if (argClass.equals(java.lang.Integer.class)) {
@@ -229,7 +229,7 @@ public final class InternalFunction extends s.java.lang.Object implements s.java
         return ret;
     }
 
-    private static s.java.lang.Class getShadowCanonicalType(Class<?> parameterType) {
+    private static s.java.lang.Class<?> getShadowCanonicalType(Class<?> parameterType) {
         s.java.lang.Class<?> ret = null;
         if(!parameterType.isPrimitive()){
             ret = new s.java.lang.Class<>(parameterType);
