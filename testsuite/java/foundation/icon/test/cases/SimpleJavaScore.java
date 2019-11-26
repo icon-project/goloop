@@ -166,24 +166,35 @@ class SimpleJavaScore {
                     from, score, "transfer", builder.build());
     }
 
-    @Test
-    void testScoreAPITest() throws Exception {
+    private Address deployAPITest() throws Exception {
         LOG.infoEntering("deploy", "apiTest");
         Address scoreAddr = Score.install(iconService, chain, ownerWallet, Constants.JSCORE_APITEST,
                                           null, 1000000, Constants.CONTENT_TYPE_JAVA);
         LOG.info("scoreAddr = " + scoreAddr);
         testScore = new Score(iconService, chain, scoreAddr);
         LOG.infoExiting();
+        return scoreAddr;
+    }
+
+    @Test
+    void testAPITestForAddress() throws Exception {
+        Address scoreAddr = deployAPITest();
+        KeyWallet caller = KeyWallet.create();
+        TransactionResult tr;
 
         // getAddress
         LOG.infoEntering("getAddress", "invoke");
-        KeyWallet caller = KeyWallet.create();
-        TransactionResult tr = testScore.invokeAndWaitResult(caller, "getAddress", null, 0, 100000);
+        tr = testScore.invokeAndWaitResult(caller, "getAddress",
+                new RpcObject.Builder().put("addr", new RpcValue(testScore.getAddress())).build(),
+                0, 100000);
         assertEquals(BigInteger.ONE, tr.getStatus());
+        tr = testScore.invokeAndWaitResult(caller, "getAddress",
+                new RpcObject.Builder().put("addr", new RpcValue(caller.getAddress())).build(),
+                0, 100000);
+        assertEquals(BigInteger.ZERO, tr.getStatus());
         LOG.infoExiting();
 
         LOG.infoEntering("getAddress", "query");
-        caller = KeyWallet.create();
         RpcItem result = testScore.call(caller.getAddress(), "getAddressQuery", null);
         LOG.info("expected (" + scoreAddr + "), result (" + result.asAddress() + ")");
         assertEquals(scoreAddr, result.asAddress());
@@ -191,12 +202,17 @@ class SimpleJavaScore {
 
         // getCaller
         LOG.infoEntering("getCaller", "invoke");
-        tr = testScore.invokeAndWaitResult(caller, "getCaller", null, 0, 100000);
+        tr = testScore.invokeAndWaitResult(caller, "getCaller",
+                new RpcObject.Builder().put("caller", new RpcValue(caller.getAddress())).build(),
+                0, 100000);
         assertEquals(BigInteger.ONE, tr.getStatus());
+        tr = testScore.invokeAndWaitResult(caller, "getCaller",
+                new RpcObject.Builder().put("caller", new RpcValue(testScore.getAddress())).build(),
+                0, 100000);
+        assertEquals(BigInteger.ZERO, tr.getStatus());
         LOG.infoExiting();
 
         LOG.infoEntering("getCaller", "query");
-        caller = KeyWallet.create();
         result = testScore.call(caller.getAddress(), "getCallerQuery", null);
         LOG.info("expected (" + "null" + "), result (" + result + ")");
         assertNull(result);
@@ -204,8 +220,14 @@ class SimpleJavaScore {
 
         // getOrigin
         LOG.infoEntering("getOrigin", "invoke");
-        tr = testScore.invokeAndWaitResult(caller, "getOrigin", null, 0, 100000);
+        tr = testScore.invokeAndWaitResult(caller, "getOrigin",
+                new RpcObject.Builder().put("origin", new RpcValue(caller.getAddress())).build(),
+                0, 100000);
         assertEquals(BigInteger.ONE, tr.getStatus());
+        tr = testScore.invokeAndWaitResult(caller, "getOrigin",
+                new RpcObject.Builder().put("origin", new RpcValue(testScore.getAddress())).build(),
+                0, 100000);
+        assertEquals(BigInteger.ZERO, tr.getStatus());
         LOG.infoExiting();
 
         LOG.infoEntering("getOrigin", "query");
@@ -216,14 +238,52 @@ class SimpleJavaScore {
 
         // getOwner
         LOG.infoEntering("getOwner", "invoke");
-        tr = testScore.invokeAndWaitResult(caller, "getOwner", null, 0, 100000);
+        tr = testScore.invokeAndWaitResult(caller, "getOwner",
+                new RpcObject.Builder().put("owner", new RpcValue(ownerWallet.getAddress())).build(),
+                0, 100000);
         assertEquals(BigInteger.ONE, tr.getStatus());
+        tr = testScore.invokeAndWaitResult(caller, "getOwner",
+                new RpcObject.Builder().put("owner", new RpcValue(caller.getAddress())).build(),
+                0, 100000);
+        assertEquals(BigInteger.ZERO, tr.getStatus());
         LOG.infoExiting();
 
-        LOG.infoEntering("getOwnerQuery", "query");
+        LOG.infoEntering("getOwner", "query");
         result = testScore.call(caller.getAddress(), "getOwnerQuery", null);
         LOG.info("expected (" + ownerWallet.getAddress() + "), result (" + result.asAddress() + ")");
         assertEquals(ownerWallet.getAddress(), result.asAddress());
+        LOG.infoExiting();
+    }
+
+    @Test
+    void testAPITestForBlock() throws Exception {
+        Address scoreAddr = deployAPITest();
+        KeyWallet caller = KeyWallet.create();
+        TransactionResult tr;
+
+        // getBlockHeight
+        LOG.infoEntering("getBlockHeight", "invoke");
+        tr = testScore.invokeAndWaitResult(caller, "getBlockHeight", null, 0, 100000);
+        assertEquals(BigInteger.ONE, tr.getStatus());
+        LOG.infoExiting();
+
+        LOG.infoEntering("getBlockHeight", "query");
+        RpcItem result = testScore.call(caller.getAddress(), "getBlockHeightQuery", null);
+        LOG.info("expected (" + "?" + "), result (" + result.asInteger() + ")");
+        assertTrue(BigInteger.ONE.compareTo(result.asInteger()) < 0);
+        LOG.infoExiting();
+
+        // getBlockTimestamp
+        LOG.infoEntering("getBlockTimestamp", "invoke");
+        BigInteger currentTimestamp = BigInteger.valueOf(System.currentTimeMillis());
+        tr = testScore.invokeAndWaitResult(caller, "getBlockTimestamp", null, 0, 100000);
+        assertEquals(BigInteger.ONE, tr.getStatus());
+        LOG.infoExiting();
+
+        LOG.infoEntering("getBlockTimestamp", "query");
+        result = testScore.call(caller.getAddress(), "getBlockTimestampQuery", null);
+        LOG.info("expected (" + currentTimestamp + "), result (" + result.asInteger() + ")");
+        assertTrue(currentTimestamp.compareTo(result.asInteger()) < 0);
         LOG.infoExiting();
     }
 }
