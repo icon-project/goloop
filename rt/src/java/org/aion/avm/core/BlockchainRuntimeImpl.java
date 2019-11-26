@@ -46,6 +46,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     private final IRuntimeSetup thisDAppSetup;
     private final boolean enablePrintln;
 
+    private ByteArray transactionHashCache;
     private Address addressCache;
     private Address callerCache;
     private Address originCache;
@@ -68,6 +69,17 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         this.tx = tx;
         this.thisDAppSetup = thisDAppSetup;
         this.enablePrintln = enablePrintln;
+    }
+
+    @Override
+    public ByteArray avm_getTransactionHash() {
+        if (null == this.transactionHashCache) {
+            byte[] txHash = tx.copyOfTransactionHash();
+            if (txHash != null) {
+                this.transactionHashCache = new ByteArray(txHash);
+            }
+        }
+        return this.transactionHashCache;
     }
 
     @Override

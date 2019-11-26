@@ -17,6 +17,11 @@ public interface IBlockchainRuntime {
     //================
 
     /**
+     * Returns the transaction hash of the origin transaction.
+     */
+    ByteArray avm_getTransactionHash();
+
+    /**
      * Returns the address of the currently-running SCORE.
      */
     Address avm_getAddress();

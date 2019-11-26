@@ -19,6 +19,15 @@ public final class Blockchain {
     //===================
 
     /**
+     * Returns the hash of the transaction.
+     *
+     * @return the transaction hash.
+     */
+    public static byte[] getTransactionHash() {
+        return null;
+    }
+
+    /**
      * Returns the address of the currently-running SCORE.
      *
      * @return an address

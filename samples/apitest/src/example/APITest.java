@@ -3,6 +3,7 @@ package example;
 import avm.Address;
 import avm.Blockchain;
 import foundation.icon.ee.tooling.abi.External;
+import foundation.icon.ee.tooling.abi.EventLog;
 
 import java.math.BigInteger;
 
@@ -10,6 +11,10 @@ public class APITest
 {
     public static void onInstall() {
     }
+
+    //================================
+    // Address
+    //================================
 
     @External
     public static void getAddress(Address addr) {
@@ -61,6 +66,10 @@ public class APITest
         return Blockchain.getValue();
     }
 
+    //================================
+    // Block
+    //================================
+
     @External
     public static void getBlockTimestamp() {
         Blockchain.require(Blockchain.getBlockTimestamp() > 0L);
@@ -79,5 +88,23 @@ public class APITest
     @External(readonly=true)
     public static long getBlockHeightQuery() {
         return Blockchain.getBlockHeight();
+    }
+
+    //================================
+    // Transaction
+    //================================
+
+    @EventLog
+    public static void EmitEvent(byte[] data) {}
+
+    @External
+    public static void getTransactionHash() {
+        Blockchain.require(Blockchain.getTransactionHash() != null);
+        EmitEvent(Blockchain.getTransactionHash());
+    }
+
+    @External(readonly=true)
+    public static byte[] getTransactionHashQuery() {
+        return Blockchain.getTransactionHash();
     }
 }

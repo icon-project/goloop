@@ -20,6 +20,11 @@ public final class Blockchain extends Object {
 
     // Runtime-facing implementation.
 
+    public static ByteArray avm_getTransactionHash() {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getTransactionHash);
+        return blockchainRuntime.avm_getTransactionHash();
+    }
+
     public static Address avm_getAddress() {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getAddress);
         return blockchainRuntime.avm_getAddress();
