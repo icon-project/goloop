@@ -37,6 +37,15 @@ public final class Blockchain {
     }
 
     /**
+     * Returns the timestamp of a transaction request.
+     *
+     * @return the transaction timestamp
+     */
+    public static long getTransactionTimestamp() {
+        return 0L;
+    }
+
+    /**
      * Returns the address of the currently-running SCORE.
      *
      * @return an address
@@ -96,7 +105,7 @@ public final class Blockchain {
      * @return a timestamp indicates when the block is forged.
      */
     public static long getBlockTimestamp() {
-        return 0;
+        return 0L;
     }
 
     /**
@@ -105,7 +114,7 @@ public final class Blockchain {
      * @return the height of the block, in which the transaction is included
      */
     public static long getBlockHeight() {
-        return 0;
+        return 0L;
     }
 
     //===================

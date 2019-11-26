@@ -116,12 +116,14 @@ public class TransactionExecutor {
         BigInteger nonce = (BigInteger) info.get(EEProxy.Info.TX_NONCE);
         byte[] txHash = (byte[]) info.get(EEProxy.Info.TX_HASH);
         int txIndex = ((BigInteger) info.get(EEProxy.Info.TX_INDEX)).intValue();
+        long txTimestamp = ((BigInteger) info.get(EEProxy.Info.TX_TIMESTAMP)).longValue();
         Address owner = (Address) info.get(EEProxy.Info.CONTRACT_OWNER);
         Address origin = (Address) info.get(EEProxy.Info.TX_FROM);
 
         byte[] codeBytes = readFile(code);
         ExternalState kernel = new ExternalState(proxy, codeBytes, blockHeight, blockTimestamp, owner);
-        Transaction tx = getTransactionData(isInstall, from, to, value, nonce, limit, method, params, txHash, txIndex);
+        Transaction tx = getTransactionData(isInstall, from, to, value, nonce, limit, method, params,
+                txHash, txIndex, txTimestamp);
 
         BigInteger energyUsed = BigInteger.ZERO;
         try {
@@ -135,7 +137,8 @@ public class TransactionExecutor {
                     throw new RuntimeException(result.getErrorMessage());
                 }
                 // Prepare another transaction for 'onInstall' itself
-                tx = getTransactionData(false, from, to, value, nonce, limit, method, params, txHash, txIndex);
+                tx = getTransactionData(false, from, to, value, nonce, limit, method, params,
+                        txHash, txIndex, txTimestamp);
             }
             // Actual execution of the transaction
             ResultWrapper result = new ResultWrapper(
@@ -156,7 +159,8 @@ public class TransactionExecutor {
 
     private Transaction getTransactionData(boolean isInstall, Address from, Address to,
                                            BigInteger value, BigInteger nonce, BigInteger limit,
-                                           String method, Object[] params, byte[] txHash, int txIndex) {
+                                           String method, Object[] params,
+                                           byte[] txHash, int txIndex, long txTimestamp) {
         if (to == null) {
             throw new NullPointerException("Cannot create Transaction with null destination!");
         }
@@ -165,6 +169,7 @@ public class TransactionExecutor {
                 new AionAddress(to),
                 txHash,
                 txIndex,
+                txTimestamp,
                 value,
                 nonce,
                 method,

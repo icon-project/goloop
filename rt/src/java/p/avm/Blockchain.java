@@ -30,6 +30,11 @@ public final class Blockchain extends Object {
         return blockchainRuntime.avm_getTransactionIndex();
     }
 
+    public static long avm_getTransactionTimestamp() {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getTransactionTimestamp);
+        return blockchainRuntime.avm_getTransactionTimestamp();
+    }
+
     public static Address avm_getAddress() {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getAddress);
         return blockchainRuntime.avm_getAddress();

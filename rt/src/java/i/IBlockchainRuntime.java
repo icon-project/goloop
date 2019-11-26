@@ -27,6 +27,11 @@ public interface IBlockchainRuntime {
     int avm_getTransactionIndex();
 
     /**
+     * Returns the timestamp of a transaction request.
+     */
+    long avm_getTransactionTimestamp();
+
+    /**
      * Returns the address of the currently-running SCORE.
      */
     Address avm_getAddress();

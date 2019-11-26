@@ -300,6 +300,7 @@ public class RuntimeMethodFeeSchedule {
 
     public static final int BlockchainRuntime_avm_getTransactionHash = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
     public static final int BlockchainRuntime_avm_getTransactionIndex = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
+    public static final int BlockchainRuntime_avm_getTransactionTimestamp = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
     public static final int BlockchainRuntime_avm_getAddress = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
     public static final int BlockchainRuntime_avm_getCaller = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
     public static final int BlockchainRuntime_avm_getOrigin = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;

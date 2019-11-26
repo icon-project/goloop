@@ -118,4 +118,15 @@ public class APITest
     public static int getTransactionIndexQuery() {
         return Blockchain.getTransactionIndex();
     }
+
+    @External
+    public static void getTransactionTimestamp() {
+        Blockchain.require(Blockchain.getTransactionTimestamp() > 0L);
+        EmitEvent(BigInteger.valueOf(Blockchain.getTransactionTimestamp()).toByteArray());
+    }
+
+    @External(readonly=true)
+    public static long getTransactionTimestampQuery() {
+        return Blockchain.getTransactionTimestamp();
+    }
 }

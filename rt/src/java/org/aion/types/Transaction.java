@@ -16,6 +16,7 @@ public final class Transaction {
     public final AionAddress destinationAddress;
     private final byte[] transactionHash;
     public final int transactionIndex;
+    public final long transactionTimestamp;
     public final BigInteger value;
     public final BigInteger nonce;
     public final long energyLimit;
@@ -27,6 +28,7 @@ public final class Transaction {
                         AionAddress destinationAddress,
                         byte[] transactionHash,
                         int transactionIndex,
+                        long transactionTimestamp,
                         BigInteger value,
                         BigInteger nonce,
                         long energyLimit,
@@ -70,6 +72,7 @@ public final class Transaction {
             this.transactionHash = null;
         }
         this.transactionIndex = transactionIndex;
+        this.transactionTimestamp = transactionTimestamp;
         this.value = value;
         this.nonce = nonce;
         this.energyLimit = energyLimit;
@@ -95,9 +98,9 @@ public final class Transaction {
      * @return a Transaction object
      */
     public static Transaction newTransaction(AionAddress sender, AionAddress destination,
-                                             byte[] txHash, int txIndex, BigInteger value, BigInteger nonce,
+                                             byte[] txHash, int txIndex, long txTimestamp, BigInteger value, BigInteger nonce,
                                              String method, Object[] params, long energyLimit, boolean isCreate) {
-        return new Transaction(sender, destination, txHash, txIndex, value, nonce,
+        return new Transaction(sender, destination, txHash, txIndex, txTimestamp, value, nonce,
                                energyLimit, method, params, isCreate);
     }
 

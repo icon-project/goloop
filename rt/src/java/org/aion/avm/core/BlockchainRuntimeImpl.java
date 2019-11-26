@@ -88,6 +88,11 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     @Override
+    public long avm_getTransactionTimestamp() {
+        return tx.transactionTimestamp;
+    }
+
+    @Override
     public Address avm_getAddress() {
         if (null == this.addressCache) {
             this.addressCache = new Address(this.transactionDestination.toByteArray());
