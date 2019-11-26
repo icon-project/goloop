@@ -15,6 +15,7 @@ public final class Transaction {
     public final AionAddress senderAddress;
     public final AionAddress destinationAddress;
     private final byte[] transactionHash;
+    public final int transactionIndex;
     public final BigInteger value;
     public final BigInteger nonce;
     public final long energyLimit;
@@ -25,6 +26,7 @@ public final class Transaction {
     private Transaction(AionAddress senderAddress,
                         AionAddress destinationAddress,
                         byte[] transactionHash,
+                        int transactionIndex,
                         BigInteger value,
                         BigInteger nonce,
                         long energyLimit,
@@ -67,6 +69,7 @@ public final class Transaction {
         } else {
             this.transactionHash = null;
         }
+        this.transactionIndex = transactionIndex;
         this.value = value;
         this.nonce = nonce;
         this.energyLimit = energyLimit;
@@ -81,7 +84,8 @@ public final class Transaction {
      *
      * @param sender The sender of the transaction.
      * @param destination The contract to be called or account to have value transferred to.
-     * @param transactionHash The hash of the transaction.
+     * @param txHash The hash of the transaction.
+     * @param txIndex The transaction index in a block.
      * @param value The amount of value to be transferred from the sender to the destination.
      * @param nonce The nonce of the sender.
      * @param method The name of method.
@@ -91,9 +95,10 @@ public final class Transaction {
      * @return a Transaction object
      */
     public static Transaction newTransaction(AionAddress sender, AionAddress destination,
-                                             byte[] transactionHash, BigInteger value, BigInteger nonce,
+                                             byte[] txHash, int txIndex, BigInteger value, BigInteger nonce,
                                              String method, Object[] params, long energyLimit, boolean isCreate) {
-        return new Transaction(sender, destination, transactionHash, value, nonce, energyLimit,  method, params, isCreate);
+        return new Transaction(sender, destination, txHash, txIndex, value, nonce,
+                               energyLimit, method, params, isCreate);
     }
 
     public byte[] copyOfTransactionHash() {
@@ -122,6 +127,7 @@ public final class Transaction {
             // compare method and params on transactionData field removal
             return Objects.equals(this.senderAddress, otherObject.senderAddress)
                     && Objects.equals(this.destinationAddress, otherObject.destinationAddress)
+                    && this.transactionIndex == otherObject.transactionIndex
                     && this.value.equals(otherObject.value)
                     && this.nonce.equals(otherObject.nonce)
                     && this.energyLimit == otherObject.energyLimit
@@ -135,6 +141,8 @@ public final class Transaction {
         return "TransactionData ["
             + "hash="
             + Arrays.toString(transactionHash)
+            + ", index="
+            + transactionIndex
             + ", nonce="
             + nonce
             + ", destinationAddress="
@@ -148,7 +156,7 @@ public final class Transaction {
 
     @Override
     public int hashCode() {
-        int result = Objects.hash(senderAddress, destinationAddress, value, nonce, energyLimit, isCreate);
+        int result = Objects.hash(senderAddress, destinationAddress, transactionIndex, value, nonce, energyLimit, isCreate);
         if (transactionHash != null) {
             result = 31 * result + Arrays.hashCode(transactionHash);
         }

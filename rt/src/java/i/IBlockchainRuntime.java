@@ -22,6 +22,11 @@ public interface IBlockchainRuntime {
     ByteArray avm_getTransactionHash();
 
     /**
+     * Returns the transaction index in a block.
+     */
+    int avm_getTransactionIndex();
+
+    /**
      * Returns the address of the currently-running SCORE.
      */
     Address avm_getAddress();

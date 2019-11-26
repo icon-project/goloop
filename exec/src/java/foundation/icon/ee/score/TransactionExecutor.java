@@ -115,12 +115,13 @@ public class TransactionExecutor {
         BigInteger blockTimestamp = (BigInteger) info.get(EEProxy.Info.BLOCK_TIMESTAMP);
         BigInteger nonce = (BigInteger) info.get(EEProxy.Info.TX_NONCE);
         byte[] txHash = (byte[]) info.get(EEProxy.Info.TX_HASH);
+        int txIndex = ((BigInteger) info.get(EEProxy.Info.TX_INDEX)).intValue();
         Address owner = (Address) info.get(EEProxy.Info.CONTRACT_OWNER);
         Address origin = (Address) info.get(EEProxy.Info.TX_FROM);
 
         byte[] codeBytes = readFile(code);
         ExternalState kernel = new ExternalState(proxy, codeBytes, blockHeight, blockTimestamp, owner);
-        Transaction tx = getTransactionData(isInstall, from, to, value, nonce, limit, method, params, txHash);
+        Transaction tx = getTransactionData(isInstall, from, to, value, nonce, limit, method, params, txHash, txIndex);
 
         BigInteger energyUsed = BigInteger.ZERO;
         try {
@@ -134,7 +135,7 @@ public class TransactionExecutor {
                     throw new RuntimeException(result.getErrorMessage());
                 }
                 // Prepare another transaction for 'onInstall' itself
-                tx = getTransactionData(false, from, to, value, nonce, limit, method, params, txHash);
+                tx = getTransactionData(false, from, to, value, nonce, limit, method, params, txHash, txIndex);
             }
             // Actual execution of the transaction
             ResultWrapper result = new ResultWrapper(
@@ -155,7 +156,7 @@ public class TransactionExecutor {
 
     private Transaction getTransactionData(boolean isInstall, Address from, Address to,
                                            BigInteger value, BigInteger nonce, BigInteger limit,
-                                           String method, Object[] params, byte[] txHash) {
+                                           String method, Object[] params, byte[] txHash, int txIndex) {
         if (to == null) {
             throw new NullPointerException("Cannot create Transaction with null destination!");
         }
@@ -163,6 +164,7 @@ public class TransactionExecutor {
                 from == null ? null : new AionAddress(from),
                 new AionAddress(to),
                 txHash,
+                txIndex,
                 value,
                 nonce,
                 method,

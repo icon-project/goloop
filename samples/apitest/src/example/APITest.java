@@ -107,4 +107,15 @@ public class APITest
     public static byte[] getTransactionHashQuery() {
         return Blockchain.getTransactionHash();
     }
+
+    @External
+    public static void getTransactionIndex() {
+        Blockchain.require(Blockchain.getTransactionIndex() >= 0);
+        EmitEvent(BigInteger.valueOf(Blockchain.getTransactionIndex()).toByteArray());
+    }
+
+    @External(readonly=true)
+    public static int getTransactionIndexQuery() {
+        return Blockchain.getTransactionIndex();
+    }
 }

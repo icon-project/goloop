@@ -21,10 +21,19 @@ public final class Blockchain {
     /**
      * Returns the hash of the transaction.
      *
-     * @return the transaction hash.
+     * @return the transaction hash
      */
     public static byte[] getTransactionHash() {
         return null;
+    }
+
+    /**
+     * Returns the transaction index in a block.
+     *
+     * @return the transaction index
+     */
+    public static int getTransactionIndex() {
+        return 0;
     }
 
     /**
