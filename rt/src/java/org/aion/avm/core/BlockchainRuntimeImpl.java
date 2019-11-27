@@ -27,6 +27,7 @@ import p.avm.Result;
 import p.avm.Value;
 import p.avm.ValueBuffer;
 import p.avm.VarDB;
+import s.java.math.BigInteger;
 
 import java.util.Arrays;
 import java.util.List;
@@ -46,12 +47,13 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     private final IRuntimeSetup thisDAppSetup;
     private final boolean enablePrintln;
 
-    private ByteArray transactionHashCache;
     private Address addressCache;
     private Address callerCache;
     private Address originCache;
     private Address ownerCache;
+    private ByteArray transactionHashCache;
     private s.java.math.BigInteger valueCache;
+    private s.java.math.BigInteger nonceCache;
 
     public BlockchainRuntimeImpl(IExternalState externalState,
                                  ReentrantDAppStack.ReentrantState reentrantState,
@@ -90,6 +92,14 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     @Override
     public long avm_getTransactionTimestamp() {
         return tx.transactionTimestamp;
+    }
+
+    @Override
+    public BigInteger avm_getTransactionNonce() {
+        if (null == this.nonceCache) {
+            this.nonceCache = new s.java.math.BigInteger(tx.nonce);
+        }
+        return this.nonceCache;
     }
 
     @Override

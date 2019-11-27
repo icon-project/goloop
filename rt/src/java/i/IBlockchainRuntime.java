@@ -32,6 +32,11 @@ public interface IBlockchainRuntime {
     long avm_getTransactionTimestamp();
 
     /**
+     * Returns the nonce of a transaction request.
+     */
+    BigInteger avm_getTransactionNonce();
+
+    /**
      * Returns the address of the currently-running SCORE.
      */
     Address avm_getAddress();

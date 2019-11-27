@@ -131,4 +131,14 @@ public class APITest
     public static long getTransactionTimestampQuery() {
         return Blockchain.getTransactionTimestamp();
     }
+
+    @External
+    public static void getTransactionNonce() {
+        EmitEvent(Blockchain.getTransactionNonce().toByteArray());
+    }
+
+    @External(readonly=true)
+    public static BigInteger getTransactionNonceQuery() {
+        return Blockchain.getTransactionNonce();
+    }
 }

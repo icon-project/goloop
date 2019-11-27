@@ -46,6 +46,15 @@ public final class Blockchain {
     }
 
     /**
+     * Returns the nonce of a transaction request.
+     *
+     * @return the transaction nonce
+     */
+    public static BigInteger getTransactionNonce() {
+        return BigInteger.ZERO;
+    }
+
+    /**
      * Returns the address of the currently-running SCORE.
      *
      * @return an address
