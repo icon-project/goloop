@@ -156,7 +156,7 @@ public class SignedTransaction {
                 serializeArrayItems(builder, item.asArray());
                 builder.append("]");
             } else {
-                if (item == null) {
+                if (item == null || item.isNull()) {
                     builder.append("\\0");
                 } else {
                     builder.append(escape(item.asString()));
