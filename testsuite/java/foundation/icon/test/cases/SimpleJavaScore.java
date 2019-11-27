@@ -4,6 +4,9 @@ import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.Wallet;
 import foundation.icon.icx.data.Address;
+import foundation.icon.icx.data.Block;
+import foundation.icon.icx.data.Bytes;
+import foundation.icon.icx.data.ConfirmedTransaction;
 import foundation.icon.icx.data.ScoreApi;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
@@ -22,6 +25,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Random;
 
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -96,7 +100,7 @@ class SimpleJavaScore {
         BigInteger oneToken = BigInteger.TEN.pow(decimals.intValue());
         BigInteger totalSupply = oneToken.multiply(initialSupply);
         BigInteger bal = callBalanceOf(ownerWallet.getAddress()).asInteger();
-        LOG.info("expected (" + totalSupply + "), result (" + bal + ")");
+        LOG.info("expected (" + totalSupply + "), got (" + bal + ")");
         assertEquals(totalSupply, bal);
         LOG.infoExiting();
 
@@ -118,7 +122,7 @@ class SimpleJavaScore {
         LOG.infoEntering("balanceOf", "callee");
         BigInteger expected = oneToken.add(oneToken);
         bal = callBalanceOf(calleeWallet.getAddress()).asInteger();
-        LOG.info("expected (" + expected + "), result (" + bal + ")");
+        LOG.info("expected (" + expected + "), got (" + bal + ")");
         assertEquals(expected, bal);
         LOG.infoExiting();
 
@@ -126,7 +130,7 @@ class SimpleJavaScore {
         LOG.infoEntering("balanceOf", "owner");
         expected = totalSupply.subtract(expected);
         bal = callBalanceOf(ownerWallet.getAddress()).asInteger();
-        LOG.info("expected (" + expected + "), result (" + bal + ")");
+        LOG.info("expected (" + expected + "), got (" + bal + ")");
         assertEquals(expected, bal);
         LOG.infoExiting();
     }
@@ -187,16 +191,16 @@ class SimpleJavaScore {
         tr = testScore.invokeAndWaitResult(caller, "getAddress",
                 new RpcObject.Builder().put("addr", new RpcValue(testScore.getAddress())).build(),
                 0, 100000);
-        assertEquals(BigInteger.ONE, tr.getStatus());
+        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
         tr = testScore.invokeAndWaitResult(caller, "getAddress",
                 new RpcObject.Builder().put("addr", new RpcValue(caller.getAddress())).build(),
                 0, 100000);
-        assertEquals(BigInteger.ZERO, tr.getStatus());
+        assertEquals(Constants.STATUS_FAIL, tr.getStatus());
         LOG.infoExiting();
 
         LOG.infoEntering("getAddress", "query");
         RpcItem result = testScore.call(caller.getAddress(), "getAddressQuery", null);
-        LOG.info("expected (" + scoreAddr + "), result (" + result.asAddress() + ")");
+        LOG.info("expected (" + scoreAddr + "), got (" + result.asAddress() + ")");
         assertEquals(scoreAddr, result.asAddress());
         LOG.infoExiting();
 
@@ -205,16 +209,16 @@ class SimpleJavaScore {
         tr = testScore.invokeAndWaitResult(caller, "getCaller",
                 new RpcObject.Builder().put("caller", new RpcValue(caller.getAddress())).build(),
                 0, 100000);
-        assertEquals(BigInteger.ONE, tr.getStatus());
+        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
         tr = testScore.invokeAndWaitResult(caller, "getCaller",
                 new RpcObject.Builder().put("caller", new RpcValue(testScore.getAddress())).build(),
                 0, 100000);
-        assertEquals(BigInteger.ZERO, tr.getStatus());
+        assertEquals(Constants.STATUS_FAIL, tr.getStatus());
         LOG.infoExiting();
 
         LOG.infoEntering("getCaller", "query");
         result = testScore.call(caller.getAddress(), "getCallerQuery", null);
-        LOG.info("expected (" + "null" + "), result (" + result + ")");
+        LOG.info("expected (" + "null" + "), got (" + result + ")");
         assertNull(result);
         LOG.infoExiting();
 
@@ -223,16 +227,16 @@ class SimpleJavaScore {
         tr = testScore.invokeAndWaitResult(caller, "getOrigin",
                 new RpcObject.Builder().put("origin", new RpcValue(caller.getAddress())).build(),
                 0, 100000);
-        assertEquals(BigInteger.ONE, tr.getStatus());
+        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
         tr = testScore.invokeAndWaitResult(caller, "getOrigin",
                 new RpcObject.Builder().put("origin", new RpcValue(testScore.getAddress())).build(),
                 0, 100000);
-        assertEquals(BigInteger.ZERO, tr.getStatus());
+        assertEquals(Constants.STATUS_FAIL, tr.getStatus());
         LOG.infoExiting();
 
         LOG.infoEntering("getOrigin", "query");
         result = testScore.call(caller.getAddress(), "getOriginQuery", null);
-        LOG.info("expected (" + "null" + "), result (" + result + ")");
+        LOG.info("expected (" + "null" + "), got (" + result + ")");
         assertNull(result);
         LOG.infoExiting();
 
@@ -241,16 +245,16 @@ class SimpleJavaScore {
         tr = testScore.invokeAndWaitResult(caller, "getOwner",
                 new RpcObject.Builder().put("owner", new RpcValue(ownerWallet.getAddress())).build(),
                 0, 100000);
-        assertEquals(BigInteger.ONE, tr.getStatus());
+        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
         tr = testScore.invokeAndWaitResult(caller, "getOwner",
                 new RpcObject.Builder().put("owner", new RpcValue(caller.getAddress())).build(),
                 0, 100000);
-        assertEquals(BigInteger.ZERO, tr.getStatus());
+        assertEquals(Constants.STATUS_FAIL, tr.getStatus());
         LOG.infoExiting();
 
         LOG.infoEntering("getOwner", "query");
         result = testScore.call(caller.getAddress(), "getOwnerQuery", null);
-        LOG.info("expected (" + ownerWallet.getAddress() + "), result (" + result.asAddress() + ")");
+        LOG.info("expected (" + ownerWallet.getAddress() + "), got (" + result.asAddress() + ")");
         assertEquals(ownerWallet.getAddress(), result.asAddress());
         LOG.infoExiting();
     }
@@ -260,30 +264,132 @@ class SimpleJavaScore {
         Address scoreAddr = deployAPITest();
         KeyWallet caller = KeyWallet.create();
         TransactionResult tr;
+        RpcItem result = RpcValue.NULL;
 
         // getBlockHeight
         LOG.infoEntering("getBlockHeight", "invoke");
         tr = testScore.invokeAndWaitResult(caller, "getBlockHeight", null, 0, 100000);
-        assertEquals(BigInteger.ONE, tr.getStatus());
+        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
+        for (TransactionResult.EventLog e : tr.getEventLogs()) {
+            result = e.getData().get(0);
+        }
+        LOG.info("expected (" + tr.getBlockHeight() + "), got (" + result.asInteger() + ")");
+        assertEquals(0, tr.getBlockHeight().compareTo(result.asInteger()));
         LOG.infoExiting();
 
         LOG.infoEntering("getBlockHeight", "query");
-        RpcItem result = testScore.call(caller.getAddress(), "getBlockHeightQuery", null);
-        LOG.info("expected (" + "?" + "), result (" + result.asInteger() + ")");
-        assertTrue(BigInteger.ONE.compareTo(result.asInteger()) < 0);
+        Block block = iconService.getLastBlock().execute();
+        result = testScore.call(caller.getAddress(), "getBlockHeightQuery", null);
+        LOG.info("expected (" + block.getHeight() + "), got (" + result.asInteger() + ")");
+        assertTrue(block.getHeight().compareTo(result.asInteger()) <= 0);
         LOG.infoExiting();
 
         // getBlockTimestamp
         LOG.infoEntering("getBlockTimestamp", "invoke");
-        BigInteger currentTimestamp = BigInteger.valueOf(System.currentTimeMillis());
         tr = testScore.invokeAndWaitResult(caller, "getBlockTimestamp", null, 0, 100000);
-        assertEquals(BigInteger.ONE, tr.getStatus());
+        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
+        block = iconService.getBlock(tr.getBlockHeight()).execute();
+        for (TransactionResult.EventLog e : tr.getEventLogs()) {
+            result = e.getData().get(0);
+        }
+        LOG.info("expected (" + block.getTimestamp() + "), got (" + result.asInteger() + ")");
+        assertEquals(0, block.getTimestamp().compareTo(result.asInteger()));
         LOG.infoExiting();
 
         LOG.infoEntering("getBlockTimestamp", "query");
+        block = iconService.getLastBlock().execute();
         result = testScore.call(caller.getAddress(), "getBlockTimestampQuery", null);
-        LOG.info("expected (" + currentTimestamp + "), result (" + result.asInteger() + ")");
-        assertTrue(currentTimestamp.compareTo(result.asInteger()) < 0);
+        LOG.info("expected (" + block.getTimestamp() + "), got (" + result.asInteger() + ")");
+        assertTrue(block.getTimestamp().compareTo(result.asInteger()) <= 0);
+        LOG.infoExiting();
+    }
+
+    @Test
+    void testAPITestForTransaction() throws Exception {
+        Address scoreAddr = deployAPITest();
+        KeyWallet caller = KeyWallet.create();
+        TransactionResult tr;
+        RpcItem result = RpcValue.NULL;
+
+        // getTransactionHash
+        LOG.infoEntering("getTransactionHash", "invoke");
+        tr = testScore.invokeAndWaitResult(caller, "getTransactionHash", null, 0, 200000);
+        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
+        for (TransactionResult.EventLog e : tr.getEventLogs()) {
+            result = e.getData().get(0);
+        }
+        LOG.info("expected (" + tr.getTxHash() + "), got (" + result.asString() + ")");
+        assertEquals(tr.getTxHash().toString(), result.asString());
+        LOG.infoExiting();
+
+        LOG.infoEntering("getTransactionHash", "query");
+        result = testScore.call(caller.getAddress(), "getTransactionHashQuery", null);
+        LOG.info("expected (" + "null" + "), got (" + result + ")");
+        assertNull(result);
+        LOG.infoExiting();
+
+        // getTransactionIndex
+        LOG.infoEntering("getTransactionIndex", "invoke");
+        Bytes[] ids = new Bytes[5];
+        for (int i = 0; i < ids.length; i++) {
+            ids[i] = testScore.invoke(caller, "getTransactionIndex", null, 0, 200000);
+        }
+        for (Bytes id : ids) {
+            tr = testScore.waitResult(id);
+            assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
+            for (TransactionResult.EventLog e : tr.getEventLogs()) {
+                RpcItem data = e.getData().get(0);
+                LOG.info("expected (" + tr.getTxIndex() + "), got (" + data.asInteger() + ")");
+                assertEquals(tr.getTxIndex(), data.asInteger());
+            }
+        }
+        LOG.infoExiting();
+
+        LOG.infoEntering("getTransactionIndex", "query");
+        result = testScore.call(caller.getAddress(), "getTransactionIndexQuery", null);
+        LOG.info("expected (" + "0" + "), got (" + result.asInteger() + ")");
+        assertEquals(BigInteger.ZERO, result.asInteger());
+        LOG.infoExiting();
+
+        // getTransactionTimestamp
+        LOG.infoEntering("getTransactionTimestamp", "invoke");
+        BigInteger steps = BigInteger.valueOf(200000);
+        // Add arbitrary milliseconds precision for testing
+        BigInteger timestamp = BigInteger.valueOf((System.currentTimeMillis() * 1000L) - (new Random()).nextInt(100));
+        Bytes txHash = testScore.invoke(caller, "getTransactionTimestamp", null, null, steps, timestamp, null);
+        tr = testScore.waitResult(txHash);
+        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
+        ConfirmedTransaction ctx = iconService.getTransaction(tr.getTxHash()).execute();
+        for (TransactionResult.EventLog e : tr.getEventLogs()) {
+            result = e.getData().get(0);
+        }
+        LOG.info("expected (" + ctx.getTimestamp() + "), got (" + result.asInteger() + ")");
+        assertEquals(0, ctx.getTimestamp().compareTo(result.asInteger()));
+        LOG.infoExiting();
+
+        LOG.infoEntering("getTransactionTimestamp", "query");
+        result = testScore.call(caller.getAddress(), "getTransactionTimestampQuery", null);
+        LOG.info("expected (" + "0" + "), got (" + result.asInteger() + ")");
+        assertEquals(BigInteger.ZERO, result.asInteger());
+        LOG.infoExiting();
+
+        // getTransactionNonce
+        LOG.infoEntering("getTransactionNonce", "invoke");
+        BigInteger nonce = BigInteger.valueOf(0x12345);
+        txHash = testScore.invoke(caller, "getTransactionNonce", null, null, steps, null, nonce);
+        tr = testScore.waitResult(txHash);
+        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
+        for (TransactionResult.EventLog e : tr.getEventLogs()) {
+            result = e.getData().get(0);
+        }
+        LOG.info("expected (" + nonce + "), got (" + result.asInteger() + ")");
+        assertEquals(nonce, result.asInteger());
+        LOG.infoExiting();
+
+        LOG.infoEntering("getTransactionNonce", "query");
+        result = testScore.call(caller.getAddress(), "getTransactionNonceQuery", null);
+        LOG.info("expected (" + "0" + "), got (" + result.asInteger() + ")");
+        assertEquals(BigInteger.ZERO, result.asInteger());
         LOG.infoExiting();
     }
 }

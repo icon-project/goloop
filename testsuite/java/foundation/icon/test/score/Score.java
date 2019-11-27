@@ -30,7 +30,6 @@ public class Score {
         return install(service, chain, wallet, contentPath, params, Constants.DEFAULT_STEP_LIMIT);
     }
 
-
     public static Address install(IconService service,
                                   Env.Chain chain, Wallet wallet, String contentPath, RpcObject params, long stepLimit, String contentType)
             throws IOException, TransactionFailureException, ResultTimeoutException {
