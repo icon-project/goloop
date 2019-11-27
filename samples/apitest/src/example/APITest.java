@@ -12,6 +12,9 @@ public class APITest
     public static void onInstall() {
     }
 
+    @EventLog
+    public static void EmitEvent(byte[] data) {}
+
     //================================
     // Address
     //================================
@@ -73,6 +76,7 @@ public class APITest
     @External
     public static void getBlockTimestamp() {
         Blockchain.require(Blockchain.getBlockTimestamp() > 0L);
+        EmitEvent(BigInteger.valueOf(Blockchain.getBlockTimestamp()).toByteArray());
     }
 
     @External(readonly=true)
@@ -83,6 +87,7 @@ public class APITest
     @External
     public static void getBlockHeight() {
         Blockchain.require(Blockchain.getBlockHeight() > 0L);
+        EmitEvent(BigInteger.valueOf(Blockchain.getBlockHeight()).toByteArray());
     }
 
     @External(readonly=true)
@@ -93,9 +98,6 @@ public class APITest
     //================================
     // Transaction
     //================================
-
-    @EventLog
-    public static void EmitEvent(byte[] data) {}
 
     @External
     public static void getTransactionHash() {

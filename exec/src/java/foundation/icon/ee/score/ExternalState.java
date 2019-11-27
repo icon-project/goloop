@@ -42,7 +42,7 @@ public class ExternalState implements IExternalState {
         this.proxy = proxy;
         this.codeCache = codeBytes;
         this.blockHeight = blockHeight.longValue();
-        this.blockTimestamp = blockTimestamp.longValue() / 1000; // micro to milli conversion
+        this.blockTimestamp = blockTimestamp.longValue();
         this.owner = new AionAddress(owner); // owner cannot be null
     }
 

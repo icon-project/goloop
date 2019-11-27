@@ -70,7 +70,7 @@ public class ImmortalDappModule {
      */
     public byte[] createJar(long blockTimeStamp) throws IOException {
         // set jar file timestamp to block timestamp so the whole network is in agreement over this.
-        FileTime timestamp = FileTime.fromMillis(blockTimeStamp);
+        FileTime timestamp = FileTime.fromMillis(blockTimeStamp / 1000); // micro to milli conversion
 
         // manifest, we explicitly write it so that can can control its timestamps.
         Manifest manifest = new Manifest();
