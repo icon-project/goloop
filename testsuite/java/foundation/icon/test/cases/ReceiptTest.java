@@ -367,7 +367,7 @@ class ReceiptTest {
         ConfirmedTransaction ctx = invokeAndGetTxByHash(txHash);
         checkTxParams(ctx, callerWallet.getAddress(), testScore.getAddress(), null,
                 stepLimit, BigInteger.valueOf(Env.chains[0].networkId),
-                BigInteger.TEN, txHash, "call");
+                null, txHash, "call");
         LOG.infoExiting();
     }
 }

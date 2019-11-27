@@ -78,43 +78,32 @@ public class Score {
         return this.service.call(call).execute();
     }
 
-    public Bytes invoke(Wallet wallet, String method,
-                        RpcObject params, long value, long steps)
-            throws IOException {
-        TransactionBuilder.Builder builder = TransactionBuilder.newBuilder()
-                .nid(BigInteger.valueOf(chain.networkId))
-                .from(wallet.getAddress())
-                .to(this.scoreAddress)
-                .stepLimit(BigInteger.valueOf(steps));
-
-        if (value != 0) {
-            builder.value(BigInteger.valueOf(value));
-        }
-
-        Transaction t = null;
-        if (params != null) {
-            t = builder.call(method).params(params).build();
-        } else {
-            t = builder.call(method).build();
-        }
-
-        return this.service
-                .sendTransaction(new SignedTransaction(t, wallet))
-                .execute();
+    public Bytes invoke(Wallet wallet, String method, RpcObject params,
+                        long value, long steps) throws IOException {
+        return invoke(wallet, method, params, BigInteger.valueOf(value), BigInteger.valueOf(steps));
     }
 
-    public Bytes invoke(Wallet wallet, String method,
-                        RpcObject params, BigInteger value, BigInteger steps)
-            throws IOException {
+    public Bytes invoke(Wallet wallet, String method, RpcObject params,
+                        BigInteger value, BigInteger steps) throws IOException {
+        return invoke(wallet, method, params, value, steps, null, null);
+    }
+
+    public Bytes invoke(Wallet wallet, String method, RpcObject params, BigInteger value,
+                        BigInteger steps, BigInteger timestamp, BigInteger nonce) throws IOException {
         TransactionBuilder.Builder builder = TransactionBuilder.newBuilder()
                 .nid(BigInteger.valueOf(chain.networkId))
                 .from(wallet.getAddress())
                 .to(this.scoreAddress)
-                .nonce(BigInteger.TEN)
                 .stepLimit(steps);
 
         if ((value != null) && value.bitLength() != 0) {
             builder.value(value);
+        }
+        if ((timestamp != null) && timestamp.bitLength() != 0) {
+            builder.timestamp(timestamp);
+        }
+        if ((nonce != null) && nonce.bitLength() != 0) {
+            builder.nonce(nonce);
         }
 
         Transaction t;
@@ -123,7 +112,6 @@ public class Score {
         } else {
             t = builder.call(method).build();
         }
-
         return this.service
                 .sendTransaction(new SignedTransaction(t, wallet))
                 .execute();
