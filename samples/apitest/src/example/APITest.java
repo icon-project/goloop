@@ -4,6 +4,8 @@ import avm.Address;
 import avm.Blockchain;
 import foundation.icon.ee.tooling.abi.External;
 import foundation.icon.ee.tooling.abi.EventLog;
+import foundation.icon.ee.tooling.abi.Optional;
+import foundation.icon.ee.tooling.abi.Payable;
 
 import java.math.BigInteger;
 
@@ -57,16 +59,6 @@ public class APITest
     @External(readonly=true)
     public static Address getOwnerQuery() {
         return Blockchain.getOwner();
-    }
-
-    @External
-    public static BigInteger getValue() {
-        return Blockchain.getValue();
-    }
-
-    @External(readonly=true)
-    public static BigInteger getValueQuery() {
-        return Blockchain.getValue();
     }
 
     //================================
@@ -140,5 +132,36 @@ public class APITest
     @External(readonly=true)
     public static BigInteger getTransactionNonceQuery() {
         return Blockchain.getTransactionNonce();
+    }
+
+    //================================
+    // ICX coin
+    //================================
+
+    @External
+    @Payable
+    public static void getValue() {
+        EmitEvent(Blockchain.getValue().toByteArray());
+    }
+
+    @External(readonly=true)
+    public static BigInteger getValueQuery() {
+        return Blockchain.getValue();
+    }
+
+    @External
+    public static void getBalance(@Optional Address address) {
+        if (address == null) {
+            address = Blockchain.getAddress();
+        }
+        EmitEvent(Blockchain.getBalance(address).toByteArray());
+    }
+
+    @External(readonly=true)
+    public static BigInteger getBalanceQuery(@Optional Address address) {
+        if (address == null) {
+            address = Blockchain.getAddress();
+        }
+        return Blockchain.getBalance(address);
     }
 }
