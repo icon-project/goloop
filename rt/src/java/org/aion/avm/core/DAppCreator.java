@@ -242,9 +242,10 @@ public class DAppCreator {
                                                               dappAddress,
                                                               tx,
                                                               runtimeSetup,
+                                                              dapp,
                                                               enableBlockchainPrintln);
-            FrameContextImpl fc = new FrameContextImpl(externalState, dapp, dapp.internedClasses, br);
-            InstrumentationHelpers.pushNewStackFrame(runtimeSetup, dapp.loader, tx.energyLimit - result.energyUsed(), nextHashCode, dapp.internedClasses, fc);
+            FrameContextImpl fc = new FrameContextImpl(externalState, dapp, dapp.getInternedClasses(), br);
+            InstrumentationHelpers.pushNewStackFrame(runtimeSetup, dapp.loader, tx.energyLimit - result.energyUsed(), nextHashCode, dapp.getInternedClasses(), fc);
             IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(br);
 
             // We have just created this dApp, there should be no previous runtime associated with it.

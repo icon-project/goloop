@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import foundation.icon.ee.types.Result;
 import org.aion.avm.core.IExternalState;
 import org.aion.types.AionAddress;
 import org.aion.avm.core.types.Pair;
@@ -319,5 +320,14 @@ public class TransactionalState implements IExternalState {
     @Override
     public void log(byte[][] indexed, byte[][] data) {
         parent.log(indexed, data);
+    }
+
+    @Override
+    public Result call(AionAddress address,
+                       String method,
+                       Object[] params,
+                       BigInteger value,
+                       int stepLimit) {
+        return null;
     }
 }

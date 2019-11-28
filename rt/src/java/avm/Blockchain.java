@@ -187,6 +187,12 @@ public final class Blockchain {
         return null;
     }
 
+    // TODO: use other exception
+    public static Object call(Address targetAddress, String method, Object[] params,
+                              BigInteger value) throws IllegalArgumentException {
+        return null;
+    }
+
     /**
      * Creates an account.
      *

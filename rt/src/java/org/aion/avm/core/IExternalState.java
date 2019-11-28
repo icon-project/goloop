@@ -1,6 +1,8 @@
 package org.aion.avm.core;
 
 import java.math.BigInteger;
+
+import foundation.icon.ee.types.Result;
 import org.aion.types.AionAddress;
 
 /**
@@ -282,4 +284,18 @@ public interface IExternalState {
      * Emits events log
      */
     public void log(byte[][] indexed, byte[][]data);
+
+    /**
+     * Calls external method of target contract.
+     *
+     * @param method
+     * @param params
+     * @return
+     * @throws IllegalArgumentException
+     */
+    public Result call(AionAddress address,
+                       String method,
+                       Object[] params,
+                       BigInteger value,
+                       int stepLimit);
 }

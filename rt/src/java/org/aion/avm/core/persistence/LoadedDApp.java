@@ -6,6 +6,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -14,8 +15,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import foundation.icon.ee.types.ObjectGraph;
+import foundation.icon.ee.types.DAppRuntimeState;
 import foundation.icon.ee.utils.MethodUnpacker;
 import foundation.icon.ee.utils.Unshadower;
+import i.IInstrumentation;
 import org.aion.avm.NameStyle;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.ClassRenamer;
@@ -28,14 +32,12 @@ import i.IObjectDeserializer;
 import i.IObjectSerializer;
 import i.PackageConstants;
 import p.avm.Blockchain;
-import a.ByteArray;
 import org.aion.avm.core.classloading.AvmClassLoader;
 import org.aion.avm.core.util.Helpers;
 import i.Helper;
 import i.IRuntimeSetup;
 import i.InternedClasses;
 import i.MethodAccessException;
-import i.OutOfEnergyException;
 import i.RuntimeAssertionError;
 import i.UncaughtException;
 
@@ -94,7 +96,7 @@ public class LoadedDApp {
     private long loadedCodeBlockNum;
 
     // Note that we track the interned classes here since they have the same lifecycle as the LoadedDApp (including for reentrant calls).
-    public final InternedClasses internedClasses;
+    private InternedClasses internedClasses;
 
     private final ClassRenamer classRenamer;
     private final boolean preserveDebuggability;
@@ -200,6 +202,17 @@ public class LoadedDApp {
         return nextHashCode;
     }
 
+    public int loadRuntimeState(DAppRuntimeState state) {
+        var raw = state.getGraph().getRawData();
+        ByteBuffer inputBuffer = ByteBuffer.wrap(state.getGraph().getRawData());
+        List<Object> existingObjectIndex = state.getObjects();
+        this.internedClasses = state.getInternedClasses();
+        StandardGlobalResolver resolver = new StandardGlobalResolver(state.getInternedClasses(), this.loader);
+        StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
+        int nextHashCode = Deserializer.deserializeEntireGraphAndNextHashCode(inputBuffer, existingObjectIndex, resolver, this.fieldCache, classNameMapper, this.sortedUserClasses, this.constantClass);
+        return nextHashCode;
+    }
+
     public Object deserializeObject(InternedClasses internedClassMap, byte[] rawGraphData) {
         ByteBuffer inputBuffer = ByteBuffer.wrap(rawGraphData);
         StandardGlobalResolver resolver = new StandardGlobalResolver(internedClassMap, this.loader);
@@ -226,6 +239,24 @@ public class LoadedDApp {
         byte[] finalBytes = new byte[outputBuffer.position()];
         System.arraycopy(outputBuffer.array(), 0, finalBytes, 0, finalBytes.length);
         return finalBytes;
+    }
+
+    public DAppRuntimeState saveRuntimeState() {
+        var hash = IInstrumentation.attachedThreadInstrumentation.get().peekNextHashCode();
+        return saveRuntimeState(hash, StorageFees.MAX_GRAPH_SIZE);
+    }
+
+    public DAppRuntimeState saveRuntimeState(int nextHashCode, int maximumSizeInBytes) {
+        ByteBuffer outputBuffer = ByteBuffer.allocate(maximumSizeInBytes);
+        List<Object> out_instanceIndex = new ArrayList<>();
+        List<Integer> out_calleeToCallerIndexMap = null;
+        StandardGlobalResolver resolver = new StandardGlobalResolver(null, this.loader);
+        StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
+        Serializer.serializeEntireGraph(outputBuffer, out_instanceIndex, out_calleeToCallerIndexMap, resolver, this.fieldCache, classNameMapper, nextHashCode, this.sortedUserClasses, this.constantClass);
+
+        byte[] finalBytes = new byte[outputBuffer.position()];
+        System.arraycopy(outputBuffer.array(), 0, finalBytes, 0, finalBytes.length);
+        return new DAppRuntimeState(out_instanceIndex, new InternedClasses(this.internedClasses), ObjectGraph.getInstance(finalBytes));
     }
 
     public byte[] serializeObject(Object v) {
@@ -487,5 +518,9 @@ public class LoadedDApp {
         }
 
         return jclExceptions;
+    }
+
+    public InternedClasses getInternedClasses() {
+        return internedClasses;
     }
 }

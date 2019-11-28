@@ -20,6 +20,7 @@ import foundation.icon.ee.ipc.EEProxy;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Bytes;
 import foundation.icon.ee.types.ObjectGraph;
+import foundation.icon.ee.types.Result;
 import org.aion.avm.core.IExternalState;
 import org.aion.types.AionAddress;
 import org.slf4j.Logger;
@@ -49,7 +50,6 @@ public class ExternalState implements IExternalState {
     @Override
     public void commit() {
         logger.trace("[commit]");
-        throw new RuntimeException("not implemented");
     }
 
     @Override
@@ -286,5 +286,17 @@ public class ExternalState implements IExternalState {
         } catch (IOException e) {
             logger.debug("[logEvent] {}", e.getMessage());
         }
+    }
+
+    public Result call(AionAddress address, String method, Object[] params, BigInteger value,
+                       int stepLimit) {
+        try {
+            var res = proxy.call(address.toAddress(), method, params, value, stepLimit);
+            logger.trace("[call] status={}", res.getStatus());
+            return res;
+        } catch (IOException e) {
+            logger.debug("[call] {}", e.getMessage());
+        }
+        return null;
     }
 }

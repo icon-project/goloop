@@ -31,7 +31,6 @@ import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.avm.core.util.TransactionResultUtil;
 import org.aion.kernel.AvmWrappedTransactionResult;
 import org.aion.kernel.AvmWrappedTransactionResult.AvmInternalError;
-import org.aion.kernel.TransactionalState;
 import org.aion.parallel.TransactionTask;
 import org.aion.types.AionAddress;
 import org.aion.types.Transaction;
@@ -50,6 +49,7 @@ public class AvmExecutor {
     private final boolean enableVerboseContractErrors;
     private final boolean enableBlockchainPrintln;
     private IInstrumentation instrumentation;
+    private TransactionTask task;
 
     public AvmExecutor(IInstrumentationFactory factory, AvmConfiguration config) {
         this.instrumentationFactory = factory;
@@ -64,30 +64,43 @@ public class AvmExecutor {
     }
 
     public TransactionResult run(IExternalState kernel, Transaction transaction, Address origin) {
+        if (task==null) {
+            return runExternal(kernel, transaction, origin).unwrap();
+        } else {
+            return runInternal(kernel, transaction, origin).unwrap();
+        }
+    }
+
+    private AvmWrappedTransactionResult runExternal(IExternalState kernel, Transaction transaction, Address origin) {
         // Get the first task
-        TransactionTask incomingTask = new TransactionTask(kernel, transaction, 0,
+        task = new TransactionTask(kernel, transaction, 0,
                                                            origin != null ? new AionAddress(origin) : null);
 
         // Attach the IInstrumentation helper to the task to support asynchronous abort
         // Instrumentation helper will abort the execution of the transaction by throwing an exception during chargeEnergy call
         // Aborted transaction will be retried later
-        incomingTask.startNewTransaction();
-        incomingTask.attachInstrumentationForThread();
-        AvmWrappedTransactionResult result = processTransaction(incomingTask);
-        incomingTask.detachInstrumentationForThread();
+        task.startNewTransaction();
+        task.attachInstrumentationForThread();
+        AvmWrappedTransactionResult result = processTransaction();
+        task.detachInstrumentationForThread();
 
         if (result.isAborted()) {
             // If this was an abort, we want to clear the abort state on the instrumentation for this thread, since
             // this is the point where that is "handled".
             // Note that this is safe to do here since the instrumentation isn't exposed to any other threads.
             instrumentation.clearAbortState();
-            logger.trace("Abort " + incomingTask.getIndex());
+            logger.trace("Abort " + task.getIndex());
         }
         logger.trace("{}", result);
-        return result.unwrap();
+        task = null;
+        return result;
     }
 
-    private AvmWrappedTransactionResult processTransaction(TransactionTask task) {
+    private AvmWrappedTransactionResult runInternal(IExternalState kernel, Transaction transaction, Address origin) {
+        return runCommon(kernel, transaction);
+    }
+
+    private AvmWrappedTransactionResult processTransaction() {
         AvmInternalError error = AvmInternalError.NONE;
         Transaction tx = task.getTransaction();
         RuntimeAssertionError.assertTrue(tx != null);
@@ -110,12 +123,15 @@ public class AvmExecutor {
         if (error != AvmInternalError.NONE) {
             return TransactionResultUtil.newRejectedResultWithEnergyUsed(error, tx.energyLimit);
         }
+        return runCommon(task.getThisTransactionalKernel(), tx);
+    }
 
+    private AvmWrappedTransactionResult runCommon(IExternalState kernel, Transaction tx) {
         /*
          * Run the common logic with the parent kernel as the top-level one.
          * After this point, no rejection should occur.
          */
-        TransactionalState thisTransactionKernel = task.getThisTransactionalKernel();
+        IExternalState thisTransactionKernel = kernel;
         // start with the successful result
         AvmWrappedTransactionResult result = TransactionResultUtil.newSuccessfulResultWithEnergyUsed(0);
 

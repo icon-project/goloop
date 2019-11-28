@@ -1,5 +1,7 @@
 package org.aion.avm.core;
 
+import foundation.icon.ee.types.DAppRuntimeState;
+import foundation.icon.ee.types.ObjectGraph;
 import i.AvmException;
 import i.CallDepthLimitExceededException;
 import i.EarlyAbortException;
@@ -16,7 +18,6 @@ import i.UncaughtException;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
-import org.aion.avm.core.persistence.ReentrantGraph;
 import org.aion.avm.core.util.Helpers;
 import org.aion.avm.core.util.TransactionResultUtil;
 import org.aion.kernel.AvmWrappedTransactionResult;
@@ -39,48 +40,33 @@ public class DAppExecutor {
                                                    boolean enableBlockchainPrintln) {
         AvmWrappedTransactionResult result = internalResult;
 
-        // If this is a reentrant call, we need to serialize the graph of the parent frame.  This is required to both copy-back our changes but also
-        // is required in case we want to revert the state.
-        ReentrantGraph callerState = (null != stateToResume)
-                ? dapp.captureStateAsCaller(stateToResume.getNextHashCode(), StorageFees.MAX_GRAPH_SIZE)
-                : null;
-        
         // Note that the instrumentation is just a per-thread access to the state stack - we can grab it at any time as it never changes for this thread.
         IInstrumentation threadInstrumentation = IInstrumentation.attachedThreadInstrumentation.get();
         
         // We need to get the interned classes before load the graph since it might need to instantiate class references.
-        InternedClasses initialClassWrappers = dapp.internedClasses;
+        InternedClasses initialClassWrappers = dapp.getInternedClasses();
 
-        // Note that we can't do any billing until after we install the InstrumentationHelpers new stack frame
-        int nextHashCode;
-        // Used for deserialization billing
-        int rawGraphDataLength;
-
-        if (readFromCache) {
-            if (null != callerState) {
-                nextHashCode = stateToResume.getNextHashCode();
-                byte[] rawGraphData = callerState.rawState;
-                dapp.loadEntireGraph(initialClassWrappers, rawGraphData);
-                rawGraphDataLength = rawGraphData.length;
-
-            } else {
-                // If we have the DApp in cache, we can get the next hashcode and graph length from it. Otherwise, we have to load the entire graph
-                nextHashCode = dapp.getHashCode();
-                rawGraphDataLength = dapp.getSerializedLength();
-            }
+        var saveItem = task.getReentrantDAppStack().getSaveItem(dappAddress);
+        DAppRuntimeState rs = null;
+        if (saveItem==null) {
+            var raw = externalState.getObjectGraph(dappAddress);
+            var graph = ObjectGraph.getInstance(raw);
+            rs = new DAppRuntimeState(null, dapp.getInternedClasses(), graph);
+            saveItem = new ReentrantDAppStack.SaveItem(dapp, rs);
         } else {
-            byte[] rawGraphData = (null != callerState)
-                    ? callerState.rawState
-                    : externalState.getObjectGraph(dappAddress);
-            nextHashCode = dapp.loadEntireGraph(initialClassWrappers, rawGraphData);
-            rawGraphDataLength = rawGraphData.length;
+            rs = saveItem.getRuntimeState();
         }
+        var nextHashCode = dapp.loadRuntimeState(rs);
+
+        // Used for deserialization billing
+        int rawGraphDataLength = rs.getGraph().getGraphData().length + 4;
 
         // Note that we need to store the state of this invocation on the reentrant stack in case there is another call into the same app.
         // This is required so that the call() mechanism can access it to save/reload its ContractEnvironmentState and so that the underlying
         // instance loader (ReentrantGraphProcessor/ReflectionStructureCodec) can be notified when it becomes active/inactive (since it needs
         // to know if it is loading an instance
         ReentrantDAppStack.ReentrantState thisState = new ReentrantDAppStack.ReentrantState(dappAddress, dapp, nextHashCode);
+        var prevState = task.getReentrantDAppStack().getTop();
         task.getReentrantDAppStack().pushState(thisState);
 
         IBlockchainRuntime br = new BlockchainRuntimeImpl(externalState,
@@ -90,6 +76,7 @@ public class DAppExecutor {
                                                           dappAddress,
                                                           tx,
                                                           dapp.runtimeSetup,
+                                                          dapp,
                                                           enableBlockchainPrintln);
         FrameContextImpl fc = new FrameContextImpl(externalState, dapp, initialClassWrappers, br);
         InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.energyLimit - result.energyUsed(), nextHashCode, initialClassWrappers, fc);
@@ -103,20 +90,13 @@ public class DAppExecutor {
             // Call the main within the DApp.
             Object ret = dapp.callMethod(tx.method, tx.getParams());
 
+            var runtimeState = dapp.saveRuntimeState();
+
             // Save back the state before we return.
-            if (null != stateToResume) {
-                int updatedNextHashCode = threadInstrumentation.peekNextHashCode();
-                ReentrantGraph calleeState = dapp.captureStateAsCallee(updatedNextHashCode, StorageFees.MAX_GRAPH_SIZE);
-                // Bill for writing this size.
-                threadInstrumentation.chargeEnergy(StorageFees.WRITE_PRICE_PER_BYTE * calleeState.rawState.length);
-                // Now, commit this back into the callerState.
-                dapp.commitReentrantChanges(initialClassWrappers, callerState, calleeState);
-                // Update the final hash code.
-                stateToResume.updateNextHashCode(updatedNextHashCode);
-            } else {
+            if (null == stateToResume) {
                 // We are at the "top" so write this back to disk.
                 int newHashCode = threadInstrumentation.peekNextHashCode();
-                byte[] postCallGraphData = dapp.saveEntireGraph(newHashCode, StorageFees.MAX_GRAPH_SIZE);
+                byte[] postCallGraphData = runtimeState.getGraph().getRawData();
                 // Bill for writing this size.
                 threadInstrumentation.chargeEnergy(StorageFees.WRITE_PRICE_PER_BYTE * postCallGraphData.length);
                 externalState.putObjectGraph(dappAddress, postCallGraphData);
@@ -140,13 +120,14 @@ public class DAppExecutor {
                 refund = Math.min(energyUsed / 2, resetStorageRefund);
             }
             result = TransactionResultUtil.setEnergyUsed(result, energyUsed - refund);
+            if (prevState != null) {
+                prevState.getSaveItems().putAll(thisState.getSaveItems());
+                prevState.getSaveItems().put(dappAddress, new ReentrantDAppStack.SaveItem(dapp, runtimeState));
+            }
         } catch (OutOfEnergyException e) {
             if (verboseErrors) {
                 System.err.println("DApp execution failed due to Out-of-Energy EXCEPTION: \"" + e.getMessage() + "\"");
                 e.printStackTrace(System.err);
-            }
-            if (null != stateToResume) {
-                dapp.revertToCallerState(initialClassWrappers, callerState);
             }
             result = TransactionResultUtil.setNonRevertedFailureAndEnergyUsed(result, AvmInternalError.FAILED_OUT_OF_ENERGY, tx.energyLimit);
 
@@ -155,18 +136,12 @@ public class DAppExecutor {
                 System.err.println("DApp execution failed due to stack overflow EXCEPTION: \"" + e.getMessage() + "\"");
                 e.printStackTrace(System.err);
             }
-            if (null != stateToResume) {
-                dapp.revertToCallerState(initialClassWrappers, callerState);
-            }
             result = TransactionResultUtil.setNonRevertedFailureAndEnergyUsed(result, AvmInternalError.FAILED_OUT_OF_STACK, tx.energyLimit);
 
         } catch (CallDepthLimitExceededException e) {
             if (verboseErrors) {
                 System.err.println("DApp execution failed due to call depth limit EXCEPTION: \"" + e.getMessage() + "\"");
                 e.printStackTrace(System.err);
-            }
-            if (null != stateToResume) {
-                dapp.revertToCallerState(initialClassWrappers, callerState);
             }
             result = TransactionResultUtil.setNonRevertedFailureAndEnergyUsed(result, AvmInternalError.FAILED_CALL_DEPTH_LIMIT, tx.energyLimit);
 
@@ -175,9 +150,6 @@ public class DAppExecutor {
                 System.err.println("DApp execution to REVERT due to uncaught EXCEPTION: \"" + e.getMessage() + "\"");
                 e.printStackTrace(System.err);
             }
-            if (null != stateToResume) {
-                dapp.revertToCallerState(initialClassWrappers, callerState);
-            }
             result = TransactionResultUtil.setRevertedFailureAndEnergyUsed(result, tx.energyLimit - threadInstrumentation.energyLeft());
 
         } catch (InvalidException e) {
@@ -185,17 +157,11 @@ public class DAppExecutor {
                 System.err.println("DApp execution INVALID due to uncaught EXCEPTION: \"" + e.getMessage() + "\"");
                 e.printStackTrace(System.err);
             }
-            if (null != stateToResume) {
-                dapp.revertToCallerState(initialClassWrappers, callerState);
-            }
             result = TransactionResultUtil.setNonRevertedFailureAndEnergyUsed(result, AvmInternalError.FAILED_INVALID, tx.energyLimit);
 
         } catch (EarlyAbortException e) {
             if (verboseErrors) {
                 System.err.println("FYI - concurrent abort (will retry) in transaction \"" + Helpers.bytesToHexString(tx.copyOfTransactionHash()) + "\"");
-            }
-            if (null != stateToResume) {
-                dapp.revertToCallerState(initialClassWrappers, callerState);
             }
             result = TransactionResultUtil.newAbortedResultWithZeroEnergyUsed();
 
@@ -204,18 +170,12 @@ public class DAppExecutor {
                 System.err.println("DApp execution failed due to uncaught EXCEPTION: \"" + e.getMessage() + "\"");
                 e.printStackTrace(System.err);
             }
-            if (null != stateToResume) {
-                dapp.revertToCallerState(initialClassWrappers, callerState);
-            }
             result = TransactionResultUtil.setFailedException(result, e.getCause(), tx.energyLimit);
         } catch (AvmException e) {
             // We handle the generic AvmException as some failure within the contract.
             if (verboseErrors) {
                 System.err.println("DApp execution failed due to AvmException: \"" + e.getMessage() + "\"");
                 e.printStackTrace(System.err);
-            }
-            if (null != stateToResume) {
-                dapp.revertToCallerState(initialClassWrappers, callerState);
             }
             result = TransactionResultUtil.setNonRevertedFailureAndEnergyUsed(result, AvmInternalError.FAILED, tx.energyLimit);
         } catch (JvmError e) {

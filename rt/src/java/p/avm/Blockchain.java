@@ -4,6 +4,7 @@ import a.ByteArray;
 import i.DBImplBase;
 import i.IBlockchainRuntime;
 import i.IInstrumentation;
+import i.IObject;
 import i.IObjectArray;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 import org.aion.avm.StorageFees;
@@ -115,6 +116,12 @@ public final class Blockchain extends Object {
     public static Result avm_call(Address targetAddress, BigInteger value, ByteArray data, long energyLimit) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_call);
         return blockchainRuntime.avm_call(targetAddress, value, data, energyLimit);
+    }
+
+    public static IObject avm_call(Address targetAddress, String method, IObjectArray params,
+                                   BigInteger value) throws IllegalArgumentException {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_call);
+        return blockchainRuntime.avm_call(targetAddress, method, params, value);
     }
 
     public static Result avm_create(BigInteger value, ByteArray data, long energyLimit) {

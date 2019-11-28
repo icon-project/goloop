@@ -2,7 +2,10 @@ package org.aion.avm.core;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.HashMap;
+import java.util.Map;
 
+import foundation.icon.ee.types.DAppRuntimeState;
 import org.aion.types.AionAddress;
 import org.aion.avm.core.persistence.LoadedDApp;
 import i.RuntimeAssertionError;
@@ -62,16 +65,35 @@ public class ReentrantDAppStack {
         return state;
     }
 
+    public SaveItem getSaveItem(AionAddress addr) {
+        RuntimeAssertionError.assertTrue(null != addr);
+        ReentrantState foundState = null;
+        for (var iter = stack.descendingIterator(); iter.hasNext(); ) {
+            var rs = iter.next();
+            var saveItem = rs.getSaveItems().get(addr);
+            if (saveItem!=null) {
+                return saveItem;
+            }
+        }
+        return null;
+    }
+
+    public ReentrantState getTop() {
+        return this.stack.peekLast();
+    }
+
 
     public static class ReentrantState {
         public final AionAddress address;
         public final LoadedDApp dApp;
         private int nextHashCode;
+        private Map<AionAddress, SaveItem> saveItems;
 
         public ReentrantState(AionAddress address, LoadedDApp dApp, int nextHashCode) {
             this.address = address;
             this.dApp = dApp;
             this.nextHashCode = nextHashCode;
+            this.saveItems = new HashMap<>();
         }
         
         public int getNextHashCode() {
@@ -80,6 +102,28 @@ public class ReentrantDAppStack {
 
         public void updateNextHashCode(int nextHashCode) {
             this.nextHashCode = nextHashCode;
+        }
+
+        public Map<AionAddress, SaveItem> getSaveItems() {
+            return this.saveItems;
+        }
+    }
+
+    public static class SaveItem {
+        private LoadedDApp dApp;
+        private DAppRuntimeState runtimeState;
+
+        public SaveItem(LoadedDApp dApp, DAppRuntimeState runtimeState) {
+            this.dApp = dApp;
+            this.runtimeState = runtimeState;
+        }
+
+        public LoadedDApp getDApp() {
+            return dApp;
+        }
+
+        public DAppRuntimeState getRuntimeState() {
+            return runtimeState;
         }
     }
 }

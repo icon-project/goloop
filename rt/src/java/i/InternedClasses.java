@@ -14,6 +14,10 @@ public class InternedClasses {
         this.internedClassWrappers = new IdentityHashMap<>();
     }
 
+    public InternedClasses(InternedClasses src) {
+        this.internedClassWrappers = new IdentityHashMap<>(src.internedClassWrappers);
+    }
+
     public s.java.lang.Class<?> get(Class<?> underlyingClass) {
         s.java.lang.Class<?> internedClass = this.internedClassWrappers.get(underlyingClass);
         if (null == internedClass) {

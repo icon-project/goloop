@@ -1,6 +1,9 @@
 package collection;
 
 import avm.*;
+import foundation.icon.ee.tooling.abi.External;
+
+import java.math.BigInteger;
 
 public class CollectionTest
 {
@@ -84,5 +87,28 @@ public class CollectionTest
         dadb.at(0).pop();
         dadb.at(0).pop();
         expectEquals(dadb.at(0).size(), 0);
+    }
+
+    @External
+    public static int getInt() {
+        return 11;
+    }
+
+    private static Address sampleTokenAddress() {
+        var ba = new BigInteger("784b61a531e819838e1f308287f953015020000a", 16).toByteArray();
+        var ba2 = new byte[ba.length+1];
+        System.arraycopy(ba, 0, ba2, 1, ba.length);
+        ba2[0] = 1;
+        return new Address(ba2);
+    }
+
+    @External
+    public static BigInteger totalSupply2() {
+        return (BigInteger)Blockchain.call(sampleTokenAddress(), "totalSupply", new Object[0], BigInteger.ZERO);
+    }
+
+    @External
+    public static BigInteger balanceOf2(Address _owner) {
+        return (BigInteger) Blockchain.call(sampleTokenAddress(), "balanceOf", new Object[]{_owner}, BigInteger.ZERO);
     }
 }

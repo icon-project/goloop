@@ -5,8 +5,7 @@ import java.util.Arrays;
 import java.util.Objects;
 
 /**
- * Represents an "external" transaction.
- * An external transaction is a tx whose sender is NOT a contract.
+ * Represents a transaction. (including external and internal)
  *
  * This class is immutable,
  */

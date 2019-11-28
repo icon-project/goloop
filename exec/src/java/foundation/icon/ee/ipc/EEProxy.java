@@ -19,6 +19,7 @@ package foundation.icon.ee.ipc;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Method;
 import foundation.icon.ee.types.ObjectGraph;
+import foundation.icon.ee.types.Result;
 import org.msgpack.core.MessageTypeCastException;
 import org.msgpack.value.ArrayValue;
 import org.msgpack.value.Value;
@@ -97,6 +98,10 @@ public class EEProxy extends Proxy {
     }
 
     public void handleMessages() throws IOException {
+        doHandleMessages();
+    }
+
+    private Value doHandleMessages() throws IOException {
         while (true) {
             Message msg = getNextMessage();
             switch (msg.type) {
@@ -109,9 +114,13 @@ public class EEProxy extends Proxy {
                     logger.trace("[INVOKE]");
                     handleInvoke(msg.value);
                     break;
+                case MsgType.RESULT:
+                    logger.trace("[RESULT]");
+                    return msg.value;
                 case MsgType.CLOSE:
+                    // TODO: unwind stack
                     logger.trace("[CLOSE]");
-                    return; // exit loop
+                    return null; // exit loop
             }
         }
     }
@@ -250,5 +259,17 @@ public class EEProxy extends Proxy {
             logger.warn(errMsg, e);
             sendMessage(MsgType.RESULT, Status.FAILURE, BigInteger.ZERO, TypedObj.encodeAny(errMsg));
         }
+    }
+
+    public Result call(Address addr, String method, Object[] params, BigInteger value, int stepLimit) throws IOException {
+        var sl = BigInteger.valueOf(stepLimit);
+        var pa = TypedObj.encodeAny(params);
+        sendMessage(MsgType.CALL, addr, value, sl, method, pa);
+        Value raw = doHandleMessages();
+        ArrayValue data = raw.asArrayValue();
+        int status = data.get(0).asIntegerValue().asInt();
+        BigInteger stepUsed = new BigInteger(getValueAsByteArray(data.get(1)));
+        Object res = TypedObj.decodeAny(data.get(2));
+        return new Result(status, stepUsed, res);
     }
 }

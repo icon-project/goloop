@@ -116,6 +116,12 @@ public abstract class Proxy {
         } else if (obj instanceof TypedObj) {
             TypedObj to = (TypedObj) obj;
             to.writeTo(packer);
+        } else if (obj instanceof TypedObj[]) {
+            TypedObj[] toa = (TypedObj[]) obj;
+            packer.packArrayHeader(toa.length);
+            for (TypedObj to : toa) {
+                to.writeTo(packer);
+            }
         } else if (obj instanceof byte[][]) {
             byte[][] bytesArray = (byte[][]) obj;
             packer.packArrayHeader(bytesArray.length);

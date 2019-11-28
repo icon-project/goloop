@@ -1,6 +1,8 @@
 package org.aion.kernel;
 
 import java.math.BigInteger;
+
+import foundation.icon.ee.types.Result;
 import i.RuntimeAssertionError;
 import org.aion.avm.core.IExternalState;
 import org.aion.types.AionAddress;
@@ -207,5 +209,14 @@ public class CachingState implements IExternalState {
     @Override
     public void log(byte[][] indexed, byte[][] data) {
         throw RuntimeAssertionError.unreachable("This class does not implement this method.");
+    }
+
+    @Override
+    public Result call(AionAddress address,
+                       String method,
+                       Object[] params,
+                       BigInteger value,
+                       int stepLimit) {
+        return null;
     }
 }

@@ -1,15 +1,20 @@
 package org.aion.avm.core;
 
 import a.ByteArray;
+import foundation.icon.ee.utils.Shadower;
+import foundation.icon.ee.utils.Unshadower;
 import i.CallDepthLimitExceededException;
 import i.IBlockchainRuntime;
 import i.IInstrumentation;
+import i.IObject;
 import i.IObjectArray;
 import i.IRuntimeSetup;
 import i.InstrumentationHelpers;
 import i.InvalidException;
 import i.RevertException;
 import i.RuntimeAssertionError;
+import org.aion.avm.StorageFees;
+import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.avm.core.util.LogSizeUtils;
 import org.aion.avm.core.util.TransactionResultUtil;
 import org.aion.kernel.AvmWrappedTransactionResult;
@@ -45,6 +50,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     private final AionAddress transactionDestination;
     private final Transaction tx;
     private final IRuntimeSetup thisDAppSetup;
+    private LoadedDApp dApp;
     private final boolean enablePrintln;
 
     private Address addressCache;
@@ -62,6 +68,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                                  AionAddress transactionDestination,
                                  Transaction tx,
                                  IRuntimeSetup thisDAppSetup,
+                                 LoadedDApp dApp,
                                  boolean enablePrintln) {
         this.externalState = externalState;
         this.reentrantState = reentrantState;
@@ -70,6 +77,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         this.transactionDestination = transactionDestination;
         this.tx = tx;
         this.thisDAppSetup = thisDAppSetup;
+        this.dApp = dApp;
         this.enablePrintln = enablePrintln;
     }
 
@@ -186,6 +194,58 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     public s.java.math.BigInteger avm_getBalance(Address address) {
         require(null != address, "Address can't be NULL");
         return new s.java.math.BigInteger(this.externalState.getBalance(new AionAddress(address.toByteArray())));
+    }
+
+    @Override
+    public IObject avm_call(Address targetAddress,
+                            s.java.lang.String method,
+                            IObjectArray sparams,
+                            s.java.math.BigInteger value) throws IllegalArgumentException {
+        java.math.BigInteger underlyingValue = value.getUnderlying();
+        require(targetAddress != null, "Destination can't be NULL");
+        require(underlyingValue.compareTo(java.math.BigInteger.ZERO) >= 0 , "Value can't be negative");
+        require(underlyingValue.compareTo(externalState.getBalance(this.transactionDestination)) <= 0, "Insufficient balance");
+
+        if (task.getTransactionStackDepth() == 9) {
+            // since we increase depth in the upcoming call to runInternalCall(),
+            // a current depth of 9 means we're about to go up to 10, so we fail
+            throw new CallDepthLimitExceededException("Internal call depth cannot be more than 10");
+        }
+        var hash = IInstrumentation.attachedThreadInstrumentation.get().peekNextHashCode();
+        int stepLeft = (int)IInstrumentation.attachedThreadInstrumentation.get().energyLeft();
+        var rs = dApp.saveRuntimeState(hash, StorageFees.MAX_GRAPH_SIZE);
+        var saveItem = new ReentrantDAppStack.SaveItem(dApp, rs);
+        var aionAddr = new AionAddress(avm_getAddress().toByteArray());
+        task.getReentrantDAppStack().getTop().getSaveItems().put(aionAddr, saveItem);
+        task.incrementTransactionStackDepth();
+        InstrumentationHelpers.temporarilyExitFrame(this.thisDAppSetup);
+        Object[] params = new Object[sparams.length()];
+        for (int i=0; i<params.length; i++) {
+            var  p = sparams.get(i);
+            params[i] = Unshadower.unshadow((s.java.lang.Object)sparams.get(i));
+            if (p!=null && params[i]==null) {
+                throw new IllegalArgumentException(String.format("invalid argument at index %d", i));
+            }
+        }
+        foundation.icon.ee.types.Result res = externalState.call(
+                new AionAddress(targetAddress.toByteArray()),
+                method.getUnderlying(),
+                params,
+                value.getUnderlying(),
+                stepLeft);
+        InstrumentationHelpers.returnToExecutingFrame(this.thisDAppSetup);
+        task.decrementTransactionStackDepth();
+        var saveItems = task.getReentrantDAppStack().getTop().getSaveItems();
+        var saveItemFinal = saveItems.remove(aionAddr);
+        assert saveItemFinal!=null;
+        dApp.loadRuntimeState(saveItemFinal.getRuntimeState());
+        IInstrumentation.attachedThreadInstrumentation.get().forceNextHashCode(saveItemFinal.getRuntimeState().getGraph().hashCode());
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(res.getStepUsed().intValue());
+        if (res.getStatus()!=0) {
+            // TODO: define exception
+            throw new IllegalArgumentException(String.format("Call failed status=%d", res.getStatus()));
+        }
+        return Shadower.shadow(res.getRet());
     }
 
     @Override
