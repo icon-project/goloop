@@ -57,7 +57,7 @@ class SimpleJavaScore {
         ownerWallet = KeyWallet.create();
         calleeWallet = KeyWallet.create();
         Address[] addrs = {ownerWallet.getAddress(), calleeWallet.getAddress(), chain.governorWallet.getAddress()};
-        Utils.transferAndCheck(iconService, chain, chain.godWallet, addrs, Constants.DEFAULT_BALANCE);
+        Utils.transferAndCheck(iconService, chain, chain.godWallet, addrs, BigInteger.TEN.pow(20));
 
         govScore.setMaxStepLimit("invoke", BigInteger.valueOf(1000000));
         govScore.setMaxStepLimit("query", BigInteger.valueOf(1000000));
@@ -390,6 +390,60 @@ class SimpleJavaScore {
         result = testScore.call(caller.getAddress(), "getTransactionNonceQuery", null);
         LOG.info("expected (" + "0" + "), got (" + result.asInteger() + ")");
         assertEquals(BigInteger.ZERO, result.asInteger());
+        LOG.infoExiting();
+    }
+
+    @Test
+    void testAPITestForCoin() throws Exception {
+        Address scoreAddr = deployAPITest();
+        KeyWallet caller = KeyWallet.create();
+        TransactionResult tr;
+        RpcItem result = RpcValue.NULL;
+
+        // getValue
+        LOG.infoEntering("getValue", "invoke");
+        BigInteger coin = BigInteger.TEN.pow(18);
+        BigInteger stepLimit = BigInteger.valueOf(100000);
+        tr = testScore.invokeAndWaitResult(ownerWallet, "getValue", null, coin, stepLimit);
+        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
+        for (TransactionResult.EventLog e : tr.getEventLogs()) {
+            result = e.getData().get(0);
+        }
+        LOG.info("expected (" + coin + "), got (" + result.asInteger() + ")");
+        assertEquals(coin, result.asInteger());
+        Utils.ensureIcxBalance(iconService, ownerWallet.getAddress(), 100, 99);
+        Utils.ensureIcxBalance(iconService, scoreAddr, 0, 1);
+        LOG.infoExiting();
+
+        LOG.infoEntering("getValue", "query");
+        result = testScore.call(ownerWallet.getAddress(), "getValueQuery", null);
+        LOG.info("expected (" + "0" + "), got (" + result.asInteger() + ")");
+        assertEquals(BigInteger.ZERO, result.asInteger());
+        LOG.infoExiting();
+
+        // getBalance
+        LOG.infoEntering("getBalance", "check owner balance");
+        BigInteger ownerBalance = iconService.getBalance(ownerWallet.getAddress()).execute();
+        RpcObject params = new RpcObject.Builder()
+                .put("address", new RpcValue(ownerWallet.getAddress()))
+                .build();
+        tr = testScore.invokeAndWaitResult(caller, "getBalance", params, null, stepLimit);
+        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
+        for (TransactionResult.EventLog e : tr.getEventLogs()) {
+            result = e.getData().get(0);
+        }
+        LOG.info("expected (" + ownerBalance + "), got (" + result.asInteger() + ")");
+        assertEquals(ownerBalance, result.asInteger());
+        LOG.infoExiting();
+
+        LOG.infoEntering("getBalance", "check caller balance");
+        tr = testScore.invokeAndWaitResult(caller, "getBalance", null, null, stepLimit);
+        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
+        for (TransactionResult.EventLog e : tr.getEventLogs()) {
+            result = e.getData().get(0);
+        }
+        LOG.info("expected (" + coin + "), got (" + result.asInteger() + ")");
+        assertEquals(coin, result.asInteger());
         LOG.infoExiting();
     }
 }
