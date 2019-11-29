@@ -68,11 +68,7 @@ class InternalCall(object):
             raise AssertionError('Used step must be lower than the given limit')
         context.step_counter.add_step(step_used)
 
-        if status == Status.SUCCESS:
+        if status == ExceptionCode.OK:
             return result
         else:
-            if status < ExceptionCode.SCORE_ERROR:
-                raise IconServiceBaseException(result, status)
-            else:
-                code = status - ExceptionCode.SCORE_ERROR
-                raise IconScoreException(result, code)
+            raise IconServiceBaseException.create(result, status)

@@ -88,6 +88,9 @@ const (
 	StatusStackOverflow
 	StatusSkipTransaction
 	StatusReverted Status = 32
+
+	StatusLimitRev5 Status = 99
+	StatusLimit     Status = 999
 )
 
 const (
@@ -96,6 +99,7 @@ const (
 	Revision3
 	Revision4
 	Revision5
+	Revision6
 	RevisionReserved
 )
 
