@@ -489,6 +489,13 @@ func (s *ChainScore) Install(param []byte) error {
 	revision := int(module.DefaultRevision)
 	if chain.Revision.Value != 0 {
 		revision = int(chain.Revision.Value)
+		if revision > module.MaxRevision {
+			return scoreresult.IllegalFormatError.Errorf(
+				"RevisionIsHigherMax(%d > %d)", revision, module.MaxRevision)
+		} else if revision > module.LatestRevision {
+			s.log.Warnf("Revision in genesis is higher than latest(%d > %d)",
+				revision, module.LatestRevision)
+		}
 	}
 	if err := scoredb.NewVarDB(as, state.VarRevision).Set(revision); err != nil {
 		return err
