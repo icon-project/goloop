@@ -1,8 +1,23 @@
+/*
+ * Copyright 2019 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package example;
 
 import avm.Address;
 import avm.Blockchain;
-
 import avm.DictDB;
 import avm.Value;
 import avm.ValueBuffer;
@@ -97,16 +112,16 @@ public class SampleToken
     @External
     public static void transfer(Address _to, BigInteger _value, @Optional byte[] _data) {
         Address _from = Blockchain.getCaller();
-        var vb = new ValueBuffer();
-        Value v = token.balances.get(_from, vb);
+        Value v = token.balances.get(_from);
         BigInteger fromBalance = (v != null) ? v.asBigInteger() : BigInteger.ZERO;
-        v = token.balances.get(_to, vb);
+        v = token.balances.get(_to);
         BigInteger toBalance = (v != null) ? v.asBigInteger() : BigInteger.ZERO;
 
         // check some basic requirements
         Blockchain.require(_value.compareTo(BigInteger.ZERO) >= 0);
         Blockchain.require(fromBalance.compareTo(_value) >= 0);
 
+        var vb = new ValueBuffer();
         vb.set(fromBalance.subtract(_value));
         token.balances.set(_from, vb);
         vb.set(toBalance.add(_value));
