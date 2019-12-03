@@ -397,13 +397,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     @Override
-    public void avm_print(s.java.lang.String message) {
-        if (this.enablePrintln) {
-            task.outputPrint(message.toString());
-        }
-    }
-
-    @Override
     public void avm_println(s.java.lang.String message) {
         if (this.enablePrintln) {
             task.outputPrintln(message!=null ? message.toString() : null);

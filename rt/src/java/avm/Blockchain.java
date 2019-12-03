@@ -293,15 +293,6 @@ public final class Blockchain {
      *
      * @param message the message to print
      */
-    public static void print(String message) {
-
-    }
-
-    /**
-     * Prints a message, for debugging purpose
-     *
-     * @param message the message to print
-     */
     public static void println(String message) {
 
     }

@@ -188,11 +188,6 @@ public final class Blockchain extends Object {
         blockchainRuntime.avm_require(condition);
     }
 
-    public static void avm_print(String message) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_print);
-        blockchainRuntime.avm_print(message);
-    }
-
     public static void avm_println(String message) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_println);
         blockchainRuntime.avm_println(message);

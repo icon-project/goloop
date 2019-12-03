@@ -163,13 +163,6 @@ public interface IBlockchainRuntime {
      *
      * @param message
      */
-    void avm_print(String message);
-
-    /**
-     * Prints a message to console for debugging purpose
-     *
-     * @param message
-     */
     void avm_println(String message);
 
     /**
