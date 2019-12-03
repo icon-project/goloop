@@ -24,7 +24,6 @@ import avm.ValueBuffer;
 import foundation.icon.ee.tooling.abi.EventLog;
 import foundation.icon.ee.tooling.abi.External;
 import foundation.icon.ee.tooling.abi.Optional;
-import foundation.icon.ee.tooling.abi.Payable;
 
 import java.math.BigInteger;
 
@@ -80,10 +79,6 @@ public class SampleToken
         token = new SampleToken(_name, _symbol, _decimals, _initialSupply);
     }
 
-    @Payable
-    public static void fallback() {
-    }
-
     @External(readonly=true)
     public static String name() {
         return token.name;
@@ -106,29 +101,45 @@ public class SampleToken
 
     @External(readonly=true)
     public static BigInteger balanceOf(Address _owner) {
-        return token.balances.get(_owner).asBigInteger();
+        return safeGetBalance(_owner);
     }
 
     @External
     public static void transfer(Address _to, BigInteger _value, @Optional byte[] _data) {
         Address _from = Blockchain.getCaller();
-        Value v = token.balances.get(_from);
-        BigInteger fromBalance = (v != null) ? v.asBigInteger() : BigInteger.ZERO;
-        v = token.balances.get(_to);
-        BigInteger toBalance = (v != null) ? v.asBigInteger() : BigInteger.ZERO;
+        BigInteger fromBalance = safeGetBalance(_from);
+        BigInteger toBalance = safeGetBalance(_to);
 
         // check some basic requirements
         Blockchain.require(_value.compareTo(BigInteger.ZERO) >= 0);
         Blockchain.require(fromBalance.compareTo(_value) >= 0);
 
-        var vb = new ValueBuffer();
-        vb.set(fromBalance.subtract(_value));
-        token.balances.set(_from, vb);
-        vb.set(toBalance.add(_value));
-        token.balances.set(_to, vb);
+        // adjust the balances
+        safeSetBalance(_from, fromBalance.subtract(_value));
+        safeSetBalance(_to, toBalance.add(_value));
+
+        // if the recipient is SCORE, call 'tokenFallback' to handle further operation
+        byte[] dataBytes = (_data == null) ? new byte[0] : _data;
+        if (isContract(_to)) {
+            Blockchain.call(_to, "tokenFallback", new Object[] {_from, _value, dataBytes}, BigInteger.ZERO);
+        }
 
         // emit Transfer event
-        Transfer(_from, _to, _value, (_data == null) ? new byte[0] : _data);
+        Transfer(_from, _to, _value, dataBytes);
+    }
+
+    private static BigInteger safeGetBalance(Address owner) {
+        Value v = token.balances.get(owner);
+        return (v != null) ? v.asBigInteger() : BigInteger.ZERO;
+    }
+
+    private static void safeSetBalance(Address owner, BigInteger amount) {
+        token.balances.set(owner, new ValueBuffer(amount));
+    }
+
+    private static boolean isContract(Address address) {
+        byte[] ba = address.toByteArray();
+        return (ba[0] == 0x1) ? true : false;
     }
 
     @EventLog(indexed=3)
