@@ -83,3 +83,22 @@ func Chunk() echo.MiddlewareFunc {
 		}
 	}
 }
+
+func NoneMiddlewareFunc(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		return next(c)
+	}
+}
+
+
+func Unauthorized(readOnly bool) echo.MiddlewareFunc {
+	if readOnly {
+		return func(next echo.HandlerFunc) echo.HandlerFunc {
+			return func(ctx echo.Context) error {
+				return ctx.String(http.StatusUnauthorized,"unauthorized")
+			}
+		}
+	} else {
+		return NoneMiddlewareFunc
+	}
+}
