@@ -33,13 +33,13 @@ import org.slf4j.LoggerFactory;
 import static org.msgpack.value.ValueType.ARRAY;
 
 public abstract class Proxy {
-    private final Client client;
+    private final Connection client;
     private static final Logger logger = LoggerFactory.getLogger(Proxy.class);
     private final MessageUnpacker unpacker;
 
-    static class Message {
-        final int type;
-        final Value value;
+    protected static class Message {
+        public final int type;
+        public final Value value;
 
         Message(int type, Value value) {
             this.type = type;
@@ -47,13 +47,24 @@ public abstract class Proxy {
         }
     }
 
-    protected Proxy(Client client) {
+    protected Proxy(Connection client) {
         this.client = client;
         unpacker = MessagePack.newDefaultUnpacker(client.getInputStream());
     }
 
     protected void close() throws IOException {
         this.client.close();
+    }
+
+    protected Message getNextMessageNoLog() throws IOException {
+        Value v = unpacker.unpackValue();
+        if (v.getValueType() != ARRAY) {
+            throw new IOException("should be array type");
+        }
+        ArrayValue a = v.asArrayValue();
+        int type = a.get(0).asIntegerValue().toInt();
+        Value value = a.get(1);
+        return new Message(type, value);
     }
 
     protected Message getNextMessage() throws IOException {
@@ -107,6 +118,8 @@ public abstract class Proxy {
             packByteArray(((BigInteger) obj).toByteArray(), packer);
         } else if (obj instanceof Address) {
             packByteArray(((Address) obj).toByteArray(), packer);
+        } else if (obj instanceof avm.Address) {
+            packByteArray(((avm.Address) obj).toByteArray(), packer);
         } else if (obj instanceof Method[]) {
             Method[] methods = (Method[]) obj;
             packer.packArrayHeader(methods.length);

@@ -47,7 +47,7 @@ public class TypedObj {
         this.obj = value;
     }
 
-    static Object decodeAny(Value raw) throws IOException {
+    public static Object decodeAny(Value raw) throws IOException {
         ArrayValue data = raw.asArrayValue();
         int tag = data.get(0).asIntegerValue().asInt();
         Value val = data.get(1);
@@ -113,6 +113,8 @@ public class TypedObj {
             return new TypedObj(BOOL, obj);
         } else if (obj instanceof Address) {
             return new TypedObj(ADDRESS, ((Address)obj).toByteArray());
+        } else if (obj instanceof avm.Address) {
+            return new TypedObj(ADDRESS, ((avm.Address)obj).toByteArray());
         } else if (obj instanceof BigInteger) {
             return new TypedObj(INT, ((BigInteger)obj).toByteArray());
         } else if (obj instanceof Byte) {

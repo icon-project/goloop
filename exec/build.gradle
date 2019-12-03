@@ -4,6 +4,16 @@ dependencies {
 
     implementation project(':tooling')
     implementation project(':rt')
+
+    testImplementation(
+            'org.junit.jupiter:junit-jupiter-api:5.4.2',
+            project(':samples'),
+    )
+    testRuntime(
+            'org.junit.jupiter:junit-jupiter-engine:5.4.2',
+    )
+    testRuntimeOnly project(':logger')
+
 }
 
 task compileNative(type: Exec) {
@@ -22,3 +32,6 @@ sourceSets {
     }
 }
 
+test {
+    useJUnitPlatform()
+}

@@ -35,7 +35,7 @@ public class ManagerProxy extends Proxy {
         static final int END = 103;
     }
 
-    public ManagerProxy(Client client) {
+    public ManagerProxy(Connection client) {
         super(client);
     }
 

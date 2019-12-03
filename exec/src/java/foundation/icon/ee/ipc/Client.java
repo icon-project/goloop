@@ -23,7 +23,7 @@ import java.io.File;
 /*
  * Simple UNIX domain socket implementation for communicating with the Service Manager.
  */
-public class Client {
+public class Client implements Connection {
     private String path;
     private int fd;
 
@@ -135,4 +135,10 @@ public class Client {
     static {
         System.loadLibrary("client");
     }
+
+    static public Connector connector = new Connector(){
+        public Connection connect(String addr) throws IOException {
+            return Client.connect(addr);
+        }
+    };
 }

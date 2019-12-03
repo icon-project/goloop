@@ -45,22 +45,22 @@ public class EEProxy extends Proxy {
     private OnGetApiListener mOnGetApiListener;
     private OnInvokeListener mOnInvokeListener;
 
-    static class MsgType {
-        static final int VERSION = 0;
-        static final int INVOKE = 1;
-        static final int RESULT = 2;
-        static final int GETVALUE = 3;
-        static final int SETVALUE = 4;
-        static final int CALL = 5;
-        static final int EVENT = 6;
-        static final int GETINFO = 7;
-        static final int GETBALANCE = 8;
-        static final int GETAPI = 9;
-        static final int LOG = 10;
-        static final int CLOSE = 11;
-        static final int SETCODE = 12;
-        static final int GETOBJGRAPH = 13;
-        static final int SETOBJGRAPH = 14;
+    public static class MsgType {
+        public static final int VERSION = 0;
+        public static final int INVOKE = 1;
+        public static final int RESULT = 2;
+        public static final int GETVALUE = 3;
+        public static final int SETVALUE = 4;
+        public static final int CALL = 5;
+        public static final int EVENT = 6;
+        public static final int GETINFO = 7;
+        public static final int GETBALANCE = 8;
+        public static final int GETAPI = 9;
+        public static final int LOG = 10;
+        public static final int CLOSE = 11;
+        public static final int SETCODE = 12;
+        public static final int GETOBJGRAPH = 13;
+        public static final int SETOBJGRAPH = 14;
     }
 
     public static class Status {
@@ -80,7 +80,7 @@ public class EEProxy extends Proxy {
         public static final String CONTRACT_OWNER = "C.owner";
     }
 
-    public EEProxy(Client client) {
+    public EEProxy(Connection client) {
         super(client);
         threadLocal.set(this);
     }

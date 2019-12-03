@@ -28,15 +28,21 @@ public class ExecutorManager {
     private Map<String, TransactionExecutor> execMap;
     private ManagerProxy proxy;
     private String execSockAddr;
+    private Connector connector;
 
-    public ExecutorManager(String sockAddr) throws IOException {
-        Client client = Client.connect(sockAddr);
+    public ExecutorManager(String sockAddr, Connector c) throws IOException {
+        Connection client = c.connect(sockAddr);
         proxy = new ManagerProxy(client);
         execSockAddr = sockAddr;
         execMap = new HashMap<>();
+        connector = c;
 
         proxy.setOnRunListener(this::runExecutor);
         proxy.setOnKillListener(this::killExecutor);
+    }
+
+    public ExecutorManager(String sockAddr) throws IOException {
+        this(sockAddr, Client.connector);
     }
 
     private void killExecutor(String uuid) throws IOException {
@@ -55,7 +61,9 @@ public class ExecutorManager {
         }
         Thread th = new Thread(() -> {
             try {
-                TransactionExecutor exec = TransactionExecutor.newInstance(execSockAddr, uuid);
+                TransactionExecutor exec = TransactionExecutor.newInstance(
+                        connector.connect(execSockAddr),
+                        uuid);
                 execMap.put(uuid, exec);
                 exec.connectAndRunLoop();
             } catch (IOException e) {

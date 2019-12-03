@@ -17,6 +17,7 @@
 package foundation.icon.ee.score;
 
 import foundation.icon.ee.ipc.Client;
+import foundation.icon.ee.ipc.Connection;
 import foundation.icon.ee.ipc.EEProxy;
 import foundation.icon.ee.ipc.InvokeResult;
 import foundation.icon.ee.ipc.TypedObj;
@@ -55,19 +56,33 @@ public class TransactionExecutor {
     private final EEProxy proxy;
     private final String uuid;
     private final AvmExecutor avmExecutor;
+    private final FileReader fileReader;
 
-    private TransactionExecutor(String sockAddr, String uuid) throws IOException {
-        Client client = Client.connect(sockAddr);
-        this.proxy = new EEProxy(client);
+    private TransactionExecutor(Connection conn,
+                                String uuid,
+                                FileReader fileReader) throws IOException {
+        this.proxy = new EEProxy(conn);
         this.uuid = uuid;
 
         proxy.setOnGetApiListener(this::handleGetApi);
         proxy.setOnInvokeListener(this::handleInvoke);
         avmExecutor = CommonAvmFactory.getAvmInstance(avmConfig);
+
+        this.fileReader = fileReader;
     }
 
     public static TransactionExecutor newInstance(String sockAddr, String uuid) throws IOException {
-        return new TransactionExecutor(sockAddr, uuid);
+        return new TransactionExecutor(Client.connect(sockAddr), uuid, defaultFileReader);
+    }
+
+    public static TransactionExecutor newInstance(Connection c,
+                                                  String uuid) throws IOException {
+        return new TransactionExecutor(c, uuid, defaultFileReader);
+    }
+    public static TransactionExecutor newInstance(Connection c,
+                                                  String uuid,
+                                                  FileReader r) throws IOException {
+        return new TransactionExecutor(c, uuid, r);
     }
 
     public void connectAndRunLoop() throws IOException {
@@ -87,7 +102,7 @@ public class TransactionExecutor {
 
     private Method[] handleGetApi(String path) throws IOException {
         logger.trace(">>> path={}", path);
-        byte[] jarBytes = readFile(path);
+        byte[] jarBytes = fileReader.readFile(path);
         byte[] apis = JarBuilder.getAPIsBytesFromJAR(jarBytes);
         if (null!=apis) {
             Method[] methods = MethodUnpacker.readFrom(apis);
@@ -120,7 +135,7 @@ public class TransactionExecutor {
         Address owner = (Address) info.get(EEProxy.Info.CONTRACT_OWNER);
         Address origin = (Address) info.get(EEProxy.Info.TX_FROM);
 
-        byte[] codeBytes = readFile(code);
+        byte[] codeBytes = fileReader.readFile(code);
         ExternalState kernel = new ExternalState(proxy, codeBytes, blockHeight, blockTimestamp, owner);
         Transaction tx = getTransactionData(isInstall, from, to, value, nonce, limit, method, params,
                 txHash, txIndex, txTimestamp);
@@ -178,16 +193,18 @@ public class TransactionExecutor {
                 isInstall);
     }
 
-    private byte[] readFile(String code) throws IOException {
-        Path path = Paths.get(code, CODE_JAR);
-        byte[] jarBytes;
-        try {
-            jarBytes = Files.readAllBytes(path);
-        } catch (IOException e) {
-            throw new IOException("JAR read error: " + e.getMessage());
+    private static FileReader defaultFileReader = new FileReader() {
+        public byte[] readFile(String p) throws IOException {
+            Path path = Paths.get(p, CODE_JAR);
+            byte[] jarBytes;
+            try {
+                jarBytes = Files.readAllBytes(path);
+            } catch (IOException e) {
+                throw new IOException("JAR read error: " + e.getMessage());
+            }
+            return jarBytes;
         }
-        return jarBytes;
-    }
+    };
 
     private static class ResultWrapper {
         private final TransactionResult result;

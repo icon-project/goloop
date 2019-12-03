@@ -1,0 +1,12 @@
+dependencies {
+    implementation project(':rt')
+    implementation project(':tooling')
+}
+
+sourceSets {
+    main.java.srcDirs = ['sample_token/src', 'collection/src']
+}
+
+compileJava {
+    options.compilerArgs += ['-parameters']
+}
