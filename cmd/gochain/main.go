@@ -202,7 +202,7 @@ func Execute(cmd *cobra.Command, args []string) {
 		if err != nil {
 			log.Panicf("Failed to load genesisStorage\n")
 		}
-		cfg.Genesis, _ = json.Marshal(cfg.GenesisStorage.Genesis())
+		cfg.Genesis = cfg.GenesisStorage.Genesis()
 	} else if len(genesisPath) > 0 {
 		storage := bytes.NewBuffer(nil)
 		if err := gs.WriteFromPath(storage, genesisPath); err != nil {
@@ -213,6 +213,7 @@ func Execute(cmd *cobra.Command, args []string) {
 		if err != nil {
 			log.Panicf("Failed to load genesisStorage\n")
 		}
+		cfg.Genesis = cfg.GenesisStorage.Genesis()
 	} else if len(cfg.Genesis) == 0 {
 		genesis := map[string]interface{}{
 			"accounts": []map[string]interface{}{
@@ -241,7 +242,7 @@ func Execute(cmd *cobra.Command, args []string) {
 	}
 
 	if cfg.NID == 0 {
-		gtx, _ := transaction.NewGenesisTransaction(cfg.GenesisStorage.Genesis())
+		gtx, _ := transaction.NewGenesisTransaction(cfg.Genesis)
 		cfg.NID = gtx.NID()
 	}
 
