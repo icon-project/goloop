@@ -110,7 +110,8 @@ public class TypedObj {
         } else if (obj instanceof String) {
             return new TypedObj(STRING, obj);
         } else if (obj instanceof Boolean) {
-            return new TypedObj(BOOL, obj);
+            boolean o = (Boolean) obj;
+            return new TypedObj(BOOL, o ? new byte[]{1} : new byte[]{0});
         } else if (obj instanceof Address) {
             return new TypedObj(ADDRESS, ((Address)obj).toByteArray());
         } else if (obj instanceof avm.Address) {
@@ -187,9 +188,7 @@ public class TypedObj {
             }
         } else if (type == STRING) {
             packer.packString((String) obj);
-        } else if (type == BOOL) {
-            packer.packBoolean((Boolean) obj);
-        } else if (type == BYTES || type == ADDRESS || type == INT) {
+        } else if (type == BOOL || type == BYTES || type == ADDRESS || type == INT) {
             byte[] ba = (byte[]) obj;
             packer.packBinaryHeader(ba.length);
             packer.writePayload(ba);
