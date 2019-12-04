@@ -60,7 +60,7 @@ public class SampleCrowdsale
                                  BigInteger _durationInBlocks) {
         // some basic requirements
         Blockchain.require(_fundingGoalInIcx.compareTo(BigInteger.ZERO) >= 0);
-        Blockchain.require(_durationInBlocks.compareTo(_durationInBlocks) >= 0);
+        Blockchain.require(_durationInBlocks.compareTo(BigInteger.ZERO) >= 0);
 
         crowdsale = new SampleCrowdsale(_fundingGoalInIcx, _tokenScore, _durationInBlocks);
     }

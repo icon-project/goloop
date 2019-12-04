@@ -4,7 +4,12 @@ dependencies {
 }
 
 sourceSets {
-    main.java.srcDirs = ['sample_token/src', 'collection/src']
+    main.java.srcDirs = [
+            'apitest/src',
+            'collection/src',
+            'crowdsale/src',
+            'sample_token/src',
+    ]
 }
 
 compileJava {
