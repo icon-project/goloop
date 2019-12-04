@@ -116,32 +116,15 @@ public interface IBlockchainRuntime {
      * NOTE:  This is likely to change as we work out the details of the ABI and cross-call semantics but exists to handle expectations of ported Solidity applications.
      *
      * @param targetAddress The address of the contract to call.
+     * @param method        method
+     * @param params        parameters
      * @param value         The value to transfer
-     * @param data          The data payload to send to that contract.
-     * @param energyLimit   The energy to send that contract.
      * @return The response of executing the contract.
      */
-    Result avm_call(Address targetAddress, BigInteger value, ByteArray data, long energyLimit) throws IllegalArgumentException;
-
     IObject avm_call(Address targetAddress, String method, IObjectArray params,
                                   BigInteger value) throws IllegalArgumentException;
 
     Result avm_create(BigInteger value, ByteArray data, long energyLimit) throws IllegalArgumentException;
-
-    /**
-     * Logs information for offline analysis or external listening.
-     *
-     * @param data arbitrary unstructured data.
-     */
-    void avm_log(ByteArray data) throws IllegalArgumentException;
-
-    void avm_log(ByteArray topic1, ByteArray data) throws IllegalArgumentException;
-
-    void avm_log(ByteArray topic1, ByteArray topic2, ByteArray data) throws IllegalArgumentException;
-
-    void avm_log(ByteArray topic1, ByteArray topic2, ByteArray topic3, ByteArray data) throws IllegalArgumentException;
-
-    void avm_log(ByteArray topic1, ByteArray topic2, ByteArray topic3, ByteArray topic4, ByteArray data) throws IllegalArgumentException;
 
     /**
      * Stop the current execution, rollback any state changes, and refund the remaining energy to caller.

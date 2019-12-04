@@ -249,41 +249,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     @Override
-    public Result avm_call(Address targetAddress, s.java.math.BigInteger value, ByteArray data, long energyLimit) {
-        java.math.BigInteger underlyingValue = value.getUnderlying();
-        require(targetAddress != null, "Destination can't be NULL");
-        require(underlyingValue.compareTo(java.math.BigInteger.ZERO) >= 0 , "Value can't be negative");
-        require(underlyingValue.compareTo(externalState.getBalance(this.transactionDestination)) <= 0, "Insufficient balance");
-        require(data != null, "Data can't be NULL");
-        require(energyLimit >= 0, "Energy limit can't be negative");
-
-        if (task.getTransactionStackDepth() == 9) {
-            // since we increase depth in the upcoming call to runInternalCall(),
-            // a current depth of 9 means we're about to go up to 10, so we fail
-            throw new CallDepthLimitExceededException("Internal call depth cannot be more than 10");
-        }
-
-        AionAddress target = new AionAddress(targetAddress.toByteArray());
-        if (!externalState.destinationAddressIsSafeForThisVM(target)) {
-            throw new IllegalArgumentException("Attempt to execute code using a foreign virtual machine");
-        }
-
-        // construct the internal transaction
-        InternalTransaction internalTx = InternalTransaction.contractCallTransaction(
-                InternalTransaction.RejectedStatus.NOT_REJECTED,
-                this.transactionDestination,
-                target,
-                this.externalState.getNonce(this.transactionDestination),
-                underlyingValue,
-                data.getUnderlying(),
-                restrictEnergyLimit(energyLimit),
-                0L);
-        
-        // Call the common run helper.
-        return runInternalCall(internalTx);
-    }
-
-    @Override
     public Result avm_create(s.java.math.BigInteger value, ByteArray data, long energyLimit) {
         java.math.BigInteger underlyingValue = value.getUnderlying();
         require(underlyingValue.compareTo(java.math.BigInteger.ZERO) >= 0 , "Value can't be negative");
@@ -315,68 +280,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         if (!condition) {
             throw new IllegalArgumentException(message);
         }
-    }
-
-    @Override
-    public void avm_log(ByteArray data) {
-        require(null != data, "data can't be NULL");
-
-        Log log = Log.dataOnly(this.transactionDestination.toByteArray(), data.getUnderlying());
-        task.peekSideEffects().addLog(log);
-    }
-
-    @Override
-    public void avm_log(ByteArray topic1, ByteArray data) {
-        require(null != topic1, "topic1 can't be NULL");
-        require(null != data, "data can't be NULL");
-
-        Log log = Log.topicsAndData(this.transactionDestination.toByteArray(),
-                List.of(LogSizeUtils.truncatePadTopic(topic1.getUnderlying())),
-                data.getUnderlying()
-        );
-        task.peekSideEffects().addLog(log);
-    }
-
-    @Override
-    public void avm_log(ByteArray topic1, ByteArray topic2, ByteArray data) {
-        require(null != topic1, "topic1 can't be NULL");
-        require(null != topic2, "topic2 can't be NULL");
-        require(null != data, "data can't be NULL");
-
-        Log log = Log.topicsAndData(this.transactionDestination.toByteArray(),
-                List.of(LogSizeUtils.truncatePadTopic(topic1.getUnderlying()), LogSizeUtils.truncatePadTopic(topic2.getUnderlying())),
-                data.getUnderlying()
-        );
-        task.peekSideEffects().addLog(log);
-    }
-
-    @Override
-    public void avm_log(ByteArray topic1, ByteArray topic2, ByteArray topic3, ByteArray data) {
-        require(null != topic1, "topic1 can't be NULL");
-        require(null != topic2, "topic2 can't be NULL");
-        require(null != topic3, "topic3 can't be NULL");
-        require(null != data, "data can't be NULL");
-
-        Log log = Log.topicsAndData(this.transactionDestination.toByteArray(),
-                List.of(LogSizeUtils.truncatePadTopic(topic1.getUnderlying()), LogSizeUtils.truncatePadTopic(topic2.getUnderlying()), LogSizeUtils.truncatePadTopic(topic3.getUnderlying())),
-                data.getUnderlying()
-        );
-        task.peekSideEffects().addLog(log);
-    }
-
-    @Override
-    public void avm_log(ByteArray topic1, ByteArray topic2, ByteArray topic3, ByteArray topic4, ByteArray data) {
-        require(null != topic1, "topic1 can't be NULL");
-        require(null != topic2, "topic2 can't be NULL");
-        require(null != topic3, "topic3 can't be NULL");
-        require(null != topic4, "topic4 can't be NULL");
-        require(null != data, "data can't be NULL");
-
-        Log log = Log.topicsAndData(this.transactionDestination.toByteArray(),
-                List.of(LogSizeUtils.truncatePadTopic(topic1.getUnderlying()), LogSizeUtils.truncatePadTopic(topic2.getUnderlying()), LogSizeUtils.truncatePadTopic(topic3.getUnderlying()), LogSizeUtils.truncatePadTopic(topic4.getUnderlying())),
-                data.getUnderlying()
-        );
-        task.peekSideEffects().addLog(log);
     }
 
     @Override

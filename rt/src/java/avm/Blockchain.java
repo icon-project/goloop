@@ -176,17 +176,13 @@ public final class Blockchain {
      * If neither of these conditions is true then this method will throw an exception.
      *
      * @param targetAddress the account address
+     * @param method        method
+     * @param params        parameters
      * @param value         the value to transfer
-     * @param data          the value to pass
-     * @param energyLimit   the max energy the invoked dapp can use.
      * @return the invocation result.
      * @throws IllegalArgumentException when the arguments are invalid, e.g. insufficient balance, NULL address
      * or the targetAddress is a contract that requires a foreign virtual machine in order to be executed.
      */
-    public static Result call(Address targetAddress, BigInteger value, byte[] data, long energyLimit) throws IllegalArgumentException {
-        return null;
-    }
-
     // TODO: use other exception
     public static Object call(Address targetAddress, String method, Object[] params,
                               BigInteger value) throws IllegalArgumentException {
@@ -206,58 +202,6 @@ public final class Blockchain {
         return null;
     }
 
-    /**
-     * Records a log on blockchain.
-     *
-     * @param data any arbitrary data, non-NULL
-     * @throws IllegalArgumentException when the arguments are invalid, e.g. any are NULL.
-     */
-    public static void log(byte[] data) throws IllegalArgumentException {
-    }
-
-    /**
-     * Records a log on blockchain.
-     *
-     * @param topic1 the 1st topic
-     * @param data   any arbitrary data, non-NULL
-     * @throws IllegalArgumentException when the arguments are invalid, e.g. any are NULL.
-     */
-    public static void log(byte[] topic1, byte[] data) throws IllegalArgumentException {
-    }
-
-    /**
-     * Records a log on blockchain.
-     *
-     * @param topic1 the 1st topic
-     * @param topic2 the 2nd topic
-     * @param data   any arbitrary data, non-NULL
-     * @throws IllegalArgumentException when the arguments are invalid, e.g. any are NULL.
-     */
-    public static void log(byte[] topic1, byte[] topic2, byte[] data) throws IllegalArgumentException {
-    }
-
-    /**
-     * Records a log on blockchain.
-     *
-     * @param topic1 the 1st topic
-     * @param topic2 the 2nd topic
-     * @param topic3 the 3rd topic
-     * @param data   any arbitrary data, non-NULL
-     * @throws IllegalArgumentException when the arguments are invalid, e.g. any are NULL.
-     */
-    public static void log(byte[] topic1, byte[] topic2, byte[] topic3, byte[] data) throws IllegalArgumentException {
-    }
-
-    /**
-     * Records a log on blockchain.
-     *
-     * @param topic1 the 1st topic
-     * @param topic2 the 2nd topic
-     * @param topic3 the 3rd topic
-     * @param topic4 the 4th topic
-     * @param data   any arbitrary data, non-NULL
-     * @throws IllegalArgumentException when the arguments are invalid, e.g. any are NULL.
-     */
     public static void log(byte[] topic1, byte[] topic2, byte[] topic3, byte[] topic4, byte[] data) throws IllegalArgumentException {
     }
 
@@ -318,8 +262,10 @@ public final class Blockchain {
     }
 
     /**
-     * @param indexed This shall be array of Value type.
-     * @param data This shall be array of Value type.
+     * Records a log on blockchain.
+     *
+     * @param indexed indexed data
+     * @param data extra data
      */
     public static void log(Value[] indexed, Value[] data) {
     }

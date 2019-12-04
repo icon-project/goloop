@@ -113,11 +113,6 @@ public final class Blockchain extends Object {
         return blockchainRuntime.avm_getBalance(address);
     }
 
-    public static Result avm_call(Address targetAddress, BigInteger value, ByteArray data, long energyLimit) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_call);
-        return blockchainRuntime.avm_call(targetAddress, value, data, energyLimit);
-    }
-
     public static IObject avm_call(Address targetAddress, String method, IObjectArray params,
                                    BigInteger value) throws IllegalArgumentException {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_call);
@@ -127,50 +122,6 @@ public final class Blockchain extends Object {
     public static Result avm_create(BigInteger value, ByteArray data, long energyLimit) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_create);
         return blockchainRuntime.avm_create(value, data, energyLimit);
-    }
-
-    public static void avm_log(ByteArray data) {
-        int dataSize = data != null ? data.length() : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(
-                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_log_base
-                        + RuntimeMethodFeeSchedule.BlockchainRuntime_avm_log_per_data_byte * dataSize);
-        blockchainRuntime.avm_log(data);
-    }
-
-    public static void avm_log(ByteArray topic1, ByteArray data) {
-        int dataSize = data != null ? data.length() : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(
-                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_log_base
-                        + RuntimeMethodFeeSchedule.BlockchainRuntime_avm_log_per_topic
-                        + RuntimeMethodFeeSchedule.BlockchainRuntime_avm_log_per_data_byte * dataSize);
-        blockchainRuntime.avm_log(topic1, data);
-    }
-
-    public static void avm_log(ByteArray topic1, ByteArray topic2, ByteArray data) {
-        int dataSize = data != null ? data.length() : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(
-                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_log_base
-                        + 2 * RuntimeMethodFeeSchedule.BlockchainRuntime_avm_log_per_topic
-                        + RuntimeMethodFeeSchedule.BlockchainRuntime_avm_log_per_data_byte * dataSize);
-        blockchainRuntime.avm_log(topic1, topic2, data);
-    }
-
-    public static void avm_log(ByteArray topic1, ByteArray topic2, ByteArray topic3, ByteArray data) {
-        int dataSize = data != null ? data.length() : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(
-                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_log_base
-                        + 3 * RuntimeMethodFeeSchedule.BlockchainRuntime_avm_log_per_topic
-                        + RuntimeMethodFeeSchedule.BlockchainRuntime_avm_log_per_data_byte * dataSize);
-        blockchainRuntime.avm_log(topic1, topic2, topic3, data);
-    }
-
-    public static void avm_log(ByteArray topic1, ByteArray topic2, ByteArray topic3, ByteArray topic4, ByteArray data) {
-        int dataSize = data != null ? data.length() : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(
-                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_log_base
-                        + 4 * RuntimeMethodFeeSchedule.BlockchainRuntime_avm_log_per_topic
-                        + RuntimeMethodFeeSchedule.BlockchainRuntime_avm_log_per_data_byte * dataSize);
-        blockchainRuntime.avm_log(topic1, topic2, topic3, topic4, data);
     }
 
     public static void avm_revert() {
