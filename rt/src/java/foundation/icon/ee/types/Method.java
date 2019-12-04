@@ -196,33 +196,32 @@ public class Method {
         return out;
     }
 
-    public s.java.lang.Object[] convertParameters(Object[] params) {
+    public Object[] convertParameters(Object[] params) {
         assert params.length == inputs.length : String.format("bad param length=%d input length=%d", params.length, inputs.length);
 
-        s.java.lang.Object[] out = new s.java.lang.Object[inputs.length];
+        Object[] out = new Object[inputs.length];
         for (int i=0; i<inputs.length; i++) {
             var d = inputs[i].getDescriptor();
             if (d.equals("Z")) {
-                Boolean p = (Boolean) params[i];
-                out[i] = s.java.lang.Boolean.valueOf(p.booleanValue());
+                out[i] = params[i];
             } else if (d.equals("C")) {
                 BigInteger p = (BigInteger) params[i];
-                out[i] = s.java.lang.Character.valueOf((char)p.intValue());
+                out[i] = (char)p.intValue();
             } else if (d.equals("B")) {
                 BigInteger p = (BigInteger) params[i];
-                out[i] = s.java.lang.Byte.valueOf(p.byteValue());
+                out[i] = p.byteValue();
             } else if (d.equals("S")) {
                 BigInteger p = (BigInteger) params[i];
-                out[i] = s.java.lang.Short.valueOf(p.shortValue());
+                out[i] = p.shortValue();
             } else if (d.equals("I")) {
                 BigInteger p = (BigInteger) params[i];
-                out[i] = s.java.lang.Integer.valueOf(p.intValue());
+                out[i] = p.intValue();
             } else if (d.equals("J")) {
                 BigInteger p = (BigInteger) params[i];
-                out[i] = s.java.lang.Long.valueOf(p.longValue());
+                out[i] = p.longValue();
             } else if (d.equals("Ljava/math/BigInteger;")) {
                 BigInteger p = (BigInteger) params[i];
-                out[i] = new s.java.math.BigInteger(p);
+                out[i] = (p != null) ? new s.java.math.BigInteger(p) : null;
             } else if (d.equals("Ljava/lang/String;")) {
                 String p = (String) params[i];
                 out[i] = (p != null) ? new s.java.lang.String(p) : null;
