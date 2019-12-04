@@ -32,6 +32,10 @@ sourceSets {
     }
 }
 
+compileTestJava {
+    options.compilerArgs += ['-parameters']
+}
+
 test {
     useJUnitPlatform()
 }
