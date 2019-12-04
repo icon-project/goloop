@@ -7,6 +7,9 @@ class ResultGeneratorInterface(InterfaceScore):
     def callRevertWithIndex(self, index: int) -> None:
         pass
 
+    @interface
+    def returnStr(self, _value: str) -> str:
+        pass
 
 class ResultGenerator(IconScoreBase):
     def __init__(self, db: IconScoreDatabase) -> None:
@@ -43,3 +46,17 @@ class ResultGenerator(IconScoreBase):
             s.callRevertWithIndex(index)
         except IconScoreException as e:
             self.RevertCatch(e.code)
+
+    @external
+    def returnStr(self, value: str) -> str:
+        return value
+
+    @eventlog
+    def ReturnedStr(self, value: str) -> None:
+        pass
+
+    @external
+    def interCallReturnStr(self, addr: Address, value: str):
+        s = self.create_interface_score(addr, ResultGeneratorInterface)
+        r_value = s.returnStr(value)
+        self.ReturnedStr(r_value)

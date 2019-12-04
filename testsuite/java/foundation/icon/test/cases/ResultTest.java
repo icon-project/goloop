@@ -142,4 +142,34 @@ public class ResultTest {
 
         LOG.infoExiting();
     }
+
+    @Test
+    void checkExternalReturnValue() throws Exception {
+        String[] values = {
+                "HelloWorld", "한글", ""
+        };
+
+        Bytes[] txs = new Bytes[values.length];
+        for (int i = 0; i < values.length; i++) {
+            RpcObject params = new RpcObject.Builder()
+                    .put("addr", new RpcValue(score2.getAddress()))
+                    .put("value", new RpcValue(values[i]))
+                    .build();
+            txs[i] = score1.invoke(ownerWallet, "interCallReturnStr", params,
+                    0, Constants.DEFAULT_STEP_LIMIT);
+        }
+
+        for (int i = 0; i < values.length; i++) {
+            TransactionResult result = score1.waitResult(txs[i]);
+            assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+            int checked = 0;
+            for (TransactionResult.EventLog el : result.getEventLogs()) {
+                if (el.getIndexed().get(0).asString().equals("ReturnedStr(str)")) {
+                    assertEquals(values[i], el.getData().get(0).asString());
+                    checked += 1;
+                }
+            }
+            assertEquals(1, checked);
+        }
+    }
 }
