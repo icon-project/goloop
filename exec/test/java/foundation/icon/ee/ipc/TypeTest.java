@@ -40,38 +40,6 @@ public class TypeTest extends GoldenTest {
             return v;
         }
 
-        /*
-        @External
-        public static Byte mByte(Byte v) {
-            return v;
-        }
-
-        @External
-        public static Short mShort(Short v) {
-            return v;
-        }
-
-        @External
-        public static Integer mInteger(Integer v) {
-            return v;
-        }
-
-        @External
-        public static Long mLong(Long v) {
-            return v;
-        }
-
-        @External
-        public static Boolean mBoolean(Boolean v) {
-            return v;
-        }
-
-        @External
-        public static Character mCharacter(Character v) {
-            return v;
-        }
-         */
-
         @External
         public static BigInteger mBigInteger(@Optional BigInteger v) {
             return v;
@@ -102,26 +70,10 @@ public class TypeTest extends GoldenTest {
         app.invoke("mlong", (long)0);
         app.invoke("mboolean", false);
         app.invoke("mchar", 0);
-        /*
-        app.invoke("mByte", 0);
-        app.invoke("mShort", 0);
-        app.invoke("mInteger", 0);
-        app.invoke("mLong", (long)0);
-        app.invoke("mBoolean", 0);
-        app.invoke("mCharacter", 0);
-         */
         app.invoke("mBigInteger", 0);
         app.invoke("mString", "string");
         app.invoke("mByteArray", new byte[]{0, 1, 2});
         app.invoke("mAddress", sm.newExternalAddress());
-        /*
-        app.invoke("mByte", (Object)null);
-        app.invoke("mShort", (Object)null);
-        app.invoke("mInteger", (Object)null);
-        app.invoke("mLong", (Object)null);
-        app.invoke("mBoolean", (Object)null);
-        app.invoke("mCharacter", (Object)null);
-         */
         app.invoke("mBigInteger", (Object)null);
         app.invoke("mString", (Object)null);
         app.invoke("mByteArray", (Object)null);
