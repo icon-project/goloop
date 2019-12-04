@@ -26,4 +26,12 @@ public class SimpleTest extends GoldenTest {
         app2.invoke("totalSupply2", app.getAddress());
         app2.invoke("balanceOf2", app.getAddress(), owner);
     }
+
+    public static class ScoreWithoutOnInstall {
+    }
+
+    @Test
+    public void testNoOnInstall() {
+        var app = sm.deploy(ScoreWithoutOnInstall.class);
+    }
 }

@@ -293,7 +293,7 @@ public class SMProxy extends Proxy {
         var status = data.get(0).asIntegerValue().asInt();
         var stepUsed = new BigInteger(data.get(1).asRawValue().asByteArray());
         var result = TypedObj.decodeAny(data.get(2));
-        System.out.format("RECV result %d %s %s%n", status, stepUsed, result);
+        System.out.format("RECV result %d %s %s%n", status, stepUsed, beautify(result));
         return new Result(status, stepUsed, result);
     }
 
