@@ -64,6 +64,20 @@ public class ABICompilerClassVisitor extends ClassVisitor {
         super.visitEnd();
     }
 
+    private void addOnInstall() {
+        int access = Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC;
+        String name = "onInstall";
+        String descriptor = "()V";
+        var mv = new ABICompilerMethodVisitor(access, name, descriptor,
+                super.visitMethod(access, name, descriptor, null, null));
+        mv.visitCode();
+        mv.visitInsn(Opcodes.RETURN);
+        mv.visitMaxs(0, 0);
+        mv.visitEnd();
+        callableInfo.add(mv.getCallableMethodInfo());
+        callableMethodVisitors.add(mv);
+    }
+
     private void postProcess() {
         boolean foundOnInstall = false;
         Set<String> callableNames = new HashSet<>();
@@ -92,6 +106,9 @@ public class ABICompilerClassVisitor extends ClassVisitor {
             } else if (mv.isFallback()) {
                 callableInfo.add(mv.getCallableMethodInfo());
             }
+        }
+        if (!foundOnInstall) {
+            addOnInstall();
         }
     }
 }
