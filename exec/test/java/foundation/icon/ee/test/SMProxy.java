@@ -213,8 +213,9 @@ public class SMProxy extends Proxy {
                 }
                 case EEProxy.MsgType.GETBALANCE: {
                     var addr = msg.value.asRawValue().asByteArray();
-                    sendMessage(EEProxy.MsgType.GETBALANCE, (Object) current.balance.toByteArray());
-                    System.out.format("RECV getBalance => %d%n", current.balance);
+                    var balance = accounts.get(addr).balance;
+                    sendMessage(EEProxy.MsgType.GETBALANCE, (Object) balance.toByteArray());
+                    System.out.format("RECV getBalance %s => %d%n", addr, balance);
                     break;
                 }
                 case EEProxy.MsgType.LOG: {
