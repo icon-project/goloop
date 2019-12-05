@@ -83,7 +83,7 @@ public class SampleCrowdsale
         Blockchain.require(crowdsale.crowdsaleClosed);
         crowdsale.crowdsaleClosed = false;
         // emit eventlog
-        CrowdsaleStarted(crowdsale.fundingGoal);
+        CrowdsaleStarted(crowdsale.fundingGoal, crowdsale.deadline);
     }
 
     /*
@@ -188,7 +188,7 @@ public class SampleCrowdsale
     }
 
     @EventLog
-    private static void CrowdsaleStarted(BigInteger fundingGoal) {}
+    private static void CrowdsaleStarted(BigInteger fundingGoal, long deadline) {}
 
     @EventLog
     private static void CrowdsaleEnded() {}
