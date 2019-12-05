@@ -73,13 +73,6 @@ public class IntercallTest extends GoldenTest {
         }
     }
 
-    public static class ScoreB {
-        @External
-        public static String mStringNull() {
-            return null;
-        }
-    }
-
     @Test
     public void testTypes() {
         var papp = sm.deploy(TypeTest.Score.class);
@@ -98,5 +91,48 @@ public class IntercallTest extends GoldenTest {
         app.invoke("mString", (Object)null);
         app.invoke("mByteArray", (Object)null);
         app.invoke("mAddress", (Object)null);
+    }
+
+    public static class ScoreA {
+        @External
+        public static void method(Address addr) {
+            Blockchain.call(addr, "setValue", new Object[]{1}, BigInteger.ZERO);
+            var res = (BigInteger)Blockchain.call(addr, "getValue", new Object[0], BigInteger.ZERO);
+            Blockchain.require(res.intValue()==1);
+            try {
+                Blockchain.call(addr, "setValueFail", new Object[]{2}, BigInteger.ZERO);
+            } catch (Exception e) {
+                Blockchain.println(e.toString());
+            }
+            res = (BigInteger)Blockchain.call(addr, "getValue", new Object[0], BigInteger.ZERO);
+            Blockchain.require(res.intValue()==1);
+        }
+    }
+
+    public static class ScoreFail {
+        private static int value = 0;
+
+        @External
+        public static void setValue(int v) {
+            value = v;
+        }
+
+        @External
+        public static void setValueFail(int v) {
+            value = v;
+            Blockchain.revert();
+        }
+
+        @External
+        public static int getValue() {
+            return value;
+        }
+    }
+
+    @Test
+    public void testFail() {
+        var app1 = sm.deploy(ScoreA.class);
+        var app2 = sm.deploy(ScoreFail.class);
+        app1.invoke("method", app2.getAddress());
     }
 }
