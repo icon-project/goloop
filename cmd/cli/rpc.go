@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -460,33 +459,20 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 		Short: "Coin Transfer Transaction",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var value jsonrpc.HexInt
-			valStr := cmd.Flag("value").Value.String()
-			if valInt64, err := strconv.ParseInt(valStr, 0, 64);err == nil {
-				value = jsonrpc.HexInt(common.FormatInt(valInt64))
-			}else{
-				if strings.HasPrefix(valStr, "0x") {
-					valStr = valStr[2:]
-				}
-				if b, err := hex.DecodeString(valStr); err != nil {
-					return err
-				}else{
-					var valHexInt common.HexInt
-					valHexInt.SetBytes(b)
-					value = jsonrpc.HexInt(valHexInt.String())
-				}
+			var value common.HexInt
+			if _, ok := value.SetString(cmd.Flag("value").Value.String(), 0); !ok {
+				return fmt.Errorf("fail to parsing value %s",cmd.Flag("value").Value.String())
 			}
 			stepLimit := vc.GetInt64("step_limit")
 			nid, err := common.ParseInt(vc.GetString("nid"), 64)
 			if err != nil {
 				return err
 			}
-
 			param := &v3.TransactionParam{
 				Version:     jsonrpc.HexInt(common.FormatInt(jsonrpc.APIVersion3)),
 				FromAddress: jsonrpc.Address(rpcWallet.Address().String()),
 				ToAddress:   jsonrpc.Address(cmd.Flag("to").Value.String()),
-				Value:       value,
+				Value:       jsonrpc.HexInt(value.String()),
 				StepLimit:   jsonrpc.HexInt(common.FormatInt(stepLimit)),
 				NetworkID:   jsonrpc.HexInt(common.FormatInt(nid)),
 				//Nonce:       "",
