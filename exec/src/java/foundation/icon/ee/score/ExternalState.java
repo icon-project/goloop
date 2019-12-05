@@ -292,6 +292,11 @@ public class ExternalState implements IExternalState {
                        int stepLimit) {
         try {
             var res = proxy.call(address.toAddress(), method, params, value, stepLimit);
+            // TODO: to be removed
+            if (res.getRet() instanceof Address) {
+                var addr = (Address) res.getRet();
+                res = new Result(res.getStatus(), res.getStepUsed(), new avm.Address(addr.toByteArray()));
+            }
             logger.trace("[call] status={}", res.getStatus());
             return res;
         } catch (IOException e) {
