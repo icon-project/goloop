@@ -5,6 +5,7 @@ import foundation.icon.ee.ipc.Connection;
 import foundation.icon.ee.ipc.EEProxy;
 import foundation.icon.ee.ipc.Proxy;
 import foundation.icon.ee.ipc.TypedObj;
+import foundation.icon.ee.score.FileReader;
 import foundation.icon.ee.tooling.deploy.OptimizedJarBuilder;
 import foundation.icon.ee.utils.Crypto;
 import org.aion.avm.core.util.ByteArrayWrapper;
@@ -23,26 +24,12 @@ public class SMProxy extends Proxy {
     private static final BigInteger scoreBase = new BigInteger(1, Arrays.copyOf(new byte[]{1, 2}, 21));
     private static final BigInteger extBase = new BigInteger(1, Arrays.copyOf(new byte[]{1}, 20));
 
-    private static class Account {
-        public Address address;
-        public BigInteger balance = BigInteger.ZERO;
-        public int nextHash = 0;
-        public byte[] objectGraph = new byte[0];
-        public byte[] objectGraphHash = Crypto.sha3_256(new byte[0]);
-        public Map<ByteArrayWrapper, byte[]> storage = new HashMap<>();
-
-        Account(byte[] addr) {
-            address = new Address(addr);
-        }
-    }
-
-    private FileSystem fs = new FileSystem();
+    private State state = new State();
     private BigInteger nextScoreAddr = scoreBase;
     private BigInteger nextExtAddr = extBase;
     private BigInteger value = BigInteger.valueOf(0);
     private BigInteger stepLimit = BigInteger.valueOf(1000000000);
-    private Map<ByteArrayWrapper, Account> accounts = new HashMap<>();
-    private Account current;
+    private State.Account current;
     private Address origin;
     private Map<String, Object> info = new HashMap<>();
 
@@ -57,7 +44,7 @@ public class SMProxy extends Proxy {
         info.put(Info.TX_TIMESTAMP, BigInteger.valueOf(1000000));
         info.put(Info.TX_NONCE, BigInteger.valueOf(2));
         info.put(Info.CONTRACT_OWNER, origin);
-        current = getAccount(origin);
+        current = state.getAccount(origin);
     }
 
     public static byte[] makeJar(Class c) {
@@ -85,17 +72,6 @@ public class SMProxy extends Proxy {
         return new Address(addr);
     }
 
-    private Account getAccount(Address addr) {
-        var ba = addr.toByteArray();
-        var baw = new ByteArrayWrapper(ba);
-        var account = accounts.get(baw);
-        if (account==null) {
-            account = new Account(ba);
-            accounts.put(baw, account);
-        }
-        return account;
-    }
-
     public Contract deploy(Class main, Object ... params) {
         byte[] jar = makeJar(main);
         return doDeploy(jar, params);
@@ -113,13 +89,16 @@ public class SMProxy extends Proxy {
     private Contract doDeploy(byte[] jar, Object ... params) {
         Address scoreAddr = newScoreAddress();
         String path = scoreAddr.toString() + "/optimized";
-        fs.writeFile(path, jar);
         try {
             var prev = current;
-            current = getAccount(scoreAddr);
+            var prevState = new State(state);
+            state.writeFile(path, jar);
+            current = state.getAccount(scoreAddr);
             info.put(Info.CONTRACT_OWNER, origin);
             var res = invoke(path, false, origin, scoreAddr, value, stepLimit, "onInstall", params);
             if (res.getStatus()!=0) {
+                state = prevState;
+                current = state.getAccount(prev.address);
                 throw new IllegalArgumentException("deploy failed");
             }
             current = prev;
@@ -137,8 +116,8 @@ public class SMProxy extends Proxy {
         return stepLimit;
     }
 
-    public FileSystem getFileSystem() {
-        return fs;
+    public FileReader getFileReader() {
+        return state;
     }
 
     public void close() {
@@ -212,7 +191,7 @@ public class SMProxy extends Proxy {
                 }
                 case EEProxy.MsgType.GETBALANCE: {
                     var addr = new Address(msg.value.asRawValue().asByteArray());
-                    var balance = getAccount(addr).balance;
+                    var balance = state.getAccount(addr).balance;
                     sendMessage(EEProxy.MsgType.GETBALANCE, (Object) balance.toByteArray());
                     System.out.format("RECV getBalance %s => %d%n", addr, balance);
                     break;
@@ -229,7 +208,7 @@ public class SMProxy extends Proxy {
                 }
                 case EEProxy.MsgType.SETCODE:{
                     var code = msg.value.asRawValue().asByteArray();
-                    fs.writeFile(current.address.toString() + "/transformed", code);
+                    state.writeFile(current.address.toString() + "/transformed", code);
                     System.out.format("RECV setCode hash=%s len=%d%n", beautify(Crypto.sha3_256(code)), code.length);
                     break;
                 }
@@ -269,11 +248,17 @@ public class SMProxy extends Proxy {
     public Result invoke(Address to, BigInteger value, BigInteger stepLimit,
                          String method, Object[] params) throws IOException {
         var prev = current;
+        var prevState = new State(state);
         var from = current.address;
-        current = getAccount(to);
+        current = state.getAccount(to);
         info.put(Info.CONTRACT_OWNER, from);
         var res = invoke(to.toString()+"/transformed", false, from, to, value, stepLimit, method, params);
-        current = prev;
+        if (res.getStatus()!=0) {
+            state = prevState;
+            current = state.getAccount(prev.address);
+        } else {
+            current = prev;
+        }
         return res;
     }
 

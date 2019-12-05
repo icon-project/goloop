@@ -53,7 +53,7 @@ public class GoldenTest {
             try {
                 var te = TransactionExecutor.newInstance(pipes[1],
                         "",
-                        sm.getFileSystem());
+                        sm.getFileReader());
                 te.connectAndRunLoop();
             } catch (IOException e) {
                 System.out.println(e);
