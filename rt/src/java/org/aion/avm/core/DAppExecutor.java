@@ -86,9 +86,15 @@ public class DAppExecutor {
             // It is now safe for us to bill for the cost of loading the graph (the cost is the same, whether this came from the caller or the disk).
             // (note that we do this under the try since aborts can happen here)
             threadInstrumentation.chargeEnergy(StorageFees.READ_PRICE_PER_BYTE * rawGraphDataLength);
-            
+
             // Call the main within the DApp.
-            Object ret = dapp.callMethod(tx.method, tx.getParams());
+            Object ret;
+            try {
+                ret = dapp.callMethod(tx.method, tx.getParams());
+            } catch(Throwable t) {
+                System.err.println("Exception at method " + tx.method);
+                throw t;
+            }
 
             var runtimeState = dapp.saveRuntimeState();
 
