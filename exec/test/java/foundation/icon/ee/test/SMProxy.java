@@ -6,14 +6,13 @@ import foundation.icon.ee.ipc.EEProxy;
 import foundation.icon.ee.ipc.Proxy;
 import foundation.icon.ee.ipc.TypedObj;
 import foundation.icon.ee.tooling.deploy.OptimizedJarBuilder;
+import foundation.icon.ee.utils.Crypto;
 import org.aion.avm.core.util.ByteArrayWrapper;
 import org.aion.avm.utilities.JarBuilder;
 import org.msgpack.value.ArrayValue;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -29,7 +28,7 @@ public class SMProxy extends Proxy {
         public BigInteger balance = BigInteger.ZERO;
         public int nextHash = 0;
         public byte[] objectGraph = new byte[0];
-        public byte[] objectGraphHash = hash(new byte[0]);
+        public byte[] objectGraphHash = Crypto.sha3_256(new byte[0]);
         public Map<ByteArrayWrapper, byte[]> storage = new HashMap<>();
 
         Account(byte[] addr) {
@@ -231,7 +230,7 @@ public class SMProxy extends Proxy {
                 case EEProxy.MsgType.SETCODE:{
                     var code = msg.value.asRawValue().asByteArray();
                     fs.writeFile(current.address.toString() + "/transformed", code);
-                    System.out.format("RECV setCode hash=%s len=%d%n", beautify(hash(code)), code.length);
+                    System.out.format("RECV setCode hash=%s len=%d%n", beautify(Crypto.sha3_256(code)), code.length);
                     break;
                 }
                 case EEProxy.MsgType.GETOBJGRAPH: {
@@ -255,7 +254,7 @@ public class SMProxy extends Proxy {
                     current.nextHash = nextHash;
                     if ((flag&1)!=0) {
                         var og = data.get(2).asRawValue().asByteArray();
-                        current.objectGraphHash = hash(og);
+                        current.objectGraphHash = Crypto.sha3_256(og);
                         current.objectGraph = og;
                         System.out.format("RECV setObjGraph flag=%d next=%d hash=%s graphLen=%d graph=%s%n", flag, nextHash, beautify(current.objectGraphHash), og.length, beautifyObjectGraph(og));
                     } else {
@@ -296,15 +295,6 @@ public class SMProxy extends Proxy {
         var result = TypedObj.decodeAny(data.get(2));
         System.out.format("RECV result status=%d stepUsed=%d ret=%s%n", status, stepUsed, beautify(result));
         return new Result(status, stepUsed, result);
-    }
-
-    private static byte[] hash(byte[] msg) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA3-256");
-            return digest.digest(msg);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private static boolean isPrint(int ch) {

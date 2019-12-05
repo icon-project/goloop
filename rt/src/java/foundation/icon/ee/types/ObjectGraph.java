@@ -16,9 +16,9 @@
 
 package foundation.icon.ee.types;
 
+import foundation.icon.ee.utils.Crypto;
+
 import java.nio.ByteBuffer;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 
 public class ObjectGraph {
@@ -37,7 +37,7 @@ public class ObjectGraph {
         int nextHash = buffer.getInt();
         byte[] graphData = new byte[buffer.remaining()];
         buffer.get(graphData);
-        return new ObjectGraph(nextHash, sha3_256(graphData), graphData);
+        return new ObjectGraph(nextHash, Crypto.sha3_256(graphData), graphData);
     }
 
     public byte[] getRawData() {
@@ -73,15 +73,5 @@ public class ObjectGraph {
                 ", graphHash=" + Bytes.toHexString(graphHash) +
                 ", graphData=" + (graphData == null ? null : graphData.length) +
                 '}';
-    }
-
-    // FIXME: Move to other class later
-    private static byte[] sha3_256(byte[] msg) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA3-256");
-            return digest.digest(msg);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
     }
 }

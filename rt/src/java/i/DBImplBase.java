@@ -1,7 +1,6 @@
 package i;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import foundation.icon.ee.utils.Crypto;
 
 public class DBImplBase extends s.java.lang.Object {
     public static final int TYPE_ARRAY_DB = 0;
@@ -43,15 +42,6 @@ public class DBImplBase extends s.java.lang.Object {
         return c.toByteArray();
     }
 
-    private static byte[] hash(byte[] msg) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA3-256");
-            return digest.digest(msg);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     public IDBStorage chargeAndGetDBStorage(int cost) {
         IInstrumentation ins = IInstrumentation.attachedThreadInstrumentation.get();
         ins.chargeEnergy(cost);
@@ -60,17 +50,17 @@ public class DBImplBase extends s.java.lang.Object {
 
     public byte[] getStorageKey() {
         if (hash == null) {
-            hash = hash(id);
+            hash = Crypto.sha3_256(id);
         }
         return hash;
     }
 
     public byte[] getStorageKey(IObject key) {
-        return hash(catEncodedKey(id, key));
+        return Crypto.sha3_256(catEncodedKey(id, key));
     }
 
     public byte[] getStorageKey(int key) {
-        return hash(catEncodedKey(id, key));
+        return Crypto.sha3_256(catEncodedKey(id, key));
     }
 
     public byte[] getSubDBID(IObject key) {
