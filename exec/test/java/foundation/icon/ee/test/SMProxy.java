@@ -183,11 +183,11 @@ public class SMProxy extends Proxy {
                     var isDelete = data.get(1).asBooleanValue().getBoolean();
                     if (isDelete) {
                         current.storage.remove(new ByteArrayWrapper(key));
-                        System.out.format("RECV setValue %s %b%n", beautify(key), isDelete);
+                        System.out.format("RECV setValue %s isDelete=%b%n", beautify(key), isDelete);
                     } else {
                         var value = data.get(2).asRawValue().asByteArray();
                         current.storage.put(new ByteArrayWrapper(key), value);
-                        System.out.format("RECV setValue %s %b %s%n", beautify(key), isDelete, beautify(value));
+                        System.out.format("RECV setValue %s isDelete=%b %s%n", beautify(key), isDelete, beautify(value));
                     }
                     break;
                 }
@@ -198,7 +198,7 @@ public class SMProxy extends Proxy {
                     var stepLimit = new BigInteger(data.get(2).asRawValue().asByteArray());
                     String method = data.get(3).asStringValue().asString();
                     Object[] params = (Object[]) TypedObj.decodeAny(data.get(4));
-                    System.out.format("RECV call %s %d %d %s %s%n",
+                    System.out.format("RECV call to=%s value=%d stepLimit=%d method=%s params=%s%n",
                             to, value, stepLimit, method, beautify(params));
                     var res = invoke(to, value, stepLimit, method, params);
                     sendMessage(EEProxy.MsgType.RESULT, res.getStatus(), res.getStepUsed(), TypedObj.encodeAny(res.getResult()));
@@ -208,12 +208,12 @@ public class SMProxy extends Proxy {
                     var data = msg.value.asArrayValue();
                     var indexed = unpackByteArrayArray(data.get(0).asArrayValue());
                     var nonIndexed = unpackByteArrayArray(data.get(0).asArrayValue());
-                    System.out.format("RECV event %s %s%n", beautify(indexed), beautify(nonIndexed));
+                    System.out.format("RECV event indxed=%s data=%s%n", beautify(indexed), beautify(nonIndexed));
                     break;
                 }
                 case EEProxy.MsgType.GETBALANCE: {
-                    var addr = msg.value.asRawValue().asByteArray();
-                    var balance = accounts.get(addr).balance;
+                    var addr = new Address(msg.value.asRawValue().asByteArray());
+                    var balance = getAccount(addr).balance;
                     sendMessage(EEProxy.MsgType.GETBALANCE, (Object) balance.toByteArray());
                     System.out.format("RECV getBalance %s => %d%n", addr, balance);
                     break;
@@ -224,7 +224,7 @@ public class SMProxy extends Proxy {
                     var logMsg = data.get(1).asStringValue().asString();
                     // filter only Blockchain.println
                     if (logMsg.startsWith("org.aion.avm.core.BlockchainRuntimeImpl PRT|")) {
-                        System.out.format("RECV log %d %s%n", level, logMsg);
+                        System.out.format("RECV log level=%d %s%n", level, logMsg);
                     }
                     break;
                 }
@@ -240,10 +240,10 @@ public class SMProxy extends Proxy {
                     var ogh = current.objectGraphHash;
                     if ((flag&1)!=0) {
                         var og = current.objectGraph;
-                        System.out.format("RECV getObjGraph %d => %d hash=%s len=%d%n", flag, nextHash, beautify(ogh), og.length);
+                        System.out.format("RECV getObjGraph flag=%d => next=%d hash=%s graphLen=%d graph=%s%n", flag, nextHash, beautify(ogh), og.length, beautifyObjectGraph(og));
                         sendMessage(EEProxy.MsgType.GETOBJGRAPH, nextHash, ogh, og);
                     } else {
-                        System.out.format("RECV getObjGraph %d => %d hash=%s%n", flag, nextHash, beautify(ogh));
+                        System.out.format("RECV getObjGraph flag=%d => next=%d hash=%s%n", flag, nextHash, beautify(ogh));
                         sendMessage(EEProxy.MsgType.GETOBJGRAPH, nextHash, ogh);
                     }
                     break;
@@ -257,9 +257,9 @@ public class SMProxy extends Proxy {
                         var og = data.get(2).asRawValue().asByteArray();
                         current.objectGraphHash = hash(og);
                         current.objectGraph = og;
-                        System.out.format("RECV setObjGraph %d %d hash=%s len=%d%n", flag, nextHash, beautify(current.objectGraphHash), og.length);
+                        System.out.format("RECV setObjGraph flag=%d next=%d hash=%s graphLen=%d graph=%s%n", flag, nextHash, beautify(current.objectGraphHash), og.length, beautifyObjectGraph(og));
                     } else {
-                        System.out.format("RECV setObjGraph %d %d%n", flag, nextHash);
+                        System.out.format("RECV setObjGraph flag=%d next=%d%n", flag, nextHash);
                     }
                     break;
                 }
@@ -281,7 +281,7 @@ public class SMProxy extends Proxy {
     public Result invoke(String code, boolean isQuery, Address from,
                      Address to, BigInteger value, BigInteger stepLimit,
                      String method, Object[] params) throws IOException {
-        System.out.format("SEND invoke %s %b %s %s %d %d %s %s%n",
+        System.out.format("SEND invoke code=%s isQuery=%b from=%s to=%s value=%d stepLimit=%d method=%s params=%s%n",
                 code, isQuery, from, to, value, stepLimit, method,
                 beautify(params));
         sendMessage(EEProxy.MsgType.INVOKE, code, isQuery, from, to, value, stepLimit,
@@ -294,7 +294,7 @@ public class SMProxy extends Proxy {
         var status = data.get(0).asIntegerValue().asInt();
         var stepUsed = new BigInteger(data.get(1).asRawValue().asByteArray());
         var result = TypedObj.decodeAny(data.get(2));
-        System.out.format("RECV result %d %d %s%n", status, stepUsed, beautify(result));
+        System.out.format("RECV result status=%d stepUsed=%d ret=%s%n", status, stepUsed, beautify(result));
         return new Result(status, stepUsed, result);
     }
 
@@ -347,5 +347,20 @@ public class SMProxy extends Proxy {
             return beautifyObjects((Object[])o);
         }
         return o.toString();
+    }
+
+    private static String beautifyObjectGraph(byte[] og) {
+        StringBuilder sb = new StringBuilder();
+        for (int i=0; i<og.length; i++) {
+            if (isPrint(og[i])) {
+                sb.append((char)og[i]);
+            } else {
+                int v = og[i] & 0xFF;
+                char c1 = HEX_ARRAY[v >>> 4];
+                char c2 = HEX_ARRAY[v & 0x0F];
+                sb.append("\\x"+c1+c2);
+            }
+        }
+        return sb.toString();
     }
 }
