@@ -287,7 +287,7 @@ public class SMProxy extends Proxy {
                 method, TypedObj.encodeAny(params), TypedObj.encodeAny(info));
         var msg = waitFor(EEProxy.MsgType.RESULT);
         if (msg.type!= EEProxy.MsgType.RESULT) {
-            new AssertionError(String.format("unexpected message type %d", msg.type));
+            throw new AssertionError(String.format("unexpected message type %d", msg.type));
         }
         var data = msg.value.asArrayValue();
         var status = data.get(0).asIntegerValue().asInt();
