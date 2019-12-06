@@ -44,10 +44,11 @@ public class Renamer {
         String mainClassName = Utilities.extractMainClassName(jarReader, Utilities.NameStyle.SLASH_NAME);
         Map<String, ClassNode> sortedClassMap = sortBasedOnInnerClassLevel(extractClasses(jarReader));
 
-        Map<String, ClassNode> renamedNodes = renameClassNodes(sortedClassMap, mainClassName, roots);
+        String[] newMainNameBuf = new String[1];
+        Map<String, ClassNode> renamedNodes = renameClassNodes(sortedClassMap, mainClassName, roots, newMainNameBuf);
 
         Map<String, byte[]> classNameByteCodeMap = getClassBytes(renamedNodes);
-        String newMainClassName = NameGenerator.getNewMainClassName();
+        String newMainClassName = newMainNameBuf[0];
         byte[] mainClassBytes = classNameByteCodeMap.get(newMainClassName);
         classNameByteCodeMap.remove(newMainClassName, mainClassBytes);
 
@@ -63,9 +64,12 @@ public class Renamer {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
     }
 
-    private static Map<String, ClassNode> renameClassNodes(Map<String, ClassNode> sortedClassMap, String mainClassName, String[] roots) throws Exception {
+    private static Map<String, ClassNode> renameClassNodes(Map<String, ClassNode> sortedClassMap, String mainClassName, String[] roots, String[] out_newMainName) throws Exception {
         //rename classes
         Map<String, String> mappedNames = ClassRenamer.renameClasses(sortedClassMap, mainClassName);
+        if (out_newMainName!=null && out_newMainName.length>0) {
+            out_newMainName[0] = mappedNames.get(mainClassName);
+        }
         Map<String, ClassNode> newClassNameMap = applyMapping(sortedClassMap, mappedNames);
 
         //rename methods

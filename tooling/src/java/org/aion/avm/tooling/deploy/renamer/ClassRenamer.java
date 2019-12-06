@@ -4,7 +4,6 @@ import org.objectweb.asm.tree.ClassNode;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 public class ClassRenamer {
     private static boolean printEnabled = false;
@@ -19,10 +18,16 @@ public class ClassRenamer {
         for (String className : classMap.keySet()) {
             String newClassName;
             if (className.contains("$")) {
-                newClassName = classNameMap.get(className.substring(0, className.lastIndexOf('$'))) + "$" + generator.getNextClassName();
+                String outerClassName = className.substring(0, className.lastIndexOf('$'));
+                String newOuterClassName = classNameMap.get(outerClassName);
+                if (newOuterClassName==null) {
+                    newOuterClassName = generator.getNextClassName();
+                    classNameMap.put(className, newOuterClassName);
+                }
+                newClassName = newOuterClassName + "$" + generator.getNextClassName();
                 classNameMap.put(className, newClassName);
             } else {
-                newClassName = className.equals(mainClassName) ? NameGenerator.getNewMainClassName() : generator.getNextClassName();
+                newClassName = generator.getNextClassName();
                 classNameMap.put(className, newClassName);
             }
             if (printEnabled) {
