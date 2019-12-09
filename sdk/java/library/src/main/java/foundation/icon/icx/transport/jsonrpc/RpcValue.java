@@ -12,7 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
 
 package foundation.icon.icx.transport.jsonrpc;
@@ -117,13 +116,12 @@ public class RpcValue implements RpcItem {
     @Override
     public Address asAddress() {
         try {
+            if (isEmpty()) {
+                return null;
+            }
             return new Address(value);
         } catch (IllegalArgumentException e) {
-            if (value == null) {
-                return null;
-            } else {
-                return Address.createMalformedAddress(value);
-            }
+            return Address.createMalformedAddress(value);
         }
     }
 
@@ -177,5 +175,4 @@ public class RpcValue implements RpcItem {
     public String toString() {
         return value;
     }
-
 }

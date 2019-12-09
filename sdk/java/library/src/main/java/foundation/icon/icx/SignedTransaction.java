@@ -74,14 +74,14 @@ public class SignedTransaction {
      */
     private void createProperties(BigInteger stepLimit) {
         RpcObject.Builder builder = new RpcObject.Builder();
-        if (stepLimit != null) {
-            builder.put("stepLimit", new RpcValue(stepLimit));
-        }
         RpcObject object = getTransactionProperties();
         for (String key : object.keySet()) {
             builder.put(key, object.getItem(key));
         }
-
+        if (stepLimit != null) {
+            // override the existing stepLimit
+            builder.put("stepLimit", new RpcValue(stepLimit));
+        }
         String signature = Base64.toBase64String(getSignature(builder.build()));
         builder.put("signature", new RpcValue(signature));
         this.properties = builder.build();
