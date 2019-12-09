@@ -30,13 +30,13 @@ public class GoldenTest {
     protected Path getGoldenFilePath(TestInfo testInfo) {
         String cls = this.getClass().getName().replace('.', '/');
         String method = testInfo.getTestMethod().get().getName();
-        return Paths.get("test", "resources", cls + "-" + method + ".pass");
+        return Paths.get("test", "resources", "out", cls + "-" + method + ".txt");
     }
 
     protected Path getActualFilePath(TestInfo testInfo) {
         String cls = this.getClass().getName().replace('.', '/');
         String method = testInfo.getTestMethod().get().getName();
-        return Paths.get("test", "resources", cls + "-" + method + ".fail");
+        return Paths.get("build", "test-results", "out", cls + "-" + method + ".txt");
     }
 
     @BeforeEach
@@ -62,6 +62,10 @@ public class GoldenTest {
         th.start();
     }
 
+    private void mkdirs(Path path) {
+        path.toFile().getParentFile().mkdirs();
+    }
+
     @AfterEach
     public void tearDown(TestInfo testInfo) {
         sm.close();
@@ -75,8 +79,7 @@ public class GoldenTest {
         var bis = new ByteArrayInputStream(outContent.toByteArray());
         var r = new BufferedReader(new InputStreamReader(bis));
         var path = getGoldenFilePath(testInfo);
-        var file = path.toFile();
-        file.getParentFile().mkdirs();
+        mkdirs(path);
         List<String> expected;
         try {
             expected = Files.readAllLines(path);
@@ -90,6 +93,8 @@ public class GoldenTest {
             while (r.ready()) {
                 actual.add(r.readLine());
             }
+            var actualPath = getActualFilePath(testInfo);
+            mkdirs(actualPath);
             Files.write(getActualFilePath(testInfo), actual);
         } catch (Exception e) {
             throw new AssertionError(e);
