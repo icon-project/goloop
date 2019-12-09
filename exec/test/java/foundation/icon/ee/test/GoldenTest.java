@@ -90,9 +90,7 @@ public class GoldenTest {
             while (r.ready()) {
                 actual.add(r.readLine());
             }
-            if (!expected.equals(actual)) {
-                Files.write(getActualFilePath(testInfo), actual);
-            }
+            Files.write(getActualFilePath(testInfo), actual);
         } catch (Exception e) {
             throw new AssertionError(e);
         }
