@@ -8,6 +8,7 @@ package foundation.icon.ee.tooling.abi;
 import foundation.icon.ee.types.Method;
 import org.aion.avm.tooling.abi.ABIUtils;
 import org.objectweb.asm.AnnotationVisitor;
+import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -34,6 +35,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
     private boolean isFallback = false;
     private boolean isEventLog = false;
     private MethodVisitor pmv = null;
+    private boolean stripLineNumber;
 
     private static final int MAX_INDEXED_COUNT = 3;
     private static final Set<String> reservedEventNames = Set.of(
@@ -52,7 +54,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
             "Lavm/Address;", Method.DataType.ADDRESS
     );
 
-    public ABICompilerMethodVisitor(int access, String methodName, String methodDescriptor, MethodVisitor mv) {
+    public ABICompilerMethodVisitor(int access, String methodName, String methodDescriptor, MethodVisitor mv, boolean stripLineNumber) {
         super(Opcodes.ASM6, mv);
         this.access = access;
         this.methodName = methodName;
@@ -72,6 +74,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
             }
             isFallback = true;
         }
+        this.stripLineNumber = stripLineNumber;
     }
 
     @Override
@@ -448,5 +451,12 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
 
     public String getDescriptor() {
         return methodDescriptor;
+    }
+
+    public void visitLineNumber(int line, Label start) {
+        if (stripLineNumber) {
+            return;
+        }
+        super.visitLineNumber(line, start);
     }
 }

@@ -37,8 +37,12 @@ public class OptimizedJarBuilder {
      * @param abiVersion Version of ABI compiler to use
      */
     public OptimizedJarBuilder(boolean debugModeEnabled, byte[] jarBytes) {
+        this(debugModeEnabled, jarBytes, false);
+    }
+
+    public OptimizedJarBuilder(boolean debugModeEnabled, byte[] jarBytes, boolean stripLineNumber) {
         this.debugModeEnabled = debugModeEnabled;
-        ABICompiler compiler = ABICompiler.compileJarBytes(jarBytes);
+        ABICompiler compiler = ABICompiler.compileJarBytes(jarBytes, stripLineNumber);
         dappBytes = compiler.getJarFileBytes();
         callables = compiler.getCallables();
     }

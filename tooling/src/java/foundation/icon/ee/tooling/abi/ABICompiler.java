@@ -24,17 +24,19 @@ public class ABICompiler {
     private byte[] outputJarFile;
     private List<Method> callables;
     private Map<String, byte[]> classMap = new HashMap<>();
+    private boolean stripLineNumber;
 
-    public static ABICompiler compileJar(InputStream byteReader) {
-        return initCompilerAndCompile(byteReader);
+    public static ABICompiler compileJar(InputStream byteReader, boolean stripLineNumber) {
+        return initCompilerAndCompile(byteReader, stripLineNumber);
     }
 
-    public static ABICompiler compileJarBytes(byte[] rawBytes) {
-        return initCompilerAndCompile(new ByteArrayInputStream(rawBytes));
+    public static ABICompiler compileJarBytes(byte[] rawBytes, boolean stripLineNumber) {
+        return initCompilerAndCompile(new ByteArrayInputStream(rawBytes), stripLineNumber);
     }
 
-    private static ABICompiler initCompilerAndCompile(InputStream byteReader) {
+    private static ABICompiler initCompilerAndCompile(InputStream byteReader, boolean stripLineNumber) {
         ABICompiler compiler = new ABICompiler();
+        compiler.stripLineNumber = stripLineNumber;
         compiler.compile(byteReader);
         return compiler;
     }
@@ -55,7 +57,7 @@ public class ABICompiler {
 
         ClassReader reader = new ClassReader(mainClassBytes);
         ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-        ABICompilerClassVisitor classVisitor = new ABICompilerClassVisitor(classWriter);
+        ABICompilerClassVisitor classVisitor = new ABICompilerClassVisitor(classWriter, stripLineNumber);
         reader.accept(classVisitor, 0);
 
         callables = classVisitor.getCallableInfo();

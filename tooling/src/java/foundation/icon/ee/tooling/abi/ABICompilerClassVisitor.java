@@ -21,9 +21,11 @@ public class ABICompilerClassVisitor extends ClassVisitor {
     private List<ABICompilerMethodVisitor> methodVisitors = new ArrayList<>();
     private List<ABICompilerMethodVisitor> callableMethodVisitors = new ArrayList<>();
     private List<Method> callableInfo = new ArrayList<>();
+    private boolean stripLineNumber;
 
-    public ABICompilerClassVisitor(ClassWriter cw) {
+    public ABICompilerClassVisitor(ClassWriter cw, boolean stripLineNumber) {
         super(Opcodes.ASM6, cw);
+        this.stripLineNumber = stripLineNumber;
     }
 
     public List<Method> getCallableInfo() {
@@ -53,7 +55,7 @@ public class ABICompilerClassVisitor extends ClassVisitor {
             throw new ABICompilerException("main method cannot be defined", name);
         }
         ABICompilerMethodVisitor mv = new ABICompilerMethodVisitor(access, name, descriptor,
-                super.visitMethod(access, name, descriptor, signature, exceptions));
+                super.visitMethod(access, name, descriptor, signature, exceptions), stripLineNumber);
         methodVisitors.add(mv);
         return mv;
     }
@@ -69,7 +71,7 @@ public class ABICompilerClassVisitor extends ClassVisitor {
         String name = "onInstall";
         String descriptor = "()V";
         var mv = new ABICompilerMethodVisitor(access, name, descriptor,
-                super.visitMethod(access, name, descriptor, null, null));
+                super.visitMethod(access, name, descriptor, null, null), stripLineNumber);
         mv.visitCode();
         mv.visitInsn(Opcodes.RETURN);
         mv.visitMaxs(0, 0);
