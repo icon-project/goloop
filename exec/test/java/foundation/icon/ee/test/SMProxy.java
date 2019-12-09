@@ -53,7 +53,7 @@ public class SMProxy extends Proxy {
 
     public static byte[] makeJar(String name, Class[] all) {
         byte[] preopt = JarBuilder.buildJarForExplicitMainAndClasses(name, all);
-        return new OptimizedJarBuilder(true, preopt)
+        return new OptimizedJarBuilder(true, preopt, true)
                 .withUnreachableMethodRemover()
                 .withRenamer().getOptimizedBytes();
     }
