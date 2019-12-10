@@ -79,7 +79,7 @@ public class ReentrantDAppStack {
     }
 
     public ReentrantState getTop() {
-        return this.stack.peekLast();
+        return this.stack.peekFirst();
     }
 
 
