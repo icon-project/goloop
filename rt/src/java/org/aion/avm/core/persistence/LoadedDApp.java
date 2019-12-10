@@ -206,8 +206,7 @@ public class LoadedDApp {
         var raw = state.getGraph().getRawData();
         ByteBuffer inputBuffer = ByteBuffer.wrap(state.getGraph().getRawData());
         List<Object> existingObjectIndex = state.getObjects();
-        this.internedClasses = state.getInternedClasses();
-        StandardGlobalResolver resolver = new StandardGlobalResolver(state.getInternedClasses(), this.loader);
+        StandardGlobalResolver resolver = new StandardGlobalResolver(internedClasses, this.loader);
         StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
         int nextHashCode = Deserializer.deserializeEntireGraphAndNextHashCode(inputBuffer, existingObjectIndex, resolver, this.fieldCache, classNameMapper, this.sortedUserClasses, this.constantClass);
         return nextHashCode;
@@ -256,7 +255,7 @@ public class LoadedDApp {
 
         byte[] finalBytes = new byte[outputBuffer.position()];
         System.arraycopy(outputBuffer.array(), 0, finalBytes, 0, finalBytes.length);
-        return new DAppRuntimeState(out_instanceIndex, new InternedClasses(this.internedClasses), ObjectGraph.getInstance(finalBytes));
+        return new DAppRuntimeState(out_instanceIndex, ObjectGraph.getInstance(finalBytes));
     }
 
     public byte[] serializeObject(Object v) {

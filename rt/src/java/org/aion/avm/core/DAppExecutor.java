@@ -51,7 +51,7 @@ public class DAppExecutor {
         if (saveItem==null) {
             var raw = externalState.getObjectGraph(dappAddress);
             var graph = ObjectGraph.getInstance(raw);
-            rs = new DAppRuntimeState(null, dapp.getInternedClasses(), graph);
+            rs = new DAppRuntimeState(null, graph);
             saveItem = new ReentrantDAppStack.SaveItem(dapp, rs);
         } else {
             rs = saveItem.getRuntimeState();
