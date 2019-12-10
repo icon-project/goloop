@@ -143,7 +143,7 @@ public class SMProxy extends Proxy {
 
     private Message waitFor(int type) throws IOException {
         while (true) {
-            Message msg = getNextMessageNoLog();
+            Message msg = getNextMessage();
             if (msg.type==type) {
                 return msg;
             }

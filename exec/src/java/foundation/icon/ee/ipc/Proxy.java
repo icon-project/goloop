@@ -56,17 +56,6 @@ public abstract class Proxy {
         this.client.close();
     }
 
-    protected Message getNextMessageNoLog() throws IOException {
-        Value v = unpacker.unpackValue();
-        if (v.getValueType() != ARRAY) {
-            throw new IOException("should be array type");
-        }
-        ArrayValue a = v.asArrayValue();
-        int type = a.get(0).asIntegerValue().toInt();
-        Value value = a.get(1);
-        return new Message(type, value);
-    }
-
     protected Message getNextMessage() throws IOException {
         Value v = unpacker.unpackValue();
         if (v.getValueType() != ARRAY) {
@@ -75,16 +64,7 @@ public abstract class Proxy {
         ArrayValue a = v.asArrayValue();
         int type = a.get(0).asIntegerValue().toInt();
         Value value = a.get(1);
-        Message m = new Message(type, value);
-
-        if (logger.isTraceEnabled()) {
-            logger.trace("[MsgType] {}", m.type);
-            for (Value e : a) {
-                logger.trace("-- type: {}", e.getValueType());
-                logger.trace("   value: {}", e);
-            }
-        }
-        return m;
+        return new Message(type, value);
     }
 
     protected void sendMessage(int msgType, Object... args) throws IOException {
