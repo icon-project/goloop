@@ -124,11 +124,6 @@ public final class Blockchain extends Object {
         blockchainRuntime.avm_revert();
     }
 
-    public static void avm_invalid() {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_invalid);
-        blockchainRuntime.avm_invalid();
-    }
-
     public static void avm_require(boolean condition) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_require);
         blockchainRuntime.avm_require(condition);

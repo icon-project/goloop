@@ -198,14 +198,6 @@ public final class Blockchain {
     }
 
     /**
-     * Stop the current execution and roll back all state changes.
-     * <p>
-     * the remaining energy will be consumed.
-     */
-    public static void invalid() {
-    }
-
-    /**
      * Checks that the provided condition is true and if it is false, triggers a revert.
      * <p>
      * In other words, if {@code condition == true} this method does nothing, otherwise it is
@@ -222,7 +214,6 @@ public final class Blockchain {
      * @param message the message to print
      */
     public static void println(String message) {
-
     }
 
     //===================

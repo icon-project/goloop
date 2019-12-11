@@ -413,8 +413,7 @@ public class DAppCreator {
      * This method handles the following exceptions and ensures that if any of them are thrown
      * that they will be represented by the returned result (any other exceptions thrown here will
      * not be handled):
-     * {@link OutOfStackException}, {@link CallDepthLimitExceededException}, {@link RevertException},
-     * and {@link InvalidException}.
+     * {@link OutOfStackException}, {@link CallDepthLimitExceededException}, and {@link RevertException}.
      *
      * @param verboseErrors Whether or not to report errors to stderr.
      * @param dapp The dapp to run.
@@ -471,12 +470,6 @@ public class DAppCreator {
                 e.printStackTrace(System.err);
             }
             resultToReturn = TransactionResultUtil.setRevertedFailureAndEnergyUsed(currentResultState, energyLimit - threadInstrumentation.energyLeft());
-        } catch (InvalidException e) {
-            if (verboseErrors) {
-                System.err.println("DApp deployment INVALID due to uncaught EXCEPTION: \"" + e.getMessage() + "\"");
-                e.printStackTrace(System.err);
-            }
-            resultToReturn = TransactionResultUtil.setNonRevertedFailureAndEnergyUsed(currentResultState, AvmInternalError.FAILED_INVALID, energyLimit);
         }
 
         return resultToReturn;

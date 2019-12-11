@@ -10,7 +10,6 @@ import i.IObject;
 import i.IObjectArray;
 import i.IRuntimeSetup;
 import i.InstrumentationHelpers;
-import i.InvalidException;
 import i.RevertException;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
@@ -249,11 +248,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     @Override
     public void avm_revert() {
         throw new RevertException();
-    }
-
-    @Override
-    public void avm_invalid() {
-        throw new InvalidException();
     }
 
     @Override

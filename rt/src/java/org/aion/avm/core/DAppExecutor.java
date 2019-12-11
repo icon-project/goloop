@@ -9,7 +9,6 @@ import i.IBlockchainRuntime;
 import i.IInstrumentation;
 import i.InstrumentationHelpers;
 import i.InternedClasses;
-import i.InvalidException;
 import i.JvmError;
 import i.OutOfEnergyException;
 import i.OutOfStackException;
@@ -157,13 +156,6 @@ public class DAppExecutor {
                 e.printStackTrace(System.err);
             }
             result = TransactionResultUtil.setRevertedFailureAndEnergyUsed(result, tx.energyLimit - threadInstrumentation.energyLeft());
-
-        } catch (InvalidException e) {
-            if (verboseErrors) {
-                System.err.println("DApp execution INVALID due to uncaught EXCEPTION: \"" + e.getMessage() + "\"");
-                e.printStackTrace(System.err);
-            }
-            result = TransactionResultUtil.setNonRevertedFailureAndEnergyUsed(result, AvmInternalError.FAILED_INVALID, tx.energyLimit);
 
         } catch (EarlyAbortException e) {
             if (verboseErrors) {

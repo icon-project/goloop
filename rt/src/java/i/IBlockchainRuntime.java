@@ -3,7 +3,6 @@ package i;
 import a.ByteArray;
 import p.avm.Address;
 import p.avm.CollectionDB;
-import p.avm.Result;
 import p.avm.VarDB;
 import s.java.math.BigInteger;
 import s.java.lang.String;
@@ -130,19 +129,12 @@ public interface IBlockchainRuntime {
     void avm_revert();
 
     /**
-     * Stop the current execution, rollback any state changes, and consume all remaining energy.
-     */
-    void avm_invalid();
-
-    /**
      * Requires that condition is true, otherwise triggers a revert.
      */
     void avm_require(boolean condition);
 
     /**
      * Prints a message to console for debugging purpose
-     *
-     * @param message
      */
     void avm_println(String message);
 

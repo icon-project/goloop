@@ -318,7 +318,6 @@ public class RuntimeMethodFeeSchedule {
     public static final int BlockchainRuntime_avm_call = 5000; // totalCost - 140;
 
     public static final int BlockchainRuntime_avm_revert = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
-    public static final int BlockchainRuntime_avm_invalid = RT_METHOD_FEE_LEVEL_1; // totalCost - 116;
     public static final int BlockchainRuntime_avm_require = RT_METHOD_FEE_LEVEL_1;
     public static final int BlockchainRuntime_avm_println = RT_METHOD_FEE_LEVEL_1; // totalCost - 696; // byte code cost - 122; invoked methods cost - 574;
 
