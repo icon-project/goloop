@@ -81,8 +81,9 @@ public class TransactionExecutor {
                                                   String uuid,
                                                   Loader loader,
                                                   FileReader r) {
-        if (loader == null)
+        if (loader == null) {
             loader = new Loader();
+        }
         if (r == null) {
             r = defaultFileReader;
         }
@@ -108,7 +109,7 @@ public class TransactionExecutor {
         logger.trace(">>> path={}", path);
         byte[] jarBytes = fileReader.readFile(path);
         byte[] apis = JarBuilder.getAPIsBytesFromJAR(jarBytes);
-        if (null!=apis) {
+        if (null != apis) {
             Method[] methods = MethodUnpacker.readFrom(apis);
             for (var m : methods) {
                 if (!m.hasValidParams()) {

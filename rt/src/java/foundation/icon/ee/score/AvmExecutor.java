@@ -24,7 +24,6 @@ import i.RuntimeAssertionError;
 import org.aion.avm.core.AvmConfiguration;
 import org.aion.avm.core.DAppCreator;
 import org.aion.avm.core.DAppExecutor;
-import org.aion.avm.core.DAppLoader;
 import org.aion.avm.core.IExternalState;
 import org.aion.avm.core.ReentrantDAppStack;
 import org.aion.avm.core.persistence.LoadedDApp;
@@ -66,17 +65,16 @@ public class AvmExecutor {
     }
 
     public TransactionResult run(IExternalState kernel, Transaction transaction, Address origin) {
-        if (task==null) {
+        if (task == null) {
             return runExternal(kernel, transaction, origin).unwrap();
         } else {
-            return runInternal(kernel, transaction, origin).unwrap();
+            return runInternal(kernel, transaction).unwrap();
         }
     }
 
     private AvmWrappedTransactionResult runExternal(IExternalState kernel, Transaction transaction, Address origin) {
         // Get the first task
-        task = new TransactionTask(kernel, transaction, 0,
-                                                           origin != null ? new AionAddress(origin) : null);
+        task = new TransactionTask(kernel, transaction, 0, origin != null ? new AionAddress(origin) : null);
 
         // Attach the IInstrumentation helper to the task to support asynchronous abort
         // Instrumentation helper will abort the execution of the transaction by throwing an exception during chargeEnergy call
@@ -98,7 +96,7 @@ public class AvmExecutor {
         return result;
     }
 
-    private AvmWrappedTransactionResult runInternal(IExternalState kernel, Transaction transaction, Address origin) {
+    private AvmWrappedTransactionResult runInternal(IExternalState kernel, Transaction transaction) {
         return runCommon(kernel, transaction);
     }
 
