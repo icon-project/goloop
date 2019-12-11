@@ -93,4 +93,5 @@ public class IntercallRefTest extends GoldenTest {
         var app1 = sm.deploy(RefScoreA.class);
         var app2 = sm.deploy(RefScoreB.class);
         app1.invoke("method", 2, true, app2.getAddress());
-    }}
+    }
+}
