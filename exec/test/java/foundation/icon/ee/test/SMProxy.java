@@ -47,11 +47,11 @@ public class SMProxy extends Proxy {
         current = state.getAccount(origin);
     }
 
-    public static byte[] makeJar(Class c) {
-        return makeJar(c.getName(), new Class[]{c});
+    public static byte[] makeJar(Class<?> c) {
+        return makeJar(c.getName(), new Class<?>[]{c});
     }
 
-    public static byte[] makeJar(String name, Class[] all) {
+    public static byte[] makeJar(String name, Class<?>[] all) {
         byte[] preopt = JarBuilder.buildJarForExplicitMainAndClasses(name, all);
         return new OptimizedJarBuilder(true, preopt, true)
                 .withUnreachableMethodRemover()
@@ -72,7 +72,7 @@ public class SMProxy extends Proxy {
         return new Address(addr);
     }
 
-    public Contract deploy(Class main, Object ... params) {
+    public Contract deploy(Class<?> main, Object ... params) {
         byte[] jar = makeJar(main);
         return doDeploy(jar, params);
     }
@@ -81,7 +81,7 @@ public class SMProxy extends Proxy {
         return origin;
     }
 
-    public Contract deploy(Class main, Class[] all, Object ... params) {
+    public Contract deploy(Class<?> main, Class<?>[] all, Object ... params) {
         byte[] jar = makeJar(main.getName(), all);
         return doDeploy(jar, params);
     }
@@ -161,11 +161,11 @@ public class SMProxy extends Proxy {
                     var isDelete = data.get(1).asBooleanValue().getBoolean();
                     if (isDelete) {
                         current.storage.remove(new ByteArrayWrapper(key));
-                        System.out.format("RECV setValue %s isDelete=%b%n", beautify(key), isDelete);
+                        System.out.format("RECV setValue %s isDelete=%b%n", beautify(key), true);
                     } else {
                         var value = data.get(2).asRawValue().asByteArray();
                         current.storage.put(new ByteArrayWrapper(key), value);
-                        System.out.format("RECV setValue %s isDelete=%b %s%n", beautify(key), isDelete, beautify(value));
+                        System.out.format("RECV setValue %s isDelete=%b %s%n", beautify(key), false, beautify(value));
                     }
                     break;
                 }
@@ -283,9 +283,7 @@ public class SMProxy extends Proxy {
     }
 
     private static boolean isPrint(int ch) {
-        if ( ch >= 0x20 && ch <= 0x7e )
-            return true;
-        return false;
+        return ch >= 0x20 && ch <= 0x7e;
     }
 
     private static final char[] HEX_ARRAY = "0123456789abcdef".toCharArray();
@@ -326,14 +324,14 @@ public class SMProxy extends Proxy {
 
     private static String beautifyObjectGraph(byte[] og) {
         StringBuilder sb = new StringBuilder();
-        for (int i=0; i<og.length; i++) {
-            if (isPrint(og[i])) {
-                sb.append((char)og[i]);
+        for (byte b : og) {
+            if (isPrint(b)) {
+                sb.append((char) b);
             } else {
-                int v = og[i] & 0xFF;
+                int v = b & 0xFF;
                 char c1 = HEX_ARRAY[v >>> 4];
                 char c2 = HEX_ARRAY[v & 0x0F];
-                sb.append("\\x"+c1+c2);
+                sb.append("\\x").append(c1).append(c2);
             }
         }
         return sb.toString();
