@@ -8,14 +8,11 @@ import org.aion.avm.core.ReentrantDAppStack;
 import org.aion.avm.core.types.Pair;
 import org.aion.avm.core.util.ByteArrayWrapper;
 import org.aion.avm.core.util.Helpers;
-import org.aion.kernel.SideEffects;
-import org.aion.kernel.TransactionalState;
 import org.aion.types.AionAddress;
 import org.aion.types.Transaction;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.Stack;
 
 /**
  * A TransactionTask represent a complete transaction chain started from an external transaction. It represents the logical ordering of the block to be passed to the concurrent executor.
@@ -32,7 +29,6 @@ public class TransactionTask implements Comparable<TransactionTask> {
     private ReentrantDAppStack reentrantDAppStack;
     private int index;
     private StringBuffer outBuffer;
-    private Stack<SideEffects> sideEffectsStack;
     private Address origin;
     private int depth;
     private Set<Pair<AionAddress, ByteArrayWrapper>> resetStorageKeys;
@@ -49,8 +45,6 @@ public class TransactionTask implements Comparable<TransactionTask> {
             this.origin = new Address(origin.toByteArray());
         }
         this.depth = 0;
-        this.sideEffectsStack = new Stack<>();
-        this.sideEffectsStack.push(new SideEffects());
         this.resetStorageKeys = new HashSet<>();
     }
 
@@ -141,22 +135,6 @@ public class TransactionTask implements Comparable<TransactionTask> {
 
     public void outputPrintln(String toPrint){
         this.outBuffer.append(toPrint).append("\n");
-    }
-
-    public void pushSideEffects(SideEffects se) {
-        sideEffectsStack.push(se);
-    }
-
-    public SideEffects popSideEffects() {
-        return sideEffectsStack.pop();
-    }
-
-    public SideEffects peekSideEffects() {
-        return sideEffectsStack.peek();
-    }
-
-    public boolean isSideEffectsStackEmpty() {
-        return sideEffectsStack.empty();
     }
 
     public Address getOriginAddress() {
