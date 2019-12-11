@@ -16,7 +16,6 @@
 
 package foundation.icon.ee.score;
 
-import foundation.icon.ee.ipc.Client;
 import foundation.icon.ee.ipc.Connection;
 import foundation.icon.ee.ipc.EEProxy;
 import foundation.icon.ee.ipc.InvokeResult;
@@ -61,7 +60,7 @@ public class TransactionExecutor {
     private TransactionExecutor(Connection conn,
                                 String uuid,
                                 Loader loader,
-                                FileReader fileReader) throws IOException {
+                                FileReader fileReader) {
         this.proxy = new EEProxy(conn);
         this.uuid = uuid;
 
@@ -74,14 +73,14 @@ public class TransactionExecutor {
 
     // TODO : remove me later
     public static TransactionExecutor newInstance(Connection c,
-                                                  String uuid) throws IOException {
+                                                  String uuid) {
         return newInstance(c, uuid, null, null);
     }
 
     public static TransactionExecutor newInstance(Connection c,
                                                   String uuid,
                                                   Loader loader,
-                                                  FileReader r) throws IOException {
+                                                  FileReader r) {
         if (loader == null)
             loader = new Loader();
         if (r == null) {
@@ -125,7 +124,7 @@ public class TransactionExecutor {
 
     private InvokeResult handleInvoke(String code, boolean isQuery, Address from, Address to,
                                       BigInteger value, BigInteger limit,
-                                      String method, Object[] params, Map info) throws IOException {
+                                      String method, Object[] params, Map<String, Object> info) throws IOException {
         if (logger.isTraceEnabled()) {
             printInvokeParams(code, isQuery, from, to, value, limit, method, params);
             printGetInfo(info);
@@ -198,17 +197,15 @@ public class TransactionExecutor {
                 isInstall);
     }
 
-    private static FileReader defaultFileReader = new FileReader() {
-        public byte[] readFile(String p) throws IOException {
-            Path path = Paths.get(p, CODE_JAR);
-            byte[] jarBytes;
-            try {
-                jarBytes = Files.readAllBytes(path);
-            } catch (IOException e) {
-                throw new IOException("JAR read error: " + e.getMessage());
-            }
-            return jarBytes;
+    private static FileReader defaultFileReader = p -> {
+        Path path = Paths.get(p, CODE_JAR);
+        byte[] jarBytes;
+        try {
+            jarBytes = Files.readAllBytes(path);
+        } catch (IOException e) {
+            throw new IOException("JAR read error: " + e.getMessage());
         }
+        return jarBytes;
     };
 
     private static class ResultWrapper {
@@ -264,7 +261,7 @@ public class TransactionExecutor {
         logger.trace("    ]");
     }
 
-    private void printGetInfo(Map info) {
+    private void printGetInfo(Map<String, Object> info) {
         logger.trace(">>> getInfo: info={}", info);
         logger.trace("    txHash={}", Bytes.toHexString((byte[]) info.get(EEProxy.Info.TX_HASH)));
         logger.trace("    txIndex={}", info.get(EEProxy.Info.TX_INDEX));

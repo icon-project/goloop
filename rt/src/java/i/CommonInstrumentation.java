@@ -33,7 +33,7 @@ public class CommonInstrumentation implements IInstrumentation {
         // Note that we want to fail on any attempt to use the interned string map which isn't the initial call (since <clinit> needs it but any
         // other attempt to use it is an error).
         if (1 == nextHashCode) {
-            newFrame.internedStringWrappers = new IdentityHashMap<String, s.java.lang.String>();
+            newFrame.internedStringWrappers = new IdentityHashMap<>();
         }
 
         newFrame.internedClassWrappers = classWrappers;
@@ -125,7 +125,7 @@ public class CommonInstrumentation implements IInstrumentation {
 
     @Override
     public Throwable wrapAsThrowable(s.java.lang.Object arg) {
-        Throwable result = null;
+        Throwable result;
         try {
             // In this case, we just want to look up the appropriate wrapper (using reflection) and instantiate a wrapper for this.
             String objectClass = arg.getClass().getName();

@@ -216,7 +216,7 @@ public class EEProxy extends Proxy {
     public interface OnInvokeListener {
         InvokeResult onInvoke(String code, boolean isQuery, Address from, Address to,
                               BigInteger value, BigInteger limit,
-                              String method, Object[] params, Map info) throws IOException;
+                              String method, Object[] params, Map<String, Object> info) throws IOException;
     }
 
     public void setOnInvokeListener(OnInvokeListener listener) {
@@ -245,7 +245,7 @@ public class EEProxy extends Proxy {
             BigInteger limit = new BigInteger(getValueAsByteArray(data.get(5)));
             String method = data.get(6).asStringValue().asString();
             Object[] params = (Object[]) TypedObj.decodeAny(data.get(7));
-            Map info = (Map) TypedObj.decodeAny(data.get(8));
+            var info = (Map<String, Object>) TypedObj.decodeAny(data.get(8));
 
             if (mOnInvokeListener != null) {
                 InvokeResult result = mOnInvokeListener.onInvoke(

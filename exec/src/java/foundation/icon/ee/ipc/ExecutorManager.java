@@ -57,7 +57,7 @@ public class ExecutorManager {
         }
     }
 
-    private void runExecutor(String uuid) throws IOException {
+    private void runExecutor(String uuid) {
         if (execMap.get(uuid) != null) {
             logger.info(uuid + " already exists");
             return;

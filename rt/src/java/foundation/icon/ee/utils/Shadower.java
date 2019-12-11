@@ -7,7 +7,7 @@ public class Shadower {
         if (obj==null) {
             return null;
         } else if (obj instanceof Boolean) {
-            return s.java.lang.Boolean.valueOf(((Boolean) obj).booleanValue());
+            return s.java.lang.Boolean.valueOf((Boolean) obj);
         } else if (obj instanceof BigInteger) {
             return new s.java.math.BigInteger((BigInteger)obj);
         } else if (obj instanceof String) {

@@ -88,7 +88,7 @@ public class Client implements Connection {
     /*
      * InputStream for the socket connection to get the target
      */
-    private class SocketInputStream extends InputStream {
+    private static class SocketInputStream extends InputStream {
         int s;
 
         SocketInputStream(int s) {
@@ -136,9 +136,5 @@ public class Client implements Connection {
         System.loadLibrary("client");
     }
 
-    static public Connector connector = new Connector(){
-        public Connection connect(String addr) throws IOException {
-            return Client.connect(addr);
-        }
-    };
+    static public Connector connector = Client::connect;
 }

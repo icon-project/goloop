@@ -133,7 +133,6 @@ public class AvmExecutor {
          * Run the common logic with the parent kernel as the top-level one.
          * After this point, no rejection should occur.
          */
-        IExternalState thisTransactionKernel = kernel;
         // start with the successful result
         AvmWrappedTransactionResult result = TransactionResultUtil.newSuccessfulResultWithEnergyUsed(0);
 
@@ -142,7 +141,7 @@ public class AvmExecutor {
 
         if (tx.isCreate) {
             logger.trace("=== DAppCreator ===");
-            result = DAppCreator.create(thisTransactionKernel, task,
+            result = DAppCreator.create(kernel, task,
                     senderAddress, recipient, tx, result,
                     this.preserveDebuggability, this.enableVerboseContractErrors, this.enableBlockchainPrintln);
         } else {
@@ -155,24 +154,24 @@ public class AvmExecutor {
                 dapp = stateToResume.dApp;
                 // Call directly and don't interact with DApp cache (we are reentering the state, not the origin of it).
                 logger.trace("=== DAppExecutor === call 1");
-                result = DAppExecutor.call(thisTransactionKernel, dapp, stateToResume, task,
+                result = DAppExecutor.call(kernel, dapp, stateToResume, task,
                         senderAddress, recipient, tx, result,
                         this.enableVerboseContractErrors, true, this.enableBlockchainPrintln);
             } else {
                 try {
-                    dapp = loader.load(recipient, thisTransactionKernel, preserveDebuggability);
+                    dapp = loader.load(recipient, kernel, preserveDebuggability);
                 } catch (IOException e) {
                     throw RuntimeAssertionError.unexpected(e);
                 }
                 logger.trace("=== DAppExecutor === call 2");
-                result = DAppExecutor.call(thisTransactionKernel, dapp, stateToResume, task,
+                result = DAppExecutor.call(kernel, dapp, null, task,
                         senderAddress, recipient, tx, result,
                         this.enableVerboseContractErrors, false, this.enableBlockchainPrintln);
             }
         }
 
         if (result.isSuccess()) {
-            thisTransactionKernel.commit();
+            kernel.commit();
         } else if (result.isFailedUnexpected()) {
             logger.error("Unexpected error during transaction execution!", result.exception);
         }
