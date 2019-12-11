@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class GoldenTest {
     static final String logLevelKey = "foundation.icon.ee.logger.defaultLogLevel";
-    protected SMProxy sm;
+    protected ServiceManager sm;
     private ByteArrayOutputStream outContent;
     private PrintStream prevOut;
     private String prevLogLevel;
@@ -48,7 +48,7 @@ public class GoldenTest {
         prevLogLevel = System.setProperty(logLevelKey, "trace");
 
         var pipes = Pipe.createPair();
-        sm = new SMProxy(pipes[0]);
+        sm = new ServiceManager(pipes[0]);
         Thread th = new Thread(() -> {
             try {
                 var te = TransactionExecutor.newInstance(pipes[1],

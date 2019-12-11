@@ -3,10 +3,10 @@ package foundation.icon.ee.test;
 import avm.Address;
 
 public class Contract {
-    private SMProxy sm;
+    private ServiceManager sm;
     private Address address;
 
-    public Contract(SMProxy sm, Address address) {
+    public Contract(ServiceManager sm, Address address) {
         this.sm = sm;
         this.address = address;
     }

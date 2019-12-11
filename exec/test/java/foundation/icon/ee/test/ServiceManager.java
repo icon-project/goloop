@@ -20,7 +20,7 @@ import java.util.Map;
 
 import static foundation.icon.ee.ipc.EEProxy.Info;
 
-public class SMProxy extends Proxy {
+public class ServiceManager extends Proxy {
     private static final BigInteger scoreBase = new BigInteger(1, Arrays.copyOf(new byte[]{1, 2}, 21));
     private static final BigInteger extBase = new BigInteger(1, Arrays.copyOf(new byte[]{1}, 20));
 
@@ -33,7 +33,7 @@ public class SMProxy extends Proxy {
     private Address origin;
     private Map<String, Object> info = new HashMap<>();
 
-    public SMProxy(Connection conn) {
+    public ServiceManager(Connection conn) {
         super(conn);
         origin = newExternalAddress();
         info.put(Info.BLOCK_TIMESTAMP, BigInteger.valueOf(1000000));
