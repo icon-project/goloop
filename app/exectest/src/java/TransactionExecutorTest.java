@@ -27,7 +27,7 @@ public class TransactionExecutorTest {
         Logger logger = LoggerFactory.getLogger(TransactionExecutorTest.class);
         logger.info("=== TransactionExecutorTest ===");
         if (args.length == 2) {
-            TransactionExecutor executor = TransactionExecutor.newInstance(Client.connect(args[0]), args[1], null);
+            TransactionExecutor executor = TransactionExecutor.newInstance(Client.connect(args[0]), args[1]);
             executor.connectAndRunLoop();
         } else if (args.length == 1) {
             ExecutorManager executorManager = new ExecutorManager(args[0]);

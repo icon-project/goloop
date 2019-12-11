@@ -56,7 +56,6 @@ public class TransactionExecutor {
     private final EEProxy proxy;
     private final String uuid;
     private final AvmExecutor avmExecutor;
-    private final Loader loader;
     private final FileReader fileReader;
 
     private TransactionExecutor(Connection conn,
@@ -70,15 +69,13 @@ public class TransactionExecutor {
         proxy.setOnInvokeListener(this::handleInvoke);
         avmExecutor = CommonAvmFactory.createAvmExecutor(avmConfig, loader);
 
-        this.loader = loader;
         this.fileReader = fileReader;
     }
 
     // TODO : remove me later
     public static TransactionExecutor newInstance(Connection c,
-                                                  String uuid,
-                                                  FileReader r) throws IOException {
-        return new TransactionExecutor(c, uuid, null, r);
+                                                  String uuid) throws IOException {
+        return newInstance(c, uuid, null, null);
     }
 
     public static TransactionExecutor newInstance(Connection c,
