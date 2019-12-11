@@ -189,9 +189,6 @@ public final class Blockchain {
         return null;
     }
 
-    public static void log(byte[] topic1, byte[] topic2, byte[] topic3, byte[] topic4, byte[] data) throws IllegalArgumentException {
-    }
-
     /**
      * Stop the current execution and roll back all state changes.
      * <p>
