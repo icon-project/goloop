@@ -7,8 +7,6 @@ import org.aion.kernel.AvmWrappedTransactionResult.AvmInternalError;
 import org.aion.types.TransactionResult;
 import org.aion.types.TransactionStatus;
 
-import java.util.Collections;
-
 /**
  * A utility class for constructing {@link AvmWrappedTransactionResult} objects. Typically, inside
  * the Avm we interact with {@link TransactionResult} via this wrapper class, which contains
@@ -27,7 +25,7 @@ public final class TransactionResultUtil {
      * @return the new result.
      */
     public static AvmWrappedTransactionResult newSuccessfulResultWithEnergyUsedAndOutput(long energyUsed, byte[] output) {
-        TransactionResult result = new TransactionResult(TransactionStatus.successful(), Collections.emptyList(), energyUsed, output);
+        TransactionResult result = new TransactionResult(TransactionStatus.successful(), energyUsed, output);
         return new AvmWrappedTransactionResult(result, null, null, AvmInternalError.NONE);
     }
 
@@ -43,7 +41,7 @@ public final class TransactionResultUtil {
      * @return the new result.
      */
     public static AvmWrappedTransactionResult newResultWithNonRevertedFailureAndEnergyUsed(AvmInternalError failureError, long energyUsed) {
-        TransactionResult result = new TransactionResult(TransactionStatus.nonRevertedFailure(failureError.error), Collections.emptyList(), energyUsed, null);
+        TransactionResult result = new TransactionResult(TransactionStatus.nonRevertedFailure(failureError.error), energyUsed, null);
         return new AvmWrappedTransactionResult(result, null, null, failureError);
     }
 
@@ -57,7 +55,7 @@ public final class TransactionResultUtil {
      * @return the new result.
      */
     public static AvmWrappedTransactionResult newSuccessfulResultWithEnergyUsed(long energyUsed) {
-        TransactionResult result = new TransactionResult(TransactionStatus.successful(), Collections.emptyList(), energyUsed, null);
+        TransactionResult result = new TransactionResult(TransactionStatus.successful(), energyUsed, null);
         return new AvmWrappedTransactionResult(result, null, null, AvmInternalError.NONE);
     }
 
@@ -73,7 +71,7 @@ public final class TransactionResultUtil {
      * @return the new result.
      */
     public static AvmWrappedTransactionResult newRejectedResultWithEnergyUsed(AvmInternalError rejectedError, long energyUsed) {
-        TransactionResult result = new TransactionResult(TransactionStatus.rejection(rejectedError.error), Collections.emptyList(), energyUsed, null);
+        TransactionResult result = new TransactionResult(TransactionStatus.rejection(rejectedError.error), energyUsed, null);
         return new AvmWrappedTransactionResult(result, null, null, rejectedError);
     }
 
@@ -86,7 +84,7 @@ public final class TransactionResultUtil {
      * @return the new result.
      */
     public static AvmWrappedTransactionResult newAbortedResultWithZeroEnergyUsed() {
-        TransactionResult result = new TransactionResult(TransactionStatus.nonRevertedFailure(AvmInternalError.ABORTED.error), Collections.emptyList(), 0, null);
+        TransactionResult result = new TransactionResult(TransactionStatus.nonRevertedFailure(AvmInternalError.ABORTED.error), 0, null);
         return new AvmWrappedTransactionResult(result, null, null, AvmInternalError.ABORTED);
     }
 
@@ -100,7 +98,7 @@ public final class TransactionResultUtil {
      */
     public static AvmWrappedTransactionResult setExternalState(AvmWrappedTransactionResult result, IExternalState externalState) {
         RuntimeAssertionError.assertTrue(externalState != null);
-        TransactionResult transactionResult = new TransactionResult(result.transactionStatus(), result.internalTransactions(), result.energyUsed(), result.output());
+        TransactionResult transactionResult = new TransactionResult(result.transactionStatus(), result.energyUsed(), result.output());
         return new AvmWrappedTransactionResult(transactionResult, result.exception, externalState, result.avmInternalError);
     }
 
@@ -116,7 +114,7 @@ public final class TransactionResultUtil {
      */
     public static AvmWrappedTransactionResult setNonRevertedFailureAndEnergyUsed(AvmWrappedTransactionResult result, AvmInternalError failureError, long energyUsed) {
         RuntimeAssertionError.assertTrue(failureError != null);
-        TransactionResult transactionResult = new TransactionResult(TransactionStatus.nonRevertedFailure(failureError.error), result.internalTransactions(), energyUsed, result.output());
+        TransactionResult transactionResult = new TransactionResult(TransactionStatus.nonRevertedFailure(failureError.error), energyUsed, result.output());
         return new AvmWrappedTransactionResult(transactionResult, result.exception,  result.externalState, failureError);
     }
 
@@ -129,7 +127,7 @@ public final class TransactionResultUtil {
      * @return the new result.
      */
     public static AvmWrappedTransactionResult setRevertedFailureAndEnergyUsed(AvmWrappedTransactionResult result, long energyUsed) {
-        TransactionResult transactionResult = new TransactionResult(TransactionStatus.revertedFailure(), result.internalTransactions(), energyUsed, result.output());
+        TransactionResult transactionResult = new TransactionResult(TransactionStatus.revertedFailure(), energyUsed, result.output());
         return new AvmWrappedTransactionResult(transactionResult, result.exception,  result.externalState, AvmInternalError.FAILED_REVERTED);
     }
 
@@ -144,7 +142,7 @@ public final class TransactionResultUtil {
      * @return the new result.
      */
     public static AvmWrappedTransactionResult setSuccessfulOutput(AvmWrappedTransactionResult result, Object output) {
-        TransactionResult transactionResult = new TransactionResult(TransactionStatus.successful(), result.internalTransactions(), result.energyUsed(), output);
+        TransactionResult transactionResult = new TransactionResult(TransactionStatus.successful(), result.energyUsed(), output);
         return new AvmWrappedTransactionResult(transactionResult, result.exception,  result.externalState, AvmInternalError.NONE);
     }
 
@@ -157,7 +155,7 @@ public final class TransactionResultUtil {
      * @return the new result.
      */
     public static AvmWrappedTransactionResult setEnergyUsed(AvmWrappedTransactionResult result, long energyUsed) {
-        TransactionResult transactionResult = new TransactionResult(result.transactionStatus(), result.internalTransactions(), energyUsed, result.output());
+        TransactionResult transactionResult = new TransactionResult(result.transactionStatus(), energyUsed, result.output());
         return new AvmWrappedTransactionResult(transactionResult, result.exception,  result.externalState, result.avmInternalError);
     }
 
@@ -173,7 +171,7 @@ public final class TransactionResultUtil {
      */
     public static AvmWrappedTransactionResult setFailedException(AvmWrappedTransactionResult result, Throwable exception, long energyUsed) {
         RuntimeAssertionError.assertTrue(exception != null);
-        TransactionResult transactionResult = new TransactionResult(TransactionStatus.nonRevertedFailure(AvmInternalError.FAILED_EXCEPTION.error), result.internalTransactions(), energyUsed, result.output());
+        TransactionResult transactionResult = new TransactionResult(TransactionStatus.nonRevertedFailure(AvmInternalError.FAILED_EXCEPTION.error), energyUsed, result.output());
         return new AvmWrappedTransactionResult(transactionResult, exception,  result.externalState, AvmInternalError.FAILED_EXCEPTION);
     }
 
@@ -189,7 +187,7 @@ public final class TransactionResultUtil {
      */
     public static AvmWrappedTransactionResult setFailedUnexpected(AvmWrappedTransactionResult result, Throwable exception, long energyUsed) {
         RuntimeAssertionError.assertTrue(exception != null);
-        TransactionResult transactionResult = new TransactionResult(TransactionStatus.nonRevertedFailure(AvmInternalError.FAILED_UNEXPECTED.error), result.internalTransactions(), energyUsed, result.output());
+        TransactionResult transactionResult = new TransactionResult(TransactionStatus.nonRevertedFailure(AvmInternalError.FAILED_UNEXPECTED.error), energyUsed, result.output());
         return new AvmWrappedTransactionResult(transactionResult, exception,  result.externalState, AvmInternalError.FAILED_UNEXPECTED);
     }
 }

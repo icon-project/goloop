@@ -1,9 +1,7 @@
 package org.aion.kernel;
 
 import i.RuntimeAssertionError;
-import java.util.List;
 import org.aion.avm.core.IExternalState;
-import org.aion.types.InternalTransaction;
 import org.aion.types.TransactionResult;
 import org.aion.types.TransactionStatus;
 
@@ -67,10 +65,10 @@ public final class AvmWrappedTransactionResult {
      */
     public AvmWrappedTransactionResult(TransactionResult result, Throwable exception, IExternalState externalState, AvmInternalError avmInternalError) {
         if (result == null) {
-            throw new NullPointerException("Cannot construct InternalTransactionResult with null result!");
+            throw new NullPointerException("Cannot construct a result wrapper with null result!");
         }
         if (avmInternalError == null) {
-            throw new NullPointerException("Cannot construct InternalTransactionResult with null avmInternalError!");
+            throw new NullPointerException("Cannot construct a result wrapper with null avmInternalError!");
         }
 
         // Ensure that the provided avmInternalError and result statuses are consistent.
@@ -110,13 +108,6 @@ public final class AvmWrappedTransactionResult {
      */
     public TransactionResult unwrap() {
         return this.result;
-    }
-
-    /**
-     * @return the internal transactions.
-     */
-    public List<InternalTransaction> internalTransactions() {
-        return this.result.internalTransactions;
     }
 
     /**

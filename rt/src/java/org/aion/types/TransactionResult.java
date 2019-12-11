@@ -1,8 +1,5 @@
 package org.aion.types;
 
-import java.util.Collections;
-import java.util.List;
-
 /**
  * A class that represents the end result of executing a transaction.
  *
@@ -16,7 +13,6 @@ import java.util.List;
  */
 public final class TransactionResult {
     public final TransactionStatus transactionStatus;
-    public final List<InternalTransaction> internalTransactions;
     public final long energyUsed;
     private final Object output;
 
@@ -24,24 +20,17 @@ public final class TransactionResult {
      * Constructs a new transaction result.
      *
      * @param transactionStatus The status of executing the transaction.
-     * @param logs The logs fired off during execution of the transaction.
-     * @param internalTransactions The internal transactions spawned during the execution of the transaction.
      * @param energyUsed The amount of energy used during the execution of the transaction.
      * @param output The output of the transaction.
      */
-    public TransactionResult(TransactionStatus transactionStatus, List<InternalTransaction> internalTransactions, long energyUsed, Object output) {
+    public TransactionResult(TransactionStatus transactionStatus, long energyUsed, Object output) {
         if (transactionStatus == null) {
             throw new NullPointerException("Cannot construct TransactionResult with null transactionStatus!");
-        }
-        if (internalTransactions == null) {
-            throw new NullPointerException("Cannot construct TransactionResult with null internalTransactions!");
         }
         if (energyUsed < 0) {
             throw new IllegalArgumentException("Cannot construct TransactionResult with negative energyUsed!");
         }
-
         this.transactionStatus = transactionStatus;
-        this.internalTransactions = Collections.unmodifiableList(internalTransactions);
         this.energyUsed = energyUsed;
         this.output = copyOfOutput(output);
     }
@@ -73,7 +62,6 @@ public final class TransactionResult {
 
         TransactionResult otherResult = (TransactionResult) other;
         return this.transactionStatus.equals(otherResult.transactionStatus)
-            && this.internalTransactions.equals(otherResult.internalTransactions)
             && (this.energyUsed == otherResult.energyUsed)
             && equalOutput(this.output, otherResult.output);
     }
@@ -88,7 +76,6 @@ public final class TransactionResult {
     @Override
     public int hashCode() {
         return this.transactionStatus.hashCode()
-            + this.internalTransactions.hashCode()
             + ((int) this.energyUsed)
             + (this.output != null ? this.output.hashCode() : 7);
     }
@@ -99,7 +86,6 @@ public final class TransactionResult {
             + "status = " + this.transactionStatus
             + ", energy used = " + this.energyUsed
             + ", output = " + ((this.output == null) ? "null" : this.output)
-            + ", internal transactions = " + this.internalTransactions
             + " }";
     }
 
