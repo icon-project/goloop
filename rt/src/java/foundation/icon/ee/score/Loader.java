@@ -24,17 +24,19 @@ public class Loader {
     };
 
     public LoadedDApp load(AionAddress addr, IExternalState es, boolean preserveDebuggability) throws IOException {
-        var dappSR = dappCache.get(addr);
-        var dapp = (dappSR!=null) ? dappSR.get() : null;
-        if (dapp == null) {
-            if (es != null) {
-                var code = es.getTransformedCode(addr);
-                dapp = DAppLoader.loadFromGraph(code, preserveDebuggability);
-                if (dapp != null) {
-                    dappCache.put(addr, new SoftReference<>(dapp));
+        synchronized(this) {
+            var dappSR = dappCache.get(addr);
+            var dapp = (dappSR!=null) ? dappSR.get() : null;
+            if (dapp == null) {
+                if (es != null) {
+                    var code = es.getTransformedCode(addr);
+                    dapp = DAppLoader.loadFromGraph(code, preserveDebuggability);
+                    if (dapp != null) {
+                        dappCache.put(addr, new SoftReference<>(dapp));
+                    }
                 }
             }
+            return dapp;
         }
-        return dapp;
     }
 }
