@@ -189,19 +189,6 @@ public final class Blockchain {
         return null;
     }
 
-    /**
-     * Creates an account.
-     *
-     * @param value       the value to transfer to the account to be created.
-     * @param data        the data, in the format of <code>size_of_code + code + size_of_data + data</code>
-     * @param energyLimit the max energy the invoked dapp can use.
-     * @return the invocation result.
-     * @throws IllegalArgumentException when the arguments are invalid, e.g. insufficient balance or NULL data.
-     */
-    public static Result create(BigInteger value, byte[] data, long energyLimit) throws IllegalArgumentException {
-        return null;
-    }
-
     public static void log(byte[] topic1, byte[] topic2, byte[] topic3, byte[] topic4, byte[] data) throws IllegalArgumentException {
     }
 

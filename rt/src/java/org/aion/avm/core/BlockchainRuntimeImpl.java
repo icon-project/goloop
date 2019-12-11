@@ -12,30 +12,22 @@ import i.IRuntimeSetup;
 import i.InstrumentationHelpers;
 import i.InvalidException;
 import i.RevertException;
-import i.RuntimeAssertionError;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
-import org.aion.avm.core.util.LogSizeUtils;
-import org.aion.avm.core.util.TransactionResultUtil;
-import org.aion.kernel.AvmWrappedTransactionResult;
 import org.aion.parallel.TransactionTask;
 import org.aion.types.AionAddress;
-import org.aion.types.InternalTransaction;
-import org.aion.types.Log;
 import org.aion.types.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import p.avm.Address;
 import p.avm.CollectionDB;
 import p.avm.CollectionDBImpl;
-import p.avm.Result;
 import p.avm.Value;
 import p.avm.ValueBuffer;
 import p.avm.VarDB;
 import s.java.math.BigInteger;
 
 import java.util.Arrays;
-import java.util.List;
 
 /**
  * The implementation of IBlockchainRuntime which is appropriate for exposure as a shadow Object instance within a DApp.
@@ -248,34 +240,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         return Shadower.shadow(res.getRet());
     }
 
-    @Override
-    public Result avm_create(s.java.math.BigInteger value, ByteArray data, long energyLimit) {
-        java.math.BigInteger underlyingValue = value.getUnderlying();
-        require(underlyingValue.compareTo(java.math.BigInteger.ZERO) >= 0 , "Value can't be negative");
-        require(underlyingValue.compareTo(externalState.getBalance(this.transactionDestination)) <= 0, "Insufficient balance");
-        require(data != null, "Data can't be NULL");
-        require(energyLimit >= 0, "Energy limit can't be negative");
-
-        if (task.getTransactionStackDepth() == 9) {
-            // since we increase depth in the upcoming call to runInternalCall(),
-            // a current depth of 9 means we're about to go up to 10, so we fail
-            throw new CallDepthLimitExceededException("Internal call depth cannot be more than 10");
-        }
-
-        // construct the internal transaction
-        InternalTransaction internalTx = InternalTransaction.contractCreateTransaction(
-                InternalTransaction.RejectedStatus.NOT_REJECTED,
-                this.transactionDestination,
-                this.externalState.getNonce(this.transactionDestination),
-                underlyingValue,
-                data.getUnderlying(),
-                restrictEnergyLimit(energyLimit),
-                0L);
-        
-        // Call the common run helper.
-        return runInternalCall(internalTx);
-    }
-
     private void require(boolean condition, String message) {
         if (!condition) {
             throw new IllegalArgumentException(message);
@@ -304,74 +268,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         if (this.enablePrintln) {
             logger.trace("PRT| " + (message!=null ? message.toString() : "<null>"));
         }
-    }
-
-    private long restrictEnergyLimit(long energyLimit) {
-        long remainingEnergy = IInstrumentation.attachedThreadInstrumentation.get().energyLeft();
-        long maxAllowed = remainingEnergy - (remainingEnergy >> 6);
-        return Math.min(maxAllowed, energyLimit);
-    }
-
-    private Result runInternalCall(InternalTransaction internalTx) {
-        // add the internal transaction to result
-        task.peekSideEffects().addInternalTransaction(internalTx);
-
-        // we should never leave this method without decrementing this
-        task.incrementTransactionStackDepth();
-
-        IInstrumentation currentThreadInstrumentation = IInstrumentation.attachedThreadInstrumentation.get();
-        if (null != this.reentrantState) {
-            // Note that we want to save out the current nextHashCode.
-            int nextHashCode = currentThreadInstrumentation.peekNextHashCode();
-            this.reentrantState.updateNextHashCode(nextHashCode);
-        }
-        // Temporarily detach from the DApp we were in.
-        InstrumentationHelpers.temporarilyExitFrame(this.thisDAppSetup);
-
-        // Create the Transaction.
-//        Transaction transaction = AvmTransactionUtil.fromInternalTransaction(internalTx);
-
-        // Acquire the target of the internal transaction
-//        AionAddress destination = (transaction.isCreate) ? this.capabilities.generateContractAddress(transaction) : transaction.destinationAddress;
-        boolean isAcquired = false; //avm.getResourceMonitor().acquire(destination.toByteArray(), task);
-
-        // execute the internal transaction
-        AvmWrappedTransactionResult newResult = null;
-        try {
-            if(isAcquired) {
-                //newResult = this.avm.runInternalTransaction(this.externalState, this.task, transaction);
-            } else {
-                // Unsuccessful acquire means transaction task has been aborted.
-                // In abort case, internal transaction will not be executed.
-                newResult = TransactionResultUtil.newAbortedResultWithZeroEnergyUsed();
-            }
-        } finally {
-            // Re-attach.
-            InstrumentationHelpers.returnToExecutingFrame(this.thisDAppSetup);
-        }
-        
-        if (null != this.reentrantState) {
-            // Update the next hashcode counter, in case this was a reentrant call and it was changed.
-            currentThreadInstrumentation.forceNextHashCode(this.reentrantState.getNextHashCode());
-        }
-
-        // Note that we can only meaningfully charge energy if the transaction was NOT aborted and it actually ran something (balance transfers report zero energy used, here).
-        if (isAcquired) {
-            // charge energy consumed
-            long energyUsed = newResult.energyUsed();
-            if (0L != energyUsed) {
-                // We know that this must be a positive integer.
-                RuntimeAssertionError.assertTrue(energyUsed > 0L);
-                RuntimeAssertionError.assertTrue(energyUsed <= (long)Integer.MAX_VALUE);
-                currentThreadInstrumentation.chargeEnergy((int)energyUsed);
-            }
-        }
-
-        task.decrementTransactionStackDepth();
-
-        // TODO
-        byte[] output = new byte[0];
-        return new Result(newResult.isSuccess(), output == null ? null : new ByteArray(output));
     }
 
     public CollectionDB avm_newCollectionDB(int type, s.java.lang.String id) {

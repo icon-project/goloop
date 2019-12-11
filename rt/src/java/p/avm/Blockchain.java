@@ -119,11 +119,6 @@ public final class Blockchain extends Object {
         return blockchainRuntime.avm_call(targetAddress, method, params, value);
     }
 
-    public static Result avm_create(BigInteger value, ByteArray data, long energyLimit) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_create);
-        return blockchainRuntime.avm_create(value, data, energyLimit);
-    }
-
     public static void avm_revert() {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_revert);
         blockchainRuntime.avm_revert();

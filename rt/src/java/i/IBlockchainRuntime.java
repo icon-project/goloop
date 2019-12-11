@@ -124,8 +124,6 @@ public interface IBlockchainRuntime {
     IObject avm_call(Address targetAddress, String method, IObjectArray params,
                                   BigInteger value) throws IllegalArgumentException;
 
-    Result avm_create(BigInteger value, ByteArray data, long energyLimit) throws IllegalArgumentException;
-
     /**
      * Stop the current execution, rollback any state changes, and refund the remaining energy to caller.
      */
