@@ -151,7 +151,7 @@ public class ServiceManager extends Proxy {
                 case EEProxy.MsgType.GETVALUE: {
                     var key = msg.value.asRawValue().asByteArray();
                     var value = current.storage.get(new ByteArrayWrapper(key));
-                    System.out.format("RECV getValue %s => %s%n", beautify(key), beautify(value));
+                    printf("RECV getValue %s => %s%n", key, value);
                     sendMessage(EEProxy.MsgType.GETVALUE, value!=null, value);
                     break;
                 }
@@ -161,11 +161,11 @@ public class ServiceManager extends Proxy {
                     var isDelete = data.get(1).asBooleanValue().getBoolean();
                     if (isDelete) {
                         current.storage.remove(new ByteArrayWrapper(key));
-                        System.out.format("RECV setValue %s isDelete=%b%n", beautify(key), true);
+                        printf("RECV setValue %s isDelete=%b%n", key, true);
                     } else {
                         var value = data.get(2).asRawValue().asByteArray();
                         current.storage.put(new ByteArrayWrapper(key), value);
-                        System.out.format("RECV setValue %s isDelete=%b %s%n", beautify(key), false, beautify(value));
+                        printf("RECV setValue %s isDelete=%b %s%n", key, false, value);
                     }
                     break;
                 }
@@ -176,8 +176,8 @@ public class ServiceManager extends Proxy {
                     var stepLimit = new BigInteger(data.get(2).asRawValue().asByteArray());
                     String method = data.get(3).asStringValue().asString();
                     Object[] params = (Object[]) TypedObj.decodeAny(data.get(4));
-                    System.out.format("RECV call to=%s value=%d stepLimit=%d method=%s params=%s%n",
-                            to, value, stepLimit, method, beautify(params));
+                    printf("RECV call to=%s value=%d stepLimit=%d method=%s params=%s%n",
+                            to, value, stepLimit, method, params);
                     var res = invoke(to, value, stepLimit, method, params);
                     sendMessage(EEProxy.MsgType.RESULT, res.getStatus(), res.getStepUsed(), TypedObj.encodeAny(res.getResult()));
                     break;
@@ -186,14 +186,14 @@ public class ServiceManager extends Proxy {
                     var data = msg.value.asArrayValue();
                     var indexed = unpackByteArrayArray(data.get(0).asArrayValue());
                     var nonIndexed = unpackByteArrayArray(data.get(0).asArrayValue());
-                    System.out.format("RECV event indxed=%s data=%s%n", beautify(indexed), beautify(nonIndexed));
+                    printf("RECV event indxed=%s data=%s%n", indexed, nonIndexed);
                     break;
                 }
                 case EEProxy.MsgType.GETBALANCE: {
                     var addr = new Address(msg.value.asRawValue().asByteArray());
                     var balance = state.getAccount(addr).balance;
                     sendMessage(EEProxy.MsgType.GETBALANCE, (Object) balance.toByteArray());
-                    System.out.format("RECV getBalance %s => %d%n", addr, balance);
+                    printf("RECV getBalance %s => %d%n", addr, balance);
                     break;
                 }
                 case EEProxy.MsgType.LOG: {
@@ -202,14 +202,14 @@ public class ServiceManager extends Proxy {
                     var logMsg = data.get(1).asStringValue().asString();
                     // filter only Blockchain.println
                     if (logMsg.startsWith("org.aion.avm.core.BlockchainRuntimeImpl PRT|")) {
-                        System.out.format("RECV log level=%d %s%n", level, logMsg);
+                        printf("RECV log level=%d %s%n", level, logMsg);
                     }
                     break;
                 }
                 case EEProxy.MsgType.SETCODE:{
                     var code = msg.value.asRawValue().asByteArray();
                     state.writeFile(current.address.toString() + "/transformed", code);
-                    System.out.format("RECV setCode hash=%s len=%d%n", beautify(Crypto.sha3_256(code)), code.length);
+                    printf("RECV setCode hash=%s len=%d%n", Crypto.sha3_256(code), code.length);
                     break;
                 }
                 case EEProxy.MsgType.GETOBJGRAPH: {
@@ -218,10 +218,10 @@ public class ServiceManager extends Proxy {
                     var ogh = current.objectGraphHash;
                     if ((flag&1)!=0) {
                         var og = current.objectGraph;
-                        System.out.format("RECV getObjGraph flag=%d => next=%d hash=%s graphLen=%d graph=%s%n", flag, nextHash, beautify(ogh), og.length, beautifyObjectGraph(og));
+                        printf("RECV getObjGraph flag=%d => next=%d hash=%s graphLen=%d graph=%s%n", flag, nextHash, ogh, og.length, beautifyObjectGraph(og));
                         sendMessage(EEProxy.MsgType.GETOBJGRAPH, nextHash, ogh, og);
                     } else {
-                        System.out.format("RECV getObjGraph flag=%d => next=%d hash=%s%n", flag, nextHash, beautify(ogh));
+                        printf("RECV getObjGraph flag=%d => next=%d hash=%s%n", flag, nextHash, ogh);
                         sendMessage(EEProxy.MsgType.GETOBJGRAPH, nextHash, ogh);
                     }
                     break;
@@ -235,9 +235,9 @@ public class ServiceManager extends Proxy {
                         var og = data.get(2).asRawValue().asByteArray();
                         current.objectGraphHash = Crypto.sha3_256(og);
                         current.objectGraph = og;
-                        System.out.format("RECV setObjGraph flag=%d next=%d hash=%s graphLen=%d graph=%s%n", flag, nextHash, beautify(current.objectGraphHash), og.length, beautifyObjectGraph(og));
+                        printf("RECV setObjGraph flag=%d next=%d hash=%s graphLen=%d graph=%s%n", flag, nextHash, current.objectGraphHash, og.length, beautifyObjectGraph(og));
                     } else {
-                        System.out.format("RECV setObjGraph flag=%d next=%d%n", flag, nextHash);
+                        printf("RECV setObjGraph flag=%d next=%d%n", flag, nextHash);
                     }
                     break;
                 }
@@ -265,9 +265,9 @@ public class ServiceManager extends Proxy {
     public Result invoke(String code, boolean isQuery, Address from,
                      Address to, BigInteger value, BigInteger stepLimit,
                      String method, Object[] params) throws IOException {
-        System.out.format("SEND invoke code=%s isQuery=%b from=%s to=%s value=%d stepLimit=%d method=%s params=%s%n",
+        printf("SEND invoke code=%s isQuery=%b from=%s to=%s value=%d stepLimit=%d method=%s params=%s%n",
                 code, isQuery, from, to, value, stepLimit, method,
-                beautify(params));
+                params);
         sendMessage(EEProxy.MsgType.INVOKE, code, isQuery, from, to, value, stepLimit,
                 method, TypedObj.encodeAny(params), TypedObj.encodeAny(info));
         var msg = waitFor(EEProxy.MsgType.RESULT);
@@ -278,7 +278,7 @@ public class ServiceManager extends Proxy {
         var status = data.get(0).asIntegerValue().asInt();
         var stepUsed = new BigInteger(data.get(1).asRawValue().asByteArray());
         var result = TypedObj.decodeAny(data.get(2));
-        System.out.format("RECV result status=%d stepUsed=%d ret=%s%n", status, stepUsed, beautify(result));
+        printf("RECV result status=%d stepUsed=%d ret=%s%n", status, stepUsed, result);
         return new Result(status, stepUsed, result);
     }
 
@@ -311,7 +311,7 @@ public class ServiceManager extends Proxy {
         return sb.toString();
     }
 
-    private static String beautify(Object o) {
+    private static Object beautify(Object o) {
         if (o==null) {
             return "<null>";
         } else if (o instanceof byte[]) {
@@ -319,7 +319,7 @@ public class ServiceManager extends Proxy {
         } else if (o instanceof Object[]) {
             return beautifyObjects((Object[])o);
         }
-        return o.toString();
+        return o;
     }
 
     private static String beautifyObjectGraph(byte[] og) {
@@ -335,5 +335,13 @@ public class ServiceManager extends Proxy {
             }
         }
         return sb.toString();
+    }
+
+    private void printf(String fmt, Object... inObjs) {
+        var outObjs = new Object[inObjs.length];
+        for (int i=0; i<inObjs.length; i++) {
+            outObjs[i] = beautify(inObjs[i]);
+        }
+        System.out.printf(fmt, outObjs);
     }
 }
