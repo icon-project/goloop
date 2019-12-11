@@ -17,7 +17,6 @@ import java.util.List;
 public final class TransactionResult {
     public final TransactionStatus transactionStatus;
     public final List<InternalTransaction> internalTransactions;
-    public final List<Log> logs;
     public final long energyUsed;
     private final Object output;
 
@@ -27,15 +26,12 @@ public final class TransactionResult {
      * @param transactionStatus The status of executing the transaction.
      * @param logs The logs fired off during execution of the transaction.
      * @param internalTransactions The internal transactions spawned during the execution of the transaction.
-     * @param energyUsed The amount of energy used during the executin of the transaction.
+     * @param energyUsed The amount of energy used during the execution of the transaction.
      * @param output The output of the transaction.
      */
-    public TransactionResult(TransactionStatus transactionStatus, List<Log> logs, List<InternalTransaction> internalTransactions, long energyUsed, Object output) {
+    public TransactionResult(TransactionStatus transactionStatus, List<InternalTransaction> internalTransactions, long energyUsed, Object output) {
         if (transactionStatus == null) {
             throw new NullPointerException("Cannot construct TransactionResult with null transactionStatus!");
-        }
-        if (logs == null) {
-            throw new NullPointerException("Cannot construct TransactionResult with null logs!");
         }
         if (internalTransactions == null) {
             throw new NullPointerException("Cannot construct TransactionResult with null internalTransactions!");
@@ -45,7 +41,6 @@ public final class TransactionResult {
         }
 
         this.transactionStatus = transactionStatus;
-        this.logs = Collections.unmodifiableList(logs);
         this.internalTransactions = Collections.unmodifiableList(internalTransactions);
         this.energyUsed = energyUsed;
         this.output = copyOfOutput(output);
@@ -78,7 +73,6 @@ public final class TransactionResult {
 
         TransactionResult otherResult = (TransactionResult) other;
         return this.transactionStatus.equals(otherResult.transactionStatus)
-            && this.logs.equals(otherResult.logs)
             && this.internalTransactions.equals(otherResult.internalTransactions)
             && (this.energyUsed == otherResult.energyUsed)
             && equalOutput(this.output, otherResult.output);
@@ -94,7 +88,6 @@ public final class TransactionResult {
     @Override
     public int hashCode() {
         return this.transactionStatus.hashCode()
-            + this.logs.hashCode()
             + this.internalTransactions.hashCode()
             + ((int) this.energyUsed)
             + (this.output != null ? this.output.hashCode() : 7);
@@ -106,7 +99,6 @@ public final class TransactionResult {
             + "status = " + this.transactionStatus
             + ", energy used = " + this.energyUsed
             + ", output = " + ((this.output == null) ? "null" : this.output)
-            + ", logs = " + this.logs
             + ", internal transactions = " + this.internalTransactions
             + " }";
     }

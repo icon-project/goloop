@@ -4,7 +4,6 @@ import i.RuntimeAssertionError;
 import java.util.List;
 import org.aion.avm.core.IExternalState;
 import org.aion.types.InternalTransaction;
-import org.aion.types.Log;
 import org.aion.types.TransactionResult;
 import org.aion.types.TransactionStatus;
 
@@ -111,13 +110,6 @@ public final class AvmWrappedTransactionResult {
      */
     public TransactionResult unwrap() {
         return this.result;
-    }
-
-    /**
-     * @return the logs.
-     */
-    public List<Log> logs() {
-        return this.result.logs;
     }
 
     /**
