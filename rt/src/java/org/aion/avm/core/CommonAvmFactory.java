@@ -1,6 +1,7 @@
 package org.aion.avm.core;
 
 import foundation.icon.ee.score.AvmExecutor;
+import foundation.icon.ee.score.Loader;
 import i.CommonInstrumentation;
 import i.IInstrumentation;
 import i.IInstrumentationFactory;
@@ -15,13 +16,14 @@ public class CommonAvmFactory {
      * Creates an AVM instance based on the given configuration object.
      *
      * @param config The configuration to use when assembling the AVM instance.
+     * @param loader Score loader
      * @return An AVM executor
      */
-    public static AvmExecutor getAvmInstance(AvmConfiguration config) {
+    public static AvmExecutor createAvmExecutor(AvmConfiguration config, Loader loader) {
         // Ensure that NodeEnvironment has been initialized
         NodeEnvironment node = NodeEnvironment.getInstance();
         IInstrumentationFactory factory = new CommonInstrumentationFactory();
-        AvmExecutor executor = new AvmExecutor(factory, config);
+        AvmExecutor executor = new AvmExecutor(factory, config, loader);
         return executor;
     }
 

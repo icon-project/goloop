@@ -56,33 +56,41 @@ public class TransactionExecutor {
     private final EEProxy proxy;
     private final String uuid;
     private final AvmExecutor avmExecutor;
+    private final Loader loader;
     private final FileReader fileReader;
 
     private TransactionExecutor(Connection conn,
                                 String uuid,
+                                Loader loader,
                                 FileReader fileReader) throws IOException {
         this.proxy = new EEProxy(conn);
         this.uuid = uuid;
 
         proxy.setOnGetApiListener(this::handleGetApi);
         proxy.setOnInvokeListener(this::handleInvoke);
-        avmExecutor = CommonAvmFactory.getAvmInstance(avmConfig);
+        avmExecutor = CommonAvmFactory.createAvmExecutor(avmConfig, loader);
 
+        this.loader = loader;
         this.fileReader = fileReader;
     }
 
-    public static TransactionExecutor newInstance(String sockAddr, String uuid) throws IOException {
-        return new TransactionExecutor(Client.connect(sockAddr), uuid, defaultFileReader);
-    }
-
-    public static TransactionExecutor newInstance(Connection c,
-                                                  String uuid) throws IOException {
-        return new TransactionExecutor(c, uuid, defaultFileReader);
-    }
+    // TODO : remove me later
     public static TransactionExecutor newInstance(Connection c,
                                                   String uuid,
                                                   FileReader r) throws IOException {
-        return new TransactionExecutor(c, uuid, r);
+        return new TransactionExecutor(c, uuid, null, r);
+    }
+
+    public static TransactionExecutor newInstance(Connection c,
+                                                  String uuid,
+                                                  Loader loader,
+                                                  FileReader r) throws IOException {
+        if (loader == null)
+            loader = new Loader();
+        if (r == null) {
+            r = defaultFileReader;
+        }
+        return new TransactionExecutor(c, uuid, loader, r);
     }
 
     public void connectAndRunLoop() throws IOException {

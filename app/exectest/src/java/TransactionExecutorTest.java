@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import foundation.icon.ee.ipc.Client;
 import foundation.icon.ee.ipc.ExecutorManager;
 import foundation.icon.ee.score.TransactionExecutor;
 import org.slf4j.Logger;
@@ -26,7 +27,7 @@ public class TransactionExecutorTest {
         Logger logger = LoggerFactory.getLogger(TransactionExecutorTest.class);
         logger.info("=== TransactionExecutorTest ===");
         if (args.length == 2) {
-            TransactionExecutor executor = TransactionExecutor.newInstance(args[0], args[1]);
+            TransactionExecutor executor = TransactionExecutor.newInstance(Client.connect(args[0]), args[1], null);
             executor.connectAndRunLoop();
         } else if (args.length == 1) {
             ExecutorManager executorManager = new ExecutorManager(args[0]);

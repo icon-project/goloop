@@ -48,14 +48,16 @@ public class AvmExecutor {
     private final boolean preserveDebuggability;
     private final boolean enableVerboseContractErrors;
     private final boolean enableBlockchainPrintln;
+    private Loader loader;
     private IInstrumentation instrumentation;
     private TransactionTask task;
 
-    public AvmExecutor(IInstrumentationFactory factory, AvmConfiguration config) {
+    public AvmExecutor(IInstrumentationFactory factory, AvmConfiguration config, Loader loader) {
         this.instrumentationFactory = factory;
         this.preserveDebuggability = config.preserveDebuggability;
         this.enableVerboseContractErrors = config.enableVerboseContractErrors;
         this.enableBlockchainPrintln = config.enableBlockchainPrintln;
+        this.loader = loader;
     }
 
     public void start() {
@@ -148,9 +150,8 @@ public class AvmExecutor {
 
             // See if this call is trying to reenter one already on this call-stack.  If so, we will need to partially resume its state.
             ReentrantDAppStack.ReentrantState stateToResume = task.getReentrantDAppStack().tryShareState(recipient);
-            byte[] transformedCode = thisTransactionKernel.getTransformedCode(recipient);
 
-            if ((null != stateToResume) && (null != transformedCode)) {
+            if ((null != stateToResume)) {
                 dapp = stateToResume.dApp;
                 // Call directly and don't interact with DApp cache (we are reentering the state, not the origin of it).
                 logger.trace("=== DAppExecutor === call 1");
@@ -159,7 +160,7 @@ public class AvmExecutor {
                         this.enableVerboseContractErrors, true, this.enableBlockchainPrintln);
             } else {
                 try {
-                    dapp = DAppLoader.loadFromGraph(transformedCode, this.preserveDebuggability);
+                    dapp = loader.load(recipient, thisTransactionKernel, preserveDebuggability);
                 } catch (IOException e) {
                     throw RuntimeAssertionError.unexpected(e);
                 }

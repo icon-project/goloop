@@ -19,6 +19,8 @@ package foundation.icon.ee.ipc;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+
+import foundation.icon.ee.score.Loader;
 import foundation.icon.ee.score.TransactionExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +31,7 @@ public class ExecutorManager {
     private ManagerProxy proxy;
     private String execSockAddr;
     private Connector connector;
+    private Loader loader = new Loader();
 
     public ExecutorManager(String sockAddr, Connector c) throws IOException {
         Connection client = c.connect(sockAddr);
@@ -63,7 +66,9 @@ public class ExecutorManager {
             try {
                 TransactionExecutor exec = TransactionExecutor.newInstance(
                         connector.connect(execSockAddr),
-                        uuid);
+                        uuid,
+                        loader,
+                        null);
                 execMap.put(uuid, exec);
                 exec.connectAndRunLoop();
             } catch (IOException e) {

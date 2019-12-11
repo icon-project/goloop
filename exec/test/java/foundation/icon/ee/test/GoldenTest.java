@@ -53,6 +53,7 @@ public class GoldenTest {
             try {
                 var te = TransactionExecutor.newInstance(pipes[1],
                         "",
+                        null,
                         sm.getFileReader());
                 te.connectAndRunLoop();
             } catch (IOException e) {
