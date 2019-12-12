@@ -11,7 +11,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-
 import java.util.Map;
 import java.util.Set;
 
@@ -87,7 +86,6 @@ public class LoadedDApp {
     private final Map<String, foundation.icon.ee.types.Method> nameToMethod;
 
     // Other caches of specific pieces of data which are lazily built.
-    private final Class<?> helperClass;
     public final IRuntimeSetup runtimeSetup;
     private Class<?> blockchainRuntimeClass;
     private Class<?> mainClass;
@@ -146,7 +144,7 @@ public class LoadedDApp {
         // We also know that we need the runtimeSetup, meaning we also need the helperClass.
         try {
             String helperClassName = Helper.RUNTIME_HELPER_NAME;
-            this.helperClass = this.loader.loadClass(helperClassName);
+            Class<?> helperClass = this.loader.loadClass(helperClassName);
             RuntimeAssertionError.assertTrue(helperClass.getClassLoader() == this.loader);
             this.runtimeSetup = (IRuntimeSetup) helperClass.getConstructor().newInstance();
         } catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException | NoSuchMethodException | SecurityException | ClassNotFoundException e) {
@@ -198,18 +196,17 @@ public class LoadedDApp {
         List<Object> existingObjectIndex = null;
         StandardGlobalResolver resolver = new StandardGlobalResolver(internedClassMap, this.loader);
         StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
-        int nextHashCode = Deserializer.deserializeEntireGraphAndNextHashCode(inputBuffer, existingObjectIndex, resolver, this.fieldCache, classNameMapper, this.sortedUserClasses, this.constantClass);
-        return nextHashCode;
+        return Deserializer.deserializeEntireGraphAndNextHashCode(inputBuffer, existingObjectIndex, resolver,
+                this.fieldCache, classNameMapper, this.sortedUserClasses, this.constantClass);
     }
 
     public int loadRuntimeState(DAppRuntimeState state) {
-        var raw = state.getGraph().getRawData();
         ByteBuffer inputBuffer = ByteBuffer.wrap(state.getGraph().getRawData());
         List<Object> existingObjectIndex = state.getObjects();
         StandardGlobalResolver resolver = new StandardGlobalResolver(internedClasses, this.loader);
         StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
-        int nextHashCode = Deserializer.deserializeEntireGraphAndNextHashCode(inputBuffer, existingObjectIndex, resolver, this.fieldCache, classNameMapper, this.sortedUserClasses, this.constantClass);
-        return nextHashCode;
+        return Deserializer.deserializeEntireGraphAndNextHashCode(inputBuffer, existingObjectIndex, resolver,
+                this.fieldCache, classNameMapper, this.sortedUserClasses, this.constantClass);
     }
 
     public Object deserializeObject(InternedClasses internedClassMap, byte[] rawGraphData) {
@@ -376,11 +373,9 @@ public class LoadedDApp {
         } catch (ClassNotFoundException e) {
             // This error would mean that this is assembled completely incorrectly, which is a static error in our implementation.
             RuntimeAssertionError.unexpected(e);
-
         } catch (SecurityException e) {
             // This would mean that the shadowing is not working properly.
             RuntimeAssertionError.unexpected(e);
-
         } catch (ExceptionInInitializerError e) {
             // handle the real exception
             handleUncaughtException(e.getException());
