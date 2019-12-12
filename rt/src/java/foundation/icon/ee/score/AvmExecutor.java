@@ -145,27 +145,22 @@ public class AvmExecutor {
         } else {
             LoadedDApp dapp;
 
-            // See if this call is trying to reenter one already on this call-stack.  If so, we will need to partially resume its state.
+            // See if this call is trying to reenter one already on this call-stack.
             ReentrantDAppStack.ReentrantState stateToResume = task.getReentrantDAppStack().tryShareState(recipient);
 
-            if ((null != stateToResume)) {
+            if (null != stateToResume) {
                 dapp = stateToResume.dApp;
-                // Call directly and don't interact with DApp cache (we are reentering the state, not the origin of it).
-                logger.trace("=== DAppExecutor === call 1");
-                result = DAppExecutor.call(kernel, dapp, stateToResume, task,
-                        senderAddress, recipient, tx, result,
-                        this.enableVerboseContractErrors, true, this.enableBlockchainPrintln);
             } else {
                 try {
                     dapp = loader.load(recipient, kernel, preserveDebuggability);
                 } catch (IOException e) {
                     throw RuntimeAssertionError.unexpected(e);
                 }
-                logger.trace("=== DAppExecutor === call 2");
-                result = DAppExecutor.call(kernel, dapp, null, task,
-                        senderAddress, recipient, tx, result,
-                        this.enableVerboseContractErrors, false, this.enableBlockchainPrintln);
             }
+            logger.trace("=== DAppExecutor ===");
+            result = DAppExecutor.call(kernel, dapp, stateToResume, task,
+                    senderAddress, recipient, tx, result,
+                    this.enableVerboseContractErrors, this.enableBlockchainPrintln);
         }
 
         if (result.isSuccess()) {

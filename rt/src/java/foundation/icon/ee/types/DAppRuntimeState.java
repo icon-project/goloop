@@ -1,7 +1,5 @@
 package foundation.icon.ee.types;
 
-import i.InternedClasses;
-
 import java.util.List;
 
 public class DAppRuntimeState {

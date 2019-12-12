@@ -34,7 +34,6 @@ import java.util.Arrays;
 public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     private static final Logger logger = LoggerFactory.getLogger(BlockchainRuntimeImpl.class);
     private final IExternalState externalState;
-    private final ReentrantDAppStack.ReentrantState reentrantState;
 
     private final TransactionTask task;
     private final AionAddress transactionSender;
@@ -53,7 +52,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     private s.java.math.BigInteger nonceCache;
 
     public BlockchainRuntimeImpl(IExternalState externalState,
-                                 ReentrantDAppStack.ReentrantState reentrantState,
                                  TransactionTask task,
                                  AionAddress transactionSender,
                                  AionAddress transactionDestination,
@@ -62,7 +60,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                                  LoadedDApp dApp,
                                  boolean enablePrintln) {
         this.externalState = externalState;
-        this.reentrantState = reentrantState;
         this.task = task;
         this.transactionSender = transactionSender;
         this.transactionDestination = transactionDestination;

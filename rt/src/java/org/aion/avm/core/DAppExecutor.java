@@ -35,7 +35,6 @@ public class DAppExecutor {
                                                    Transaction tx,
                                                    AvmWrappedTransactionResult internalResult,
                                                    boolean verboseErrors,
-                                                   boolean readFromCache,
                                                    boolean enableBlockchainPrintln) {
         AvmWrappedTransactionResult result = internalResult;
 
@@ -46,12 +45,11 @@ public class DAppExecutor {
         InternedClasses initialClassWrappers = dapp.getInternedClasses();
 
         var saveItem = task.getReentrantDAppStack().getSaveItem(dappAddress);
-        DAppRuntimeState rs = null;
-        if (saveItem==null) {
+        DAppRuntimeState rs;
+        if (saveItem == null) {
             var raw = externalState.getObjectGraph(dappAddress);
             var graph = ObjectGraph.getInstance(raw);
             rs = new DAppRuntimeState(null, graph);
-            saveItem = new ReentrantDAppStack.SaveItem(dapp, rs);
         } else {
             rs = saveItem.getRuntimeState();
         }
@@ -69,7 +67,6 @@ public class DAppExecutor {
         task.getReentrantDAppStack().pushState(thisState);
 
         IBlockchainRuntime br = new BlockchainRuntimeImpl(externalState,
-                                                          thisState,
                                                           task,
                                                           senderAddress,
                                                           dappAddress,

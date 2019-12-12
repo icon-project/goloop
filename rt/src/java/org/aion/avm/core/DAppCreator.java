@@ -236,7 +236,6 @@ public class DAppCreator {
             int nextHashCode = 1;
             // we pass a null re-entrant state since we haven't finished initializing yet - nobody can call into us.
             IBlockchainRuntime br = new BlockchainRuntimeImpl(externalState,
-                                                              null,
                                                               task,
                                                               senderAddress,
                                                               dappAddress,

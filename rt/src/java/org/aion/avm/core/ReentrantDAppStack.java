@@ -58,20 +58,17 @@ public class ReentrantDAppStack {
      * @return The state which was previously on top of the stack (null if empty).
      */
     public ReentrantState popState() {
-        ReentrantState state = (this.stack.isEmpty())
+        return (this.stack.isEmpty())
                 ? null
                 : this.stack.pop();
-        
-        return state;
     }
 
     public SaveItem getSaveItem(AionAddress addr) {
         RuntimeAssertionError.assertTrue(null != addr);
-        ReentrantState foundState = null;
         for (var iter = stack.descendingIterator(); iter.hasNext(); ) {
             var rs = iter.next();
             var saveItem = rs.getSaveItems().get(addr);
-            if (saveItem!=null) {
+            if (saveItem != null) {
                 return saveItem;
             }
         }
