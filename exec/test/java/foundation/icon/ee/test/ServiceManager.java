@@ -91,7 +91,7 @@ public class ServiceManager extends Proxy {
 
     private Contract doDeploy(byte[] jar, Object ... params) {
         Address scoreAddr = newScoreAddress();
-        String path = scoreAddr.toString() + "/optimized";
+        String path = getHexPrefix(scoreAddr) + "/optimized";
         try {
             var prev = current;
             var prevState = new State(state);
@@ -211,7 +211,7 @@ public class ServiceManager extends Proxy {
                 }
                 case EEProxy.MsgType.SETCODE:{
                     var code = msg.value.asRawValue().asByteArray();
-                    state.writeFile(current.address.toString() + "/transformed", code);
+                    state.writeFile(getHexPrefix(current.address) + "/transformed", code);
                     printf("RECV setCode hash=%s len=%d%n", Crypto.sha3_256(code), code.length);
                     break;
                 }
@@ -255,7 +255,7 @@ public class ServiceManager extends Proxy {
         var from = current.address;
         current = state.getAccount(to);
         info.put(Info.CONTRACT_OWNER, from);
-        var res = invoke(to.toString()+"/transformed", false, from, to, value, stepLimit, method, params);
+        var res = invoke(getHexPrefix(to)+"/transformed", false, from, to, value, stepLimit, method, params);
         if (res.getStatus()!=0) {
             state = prevState;
             current = state.getAccount(prev.address);
@@ -314,6 +314,14 @@ public class ServiceManager extends Proxy {
         return sb.toString();
     }
 
+    private static String getHexPrefix(Address addr) {
+        return getHexPrefix(addr, 3);
+    }
+
+    private static String getHexPrefix(Address addr, int len) {
+        return toHex(Arrays.copyOf(addr.toByteArray(), len));
+    }
+
     private static Object beautify(Object o) {
         if (o==null) {
             return "<null>";
@@ -321,6 +329,9 @@ public class ServiceManager extends Proxy {
             return toHex((byte[])o);
         } else if (o instanceof Object[]) {
             return beautifyObjects((Object[])o);
+        } else if (o instanceof Address) {
+            var a = (Address) o;
+            return getHexPrefix(a) + "...";
         }
         return o;
     }
