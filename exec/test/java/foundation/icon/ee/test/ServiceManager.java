@@ -21,12 +21,9 @@ import java.util.Map;
 import static foundation.icon.ee.ipc.EEProxy.Info;
 
 public class ServiceManager extends Proxy {
-    private static final BigInteger scoreBase = new BigInteger(1, Arrays.copyOf(new byte[]{1, 2}, 21));
-    private static final BigInteger extBase = new BigInteger(1, Arrays.copyOf(new byte[]{1}, 20));
-
     private State state = new State();
-    private BigInteger nextScoreAddr = scoreBase;
-    private BigInteger nextExtAddr = extBase;
+    private int nextScoreAddr = 1;
+    private int nextExtAddr = 1;
     private BigInteger value = BigInteger.valueOf(0);
     private BigInteger stepLimit = BigInteger.valueOf(1000000000);
     private State.Account current;
@@ -59,17 +56,23 @@ public class ServiceManager extends Proxy {
     }
 
     public Address newScoreAddress() {
-        var addr = new Address(nextScoreAddr.toByteArray());
-        nextScoreAddr = nextScoreAddr.add(BigInteger.ONE);
+        var addr = new Address(Arrays.copyOf(new byte[]{
+                1,
+                (byte)(nextScoreAddr>>8),
+                (byte)(nextScoreAddr)
+        }, 21));
+        nextScoreAddr++;
         return addr;
     }
 
     public Address newExternalAddress() {
-        var addr = Arrays.copyOf(new byte[]{0, 1}, 21);
-        var next = nextExtAddr.toByteArray();
-        System.arraycopy(next, 0, addr, 1, 20);
-        nextExtAddr = nextExtAddr.add(BigInteger.ONE);
-        return new Address(addr);
+        var addr = new Address(Arrays.copyOf(new byte[]{
+                0,
+                (byte) (nextExtAddr >> 8),
+                (byte) (nextExtAddr)
+        }, 21));
+        nextExtAddr++;
+        return addr;
     }
 
     public Contract deploy(Class<?> main, Object ... params) {
