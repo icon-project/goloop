@@ -84,8 +84,8 @@ public class ServiceManager extends Proxy {
         return origin;
     }
 
-    public Contract deploy(Class<?> main, Class<?>[] all, Object ... params) {
-        byte[] jar = makeJar(main.getName(), all);
+    public Contract deploy(Class<?>[] all, Object ... params) {
+        byte[] jar = makeJar(all[0].getName(), all);
         return doDeploy(jar, params);
     }
 
