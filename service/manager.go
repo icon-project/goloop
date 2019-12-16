@@ -214,7 +214,6 @@ func (m *manager) GetPatches(parent module.Transition, bi module.BlockInfo) modu
 			txs = append(txs, tx)
 		}
 	}
-	m.log.Debugf("GetPatches() pl = %+v", txs)
 	return transaction.NewTransactionListFromSlice(m.db, txs)
 }
 

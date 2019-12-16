@@ -15,8 +15,7 @@
 from typing import TYPE_CHECKING, Optional, Any
 
 from ..base.address import Address
-from ..base.exception import ExceptionCode, IconServiceBaseException, IconScoreException
-from ..icon_constant import Status
+from ..base.exception import ExceptionCode, IconServiceBaseException
 from ..iconscore.icon_score_constant import STR_FALLBACK
 from ..iconscore.icon_score_step import StepType
 from ..logger import Logger
@@ -68,11 +67,7 @@ class InternalCall(object):
             raise AssertionError('Used step must be lower than the given limit')
         context.step_counter.add_step(step_used)
 
-        if status == Status.SUCCESS:
+        if status == ExceptionCode.OK:
             return result
         else:
-            if status < ExceptionCode.SCORE_ERROR:
-                raise IconServiceBaseException(result, status)
-            else:
-                code = status - ExceptionCode.SCORE_ERROR
-                raise IconScoreException(result, code)
+            raise IconServiceBaseException.create(result, status)

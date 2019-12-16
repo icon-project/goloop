@@ -201,7 +201,7 @@ public class ChainScoreTest{
                 Constants.CHAINSCORE_ADDRESS, "getRevision", null).asInteger();
         if(score.addr.equals(Constants.GOV_ADDRESS)) {
 //            assertEquals(newRevision, revision);
-            for (int i = 0; i < 2; i++) {
+            for (int i = 1; i < 2; i++) {
                 // It allows to set a greater value than the current. test with same value & less value.
                 BigInteger wrongRevision = revision.subtract(BigInteger.valueOf(i));
                 params = new RpcObject.Builder()

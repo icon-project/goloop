@@ -19,6 +19,7 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/network"
+	"github.com/icon-project/goloop/server"
 	"github.com/icon-project/goloop/server/metric"
 	"github.com/icon-project/goloop/service"
 )
@@ -163,11 +164,11 @@ func RegisterInspectFunc(name string, f InspectFunc) error {
 func RegisterRest(n *Node) {
 	r := Rest{n}
 	ag := n.srv.AdminEchoGroup()
-	r.RegisterChainHandlers(ag.Group(UrlChain))
-	r.RegisterSystemHandlers(ag.Group(UrlSystem))
+	r.RegisterChainHandlers(ag.Group(UrlChain), true)
+	r.RegisterSystemHandlers(ag.Group(UrlSystem), true)
 
-	r.RegisterChainHandlers(n.cliSrv.e.Group(UrlChain))
-	r.RegisterSystemHandlers(n.cliSrv.e.Group(UrlSystem))
+	r.RegisterChainHandlers(n.cliSrv.e.Group(UrlChain), false)
+	r.RegisterSystemHandlers(n.cliSrv.e.Group(UrlSystem), false)
 	r.RegisterStatsHandlers(n.cliSrv.e.Group(UrlStats))
 
 	_ = RegisterInspectFunc("metrics", metric.Inspect)
@@ -175,21 +176,21 @@ func RegisterRest(n *Node) {
 	_ = RegisterInspectFunc("service", service.Inspect)
 }
 
-func (r *Rest) RegisterChainHandlers(g *echo.Group) {
+func (r *Rest) RegisterChainHandlers(g *echo.Group, readOnly bool) {
 	g.GET("", r.GetChains)
-	g.POST("", r.JoinChain)
+	g.POST("", r.JoinChain, server.Unauthorized(readOnly))
 
 	g.GET(UrlChainRes, r.GetChain, r.ChainInjector)
-	g.DELETE(UrlChainRes, r.LeaveChain, r.ChainInjector)
+	g.DELETE(UrlChainRes, r.LeaveChain, server.Unauthorized(readOnly), r.ChainInjector)
 	// TODO update chain configuration ex> Channel, Seed, ConcurrencyLevel ...
 	// g.PUT(UrlChainRes, r.UpdateChain, r.ChainInjector)
-	g.POST(UrlChainRes+"/start", r.StartChain, r.ChainInjector)
-	g.POST(UrlChainRes+"/stop", r.StopChain, r.ChainInjector)
-	g.POST(UrlChainRes+"/reset", r.ResetChain, r.ChainInjector)
-	g.POST(UrlChainRes+"/verify", r.VerifyChain, r.ChainInjector)
-	g.POST(UrlChainRes+"/import", r.ImportChain, r.ChainInjector)
+	g.POST(UrlChainRes+"/start", r.StartChain, server.Unauthorized(readOnly), r.ChainInjector)
+	g.POST(UrlChainRes+"/stop", r.StopChain, server.Unauthorized(readOnly), r.ChainInjector)
+	g.POST(UrlChainRes+"/reset", r.ResetChain, server.Unauthorized(readOnly), r.ChainInjector)
+	g.POST(UrlChainRes+"/verify", r.VerifyChain, server.Unauthorized(readOnly), r.ChainInjector)
+	g.POST(UrlChainRes+"/import", r.ImportChain, server.Unauthorized(readOnly), r.ChainInjector)
 	g.GET(UrlChainRes+"/configure", r.GetChainConfig, r.ChainInjector)
-	g.POST(UrlChainRes+"/configure", r.ConfigureChain, r.ChainInjector)
+	g.POST(UrlChainRes+"/configure", r.ConfigureChain, server.Unauthorized(readOnly), r.ChainInjector)
 }
 
 func (r *Rest) ChainInjector(next echo.HandlerFunc) echo.HandlerFunc {
@@ -363,10 +364,10 @@ func (r *Rest) ConfigureChain(ctx echo.Context) error {
 	return ctx.String(http.StatusOK, "OK")
 }
 
-func (r *Rest) RegisterSystemHandlers(g *echo.Group) {
+func (r *Rest) RegisterSystemHandlers(g *echo.Group, readOnly bool) {
 	g.GET("", r.GetSystem)
 	g.GET("/configure", r.GetSystemConfig)
-	g.POST("/configure", r.ConfigureSystem)
+	g.POST("/configure", r.ConfigureSystem, server.Unauthorized(readOnly))
 }
 
 func (r *Rest) GetSystem(ctx echo.Context) error {

@@ -128,7 +128,7 @@ class ServiceEngine(ContextContainer):
     @classmethod
     def _get_status_from_exception(cls, e: BaseException):
         if isinstance(e, IconServiceBaseException):
-            if e.code >= ExceptionCode.SCORE_ERROR or isinstance(e, IconScoreException):
+            if isinstance(e, IconScoreException):
                 tag = 'ScoreException'
             else:
                 tag = 'SystemException'

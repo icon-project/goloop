@@ -197,12 +197,23 @@ func (cc *callContext) addLogToFrame(address module.Address, indexed [][]byte, d
 	return nil
 }
 
+func (cc *callContext) validateStatus(status error) error {
+	if status != nil && cc.Revision() < module.Revision6 {
+		code, _ := scoreresult.StatusOf(status)
+		if code > module.StatusLimitRev5 && code <= module.StatusLimit {
+			status = scoreresult.WithStatus(status, module.StatusLimitRev5)
+		}
+	}
+	return status
+}
+
 func (cc *callContext) Call(handler ContractHandler) (error, *big.Int, *codec.TypedObj, module.Address) {
 	switch handler := handler.(type) {
 	case SyncContractHandler:
 		e := cc.pushFrame(handler, false)
 
 		status, stepUsed, result, scoreAddr := handler.ExecuteSync(cc)
+		status = cc.validateStatus(status)
 
 		cc.popFrame(e, status != nil)
 		return status, stepUsed, result, scoreAddr
@@ -212,6 +223,7 @@ func (cc *callContext) Call(handler ContractHandler) (error, *big.Int, *codec.Ty
 		if err := handler.ExecuteAsync(cc); err != nil {
 			cc.popFrame(e, true)
 			handler.Dispose()
+			err = cc.validateStatus(err)
 			return err, handler.StepLimit(), nil, nil
 		}
 		return cc.waitResult(handler.StepLimit())
@@ -235,16 +247,18 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (error, *big.Int, *codec.T
 		case msg := <-cc.waiter:
 			switch msg := msg.(type) {
 			case *callResultMessage:
-				if cc.handleResult(msg.status, msg.stepUsed,
+				status := cc.validateStatus(msg.status)
+				if cc.handleResult(status, msg.stepUsed,
 					msg.result, msg.addr) {
 					continue
 				}
-				return msg.status, msg.stepUsed, msg.result, msg.addr
+				return status, msg.stepUsed, msg.result, msg.addr
 			case *callRequestMessage:
 				switch handler := msg.handler.(type) {
 				case SyncContractHandler:
 					cc.pushFrame(handler, true)
 					status, used, result, addr := handler.ExecuteSync(cc)
+					status = cc.validateStatus(status)
 					if cc.handleResult(status, used, result, addr) {
 						continue
 					}
@@ -252,6 +266,7 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (error, *big.Int, *codec.T
 				case AsyncContractHandler:
 					cc.pushFrame(handler, true)
 					if err := handler.ExecuteAsync(cc); err != nil {
+						err = cc.validateStatus(err)
 						if cc.handleResult(err, handler.StepLimit(), nil, nil) {
 							continue
 						}

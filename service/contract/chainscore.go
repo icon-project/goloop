@@ -489,6 +489,13 @@ func (s *ChainScore) Install(param []byte) error {
 	revision := int(module.DefaultRevision)
 	if chain.Revision.Value != 0 {
 		revision = int(chain.Revision.Value)
+		if revision > module.MaxRevision {
+			return scoreresult.IllegalFormatError.Errorf(
+				"RevisionIsHigherMax(%d > %d)", revision, module.MaxRevision)
+		} else if revision > module.LatestRevision {
+			s.log.Warnf("Revision in genesis is higher than latest(%d > %d)",
+				revision, module.LatestRevision)
+		}
 	}
 	if err := scoredb.NewVarDB(as, state.VarRevision).Set(revision); err != nil {
 		return err
@@ -711,7 +718,7 @@ func (s *ChainScore) Ex_setRevision(code *common.HexInt) error {
 
 	as := s.cc.GetAccountState(state.SystemID)
 	r := scoredb.NewVarDB(as, state.VarRevision).Int64()
-	if code.Int64() <= r {
+	if code.Int64() < r {
 		return scoreresult.Errorf(StatusIllegalArgument,
 			"IllegalArgument(current=%#x,new=%s)", r, code)
 	}

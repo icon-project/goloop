@@ -35,7 +35,7 @@ class ExceptionCode(IntEnum):
 
     # Caused by revert call or user-defined exception.
     SCORE_ERROR = 32
-    END = 99
+    END = 999
 
     def __str__(self) -> str:
         return str(self.name).capitalize().replace('_', ' ')
@@ -58,6 +58,12 @@ class IconServiceBaseException(BaseException):
 
     def __str__(self):
         return f'{self.message} ({self.code})'
+
+    @classmethod
+    def create(cls, msg: str, code: int) -> 'IconServiceBaseException':
+        if ExceptionCode.SCORE_ERROR <= code <= ExceptionCode.END:
+            return IconScoreException(msg, index=code - ExceptionCode.SCORE_ERROR)
+        return IconServiceBaseException(msg, code=code + ExceptionCode.OK)
 
 
 class ScoreNotFoundException(IconServiceBaseException):

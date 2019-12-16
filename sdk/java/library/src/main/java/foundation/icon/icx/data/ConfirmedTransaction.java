@@ -154,6 +154,9 @@ public class ConfirmedTransaction implements Transaction {
         // So, stringValue is a decimal string or a 0x included hex string.("12345", "0x12345")
         // if it has 0x, the method converts it as hex otherwise decimal
 
+        if (value.isEmpty()) {
+            return null;
+        }
         String stringValue = value.asString();
         if (stringValue.startsWith(Bytes.HEX_PREFIX) ||
                 stringValue.startsWith("-" + Bytes.HEX_PREFIX)) {

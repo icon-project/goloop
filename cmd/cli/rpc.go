@@ -459,21 +459,20 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 		Short: "Coin Transfer Transaction",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			val, err := cmd.Flags().GetInt64("value")
-			if err != nil {
-				return err
+			var value common.HexInt
+			if _, ok := value.SetString(cmd.Flag("value").Value.String(), 0); !ok {
+				return fmt.Errorf("fail to parsing value %s",cmd.Flag("value").Value.String())
 			}
 			stepLimit := vc.GetInt64("step_limit")
 			nid, err := common.ParseInt(vc.GetString("nid"), 64)
 			if err != nil {
 				return err
 			}
-
 			param := &v3.TransactionParam{
 				Version:     jsonrpc.HexInt(common.FormatInt(jsonrpc.APIVersion3)),
 				FromAddress: jsonrpc.Address(rpcWallet.Address().String()),
 				ToAddress:   jsonrpc.Address(cmd.Flag("to").Value.String()),
-				Value:       jsonrpc.HexInt(common.FormatInt(val)),
+				Value:       jsonrpc.HexInt(value.String()),
 				StepLimit:   jsonrpc.HexInt(common.FormatInt(stepLimit)),
 				NetworkID:   jsonrpc.HexInt(common.FormatInt(nid)),
 				//Nonce:       "",
@@ -498,7 +497,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 	rootCmd.AddCommand(transferCmd)
 	transferFlags := transferCmd.Flags()
 	transferFlags.String("to", "", "ToAddress")
-	transferFlags.Int64("value", 0, "Value")
+	transferFlags.String("value", "", "Value")
 	transferFlags.String("message", "", "Message")
 	MarkAnnotationRequired(transferFlags, "to", "value")
 

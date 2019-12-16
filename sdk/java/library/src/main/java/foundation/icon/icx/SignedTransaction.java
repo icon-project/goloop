@@ -73,17 +73,16 @@ public class SignedTransaction {
      * Create the parameters including signature
      */
     private void createProperties(BigInteger stepLimit) {
-        RpcObject object = getTransactionProperties();
-
         RpcObject.Builder builder = new RpcObject.Builder();
-        if (stepLimit != null) {
-            builder.put("stepLimit", new RpcValue(stepLimit));
-        }
+        RpcObject object = getTransactionProperties();
         for (String key : object.keySet()) {
             builder.put(key, object.getItem(key));
         }
-
-        String signature = Base64.toBase64String(getSignature(object));
+        if (stepLimit != null) {
+            // override the existing stepLimit
+            builder.put("stepLimit", new RpcValue(stepLimit));
+        }
+        String signature = Base64.toBase64String(getSignature(builder.build()));
         builder.put("signature", new RpcValue(signature));
         this.properties = builder.build();
     }
@@ -156,7 +155,7 @@ public class SignedTransaction {
                 serializeArrayItems(builder, item.asArray());
                 builder.append("]");
             } else {
-                if (item == null) {
+                if (item == null || item.isNull()) {
                     builder.append("\\0");
                 } else {
                     builder.append(escape(item.asString()));

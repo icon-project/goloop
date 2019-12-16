@@ -1,6 +1,7 @@
 package scoreapi
 
 import (
+	"bytes"
 	"encoding/json"
 
 	"gopkg.in/vmihailenco/msgpack.v4"
@@ -106,6 +107,18 @@ func (info *Info) String() string {
 	jso, _ := info.ToJSON(3)
 	bs, _ := json.Marshal(jso)
 	return string(bs)
+}
+
+func (info *Info) Equal(info2 *Info) bool {
+	if info == info2 {
+		return true
+	}
+	if info == nil || info2 == nil {
+		return false
+	}
+	bs1, _ := info.Bytes()
+	bs2, _ := info2.Bytes()
+	return bytes.Equal(bs1, bs2)
 }
 
 func NewInfo(methods []*Method) *Info {

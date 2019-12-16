@@ -88,6 +88,9 @@ const (
 	StatusStackOverflow
 	StatusSkipTransaction
 	StatusReverted Status = 32
+
+	StatusLimitRev5 Status = 99
+	StatusLimit     Status = 999
 )
 
 const (
@@ -96,13 +99,14 @@ const (
 	Revision3
 	Revision4
 	Revision5
+	Revision6
 	RevisionReserved
 )
 
 const (
 	DefaultRevision = Revision4
 	MaxRevision     = RevisionReserved - 1
-	LatestRevision  = Revision5
+	LatestRevision  = Revision6
 )
 
 func (s Status) String() string {

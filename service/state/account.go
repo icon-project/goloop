@@ -224,6 +224,9 @@ func (s *accountSnapshotImpl) Equal(object trie.Object) bool {
 		if s.nextContract.Equal(s2.nextContract) == false {
 			return false
 		}
+		if s.apiInfo.Equal(s2.apiInfo) == false {
+			return false
+		}
 		if s.objGraph.Equal(s2.objGraph) == false {
 			return false
 		}

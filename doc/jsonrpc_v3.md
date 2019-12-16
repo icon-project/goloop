@@ -29,7 +29,7 @@ Below table shows the most common "VALUE types".
 Following is a list of failure codes.
 
 | Name                      | Value      | Description                                                                 |
-|:--------------------------|:-----------|:----------------------------------------------------------------------------|
+|:--------------------------|:----------:|:----------------------------------------------------------------------------|
 | UNKNOWN_FAILURE           | 1          | An uncategorized internal system error occurred.                            |
 | CONTRACT_NOT_FOUND        | 2          | There is no valid contract on the target address.                           |
 | METHOD_NOT_FOUND          | 3          | The specified method does not exist or is not usable.                       |
@@ -44,7 +44,7 @@ Following is a list of failure codes.
 | TIMEOUT_ERROR             | 12         | Timeout error                                                               |
 | STACK_OVERFLOW            | 13         | Too deep inter-call                                                         |
 | SKIP_TARANSACTION         | 14         | The transaction is not executed.                                            |
-| REVERTED                  | 32 ~ 99    | End with revert request                                                     |
+| REVERTED                  | 32 ~ 999   | End with revert request.(by Revision5, it was limited to 99)                |
 
 ## JSON-RPC Failure
 
@@ -89,7 +89,7 @@ Below table shows the default error messages for the error code. Actual message 
 |              | -31005          | Lack of resource | Resource is not available.                                                                                |
 |              | -31006          | Timeout          | Fail to get result of transaction in specified timeout                                                    |
 |              | -31007          | System timeout   | Fail to get result of transaction in system timeout (short time than specified)                           |
-| SCORE Error  | -30000 ~ -30099 |                  | Mapped errors from [Failure code](#failure-code) ( = -30000 - `value` )                                   |
+| SCORE Error  | -30000 ~ -30999 |                  | Mapped errors from [Failure code](#failure-code) ( = -30000 - `value` )                                   |
 
 
 ## JSON-RPC HTTP Header
