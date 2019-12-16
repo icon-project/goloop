@@ -8,7 +8,7 @@ cd $WORKDIR
 #refer ../py-deps/build.sh
 PYREQ_SHA=$(sha1sum ../../pyee/requirements.txt | cut -d ' ' -f 1)
 REPO_PY_DEPS=${REPO_PY_DEPS:-goloop/py-deps}
-TAG_PY_DEPS=${TAG_BY_DEPS:-$(docker images --filter="reference=$REPO_PY_DEPS" --filter="label=GOLOOP_PYREQ_SHA=${PYREQ_SHA}" --format="{{.Tag}}" | head -n 1)}
+TAG_PY_DEPS=${TAG_PY_DEPS:-$(docker images --filter="reference=$REPO_PY_DEPS" --filter="label=GOLOOP_PYREQ_SHA=${PYREQ_SHA}" --format="{{.Tag}}" | head -n 1)}
 if [ "${TAG_PY_DEPS}" != "" ] ;then
   TAG_SLUG=${TAG_PY_DEPS//\//__}
   BUILD_ARG_TAG_PY_DEPS="--build-arg=TAG_PY_DEPS=${TAG_SLUG} "

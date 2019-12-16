@@ -87,7 +87,7 @@ build:go:
     - build:pyee
     - build:go
 
-pack:gochian:
+pack:gochain:
   <<: *pack
   script:
     - sh docker/gochain/build.sh
