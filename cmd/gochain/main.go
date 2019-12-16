@@ -11,6 +11,7 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -82,6 +83,7 @@ var cfg GoChainConfig
 var cpuProfile, memProfile string
 var chainDir string
 var eeSocket string
+var engines string
 var modLevels map[string]string
 var lfCfg log.ForwarderConfig
 
@@ -130,6 +132,7 @@ func main() {
 	flag.StringToString("log_forwarder_options", nil, "LogForwarder options, comma-separated 'key=value'")
 	flag.Int64Var(&cfg.DefWaitTimeout, "default_wait_timeout", 0, "Default wait timeout in milli-second (0: disable)")
 	flag.Int64Var(&cfg.MaxWaitTimeout, "max_wait_timeout", 0, "Max wait timeout in milli-second (0:uses same value of default_wait_timeout)")
+	flag.StringVar(&engines, "engines", "python", "Execution engines, comma-separated (python,java)")
 
 	cmd.Run = Execute
 	cmd.Execute()
@@ -397,17 +400,12 @@ func Execute(cmd *cobra.Command, args []string) {
 	}
 	defer nt.Close()
 
-	ee, err := eeproxy.NewPythonEE(logger)
+	ee, err := eeproxy.AllocEngines(logger, strings.Split(engines, ",")...)
 	if err != nil {
-		log.Panicf("FAIL to create PythonEE err=%+v", err)
+		log.Panicf("FAIL to create engines err=%+v", err)
 	}
 
-	jee, err := eeproxy.NewJavaEE(logger)
-	if err != nil {
-		log.Panicf("FAIL to create JavaEE err=%+v", err)
-	}
-
-	pm, err := eeproxy.NewManager("unix", cfg.EESocket, logger, ee, jee)
+	pm, err := eeproxy.NewManager("unix", cfg.EESocket, logger, ee...)
 	if err != nil {
 		log.Panicln("FAIL to start EEManager")
 	}

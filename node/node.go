@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/icon-project/goloop/chain"
@@ -551,16 +552,12 @@ func NewNode(
 	}
 	srv := server.NewManager(cfg.RPCAddr, cfg.RPCDump, rcfg.RPCIncludeDebug, rcfg.RPCDefaultChannel, w, l)
 
-	ee, err := eeproxy.NewPythonEE(l)
+	ee, err := eeproxy.AllocEngines(l, strings.Split(cfg.Engines, ",")...)
 	if err != nil {
-		log.Panicf("fail to create PythonEE err=%+v", err)
-	}
-	jee, err := eeproxy.NewJavaEE(l)
-	if err != nil {
-		log.Panicf("fail to create JavaEE err=%+v", err)
+		log.Panicf("fail to create engines err=%+v", err)
 	}
 	eeSocket := cfg.ResolveAbsolute(cfg.EESocket)
-	pm, err := eeproxy.NewManager("unix", eeSocket, l, ee, jee)
+	pm, err := eeproxy.NewManager("unix", eeSocket, l, ee...)
 	if err != nil {
 		log.Panicf("fail to start EEManager err=%+v", err)
 	}

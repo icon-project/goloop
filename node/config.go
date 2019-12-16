@@ -18,12 +18,13 @@ const (
 
 type StaticConfig struct {
 	// static
-	CliSocket         string `json:"node_sock"` // relative path
-	P2PAddr           string `json:"p2p"`
-	P2PListenAddr     string `json:"p2p_listen"`
-	RPCAddr           string `json:"rpc_addr"`
-	RPCDump           bool   `json:"rpc_dump"`
-	EESocket          string `json:"ee_socket"`
+	CliSocket     string `json:"node_sock"` // relative path
+	P2PAddr       string `json:"p2p"`
+	P2PListenAddr string `json:"p2p_listen"`
+	RPCAddr       string `json:"rpc_addr"`
+	RPCDump       bool   `json:"rpc_dump"`
+	EESocket      string `json:"ee_socket"`
+	Engines       string `json:"engines"`
 
 	BaseDir  string `json:"node_dir"`
 	FilePath string `json:"-"` // absolute path
@@ -105,8 +106,8 @@ func (c *RuntimeConfig) save() error {
 
 func loadRuntimeConfig(baseDir string) (*RuntimeConfig, error) {
 	cfg := &RuntimeConfig{
-		EEInstances : DefaultEEInstances,
-		FilePath: path.Join(baseDir, "rconfig.json"),
+		EEInstances: DefaultEEInstances,
+		FilePath:    path.Join(baseDir, "rconfig.json"),
 	}
 	if err := cfg.load(); err != nil {
 		if os.IsNotExist(err) {

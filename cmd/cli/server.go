@@ -104,6 +104,7 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 	rootPFlags.String("log_forwarder_level", "info", "LogForwarder level")
 	rootPFlags.String("log_forwarder_name", "", "LogForwarder name")
 	rootPFlags.StringToString("log_forwarder_options", nil, "LogForwarder options, comma-separated 'key=value'")
+	rootPFlags.String("engines", "python", "Execution engines, comma-separated (python,java)")
 
 	BindPFlags(vc, rootCmd.PersistentFlags())
 
