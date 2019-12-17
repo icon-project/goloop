@@ -1,15 +1,11 @@
 package contract
 
 import (
-	"archive/zip"
-	"bytes"
 	"container/list"
 	"encoding/hex"
-	"io/ioutil"
 	"math/big"
 	"os"
 	"path/filepath"
-	"strconv"
 	"sync"
 	"time"
 
@@ -65,9 +61,7 @@ type (
 )
 
 const (
-	tmpRoot                        = "tmp"
-	contractPythonRootFile         = "package.json"
-	csInProgress           cStatus = iota
+	csInProgress cStatus = iota
 	csComplete
 )
 
@@ -163,95 +157,21 @@ func (cm *contractManager) GetCallHandler(from, to module.Address,
 	}
 }
 
-const tryTmpNum = 10
-
 // if path does not exist, make the path
-func (cm *contractManager) storeContract(eeType string, code []byte, codeHash []byte, sc *storageCache) (string, error) {
-	var path string
+func (cm *contractManager) storeContract(eeType state.EEType,
+	code []byte, codeHash []byte, sc *storageCache) (string, error) {
+	// check directory with hash, if it exists return path, nil
 	defer sc.timer.Stop()
-	contractDir := "0x" + hex.EncodeToString(codeHash)
-	path = filepath.Join(cm.storeRoot, contractDir)
+	dir := "0x" + hex.EncodeToString(codeHash)
+	path := filepath.Join(cm.storeRoot, dir)
+	cm.log.Debugf("[contractmanager], storeContract dir(%s), path(%s)\n", dir, path)
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		return path, nil
 	}
 
-	var tmpPath string
-	var i int
-	for i = 0; i < tryTmpNum; i++ {
-		tmpPath = filepath.Join(cm.storeRoot, tmpRoot, contractDir+strconv.Itoa(i))
-		if _, err := os.Stat(tmpPath); !os.IsNotExist(err) {
-			if err := os.RemoveAll(tmpPath); err != nil {
-				break
-			}
-		} else {
-			break
-		}
-	}
-	if i == tryTmpNum {
-		return "", errors.CriticalIOError.Errorf("Fail to create temporary directory")
-	}
-	if err := os.MkdirAll(tmpPath, 0755); err != nil {
-		return "", errors.WithCode(err, errors.CriticalIOError)
-	}
-	zipReader, err :=
-		zip.NewReader(bytes.NewReader(code), int64(len(code)))
+	err := eeType.Store(path, code, cm.log)
 	if err != nil {
-		return "", errors.WithCode(err, errors.CriticalIOError)
-	}
-
-	switch eeType {
-	case "python":
-		findRoot := false
-		rootDir := ""
-		for _, zipFile := range zipReader.File {
-			if info := zipFile.FileInfo(); info.IsDir() {
-				continue
-			}
-			if findRoot == false &&
-				filepath.Base(zipFile.Name) == contractPythonRootFile {
-				rootDir = filepath.Dir(zipFile.Name)
-				findRoot = true
-			}
-			storePath := filepath.Join(tmpPath, zipFile.Name)
-			storeDir := filepath.Dir(storePath)
-			if _, err := os.Stat(storeDir); os.IsNotExist(err) {
-				os.MkdirAll(storeDir, 0755)
-			}
-			reader, err := zipFile.Open()
-			if err != nil {
-				return "", scoreresult.IllegalFormatError.Wrap(err, "Fail to open zip file")
-			}
-			buf, err := ioutil.ReadAll(reader)
-			if err != nil {
-				reader.Close()
-				return "", scoreresult.IllegalFormatError.Wrap(err, "Fail to read zip file")
-			}
-			if err = ioutil.WriteFile(storePath, buf, 0755); err != nil {
-				return "", errors.CriticalIOError.Wrapf(err, "FailToWriteFile(name=%s)", storePath)
-			}
-			err = reader.Close()
-			if err != nil {
-				return "", errors.CriticalIOError.Wrap(err, "Fail to close zip file")
-			}
-		}
-		if findRoot == false {
-			os.RemoveAll(tmpPath)
-			return "", scoreresult.IllegalFormatError.Errorf(
-				"Root file does not exist(required:%s)\n", contractPythonRootFile)
-		}
-		contractRoot := filepath.Join(tmpPath, rootDir)
-		sc.lock.Lock()
-		if sc.status == csComplete {
-			sc.lock.Unlock()
-			os.Remove(contractRoot)
-			return "", nil
-		}
-		sc.lock.Unlock()
-		if err := os.Rename(contractRoot, path); err != nil {
-			return "", errors.CriticalIOError.Wrapf(err, "FailToRenameTo(path=%s)", path)
-		}
-		os.RemoveAll(tmpPath)
-	default:
+		return "", err
 	}
 
 	return path, nil
@@ -300,7 +220,7 @@ func (cm *contractManager) PrepareContractStore(
 	cm.lock.Unlock()
 
 	go func() {
-		path, err := cm.storeContract(contract.EEType(), codeBuf, codeHash, sc)
+		path, err := cm.storeContract(state.EEType(contract.EEType()), codeBuf, codeHash, sc)
 		if sc.complete(path, err) == false {
 			os.RemoveAll(path)
 		}
@@ -330,10 +250,6 @@ func NewContractManager(db db.Database, contractDir string, log log.Logger) (Con
 		if err := os.MkdirAll(storeRoot, 0755); err != nil {
 			return nil, errors.UnknownError.Wrapf(err, "FAIL to make dir(%s)", contractDir)
 		}
-	}
-	tmp := filepath.Join(storeRoot, tmpRoot)
-	if _, err := os.Stat(tmp); !os.IsNotExist(err) {
-		os.RemoveAll(tmp)
 	}
 	return &contractManager{db: db, storeRoot: storeRoot,
 			storageCache: make(map[string]*storageCache), log: log},

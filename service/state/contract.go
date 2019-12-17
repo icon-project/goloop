@@ -49,6 +49,7 @@ const (
 
 const (
 	CTAppZip    = "application/zip"
+	CTAppJava   = "application/java"
 	CTAppSystem = "application/x.score.system"
 )
 

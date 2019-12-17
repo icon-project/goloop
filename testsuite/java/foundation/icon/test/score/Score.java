@@ -30,9 +30,10 @@ public class Score {
         return install(service, chain, wallet, contentPath, params, Constants.DEFAULT_STEP_LIMIT);
     }
 
-    public static Address install(IconService service, Env.Chain chain, Wallet wallet, String contentPath, RpcObject params, long stepLimit)
+    public static Address install(IconService service,
+                                  Env.Chain chain, Wallet wallet, String contentPath, RpcObject params, long stepLimit, String contentType)
             throws IOException, TransactionFailureException, ResultTimeoutException {
-        Bytes txHash = Utils.deployScore(service, chain.networkId, wallet, Constants.CHAINSCORE_ADDRESS, contentPath, params, stepLimit);
+        Bytes txHash = Utils.deployScore(service, chain.networkId, wallet, Constants.CHAINSCORE_ADDRESS, contentPath, params, stepLimit, contentType);
         TransactionResult result = Utils.getTransactionResult(service, txHash, Constants.DEFAULT_WAITING_TIME);
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new TransactionFailureException(result.getFailure());
@@ -46,6 +47,11 @@ public class Score {
             throw ex;
         }
         return new Address(result.getScoreAddress());
+    }
+
+    public static Address install(IconService service, Env.Chain chain, Wallet wallet, String contentPath, RpcObject params, long stepLimit)
+            throws IOException, TransactionFailureException, ResultTimeoutException {
+        return install(service, chain, wallet, contentPath, params, stepLimit, Constants.CONTENT_TYPE_ZIP);
     }
 
     public void update(IconService service, Env.Chain chain, Wallet wallet, String contentPath, RpcObject params)

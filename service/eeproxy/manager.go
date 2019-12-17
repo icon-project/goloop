@@ -301,7 +301,7 @@ func NewManager(net, addr string, l log.Logger, engines ...Engine) (Manager, err
 	em := new(executorManager)
 	srv.SetHandler(em)
 	em.server = srv
-	em.log = l.WithFields(log.Fields{log.FieldKeyModule: "eeproxy"})
+	em.log = l.WithFields(log.Fields{log.FieldKeyModule: "EEP"})
 
 	for i := 0; i < len(em.executorStates); i++ {
 		em.executorStates[i].waiter = sync.NewCond(&em.lock)

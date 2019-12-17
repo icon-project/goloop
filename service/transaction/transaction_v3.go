@@ -149,6 +149,13 @@ func (tx *transactionV3) Version() int {
 	return module.TransactionVersion3
 }
 
+func (tx *transactionV3) isDeployType(cType string) bool {
+	if cType == state.CTAppZip || cType == state.CTAppJava {
+		return true
+	}
+	return false
+}
+
 func (tx *transactionV3) Verify() error {
 	// value >= 0
 	if tx.Value != nil && tx.Value.Sign() < 0 {
@@ -185,7 +192,8 @@ func (tx *transactionV3) Verify() error {
 				Params      json.RawMessage `json:"params"`
 			}
 			var jso dataDeployJSON
-			if json.Unmarshal(tx.Data, &jso) != nil || jso.ContentType == "" ||
+			if json.Unmarshal(tx.Data, &jso) != nil ||
+				tx.isDeployType(jso.ContentType) == false ||
 				jso.Content == nil {
 				return InvalidTxValue.Errorf("InvalidDeployData(%s)", string(tx.Data))
 			}

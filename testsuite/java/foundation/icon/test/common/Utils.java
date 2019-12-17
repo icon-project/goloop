@@ -146,9 +146,15 @@ public class Utils {
     }
 
     public static Bytes deployScore(IconService iconService, int networkId,
-            Wallet fromWallet, Address to, String contentPath, RpcObject params, long stepLimit)
-                throws IOException {
-        byte[] content = zipContent(contentPath);
+                                    Wallet fromWallet, Address to, String contentPath, RpcObject params, long stepLimit, String contentType)
+            throws IOException {
+        byte[] content = null;
+        if(contentType.equals(Constants.CONTENT_TYPE_JAVA)) {
+            content = Files.readAllBytes(new File(contentPath).toPath());
+        } else {
+            content = zipContent(contentPath);
+        }
+
         Transaction transaction = TransactionBuilder.newBuilder()
                 .nid(BigInteger.valueOf(networkId))
                 .from(fromWallet.getAddress())
@@ -156,12 +162,19 @@ public class Utils {
                 .stepLimit(BigInteger.valueOf(stepLimit))
                 .timestamp(getMicroTime())
                 .nonce(new BigInteger("1"))
-                .deploy(Constants.CONTENT_TYPE, content)
+                .deploy(contentType, content)
                 .params(params)
                 .build();
 
         SignedTransaction signedTransaction = new SignedTransaction(transaction, fromWallet);
         return iconService.sendTransaction(signedTransaction).execute();
+    }
+
+    public static Bytes deployScore(IconService iconService, int networkId,
+            Wallet fromWallet, Address to, String contentPath, RpcObject params, long stepLimit)
+                throws IOException {
+        return deployScore(iconService, networkId, fromWallet, to,
+                contentPath, params, stepLimit, Constants.CONTENT_TYPE_ZIP);
     }
 
     public static TransactionResult getTransactionResult(IconService iconService, Bytes txHash, long waitingTime)
@@ -229,7 +242,7 @@ public class Utils {
                 .nid(BigInteger.valueOf(nid))
                 .from(fromWallet.getAddress())
                 .to(scoreAddr)
-                .stepLimit(new BigInteger("200000"))
+                .stepLimit(new BigInteger("1000000"))
                 .timestamp(new BigInteger(Long.toString(timestamp)))
                 .nonce(new BigInteger("1"))
                 .value(BigInteger.valueOf(value))

@@ -47,6 +47,7 @@ test methods
 
 @Tag(Constants.TAG_GOVERNANCE)
 public class DeployTest {
+    private static final String PACKAGE_JSON = "package.json";
     private static IconService iconService;
     private static Env.Chain chain;
     private static GovScore govScore;
@@ -400,7 +401,7 @@ public class DeployTest {
             }
         }
         else {
-            if(!root && source.getName().equals(Constants.SCORE_PYTHON_ROOT)) {
+            if (!root && source.getName().equals(PACKAGE_JSON)) {
                 return;
             }
             ZipEntry ze = new ZipEntry(zipPath + source.getName());
@@ -428,7 +429,7 @@ public class DeployTest {
                 .stepLimit(BigInteger.valueOf(3000))
                 .timestamp(Utils.getMicroTime())
                 .nonce(new BigInteger("1"))
-                .deploy(Constants.CONTENT_TYPE, content);
+                .deploy(Constants.CONTENT_TYPE_ZIP, content);
         if(params != null) {
             builder = builder.params(params);
         }
@@ -487,7 +488,7 @@ public class DeployTest {
             }
         }
         else {
-            if(source.getName().equals(Constants.SCORE_PYTHON_ROOT)) {
+            if (source.getName().equals(PACKAGE_JSON)) {
                 return;
             }
             bos.write(Files.readAllBytes(source.toPath()));
@@ -650,7 +651,7 @@ public class DeployTest {
                     .stepLimit(BigInteger.valueOf(Constants.DEFAULT_STEP_LIMIT))
                     .timestamp(Utils.getMicroTime())
                     .nonce(new BigInteger("1"))
-                    .deploy(Constants.CONTENT_TYPE, content)
+                    .deploy(Constants.CONTENT_TYPE_ZIP, content)
                     .params(params)
                     .build();
 
