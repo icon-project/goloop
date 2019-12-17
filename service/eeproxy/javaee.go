@@ -89,7 +89,7 @@ func (e *javaExecutionEngine) Init(net, addr string) error {
 }
 
 func (e *javaExecutionEngine) runInstances() error {
-	e.logger.Debugf("runInstances e.target(%d), e.instances(%d)\n", e.target, e.instances)
+	e.logger.Debugf("runInstances e.target(%d), e.instances(%d)\n", e.target, len(e.instances))
 	for e.target > len(e.instances) {
 		uid := newUID()
 		e.logger.Debugf("runInstances with uid(%s)\n", uid)
@@ -119,6 +119,7 @@ func (e *javaExecutionEngine) SetInstances(n int) error {
 }
 
 func (e *javaExecutionEngine) OnAttach(uid string) bool {
+	e.logger.Debugf("OnAttach uid(%s)\n", uid)
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
@@ -132,16 +133,13 @@ func (e *javaExecutionEngine) OnAttach(uid string) bool {
 
 // restart EE
 func (e *javaExecutionEngine) Kill(uid string) (bool, error) {
+	e.logger.Debugf("Kill uid(%s)\n", uid)
 	e.lock.Lock()
 	defer e.lock.Unlock()
 
 	if is, ok := e.instances[uid]; ok {
-		e.term(is)
-		if err := e.managerProxy.Kill(uid); err != nil {
-			return false, err
-		}
-		if err := e.runInstances(); err != nil {
-			return false, err
+		if err := e.managerProxy.Kill(is.uid); err != nil {
+			return true, err
 		}
 		return true, nil
 	}
@@ -161,7 +159,6 @@ func (e *javaExecutionEngine) OnConnect(conn ipc.Connection, version uint16) err
 	e.timer.Stop()
 
 	e.conn = conn
-	e.logger.Debugf("javaEE OnConnect")
 	e.managerProxy, err = newManagerProxy(version, conn, e, e.logger)
 	if err == nil {
 		err = e.runInstances()
@@ -175,7 +172,7 @@ func (e *javaExecutionEngine) OnEnd(uid string) bool {
 	defer e.lock.Unlock()
 
 	if is, ok := e.instances[uid]; ok {
-		e.logger.Infof("uid(%s) status(%s)\n", uid, is.status)
+		e.logger.Infof("OnEnd uid(%s) status(%s)\n", uid, is.status)
 		if is.status == instanceOnline {
 			e.term(is)
 			if err := e.runInstances(); err != nil {
