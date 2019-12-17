@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@Tag(Constants.TAG_GOVERNANCE)
+@Tag(Constants.TAG_JAVA_SCORE)
 class SimpleJavaScore {
     private static IconService iconService;
     private static Env.Chain chain;

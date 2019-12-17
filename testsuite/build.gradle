@@ -161,6 +161,20 @@ task testNormal(type: ChainTest, overwrite: true) {
     }
 }
 
+task testJavaScore(type: ChainTest, overwrite: true) {
+    useJUnitPlatform {
+        includeTags "javaScore"
+    }
+    gsDir = "./data/genesisStorage/genesis_normal.json"
+    envFile = "./data/govEnv.properties"
+    configFile = "./data/govConfig.json"
+    logFile = "./javaee.log"
+    chainDir = ".chain/javaee"
+
+    dependsOn cleanTest
+    testLogging.showStandardStreams = true
+}
+
 task test(overwrite: true) {
     dependsOn 'testNormal', 'testGovernance'
 }
