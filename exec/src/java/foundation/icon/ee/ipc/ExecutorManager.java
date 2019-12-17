@@ -49,8 +49,7 @@ public class ExecutorManager {
     }
 
     private void killExecutor(String uuid) throws IOException {
-        logger.trace("[killExecutor]");
-        TransactionExecutor executor = execMap.remove(uuid);
+        TransactionExecutor executor = execMap.get(uuid);
         if (executor != null) {
             logger.trace("disconnect executor uuid={}", uuid);
             executor.disconnect();
@@ -71,15 +70,15 @@ public class ExecutorManager {
                         null);
                 execMap.put(uuid, exec);
                 exec.connectAndRunLoop();
-            } catch (IOException e) {
-                logger.warn("executor terminated ", e);
+            } catch (Exception e) {
+                System.err.println("Executor terminated: " + e);
             } finally {
                 if (execMap.remove(uuid) != null) {
                     try {
                         proxy.end(uuid);
                     }
                     catch (IOException ex) {
-                        logger.warn("Failed to send END message ", ex);
+                        System.err.println("Failed to send END message: " + ex);
                     }
                 }
             }

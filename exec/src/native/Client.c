@@ -137,6 +137,7 @@ JNIEXPORT void JNICALL Java_foundation_icon_ee_ipc_Client_close
   (JNIEnv *env, jclass cls, jint fd)
 {
     int res;
+    shutdown(fd, SHUT_RDWR);
     RESTARTABLE(close(fd), res);
 }
 
