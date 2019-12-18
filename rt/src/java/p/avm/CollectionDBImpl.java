@@ -2,15 +2,16 @@ package p.avm;
 
 import i.*;
 import org.aion.avm.RuntimeMethodFeeSchedule;
+import s.java.lang.Class;
 import s.java.lang.String;
 
 public class CollectionDBImpl extends DBImplBase implements CollectionDB {
-    public CollectionDBImpl(int type, String id) {
-        super(type, id);
+    public CollectionDBImpl(int type, String id, Class<?> vc) {
+        super(type, id, vc);
     }
 
-    public CollectionDBImpl(byte[] id) {
-        super(id);
+    public CollectionDBImpl(byte[] id, Class<?> vc) {
+        super(id, vc);
     }
 
     public CollectionDBImpl(Void ignore, int readIndex) {
@@ -27,15 +28,15 @@ public class CollectionDBImpl extends DBImplBase implements CollectionDB {
         s.setTyped(getStorageKey(key), value);
     }
 
-    public void avm_set(IObject key, Value value) {
+    public void avm_set(IObject key, IObject value) {
         IDBStorage s = chargeAndGetDBStorage(RuntimeMethodFeeSchedule.DictDB_avm_putValue);
-        s.setValue(getStorageKey(key), value);
+        s.setBytes(getStorageKey(key), encode(value));
     }
 
     public IObject avm_at(IObject key) {
         IInstrumentation.attachedThreadInstrumentation.get()
                 .chargeEnergy(RuntimeMethodFeeSchedule.DictDB_avm_get);
-        return (IObject) new CollectionDBImpl(getSubDBID(key));
+        return (IObject) new CollectionDBImpl(getSubDBID(key), leafValue);
     }
 
     public IObject _avm_getTyped(IObject key) {
@@ -43,13 +44,15 @@ public class CollectionDBImpl extends DBImplBase implements CollectionDB {
         return s.getTyped(getStorageKey(key));
     }
 
-    public Value avm_get(IObject key) {
-        return avm_get(key, null);
+    public IObject avm_get(IObject key) {
+        IDBStorage s = chargeAndGetDBStorage(RuntimeMethodFeeSchedule.DictDB_avm_getValue);
+        return decode(s.getBytes(getStorageKey(key)));
     }
 
-    public Value avm_get(IObject key, ValueBuffer out) {
+    public IObject avm_getOrDefault(IObject key, IObject defaultValue) {
         IDBStorage s = chargeAndGetDBStorage(RuntimeMethodFeeSchedule.DictDB_avm_getValue);
-        return s.getValue(getStorageKey(key), out);
+        var out = decode(s.getBytes(getStorageKey(key)));
+        return (out != null) ? out : defaultValue;
     }
 
     public void _avm_add(IObject value) {
@@ -59,10 +62,10 @@ public class CollectionDBImpl extends DBImplBase implements CollectionDB {
         s.setArrayLength(getStorageKey(), sz + 1);
     }
 
-    public void avm_add(Value value) {
+    public void avm_add(IObject value) {
         IDBStorage s = chargeAndGetDBStorage(RuntimeMethodFeeSchedule.ArrayDB_avm_addValue);
         int sz = s.getArrayLength(getStorageKey());
-        s.setValue(getStorageKey(sz), value);
+        s.setBytes(getStorageKey(sz), encode(value));
         s.setArrayLength(getStorageKey(), sz + 1);
     }
 
@@ -75,13 +78,13 @@ public class CollectionDBImpl extends DBImplBase implements CollectionDB {
         s.setTyped(getStorageKey(sz), value);
     }
 
-    public void avm_set(int index, Value value) {
+    public void avm_set(int index, IObject value) {
         IDBStorage s = chargeAndGetDBStorage(RuntimeMethodFeeSchedule.ArrayDB_avm_setValue);
         int sz = s.getArrayLength(getStorageKey());
         if (index >= sz) {
             throw new InvalidDBAccessException();
         }
-        s.setValue(getStorageKey(sz), value);
+        s.setBytes(getStorageKey(sz), encode(value));
     }
 
     public void avm_removeLast() {
@@ -90,7 +93,7 @@ public class CollectionDBImpl extends DBImplBase implements CollectionDB {
         if (sz <= 0) {
             throw new InvalidDBAccessException();
         }
-        s.setValue(getStorageKey(sz), null);
+        s.setBytes(getStorageKey(sz), null);
         s.setArrayLength(getStorageKey(), sz - 1);
     }
 
@@ -105,19 +108,15 @@ public class CollectionDBImpl extends DBImplBase implements CollectionDB {
         return v;
     }
 
-    public Value avm_pop(ValueBuffer out) {
+    public IObject avm_pop() {
         IDBStorage s = chargeAndGetDBStorage(RuntimeMethodFeeSchedule.ArrayDB_avm_popValue);
         int sz = s.getArrayLength(getStorageKey());
         if (sz <= 0) {
             throw new InvalidDBAccessException();
         }
-        var o = s.getValue(getStorageKey(sz - 1), out);
+        var o = decode(s.getBytes(getStorageKey(sz - 1)));
         s.setArrayLength(getStorageKey(), sz - 1);
         return o;
-    }
-
-    public Value avm_pop() {
-        return avm_pop(null);
     }
 
     public IObject _avm_getTyped(int index) {
@@ -129,17 +128,13 @@ public class CollectionDBImpl extends DBImplBase implements CollectionDB {
         return s.getTyped(getStorageKey(index));
     }
 
-    public Value avm_get(int index, ValueBuffer out) {
+    public IObject avm_get(int index) {
         IDBStorage s = chargeAndGetDBStorage(RuntimeMethodFeeSchedule.ArrayDB_avm_getValue);
         int sz = s.getArrayLength(getStorageKey());
         if (index >= sz || index < 0) {
             throw new InvalidDBAccessException();
         }
-        return s.getValue(getStorageKey(index), out);
-    }
-
-    public Value avm_get(int index) {
-        return avm_get(index, null);
+        return decode(s.getBytes(getStorageKey(index)));
     }
 
     public int avm_size() {

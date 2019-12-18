@@ -4,11 +4,12 @@ import i.DBImplBase;
 import i.IDBStorage;
 import i.IObject;
 import org.aion.avm.RuntimeMethodFeeSchedule;
+import s.java.lang.Class;
 import s.java.lang.String;
 
 public class VarDBImpl extends DBImplBase implements VarDB {
-    public VarDBImpl(String id) {
-        super(TYPE_VAR_DB, id);
+    public VarDBImpl(String id, Class<?> vc) {
+        super(TYPE_VAR_DB, id, vc);
     }
 
     public VarDBImpl(Void ignore, int readIndex) {
@@ -20,9 +21,9 @@ public class VarDBImpl extends DBImplBase implements VarDB {
         s.setTyped(getStorageKey(), value);
     }
 
-    public void avm_set(Value value) {
+    public void avm_set(IObject value) {
         IDBStorage s = chargeAndGetDBStorage(RuntimeMethodFeeSchedule.VarDB_avm_putValue);
-        s.setValue(getStorageKey(), value);
+        s.setBytes(getStorageKey(), encode(value));
     }
 
     public IObject _avm_getTyped() {
@@ -30,12 +31,14 @@ public class VarDBImpl extends DBImplBase implements VarDB {
         return s.getTyped(getStorageKey());
     }
 
-    public Value avm_get(ValueBuffer out) {
+    public IObject avm_get() {
         IDBStorage s = chargeAndGetDBStorage(RuntimeMethodFeeSchedule.VarDB_avm_getValue);
-        return s.getValue(getStorageKey(), out);
+        return decode(s.getBytes(getStorageKey()));
     }
 
-    public Value avm_get() {
-        return avm_get(null);
+    public IObject avm_getOrDefault(IObject defaultValue) {
+        IDBStorage s = chargeAndGetDBStorage(RuntimeMethodFeeSchedule.VarDB_avm_getValue);
+        var out = decode(s.getBytes(getStorageKey()));
+        return (out != null) ? out : defaultValue;
     }
 }

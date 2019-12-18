@@ -1,21 +1,24 @@
 package i;
 
 import foundation.icon.ee.utils.Crypto;
+import foundation.icon.ee.utils.ValueCodec;
 
 public class DBImplBase extends s.java.lang.Object {
     public static final int TYPE_ARRAY_DB = 0;
     public static final int TYPE_DICT_DB = 1;
     public static final int TYPE_VAR_DB = 2;
 
-    byte[] id;
-    byte[] hash;
+    private byte[] id;
+    private byte[] hash;
+    protected s.java.lang.Class<?> leafValue;
 
-    public DBImplBase(int type, s.java.lang.String id) {
-        this.id = catEncodedKey(new byte[]{(byte)type}, id);
+    public DBImplBase(int type, s.java.lang.String id, s.java.lang.Class<?> vc) {
+        this(catEncodedKey(new byte[]{(byte) type}, id), vc);
     }
 
-    public DBImplBase(byte[] id) {
+    public DBImplBase(byte[] id, s.java.lang.Class<?> vc) {
         this.id = id;
+        this.leafValue = vc;
     }
 
     public DBImplBase(Void ignore, int readIndex) {
@@ -67,13 +70,23 @@ public class DBImplBase extends s.java.lang.Object {
         return catEncodedKey(id, key);
     }
 
+    public byte[] encode(IObject obj) {
+        return ValueCodec.encode(obj);
+    }
+
+    public IObject decode(byte[] raw) {
+        return ValueCodec.decode(raw, leafValue);
+    }
+
     public void deserializeSelf(java.lang.Class<?> firstRealImplementation, IObjectDeserializer deserializer) {
         super.deserializeSelf(DBImplBase.class, deserializer);
         this.id = CodecIdioms.deserializeByteArray(deserializer);
+        this.leafValue = (s.java.lang.Class<?>) deserializer.readObject();
     }
 
     public void serializeSelf(java.lang.Class<?> firstRealImplementation, IObjectSerializer serializer) {
         super.serializeSelf(DBImplBase.class, serializer);
         CodecIdioms.serializeByteArray(serializer, this.id);
+        serializer.writeObject(this.leafValue);
     }
 }

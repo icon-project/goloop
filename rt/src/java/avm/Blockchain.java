@@ -220,19 +220,19 @@ public final class Blockchain {
     // Collection DB
     //===================
 
-    public static<K, V> NestingDictDB<K, V> newNestingDictDB(String id) {
+    public static<K, V> NestingDictDB<K, V> newNestingDictDB(String id, Class<?> leafValueClass) {
         return null;
     }
 
-    public static<K> DictDB<K> newDictDB(String id) {
+    public static<K, V> DictDB<K, V> newDictDB(String id, Class<?> valueClass) {
         return null;
     }
 
-    public static ArrayDB newArrayDB(String id) {
+    public static<E> ArrayDB<E> newArrayDB(String id, Class<?> valueClass) {
         return null;
     }
 
-    public static VarDB newVarDB(String id) {
+    public static<E> VarDB<E> newVarDB(String id, Class<?> valueClass) {
         return null;
     }
 

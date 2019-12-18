@@ -5,6 +5,7 @@ import p.avm.Address;
 import p.avm.CollectionDB;
 import p.avm.VarDB;
 import s.java.math.BigInteger;
+import s.java.lang.Class;
 import s.java.lang.String;
 
 /**
@@ -141,12 +142,12 @@ public interface IBlockchainRuntime {
     /**
      * Returns a new collection DB instance
      */
-    CollectionDB avm_newCollectionDB(int type, String id);
+    CollectionDB avm_newCollectionDB(int type, String id, Class<?> vc);
 
     /**
      * Returns a new var DB instance
      */
-    VarDB avm_newVarDB(String id);
+    VarDB avm_newVarDB(String id, Class<?> vc);
 
     /**
      * Emits event logs

@@ -1,10 +1,14 @@
 package org.aion.avm.core;
 
-import i.*;
+import i.DBImplBase;
+import i.IDBStorage;
+import i.IInstrumentation;
+import i.IObject;
+import i.InternedClasses;
+import i.InvalidDBAccessException;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.types.AionAddress;
-import p.avm.Value;
 import p.avm.ValueBuffer;
 
 public class DBStorage implements IDBStorage {
@@ -81,28 +85,17 @@ public class DBStorage implements IDBStorage {
         return (IObject) deserializeObject(v);
     }
 
-    public void setValue(byte[] key, Value value) {
-        byte[] v = null;
-        if (value!=null) {
-            if (value instanceof ValueBuffer) {
-                v = ((ValueBuffer)value).asByteArray();
-            } else {
-                v = value.avm_asByteArray().getUnderlying();
-            }
-            charge(v.length * StorageFees.WRITE_PRICE_PER_BYTE);
-        }
-        ctx.putStorage(getAddress(), key, v);
+    public void setBytes(byte[] key, byte[] value) {
+        if (value != null)
+            charge(value.length * StorageFees.WRITE_PRICE_PER_BYTE);
+        ctx.putStorage(getAddress(), key, value);
     }
 
-    public Value getValue(byte[] key, ValueBuffer out) {
-        var v = ctx.getStorage(getAddress(), key);
-        if (v==null)
-            return null;
-        charge(v.length);
-        if (out==null)
-            out = new ValueBuffer();
-        out.set(v);
-        return out;
+    public byte[] getBytes(byte[] key) {
+        var value = ctx.getStorage(getAddress(), key);
+        if (value != null)
+            charge(value.length * StorageFees.READ_PRICE_PER_BYTE);
+        return value;
     }
 
     public void flush() {

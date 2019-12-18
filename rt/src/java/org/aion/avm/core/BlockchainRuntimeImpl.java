@@ -3,6 +3,7 @@ package org.aion.avm.core;
 import a.ByteArray;
 import foundation.icon.ee.utils.Shadower;
 import foundation.icon.ee.utils.Unshadower;
+import foundation.icon.ee.utils.ValueCodec;
 import i.CallDepthLimitExceededException;
 import i.IBlockchainRuntime;
 import i.IInstrumentation;
@@ -10,6 +11,7 @@ import i.IObject;
 import i.IObjectArray;
 import i.IRuntimeSetup;
 import i.InstrumentationHelpers;
+import i.InvalidDBAccessException;
 import i.RevertException;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
@@ -261,12 +263,21 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         }
     }
 
-    public CollectionDB avm_newCollectionDB(int type, s.java.lang.String id) {
-        return new CollectionDBImpl(type, id);
+    private void assumeValidLeafValueClass(s.java.lang.Class<?> vc) {
+        if (!ValueCodec.isSupported(vc))
+            throw new InvalidDBAccessException("Invalid leaf value class " + vc);
     }
 
-    public VarDB avm_newVarDB(s.java.lang.String id) {
-        return new p.avm.VarDBImpl(id);
+    public CollectionDB avm_newCollectionDB(int type,
+                                            s.java.lang.String id,
+                                            s.java.lang.Class<?> vc) {
+        assumeValidLeafValueClass(vc);
+        return new CollectionDBImpl(type, id, vc);
+    }
+
+    public VarDB avm_newVarDB(s.java.lang.String id, s.java.lang.Class<?> vc) {
+        assumeValidLeafValueClass(vc);
+        return new p.avm.VarDBImpl(id, vc);
     }
 
     public void avm_log(IObjectArray indexed, IObjectArray data) {

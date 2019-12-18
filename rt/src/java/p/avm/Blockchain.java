@@ -8,6 +8,7 @@ import i.IObject;
 import i.IObjectArray;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 import org.aion.avm.StorageFees;
+import s.java.lang.Class;
 import s.java.lang.Object;
 import s.java.lang.String;
 import s.java.math.BigInteger;
@@ -134,24 +135,24 @@ public final class Blockchain extends Object {
         blockchainRuntime.avm_println(message);
     }
 
-    public static NestingDictDB avm_newNestingDictDB(String id) {
+    public static NestingDictDB avm_newNestingDictDB(String id, Class<?> vc) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_newDictDB);
-        return blockchainRuntime.avm_newCollectionDB(DBImplBase.TYPE_DICT_DB, id);
+        return blockchainRuntime.avm_newCollectionDB(DBImplBase.TYPE_DICT_DB, id, vc);
     }
 
-    public static DictDB avm_newDictDB(String id) {
+    public static DictDB avm_newDictDB(String id, Class<?> vc) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_newDictDB);
-        return blockchainRuntime.avm_newCollectionDB(DBImplBase.TYPE_DICT_DB, id);
+        return blockchainRuntime.avm_newCollectionDB(DBImplBase.TYPE_DICT_DB, id, vc);
     }
 
-    public static ArrayDB avm_newArrayDB(String id) {
+    public static ArrayDB avm_newArrayDB(String id, Class<?> vc) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_newArrayDB);
-        return blockchainRuntime.avm_newCollectionDB(DBImplBase.TYPE_ARRAY_DB, id);
+        return blockchainRuntime.avm_newCollectionDB(DBImplBase.TYPE_ARRAY_DB, id, vc);
     }
 
-    public static VarDB avm_newVarDB(String id) {
+    public static VarDB avm_newVarDB(String id, Class<?> vc) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_newVarDB);
-        return blockchainRuntime.avm_newVarDB(id);
+        return blockchainRuntime.avm_newVarDB(id, vc);
     }
 
     public static void avm_log(IObjectArray indexed, IObjectArray data) {

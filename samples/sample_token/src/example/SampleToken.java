@@ -19,8 +19,6 @@ package example;
 import avm.Address;
 import avm.Blockchain;
 import avm.DictDB;
-import avm.Value;
-import avm.ValueBuffer;
 import foundation.icon.ee.tooling.abi.EventLog;
 import foundation.icon.ee.tooling.abi.External;
 import foundation.icon.ee.tooling.abi.Optional;
@@ -33,7 +31,7 @@ public class SampleToken
     private final String symbol;
     private final int decimals;
     private final BigInteger totalSupply;
-    private DictDB<Address> balances;
+    private DictDB<Address, BigInteger> balances;
 
     private SampleToken(String name, String symbol, BigInteger decimals, BigInteger initialSupply) {
         this.name = name;
@@ -56,8 +54,8 @@ public class SampleToken
         }
 
         // set the initial balance of the owner
-        this.balances = Blockchain.newDictDB("balances");
-        this.balances.set(Blockchain.getOrigin(), new ValueBuffer(this.totalSupply));
+        this.balances = Blockchain.newDictDB("balances", BigInteger.class);
+        this.balances.set(Blockchain.getOrigin(), this.totalSupply);
     }
 
     // BigInteger#pow() is not implemented in the shadow BigInteger.
@@ -129,12 +127,11 @@ public class SampleToken
     }
 
     private static BigInteger safeGetBalance(Address owner) {
-        Value v = token.balances.get(owner);
-        return (v != null) ? v.asBigInteger() : BigInteger.ZERO;
+        return token.balances.getOrDefault(owner, BigInteger.ZERO);
     }
 
     private static void safeSetBalance(Address owner, BigInteger amount) {
-        token.balances.set(owner, new ValueBuffer(amount));
+        token.balances.set(owner, amount);
     }
 
     private static boolean isContract(Address address) {

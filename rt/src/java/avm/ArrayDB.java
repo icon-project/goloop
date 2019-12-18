@@ -1,20 +1,10 @@
 package avm;
 
-public interface ArrayDB {
-    void add(Value value);
-
-    void set(int index, Value value);
-
+public interface ArrayDB<E> {
+    void add(E value);
+    void set(int index, E value);
     void removeLast();
-
-    Value get(int index, ValueBuffer out);
-
-    Value get(int index);
-
+    E get(int index);
     int size();
-
-    // Do not shrink if decoding fails.
-    Value pop(ValueBuffer out);
-
-    Value pop();
+    E pop();
 }

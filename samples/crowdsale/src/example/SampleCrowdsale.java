@@ -19,8 +19,6 @@ package example;
 import avm.Address;
 import avm.Blockchain;
 import avm.DictDB;
-import avm.Value;
-import avm.ValueBuffer;
 import avm.VarDB;
 import foundation.icon.ee.tooling.abi.EventLog;
 import foundation.icon.ee.tooling.abi.External;
@@ -37,8 +35,8 @@ public class SampleCrowdsale
     private long deadline;
     private boolean fundingGoalReached;
     private boolean crowdsaleClosed;
-    private DictDB<Address> balances;
-    private VarDB amountRaised;
+    private DictDB<Address, BigInteger> balances;
+    private VarDB<BigInteger> amountRaised;
 
     private SampleCrowdsale(BigInteger fundingGoalInIcx, Address tokenScore, BigInteger durationInBlocks) {
         this.beneficiary = Blockchain.getCaller();
@@ -49,8 +47,8 @@ public class SampleCrowdsale
         this.fundingGoalReached = false;
         this.crowdsaleClosed = true; // Crowdsale closed by default
 
-        this.balances = Blockchain.newDictDB("balances");
-        this.amountRaised = Blockchain.newVarDB("amountRaised");
+        this.balances = Blockchain.newDictDB("balances", BigInteger.class);
+        this.amountRaised = Blockchain.newVarDB("amountRaised", BigInteger.class);
     }
 
     private static SampleCrowdsale crowdsale;
@@ -100,11 +98,11 @@ public class SampleCrowdsale
 
         // accept the contribution
         BigInteger fromBalance = safeGetBalance(_from);
-        crowdsale.balances.set(_from, new ValueBuffer(fromBalance.add(_value)));
+        crowdsale.balances.set(_from, fromBalance.add(_value));
 
         // increase the total amount of funding
         BigInteger amountRaised = safeGetAmountRaised();
-        crowdsale.amountRaised.set(new ValueBuffer(amountRaised.add(_value)));
+        crowdsale.amountRaised.set(amountRaised.add(_value));
 
         // give tokens to the contributor as a reward
         byte[] _data = "called from Crowdsale".getBytes();
@@ -153,7 +151,7 @@ public class SampleCrowdsale
                     // emit eventlog
                     FundTransfer(_from, amount, false);
                     // set their balance to ZERO
-                    crowdsale.balances.set(_from, new ValueBuffer(BigInteger.ZERO));
+                    crowdsale.balances.set(_from, BigInteger.ZERO);
                 }
             }
 
@@ -166,20 +164,18 @@ public class SampleCrowdsale
                     // emit eventlog
                     FundTransfer(crowdsale.beneficiary, amountRaised, false);
                     // reset amountRaised
-                    crowdsale.amountRaised.set(new ValueBuffer(BigInteger.ZERO));
+                    crowdsale.amountRaised.set(BigInteger.ZERO);
                 }
             }
         }
     }
 
     private static BigInteger safeGetBalance(Address owner) {
-        Value v = crowdsale.balances.get(owner);
-        return (v != null) ? v.asBigInteger() : BigInteger.ZERO;
+        return crowdsale.balances.getOrDefault(owner, BigInteger.ZERO);
     }
 
     private static BigInteger safeGetAmountRaised() {
-        Value v = crowdsale.amountRaised.get();
-        return (v != null) ? v.asBigInteger() : BigInteger.ZERO;
+        return crowdsale.amountRaised.getOrDefault(BigInteger.ZERO);
     }
 
     private static boolean afterDeadline() {
