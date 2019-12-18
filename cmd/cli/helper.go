@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"path"
 	"reflect"
+	"regexp"
 	"runtime/pprof"
 	"strconv"
 	"strings"
@@ -449,36 +450,60 @@ func FlagToMarkdown(buf *bytes.Buffer, vcs ...*viper.Viper) func(f *pflag.Flag) 
 	}
 }
 
-func addDirectoryToZip(zipWriter *zip.Writer, base, uri string) error {
+func isSymlink(fi os.FileInfo) bool {
+	return fi.Mode()&os.ModeSymlink != 0
+}
+
+func addDirectoryToZip(zipWriter *zip.Writer, base, uri string, excludes []*regexp.Regexp) error {
 	p := path.Join(base, uri)
 	entries, err := ioutil.ReadDir(p)
 	if err != nil {
 		return errors.WithStack(err)
 	}
+Loop:
 	for _, entry := range entries {
+		name := entry.Name()
+		for _, exclude := range excludes {
+			if exclude.MatchString(name) {
+				fmt.Println("exclude", p, name)
+				continue Loop
+			}
+		}
 		if entry.IsDir() {
-			err = addDirectoryToZip(zipWriter, base, path.Join(uri, entry.Name()))
+			err = addDirectoryToZip(zipWriter, base, path.Join(uri, name), excludes)
 			if err != nil {
 				return err
 			}
 		} else {
-			fd, err := os.Open(path.Join(p, entry.Name()))
+			filePath := path.Join(p, name)
+			if entry.Mode()&os.ModeSymlink != 0 {
+				filePath, err = os.Readlink(filePath)
+				if err != nil {
+					return errors.WithStack(err)
+				}
+				if fi, err := os.Stat(filePath); err != nil {
+					return errors.WithStack(err)
+				} else {
+					if fi.IsDir() {
+						err = addDirectoryToZip(zipWriter, base, path.Join(uri, name), excludes)
+						if err != nil {
+							return err
+						}
+						continue Loop
+					}
+				}
+			}
+			fd, err := os.Open(filePath)
 			if err != nil {
 				return errors.WithStack(err)
 			}
 
-			info, err := fd.Stat()
+			hdr, err := zip.FileInfoHeader(entry)
 			if err != nil {
 				fd.Close()
 				return errors.WithStack(err)
 			}
-
-			hdr, err := zip.FileInfoHeader(info)
-			if err != nil {
-				fd.Close()
-				return errors.WithStack(err)
-			}
-			hdr.Name = path.Join(uri, entry.Name())
+			hdr.Name = path.Join(uri, name)
 			hdr.Method = zip.Deflate
 			writer, err := zipWriter.CreateHeader(hdr)
 			_, err = io.Copy(writer, fd)
@@ -488,7 +513,7 @@ func addDirectoryToZip(zipWriter *zip.Writer, base, uri string) error {
 	return nil
 }
 
-func ZipDirectory(p string) ([]byte, error) {
+func ZipDirectory(p string, excludes ...string) ([]byte, error) {
 	isDir, err := IsDirectory(p)
 	if err != nil {
 		return nil, err
@@ -496,10 +521,18 @@ func ZipDirectory(p string) ([]byte, error) {
 	if !isDir {
 		return nil, errors.New(p + " is not directory")
 	}
+	regexps := make([]*regexp.Regexp, 0)
+	for _, exclude := range excludes {
+		re, err := regexp.Compile(exclude)
+		if err != nil {
+			return nil, err
+		}
+		regexps = append(regexps, re)
+	}
 
 	bs := bytes.NewBuffer(nil)
 	zfd := zip.NewWriter(bs)
-	if err = addDirectoryToZip(zfd, p, ""); err != nil {
+	if err = addDirectoryToZip(zfd, p, "", regexps); err != nil {
 		return nil, err
 	}
 	if err = zfd.Close(); err != nil {

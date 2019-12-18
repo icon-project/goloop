@@ -595,7 +595,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 			}
 			var b []byte
 			if isDir {
-				if b, err = ZipDirectory(args[0]); err != nil {
+				if b, err = ZipDirectory(args[0], "__pycache__"); err != nil {
 					return fmt.Errorf("fail to zip with directory %s err:%+v", args[0], err)
 				}
 			} else {
