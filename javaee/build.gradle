@@ -1,0 +1,19 @@
+allprojects {
+    repositories {
+        jcenter()
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+
+    java {
+        sourceCompatibility = JavaVersion.VERSION_1_10
+        targetCompatibility = JavaVersion.VERSION_1_10
+    }
+
+    sourceSets {
+        main.java.srcDirs = ['src/java']
+        test.java.srcDirs = ['test/java']
+    }
+}

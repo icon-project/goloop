@@ -1,0 +1,8 @@
+build/
+.gradle/
+*.orig
+*.rej
+*~
+*.class
+*.o
+*.so
