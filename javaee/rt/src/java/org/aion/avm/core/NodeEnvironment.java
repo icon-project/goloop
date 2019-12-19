@@ -137,6 +137,7 @@ public class NodeEnvironment {
                     , s.java.util.concurrent.TimeUnit.class
                 
                     , s.java.io.Serializable.class
+                    , s.avm.TargetRevertedException.class
             };
 
             this.jclClassNames = new HashSet<>();
@@ -179,7 +180,7 @@ public class NodeEnvironment {
         // create the object size look-up maps
         Map<String, Integer> rtObjectSizeMap = computeRuntimeObjectSizes();
         // This is to ensure the JCLAndAPIHeapInstanceSize is updated with the correct instance size of a newly added JCL or API class
-        RuntimeAssertionError.assertTrue(rtObjectSizeMap.size() == 97);
+        RuntimeAssertionError.assertTrue(rtObjectSizeMap.size() == 98);
 
         Map<String, Integer> shadowObjectSizeMap = new HashMap<>(); // pre-rename; shadow objects and exceptions
         Map<String, Integer> apiObjectSizeMap = new HashMap<>(); // post-rename; API objects

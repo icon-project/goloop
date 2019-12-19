@@ -91,7 +91,7 @@ public class CommonInstrumentation implements IInstrumentation {
             // NOTE:  This is called for both the cases where the throwable is a VM-generated "java.lang" exception or one of our wrappers.
             // We need to wrap the java.lang instance in a shadow and unwrap the other case to return the shadow.
             String throwableName = t.getClass().getName();
-            if (throwableName.startsWith("java.lang.")) {
+            if (throwableName.startsWith("java.lang.") || throwableName.startsWith("avm.")) {
                 // Note that there are 2 cases of VM-generated exceptions:  the kind we wrap for the user and the kind we interpret as a fatal node error.
                 if (t instanceof VirtualMachineError) {
                     // This is a fatal node error:

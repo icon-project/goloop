@@ -40,6 +40,8 @@ public final class ClassRenamer {
 
     public enum ArrayType { PRECISE_TYPE, UNIFYING_TYPE, NOT_ARRAY }
 
+    private static final String exceptionPostfix = "Exception";
+
     /**
      * Constructs a new class renamer.
      *
@@ -400,7 +402,8 @@ public final class ClassRenamer {
     }
 
     private boolean isPreRenameApiClass(String className) {
-        return className.startsWith(this.preRenameApiPrefix);
+        return className.startsWith(this.preRenameApiPrefix)
+                && !className.endsWith(exceptionPostfix);
     }
 
     private boolean isPreRenameArray(String className) {
