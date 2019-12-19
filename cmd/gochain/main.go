@@ -41,6 +41,7 @@ type GoChainConfig struct {
 	RPCDump       bool   `json:"rpc_dump"`
 	RPCDebug      bool   `json:"rpc_debug"`
 	EEInstances   int    `json:"ee_instances"`
+	Engines       string `json:"engines"`
 
 	Key          []byte          `json:"key,omitempty"`
 	KeyStoreData json.RawMessage `json:"key_store"`
@@ -83,7 +84,6 @@ var cfg GoChainConfig
 var cpuProfile, memProfile string
 var chainDir string
 var eeSocket string
-var engines string
 var modLevels map[string]string
 var lfCfg log.ForwarderConfig
 
@@ -132,7 +132,7 @@ func main() {
 	flag.StringToString("log_forwarder_options", nil, "LogForwarder options, comma-separated 'key=value'")
 	flag.Int64Var(&cfg.DefWaitTimeout, "default_wait_timeout", 0, "Default wait timeout in milli-second (0: disable)")
 	flag.Int64Var(&cfg.MaxWaitTimeout, "max_wait_timeout", 0, "Max wait timeout in milli-second (0:uses same value of default_wait_timeout)")
-	flag.StringVar(&engines, "engines", "python", "Execution engines, comma-separated (python,java)")
+	flag.StringVar(&cfg.Engines, "engines", "python", "Execution engines, comma-separated (python,java)")
 
 	cmd.Run = Execute
 	cmd.Execute()
@@ -400,7 +400,7 @@ func Execute(cmd *cobra.Command, args []string) {
 	}
 	defer nt.Close()
 
-	ee, err := eeproxy.AllocEngines(logger, strings.Split(engines, ",")...)
+	ee, err := eeproxy.AllocEngines(logger, strings.Split(cfg.Engines, ",")...)
 	if err != nil {
 		log.Panicf("FAIL to create engines err=%+v", err)
 	}
