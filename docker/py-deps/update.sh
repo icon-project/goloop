@@ -1,7 +1,7 @@
 #!/bin/sh
 
 BASE_DIR=$(dirname $0)
-PYTHON_VERSION=${PYTHON_VERSION:-3.7.3}
+PYTHON_VERSION=${PYTHON_VERSION:-3.7.5}
 
 get_hash_of_dir() {
     local SRC_DIR=$1

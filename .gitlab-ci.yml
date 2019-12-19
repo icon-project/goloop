@@ -9,8 +9,8 @@ stages:
 
 variables:
   GOLANG_VERSION: "1.12.4"
+  PYTHON_VERSION: "3.7.5"
   REPO_GO_DEPS: "goloop/go-deps/${CI_COMMIT_REF_SLUG}"
-  PYTHON_VERSION: "3.7.3"
   REPO_PY_DEPS: "goloop/py-deps/${CI_COMMIT_REF_SLUG}"
   REPO_GOCHAIN: "goloop/gochain/${CI_COMMIT_REF_SLUG}"
   REPO_GOLOOP: "goloop/${CI_COMMIT_REF_SLUG}"
@@ -51,19 +51,6 @@ unit:py:
   tags:
     - docker
 
-build:pyee:
-  image: "${REPO_PY_DEPS}"
-  stage: build
-  script:
-    - cd pyee
-    - python3 setup.py bdist_wheel
-  artifacts:
-    expire_in: 1 day
-    paths:
-      - pyee/dist/
-  tags:
-    - docker
-
 build:go:
   image: "${REPO_GO_DEPS}"
   stage: build
@@ -78,14 +65,27 @@ build:go:
   tags:
     - docker
 
+build:pyee:
+  image: "${REPO_PY_DEPS}"
+  stage: build
+  script:
+    - cd pyee
+    - python3 setup.py bdist_wheel
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - pyee/dist/
+  tags:
+    - docker
+
 .pack: &pack
   image: docker:git
   stage: pack
   tags:
     - docker-build
   dependencies:
-    - build:pyee
     - build:go
+    - build:pyee
 
 pack:gochain:
   <<: *pack
@@ -131,7 +131,6 @@ pack:goloop:
     - docker
   except:
     - tags
-    - feature-javaee
 
 ITJ:gochain:normal:
   <<: *ITJ__gochain
@@ -212,7 +211,6 @@ ITJ:gochain:governance:audit:
     - docker-service
   except:
     - tags
-    - feature-javaee
 
 ITJ:goloop:normal:
   <<: *ITJ__goloop

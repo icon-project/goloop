@@ -1,4 +1,4 @@
-ARG PYTHON_VERSION=3.7.3
+ARG PYTHON_VERSION=3.7.5
 FROM python:${PYTHON_VERSION}-alpine
 RUN apk add git
 
