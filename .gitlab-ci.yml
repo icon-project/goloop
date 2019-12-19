@@ -10,8 +10,10 @@ stages:
 variables:
   GOLANG_VERSION: "1.12.4"
   PYTHON_VERSION: "3.7.5"
+  JAVA_VERSION: "11.0.4"
   REPO_GO_DEPS: "goloop/go-deps/${CI_COMMIT_REF_SLUG}"
   REPO_PY_DEPS: "goloop/py-deps/${CI_COMMIT_REF_SLUG}"
+  REPO_JAVA_DEPS: "goloop/java-deps/${CI_COMMIT_REF_SLUG}"
   REPO_GOCHAIN: "goloop/gochain/${CI_COMMIT_REF_SLUG}"
   REPO_GOLOOP: "goloop/${CI_COMMIT_REF_SLUG}"
 
@@ -34,6 +36,14 @@ deps:py:
   tags:
     - docker-build
 
+deps:java:
+  image: docker:git
+  stage: deps
+  script:
+    - sh docker/java-deps/build.sh
+  tags:
+    - docker-build
+
 unit:go:
   image: "${REPO_GO_DEPS}"
   stage: unit
@@ -48,6 +58,15 @@ unit:py:
   script:
     - cd pyee
     - python -m unittest -v
+  tags:
+    - docker
+
+unit:java:
+  image: "${REPO_JAVA_DEPS}"
+  stage: unit
+  script:
+    - cd javaee
+    - ./gradlew test
   tags:
     - docker
 
@@ -78,6 +97,19 @@ build:pyee:
   tags:
     - docker
 
+build:java:
+  image: "${REPO_JAVA_DEPS}"
+  stage: build
+  script:
+    - cd javaee
+    - ./gradlew app:exectest:distZip
+  artifacts:
+    expire_in: 1 day
+    paths:
+      - javaee/app/exectest/build/distributions/
+  tags:
+    - docker
+
 .pack: &pack
   image: docker:git
   stage: pack
@@ -86,6 +118,7 @@ build:pyee:
   dependencies:
     - build:go
     - build:pyee
+    - build:java
 
 pack:gochain:
   <<: *pack
@@ -163,6 +196,18 @@ ITJ:gochain:governance:audit:
     GOCHAIN_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/govEnvAudit.properties"
   script:
     - ./gradlew testGovernance -DNO_SERVER="true" -DAUDIT="true" -DCHAIN_ENV="${GOCHAIN_ENVFILE}"
+
+ITJ:gochain:javascore:
+  <<: *ITJ__gochain
+  variables:
+    GOCHAIN_CONFIG: "${CI_PROJECT_DIR}/testsuite/data/javaConfig.json"
+    GOCHAIN_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
+    GOCHAIN_LOGFILE: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}/gochain.log"
+    GOCHAIN_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_normal.json"
+    GOCHAIN_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/govEnv.properties"
+    JAVAEE_BIN: "/goloop/exectest/bin/exectest"
+  script:
+    - ./gradlew testJavaScore -DNO_SERVER="true" -DAUDIT="false" -DCHAIN_ENV="${GOCHAIN_ENVFILE}"
 
 .integration:java-sdk:goloop: &ITJ__goloop
   image: docker:java #sh -c 'echo -e "FROM docker:git\nRUN apk add openjdk8" | docker build --tag docker:java -'

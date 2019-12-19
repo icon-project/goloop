@@ -150,9 +150,9 @@ rm)
   echo "  start: $0 start"
   echo "  env: $0 env [ENV_PROPERTIES]"
   echo "  rm: $0 rm"
-  cd $PRE_PW
+  cd $PRE_PWD
   exit 1
 ;;
 esac
 
-cd $PRE_PW
+cd $PRE_PWD

@@ -39,4 +39,4 @@ if [ "${TAG_GOCHAIN}" != "" ] && [ "${TAG_GOCHAIN}" != "latest" ];then
   docker tag ${REPO_GOCHAIN} ${REPO_GOCHAIN}:${TAG_SLUG}
 fi
 
-cd $PRE_PW
+cd $PRE_PWD

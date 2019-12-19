@@ -23,11 +23,7 @@ then
   mkdir dist
   cp ../../pyee/dist/pyexec-*.whl ./dist/
   cp ../../bin/gochain ./dist/
-  #require update 'tar' for '--transform' argument
-  #tar -C ../../testsuite --transform='flags=r;s|data|testsuite|' -z -cvf dist/testsuite.tar.gz data
-  #cp -r ../../testsuite/data ./testsuite
-  #tar -cvzf dist/testsuite.tar.gz testsuite
-  #rm -rf testsuite
+  cp ../../javaee/app/exectest/build/distributions/exectest.zip ./dist/
   docker build \
     --build-arg REPO_PY_DEPS=${REPO_PY_DEPS} \
     ${BUILD_ARG_TAG_PY_DEPS} \
@@ -44,4 +40,4 @@ if [ "${TAG_GOCHAIN}" != "" ] && [ "${TAG_GOCHAIN}" != "latest" ];then
   docker tag ${REPO_GOCHAIN} ${REPO_GOCHAIN}:${TAG_SLUG}
 fi
 
-cd $PRE_PW
+cd $PRE_PWD

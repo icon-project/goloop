@@ -38,7 +38,6 @@ class ChainTest extends Test {
     String chainDir = ".chain/normal"
     String gsFile = null
     String gsDir = null
-    String engines = null
     Process process = null
 
     void startServer() {
@@ -54,10 +53,6 @@ class ChainTest extends Test {
         } else if (gsDir != null) {
             commands.add("--genesis")
             commands.add(gsDir)
-        }
-        if (engines != null) {
-            commands.add("--engines")
-            commands.add(engines)
         }
         def logLevel = System.getProperty("LOG_LEVEL")
         if (logLevel != null && logLevel.length() != 0) {
@@ -171,10 +166,9 @@ task testJavaScore(type: ChainTest, overwrite: true) {
     }
     gsDir = "./data/genesisStorage/genesis_normal.json"
     envFile = "./data/govEnv.properties"
-    configFile = "./data/govConfig.json"
+    configFile = "./data/javaConfig.json"
     logFile = "./javaee.log"
     chainDir = ".chain/javaee"
-    engines = "python,java"
 
     dependsOn cleanTest
     testLogging.showStandardStreams = true
