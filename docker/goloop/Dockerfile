@@ -25,8 +25,9 @@ VOLUME ["/goloop/data"]
 # goloop entrypoint
 ENV GOLOOP_DATA_ROOT=/goloop/data
 ENV GOLOOP_NODE_DIR=/goloop/data
-ENV GOLOOP_CONFIG=/goloop/config.json
-ENV GOLOOP_KEY_STORE=/goloop/keystore.json
+ENV GOLOOP_CONFIG=/goloop/config/server.json
+ENV GOLOOP_KEY_STORE=/goloop/config/keystore.json
+ENV GOLOOP_KEY_SECRET=/goloop/config/keysecret
 ENV GOLOOP_P2P_LISTEN=":8080"
 ENV GOLOOP_RPC_ADDR=":9080"
 
@@ -35,14 +36,17 @@ RUN { \
   		echo '#!/bin/sh'; \
   		echo 'set -e'; \
   		echo 'if [ "$GOLOOP_CONFIG" != "" ] && [ ! -f "$GOLOOP_CONFIG" ]; then'; \
-  		echo '  ENV_UNSET="GOLOOP_CONFIG=''"'; \
-  		echo '  if [ "$GOLOOP_KEY_STORE" != "" ] && [ ! -f "$GOLOOP_KEY_STORE" ]; then'; \
-  		echo '    GOLOOP_SAVE_KEY_STORE="--save_key_store=$GOLOOP_KEY_STORE"'; \
-  		echo '    ENV_UNSET="$ENV_UNSET GOLOOP_KEY_STORE=''"'; \
-  		echo '    sh -c "$ENV_UNSET goloop server save $GOLOOP_CONFIG --save_key_store=$GOLOOP_KEY_STORE"'; \
-  		echo '  else'; \
-  		echo '    sh -c "$ENV_UNSET goloop server save $GOLOOP_CONFIG"'; \
+		echo '  UNSET="GOLOOP_CONFIG"' ; \
+  		echo '  CMD="goloop server save $GOLOOP_CONFIG"'; \
+  		echo '  if [ "$GOLOOP_KEY_SECRET" != "" ] && [ ! -f "$GOLOOP_KEY_SECRET" ]; then'; \
+		echo '    mkdir -p $(dirname $GOLOOP_KEY_SECRET)'; \
+  		echo '    echo -n $(date|md5sum|head -c16) > $GOLOOP_KEY_SECRET' ; \
   		echo '  fi'; \
+  		echo '  if [ "$GOLOOP_KEY_STORE" != "" ] && [ ! -f "$GOLOOP_KEY_STORE" ]; then'; \
+		echo '    UNSET="$UNSET GOLOOP_KEY_STORE"' ; \
+  		echo '    CMD="$CMD --save_key_store=$GOLOOP_KEY_STORE"' ; \
+  		echo '  fi'; \
+                echo '  sh -c "unset $UNSET ; $CMD"' ; \
   		echo 'fi'; \
   		echo ; \
   		echo 'source /goloop/venv/bin/activate'; \
