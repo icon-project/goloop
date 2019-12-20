@@ -50,6 +50,8 @@ type GoChainConfig struct {
 	LogLevel     string               `json:"log_level"`
 	ConsoleLevel string               `json:"console_level"`
 	LogForwarder *log.ForwarderConfig `json:"log_forwarder,omitempty"`
+
+	LogWriter *log.WriterConfig `json:"log_writer,omitempty"`
 }
 
 func (config *GoChainConfig) String() string {
@@ -65,6 +67,9 @@ func (config *GoChainConfig) Set(name string) error {
 	if bs, e := ioutil.ReadFile(name); e == nil {
 		if err := json.Unmarshal(bs, config); err != nil {
 			return err
+		}
+		if config.LogWriter != nil {
+			lwCfg = *config.LogWriter
 		}
 	}
 	return nil
@@ -86,6 +91,7 @@ var chainDir string
 var eeSocket string
 var modLevels map[string]string
 var lfCfg log.ForwarderConfig
+var lwCfg log.WriterConfig
 
 func main() {
 	cmd := &cobra.Command{
@@ -133,6 +139,12 @@ func main() {
 	flag.Int64Var(&cfg.DefWaitTimeout, "default_wait_timeout", 0, "Default wait timeout in milli-second (0: disable)")
 	flag.Int64Var(&cfg.MaxWaitTimeout, "max_wait_timeout", 0, "Max wait timeout in milli-second (0:uses same value of default_wait_timeout)")
 	flag.StringVar(&cfg.Engines, "engines", "python", "Execution engines, comma-separated (python,java)")
+	flag.StringVar(&lwCfg.Filename, "log_writer_filename", "", "Log file name")
+	flag.IntVar(&lwCfg.MaxSize, "log_writer_maxsize", 100, "Log file max size")
+	flag.IntVar(&lwCfg.MaxAge, "log_writer_maxage", 0, "Log file max age")
+	flag.IntVar(&lwCfg.MaxBackups, "log_writer_maxbackups", 0, "Log file max backups")
+	flag.BoolVar(&lwCfg.LocalTime, "log_writer_localtime", false, "Uses localtime for rotated filename")
+	flag.BoolVar(&lwCfg.Compress, "log_writer_compress", false, "Uses gzip for rotated file")
 
 	cmd.Run = Execute
 	cmd.Execute()
@@ -295,6 +307,12 @@ func Execute(cmd *cobra.Command, args []string) {
 		cfg.LogForwarder = &lfCfg
 	}
 
+	if lwCfg.Filename != "" {
+		cfg.LogWriter = &lwCfg
+	} else {
+		cfg.LogWriter = nil
+	}
+
 	if saveFile != "" {
 		f, err := os.OpenFile(saveFile,
 			os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
@@ -316,6 +334,18 @@ func Execute(cmd *cobra.Command, args []string) {
 	})
 	log.SetGlobalLogger(logger)
 	stdlog.SetOutput(logger.WriterLevel(log.WarnLevel))
+	if cfg.LogWriter != nil {
+		lwCfg = *cfg.LogWriter
+		lwCfg.Filename = cfg.ResolveAbsolute(lwCfg.Filename)
+		writer, err := log.NewWriter(&lwCfg)
+		if err != nil {
+			log.Panicf("Fail to make log writer err=%+v", err)
+		}
+		err = logger.SetFileWriter(writer)
+		if err != nil {
+			log.Panicf("Fail to set log writer err=%+v", err)
+		}
+	}
 
 	if lv, err := log.ParseLevel(cfg.LogLevel); err != nil {
 		log.Panicf("Fail to parse loglevel level=%s", cfg.LogLevel)

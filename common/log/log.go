@@ -137,6 +137,7 @@ type Logger interface {
 	GetModuleLevel(mod string) Level
 	Writer() *io.PipeWriter
 	WriterLevel(lv Level) *io.PipeWriter
+	SetFileWriter(writer io.Writer) error
 
 	addHook(hook logrus.Hook)
 }
@@ -203,6 +204,10 @@ func (w entryWrapper) Logf(lv Level, format string, args ...interface{}) {
 	w.Entry.Logf(logrus.Level(lv), format, args...)
 }
 
+func (w entryWrapper) SetFileWriter(writer io.Writer) error {
+	return w.Logger.Formatter.(*logFilter).SetFileWriter(writer)
+}
+
 type loggerWrapper struct {
 	*logrus.Logger
 }
@@ -259,6 +264,10 @@ func (w loggerWrapper) Logln(lv Level, args ...interface{}) {
 
 func (w loggerWrapper) Logf(lv Level, format string, args ...interface{}) {
 	w.Logger.Logf(logrus.Level(lv), format, args...)
+}
+
+func (w loggerWrapper) SetFileWriter(writer io.Writer) error {
+	return w.Logger.Formatter.(*logFilter).SetFileWriter(writer)
 }
 
 func getPackageName(f string) string {

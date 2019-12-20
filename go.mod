@@ -32,13 +32,13 @@ require (
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/tinylib/msgp v1.1.0 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
-	github.com/ybbus/jsonrpc v2.1.2+incompatible
 	go.etcd.io/bbolt v1.3.2
 	go.opencensus.io v0.20.2
 	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
 	golang.org/x/tools v0.0.0-20190312170243-e65039ee4138
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/go-playground/validator.v9 v9.28.0
+	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/vmihailenco/msgpack.v4 v4.0.4
 )
 

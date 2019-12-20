@@ -30,6 +30,7 @@ type ServerConfig struct {
 	LogLevel     string               `json:"log_level"`
 	ConsoleLevel string               `json:"console_level"`
 	LogForwarder *log.ForwarderConfig `json:"log_forwarder,omitempty"`
+	LogWriter    *log.WriterConfig    `json:"log_writer,omitempty"`
 }
 
 func (cfg *ServerConfig) MakesureKeyStore() error {
@@ -106,6 +107,13 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 	rootPFlags.StringToString("log_forwarder_options", nil, "LogForwarder options, comma-separated 'key=value'")
 	rootPFlags.String("engines", "python", "Execution engines, comma-separated (python,java)")
 
+	rootPFlags.String("log_writer_filename", "", "Log file name (rotated files resides in same directory)")
+	rootPFlags.Int("log_writer_maxsize", 100, "Maximum log file size in MiB")
+	rootPFlags.Int("log_writer_maxage", 0, "Maximum age of log file in day")
+	rootPFlags.Int("log_writer_maxbackups", 0, "Maximum number of backups")
+	rootPFlags.Bool("log_writer_localtime", false, "Use localtime on rotated log file instead of UTC")
+	rootPFlags.Bool("log_writer_compress", false, "Use gzip on rotated log file")
+
 	BindPFlags(vc, rootCmd.PersistentFlags())
 
 	saveCmd := &cobra.Command{
@@ -149,6 +157,19 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 			})
 			log.SetGlobalLogger(logger)
 			stdlog.SetOutput(logger.WriterLevel(log.WarnLevel))
+			if cfg.LogWriter != nil {
+				var lwCfg log.WriterConfig
+				lwCfg = *cfg.LogWriter
+				lwCfg.Filename = cfg.ResolveAbsolute(lwCfg.Filename)
+				writer, err := log.NewWriter(&lwCfg)
+				if err != nil {
+					log.Panicf("Fail to make writer err=%+v", err)
+				}
+				err = logger.SetFileWriter(writer)
+				if err != nil {
+					log.Panicf("Fail to set file logger err=%+v", err)
+				}
+			}
 
 			if lv, err := log.ParseLevel(cfg.LogLevel); err != nil {
 				log.Panicf("Invalid log_level=%s", cfg.LogLevel)
@@ -217,6 +238,7 @@ func MergeWithViper(vc *viper.Viper, cfg *ServerConfig) error {
 	nodeDir := vc.GetString("node_dir")
 	cliSocket := vc.GetString("node_sock")
 	eeSocket := vc.GetString("ee_socket")
+	lwFilename := vc.GetString("log_writer_filename")
 
 	if cfg.FilePath != "" {
 		f, err := os.Open(cfg.FilePath)
@@ -232,6 +254,15 @@ func MergeWithViper(vc *viper.Viper, cfg *ServerConfig) error {
 			m := make(map[string]interface{})
 			for _, k := range lfVc.AllKeys() {
 				m["log_forwarder_"+k] = lfVc.Get(k)
+			}
+			if err := vc.MergeConfigMap(m); err != nil {
+				return errors.Errorf("fail to merge config file=%s err=%+v", cfg.FilePath, err)
+			}
+		}
+		if lfVc := vc.Sub("log_writer"); lfVc != nil {
+			m := make(map[string]interface{})
+			for _, k := range lfVc.AllKeys() {
+				m["log_writer_"+k] = lfVc.Get(k)
 			}
 			if err := vc.MergeConfigMap(m); err != nil {
 				return errors.Errorf("fail to merge config file=%s err=%+v", cfg.FilePath, err)
@@ -272,6 +303,21 @@ func MergeWithViper(vc *viper.Viper, cfg *ServerConfig) error {
 	}
 	if lfCfg.Vendor != "" {
 		cfg.LogForwarder = lfCfg
+	}
+
+	lwCfg := &log.WriterConfig{
+		Filename:   vc.GetString("log_writer_filename"),
+		MaxSize:    vc.GetInt("log_writer_maxsize"),
+		MaxAge:     vc.GetInt("log_writer_maxage"),
+		MaxBackups: vc.GetInt("log_writer_maxbackups"),
+		LocalTime:  vc.GetBool("log_writer_localtime"),
+		Compress:   vc.GetBool("log_writer_compress"),
+	}
+	if len(lwFilename) > 0 {
+		lwCfg.Filename = cfg.ResolveRelative(lwFilename)
+	}
+	if len(lwCfg.Filename) > 0 {
+		cfg.LogWriter = lwCfg
 	}
 
 	if nodeDir != "" {
