@@ -132,7 +132,7 @@ pack:goloop:
 
 #ITJ : Integration Test Java-sdk
 .integration:java-sdk:gochain: &ITJ__gochain
-  image: "openjdk:8u212-jdk-alpine"
+  image: "${REPO_JAVA_DEPS}"
   stage: integration
   services:
     - ${REPO_GOCHAIN}
@@ -210,7 +210,7 @@ ITJ:gochain:javascore:
     - ./gradlew testJavaScore -DNO_SERVER="true" -DAUDIT="false" -DCHAIN_ENV="${GOCHAIN_ENVFILE}"
 
 .integration:java-sdk:goloop: &ITJ__goloop
-  image: docker:java #sh -c 'echo -e "FROM docker:git\nRUN apk add openjdk8" | docker build --tag docker:java -'
+  image: "docker:java11" #sh -c 'echo -e "FROM docker:git\nRUN apk add openjdk11" | docker build --tag docker:java11 -'
   stage: integration
   variables:
     GOLOOP_DOCKER_REPLICAS: 4
