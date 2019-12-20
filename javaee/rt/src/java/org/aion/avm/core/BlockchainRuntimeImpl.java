@@ -187,10 +187,14 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     @Override
-    public IObject avm_call(Address targetAddress,
+    public IObject avm_call(s.java.math.BigInteger value,
+                            s.java.math.BigInteger stepLimit,
+                            Address targetAddress,
                             s.java.lang.String method,
-                            IObjectArray sparams,
-                            s.java.math.BigInteger value) throws IllegalArgumentException {
+                            IObjectArray sparams) {
+        // FIXME
+        if (value == null)
+            value = new BigInteger(java.math.BigInteger.ZERO);
         java.math.BigInteger underlyingValue = value.getUnderlying();
         require(targetAddress != null, "Destination can't be NULL");
         require(underlyingValue.compareTo(java.math.BigInteger.ZERO) >= 0 , "Value can't be negative");

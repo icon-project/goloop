@@ -19,57 +19,57 @@ public class IntercallTest extends GoldenTest {
 
         @External
         public static byte mbyte(byte v) {
-            var vv = (BigInteger)Blockchain.call(next, "mbyte", new Object[]{v}, BigInteger.ZERO);
+            var vv = (BigInteger)Blockchain.call(next, "mbyte", v);
             return vv.byteValue();
         }
 
         @External
         public static short mshort(short v) {
-            var vv = (BigInteger)Blockchain.call(next, "mshort", new Object[]{v}, BigInteger.ZERO);
+            var vv = (BigInteger)Blockchain.call(next, "mshort", v);
             return vv.shortValue();
         }
 
         @External
         public static int mint(int v) {
-            var vv = (BigInteger)Blockchain.call(next, "mint", new Object[]{v}, BigInteger.ZERO);
+            var vv = (BigInteger)Blockchain.call(next, "mint", v);
             return vv.intValue();
         }
 
         @External
         public static long mlong(long v) {
-            var vv = (BigInteger)Blockchain.call(next, "mlong", new Object[]{v}, BigInteger.ZERO);
+            var vv = (BigInteger)Blockchain.call(next, "mlong", v);
             return vv.longValue();
         }
 
         @External
         public static boolean mboolean(boolean v) {
-            return (Boolean)Blockchain.call(next, "mboolean", new Object[]{v}, BigInteger.ZERO);
+            return (Boolean)Blockchain.call(next, "mboolean", v);
         }
 
         @External
         public static char mchar(char v) {
-            var vv = (BigInteger)Blockchain.call(next, "mchar", new Object[]{v}, BigInteger.ZERO);
+            var vv = (BigInteger)Blockchain.call(next, "mchar", v);
             return (char)vv.intValue();
         }
 
         @External
         public static BigInteger mBigInteger(@Optional BigInteger v) {
-            return (BigInteger)Blockchain.call(next, "mBigInteger", new Object[]{v}, BigInteger.ZERO);
+            return (BigInteger)Blockchain.call(next, "mBigInteger", v);
         }
 
         @External
         public static String mString(@Optional String v) {
-            return (String)Blockchain.call(next, "mString", new Object[]{v}, BigInteger.ZERO);
+            return (String)Blockchain.call(next, "mString", v);
         }
 
         @External
         public static byte[] mByteArray(@Optional byte[] v) {
-            return (byte[])Blockchain.call(next, "mByteArray", new Object[]{v}, BigInteger.ZERO);
+            return (byte[])Blockchain.call(next, "mByteArray", (Object) v);
         }
 
         @External
         public static Address mAddress(@Optional Address v) {
-            return (Address)Blockchain.call(next, "mAddress", new Object[]{v}, BigInteger.ZERO);
+            return (Address)Blockchain.call(next, "mAddress", v);
         }
     }
 
@@ -85,7 +85,7 @@ public class IntercallTest extends GoldenTest {
         app.invoke("mchar", 0);
         app.invoke("mBigInteger", 0);
         app.invoke("mString", "string");
-        app.invoke("mByteArray", new byte[]{0, 1, 2});
+        app.invoke("mByteArray", (Object) new byte[]{0, 1, 2});
         app.invoke("mAddress", sm.newExternalAddress());
         app.invoke("mBigInteger", (Object)null);
         app.invoke("mString", (Object)null);
@@ -96,15 +96,15 @@ public class IntercallTest extends GoldenTest {
     public static class ScoreA {
         @External
         public static void method(Address addr) {
-            Blockchain.call(addr, "setValue", new Object[]{1}, BigInteger.ZERO);
-            var res = (BigInteger)Blockchain.call(addr, "getValue", new Object[0], BigInteger.ZERO);
+            Blockchain.call(addr, "setValue", 1);
+            var res = (BigInteger)Blockchain.call(addr, "getValue");
             Blockchain.require(res.intValue()==1);
             try {
-                Blockchain.call(addr, "setValueFail", new Object[]{2}, BigInteger.ZERO);
+                Blockchain.call(addr, "setValueFail", 2);
             } catch (Exception e) {
                 Blockchain.println(e.toString());
             }
-            res = (BigInteger)Blockchain.call(addr, "getValue", new Object[0], BigInteger.ZERO);
+            res = (BigInteger)Blockchain.call(addr, "getValue");
             Blockchain.require(res.intValue()==1);
         }
     }

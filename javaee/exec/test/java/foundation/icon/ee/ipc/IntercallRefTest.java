@@ -26,7 +26,7 @@ public class IntercallRefTest extends GoldenTest {
                     addr = Blockchain.getCaller();
                 }
                 try {
-                    Blockchain.call(addr, "method", new Object[]{ttl-1, false, null}, BigInteger.ZERO);
+                    Blockchain.call(addr, "method", ttl-1, false, null);
                 } catch (Exception e) {
                     Blockchain.println("Exception : " + e);
                 }
@@ -36,7 +36,7 @@ public class IntercallRefTest extends GoldenTest {
                 Blockchain.println("sClass==lClass1 : " + (sClass==lClass1));
                 Blockchain.println("sClass==lClass2 : " + (sClass==lClass2));
                 try {
-                    Blockchain.call(addr, "method", new Object[]{ttl-1, true, null}, BigInteger.ZERO);
+                    Blockchain.call(addr, "method", ttl-1, true, null);
                 } catch (Exception e) {
                     Blockchain.println("Exception : " + e);
                 }
@@ -64,12 +64,12 @@ public class IntercallRefTest extends GoldenTest {
                     addr = Blockchain.getCaller();
                 }
                 try {
-                    Blockchain.call(addr, "method", new Object[]{ttl-1, false, null}, BigInteger.ZERO);
+                    Blockchain.call(addr, "method", ttl-1, false, null);
                 } catch (Exception e) {
                     Blockchain.println("Exception : " + e);
                 }
                 try {
-                    Blockchain.call(addr, "method", new Object[]{ttl-1, true, null}, BigInteger.ZERO);
+                    Blockchain.call(addr, "method", ttl-1, true, null);
                 } catch (Exception e) {
                     Blockchain.println("Exception : " + e);
                 }

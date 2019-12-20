@@ -114,10 +114,28 @@ public final class Blockchain extends Object {
         return blockchainRuntime.avm_getBalance(address);
     }
 
-    public static IObject avm_call(Address targetAddress, String method, IObjectArray params,
-                                   BigInteger value) throws IllegalArgumentException {
+    public static IObject avm_call(Address targetAddress,
+                                   String method,
+                                   IObjectArray params) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_call);
-        return blockchainRuntime.avm_call(targetAddress, method, params, value);
+        return blockchainRuntime.avm_call(null, null, targetAddress, method, params);
+    }
+
+    public static IObject avm_call(BigInteger value,
+                                   Address targetAddress,
+                                   String method,
+                                   IObjectArray params) {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_call);
+        return blockchainRuntime.avm_call(value, null, targetAddress, method, params);
+    }
+
+    public static IObject avm_call(BigInteger value,
+                                   BigInteger stepLimit,
+                                   Address targetAddress,
+                                   String method,
+                                   IObjectArray params) {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_call);
+        return blockchainRuntime.avm_call(value, stepLimit, targetAddress, method, params);
     }
 
     public static void avm_revert() {

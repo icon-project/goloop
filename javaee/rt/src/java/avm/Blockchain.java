@@ -175,17 +175,27 @@ public final class Blockchain {
      *
      * If neither of these conditions is true then this method will throw an exception.
      *
+     * @param value         the value to transfer
+     * @param stepLimit     step limit
      * @param targetAddress the account address
      * @param method        method
      * @param params        parameters
-     * @param value         the value to transfer
      * @return the invocation result.
      * @throws IllegalArgumentException when the arguments are invalid, e.g. insufficient balance, NULL address
+     * @throws TargetRevertedException when call target reverts the newly created frame
      * or the targetAddress is a contract that requires a foreign virtual machine in order to be executed.
      */
-    // TODO: use other exception
-    public static Object call(Address targetAddress, String method, Object[] params,
-                              BigInteger value) throws IllegalArgumentException {
+    public static Object call(BigInteger value, BigInteger stepLimit,
+                              Address targetAddress, String method, Object... params) {
+        return null;
+    }
+
+    public static Object call(BigInteger value,
+                              Address targetAddress, String method, Object... params) {
+        return null;
+    }
+
+    public static Object call(Address targetAddress, String method, Object... params) {
         return null;
     }
 

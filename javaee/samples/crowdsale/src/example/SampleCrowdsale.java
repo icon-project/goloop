@@ -106,7 +106,7 @@ public class SampleCrowdsale
 
         // give tokens to the contributor as a reward
         byte[] _data = "called from Crowdsale".getBytes();
-        Blockchain.call(crowdsale.tokenScore, "transfer", new Object[] {_from, _value, _data}, BigInteger.ZERO);
+        Blockchain.call(crowdsale.tokenScore, "transfer", _from, _value, _data);
         // emit eventlog
         FundTransfer(_from, _value, true);
     }
@@ -147,7 +147,7 @@ public class SampleCrowdsale
                 BigInteger amount = safeGetBalance(_from);
                 if (amount.compareTo(BigInteger.ZERO) > 0) {
                     // transfer the icx back to them
-                    Blockchain.call(_from, "fallback", new Object[0], amount);
+                    Blockchain.call(amount, _from, "fallback");
                     // emit eventlog
                     FundTransfer(_from, amount, false);
                     // set their balance to ZERO
@@ -160,7 +160,7 @@ public class SampleCrowdsale
                 BigInteger amountRaised = safeGetAmountRaised();
                 if (amountRaised.compareTo(BigInteger.ZERO) > 0) {
                     // transfer the funds to beneficiary
-                    Blockchain.call(crowdsale.beneficiary, "fallback", new Object[0], amountRaised);
+                    Blockchain.call(amountRaised, crowdsale.beneficiary, "fallback");
                     // emit eventlog
                     FundTransfer(crowdsale.beneficiary, amountRaised, false);
                     // reset amountRaised

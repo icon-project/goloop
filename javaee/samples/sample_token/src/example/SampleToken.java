@@ -119,7 +119,7 @@ public class SampleToken
         // if the recipient is SCORE, call 'tokenFallback' to handle further operation
         byte[] dataBytes = (_data == null) ? new byte[0] : _data;
         if (isContract(_to)) {
-            Blockchain.call(_to, "tokenFallback", new Object[] {_from, _value, dataBytes}, BigInteger.ZERO);
+            Blockchain.call(_to, "tokenFallback", _from, _value, dataBytes);
         }
 
         // emit Transfer event

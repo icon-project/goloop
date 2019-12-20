@@ -121,8 +121,8 @@ public interface IBlockchainRuntime {
      * @param value         The value to transfer
      * @return The response of executing the contract.
      */
-    IObject avm_call(Address targetAddress, String method, IObjectArray params,
-                                  BigInteger value) throws IllegalArgumentException;
+    IObject avm_call(BigInteger value, BigInteger stepLimit,
+                     Address targetAddress, String method, IObjectArray params);
 
     /**
      * Stop the current execution, rollback any state changes, and refund the remaining energy to caller.

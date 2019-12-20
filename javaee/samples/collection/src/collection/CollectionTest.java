@@ -119,11 +119,11 @@ public class CollectionTest
 
     @External
     public static BigInteger totalSupply2(Address sc) {
-        return (BigInteger)Blockchain.call(sc, "totalSupply", new Object[0], BigInteger.ZERO);
+        return (BigInteger)Blockchain.call(sc, "totalSupply");
     }
 
     @External
     public static BigInteger balanceOf2(Address sc, Address _owner) {
-        return (BigInteger) Blockchain.call(sc, "balanceOf", new Object[]{_owner}, BigInteger.ZERO);
+        return (BigInteger) Blockchain.call(sc, "balanceOf", _owner);
     }
 }

@@ -63,7 +63,7 @@ public class ScenarioTest extends GoldenTest {
                         int ccodeLen = (code[offset++] << 8) & 0xff | (code[offset++] & 0xff);
                         var ccode = Arrays.copyOfRange(code, offset, offset + ccodeLen);
                         offset += ccodeLen;
-                        Blockchain.call(addr, "run", new Object[]{ccode}, BigInteger.ZERO);
+                        Blockchain.call(addr, "run", (Object) ccode);
                     } catch (Exception e) {
                         Blockchain.println("Exception e=" + e);
                     }
