@@ -17,7 +17,6 @@ RECV result status=0 stepUsed=203042 ret=<null>
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=method params=[1 true 010002...]
 RECV getObjGraph flag=1 => next=3 hash=956e51ed46f2fa7e578cd8e06820e61cf652bf42e4a1c57709156301c48f601e graphLen=82 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x00\x00\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x0eleave A.method\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x06method
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| enter A.method(1 true 010002000000000000000000000000000000000000)
-RECV getBalance 010001... => 0
 RECV call to=010002... value=0 stepLimit=999982031 method=method params=[0 false <null>]
 SEND invoke code=010002/transformed isQuery=false from=010001... to=010002... value=0 stepLimit=999982031 method=method params=[0 false <null>]
 RECV getObjGraph flag=1 => next=3 hash=d77c0733f5a8fec058f9c6a5c570dbe08365b8802b4592a0b7e56cb0877c181d graphLen=80 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x0eleave B.method\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x06method
@@ -29,7 +28,6 @@ RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| lString==sString :
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| lClass1==lClass2 : true
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| sClass==lClass1 : true
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| sClass==lClass2 : true
-RECV getBalance 010001... => 0
 RECV call to=010002... value=0 stepLimit=999933556 method=method params=[0 true <null>]
 SEND invoke code=010002/transformed isQuery=false from=010001... to=010002... value=0 stepLimit=999933556 method=method params=[0 true <null>]
 RECV getObjGraph flag=1 => next=3 hash=d77c0733f5a8fec058f9c6a5c570dbe08365b8802b4592a0b7e56cb0877c181d graphLen=80 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x0eleave B.method\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x06method

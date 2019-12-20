@@ -194,7 +194,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         java.math.BigInteger underlyingValue = value.getUnderlying();
         require(targetAddress != null, "Destination can't be NULL");
         require(underlyingValue.compareTo(java.math.BigInteger.ZERO) >= 0 , "Value can't be negative");
-        require(underlyingValue.compareTo(externalState.getBalance(this.transactionDestination)) <= 0, "Insufficient balance");
 
         if (task.getTransactionStackDepth() == 9) {
             // since we increase depth in the upcoming call to runInternalCall(),
