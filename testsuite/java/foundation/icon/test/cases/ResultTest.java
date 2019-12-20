@@ -65,7 +65,7 @@ public class ResultTest {
                 BigInteger.valueOf(CODE_LIMIT_REV6 - CODE_REVERTED + 1),
         };
         BigInteger[] expect;
-        RpcItem rev = chainSCORE.call(null, "getRevision", null);
+        RpcItem rev = chainSCORE.call("getRevision", null);
         LOG.info("Revision: " + rev.asString());
         if (rev.asInteger().intValue() < 6) {
             expect = new BigInteger[]{
@@ -95,7 +95,7 @@ public class ResultTest {
 
             LOG.info("query case" + String.valueOf(i));
             try {
-                RpcItem qr = score1.call(null, "queryRevertWithIndex", params);
+                RpcItem qr = score1.call("queryRevertWithIndex", params);
                 fail();
             } catch (RpcError e) {
                 assertEquals(-30000 - expect[i].intValue(), e.getCode());

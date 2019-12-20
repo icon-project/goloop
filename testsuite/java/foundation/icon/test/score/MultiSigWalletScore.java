@@ -1,3 +1,19 @@
+/*
+ * Copyright 2019 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package foundation.icon.test.score;
 
 import foundation.icon.icx.IconService;
@@ -59,7 +75,7 @@ public class MultiSigWalletScore extends Score {
     public TransactionResult addWalletOwner(Wallet fromWallet, Address newOwner, String description) throws IOException, ResultTimeoutException {
         String methodParams = String.format("[{\"name\": \"_walletOwner\", \"type\": \"Address\", \"value\": \"%s\"}]", newOwner);
         RpcObject params = new RpcObject.Builder()
-                .put("_destination", new RpcValue(scoreAddress))
+                .put("_destination", new RpcValue(getAddress()))
                 .put("_method", new RpcValue("addWalletOwner"))
                 .put("_params", new RpcValue(methodParams))
                 .put("_description", new RpcValue(description))
@@ -72,7 +88,7 @@ public class MultiSigWalletScore extends Score {
                 "[{\"name\": \"_walletOwner\", \"type\": \"Address\", \"value\": \"%s\"},"
                         + "{\"name\": \"_newWalletOwner\", \"type\": \"Address\", \"value\": \"%s\"}]", oldOwner, newOwner);
         RpcObject params = new RpcObject.Builder()
-                .put("_destination", new RpcValue(scoreAddress))
+                .put("_destination", new RpcValue(getAddress()))
                 .put("_method", new RpcValue("replaceWalletOwner"))
                 .put("_params", new RpcValue(methodParams))
                 .put("_description", new RpcValue(description))
@@ -83,7 +99,7 @@ public class MultiSigWalletScore extends Score {
     public TransactionResult changeRequirement(Wallet fromWallet, int required, String description) throws IOException, ResultTimeoutException {
         String methodParams = String.format("[{\"name\": \"_required\", \"type\": \"int\", \"value\": \"%d\"}]", required);
         RpcObject params = new RpcObject.Builder()
-                .put("_destination", new RpcValue(scoreAddress))
+                .put("_destination", new RpcValue(getAddress()))
                 .put("_method", new RpcValue("changeRequirement"))
                 .put("_params", new RpcValue(methodParams))
                 .put("_description", new RpcValue(description))
@@ -92,7 +108,7 @@ public class MultiSigWalletScore extends Score {
     }
 
     public BigInteger getTransactionId(TransactionResult result) throws IOException {
-        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, scoreAddress, "Submission(int)");
+        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, getAddress(), "Submission(int)");
         if (event != null) {
             return event.getIndexed().get(1).asInteger();
         }
@@ -100,7 +116,7 @@ public class MultiSigWalletScore extends Score {
     }
 
     public void ensureConfirmation(TransactionResult result, Address sender, BigInteger txId) throws IOException {
-        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, scoreAddress, "Confirmation(Address,int)");
+        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, getAddress(), "Confirmation(Address,int)");
         if (event != null) {
             Address _sender = event.getIndexed().get(1).asAddress();
             BigInteger _txId = event.getIndexed().get(2).asInteger();
@@ -112,7 +128,7 @@ public class MultiSigWalletScore extends Score {
     }
 
     public void ensureIcxTransfer(TransactionResult result, Address from, Address to, long value) throws IOException {
-        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, scoreAddress, "ICXTransfer(Address,Address,int)");
+        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, getAddress(), "ICXTransfer(Address,Address,int)");
         if (event != null) {
             BigInteger icxValue = IconAmount.of(BigInteger.valueOf(value), IconAmount.Unit.ICX).toLoop();
             Address _from = event.getIndexed().get(1).asAddress();
@@ -126,7 +142,7 @@ public class MultiSigWalletScore extends Score {
     }
 
     public void ensureExecution(TransactionResult result, BigInteger txId) throws IOException {
-        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, scoreAddress, "Execution(int)");
+        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, getAddress(), "Execution(int)");
         if (event != null) {
             BigInteger _txId = event.getIndexed().get(1).asInteger();
             if (txId.equals(_txId)) {
@@ -137,7 +153,7 @@ public class MultiSigWalletScore extends Score {
     }
 
     public void ensureWalletOwnerAddition(TransactionResult result, Address address) throws IOException {
-        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, scoreAddress, "WalletOwnerAddition(Address)");
+        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, getAddress(), "WalletOwnerAddition(Address)");
         if (event != null) {
             Address _address = event.getIndexed().get(1).asAddress();
             if (address.equals(_address)) {
@@ -148,7 +164,7 @@ public class MultiSigWalletScore extends Score {
     }
 
     public void ensureWalletOwnerRemoval(TransactionResult result, Address address) throws IOException {
-        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, scoreAddress, "WalletOwnerRemoval(Address)");
+        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, getAddress(), "WalletOwnerRemoval(Address)");
         if (event != null) {
             Address _address = event.getIndexed().get(1).asAddress();
             if (address.equals(_address)) {
@@ -159,7 +175,7 @@ public class MultiSigWalletScore extends Score {
     }
 
     public void ensureRequirementChange(TransactionResult result, Integer required) throws IOException {
-        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, scoreAddress, "RequirementChange(int)");
+        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, getAddress(), "RequirementChange(int)");
         if (event != null) {
             BigInteger _required = event.getData().get(0).asInteger();
             if (required.equals(_required.intValue())) {

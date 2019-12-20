@@ -55,7 +55,7 @@ public class CrowdSaleScore extends Score {
     public TransactionResult checkGoalReached(Wallet wallet)
             throws ResultTimeoutException, IOException {
         return invokeAndWaitResult(wallet,
-                "checkGoalReached", null, null, STEPS_DEFAULT);
+                "checkGoalReached", null, null, Constants.DEFAULT_STEPS);
     }
 
     public void ensureCheckGoalReached(Wallet wallet) throws Exception {
@@ -64,7 +64,7 @@ public class CrowdSaleScore extends Score {
             if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
                 throw new IOException("Failed to execute checkGoalReached.");
             }
-            TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, scoreAddress, "GoalReached(Address,int)");
+            TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, getAddress(), "GoalReached(Address,int)");
             if (event != null) {
                 break;
             }
@@ -74,6 +74,6 @@ public class CrowdSaleScore extends Score {
     }
 
     public TransactionResult safeWithdrawal(Wallet wallet) throws ResultTimeoutException , IOException {
-        return invokeAndWaitResult(wallet, "safeWithdrawal", null, null, STEPS_DEFAULT);
+        return invokeAndWaitResult(wallet, "safeWithdrawal", null, null, Constants.DEFAULT_STEPS);
     }
 }

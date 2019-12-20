@@ -1,5 +1,23 @@
+/*
+ * Copyright 2019 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package foundation.icon.test.cases;
 
+import example.SampleCrowdsale;
+import example.SampleToken;
 import foundation.icon.icx.Call;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
@@ -14,6 +32,7 @@ import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.ResultTimeoutException;
+import foundation.icon.test.common.TransactionHandler;
 import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.CrowdSaleScore;
 import foundation.icon.test.score.GovScore;
@@ -34,13 +53,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @Tag(Constants.TAG_JAVA_SCORE)
 class CrowdsaleTest {
     private static IconService iconService;
+    private static TransactionHandler txHandler;
     private static Env.Chain chain;
     private static KeyWallet ownerWallet;
     private static GovScore govScore;
     private static GovScore.Fee fee;
-
-    private static final String SAMPLETOKEN_JAR = Constants.JAVA_SCORE_ROOT + "sampleToken.jar";
-    private static final String CROWDSALE_JAR = Constants.JAVA_SCORE_ROOT + "crowdsale.jar";
 
     @BeforeAll
     static void init() throws Exception {
@@ -48,6 +65,7 @@ class CrowdsaleTest {
         Env.Channel channel = node.channels[0];
         chain = channel.chain;
         iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
+        txHandler = new TransactionHandler(iconService, chain);
         govScore = new GovScore(iconService, chain);
         fee = govScore.getFee();
         initScoreTest();
@@ -55,8 +73,9 @@ class CrowdsaleTest {
 
     private static void initScoreTest() throws Exception {
         ownerWallet = KeyWallet.create();
-        Address[] addrs = {ownerWallet.getAddress(), chain.governorWallet.getAddress()};
-        Utils.transferAndCheck(iconService, chain, chain.godWallet, addrs, BigInteger.TEN.pow(20));
+        Utils.transferAndCheck(iconService, chain, chain.godWallet, new Address[] {
+                    ownerWallet.getAddress(), chain.governorWallet.getAddress()
+                }, BigInteger.TEN.pow(20));
 
         govScore.setMaxStepLimit("invoke", BigInteger.valueOf(1000000));
         govScore.setMaxStepLimit("query", BigInteger.valueOf(1000000));
@@ -135,11 +154,10 @@ class CrowdsaleTest {
                 .put("_decimals", new RpcValue(decimals))
                 .put("_initialSupply", new RpcValue(initialSupply))
                 .build();
-        Address scoreAddr = Score.install(iconService, chain, ownerWallet, SAMPLETOKEN_JAR,
-                                          params, 1000000, Constants.CONTENT_TYPE_JAVA);
-        LOG.info("scoreAddr = " + scoreAddr);
+        Score score = txHandler.deploy(ownerWallet, SampleToken.class, params);
+        LOG.info("scoreAddr = " + score.getAddress());
         LOG.infoExiting();
-        return scoreAddr;
+        return score.getAddress();
     }
 
     private Address deployCrowdsale(Address tokenScore, BigInteger fundingGoalInIcx) throws Exception {
@@ -149,11 +167,10 @@ class CrowdsaleTest {
                 .put("_tokenScore", new RpcValue(tokenScore))
                 .put("_durationInBlocks", new RpcValue(BigInteger.valueOf(10)))
                 .build();
-        Address scoreAddr = Score.install(iconService, chain, ownerWallet, CROWDSALE_JAR,
-                                          params, 1000000, Constants.CONTENT_TYPE_JAVA);
-        LOG.info("scoreAddr = " + scoreAddr);
+        Score score = txHandler.deploy(ownerWallet, SampleCrowdsale.class, params);
+        LOG.info("scoreAddr = " + score.getAddress());
         LOG.infoExiting();
-        return scoreAddr;
+        return score.getAddress();
     }
 
     private static void ensureFundingGoal(Bytes txHash, Address scoreAddress, BigInteger fundingGoalInIcx)

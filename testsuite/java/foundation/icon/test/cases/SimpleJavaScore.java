@@ -1,5 +1,23 @@
+/*
+ * Copyright 2019 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package foundation.icon.test.cases;
 
+import example.APITest;
+import example.SampleToken;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.Wallet;
@@ -15,6 +33,7 @@ import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
+import foundation.icon.test.common.TransactionHandler;
 import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.GovScore;
 import foundation.icon.test.score.Score;
@@ -35,6 +54,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Tag(Constants.TAG_JAVA_SCORE)
 class SimpleJavaScore {
     private static IconService iconService;
+    private static TransactionHandler txHandler;
     private static Env.Chain chain;
     private static KeyWallet ownerWallet;
     private static KeyWallet calleeWallet;
@@ -48,6 +68,7 @@ class SimpleJavaScore {
         Env.Channel channel = node.channels[0];
         chain = channel.chain;
         iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
+        txHandler = new TransactionHandler(iconService, chain);
         govScore = new GovScore(iconService, chain);
         fee = govScore.getFee();
         initScoreTest();
@@ -56,8 +77,9 @@ class SimpleJavaScore {
     private static void initScoreTest() throws Exception {
         ownerWallet = KeyWallet.create();
         calleeWallet = KeyWallet.create();
-        Address[] addrs = {ownerWallet.getAddress(), calleeWallet.getAddress(), chain.governorWallet.getAddress()};
-        Utils.transferAndCheck(iconService, chain, chain.godWallet, addrs, BigInteger.TEN.pow(20));
+        Utils.transferAndCheck(iconService, chain, chain.godWallet, new Address[] {
+                    ownerWallet.getAddress(), calleeWallet.getAddress()
+                }, BigInteger.TEN.pow(20));
 
         govScore.setMaxStepLimit("invoke", BigInteger.valueOf(1000000));
         govScore.setMaxStepLimit("query", BigInteger.valueOf(1000000));
@@ -143,19 +165,17 @@ class SimpleJavaScore {
                 .put("_decimals", new RpcValue(decimals))
                 .put("_initialSupply", new RpcValue(initialSupply))
                 .build();
-        Address scoreAddr = Score.install(iconService, chain, ownerWallet, Constants.JSCORE_MYSAMPLETOKEN,
-                                          params, 1000000, Constants.CONTENT_TYPE_JAVA);
-        LOG.info("scoreAddr = " + scoreAddr);
-        testScore = new Score(iconService, chain, scoreAddr);
+        testScore = txHandler.deploy(ownerWallet, SampleToken.class, params);
+        LOG.info("scoreAddr = " + testScore.getAddress());
         LOG.infoExiting();
-        return scoreAddr;
+        return testScore.getAddress();
     }
 
     private RpcItem callBalanceOf(Address addr) throws Exception {
         RpcObject params = new RpcObject.Builder()
                 .put("_owner", new RpcValue(addr.toString()))
                 .build();
-        return testScore.call(KeyWallet.create().getAddress(), "balanceOf", params);
+        return testScore.call("balanceOf", params);
     }
 
     private TransactionResult invokeTransfer(Address score, Wallet from, Address to, BigInteger value,
@@ -172,12 +192,10 @@ class SimpleJavaScore {
 
     private Address deployAPITest() throws Exception {
         LOG.infoEntering("deploy", "apiTest");
-        Address scoreAddr = Score.install(iconService, chain, ownerWallet, Constants.JSCORE_APITEST,
-                                          null, 1000000, Constants.CONTENT_TYPE_JAVA);
-        LOG.info("scoreAddr = " + scoreAddr);
-        testScore = new Score(iconService, chain, scoreAddr);
+        testScore = txHandler.deploy(ownerWallet, APITest.class, null);
+        LOG.info("scoreAddr = " + testScore.getAddress());
         LOG.infoExiting();
-        return scoreAddr;
+        return testScore.getAddress();
     }
 
     @Test
@@ -199,7 +217,7 @@ class SimpleJavaScore {
         LOG.infoExiting();
 
         LOG.infoEntering("getAddress", "query");
-        RpcItem result = testScore.call(caller.getAddress(), "getAddressQuery", null);
+        RpcItem result = testScore.call("getAddressQuery", null);
         LOG.info("expected (" + scoreAddr + "), got (" + result.asAddress() + ")");
         assertEquals(scoreAddr, result.asAddress());
         LOG.infoExiting();
@@ -217,7 +235,7 @@ class SimpleJavaScore {
         LOG.infoExiting();
 
         LOG.infoEntering("getCaller", "query");
-        result = testScore.call(caller.getAddress(), "getCallerQuery", null);
+        result = testScore.call("getCallerQuery", null);
         LOG.info("expected (" + "null" + "), got (" + result + ")");
         assertNull(result);
         LOG.infoExiting();
@@ -235,7 +253,7 @@ class SimpleJavaScore {
         LOG.infoExiting();
 
         LOG.infoEntering("getOrigin", "query");
-        result = testScore.call(caller.getAddress(), "getOriginQuery", null);
+        result = testScore.call("getOriginQuery", null);
         LOG.info("expected (" + "null" + "), got (" + result + ")");
         assertNull(result);
         LOG.infoExiting();
@@ -253,7 +271,7 @@ class SimpleJavaScore {
         LOG.infoExiting();
 
         LOG.infoEntering("getOwner", "query");
-        result = testScore.call(caller.getAddress(), "getOwnerQuery", null);
+        result = testScore.call("getOwnerQuery", null);
         LOG.info("expected (" + ownerWallet.getAddress() + "), got (" + result.asAddress() + ")");
         assertEquals(ownerWallet.getAddress(), result.asAddress());
         LOG.infoExiting();
@@ -279,7 +297,7 @@ class SimpleJavaScore {
 
         LOG.infoEntering("getBlockHeight", "query");
         Block block = iconService.getLastBlock().execute();
-        result = testScore.call(caller.getAddress(), "getBlockHeightQuery", null);
+        result = testScore.call("getBlockHeightQuery", null);
         LOG.info("expected (" + block.getHeight() + "), got (" + result.asInteger() + ")");
         assertTrue(block.getHeight().compareTo(result.asInteger()) <= 0);
         LOG.infoExiting();
@@ -298,7 +316,7 @@ class SimpleJavaScore {
 
         LOG.infoEntering("getBlockTimestamp", "query");
         block = iconService.getLastBlock().execute();
-        result = testScore.call(caller.getAddress(), "getBlockTimestampQuery", null);
+        result = testScore.call("getBlockTimestampQuery", null);
         LOG.info("expected (" + block.getTimestamp() + "), got (" + result.asInteger() + ")");
         assertTrue(block.getTimestamp().compareTo(result.asInteger()) <= 0);
         LOG.infoExiting();
@@ -323,7 +341,7 @@ class SimpleJavaScore {
         LOG.infoExiting();
 
         LOG.infoEntering("getTransactionHash", "query");
-        result = testScore.call(caller.getAddress(), "getTransactionHashQuery", null);
+        result = testScore.call("getTransactionHashQuery", null);
         LOG.info("expected (" + "null" + "), got (" + result + ")");
         assertNull(result);
         LOG.infoExiting();
@@ -346,7 +364,7 @@ class SimpleJavaScore {
         LOG.infoExiting();
 
         LOG.infoEntering("getTransactionIndex", "query");
-        result = testScore.call(caller.getAddress(), "getTransactionIndexQuery", null);
+        result = testScore.call("getTransactionIndexQuery", null);
         LOG.info("expected (" + "0" + "), got (" + result.asInteger() + ")");
         assertEquals(BigInteger.ZERO, result.asInteger());
         LOG.infoExiting();
@@ -368,7 +386,7 @@ class SimpleJavaScore {
         LOG.infoExiting();
 
         LOG.infoEntering("getTransactionTimestamp", "query");
-        result = testScore.call(caller.getAddress(), "getTransactionTimestampQuery", null);
+        result = testScore.call("getTransactionTimestampQuery", null);
         LOG.info("expected (" + "0" + "), got (" + result.asInteger() + ")");
         assertEquals(BigInteger.ZERO, result.asInteger());
         LOG.infoExiting();
@@ -387,7 +405,7 @@ class SimpleJavaScore {
         LOG.infoExiting();
 
         LOG.infoEntering("getTransactionNonce", "query");
-        result = testScore.call(caller.getAddress(), "getTransactionNonceQuery", null);
+        result = testScore.call("getTransactionNonceQuery", null);
         LOG.info("expected (" + "0" + "), got (" + result.asInteger() + ")");
         assertEquals(BigInteger.ZERO, result.asInteger());
         LOG.infoExiting();
@@ -416,7 +434,7 @@ class SimpleJavaScore {
         LOG.infoExiting();
 
         LOG.infoEntering("getValue", "query");
-        result = testScore.call(ownerWallet.getAddress(), "getValueQuery", null);
+        result = testScore.call("getValueQuery", null);
         LOG.info("expected (" + "0" + "), got (" + result.asInteger() + ")");
         assertEquals(BigInteger.ZERO, result.asInteger());
         LOG.infoExiting();

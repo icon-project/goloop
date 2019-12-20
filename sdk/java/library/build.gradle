@@ -2,11 +2,15 @@ plugins {
     id 'java-library'
 }
 
-sourceCompatibility = 1.8
-
 repositories {
     mavenCentral()
 }
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+}
+
+sourceSets.main.java.srcDirs = ["src/main/java"]
 
 ext {
     bouncycastleVersion = '1.60'
@@ -31,4 +35,3 @@ task sourcesJar(type: Jar) {
     classifier = 'sources'
     from sourceSets.main.allSource
 }
-

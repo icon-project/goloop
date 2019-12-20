@@ -77,7 +77,7 @@ public class StepCounterScore extends Score {
     }
 
     public BigInteger getStep(Address from) throws IOException {
-        RpcItem res = this.call(from, "getStep", null);
+        RpcItem res = this.call("getStep", null);
         return res.asInteger();
     }
 }

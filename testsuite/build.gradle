@@ -1,18 +1,26 @@
 import java.util.concurrent.TimeUnit
 
-plugins {
-    id 'java'
-}
-
 group 'foundation.icon'
 version '0.9'
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
+allprojects {
+    apply plugin: 'java'
+
+    repositories {
+        mavenCentral()
+    }
 }
 
-repositories {
-    mavenCentral()
+subprojects {
+    java {
+        sourceCompatibility = JavaVersion.VERSION_1_10
+        targetCompatibility = JavaVersion.VERSION_1_10
+    }
+
+    sourceSets {
+        main.java.srcDirs = ['src/java']
+        test.java.srcDirs = ['test/java']
+    }
 }
 
 sourceSets.test.java.srcDirs = ["java"]
@@ -22,6 +30,9 @@ dependencies {
     implementation "org.msgpack:jackson-dataformat-msgpack:0.8.16"
     implementation "org.java-websocket:Java-WebSocket:1.4.0"
     implementation project(':sdk')
+    implementation project(':rt')
+    implementation project(':tooling')
+    implementation project(':samples')
     testImplementation "org.junit.jupiter:junit-jupiter:5.4.2"
     testRuntime "org.junit.jupiter:junit-jupiter-engine:5.4.2"
 }

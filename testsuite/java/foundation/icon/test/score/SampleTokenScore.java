@@ -1,3 +1,19 @@
+/*
+ * Copyright 2019 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package foundation.icon.test.score;
 
 import foundation.icon.icx.*;
@@ -45,7 +61,7 @@ public class SampleTokenScore extends Score {
         RpcObject params = new RpcObject.Builder()
                 .put("_owner", new RpcValue(owner))
                 .build();
-        return call(owner, "balanceOf", params).asInteger();
+        return call("balanceOf", params).asInteger();
     }
 
     public void ensureTokenBalance(KeyWallet wallet, long value) throws ResultTimeoutException, IOException {
@@ -78,20 +94,8 @@ public class SampleTokenScore extends Score {
                 .put("_to", new RpcValue(toAddress))
                 .put("_value", new RpcValue(IconAmount.of(value, 18).toLoop()))
                 .build();
-
-        Transaction transaction = TransactionBuilder.newBuilder()
-                .nid(BigInteger.valueOf(chain.networkId))
-                .from(fromWallet.getAddress())
-                .to(scoreAddress)
-                .stepLimit(STEPS_DEFAULT)
-                .timestamp(Utils.getMicroTime())
-                .nonce(new BigInteger("1"))
-                .call("transfer")
-                .params(params)
-                .build();
-
-        SignedTransaction signedTransaction = new SignedTransaction(transaction, fromWallet);
-        return service.sendTransaction(signedTransaction).execute();
+        return this.invoke(fromWallet, "transfer", params, null, Constants.DEFAULT_STEPS,
+                Utils.getMicroTime(), BigInteger.ONE);
     }
 
     public void ensureFundTransfer(TransactionResult result, Address scoreAddress,

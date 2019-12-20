@@ -109,7 +109,7 @@ class ScoreParamTest {
                             params, BigInteger.valueOf(0), BigInteger.valueOf(100));
             LOG.infoExiting();
             assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-            RpcItem item = testScore.call(callerWallet.getAddress(), "check_int", null);
+            RpcItem item = testScore.call("check_int", null);
             assertEquals(p.toString(), item.asString());
         }
         LOG.infoExiting();
@@ -128,7 +128,7 @@ class ScoreParamTest {
                             params, BigInteger.valueOf(0), BigInteger.valueOf(100));
             LOG.infoExiting();
             assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-            RpcItem item = testScore.call(callerWallet.getAddress(), "check_str", null);
+            RpcItem item = testScore.call("check_str", null);
             assertEquals(p, item.asString());
         }
         LOG.infoExiting();
@@ -149,7 +149,7 @@ class ScoreParamTest {
                             params, BigInteger.valueOf(0), BigInteger.valueOf(100));
             LOG.infoExiting();
             assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-            RpcItem item = testScore.call(callerWallet.getAddress(), "check_bytes", null);
+            RpcItem item = testScore.call("check_bytes", null);
             assertEquals(pv.asString(), item.asString());
         }
         LOG.infoExiting();
@@ -168,7 +168,7 @@ class ScoreParamTest {
                             params, BigInteger.valueOf(0), BigInteger.valueOf(100));
             LOG.infoExiting();
             assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-            RpcItem item = testScore.call(callerWallet.getAddress(), "check_bool", null);
+            RpcItem item = testScore.call("check_bool", null);
             assertEquals(String.valueOf(p), item.asString());
         }
         LOG.infoExiting();
@@ -187,7 +187,7 @@ class ScoreParamTest {
                             params, BigInteger.valueOf(0), BigInteger.valueOf(100));
             LOG.infoExiting();
             assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-            RpcItem item = testScore.call(callerWallet.getAddress(), "check_address", null);
+            RpcItem item = testScore.call("check_address", null);
             assertEquals(p.toString(), item.asString());
         }
         LOG.infoExiting();
@@ -209,7 +209,7 @@ class ScoreParamTest {
                         params, BigInteger.valueOf(0), BigInteger.valueOf(100));
         LOG.infoExiting();
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-        RpcItem item = testScore.call(callerWallet.getAddress(), "check_all", null);
+        RpcItem item = testScore.call("check_all", null);
         assertEquals("all", item.asString());
         LOG.infoExiting();
     }
@@ -229,7 +229,7 @@ class ScoreParamTest {
                             params, BigInteger.valueOf(0), BigInteger.valueOf(100));
             LOG.infoExiting();
             assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-            RpcItem item = interCallScore.call(callerWallet.getAddress(), "check_bool", null);
+            RpcItem item = interCallScore.call("check_bool", null);
             assertEquals(String.valueOf(p), item.asString());
         }
         LOG.infoExiting();
@@ -250,7 +250,7 @@ class ScoreParamTest {
                             params, BigInteger.valueOf(0), BigInteger.valueOf(100));
             LOG.infoExiting();
             assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-            RpcItem item = interCallScore.call(callerWallet.getAddress(), "check_address", null);
+            RpcItem item = interCallScore.call("check_address", null);
             assertEquals(p.toString(), item.asString());
         }
         LOG.infoExiting();
@@ -273,7 +273,7 @@ class ScoreParamTest {
                             params, BigInteger.valueOf(0), BigInteger.valueOf(100));
             LOG.infoExiting();
             assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-            RpcItem item = interCallScore.call(callerWallet.getAddress(), "check_int", null);
+            RpcItem item = interCallScore.call("check_int", null);
             assertEquals(p.toString(), item.asString());
         }
         LOG.infoExiting();
@@ -295,7 +295,7 @@ class ScoreParamTest {
                             params, BigInteger.valueOf(0), BigInteger.valueOf(100));
             LOG.infoExiting();
             assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-            RpcItem item = interCallScore.call(callerWallet.getAddress(), "check_bytes", null);
+            RpcItem item = interCallScore.call("check_bytes", null);
             assertEquals(pv.asString(), item.asString());
         }
         LOG.infoExiting();
@@ -316,7 +316,7 @@ class ScoreParamTest {
                             params, BigInteger.valueOf(0), BigInteger.valueOf(100));
             LOG.infoExiting();
             assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-            RpcItem item = interCallScore.call(callerWallet.getAddress(), "check_str", null);
+            RpcItem item = interCallScore.call("check_str", null);
             assertEquals(p, item.asString());
         }
         LOG.infoExiting();
@@ -339,7 +339,7 @@ class ScoreParamTest {
                         params, BigInteger.valueOf(0), BigInteger.valueOf(100));
         LOG.infoExiting();
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-        RpcItem item = interCallScore.call(callerWallet.getAddress(), "check_all", null);
+        RpcItem item = interCallScore.call("check_all", null);
         assertEquals("all", item.asString());
         LOG.infoExiting();
     }
@@ -452,7 +452,7 @@ class ScoreParamTest {
                         params, BigInteger.valueOf(0), BigInteger.valueOf(100));
         LOG.infoExiting();
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-        RpcItem item = testScore.call(callerWallet.getAddress(), "check_default", null);
+        RpcItem item = testScore.call("check_default", null);
         assertEquals(param, item.asString());
 
         params = new RpcObject.Builder()
@@ -462,7 +462,7 @@ class ScoreParamTest {
                         params, BigInteger.valueOf(0), BigInteger.valueOf(100));
         LOG.infoExiting();
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-        item = testScore.call(callerWallet.getAddress(), "check_default", null);
+        item = testScore.call("check_default", null);
         assertEquals("None", item.asString());
         LOG.infoExiting();
     }
@@ -480,7 +480,7 @@ class ScoreParamTest {
                         params, BigInteger.valueOf(0), BigInteger.valueOf(100));
         LOG.infoExiting();
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-        RpcItem item = interCallScore.call(callerWallet.getAddress(), "check_default", null);
+        RpcItem item = interCallScore.call("check_default", null);
         assertEquals(param, item.asString());
 
         params = new RpcObject.Builder()
@@ -491,7 +491,7 @@ class ScoreParamTest {
                         params, BigInteger.valueOf(0), BigInteger.valueOf(100));
         LOG.infoExiting();
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-        item = interCallScore.call(callerWallet.getAddress(), "check_default", null);
+        item = interCallScore.call("check_default", null);
         assertEquals("None", item.asString());
         LOG.infoExiting();
     }
@@ -557,7 +557,7 @@ class ScoreParamTest {
                         params, BigInteger.valueOf(0), BigInteger.valueOf(100));
         LOG.infoExiting();
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-        RpcItem item = interCallScore.call(callerWallet.getAddress(), "check_str", null);
+        RpcItem item = interCallScore.call("check_str", null);
         assertEquals("", item.asString());
         LOG.infoExiting();
     }
@@ -575,15 +575,15 @@ class ScoreParamTest {
         LOG.infoExiting();
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
         // check the saved values
-        RpcItem item = interCallScore.call(callerWallet.getAddress(), "check_bool", null);
+        RpcItem item = interCallScore.call("check_bool", null);
         assertEquals("true", item.asString());
-        item = interCallScore.call(callerWallet.getAddress(), "check_address", null);
+        item = interCallScore.call("check_address", null);
         assertEquals("cx0000000000000000000000000000000000000000", item.asString());
-        item = interCallScore.call(callerWallet.getAddress(), "check_int", null);
+        item = interCallScore.call("check_int", null);
         assertEquals("0", item.asString());
-        item = interCallScore.call(callerWallet.getAddress(), "check_str", null);
+        item = interCallScore.call("check_str", null);
         assertEquals("", item.asString());
-        item = interCallScore.call(callerWallet.getAddress(), "check_bytes", null);
+        item = interCallScore.call("check_bytes", null);
         assertEquals("0x00", item.asString());
         LOG.infoExiting();
     }
@@ -591,7 +591,7 @@ class ScoreParamTest {
     @Test
     void checkSender() throws Exception {
         LOG.infoEntering("checkSender");
-        RpcItem item = testScore.call(callerWallet.getAddress(), "check_sender", null);
+        RpcItem item = testScore.call("check_sender", null);
         assertNull(item);
         LOG.infoExiting();
     }

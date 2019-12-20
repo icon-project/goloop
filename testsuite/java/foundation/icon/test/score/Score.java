@@ -1,28 +1,55 @@
+/*
+ * Copyright 2019 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package foundation.icon.test.score;
 
-import foundation.icon.icx.*;
+import foundation.icon.icx.Call;
+import foundation.icon.icx.IconService;
+import foundation.icon.icx.Transaction;
+import foundation.icon.icx.TransactionBuilder;
+import foundation.icon.icx.Wallet;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
-import foundation.icon.test.common.*;
+import foundation.icon.test.common.Constants;
+import foundation.icon.test.common.Env;
+import foundation.icon.test.common.Log;
+import foundation.icon.test.common.ResultTimeoutException;
+import foundation.icon.test.common.TransactionFailureException;
+import foundation.icon.test.common.TransactionHandler;
+import foundation.icon.test.common.Utils;
 
 import java.io.IOException;
 import java.math.BigInteger;
 
 public class Score {
-    public static final BigInteger STEPS_DEFAULT = BigInteger.valueOf(2000000);
     private static final Log LOG = Log.getGlobal();
-
-    protected IconService service;
-    protected Address scoreAddress;
-    protected Env.Chain chain;
+    private final TransactionHandler txHandler;
+    private Address address;
 
     public Score(IconService service, Env.Chain chain, Address scoreAddress) {
-        this.service = service;
-        this.chain = chain;
-        this.scoreAddress = scoreAddress;
+        this.txHandler = new TransactionHandler(service, chain);
+        this.address = scoreAddress;
+    }
+
+    public Score(TransactionHandler txHandler, Address scoreAddress) {
+        this.txHandler = txHandler;
+        this.address = scoreAddress;
     }
 
     public static Address install(IconService service, Env.Chain chain, Wallet wallet, String contentPath, RpcObject params)
@@ -56,7 +83,7 @@ public class Score {
 
     public void update(IconService service, Env.Chain chain, Wallet wallet, String contentPath, RpcObject params)
             throws TransactionFailureException, ResultTimeoutException, IOException {
-        Bytes txHash = Utils.deployScore(service, chain.networkId, wallet, this.scoreAddress, contentPath, params);
+        Bytes txHash = Utils.deployScore(service, chain.networkId, wallet, getAddress(), contentPath, params);
         TransactionResult result = Utils.getTransactionResult(service, txHash, Constants.DEFAULT_WAITING_TIME);
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new TransactionFailureException(result.getFailure());
@@ -70,18 +97,17 @@ public class Score {
         }
     }
 
-    public RpcItem call(Address from, String method, RpcObject params)
+    public RpcItem call(String method, RpcObject params)
             throws IOException {
         if (params == null) {
             params = new RpcObject.Builder().build();
         }
         Call<RpcItem> call = new Call.Builder()
-                .from(from)
-                .to(this.scoreAddress)
+                .to(getAddress())
                 .method(method)
                 .params(params)
                 .build();
-        return this.service.call(call).execute();
+        return this.txHandler.call(call);
     }
 
     public Bytes invoke(Wallet wallet, String method, RpcObject params,
@@ -97,9 +123,9 @@ public class Score {
     public Bytes invoke(Wallet wallet, String method, RpcObject params, BigInteger value,
                         BigInteger steps, BigInteger timestamp, BigInteger nonce) throws IOException {
         TransactionBuilder.Builder builder = TransactionBuilder.newBuilder()
-                .nid(BigInteger.valueOf(chain.networkId))
+                .nid(getNetworkId())
                 .from(wallet.getAddress())
-                .to(this.scoreAddress)
+                .to(getAddress())
                 .stepLimit(steps);
 
         if ((value != null) && value.bitLength() != 0) {
@@ -118,9 +144,7 @@ public class Score {
         } else {
             t = builder.call(method).build();
         }
-        return this.service
-                .sendTransaction(new SignedTransaction(t, wallet))
-                .execute();
+        return this.txHandler.invoke(wallet, t);
     }
 
     public TransactionResult invokeAndWaitResult(Wallet wallet, String method,
@@ -138,23 +162,27 @@ public class Score {
     }
 
     public TransactionResult waitResult(Bytes txHash) throws ResultTimeoutException, IOException {
-        return Utils.getTransactionResult(this.service, txHash, Constants.DEFAULT_WAITING_TIME);
+        return waitResult(txHash, Constants.DEFAULT_WAITING_TIME);
     }
 
     public TransactionResult waitResult(Bytes txHash, long waiting) throws ResultTimeoutException, IOException {
-        return Utils.getTransactionResult(this.service, txHash, waiting);
+        return this.txHandler.getTransactionResult(txHash, waiting);
     }
 
     public Address getAddress() {
-        return this.scoreAddress;
+        return this.address;
     }
 
     public void setAddress(Address addr) {
-        this.scoreAddress = addr;
+        this.address = addr;
+    }
+
+    public BigInteger getNetworkId() {
+        return txHandler.getNetworkId();
     }
 
     @Override
     public String toString() {
-        return "SCORE(" + this.scoreAddress.toString() + ")";
+        return "SCORE(" + getAddress().toString() + ")";
     }
 }
