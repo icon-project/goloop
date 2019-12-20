@@ -160,7 +160,7 @@ class CrowdsaleTest {
             throws IOException, ResultTimeoutException {
         TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, scoreAddress, "CrowdsaleStarted(int)");
+        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, scoreAddress, "CrowdsaleStarted(int,int)");
         if (event != null) {
             BigInteger fundingGoalInLoop = IconAmount.of(fundingGoalInIcx, IconAmount.Unit.ICX).toLoop();
             BigInteger fundingGoalFromScore = event.getData().get(0).asInteger();
