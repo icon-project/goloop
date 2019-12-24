@@ -23,8 +23,8 @@ if [[ -n "$JAVA_HOME" ]] && [[ -x "$JAVA_HOME/bin/javac" ]]; then
     JAVAC="$JAVA_HOME/bin/javac"
     JAR="$JAVA_HOME/bin/jar"
 else
-    echo "ERROR: No javac found in your system!"
-    exit 2
+    JAVAC="javac"
+    JAR="jar"
 fi
 JAVAC_OPTIONS='-parameters --release 10'
 
