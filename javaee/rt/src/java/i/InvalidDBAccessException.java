@@ -1,18 +1,22 @@
 package i;
 
-public class InvalidDBAccessException extends AvmException {
+import foundation.icon.ee.types.Status;
+import foundation.icon.ee.types.SystemException;
+
+public class InvalidDBAccessException extends SystemException {
     public InvalidDBAccessException() {
+        super(Status.InvalidContainerAccess);
     }
 
     public InvalidDBAccessException(String msg) {
-        super(msg);
+        super(Status.InvalidContainerAccess, msg);
     }
 
     public InvalidDBAccessException(String message, Throwable cause) {
-        super(message, cause);
+        super(Status.InvalidContainerAccess, message, cause);
     }
 
     public InvalidDBAccessException(Throwable cause) {
-        super(cause);
+        super(Status.InvalidContainerAccess, cause);
     }
 }
