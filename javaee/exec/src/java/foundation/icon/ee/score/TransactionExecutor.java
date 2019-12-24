@@ -23,13 +23,14 @@ import foundation.icon.ee.ipc.TypedObj;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Bytes;
 import foundation.icon.ee.types.Method;
+import foundation.icon.ee.types.Result;
+import foundation.icon.ee.types.Status;
 import foundation.icon.ee.utils.MethodUnpacker;
 import org.aion.avm.core.AvmConfiguration;
 import org.aion.avm.core.CommonAvmFactory;
 import org.aion.avm.utilities.JarBuilder;
 import org.aion.types.AionAddress;
 import org.aion.types.Transaction;
-import org.aion.types.TransactionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -145,35 +146,30 @@ public class TransactionExecutor {
         Transaction tx = getTransactionData(isInstall, from, to, value, nonce, limit, method, params,
                 txHash, txIndex, txTimestamp);
 
-        BigInteger energyUsed = BigInteger.ZERO;
+        BigInteger stepUsed = BigInteger.ZERO;
         try {
             if (isInstall) {
                 // The following is for transformation
-                ResultWrapper result = new ResultWrapper(
-                        avmExecutor.run(kernel, tx, origin)
-                );
-                energyUsed = result.getEnergyUsed();
-                if (!result.isSuccess()) {
-                    throw new RuntimeException(result.getErrorMessage());
+                Result result = avmExecutor.run(kernel, tx, origin);
+                if (result.getStatus() != Status.Success) {
+                    return new InvokeResult(result);
                 }
+                stepUsed = result.getStepUsed();
                 // Prepare another transaction for 'onInstall' itself
                 tx = getTransactionData(false, from, to, value, nonce, limit, method, params,
                         txHash, txIndex, txTimestamp);
             }
             // Actual execution of the transaction
-            ResultWrapper result = new ResultWrapper(
-                    avmExecutor.run(kernel, tx, origin), energyUsed
-            );
-            Object retVal = result.getDecodedReturnData();
-            return new InvokeResult((result.isSuccess()) ? EEProxy.Status.SUCCESS : EEProxy.Status.FAILURE,
-                    result.getEnergyUsed(), TypedObj.encodeAny(retVal));
+            // FIXME: wrong starting stepUsed
+            Result result = avmExecutor.run(kernel, tx, origin);
+            return new InvokeResult(result.addStepUsed(stepUsed));
         } catch (Exception e) {
             String errMsg = e.getMessage();
             if (errMsg == null) {
                 errMsg = e.getClass().getName() + " occurred";
             }
             logger.warn("Execution failure", e);
-            return new InvokeResult(EEProxy.Status.FAILURE, energyUsed, TypedObj.encodeAny(errMsg));
+            return new InvokeResult(Status.UnknownFailure, stepUsed, TypedObj.encodeAny(errMsg));
         }
     }
 
@@ -208,43 +204,6 @@ public class TransactionExecutor {
         }
         return jarBytes;
     };
-
-    private static class ResultWrapper {
-        private final TransactionResult result;
-        private final long energyUsed;
-
-        ResultWrapper(TransactionResult result) {
-            this(result, BigInteger.ZERO);
-        }
-
-        ResultWrapper(TransactionResult result, BigInteger energyUsed) {
-            this.result = result;
-            this.energyUsed = energyUsed.longValue();
-        }
-
-        boolean isSuccess() {
-            return result.transactionStatus.isSuccess();
-        }
-
-        BigInteger getEnergyUsed() {
-            return BigInteger.valueOf(result.energyUsed + this.energyUsed);
-        }
-
-        Object getDecodedReturnData() {
-            if (!isSuccess()) {
-                return null;
-            }
-            return result.copyOfTransactionOutput();
-        }
-
-        String getErrorMessage() {
-            return result.transactionStatus.causeOfError;
-        }
-
-        public String toString() {
-            return result.toString();
-        }
-    }
 
     private void printInvokeParams(String code, boolean isQuery, Address from, Address to, BigInteger value,
                                    BigInteger limit, String method, Object[] params) {

@@ -17,6 +17,8 @@
 package foundation.icon.ee.score;
 
 import foundation.icon.ee.types.Address;
+import foundation.icon.ee.types.Result;
+import foundation.icon.ee.types.Status;
 import i.IInstrumentation;
 import i.IInstrumentationFactory;
 import i.InstrumentationHelpers;
@@ -27,13 +29,9 @@ import org.aion.avm.core.DAppExecutor;
 import org.aion.avm.core.IExternalState;
 import org.aion.avm.core.ReentrantDAppStack;
 import org.aion.avm.core.persistence.LoadedDApp;
-import org.aion.avm.core.util.TransactionResultUtil;
-import org.aion.kernel.AvmWrappedTransactionResult;
-import org.aion.kernel.AvmWrappedTransactionResult.AvmInternalError;
 import org.aion.parallel.TransactionTask;
 import org.aion.types.AionAddress;
 import org.aion.types.Transaction;
-import org.aion.types.TransactionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,15 +62,15 @@ public class AvmExecutor {
         InstrumentationHelpers.attachThread(instrumentation);
     }
 
-    public TransactionResult run(IExternalState kernel, Transaction transaction, Address origin) {
+    public Result run(IExternalState kernel, Transaction transaction, Address origin) {
         if (task == null) {
-            return runExternal(kernel, transaction, origin).unwrap();
+            return runExternal(kernel, transaction, origin);
         } else {
-            return runInternal(kernel, transaction).unwrap();
+            return runInternal(kernel, transaction);
         }
     }
 
-    private AvmWrappedTransactionResult runExternal(IExternalState kernel, Transaction transaction, Address origin) {
+    private Result runExternal(IExternalState kernel, Transaction transaction, Address origin) {
         // Get the first task
         task = new TransactionTask(kernel, transaction, 0, origin != null ? new AionAddress(origin) : null);
 
@@ -81,58 +79,46 @@ public class AvmExecutor {
         // Aborted transaction will be retried later
         task.startNewTransaction();
         task.attachInstrumentationForThread();
-        AvmWrappedTransactionResult result = processTransaction();
+        Result result = processTransaction();
         task.detachInstrumentationForThread();
 
-        if (result.isAborted()) {
-            // If this was an abort, we want to clear the abort state on the instrumentation for this thread, since
-            // this is the point where that is "handled".
-            // Note that this is safe to do here since the instrumentation isn't exposed to any other threads.
-            instrumentation.clearAbortState();
-            logger.trace("Abort " + task.getIndex());
-        }
         logger.trace("{}", result);
         task = null;
         return result;
     }
 
-    private AvmWrappedTransactionResult runInternal(IExternalState kernel, Transaction transaction) {
+    private Result runInternal(IExternalState kernel, Transaction transaction) {
         return runCommon(kernel, transaction);
     }
 
-    private AvmWrappedTransactionResult processTransaction() {
-        AvmInternalError error = AvmInternalError.NONE;
+    private Result processTransaction() {
         Transaction tx = task.getTransaction();
         RuntimeAssertionError.assertTrue(tx != null);
 
         BigInteger value = tx.value;
         if (value.compareTo(BigInteger.ZERO) < 0) {
-            error = AvmInternalError.REJECTED_INVALID_VALUE;
+            return new Result(Status.InvalidParameter, tx.energyLimit, "bad value");
         }
 
         if (tx.isCreate) {
             if (!task.getThisTransactionalKernel().isValidEnergyLimitForCreate(tx.energyLimit)) {
-                error = AvmInternalError.REJECTED_INVALID_ENERGY_LIMIT;
+                return new Result(Status.InvalidParameter, tx.energyLimit, "bad step limit for create");
             }
         } else {
             if (!task.getThisTransactionalKernel().isValidEnergyLimitForNonCreate(tx.energyLimit)) {
-                error = AvmInternalError.REJECTED_INVALID_ENERGY_LIMIT;
+                return new Result(Status.InvalidParameter, tx.energyLimit, "bad step limit for call");
             }
-        }
-        // exit if validation check fails
-        if (error != AvmInternalError.NONE) {
-            return TransactionResultUtil.newRejectedResultWithEnergyUsed(error, tx.energyLimit);
         }
         return runCommon(task.getThisTransactionalKernel(), tx);
     }
 
-    private AvmWrappedTransactionResult runCommon(IExternalState kernel, Transaction tx) {
+    private Result runCommon(IExternalState kernel, Transaction tx) {
         /*
          * Run the common logic with the parent kernel as the top-level one.
          * After this point, no rejection should occur.
          */
         // start with the successful result
-        AvmWrappedTransactionResult result = TransactionResultUtil.newSuccessfulResultWithEnergyUsed(0);
+        Result result;
 
         AionAddress senderAddress = tx.senderAddress;
         AionAddress recipient = tx.destinationAddress;
@@ -140,7 +126,7 @@ public class AvmExecutor {
         if (tx.isCreate) {
             logger.trace("=== DAppCreator ===");
             result = DAppCreator.create(kernel, task,
-                    senderAddress, recipient, tx, result,
+                    senderAddress, recipient, tx, 0,
                     this.preserveDebuggability, this.enableVerboseContractErrors, this.enableBlockchainPrintln);
         } else {
             LoadedDApp dapp;
@@ -159,20 +145,15 @@ public class AvmExecutor {
             }
             logger.trace("=== DAppExecutor ===");
             result = DAppExecutor.call(kernel, dapp, stateToResume, task,
-                    senderAddress, recipient, tx, result,
+                    senderAddress, recipient, tx, 0,
                     this.enableVerboseContractErrors, this.enableBlockchainPrintln);
         }
 
-        if (result.isSuccess()) {
+        if (result.getStatus()==Status.Success) {
             kernel.commit();
-        } else if (result.isFailedUnexpected()) {
-            logger.error("Unexpected error during transaction execution!", result.exception);
         }
 
-        if (!result.isAborted()){
-            result = TransactionResultUtil.setExternalState(result, task.getThisTransactionalKernel());
-            task.outputFlush();
-        }
+        task.outputFlush();
         return result;
     }
 

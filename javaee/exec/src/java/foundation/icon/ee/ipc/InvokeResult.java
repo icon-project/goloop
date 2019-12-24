@@ -16,6 +16,9 @@
 
 package foundation.icon.ee.ipc;
 
+import foundation.icon.ee.types.Result;
+
+import java.io.IOException;
 import java.math.BigInteger;
 
 public class InvokeResult {
@@ -28,6 +31,12 @@ public class InvokeResult {
         this.status = status;
         this.stepUsed = stepUsed;
         this.result = result;
+    }
+
+    public InvokeResult(Result result) throws IOException {
+        this.status = result.getStatus();
+        this.stepUsed = result.getStepUsed();
+        this.result = TypedObj.encodeAny(result.getRet());
     }
 
     int getStatus() {

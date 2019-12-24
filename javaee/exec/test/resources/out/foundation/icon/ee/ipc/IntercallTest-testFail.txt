@@ -29,8 +29,8 @@ RECV setObjGraph flag=1 next=1 hash=7250d6eb424a2ae67b384738f4c918ac6bacb340e0ab
 RECV result status=0 stepUsed=63 ret=1
 RECV call to=010002... value=0 stepLimit=999983369 method=setValueFail params=[2]
 SEND invoke code=010002/transformed isQuery=false from=010001... to=010002... value=0 stepLimit=999983369 method=setValueFail params=[2]
-RECV result status=1 stepUsed=165 ret=<null>
-RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| java.lang.IllegalArgumentException: Call failed status=1
+RECV result status=32 stepUsed=165 ret=i.RevertException
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| java.lang.IllegalArgumentException: Call failed status=32
 RECV call to=010002... value=0 stepLimit=999977494 method=getValue params=[]
 SEND invoke code=010002/transformed isQuery=false from=010001... to=010002... value=0 stepLimit=999977494 method=getValue params=[]
 RECV setObjGraph flag=1 next=1 hash=7250d6eb424a2ae67b384738f4c918ac6bacb340e0ab775c1076ebbefb8eeccc graphLen=4 graph=\x00\x00\x00\x01

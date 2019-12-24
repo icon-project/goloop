@@ -2,41 +2,37 @@ package org.aion.avm.core;
 
 import foundation.icon.ee.types.DAppRuntimeState;
 import foundation.icon.ee.types.ObjectGraph;
+import foundation.icon.ee.types.Result;
+import foundation.icon.ee.types.Status;
+import foundation.icon.ee.types.SystemException;
 import i.AvmException;
-import i.CallDepthLimitExceededException;
 import i.EarlyAbortException;
 import i.IBlockchainRuntime;
 import i.IInstrumentation;
 import i.InstrumentationHelpers;
 import i.InternedClasses;
 import i.JvmError;
-import i.OutOfEnergyException;
-import i.OutOfStackException;
 import i.RevertException;
-import i.UncaughtException;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.avm.core.util.Helpers;
-import org.aion.avm.core.util.TransactionResultUtil;
-import org.aion.kernel.AvmWrappedTransactionResult;
-import org.aion.kernel.AvmWrappedTransactionResult.AvmInternalError;
 import org.aion.parallel.TransactionTask;
 import org.aion.types.AionAddress;
 import org.aion.types.Transaction;
 
 public class DAppExecutor {
-    public static AvmWrappedTransactionResult call(IExternalState externalState,
-                                                   LoadedDApp dapp,
-                                                   ReentrantDAppStack.ReentrantState stateToResume,
-                                                   TransactionTask task,
-                                                   AionAddress senderAddress,
-                                                   AionAddress dappAddress,
-                                                   Transaction tx,
-                                                   AvmWrappedTransactionResult internalResult,
-                                                   boolean verboseErrors,
-                                                   boolean enableBlockchainPrintln) {
-        AvmWrappedTransactionResult result = internalResult;
+    public static Result call(IExternalState externalState,
+                              LoadedDApp dapp,
+                              ReentrantDAppStack.ReentrantState stateToResume,
+                              TransactionTask task,
+                              AionAddress senderAddress,
+                              AionAddress dappAddress,
+                              Transaction tx,
+                              long energyPreused,
+                              boolean verboseErrors,
+                              boolean enableBlockchainPrintln) {
+        Result result = null;
 
         // Note that the instrumentation is just a per-thread access to the state stack - we can grab it at any time as it never changes for this thread.
         IInstrumentation threadInstrumentation = IInstrumentation.attachedThreadInstrumentation.get();
@@ -75,7 +71,7 @@ public class DAppExecutor {
                                                           dapp,
                                                           enableBlockchainPrintln);
         FrameContextImpl fc = new FrameContextImpl(externalState, dapp, initialClassWrappers, br);
-        InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.energyLimit - result.energyUsed(), nextHashCode, initialClassWrappers, fc);
+        InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.energyLimit - energyPreused, nextHashCode, initialClassWrappers, fc);
         IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(br);
 
         try {
@@ -87,7 +83,7 @@ public class DAppExecutor {
             Object ret;
             try {
                 ret = dapp.callMethod(tx.method, tx.getParams());
-            } catch(Throwable t) {
+            } catch (Throwable t) {
                 System.err.println("Exception at method " + tx.method);
                 throw t;
             }
@@ -107,7 +103,6 @@ public class DAppExecutor {
                 dapp.setSerializedLength(postCallGraphData.length);
             }
 
-            result = TransactionResultUtil.setSuccessfulOutput(result, ret);
             long refund = 0;
             long energyUsed = tx.energyLimit - threadInstrumentation.energyLeft();
             //refund is only calculated for the external transaction
@@ -121,58 +116,40 @@ public class DAppExecutor {
                 // refund is capped at half the energy used for the whole transaction
                 refund = Math.min(energyUsed / 2, resetStorageRefund);
             }
-            result = TransactionResultUtil.setEnergyUsed(result, energyUsed - refund);
+            result = new Result(Status.Success, energyUsed - refund, ret);
             if (prevState != null) {
                 prevState.getSaveItems().putAll(thisState.getSaveItems());
                 prevState.getSaveItems().put(dappAddress, new ReentrantDAppStack.SaveItem(dapp, runtimeState));
             }
-        } catch (OutOfEnergyException e) {
+        } catch (SystemException e) {
             if (verboseErrors) {
-                System.err.println("DApp execution failed due to Out-of-Energy EXCEPTION: \"" + e.getMessage() + "\"");
+                System.err.println("DApp execution failed due to : \"" + e.getMessage() + "\"");
                 e.printStackTrace(System.err);
             }
-            result = TransactionResultUtil.setNonRevertedFailureAndEnergyUsed(result, AvmInternalError.FAILED_OUT_OF_ENERGY, tx.energyLimit);
-
-        } catch (OutOfStackException e) {
-            if (verboseErrors) {
-                System.err.println("DApp execution failed due to stack overflow EXCEPTION: \"" + e.getMessage() + "\"");
-                e.printStackTrace(System.err);
-            }
-            result = TransactionResultUtil.setNonRevertedFailureAndEnergyUsed(result, AvmInternalError.FAILED_OUT_OF_STACK, tx.energyLimit);
-
-        } catch (CallDepthLimitExceededException e) {
-            if (verboseErrors) {
-                System.err.println("DApp execution failed due to call depth limit EXCEPTION: \"" + e.getMessage() + "\"");
-                e.printStackTrace(System.err);
-            }
-            result = TransactionResultUtil.setNonRevertedFailureAndEnergyUsed(result, AvmInternalError.FAILED_CALL_DEPTH_LIMIT, tx.energyLimit);
+            result = new Result(e.getStatus(), tx.energyLimit, e.toString());
 
         } catch (RevertException e) {
             if (verboseErrors) {
                 System.err.println("DApp execution to REVERT due to uncaught EXCEPTION: \"" + e.getMessage() + "\"");
                 e.printStackTrace(System.err);
             }
-            result = TransactionResultUtil.setRevertedFailureAndEnergyUsed(result, tx.energyLimit - threadInstrumentation.energyLeft());
+            result = new Result(Status.UserReversionStart + e.getCode(),
+                    tx.energyLimit - threadInstrumentation.energyLeft(),
+                    e.toString());
 
         } catch (EarlyAbortException e) {
             if (verboseErrors) {
                 System.err.println("FYI - concurrent abort (will retry) in transaction \"" + Helpers.bytesToHexString(tx.copyOfTransactionHash()) + "\"");
             }
-            result = TransactionResultUtil.newAbortedResultWithZeroEnergyUsed();
+            assert false : "unexpected abort";
 
-        } catch (UncaughtException e) {
-            if (verboseErrors) {
-                System.err.println("DApp execution failed due to uncaught EXCEPTION: \"" + e.getMessage() + "\"");
-                e.printStackTrace(System.err);
-            }
-            result = TransactionResultUtil.setFailedException(result, e.getCause(), tx.energyLimit);
         } catch (AvmException e) {
             // We handle the generic AvmException as some failure within the contract.
             if (verboseErrors) {
                 System.err.println("DApp execution failed due to AvmException: \"" + e.getMessage() + "\"");
                 e.printStackTrace(System.err);
             }
-            result = TransactionResultUtil.setNonRevertedFailureAndEnergyUsed(result, AvmInternalError.FAILED, tx.energyLimit);
+            result = new Result(Status.UnknownFailure, tx.energyLimit, e.toString());
         } catch (JvmError e) {
             // These are cases which we know we can't handle and have decided to handle by safely stopping the AVM instance so
             // re-throw this as the AvmImpl top-level loop will commute it into an asynchronous shutdown.
@@ -185,7 +162,7 @@ public class DAppExecutor {
             // We don't know what went wrong in this case, but it is beyond our ability to handle it here.
             // We ship it off to the ExceptionHandler, which kills the transaction as a failure for unknown reasons.
             System.err.println("Exception on method " + tx.method);
-            result = DAppExceptionHandler.handle(e, result, tx.energyLimit, verboseErrors);
+            result = new Result(Status.UnknownFailure, tx.energyLimit, e.toString());
         } finally {
             // Once we are done running this, no matter how it ended, we want to detach our thread from the DApp.
             InstrumentationHelpers.popExistingStackFrame(dapp.runtimeSetup);

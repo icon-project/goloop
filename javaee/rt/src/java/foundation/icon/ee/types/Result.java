@@ -13,6 +13,16 @@ public class Result {
         this.ret = ret;
     }
 
+    public Result(int status, long stepUsed, Object ret) {
+        this.status = status;
+        this.stepUsed = BigInteger.valueOf(stepUsed);
+        this.ret = ret;
+    }
+
+    public Result addStepUsed(BigInteger stepUsed) {
+        return new Result(status, this.stepUsed.add(stepUsed), ret);
+    }
+
     public int getStatus() {
         return status;
     }

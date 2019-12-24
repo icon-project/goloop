@@ -20,6 +20,7 @@ import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Method;
 import foundation.icon.ee.types.ObjectGraph;
 import foundation.icon.ee.types.Result;
+import foundation.icon.ee.types.Status;
 import org.msgpack.core.MessageTypeCastException;
 import org.msgpack.value.ArrayValue;
 import org.msgpack.value.Value;
@@ -61,11 +62,6 @@ public class EEProxy extends Proxy {
         public static final int SETCODE = 12;
         public static final int GETOBJGRAPH = 13;
         public static final int SETOBJGRAPH = 14;
-    }
-
-    public static class Status {
-        public static final int SUCCESS = 0;
-        public static final int FAILURE = 1;
     }
 
     public static class Info {
@@ -206,11 +202,11 @@ public class EEProxy extends Proxy {
         if (mOnGetApiListener != null) {
             Method[] methods = mOnGetApiListener.onGetApi(path);
             if (methods != null) {
-                sendMessage(MsgType.GETAPI, Status.SUCCESS, methods);
+                sendMessage(MsgType.GETAPI, Status.Success, methods);
                 return;
             }
         }
-        sendMessage(MsgType.GETAPI, Status.FAILURE, null);
+        sendMessage(MsgType.GETAPI, Status.UnknownFailure, null);
     }
 
     public interface OnInvokeListener {
@@ -257,7 +253,7 @@ public class EEProxy extends Proxy {
         } catch (MessageTypeCastException e) {
             String errMsg = "MessagePack casting error";
             logger.warn(errMsg, e);
-            sendMessage(MsgType.RESULT, Status.FAILURE, BigInteger.ZERO, TypedObj.encodeAny(errMsg));
+            sendMessage(MsgType.RESULT, Status.UnknownFailure, BigInteger.ZERO, TypedObj.encodeAny(errMsg));
         }
     }
 
