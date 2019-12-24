@@ -6,7 +6,7 @@ TAG = 'SampleCrowdsale'
 # An interface of token to give a reward to anyone who contributes
 class TokenInterface(InterfaceScore):
     @interface
-    def transfer(self, _to: Address, _value: int, _data: bytes=None):
+    def transfer(self, _to: Address, _value: int, _data: bytes = None):
         pass
 
 
@@ -22,6 +22,16 @@ class SampleCrowdsale(IconScoreBase):
     _JOINER_LIST = 'joiner_list'
     _FUNDING_GOAL_REACHED = 'funding_goal_reached'
     _CROWDSALE_CLOSED = 'crowdsale_closed'
+
+    ONE_ICX = 10 ** 18
+
+    @eventlog
+    def CrowdsaleStarted(self, fundingGoal: int, deadline: int):
+        pass
+
+    @eventlog
+    def CrowdsaleEnded(self):
+        pass
 
     @eventlog(indexed=3)
     def FundTransfer(self, backer: Address, amount: int, is_contribution: bool):
@@ -70,7 +80,7 @@ class SampleCrowdsale(IconScoreBase):
 
         self._addr_beneficiary.set(self.msg.sender)
         self._addr_token_score.set(_tokenScore)
-        self._funding_goal.set(_fundingGoalInIcx)
+        self._funding_goal.set(_fundingGoalInIcx * self.ONE_ICX)
         self._dead_line.set(self.block.height + _durationInBlocks)
         price = int(icx_cost_of_each_token)
         self._price.set(price)
@@ -102,6 +112,7 @@ class SampleCrowdsale(IconScoreBase):
         # start Crowdsale hereafter
         self._crowdsale_closed.set(False)
         Logger.debug(f'tokenFallback: token supply = "{_value}"', TAG)
+        self.CrowdsaleStarted(self._funding_goal.get(), self._dead_line.get())
 
     @payable
     def fallback(self):
@@ -150,11 +161,14 @@ class SampleCrowdsale(IconScoreBase):
         Checks if the goal has been reached and ends the campaign.
         """
         if self._after_dead_line():
+            if not self._crowdsale_closed.get():
+                self._crowdsale_closed.set(True)
+                self.CrowdsaleEnded()
+
             if self._amount_raised.get() >= self._funding_goal.get():
                 self._funding_goal_reached.set(True)
                 self.GoalReached(self._addr_beneficiary.get(), self._amount_raised.get())
                 Logger.debug(f'Goal reached!', TAG)
-            self._crowdsale_closed.set(True)
 
     @external
     def safeWithdrawal(self):
@@ -182,6 +196,8 @@ class SampleCrowdsale(IconScoreBase):
                     self.FundTransfer(self._addr_beneficiary.get(), self._amount_raised.get(), False)
                     Logger.debug(f'FundTransfer({self._addr_beneficiary.get()},'
                                  f'{self._amount_raised.get()}, False)', TAG)
+                    # reset amount_raised
+                    self._amount_raised.set(0)
                 else:
                     # if the transfer to beneficiary fails, unlock contributors balance
                     Logger.debug(f'Failed to send to beneficiary!', TAG)
