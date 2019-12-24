@@ -7,6 +7,7 @@ import foundation.icon.ee.ipc.Proxy;
 import foundation.icon.ee.ipc.TypedObj;
 import foundation.icon.ee.score.FileReader;
 import foundation.icon.ee.tooling.deploy.OptimizedJarBuilder;
+import foundation.icon.ee.types.Status;
 import foundation.icon.ee.utils.Crypto;
 import org.aion.avm.core.util.ByteArrayWrapper;
 import org.aion.avm.utilities.JarBuilder;
@@ -255,7 +256,14 @@ public class ServiceManager extends Proxy {
         var from = current.address;
         current = state.getAccount(to);
         info.put(Info.CONTRACT_OWNER, from);
-        var res = invoke(getHexPrefix(to)+"/transformed", false, from, to, value, stepLimit, method, params);
+        var code = getHexPrefix(to) + "/transformed";
+        if (state.readFile(code) == null) {
+            return new Result(
+                    Status.ContractNotFound,
+                    BigInteger.ZERO,
+                    "Contract not found");
+        }
+        var res = invoke(code, false, from, to, value, stepLimit, method, params);
         if (res.getStatus()!=0) {
             state = prevState;
             current = state.getAccount(prev.address);
