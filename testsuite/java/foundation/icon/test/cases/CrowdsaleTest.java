@@ -16,9 +16,6 @@
 
 package foundation.icon.test.cases;
 
-import example.SampleCrowdsale;
-import example.SampleToken;
-import foundation.icon.icx.Call;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.data.Address;
@@ -26,31 +23,23 @@ import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.IconAmount;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
-import foundation.icon.icx.transport.jsonrpc.RpcItem;
-import foundation.icon.icx.transport.jsonrpc.RpcObject;
-import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
-import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.TransactionHandler;
 import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.CrowdSaleScore;
 import foundation.icon.test.score.GovScore;
 import foundation.icon.test.score.SampleTokenScore;
-import foundation.icon.test.score.Score;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.math.BigInteger;
 
 import static foundation.icon.test.common.Env.LOG;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@Tag(Constants.TAG_JAVA_SCORE)
 class CrowdsaleTest {
     private static IconService iconService;
     private static TransactionHandler txHandler;
@@ -86,22 +75,51 @@ class CrowdsaleTest {
         govScore.setFee(fee);
     }
 
+    @Tag(Constants.TAG_GOVERNANCE)
+    @Tag(Constants.TAG_JAVA_SCORE)
     @Test
-    void testCrowdsale() throws Exception {
-        KeyWallet aliceWallet = KeyWallet.create();
-        KeyWallet bobWallet = KeyWallet.create();
-        BigInteger ownerBalance = iconService.getBalance(ownerWallet.getAddress()).execute();
+    void testPythonToPython() throws Exception {
+        deployAndStartCrowdsale(Constants.CONTENT_TYPE_PYTHON, Constants.CONTENT_TYPE_PYTHON);
+    }
 
+    @Tag(Constants.TAG_JAVA_SCORE)
+    @Test
+    void testJavaToJava() throws Exception {
+        deployAndStartCrowdsale(Constants.CONTENT_TYPE_JAVA, Constants.CONTENT_TYPE_JAVA);
+    }
+
+    @Tag(Constants.TAG_JAVA_SCORE)
+    @Test
+    void testPythonToJava() throws Exception {
+        deployAndStartCrowdsale(Constants.CONTENT_TYPE_PYTHON, Constants.CONTENT_TYPE_JAVA);
+    }
+
+    @Tag(Constants.TAG_JAVA_SCORE)
+    @Test
+    void testJavaToPython() throws Exception {
+        deployAndStartCrowdsale(Constants.CONTENT_TYPE_JAVA, Constants.CONTENT_TYPE_PYTHON);
+    }
+
+    void deployAndStartCrowdsale(String tokenType, String crowdsaleType) throws Exception {
         // deploy token SCORE
         BigInteger decimals = BigInteger.valueOf(18);
         BigInteger initialSupply = BigInteger.valueOf(1000);
-        SampleTokenScore tokenScore = new SampleTokenScore(iconService, chain,
-                deploySampleToken(decimals, initialSupply));
+        SampleTokenScore tokenScore = SampleTokenScore.mustDeploy(txHandler, ownerWallet,
+                decimals, initialSupply, tokenType);
 
         // deploy crowdsale SCORE
         BigInteger fundingGoalInIcx = BigInteger.valueOf(100);
-        CrowdSaleScore crowdsaleScore = new CrowdSaleScore(iconService, chain,
-                deployCrowdsale(tokenScore.getAddress(), fundingGoalInIcx));
+        CrowdSaleScore crowdsaleScore = CrowdSaleScore.mustDeploy(txHandler, ownerWallet,
+                tokenScore.getAddress(), fundingGoalInIcx, crowdsaleType);
+
+        startCrowdsale(tokenScore, crowdsaleScore, initialSupply, fundingGoalInIcx);
+    }
+
+    void startCrowdsale(SampleTokenScore tokenScore, CrowdSaleScore crowdsaleScore,
+                        BigInteger initialSupply, BigInteger fundingGoalInIcx) throws Exception {
+        KeyWallet aliceWallet = KeyWallet.create();
+        KeyWallet bobWallet = KeyWallet.create();
+        BigInteger ownerBalance = iconService.getBalance(ownerWallet.getAddress()).execute();
 
         // send 50 icx to Alice, 100 to Bob
         LOG.infoEntering("transfer icx", "50 to Alice; 100 to Bob");
@@ -114,16 +132,16 @@ class CrowdsaleTest {
         // transfer all tokens to crowdsale score
         LOG.infoEntering("transfer token", "all tokens to crowdsale score from owner");
         Bytes txHash = tokenScore.transfer(ownerWallet, crowdsaleScore.getAddress(), initialSupply);
-        ensureFundingGoal(txHash, crowdsaleScore.getAddress(), fundingGoalInIcx);
-        ensureTokenBalance(tokenScore, crowdsaleScore.getAddress(), initialSupply.longValue());
+        crowdsaleScore.ensureFundingGoal(txHash, fundingGoalInIcx);
+        tokenScore.ensureTokenBalance(crowdsaleScore.getAddress(), initialSupply.longValue());
         LOG.infoExiting();
 
         // send icx to crowdsale score from Alice and Bob
         LOG.infoEntering("transfer icx", "to crowdsale score (40 from Alice, 60 from Bob)");
         Utils.transferIcx(iconService, chain.networkId, aliceWallet, crowdsaleScore.getAddress(), "40");
         Utils.transferIcx(iconService, chain.networkId, bobWallet, crowdsaleScore.getAddress(), "60");
-        tokenScore.ensureTokenBalance(aliceWallet, 40);
-        tokenScore.ensureTokenBalance(bobWallet, 60);
+        tokenScore.ensureTokenBalance(aliceWallet.getAddress(), 40);
+        tokenScore.ensureTokenBalance(bobWallet.getAddress(), 60);
         LOG.infoExiting();
 
         // check if goal reached
@@ -142,110 +160,7 @@ class CrowdsaleTest {
 
         // check the final icx balance of owner
         LOG.info("Initial ICX balance of owner: " + ownerBalance);
-        ensureIcxBalance(iconService, ownerWallet.getAddress(), ownerBalance, ownerBalance.add(amount));
+        Utils.ensureIcxBalance(iconService, ownerWallet.getAddress(), ownerBalance, ownerBalance.add(amount));
         LOG.infoExiting();
-    }
-
-    private Address deploySampleToken(BigInteger decimals, BigInteger initialSupply) throws Exception {
-        LOG.infoEntering("deploy", "SampleToken");
-        RpcObject params = new RpcObject.Builder()
-                .put("_name", new RpcValue("MySampleToken"))
-                .put("_symbol", new RpcValue("MST"))
-                .put("_decimals", new RpcValue(decimals))
-                .put("_initialSupply", new RpcValue(initialSupply))
-                .build();
-        Score score = txHandler.deploy(ownerWallet, SampleToken.class, params);
-        LOG.info("scoreAddr = " + score.getAddress());
-        LOG.infoExiting();
-        return score.getAddress();
-    }
-
-    private Address deployCrowdsale(Address tokenScore, BigInteger fundingGoalInIcx) throws Exception {
-        LOG.infoEntering("deploy", "Crowdsale");
-        RpcObject params = new RpcObject.Builder()
-                .put("_fundingGoalInIcx", new RpcValue(fundingGoalInIcx))
-                .put("_tokenScore", new RpcValue(tokenScore))
-                .put("_durationInBlocks", new RpcValue(BigInteger.valueOf(10)))
-                .build();
-        Score score = txHandler.deploy(ownerWallet, SampleCrowdsale.class, params);
-        LOG.info("scoreAddr = " + score.getAddress());
-        LOG.infoExiting();
-        return score.getAddress();
-    }
-
-    private static void ensureFundingGoal(Bytes txHash, Address scoreAddress, BigInteger fundingGoalInIcx)
-            throws IOException, ResultTimeoutException {
-        TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
-        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, scoreAddress, "CrowdsaleStarted(int,int)");
-        if (event != null) {
-            BigInteger fundingGoalInLoop = IconAmount.of(fundingGoalInIcx, IconAmount.Unit.ICX).toLoop();
-            BigInteger fundingGoalFromScore = event.getData().get(0).asInteger();
-            assertEquals(fundingGoalInLoop, fundingGoalFromScore);
-        } else {
-            throw new IOException("ensureFundingGoal failed.");
-        }
-    }
-
-    // TODO: integrate into Utils class
-    private static void ensureIcxBalance(IconService iconService, Address address,
-                                        BigInteger oldVal, BigInteger newVal) throws Exception {
-        long limitTime = System.currentTimeMillis() + Constants.DEFAULT_WAITING_TIME;
-        while (true) {
-            BigInteger icxBalance = iconService.getBalance(address).execute();
-            String msg = "ICX balance of " + address + ": " + icxBalance;
-            if (icxBalance.equals(oldVal)) {
-                if (limitTime < System.currentTimeMillis()) {
-                    throw new ResultTimeoutException();
-                }
-                try {
-                    // wait until block confirmation
-                    LOG.debug(msg + "; Retry in 1 sec.");
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            } else if (icxBalance.equals(newVal)) {
-                LOG.info(msg);
-                break;
-            } else {
-                throw new IOException("ICX balance mismatch!");
-            }
-        }
-    }
-
-    // TODO: integrate into SampleTokenScore
-    private static void ensureTokenBalance(SampleTokenScore tokenScore, Address address, long value) throws ResultTimeoutException, IOException {
-        long limitTime = System.currentTimeMillis() + Constants.DEFAULT_WAITING_TIME;
-        while (true) {
-            RpcObject params = new RpcObject.Builder()
-                    .put("_owner", new RpcValue(address))
-                    .build();
-            Call<RpcItem> call = new Call.Builder()
-                    .to(tokenScore.getAddress())
-                    .method("balanceOf")
-                    .params(params)
-                    .build();
-            BigInteger balance = iconService.call(call).execute().asInteger();
-
-            String msg = "Token balance of " + address + ": " + balance;
-            if (balance.equals(BigInteger.valueOf(0))) {
-                try {
-                    if (limitTime < System.currentTimeMillis()) {
-                        throw new ResultTimeoutException();
-                    }
-                    // wait until block confirmation
-                    LOG.info(msg + "; Retry in 1 sec.");
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            } else if (balance.equals(BigInteger.valueOf(value).multiply(BigDecimal.TEN.pow(18).toBigInteger()))) {
-                LOG.info(msg);
-                break;
-            } else {
-                throw new IOException("Token balance mismatch!");
-            }
-        }
     }
 }

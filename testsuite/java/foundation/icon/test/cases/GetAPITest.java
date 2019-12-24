@@ -1,3 +1,19 @@
+/*
+ * Copyright 2019 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package foundation.icon.test.cases;
 
 import foundation.icon.icx.IconService;
@@ -14,7 +30,6 @@ import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.Utils;
-import foundation.icon.test.score.SampleTokenScore;
 import foundation.icon.test.score.StepCounterScore;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -27,7 +42,10 @@ import java.util.List;
 import java.util.Map;
 
 import static foundation.icon.test.common.Env.LOG;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /*
 test methods
@@ -159,29 +177,6 @@ class GetAPITest {
                 assertNull(p2.getIndexed());
             } else {
                 throw new Exception("Unexpected method:"+api.toString());
-            }
-        }
-        LOG.infoExiting();
-    }
-
-    @Test
-    void testCheckDefaultParam() throws Exception {
-        LOG.infoEntering("deployScore", "SampleToken");
-        SampleTokenScore score = SampleTokenScore.mustDeploy(iconService, chain, chain.godWallet,
-                "MySampleToken", "MST", 18, BigInteger.valueOf(1000));
-        LOG.infoExiting();
-
-        LOG.infoEntering("checkDefaultParam");
-        List<ScoreApi> apis = iconService.getScoreApi(score.getAddress()).execute();
-        for (ScoreApi api: apis) {
-            if (api.getName().equals("transfer")) {
-                for (ScoreApi.Param p : api.getInputs()) {
-                    if (p.getName().equals("_data")) {
-                        assertTrue(p.getDefault().isNull());
-                    } else {
-                        assertNull(p.getDefault());
-                    }
-                }
             }
         }
         LOG.infoExiting();

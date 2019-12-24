@@ -28,7 +28,7 @@ public class Constants {
     public static final BigInteger STATUS_SUCCESS = BigInteger.ONE;
     public static final BigInteger STATUS_FAIL = BigInteger.ZERO;
 
-    public static final String CONTENT_TYPE_ZIP = "application/zip";
+    public static final String CONTENT_TYPE_PYTHON = "application/zip";
     public static final String CONTENT_TYPE_JAVA = "application/java";
     public static final String SCORE_ROOT = "./data/scores/";
 

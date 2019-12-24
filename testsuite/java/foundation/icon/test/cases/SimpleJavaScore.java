@@ -17,7 +17,6 @@
 package foundation.icon.test.cases;
 
 import example.APITest;
-import example.SampleToken;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.Wallet;
@@ -25,7 +24,6 @@ import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Block;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.ConfirmedTransaction;
-import foundation.icon.icx.data.ScoreApi;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
@@ -36,6 +34,7 @@ import foundation.icon.test.common.Env;
 import foundation.icon.test.common.TransactionHandler;
 import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.GovScore;
+import foundation.icon.test.score.SampleTokenScore;
 import foundation.icon.test.score.Score;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -43,7 +42,6 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigInteger;
-import java.util.List;
 import java.util.Random;
 
 import static foundation.icon.test.common.Env.LOG;
@@ -91,59 +89,38 @@ class SimpleJavaScore {
     }
 
     @Test
-    void testCheckDefaultParam() throws Exception {
-        Address scoreAddr = deploySampleToken(BigInteger.valueOf(18), BigInteger.valueOf(1000));
-
-        LOG.infoEntering("checkDefaultParam");
-        List<ScoreApi> apis = iconService.getScoreApi(scoreAddr).execute();
-        for (ScoreApi api: apis) {
-            if (api.getName().equals("transfer")) {
-                for (ScoreApi.Param p : api.getInputs()) {
-                    if (p.getName().equals("_data")) {
-                        assertTrue(p.getDefault().isNull());
-                    } else {
-                        assertNull(p.getDefault());
-                    }
-                }
-            }
-        }
-        LOG.infoExiting();
-    }
-
-    @Test
     void testSampleToken() throws Exception {
         // 1. deploy
         BigInteger decimals = BigInteger.valueOf(18);
         BigInteger initialSupply = BigInteger.valueOf(1000);
-        Address scoreAddr = deploySampleToken(decimals, initialSupply);
+        SampleTokenScore tokenScore = SampleTokenScore.mustDeploy(txHandler, ownerWallet,
+                decimals, initialSupply, Constants.CONTENT_TYPE_JAVA);
 
         // 2. balanceOf
         LOG.infoEntering("balanceOf", "owner (initial)");
         BigInteger oneToken = BigInteger.TEN.pow(decimals.intValue());
         BigInteger totalSupply = oneToken.multiply(initialSupply);
-        BigInteger bal = callBalanceOf(ownerWallet.getAddress()).asInteger();
+        BigInteger bal = callBalanceOf(tokenScore, ownerWallet.getAddress()).asInteger();
         LOG.info("expected (" + totalSupply + "), got (" + bal + ")");
         assertEquals(totalSupply, bal);
         LOG.infoExiting();
 
         // 3. transfer #1
         LOG.infoEntering("transfer", "#1");
-        TransactionResult result = invokeTransfer(scoreAddr, ownerWallet, calleeWallet.getAddress(), oneToken, true);
-        LOG.info("result(" + result + ")");
+        TransactionResult result = invokeTransfer(tokenScore.getAddress(), ownerWallet, calleeWallet.getAddress(), oneToken, true);
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
         LOG.infoExiting();
 
         // 3.1 transfer #2
         LOG.infoEntering("transfer", "#2");
-        result = invokeTransfer(scoreAddr, ownerWallet, calleeWallet.getAddress(), oneToken, false);
-        LOG.info("result(" + result + ")");
+        result = invokeTransfer(tokenScore.getAddress(), ownerWallet, calleeWallet.getAddress(), oneToken, false);
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
         LOG.infoExiting();
 
         // 4. check balance of callee
         LOG.infoEntering("balanceOf", "callee");
         BigInteger expected = oneToken.add(oneToken);
-        bal = callBalanceOf(calleeWallet.getAddress()).asInteger();
+        bal = callBalanceOf(tokenScore, calleeWallet.getAddress()).asInteger();
         LOG.info("expected (" + expected + "), got (" + bal + ")");
         assertEquals(expected, bal);
         LOG.infoExiting();
@@ -151,31 +128,17 @@ class SimpleJavaScore {
         // 5. check balance of owner
         LOG.infoEntering("balanceOf", "owner");
         expected = totalSupply.subtract(expected);
-        bal = callBalanceOf(ownerWallet.getAddress()).asInteger();
+        bal = callBalanceOf(tokenScore, ownerWallet.getAddress()).asInteger();
         LOG.info("expected (" + expected + "), got (" + bal + ")");
         assertEquals(expected, bal);
         LOG.infoExiting();
     }
 
-    private Address deploySampleToken(BigInteger decimals, BigInteger initialSupply) throws Exception {
-        LOG.infoEntering("deploy", "SampleToken");
-        RpcObject params = new RpcObject.Builder()
-                .put("_name", new RpcValue("MySampleToken"))
-                .put("_symbol", new RpcValue("MST"))
-                .put("_decimals", new RpcValue(decimals))
-                .put("_initialSupply", new RpcValue(initialSupply))
-                .build();
-        testScore = txHandler.deploy(ownerWallet, SampleToken.class, params);
-        LOG.info("scoreAddr = " + testScore.getAddress());
-        LOG.infoExiting();
-        return testScore.getAddress();
-    }
-
-    private RpcItem callBalanceOf(Address addr) throws Exception {
+    private RpcItem callBalanceOf(Score score, Address addr) throws Exception {
         RpcObject params = new RpcObject.Builder()
                 .put("_owner", new RpcValue(addr.toString()))
                 .build();
-        return testScore.call("balanceOf", params);
+        return score.call("balanceOf", params);
     }
 
     private TransactionResult invokeTransfer(Address score, Wallet from, Address to, BigInteger value,

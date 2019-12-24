@@ -19,13 +19,13 @@ package foundation.icon.test.common;
 import foundation.icon.ee.tooling.deploy.OptimizedJarBuilder;
 import foundation.icon.icx.Call;
 import foundation.icon.icx.IconService;
-import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.SignedTransaction;
 import foundation.icon.icx.Transaction;
 import foundation.icon.icx.TransactionBuilder;
 import foundation.icon.icx.Wallet;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
+import foundation.icon.icx.data.ScoreApi;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
@@ -34,6 +34,7 @@ import org.aion.avm.utilities.JarBuilder;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.List;
 
 public class TransactionHandler {
     private final IconService iconService;
@@ -44,10 +45,16 @@ public class TransactionHandler {
         this.chain = chain;
     }
 
-    public Score deploy(KeyWallet owner, Class<?> mainClass, RpcObject params)
+    public Score deploy(Wallet owner, String scorePath, RpcObject params)
+            throws IOException, ResultTimeoutException, TransactionFailureException {
+        byte[] data = Utils.zipContent(scorePath);
+        return doDeploy(owner, data, params, Constants.CONTENT_TYPE_PYTHON);
+    }
+
+    public Score deploy(Wallet owner, Class<?> mainClass, RpcObject params)
             throws IOException, ResultTimeoutException, TransactionFailureException {
         byte[] jar = makeJar(mainClass);
-        return doDeploy(owner, jar, params);
+        return doDeploy(owner, jar, params, Constants.CONTENT_TYPE_JAVA);
     }
 
     private byte[] makeJar(Class<?> c) {
@@ -62,14 +69,14 @@ public class TransactionHandler {
                 .getOptimizedBytes();
     }
 
-    private Score doDeploy(KeyWallet owner, byte[] jarBytes, RpcObject params)
+    private Score doDeploy(Wallet owner, byte[] content, RpcObject params, String contentType)
             throws IOException, ResultTimeoutException, TransactionFailureException {
         Transaction transaction = TransactionBuilder.newBuilder()
                 .nid(getNetworkId())
                 .from(owner.getAddress())
                 .to(Constants.CHAINSCORE_ADDRESS)
                 .stepLimit(Constants.DEFAULT_STEPS)
-                .deploy(Constants.CONTENT_TYPE_JAVA, jarBytes)
+                .deploy(contentType, content)
                 .params(params)
                 .build();
 
@@ -84,6 +91,10 @@ public class TransactionHandler {
 
     public BigInteger getNetworkId() {
         return BigInteger.valueOf(chain.networkId);
+    }
+
+    public List<ScoreApi> getScoreApi(Address scoreAddress) throws IOException {
+        return iconService.getScoreApi(scoreAddress).execute();
     }
 
     public RpcItem call(Call<RpcItem> call) throws IOException {

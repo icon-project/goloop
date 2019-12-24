@@ -16,7 +16,13 @@
 
 package foundation.icon.test.common;
 
-import foundation.icon.icx.*;
+import foundation.icon.icx.Call;
+import foundation.icon.icx.IconService;
+import foundation.icon.icx.KeyWallet;
+import foundation.icon.icx.SignedTransaction;
+import foundation.icon.icx.Transaction;
+import foundation.icon.icx.TransactionBuilder;
+import foundation.icon.icx.Wallet;
 import foundation.icon.icx.crypto.IconKeys;
 import foundation.icon.icx.crypto.KeystoreException;
 import foundation.icon.icx.data.Address;
@@ -49,7 +55,6 @@ import java.util.zip.ZipOutputStream;
 
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class Utils {
     public static BigInteger getMicroTime() {
@@ -70,11 +75,15 @@ public class Utils {
     public static void ensureIcxBalance(IconService iconService, Address address, long oldVal, long newVal) throws Exception {
         BigInteger oldValInt = BigInteger.valueOf(oldVal).multiply(BigDecimal.TEN.pow(18).toBigInteger());
         BigInteger newValInt = BigInteger.valueOf(newVal).multiply(BigDecimal.TEN.pow(18).toBigInteger());
+        Utils.ensureIcxBalance(iconService, address, oldValInt, newValInt);
+    }
+
+    public static void ensureIcxBalance(IconService iconService, Address address, BigInteger oldVal, BigInteger newVal) throws Exception {
         long limitTime = System.currentTimeMillis() + Constants.DEFAULT_WAITING_TIME;
         while (true) {
             BigInteger icxBalance = iconService.getBalance(address).execute();
             String msg = "ICX balance of " + address + ": " + icxBalance;
-            if (icxBalance.equals(oldValInt)) {
+            if (icxBalance.equals(oldVal)) {
                 if (limitTime < System.currentTimeMillis()) {
                     throw new ResultTimeoutException();
                 }
@@ -85,7 +94,7 @@ public class Utils {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-            } else if (icxBalance.equals(newValInt)) {
+            } else if (icxBalance.equals(newVal)) {
                 LOG.info(msg);
                 break;
             } else {
@@ -174,7 +183,7 @@ public class Utils {
             Wallet fromWallet, Address to, String contentPath, RpcObject params, long stepLimit)
                 throws IOException {
         return deployScore(iconService, networkId, fromWallet, to,
-                contentPath, params, stepLimit, Constants.CONTENT_TYPE_ZIP);
+                contentPath, params, stepLimit, Constants.CONTENT_TYPE_PYTHON);
     }
 
     public static TransactionResult getTransactionResult(IconService iconService, Bytes txHash, long waitingTime)
@@ -432,6 +441,7 @@ public class Utils {
         compEnc[0] = (byte) (yBit ? 0x03 : 0x02);
         return curve.getCurve().decodePoint(compEnc);
     }
+
     public static byte[] recoverFromSignature(int recId, BigInteger[] sig, byte[] message) {
         BigInteger r = sig[0];
         BigInteger s = sig[1];

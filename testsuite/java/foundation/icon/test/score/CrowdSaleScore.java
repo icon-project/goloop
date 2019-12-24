@@ -16,46 +16,61 @@
 
 package foundation.icon.test.score;
 
-import foundation.icon.icx.IconService;
+import example.SampleCrowdsale;
 import foundation.icon.icx.Wallet;
 import foundation.icon.icx.data.Address;
+import foundation.icon.icx.data.Bytes;
+import foundation.icon.icx.data.IconAmount;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
-import foundation.icon.test.common.*;
+import foundation.icon.test.common.Constants;
+import foundation.icon.test.common.ResultTimeoutException;
+import foundation.icon.test.common.TransactionFailureException;
+import foundation.icon.test.common.TransactionHandler;
+import foundation.icon.test.common.Utils;
 
 import java.io.IOException;
 import java.math.BigInteger;
 
 import static foundation.icon.test.common.Env.LOG;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class CrowdSaleScore extends Score {
-    private static final String PATH = Constants.SCORE_CROWDSALE_PATH;
-
-    public static CrowdSaleScore mustDeploy(IconService service, Env.Chain chain, Wallet wallet,
-                                            BigInteger goalInIcx, Address tokenScore, int durationInBlocks)
-            throws ResultTimeoutException, TransactionFailureException, IOException
-    {
+    public static CrowdSaleScore mustDeploy(TransactionHandler txHandler, Wallet owner,
+                                            Address tokenAddress, BigInteger fundingGoalInIcx, String contentType)
+            throws ResultTimeoutException, TransactionFailureException, IOException {
+        LOG.infoEntering("deploy", "Crowdsale");
         RpcObject params = new RpcObject.Builder()
-                .put("_fundingGoalInIcx", new RpcValue(goalInIcx))
-                .put("_tokenScore", new RpcValue(tokenScore))
-                .put("_durationInBlocks", new RpcValue(BigInteger.valueOf(durationInBlocks)))
+                .put("_fundingGoalInIcx", new RpcValue(fundingGoalInIcx))
+                .put("_tokenScore", new RpcValue(tokenAddress))
+                .put("_durationInBlocks", new RpcValue(BigInteger.valueOf(10)))
                 .build();
-        return new CrowdSaleScore(
-                service,
-                chain,
-                Score.install(service, chain, wallet, PATH, params)
-        );
+        Score score;
+        if (contentType.equals(Constants.CONTENT_TYPE_PYTHON)) {
+            score = txHandler.deploy(owner, Constants.SCORE_CROWDSALE_PATH, params);
+        } else if (contentType.equals(Constants.CONTENT_TYPE_JAVA)) {
+            score = txHandler.deploy(owner, SampleCrowdsale.class, params);
+        } else {
+            throw new IllegalArgumentException("Unknown content type");
+        }
+        LOG.info("scoreAddr = " + score.getAddress());
+        LOG.infoExiting();
+        return new CrowdSaleScore(score);
     }
 
-    public CrowdSaleScore(IconService iconService, Env.Chain chain, Address scoreAddress) {
-        super(iconService, chain, scoreAddress);
+    public CrowdSaleScore(Score other) {
+        super(other);
     }
 
     public TransactionResult checkGoalReached(Wallet wallet)
             throws ResultTimeoutException, IOException {
-        return invokeAndWaitResult(wallet,
-                "checkGoalReached", null, null, Constants.DEFAULT_STEPS);
+        return invokeAndWaitResult(wallet, "checkGoalReached", null, null, Constants.DEFAULT_STEPS);
+    }
+
+    public TransactionResult safeWithdrawal(Wallet wallet)
+            throws ResultTimeoutException, IOException {
+        return invokeAndWaitResult(wallet, "safeWithdrawal", null, null, Constants.DEFAULT_STEPS);
     }
 
     public void ensureCheckGoalReached(Wallet wallet) throws Exception {
@@ -73,7 +88,17 @@ public class CrowdSaleScore extends Score {
         }
     }
 
-    public TransactionResult safeWithdrawal(Wallet wallet) throws ResultTimeoutException , IOException {
-        return invokeAndWaitResult(wallet, "safeWithdrawal", null, null, Constants.DEFAULT_STEPS);
+    public void ensureFundingGoal(Bytes txHash, BigInteger fundingGoalInIcx)
+            throws IOException, ResultTimeoutException {
+        TransactionResult result = waitResult(txHash);
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, getAddress(), "CrowdsaleStarted(int,int)");
+        if (event != null) {
+            BigInteger fundingGoalInLoop = IconAmount.of(fundingGoalInIcx, IconAmount.Unit.ICX).toLoop();
+            BigInteger fundingGoalFromScore = event.getData().get(0).asInteger();
+            assertEquals(fundingGoalInLoop, fundingGoalFromScore);
+        } else {
+            throw new IOException("ensureFundingGoal failed.");
+        }
     }
 }

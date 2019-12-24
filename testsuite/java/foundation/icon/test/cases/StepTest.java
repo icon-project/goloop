@@ -277,7 +277,7 @@ public class StepTest {
                 builder = builder.to(Constants.CHAINSCORE_ADDRESS);
             }
 
-            Transaction transaction = builder.deploy(Constants.CONTENT_TYPE_ZIP, content)
+            Transaction transaction = builder.deploy(Constants.CONTENT_TYPE_PYTHON, content)
                     .params(params).build();
             this.expectedStep = calcDeployStep(transaction, content, to != null);
 

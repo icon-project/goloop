@@ -23,6 +23,7 @@ import foundation.icon.icx.TransactionBuilder;
 import foundation.icon.icx.Wallet;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
+import foundation.icon.icx.data.ScoreApi;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
@@ -36,6 +37,7 @@ import foundation.icon.test.common.Utils;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.List;
 
 public class Score {
     private static final Log LOG = Log.getGlobal();
@@ -50,6 +52,10 @@ public class Score {
     public Score(TransactionHandler txHandler, Address scoreAddress) {
         this.txHandler = txHandler;
         this.address = scoreAddress;
+    }
+
+    public Score(Score other) {
+        this(other.txHandler, other.address);
     }
 
     public static Address install(IconService service, Env.Chain chain, Wallet wallet, String contentPath, RpcObject params)
@@ -78,7 +84,7 @@ public class Score {
 
     public static Address install(IconService service, Env.Chain chain, Wallet wallet, String contentPath, RpcObject params, long stepLimit)
             throws IOException, TransactionFailureException, ResultTimeoutException {
-        return install(service, chain, wallet, contentPath, params, stepLimit, Constants.CONTENT_TYPE_ZIP);
+        return install(service, chain, wallet, contentPath, params, stepLimit, Constants.CONTENT_TYPE_PYTHON);
     }
 
     public void update(IconService service, Env.Chain chain, Wallet wallet, String contentPath, RpcObject params)
@@ -179,6 +185,10 @@ public class Score {
 
     public BigInteger getNetworkId() {
         return txHandler.getNetworkId();
+    }
+
+    public List<ScoreApi> getScoreApi() throws IOException {
+        return txHandler.getScoreApi(getAddress());
     }
 
     @Override
