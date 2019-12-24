@@ -1,6 +1,9 @@
 package org.aion.avm.core;
 
 import a.ByteArray;
+import avm.TargetRevertedException;
+import foundation.icon.ee.types.Status;
+import foundation.icon.ee.types.SystemException;
 import foundation.icon.ee.utils.Shadower;
 import foundation.icon.ee.utils.Unshadower;
 import foundation.icon.ee.utils.ValueCodec;
@@ -234,9 +237,10 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         dApp.loadRuntimeState(saveItemFinal.getRuntimeState());
         IInstrumentation.attachedThreadInstrumentation.get().forceNextHashCode(saveItemFinal.getRuntimeState().getGraph().getNextHash());
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(res.getStepUsed().intValue());
-        if (res.getStatus()!=0) {
-            // TODO: define exception
-            throw new IllegalArgumentException(String.format("Call failed status=%d", res.getStatus()));
+        if (res.getStatus() > 0 && res.getStatus() < Status.UserReversionStart) {
+            throw new SystemException(res.getStatus(), String.format("address=%s method=%s status=%d %s", targetAddress, method, res.getStatus(), res.getRet()));
+        } else if (res.getStatus() >= Status.UserReversionStart) {
+            throw new TargetRevertedException(res.getStatus(), String.format("address=%s method=%s status=%d %s", targetAddress, method, res.getStatus(), res.getRet()));
         }
         return Shadower.shadow(res.getRet());
     }
@@ -248,8 +252,13 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     @Override
-    public void avm_revert() {
-        throw new RevertException();
+    public void avm_revert(int code, s.java.lang.String message) {
+        throw new RevertException(code, message.getUnderlying());
+    }
+
+    @Override
+    public void avm_revert(int code) {
+        throw new RevertException(code);
     }
 
     @Override

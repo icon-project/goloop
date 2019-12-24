@@ -204,6 +204,15 @@ public final class Blockchain {
      * <p>
      * the remaining energy will be refunded.
      */
+    public static void revert(int code, String message) {
+    }
+
+    public static void revert(int code) {
+    }
+
+    public static void revert(String message) {
+    }
+
     public static void revert() {
     }
 

@@ -127,7 +127,9 @@ public interface IBlockchainRuntime {
     /**
      * Stop the current execution, rollback any state changes, and refund the remaining energy to caller.
      */
-    void avm_revert();
+    void avm_revert(int code, String message);
+
+    void avm_revert(int code);
 
     /**
      * Requires that condition is true, otherwise triggers a revert.
