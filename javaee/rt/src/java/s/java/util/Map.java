@@ -2,7 +2,7 @@ package s.java.util;
 
 import i.IObject;
 
-public interface Map<K, V> extends IObject {
+public interface Map<K extends IObject, V extends IObject> extends IObject {
 
     // Query Operations
 
@@ -14,11 +14,11 @@ public interface Map<K, V> extends IObject {
 
     boolean avm_containsValue(IObject value);
 
-    IObject avm_get(IObject key);
+    V avm_get(IObject key);
 
-    IObject avm_put(IObject key, IObject value);
+    V avm_put(K key, V value);
 
-    IObject avm_remove(IObject key);
+    V avm_remove(IObject key);
 
     void avm_putAll(Map<? extends K, ? extends V> m);
 
@@ -32,12 +32,12 @@ public interface Map<K, V> extends IObject {
 
     Set<Map.Entry<K, V>> avm_entrySet();
 
-    interface Entry<K, V> extends IObject {
-        IObject avm_getKey();
+    interface Entry<K extends IObject, V extends IObject> extends IObject {
+        K avm_getKey();
 
-        IObject avm_getValue();
+        V avm_getValue();
 
-        IObject avm_setValue(IObject value);
+        V avm_setValue(V value);
 
         boolean avm_equals(IObject o);
 

@@ -2,15 +2,15 @@ package s.java.util;
 
 import i.IObject;
 
-public interface ListIterator<E> extends Iterator<E>{
+public interface ListIterator<E extends IObject> extends Iterator<E>{
 
     boolean avm_hasNext();
 
-    IObject avm_next();
+    E avm_next();
 
     boolean avm_hasPrevious();
 
-    IObject avm_previous();
+    E avm_previous();
 
     int avm_nextIndex();
 
@@ -18,8 +18,8 @@ public interface ListIterator<E> extends Iterator<E>{
 
     void avm_remove();
 
-    void avm_set(IObject e);
+    void avm_set(E e);
 
-    void avm_add(IObject e);
+    void avm_add(E e);
 
 }

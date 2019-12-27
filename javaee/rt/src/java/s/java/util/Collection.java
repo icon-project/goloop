@@ -4,7 +4,7 @@ import i.IObject;
 import i.IObjectArray;
 import s.java.lang.Iterable;
 
-public interface Collection<E> extends Iterable<E>{
+public interface Collection<E extends IObject> extends Iterable<E>{
 
     // Query Operations
 
@@ -16,17 +16,17 @@ public interface Collection<E> extends Iterable<E>{
 
     IObjectArray avm_toArray();
 
-    boolean avm_add(IObject e);
+    boolean avm_add(E e);
 
     boolean avm_remove(IObject o);
 
-    boolean avm_containsAll(Collection<?> c);
+    boolean avm_containsAll(Collection<? extends IObject> c);
 
     boolean avm_addAll(Collection<? extends E> c);
 
-    boolean avm_removeAll(Collection<?> c);
+    boolean avm_removeAll(Collection<? extends IObject> c);
 
-    boolean avm_retainAll(Collection<?> c);
+    boolean avm_retainAll(Collection<? extends IObject> c);
 
     void avm_clear();
 
