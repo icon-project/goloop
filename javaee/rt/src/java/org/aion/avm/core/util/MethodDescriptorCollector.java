@@ -114,7 +114,8 @@ public class MethodDescriptorCollector {
     }
 
     private static boolean isSupportedInternalType(String className) {
-        return className.equals(PackageConstants.kInternalDotPrefix + "IObject");
+        return className.equals(PackageConstants.kInternalDotPrefix + "IObject") ||
+                className.equals(PackageConstants.kInternalDotPrefix + "IObjectArray");
     }
 
     private static boolean hasAvmMethodPrefix(Method method) {
