@@ -19,6 +19,12 @@ public class JCLAndAPIHeapInstanceSize {
             {Utilities.fulllyQualifiedNameToInternalName(s.java.lang.Enum.class.getName()), 28}, // Object + String + int
             {Utilities.fulllyQualifiedNameToInternalName(s.java.util.concurrent.TimeUnit.class.getName()), 28}, // Enum
             {Utilities.fulllyQualifiedNameToInternalName(s.java.math.RoundingMode.class.getName()), 32}, // Enum + int
+            {Utilities.fulllyQualifiedNameToInternalName(s.java.util.UnmodifiableArrayCollection.class.getName()), 24}, // Object + IObject[]
+            {Utilities.fulllyQualifiedNameToInternalName(s.java.util.UnmodifiableArrayContainer.class.getName()), 24}, // Object + IObject[]
+            {Utilities.fulllyQualifiedNameToInternalName(s.java.util.UnmodifiableArrayList.class.getName()), 24}, // Object + IObject[]
+            {Utilities.fulllyQualifiedNameToInternalName(s.java.util.UnmodifiableArrayMap.class.getName()), 24}, // Object + IObject[]
+            {Utilities.fulllyQualifiedNameToInternalName(s.java.util.UnmodifiableArraySet.class.getName()), 24}, // Object + IObject[]
+            {Utilities.fulllyQualifiedNameToInternalName(s.java.util.UnmodifiableMapEntry.class.getName()), 32}, // Object + Object + Object
 
             // non generated exception classes
             {Utilities.fulllyQualifiedNameToInternalName(s.java.lang.Throwable.class.getName()), DEFAULT_EXCEPTION_ALLOCATION_SIZE}, // Object + String + Object
