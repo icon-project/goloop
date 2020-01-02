@@ -3,6 +3,7 @@ package foundation.icon.test.cases;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.data.Address;
+import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
@@ -20,7 +21,9 @@ import java.math.BigInteger;
 
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 @Tag(Constants.TAG_NORMAL)
 public class ScoreTestNormal {
@@ -55,7 +58,7 @@ public class ScoreTestNormal {
 
     @Test
     public void invalidMethodName() throws Exception {
-        LOG.infoEntering( "invalidMethodName");
+        LOG.infoEntering("invalidMethodName");
         final String correctMethod = "helloWithName";
         for(String method : new String[]{correctMethod, "helloWithName2", "hi"}) {
             try {
@@ -77,7 +80,7 @@ public class ScoreTestNormal {
 
     @Test
     public void invalidParamName() throws Exception {
-        LOG.infoEntering( "invalidParamName");
+        LOG.infoEntering("invalidParamName");
         for(String param : new String[]{"name", "nami"}) {
             try {
                 RpcObject params = new RpcObject.Builder()
@@ -98,8 +101,8 @@ public class ScoreTestNormal {
 
     @Test
     public void unexpectedParam() throws Exception {
-        LOG.infoEntering( "invalidParamNum");
-        String params[][] = new String[][]{{}, {"age"}, {"name"}, {"name", "age"}, {"name", "etc"}, {"name", "age", "etc"}};
+        LOG.infoEntering("invalidParamNum");
+        String[][] params = new String[][]{{}, {"age"}, {"name"}, {"name", "age"}, {"name", "etc"}, {"name", "age", "etc"}};
         for(int i = 0; i < params.length; i++) {
             try {
                 RpcObject.Builder builder = new RpcObject.Builder();
@@ -113,10 +116,57 @@ public class ScoreTestNormal {
                 assertEquals(i == 2 || i == 3, Constants.STATUS_SUCCESS.equals(result.getStatus()));
                 LOG.infoExiting();
             } catch (ResultTimeoutException ex) {
-                assertTrue(params.length != 1);
-                LOG.infoExiting();
+                fail("Should not be reached");
             }
         }
+        LOG.infoExiting();
+    }
+
+    /*
+     * If Governance SCORE has not been deployed, anyone can initially install Governance SCORE.
+     */
+    @Test
+    public void deployGovScore() throws Exception {
+        LOG.infoEntering("setGovernance");
+        RpcObject params = new RpcObject.Builder()
+                .put("name", new RpcValue("HelloWorld"))
+                .put("value", new RpcValue(BigInteger.ONE))
+                .build();
+
+        // deploy tx to install governance
+        KeyWallet govOwner = KeyWallet.create();
+        LOG.infoEntering("install governance score");
+        Bytes txHash = Utils.deployScore(iconService, chain.networkId,
+                govOwner, Constants.GOV_ADDRESS, Constants.SCORE_GOV_PATH, params);
+        TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
+        LOG.infoExiting("result : " + result);
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+
+        // check install result
+        boolean updated = Utils.icxCall(iconService, Constants.GOV_ADDRESS, "updated", null).asBoolean();
+        assertFalse(updated);
+
+        // failed when deploy tx with another address
+        LOG.infoEntering("update governance score with not owner");
+        txHash = Utils.deployScore(iconService, chain.networkId,
+                KeyWallet.create(), Constants.GOV_ADDRESS, Constants.SCORE_GOV_UPDATE_PATH, null);
+        result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
+        LOG.infoExiting("result : " + result);
+        assertEquals(Constants.STATUS_FAIL, result.getStatus());
+        updated = Utils.icxCall(iconService, Constants.GOV_ADDRESS, "updated", null).asBoolean();
+        assertFalse(updated);
+
+        // success when deploy tx with owner
+        LOG.infoEntering("update governance score with owner");
+        txHash = Utils.deployScore(iconService, chain.networkId,
+                govOwner, Constants.GOV_ADDRESS, Constants.SCORE_GOV_UPDATE_PATH, null);
+        result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
+        LOG.infoExiting("result : " + result);
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+
+        // check update result
+        updated = Utils.icxCall(iconService, Constants.GOV_ADDRESS, "updated", null).asBoolean();
+        assertTrue(updated);
         LOG.infoExiting();
     }
 }

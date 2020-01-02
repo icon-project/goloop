@@ -1,6 +1,10 @@
 package foundation.icon.test.cases;
 
-import foundation.icon.icx.*;
+import foundation.icon.icx.IconService;
+import foundation.icon.icx.KeyWallet;
+import foundation.icon.icx.SignedTransaction;
+import foundation.icon.icx.Transaction;
+import foundation.icon.icx.TransactionBuilder;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
@@ -8,7 +12,11 @@ import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.icx.transport.jsonrpc.RpcError;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
-import foundation.icon.test.common.*;
+import foundation.icon.test.common.Constants;
+import foundation.icon.test.common.Env;
+import foundation.icon.test.common.ResultTimeoutException;
+import foundation.icon.test.common.TransactionFailureException;
+import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.GovScore;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -24,7 +32,11 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static foundation.icon.test.common.Env.LOG;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /*
 test methods
@@ -353,7 +365,6 @@ public class DeployTest {
         invoke(owner, scoreAddr, "helloWithName", params);
         LOG.infoExiting();
 
-
         boolean failEx = false;
         LOG.infoExiting();
         try {
@@ -364,11 +375,7 @@ public class DeployTest {
             deploy(owner, KeyWallet.create().getAddress(), Constants.SCORE_HELLOWORLD_UPDATE_PATH, params, Constants.DEFAULT_STEP_LIMIT);
             LOG.infoExiting();
         }
-        catch (TransactionFailureException ex) {
-            LOG.infoExiting();
-            failEx = true;
-        }
-        catch (ResultTimeoutException ex) {
+        catch (TransactionFailureException | ResultTimeoutException ex) {
             LOG.infoExiting();
             failEx = true;
         }
@@ -430,8 +437,8 @@ public class DeployTest {
                 .timestamp(Utils.getMicroTime())
                 .nonce(new BigInteger("1"))
                 .deploy(Constants.CONTENT_TYPE_PYTHON, content);
-        if(params != null) {
-            builder = builder.params(params);
+        if (params != null) {
+            builder.params(params);
         }
         Transaction transaction = builder.build();
         SignedTransaction signedTransaction = new SignedTransaction(transaction, owner);
@@ -441,7 +448,6 @@ public class DeployTest {
             LOG.infoExiting();
             return null;
         }
-
 
         try {
             Utils.acceptIfAuditEnabled(iconService, chain, txHash);
@@ -475,7 +481,6 @@ public class DeployTest {
             }
         }
     }
-
 
     private static void readScore(File source, ByteArrayOutputStream bos) throws IOException {
         if(source.isHidden()) {
@@ -629,8 +634,8 @@ public class DeployTest {
     @Test
     public void invalidSignature() throws Exception {
         LOG.infoEntering( "invalidSignature");
-        KeyWallet testWallets[] = new KeyWallet[10];
-        Address testAddr[] = new Address[10];
+        KeyWallet[] testWallets = new KeyWallet[10];
+        Address[] testAddr = new Address[10];
         LOG.infoEntering( "transfer for test");
 
         for(int i = 0; i < testWallets.length; i++) {
@@ -643,7 +648,7 @@ public class DeployTest {
         RpcObject params = new RpcObject.Builder()
                 .put("name", new RpcValue("HelloWorld"))
                 .build();
-        for(int i = 0; i < testWallets.length; i++) { //            Transaction transaction = TransactionBuilder.newBuilder()
+        for (int i = 0; i < testWallets.length; i++) {
             Transaction transaction = TransactionBuilder.newBuilder()
                     .nid(BigInteger.valueOf(chain.networkId))
                     .from(testWallets[i].getAddress())
@@ -664,7 +669,6 @@ public class DeployTest {
             }
             catch(RpcError ex) {
                 assertNotEquals(0, i);
-                continue;
             }
         }
         LOG.infoExiting();
@@ -673,32 +677,28 @@ public class DeployTest {
     @Test
     public void deployGovScore() throws Exception {
         LOG.infoEntering("setGovernance");
-        final String guPath = Constants.SCORE_GOV_UPDATE_PATH;
-        // deploy tx to governance address
+        // check the existing governance score
         boolean updated = Utils.icxCall(iconService, Constants.GOV_ADDRESS,
                 "updated",null).asBoolean();
-        assertTrue(!updated);
+        assertFalse(updated);
 
         // Update with not owner
         LOG.infoEntering("update governance score with not governor");
         RpcObject govParams = new RpcObject.Builder()
                 .put("name", new RpcValue("HelloWorld"))
-                .put("value", new RpcValue("0x1"))
+                .put("value", new RpcValue(BigInteger.ONE))
                 .build();
         Bytes txHash = Utils.deployScore(iconService, chain.networkId,
-                chain.godWallet, Constants.GOV_ADDRESS, guPath, govParams);
-        TransactionResult result = Utils.getTransactionResult(iconService,
-                txHash, Constants.DEFAULT_WAITING_TIME);
+                chain.godWallet, Constants.GOV_ADDRESS, Constants.SCORE_GOV_UPDATE_PATH, govParams);
+        TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
         LOG.infoExiting("result : " + result);
         assertEquals(Constants.STATUS_FAIL, result.getStatus());
 
         // Update with governor
         LOG.infoEntering("update governance score with governor");
-        KeyWallet govWallet = chain.governorWallet;
         txHash = Utils.deployScore(iconService, chain.networkId,
-                govWallet, Constants.GOV_ADDRESS, guPath, null);
-        result = Utils.getTransactionResult(iconService,
-                txHash, Constants.DEFAULT_WAITING_TIME);
+                chain.governorWallet, Constants.GOV_ADDRESS, Constants.SCORE_GOV_UPDATE_PATH, null);
+        result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
 
         try {
             Utils.acceptIfAuditEnabled(iconService, chain, txHash);
@@ -710,8 +710,7 @@ public class DeployTest {
         LOG.infoExiting("result : " + result);
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
 
-        LOG.info("result : " + result);
-        updated = Utils.icxCall(iconService, Constants.GOV_ADDRESS, "updated",null).asBoolean();
+        updated = Utils.icxCall(iconService, Constants.GOV_ADDRESS, "updated", null).asBoolean();
         assertTrue(updated);
         LOG.infoExiting();
     }
