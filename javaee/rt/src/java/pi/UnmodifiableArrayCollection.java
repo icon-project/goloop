@@ -1,9 +1,11 @@
-package s.java.util;
+package pi;
 
 import a.ObjectArray;
 import i.IObject;
 import i.IObjectArray;
 import s.java.lang.Object;
+import s.java.util.Collection;
+import s.java.util.Iterator;
 
 public class UnmodifiableArrayCollection<E extends IObject>
         extends UnmodifiableArrayContainer

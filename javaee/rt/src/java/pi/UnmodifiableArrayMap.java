@@ -1,7 +1,10 @@
-package s.java.util;
+package pi;
 
 import foundation.icon.ee.utils.IObjects;
 import i.IObject;
+import s.java.util.Collection;
+import s.java.util.Map;
+import s.java.util.Set;
 
 // iteration order is deterministic
 // may have null value

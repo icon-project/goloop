@@ -1,7 +1,10 @@
-package s.java.util;
+package pi;
 
 import foundation.icon.ee.utils.IObjects;
 import i.IObject;
+import s.java.util.Iterator;
+import s.java.util.List;
+import s.java.util.ListIterator;
 
 public class UnmodifiableArrayList<E extends IObject>
         extends UnmodifiableArrayCollection<E>

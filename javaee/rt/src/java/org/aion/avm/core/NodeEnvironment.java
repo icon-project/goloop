@@ -135,15 +135,9 @@ public class NodeEnvironment {
                     , s.java.util.function.Function.class
 
                     , s.java.util.concurrent.TimeUnit.class
-                
+
                     , s.java.io.Serializable.class
                     , s.avm.TargetRevertedException.class
-                    , s.java.util.UnmodifiableArrayCollection.class
-                    , s.java.util.UnmodifiableArrayContainer.class
-                    , s.java.util.UnmodifiableArrayList.class
-                    , s.java.util.UnmodifiableArrayMap.class
-                    , s.java.util.UnmodifiableArraySet.class
-                    , s.java.util.UnmodifiableMapEntry.class
             };
 
             this.jclClassNames = new HashSet<>();
@@ -186,7 +180,7 @@ public class NodeEnvironment {
         // create the object size look-up maps
         Map<String, Integer> rtObjectSizeMap = computeRuntimeObjectSizes();
         // This is to ensure the JCLAndAPIHeapInstanceSize is updated with the correct instance size of a newly added JCL or API class
-        RuntimeAssertionError.assertTrue(rtObjectSizeMap.size() == 104);
+        RuntimeAssertionError.assertTrue(rtObjectSizeMap.size() == 98);
 
         Map<String, Integer> shadowObjectSizeMap = new HashMap<>(); // pre-rename; shadow objects and exceptions
         Map<String, Integer> apiObjectSizeMap = new HashMap<>(); // post-rename; API objects
@@ -352,6 +346,13 @@ public class NodeEnvironment {
         // Load all the classes - even just mentioning these might cause them to be loaded, even before the Class.forName().
         InstrumentationHelpers.attachThread(instrumentation);
         Set<String> loadedClassNames = loadAndInitializeClasses(loader, shadowClasses);
+
+        // TODO: refactor this
+        // load and initialize api impl class with static field
+        loadAndInitializeClasses(loader,
+                pi.UnmodifiableArrayMap.class,
+                pi.UnmodifiableArrayList.class
+        );
         InstrumentationHelpers.detachThread(instrumentation);
 
         return loadedClassNames;
