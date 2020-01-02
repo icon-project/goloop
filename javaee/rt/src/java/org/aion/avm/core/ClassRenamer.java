@@ -33,6 +33,7 @@ public final class ClassRenamer {
     private String preRenameApiPrefix;
     private String shadowPrefix;
     private String userPrefix;
+    private String apiImplPrefix;
 
     public enum ClassCategory { JCL, API, EXCEPTION_WRAPPER, PRECISE_ARRAY, UNIFYING_ARRAY, USER}
 
@@ -89,12 +90,14 @@ public final class ClassRenamer {
             this.preRenameApiPrefix = PackageConstants.kPublicApiDotPrefix;
             this.shadowPrefix = PackageConstants.kShadowDotPrefix;
             this.userPrefix = (preserveDebuggability) ? "" : PackageConstants.kUserDotPrefix;
+            this.apiImplPrefix = PackageConstants.kApiImplDotPrefix;
         } else {
             this.exceptionWrapperPrefix = PackageConstants.kExceptionWrapperSlashPrefix;
             this.postRenameApiPrefix = PackageConstants.kShadowApiSlashPrefix;
             this.preRenameApiPrefix = PackageConstants.kPublicApiSlashPrefix;
             this.shadowPrefix = PackageConstants.kShadowSlashPrefix;
             this.userPrefix = (preserveDebuggability) ? "" : PackageConstants.kUserSlashPrefix;
+            this.apiImplPrefix = PackageConstants.kApiImplSlashPrefix;
         }
 
         this.style = style;
@@ -160,6 +163,8 @@ public final class ClassRenamer {
             return toPostRenameApiClass(preRenameClassName);
         } else if (isPreRenameJclClass(preRenameClassName)) {
             return toPostRenameJclClass(preRenameClassName);
+        } else if (isApiImplClass(preRenameClassName)) {
+            return preRenameClassName;
         } else {
             if (allowClassRejection) {
                 throw RejectedClassException.nonWhiteListedClass(preRenameClassName);
@@ -191,6 +196,8 @@ public final class ClassRenamer {
             return toPreRenameApiClass(postRename);
         } else if (isPostRenameJclClass(postRename)) {
             return toPreRenameJclClass(postRename);
+        } else if (isApiImplClass(postRename)) {
+            return postRename;
         } else {
             throw RuntimeAssertionError.unreachable("Expected a post-rename class name: " + postRename);
         }
@@ -392,6 +399,9 @@ public final class ClassRenamer {
     }
 
     //<-----------------------------PRE-RENAME CLASS DETECTION METHODS----------------------------->
+    private boolean isApiImplClass(String className) {
+        return className.startsWith(this.apiImplPrefix);
+    }
 
     private boolean isPreRenameUserClass(String className) {
         return this.preRenameUserClasses.contains(className);

@@ -15,6 +15,7 @@ public class PackageConstants {
     public static final String kInternalDotPrefix = "i.";
     public static final String kUserDotPrefix = "u.";
     public static final String kPublicApiDotPrefix = "avm.";
+    public static final String kApiImplDotPrefix = "pi.";
 
     public static final String kShadowSlashPrefix = "s/";
     public static final String kShadowApiSlashPrefix = "p/";
@@ -24,6 +25,7 @@ public class PackageConstants {
     public static final String kInternalSlashPrefix = "i/";
     public static final String kUserSlashPrefix = "u/";
     public static final String kPublicApiSlashPrefix = "avm/";
+    public static final String kApiImplSlashPrefix = "pi/";
 
     public static final String kConstantClassName = "C";
 }
