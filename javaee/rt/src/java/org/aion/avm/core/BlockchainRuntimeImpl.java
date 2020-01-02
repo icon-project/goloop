@@ -25,10 +25,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import p.avm.Address;
 import p.avm.CollectionDB;
-import p.avm.CollectionDBImpl;
+import pi.CollectionDBImpl;
 import p.avm.Value;
 import p.avm.ValueBuffer;
 import p.avm.VarDB;
+import pi.VarDBImpl;
 import s.java.math.BigInteger;
 
 import java.util.Arrays;
@@ -289,7 +290,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
     public VarDB avm_newVarDB(s.java.lang.String id, s.java.lang.Class<?> vc) {
         assumeValidLeafValueClass(vc);
-        return new p.avm.VarDBImpl(id, vc);
+        return new VarDBImpl(id, vc);
     }
 
     public void avm_log(IObjectArray indexed, IObjectArray data) {
