@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 @Tag(Constants.TAG_NORMAL)
-public class ScoreTestNormal {
+public class InvokeTestNormal {
     private static IconService iconService;
     private static Env.Chain chain;
     private static KeyWallet ownerWallet;

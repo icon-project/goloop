@@ -34,7 +34,7 @@ test methods
     timeout
  */
 @Tag(Constants.TAG_GOVERNANCE)
-public class ScoreTest {
+public class InvokeTest {
     private static IconService iconService;
     private static Env.Chain chain;
     private static KeyWallet ownerWallet;

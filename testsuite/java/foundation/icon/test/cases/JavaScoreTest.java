@@ -50,7 +50,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Tag(Constants.TAG_JAVA_SCORE)
-class SimpleJavaScore {
+class JavaScoreTest {
     private static IconService iconService;
     private static TransactionHandler txHandler;
     private static Env.Chain chain;
