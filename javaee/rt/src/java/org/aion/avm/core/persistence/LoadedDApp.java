@@ -324,13 +324,16 @@ public class LoadedDApp {
                 throw new NoSuchMethodException(String.format("method %s is not in APIS", methodName));
             }
             Method method = getExternalMethod(m);
-            Object sres = method.invoke(null, (Object[])m.convertParameters(params));
+            Object sres = method.invoke(null, m.convertParameters(params));
             Object res;
             if (m.hasValidPrimitiveReturnType()) {
                 res = sres;
             } else {
-                res = Unshadower.unshadow((s.java.lang.Object)sres);
-                assert sres==null || res!=null : "bad shadow type";
+                try {
+                    res = Unshadower.unshadow((s.java.lang.Object)sres);
+                } catch (IllegalArgumentException e) {
+                    throw new ClassCastException("bad return value");
+                }
             }
             return res;
         } catch (ClassNotFoundException | SecurityException | ExceptionInInitializerError e) {

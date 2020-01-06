@@ -1,6 +1,12 @@
 package foundation.icon.ee.utils;
 
+import i.IObject;
+import i.RuntimeAssertionError;
+import pi.UnmodifiableArrayList;
+import pi.UnmodifiableArrayMap;
+
 import java.math.BigInteger;
+import java.util.Map;
 
 public class Shadower {
     public static s.java.lang.Object shadow(Object obj) {
@@ -16,7 +22,25 @@ public class Shadower {
             return new a.ByteArray((byte[])obj);
         } else if (obj instanceof avm.Address) {
             return new p.avm.Address(((avm.Address)obj).toByteArray());
+        } else if (obj instanceof Object[]) {
+            var o = (Object[]) obj;
+            var sa = new IObject[o.length];
+            int i = 0;
+            for (var e : o) {
+                sa[i++] = Shadower.shadow(e);
+            }
+            return new UnmodifiableArrayList<>(sa);
+        } else if (obj instanceof Map) {
+            var o = (Map<?, ?>) obj;
+            var skv = new IObject[o.size() * 2];
+            int i = 0;
+            for (Map.Entry<?, ?> e : o.entrySet()) {
+                skv[i++] = shadow(e.getKey());
+                skv[i++] = shadow(e.getValue());
+            }
+            return new UnmodifiableArrayMap<>(skv);
         } else {
+            RuntimeAssertionError.unreachable("invalid shadow type");
             return null;
         }
     }

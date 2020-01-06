@@ -42,6 +42,8 @@ public class Method {
         public static final int BYTES = 3;
         public static final int BOOL = 4;
         public static final int ADDRESS = 5;
+        public static final int LIST = 6;
+        public static final int DICT = 7;
     }
 
     public static class Parameter {

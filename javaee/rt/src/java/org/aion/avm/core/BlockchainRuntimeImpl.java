@@ -220,9 +220,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         for (int i=0; i<params.length; i++) {
             var  p = sparams.get(i);
             params[i] = Unshadower.unshadow((s.java.lang.Object)sparams.get(i));
-            if (p!=null && params[i]==null) {
-                throw new IllegalArgumentException(String.format("invalid argument at index %d", i));
-            }
         }
         foundation.icon.ee.types.Result res = externalState.call(
                 new AionAddress(targetAddress.toByteArray()),

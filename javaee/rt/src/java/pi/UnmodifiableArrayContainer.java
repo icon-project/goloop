@@ -35,6 +35,10 @@ public abstract class UnmodifiableArrayContainer extends Object {
         throw new UnsupportedOperationException();
     }
 
+    public IObject[] getData() {
+        return data;
+    }
+
     public UnmodifiableArrayContainer(Void ignore, int readIndex) {
         super(ignore, readIndex);
     }

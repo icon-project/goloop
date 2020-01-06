@@ -36,8 +36,27 @@ public class Unshadower {
         } else if (so instanceof p.avm.Address) {
             var o = (p.avm.Address) so;
             return new Address(o.toByteArray());
+        } else if (so instanceof s.java.util.List) {
+            var o = (s.java.util.List) so;
+            var sa = o.getData();
+            var oa = new Object[sa.length];
+            for (int i = 0; i < sa.length; i++) {
+                oa[i] = Unshadower.unshadow((s.java.lang.Object) sa[i]);
+            }
+            return oa;
+        } else if (so instanceof s.java.util.Map) {
+            var o = (s.java.util.Map) so;
+            var skv = o.getData();
+            var map = new java.util.HashMap();
+            for (int i = 0; i < skv.length; i += 2) {
+                map.put(
+                        Unshadower.unshadow((s.java.lang.Object) skv[i]),
+                        Unshadower.unshadow((s.java.lang.Object) skv[i + 1])
+                );
+            }
+            return map;
         } else {
-            return null;
+            throw new IllegalArgumentException();
         }
     }
 }

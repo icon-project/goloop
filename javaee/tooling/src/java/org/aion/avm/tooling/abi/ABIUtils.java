@@ -4,46 +4,45 @@ import avm.Address;
 import org.objectweb.asm.Type;
 
 import java.math.BigInteger;
+import java.util.List;
+import java.util.Map;
 
 public class ABIUtils {
-    public static boolean isAllowedType(Type type) {
-        if(isPrimitiveType(type) || isAllowedObject(type)) {
-            return true;
-        }
-        if (type.getSort() == Type.ARRAY) {
-            switch(type.getDimensions()) {
-                case 1:
-                    return isAllowedType(type.getElementType());
-                case 2:
-                    // We do not allow 2-dimensional arrays of Strings and Addresses
-                    return isPrimitiveType(type.getElementType());
-                default:
-                    return false;
-            }
-        }
-        return false;
+    private static final List<String> paramTypes = List.of(
+            "Z",
+            "C",
+            "B",
+            "S",
+            "I",
+            "J",
+            Type.getDescriptor(BigInteger.class),
+            Type.getDescriptor(String.class),
+            Type.getDescriptor(Address.class),
+            "[B"
+    );
+
+    public static boolean isAllowedParamType(Type type) {
+        return paramTypes.contains(type.getDescriptor());
     }
 
-    public static boolean isPrimitiveType(Type type) {
-        switch (type.getSort()) {
-            case Type.BYTE:
-            case Type.BOOLEAN:
-            case Type.CHAR:
-            case Type.SHORT:
-            case Type.INT:
-            case Type.FLOAT:
-            case Type.LONG:
-            case Type.DOUBLE:
-                return true;
-            default:
-                return false;
-        }
-    }
+    private static final List<String> returnTypes = List.of(
+            "Z",
+            "C",
+            "B",
+            "S",
+            "I",
+            "J",
+            Type.getDescriptor(BigInteger.class),
+            Type.getDescriptor(String.class),
+            Type.getDescriptor(Address.class),
+            "[B",
+            Type.getDescriptor(List.class),
+            Type.getDescriptor(Map.class),
+            "V"
+    );
 
-    public static boolean isAllowedObject(Type type) {
-        return type.getClassName().equals(String.class.getName())
-                || type.getClassName().equals(Address.class.getName())
-                || type.getClassName().equals(BigInteger.class.getName());
+    public static boolean isAllowedReturnType(Type type) {
+        return returnTypes.contains(type.getDescriptor());
     }
 
     public static String shortenClassName(String s) {

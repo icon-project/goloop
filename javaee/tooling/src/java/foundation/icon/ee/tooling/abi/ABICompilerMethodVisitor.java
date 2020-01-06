@@ -18,6 +18,7 @@ import org.objectweb.asm.util.TraceMethodVisitor;
 
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -41,17 +42,29 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
     private static final Set<String> reservedEventNames = Set.of(
             "ICXTransfer"
     );
-    private static final Map<String, Integer> dataTypeMap = Map.of(
-            "B", Method.DataType.INTEGER,
-            "C", Method.DataType.INTEGER,
-            "S", Method.DataType.INTEGER,
-            "I", Method.DataType.INTEGER,
-            "J", Method.DataType.INTEGER,
-            "Ljava/math/BigInteger;", Method.DataType.INTEGER,
-            "Ljava/lang/String;", Method.DataType.STRING,
-            "[B", Method.DataType.BYTES,
-            "Z", Method.DataType.BOOL,
-            "Lavm/Address;", Method.DataType.ADDRESS
+    private static final Map.Entry<String, Integer>[] dataTypeEntries = new Map.Entry[]{
+            Map.entry("B", Method.DataType.INTEGER),
+            Map.entry("C", Method.DataType.INTEGER),
+            Map.entry("S", Method.DataType.INTEGER),
+            Map.entry("I", Method.DataType.INTEGER),
+            Map.entry("J", Method.DataType.INTEGER),
+            Map.entry("Ljava/math/BigInteger;", Method.DataType.INTEGER),
+            Map.entry("Ljava/lang/String;", Method.DataType.STRING),
+            Map.entry("[B", Method.DataType.BYTES),
+            Map.entry("Z", Method.DataType.BOOL),
+            Map.entry("Lavm/Address;", Method.DataType.ADDRESS),
+
+            Map.entry("V", Method.DataType.NONE),
+            Map.entry("Ljava/util/List;", Method.DataType.LIST),
+            Map.entry("Ljava/util/Map;", Method.DataType.DICT),
+    };
+
+    private static final Map<String, Integer> paramTypeMap = Map.ofEntries(
+            Arrays.copyOfRange(dataTypeEntries, 0, 10)
+    );
+
+    private static final Map<String, Integer> returnTypeMap = Map.ofEntries(
+            dataTypeEntries
     );
 
     public ABICompilerMethodVisitor(int access, String methodName, String methodDescriptor, MethodVisitor mv, boolean stripLineNumber) {
@@ -120,7 +133,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
             }
             var args = Type.getArgumentTypes(methodDescriptor);
             for (Type t : args) {
-                if (!dataTypeMap.containsKey(t.getDescriptor())) {
+                if (!paramTypeMap.containsKey(t.getDescriptor())) {
                     throw new ABICompilerException("Bad argument type for @EventLog method", methodName);
                 }
             }
@@ -336,13 +349,13 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
     // TODO: refactor later
     private void checkArgumentsAndReturnType() {
         for (Type type : Type.getArgumentTypes(this.methodDescriptor)) {
-            if (!ABIUtils.isAllowedType(type)) {
+            if (!ABIUtils.isAllowedParamType(type)) {
                 throw new ABICompilerException(
                     type.getClassName() + " is not an allowed parameter type", methodName);
             }
         }
         Type returnType = Type.getReturnType(methodDescriptor);
-        if (!ABIUtils.isAllowedType(returnType) && returnType != Type.VOID_TYPE) {
+        if (!ABIUtils.isAllowedReturnType(returnType)) {
             throw new ABICompilerException(
                 returnType.getClassName() + " is not an allowed return type", methodName);
         }
@@ -365,10 +378,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
     public Method getCallableMethodInfo() {
         if (isExternal() || isOnInstall()) {
             Type type = Type.getReturnType(this.methodDescriptor);
-            int output = Method.DataType.NONE;
-            if (type != Type.VOID_TYPE) {
-                output = getDataType(type);
-            }
+            int output = getDataType(returnTypeMap, type);
             int optionalCount = 0;
             if (optional != null) {
                 for (int i = optional.length - 1; i >= 0; i--) {
@@ -404,7 +414,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
                 params[i] = new Method.Parameter(
                         paramNames.get(i),
                         types[i].getDescriptor(),
-                        getDataType(types[i]),
+                        getDataType(paramTypeMap, types[i]),
                         optional != null && optional[i]);
             }
         } else {
@@ -413,10 +423,10 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
         return params;
     }
 
-    private int getDataType(Type type) {
-        int dataType = dataTypeMap.getOrDefault(type.getDescriptor(), Method.DataType.NONE);
-        if (dataType == Method.DataType.NONE) {
-            throw new ABICompilerException("Unsupported parameter type: " + type.getDescriptor(), methodName);
+    private int getDataType(Map<String, Integer> map, Type type) {
+        Integer dataType = map.get(type.getDescriptor());
+        if (dataType == null) {
+            throw new ABICompilerException("Unsupported type: " + type.getDescriptor(), methodName);
         }
         return dataType;
     }
