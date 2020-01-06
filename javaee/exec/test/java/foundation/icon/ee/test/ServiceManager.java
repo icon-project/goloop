@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static foundation.icon.ee.ipc.EEProxy.Info;
@@ -340,6 +341,24 @@ public class ServiceManager extends Proxy {
         } else if (o instanceof Address) {
             var a = (Address) o;
             return getHexPrefix(a) + "...";
+        } else if (o instanceof Map) {
+            var m = (Map<?, ?>) o;
+            var es = m.entrySet();
+            StringBuilder sb = new StringBuilder();
+            sb.append('{');
+            boolean first = true;
+            for (Map.Entry<?, ?> e : es) {
+                if (first) {
+                    first =false;
+                } else {
+                    sb.append(", ");
+                }
+                sb.append(beautify(e.getKey()));
+                sb.append('=');
+                sb.append(beautify(e.getValue()));
+            }
+            sb.append('}');
+            return sb.toString();
         }
         return o;
     }
