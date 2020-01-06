@@ -59,6 +59,10 @@ public class TypeTest extends GoldenTest {
         public static Address mAddress(@Optional Address v) {
             return v;
         }
+
+        @External
+        public static void mvoid() {
+        }
     }
 
     @Test
@@ -78,5 +82,6 @@ public class TypeTest extends GoldenTest {
         app.invoke("mString", (Object)null);
         app.invoke("mByteArray", (Object)null);
         app.invoke("mAddress", (Object)null);
+        app.invoke("mvoid");
     }
 }

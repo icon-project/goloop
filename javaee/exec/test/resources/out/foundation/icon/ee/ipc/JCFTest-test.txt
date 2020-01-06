@@ -2,15 +2,17 @@ Method{type=0, name='setMyMap1', flags=2, indexed=0, inputs=[], output=0, output
 Method{type=0, name='setMyMap2', flags=2, indexed=0, inputs=[], output=0, outputDescriptor=V}
 Method{type=0, name='dumpMyMap', flags=2, indexed=0, inputs=[], output=0, outputDescriptor=V}
 Method{type=0, name='run', flags=2, indexed=0, inputs=[], output=0, outputDescriptor=V}
+Method{type=0, name='returnMap', flags=2, indexed=0, inputs=[], output=7, outputDescriptor=Ljava/util/Map;}
+Method{type=0, name='returnMap2', flags=2, indexed=0, inputs=[], output=7, outputDescriptor=Ljava/util/Map;}
 Method{type=0, name='onInstall', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
 SEND invoke code=010001/optimized isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=onInstall params=[]
-RECV setCode hash=20cd1f9a97187e15d18c03a0bb331f61fa2b9204faf3c828be64e113c944fdc0 len=2631
-RECV setObjGraph flag=1 next=4 hash=7e653b873d218a657942e8be56d876c54ac948d2fc6a6aba5ab52edbc36a151b graphLen=134 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x02k2\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03kkk\x17pi.UnmodifiableArrayMap\x80\x00\x00\x00\x00\x00\x00\x00
-RECV getObjGraph flag=0 => next=4 hash=7e653b873d218a657942e8be56d876c54ac948d2fc6a6aba5ab52edbc36a151b
-RECV setObjGraph flag=0 next=4
-RECV result status=0 stepUsed=204209 ret=<null>
+RECV setCode hash=3e64b1310e186fe4329de75face2197aaaefa7857e89dfde93bc2110805f454f len=2886
+RECV setObjGraph flag=1 next=7 hash=327fea659c66f697dbfe729e7ce426fe1e2f2ed41f0941711b841c41546a1c70 graphLen=246 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03k11\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x02k2\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x03kkk\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x09returnMap\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x0areturnMap2\x17pi.UnmodifiableArrayMap\x80\x00\x00\x00\x00\x00\x00\x00
+RECV getObjGraph flag=0 => next=7 hash=327fea659c66f697dbfe729e7ce426fe1e2f2ed41f0941711b841c41546a1c70
+RECV setObjGraph flag=0 next=7
+RECV result status=0 stepUsed=205221 ret=<null>
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=run params=[]
-RECV getObjGraph flag=1 => next=4 hash=7e653b873d218a657942e8be56d876c54ac948d2fc6a6aba5ab52edbc36a151b graphLen=134 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x02k2\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03kkk\x17pi.UnmodifiableArrayMap\x80\x00\x00\x00\x00\x00\x00\x00
+RECV getObjGraph flag=1 => next=7 hash=327fea659c66f697dbfe729e7ce426fe1e2f2ed41f0941711b841c41546a1c70 graphLen=246 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03k11\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x02k2\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x03kkk\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x09returnMap\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x0areturnMap2\x17pi.UnmodifiableArrayMap\x80\x00\x00\x00\x00\x00\x00\x00
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| list.size=0
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| list.size=3
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| list.get(0)=0
@@ -62,20 +64,9 @@ RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| map entry key=k1 v
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| map.get(k1)=1
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| map entry key=k2 value=2
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| map.get(k2)=2
-RECV setObjGraph flag=0 next=238
-RECV result status=0 stepUsed=287469 ret=<null>
-SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=dumpMyMap params=[]
-RECV getObjGraph flag=1 => next=238 hash=7e653b873d218a657942e8be56d876c54ac948d2fc6a6aba5ab52edbc36a151b graphLen=134 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x02k2\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03kkk\x17pi.UnmodifiableArrayMap\x80\x00\x00\x00\x00\x00\x00\x00
-RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| map.size=0
-RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| set.size=0
-RECV setObjGraph flag=0 next=250
-RECV result status=0 stepUsed=9482 ret=<null>
-SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=setMyMap1 params=[]
-RECV getObjGraph flag=1 => next=250 hash=7e653b873d218a657942e8be56d876c54ac948d2fc6a6aba5ab52edbc36a151b graphLen=134 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x02k2\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03kkk\x17pi.UnmodifiableArrayMap\x80\x00\x00\x00\x00\x00\x00\x00
-RECV setObjGraph flag=1 next=253 hash=6bebe277a9661534bc6d4bb603cace29cae4a76516b568bd84e5f5e1f49e1dcb graphLen=206 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x02k2\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03kkk\x17pi.UnmodifiableArrayMap\x00\x00\x00\xfc\x00\x00\x00\x04\x03\x00\x00\x00\x00\x03\x00\x00\x00\x04\x03\x00\x00\x00\x01\x03\x00\x00\x00\x05\x11java.lang.Integer\x00\x00\x00\xfa\x00\x00\x00\x01\x11java.lang.Integer\x00\x00\x00\xfb\x00\x00\x00\x02
-RECV result status=0 stepUsed=1700 ret=<null>
-SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=dumpMyMap params=[]
-RECV getObjGraph flag=1 => next=253 hash=6bebe277a9661534bc6d4bb603cace29cae4a76516b568bd84e5f5e1f49e1dcb graphLen=206 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x02k2\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03kkk\x17pi.UnmodifiableArrayMap\x00\x00\x00\xfc\x00\x00\x00\x04\x03\x00\x00\x00\x00\x03\x00\x00\x00\x04\x03\x00\x00\x00\x01\x03\x00\x00\x00\x05\x11java.lang.Integer\x00\x00\x00\xfa\x00\x00\x00\x01\x11java.lang.Integer\x00\x00\x00\xfb\x00\x00\x00\x02
+RECV call to=010001... value=0 stepLimit=999707403 method=returnMap params=[]
+SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999707403 method=returnMap params=[]
+RECV result status=0 stepUsed=1174 ret={k1=1, k2=2}
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| map.size=2
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| set.size=2
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| set element=k1
@@ -84,18 +75,48 @@ RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| map entry key=k1 v
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| map.get(k1)=1
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| map entry key=k2 value=2
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| map.get(k2)=2
-RECV setObjGraph flag=0 next=283
-RECV result status=0 stepUsed=47410 ret=<null>
-SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=setMyMap2 params=[]
-RECV getObjGraph flag=1 => next=283 hash=6bebe277a9661534bc6d4bb603cace29cae4a76516b568bd84e5f5e1f49e1dcb graphLen=206 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x02k2\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03kkk\x17pi.UnmodifiableArrayMap\x00\x00\x00\xfc\x00\x00\x00\x04\x03\x00\x00\x00\x00\x03\x00\x00\x00\x04\x03\x00\x00\x00\x01\x03\x00\x00\x00\x05\x11java.lang.Integer\x00\x00\x00\xfa\x00\x00\x00\x01\x11java.lang.Integer\x00\x00\x00\xfb\x00\x00\x00\x02
-RECV setObjGraph flag=1 next=285 hash=2badda3c6e5fd3d4887c1df72111b89b4babfde4740ac577cd053233d143ac7a graphLen=170 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x02k2\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03kkk\x17pi.UnmodifiableArrayMap\x00\x00\x01\x1c\x00\x00\x00\x02\x03\x00\x00\x00\x02\x03\x00\x00\x00\x04\x11java.lang.Integer\x00\x00\x01\x1b\x00\x00'\x0f
-RECV result status=0 stepUsed=915 ret=<null>
+RECV call to=010001... value=0 stepLimit=999649813 method=returnMap2 params=[]
+SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999649813 method=returnMap2 params=[]
+RECV result status=0 stepUsed=726 ret={k1={k11=[1 2 3]}}
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| map.size=1
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| set.size=1
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| set element=k1
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| map entry key=k1 value=pi.UnmodifiableArrayMap@1efaa
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| map.get(k1)=pi.UnmodifiableArrayMap@1efaa
+RECV setObjGraph flag=0 next=319
+RECV result status=0 stepUsed=381194 ret=<null>
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=dumpMyMap params=[]
-RECV getObjGraph flag=1 => next=285 hash=2badda3c6e5fd3d4887c1df72111b89b4babfde4740ac577cd053233d143ac7a graphLen=170 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x02k2\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03kkk\x17pi.UnmodifiableArrayMap\x00\x00\x01\x1c\x00\x00\x00\x02\x03\x00\x00\x00\x02\x03\x00\x00\x00\x04\x11java.lang.Integer\x00\x00\x01\x1b\x00\x00'\x0f
+RECV getObjGraph flag=1 => next=319 hash=327fea659c66f697dbfe729e7ce426fe1e2f2ed41f0941711b841c41546a1c70 graphLen=246 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03k11\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x02k2\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x03kkk\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x09returnMap\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x0areturnMap2\x17pi.UnmodifiableArrayMap\x80\x00\x00\x00\x00\x00\x00\x00
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| map.size=0
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| set.size=0
+RECV setObjGraph flag=0 next=331
+RECV result status=0 stepUsed=9930 ret=<null>
+SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=setMyMap1 params=[]
+RECV getObjGraph flag=1 => next=331 hash=327fea659c66f697dbfe729e7ce426fe1e2f2ed41f0941711b841c41546a1c70 graphLen=246 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03k11\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x02k2\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x03kkk\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x09returnMap\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x0areturnMap2\x17pi.UnmodifiableArrayMap\x80\x00\x00\x00\x00\x00\x00\x00
+RECV setObjGraph flag=1 next=334 hash=23ef31a3023cff701a6327c65225afdb7c612fd28f2d9d0ecea4333c15b28b65 graphLen=318 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03k11\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x02k2\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x03kkk\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x09returnMap\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x0areturnMap2\x17pi.UnmodifiableArrayMap\x00\x00\x01M\x00\x00\x00\x04\x03\x00\x00\x00\x00\x03\x00\x00\x00\x07\x03\x00\x00\x00\x02\x03\x00\x00\x00\x08\x11java.lang.Integer\x00\x00\x01K\x00\x00\x00\x01\x11java.lang.Integer\x00\x00\x01L\x00\x00\x00\x02
+RECV result status=0 stepUsed=2148 ret=<null>
+SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=dumpMyMap params=[]
+RECV getObjGraph flag=1 => next=334 hash=23ef31a3023cff701a6327c65225afdb7c612fd28f2d9d0ecea4333c15b28b65 graphLen=318 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03k11\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x02k2\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x03kkk\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x09returnMap\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x0areturnMap2\x17pi.UnmodifiableArrayMap\x00\x00\x01M\x00\x00\x00\x04\x03\x00\x00\x00\x00\x03\x00\x00\x00\x07\x03\x00\x00\x00\x02\x03\x00\x00\x00\x08\x11java.lang.Integer\x00\x00\x01K\x00\x00\x00\x01\x11java.lang.Integer\x00\x00\x01L\x00\x00\x00\x02
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| map.size=2
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| set.size=2
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| set element=k1
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| set element=k2
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| map entry key=k1 value=1
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| map.get(k1)=1
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| map entry key=k2 value=2
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| map.get(k2)=2
+RECV setObjGraph flag=0 next=364
+RECV result status=0 stepUsed=47858 ret=<null>
+SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=setMyMap2 params=[]
+RECV getObjGraph flag=1 => next=364 hash=23ef31a3023cff701a6327c65225afdb7c612fd28f2d9d0ecea4333c15b28b65 graphLen=318 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03k11\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x02k2\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x03kkk\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x09returnMap\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x0areturnMap2\x17pi.UnmodifiableArrayMap\x00\x00\x01M\x00\x00\x00\x04\x03\x00\x00\x00\x00\x03\x00\x00\x00\x07\x03\x00\x00\x00\x02\x03\x00\x00\x00\x08\x11java.lang.Integer\x00\x00\x01K\x00\x00\x00\x01\x11java.lang.Integer\x00\x00\x01L\x00\x00\x00\x02
+RECV setObjGraph flag=1 next=366 hash=081703522b77165711a7d701ee84e9520cfacab8e08dd79eb882809607b8971c graphLen=282 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03k11\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x02k2\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x03kkk\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x09returnMap\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x0areturnMap2\x17pi.UnmodifiableArrayMap\x00\x00\x01m\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x07\x11java.lang.Integer\x00\x00\x01l\x00\x00'\x0f
+RECV result status=0 stepUsed=1363 ret=<null>
+SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=dumpMyMap params=[]
+RECV getObjGraph flag=1 => next=366 hash=081703522b77165711a7d701ee84e9520cfacab8e08dd79eb882809607b8971c graphLen=282 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03k11\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x02k2\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x03kkk\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x09returnMap\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x0areturnMap2\x17pi.UnmodifiableArrayMap\x00\x00\x01m\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x07\x11java.lang.Integer\x00\x00\x01l\x00\x00'\x0f
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| map.size=1
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| set.size=1
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| set element=kkk
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| map entry key=kkk value=9999
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| map.get(kkk)=9999
-RECV setObjGraph flag=0 next=306
-RECV result status=0 stepUsed=28386 ret=<null>
+RECV setObjGraph flag=0 next=387
+RECV result status=0 stepUsed=28834 ret=<null>

@@ -71,6 +71,11 @@ public class IntercallTest extends GoldenTest {
         public static Address mAddress(@Optional Address v) {
             return (Address)Blockchain.call(next, "mAddress", v);
         }
+
+        @External
+        public static void mvoid() {
+            Blockchain.call(next, "mvoid");
+        }
     }
 
     @Test
@@ -91,6 +96,7 @@ public class IntercallTest extends GoldenTest {
         app.invoke("mString", (Object)null);
         app.invoke("mByteArray", (Object)null);
         app.invoke("mAddress", (Object)null);
+        app.invoke("mvoid");
     }
 
     public static class ScoreA {

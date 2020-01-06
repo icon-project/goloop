@@ -8,13 +8,14 @@ Method{type=0, name='mBigInteger', flags=2, indexed=0, inputs=[Parameter{name='v
 Method{type=0, name='mString', flags=2, indexed=0, inputs=[Parameter{name='v', descriptor=Ljava/lang/String;, type=2, optional=true}], output=2, outputDescriptor=Ljava/lang/String;}
 Method{type=0, name='mByteArray', flags=2, indexed=0, inputs=[Parameter{name='v', descriptor=[B, type=3, optional=true}], output=3, outputDescriptor=[B}
 Method{type=0, name='mAddress', flags=2, indexed=0, inputs=[Parameter{name='v', descriptor=Lavm/Address;, type=5, optional=true}], output=5, outputDescriptor=Lavm/Address;}
+Method{type=0, name='mvoid', flags=2, indexed=0, inputs=[], output=0, outputDescriptor=V}
 Method{type=0, name='onInstall', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
 SEND invoke code=010001/optimized isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=onInstall params=[]
-RECV setCode hash=c8b49ed62f067c871baaa64ef27c3fe5fa652ead14799d3460b25a7ba1781084 len=1539
+RECV setCode hash=49abd11dcd78be4c6c9ab5160883eab342af61556c8913e62fc2645fb80335a8 len=1555
 RECV setObjGraph flag=1 next=1 hash=a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a graphLen=0 graph=
 RECV getObjGraph flag=0 => next=1 hash=a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a
 RECV setObjGraph flag=0 next=1
-RECV result status=0 stepUsed=202257 ret=<null>
+RECV result status=0 stepUsed=202274 ret=<null>
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mbyte params=[0]
 RECV getObjGraph flag=1 => next=1 hash=a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a graphLen=0 graph=
 RECV setObjGraph flag=0 next=1
@@ -71,3 +72,7 @@ SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... va
 RECV getObjGraph flag=1 => next=5 hash=a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a graphLen=0 graph=
 RECV setObjGraph flag=0 next=5
 RECV result status=0 stepUsed=42 ret=<null>
+SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mvoid params=[]
+RECV getObjGraph flag=1 => next=5 hash=a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a graphLen=0 graph=
+RECV setObjGraph flag=0 next=5
+RECV result status=0 stepUsed=39 ret=<null>

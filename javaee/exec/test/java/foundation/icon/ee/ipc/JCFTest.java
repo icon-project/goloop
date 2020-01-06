@@ -65,6 +65,19 @@ public class JCFTest extends GoldenTest {
                     Map.entry("k1", 1),
                     Map.entry("k2", 2)
             ));
+            var self = Blockchain.getAddress();
+            dumpMap((Map<?, ?>) Blockchain.call(self, "returnMap"));
+            dumpMap((Map<?, ?>) Blockchain.call(self, "returnMap2"));
+        }
+
+        @External
+        public static Map<String, Integer> returnMap() {
+            return Map.of("k1", 1, "k2", 2);
+        }
+
+        @External
+        public static Map<String, Map<String, List<Integer>>> returnMap2() {
+            return Map.of("k1", Map.of("k11", List.of(1, 2, 3)));
         }
     }
 
@@ -77,6 +90,5 @@ public class JCFTest extends GoldenTest {
         score.invoke("dumpMyMap");
         score.invoke("setMyMap2");
         score.invoke("dumpMyMap");
-        // test object return
     }
 }
