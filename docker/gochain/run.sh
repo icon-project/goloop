@@ -4,7 +4,7 @@
 #
 #   Usable environment variables.
 #
-#   GOCAHIN_DATA    (deault:"./data")
+#   GOCHAIN_DATA    (default:"./data")
 #                   Path to to store BlockData, Contracts and WAL.
 #
 #   GOCHAIN_CONFIG  (default:"./config.json")
@@ -31,7 +31,7 @@
 #                   File path including password for KeyStore.
 #                   It overrides GOCHAIN_KEYPASSWORD.
 #
-#   GOCHAIN_KEYAUTO (recommeded)
+#   GOCHAIN_KEYAUTO (recommended)
 #                   Set it as "1" to enable automatic generation of KeySecret
 #                   through user input.
 #

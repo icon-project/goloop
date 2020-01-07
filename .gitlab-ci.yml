@@ -8,12 +8,14 @@ stages:
   - cleanup
 
 variables:
-  GOLANG_VERSION: "1.12.4"
+  ALPINE_VERSION: "3.10"
+  GOLANG_VERSION: "1.12.14"
   PYTHON_VERSION: "3.7.5"
   JAVA_VERSION: "11.0.4"
   REPO_GO_DEPS: "goloop/go-deps/${CI_COMMIT_REF_SLUG}"
   REPO_PY_DEPS: "goloop/py-deps/${CI_COMMIT_REF_SLUG}"
   REPO_JAVA_DEPS: "goloop/java-deps/${CI_COMMIT_REF_SLUG}"
+  REPO_PYJAVA_DEPS: "goloop/pyjava-deps/${CI_COMMIT_REF_SLUG}"
   REPO_GOCHAIN: "goloop/gochain/${CI_COMMIT_REF_SLUG}"
   REPO_GOLOOP: "goloop/${CI_COMMIT_REF_SLUG}"
 
@@ -41,6 +43,14 @@ deps:java:
   stage: deps
   script:
     - sh docker/java-deps/build.sh
+  tags:
+    - docker-build
+
+deps:pyjava:
+  image: docker:git
+  stage: deps
+  script:
+    - sh docker/pyjava-deps/build.sh
   tags:
     - docker-build
 
@@ -89,6 +99,7 @@ build:pyee:
   stage: build
   script:
     - cd pyee
+    - pip3 install wheel
     - python3 setup.py bdist_wheel
   artifacts:
     expire_in: 1 day

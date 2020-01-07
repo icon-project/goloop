@@ -12,8 +12,11 @@ RUN python3 -m venv /goloop/venv && \
     source /goloop/venv/bin/activate && \
     pip install -r /goloop/requirements.txt
 
-ARG GOLOOP_PYREQ_SHA
-LABEL GOLOOP_PYREQ_SHA="$GOLOOP_PYREQ_SHA"
+# install JRE
+RUN apk add --no-cache openjdk11-jre-headless
+
+ARG GOLOOP_PYJADEP_SHA
+LABEL GOLOOP_PYJADEP_SHA="$GOLOOP_PYJADEP_SHA"
 
 # entrypoint
 RUN { \

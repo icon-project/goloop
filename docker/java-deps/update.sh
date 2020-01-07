@@ -5,7 +5,7 @@ JAVA_VERSION=${JAVA_VERSION:-11.0.4}
 
 get_hash_of_dir() {
     local SRC_DIR=$1
-    local SUM=$(sha1sum "${SRC_DIR}/javaee/build.gradle" | cut -d ' ' -f 1)
+    local SUM=$(sha1sum "${SRC_DIR}/docker/java-deps/Dockerfile" | cut -d ' ' -f 1)
     echo "${JAVA_VERSION}-${SUM}"
 }
 
@@ -22,7 +22,7 @@ update_image() {
 
     local TAG=$1
     local SRC_DIR=$2
-    if [ "${SRC_DIR}" == "" ] ; then
+    if [ -z "${SRC_DIR}" ] ; then
         SRC_DIR="."
     fi
     local BUILD_DIR=$3
@@ -39,6 +39,8 @@ update_image() {
         else
             BUILD_DIR=${BASE_DIR}
         fi
+
+        cp -r ${SRC_DIR}/javaee/gradle* ${BUILD_DIR}/
 
         CDIR=$(pwd)
         cd ${BUILD_DIR}

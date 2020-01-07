@@ -1,7 +1,7 @@
 #!/bin/sh
 
 BASE_DIR=$(dirname $0)
-GOLANG_VERSION=${GOLANG_VERSION:-1.12.4}
+GOLANG_VERSION=${GOLANG_VERSION:-1.12.14}
 
 get_hash_of_dir() {
     local SRC_DIR=$1
@@ -22,14 +22,13 @@ update_image() {
 
     local TAG=$1
     local SRC_DIR=$2
-    if [ "${SRC_DIR}" == "" ] ; then
+    if [ -z "${SRC_DIR}" ] ; then
 	SRC_DIR="."
     fi
     local BUILD_DIR=$3
 
     local GOLOOP_GOMOD_SHA=$(get_hash_of_dir ${SRC_DIR})
     local IMAGE_GOMOD_SHA=$(get_hash_of_image ${TAG})
-
 
     if [ "${GOLOOP_GOMOD_SHA}" != "${IMAGE_GOMOD_SHA}" ] ; then
 	# Prepare build directory if it's set

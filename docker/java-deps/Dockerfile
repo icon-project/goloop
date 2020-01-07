@@ -1,4 +1,5 @@
-FROM alpine:3.10
+ARG ALPINE_VERSION=3.10
+FROM alpine:${ALPINE_VERSION}
 
 RUN apk add --no-cache openjdk11-jdk build-base
 ENV JAVA_HOME /usr/lib/jvm/default-jvm
@@ -6,6 +7,11 @@ RUN ln -s ${JAVA_HOME}/bin/javac /usr/bin/javac
 
 ARG GOLOOP_JADEP_SHA
 LABEL GOLOOP_JADEP_SHA="$GOLOOP_JADEP_SHA"
+COPY gradlew /goloop/
+COPY gradle/ /goloop/gradle/
 WORKDIR /goloop
+
+RUN ./gradlew tasks \
+    && find ~/.gradle/ -name "*.lock" -type f -delete
 
 CMD ["/bin/sh"]
