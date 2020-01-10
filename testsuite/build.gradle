@@ -49,6 +49,7 @@ class ChainTest extends Test {
     String chainDir = ".chain/normal"
     String gsFile = null
     String gsDir = null
+    String dockerEnv = null
     Process process = null
 
     void startServer() {
@@ -104,9 +105,9 @@ class ChainTest extends Test {
         commands.add("-v")
         commands.add(getWorkingDir().toString() + ":" + "/testsuite")
         commands.add("--env-file")
-        commands.add("data/dockerenv")
+        commands.add("data/dockerenv/" + dockerEnv)
         commands.add("--name")
-        commands.add("gochain-docker")
+        commands.add("gochain-" + dockerEnv)
         commands.add("goloop/gochain")
         process = commands.execute()
     }
@@ -129,8 +130,14 @@ class ChainTest extends Test {
             if (useDocker != null && useDocker == "true") {
                 logging.println("STARTING docker container")
                 startDocker()
+
+                logging.println("EnvFile: ${envFile}")
+                def proc = ['sh', '-c', "sed \'s/localhost/172.17.0.2/\' ${envFile} > /tmp/env.props"].execute()
+                proc.waitForProcessOutput(System.out, System.err)
+                systemProperty("CHAIN_ENV", "/tmp/env.props")
+            } else {
+                systemProperty("CHAIN_ENV", System.getProperty("CHAIN_ENV"))
             }
-            systemProperty("CHAIN_ENV", System.getProperty("CHAIN_ENV"))
         }
         try {
             super.executeTests()
@@ -152,47 +159,49 @@ class ChainTest extends Test {
     synchronized void stopDocker() {
         if (process != null && process.exitValue() == 0) {
             logging.println("STOPPING docker container")
-            ["docker", "stop", "gochain-docker"].execute().waitFor()
-            ["docker", "rm", "gochain-docker"].execute().waitFor()
+            ["docker", "stop", "gochain-${dockerEnv}"].execute().waitFor()
+            ["docker", "rm", "gochain-${dockerEnv}"].execute().waitFor()
             process = null
         }
     }
 }
 
-task testGovernance(type: ChainTest, overwrite: true) {
+task testPyGov(type: ChainTest, overwrite: true) {
     useJUnitPlatform {
         includeTags "governance"
     }
     def audit = System.getProperty("AUDIT")
     if (audit == "true") {
+        configFile = "./data/config/gov.json"
+        chainDir = ".chain/pyaudit"
+        logFile = "./pyaudit.log"
         gsDir = "./data/genesisStorage/genesis_audit.json"
-        envFile = "./data/govEnvAudit.properties"
-        configFile = "./data/govConfigAudit.json"
-        logFile = "./gov_audit.log"
-        chainDir = ".chain/governance_audit"
-    }
-    else {
-        gsDir = "./data/genesisStorage/genesis_normal.json"
-        envFile = "./data/govEnv.properties"
-        configFile = "./data/govConfig.json"
-        logFile = "./gov.log"
-        chainDir = ".chain/governance"
+        envFile = "./data/chainenv/gov.props"
+        dockerEnv = "pyaudit"
+    } else {
+        configFile = "./data/config/gov.json"
+        chainDir = ".chain/pygov"
+        logFile = "./pygov.log"
+        gsDir = "./data/genesisStorage/genesis_gov.json"
+        envFile = "./data/chainenv/gov.props"
+        dockerEnv = "pygov"
     }
 
-    dependsOn cleanTest
+    dependsOn 'cleanTestPyGov'
     testLogging.showStandardStreams = true
 }
 
-task testNormal(type: ChainTest, overwrite: true) {
+task testPyScore(type: ChainTest, overwrite: true) {
     useJUnitPlatform {
         includeTags "normal"
     }
-    configFile = "./data/config.json"
-    chainDir = ".chain/normal"
-    logFile = "./normal.log"
-    envFile = "./data/env.properties"
+    configFile = "./data/config/py.json"
+    chainDir = ".chain/pyscore"
+    logFile = "./pyscore.log"
+    envFile = "./data/chainenv/normal.props"
+    dockerEnv = "pyscore"
 
-    dependsOn cleanTest
+    dependsOn 'cleanTestPyScore'
     testLogging.showStandardStreams = true
 
     def forks = System.getProperty("FORKS")
@@ -205,16 +214,17 @@ task testJavaScore(type: ChainTest, overwrite: true) {
     useJUnitPlatform {
         includeTags "javaScore"
     }
-    gsDir = "./data/genesisStorage/genesis_normal.json"
-    envFile = "./data/govEnv.properties"
-    configFile = "./data/javaConfig.json"
-    logFile = "./javaee.log"
-    chainDir = ".chain/javaee"
+    configFile = "./data/config/java.json"
+    chainDir = ".chain/javascore"
+    logFile = "./javascore.log"
+    gsDir = "./data/genesisStorage/genesis_gov.json"
+    envFile = "./data/chainenv/gov.props"
+    dockerEnv = "javascore"
 
-    dependsOn cleanTest
+    dependsOn 'cleanTestJavaScore'
     testLogging.showStandardStreams = true
 }
 
 task test(overwrite: true) {
-    dependsOn 'testNormal', 'testGovernance'
+    dependsOn 'testPyScore', 'testPyGov', 'testJavaScore'
 }

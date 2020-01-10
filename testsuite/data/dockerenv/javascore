@@ -1,0 +1,6 @@
+GOCHAIN_CONFIG=/testsuite/data/config/java.json
+GOCHAIN_GENESIS=/testsuite/data/genesisStorage/genesis_gov.json
+GOCHAIN_DATA=/testsuite/.chain/javascore
+GOCHAIN_LOGFILE=/testsuite/.chain/javascore.log
+GOCHAIN_CLEAN_DATA=true
+JAVAEE_BIN=/goloop/exectest/bin/exectest

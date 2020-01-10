@@ -1,0 +1,5 @@
+GOCHAIN_CONFIG=/testsuite/data/config/gov.json
+GOCHAIN_GENESIS=/testsuite/data/genesisStorage/genesis_audit.json
+GOCHAIN_DATA=/testsuite/.chain/pyaudit
+GOCHAIN_LOGFILE=/testsuite/.chain/pyaudit.log
+GOCHAIN_CLEAN_DATA=true

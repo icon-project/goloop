@@ -1,0 +1,4 @@
+GOCHAIN_CONFIG=/testsuite/data/config/py.json
+GOCHAIN_DATA=/testsuite/.chain/pyscore
+GOCHAIN_LOGFILE=/testsuite/.chain/pyscore.log
+GOCHAIN_CLEAN_DATA=true
