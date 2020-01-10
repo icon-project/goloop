@@ -96,6 +96,21 @@ class ChainTest extends Test {
         systemProperty("CHAIN_ENV", envFile)
     }
 
+    void startDocker() {
+        List<String> commands = new LinkedList<String>()
+        commands.add("docker")
+        commands.add("run")
+        commands.add("-dit")
+        commands.add("-v")
+        commands.add(getWorkingDir().toString() + ":" + "/testsuite")
+        commands.add("--env-file")
+        commands.add("data/dockerenv")
+        commands.add("--name")
+        commands.add("gochain-docker")
+        commands.add("goloop/gochain")
+        process = commands.execute()
+    }
+
     @TaskAction
     @Override
     void executeTests() {
@@ -110,22 +125,37 @@ class ChainTest extends Test {
             }
             startServer()
         } else {
+            def useDocker = System.getProperty("USE_DOCKER")
+            if (useDocker != null && useDocker == "true") {
+                logging.println("STARTING docker container")
+                startDocker()
+            }
             systemProperty("CHAIN_ENV", System.getProperty("CHAIN_ENV"))
         }
         try {
             super.executeTests()
         } finally {
             stopServer()
+            stopDocker()
         }
     }
 
     synchronized void stopServer() {
-        if (process != null) {
+        if (process != null && process.isAlive()) {
             logging.println("STOPPING Stand-alone server")
             process.destroy()
             process.waitFor(1, TimeUnit.SECONDS)
+            process = null
         }
-        process = null
+    }
+
+    synchronized void stopDocker() {
+        if (process != null && process.exitValue() == 0) {
+            logging.println("STOPPING docker container")
+            ["docker", "stop", "gochain-docker"].execute().waitFor()
+            ["docker", "rm", "gochain-docker"].execute().waitFor()
+            process = null
+        }
     }
 }
 

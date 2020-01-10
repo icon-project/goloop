@@ -45,6 +45,9 @@ GOCHAIN_DATA=${GOCHAIN_DATA:-"./data"}
 GOCHAIN_CONFIG=${GOCHAIN_CONFIG:-"./config.json"}
 GOCHAIN_KEYSTORE=${GOCHAIN_KEYSTORE:-"./keystore.json"}
 
+if [ ${GOCHAIN_CLEAN_DATA} == "true" ] ; then
+    rm -rf ${GOCHAIN_DATA} || exit -1
+fi
 if [ ! -d ${GOCHAIN_DATA} ] ; then
     mkdir -p ${GOCHAIN_DATA} || exit -1
 fi

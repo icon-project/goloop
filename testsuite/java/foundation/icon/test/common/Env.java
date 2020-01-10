@@ -4,6 +4,7 @@ import foundation.icon.icx.KeyWallet;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -199,15 +200,11 @@ public class Env {
     }
 
     static {
-        String env_file = System.getProperty("CHAIN_ENV",
-                "./data/env.properties");
-        int lastIndex;
-        if((lastIndex = env_file.lastIndexOf('/')) != -1) {
-            dataPath = env_file.substring(0, lastIndex + 1);
-        }
+        String env_file = System.getProperty("CHAIN_ENV", "./data/env.properties");
+        dataPath = Paths.get("data").toAbsolutePath().toString() + "/";
         Properties props = new Properties();
         try {
-            System.out.println("Current env.properties:"+env_file);
+            System.out.println("Current env.properties: " + env_file);
             FileInputStream fi = new FileInputStream(env_file);
             props.load(fi);
             fi.close();
