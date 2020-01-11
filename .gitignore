@@ -6,5 +6,3 @@ __pycache__
 doc.tmp/
 build/
 bin/
-linux/
-vendor/

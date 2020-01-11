@@ -6,7 +6,7 @@
 # Configuration
 BUILD_ROOT = $(abspath ./)
 BIN_DIR = ./bin
-LINUX_BIN_DIR = ./linux
+LINUX_BIN_DIR = ./build/linux
 
 GOBUILD = go build
 GOBUILD_TAGS =
@@ -139,7 +139,7 @@ goloop-image: pyrun-pyexec gorun-goloop-linux
 	@ mkdir -p $(GOLOOP_DOCKER_DIR)/dist/bin
 	@ cp $(BUILD_ROOT)/docker/goloop/* $(GOLOOP_DOCKER_DIR)
 	@ cp $(BUILD_ROOT)/pyee/dist/* $(GOLOOP_DOCKER_DIR)/dist/pyee
-	@ cp $(BUILD_ROOT)/linux/goloop $(GOLOOP_DOCKER_DIR)/dist/bin
+	@ cp $(LINUX_BIN_DIR)/goloop $(GOLOOP_DOCKER_DIR)/dist/bin
 	@ docker build -t $(GOLOOP_IMAGE) \
 	    --build-arg TAG_PY_DEPS=$(GL_TAG) \
 	    --build-arg GOLOOP_VERSION=$(GL_VERSION) \
@@ -151,7 +151,7 @@ gochain-image: pyrun-pyexec gorun-gochain-linux javarun-javaexec pyjavadeps-imag
 	@ mkdir -p $(GOCHAIN_DOCKER_DIR)/dist
 	@ cp $(BUILD_ROOT)/docker/gochain/* $(GOCHAIN_DOCKER_DIR)
 	@ cp $(BUILD_ROOT)/pyee/dist/* $(GOCHAIN_DOCKER_DIR)/dist
-	@ cp $(BUILD_ROOT)/linux/gochain $(GOCHAIN_DOCKER_DIR)/dist
+	@ cp $(LINUX_BIN_DIR)/gochain $(GOCHAIN_DOCKER_DIR)/dist
 	@ cp $(BUILD_ROOT)/javaee/app/exectest/build/distributions/exectest.zip $(GOCHAIN_DOCKER_DIR)/dist
 	@ docker build -t $(GOCHAIN_IMAGE) \
 	    --build-arg TAG_PYJAVA_DEPS=$(GL_TAG) \
