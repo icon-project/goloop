@@ -133,15 +133,17 @@ pyjavadeps-image:
 	$(BUILD_ROOT)/docker/pyjava-deps/update.sh \
 	    $(PYJAVADEPS_IMAGE) $(BUILD_ROOT) $(PYJAVADEPS_DOCKER_DIR)
 
-goloop-image: pyrun-pyexec gorun-goloop-linux
+goloop-image: pyrun-pyexec gorun-goloop-linux javarun-javaexec pyjavadeps-image
+	@ echo "[#] Building image $(GOLOOP_IMAGE) for $(GL_VERSION)"
 	@ rm -rf $(GOLOOP_DOCKER_DIR)
 	@ mkdir -p $(GOLOOP_DOCKER_DIR)/dist/pyee
 	@ mkdir -p $(GOLOOP_DOCKER_DIR)/dist/bin
 	@ cp $(BUILD_ROOT)/docker/goloop/* $(GOLOOP_DOCKER_DIR)
 	@ cp $(BUILD_ROOT)/pyee/dist/* $(GOLOOP_DOCKER_DIR)/dist/pyee
 	@ cp $(LINUX_BIN_DIR)/goloop $(GOLOOP_DOCKER_DIR)/dist/bin
+	@ cp $(BUILD_ROOT)/javaee/app/exectest/build/distributions/exectest.zip $(GOLOOP_DOCKER_DIR)/dist
 	@ docker build -t $(GOLOOP_IMAGE) \
-	    --build-arg TAG_PY_DEPS=$(GL_TAG) \
+	    --build-arg TAG_PYJAVA_DEPS=$(GL_TAG) \
 	    --build-arg GOLOOP_VERSION=$(GL_VERSION) \
 	    $(GOLOOP_DOCKER_DIR)
 

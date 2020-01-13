@@ -1,17 +1,26 @@
-ARG REPO_PY_DEPS=goloop/py-deps
-ARG TAG_PY_DEPS=latest
-FROM ${REPO_PY_DEPS}:${TAG_PY_DEPS}
+ARG REPO_PYJAVA_DEPS=goloop/pyjava-deps
+ARG TAG_PYJAVA_DEPS=latest
+FROM ${REPO_PYJAVA_DEPS}:${TAG_PYJAVA_DEPS}
 LABEL MAINTAINER="t_arch@iconloop.com"
 
 ARG GOLOOP_VERSION
 LABEL GOLOOP_VERSION="$GOLOOP_VERSION"
 
-# installing python executor
+# install python executor
 ADD dist/pyee /goloop/pyee
-RUN /entrypoint python3 -m pip install /goloop/pyee/pyexec-*.whl && \
+RUN /entrypoint python3 -m pip -q install /goloop/pyee/pyexec-*.whl && \
     rm -rf /goloop/pyee
 
-# installing gochain and other stuff
+# install java executor
+ADD dist/exectest.zip /goloop/
+RUN unzip -q /goloop/exectest.zip -d /goloop/ && \
+    rm -f /goloop/exectest.zip
+RUN unzip -q /goloop/exectest/lib/exec.jar libclient.so -d /goloop/exectest/lib && \
+    sed -i 's/java.library.path=[a-zA-Z0-9\/\-]*/java.library.path=\/goloop\/exectest\/lib/' \
+    /goloop/exectest/bin/exectest
+ENV JAVAEE_BIN /goloop/exectest/bin/exectest
+
+# install goloop and other stuff
 ADD dist/bin/* /goloop/bin/
 ENV PATH $PATH:/goloop/bin
 WORKDIR /goloop
@@ -29,6 +38,7 @@ ENV GOLOOP_KEY_STORE=/goloop/config/keystore.json
 ENV GOLOOP_KEY_SECRET=/goloop/config/keysecret
 ENV GOLOOP_P2P_LISTEN=":8080"
 ENV GOLOOP_RPC_ADDR=":9080"
+ENV GOLOOP_ENGINES=python
 
 # entrypoint
 RUN { \
@@ -36,7 +46,7 @@ RUN { \
   		echo 'set -e'; \
   		echo 'if [ "$GOLOOP_CONFIG" != "" ] && [ ! -f "$GOLOOP_CONFIG" ]; then'; \
 		echo '  UNSET="GOLOOP_CONFIG"' ; \
-  		echo '  CMD="goloop server save $GOLOOP_CONFIG"'; \
+		echo '  CMD="goloop server save $GOLOOP_CONFIG --engines=$GOLOOP_ENGINES"'; \
   		echo '  if [ "$GOLOOP_KEY_SECRET" != "" ] && [ ! -f "$GOLOOP_KEY_SECRET" ]; then'; \
 		echo '    mkdir -p $(dirname $GOLOOP_KEY_SECRET)'; \
   		echo '    echo -n $(date|md5sum|head -c16) > $GOLOOP_KEY_SECRET' ; \
