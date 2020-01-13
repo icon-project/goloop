@@ -50,7 +50,6 @@ class ChainTest extends Test {
     String gsFile = null
     String gsDir = null
     String dockerEnv = null
-    int serverPort = 9080
     Process process = null
 
     void startServer() {
@@ -95,10 +94,9 @@ class ChainTest extends Test {
                 stopServer()
             }
         }))
-        systemProperty("CHAIN_ENV", envFile)
     }
 
-    void startDocker() {
+    void startDocker(String serverPort) {
         List<String> commands = new LinkedList<String>()
         commands.add("docker")
         commands.add("run")
@@ -128,15 +126,13 @@ class ChainTest extends Test {
                 logging.println("GSFile: ${gsFile}")
             }
             startServer()
+            systemProperty("CHAIN_ENV", envFile)
         } else {
             def useDocker = System.getProperty("USE_DOCKER")
             if (useDocker != null && useDocker == "true") {
                 logging.println("STARTING docker container")
-                startDocker()
-
                 logging.println("EnvFile: ${envFile}")
-                logging.println("Port Map: ${serverPort}")
-
+                startDocker(getServerPort())
                 systemProperty("CHAIN_ENV", envFile)
             } else {
                 systemProperty("CHAIN_ENV", System.getProperty("CHAIN_ENV"))
@@ -148,6 +144,15 @@ class ChainTest extends Test {
             stopServer()
             stopDocker()
         }
+    }
+
+    private String getServerPort() {
+        def stdout = new ByteArrayOutputStream()
+        def proc = ['sh', '-c', "grep localhost ${envFile} | cut -d \':\' -f 3"].execute()
+        proc.waitForProcessOutput(stdout, System.err)
+        def serverPort = stdout.toString().trim()
+        logging.println("ServerPort: ${serverPort}")
+        return serverPort
     }
 
     synchronized void stopServer() {
@@ -181,7 +186,6 @@ task testPyGov(type: ChainTest, overwrite: true) {
         gsDir = "./data/genesisStorage/genesis_audit.json"
         envFile = "./data/chainenv/gov.props"
         dockerEnv = "pyaudit"
-        serverPort = 9081
     } else {
         configFile = "./data/config/gov.json"
         chainDir = ".chain/pygov"
@@ -189,7 +193,6 @@ task testPyGov(type: ChainTest, overwrite: true) {
         gsDir = "./data/genesisStorage/genesis_gov.json"
         envFile = "./data/chainenv/gov.props"
         dockerEnv = "pygov"
-        serverPort = 9081
     }
 
     dependsOn 'cleanTestPyGov'
@@ -225,7 +228,6 @@ task testJavaScore(type: ChainTest, overwrite: true) {
     gsDir = "./data/genesisStorage/genesis_gov.json"
     envFile = "./data/chainenv/gov.props"
     dockerEnv = "javascore"
-    serverPort = 9081
 
     dependsOn 'cleanTestJavaScore'
     testLogging.showStandardStreams = true
