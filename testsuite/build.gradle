@@ -50,6 +50,7 @@ class ChainTest extends Test {
     String gsFile = null
     String gsDir = null
     String dockerEnv = null
+    int serverPort = 9080
     Process process = null
 
     void startServer() {
@@ -104,6 +105,8 @@ class ChainTest extends Test {
         commands.add("-dit")
         commands.add("-v")
         commands.add(getWorkingDir().toString() + ":" + "/testsuite")
+        commands.add("-p")
+        commands.add("${serverPort}:${serverPort}")
         commands.add("--env-file")
         commands.add("data/dockerenv/" + dockerEnv)
         commands.add("--name")
@@ -132,9 +135,9 @@ class ChainTest extends Test {
                 startDocker()
 
                 logging.println("EnvFile: ${envFile}")
-                def proc = ['sh', '-c', "sed \'s/localhost/172.17.0.2/\' ${envFile} > /tmp/env.props"].execute()
-                proc.waitForProcessOutput(System.out, System.err)
-                systemProperty("CHAIN_ENV", "/tmp/env.props")
+                logging.println("Port Map: ${serverPort}")
+
+                systemProperty("CHAIN_ENV", envFile)
             } else {
                 systemProperty("CHAIN_ENV", System.getProperty("CHAIN_ENV"))
             }
@@ -178,6 +181,7 @@ task testPyGov(type: ChainTest, overwrite: true) {
         gsDir = "./data/genesisStorage/genesis_audit.json"
         envFile = "./data/chainenv/gov.props"
         dockerEnv = "pyaudit"
+        serverPort = 9081
     } else {
         configFile = "./data/config/gov.json"
         chainDir = ".chain/pygov"
@@ -185,6 +189,7 @@ task testPyGov(type: ChainTest, overwrite: true) {
         gsDir = "./data/genesisStorage/genesis_gov.json"
         envFile = "./data/chainenv/gov.props"
         dockerEnv = "pygov"
+        serverPort = 9081
     }
 
     dependsOn 'cleanTestPyGov'
@@ -220,6 +225,7 @@ task testJavaScore(type: ChainTest, overwrite: true) {
     gsDir = "./data/genesisStorage/genesis_gov.json"
     envFile = "./data/chainenv/gov.props"
     dockerEnv = "javascore"
+    serverPort = 9081
 
     dependsOn 'cleanTestJavaScore'
     testLogging.showStandardStreams = true
