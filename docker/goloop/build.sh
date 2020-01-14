@@ -38,10 +38,10 @@ else
   echo "Already exists image ${REPO_GOLOOP}"
 fi
 
-if [ "${TAG_GOCHAIN}" != "" ] && [ "${TAG_GOCHAIN}" != "latest" ]; then
-  TAG_SLUG=${TAG_GOCHAIN//\//__}
-  echo "Tag image ${REPO_GOCHAIN} to ${REPO_GOCHAIN}:${TAG_SLUG} for TAG_GOCHAIN:${TAG_GOCHAIN}"
-  docker tag ${REPO_GOCHAIN} ${REPO_GOCHAIN}:${TAG_SLUG}
+if [ "${TAG_GOLOOP}" != "" ] && [ "${TAG_GOLOOP}" != "latest" ]; then
+  TAG_SLUG=${TAG_GOLOOP//\//__}
+  echo "Tag image ${REPO_GOLOOP} to ${REPO_GOLOOP}:${TAG_SLUG} for TAG_GOLOOP:${TAG_GOLOOP}"
+  docker tag ${REPO_GOLOOP} ${REPO_GOLOOP}:${TAG_SLUG}
 fi
 
 cd $PRE_PWD

@@ -17,6 +17,8 @@ variables:
   REPO_JAVA_DEPS: "goloop/java-deps/${CI_COMMIT_REF_SLUG}"
   REPO_PYJAVA_DEPS: "goloop/pyjava-deps/${CI_COMMIT_REF_SLUG}"
   REPO_GOLOOP: "goloop/${CI_COMMIT_REF_SLUG}"
+  REPO_GOLOOP_PY: "goloop-py/${CI_COMMIT_REF_SLUG}"
+  REPO_GOLOOP_JAVA: "goloop-java/${CI_COMMIT_REF_SLUG}"
 
 before_script:
   - env
@@ -128,6 +130,16 @@ build:java:
     - build:go
     - build:pyee
     - build:java
+
+pack:goloop:py:
+  <<: *pack
+  script:
+    - sh docker/goloop-py/build.sh
+
+pack:goloop:java:
+  <<: *pack
+  script:
+    - sh docker/goloop-java/build.sh
 
 pack:goloop:
   <<: *pack

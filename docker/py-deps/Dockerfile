@@ -12,8 +12,8 @@ RUN python3 -m venv /goloop/venv && \
     source /goloop/venv/bin/activate && \
     pip install -r /goloop/requirements.txt
 
-ARG GOLOOP_PYREQ_SHA
-LABEL GOLOOP_PYREQ_SHA="$GOLOOP_PYREQ_SHA"
+ARG GOLOOP_PYDEP_SHA
+LABEL GOLOOP_PYDEP_SHA="$GOLOOP_PYDEP_SHA"
 
 # entrypoint
 RUN { \

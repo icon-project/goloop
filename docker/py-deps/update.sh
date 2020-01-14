@@ -13,7 +13,7 @@ get_hash_of_dir() {
 
 get_hash_of_image() {
     local TAG=$1
-    docker image inspect -f '{{.Config.Labels.GOLOOP_PYREQ_SHA}}' ${TAG} 2> /dev/null || echo 'none'
+    docker image inspect -f '{{.Config.Labels.GOLOOP_PYDEP_SHA}}' ${TAG} 2> /dev/null || echo 'none'
 }
 
 update_image() {
@@ -29,10 +29,10 @@ update_image() {
     fi
     local BUILD_DIR=$3
 
-    local GOLOOP_PYREQ_SHA=$(get_hash_of_dir ${SRC_DIR})
-    local IMAGE_PYREQ_SHA=$(get_hash_of_image ${TAG})
+    local GOLOOP_PYDEP_SHA=$(get_hash_of_dir ${SRC_DIR})
+    local IMAGE_PYDEP_SHA=$(get_hash_of_image ${TAG})
 
-    if [ "${GOLOOP_PYREQ_SHA}" != "${IMAGE_PYREQ_SHA}" ] ; then
+    if [ "${GOLOOP_PYDEP_SHA}" != "${IMAGE_PYDEP_SHA}" ] ; then
         # Prepare build directory if it's set
         if [ "${BUILD_DIR}" != "" ] ; then
             rm -rf ${BUILD_DIR}
@@ -47,9 +47,9 @@ update_image() {
         CDIR=$(pwd)
         cd ${BUILD_DIR}
 
-        echo "Building image ${TAG} for ${GOLOOP_PYREQ_SHA}"
+        echo "Building image ${TAG} for ${GOLOOP_PYDEP_SHA}"
         docker build \
-            --build-arg GOLOOP_PYREQ_SHA=${GOLOOP_PYREQ_SHA} \
+            --build-arg GOLOOP_PYDEP_SHA=${GOLOOP_PYDEP_SHA} \
             --build-arg PYTHON_VERSION=${PYTHON_VERSION} \
             --tag ${TAG} .
         local result=$?
@@ -58,7 +58,7 @@ update_image() {
         cd ${CDIR}
         return $result
     else
-        echo "Already exist image ${TAG} for ${GOLOOP_PYREQ_SHA}"
+        echo "Already exist image ${TAG} for ${GOLOOP_PYDEP_SHA}"
         return 0
     fi
     return 0
