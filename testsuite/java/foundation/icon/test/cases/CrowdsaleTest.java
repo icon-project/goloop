@@ -28,9 +28,7 @@ import foundation.icon.test.common.Env;
 import foundation.icon.test.common.TransactionHandler;
 import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.CrowdSaleScore;
-import foundation.icon.test.score.GovScore;
 import foundation.icon.test.score.SampleTokenScore;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -45,8 +43,6 @@ class CrowdsaleTest {
     private static TransactionHandler txHandler;
     private static Env.Chain chain;
     private static KeyWallet ownerWallet;
-    private static GovScore govScore;
-    private static GovScore.Fee fee;
 
     @BeforeAll
     static void init() throws Exception {
@@ -55,28 +51,14 @@ class CrowdsaleTest {
         chain = channel.chain;
         iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
         txHandler = new TransactionHandler(iconService, chain);
-        govScore = new GovScore(iconService, chain);
-        fee = govScore.getFee();
-        initScoreTest();
-    }
 
-    private static void initScoreTest() throws Exception {
         ownerWallet = KeyWallet.create();
         Utils.transferAndCheck(iconService, chain, chain.godWallet, new Address[] {
-                    ownerWallet.getAddress(), chain.governorWallet.getAddress()
+                    ownerWallet.getAddress()
                 }, BigInteger.TEN.pow(20));
-
-        govScore.setMaxStepLimit("invoke", BigInteger.valueOf(1000000));
-        govScore.setMaxStepLimit("query", BigInteger.valueOf(1000000));
     }
 
-    @AfterAll
-    static void destroy() throws Exception {
-        govScore.setFee(fee);
-    }
-
-    @Tag(Constants.TAG_GOVERNANCE)
-    @Tag(Constants.TAG_JAVA_SCORE)
+    @Tag(Constants.TAG_PY_SCORE)
     @Test
     void testPythonToPython() throws Exception {
         deployAndStartCrowdsale(Constants.CONTENT_TYPE_PYTHON, Constants.CONTENT_TYPE_PYTHON);
@@ -88,13 +70,13 @@ class CrowdsaleTest {
         deployAndStartCrowdsale(Constants.CONTENT_TYPE_JAVA, Constants.CONTENT_TYPE_JAVA);
     }
 
-    @Tag(Constants.TAG_JAVA_SCORE)
+    @Tag(Constants.TAG_INTER_SCORE)
     @Test
     void testPythonToJava() throws Exception {
         deployAndStartCrowdsale(Constants.CONTENT_TYPE_PYTHON, Constants.CONTENT_TYPE_JAVA);
     }
 
-    @Tag(Constants.TAG_JAVA_SCORE)
+    @Tag(Constants.TAG_INTER_SCORE)
     @Test
     void testJavaToPython() throws Exception {
         deployAndStartCrowdsale(Constants.CONTENT_TYPE_JAVA, Constants.CONTENT_TYPE_PYTHON);

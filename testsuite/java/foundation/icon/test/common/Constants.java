@@ -21,9 +21,10 @@ import foundation.icon.icx.data.Address;
 import java.math.BigInteger;
 
 public class Constants {
-    public static final String TAG_GOVERNANCE = "governance";
-    public static final String TAG_NORMAL = "normal";
+    public static final String TAG_PY_GOV = "pyGov";
+    public static final String TAG_PY_SCORE = "pyScore";
     public static final String TAG_JAVA_SCORE = "javaScore";
+    public static final String TAG_INTER_SCORE = "interScore";
 
     public static final BigInteger STATUS_SUCCESS = BigInteger.ONE;
     public static final BigInteger STATUS_FAIL = BigInteger.ZERO;

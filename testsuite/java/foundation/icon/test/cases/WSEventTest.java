@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 // TODO What about adding annotation indicating requirements. For example,
 // "@require(nodeNum=4,chainNum=1)" indicates it requires at least 4 nodes and
 // 1 chain for each.
-@Tag(Constants.TAG_NORMAL)
+@Tag(Constants.TAG_PY_SCORE)
 public class WSEventTest {
     private static Env.Chain chain;
     private static IconService iconService;

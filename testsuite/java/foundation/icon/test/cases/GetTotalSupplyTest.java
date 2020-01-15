@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 import java.math.BigInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@Tag(Constants.TAG_NORMAL)
+@Tag(Constants.TAG_PY_SCORE)
 public class GetTotalSupplyTest {
     static Env.Chain chain;
     static IconService iconService;

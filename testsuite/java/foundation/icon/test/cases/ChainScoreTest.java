@@ -44,7 +44,7 @@ test methods
     addRemoveMember
     addRemoveDeployer
  */
-@Tag(Constants.TAG_GOVERNANCE)
+@Tag(Constants.TAG_PY_GOV)
 public class ChainScoreTest{
     private static Env.Chain chain;
     private static IconService iconService;

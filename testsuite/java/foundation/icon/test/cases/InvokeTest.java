@@ -33,7 +33,7 @@ test methods
     notEnoughBalance
     timeout
  */
-@Tag(Constants.TAG_GOVERNANCE)
+@Tag(Constants.TAG_PY_GOV)
 public class InvokeTest {
     private static IconService iconService;
     private static Env.Chain chain;

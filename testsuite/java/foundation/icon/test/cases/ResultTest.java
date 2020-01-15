@@ -22,7 +22,7 @@ import java.math.BigInteger;
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.*;
 
-@Tag(Constants.TAG_NORMAL)
+@Tag(Constants.TAG_PY_SCORE)
 public class ResultTest {
     private static Env.Chain chain;
     private static IconService iconService;

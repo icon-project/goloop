@@ -33,10 +33,8 @@ import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.TransactionHandler;
 import foundation.icon.test.common.Utils;
-import foundation.icon.test.score.GovScore;
 import foundation.icon.test.score.SampleTokenScore;
 import foundation.icon.test.score.Score;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -56,8 +54,6 @@ class JavaScoreTest {
     private static Env.Chain chain;
     private static KeyWallet ownerWallet;
     private static KeyWallet calleeWallet;
-    private static GovScore govScore;
-    private static GovScore.Fee fee;
     private static Score testScore;
 
     @BeforeAll
@@ -67,25 +63,12 @@ class JavaScoreTest {
         chain = channel.chain;
         iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
         txHandler = new TransactionHandler(iconService, chain);
-        govScore = new GovScore(iconService, chain);
-        fee = govScore.getFee();
-        initScoreTest();
-    }
 
-    private static void initScoreTest() throws Exception {
         ownerWallet = KeyWallet.create();
         calleeWallet = KeyWallet.create();
         Utils.transferAndCheck(iconService, chain, chain.godWallet, new Address[] {
                     ownerWallet.getAddress(), calleeWallet.getAddress()
                 }, BigInteger.TEN.pow(20));
-
-        govScore.setMaxStepLimit("invoke", BigInteger.valueOf(1000000));
-        govScore.setMaxStepLimit("query", BigInteger.valueOf(1000000));
-    }
-
-    @AfterAll
-    static void destroy() throws Exception {
-        govScore.setFee(fee);
     }
 
     @Test

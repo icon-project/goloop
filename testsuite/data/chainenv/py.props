@@ -6,4 +6,3 @@ chain0.nid=0x1
 chain0.godWallet=keystore_god.json
 chain0.godPassword=gochain
 chain0.totalSupply=0x2961fff8ca4a62327800000
-

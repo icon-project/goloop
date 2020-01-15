@@ -1,0 +1,46 @@
+{
+    "accounts": [
+        {
+            "address": "hxb6b5791be0b5ef67063b3c10b840fb81514db2fd",
+            "balance": "0x2961fff8ca4a62327800000",
+            "name": "god"
+        },
+        {
+            "address": "hx1000000000000000000000000000000000000000",
+            "balance": "0x0",
+            "name": "treasury"
+        }
+    ],
+    "chain": {
+        "auditEnabled": "0x0",
+        "deployerWhiteListEnabled": "0x0",
+        "revision": "0x5",
+        "fee": {
+            "stepPrice": "0x0",
+            "stepLimit": {
+                "invoke": "0x10000000",
+                "query": "0x1000000"
+            },
+            "stepCosts": {
+                "default": "0x1",
+                "contractCall": "0x1",
+                "contractCreate": "0x1",
+                "contractUpdate": "0x1",
+                "contractDestruct": "0x1",
+                "contractSet": "0x1",
+                "get": "0x0",
+                "set": "0x1",
+                "replace": "0x1",
+                "delete": "-0x1",
+                "input": "0x1",
+                "eventLog": "0x1",
+                "apiCall": "0x1"
+            }
+        },
+        "validatorList": [
+            "hxb6b5791be0b5ef67063b3c10b840fb81514db2fd"
+        ]
+    },
+    "message": "genesis for CI tests",
+    "nid": "0x3"
+}

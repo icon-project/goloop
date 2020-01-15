@@ -38,7 +38,7 @@ test methods
     notEnoughStepLimit
     invalidSignature
  */
-@Tag(Constants.TAG_GOVERNANCE)
+@Tag(Constants.TAG_PY_GOV)
 public class TransferTest {
     private static KeyWallet[]testWallets;
     private static IconService iconService;

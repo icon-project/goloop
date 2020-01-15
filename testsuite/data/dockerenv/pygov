@@ -1,4 +1,4 @@
-GOCHAIN_CONFIG=/testsuite/data/config/gov.json
+GOCHAIN_CONFIG=/testsuite/data/config/pygov.json
 GOCHAIN_GENESIS=/testsuite/data/genesisStorage/genesis_gov.json
 GOCHAIN_DATA=/testsuite/.chain/pygov
 GOCHAIN_LOGFILE=/testsuite/.chain/pygov.log

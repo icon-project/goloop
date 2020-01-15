@@ -34,7 +34,7 @@ test methods
     deployStep
     callStep
  */
-@Tag(Constants.TAG_GOVERNANCE)
+@Tag(Constants.TAG_PY_GOV)
 public class StepTest {
     private static KeyWallet[]testWallets;
     private static IconService iconService;

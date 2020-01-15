@@ -22,7 +22,7 @@ import java.util.List;
 import static foundation.icon.test.common.Env.LOG;
 
 
-@Tag(Constants.TAG_NORMAL)
+@Tag(Constants.TAG_PY_SCORE)
 public class BtpApiTest {
     private static IconService iconService;
     private static Env.Chain chain;

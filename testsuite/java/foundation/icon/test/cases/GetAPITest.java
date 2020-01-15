@@ -52,7 +52,7 @@ test methods
     testGetAPIForStepCounter
     validateGetScoreApi
  */
-@Tag(Constants.TAG_NORMAL)
+@Tag(Constants.TAG_PY_SCORE)
 class GetAPITest {
     private static Env.Chain chain;
     private static IconService iconService;

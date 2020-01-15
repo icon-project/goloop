@@ -57,7 +57,7 @@ test methods
     invalidScoreNoOnUpdateMethod
  */
 
-@Tag(Constants.TAG_GOVERNANCE)
+@Tag(Constants.TAG_PY_GOV)
 public class DeployTest {
     private static final String PACKAGE_JSON = "package.json";
     private static IconService iconService;

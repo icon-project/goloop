@@ -176,18 +176,18 @@ class ChainTest extends Test {
 
 task testPyGov(type: ChainTest, overwrite: true) {
     useJUnitPlatform {
-        includeTags "governance"
+        includeTags "pyGov"
     }
     def audit = System.getProperty("AUDIT")
     if (audit == "true") {
-        configFile = "./data/config/gov.json"
+        configFile = "./data/config/pygov.json"
         chainDir = ".chain/pyaudit"
         logFile = "./pyaudit.log"
         gsDir = "./data/genesisStorage/genesis_audit.json"
         envFile = "./data/chainenv/gov.props"
         dockerEnv = "pyaudit"
     } else {
-        configFile = "./data/config/gov.json"
+        configFile = "./data/config/pygov.json"
         chainDir = ".chain/pygov"
         logFile = "./pygov.log"
         gsDir = "./data/genesisStorage/genesis_gov.json"
@@ -201,12 +201,12 @@ task testPyGov(type: ChainTest, overwrite: true) {
 
 task testPyScore(type: ChainTest, overwrite: true) {
     useJUnitPlatform {
-        includeTags "normal"
+        includeTags "pyScore"
     }
     configFile = "./data/config/py.json"
     chainDir = ".chain/pyscore"
     logFile = "./pyscore.log"
-    envFile = "./data/chainenv/normal.props"
+    envFile = "./data/chainenv/py.props"
     dockerEnv = "pyscore"
 
     dependsOn 'cleanTestPyScore'
@@ -225,14 +225,27 @@ task testJavaScore(type: ChainTest, overwrite: true) {
     configFile = "./data/config/java.json"
     chainDir = ".chain/javascore"
     logFile = "./javascore.log"
-    gsDir = "./data/genesisStorage/genesis_gov.json"
-    envFile = "./data/chainenv/gov.props"
+    envFile = "./data/chainenv/java.props"
     dockerEnv = "javascore"
 
     dependsOn 'cleanTestJavaScore'
     testLogging.showStandardStreams = true
 }
 
+task testInterScore(type: ChainTest, overwrite: true) {
+    useJUnitPlatform {
+        includeTags "interScore"
+    }
+    configFile = "./data/config/inter.json"
+    chainDir = ".chain/interscore"
+    logFile = "./interscore.log"
+    envFile = "./data/chainenv/java.props"
+    dockerEnv = "interscore"
+
+    dependsOn 'cleanTestInterScore'
+    testLogging.showStandardStreams = true
+}
+
 task test(overwrite: true) {
-    dependsOn 'testPyScore', 'testPyGov', 'testJavaScore'
+    dependsOn 'testPyScore', 'testPyGov', 'testJavaScore', 'testInterScore'
 }

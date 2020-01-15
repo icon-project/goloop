@@ -154,7 +154,7 @@ pack:goloop:
     GOLOOP_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
     GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesis.json"
     GOLOOP_GOD_KEYSTORE: "${CI_PROJECT_DIR}/testsuite/data/keystore_god.json"
-    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/normal.props"
+    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/py.props"
   before_script:
     - env
     - export SELF_CONTAINER=$(docker ps --filter label=com.gitlab.gitlab-runner.job.id=${CI_JOB_ID} --format {{.ID}});
@@ -201,7 +201,7 @@ IT:goloop:pyscore:
     GOLOOP_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
     GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesis.json"
     GOLOOP_GOD_KEYSTORE: "${CI_PROJECT_DIR}/testsuite/data/keystore_god.json"
-    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/normal.props"
+    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/py.props"
     GOLOOP_ENGINES: "python"
   script:
     - ./gradlew testPyScore -DNO_SERVER="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
@@ -235,10 +235,10 @@ IT:goloop:javascore:
   variables:
     GOLOOP_DOCKER_REPLICAS: 4
     GOLOOP_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
-    GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_gov.json"
+    GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_fee.json"
     GOLOOP_GOD_KEYSTORE: "${CI_PROJECT_DIR}/testsuite/data/keystore_god.json"
-    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/gov.props"
-    GOLOOP_ENGINES: "python,java"
+    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/java.props"
+    GOLOOP_ENGINES: "java"
   script:
     - ./gradlew testJavaScore -DNO_SERVER="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
 
@@ -250,7 +250,7 @@ IT:goloop:javascore:
     GOLOOP_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
     GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesis.json"
     GOLOOP_GOD_KEYSTORE: "${CI_PROJECT_DIR}/testsuite/data/keystore_god.json"
-    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/normal.props"
+    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/py.props"
   before_script:
     - env
     - export SELF_CONTAINER=$(docker ps --filter label=com.gitlab.gitlab-runner.job.id=${CI_JOB_ID} --format {{.ID}});
@@ -297,7 +297,7 @@ IT:py:pyscore:
     GOLOOP_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
     GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesis.json"
     GOLOOP_GOD_KEYSTORE: "${CI_PROJECT_DIR}/testsuite/data/keystore_god.json"
-    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/normal.props"
+    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/py.props"
     GOLOOP_ENGINES: "python"
   script:
     - ./gradlew testPyScore -DNO_SERVER="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
@@ -334,7 +334,7 @@ IT:py:pyaudit:
     GOLOOP_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
     GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesis.json"
     GOLOOP_GOD_KEYSTORE: "${CI_PROJECT_DIR}/testsuite/data/keystore_god.json"
-    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/normal.props"
+    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/py.props"
   before_script:
     - env
     - export SELF_CONTAINER=$(docker ps --filter label=com.gitlab.gitlab-runner.job.id=${CI_JOB_ID} --format {{.ID}});
@@ -379,9 +379,9 @@ IT:java:javascore:
   variables:
     GOLOOP_DOCKER_REPLICAS: 4
     GOLOOP_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
-    GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_gov.json"
+    GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_fee.json"
     GOLOOP_GOD_KEYSTORE: "${CI_PROJECT_DIR}/testsuite/data/keystore_god.json"
-    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/gov.props"
+    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/java.props"
     GOLOOP_ENGINES: "java"
   script:
     - ./gradlew testJavaScore -DNO_SERVER="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"

@@ -1,0 +1,5 @@
+GOCHAIN_CONFIG=/testsuite/data/config/inter.json
+GOCHAIN_DATA=/testsuite/.chain/interscore
+GOCHAIN_LOGFILE=/testsuite/.chain/interscore.log
+GOCHAIN_CLEAN_DATA=true
+JAVAEE_BIN=/goloop/exectest/bin/exectest
