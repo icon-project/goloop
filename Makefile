@@ -76,6 +76,7 @@ PYJAVADEPS_IMAGE = goloop/pyjava-deps:$(GL_TAG)
 PYJAVADEPS_DOCKER_DIR = $(BUILD_ROOT)/build/pyjavadeps
 
 GOLOOP_WORK_DIR = /work
+PYEE_DIST_DIR = $(BUILD_ROOT)/build/pyee/dist
 
 godeps-image:
 	@ \
@@ -106,9 +107,10 @@ pyrun-% : pydeps-image
 pyexec:
 	@ \
 	cd $(BUILD_ROOT)/pyee ; \
-	rm -rf build dist ; \
+	rm -rf build ; \
 	pip3 install wheel ; \
-	python3 setup.py bdist_wheel
+	python3 setup.py bdist_wheel -d $(PYEE_DIST_DIR) ; \
+	rm -rf pyexec.egg-info
 
 javadeps-image:
 	@ \
@@ -139,7 +141,7 @@ goloop-image: pyrun-pyexec gorun-goloop-linux javarun-javaexec pyjavadeps-image
 	@ mkdir -p $(GOLOOP_DOCKER_DIR)/dist/pyee
 	@ mkdir -p $(GOLOOP_DOCKER_DIR)/dist/bin
 	@ cp $(BUILD_ROOT)/docker/goloop/* $(GOLOOP_DOCKER_DIR)
-	@ cp $(BUILD_ROOT)/pyee/dist/* $(GOLOOP_DOCKER_DIR)/dist/pyee
+	@ cp $(PYEE_DIST_DIR)/*.whl $(GOLOOP_DOCKER_DIR)/dist/pyee
 	@ cp $(LINUX_BIN_DIR)/goloop $(GOLOOP_DOCKER_DIR)/dist/bin
 	@ cp $(BUILD_ROOT)/javaee/app/exectest/build/distributions/exectest.zip $(GOLOOP_DOCKER_DIR)/dist
 	@ docker build -t $(GOLOOP_IMAGE) \
@@ -152,7 +154,7 @@ gochain-image: pyrun-pyexec gorun-gochain-linux javarun-javaexec pyjavadeps-imag
 	@ rm -rf $(GOCHAIN_DOCKER_DIR)
 	@ mkdir -p $(GOCHAIN_DOCKER_DIR)/dist
 	@ cp $(BUILD_ROOT)/docker/gochain/* $(GOCHAIN_DOCKER_DIR)
-	@ cp $(BUILD_ROOT)/pyee/dist/* $(GOCHAIN_DOCKER_DIR)/dist
+	@ cp $(PYEE_DIST_DIR)/*.whl $(GOCHAIN_DOCKER_DIR)/dist
 	@ cp $(LINUX_BIN_DIR)/gochain $(GOCHAIN_DOCKER_DIR)/dist
 	@ cp $(BUILD_ROOT)/javaee/app/exectest/build/distributions/exectest.zip $(GOCHAIN_DOCKER_DIR)/dist
 	@ docker build -t $(GOCHAIN_IMAGE) \
