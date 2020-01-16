@@ -28,10 +28,10 @@ func main() {
 		Use: fmt.Sprintf("%s [urls]", os.Args[0]),
 	}
 	flags := cmd.PersistentFlags()
-	flags.StringVarP(&keyStoreFile, "keystore", "k", "", "File path to keystore of base account(like GOD)")
+	flags.StringVarP(&keyStoreFile, "keystore", "k", "", "File path to keystore of base account (like GOD)")
 	flags.StringVarP(&keyStorePass, "password", "p", "gochain", "Password for the keystore")
 	flags.IntVarP(&tps, "tps", "t", 1000, "Max transaction per a second")
-	flags.IntVarP(&concurrent, "concurrent", "c", 2, "Number of subroutines(threads)")
+	flags.IntVarP(&concurrent, "concurrent", "c", 2, "Number of subroutines (threads)")
 	flags.IntVarP(&walletCount, "wallets", "w", 1000, "Number of temporal wallets")
 	flags.Int64VarP(&nid, "nid", "n", 1, "Network ID of URLs")
 	flags.StringVarP(&scorePath, "score", "s", "", "Path to SCORE source directory")
@@ -39,8 +39,8 @@ func main() {
 	flags.StringToStringVar(&params, "param", nil, "Parameters for the call")
 	flags.StringToStringVar(&installParams, "installParam", make(map[string]string), "Install parameters")
 	flags.Int64VarP(&index, "index", "i", 0, "Initial index value to be used for generating transaction")
-	flags.Int64VarP(&last, "last", "l", 0, "Last index vlaue to be used for generating transaction")
-	flags.Int64Var(&waitTimeout, "wait", 0, "Wait for specific time (in ms) for each TX(enable to use sendAndWait)")
+	flags.Int64VarP(&last, "last", "l", 0, "Last index value to be used for generating transaction")
+	flags.Int64Var(&waitTimeout, "wait", 0, "Wait for specified time (in ms) for each TX (enable to use sendAndWait)")
 
 	cmd.Run = func(cmd *cobra.Command, urls []string) {
 		if len(urls) == 0 {

@@ -92,13 +92,13 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 	rootPFlags.String("log_level", "debug", "Global log level (trace,debug,info,warn,error,fatal,panic)")
 	rootPFlags.String("console_level", "trace", "Console log level (trace,debug,info,warn,error,fatal,panic)")
 	rootPFlags.String("node_dir", "",
-		"Node data directory(default:[configuration file path]/.chain/[ADDRESS])")
+		"Node data directory (default: [configuration file path]/.chain/[ADDRESS])")
 	rootPFlags.StringP("node_sock", "s", "",
-		"Node Command Line Interface socket path(default:[node_dir]/cli.sock)")
+		"Node Command Line Interface socket path (default: [node_dir]/cli.sock)")
 	rootPFlags.StringP("config", "c", "", "Parsing configuration file")
 	//
 	rootPFlags.String("key_store", "", "KeyStore file for wallet")
-	rootPFlags.String("key_secret", "", "Secret(password) file for KeyStore")
+	rootPFlags.String("key_secret", "", "Secret (password) file for KeyStore")
 	//
 	rootPFlags.String("log_forwarder_vendor", "", "LogForwarder vendor (fluentd,logstash)")
 	rootPFlags.String("log_forwarder_address", "", "LogForwarder address")
@@ -107,7 +107,7 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 	rootPFlags.StringToString("log_forwarder_options", nil, "LogForwarder options, comma-separated 'key=value'")
 	rootPFlags.String("engines", "python", "Execution engines, comma-separated (python,java)")
 
-	rootPFlags.String("log_writer_filename", "", "Log file name (rotated files resides in same directory)")
+	rootPFlags.String("log_writer_filename", "", "Log filename (rotated files resides in same directory)")
 	rootPFlags.Int("log_writer_maxsize", 100, "Maximum log file size in MiB")
 	rootPFlags.Int("log_writer_maxage", 0, "Maximum age of log file in day")
 	rootPFlags.Int("log_writer_maxbackups", 0, "Maximum number of backups")

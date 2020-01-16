@@ -152,7 +152,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	joinFlags.String("seed", "", "List of trust-seed ip-port, Comma separated string")
 	joinFlags.Uint("role", 3, "[0:None, 1:Seed, 2:Validator, 3:Both]")
 	joinFlags.String("db_type", "goleveldb", "Name of database system(*badgerdb, goleveldb, boltdb, mapdb)")
-	joinFlags.Int("concurrency", 1, "Maximum number of executors to use for concurrency")
+	joinFlags.Int("concurrency", 1, "Maximum number of executors to be used for concurrency")
 	joinFlags.Int("normal_tx_pool", 0, "Size of normal transaction pool")
 	joinFlags.Int("patch_tx_pool", 0, "Size of patch transaction pool")
 	joinFlags.Int("max_block_tx_bytes", 0, "Max size of transactions in a block")
@@ -163,7 +163,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	joinFlags.String("secure_aeads", "chacha,aes128,aes256",
 		"Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string")
 	joinFlags.Int64("default_wait_timeout", 0, "Default wait timeout in milli-second (0: disable)")
-	joinFlags.Int64("max_wait_timeout", 0, "Max wait timeout in milli-second (0:uses same value of default_wait_timeout)")
+	joinFlags.Int64("max_wait_timeout", 0, "Max wait timeout in milli-second (0: uses same value of default_wait_timeout)")
 
 	leaveCmd := &cobra.Command{
 		Use:   "leave NID",
