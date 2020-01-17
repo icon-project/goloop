@@ -247,18 +247,18 @@ IT:java:javascore:
   script:
     - ./gradlew testJavaScore -DNO_SERVER="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
 
-IT:goloop:pyscore:
+IT:goloop:pyaudit:
   <<: *IT__goloop
   variables:
     GOLOOP_DOCKER_REPLICAS: 4
     GOLOOP_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
-    GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesis.json"
+    GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_audit.json"
     GOLOOP_GOD_KEYSTORE: "${CI_PROJECT_DIR}/testsuite/data/keystore_god.json"
-    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/py.props"
+    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/gov.props"
     GOLOOP_MULTI_SCRIPT: docker/goloop/multi.sh
     GOLOOP_ENGINES: "python"
   script:
-    - ./gradlew testPyScore -DNO_SERVER="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
+    - ./gradlew testPyGov -DNO_SERVER="true" -DAUDIT="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
 
 IT:goloop:pygov:
   <<: *IT__goloop
@@ -273,18 +273,18 @@ IT:goloop:pygov:
   script:
     - ./gradlew testPyGov -DNO_SERVER="true" -DAUDIT="false" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
 
-IT:goloop:pyaudit:
+IT:goloop:pyscore:
   <<: *IT__goloop
   variables:
     GOLOOP_DOCKER_REPLICAS: 4
     GOLOOP_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
-    GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_audit.json"
+    GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesis.json"
     GOLOOP_GOD_KEYSTORE: "${CI_PROJECT_DIR}/testsuite/data/keystore_god.json"
-    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/gov.props"
+    GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/py.props"
     GOLOOP_MULTI_SCRIPT: docker/goloop/multi.sh
     GOLOOP_ENGINES: "python"
   script:
-    - ./gradlew testPyGov -DNO_SERVER="true" -DAUDIT="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
+    - ./gradlew testPyScore -DNO_SERVER="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
 
 IT:goloop:javascore:
   <<: *IT__goloop
