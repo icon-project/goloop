@@ -164,6 +164,7 @@ pack:goloop:
     GOLOOP_MULTI_SCRIPT: docker/goloop/multi.sh
   before_script:
     - env
+    - export GRADLE_USER_HOME=${CI_PROJECT_DIR}/testsuite/.gradle
     - export SELF_CONTAINER=$(docker ps --filter label=com.gitlab.gitlab-runner.job.id=${CI_JOB_ID} --format {{.ID}});
       export GOLOOP_DOCKER_MOUNT="/builds";
       FORMAT_MOUNT_NAME="{{range .Mounts}}{{if eq .Destination \"/builds\"}}{{.Name}}{{end}}{{end}}";
@@ -186,9 +187,11 @@ pack:goloop:
     - export GOLOOP_DOCKER_PREFIX=${GOLOOP_DOCKER_PREFIX:-goloop-${CI_JOB_ID}};
       sh ${GOLOOP_MULTI_SCRIPT} rm
   cache:
-    key: "$CI_COMMIT_REF_NAME"
+    key: "${CI_COMMIT_REF_SLUG}"
     paths:
-      - testsuite/.gradle
+      - testsuite/.gradle/caches
+      - testsuite/.gradle/native
+      - testsuite/.gradle/wrapper
   dependencies:
     - build:go
   artifacts:
