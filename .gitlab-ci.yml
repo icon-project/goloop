@@ -126,25 +126,31 @@ build:java:
   stage: pack
   tags:
     - docker-build
-  dependencies:
-    - build:go
-    - build:pyee
-    - build:java
 
 pack:goloop:py:
   <<: *pack
   script:
     - sh docker/goloop-py/build.sh
+  dependencies:
+    - build:go
+    - build:pyee
 
 pack:goloop:java:
   <<: *pack
   script:
     - sh docker/goloop-java/build.sh
+  dependencies:
+    - build:go
+    - build:java
 
 pack:goloop:
   <<: *pack
   script:
     - sh docker/goloop/build.sh
+  dependencies:
+    - build:go
+    - build:pyee
+    - build:java
 
 .integration:goloop: &IT__goloop
   image: "docker:java11" #sh -c 'echo -e "FROM docker:git\nRUN apk add openjdk11" | docker build --tag docker:java11 -'
@@ -183,6 +189,8 @@ pack:goloop:
     key: "$CI_COMMIT_REF_NAME"
     paths:
       - testsuite/.gradle
+  dependencies:
+    - build:go
   artifacts:
     expire_in: 1 day
     when: on_failure
