@@ -11,6 +11,12 @@ public interface IInstrumentation {
     // The instrumentation instance associated with the given thread and also installed into the Helper of the currently-running DApp.
     public static final ThreadLocal<IInstrumentation> attachedThreadInstrumentation = new ThreadLocal<>();
 
+    static IInstrumentation charge(int cost) throws OutOfEnergyException {
+        IInstrumentation ins = attachedThreadInstrumentation.get();
+        ins.chargeEnergy(cost);
+        return ins;
+    }
+
     void enterNewFrame(ClassLoader contractLoader, long energyLeft, int nextHashCode, InternedClasses classWrappers, FrameContext frameContext);
     void exitCurrentFrame();
 
