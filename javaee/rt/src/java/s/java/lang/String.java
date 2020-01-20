@@ -415,6 +415,11 @@ public final class String extends Object implements Comparable<String>, CharSequ
         this.v = underlying;
     }
 
+    public static String newWithCharge(java.lang.String u) {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.String_avm_constructor);
+        return new String(u);
+    }
+
     // Deserializer support.
     public String(java.lang.Void ignore, int readIndex) {
         super(ignore, readIndex);

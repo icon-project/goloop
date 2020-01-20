@@ -353,6 +353,11 @@ public class BigInteger extends Number implements Comparable<BigInteger> {
         setUnderlying(u);
     }
 
+    public static BigInteger newWithCharge(java.math.BigInteger u) {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.BigInteger_avm_constructor);
+        return new BigInteger(u);
+    }
+
     private void setUnderlying(java.math.BigInteger u) {
         if (isValidLength(u.toByteArray().length)) {
             v = u;

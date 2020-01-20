@@ -107,6 +107,11 @@ public final class Address extends s.java.lang.Object {
         setUnderlying(raw);
     }
 
+    public static Address newWithCharge(byte[] raw) {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.Address_avm_constructor);
+        return new Address(raw);
+    }
+
     /**
      * Similarly, this method will probably be removed or otherwise hidden.
      *

@@ -80,6 +80,11 @@ public class ByteArray extends Array {
         this.underlying = underlying;
     }
 
+    public static ByteArray newWithCharge(byte[] underlying) {
+        IInstrumentation.charge(RuntimeMethodFeeSchedule.ByteArray_avm_constructor);
+        return new ByteArray(underlying);
+    }
+
     public byte[] getUnderlying() {
         lazyLoad();
         return underlying;
