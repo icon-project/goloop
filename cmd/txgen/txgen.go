@@ -248,9 +248,10 @@ func (ctx *Context) Run(urls []string) error {
 		time.Duration(ctx.tps)
 
 	headers := map[string]string{}
-	if ctx.timeout > 0 {
+	timeoutOption := int64(ctx.timeout/time.Millisecond)
+	if timeoutOption > 200 {
 		iconOpts := jsonrpc.IconOptions{}
-		iconOpts.SetInt(jsonrpc.IconOptionsTimeout, int64(ctx.timeout/time.Millisecond))
+		iconOpts.SetInt(jsonrpc.IconOptionsTimeout, timeoutOption)
 		headers[jsonrpc.HeaderKeyIconOptions] = iconOpts.ToHeaderValue()
 	}
 

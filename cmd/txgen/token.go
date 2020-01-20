@@ -111,7 +111,7 @@ func (m *TokenTransferMaker) Prepare(client *Client) error {
 
 func (m *TokenTransferMaker) MakeOne() (interface{}, error) {
 	index := atomic.AddInt64(&m.index, 1)
-	if m.Last != 0 && index >= m.Last {
+	if m.Last != 0 && index > m.Last {
 		return nil, ErrEndOfTransaction
 	}
 	fromIndex := rand.Intn(m.WalletCount)
