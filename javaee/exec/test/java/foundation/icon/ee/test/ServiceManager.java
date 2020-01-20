@@ -104,7 +104,12 @@ public class ServiceManager extends Proxy {
             if (res.getStatus()!=0) {
                 state = prevState;
                 current = state.getAccount(prev.address);
-                throw new IllegalArgumentException("deploy failed");
+                throw new IllegalArgumentException(
+                        String.format("deploy failed status=%d ret=%s",
+                                res.getStatus(),
+                                res.getResult()
+                        )
+                );
             }
             current = prev;
             return new Contract(this, scoreAddr);
