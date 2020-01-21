@@ -19,6 +19,7 @@ package foundation.icon.icx.transport.http;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import foundation.icon.icx.transport.monitor.Monitor;
@@ -109,12 +110,12 @@ public class HttpProvider implements Provider {
         WS_STOP
     }
 
-    private class HttpMonitor<T> implements Monitor {
+    private class HttpMonitor<T> implements Monitor<T> {
         Monitor.Listener<T> listener;
         MonitorSpec spec;
         WsState state = WsState.WS_INIT;
         okhttp3.WebSocket ws;
-        Object condVar = new Object();
+        final Object condVar = new Object();
         RpcConverter<T> rpcConverter;
 
         HttpMonitor(MonitorSpec spec, RpcConverter<T> converter) {
@@ -160,9 +161,10 @@ public class HttpProvider implements Provider {
                             break;
                         case WS_START:
                             try {
-                                Map<String, String> map = mapper.readValue(message, Map.class);
+                                TypeReference<Map<String, String>> typeRef = new TypeReference<Map<String, String>>(){};
+                                Map<String, String> map = mapper.readValue(message, typeRef);
                                 RpcObject.Builder builder = new RpcObject.Builder();
-                                for(String key : map.keySet()) {
+                                for (String key : map.keySet()) {
                                     builder.put(key, new RpcValue(map.get(key)));
                                 }
                                 T obj = rpcConverter.convertTo(builder.build());
@@ -197,7 +199,7 @@ public class HttpProvider implements Provider {
         }
 
         @Override
-        public boolean start(Listener listener) {
+        public boolean start(Listener<T> listener) {
             synchronized (condVar) {
                 switch(state) {
                     case WS_INIT:
@@ -253,6 +255,6 @@ public class HttpProvider implements Provider {
 
     @Override
     public <T> Monitor<T> monitor(MonitorSpec spec, RpcConverter<T> converter) {
-        return new HttpMonitor(spec, converter);
+        return new HttpMonitor<T>(spec, converter);
     }
 }
