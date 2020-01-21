@@ -31,6 +31,8 @@ import okhttp3.Response;
 import okio.BufferedSink;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Map;
 
 /**
@@ -41,11 +43,28 @@ public class HttpProvider implements Provider {
     private final OkHttpClient httpClient;
     private final String url;
 
+    /**
+     * Initializes a new {@code HttpProvider} with the custom http client object and the given endpoint url.
+     *
+     * @param httpClient a custom http client to send HTTP requests and read their responses
+     * @param url an endpoint url, ex) {@code http://localhost:9000/api/v3}
+     */
     public HttpProvider(OkHttpClient httpClient, String url) {
         this.httpClient = httpClient;
-        this.url = url;
+        try {
+            new URI(url);
+            this.url = url;
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException(e.getMessage());
+        }
     }
 
+    /**
+     * Initializes a new {@code HttpProvider} with the given endpoint url.
+     * This will use a default http client object for the operation.
+     *
+     * @param url an endpoint url, ex) {@code http://localhost:9000/api/v3}
+     */
     public HttpProvider(String url) {
         this(new OkHttpClient.Builder().build(), url);
     }
