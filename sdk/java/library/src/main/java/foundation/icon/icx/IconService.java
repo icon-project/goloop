@@ -181,7 +181,7 @@ public class IconService {
     }
 
     /**
-     * Gets the result of a transaction by transaction hash
+     * Gets the result of a transaction specified by the transaction hash
      *
      * @param hash a transaction hash
      * @return a {@code TransactionResult} object
@@ -224,6 +224,41 @@ public class IconService {
     }
 
     // below apis are additional feature for core2
+
+    /**
+     * Sends a transaction like {@code sendTransaction}, then waits for some time to get the result.
+     * The user may set a specific timeout in the HTTP header, but it cannot exceed the node's max timeout limit.
+     * If a timeout did not set by the user, the node uses its {@code defaultWaitTimeout} setting.
+     *
+     * @param signedTransaction a transaction that was signed with the sender's wallet
+     * @return a {@code TransactionResult} object
+     */
+    public Request<TransactionResult> sendTransactionAndWait(SignedTransaction signedTransaction) {
+        long requestId = System.currentTimeMillis();
+        foundation.icon.icx.transport.jsonrpc.Request request = new foundation.icon.icx.transport.jsonrpc.Request(
+                requestId, "icx_sendTransactionAndWait", signedTransaction.getProperties());
+        return provider.request(request, findConverter(TransactionResult.class));
+    }
+
+    /**
+     * Gets the result of a transaction specified by the transaction hash like {@code getTransactionResult},
+     * but waits for some time to get the transaction result instead of returning immediately
+     * if there is no finalized result.
+     * The user may set a specific timeout in the HTTP header, but it cannot exceed the node's max timeout limit.
+     * If a timeout did not set by the user, the node uses its {@code defaultWaitTimeout} setting.
+     *
+     * @param hash a transaction hash
+     * @return a {@code TransactionResult} object
+     */
+    public Request<TransactionResult> waitTransactionResult(Bytes hash) {
+        long requestId = System.currentTimeMillis();
+        RpcObject params = new RpcObject.Builder()
+                .put("txHash", new RpcValue(hash))
+                .build();
+        foundation.icon.icx.transport.jsonrpc.Request request = new foundation.icon.icx.transport.jsonrpc.Request(
+                requestId, "icx_waitTransactionResult", params);
+        return provider.request(request, findConverter(TransactionResult.class));
+    }
 
     /**
      * Retrieves data based on the hash algorithm(SHA3-256)
