@@ -1,8 +1,12 @@
 package foundation.icon.ee.utils;
 
 import a.ByteArray;
+import foundation.icon.ee.io.MessagePackDataReader;
+import foundation.icon.ee.io.MessagePackDataWriter;
 import i.IObject;
 import p.avm.Address;
+import pi.ObjectReaderImpl;
+import pi.ObjectWriterImpl;
 import s.java.lang.Boolean;
 import s.java.lang.Byte;
 import s.java.lang.Character;
@@ -38,8 +42,12 @@ public class ValueCodec {
             return ((String) o).getUnderlying().getBytes(StandardCharsets.UTF_8);
         } else if (o instanceof ByteArray) {
             return ((ByteArray) o).getUnderlying().clone();
+        } else {
+            try (var owi = new ObjectWriterImpl(new MessagePackDataWriter())) {
+                owi.avm_write(o);
+                return owi.toByteArray();
+            }
         }
-        return null;
     }
 
     public static IObject decode(byte[] raw, Class<?> cls) {
@@ -47,52 +55,29 @@ public class ValueCodec {
             return null;
         var c = cls.getRealClass();
         if (c == Byte.class) {
-            return Byte.valueOf(new BigInteger(raw).byteValue());
+            return Byte.avm_valueOf(new BigInteger(raw).byteValue());
         } else if (c == Short.class) {
-            return Short.valueOf(new BigInteger(raw).shortValue());
+            return Short.avm_valueOf(new BigInteger(raw).shortValue());
         } else if (c == Integer.class) {
-            return Integer.valueOf(new BigInteger(raw).intValue());
+            return Integer.avm_valueOf(new BigInteger(raw).intValue());
         } else if (c == Long.class) {
-            return Long.valueOf(new BigInteger(raw).longValue());
+            return Long.avm_valueOf(new BigInteger(raw).longValue());
         } else if (c == s.java.math.BigInteger.class) {
-            return new s.java.math.BigInteger(new BigInteger(raw));
+            return s.java.math.BigInteger.newWithCharge(new BigInteger(raw));
         } else if (c == Character.class) {
-            return Character.valueOf((char) new BigInteger(raw).intValue());
+            return Character.avm_valueOf((char) new BigInteger(raw).intValue());
         } else if (c == Boolean.class) {
-            return Boolean.valueOf(new BigInteger(raw).intValue() != 0);
+            return Boolean.avm_valueOf(new BigInteger(raw).intValue() != 0);
         } else if (c == Address.class) {
-            return new Address(raw);
+            return Address.newWithCharge(raw);
         } else if (c == String.class) {
-            return new String(new java.lang.String(raw, StandardCharsets.UTF_8));
+            return String.newWithCharge(new java.lang.String(raw, StandardCharsets.UTF_8));
         } else if (c == ByteArray.class) {
-            return new ByteArray(raw.clone());
+            return ByteArray.newWithCharge(raw.clone());
+        } else {
+            try (var ori = new ObjectReaderImpl(new MessagePackDataReader(raw))) {
+                return ori.avm_read((Class<? extends IObject>)cls);
+            }
         }
-        return null;
-    }
-
-    public static boolean isSupported(Class<?> cls) {
-        var c = cls.getRealClass();
-        if (c == Byte.class) {
-            return true;
-        } else if (c == Short.class) {
-            return true;
-        } else if (c == Integer.class) {
-            return true;
-        } else if (c == Long.class) {
-            return true;
-        } else if (c == s.java.math.BigInteger.class) {
-            return true;
-        } else if (c == Character.class) {
-            return true;
-        } else if (c == Boolean.class) {
-            return true;
-        } else if (c == Address.class) {
-            return true;
-        } else if (c == String.class) {
-            return true;
-        } else if (c == ByteArray.class) {
-            return true;
-        }
-        return false;
     }
 }

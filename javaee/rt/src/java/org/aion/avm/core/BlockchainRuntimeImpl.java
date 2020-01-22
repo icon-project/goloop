@@ -273,20 +273,13 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         }
     }
 
-    private void assumeValidLeafValueClass(s.java.lang.Class<?> vc) {
-        if (!ValueCodec.isSupported(vc))
-            throw new InvalidDBAccessException("Invalid leaf value class " + vc);
-    }
-
     public CollectionDB avm_newCollectionDB(int type,
                                             s.java.lang.String id,
                                             s.java.lang.Class<?> vc) {
-        assumeValidLeafValueClass(vc);
         return new CollectionDBImpl(type, id, vc);
     }
 
     public VarDB avm_newVarDB(s.java.lang.String id, s.java.lang.Class<?> vc) {
-        assumeValidLeafValueClass(vc);
         return new VarDBImpl(id, vc);
     }
 

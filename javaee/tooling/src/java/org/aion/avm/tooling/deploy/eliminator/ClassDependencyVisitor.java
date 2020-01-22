@@ -49,12 +49,20 @@ public class ClassDependencyVisitor extends ClassVisitor {
         for (MethodDependencyVisitor methodVisitor : methodVisitors) {
             MethodInfo methodInfo = new MethodInfo(methodVisitor.getMethodIdentifier(), methodVisitor.isStatic(), methodVisitor.getMethodsCalled());
             methodMap.put(methodVisitor.getMethodIdentifier(), methodInfo);
-            if (isAlwaysReachable(methodInfo.methodIdentifier)) {
+            if (isAlwaysReachable(methodInfo.methodIdentifier) || isIOMethod(methodInfo)) {
                 methodInfo.isReachable = true;
                 alwaysReachables.add(methodInfo);
             }
         }
         super.visitEnd();
+    }
+
+    private boolean isIOMethod(MethodInfo info) {
+        var name = info.methodIdentifier;
+        if (!info.isStatic)
+            return false;
+        return (name.equals("readObject(Lavm/ObjectReader;)L"+classSlashName+";")
+            || name.equals("writeObject(Lavm/ObjectWriter;L"+classSlashName+";)V"));
     }
 
     // These are the methods we flag as "Always Reachable" because we believe they are the only ones that can be called
