@@ -1,6 +1,6 @@
 package pi;
 
-import foundation.icon.ee.utils.IObjects;
+import foundation.icon.ee.util.IObjects;
 import i.IObject;
 import s.java.util.Iterator;
 import s.java.util.List;

@@ -8,7 +8,7 @@ import foundation.icon.ee.ipc.TypedObj;
 import foundation.icon.ee.score.FileReader;
 import foundation.icon.ee.tooling.deploy.OptimizedJarBuilder;
 import foundation.icon.ee.types.Status;
-import foundation.icon.ee.utils.Crypto;
+import foundation.icon.ee.util.Crypto;
 import org.aion.avm.core.util.ByteArrayWrapper;
 import org.aion.avm.utilities.JarBuilder;
 import org.msgpack.value.ArrayValue;
@@ -17,7 +17,6 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import static foundation.icon.ee.ipc.EEProxy.Info;

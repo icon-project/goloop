@@ -1,4 +1,4 @@
-package foundation.icon.ee.utils;
+package foundation.icon.ee.util;
 
 import foundation.icon.ee.types.Address;
 

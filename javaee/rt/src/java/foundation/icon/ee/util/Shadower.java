@@ -1,4 +1,4 @@
-package foundation.icon.ee.utils;
+package foundation.icon.ee.util;
 
 import i.IObject;
 import i.RuntimeAssertionError;

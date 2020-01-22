@@ -2,7 +2,7 @@ package s.java.util;
 
 import a.ObjectArray;
 import pi.UnmodifiableArrayList;
-import foundation.icon.ee.utils.IObjects;
+import foundation.icon.ee.util.IObjects;
 import i.IObject;
 import i.IObjectArray;
 

@@ -16,8 +16,8 @@ import java.util.Set;
 
 import foundation.icon.ee.types.ObjectGraph;
 import foundation.icon.ee.types.DAppRuntimeState;
-import foundation.icon.ee.utils.MethodUnpacker;
-import foundation.icon.ee.utils.Unshadower;
+import foundation.icon.ee.util.MethodUnpacker;
+import foundation.icon.ee.util.Unshadower;
 import i.IInstrumentation;
 import org.aion.avm.NameStyle;
 import org.aion.avm.StorageFees;

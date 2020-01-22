@@ -1,4 +1,4 @@
-package foundation.icon.ee.utils;
+package foundation.icon.ee.util;
 
 import a.ByteArray;
 import foundation.icon.ee.io.MessagePackDataReader;

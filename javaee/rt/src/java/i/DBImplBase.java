@@ -1,7 +1,7 @@
 package i;
 
-import foundation.icon.ee.utils.Crypto;
-import foundation.icon.ee.utils.ValueCodec;
+import foundation.icon.ee.util.Crypto;
+import foundation.icon.ee.util.ValueCodec;
 
 public class DBImplBase extends s.java.lang.Object {
     public static final int TYPE_ARRAY_DB = 0;

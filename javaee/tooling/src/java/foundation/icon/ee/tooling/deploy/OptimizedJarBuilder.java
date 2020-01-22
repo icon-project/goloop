@@ -7,7 +7,7 @@ package foundation.icon.ee.tooling.deploy;
 
 import foundation.icon.ee.tooling.abi.ABICompiler;
 import foundation.icon.ee.types.Method;
-import foundation.icon.ee.utils.MethodPacker;
+import foundation.icon.ee.util.MethodPacker;
 import org.aion.avm.tooling.deploy.JarOptimizer;
 import org.aion.avm.tooling.deploy.eliminator.UnreachableMethodRemover;
 import org.aion.avm.tooling.deploy.renamer.Renamer;

@@ -25,7 +25,7 @@ import foundation.icon.ee.types.Bytes;
 import foundation.icon.ee.types.Method;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
-import foundation.icon.ee.utils.MethodUnpacker;
+import foundation.icon.ee.util.MethodUnpacker;
 import org.aion.avm.core.AvmConfiguration;
 import org.aion.avm.core.CommonAvmFactory;
 import org.aion.avm.utilities.JarBuilder;

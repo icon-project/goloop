@@ -18,7 +18,7 @@ package foundation.icon.ee.ipc;
 
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Method;
-import foundation.icon.ee.utils.MethodPacker;
+import foundation.icon.ee.util.MethodPacker;
 import org.msgpack.core.MessageBufferPacker;
 import org.msgpack.core.MessagePack;
 import org.msgpack.core.MessageUnpacker;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package foundation.icon.ee.utils;
+package foundation.icon.ee.util;
 
 import foundation.icon.ee.types.Method;
 import foundation.icon.ee.types.Method.MethodType;

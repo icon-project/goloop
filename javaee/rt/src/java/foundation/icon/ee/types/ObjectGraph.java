@@ -16,7 +16,7 @@
 
 package foundation.icon.ee.types;
 
-import foundation.icon.ee.utils.Crypto;
+import foundation.icon.ee.util.Crypto;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
