@@ -632,7 +632,7 @@ class ScoreParamTest {
         for (int i = 0; i < CASES; i++) {
             LOG.infoEntering("checking case=" + i + " txid=" + ids[i]);
 
-            TransactionResult result = testScore.waitResult(ids[i]);
+            TransactionResult result = testScore.getResult(ids[i]);
             assertEquals(result.getStatus(), Constants.STATUS_SUCCESS);
 
             boolean checked = false;

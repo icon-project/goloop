@@ -288,7 +288,7 @@ class ReceiptTest {
         Bytes txHash = testScore.invoke(callerWallet, "call_event_log",
                 params, BigInteger.valueOf(0), BigInteger.valueOf(100));
         LOG.infoExiting();
-        TransactionResult txr = testScore.waitResult(txHash);
+        TransactionResult txr = testScore.getResult(txHash);
         checkResultParams(txr, Constants.STATUS_SUCCESS, testScore.getAddress(), txHash);
         LOG.infoExiting();
     }

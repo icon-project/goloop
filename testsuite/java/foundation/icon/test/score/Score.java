@@ -128,6 +128,18 @@ public class Score {
 
     public Bytes invoke(Wallet wallet, String method, RpcObject params, BigInteger value,
                         BigInteger steps, BigInteger timestamp, BigInteger nonce) throws IOException {
+        Transaction tx = getTransaction(wallet, method, params, value, steps, timestamp, nonce);
+        return this.txHandler.invoke(wallet, tx);
+    }
+
+    public TransactionResult invokeAndWait(Wallet wallet, String method, RpcObject params,
+                                           BigInteger value, BigInteger steps) throws IOException {
+        Transaction tx = getTransaction(wallet, method, params, value, steps, null, null);
+        return this.txHandler.invokeAndWait(wallet, tx);
+    }
+
+    private Transaction getTransaction(Wallet wallet, String method, RpcObject params, BigInteger value,
+                                       BigInteger steps, BigInteger timestamp, BigInteger nonce) {
         TransactionBuilder.Builder builder = TransactionBuilder.newBuilder()
                 .nid(getNetworkId())
                 .from(wallet.getAddress())
@@ -140,39 +152,42 @@ public class Score {
         if ((timestamp != null) && timestamp.bitLength() != 0) {
             builder.timestamp(timestamp);
         }
-        if ((nonce != null) && nonce.bitLength() != 0) {
+        if (nonce != null) {
             builder.nonce(nonce);
         }
 
-        Transaction t;
+        Transaction tx;
         if (params != null) {
-            t = builder.call(method).params(params).build();
+            tx = builder.call(method).params(params).build();
         } else {
-            t = builder.call(method).build();
+            tx = builder.call(method).build();
         }
-        return this.txHandler.invoke(wallet, t);
+        return tx;
+    }
+
+    public TransactionResult waitResult(Bytes txHash) throws IOException {
+        return this.txHandler.waitResult(txHash);
     }
 
     public TransactionResult invokeAndWaitResult(Wallet wallet, String method,
                                                  RpcObject params, long value, long steps)
             throws ResultTimeoutException, IOException {
-        Bytes txHash = this.invoke(wallet, method, params, value, steps);
-        return waitResult(txHash);
+        return invokeAndWaitResult(wallet, method, params, BigInteger.valueOf(value), BigInteger.valueOf(steps));
     }
 
     public TransactionResult invokeAndWaitResult(Wallet wallet, String method,
                                                  RpcObject params, BigInteger value, BigInteger steps)
             throws ResultTimeoutException, IOException {
         Bytes txHash = this.invoke(wallet, method, params, value, steps);
-        return waitResult(txHash);
+        return getResult(txHash);
     }
 
-    public TransactionResult waitResult(Bytes txHash) throws ResultTimeoutException, IOException {
-        return waitResult(txHash, Constants.DEFAULT_WAITING_TIME);
+    public TransactionResult getResult(Bytes txHash) throws ResultTimeoutException, IOException {
+        return getResult(txHash, Constants.DEFAULT_WAITING_TIME);
     }
 
-    public TransactionResult waitResult(Bytes txHash, long waiting) throws ResultTimeoutException, IOException {
-        return this.txHandler.getTransactionResult(txHash, waiting);
+    public TransactionResult getResult(Bytes txHash, long waiting) throws ResultTimeoutException, IOException {
+        return this.txHandler.getResult(txHash, waiting);
     }
 
     public Address getAddress() {

@@ -11,6 +11,7 @@
   "role": 2,
   "rpc_addr": ":9080",
   "seed_addr": "",
+  "waitTimeout": 3000,
   "genesis": {
     "accounts": [
       {

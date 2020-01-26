@@ -68,7 +68,7 @@ class ScoreEventTest {
 
         String[] blooms = new String[NUM];
         for (int i = 0; i < NUM; i++) {
-            TransactionResult result = testScore.waitResult(ids[i]);
+            TransactionResult result = testScore.getResult(ids[i]);
             assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
 
             blooms[i] = result.getLogsBloom();

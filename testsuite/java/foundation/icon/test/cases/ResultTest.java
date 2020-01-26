@@ -118,17 +118,17 @@ public class ResultTest {
 
         for (int i = 0; i < cases.length; i++) {
             LOG.info("check result for normal case" + i);
-            TransactionResult result = score1.waitResult(txs[i]);
+            TransactionResult result = score1.getResult(txs[i]);
             assertEquals(result.getStatus(), Constants.STATUS_FAIL);
             assertEquals(expect[i], result.getFailure().getCode());
 
             LOG.info("check result for inter-call case" + i);
-            result = score1.waitResult(icTxs[i]);
+            result = score1.getResult(icTxs[i]);
             assertEquals(result.getStatus(), Constants.STATUS_FAIL);
             assertEquals(expect[i], result.getFailure().getCode());
 
             LOG.info("check result for inter-call catch case" + i);
-            result = score1.waitResult(iccTxs[i]);
+            result = score1.getResult(iccTxs[i]);
             assertEquals(result.getStatus(), Constants.STATUS_SUCCESS);
             boolean checked = false;
             for (TransactionResult.EventLog el : result.getEventLogs()) {
@@ -160,7 +160,7 @@ public class ResultTest {
         }
 
         for (int i = 0; i < values.length; i++) {
-            TransactionResult result = score1.waitResult(txs[i]);
+            TransactionResult result = score1.getResult(txs[i]);
             assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
             int checked = 0;
             for (TransactionResult.EventLog el : result.getEventLogs()) {

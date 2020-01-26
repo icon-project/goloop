@@ -130,7 +130,7 @@ public class GovScore extends Score {
             list.add(txHash);
         }
         for(Bytes txHash : list) {
-            TransactionResult result = waitResult(txHash);
+            TransactionResult result = getResult(txHash);
             if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
                 throw new TransactionFailureException(result.getFailure());
             }
@@ -162,7 +162,7 @@ public class GovScore extends Score {
             list.add(txHash);
         }
         for(Bytes txHash : list) {
-            TransactionResult result = waitResult(txHash);
+            TransactionResult result = getResult(txHash);
             if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
                 throw new TransactionFailureException(result.getFailure());
             }

@@ -299,7 +299,7 @@ class JavaScoreTest {
             ids[i] = testScore.invoke(caller, "getTransactionIndex", null, 0, 200000);
         }
         for (Bytes id : ids) {
-            tr = testScore.waitResult(id);
+            tr = testScore.getResult(id);
             assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
             for (TransactionResult.EventLog e : tr.getEventLogs()) {
                 RpcItem data = e.getData().get(0);
@@ -321,7 +321,7 @@ class JavaScoreTest {
         // Add arbitrary milliseconds precision for testing
         BigInteger timestamp = BigInteger.valueOf((System.currentTimeMillis() * 1000L) - (new Random()).nextInt(100));
         Bytes txHash = testScore.invoke(caller, "getTransactionTimestamp", null, null, steps, timestamp, null);
-        tr = testScore.waitResult(txHash);
+        tr = testScore.getResult(txHash);
         assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
         ConfirmedTransaction ctx = iconService.getTransaction(tr.getTxHash()).execute();
         for (TransactionResult.EventLog e : tr.getEventLogs()) {
@@ -341,7 +341,7 @@ class JavaScoreTest {
         LOG.infoEntering("getTransactionNonce", "invoke");
         BigInteger nonce = BigInteger.valueOf(0x12345);
         txHash = testScore.invoke(caller, "getTransactionNonce", null, null, steps, null, nonce);
-        tr = testScore.waitResult(txHash);
+        tr = testScore.getResult(txHash);
         assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
         for (TransactionResult.EventLog e : tr.getEventLogs()) {
             result = e.getData().get(0);

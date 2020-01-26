@@ -608,7 +608,7 @@ func waitTransactionResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interf
 
 	dt := chain.DefaultWaitTimeout()
 	if dt <= 0 {
-		return nil, jsonrpc.ErrorCodeMethodNotFound.Errorf("NotEnabled(defaultWaitTimeout=%d)", dt)
+		return nil, jsonrpc.ErrorCodeMethodNotFound.Errorf("NotEnabled(waitTimeout=%d)", dt)
 	}
 
 	ut := ctx.GetTimeout(dt)

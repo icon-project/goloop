@@ -13,6 +13,7 @@ GOLOOP_DOCKER_VOLUME=${GOLOOP_DOCKER_VOLUME:-goloop_data}
 GOLOOP_DOCKER_MOUNT=${GOLOOP_DOCKER_MOUNT:-${GOLOOP_DATA}}
 GOLOOP_DOCKER_PREFIX=${GOLOOP_DOCKER_PREFIX:-goloop}
 GOLOOP_GENESIS_STORAGE=${GOLOOP_DATA}/gs.zip
+GOLOOP_DEF_WAIT_TIMEOUT=${GOLOOP_DEF_WAIT_TIMEOUT:-3000}
 
 GSTOOL=${GSTOOL:-../../bin/gstool}
 
@@ -97,7 +98,7 @@ function join(){
     ${GSTOOL} gs gen -i ${GENESIS_TEMPLATE} -o ${GOLOOP_GENESIS_STORAGE}
 
     for i in $(seq 0 $((${GOLOOP_DOCKER_REPLICAS}-1)));do
-        docker exec ${GOLOOP_DOCKER_PREFIX}-${i} goloop chain join --genesis ${GOLOOP_GENESIS_STORAGE} --seed "${GOLOOP_DOCKER_PREFIX}-0":8080 --channel test
+        docker exec ${GOLOOP_DOCKER_PREFIX}-${i} goloop chain join --genesis ${GOLOOP_GENESIS_STORAGE} --seed "${GOLOOP_DOCKER_PREFIX}-0":8080 --channel test --default_wait_timeout ${GOLOOP_DEF_WAIT_TIMEOUT}
     done
 }
 

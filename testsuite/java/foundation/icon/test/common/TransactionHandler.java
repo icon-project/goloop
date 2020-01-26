@@ -102,11 +102,19 @@ public class TransactionHandler {
         return this.iconService.call(call).execute();
     }
 
-    public Bytes invoke(Wallet wallet, Transaction t) throws IOException {
-        return this.iconService.sendTransaction(new SignedTransaction(t, wallet)).execute();
+    public Bytes invoke(Wallet wallet, Transaction tx) throws IOException {
+        return this.iconService.sendTransaction(new SignedTransaction(tx, wallet)).execute();
     }
 
-    public TransactionResult getTransactionResult(Bytes txHash, long waiting)
+    public TransactionResult invokeAndWait(Wallet wallet, Transaction tx) throws IOException {
+        return this.iconService.sendTransactionAndWait(new SignedTransaction(tx, wallet)).execute();
+    }
+
+    public TransactionResult waitResult(Bytes txHash) throws IOException {
+        return this.iconService.waitTransactionResult(txHash).execute();
+    }
+
+    public TransactionResult getResult(Bytes txHash, long waiting)
             throws IOException, ResultTimeoutException {
         return Utils.getTransactionResult(this.iconService, txHash, waiting);
     }

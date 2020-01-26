@@ -90,7 +90,7 @@ public class CrowdSaleScore extends Score {
 
     public void ensureFundingGoal(Bytes txHash, BigInteger fundingGoalInIcx)
             throws IOException, ResultTimeoutException {
-        TransactionResult result = waitResult(txHash);
+        TransactionResult result = getResult(txHash);
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
         TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, getAddress(), "CrowdsaleStarted(int,int)");
         if (event != null) {

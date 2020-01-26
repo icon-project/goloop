@@ -72,6 +72,10 @@ public class IconService {
                 Base64.class, Converters.BASE64));
     }
 
+    public void setProvider(Provider provider) {
+        this.provider = provider;
+    }
+
     /**
      * Gets the total number of issued coins
      *
