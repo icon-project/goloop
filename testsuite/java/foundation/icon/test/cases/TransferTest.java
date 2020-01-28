@@ -153,15 +153,14 @@ public class TransferTest {
             Bytes txHash = iconService.sendTransaction(signedTransaction).execute();
             try {
                 Utils.getTransactionResult(iconService, txHash, 5000);
-                LOG.infoExiting();
                 assertEquals(newDefStepCost, testLimit);
                 BigInteger resultBal = iconService.getBalance(toWallet.getAddress()).execute();
                 assertEquals(toBal.add(testValue), resultBal);
-            }
-            catch (ResultTimeoutException ex) {
-                LOG.info("FAIL to get result");
-                LOG.infoExiting();
+            } catch (RpcError e) {
+                LOG.info("RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
                 assertNotEquals(newDefStepCost, testLimit);
+            } finally {
+                LOG.infoExiting();
             }
         }
         govScore.setStepCost("default", prevDefStepCost);
@@ -197,7 +196,7 @@ public class TransferTest {
         LOG.infoExiting();
     }
 
-    class Account {
+    static class Account {
         private KeyWallet wallet;
         private Bytes txHash;
         private BigInteger balance;
@@ -309,7 +308,6 @@ public class TransferTest {
         }
         LOG.infoExiting();
     }
-
 
     @Test
     public void transferWithMessage() throws Exception {

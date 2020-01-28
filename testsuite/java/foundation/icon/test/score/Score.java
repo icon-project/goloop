@@ -25,6 +25,7 @@ import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.ScoreApi;
 import foundation.icon.icx.data.TransactionResult;
+import foundation.icon.icx.transport.jsonrpc.RpcError;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.test.common.Constants;
@@ -178,6 +179,30 @@ public class Score {
     public TransactionResult invokeAndWaitResult(Wallet wallet, String method,
                                                  RpcObject params, BigInteger value, BigInteger steps)
             throws ResultTimeoutException, IOException {
+        long endTime = System.currentTimeMillis() + Constants.DEFAULT_WAITING_TIME;
+        try {
+            // try to use sendTxAndWait API first
+            return this.invokeAndWait(wallet, method, params, value, steps);
+        } catch (RpcError e) {
+            while (true) {
+                if (e.getCode() == -31006 || e.getCode() == -31007) { // Timeout
+                    if (endTime < System.currentTimeMillis()) {
+                        throw new ResultTimeoutException(e.getData());
+                    }
+                    try {
+                        return this.waitResult(e.getData());
+                    } catch (RpcError e2) {
+                        e = e2;
+                        continue;
+                    }
+                }
+                if (e.getCode() == -32601) { // MethodNotFound
+                    // fallback to the original code
+                    break;
+                }
+                throw e;
+            }
+        }
         Bytes txHash = this.invoke(wallet, method, params, value, steps);
         return getResult(txHash);
     }

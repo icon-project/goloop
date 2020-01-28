@@ -236,7 +236,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 	}
 	minStep := big.NewInt(wc.StepsFor(state.StepTypeDefault, 1) + wc.StepsFor(state.StepTypeInput, cnt))
 	if tx.StepLimit.Cmp(minStep) < 0 {
-		return NotEnoughStepError.Errorf("NotEnoughStep(txStepLimit:%s, minStep:%s)\n", tx.StepLimit, minStep)
+		return NotEnoughStepError.Errorf("NotEnoughStep(txStepLimit:%s, minStep:%s)", tx.StepLimit, minStep)
 	}
 
 	// balance >= (fee + value)
@@ -252,7 +252,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 	as1 := wc.GetAccountState(tx.From().ID())
 	balance1 := as1.GetBalance()
 	if balance1.Cmp(trans) < 0 {
-		return NotEnoughBalanceError.Errorf("OutOfBalance(balance:%s, value:%s)\n", balance1, trans)
+		return NotEnoughBalanceError.Errorf("OutOfBalance(balance:%s, value:%s)", balance1, trans)
 	}
 
 	// for cumulative balance check

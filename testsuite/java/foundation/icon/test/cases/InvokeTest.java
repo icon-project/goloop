@@ -147,25 +147,26 @@ public class InvokeTest {
         long needStep = contractCallStep + defaultStep;
         long needValue = needStep * stepPrice;
         long preValidationFailureStep = defaultStep - 1;
-        // expected {prevalidation failure, transaction execution failre, transaction execution success}
-        for(long step : new long[]{preValidationFailureStep, needStep - 1, needStep}) {
+        // expected {preValidation failure, transaction execution failure, transaction execution success}
+        for (long step : new long[]{preValidationFailureStep, needStep - 1, needStep}) {
             try {
                 BigInteger sub = BigInteger.valueOf(needValue).subtract(iconService.getBalance(testWallet.getAddress()).execute());
-                if(sub.compareTo(BigInteger.ZERO) > 0) {
+                if (sub.compareTo(BigInteger.ZERO) > 0) {
                     Utils.transferAndCheck(iconService, chain, chain.godWallet, testWallet.getAddress(), sub);
                 }
-                LOG.infoEntering("invoke");
+                LOG.infoEntering("invoke", "step=" + step);
                 TransactionResult result = testScore.invokeAndWaitResult(testWallet, "hello",
                         null, BigInteger.valueOf(0), BigInteger.valueOf(step));
-                LOG.infoExiting();
-                if(step < needStep) {
+                if (step < needStep) {
                     assertEquals(Constants.STATUS_FAIL, result.getStatus());
                 } else {
                     assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
                 }
-            } catch (ResultTimeoutException ex) {
-                LOG.infoExiting();
+            } catch (RpcError e) {
+                LOG.info("RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
                 assertEquals(preValidationFailureStep, step);
+            } finally {
+                LOG.infoExiting();
             }
         }
         LOG.infoExiting();
@@ -177,16 +178,19 @@ public class InvokeTest {
         KeyWallet testWallet = KeyWallet.create();
         long needStep = contractCallStep + defaultStep;
         long needValue = needStep * stepPrice;
-        long []values = {needValue, needValue - 1};
-        for(long value : values) {
+        long[] values = {needValue, needValue - 1};
+        for (long value : values) {
             Utils.transferAndCheck(iconService, chain, chain.godWallet, testWallet.getAddress(), BigInteger.valueOf(value));
+            LOG.infoEntering("invoke", "value=" + value);
             try {
-                TransactionResult result = testScore.invokeAndWaitResult(testWallet, "hello", null
-                        , BigInteger.valueOf(0), BigInteger.valueOf(needStep));
+                TransactionResult result = testScore.invokeAndWaitResult(testWallet, "hello", null,
+                        BigInteger.valueOf(0), BigInteger.valueOf(needStep));
                 assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+                assertEquals(value, needValue);
             } catch (ResultTimeoutException ex) {
                 assertTrue(value < needValue);
             }
+            LOG.infoExiting();
         }
         LOG.infoExiting();
     }

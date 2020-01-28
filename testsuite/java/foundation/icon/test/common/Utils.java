@@ -188,25 +188,27 @@ public class Utils {
 
     public static TransactionResult getTransactionResult(IconService iconService, Bytes txHash, long waitingTime)
             throws ResultTimeoutException, IOException  {
-        TransactionResult result = null;
         long limitTime = System.currentTimeMillis() + waitingTime;
-        while (result == null) {
+        while (true) {
             try {
-                result = iconService.getTransactionResult(txHash).execute();
+                return iconService.getTransactionResult(txHash).execute();
             } catch (RpcError e) {
-                if (limitTime < System.currentTimeMillis()) {
-                    throw new ResultTimeoutException(txHash);
+                if (e.getCode() == -31002 || e.getCode() == -31003) { // pending or executing
+                    if (limitTime < System.currentTimeMillis()) {
+                        throw new ResultTimeoutException(txHash);
+                    }
+                    try {
+                        // wait until block confirmation
+                        LOG.debug("RpcError: code(" + e.getCode() + ") message(" + e.getMessage() + "); Retry in 1 sec.");
+                        Thread.sleep(1000);
+                    } catch (InterruptedException ex) {
+                        ex.printStackTrace();
+                    }
+                    continue;
                 }
-                try {
-                    // wait until block confirmation
-                    LOG.debug("RpcError: code(" + e.getCode() + ") message(" + e.getMessage() + "); Retry in 1 sec.");
-                    Thread.sleep(1000);
-                } catch (InterruptedException ex) {
-                    ex.printStackTrace();
-                }
+                throw e;
             }
         }
-        return result;
     }
 
     public static EventLog findEventLogWithFuncSig(TransactionResult result, Address scoreAddress, String funcSig) {
