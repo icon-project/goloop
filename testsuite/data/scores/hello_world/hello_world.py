@@ -17,7 +17,7 @@ class HelloWorld(IconScoreBase):
         self._balances = DictDB(self._BALANCES, db, value_type=int)
 
     def on_install(self, name : str) -> None:
-        print("on_install - sender(", self.msg.sender, ")")
+        Logger.info(f"on_install - sender({self.msg.sender})", TAG)
         super().on_install()
 
     def on_update(self) -> None:
@@ -45,7 +45,7 @@ class HelloWorld(IconScoreBase):
         loopCnt = 1
         while True:
             loopCnt = loopCnt + 1
-            # print("loopCnt ", loopCnt)
+            # Logger.debug(f"loopCnt={loopCnt}", TAG)
 
     @external
     @payable
@@ -56,12 +56,12 @@ class HelloWorld(IconScoreBase):
 
     @external(readonly=True)
     def balanceOf(self, _owner: Address) -> str:
-        print("balanceOf : ", self._balances[_owner])
+        Logger.info(f"balanceOf : {self._balances[_owner]}", TAG)
         return self._balances[_owner]
 
     @external
     def infinite_intercall(self, _to: Address, call_cnt: int):
         score = self.create_interface_score(_to, InterCallInterface)
-        print("intercall (", _to , ") call_cnt(", call_cnt, ")")
+        Logger.debug(f"intercall ({_to}) call_cnt({call_cnt})", TAG)
         score.infinite_intercall(self.address, call_cnt + 1)
 

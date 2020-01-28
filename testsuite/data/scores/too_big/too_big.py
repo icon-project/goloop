@@ -1,6 +1,7 @@
 from iconservice import *
 
-TAG = 'HelloWorld'
+TAG = 'TooBig'
+
 
 class TooBig(IconScoreBase):
     _BALANCES = 'balances'
@@ -37,7 +38,7 @@ class TooBig(IconScoreBase):
         loopCnt = 1
         while True:
             loopCnt = loopCnt + 1
-            # print("loopCnt ", loopCnt)
+            # Logger.debug(f"loopCnt={loopCnt}", TAG)
 
     @external
     @payable
@@ -48,5 +49,5 @@ class TooBig(IconScoreBase):
 
     @external(readonly=True)
     def balanceOf(self, _owner: Address) -> str:
-        print("balanceOf : ", self._balances[_owner])
+        Logger.info(f"balanceOf : {self._balances[_owner]}", TAG)
         return self._balances[_owner]
