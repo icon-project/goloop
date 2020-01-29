@@ -151,15 +151,25 @@ func PromethusExporter() *prometheus.Exporter {
 	return pe
 }
 
-func ParseMetricData(r *view.Row) interface{} {
+func ParseMetricData(r *view.Row, prev interface{}, cnt int) interface{} {
 	switch data := r.Data.(type) {
 	case *view.CountData:
+		if prev != nil {
+			return prev.(int64) + data.Value
+		}
 		return data.Value
 	case *view.DistributionData:
+		//TODO aggregation DistributionData
 		return data
 	case *view.SumData:
+		if prev != nil {
+			return prev.(float64) + data.Value
+		}
 		return data.Value
 	case *view.LastValueData:
+		if prev != nil {
+			return (prev.(float64)*float64(cnt-1)+data.Value)/float64(cnt)
+		}
 		return data.Value
 	}
 	return nil
@@ -175,14 +185,14 @@ func Inspect(c module.Chain, informal bool) map[string]interface{} {
 	}
 	m := make(map[string]interface{})
 	for k, v := range mViews {
+		i := 1
 		m[v.Name] = nil
 		rows, _ := view.RetrieveData(k)
 		for _, r := range rows {
-		LoopTag:
 			for _, t := range r.Tags {
 				if t.Key.Name() == MetricKeyChain.Name() && t.Value == chainID {
-					m[v.Name] = ParseMetricData(r)
-					break LoopTag
+					m[v.Name] = ParseMetricData(r, m[v.Name], i)
+					i++
 				}
 			}
 		}
@@ -202,5 +212,4 @@ func ResetMetricViews() {
 	if err := view.Register(vs...); err != nil {
 		log.Fatalf("Fail ResetMetricViews view.Register %+v", err)
 	}
-
 }
