@@ -97,7 +97,7 @@ func (c bytesWrapper) UnmarshalFromBytes(b []byte, v interface{}) ([]byte, error
 }
 
 func (c bytesWrapper) MustMarshalToBytes(v interface{}) []byte {
-	bs, err := MarshalToBytes(v)
+	bs, err := c.MarshalToBytes(v)
 	if err != nil {
 		log.Panicf("MustMarshalToBytes() fails for object=%T err=%+v", v, err)
 		return nil
@@ -107,7 +107,7 @@ func (c bytesWrapper) MustMarshalToBytes(v interface{}) []byte {
 }
 
 func (c bytesWrapper) MustUnmarshalFromBytes(b []byte, v interface{}) []byte {
-	bs, err := UnmarshalFromBytes(b, v)
+	bs, err := c.UnmarshalFromBytes(b, v)
 	if err != nil {
 		log.Panicf("MustUnmarshalFromBytes() fails for bytes=% x buffer=%T err=%+v", b, v, err)
 		return nil
