@@ -445,6 +445,11 @@ func (r *Rest) StreamStats(ctx echo.Context) error {
 		select {
 		case <-tick.C:
 			if err := r.ResponseStatsView(resp); err != nil {
+				if EqualsSyscallErrno(err, syscall.EPIPE) {
+					// ignore 'write: broken pipe' error
+					// close by client
+					return nil
+				}
 				return err
 			}
 			resp.Flush()
@@ -466,15 +471,7 @@ func (r *Rest) ResponseStatsView(resp *echo.Response) error {
 			v.Chains = append(v.Chains, m)
 		}
 	}
-	if err := json.NewEncoder(resp).Encode(&v); err != nil {
-		if EqualsSyscallErrno(err, syscall.EPIPE) {
-			// ignore 'write: broken pipe' error
-			// close by client
-			return nil
-		}
-		return err
-	}
-	return nil
+	return json.NewEncoder(resp).Encode(&v)
 }
 
 func EqualsSyscallErrno(err error, sen syscall.Errno) bool {
