@@ -12,12 +12,12 @@ RUN /entrypoint python3 -m pip -q install /goloop/pyexec-*.whl && \
     rm -f /goloop/pyexec-*.whl
 
 # install java executor
-ADD dist/exectest.zip /goloop/
-RUN unzip -q /goloop/exectest.zip -d /goloop/ && \
-    rm -f /goloop/exectest.zip
-RUN unzip -q /goloop/exectest/lib/exec.jar libclient.so -d /goloop/exectest/lib && \
-    sed -i 's/java.library.path=[a-zA-Z0-9\/\-]*/java.library.path=\/goloop\/exectest\/lib/' \
-    /goloop/exectest/bin/exectest
+ADD dist/execman.zip /goloop/
+RUN unzip -q /goloop/execman.zip -d /goloop/ && \
+    rm -f /goloop/execman.zip
+RUN unzip -q /goloop/execman/lib/exec.jar libclient.so -d /goloop/execman/lib && \
+    sed -i 's/java.library.path=[a-zA-Z0-9\/\-]*/java.library.path=\/goloop\/execman\/lib/' \
+    /goloop/execman/bin/execman
 
 # install gochain and other stuff
 ADD dist/gochain /goloop/bin/

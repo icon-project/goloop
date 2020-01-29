@@ -22,10 +22,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class TransactionExecutorTest {
+public class Launcher {
     public static void main(String[] args) throws IOException {
-        Logger logger = LoggerFactory.getLogger(TransactionExecutorTest.class);
-        logger.info("=== TransactionExecutorTest ===");
+        Logger logger = LoggerFactory.getLogger(Launcher.class);
         if (args.length == 2) {
             TransactionExecutor executor = TransactionExecutor.newInstance(Client.connect(args[0]), args[1]);
             executor.connectAndRunLoop();
@@ -33,7 +32,7 @@ public class TransactionExecutorTest {
             ExecutorManager executorManager = new ExecutorManager(args[0]);
             executorManager.run();
         } else {
-            logger.info("Usage: TransactionExecutorTest <socket addr> (<uuid>)");
+            logger.info("Usage: Launcher <socket addr> (<uuid>)");
         }
     }
 }

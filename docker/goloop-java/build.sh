@@ -13,7 +13,7 @@ then
   echo "Build image ${REPO_GOLOOP_JAVA} for ${GOLOOP_VERSION}"
   mkdir -p dist/bin
   cp ../../bin/* ./dist/bin/
-  cp ../../javaee/app/exectest/build/distributions/exectest.zip ./dist/
+  cp ../../javaee/app/execman/build/distributions/execman.zip ./dist/
   docker build \
     --build-arg GOLOOP_VERSION=${GOLOOP_VERSION} \
     --tag ${REPO_GOLOOP_JAVA} .

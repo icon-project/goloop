@@ -2,4 +2,4 @@ GOCHAIN_CONFIG=/testsuite/data/config/java.json
 GOCHAIN_DATA=/testsuite/.chain/javascore
 GOCHAIN_LOGFILE=/testsuite/.chain/javascore.log
 GOCHAIN_CLEAN_DATA=true
-JAVAEE_BIN=/goloop/exectest/bin/exectest
+JAVAEE_BIN=/goloop/execman/bin/execman

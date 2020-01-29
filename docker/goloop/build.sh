@@ -27,7 +27,7 @@ then
   mkdir -p dist/pyee dist/bin
   cp ../../pyee/dist/* ./dist/pyee/
   cp ../../bin/* ./dist/bin/
-  cp ../../javaee/app/exectest/build/distributions/exectest.zip ./dist/
+  cp ../../javaee/app/execman/build/distributions/execman.zip ./dist/
   docker build \
     --build-arg REPO_PYJAVA_DEPS=${REPO_PYJAVA_DEPS} \
     ${BUILD_ARG_TAG_PYJAVA_DEPS} \

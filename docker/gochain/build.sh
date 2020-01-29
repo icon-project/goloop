@@ -27,7 +27,7 @@ then
   mkdir dist
   cp ../../pyee/dist/pyexec-*.whl ./dist/
   cp ../../bin/gochain ./dist/
-  cp ../../javaee/app/exectest/build/distributions/exectest.zip ./dist/
+  cp ../../javaee/app/execman/build/distributions/execman.zip ./dist/
   docker build \
     --build-arg REPO_PYJAVA_DEPS=${REPO_PYJAVA_DEPS} \
     ${BUILD_ARG_TAG_PYJAVA_DEPS} \

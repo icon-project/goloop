@@ -9,7 +9,7 @@ dependencies {
 }
 
 application {
-    mainClassName = 'TransactionExecutorTest'
+    mainClassName = 'Launcher'
     applicationDefaultJvmArgs = [
         '-Djava.library.path=' + project(':exec').buildDir + '/native',
         '-Dfoundation.icon.ee.logger.defaultLogLevel=debug'

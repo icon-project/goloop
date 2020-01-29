@@ -113,11 +113,11 @@ build:java:
   stage: build
   script:
     - cd javaee
-    - ./gradlew app:exectest:distZip
+    - ./gradlew app:execman:distZip
   artifacts:
     expire_in: 1 day
     paths:
-      - javaee/app/exectest/build/distributions/
+      - javaee/app/execman/build/distributions/
   tags:
     - docker
 
