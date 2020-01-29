@@ -1,9 +1,10 @@
 package state
 
 import (
-	"bytes"
 	"math/big"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/icon-project/goloop/common/db"
 )
@@ -61,8 +62,12 @@ func TestAccountSnapshot_Bytes(t *testing.T) {
 	serialized := s1.Bytes()
 	s1.Flush()
 
+	t.Logf("Serialized:% X", serialized)
+
 	s2 := new(accountSnapshotImpl)
 	s2.Reset(database, serialized)
+
+	assert.Equal(t, serialized, s2.Bytes())
 
 	v2 := s2.GetBalance()
 	if v1.Cmp(v2) != 0 {
@@ -70,7 +75,5 @@ func TestAccountSnapshot_Bytes(t *testing.T) {
 	}
 
 	tv2, _ := s2.GetValue(tv)
-	if !bytes.Equal(tv, tv2) {
-		t.Errorf("Fail to get same value exp=%x returned=%x", tv, tv2)
-	}
+	assert.Equal(t, tv, tv2)
 }

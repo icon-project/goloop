@@ -7,7 +7,10 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/jsonrpc"
 )
@@ -33,4 +36,11 @@ func TestReceipt_JSON(t *testing.T) {
 	if !bytes.Equal(r.Bytes(), r2.Bytes()) {
 		t.Errorf("Different bytes from Unmarshaled Receipt")
 	}
+
+	t.Logf("Encoded: % X", r.Bytes())
+
+	r3 := new(receipt)
+	err = r3.Reset(db.NewMapDB(), r.Bytes())
+	assert.NoError(t, err)
+	assert.Equal(t, r3.Bytes(), r2.Bytes())
 }
