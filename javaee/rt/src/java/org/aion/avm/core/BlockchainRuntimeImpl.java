@@ -2,6 +2,7 @@ package org.aion.avm.core;
 
 import a.ByteArray;
 import avm.TargetRevertedException;
+import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.SystemException;
 import foundation.icon.ee.util.Shadower;
@@ -17,16 +18,14 @@ import i.RevertException;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.parallel.TransactionTask;
-import org.aion.types.AionAddress;
 import org.aion.types.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import p.avm.Address;
 import p.avm.CollectionDB;
-import pi.CollectionDBImpl;
 import p.avm.Value;
 import p.avm.ValueBuffer;
 import p.avm.VarDB;
+import pi.CollectionDBImpl;
 import pi.VarDBImpl;
 import s.java.math.BigInteger;
 
@@ -40,25 +39,25 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     private final IExternalState externalState;
 
     private final TransactionTask task;
-    private final AionAddress transactionSender;
-    private final AionAddress transactionDestination;
+    private final Address transactionSender;
+    private final Address transactionDestination;
     private final Transaction tx;
     private final IRuntimeSetup thisDAppSetup;
     private LoadedDApp dApp;
     private final boolean enablePrintln;
 
-    private Address addressCache;
-    private Address callerCache;
-    private Address originCache;
-    private Address ownerCache;
+    private p.avm.Address addressCache;
+    private p.avm.Address callerCache;
+    private p.avm.Address originCache;
+    private p.avm.Address ownerCache;
     private ByteArray transactionHashCache;
     private s.java.math.BigInteger valueCache;
     private s.java.math.BigInteger nonceCache;
 
     public BlockchainRuntimeImpl(IExternalState externalState,
                                  TransactionTask task,
-                                 AionAddress transactionSender,
-                                 AionAddress transactionDestination,
+                                 Address transactionSender,
+                                 Address transactionDestination,
                                  Transaction tx,
                                  IRuntimeSetup thisDAppSetup,
                                  LoadedDApp dApp,
@@ -103,33 +102,33 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     @Override
-    public Address avm_getAddress() {
+    public p.avm.Address avm_getAddress() {
         if (null == this.addressCache) {
-            this.addressCache = new Address(this.transactionDestination.toByteArray());
+            this.addressCache = new p.avm.Address(this.transactionDestination.toByteArray());
         }
         return this.addressCache;
     }
 
     @Override
-    public Address avm_getCaller() {
+    public p.avm.Address avm_getCaller() {
         if (null == this.callerCache && this.transactionSender != null) {
-            this.callerCache = new Address(this.transactionSender.toByteArray());
+            this.callerCache = new p.avm.Address(this.transactionSender.toByteArray());
         }
         return this.callerCache;
     }
 
     @Override
-    public Address avm_getOrigin() {
+    public p.avm.Address avm_getOrigin() {
         if (null == this.originCache && task.getOriginAddress() != null) {
-            this.originCache = new Address(task.getOriginAddress().toByteArray());
+            this.originCache = new p.avm.Address(task.getOriginAddress().toByteArray());
         }
         return this.originCache;
     }
 
     @Override
-    public Address avm_getOwner() {
+    public p.avm.Address avm_getOwner() {
         if (null == this.ownerCache) {
-            this.ownerCache = new Address(this.externalState.getOwner().toByteArray());
+            this.ownerCache = new p.avm.Address(this.externalState.getOwner().toByteArray());
         }
         return this.ownerCache;
     }
@@ -183,15 +182,15 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     @Override
-    public s.java.math.BigInteger avm_getBalance(Address address) {
+    public s.java.math.BigInteger avm_getBalance(p.avm.Address address) {
         require(null != address, "Address can't be NULL");
-        return new s.java.math.BigInteger(this.externalState.getBalance(new AionAddress(address.toByteArray())));
+        return new s.java.math.BigInteger(this.externalState.getBalance(new Address(address.toByteArray())));
     }
 
     @Override
     public IObject avm_call(s.java.math.BigInteger value,
                             s.java.math.BigInteger stepLimit,
-                            Address targetAddress,
+                            p.avm.Address targetAddress,
                             s.java.lang.String method,
                             IObjectArray sparams) {
         // FIXME
@@ -210,8 +209,8 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         int stepLeft = (int)IInstrumentation.attachedThreadInstrumentation.get().energyLeft();
         var rs = dApp.saveRuntimeState(hash, StorageFees.MAX_GRAPH_SIZE);
         var saveItem = new ReentrantDAppStack.SaveItem(dApp, rs);
-        var aionAddr = new AionAddress(avm_getAddress().toByteArray());
-        task.getReentrantDAppStack().getTop().getSaveItems().put(aionAddr, saveItem);
+        var callerAddr = new Address(avm_getAddress().toByteArray());
+        task.getReentrantDAppStack().getTop().getSaveItems().put(callerAddr, saveItem);
         task.incrementTransactionStackDepth();
         InstrumentationHelpers.temporarilyExitFrame(this.thisDAppSetup);
         Object[] params = new Object[sparams.length()];
@@ -220,7 +219,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
             params[i] = Unshadower.unshadow((s.java.lang.Object)sparams.get(i));
         }
         foundation.icon.ee.types.Result res = externalState.call(
-                new AionAddress(targetAddress.toByteArray()),
+                new Address(targetAddress.toByteArray()),
                 method.getUnderlying(),
                 params,
                 value.getUnderlying(),
@@ -228,7 +227,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         InstrumentationHelpers.returnToExecutingFrame(this.thisDAppSetup);
         task.decrementTransactionStackDepth();
         var saveItems = task.getReentrantDAppStack().getTop().getSaveItems();
-        var saveItemFinal = saveItems.remove(aionAddr);
+        var saveItemFinal = saveItems.remove(callerAddr);
         assert saveItemFinal!=null;
         dApp.loadRuntimeState(saveItemFinal.getRuntimeState());
         IInstrumentation.attachedThreadInstrumentation.get().forceNextHashCode(saveItemFinal.getRuntimeState().getGraph().getNextHash());

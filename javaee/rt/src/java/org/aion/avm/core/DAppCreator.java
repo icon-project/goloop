@@ -1,9 +1,21 @@
 package org.aion.avm.core;
 
+import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.SystemException;
-import i.*;
+import i.AvmException;
+import i.CallDepthLimitExceededException;
+import i.EarlyAbortException;
+import i.IBlockchainRuntime;
+import i.IInstrumentation;
+import i.IRuntimeSetup;
+import i.InstrumentationHelpers;
+import i.JvmError;
+import i.OutOfStackException;
+import i.PackageConstants;
+import i.RevertException;
+import i.RuntimeAssertionError;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.arraywrapping.ArraysRequiringAnalysisClassVisitor;
@@ -44,12 +56,11 @@ import org.aion.avm.core.verification.Verifier;
 import org.aion.avm.utilities.JarBuilder;
 import org.aion.avm.utilities.Utilities;
 import org.aion.avm.utilities.analyze.ClassFileInfoBuilder;
-import org.aion.types.AionAddress;
-import org.aion.types.Transaction;
 import org.aion.parallel.TransactionTask;
-
+import org.aion.types.Transaction;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -177,8 +188,8 @@ public class DAppCreator {
 
     public static Result create(IExternalState externalState,
                                                      TransactionTask task,
-                                                     AionAddress senderAddress,
-                                                     AionAddress dappAddress,
+                                                     Address senderAddress,
+                                                     Address dappAddress,
                                                      Transaction tx,
                                                      long energyPreused,
                                                      boolean preserveDebuggability,
@@ -267,7 +278,7 @@ public class DAppCreator {
             externalState.setTransformedCode(dappAddress, immortalDappJar);
 
             // Force the classes in the dapp to initialize so that the <clinit> is run (since we already saved the version without).
-            result = runClinitAndBillSender(verboseErrors, dapp, threadInstrumentation, externalState, task, energyPreused, dappAddress, tx.energyLimit);
+            result = runClinitAndBillSender(verboseErrors, dapp, threadInstrumentation, externalState, task, dappAddress, tx.energyLimit);
         } catch (SystemException e) {
             if (verboseErrors) {
                 System.err.println("DApp execution failed due to : \"" + e.getMessage() + "\"");
@@ -406,12 +417,17 @@ public class DAppCreator {
      * @param threadInstrumentation The thread instrumentation.
      * @param externalState The state of the world.
      * @param task The transaction task.
-     * @param currentResultState The current result of the create operation when entering this method.
      * @param dappAddress The address of the contract.
      * @param energyLimit The energy limit of this create transaction.
      * @return the result of initializing and billing the sender.
      */
-    private static Result runClinitAndBillSender(boolean verboseErrors, LoadedDApp dapp, IInstrumentation threadInstrumentation, IExternalState externalState, TransactionTask task, long energyPreused, AionAddress dappAddress, long energyLimit) throws Throwable {
+    private static Result runClinitAndBillSender(boolean verboseErrors,
+                                                 LoadedDApp dapp,
+                                                 IInstrumentation threadInstrumentation,
+                                                 IExternalState externalState,
+                                                 TransactionTask task,
+                                                 Address dappAddress,
+                                                 long energyLimit) throws Throwable {
         Result resultToReturn;
 
         try {

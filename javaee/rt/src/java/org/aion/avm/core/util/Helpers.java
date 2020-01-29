@@ -1,25 +1,24 @@
 package org.aion.avm.core.util;
 
-import org.aion.types.AionAddress;
-import p.avm.Blockchain;
+import i.CommonInstrumentation;
+import i.Helper;
 import i.IBlockchainRuntime;
 import i.IRuntimeSetup;
+import i.RuntimeAssertionError;
+import i.StackWatcher;
 import org.aion.avm.core.ClassToolchain;
 import org.aion.avm.core.classloading.AvmClassLoader;
 import org.aion.avm.core.miscvisitors.ClassRenameVisitor;
 import org.aion.avm.utilities.Utilities;
-
-import i.CommonInstrumentation;
-import i.Helper;
-import i.RuntimeAssertionError;
-import i.StackWatcher;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
+import p.avm.Blockchain;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
-import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -97,46 +96,6 @@ public class Helpers {
         }
     }
 
-    /**
-     * Reads file as a byte array.
-     *
-     * @param path
-     * @return
-     */
-    public static byte[] readFileToBytes(String path) {
-        File f = new File(path);
-        byte[] b = new byte[(int) f.length()];
-
-        try (DataInputStream in = new DataInputStream(new FileInputStream(f))) {
-            in.readFully(b);
-        } catch (IOException e) {
-            throw RuntimeAssertionError.unexpected(e);
-        }
-
-        return b;
-    }
-
-    private static SecureRandom secureRandom = new SecureRandom();
-
-    public static AionAddress randomAddress() {
-        byte[] bytes = new byte[AionAddress.LENGTH];
-        secureRandom.nextBytes(bytes);
-        return new AionAddress(bytes);
-    }
-
-    /**
-     * Generate random byte array of the specified length.
-     *
-     * @param n
-     * @return
-     */
-    public static byte[] randomBytes(int n) {
-        byte[] bytes = new byte[n];
-        secureRandom.nextBytes(bytes);
-
-        return bytes;
-    }
-
     private static String blockchainRuntimeClassName = Blockchain.class.getName();
     private static byte[] blockchainRuntimeBytes = Utilities.loadRequiredResourceAsBytes(blockchainRuntimeClassName.replaceAll("\\.", "/") + ".class");
 
@@ -202,31 +161,6 @@ public class Helpers {
             // Errors at this point imply something wrong with the installation so fail.
             throw RuntimeAssertionError.unexpected(t);
         }
-    }
-
-    // for test suites only
-    public static AionAddress address(int n) {
-        byte[] arr = new byte[AionAddress.LENGTH];
-        for (int i = 0; i < arr.length; i++) {
-            arr[i] = (byte) n;
-        }
-        return new AionAddress(arr);
-    }
-
-    public static byte[] merge(byte[]...arrays) {
-        int length = 0;
-        for (byte[] array : arrays) {
-            length += array.length;
-        }
-
-        byte[] ret = new byte[length];
-        int start = 0;
-        for (byte[] array : arrays) {
-            System.arraycopy(array, 0, ret, start, array.length);
-            start += array.length;
-        }
-
-        return ret;
     }
 
     /**

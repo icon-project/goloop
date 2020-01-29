@@ -1,14 +1,14 @@
 package org.aion.kernel;
 
-import java.math.BigInteger;
-
+import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Result;
 import i.RuntimeAssertionError;
 import org.aion.avm.core.IExternalState;
-import org.aion.types.AionAddress;
 import org.aion.data.IAccountStore;
 import org.aion.data.IDataStore;
 import org.aion.data.MemoryBackedDataStore;
+
+import java.math.BigInteger;
 
 /**
  * In in-memory cached used by the TransactionalState in order to store results of in-flight transactions prior to commit.
@@ -45,22 +45,22 @@ public class CachingState implements IExternalState {
     }
 
     @Override
-    public void removeStorage(AionAddress address, byte[] key) {
+    public void removeStorage(Address address, byte[] key) {
         lazyCreateAccount(address.toByteArray()).removeData(key);
     }
 
     @Override
-    public void createAccount(AionAddress address) {
+    public void createAccount(Address address) {
         this.dataStore.createAccount(address.toByteArray());
     }
 
     @Override
-    public boolean hasAccountState(AionAddress address) {
+    public boolean hasAccountState(Address address) {
         return this.dataStore.openAccount(address.toByteArray()) != null;
     }
 
     @Override
-    public byte[] getCode(AionAddress address) {
+    public byte[] getCode(Address address) {
         IAccountStore account = this.dataStore.openAccount(address.toByteArray());
         return (null != account)
             ? account.getCode()
@@ -68,14 +68,14 @@ public class CachingState implements IExternalState {
     }
 
     @Override
-    public void putCode(AionAddress address, byte[] code) {
+    public void putCode(Address address, byte[] code) {
         // Note that saving empty code is invalid since a valid JAR is not empty.
         RuntimeAssertionError.assertTrue((null != code) && (code.length > 0));
         lazyCreateAccount(address.toByteArray()).setCode(code);
     }
 
     @Override
-    public byte[] getTransformedCode(AionAddress address) {
+    public byte[] getTransformedCode(Address address) {
         IAccountStore account = this.dataStore.openAccount(address.toByteArray());
         return (null != account)
             ? account.getTransformedCode()
@@ -83,28 +83,28 @@ public class CachingState implements IExternalState {
     }
 
     @Override
-    public void setTransformedCode(AionAddress address, byte[] code) {
+    public void setTransformedCode(Address address, byte[] code) {
         RuntimeAssertionError.assertTrue((null != code) && (code.length > 0));
         lazyCreateAccount(address.toByteArray()).setTransformedCode(code);
     }
 
     @Override
-    public void putObjectGraph(AionAddress address, byte[] bytes) {
+    public void putObjectGraph(Address address, byte[] bytes) {
         lazyCreateAccount(address.toByteArray()).setObjectGraph(bytes);
     }
 
     @Override
-    public byte[] getObjectGraph(AionAddress address) {
+    public byte[] getObjectGraph(Address address) {
         return lazyCreateAccount(address.toByteArray()).getObjectGraph();
     }
 
     @Override
-    public void putStorage(AionAddress address, byte[] key, byte[] value) {
+    public void putStorage(Address address, byte[] key, byte[] value) {
         lazyCreateAccount(address.toByteArray()).setData(key, value);
     }
 
     @Override
-    public byte[] getStorage(AionAddress address, byte[] key) {
+    public byte[] getStorage(Address address, byte[] key) {
         IAccountStore account = this.dataStore.openAccount(address.toByteArray());
         return (null != account)
                 ? account.getData(key)
@@ -112,12 +112,12 @@ public class CachingState implements IExternalState {
     }
 
     @Override
-    public void deleteAccount(AionAddress address) {
+    public void deleteAccount(Address address) {
         this.dataStore.deleteAccount(address.toByteArray());
     }
 
     @Override
-    public BigInteger getBalance(AionAddress address) {
+    public BigInteger getBalance(Address address) {
         IAccountStore account = this.dataStore.openAccount(address.toByteArray());
         return (null != account)
                 ? account.getBalance()
@@ -125,12 +125,12 @@ public class CachingState implements IExternalState {
     }
 
     @Override
-    public void adjustBalance(AionAddress address, BigInteger delta) {
+    public void adjustBalance(Address address, BigInteger delta) {
         internalAdjustBalance(address, delta);
     }
 
     @Override
-    public BigInteger getNonce(AionAddress address) {
+    public BigInteger getNonce(Address address) {
         IAccountStore account = this.dataStore.openAccount(address.toByteArray());
         return (null != account)
                 ? BigInteger.valueOf(account.getNonce())
@@ -138,19 +138,19 @@ public class CachingState implements IExternalState {
     }
 
     @Override
-    public void incrementNonce(AionAddress address) {
+    public void incrementNonce(Address address) {
         IAccountStore account = lazyCreateAccount(address.toByteArray());
         long start = account.getNonce();
         account.setNonce(start + 1);
     }
 
     @Override
-    public boolean accountNonceEquals(AionAddress address, BigInteger nonce) {
+    public boolean accountNonceEquals(Address address, BigInteger nonce) {
         return nonce.compareTo(this.getNonce(address)) == 0;
     }
 
     @Override
-    public boolean accountBalanceIsAtLeast(AionAddress address, BigInteger amount) {
+    public boolean accountBalanceIsAtLeast(Address address, BigInteger amount) {
         return this.getBalance(address).compareTo(amount) >= 0;
     }
 
@@ -165,7 +165,7 @@ public class CachingState implements IExternalState {
     }
 
     @Override
-    public boolean destinationAddressIsSafeForThisVM(AionAddress address) {
+    public boolean destinationAddressIsSafeForThisVM(Address address) {
         // This implementation knows nothing of other VMs so it could only ever return true.
         // Since that is somewhat misleading (it assumes it is making a decision based on something), it is more reliable to just never call it.
         throw RuntimeAssertionError.unreachable("Caching kernel knows nothing of other VMs.");
@@ -182,12 +182,12 @@ public class CachingState implements IExternalState {
     }
 
     @Override
-    public AionAddress getOwner() {
+    public Address getOwner() {
         throw RuntimeAssertionError.unreachable("This class does not implement this method.");
     }
 
     @Override
-    public void refundAccount(AionAddress address, BigInteger amount) {
+    public void refundAccount(Address address, BigInteger amount) {
         // This method may have special logic in the kernel. Here it is just adjustBalance.
         internalAdjustBalance(address, amount);
     }
@@ -200,7 +200,7 @@ public class CachingState implements IExternalState {
         return account;
     }
 
-    private void internalAdjustBalance(AionAddress address, BigInteger delta) {
+    private void internalAdjustBalance(Address address, BigInteger delta) {
         IAccountStore account = lazyCreateAccount(address.toByteArray());
         BigInteger start = account.getBalance();
         account.setBalance(start.add(delta));
@@ -212,7 +212,7 @@ public class CachingState implements IExternalState {
     }
 
     @Override
-    public Result call(AionAddress address,
+    public Result call(Address address,
                        String method,
                        Object[] params,
                        BigInteger value,

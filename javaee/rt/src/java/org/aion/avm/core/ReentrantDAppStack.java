@@ -1,15 +1,14 @@
 package org.aion.avm.core;
 
+import foundation.icon.ee.types.Address;
+import foundation.icon.ee.types.DAppRuntimeState;
+import i.RuntimeAssertionError;
+import org.aion.avm.core.persistence.LoadedDApp;
+
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Map;
-
-import foundation.icon.ee.types.DAppRuntimeState;
-import org.aion.types.AionAddress;
-import org.aion.avm.core.persistence.LoadedDApp;
-import i.RuntimeAssertionError;
-
 
 /**
  * Contains the state of DApps currently running within the current logical thread (DApps calling DApps) to ensure that we can properly manage
@@ -39,7 +38,7 @@ public class ReentrantDAppStack {
      * @param address The address of the state we wish to find.
      * @return The first state found with the given address.
      */
-    public ReentrantState tryShareState(AionAddress address) {
+    public ReentrantState tryShareState(Address address) {
         RuntimeAssertionError.assertTrue(null != address);
         ReentrantState foundState = null;
         for (ReentrantState state : this.stack) {
@@ -63,7 +62,7 @@ public class ReentrantDAppStack {
                 : this.stack.pop();
     }
 
-    public SaveItem getSaveItem(AionAddress addr) {
+    public SaveItem getSaveItem(Address addr) {
         RuntimeAssertionError.assertTrue(null != addr);
         for (var iter = stack.descendingIterator(); iter.hasNext(); ) {
             var rs = iter.next();
@@ -81,12 +80,12 @@ public class ReentrantDAppStack {
 
 
     public static class ReentrantState {
-        public final AionAddress address;
+        public final Address address;
         public final LoadedDApp dApp;
         private int nextHashCode;
-        private Map<AionAddress, SaveItem> saveItems;
+        private Map<Address, SaveItem> saveItems;
 
-        public ReentrantState(AionAddress address, LoadedDApp dApp, int nextHashCode) {
+        public ReentrantState(Address address, LoadedDApp dApp, int nextHashCode) {
             this.address = address;
             this.dApp = dApp;
             this.nextHashCode = nextHashCode;
@@ -101,7 +100,7 @@ public class ReentrantDAppStack {
             this.nextHashCode = nextHashCode;
         }
 
-        public Map<AionAddress, SaveItem> getSaveItems() {
+        public Map<Address, SaveItem> getSaveItems() {
             return this.saveItems;
         }
     }

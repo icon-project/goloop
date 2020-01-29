@@ -1,6 +1,6 @@
 package org.aion.parallel;
 
-import avm.Address;
+import foundation.icon.ee.types.Address;
 import i.IInstrumentation;
 import i.RuntimeAssertionError;
 import org.aion.avm.core.IExternalState;
@@ -8,7 +8,6 @@ import org.aion.avm.core.ReentrantDAppStack;
 import org.aion.avm.core.types.Pair;
 import org.aion.avm.core.util.ByteArrayWrapper;
 import org.aion.avm.core.util.Helpers;
-import org.aion.types.AionAddress;
 import org.aion.types.Transaction;
 
 import java.util.HashSet;
@@ -31,9 +30,9 @@ public class TransactionTask implements Comparable<TransactionTask> {
     private StringBuffer outBuffer;
     private Address origin;
     private int depth;
-    private Set<Pair<AionAddress, ByteArrayWrapper>> resetStorageKeys;
+    private Set<Pair<Address, ByteArrayWrapper>> resetStorageKeys;
 
-    public TransactionTask(IExternalState parentKernel, Transaction tx, int index, AionAddress origin) {
+    public TransactionTask(IExternalState parentKernel, Transaction tx, int index, Address origin) {
         this.parentKernel = parentKernel;
         this.externalTransaction = tx;
         this.index = index;
@@ -41,9 +40,7 @@ public class TransactionTask implements Comparable<TransactionTask> {
         this.threadOwningTask = null;
         this.reentrantDAppStack = new ReentrantDAppStack();
         this.outBuffer = new StringBuffer();
-        if (origin != null) {
-            this.origin = new Address(origin.toByteArray());
-        }
+        this.origin = origin;
         this.depth = 0;
         this.resetStorageKeys = new HashSet<>();
     }
@@ -153,9 +150,13 @@ public class TransactionTask implements Comparable<TransactionTask> {
         depth--;
     }
 
-    public void addResetStorageKey(AionAddress address, byte[] key){ resetStorageKeys.add(Pair.of(address, new ByteArrayWrapper(key))); }
+    public void addResetStorageKey(Address address, byte[] key) {
+        resetStorageKeys.add(Pair.of(address, new ByteArrayWrapper(key)));
+    }
 
-    public int getResetStorageKeyCount(){ return resetStorageKeys.size(); }
+    public int getResetStorageKeyCount() {
+        return resetStorageKeys.size();
+    }
 
     public void outputFlush() {
         if (this.outBuffer.length() > 0) {

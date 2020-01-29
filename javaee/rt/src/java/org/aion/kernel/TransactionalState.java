@@ -1,18 +1,17 @@
 package org.aion.kernel;
 
+import foundation.icon.ee.types.Address;
+import foundation.icon.ee.types.Result;
+import org.aion.avm.core.IExternalState;
+import org.aion.avm.core.types.Pair;
+import org.aion.avm.core.util.ByteArrayWrapper;
+
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
-
-import foundation.icon.ee.types.Result;
-import org.aion.avm.core.IExternalState;
-import org.aion.types.AionAddress;
-import org.aion.avm.core.types.Pair;
-import org.aion.avm.core.util.ByteArrayWrapper;
-
 
 /**
  * A transactional implementation of the IExternalState which only writes back to its "parent" on commit.
@@ -27,7 +26,7 @@ public class TransactionalState implements IExternalState {
     private final List<Consumer<IExternalState>> writeLog;
     private final Set<ByteArrayWrapper> deletedAccountProjection;
     private final Set<ByteArrayWrapper> cachedAccountBalances;
-    private final Set<Pair<AionAddress, ByteArrayWrapper>> deletedStorageKeys;
+    private final Set<Pair<Address, ByteArrayWrapper>> deletedStorageKeys;
 
     private long blockHeight;
     private long blockTimestamp;
@@ -71,7 +70,7 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public void createAccount(AionAddress address) {
+    public void createAccount(Address address) {
         Consumer<IExternalState> write = (externalState) -> {
             externalState.createAccount(address);
         };
@@ -83,7 +82,7 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public boolean hasAccountState(AionAddress address) {
+    public boolean hasAccountState(Address address) {
         boolean result = false;
         if (!this.deletedAccountProjection.contains(new ByteArrayWrapper(address.toByteArray()))) {
             result = this.writeCache.hasAccountState(address);
@@ -95,7 +94,7 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public byte[] getCode(AionAddress address) {
+    public byte[] getCode(Address address) {
         byte[] result = null;
         if (!this.deletedAccountProjection.contains(new ByteArrayWrapper(address.toByteArray()))) {
             result = this.writeCache.getCode(address);
@@ -107,7 +106,7 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public void putCode(AionAddress address, byte[] code) {
+    public void putCode(Address address, byte[] code) {
         Consumer<IExternalState> write = (externalState) -> {
             externalState.putCode(address, code);
         };
@@ -116,7 +115,7 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public byte[] getTransformedCode(AionAddress address) {
+    public byte[] getTransformedCode(Address address) {
         byte[] result = null;
         if (!this.deletedAccountProjection.contains(new ByteArrayWrapper(address.toByteArray()))) {
             result = this.writeCache.getTransformedCode(address);
@@ -128,7 +127,7 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public void setTransformedCode(AionAddress address, byte[] bytes) {
+    public void setTransformedCode(Address address, byte[] bytes) {
         Consumer<IExternalState> write = (externalState) -> {
             externalState.setTransformedCode(address, bytes);
         };
@@ -137,7 +136,7 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public void putObjectGraph(AionAddress address, byte[] bytes) {
+    public void putObjectGraph(Address address, byte[] bytes) {
         Consumer<IExternalState> write = (externalState) -> {
             externalState.putObjectGraph(address, bytes);
         };
@@ -146,7 +145,7 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public byte[] getObjectGraph(AionAddress address) {
+    public byte[] getObjectGraph(Address address) {
         byte[] result = this.writeCache.getObjectGraph(address);
         if (null == result) {
             result = this.parent.getObjectGraph(address);
@@ -155,7 +154,7 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public void putStorage(AionAddress address, byte[] key, byte[] value) {
+    public void putStorage(Address address, byte[] key, byte[] value) {
         Consumer<IExternalState> write = (externalState) -> {
             externalState.putStorage(address, key, value);
         };
@@ -167,7 +166,7 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public byte[] getStorage(AionAddress address, byte[] key) {
+    public byte[] getStorage(Address address, byte[] key) {
         // We issue these requests from the given address, only, so it is safe for us to decide that we permit reads after deletes.
         // The direct reason why this happens is that DApps which are already running are permitted to continue running but may need to lazyLoad.
         byte[] result = this.writeCache.getStorage(address, key);
@@ -179,7 +178,7 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public void deleteAccount(AionAddress address) {
+    public void deleteAccount(Address address) {
         Consumer<IExternalState> write = (externalState) -> {
             externalState.deleteAccount(address);
         };
@@ -190,7 +189,7 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public BigInteger getBalance(AionAddress address) {
+    public BigInteger getBalance(Address address) {
         BigInteger result = BigInteger.ZERO;
         if (!this.deletedAccountProjection.contains(new ByteArrayWrapper(address.toByteArray()))) {
             result = this.writeCache.getBalance(address);
@@ -202,7 +201,7 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public void adjustBalance(AionAddress address, BigInteger delta) {
+    public void adjustBalance(Address address, BigInteger delta) {
         // This is a read-then-write operation so we need to make sure that there is an entry in our cache, first, before we can apply the mutation.
         if (!this.cachedAccountBalances.contains(new ByteArrayWrapper(address.toByteArray()))) {
             // We can only re-cache this if we didn't already delete it.
@@ -226,7 +225,7 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public BigInteger getNonce(AionAddress address) {
+    public BigInteger getNonce(Address address) {
         BigInteger result = BigInteger.ZERO;
         if (!this.deletedAccountProjection.contains(new ByteArrayWrapper(address.toByteArray()))) {
             result = this.writeCache.getNonce(address);
@@ -238,7 +237,7 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public void incrementNonce(AionAddress address) {
+    public void incrementNonce(Address address) {
         Consumer<IExternalState> write = (externalState) -> {
             externalState.incrementNonce(address);
         };
@@ -247,14 +246,14 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public boolean accountNonceEquals(AionAddress address, BigInteger nonce) {
+    public boolean accountNonceEquals(Address address, BigInteger nonce) {
         // Delegate the check to our parent. The actual KernelInterface given to us by the externalState
         // has an opportunity to do some special case logic here when it wishes.
         return this.parent.accountNonceEquals(address, nonce);
     }
 
     @Override
-    public boolean accountBalanceIsAtLeast(AionAddress address, BigInteger amount) {
+    public boolean accountBalanceIsAtLeast(Address address, BigInteger amount) {
         // Delegate the check to our parent. The actual KernelInterface given to us by the externalState
         // has an opportunity to do some special case logic here when it wishes.
         return this.parent.accountBalanceIsAtLeast(address, amount);
@@ -275,7 +274,7 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public void refundAccount(AionAddress address, BigInteger amount) {
+    public void refundAccount(Address address, BigInteger amount) {
         // This method may have special logic in the externalState. Here it is just adjustBalance.
         adjustBalance(address, amount);
     }
@@ -286,7 +285,7 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public void removeStorage(AionAddress address, byte[] key) {
+    public void removeStorage(Address address, byte[] key) {
         Consumer<IExternalState> write = (externalState) -> {
             externalState.removeStorage(address, key);
         };
@@ -296,7 +295,7 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public boolean destinationAddressIsSafeForThisVM(AionAddress address) {
+    public boolean destinationAddressIsSafeForThisVM(Address address) {
         // We need to delegate to our parent externalState to apply whatever logic is defined there.
         // The only exception to this is cases where we already stored code in our cache so see if that is there.
         return (null != this.writeCache.getTransformedCode(address)) || this.parent.destinationAddressIsSafeForThisVM(address);
@@ -313,7 +312,7 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public AionAddress getOwner() {
+    public Address getOwner() {
         return parent.getOwner();
     }
 
@@ -323,7 +322,7 @@ public class TransactionalState implements IExternalState {
     }
 
     @Override
-    public Result call(AionAddress address,
+    public Result call(Address address,
                        String method,
                        Object[] params,
                        BigInteger value,

@@ -1,12 +1,11 @@
 package p.avm;
 
 import a.ByteArray;
+import i.IInstrumentation;
 import i.IObject;
 import i.IObjectDeserializer;
 import i.IObjectSerializer;
-import i.IInstrumentation;
 import org.aion.avm.RuntimeMethodFeeSchedule;
-import org.aion.types.AionAddress;
 
 /**
  * The address has a very specific meaning, within the environment, so we wrap a ByteArray to produce this more specific type.
@@ -17,7 +16,7 @@ import org.aion.types.AionAddress;
  */
 public final class Address extends s.java.lang.Object {
     // Runtime-facing implementation.
-    public static final int avm_LENGTH = AionAddress.LENGTH;
+    public static final int avm_LENGTH = 21;
 
     // Note that we always contain an internal byte[] and we serialize that, specially.
     private final byte[] internalArray = new byte[avm_LENGTH];

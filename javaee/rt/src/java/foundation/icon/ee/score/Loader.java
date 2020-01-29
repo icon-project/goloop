@@ -1,9 +1,9 @@
 package foundation.icon.ee.score;
 
+import foundation.icon.ee.types.Address;
 import org.aion.avm.core.DAppLoader;
 import org.aion.avm.core.IExternalState;
 import org.aion.avm.core.persistence.LoadedDApp;
-import org.aion.types.AionAddress;
 
 import java.io.IOException;
 import java.lang.ref.SoftReference;
@@ -14,7 +14,7 @@ import java.util.Map;
 public class Loader {
     private static final int MAX_ENTRY = 256;
 
-    private Map<AionAddress, SoftReference<LoadedDApp>> dappCache = Collections.synchronizedMap(
+    private Map<Address, SoftReference<LoadedDApp>> dappCache = Collections.synchronizedMap(
             new LinkedHashMap<>(
                     MAX_ENTRY + 1,
                     1.0f,
@@ -25,7 +25,7 @@ public class Loader {
                 }
             });
 
-    public LoadedDApp load(AionAddress addr, IExternalState es, boolean preserveDebuggability) throws IOException {
+    public LoadedDApp load(Address addr, IExternalState es, boolean preserveDebuggability) throws IOException {
         var dappSR = dappCache.get(addr);
         var dapp = (dappSR != null) ? dappSR.get() : null;
         if (dapp == null) {

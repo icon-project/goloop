@@ -29,7 +29,6 @@ import foundation.icon.ee.util.MethodUnpacker;
 import org.aion.avm.core.AvmConfiguration;
 import org.aion.avm.core.CommonAvmFactory;
 import org.aion.avm.utilities.JarBuilder;
-import org.aion.types.AionAddress;
 import org.aion.types.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -181,8 +180,8 @@ public class TransactionExecutor {
             throw new NullPointerException("Cannot create Transaction with null destination!");
         }
         return Transaction.newTransaction(
-                from == null ? null : new AionAddress(from),
-                new AionAddress(to),
+                from,
+                to,
                 txHash,
                 txIndex,
                 txTimestamp,

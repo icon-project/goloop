@@ -1,5 +1,6 @@
 package org.aion.avm.core;
 
+import foundation.icon.ee.types.Address;
 import i.DBImplBase;
 import i.IDBStorage;
 import i.IInstrumentation;
@@ -8,7 +9,6 @@ import i.InternedClasses;
 import i.InvalidDBAccessException;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
-import org.aion.types.AionAddress;
 import p.avm.ValueBuffer;
 
 public class DBStorage implements IDBStorage {
@@ -51,10 +51,10 @@ public class DBStorage implements IDBStorage {
         return vb.asInt();
     }
 
-    private AionAddress getAddress() {
+    private Address getAddress() {
         var addr = IInstrumentation.attachedThreadInstrumentation.get()
                 .getFrameContext().getBlockchainRuntime().avm_getAddress();
-        return new AionAddress(addr.toByteArray());
+        return new Address(addr.toByteArray());
     }
 
     private void charge(int cost) {

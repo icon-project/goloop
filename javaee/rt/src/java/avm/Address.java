@@ -1,7 +1,5 @@
 package avm;
 
-import org.aion.types.AionAddress;
-
 /**
  * Represents an address of account in the Aion Network.
  */
@@ -10,7 +8,7 @@ public class Address {
     /**
      * The length of an address.
      */
-    public static final int LENGTH = AionAddress.LENGTH;
+    public static final int LENGTH = 21;
 
     private final byte[] raw = new byte[LENGTH];
 

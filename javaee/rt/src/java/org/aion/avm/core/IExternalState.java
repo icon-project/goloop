@@ -1,9 +1,9 @@
 package org.aion.avm.core;
 
-import java.math.BigInteger;
-
+import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Result;
-import org.aion.types.AionAddress;
+
+import java.math.BigInteger;
 
 /**
  * An interface into some external component that maintains and can answer state queries pertaining
@@ -14,14 +14,14 @@ public interface IExternalState {
     /**
      * Commits the state changes in this IExternalState to its parent IExternalState.
      */
-    public void commit();
+    void commit();
 
     /**
      * Commits the state changes in this IExternalState to the specified IExternalState.
      *
      * @param externalState The external state to commit to.
      */
-    public void commitTo(IExternalState externalState);
+    void commitTo(IExternalState externalState);
 
     /**
      * Returns a new IExternalState that is a child of this IExternalState.
@@ -35,7 +35,7 @@ public interface IExternalState {
      *
      * @param address The address of the new account.
      */
-    public void createAccount(AionAddress address);
+    void createAccount(Address address);
 
     /**
      * Returns {@code true} only if the specified address has any state associated with it.
@@ -43,7 +43,7 @@ public interface IExternalState {
      * @param address The address whose account state is to be queried.
      * @return true only if the address has state.
      */
-    public boolean hasAccountState(AionAddress address);
+    boolean hasAccountState(Address address);
 
     /**
      * Returns the pre-transformed code associated with the specified address.
@@ -53,7 +53,7 @@ public interface IExternalState {
      * @param address The address whose code is to be returned.
      * @return the pre-transformed code or null.
      */
-    public byte[] getCode(AionAddress address);
+    byte[] getCode(Address address);
 
     /**
      * Saves the specified pre-transformed code to the given address.
@@ -61,7 +61,7 @@ public interface IExternalState {
      * @param address The contract address.
      * @param code The code corresponding to the address.
      */
-    public void putCode(AionAddress address, byte[] code);
+    void putCode(Address address, byte[] code);
 
     /**
      * Returns the transformed code associated with the specified address.
@@ -71,7 +71,7 @@ public interface IExternalState {
      * @param address The address whose code is to be returned.
      * @return the transformed code or null.
      */
-    public byte[] getTransformedCode(AionAddress address);
+    byte[] getTransformedCode(Address address);
 
     /**
      * Saves the specified transformed code associated with the given address.
@@ -79,7 +79,7 @@ public interface IExternalState {
      * @param address The contract address.
      * @param code The code corresponding to the address.
      */
-    public void setTransformedCode(AionAddress address, byte[] code);
+    void setTransformedCode(Address address, byte[] code);
 
     /**
      * Saves the specified serialized bytes of the object graph to the given address.
@@ -87,7 +87,7 @@ public interface IExternalState {
      * @param address The contract address.
      * @param objectGraph The bytes of the object graph.
      */
-    public void putObjectGraph(AionAddress address, byte[] objectGraph);
+    void putObjectGraph(Address address, byte[] objectGraph);
 
     /**
      * Returns the serialized bytes of the object graph associated with the given address.
@@ -97,7 +97,7 @@ public interface IExternalState {
      * @param address The address whose object graph is to be returned.
      * @return the serialized bytes of the object graph or null.
      */
-    public byte[] getObjectGraph(AionAddress address);
+    byte[] getObjectGraph(Address address);
 
     /**
      * Saves the specified key-value pairing to the given address.
@@ -109,7 +109,7 @@ public interface IExternalState {
      * @param key The key.
      * @param value The value.
      */
-    public void putStorage(AionAddress address, byte[] key, byte[] value);
+    void putStorage(Address address, byte[] key, byte[] value);
 
     /**
      * Removes any key-value pairing corresponding to the specified key for the given address if
@@ -118,7 +118,7 @@ public interface IExternalState {
      * @param address The address.
      * @param key The key.
      */
-    public void removeStorage(AionAddress address, byte[] key);
+    void removeStorage(Address address, byte[] key);
 
     /**
      * Returns the value in the key-value pairing to the specified key for the given address if any
@@ -130,14 +130,14 @@ public interface IExternalState {
      * @param key The key.
      * @return the value or null if there is no such value.
      */
-    public byte[] getStorage(AionAddress address, byte[] key);
+    byte[] getStorage(Address address, byte[] key);
 
     /**
      * Deletes the specified address and any state corresponding to it, if such an address exists.
      *
      * @param address The address to be deleted.
      */
-    public void deleteAccount(AionAddress address);
+    void deleteAccount(Address address);
 
     /**
      * Returns the balance of the specified address.
@@ -147,7 +147,7 @@ public interface IExternalState {
      * @param address The address whose balance is to be queried.
      * @return the account balance.
      */
-    public BigInteger getBalance(AionAddress address);
+    BigInteger getBalance(Address address);
 
     /**
      * Adds the specified amount of funding to the given address. If amount is positive then the
@@ -157,7 +157,7 @@ public interface IExternalState {
      * @param address The address whose balance is to be adjusted.
      * @param amount The amount by which to adjust the balance of the account.
      */
-    public void adjustBalance(AionAddress address, BigInteger amount);
+    void adjustBalance(Address address, BigInteger amount);
 
     /**
      * Returns the nonce of the specified address.
@@ -167,7 +167,7 @@ public interface IExternalState {
      * @param address The address whose nonce is to be queried.
      * @return The account nonce.
      */
-    public BigInteger getNonce(AionAddress address);
+    BigInteger getNonce(Address address);
 
     /**
      * Increments the nonce of the specified address by one.
@@ -177,7 +177,7 @@ public interface IExternalState {
      *
      * @param address The address whose nonce is to be incremented.
      */
-    public void incrementNonce(AionAddress address);
+    void incrementNonce(Address address);
 
     /**
      * Refunds the given address by the specified refund amount.
@@ -189,7 +189,7 @@ public interface IExternalState {
      * @param address The address whose balance is to be updated.
      * @param refund The amount by which to increase the account balance.
      */
-    public void refundAccount(AionAddress address, BigInteger refund);
+    void refundAccount(Address address, BigInteger refund);
 
     /**
      * Returns the hash of the block whose height is the specified number.
@@ -200,7 +200,7 @@ public interface IExternalState {
      * @param blockHeight The block height whose hash is to be returned.
      * @return the hash of the specified block or null.
      */
-    public byte[] getBlockHashByHeight(long blockHeight);
+    byte[] getBlockHashByHeight(long blockHeight);
 
     /**
      * Returns {@code true} only if the given address has a nonce equal to the specified nonce.
@@ -211,7 +211,7 @@ public interface IExternalState {
      * @param nonce The nonce to check for.
      * @return whether the account has the given nonce.
      */
-    public boolean accountNonceEquals(AionAddress address, BigInteger nonce);
+    boolean accountNonceEquals(Address address, BigInteger nonce);
 
     /**
      * Returns {@code true} only if the balance of the given address is greater than or equal to
@@ -223,7 +223,7 @@ public interface IExternalState {
      * @param amount The amount to check for.
      * @return whether the account has a balance greater than or equal to amount.
      */
-    public boolean accountBalanceIsAtLeast(AionAddress address, BigInteger amount);
+    boolean accountBalanceIsAtLeast(Address address, BigInteger amount);
 
     /**
      * Returns {@code true} only if the specified energy limit is a valid energy limit that can be
@@ -234,7 +234,7 @@ public interface IExternalState {
      * @param limit The energy limit to test.
      * @return whether the energy limit is valid for a transaction create.
      */
-    public boolean isValidEnergyLimitForCreate(long limit);
+    boolean isValidEnergyLimitForCreate(long limit);
 
     /**
      * Returns {@code true} only if the specified energy limit is a valid energy limit that can be
@@ -245,7 +245,7 @@ public interface IExternalState {
      * @param limit The energy limit to test.
      * @return whether the energy limit is valid for a transaction call.
      */
-    public boolean isValidEnergyLimitForNonCreate(long limit);
+    boolean isValidEnergyLimitForNonCreate(long limit);
 
     /**
      * Returns {@code true} only if the specified address is safe for the Avm to interact with.
@@ -257,33 +257,33 @@ public interface IExternalState {
      * @param address The address to be tested.
      * @return whether or not the address is Avm-safe.
      */
-    public boolean destinationAddressIsSafeForThisVM(AionAddress address);
+    boolean destinationAddressIsSafeForThisVM(Address address);
 
     /**
      * Returns the block height of the current block.
      *
      * @return the current block height.
      */
-    public long getBlockHeight();
+    long getBlockHeight();
 
     /**
      * Returns the timestamp of the current block.
      *
      * @return the current block timestamp.
      */
-    public long getBlockTimestamp();
+    long getBlockTimestamp();
 
     /**
      * Returns the address of the contract owner
      *
      * @return the owner address
      */
-    public AionAddress getOwner();
+    Address getOwner();
 
     /**
      * Emits events log
      */
-    public void log(byte[][] indexed, byte[][]data);
+    void log(byte[][] indexed, byte[][]data);
 
     /**
      * Calls external method of target contract.
@@ -293,7 +293,7 @@ public interface IExternalState {
      * @return
      * @throws IllegalArgumentException
      */
-    public Result call(AionAddress address,
+    Result call(Address address,
                        String method,
                        Object[] params,
                        BigInteger value,

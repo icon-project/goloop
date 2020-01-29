@@ -1,18 +1,14 @@
 package org.aion.types;
 
+import foundation.icon.ee.types.Address;
+
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Objects;
 
-/**
- * Represents a transaction. (including external and internal)
- *
- * This class is immutable,
- */
 public final class Transaction {
-
-    public final AionAddress senderAddress;
-    public final AionAddress destinationAddress;
+    public final Address senderAddress;
+    public final Address destinationAddress;
     private final byte[] transactionHash;
     public final int transactionIndex;
     public final long transactionTimestamp;
@@ -23,8 +19,8 @@ public final class Transaction {
     public final String method;
     private final Object[] params;
 
-    private Transaction(AionAddress senderAddress,
-                        AionAddress destinationAddress,
+    private Transaction(Address senderAddress,
+                        Address destinationAddress,
                         byte[] transactionHash,
                         int transactionIndex,
                         long transactionTimestamp,
@@ -96,7 +92,7 @@ public final class Transaction {
      * @param isCreate True if this transaction is for contract creation.
      * @return a Transaction object
      */
-    public static Transaction newTransaction(AionAddress sender, AionAddress destination,
+    public static Transaction newTransaction(Address sender, Address destination,
                                              byte[] txHash, int txIndex, long txTimestamp, BigInteger value, BigInteger nonce,
                                              String method, Object[] params, long energyLimit, boolean isCreate) {
         return new Transaction(sender, destination, txHash, txIndex, txTimestamp, value, nonce,

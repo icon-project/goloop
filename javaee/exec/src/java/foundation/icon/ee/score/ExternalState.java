@@ -22,7 +22,6 @@ import foundation.icon.ee.types.Bytes;
 import foundation.icon.ee.types.ObjectGraph;
 import foundation.icon.ee.types.Result;
 import org.aion.avm.core.IExternalState;
-import org.aion.types.AionAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +34,7 @@ public class ExternalState implements IExternalState {
     private final EEProxy proxy;
     private final long blockHeight;
     private final long blockTimestamp;
-    private final AionAddress owner;
+    private final Address owner;
     private byte[] codeCache;
     private ObjectGraph graphCache;
 
@@ -44,7 +43,7 @@ public class ExternalState implements IExternalState {
         this.codeCache = codeBytes;
         this.blockHeight = blockHeight.longValue();
         this.blockTimestamp = blockTimestamp.longValue();
-        this.owner = new AionAddress(owner); // owner cannot be null
+        this.owner = owner; // owner cannot be null
     }
 
     @Override
@@ -65,19 +64,19 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public void createAccount(AionAddress address) {
+    public void createAccount(Address address) {
         logger.trace("[createAccount] {}", address);
         throw new RuntimeException("not implemented");
     }
 
     @Override
-    public boolean hasAccountState(AionAddress address) {
+    public boolean hasAccountState(Address address) {
         logger.trace("[hasAccountState] {}", address);
         throw new RuntimeException("not implemented");
     }
 
     @Override
-    public byte[] getCode(AionAddress address) {
+    public byte[] getCode(Address address) {
         logger.trace("[getCode] {}", address);
         if (codeCache == null) {
             throw new RuntimeException("code not found");
@@ -86,12 +85,12 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public void putCode(AionAddress address, byte[] code) {
+    public void putCode(Address address, byte[] code) {
         throw new RuntimeException("should not be called");
     }
 
     @Override
-    public byte[] getTransformedCode(AionAddress address) {
+    public byte[] getTransformedCode(Address address) {
         logger.trace("[getTransformedCode] {}", address);
         if (codeCache == null) {
             throw new RuntimeException("transformed code not found");
@@ -100,7 +99,7 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public void setTransformedCode(AionAddress address, byte[] code) {
+    public void setTransformedCode(Address address, byte[] code) {
         logger.trace("[setTransformedCode] {} len={}", address, code.length);
         try {
             proxy.setCode(code);
@@ -111,7 +110,7 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public byte[] getObjectGraph(AionAddress address) {
+    public byte[] getObjectGraph(Address address) {
         try {
             ObjectGraph objGraph = null;
             boolean requestFull = true;
@@ -135,7 +134,7 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public void putObjectGraph(AionAddress address, byte[] data) {
+    public void putObjectGraph(Address address, byte[] data) {
         logger.trace("[putObjectGraph] len={}", data.length);
         try {
             boolean includeGraph = true;
@@ -151,7 +150,7 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public void putStorage(AionAddress address, byte[] key, byte[] value) {
+    public void putStorage(Address address, byte[] key, byte[] value) {
         logger.trace("[putStorage] key={} value={}", Bytes.toHexString(key), Bytes.toHexString(value));
         try {
             proxy.setValue(key, value);
@@ -161,7 +160,7 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public void removeStorage(AionAddress address, byte[] key) {
+    public void removeStorage(Address address, byte[] key) {
         logger.trace("[removeStorage] key={}", Bytes.toHexString(key));
         try {
             proxy.setValue(key, null);
@@ -171,7 +170,7 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public byte[] getStorage(AionAddress address, byte[] key) {
+    public byte[] getStorage(Address address, byte[] key) {
         try {
             byte[] value = proxy.getValue(key);
             logger.trace("[getStorage] key={} value={}", Bytes.toHexString(key), Bytes.toHexString(value));
@@ -183,15 +182,15 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public void deleteAccount(AionAddress address) {
+    public void deleteAccount(Address address) {
         logger.trace("[deleteStorage] {}", address);
         throw new RuntimeException("not implemented");
     }
 
     @Override
-    public BigInteger getBalance(AionAddress address) {
+    public BigInteger getBalance(Address address) {
         try {
-            BigInteger balance = proxy.getBalance(address.toAddress());
+            BigInteger balance = proxy.getBalance(address);
             logger.trace("[getBalance] {} balance={}", address, balance);
             return balance;
         } catch (IOException e) {
@@ -201,25 +200,25 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public void adjustBalance(AionAddress address, BigInteger amount) {
+    public void adjustBalance(Address address, BigInteger amount) {
         logger.trace("[adjustBalance] {} amount={}", address, amount);
         // just ignore this
     }
 
     @Override
-    public BigInteger getNonce(AionAddress address) {
+    public BigInteger getNonce(Address address) {
         logger.trace("[getNonce] {}", address);
         throw new RuntimeException("not implemented");
     }
 
     @Override
-    public void incrementNonce(AionAddress address) {
+    public void incrementNonce(Address address) {
         logger.trace("[incrementNonce] {}", address);
         // just ignore this
     }
 
     @Override
-    public void refundAccount(AionAddress address, BigInteger refund) {
+    public void refundAccount(Address address, BigInteger refund) {
         logger.trace("[refundAccount] {} refund={}", address, refund);
         throw new RuntimeException("not implemented");
     }
@@ -231,13 +230,13 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public boolean accountNonceEquals(AionAddress address, BigInteger nonce) {
+    public boolean accountNonceEquals(Address address, BigInteger nonce) {
         logger.trace("[accountNonceEquals] {} nonce={}", address, nonce);
         return true;
     }
 
     @Override
-    public boolean accountBalanceIsAtLeast(AionAddress address, BigInteger amount) {
+    public boolean accountBalanceIsAtLeast(Address address, BigInteger amount) {
         logger.trace("[accountBalanceIsAtLeast] {} amount={}", address, amount);
         return true;
     }
@@ -255,7 +254,7 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public boolean destinationAddressIsSafeForThisVM(AionAddress address) {
+    public boolean destinationAddressIsSafeForThisVM(Address address) {
         logger.trace("[destinationAddressIsSafeForThisVM] {}", address);
         throw new RuntimeException("not implemented");
     }
@@ -273,7 +272,7 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public AionAddress getOwner() {
+    public Address getOwner() {
         logger.trace("[getOwner] ret={}", owner);
         return owner;
     }
@@ -288,10 +287,10 @@ public class ExternalState implements IExternalState {
         }
     }
 
-    public Result call(AionAddress address, String method, Object[] params, BigInteger value,
+    public Result call(Address address, String method, Object[] params, BigInteger value,
                        int stepLimit) {
         try {
-            var res = proxy.call(address.toAddress(), method, params, value, stepLimit);
+            var res = proxy.call(address, method, params, value, stepLimit);
             // TODO: to be removed
             if (res.getRet() instanceof Address) {
                 var addr = (Address) res.getRet();

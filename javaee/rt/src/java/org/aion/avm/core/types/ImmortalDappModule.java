@@ -1,6 +1,8 @@
 package org.aion.avm.core.types;
 
-import java.io.ByteArrayInputStream;
+import org.aion.avm.core.dappreading.LoadedJar;
+import org.aion.avm.utilities.JarBuilder;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.attribute.FileTime;
@@ -8,16 +10,9 @@ import java.util.Map;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-import java.util.jar.JarInputStream;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
-
 import java.util.zip.ZipEntry;
-
-import org.aion.avm.utilities.JarBuilder;
-import org.aion.types.AionAddress;
-import org.aion.avm.core.dappreading.LoadedJar;
-
 
 /**
  * Represents the DApp code once it has been validated, transformed, and stripped of any code/data only required for the initial deployment call.
@@ -53,7 +48,6 @@ public class ImmortalDappModule {
     public static ImmortalDappModule fromImmortalClasses(Map<String, byte[]> classes, String mainClass, byte[] apis)  {
         return new ImmortalDappModule(classes, mainClass, apis);
     }
-
 
     public final Map<String, byte[]> classes;
     public final String mainClass;

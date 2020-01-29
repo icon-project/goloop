@@ -30,7 +30,6 @@ import org.aion.avm.core.IExternalState;
 import org.aion.avm.core.ReentrantDAppStack;
 import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.parallel.TransactionTask;
-import org.aion.types.AionAddress;
 import org.aion.types.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,7 +71,7 @@ public class AvmExecutor {
 
     private Result runExternal(IExternalState kernel, Transaction transaction, Address origin) {
         // Get the first task
-        task = new TransactionTask(kernel, transaction, 0, origin != null ? new AionAddress(origin) : null);
+        task = new TransactionTask(kernel, transaction, 0, origin);
 
         // Attach the IInstrumentation helper to the task to support asynchronous abort
         // Instrumentation helper will abort the execution of the transaction by throwing an exception during chargeEnergy call
@@ -120,8 +119,8 @@ public class AvmExecutor {
         // start with the successful result
         Result result;
 
-        AionAddress senderAddress = tx.senderAddress;
-        AionAddress recipient = tx.destinationAddress;
+        Address senderAddress = tx.senderAddress;
+        Address recipient = tx.destinationAddress;
 
         if (tx.isCreate) {
             logger.trace("=== DAppCreator ===");

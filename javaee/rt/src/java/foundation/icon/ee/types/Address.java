@@ -24,6 +24,9 @@ public class Address {
     private byte[] body;
 
     public Address(byte[] input) {
+        if (input == null) {
+            throw new NullPointerException();
+        }
         if (input.length != LENGTH) {
             throw new IllegalArgumentException("Illegal format");
         }
@@ -31,6 +34,24 @@ public class Address {
         this.body = Arrays.copyOfRange(input, 1, input.length);
     }
 
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(toByteArray());
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        } else if (obj instanceof Address) {
+            Address other = (Address) obj;
+            return (this.prefix == other.prefix &&
+                    Arrays.equals(this.body, other.body));
+        }
+        return false;
+    }
+
+    @Override
     public String toString() {
         return ((prefix == 0) ? "hx" : "cx") + Bytes.toHexString(body);
     }

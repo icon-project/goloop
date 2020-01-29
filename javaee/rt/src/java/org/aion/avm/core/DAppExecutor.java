@@ -1,5 +1,6 @@
 package org.aion.avm.core;
 
+import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.DAppRuntimeState;
 import foundation.icon.ee.types.ObjectGraph;
 import foundation.icon.ee.types.Result;
@@ -18,7 +19,6 @@ import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.avm.core.util.Helpers;
 import org.aion.parallel.TransactionTask;
-import org.aion.types.AionAddress;
 import org.aion.types.Transaction;
 
 public class DAppExecutor {
@@ -26,8 +26,8 @@ public class DAppExecutor {
                               LoadedDApp dapp,
                               ReentrantDAppStack.ReentrantState stateToResume,
                               TransactionTask task,
-                              AionAddress senderAddress,
-                              AionAddress dappAddress,
+                              Address senderAddress,
+                              Address dappAddress,
                               Transaction tx,
                               long energyPreused,
                               boolean verboseErrors,
