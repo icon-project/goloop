@@ -1,55 +1,13 @@
-package codec
+package rlp
 
 import (
-	"bytes"
-	"io"
-	"io/ioutil"
+	"encoding/json"
 	"log"
 	"reflect"
 	"testing"
-)
 
-func Test_rlpDecoder_decodeContainer(t *testing.T) {
-	type fields struct {
-		Reader           io.Reader
-		containerReader  io.Reader
-		containerDecoder *rlpDecoder
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		want    []byte
-		wantErr bool
-	}{
-		{
-			name: "NormalCase1",
-			fields: fields{
-				Reader: bytes.NewBuffer([]byte{0xC5, 0x76, 0x54, 0x32, 0x10, 0x90, 0x80}),
-			},
-			want:    []byte{0x76, 0x54, 0x32, 0x10, 0x90},
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			e := &rlpDecoder{
-				Reader:           tt.fields.Reader,
-				containerReader:  tt.fields.containerReader,
-				containerDecoder: tt.fields.containerDecoder,
-			}
-			got, err := e.decodeContainer()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("rlpDecoder.decodeContainer() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			bs, _ := ioutil.ReadAll(got)
-			if !bytes.Equal(bs, tt.want) {
-				t.Errorf("rlpDecoder.decodeContainer() = %x, want %x", bs, tt.want)
-				return
-			}
-		})
-	}
-}
+	"github.com/stretchr/testify/assert"
+)
 
 func TestStructEncodeDecode(t *testing.T) {
 	type myType struct {
@@ -65,23 +23,20 @@ func TestStructEncodeDecode(t *testing.T) {
 		IntArray    [3]int
 	}
 
-	buf := bytes.NewBuffer(nil)
-
 	v1 := myType{
 		IntValue:    3,
 		StringValue: "test",
 		BytesValue:  []byte{0x11, 0x22},
 		IntSlice:    []int{0x22, 0x6fe3},
 	}
-	if err := RLP.Marshal(buf, v1); err != nil {
+	bs, err := Marshal(v1)
+	if err != nil {
 		t.Errorf("Fail to marshal custom structure err=%+v", err)
 		return
 	}
 
-	buf2 := bytes.NewBuffer(buf.Bytes())
-
 	var v2 myType
-	if err := RLP.Unmarshal(buf, &v2); err != nil {
+	if err := Unmarshal(bs, &v2); err != nil {
 		t.Errorf("Fail to unmarshal custom structure err=%+v", err)
 		return
 	}
@@ -91,7 +46,7 @@ func TestStructEncodeDecode(t *testing.T) {
 	}
 
 	var v3 myTypeArray
-	if err := RLP.Unmarshal(buf2, &v3); err != nil {
+	if err := Unmarshal(bs, &v3); err != nil {
 		t.Errorf("Fail to unmarshal custom structure err=%+v", err)
 		return
 	}
@@ -155,24 +110,12 @@ type MyType struct {
 	age  int
 }
 
-func (o *MyType) RLPEncodeSelf(e RLPEncoder) error {
-	if err := e.Encode(o.name); err != nil {
-		return err
-	}
-	if err := e.Encode(o.age); err != nil {
-		return err
-	}
-	return nil
+func (o *MyType) RLPEncodeSelf(e Encoder) error {
+	return e.EncodeListOf(o.name, o.age)
 }
 
-func (o *MyType) RLPDecodeSelf(d RLPDecoder) error {
-	if err := d.Decode(&o.name); err != nil {
-		return err
-	}
-	if err := d.Decode(&o.age); err != nil {
-		return err
-	}
-	return nil
+func (o *MyType) RLPDecodeSelf(d Decoder) error {
+	return d.DecodeListOf(&o.name, &o.age)
 }
 
 func TestCustomObject1(t *testing.T) {
@@ -181,15 +124,15 @@ func TestCustomObject1(t *testing.T) {
 	}
 	var b []MyType
 
-	buf := bytes.NewBuffer(nil)
-	if err := RLP.Marshal(buf, a); err != nil {
+	bs, err := Marshal(a)
+	if err != nil {
 		t.Errorf("Fail to marshal object on the buffer err=%+v", err)
 		return
 	}
 
-	log.Printf("Buffer:% X", buf.Bytes())
+	log.Printf("Encoded:% X", bs)
 
-	if err := RLP.Unmarshal(buf, &b); err != nil {
+	if err := Unmarshal(bs, &b); err != nil {
 		t.Errorf("Fail to unmarshal object err=%+v", err)
 		return
 	}
@@ -207,21 +150,84 @@ func TestCustomObject2(t *testing.T) {
 	}
 	var b []*MyType
 
-	buf := bytes.NewBuffer(nil)
-	if err := RLP.Marshal(buf, a); err != nil {
+	bs, err := Marshal(a)
+	if err != nil {
 		t.Errorf("Fail to marshal object on the buffer err=%+v", err)
 		return
 	}
 
-	log.Printf("Encoded: % X", buf.Bytes())
+	log.Printf("Encoded: % X", bs)
 
-	if err := RLP.Unmarshal(buf, &b); err != nil {
+	if err := Unmarshal(bs, &b); err != nil {
 		t.Errorf("Fail to unmarshal object err=%+v", err)
 		return
 	}
 
-	if !reflect.DeepEqual(a, b) {
-		t.Errorf("Decoded value isnt' same as original")
-		return
+	assert.Equal(t, a, b)
+}
+
+func TestMapObject1(t *testing.T) {
+	mo := map[string]string{
+		"test2": "value2",
+		"test1": "value1",
+		"test3": "value3",
 	}
+	bs, err := Marshal(mo)
+	assert.NoError(t, err)
+
+	log.Printf("Encoded: % X", bs)
+	for k, v := range mo {
+		log.Printf("key=% X  value=% X", []byte(k), []byte(v))
+	}
+
+	var mo2 map[string]string
+	err = Unmarshal(bs, &mo2)
+	assert.NoError(t, err)
+	assert.Equal(t, mo, mo2)
+}
+
+func TestJSON_MapDecoding(t *testing.T) {
+	var mo map[string]string
+	mo = make(map[string]string)
+	if err := json.Unmarshal([]byte("{ \"a\": \"a\" }"), &mo); err != nil {
+		t.Errorf("Fail to unmarshal err=%+v", err)
+	}
+	if v, ok := mo["a"]; ok {
+		assert.Equal(t, "a", v)
+	} else {
+		t.Error("There is no value for \"a\"")
+	}
+}
+
+func Test_Nil_Test(t *testing.T) {
+	var nullBytes []byte = nil
+
+	bs1, err := Marshal(nil)
+	assert.NoError(t, err)
+	bs2, err := Marshal(nullBytes)
+	assert.Equal(t, bs1, bs2)
+}
+
+type StructHavingPointer struct {
+	A, B *MyType
+}
+
+func Test_Nil_Custom(t *testing.T) {
+	a := StructHavingPointer{
+		A: &MyType{
+			name: "Test",
+			age:  2,
+		},
+		B: nil,
+	}
+	var b StructHavingPointer
+	bs, err := Marshal(a)
+	assert.NoError(t, err)
+	assert.NotNil(t, bs)
+
+	t.Logf("Encoded: % X", bs)
+
+	err = Unmarshal(bs, &b)
+	assert.NoError(t, err)
+	assert.Equal(t, a, b)
 }

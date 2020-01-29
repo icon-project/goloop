@@ -19,7 +19,7 @@ type transactionList struct {
 }
 
 func intToKey(i int) []byte {
-	b, err := codec.MP.MarshalToBytes(uint(i))
+	b, err := codec.BC.MarshalToBytes(uint(i))
 	if err != nil {
 		log.Panicf("Fail to marshal int i=%d", i)
 	}
@@ -50,7 +50,7 @@ func (i *transactionIterator) Get() (module.Transaction, int, error) {
 		return nil, 0, nil
 	}
 	var idx uint
-	if _, err := codec.MP.UnmarshalFromBytes(key, &idx); err != nil {
+	if _, err := codec.BC.UnmarshalFromBytes(key, &idx); err != nil {
 		return nil, 0, err
 	}
 	if tx, ok := obj.(module.Transaction); ok {

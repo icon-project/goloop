@@ -107,14 +107,14 @@ func (vss *validatorSnapshot) Hash() []byte {
 
 func (vss *validatorSnapshot) serializeInLock() []byte {
 	if vss.serialized == nil && len(vss.validators) > 0 {
-		vss.serialized, _ = codec.MP.MarshalToBytes(vss.validators)
+		vss.serialized, _ = codec.BC.MarshalToBytes(vss.validators)
 	}
 	return vss.serialized
 }
 
 func (vss *validatorSnapshot) OnData(bs []byte, bd merkle.Builder) error {
 	vss.serialized = bs
-	if _, err := codec.MP.UnmarshalFromBytes(bs, &vss.validators); err != nil {
+	if _, err := codec.BC.UnmarshalFromBytes(bs, &vss.validators); err != nil {
 		return err
 	}
 	return nil
@@ -290,7 +290,7 @@ func validatorSnapshotFromHash(bk db.Bucket, h []byte) (*validatorSnapshot, erro
 		if len(value) == 0 {
 			return nil, errors.NotFoundError.New("InvalidHashValue")
 		}
-		_, err = codec.MP.UnmarshalFromBytes(value, &vss.validators)
+		_, err = codec.BC.UnmarshalFromBytes(value, &vss.validators)
 		if err != nil {
 			return nil, err
 		}

@@ -13,7 +13,7 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-var vlCodec = codec.MP
+var vlCodec = codec.BC
 
 type commitVoteItem struct {
 	Timestamp int64

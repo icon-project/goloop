@@ -10,7 +10,7 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 )
 
-var msgCodec = codec.MP
+var msgCodec = codec.BC
 
 const (
 	protoProposal protocolInfo = iota << 8

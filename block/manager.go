@@ -22,7 +22,7 @@ const (
 	configTraceBnode = false
 )
 
-var dbCodec = codec.MP
+var dbCodec = codec.BC
 
 const (
 	keyLastBlockHeight = "block.lastHeight"

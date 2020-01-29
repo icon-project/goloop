@@ -38,7 +38,7 @@ func (l *receiptList) Iterator() module.ReceiptIterator {
 }
 
 func (l *receiptList) Get(n int) (module.Receipt, error) {
-	b, err := codec.MP.MarshalToBytes(uint(n))
+	b, err := codec.BC.MarshalToBytes(uint(n))
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func (l *receiptList) Get(n int) (module.Receipt, error) {
 }
 
 func (l *receiptList) GetProof(n int) ([][]byte, error) {
-	b, err := codec.MP.MarshalToBytes(uint(n))
+	b, err := codec.BC.MarshalToBytes(uint(n))
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ var receiptType = reflect.TypeOf((*receipt)(nil))
 func NewReceiptListFromSlice(database db.Database, list []Receipt) module.ReceiptList {
 	mt := trie_manager.NewMutableForObject(database, nil, receiptType)
 	for idx, r := range list {
-		k, _ := codec.MP.MarshalToBytes(uint(idx))
+		k, _ := codec.BC.MarshalToBytes(uint(idx))
 		err := mt.Set(k, r.(*receipt))
 		if err != nil {
 			log.Panicf("NewTransactionListFromSlice FAILs err=%+v", err)

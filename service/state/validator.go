@@ -59,7 +59,7 @@ func (v *validator) PublicKey() []byte {
 }
 
 func (v *validator) Bytes() []byte {
-	bytes, err := codec.MP.MarshalToBytes(v)
+	bytes, err := codec.BC.MarshalToBytes(v)
 	if err != nil {
 		log.Errorf("Fail to convert validator to bytes. err=%+v\n", err)
 		return nil
@@ -68,7 +68,7 @@ func (v *validator) Bytes() []byte {
 }
 
 func (v *validator) SetBytes(bs []byte) error {
-	_, err := codec.MP.UnmarshalFromBytes(bs, v)
+	_, err := codec.BC.UnmarshalFromBytes(bs, v)
 	return err
 }
 

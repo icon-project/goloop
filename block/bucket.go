@@ -22,7 +22,7 @@ func newBucket(database db.Database, id db.BucketID, c codec.Codec) *bucket {
 	}
 	b.dbBucket = dbb
 	if c == nil {
-		c = codec.MP
+		c = codec.BC
 	}
 	b.codec = c
 	return b

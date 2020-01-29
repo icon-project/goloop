@@ -93,7 +93,7 @@ func TestValidatorSerializeWithPubKey(t *testing.T) {
 	v1Bytes := v1.Bytes()
 
 	var v3 *validator
-	if _, err := codec.MP.UnmarshalFromBytes(v1Bytes, &v3); err != nil {
+	if _, err := codec.BC.UnmarshalFromBytes(v1Bytes, &v3); err != nil {
 		t.Errorf("Fail to unmarshal bytes")
 		return
 	}
@@ -124,7 +124,7 @@ func TestValidatorSerializeWithAddr(t *testing.T) {
 		return
 	}
 
-	b, err := codec.MP.MarshalToBytes(v)
+	b, err := codec.BC.MarshalToBytes(v)
 	if err != nil {
 		t.Errorf("Fail to marshal Validator from validator=%v err=%+v", v, err)
 		return
@@ -133,7 +133,7 @@ func TestValidatorSerializeWithAddr(t *testing.T) {
 	t.Logf("Serialized:[%x]", b)
 
 	var v2 *validator
-	if _, err := codec.MP.UnmarshalFromBytes(b, &v2); err != nil {
+	if _, err := codec.BC.UnmarshalFromBytes(b, &v2); err != nil {
 		t.Errorf("Fail to unmarshal Validator from bytes=%x", b)
 		return
 	}

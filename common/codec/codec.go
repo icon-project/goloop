@@ -29,43 +29,43 @@ type Codec interface {
 }
 
 var (
-	codec = MP
+	BC = MP
 )
 
 func Marshal(w io.Writer, v interface{}) error {
-	return codec.Marshal(w, v)
+	return BC.Marshal(w, v)
 }
 
 func Unmarshal(r io.Reader, v interface{}) error {
-	return codec.Unmarshal(r, v)
+	return BC.Unmarshal(r, v)
 }
 
 func NewEncoder(w io.Writer) Encoder {
-	return codec.NewEncoder(w)
+	return BC.NewEncoder(w)
 }
 
 func NewDecoder(r io.Reader) Decoder {
-	return codec.NewDecoder(r)
+	return BC.NewDecoder(r)
 }
 
 func NewEncoderBytes(b *[]byte) Encoder {
-	return codec.NewEncoderBytes(b)
+	return BC.NewEncoderBytes(b)
 }
 
 func MarshalToBytes(v interface{}) ([]byte, error) {
-	return codec.MarshalToBytes(v)
+	return BC.MarshalToBytes(v)
 }
 
 func UnmarshalFromBytes(b []byte, v interface{}) ([]byte, error) {
-	return codec.UnmarshalFromBytes(b, v)
+	return BC.UnmarshalFromBytes(b, v)
 }
 
 func MustMarshalToBytes(v interface{}) []byte {
-	return codec.MustMarshalToBytes(v)
+	return BC.MustMarshalToBytes(v)
 }
 
 func MustUnmarshalFromBytes(b []byte, v interface{}) []byte {
-	return codec.MustUnmarshalFromBytes(b, v)
+	return BC.MustUnmarshalFromBytes(b, v)
 }
 
 type bytesWrapper struct {

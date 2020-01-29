@@ -11,7 +11,7 @@ import (
 	"github.com/icon-project/goloop/module"
 )
 
-var v2Codec = codec.MP
+var v2Codec = codec.BC
 
 const blockV2String = "2.0"
 
