@@ -107,7 +107,7 @@ pyrun-% : pydeps-image
 pyexec:
 	@ \
 	cd $(BUILD_ROOT)/pyee ; \
-	rm -rf build ; \
+	rm -rf build $(PYEE_DIST_DIR); \
 	pip3 install wheel ; \
 	python3 setup.py bdist_wheel -d $(PYEE_DIST_DIR) ; \
 	rm -rf pyexec.egg-info
