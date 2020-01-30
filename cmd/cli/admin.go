@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"strconv"
@@ -283,6 +284,33 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	importFlags.String("db_path", "", "Database path")
 	importFlags.Int64("height", 0, "Block Height")
 	MarkAnnotationRequired(importFlags, "db_path", "height")
+
+	genesisCmd := &cobra.Command{
+		Use:   "genesis NID FILE",
+		Short: "Download chain genesis file",
+		Args:  ArgsWithDefaultErrorFunc(OrArgs(cobra.ExactArgs(1),cobra.ExactArgs(2))),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			reqUrl := node.UrlChain + "/" + args[0] + "/genesis"
+			resp, err := adminClient.Get(reqUrl, nil)
+			if err != nil {
+				return err
+			}
+			b, fileName, dErr := node.FileDownload(resp)
+			if dErr != nil {
+				return err
+			}
+			if len(args) == 2 {
+				fileName = args[1]
+			}
+			err = ioutil.WriteFile(fileName, b, 0644)
+			if err != nil {
+				return fmt.Errorf("fail to write file err:%+v", err)
+			}
+			fmt.Println(fileName)
+			return nil
+		},
+	}
+	rootCmd.AddCommand(genesisCmd)
 
 	configCmd := &cobra.Command{
 		Use:   "config NID KEY VALUE",

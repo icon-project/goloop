@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"strconv"
 	"syscall"
 	"text/template"
@@ -189,6 +190,7 @@ func (r *Rest) RegisterChainHandlers(g *echo.Group, readOnly bool) {
 	g.POST(UrlChainRes+"/reset", r.ResetChain, server.Unauthorized(readOnly), r.ChainInjector)
 	g.POST(UrlChainRes+"/verify", r.VerifyChain, server.Unauthorized(readOnly), r.ChainInjector)
 	g.POST(UrlChainRes+"/import", r.ImportChain, server.Unauthorized(readOnly), r.ChainInjector)
+	g.GET(UrlChainRes+"/genesis", r.GetChainGenesis, r.ChainInjector)
 	g.GET(UrlChainRes+"/configure", r.GetChainConfig, r.ChainInjector)
 	g.POST(UrlChainRes+"/configure", r.ConfigureChain, server.Unauthorized(readOnly), r.ChainInjector)
 }
@@ -345,6 +347,13 @@ func (r *Rest) ImportChain(ctx echo.Context) error {
 		return err
 	}
 	return ctx.String(http.StatusOK, "OK")
+}
+
+func (r *Rest) GetChainGenesis(ctx echo.Context) error {
+	c := ctx.Get("chain").(*Chain)
+	chainDir := r.n.ChainDir(c.NID())
+	gsFile := path.Join(chainDir, ChainGenesisZipFileName)
+	return ctx.Attachment(gsFile, fmt.Sprintf("%s_%s",c.Channel(),ChainGenesisZipFileName))
 }
 
 func (r *Rest) GetChainConfig(ctx echo.Context) error {

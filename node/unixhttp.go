@@ -15,6 +15,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/icon-project/goloop/server"
@@ -168,6 +169,35 @@ func decodeResponseBody(resp *http.Response, respPtr interface{}) error {
 		}
 	}
 	return nil
+}
+
+func FileDownload(resp *http.Response) (b []byte, fileName string, err error) {
+	hcd := resp.Header.Get(echo.HeaderContentDisposition)
+	if hcd == "" {
+		err = fmt.Errorf("not exists HeaderContentDisposition")
+		return
+	}
+	s := strings.Split(hcd, ";")
+	if len(s) != 2 {
+		err = fmt.Errorf("invalid HeaderContentDisposition %s", hcd)
+		return
+	}
+	//dispositionType := s[0]
+	fileName = strings.TrimSpace(s[1])
+	if strings.HasPrefix(fileName, "filename=") {
+		fileName = fileName[len("filename="):]
+		fileName = strings.Trim(fileName, "\"")
+		defer resp.Body.Close()
+		b, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			err = fmt.Errorf("failed read err=%+v", err)
+			return
+		}
+		return
+	} else {
+		err = fmt.Errorf("not exists filename")
+		return
+	}
 }
 
 type StreamCallbackFunc func(respPtr interface{}) error
