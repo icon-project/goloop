@@ -214,6 +214,28 @@ paths:
           description: Not Found
         "500":
           description: Internal Server Error
+  /chain/{nid}/genesis:
+    get:
+      operationId: getChainGenesis
+      tags:
+        - chain
+      summary: Download Genesis-Storage
+      description: Download Genesis-Storage zip file
+      parameters:
+        - <<: *path__nid
+      responses:
+        "200":
+          description: Success
+          content:
+            'application/zip':
+              schema:
+                type: string
+                format: binary
+              description: 'zip file with "Content-Disposition: attachment; filename=" header'
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
   /chain/{nid}/configure:
     get:
       operationId: getChainConfiguration
@@ -367,10 +389,10 @@ components:
           type: string
           enum: [badgerdb, goleveldb, boltdb, mapdb]
           default: "goleveldb"
-          description: "Name of database system"
+          description: "Name of database system, ReadOnly"
         seedAddress:
           type: string
-          description: "List of Seed ip-port, Comma separated string"
+          description: "List of Seed ip-port, Comma separated string, Runtime-Configurable"
         role:
           type: integer
           enum: [0,1,2,3]
@@ -381,6 +403,7 @@ components:
              * `1` - Seed
              * `2` - Validator
              * `3` - Seed and Validator
+            Runtime-Configurable
         concurrencyLevel:
           type: integer
           default: 1
@@ -397,6 +420,15 @@ components:
           type: integer
           default: 0
           description: "Max size of transactions in a block"
+        nodeCache:
+          type: string
+          enum: [none,small,large]
+          default: none
+          description: >
+            Node cache:
+             * `none` - No cache
+             * `small` - Memory Lv1 ~ Lv5 for all
+             * `large` - Memory Lv1 ~ Lv5 for all and File Lv6 for store
         channel:
           type: string
           default: ""
@@ -409,15 +441,6 @@ components:
           type: string
           default: "chacha,aes128,aes256"
           description: "Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string"
-        nodeCache:
-          type: string
-          enum: [none,small,large]
-          default: none
-          description: >
-            Node cache:
-             * `none` - No cache
-             * `small` - Memory Lv1 ~ Lv5 for all
-             * `large` - Memory Lv1 ~ Lv5 for all and File Lv6 for store
         defaultWaitTimeout:
           type: integer
           default: 0
@@ -434,9 +457,12 @@ components:
         normalTxPool: 5000
         patchTxPool: 1000
         maxBlockTxBytes: 1048576
+        nodeCache: "none"
         channel: "000000"
         secureSuites: "none,tls,ecdhe"
         secureAeads: "chacha,aes128,aes256"
+        defaultWaitTimeout: 0
+        maxWaitTimeout: 0
     ChainImportParam:
       type: object
       properties:

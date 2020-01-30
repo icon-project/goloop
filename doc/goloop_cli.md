@@ -41,6 +41,7 @@ Manage chains
 |Command | Description|
 |---|---|
 | [goloop chain config](#goloop-chain-config) |  Configure chain |
+| [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
 | [goloop chain join](#goloop-chain-join) |  Join chain |
@@ -94,6 +95,43 @@ Configure chain
 |Command | Description|
 |---|---|
 | [goloop chain config](#goloop-chain-config) |  Configure chain |
+| [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
+| [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
+| [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
+| [goloop chain join](#goloop-chain-join) |  Join chain |
+| [goloop chain leave](#goloop-chain-leave) |  Leave chain |
+| [goloop chain ls](#goloop-chain-ls) |  List chains |
+| [goloop chain reset](#goloop-chain-reset) |  Chain data reset |
+| [goloop chain start](#goloop-chain-start) |  Chain start |
+| [goloop chain stop](#goloop-chain-stop) |  Chain stop |
+| [goloop chain verify](#goloop-chain-verify) |  Chain data verify |
+
+## goloop chain genesis
+
+### Description
+Download chain genesis file
+
+### Usage
+` goloop chain genesis NID FILE `
+
+### Inherited Options
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop chain](#goloop-chain) |  Manage chains |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop chain config](#goloop-chain-config) |  Configure chain |
+| [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
 | [goloop chain join](#goloop-chain-join) |  Join chain |
@@ -135,6 +173,7 @@ Start to import legacy database
 |Command | Description|
 |---|---|
 | [goloop chain config](#goloop-chain-config) |  Configure chain |
+| [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
 | [goloop chain join](#goloop-chain-join) |  Join chain |
@@ -176,6 +215,7 @@ Inspect chain
 |Command | Description|
 |---|---|
 | [goloop chain config](#goloop-chain-config) |  Configure chain |
+| [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
 | [goloop chain join](#goloop-chain-join) |  Join chain |
@@ -198,13 +238,13 @@ Join chain
 |Name,shorthand | Environment Variable | Default | Description|
 |---|---|---|---|
 | --channel |  |  | Channel |
-| --concurrency |  | 1 | Maximum number of executors to use for concurrency |
+| --concurrency |  | 1 | Maximum number of executors to be used for concurrency |
 | --db_type |  | goleveldb | Name of database system(*badgerdb, goleveldb, boltdb, mapdb) |
 | --default_wait_timeout |  | 0 | Default wait timeout in milli-second (0: disable) |
 | --genesis |  |  | Genesis storage path |
 | --genesis_template |  |  | Genesis template directory or file |
 | --max_block_tx_bytes |  | 0 | Max size of transactions in a block |
-| --max_wait_timeout |  | 0 | Max wait timeout in milli-second (0:uses same value of default_wait_timeout) |
+| --max_wait_timeout |  | 0 | Max wait timeout in milli-second (0: uses same value of default_wait_timeout) |
 | --node_cache |  | none | Node cache (none,small,large) |
 | --normal_tx_pool |  | 0 | Size of normal transaction pool |
 | --patch_tx_pool |  | 0 | Size of patch transaction pool |
@@ -230,6 +270,7 @@ Join chain
 |Command | Description|
 |---|---|
 | [goloop chain config](#goloop-chain-config) |  Configure chain |
+| [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
 | [goloop chain join](#goloop-chain-join) |  Join chain |
@@ -265,6 +306,7 @@ Leave chain
 |Command | Description|
 |---|---|
 | [goloop chain config](#goloop-chain-config) |  Configure chain |
+| [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
 | [goloop chain join](#goloop-chain-join) |  Join chain |
@@ -300,6 +342,7 @@ List chains
 |Command | Description|
 |---|---|
 | [goloop chain config](#goloop-chain-config) |  Configure chain |
+| [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
 | [goloop chain join](#goloop-chain-join) |  Join chain |
@@ -335,6 +378,7 @@ Chain data reset
 |Command | Description|
 |---|---|
 | [goloop chain config](#goloop-chain-config) |  Configure chain |
+| [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
 | [goloop chain join](#goloop-chain-join) |  Join chain |
@@ -370,6 +414,7 @@ Chain start
 |Command | Description|
 |---|---|
 | [goloop chain config](#goloop-chain-config) |  Configure chain |
+| [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
 | [goloop chain join](#goloop-chain-join) |  Join chain |
@@ -405,6 +450,7 @@ Chain stop
 |Command | Description|
 |---|---|
 | [goloop chain config](#goloop-chain-config) |  Configure chain |
+| [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
 | [goloop chain join](#goloop-chain-join) |  Join chain |
@@ -440,6 +486,7 @@ Chain data verify
 |Command | Description|
 |---|---|
 | [goloop chain config](#goloop-chain-config) |  Configure chain |
+| [goloop chain genesis](#goloop-chain-genesis) |  Download chain genesis file |
 | [goloop chain import](#goloop-chain-import) |  Start to import legacy database |
 | [goloop chain inspect](#goloop-chain-inspect) |  Inspect chain |
 | [goloop chain join](#goloop-chain-join) |  Join chain |
@@ -1427,7 +1474,7 @@ Coin Transfer Transaction
 |---|---|---|---|
 | --message |  |  | Message |
 | --to |  |  | ToAddress |
-| --value |  | 0 | Value |
+| --value |  |  | Value |
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Default | Description|
@@ -1626,8 +1673,9 @@ Server management
 | --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
 | --console_level | GOLOOP_CONSOLE_LEVEL | trace | Console log level (trace,debug,info,warn,error,fatal,panic) |
 | --ee_socket | GOLOOP_EE_SOCKET |  | Execution engine socket path |
+| --engines | GOLOOP_ENGINES | python | Execution engines, comma-separated (python,java) |
 | --key_password | GOLOOP_KEY_PASSWORD |  | Password for the KeyStore file |
-| --key_secret | GOLOOP_KEY_SECRET |  | Secret(password) file for KeyStore |
+| --key_secret | GOLOOP_KEY_SECRET |  | Secret (password) file for KeyStore |
 | --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
 | --log_forwarder_address | GOLOOP_LOG_FORWARDER_ADDRESS |  | LogForwarder address |
 | --log_forwarder_level | GOLOOP_LOG_FORWARDER_LEVEL | info | LogForwarder level |
@@ -1635,8 +1683,14 @@ Server management
 | --log_forwarder_options | GOLOOP_LOG_FORWARDER_OPTIONS | [] | LogForwarder options, comma-separated 'key=value' |
 | --log_forwarder_vendor | GOLOOP_LOG_FORWARDER_VENDOR |  | LogForwarder vendor (fluentd,logstash) |
 | --log_level | GOLOOP_LOG_LEVEL | debug | Global log level (trace,debug,info,warn,error,fatal,panic) |
-| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
-| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+| --log_writer_compress | GOLOOP_LOG_WRITER_COMPRESS | false | Use gzip on rotated log file |
+| --log_writer_filename | GOLOOP_LOG_WRITER_FILENAME |  | Log filename (rotated files resides in same directory) |
+| --log_writer_localtime | GOLOOP_LOG_WRITER_LOCALTIME | false | Use localtime on rotated log file instead of UTC |
+| --log_writer_maxage | GOLOOP_LOG_WRITER_MAXAGE | 0 | Maximum age of log file in day |
+| --log_writer_maxbackups | GOLOOP_LOG_WRITER_MAXBACKUPS | 0 | Maximum number of backups |
+| --log_writer_maxsize | GOLOOP_LOG_WRITER_MAXSIZE | 100 | Maximum log file size in MiB |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory (default: [configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path (default: [node_dir]/cli.sock) |
 | --p2p | GOLOOP_P2P | 127.0.0.1:8080 | Advertise ip-port of P2P |
 | --p2p_listen | GOLOOP_P2P_LISTEN |  | Listen ip-port of P2P |
 | --rpc_addr | GOLOOP_RPC_ADDR | :9080 | Listen ip-port of JSON-RPC |
@@ -1685,8 +1739,9 @@ Save configuration
 | --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
 | --console_level | GOLOOP_CONSOLE_LEVEL | trace | Console log level (trace,debug,info,warn,error,fatal,panic) |
 | --ee_socket | GOLOOP_EE_SOCKET |  | Execution engine socket path |
+| --engines | GOLOOP_ENGINES | python | Execution engines, comma-separated (python,java) |
 | --key_password | GOLOOP_KEY_PASSWORD |  | Password for the KeyStore file |
-| --key_secret | GOLOOP_KEY_SECRET |  | Secret(password) file for KeyStore |
+| --key_secret | GOLOOP_KEY_SECRET |  | Secret (password) file for KeyStore |
 | --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
 | --log_forwarder_address | GOLOOP_LOG_FORWARDER_ADDRESS |  | LogForwarder address |
 | --log_forwarder_level | GOLOOP_LOG_FORWARDER_LEVEL | info | LogForwarder level |
@@ -1694,8 +1749,14 @@ Save configuration
 | --log_forwarder_options | GOLOOP_LOG_FORWARDER_OPTIONS | [] | LogForwarder options, comma-separated 'key=value' |
 | --log_forwarder_vendor | GOLOOP_LOG_FORWARDER_VENDOR |  | LogForwarder vendor (fluentd,logstash) |
 | --log_level | GOLOOP_LOG_LEVEL | debug | Global log level (trace,debug,info,warn,error,fatal,panic) |
-| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
-| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+| --log_writer_compress | GOLOOP_LOG_WRITER_COMPRESS | false | Use gzip on rotated log file |
+| --log_writer_filename | GOLOOP_LOG_WRITER_FILENAME |  | Log filename (rotated files resides in same directory) |
+| --log_writer_localtime | GOLOOP_LOG_WRITER_LOCALTIME | false | Use localtime on rotated log file instead of UTC |
+| --log_writer_maxage | GOLOOP_LOG_WRITER_MAXAGE | 0 | Maximum age of log file in day |
+| --log_writer_maxbackups | GOLOOP_LOG_WRITER_MAXBACKUPS | 0 | Maximum number of backups |
+| --log_writer_maxsize | GOLOOP_LOG_WRITER_MAXSIZE | 100 | Maximum log file size in MiB |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory (default: [configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path (default: [node_dir]/cli.sock) |
 | --p2p | GOLOOP_P2P | 127.0.0.1:8080 | Advertise ip-port of P2P |
 | --p2p_listen | GOLOOP_P2P_LISTEN |  | Listen ip-port of P2P |
 | --rpc_addr | GOLOOP_RPC_ADDR | :9080 | Listen ip-port of JSON-RPC |
@@ -1733,8 +1794,9 @@ Start server
 | --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
 | --console_level | GOLOOP_CONSOLE_LEVEL | trace | Console log level (trace,debug,info,warn,error,fatal,panic) |
 | --ee_socket | GOLOOP_EE_SOCKET |  | Execution engine socket path |
+| --engines | GOLOOP_ENGINES | python | Execution engines, comma-separated (python,java) |
 | --key_password | GOLOOP_KEY_PASSWORD |  | Password for the KeyStore file |
-| --key_secret | GOLOOP_KEY_SECRET |  | Secret(password) file for KeyStore |
+| --key_secret | GOLOOP_KEY_SECRET |  | Secret (password) file for KeyStore |
 | --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
 | --log_forwarder_address | GOLOOP_LOG_FORWARDER_ADDRESS |  | LogForwarder address |
 | --log_forwarder_level | GOLOOP_LOG_FORWARDER_LEVEL | info | LogForwarder level |
@@ -1742,8 +1804,14 @@ Start server
 | --log_forwarder_options | GOLOOP_LOG_FORWARDER_OPTIONS | [] | LogForwarder options, comma-separated 'key=value' |
 | --log_forwarder_vendor | GOLOOP_LOG_FORWARDER_VENDOR |  | LogForwarder vendor (fluentd,logstash) |
 | --log_level | GOLOOP_LOG_LEVEL | debug | Global log level (trace,debug,info,warn,error,fatal,panic) |
-| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
-| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+| --log_writer_compress | GOLOOP_LOG_WRITER_COMPRESS | false | Use gzip on rotated log file |
+| --log_writer_filename | GOLOOP_LOG_WRITER_FILENAME |  | Log filename (rotated files resides in same directory) |
+| --log_writer_localtime | GOLOOP_LOG_WRITER_LOCALTIME | false | Use localtime on rotated log file instead of UTC |
+| --log_writer_maxage | GOLOOP_LOG_WRITER_MAXAGE | 0 | Maximum age of log file in day |
+| --log_writer_maxbackups | GOLOOP_LOG_WRITER_MAXBACKUPS | 0 | Maximum number of backups |
+| --log_writer_maxsize | GOLOOP_LOG_WRITER_MAXSIZE | 100 | Maximum log file size in MiB |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory (default: [configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path (default: [node_dir]/cli.sock) |
 | --p2p | GOLOOP_P2P | 127.0.0.1:8080 | Advertise ip-port of P2P |
 | --p2p_listen | GOLOOP_P2P_LISTEN |  | Listen ip-port of P2P |
 | --rpc_addr | GOLOOP_RPC_ADDR | :9080 | Listen ip-port of JSON-RPC |

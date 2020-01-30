@@ -226,9 +226,12 @@ json:
   normalTxPool: 5000
   patchTxPool: 1000
   maxBlockTxBytes: 1048576
+  nodeCache: none
   channel: '000000'
   secureSuites: 'none,tls,ecdhe'
   secureAeads: 'chacha,aes128,aes256'
+  defaultWaitTimeout: 0
+  maxWaitTimeout: 0
 genesisZip: string
 
 ```
@@ -239,17 +242,17 @@ genesisZip: string
 |---|---|---|---|---|
 |body|body|object|true|Genesis-Storage zip file and json encoded chain-configuration for join chain using multipart|
 |» json|body|[ChainConfig](#schemachainconfig)|true|json encoded chain-configuration, using multipart 'Content-Disposition: name=json'|
-|»» dbType|body|string|false|Name of database system|
-|»» seedAddress|body|string|false|List of Seed ip-port, Comma separated string|
+|»» dbType|body|string|false|Name of database system, ReadOnly|
+|»» seedAddress|body|string|false|List of Seed ip-port, Comma separated string, Runtime-Configurable|
 |»» role|body|integer|false|Role:|
 |»» concurrencyLevel|body|integer|false|Maximum number of executors to use for concurrency|
 |»» normalTxPool|body|integer|false|Size of normal transaction pool|
 |»» patchTxPool|body|integer|false|Size of patch transaction pool|
 |»» maxBlockTxBytes|body|integer|false|Max size of transactions in a block|
+|»» nodeCache|body|string|false|Node cache:|
 |»» channel|body|string|false|Chain-alias of node|
 |»» secureSuites|body|string|false|Supported Secure suites with order (none,tls,ecdhe) - Comma separated string|
 |»» secureAeads|body|string|false|Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string|
-|»» nodeCache|body|string|false|Node cache:|
 |»» defaultWaitTimeout|body|integer|false|Default wait timeout in milli-second(0:disable)|
 |»» maxWaitTimeout|body|integer|false|Max wait timeout in milli-second(0:uses same value of defaultWaitTimeout)|
 |» genesisZip|body|string(binary)|true|Genesis-Storage zip file, using multipart 'Content-Disposition: name=genesisZip'|
@@ -261,6 +264,7 @@ genesisZip: string
  * `1` - Seed
  * `2` - Validator
  * `3` - Seed and Validator
+Runtime-Configurable
 
 **»» nodeCache**: Node cache:
  * `none` - No cache
@@ -337,9 +341,12 @@ Return low-level information about a chain.
     "normalTxPool": 5000,
     "patchTxPool": 1000,
     "maxBlockTxBytes": 1048576,
+    "nodeCache": "none",
     "channel": "000000",
     "secureSuites": "none,tls,ecdhe",
-    "secureAeads": "chacha,aes128,aes256"
+    "secureAeads": "chacha,aes128,aes256",
+    "defaultWaitTimeout": 0,
+    "maxWaitTimeout": 0
   },
   "module": {
     "property1": {},
@@ -510,6 +517,38 @@ Import a chain from legacy database.
 This operation does not require authentication
 </aside>
 
+## Download Genesis-Storage
+
+<a id="opIdgetChainGenesis"></a>
+
+> Code samples
+
+`GET /chain/{nid}/genesis`
+
+Download Genesis-Storage zip file
+
+<h3 id="download-genesis-storage-parameters">Parameters</h3>
+
+|Name|In|Type|Required|Description|
+|---|---|---|---|---|
+|nid|path|string("0x" + lowercase HEX string)|true|network-id of chain|
+
+> Example responses
+
+> 200 Response
+
+<h3 id="download-genesis-storage-responses">Responses</h3>
+
+|Status|Meaning|Description|Schema|
+|---|---|---|---|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Success|string|
+|404|[Not Found](https://tools.ietf.org/html/rfc7231#section-6.5.4)|Not Found|None|
+|500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal Server Error|None|
+
+<aside class="success">
+This operation does not require authentication
+</aside>
+
 ## View chain configuration
 
 <a id="opIdgetChainConfiguration"></a>
@@ -539,9 +578,12 @@ Return chain configuration.
   "normalTxPool": 5000,
   "patchTxPool": 1000,
   "maxBlockTxBytes": 1048576,
+  "nodeCache": "none",
   "channel": "000000",
   "secureSuites": "none,tls,ecdhe",
-  "secureAeads": "chacha,aes128,aes256"
+  "secureAeads": "chacha,aes128,aes256",
+  "defaultWaitTimeout": 0,
+  "maxWaitTimeout": 0
 }
 ```
 
@@ -659,9 +701,12 @@ This operation does not require authentication
     "normalTxPool": 5000,
     "patchTxPool": 1000,
     "maxBlockTxBytes": 1048576,
+    "nodeCache": "none",
     "channel": "000000",
     "secureSuites": "none,tls,ecdhe",
-    "secureAeads": "chacha,aes128,aes256"
+    "secureAeads": "chacha,aes128,aes256",
+    "defaultWaitTimeout": 0,
+    "maxWaitTimeout": 0
   },
   "module": {
     "property1": {},
@@ -702,9 +747,12 @@ This operation does not require authentication
   "normalTxPool": 5000,
   "patchTxPool": 1000,
   "maxBlockTxBytes": 1048576,
+  "nodeCache": "none",
   "channel": "000000",
   "secureSuites": "none,tls,ecdhe",
-  "secureAeads": "chacha,aes128,aes256"
+  "secureAeads": "chacha,aes128,aes256",
+  "defaultWaitTimeout": 0,
+  "maxWaitTimeout": 0
 }
 
 ```
@@ -713,17 +761,17 @@ This operation does not require authentication
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
-|dbType|string|false|none|Name of database system|
-|seedAddress|string|false|none|List of Seed ip-port, Comma separated string|
-|role|integer|false|none|Role:  * `0` - None  * `1` - Seed  * `2` - Validator  * `3` - Seed and Validator|
+|dbType|string|false|none|Name of database system, ReadOnly|
+|seedAddress|string|false|none|List of Seed ip-port, Comma separated string, Runtime-Configurable|
+|role|integer|false|none|Role:  * `0` - None  * `1` - Seed  * `2` - Validator  * `3` - Seed and Validator Runtime-Configurable|
 |concurrencyLevel|integer|false|none|Maximum number of executors to use for concurrency|
 |normalTxPool|integer|false|none|Size of normal transaction pool|
 |patchTxPool|integer|false|none|Size of patch transaction pool|
 |maxBlockTxBytes|integer|false|none|Max size of transactions in a block|
+|nodeCache|string|false|none|Node cache:  * `none` - No cache  * `small` - Memory Lv1 ~ Lv5 for all  * `large` - Memory Lv1 ~ Lv5 for all and File Lv6 for store|
 |channel|string|false|none|Chain-alias of node|
 |secureSuites|string|false|none|Supported Secure suites with order (none,tls,ecdhe) - Comma separated string|
 |secureAeads|string|false|none|Supported Secure AEAD with order (chacha,aes128,aes256) - Comma separated string|
-|nodeCache|string|false|none|Node cache:  * `none` - No cache  * `small` - Memory Lv1 ~ Lv5 for all  * `large` - Memory Lv1 ~ Lv5 for all and File Lv6 for store|
 |defaultWaitTimeout|integer|false|none|Default wait timeout in milli-second(0:disable)|
 |maxWaitTimeout|integer|false|none|Max wait timeout in milli-second(0:uses same value of defaultWaitTimeout)|
 
