@@ -18,7 +18,7 @@ from abc import ABC, ABCMeta
 from enum import IntEnum
 from typing import TYPE_CHECKING, Optional, Any
 
-from secp256k1 import PublicKey, ALL_FLAGS, NO_FLAGS
+from coincurve import PublicKey
 
 from .icon_score_constant import STR_FALLBACK
 from .icon_score_context import ContextContainer, IconScoreContext
@@ -30,28 +30,6 @@ from ..icon_constant import REVISION_3, CHARSET_ENCODING
 
 if TYPE_CHECKING:
     from .icon_score_base import IconScoreBase
-
-"""
-The explanation below are extracted
-from https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h
-
-Opaque data structure that holds context information (precomputed tables etc.).
-
-The purpose of context structures is to cache large precomputed data tables
-that are expensive to construct, and also to maintain the randomization data for blinding.
-
-Do not create a new context object for each operation, as construction is
-far slower than all other API calls (~100 times slower than an ECDSA verification).
-
-A constructed context can safely be used from multiple threads
-simultaneously, but API call that take a non-const pointer to a context
-need exclusive access to it. In particular this is the case for
-secp256k1_context_destroy and secp256k1_context_randomize.
-
-Regarding randomization, either do it once at creation time (in which case
-you do not need any locking for the other calls), or use a read-write lock.
-"""
-_public_key = PublicKey(flags=ALL_FLAGS)
 
 
 class InterfaceScoreMeta(ABCMeta):
@@ -317,8 +295,8 @@ def _convert_key(public_key: bytes, compressed: bool) -> Optional[bytes]:
     :param public_key: compressed or uncompressed key
     :return: the counterpart key of a given public_key
     """
-    public_key = PublicKey(public_key, raw=True, flags=NO_FLAGS, ctx=_public_key.ctx)
-    return public_key.serialize(compressed=not compressed)
+    public_key_object = PublicKey(public_key)
+    return public_key_object.format(compressed=not compressed)
 
 
 def recover_key(msg_hash: bytes, signature: bytes, compressed: bool = True) -> Optional[bytes]:
@@ -348,12 +326,6 @@ def _recover_key(msg_hash: bytes, signature: bytes, compressed: bool) -> Optiona
             and len(msg_hash) == 32 \
             and isinstance(signature, bytes) \
             and len(signature) == 65:
-        internal_recover_sig = _public_key.ecdsa_recoverable_deserialize(
-            ser_sig=signature[:64], rec_id=signature[64])
-        internal_pubkey = _public_key.ecdsa_recover(
-            msg_hash, internal_recover_sig, raw=True, digest=None)
-
-        public_key = PublicKey(internal_pubkey, raw=False, ctx=_public_key.ctx)
-        return public_key.serialize(compressed)
+        return PublicKey.from_signature_and_message(signature, msg_hash, hasher=None).format(compressed)
 
     return None

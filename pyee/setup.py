@@ -13,9 +13,9 @@ setup_options = {
     'name': 'pyexec',
     'version': version,
     'description': 'Python Execution Engine',
+    'long_description_content_type': 'text/markdown',
     'long_description': open('README.md').read(),
-    'long_description_content_type': "text/markdown",
-    'url': 'https://github.com/icon-project/pyexec',
+    'url': 'https://github.com/icon-project/goloop/pyee/pyexec',
     'author': 'ICON Foundation',
     'author_email': 'foo@icon.foundation',
     'packages': find_packages(exclude=['tests*', 'docs']),
@@ -23,7 +23,6 @@ setup_options = {
     'license': "Apache License 2.0",
     'install_requires': requires,
     'python_requires': '>=3.6.5',
-    'test_suite': 'tests',
     'entry_points': {
         'console_scripts': [
             'pyexec=pyexec.__main__:main'
@@ -35,8 +34,10 @@ setup_options = {
         'Intended Audience :: System Administrators',
         'Natural Language :: English',
         'License :: OSI Approved :: Apache Software License',
-        'Programming Language :: Python :: 3.6'
-    ]
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7'
+    ],
+    'test_suite': 'tests'
 }
 
 setup(**setup_options)

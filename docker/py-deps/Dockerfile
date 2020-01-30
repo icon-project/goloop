@@ -2,8 +2,8 @@ ARG PYTHON_VERSION=3.7.5
 ARG ALPINE_VERSION=3.10
 FROM python:${PYTHON_VERSION}-alpine${ALPINE_VERSION}
 
-# required by 'pip install secp256k1, cryptography'
-RUN apk add --no-cache pkgconfig libffi-dev build-base autoconf automake libtool libressl-dev
+# required by 'pip install coincurve cryptography'
+RUN apk add --no-cache build-base libffi-dev libressl-dev
 
 # setup python env
 ADD requirements.txt /goloop/
