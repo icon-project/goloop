@@ -15,7 +15,6 @@ variables:
   REPO_GO_DEPS: "goloop/go-deps/${CI_COMMIT_REF_SLUG}"
   REPO_PY_DEPS: "goloop/py-deps/${CI_COMMIT_REF_SLUG}"
   REPO_JAVA_DEPS: "goloop/java-deps/${CI_COMMIT_REF_SLUG}"
-  REPO_PYJAVA_DEPS: "goloop/pyjava-deps/${CI_COMMIT_REF_SLUG}"
   REPO_GOLOOP: "goloop/${CI_COMMIT_REF_SLUG}"
   REPO_GOLOOP_PY: "goloop-py/${CI_COMMIT_REF_SLUG}"
   REPO_GOLOOP_JAVA: "goloop-java/${CI_COMMIT_REF_SLUG}"
@@ -44,14 +43,6 @@ deps:java:
   stage: deps
   script:
     - sh docker/java-deps/build.sh
-  tags:
-    - docker-build
-
-deps:pyjava:
-  image: docker:git
-  stage: deps
-  script:
-    - sh docker/pyjava-deps/build.sh
   tags:
     - docker-build
 

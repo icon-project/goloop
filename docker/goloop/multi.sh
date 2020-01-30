@@ -20,20 +20,20 @@ GSTOOL=${GSTOOL:-../../bin/gstool}
 function create(){
     docker network create --driver overlay --attachable ${GOLOOP_DOCKER_NETWORK} || echo "already created ${GOLOOP_DOCKER_NETWORK}"
     docker volume create ${GOLOOP_DOCKER_VOLUME} || echo "already created ${GOLOOP_DOCKER_VOLUME}"
-    
-    for i in $(seq 0 $((${GOLOOP_DOCKER_REPLICAS}-1)));do 
+
+    for i in $(seq 0 $((${GOLOOP_DOCKER_REPLICAS}-1)));do
         GOLOOP_NODE_DIR="${GOLOOP_DATA}/${i}"
         GOLOOP_CONFIG="${GOLOOP_NODE_DIR}/config.json"
         GOLOOP_KEY_STORE="${GOLOOP_NODE_DIR}/keystore.json"
         GOLOOP_KEY_SECRET="${GOLOOP_NODE_DIR}/secret"
         GOLOOP_LOGFILE="${GOLOOP_NODE_DIR}/goloop.log"
-        
+
         # keystore
         mkdir -p $(dirname ${GOLOOP_KEY_SECRET})
         echo -n "${GOLOOP_DOCKER_PREFIX}-${i}" > ${GOLOOP_KEY_SECRET}
         echo "${GSTOOL} ks gen -o ${GOLOOP_KEY_STORE} -p \$(cat ${GOLOOP_KEY_SECRET})"
         ${GSTOOL} ks gen -o "${GOLOOP_KEY_STORE}" -p $(cat ${GOLOOP_KEY_SECRET})
-        
+
         docker run -d \
           --mount type=volume,src=${GOLOOP_DOCKER_VOLUME},dst=${GOLOOP_DOCKER_MOUNT} \
           --network ${GOLOOP_DOCKER_NETWORK} \
@@ -70,14 +70,14 @@ function create(){
 function join(){
     local GENESIS_TEMPLATE=${1:-${GOLOOP_DATA}/genesis/genesis.json}
     local GOD_KEYSTORE=${2}
-    
+
     # collect node addresses
-    for i in $(seq 0 $((${GOLOOP_DOCKER_REPLICAS}-1)));do 
+    for i in $(seq 0 $((${GOLOOP_DOCKER_REPLICAS}-1)));do
         ADDRESS=$(docker exec ${GOLOOP_DOCKER_PREFIX}-${i} goloop system info --format "{{.Setting.Address}}")
         VALIDATORS="${VALIDATORS} -v ${ADDRESS}"
         ADDRESSES="${ADDRESSES} ${ADDRESS}"
     done
-    
+
     # god keystore
     if [ "${GOD_KEYSTORE}" != "" ] && [ ! -f ${GOD_KEYSTORE} ]; then
       mkdir -p $(dirname ${GOD_KEYSTORE})
@@ -96,8 +96,8 @@ function join(){
 
     echo ${GSTOOL} gs gen -i ${GENESIS_TEMPLATE} -o ${GOLOOP_GENESIS_STORAGE}
     ${GSTOOL} gs gen -i ${GENESIS_TEMPLATE} -o ${GOLOOP_GENESIS_STORAGE}
-    
-    for i in $(seq 0 $((${GOLOOP_DOCKER_REPLICAS}-1)));do 
+
+    for i in $(seq 0 $((${GOLOOP_DOCKER_REPLICAS}-1)));do
         docker exec ${GOLOOP_DOCKER_PREFIX}-${i} goloop chain join --genesis ${GOLOOP_GENESIS_STORAGE} --seed "${GOLOOP_DOCKER_PREFIX}-0":8080 --channel test --default_wait_timeout ${GOLOOP_DEF_WAIT_TIMEOUT}
     done
 }
@@ -105,7 +105,7 @@ function join(){
 function start(){
     local GENESIS_NID=$(${GSTOOL} gs info -n ${GOLOOP_GENESIS_STORAGE})
 
-    for i in $(seq 0 $((${GOLOOP_DOCKER_REPLICAS}-1)));do 
+    for i in $(seq 0 $((${GOLOOP_DOCKER_REPLICAS}-1)));do
         docker exec ${GOLOOP_DOCKER_PREFIX}-${i} goloop chain start ${GENESIS_NID}
     done
 }

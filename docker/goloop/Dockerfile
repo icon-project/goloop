@@ -1,7 +1,10 @@
-ARG REPO_PYJAVA_DEPS=goloop/pyjava-deps
-ARG TAG_PYJAVA_DEPS=latest
-FROM ${REPO_PYJAVA_DEPS}:${TAG_PYJAVA_DEPS}
+ARG REPO_PY_DEPS=goloop/py-deps
+ARG TAG_PY_DEPS=latest
+FROM ${REPO_PY_DEPS}:${TAG_PY_DEPS}
 LABEL MAINTAINER="t_arch@iconloop.com"
+
+# install JRE
+RUN apk add --no-cache openjdk11-jre-headless
 
 ARG GOLOOP_VERSION
 LABEL GOLOOP_VERSION="$GOLOOP_VERSION"
@@ -42,34 +45,34 @@ ENV GOLOOP_ENGINES=python
 
 # entrypoint
 RUN { \
-  		echo '#!/bin/sh'; \
-  		echo 'set -e'; \
-  		echo 'if [ "$GOLOOP_CONFIG" != "" ] && [ ! -f "$GOLOOP_CONFIG" ]; then'; \
-		echo '  UNSET="GOLOOP_CONFIG"' ; \
-		echo '  CMD="goloop server save $GOLOOP_CONFIG --engines=$GOLOOP_ENGINES"'; \
-  		echo '  if [ "$GOLOOP_KEY_SECRET" != "" ] && [ ! -f "$GOLOOP_KEY_SECRET" ]; then'; \
-		echo '    mkdir -p $(dirname $GOLOOP_KEY_SECRET)'; \
-  		echo '    echo -n $(date|md5sum|head -c16) > $GOLOOP_KEY_SECRET' ; \
-  		echo '  fi'; \
-  		echo '  if [ "$GOLOOP_KEY_STORE" != "" ] && [ ! -f "$GOLOOP_KEY_STORE" ]; then'; \
-		echo '    UNSET="$UNSET GOLOOP_KEY_STORE"' ; \
-  		echo '    CMD="$CMD --save_key_store=$GOLOOP_KEY_STORE"' ; \
-  		echo '  fi'; \
-                echo '  sh -c "unset $UNSET ; $CMD"' ; \
-  		echo 'fi'; \
-  		echo ; \
-  		echo 'source /goloop/venv/bin/activate'; \
-  		echo 'if [ "${GOLOOP_LOGFILE}" != "" ]; then'; \
-  		echo '  GOLOOP_LOGDIR=$(dirname ${GOLOOP_LOGFILE})'; \
-  		echo '  if [ ! -d "${GOLOOP_LOGDIR}" ]; then'; \
-  		echo '     mkdir -p ${GOLOOP_LOGDIR}'; \
-  		echo '  fi'; \
-  		echo '  exec "$@ 2>&1 | tee -a ${GOLOOP_LOGFILE}"'; \
-  		echo 'else'; \
-  		echo '  exec "$@"'; \
-  		echo 'fi'; \
-	} > /entrypoint \
-	&& chmod +x /entrypoint
+        echo '#!/bin/sh'; \
+        echo 'set -e'; \
+        echo 'if [ "$GOLOOP_CONFIG" != "" ] && [ ! -f "$GOLOOP_CONFIG" ]; then'; \
+        echo '  UNSET="GOLOOP_CONFIG"' ; \
+        echo '  CMD="goloop server save $GOLOOP_CONFIG --engines=$GOLOOP_ENGINES"'; \
+        echo '  if [ "$GOLOOP_KEY_SECRET" != "" ] && [ ! -f "$GOLOOP_KEY_SECRET" ]; then'; \
+        echo '    mkdir -p $(dirname $GOLOOP_KEY_SECRET)'; \
+        echo '    echo -n $(date|md5sum|head -c16) > $GOLOOP_KEY_SECRET' ; \
+        echo '  fi'; \
+        echo '  if [ "$GOLOOP_KEY_STORE" != "" ] && [ ! -f "$GOLOOP_KEY_STORE" ]; then'; \
+        echo '    UNSET="$UNSET GOLOOP_KEY_STORE"' ; \
+        echo '    CMD="$CMD --save_key_store=$GOLOOP_KEY_STORE"' ; \
+        echo '  fi'; \
+        echo '  sh -c "unset $UNSET ; $CMD"' ; \
+        echo 'fi'; \
+        echo ; \
+        echo 'source /goloop/venv/bin/activate'; \
+        echo 'if [ "${GOLOOP_LOGFILE}" != "" ]; then'; \
+        echo '  GOLOOP_LOGDIR=$(dirname ${GOLOOP_LOGFILE})'; \
+        echo '  if [ ! -d "${GOLOOP_LOGDIR}" ]; then'; \
+        echo '     mkdir -p ${GOLOOP_LOGDIR}'; \
+        echo '  fi'; \
+        echo '  exec "$@ 2>&1 | tee -a ${GOLOOP_LOGFILE}"'; \
+        echo 'else'; \
+        echo '  exec "$@"'; \
+        echo 'fi'; \
+    } > /entrypoint \
+    && chmod +x /entrypoint
 ENTRYPOINT ["/entrypoint"]
 
 CMD goloop server start

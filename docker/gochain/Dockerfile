@@ -1,7 +1,10 @@
-ARG REPO_PYJAVA_DEPS=goloop/pyjava-deps
-ARG TAG_PYJAVA_DEPS=latest
-FROM ${REPO_PYJAVA_DEPS}:${TAG_PYJAVA_DEPS}
+ARG REPO_PY_DEPS=goloop/py-deps
+ARG TAG_PY_DEPS=latest
+FROM ${REPO_PY_DEPS}:${TAG_PY_DEPS}
 LABEL MAINTAINER="t_arch@iconloop.com"
+
+# install JRE
+RUN apk add --no-cache openjdk11-jre-headless
 
 ARG GOCHAIN_VERSION
 LABEL GOCHAIN_VERSION="$GOCHAIN_VERSION"

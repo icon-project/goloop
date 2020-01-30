@@ -72,9 +72,6 @@ PYDEPS_DOCKER_DIR = $(BUILD_ROOT)/build/pydeps
 JAVADEPS_IMAGE = goloop/java-deps:$(GL_TAG)
 JAVADEPS_DOCKER_DIR = $(BUILD_ROOT)/build/javadeps
 
-PYJAVADEPS_IMAGE = goloop/pyjava-deps:$(GL_TAG)
-PYJAVADEPS_DOCKER_DIR = $(BUILD_ROOT)/build/pyjavadeps
-
 GOLOOP_WORK_DIR = /work
 PYEE_DIST_DIR = $(BUILD_ROOT)/build/pyee/dist
 
@@ -106,6 +103,7 @@ pyrun-% : pydeps-image
 
 pyexec:
 	@ \
+	echo "[#] Building Python executor" ; \
 	cd $(BUILD_ROOT)/pyee ; \
 	rm -rf build $(PYEE_DIST_DIR); \
 	pip3 install wheel ; \
@@ -127,15 +125,11 @@ javarun-% : javadeps-image
 
 javaexec:
 	@ \
+	echo "[#] Building Java executor" ; \
 	cd $(BUILD_ROOT)/javaee ; \
 	./gradlew app:execman:distZip
 
-pyjavadeps-image:
-	@ \
-	$(BUILD_ROOT)/docker/pyjava-deps/update.sh \
-	    $(PYJAVADEPS_IMAGE) $(BUILD_ROOT) $(PYJAVADEPS_DOCKER_DIR)
-
-goloop-image: pyrun-pyexec gorun-goloop-linux javarun-javaexec pyjavadeps-image
+goloop-image: pyrun-pyexec gorun-goloop-linux javarun-javaexec
 	@ echo "[#] Building image $(GOLOOP_IMAGE) for $(GL_VERSION)"
 	@ rm -rf $(GOLOOP_DOCKER_DIR)
 	@ mkdir -p $(GOLOOP_DOCKER_DIR)/dist/pyee
@@ -145,11 +139,11 @@ goloop-image: pyrun-pyexec gorun-goloop-linux javarun-javaexec pyjavadeps-image
 	@ cp $(LINUX_BIN_DIR)/goloop $(GOLOOP_DOCKER_DIR)/dist/bin
 	@ cp $(BUILD_ROOT)/javaee/app/execman/build/distributions/execman.zip $(GOLOOP_DOCKER_DIR)/dist
 	@ docker build -t $(GOLOOP_IMAGE) \
-	    --build-arg TAG_PYJAVA_DEPS=$(GL_TAG) \
+	    --build-arg TAG_PY_DEPS=$(GL_TAG) \
 	    --build-arg GOLOOP_VERSION=$(GL_VERSION) \
 	    $(GOLOOP_DOCKER_DIR)
 
-gochain-image: pyrun-pyexec gorun-gochain-linux javarun-javaexec pyjavadeps-image
+gochain-image: pyrun-pyexec gorun-gochain-linux javarun-javaexec
 	@ echo "[#] Building image $(GOCHAIN_IMAGE) for $(GL_VERSION)"
 	@ rm -rf $(GOCHAIN_DOCKER_DIR)
 	@ mkdir -p $(GOCHAIN_DOCKER_DIR)/dist
@@ -158,7 +152,7 @@ gochain-image: pyrun-pyexec gorun-gochain-linux javarun-javaexec pyjavadeps-imag
 	@ cp $(LINUX_BIN_DIR)/gochain $(GOCHAIN_DOCKER_DIR)/dist
 	@ cp $(BUILD_ROOT)/javaee/app/execman/build/distributions/execman.zip $(GOCHAIN_DOCKER_DIR)/dist
 	@ docker build -t $(GOCHAIN_IMAGE) \
-	    --build-arg TAG_PYJAVA_DEPS=$(GL_TAG) \
+	    --build-arg TAG_PY_DEPS=$(GL_TAG) \
 	    --build-arg GOCHAIN_VERSION=$(GL_VERSION) \
 	    $(GOCHAIN_DOCKER_DIR)
 
