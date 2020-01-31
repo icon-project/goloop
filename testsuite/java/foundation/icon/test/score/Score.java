@@ -74,7 +74,7 @@ public class Score {
         }
 
         try {
-            Utils.acceptIfAuditEnabled(service, chain, txHash);
+            Utils.acceptScoreIfAuditEnabled(service, chain, txHash);
         }
         catch(TransactionFailureException ex) {
             LOG.infoExiting();
@@ -96,7 +96,7 @@ public class Score {
             throw new TransactionFailureException(result.getFailure());
         }
         try {
-            Utils.acceptIfAuditEnabled(service, chain, txHash);
+            Utils.acceptScoreIfAuditEnabled(service, chain, txHash);
         }
         catch(TransactionFailureException ex) {
             LOG.infoExiting();

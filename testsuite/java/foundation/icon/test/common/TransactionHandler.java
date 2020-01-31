@@ -86,7 +86,7 @@ public class TransactionHandler {
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new TransactionFailureException(result.getFailure());
         }
-        Utils.acceptIfAuditEnabled(iconService, chain, txHash);
+        Utils.acceptScoreIfAuditEnabled(iconService, chain, txHash);
         return new Score(this, new Address(result.getScoreAddress()));
     }
 

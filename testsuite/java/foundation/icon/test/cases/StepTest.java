@@ -209,7 +209,7 @@ public class StepTest {
             // contractCreate or contractUpdate
             // contractSet * codeLen
             BigInteger stepUsed;
-            if(Utils.isAudit(iconService)) {
+            if (Utils.isAuditEnabled(iconService)) {
                 stepUsed = calcTransactionStep(tx);
             }
             else {
@@ -287,7 +287,7 @@ public class StepTest {
             assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
 
             try {
-                Utils.acceptIfAuditEnabled(iconService, chain, txHash);
+                Utils.acceptScoreIfAuditEnabled(iconService, chain, txHash);
             }
             catch(TransactionFailureException ex) {
                 LOG.infoExiting();
@@ -365,7 +365,7 @@ public class StepTest {
         BigInteger usedCoin = sTx.deploy(testWallets[0], null, installPath, params);
         LOG.infoExiting();
         assertEquals(sTx.estimatedCoin(), usedCoin);
-        if(!Utils.isAudit(iconService)) {
+        if (!Utils.isAuditEnabled(iconService)) {
             assertEquals(sTx.estimatedCoin(), sTx.treasuryFee);
         }
 
@@ -379,7 +379,7 @@ public class StepTest {
         usedCoin = sTx.deploy(testWallets[0], socreAddr, updatePath, params);
         LOG.infoExiting();
         assertEquals(sTx.estimatedCoin(), usedCoin);
-        if(!Utils.isAudit(iconService)) {
+        if (!Utils.isAuditEnabled(iconService)) {
             assertEquals(sTx.estimatedCoin(), sTx.treasuryFee);
         }
         LOG.infoExiting();
@@ -428,7 +428,7 @@ public class StepTest {
         LOG.infoExiting();
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
         try {
-            Utils.acceptIfAuditEnabled(iconService, chain, txHash);
+            Utils.acceptScoreIfAuditEnabled(iconService, chain, txHash);
         }
         catch(TransactionFailureException ex) {
             LOG.infoExiting();

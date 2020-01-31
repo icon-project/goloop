@@ -227,7 +227,7 @@ public class ChainScoreTest{
     @ParameterizedTest(name = "acceptScore {0}")
     @EnumSource(TargetScore.class)
     public void acceptScore(TargetScore score) throws Exception {
-        if (!Utils.isAudit(iconService)) {
+        if (!Utils.isAuditEnabled(iconService)) {
             return;
         }
         LOG.infoEntering("acceptScore");
@@ -293,7 +293,7 @@ public class ChainScoreTest{
     @ParameterizedTest(name = "rejectScore {0}")
     @EnumSource(TargetScore.class)
     public void rejectScore(TargetScore score) throws Exception {
-        if (!Utils.isAudit(iconService)) {
+        if (!Utils.isAuditEnabled(iconService)) {
             return;
         }
         LOG.infoEntering("rejectScore");

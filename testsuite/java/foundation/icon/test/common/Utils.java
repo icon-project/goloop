@@ -293,7 +293,7 @@ public class Utils {
         return txHash;
     }
 
-    public static boolean isAudit(IconService iconService) {
+    public static boolean isAuditEnabled(IconService iconService) {
         BigInteger rpcObject;
         try {
             rpcObject = icxCall(iconService,
@@ -306,18 +306,17 @@ public class Utils {
         return (lAudit & 0x2) == 0x2;
     }
 
-    public static TransactionResult acceptIfAuditEnabled(IconService iconService, Env.Chain chain, Bytes txHash) throws ResultTimeoutException, IOException, TransactionFailureException {
-        TransactionResult result = null;
-        if(Utils.isAudit(iconService)) {
-            LOG.infoEntering("accept", "accept score");
-            result = new GovScore(iconService, chain).acceptScore(txHash);
+    public static void acceptScoreIfAuditEnabled(IconService iconService, Env.Chain chain, Bytes txHash)
+            throws ResultTimeoutException, IOException, TransactionFailureException {
+        if (Utils.isAuditEnabled(iconService)) {
+            LOG.infoEntering("invoke", "acceptScore");
+            TransactionResult result = new GovScore(iconService, chain).acceptScore(txHash);
             if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
                 LOG.infoExiting();
                 throw new TransactionFailureException(result.getFailure());
             }
             LOG.infoExiting();
         }
-        return result;
     }
 
     private static void recursiveZip(File source, String zipPath, ZipOutputStream zos) throws IOException{
@@ -421,7 +420,7 @@ public class Utils {
         }
 
         try {
-            Utils.acceptIfAuditEnabled(service, chain, txHash);
+            Utils.acceptScoreIfAuditEnabled(service, chain, txHash);
         }
         catch(TransactionFailureException ex) {
             throw ex;

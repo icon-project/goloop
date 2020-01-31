@@ -450,7 +450,7 @@ public class DeployTest {
         }
 
         try {
-            Utils.acceptIfAuditEnabled(iconService, chain, txHash);
+            Utils.acceptScoreIfAuditEnabled(iconService, chain, txHash);
         }
         catch(TransactionFailureException ex) {
             LOG.infoExiting();
@@ -476,7 +476,7 @@ public class DeployTest {
                 assertEquals(includeRoot, installScore(content, params) != null);
             }
             catch (TransactionFailureException ex) {
-                assertTrue(Utils.isAudit(iconService));
+                assertTrue(Utils.isAuditEnabled(iconService));
                 assertFalse(includeRoot);
             }
         }
@@ -523,7 +523,7 @@ public class DeployTest {
                 assertEquals(zip, installScore(content, params) != null);
             }
             catch (TransactionFailureException ex) {
-                assertTrue(Utils.isAudit(iconService));
+                assertTrue(Utils.isAuditEnabled(iconService));
                 assertFalse(zip);
             }
         }
@@ -701,7 +701,7 @@ public class DeployTest {
         result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
 
         try {
-            Utils.acceptIfAuditEnabled(iconService, chain, txHash);
+            Utils.acceptScoreIfAuditEnabled(iconService, chain, txHash);
         }
         catch(TransactionFailureException ex) {
             LOG.infoExiting();

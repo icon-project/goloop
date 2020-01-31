@@ -314,7 +314,7 @@ class GetAPITest {
                 KeyWallet.create(), Constants.CHAINSCORE_ADDRESS, scorePath, null);
         TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-        Utils.acceptIfAuditEnabled(iconService, chain, txHash);
+        Utils.acceptScoreIfAuditEnabled(iconService, chain, txHash);
         LOG.infoExiting();
 
         LOG.infoEntering("validateGetScoreApi");
