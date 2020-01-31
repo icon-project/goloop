@@ -183,8 +183,8 @@ This document specifies the genesis file format.
    }
  ],
  "chain" : {
-   "auditEnabled" : true,
-   "deployerWhiteListEnabled" : false,
+   "auditEnabled" : "0x1",
+   "deployerWhiteListEnabled" : "0x0",
    "fee": {
      "stepPrice": "0x10000",
      "stepLimit": {
