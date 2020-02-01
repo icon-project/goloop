@@ -89,7 +89,7 @@ type WorldContext interface {
 	IsDeployer(addr string) bool
 	FeeEnabled() bool
 	AuditEnabled() bool
-	DeployWhiteListEnabled() bool
+	DeployerWhiteListEnabled() bool
 	PackageValidatorEnabled() bool
 	MembershipEnabled() bool
 	TransactionTimestampThreshold() int64
@@ -246,7 +246,7 @@ func (c *worldContext) AuditEnabled() bool {
 	return true
 }
 
-func (c *worldContext) DeployWhiteListEnabled() bool {
+func (c *worldContext) DeployerWhiteListEnabled() bool {
 	if c.systemInfo.sysConfig&SysConfigDeployerWhiteList == 0 {
 		return false
 	}

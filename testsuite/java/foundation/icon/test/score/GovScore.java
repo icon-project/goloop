@@ -18,6 +18,7 @@ package foundation.icon.test.score;
 
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.Wallet;
+import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
@@ -181,5 +182,12 @@ public class GovScore extends Score {
         setStepPrice(fee.stepPrice);
         setStepCosts(fee.stepCosts);
         setMaxStepLimits(fee.stepMaxLimits);
+    }
+
+    public TransactionResult addDeployer(Address address) throws IOException, ResultTimeoutException {
+        RpcObject params = new RpcObject.Builder()
+                .put("address", new RpcValue(address))
+                .build();
+        return invokeAndWaitResult(getGovernorWallet(), "addDeployer", params, 0, stepLimit);
     }
 }

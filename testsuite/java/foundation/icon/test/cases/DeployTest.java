@@ -18,6 +18,7 @@ import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.TransactionFailureException;
 import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.GovScore;
+import foundation.icon.test.score.HelloWorld;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -712,6 +713,40 @@ public class DeployTest {
 
         updated = Utils.icxCall(iconService, Constants.GOV_ADDRESS, "updated", null).asBoolean();
         assertTrue(updated);
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void testDeployerWhiteList() throws Exception {
+        if (!Utils.isDeployerWhiteListEnabled(iconService)) {
+            LOG.info("SKIP: deployerWhiteList is not enabled.");
+            return;
+        }
+        LOG.infoEntering("setup", "test wallets");
+        KeyWallet deployer = KeyWallet.create();
+        KeyWallet caller = KeyWallet.create();
+        Utils.transferAndCheck(iconService, chain, chain.godWallet,
+                new Address[] {deployer.getAddress(), caller.getAddress()},
+                Constants.DEFAULT_BALANCE);
+        LOG.infoExiting();
+
+        LOG.infoEntering("invoke", "addDeployer");
+        TransactionResult result = govScore.addDeployer(deployer.getAddress());
+        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        LOG.infoExiting();
+
+        LOG.infoEntering("deploy", "by deployer");
+        HelloWorld helloScore = HelloWorld.install(iconService, chain, deployer);
+        assertEquals(Constants.STATUS_SUCCESS, helloScore.invokeHello(caller).getStatus());
+        LOG.infoExiting();
+
+        LOG.infoEntering("deploy", "by caller");
+        try {
+            HelloWorld.install(iconService, chain, caller);
+            fail();
+        } catch (TransactionFailureException e) {
+            LOG.info("expected exception: " + e.getMessage());
+        }
         LOG.infoExiting();
     }
 }

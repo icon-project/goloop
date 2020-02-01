@@ -293,17 +293,22 @@ public class Utils {
         return txHash;
     }
 
-    public static boolean isAuditEnabled(IconService iconService) {
-        BigInteger rpcObject;
+    private static int getServiceConfig(IconService iconService) {
         try {
-            rpcObject = icxCall(iconService,
-                    Constants.CHAINSCORE_ADDRESS, "getServiceConfig", null).asInteger();
+            BigInteger rpcObject = icxCall(iconService, Constants.CHAINSCORE_ADDRESS,
+                    "getServiceConfig", null).asInteger();
+            return rpcObject.intValue();
+        } catch (Exception ex) {
+            throw new IllegalStateException("Failed to get serviceConfig: " + ex.getMessage());
         }
-        catch (Exception ex) {
-            throw new IllegalStateException("FAIL to call icx for serviceConfig. ex : " + ex.getMessage());
-        }
-        long lAudit = rpcObject.longValue();
-        return (lAudit & 0x2) == 0x2;
+    }
+
+    public static boolean isAuditEnabled(IconService iconService) {
+        return (getServiceConfig(iconService) & 0x2) != 0;
+    }
+
+    public static boolean isDeployerWhiteListEnabled(IconService iconService) {
+        return (getServiceConfig(iconService) & 0x4) != 0;
     }
 
     public static void acceptScoreIfAuditEnabled(IconService iconService, Env.Chain chain, Bytes txHash)

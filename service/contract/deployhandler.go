@@ -172,7 +172,10 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.Typ
 		return scoreresult.ErrOutOfStep, h.StepUsed(), nil, nil
 	}
 
-	// store ScoreDeployInfo and ScoreDeployTXParams
+	if cc.DeployerWhiteListEnabled() == true && !cc.IsDeployer(h.from.String()) {
+		return scoreresult.ErrAccessDenied, h.StepUsed(), nil, nil
+	}
+
 	if update == false {
 		if as.InitContractAccount(h.from) == false {
 			return errors.ErrExecutionFail, h.StepUsed(), nil, nil
