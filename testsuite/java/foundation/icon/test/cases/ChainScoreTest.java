@@ -1,3 +1,19 @@
+/*
+ * Copyright 2019 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package foundation.icon.test.cases;
 
 import foundation.icon.icx.IconService;
@@ -31,19 +47,6 @@ import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-/*
-test methods
-    disableEnableScore
-    setRevision
-    acceptScore
-    rejectScore
-    blockUnblockScore
-    setStepPrice
-    setStepCost
-    setMaxStepLimit
-    addRemoveMember
-    addRemoveDeployer
- */
 @Tag(Constants.TAG_PY_GOV)
 public class ChainScoreTest{
     private static Env.Chain chain;
@@ -269,7 +272,7 @@ public class ChainScoreTest{
                 LOG.info("FAIL to get result by tx");
                 assertEquals(Constants.SCORE_STATUS_PENDING, expect);
             }
-            if(expect == Constants.SCORE_STATUS_PENDING) {
+            if (expect.equals(Constants.SCORE_STATUS_PENDING)) {
                 params = new RpcObject.Builder()
                         .put("txHash", new RpcValue(txHash))
                         .build();
@@ -316,7 +319,7 @@ public class ChainScoreTest{
             expectedStatus = new String[]{Constants.SCORE_STATUS_PENDING, Constants.SCORE_STATUS_PENDING};
         }
 
-        for(String expect : expectedStatus) {
+        for (String expect : expectedStatus) {
             params = new RpcObject.Builder()
                     .put("address", new RpcValue(scoreAddr))
                     .build();
@@ -336,7 +339,7 @@ public class ChainScoreTest{
                 LOG.info("FAIL to get result by tx");
                 //success
             }
-            if(expect == Constants.SCORE_STATUS_PENDING) {
+            if (expect.equals(Constants.SCORE_STATUS_PENDING)) {
                 LOG.infoEntering("reject score");
                 params = new RpcObject.Builder()
                         .put("txHash", new RpcValue(txHash))
@@ -549,17 +552,14 @@ public class ChainScoreTest{
     @ParameterizedTest(name = "grantRevokeValidator {0}")
     @EnumSource(TargetScore.class)
     public void grantRevokeValidator(TargetScore score) throws Exception {
-        LOG.infoEntering("grantRevokeValidator");
         assumeTrue(score.addr.equals(Constants.CHAINSCORE_ADDRESS) || Env.nodes.length >= 3);
+        LOG.infoEntering("grantRevokeValidator");
         KeyWallet wallet = testWallets[0];
-        RpcObject params = new RpcObject.Builder()
-                .put("address", new RpcValue(wallet.getAddress()))
-                .build();
         RpcItem item = Utils.icxCall(iconService,
                 Constants.CHAINSCORE_ADDRESS, "getValidators", null);
         RpcArray rpcArray = item.asArray();
-        for(int i = 0; i < rpcArray.size(); i++) {
-            if(rpcArray.get(i).asAddress().equals(wallet)) {
+        for (int i = 0; i < rpcArray.size(); i++) {
+            if (rpcArray.get(i).asAddress().equals(wallet.getAddress())) {
                 throw new Exception();
             }
         }
@@ -575,20 +575,20 @@ public class ChainScoreTest{
                     "getValidators", null);
             boolean bFound = false;
             rpcArray = item.asArray();
-            for(int i = 0; i < rpcArray.size(); i++) {
-                if(rpcArray.get(i).asAddress().equals(wallet.getAddress())) {
+            for (int i = 0; i < rpcArray.size(); i++) {
+                if (rpcArray.get(i).asAddress().equals(wallet.getAddress())) {
                     bFound = true;
                     break;
                 }
             }
 
-            if(score.addr.equals(Constants.CHAINSCORE_ADDRESS)) {
-                if(bFound == true) {
+            if (score.addr.equals(Constants.CHAINSCORE_ADDRESS)) {
+                if (bFound) {
                     throw new Exception();
                 }
             } else {
-                if(method.compareTo("grantValidator") == 0) {
-                    if(bFound == false) {
+                if (method.compareTo("grantValidator") == 0) {
+                    if (!bFound) {
                         throw new Exception();
                     }
                 }
@@ -604,10 +604,9 @@ public class ChainScoreTest{
         KeyWallet wallet = testWallets[0];
         RpcItem item = Utils.icxCall(iconService,
                 Constants.CHAINSCORE_ADDRESS,"getMembers", null);
-
         RpcArray rpcArray = item.asArray();
-        for(int i = 0; i < rpcArray.size(); i++) {
-            if(rpcArray.get(i).asAddress().equals(wallet)) {
+        for (int i = 0; i < rpcArray.size(); i++) {
+            if (rpcArray.get(i).asAddress().equals(wallet.getAddress())) {
                 throw new Exception();
             }
         }

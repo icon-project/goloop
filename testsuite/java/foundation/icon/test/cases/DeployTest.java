@@ -1,3 +1,19 @@
+/*
+ * Copyright 2019 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package foundation.icon.test.cases;
 
 import foundation.icon.icx.IconService;
@@ -38,25 +54,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
-
-/*
-test methods
-  positive
-    installScoreAndCall
-    updateScoreAndCall
-  negative
-    notEnoughBalance
-    notEnoughStepLimit
-    installWithInvalidParams
-    updateWithInvalidParams
-    updateWithInvalidOwner
-    updateToInvalidScoreAddress
-    invalidContentNoRootFile
-    invalidContentNotZip
-    invalidContentTooBig
-    invalidScoreNoOnInstallMethod
-    invalidScoreNoOnUpdateMethod
- */
 
 @Tag(Constants.TAG_PY_GOV)
 public class DeployTest {
@@ -315,9 +312,7 @@ public class DeployTest {
         invoke(owner, scoreAddr, "helloWithName", params);
         LOG.infoExiting();
 
-
         boolean failEx = false;
-        LOG.infoExiting();
         try {
             LOG.infoEntering("update");
             params = new RpcObject.Builder()
@@ -367,7 +362,6 @@ public class DeployTest {
         LOG.infoExiting();
 
         boolean failEx = false;
-        LOG.infoExiting();
         try {
             LOG.infoEntering("update");
             params = new RpcObject.Builder()
@@ -550,8 +544,8 @@ public class DeployTest {
         try {
             deploy(owner, Constants.CHAINSCORE_ADDRESS, SCORE_TOO_BIG_PATH, params, Constants.DEFAULT_STEP_LIMIT);
             fail();
-        }
-        catch(Exception ex) {
+        } catch (RpcError e) {
+            LOG.info("Expected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
             LOG.infoExiting();
         }
         LOG.infoExiting();
@@ -559,7 +553,7 @@ public class DeployTest {
 
     @Test
     public void invalidScoreNoOnInstallMethod() throws Exception {
-        String SCORE_TOO_BIG_PATH = Constants.SCORE_ROOT + "no_install_method";
+        String SCORE_NO_INSTALL_PATH = Constants.SCORE_ROOT + "no_install_method";
         LOG.infoEntering( "invalidScoreNoOnInstallMethod");
         KeyWallet owner = KeyWallet.create();
         BigInteger bal = iconService.getBalance(owner.getAddress()).execute();
@@ -575,7 +569,7 @@ public class DeployTest {
                 .build();
 
         try {
-            deploy(owner, Constants.CHAINSCORE_ADDRESS, SCORE_TOO_BIG_PATH, params, Constants.DEFAULT_STEP_LIMIT);
+            deploy(owner, Constants.CHAINSCORE_ADDRESS, SCORE_NO_INSTALL_PATH, params, Constants.DEFAULT_STEP_LIMIT);
             fail();
         }
         catch(TransactionFailureException ex) {
