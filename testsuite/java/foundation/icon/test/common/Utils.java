@@ -313,7 +313,7 @@ public class Utils {
 
     public static void acceptScoreIfAuditEnabled(IconService iconService, Env.Chain chain, Bytes txHash)
             throws ResultTimeoutException, IOException, TransactionFailureException {
-        if (Utils.isAuditEnabled(iconService)) {
+        if (isAuditEnabled(iconService) && !isDeployerWhiteListEnabled(iconService)) {
             LOG.infoEntering("invoke", "acceptScore");
             TransactionResult result = new GovScore(iconService, chain).acceptScore(txHash);
             if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
