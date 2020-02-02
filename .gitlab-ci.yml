@@ -147,15 +147,15 @@ pack:goloop:
   image: "docker:java11" #sh -c 'echo -e "FROM docker:git\nRUN apk add openjdk11" | docker build --tag docker:java11 -'
   stage: integration
   variables:
-    GOLOOP_DOCKER_REPLICAS: 4
-    GOLOOP_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
     GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesis.json"
-    GOLOOP_GOD_KEYSTORE: "${CI_PROJECT_DIR}/testsuite/data/keystore_god.json"
     GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/py.props"
     GOLOOP_MULTI_SCRIPT: docker/goloop/multi.sh
   before_script:
     - env
     - export GRADLE_USER_HOME=${CI_PROJECT_DIR}/testsuite/.gradle
+    - export GOLOOP_DOCKER_REPLICAS=4
+    - export GOLOOP_DATA=${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}
+    - export GOLOOP_GOD_KEYSTORE=${CI_PROJECT_DIR}/testsuite/data/keystore_god.json
     - export SELF_CONTAINER=$(docker ps --filter label=com.gitlab.gitlab-runner.job.id=${CI_JOB_ID} --format {{.ID}});
       export GOLOOP_DOCKER_MOUNT="/builds";
       FORMAT_MOUNT_NAME="{{range .Mounts}}{{if eq .Destination \"/builds\"}}{{.Name}}{{end}}{{end}}";
@@ -171,7 +171,8 @@ pack:goloop:
   script:
     - ./gradlew test -DNO_SERVER="true" -DCHAIN_ENV="${GOLOOP_ENVFILE}"
   after_script:
-    - cp -rf $GOLOOP_DATA goloop_data || echo "failed copy $GOLOOP_DATA"
+    - export GOLOOP_DATA=${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID};
+      cp -rf $GOLOOP_DATA goloop_data || echo "failed copy $GOLOOP_DATA"
     - export SELF_CONTAINER=$(docker ps --filter label=com.gitlab.gitlab-runner.job.id=${CI_JOB_ID} --format {{.ID}});
       export GOLOOP_DOCKER_NETWORK=${GOLOOP_DOCKER_NETWORK:-goloop_${CI_JOB_ID}_net};
       docker network disconnect ${GOLOOP_DOCKER_NETWORK} ${SELF_CONTAINER}
@@ -200,10 +201,7 @@ pack:goloop:
 IT:py:pyscore:
   <<: *IT__goloop
   variables:
-    GOLOOP_DOCKER_REPLICAS: 4
-    GOLOOP_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
     GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesis.json"
-    GOLOOP_GOD_KEYSTORE: "${CI_PROJECT_DIR}/testsuite/data/keystore_god.json"
     GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/py.props"
     GOLOOP_MULTI_SCRIPT: docker/goloop-py/multi.sh
     GOLOOP_ENGINES: "python"
@@ -213,10 +211,7 @@ IT:py:pyscore:
 IT:py:pygov:
   <<: *IT__goloop
   variables:
-    GOLOOP_DOCKER_REPLICAS: 4
-    GOLOOP_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
     GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_gov.json"
-    GOLOOP_GOD_KEYSTORE: "${CI_PROJECT_DIR}/testsuite/data/keystore_god.json"
     GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/gov.props"
     GOLOOP_MULTI_SCRIPT: docker/goloop-py/multi.sh
     GOLOOP_ENGINES: "python"
@@ -226,10 +221,7 @@ IT:py:pygov:
 IT:py:pyaudit:
   <<: *IT__goloop
   variables:
-    GOLOOP_DOCKER_REPLICAS: 4
-    GOLOOP_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
     GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_audit.json"
-    GOLOOP_GOD_KEYSTORE: "${CI_PROJECT_DIR}/testsuite/data/keystore_god.json"
     GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/gov.props"
     GOLOOP_MULTI_SCRIPT: docker/goloop-py/multi.sh
     GOLOOP_ENGINES: "python"
@@ -239,10 +231,7 @@ IT:py:pyaudit:
 IT:java:javascore:
   <<: *IT__goloop
   variables:
-    GOLOOP_DOCKER_REPLICAS: 4
-    GOLOOP_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
     GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_fee.json"
-    GOLOOP_GOD_KEYSTORE: "${CI_PROJECT_DIR}/testsuite/data/keystore_god.json"
     GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/java.props"
     GOLOOP_MULTI_SCRIPT: docker/goloop-java/multi.sh
     GOLOOP_ENGINES: "java"
@@ -252,10 +241,7 @@ IT:java:javascore:
 IT:goloop:pyaudit:
   <<: *IT__goloop
   variables:
-    GOLOOP_DOCKER_REPLICAS: 4
-    GOLOOP_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
     GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_audit.json"
-    GOLOOP_GOD_KEYSTORE: "${CI_PROJECT_DIR}/testsuite/data/keystore_god.json"
     GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/gov.props"
     GOLOOP_MULTI_SCRIPT: docker/goloop/multi.sh
     GOLOOP_ENGINES: "python"
@@ -265,10 +251,7 @@ IT:goloop:pyaudit:
 IT:goloop:pygov:
   <<: *IT__goloop
   variables:
-    GOLOOP_DOCKER_REPLICAS: 4
-    GOLOOP_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
     GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_gov.json"
-    GOLOOP_GOD_KEYSTORE: "${CI_PROJECT_DIR}/testsuite/data/keystore_god.json"
     GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/gov.props"
     GOLOOP_MULTI_SCRIPT: docker/goloop/multi.sh
     GOLOOP_ENGINES: "python"
@@ -278,10 +261,7 @@ IT:goloop:pygov:
 IT:goloop:pyscore:
   <<: *IT__goloop
   variables:
-    GOLOOP_DOCKER_REPLICAS: 4
-    GOLOOP_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
     GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesis.json"
-    GOLOOP_GOD_KEYSTORE: "${CI_PROJECT_DIR}/testsuite/data/keystore_god.json"
     GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/py.props"
     GOLOOP_MULTI_SCRIPT: docker/goloop/multi.sh
     GOLOOP_ENGINES: "python"
@@ -291,10 +271,7 @@ IT:goloop:pyscore:
 IT:goloop:javascore:
   <<: *IT__goloop
   variables:
-    GOLOOP_DOCKER_REPLICAS: 4
-    GOLOOP_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
     GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_fee.json"
-    GOLOOP_GOD_KEYSTORE: "${CI_PROJECT_DIR}/testsuite/data/keystore_god.json"
     GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/java.props"
     GOLOOP_MULTI_SCRIPT: docker/goloop/multi.sh
     GOLOOP_ENGINES: "java"
@@ -304,10 +281,7 @@ IT:goloop:javascore:
 IT:goloop:interscore:
   <<: *IT__goloop
   variables:
-    GOLOOP_DOCKER_REPLICAS: 4
-    GOLOOP_DATA: "${CI_PROJECT_DIR}.tmp/${CI_COMMIT_REF_NAME}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
     GOLOOP_GENESIS: "${CI_PROJECT_DIR}/testsuite/data/genesisStorage/genesis_fee.json"
-    GOLOOP_GOD_KEYSTORE: "${CI_PROJECT_DIR}/testsuite/data/keystore_god.json"
     GOLOOP_ENVFILE: "${CI_PROJECT_DIR}/testsuite/data/chainenv/java.props"
     GOLOOP_MULTI_SCRIPT: docker/goloop/multi.sh
     GOLOOP_ENGINES: "python,java"
