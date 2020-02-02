@@ -239,11 +239,12 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.Typ
 	// 1. call GetAPI
 	sysAs := cc.GetAccountState(state.SystemID)
 	h2a := scoredb.NewDictDB(sysAs, state.VarTxHashToAddress, 1)
-	scoreAddr := h2a.Get(h.txHash).Address()
-	if scoreAddr == nil {
+	value := h2a.Get(h.txHash)
+	if value == nil {
 		err := scoreresult.ContractNotFoundError.New("NoSCOREForTx")
-		return err, h.stepLimit, nil, nil
+		return err, h.StepUsed(), nil, nil
 	}
+	scoreAddr := value.Address()
 	h2a.Delete(h.txHash)
 	scoreAs := cc.GetAccountState(scoreAddr.ID())
 
