@@ -2,7 +2,7 @@ package avm;
 
 import foundation.icon.ee.types.Status;
 
-public class ScoreRevertException extends RuntimeException {
+public class ScoreRevertException extends RevertException {
     private static final int End = Status.UserReversionEnd - Status.UserReversionStart;
 
     private int statusCode;

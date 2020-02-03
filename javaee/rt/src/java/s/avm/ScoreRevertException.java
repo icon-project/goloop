@@ -1,11 +1,10 @@
 package s.avm;
 
 import foundation.icon.ee.types.Status;
-import s.java.lang.RuntimeException;
 import s.java.lang.String;
 import s.java.lang.Throwable;
 
-public class ScoreRevertException extends RuntimeException {
+public class ScoreRevertException extends RevertException {
     private static final int End = Status.UserReversionEnd - Status.UserReversionStart;
 
     private int statusCode;

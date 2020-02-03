@@ -34,6 +34,7 @@ public class CommonGenerators {
         ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_ENUM_CONSTANT_EXCEPTION.dotName),
         ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_NO_TYPE_PRESENT_EXCEPTION.dotName),
         ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_NO_SUCH_ELEMENT_EXCEPTION.dotName),
+        ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_REVERT_EXCEPTION.dotName),
         ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_SCORE_REVERT_EXCEPTION.dotName),
     });
 
