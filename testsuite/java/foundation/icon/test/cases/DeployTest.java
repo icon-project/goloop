@@ -54,6 +54,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 @Tag(Constants.TAG_PY_GOV)
 public class DeployTest {
@@ -712,10 +713,7 @@ public class DeployTest {
 
     @Test
     public void testDeployerWhiteList() throws Exception {
-        if (!Utils.isDeployerWhiteListEnabled(iconService)) {
-            LOG.info("SKIP: deployerWhiteList is not enabled.");
-            return;
-        }
+        assumeTrue(Utils.isDeployerWhiteListEnabled(iconService), "deployerWhiteList is not enabled.");
         LOG.infoEntering("setup", "test wallets");
         KeyWallet deployer = KeyWallet.create();
         KeyWallet caller = KeyWallet.create();

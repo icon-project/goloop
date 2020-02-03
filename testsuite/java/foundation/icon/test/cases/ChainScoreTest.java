@@ -230,9 +230,7 @@ public class ChainScoreTest{
     @ParameterizedTest(name = "acceptScore {0}")
     @EnumSource(TargetScore.class)
     public void acceptScore(TargetScore score) throws Exception {
-        if (!Utils.isAuditEnabled(iconService)) {
-            return;
-        }
+        assumeTrue(Utils.isAuditEnabled(iconService), "audit is not enabled");
         LOG.infoEntering("acceptScore");
         KeyWallet owner = KeyWallet.create();
         RpcObject params = new RpcObject.Builder()
@@ -296,9 +294,7 @@ public class ChainScoreTest{
     @ParameterizedTest(name = "rejectScore {0}")
     @EnumSource(TargetScore.class)
     public void rejectScore(TargetScore score) throws Exception {
-        if (!Utils.isAuditEnabled(iconService)) {
-            return;
-        }
+        assumeTrue(Utils.isAuditEnabled(iconService), "audit is not enabled");
         LOG.infoEntering("rejectScore");
         KeyWallet owner = KeyWallet.create();
         RpcObject params = new RpcObject.Builder()
