@@ -72,7 +72,7 @@ public class RLPCoder {
             var bs = BigInteger.valueOf(vv).toByteArray();
             encode(bs);
         } else {
-            throw new InvalidDBAccessException("bad key type :" + v.getClass());
+            throw new IllegalArgumentException("bad key type :" + v.getClass());
         }
     }
 

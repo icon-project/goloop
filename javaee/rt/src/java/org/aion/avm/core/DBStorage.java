@@ -6,7 +6,6 @@ import i.IDBStorage;
 import i.IInstrumentation;
 import i.IObject;
 import i.InternedClasses;
-import i.InvalidDBAccessException;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
 import p.avm.ValueBuffer;
@@ -63,7 +62,7 @@ public class DBStorage implements IDBStorage {
 
     private void assumeValidValue(Object value) {
         if (value instanceof DBImplBase) {
-            throw new InvalidDBAccessException();
+            throw new IllegalArgumentException();
         }
     }
 

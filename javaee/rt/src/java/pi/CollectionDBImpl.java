@@ -22,7 +22,6 @@ public class CollectionDBImpl extends DBImplBase implements CollectionDB {
     /**
      * @param key
      * @param value
-     * @throws InvalidDBAccessException if key is null,
      */
     public void _avm_set(IObject key, IObject value) {
         IDBStorage s = chargeAndGetDBStorage(RuntimeMethodFeeSchedule.DictDB_avm_putValue);
@@ -74,7 +73,7 @@ public class CollectionDBImpl extends DBImplBase implements CollectionDB {
         IDBStorage s = chargeAndGetDBStorage(RuntimeMethodFeeSchedule.ArrayDB_avm_setValue);
         int sz = s.getArrayLength(getStorageKey());
         if (index >= sz) {
-            throw new InvalidDBAccessException();
+            throw new IllegalArgumentException();
         }
         s.setTyped(getStorageKey(sz), value);
     }
@@ -83,7 +82,7 @@ public class CollectionDBImpl extends DBImplBase implements CollectionDB {
         IDBStorage s = chargeAndGetDBStorage(RuntimeMethodFeeSchedule.ArrayDB_avm_setValue);
         int sz = s.getArrayLength(getStorageKey());
         if (index >= sz) {
-            throw new InvalidDBAccessException();
+            throw new IllegalArgumentException();
         }
         s.setBytes(getStorageKey(sz), encode(value));
     }
@@ -92,7 +91,7 @@ public class CollectionDBImpl extends DBImplBase implements CollectionDB {
         IDBStorage s = chargeAndGetDBStorage(RuntimeMethodFeeSchedule.ArrayDB_avm_removeLast);
         int sz = s.getArrayLength(getStorageKey());
         if (sz <= 0) {
-            throw new InvalidDBAccessException();
+            throw new IllegalArgumentException();
         }
         s.setBytes(getStorageKey(sz), null);
         s.setArrayLength(getStorageKey(), sz - 1);
@@ -102,7 +101,7 @@ public class CollectionDBImpl extends DBImplBase implements CollectionDB {
         IDBStorage s = chargeAndGetDBStorage(RuntimeMethodFeeSchedule.ArrayDB_avm_popValue);
         int sz = s.getArrayLength(getStorageKey());
         if (sz <= 0) {
-            throw new InvalidDBAccessException();
+            throw new IllegalArgumentException();
         }
         var v = s.getTyped(getStorageKey(sz - 1));
         s.setArrayLength(getStorageKey(), sz - 1);
@@ -113,7 +112,7 @@ public class CollectionDBImpl extends DBImplBase implements CollectionDB {
         IDBStorage s = chargeAndGetDBStorage(RuntimeMethodFeeSchedule.ArrayDB_avm_popValue);
         int sz = s.getArrayLength(getStorageKey());
         if (sz <= 0) {
-            throw new InvalidDBAccessException();
+            throw new IllegalArgumentException();
         }
         var o = decode(s.getBytes(getStorageKey(sz - 1)));
         s.setArrayLength(getStorageKey(), sz - 1);
@@ -124,7 +123,7 @@ public class CollectionDBImpl extends DBImplBase implements CollectionDB {
         IDBStorage s = chargeAndGetDBStorage(RuntimeMethodFeeSchedule.ArrayDB_avm_getValue);
         int sz = s.getArrayLength(getStorageKey());
         if (index >= sz || index < 0) {
-            throw new InvalidDBAccessException();
+            throw new IllegalArgumentException();
         }
         return s.getTyped(getStorageKey(index));
     }
@@ -133,7 +132,7 @@ public class CollectionDBImpl extends DBImplBase implements CollectionDB {
         IDBStorage s = chargeAndGetDBStorage(RuntimeMethodFeeSchedule.ArrayDB_avm_getValue);
         int sz = s.getArrayLength(getStorageKey());
         if (index >= sz || index < 0) {
-            throw new InvalidDBAccessException();
+            throw new IllegalArgumentException();
         }
         return decode(s.getBytes(getStorageKey(index)));
     }
