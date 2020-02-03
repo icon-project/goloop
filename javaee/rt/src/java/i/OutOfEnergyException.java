@@ -9,7 +9,7 @@ import foundation.icon.ee.types.SystemException;
 public class OutOfEnergyException extends SystemException {
     private static final long serialVersionUID = 1L;
 
-    public OutOfEnergyException() {
-        super(Status.OutOfStep);
+    public int getCode() {
+        return Status.OutOfStep;
     }
 }

@@ -2,6 +2,7 @@ package foundation.icon.ee.ipc;
 
 import avm.Address;
 import avm.Blockchain;
+import avm.RevertException;
 import avm.ScoreRevertException;
 import foundation.icon.ee.test.GoldenTest;
 import foundation.icon.ee.tooling.abi.External;
@@ -26,14 +27,14 @@ public class ExceptionTest extends GoldenTest {
 
             try {
                 Blockchain.call(addrGood,"run");
-            } catch (ScoreRevertException e) {
+            } catch (RevertException e) {
                 Blockchain.println("OK");
             }
 
             try {
                 Blockchain.call(addrBad,"run");
             } catch (Exception e) {
-                Blockchain.println("Not OK");
+                Blockchain.println("OK : " + e);
             }
         }
     }

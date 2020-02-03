@@ -10,11 +10,15 @@ public class UncaughtException extends SystemException {
     private static final long serialVersionUID = 1L;
 
     public UncaughtException(Throwable thrownByVmInUserSpace) {
-        super(Status.UnknownFailure, thrownByVmInUserSpace);
+        super(thrownByVmInUserSpace);
     }
 
     public UncaughtException(String messageThrownByUser, Throwable throwableWrapper) {
         // We have no good way to communicate this within the standard exception hierarchy so just pass the message.
-        super(Status.UnknownFailure, messageThrownByUser, throwableWrapper);
+        super(messageThrownByUser, throwableWrapper);
+    }
+
+    public int getCode() {
+        return Status.UnknownFailure;
     }
 }

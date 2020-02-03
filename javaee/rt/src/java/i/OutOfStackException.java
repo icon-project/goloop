@@ -9,7 +9,7 @@ import foundation.icon.ee.types.SystemException;
 public class OutOfStackException extends SystemException {
     private static final long serialVersionUID = 1L;
 
-    public OutOfStackException() {
-        super(Status.StackOverflow);
+    public int getCode() {
+        return Status.StackOverflow;
     }
 }

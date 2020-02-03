@@ -1,6 +1,8 @@
 package i;
 
-public class RevertException extends AvmException {
+import foundation.icon.ee.types.SystemException;
+
+public class RevertException extends SystemException {
     private int code;
 
     public RevertException() {

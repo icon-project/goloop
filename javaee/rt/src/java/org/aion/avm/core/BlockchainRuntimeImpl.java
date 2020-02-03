@@ -1,10 +1,10 @@
 package org.aion.avm.core;
 
 import a.ByteArray;
+import avm.RevertException;
 import avm.ScoreRevertException;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Status;
-import foundation.icon.ee.types.SystemException;
 import foundation.icon.ee.util.Shadower;
 import foundation.icon.ee.util.Unshadower;
 import i.CallDepthLimitExceededException;
@@ -14,7 +14,7 @@ import i.IObject;
 import i.IObjectArray;
 import i.IRuntimeSetup;
 import i.InstrumentationHelpers;
-import i.RevertException;
+import i.RuntimeAssertionError;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.parallel.TransactionTask;
@@ -193,9 +193,8 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                             p.avm.Address targetAddress,
                             s.java.lang.String method,
                             IObjectArray sparams) {
-        // FIXME
         if (value == null)
-            value = new BigInteger(java.math.BigInteger.ZERO);
+            value = BigInteger.avm_ZERO;
         java.math.BigInteger underlyingValue = value.getUnderlying();
         require(targetAddress != null, "Destination can't be NULL");
         require(underlyingValue.compareTo(java.math.BigInteger.ZERO) >= 0 , "Value can't be negative");
@@ -232,12 +231,26 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         dApp.loadRuntimeState(saveItemFinal.getRuntimeState());
         IInstrumentation.attachedThreadInstrumentation.get().forceNextHashCode(saveItemFinal.getRuntimeState().getGraph().getNextHash());
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(res.getStepUsed().intValue());
-        if (res.getStatus() > 0 && res.getStatus() < Status.UserReversionStart) {
-            throw new SystemException(res.getStatus(), String.format("address=%s method=%s status=%d %s", targetAddress, method, res.getStatus(), res.getRet()));
-        } else if (res.getStatus() >= Status.UserReversionStart) {
-            throw new ScoreRevertException(res.getStatus(), String.format("address=%s method=%s status=%d %s", targetAddress, method, res.getStatus(), res.getRet()));
+        int s = res.getStatus();
+        if (s == Status.Success) {
+            return Shadower.shadow(res.getRet());
+        } else if (s == Status.UnknownFailure) {
+            throw new RevertException();
+        } else if (s == Status.ContractNotFound
+                || s == Status.MethodNotFound
+                || s == Status.MethodNotPayable
+                || s == Status.InvalidParameter
+                || s == Status.OutOfBalance) {
+            throw new IllegalArgumentException();
+        } else if (s == Status.OutOfStep
+                || s == Status.StackOverflow) {
+            throw new i.RevertException(s, String.format("address=%s method=%s status=%d %s", targetAddress, method, s, res.getRet()));
+        } else if (s < Status.UserReversionStart) {
+            RuntimeAssertionError.unreachable("bad result status " + s);
+        } else if (s < Status.UserReversionEnd){
+            throw new ScoreRevertException(s - Status.UserReversionStart);
         }
-        return Shadower.shadow(res.getRet());
+        throw new RevertException();
     }
 
     private void require(boolean condition, String message) {
@@ -248,18 +261,18 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
     @Override
     public void avm_revert(int code, s.java.lang.String message) {
-        throw new RevertException(code, message.getUnderlying());
+        throw new i.RevertException(code + Status.UserReversionStart, message.getUnderlying());
     }
 
     @Override
     public void avm_revert(int code) {
-        throw new RevertException(code);
+        throw new i.RevertException(code + Status.UserReversionStart);
     }
 
     @Override
     public void avm_require(boolean condition) {
         if (!condition) {
-            throw new RevertException();
+            throw new i.RevertException(Status.UserReversionStart);
         }
     }
 

@@ -13,7 +13,6 @@ import i.IInstrumentation;
 import i.InstrumentationHelpers;
 import i.InternedClasses;
 import i.JvmError;
-import i.RevertException;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
@@ -126,14 +125,7 @@ public class DAppExecutor {
                 System.err.println("DApp execution failed due to : \"" + e.getMessage() + "\"");
                 e.printStackTrace(System.err);
             }
-            result = new Result(e.getStatus(), tx.energyLimit, e.toString());
-
-        } catch (RevertException e) {
-            if (verboseErrors) {
-                System.err.println("DApp execution to REVERT due to uncaught EXCEPTION: \"" + e.getMessage() + "\"");
-                e.printStackTrace(System.err);
-            }
-            result = new Result(Status.UserReversionStart + e.getCode(),
+            result = new Result(e.getCode(),
                     tx.energyLimit - threadInstrumentation.energyLeft(),
                     e.toString());
 

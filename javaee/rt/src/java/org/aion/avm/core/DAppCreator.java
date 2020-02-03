@@ -14,7 +14,6 @@ import i.InstrumentationHelpers;
 import i.JvmError;
 import i.OutOfStackException;
 import i.PackageConstants;
-import i.RevertException;
 import i.RuntimeAssertionError;
 import org.aion.avm.RuntimeMethodFeeSchedule;
 import org.aion.avm.StorageFees;
@@ -281,10 +280,12 @@ public class DAppCreator {
             result = runClinitAndBillSender(verboseErrors, dapp, threadInstrumentation, externalState, task, dappAddress, tx.energyLimit);
         } catch (SystemException e) {
             if (verboseErrors) {
-                System.err.println("DApp execution failed due to : \"" + e.getMessage() + "\"");
+                System.err.println("DApp deployment to REVERT due to uncaught EXCEPTION: \"" + e.getMessage() + "\"");
                 e.printStackTrace(System.err);
             }
-            result = new Result(e.getStatus(), tx.energyLimit, e.toString());
+            result = new Result(e.getCode(),
+                    tx.energyLimit - IInstrumentation.getEnergyLeft(),
+                    e.toString());
 
         } catch (EarlyAbortException e) {
             if (verboseErrors) {
@@ -410,7 +411,7 @@ public class DAppCreator {
      * This method handles the following exceptions and ensures that if any of them are thrown
      * that they will be represented by the returned result (any other exceptions thrown here will
      * not be handled):
-     * {@link OutOfStackException}, {@link CallDepthLimitExceededException}, and {@link RevertException}.
+     * {@link OutOfStackException}, {@link CallDepthLimitExceededException}, and {@link i.RevertException}.
      *
      * @param verboseErrors Whether or not to report errors to stderr.
      * @param dapp The dapp to run.
@@ -459,13 +460,7 @@ public class DAppCreator {
                 System.err.println("DApp deployment failed due to stack overflow EXCEPTION: \"" + e.getMessage() + "\"");
                 e.printStackTrace(System.err);
             }
-            resultToReturn = new Result(e.getStatus(), energyLimit, e.toString());
-        } catch (RevertException e) {
-            if (verboseErrors) {
-                System.err.println("DApp deployment to REVERT due to uncaught EXCEPTION: \"" + e.getMessage() + "\"");
-                e.printStackTrace(System.err);
-            }
-            resultToReturn = new Result(Status.UserReversionStart + e.getCode(),
+            resultToReturn = new Result(e.getCode(),
                     energyLimit - threadInstrumentation.energyLeft(),
                     e.toString());
         }

@@ -9,7 +9,11 @@ import foundation.icon.ee.types.SystemException;
 public class CallDepthLimitExceededException extends SystemException {
     private static final long serialVersionUID = 1L;
 
-    public CallDepthLimitExceededException(String message) {
-        super(Status.StackOverflow, message);
+    public CallDepthLimitExceededException(String msg) {
+        super(msg);
+    }
+
+    public int getCode() {
+        return Status.StackOverflow;
     }
 }

@@ -2,9 +2,7 @@ package foundation.icon.ee.types;
 
 import i.AvmException;
 
-public class SystemException extends AvmException {
-    private int status = Status.UnknownFailure;
-
+public abstract class SystemException extends AvmException {
     public SystemException() {
         super();
     }
@@ -21,27 +19,5 @@ public class SystemException extends AvmException {
         super(cause);
     }
 
-    public SystemException(int status) {
-        super();
-        this.status = status;
-    }
-
-    public SystemException(int status, String message) {
-        super(message);
-        this.status = status;
-    }
-
-    public SystemException(int status, String message, Throwable cause) {
-        super(message, cause);
-        this.status = status;
-    }
-
-    public SystemException(int status, Throwable cause) {
-        super(cause);
-        this.status = status;
-    }
-
-    public int getStatus() {
-        return status;
-    }
+    public abstract int getCode();
 }

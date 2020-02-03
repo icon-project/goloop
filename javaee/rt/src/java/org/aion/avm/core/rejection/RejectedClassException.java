@@ -96,6 +96,10 @@ public class RejectedClassException extends SystemException {
     }
 
     public RejectedClassException(String message) {
-        super(Status.IllegalFormat, message);
+        super(message);
+    }
+
+    public int getCode() {
+        return Status.IllegalFormat;
     }
 }

@@ -23,13 +23,13 @@ RECV getObjGraph flag=1 => next=3 hash=d77c0733f5a8fec058f9c6a5c570dbe08365b8802
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| enter B.method(0 false null)
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| leave B.method
 RECV result status=32 stepUsed=8455 ret=i.RevertException
-RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exception : avm.ScoreRevertException: address=010002000000000000000000000000000000000000 method=method status=32 i.RevertException
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exception : avm.ScoreRevertException
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| lString==sString : true
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| lClass1==lClass2 : true
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| sClass==lClass1 : true
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| sClass==lClass2 : true
-RECV call to=010002... value=0 stepLimit=999932952 method=method params=[0 true <null>]
-SEND invoke code=010002/transformed isQuery=false from=010001... to=010002... value=0 stepLimit=999932952 method=method params=[0 true <null>]
+RECV call to=010002... value=0 stepLimit=999933892 method=method params=[0 true <null>]
+SEND invoke code=010002/transformed isQuery=false from=010001... to=010002... value=0 stepLimit=999933892 method=method params=[0 true <null>]
 RECV getObjGraph flag=1 => next=3 hash=d77c0733f5a8fec058f9c6a5c570dbe08365b8802b4592a0b7e56cb0877c181d graphLen=80 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x0eleave B.method\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x06method
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| enter B.method(0 true null)
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| leave B.method
@@ -39,5 +39,5 @@ RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| lString==sString :
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| lClass1==lClass2 : true
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| lClass3==sClass : false
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| leave A.method
-RECV setObjGraph flag=1 next=47 hash=aec6137ec46fed3d83cda0c7d4056693d94292c3335b60aa10844aa7be0c5fb7 graphLen=135 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x01\x10java.lang.String\x03\x00\x00\x00\x02\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x0eleave A.method\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x06method\x10java.lang.String\x00\x00\x00\x0d\x00\x00\x00\x07string1
-RECV result status=0 stepUsed=98071 ret=<null>
+RECV setObjGraph flag=1 next=43 hash=aec6137ec46fed3d83cda0c7d4056693d94292c3335b60aa10844aa7be0c5fb7 graphLen=135 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x01\x10java.lang.String\x03\x00\x00\x00\x02\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x0eleave A.method\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x06method\x10java.lang.String\x00\x00\x00\x0d\x00\x00\x00\x07string1
+RECV result status=0 stepUsed=97131 ret=<null>

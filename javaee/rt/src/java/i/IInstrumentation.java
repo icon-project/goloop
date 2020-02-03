@@ -17,6 +17,10 @@ public interface IInstrumentation {
         return ins;
     }
 
+    static long getEnergyLeft() {
+        return attachedThreadInstrumentation.get().energyLeft();
+    }
+
     void enterNewFrame(ClassLoader contractLoader, long energyLeft, int nextHashCode, InternedClasses classWrappers, FrameContext frameContext);
     void exitCurrentFrame();
 
