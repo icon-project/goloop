@@ -137,7 +137,7 @@ public class NodeEnvironment {
                     , s.java.util.concurrent.TimeUnit.class
 
                     , s.java.io.Serializable.class
-                    , s.avm.TargetRevertedException.class
+                    , s.avm.ScoreRevertException.class
             };
 
             this.jclClassNames = new HashSet<>();

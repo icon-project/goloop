@@ -34,7 +34,7 @@ public class CommonGenerators {
         ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_ENUM_CONSTANT_EXCEPTION.dotName),
         ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_NO_TYPE_PRESENT_EXCEPTION.dotName),
         ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_NO_SUCH_ELEMENT_EXCEPTION.dotName),
-        ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_TARGET_REVERTED_EXCEPTION.dotName),
+        ClassNameExtractor.getOriginalClassName(CommonType.SHADOW_SCORE_REVERT_EXCEPTION.dotName),
     });
 
     // We generate "legacy-style exception" shadows for these ones (and wrappers are still required).

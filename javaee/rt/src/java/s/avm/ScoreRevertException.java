@@ -1,25 +1,28 @@
-package avm;
+package s.avm;
 
 import foundation.icon.ee.types.Status;
+import s.java.lang.RuntimeException;
+import s.java.lang.String;
+import s.java.lang.Throwable;
 
-public class TargetRevertedException extends RuntimeException {
+public class ScoreRevertException extends RuntimeException {
     private static final int End = Status.UserReversionEnd - Status.UserReversionStart;
 
     private int statusCode;
 
-    public TargetRevertedException() {
+    public ScoreRevertException() {
         super();
     }
 
-    public TargetRevertedException(String message) {
+    public ScoreRevertException(String message) {
         super(message);
     }
 
-    public TargetRevertedException(String message, Throwable cause) {
+    public ScoreRevertException(String message, Throwable cause) {
         super(message, cause);
     }
 
-    public TargetRevertedException(Throwable cause) {
+    public ScoreRevertException(Throwable cause) {
         super(cause);
     }
 
@@ -29,25 +32,25 @@ public class TargetRevertedException extends RuntimeException {
         }
     }
 
-    public TargetRevertedException(int code) {
+    public ScoreRevertException(int code) {
         super();
         assumeValidCode(code);
         statusCode = code;
     }
 
-    public TargetRevertedException(int code, String message) {
+    public ScoreRevertException(int code, String message) {
         super(message);
         assumeValidCode(code);
         statusCode = code;
     }
 
-    public TargetRevertedException(int code, String message, Throwable cause) {
+    public ScoreRevertException(int code, String message, Throwable cause) {
         super(message, cause);
         assumeValidCode(code);
         statusCode = code;
     }
 
-    public TargetRevertedException(int code, Throwable cause) {
+    public ScoreRevertException(int code, Throwable cause) {
         super(cause);
         assumeValidCode(code);
         statusCode = code;

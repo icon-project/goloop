@@ -182,7 +182,7 @@ public final class Blockchain {
      * @param params        parameters
      * @return the invocation result.
      * @throws IllegalArgumentException when the arguments are invalid, e.g. insufficient balance, NULL address
-     * @throws TargetRevertedException when call target reverts the newly created frame
+     * @throws ScoreRevertException when call target reverts the newly created frame
      * or the targetAddress is a contract that requires a foreign virtual machine in order to be executed.
      */
     public static Object call(BigInteger value, BigInteger stepLimit,

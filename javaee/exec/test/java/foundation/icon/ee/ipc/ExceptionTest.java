@@ -2,7 +2,7 @@ package foundation.icon.ee.ipc;
 
 import avm.Address;
 import avm.Blockchain;
-import avm.TargetRevertedException;
+import avm.ScoreRevertException;
 import foundation.icon.ee.test.GoldenTest;
 import foundation.icon.ee.tooling.abi.External;
 import org.junit.jupiter.api.Test;
@@ -19,14 +19,14 @@ public class ExceptionTest extends GoldenTest {
         @External
         public static void run(Address addrGood, Address addrBad) {
             try {
-                throw new TargetRevertedException("test");
-            } catch (TargetRevertedException e) {
+                throw new ScoreRevertException("test");
+            } catch (ScoreRevertException e) {
                 Blockchain.println("OK");
             }
 
             try {
                 Blockchain.call(addrGood,"run");
-            } catch (TargetRevertedException e) {
+            } catch (ScoreRevertException e) {
                 Blockchain.println("OK");
             }
 

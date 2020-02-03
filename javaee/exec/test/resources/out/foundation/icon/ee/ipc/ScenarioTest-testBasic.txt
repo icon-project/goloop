@@ -44,7 +44,7 @@ RECV setObjGraph flag=1 next=24 hash=9bd5158be470e58ef800f7bbab897c27f35f759c37d
 RECV result status=0 stepUsed=13043 ret=<null>
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Revert addr=3
 RECV result status=32 stepUsed=32800 ret=i.RevertException
-RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exception e=avm.TargetRevertedException: address=010003000000000000000000000000000000000000 method=run status=32 i.RevertException
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exception e=avm.ScoreRevertException: address=010003000000000000000000000000000000000000 method=run status=32 i.RevertException
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Return addr=1
 RECV setObjGraph flag=0 next=29
-RECV result status=0 stepUsed=77729 ret=<null>
+RECV result status=0 stepUsed=77699 ret=<null>

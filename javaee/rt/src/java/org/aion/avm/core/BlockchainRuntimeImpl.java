@@ -1,7 +1,7 @@
 package org.aion.avm.core;
 
 import a.ByteArray;
-import avm.TargetRevertedException;
+import avm.ScoreRevertException;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.SystemException;
@@ -235,7 +235,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         if (res.getStatus() > 0 && res.getStatus() < Status.UserReversionStart) {
             throw new SystemException(res.getStatus(), String.format("address=%s method=%s status=%d %s", targetAddress, method, res.getStatus(), res.getRet()));
         } else if (res.getStatus() >= Status.UserReversionStart) {
-            throw new TargetRevertedException(res.getStatus(), String.format("address=%s method=%s status=%d %s", targetAddress, method, res.getStatus(), res.getRet()));
+            throw new ScoreRevertException(res.getStatus(), String.format("address=%s method=%s status=%d %s", targetAddress, method, res.getStatus(), res.getRet()));
         }
         return Shadower.shadow(res.getRet());
     }

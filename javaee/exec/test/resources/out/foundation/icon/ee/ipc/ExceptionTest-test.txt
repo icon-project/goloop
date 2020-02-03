@@ -1,11 +1,11 @@
 Method{type=0, name='run', flags=2, indexed=2, inputs=[Parameter{name='addrGood', descriptor=Lavm/Address;, type=5, optional=false}, Parameter{name='addrBad', descriptor=Lavm/Address;, type=5, optional=false}], output=0, outputDescriptor=V}
 Method{type=0, name='onInstall', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
 SEND invoke code=010001/optimized isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=onInstall params=[]
-RECV setCode hash=84c2b804e90493b63e307aaf13b925b076760f18572eda5c076f2a7a6c8d5fe5 len=1749
+RECV setCode hash=abce92f3347a670d5de31c38e29c76c7261e973a2aaeb45b6bf78db1a5bc0675 len=1746
 RECV setObjGraph flag=1 next=5 hash=cc09a296ccdf41cafeada1888f053576750166dbca172ca58ee6c4c65bd928e3 graphLen=135 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x06Not OK\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x02OK\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03run\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x04test
 RECV getObjGraph flag=0 => next=5 hash=cc09a296ccdf41cafeada1888f053576750166dbca172ca58ee6c4c65bd928e3
 RECV setObjGraph flag=0 next=5
-RECV result status=0 stepUsed=203111 ret=<null>
+RECV result status=0 stepUsed=203107 ret=<null>
 Method{type=0, name='run', flags=2, indexed=0, inputs=[], output=0, outputDescriptor=V}
 Method{type=0, name='onInstall', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
 SEND invoke code=010002/optimized isQuery=false from=000001... to=010002... value=0 stepLimit=1000000000 method=onInstall params=[]
