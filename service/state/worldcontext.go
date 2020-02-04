@@ -44,6 +44,7 @@ const (
 	SysConfigDeployerWhiteList
 	SysConfigScorePackageValidator
 	SysConfigMembership
+	SysConfigMax
 )
 
 const (

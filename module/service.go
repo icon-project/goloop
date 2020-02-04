@@ -100,6 +100,7 @@ const (
 	Revision4
 	Revision5
 	Revision6
+	Revision7
 	RevisionReserved
 )
 

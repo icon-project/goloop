@@ -401,6 +401,20 @@ var chainMethods = []*chainMethod{
 			scoreapi.Integer,
 		},
 	}, module.Revision5, 0},
+	{scoreapi.Method{scoreapi.Function, "getDeployers",
+		scoreapi.FlagReadOnly, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.List,
+		},
+	}, module.Revision7, 0},
+	{scoreapi.Method{scoreapi.Function, "setDeployerWhiteListEnabled",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"yn", scoreapi.Bool, nil},
+		},
+		nil,
+	}, module.Revision7, 0},
 	{scoreapi.Method{scoreapi.Function, "getServiceConfig",
 		scoreapi.FlagReadOnly, 0,
 		nil,
@@ -1132,6 +1146,30 @@ func (s *ChainScore) Ex_isDeployer(address module.Address) (int, error) {
 		}
 	}
 	return 0, nil
+}
+
+func (s *ChainScore) Ex_getDeployers() ([]interface{}, error) {
+	as := s.cc.GetAccountState(state.SystemID)
+	db := scoredb.NewArrayDB(as, state.VarDeployers)
+	deployers := make([]interface{}, db.Size())
+	for i := 0; i < db.Size(); i++ {
+		deployers[i] = db.Get(i).Address()
+	}
+    return deployers, nil
+}
+
+func (s *ChainScore) Ex_setDeployerWhiteListEnabled(yn bool) error {
+	if !s.fromGovernance() {
+		return scoreresult.New(module.StatusAccessDenied, "NoPermission")
+	}
+	as := s.cc.GetAccountState(state.SystemID)
+	confValue := scoredb.NewVarDB(as, state.VarServiceConfig).Int64()
+	if yn {
+		confValue |= state.SysConfigDeployerWhiteList
+	} else {
+		confValue &= state.SysConfigMax - state.SysConfigDeployerWhiteList - 1
+	}
+	return scoredb.NewVarDB(as, state.VarServiceConfig).Set(confValue)
 }
 
 func (s *ChainScore) Ex_getServiceConfig() (int64, error) {
