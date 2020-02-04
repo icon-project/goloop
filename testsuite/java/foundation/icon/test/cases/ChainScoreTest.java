@@ -23,6 +23,7 @@ import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.icx.transport.jsonrpc.RpcArray;
+import foundation.icon.icx.transport.jsonrpc.RpcError;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
@@ -30,6 +31,7 @@ import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.Utils;
+import foundation.icon.test.score.ChainScore;
 import foundation.icon.test.score.GovScore;
 import foundation.icon.test.score.HelloWorld;
 import org.junit.jupiter.api.AfterAll;
@@ -38,9 +40,11 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.opentest4j.AssertionFailedError;
 
 import java.math.BigInteger;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static foundation.icon.test.common.Env.LOG;
@@ -55,6 +59,9 @@ public class ChainScoreTest{
     private static KeyWallet[]testWallets;
     private static final int testWalletNum = 3;
     private static HelloWorld helloWorld;
+
+    private static ChainScore chainScore;
+    private static GovScore govScore;
 
     enum TargetScore {
         TO_CHAINSCORE(Constants.CHAINSCORE_ADDRESS),
@@ -81,6 +88,8 @@ public class ChainScoreTest{
     }
 
     static void initChainScore() throws Exception {
+        chainScore = new ChainScore(iconService, chain);
+        govScore = new GovScore(iconService, chain);
         Utils.transferAndCheck(iconService, chain, chain.godWallet, chain.governorWallet.getAddress(), Constants.DEFAULT_BALANCE);
 
         testWallets = new KeyWallet[testWalletNum];
@@ -640,24 +649,24 @@ public class ChainScoreTest{
     @ParameterizedTest(name = "addRemoveDeployer {0}")
     @EnumSource(TargetScore.class)
     public void addRemoveDeployer(TargetScore score) throws Exception {
-        LOG.infoEntering( "addRemoveDeployer");
+        LOG.infoEntering("addRemoveDeployer");
         KeyWallet wallet = testWallets[0];
         RpcObject params = new RpcObject.Builder()
                 .put("address", new RpcValue(wallet.getAddress()))
                 .build();
-        boolean isDeployer = Utils.icxCall(iconService, Constants.CHAINSCORE_ADDRESS,"isDeployer", params).asBoolean();
+        boolean isDeployer = chainScore.isDeployer(wallet.getAddress());
         assertFalse(isDeployer);
 
         for (String method : new String[]{"addDeployer", "removeDeployer"}) {
             LOG.infoEntering("method[" + method + "]");
             sendGovCallTx(score.addr, method, params);
             LOG.infoExiting();
-            isDeployer = Utils.icxCall(iconService, Constants.CHAINSCORE_ADDRESS,"isDeployer", params).asBoolean();
+            isDeployer = chainScore.isDeployer(wallet.getAddress());
 
-            if(score.addr.equals(Constants.CHAINSCORE_ADDRESS)) {
+            if (score.addr.equals(Constants.CHAINSCORE_ADDRESS)) {
                 assertFalse(isDeployer);
             } else {
-                if(method.equals("addDeployer")) {
+                if (method.equals("addDeployer")) {
                     assertTrue(isDeployer);
                 } else {
                     assertFalse(isDeployer);
@@ -697,5 +706,120 @@ public class ChainScoreTest{
         }
 
         LOG.infoExiting();
+    }
+
+    @Test
+    public void getDeployers() throws Exception {
+        LOG.infoEntering("check revision");
+        final int requiredRevision = 7;
+        int revision = chainScore.getRevision();
+        if (revision < requiredRevision) {
+            LOG.infoEntering("assert", "MethodNotFound");
+            try {
+                chainScore.getDeployers();
+                fail();
+            } catch (RpcError e) {
+                LOG.info("Expected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
+            }
+            LOG.infoExiting();
+        }
+        LOG.infoExiting();
+
+        // NOTE: Uncomment the block below if you want to test when the revision < requiredRevision
+        //revision = setRevisionIfRequired(revision, requiredRevision);
+
+        assumeTrue(revision >= requiredRevision);
+        LOG.infoEntering("invoke", "getDeployers");
+        List<Address> deployers = chainScore.getDeployers();
+        int prevSize = deployers.size();
+        LOG.info(">>> prevSize=" + prevSize);
+        LOG.infoExiting();
+
+        LOG.infoEntering("invoke", "addDeployer");
+        for (KeyWallet wallet : testWallets) {
+            LOG.info("  - wallet=" + wallet.getAddress());
+            assertFalse(chainScore.isDeployer(wallet.getAddress()));
+            assertSuccess(govScore.addDeployer(wallet.getAddress()));
+        }
+        LOG.infoExiting();
+
+        LOG.infoEntering("invoke", "getDeployers [2]");
+        deployers = chainScore.getDeployers();
+        LOG.info(">>> size=" + deployers.size());
+        assertEquals(prevSize + testWallets.length, deployers.size());
+        for (Address deployer : deployers) {
+            LOG.info("  - deployer=" + deployer);
+        }
+        LOG.infoExiting();
+
+        LOG.infoEntering("invoke", "removeDeployer");
+        for (KeyWallet wallet : testWallets) {
+            assertSuccess(govScore.removeDeployer(wallet.getAddress()));
+        }
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void setDeployerWhiteListEnabled() throws Exception {
+        LOG.infoEntering("check revision");
+        final int requiredRevision = 7;
+        int revision = chainScore.getRevision();
+        if (revision < requiredRevision) {
+            LOG.infoEntering("assert", "MethodNotFound");
+            assertFailure(govScore.setDeployerWhiteListEnabled(true));
+            LOG.infoExiting();
+        }
+        LOG.infoExiting();
+
+        // NOTE: Uncomment the block below if you want to test when the revision < requiredRevision
+        //revision = setRevisionIfRequired(revision, requiredRevision);
+
+        assumeTrue(revision >= requiredRevision);
+        int serviceConfig = chainScore.getServiceConfig();
+        boolean enabled = ChainScore.isDeployerWhiteListEnabled(serviceConfig);
+        boolean expected = !enabled;
+
+        LOG.infoEntering("invoke and check", enabled + " --> " + expected);
+        assertSuccess(govScore.setDeployerWhiteListEnabled(expected));
+        assertEquals(expected, chainScore.isDeployerWhiteListEnabled());
+        LOG.infoExiting();
+
+        if (expected) {
+            LOG.info("TODO: invoke deploy test with the deployerWhiteList");
+        }
+
+        LOG.infoEntering("revert config", String.valueOf(enabled));
+        assertSuccess(govScore.setDeployerWhiteListEnabled(enabled));
+        assertEquals(enabled, chainScore.isDeployerWhiteListEnabled());
+        LOG.infoExiting();
+    }
+
+    private int setRevisionIfRequired(int current, int required) throws Exception {
+        if (current < required) {
+            LOG.infoEntering("invoke", "setRevision " + current + " -> " + required);
+            govScore.setRevision(required);
+            current = chainScore.getRevision();
+            assertEquals(required, current);
+            LOG.infoExiting();
+        }
+        return current;
+    }
+
+    private static void assertSuccess(TransactionResult result) {
+        assertStatus(Constants.STATUS_SUCCESS, result);
+    }
+
+    private static void assertFailure(TransactionResult result) {
+        assertStatus(Constants.STATUS_FAIL, result);
+        LOG.info("Expected " + result.getFailure());
+    }
+
+    private static void assertStatus(BigInteger status, TransactionResult result) {
+        try {
+            assertEquals(status, result.getStatus());
+        } catch (AssertionFailedError e) {
+            LOG.info("Assertion Failed: result=" + result);
+            fail(e.getMessage());
+        }
     }
 }

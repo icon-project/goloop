@@ -76,6 +76,10 @@ class SystemInterface(InterfaceScore):
     def setRoundLimitFactor(self, factor: int):
         pass
 
+    @interface
+    def setDeployerWhiteListEnabled(self, yn: bool):
+        pass
+
 
 class Governance(IconScoreBase):
 
@@ -169,6 +173,10 @@ class Governance(IconScoreBase):
     @external
     def setRoundLimitFactor(self, factor: int):
         self.system_score.setRoundLimitFactor(factor)
+
+    @external
+    def setDeployerWhiteListEnabled(self, yn: bool):
+        self.system_score.setDeployerWhiteListEnabled(yn)
 
     @external(readonly=True)
     def updated(self) -> bool:
