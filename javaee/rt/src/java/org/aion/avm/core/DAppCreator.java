@@ -3,10 +3,11 @@ package org.aion.avm.core;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
-import foundation.icon.ee.types.SystemException;
+import foundation.icon.ee.types.CodedException;
 import i.AvmException;
 import i.CallDepthLimitExceededException;
 import i.EarlyAbortException;
+import i.GenericCodedException;
 import i.IBlockchainRuntime;
 import i.IInstrumentation;
 import i.IRuntimeSetup;
@@ -278,7 +279,7 @@ public class DAppCreator {
 
             // Force the classes in the dapp to initialize so that the <clinit> is run (since we already saved the version without).
             result = runClinitAndBillSender(verboseErrors, dapp, threadInstrumentation, externalState, task, dappAddress, tx.energyLimit);
-        } catch (SystemException e) {
+        } catch (CodedException e) {
             if (verboseErrors) {
                 System.err.println("DApp deployment to REVERT due to uncaught EXCEPTION: \"" + e.getMessage() + "\"");
                 e.printStackTrace(System.err);
@@ -411,7 +412,7 @@ public class DAppCreator {
      * This method handles the following exceptions and ensures that if any of them are thrown
      * that they will be represented by the returned result (any other exceptions thrown here will
      * not be handled):
-     * {@link OutOfStackException}, {@link CallDepthLimitExceededException}, and {@link i.RevertException}.
+     * {@link OutOfStackException}, {@link CallDepthLimitExceededException}, and {@link GenericCodedException}.
      *
      * @param verboseErrors Whether or not to report errors to stderr.
      * @param dapp The dapp to run.
@@ -455,7 +456,7 @@ public class DAppCreator {
             // Return data of a CREATE transaction is the new DApp address.
             resultToReturn = new Result(Status.Success, energyUsed - refund, null);
 
-        } catch (SystemException e) {
+        } catch (CodedException e) {
             if (verboseErrors) {
                 System.err.println("DApp deployment failed due to stack overflow EXCEPTION: \"" + e.getMessage() + "\"");
                 e.printStackTrace(System.err);

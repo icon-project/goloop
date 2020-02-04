@@ -15,7 +15,7 @@ SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... va
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Enter addr=1
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| AddTo sVar= s=a => sVar=a
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Revert addr=1
-RECV result status=32 stepUsed=24718 ret=i.RevertException
+RECV result status=32 stepUsed=24718 ret=i.GenericCodedException
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exception e=avm.ScoreRevertException
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=
 RECV call to=010001... value=0 stepLimit=999937263 method=run params=[03000162]
@@ -34,11 +34,11 @@ RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Enter addr=1
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| AddTo sVar=b s=c => sVar=bc
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=bc
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Revert addr=1
-RECV result status=32 stepUsed=35009 ret=i.RevertException
+RECV result status=32 stepUsed=35009 ret=i.GenericCodedException
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exception e=avm.ScoreRevertException
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=b
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Revert addr=1
-RECV result status=32 stepUsed=70365 ret=i.RevertException
+RECV result status=32 stepUsed=70365 ret=i.GenericCodedException
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exception e=avm.ScoreRevertException
 RECV call to=010001... value=0 stepLimit=999814413 method=run params=[0000010009030001640400026264040002626401]
 SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999814413 method=run params=[0000010009030001640400026264040002626401]
@@ -52,7 +52,7 @@ RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Return add
 RECV result status=0 stepUsed=34463 ret=<null>
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=bd
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Revert addr=1
-RECV result status=32 stepUsed=64555 ret=i.RevertException
+RECV result status=32 stepUsed=64555 ret=i.GenericCodedException
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exception e=avm.ScoreRevertException
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=b
 RECV call to=010001... value=0 stepLimit=999727947 method=run params=[000001000a0300016504000262650104000162]
@@ -64,7 +64,7 @@ RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Enter addr=1
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| AddTo sVar=b s=e => sVar=be
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=be
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Revert addr=1
-RECV result status=32 stepUsed=35009 ret=i.RevertException
+RECV result status=32 stepUsed=35009 ret=i.GenericCodedException
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exception e=avm.ScoreRevertException
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=b
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Return addr=1

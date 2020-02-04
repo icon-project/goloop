@@ -8,6 +8,7 @@ import foundation.icon.ee.types.Status;
 import foundation.icon.ee.util.Shadower;
 import foundation.icon.ee.util.Unshadower;
 import i.CallDepthLimitExceededException;
+import i.GenericCodedException;
 import i.IBlockchainRuntime;
 import i.IInstrumentation;
 import i.IObject;
@@ -244,7 +245,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
             throw new IllegalArgumentException();
         } else if (s == Status.OutOfStep
                 || s == Status.StackOverflow) {
-            throw new i.RevertException(s, String.format("address=%s method=%s status=%d %s", targetAddress, method, s, res.getRet()));
+            throw new GenericCodedException(s, String.format("address=%s method=%s status=%d %s", targetAddress, method, s, res.getRet()));
         } else if (s < Status.UserReversionStart) {
             RuntimeAssertionError.unreachable("bad result status " + s);
         } else if (s < Status.UserReversionEnd){
@@ -261,18 +262,18 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
     @Override
     public void avm_revert(int code, s.java.lang.String message) {
-        throw new i.RevertException(code + Status.UserReversionStart, message.getUnderlying());
+        throw new GenericCodedException(code + Status.UserReversionStart, message.getUnderlying());
     }
 
     @Override
     public void avm_revert(int code) {
-        throw new i.RevertException(code + Status.UserReversionStart);
+        throw new GenericCodedException(code + Status.UserReversionStart);
     }
 
     @Override
     public void avm_require(boolean condition) {
         if (!condition) {
-            throw new i.RevertException(Status.UserReversionStart);
+            throw new GenericCodedException(Status.UserReversionStart);
         }
     }
 

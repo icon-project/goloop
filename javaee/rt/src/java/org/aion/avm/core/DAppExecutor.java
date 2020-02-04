@@ -5,7 +5,7 @@ import foundation.icon.ee.types.DAppRuntimeState;
 import foundation.icon.ee.types.ObjectGraph;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
-import foundation.icon.ee.types.SystemException;
+import foundation.icon.ee.types.CodedException;
 import i.AvmException;
 import i.EarlyAbortException;
 import i.IBlockchainRuntime;
@@ -120,7 +120,7 @@ public class DAppExecutor {
                 prevState.getSaveItems().putAll(thisState.getSaveItems());
                 prevState.getSaveItems().put(dappAddress, new ReentrantDAppStack.SaveItem(dapp, runtimeState));
             }
-        } catch (SystemException e) {
+        } catch (CodedException e) {
             if (verboseErrors) {
                 System.err.println("DApp execution failed due to : \"" + e.getMessage() + "\"");
                 e.printStackTrace(System.err);
