@@ -1,15 +1,13 @@
+Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
 Method{type=0, name='run', flags=2, indexed=0, inputs=[], output=0, outputDescriptor=V}
-Method{type=0, name='onInstall', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
-SEND invoke code=010001/optimized isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=onInstall params=[]
-RECV setCode hash=8b3bf03c844a650daee5e02a4704e0dffdee39c54bd50f968fa5f65b073920dc len=2716
-RECV setObjGraph flag=1 next=6 hash=2ade1c729fc33cd4bdc6788e90e869a2c400e0b9057dc8ea732f71597981feaf graphLen=212 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x01A\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03aaa\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x06userDB\x13pi.CollectionDBImpl\x00\x00\x00\x05\x00\x00\x00\x08\x01\x86userDB\x01%foundation.icon.ee.ipc.CodecTest$User
-RECV getObjGraph flag=0 => next=6 hash=2ade1c729fc33cd4bdc6788e90e869a2c400e0b9057dc8ea732f71597981feaf
-RECV setObjGraph flag=0 next=6
-RECV result status=0 stepUsed=205917 ret=<null>
+SEND invoke code=010001/optimized isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[]
+RECV setCode hash=ee16dfa7d8a27af16f63c1e9a366fe3fbd87858fd3a07a24b457aeac30e8862a len=2808
+RECV setObjGraph flag=1 next=7 hash=ed2a57644ba02d135b69687c639ed4964a931412b6bede280ff39a0fa36b8d4d graphLen=260 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04&foundation.icon.ee.ipc.CodecTest$Score\x00\x00\x00\x05\x03\x00\x00\x00\x05\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x01A\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03aaa\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x06userDB\x13pi.CollectionDBImpl\x00\x00\x00\x06\x00\x00\x00\x08\x01\x86userDB\x01%foundation.icon.ee.ipc.CodecTest$User
+RECV result status=0 stepUsed=205205 ret=<null>
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=run params=[]
-RECV getObjGraph flag=1 => next=6 hash=2ade1c729fc33cd4bdc6788e90e869a2c400e0b9057dc8ea732f71597981feaf graphLen=212 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x01A\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03aaa\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x06userDB\x13pi.CollectionDBImpl\x00\x00\x00\x05\x00\x00\x00\x08\x01\x86userDB\x01%foundation.icon.ee.ipc.CodecTest$User
+RECV getObjGraph flag=1 => next=7 hash=ed2a57644ba02d135b69687c639ed4964a931412b6bede280ff39a0fa36b8d4d graphLen=260 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04&foundation.icon.ee.ipc.CodecTest$Score\x00\x00\x00\x05\x03\x00\x00\x00\x05\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x01A\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03aaa\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x02k1\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x06userDB\x13pi.CollectionDBImpl\x00\x00\x00\x06\x00\x00\x00\x08\x01\x86userDB\x01%foundation.icon.ee.ipc.CodecTest$User
 RECV setValue 3d8cc4fb7a6119ee07b817dfdcfb09702fe2ea4d94c395a59723d18c65b3d18c isDelete=false 93a1410aa3616161
 RECV getValue 3d8cc4fb7a6119ee07b817dfdcfb09702fe2ea4d94c395a59723d18c65b3d18c => 93a1410aa3616161
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| User{name='A', visitCount=10, desc='aaa'}
-RECV setObjGraph flag=0 next=19
-RECV result status=0 stepUsed=36169 ret=<null>
+RECV setObjGraph flag=0 next=20
+RECV result status=0 stepUsed=36367 ret=<null>

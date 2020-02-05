@@ -1,89 +1,87 @@
+Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
 Method{type=0, name='run', flags=2, indexed=1, inputs=[Parameter{name='code', descriptor=[B, type=3, optional=false}], output=0, outputDescriptor=V}
-Method{type=0, name='onInstall', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
-SEND invoke code=010001/optimized isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=onInstall params=[]
-RECV setCode hash=6b92f78bccc3d06fa5c2173196b412786c4a6790054a224e255d95a23d844847 len=2778
-RECV setObjGraph flag=1 next=2 hash=9bd5158be470e58ef800f7bbab897c27f35f759c37d064730bbd3833d270a81e graphLen=39 graph=\x03\x00\x00\x00\x00\x03\x00\x04\x01\x02\x00\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x03run
-RECV getObjGraph flag=0 => next=2 hash=9bd5158be470e58ef800f7bbab897c27f35f759c37d064730bbd3833d270a81e
-RECV setObjGraph flag=0 next=2
-RECV result status=0 stepUsed=203451 ret=<null>
+SEND invoke code=010001/optimized isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[]
+RECV setCode hash=d99cdc32ed37a4827b72fc7ea30cf30945efc3662d9f619ae5f859376710df61 len=2817
+RECV setObjGraph flag=1 next=3 hash=23bba002aa514e5b7beb23c37fc9c0daf405b343aef1775b06fd721d071b289a graphLen=90 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x04\x01\x02)foundation.icon.ee.ipc.ScenarioTest$Score\x00\x00\x00\x02\x00\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x03run
+RECV result status=0 stepUsed=203501 ret=<null>
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=run params=[02000000000100050300016101040000000001000403000162040001620000010014000001000a03000163040002626301040001620100000100140000010009030001640400026264040002626401040001620000010013000001000a0300016504000262650104000162040001620000010013000001000903000166040002626604000262660400026266]
-RECV getObjGraph flag=1 => next=2 hash=9bd5158be470e58ef800f7bbab897c27f35f759c37d064730bbd3833d270a81e graphLen=39 graph=\x03\x00\x00\x00\x00\x03\x00\x04\x01\x02\x00\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x03run
+RECV getObjGraph flag=1 => next=3 hash=23bba002aa514e5b7beb23c37fc9c0daf405b343aef1775b06fd721d071b289a graphLen=90 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x04\x01\x02)foundation.icon.ee.ipc.ScenarioTest$Score\x00\x00\x00\x02\x00\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x03run
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Enter addr=1
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Set sVar=
-RECV call to=010001... value=0 stepLimit=999983797 method=run params=[0300016101]
-SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999983797 method=run params=[0300016101]
+RECV call to=010001... value=0 stepLimit=999983737 method=run params=[0300016101]
+SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999983737 method=run params=[0300016101]
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Enter addr=1
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| AddTo sVar= s=a => sVar=a
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Revert addr=1
-RECV result status=32 stepUsed=24718 ret=i.GenericCodedException
+RECV result status=32 stepUsed=24784 ret=i.GenericCodedException
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exception e=avm.ScoreRevertException
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=
-RECV call to=010001... value=0 stepLimit=999937263 method=run params=[03000162]
-SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999937263 method=run params=[03000162]
+RECV call to=010001... value=0 stepLimit=999937131 method=run params=[03000162]
+SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999937131 method=run params=[03000162]
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Enter addr=1
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| AddTo sVar= s=b => sVar=b
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Return addr=1
-RECV result status=0 stepUsed=24172 ret=<null>
+RECV result status=0 stepUsed=24238 ret=<null>
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=b
-RECV call to=010001... value=0 stepLimit=999896454 method=run params=[000001000a030001630400026263010400016201]
-SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999896454 method=run params=[000001000a030001630400026263010400016201]
+RECV call to=010001... value=0 stepLimit=999896250 method=run params=[000001000a030001630400026263010400016201]
+SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999896250 method=run params=[000001000a030001630400026263010400016201]
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Enter addr=1
-RECV call to=010001... value=0 stepLimit=999884816 method=run params=[03000163040002626301]
-SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999884816 method=run params=[03000163040002626301]
+RECV call to=010001... value=0 stepLimit=999884558 method=run params=[03000163040002626301]
+SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999884558 method=run params=[03000163040002626301]
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Enter addr=1
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| AddTo sVar=b s=c => sVar=bc
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=bc
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Revert addr=1
-RECV result status=32 stepUsed=35009 ret=i.GenericCodedException
+RECV result status=32 stepUsed=35081 ret=i.GenericCodedException
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exception e=avm.ScoreRevertException
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=b
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Revert addr=1
-RECV result status=32 stepUsed=70365 ret=i.GenericCodedException
+RECV result status=32 stepUsed=70497 ret=i.GenericCodedException
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exception e=avm.ScoreRevertException
-RECV call to=010001... value=0 stepLimit=999814413 method=run params=[0000010009030001640400026264040002626401]
-SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999814413 method=run params=[0000010009030001640400026264040002626401]
+RECV call to=010001... value=0 stepLimit=999814077 method=run params=[0000010009030001640400026264040002626401]
+SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999814077 method=run params=[0000010009030001640400026264040002626401]
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Enter addr=1
-RECV call to=010001... value=0 stepLimit=999802780 method=run params=[030001640400026264]
-SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999802780 method=run params=[030001640400026264]
+RECV call to=010001... value=0 stepLimit=999802390 method=run params=[030001640400026264]
+SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999802390 method=run params=[030001640400026264]
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Enter addr=1
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| AddTo sVar=b s=d => sVar=bd
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=bd
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Return addr=1
-RECV result status=0 stepUsed=34463 ret=<null>
+RECV result status=0 stepUsed=34535 ret=<null>
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=bd
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Revert addr=1
-RECV result status=32 stepUsed=64555 ret=i.GenericCodedException
+RECV result status=32 stepUsed=64687 ret=i.GenericCodedException
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exception e=avm.ScoreRevertException
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=b
-RECV call to=010001... value=0 stepLimit=999727947 method=run params=[000001000a0300016504000262650104000162]
-SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999727947 method=run params=[000001000a0300016504000262650104000162]
+RECV call to=010001... value=0 stepLimit=999727473 method=run params=[000001000a0300016504000262650104000162]
+SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999727473 method=run params=[000001000a0300016504000262650104000162]
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Enter addr=1
-RECV call to=010001... value=0 stepLimit=999716309 method=run params=[03000165040002626501]
-SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999716309 method=run params=[03000165040002626501]
+RECV call to=010001... value=0 stepLimit=999715781 method=run params=[03000165040002626501]
+SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999715781 method=run params=[03000165040002626501]
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Enter addr=1
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| AddTo sVar=b s=e => sVar=be
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=be
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Revert addr=1
-RECV result status=32 stepUsed=35009 ret=i.GenericCodedException
+RECV result status=32 stepUsed=35081 ret=i.GenericCodedException
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exception e=avm.ScoreRevertException
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=b
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Return addr=1
-RECV result status=0 stepUsed=69819 ret=<null>
+RECV result status=0 stepUsed=69951 ret=<null>
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=b
-RECV call to=010001... value=0 stepLimit=999641496 method=run params=[00000100090300016604000262660400026266]
-SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999641496 method=run params=[00000100090300016604000262660400026266]
+RECV call to=010001... value=0 stepLimit=999640884 method=run params=[00000100090300016604000262660400026266]
+SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999640884 method=run params=[00000100090300016604000262660400026266]
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Enter addr=1
-RECV call to=010001... value=0 stepLimit=999629863 method=run params=[030001660400026266]
-SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999629863 method=run params=[030001660400026266]
+RECV call to=010001... value=0 stepLimit=999629197 method=run params=[030001660400026266]
+SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999629197 method=run params=[030001660400026266]
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Enter addr=1
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| AddTo sVar=b s=f => sVar=bf
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=bf
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Return addr=1
-RECV result status=0 stepUsed=34463 ret=<null>
+RECV result status=0 stepUsed=34535 ret=<null>
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=bf
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Return addr=1
-RECV result status=0 stepUsed=64009 ret=<null>
+RECV result status=0 stepUsed=64141 ret=<null>
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=bf
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Return addr=1
-RECV setObjGraph flag=1 next=131 hash=b2eced20915f10f14402950104d7868ac1a3df189b589a8360c76f446bc4ceff graphLen=70 graph=\x03\x00\x00\x00\x00\x03\x00\x04\x01\x02\x03\x00\x00\x00\x01\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x03run\x10java.lang.String\x00\x00\x00k\x00\x00\x00\x02bf
-RECV result status=0 stepUsed=440648 ret=<null>
+RECV setObjGraph flag=1 next=132 hash=edc6b4aac7df968d33411cb843b724d80eaa04268e4408dabcd790795d21eb95 graphLen=121 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x04\x01\x02)foundation.icon.ee.ipc.ScenarioTest$Score\x00\x00\x00\x02\x03\x00\x00\x00\x02\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x03run\x10java.lang.String\x00\x00\x00l\x00\x00\x00\x02bf
+RECV result status=0 stepUsed=441551 ret=<null>

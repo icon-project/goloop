@@ -33,22 +33,22 @@ public class SampleToken
     private final BigInteger totalSupply;
     private DictDB<Address, BigInteger> balances;
 
-    private SampleToken(String name, String symbol, BigInteger decimals, BigInteger initialSupply) {
-        this.name = name;
-        this.symbol = symbol;
-        this.decimals = decimals.intValue();
+    public SampleToken(String _name, String _symbol, BigInteger _decimals, BigInteger _initialSupply) {
+        this.name = _name;
+        this.symbol = _symbol;
+        this.decimals = _decimals.intValue();
 
         // decimals must be larger than 0 and less than 21
         Blockchain.require(this.decimals >= 0);
         Blockchain.require(this.decimals <= 21);
 
         // initialSupply must be larger than 0
-        Blockchain.require(initialSupply.compareTo(BigInteger.ZERO) >= 0);
+        Blockchain.require(_initialSupply.compareTo(BigInteger.ZERO) >= 0);
 
         // calculate totalSupply
-        if (initialSupply.compareTo(BigInteger.ZERO) > 0) {
+        if (_initialSupply.compareTo(BigInteger.ZERO) > 0) {
             BigInteger oneToken = pow(BigInteger.TEN, this.decimals);
-            this.totalSupply = oneToken.multiply(initialSupply);
+            this.totalSupply = oneToken.multiply(_initialSupply);
         } else {
             this.totalSupply = BigInteger.ZERO;
         }
@@ -68,42 +68,33 @@ public class SampleToken
         return result;
     }
 
-    private static SampleToken token;
-
-    public static void onInstall(String _name,
-                                 String _symbol,
-                                 BigInteger _decimals,
-                                 BigInteger _initialSupply) {
-        token = new SampleToken(_name, _symbol, _decimals, _initialSupply);
+    @External(readonly=true)
+    public String name() {
+        return name;
     }
 
     @External(readonly=true)
-    public static String name() {
-        return token.name;
+    public String symbol() {
+        return symbol;
     }
 
     @External(readonly=true)
-    public static String symbol() {
-        return token.symbol;
+    public int decimals() {
+        return decimals;
     }
 
     @External(readonly=true)
-    public static int decimals() {
-        return token.decimals;
+    public BigInteger totalSupply() {
+        return totalSupply;
     }
 
     @External(readonly=true)
-    public static BigInteger totalSupply() {
-        return token.totalSupply;
-    }
-
-    @External(readonly=true)
-    public static BigInteger balanceOf(Address _owner) {
+    public BigInteger balanceOf(Address _owner) {
         return safeGetBalance(_owner);
     }
 
     @External
-    public static void transfer(Address _to, BigInteger _value, @Optional byte[] _data) {
+    public void transfer(Address _to, BigInteger _value, @Optional byte[] _data) {
         Address _from = Blockchain.getCaller();
         BigInteger fromBalance = safeGetBalance(_from);
         BigInteger toBalance = safeGetBalance(_to);
@@ -126,12 +117,12 @@ public class SampleToken
         Transfer(_from, _to, _value, dataBytes);
     }
 
-    private static BigInteger safeGetBalance(Address owner) {
-        return token.balances.getOrDefault(owner, BigInteger.ZERO);
+    private BigInteger safeGetBalance(Address owner) {
+        return balances.getOrDefault(owner, BigInteger.ZERO);
     }
 
-    private static void safeSetBalance(Address owner, BigInteger amount) {
-        token.balances.set(owner, amount);
+    private void safeSetBalance(Address owner, BigInteger amount) {
+        balances.set(owner, amount);
     }
 
     private static boolean isContract(Address address) {
@@ -140,5 +131,5 @@ public class SampleToken
     }
 
     @EventLog(indexed=3)
-    private static void Transfer(Address _from, Address _to, BigInteger _value, byte[] _data) {}
+    private void Transfer(Address _from, Address _to, BigInteger _value, byte[] _data) {}
 }

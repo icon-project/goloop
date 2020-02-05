@@ -278,7 +278,7 @@ public class DAppCreator {
             externalState.setTransformedCode(dappAddress, immortalDappJar);
 
             // Force the classes in the dapp to initialize so that the <clinit> is run (since we already saved the version without).
-            result = runClinitAndBillSender(verboseErrors, dapp, threadInstrumentation, externalState, task, dappAddress, tx.energyLimit);
+            result = runClinitAndBillSender(verboseErrors, dapp, threadInstrumentation, externalState, task, dappAddress, tx);
         } catch (CodedException e) {
             if (verboseErrors) {
                 System.err.println("DApp deployment to REVERT due to uncaught EXCEPTION: \"" + e.getMessage() + "\"");
@@ -429,11 +429,13 @@ public class DAppCreator {
                                                  IExternalState externalState,
                                                  TransactionTask task,
                                                  Address dappAddress,
-                                                 long energyLimit) throws Throwable {
+                                                 Transaction tx) throws Throwable {
+        long energyLimit = tx.energyLimit;
         Result resultToReturn;
 
         try {
             dapp.forceInitializeAllClasses();
+            dapp.initMainInstance(tx.getParams());
 
             // Save back the state before we return.
             byte[] rawGraphData = dapp.saveEntireGraph(threadInstrumentation.peekNextHashCode(), StorageFees.MAX_GRAPH_SIZE);

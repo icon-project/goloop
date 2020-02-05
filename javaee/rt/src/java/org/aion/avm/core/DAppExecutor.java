@@ -154,6 +154,7 @@ public class DAppExecutor {
             // We don't know what went wrong in this case, but it is beyond our ability to handle it here.
             // We ship it off to the ExceptionHandler, which kills the transaction as a failure for unknown reasons.
             System.err.println("Exception on method " + tx.method);
+            e.printStackTrace(System.err);
             result = new Result(Status.UnknownFailure, tx.energyLimit, e.toString());
         } finally {
             // Once we are done running this, no matter how it ended, we want to detach our thread from the DApp.

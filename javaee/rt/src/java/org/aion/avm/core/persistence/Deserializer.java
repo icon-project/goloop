@@ -14,6 +14,10 @@ import i.RuntimeAssertionError;
 
 public class Deserializer {
     public static int deserializeEntireGraphAndNextHashCode(ByteBuffer inputBuffer, List<Object> existingObjectIndex, IGlobalResolver resolver, SortedFieldCache cache, IPersistenceNameMapper classNameMapper, Class<?>[] sortedRoots, Class<?> constantClass) {
+        return deserializeEntireGraphAndNextHashCode(inputBuffer, existingObjectIndex, resolver, cache, classNameMapper, sortedRoots, constantClass, null);
+    }
+
+    public static int deserializeEntireGraphAndNextHashCode(ByteBuffer inputBuffer, List<Object> existingObjectIndex, IGlobalResolver resolver, SortedFieldCache cache, IPersistenceNameMapper classNameMapper, Class<?>[] sortedRoots, Class<?> constantClass, Object[] mainInstanceBuf) {
         // We define the storage as big-endian.
         RuntimeAssertionError.assertTrue(ByteOrder.BIG_ENDIAN == inputBuffer.order());
         
@@ -22,6 +26,10 @@ public class Deserializer {
         inputBuffer.getInt();
         // Create the pre-pass deserializer, just to walk consistently.
         ByteBufferObjectDeserializer prePassDeserializer = new ByteBufferObjectDeserializer(inputBuffer, null, cache, resolver, classNameMapper);
+
+        if (mainInstanceBuf != null) {
+            mainInstanceBuf[0] = prePassDeserializer.readObject();
+        }
         // Now, we need walk the statics, but only to advance the cursor through the buffer (since we will read the same data, but just won't be able to find the instances).
         deserializeClassStatics(prePassDeserializer, cache, sortedRoots, constantClass);
         
@@ -36,6 +44,9 @@ public class Deserializer {
         // Create te real deserializer (this one has the instance list for building the connections from that index).
         ByteBufferObjectDeserializer objectDeserializer = new ByteBufferObjectDeserializer(inputBuffer, instanceList, cache, resolver, classNameMapper);
         
+        if (mainInstanceBuf != null) {
+            mainInstanceBuf[0] = objectDeserializer.readObject();
+        }
         // Next, we deserialize all the class statics for the user's classes.
         deserializeClassStatics(objectDeserializer, cache, sortedRoots, constantClass);
         

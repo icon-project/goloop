@@ -49,10 +49,10 @@ public class CodecTest extends GoldenTest {
     }
 
     public static class Score {
-        private static DictDB<String, User> userDB = Blockchain.newDictDB("userDB", User.class);
+        private DictDB<String, User> userDB = Blockchain.newDictDB("userDB", User.class);
 
         @External
-        public static void run() {
+        public void run() {
             userDB.set("k1", new User("A", 10, "aaa"));
             User u = userDB.get("k1");
             Blockchain.println(u.toString());

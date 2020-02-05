@@ -17,6 +17,10 @@ import i.RuntimeAssertionError;
 public class Serializer {
     // (Should make this Map a list since the graph is probably dense?)
     public static void serializeEntireGraph(ByteBuffer outputBuffer, List<Object> out_instanceIndex, List<Integer> out_calleeToCallerIndexMap, IGlobalResolver resolver, SortedFieldCache cache, IPersistenceNameMapper classNameMapper, int nextHashCode, Class<?>[] sortedRoots, Class<?> constantClass) {
+        serializeEntireGraph(outputBuffer, out_instanceIndex, out_calleeToCallerIndexMap, resolver, cache, classNameMapper, nextHashCode, sortedRoots, constantClass, null);
+    }
+
+    public static void serializeEntireGraph(ByteBuffer outputBuffer, List<Object> out_instanceIndex, List<Integer> out_calleeToCallerIndexMap, IGlobalResolver resolver, SortedFieldCache cache, IPersistenceNameMapper classNameMapper, int nextHashCode, Class<?>[] sortedRoots, Class<?> constantClass, Object mainInstance) {
         // We define the storage as big-endian.
         RuntimeAssertionError.assertTrue(ByteOrder.BIG_ENDIAN == outputBuffer.order());
         // We cannot be both serializing to build an index (that is done when serializing caller state before entering a callee frame)
@@ -31,7 +35,10 @@ public class Serializer {
         Queue<Object> toProcessQueue = new LinkedList<>();
         // Create the object serializer (it maintains the state of the serialization and can also be passed in to objects to request that they serialize).
         ByteBufferObjectSerializer objectSerializer = new ByteBufferObjectSerializer(outputBuffer, toProcessQueue, cache, resolver, classNameMapper);
-        
+
+        if (mainInstance != null) {
+            objectSerializer.writeObject(mainInstance);
+        }
         // Next, we serialize all the class statics from the user's classes.
         serializeClassStatics(objectSerializer, cache, sortedRoots, constantClass);
         

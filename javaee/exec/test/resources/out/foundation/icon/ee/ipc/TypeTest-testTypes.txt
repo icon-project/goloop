@@ -1,3 +1,4 @@
+Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
 Method{type=0, name='mbyte', flags=2, indexed=1, inputs=[Parameter{name='v', descriptor=B, type=1, optional=false}], output=1, outputDescriptor=B}
 Method{type=0, name='mshort', flags=2, indexed=1, inputs=[Parameter{name='v', descriptor=S, type=1, optional=false}], output=1, outputDescriptor=S}
 Method{type=0, name='mint', flags=2, indexed=1, inputs=[Parameter{name='v', descriptor=I, type=1, optional=false}], output=1, outputDescriptor=I}
@@ -9,70 +10,67 @@ Method{type=0, name='mString', flags=2, indexed=0, inputs=[Parameter{name='v', d
 Method{type=0, name='mByteArray', flags=2, indexed=0, inputs=[Parameter{name='v', descriptor=[B, type=3, optional=true}], output=3, outputDescriptor=[B}
 Method{type=0, name='mAddress', flags=2, indexed=0, inputs=[Parameter{name='v', descriptor=Lavm/Address;, type=5, optional=true}], output=5, outputDescriptor=Lavm/Address;}
 Method{type=0, name='mvoid', flags=2, indexed=0, inputs=[], output=0, outputDescriptor=V}
-Method{type=0, name='onInstall', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
-SEND invoke code=010001/optimized isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=onInstall params=[]
-RECV setCode hash=49abd11dcd78be4c6c9ab5160883eab342af61556c8913e62fc2645fb80335a8 len=1555
-RECV setObjGraph flag=1 next=1 hash=a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a graphLen=0 graph=
-RECV getObjGraph flag=0 => next=1 hash=a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a
-RECV setObjGraph flag=0 next=1
-RECV result status=0 stepUsed=202274 ret=<null>
+SEND invoke code=010001/optimized isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[]
+RECV setCode hash=817f50e5bd73bb40535074791bd6762d4d5f8e31c235fd0a8f41ca1a82197968 len=1572
+RECV setObjGraph flag=1 next=2 hash=06bdb7136d457124a2de984f348f0d666770deb2698168f62371b69b855d5766 graphLen=47 graph=\x03\x00\x00\x00\x00%foundation.icon.ee.ipc.TypeTest$Score\x00\x00\x00\x01
+RECV result status=0 stepUsed=202470 ret=<null>
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mbyte params=[0]
-RECV getObjGraph flag=1 => next=1 hash=a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a graphLen=0 graph=
-RECV setObjGraph flag=0 next=1
-RECV result status=0 stepUsed=42 ret=0
-SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mshort params=[0]
-RECV getObjGraph flag=1 => next=1 hash=a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a graphLen=0 graph=
-RECV setObjGraph flag=0 next=1
-RECV result status=0 stepUsed=42 ret=0
-SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mint params=[0]
-RECV getObjGraph flag=1 => next=1 hash=a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a graphLen=0 graph=
-RECV setObjGraph flag=0 next=1
-RECV result status=0 stepUsed=42 ret=0
-SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mlong params=[0]
-RECV getObjGraph flag=1 => next=1 hash=a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a graphLen=0 graph=
-RECV setObjGraph flag=0 next=1
-RECV result status=0 stepUsed=42 ret=0
-SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mboolean params=[false]
-RECV getObjGraph flag=1 => next=1 hash=a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a graphLen=0 graph=
-RECV setObjGraph flag=0 next=1
-RECV result status=0 stepUsed=42 ret=false
-SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mchar params=[0]
-RECV getObjGraph flag=1 => next=1 hash=a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a graphLen=0 graph=
-RECV setObjGraph flag=0 next=1
-RECV result status=0 stepUsed=42 ret=0
-SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mBigInteger params=[0]
-RECV getObjGraph flag=1 => next=1 hash=a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a graphLen=0 graph=
+RECV getObjGraph flag=1 => next=2 hash=06bdb7136d457124a2de984f348f0d666770deb2698168f62371b69b855d5766 graphLen=47 graph=\x03\x00\x00\x00\x00%foundation.icon.ee.ipc.TypeTest$Score\x00\x00\x00\x01
 RECV setObjGraph flag=0 next=2
-RECV result status=0 stepUsed=42 ret=0
-SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mString params=[string]
-RECV getObjGraph flag=1 => next=2 hash=a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a graphLen=0 graph=
+RECV result status=0 stepUsed=230 ret=0
+SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mshort params=[0]
+RECV getObjGraph flag=1 => next=2 hash=06bdb7136d457124a2de984f348f0d666770deb2698168f62371b69b855d5766 graphLen=47 graph=\x03\x00\x00\x00\x00%foundation.icon.ee.ipc.TypeTest$Score\x00\x00\x00\x01
+RECV setObjGraph flag=0 next=2
+RECV result status=0 stepUsed=230 ret=0
+SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mint params=[0]
+RECV getObjGraph flag=1 => next=2 hash=06bdb7136d457124a2de984f348f0d666770deb2698168f62371b69b855d5766 graphLen=47 graph=\x03\x00\x00\x00\x00%foundation.icon.ee.ipc.TypeTest$Score\x00\x00\x00\x01
+RECV setObjGraph flag=0 next=2
+RECV result status=0 stepUsed=230 ret=0
+SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mlong params=[0]
+RECV getObjGraph flag=1 => next=2 hash=06bdb7136d457124a2de984f348f0d666770deb2698168f62371b69b855d5766 graphLen=47 graph=\x03\x00\x00\x00\x00%foundation.icon.ee.ipc.TypeTest$Score\x00\x00\x00\x01
+RECV setObjGraph flag=0 next=2
+RECV result status=0 stepUsed=230 ret=0
+SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mboolean params=[false]
+RECV getObjGraph flag=1 => next=2 hash=06bdb7136d457124a2de984f348f0d666770deb2698168f62371b69b855d5766 graphLen=47 graph=\x03\x00\x00\x00\x00%foundation.icon.ee.ipc.TypeTest$Score\x00\x00\x00\x01
+RECV setObjGraph flag=0 next=2
+RECV result status=0 stepUsed=230 ret=false
+SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mchar params=[0]
+RECV getObjGraph flag=1 => next=2 hash=06bdb7136d457124a2de984f348f0d666770deb2698168f62371b69b855d5766 graphLen=47 graph=\x03\x00\x00\x00\x00%foundation.icon.ee.ipc.TypeTest$Score\x00\x00\x00\x01
+RECV setObjGraph flag=0 next=2
+RECV result status=0 stepUsed=230 ret=0
+SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mBigInteger params=[0]
+RECV getObjGraph flag=1 => next=2 hash=06bdb7136d457124a2de984f348f0d666770deb2698168f62371b69b855d5766 graphLen=47 graph=\x03\x00\x00\x00\x00%foundation.icon.ee.ipc.TypeTest$Score\x00\x00\x00\x01
 RECV setObjGraph flag=0 next=3
-RECV result status=0 stepUsed=42 ret=string
-SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mByteArray params=[000102]
-RECV getObjGraph flag=1 => next=3 hash=a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a graphLen=0 graph=
+RECV result status=0 stepUsed=230 ret=0
+SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mString params=[string]
+RECV getObjGraph flag=1 => next=3 hash=06bdb7136d457124a2de984f348f0d666770deb2698168f62371b69b855d5766 graphLen=47 graph=\x03\x00\x00\x00\x00%foundation.icon.ee.ipc.TypeTest$Score\x00\x00\x00\x01
 RECV setObjGraph flag=0 next=4
-RECV result status=0 stepUsed=42 ret=000102
+RECV result status=0 stepUsed=230 ret=string
+SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mByteArray params=[000102]
+RECV getObjGraph flag=1 => next=4 hash=06bdb7136d457124a2de984f348f0d666770deb2698168f62371b69b855d5766 graphLen=47 graph=\x03\x00\x00\x00\x00%foundation.icon.ee.ipc.TypeTest$Score\x00\x00\x00\x01
+RECV setObjGraph flag=0 next=5
+RECV result status=0 stepUsed=230 ret=000102
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mAddress params=[000002...]
-RECV getObjGraph flag=1 => next=4 hash=a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a graphLen=0 graph=
-RECV setObjGraph flag=0 next=5
-RECV result status=0 stepUsed=42 ret=hx0002000000000000000000000000000000000000
+RECV getObjGraph flag=1 => next=5 hash=06bdb7136d457124a2de984f348f0d666770deb2698168f62371b69b855d5766 graphLen=47 graph=\x03\x00\x00\x00\x00%foundation.icon.ee.ipc.TypeTest$Score\x00\x00\x00\x01
+RECV setObjGraph flag=0 next=6
+RECV result status=0 stepUsed=230 ret=hx0002000000000000000000000000000000000000
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mBigInteger params=[<null>]
-RECV getObjGraph flag=1 => next=5 hash=a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a graphLen=0 graph=
-RECV setObjGraph flag=0 next=5
-RECV result status=0 stepUsed=42 ret=<null>
+RECV getObjGraph flag=1 => next=6 hash=06bdb7136d457124a2de984f348f0d666770deb2698168f62371b69b855d5766 graphLen=47 graph=\x03\x00\x00\x00\x00%foundation.icon.ee.ipc.TypeTest$Score\x00\x00\x00\x01
+RECV setObjGraph flag=0 next=6
+RECV result status=0 stepUsed=230 ret=<null>
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mString params=[<null>]
-RECV getObjGraph flag=1 => next=5 hash=a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a graphLen=0 graph=
-RECV setObjGraph flag=0 next=5
-RECV result status=0 stepUsed=42 ret=<null>
+RECV getObjGraph flag=1 => next=6 hash=06bdb7136d457124a2de984f348f0d666770deb2698168f62371b69b855d5766 graphLen=47 graph=\x03\x00\x00\x00\x00%foundation.icon.ee.ipc.TypeTest$Score\x00\x00\x00\x01
+RECV setObjGraph flag=0 next=6
+RECV result status=0 stepUsed=230 ret=<null>
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mByteArray params=[<null>]
-RECV getObjGraph flag=1 => next=5 hash=a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a graphLen=0 graph=
-RECV setObjGraph flag=0 next=5
-RECV result status=0 stepUsed=42 ret=<null>
+RECV getObjGraph flag=1 => next=6 hash=06bdb7136d457124a2de984f348f0d666770deb2698168f62371b69b855d5766 graphLen=47 graph=\x03\x00\x00\x00\x00%foundation.icon.ee.ipc.TypeTest$Score\x00\x00\x00\x01
+RECV setObjGraph flag=0 next=6
+RECV result status=0 stepUsed=230 ret=<null>
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mAddress params=[<null>]
-RECV getObjGraph flag=1 => next=5 hash=a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a graphLen=0 graph=
-RECV setObjGraph flag=0 next=5
-RECV result status=0 stepUsed=42 ret=<null>
+RECV getObjGraph flag=1 => next=6 hash=06bdb7136d457124a2de984f348f0d666770deb2698168f62371b69b855d5766 graphLen=47 graph=\x03\x00\x00\x00\x00%foundation.icon.ee.ipc.TypeTest$Score\x00\x00\x00\x01
+RECV setObjGraph flag=0 next=6
+RECV result status=0 stepUsed=230 ret=<null>
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mvoid params=[]
-RECV getObjGraph flag=1 => next=5 hash=a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a graphLen=0 graph=
-RECV setObjGraph flag=0 next=5
-RECV result status=0 stepUsed=39 ret=<null>
+RECV getObjGraph flag=1 => next=6 hash=06bdb7136d457124a2de984f348f0d666770deb2698168f62371b69b855d5766 graphLen=47 graph=\x03\x00\x00\x00\x00%foundation.icon.ee.ipc.TypeTest$Score\x00\x00\x00\x01
+RECV setObjGraph flag=0 next=6
+RECV result status=0 stepUsed=227 ret=<null>

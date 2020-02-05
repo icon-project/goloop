@@ -37,25 +37,25 @@ public class JCFTest extends GoldenTest {
             }
         }
 
-        static Map<String, Integer> myMap = Map.of();
+        Map<String, Integer> myMap = Map.of();
 
         @External
-        public static void setMyMap1() {
+        public void setMyMap1() {
             myMap = Map.of("k1", 1, "k2", 2);
         }
 
         @External
-        public static void setMyMap2() {
+        public void setMyMap2() {
             myMap = Map.of("kkk", 9999);
         }
 
         @External
-        public static void dumpMyMap() {
+        public void dumpMyMap() {
             dumpMap(myMap);
         }
 
         @External
-        public static void run() {
+        public void run() {
             dumpList(List.of());
             dumpList(List.of(0, 1, 2));
             dumpList(List.of(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11));
@@ -71,12 +71,12 @@ public class JCFTest extends GoldenTest {
         }
 
         @External
-        public static Map<String, Integer> returnMap() {
+        public Map<String, Integer> returnMap() {
             return Map.of("k1", 1, "k2", 2);
         }
 
         @External
-        public static Map<String, Map<String, List<Integer>>> returnMap2() {
+        public Map<String, Map<String, List<Integer>>> returnMap2() {
             return Map.of("k1", Map.of("k11", List.of(1, 2, 3)));
         }
     }

@@ -43,7 +43,7 @@ import java.util.Map;
 public class TransactionExecutor {
     private static final Logger logger = LoggerFactory.getLogger(TransactionExecutor.class);
     private static final String CODE_JAR = "code.jar";
-    private static final String CMD_INSTALL = "onInstall";
+    private static final String CMD_INSTALL = "<init>";
     private static final AvmConfiguration avmConfig = new AvmConfiguration();
 
     static {
@@ -147,21 +147,8 @@ public class TransactionExecutor {
 
         BigInteger stepUsed = BigInteger.ZERO;
         try {
-            if (isInstall) {
-                // The following is for transformation
-                Result result = avmExecutor.run(kernel, tx, origin);
-                if (result.getStatus() != Status.Success) {
-                    return new InvokeResult(result);
-                }
-                stepUsed = result.getStepUsed();
-                // Prepare another transaction for 'onInstall' itself
-                tx = getTransactionData(false, from, to, value, nonce, limit, method, params,
-                        txHash, txIndex, txTimestamp);
-            }
-            // Actual execution of the transaction
-            // FIXME: wrong starting stepUsed
             Result result = avmExecutor.run(kernel, tx, origin);
-            return new InvokeResult(result.addStepUsed(stepUsed));
+            return new InvokeResult(result);
         } catch (Exception e) {
             String errMsg = e.getMessage();
             if (errMsg == null) {

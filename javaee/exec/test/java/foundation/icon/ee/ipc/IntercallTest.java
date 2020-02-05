@@ -11,69 +11,69 @@ import java.math.BigInteger;
 
 public class IntercallTest extends GoldenTest {
     public static class ProxyScore {
-        private static Address next;
+        private Address next;
 
-        public static void onInstall(Address addr) {
+        public ProxyScore(Address addr) {
             next = addr;
         }
 
         @External
-        public static byte mbyte(byte v) {
+        public byte mbyte(byte v) {
             var vv = (BigInteger)Blockchain.call(next, "mbyte", v);
             return vv.byteValue();
         }
 
         @External
-        public static short mshort(short v) {
+        public short mshort(short v) {
             var vv = (BigInteger)Blockchain.call(next, "mshort", v);
             return vv.shortValue();
         }
 
         @External
-        public static int mint(int v) {
+        public int mint(int v) {
             var vv = (BigInteger)Blockchain.call(next, "mint", v);
             return vv.intValue();
         }
 
         @External
-        public static long mlong(long v) {
+        public long mlong(long v) {
             var vv = (BigInteger)Blockchain.call(next, "mlong", v);
             return vv.longValue();
         }
 
         @External
-        public static boolean mboolean(boolean v) {
+        public boolean mboolean(boolean v) {
             return (Boolean)Blockchain.call(next, "mboolean", v);
         }
 
         @External
-        public static char mchar(char v) {
+        public char mchar(char v) {
             var vv = (BigInteger)Blockchain.call(next, "mchar", v);
             return (char)vv.intValue();
         }
 
         @External
-        public static BigInteger mBigInteger(@Optional BigInteger v) {
+        public BigInteger mBigInteger(@Optional BigInteger v) {
             return (BigInteger)Blockchain.call(next, "mBigInteger", v);
         }
 
         @External
-        public static String mString(@Optional String v) {
+        public String mString(@Optional String v) {
             return (String)Blockchain.call(next, "mString", v);
         }
 
         @External
-        public static byte[] mByteArray(@Optional byte[] v) {
+        public byte[] mByteArray(@Optional byte[] v) {
             return (byte[])Blockchain.call(next, "mByteArray", (Object) v);
         }
 
         @External
-        public static Address mAddress(@Optional Address v) {
+        public Address mAddress(@Optional Address v) {
             return (Address)Blockchain.call(next, "mAddress", v);
         }
 
         @External
-        public static void mvoid() {
+        public void mvoid() {
             Blockchain.call(next, "mvoid");
         }
     }
@@ -101,7 +101,7 @@ public class IntercallTest extends GoldenTest {
 
     public static class ScoreA {
         @External
-        public static void method(Address addr) {
+        public void method(Address addr) {
             Blockchain.call(addr, "setValue", 1);
             var res = (BigInteger)Blockchain.call(addr, "getValue");
             Blockchain.require(res.intValue()==1);
@@ -116,21 +116,21 @@ public class IntercallTest extends GoldenTest {
     }
 
     public static class ScoreFail {
-        private static int value = 0;
+        private int value = 0;
 
         @External
-        public static void setValue(int v) {
+        public void setValue(int v) {
             value = v;
         }
 
         @External
-        public static void setValueFail(int v) {
+        public void setValueFail(int v) {
             value = v;
             Blockchain.revert();
         }
 
         @External
-        public static int getValue() {
+        public int getValue() {
             return value;
         }
     }

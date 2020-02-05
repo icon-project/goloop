@@ -73,12 +73,12 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
         this.methodName = methodName;
         this.methodDescriptor = methodDescriptor;
 
-        if (methodName.equals("onInstall") && checkIfPublicAndStatic(access)) {
+        if (methodName.equals("<init>") && checkIfPublicAndNonstatic(access)) {
             if (Type.getReturnType(methodDescriptor) != Type.VOID_TYPE) {
-                throw new ABICompilerException("onInstall method must have void return type", methodName);
+                throw new ABICompilerException("<init> method must have void return type", methodName);
             }
             isOnInstall = true;
-        } else if (methodName.equals("fallback") && checkIfPublicAndStatic(access)) {
+        } else if (methodName.equals("fallback") && checkIfPublicAndNonstatic(access)) {
             if (Type.getReturnType(methodDescriptor) != Type.VOID_TYPE) {
                 throw new ABICompilerException("fallback method must have void return type", methodName);
             }
@@ -100,7 +100,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
     @Override
     public AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
         if (Type.getType(descriptor).getClassName().equals(External.class.getName())) {
-            if (!checkIfPublicAndStatic(this.access)) {
+            if (!checkIfPublicAndNonstatic(this.access)) {
                 throw new ABICompilerException("@External methods must be public and static", methodName);
             }
             checkArgumentsAndReturnType();
@@ -115,15 +115,15 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
                 }
             };
         } else if (Type.getType(descriptor).getClassName().equals(Payable.class.getName())) {
-            if (!checkIfPublicAndStatic(this.access)) {
+            if (!checkIfPublicAndNonstatic(this.access)) {
                 throw new ABICompilerException("@Payable methods must be public and static", methodName);
             }
             flags |= Method.Flags.PAYABLE;
             return null;
         } else if (Type.getType(descriptor).getClassName().equals(EventLog.class.getName())) {
             boolean isStatic = (this.access & Opcodes.ACC_STATIC) != 0;
-            if (!isStatic) {
-                throw new ABICompilerException("@EventLog methods must be static", methodName);
+            if (isStatic) {
+                throw new ABICompilerException("@EventLog methods must be non static", methodName);
             }
             if (Type.getReturnType(methodDescriptor) != Type.VOID_TYPE) {
                 throw new ABICompilerException("@EventLog methods must have void return type", methodName);
@@ -260,7 +260,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
     }
 
     private void emitEventLogBody(Type[] args, int argsSize) {
-        int argPos = 0;
+        int argPos = 1;
         // Value[] indexedArr = new Value[${indexed+1}];
         super.visitIntInsn(Opcodes.BIPUSH, indexed+1);
         super.visitTypeInsn(Opcodes.ANEWARRAY, "avm/Value");
@@ -271,7 +271,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
             emitSetValueArrayElementByArg(i+1, args[i], argPos);
             argPos += args[i].getSize();
         }
-        super.visitVarInsn(Opcodes.ASTORE, argsSize);
+        super.visitVarInsn(Opcodes.ASTORE, argsSize+1);
 
         // Value[] dataArr = new Value[${args.len-indexed}];
         super.visitIntInsn(Opcodes.BIPUSH, args.length-indexed);
@@ -281,11 +281,11 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
             emitSetValueArrayElementByArg(i, args[indexed+i], argPos);
             argPos += args[indexed+i].getSize();
         }
-        super.visitVarInsn(Opcodes.ASTORE, argsSize+1);
+        super.visitVarInsn(Opcodes.ASTORE, argsSize+2);
 
         // Blockchain.log(indexedArr, dataArr);
-        super.visitVarInsn(Opcodes.ALOAD, argsSize);
         super.visitVarInsn(Opcodes.ALOAD, argsSize+1);
+        super.visitVarInsn(Opcodes.ALOAD, argsSize+2);
         super.visitMethodInsn(Opcodes.INVOKESTATIC, "avm/Blockchain", "log", "([Lavm/Value;[Lavm/Value;)V", false);
         super.visitInsn(Opcodes.RETURN);
         super.visitMaxs(0, 0);
@@ -294,7 +294,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
     @Override
     public void visitEnd() {
         if (isOnInstall() && this.flags != 0) {
-            throw new ABICompilerException("onInstall method cannot be annotated", methodName);
+            throw new ABICompilerException("<init> method cannot be annotated", methodName);
         }
         if (isPayable() && isReadonly()) {
             throw new ABICompilerException("Method annotated @Payable cannot be readonly", methodName);
@@ -340,10 +340,10 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
         super.visitEnd();
     }
 
-    private boolean checkIfPublicAndStatic(int access) {
+    private boolean checkIfPublicAndNonstatic(int access) {
         boolean isPublic = (access & Opcodes.ACC_PUBLIC) != 0;
         boolean isStatic = (access & Opcodes.ACC_STATIC) != 0;
-        return isPublic && isStatic;
+        return isPublic && !isStatic;
     }
 
     // TODO: refactor later

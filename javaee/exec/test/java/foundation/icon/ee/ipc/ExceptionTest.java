@@ -11,14 +11,14 @@ import org.junit.jupiter.api.Test;
 public class ExceptionTest extends GoldenTest {
     public static class RevertScore {
         @External
-        public static void run() {
+        public void run() {
             Blockchain.revert(1, "user revert");
         }
     }
 
     public static class Score {
         @External
-        public static void run(Address addrGood, Address addrBad) {
+        public void run(Address addrGood, Address addrBad) {
             try {
                 throw new ScoreRevertException("test");
             } catch (ScoreRevertException e) {

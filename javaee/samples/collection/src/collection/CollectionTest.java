@@ -49,7 +49,7 @@ public class CollectionTest
         }
     }
 
-    public static void onInstall() {
+    public CollectionTest() {
         String s;
 
         VarDB<String> vdb = Blockchain.newVarDB("vdb", String.class);
@@ -105,7 +105,7 @@ public class CollectionTest
     }
 
     @External
-    public static int getInt() {
+    public int getInt() {
         return 11;
     }
 
@@ -118,12 +118,12 @@ public class CollectionTest
     }
 
     @External
-    public static BigInteger totalSupply2(Address sc) {
+    public BigInteger totalSupply2(Address sc) {
         return (BigInteger)Blockchain.call(sc, "totalSupply");
     }
 
     @External
-    public static BigInteger balanceOf2(Address sc, Address _owner) {
+    public BigInteger balanceOf2(Address sc, Address _owner) {
         return (BigInteger) Blockchain.call(sc, "balanceOf", _owner);
     }
 }

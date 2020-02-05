@@ -30,7 +30,7 @@ func (e EEType) InstallMethod() string {
 	case eePython:
 		return "on_install"
 	case eeJava:
-		return "onInstall"
+		return "<init>"
 	}
 	log.Errorf("UnexpectedEEType(%s)\n", e)
 	return ""

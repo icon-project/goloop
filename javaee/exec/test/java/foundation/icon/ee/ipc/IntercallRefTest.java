@@ -11,11 +11,11 @@ import java.math.BigInteger;
 
 public class IntercallRefTest extends GoldenTest {
     public static class RefScoreA {
-        public static String sString;
-        public static Class<?> sClass;
+        public String sString;
+        public Class<?> sClass;
 
         @External
-        public static void method(int ttl, boolean ok, @Optional Address addr) {
+        public void method(int ttl, boolean ok, @Optional Address addr) {
             Blockchain.println("enter A.method(" + ttl + " " + ok + " " + addr + ")");
             sString = "string"+ttl;
             String lString = sString;
@@ -57,7 +57,7 @@ public class IntercallRefTest extends GoldenTest {
 
     public static class RefScoreB {
         @External
-        public static void method(int ttl, boolean ok, @Optional Address addr) {
+        public void method(int ttl, boolean ok, @Optional Address addr) {
             Blockchain.println("enter B.method(" + ttl + " " + ok + " " + addr + ")");
             if (ttl>0) {
                 if (addr==null) {

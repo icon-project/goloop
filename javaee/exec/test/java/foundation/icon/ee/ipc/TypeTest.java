@@ -11,57 +11,57 @@ import java.math.BigInteger;
 public class TypeTest extends GoldenTest {
     public static class Score {
         @External
-        public static byte mbyte(byte v) {
+        public byte mbyte(byte v) {
             return v;
         }
 
         @External
-        public static short mshort(short v) {
+        public short mshort(short v) {
             return v;
         }
 
         @External
-        public static int mint(int v) {
+        public int mint(int v) {
             return v;
         }
 
         @External
-        public static long mlong(long v) {
+        public long mlong(long v) {
             return v;
         }
 
         @External
-        public static boolean mboolean(boolean v) {
+        public boolean mboolean(boolean v) {
             return v;
         }
 
         @External
-        public static char mchar(char v) {
+        public char mchar(char v) {
             return v;
         }
 
         @External
-        public static BigInteger mBigInteger(@Optional BigInteger v) {
+        public BigInteger mBigInteger(@Optional BigInteger v) {
             return v;
         }
 
         @External
-        public static String mString(@Optional String v) {
+        public String mString(@Optional String v) {
             return v;
         }
 
         @External
-        public static byte[] mByteArray(@Optional byte[] v) {
+        public byte[] mByteArray(@Optional byte[] v) {
             return v;
         }
 
         @External
-        public static Address mAddress(@Optional Address v) {
+        public Address mAddress(@Optional Address v) {
             return v;
         }
 
         @External
-        public static void mvoid() {
+        public void mvoid() {
         }
     }
 

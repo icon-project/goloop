@@ -34,10 +34,10 @@ public class ScenarioTest extends GoldenTest {
         // byte[] string
         public static final byte EXPECT_SVAR = 4;
 
-        private static String sVar;
+        private String sVar;
 
         @External
-        public static void run(byte[] code) {
+        public void run(byte[] code) {
             var ba = Blockchain.getAddress().toByteArray();
             int addr = (ba[1] << 8) & 0xff | (ba[2] & 0xff);
             Blockchain.println("Enter addr=" + addr);
@@ -49,7 +49,7 @@ public class ScenarioTest extends GoldenTest {
             }
         }
 
-        private static void doRunImpl(byte[] code) {
+        private void doRunImpl(byte[] code) {
             int offset = 0;
             while (offset < code.length) {
                 int insn = code[offset++] & 0xff;

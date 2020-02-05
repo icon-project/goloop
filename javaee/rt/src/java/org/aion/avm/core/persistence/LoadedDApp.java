@@ -1,6 +1,7 @@
 package org.aion.avm.core.persistence;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -103,6 +104,7 @@ public class LoadedDApp {
     private int hashCode;
     // Used for billing
     private int serializedLength;
+    private Object mainInstance;
 
     /**
      * Creates the LoadedDApp to represent the classes related to DApp at address.
@@ -171,12 +173,19 @@ public class LoadedDApp {
         return clazz.getMethod(METHOD_PREFIX + m.getName(), paramClasses);
     }
 
+    private Constructor getConstructor(foundation.icon.ee.types.Method m) throws ReflectiveOperationException {
+        var paramClasses = m.getParameterClasses();
+        Class<?> clazz = loadMainClass();
+        return clazz.getConstructor(paramClasses);
+    }
+
     public void verifyExternalMethods() throws ReflectiveOperationException {
         Class<?> clazz = loadMainClass();
         for (var m : nameToMethod.entrySet()) {
-            if (m.getValue().getType() != foundation.icon.ee.types.Method.MethodType.EVENT) {
+            if (m.getValue().getType() != foundation.icon.ee.types.Method.MethodType.EVENT
+                    && !m.getValue().getName().equals("<init>")) {
                 Method method = getExternalMethod(m.getValue());
-                if (!Modifier.isStatic(method.getModifiers())) {
+                if (Modifier.isStatic(method.getModifiers())) {
                     throw new NoSuchMethodException(String.format("method %s is not static", m.getKey()));
                 }
             }
@@ -196,8 +205,12 @@ public class LoadedDApp {
         List<Object> existingObjectIndex = null;
         StandardGlobalResolver resolver = new StandardGlobalResolver(internedClassMap, this.loader);
         StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
-        return Deserializer.deserializeEntireGraphAndNextHashCode(inputBuffer, existingObjectIndex, resolver,
-                this.fieldCache, classNameMapper, this.sortedUserClasses, this.constantClass);
+        var buf = new Object[1];
+        var res =  Deserializer.deserializeEntireGraphAndNextHashCode(inputBuffer, existingObjectIndex, resolver,
+                this.fieldCache, classNameMapper, this.sortedUserClasses, this.constantClass,
+                buf);
+        mainInstance = buf[0];
+        return res;
     }
 
     public int loadRuntimeState(DAppRuntimeState state) {
@@ -205,8 +218,12 @@ public class LoadedDApp {
         List<Object> existingObjectIndex = state.getObjects();
         StandardGlobalResolver resolver = new StandardGlobalResolver(internedClasses, this.loader);
         StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
-        return Deserializer.deserializeEntireGraphAndNextHashCode(inputBuffer, existingObjectIndex, resolver,
-                this.fieldCache, classNameMapper, this.sortedUserClasses, this.constantClass);
+        var buf = new Object[1];
+        var res = Deserializer.deserializeEntireGraphAndNextHashCode(inputBuffer, existingObjectIndex, resolver,
+                this.fieldCache, classNameMapper, this.sortedUserClasses, this.constantClass,
+                buf);
+        mainInstance = buf[0];
+        return res;
     }
 
     public Object deserializeObject(InternedClasses internedClassMap, byte[] rawGraphData) {
@@ -230,7 +247,7 @@ public class LoadedDApp {
         List<Integer> out_calleeToCallerIndexMap = null;
         StandardGlobalResolver resolver = new StandardGlobalResolver(null, this.loader);
         StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
-        Serializer.serializeEntireGraph(outputBuffer, out_instanceIndex, out_calleeToCallerIndexMap, resolver, this.fieldCache, classNameMapper, nextHashCode, this.sortedUserClasses, this.constantClass);
+        Serializer.serializeEntireGraph(outputBuffer, out_instanceIndex, out_calleeToCallerIndexMap, resolver, this.fieldCache, classNameMapper, nextHashCode, this.sortedUserClasses, this.constantClass, this.mainInstance);
         
         byte[] finalBytes = new byte[outputBuffer.position()];
         System.arraycopy(outputBuffer.array(), 0, finalBytes, 0, finalBytes.length);
@@ -248,7 +265,7 @@ public class LoadedDApp {
         List<Integer> out_calleeToCallerIndexMap = null;
         StandardGlobalResolver resolver = new StandardGlobalResolver(null, this.loader);
         StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
-        Serializer.serializeEntireGraph(outputBuffer, out_instanceIndex, out_calleeToCallerIndexMap, resolver, this.fieldCache, classNameMapper, nextHashCode, this.sortedUserClasses, this.constantClass);
+        Serializer.serializeEntireGraph(outputBuffer, out_instanceIndex, out_calleeToCallerIndexMap, resolver, this.fieldCache, classNameMapper, nextHashCode, this.sortedUserClasses, this.constantClass, this.mainInstance);
 
         byte[] finalBytes = new byte[outputBuffer.position()];
         System.arraycopy(outputBuffer.array(), 0, finalBytes, 0, finalBytes.length);
@@ -317,6 +334,31 @@ public class LoadedDApp {
         }
     }
 
+    public void initMainInstance(Object []params) throws Throwable {
+        try {
+            var m = nameToMethod.get("<init>");
+            if (m==null) {
+                throw new NoSuchMethodException(String.format("method <init> is not in APIS"));
+            }
+            Constructor ctor = getConstructor(m);
+            mainInstance = ctor.newInstance(m.convertParameters(params));
+        } catch (ClassNotFoundException | SecurityException | ExceptionInInitializerError e) {
+            // should have been handled during CREATE.
+            RuntimeAssertionError.unexpected(e);
+
+        } catch (NoSuchMethodException | IllegalAccessException e) {
+            throw new MethodAccessException(e);
+
+        } catch (InvocationTargetException e) {
+            // handle the real exception
+            if (e.getTargetException() instanceof UncaughtException) {
+                handleUncaughtException(e.getTargetException().getCause());
+            } else {
+                handleUncaughtException(e.getTargetException());
+            }
+        }
+    }
+
     public Object callMethod(String methodName, Object[] params) throws Throwable {
         try {
             var m = nameToMethod.get(methodName);
@@ -324,7 +366,7 @@ public class LoadedDApp {
                 throw new NoSuchMethodException(String.format("method %s is not in APIS", methodName));
             }
             Method method = getExternalMethod(m);
-            Object sres = method.invoke(null, m.convertParameters(params));
+            Object sres = method.invoke(mainInstance, m.convertParameters(params));
             Object res;
             if (m.hasValidPrimitiveReturnType()) {
                 res = sres;

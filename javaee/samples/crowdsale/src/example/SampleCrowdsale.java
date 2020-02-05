@@ -38,11 +38,15 @@ public class SampleCrowdsale
     private DictDB<Address, BigInteger> balances;
     private VarDB<BigInteger> amountRaised;
 
-    private SampleCrowdsale(BigInteger fundingGoalInIcx, Address tokenScore, BigInteger durationInBlocks) {
+    public SampleCrowdsale(BigInteger _fundingGoalInIcx, Address _tokenScore, BigInteger _durationInBlocks) {
+        // some basic requirements
+        Blockchain.require(_fundingGoalInIcx.compareTo(BigInteger.ZERO) >= 0);
+        Blockchain.require(_durationInBlocks.compareTo(BigInteger.ZERO) >= 0);
+
         this.beneficiary = Blockchain.getCaller();
-        this.fundingGoal = ONE_ICX.multiply(fundingGoalInIcx);
-        this.tokenScore = tokenScore;
-        this.deadline = Blockchain.getBlockHeight() + durationInBlocks.longValue();
+        this.fundingGoal = ONE_ICX.multiply(_fundingGoalInIcx);
+        this.tokenScore = _tokenScore;
+        this.deadline = Blockchain.getBlockHeight() + _durationInBlocks.longValue();
 
         this.fundingGoalReached = false;
         this.crowdsaleClosed = true; // Crowdsale closed by default
@@ -51,25 +55,13 @@ public class SampleCrowdsale
         this.amountRaised = Blockchain.newVarDB("amountRaised", BigInteger.class);
     }
 
-    private static SampleCrowdsale crowdsale;
-
-    public static void onInstall(BigInteger _fundingGoalInIcx,
-                                 Address _tokenScore,
-                                 BigInteger _durationInBlocks) {
-        // some basic requirements
-        Blockchain.require(_fundingGoalInIcx.compareTo(BigInteger.ZERO) >= 0);
-        Blockchain.require(_durationInBlocks.compareTo(BigInteger.ZERO) >= 0);
-
-        crowdsale = new SampleCrowdsale(_fundingGoalInIcx, _tokenScore, _durationInBlocks);
-    }
-
     /*
      * Receives initial tokens to reward to the contributors.
      */
     @External
-    public static void tokenFallback(Address _from, BigInteger _value, byte[] _data) {
+    public void tokenFallback(Address _from, BigInteger _value, byte[] _data) {
         // check if the caller is a token SCORE address that this SCORE is interested in
-        Blockchain.require(Blockchain.getCaller().equals(crowdsale.tokenScore));
+        Blockchain.require(Blockchain.getCaller().equals(this.tokenScore));
 
         // depositing tokens can only be done by owner
         Blockchain.require(Blockchain.getOwner().equals(_from));
@@ -78,19 +70,19 @@ public class SampleCrowdsale
         Blockchain.require(_value.compareTo(BigInteger.ZERO) >= 0);
 
         // start Crowdsale hereafter
-        Blockchain.require(crowdsale.crowdsaleClosed);
-        crowdsale.crowdsaleClosed = false;
+        Blockchain.require(this.crowdsaleClosed);
+        this.crowdsaleClosed = false;
         // emit eventlog
-        CrowdsaleStarted(crowdsale.fundingGoal, crowdsale.deadline);
+        CrowdsaleStarted(this.fundingGoal, this.deadline);
     }
 
     /*
      * Called when anyone sends funds to the SCORE and that funds would be regarded as a contribution.
      */
     @Payable
-    public static void fallback() {
+    public void fallback() {
         // check if the crowdsale is closed
-        Blockchain.require(crowdsale.crowdsaleClosed == false);
+        Blockchain.require(this.crowdsaleClosed == false);
 
         Address _from = Blockchain.getCaller();
         BigInteger _value = Blockchain.getValue();
@@ -98,15 +90,15 @@ public class SampleCrowdsale
 
         // accept the contribution
         BigInteger fromBalance = safeGetBalance(_from);
-        crowdsale.balances.set(_from, fromBalance.add(_value));
+        this.balances.set(_from, fromBalance.add(_value));
 
         // increase the total amount of funding
         BigInteger amountRaised = safeGetAmountRaised();
-        crowdsale.amountRaised.set(amountRaised.add(_value));
+        this.amountRaised.set(amountRaised.add(_value));
 
         // give tokens to the contributor as a reward
         byte[] _data = "called from Crowdsale".getBytes();
-        Blockchain.call(crowdsale.tokenScore, "transfer", _from, _value, _data);
+        Blockchain.call(this.tokenScore, "transfer", _from, _value, _data);
         // emit eventlog
         FundTransfer(_from, _value, true);
     }
@@ -115,18 +107,18 @@ public class SampleCrowdsale
      * Checks if the goal has been reached and ends the campaign.
      */
     @External
-    public static void checkGoalReached() {
+    public void checkGoalReached() {
         if (afterDeadline()) {
-            if (crowdsale.crowdsaleClosed == false) {
-                crowdsale.crowdsaleClosed = true;
+            if (this.crowdsaleClosed == false) {
+                this.crowdsaleClosed = true;
                 // emit eventlog
                 CrowdsaleEnded();
             }
             BigInteger amountRaised = safeGetAmountRaised();
-            if (amountRaised.compareTo(crowdsale.fundingGoal) >= 0) {
-                crowdsale.fundingGoalReached = true;
+            if (amountRaised.compareTo(this.fundingGoal) >= 0) {
+                this.fundingGoalReached = true;
                 // emit eventlog
-                GoalReached(crowdsale.beneficiary, amountRaised);
+                GoalReached(this.beneficiary, amountRaised);
             }
         }
     }
@@ -138,12 +130,12 @@ public class SampleCrowdsale
      *  - If the goal was not reached, each contributor can withdraw the amount they contributed.
      */
     @External
-    public static void safeWithdrawal() {
+    public void safeWithdrawal() {
         if (afterDeadline()) {
             Address _from = Blockchain.getCaller();
 
             // each contributor can withdraw the amount they contributed if the goal was not reached
-            if (crowdsale.fundingGoalReached == false) {
+            if (this.fundingGoalReached == false) {
                 BigInteger amount = safeGetBalance(_from);
                 if (amount.compareTo(BigInteger.ZERO) > 0) {
                     // transfer the icx back to them
@@ -151,47 +143,47 @@ public class SampleCrowdsale
                     // emit eventlog
                     FundTransfer(_from, amount, false);
                     // set their balance to ZERO
-                    crowdsale.balances.set(_from, BigInteger.ZERO);
+                    this.balances.set(_from, BigInteger.ZERO);
                 }
             }
 
             // owner can withdraw the contribution since the sales target has been met.
-            if (crowdsale.fundingGoalReached && crowdsale.beneficiary.equals(_from)) {
+            if (this.fundingGoalReached && this.beneficiary.equals(_from)) {
                 BigInteger amountRaised = safeGetAmountRaised();
                 if (amountRaised.compareTo(BigInteger.ZERO) > 0) {
                     // transfer the funds to beneficiary
-                    Blockchain.call(amountRaised, crowdsale.beneficiary, "fallback");
+                    Blockchain.call(amountRaised, this.beneficiary, "fallback");
                     // emit eventlog
-                    FundTransfer(crowdsale.beneficiary, amountRaised, false);
+                    FundTransfer(this.beneficiary, amountRaised, false);
                     // reset amountRaised
-                    crowdsale.amountRaised.set(BigInteger.ZERO);
+                    this.amountRaised.set(BigInteger.ZERO);
                 }
             }
         }
     }
 
-    private static BigInteger safeGetBalance(Address owner) {
-        return crowdsale.balances.getOrDefault(owner, BigInteger.ZERO);
+    private BigInteger safeGetBalance(Address owner) {
+        return this.balances.getOrDefault(owner, BigInteger.ZERO);
     }
 
-    private static BigInteger safeGetAmountRaised() {
-        return crowdsale.amountRaised.getOrDefault(BigInteger.ZERO);
+    private BigInteger safeGetAmountRaised() {
+        return this.amountRaised.getOrDefault(BigInteger.ZERO);
     }
 
-    private static boolean afterDeadline() {
+    private boolean afterDeadline() {
         // checks if it has been reached to the deadline block
-        return Blockchain.getBlockHeight() >= crowdsale.deadline;
+        return Blockchain.getBlockHeight() >= this.deadline;
     }
 
     @EventLog
-    private static void CrowdsaleStarted(BigInteger fundingGoal, long deadline) {}
+    private void CrowdsaleStarted(BigInteger fundingGoal, long deadline) {}
 
     @EventLog
-    private static void CrowdsaleEnded() {}
+    private void CrowdsaleEnded() {}
 
     @EventLog(indexed=3)
-    private static void FundTransfer(Address backer, BigInteger amount, boolean isContribution) {}
+    private void FundTransfer(Address backer, BigInteger amount, boolean isContribution) {}
 
     @EventLog(indexed=2)
-    private static void GoalReached(Address recipient, BigInteger totalAmountRaised) {}
+    private void GoalReached(Address recipient, BigInteger totalAmountRaised) {}
 }

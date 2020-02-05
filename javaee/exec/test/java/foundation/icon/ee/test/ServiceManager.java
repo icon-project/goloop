@@ -99,7 +99,7 @@ public class ServiceManager extends Proxy {
             state.writeFile(path, jar);
             current = state.getAccount(scoreAddr);
             info.put(Info.CONTRACT_OWNER, origin);
-            var res = invoke(path, false, origin, scoreAddr, value, stepLimit, "onInstall", params);
+            var res = invoke(path, false, origin, scoreAddr, value, stepLimit, "<init>", params);
             if (res.getStatus()!=0) {
                 state = prevState;
                 current = state.getAccount(prev.address);
