@@ -16,14 +16,16 @@
 
 package foundation.icon.test.score;
 
-import foundation.icon.icx.IconService;
+import foundation.icon.icx.Wallet;
 import foundation.icon.icx.data.Address;
+import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcArray;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
-import foundation.icon.test.common.Env;
+import foundation.icon.test.common.ResultTimeoutException;
+import foundation.icon.test.common.TransactionHandler;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -33,8 +35,8 @@ public class ChainScore extends Score {
     private static final int CONFIG_AUDIT = 0x2;
     private static final int CONFIG_DEPLOYER_WHITE_LIST = 0x4;
 
-    public ChainScore(IconService service, Env.Chain chain) {
-        super(service, chain, Constants.CHAINSCORE_ADDRESS);
+    public ChainScore(TransactionHandler txHandler) {
+        super(txHandler, Constants.CHAINSCORE_ADDRESS);
     }
 
     public int getRevision() throws IOException {
@@ -75,5 +77,28 @@ public class ChainScore extends Score {
             list.add(item.asAddress());
         }
         return list;
+    }
+
+    public RpcObject getScoreStatus(Address address) throws IOException {
+        RpcObject params = new RpcObject.Builder()
+                .put("address", new RpcValue(address))
+                .build();
+        return call("getScoreStatus", params).asObject();
+    }
+
+    public TransactionResult disableScore(Wallet wallet, Address address)
+            throws IOException, ResultTimeoutException {
+        RpcObject params = new RpcObject.Builder()
+                .put("address", new RpcValue(address))
+                .build();
+        return invokeAndWaitResult(wallet, "disableScore", params, 0, 0);
+    }
+
+    public TransactionResult enableScore(Wallet wallet, Address address)
+            throws IOException, ResultTimeoutException {
+        RpcObject params = new RpcObject.Builder()
+                .put("address", new RpcValue(address))
+                .build();
+        return invokeAndWaitResult(wallet, "enableScore", params, 0, 0);
     }
 }

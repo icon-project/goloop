@@ -117,6 +117,10 @@ public class Score {
         return this.txHandler.call(call);
     }
 
+    public Bytes invoke(Wallet wallet, String method, RpcObject params) throws IOException {
+        return invoke(wallet, method, params, BigInteger.ZERO, Constants.DEFAULT_STEPS);
+    }
+
     public Bytes invoke(Wallet wallet, String method, RpcObject params,
                         long value, long steps) throws IOException {
         return invoke(wallet, method, params, BigInteger.valueOf(value), BigInteger.valueOf(steps));
@@ -168,6 +172,11 @@ public class Score {
 
     public TransactionResult waitResult(Bytes txHash) throws IOException {
         return this.txHandler.waitResult(txHash);
+    }
+
+    public TransactionResult invokeAndWaitResult(Wallet wallet, String method, RpcObject params)
+            throws ResultTimeoutException, IOException {
+        return invokeAndWaitResult(wallet, method, params, BigInteger.ZERO, Constants.DEFAULT_STEPS);
     }
 
     public TransactionResult invokeAndWaitResult(Wallet wallet, String method,

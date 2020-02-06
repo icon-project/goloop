@@ -266,33 +266,6 @@ public class Utils {
         return getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
     }
 
-    public static Bytes sendTransactionWithCall(IconService iconService, int nid, Wallet fromWallet,
-            Address scoreAddr, String function, RpcObject params, long value, boolean waitResult)
-                    throws TransactionFailureException, ResultTimeoutException, IOException {
-        long timestamp = System.currentTimeMillis() * 1000L;
-        Transaction transaction = TransactionBuilder.newBuilder()
-                .nid(BigInteger.valueOf(nid))
-                .from(fromWallet.getAddress())
-                .to(scoreAddr)
-                .stepLimit(new BigInteger("200000"))
-                .timestamp(new BigInteger(Long.toString(timestamp)))
-                .nonce(new BigInteger("1"))
-                .value(BigInteger.valueOf(value))
-                .call(function)
-                .params(params)
-                .build();
-
-        SignedTransaction signedTransaction = new SignedTransaction(transaction, fromWallet);
-        Bytes txHash = iconService.sendTransaction(signedTransaction).execute();
-        if(waitResult) {
-            TransactionResult result = getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
-            if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
-                throw new TransactionFailureException(result.getFailure());
-            }
-        }
-        return txHash;
-    }
-
     private static int getServiceConfig(IconService iconService) {
         try {
             BigInteger rpcObject = icxCall(iconService, Constants.CHAINSCORE_ADDRESS,

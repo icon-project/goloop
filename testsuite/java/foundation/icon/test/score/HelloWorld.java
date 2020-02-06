@@ -10,55 +10,42 @@ import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.TransactionFailureException;
+import foundation.icon.test.common.TransactionHandler;
 
 import java.io.IOException;
-import java.math.BigInteger;
 
 public class HelloWorld extends Score {
     private static final String INSTALL_PATH = Constants.SCORE_HELLOWORLD_PATH;
     private static final String UPDATE_PATH = Constants.SCORE_HELLOWORLD_UPDATE_PATH;
 
-    public HelloWorld(IconService iconService, Env.Chain chain, Address scoreAddress) {
-        super(iconService, chain, scoreAddress);
+    public HelloWorld(TransactionHandler txHandler, Address address) {
+        super(txHandler, address);
     }
 
-    // install with default stepLimit and default parameter
+    public HelloWorld(Score other) {
+        super(other);
+    }
+
     public static HelloWorld install(IconService service, Env.Chain chain, Wallet wallet)
-            throws TransactionFailureException, ResultTimeoutException, IOException
-    {
-        return install(service, chain, wallet, 2000000);
+            throws TransactionFailureException, IOException, ResultTimeoutException {
+        TransactionHandler txHandler = new TransactionHandler(service, chain);
+        return install(txHandler, wallet);
     }
 
-    // install with default parameter
-    public static HelloWorld install(IconService service, Env.Chain chain, Wallet wallet, long stepLimit)
-            throws TransactionFailureException, ResultTimeoutException, IOException
-    {
+    public static HelloWorld install(TransactionHandler txHandler, Wallet wallet)
+            throws TransactionFailureException, ResultTimeoutException, IOException {
         RpcObject params = new RpcObject.Builder()
                 .put("name", new RpcValue("HelloWorld"))
                 .build();
-        return install(service, chain, wallet, params, stepLimit);
+        return install(txHandler, wallet, params);
     }
 
-    // install with passed parameter
-    public static HelloWorld install(IconService service, Env.Chain chain,
-                                     Wallet wallet, RpcObject params, long stepLimit)
-            throws TransactionFailureException, ResultTimeoutException, IOException
-    {
-        return new HelloWorld(
-                service,
-                chain,
-                Score.install(service, chain, wallet, INSTALL_PATH, params, stepLimit)
-        );
+    public static HelloWorld install(TransactionHandler txHandler, Wallet wallet, RpcObject params)
+            throws TransactionFailureException, ResultTimeoutException, IOException {
+        return new HelloWorld(txHandler.deploy(wallet, INSTALL_PATH, params));
     }
 
-    public void update(IconService service, Env.Chain chain, Wallet wallet, RpcObject params)
-            throws TransactionFailureException, ResultTimeoutException, IOException
-    {
-        super.update(service, chain, wallet, UPDATE_PATH, params);
-    }
-
-    public TransactionResult invokeHello(Wallet from) throws ResultTimeoutException, IOException{
-        return invokeAndWaitResult(from, "hello", null
-                , BigInteger.valueOf(0), BigInteger.valueOf(100));
+    public TransactionResult invokeHello(Wallet from) throws ResultTimeoutException, IOException {
+        return invokeAndWaitResult(from, "hello", null);
     }
 }

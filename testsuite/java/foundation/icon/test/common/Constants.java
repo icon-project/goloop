@@ -47,7 +47,7 @@ public class Constants {
 
     public static final String SCORE_STATUS_PENDING = "pending";
     public static final String SCORE_STATUS_ACTIVE = "active";
-    public static final String SCORE_STATUS_REJECT = "rejected";
+    public static final String SCORE_STATUS_REJECTED = "rejected";
 
     public static final String SCORE_MULTISIG_PATH = SCORE_ROOT + "multisig_wallet";
     public static final String SCORE_STEPCOUNTER_PATH = SCORE_ROOT + "step_counter";

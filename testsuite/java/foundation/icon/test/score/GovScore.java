@@ -28,6 +28,7 @@ import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.TransactionFailureException;
+import foundation.icon.test.common.TransactionHandler;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -46,7 +47,7 @@ public class GovScore extends Score {
         BigInteger stepPrice;
     }
 
-    public static String[] stepCostTypes = {
+    public static final String[] stepCostTypes = {
             "default",
             "contractCall",
             "contractCreate",
@@ -61,7 +62,6 @@ public class GovScore extends Score {
             "eventLog",
             "apiCall"
     };
-    final long stepLimit = 1000000;
 
     public GovScore(IconService iconService, Env.Chain chain) {
         super(iconService, chain, Constants.GOV_ADDRESS);
@@ -69,52 +69,58 @@ public class GovScore extends Score {
         this.chainScore = new Score(iconService, chain, Constants.CHAINSCORE_ADDRESS);
     }
 
+    public GovScore(TransactionHandler txHandler) {
+        super(txHandler, Constants.GOV_ADDRESS);
+        this.governorWallet = txHandler.getChain().governorWallet;
+        this.chainScore = new Score(txHandler, Constants.CHAINSCORE_ADDRESS);
+    }
+
     private Wallet getWallet() {
         return this.governorWallet;
     }
 
-    public void setRevision(int code) throws Exception {
+    public TransactionResult setRevision(int code) throws Exception {
         RpcObject params = new RpcObject.Builder()
                 .put("code", new RpcValue(BigInteger.valueOf(code)))
                 .build();
-        invokeAndWaitResult(getWallet(), "setRevision", params, 0, stepLimit);
+        return invokeAndWaitResult(getWallet(), "setRevision", params);
     }
 
-    public void setStepPrice(BigInteger price) throws Exception{
+    public void setStepPrice(BigInteger price) throws Exception {
         RpcObject params = new RpcObject.Builder()
                 .put("price", new RpcValue(price))
                 .build();
-        invokeAndWaitResult(getWallet(), "setStepPrice", params, 0, stepLimit);
+        invokeAndWaitResult(getWallet(), "setStepPrice", params);
     }
 
-    public void setStepCost(String type, BigInteger cost) throws ResultTimeoutException, IOException{
+    public void setStepCost(String type, BigInteger cost) throws ResultTimeoutException, IOException {
         RpcObject params = new RpcObject.Builder()
                 .put("type", new RpcValue(type))
                 .put("cost", new RpcValue(cost))
                 .build();
-        invokeAndWaitResult(getWallet(), "setStepCost", params, 0, stepLimit);
+        invokeAndWaitResult(getWallet(), "setStepCost", params);
     }
 
-    public void setMaxStepLimit(String type, BigInteger cost) throws ResultTimeoutException, IOException{
+    public TransactionResult setMaxStepLimit(String type, BigInteger cost) throws ResultTimeoutException, IOException {
         RpcObject params = new RpcObject.Builder()
                 .put("contextType", new RpcValue(type))
                 .put("limit", new RpcValue(cost))
                 .build();
-        invokeAndWaitResult(getWallet(), "setMaxStepLimit", params, 0, stepLimit);
+        return invokeAndWaitResult(getWallet(), "setMaxStepLimit", params);
     }
 
     public TransactionResult acceptScore(Bytes txHash) throws ResultTimeoutException, IOException {
         RpcObject params = new RpcObject.Builder()
                 .put("txHash", new RpcValue(txHash))
                 .build();
-        return invokeAndWaitResult(getWallet(), "acceptScore", params, 0, stepLimit);
+        return invokeAndWaitResult(getWallet(), "acceptScore", params);
     }
 
     public TransactionResult rejectScore(Bytes txHash) throws ResultTimeoutException, IOException {
         RpcObject params = new RpcObject.Builder()
                 .put("txHash", new RpcValue(txHash))
                 .build();
-        return invokeAndWaitResult(getWallet(), "rejectScore", params, 0, stepLimit);
+        return invokeAndWaitResult(getWallet(), "rejectScore", params);
     }
 
     public Map<String, BigInteger> getStepCosts() throws Exception {
@@ -134,7 +140,7 @@ public class GovScore extends Score {
                     .put("type", new RpcValue(type))
                     .put("cost", new RpcValue(map.get(type)))
                     .build();
-            Bytes txHash = invoke(getWallet(), "setStepCost", params, 0, stepLimit);
+            Bytes txHash = invoke(getWallet(), "setStepCost", params);
             list.add(txHash);
         }
         for(Bytes txHash : list) {
@@ -166,7 +172,7 @@ public class GovScore extends Score {
                     .put("contextType", new RpcValue(type))
                     .put("limit", new RpcValue(limits.get(type)))
                     .build();
-            Bytes txHash = invoke(getWallet(), "setMaxStepLimit", params, 0, stepLimit);
+            Bytes txHash = invoke(getWallet(), "setMaxStepLimit", params);
             list.add(txHash);
         }
         for(Bytes txHash : list) {
@@ -195,20 +201,20 @@ public class GovScore extends Score {
         RpcObject params = new RpcObject.Builder()
                 .put("address", new RpcValue(address))
                 .build();
-        return invokeAndWaitResult(getWallet(), "addDeployer", params, 0, stepLimit);
+        return invokeAndWaitResult(getWallet(), "addDeployer", params);
     }
 
     public TransactionResult removeDeployer(Address address) throws IOException, ResultTimeoutException {
         RpcObject params = new RpcObject.Builder()
                 .put("address", new RpcValue(address))
                 .build();
-        return invokeAndWaitResult(getWallet(), "removeDeployer", params, 0, stepLimit);
+        return invokeAndWaitResult(getWallet(), "removeDeployer", params);
     }
 
     public TransactionResult setDeployerWhiteListEnabled(boolean yn) throws IOException, ResultTimeoutException {
         RpcObject params = new RpcObject.Builder()
                 .put("yn", new RpcValue(yn))
                 .build();
-        return invokeAndWaitResult(getWallet(), "setDeployerWhiteListEnabled", params, 0, stepLimit);
+        return invokeAndWaitResult(getWallet(), "setDeployerWhiteListEnabled", params);
     }
 }

@@ -48,13 +48,13 @@ public class TransactionHandler {
     public Score deploy(Wallet owner, String scorePath, RpcObject params)
             throws IOException, ResultTimeoutException, TransactionFailureException {
         byte[] data = Utils.zipContent(scorePath);
-        return doDeploy(owner, data, params, Constants.CONTENT_TYPE_PYTHON);
+        return getScore(doDeploy(owner, data, params, Constants.CONTENT_TYPE_PYTHON));
     }
 
     public Score deploy(Wallet owner, Class<?> mainClass, RpcObject params)
             throws IOException, ResultTimeoutException, TransactionFailureException {
         byte[] jar = makeJar(mainClass);
-        return doDeploy(owner, jar, params, Constants.CONTENT_TYPE_JAVA);
+        return getScore(doDeploy(owner, jar, params, Constants.CONTENT_TYPE_JAVA));
     }
 
     private byte[] makeJar(Class<?> c) {
@@ -69,8 +69,7 @@ public class TransactionHandler {
                 .getOptimizedBytes();
     }
 
-    private Score doDeploy(Wallet owner, byte[] content, RpcObject params, String contentType)
-            throws IOException, ResultTimeoutException, TransactionFailureException {
+    private Bytes doDeploy(Wallet owner, byte[] content, RpcObject params, String contentType) throws IOException {
         Transaction transaction = TransactionBuilder.newBuilder()
                 .nid(getNetworkId())
                 .from(owner.getAddress())
@@ -79,15 +78,27 @@ public class TransactionHandler {
                 .deploy(contentType, content)
                 .params(params)
                 .build();
-
         SignedTransaction signedTransaction = new SignedTransaction(transaction, owner);
-        Bytes txHash = iconService.sendTransaction(signedTransaction).execute();
+        return iconService.sendTransaction(signedTransaction).execute();
+    }
+
+    public Score getScore(Bytes txHash)
+            throws IOException, ResultTimeoutException, TransactionFailureException {
         TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new TransactionFailureException(result.getFailure());
         }
         Utils.acceptScoreIfAuditEnabled(iconService, chain, txHash);
         return new Score(this, new Address(result.getScoreAddress()));
+    }
+
+    public Bytes deployOnly(Wallet owner, String scorePath, RpcObject params) throws IOException {
+        byte[] data = Utils.zipContent(scorePath);
+        return doDeploy(owner, data, params, Constants.CONTENT_TYPE_PYTHON);
+    }
+
+    public Env.Chain getChain() {
+        return this.chain;
     }
 
     public BigInteger getNetworkId() {
