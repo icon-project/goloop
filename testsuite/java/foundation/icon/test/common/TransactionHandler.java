@@ -47,8 +47,23 @@ public class TransactionHandler {
 
     public Score deploy(Wallet owner, String scorePath, RpcObject params)
             throws IOException, ResultTimeoutException, TransactionFailureException {
+        return deploy(owner, scorePath, params, Constants.DEFAULT_STEPS);
+    }
+
+    public Score deploy(Wallet owner, byte[] content, RpcObject params)
+            throws IOException, ResultTimeoutException, TransactionFailureException {
+        return getScore(doDeploy(owner, content, params, Constants.CONTENT_TYPE_PYTHON));
+    }
+
+    public Score deploy(Wallet owner, String scorePath, RpcObject params, BigInteger steps)
+            throws IOException, ResultTimeoutException, TransactionFailureException {
+        return deploy(owner, scorePath, Constants.CHAINSCORE_ADDRESS, params, steps);
+    }
+
+    public Score deploy(Wallet owner, String scorePath, Address to, RpcObject params, BigInteger steps)
+            throws IOException, ResultTimeoutException, TransactionFailureException {
         byte[] data = Utils.zipContent(scorePath);
-        return getScore(doDeploy(owner, data, params, Constants.CONTENT_TYPE_PYTHON));
+        return getScore(doDeploy(owner, data, to, params, steps, Constants.CONTENT_TYPE_PYTHON));
     }
 
     public Score deploy(Wallet owner, Class<?> mainClass, RpcObject params)
@@ -69,12 +84,18 @@ public class TransactionHandler {
                 .getOptimizedBytes();
     }
 
-    private Bytes doDeploy(Wallet owner, byte[] content, RpcObject params, String contentType) throws IOException {
+    private Bytes doDeploy(Wallet owner, byte[] content, RpcObject params, String contentType)
+            throws IOException {
+        return doDeploy(owner, content, Constants.CHAINSCORE_ADDRESS, params, Constants.DEFAULT_STEPS, contentType);
+    }
+
+    private Bytes doDeploy(Wallet owner, byte[] content, Address to, RpcObject params, BigInteger steps, String contentType)
+            throws IOException {
         Transaction transaction = TransactionBuilder.newBuilder()
                 .nid(getNetworkId())
                 .from(owner.getAddress())
-                .to(Constants.CHAINSCORE_ADDRESS)
-                .stepLimit(Constants.DEFAULT_STEPS)
+                .to(to)
+                .stepLimit(steps)
                 .deploy(contentType, content)
                 .params(params)
                 .build();
@@ -84,7 +105,7 @@ public class TransactionHandler {
 
     public Score getScore(Bytes txHash)
             throws IOException, ResultTimeoutException, TransactionFailureException {
-        TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
+        TransactionResult result = getResult(txHash, Constants.DEFAULT_WAITING_TIME);
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new TransactionFailureException(result.getFailure());
         }
@@ -103,6 +124,10 @@ public class TransactionHandler {
 
     public BigInteger getNetworkId() {
         return BigInteger.valueOf(chain.networkId);
+    }
+
+    public BigInteger getBalance(Address address) throws IOException {
+        return iconService.getBalance(address).execute();
     }
 
     public List<ScoreApi> getScoreApi(Address scoreAddress) throws IOException {
@@ -128,5 +153,17 @@ public class TransactionHandler {
     public TransactionResult getResult(Bytes txHash, long waiting)
             throws IOException, ResultTimeoutException {
         return Utils.getTransactionResult(this.iconService, txHash, waiting);
+    }
+
+    public Bytes transfer(Wallet owner, Address to, BigInteger amount) throws IOException {
+        Transaction transaction = TransactionBuilder.newBuilder()
+                .nid(getNetworkId())
+                .from(owner.getAddress())
+                .to(to)
+                .value(amount)
+                .stepLimit(Constants.DEFAULT_STEPS)
+                .build();
+        SignedTransaction signedTransaction = new SignedTransaction(transaction, owner);
+        return iconService.sendTransaction(signedTransaction).execute();
     }
 }

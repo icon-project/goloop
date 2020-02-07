@@ -7,16 +7,18 @@ class HelloWorld(IconScoreBase):
 
     def __init__(self, db: IconScoreDatabase) -> None:
         super().__init__(db)
+        self._name = VarDB('name', db, value_type=str)
 
-    def on_install(self, name : str) -> None:
+    def on_install(self, name: str) -> None:
         super().on_install()
 
-    def on_update(self, name : str) -> None:
+    def on_update(self, name: str) -> None:
         super().on_update()
+        self._name.set(name)
     
     @external(readonly=True)
     def name(self) -> str:
-        return "HelloWorld"
+        return self._name.get()
 
     @external
     def hello(self):
@@ -32,4 +34,4 @@ class HelloWorld(IconScoreBase):
 
     @external
     def tokenFallback(self, _from: Address, _value: int, _data: bytes):
-        Logger.info('tokenFallabck is called', TAG)
+        Logger.info('tokenFallback is called', TAG)

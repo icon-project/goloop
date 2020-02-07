@@ -15,8 +15,8 @@ import foundation.icon.test.common.TransactionHandler;
 import java.io.IOException;
 
 public class HelloWorld extends Score {
-    private static final String INSTALL_PATH = Constants.SCORE_HELLOWORLD_PATH;
-    private static final String UPDATE_PATH = Constants.SCORE_HELLOWORLD_UPDATE_PATH;
+    public static final String INSTALL_PATH = Constants.SCORE_HELLOWORLD_PATH;
+    public static final String UPDATE_PATH = Constants.SCORE_HELLOWORLD_UPDATE_PATH;
 
     public HelloWorld(TransactionHandler txHandler, Address address) {
         super(txHandler, address);

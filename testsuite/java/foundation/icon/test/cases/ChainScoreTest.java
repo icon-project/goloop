@@ -30,8 +30,8 @@ import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.ResultTimeoutException;
+import foundation.icon.test.common.TestBase;
 import foundation.icon.test.common.TransactionHandler;
-import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.ChainScore;
 import foundation.icon.test.score.GovScore;
 import foundation.icon.test.score.HelloWorld;
@@ -42,7 +42,6 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.opentest4j.AssertionFailedError;
 
 import java.math.BigInteger;
 import java.util.HashMap;
@@ -50,11 +49,16 @@ import java.util.List;
 import java.util.Map;
 
 import static foundation.icon.test.common.Env.LOG;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 @Tag(Constants.TAG_PY_GOV)
-public class ChainScoreTest {
+public class ChainScoreTest extends TestBase {
     private static TransactionHandler txHandler;
     private static ChainScore chainScore;
     private static GovScore govScore;
@@ -82,13 +86,12 @@ public class ChainScoreTest {
         govScore = new GovScore(txHandler);
         governorWallet = chain.governorWallet;
         try {
-            Utils.transferAndCheck(iconService, chain,
-                    chain.godWallet, governorWallet.getAddress(), Constants.DEFAULT_BALANCE);
+            Bytes txHash = txHandler.transfer(chain.godWallet, governorWallet.getAddress(), Constants.DEFAULT_BALANCE);
+            assertSuccess(txHandler.getResult(txHash, Constants.DEFAULT_WAITING_TIME));
 
             testWallets = new KeyWallet[testWalletNum];
             for (int i = 0; i < testWalletNum; i++) {
-                KeyWallet wallet = KeyWallet.create();
-                testWallets[i] = wallet;
+                testWallets[i] = KeyWallet.create();
             }
 
             for (String type : new String[]{"invoke", "query"}) {
@@ -687,23 +690,5 @@ public class ChainScoreTest {
             LOG.infoExiting();
         }
         return current;
-    }
-
-    private static void assertSuccess(TransactionResult result) {
-        assertStatus(Constants.STATUS_SUCCESS, result);
-    }
-
-    private static void assertFailure(TransactionResult result) {
-        assertStatus(Constants.STATUS_FAIL, result);
-        LOG.info("Expected " + result.getFailure());
-    }
-
-    private static void assertStatus(BigInteger status, TransactionResult result) {
-        try {
-            assertEquals(status, result.getStatus());
-        } catch (AssertionFailedError e) {
-            LOG.info("Assertion Failed: result=" + result);
-            fail(e.getMessage());
-        }
     }
 }

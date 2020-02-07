@@ -16,7 +16,7 @@ class HelloWorld(IconScoreBase):
         super().__init__(db)
         self._balances = DictDB(self._BALANCES, db, value_type=int)
 
-    def on_install(self, name : str) -> None:
+    def on_install(self, name: str) -> None:
         Logger.info(f"on_install - sender({self.msg.sender})", TAG)
         super().on_install()
 
@@ -52,7 +52,6 @@ class HelloWorld(IconScoreBase):
     def transfer(self) -> None:
         Logger.info('Transfer!!', TAG)
         self._balances[self.msg.sender] = self.msg.value
-
 
     @external(readonly=True)
     def balanceOf(self, _owner: Address) -> str:
