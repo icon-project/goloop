@@ -20,7 +20,6 @@ import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.crypto.IconKeys;
 import foundation.icon.icx.data.Address;
-import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.icx.transport.jsonrpc.RpcError;
@@ -46,8 +45,6 @@ import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -94,8 +91,8 @@ public class DeployTest extends TestBase {
             testWallets[i] = KeyWallet.create();
             testAddresses[i] = testWallets[i].getAddress();
         }
-        transferAndCheckResult(chain.governorWallet.getAddress(), Constants.DEFAULT_BALANCE);
-        transferAndCheckResult(testAddresses, Constants.DEFAULT_BALANCE);
+        transferAndCheckResult(txHandler, chain.governorWallet.getAddress(), Constants.DEFAULT_BALANCE);
+        transferAndCheckResult(txHandler, testAddresses, Constants.DEFAULT_BALANCE);
         govScore.setMaxStepLimit("invoke", invokeMaxStepLimit);
         govScore.setStepCost("contractCreate", stepCostCC);
         govScore.setStepPrice(stepPrice);
@@ -132,26 +129,11 @@ public class DeployTest extends TestBase {
         return txHandler.deploy(owner, scorePath, to, params, stepsForDeploy);
     }
 
-    private static void transferAndCheckResult(Address to, BigInteger amount) throws IOException, ResultTimeoutException {
-        Bytes txHash = txHandler.transfer(chain.godWallet, to, amount);
-        assertSuccess(txHandler.getResult(txHash, Constants.DEFAULT_WAITING_TIME));
-    }
-
-    private static void transferAndCheckResult(Address[] addresses, BigInteger amount) throws IOException, ResultTimeoutException {
-        List<Bytes> hashes = new ArrayList<>();
-        for (Address to : addresses) {
-            hashes.add(txHandler.transfer(chain.godWallet, to, amount));
-        }
-        for (Bytes hash : hashes) {
-            assertSuccess(txHandler.getResult(hash, Constants.DEFAULT_WAITING_TIME));
-        }
-    }
-
     @Test
     public void notEnoughBalance() throws Exception {
         LOG.infoEntering("notEnoughBalance");
         KeyWallet owner = KeyWallet.create();
-        transferAndCheckResult(owner.getAddress(), stepsForDeploy.subtract(BigInteger.ONE));
+        transferAndCheckResult(txHandler, owner.getAddress(), stepsForDeploy.subtract(BigInteger.ONE));
         try {
             deployHello(owner, null, null, stepsForDeploy);
             fail();
@@ -168,7 +150,7 @@ public class DeployTest extends TestBase {
     public void notEnoughStepLimit() throws Exception {
         LOG.infoEntering("notEnoughStepLimit");
         KeyWallet owner = KeyWallet.create();
-        transferAndCheckResult(owner.getAddress(), stepsForDeploy);
+        transferAndCheckResult(txHandler, owner.getAddress(), stepsForDeploy);
         try {
             deployHello(owner, null, null, stepsForDeploy.subtract(BigInteger.ONE));
             fail();

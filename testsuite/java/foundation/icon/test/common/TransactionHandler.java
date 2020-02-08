@@ -109,7 +109,7 @@ public class TransactionHandler {
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new TransactionFailureException(result.getFailure());
         }
-        Utils.acceptScoreIfAuditEnabled(iconService, chain, txHash);
+        acceptScoreIfAuditEnabled(txHash);
         return new Score(this, new Address(result.getScoreAddress()));
     }
 
@@ -155,6 +155,10 @@ public class TransactionHandler {
         return Utils.getTransactionResult(this.iconService, txHash, waiting);
     }
 
+    public Bytes transfer(Address to, BigInteger amount) throws IOException {
+        return transfer(chain.godWallet, to, amount);
+    }
+
     public Bytes transfer(Wallet owner, Address to, BigInteger amount) throws IOException {
         Transaction transaction = TransactionBuilder.newBuilder()
                 .nid(getNetworkId())
@@ -165,5 +169,10 @@ public class TransactionHandler {
                 .build();
         SignedTransaction signedTransaction = new SignedTransaction(transaction, owner);
         return iconService.sendTransaction(signedTransaction).execute();
+    }
+
+    public void acceptScoreIfAuditEnabled(Bytes txHash)
+            throws TransactionFailureException, IOException, ResultTimeoutException {
+        Utils.acceptScoreIfAuditEnabled(iconService, chain, txHash);
     }
 }

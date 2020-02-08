@@ -1,6 +1,6 @@
 from iconservice import *
 
-TAG = 'HelloWorld'
+TAG = 'HelloWorld2'
 
 
 class HelloWorld(IconScoreBase):
@@ -15,7 +15,8 @@ class HelloWorld(IconScoreBase):
     def on_update(self, name: str) -> None:
         super().on_update()
         self._name.set(name)
-    
+        Logger.info(f"on_update: name={name}", TAG)
+
     @external(readonly=True)
     def name(self) -> str:
         return self._name.get()

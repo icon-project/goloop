@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from iconservice import *
 
 TAG = 'StepTest'
@@ -36,7 +34,7 @@ class DbStep(IconScoreBase):
 
     @external(readonly=True)
     def get(self) -> int:
-        return
+        return self._var_int.get()
 
     @external
     def set(self, var: int):
@@ -55,11 +53,11 @@ class DbStep(IconScoreBase):
         if v_addr is not None:
             self._var_addr.set(v_addr)
         elif v_bytes is not None:
-            self._var_bytes.set(bytes(v_bytes))
+            self._var_bytes.set(v_bytes)
         elif v_str is not None:
-            self._var_str.set(str(v_str))
+            self._var_str.set(v_str)
         else:
-            self._var_int.set(int(v_int))
+            self._var_int.set(v_int)
 
     # type : 0 for int, 1 for str, 2 for bytes, 3 for addr
     @external
@@ -75,13 +73,12 @@ class DbStep(IconScoreBase):
 
     @external(readonly=True)
     def readFromVar(self, type: int) -> str:
-        val = None
         if type == 0:
             val = self._var_int.get()
         elif type == 1:
             val = self._var_str.get()
         elif type == 2:
-            val = self._var_bytes.get()
+            val = self._var_bytes.get().decode()
         else:
             val = self._var_addr.get()
         return val

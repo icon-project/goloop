@@ -16,10 +16,15 @@
 
 package foundation.icon.test.common;
 
+import foundation.icon.icx.data.Address;
+import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
 import org.opentest4j.AssertionFailedError;
 
+import java.io.IOException;
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
 
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -41,6 +46,23 @@ public class TestBase {
         } catch (AssertionFailedError e) {
             LOG.info("Assertion Failed: result=" + result);
             fail(e.getMessage());
+        }
+    }
+
+    protected static void transferAndCheckResult(TransactionHandler txHandler, Address to, BigInteger amount)
+            throws IOException, ResultTimeoutException {
+        Bytes txHash = txHandler.transfer(to, amount);
+        assertSuccess(txHandler.getResult(txHash, Constants.DEFAULT_WAITING_TIME));
+    }
+
+    protected static void transferAndCheckResult(TransactionHandler txHandler, Address[] addresses, BigInteger amount)
+            throws IOException, ResultTimeoutException {
+        List<Bytes> hashes = new ArrayList<>();
+        for (Address to : addresses) {
+            hashes.add(txHandler.transfer(to, amount));
+        }
+        for (Bytes hash : hashes) {
+            assertSuccess(txHandler.getResult(hash, Constants.DEFAULT_WAITING_TIME));
         }
     }
 }

@@ -10,22 +10,25 @@ class InterCallInterface(InterfaceScore):
 
 
 class HelloWorld(IconScoreBase):
+    _NAME = 'name'
     _BALANCES = 'balances'
 
     def __init__(self, db: IconScoreDatabase) -> None:
         super().__init__(db)
+        self._name = VarDB(self._NAME, db, value_type=str)
         self._balances = DictDB(self._BALANCES, db, value_type=int)
 
     def on_install(self, name: str) -> None:
-        Logger.info(f"on_install - sender({self.msg.sender})", TAG)
         super().on_install()
+        self._name.set(name)
+        Logger.info(f"on_install: name={name}", TAG)
 
     def on_update(self) -> None:
         super().on_update()
-    
+
     @external(readonly=True)
     def name(self) -> str:
-        return "HelloWorld"
+        return self._name.get()
 
     @external
     def hello(self):
