@@ -38,6 +38,9 @@ import java.util.List;
 import java.util.Map;
 
 public class GovScore extends Score {
+    public static final String INSTALL_PATH = Constants.SCORE_GOV_PATH;
+    public static final String UPDATE_PATH = Constants.SCORE_GOV_UPDATE_PATH;
+
     private final Wallet governorWallet;
     private final Score chainScore;
 

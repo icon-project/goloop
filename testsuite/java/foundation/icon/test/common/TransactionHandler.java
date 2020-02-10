@@ -150,6 +150,11 @@ public class TransactionHandler {
         return this.iconService.waitTransactionResult(txHash).execute();
     }
 
+    public TransactionResult getResult(Bytes txHash)
+            throws IOException, ResultTimeoutException {
+        return getResult(txHash, Constants.DEFAULT_WAITING_TIME);
+    }
+
     public TransactionResult getResult(Bytes txHash, long waiting)
             throws IOException, ResultTimeoutException {
         return Utils.getTransactionResult(this.iconService, txHash, waiting);

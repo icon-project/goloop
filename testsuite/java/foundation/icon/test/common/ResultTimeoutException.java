@@ -1,6 +1,5 @@
 package foundation.icon.test.common;
 
-
 import foundation.icon.icx.data.Bytes;
 
 public class ResultTimeoutException extends Exception{
@@ -15,7 +14,7 @@ public class ResultTimeoutException extends Exception{
     }
 
     public ResultTimeoutException(Bytes txHash) {
-        super("timeout. txHash : " + txHash);
+        super("Timeout. txHash=" + txHash);
         this.txHash = txHash;
     }
 

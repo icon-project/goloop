@@ -92,6 +92,7 @@ class Governance(IconScoreBase):
         super().on_install()
 
     def on_update(self) -> None:
+        Logger.info('update governance')
         super().on_update()
 
     # NOTE: Governance should not accept incoming funds
