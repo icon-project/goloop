@@ -167,7 +167,7 @@ public class LoadedDApp {
         }
     }
 
-    public Method getExternalMethod(foundation.icon.ee.types.Method m) throws ReflectiveOperationException  {
+    private Method getExternalMethod(foundation.icon.ee.types.Method m) throws ReflectiveOperationException  {
         var paramClasses = m.getParameterClasses();
         Class<?> clazz = loadMainClass();
         return clazz.getMethod(METHOD_PREFIX + m.getName(), paramClasses);
