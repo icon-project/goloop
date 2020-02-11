@@ -25,6 +25,7 @@ import foundation.icon.icx.TransactionBuilder;
 import foundation.icon.icx.Wallet;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
+import foundation.icon.icx.data.ConfirmedTransaction;
 import foundation.icon.icx.data.ScoreApi;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
@@ -179,5 +180,9 @@ public class TransactionHandler {
     public void acceptScoreIfAuditEnabled(Bytes txHash)
             throws TransactionFailureException, IOException, ResultTimeoutException {
         Utils.acceptScoreIfAuditEnabled(iconService, chain, txHash);
+    }
+
+    public ConfirmedTransaction getTransaction(Bytes txHash) throws IOException {
+        return iconService.getTransaction(txHash).execute();
     }
 }
