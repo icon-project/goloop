@@ -68,38 +68,46 @@ class CheckParams(IconScoreBase):
     @external
     def call_address(self, param: Address):
         if param is None:
-            self._type_val['Address'] = "None"
+            value = "None"
         elif isinstance(param, Address):
-            self._type_val['Address'] = str(param)
+            value = str(param)
+            self.LogCallValue(None, None, None, param, None)
         else:
-            self._type_val['Address'] = "not address"
+            value = "not address"
+        self._type_val['Address'] = value
 
     @external
     def call_int(self, param: int):
         if param is None:
-            self._type_val['int'] = 'None'
+            value = 'None'
         elif isinstance(param, int):
-            self._type_val['int'] = str(param)
+            value = str(param)
+            self.LogCallValue(None, param, None, None, None)
         else:
-            self._type_val['int'] = "not int"
+            value = "not int"
+        self._type_val['int'] = value
 
     @external
     def call_bytes(self, param: bytes):
         if param is None:
-            self._type_val['bytes'] = "None"
+            value = "None"
         elif isinstance(param, bytes):
-            self._type_val['bytes'] = "0x" + param.hex()
+            value = "0x" + param.hex()
+            self.LogCallValue(None, None, None, None, param)
         else:
-            self._type_val['bytes'] = "not bytes"
+            value = "not bytes"
+        self._type_val['bytes'] = value
 
     @external
     def call_str(self, param: str):
         if param is None:
-            self._type_val['str'] = "None"
+            value = "None"
         elif isinstance(param, str):
-            self._type_val['str'] = str(param)
+            value = param
+            self.LogCallValue(None, None, param, None, None)
         else:
-            self._type_val['str'] = "not str"
+            value = "not str"
+        self._type_val['str'] = value
 
     @external
     def call_all(self, p_bool: bool, p_addr: Address, p_int: int, p_str: str, p_bytes: bytes):

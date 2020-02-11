@@ -1,3 +1,19 @@
+/*
+ * Copyright 2019 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package foundation.icon.test.cases;
 
 import foundation.icon.icx.IconService;
@@ -11,9 +27,9 @@ import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
-import foundation.icon.test.common.Utils;
+import foundation.icon.test.common.TestBase;
+import foundation.icon.test.common.TransactionHandler;
 import foundation.icon.test.score.Score;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -21,17 +37,16 @@ import org.junit.jupiter.api.Test;
 import java.math.BigInteger;
 
 import static foundation.icon.test.common.Env.LOG;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Tag(Constants.TAG_PY_SCORE)
-class ScoreParamTest {
-    private static IconService iconService;
-    private static Env.Chain chain;
-    private static KeyWallet ownerWallet;
+class ScoreParamTest extends TestBase {
+    private static TransactionHandler txHandler;
     private static KeyWallet callerWallet;
     private static Score testScore;
     private static Score interCallScore;
-    private static final String PATH = Constants.SCORE_CHECKPARAMS_PATH;
 
     private static final int TYPE_BOOL = 0;
     private static final int TYPE_ADDRESS = 1;
@@ -52,6 +67,7 @@ class ScoreParamTest {
 
     private static final BigInteger[] VALUES_FOR_INT = {
             BigInteger.ONE, BigInteger.ZERO,
+            BigInteger.valueOf(-1),
             BigInteger.valueOf(0x1FFFFFFFFL),
             new BigInteger("1FFFFFFFFFFFFFFFF", 16),
     };
@@ -65,52 +81,51 @@ class ScoreParamTest {
             new Address("hx0000000000000000000000000000000000000000"),
     };
 
-    // true if blockchain ignores undefined params
-    // false if blockchain returns failure when undefined params passes
-
     @BeforeAll
     static void init() throws Exception {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
-        chain = channel.chain;
-        iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
-        initScoreTest();
-    }
-
-    private static void initScoreTest() throws Exception {
-        ownerWallet = KeyWallet.create();
+        Env.Chain chain = channel.chain;
+        IconService iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
+        txHandler = new TransactionHandler(iconService, chain);
         callerWallet = KeyWallet.create();
-        Address[] addrs = {ownerWallet.getAddress(), callerWallet.getAddress(), chain.governorWallet.getAddress()};
-        Utils.transferAndCheck(iconService, chain, chain.godWallet, addrs, Constants.DEFAULT_BALANCE);
 
-        RpcObject params = new RpcObject.Builder()
-                .build();
-        Address interCallAddr = Score.install(iconService, chain, ownerWallet, PATH, params);
-        interCallScore = new Score(iconService, chain, interCallAddr);
-
-        Address scoreAddr = Score.install(iconService, chain, ownerWallet, PATH, params);
-        testScore = new Score(iconService, chain, scoreAddr);
-    }
-
-    @AfterAll
-    static void destroy()  {
+        KeyWallet ownerWallet = KeyWallet.create();
+        testScore = txHandler.deploy(ownerWallet, Constants.SCORE_CHECKPARAMS_PATH, null);
+        interCallScore = txHandler.deploy(ownerWallet, Constants.SCORE_CHECKPARAMS_PATH, null);
     }
 
     @Test
     void callInt() throws Exception {
         LOG.infoEntering("callInt");
+        Bytes[] hashes = new Bytes[VALUES_FOR_INT.length];
+        int cnt = 0;
         for (BigInteger p : VALUES_FOR_INT) {
             RpcObject params = new RpcObject.Builder()
                     .put("param", new RpcValue(p))
                     .build();
             LOG.infoEntering("invoke", p.toString());
-            TransactionResult result =
-                    testScore.invokeAndWaitResult(callerWallet, "call_int",
-                            params, BigInteger.valueOf(0), BigInteger.valueOf(100));
+            hashes[cnt++] = testScore.invoke(callerWallet, "call_int", params);
             LOG.infoExiting();
-            assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-            RpcItem item = testScore.call("check_int", null);
-            assertEquals(p.toString(), item.asString());
+        }
+        for (int i = 0; i < cnt; i++) {
+            String expected = new RpcValue(VALUES_FOR_INT[i]).toString();
+            LOG.infoEntering("check", "exp={" + expected + "}");
+            TransactionResult result = txHandler.getResult(hashes[i]);
+            assertSuccess(result);
+
+            boolean checked = false;
+            for (TransactionResult.EventLog el : result.getEventLogs()) {
+                RpcItem sig = el.getIndexed().get(0);
+                if (!sig.asString().equals("LogCallValue(bool,int,str,Address,bytes)")) {
+                    continue;
+                }
+                RpcItem val = el.getData().get(1);
+                assertEquals(expected, val.asString());
+                checked = true;
+            }
+            assertTrue(checked);
+            LOG.infoExiting();
         }
         LOG.infoExiting();
     }
@@ -118,18 +133,34 @@ class ScoreParamTest {
     @Test
     void callStr() throws Exception {
         LOG.infoEntering("callStr");
+        Bytes[] hashes = new Bytes[VALUES_FOR_STR.length];
+        int cnt = 0;
         for (String p : VALUES_FOR_STR) {
             RpcObject params = new RpcObject.Builder()
                     .put("param", new RpcValue(p))
                     .build();
             LOG.infoEntering("invoke", p);
-            TransactionResult result =
-                    testScore.invokeAndWaitResult(callerWallet, "call_str",
-                            params, BigInteger.valueOf(0), BigInteger.valueOf(100));
+            hashes[cnt++] = testScore.invoke(callerWallet, "call_str", params);
             LOG.infoExiting();
-            assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-            RpcItem item = testScore.call("check_str", null);
-            assertEquals(p, item.asString());
+        }
+        for (int i = 0; i < cnt; i++) {
+            String expected = VALUES_FOR_STR[i];
+            LOG.infoEntering("check", "exp={" + expected + "}");
+            TransactionResult result = txHandler.getResult(hashes[i]);
+            assertSuccess(result);
+
+            boolean checked = false;
+            for (TransactionResult.EventLog el : result.getEventLogs()) {
+                RpcItem sig = el.getIndexed().get(0);
+                if (!sig.asString().equals("LogCallValue(bool,int,str,Address,bytes)")) {
+                    continue;
+                }
+                RpcItem val = el.getData().get(2);
+                assertEquals(expected, val.asString());
+                checked = true;
+            }
+            assertTrue(checked);
+            LOG.infoExiting();
         }
         LOG.infoExiting();
     }
@@ -137,20 +168,35 @@ class ScoreParamTest {
     @Test
     void callBytes() throws Exception {
         LOG.infoEntering("callBytes");
+        Bytes[] hashes = new Bytes[VALUES_FOR_BYTES.length];
+        int cnt = 0;
         for (byte[] p : VALUES_FOR_BYTES) {
             RpcValue pv = new RpcValue(p);
             RpcObject params = new RpcObject.Builder()
                     .put("param", pv)
                     .build();
-
             LOG.infoEntering("invoke", pv.asString());
-            TransactionResult result =
-                    testScore.invokeAndWaitResult(callerWallet, "call_bytes",
-                            params, BigInteger.valueOf(0), BigInteger.valueOf(100));
+            hashes[cnt++] = testScore.invoke(callerWallet, "call_bytes", params);
             LOG.infoExiting();
-            assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-            RpcItem item = testScore.call("check_bytes", null);
-            assertEquals(pv.asString(), item.asString());
+        }
+        for (int i = 0; i < cnt; i++) {
+            String expected = new Bytes(VALUES_FOR_BYTES[i]).toString();
+            LOG.infoEntering("check", "exp={" + expected + "}");
+            TransactionResult result = txHandler.getResult(hashes[i]);
+            assertSuccess(result);
+
+            boolean checked = false;
+            for (TransactionResult.EventLog el : result.getEventLogs()) {
+                RpcItem sig = el.getIndexed().get(0);
+                if (!sig.asString().equals("LogCallValue(bool,int,str,Address,bytes)")) {
+                    continue;
+                }
+                RpcItem val = el.getData().get(4);
+                assertEquals(expected, val.asString());
+                checked = true;
+            }
+            assertTrue(checked);
+            LOG.infoExiting();
         }
         LOG.infoExiting();
     }
@@ -177,18 +223,34 @@ class ScoreParamTest {
     @Test
     void callAddress() throws Exception {
         LOG.infoEntering("callAddress");
+        Bytes[] hashes = new Bytes[VALUES_FOR_ADDRESS.length];
+        int cnt = 0;
         for (Address p : VALUES_FOR_ADDRESS) {
             RpcObject params = new RpcObject.Builder()
                     .put("param", new RpcValue(p))
                     .build();
             LOG.infoEntering("invoke", p.toString());
-            TransactionResult result =
-                    testScore.invokeAndWaitResult(callerWallet, "call_address",
-                            params, BigInteger.valueOf(0), BigInteger.valueOf(100));
+            hashes[cnt++] = testScore.invoke(callerWallet, "call_address", params);
             LOG.infoExiting();
-            assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-            RpcItem item = testScore.call("check_address", null);
-            assertEquals(p.toString(), item.asString());
+        }
+        for (int i = 0; i < cnt; i++) {
+            String expected = VALUES_FOR_ADDRESS[i].toString();
+            LOG.infoEntering("check", "exp={" + expected + "}");
+            TransactionResult result = txHandler.getResult(hashes[i]);
+            assertSuccess(result);
+
+            boolean checked = false;
+            for (TransactionResult.EventLog el : result.getEventLogs()) {
+                RpcItem sig = el.getIndexed().get(0);
+                if (!sig.asString().equals("LogCallValue(bool,int,str,Address,bytes)")) {
+                    continue;
+                }
+                RpcItem val = el.getData().get(3);
+                assertEquals(expected, val.asString());
+                checked = true;
+            }
+            assertTrue(checked);
+            LOG.infoExiting();
         }
         LOG.infoExiting();
     }
@@ -217,7 +279,7 @@ class ScoreParamTest {
     @Test
     void interCallBool() throws Exception {
         LOG.infoEntering("interCallBool");
-        for (boolean p : new boolean[]{true, false}) {
+        for (boolean p : VALUES_FOR_BOOL) {
             RpcObject params = new RpcObject.Builder()
                     .put("_to", new RpcValue(interCallScore.getAddress()))
                     .put("param", new RpcValue(p))
@@ -238,20 +300,38 @@ class ScoreParamTest {
     @Test
     void interCallAddress() throws Exception {
         LOG.infoEntering("interCallAddress");
-        for (Address p : new Address[]{ownerWallet.getAddress(), callerWallet.getAddress()}) {
+        Bytes[] hashes = new Bytes[VALUES_FOR_ADDRESS.length];
+        int cnt = 0;
+        for (Address p : VALUES_FOR_ADDRESS) {
             RpcObject params = new RpcObject.Builder()
                     .put("_to", new RpcValue(interCallScore.getAddress()))
                     .put("param", new RpcValue(p))
                     .put("ptype", new RpcValue(BigInteger.valueOf(TYPE_ADDRESS)))
                     .build();
             LOG.infoEntering("invoke", p.toString());
-            TransactionResult result =
-                    testScore.invokeAndWaitResult(callerWallet, "inter_call_address",
-                            params, BigInteger.valueOf(0), BigInteger.valueOf(100));
+            hashes[cnt++] = testScore.invoke(callerWallet, "inter_call_address", params);
             LOG.infoExiting();
-            assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-            RpcItem item = interCallScore.call("check_address", null);
-            assertEquals(p.toString(), item.asString());
+        }
+        for (int i = 0; i < cnt; i++) {
+            String expected = VALUES_FOR_ADDRESS[i].toString();
+            LOG.infoEntering("check", "exp={" + expected + "}");
+            TransactionResult result = txHandler.getResult(hashes[i]);
+            assertSuccess(result);
+
+            boolean checked = false;
+            for (TransactionResult.EventLog el : result.getEventLogs()) {
+                RpcItem sig = el.getIndexed().get(0);
+                Address scoreAddr = new Address(el.getScoreAddress());
+                if (!sig.asString().equals("LogCallValue(bool,int,str,Address,bytes)")
+                        || !scoreAddr.equals(interCallScore.getAddress())) {
+                    continue;
+                }
+                RpcItem val = el.getData().get(3);
+                assertEquals(expected, val.asString());
+                checked = true;
+            }
+            assertTrue(checked);
+            LOG.infoExiting();
         }
         LOG.infoExiting();
     }
@@ -259,22 +339,38 @@ class ScoreParamTest {
     @Test
     void interCallInt() throws Exception {
         LOG.infoEntering("interCallInt");
-        for (BigInteger p : new BigInteger[]{
-                    BigInteger.ZERO, BigInteger.ONE, BigInteger.valueOf(0x1FFFFFFFFL), new BigInteger("1FFFFFFFFFFFFFFFF", 16)
-            }) {
+        Bytes[] hashes = new Bytes[VALUES_FOR_INT.length];
+        int cnt = 0;
+        for (BigInteger p : VALUES_FOR_INT) {
             RpcObject params = new RpcObject.Builder()
                     .put("_to", new RpcValue(interCallScore.getAddress()))
                     .put("param", new RpcValue(p))
                     .put("ptype", new RpcValue(BigInteger.valueOf(TYPE_INT)))
                     .build();
             LOG.infoEntering("invoke", p.toString());
-            TransactionResult result =
-                    testScore.invokeAndWaitResult(callerWallet, "inter_call_int",
-                            params, BigInteger.valueOf(0), BigInteger.valueOf(100));
+            hashes[cnt++] = testScore.invoke(callerWallet, "inter_call_int", params);
             LOG.infoExiting();
-            assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-            RpcItem item = interCallScore.call("check_int", null);
-            assertEquals(p.toString(), item.asString());
+        }
+        for (int i = 0; i < cnt; i++) {
+            String expected = new RpcValue(VALUES_FOR_INT[i]).toString();
+            LOG.infoEntering("check", "exp={" + expected + "}");
+            TransactionResult result = txHandler.getResult(hashes[i]);
+            assertSuccess(result);
+
+            boolean checked = false;
+            for (TransactionResult.EventLog el : result.getEventLogs()) {
+                RpcItem sig = el.getIndexed().get(0);
+                Address scoreAddr = new Address(el.getScoreAddress());
+                if (!sig.asString().equals("LogCallValue(bool,int,str,Address,bytes)")
+                        || !scoreAddr.equals(interCallScore.getAddress())) {
+                    continue;
+                }
+                RpcItem val = el.getData().get(1);
+                assertEquals(expected, val.asString());
+                checked = true;
+            }
+            assertTrue(checked);
+            LOG.infoExiting();
         }
         LOG.infoExiting();
     }
@@ -282,7 +378,9 @@ class ScoreParamTest {
     @Test
     void interCallBytes() throws Exception {
         LOG.infoEntering("interCallBytes");
-        for (byte[] p : new byte[][]{{0}, {1}, "Hello".getBytes(), {}}) {
+        Bytes[] hashes = new Bytes[VALUES_FOR_BYTES.length];
+        int cnt = 0;
+        for (byte[] p : VALUES_FOR_BYTES) {
             RpcValue pv = new RpcValue(p);
             RpcObject params = new RpcObject.Builder()
                     .put("_to", new RpcValue(interCallScore.getAddress()))
@@ -290,13 +388,29 @@ class ScoreParamTest {
                     .put("ptype", new RpcValue(BigInteger.valueOf(TYPE_BYTES)))
                     .build();
             LOG.infoEntering("invoke", pv.asString());
-            TransactionResult result =
-                    testScore.invokeAndWaitResult(callerWallet, "inter_call_bytes",
-                            params, BigInteger.valueOf(0), BigInteger.valueOf(100));
+            hashes[cnt++] = testScore.invoke(callerWallet, "inter_call_bytes", params);
             LOG.infoExiting();
-            assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-            RpcItem item = interCallScore.call("check_bytes", null);
-            assertEquals(pv.asString(), item.asString());
+        }
+        for (int i = 0; i < cnt; i++) {
+            String expected = new Bytes(VALUES_FOR_BYTES[i]).toString();
+            LOG.infoEntering("check", "exp={" + expected + "}");
+            TransactionResult result = txHandler.getResult(hashes[i]);
+            assertSuccess(result);
+
+            boolean checked = false;
+            for (TransactionResult.EventLog el : result.getEventLogs()) {
+                RpcItem sig = el.getIndexed().get(0);
+                Address scoreAddr = new Address(el.getScoreAddress());
+                if (!sig.asString().equals("LogCallValue(bool,int,str,Address,bytes)")
+                        || !scoreAddr.equals(interCallScore.getAddress())) {
+                    continue;
+                }
+                RpcItem val = el.getData().get(4);
+                assertEquals(expected, val.asString());
+                checked = true;
+            }
+            assertTrue(checked);
+            LOG.infoExiting();
         }
         LOG.infoExiting();
     }
@@ -304,6 +418,8 @@ class ScoreParamTest {
     @Test
     void interCallStr() throws Exception {
         LOG.infoEntering("interCallStr");
+        Bytes[] hashes = new Bytes[VALUES_FOR_STR.length];
+        int cnt = 0;
         for (String p : VALUES_FOR_STR) {
             RpcObject params = new RpcObject.Builder()
                     .put("_to", new RpcValue(interCallScore.getAddress()))
@@ -311,13 +427,29 @@ class ScoreParamTest {
                     .put("ptype", new RpcValue(BigInteger.valueOf(TYPE_STR)))
                     .build();
             LOG.infoEntering("invoke", p);
-            TransactionResult result =
-                    testScore.invokeAndWaitResult(callerWallet, "inter_call_str",
-                            params, BigInteger.valueOf(0), BigInteger.valueOf(100));
+            hashes[cnt++] = testScore.invoke(callerWallet, "inter_call_str", params);
             LOG.infoExiting();
-            assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-            RpcItem item = interCallScore.call("check_str", null);
-            assertEquals(p, item.asString());
+        }
+        for (int i = 0; i < cnt; i++) {
+            String expected = VALUES_FOR_STR[i];
+            LOG.infoEntering("check", "exp={" + expected + "}");
+            TransactionResult result = txHandler.getResult(hashes[i]);
+            assertSuccess(result);
+
+            boolean checked = false;
+            for (TransactionResult.EventLog el : result.getEventLogs()) {
+                RpcItem sig = el.getIndexed().get(0);
+                Address scoreAddr = new Address(el.getScoreAddress());
+                if (!sig.asString().equals("LogCallValue(bool,int,str,Address,bytes)")
+                        || !scoreAddr.equals(interCallScore.getAddress())) {
+                    continue;
+                }
+                RpcItem val = el.getData().get(2);
+                assertEquals(expected, val.asString());
+                checked = true;
+            }
+            assertTrue(checked);
+            LOG.infoExiting();
         }
         LOG.infoExiting();
     }
@@ -347,6 +479,8 @@ class ScoreParamTest {
     @Test
     void invalidInterCallBool() throws Exception {
         LOG.infoEntering("invalidInterCallBool");
+        Bytes[] hashes = new Bytes[4];
+        int cnt = 0;
         for (int t : new int[]{TYPE_ADDRESS, TYPE_INT, TYPE_BYTES, TYPE_STR}) {
             RpcObject params = new RpcObject.Builder()
                     .put("_to", new RpcValue(interCallScore.getAddress()))
@@ -354,11 +488,11 @@ class ScoreParamTest {
                     .put("ptype", new RpcValue(BigInteger.valueOf(t)))
                     .build();
             LOG.infoEntering("invoke", String.valueOf(t));
-            TransactionResult result =
-                    testScore.invokeAndWaitResult(callerWallet, "inter_call_bool",
-                            params, BigInteger.valueOf(0), BigInteger.valueOf(100));
+            hashes[cnt++] = testScore.invoke(callerWallet, "inter_call_bool", params);
             LOG.infoExiting();
-            assertEquals(Constants.STATUS_FAIL, result.getStatus());
+        }
+        for (int i = 0; i < cnt; i++) {
+            assertFailure(txHandler.getResult(hashes[i]));
         }
         LOG.infoExiting();
     }
@@ -366,6 +500,8 @@ class ScoreParamTest {
     @Test
     void invalidInterCallAddress() throws Exception {
         LOG.infoEntering("invalidInterCallAddress");
+        Bytes[] hashes = new Bytes[4];
+        int cnt = 0;
         for (int t : new int[]{TYPE_BOOL, TYPE_INT, TYPE_BYTES, TYPE_STR}) {
             RpcObject params = new RpcObject.Builder()
                     .put("_to", new RpcValue(interCallScore.getAddress()))
@@ -373,11 +509,11 @@ class ScoreParamTest {
                     .put("ptype", new RpcValue(BigInteger.valueOf(t)))
                     .build();
             LOG.infoEntering("invoke", String.valueOf(t));
-            TransactionResult result =
-                    testScore.invokeAndWaitResult(callerWallet, "inter_call_address",
-                            params, BigInteger.valueOf(0), BigInteger.valueOf(100));
+            hashes[cnt++] = testScore.invoke(callerWallet, "inter_call_address", params);
             LOG.infoExiting();
-            assertEquals(Constants.STATUS_FAIL, result.getStatus());
+        }
+        for (int i = 0; i < cnt; i++) {
+            assertFailure(txHandler.getResult(hashes[i]));
         }
         LOG.infoExiting();
     }
@@ -385,6 +521,8 @@ class ScoreParamTest {
     @Test
     void invalidInterCallBytes() throws Exception {
         LOG.infoEntering("invalidInterCallBytes");
+        Bytes[] hashes = new Bytes[4];
+        int cnt = 0;
         for (int t : new int[]{TYPE_BOOL, TYPE_INT, TYPE_ADDRESS, TYPE_STR}) {
             RpcObject params = new RpcObject.Builder()
                     .put("_to", new RpcValue(interCallScore.getAddress()))
@@ -392,11 +530,11 @@ class ScoreParamTest {
                     .put("ptype", new RpcValue(BigInteger.valueOf(t)))
                     .build();
             LOG.infoEntering("invoke", String.valueOf(t));
-            TransactionResult result =
-                    testScore.invokeAndWaitResult(callerWallet, "inter_call_bytes",
-                            params, BigInteger.valueOf(0), BigInteger.valueOf(100));
+            hashes[cnt++] = testScore.invoke(callerWallet, "inter_call_bytes", params);
             LOG.infoExiting();
-            assertEquals(Constants.STATUS_FAIL, result.getStatus());
+        }
+        for (int i = 0; i < cnt; i++) {
+            assertFailure(txHandler.getResult(hashes[i]));
         }
         LOG.infoExiting();
     }
@@ -404,6 +542,8 @@ class ScoreParamTest {
     @Test
     void invalidInterCallStr() throws Exception {
         LOG.infoEntering("invalidInterCallStr");
+        Bytes[] hashes = new Bytes[4];
+        int cnt = 0;
         for (int t : new int[]{TYPE_BOOL, TYPE_INT, TYPE_ADDRESS, TYPE_BYTES}) {
             RpcObject params = new RpcObject.Builder()
                     .put("_to", new RpcValue(interCallScore.getAddress()))
@@ -411,11 +551,11 @@ class ScoreParamTest {
                     .put("ptype", new RpcValue(BigInteger.valueOf(t)))
                     .build();
             LOG.infoEntering("invoke", String.valueOf(t));
-            TransactionResult result =
-                    testScore.invokeAndWaitResult(callerWallet, "inter_call_str",
-                            params, BigInteger.valueOf(0), BigInteger.valueOf(100));
+            hashes[cnt++] = testScore.invoke(callerWallet, "inter_call_str", params);
             LOG.infoExiting();
-            assertEquals(Constants.STATUS_FAIL, result.getStatus());
+        }
+        for (int i = 0; i < cnt; i++) {
+            assertFailure(txHandler.getResult(hashes[i]));
         }
         LOG.infoExiting();
     }
@@ -423,6 +563,8 @@ class ScoreParamTest {
     @Test
     void invalidInterCallInt() throws Exception {
         LOG.infoEntering("invalidInterCallInt");
+        Bytes[] hashes = new Bytes[4];
+        int cnt = 0;
         for (int t : new int[]{TYPE_BOOL, TYPE_BYTES, TYPE_ADDRESS, TYPE_STR}) {
             RpcObject params = new RpcObject.Builder()
                     .put("_to", new RpcValue(interCallScore.getAddress()))
@@ -430,11 +572,11 @@ class ScoreParamTest {
                     .put("ptype", new RpcValue(BigInteger.valueOf(t)))
                     .build();
             LOG.infoEntering("invoke", String.valueOf(t));
-            TransactionResult result =
-                    testScore.invokeAndWaitResult(callerWallet, "inter_call_int",
-                            params, BigInteger.valueOf(0), BigInteger.valueOf(100));
+            hashes[cnt++] = testScore.invoke(callerWallet, "inter_call_int", params);
             LOG.infoExiting();
-            assertEquals(Constants.STATUS_FAIL, result.getStatus());
+        }
+        for (int i = 0; i < cnt; i++) {
+            assertFailure(txHandler.getResult(hashes[i]));
         }
         LOG.infoExiting();
     }
@@ -499,17 +641,19 @@ class ScoreParamTest {
     @Test
     void interCallWithNull() throws Exception {
         LOG.infoEntering("interCallWithNull");
+        Bytes[] hashes = new Bytes[5];
+        int cnt = 0;
         for (int t : new int[]{TYPE_BOOL, TYPE_ADDRESS, TYPE_INT, TYPE_BYTES, TYPE_STR}) {
             RpcObject params = new RpcObject.Builder()
                     .put("_to", new RpcValue(interCallScore.getAddress()))
                     .put("ptype", new RpcValue(BigInteger.valueOf(t)))
                     .build();
             LOG.infoEntering("invoke", String.valueOf(t));
-            TransactionResult result =
-                    testScore.invokeAndWaitResult(callerWallet, "inter_call_with_none",
-                            params, BigInteger.valueOf(0), BigInteger.valueOf(100));
+            hashes[cnt++] = testScore.invoke(callerWallet, "inter_call_with_none", params);
             LOG.infoExiting();
-            assertEquals(Constants.STATUS_FAIL, result.getStatus());
+        }
+        for (int i = 0; i < cnt; i++) {
+            assertFailure(txHandler.getResult(hashes[i]));
         }
         LOG.infoExiting();
     }
@@ -525,7 +669,7 @@ class ScoreParamTest {
                 testScore.invokeAndWaitResult(callerWallet, "inter_call_with_more_params",
                         params, BigInteger.valueOf(0), BigInteger.valueOf(100));
         LOG.infoExiting();
-        assertEquals(Constants.STATUS_FAIL, result.getStatus());
+        assertFailure(result);
         LOG.infoExiting();
     }
 
@@ -540,8 +684,8 @@ class ScoreParamTest {
         TransactionResult result =
                 testScore.invokeAndWaitResult(callerWallet, "call_default_param",
                         params, BigInteger.valueOf(0), BigInteger.valueOf(100));
-        assertEquals(Constants.STATUS_FAIL, result.getStatus());
         LOG.infoExiting();
+        assertFailure(result);
         LOG.infoExiting();
     }
 
@@ -630,7 +774,7 @@ class ScoreParamTest {
         LOG.infoExiting();
 
         for (int i = 0; i < CASES; i++) {
-            LOG.infoEntering("checking case=" + i + " txid=" + ids[i]);
+            LOG.infoEntering("checking", "case=" + i + " txid=" + ids[i]);
 
             TransactionResult result = testScore.getResult(ids[i]);
             assertEquals(result.getStatus(), Constants.STATUS_SUCCESS);
@@ -654,7 +798,6 @@ class ScoreParamTest {
             assertTrue(checked);
             LOG.infoExiting();
         }
-
         LOG.infoExiting();
     }
 
