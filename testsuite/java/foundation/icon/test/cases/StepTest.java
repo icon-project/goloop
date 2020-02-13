@@ -54,6 +54,8 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 @Tag(Constants.TAG_PY_GOV)
 public class StepTest extends TestBase {
+    private static final String SCORE_DB_STEP_PATH = Constants.SCORE_ROOT + "db_step";
+
     private static TransactionHandler txHandler;
     private static ChainScore chainScore;
     private static GovScore govScore;
@@ -412,7 +414,7 @@ public class StepTest extends TestBase {
         KeyWallet scoreOwner = testWallets[2];
         KeyWallet caller = testWallets[3];
         LOG.infoEntering("deploy", "db_step");
-        Score dbScore = txHandler.deploy(scoreOwner, Constants.SCORE_DB_STEP_PATH, null);
+        Score dbScore = txHandler.deploy(scoreOwner, SCORE_DB_STEP_PATH, null);
         LOG.infoExiting();
 
         Address scoreAddr = dbScore.getAddress();

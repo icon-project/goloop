@@ -16,23 +16,29 @@
 
 package foundation.icon.test.score;
 
-import foundation.icon.icx.IconService;
 import foundation.icon.icx.Wallet;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.IconAmount;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
-import foundation.icon.test.common.*;
+import foundation.icon.test.common.Constants;
+import foundation.icon.test.common.ResultTimeoutException;
+import foundation.icon.test.common.TransactionFailureException;
+import foundation.icon.test.common.TransactionHandler;
+import foundation.icon.test.common.Utils;
 
 import java.io.IOException;
 import java.math.BigInteger;
 
 public class MultiSigWalletScore extends Score {
-    private static final BigInteger STEPS = BigInteger.valueOf(10000000);
-    private static final String PATH = Constants.SCORE_MULTISIG_PATH;
+    private static final String SCORE_MULTISIG_PATH = Constants.SCORE_ROOT + "multisig_wallet";
 
-    public static MultiSigWalletScore mustDeploy(IconService service, Env.Chain chain, Wallet wallet,
+    public MultiSigWalletScore(Score other) {
+        super(other);
+    }
+
+    public static MultiSigWalletScore mustDeploy(TransactionHandler txHandler, Wallet wallet,
                                                  Address[] walletOwners, int required)
             throws IOException, TransactionFailureException, ResultTimeoutException {
         StringBuilder buf = new StringBuilder();
@@ -45,34 +51,31 @@ public class MultiSigWalletScore extends Score {
                 .put("_required", new RpcValue(BigInteger.valueOf(required)))
                 .build();
         return new MultiSigWalletScore(
-                service,
-                chain,
-                Score.install(service, chain, wallet, PATH, params)
+                txHandler.deploy(wallet, SCORE_MULTISIG_PATH, params)
         );
     }
 
-    public MultiSigWalletScore(IconService iconService, Env.Chain chain, Address scoreAddress) {
-        super(iconService, chain, scoreAddress);
-    }
-
-    public TransactionResult submitIcxTransaction(Wallet fromWallet, Address dest, long value, String description) throws IOException, ResultTimeoutException {
+    public TransactionResult submitIcxTransaction(Wallet fromWallet, Address dest, long value, String description)
+            throws IOException, ResultTimeoutException {
         BigInteger icx = IconAmount.of(BigInteger.valueOf(value), IconAmount.Unit.ICX).toLoop();
         RpcObject params = new RpcObject.Builder()
                 .put("_destination", new RpcValue(dest))
                 .put("_value", new RpcValue(icx))
                 .put("_description", new RpcValue(description))
                 .build();
-        return invokeAndWaitResult(fromWallet, "submitTransaction", params, null, STEPS);
+        return invokeAndWaitResult(fromWallet, "submitTransaction", params);
     }
 
-    public TransactionResult confirmTransaction(Wallet fromWallet, BigInteger txId) throws IOException, ResultTimeoutException {
+    public TransactionResult confirmTransaction(Wallet fromWallet, BigInteger txId)
+            throws IOException, ResultTimeoutException {
         RpcObject params = new RpcObject.Builder()
                 .put("_transactionId", new RpcValue(txId))
                 .build();
-        return invokeAndWaitResult(fromWallet, "confirmTransaction", params, null, STEPS);
+        return invokeAndWaitResult(fromWallet, "confirmTransaction", params);
     }
 
-    public TransactionResult addWalletOwner(Wallet fromWallet, Address newOwner, String description) throws IOException, ResultTimeoutException {
+    public TransactionResult addWalletOwner(Wallet fromWallet, Address newOwner, String description)
+            throws IOException, ResultTimeoutException {
         String methodParams = String.format("[{\"name\": \"_walletOwner\", \"type\": \"Address\", \"value\": \"%s\"}]", newOwner);
         RpcObject params = new RpcObject.Builder()
                 .put("_destination", new RpcValue(getAddress()))
@@ -80,10 +83,11 @@ public class MultiSigWalletScore extends Score {
                 .put("_params", new RpcValue(methodParams))
                 .put("_description", new RpcValue(description))
                 .build();
-        return invokeAndWaitResult(fromWallet, "submitTransaction", params, null, STEPS);
+        return invokeAndWaitResult(fromWallet, "submitTransaction", params);
     }
 
-    public TransactionResult replaceWalletOwner(Wallet fromWallet, Address oldOwner, Address newOwner, String description) throws IOException, ResultTimeoutException {
+    public TransactionResult replaceWalletOwner(Wallet fromWallet, Address oldOwner, Address newOwner, String description)
+            throws IOException, ResultTimeoutException {
         String methodParams = String.format(
                 "[{\"name\": \"_walletOwner\", \"type\": \"Address\", \"value\": \"%s\"},"
                         + "{\"name\": \"_newWalletOwner\", \"type\": \"Address\", \"value\": \"%s\"}]", oldOwner, newOwner);
@@ -93,10 +97,11 @@ public class MultiSigWalletScore extends Score {
                 .put("_params", new RpcValue(methodParams))
                 .put("_description", new RpcValue(description))
                 .build();
-        return invokeAndWaitResult(fromWallet, "submitTransaction", params, null, STEPS);
+        return invokeAndWaitResult(fromWallet, "submitTransaction", params);
     }
 
-    public TransactionResult changeRequirement(Wallet fromWallet, int required, String description) throws IOException, ResultTimeoutException {
+    public TransactionResult changeRequirement(Wallet fromWallet, int required, String description)
+            throws IOException, ResultTimeoutException {
         String methodParams = String.format("[{\"name\": \"_required\", \"type\": \"int\", \"value\": \"%d\"}]", required);
         RpcObject params = new RpcObject.Builder()
                 .put("_destination", new RpcValue(getAddress()))
@@ -104,7 +109,7 @@ public class MultiSigWalletScore extends Score {
                 .put("_params", new RpcValue(methodParams))
                 .put("_description", new RpcValue(description))
                 .build();
-        return invokeAndWaitResult(fromWallet, "submitTransaction", params, null, STEPS);
+        return invokeAndWaitResult(fromWallet, "submitTransaction", params);
     }
 
     public BigInteger getTransactionId(TransactionResult result) throws IOException {

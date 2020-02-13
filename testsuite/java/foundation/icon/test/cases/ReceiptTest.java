@@ -1,3 +1,19 @@
+/*
+ * Copyright 2019 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package foundation.icon.test.cases;
 
 import foundation.icon.icx.IconService;
@@ -13,7 +29,8 @@ import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.ResultTimeoutException;
-import foundation.icon.test.common.Utils;
+import foundation.icon.test.common.TestBase;
+import foundation.icon.test.common.TransactionHandler;
 import foundation.icon.test.score.Score;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -22,40 +39,34 @@ import org.junit.jupiter.api.Test;
 import java.math.BigInteger;
 
 import static foundation.icon.test.common.Env.LOG;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Tag(Constants.TAG_PY_SCORE)
-class ReceiptTest {
-    private static IconService iconService;
-    private static Env.Chain chain;
-    private static KeyWallet ownerWallet;
+class ReceiptTest extends TestBase {
+    private static final String SCORE_RECEIPT_PATH = Constants.SCORE_ROOT + "receipt";
+    private static TransactionHandler txHandler;
     private static KeyWallet callerWallet;
     private static Score testScore;
     private static Score interCallScore;
-    private static final String PATH = Constants.SCORE_RECEIPT_PATH;
 
     @BeforeAll
     public static void init() throws Exception {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
-        chain = channel.chain;
-        iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
-        initScoreTest();
-    }
+        Env.Chain chain = channel.chain;
+        IconService iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
+        txHandler = new TransactionHandler(iconService, chain);
 
-    private static void initScoreTest() throws Exception {
-        ownerWallet = KeyWallet.create();
+        KeyWallet ownerWallet = KeyWallet.create();
         callerWallet = KeyWallet.create();
-        Address[] addrs = {ownerWallet.getAddress(), callerWallet.getAddress(), chain.governorWallet.getAddress()};
-        Utils.transferAndCheck(iconService, chain, chain.godWallet, addrs, Constants.DEFAULT_BALANCE);
+        transferAndCheckResult(txHandler, callerWallet.getAddress(), Constants.DEFAULT_BALANCE);
 
-        RpcObject params = new RpcObject.Builder()
-                .build();
-        Address interCallAddr = Score.install(iconService, chain, ownerWallet, PATH, params);
-        interCallScore = new Score(iconService, chain, interCallAddr);
-
-        Address scoreAddr = Score.install(iconService, chain, ownerWallet, PATH, params);
-        testScore = new Score(iconService, chain, scoreAddr);
+        testScore = txHandler.deploy(ownerWallet, SCORE_RECEIPT_PATH, null);
+        interCallScore = txHandler.deploy(ownerWallet, SCORE_RECEIPT_PATH, null);
     }
 
     @Test
@@ -105,7 +116,7 @@ class ReceiptTest {
                     }
                 }
             }
-            assertEquals(true, found);
+            assertTrue(found);
         }
         LOG.infoExiting();
     }
@@ -159,7 +170,7 @@ class ReceiptTest {
                     }
                 }
             }
-            assertEquals(true, found);
+            assertTrue(found);
         }
         LOG.infoExiting();
     }
@@ -246,13 +257,12 @@ class ReceiptTest {
 
     @Test
     public void transferTxResultParams() throws Exception {
-        LOG.infoEntering("deployTxResultParams");
+        LOG.infoEntering("transferTxResultParams");
         KeyWallet wallet = KeyWallet.create();
         LOG.infoEntering("transfer");
-        Bytes txHash = Utils.transfer(iconService, chain.networkId, callerWallet, wallet.getAddress(), BigInteger.valueOf(2));
+        Bytes txHash = txHandler.transfer(callerWallet, wallet.getAddress(), BigInteger.valueOf(2));
         LOG.infoExiting();
-        TransactionResult result =
-                Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
+        TransactionResult result = txHandler.getResult(txHash, Constants.DEFAULT_WAITING_TIME);
         checkResultParams(result, Constants.STATUS_SUCCESS, wallet.getAddress(), txHash);
         LOG.infoExiting();
     }
@@ -263,11 +273,9 @@ class ReceiptTest {
         RpcObject params = new RpcObject.Builder()
                 .build();
         LOG.infoEntering("deploy");
-        Bytes txHash = Utils.deployScore(iconService, chain.networkId,
-                callerWallet, Constants.CHAINSCORE_ADDRESS, PATH, params, Constants.DEFAULT_STEP_LIMIT);
+        Bytes txHash = txHandler.deployOnly(callerWallet, SCORE_RECEIPT_PATH, params);
         LOG.infoExiting();
-        TransactionResult result =
-                Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
+        TransactionResult result = txHandler.getResult(txHash, Constants.DEFAULT_WAITING_TIME);
         checkResultParams(result, Constants.STATUS_SUCCESS, Constants.CHAINSCORE_ADDRESS, txHash);
         assertNotNull(result.getScoreAddress());
         LOG.infoExiting();
@@ -275,7 +283,7 @@ class ReceiptTest {
 
     @Test
     public void callTxResultParams() throws Exception {
-        LOG.infoEntering("txResultParams");
+        LOG.infoEntering("callTxResultParams");
         RpcObject params = new RpcObject.Builder()
                 .put("p_log_index", new RpcValue(BigInteger.valueOf(3)))
                 .put("p_bool", new RpcValue(false))
@@ -296,9 +304,9 @@ class ReceiptTest {
     private static ConfirmedTransaction invokeAndGetTxByHash(Bytes txHash) throws Exception {
         long limitTime = System.currentTimeMillis() + Constants.DEFAULT_WAITING_TIME;
         ConfirmedTransaction ctx = null;
-        while(ctx == null) {
+        while (ctx == null) {
             try {
-                ctx = iconService.getTransaction(txHash).execute();
+                ctx = txHandler.getTransaction(txHash);
             } catch (RpcError ex) {
                 if (limitTime < System.currentTimeMillis()) {
                     throw new ResultTimeoutException(txHash);
@@ -325,7 +333,7 @@ class ReceiptTest {
         assertNotNull(ctx.getBlockHash());
         assertNotNull(ctx.getSignature());
         assertEquals(dataType, ctx.getDataType());
-        if(dataType != null) {
+        if (dataType != null) {
             assertNotNull(ctx.getData());
         } else {
             assertNull(ctx.getData());
@@ -338,12 +346,12 @@ class ReceiptTest {
         KeyWallet wallet = KeyWallet.create();
         LOG.infoEntering("transfer");
         BigInteger value = BigInteger.valueOf(2);
-        Bytes txHash = Utils.transfer(iconService, chain.networkId, callerWallet, wallet.getAddress(), value);
+        Bytes txHash = txHandler.transfer(callerWallet, wallet.getAddress(), value);
         LOG.infoExiting();
         ConfirmedTransaction ctx = invokeAndGetTxByHash(txHash);
         checkTxParams(ctx, callerWallet.getAddress(), wallet.getAddress(), value,
-                BigInteger.valueOf(Constants.DEFAULT_STEP_LIMIT), BigInteger.valueOf(Env.chains[0].networkId),
-                BigInteger.ONE, txHash, null);
+                Constants.DEFAULT_STEPS, txHandler.getNetworkId(),
+                null, txHash, null);
         LOG.infoExiting();
     }
 
@@ -361,12 +369,12 @@ class ReceiptTest {
         LOG.infoEntering("invoke call_event_log");
         BigInteger stepLimit = BigInteger.valueOf(100);
         Bytes txHash = testScore.invoke(callerWallet, "call_event_log",
-                params, BigInteger.valueOf(0), stepLimit);
+                params, BigInteger.valueOf(0), stepLimit, null, BigInteger.ONE);
         LOG.infoExiting();
         ConfirmedTransaction ctx = invokeAndGetTxByHash(txHash);
         checkTxParams(ctx, callerWallet.getAddress(), testScore.getAddress(), null,
-                stepLimit, BigInteger.valueOf(Env.chains[0].networkId),
-                null, txHash, "call");
+                stepLimit, txHandler.getNetworkId(),
+                BigInteger.ONE, txHash, "call");
         LOG.infoExiting();
     }
 }

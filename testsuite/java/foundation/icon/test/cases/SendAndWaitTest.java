@@ -18,7 +18,6 @@ package foundation.icon.test.cases;
 
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
-import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
@@ -28,7 +27,7 @@ import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.TransactionHandler;
-import foundation.icon.test.common.Utils;
+import foundation.icon.test.score.HelloWorld;
 import foundation.icon.test.score.Score;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -58,14 +57,7 @@ public class SendAndWaitTest {
         TransactionHandler txHandler = new TransactionHandler(iconService, channel.chain);
 
         wallet = KeyWallet.create();
-        Utils.transferAndCheck(iconService, channel.chain, channel.chain.godWallet,
-                new Address[] {wallet.getAddress()},
-                Constants.DEFAULT_BALANCE);
-
-        RpcObject params = new RpcObject.Builder()
-                .put("name", new RpcValue("HelloWorld"))
-                .build();
-        testScore = txHandler.deploy(wallet, Constants.SCORE_HELLOWORLD_PATH, params);
+        testScore = HelloWorld.install(txHandler, wallet);
     }
 
     private void resetTimeout(int timeout) {
@@ -82,7 +74,6 @@ public class SendAndWaitTest {
             httpClient = new OkHttpClient.Builder().build();
         }
         iconService.setProvider(new HttpProvider(httpClient, channel.getAPIUrl(Env.testApiVer)));
-        testScore = new Score(iconService, channel.chain, testScore.getAddress());
     }
 
     private TransactionResult waitTransactionResult(Bytes txHash) throws IOException {

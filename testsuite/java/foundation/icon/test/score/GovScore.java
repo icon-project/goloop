@@ -16,7 +16,6 @@
 
 package foundation.icon.test.score;
 
-import foundation.icon.icx.IconService;
 import foundation.icon.icx.Wallet;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
@@ -25,7 +24,6 @@ import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
-import foundation.icon.test.common.Env;
 import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.TransactionFailureException;
 import foundation.icon.test.common.TransactionHandler;
@@ -38,11 +36,11 @@ import java.util.List;
 import java.util.Map;
 
 public class GovScore extends Score {
-    public static final String INSTALL_PATH = Constants.SCORE_GOV_PATH;
-    public static final String UPDATE_PATH = Constants.SCORE_GOV_UPDATE_PATH;
+    public static final String INSTALL_PATH = "./data/genesisStorage/" + "governance";
+    public static final String UPDATE_PATH = Constants.SCORE_ROOT + "governance";
 
     private final Wallet governorWallet;
-    private final Score chainScore;
+    private final ChainScore chainScore;
 
     public static class Fee {
         Map<String, BigInteger> stepCosts;
@@ -66,16 +64,10 @@ public class GovScore extends Score {
             "apiCall"
     };
 
-    public GovScore(IconService iconService, Env.Chain chain) {
-        super(iconService, chain, Constants.GOV_ADDRESS);
-        this.governorWallet = chain.governorWallet;
-        this.chainScore = new Score(iconService, chain, Constants.CHAINSCORE_ADDRESS);
-    }
-
     public GovScore(TransactionHandler txHandler) {
         super(txHandler, Constants.GOV_ADDRESS);
         this.governorWallet = txHandler.getChain().governorWallet;
-        this.chainScore = new Score(txHandler, Constants.CHAINSCORE_ADDRESS);
+        this.chainScore = new ChainScore(txHandler);
     }
 
     private Wallet getWallet() {
@@ -110,6 +102,11 @@ public class GovScore extends Score {
                 .put("limit", new RpcValue(cost))
                 .build();
         return invokeAndWaitResult(getWallet(), "setMaxStepLimit", params);
+    }
+
+    public boolean isAuditEnabledOnly() throws IOException {
+        int config = chainScore.getServiceConfig();
+        return ChainScore.isAuditEnabled(config) && !ChainScore.isDeployerWhiteListEnabled(config);
     }
 
     public TransactionResult acceptScore(Bytes txHash) throws ResultTimeoutException, IOException {

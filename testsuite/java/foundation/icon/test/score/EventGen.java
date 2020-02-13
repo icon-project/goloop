@@ -1,6 +1,21 @@
+/*
+ * Copyright 2019 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package foundation.icon.test.score;
 
-import foundation.icon.icx.IconService;
 import foundation.icon.icx.Wallet;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
@@ -8,47 +23,43 @@ import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
-import foundation.icon.test.common.Env;
 import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.TransactionFailureException;
+import foundation.icon.test.common.TransactionHandler;
 
 import java.io.IOException;
 import java.math.BigInteger;
 
 public class EventGen extends Score {
-    private static final String INSTALL_PATH = Constants.SCORE_ROOT +  "event_gen";
+    private static final String INSTALL_PATH = Constants.SCORE_ROOT + "event_gen";
 
-    public EventGen(IconService iconService, Env.Chain chain, Address scoreAddress) {
-        super(iconService, chain, scoreAddress);
+    public EventGen(Score other) {
+        super(other);
     }
 
     // install with default stepLimit and default parameter
-    public static EventGen install(IconService service, Env.Chain chain, Wallet wallet)
+    public static EventGen install(TransactionHandler txHandler, Wallet wallet)
             throws TransactionFailureException, ResultTimeoutException, IOException
     {
-        return install(service, chain, wallet, Constants.DEFAULT_STEP_LIMIT);
+        return install(txHandler, wallet, Constants.DEFAULT_STEP_LIMIT);
     }
 
     // install with default parameter
-    public static EventGen install(IconService service, Env.Chain chain, Wallet wallet, long stepLimit)
+    public static EventGen install(TransactionHandler txHandler, Wallet wallet, long stepLimit)
             throws TransactionFailureException, ResultTimeoutException, IOException
     {
         RpcObject params = new RpcObject.Builder()
                 .put("name", new RpcValue("EventGen"))
                 .build();
-        return install(service, chain, wallet, params, stepLimit);
+        return install(txHandler, wallet, params, stepLimit);
     }
 
     // install with passed parameter
-    public static EventGen install(IconService service, Env.Chain chain,
-                                     Wallet wallet, RpcObject params, long stepLimit)
+    public static EventGen install(TransactionHandler txHandler,
+                                   Wallet wallet, RpcObject params, long stepLimit)
             throws TransactionFailureException, ResultTimeoutException, IOException
     {
-        return new EventGen(
-                service,
-                chain,
-                Score.install(service, chain, wallet, INSTALL_PATH, params, stepLimit)
-        );
+        return new EventGen(txHandler.deploy(wallet, INSTALL_PATH, params, BigInteger.valueOf(stepLimit)));
     }
 
     public Bytes invokeGenerate(Wallet from, Address addr, BigInteger i, byte[] bytes) throws IOException{

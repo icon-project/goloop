@@ -1,8 +1,23 @@
+/*
+ * Copyright 2019 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package foundation.icon.test.cases;
 
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
-import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
@@ -12,6 +27,8 @@ import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
+import foundation.icon.test.common.TransactionHandler;
+import foundation.icon.test.score.ChainScore;
 import foundation.icon.test.score.Score;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -20,15 +37,14 @@ import org.junit.jupiter.api.Test;
 import java.math.BigInteger;
 
 import static foundation.icon.test.common.Env.LOG;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 @Tag(Constants.TAG_PY_SCORE)
 public class ResultTest {
-    private static Env.Chain chain;
-    private static IconService iconService;
-
+    private static final String SCORE_RESULT_GEN_PATH = Constants.SCORE_ROOT + "result_gen";
     private static KeyWallet ownerWallet;
-
     private static Score score1, score2;
     private static Score chainSCORE;
 
@@ -36,20 +52,14 @@ public class ResultTest {
     public static void setUp() throws Exception {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
-        chain = channel.chain;
-        iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
-        ownerWallet = KeyWallet.create();
+        Env.Chain chain = channel.chain;
+        IconService iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
+        TransactionHandler txHandler = new TransactionHandler(iconService, chain);
 
-        score1 = new Score(iconService, chain,
-                Score.install(iconService, chain, ownerWallet,
-                        Constants.SCORE_ROOT + "result_gen",
-                        null));
-        score2 = new Score(iconService, chain,
-                Score.install(iconService, chain, ownerWallet,
-                        Constants.SCORE_ROOT + "result_gen",
-                        null));
-        chainSCORE = new Score(iconService, chain,
-                new Address("cx0000000000000000000000000000000000000000"));
+        ownerWallet = KeyWallet.create();
+        score1 = txHandler.deploy(ownerWallet, SCORE_RESULT_GEN_PATH, null);
+        score2 = txHandler.deploy(ownerWallet, SCORE_RESULT_GEN_PATH, null);
+        chainSCORE = new ChainScore(txHandler);
     }
 
     final static int CODE_REVERTED = 32;
@@ -85,7 +95,7 @@ public class ResultTest {
         Bytes[] icTxs = new Bytes[cases.length];
         Bytes[] iccTxs = new Bytes[cases.length];
         for (int i = 0; i < cases.length; i++) {
-            LOG.info("send tx normal case" + String.valueOf(i));
+            LOG.info("send tx normal case" + i);
             RpcObject params = new RpcObject.Builder()
                     .put("index", new RpcValue(cases[i]))
                     .build();
@@ -93,7 +103,7 @@ public class ResultTest {
                     ownerWallet, "callRevertWithIndex", params,
                     0, Constants.DEFAULT_STEP_LIMIT);
 
-            LOG.info("query case" + String.valueOf(i));
+            LOG.info("query case" + i);
             try {
                 RpcItem qr = score1.call("queryRevertWithIndex", params);
                 fail();
@@ -101,7 +111,7 @@ public class ResultTest {
                 assertEquals(-30000 - expect[i].intValue(), e.getCode());
             }
 
-            LOG.info("send tx inter-call case" + String.valueOf(i));
+            LOG.info("send tx inter-call case" + i);
             params = new RpcObject.Builder()
                     .put("addr", new RpcValue(score2.getAddress()))
                     .put("index", new RpcValue(cases[i]))

@@ -18,13 +18,13 @@ package foundation.icon.test.cases;
 
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
-import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.IconAmount;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
+import foundation.icon.test.common.TestBase;
 import foundation.icon.test.common.TransactionHandler;
 import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.CrowdSaleScore;
@@ -38,24 +38,18 @@ import java.math.BigInteger;
 
 import static foundation.icon.test.common.Env.LOG;
 
-class CrowdsaleTest {
-    private static IconService iconService;
+class CrowdsaleTest extends TestBase {
     private static TransactionHandler txHandler;
-    private static Env.Chain chain;
     private static KeyWallet ownerWallet;
 
     @BeforeAll
     static void init() throws Exception {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
-        chain = channel.chain;
-        iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
+        Env.Chain chain = channel.chain;
+        IconService iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
         txHandler = new TransactionHandler(iconService, chain);
-
         ownerWallet = KeyWallet.create();
-        Utils.transferAndCheck(iconService, chain, chain.godWallet, new Address[] {
-                    ownerWallet.getAddress()
-                }, BigInteger.TEN.pow(20));
     }
 
     @Tag(Constants.TAG_PY_SCORE)
@@ -101,14 +95,13 @@ class CrowdsaleTest {
                         BigInteger initialSupply, BigInteger fundingGoalInIcx) throws Exception {
         KeyWallet aliceWallet = KeyWallet.create();
         KeyWallet bobWallet = KeyWallet.create();
-        BigInteger ownerBalance = iconService.getBalance(ownerWallet.getAddress()).execute();
+        BigInteger ownerBalance = txHandler.getBalance(ownerWallet.getAddress());
+        final BigInteger icx = BigInteger.TEN.pow(18);
 
         // send 50 icx to Alice, 100 to Bob
         LOG.infoEntering("transfer icx", "50 to Alice; 100 to Bob");
-        Utils.transferIcx(iconService, chain.networkId, chain.godWallet, aliceWallet.getAddress(), "50");
-        Utils.transferIcx(iconService, chain.networkId, chain.godWallet, bobWallet.getAddress(), "100");
-        Utils.ensureIcxBalance(iconService, aliceWallet.getAddress(), 0, 50);
-        Utils.ensureIcxBalance(iconService, bobWallet.getAddress(), 0, 100);
+        transferAndCheckResult(txHandler, aliceWallet.getAddress(), icx.multiply(BigInteger.valueOf(50)));
+        transferAndCheckResult(txHandler, bobWallet.getAddress(), icx.multiply(BigInteger.valueOf(100)));
         LOG.infoExiting();
 
         // transfer all tokens to crowdsale score
@@ -120,8 +113,12 @@ class CrowdsaleTest {
 
         // send icx to crowdsale score from Alice and Bob
         LOG.infoEntering("transfer icx", "to crowdsale score (40 from Alice, 60 from Bob)");
-        Utils.transferIcx(iconService, chain.networkId, aliceWallet, crowdsaleScore.getAddress(), "40");
-        Utils.transferIcx(iconService, chain.networkId, bobWallet, crowdsaleScore.getAddress(), "60");
+        Bytes[] ids = new Bytes[2];
+        ids[0] = txHandler.transfer(aliceWallet, crowdsaleScore.getAddress(), icx.multiply(BigInteger.valueOf(40)));
+        ids[1] = txHandler.transfer(bobWallet, crowdsaleScore.getAddress(), icx.multiply(BigInteger.valueOf(60)));
+        for (Bytes id : ids) {
+            assertSuccess(txHandler.getResult(id));
+        }
         tokenScore.ensureTokenBalance(aliceWallet.getAddress(), 40);
         tokenScore.ensureTokenBalance(bobWallet.getAddress(), 60);
         LOG.infoExiting();
@@ -142,7 +139,7 @@ class CrowdsaleTest {
 
         // check the final icx balance of owner
         LOG.info("Initial ICX balance of owner: " + ownerBalance);
-        Utils.ensureIcxBalance(iconService, ownerWallet.getAddress(), ownerBalance, ownerBalance.add(amount));
+        Utils.ensureIcxBalance(txHandler, ownerWallet.getAddress(), ownerBalance, ownerBalance.add(amount));
         LOG.infoExiting();
     }
 }

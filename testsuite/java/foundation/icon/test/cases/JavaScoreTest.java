@@ -31,6 +31,7 @@ import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
+import foundation.icon.test.common.TestBase;
 import foundation.icon.test.common.TransactionHandler;
 import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.SampleTokenScore;
@@ -48,10 +49,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Tag(Constants.TAG_JAVA_SCORE)
-class JavaScoreTest {
+class JavaScoreTest extends TestBase {
     private static IconService iconService;
     private static TransactionHandler txHandler;
-    private static Env.Chain chain;
     private static KeyWallet ownerWallet;
     private static KeyWallet calleeWallet;
     private static Score testScore;
@@ -60,15 +60,13 @@ class JavaScoreTest {
     static void init() throws Exception {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
-        chain = channel.chain;
+        Env.Chain chain = channel.chain;
         iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
         txHandler = new TransactionHandler(iconService, chain);
 
         ownerWallet = KeyWallet.create();
         calleeWallet = KeyWallet.create();
-        Utils.transferAndCheck(iconService, chain, chain.godWallet, new Address[] {
-                    ownerWallet.getAddress(), calleeWallet.getAddress()
-                }, BigInteger.TEN.pow(20));
+        transferAndCheckResult(txHandler, ownerWallet.getAddress(), BigInteger.TEN.pow(20));
     }
 
     @Test
@@ -90,13 +88,13 @@ class JavaScoreTest {
 
         // 3. transfer #1
         LOG.infoEntering("transfer", "#1");
-        TransactionResult result = invokeTransfer(tokenScore.getAddress(), ownerWallet, calleeWallet.getAddress(), oneToken, true);
+        TransactionResult result = invokeTransfer(tokenScore, ownerWallet, calleeWallet.getAddress(), oneToken, true);
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
         LOG.infoExiting();
 
         // 3.1 transfer #2
         LOG.infoEntering("transfer", "#2");
-        result = invokeTransfer(tokenScore.getAddress(), ownerWallet, calleeWallet.getAddress(), oneToken, false);
+        result = invokeTransfer(tokenScore, ownerWallet, calleeWallet.getAddress(), oneToken, false);
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
         LOG.infoExiting();
 
@@ -124,7 +122,7 @@ class JavaScoreTest {
         return score.call("balanceOf", params);
     }
 
-    private TransactionResult invokeTransfer(Address score, Wallet from, Address to, BigInteger value,
+    private TransactionResult invokeTransfer(Score score, Wallet from, Address to, BigInteger value,
                                              boolean includeData) throws Exception {
         RpcObject.Builder builder = new RpcObject.Builder()
                 .put("_to", new RpcValue(to))
@@ -132,8 +130,7 @@ class JavaScoreTest {
         if (includeData) {
             builder.put("_data", new RpcValue("Hello".getBytes()));
         }
-        return Utils.sendTransactionWithCall(iconService, chain.networkId,
-                    from, score, "transfer", builder.build());
+        return score.invokeAndWaitResult(from, "transfer", builder.build());
     }
 
     private Address deployAPITest() throws Exception {
@@ -375,8 +372,8 @@ class JavaScoreTest {
         }
         LOG.info("expected (" + coin + "), got (" + result.asInteger() + ")");
         assertEquals(coin, result.asInteger());
-        Utils.ensureIcxBalance(iconService, ownerWallet.getAddress(), 100, 99);
-        Utils.ensureIcxBalance(iconService, scoreAddr, 0, 1);
+        Utils.ensureIcxBalance(txHandler, ownerWallet.getAddress(), 100, 99);
+        Utils.ensureIcxBalance(txHandler, scoreAddr, 0, 1);
         LOG.infoExiting();
 
         LOG.infoEntering("getValue", "query");

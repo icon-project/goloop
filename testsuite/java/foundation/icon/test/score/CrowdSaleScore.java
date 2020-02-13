@@ -37,6 +37,8 @@ import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class CrowdSaleScore extends Score {
+    public static final String CROWDSALE_PATH = Constants.SCORE_ROOT + "crowdsale";
+
     public static CrowdSaleScore mustDeploy(TransactionHandler txHandler, Wallet owner,
                                             Address tokenAddress, BigInteger fundingGoalInIcx, String contentType)
             throws ResultTimeoutException, TransactionFailureException, IOException {
@@ -48,7 +50,7 @@ public class CrowdSaleScore extends Score {
                 .build();
         Score score;
         if (contentType.equals(Constants.CONTENT_TYPE_PYTHON)) {
-            score = txHandler.deploy(owner, Constants.SCORE_CROWDSALE_PATH, params);
+            score = txHandler.deploy(owner, CROWDSALE_PATH, params);
         } else if (contentType.equals(Constants.CONTENT_TYPE_JAVA)) {
             score = txHandler.deploy(owner, SampleCrowdsale.class, params);
         } else {

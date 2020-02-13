@@ -43,6 +43,8 @@ import java.util.Map;
 import static foundation.icon.test.common.Env.LOG;
 
 public class SampleTokenScore extends Score {
+    public static final String SAMPLE_TOKEN_PATH = Constants.SCORE_ROOT + "sample_token";
+
     private static Map<String, Method> expectedMap = new HashMap<>() {{
         put("name", Method.newFunction("name", Method.Flags.READONLY | Method.Flags.EXTERNAL,
                 null, Method.DataType.STRING, "str"));
@@ -83,7 +85,7 @@ public class SampleTokenScore extends Score {
                 .build();
         Score score;
         if (contentType.equals(Constants.CONTENT_TYPE_PYTHON)) {
-            score = txHandler.deploy(owner, Constants.SCORE_SAMPLETOKEN_PATH, params);
+            score = txHandler.deploy(owner, SAMPLE_TOKEN_PATH, params);
         } else if (contentType.equals(Constants.CONTENT_TYPE_JAVA)) {
             score = txHandler.deploy(owner, SampleToken.class, params);
         } else {
@@ -179,13 +181,12 @@ public class SampleTokenScore extends Score {
         }
     }
 
-    public Bytes transfer(Wallet fromWallet, Address toAddress, BigInteger value) throws IOException {
+    public Bytes transfer(Wallet fromWallet, Address toAddress, BigInteger valueInIcx) throws IOException {
         RpcObject params = new RpcObject.Builder()
                 .put("_to", new RpcValue(toAddress))
-                .put("_value", new RpcValue(IconAmount.of(value, 18).toLoop()))
+                .put("_value", new RpcValue(IconAmount.of(valueInIcx, 18).toLoop()))
                 .build();
-        return this.invoke(fromWallet, "transfer", params, null, Constants.DEFAULT_STEPS,
-                Utils.getMicroTime(), BigInteger.ONE);
+        return this.invoke(fromWallet, "transfer", params);
     }
 
     public void ensureFundTransfer(TransactionResult result, Address scoreAddress,

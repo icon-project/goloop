@@ -185,7 +185,7 @@ public class ChainScoreTest extends TestBase {
         RpcObject params = new RpcObject.Builder()
                 .put("name", new RpcValue("HelloWorld"))
                 .build();
-        Bytes txHash = txHandler.deployOnly(testWallets[0], Constants.SCORE_HELLOWORLD_PATH, params);
+        Bytes txHash = txHandler.deployOnly(testWallets[0], HelloWorld.INSTALL_PATH, params);
         TransactionResult result = txHandler.getResult(txHash, Constants.DEFAULT_WAITING_TIME);
         assertSuccess(result);
         Address scoreAddr = new Address(result.getScoreAddress());
@@ -243,7 +243,7 @@ public class ChainScoreTest extends TestBase {
         RpcObject params = new RpcObject.Builder()
                 .put("name", new RpcValue("HelloWorld"))
                 .build();
-        Bytes txHash = txHandler.deployOnly(testWallets[0], Constants.SCORE_HELLOWORLD_PATH, params);
+        Bytes txHash = txHandler.deployOnly(testWallets[0], HelloWorld.INSTALL_PATH, params);
         TransactionResult result = txHandler.getResult(txHash, Constants.DEFAULT_WAITING_TIME);
         assertSuccess(result);
         Address scoreAddr = new Address(result.getScoreAddress());

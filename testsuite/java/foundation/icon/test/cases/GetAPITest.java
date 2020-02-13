@@ -29,7 +29,7 @@ import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
-import foundation.icon.test.common.Utils;
+import foundation.icon.test.common.TransactionHandler;
 import foundation.icon.test.score.StepCounterScore;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -47,22 +47,18 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-/*
-test methods
-    testGetAPIForStepCounter
-    validateGetScoreApi
- */
 @Tag(Constants.TAG_PY_SCORE)
 class GetAPITest {
-    private static Env.Chain chain;
-    private static IconService iconService;
+    public static final String SCORE_API_PATH = Constants.SCORE_ROOT + "score_api";
+    private static TransactionHandler txHandler;
 
     @BeforeAll
     static void init() {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
-        chain = channel.chain;
-        iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
+        Env.Chain chain = channel.chain;
+        IconService iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
+        txHandler = new TransactionHandler(iconService, chain);
     }
 
     private static final String TYPE_FUNCTION = "function";
@@ -83,11 +79,11 @@ class GetAPITest {
     @Test
     void testGetAPIForStepCounter() throws Exception {
         LOG.infoEntering("deployScore", "StepCounterScore");
-        StepCounterScore score = StepCounterScore.mustDeploy(iconService, chain, chain.godWallet);
+        StepCounterScore score = StepCounterScore.mustDeploy(txHandler, KeyWallet.create());
         LOG.infoExiting();
 
         LOG.infoEntering("testGetAPIForStepCounter");
-        List<ScoreApi> apis = iconService.getScoreApi(score.getAddress()).execute();
+        List<ScoreApi> apis = txHandler.getScoreApi(score.getAddress());
         for (ScoreApi api : apis) {
             String name = api.getName();
             if (name.equals("getStep")) {
@@ -308,18 +304,15 @@ class GetAPITest {
 
     @Test
     void validateGetScoreApi() throws Exception {
-        String scorePath = Constants.SCORE_API_PATH;
         LOG.infoEntering("deployScore", "ScoreApi");
-        Bytes txHash = Utils.deployScore(iconService, chain.networkId,
-                KeyWallet.create(), Constants.CHAINSCORE_ADDRESS, scorePath, null);
-        TransactionResult result = Utils.getTransactionResult(iconService, txHash, Constants.DEFAULT_WAITING_TIME);
+        Bytes txHash = txHandler.deployOnly(KeyWallet.create(), SCORE_API_PATH, null);
+        TransactionResult result = txHandler.getResult(txHash, Constants.DEFAULT_WAITING_TIME);
         assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-        Utils.acceptScoreIfAuditEnabled(iconService, chain, txHash);
         LOG.infoExiting();
 
         LOG.infoEntering("validateGetScoreApi");
         Address scoreAddr = new Address(result.getScoreAddress());
-        List<ScoreApi> apis = iconService.getScoreApi(scoreAddr).execute();
+        List<ScoreApi> apis = txHandler.getScoreApi(scoreAddr);
         assertTrue(checkApisForScoreApi(apis));
         LOG.infoExiting();
 
@@ -327,7 +320,7 @@ class GetAPITest {
         String newAddr = KeyWallet.create().getAddress().toString();
         Address noScoreAddr = new Address("cx" + newAddr.substring(2));
         try {
-            iconService.getScoreApi(noScoreAddr).execute();
+            txHandler.getScoreApi(noScoreAddr);
             fail();
         }
         catch (RpcError ex) {

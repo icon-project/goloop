@@ -419,7 +419,7 @@ public class DeployTest extends TestBase {
         LOG.infoEntering("update governance", "with invalid governor");
         KeyWallet testWallet = testWallets[0];
         try {
-            txHandler.deploy(testWallet, Constants.SCORE_GOV_UPDATE_PATH,
+            txHandler.deploy(testWallet, GovScore.UPDATE_PATH,
                     Constants.GOV_ADDRESS, null, Constants.DEFAULT_STEPS);
             fail();
         } catch (TransactionFailureException e) {
@@ -433,7 +433,7 @@ public class DeployTest extends TestBase {
         // Update with governor
         LOG.infoEntering("update governance", "with governor");
         try {
-            Score updatedGov = txHandler.deploy(chain.governorWallet, Constants.SCORE_GOV_UPDATE_PATH,
+            Score updatedGov = txHandler.deploy(chain.governorWallet, GovScore.UPDATE_PATH,
                     Constants.GOV_ADDRESS, null, Constants.DEFAULT_STEPS);
             updated = updatedGov.call("updated", null).asBoolean();
             assertTrue(updated);

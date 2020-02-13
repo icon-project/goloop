@@ -28,14 +28,18 @@ import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.ConfirmedTransaction;
 import foundation.icon.icx.data.ScoreApi;
 import foundation.icon.icx.data.TransactionResult;
+import foundation.icon.icx.transport.jsonrpc.RpcError;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
+import foundation.icon.test.score.GovScore;
 import foundation.icon.test.score.Score;
 import org.aion.avm.utilities.JarBuilder;
 
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.List;
+
+import static foundation.icon.test.common.Env.LOG;
 
 public class TransactionHandler {
     private final IconService iconService;
@@ -158,7 +162,27 @@ public class TransactionHandler {
 
     public TransactionResult getResult(Bytes txHash, long waiting)
             throws IOException, ResultTimeoutException {
-        return Utils.getTransactionResult(this.iconService, txHash, waiting);
+        long limitTime = System.currentTimeMillis() + waiting;
+        while (true) {
+            try {
+                return iconService.getTransactionResult(txHash).execute();
+            } catch (RpcError e) {
+                if (e.getCode() == -31002 || e.getCode() == -31003) { // pending or executing
+                    if (limitTime < System.currentTimeMillis()) {
+                        throw new ResultTimeoutException(txHash);
+                    }
+                    try {
+                        // wait until block confirmation
+                        LOG.debug("RpcError: code(" + e.getCode() + ") message(" + e.getMessage() + "); Retry in 1 sec.");
+                        Thread.sleep(1000);
+                    } catch (InterruptedException ex) {
+                        ex.printStackTrace();
+                    }
+                    continue;
+                }
+                throw e;
+            }
+        }
     }
 
     public Bytes transfer(Address to, BigInteger amount) throws IOException {
@@ -179,7 +203,16 @@ public class TransactionHandler {
 
     public void acceptScoreIfAuditEnabled(Bytes txHash)
             throws TransactionFailureException, IOException, ResultTimeoutException {
-        Utils.acceptScoreIfAuditEnabled(iconService, chain, txHash);
+        GovScore govScore = new GovScore(this);
+        if (govScore.isAuditEnabledOnly()) {
+            LOG.infoEntering("invoke", "acceptScore");
+            TransactionResult result = govScore.acceptScore(txHash);
+            if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
+                LOG.infoExiting();
+                throw new TransactionFailureException(result.getFailure());
+            }
+            LOG.infoExiting();
+        }
     }
 
     public ConfirmedTransaction getTransaction(Bytes txHash) throws IOException {

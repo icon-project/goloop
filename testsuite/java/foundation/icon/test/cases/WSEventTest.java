@@ -1,12 +1,34 @@
+/*
+ * Copyright 2019 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package foundation.icon.test.cases;
 
-import foundation.icon.icx.*;
-import foundation.icon.icx.data.*;
+import foundation.icon.icx.IconService;
+import foundation.icon.icx.KeyWallet;
+import foundation.icon.icx.data.Address;
+import foundation.icon.icx.data.Block;
+import foundation.icon.icx.data.BlockNotification;
+import foundation.icon.icx.data.Bytes;
+import foundation.icon.icx.data.EventNotification;
+import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.icx.transport.monitor.Monitor;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
-import foundation.icon.test.common.Utils;
+import foundation.icon.test.common.TransactionHandler;
 import foundation.icon.test.score.EventGen;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -17,25 +39,27 @@ import java.util.LinkedList;
 import java.util.List;
 
 import static foundation.icon.test.common.Env.LOG;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 // TODO What about adding annotation indicating requirements. For example,
 // "@require(nodeNum=4,chainNum=1)" indicates it requires at least 4 nodes and
 // 1 chain for each.
 @Tag(Constants.TAG_PY_SCORE)
 public class WSEventTest {
-    private static Env.Chain chain;
+    private static TransactionHandler txHandler;
     private static IconService iconService;
-    private Object condVar = new Object();
+    private final Object condVar = new Object();
 
     @BeforeAll
     public static void setUp() {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
-        chain = channel.chain;
+        Env.Chain chain = channel.chain;
         iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
+        txHandler = new TransactionHandler(iconService, chain);
     }
-
 
     /*
     It receives 10 blocks from the last block.
@@ -91,21 +115,20 @@ public class WSEventTest {
         });
 
         BlockNotification noti = null;
-        BigInteger height = reqBlkHeight;
         synchronized (condVar) {
             condVar.wait(3000 * testBlkNum);
             assertEquals(testBlkNum, notiList.size());
         }
         for(int i = 0; i < testBlkNum; i++) {
             noti = notiList.get(i);
-            assertFalse(noti == null);
+            assertNotNull(noti);
             LOG.infoEntering("check received block " + noti.getHeight());
             // check the order og the received blocks
-            int cmp = noti.getHeight().compareTo(height.add(BigInteger.valueOf(i)));
-            assertTrue(cmp == 0);
+            int cmp = noti.getHeight().compareTo(reqBlkHeight.add(BigInteger.valueOf(i)));
+            assertEquals(0, cmp);
             Block blk = iconService.getBlock(noti.getHash()).execute();
             cmp = blk.getHeight().compareTo(noti.getHeight());
-            assertTrue(cmp == 0);
+            assertEquals(0, cmp);
             LOG.infoExiting();
         }
 
@@ -113,7 +136,7 @@ public class WSEventTest {
         bm.stop();
         synchronized (condVar) {
             condVar.wait(3000);
-            assertTrue(notiList.size() == 0);
+            assertEquals(0, notiList.size());
         }
         LOG.infoExiting();
     }
@@ -124,32 +147,27 @@ public class WSEventTest {
         KeyWallet aliceWallet = KeyWallet.create();
         KeyWallet bobWallet = KeyWallet.create();
 
-        LOG.infoEntering("transfer", "initial icx to owner address");
-        Utils.transferIcx(iconService, chain.networkId, chain.godWallet, ownerWallet.getAddress(), "100");
-        Utils.ensureIcxBalance(iconService, ownerWallet.getAddress(), 0, 100);
-        LOG.infoExiting();
-
         // deploy 2 scores with same source
-        EventGen eventGen[] = new EventGen[2];
+        EventGen[] eventGen = new EventGen[2];
         LOG.infoEntering("deploy", "event gen SCORE");
-        eventGen[0] = EventGen.install(iconService, chain, ownerWallet, 18);
+        eventGen[0] = EventGen.install(txHandler, ownerWallet, 100);
         LOG.infoExiting();
 
         LOG.infoEntering("deploy", "event gen SCORE");
-        eventGen[1] = EventGen.install(iconService, chain, ownerWallet, 18);
+        eventGen[1] = EventGen.install(txHandler, ownerWallet, 100);
         LOG.infoExiting();
 
         String event = "Event(Address,int,bytes)";
-        Address addrs[] = new Address[] {
+        Address[] addrs = new Address[] {
                 null, eventGen[0].getAddress(), eventGen[0].getAddress(),
         };
-        String data[][] = new String[][] {
+        String[][] data = new String[][] {
                 null,
                 null,
                 {bobWallet.getAddress().toString(), "500", "0x0A"},
         };
         LOG.info("bobAddr : " + bobWallet.getAddress().toString());
-        int expectedEventNum[] = {4,2,1};
+        int[] expectedEventNum = {4,2,1};
 
         for(int i = 0; i < 3; i++) {
             List<EventNotification> eventList = new LinkedList<>();

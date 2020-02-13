@@ -9,6 +9,7 @@ class EventGen(IconScoreBase):
 
     def on_install(self, name: str) -> None:
         super().on_install()
+        Logger.info(f'on_install: name={name}', TAG)
 
     def on_update(self) -> None:
         super().on_update()

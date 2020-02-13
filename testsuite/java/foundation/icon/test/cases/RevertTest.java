@@ -1,3 +1,19 @@
+/*
+ * Copyright 2019 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package foundation.icon.test.cases;
 
 import foundation.icon.icx.IconService;
@@ -6,6 +22,7 @@ import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
+import foundation.icon.test.common.TransactionHandler;
 import foundation.icon.test.score.StepCounterScore;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -18,15 +35,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Tag(Constants.TAG_PY_SCORE)
 public class RevertTest {
-    private static Env.Chain chain;
-    private static IconService iconService;
+    private static TransactionHandler txHandler;
 
     @BeforeAll
     public static void setUp() {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
-        chain = channel.chain;
-        iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
+        Env.Chain chain = channel.chain;
+        IconService iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
+        txHandler = new TransactionHandler(iconService, chain);
     }
 
     @Test
@@ -34,12 +51,10 @@ public class RevertTest {
         KeyWallet ownerWallet = KeyWallet.create();
 
         LOG.infoEntering("deploy", "SCORE1");
-        StepCounterScore score1 = StepCounterScore.mustDeploy(iconService,
-                chain, ownerWallet);
+        StepCounterScore score1 = StepCounterScore.mustDeploy(txHandler, ownerWallet);
         LOG.infoExiting("deployed:" + score1);
         LOG.infoEntering("deploy", "SCORE2");
-        StepCounterScore score2 = StepCounterScore.mustDeploy(iconService,
-                chain, ownerWallet);
+        StepCounterScore score2 = StepCounterScore.mustDeploy(txHandler, ownerWallet);
         LOG.infoExiting("deployed:" + score2);
 
         TransactionResult txr;

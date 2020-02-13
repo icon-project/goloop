@@ -43,6 +43,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Tag(Constants.TAG_PY_SCORE)
 class ScoreParamTest extends TestBase {
+    public static final String SCORE_CHECK_PARAMS_PATH = Constants.SCORE_ROOT + "check_params";
+
     private static TransactionHandler txHandler;
     private static KeyWallet callerWallet;
     private static Score testScore;
@@ -91,8 +93,8 @@ class ScoreParamTest extends TestBase {
         callerWallet = KeyWallet.create();
 
         KeyWallet ownerWallet = KeyWallet.create();
-        testScore = txHandler.deploy(ownerWallet, Constants.SCORE_CHECKPARAMS_PATH, null);
-        interCallScore = txHandler.deploy(ownerWallet, Constants.SCORE_CHECKPARAMS_PATH, null);
+        testScore = txHandler.deploy(ownerWallet, SCORE_CHECK_PARAMS_PATH, null);
+        interCallScore = txHandler.deploy(ownerWallet, SCORE_CHECK_PARAMS_PATH, null);
     }
 
     @Test

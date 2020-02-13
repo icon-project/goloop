@@ -14,8 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Tag(Constants.TAG_PY_SCORE)
 public class GetTotalSupplyTest {
-    static Env.Chain chain;
-    static IconService iconService;
+    private static Env.Chain chain;
+    private static IconService iconService;
 
     @BeforeAll
     public static void init() throws Exception {

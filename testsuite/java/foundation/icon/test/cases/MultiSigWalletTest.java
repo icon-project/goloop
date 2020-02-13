@@ -1,3 +1,19 @@
+/*
+ * Copyright 2019 ICON Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package foundation.icon.test.cases;
 
 import foundation.icon.icx.IconService;
@@ -7,6 +23,8 @@ import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
+import foundation.icon.test.common.TestBase;
+import foundation.icon.test.common.TransactionHandler;
 import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.HelloWorld;
 import foundation.icon.test.score.MultiSigWalletScore;
@@ -19,16 +37,16 @@ import java.math.BigInteger;
 import static foundation.icon.test.common.Env.LOG;
 
 @Tag(Constants.TAG_PY_SCORE)
-public class MultiSigWalletTest {
-    private static Env.Chain chain;
-    private static IconService iconService;
+public class MultiSigWalletTest extends TestBase {
+    private static TransactionHandler txHandler;
 
     @BeforeAll
     public static void setUp() {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
-        chain = channel.chain;
-        iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
+        Env.Chain chain = channel.chain;
+        IconService iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
+        txHandler = new TransactionHandler(iconService, chain);
     }
 
     @Test
@@ -46,18 +64,18 @@ public class MultiSigWalletTest {
         Address[] walletOwners =
                 new Address[] {ownerWallet.getAddress(), aliceWallet.getAddress(), bobWallet.getAddress()};
         MultiSigWalletScore multiSigWalletScore =
-                MultiSigWalletScore.mustDeploy(iconService, chain, ownerWallet, walletOwners, 2);
+                MultiSigWalletScore.mustDeploy(txHandler, ownerWallet, walletOwners, 2);
         Address multiSigWalletAddress = multiSigWalletScore.getAddress();
 
         // send 3 icx to the multiSigWallet
         LOG.info("transfer: 3 icx to multiSigWallet");
-        Utils.transferIcx(iconService, chain.networkId, chain.godWallet, multiSigWalletAddress, "3");
-        Utils.ensureIcxBalance(iconService, multiSigWalletAddress, 0, 3);
+        final BigInteger icx = BigInteger.TEN.pow(18);
+        transferAndCheckResult(txHandler, multiSigWalletAddress, icx.multiply(BigInteger.valueOf(3)));
+        Utils.ensureIcxBalance(txHandler, multiSigWalletAddress, 0, 3);
 
         // *** Send 2 icx to Bob (EOA)
         // 1. tx is initiated by ownerWallet first
         LOG.infoEntering("call", "submitIcxTransaction() - send 2 icx to Bob");
-        // TODO check txHash, txId
         TransactionResult result =
                 multiSigWalletScore.submitIcxTransaction(ownerWallet, bobWallet.getAddress(), 2, "send 2 icx to Bob");
         BigInteger txId = multiSigWalletScore.getTransactionId(result);
@@ -72,14 +90,14 @@ public class MultiSigWalletTest {
         multiSigWalletScore.ensureExecution(result, txId);
 
         // check icx balances
-        Utils.ensureIcxBalance(iconService, multiSigWalletAddress, 3, 1);
-        Utils.ensureIcxBalance(iconService, bobWallet.getAddress(), 0, 2);
+        Utils.ensureIcxBalance(txHandler, multiSigWalletAddress, 3, 1);
+        Utils.ensureIcxBalance(txHandler, bobWallet.getAddress(), 0, 2);
         LOG.infoExiting();
 
         // *** Send 1 icx to Contract
         // deploy sample multiSigWalletScore to accept icx
         LOG.info("deploy: HelloWorld");
-        HelloWorld helloScore = HelloWorld.install(iconService, chain, ownerWallet);
+        HelloWorld helloScore = HelloWorld.install(txHandler, ownerWallet);
 
         // 3. tx is initiated by ownerWallet first
         LOG.infoEntering("call", "submitIcxTransaction() - send 1 icx to hello");
@@ -96,8 +114,8 @@ public class MultiSigWalletTest {
         multiSigWalletScore.ensureExecution(result, txId);
 
         // check icx balances
-        Utils.ensureIcxBalance(iconService, multiSigWalletAddress, 1, 0);
-        Utils.ensureIcxBalance(iconService, helloScore.getAddress(), 0, 1);
+        Utils.ensureIcxBalance(txHandler, multiSigWalletAddress, 1, 0);
+        Utils.ensureIcxBalance(txHandler, helloScore.getAddress(), 0, 1);
         LOG.infoExiting();
 
         // *** Add new wallet owner (charlie)

@@ -1,4 +1,3 @@
-
 from iconservice import *
 
 
@@ -10,6 +9,7 @@ class ResultGeneratorInterface(InterfaceScore):
     @interface
     def returnStr(self, _value: str) -> str:
         pass
+
 
 class ResultGenerator(IconScoreBase):
     def __init__(self, db: IconScoreDatabase) -> None:

@@ -34,7 +34,7 @@ public class Constants {
     public static final String SCORE_ROOT = "./data/scores/";
 
     public static final long DEFAULT_STEP_LIMIT = 9000000;
-    public static final long DEFAULT_WAITING_TIME = 7000; // millisecond
+    public static final long DEFAULT_WAITING_TIME = 7000;
     public static final BigInteger DEFAULT_STEPS = BigInteger.valueOf(2000000);
     public static final BigInteger DEFAULT_BALANCE = new BigInteger("100000000");
 
@@ -48,17 +48,4 @@ public class Constants {
     public static final String SCORE_STATUS_PENDING = "pending";
     public static final String SCORE_STATUS_ACTIVE = "active";
     public static final String SCORE_STATUS_REJECTED = "rejected";
-
-    public static final String SCORE_MULTISIG_PATH = SCORE_ROOT + "multisig_wallet";
-    public static final String SCORE_STEPCOUNTER_PATH = SCORE_ROOT + "step_counter";
-    public static final String SCORE_DB_STEP_PATH = SCORE_ROOT + "db_step";
-    public static final String SCORE_CROWDSALE_PATH = SCORE_ROOT + "crowdsale";
-    public static final String SCORE_SAMPLETOKEN_PATH = SCORE_ROOT + "sample_token";
-    public static final String SCORE_HELLOWORLD_PATH = SCORE_ROOT + "hello_world";
-    public static final String SCORE_HELLOWORLD_UPDATE_PATH = SCORE_ROOT + "hello_world2";
-    public static final String SCORE_CHECKPARAMS_PATH = SCORE_ROOT + "check_params";
-    public static final String SCORE_RECEIPT_PATH = SCORE_ROOT + "receipt";
-    public static final String SCORE_API_PATH = SCORE_ROOT + "score_api";
-    public static final String SCORE_GOV_PATH = "./data/genesisStorage/" + "governance";
-    public static final String SCORE_GOV_UPDATE_PATH = SCORE_ROOT + "governance";
 }

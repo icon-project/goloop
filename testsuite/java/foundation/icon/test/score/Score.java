@@ -17,7 +17,6 @@
 package foundation.icon.test.score;
 
 import foundation.icon.icx.Call;
-import foundation.icon.icx.IconService;
 import foundation.icon.icx.Transaction;
 import foundation.icon.icx.TransactionBuilder;
 import foundation.icon.icx.Wallet;
@@ -29,26 +28,16 @@ import foundation.icon.icx.transport.jsonrpc.RpcError;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.test.common.Constants;
-import foundation.icon.test.common.Env;
-import foundation.icon.test.common.Log;
 import foundation.icon.test.common.ResultTimeoutException;
-import foundation.icon.test.common.TransactionFailureException;
 import foundation.icon.test.common.TransactionHandler;
-import foundation.icon.test.common.Utils;
 
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.List;
 
 public class Score {
-    private static final Log LOG = Log.getGlobal();
     private final TransactionHandler txHandler;
     private Address address;
-
-    public Score(IconService service, Env.Chain chain, Address scoreAddress) {
-        this.txHandler = new TransactionHandler(service, chain);
-        this.address = scoreAddress;
-    }
 
     public Score(TransactionHandler txHandler, Address scoreAddress) {
         this.txHandler = txHandler;
@@ -57,51 +46,6 @@ public class Score {
 
     public Score(Score other) {
         this(other.txHandler, other.address);
-    }
-
-    public static Address install(IconService service, Env.Chain chain, Wallet wallet, String contentPath, RpcObject params)
-            throws IOException, TransactionFailureException, ResultTimeoutException {
-        return install(service, chain, wallet, contentPath, params, Constants.DEFAULT_STEP_LIMIT);
-    }
-
-    public static Address install(IconService service,
-                                  Env.Chain chain, Wallet wallet, String contentPath, RpcObject params, long stepLimit, String contentType)
-            throws IOException, TransactionFailureException, ResultTimeoutException {
-        Bytes txHash = Utils.deployScore(service, chain.networkId, wallet, Constants.CHAINSCORE_ADDRESS, contentPath, params, stepLimit, contentType);
-        TransactionResult result = Utils.getTransactionResult(service, txHash, Constants.DEFAULT_WAITING_TIME);
-        if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
-            throw new TransactionFailureException(result.getFailure());
-        }
-
-        try {
-            Utils.acceptScoreIfAuditEnabled(service, chain, txHash);
-        }
-        catch(TransactionFailureException ex) {
-            LOG.infoExiting();
-            throw ex;
-        }
-        return new Address(result.getScoreAddress());
-    }
-
-    public static Address install(IconService service, Env.Chain chain, Wallet wallet, String contentPath, RpcObject params, long stepLimit)
-            throws IOException, TransactionFailureException, ResultTimeoutException {
-        return install(service, chain, wallet, contentPath, params, stepLimit, Constants.CONTENT_TYPE_PYTHON);
-    }
-
-    public void update(IconService service, Env.Chain chain, Wallet wallet, String contentPath, RpcObject params)
-            throws TransactionFailureException, ResultTimeoutException, IOException {
-        Bytes txHash = Utils.deployScore(service, chain.networkId, wallet, getAddress(), contentPath, params);
-        TransactionResult result = Utils.getTransactionResult(service, txHash, Constants.DEFAULT_WAITING_TIME);
-        if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
-            throw new TransactionFailureException(result.getFailure());
-        }
-        try {
-            Utils.acceptScoreIfAuditEnabled(service, chain, txHash);
-        }
-        catch(TransactionFailureException ex) {
-            LOG.infoExiting();
-            throw ex;
-        }
     }
 
     public RpcItem call(String method, RpcObject params)
@@ -176,7 +120,7 @@ public class Score {
 
     public TransactionResult invokeAndWaitResult(Wallet wallet, String method, RpcObject params)
             throws ResultTimeoutException, IOException {
-        return invokeAndWaitResult(wallet, method, params, BigInteger.ZERO, Constants.DEFAULT_STEPS);
+        return invokeAndWaitResult(wallet, method, params, null, Constants.DEFAULT_STEPS);
     }
 
     public TransactionResult invokeAndWaitResult(Wallet wallet, String method,
