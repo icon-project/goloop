@@ -3,7 +3,12 @@ package org.aion.avm.core;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.util.Printer;
+import org.objectweb.asm.util.TraceClassVisitor;
 
+import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -83,6 +88,25 @@ public final class ClassToolchain {
             this.cv = delegate;
         }
 
+    }
+
+    public static class TraceToolChainClassVisitor extends ToolChainClassVisitor {
+        private PrintWriter pw;
+        private Printer p;
+
+        public TraceToolChainClassVisitor(Printer p, OutputStream os) {
+            super(Opcodes.ASM6);
+            this.p = p;
+            this.pw = new PrintWriter(os);
+        }
+
+        public void setDelegate(ClassVisitor delegate) {
+            this.cv = new TraceClassVisitor(delegate, p, pw);
+        }
+
+        public void visitEnd() {
+            super.visitEnd();
+        }
     }
 
 }
