@@ -18,12 +18,12 @@ public class InternedClasses {
         this.internedClassWrappers = new IdentityHashMap<>(src.internedClassWrappers);
     }
 
-    public s.java.lang.Class<?> get(Class<?> underlyingClass) {
+    public <T> s.java.lang.Class<T> get(Class<T> underlyingClass) {
         s.java.lang.Class<?> internedClass = this.internedClassWrappers.get(underlyingClass);
         if (null == internedClass) {
             internedClass = new s.java.lang.Class<>(underlyingClass);
             this.internedClassWrappers.put(underlyingClass, internedClass);
         }
-        return internedClass;
+        return (s.java.lang.Class<T>)internedClass;
     }
 }
