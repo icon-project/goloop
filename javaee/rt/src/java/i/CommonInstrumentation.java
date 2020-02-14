@@ -100,10 +100,11 @@ public class CommonInstrumentation implements IInstrumentation {
                     // -store it in forceExitState
                     this.currentFrame.forceExitState = error;
                     // -throw it
-                    throw error;
+                    exceptionToRethrow = error;
+                } else {
+                    // This is VM-generated - we will have to instantiate a shadow, directly.
+                    shadow = convertVmGeneratedException(t);
                 }
-                // This is VM-generated - we will have to instantiate a shadow, directly.
-                shadow = convertVmGeneratedException(t);
             } else if (t instanceof AvmThrowable) {
                 // There are cases where an AvmException might appear here during, for example, a finally clause.  We just want to re-throw it
                 // since these aren't catchable within the user code.
