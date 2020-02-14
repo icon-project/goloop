@@ -241,6 +241,7 @@ public class EEProxy extends Proxy {
             BigInteger limit = new BigInteger(getValueAsByteArray(data.get(5)));
             String method = data.get(6).asStringValue().asString();
             Object[] params = (Object[]) TypedObj.decodeAny(data.get(7));
+            @SuppressWarnings("unchecked")
             var info = (Map<String, Object>) TypedObj.decodeAny(data.get(8));
 
             if (mOnInvokeListener != null) {

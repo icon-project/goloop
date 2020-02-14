@@ -91,7 +91,8 @@ public class TypedObj {
         if (obj == null) {
             return new TypedObj(NIL, null);
         } else if (obj instanceof Map) {
-            Map<String, Object> map = (Map) obj;
+            @SuppressWarnings("unchecked")
+            Map<String, Object> map = (Map<String, Object>) obj;
             Map<String, Object> typedMap = new HashMap<>();
             for (Map.Entry<String, Object> pair : map.entrySet()) {
                 typedMap.put(pair.getKey(), encodeAny(pair.getValue()));
@@ -168,7 +169,8 @@ public class TypedObj {
         if (type == NIL) {
             packer.packNil();
         } else if (type == DICT) {
-            Map<String, Object> map = (Map) obj;
+            @SuppressWarnings("unchecked")
+            Map<String, Object> map = (Map<String, Object>) obj;
             packer.packMapHeader(map.size());
             for (Map.Entry<String, Object> pair : map.entrySet()) {
                 packer.packString(pair.getKey());

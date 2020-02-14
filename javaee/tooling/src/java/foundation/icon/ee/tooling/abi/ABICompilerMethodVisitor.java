@@ -42,6 +42,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
     private static final Set<String> reservedEventNames = Set.of(
             "ICXTransfer"
     );
+    @SuppressWarnings("unchecked")
     private static final Map.Entry<String, Integer>[] dataTypeEntries = new Map.Entry[]{
             Map.entry("B", Method.DataType.INTEGER),
             Map.entry("C", Method.DataType.INTEGER),
