@@ -25,11 +25,11 @@ import foundation.icon.ee.types.Bytes;
 import foundation.icon.ee.types.Method;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
+import foundation.icon.ee.types.Transaction;
 import foundation.icon.ee.util.MethodUnpacker;
 import org.aion.avm.core.AvmConfiguration;
 import org.aion.avm.core.CommonAvmFactory;
 import org.aion.avm.utilities.JarBuilder;
-import org.aion.types.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -142,9 +142,8 @@ public class TransactionExecutor {
 
         byte[] codeBytes = fileReader.readFile(code);
         ExternalState kernel = new ExternalState(proxy, codeBytes, blockHeight, blockTimestamp, owner);
-        Transaction tx = getTransactionData(isInstall, from, to, value, nonce, limit, method, params,
-                txHash, txIndex, txTimestamp);
-
+        Transaction tx = new Transaction(from, to, value, nonce, limit.longValue(), method, params,
+                                         txHash, txIndex, txTimestamp, isInstall);
         BigInteger stepUsed = BigInteger.ZERO;
         try {
             Result result = avmExecutor.run(kernel, tx, origin);
@@ -157,27 +156,6 @@ public class TransactionExecutor {
             logger.warn("Execution failure", e);
             return new InvokeResult(Status.UnknownFailure, stepUsed, TypedObj.encodeAny(errMsg));
         }
-    }
-
-    private Transaction getTransactionData(boolean isInstall, Address from, Address to,
-                                           BigInteger value, BigInteger nonce, BigInteger limit,
-                                           String method, Object[] params,
-                                           byte[] txHash, int txIndex, long txTimestamp) {
-        if (to == null) {
-            throw new NullPointerException("Cannot create Transaction with null destination!");
-        }
-        return Transaction.newTransaction(
-                from,
-                to,
-                txHash,
-                txIndex,
-                txTimestamp,
-                value,
-                nonce,
-                method,
-                params,
-                limit.longValue(),
-                isInstall);
     }
 
     private static FileReader defaultFileReader = p -> {

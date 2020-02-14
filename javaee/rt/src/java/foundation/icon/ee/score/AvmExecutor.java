@@ -19,6 +19,7 @@ package foundation.icon.ee.score;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
+import foundation.icon.ee.types.Transaction;
 import i.IInstrumentation;
 import i.IInstrumentationFactory;
 import i.InstrumentationHelpers;
@@ -30,7 +31,6 @@ import org.aion.avm.core.IExternalState;
 import org.aion.avm.core.ReentrantDAppStack;
 import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.parallel.TransactionTask;
-import org.aion.types.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,18 +94,18 @@ public class AvmExecutor {
         Transaction tx = task.getTransaction();
         RuntimeAssertionError.assertTrue(tx != null);
 
-        BigInteger value = tx.value;
+        BigInteger value = tx.getValue();
         if (value.compareTo(BigInteger.ZERO) < 0) {
-            return new Result(Status.InvalidParameter, tx.energyLimit, "bad value");
+            return new Result(Status.InvalidParameter, BigInteger.ZERO, "bad value");
         }
 
-        if (tx.isCreate) {
-            if (!task.getThisTransactionalKernel().isValidEnergyLimitForCreate(tx.energyLimit)) {
-                return new Result(Status.InvalidParameter, tx.energyLimit, "bad step limit for create");
+        if (tx.isCreate()) {
+            if (!task.getThisTransactionalKernel().isValidEnergyLimitForCreate(tx.getLimit())) {
+                return new Result(Status.InvalidParameter, tx.getLimit(), "bad step limit for create");
             }
         } else {
-            if (!task.getThisTransactionalKernel().isValidEnergyLimitForNonCreate(tx.energyLimit)) {
-                return new Result(Status.InvalidParameter, tx.energyLimit, "bad step limit for call");
+            if (!task.getThisTransactionalKernel().isValidEnergyLimitForNonCreate(tx.getLimit())) {
+                return new Result(Status.InvalidParameter, tx.getLimit(), "bad step limit for call");
             }
         }
         return runCommon(task.getThisTransactionalKernel(), tx);
@@ -119,10 +119,10 @@ public class AvmExecutor {
         // start with the successful result
         Result result;
 
-        Address senderAddress = tx.senderAddress;
-        Address recipient = tx.destinationAddress;
+        Address senderAddress = tx.getSender();
+        Address recipient = tx.getDestination();
 
-        if (tx.isCreate) {
+        if (tx.isCreate()) {
             logger.trace("=== DAppCreator ===");
             result = DAppCreator.create(kernel, task,
                     senderAddress, recipient, tx, 0,

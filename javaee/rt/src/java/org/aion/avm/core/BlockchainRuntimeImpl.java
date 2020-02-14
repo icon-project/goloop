@@ -5,6 +5,7 @@ import avm.RevertException;
 import avm.ScoreRevertException;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Status;
+import foundation.icon.ee.types.Transaction;
 import foundation.icon.ee.util.Shadower;
 import foundation.icon.ee.util.Unshadower;
 import i.CallDepthLimitExceededException;
@@ -19,7 +20,6 @@ import i.RuntimeAssertionError;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.parallel.TransactionTask;
-import org.aion.types.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import p.avm.CollectionDB;
@@ -28,7 +28,6 @@ import p.avm.ValueBuffer;
 import p.avm.VarDB;
 import pi.CollectionDBImpl;
 import pi.VarDBImpl;
-import s.java.math.BigInteger;
 
 import java.util.Arrays;
 
@@ -86,18 +85,18 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
     @Override
     public int avm_getTransactionIndex() {
-        return tx.transactionIndex;
+        return tx.getTxIndex();
     }
 
     @Override
     public long avm_getTransactionTimestamp() {
-        return tx.transactionTimestamp;
+        return tx.getTxTimestamp();
     }
 
     @Override
-    public BigInteger avm_getTransactionNonce() {
+    public s.java.math.BigInteger avm_getTransactionNonce() {
         if (null == this.nonceCache) {
-            this.nonceCache = new s.java.math.BigInteger(tx.nonce);
+            this.nonceCache = new s.java.math.BigInteger(tx.getNonce());
         }
         return this.nonceCache;
     }
@@ -137,8 +136,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     @Override
     public s.java.math.BigInteger avm_getValue() {
         if (null == this.valueCache) {
-            java.math.BigInteger value = tx.value;
-            this.valueCache = new s.java.math.BigInteger(value);
+            this.valueCache = new s.java.math.BigInteger(tx.getValue());
         }
         return this.valueCache;
     }
@@ -194,8 +192,9 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                             p.avm.Address targetAddress,
                             s.java.lang.String method,
                             IObjectArray sparams) {
-        if (value == null)
-            value = BigInteger.avm_ZERO;
+        if (value == null) {
+            value = s.java.math.BigInteger.avm_ZERO;
+        }
         java.math.BigInteger underlyingValue = value.getUnderlying();
         require(targetAddress != null, "Destination can't be NULL");
         require(underlyingValue.compareTo(java.math.BigInteger.ZERO) >= 0 , "Value can't be negative");

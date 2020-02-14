@@ -1,6 +1,7 @@
 package org.aion.parallel;
 
 import foundation.icon.ee.types.Address;
+import foundation.icon.ee.types.Transaction;
 import i.IInstrumentation;
 import i.RuntimeAssertionError;
 import org.aion.avm.core.IExternalState;
@@ -8,7 +9,6 @@ import org.aion.avm.core.ReentrantDAppStack;
 import org.aion.avm.core.types.Pair;
 import org.aion.avm.core.util.ByteArrayWrapper;
 import org.aion.avm.core.util.Helpers;
-import org.aion.types.Transaction;
 
 import java.util.HashSet;
 import java.util.Set;

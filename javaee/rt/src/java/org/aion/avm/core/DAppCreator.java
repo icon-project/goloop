@@ -4,6 +4,7 @@ import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.CodedException;
+import foundation.icon.ee.types.Transaction;
 import i.AvmException;
 import i.CallDepthLimitExceededException;
 import i.EarlyAbortException;
@@ -57,7 +58,6 @@ import org.aion.avm.utilities.JarBuilder;
 import org.aion.avm.utilities.Utilities;
 import org.aion.avm.utilities.analyze.ClassFileInfoBuilder;
 import org.aion.parallel.TransactionTask;
-import org.aion.types.Transaction;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 
@@ -205,7 +205,7 @@ public class DAppCreator {
                 if (verboseErrors) {
                     System.err.println("DApp deployment failed due to bad external methods info");
                 }
-                return new Result(Status.IllegalFormat, tx.energyLimit, "bad external method info");
+                return new Result(Status.IllegalFormat, tx.getLimit(), "bad external method info");
             }
 
             RawDappModule rawDapp = RawDappModule.readFromJar(codeBytes, preserveDebuggability, verboseErrors);
@@ -213,7 +213,7 @@ public class DAppCreator {
                 if (verboseErrors) {
                     System.err.println("DApp deployment failed due to corrupt JAR data");
                 }
-                return new  Result(Status.IllegalFormat, tx.energyLimit, "bad jar data");
+                return new Result(Status.IllegalFormat, tx.getLimit(), "bad jar data");
             }
 
             // Verify that the DApp contains the main class they listed and that it has a "public static byte[] main()" method.
@@ -222,7 +222,7 @@ public class DAppCreator {
                     String explanation = "missing Main class";
                     System.err.println("DApp deployment failed due to " + explanation);
                 }
-                return new Result(Status.IllegalFormat, tx.energyLimit, "missing Main class");
+                return new Result(Status.IllegalFormat, tx.getLimit(), "missing Main class");
             }
             ClassHierarchyForest dappClassesForest = rawDapp.classHierarchyForest;
 
@@ -239,7 +239,7 @@ public class DAppCreator {
                     System.err.println("DApp deployment failed due to " + explanation + " exception:" + e);
                     e.printStackTrace();
                 }
-                return new Result(Status.IllegalFormat, tx.energyLimit, e.toString());
+                return new Result(Status.IllegalFormat, tx.getLimit(), e.toString());
             }
             runtimeSetup = dapp.runtimeSetup;
 
@@ -255,7 +255,7 @@ public class DAppCreator {
                                                               dapp,
                                                               enableBlockchainPrintln);
             FrameContextImpl fc = new FrameContextImpl(externalState, dapp, dapp.getInternedClasses(), br);
-            InstrumentationHelpers.pushNewStackFrame(runtimeSetup, dapp.loader, tx.energyLimit - energyPreused, nextHashCode, dapp.getInternedClasses(), fc);
+            InstrumentationHelpers.pushNewStackFrame(runtimeSetup, dapp.loader, tx.getLimit() - energyPreused, nextHashCode, dapp.getInternedClasses(), fc);
             IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(br);
 
             // We have just created this dApp, there should be no previous runtime associated with it.
@@ -285,7 +285,7 @@ public class DAppCreator {
                 e.printStackTrace(System.err);
             }
             result = new Result(e.getCode(),
-                    tx.energyLimit - IInstrumentation.getEnergyLeft(),
+                    tx.getLimit() - IInstrumentation.getEnergyLeft(),
                     e.toString());
 
         } catch (EarlyAbortException e) {
@@ -300,7 +300,7 @@ public class DAppCreator {
                 System.err.println("DApp deployment failed due to AvmException: \"" + e.getMessage() + "\"");
                 e.printStackTrace(System.err);
             }
-            result = new Result(Status.UnknownFailure, tx.energyLimit, e.toString());
+            result = new Result(Status.UnknownFailure, tx.getLimit(), e.toString());
         } catch (JvmError e) {
             // These are cases which we know we can't handle and have decided to handle by safely stopping the AVM instance so
             // re-throw this as the AvmImpl top-level loop will commute it into an asynchronous shutdown.
@@ -312,7 +312,7 @@ public class DAppCreator {
         } catch (Throwable e) {
             // We don't know what went wrong in this case, but it is beyond our ability to handle it here.
             // We ship it off to the ExceptionHandler, which kills the transaction as a failure for unknown reasons.
-            result = new Result(Status.UnknownFailure, tx.energyLimit, e.toString());
+            result = new Result(Status.UnknownFailure, tx.getLimit(), e.toString());
         } finally {
             // Once we are done running this, no matter how it ended, we want to detach our thread from the DApp.
             if (null != runtimeSetup) {
@@ -420,7 +420,7 @@ public class DAppCreator {
      * @param externalState The state of the world.
      * @param task The transaction task.
      * @param dappAddress The address of the contract.
-     * @param energyLimit The energy limit of this create transaction.
+     * @param tx The transaction.
      * @return the result of initializing and billing the sender.
      */
     private static Result runClinitAndBillSender(boolean verboseErrors,
@@ -430,7 +430,7 @@ public class DAppCreator {
                                                  TransactionTask task,
                                                  Address dappAddress,
                                                  Transaction tx) throws Throwable {
-        long energyLimit = tx.energyLimit;
+        long energyLimit = tx.getLimit();
         Result resultToReturn;
 
         try {

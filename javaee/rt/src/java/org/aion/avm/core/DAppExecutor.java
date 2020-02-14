@@ -6,6 +6,7 @@ import foundation.icon.ee.types.ObjectGraph;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.CodedException;
+import foundation.icon.ee.types.Transaction;
 import i.AvmException;
 import i.EarlyAbortException;
 import i.IBlockchainRuntime;
@@ -18,7 +19,6 @@ import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.avm.core.util.Helpers;
 import org.aion.parallel.TransactionTask;
-import org.aion.types.Transaction;
 
 public class DAppExecutor {
     public static Result call(IExternalState externalState,
@@ -70,7 +70,7 @@ public class DAppExecutor {
                                                           dapp,
                                                           enableBlockchainPrintln);
         FrameContextImpl fc = new FrameContextImpl(externalState, dapp, initialClassWrappers, br);
-        InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.energyLimit - energyPreused, nextHashCode, initialClassWrappers, fc);
+        InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.getLimit() - energyPreused, nextHashCode, initialClassWrappers, fc);
         IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(br);
 
         try {
@@ -81,9 +81,9 @@ public class DAppExecutor {
             // Call the main within the DApp.
             Object ret;
             try {
-                ret = dapp.callMethod(tx.method, tx.getParams());
+                ret = dapp.callMethod(tx.getMethod(), tx.getParams());
             } catch (Throwable t) {
-                System.err.println("Exception at method " + tx.method);
+                System.err.println("Exception at method " + tx.getMethod());
                 throw t;
             }
 
@@ -103,7 +103,7 @@ public class DAppExecutor {
             }
 
             long refund = 0;
-            long energyUsed = tx.energyLimit - threadInstrumentation.energyLeft();
+            long energyUsed = tx.getLimit() - threadInstrumentation.energyLeft();
             //refund is only calculated for the external transaction
             if (task.getTransactionStackDepth() == 0) {
                 // refund is calculated for the transaction if it set the storage value from nonzero to zero
@@ -126,7 +126,7 @@ public class DAppExecutor {
                 e.printStackTrace(System.err);
             }
             result = new Result(e.getCode(),
-                    tx.energyLimit - threadInstrumentation.energyLeft(),
+                    tx.getLimit() - threadInstrumentation.energyLeft(),
                     e.toString());
 
         } catch (EarlyAbortException e) {
@@ -141,7 +141,7 @@ public class DAppExecutor {
                 System.err.println("DApp execution failed due to AvmException: \"" + e.getMessage() + "\"");
                 e.printStackTrace(System.err);
             }
-            result = new Result(Status.UnknownFailure, tx.energyLimit, e.toString());
+            result = new Result(Status.UnknownFailure, tx.getLimit(), e.toString());
         } catch (JvmError e) {
             // These are cases which we know we can't handle and have decided to handle by safely stopping the AVM instance so
             // re-throw this as the AvmImpl top-level loop will commute it into an asynchronous shutdown.
@@ -153,9 +153,9 @@ public class DAppExecutor {
         } catch (Throwable e) {
             // We don't know what went wrong in this case, but it is beyond our ability to handle it here.
             // We ship it off to the ExceptionHandler, which kills the transaction as a failure for unknown reasons.
-            System.err.println("Exception on method " + tx.method);
+            System.err.println("Exception on method " + tx.getMethod());
             e.printStackTrace(System.err);
-            result = new Result(Status.UnknownFailure, tx.energyLimit, e.toString());
+            result = new Result(Status.UnknownFailure, tx.getLimit(), e.toString());
         } finally {
             // Once we are done running this, no matter how it ended, we want to detach our thread from the DApp.
             InstrumentationHelpers.popExistingStackFrame(dapp.runtimeSetup);
