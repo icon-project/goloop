@@ -88,14 +88,12 @@ class JavaScoreTest extends TestBase {
 
         // 3. transfer #1
         LOG.infoEntering("transfer", "#1");
-        TransactionResult result = invokeTransfer(tokenScore, ownerWallet, calleeWallet.getAddress(), oneToken, true);
-        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        assertSuccess(invokeTransfer(tokenScore, ownerWallet, calleeWallet.getAddress(), oneToken, true));
         LOG.infoExiting();
 
         // 3.1 transfer #2
         LOG.infoEntering("transfer", "#2");
-        result = invokeTransfer(tokenScore, ownerWallet, calleeWallet.getAddress(), oneToken, false);
-        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        assertSuccess(invokeTransfer(tokenScore, ownerWallet, calleeWallet.getAddress(), oneToken, false));
         LOG.infoExiting();
 
         // 4. check balance of callee

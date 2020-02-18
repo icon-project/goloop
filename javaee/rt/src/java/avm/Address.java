@@ -1,7 +1,7 @@
 package avm;
 
 /**
- * Represents an address of account in the Aion Network.
+ * Represents an address of account in the ICON Network.
  */
 public class Address {
 
@@ -27,6 +27,11 @@ public class Address {
             throw new IllegalArgumentException();
         }
         System.arraycopy(raw, 0, this.raw, 0, LENGTH);
+    }
+
+    public static boolean isContract(Address address) {
+        byte[] ba = address.toByteArray();
+        return ba[0] == 0x1;
     }
 
     /**

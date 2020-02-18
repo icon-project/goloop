@@ -109,7 +109,7 @@ public class SampleToken
 
         // if the recipient is SCORE, call 'tokenFallback' to handle further operation
         byte[] dataBytes = (_data == null) ? new byte[0] : _data;
-        if (isContract(_to)) {
+        if (Address.isContract(_to)) {
             Blockchain.call(_to, "tokenFallback", _from, _value, dataBytes);
         }
 
@@ -123,11 +123,6 @@ public class SampleToken
 
     private void safeSetBalance(Address owner, BigInteger amount) {
         balances.set(owner, amount);
-    }
-
-    private static boolean isContract(Address address) {
-        byte[] ba = address.toByteArray();
-        return (ba[0] == 0x1) ? true : false;
     }
 
     @EventLog(indexed=3)

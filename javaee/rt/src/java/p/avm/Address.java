@@ -35,6 +35,12 @@ public final class Address extends s.java.lang.Object {
         setUnderlying(raw.getUnderlying());
     }
 
+    public static boolean avm_isContract(Address address) {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Address_avm_unwrap);
+        byte[] ba = address.toByteArray();
+        return ba[0] == 0x1;
+    }
+
     /**
      * Similarly, this method will probably be removed or otherwise hidden.
      *
