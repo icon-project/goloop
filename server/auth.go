@@ -114,7 +114,7 @@ func parse(s string) map[string]string {
 }
 
 func (a *Auth) validator(s string, ctx echo.Context) (b bool, err error) {
-	log.Infoln("validator:", s)
+	log.Traceln("validator:", s)
 	m := parse(s)
 	var timestamp int64
 	if timestamp, err = strconv.ParseInt(m["Timestamp"], 0, 64); err != nil{
@@ -137,15 +137,16 @@ func (a *Auth) validator(s string, ctx echo.Context) (b bool, err error) {
 		return
 	}
 	id := common.NewAccountAddressFromPublicKey(pubKey).String()
-	log.Infoln("id:",id,"serialized:", serialized)
+	log.Traceln("id:",id,"serialized:", serialized)
 
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 	if ts, ok := a.users[id]; ok && ts < timestamp {
 		a.users[id] = timestamp
+		log.Traceln("valid signature", ts, timestamp)
 		return true, nil
 	}
-	log.Infoln("old signature", a.users[id], timestamp)
+	log.Traceln("old signature", a.users[id], timestamp)
 	return false, nil
 }
 
