@@ -223,7 +223,9 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 	startFlags.StringToString("mod_level", nil, "Set console log level for specific module ('mod'='level',...)")
 	startFlags.String("cpuprofile", "", "CPU Profiling data file")
 	startFlags.String("memprofile", "", "Memory Profiling data file")
+	startFlags.Bool("auth_skip_if_empty_users", false, "Skip admin API authentication if empty users")
 	startFlags.MarkHidden("mod_level")
+	startFlags.MarkHidden("auth_skip_if_empty_users")
 
 	BindPFlags(vc, startFlags)
 

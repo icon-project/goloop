@@ -36,6 +36,7 @@ func main() {
 	cli.NewServerCmd(rootCmd, rootVc, version, build, logoLines)
 	cli.NewChainCmd(rootCmd, rootVc)
 	cli.NewSystemCmd(rootCmd, rootVc)
+	cli.NewUserCmd(rootCmd, rootVc)
 	cli.NewStatsCmd(rootCmd, rootVc)
 	cli.NewRpcCmd(rootCmd, nil)
 	rootCmd.AddCommand(

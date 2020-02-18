@@ -27,14 +27,18 @@ import (
 
 const (
 	UrlSystem   = "/system"
+	UrlUser     = "/user"
 	UrlStats    = "/stats"
 	UrlChain    = "/chain"
 	ParamNID    = "nid"
 	UrlChainRes = "/:" + ParamNID
+	ParamID    = "id"
+	UrlUserRes = "/:" + ParamID
 )
 
 type Rest struct {
 	n *Node
+	a *server.Auth
 }
 
 type SystemView struct {
@@ -163,13 +167,18 @@ func RegisterInspectFunc(name string, f InspectFunc) error {
 }
 
 func RegisterRest(n *Node) {
-	r := Rest{n}
-	ag := n.srv.AdminEchoGroup()
-	r.RegisterChainHandlers(ag.Group(UrlChain), true)
-	r.RegisterSystemHandlers(ag.Group(UrlSystem), true)
+	r := Rest{
+		n: n,
+		a: server.NewAuth(path.Join(n.cfg.ResolveAbsolute(n.cfg.BaseDir), "auth.json"), server.UrlAdmin),
+	}
+	r.a.SkipIfEmptyUsers = n.cfg.AuthSkipIfEmptyUsers
+	ag := n.srv.AdminEchoGroup(r.a.MiddlewareFunc())
+	r.RegisterChainHandlers(ag.Group(UrlChain))
+	r.RegisterSystemHandlers(ag.Group(UrlSystem))
 
-	r.RegisterChainHandlers(n.cliSrv.e.Group(UrlChain), false)
-	r.RegisterSystemHandlers(n.cliSrv.e.Group(UrlSystem), false)
+	r.RegisterChainHandlers(n.cliSrv.e.Group(UrlChain))
+	r.RegisterSystemHandlers(n.cliSrv.e.Group(UrlSystem))
+	r.RegisterUserHandlers(n.cliSrv.e.Group(UrlUser))
 	r.RegisterStatsHandlers(n.cliSrv.e.Group(UrlStats))
 
 	_ = RegisterInspectFunc("metrics", metric.Inspect)
@@ -177,22 +186,23 @@ func RegisterRest(n *Node) {
 	_ = RegisterInspectFunc("service", service.Inspect)
 }
 
-func (r *Rest) RegisterChainHandlers(g *echo.Group, readOnly bool) {
+func (r *Rest) RegisterChainHandlers(g *echo.Group) {
 	g.GET("", r.GetChains)
-	g.POST("", r.JoinChain, server.Unauthorized(readOnly))
+	g.POST("", r.JoinChain)
 
 	g.GET(UrlChainRes, r.GetChain, r.ChainInjector)
-	g.DELETE(UrlChainRes, r.LeaveChain, server.Unauthorized(readOnly), r.ChainInjector)
-	// TODO update chain configuration ex> Channel, Seed, ConcurrencyLevel ...
-	// g.PUT(UrlChainRes, r.UpdateChain, r.ChainInjector)
-	g.POST(UrlChainRes+"/start", r.StartChain, server.Unauthorized(readOnly), r.ChainInjector)
-	g.POST(UrlChainRes+"/stop", r.StopChain, server.Unauthorized(readOnly), r.ChainInjector)
-	g.POST(UrlChainRes+"/reset", r.ResetChain, server.Unauthorized(readOnly), r.ChainInjector)
-	g.POST(UrlChainRes+"/verify", r.VerifyChain, server.Unauthorized(readOnly), r.ChainInjector)
-	g.POST(UrlChainRes+"/import", r.ImportChain, server.Unauthorized(readOnly), r.ChainInjector)
-	g.GET(UrlChainRes+"/genesis", r.GetChainGenesis, r.ChainInjector)
+	g.DELETE(UrlChainRes, r.LeaveChain, r.ChainInjector)
+	g.POST(UrlChainRes+"/start", r.StartChain, r.ChainInjector)
+	g.POST(UrlChainRes+"/stop", r.StopChain, r.ChainInjector)
+	g.POST(UrlChainRes+"/reset", r.ResetChain, r.ChainInjector)
+	g.POST(UrlChainRes+"/verify", r.VerifyChain, r.ChainInjector)
+	g.POST(UrlChainRes+"/import", r.ImportChain, r.ChainInjector)
+	route := g.GET(UrlChainRes+"/genesis", r.GetChainGenesis, r.ChainInjector)
+	if r.a != nil {
+		r.a.SetSkip(route, false)
+	}
 	g.GET(UrlChainRes+"/configure", r.GetChainConfig, r.ChainInjector)
-	g.POST(UrlChainRes+"/configure", r.ConfigureChain, server.Unauthorized(readOnly), r.ChainInjector)
+	g.POST(UrlChainRes+"/configure", r.ConfigureChain, r.ChainInjector)
 }
 
 func (r *Rest) ChainInjector(next echo.HandlerFunc) echo.HandlerFunc {
@@ -353,7 +363,7 @@ func (r *Rest) GetChainGenesis(ctx echo.Context) error {
 	c := ctx.Get("chain").(*Chain)
 	chainDir := r.n.ChainDir(c.NID())
 	gsFile := path.Join(chainDir, ChainGenesisZipFileName)
-	return ctx.Attachment(gsFile, fmt.Sprintf("%s_%s",c.Channel(),ChainGenesisZipFileName))
+	return ctx.Attachment(gsFile, fmt.Sprintf("%s_%s", c.Channel(), ChainGenesisZipFileName))
 }
 
 func (r *Rest) GetChainConfig(ctx echo.Context) error {
@@ -373,10 +383,10 @@ func (r *Rest) ConfigureChain(ctx echo.Context) error {
 	return ctx.String(http.StatusOK, "OK")
 }
 
-func (r *Rest) RegisterSystemHandlers(g *echo.Group, readOnly bool) {
+func (r *Rest) RegisterSystemHandlers(g *echo.Group) {
 	g.GET("", r.GetSystem)
 	g.GET("/configure", r.GetSystemConfig)
-	g.POST("/configure", r.ConfigureSystem, server.Unauthorized(readOnly))
+	g.POST("/configure", r.ConfigureSystem)
 }
 
 func (r *Rest) GetSystem(ctx echo.Context) error {
@@ -411,6 +421,33 @@ func (r *Rest) ConfigureSystem(ctx echo.Context) error {
 	if err := r.n.Configure(p.Key, p.Value); err != nil {
 		return err
 	}
+	return ctx.String(http.StatusOK, "OK")
+}
+
+func (r *Rest) RegisterUserHandlers(g *echo.Group) {
+	g.GET("", r.Users)
+	g.POST("", r.AddUser)
+	g.DELETE(UrlUserRes, r.RemoveUser)
+}
+
+func (r *Rest) Users(ctx echo.Context) error {
+	return ctx.JSON(http.StatusOK, r.a.GetUsers())
+}
+
+func (r *Rest) AddUser(ctx echo.Context) error {
+	param := struct {
+		Id string `json:"id"`
+	}{}
+	if err := ctx.Bind(&param); err != nil {
+		return echo.ErrBadRequest
+	}
+	r.a.AddUser(param.Id)
+	return ctx.String(http.StatusOK, "OK")
+}
+
+func (r *Rest) RemoveUser(ctx echo.Context) error {
+	p := ctx.Param(ParamID)
+	r.a.RemoveUser(p)
 	return ctx.String(http.StatusOK, "OK")
 }
 

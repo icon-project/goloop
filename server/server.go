@@ -2,13 +2,10 @@ package server
 
 import (
 	"context"
-	"fmt"
-	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
@@ -22,6 +19,7 @@ import (
 const (
 	flagENABLE  int32 = 1
 	flagDISABLE int32 = 0
+	UrlAdmin = "/admin"
 )
 
 type Manager struct {
@@ -157,14 +155,6 @@ func (srv *Manager) Start() error {
 		MaxAge: 3600,
 	}))
 
-	// auth : hello test
-	srv.e.POST("/auth", authentication(srv.wallet))
-	srv.e.GET("hello", func(c echo.Context) error {
-		token := c.Get("token").(*jwt.Token)
-		claims := token.Claims.(*tokenClaims)
-		return c.JSON(http.StatusOK, fmt.Sprintf("Hello: %s[%s]", claims.Audience, claims.Role))
-	}, middleware.JWTWithConfig(JWTConfig(srv.wallet)))
-
 	// method
 	mr := v3.MethodRepository()
 
@@ -213,6 +203,6 @@ func (srv *Manager) Stop() error {
 	return srv.e.Shutdown(ctx)
 }
 
-func (srv *Manager) AdminEchoGroup() *echo.Group {
-	return srv.e.Group("/admin")
+func (srv *Manager) AdminEchoGroup(m ...echo.MiddlewareFunc) *echo.Group {
+	return srv.e.Group(UrlAdmin, m...)
 }

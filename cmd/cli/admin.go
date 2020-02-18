@@ -288,7 +288,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	genesisCmd := &cobra.Command{
 		Use:   "genesis NID FILE",
 		Short: "Download chain genesis file",
-		Args:  ArgsWithDefaultErrorFunc(OrArgs(cobra.ExactArgs(1),cobra.ExactArgs(2))),
+		Args:  ArgsWithDefaultErrorFunc(OrArgs(cobra.ExactArgs(1), cobra.ExactArgs(2))),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reqUrl := node.UrlChain + "/" + args[0] + "/genesis"
 			resp, err := adminClient.Get(reqUrl, nil)
@@ -418,6 +418,62 @@ func NewSystemCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comma
 	}
 	rootCmd.AddCommand(configCmd)
 
+	return rootCmd, vc
+}
+
+func NewUserCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command, *viper.Viper) {
+	var adminClient node.UnixDomainSockHttpClient
+	rootCmd, vc := NewCommand(parentCmd, parentVc, "user", "User management")
+	rootCmd.PersistentPreRunE = AdminPersistentPreRunE(vc, &adminClient)
+	AddAdminRequiredFlags(rootCmd)
+	BindPFlags(vc, rootCmd.PersistentFlags())
+
+	rootCmd.AddCommand(&cobra.Command{
+		Use:   "ls",
+		Short: "List users",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			l := make([]string, 0)
+			reqUrl := node.UrlUser
+			resp, err := adminClient.Get(reqUrl, &l)
+			if err != nil {
+				return err
+			}
+			if err = JsonPrettyPrintln(os.Stdout, l); err != nil {
+				return errors.Errorf("failed JsonIntend resp=%+v, err=%+v", resp, err)
+			}
+			return nil
+		},
+	}, &cobra.Command{
+		Use:   "add",
+		Short: "Add user",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			reqUrl := node.UrlUser
+			param := &struct {
+				Id string `json:"id"`
+			}{Id: args[0]}
+			var v string
+			if _, err := adminClient.PostWithJson(reqUrl, param, &v); err != nil {
+				return err
+			}
+			fmt.Println(v)
+			return nil
+		},
+	}, &cobra.Command{
+		Use:   "rm",
+		Short: "Remove user",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			reqUrl := node.UrlUser + "/" + args[0]
+			var v string
+			if _, err := adminClient.Delete(reqUrl, &v); err != nil {
+				return err
+			}
+			fmt.Println(v)
+			return nil
+		},
+	})
 	return rootCmd, vc
 }
 

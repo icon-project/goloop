@@ -1,184 +1,239 @@
 package server
 
 import (
-	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"net/http"
+	"os"
+	"strconv"
+	"strings"
+	"sync"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
-	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/server/jsonrpc"
+	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/log"
 )
 
-type SignedMethodSECP256K1 struct {
-	Name string
+const (
+	AuthScheme = "goloop"
+)
+
+type Auth struct {
+	skips map[string]map[string]bool
+	users map[string]int64
+	filePath string
+	prefix string
+	SkipIfEmptyUsers bool
+	mtx   sync.Mutex
 }
 
-var SigningMethodSECP256K1 *SignedMethodSECP256K1
-
-func init() {
-	// Wallet
-	SigningMethodSECP256K1 = &SignedMethodSECP256K1{"SECP256K1"}
-	jwt.RegisterSigningMethod(SigningMethodSECP256K1.Alg(), func() jwt.SigningMethod {
-		return SigningMethodSECP256K1
-	})
-}
-
-func (m *SignedMethodSECP256K1) Alg() string {
-	return m.Name
-}
-
-func (m *SignedMethodSECP256K1) Sign(signingString string, key interface{}) (string, error) {
-	if wallet, ok := key.(module.Wallet); ok {
-		hashValue := crypto.SHASum256([]byte(signingString))
-		sign, err := wallet.Sign(hashValue)
-		if err != nil {
-			return "", err
-		}
-		return jwt.EncodeSegment(sign), nil
-	}
-	return "", jwt.ErrInvalidKeyType
-}
-
-func (m *SignedMethodSECP256K1) Verify(signingString, signature string, key interface{}) error {
-	var err error
-
-	// Decode the signature
-	var sig []byte
-	if sig, err = jwt.DecodeSegment(signature); err != nil {
-		return err
-	}
-	sign, err := crypto.ParseSignature(sig)
-	if err != nil {
-		return err
-	}
-
-	hashValue := crypto.SHASum256([]byte(signingString))
-
-	// Get the key
-	var wallet module.Wallet
-	switch k := key.(type) {
-	case module.Wallet:
-		wallet = k
-	default:
-		return jwt.ErrInvalidKeyType
-	}
-
-	pubKey, err := crypto.ParsePublicKey(wallet.PublicKey())
-	if err != nil {
-		return err
-	}
-
-	if !sign.Verify(hashValue, pubKey) {
-		return jwt.ErrSignatureInvalid
-	}
-
-	return nil
-}
-
-type tokenClaims struct {
-	Role   string `json:"role"`
-	Chains string `json:"chains"`
-	jwt.StandardClaims
-}
-
-func JWTConfig(wallet module.Wallet) middleware.JWTConfig {
-	config := middleware.JWTConfig{
-		Claims:        &tokenClaims{},
-		SigningKey:    wallet,
-		SigningMethod: "SECP256K1",
-		ContextKey:    "token",
-	}
-	return config
-}
-
-type authParam struct {
-	Address   jsonrpc.Address `json:"address" validate:"required,t_addr_eoa"`
-	Timestamp jsonrpc.HexInt  `json:"timestamp" validate:"required,t_int"`
-	Signature string          `json:"signature" validate:"required,t_sig"`
-}
-
-func (p *authParam) signature() (*crypto.Signature, error) {
-	var err error
-	var sig []byte
-	if sig, err = base64.StdEncoding.DecodeString(p.Signature); err != nil {
-		return nil, err
-	}
-	sign, err := crypto.ParseSignature(sig)
-	if err != nil {
-		return nil, err
-	}
-	return sign, nil
-}
-
-func (p *authParam) signingHashValue() ([]byte, error) {
-	signingParam := make(map[string]interface{})
-	signingParam["address"] = p.Address
-	signingParam["timestamp"] = p.Timestamp
-	signingString, err := json.Marshal(signingParam)
-	if err != nil {
-		return nil, err
-	}
-	encodeString := base64.URLEncoding.EncodeToString(signingString)
-	return crypto.SHASum256([]byte(encodeString)), nil
-}
-
-func authentication(wallet module.Wallet) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		params := new(authParam)
-		if err := c.Bind(params); err != nil {
-			return echo.ErrBadRequest
-		}
-		if err := c.Validate(params); err != nil {
-			return echo.ErrBadRequest
-		}
-		hashValue, err := params.signingHashValue()
-		if err != nil {
-			return err
-		}
-		signature, err := params.signature()
-		if err != nil {
-			return err
-		}
-		pubKey, err := signature.RecoverPublicKey(hashValue)
-		if err != nil {
-			return err
-		}
-
-		// if signature.Verify(hashValue, pubKey)
-		addr := common.NewAccountAddressFromPublicKey(pubKey)
-		if addr.Equal(params.Address.Address()) {
-			signedToken, err := newToken(wallet, params.Address.Address().String())
+func (a *Auth) MiddlewareFunc() echo.MiddlewareFunc {
+	//middleware.KeyAuth response http.StatusBadRequest when 'missing key' error
+	//return middleware.KeyAuthWithConfig(middleware.KeyAuthConfig{
+	//	Skipper:    a.skipper,
+	//	//KeyLookup:  "header:" + echo.HeaderAuthorization, //middleware.DefaultKeyAuthConfig.KeyLookup
+	//	AuthScheme: AuthScheme,
+	//	Validator:  a.validator,
+	//})
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(ctx echo.Context) error {
+			if a.skipper(ctx) {
+				return next(ctx)
+			}
+			key, err := a.extractor(ctx)
+			if err != nil {
+				return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
+			}
+			valid, err := a.validator(key, ctx)
 			if err != nil {
 				return err
+			} else if valid {
+				return next(ctx)
 			}
-			return c.JSON(http.StatusOK, map[string]string{
-				"token": signedToken,
-			})
-		} else {
 			return echo.ErrUnauthorized
 		}
 	}
 }
 
-func newToken(wallet module.Wallet, audience string) (string, error) {
-	// TODO : role, chains
-	claims := &tokenClaims{
-		"admin",
-		"0x01",
-		jwt.StandardClaims{
-			Issuer:    wallet.Address().String(),
-			IssuedAt:  time.Now().Unix(),
-			Audience:  audience,
-			ExpiresAt: time.Now().Add(time.Minute * 10).Unix(),
-		},
+func (a *Auth) SetSkip(r *echo.Route, skip bool) {
+	m, ok := a.skips[r.Method]
+	if !ok {
+		m = make(map[string]bool)
+		a.skips[r.Method] = m
 	}
-	token := jwt.NewWithClaims(SigningMethodSECP256K1, claims)
-	return token.SignedString(wallet)
+	m[r.Path] = skip
+}
+
+func (a *Auth) skipper(ctx echo.Context) bool {
+	if a.SkipIfEmptyUsers && a.IsEmptyUsers() {
+		return true
+	}
+	method := ctx.Request().Method
+	if m, ok := a.skips[method]; ok {
+		if skip, has := m[ctx.Path()]; has {
+			return skip
+		}
+	}
+	return method == http.MethodGet
+}
+
+func (a *Auth) extractor(ctx echo.Context) (string, error) {
+	auth := ctx.Request().Header.Get(echo.HeaderAuthorization)
+	if auth == "" {
+		return "", errors.New("missing key in request header")
+	}
+	l := len(AuthScheme)
+	if len(auth) > l+1 && auth[:l] == AuthScheme {
+		return auth[l+1:], nil
+	}
+	return "", errors.New("invalid key in the request header")
+}
+
+func parse(s string) map[string]string {
+	m := make(map[string]string)
+	if s != "" {
+		kvs := strings.Split(s, ",")
+		for _, kv := range kvs {
+			if kv != "" {
+				idx := strings.Index(kv, "=")
+				if idx > 0 {
+					m[kv[:idx]] = kv[(idx + 1):]
+				} else {
+					m[kv] = ""
+				}
+			}
+		}
+	}
+	return m
+}
+
+func (a *Auth) validator(s string, ctx echo.Context) (b bool, err error) {
+	log.Infoln("validator:", s)
+	m := parse(s)
+	var timestamp int64
+	if timestamp, err = strconv.ParseInt(m["Timestamp"], 0, 64); err != nil{
+		return
+	}
+	var signature []byte
+	if signature, err = hex.DecodeString(m["Signature"]); err != nil {
+		return
+	}
+	var sig *crypto.Signature
+	if sig, err = crypto.ParseSignature(signature); err != nil {
+		return
+	}
+	url := strings.Replace(ctx.Request().URL.EscapedPath(),a.prefix,"",1)
+	serialized := fmt.Sprintf("Method=%s,Url=%s,Timestamp=%s",
+		ctx.Request().Method, url, m["Timestamp"])
+
+	var pubKey *crypto.PublicKey
+	if pubKey, err = sig.RecoverPublicKey(crypto.SHA3Sum256([]byte(serialized))); err != nil {
+		return
+	}
+	id := common.NewAccountAddressFromPublicKey(pubKey).String()
+	log.Infoln("id:",id,"serialized:", serialized)
+
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+	if ts, ok := a.users[id]; ok && ts < timestamp {
+		a.users[id] = timestamp
+		return true, nil
+	}
+	log.Infoln("old signature", a.users[id], timestamp)
+	return false, nil
+}
+
+func (a *Auth) AddUser(id string) {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
+	if _, ok := a.users[id]; !ok {
+		a.users[id] = time.Now().Unix()
+		if err := a._export(); err != nil {
+			panic(err)
+		}
+	}
+}
+
+func (a *Auth) RemoveUser(id string) {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
+	if _, ok := a.users[id]; ok {
+		delete(a.users, id)
+		if err := a._export(); err != nil {
+			panic(err)
+		}
+	}
+}
+
+func (a *Auth) _users() []string {
+	users := make([]string, 0)
+	for user := range a.users {
+		users = append(users, user)
+	}
+	return users
+}
+
+func (a *Auth) IsEmptyUsers() bool {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+	return len(a.users) == 0
+}
+
+func (a *Auth) GetUsers() []string {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
+	return a._users()
+}
+
+func (a *Auth) _export() error {
+	if a.filePath != "" {
+		users := a._users()
+		if b, err := json.Marshal(users); err != nil {
+			return err
+		}else {
+			if err = ioutil.WriteFile(a.filePath, b, 0644); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func NewAuth(filePath, prefix string) *Auth {
+	a := &Auth{
+		skips: make(map[string]map[string]bool),
+		users: make(map[string]int64),
+		filePath: filePath,
+		prefix: prefix,
+	}
+	if a.filePath != "" {
+		if _, err := os.Stat(filePath); err != nil {
+			if os.IsNotExist(err) {
+				if err = a._export(); err != nil {
+					panic(err)
+				}
+			}
+		}
+		if b, err := ioutil.ReadFile(filePath); err != nil {
+			panic(err)
+		} else {
+			var users []string
+			if err = json.Unmarshal(b, &users); err != nil {
+				panic(err)
+			}
+			for _, user := range users {
+				a.AddUser(user)
+			}
+		}
+	}
+	return a
 }
