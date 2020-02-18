@@ -47,7 +47,7 @@ public class TransactionExecutor {
     private static final AvmConfiguration avmConfig = new AvmConfiguration();
 
     static {
-        if (logger.isDebugEnabled()) {
+        if (logger.isTraceEnabled()) {
             avmConfig.enableVerboseContractErrors = true;
         }
     }

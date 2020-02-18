@@ -1,11 +1,11 @@
 package org.aion.avm.core;
 
 import foundation.icon.ee.types.Address;
+import foundation.icon.ee.types.CodedException;
 import foundation.icon.ee.types.DAppRuntimeState;
 import foundation.icon.ee.types.ObjectGraph;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
-import foundation.icon.ee.types.CodedException;
 import foundation.icon.ee.types.Transaction;
 import i.AvmException;
 import i.EarlyAbortException;
@@ -19,8 +19,12 @@ import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.avm.core.util.Helpers;
 import org.aion.parallel.TransactionTask;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DAppExecutor {
+    private static final Logger logger = LoggerFactory.getLogger(DAppExecutor.class);
+
     public static Result call(IExternalState externalState,
                               LoadedDApp dapp,
                               ReentrantDAppStack.ReentrantState stateToResume,
@@ -83,7 +87,7 @@ public class DAppExecutor {
             try {
                 ret = dapp.callMethod(tx.getMethod(), tx.getParams());
             } catch (Throwable t) {
-                System.err.println("Exception at method " + tx.getMethod());
+                logger.debug("Exception at method: {}", tx.getMethod());
                 throw t;
             }
 
@@ -153,7 +157,7 @@ public class DAppExecutor {
         } catch (Throwable e) {
             // We don't know what went wrong in this case, but it is beyond our ability to handle it here.
             // We ship it off to the ExceptionHandler, which kills the transaction as a failure for unknown reasons.
-            System.err.println("Exception on method " + tx.getMethod());
+            System.err.println("Exception at method: " + tx.getMethod());
             e.printStackTrace(System.err);
             result = new Result(Status.UnknownFailure, tx.getLimit(), e.toString());
         } finally {
