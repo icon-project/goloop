@@ -22,7 +22,7 @@ public class Shadower {
         } else if (obj instanceof byte[]) {
             return new a.ByteArray((byte[])obj);
         } else if (obj instanceof Address) {
-            return new p.avm.Address(((Address)obj).toByteArray());
+            return new p.score.Address(((Address)obj).toByteArray());
         } else if (obj instanceof Object[]) {
             var o = (Object[]) obj;
             var sa = new IObject[o.length];

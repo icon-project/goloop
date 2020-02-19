@@ -2,7 +2,7 @@ package pi;
 
 import i.*;
 import org.aion.avm.RuntimeMethodFeeSchedule;
-import p.avm.CollectionDB;
+import p.score.CollectionDB;
 import s.java.lang.Class;
 import s.java.lang.String;
 

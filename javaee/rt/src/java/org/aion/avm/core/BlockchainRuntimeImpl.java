@@ -22,10 +22,10 @@ import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.parallel.TransactionTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import p.avm.CollectionDB;
-import p.avm.Value;
-import p.avm.ValueBuffer;
-import p.avm.VarDB;
+import p.score.CollectionDB;
+import p.score.Value;
+import p.score.ValueBuffer;
+import p.score.VarDB;
 import pi.CollectionDBImpl;
 import pi.VarDBImpl;
 
@@ -46,10 +46,10 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     private LoadedDApp dApp;
     private final boolean enablePrintln;
 
-    private p.avm.Address addressCache;
-    private p.avm.Address callerCache;
-    private p.avm.Address originCache;
-    private p.avm.Address ownerCache;
+    private p.score.Address addressCache;
+    private p.score.Address callerCache;
+    private p.score.Address originCache;
+    private p.score.Address ownerCache;
     private ByteArray transactionHashCache;
     private s.java.math.BigInteger valueCache;
     private s.java.math.BigInteger nonceCache;
@@ -102,33 +102,33 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     @Override
-    public p.avm.Address avm_getAddress() {
+    public p.score.Address avm_getAddress() {
         if (null == this.addressCache) {
-            this.addressCache = new p.avm.Address(this.transactionDestination.toByteArray());
+            this.addressCache = new p.score.Address(this.transactionDestination.toByteArray());
         }
         return this.addressCache;
     }
 
     @Override
-    public p.avm.Address avm_getCaller() {
+    public p.score.Address avm_getCaller() {
         if (null == this.callerCache && this.transactionSender != null) {
-            this.callerCache = new p.avm.Address(this.transactionSender.toByteArray());
+            this.callerCache = new p.score.Address(this.transactionSender.toByteArray());
         }
         return this.callerCache;
     }
 
     @Override
-    public p.avm.Address avm_getOrigin() {
+    public p.score.Address avm_getOrigin() {
         if (null == this.originCache && task.getOriginAddress() != null) {
-            this.originCache = new p.avm.Address(task.getOriginAddress().toByteArray());
+            this.originCache = new p.score.Address(task.getOriginAddress().toByteArray());
         }
         return this.originCache;
     }
 
     @Override
-    public p.avm.Address avm_getOwner() {
+    public p.score.Address avm_getOwner() {
         if (null == this.ownerCache) {
-            this.ownerCache = new p.avm.Address(this.externalState.getOwner().toByteArray());
+            this.ownerCache = new p.score.Address(this.externalState.getOwner().toByteArray());
         }
         return this.ownerCache;
     }
@@ -181,7 +181,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     @Override
-    public s.java.math.BigInteger avm_getBalance(p.avm.Address address) {
+    public s.java.math.BigInteger avm_getBalance(p.score.Address address) {
         require(null != address, "Address can't be NULL");
         return new s.java.math.BigInteger(this.externalState.getBalance(new Address(address.toByteArray())));
     }
@@ -189,7 +189,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     @Override
     public IObject avm_call(s.java.math.BigInteger value,
                             s.java.math.BigInteger stepLimit,
-                            p.avm.Address targetAddress,
+                            p.score.Address targetAddress,
                             s.java.lang.String method,
                             IObjectArray sparams) {
         if (value == null) {

@@ -12,9 +12,9 @@ public class JCLAndAPIHeapInstanceSize {
     private static final int DEFAULT_EXCEPTION_ALLOCATION_SIZE = 32;
 
     private static final Map<String, Integer> POST_RENAME_INSTANCE_SIZE = Stream.of(new Object[][]{
-            {Utilities.fulllyQualifiedNameToInternalName(p.avm.Address.class.getName()), 24}, // Object + byte[]
-            {Utilities.fulllyQualifiedNameToInternalName(p.avm.Result.class.getName()), 25}, //Object + boolean + byte[]
-            {Utilities.fulllyQualifiedNameToInternalName(p.avm.ValueBuffer.class.getName()), 24}, // Object + byte[]
+            {Utilities.fulllyQualifiedNameToInternalName(p.score.Address.class.getName()), 24}, // Object + byte[]
+            {Utilities.fulllyQualifiedNameToInternalName(p.score.Result.class.getName()), 25}, //Object + boolean + byte[]
+            {Utilities.fulllyQualifiedNameToInternalName(p.score.ValueBuffer.class.getName()), 24}, // Object + byte[]
             {Utilities.fulllyQualifiedNameToInternalName(s.java.lang.Class.class.getName()), 32}, // Object + Object + Object
             {Utilities.fulllyQualifiedNameToInternalName(s.java.lang.Enum.class.getName()), 28}, // Object + String + int
             {Utilities.fulllyQualifiedNameToInternalName(s.java.util.concurrent.TimeUnit.class.getName()), 28}, // Enum

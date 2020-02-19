@@ -179,7 +179,7 @@ public class Method {
             "Ljava/math/BigInteger;", s.java.math.BigInteger.class,
             "Ljava/lang/String;", s.java.lang.String.class,
             "[B", a.ByteArray.class,
-            "Lavm/Address;", p.avm.Address.class
+            "Lscore/Address;", p.score.Address.class
     );
 
     public boolean hasValidParams() {
@@ -230,9 +230,9 @@ public class Method {
             } else if (d.equals("[B")) {
                 byte[] p = (byte[]) params[i];
                 out[i] = (p != null) ? new a.ByteArray(p) : null;
-            } else if (d.equals("Lavm/Address;")) {
+            } else if (d.equals("Lscore/Address;")) {
                 Address p = (Address) params[i];
-                out[i] = (p != null) ? new p.avm.Address(p.toByteArray()) : null;
+                out[i] = (p != null) ? new p.score.Address(p.toByteArray()) : null;
             } else {
                 assert false : String.format("bad %d-th param type %s", i, params[i].getClass().getName());
             }

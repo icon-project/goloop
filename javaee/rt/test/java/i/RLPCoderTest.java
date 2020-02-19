@@ -12,7 +12,7 @@ import s.java.lang.Integer;
 import s.java.lang.Long;
 import s.java.lang.Character;
 import s.java.math.BigInteger;
-import p.avm.Address;
+import p.score.Address;
 
 import static org.junit.Assert.*;
 

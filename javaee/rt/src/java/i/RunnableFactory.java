@@ -3,7 +3,7 @@ package i;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 
-import p.avm.InternalRunnable;
+import p.score.InternalRunnable;
 
 
 public final class RunnableFactory {

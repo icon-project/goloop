@@ -1,8 +1,5 @@
 package i;
 
-import p.avm.Value;
-import p.avm.ValueBuffer;
-
 public interface IDBStorage {
     void setTyped(byte[] key, IObject value);
     IObject getTyped(byte[] key);

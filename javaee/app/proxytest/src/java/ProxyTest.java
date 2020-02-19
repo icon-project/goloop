@@ -44,7 +44,7 @@ public class ProxyTest {
         }
     }
 
-    private static final String DESC_ADDRESS = "Lavm/Address;";
+    private static final String DESC_ADDRESS = "Lscore/Address;";
     private static final String DESC_BIG_INTEGER = "Ljava.math.BigInteger;";
 
     private static void setGetApiHandler(EEProxy proxy) {

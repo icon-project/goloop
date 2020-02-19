@@ -53,7 +53,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
             Map.entry("Ljava/lang/String;", Method.DataType.STRING),
             Map.entry("[B", Method.DataType.BYTES),
             Map.entry("Z", Method.DataType.BOOL),
-            Map.entry("Lavm/Address;", Method.DataType.ADDRESS),
+            Map.entry("Lscore/Address;", Method.DataType.ADDRESS),
 
             Map.entry("V", Method.DataType.NONE),
             Map.entry("Ljava/util/List;", Method.DataType.LIST),
@@ -180,10 +180,10 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
         } else {
             super.visitIntInsn(Opcodes.BIPUSH, index);
         }
-        super.visitTypeInsn(Opcodes.NEW, "avm/ValueBuffer");
+        super.visitTypeInsn(Opcodes.NEW, "score/ValueBuffer");
         super.visitInsn(Opcodes.DUP);
         super.visitLdcInsn(value);
-        super.visitMethodInsn(Opcodes.INVOKESPECIAL, "avm/ValueBuffer", "<init>", "(Ljava/lang/String;)V", false);
+        super.visitMethodInsn(Opcodes.INVOKESPECIAL, "score/ValueBuffer", "<init>", "(Ljava/lang/String;)V", false);
         super.visitInsn(Opcodes.AASTORE);
     }
 
@@ -194,7 +194,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
         } else {
             super.visitIntInsn(Opcodes.BIPUSH, index);
         }
-        super.visitTypeInsn(Opcodes.NEW, "avm/ValueBuffer");
+        super.visitTypeInsn(Opcodes.NEW, "score/ValueBuffer");
         super.visitInsn(Opcodes.DUP);
         switch (argType.getSort()) {
         case Type.BYTE:
@@ -214,7 +214,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
         default:
             assert false : "bad param type "+argType+" for @EventLog";
         }
-        super.visitMethodInsn(Opcodes.INVOKESPECIAL, "avm/ValueBuffer", "<init>", "("+argType.getDescriptor()+")V", false);
+        super.visitMethodInsn(Opcodes.INVOKESPECIAL, "score/ValueBuffer", "<init>", "("+argType.getDescriptor()+")V", false);
         super.visitInsn(Opcodes.AASTORE);
     }
 
@@ -237,7 +237,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
                 return "str";
             } else if (type.getDescriptor().equals("Ljava/math/BigInteger;")) {
                 return "int";
-            } else if (type.getDescriptor().equals("Lavm/Address;")) {
+            } else if (type.getDescriptor().equals("Lscore/Address;")) {
                 return "Address";
             }
         default:
@@ -264,7 +264,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
         int argPos = 1;
         // Value[] indexedArr = new Value[${indexed+1}];
         super.visitIntInsn(Opcodes.BIPUSH, indexed+1);
-        super.visitTypeInsn(Opcodes.ANEWARRAY, "avm/Value");
+        super.visitTypeInsn(Opcodes.ANEWARRAY, "score/Value");
         // indexedArr[0] = ${event signature};
         emitSetValueArrayElementString(0, getEventSignature(args));
         for (int i=0; i<indexed; i++) {
@@ -276,7 +276,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
 
         // Value[] dataArr = new Value[${args.len-indexed}];
         super.visitIntInsn(Opcodes.BIPUSH, args.length-indexed);
-        super.visitTypeInsn(Opcodes.ANEWARRAY, "avm/Value");
+        super.visitTypeInsn(Opcodes.ANEWARRAY, "score/Value");
         for (int i=0; i<args.length-indexed; i++) {
             // dataArr[$i] = ValueBuffer.of(${args[indexed+i]});
             emitSetValueArrayElementByArg(i, args[indexed+i], argPos);
@@ -287,7 +287,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
         // Blockchain.log(indexedArr, dataArr);
         super.visitVarInsn(Opcodes.ALOAD, argsSize+1);
         super.visitVarInsn(Opcodes.ALOAD, argsSize+2);
-        super.visitMethodInsn(Opcodes.INVOKESTATIC, "avm/Blockchain", "log", "([Lavm/Value;[Lavm/Value;)V", false);
+        super.visitMethodInsn(Opcodes.INVOKESTATIC, "score/Blockchain", "log", "([Lscore/Value;[Lscore/Value;)V", false);
         super.visitInsn(Opcodes.RETURN);
         super.visitMaxs(0, 0);
     }

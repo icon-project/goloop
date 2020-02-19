@@ -31,7 +31,7 @@ import i.IBlockchainRuntime;
 import i.IObjectDeserializer;
 import i.IObjectSerializer;
 import i.PackageConstants;
-import p.avm.Blockchain;
+import p.score.Blockchain;
 import org.aion.avm.core.classloading.AvmClassLoader;
 import org.aion.avm.core.util.Helpers;
 import i.Helper;

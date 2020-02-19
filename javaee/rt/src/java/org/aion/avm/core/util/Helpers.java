@@ -12,7 +12,7 @@ import org.aion.avm.core.miscvisitors.ClassRenameVisitor;
 import org.aion.avm.utilities.Utilities;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
-import p.avm.Blockchain;
+import p.score.Blockchain;
 
 import java.io.File;
 import java.io.FileOutputStream;

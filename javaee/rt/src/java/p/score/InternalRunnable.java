@@ -1,4 +1,9 @@
-package p.avm;
+/*
+ * Copyright 2019 ICON Foundation
+ * Copyright (c) 2018 Aion Foundation https://aion.network/
+ */
+
+package p.score;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandleInfo;
@@ -23,7 +28,7 @@ public final class InternalRunnable extends s.java.lang.Object implements s.java
         Class<?> receiver = info.getDeclaringClass();
         String methodName = info.getName();
         RuntimeAssertionError.assertTrue(methodName.startsWith(METHOD_PREFIX));
-        
+
         return new InternalRunnable(receiver, methodName);
     }
 
@@ -49,7 +54,7 @@ public final class InternalRunnable extends s.java.lang.Object implements s.java
 
     public void deserializeSelf(java.lang.Class<?> firstRealImplementation, IObjectDeserializer deserializer) {
         super.deserializeSelf(InternalRunnable.class, deserializer);
-        
+
         // We write the class as a direct class object reference but the method name, inline.
         // Note that we can only store the class if it is a shadow class, so unwrap it.
         Object original = deserializer.readObject();
@@ -59,7 +64,7 @@ public final class InternalRunnable extends s.java.lang.Object implements s.java
             Class<?> clazz = ((s.java.lang.Class<?>)original).getRealClass();
             // Note that the method name needs a prefix added.
             String methodName = METHOD_PREFIX + externalMethodName;
-            
+
             this.receiver = clazz;
             this.methodName = methodName;
             this.target = createAccessibleMethod(clazz, methodName);
@@ -68,13 +73,13 @@ public final class InternalRunnable extends s.java.lang.Object implements s.java
 
     public void serializeSelf(java.lang.Class<?> firstRealImplementation, IObjectSerializer serializer) {
         super.serializeSelf(InternalRunnable.class, serializer);
-        
+
         // We save the receiver class as an object reference and the method name, inline.
         // Note that we can only store the class if it is a shadow class, so unwrap it.
         s.java.lang.Class<?> clazz = new s.java.lang.Class<>(this.receiver);
         // Note that we need to strip the prefix from the method.
         String methodName = this.methodName.substring(METHOD_PREFIX.length());
-        
+
         serializer.writeObject(clazz);
         CodecIdioms.serializeString(serializer, methodName);
     }

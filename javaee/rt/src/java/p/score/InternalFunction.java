@@ -1,4 +1,9 @@
-package p.avm;
+/*
+ * Copyright 2019 ICON Foundation
+ * Copyright (c) 2018 Aion Foundation https://aion.network/
+ */
+
+package p.score;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandleInfo;
@@ -39,7 +44,7 @@ public final class InternalFunction extends s.java.lang.Object implements s.java
         }
 
         RuntimeAssertionError.assertTrue(methodName.startsWith(METHOD_PREFIX) || methodName.equals(INIT_NAME));
-        
+
         return new InternalFunction(receiver, methodName, parameterType);
     }
 
@@ -67,7 +72,7 @@ public final class InternalFunction extends s.java.lang.Object implements s.java
 
     public void deserializeSelf(java.lang.Class<?> firstRealImplementation, IObjectDeserializer deserializer) {
         super.deserializeSelf(InternalFunction.class, deserializer);
-        
+
         // We write the classes as direct class objects reference but the method name, inline.
         // Note that we can only store the class if it is a shadow class, so unwrap it.
         Object originalReceiver = deserializer.readObject();
@@ -97,7 +102,7 @@ public final class InternalFunction extends s.java.lang.Object implements s.java
 
     public void serializeSelf(java.lang.Class<?> firstRealImplementation, IObjectSerializer serializer) {
         super.serializeSelf(InternalFunction.class, serializer);
-        
+
         // We save the classes as object references and the method name, inline.
         // Note that we can only store the class if it is a shadow class, so unwrap it.
         s.java.lang.Class<?> receiverClass = new s.java.lang.Class<>(this.receiver);
@@ -112,7 +117,7 @@ public final class InternalFunction extends s.java.lang.Object implements s.java
         if(this.parameterType != null){
             parameterClass = getShadowCanonicalType(this.parameterType);
         }
-        
+
         serializer.writeObject(receiverClass);
         CodecIdioms.serializeString(serializer, methodName);
         serializer.writeObject(parameterClass);

@@ -10,7 +10,7 @@ import s.java.lang.Short;
 import s.java.lang.Integer;
 import s.java.lang.Long;
 import s.java.lang.Character;
-import p.avm.Address;
+import p.score.Address;
 
 import java.math.BigInteger;
 

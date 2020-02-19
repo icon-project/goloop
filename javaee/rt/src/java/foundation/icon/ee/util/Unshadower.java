@@ -33,8 +33,8 @@ public class Unshadower {
         } else if (so instanceof a.ByteArray) {
             var o = (a.ByteArray) so;
             return o.getUnderlying();
-        } else if (so instanceof p.avm.Address) {
-            var o = (p.avm.Address) so;
+        } else if (so instanceof p.score.Address) {
+            var o = (p.score.Address) so;
             return new Address(o.toByteArray());
         } else if (so instanceof s.java.util.List) {
             var o = (s.java.util.List) so;

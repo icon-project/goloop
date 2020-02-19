@@ -3,7 +3,7 @@ package i;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 
-import p.avm.InternalFunction;
+import p.score.InternalFunction;
 
 
 public final class FunctionFactory {

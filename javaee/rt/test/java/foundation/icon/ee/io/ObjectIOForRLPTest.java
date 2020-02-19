@@ -6,7 +6,7 @@ import i.IObject;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import p.avm.Address;
+import p.score.Address;
 import pi.ObjectReaderImpl;
 import pi.ObjectWriterImpl;
 import testutils.TestInstrumentation;

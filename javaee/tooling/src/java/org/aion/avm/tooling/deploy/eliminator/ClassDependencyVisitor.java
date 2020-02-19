@@ -61,8 +61,8 @@ public class ClassDependencyVisitor extends ClassVisitor {
         var name = info.methodIdentifier;
         if (!info.isStatic)
             return false;
-        return (name.equals("readObject(Lavm/ObjectReader;)L"+classSlashName+";")
-            || name.equals("writeObject(Lavm/ObjectWriter;L"+classSlashName+";)V"));
+        return (name.equals("readObject(Lscore/ObjectReader;)L"+classSlashName+";")
+            || name.equals("writeObject(Lscore/ObjectWriter;L"+classSlashName+";)V"));
     }
 
     // These are the methods we flag as "Always Reachable" because we believe they are the only ones that can be called

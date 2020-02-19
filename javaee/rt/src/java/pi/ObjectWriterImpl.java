@@ -7,8 +7,8 @@ import i.IObjectArray;
 import i.IObjectDeserializer;
 import i.IObjectSerializer;
 import i.RuntimeAssertionError;
-import p.avm.Address;
-import p.avm.ObjectWriter;
+import p.score.Address;
+import p.score.ObjectWriter;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;

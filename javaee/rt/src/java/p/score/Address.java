@@ -1,4 +1,9 @@
-package p.avm;
+/*
+ * Copyright 2019 ICON Foundation
+ * Copyright (c) 2018 Aion Foundation https://aion.network/
+ */
+
+package p.score;
 
 import a.ByteArray;
 import i.IInstrumentation;

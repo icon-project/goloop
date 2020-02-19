@@ -8,7 +8,7 @@ import i.IObject;
 import i.InternedClasses;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
-import p.avm.ValueBuffer;
+import p.score.ValueBuffer;
 
 public class DBStorage implements IDBStorage {
     private IExternalState ctx;

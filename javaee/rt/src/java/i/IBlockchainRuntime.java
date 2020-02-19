@@ -1,9 +1,9 @@
 package i;
 
 import a.ByteArray;
-import p.avm.Address;
-import p.avm.CollectionDB;
-import p.avm.VarDB;
+import p.score.Address;
+import p.score.CollectionDB;
+import p.score.VarDB;
 import s.java.math.BigInteger;
 import s.java.lang.Class;
 import s.java.lang.String;

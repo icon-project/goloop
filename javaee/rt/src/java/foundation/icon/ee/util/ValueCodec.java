@@ -4,7 +4,7 @@ import a.ByteArray;
 import foundation.icon.ee.io.MessagePackDataReader;
 import foundation.icon.ee.io.MessagePackDataWriter;
 import i.IObject;
-import p.avm.Address;
+import p.score.Address;
 import pi.ObjectReaderImpl;
 import pi.ObjectWriterImpl;
 import s.java.lang.Boolean;

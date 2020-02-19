@@ -15,11 +15,11 @@ import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import p.avm.Address;
-import p.avm.Blockchain;
-import p.avm.Result;
-import p.avm.Value;
-import p.avm.ValueBuffer;
+import p.score.Address;
+import p.score.Blockchain;
+import p.score.Result;
+import p.score.Value;
+import p.score.ValueBuffer;
 
 /**
  * Represents the long-lived global state of a specific "node" instance.

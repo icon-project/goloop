@@ -4,7 +4,7 @@ import i.DBImplBase;
 import i.IDBStorage;
 import i.IObject;
 import org.aion.avm.RuntimeMethodFeeSchedule;
-import p.avm.VarDB;
+import p.score.VarDB;
 import s.java.lang.Class;
 import s.java.lang.String;
 
