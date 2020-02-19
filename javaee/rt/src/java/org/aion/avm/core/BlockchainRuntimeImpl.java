@@ -1,8 +1,8 @@
 package org.aion.avm.core;
 
 import a.ByteArray;
-import avm.RevertException;
-import avm.ScoreRevertException;
+import score.RevertException;
+import score.ScoreRevertException;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.Transaction;

@@ -16,8 +16,13 @@
 
 package collection;
 
-import avm.*;
 import foundation.icon.ee.tooling.abi.External;
+import score.Address;
+import score.ArrayDB;
+import score.Blockchain;
+import score.DictDB;
+import score.NestingDictDB;
+import score.VarDB;
 
 import java.math.BigInteger;
 

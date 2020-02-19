@@ -16,10 +16,10 @@
 
 package example;
 
-import avm.Address;
-import avm.Blockchain;
-import avm.DictDB;
-import avm.VarDB;
+import score.Address;
+import score.Blockchain;
+import score.DictDB;
+import score.VarDB;
 import foundation.icon.ee.tooling.abi.EventLog;
 import foundation.icon.ee.tooling.abi.External;
 import foundation.icon.ee.tooling.abi.Payable;

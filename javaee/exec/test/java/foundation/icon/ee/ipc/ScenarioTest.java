@@ -1,13 +1,12 @@
 package foundation.icon.ee.ipc;
 
-import avm.Address;
-import avm.Blockchain;
+import score.Address;
+import score.Blockchain;
 import foundation.icon.ee.test.Contract;
 import foundation.icon.ee.test.GoldenTest;
 import foundation.icon.ee.tooling.abi.External;
 import org.junit.jupiter.api.Test;
 
-import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;

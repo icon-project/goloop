@@ -1,6 +1,6 @@
 package foundation.icon.ee.ipc;
 
-import avm.Address;
+import score.Address;
 import foundation.icon.ee.test.GoldenTest;
 import foundation.icon.ee.tooling.abi.External;
 import foundation.icon.ee.tooling.abi.Optional;

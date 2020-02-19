@@ -1,6 +1,6 @@
 package foundation.icon.ee.test;
 
-import avm.Address;
+import score.Address;
 import foundation.icon.ee.score.FileReader;
 import foundation.icon.ee.util.Crypto;
 import org.aion.avm.core.util.ByteArrayWrapper;

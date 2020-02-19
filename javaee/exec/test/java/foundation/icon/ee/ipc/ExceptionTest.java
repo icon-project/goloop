@@ -1,9 +1,9 @@
 package foundation.icon.ee.ipc;
 
-import avm.Address;
-import avm.Blockchain;
-import avm.RevertException;
-import avm.ScoreRevertException;
+import score.Address;
+import score.Blockchain;
+import score.RevertException;
+import score.ScoreRevertException;
 import foundation.icon.ee.test.GoldenTest;
 import foundation.icon.ee.tooling.abi.External;
 import org.junit.jupiter.api.Test;

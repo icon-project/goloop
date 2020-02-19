@@ -1,6 +1,6 @@
 package foundation.icon.ee.ipc;
 
-import avm.Blockchain;
+import score.Blockchain;
 import foundation.icon.ee.test.GoldenTest;
 import foundation.icon.ee.tooling.abi.External;
 import org.junit.jupiter.api.Test;

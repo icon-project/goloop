@@ -1,4 +1,9 @@
-package avm;
+/*
+ * Copyright 2019 ICON Foundation
+ * Copyright (c) 2018 Aion Foundation https://aion.network/
+ */
+
+package score;
 
 /**
  * Represents an address of account in the ICON Network.

@@ -1,6 +1,6 @@
 package foundation.icon.ee.test;
 
-import avm.Address;
+import score.Address;
 import foundation.icon.ee.ipc.Connection;
 import foundation.icon.ee.ipc.EEProxy;
 import foundation.icon.ee.ipc.Proxy;

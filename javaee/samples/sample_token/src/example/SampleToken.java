@@ -16,9 +16,9 @@
 
 package example;
 
-import avm.Address;
-import avm.Blockchain;
-import avm.DictDB;
+import score.Address;
+import score.Blockchain;
+import score.DictDB;
 import foundation.icon.ee.tooling.abi.EventLog;
 import foundation.icon.ee.tooling.abi.External;
 import foundation.icon.ee.tooling.abi.Optional;

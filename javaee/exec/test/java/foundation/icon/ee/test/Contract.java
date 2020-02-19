@@ -1,6 +1,6 @@
 package foundation.icon.ee.test;
 
-import avm.Address;
+import score.Address;
 
 public class Contract {
     private ServiceManager sm;

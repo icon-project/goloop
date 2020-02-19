@@ -98,8 +98,8 @@ public abstract class Proxy {
             packByteArray(((BigInteger) obj).toByteArray(), packer);
         } else if (obj instanceof Address) {
             packByteArray(((Address) obj).toByteArray(), packer);
-        } else if (obj instanceof avm.Address) {
-            packByteArray(((avm.Address) obj).toByteArray(), packer);
+        } else if (obj instanceof score.Address) {
+            packByteArray(((score.Address) obj).toByteArray(), packer);
         } else if (obj instanceof Method[]) {
             Method[] methods = (Method[]) obj;
             packer.packArrayHeader(methods.length);

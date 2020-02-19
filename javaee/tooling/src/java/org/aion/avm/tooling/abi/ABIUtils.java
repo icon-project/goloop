@@ -1,6 +1,6 @@
 package org.aion.avm.tooling.abi;
 
-import avm.Address;
+import score.Address;
 import org.objectweb.asm.Type;
 
 import java.math.BigInteger;

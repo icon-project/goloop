@@ -1,9 +1,9 @@
 package foundation.icon.ee.ipc;
 
-import avm.Blockchain;
-import avm.DictDB;
-import avm.ObjectReader;
-import avm.ObjectWriter;
+import score.Blockchain;
+import score.DictDB;
+import score.ObjectReader;
+import score.ObjectWriter;
 import foundation.icon.ee.test.GoldenTest;
 import foundation.icon.ee.tooling.abi.External;
 import org.junit.jupiter.api.Test;

@@ -4,6 +4,7 @@ import i.IObject;
 import i.RuntimeAssertionError;
 import pi.UnmodifiableArrayList;
 import pi.UnmodifiableArrayMap;
+import score.Address;
 
 import java.math.BigInteger;
 import java.util.Map;
@@ -20,8 +21,8 @@ public class Shadower {
             return new s.java.lang.String((String)obj);
         } else if (obj instanceof byte[]) {
             return new a.ByteArray((byte[])obj);
-        } else if (obj instanceof avm.Address) {
-            return new p.avm.Address(((avm.Address)obj).toByteArray());
+        } else if (obj instanceof Address) {
+            return new p.avm.Address(((Address)obj).toByteArray());
         } else if (obj instanceof Object[]) {
             var o = (Object[]) obj;
             var sa = new IObject[o.length];
