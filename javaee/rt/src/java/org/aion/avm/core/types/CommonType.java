@@ -102,8 +102,8 @@ public enum CommonType {
     SHADOW_NO_SUCH_ELEMENT_EXCEPTION(false, true,   false,  PackageConstants.kShadowDotPrefix + "java.util.NoSuchElementException",         SHADOW_RUNTIME_EXCEPTION.dotName,           null),
     SHADOW_BUFF_UNDERFLOW_EXCEPTION (false, true,   false,  PackageConstants.kShadowDotPrefix + "java.nio.BufferUnderflowException",        SHADOW_RUNTIME_EXCEPTION.dotName,           null),
     SHADOW_BUFF_OVERFLOW_EXCEPTION  (false, true,   false,  PackageConstants.kShadowDotPrefix + "java.nio.BufferOverflowException",         SHADOW_RUNTIME_EXCEPTION.dotName,           null),
-    SHADOW_REVERT_EXCEPTION         (false, true,   false,  PackageConstants.kShadowDotPrefix + "avm.RevertException",              SHADOW_RUNTIME_EXCEPTION.dotName,           null),
-    SHADOW_SCORE_REVERT_EXCEPTION(false, true,   false,  PackageConstants.kShadowDotPrefix + "avm.ScoreRevertException",              SHADOW_REVERT_EXCEPTION.dotName,           null),
+    SHADOW_REVERT_EXCEPTION         (false, true,   false,  PackageConstants.kShadowDotPrefix + "score.RevertException",                    SHADOW_RUNTIME_EXCEPTION.dotName,           null),
+    SHADOW_SCORE_REVERT_EXCEPTION   (false, true,   false,  PackageConstants.kShadowDotPrefix + "score.ScoreRevertException",               SHADOW_REVERT_EXCEPTION.dotName,            null),
     ;
 
     public final boolean isInterface;
