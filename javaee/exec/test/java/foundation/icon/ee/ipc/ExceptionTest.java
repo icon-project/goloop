@@ -1,7 +1,7 @@
 package foundation.icon.ee.ipc;
 
 import score.Address;
-import score.Blockchain;
+import score.Context;
 import score.RevertException;
 import score.ScoreRevertException;
 import foundation.icon.ee.test.GoldenTest;
@@ -12,7 +12,7 @@ public class ExceptionTest extends GoldenTest {
     public static class RevertScore {
         @External
         public void run() {
-            Blockchain.revert(1, "user revert");
+            Context.revert(1, "user revert");
         }
     }
 
@@ -22,19 +22,19 @@ public class ExceptionTest extends GoldenTest {
             try {
                 throw new ScoreRevertException("test");
             } catch (ScoreRevertException e) {
-                Blockchain.println("OK");
+                Context.println("OK");
             }
 
             try {
-                Blockchain.call(addrGood,"run");
+                Context.call(addrGood,"run");
             } catch (RevertException e) {
-                Blockchain.println("OK");
+                Context.println("OK");
             }
 
             try {
-                Blockchain.call(addrBad,"run");
+                Context.call(addrBad,"run");
             } catch (Exception e) {
-                Blockchain.println("OK : " + e);
+                Context.println("OK : " + e);
             }
         }
     }

@@ -22,7 +22,7 @@ public class APIRemapClassVisitor extends ClassToolchain.ToolChainClassVisitor {
                     String descriptor,
                     boolean isInterface) {
                 if (opcode==Opcodes.INVOKESTATIC &&
-                        owner.equals("p/score/Blockchain") &&
+                        owner.equals("p/score/Context") &&
                         name.equals("avm_log") &&
                         descriptor.equals("(Lw/_Lp/score/Value;Lw/_Lp/score/Value;)V") &&
                         !isInterface) {

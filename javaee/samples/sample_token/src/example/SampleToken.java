@@ -17,7 +17,7 @@
 package example;
 
 import score.Address;
-import score.Blockchain;
+import score.Context;
 import score.DictDB;
 import foundation.icon.ee.tooling.abi.EventLog;
 import foundation.icon.ee.tooling.abi.External;
@@ -39,11 +39,11 @@ public class SampleToken
         this.decimals = _decimals.intValue();
 
         // decimals must be larger than 0 and less than 21
-        Blockchain.require(this.decimals >= 0);
-        Blockchain.require(this.decimals <= 21);
+        Context.require(this.decimals >= 0);
+        Context.require(this.decimals <= 21);
 
         // initialSupply must be larger than 0
-        Blockchain.require(_initialSupply.compareTo(BigInteger.ZERO) >= 0);
+        Context.require(_initialSupply.compareTo(BigInteger.ZERO) >= 0);
 
         // calculate totalSupply
         if (_initialSupply.compareTo(BigInteger.ZERO) > 0) {
@@ -54,8 +54,8 @@ public class SampleToken
         }
 
         // set the initial balance of the owner
-        this.balances = Blockchain.newDictDB("balances", BigInteger.class);
-        this.balances.set(Blockchain.getOrigin(), this.totalSupply);
+        this.balances = Context.newDictDB("balances", BigInteger.class);
+        this.balances.set(Context.getOrigin(), this.totalSupply);
     }
 
     // BigInteger#pow() is not implemented in the shadow BigInteger.
@@ -95,13 +95,13 @@ public class SampleToken
 
     @External
     public void transfer(Address _to, BigInteger _value, @Optional byte[] _data) {
-        Address _from = Blockchain.getCaller();
+        Address _from = Context.getCaller();
         BigInteger fromBalance = safeGetBalance(_from);
         BigInteger toBalance = safeGetBalance(_to);
 
         // check some basic requirements
-        Blockchain.require(_value.compareTo(BigInteger.ZERO) >= 0);
-        Blockchain.require(fromBalance.compareTo(_value) >= 0);
+        Context.require(_value.compareTo(BigInteger.ZERO) >= 0);
+        Context.require(fromBalance.compareTo(_value) >= 0);
 
         // adjust the balances
         safeSetBalance(_from, fromBalance.subtract(_value));
@@ -110,7 +110,7 @@ public class SampleToken
         // if the recipient is SCORE, call 'tokenFallback' to handle further operation
         byte[] dataBytes = (_data == null) ? new byte[0] : _data;
         if (Address.isContract(_to)) {
-            Blockchain.call(_to, "tokenFallback", _from, _value, dataBytes);
+            Context.call(_to, "tokenFallback", _from, _value, dataBytes);
         }
 
         // emit Transfer event

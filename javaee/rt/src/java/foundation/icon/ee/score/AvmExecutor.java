@@ -43,7 +43,7 @@ public class AvmExecutor {
     private final IInstrumentationFactory instrumentationFactory;
     private final boolean preserveDebuggability;
     private final boolean enableVerboseContractErrors;
-    private final boolean enableBlockchainPrintln;
+    private final boolean enableContextPrintln;
     private Loader loader;
     private IInstrumentation instrumentation;
     private TransactionTask task;
@@ -52,7 +52,7 @@ public class AvmExecutor {
         this.instrumentationFactory = factory;
         this.preserveDebuggability = config.preserveDebuggability;
         this.enableVerboseContractErrors = config.enableVerboseContractErrors;
-        this.enableBlockchainPrintln = config.enableBlockchainPrintln;
+        this.enableContextPrintln = config.enableContextPrintln;
         this.loader = loader;
     }
 
@@ -126,7 +126,7 @@ public class AvmExecutor {
             logger.trace("=== DAppCreator ===");
             result = DAppCreator.create(kernel, task,
                     senderAddress, recipient, tx, 0,
-                    this.preserveDebuggability, this.enableVerboseContractErrors, this.enableBlockchainPrintln);
+                    this.preserveDebuggability, this.enableVerboseContractErrors, this.enableContextPrintln);
         } else {
             LoadedDApp dapp;
 
@@ -145,7 +145,7 @@ public class AvmExecutor {
             logger.trace("=== DAppExecutor ===");
             result = DAppExecutor.call(kernel, dapp, stateToResume, task,
                     senderAddress, recipient, tx, 0,
-                    this.enableVerboseContractErrors, this.enableBlockchainPrintln);
+                    this.enableVerboseContractErrors, this.enableContextPrintln);
         }
 
         if (result.getStatus()==Status.Success) {

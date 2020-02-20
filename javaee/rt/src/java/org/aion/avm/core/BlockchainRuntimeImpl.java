@@ -295,7 +295,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
     public void avm_log(IObjectArray indexed, IObjectArray data) {
         if (logger.isTraceEnabled()) {
-            logger.trace("Blockchain.log indxed.len={} data.len={}", indexed.length(), data.length());
+            logger.trace("Context.log indexed.len={} data.len={}", indexed.length(), data.length());
             for (int i=0; i<indexed.length(); i++) {
                 var v = indexed.get(i);
                 if (v instanceof ValueBuffer) {

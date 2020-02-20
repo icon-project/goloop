@@ -9,7 +9,7 @@ import s.java.lang.Class;
 import s.java.lang.String;
 
 /**
- * Represents the hub of AVM runtime.
+ * Interface to the blockchain runtime.
  */
 public interface IBlockchainRuntime {
     //================
@@ -112,13 +112,13 @@ public interface IBlockchainRuntime {
     //================
 
     /**
-     * Calls the contract denoted by the targetAddress, sending payload data and energyLimit for the invocation.  Returns the response of the contract.
-     * NOTE:  This is likely to change as we work out the details of the ABI and cross-call semantics but exists to handle expectations of ported Solidity applications.
+     * Calls the contract denoted by the targetAddress.  Returns the response of the contract.
      *
+     * @param value         The value to transfer
+     * @param stepLimit     The step limit
      * @param targetAddress The address of the contract to call.
      * @param method        method
      * @param params        parameters
-     * @param value         The value to transfer
      * @return The response of executing the contract.
      */
     IObject avm_call(BigInteger value, BigInteger stepLimit,

@@ -1,6 +1,5 @@
 package org.aion.avm.core;
 
-
 /**
  * A class to describe how to configure an AVM instance, when requesting that it be created.
  * The overall strategy with this class is just to make it into a plain-old-data struct, with each field set to a "default" value
@@ -31,10 +30,10 @@ public class AvmConfiguration {
      */
     public boolean enableVerboseConcurrentExecutor;
     /**
-     * If set to true, will pass calls to Blockchain.println to the underlying stdout console.
+     * If set to true, will pass calls to Context.println to the underlying stdout console.
      * If false, this call is still legal but will have no effect.
      */
-    public boolean enableBlockchainPrintln;
+    public boolean enableContextPrintln;
 
     public AvmConfiguration() {
         // 4 threads is generally a safe, yet useful, number.
@@ -44,7 +43,7 @@ public class AvmConfiguration {
         // By default, none of our verbose options are enabled.
         this.enableVerboseContractErrors = false;
         this.enableVerboseConcurrentExecutor = false;
-        // While the system is still relatively new, we enable the Blockchain.println output, by default.
-        this.enableBlockchainPrintln = true;
+        // While the system is still relatively new, we enable the Context.println output, by default.
+        this.enableContextPrintln = true;
     }
 }

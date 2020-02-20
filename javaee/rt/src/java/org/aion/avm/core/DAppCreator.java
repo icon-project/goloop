@@ -194,7 +194,7 @@ public class DAppCreator {
                                                      long energyPreused,
                                                      boolean preserveDebuggability,
                                                      boolean verboseErrors,
-                                                     boolean enableBlockchainPrintln) {
+                                                     boolean enablePrintln) {
         // We hold onto the runtimeSetup that we are pushing onto the stack in here so that we can pop it back off in the finally block.
         IRuntimeSetup runtimeSetup = null;
         Result result = null;
@@ -253,7 +253,7 @@ public class DAppCreator {
                                                               tx,
                                                               runtimeSetup,
                                                               dapp,
-                                                              enableBlockchainPrintln);
+                                                              enablePrintln);
             FrameContextImpl fc = new FrameContextImpl(externalState, dapp, dapp.getInternedClasses(), br);
             InstrumentationHelpers.pushNewStackFrame(runtimeSetup, dapp.loader, tx.getLimit() - energyPreused, nextHashCode, dapp.getInternedClasses(), fc);
             IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(br);

@@ -1,6 +1,6 @@
 package foundation.icon.ee.ipc;
 
-import score.Blockchain;
+import score.Context;
 import score.DictDB;
 import score.ObjectReader;
 import score.ObjectWriter;
@@ -49,13 +49,13 @@ public class CodecTest extends GoldenTest {
     }
 
     public static class Score {
-        private DictDB<String, User> userDB = Blockchain.newDictDB("userDB", User.class);
+        private DictDB<String, User> userDB = Context.newDictDB("userDB", User.class);
 
         @External
         public void run() {
             userDB.set("k1", new User("A", 10, "aaa"));
             User u = userDB.get("k1");
-            Blockchain.println(u.toString());
+            Context.println(u.toString());
         }
     }
 

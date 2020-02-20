@@ -209,7 +209,7 @@ public class ServiceManager extends Proxy {
                     var data = msg.value.asArrayValue();
                     var level = data.get(0).asIntegerValue().asInt();
                     var logMsg = data.get(1).asStringValue().asString();
-                    // filter only Blockchain.println
+                    // filter only Context.println
                     if (logMsg.startsWith("org.aion.avm.core.BlockchainRuntimeImpl PRT|")) {
                         printf("RECV log level=%d %s%n", level, logMsg);
                     }

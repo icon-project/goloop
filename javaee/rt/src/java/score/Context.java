@@ -8,15 +8,14 @@ package score;
 import java.math.BigInteger;
 
 /**
- * Every SCORE has an associated <code>Blockchain</code> which allows
- * the application to interface with the environment the app is running.
+ * Every SCORE has an associated <code>Context</code> which allows the application to interface
+ * with the environment the app is running.
  * <p>
- * Typically, it includes the transaction and block context, and other blockchain
- * functionality.
+ * Typically, it includes the transaction and block context, and other blockchain functionality.
  */
-public final class Blockchain {
+public final class Context {
 
-    private Blockchain() {
+    private Context() {
     }
 
     //===================
@@ -103,7 +102,7 @@ public final class Blockchain {
     /**
      * Returns the value being transferred to this SCORE.
      *
-     * @return the value in 10^-18 loop
+     * @return the value in loop (1 ICX == 10^18 loop)
      */
     public static BigInteger getValue() {
         return BigInteger.ZERO;
@@ -136,11 +135,11 @@ public final class Blockchain {
     //===================
 
     /**
-     *  puts the key-value data of an account
+     * Puts the key-value data of an account
      *
      * @param key key of the key-value data pair
      * @param value value of the key-value data pair
-     * @throws IllegalArgumentException when the arguments are invalud, e.g. NULL address
+     * @throws IllegalArgumentException when the arguments are invalid, e.g. NULL address
      */
     public static void putStorage(byte[] key, byte[] value) throws IllegalArgumentException {
     }
@@ -174,12 +173,6 @@ public final class Blockchain {
     /**
      * Calls another account, whether it's normal account or SCORE.
      *
-     * In terms of the provided {@code targetAddress}, a call is legitimate only if:
-     *   1. The targetAddress has no code (ie. it is not a contract)
-     *   2. The targetAddress has code and its code can be executed by the Avm.
-     *
-     * If neither of these conditions is true then this method will throw an exception.
-     *
      * @param value         the value to transfer
      * @param stepLimit     step limit
      * @param targetAddress the account address
@@ -188,7 +181,6 @@ public final class Blockchain {
      * @return the invocation result.
      * @throws IllegalArgumentException when the arguments are invalid, e.g. insufficient balance, NULL address
      * @throws ScoreRevertException when call target reverts the newly created frame
-     * or the targetAddress is a contract that requires a foreign virtual machine in order to be executed.
      */
     public static Object call(BigInteger value, BigInteger stepLimit,
                               Address targetAddress, String method, Object... params) {
@@ -225,7 +217,7 @@ public final class Blockchain {
      * Checks that the provided condition is true and if it is false, triggers a revert.
      * <p>
      * In other words, if {@code condition == true} this method does nothing, otherwise it is
-     * equivalent to calling {@link Blockchain#revert()}.
+     * equivalent to calling {@link Context#revert()}.
      *
      * @param condition The condition that is required to be {@code true}.
      */

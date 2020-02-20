@@ -17,7 +17,7 @@
 package example;
 
 import score.Address;
-import score.Blockchain;
+import score.Context;
 import foundation.icon.ee.tooling.abi.External;
 import foundation.icon.ee.tooling.abi.EventLog;
 import foundation.icon.ee.tooling.abi.Optional;
@@ -39,42 +39,42 @@ public class APITest
 
     @External
     public void getAddress(Address addr) {
-        Blockchain.require(Blockchain.getAddress().equals(addr));
+        Context.require(Context.getAddress().equals(addr));
     }
 
     @External(readonly=true)
     public Address getAddressQuery() {
-        return Blockchain.getAddress();
+        return Context.getAddress();
     }
 
     @External
     public void getCaller(Address caller) {
-        Blockchain.require(Blockchain.getCaller().equals(caller));
+        Context.require(Context.getCaller().equals(caller));
     }
 
     @External(readonly=true)
     public Address getCallerQuery() {
-        return Blockchain.getCaller();
+        return Context.getCaller();
     }
 
     @External
     public void getOrigin(Address origin) {
-        Blockchain.require(Blockchain.getOrigin().equals(origin));
+        Context.require(Context.getOrigin().equals(origin));
     }
 
     @External(readonly=true)
     public Address getOriginQuery() {
-        return Blockchain.getOrigin();
+        return Context.getOrigin();
     }
 
     @External
     public void getOwner(Address owner) {
-        Blockchain.require(Blockchain.getOwner().equals(owner));
+        Context.require(Context.getOwner().equals(owner));
     }
 
     @External(readonly=true)
     public Address getOwnerQuery() {
-        return Blockchain.getOwner();
+        return Context.getOwner();
     }
 
     //================================
@@ -83,24 +83,24 @@ public class APITest
 
     @External
     public void getBlockTimestamp() {
-        Blockchain.require(Blockchain.getBlockTimestamp() > 0L);
-        EmitEvent(BigInteger.valueOf(Blockchain.getBlockTimestamp()).toByteArray());
+        Context.require(Context.getBlockTimestamp() > 0L);
+        EmitEvent(BigInteger.valueOf(Context.getBlockTimestamp()).toByteArray());
     }
 
     @External(readonly=true)
     public long getBlockTimestampQuery() {
-        return Blockchain.getBlockTimestamp();
+        return Context.getBlockTimestamp();
     }
 
     @External
     public void getBlockHeight() {
-        Blockchain.require(Blockchain.getBlockHeight() > 0L);
-        EmitEvent(BigInteger.valueOf(Blockchain.getBlockHeight()).toByteArray());
+        Context.require(Context.getBlockHeight() > 0L);
+        EmitEvent(BigInteger.valueOf(Context.getBlockHeight()).toByteArray());
     }
 
     @External(readonly=true)
     public long getBlockHeightQuery() {
-        return Blockchain.getBlockHeight();
+        return Context.getBlockHeight();
     }
 
     //================================
@@ -109,45 +109,45 @@ public class APITest
 
     @External
     public void getTransactionHash() {
-        Blockchain.require(Blockchain.getTransactionHash() != null);
-        EmitEvent(Blockchain.getTransactionHash());
+        Context.require(Context.getTransactionHash() != null);
+        EmitEvent(Context.getTransactionHash());
     }
 
     @External(readonly=true)
     public byte[] getTransactionHashQuery() {
-        return Blockchain.getTransactionHash();
+        return Context.getTransactionHash();
     }
 
     @External
     public void getTransactionIndex() {
-        Blockchain.require(Blockchain.getTransactionIndex() >= 0);
-        EmitEvent(BigInteger.valueOf(Blockchain.getTransactionIndex()).toByteArray());
+        Context.require(Context.getTransactionIndex() >= 0);
+        EmitEvent(BigInteger.valueOf(Context.getTransactionIndex()).toByteArray());
     }
 
     @External(readonly=true)
     public int getTransactionIndexQuery() {
-        return Blockchain.getTransactionIndex();
+        return Context.getTransactionIndex();
     }
 
     @External
     public void getTransactionTimestamp() {
-        Blockchain.require(Blockchain.getTransactionTimestamp() > 0L);
-        EmitEvent(BigInteger.valueOf(Blockchain.getTransactionTimestamp()).toByteArray());
+        Context.require(Context.getTransactionTimestamp() > 0L);
+        EmitEvent(BigInteger.valueOf(Context.getTransactionTimestamp()).toByteArray());
     }
 
     @External(readonly=true)
     public long getTransactionTimestampQuery() {
-        return Blockchain.getTransactionTimestamp();
+        return Context.getTransactionTimestamp();
     }
 
     @External
     public void getTransactionNonce() {
-        EmitEvent(Blockchain.getTransactionNonce().toByteArray());
+        EmitEvent(Context.getTransactionNonce().toByteArray());
     }
 
     @External(readonly=true)
     public BigInteger getTransactionNonceQuery() {
-        return Blockchain.getTransactionNonce();
+        return Context.getTransactionNonce();
     }
 
     //================================
@@ -157,27 +157,27 @@ public class APITest
     @External
     @Payable
     public void getValue() {
-        EmitEvent(Blockchain.getValue().toByteArray());
+        EmitEvent(Context.getValue().toByteArray());
     }
 
     @External(readonly=true)
     public BigInteger getValueQuery() {
-        return Blockchain.getValue();
+        return Context.getValue();
     }
 
     @External
     public void getBalance(@Optional Address address) {
         if (address == null) {
-            address = Blockchain.getAddress();
+            address = Context.getAddress();
         }
-        EmitEvent(Blockchain.getBalance(address).toByteArray());
+        EmitEvent(Context.getBalance(address).toByteArray());
     }
 
     @External(readonly=true)
     public BigInteger getBalanceQuery(@Optional Address address) {
         if (address == null) {
-            address = Blockchain.getAddress();
+            address = Context.getAddress();
         }
-        return Blockchain.getBalance(address);
+        return Context.getBalance(address);
     }
 }

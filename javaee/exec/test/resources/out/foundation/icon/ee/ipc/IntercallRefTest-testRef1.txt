@@ -1,15 +1,15 @@
 Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
 Method{type=0, name='method', flags=2, indexed=2, inputs=[Parameter{name='ttl', descriptor=I, type=1, optional=false}, Parameter{name='ok', descriptor=Z, type=4, optional=false}, Parameter{name='addr', descriptor=Lscore/Address;, type=5, optional=true}], output=0, outputDescriptor=V}
 SEND invoke code=010001/optimized isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[]
-RECV setCode hash=8c70281a287ea92ea855886f6630b0acdbd1cbf959e9c259e66f3b6aae2e6d3a len=2452
+RECV setCode hash=987b52592cc3bda05cc0e61641185a1c69cf14c1ed2212f1adb5573c10c2c851 len=2452
 RECV setObjGraph flag=1 next=4 hash=4af0eeb564f2a45ea893e805682f0c4e275abb50ad77240334084c6f16c76adb graphLen=141 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x021foundation.icon.ee.ipc.IntercallRefTest$RefScoreA\x00\x00\x00\x03\x00\x00\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x0eleave A.method\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x06method
-RECV result status=0 stepUsed=203284 ret=<null>
+RECV result status=0 stepUsed=203281 ret=<null>
 Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
 Method{type=0, name='method', flags=2, indexed=2, inputs=[Parameter{name='ttl', descriptor=I, type=1, optional=false}, Parameter{name='ok', descriptor=Z, type=4, optional=false}, Parameter{name='addr', descriptor=Lscore/Address;, type=5, optional=true}], output=0, outputDescriptor=V}
 SEND invoke code=010002/optimized isQuery=false from=000001... to=010002... value=0 stepLimit=1000000000 method=<init> params=[]
-RECV setCode hash=6e383df4ddd8075251944e13a88f3a55a8723f4c36feeb7c1ed0bb43b8d7bca2 len=2047
+RECV setCode hash=ede57fba8fbbcc7dd6af3d4b38326347fa8df2a2153f40e4c0c2eb0200a2bb44 len=2047
 RECV setObjGraph flag=1 next=4 hash=89df34e80e17c6b6deb4c8732b5d56e5a4c6c267b4fbf61fc8d628b96f631eb4 graphLen=139 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x021foundation.icon.ee.ipc.IntercallRefTest$RefScoreB\x00\x00\x00\x03\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x0eleave B.method\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x06method
-RECV result status=0 stepUsed=202904 ret=<null>
+RECV result status=0 stepUsed=202902 ret=<null>
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=method params=[1 true 010002...]
 RECV getObjGraph flag=1 => next=4 hash=4af0eeb564f2a45ea893e805682f0c4e275abb50ad77240334084c6f16c76adb graphLen=141 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x021foundation.icon.ee.ipc.IntercallRefTest$RefScoreA\x00\x00\x00\x03\x00\x00\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x0eleave A.method\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x06method
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| enter A.method(1 true 010002000000000000000000000000000000000000)

@@ -16,7 +16,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import p.score.Address;
-import p.score.Blockchain;
+import p.score.Context;
 import p.score.Result;
 import p.score.Value;
 import p.score.ValueBuffer;
@@ -56,7 +56,7 @@ public class NodeEnvironment {
         try {
             this.shadowApiClasses = new Class<?>[] {
                 Address.class,
-                Blockchain.class,
+                Context.class,
                 Result.class,
                 ValueBuffer.class,
                 Value.class,

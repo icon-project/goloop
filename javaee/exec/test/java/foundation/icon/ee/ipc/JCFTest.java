@@ -1,6 +1,6 @@
 package foundation.icon.ee.ipc;
 
-import score.Blockchain;
+import score.Context;
 import foundation.icon.ee.test.GoldenTest;
 import foundation.icon.ee.tooling.abi.External;
 import org.junit.jupiter.api.Test;
@@ -12,28 +12,28 @@ import java.util.Set;
 public class JCFTest extends GoldenTest {
     public static class Score {
         public static void dumpList(List<?> list) {
-            Blockchain.println("list.size=" + list.size());
+            Context.println("list.size=" + list.size());
             for (int i = 0; i < list.size(); i++) {
-                Blockchain.println("list.get(" + i + ")=" + list.get(i));
+                Context.println("list.get(" + i + ")=" + list.get(i));
             }
             for (var e : list) {
-                Blockchain.println("list element=" + e);
+                Context.println("list element=" + e);
             }
         }
 
         public static void dumpSet(Set<?> set) {
-            Blockchain.println("set.size=" + set.size());
+            Context.println("set.size=" + set.size());
             for (var e : set) {
-                Blockchain.println("set element=" + e);
+                Context.println("set element=" + e);
             }
         }
 
         public static void dumpMap(Map<?, ?> map) {
-            Blockchain.println("map.size=" + map.size());
+            Context.println("map.size=" + map.size());
             dumpSet(map.keySet());
             for (var e : map.entrySet()) {
-                Blockchain.println("map entry key=" + e.getKey() + " value=" + e.getValue());
-                Blockchain.println("map.get(" + e.getKey() + ")=" + map.get(e.getKey()));
+                Context.println("map entry key=" + e.getKey() + " value=" + e.getValue());
+                Context.println("map.get(" + e.getKey() + ")=" + map.get(e.getKey()));
             }
         }
 
@@ -65,9 +65,9 @@ public class JCFTest extends GoldenTest {
                     Map.entry("k1", 1),
                     Map.entry("k2", 2)
             ));
-            var self = Blockchain.getAddress();
-            dumpMap((Map<?, ?>) Blockchain.call(self, "returnMap"));
-            dumpMap((Map<?, ?>) Blockchain.call(self, "returnMap2"));
+            var self = Context.getAddress();
+            dumpMap((Map<?, ?>) Context.call(self, "returnMap"));
+            dumpMap((Map<?, ?>) Context.call(self, "returnMap2"));
         }
 
         @External

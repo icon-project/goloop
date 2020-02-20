@@ -34,7 +34,7 @@ public class DAppExecutor {
                               Transaction tx,
                               long energyPreused,
                               boolean verboseErrors,
-                              boolean enableBlockchainPrintln) {
+                              boolean enablePrintln) {
         Result result = null;
 
         // Note that the instrumentation is just a per-thread access to the state stack - we can grab it at any time as it never changes for this thread.
@@ -72,7 +72,7 @@ public class DAppExecutor {
                                                           tx,
                                                           dapp.runtimeSetup,
                                                           dapp,
-                                                          enableBlockchainPrintln);
+                                                          enablePrintln);
         FrameContextImpl fc = new FrameContextImpl(externalState, dapp, initialClassWrappers, br);
         InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.getLimit() - energyPreused, nextHashCode, initialClassWrappers, fc);
         IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(br);

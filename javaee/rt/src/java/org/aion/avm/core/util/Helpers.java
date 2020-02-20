@@ -12,7 +12,7 @@ import org.aion.avm.core.miscvisitors.ClassRenameVisitor;
 import org.aion.avm.utilities.Utilities;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
-import p.score.Blockchain;
+import p.score.Context;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-
 /**
  * Common utilities we often want to use in various tests (either temporarily or permanently).
  * These are kept here just to avoid duplication.
@@ -38,9 +37,6 @@ public class Helpers {
 
     /**
      * Converts byte array into its hex string representation.
-     *
-     * @param bytes
-     * @return
      */
     public static String bytesToHexString(byte[] bytes) {
         if (bytes.length == 0){
@@ -60,9 +56,6 @@ public class Helpers {
 
     /**
      * Converts hex string into its byte[] representation.
-     *
-     * @param s
-     * @return
      */
     public static byte[] hexStringToBytes(String s) {
         if (s.startsWith("0x")) {
@@ -96,8 +89,8 @@ public class Helpers {
         }
     }
 
-    private static String blockchainRuntimeClassName = Blockchain.class.getName();
-    private static byte[] blockchainRuntimeBytes = Utilities.loadRequiredResourceAsBytes(blockchainRuntimeClassName.replaceAll("\\.", "/") + ".class");
+    private static String contextRuntimeClassName = Context.class.getName();
+    private static byte[] contextRuntimeBytes = Utilities.loadRequiredResourceAsBytes(contextRuntimeClassName.replaceAll("\\.", "/") + ".class");
 
     /**
      * A common helper used to construct a map of visible class bytecode for an AvmClassLoader instance.
@@ -118,7 +111,7 @@ public class Helpers {
         // Now, construct the map.
         Map<String, byte[]> modifiedMap = new HashMap<>(inputMap);
         modifiedMap.put(Helper.RUNTIME_HELPER_NAME, renamedBytes);
-        modifiedMap.put(blockchainRuntimeClassName, blockchainRuntimeBytes);
+        modifiedMap.put(contextRuntimeClassName, contextRuntimeBytes);
         return modifiedMap;
     }
 
@@ -129,15 +122,12 @@ public class Helpers {
     }
 
     /**
-     * Attaches a Blockchain instance to the Blockchain class (per contract) so DApp can
+     * Attaches a BlockchainRuntime instance to the Context class (per contract) so SCORE can
      * access blockchain related methods.
-     *
-     * @param contractLoader
-     * @param rt
      */
     public static void attachBlockchainRuntime(AvmClassLoader contractLoader, IBlockchainRuntime rt) {
         try {
-            String runtimeClassName = Blockchain.class.getName();
+            String runtimeClassName = Context.class.getName();
             Class<?> helperClass = contractLoader.loadClass(runtimeClassName);
             helperClass.getField("blockchainRuntime").set(null, rt);
         } catch (Throwable t) {

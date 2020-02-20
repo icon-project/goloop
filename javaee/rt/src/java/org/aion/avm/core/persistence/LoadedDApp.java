@@ -15,32 +15,31 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import foundation.icon.ee.types.ObjectGraph;
 import foundation.icon.ee.types.DAppRuntimeState;
+import foundation.icon.ee.types.ObjectGraph;
 import foundation.icon.ee.util.MethodUnpacker;
 import foundation.icon.ee.util.Unshadower;
+import i.AvmThrowable;
+import i.Helper;
+import i.IBlockchainRuntime;
 import i.IInstrumentation;
+import i.IObjectDeserializer;
+import i.IObjectSerializer;
+import i.IRuntimeSetup;
+import i.InternedClasses;
+import i.MethodAccessException;
+import i.PackageConstants;
+import i.RuntimeAssertionError;
+import i.UncaughtException;
 import org.aion.avm.NameStyle;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.ClassRenamer;
 import org.aion.avm.core.ClassRenamerBuilder;
+import org.aion.avm.core.classloading.AvmClassLoader;
 import org.aion.avm.core.types.CommonType;
 import org.aion.avm.core.util.DebugNameResolver;
-import i.AvmThrowable;
-import i.IBlockchainRuntime;
-import i.IObjectDeserializer;
-import i.IObjectSerializer;
-import i.PackageConstants;
-import p.score.Blockchain;
-import org.aion.avm.core.classloading.AvmClassLoader;
 import org.aion.avm.core.util.Helpers;
-import i.Helper;
-import i.IRuntimeSetup;
-import i.InternedClasses;
-import i.MethodAccessException;
-import i.RuntimeAssertionError;
-import i.UncaughtException;
-
+import p.score.Context;
 
 /**
  * Manages the organization of a DApp's root classes serialized shape as well as how to kick-off the serialization/deserialization
@@ -466,7 +465,7 @@ public class LoadedDApp {
     private Class<?> loadBlockchainRuntimeClass() throws ClassNotFoundException {
         Class<?> runtimeClass = this.blockchainRuntimeClass;
         if (null == runtimeClass) {
-            String runtimeClassName = Blockchain.class.getName();
+            String runtimeClassName = Context.class.getName();
             runtimeClass = this.loader.loadClass(runtimeClassName);
             RuntimeAssertionError.assertTrue(runtimeClass.getClassLoader() == this.loader);
             this.blockchainRuntimeClass = runtimeClass;

@@ -18,11 +18,10 @@ import s.java.lang.Object;
 import s.java.lang.String;
 import s.java.math.BigInteger;
 
-
-public final class Blockchain extends Object {
+public final class Context extends Object {
     public static IBlockchainRuntime blockchainRuntime;
 
-    private Blockchain() {
+    private Context() {
     }
 
     // Runtime-facing implementation.
@@ -94,7 +93,7 @@ public final class Blockchain extends Object {
             // nonzero to zero
             IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_resetStorage);
             requiresRefund = true;
-        } else if (storage == null && value == null) {
+        } else if (storage == null) {
             // zero to zero
             IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_resetStorage);
         } else {

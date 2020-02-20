@@ -1,7 +1,7 @@
 package foundation.icon.ee.ipc;
 
 import score.Address;
-import score.Blockchain;
+import score.Context;
 import foundation.icon.ee.test.Contract;
 import foundation.icon.ee.test.GoldenTest;
 import foundation.icon.ee.tooling.abi.External;
@@ -37,14 +37,14 @@ public class ScenarioTest extends GoldenTest {
 
         @External
         public void run(byte[] code) {
-            var ba = Blockchain.getAddress().toByteArray();
+            var ba = Context.getAddress().toByteArray();
             int addr = (ba[1] << 8) & 0xff | (ba[2] & 0xff);
-            Blockchain.println("Enter addr=" + addr);
+            Context.println("Enter addr=" + addr);
             try {
                 doRunImpl(code);
-                Blockchain.println("Exit by Return addr=" + addr);
+                Context.println("Exit by Return addr=" + addr);
             } catch(Throwable t) {
-                Blockchain.println("Exit by Throwable addr=" + addr + " t=" + t);
+                Context.println("Exit by Throwable addr=" + addr + " t=" + t);
             }
         }
 
@@ -62,36 +62,36 @@ public class ScenarioTest extends GoldenTest {
                         int ccodeLen = (code[offset++] << 8) & 0xff | (code[offset++] & 0xff);
                         var ccode = Arrays.copyOfRange(code, offset, offset + ccodeLen);
                         offset += ccodeLen;
-                        Blockchain.call(addr, "run", (Object) ccode);
+                        Context.call(addr, "run", (Object) ccode);
                     } catch (Exception e) {
-                        Blockchain.println("Exception e=" + e);
+                        Context.println("Exception e=" + e);
                     }
                 } else if (insn == REVERT){
-                    var ba = Blockchain.getAddress().toByteArray();
+                    var ba = Context.getAddress().toByteArray();
                     int addr = (ba[1] << 8) & 0xff | (ba[2] & 0xff);
-                    Blockchain.println("Exit by Revert addr=" + addr);
-                    Blockchain.revert();
+                    Context.println("Exit by Revert addr=" + addr);
+                    Context.revert();
                 } else if (insn == SET_SVAR) {
                     int len = (code[offset++] << 8) & 0xff | (code[offset++] & 0xff);
                     var s = new String(code, offset, len);
                     offset += len;
                     sVar = s;
-                    Blockchain.println("Set sVar=" + sVar);
+                    Context.println("Set sVar=" + sVar);
                 } else if (insn == ADD_TO_SVAR) {
                     int len = (code[offset++] << 8) & 0xff | (code[offset++] & 0xff);
                     var s = new String(code, offset, len);
                     offset += len;
                     var before = sVar;
                     sVar += s;
-                    Blockchain.println("AddTo sVar=" + before + " s=" + s + " => sVar=" + sVar);
+                    Context.println("AddTo sVar=" + before + " s=" + s + " => sVar=" + sVar);
                 } else if (insn == EXPECT_SVAR) {
                     int len = (code[offset++] << 8) & 0xff | (code[offset++] & 0xff);
                     var s = new String(code, offset, len);
                     offset += len;
                     if (s.equals(sVar)) {
-                        Blockchain.println("Expect [OK] expected sVar=" + sVar);
+                        Context.println("Expect [OK] expected sVar=" + sVar);
                     } else {
-                        Blockchain.println("Expect [ERROR] expected sVar=" + s + " observed sVar=" + sVar);
+                        Context.println("Expect [ERROR] expected sVar=" + s + " observed sVar=" + sVar);
                     }
                 }
             }

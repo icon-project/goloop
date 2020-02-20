@@ -1,7 +1,7 @@
 package foundation.icon.ee.ipc;
 
 import score.Address;
-import score.Blockchain;
+import score.Context;
 import foundation.icon.ee.test.GoldenTest;
 import foundation.icon.ee.tooling.abi.External;
 import foundation.icon.ee.tooling.abi.Optional;
@@ -19,62 +19,62 @@ public class IntercallTest extends GoldenTest {
 
         @External
         public byte mbyte(byte v) {
-            var vv = (BigInteger)Blockchain.call(next, "mbyte", v);
+            var vv = (BigInteger) Context.call(next, "mbyte", v);
             return vv.byteValue();
         }
 
         @External
         public short mshort(short v) {
-            var vv = (BigInteger)Blockchain.call(next, "mshort", v);
+            var vv = (BigInteger) Context.call(next, "mshort", v);
             return vv.shortValue();
         }
 
         @External
         public int mint(int v) {
-            var vv = (BigInteger)Blockchain.call(next, "mint", v);
+            var vv = (BigInteger) Context.call(next, "mint", v);
             return vv.intValue();
         }
 
         @External
         public long mlong(long v) {
-            var vv = (BigInteger)Blockchain.call(next, "mlong", v);
+            var vv = (BigInteger) Context.call(next, "mlong", v);
             return vv.longValue();
         }
 
         @External
         public boolean mboolean(boolean v) {
-            return (Boolean)Blockchain.call(next, "mboolean", v);
+            return (Boolean) Context.call(next, "mboolean", v);
         }
 
         @External
         public char mchar(char v) {
-            var vv = (BigInteger)Blockchain.call(next, "mchar", v);
+            var vv = (BigInteger) Context.call(next, "mchar", v);
             return (char)vv.intValue();
         }
 
         @External
         public BigInteger mBigInteger(@Optional BigInteger v) {
-            return (BigInteger)Blockchain.call(next, "mBigInteger", v);
+            return (BigInteger) Context.call(next, "mBigInteger", v);
         }
 
         @External
         public String mString(@Optional String v) {
-            return (String)Blockchain.call(next, "mString", v);
+            return (String) Context.call(next, "mString", v);
         }
 
         @External
         public byte[] mByteArray(@Optional byte[] v) {
-            return (byte[])Blockchain.call(next, "mByteArray", (Object) v);
+            return (byte[]) Context.call(next, "mByteArray", (Object) v);
         }
 
         @External
         public Address mAddress(@Optional Address v) {
-            return (Address)Blockchain.call(next, "mAddress", v);
+            return (Address) Context.call(next, "mAddress", v);
         }
 
         @External
         public void mvoid() {
-            Blockchain.call(next, "mvoid");
+            Context.call(next, "mvoid");
         }
     }
 
@@ -102,16 +102,16 @@ public class IntercallTest extends GoldenTest {
     public static class ScoreA {
         @External
         public void method(Address addr) {
-            Blockchain.call(addr, "setValue", 1);
-            var res = (BigInteger)Blockchain.call(addr, "getValue");
-            Blockchain.require(res.intValue()==1);
+            Context.call(addr, "setValue", 1);
+            var res = (BigInteger) Context.call(addr, "getValue");
+            Context.require(res.intValue()==1);
             try {
-                Blockchain.call(addr, "setValueFail", 2);
+                Context.call(addr, "setValueFail", 2);
             } catch (Exception e) {
-                Blockchain.println(e.toString());
+                Context.println(e.toString());
             }
-            res = (BigInteger)Blockchain.call(addr, "getValue");
-            Blockchain.require(res.intValue()==1);
+            res = (BigInteger) Context.call(addr, "getValue");
+            Context.require(res.intValue()==1);
         }
     }
 
@@ -126,7 +126,7 @@ public class IntercallTest extends GoldenTest {
         @External
         public void setValueFail(int v) {
             value = v;
-            Blockchain.revert();
+            Context.revert();
         }
 
         @External

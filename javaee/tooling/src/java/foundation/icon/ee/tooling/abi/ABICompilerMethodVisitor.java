@@ -284,10 +284,10 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
         }
         super.visitVarInsn(Opcodes.ASTORE, argsSize+2);
 
-        // Blockchain.log(indexedArr, dataArr);
+        // Context.log(indexedArr, dataArr);
         super.visitVarInsn(Opcodes.ALOAD, argsSize+1);
         super.visitVarInsn(Opcodes.ALOAD, argsSize+2);
-        super.visitMethodInsn(Opcodes.INVOKESTATIC, "score/Blockchain", "log", "([Lscore/Value;[Lscore/Value;)V", false);
+        super.visitMethodInsn(Opcodes.INVOKESTATIC, "score/Context", "log", "([Lscore/Value;[Lscore/Value;)V", false);
         super.visitInsn(Opcodes.RETURN);
         super.visitMaxs(0, 0);
     }

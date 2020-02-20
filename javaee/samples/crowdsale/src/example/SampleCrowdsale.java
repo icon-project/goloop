@@ -17,7 +17,7 @@
 package example;
 
 import score.Address;
-import score.Blockchain;
+import score.Context;
 import score.DictDB;
 import score.VarDB;
 import foundation.icon.ee.tooling.abi.EventLog;
@@ -40,19 +40,19 @@ public class SampleCrowdsale
 
     public SampleCrowdsale(BigInteger _fundingGoalInIcx, Address _tokenScore, BigInteger _durationInBlocks) {
         // some basic requirements
-        Blockchain.require(_fundingGoalInIcx.compareTo(BigInteger.ZERO) >= 0);
-        Blockchain.require(_durationInBlocks.compareTo(BigInteger.ZERO) >= 0);
+        Context.require(_fundingGoalInIcx.compareTo(BigInteger.ZERO) >= 0);
+        Context.require(_durationInBlocks.compareTo(BigInteger.ZERO) >= 0);
 
-        this.beneficiary = Blockchain.getCaller();
+        this.beneficiary = Context.getCaller();
         this.fundingGoal = ONE_ICX.multiply(_fundingGoalInIcx);
         this.tokenScore = _tokenScore;
-        this.deadline = Blockchain.getBlockHeight() + _durationInBlocks.longValue();
+        this.deadline = Context.getBlockHeight() + _durationInBlocks.longValue();
 
         this.fundingGoalReached = false;
         this.crowdsaleClosed = true; // Crowdsale closed by default
 
-        this.balances = Blockchain.newDictDB("balances", BigInteger.class);
-        this.amountRaised = Blockchain.newVarDB("amountRaised", BigInteger.class);
+        this.balances = Context.newDictDB("balances", BigInteger.class);
+        this.amountRaised = Context.newVarDB("amountRaised", BigInteger.class);
     }
 
     /*
@@ -61,16 +61,16 @@ public class SampleCrowdsale
     @External
     public void tokenFallback(Address _from, BigInteger _value, byte[] _data) {
         // check if the caller is a token SCORE address that this SCORE is interested in
-        Blockchain.require(Blockchain.getCaller().equals(this.tokenScore));
+        Context.require(Context.getCaller().equals(this.tokenScore));
 
         // depositing tokens can only be done by owner
-        Blockchain.require(Blockchain.getOwner().equals(_from));
+        Context.require(Context.getOwner().equals(_from));
 
         // value should be greater than zero
-        Blockchain.require(_value.compareTo(BigInteger.ZERO) >= 0);
+        Context.require(_value.compareTo(BigInteger.ZERO) >= 0);
 
         // start Crowdsale hereafter
-        Blockchain.require(this.crowdsaleClosed);
+        Context.require(this.crowdsaleClosed);
         this.crowdsaleClosed = false;
         // emit eventlog
         CrowdsaleStarted(this.fundingGoal, this.deadline);
@@ -82,11 +82,11 @@ public class SampleCrowdsale
     @Payable
     public void fallback() {
         // check if the crowdsale is closed
-        Blockchain.require(this.crowdsaleClosed == false);
+        Context.require(!this.crowdsaleClosed);
 
-        Address _from = Blockchain.getCaller();
-        BigInteger _value = Blockchain.getValue();
-        Blockchain.require(_value.compareTo(BigInteger.ZERO) > 0);
+        Address _from = Context.getCaller();
+        BigInteger _value = Context.getValue();
+        Context.require(_value.compareTo(BigInteger.ZERO) > 0);
 
         // accept the contribution
         BigInteger fromBalance = safeGetBalance(_from);
@@ -98,7 +98,7 @@ public class SampleCrowdsale
 
         // give tokens to the contributor as a reward
         byte[] _data = "called from Crowdsale".getBytes();
-        Blockchain.call(this.tokenScore, "transfer", _from, _value, _data);
+        Context.call(this.tokenScore, "transfer", _from, _value, _data);
         // emit eventlog
         FundTransfer(_from, _value, true);
     }
@@ -109,7 +109,7 @@ public class SampleCrowdsale
     @External
     public void checkGoalReached() {
         if (afterDeadline()) {
-            if (this.crowdsaleClosed == false) {
+            if (!this.crowdsaleClosed) {
                 this.crowdsaleClosed = true;
                 // emit eventlog
                 CrowdsaleEnded();
@@ -132,14 +132,14 @@ public class SampleCrowdsale
     @External
     public void safeWithdrawal() {
         if (afterDeadline()) {
-            Address _from = Blockchain.getCaller();
+            Address _from = Context.getCaller();
 
             // each contributor can withdraw the amount they contributed if the goal was not reached
-            if (this.fundingGoalReached == false) {
+            if (!this.fundingGoalReached) {
                 BigInteger amount = safeGetBalance(_from);
                 if (amount.compareTo(BigInteger.ZERO) > 0) {
                     // transfer the icx back to them
-                    Blockchain.call(amount, _from, "fallback");
+                    Context.call(amount, _from, "fallback");
                     // emit eventlog
                     FundTransfer(_from, amount, false);
                     // set their balance to ZERO
@@ -152,7 +152,7 @@ public class SampleCrowdsale
                 BigInteger amountRaised = safeGetAmountRaised();
                 if (amountRaised.compareTo(BigInteger.ZERO) > 0) {
                     // transfer the funds to beneficiary
-                    Blockchain.call(amountRaised, this.beneficiary, "fallback");
+                    Context.call(amountRaised, this.beneficiary, "fallback");
                     // emit eventlog
                     FundTransfer(this.beneficiary, amountRaised, false);
                     // reset amountRaised
@@ -172,7 +172,7 @@ public class SampleCrowdsale
 
     private boolean afterDeadline() {
         // checks if it has been reached to the deadline block
-        return Blockchain.getBlockHeight() >= this.deadline;
+        return Context.getBlockHeight() >= this.deadline;
     }
 
     @EventLog
