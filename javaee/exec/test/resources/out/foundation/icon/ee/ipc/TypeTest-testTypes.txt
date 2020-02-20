@@ -8,12 +8,12 @@ Method{type=0, name='mchar', flags=2, indexed=1, inputs=[Parameter{name='v', des
 Method{type=0, name='mBigInteger', flags=2, indexed=0, inputs=[Parameter{name='v', descriptor=Ljava/math/BigInteger;, type=1, optional=true}], output=1, outputDescriptor=Ljava/math/BigInteger;}
 Method{type=0, name='mString', flags=2, indexed=0, inputs=[Parameter{name='v', descriptor=Ljava/lang/String;, type=2, optional=true}], output=2, outputDescriptor=Ljava/lang/String;}
 Method{type=0, name='mByteArray', flags=2, indexed=0, inputs=[Parameter{name='v', descriptor=[B, type=3, optional=true}], output=3, outputDescriptor=[B}
-Method{type=0, name='mAddress', flags=2, indexed=0, inputs=[Parameter{name='v', descriptor=Lavm/Address;, type=5, optional=true}], output=5, outputDescriptor=Lavm/Address;}
+Method{type=0, name='mAddress', flags=2, indexed=0, inputs=[Parameter{name='v', descriptor=Lscore/Address;, type=5, optional=true}], output=5, outputDescriptor=Lscore/Address;}
 Method{type=0, name='mvoid', flags=2, indexed=0, inputs=[], output=0, outputDescriptor=V}
 SEND invoke code=010001/optimized isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[]
-RECV setCode hash=817f50e5bd73bb40535074791bd6762d4d5f8e31c235fd0a8f41ca1a82197968 len=1572
+RECV setCode hash=64aa0aa0cdefba1280b203da74ede58067f87976b16bbcc22f11be8a02d01cf7 len=1576
 RECV setObjGraph flag=1 next=2 hash=06bdb7136d457124a2de984f348f0d666770deb2698168f62371b69b855d5766 graphLen=47 graph=\x03\x00\x00\x00\x00%foundation.icon.ee.ipc.TypeTest$Score\x00\x00\x00\x01
-RECV result status=0 stepUsed=202470 ret=<null>
+RECV result status=0 stepUsed=202471 ret=<null>
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mbyte params=[0]
 RECV getObjGraph flag=1 => next=2 hash=06bdb7136d457124a2de984f348f0d666770deb2698168f62371b69b855d5766 graphLen=47 graph=\x03\x00\x00\x00\x00%foundation.icon.ee.ipc.TypeTest$Score\x00\x00\x00\x01
 RECV setObjGraph flag=0 next=2
