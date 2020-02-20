@@ -119,15 +119,9 @@ javarun-% : javadeps-image
 	@ \
 	docker run -it --rm \
 	    -v $(BUILD_ROOT):$(GOLOOP_WORK_DIR) \
-	    -w $(GOLOOP_WORK_DIR) \
+	    -w $(GOLOOP_WORK_DIR)/javaee \
 	    $(JAVADEPS_IMAGE) \
-	    make "GL_VERSION=$(GL_VERSION)" $(patsubst javarun-%,%,$@)
-
-javaexec:
-	@ \
-	echo "[#] Building Java executor" ; \
-	cd $(BUILD_ROOT)/javaee ; \
-	./gradlew app:execman:distZip
+	    make $(patsubst javarun-%,%,$@)
 
 goloop-image: pyrun-pyexec gorun-goloop-linux javarun-javaexec
 	@ echo "[#] Building image $(GOLOOP_IMAGE) for $(GL_VERSION)"
