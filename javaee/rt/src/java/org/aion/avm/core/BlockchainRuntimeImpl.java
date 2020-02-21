@@ -1,8 +1,6 @@
 package org.aion.avm.core;
 
 import a.ByteArray;
-import score.RevertException;
-import score.ScoreRevertException;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.Transaction;
@@ -28,8 +26,8 @@ import p.score.ValueBuffer;
 import p.score.VarDB;
 import pi.CollectionDBImpl;
 import pi.VarDBImpl;
-
-import java.util.Arrays;
+import score.RevertException;
+import score.ScoreRevertException;
 
 /**
  * The implementation of IBlockchainRuntime which is appropriate for exposure as a shadow Object instance within a DApp.
@@ -149,35 +147,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     @Override
     public long avm_getBlockHeight() {
         return externalState.getBlockHeight();
-    }
-
-    @Override
-    public void avm_putStorage(ByteArray key, ByteArray value, boolean requiresRefund) {
-        require(key != null, "Key can't be NULL");
-        require(key.getUnderlying().length == 32, "Key must be 32 bytes");
-
-        byte[] keyCopy = Arrays.copyOf(key.getUnderlying(), key.getUnderlying().length);
-        byte[] valueCopy = (value == null) ? null : Arrays.copyOf(value.getUnderlying(), value.getUnderlying().length);
-
-        if (value == null) {
-            externalState.removeStorage(this.transactionDestination, keyCopy);
-        } else {
-            externalState.putStorage(this.transactionDestination, keyCopy, valueCopy);
-        }
-        if (requiresRefund){
-            task.addResetStorageKey(this.transactionDestination, keyCopy);
-        }
-    }
-
-    @Override
-    public ByteArray avm_getStorage(ByteArray key) {
-        require(key != null, "Key can't be NULL");
-        require(key.getUnderlying().length == 32, "Key must be 32 bytes");
-
-        byte[] data = this.externalState.getStorage(this.transactionDestination, key.getUnderlying());
-        return (null != data)
-            ? new ByteArray(Arrays.copyOf(data, data.length))
-            : null;
     }
 
     @Override

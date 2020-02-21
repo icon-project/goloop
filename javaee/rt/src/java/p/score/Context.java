@@ -12,7 +12,6 @@ import i.IInstrumentation;
 import i.IObject;
 import i.IObjectArray;
 import org.aion.avm.RuntimeMethodFeeSchedule;
-import org.aion.avm.StorageFees;
 import s.java.lang.Class;
 import s.java.lang.Object;
 import s.java.lang.String;
@@ -79,38 +78,6 @@ public final class Context extends Object {
     public static long avm_getBlockHeight() {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getBlockHeight);
         return blockchainRuntime.avm_getBlockHeight();
-    }
-
-    public static void avm_putStorage(ByteArray key, ByteArray value) {
-        boolean requiresRefund =  false;
-        int valueSize = value != null ? value.length() : 0;
-        ByteArray storage = blockchainRuntime.avm_getStorage(key);
-        if (storage == null && value != null) {
-            // zero to nonzero
-            IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(
-                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_setStorage + StorageFees.WRITE_PRICE_PER_BYTE * valueSize);
-        } else if (storage != null && value == null) {
-            // nonzero to zero
-            IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_resetStorage);
-            requiresRefund = true;
-        } else if (storage == null) {
-            // zero to zero
-            IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_resetStorage);
-        } else {
-            //nonzero to nonzero
-            IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(
-                    RuntimeMethodFeeSchedule.BlockchainRuntime_avm_resetStorage + StorageFees.WRITE_PRICE_PER_BYTE * valueSize);
-        }
-        blockchainRuntime.avm_putStorage(key, value, requiresRefund);
-    }
-
-    public static ByteArray avm_getStorage(ByteArray key) {
-        // Note that we must charge the linear portion of the read _after_ the read happens.
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getStorage);
-        ByteArray value = blockchainRuntime.avm_getStorage(key);
-        int valueSize = value != null ? value.length() : 0;
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(StorageFees.READ_PRICE_PER_BYTE * valueSize);
-        return value;
     }
 
     public static BigInteger avm_getBalance(Address address) {

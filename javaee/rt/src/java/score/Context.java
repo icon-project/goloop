@@ -135,27 +135,6 @@ public final class Context {
     //===================
 
     /**
-     * Puts the key-value data of an account
-     *
-     * @param key key of the key-value data pair
-     * @param value value of the key-value data pair
-     * @throws IllegalArgumentException when the arguments are invalid, e.g. NULL address
-     */
-    public static void putStorage(byte[] key, byte[] value) throws IllegalArgumentException {
-    }
-
-    /**
-     * Returns the storage value
-     *
-     * @param key key of the key-value data pair
-     * @return the value in storage associated to the given address and key
-     * @throws IllegalArgumentException when the arguments are invalid, e.g. NULL address
-     */
-    public static byte[] getStorage(byte[] key) throws IllegalArgumentException {
-        return null;
-    }
-
-    /**
      * Returns the balance of an account.
      *
      * @param address the account address.

@@ -4,9 +4,9 @@ import a.ByteArray;
 import p.score.Address;
 import p.score.CollectionDB;
 import p.score.VarDB;
-import s.java.math.BigInteger;
 import s.java.lang.Class;
 import s.java.lang.String;
+import s.java.math.BigInteger;
 
 /**
  * Interface to the blockchain runtime.
@@ -82,22 +82,6 @@ public interface IBlockchainRuntime {
     //================
     // Storage
     //================
-
-    /**
-     * Puts the key-value data of an account.
-     *
-     * @param key key of the key-value data pair
-     * @param value value of the key-value data pair
-     */
-     void avm_putStorage(ByteArray key, ByteArray value, boolean requiresRefund) throws IllegalArgumentException;
-
-    /**
-     * Returns the storage value.
-     *
-     * @param key of the key-value pair
-     * @return the value in storage associated to the given key
-     */
-    ByteArray avm_getStorage(ByteArray key) throws IllegalArgumentException;
 
     /**
      * Returns the balance of an account.
