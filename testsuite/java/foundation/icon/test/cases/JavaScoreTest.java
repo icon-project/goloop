@@ -16,7 +16,6 @@
 
 package foundation.icon.test.cases;
 
-import example.APITest;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.Wallet;
@@ -39,6 +38,7 @@ import foundation.icon.test.score.Score;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import testcases.APITest;
 
 import java.math.BigInteger;
 import java.util.Random;

@@ -5,10 +5,10 @@ dependencies {
 
 sourceSets {
     main.java.srcDirs = [
-            'apitest/src',
-            'collection/src',
-            'crowdsale/src',
-            'sample_token/src',
+        'collection/src',
+        'crowdsale/src',
+        'sampletoken/src',
+        'testcases/src',
     ]
 }
 

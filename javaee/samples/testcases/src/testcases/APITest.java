@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package example;
+package testcases;
 
 import score.Address;
 import score.Context;
