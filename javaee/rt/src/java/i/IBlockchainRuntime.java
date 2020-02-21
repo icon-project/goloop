@@ -126,6 +126,11 @@ public interface IBlockchainRuntime {
     void avm_println(String message);
 
     /**
+     * Computes the SHA3-256 hash using the input data
+     */
+    ByteArray avm_sha3_256(ByteArray data);
+
+    /**
      * Returns a new collection DB instance
      */
     CollectionDB avm_newCollectionDB(int type, String id, Class<?> vc);

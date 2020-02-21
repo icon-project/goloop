@@ -211,6 +211,13 @@ public final class Context {
     public static void println(String message) {
     }
 
+    /**
+     * Computes the SHA3-256 hash using the input data
+     */
+    public static byte[] sha3_256(byte[] data) throws IllegalArgumentException {
+        return null;
+    }
+
     //===================
     // Collection DB
     //===================

@@ -321,6 +321,9 @@ public class RuntimeMethodFeeSchedule {
     public static final int BlockchainRuntime_avm_require = RT_METHOD_FEE_LEVEL_1;
     public static final int BlockchainRuntime_avm_println = RT_METHOD_FEE_LEVEL_1; // totalCost - 696; // byte code cost - 122; invoked methods cost - 574;
 
+    public static final int BlockchainRuntime_avm_sha3_256_base = RT_METHOD_FEE_LEVEL_5;
+    public static final int BlockchainRuntime_avm_sha3_256_per_bytes = 2;
+
     public static final int BlockchainRuntime_avm_newDictDB = RT_METHOD_FEE_LEVEL_1;
     public static final int BlockchainRuntime_avm_newArrayDB = RT_METHOD_FEE_LEVEL_1;
     public static final int BlockchainRuntime_avm_newVarDB = RT_METHOD_FEE_LEVEL_1;

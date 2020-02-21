@@ -16,6 +16,7 @@
 
 package foundation.icon.test.cases;
 
+import foundation.icon.ee.util.Crypto;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.Wallet;
@@ -424,6 +425,37 @@ class JavaScoreTest extends TestBase {
         result = apiScore.call("getBalanceQuery", null);
         LOG.info("expected (" + coin + "), got (" + result.asInteger() + ")");
         assertEquals(coin, result.asInteger());
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void testAPIForSHA3_256() throws Exception {
+        Score apiScore = deployAPITest();
+        KeyWallet caller = KeyWallet.create();
+        TransactionResult tr;
+        RpcItem result = RpcValue.NULL;
+
+        // computeHash
+        LOG.infoEntering("computeHash", "invoke");
+        byte[] data = "Hello world".getBytes();
+        RpcObject params = new RpcObject.Builder()
+                .put("data", new RpcValue(data))
+                .build();
+        tr = apiScore.invokeAndWaitResult(caller, "computeHash", params);
+        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
+        for (TransactionResult.EventLog e : tr.getEventLogs()) {
+            result = e.getData().get(0);
+        }
+        Bytes expected = new Bytes(Crypto.sha3_256(data));
+        LOG.info("expected (" + expected + "), got (" + result.asString() + ")");
+        assertEquals(expected.toString(), result.asString());
+        LOG.infoExiting();
+
+        LOG.infoEntering("computeHash", "query");
+        result = apiScore.call("computeHashQuery", params);
+        LOG.info("result=" + result);
+        LOG.info("expected (" + expected + "), got (" + result.asString() + ")");
+        assertEquals(expected.toString(), result.asString());
         LOG.infoExiting();
     }
 }

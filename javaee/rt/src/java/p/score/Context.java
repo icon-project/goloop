@@ -135,6 +135,13 @@ public final class Context extends Object {
         blockchainRuntime.avm_println(message);
     }
 
+    public static ByteArray avm_sha3_256(ByteArray data) {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(
+                RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_base
+                    + RuntimeMethodFeeSchedule.BlockchainRuntime_avm_sha3_256_per_bytes * (data != null ? data.length() : 0));
+        return blockchainRuntime.avm_sha3_256(data);
+    }
+
     public static NestingDictDB avm_newNestingDictDB(String id, Class<?> vc) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_newDictDB);
         return blockchainRuntime.avm_newCollectionDB(DBImplBase.TYPE_DICT_DB, id, vc);

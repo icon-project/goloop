@@ -180,4 +180,18 @@ public class APITest
         }
         return Context.getBalance(address);
     }
+
+    //================================
+    // Crypto
+    //================================
+
+    @External
+    public void computeHash(byte[] data) {
+        EmitEvent(Context.sha3_256(data));
+    }
+
+    @External(readonly=true)
+    public byte[] computeHashQuery(byte[] data) {
+        return Context.sha3_256(data);
+    }
 }

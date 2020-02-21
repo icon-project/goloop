@@ -4,6 +4,7 @@ import a.ByteArray;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.Transaction;
+import foundation.icon.ee.util.Crypto;
 import foundation.icon.ee.util.Shadower;
 import foundation.icon.ee.util.Unshadower;
 import i.CallDepthLimitExceededException;
@@ -252,16 +253,25 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         }
     }
 
+    @Override
+    public ByteArray avm_sha3_256(ByteArray data) {
+        require(null != data, "Input data can't be NULL");
+        return new ByteArray(Crypto.sha3_256(data.getUnderlying()));
+    }
+
+    @Override
     public CollectionDB avm_newCollectionDB(int type,
                                             s.java.lang.String id,
                                             s.java.lang.Class<?> vc) {
         return new CollectionDBImpl(type, id, vc);
     }
 
+    @Override
     public VarDB avm_newVarDB(s.java.lang.String id, s.java.lang.Class<?> vc) {
         return new VarDBImpl(id, vc);
     }
 
+    @Override
     public void avm_log(IObjectArray indexed, IObjectArray data) {
         if (logger.isTraceEnabled()) {
             logger.trace("Context.log indexed.len={} data.len={}", indexed.length(), data.length());
