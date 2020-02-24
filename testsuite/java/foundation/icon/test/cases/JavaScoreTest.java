@@ -53,7 +53,6 @@ class JavaScoreTest extends TestBase {
     private static IconService iconService;
     private static TransactionHandler txHandler;
     private static KeyWallet ownerWallet;
-    private static KeyWallet calleeWallet;
     private static Score testScore;
 
     @BeforeAll
@@ -65,12 +64,13 @@ class JavaScoreTest extends TestBase {
         txHandler = new TransactionHandler(iconService, chain);
 
         ownerWallet = KeyWallet.create();
-        calleeWallet = KeyWallet.create();
         transferAndCheckResult(txHandler, ownerWallet.getAddress(), BigInteger.TEN.pow(20));
     }
 
     @Test
-    void testSampleToken() throws Exception {
+    public void testSampleToken() throws Exception {
+        KeyWallet calleeWallet = KeyWallet.create();
+
         // 1. deploy
         BigInteger decimals = BigInteger.valueOf(18);
         BigInteger initialSupply = BigInteger.valueOf(1000);
@@ -131,103 +131,112 @@ class JavaScoreTest extends TestBase {
         return score.invokeAndWaitResult(from, "transfer", builder.build());
     }
 
-    private Address deployAPITest() throws Exception {
-        LOG.infoEntering("deploy", "apiTest");
-        testScore = txHandler.deploy(ownerWallet, APITest.class, null);
-        LOG.info("scoreAddr = " + testScore.getAddress());
-        LOG.infoExiting();
-        return testScore.getAddress();
+    private Score deployAPITest() throws Exception {
+        if (testScore == null) {
+            LOG.infoEntering("deploy", "apiTest");
+            testScore = txHandler.deploy(ownerWallet, APITest.class, null);
+            LOG.info("scoreAddr = " + testScore.getAddress());
+            LOG.infoExiting();
+        }
+        return testScore;
+    }
+
+    static class TestCase {
+        private final String method;
+        private final RpcObject params;
+        private final BigInteger expectedStatus;
+
+        TestCase(String method, RpcObject params, BigInteger expectedStatus) {
+            this.method = method;
+            this.params = params;
+            this.expectedStatus = expectedStatus;
+        }
     }
 
     @Test
-    void testAPITestForAddress() throws Exception {
-        Address scoreAddr = deployAPITest();
+    public void testAPIForAddress() throws Exception {
+        Score apiScore = deployAPITest();
         KeyWallet caller = KeyWallet.create();
         TransactionResult tr;
 
-        // getAddress
-        LOG.infoEntering("getAddress", "invoke");
-        tr = testScore.invokeAndWaitResult(caller, "getAddress",
-                new RpcObject.Builder().put("addr", new RpcValue(testScore.getAddress())).build(),
-                0, 100000);
-        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
-        tr = testScore.invokeAndWaitResult(caller, "getAddress",
-                new RpcObject.Builder().put("addr", new RpcValue(caller.getAddress())).build(),
-                0, 100000);
-        assertEquals(Constants.STATUS_FAIL, tr.getStatus());
+        LOG.infoEntering("invoke");
+        TestCase[] testCases = {
+                new TestCase("getAddress", new RpcObject.Builder()
+                        .put("addr", new RpcValue(apiScore.getAddress())).build(),
+                        Constants.STATUS_SUCCESS),
+                new TestCase("getAddress", new RpcObject.Builder()
+                        .put("addr", new RpcValue(caller.getAddress())).build(),
+                        Constants.STATUS_FAILURE),
+                new TestCase("getCaller", new RpcObject.Builder()
+                        .put("caller", new RpcValue(caller.getAddress())).build(),
+                        Constants.STATUS_SUCCESS),
+                new TestCase("getCaller", new RpcObject.Builder()
+                        .put("caller", new RpcValue(ownerWallet.getAddress())).build(),
+                        Constants.STATUS_FAILURE),
+                new TestCase("getOrigin", new RpcObject.Builder()
+                        .put("origin", new RpcValue(caller.getAddress())).build(),
+                        Constants.STATUS_SUCCESS),
+                new TestCase("getOrigin", new RpcObject.Builder()
+                        .put("origin", new RpcValue(ownerWallet.getAddress())).build(),
+                        Constants.STATUS_FAILURE),
+                new TestCase("getOwner", new RpcObject.Builder()
+                        .put("owner", new RpcValue(ownerWallet.getAddress())).build(),
+                        Constants.STATUS_SUCCESS),
+                new TestCase("getOwner", new RpcObject.Builder()
+                        .put("owner", new RpcValue(caller.getAddress())).build(),
+                        Constants.STATUS_FAILURE),
+        };
+
+        Bytes[] ids = new Bytes[testCases.length];
+        int cnt = 0;
+        for (TestCase tc : testCases) {
+            LOG.info(tc.method);
+            ids[cnt++] = apiScore.invoke(caller, tc.method, tc.params);
+        }
+        for (int i = 0; i < cnt; i++) {
+            tr = txHandler.getResult(ids[i]);
+            assertStatus(testCases[i].expectedStatus, tr);
+            if (tr.getFailure() != null) {
+                LOG.info("Expected " + tr.getFailure());
+            }
+        }
         LOG.infoExiting();
 
         LOG.infoEntering("getAddress", "query");
-        RpcItem result = testScore.call("getAddressQuery", null);
-        LOG.info("expected (" + scoreAddr + "), got (" + result.asAddress() + ")");
-        assertEquals(scoreAddr, result.asAddress());
-        LOG.infoExiting();
-
-        // getCaller
-        LOG.infoEntering("getCaller", "invoke");
-        tr = testScore.invokeAndWaitResult(caller, "getCaller",
-                new RpcObject.Builder().put("caller", new RpcValue(caller.getAddress())).build(),
-                0, 100000);
-        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
-        tr = testScore.invokeAndWaitResult(caller, "getCaller",
-                new RpcObject.Builder().put("caller", new RpcValue(testScore.getAddress())).build(),
-                0, 100000);
-        assertEquals(Constants.STATUS_FAIL, tr.getStatus());
+        RpcItem result = apiScore.call("getAddressQuery", null);
+        LOG.info("expected (" + apiScore.getAddress() + "), got (" + result.asAddress() + ")");
+        assertEquals(apiScore.getAddress(), result.asAddress());
         LOG.infoExiting();
 
         LOG.infoEntering("getCaller", "query");
-        result = testScore.call("getCallerQuery", null);
+        result = apiScore.call("getCallerQuery", null);
         LOG.info("expected (" + "null" + "), got (" + result + ")");
         assertNull(result);
-        LOG.infoExiting();
-
-        // getOrigin
-        LOG.infoEntering("getOrigin", "invoke");
-        tr = testScore.invokeAndWaitResult(caller, "getOrigin",
-                new RpcObject.Builder().put("origin", new RpcValue(caller.getAddress())).build(),
-                0, 100000);
-        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
-        tr = testScore.invokeAndWaitResult(caller, "getOrigin",
-                new RpcObject.Builder().put("origin", new RpcValue(testScore.getAddress())).build(),
-                0, 100000);
-        assertEquals(Constants.STATUS_FAIL, tr.getStatus());
         LOG.infoExiting();
 
         LOG.infoEntering("getOrigin", "query");
-        result = testScore.call("getOriginQuery", null);
+        result = apiScore.call("getOriginQuery", null);
         LOG.info("expected (" + "null" + "), got (" + result + ")");
         assertNull(result);
         LOG.infoExiting();
 
-        // getOwner
-        LOG.infoEntering("getOwner", "invoke");
-        tr = testScore.invokeAndWaitResult(caller, "getOwner",
-                new RpcObject.Builder().put("owner", new RpcValue(ownerWallet.getAddress())).build(),
-                0, 100000);
-        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
-        tr = testScore.invokeAndWaitResult(caller, "getOwner",
-                new RpcObject.Builder().put("owner", new RpcValue(caller.getAddress())).build(),
-                0, 100000);
-        assertEquals(Constants.STATUS_FAIL, tr.getStatus());
-        LOG.infoExiting();
-
         LOG.infoEntering("getOwner", "query");
-        result = testScore.call("getOwnerQuery", null);
+        result = apiScore.call("getOwnerQuery", null);
         LOG.info("expected (" + ownerWallet.getAddress() + "), got (" + result.asAddress() + ")");
         assertEquals(ownerWallet.getAddress(), result.asAddress());
         LOG.infoExiting();
     }
 
     @Test
-    void testAPITestForBlock() throws Exception {
-        Address scoreAddr = deployAPITest();
+    public void testAPIForBlock() throws Exception {
+        Score apiScore = deployAPITest();
         KeyWallet caller = KeyWallet.create();
         TransactionResult tr;
         RpcItem result = RpcValue.NULL;
 
         // getBlockHeight
         LOG.infoEntering("getBlockHeight", "invoke");
-        tr = testScore.invokeAndWaitResult(caller, "getBlockHeight", null, 0, 100000);
+        tr = apiScore.invokeAndWaitResult(caller, "getBlockHeight", null);
         assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
         for (TransactionResult.EventLog e : tr.getEventLogs()) {
             result = e.getData().get(0);
@@ -238,14 +247,14 @@ class JavaScoreTest extends TestBase {
 
         LOG.infoEntering("getBlockHeight", "query");
         Block block = iconService.getLastBlock().execute();
-        result = testScore.call("getBlockHeightQuery", null);
+        result = apiScore.call("getBlockHeightQuery", null);
         LOG.info("expected (" + block.getHeight() + "), got (" + result.asInteger() + ")");
         assertTrue(block.getHeight().compareTo(result.asInteger()) <= 0);
         LOG.infoExiting();
 
         // getBlockTimestamp
         LOG.infoEntering("getBlockTimestamp", "invoke");
-        tr = testScore.invokeAndWaitResult(caller, "getBlockTimestamp", null, 0, 100000);
+        tr = apiScore.invokeAndWaitResult(caller, "getBlockTimestamp", null);
         assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
         block = iconService.getBlock(tr.getBlockHeight()).execute();
         for (TransactionResult.EventLog e : tr.getEventLogs()) {
@@ -257,22 +266,22 @@ class JavaScoreTest extends TestBase {
 
         LOG.infoEntering("getBlockTimestamp", "query");
         block = iconService.getLastBlock().execute();
-        result = testScore.call("getBlockTimestampQuery", null);
+        result = apiScore.call("getBlockTimestampQuery", null);
         LOG.info("expected (" + block.getTimestamp() + "), got (" + result.asInteger() + ")");
         assertTrue(block.getTimestamp().compareTo(result.asInteger()) <= 0);
         LOG.infoExiting();
     }
 
     @Test
-    void testAPITestForTransaction() throws Exception {
-        Address scoreAddr = deployAPITest();
+    public void testAPIForTransaction() throws Exception {
+        Score apiScore = deployAPITest();
         KeyWallet caller = KeyWallet.create();
         TransactionResult tr;
         RpcItem result = RpcValue.NULL;
 
         // getTransactionHash
         LOG.infoEntering("getTransactionHash", "invoke");
-        tr = testScore.invokeAndWaitResult(caller, "getTransactionHash", null, 0, 200000);
+        tr = apiScore.invokeAndWaitResult(caller, "getTransactionHash", null);
         assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
         for (TransactionResult.EventLog e : tr.getEventLogs()) {
             result = e.getData().get(0);
@@ -282,7 +291,7 @@ class JavaScoreTest extends TestBase {
         LOG.infoExiting();
 
         LOG.infoEntering("getTransactionHash", "query");
-        result = testScore.call("getTransactionHashQuery", null);
+        result = apiScore.call("getTransactionHashQuery", null);
         LOG.info("expected (" + "null" + "), got (" + result + ")");
         assertNull(result);
         LOG.infoExiting();
@@ -291,10 +300,10 @@ class JavaScoreTest extends TestBase {
         LOG.infoEntering("getTransactionIndex", "invoke");
         Bytes[] ids = new Bytes[5];
         for (int i = 0; i < ids.length; i++) {
-            ids[i] = testScore.invoke(caller, "getTransactionIndex", null, 0, 200000);
+            ids[i] = apiScore.invoke(caller, "getTransactionIndex", null);
         }
         for (Bytes id : ids) {
-            tr = testScore.getResult(id);
+            tr = apiScore.getResult(id);
             assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
             for (TransactionResult.EventLog e : tr.getEventLogs()) {
                 RpcItem data = e.getData().get(0);
@@ -305,7 +314,7 @@ class JavaScoreTest extends TestBase {
         LOG.infoExiting();
 
         LOG.infoEntering("getTransactionIndex", "query");
-        result = testScore.call("getTransactionIndexQuery", null);
+        result = apiScore.call("getTransactionIndexQuery", null);
         LOG.info("expected (" + "0" + "), got (" + result.asInteger() + ")");
         assertEquals(BigInteger.ZERO, result.asInteger());
         LOG.infoExiting();
@@ -315,8 +324,8 @@ class JavaScoreTest extends TestBase {
         BigInteger steps = BigInteger.valueOf(200000);
         // Add arbitrary milliseconds precision for testing
         BigInteger timestamp = BigInteger.valueOf((System.currentTimeMillis() * 1000L) - (new Random()).nextInt(100));
-        Bytes txHash = testScore.invoke(caller, "getTransactionTimestamp", null, null, steps, timestamp, null);
-        tr = testScore.getResult(txHash);
+        Bytes tid = apiScore.invoke(caller, "getTransactionTimestamp", null, null, steps, timestamp, null);
+        tr = apiScore.getResult(tid);
         assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
         ConfirmedTransaction ctx = iconService.getTransaction(tr.getTxHash()).execute();
         for (TransactionResult.EventLog e : tr.getEventLogs()) {
@@ -327,7 +336,7 @@ class JavaScoreTest extends TestBase {
         LOG.infoExiting();
 
         LOG.infoEntering("getTransactionTimestamp", "query");
-        result = testScore.call("getTransactionTimestampQuery", null);
+        result = apiScore.call("getTransactionTimestampQuery", null);
         LOG.info("expected (" + "0" + "), got (" + result.asInteger() + ")");
         assertEquals(BigInteger.ZERO, result.asInteger());
         LOG.infoExiting();
@@ -335,8 +344,8 @@ class JavaScoreTest extends TestBase {
         // getTransactionNonce
         LOG.infoEntering("getTransactionNonce", "invoke");
         BigInteger nonce = BigInteger.valueOf(0x12345);
-        txHash = testScore.invoke(caller, "getTransactionNonce", null, null, steps, null, nonce);
-        tr = testScore.getResult(txHash);
+        tid = apiScore.invoke(caller, "getTransactionNonce", null, null, steps, null, nonce);
+        tr = apiScore.getResult(tid);
         assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
         for (TransactionResult.EventLog e : tr.getEventLogs()) {
             result = e.getData().get(0);
@@ -346,15 +355,15 @@ class JavaScoreTest extends TestBase {
         LOG.infoExiting();
 
         LOG.infoEntering("getTransactionNonce", "query");
-        result = testScore.call("getTransactionNonceQuery", null);
+        result = apiScore.call("getTransactionNonceQuery", null);
         LOG.info("expected (" + "0" + "), got (" + result.asInteger() + ")");
         assertEquals(BigInteger.ZERO, result.asInteger());
         LOG.infoExiting();
     }
 
     @Test
-    void testAPITestForCoin() throws Exception {
-        Address scoreAddr = deployAPITest();
+    public void testAPIForCoin() throws Exception {
+        Score apiScore = deployAPITest();
         KeyWallet caller = KeyWallet.create();
         TransactionResult tr;
         RpcItem result = RpcValue.NULL;
@@ -363,7 +372,7 @@ class JavaScoreTest extends TestBase {
         LOG.infoEntering("getValue", "invoke");
         BigInteger coin = BigInteger.TEN.pow(18);
         BigInteger stepLimit = BigInteger.valueOf(100000);
-        tr = testScore.invokeAndWaitResult(ownerWallet, "getValue", null, coin, stepLimit);
+        tr = apiScore.invokeAndWaitResult(ownerWallet, "getValue", null, coin, stepLimit);
         assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
         for (TransactionResult.EventLog e : tr.getEventLogs()) {
             result = e.getData().get(0);
@@ -371,22 +380,22 @@ class JavaScoreTest extends TestBase {
         LOG.info("expected (" + coin + "), got (" + result.asInteger() + ")");
         assertEquals(coin, result.asInteger());
         Utils.ensureIcxBalance(txHandler, ownerWallet.getAddress(), 100, 99);
-        Utils.ensureIcxBalance(txHandler, scoreAddr, 0, 1);
+        Utils.ensureIcxBalance(txHandler, apiScore.getAddress(), 0, 1);
         LOG.infoExiting();
 
         LOG.infoEntering("getValue", "query");
-        result = testScore.call("getValueQuery", null);
+        result = apiScore.call("getValueQuery", null);
         LOG.info("expected (" + "0" + "), got (" + result.asInteger() + ")");
         assertEquals(BigInteger.ZERO, result.asInteger());
         LOG.infoExiting();
 
         // getBalance
         LOG.infoEntering("getBalance", "check owner balance");
-        BigInteger ownerBalance = iconService.getBalance(ownerWallet.getAddress()).execute();
+        BigInteger ownerBalance = txHandler.getBalance(ownerWallet.getAddress());
         RpcObject params = new RpcObject.Builder()
                 .put("address", new RpcValue(ownerWallet.getAddress()))
                 .build();
-        tr = testScore.invokeAndWaitResult(caller, "getBalance", params, null, stepLimit);
+        tr = apiScore.invokeAndWaitResult(caller, "getBalance", params, null, stepLimit);
         assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
         for (TransactionResult.EventLog e : tr.getEventLogs()) {
             result = e.getData().get(0);
@@ -395,12 +404,24 @@ class JavaScoreTest extends TestBase {
         assertEquals(ownerBalance, result.asInteger());
         LOG.infoExiting();
 
-        LOG.infoEntering("getBalance", "check caller balance");
-        tr = testScore.invokeAndWaitResult(caller, "getBalance", null, null, stepLimit);
+        LOG.infoEntering("getBalance", "query");
+        result = apiScore.call("getBalanceQuery", params);
+        LOG.info("expected (" + ownerBalance + "), got (" + result.asInteger() + ")");
+        assertEquals(ownerBalance, result.asInteger());
+        LOG.infoExiting();
+
+        LOG.infoEntering("getBalance", "check score balance");
+        tr = apiScore.invokeAndWaitResult(caller, "getBalance", null, null, stepLimit);
         assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
         for (TransactionResult.EventLog e : tr.getEventLogs()) {
             result = e.getData().get(0);
         }
+        LOG.info("expected (" + coin + "), got (" + result.asInteger() + ")");
+        assertEquals(coin, result.asInteger());
+        LOG.infoExiting();
+
+        LOG.infoEntering("getBalance", "query");
+        result = apiScore.call("getBalanceQuery", null);
         LOG.info("expected (" + coin + "), got (" + result.asInteger() + ")");
         assertEquals(coin, result.asInteger());
         LOG.infoExiting();

@@ -36,11 +36,11 @@ public class TestBase {
     }
 
     protected static void assertFailure(TransactionResult result) {
-        assertStatus(Constants.STATUS_FAIL, result);
+        assertStatus(Constants.STATUS_FAILURE, result);
         LOG.info("Expected " + result.getFailure());
     }
 
-    private static void assertStatus(BigInteger status, TransactionResult result) {
+    protected static void assertStatus(BigInteger status, TransactionResult result) {
         try {
             assertEquals(status, result.getStatus());
         } catch (AssertionFailedError e) {

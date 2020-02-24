@@ -140,7 +140,7 @@ public class ChainScoreTest extends TestBase {
                 } else {
                     result = chainScore.enableScore(from, helloWorld.getAddress());
                 }
-                assertEquals(from == helloWorldOwner ? Constants.STATUS_SUCCESS : Constants.STATUS_FAIL, result.getStatus());
+                assertEquals(from == helloWorldOwner ? Constants.STATUS_SUCCESS : Constants.STATUS_FAILURE, result.getStatus());
 
                 status = chainScore.getScoreStatus(helloWorld.getAddress());
                 boolean disabled = status.getItem("disabled").asBoolean();

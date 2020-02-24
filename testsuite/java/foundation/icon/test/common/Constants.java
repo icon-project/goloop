@@ -27,7 +27,7 @@ public class Constants {
     public static final String TAG_INTER_SCORE = "interScore";
 
     public static final BigInteger STATUS_SUCCESS = BigInteger.ONE;
-    public static final BigInteger STATUS_FAIL = BigInteger.ZERO;
+    public static final BigInteger STATUS_FAILURE = BigInteger.ZERO;
 
     public static final String CONTENT_TYPE_PYTHON = "application/zip";
     public static final String CONTENT_TYPE_JAVA = "application/java";

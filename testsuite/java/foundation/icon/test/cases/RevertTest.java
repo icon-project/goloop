@@ -79,7 +79,7 @@ public class RevertTest {
 
         LOG.infoEntering("call", score2 + ".setStepOf(" + score1 + "," + v + ")");
         txr = score2.setStepOf(ownerWallet, score1.getAddress(), v);
-        assertEquals(Constants.STATUS_FAIL, txr.getStatus());
+        assertEquals(Constants.STATUS_FAILURE, txr.getStatus());
         LOG.infoExiting("Result:" + txr);
 
         LOG.infoEntering("call", score1 + ".getStep()");

@@ -129,12 +129,12 @@ public class ResultTest {
         for (int i = 0; i < cases.length; i++) {
             LOG.info("check result for normal case" + i);
             TransactionResult result = score1.getResult(txs[i]);
-            assertEquals(result.getStatus(), Constants.STATUS_FAIL);
+            assertEquals(result.getStatus(), Constants.STATUS_FAILURE);
             assertEquals(expect[i], result.getFailure().getCode());
 
             LOG.info("check result for inter-call case" + i);
             result = score1.getResult(icTxs[i]);
-            assertEquals(result.getStatus(), Constants.STATUS_FAIL);
+            assertEquals(result.getStatus(), Constants.STATUS_FAILURE);
             assertEquals(expect[i], result.getFailure().getCode());
 
             LOG.info("check result for inter-call catch case" + i);
