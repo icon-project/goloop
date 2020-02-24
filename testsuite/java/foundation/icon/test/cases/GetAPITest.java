@@ -22,14 +22,15 @@ import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.Converters;
 import foundation.icon.icx.data.ScoreApi;
-import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.icx.transport.jsonrpc.RpcError;
+import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.TransactionHandler;
+import foundation.icon.test.score.Score;
 import foundation.icon.test.score.StepCounterScore;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -49,7 +50,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 @Tag(Constants.TAG_PY_SCORE)
 class GetAPITest {
-    public static final String SCORE_API_PATH = Constants.SCORE_ROOT + "score_api";
+    private static final String SCORE_API_PATH = Constants.SCORE_ROOT + "score_api";
     private static TransactionHandler txHandler;
 
     @BeforeAll
@@ -77,7 +78,7 @@ class GetAPITest {
     private static final String VALUE_FALSE = "0x0";
 
     @Test
-    void testGetAPIForStepCounter() throws Exception {
+    public void testGetAPIForStepCounter() throws Exception {
         LOG.infoEntering("deployScore", "StepCounterScore");
         StepCounterScore score = StepCounterScore.mustDeploy(txHandler, KeyWallet.create());
         LOG.infoExiting();
@@ -303,27 +304,23 @@ class GetAPITest {
     }
 
     @Test
-    void validateGetScoreApi() throws Exception {
+    public void validateGetScoreApi() throws Exception {
         LOG.infoEntering("deployScore", "ScoreApi");
-        Bytes txHash = txHandler.deployOnly(KeyWallet.create(), SCORE_API_PATH, null);
-        TransactionResult result = txHandler.getResult(txHash, Constants.DEFAULT_WAITING_TIME);
-        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
+        Score testScore = txHandler.deploy(KeyWallet.create(), SCORE_API_PATH, null);
         LOG.infoExiting();
 
         LOG.infoEntering("validateGetScoreApi");
-        Address scoreAddr = new Address(result.getScoreAddress());
-        List<ScoreApi> apis = txHandler.getScoreApi(scoreAddr);
+        List<ScoreApi> apis = txHandler.getScoreApi(testScore.getAddress());
         assertTrue(checkApisForScoreApi(apis));
         LOG.infoExiting();
 
         LOG.infoEntering("notExistsScoreAddress");
         String newAddr = KeyWallet.create().getAddress().toString();
-        Address noScoreAddr = new Address("cx" + newAddr.substring(2));
+        Address invalidAddr = new Address("cx" + newAddr.substring(2));
         try {
-            txHandler.getScoreApi(noScoreAddr);
+            txHandler.getScoreApi(invalidAddr);
             fail();
-        }
-        catch (RpcError ex) {
+        } catch (RpcError ex) {
             LOG.info("Expected exception: " + ex);
         }
         LOG.infoExiting();
@@ -333,10 +330,30 @@ class GetAPITest {
             // we use custom rpc requester to get the server response directly
             getScoreApi(KeyWallet.create().getAddress().toString());
             fail();
-        }
-        catch (RpcError ex) {
+        } catch (RpcError ex) {
             LOG.info("Expected exception: " + ex);
         }
+        LOG.infoExiting();
+
+        LOG.infoEntering("check return value", "str");
+        final String str = "Hello world";
+        RpcObject params = new RpcObject.Builder()
+                .put("param1", new RpcValue(str))
+                .build();
+        RpcItem result = testScore.call("param_str", params);
+        LOG.info("expected (" + str + "), got (" + result.asString() + ")");
+        assertEquals(str, result.asString());
+        LOG.infoExiting();
+
+        LOG.infoEntering("check return value", "bytes");
+        byte[] bytes = str.getBytes();
+        params = new RpcObject.Builder()
+                .put("param1", new RpcValue(bytes))
+                .build();
+        result = testScore.call("param_bytes", params);
+        Bytes expected = new Bytes(bytes);
+        LOG.info("expected (" + expected + "), got (" + result.asString() + ")");
+        assertEquals(expected.toString(), result.asString());
         LOG.infoExiting();
     }
 
