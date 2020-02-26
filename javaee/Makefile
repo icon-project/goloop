@@ -3,11 +3,13 @@ GRADLE=./gradlew
 javaexec:
 	@ \
 	echo "[#] Building Java executor" ; \
+	export GRADLE_USER_HOME=.gradle ; \
 	$(GRADLE) app:execman:distZip
 
 test:
 	@ \
 	echo "[#] Running javaee test" ; \
+	export GRADLE_USER_HOME=.gradle ; \
 	$(GRADLE) test
 
 clean:
