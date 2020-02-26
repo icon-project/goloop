@@ -25,6 +25,7 @@ import foundation.icon.icx.data.Base64;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
+import foundation.icon.icx.transport.jsonrpc.RpcError;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.TestBase;
@@ -61,7 +62,7 @@ public class BtpApiTest extends TestBase {
     private final static int NEXTVALIDATORHASH_INDEX = 6;
 
     @BeforeAll
-    public static void init() {
+    static void init() {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
         Env.Chain chain = channel.chain;
@@ -178,8 +179,8 @@ public class BtpApiTest extends TestBase {
     }
 
     @Test
-    public void ApiTest() throws Exception {
-        LOG.infoEntering("ApiTest");
+    public void apiTest() throws Exception {
+        LOG.infoEntering("apiTest");
         KeyWallet wallet = KeyWallet.create();
 
         LOG.infoEntering("sendTransaction");
@@ -241,6 +242,19 @@ public class BtpApiTest extends TestBase {
         LOG.infoExiting();
     }
 
+    @Test
+    public void negativeTest() throws Exception {
+        LOG.infoEntering("getVotesByHeight");
+        try {
+            // test with non-existent height
+            iconService.getVotesByHeight(BigInteger.valueOf(99999999)).execute();
+            fail();
+        } catch (RpcError e) {
+            LOG.info("Expected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
+        }
+        LOG.infoExiting();
+    }
+
     static String byteArrayToHex(byte[] array) {
         StringBuilder sb = new StringBuilder();
         sb.append("0x");
@@ -265,7 +279,7 @@ public class BtpApiTest extends TestBase {
         return curve.getCurve().decodePoint(compEnc);
     }
 
-    public static byte[] recoverFromSignature(int recId, BigInteger[] sig, byte[] message) {
+    static byte[] recoverFromSignature(int recId, BigInteger[] sig, byte[] message) {
         BigInteger r = sig[0];
         BigInteger s = sig[1];
 
