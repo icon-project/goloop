@@ -49,7 +49,7 @@ func (qh *QueryHandler) Query(ctx contract.Context) (error, interface{}) {
 	if status != nil {
 		return status, nil
 	}
-	value, err := common.DecodeAny(result)
+	value, err := common.DecodeAnyForResponse(result)
 	return err, value
 }
 

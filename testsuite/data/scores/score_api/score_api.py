@@ -66,12 +66,32 @@ class ScoreApi(IconScoreBase):
         return param1
 
     @external(readonly=True)
-    def return_list(self) -> list:
-        return [1]
+    def return_list(self, rtype: str) -> list:
+        if rtype == "str":
+            return ["hello", "world"]
+        elif rtype == "bytes":
+            hello = bytes([0x68, 0x65, 0x6c, 0x6c, 0x6f])
+            world = bytes([0x77, 0x6f, 0x72, 0x6c, 0x64])
+            return [hello, world]
+        elif rtype == "bool":
+            return [True, False]
+        elif rtype == "Address":
+            return [self.address, self.owner]
+        return [0, 1, 100]
 
     @external(readonly=True)
-    def return_dict(self) -> dict:
-        return {"1": "1"}
+    def return_dict(self, rtype: str) -> dict:
+        if rtype == "str":
+            return {"key0": "hello", "key1": "world"}
+        elif rtype == "bytes":
+            hello = bytes([0x68, 0x65, 0x6c, 0x6c, 0x6f])
+            world = bytes([0x77, 0x6f, 0x72, 0x6c, 0x64])
+            return {"key0": hello, "key1": world}
+        elif rtype == "bool":
+            return {"key0": True, "key1": False}
+        elif rtype == "Address":
+            return {"key0": self.address, "key1": self.owner}
+        return {"key0": 0, "key1": 1, "key2": 100}
 
     @payable
     def fallback(self):

@@ -23,6 +23,7 @@ import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.Converters;
 import foundation.icon.icx.data.ScoreApi;
 import foundation.icon.icx.transport.http.HttpProvider;
+import foundation.icon.icx.transport.jsonrpc.RpcArray;
 import foundation.icon.icx.transport.jsonrpc.RpcError;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
@@ -217,14 +218,18 @@ class GetAPITest {
             LOG.warning("Size of apis is 0");
             return false;
         }
-        Map<String, FuncInfo> expectedFuncMap = new HashMap<String, FuncInfo>() {{
+        Map<String, FuncInfo> expectedFuncMap = new HashMap<>() {{
             put("externalMethod", new FuncInfo(TYPE_FUNCTION, null, null, VALUE_FALSE,  VALUE_FALSE));
             put("externalReadonlyMethod", new FuncInfo(TYPE_FUNCTION, null, null, VALUE_TRUE, VALUE_FALSE));
             put("payableExternalMethod", new FuncInfo(TYPE_FUNCTION, null, TYPE_STRING, VALUE_FALSE, VALUE_TRUE));
             put("externalPayableMethod", new FuncInfo(TYPE_FUNCTION, null, null, VALUE_FALSE, VALUE_TRUE));
             put("externalReadonlyFalseMethod", new FuncInfo(TYPE_FUNCTION, null, null, VALUE_FALSE, VALUE_FALSE));
-            put("return_list", new FuncInfo(TYPE_FUNCTION, null, TYPE_LIST, VALUE_TRUE, VALUE_FALSE));
-            put("return_dict", new FuncInfo(TYPE_FUNCTION, null, TYPE_DICT, VALUE_TRUE, VALUE_FALSE));
+            put("return_list", new FuncInfo(TYPE_FUNCTION, new FuncInfo.Input[] {
+                    new FuncInfo.Input("rtype", TYPE_STRING, null)
+            }, TYPE_LIST, VALUE_TRUE, VALUE_FALSE));
+            put("return_dict", new FuncInfo(TYPE_FUNCTION, new FuncInfo.Input[] {
+                    new FuncInfo.Input("rtype", TYPE_STRING, null)
+            }, TYPE_DICT, VALUE_TRUE, VALUE_FALSE));
             put("fallback", new FuncInfo(TYPE_FALLBACK, null, null, VALUE_FALSE, VALUE_TRUE));
             put("param_int", new FuncInfo(TYPE_FUNCTION, new FuncInfo.Input[] {
                     new FuncInfo.Input("param1", TYPE_INT, null)
@@ -334,27 +339,6 @@ class GetAPITest {
             LOG.info("Expected exception: " + ex);
         }
         LOG.infoExiting();
-
-        LOG.infoEntering("check return value", "str");
-        final String str = "Hello world";
-        RpcObject params = new RpcObject.Builder()
-                .put("param1", new RpcValue(str))
-                .build();
-        RpcItem result = testScore.call("param_str", params);
-        LOG.info("expected (" + str + "), got (" + result.asString() + ")");
-        assertEquals(str, result.asString());
-        LOG.infoExiting();
-
-        LOG.infoEntering("check return value", "bytes");
-        byte[] bytes = str.getBytes();
-        params = new RpcObject.Builder()
-                .put("param1", new RpcValue(bytes))
-                .build();
-        result = testScore.call("param_bytes", params);
-        Bytes expected = new Bytes(bytes);
-        LOG.info("expected (" + expected + "), got (" + result.asString() + ")");
-        assertEquals(expected.toString(), result.asString());
-        LOG.infoExiting();
     }
 
     private List<ScoreApi> getScoreApi(String addr) throws IOException {
@@ -364,5 +348,103 @@ class GetAPITest {
                 .build();
         foundation.icon.icx.transport.jsonrpc.Request request = new foundation.icon.icx.transport.jsonrpc.Request(requestId, "icx_getScoreApi", params);
         return new HttpProvider(Env.nodes[0].channels[0].getAPIUrl(Env.testApiVer)).request(request, Converters.SCORE_API_LIST).execute();
+    }
+
+    @Test
+    public void checkReturnValue() throws Exception {
+        LOG.infoEntering("deployScore", "ScoreApi");
+        KeyWallet owner = KeyWallet.create();
+        Score testScore = txHandler.deploy(owner, SCORE_API_PATH, null);
+        LOG.infoExiting();
+
+        LOG.infoEntering("check", "int");
+        BigInteger intVal = BigInteger.valueOf(256);
+        RpcObject params = new RpcObject.Builder()
+                .put("param1", new RpcValue(intVal))
+                .build();
+        RpcItem result = testScore.call("param_int", params);
+        LOG.info("expected (" + intVal + "), got (" + result.asInteger() + ")");
+        assertEquals(intVal, result.asInteger());
+        LOG.infoExiting();
+
+        LOG.infoEntering("check", "str");
+        final String str = "Hello world";
+        params = new RpcObject.Builder()
+                .put("param1", new RpcValue(str))
+                .build();
+        result = testScore.call("param_str", params);
+        LOG.info("expected (" + str + "), got (" + result.asString() + ")");
+        assertEquals(str, result.asString());
+        LOG.infoExiting();
+
+        LOG.infoEntering("check", "bytes");
+        byte[] bytes = str.getBytes();
+        params = new RpcObject.Builder()
+                .put("param1", new RpcValue(bytes))
+                .build();
+        result = testScore.call("param_bytes", params);
+        Bytes expected = new Bytes(bytes);
+        LOG.info("expected (" + expected + "), got (" + result.asString() + ")");
+        assertEquals(expected.toString(), result.asString());
+        LOG.infoExiting();
+
+        LOG.infoEntering("check", "bool");
+        params = new RpcObject.Builder()
+                .put("param1", new RpcValue(true))
+                .build();
+        result = testScore.call("param_bool", params);
+        LOG.info("expected (" + true + "), got (" + result.asBoolean() + ")");
+        assertTrue(result.asBoolean());
+        LOG.infoExiting();
+
+        LOG.infoEntering("check", "Address");
+        params = new RpcObject.Builder()
+                .put("param1", new RpcValue(owner.getAddress()))
+                .build();
+        result = testScore.call("param_Address", params);
+        LOG.info("expected (" + owner.getAddress() + "), got (" + result.asString() + ")");
+        assertEquals(owner.getAddress(), result.asAddress());
+        LOG.infoExiting();
+
+        final String[] rtype = {"int", "str", "bytes", "bool", "Address"};
+        final String[][] values = {
+                {"0x0", "0x1", "0x64"},
+                {"hello", "world"},
+                {"0x68656c6c6f", "0x776f726c64"},
+                {"0x1", "0x0"},
+                {testScore.getAddress().toString(), owner.getAddress().toString()},
+        };
+
+        LOG.infoEntering("check", "list");
+        for (int i = 0; i < rtype.length; i++) {
+            LOG.infoEntering("arrayOf", rtype[i]);
+            params = new RpcObject.Builder()
+                    .put("rtype", new RpcValue(rtype[i]))
+                    .build();
+            result = testScore.call("return_list", params);
+            RpcArray arr = result.asArray();
+            for (int j = 0; j < arr.size(); j++) {
+                LOG.info("expected (" + values[i][j] + "), got (" + arr.get(j) + ")");
+                assertEquals(values[i][j], arr.get(j).asString());
+            }
+            LOG.infoExiting();
+        }
+        LOG.infoExiting();
+
+        LOG.infoEntering("check", "dict");
+        for (int i = 0; i < rtype.length; i++) {
+            LOG.infoEntering("dictOf", rtype[i]);
+            params = new RpcObject.Builder()
+                    .put("rtype", new RpcValue(rtype[i]))
+                    .build();
+            result = testScore.call("return_dict", params);
+            RpcObject map = result.asObject();
+            for (int j = 0; j < map.keySet().size(); j++) {
+                LOG.info("expected (" + values[i][j] + "), got (" + map.getItem("key" + j) + ")");
+                assertEquals(values[i][j], map.getItem("key" + j).asString());
+            }
+            LOG.infoExiting();
+        }
+        LOG.infoExiting();
     }
 }

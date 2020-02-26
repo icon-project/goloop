@@ -102,3 +102,48 @@ func MustDecodeAny(o *codec.TypedObj) interface{} {
 func UnmarshalAny(bs []byte) (interface{}, error) {
 	return codec.UnmarshalAny(TypeCodec, bs)
 }
+
+func DecodeAnyForResponse(o *codec.TypedObj) (interface{}, error) {
+	value, err := codec.DecodeAny(TypeCodec, o)
+	if err != nil {
+		return value, err
+	}
+	return convertType(value)
+}
+
+func convertType(o interface{}) (interface{}, error) {
+	switch obj := o.(type) {
+	case []byte:
+		return HexBytes(obj), nil
+	case bool:
+		b := new(HexInt)
+		if obj {
+			b.SetBytes(codec.TrueBytes)
+		} else {
+			b.SetBytes(codec.FalseBytes)
+		}
+		return b, nil
+	case []interface{}:
+		l := make([]interface{}, len(obj))
+		for i, o := range obj {
+			if co, err := convertType(o); err != nil {
+				return nil, err
+			} else {
+				l[i] = co
+			}
+		}
+		return l, nil
+	case map[string]interface{}:
+		m := make(map[string]interface{})
+		for k, o := range obj {
+			if co, err := convertType(o); err != nil {
+				return nil, err
+			} else {
+				m[k] = co
+			}
+		}
+		return m, nil
+	default:
+		return obj, nil
+	}
+}

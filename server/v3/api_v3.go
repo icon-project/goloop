@@ -185,9 +185,6 @@ func call(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	if err != nil {
 		return nil, jsonrpc.ErrScore(err, debug)
 	} else {
-		if b, ok := result.([]byte); ok {
-			return "0x" + hex.EncodeToString(b), nil
-		}
 		return result, nil
 	}
 }
