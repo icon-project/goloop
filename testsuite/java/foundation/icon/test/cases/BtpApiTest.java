@@ -22,6 +22,7 @@ import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.crypto.IconKeys;
 import foundation.icon.icx.data.Base64;
+import foundation.icon.icx.data.Block;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
@@ -244,13 +245,55 @@ public class BtpApiTest extends TestBase {
 
     @Test
     public void negativeTest() throws Exception {
+        final long ErrNotFound = -31004;
+
         LOG.infoEntering("getVotesByHeight");
         try {
             // test with non-existent height
             iconService.getVotesByHeight(BigInteger.valueOf(99999999)).execute();
             fail();
         } catch (RpcError e) {
-            LOG.info("Expected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
+            if (e.getCode() == ErrNotFound) {
+                LOG.info("Expected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
+            } else {
+                LOG.info("Unexpected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
+                fail();
+            }
+        }
+        LOG.infoExiting();
+
+        LOG.infoEntering("getProofForResult");
+        KeyWallet wallet = KeyWallet.create();
+        Bytes txHash = txHandler.transfer(wallet.getAddress(), BigInteger.ONE);
+        TransactionResult txResult = txHandler.getResult(txHash);
+        BigInteger height = txResult.getBlockHeight();
+        Block txBlock = iconService.getBlock(height).execute();
+        Block resultBlock = iconService.getBlock(height.add(BigInteger.ONE)).execute();
+        try {
+            // test with invalid block hash
+            BigInteger index = txResult.getTxIndex();
+            iconService.getProofForResult(txBlock.getBlockHash(), index).execute();
+            fail();
+        } catch (RpcError e) {
+            if (e.getCode() == ErrNotFound) {
+                LOG.info("Expected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
+            } else {
+                LOG.info("Unexpected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
+                fail();
+            }
+        }
+        try {
+            // test with invalid index
+            BigInteger invalidIndex = BigInteger.valueOf(txBlock.getTransactions().size() + 1);
+            iconService.getProofForResult(resultBlock.getBlockHash(), invalidIndex).execute();
+            fail();
+        } catch (RpcError e) {
+            if (e.getCode() == ErrNotFound) {
+                LOG.info("Expected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
+            } else {
+                LOG.info("Unexpected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
+                fail();
+            }
         }
         LOG.infoExiting();
     }
