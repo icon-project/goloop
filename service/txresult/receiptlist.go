@@ -60,7 +60,7 @@ func (l *receiptList) GetProof(n int) ([][]byte, error) {
 	}
 	proof := l.immutableTrie.GetProof(b)
 	if proof == nil {
-		return nil, errors.ErrIllegalArgument
+		return nil, errors.ErrNotFound
 	}
 	return proof, nil
 }
