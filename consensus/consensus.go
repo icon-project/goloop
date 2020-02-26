@@ -1611,7 +1611,7 @@ func (cs *consensus) GetVotesByHeight(height int64) (module.CommitVoteSet, error
 		return nil, err
 	}
 	if c.commitVotes == nil {
-		err = errors.NotFoundError.New("Not found")
+		return nil, errors.NotFoundError.New("Not found")
 	}
 	return c.commitVotes, nil
 }
