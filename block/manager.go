@@ -1064,7 +1064,7 @@ func (m *manager) getTransactionInfo(id []byte) (module.TransactionInfo, error) 
 	var loc transactionLocator
 	err = tlb.get(raw(id), &loc)
 	if err != nil {
-		return nil, errors.NotFoundError.New("Not found")
+		return nil, errors.ErrNotFound
 	}
 	block, err := m.getBlockByHeight(loc.BlockHeight)
 	if err != nil {
@@ -1122,7 +1122,7 @@ func (m *manager) getTransactionLocator(id []byte) (*transactionLocator, error) 
 	loc := new(transactionLocator)
 	err = tlb.get(raw(id), loc)
 	if err != nil {
-		return nil, errors.NotFoundError.New("Not found")
+		return nil, errors.ErrNotFound
 	}
 	return loc, nil
 }

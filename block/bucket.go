@@ -54,7 +54,7 @@ func (b *bucket) getBytes(key interface{}) ([]byte, error) {
 	}
 	bs, err := b.dbBucket.Get(keyBS)
 	if bs == nil && err == nil {
-		err = errors.NotFoundError.New("Not found")
+		err = errors.ErrNotFound
 	}
 	return bs, err
 }

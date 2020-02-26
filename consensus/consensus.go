@@ -1611,14 +1611,14 @@ func (cs *consensus) GetVotesByHeight(height int64) (module.CommitVoteSet, error
 		return nil, err
 	}
 	if c.commitVotes == nil {
-		return nil, errors.NotFoundError.New("Not found")
+		return nil, errors.ErrNotFound
 	}
 	return c.commitVotes, nil
 }
 
 func (cs *consensus) getCommit(h int64) (*commit, error) {
 	if h > cs.height || (h == cs.height && cs.step < stepCommit) {
-		return nil, errors.NotFoundError.New("Not found")
+		return nil, errors.ErrNotFound
 	}
 
 	c := cs.commitCache.GetByHeight(h)
