@@ -174,7 +174,7 @@ public class BtpApiTest extends TestBase {
             }
         }
         if (twoThirds >= match) {
-            fail("match must be bigger than twoThirds but match (" + match + "), twoThrids (" + twoThirds + ")");
+            fail("match must be bigger than twoThirds but match (" + match + "), twoThirds (" + twoThirds + ")");
         }
         LOG.infoExiting();
     }

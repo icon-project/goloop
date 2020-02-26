@@ -163,7 +163,7 @@ func (srv *Manager) Start() error {
 	g.Use(middleware.BodyDump(func(c echo.Context, reqBody []byte, resBody []byte) {
 		if srv.MessageDump() {
 			srv.logger.Printf("request=%s", reqBody)
-			srv.logger.Printf("respose=%s", resBody)
+			srv.logger.Printf("response=%s", resBody)
 		}
 	}))
 	g.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -181,7 +181,7 @@ func (srv *Manager) Start() error {
 	srv.e.GET("/api/v3/:channel/event", srv.wssm.RunEventSession, ChainInjector(srv))
 
 	// metric
-	srv.e.GET("/metrics", echo.WrapHandler(metric.PromethusExporter()))
+	srv.e.GET("/metrics", echo.WrapHandler(metric.PrometheusExporter()))
 
 	// document: redoc
 	// opts := RedocOpts{

@@ -131,7 +131,7 @@ func Initialize(w module.Wallet) {
 	})
 }
 
-func PromethusExporter() *prometheus.Exporter {
+func PrometheusExporter() *prometheus.Exporter {
 	// prometheus
 	pe, err := prometheus.NewExporter(prometheus.Options{
 		Namespace: "goloop",
