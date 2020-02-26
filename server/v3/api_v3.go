@@ -522,6 +522,9 @@ func getProofForResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{
 	}
 	proofs, err := receiptList.GetProof(idx)
 	if err != nil {
+		if errors.NotFoundError.Equals(err) {
+			return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+		}
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 
@@ -695,4 +698,102 @@ func waitTransactionResultOnChannel(ctx *jsonrpc.Context, bm module.BlockManager
 	result["txHash"] = "0x" + hex.EncodeToString(id)
 
 	return result, nil
+}
+
+func DebugMethodRepository() *jsonrpc.MethodRepository {
+	mr := jsonrpc.NewMethodRepository()
+
+	mr.RegisterMethod("dbg_getTraceByHash", getTraceByHash)
+
+	return mr
+}
+
+type traceCallback struct {
+	result chan interface{}
+}
+
+func (cb traceCallback) OnValidate(t module.Transition, err error) {
+	cb.result <- err
+}
+
+func (cb traceCallback) OnExecute(t module.Transition, err error) {
+	cb.result <- err
+}
+
+func getTraceByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
+	debug := ctx.IncludeDebug()
+
+	var param TransactionHashParam
+	if err := params.Convert(&param); err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+
+	chain, err := ctx.Chain()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
+	}
+
+	bm := chain.BlockManager()
+	sm := chain.ServiceManager()
+
+	txInfo, err := bm.GetTransactionInfo(param.Hash.Bytes())
+	if errors.NotFoundError.Equals(err) {
+		if sm.HasTransaction(param.Hash.Bytes()) {
+			return nil, jsonrpc.ErrorCodePending.New("Pending")
+		}
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	} else if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+
+	if txInfo.Group() == module.TransactionGroupPatch {
+		return nil, jsonrpc.ErrorCodeInvalidParams.New("Patch transaction can't be replayed")
+	}
+
+	blk := txInfo.Block()
+	_, err = txInfo.GetReceipt()
+	if block.ResultNotFinalizedError.Equals(err) {
+		return nil, jsonrpc.ErrorCodeExecuting.New("Executing")
+	} else if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	nblk, err := bm.GetBlockByHeight(blk.Height() + 1)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	tr1, err := sm.CreateInitialTransition(blk.Result(), blk.NextValidators())
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	tr2, err := sm.CreateTransition(tr1, blk.NormalTransactions(), blk)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	tr2 = sm.PatchTransition(tr2, nblk.PatchTransactions(), nblk)
+
+	cbChannel := make(chan interface{}, 10)
+	canceller, err := tr2.Execute(traceCallback{result: cbChannel})
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+
+	timer := time.After(time.Second * 5)
+	response := make([]interface{}, 0, 100)
+	for {
+		select {
+		case <-timer:
+			canceller()
+			return nil, jsonrpc.ErrorCodeSystemTimeout.Errorf(
+				"Not enough time to get result of %x", param.Hash.Bytes())
+		case msg := <-cbChannel:
+			switch obj := msg.(type) {
+			case error:
+				response = append(response, obj)
+				break
+			default:
+				response = append(response, obj)
+			}
+		}
+	}
+	return response, nil
 }
