@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -19,7 +20,7 @@ import (
 const (
 	flagENABLE  int32 = 1
 	flagDISABLE int32 = 0
-	UrlAdmin = "/admin"
+	UrlAdmin          = "/admin"
 )
 
 type Manager struct {
@@ -157,6 +158,7 @@ func (srv *Manager) Start() error {
 
 	// method
 	mr := v3.MethodRepository()
+	dmr := v3.DebugMethodRepository()
 
 	// jsonrpc
 	g := srv.e.Group("/api")
@@ -172,9 +174,15 @@ func (srv *Manager) Start() error {
 			return next(ctx)
 		}
 	})
-	g.Use(JsonRpc(mr), Chunk())
-	g.POST("/v3", mr.Handle, ChainInjector(srv))
-	g.POST("/v3/:channel", mr.Handle, ChainInjector(srv))
+	v3api := g.Group("/v3")
+	v3api.Use(JsonRpc(mr), Chunk())
+	v3api.POST("", mr.Handle, ChainInjector(srv))
+	v3api.POST("/:channel", mr.Handle, ChainInjector(srv))
+
+	v3dbg := g.Group("/v3d")
+	v3dbg.Use(srv.CheckDebug(), JsonRpc(dmr), Chunk())
+	v3dbg.POST("", dmr.Handle, ChainInjector(srv))
+	v3dbg.POST("/:channel", dmr.Handle, ChainInjector(srv))
 
 	// websocket
 	srv.e.GET("/api/v3/:channel/block", srv.wssm.RunBlockSession, ChainInjector(srv))
@@ -192,6 +200,17 @@ func (srv *Manager) Start() error {
 
 	// Start server : main loop
 	return srv.e.Start(srv.addr)
+}
+
+func (srv *Manager) CheckDebug() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(ctx echo.Context) error {
+			if !srv.IncludeDebug() {
+				return ctx.String(http.StatusNotFound, "rpc_debug is false")
+			}
+			return next(ctx)
+		}
+	}
 }
 
 func (srv *Manager) Stop() error {

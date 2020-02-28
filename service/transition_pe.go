@@ -72,7 +72,7 @@ func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, c
 			return err
 		}
 		wc, err2 := txh.Prepare(ctx)
-		ctx = contract.NewContext(wc, t.cm, t.eem, t.chain, t.log)
+		ctx = contract.NewContext(wc, t.cm, t.eem, t.chain, t.log, t.ti)
 		if err2 != nil {
 			t.log.Debugf("Fail to prepare for %+v", err2)
 			return err2
@@ -81,6 +81,7 @@ func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, c
 		ec.Ready()
 		go func(ctx contract.Context, wc state.WorldContext, txo transaction.Transaction, cnt int, rb *txresult.Receipt) {
 			ctx.SetTransactionInfo(&state.TransactionInfo{
+				Group:     txo.Group(),
 				Index:     int32(cnt),
 				Timestamp: txo.Timestamp(),
 				Nonce:     txo.Nonce(),
@@ -112,7 +113,7 @@ func (t *transition) executeTxsConcurrent(level int, l module.TransactionList, c
 					ec.Report(err)
 					break
 				}
-				ctx = contract.NewContext(wc, t.cm, t.eem, t.chain, t.log)
+				ctx = contract.NewContext(wc, t.cm, t.eem, t.chain, t.log, t.ti)
 			}
 			wvs.Commit()
 			ec.Done()

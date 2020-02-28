@@ -37,6 +37,18 @@ func Wrap(e error, s module.Status, msg string) error {
 	return errors.Wrapc(e, codeForStatus(s), msg)
 }
 
+func Validate(e error) error {
+	if s, ok := StatusOf(e); !ok {
+		return WithStatus(e, s)
+	}
+	return e
+}
+
+func IsValid(e error) bool {
+	_, ok := StatusOf(e)
+	return ok
+}
+
 func StatusOf(e error) (module.Status, bool) {
 	if e == nil {
 		return module.StatusSuccess, true

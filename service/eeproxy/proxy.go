@@ -7,6 +7,7 @@ import (
 	"github.com/gofrs/uuid"
 
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/service/trace"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -63,6 +64,7 @@ type CallContext interface {
 	SetCode(code []byte) error
 	GetObjGraph(bool) (int, []byte, []byte, error)
 	SetObjGraph(flags bool, nextHash int, objGraph []byte) error
+	Logger() log.Logger
 }
 
 type Proxy interface {
@@ -81,6 +83,7 @@ type proxyManager interface {
 type callFrame struct {
 	addr module.Address
 	ctx  CallContext
+	log  *trace.Logger
 
 	prev *callFrame
 }
@@ -96,7 +99,7 @@ type proxy struct {
 	uid       string
 	scoreType string
 
-	log log.Logger
+	log *trace.Logger
 
 	frame *callFrame
 
@@ -168,7 +171,20 @@ type setObjGraphMessage struct {
 	ObjectGraph []byte
 }
 
+func traceLevelOf(lv log.Level) (module.TraceLevel, bool) {
+	switch lv {
+	case log.DebugLevel:
+		return module.TDebugLevel, true
+	case log.TraceLevel:
+		return module.TTraceLevel, true
+	default:
+		return module.TSystemLevel, false
+	}
+}
+
 func (p *proxy) Invoke(ctx CallContext, code string, isQuery bool, from, to module.Address, value, limit *big.Int, method string, params *codec.TypedObj) error {
+	logger := trace.LoggerOf(ctx.Logger().WithFields(log.Fields{log.FieldKeyEID: p.uid}))
+
 	var m invokeMessage
 	m.Code = code
 	m.IsQry = isQuery
@@ -188,26 +204,34 @@ func (p *proxy) Invoke(ctx CallContext, code string, isQuery bool, from, to modu
 		m.Info = eo
 	}
 
-	p.log.Tracef("Proxy[%p].Invoke code=%s query=%v from=%v to=%v value=%v limit=%v method=%s\n", p, code, isQuery, from, to, value, limit, method)
+	logger.Tracef("Proxy[%p].Invoke code=%s query=%v from=%v to=%v value=%v limit=%v method=%s", p, code, isQuery, from, to, value, limit, method)
 
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	p.frame = &callFrame{
 		addr: to,
 		ctx:  ctx,
+		log:  p.log,
 		prev: p.frame,
 	}
+	p.log = logger
 	return p.conn.Send(msgINVOKE, &m)
 }
 
 func (p *proxy) GetAPI(ctx CallContext, code string) error {
+	logger := trace.LoggerOf(ctx.Logger().WithFields(log.Fields{log.FieldKeyEID: p.uid}))
+
+	logger.Tracef("Proxy[%p].GetAPI(code=%s)", p, code)
+
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	p.frame = &callFrame{
 		addr: nil,
 		ctx:  ctx,
+		log:  p.log,
 		prev: p.frame,
 	}
+	p.log = logger
 	return p.conn.Send(msgGETAPI, code)
 }
 
@@ -265,6 +289,7 @@ func (p *proxy) popFrame() *callFrame {
 
 	if p.frame != nil {
 		frame := p.frame
+		p.log = frame.log
 		p.frame = frame.prev
 		return frame
 	}
@@ -327,6 +352,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		var m getValueMessage
 		if value, err := p.frame.ctx.GetValue(key); err != nil {
 			p.log.Tracef("Proxy[%p].GetValue key=<%x> err=%+v", p, key, err)
+			p.log.TSystemf("GETVALUE key=<%x> err=%+v", key, err)
 			return err
 		} else {
 			if value != nil {
@@ -337,6 +363,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 				m.Value = nil
 			}
 			p.log.Tracef("Proxy[%p].GetValue key=<%x> value=<%x>", p, key, value)
+			p.log.TSystemf("GETVALUE key=<%x> value=<%x>", key, value)
 		}
 		return p.conn.Send(msgGETVALUE, &m)
 
@@ -347,9 +374,11 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		}
 		if m.IsDelete {
 			p.log.Tracef("Proxy[%p].Delete key=<%x>", p, m.Key)
+			p.log.TSystemf("DELETE key=<%x>", m.Key)
 			return p.frame.ctx.DeleteValue(m.Key)
 		} else {
 			p.log.Tracef("Proxy[%p].SetValue key=<%x> value=<%x>", p, m.Key, m.Value)
+			p.log.TSystemf("SETVALUE key=<%x> value=<%x>", m.Key, m.Value)
 			return p.frame.ctx.SetValue(m.Key, m.Value)
 		}
 
@@ -358,7 +387,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
 			return err
 		}
-		p.log.Tracef("Proxy[%p].OnCall from=%v to=%v value=%v steplimit=%v method=%s\n",
+		p.log.Tracef("Proxy[%p].OnCall from=%v to=%v value=%v steplimit=%v method=%s",
 			p, p.frame.addr, &m.To, &m.Value.Int, &m.Limit.Int, m.Method)
 		p.frame.ctx.OnCall(p.frame.addr,
 			&m.To, &m.Value.Int, &m.Limit.Int, m.Method, m.Params)
@@ -383,6 +412,7 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		balance.Set(p.frame.ctx.GetBalance(&addr))
 		p.log.Tracef("Proxy[%p].GetBalance(%s) -> %s",
 			p, &addr, &balance)
+		p.log.TSystemf("GETBALANCE addr=%s value=%s", &addr, &balance)
 		return p.conn.Send(msgGETBALANCE, &balance)
 
 	case msgGETAPI:
@@ -414,6 +444,9 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		p.lock.Lock()
 		defer p.lock.Unlock()
 
+		if tl, ok := traceLevelOf(m.Level); ok {
+			p.log.TLog(tl, m.Message)
+		}
 		if p.frame != nil && p.frame.addr != nil {
 			p.log.Log(m.Level, p.scoreType, "|",
 				common.StrLeft(10, p.frame.addr.String()), "|", m.Message)
@@ -523,10 +556,13 @@ func (p *proxy) attachTo(r **proxy) {
 }
 
 func newProxy(m proxyManager, c ipc.Connection, l log.Logger, t string, v uint16, uid string) (*proxy, error) {
+	logger := trace.LoggerOf(l.WithFields(log.Fields{
+		log.FieldKeyEID: uid,
+	}))
 	p := &proxy{
 		mgr:  m,
 		conn: c,
-		log:  l,
+		log:  logger,
 
 		scoreType: t,
 		version:   v,
@@ -546,9 +582,6 @@ func newProxy(m proxyManager, c ipc.Connection, l log.Logger, t string, v uint16
 	c.SetHandler(msgGETOBJGRAPH, p)
 	c.SetHandler(msgSETOBJGRAPH, p)
 
-	p.log = p.log.WithFields(log.Fields{
-		log.FieldKeyEID: p.uid,
-	})
 	if err := m.onReady(t, p); err != nil {
 		p.state = stateStopped
 		return nil, err

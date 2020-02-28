@@ -448,6 +448,10 @@ func (tr *testTransition) Execute(cb module.TransitionCallback) (canceler func()
 	}, nil
 }
 
+func (tr *testTransition) ExecuteForTrace(ti module.TraceInfo) (canceler func() bool, err error) {
+	return nil, errors.ErrUnsupported
+}
+
 func (tr *testTransition) Result() []byte {
 	tr.Lock()
 	defer tr.Unlock()

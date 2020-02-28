@@ -103,7 +103,7 @@ func UnmarshalAny(bs []byte) (interface{}, error) {
 	return codec.UnmarshalAny(TypeCodec, bs)
 }
 
-func DecodeAnyForResponse(o *codec.TypedObj) (interface{}, error) {
+func DecodeAnyForJSON(o *codec.TypedObj) (interface{}, error) {
 	value, err := codec.DecodeAny(TypeCodec, o)
 	if err != nil {
 		return value, err

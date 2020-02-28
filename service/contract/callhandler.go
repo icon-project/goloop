@@ -14,6 +14,7 @@ import (
 	"github.com/icon-project/goloop/service/scoreapi"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/service/trace"
 )
 
 const (
@@ -142,7 +143,11 @@ func (h *CallHandler) contract(as state.AccountState) state.Contract {
 }
 
 func (h *CallHandler) ExecuteAsync(cc CallContext) error {
+	h.log = trace.LoggerOf(cc.Logger())
 	h.cc = cc
+	h.cm = cc.ContractManager()
+
+	h.log.TSystemf("INVOKE start score=%s method=%s", h.to, h.method)
 
 	// Calculate steps
 	if !h.forDeploy {
@@ -160,43 +165,29 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 	}
 	cc.SetContractInfo(&state.ContractInfo{Owner: h.as.ContractOwner()})
 
-	// Set up contract files
 	c := h.contract(h.as)
 	if c == nil {
 		return scoreresult.New(module.StatusContractNotFound, "NotActiveContract")
 	}
 
-	if strings.Compare(c.ContentType(), state.CTAppSystem) == 0 {
-		h.isSysCall = true
-
-		var status error
-		var result *codec.TypedObj
-		from := h.from
-		if from == nil {
-			from = common.NewAddress(state.SystemID)
-		}
-		sScore, err := GetSystemScore(CID_CHAIN, from, cc, h.log)
-		if err != nil {
-			return err
-		}
-		err = h.ensureParamObj()
-		if err == nil {
-			var step *big.Int
-			status, result, step = Invoke(sScore, h.method, h.paramObj)
-			h.DeductSteps(step)
-			go func() {
-				cc.OnResult(status, h.StepUsed(), result, nil)
-			}()
-		}
+	if err := h.ensureParamObj(); err != nil {
 		return err
 	}
 
-	h.cm = cc.ContractManager()
+	if strings.Compare(c.ContentType(), state.CTAppSystem) == 0 {
+		return h.invokeSystemMethod(cc, c)
+	}
+	return h.invokeEEMethod(cc, c)
+}
+
+func (h *CallHandler) invokeEEMethod(cc CallContext, c state.Contract) error {
 	h.conn = cc.GetProxy(h.EEType())
 	if h.conn == nil {
 		return errors.ExecutionFailError.Errorf(
 			"FAIL to get connection for (%s)", h.EEType())
 	}
+
+	// Set up contract files
 	if err := h.prepareContractStore(cc, cc, c); err != nil {
 		h.log.Warnf("FAIL to prepare contract. err=%+v\n", err)
 		return errors.CriticalIOError.Wrap(err, "FAIL to prepare contract")
@@ -210,14 +201,37 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) error {
 	// Execute
 	h.lock.Lock()
 	if !h.disposed {
-		if err = h.ensureParamObj(); err == nil {
-			err = h.conn.Invoke(h, path, h.cc.QueryMode(), h.from, h.to,
-				h.value, h.StepAvail(), h.method, h.paramObj)
-		}
+		err = h.conn.Invoke(h, path, h.cc.QueryMode(), h.from, h.to,
+			h.value, h.StepAvail(), h.method, h.paramObj)
 	}
 	h.lock.Unlock()
 
 	return err
+}
+
+func (h *CallHandler) invokeSystemMethod(cc CallContext, c state.Contract) error {
+	h.isSysCall = true
+
+	var cid string
+	if code, err := c.Code(); err != nil {
+		if len(code) == 0 {
+			cid = CID_CHAIN
+		} else {
+			cid = string(cid)
+		}
+	}
+
+	score, err := GetSystemScore(cid, cc, h.from)
+	if err != nil {
+		return err
+	}
+
+	status, result, step := Invoke(score, h.method, h.paramObj)
+	go func() {
+		h.OnResult(status, step, result)
+	}()
+
+	return nil
 }
 
 func (h *CallHandler) ensureParamObj() error {
@@ -241,6 +255,17 @@ func (h *CallHandler) ensureParamObj() error {
 }
 
 func (h *CallHandler) SendResult(status error, steps *big.Int, result *codec.TypedObj) error {
+	if h.log.IsTrace() {
+		if status == nil {
+			po, _ := common.DecodeAnyForJSON(result)
+			h.log.TSystemf("INVOKE return status=%s steps=%v result=%s",
+				module.StatusSuccess, steps, trace.ToJSON(po))
+		} else {
+			s, _ := scoreresult.StatusOf(status)
+			h.log.TSystemf("INVOKE return status=%s steps=%v msg=%s",
+				s, steps, status.Error())
+		}
+	}
 	if !h.isSysCall {
 		if h.conn == nil {
 			return errors.ExecutionFailError.Errorf(
@@ -263,7 +288,7 @@ func (h *CallHandler) Dispose() {
 	h.lock.Unlock()
 }
 
-func (h *CallHandler) EEType() string {
+func (h *CallHandler) EEType() state.EEType {
 	c := h.contract(h.as)
 	if c == nil {
 		h.log.Debugf("No associated contract exists. forDeploy(%d), Active(%v), Next(%v)\n",
@@ -320,12 +345,27 @@ func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) {
 
 func (h *CallHandler) OnResult(status error, steps *big.Int, result *codec.TypedObj) {
 	h.DeductSteps(steps)
+	if h.log.IsTrace() {
+		if status != nil {
+			s, _ := scoreresult.StatusOf(status)
+			h.log.TSystemf("INVOKE done status=%s msg=%v steps=%s", s, status, steps)
+		} else {
+			obj, _ := common.DecodeAnyForJSON(result)
+			h.log.TSystemf("INVOKE done status=%s steps=%s result=%s",
+				module.StatusSuccess, steps, trace.ToJSON(obj))
+		}
+	}
 	h.cc.OnResult(status, h.StepUsed(), result, nil)
 }
 
 func (h *CallHandler) OnCall(from, to module.Address, value,
 	limit *big.Int, method string, params *codec.TypedObj,
 ) {
+	if h.log.IsTrace() {
+		po, _ := common.DecodeAnyForJSON(params)
+		h.log.TSystemf("INVOKE call from=%v to=%v value=%v steplimit=%v method=%s params=%s",
+			from, to, value, limit, method, trace.ToJSON(po))
+	}
 	h.cc.OnCall(h.cm.GetCallHandler(from, to, value, limit, method, params))
 }
 

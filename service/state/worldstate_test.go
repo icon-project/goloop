@@ -65,7 +65,7 @@ func TestNewWorldStateWithContract(t *testing.T) {
 	type testStruct struct {
 		testStatus      ContractState
 		testContentType string
-		testEeType      string
+		testEeType      EEType
 		testApiInfo     []byte
 		testCode        []byte
 		testAuditTx     []byte
@@ -124,7 +124,7 @@ func TestNewWorldStateWithContract(t *testing.T) {
 		if strings.Compare(c.ContentType(), test[i].testContentType) != 0 {
 			log.Panicf("Invalid contentType %s\n", c.ContentType())
 		}
-		if strings.Compare(c.EEType(), test[i].testEeType) != 0 {
+		if c.EEType() != test[i].testEeType {
 			log.Panicf("Invalid EEType")
 		}
 	}

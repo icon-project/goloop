@@ -7,6 +7,7 @@ import (
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/service/trace"
 	"github.com/icon-project/goloop/service/txresult"
 
 	"github.com/icon-project/goloop/common/errors"
@@ -100,6 +101,11 @@ func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, e
 
 	// Set up
 	th.cc = contract.NewCallContext(ctx, th.receipt, false)
+	logger := trace.LoggerOf(th.cc.Logger())
+	th.chandler.ResetLogger(logger)
+
+	logger.TSystemf("TRANSACTION start to=%s from=%s", th.to, th.from)
+
 	if th.chandler.StepLimit().Cmp(ctx.GetStepLimit(LimitTypeInvoke)) > 0 {
 		th.chandler.ResetSteps(ctx.GetStepLimit(LimitTypeInvoke))
 	}
@@ -161,6 +167,8 @@ func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, e
 	// Make a receipt
 	s, _ := scoreresult.StatusOf(status)
 	th.receipt.SetResult(s, th.chandler.StepUsed(), stepPrice, addr)
+
+	logger.TSystemf("TRANSACTION done status=%s steps=%s price=%s", s, th.chandler.StepUsed(), stepPrice)
 
 	return th.receipt, nil
 }

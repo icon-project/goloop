@@ -85,19 +85,23 @@ func (cc *callContext) OnAPI(status error, info *scoreapi.Info) {
 	fmt.Printf("CallContext.OnAPI(%d,%+v)\n", status, info)
 }
 
-func (h *callContext) SetCode(code []byte) error {
+func (cc *callContext) SetCode(code []byte) error {
 	fmt.Println("CallContext.SetCode")
 	return nil
 }
 
-func (h *callContext) GetObjGraph(flags bool) (int, []byte, []byte, error) {
+func (cc *callContext) GetObjGraph(flags bool) (int, []byte, []byte, error) {
 	fmt.Printf("CallContext.GetObjGraph(%t)\n", flags)
 	return 0, nil, nil, nil
 }
 
-func (h *callContext) SetObjGraph(flags bool, nextHash int, objGraph []byte) error {
+func (cc *callContext) SetObjGraph(flags bool, nextHash int, objGraph []byte) error {
 	fmt.Printf("CallContext.SetObjGraph(%t,%d,%#x)\n", flags, nextHash, objGraph)
 	return nil
+}
+
+func (cc *callContext) Logger() log.Logger {
+	return log.GlobalLogger()
 }
 
 func makeTransactions(cc *callContext, mgr eeproxy.Manager) {

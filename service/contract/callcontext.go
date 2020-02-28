@@ -15,6 +15,7 @@ import (
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/service/trace"
 	"github.com/icon-project/goloop/service/txresult"
 )
 
@@ -28,7 +29,7 @@ type (
 		OnEvent(addr module.Address, indexed, data [][]byte)
 		GetBalance(module.Address) *big.Int
 		ReserveExecutor() error
-		GetProxy(eeType string) eeproxy.Proxy
+		GetProxy(eeType state.EEType) eeproxy.Proxy
 		Dispose()
 	}
 	callResultMessage struct {
@@ -54,10 +55,21 @@ type callContext struct {
 	stack  list.List
 	waiter chan interface{}
 
-	log log.Logger
+	log *trace.Logger
 }
 
 func NewCallContext(ctx Context, receipt txresult.Receipt, isQuery bool) CallContext {
+	logger := trace.LoggerOf(ctx.Logger())
+	ti := ctx.TraceInfo()
+	if ti != nil {
+		var info state.TransactionInfo
+		if ctx.GetTransactionInfo(&info) {
+			if info.Group == ti.Group && int(info.Index) == ti.Index {
+				logger = trace.NewLogger(logger.Logger, ti.Callback)
+			}
+		}
+	}
+
 	return &callContext{
 		Context: ctx,
 		receipt: receipt,
@@ -65,12 +77,16 @@ func NewCallContext(ctx Context, receipt txresult.Receipt, isQuery bool) CallCon
 		// 0-buffered channel is fine, but it sets some number just in case of
 		// EE unexpectedly sends messages up to 8.
 		waiter: make(chan interface{}, 8),
-		log:    ctx.Logger(),
+		log:    logger,
 	}
 }
 
 func (cc *callContext) QueryMode() bool {
 	return cc.isQuery
+}
+
+func (cc *callContext) Logger() log.Logger {
+	return cc.log
 }
 
 type eventLog struct {
@@ -208,6 +224,8 @@ func (cc *callContext) validateStatus(status error) error {
 }
 
 func (cc *callContext) Call(handler ContractHandler) (error, *big.Int, *codec.TypedObj, module.Address) {
+	handler.ResetLogger(cc.Logger())
+
 	switch handler := handler.(type) {
 	case SyncContractHandler:
 		e := cc.pushFrame(handler, false)
@@ -254,6 +272,8 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (error, *big.Int, *codec.T
 				}
 				return status, msg.stepUsed, msg.result, msg.addr
 			case *callRequestMessage:
+				msg.handler.ResetLogger(cc.log)
+
 				switch handler := msg.handler.(type) {
 				case SyncContractHandler:
 					cc.pushFrame(handler, true)
@@ -362,6 +382,10 @@ func (cc *callContext) sendMessage(msg interface{}) error {
 }
 
 func (cc *callContext) OnEvent(addr module.Address, indexed, data [][]byte) {
+	cc.log.TSystemf("EVENT score=%s sig=%s indexed=%v data=%v",
+		addr, indexed[0],
+		common.SliceOfHexBytes(indexed[1:]),
+		common.SliceOfHexBytes(data))
 	if err := cc.addLogToFrame(addr, indexed, data); err != nil {
 		cc.log.Errorf("Fail to log err=%+v", err)
 	}
@@ -393,9 +417,9 @@ func (cc *callContext) KillExecutor() {
 	}
 }
 
-func (cc *callContext) GetProxy(eeType string) eeproxy.Proxy {
+func (cc *callContext) GetProxy(eeType state.EEType) eeproxy.Proxy {
 	cc.ReserveExecutor()
-	return cc.executor.Get(eeType)
+	return cc.executor.Get(string(eeType))
 }
 
 func (cc *callContext) Dispose() {

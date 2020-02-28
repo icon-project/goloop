@@ -105,3 +105,11 @@ func HexPre(bs []byte) string {
 	}
 	return fmt.Sprintf("%x", bs)
 }
+
+func SliceOfHexBytes(bss [][]byte) []HexBytes {
+	hbs := make([]HexBytes, len(bss))
+	for i, bs := range bss {
+		hbs[i] = bs
+	}
+	return hbs
+}

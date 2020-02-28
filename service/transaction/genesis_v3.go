@@ -156,7 +156,18 @@ func (g *genesisV3) Prepare(ctx contract.Context) (state.WorldContext, error) {
 
 func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
 	r := txresult.NewReceipt(common.NewContractAddress(state.SystemID))
-	as := ctx.GetAccountState(state.SystemID)
+	cc := contract.NewCallContext(ctx, r, false)
+	defer cc.Dispose()
+	cc.SetTransactionInfo(&state.TransactionInfo{
+		Group:     module.TransactionGroupNormal,
+		Index:     0,
+		Hash:      g.Hash(),
+		From:      common.NewContractAddress(state.SystemID),
+		Timestamp: 0,
+		Nonce:     nil,
+	})
+
+	as := cc.GetAccountState(state.SystemID)
 
 	var totalSupply big.Int
 	for i := range g.Accounts {
@@ -181,7 +192,7 @@ func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
 		return nil, err
 	}
 
-	if err := g.deployPreInstall(ctx, r); err != nil {
+	if err := g.installContracts(cc); err != nil {
 		ctx.Logger().Warnf("Fail to install scores err=%+v\n", err)
 		return nil, err
 	}
@@ -194,9 +205,10 @@ const (
 	contentIdCid  = "cid:"
 )
 
-func (g *genesisV3) deployPreInstall(ctx contract.Context, receipt txresult.Receipt) error {
-	if err := contract.InstallSystemScore(state.SystemID,
-		contract.CID_CHAIN, g.Chain, ctx, receipt, nil); err != nil {
+func (g *genesisV3) installContracts(cc contract.CallContext) error {
+	from := common.NewContractAddress(state.SystemID)
+	if err := contract.InstallChainSCORE(state.SystemID,
+		contract.CID_CHAIN, from, g.Chain, cc, g.Hash()); err != nil {
 		return InvalidGenesisError.Wrapf(err, "FAIL to deploy ChainScore")
 	}
 	for _, acc := range g.Accounts {
@@ -204,36 +216,33 @@ func (g *genesisV3) deployPreInstall(ctx contract.Context, receipt txresult.Rece
 			continue
 		}
 		score := acc.Score
-		cc := contract.NewCallContext(ctx, receipt, false)
 		if score.Content != "" {
 			if strings.HasPrefix(score.Content, "0x") {
 				score.Content = strings.TrimPrefix(score.Content, "0x")
 			}
 			data, _ := hex.DecodeString(score.Content)
 			handler := contract.NewDeployHandlerForPreInstall(score.Owner,
-				&acc.Address, score.ContentType, data, score.Params, ctx.Logger())
+				&acc.Address, score.ContentType, data, score.Params, cc.Logger())
 			status, _, _, _ := cc.Call(handler)
 			if status != nil {
 				return InvalidGenesisError.Wrapf(status,
 					"FAIL to install pre-installed score addr=%s", acc.Address)
 			}
-			cc.Dispose()
 		} else if score.ContentID != "" {
 			if strings.HasPrefix(score.ContentID, contentIdHash) == true {
 				contentHash := strings.TrimPrefix(score.ContentID, contentIdHash)
-				content, err := ctx.GetPreInstalledScore(contentHash)
+				content, err := cc.GetPreInstalledScore(contentHash)
 				if err != nil {
 					return InvalidGenesisError.Wrapf(err,
 						"Fail to get PreInstalledScore for ID=%s", contentHash)
 				}
 				handler := contract.NewDeployHandlerForPreInstall(score.Owner,
-					&acc.Address, score.ContentType, content, score.Params, ctx.Logger())
+					&acc.Address, score.ContentType, content, score.Params, cc.Logger())
 				status, _, _, _ := cc.Call(handler)
 				if status != nil {
 					return InvalidGenesisError.Wrapf(status,
 						"FAIL to install pre-installed score. addr=%s", acc.Address)
 				}
-				cc.Dispose()
 			} else if strings.HasPrefix(score.ContentID, contentIdCid) == true {
 				// TODO implement for contentCid
 				return InvalidGenesisError.New("CID prefix is't Unsupported")

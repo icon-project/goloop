@@ -57,7 +57,7 @@ type ContractSnapshot interface {
 	CodeHash() []byte
 	Code() ([]byte, error)
 	SetCode([]byte) error
-	EEType() string
+	EEType() EEType
 	ContentType() string
 	DeployTxHash() []byte
 	AuditTxHash() []byte
@@ -71,7 +71,7 @@ type contractSnapshotImpl struct {
 	isNew        bool
 	state        ContractState
 	contentType  string
-	eeType       string
+	eeType       EEType
 	deployTxHash []byte
 	auditTxHash  []byte
 	codeHash     []byte
@@ -106,6 +106,9 @@ func (c *contractSnapshotImpl) CodeHash() []byte {
 
 func (c *contractSnapshotImpl) Code() ([]byte, error) {
 	if len(c.code) == 0 {
+		if len(c.codeHash) == 0 {
+			return nil, nil
+		}
 		code, err := c.bk.Get(c.codeHash)
 		if err != nil {
 			return nil, err
@@ -120,13 +123,18 @@ func (c *contractSnapshotImpl) Code() ([]byte, error) {
 }
 
 func (c *contractSnapshotImpl) SetCode(code []byte) error {
+	if len(code) == 0 {
+		c.code = nil
+		c.codeHash = nil
+		return nil
+	}
 	c.code = code
 	codeHash := sha3.Sum256(code)
 	c.codeHash = codeHash[:]
 	return nil
 }
 
-func (c *contractSnapshotImpl) EEType() string {
+func (c *contractSnapshotImpl) EEType() EEType {
 	return c.eeType
 }
 

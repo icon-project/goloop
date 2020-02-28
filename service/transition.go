@@ -61,6 +61,20 @@ func (s transitionStep) String() string {
 	}
 }
 
+type transitionCallbackForTrace struct {
+	info *module.TraceInfo
+}
+
+func (cb *transitionCallbackForTrace) OnValidate(tr module.Transition, e error) {
+	if e != nil {
+		cb.info.Callback.OnEnd(e)
+	}
+}
+
+func (cb *transitionCallbackForTrace) OnExecute(tr module.Transition, e error) {
+	cb.info.Callback.OnEnd(e)
+}
+
 type transition struct {
 	parent *transition
 	bi     module.BlockInfo
@@ -93,6 +107,8 @@ type transition struct {
 	tsc              *TxTimestampChecker
 
 	syncer ssync.Syncer
+
+	ti *module.TraceInfo
 }
 
 type transitionResult struct {
@@ -214,13 +230,13 @@ func (t *transition) NormalReceipts() module.ReceiptList {
 	return t.normalReceipts
 }
 
-// Execute executes this transition.
+// startExecution executes this transition.
 // The result is asynchronously notified by cb. canceler can be used
 // to cancel it after calling Execute. After canceler returns true,
 // all succeeding cb functions may not be called back.
 // REMARK: It is assumed to be called once. Any additional call returns
 // error.
-func (t *transition) Execute(cb module.TransitionCallback) (canceler func() bool, err error) {
+func (t *transition) startExecution(setup func() error) (canceler func() bool, err error) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
@@ -232,14 +248,56 @@ func (t *transition) Execute(cb module.TransitionCallback) (canceler func() bool
 	default:
 		return nil, errors.InvalidStateError.Errorf("Invalid transition state: %s", t.step)
 	}
-	t.cb = cb
+
+	if err := setup(); err != nil {
+		return nil, err
+	}
+
 	if t.syncer == nil {
-		go t.executeSync(t.step == stepExecuting)
+		go t.doExecute(t.step == stepExecuting)
 	} else {
-		go t.forceSync()
+		go t.doForceSync()
 	}
 
 	return t.cancelExecution, nil
+}
+
+func (t *transition) Execute(cb module.TransitionCallback) (canceler func() bool, err error) {
+	if cb == nil {
+		return nil, errors.IllegalArgumentError.New("TraceCallbackIsNil")
+	}
+
+	return t.startExecution(func() error {
+		t.cb = cb
+		return nil
+	})
+}
+
+func (t *transition) ExecuteForTrace(ti module.TraceInfo) (canceler func() bool, err error) {
+	if ti.Callback == nil {
+		return nil, errors.IllegalArgumentError.New("TraceCallbackIsNil")
+	}
+	switch ti.Group {
+	case module.TransactionGroupNormal:
+		if _, err := t.normalTransactions.Get(ti.Index); err != nil {
+			return nil, errors.IllegalArgumentError.Errorf("InvalidTransactionIndex(n=%d)", ti.Index)
+		}
+	case module.TransactionGroupPatch:
+		if _, err := t.patchTransactions.Get(ti.Index); err != nil {
+			return nil, errors.IllegalArgumentError.Errorf("InvalidTransactionIndex(n=%d)", ti.Index)
+		}
+	default:
+		return nil, errors.IllegalArgumentError.Errorf("UnknownTransactionGroup(%d)", ti.Group)
+	}
+
+	return t.startExecution(func() error {
+		if t.syncer != nil {
+			return errors.InvalidStateError.New("TraceWithSyncTransition")
+		}
+		t.ti = &ti
+		t.cb = &transitionCallbackForTrace{info: t.ti}
+		return nil
+	})
 }
 
 // Result returns service manager defined result bytes.
@@ -356,7 +414,7 @@ func (t *transition) canceled() bool {
 	return t.step == stepCanceled
 }
 
-func (t *transition) forceSync() {
+func (t *transition) doForceSync() {
 	t.reportValidation(nil)
 
 	sr := t.syncer.ForceSync()
@@ -380,7 +438,7 @@ func (t *transition) forceSync() {
 	t.reportExecution(nil)
 }
 
-func (t *transition) executeSync(alreadyValidated bool) {
+func (t *transition) doExecute(alreadyValidated bool) {
 	var normalCount, patchCount int
 	if !alreadyValidated {
 		wc, err := t.newWorldContext(false)
@@ -424,7 +482,7 @@ func (t *transition) executeSync(alreadyValidated bool) {
 		t.reportExecution(err)
 		return
 	}
-	ctx := contract.NewContext(wc, t.cm, t.eem, t.chain, t.log)
+	ctx := contract.NewContext(wc, t.cm, t.eem, t.chain, t.log, t.ti)
 	ctx.ClearCache()
 
 	startTime := time.Now()

@@ -27,8 +27,8 @@ type ChainScore struct {
 	log  log.Logger
 }
 
-func NewChainScore(from module.Address, cc CallContext, log log.Logger) SystemScore {
-	return &ChainScore{from, cc, log}
+func NewChainScore(cid string, cc CallContext, from module.Address) (SystemScore, error) {
+	return &ChainScore{from, cc, cc.Logger()}, nil
 }
 
 const (
@@ -1155,7 +1155,7 @@ func (s *ChainScore) Ex_getDeployers() ([]interface{}, error) {
 	for i := 0; i < db.Size(); i++ {
 		deployers[i] = db.Get(i).Address()
 	}
-    return deployers, nil
+	return deployers, nil
 }
 
 func (s *ChainScore) Ex_setDeployerWhiteListEnabled(yn bool) error {

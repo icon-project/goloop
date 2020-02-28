@@ -10,6 +10,7 @@ const (
 	TransitionInterruptedError
 	InvalidTransactionError
 	InvalidQueryError
+	InvalidResultError
 	NoActiveContractError
 	NotContractAddressError
 	InvalidPatchDataError

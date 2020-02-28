@@ -29,6 +29,7 @@ func (t *transition) executeTxsSequential(l module.TransactionList, ctx contract
 				return err
 			}
 			ctx.SetTransactionInfo(&state.TransactionInfo{
+				Group:     txo.Group(),
 				Index:     int32(cnt),
 				Timestamp: txo.Timestamp(),
 				Nonce:     txo.Nonce(),

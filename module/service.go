@@ -203,6 +203,11 @@ type Transition interface {
 	// error.
 	Execute(cb TransitionCallback) (canceler func() bool, err error)
 
+	// ExecuteForTrace executes this transition until it executes the transaction
+	// at offset `n` of normal transactions. If it fails, then OnValidate or
+	// OnExecute will be called with an error.
+	ExecuteForTrace(ti TraceInfo) (canceler func() bool, err error)
+
 	// Result returns service manager defined result bytes.
 	// For example, it can be "[world_state_hash][patch_tx_hash][normal_tx_hash]".
 	Result() []byte
@@ -348,4 +353,23 @@ type ServiceManager interface {
 
 	// WaitTransactionResult return channel for result.
 	WaitTransactionResult(id []byte) (<-chan interface{}, error)
+}
+
+type TraceInfo struct {
+	Group    TransactionGroup
+	Index    int
+	Callback TraceCallback
+}
+
+type TraceLevel int
+
+const (
+	TDebugLevel TraceLevel = iota
+	TTraceLevel
+	TSystemLevel
+)
+
+type TraceCallback interface {
+	OnLog(level TraceLevel, msg string)
+	OnEnd(e error)
 }

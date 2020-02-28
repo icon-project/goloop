@@ -9,6 +9,7 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/eeproxy"
 	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/service/trace"
 )
 
 const (
@@ -31,6 +32,7 @@ type (
 		DeductSteps(*big.Int) bool
 		ResetSteps(*big.Int)
 		Prepare(ctx Context) (state.WorldContext, error)
+		ResetLogger(logger log.Logger)
 	}
 
 	SyncContractHandler interface {
@@ -44,7 +46,7 @@ type (
 		SendResult(status error, steps *big.Int, result *codec.TypedObj) error
 		Dispose()
 
-		EEType() string
+		EEType() state.EEType
 		eeproxy.CallContext
 	}
 )
@@ -52,14 +54,14 @@ type (
 type CommonHandler struct {
 	from, to                   module.Address
 	value, stepLimit, stepUsed *big.Int
-	log                        log.Logger
+	log                        *trace.Logger
 }
 
 func newCommonHandler(from, to module.Address, value, stepLimit *big.Int, log log.Logger) *CommonHandler {
 	return &CommonHandler{
 		from: from, to: to, value: value, stepLimit: stepLimit,
 		stepUsed: big.NewInt(0),
-		log:      log}
+		log:      trace.LoggerOf(log)}
 }
 
 func (h *CommonHandler) StepLimit() *big.Int {
@@ -71,10 +73,17 @@ func (h *CommonHandler) StepUsed() *big.Int {
 }
 
 func (h *CommonHandler) ApplySteps(wc state.WorldContext, stepType state.StepType, n int) bool {
-	return h.DeductSteps(big.NewInt(wc.StepsFor(stepType, n)))
+	steps := big.NewInt(wc.StepsFor(stepType, n))
+	h.log.TSystemf("STEP apply type=%s count=%d cost=%s", stepType, n, steps)
+	return h.deductSteps(steps)
 }
 
 func (h *CommonHandler) DeductSteps(steps *big.Int) bool {
+	h.log.TSystemf("STEP apply cost=%s", steps)
+	return h.deductSteps(steps)
+}
+
+func (h *CommonHandler) deductSteps(steps *big.Int) bool {
 	h.stepUsed.Add(h.stepUsed, steps)
 	if h.stepUsed.Cmp(h.stepLimit) > 0 {
 		h.stepUsed = h.stepLimit
@@ -100,4 +109,12 @@ func (h *CommonHandler) Prepare(ctx Context) (state.WorldContext, error) {
 
 func (h *CommonHandler) StepAvail() *big.Int {
 	return big.NewInt(0).Sub(h.stepLimit, h.stepUsed)
+}
+
+func (h *CommonHandler) Logger() log.Logger {
+	return h.log
+}
+
+func (h *CommonHandler) ResetLogger(logger log.Logger) {
+	h.log = trace.LoggerOf(logger)
 }

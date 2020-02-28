@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 	"unsafe"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/jsonrpc"
 	"github.com/icon-project/goloop/service"
+	"github.com/icon-project/goloop/service/scoreresult"
 )
 
 const jsonRpcApiVersion = jsonrpc.APIVersion3
@@ -183,7 +185,13 @@ func call(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	block, err := bm.GetLastBlock()
 	result, err := sm.Call(block.Result(), block.NextValidators(), params.RawMessage(), block)
 	if err != nil {
-		return nil, jsonrpc.ErrScore(err, debug)
+		if service.InvalidQueryError.Equals(err) {
+			return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+		} else if scoreresult.IsValid(err) {
+			return nil, jsonrpc.ErrScore(err, debug)
+		} else {
+			return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+		}
 	} else {
 		return result, nil
 	}
@@ -703,24 +711,61 @@ func waitTransactionResultOnChannel(ctx *jsonrpc.Context, bm module.BlockManager
 func DebugMethodRepository() *jsonrpc.MethodRepository {
 	mr := jsonrpc.NewMethodRepository()
 
-	mr.RegisterMethod("dbg_getTraceByHash", getTraceByHash)
+	mr.RegisterMethod("debug_getTrace", getTrace)
 
 	return mr
 }
 
 type traceCallback struct {
-	result chan interface{}
+	lock    sync.Mutex
+	logs    []interface{}
+	last    error
+	channel chan interface{}
 }
 
-func (cb traceCallback) OnValidate(t module.Transition, err error) {
-	cb.result <- err
+type traceLog struct {
+	Level module.TraceLevel
+	Msg   string
 }
 
-func (cb traceCallback) OnExecute(t module.Transition, err error) {
-	cb.result <- err
+func (t *traceCallback) OnLog(level module.TraceLevel, msg string) {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+
+	t.logs = append(t.logs, traceLog{level, msg})
 }
 
-func getTraceByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
+func (t *traceCallback) OnEnd(e error) {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+
+	t.last = e
+
+	t.channel <- e
+	close(t.channel)
+}
+
+func (t *traceCallback) result() interface{} {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+
+	result := map[string]interface{}{
+		"logs": t.logs,
+	}
+	if t.last == nil {
+		result["status"] = "0x1"
+	} else {
+		result["status"] = "0x0"
+		status, _ := scoreresult.StatusOf(t.last)
+		result["failure"] = map[string]interface{}{
+			"code":    status,
+			"message": t.last.Error(),
+		}
+	}
+	return result
+}
+
+func getTrace(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
 	debug := ctx.IncludeDebug()
 
 	var param TransactionHashParam
@@ -771,29 +816,29 @@ func getTraceByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, 
 	}
 	tr2 = sm.PatchTransition(tr2, nblk.PatchTransactions(), nblk)
 
-	cbChannel := make(chan interface{}, 10)
-	canceller, err := tr2.Execute(traceCallback{result: cbChannel})
+	cb := &traceCallback{
+		logs:    make([]interface{}, 0, 100),
+		channel: make(chan interface{}, 10),
+	}
+	canceller, err := tr2.ExecuteForTrace(module.TraceInfo{
+		Group:    txInfo.Group(),
+		Index:    txInfo.Index(),
+		Callback: cb,
+	})
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 
 	timer := time.After(time.Second * 5)
-	response := make([]interface{}, 0, 100)
 	for {
 		select {
 		case <-timer:
 			canceller()
 			return nil, jsonrpc.ErrorCodeSystemTimeout.Errorf(
 				"Not enough time to get result of %x", param.Hash.Bytes())
-		case msg := <-cbChannel:
-			switch obj := msg.(type) {
-			case error:
-				response = append(response, obj)
-				break
-			default:
-				response = append(response, obj)
-			}
+		case <-cb.channel:
+			return cb.result(), nil
 		}
 	}
-	return response, nil
+	return nil, jsonrpc.ErrorCodeSystem.New("Unknown error on channel")
 }

@@ -68,8 +68,7 @@ type AccountState interface {
 
 	IsContractOwner(owner module.Address) bool
 	InitContractAccount(address module.Address) bool
-	DeployContract(code []byte, eeType string, contentType string,
-		params []byte, txHash []byte) ([]byte, error)
+	DeployContract(code []byte, eeType EEType, contentType string, params []byte, txHash []byte) ([]byte, error)
 	APIInfo() *scoreapi.Info
 	SetAPIInfo(*scoreapi.Info)
 	AcceptContract(txHash []byte, auditTxHash []byte) error
@@ -590,7 +589,7 @@ func (s *accountStateImpl) InitContractAccount(address module.Address) bool {
 	return true
 }
 
-func (s *accountStateImpl) DeployContract(code []byte, eeType string, contentType string, params []byte, txHash []byte) ([]byte, error) {
+func (s *accountStateImpl) DeployContract(code []byte, eeType EEType, contentType string, params []byte, txHash []byte) ([]byte, error) {
 	if s.isContract == false {
 		return nil, nil
 	}
@@ -879,7 +878,7 @@ func (a *accountROState) InitContractAccount(address module.Address) bool {
 	return false
 }
 
-func (a *accountROState) DeployContract(code []byte, eeType string, contentType string, params []byte, txHash []byte) ([]byte, error) {
+func (a *accountROState) DeployContract(code []byte, eeType EEType, contentType string, params []byte, txHash []byte) ([]byte, error) {
 	log.Panic("accountROState().DeployContract() is invoked")
 	return nil, nil
 }

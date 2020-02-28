@@ -15,42 +15,44 @@ type QueryHandler struct {
 	data []byte
 }
 
-func (qh *QueryHandler) Query(ctx contract.Context) (error, interface{}) {
+func (qh *QueryHandler) Query(ctx contract.Context) (interface{}, error) {
 	// check if function is read-only
 	jso, err := transaction.ParseCallData(qh.data)
 	if err != nil {
-		return scoreresult.ErrMethodNotFound, nil
+		return nil, scoreresult.ErrMethodNotFound
 	}
 	as := ctx.GetAccountSnapshot(qh.to.ID())
 	if as == nil {
-		return scoreresult.ErrContractNotFound, nil
+		return nil, scoreresult.ErrContractNotFound
 	}
 	apiInfo := as.APIInfo()
 	if apiInfo == nil {
-		return scoreresult.ErrContractNotFound, nil
+		return nil, scoreresult.ErrContractNotFound
 	} else {
 		m := apiInfo.GetMethod(jso.Method)
 		if m == nil {
-			return scoreresult.ErrMethodNotFound, nil
+			return nil, scoreresult.ErrMethodNotFound
 		}
 		if !m.IsReadOnly() {
-			return scoreresult.ErrMethodNotFound, nil
+			return nil, scoreresult.ErrMethodNotFound
 		}
 	}
 
 	// Set up
 	cc := contract.NewCallContext(ctx, nil, true)
-	handler := ctx.ContractManager().GetHandler(nil, qh.to,
-		big.NewInt(0), ctx.GetStepLimit(transaction.LimitTypeCall), contract.CTypeCall, qh.data)
+	handler := ctx.ContractManager().GetHandler(nil, qh.to, big.NewInt(0), ctx.GetStepLimit(transaction.LimitTypeCall), contract.CTypeCall, qh.data)
 
 	// Execute
 	status, _, result, _ := cc.Call(handler)
 	cc.Dispose()
 	if status != nil {
-		return status, nil
+		return nil, scoreresult.Validate(status)
 	}
-	value, err := common.DecodeAnyForResponse(result)
-	return err, value
+	value, err := common.DecodeAnyForJSON(result)
+	if err != nil {
+		return nil, InvalidResultError.Wrap(err, "FailToDecodeOutput")
+	}
+	return value, nil
 }
 
 func NewQueryHandler(cm contract.ContractManager, to module.Address, data []byte) *QueryHandler {

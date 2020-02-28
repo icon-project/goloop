@@ -434,11 +434,7 @@ func (m *manager) Call(resultHash []byte,
 	}
 
 	qh := NewQueryHandler(m.cm, &jso.To, jso.Data)
-	status, result := qh.Query(contract.NewContext(wc, m.cm, m.eem, m.chain, m.log))
-	if status != nil {
-		return nil, status
-	}
-	return result, nil
+	return qh.Query(contract.NewContext(wc, m.cm, m.eem, m.chain, m.log, nil))
 }
 
 func (m *manager) ValidatorListFromHash(hash []byte) module.ValidatorList {

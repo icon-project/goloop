@@ -18,30 +18,17 @@ import (
 	"github.com/icon-project/goloop/service/scoredb"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/service/trace"
 )
 
 type DeployHandler struct {
 	*CommonHandler
-	eeType         string
+	eeType         state.EEType
 	content        []byte
 	contentType    string
 	params         []byte
 	txHash         []byte
 	preDefinedAddr module.Address
-}
-
-// Only "application/zip" and "application/java" are allowed as contentType by server validator.
-func getEEType(contentType string) string {
-	eeType := ""
-	switch contentType {
-	case state.CTAppZip:
-		eeType = "python"
-	case state.CTAppJava:
-		eeType = "java"
-	default:
-		log.Errorf("Unexpected contentType(%s)\n", contentType)
-	}
-	return eeType
 }
 
 func newDeployHandler(
@@ -61,7 +48,7 @@ func newDeployHandler(
 		CommonHandler: ch,
 		content:       dataJSON.Content,
 		contentType:   dataJSON.ContentType,
-		eeType:        getEEType(dataJSON.ContentType),
+		eeType:        state.EETypeFromContentType(dataJSON.ContentType),
 		params:        dataJSON.Params,
 	}
 }
@@ -83,7 +70,7 @@ func NewDeployHandlerForPreInstall(owner, scoreAddr module.Address, contentType 
 		content:        content,
 		contentType:    contentType,
 		preDefinedAddr: scoreAddr,
-		eeType:         getEEType(contentType),
+		eeType:         state.EETypeFromContentType(contentType),
 		params:         p,
 	}
 }
@@ -129,7 +116,10 @@ func (h *DeployHandler) Prepare(ctx Context) (state.WorldContext, error) {
 }
 
 func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.TypedObj, module.Address) {
+	h.log = trace.LoggerOf(cc.Logger())
 	sysAs := cc.GetAccountState(state.SystemID)
+
+	h.log.TSystemf("DEPLOY start to=%s", h.to)
 
 	update := false
 	info := cc.GetInfo()
@@ -209,6 +199,7 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.Typ
 			return status, h.StepUsed(), nil, nil
 		}
 	}
+	h.log.TSystemf("DEPLOY done steps=%s score=%s", h.StepUsed(), scoreAddr)
 
 	return nil, h.StepUsed(), nil, scoreAddr
 }
@@ -236,6 +227,10 @@ const (
 )
 
 func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.TypedObj, module.Address) {
+	h.log = trace.LoggerOf(cc.Logger())
+
+	h.log.TSystemf("ACCEPT start txhash=0x%x audit=0x%x", h.txHash, h.auditTxHash)
+
 	// 1. call GetAPI
 	sysAs := cc.GetAccountState(state.SystemID)
 	h2a := scoredb.NewDictDB(sysAs, state.VarTxHashToAddress, 1)
@@ -250,7 +245,7 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.Typ
 
 	var methodStr string
 	if scoreAs.Contract() == nil {
-		methodStr = state.EEType(scoreAs.NextContract().EEType()).InstallMethod()
+		methodStr = scoreAs.NextContract().EEType().InstallMethod()
 	} else {
 		methodStr = deployUpdate
 	}
@@ -285,6 +280,7 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.Typ
 	if status != nil {
 		return status, h.StepUsed(), nil, nil
 	}
+	h.log.TSystemf("ACCEPT done score=%s", scoreAddr)
 	if err = scoreAs.AcceptContract(h.txHash, h.auditTxHash); err != nil {
 		return err, h.StepUsed(), nil, nil
 	}
@@ -315,6 +311,7 @@ func (h *callGetAPIHandler) Prepare(ctx Context) (state.WorldContext, error) {
 
 func (h *callGetAPIHandler) ExecuteAsync(cc CallContext) error {
 	h.cc = cc
+	h.log = trace.LoggerOf(cc.Logger())
 
 	h.as = cc.GetAccountState(h.to.ID())
 	if !h.as.IsContract() {
@@ -324,7 +321,7 @@ func (h *callGetAPIHandler) ExecuteAsync(cc CallContext) error {
 	conn := h.cc.GetProxy(h.EEType())
 	if conn == nil {
 		return NoAvailableProxy.Errorf(
-			"FAIL to get connection of (" + h.EEType() + ")")
+			"FAIL to get connection of (%s)", h.EEType())
 	}
 
 	c := h.as.NextContract()
@@ -332,6 +329,8 @@ func (h *callGetAPIHandler) ExecuteAsync(cc CallContext) error {
 		return scoreresult.New(module.StatusContractNotFound,
 			"No pending contract")
 	}
+	h.log.TSystemf("GETAPI start code=<%x>", c.CodeHash())
+
 	var err error
 	h.lock.Lock()
 	h.cs, err = cc.ContractManager().PrepareContractStore(cc, c)
@@ -368,7 +367,7 @@ func (h *callGetAPIHandler) Dispose() {
 	h.lock.Unlock()
 }
 
-func (h *callGetAPIHandler) EEType() string {
+func (h *callGetAPIHandler) EEType() state.EEType {
 	c := h.as.NextContract()
 	if c == nil {
 		h.log.Println("No associated contract exists")
@@ -416,7 +415,11 @@ func (h *callGetAPIHandler) OnCall(from, to module.Address, value, limit *big.In
 
 func (h *callGetAPIHandler) OnAPI(status error, info *scoreapi.Info) {
 	if status == nil {
+		h.log.TSystemf("GETAPI done status=%s info=%v", module.StatusSuccess, info)
 		h.as.SetAPIInfo(info)
+	} else {
+		s, _ := scoreresult.StatusOf(status)
+		h.log.TSystemf("GETAPI done status=%s msg=%s", s, status.Error())
 	}
 	h.cc.OnResult(status, new(big.Int), nil, nil)
 }

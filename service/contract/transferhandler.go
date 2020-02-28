@@ -33,6 +33,9 @@ func (h *TransferHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.T
 	bal2.Add(bal2, h.value)
 	as2.SetBalance(bal2)
 
+	h.log.TSystemf("TRANSFER from=%s to=%s value=%s",
+		h.from, h.to, h.value)
+
 	if h.from.IsContract() {
 		indexed := make([][]byte, 4, 4)
 		indexed[0] = []byte(txresult.EventLogICXTransfer)

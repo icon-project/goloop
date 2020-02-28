@@ -5,11 +5,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/icon-project/goloop/common/log"
-
-	"github.com/icon-project/goloop/common/db"
-
 	"github.com/icon-project/goloop/common/codec"
+	"github.com/icon-project/goloop/common/db"
+	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreapi"
 	"github.com/icon-project/goloop/service/state"
@@ -123,6 +121,7 @@ func newCallContext() CallContext {
 			nil,
 			nil,
 			log.New(),
+			nil,
 		),
 		nil,
 		false,
@@ -158,6 +157,14 @@ func (h *commonHandler) Prepare(ctx Context) (state.WorldContext, error) {
 	panic("implement me")
 }
 
+func (h *commonHandler) ResetLogger(logger log.Logger) {
+	// do nothing
+}
+
+func (h *commonHandler) Logger() log.Logger {
+	return log.GlobalLogger()
+}
+
 type asyncHandler struct {
 	*commonHandler
 	cc *testCallContext
@@ -190,7 +197,7 @@ func (h *asyncHandler) SendResult(status error, steps *big.Int, result *codec.Ty
 func (h *asyncHandler) Dispose() {
 }
 
-func (h *asyncHandler) EEType() string {
+func (h *asyncHandler) EEType() state.EEType {
 	panic("implement me")
 }
 

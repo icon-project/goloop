@@ -17,6 +17,7 @@ type Context interface {
 	GetPreInstalledScore(id string) ([]byte, error)
 	Logger() log.Logger
 	PatchDecoder() module.PatchDecoder
+	TraceInfo() *module.TraceInfo
 }
 
 type context struct {
@@ -25,10 +26,11 @@ type context struct {
 	cm    ContractManager
 	eem   eeproxy.Manager
 	log   log.Logger
+	ti    *module.TraceInfo
 }
 
-func NewContext(wc state.WorldContext, cm ContractManager, eem eeproxy.Manager, chain module.Chain, log log.Logger) *context {
-	return &context{WorldContext: wc, cm: cm, eem: eem, chain: chain, log: log}
+func NewContext(wc state.WorldContext, cm ContractManager, eem eeproxy.Manager, chain module.Chain, log log.Logger, ti *module.TraceInfo) *context {
+	return &context{WorldContext: wc, cm: cm, eem: eem, chain: chain, log: log, ti: ti}
 }
 func (c *context) ContractManager() ContractManager {
 	return c.cm
@@ -55,4 +57,8 @@ func (c *context) GetPreInstalledScore(id string) ([]byte, error) {
 
 func (c *context) Logger() log.Logger {
 	return c.log
+}
+
+func (c *context) TraceInfo() *module.TraceInfo {
+	return c.ti
 }

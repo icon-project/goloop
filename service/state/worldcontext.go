@@ -83,7 +83,7 @@ type WorldContext interface {
 	WorldVirtualState() WorldVirtualState
 	GetFuture(lq []LockRequest) WorldContext
 	SetTransactionInfo(ti *TransactionInfo)
-	GetTransactionInfo(ti *TransactionInfo)
+	GetTransactionInfo(ti *TransactionInfo) bool
 	SetContractInfo(si *ContractInfo)
 	UpdateSystemInfo()
 
@@ -105,6 +105,7 @@ type BlockInfo struct {
 }
 
 type TransactionInfo struct {
+	Group     module.TransactionGroup
 	Index     int32
 	Hash      []byte
 	From      module.Address
@@ -331,8 +332,12 @@ func (c *worldContext) SetTransactionInfo(ti *TransactionInfo) {
 	c.info = nil
 }
 
-func (c *worldContext) GetTransactionInfo(ti *TransactionInfo) {
-	*ti = c.txInfo
+func (c *worldContext) GetTransactionInfo(ti *TransactionInfo) bool {
+	if c.txInfo.Hash != nil {
+		*ti = c.txInfo
+		return true
+	}
+	return false
 }
 
 func (c *worldContext) SetContractInfo(si *ContractInfo) {

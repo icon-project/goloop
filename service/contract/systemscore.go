@@ -5,12 +5,10 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
-	"github.com/icon-project/goloop/service/state"
-	"github.com/icon-project/goloop/service/txresult"
-
+	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreresult"
+	"github.com/icon-project/goloop/service/state"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -25,8 +23,12 @@ const (
 	CID_CHAIN = "CID_CHAINSCORE"
 )
 
-var newSysScore = map[string]interface{}{
-	CID_CHAIN: NewChainScore,
+type SystemScoreModule struct {
+	New func(cid string, cc CallContext, from module.Address) (SystemScore, error)
+}
+
+var systemScoreModules = map[string]*SystemScoreModule{
+	CID_CHAIN: {NewChainScore},
 }
 
 type SystemScore interface {
@@ -35,63 +37,13 @@ type SystemScore interface {
 	GetAPI() *scoreapi.Info
 }
 
-func GetSystemScore(contentID string, params ...interface{}) (score SystemScore, err error) {
-	defer func() {
-		if e := recover(); e != nil {
-			if e2, ok := e.(error); ok {
-				err = e2
-			} else {
-				err = errors.CriticalUnknownError.Errorf(
-					"Recover from e=%+v", e)
-			}
-		}
-	}()
-	v, ok := newSysScore[contentID]
+func GetSystemScore(contentID string, cc CallContext, from module.Address) (score SystemScore, err error) {
+	v, ok := systemScoreModules[contentID]
 	if ok == false {
 		return nil, scoreresult.ContractNotFoundError.Errorf(
 			"ContractNotFound(cid=%s)", contentID)
 	}
-
-	f := reflect.ValueOf(v)
-	fType := f.Type()
-	if len(params) != fType.NumIn() {
-		return nil, scoreresult.InvalidInstanceError.Errorf(
-			"WrongParamNum(req:%d, pass:%d", fType.NumIn(), len(params))
-	}
-
-	in := make([]reflect.Value, len(params))
-	for i, p := range params {
-		pValue := reflect.ValueOf(p)
-		if !pValue.IsValid() {
-			in[i] = reflect.New(fType.In(i)).Elem()
-			continue
-		}
-		if !pValue.Type().AssignableTo(fType.In(i)) {
-			return nil, scoreresult.InvalidInstanceError.Errorf(
-				"Can't cast from %s to %s", pValue.Type(), fType.In(i))
-		}
-		in[i] = reflect.New(fType.In(i)).Elem()
-		in[i].Set(pValue)
-	}
-
-	result := f.Call(in)
-
-	if len(result) < 1 {
-		return nil, scoreresult.InvalidInstanceError.New(
-			"Fail to create system score.")
-	}
-
-	if result[0].IsNil() {
-		return nil, scoreresult.InvalidInstanceError.New(
-			"Fail to create system score instance")
-	}
-
-	score, ok = result[0].Interface().(SystemScore)
-	if ok == false {
-		return nil, scoreresult.InvalidInstanceError.Errorf(
-			"Not SystemScore. Returned Type is %s", result[0].Type().String())
-	}
-	return score, nil
+	return v.New(contentID, cc, from)
 }
 
 func CheckMethod(obj SystemScore) error {
@@ -261,16 +213,15 @@ func Invoke(score SystemScore, method string, paramObj *codec.TypedObj) (status 
 	return
 }
 
-func InstallSystemScore(addr []byte, cid string, param []byte, ctx Context, receipt txresult.Receipt, txHash []byte) error {
-	sas := ctx.GetAccountState(addr)
+func InstallChainSCORE(addr []byte, cid string, from module.Address, param []byte, cc CallContext, txHash []byte) error {
+	sas := cc.GetAccountState(addr)
 	sas.InitContractAccount(nil)
-	sas.DeployContract(nil, "system", state.CTAppSystem,
+	sas.DeployContract(nil, state.SystemEE, state.CTAppSystem,
 		nil, nil)
-	if err := sas.AcceptContract(txHash, nil); err != nil {
+	if err := sas.AcceptContract(nil, nil); err != nil {
 		return err
 	}
-	sysScore, err := GetSystemScore(cid,
-		common.NewContractAddress(addr), NewCallContext(ctx, receipt, false), ctx.Logger())
+	sysScore, err := GetSystemScore(cid, cc, from)
 	if err != nil {
 		return err
 	}

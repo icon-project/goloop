@@ -329,3 +329,7 @@ func (t *transitionForImport) Execute(cb module.TransitionCallback) (canceler fu
 	t.canceler = c
 	return c, e
 }
+
+func (t *transitionForImport) ExecuteForTrace(ti module.TraceInfo) (canceler func() bool, err error) {
+	return nil, errors.UnsupportedError.New("UnsupportedTrace(Importing)")
+}
