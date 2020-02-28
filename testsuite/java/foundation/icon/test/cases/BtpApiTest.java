@@ -18,6 +18,7 @@ package foundation.icon.test.cases;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import foundation.icon.ee.util.Crypto;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.crypto.IconKeys;
@@ -31,15 +32,6 @@ import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.TestBase;
 import foundation.icon.test.common.TransactionHandler;
-import org.bouncycastle.asn1.x9.X9ECParameters;
-import org.bouncycastle.asn1.x9.X9IntegerConverter;
-import org.bouncycastle.crypto.ec.CustomNamedCurves;
-import org.bouncycastle.crypto.params.ECDomainParameters;
-import org.bouncycastle.jcajce.provider.digest.SHA3;
-import org.bouncycastle.math.ec.ECAlgorithms;
-import org.bouncycastle.math.ec.ECPoint;
-import org.bouncycastle.math.ec.custom.sec.SecP256K1Curve;
-import org.bouncycastle.util.BigIntegers;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -92,8 +84,8 @@ public class BtpApiTest extends TestBase {
 
         BigInteger resBlkHeight = result.getBlockHeight();
         Base64 resBlkHeader = iconService.getBlockHeaderByHeight(resBlkHeight).execute();
-        byte []resHeaderBytes = resBlkHeader.decode();
-        byte []blkHash = getHash(resHeaderBytes);
+        byte[] resHeaderBytes = resBlkHeader.decode();
+        byte[] blkHash = Crypto.sha3_256(resHeaderBytes);
         if (!Arrays.equals(result.getBlockHash().toByteArray(), blkHash)) {
             LOG.info("blkHeight (" + resBlkHeight + ")");
             LOG.info("headerBytes (" + byteArrayToHex(resHeaderBytes) + ")");
@@ -124,9 +116,9 @@ public class BtpApiTest extends TestBase {
         // get nextValidator from pprev block
         BigInteger valBlkHeight = resBlkHeight.subtract(BigInteger.valueOf(2)); // block height for validators
         Base64 valBlkHeader = iconService.getBlockHeaderByHeight(valBlkHeight).execute();
-        byte []valHeaderBytes = valBlkHeader.decode();
+        byte[] valHeaderBytes = valBlkHeader.decode();
         List<Object> dvBlkHeader = objectMapper.readValue(valHeaderBytes, new TypeReference<List<Object>>() {});
-        byte []validatorHash = (byte[])dvBlkHeader.get(NEXTVALIDATORHASH_INDEX);
+        byte[] validatorHash = (byte[])dvBlkHeader.get(NEXTVALIDATORHASH_INDEX);
         Base64 validator = iconService.getDataByHash(new Bytes(validatorHash)).execute();
         List<Object> validatorsList = objectMapper.readValue(validator.decode(), new TypeReference<List<Object>>() {});
         byte[] prevBlockID = (byte[])dBlkHeader.get(PREVID_INDEX);
@@ -145,32 +137,29 @@ public class BtpApiTest extends TestBase {
             vSign.add(voteItemList.get(0));
             byte[] sign = (byte[]) voteItemList.get(1);
             byte[] message = objectMapper.writeValueAsBytes(vSign);
-            byte[] msgHash = getHash(message);
-            BigInteger[] sig = new BigInteger[2];
-            sig[0] = BigIntegers.fromUnsignedByteArray(sign, 0, 32);
-            sig[1] = BigIntegers.fromUnsignedByteArray(sign, 32, 32);
-
-            byte[] recover = new byte[21];
-            recover[0] = 0;
-            byte[] pubKey = recoverFromSignature(sign[64], sig, msgHash);
-            if(pubKey == null) {
-                LOG.info("redId(" + sign[64] + "), sig[0](" + sig[0] +
-                        "), sig[1](" + sig[1] + ")" + ", msgHash(" + byteArrayToHex(message) + ")");
+            byte[] msgHash = Crypto.sha3_256(message);
+            byte[] pubKey = Crypto.recoverKey(msgHash, sign, false);
+            if (pubKey == null) {
+                LOG.info("recId(" + sign[64] + "), " +
+                        "sign(" + byteArrayToHex(sign) + "), " +
+                        "msgHash(" + byteArrayToHex(message) + ")");
                 LOG.infoExiting();
                 fail("cannot recover pubkey from signature");
             }
-            System.arraycopy(pubKey, 0, recover, 1, 20);
+            byte[] addressHash = IconKeys.getAddressHash(pubKey);
+            byte[] recovered = new byte[21];
+            System.arraycopy(addressHash, 0, recovered, 1, addressHash.length);
             for (Object vo : validatorsList) {
-                if (Arrays.equals((byte[]) vo, recover)) {
+                if (Arrays.equals((byte[]) vo, recovered)) {
                     match++;
                     validatorsList.remove(vo);
                     break;
                 }
             }
         }
-        if (validatorsList.size() != 0){
-            for(Object vo : validatorsList) {
-                LOG.info("No vote validator  : " + byteArrayToHex((byte[])vo));
+        if (validatorsList.size() != 0) {
+            for (Object vo : validatorsList) {
+                LOG.info("No vote validator : " + byteArrayToHex((byte[])vo));
             }
         }
         if (twoThirds >= match) {
@@ -191,8 +180,8 @@ public class BtpApiTest extends TestBase {
 
         BigInteger resBlkHeight = result.getBlockHeight();
         Base64 resBlkHeader = iconService.getBlockHeaderByHeight(resBlkHeight).execute();
-        byte []resHeaderBytes = resBlkHeader.decode();
-        byte []blkHash = getHash(resHeaderBytes);
+        byte[] resHeaderBytes = resBlkHeader.decode();
+        byte[] blkHash = Crypto.sha3_256(resHeaderBytes);
         if (!Arrays.equals(result.getBlockHash().toByteArray(), blkHash)) {
             LOG.info("blkHeight (" + resBlkHeight + ")");
             LOG.info("headerBytes (" + byteArrayToHex(resHeaderBytes) + ")");
@@ -207,7 +196,7 @@ public class BtpApiTest extends TestBase {
 
         // get votes by hash of the votes
         Base64 votes = iconService.getDataByHash(new Bytes(votesHash)).execute();
-        byte[] voteHash2 = getHash(votes.decode());
+        byte[] voteHash2 = Crypto.sha3_256(votes.decode());
         if (!Arrays.equals(votesHash, voteHash2)) {
             LOG.info("blkHeight (" + resBlkHeight + ")");
             LOG.info("headerBytes (" + byteArrayToHex(resHeaderBytes) + ")");
@@ -219,7 +208,7 @@ public class BtpApiTest extends TestBase {
 
         byte[] nextValidatorHash = (byte[])dBlkHeader.get(NEXTVALIDATORHASH_INDEX);
         Base64 nextValidator = iconService.getDataByHash(new Bytes(nextValidatorHash)).execute();
-        byte[] vHash = getHash(nextValidator.decode());
+        byte[] vHash = Crypto.sha3_256(nextValidator.decode());
         if(!Arrays.equals(vHash, nextValidatorHash)) {
             LOG.info("blkHeight (" + resBlkHeight + ")");
             LOG.info("headerBytes (" + byteArrayToHex(resHeaderBytes) + ")");
@@ -298,53 +287,12 @@ public class BtpApiTest extends TestBase {
         LOG.infoExiting();
     }
 
-    static String byteArrayToHex(byte[] array) {
+    private static String byteArrayToHex(byte[] array) {
         StringBuilder sb = new StringBuilder();
         sb.append("0x");
-        for(byte v : array) {
+        for (byte v : array) {
             sb.append(String.format("%02x", v));
         }
         return sb.toString();
-    }
-
-    static byte[] getHash(byte[] data) {
-        return new SHA3.Digest256().digest(data);
-    }
-
-    // below codes are from foundation.icon.icx.crypto.ECDSASignature
-    private final static X9ECParameters curveParams = CustomNamedCurves.getByName("secp256k1");
-    private final static ECDomainParameters curve = new ECDomainParameters(
-            curveParams.getCurve(), curveParams.getG(), curveParams.getN(), curveParams.getH());
-    private static ECPoint decompressKey(BigInteger xBN, boolean yBit) {
-        X9IntegerConverter x9 = new X9IntegerConverter();
-        byte[] compEnc = x9.integerToBytes(xBN, 1 + x9.getByteLength(curve.getCurve()));
-        compEnc[0] = (byte) (yBit ? 0x03 : 0x02);
-        return curve.getCurve().decodePoint(compEnc);
-    }
-
-    static byte[] recoverFromSignature(int recId, BigInteger[] sig, byte[] message) {
-        BigInteger r = sig[0];
-        BigInteger s = sig[1];
-
-        BigInteger n = curve.getN();  // Curve order.
-        BigInteger i = BigInteger.valueOf((long) recId / 2);
-        BigInteger x = r.add(i.multiply(n));
-        BigInteger prime = SecP256K1Curve.q;
-        if (x.compareTo(prime) >= 0) {
-            return null;
-        }
-        ECPoint ecPoint = decompressKey(x, (recId & 1) == 1);
-        if (!ecPoint.multiply(n).isInfinity()) {
-            return null;
-        }
-        BigInteger e = new BigInteger(1, message);
-        BigInteger eInv = BigInteger.ZERO.subtract(e).mod(n);
-        BigInteger rInv = r.modInverse(n);
-        BigInteger srInv = rInv.multiply(s).mod(n);
-        BigInteger eInvrInv = rInv.multiply(eInv).mod(n);
-        ECPoint q = ECAlgorithms.sumOfTwoMultiplies(curve.getG(), eInvrInv, ecPoint, srInv);
-
-        byte [] encoded = q.getEncoded(false);
-        return IconKeys.getAddressHash(encoded);
     }
 }
