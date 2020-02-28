@@ -260,6 +260,16 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     @Override
+    public ByteArray avm_recoverKey(ByteArray msgHash, ByteArray signature, boolean compressed) {
+        require(null != msgHash && null != signature, "msgHash or signature is NULL");
+        byte[] msgBytes = msgHash.getUnderlying();
+        byte[] sigBytes = signature.getUnderlying();
+        require(msgBytes.length == 32, "the length of msgHash must be 32");
+        require(sigBytes.length == 65, "the length of signature must be 65");
+        return new ByteArray(Crypto.recoverKey(msgBytes, sigBytes, compressed));
+    }
+
+    @Override
     public CollectionDB avm_newCollectionDB(int type,
                                             s.java.lang.String id,
                                             s.java.lang.Class<?> vc) {

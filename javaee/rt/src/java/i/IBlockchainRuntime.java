@@ -131,6 +131,11 @@ public interface IBlockchainRuntime {
     ByteArray avm_sha3_256(ByteArray data);
 
     /**
+     * Recovers the public key from the message hash and the recoverable signature
+     */
+    ByteArray avm_recoverKey(ByteArray msgHash, ByteArray signature, boolean compressed);
+
+    /**
      * Returns a new collection DB instance
      */
     CollectionDB avm_newCollectionDB(int type, String id, Class<?> vc);

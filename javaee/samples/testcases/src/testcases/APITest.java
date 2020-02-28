@@ -194,4 +194,14 @@ public class APITest
     public byte[] computeHashQuery(byte[] data) {
         return Context.sha3_256(data);
     }
+
+    @External
+    public void recoverKey(byte[] msgHash, byte[] signature, boolean compressed) {
+        EmitEvent(Context.recoverKey(msgHash, signature, compressed));
+    }
+
+    @External(readonly=true)
+    public byte[] recoverKeyQuery(byte[] msgHash, byte[] signature, boolean compressed) {
+        return Context.recoverKey(msgHash, signature, compressed);
+    }
 }

@@ -218,6 +218,19 @@ public final class Context {
         return null;
     }
 
+    /**
+     * Recovers the public key from the message hash and the recoverable signature
+     *
+     * @param msgHash the 32 bytes hash data
+     * @param signature signature_data(64) + recovery_id(1)
+     * @param compressed the type of public key to be returned
+     * @return the public key recovered from msgHash and signature
+     *         (compressed: 33 bytes key, uncompressed: 65 bytes key)
+     */
+    public static byte[] recoverKey(byte[] msgHash, byte[] signature, boolean compressed) {
+        return null;
+    }
+
     //===================
     // Collection DB
     //===================

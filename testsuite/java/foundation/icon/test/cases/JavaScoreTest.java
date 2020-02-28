@@ -19,8 +19,10 @@ package foundation.icon.test.cases;
 import foundation.icon.ee.util.Crypto;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
+import foundation.icon.icx.SignedTransaction;
 import foundation.icon.icx.Wallet;
 import foundation.icon.icx.data.Address;
+import foundation.icon.icx.data.Base64;
 import foundation.icon.icx.data.Block;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.ConfirmedTransaction;
@@ -42,6 +44,7 @@ import org.junit.jupiter.api.Test;
 import testcases.APITest;
 
 import java.math.BigInteger;
+import java.util.List;
 import java.util.Random;
 
 import static foundation.icon.test.common.Env.LOG;
@@ -453,9 +456,81 @@ class JavaScoreTest extends TestBase {
 
         LOG.infoEntering("computeHash", "query");
         result = apiScore.call("computeHashQuery", params);
-        LOG.info("result=" + result);
         LOG.info("expected (" + expected + "), got (" + result.asString() + ")");
         assertEquals(expected.toString(), result.asString());
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void testAPIForRecoverKey() throws Exception {
+        Score apiScore = deployAPITest();
+        KeyWallet caller = KeyWallet.create();
+        TransactionResult tr;
+        RpcItem result = RpcValue.NULL;
+
+        // invoke a transaction to be verified later
+        byte[] data = "Hello world".getBytes();
+        RpcObject params = new RpcObject.Builder()
+                .put("data", new RpcValue(data))
+                .build();
+        tr = apiScore.invokeAndWaitResult(caller, "computeHash", params);
+        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
+
+        // extract the necessary data for the verification
+        ConfirmedTransaction tx = iconService.getTransaction(tr.getTxHash()).execute();
+        RpcObject.Builder builder = new RpcObject.Builder();
+        RpcObject props = tx.getProperties();
+        for (String key : props.keySet()) {
+            List<String> excludeKeys = List.of("blockHash", "blockHeight", "txHash", "txIndex", "signature");
+            if (!excludeKeys.contains(key)) {
+                builder.put(key, props.getItem(key));
+            }
+        }
+        String serializedData = SignedTransaction.TransactionSerializer.serialize(builder.build());
+        byte[] msgHash = Crypto.sha3_256(serializedData.getBytes());
+        byte[] signature = new Base64(props.getItem("signature").asString()).decode();
+
+        // recoverKey
+        LOG.infoEntering("recoverKey", "invoke - uncompressed");
+        params = new RpcObject.Builder()
+                .put("msgHash", new RpcValue(msgHash))
+                .put("signature", new RpcValue(signature))
+                .put("compressed", new RpcValue(false))
+                .build();
+        tr = apiScore.invokeAndWaitResult(caller, "recoverKey", params);
+        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
+        for (TransactionResult.EventLog e : tr.getEventLogs()) {
+            result = e.getData().get(0);
+        }
+        LOG.info("expected (" + caller.getPublicKey() + "), got (" + result.asString() + ")");
+        assertEquals(caller.getPublicKey().toString(), result.asString());
+        LOG.infoExiting();
+
+        LOG.infoEntering("recoverKey", "invoke - compressed");
+        params = new RpcObject.Builder()
+                .put("msgHash", new RpcValue(msgHash))
+                .put("signature", new RpcValue(signature))
+                .put("compressed", new RpcValue(true))
+                .build();
+        tr = apiScore.invokeAndWaitResult(caller, "recoverKey", params);
+        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
+        for (TransactionResult.EventLog e : tr.getEventLogs()) {
+            result = e.getData().get(0);
+        }
+        LOG.info("got (" + result.asString() + ")");
+        List<Byte> prefixes = List.of((byte) 0x02, (byte) 0x03);
+        assertTrue(prefixes.contains(result.asByteArray()[0]));
+        LOG.infoExiting();
+
+        LOG.infoEntering("recoverKey", "query");
+        params = new RpcObject.Builder()
+                .put("msgHash", new RpcValue(msgHash))
+                .put("signature", new RpcValue(signature))
+                .put("compressed", new RpcValue(false))
+                .build();
+        RpcItem publicKey = apiScore.call("recoverKeyQuery", params);
+        LOG.info("expected (" + caller.getPublicKey() + "), got (" + publicKey.asString() + ")");
+        assertEquals(caller.getPublicKey().toString(), publicKey.asString());
         LOG.infoExiting();
     }
 }
