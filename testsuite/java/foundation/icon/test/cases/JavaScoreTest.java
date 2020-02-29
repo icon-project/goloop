@@ -506,6 +506,19 @@ class JavaScoreTest extends TestBase {
         assertEquals(caller.getPublicKey().toString(), result.asString());
         LOG.infoExiting();
 
+        LOG.infoEntering("getAddressFromKey", "invoke - uncompressed");
+        params = new RpcObject.Builder()
+                .put("publicKey", new RpcValue(result.asByteArray()))
+                .build();
+        tr = apiScore.invokeAndWaitResult(caller, "getAddressFromKey", params);
+        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
+        for (TransactionResult.EventLog e : tr.getEventLogs()) {
+            result = e.getData().get(0);
+        }
+        LOG.info("expected (" + caller.getAddress() + "), got (" + result.asString() + ")");
+        assertEquals(caller.getAddress().toString().substring(2), result.asString().substring(4));
+        LOG.infoExiting();
+
         LOG.infoEntering("recoverKey", "invoke - compressed");
         params = new RpcObject.Builder()
                 .put("msgHash", new RpcValue(msgHash))
@@ -522,6 +535,19 @@ class JavaScoreTest extends TestBase {
         assertTrue(prefixes.contains(result.asByteArray()[0]));
         LOG.infoExiting();
 
+        LOG.infoEntering("getAddressFromKey", "invoke - compressed");
+        params = new RpcObject.Builder()
+                .put("publicKey", new RpcValue(result.asByteArray()))
+                .build();
+        tr = apiScore.invokeAndWaitResult(caller, "getAddressFromKey", params);
+        assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
+        for (TransactionResult.EventLog e : tr.getEventLogs()) {
+            result = e.getData().get(0);
+        }
+        LOG.info("expected (" + caller.getAddress() + "), got (" + result.asString() + ")");
+        assertEquals(caller.getAddress().toString().substring(2), result.asString().substring(4));
+        LOG.infoExiting();
+
         LOG.infoEntering("recoverKey", "query");
         params = new RpcObject.Builder()
                 .put("msgHash", new RpcValue(msgHash))
@@ -531,6 +557,15 @@ class JavaScoreTest extends TestBase {
         RpcItem publicKey = apiScore.call("recoverKeyQuery", params);
         LOG.info("expected (" + caller.getPublicKey() + "), got (" + publicKey.asString() + ")");
         assertEquals(caller.getPublicKey().toString(), publicKey.asString());
+        LOG.infoExiting();
+
+        LOG.infoEntering("getAddressFromKey", "query");
+        params = new RpcObject.Builder()
+                .put("publicKey", new RpcValue(publicKey.asByteArray()))
+                .build();
+        RpcItem address = apiScore.call("getAddressFromKeyQuery", params);
+        LOG.info("expected (" + caller.getAddress() + "), got (" + address.asAddress() + ")");
+        assertEquals(caller.getAddress(), address.asAddress());
         LOG.infoExiting();
     }
 }

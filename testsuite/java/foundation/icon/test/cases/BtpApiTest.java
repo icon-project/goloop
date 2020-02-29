@@ -21,7 +21,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import foundation.icon.ee.util.Crypto;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
-import foundation.icon.icx.crypto.IconKeys;
 import foundation.icon.icx.data.Base64;
 import foundation.icon.icx.data.Block;
 import foundation.icon.icx.data.Bytes;
@@ -146,9 +145,7 @@ public class BtpApiTest extends TestBase {
                 LOG.infoExiting();
                 fail("cannot recover pubkey from signature");
             }
-            byte[] addressHash = IconKeys.getAddressHash(pubKey);
-            byte[] recovered = new byte[21];
-            System.arraycopy(addressHash, 0, recovered, 1, addressHash.length);
+            byte[] recovered = Crypto.getAddressBytesFromKey(pubKey);
             for (Object vo : validatorsList) {
                 if (Arrays.equals((byte[]) vo, recovered)) {
                     match++;

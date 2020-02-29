@@ -28,6 +28,7 @@ import org.bouncycastle.util.BigIntegers;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 
 public class Crypto {
     public static byte[] sha3_256(byte[] msg) {
@@ -45,9 +46,34 @@ public class Crypto {
         return recoverFromSignature(signature[64], r, s, msgHash, compressed);
     }
 
+    public static byte[] getAddressBytesFromKey(byte[] pubKey) {
+        checkArgument(pubKey.length == 33 || pubKey.length == 65, "Invalid key length");
+        byte[] uncompressed;
+        if (pubKey.length == 33) {
+            uncompressed = uncompressKey(pubKey);
+        } else {
+            uncompressed = pubKey;
+        }
+        byte[] hash = sha3_256(Arrays.copyOfRange(uncompressed, 1, uncompressed.length));
+        byte[] address = new byte[21];
+        System.arraycopy(hash, hash.length - 20, address, 1, 20);
+        return address;
+    }
+
     private final static X9ECParameters curveParams = CustomNamedCurves.getByName("secp256k1");
     private final static ECDomainParameters curve = new ECDomainParameters(
             curveParams.getCurve(), curveParams.getG(), curveParams.getN(), curveParams.getH());
+
+    private static byte[] uncompressKey(byte[] compKey) {
+        ECPoint point = curve.getCurve().decodePoint(compKey);
+        byte[] x = point.getXCoord().getEncoded();
+        byte[] y = point.getYCoord().getEncoded();
+        byte[] key = new byte[x.length + y.length + 1];
+        key[0] = 0x04;
+        System.arraycopy(x, 0, key, 1, x.length);
+        System.arraycopy(y, 0, key, x.length + 1, y.length);
+        return key;
+    }
 
     private static ECPoint decompressKey(BigInteger xBN, boolean yBit) {
         X9IntegerConverter x9 = new X9IntegerConverter();

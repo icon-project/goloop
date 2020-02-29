@@ -231,6 +231,16 @@ public final class Context {
         return null;
     }
 
+    /**
+     * Returns the address that is associated with the given public key
+     *
+     * @param publicKey the public key
+     * @return the address that is associated with the public key
+     */
+    public static Address getAddressFromKey(byte[] publicKey) {
+        return null;
+    }
+
     //===================
     // Collection DB
     //===================

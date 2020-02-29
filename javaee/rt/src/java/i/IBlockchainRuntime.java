@@ -136,6 +136,11 @@ public interface IBlockchainRuntime {
     ByteArray avm_recoverKey(ByteArray msgHash, ByteArray signature, boolean compressed);
 
     /**
+     * Returns the address that is associated with the given public key
+     */
+    Address avm_getAddressFromKey(ByteArray publicKey);
+
+    /**
      * Returns a new collection DB instance
      */
     CollectionDB avm_newCollectionDB(int type, String id, Class<?> vc);

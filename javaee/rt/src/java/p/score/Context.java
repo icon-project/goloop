@@ -147,6 +147,11 @@ public final class Context extends Object {
         return blockchainRuntime.avm_recoverKey(msgHash, signature, compressed);
     }
 
+    public static Address avm_getAddressFromKey(ByteArray publicKey) {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_getAddressFromKey);
+        return blockchainRuntime.avm_getAddressFromKey(publicKey);
+    }
+
     public static NestingDictDB avm_newNestingDictDB(String id, Class<?> vc) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_newDictDB);
         return blockchainRuntime.avm_newCollectionDB(DBImplBase.TYPE_DICT_DB, id, vc);

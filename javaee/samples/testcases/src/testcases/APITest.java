@@ -204,4 +204,17 @@ public class APITest
     public byte[] recoverKeyQuery(byte[] msgHash, byte[] signature, boolean compressed) {
         return Context.recoverKey(msgHash, signature, compressed);
     }
+
+    @External
+    public void getAddressFromKey(byte[] publicKey) {
+        Address address = Context.getAddressFromKey(publicKey);
+        if (address != null) {
+            EmitEvent(address.toByteArray());
+        }
+    }
+
+    @External(readonly=true)
+    public Address getAddressFromKeyQuery(byte[] publicKey) {
+        return Context.getAddressFromKey(publicKey);
+    }
 }

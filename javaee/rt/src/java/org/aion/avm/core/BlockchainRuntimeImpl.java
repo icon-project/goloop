@@ -270,6 +270,12 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     }
 
     @Override
+    public p.score.Address avm_getAddressFromKey(ByteArray publicKey) {
+        require(null != publicKey, "publicKey is NULL");
+        return new p.score.Address(Crypto.getAddressBytesFromKey(publicKey.getUnderlying()));
+    }
+
+    @Override
     public CollectionDB avm_newCollectionDB(int type,
                                             s.java.lang.String id,
                                             s.java.lang.Class<?> vc) {
