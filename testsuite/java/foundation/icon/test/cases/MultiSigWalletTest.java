@@ -36,35 +36,53 @@ import java.math.BigInteger;
 
 import static foundation.icon.test.common.Env.LOG;
 
-@Tag(Constants.TAG_PY_SCORE)
 public class MultiSigWalletTest extends TestBase {
     private static TransactionHandler txHandler;
+    private static KeyWallet[] wallets;
 
     @BeforeAll
-    public static void setUp() {
+    static void setUp() throws Exception {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
         Env.Chain chain = channel.chain;
         IconService iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
         txHandler = new TransactionHandler(iconService, chain);
+
+        // init wallets
+        wallets = new KeyWallet[3];
+        for (int i = 0; i < wallets.length; i++) {
+            wallets[i] = KeyWallet.create();
+        }
     }
 
+    @Tag(Constants.TAG_PY_SCORE)
     @Test
-    public void multiSigWalletTest() throws Exception {
-        KeyWallet ownerWallet = KeyWallet.create();
-        KeyWallet aliceWallet = KeyWallet.create();
-        KeyWallet bobWallet = KeyWallet.create();
+    public void testPython() throws Exception {
+        deployAndStartTest(Constants.CONTENT_TYPE_PYTHON);
+    }
 
+    @Tag(Constants.TAG_JAVA_SCORE)
+    @Test
+    public void testJava() throws Exception {
+        deployAndStartTest(Constants.CONTENT_TYPE_JAVA);
+    }
+
+    private void deployAndStartTest(String contentType) throws Exception {
+        // deploy MultiSigWallet SCORE
+        Address[] walletOwners = new Address[] {
+                wallets[0].getAddress(), wallets[1].getAddress(), wallets[2].getAddress()};
+        MultiSigWalletScore multiSigWalletScore = MultiSigWalletScore.mustDeploy(txHandler,
+                wallets[0], walletOwners, 2, contentType);
+        startTest(multiSigWalletScore);
+    }
+
+    private void startTest(MultiSigWalletScore multiSigWalletScore) throws Exception {
+        KeyWallet ownerWallet = wallets[0];
+        KeyWallet aliceWallet = wallets[1];
+        KeyWallet bobWallet = wallets[2];
         LOG.info("Address of owner: " + ownerWallet.getAddress());
         LOG.info("Address of Alice: " + aliceWallet.getAddress());
         LOG.info("Address of Bob:   " + bobWallet.getAddress());
-
-        // deploy MultiSigWallet multiSigWalletScore
-        LOG.info("deploy: MultiSigWalletScore");
-        Address[] walletOwners =
-                new Address[] {ownerWallet.getAddress(), aliceWallet.getAddress(), bobWallet.getAddress()};
-        MultiSigWalletScore multiSigWalletScore =
-                MultiSigWalletScore.mustDeploy(txHandler, ownerWallet, walletOwners, 2);
         Address multiSigWalletAddress = multiSigWalletScore.getAddress();
 
         // send 3 icx to the multiSigWallet
@@ -81,8 +99,8 @@ public class MultiSigWalletTest extends TestBase {
         BigInteger txId = multiSigWalletScore.getTransactionId(result);
         LOG.infoExiting();
 
-        // 2. Alice confirms the tx to make the tx executedS
-        LOG.infoEntering("call", "confirmTransaction(Alice)");
+        // 2. Alice confirms the tx to make it executed
+        LOG.infoEntering("call", "confirmTransaction() by Alice");
         result = multiSigWalletScore.confirmTransaction(aliceWallet, txId);
 
         multiSigWalletScore.ensureConfirmation(result, aliceWallet.getAddress(), txId);
@@ -95,7 +113,7 @@ public class MultiSigWalletTest extends TestBase {
         LOG.infoExiting();
 
         // *** Send 1 icx to Contract
-        // deploy sample multiSigWalletScore to accept icx
+        // deploy another sample score to accept icx
         LOG.info("deploy: HelloWorld");
         HelloWorld helloScore = HelloWorld.install(txHandler, ownerWallet);
 
@@ -105,8 +123,8 @@ public class MultiSigWalletTest extends TestBase {
         txId = multiSigWalletScore.getTransactionId(result);
         LOG.infoExiting();
 
-        // 4. Bob confirms the tx to make the tx executed
-        LOG.infoEntering("call", "confirmTransaction(Bob)");
+        // 4. Bob confirms the tx to make it executed
+        LOG.infoEntering("call", "confirmTransaction() by Bob");
         result = multiSigWalletScore.confirmTransaction(bobWallet, txId);
 
         multiSigWalletScore.ensureConfirmation(result, bobWallet.getAddress(), txId);
@@ -126,7 +144,7 @@ public class MultiSigWalletTest extends TestBase {
         txId = multiSigWalletScore.getTransactionId(result);
         LOG.infoExiting();
 
-        // 6. Alice confirms the tx to make the tx executed
+        // 6. Alice confirms the tx to make it executed
         LOG.infoEntering("call", "confirmTransaction() by Alice");
         result = multiSigWalletScore.confirmTransaction(aliceWallet, txId);
 
@@ -144,7 +162,7 @@ public class MultiSigWalletTest extends TestBase {
         txId = multiSigWalletScore.getTransactionId(result);
         LOG.infoExiting();
 
-        // 8. Alice confirms the tx to make the tx executed
+        // 8. Alice confirms the tx to make it executed
         LOG.infoEntering("call", "confirmTransaction() by Alice");
         result = multiSigWalletScore.confirmTransaction(aliceWallet, txId);
 
@@ -161,7 +179,7 @@ public class MultiSigWalletTest extends TestBase {
         txId = multiSigWalletScore.getTransactionId(result);
         LOG.infoExiting();
 
-        // 10. Alice confirms the tx to make the tx executed
+        // 10. Alice confirms the tx to make it executed
         LOG.infoEntering("call", "confirmTransaction() by Alice");
         result = multiSigWalletScore.confirmTransaction(aliceWallet, txId);
 

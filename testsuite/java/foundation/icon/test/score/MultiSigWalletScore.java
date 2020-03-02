@@ -16,6 +16,7 @@
 
 package foundation.icon.test.score;
 
+import example.MultiSigWallet;
 import foundation.icon.icx.Wallet;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.IconAmount;
@@ -31,6 +32,8 @@ import foundation.icon.test.common.Utils;
 import java.io.IOException;
 import java.math.BigInteger;
 
+import static foundation.icon.test.common.Env.LOG;
+
 public class MultiSigWalletScore extends Score {
     private static final String SCORE_MULTISIG_PATH = Constants.SCORE_ROOT + "multisig_wallet";
 
@@ -39,20 +42,29 @@ public class MultiSigWalletScore extends Score {
     }
 
     public static MultiSigWalletScore mustDeploy(TransactionHandler txHandler, Wallet wallet,
-                                                 Address[] walletOwners, int required)
+                                                 Address[] walletOwners, int required, String contentType)
             throws IOException, TransactionFailureException, ResultTimeoutException {
+        LOG.infoEntering("deploy", "MultiSigWallet");
         StringBuilder buf = new StringBuilder();
         for (Address walletOwner : walletOwners) {
             buf.append(walletOwner.toString()).append(",");
         }
-        String str = buf.substring(0, buf.length() - 1);
+        String owners = buf.substring(0, buf.length() - 1);
         RpcObject params = new RpcObject.Builder()
-                .put("_walletOwners", new RpcValue(str))
+                .put("_walletOwners", new RpcValue(owners))
                 .put("_required", new RpcValue(BigInteger.valueOf(required)))
                 .build();
-        return new MultiSigWalletScore(
-                txHandler.deploy(wallet, SCORE_MULTISIG_PATH, params)
-        );
+        Score score;
+        if (contentType.equals(Constants.CONTENT_TYPE_PYTHON)) {
+            score = txHandler.deploy(wallet, SCORE_MULTISIG_PATH, params);
+        } else if (contentType.equals(Constants.CONTENT_TYPE_JAVA)) {
+            score = txHandler.deploy(wallet, MultiSigWallet.class, params);
+        } else {
+            throw new IllegalArgumentException("Unknown content type");
+        }
+        LOG.info("scoreAddr = " + score.getAddress());
+        LOG.infoExiting();
+        return new MultiSigWalletScore(score);
     }
 
     public TransactionResult submitIcxTransaction(Wallet fromWallet, Address dest, long value, String description)
