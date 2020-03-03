@@ -40,6 +40,28 @@ public final class Address extends s.java.lang.Object {
         setUnderlying(raw.getUnderlying());
     }
 
+    public static Address avm_fromString(s.java.lang.String str) {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Address_avm_fromString);
+        if (str == null) {
+            throw new NullPointerException();
+        }
+        String raw = str.getUnderlying();
+        if (raw.length() != avm_LENGTH * 2) {
+            throw new IllegalArgumentException();
+        }
+        if (raw.startsWith("hx") || raw.startsWith("cx")) {
+            byte[] bytes = new byte[avm_LENGTH];
+            bytes[0] = (byte) (raw.startsWith("hx") ? 0x0 : 0x1);
+            for (int i = 1; i < avm_LENGTH; i++) {
+                int j = i * 2;
+                bytes[i] = (byte) Integer.parseInt(raw.substring(j, j + 2), 16);
+            }
+            return newWithCharge(bytes);
+        } else {
+            throw new IllegalArgumentException();
+        }
+    }
+
     public static boolean avm_isContract(Address address) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Address_avm_unwrap);
         byte[] ba = address.toByteArray();
@@ -88,10 +110,14 @@ public final class Address extends s.java.lang.Object {
     }
 
     private static char[] toHexChars(byte[] bytes) {
-        int length = bytes.length;
-
-        char[] hexChars = new char[length * 2];
-        for (int i = 0; i < length; i++) {
+        char[] hexChars = new char[bytes.length * 2];
+        if (bytes[0] == 0x0) {
+            hexChars[0] = 'h';
+        } else {
+            hexChars[0] = 'c';
+        }
+        hexChars[1] = 'x';
+        for (int i = 1; i < bytes.length; i++) {
             int v = bytes[i] & 0xFF;
             hexChars[i * 2] = hexArray[v >>> 4];
             hexChars[i * 2 + 1] = hexArray[v & 0x0F];
@@ -160,7 +186,6 @@ public final class Address extends s.java.lang.Object {
             serializer.writeByte(this.internalArray[i]);
         }
     }
-
 
     private void setUnderlying(byte[] raw) {
         if (raw.length != avm_LENGTH) {

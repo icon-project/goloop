@@ -164,6 +164,7 @@ public class RuntimeMethodFeeSchedule {
     public static final int Address_avm_hashCode = RT_METHOD_FEE_LEVEL_2; // totalCost - 447; //maximum cost of multiple blocks; // byte code cost - 319; invoked methods cost - 128;
     public static final int Address_avm_equals = RT_METHOD_FEE_LEVEL_2; // totalCost - 1606; //maximum cost of multiple blocks; // byte code cost - 1090; invoked methods cost - 516;
     public static final int Address_avm_toString = RT_METHOD_FEE_LEVEL_3; // totalCost - 1116; // byte code cost - 182; invoked methods cost - 934;
+    public static final int Address_avm_fromString = RT_METHOD_FEE_LEVEL_3;
 
     public static final int DoubleArray2D_avm_clone = RT_METHOD_FEE_LEVEL_3; // totalCost - 762; // byte code cost - 362; invoked methods cost - 400;
     public static final int DoubleArray2D_avm_constructor_2 = RT_METHOD_FEE_LEVEL_3; // totalCost - 704; //maximum cost of multiple blocks;

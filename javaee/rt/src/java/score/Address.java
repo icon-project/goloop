@@ -34,6 +34,31 @@ public class Address {
         System.arraycopy(raw, 0, this.raw, 0, LENGTH);
     }
 
+    /**
+     * Create an Address from the hex string format
+     *
+     * @param str a hex string that represents an Address
+     */
+    public static Address fromString(String str) {
+        if (str == null) {
+            throw new NullPointerException();
+        }
+        if (str.length() != LENGTH * 2) {
+            throw new IllegalArgumentException();
+        }
+        if (str.startsWith("hx") || str.startsWith("cx")) {
+            byte[] bytes = new byte[LENGTH];
+            bytes[0] = (byte) (str.startsWith("hx") ? 0x0 : 0x1);
+            for (int i = 1; i < LENGTH; i++) {
+                int j = i * 2;
+                bytes[i] = (byte) Integer.parseInt(str.substring(j, j + 2), 16);
+            }
+            return new Address(bytes);
+        } else {
+            throw new IllegalArgumentException();
+        }
+    }
+
     public static boolean isContract(Address address) {
         byte[] ba = address.toByteArray();
         return ba[0] == 0x1;
@@ -74,15 +99,16 @@ public class Address {
     }
 
     @Override
-    public java.lang.String toString() {
-        return toHexStringForAPI(this.raw);
+    public String toString() {
+        byte prefix = this.raw[0];
+        byte[] body = new byte[LENGTH - 1];
+        System.arraycopy(this.raw, 1, body, 0, body.length);
+        return ((prefix == 0x0) ? "hx" : "cx") + toHexString(body);
     }
 
-    private static java.lang.String toHexStringForAPI(byte[] bytes) {
-        int length = bytes.length;
-
-        char[] hexChars = new char[length * 2];
-        for (int i = 0; i < length; i++) {
+    private static String toHexString(byte[] bytes) {
+        char[] hexChars = new char[bytes.length * 2];
+        for (int i = 0; i < bytes.length; i++) {
             int v = bytes[i] & 0xFF;
             hexChars[i * 2] = hexArray[v >>> 4];
             hexChars[i * 2 + 1] = hexArray[v & 0x0F];
