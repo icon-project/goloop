@@ -1,3 +1,8 @@
+/*
+ * Copyright 2019 ICON Foundation
+ * Copyright (c) 2018 Aion Foundation https://aion.network/
+ */
+
 package org.aion.avm.core;
 
 import a.ByteArray;
@@ -165,6 +170,9 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         if (value == null) {
             value = s.java.math.BigInteger.avm_ZERO;
         }
+        if (method == null) {
+            method = new s.java.lang.String("fallback");
+        }
         java.math.BigInteger underlyingValue = value.getUnderlying();
         require(targetAddress != null, "Destination can't be NULL");
         require(underlyingValue.compareTo(java.math.BigInteger.ZERO) >= 0 , "Value can't be negative");
@@ -184,7 +192,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         InstrumentationHelpers.temporarilyExitFrame(this.thisDAppSetup);
         Object[] params = new Object[sparams.length()];
         for (int i=0; i<params.length; i++) {
-            var  p = sparams.get(i);
             params[i] = Unshadower.unshadow((s.java.lang.Object)sparams.get(i));
         }
         foundation.icon.ee.types.Result res = externalState.call(
