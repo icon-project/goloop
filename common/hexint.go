@@ -51,6 +51,22 @@ func Uint64ToBytes(v uint64) []byte {
 	if v == 0 {
 		return BytesForZero()
 	}
+	bs := make([]byte, 9)
+	for idx := 8; idx >= 0; idx-- {
+		tv := byte(v & 0xff)
+		bs[idx] = tv
+		v >>= 8
+		if v == 0 && (tv&0x80) == 0 {
+			return bs[idx:]
+		}
+	}
+	return bs
+}
+
+func uint64ToBytes(v uint64) []byte {
+	if v == 0 {
+		return BytesForZero()
+	}
 	bs := make([]byte, 8)
 	for idx := 7; idx >= 0; idx-- {
 		bs[idx] = byte(v & 0xff)
@@ -63,6 +79,20 @@ func Uint64ToBytes(v uint64) []byte {
 }
 
 func BytesToUint64(bs []byte) uint64 {
+	if len(bs) == 0 {
+		return 0
+	}
+	var v uint64
+	if (bs[0] & 0x80) != 0 {
+		v = 0xffffffffffffffff
+	}
+	for _, b := range bs {
+		v = (v << 8) | uint64(b)
+	}
+	return v
+}
+
+func bytesToUint64(bs []byte) uint64 {
 	var v uint64
 	for _, b := range bs {
 		v = (v << 8) | uint64(b)
@@ -148,7 +178,7 @@ func ParseInt(s string, bits int) (int64, error) {
 		if len(bs)*8 > bits {
 			return 0, errors.New("OutOfRange")
 		}
-		u64 := BytesToUint64(bs)
+		u64 := bytesToUint64(bs)
 		edge := (uint64(1)) << uint(bits-1)
 		if negative {
 			if u64 > edge {
@@ -174,7 +204,7 @@ func ParseUint(s string, bits int) (uint64, error) {
 		if len(bs)*8 > bits {
 			return 0, errors.New("OutOfRange")
 		}
-		return BytesToUint64(bs), nil
+		return bytesToUint64(bs), nil
 	} else {
 		return 0, errors.New("IllegalFormat")
 	}
@@ -183,16 +213,16 @@ func ParseUint(s string, bits int) (uint64, error) {
 func FormatInt(v int64) string {
 	var bs []byte
 	if v < 0 {
-		bs = Uint64ToBytes(uint64(-v))
+		bs = uint64ToBytes(uint64(-v))
 		return encodeHexNumber(true, bs)
 	} else {
-		bs = Uint64ToBytes(uint64(v))
+		bs = uint64ToBytes(uint64(v))
 		return encodeHexNumber(false, bs)
 	}
 }
 
 func FormatUint(v uint64) string {
-	return encodeHexNumber(false, Uint64ToBytes(v))
+	return encodeHexNumber(false, uint64ToBytes(v))
 }
 
 type HexInt struct {
@@ -341,7 +371,7 @@ func (i *HexUint16) DecodeMsgpack(d *msgpack.Decoder) error {
 }
 
 func (i HexUint16) Bytes() []byte {
-	return Uint64ToBytes(uint64(i.Value))
+	return Int64ToBytes(int64(i.Value))
 }
 
 type HexInt32 struct {

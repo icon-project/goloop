@@ -685,6 +685,8 @@ func TestInt64ToBytes(t *testing.T) {
 		{"T3", args{0x80}, []byte{0x00, 0x80}},
 		{"T4", args{-0x80}, []byte{0x80}},
 		{"T5", args{0}, []byte{0x00}},
+		{"T6", args{-0x8000000000000000}, []byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
+		{"T7", args{0x7fffffffffffffff}, []byte{0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -714,6 +716,55 @@ func TestBytesToInt64(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := BytesToInt64(tt.args.bs); got != tt.want {
 				t.Errorf("BytesToInt64() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUint64ToBytes(t *testing.T) {
+	type args struct {
+		v uint64
+	}
+	tests := []struct {
+		name string
+		args args
+		want []byte
+	}{
+		{"T1", args{0x00}, []byte{0x00}},
+		{"T2", args{0x80}, []byte{0x00, 0x80}},
+		{"T3", args{0xffffffffffffffff}, []byte{0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}},
+		{"T4", args{0x7fffffffffffffff}, []byte{0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Uint64ToBytes(tt.args.v); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Uint64ToBytes() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBytesToUint64(t *testing.T) {
+	type args struct {
+		bs []byte
+	}
+	tests := []struct {
+		name string
+		args args
+		want uint64
+	}{
+		{"T1", args{[]byte{}}, 0},
+		{"T2", args{[]byte{0x80}}, 0xffffffffffffff80},
+		{"T3", args{[]byte{0x00, 0x80}}, 0x80},
+		{"T4", args{[]byte{0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}}, 0x8000000000000000},
+		{"T5", args{[]byte{0x7f, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}}, 0x7fffffffffffffff},
+		{"T6", args{[]byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}}, 0xffffffffffffffff},
+		{"T7", args{[]byte{0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}}, 0xffffffffffffffff},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := BytesToUint64(tt.args.bs); got != tt.want {
+				t.Errorf("BytesToUint64() = %v, want %v", got, tt.want)
 			}
 		})
 	}
