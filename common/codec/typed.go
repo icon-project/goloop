@@ -62,7 +62,7 @@ func (o *TypedObj) DecodeMsgpack(d *msgpack.Decoder) error {
 	o.Type = t
 	switch t {
 	case TypeNil:
-		return nil
+		d.Skip()
 	case TypeDict:
 		var m map[string]*TypedObj
 		err = d.Decode(&m)
@@ -115,7 +115,7 @@ func MarshalAny(tc TypeCodec, o interface{}) ([]byte, error) {
 
 func EncodeAny(tc TypeCodec, o interface{}) (*TypedObj, error) {
 	if o == nil {
-		return newTypedObj(TypeNil, nil), nil
+		return Nil, nil
 	}
 	switch obj := o.(type) {
 	case string:
