@@ -12,7 +12,7 @@ RECV setObjGraph flag=1 next=4 hash=89df34e80e17c6b6deb4c8732b5d56e5a4c6c267b4fb
 RECV result status=0 stepUsed=202902 ret=<null>
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=method params=[2 true 010002...]
 RECV getObjGraph flag=1 => next=4 hash=4af0eeb564f2a45ea893e805682f0c4e275abb50ad77240334084c6f16c76adb graphLen=141 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x021foundation.icon.ee.ipc.IntercallRefTest$RefScoreA\x00\x00\x00\x03\x00\x00\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x0eleave A.method\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x06method
-RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| enter A.method(2 true 010002000000000000000000000000000000000000)
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| enter A.method(2 true cx0002000000000000000000000000000000000000)
 RECV call to=010002... value=0 stepLimit=999981971 method=method params=[1 false <null>]
 SEND invoke code=010002/transformed isQuery=false from=010001... to=010002... value=0 stepLimit=999981971 method=method params=[1 false <null>]
 RECV getObjGraph flag=1 => next=4 hash=89df34e80e17c6b6deb4c8732b5d56e5a4c6c267b4fbf61fc8d628b96f631eb4 graphLen=139 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x021foundation.icon.ee.ipc.IntercallRefTest$RefScoreB\x00\x00\x00\x03\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x0eleave B.method\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x06method
