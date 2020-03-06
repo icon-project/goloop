@@ -59,9 +59,9 @@ func TestStructEncodeDecode(t *testing.T) {
 	}
 }
 
-func Test_uint64ToBytes(t *testing.T) {
+func Test_sizeToBytes(t *testing.T) {
 	type args struct {
-		v uint64
+		v int
 	}
 	tests := []struct {
 		name string
@@ -71,35 +71,12 @@ func Test_uint64ToBytes(t *testing.T) {
 		{"1byte", args{0xf0}, []byte{0xf0}},
 		{"2byte", args{0x0189}, []byte{0x01, 0x89}},
 		{"3byte", args{0xff0189}, []byte{0xff, 0x01, 0x89}},
-		{"8byte", args{0xff018945dd4a9c44}, []byte{0xff, 0x01, 0x89, 0x45, 0xdd, 0x4a, 0x9c, 0x44}},
+		{"4byte", args{0xff018945}, []byte{0xff, 0x01, 0x89, 0x45}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := uint64ToBytes(tt.args.v); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("uint64ToBytes() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_int64ToBytes(t *testing.T) {
-	type args struct {
-		v int64
-	}
-	tests := []struct {
-		name string
-		args args
-		want []byte
-	}{
-		{"byte1", args{-1}, []byte{0x81}},
-		{"byte2", args{-0x80}, []byte{0x80, 0x80}},
-		{"byte8", args{-0x7fffffffffffffff},
-			[]byte{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := int64ToBytes(tt.args.v); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("int64ToBytes() = %v, want %v", got, tt.want)
+			if got := sizeToBytes(tt.args.v); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("sizeToBytes() = %v, want %v", got, tt.want)
 			}
 		})
 	}

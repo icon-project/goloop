@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 )
@@ -70,15 +71,15 @@ func ToBytes(v interface{}) []byte {
 			return []byte{0}
 		}
 	case int:
-		return common.Int64ToBytes(int64(obj))
+		return intconv.Int64ToBytes(int64(obj))
 	case int16:
-		return common.Int64ToBytes(int64(obj))
+		return intconv.Int64ToBytes(int64(obj))
 	case int32:
-		return common.Int64ToBytes(int64(obj))
+		return intconv.Int64ToBytes(int64(obj))
 	case int64:
-		return common.Int64ToBytes(obj)
+		return intconv.Int64ToBytes(obj)
 	case *big.Int:
-		return common.BigIntToBytes(obj)
+		return intconv.BigIntToBytes(obj)
 	case *common.HexInt:
 		return obj.Bytes()
 	case string:
@@ -98,7 +99,7 @@ type valueImpl struct {
 func (e *valueImpl) BigInt() *big.Int {
 	if bs := e.Bytes(); bs != nil {
 		value := new(big.Int)
-		return common.BigIntSetBytes(value, bs)
+		return intconv.BigIntSetBytes(value, bs)
 	} else {
 		return nil
 	}
@@ -107,9 +108,9 @@ func (e *valueImpl) BigInt() *big.Int {
 func (e *valueImpl) Int64() int64 {
 	if bs := e.Bytes(); len(bs) != 0 {
 		if len(bs) <= 8 {
-			return common.BytesToInt64(bs)
+			return intconv.BytesToInt64(bs)
 		} else {
-			return common.BytesToInt64(bs[len(bs)-8:])
+			return intconv.BytesToInt64(bs[len(bs)-8:])
 		}
 	}
 	return 0
@@ -135,10 +136,10 @@ func (e *valueImpl) String() string {
 
 func (e *valueImpl) Bool() bool {
 	if bs := e.Bytes(); len(bs) <= 1 {
-		return common.BytesToInt64(bs) != 0
+		return intconv.BytesToInt64(bs) != 0
 	} else {
 		var value big.Int
-		return common.BigIntSetBytes(&value, bs).Sign() != 0
+		return intconv.BigIntSetBytes(&value, bs).Sign() != 0
 	}
 }
 

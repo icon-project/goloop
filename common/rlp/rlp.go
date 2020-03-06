@@ -10,6 +10,7 @@ import (
 	"sort"
 
 	cerrors "github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/intconv"
 )
 
 type Encoder interface {
@@ -163,10 +164,10 @@ func (e *rlpEncoder) encodeValue(v reflect.Value) error {
 		return e.encodeBytes(buffer[:])
 
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return e.encodeBytes(uint64ToBytes(v.Uint()))
+		return e.encodeBytes(intconv.Uint64ToBytes(v.Uint()))
 
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return e.encodeBytes(int64ToBytes(v.Int()))
+		return e.encodeBytes(intconv.Int64ToBytes(v.Int()))
 
 	case reflect.Slice:
 		return e.encodeNullable(v, func(e *rlpEncoder, v reflect.Value) error {
@@ -299,74 +300,11 @@ func (e *rlpEncoder) writeAll(b []byte) error {
 }
 
 func sizeToBytes(s int) []byte {
-	return uint64ToBytes(uint64(s))
+	return intconv.SizeToBytes(uint64(s))
 }
 
-func bytesTosize(b []byte) int {
-	return int(bytesToUint64(b))
-}
-
-func uint64ToBytes(v uint64) []byte {
-	var buf [8]byte
-	var idx int
-	for idx = len(buf) - 1; idx >= 0; idx-- {
-		buf[idx] = byte(v & 0xff)
-		v = v >> 8
-		if v == 0 {
-			return buf[idx:]
-		}
-	}
-	return buf[:]
-}
-
-func int64ToBytes(v int64) []byte {
-	if v >= 0 {
-		return uint64ToBytes(uint64(v))
-	}
-	v = -v
-	var buf [8]byte
-	var idx int
-	for idx = len(buf) - 1; idx >= 0; idx-- {
-		buf[idx] = byte(v & 0xff)
-		if (v & 0x80) != 0 {
-			v = v >> 8
-		} else {
-			v = v >> 8
-			if v == 0 {
-				buf[idx] |= 0x80
-				return buf[idx:]
-			}
-		}
-	}
-	buf[0] |= 0x80
-	return buf[:]
-}
-
-func bytesToInt64(bs []byte) int64 {
-	negative := false
-	var value int64
-	for i := 0; i < len(bs); i++ {
-		b := bs[i]
-		if i == 0 {
-			if (b & 0x80) != 0 {
-				b &= 0x7f
-				negative = true
-			}
-		}
-		value = (value << 8) + int64(b)
-	}
-	if negative {
-		value = -value
-	}
-	return value
-}
-
-func bytesToUint64(bs []byte) uint64 {
-	var value uint64
-	for i := 0; i < len(bs); i++ {
-		value = (value << 8) + uint64(bs[i])
-	}
-	return value
+func bytesToSize(bs []byte) int {
+	return int(intconv.BytesToSize(bs))
 }
 
 func (e *rlpEncoder) encodeBytes(b []byte) error {
@@ -469,7 +407,7 @@ func (d *rlpDecoder) readBytes() ([]byte, error) {
 			return nil, cerrors.WithStack(err)
 		}
 
-		blen := bytesTosize(header[1 : 1+sz])
+		blen := bytesToSize(header[1 : 1+sz])
 		buffer := make([]byte, blen)
 		if _, err := io.ReadFull(d.reader, buffer); err != nil {
 			if err == io.EOF {
@@ -520,7 +458,7 @@ func (d *rlpDecoder) readList() (io.Reader, int64, error) {
 		if sz == 1 && header[1] == 0 {
 			return nil, 0, ErrNilValue
 		}
-		blen := bytesToUint64(header[1 : 1+sz])
+		blen := bytesToSize(header[1 : 1+sz])
 		return io.LimitReader(d.reader, int64(blen)), int64(blen), nil
 	}
 }
@@ -647,7 +585,7 @@ func (d *rlpDecoder) decodeValue(v reflect.Value) error {
 		if err != nil {
 			return err
 		}
-		elem.SetBool(bytesToUint64(bs) != 0)
+		elem.SetBool(intconv.BytesToUint64(bs) != 0)
 		return nil
 
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
@@ -655,7 +593,7 @@ func (d *rlpDecoder) decodeValue(v reflect.Value) error {
 		if err != nil {
 			return err
 		}
-		elem.SetUint(bytesToUint64(bs))
+		elem.SetUint(intconv.BytesToUint64(bs))
 		return nil
 
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -663,7 +601,7 @@ func (d *rlpDecoder) decodeValue(v reflect.Value) error {
 		if err != nil {
 			return err
 		}
-		elem.SetInt(bytesToInt64(bs))
+		elem.SetInt(intconv.BytesToInt64(bs))
 		return nil
 
 	case reflect.Array:

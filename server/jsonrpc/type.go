@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -17,11 +18,11 @@ func (hs HexBytes) Bytes() []byte {
 type HexInt string
 
 func (i HexInt) ParseInt(bits int) (int64, error) {
-	return common.ParseInt(string(i), bits)
+	return intconv.ParseInt(string(i), bits)
 }
 
 func (i HexInt) Value() int64 {
-	v, err := common.ParseInt(string(i), 64)
+	v, err := intconv.ParseInt(string(i), 64)
 	if err != nil {
 		return 0
 	}

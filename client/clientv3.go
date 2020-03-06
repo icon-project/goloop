@@ -11,8 +11,8 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server"
 	"github.com/icon-project/goloop/server/jsonrpc"
@@ -187,7 +187,7 @@ func (c *ClientV3) GetTransactionByHash(param *v3.TransactionHashParam) (*Transa
 var txSerializeExcludes = map[string]bool{"signature": true}
 
 func (c *ClientV3) SendTransaction(w module.Wallet, param *v3.TransactionParam) (*jsonrpc.HexBytes, error) {
-	param.Timestamp = jsonrpc.HexInt(common.FormatInt(time.Now().UnixNano() / int64(time.Microsecond)))
+	param.Timestamp = jsonrpc.HexInt(intconv.FormatInt(time.Now().UnixNano() / int64(time.Microsecond)))
 	js, err := json.Marshal(param)
 	if err != nil {
 		return nil, err

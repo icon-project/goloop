@@ -8,6 +8,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/jsonrpc"
@@ -441,7 +442,7 @@ func countBytesOfDataValue(v interface{}) int {
 	case bool:
 		return 1
 	case float64:
-		return len(common.Int64ToBytes(int64(o)))
+		return len(intconv.Int64ToBytes(int64(o)))
 	default:
 		return 0
 	}

@@ -15,6 +15,7 @@ import (
 	"github.com/icon-project/goloop/client"
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/wallet"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server"
@@ -74,11 +75,11 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 			Short: "GetBlockByHeight",
 			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 			RunE: func(cmd *cobra.Command, args []string) error {
-				height, err := common.ParseInt(args[0], 64)
+				height, err := intconv.ParseInt(args[0], 64)
 				if err != nil {
 					return err
 				}
-				param := &v3.BlockHeightParam{Height: jsonrpc.HexInt(common.FormatInt(height))}
+				param := &v3.BlockHeightParam{Height: jsonrpc.HexInt(intconv.FormatInt(height))}
 				blk, err := rpcClient.GetBlockByHeight(param)
 				if err != nil {
 					return err
@@ -257,11 +258,11 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 			Short: "GetBlockHeaderByHeight",
 			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 			RunE: func(cmd *cobra.Command, args []string) error {
-				height, err := common.ParseInt(args[0], 64)
+				height, err := intconv.ParseInt(args[0], 64)
 				if err != nil {
 					return err
 				}
-				param := &v3.BlockHeightParam{Height: jsonrpc.HexInt(common.FormatInt(height))}
+				param := &v3.BlockHeightParam{Height: jsonrpc.HexInt(intconv.FormatInt(height))}
 				raw, err := rpcClient.GetBlockHeaderByHeight(param)
 				if err != nil {
 					return err
@@ -274,11 +275,11 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 			Short: "GetVotesByHeight",
 			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 			RunE: func(cmd *cobra.Command, args []string) error {
-				height, err := common.ParseInt(args[0], 64)
+				height, err := intconv.ParseInt(args[0], 64)
 				if err != nil {
 					return err
 				}
-				param := &v3.BlockHeightParam{Height: jsonrpc.HexInt(common.FormatInt(height))}
+				param := &v3.BlockHeightParam{Height: jsonrpc.HexInt(intconv.FormatInt(height))}
 				raw, err := rpcClient.GetVotesByHeight(param)
 				if err != nil {
 					return err
@@ -291,13 +292,13 @@ func NewRpcCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command,
 			Short: "GetProofForResult",
 			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(2)),
 			RunE: func(cmd *cobra.Command, args []string) error {
-				idx, err := common.ParseInt(args[1], 64)
+				idx, err := intconv.ParseInt(args[1], 64)
 				if err != nil {
 					return err
 				}
 				param := &v3.ProofResultParam{
 					BlockHash: jsonrpc.HexBytes(args[0]),
-					Index:     jsonrpc.HexInt(common.FormatInt(idx)),
+					Index:     jsonrpc.HexInt(intconv.FormatInt(idx)),
 				}
 				raw, err := rpcClient.GetProofForResult(param)
 				if err != nil {
@@ -423,22 +424,22 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 				return err
 			}
 			if param.Version == "" {
-				param.Version = jsonrpc.HexInt(common.FormatInt(jsonrpc.APIVersion3))
+				param.Version = jsonrpc.HexInt(intconv.FormatInt(jsonrpc.APIVersion3))
 			}
 			if param.FromAddress == "" {
 				param.FromAddress = jsonrpc.Address(rpcWallet.Address().String())
 			}
 			if param.StepLimit == "" {
 				stepLimit := vc.GetInt64("step_limit")
-				param.StepLimit = jsonrpc.HexInt(common.FormatInt(stepLimit))
+				param.StepLimit = jsonrpc.HexInt(intconv.FormatInt(stepLimit))
 			}
 			if param.NetworkID == "" {
 				strNid := vc.GetString("nid")
-				nid, err := common.ParseInt(strNid, 64)
+				nid, err := intconv.ParseInt(strNid, 64)
 				if err != nil {
 					return err
 				}
-				param.NetworkID = jsonrpc.HexInt(common.FormatInt(nid))
+				param.NetworkID = jsonrpc.HexInt(intconv.FormatInt(nid))
 			}
 
 			txHash, err := rpcClient.SendTransaction(rpcWallet, param)
@@ -461,20 +462,20 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var value common.HexInt
 			if _, ok := value.SetString(cmd.Flag("value").Value.String(), 0); !ok {
-				return fmt.Errorf("fail to parsing value %s",cmd.Flag("value").Value.String())
+				return fmt.Errorf("fail to parsing value %s", cmd.Flag("value").Value.String())
 			}
 			stepLimit := vc.GetInt64("step_limit")
-			nid, err := common.ParseInt(vc.GetString("nid"), 64)
+			nid, err := intconv.ParseInt(vc.GetString("nid"), 64)
 			if err != nil {
 				return err
 			}
 			param := &v3.TransactionParam{
-				Version:     jsonrpc.HexInt(common.FormatInt(jsonrpc.APIVersion3)),
+				Version:     jsonrpc.HexInt(intconv.FormatInt(jsonrpc.APIVersion3)),
 				FromAddress: jsonrpc.Address(rpcWallet.Address().String()),
 				ToAddress:   jsonrpc.Address(cmd.Flag("to").Value.String()),
 				Value:       jsonrpc.HexInt(value.String()),
-				StepLimit:   jsonrpc.HexInt(common.FormatInt(stepLimit)),
-				NetworkID:   jsonrpc.HexInt(common.FormatInt(nid)),
+				StepLimit:   jsonrpc.HexInt(intconv.FormatInt(stepLimit)),
+				NetworkID:   jsonrpc.HexInt(intconv.FormatInt(nid)),
 				//Nonce:       "",
 			}
 			msg, err := cmd.Flags().GetString("message")
@@ -507,17 +508,17 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			stepLimit := vc.GetInt64("step_limit")
-			nid, err := common.ParseInt(vc.GetString("nid"), 64)
+			nid, err := intconv.ParseInt(vc.GetString("nid"), 64)
 			if err != nil {
 				return err
 			}
 
 			param := &v3.TransactionParam{
-				Version:     jsonrpc.HexInt(common.FormatInt(jsonrpc.APIVersion3)),
+				Version:     jsonrpc.HexInt(intconv.FormatInt(jsonrpc.APIVersion3)),
 				FromAddress: jsonrpc.Address(rpcWallet.Address().String()),
 				ToAddress:   jsonrpc.Address(cmd.Flag("to").Value.String()),
-				StepLimit:   jsonrpc.HexInt(common.FormatInt(stepLimit)),
-				NetworkID:   jsonrpc.HexInt(common.FormatInt(nid)),
+				StepLimit:   jsonrpc.HexInt(intconv.FormatInt(stepLimit)),
+				NetworkID:   jsonrpc.HexInt(intconv.FormatInt(nid)),
 				//Nonce:       "",
 				DataType: "call",
 			}
@@ -571,16 +572,16 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			stepLimit := vc.GetInt64("step_limit")
-			nid, err := common.ParseInt(vc.GetString("nid"), 64)
+			nid, err := intconv.ParseInt(vc.GetString("nid"), 64)
 			if err != nil {
 				return err
 			}
 			param := &v3.TransactionParam{
-				Version:     jsonrpc.HexInt(common.FormatInt(jsonrpc.APIVersion3)),
+				Version:     jsonrpc.HexInt(intconv.FormatInt(jsonrpc.APIVersion3)),
 				FromAddress: jsonrpc.Address(rpcWallet.Address().String()),
 				ToAddress:   jsonrpc.Address(cmd.Flag("to").Value.String()),
-				StepLimit:   jsonrpc.HexInt(common.FormatInt(stepLimit)),
-				NetworkID:   jsonrpc.HexInt(common.FormatInt(nid)),
+				StepLimit:   jsonrpc.HexInt(intconv.FormatInt(stepLimit)),
+				NetworkID:   jsonrpc.HexInt(intconv.FormatInt(nid)),
 				//Nonce:       "",
 				DataType: "deploy",
 			}
@@ -641,7 +642,7 @@ func NewMonitorCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comma
 		Short: "MonitorBlock",
 		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			height, err := common.ParseInt(args[0], 64)
+			height, err := intconv.ParseInt(args[0], 64)
 			if err != nil {
 				return err
 			}
@@ -709,7 +710,7 @@ func NewMonitorCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comma
 				}
 			}
 			if len(args) > 0 {
-				height, err := common.ParseInt(args[0], 64)
+				height, err := intconv.ParseInt(args[0], 64)
 				if err != nil {
 					return err
 				}

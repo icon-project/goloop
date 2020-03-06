@@ -5,6 +5,7 @@ import (
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 )
@@ -36,27 +37,25 @@ func (*typeCodec) Encode(o interface{}) (uint8, []byte, error) {
 	case module.Address:
 		return TypeAddress, obj.Bytes(), nil
 	case *big.Int:
-		return TypeInt, BigIntToBytes(obj), nil
+		return TypeInt, intconv.BigIntToBytes(obj), nil
 	case *HexInt:
 		return TypeInt, obj.Bytes(), nil
 	case int:
-		return TypeInt, Int64ToBytes(int64(obj)), nil
+		return TypeInt, intconv.Int64ToBytes(int64(obj)), nil
 	case int16:
-		return TypeInt, Int64ToBytes(int64(obj)), nil
+		return TypeInt, intconv.Int64ToBytes(int64(obj)), nil
 	case int32:
-		return TypeInt, Int64ToBytes(int64(obj)), nil
+		return TypeInt, intconv.Int64ToBytes(int64(obj)), nil
 	case int64:
-		return TypeInt, Int64ToBytes(obj), nil
+		return TypeInt, intconv.Int64ToBytes(obj), nil
 	case uint:
-		return TypeInt, Int64ToBytes(int64(obj)), nil
+		return TypeInt, intconv.Int64ToBytes(int64(obj)), nil
 	case uint16:
-		return TypeInt, Int64ToBytes(int64(obj)), nil
+		return TypeInt, intconv.Int64ToBytes(int64(obj)), nil
 	case uint32:
-		return TypeInt, Int64ToBytes(int64(obj)), nil
+		return TypeInt, intconv.Int64ToBytes(int64(obj)), nil
 	case uint64:
-		var bi big.Int
-		bi.SetUint64(o.(uint64))
-		return TypeInt, BigIntToBytes(&bi), nil
+		return TypeInt, intconv.Uint64ToBytes(obj), nil
 	default:
 		return 0, nil, errors.Errorf("UnknownType:%T", obj)
 	}
