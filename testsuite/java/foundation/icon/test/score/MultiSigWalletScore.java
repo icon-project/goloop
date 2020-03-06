@@ -17,6 +17,8 @@
 package foundation.icon.test.score;
 
 import example.MultiSigWallet;
+import example.StringTokenizer;
+import example.Transaction;
 import foundation.icon.icx.Wallet;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.IconAmount;
@@ -58,7 +60,8 @@ public class MultiSigWalletScore extends Score {
         if (contentType.equals(Constants.CONTENT_TYPE_PYTHON)) {
             score = txHandler.deploy(wallet, SCORE_MULTISIG_PATH, params);
         } else if (contentType.equals(Constants.CONTENT_TYPE_JAVA)) {
-            score = txHandler.deploy(wallet, MultiSigWallet.class, params);
+            score = txHandler.deploy(wallet, new Class<?>[]
+                    {MultiSigWallet.class, StringTokenizer.class, Transaction.class}, params);
         } else {
             throw new IllegalArgumentException("Unknown content type");
         }

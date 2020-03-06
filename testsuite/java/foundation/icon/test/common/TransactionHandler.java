@@ -73,12 +73,13 @@ public class TransactionHandler {
 
     public Score deploy(Wallet owner, Class<?> mainClass, RpcObject params)
             throws IOException, ResultTimeoutException, TransactionFailureException {
-        byte[] jar = makeJar(mainClass);
-        return getScore(doDeploy(owner, jar, params, Constants.CONTENT_TYPE_JAVA));
+        return deploy(owner, new Class<?>[]{mainClass}, params);
     }
 
-    private byte[] makeJar(Class<?> c) {
-        return makeJar(c.getName(), new Class<?>[]{c});
+    public Score deploy(Wallet owner, Class<?>[] classes, RpcObject params)
+            throws IOException, ResultTimeoutException, TransactionFailureException {
+        byte[] jar = makeJar(classes[0].getName(), classes);
+        return getScore(doDeploy(owner, jar, params, Constants.CONTENT_TYPE_JAVA));
     }
 
     private byte[] makeJar(String name, Class<?>[] classes) {

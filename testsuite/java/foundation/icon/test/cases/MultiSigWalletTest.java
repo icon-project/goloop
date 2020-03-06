@@ -61,7 +61,7 @@ public class MultiSigWalletTest extends TestBase {
         deployAndStartTest(Constants.CONTENT_TYPE_PYTHON);
     }
 
-    @Tag(Constants.TAG_JAVA_SCORE)
+    @Tag(Constants.TAG_INTER_SCORE)
     @Test
     public void testJava() throws Exception {
         deployAndStartTest(Constants.CONTENT_TYPE_JAVA);
