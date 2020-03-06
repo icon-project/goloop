@@ -173,6 +173,9 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         if (method == null) {
             method = new s.java.lang.String("fallback");
         }
+        if (sparams == null) {
+            sparams = new a.ObjectArray(0);
+        }
         java.math.BigInteger underlyingValue = value.getUnderlying();
         require(targetAddress != null, "Destination can't be NULL");
         require(underlyingValue.compareTo(java.math.BigInteger.ZERO) >= 0 , "Value can't be negative");
