@@ -16,8 +16,6 @@
 
 package foundation.icon.test.cases;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import foundation.icon.ee.util.Crypto;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
@@ -27,19 +25,13 @@ import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.icx.transport.jsonrpc.RpcError;
-import foundation.icon.test.common.Constants;
-import foundation.icon.test.common.Env;
-import foundation.icon.test.common.TestBase;
-import foundation.icon.test.common.TransactionHandler;
+import foundation.icon.test.common.*;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.msgpack.jackson.dataformat.MessagePackFactory;
 
 import java.math.BigInteger;
 import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
 
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -48,10 +40,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 public class BtpApiTest extends TestBase {
     private static TransactionHandler txHandler;
     private static IconService iconService;
-
-    private final static int PREVID_INDEX = 4;
-    private final static int VOTESHASH_INDEX = 5;
-    private final static int NEXTVALIDATORHASH_INDEX = 6;
+    private static Codec codec;
 
     @BeforeAll
     static void init() {
@@ -60,6 +49,12 @@ public class BtpApiTest extends TestBase {
         Env.Chain chain = channel.chain;
         iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
         txHandler = new TransactionHandler(iconService, chain);
+        var cname = chain.getProperty("codec", "messagePack");
+        if (cname.equals("rlp")) {
+            codec = Codec.rlp;
+        } else {
+            codec = Codec.messagePack;
+        }
     }
 
     /*
@@ -81,86 +76,36 @@ public class BtpApiTest extends TestBase {
         TransactionResult result = txHandler.getResult(txHash, Constants.DEFAULT_WAITING_TIME);
         LOG.infoExiting();
 
-        BigInteger resBlkHeight = result.getBlockHeight();
-        Base64 resBlkHeader = iconService.getBlockHeaderByHeight(resBlkHeight).execute();
-        byte[] resHeaderBytes = resBlkHeader.decode();
-        byte[] blkHash = Crypto.sha3_256(resHeaderBytes);
-        if (!Arrays.equals(result.getBlockHash().toByteArray(), blkHash)) {
-            LOG.info("blkHeight (" + resBlkHeight + ")");
-            LOG.info("headerBytes (" + byteArrayToHex(resHeaderBytes) + ")");
-            LOG.info("blkHash (" + byteArrayToHex(blkHash) + ")");
+        BigInteger rBlkHeight = result.getBlockHeight();
+        Base64 rBlkB64 = iconService.getBlockHeaderByHeight(rBlkHeight).execute();
+        byte[] rBlkBytes = rBlkB64.decode();
+        byte[] rBlkHash = Crypto.sha3_256(rBlkBytes);
+        if (!Arrays.equals(result.getBlockHash().toByteArray(), rBlkHash)) {
+            LOG.info("blkHeight (" + rBlkHeight + ")");
+            LOG.info("headerBytes (" + byteArrayToHex(rBlkBytes) + ")");
+            LOG.info("blkHash (" + byteArrayToHex(rBlkHash) + ")");
             LOG.info("result.getBlockHash() (" + result.getBlockHash() + ")");
             LOG.infoExiting();
             throw new Exception();
         }
+        var rBlk = new BlockHeader(rBlkBytes, codec);
 
-        ObjectMapper objectMapper = new ObjectMapper(new MessagePackFactory());
-        List<Object> dBlkHeader = objectMapper.readValue(resHeaderBytes, new TypeReference<List<Object>>() {});
-        byte []votesHash = (byte[])dBlkHeader.get(VOTESHASH_INDEX);
-
-        // get votes by hash of the votes
-        Base64 votes = iconService.getDataByHash(new Bytes(votesHash)).execute();
-
-        // extract vote
-        byte[] bVotes = votes.decode();
-        List<Object> dVotes = objectMapper.readValue(bVotes, new TypeReference<List<Object>>() {});
-
-        // votes : 0 - round, 1 - partSetID, 2 - voteItems
-        int round = (int)dVotes.get(0);
-        @SuppressWarnings("unchecked")
-        List<Object> bPartSetId = (List<Object>)dVotes.get(1);
-        @SuppressWarnings("unchecked")
-        List<Object> voteItems = (List<Object>)dVotes.get(2);
+        Base64 rVotesB64 = iconService.getDataByHash(new Bytes(rBlk.getVotesHash())).execute();
+        var rVotes = new Votes(rVotesB64.decode(), codec);
 
         // get nextValidator from pprev block
-        BigInteger valBlkHeight = resBlkHeight.subtract(BigInteger.valueOf(2)); // block height for validators
-        Base64 valBlkHeader = iconService.getBlockHeaderByHeight(valBlkHeight).execute();
-        byte[] valHeaderBytes = valBlkHeader.decode();
-        List<Object> dvBlkHeader = objectMapper.readValue(valHeaderBytes, new TypeReference<List<Object>>() {});
-        byte[] validatorHash = (byte[])dvBlkHeader.get(NEXTVALIDATORHASH_INDEX);
-        Base64 validator = iconService.getDataByHash(new Bytes(validatorHash)).execute();
-        List<Object> validatorsList = objectMapper.readValue(validator.decode(), new TypeReference<List<Object>>() {});
-        byte[] prevBlockID = (byte[])dBlkHeader.get(PREVID_INDEX);
-        int twoThirds = validatorsList.size() * 2 / 3;
-        int match = 0;
-        for (Object voteItem : voteItems) {
-            List<Object> vSign = new LinkedList<>();
-            vSign.add(resBlkHeight.subtract(BigInteger.ONE));
-            vSign.add(round);
-            vSign.add(1); // voteTypePrecommit
-            vSign.add(prevBlockID);
-            vSign.add(bPartSetId);
-            // voteItem : 0 - Timestamp, 1 - signature
-            @SuppressWarnings("unchecked")
-            List<Object> voteItemList = (List<Object>) voteItem;
-            vSign.add(voteItemList.get(0));
-            byte[] sign = (byte[]) voteItemList.get(1);
-            byte[] message = objectMapper.writeValueAsBytes(vSign);
-            byte[] msgHash = Crypto.sha3_256(message);
-            byte[] pubKey = Crypto.recoverKey(msgHash, sign, false);
-            if (pubKey == null) {
-                LOG.info("recId(" + sign[64] + "), " +
-                        "sign(" + byteArrayToHex(sign) + "), " +
-                        "msgHash(" + byteArrayToHex(message) + ")");
-                LOG.infoExiting();
-                fail("cannot recover pubkey from signature");
-            }
-            byte[] recovered = Crypto.getAddressBytesFromKey(pubKey);
-            for (Object vo : validatorsList) {
-                if (Arrays.equals((byte[]) vo, recovered)) {
-                    match++;
-                    validatorsList.remove(vo);
-                    break;
-                }
-            }
-        }
-        if (validatorsList.size() != 0) {
-            for (Object vo : validatorsList) {
-                LOG.info("No vote validator : " + byteArrayToHex((byte[])vo));
-            }
-        }
-        if (twoThirds >= match) {
-            fail("match must be bigger than twoThirds but match (" + match + "), twoThirds (" + twoThirds + ")");
+        Base64 vBlkB64 = iconService.getBlockHeaderByHeight(BigInteger.valueOf(rBlk.getHeight()-2)).execute();
+        var vBlk = new BlockHeader(vBlkB64.decode(), codec);
+        Base64 vValidatorsB64 = iconService.getDataByHash(new Bytes(vBlk.getNextValidatorHash())).execute();
+        var vValidators = new ValidatorList(vValidatorsB64.decode(), codec);
+
+        LOG.info("validator number = " + vValidators.size());
+
+        // verify votes.
+        int twoThirds = vValidators.size() * 2 / 3;
+        var verified = rVotes.verifyVotes(rBlk, vValidators, codec);
+        if (verified <= twoThirds) {
+            fail("match must be bigger than twoThirds but verified (" + verified + "), twoThirds (" + twoThirds + ")");
         }
         LOG.infoExiting();
     }
@@ -187,9 +132,8 @@ public class BtpApiTest extends TestBase {
             throw new Exception();
         }
 
-        ObjectMapper objectMapper = new ObjectMapper(new MessagePackFactory());
-        List<Object> dBlkHeader = objectMapper.readValue(resHeaderBytes, new TypeReference<List<Object>>() {});
-        byte []votesHash = (byte[])dBlkHeader.get(VOTESHASH_INDEX);
+        var dBlk = new BlockHeader(resHeaderBytes, codec);
+        byte []votesHash = dBlk.getVotesHash();
 
         // get votes by hash of the votes
         Base64 votes = iconService.getDataByHash(new Bytes(votesHash)).execute();
@@ -203,7 +147,7 @@ public class BtpApiTest extends TestBase {
             throw new Exception();
         }
 
-        byte[] nextValidatorHash = (byte[])dBlkHeader.get(NEXTVALIDATORHASH_INDEX);
+        byte[] nextValidatorHash = dBlk.getNextValidatorHash();
         Base64 nextValidator = iconService.getDataByHash(new Bytes(nextValidatorHash)).execute();
         byte[] vHash = Crypto.sha3_256(nextValidator.decode());
         if(!Arrays.equals(vHash, nextValidatorHash)) {

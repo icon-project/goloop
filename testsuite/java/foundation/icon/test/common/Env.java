@@ -49,6 +49,10 @@ public class Env {
             return this.props.getProperty(prefix+key);
         }
 
+        public String getProperty(String key, String def) {
+            return this.props.getProperty(key, def);
+        }
+
         private void makeChannels() {
             channels = channelList.toArray(new Channel[channelList.size()]);
             channelList = null;
