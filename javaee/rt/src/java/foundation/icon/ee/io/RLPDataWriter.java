@@ -109,7 +109,6 @@ public class RLPDataWriter implements DataWriter {
     }
 
     public void writeNullity(boolean nullity) {
-        write(!nullity);
     }
 
     public void writeListHeader(int l) {
@@ -163,6 +162,7 @@ public class RLPDataWriter implements DataWriter {
     }
 
     public void writeNull() {
+        os.write(0xf8);
         os.write(0x00);
     }
 

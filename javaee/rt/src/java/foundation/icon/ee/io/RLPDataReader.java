@@ -98,6 +98,18 @@ public class RLPDataReader implements DataReader {
         }
     }
 
+    private boolean peekRLPNull(int b) {
+        if (b != 0xf8) {
+            return false;
+        }
+        var p = bb.arrayOffset() + bb.position();
+        if (arr[p + 1] == 0) {
+            o = 2 + bb.position();
+            l = 0;
+        }
+        return true;
+    }
+
     private int peek() {
         return (bb.get(bb.position()) & 0xff);
     }
@@ -161,16 +173,18 @@ public class RLPDataReader implements DataReader {
     }
 
     public boolean readNullity() {
-        return !readBoolean();
+        return this.tryReadNull();
     }
 
     public void skip(int count) {
         for (int i = 0; i < count; i++) {
             var b = peek();
-            if (b < 0xc0) {
-                peekRLPString(b);
-            } else {
-                peekRLPListHeader(b);
+            if (!peekRLPNull(b)) {
+                if (b < 0xc0) {
+                    peekRLPString(b);
+                } else {
+                    peekRLPListHeader(b);
+                }
             }
             bb.position(o + l);
         }
@@ -208,10 +222,10 @@ public class RLPDataReader implements DataReader {
 
     public boolean tryReadNull() {
         var b = peek();
-        if (b == 0x0) {
-            bb.position(bb.position() + 1);
-            return true;
+        if (!peekRLPNull(b)) {
+            return false;
         }
-        return false;
+        bb.position(o+l);
+        return true;
     }
 }
