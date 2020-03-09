@@ -75,7 +75,7 @@ public class CollectionDBImpl extends DBImplBase implements CollectionDB {
         if (index >= sz) {
             throw new IllegalArgumentException();
         }
-        s.setTyped(getStorageKey(sz), value);
+        s.setTyped(getStorageKey(index), value);
     }
 
     public void avm_set(int index, IObject value) {
@@ -84,7 +84,7 @@ public class CollectionDBImpl extends DBImplBase implements CollectionDB {
         if (index >= sz) {
             throw new IllegalArgumentException();
         }
-        s.setBytes(getStorageKey(sz), encode(value));
+        s.setBytes(getStorageKey(index), encode(value));
     }
 
     public void avm_removeLast() {
