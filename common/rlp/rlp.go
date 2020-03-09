@@ -147,6 +147,26 @@ func (e *rlpEncoder) encodeNullable(v reflect.Value, encode encodeFunc) error {
 	return encode(e, v)
 }
 
+func encodeRecursiveFields(e *rlpEncoder, v reflect.Value) error {
+	if v.Kind() != reflect.Struct {
+		return nil
+	}
+	n := v.NumField()
+	for i := 0; i < n; i++ {
+		fv := v.Field(i)
+		if !fv.CanInterface() {
+			if err := encodeRecursiveFields(e, fv); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := e.encodeValue(fv); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (e *rlpEncoder) encodeValue(v reflect.Value) error {
 	if v.CanAddr() {
 		if ok, err := e.tryCustom(v.Addr()); ok {
@@ -188,16 +208,8 @@ func (e *rlpEncoder) encodeValue(v reflect.Value) error {
 		if err != nil {
 			return err
 		}
-		n := v.NumField()
-		for i := 0; i < n; i++ {
-			fv := v.Field(i)
-			if !fv.CanInterface() {
-				continue
-			}
-			err := e2.encodeValue(fv)
-			if err != nil {
-				return err
-			}
+		if err := encodeRecursiveFields(e2, v); err != nil {
+			return err
 		}
 		return e.flush()
 
@@ -388,7 +400,7 @@ func (d *rlpDecoder) readBytes() ([]byte, error) {
 	switch {
 	case tag < 0x80:
 		return []byte{header[0]}, nil
-	case tag < (0x80 + 55):
+	case tag <= 0xB7:
 		buffer := make([]byte, int(header[0])-0x80)
 		if _, err := io.ReadFull(d.reader, buffer); err != nil {
 			if err == io.EOF {
@@ -399,7 +411,7 @@ func (d *rlpDecoder) readBytes() ([]byte, error) {
 			return buffer, nil
 		}
 	case tag < 0xC0:
-		sz := int(header[0]) - (0x80 + 55)
+		sz := int(header[0]) - 0xB7
 		if _, err := io.ReadFull(d.reader, header[1:1+sz]); err != nil {
 			if err == io.EOF {
 				return nil, cerrors.Wrapf(ErrInvalidFormat, "InvalidFormat(sz=%d,err=%s)", sz, err)
@@ -444,11 +456,11 @@ func (d *rlpDecoder) readList() (io.Reader, int64, error) {
 	switch {
 	case tag < 0xC0:
 		return nil, 0, cerrors.Wrap(ErrInvalidFormat, "InvalidFormat(RLPBytes)")
-	case tag < (0xC0 + 55):
+	case tag <= 0xF7:
 		size := int64(tag - 0xC0)
 		return io.LimitReader(reader, size), size, nil
 	default:
-		sz := tag - (0xC0 + 55)
+		sz := tag - 0xF7
 		if _, err := io.ReadFull(reader, header[1:1+sz]); err != nil {
 			if err == io.EOF {
 				return nil, 0, cerrors.Wrapf(ErrInvalidFormat, "InvalidFormat(sz=%d)", sz)
@@ -566,6 +578,29 @@ func (d *rlpDecoder) decodeNullableValue(v reflect.Value) error {
 	} else {
 		return err
 	}
+}
+
+func decodeRecursiveFields(d *rlpDecoder, elem reflect.Value) error {
+	if elem.Kind() != reflect.Struct {
+		return nil
+	}
+	n := elem.NumField()
+	for i := 0; i < n; i++ {
+		fv := elem.Field(i)
+		if !fv.CanSet() {
+			if err := decodeRecursiveFields(d, fv); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := d.decodeNullableValue(fv.Addr()); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+	}
+	return nil
 }
 
 func (d *rlpDecoder) decodeValue(v reflect.Value) error {
@@ -686,18 +721,8 @@ func (d *rlpDecoder) decodeValue(v reflect.Value) error {
 		if err != nil {
 			return err
 		}
-		n := elem.NumField()
-		for i := 0; i < n; i++ {
-			fv := elem.Field(i)
-			if !fv.CanSet() {
-				continue
-			}
-			if err := d2.decodeNullableValue(fv.Addr()); err != nil {
-				if err == io.EOF {
-					break
-				}
-				return err
-			}
+		if err := decodeRecursiveFields(d2, elem); err != nil {
+			return err
 		}
 		return d.flush()
 
