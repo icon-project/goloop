@@ -817,8 +817,8 @@ func (cs *consensus) commitAndEnterNewHeight() {
 	if cs.currentBlockParts.validatedBlock == nil {
 		hrs := cs.hrs
 		if cs.cancelBlockRequest != nil {
-			cs.cancelBlockRequest.Cancel();
-			cs.cancelBlockRequest = nil;
+			cs.cancelBlockRequest.Cancel()
+			cs.cancelBlockRequest = nil
 		}
 		_, err := cs.c.BlockManager().ImportBlock(
 			cs.currentBlockParts.block,
@@ -1571,7 +1571,7 @@ func (cs *consensus) Term() {
 	}
 	if cs.cancelBlockRequest != nil {
 		cs.cancelBlockRequest.Cancel()
-		cs.cancelBlockRequest = nil;
+		cs.cancelBlockRequest = nil
 	}
 	if cs.roundWAL != nil {
 		cs.roundWAL.Close()
@@ -1799,7 +1799,7 @@ func (w *walMessageWriter) writeMessage(msg message) error {
 	bs := make([]byte, 2, 32)
 	binary.BigEndian.PutUint16(bs, msg.subprotocol())
 	writer := bytes.NewBuffer(bs)
-	if err := codec.Marshal(writer, msg); err != nil {
+	if err := msgCodec.Marshal(writer, msg); err != nil {
 		return err
 	}
 	//cs.logger.Tracef("write WAL: %+v\n", msg)

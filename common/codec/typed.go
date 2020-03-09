@@ -4,6 +4,8 @@ import (
 	"bytes"
 
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/rlp"
+
 	"gopkg.in/vmihailenco/msgpack.v4"
 )
 
@@ -101,15 +103,67 @@ func (o *TypedObj) DecodeMsgpack(d *msgpack.Decoder) error {
 	return nil
 }
 
+func (o *TypedObj) RLPEncodeSelf(e rlp.Encoder) error {
+	return e.Encode(o.typedObjBase)
+}
+
+func (o *TypedObj) RLPDecodeSelf(d rlp.Decoder) error {
+	d2, _, err := d.DecodeList()
+	if err != nil {
+		return err
+	}
+	var t uint8
+	if err := d2.Decode(&t); err != nil {
+		return err
+	}
+	o.Type = t
+	switch t {
+	case TypeNil:
+	case TypeDict:
+		var m map[string]*TypedObj
+		err = d2.Decode(&m)
+		if err != nil {
+			return err
+		}
+		o.Object = m
+	case TypeList:
+		var l []*TypedObj
+		err = d2.Decode(&l)
+		if err != nil {
+			return err
+		}
+		o.Object = l
+	case TypeString:
+		var s string
+		if err := d2.Decode(&s); err != nil {
+			return err
+		}
+		o.Object = s
+	case TypeBool:
+		var bs []byte
+		if err := d2.Decode(&bs); err != nil {
+			return err
+		}
+		o.Object = bs
+	default:
+		var bs []byte
+		if err := d2.Decode(&bs); err != nil {
+			return err
+		}
+		o.Object = bs
+	}
+	return nil
+}
+
 func newTypedObj(t uint8, o interface{}) *TypedObj {
 	return &TypedObj{typedObjBase{t, o}}
 }
 
-func MarshalAny(tc TypeCodec, o interface{}) ([]byte, error) {
+func MarshalAny(c Codec, tc TypeCodec, o interface{}) ([]byte, error) {
 	if ao, err := EncodeAny(tc, o); err != nil {
 		return nil, err
 	} else {
-		return MarshalToBytes(ao)
+		return c.MarshalToBytes(ao)
 	}
 }
 
@@ -169,9 +223,9 @@ func EncodeAny(tc TypeCodec, o interface{}) (*TypedObj, error) {
 	}
 }
 
-func UnmarshalAny(tc TypeCodec, bs []byte) (interface{}, error) {
+func UnmarshalAny(c Codec, tc TypeCodec, bs []byte) (interface{}, error) {
 	var to TypedObj
-	if _, err := UnmarshalFromBytes(bs, &to); err != nil {
+	if _, err := c.UnmarshalFromBytes(bs, &to); err != nil {
 		return nil, err
 	}
 	return DecodeAny(tc, &to)

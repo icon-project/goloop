@@ -28,10 +28,6 @@ type Codec interface {
 	UnmarshalFromBytes(b []byte, v interface{}) ([]byte, error)
 }
 
-var (
-	BC = MP
-)
-
 func Marshal(w io.Writer, v interface{}) error {
 	return BC.Marshal(w, v)
 }

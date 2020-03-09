@@ -1,9 +1,12 @@
 package common
 
 import (
+	"fmt"
 	"log"
 	"reflect"
 	"testing"
+
+	"github.com/icon-project/goloop/common/codec"
 )
 
 func TestMarshalAny(t *testing.T) {
@@ -15,37 +18,60 @@ func TestMarshalAny(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{"Addr", args{
+		{"map", args{
 			map[string]interface{}{
 				"addr":  NewAddressFromString("hx8888888888888888888888888888888888888888"),
 				"bytes": []byte{0x23, 0x45},
 				"lst":   []interface{}{"test", "puha"},
 				"value": NewHexInt(2),
+				"null":  nil,
 			},
+		}, false},
+		{"addr", args{
+			NewAddressFromString("hx8888888888888888888888888888888888888888"),
+		}, false},
+		{"slice", args{
+			[]interface{}{
+				NewAddressFromString("hx8888888888888888888888888888888888888888"),
+				"test",
+				nil,
+				[]byte{0x02, 0x03},
+			},
+		}, false},
+		{"null", args{
+			nil,
 		}, false},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := MarshalAny(tt.args.obj)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("MarshalAny() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-
-			log.Printf("Bytes:% x\n", got)
-
-			o2, err := UnmarshalAny(got)
-			if err != nil {
-				if tt.wantErr {
+		for _, c := range []struct {
+			name  string
+			codec codec.Codec
+		}{
+			{"MPK", codec.MP},
+			{"RLP", codec.RLP},
+		} {
+			t.Run(fmt.Sprint(tt.name, "-", c.name), func(t *testing.T) {
+				got, err := MarshalAny(c.codec, tt.args.obj)
+				if (err != nil) != tt.wantErr {
+					t.Errorf("MarshalAny() error = %v, wantErr %v", err, tt.wantErr)
 					return
 				}
-				t.Errorf("UnmarshalAny() error = %+v", err)
-				return
-			}
-			if !reflect.DeepEqual(tt.args.obj, o2) {
-				log.Printf("%+v != %+v", tt.args.obj, o2)
-				t.Errorf("MarshalAny() -> UnmarshalAny() results are different")
-			}
-		})
+
+				log.Printf("Bytes(%s):% x\n", c.name, got)
+
+				o2, err := UnmarshalAny(c.codec, got)
+				if err != nil {
+					if tt.wantErr {
+						return
+					}
+					t.Errorf("UnmarshalAny() error = %+v", err)
+					return
+				}
+				if !reflect.DeepEqual(tt.args.obj, o2) {
+					log.Printf("%+v != %+v", tt.args.obj, o2)
+					t.Errorf("MarshalAny() -> UnmarshalAny() results are different")
+				}
+			})
+		}
 	}
 }

@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/icon-project/goloop/common"
-	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
 )
 
@@ -211,7 +210,7 @@ func (w *walWriter) WriteBytes(payload []byte) (int, error) {
 }
 
 func (w *walWriter) Write(v interface{}) error {
-	bs, err := codec.MarshalToBytes(v)
+	bs, err := msgCodec.MarshalToBytes(v)
 	if err != nil {
 		return err
 	}
@@ -420,7 +419,7 @@ func (w *walReader) Read(v interface{}) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return codec.UnmarshalFromBytes(bs, v)
+	return msgCodec.UnmarshalFromBytes(bs, v)
 }
 
 func (w *walReader) Close() error {

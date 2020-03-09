@@ -16,6 +16,7 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
+	"github.com/icon-project/goloop/common/rlp"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/jsonrpc"
@@ -155,6 +156,14 @@ func (r *receipt) EncodeMsgpack(e *msgpack.Encoder) error {
 }
 
 func (r *receipt) DecodeMsgpack(d *msgpack.Decoder) error {
+	return d.Decode(&r.data)
+}
+
+func (r *receipt) RLPEncodeSelf(e rlp.Encoder) error {
+	return e.Encode(&r.data)
+}
+
+func (r *receipt) RLPDecodeSelf(d rlp.Decoder) error {
 	return d.Decode(&r.data)
 }
 

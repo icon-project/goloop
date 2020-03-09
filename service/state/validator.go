@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/common/rlp"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -28,6 +29,27 @@ func (v *validator) EncodeMsgpack(e *msgpack.Encoder) error {
 
 func (v *validator) DecodeMsgpack(d *msgpack.Decoder) error {
 	var bs []byte
+	bs, err := d.DecodeBytes()
+	if err != nil {
+		return err
+	}
+	if len(bs) == common.AddressBytes {
+		v.addr = common.NewAddress(bs)
+		return nil
+	} else {
+		return v.setPublicKey(bs)
+	}
+}
+
+func (v *validator) RLPEncodeSelf(e rlp.Encoder) error {
+	if len(v.pub) == 0 {
+		return e.Encode(v.addr)
+	} else {
+		return e.Encode(v.pub)
+	}
+}
+
+func (v *validator) RLPDecodeSelf(d rlp.Decoder) error {
 	bs, err := d.DecodeBytes()
 	if err != nil {
 		return err

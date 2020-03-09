@@ -10,6 +10,7 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/common/rlp"
 	"github.com/icon-project/goloop/module"
 	"gopkg.in/vmihailenco/msgpack.v4"
 )
@@ -73,6 +74,19 @@ func (lb *LogsBloom) DecodeMsgpack(d *msgpack.Decoder) error {
 		lb.SetBytes(b)
 		return nil
 	}
+}
+
+func (lb *LogsBloom) RLPEncodeSelf(e rlp.Encoder) error {
+	return e.Encode(lb.Bytes())
+}
+
+func (lb *LogsBloom) RLPDecodeSelf(d rlp.Decoder) error {
+	var bs []byte
+	if err := d.Decode(&bs); err != nil {
+		return err
+	}
+	lb.SetBytes(bs)
+	return nil
 }
 
 // Merge bloom

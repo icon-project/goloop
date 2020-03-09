@@ -2,6 +2,7 @@ package state
 
 import (
 	"bytes"
+	"io"
 	"math/big"
 
 	"golang.org/x/crypto/sha3"
@@ -13,6 +14,7 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
+	"github.com/icon-project/goloop/common/rlp"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/cache"
 	"github.com/icon-project/goloop/common/trie/ompt"
@@ -394,6 +396,83 @@ func (s *accountSnapshotImpl) DecodeMsgpack(d *msgpack.Decoder) error {
 		}
 	}
 
+	if len(storeHash) > 0 {
+		s.store = trie_manager.NewImmutable(s.database, storeHash)
+	}
+	if s.curContract != nil {
+		s.curContract.bk, _ = s.database.GetBucket(db.BytesByHash)
+	}
+	if s.nextContract != nil {
+		s.nextContract.bk, _ = s.database.GetBucket(db.BytesByHash)
+	}
+	return nil
+}
+
+func (s *accountSnapshotImpl) RLPEncodeSelf(e rlp.Encoder) error {
+	var storeHash []byte
+	if s.store != nil {
+		storeHash = s.store.Hash()
+	}
+
+	e2, err := e.EncodeList()
+	if err != nil {
+		return err
+	}
+	if err := e2.EncodeMulti(
+		s.version,
+		&s.balance,
+		s.fIsContract,
+		storeHash,
+		s.state,
+		s.contractOwner,
+		s.apiInfo,
+		s.curContract,
+		s.nextContract,
+	); err != nil {
+		return err
+	}
+	if s.objGraph != nil {
+		if err := e2.EncodeMulti(
+			s.objGraph.nextHash,
+			s.objGraph.graphHash,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *accountSnapshotImpl) RLPDecodeSelf(d rlp.Decoder) error {
+	d2, _, err := d.DecodeList()
+	if err != nil {
+		return err
+	}
+
+	var storeHash []byte
+	var objGraph objectGraph
+	if n, err := d2.DecodeMulti(
+		&s.version,
+		&s.balance,
+		&s.fIsContract,
+		&storeHash,
+		&s.state,
+		&s.contractOwner,
+		&s.apiInfo,
+		&s.curContract,
+		&s.nextContract,
+		&objGraph.nextHash,
+		&objGraph.graphHash,
+	); err == nil || err == io.EOF {
+		if n == accountSnapshotIncludeObjGraph {
+			s.objGraph = &objGraph
+		} else if n == accountSnapshotImplEntries {
+			s.objGraph = nil
+		} else {
+			return rlp.ErrInvalidFormat
+		}
+	} else {
+		return err
+	}
 	if len(storeHash) > 0 {
 		s.store = trie_manager.NewImmutable(s.database, storeHash)
 	}

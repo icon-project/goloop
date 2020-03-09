@@ -9,7 +9,7 @@ BIN_DIR = ./bin
 LINUX_BIN_DIR = ./build/linux
 
 GOBUILD = go build
-GOBUILD_TAGS =
+GOBUILD_TAGS ?=
 GOBUILD_ENVS = CGO_ENABLED=0
 GOBUILD_LDFLAGS =
 GOBUILD_FLAGS = -tags "$(GOBUILD_TAGS)" -ldflags "$(GOBUILD_LDFLAGS)"
@@ -85,6 +85,7 @@ gorun-% : godeps-image
 	docker run -it --rm \
 	    -v $(BUILD_ROOT):$(GOLOOP_WORK_DIR) \
 	    -w $(GOLOOP_WORK_DIR) \
+	    -e "GOBUILD_TAGS=$(GOBUILD_TAGS)" \
 	    $(GODEPS_IMAGE) \
 	    make "GL_VERSION=$(GL_VERSION)" $(patsubst gorun-%,%,$@)
 

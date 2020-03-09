@@ -7,8 +7,8 @@ import (
 	"golang.org/x/crypto/sha3"
 
 	"github.com/icon-project/goloop/common/log"
-
 	"github.com/icon-project/goloop/common/merkle"
+	"github.com/icon-project/goloop/common/rlp"
 	"gopkg.in/vmihailenco/msgpack.v4"
 
 	"github.com/icon-project/goloop/common/db"
@@ -189,6 +189,30 @@ func (c *contractSnapshotImpl) DecodeMsgpack(d *msgpack.Decoder) error {
 	}
 
 	return d.DecodeMulti(
+		&c.state,
+		&c.contentType,
+		&c.eeType,
+		&c.deployTxHash,
+		&c.auditTxHash,
+		&c.codeHash,
+		&c.params,
+	)
+}
+
+func (c *contractSnapshotImpl) RLPEncodeSelf(e rlp.Encoder) error {
+	return e.EncodeListOf(
+		c.state,
+		c.contentType,
+		c.eeType,
+		c.deployTxHash,
+		c.auditTxHash,
+		c.codeHash,
+		c.params,
+	)
+}
+
+func (c *contractSnapshotImpl) RLPDecodeSelf(d rlp.Decoder) error {
+	return d.DecodeListOf(
 		&c.state,
 		&c.contentType,
 		&c.eeType,

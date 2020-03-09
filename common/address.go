@@ -8,6 +8,7 @@ import (
 
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/common/rlp"
 	"github.com/icon-project/goloop/module"
 	"gopkg.in/vmihailenco/msgpack.v4"
 )
@@ -163,6 +164,18 @@ func (a Address) EncodeMsgpack(e *msgpack.Encoder) error {
 }
 
 func (a *Address) DecodeMsgpack(d *msgpack.Decoder) error {
+	if bs, err := d.DecodeBytes(); err != nil {
+		return err
+	} else {
+		return a.SetBytes(bs)
+	}
+}
+
+func (a *Address) RLPEncodeSelf(e rlp.Encoder) error {
+	return e.Encode([]byte(a[:]))
+}
+
+func (a *Address) RLPDecodeSelf(d rlp.Decoder) error {
 	if bs, err := d.DecodeBytes(); err != nil {
 		return err
 	} else {

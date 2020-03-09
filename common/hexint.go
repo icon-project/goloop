@@ -7,6 +7,7 @@ import (
 	"gopkg.in/vmihailenco/msgpack.v4"
 
 	"github.com/icon-project/goloop/common/intconv"
+	"github.com/icon-project/goloop/common/rlp"
 )
 
 type HexInt struct {
@@ -109,6 +110,14 @@ func (i *HexInt16) DecodeMsgpack(d *msgpack.Decoder) error {
 	return d.Decode(&i.Value)
 }
 
+func (i *HexInt16) RLPEncodeSelf(e rlp.Encoder) error {
+	return e.Encode(int64(i.Value))
+}
+
+func (i *HexInt16) RLPDecodeSelf(d rlp.Decoder) error {
+	return d.Decode(&i.Value)
+}
+
 func (i HexInt16) Bytes() []byte {
 	return intconv.Int64ToBytes(int64(i.Value))
 }
@@ -143,6 +152,14 @@ func (i *HexUint16) EncodeMsgpack(e *msgpack.Encoder) error {
 }
 
 func (i *HexUint16) DecodeMsgpack(d *msgpack.Decoder) error {
+	return d.Decode(&i.Value)
+}
+
+func (i *HexUint16) RLPEncodeSelf(e rlp.Encoder) error {
+	return e.Encode(int64(i.Value))
+}
+
+func (i *HexUint16) RLPDecodeSelf(d rlp.Decoder) error {
 	return d.Decode(&i.Value)
 }
 
@@ -183,6 +200,14 @@ func (i *HexInt32) DecodeMsgpack(d *msgpack.Decoder) error {
 	return d.Decode(&i.Value)
 }
 
+func (i *HexInt32) RLPEncodeSelf(e rlp.Encoder) error {
+	return e.Encode(int64(i.Value))
+}
+
+func (i *HexInt32) RLPDecodeSelf(d rlp.Decoder) error {
+	return d.Decode(&i.Value)
+}
+
 type HexUint32 struct {
 	Value uint32
 }
@@ -213,6 +238,14 @@ func (i *HexUint32) EncodeMsgpack(e *msgpack.Encoder) error {
 }
 
 func (i *HexUint32) DecodeMsgpack(d *msgpack.Decoder) error {
+	return d.Decode(&i.Value)
+}
+
+func (i *HexUint32) RLPEncodeSelf(e rlp.Encoder) error {
+	return e.Encode(int64(i.Value))
+}
+
+func (i *HexUint32) RLPDecodeSelf(d rlp.Decoder) error {
 	return d.Decode(&i.Value)
 }
 
@@ -249,6 +282,14 @@ func (i *HexInt64) DecodeMsgpack(d *msgpack.Decoder) error {
 	return d.Decode(&i.Value)
 }
 
+func (i *HexInt64) RLPEncodeSelf(e rlp.Encoder) error {
+	return e.Encode(int64(i.Value))
+}
+
+func (i *HexInt64) RLPDecodeSelf(d rlp.Decoder) error {
+	return d.Decode(&i.Value)
+}
+
 type HexUint64 struct {
 	Value uint64
 }
@@ -279,5 +320,13 @@ func (i *HexUint64) EncodeMsgpack(e *msgpack.Encoder) error {
 }
 
 func (i *HexUint64) DecodeMsgpack(d *msgpack.Decoder) error {
+	return d.Decode(&i.Value)
+}
+
+func (i *HexUint64) RLPEncodeSelf(e rlp.Encoder) error {
+	return e.Encode(i.Value)
+}
+
+func (i *HexUint64) RLPDecodeSelf(d rlp.Decoder) error {
 	return d.Decode(&i.Value)
 }

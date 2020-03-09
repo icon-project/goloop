@@ -61,8 +61,8 @@ func (*typeCodec) Encode(o interface{}) (uint8, []byte, error) {
 	}
 }
 
-func MarshalAny(obj interface{}) ([]byte, error) {
-	return codec.MarshalAny(TypeCodec, obj)
+func MarshalAny(c codec.Codec, obj interface{}) ([]byte, error) {
+	return codec.MarshalAny(c, TypeCodec, obj)
 }
 
 func EncodeAny(obj interface{}) (*codec.TypedObj, error) {
@@ -98,8 +98,8 @@ func MustDecodeAny(o *codec.TypedObj) interface{} {
 	}
 }
 
-func UnmarshalAny(bs []byte) (interface{}, error) {
-	return codec.UnmarshalAny(TypeCodec, bs)
+func UnmarshalAny(c codec.Codec, bs []byte) (interface{}, error) {
+	return codec.UnmarshalAny(c, TypeCodec, bs)
 }
 
 func DecodeAnyForJSON(o *codec.TypedObj) (interface{}, error) {
