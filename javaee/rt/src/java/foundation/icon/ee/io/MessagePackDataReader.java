@@ -162,7 +162,7 @@ public class MessagePackDataReader implements DataReader {
     public void skip(int count) {
         try {
             unpacker.skipValue(count);
-            topFrame.current++;
+            topFrame.current += count;
         } catch (Exception e) {
             throw convert(e);
         }
