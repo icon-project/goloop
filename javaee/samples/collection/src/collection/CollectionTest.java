@@ -81,10 +81,13 @@ public class CollectionTest
         expectEquals(s, "1");
         s = adb.get(2);
         expectEquals(s, "2");
+        adb.set(1, "1'");
+        s = adb.get(1);
+        expectEquals(s, "1'");
         s = adb.pop();
         expectEquals(s, "2");
         s = adb.pop();
-        expectEquals(s, "1");
+        expectEquals(s, "1'");
         s = adb.pop();
         expectEquals(s, "0");
         expectEquals(adb.size(), 0);
