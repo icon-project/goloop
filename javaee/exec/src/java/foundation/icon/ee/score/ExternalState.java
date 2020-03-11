@@ -290,13 +290,15 @@ public class ExternalState implements IExternalState {
     public Result call(Address address, String method, Object[] params, BigInteger value,
                        int stepLimit) {
         try {
+            logger.trace("[call] target={} method={} params={} value={} limit={}",
+                    address, method, params, value, stepLimit);
             var res = proxy.call(address, method, params, value, stepLimit);
             // TODO: to be removed
             if (res.getRet() instanceof Address) {
                 var addr = (Address) res.getRet();
                 res = new Result(res.getStatus(), res.getStepUsed(), new score.Address(addr.toByteArray()));
             }
-            logger.trace("[call] status={}", res.getStatus());
+            logger.trace("[call] result={}", res.toString());
             return res;
         } catch (IOException e) {
             logger.debug("[call] {}", e.getMessage());
