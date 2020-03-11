@@ -21,6 +21,7 @@ import score.ObjectReader;
 import score.ObjectWriter;
 
 import java.math.BigInteger;
+import java.util.Map;
 
 public class Transaction {
     private final Address destination;
@@ -162,5 +163,22 @@ public class Transaction {
                 ", description='" + description + '\'' +
                 ", executed=" + executed +
                 '}';
+    }
+
+    public Map<String, String> toMap(BigInteger transactionId) {
+        return Map.of(
+                "_destination", destination.toString(),
+                "_method", getSafeString(method),
+                "_params", getSafeString(params),
+                "_value", (value == null) ? "0x0" : "0x" + value.toString(16),
+                "_description", getSafeString(description),
+                "_executed", (executed) ? "0x1" : "0x0",
+                "_transactionId", "0x" + transactionId.toString(16)
+        );
+    }
+
+    private String getSafeString(String s) {
+        if (s == null) return "";
+        return s;
     }
 }

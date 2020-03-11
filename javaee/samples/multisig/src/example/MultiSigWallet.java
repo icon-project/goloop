@@ -28,6 +28,8 @@ import foundation.icon.ee.tooling.abi.Optional;
 import foundation.icon.ee.tooling.abi.Payable;
 
 import java.math.BigInteger;
+import java.util.List;
+import java.util.Map;
 
 public class MultiSigWallet
 {
@@ -58,6 +60,13 @@ public class MultiSigWallet
         BigInteger value = Context.getValue();
         if (value.signum() > 0) {
             Deposit(Context.getCaller(), value);
+        }
+    }
+
+    @External
+    public void tokenFallback(Address _from, BigInteger _value, byte[] _data) {
+        if (_value.signum() > 0) {
+            DepositToken(_from, _value, _data);
         }
     }
 
@@ -159,6 +168,134 @@ public class MultiSigWallet
     }
 
     /*
+     * Read-only methods
+     */
+    @External(readonly=true)
+    public BigInteger getRequirement() {
+        return this.required.get();
+    }
+
+    @External(readonly=true)
+    public List<Address> getWalletOwners() {
+        int len = this.owners.size();
+        Address[] array = new Address[len];
+        for (int i = 0; i < len; i++) {
+            array[i] = this.owners.get(i);
+        }
+        return List.of(array);
+    }
+
+    @External(readonly=true)
+    public int getConfirmationCount(BigInteger _transactionId) {
+        int count = 0;
+        for (int i = 0; i < this.owners.size(); i++) {
+            if (this.confirmations.at(_transactionId).getOrDefault(this.owners.get(i), false)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    @External(readonly=true)
+    public List<Address> getConfirmations(BigInteger _transactionId) {
+        int len = this.owners.size();
+        Address[] array = new Address[len];
+        int count = 0;
+        for (int i = 0; i < len; i++) {
+            Address owner = this.owners.get(i);
+            if (this.confirmations.at(_transactionId).getOrDefault(owner, false)) {
+                array[count++] = owner;
+            }
+        }
+        Address[] confirmations = new Address[count];
+        System.arraycopy(array, 0, confirmations, 0, count);
+        return List.of(confirmations);
+    }
+
+    @External(readonly=true)
+    public BigInteger getTransactionCount(boolean _pending, boolean _executed) {
+        BigInteger count = BigInteger.ZERO;
+        BigInteger total = this.transactionCount.getOrDefault(BigInteger.ZERO);
+        while (total.signum() > 0) {
+            total = total.subtract(BigInteger.ONE);
+            Transaction transaction = this.transactions.get(total);
+            if (_pending && !transaction.executed() || _executed && transaction.executed()) {
+                count = count.add(BigInteger.ONE);
+            }
+        }
+        return count;
+    }
+
+    @External(readonly=true)
+    public Map<String, String> getTransactionInfo(BigInteger _transactionId) {
+        Transaction transaction = this.transactions.get(_transactionId);
+        if (transaction == null) {
+            return Map.of();
+        }
+        return transaction.toMap(_transactionId);
+    }
+
+    @External(readonly=true)
+    public List<BigInteger> getTransactionIds(BigInteger _offset, BigInteger _count,
+                                              boolean _pending, boolean _executed) {
+        Context.require(_offset.signum() >= 0 && _count.signum() >= 0);
+        BigInteger total = this.transactionCount.getOrDefault(BigInteger.ZERO);
+        if (_offset.add(_count).compareTo(total) > 0) {
+            _count = total.subtract(_offset);
+        }
+        if (_count.signum() <= 0) {
+            return List.of();
+        }
+        BigInteger[] entries = new BigInteger[_count.intValue()];
+        int index = 0;
+        for (int i = 0; _count.signum() > 0; i++) {
+            _count = _count.subtract(BigInteger.ONE);
+            BigInteger transactionId = _offset.add(BigInteger.valueOf(i));
+            Transaction transaction = this.transactions.get(transactionId);
+            if (_pending && !transaction.executed() || _executed && transaction.executed()) {
+                entries[index++] = transactionId;
+            }
+        }
+        if (index < entries.length) {
+            BigInteger[] tmp = new BigInteger[index];
+            System.arraycopy(entries, 0, tmp, 0, index);
+            entries = tmp;
+        }
+        return List.of(entries);
+    }
+
+    @External(readonly=true)
+    public List<Map<String, String>> getTransactionList(BigInteger _offset, BigInteger _count,
+                                                        boolean _pending, boolean _executed) {
+        Context.require(_offset.signum() >= 0 && _count.signum() >= 0);
+        BigInteger total = this.transactionCount.getOrDefault(BigInteger.ZERO);
+        if (_offset.add(_count).compareTo(total) > 0) {
+            _count = total.subtract(_offset);
+        }
+        if (_count.signum() <= 0) {
+            return List.of();
+        }
+        @SuppressWarnings("unchecked")
+        Map<String, String>[] entries = new Map[_count.intValue()];
+        int index = 0;
+        for (int i = 0; _count.signum() > 0; i++) {
+            _count = _count.subtract(BigInteger.ONE);
+            BigInteger transactionId = _offset.add(BigInteger.valueOf(i));
+            Transaction transaction = this.transactions.get(transactionId);
+            if (_pending && !transaction.executed() || _executed && transaction.executed()) {
+                entries[index++] = transaction.toMap(transactionId);
+            }
+        }
+        if (index < entries.length) {
+            @SuppressWarnings("unchecked")
+            Map<String, String>[] tmp = new Map[index];
+            System.arraycopy(entries, 0, tmp, 0, index);
+            entries = tmp;
+        }
+        return List.of(entries);
+    }
+
+    /*
      * Assertion methods
      */
     private void onlyFromWallet() {
@@ -180,14 +317,14 @@ public class MultiSigWallet
                 return;
             }
         }
-        Context.revert(100);
+        Context.revert(100, "Owner not exist");
     }
 
     private void checkOwnerDoesNotExist(Address owner) {
         //TODO: iteration is not efficient. Consider to use a Map.
         for (int i = 0; i < this.owners.size(); i++) {
             if (owner.equals(this.owners.get(i))) {
-                Context.revert(101);
+                Context.revert(101, "Owner already exists");
             }
         }
     }
@@ -225,8 +362,11 @@ public class MultiSigWallet
     private void executeTransaction(BigInteger transactionId) {
         if (isConfirmed(transactionId)) {
             Transaction transaction = this.transactions.get(transactionId);
+            Context.require(!transaction.executed());
             if (externalCall(transaction)) {
                 transaction.setExecuted(true);
+                // we need to set the transaction again since we changed the executed status
+                this.transactions.set(transactionId, transaction);
                 Execution(transactionId);
             } else {
                 ExecutionFailure(transactionId);
@@ -241,11 +381,9 @@ public class MultiSigWallet
             if (this.confirmations.at(transactionId).getOrDefault(this.owners.get(i), false)) {
                 count++;
             }
-            if (count == required) {
-                return true;
-            }
         }
-        return false;
+        // execute the transaction only if the confirmed count exactly matches the required
+        return count == required;
     }
 
     private boolean externalCall(Transaction transaction) {
@@ -287,4 +425,7 @@ public class MultiSigWallet
 
     @EventLog(indexed=1)
     private void Deposit(Address _sender, BigInteger _value) {}
+
+    @EventLog(indexed=1)
+    private void DepositToken(Address _sender, BigInteger _value, byte[] _data) {}
 }

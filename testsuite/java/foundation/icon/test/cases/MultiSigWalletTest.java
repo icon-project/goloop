@@ -21,6 +21,7 @@ import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
+import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.TestBase;
@@ -35,6 +36,7 @@ import org.junit.jupiter.api.Test;
 import java.math.BigInteger;
 
 import static foundation.icon.test.common.Env.LOG;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class MultiSigWalletTest extends TestBase {
     private static TransactionHandler txHandler;
@@ -77,6 +79,7 @@ public class MultiSigWalletTest extends TestBase {
     }
 
     private void startTest(MultiSigWalletScore multiSigWalletScore) throws Exception {
+        LOG.infoEntering("setup", "initial wallets");
         KeyWallet ownerWallet = wallets[0];
         KeyWallet aliceWallet = wallets[1];
         KeyWallet bobWallet = wallets[2];
@@ -86,106 +89,136 @@ public class MultiSigWalletTest extends TestBase {
         Address multiSigWalletAddress = multiSigWalletScore.getAddress();
 
         // send 3 icx to the multiSigWallet
-        LOG.info("transfer: 3 icx to multiSigWallet");
+        LOG.info("transfer: 5 icx to multiSigWallet");
         final BigInteger icx = BigInteger.TEN.pow(18);
-        transferAndCheckResult(txHandler, multiSigWalletAddress, icx.multiply(BigInteger.valueOf(3)));
-        Utils.ensureIcxBalance(txHandler, multiSigWalletAddress, 0, 3);
-
-        // *** Send 2 icx to Bob (EOA)
-        // 1. tx is initiated by ownerWallet first
-        LOG.infoEntering("call", "submitIcxTransaction() - send 2 icx to Bob");
-        TransactionResult result =
-                multiSigWalletScore.submitIcxTransaction(ownerWallet, bobWallet.getAddress(), 2, "send 2 icx to Bob");
-        BigInteger txId = multiSigWalletScore.getTransactionId(result);
+        transferAndCheckResult(txHandler, multiSigWalletAddress, icx.multiply(BigInteger.valueOf(5)));
+        Utils.ensureIcxBalance(txHandler, multiSigWalletAddress, 0, 5);
         LOG.infoExiting();
 
-        // 2. Alice confirms the tx to make it executed
-        LOG.infoEntering("call", "confirmTransaction() by Alice");
-        result = multiSigWalletScore.confirmTransaction(aliceWallet, txId);
+        // *** 1. Send 2 icx to Bob (EOA)
+        LOG.infoEntering("call", "submitIcxTransaction() - send 2 icx to Bob");
+        // tx is initiated by ownerWallet first
+        TransactionResult result = multiSigWalletScore.submitIcxTransaction(
+                ownerWallet, bobWallet.getAddress(), icx.multiply(BigInteger.TWO), "send 2 icx to Bob");
+        BigInteger txId = multiSigWalletScore.getTransactionId(result);
 
-        multiSigWalletScore.ensureConfirmation(result, aliceWallet.getAddress(), txId);
+        // Alice confirms the tx to make it executed
+        LOG.info("confirmTransaction() by Alice");
+        result = multiSigWalletScore.confirmTransaction(aliceWallet, txId);
         multiSigWalletScore.ensureIcxTransfer(result, multiSigWalletAddress, bobWallet.getAddress(), 2);
         multiSigWalletScore.ensureExecution(result, txId);
 
         // check icx balances
-        Utils.ensureIcxBalance(txHandler, multiSigWalletAddress, 3, 1);
+        Utils.ensureIcxBalance(txHandler, multiSigWalletAddress, 5, 3);
         Utils.ensureIcxBalance(txHandler, bobWallet.getAddress(), 0, 2);
         LOG.infoExiting();
 
-        // *** Send 1 icx to Contract
+        // *** 2. Send 1 icx to Contract
+        LOG.infoEntering("call", "submitIcxTransaction() - send 1 icx to hello");
         // deploy another sample score to accept icx
         LOG.info("deploy: HelloWorld");
         HelloWorld helloScore = HelloWorld.install(txHandler, ownerWallet);
-
-        // 3. tx is initiated by ownerWallet first
-        LOG.infoEntering("call", "submitIcxTransaction() - send 1 icx to hello");
-        result = multiSigWalletScore.submitIcxTransaction(ownerWallet, helloScore.getAddress(), 1, "send 1 icx to hello");
+        // tx is initiated by ownerWallet first
+        result = multiSigWalletScore.submitIcxTransaction(
+                ownerWallet, helloScore.getAddress(), icx.multiply(BigInteger.ONE), "send 1 icx to hello");
         txId = multiSigWalletScore.getTransactionId(result);
-        LOG.infoExiting();
 
-        // 4. Bob confirms the tx to make it executed
-        LOG.infoEntering("call", "confirmTransaction() by Bob");
+        // Bob confirms the tx to make it executed
+        LOG.info("confirmTransaction() by Bob");
         result = multiSigWalletScore.confirmTransaction(bobWallet, txId);
-
-        multiSigWalletScore.ensureConfirmation(result, bobWallet.getAddress(), txId);
         multiSigWalletScore.ensureIcxTransfer(result, multiSigWalletAddress, helloScore.getAddress(), 1);
         multiSigWalletScore.ensureExecution(result, txId);
 
         // check icx balances
-        Utils.ensureIcxBalance(txHandler, multiSigWalletAddress, 1, 0);
+        Utils.ensureIcxBalance(txHandler, multiSigWalletAddress, 3, 2);
         Utils.ensureIcxBalance(txHandler, helloScore.getAddress(), 0, 1);
         LOG.infoExiting();
 
-        // *** Add new wallet owner (charlie)
-        KeyWallet charlieWallet = KeyWallet.create();
-        // 5. tx is initiated by ownerWallet first
+        // *** 3. Send a test transaction (this will not be executed intentionally)
+        LOG.infoEntering("call", "submitIcxTransaction() - pending transaction");
+        result = multiSigWalletScore.submitIcxTransaction(
+                ownerWallet, aliceWallet.getAddress(), icx.multiply(BigInteger.TWO), "send 2 icx to Alice");
+        BigInteger pendingTx = multiSigWalletScore.getTransactionId(result);
+        LOG.infoExiting();
+
+        // *** 4. Add new wallet owner (charlie)
         LOG.infoEntering("call", "addWalletOwner(Charlie)");
+        KeyWallet charlieWallet = KeyWallet.create();
+        LOG.info("Address of Charlie: " + charlieWallet.getAddress());
         result = multiSigWalletScore.addWalletOwner(ownerWallet, charlieWallet.getAddress(), "add new wallet owner");
         txId = multiSigWalletScore.getTransactionId(result);
-        LOG.infoExiting();
 
-        // 6. Alice confirms the tx to make it executed
-        LOG.infoEntering("call", "confirmTransaction() by Alice");
+        // Alice confirms the tx to make it executed
+        LOG.info("confirmTransaction() by Alice");
         result = multiSigWalletScore.confirmTransaction(aliceWallet, txId);
-
-        multiSigWalletScore.ensureConfirmation(result, aliceWallet.getAddress(), txId);
         multiSigWalletScore.ensureWalletOwnerAddition(result, charlieWallet.getAddress());
         multiSigWalletScore.ensureExecution(result, txId);
+        multiSigWalletScore.ensureOwners(
+                ownerWallet.getAddress(), aliceWallet.getAddress(), bobWallet.getAddress(), charlieWallet.getAddress());
         LOG.infoExiting();
 
-        // *** Replace wallet owner (charlie -> david)
+        // *** 5. Replace wallet owner (bob -> david)
+        LOG.infoEntering("call", "replaceWalletOwner(Bob to David)");
         KeyWallet davidWallet = KeyWallet.create();
-        // 7. tx is initiated by ownerWallet first
-        LOG.infoEntering("call", "replaceWalletOwner(Charlie to David)");
-        result = multiSigWalletScore.replaceWalletOwner(ownerWallet, charlieWallet.getAddress(),
+        LOG.info("Address of David: " + davidWallet.getAddress());
+        result = multiSigWalletScore.replaceWalletOwner(aliceWallet, bobWallet.getAddress(),
                 davidWallet.getAddress(), "replace wallet owner");
         txId = multiSigWalletScore.getTransactionId(result);
-        LOG.infoExiting();
 
-        // 8. Alice confirms the tx to make it executed
-        LOG.infoEntering("call", "confirmTransaction() by Alice");
-        result = multiSigWalletScore.confirmTransaction(aliceWallet, txId);
-
-        multiSigWalletScore.ensureConfirmation(result, aliceWallet.getAddress(), txId);
-        multiSigWalletScore.ensureWalletOwnerRemoval(result, charlieWallet.getAddress());
+        // Charlie confirms the tx to make it executed
+        LOG.info("confirmTransaction() by Charlie");
+        result = multiSigWalletScore.confirmTransaction(charlieWallet, txId);
+        multiSigWalletScore.ensureWalletOwnerRemoval(result, bobWallet.getAddress());
         multiSigWalletScore.ensureWalletOwnerAddition(result, davidWallet.getAddress());
         multiSigWalletScore.ensureExecution(result, txId);
+        multiSigWalletScore.ensureOwners(
+                ownerWallet.getAddress(), aliceWallet.getAddress(), davidWallet.getAddress(), charlieWallet.getAddress());
         LOG.infoExiting();
 
-        // *** Change requirement
-        // 9. tx is initiated by ownerWallet first
+        // *** 6. Change requirement
         LOG.infoEntering("call", "changeRequirement(3)");
+        // check the current requirement first
+        RpcItem item = multiSigWalletScore.call("getRequirement", null);
+        assertEquals(2, item.asInteger().intValue());
+        // tx is initiated by ownerWallet first
         result = multiSigWalletScore.changeRequirement(ownerWallet, 3, "change requirement to 3");
         txId = multiSigWalletScore.getTransactionId(result);
-        LOG.infoExiting();
 
-        // 10. Alice confirms the tx to make it executed
-        LOG.infoEntering("call", "confirmTransaction() by Alice");
+        // Alice confirms the tx to make it executed
+        LOG.info("confirmTransaction() by Alice");
         result = multiSigWalletScore.confirmTransaction(aliceWallet, txId);
-
-        multiSigWalletScore.ensureConfirmation(result, aliceWallet.getAddress(), txId);
         multiSigWalletScore.ensureRequirementChange(result, 3);
         multiSigWalletScore.ensureExecution(result, txId);
+        // check the changed requirement
+        item = multiSigWalletScore.call("getRequirement", null);
+        assertEquals(3, item.asInteger().intValue());
+        LOG.infoExiting();
+
+        // *** 7. Remove wallet owner
+        LOG.infoEntering("call", "removeWalletOwner(owner)");
+        result = multiSigWalletScore.removeWalletOwner(aliceWallet, ownerWallet.getAddress(), "remove the owner");
+        txId = multiSigWalletScore.getTransactionId(result);
+
+        // Charlie and David confirm the tx to make it executed
+        LOG.info("confirmTransaction() by Charlie");
+        result = multiSigWalletScore.confirmTransaction(charlieWallet, txId);
+        multiSigWalletScore.ensureConfirmationCount(txId, 2);
+        multiSigWalletScore.getConfirmationsAndCheck(txId,
+                aliceWallet.getAddress(), charlieWallet.getAddress());
+        // check getTransactionCount before executing the tx
+        multiSigWalletScore.ensureTransactionCount(2, 5);
+        // check getTransactionList before executing the tx
+        multiSigWalletScore.ensurePendingTransactionIds(0, 7, pendingTx, txId);
+
+        LOG.info("confirmTransaction() by David");
+        result = multiSigWalletScore.confirmTransaction(davidWallet, txId);
+        multiSigWalletScore.ensureWalletOwnerRemoval(result, ownerWallet.getAddress());
+        multiSigWalletScore.ensureExecution(result, txId);
+        multiSigWalletScore.ensureConfirmationCount(txId, 3);
+        multiSigWalletScore.getConfirmationsAndCheck(txId,
+                charlieWallet.getAddress(), aliceWallet.getAddress(), davidWallet.getAddress());
+        multiSigWalletScore.ensureOwners(
+                charlieWallet.getAddress(), aliceWallet.getAddress(), davidWallet.getAddress());
         LOG.infoExiting();
     }
 }

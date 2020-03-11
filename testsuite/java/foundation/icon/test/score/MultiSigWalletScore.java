@@ -23,6 +23,7 @@ import foundation.icon.icx.Wallet;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.IconAmount;
 import foundation.icon.icx.data.TransactionResult;
+import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
 import foundation.icon.test.common.Constants;
@@ -33,14 +34,21 @@ import foundation.icon.test.common.Utils;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.List;
 
 import static foundation.icon.test.common.Env.LOG;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class MultiSigWalletScore extends Score {
     private static final String SCORE_MULTISIG_PATH = Constants.SCORE_ROOT + "multisig_wallet";
+    private static final Class<?>[] SCORE_MULTISIG_CLASSES =
+            {MultiSigWallet.class, StringTokenizer.class, Transaction.class};
+    private final String contentType;
 
-    public MultiSigWalletScore(Score other) {
+    public MultiSigWalletScore(Score other, String contentType) {
         super(other);
+        this.contentType = contentType;
     }
 
     public static MultiSigWalletScore mustDeploy(TransactionHandler txHandler, Wallet wallet,
@@ -60,22 +68,20 @@ public class MultiSigWalletScore extends Score {
         if (contentType.equals(Constants.CONTENT_TYPE_PYTHON)) {
             score = txHandler.deploy(wallet, SCORE_MULTISIG_PATH, params);
         } else if (contentType.equals(Constants.CONTENT_TYPE_JAVA)) {
-            score = txHandler.deploy(wallet, new Class<?>[]
-                    {MultiSigWallet.class, StringTokenizer.class, Transaction.class}, params);
+            score = txHandler.deploy(wallet, SCORE_MULTISIG_CLASSES, params);
         } else {
             throw new IllegalArgumentException("Unknown content type");
         }
         LOG.info("scoreAddr = " + score.getAddress());
         LOG.infoExiting();
-        return new MultiSigWalletScore(score);
+        return new MultiSigWalletScore(score, contentType);
     }
 
-    public TransactionResult submitIcxTransaction(Wallet fromWallet, Address dest, long value, String description)
+    public TransactionResult submitIcxTransaction(Wallet fromWallet, Address dest, BigInteger value, String description)
             throws IOException, ResultTimeoutException {
-        BigInteger icx = IconAmount.of(BigInteger.valueOf(value), IconAmount.Unit.ICX).toLoop();
         RpcObject params = new RpcObject.Builder()
                 .put("_destination", new RpcValue(dest))
-                .put("_value", new RpcValue(icx))
+                .put("_value", new RpcValue(value))
                 .put("_description", new RpcValue(description))
                 .build();
         return invokeAndWaitResult(fromWallet, "submitTransaction", params);
@@ -86,7 +92,9 @@ public class MultiSigWalletScore extends Score {
         RpcObject params = new RpcObject.Builder()
                 .put("_transactionId", new RpcValue(txId))
                 .build();
-        return invokeAndWaitResult(fromWallet, "confirmTransaction", params);
+        TransactionResult result = invokeAndWaitResult(fromWallet, "confirmTransaction", params);
+        ensureConfirmation(result, fromWallet.getAddress(), txId);
+        return result;
     }
 
     public TransactionResult addWalletOwner(Wallet fromWallet, Address newOwner, String description)
@@ -95,6 +103,18 @@ public class MultiSigWalletScore extends Score {
         RpcObject params = new RpcObject.Builder()
                 .put("_destination", new RpcValue(getAddress()))
                 .put("_method", new RpcValue("addWalletOwner"))
+                .put("_params", new RpcValue(methodParams))
+                .put("_description", new RpcValue(description))
+                .build();
+        return invokeAndWaitResult(fromWallet, "submitTransaction", params);
+    }
+
+    public TransactionResult removeWalletOwner(Wallet fromWallet, Address owner, String description)
+            throws IOException, ResultTimeoutException {
+        String methodParams = String.format("[{\"name\": \"_walletOwner\", \"type\": \"Address\", \"value\": \"%s\"}]", owner);
+        RpcObject params = new RpcObject.Builder()
+                .put("_destination", new RpcValue(getAddress()))
+                .put("_method", new RpcValue("removeWalletOwner"))
                 .put("_params", new RpcValue(methodParams))
                 .put("_description", new RpcValue(description))
                 .build();
@@ -203,5 +223,83 @@ public class MultiSigWalletScore extends Score {
             }
         }
         throw new IOException("Failed to get RequirementChange.");
+    }
+
+    public void ensureOwners(Address... expected) throws IOException {
+        List<RpcItem> items = getWalletOwners().asArray().asList();
+        assertEquals(expected.length, items.size());
+        Address[] actual = new Address[items.size()];
+        for (int i = 0; i < actual.length; i++) {
+            actual[i] = items.get(i).asAddress();
+        }
+        assertArrayEquals(expected, actual);
+    }
+
+    private RpcItem getWalletOwners() throws IOException {
+        RpcObject params = null;
+        if (contentType.equals(Constants.CONTENT_TYPE_PYTHON)) {
+            params = new RpcObject.Builder()
+                    .put("_offset", new RpcValue(BigInteger.ZERO))
+                    .put("_count", new RpcValue(BigInteger.valueOf(50)))
+                    .build();
+        }
+        return this.call("getWalletOwners", params);
+    }
+
+    public void ensureConfirmationCount(BigInteger txId, int count) throws IOException {
+        RpcObject params = new RpcObject.Builder()
+                .put("_transactionId", new RpcValue(txId))
+                .build();
+        assertEquals(count, this.call("getConfirmationCount", params).asInteger().intValue());
+    }
+
+    public void getConfirmationsAndCheck(BigInteger txId, Address... expected) throws IOException {
+        List<RpcItem> items = getConfirmations(txId).asArray().asList();
+        assertEquals(expected.length, items.size());
+        Address[] actual = new Address[items.size()];
+        for (int i = 0; i < actual.length; i++) {
+            actual[i] = items.get(i).asAddress();
+        }
+        assertArrayEquals(expected, actual);
+    }
+
+    private RpcItem getConfirmations(BigInteger txId) throws IOException {
+        RpcObject.Builder builder = new RpcObject.Builder()
+                .put("_transactionId", new RpcValue(txId));
+        if (contentType.equals(Constants.CONTENT_TYPE_PYTHON)) {
+            builder.put("_offset", new RpcValue(BigInteger.ZERO))
+                   .put("_count", new RpcValue(BigInteger.valueOf(50)));
+        }
+        return this.call("getConfirmations", builder.build());
+    }
+
+    public void ensureTransactionCount(int pending, int executed) throws IOException {
+        assertEquals(pending, getTransactionCount(true, false));
+        assertEquals(executed, getTransactionCount(false, true));
+        assertEquals(pending + executed, getTransactionCount(true, true));
+    }
+
+    private int getTransactionCount(boolean pending, boolean executed) throws IOException {
+        RpcObject params = new RpcObject.Builder()
+                .put("_pending", new RpcValue(pending))
+                .put("_executed", new RpcValue(executed))
+                .build();
+        return this.call("getTransactionCount", params).asInteger().intValue();
+    }
+
+    public void ensurePendingTransactionIds(int offset, int count, BigInteger... expected) throws IOException {
+        RpcObject params = new RpcObject.Builder()
+                .put("_offset", new RpcValue(BigInteger.valueOf(offset)))
+                .put("_count", new RpcValue(BigInteger.valueOf(count)))
+                .put("_pending", new RpcValue(true))
+                .put("_executed", new RpcValue(false))
+                .build();
+        List<RpcItem> items = this.call("getTransactionList", params).asArray().asList();
+        assertEquals(expected.length, items.size());
+        BigInteger[] actual = new BigInteger[items.size()];
+        for (int i = 0; i < actual.length; i++) {
+            actual[i] = items.get(i).asObject().getItem("_transactionId").asInteger();
+        }
+        assertArrayEquals(expected, actual);
     }
 }
