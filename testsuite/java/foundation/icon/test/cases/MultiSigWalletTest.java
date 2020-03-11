@@ -145,12 +145,19 @@ public class MultiSigWalletTest extends TestBase {
         LOG.infoEntering("call", "addWalletOwner(Charlie)");
         KeyWallet charlieWallet = KeyWallet.create();
         LOG.info("Address of Charlie: " + charlieWallet.getAddress());
-        result = multiSigWalletScore.addWalletOwner(ownerWallet, charlieWallet.getAddress(), "add new wallet owner");
+        result = multiSigWalletScore.addWalletOwner(aliceWallet, charlieWallet.getAddress(), "add new wallet owner");
         txId = multiSigWalletScore.getTransactionId(result);
 
-        // Alice confirms the tx to make it executed
-        LOG.info("confirmTransaction() by Alice");
-        result = multiSigWalletScore.confirmTransaction(aliceWallet, txId);
+        // Revocation test
+        LOG.info("revokeTransaction() by Alice");
+        result = multiSigWalletScore.revokeTransaction(aliceWallet, txId);
+        multiSigWalletScore.ensureRevocation(result, aliceWallet.getAddress(), txId);
+        multiSigWalletScore.getConfirmationsAndCheck(txId);
+
+        // Owner and Bob confirm the tx to make it executed
+        LOG.info("confirmTransaction() by Owner and Bob");
+        result = multiSigWalletScore.confirmTransaction(ownerWallet, txId);
+        result = multiSigWalletScore.confirmTransaction(bobWallet, txId);
         multiSigWalletScore.ensureWalletOwnerAddition(result, charlieWallet.getAddress());
         multiSigWalletScore.ensureExecution(result, txId);
         multiSigWalletScore.ensureOwners(

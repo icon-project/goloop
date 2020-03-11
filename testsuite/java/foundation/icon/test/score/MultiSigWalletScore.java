@@ -44,6 +44,7 @@ public class MultiSigWalletScore extends Score {
     private static final String SCORE_MULTISIG_PATH = Constants.SCORE_ROOT + "multisig_wallet";
     private static final Class<?>[] SCORE_MULTISIG_CLASSES =
             {MultiSigWallet.class, StringTokenizer.class, Transaction.class};
+    private static final int MAX_OWNER_COUNT = 50;
     private final String contentType;
 
     public MultiSigWalletScore(Score other, String contentType) {
@@ -95,6 +96,14 @@ public class MultiSigWalletScore extends Score {
         TransactionResult result = invokeAndWaitResult(fromWallet, "confirmTransaction", params);
         ensureConfirmation(result, fromWallet.getAddress(), txId);
         return result;
+    }
+
+    public TransactionResult revokeTransaction(Wallet fromWallet, BigInteger txId)
+            throws IOException, ResultTimeoutException {
+        RpcObject params = new RpcObject.Builder()
+                .put("_transactionId", new RpcValue(txId))
+                .build();
+        return invokeAndWaitResult(fromWallet, "revokeTransaction", params);
     }
 
     public TransactionResult addWalletOwner(Wallet fromWallet, Address newOwner, String description)
@@ -165,6 +174,18 @@ public class MultiSigWalletScore extends Score {
             }
         }
         throw new IOException("Failed to get Confirmation.");
+    }
+
+    public void ensureRevocation(TransactionResult result, Address sender, BigInteger txId) throws IOException {
+        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, getAddress(), "Revocation(Address,int)");
+        if (event != null) {
+            Address _sender = event.getIndexed().get(1).asAddress();
+            BigInteger _txId = event.getIndexed().get(2).asInteger();
+            if (sender.equals(_sender) && txId.equals(_txId)) {
+                return; // ensured
+            }
+        }
+        throw new IOException("Failed to get Revocation.");
     }
 
     public void ensureIcxTransfer(TransactionResult result, Address from, Address to, long value) throws IOException {
@@ -240,7 +261,7 @@ public class MultiSigWalletScore extends Score {
         if (contentType.equals(Constants.CONTENT_TYPE_PYTHON)) {
             params = new RpcObject.Builder()
                     .put("_offset", new RpcValue(BigInteger.ZERO))
-                    .put("_count", new RpcValue(BigInteger.valueOf(50)))
+                    .put("_count", new RpcValue(BigInteger.valueOf(MAX_OWNER_COUNT)))
                     .build();
         }
         return this.call("getWalletOwners", params);
@@ -268,7 +289,7 @@ public class MultiSigWalletScore extends Score {
                 .put("_transactionId", new RpcValue(txId));
         if (contentType.equals(Constants.CONTENT_TYPE_PYTHON)) {
             builder.put("_offset", new RpcValue(BigInteger.ZERO))
-                   .put("_count", new RpcValue(BigInteger.valueOf(50)));
+                   .put("_count", new RpcValue(BigInteger.valueOf(MAX_OWNER_COUNT)));
         }
         return this.call("getConfirmations", builder.build());
     }
