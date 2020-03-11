@@ -312,7 +312,7 @@ class MultiSigWallet(IconScoreBase):
         if self._transactions[_transactionId] is not None:
             transaction = Transaction.from_bytes(self._transactions[_transactionId])
             tx_dict = transaction.to_dict()
-            tx_dict["_transaction_id"] = _transactionId
+            tx_dict["_transactionId"] = _transactionId
             return tx_dict
         else:
             return {}
@@ -396,7 +396,7 @@ class MultiSigWallet(IconScoreBase):
                 transaction = Transaction.from_bytes(self._transactions[tx_id])
 
                 tx_dict = transaction.to_dict()
-                tx_dict["_transaction_id"] = tx_id
+                tx_dict["_transactionId"] = tx_id
                 transaction_list.append(tx_dict)
 
         return transaction_list
