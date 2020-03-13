@@ -9,6 +9,7 @@ import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -35,10 +36,8 @@ import org.aion.avm.NameStyle;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.ClassRenamer;
 import org.aion.avm.core.ClassRenamerBuilder;
-import org.aion.avm.core.classloading.AvmClassLoader;
 import org.aion.avm.core.types.CommonType;
 import org.aion.avm.core.util.DebugNameResolver;
-import org.aion.avm.core.util.Helpers;
 import p.score.Context;
 
 /**
@@ -90,8 +89,6 @@ public class LoadedDApp {
     private Class<?> blockchainRuntimeClass;
     private Class<?> mainClass;
     private Field runtimeBlockchainRuntimeField;
-    private long loadedDataBlockNum;
-    private long loadedCodeBlockNum;
 
     // Note that we track the interned classes here since they have the same lifecycle as the LoadedDApp (including for reentrant calls).
     private InternedClasses internedClasses;
@@ -118,7 +115,7 @@ public class LoadedDApp {
         this.loader = loader;
         // Note that the storage system defines the classes as being sorted alphabetically.
         this.sortedUserClasses = Arrays.stream(userClasses)
-                .sorted((f1, f2) -> f1.getName().compareTo(f2.getName()))
+                .sorted(Comparator.comparing(Class::getName))
                 .toArray(Class[]::new);
         this.constantClass = constantClass;
         this.originalMainClassName = originalMainClassName;
@@ -126,7 +123,7 @@ public class LoadedDApp {
         this.preserveDebuggability = preserveDebuggability;
 
         // Collect all of the user-defined classes, discarding any generated exception wrappers for them.
-        // This information is to be handed off to the persistance layer.
+        // This information is to be handed off to the persistence layer.
         Set<String> postRenameUserClasses = new HashSet<>();
         for (Class<?> userClass : this.sortedUserClasses) {
             String className = userClass.getName();
@@ -152,8 +149,6 @@ public class LoadedDApp {
             // We require that this be instantiated in this way.
             throw RuntimeAssertionError.unexpected(e);
         }
-        loadedDataBlockNum = -1;
-        loadedCodeBlockNum = -1;
         this.internedClasses = new InternedClasses();
         nameToMethod = new HashMap<>();
         try {
@@ -172,20 +167,19 @@ public class LoadedDApp {
         return clazz.getMethod(METHOD_PREFIX + m.getName(), paramClasses);
     }
 
-    private Constructor getConstructor(foundation.icon.ee.types.Method m) throws ReflectiveOperationException {
+    private Constructor<?> getConstructor(foundation.icon.ee.types.Method m) throws ReflectiveOperationException {
         var paramClasses = m.getParameterClasses();
         Class<?> clazz = loadMainClass();
         return clazz.getConstructor(paramClasses);
     }
 
     public void verifyExternalMethods() throws ReflectiveOperationException {
-        Class<?> clazz = loadMainClass();
         for (var m : nameToMethod.entrySet()) {
             if (m.getValue().getType() != foundation.icon.ee.types.Method.MethodType.EVENT
                     && !m.getValue().getName().equals("<init>")) {
                 Method method = getExternalMethod(m.getValue());
                 if (Modifier.isStatic(method.getModifiers())) {
-                    throw new NoSuchMethodException(String.format("method %s is not static", m.getKey()));
+                    throw new NoSuchMethodException(String.format("method %s is static", m.getKey()));
                 }
             }
         }
@@ -242,12 +236,9 @@ public class LoadedDApp {
      */
     public byte[] saveEntireGraph(int nextHashCode, int maximumSizeInBytes) {
         ByteBuffer outputBuffer = ByteBuffer.allocate(maximumSizeInBytes);
-        List<Object> out_instanceIndex = null;
-        List<Integer> out_calleeToCallerIndexMap = null;
         StandardGlobalResolver resolver = new StandardGlobalResolver(null, this.loader);
         StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
-        Serializer.serializeEntireGraph(outputBuffer, out_instanceIndex, out_calleeToCallerIndexMap, resolver, this.fieldCache, classNameMapper, nextHashCode, this.sortedUserClasses, this.constantClass, this.mainInstance);
-        
+        Serializer.serializeEntireGraph(outputBuffer, null, null, resolver, this.fieldCache, classNameMapper, nextHashCode, this.sortedUserClasses, this.constantClass, this.mainInstance);
         byte[] finalBytes = new byte[outputBuffer.position()];
         System.arraycopy(outputBuffer.array(), 0, finalBytes, 0, finalBytes.length);
         return finalBytes;
@@ -261,11 +252,9 @@ public class LoadedDApp {
     public DAppRuntimeState saveRuntimeState(int nextHashCode, int maximumSizeInBytes) {
         ByteBuffer outputBuffer = ByteBuffer.allocate(maximumSizeInBytes);
         List<Object> out_instanceIndex = new ArrayList<>();
-        List<Integer> out_calleeToCallerIndexMap = null;
         StandardGlobalResolver resolver = new StandardGlobalResolver(null, this.loader);
         StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
-        Serializer.serializeEntireGraph(outputBuffer, out_instanceIndex, out_calleeToCallerIndexMap, resolver, this.fieldCache, classNameMapper, nextHashCode, this.sortedUserClasses, this.constantClass, this.mainInstance);
-
+        Serializer.serializeEntireGraph(outputBuffer, out_instanceIndex, null, resolver, this.fieldCache, classNameMapper, nextHashCode, this.sortedUserClasses, this.constantClass, this.mainInstance);
         byte[] finalBytes = new byte[outputBuffer.position()];
         System.arraycopy(outputBuffer.array(), 0, finalBytes, 0, finalBytes.length);
         return new DAppRuntimeState(out_instanceIndex, ObjectGraph.getInstance(finalBytes));
@@ -283,30 +272,6 @@ public class LoadedDApp {
         byte[] finalBytes = new byte[outputBuffer.position()];
         System.arraycopy(outputBuffer.array(), 0, finalBytes, 0, finalBytes.length);
         return finalBytes;
-    }
-
-    public ReentrantGraph captureStateAsCaller(int nextHashCode, int maxGraphSize) {
-        StandardGlobalResolver resolver = new StandardGlobalResolver(null, this.loader);
-        StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
-        return ReentrantGraph.captureCallerState(resolver, this.fieldCache, classNameMapper, maxGraphSize, nextHashCode, this.sortedUserClasses, this.constantClass);
-    }
-
-    public ReentrantGraph captureStateAsCallee(int updatedNextHashCode, int maxGraphSize) {
-        StandardGlobalResolver resolver = new StandardGlobalResolver(null, this.loader);
-        StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
-        return ReentrantGraph.captureCalleeState(resolver, this.fieldCache, classNameMapper, maxGraphSize, updatedNextHashCode, this.sortedUserClasses, this.constantClass);
-    }
-
-    public void commitReentrantChanges(InternedClasses internedClassMap, ReentrantGraph callerState, ReentrantGraph calleeState) {
-        StandardGlobalResolver resolver = new StandardGlobalResolver(internedClassMap, this.loader);
-        StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
-        callerState.commitChangesToState(resolver, this.fieldCache, classNameMapper, this.sortedUserClasses, this.constantClass, calleeState);
-    }
-
-    public void revertToCallerState(InternedClasses internedClassMap, ReentrantGraph callerState) {
-        StandardGlobalResolver resolver = new StandardGlobalResolver(internedClassMap, this.loader);
-        StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
-        callerState.revertChangesToState(resolver, this.fieldCache, classNameMapper, this.sortedUserClasses, this.constantClass);
     }
 
     /**
@@ -337,17 +302,15 @@ public class LoadedDApp {
         try {
             var m = nameToMethod.get("<init>");
             if (m==null) {
-                throw new NoSuchMethodException(String.format("method <init> is not in APIS"));
+                throw new NoSuchMethodException("method <init> is not in APIS");
             }
-            Constructor ctor = getConstructor(m);
+            Constructor<?> ctor = getConstructor(m);
             mainInstance = ctor.newInstance(m.convertParameters(params));
         } catch (ClassNotFoundException | SecurityException | ExceptionInInitializerError e) {
             // should have been handled during CREATE.
             RuntimeAssertionError.unexpected(e);
-
         } catch (NoSuchMethodException | IllegalAccessException e) {
             throw new MethodAccessException(e);
-
         } catch (InvocationTargetException e) {
             // handle the real exception
             if (e.getTargetException() instanceof UncaughtException) {
@@ -380,10 +343,8 @@ public class LoadedDApp {
         } catch (ClassNotFoundException | SecurityException | ExceptionInInitializerError e) {
             // should have been handled during CREATE.
             RuntimeAssertionError.unexpected(e);
-
         } catch (NoSuchMethodException | IllegalAccessException e) {
             throw new MethodAccessException(e);
-
         } catch (InvocationTargetException e) {
             // handle the real exception
             if (e.getTargetException() instanceof UncaughtException) {
@@ -392,7 +353,6 @@ public class LoadedDApp {
                 handleUncaughtException(e.getTargetException());
             }
         }
-
         return null;
     }
 
@@ -414,11 +374,8 @@ public class LoadedDApp {
             // These must be the same instances we started with and they must have been loaded by this loader.
             RuntimeAssertionError.assertTrue(clazz == initialized);
             RuntimeAssertionError.assertTrue(initialized.getClassLoader() == this.loader);
-        } catch (ClassNotFoundException e) {
-            // This error would mean that this is assembled completely incorrectly, which is a static error in our implementation.
-            RuntimeAssertionError.unexpected(e);
-        } catch (SecurityException e) {
-            // This would mean that the shadowing is not working properly.
+        } catch (ClassNotFoundException | SecurityException e) {
+            // a static error occurred in the implementation or the shadowing was not working properly.
             RuntimeAssertionError.unexpected(e);
         } catch (ExceptionInInitializerError e) {
             // handle the real exception
@@ -437,30 +394,20 @@ public class LoadedDApp {
         // thrown by us
         if (cause instanceof AvmThrowable) {
             throw cause;
-
-            // thrown by runtime, but is never handled
-        } else if ((cause instanceof RuntimeException) || (cause instanceof Error)) {
+        }
+        // thrown by runtime, but is never handled
+        else if ((cause instanceof RuntimeException) || (cause instanceof Error)) {
             throw new UncaughtException(cause);
-
-            // thrown by users
-        } else if (cause instanceof e.s.java.lang.Throwable) {
+        }
+        // thrown by users
+        else if (cause instanceof e.s.java.lang.Throwable) {
             // Note that we will need to unwrap this since the wrapper doesn't actually communicate anything, just being
             // used to satisfy Java exception relationship requirements (the user code populates the wrapped object).
             throw new UncaughtException(((e.s.java.lang.Throwable) cause).unwrap().toString(), cause);
-
         } else {
             RuntimeAssertionError.unexpected(cause);
         }
     }
-
-    /**
-     * Called before the DApp is about to be put into a cache.  This is so it can put itself into a "resumable" state.
-     */
-    public void clearDataState() {
-        loadedDataBlockNum = -1;
-        Deserializer.cleanClassStatics(this.fieldCache, this.sortedUserClasses, this.constantClass);
-    }
-
 
     private Class<?> loadBlockchainRuntimeClass() throws ClassNotFoundException {
         Class<?> runtimeClass = this.blockchainRuntimeClass;
@@ -494,50 +441,6 @@ public class LoadedDApp {
         return runtimeBlockchainRuntimeField;
     }
 
-    /**
-     * Dump the transformed class files of the loaded Dapp.
-     * The output class files will be put under {@param path}.
-     *
-     * @param path The runtime to install in the DApp.
-     */
-    public void dumpTransformedByteCode(String path){
-        AvmClassLoader appLoader = (AvmClassLoader) loader;
-        dumpOneTransformedClass(path, appLoader, this.constantClass);
-        for (Class<?> clazz : this.sortedUserClasses){
-            dumpOneTransformedClass(path, appLoader, clazz);
-        }
-    }
-
-    private void dumpOneTransformedClass(String path, AvmClassLoader appLoader, Class<?> clazz) {
-        byte[] bytecode = appLoader.getUserClassBytecode(clazz.getName());
-        String output = path + "/" + clazz.getName() + ".class";
-        Helpers.writeBytesToFile(bytecode, output);
-    }
-
-    public void setLoadedCodeBlockNum(long loadedBlockNum) {
-        loadedCodeBlockNum = loadedBlockNum;
-    }
-
-    public long getLoadedCodeBlockNum() {
-        return loadedCodeBlockNum;
-    }
-
-    public void updateLoadedBlockForSuccessfulTransaction(long loadedBlockNum){
-        // Store the current block as the last number which the DApp data was loaded in
-        loadedDataBlockNum = loadedBlockNum;
-    }
-
-    public boolean hasValidCachedData(long loadedBlockNum){
-        // Ensure data has been updated before the current block and it has not been reset after.
-        // Note that from the time the data cache is updated, loadedDataBlockNum >= loadedCodeBlockNum
-        return loadedDataBlockNum < loadedBlockNum && loadedDataBlockNum != -1;
-    }
-
-    public boolean hasValidCachedCode(long loadedBlockNum){
-        // Ensure data has been updated before the current block and it has not been reset after.
-        return loadedCodeBlockNum < loadedBlockNum && loadedCodeBlockNum != -1;
-    }
-
     public void setHashCode(int hashCode) { this.hashCode = hashCode; }
 
     public void setSerializedLength(int serializedLength) { this.serializedLength = serializedLength; }
@@ -548,13 +451,11 @@ public class LoadedDApp {
 
     private Set<String> fetchPreRenameSlashStyleJclExceptions() {
         Set<String> jclExceptions = new HashSet<>();
-
         for (CommonType type : CommonType.values()) {
             if (type.isShadowException) {
                 jclExceptions.add(type.dotName.substring(PackageConstants.kShadowDotPrefix.length()).replaceAll("\\.", "/"));
             }
         }
-
         return jclExceptions;
     }
 
