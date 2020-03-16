@@ -26,7 +26,7 @@ public class ServiceManager extends Proxy {
     private int nextScoreAddr = 1;
     private int nextExtAddr = 1;
     private BigInteger value = BigInteger.valueOf(0);
-    private BigInteger stepLimit = BigInteger.valueOf(1000000000);
+    private BigInteger stepLimit = BigInteger.valueOf(1_000_000_000);
     private State.Account current;
     private Address origin;
     private Map<String, Object> info = new HashMap<>();
