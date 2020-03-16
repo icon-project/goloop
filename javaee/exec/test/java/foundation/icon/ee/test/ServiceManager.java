@@ -125,6 +125,10 @@ public class ServiceManager extends Proxy {
         return stepLimit;
     }
 
+    public void setStepLimit(BigInteger sl) {
+        stepLimit = sl;
+    }
+
     public FileReader getFileReader() {
         return state;
     }
