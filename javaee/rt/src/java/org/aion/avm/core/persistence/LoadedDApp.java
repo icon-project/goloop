@@ -219,13 +219,6 @@ public class LoadedDApp {
         return res;
     }
 
-    public Object deserializeObject(InternedClasses internedClassMap, byte[] rawGraphData) {
-        ByteBuffer inputBuffer = ByteBuffer.wrap(rawGraphData);
-        StandardGlobalResolver resolver = new StandardGlobalResolver(internedClassMap, this.loader);
-        StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
-        return Deserializer.deserializeObject(inputBuffer, resolver, this.fieldCache, classNameMapper);
-    }
-
     /**
      * Requests that the Classes in the receiver be walked and all referenced objects be serialized into a graph.
      * NOTE:  The caller is expected to manage billing - none of that is done in here.
@@ -258,20 +251,6 @@ public class LoadedDApp {
         byte[] finalBytes = new byte[outputBuffer.position()];
         System.arraycopy(outputBuffer.array(), 0, finalBytes, 0, finalBytes.length);
         return new DAppRuntimeState(out_instanceIndex, ObjectGraph.getInstance(finalBytes));
-    }
-
-    public byte[] serializeObject(Object v) {
-        return serializeObject(v, StorageFees.MAX_GRAPH_SIZE);
-    }
-
-    public byte[] serializeObject(Object v, int maximumSizeInBytes) {
-        ByteBuffer outputBuffer = ByteBuffer.allocate(maximumSizeInBytes);
-        StandardGlobalResolver resolver = new StandardGlobalResolver(null, this.loader);
-        StandardNameMapper classNameMapper = new StandardNameMapper(this.classRenamer);
-        Serializer.serializeObject(outputBuffer, v, resolver, this.fieldCache, classNameMapper);
-        byte[] finalBytes = new byte[outputBuffer.position()];
-        System.arraycopy(outputBuffer.array(), 0, finalBytes, 0, finalBytes.length);
-        return finalBytes;
     }
 
     /**

@@ -1,10 +1,8 @@
 package org.aion.avm.core;
 
 import foundation.icon.ee.types.Address;
-import i.DBImplBase;
 import i.IDBStorage;
 import i.IInstrumentation;
-import i.IObject;
 import i.InternedClasses;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
@@ -19,14 +17,6 @@ public class DBStorage implements IDBStorage {
         this.ctx = ctx;
         this.dapp = dapp;
         this.icm = icm;
-    }
-
-    private Object deserializeObject(byte[] rawGraphData) {
-        return dapp.deserializeObject(icm, rawGraphData);
-    }
-
-    private byte[] serializeObject(Object v) {
-        return dapp.serializeObject(v);
     }
 
     public void setArrayLength(byte[] key, int l) {
@@ -58,30 +48,6 @@ public class DBStorage implements IDBStorage {
 
     private void charge(int cost) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(cost);
-    }
-
-    private void assumeValidValue(Object value) {
-        if (value instanceof DBImplBase) {
-            throw new IllegalArgumentException();
-        }
-    }
-
-    public void setTyped(byte[] key, IObject value) {
-        assumeValidValue(value);
-        byte[] v = null;
-        if (value!=null) {
-            v = serializeObject(value);
-            charge(v.length * StorageFees.WRITE_PRICE_PER_BYTE);
-        }
-        ctx.putStorage(getAddress(), key, v);
-    }
-
-    public IObject getTyped(byte[] key) {
-        var v = ctx.getStorage(getAddress(), key);
-        if (v==null)
-            return null;
-        charge(v.length * StorageFees.READ_PRICE_PER_BYTE);
-        return (IObject) deserializeObject(v);
     }
 
     public void setBytes(byte[] key, byte[] value) {
