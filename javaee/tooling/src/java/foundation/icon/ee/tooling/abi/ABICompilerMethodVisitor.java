@@ -6,7 +6,6 @@
 package foundation.icon.ee.tooling.abi;
 
 import foundation.icon.ee.types.Method;
-import org.aion.avm.tooling.abi.ABIUtils;
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
@@ -15,14 +14,15 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.util.ASMifier;
 import org.objectweb.asm.util.TraceMethodVisitor;
+import score.Address;
 
 import java.io.PrintWriter;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.StringJoiner;
 
 public class ABICompilerMethodVisitor extends MethodVisitor {
     private int access;
@@ -42,6 +42,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
     private static final Set<String> reservedEventNames = Set.of(
             "ICXTransfer"
     );
+
     @SuppressWarnings("unchecked")
     private static final Map.Entry<String, Integer>[] dataTypeEntries = new Map.Entry[]{
             Map.entry("B", Method.DataType.INTEGER),
@@ -67,6 +68,43 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
     private static final Map<String, Integer> returnTypeMap = Map.ofEntries(
             dataTypeEntries
     );
+
+    private static final List<String> paramTypes = List.of(
+            "Z",
+            "C",
+            "B",
+            "S",
+            "I",
+            "J",
+            Type.getDescriptor(BigInteger.class),
+            Type.getDescriptor(String.class),
+            Type.getDescriptor(Address.class),
+            "[B"
+    );
+
+    private static boolean isAllowedParamType(Type type) {
+        return paramTypes.contains(type.getDescriptor());
+    }
+
+    private static final List<String> returnTypes = List.of(
+            "Z",
+            "C",
+            "B",
+            "S",
+            "I",
+            "J",
+            Type.getDescriptor(BigInteger.class),
+            Type.getDescriptor(String.class),
+            Type.getDescriptor(Address.class),
+            "[B",
+            Type.getDescriptor(List.class),
+            Type.getDescriptor(Map.class),
+            "V"
+    );
+
+    private static boolean isAllowedReturnType(Type type) {
+        return returnTypes.contains(type.getDescriptor());
+    }
 
     public ABICompilerMethodVisitor(int access, String methodName, String methodDescriptor, MethodVisitor mv, boolean stripLineNumber) {
         super(Opcodes.ASM6, mv);
@@ -347,33 +385,18 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
         return isPublic && !isStatic;
     }
 
-    // TODO: refactor later
     private void checkArgumentsAndReturnType() {
         for (Type type : Type.getArgumentTypes(this.methodDescriptor)) {
-            if (!ABIUtils.isAllowedParamType(type)) {
+            if (!isAllowedParamType(type)) {
                 throw new ABICompilerException(
                     type.getClassName() + " is not an allowed parameter type", methodName);
             }
         }
         Type returnType = Type.getReturnType(methodDescriptor);
-        if (!ABIUtils.isAllowedReturnType(returnType)) {
+        if (!isAllowedReturnType(returnType)) {
             throw new ABICompilerException(
                 returnType.getClassName() + " is not an allowed return type", methodName);
         }
-    }
-
-    public String getPublicStaticMethodSignature() {
-        StringJoiner arguments = new StringJoiner(", ");
-        for (Type type : Type.getArgumentTypes(this.methodDescriptor)) {
-            arguments.add(ABIUtils.shortenClassName(type.getClassName()));
-        }
-        String returnType = Type.getReturnType(this.methodDescriptor).getClassName();
-        return ("public ")
-                + ("static ")
-                + ABIUtils.shortenClassName(returnType) + " "
-                + this.methodName + "("
-                + arguments.toString()
-                + ")";
     }
 
     public Method getCallableMethodInfo() {
