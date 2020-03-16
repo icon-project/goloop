@@ -34,7 +34,6 @@ public class OptimizedJarBuilder {
      * Initializes a new instance of OptimizedJarBuilder, which allows desired optimization steps to be enabled and performed
      * @param debugModeEnabled Indicates if debug data and names need to be preserved
      * @param jarBytes Byte array corresponding to the jar
-     * @param abiVersion Version of ABI compiler to use
      */
     public OptimizedJarBuilder(boolean debugModeEnabled, byte[] jarBytes) {
         this(debugModeEnabled, jarBytes, false);
@@ -106,10 +105,6 @@ public class OptimizedJarBuilder {
             System.err.println("Writing API info failed.");
         }
         return optimizedDappBytes;
-    }
-
-    public List<Method> getCallables() {
-        return callables;
     }
 
     private byte[] writeApi(byte[] jarBytes) throws IOException {

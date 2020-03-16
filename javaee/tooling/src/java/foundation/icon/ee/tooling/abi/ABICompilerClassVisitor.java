@@ -19,7 +19,6 @@ import java.util.Set;
 
 public class ABICompilerClassVisitor extends ClassVisitor {
     private List<ABICompilerMethodVisitor> methodVisitors = new ArrayList<>();
-    private List<ABICompilerMethodVisitor> callableMethodVisitors = new ArrayList<>();
     private List<Method> callableInfo = new ArrayList<>();
     private boolean stripLineNumber;
 
@@ -30,10 +29,6 @@ public class ABICompilerClassVisitor extends ClassVisitor {
 
     public List<Method> getCallableInfo() {
         return callableInfo;
-    }
-
-    public List<ABICompilerMethodVisitor> getCallableMethodVisitors() {
-        return callableMethodVisitors;
     }
 
     @Override
@@ -77,14 +72,12 @@ public class ABICompilerClassVisitor extends ClassVisitor {
                 }
                 callableNames.add(mv.getMethodName());
                 callableInfo.add(mv.getCallableMethodInfo());
-                callableMethodVisitors.add(mv);
             } else if (mv.isOnInstall()) {
                 if (foundOnInstall) {
                     throw new ABICompilerException("Multiple onInstall methods", mv.getMethodName());
                 }
                 foundOnInstall = true;
                 callableInfo.add(mv.getCallableMethodInfo());
-                callableMethodVisitors.add(mv);
             } else if (mv.isEventLog()) {
                 if (eventsNames.contains(mv.getMethodName())) {
                     throw new ABICompilerException("Multiple @EventLog methods with the same name", mv.getMethodName());
