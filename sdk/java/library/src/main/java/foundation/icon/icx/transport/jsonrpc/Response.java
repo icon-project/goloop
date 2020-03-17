@@ -23,8 +23,6 @@ package foundation.icon.icx.transport.jsonrpc;
 public class Response {
     private String jsonrpc = "2.0";
 
-    private String method;
-
     private long id;
 
     private RpcItem result;
@@ -33,10 +31,6 @@ public class Response {
 
     public String getJsonrpc() {
         return jsonrpc;
-    }
-
-    public String getMethod() {
-        return method;
     }
 
     public long getId() {
