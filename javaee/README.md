@@ -8,18 +8,18 @@
 
 ```bash
 $ cd $JAVAEE_DIR/samples
-$ ./compile.sh sample_token example.SampleToken
+$ ./compile.sh sampletoken example.SampleToken
 ...
-The jar has been generated at $JAVAEE_DIR/samples/sample_token/build/dapp.jar
+The jar has been generated at $JAVAEE_DIR/samples/sampletoken/build/dapp.jar
 ```
 
 ### 2. Optimize the dapp.jar with DAppCompiler
 
 ```bash
 $ cd $JAVAEE_DIR
-$ gradle app:dappcomp:run --args='$JAVAEE_DIR/samples/sample_token/build/dapp.jar -debug'
+$ ./gradlew app:dappcomp:run --args='$JAVAEE_DIR/samples/sampletoken/build/dapp.jar -debug'
 ...
-[main] INFO DAppCompiler - Generated $JAVAEE_DIR/samples/sample_token/build/optimized-debug.jar
+[main] INFO DAppCompiler - Generated $JAVAEE_DIR/samples/sampletoken/build/optimized-debug.jar
 ```
 
 ### 3. Deploy the optimized jar
@@ -40,22 +40,41 @@ $ gradle app:execman:run --args='/tmp/ee.socket'
 ## Comparison to Python SCORE
 
 | Name | Python | Java |
-|---|---|---|
-| External decorator | @external | @External |
-| - (readonly)| @external(readonly=True) | @External(readonly=true) |
-| Payable decorator | @payable | @Payable |
-| Eventlog decorator | @eventlog | @EventLog |
-| - (indexed) | @eventlog(indexed=1) | @EventLog(indexed=1) |
-| fallback signature | `def fallback` | `fallback:"()V"` |
-| SCORE initialize | override `on_install` method | define `onInstall:"(...)V"` method |
+|------|--------|------|
+| External decorator | `@external` | `@External` |
+| - (readonly)| `@external(readonly=True)` | `@External(readonly=true)` |
+| Payable decorator | `@payable` | `@Payable` |
+| Eventlog decorator | `@eventlog` | `@EventLog` |
+| - (indexed) | `@eventlog(indexed=1)` | `@EventLog(indexed=1)` |
+| fallback signature | `def fallback` | `void fallback()` |
+| SCORE initialize | override `on_install` method | define a public constructor |
 | Default parameters | native language support | `@Optional` |
 
-**[NOTE]** All external Java methods must have `public` and `static` modifiers.
+**[NOTE]** All external Java methods must have a `public` modifier, and should be instance methods.
 
-## How to invoke other SCORE's function
-[TBD]
+## How to invoke a external method of another SCORE
 
-## Java SCORE Example
+One SCORE can invoke a external method of another SCORE using the following APIs.
 
-- [SampleToken](./samples/sample_token/src/example/SampleToken.java)
+```java
+// [package score.Context]
+public static Object call(Address targetAddress, String method, Object... params);
+
+public static Object call(BigInteger value,
+                          Address targetAddress, String method, Object... params);
+
+public static Object call(BigInteger value, BigInteger stepLimit,
+                          Address targetAddress, String method, Object... params);
+```
+
+> Example of calling `tokenFallback`
+```java
+if (Address.isContract(_to)) {
+    Context.call(_to, "tokenFallback", _from, _value, dataBytes);
+}
+```
+
+## Java SCORE Examples
+
+- [SampleToken](./samples/sampletoken/src/example/SampleToken.java)
 - [SampleCrowdsale](./samples/crowdsale/src/example/SampleCrowdsale.java)

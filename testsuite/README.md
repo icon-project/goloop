@@ -51,10 +51,10 @@ Using options.
 
 Available options
 
-| Option      | Targets   | Descrpition                                    |
+| Option      | Targets   | Description                                    |
 |:------------|:----------|:-----------------------------------------------|
 | AUDIT       | testPyGov | `true` for testing scores with AUDIT feature   |
-| NO_SERVER   | all       | `true`for disabling auto start `gochain`.      |
+| NO_SERVER   | all       | `true` for disabling auto start `gochain`.     |
 | USER_DOCKER | all       | `true` for enabling docker container for test. |
 
 To use other nodes than `gochain`, start the servers first, then define
