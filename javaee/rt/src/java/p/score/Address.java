@@ -62,10 +62,10 @@ public final class Address extends s.java.lang.Object {
         }
     }
 
-    public static boolean avm_isContract(Address address) {
+    public boolean avm_isContract() {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.Address_avm_unwrap);
-        byte[] ba = address.toByteArray();
-        return ba[0] == 0x1;
+        lazyLoad();
+        return internalArray[0] == 0x1;
     }
 
     /**

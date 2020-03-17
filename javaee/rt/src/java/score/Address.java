@@ -59,9 +59,8 @@ public class Address {
         }
     }
 
-    public static boolean isContract(Address address) {
-        byte[] ba = address.toByteArray();
-        return ba[0] == 0x1;
+    public boolean isContract() {
+        return this.raw[0] == 0x1;
     }
 
     /**

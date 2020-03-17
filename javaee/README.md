@@ -69,7 +69,7 @@ public static Object call(BigInteger value, BigInteger stepLimit,
 
 > Example of calling `tokenFallback`
 ```java
-if (Address.isContract(_to)) {
+if (_to.isContract()) {
     Context.call(_to, "tokenFallback", _from, _value, dataBytes);
 }
 ```

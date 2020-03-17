@@ -109,7 +109,7 @@ public class SampleToken
 
         // if the recipient is SCORE, call 'tokenFallback' to handle further operation
         byte[] dataBytes = (_data == null) ? new byte[0] : _data;
-        if (Address.isContract(_to)) {
+        if (_to.isContract()) {
             Context.call(_to, "tokenFallback", _from, _value, dataBytes);
         }
 
