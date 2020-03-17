@@ -74,7 +74,7 @@ public class ABICompilerClassVisitor extends ClassVisitor {
                 callableInfo.add(mv.getCallableMethodInfo());
             } else if (mv.isOnInstall()) {
                 if (foundOnInstall) {
-                    throw new ABICompilerException("Multiple onInstall methods", mv.getMethodName());
+                    throw new ABICompilerException("Multiple public <init> methods", mv.getMethodName());
                 }
                 foundOnInstall = true;
                 callableInfo.add(mv.getCallableMethodInfo());

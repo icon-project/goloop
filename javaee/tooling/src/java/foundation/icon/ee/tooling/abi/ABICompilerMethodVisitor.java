@@ -45,6 +45,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
 
     @SuppressWarnings("unchecked")
     private static final Map.Entry<String, Integer>[] dataTypeEntries = new Map.Entry[]{
+            // allowed types for both param and return
             Map.entry("B", Method.DataType.INTEGER),
             Map.entry("C", Method.DataType.INTEGER),
             Map.entry("S", Method.DataType.INTEGER),
@@ -55,7 +56,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
             Map.entry("[B", Method.DataType.BYTES),
             Map.entry("Z", Method.DataType.BOOL),
             Map.entry("Lscore/Address;", Method.DataType.ADDRESS),
-
+            // allowed types only for return
             Map.entry("V", Method.DataType.NONE),
             Map.entry("Ljava/util/List;", Method.DataType.LIST),
             Map.entry("Ljava/util/Map;", Method.DataType.DICT),
@@ -69,24 +70,8 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
             dataTypeEntries
     );
 
-    private static final List<String> paramTypes = List.of(
-            "Z",
-            "C",
-            "B",
-            "S",
-            "I",
-            "J",
-            Type.getDescriptor(BigInteger.class),
-            Type.getDescriptor(String.class),
-            Type.getDescriptor(Address.class),
-            "[B"
-    );
-
-    private static boolean isAllowedParamType(Type type) {
-        return paramTypes.contains(type.getDescriptor());
-    }
-
     private static final List<String> returnTypes = List.of(
+            // allowed types for both param and return
             "Z",
             "C",
             "B",
@@ -97,10 +82,19 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
             Type.getDescriptor(String.class),
             Type.getDescriptor(Address.class),
             "[B",
+            // allowed types only for return
             Type.getDescriptor(List.class),
             Type.getDescriptor(Map.class),
             "V"
     );
+
+    private static final List<String> paramTypes = List.of(
+            Arrays.copyOfRange(returnTypes.toArray(new String[0]), 0, 10)
+    );
+
+    private static boolean isAllowedParamType(Type type) {
+        return paramTypes.contains(type.getDescriptor());
+    }
 
     private static boolean isAllowedReturnType(Type type) {
         return returnTypes.contains(type.getDescriptor());
