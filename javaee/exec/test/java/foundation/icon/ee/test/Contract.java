@@ -19,6 +19,14 @@ public class Contract {
         }
     }
 
+    public Result query(String method, Object... params) {
+        try {
+            return sm.invoke(true, address, sm.getValue(), sm.getStepLimit(), method, params);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
     public Address getAddress() {
         return address;
     }

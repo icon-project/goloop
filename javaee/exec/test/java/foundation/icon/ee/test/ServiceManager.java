@@ -260,6 +260,11 @@ public class ServiceManager extends Proxy {
 
     public Result invoke(Address to, BigInteger value, BigInteger stepLimit,
                          String method, Object[] params) throws IOException {
+        return invoke(false, to, value, stepLimit, method, params);
+    }
+
+    public Result invoke(boolean query, Address to, BigInteger value, BigInteger stepLimit,
+                         String method, Object[] params) throws IOException {
         var prev = current;
         var prevState = new State(state);
         var from = current.address;
@@ -272,7 +277,7 @@ public class ServiceManager extends Proxy {
                     BigInteger.ZERO,
                     "Contract not found");
         }
-        var res = invoke(code, false, from, to, value, stepLimit, method, params);
+        var res = invoke(code, query, from, to, value, stepLimit, method, params);
         if (res.getStatus()!=0) {
             state = prevState;
             current = state.getAccount(prev.address);
