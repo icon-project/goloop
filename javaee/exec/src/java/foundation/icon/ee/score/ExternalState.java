@@ -32,14 +32,16 @@ public class ExternalState implements IExternalState {
     private static final Logger logger = LoggerFactory.getLogger(ExternalState.class);
 
     private final EEProxy proxy;
+    private final int option;
     private final long blockHeight;
     private final long blockTimestamp;
     private final Address owner;
     private byte[] codeCache;
     private ObjectGraph graphCache;
 
-    ExternalState(EEProxy proxy, byte[] codeBytes, BigInteger blockHeight, BigInteger blockTimestamp, Address owner) {
+    ExternalState(EEProxy proxy, int option, byte[] codeBytes, BigInteger blockHeight, BigInteger blockTimestamp, Address owner) {
         this.proxy = proxy;
+        this.option = option;
         this.codeCache = codeBytes;
         this.blockHeight = blockHeight.longValue();
         this.blockTimestamp = blockTimestamp.longValue();
@@ -304,5 +306,9 @@ public class ExternalState implements IExternalState {
             logger.debug("[call] {}", e.getMessage());
         }
         return null;
+    }
+
+    public int getOption() {
+        return option;
     }
 }

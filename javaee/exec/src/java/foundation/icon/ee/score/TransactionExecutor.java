@@ -29,6 +29,7 @@ import foundation.icon.ee.types.Transaction;
 import foundation.icon.ee.util.MethodUnpacker;
 import org.aion.avm.core.AvmConfiguration;
 import org.aion.avm.core.CommonAvmFactory;
+import org.aion.avm.core.IExternalState;
 import org.aion.avm.utilities.JarBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -141,7 +142,11 @@ public class TransactionExecutor {
         Address origin = (Address) info.get(EEProxy.Info.TX_FROM);
 
         byte[] codeBytes = fileReader.readFile(code);
-        ExternalState kernel = new ExternalState(proxy, codeBytes, blockHeight, blockTimestamp, owner);
+        int option = 0;
+        if (isQuery) {
+            option |= IExternalState.OPTION_QUERY;
+        }
+        ExternalState kernel = new ExternalState(proxy, option, codeBytes, blockHeight, blockTimestamp, owner);
         Transaction tx = new Transaction(from, to, value, nonce, limit.longValue(), method, params,
                                          txHash, txIndex, txTimestamp, isInstall);
         BigInteger stepUsed = BigInteger.ZERO;

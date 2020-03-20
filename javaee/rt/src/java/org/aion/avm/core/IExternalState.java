@@ -10,6 +10,8 @@ import java.math.BigInteger;
  * to the blockchain.
  */
 public interface IExternalState {
+    int OPTION_QUERY = 1;
+    int OPTION_TRACE = 2;
 
     /**
      * Commits the state changes in this IExternalState to its parent IExternalState.
@@ -298,4 +300,14 @@ public interface IExternalState {
                        Object[] params,
                        BigInteger value,
                        int stepLimit);
+
+    int getOption();
+
+    default boolean isQuery() {
+        return (getOption() & OPTION_QUERY) != 0;
+    }
+
+    default boolean isTrace() {
+        return (getOption() & OPTION_TRACE) != 0;
+    }
 }
