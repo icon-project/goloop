@@ -20,6 +20,9 @@ public class DBStorage implements IDBStorage {
     }
 
     public void setArrayLength(byte[] key, int l) {
+        if (ctx.isQuery()) {
+            throw new IllegalStateException();
+        }
         byte[] v;
         if (l==0) {
             v = null;
@@ -51,6 +54,9 @@ public class DBStorage implements IDBStorage {
     }
 
     public void setBytes(byte[] key, byte[] value) {
+        if (ctx.isQuery()) {
+            throw new IllegalStateException();
+        }
         if (value != null)
             charge(value.length * StorageFees.WRITE_PRICE_PER_BYTE);
         ctx.putStorage(getAddress(), key, value);
