@@ -1,0 +1,30 @@
+Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
+Method{type=0, name='setDictDB', flags=3, indexed=0, inputs=[], output=1, outputDescriptor=I}
+Method{type=0, name='setNestingDictDB', flags=3, indexed=0, inputs=[], output=1, outputDescriptor=I}
+Method{type=0, name='setArrayDB', flags=3, indexed=0, inputs=[], output=1, outputDescriptor=I}
+Method{type=0, name='setVarDB', flags=3, indexed=0, inputs=[], output=1, outputDescriptor=I}
+SEND invoke code=010001/optimized isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[]
+RECV setCode hash=c673590fb38217cf78f82b4cdb4af89cd80a0aaca5e34a19a8fdd052b3abca42 len=2129
+RECV setObjGraph flag=1 next=8 hash=05eec151daa5dcb15c87d7741d27975cb9b793896c2428ba7fef3f1cffae138d graphLen=255 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06&foundation.icon.ee.ipc.QueryTest$Score\x00\x00\x00\x07\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x03adb\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03ddb\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03key\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x0aunexpected\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x05value\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x03vdb
+RECV result status=0 stepUsed=203416 ret=<null>
+SEND invoke code=010001/transformed isQuery=true from=000001... to=010001... value=0 stepLimit=1000000000 method=setDictDB params=[]
+RECV getObjGraph flag=1 => next=8 hash=05eec151daa5dcb15c87d7741d27975cb9b793896c2428ba7fef3f1cffae138d graphLen=255 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06&foundation.icon.ee.ipc.QueryTest$Score\x00\x00\x00\x07\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x03adb\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03ddb\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03key\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x0aunexpected\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x05value\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x03vdb
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| OK: java.lang.IllegalStateException
+RECV setObjGraph flag=0 next=13
+RECV result status=0 stepUsed=24173 ret=0
+SEND invoke code=010001/transformed isQuery=true from=000001... to=010001... value=0 stepLimit=1000000000 method=setNestingDictDB params=[]
+RECV getObjGraph flag=1 => next=13 hash=05eec151daa5dcb15c87d7741d27975cb9b793896c2428ba7fef3f1cffae138d graphLen=255 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06&foundation.icon.ee.ipc.QueryTest$Score\x00\x00\x00\x07\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x03adb\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03ddb\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03key\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x0aunexpected\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x05value\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x03vdb
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| OK: java.lang.IllegalStateException
+RECV setObjGraph flag=0 next=19
+RECV result status=0 stepUsed=24313 ret=0
+SEND invoke code=010001/transformed isQuery=true from=000001... to=010001... value=0 stepLimit=1000000000 method=setArrayDB params=[]
+RECV getObjGraph flag=1 => next=19 hash=05eec151daa5dcb15c87d7741d27975cb9b793896c2428ba7fef3f1cffae138d graphLen=255 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06&foundation.icon.ee.ipc.QueryTest$Score\x00\x00\x00\x07\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x03adb\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03ddb\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03key\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x0aunexpected\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x05value\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x03vdb
+RECV getValue c03413d86431d40e93ec9095ddc9844df144c244175eaad0545bc894a1695fda => <null>
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| OK: java.lang.IllegalStateException
+RECV setObjGraph flag=0 next=25
+RECV result status=0 stepUsed=44270 ret=0
+SEND invoke code=010001/transformed isQuery=true from=000001... to=010001... value=0 stepLimit=1000000000 method=setVarDB params=[]
+RECV getObjGraph flag=1 => next=25 hash=05eec151daa5dcb15c87d7741d27975cb9b793896c2428ba7fef3f1cffae138d graphLen=255 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06&foundation.icon.ee.ipc.QueryTest$Score\x00\x00\x00\x07\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x03adb\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x03ddb\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03key\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x0aunexpected\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x05value\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x03vdb
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| OK: java.lang.IllegalStateException
+RECV setObjGraph flag=0 next=30
+RECV result status=0 stepUsed=24170 ret=0
