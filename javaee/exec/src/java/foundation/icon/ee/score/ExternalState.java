@@ -123,7 +123,7 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public void putStorage(Address address, byte[] key, byte[] value) {
+    public void putStorage(byte[] key, byte[] value) {
         logger.trace("[putStorage] key={} value={}", Bytes.toHexString(key), Bytes.toHexString(value));
         try {
             proxy.setValue(key, value);
@@ -133,7 +133,7 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public byte[] getStorage(Address address, byte[] key) {
+    public byte[] getStorage(byte[] key) {
         try {
             byte[] value = proxy.getValue(key);
             logger.trace("[getStorage] key={} value={}", Bytes.toHexString(key), Bytes.toHexString(value));

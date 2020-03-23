@@ -70,11 +70,10 @@ public interface IExternalState {
      * If the specified key already exists as a key-value pairing for the given address, then that
      * pairing will be updated so that its old corresponding value is replaced by the new one.
      *
-     * @param address The address.
      * @param key The key.
      * @param value The value.
      */
-    void putStorage(Address address, byte[] key, byte[] value);
+    void putStorage(byte[] key, byte[] value);
 
     /**
      * Returns the value in the key-value pairing to the specified key for the given address if any
@@ -82,11 +81,10 @@ public interface IExternalState {
      *
      * Returns {@code null} otherwise, if no such key corresponds to the address.
      *
-     * @param address The address.
      * @param key The key.
      * @return the value or null if there is no such value.
      */
-    byte[] getStorage(Address address, byte[] key);
+    byte[] getStorage(byte[] key);
 
     /**
      * Returns the balance of the specified address.

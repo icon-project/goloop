@@ -1,6 +1,5 @@
 package org.aion.avm.core;
 
-import foundation.icon.ee.types.Address;
 import i.IDBStorage;
 import i.IInstrumentation;
 import i.InternedClasses;
@@ -31,22 +30,16 @@ public class DBStorage implements IDBStorage {
             vb.set(l);
             v = vb.asByteArray();
         }
-        ctx.putStorage(getAddress(), key, v);
+        ctx.putStorage(key, v);
     }
 
     public int getArrayLength(byte[] key) {
-        var bs = ctx.getStorage(getAddress(), key);
+        var bs = ctx.getStorage(key);
         if (bs==null)
             return 0;
         var vb = new ValueBuffer();
         vb.set(bs);
         return vb.asInt();
-    }
-
-    private Address getAddress() {
-        var addr = IInstrumentation.attachedThreadInstrumentation.get()
-                .getFrameContext().getBlockchainRuntime().avm_getAddress();
-        return new Address(addr.toByteArray());
     }
 
     private void charge(int cost) {
@@ -59,11 +52,11 @@ public class DBStorage implements IDBStorage {
         }
         if (value != null)
             charge(value.length * StorageFees.WRITE_PRICE_PER_BYTE);
-        ctx.putStorage(getAddress(), key, value);
+        ctx.putStorage(key, value);
     }
 
     public byte[] getBytes(byte[] key) {
-        var value = ctx.getStorage(getAddress(), key);
+        var value = ctx.getStorage(key);
         if (value != null)
             charge(value.length * StorageFees.READ_PRICE_PER_BYTE);
         return value;
