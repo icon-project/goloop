@@ -30,7 +30,6 @@ import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.TransactionFailureException;
 import foundation.icon.test.common.TransactionHandler;
-import foundation.icon.test.common.Utils;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -41,7 +40,6 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class MultiSigWalletScore extends Score {
-    private static final String SCORE_MULTISIG_PATH = Constants.SCORE_ROOT + "multisig_wallet";
     private static final Class<?>[] SCORE_MULTISIG_CLASSES =
             {MultiSigWallet.class, StringTokenizer.class, Transaction.class};
     private static final int MAX_OWNER_COUNT = 50;
@@ -67,7 +65,7 @@ public class MultiSigWalletScore extends Score {
                 .build();
         Score score;
         if (contentType.equals(Constants.CONTENT_TYPE_PYTHON)) {
-            score = txHandler.deploy(wallet, SCORE_MULTISIG_PATH, params);
+            score = txHandler.deploy(wallet, getFilePath("multisig_wallet"), params);
         } else if (contentType.equals(Constants.CONTENT_TYPE_JAVA)) {
             score = txHandler.deploy(wallet, SCORE_MULTISIG_CLASSES, params);
         } else {
@@ -134,7 +132,7 @@ public class MultiSigWalletScore extends Score {
             throws IOException, ResultTimeoutException {
         String methodParams = String.format(
                 "[{\"name\": \"_walletOwner\", \"type\": \"Address\", \"value\": \"%s\"},"
-                        + "{\"name\": \"_newWalletOwner\", \"type\": \"Address\", \"value\": \"%s\"}]", oldOwner, newOwner);
+                + "{\"name\": \"_newWalletOwner\", \"type\": \"Address\", \"value\": \"%s\"}]", oldOwner, newOwner);
         RpcObject params = new RpcObject.Builder()
                 .put("_destination", new RpcValue(getAddress()))
                 .put("_method", new RpcValue("replaceWalletOwner"))
@@ -157,7 +155,7 @@ public class MultiSigWalletScore extends Score {
     }
 
     public BigInteger getTransactionId(TransactionResult result) throws IOException {
-        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, getAddress(), "Submission(int)");
+        TransactionResult.EventLog event = findEventLog(result, getAddress(), "Submission(int)");
         if (event != null) {
             return event.getIndexed().get(1).asInteger();
         }
@@ -165,7 +163,7 @@ public class MultiSigWalletScore extends Score {
     }
 
     public void ensureConfirmation(TransactionResult result, Address sender, BigInteger txId) throws IOException {
-        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, getAddress(), "Confirmation(Address,int)");
+        TransactionResult.EventLog event = findEventLog(result, getAddress(), "Confirmation(Address,int)");
         if (event != null) {
             Address _sender = event.getIndexed().get(1).asAddress();
             BigInteger _txId = event.getIndexed().get(2).asInteger();
@@ -177,7 +175,7 @@ public class MultiSigWalletScore extends Score {
     }
 
     public void ensureRevocation(TransactionResult result, Address sender, BigInteger txId) throws IOException {
-        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, getAddress(), "Revocation(Address,int)");
+        TransactionResult.EventLog event = findEventLog(result, getAddress(), "Revocation(Address,int)");
         if (event != null) {
             Address _sender = event.getIndexed().get(1).asAddress();
             BigInteger _txId = event.getIndexed().get(2).asInteger();
@@ -189,7 +187,7 @@ public class MultiSigWalletScore extends Score {
     }
 
     public void ensureIcxTransfer(TransactionResult result, Address from, Address to, long value) throws IOException {
-        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, getAddress(), "ICXTransfer(Address,Address,int)");
+        TransactionResult.EventLog event = findEventLog(result, getAddress(), "ICXTransfer(Address,Address,int)");
         if (event != null) {
             BigInteger icxValue = IconAmount.of(BigInteger.valueOf(value), IconAmount.Unit.ICX).toLoop();
             Address _from = event.getIndexed().get(1).asAddress();
@@ -203,7 +201,7 @@ public class MultiSigWalletScore extends Score {
     }
 
     public void ensureExecution(TransactionResult result, BigInteger txId) throws IOException {
-        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, getAddress(), "Execution(int)");
+        TransactionResult.EventLog event = findEventLog(result, getAddress(), "Execution(int)");
         if (event != null) {
             BigInteger _txId = event.getIndexed().get(1).asInteger();
             if (txId.equals(_txId)) {
@@ -214,7 +212,7 @@ public class MultiSigWalletScore extends Score {
     }
 
     public void ensureWalletOwnerAddition(TransactionResult result, Address address) throws IOException {
-        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, getAddress(), "WalletOwnerAddition(Address)");
+        TransactionResult.EventLog event = findEventLog(result, getAddress(), "WalletOwnerAddition(Address)");
         if (event != null) {
             Address _address = event.getIndexed().get(1).asAddress();
             if (address.equals(_address)) {
@@ -225,7 +223,7 @@ public class MultiSigWalletScore extends Score {
     }
 
     public void ensureWalletOwnerRemoval(TransactionResult result, Address address) throws IOException {
-        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, getAddress(), "WalletOwnerRemoval(Address)");
+        TransactionResult.EventLog event = findEventLog(result, getAddress(), "WalletOwnerRemoval(Address)");
         if (event != null) {
             Address _address = event.getIndexed().get(1).asAddress();
             if (address.equals(_address)) {
@@ -236,7 +234,7 @@ public class MultiSigWalletScore extends Score {
     }
 
     public void ensureRequirementChange(TransactionResult result, Integer required) throws IOException {
-        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, getAddress(), "RequirementChange(int)");
+        TransactionResult.EventLog event = findEventLog(result, getAddress(), "RequirementChange(int)");
         if (event != null) {
             BigInteger _required = event.getData().get(0).asInteger();
             if (required.equals(_required.intValue())) {
@@ -248,12 +246,7 @@ public class MultiSigWalletScore extends Score {
 
     public void ensureOwners(Address... expected) throws IOException {
         List<RpcItem> items = getWalletOwners().asArray().asList();
-        assertEquals(expected.length, items.size());
-        Address[] actual = new Address[items.size()];
-        for (int i = 0; i < actual.length; i++) {
-            actual[i] = items.get(i).asAddress();
-        }
-        assertArrayEquals(expected, actual);
+        assertAddressEquals(items, expected);
     }
 
     private RpcItem getWalletOwners() throws IOException {
@@ -276,12 +269,7 @@ public class MultiSigWalletScore extends Score {
 
     public void getConfirmationsAndCheck(BigInteger txId, Address... expected) throws IOException {
         List<RpcItem> items = getConfirmations(txId).asArray().asList();
-        assertEquals(expected.length, items.size());
-        Address[] actual = new Address[items.size()];
-        for (int i = 0; i < actual.length; i++) {
-            actual[i] = items.get(i).asAddress();
-        }
-        assertArrayEquals(expected, actual);
+        assertAddressEquals(items, expected);
     }
 
     private RpcItem getConfirmations(BigInteger txId) throws IOException {
@@ -320,6 +308,15 @@ public class MultiSigWalletScore extends Score {
         BigInteger[] actual = new BigInteger[items.size()];
         for (int i = 0; i < actual.length; i++) {
             actual[i] = items.get(i).asObject().getItem("_transactionId").asInteger();
+        }
+        assertArrayEquals(expected, actual);
+    }
+
+    private void assertAddressEquals(List<RpcItem> items, Address[] expected) {
+        assertEquals(expected.length, items.size());
+        Address[] actual = new Address[items.size()];
+        for (int i = 0; i < actual.length; i++) {
+            actual[i] = items.get(i).asAddress();
         }
         assertArrayEquals(expected, actual);
     }

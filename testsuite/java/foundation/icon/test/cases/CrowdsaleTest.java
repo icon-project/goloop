@@ -19,14 +19,12 @@ package foundation.icon.test.cases;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.data.Bytes;
-import foundation.icon.icx.data.IconAmount;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.TestBase;
 import foundation.icon.test.common.TransactionHandler;
-import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.CrowdSaleScore;
 import foundation.icon.test.score.SampleTokenScore;
 import org.junit.jupiter.api.BeforeAll;
@@ -43,7 +41,7 @@ class CrowdsaleTest extends TestBase {
     private static KeyWallet ownerWallet;
 
     @BeforeAll
-    static void init() throws Exception {
+    static void setup() throws Exception {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
         Env.Chain chain = channel.chain;
@@ -95,27 +93,25 @@ class CrowdsaleTest extends TestBase {
                         BigInteger initialSupply, BigInteger fundingGoalInIcx) throws Exception {
         KeyWallet aliceWallet = KeyWallet.create();
         KeyWallet bobWallet = KeyWallet.create();
-        BigInteger ownerBalance = txHandler.getBalance(ownerWallet.getAddress());
-        final BigInteger icx = BigInteger.TEN.pow(18);
 
         // send 50 icx to Alice, 100 to Bob
         LOG.infoEntering("transfer icx", "50 to Alice; 100 to Bob");
-        transferAndCheckResult(txHandler, aliceWallet.getAddress(), icx.multiply(BigInteger.valueOf(50)));
-        transferAndCheckResult(txHandler, bobWallet.getAddress(), icx.multiply(BigInteger.valueOf(100)));
+        transferAndCheckResult(txHandler, aliceWallet.getAddress(), ICX.multiply(BigInteger.valueOf(50)));
+        transferAndCheckResult(txHandler, bobWallet.getAddress(), ICX.multiply(BigInteger.valueOf(100)));
         LOG.infoExiting();
 
         // transfer all tokens to crowdsale score
         LOG.infoEntering("transfer token", "all tokens to crowdsale score from owner");
-        Bytes txHash = tokenScore.transfer(ownerWallet, crowdsaleScore.getAddress(), initialSupply);
-        crowdsaleScore.ensureFundingGoal(txHash, fundingGoalInIcx);
+        TransactionResult result = tokenScore.transfer(ownerWallet, crowdsaleScore.getAddress(), ICX.multiply(initialSupply));
+        crowdsaleScore.ensureFundingGoal(result, fundingGoalInIcx);
         tokenScore.ensureTokenBalance(crowdsaleScore.getAddress(), initialSupply.longValue());
         LOG.infoExiting();
 
         // send icx to crowdsale score from Alice and Bob
         LOG.infoEntering("transfer icx", "to crowdsale score (40 from Alice, 60 from Bob)");
         Bytes[] ids = new Bytes[2];
-        ids[0] = txHandler.transfer(aliceWallet, crowdsaleScore.getAddress(), icx.multiply(BigInteger.valueOf(40)));
-        ids[1] = txHandler.transfer(bobWallet, crowdsaleScore.getAddress(), icx.multiply(BigInteger.valueOf(60)));
+        ids[0] = txHandler.transfer(aliceWallet, crowdsaleScore.getAddress(), ICX.multiply(BigInteger.valueOf(40)));
+        ids[1] = txHandler.transfer(bobWallet, crowdsaleScore.getAddress(), ICX.multiply(BigInteger.valueOf(60)));
         for (Bytes id : ids) {
             assertSuccess(txHandler.getResult(id));
         }
@@ -130,16 +126,19 @@ class CrowdsaleTest extends TestBase {
 
         // do safe withdrawal
         LOG.infoEntering("call", "safeWithdrawal()");
-        TransactionResult result = crowdsaleScore.safeWithdrawal(ownerWallet);
+        BigInteger oldBal = txHandler.getBalance(ownerWallet.getAddress());
+        result = crowdsaleScore.safeWithdrawal(ownerWallet);
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new IOException("Failed to execute safeWithdrawal.");
         }
-        BigInteger amount = IconAmount.of("100", IconAmount.Unit.ICX).toLoop();
-        tokenScore.ensureFundTransfer(result, crowdsaleScore.getAddress(), ownerWallet.getAddress(), amount);
+        BigInteger amount = ICX.multiply(BigInteger.valueOf(100));
+        crowdsaleScore.ensureFundTransfer(result, ownerWallet.getAddress(), amount);
 
         // check the final icx balance of owner
-        LOG.info("Initial ICX balance of owner: " + ownerBalance);
-        Utils.ensureIcxBalance(txHandler, ownerWallet.getAddress(), ownerBalance, ownerBalance.add(amount));
+        LOG.info("ICX balance before safeWithdrawal: " + oldBal);
+        BigInteger fee = result.getStepUsed().multiply(result.getStepPrice());
+        BigInteger newBal = oldBal.add(amount).subtract(fee);
+        ensureIcxBalance(txHandler, ownerWallet.getAddress(), oldBal, newBal);
         LOG.infoExiting();
     }
 }

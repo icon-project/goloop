@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 ICON Foundation
+ * Copyright 2019 ICON Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,6 @@ public class Constants {
 
     public static final String CONTENT_TYPE_PYTHON = "application/zip";
     public static final String CONTENT_TYPE_JAVA = "application/java";
-    public static final String SCORE_ROOT = "./data/scores/";
 
     public static final long DEFAULT_STEP_LIMIT = 9000000;
     public static final long DEFAULT_WAITING_TIME = 7000;
@@ -44,8 +43,4 @@ public class Constants {
             = new Address("cx0000000000000000000000000000000000000001");
     public static final Address TREASURY_ADDRESS
             = new Address("cx1000000000000000000000000000000000000000");
-
-    public static final String SCORE_STATUS_PENDING = "pending";
-    public static final String SCORE_STATUS_ACTIVE = "active";
-    public static final String SCORE_STATUS_REJECTED = "rejected";
 }

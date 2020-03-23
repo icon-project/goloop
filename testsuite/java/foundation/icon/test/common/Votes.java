@@ -14,7 +14,7 @@ public class Votes {
     private final PartSetID blockPartSetID;
     private final VoteItem[] voteItems;
 
-    public class VoteItem {
+    public static class VoteItem {
         private final long timestamp;
         private final byte[] signature;
 
@@ -41,7 +41,7 @@ public class Votes {
         }
     }
 
-    public class PartSetID {
+    public static class PartSetID {
         private final int count;
         private final byte[] hash;
 
@@ -86,7 +86,7 @@ public class Votes {
             items.add(item);
         }
         r.readFooter();
-        voteItems = items.toArray(new VoteItem[items.size()]);
+        voteItems = items.toArray(new VoteItem[0]);
 
         while (r.hasNext()) {
             r.skip(1);
@@ -106,7 +106,7 @@ public class Votes {
         var id = blk.getPrevID();
         var height = blk.getHeight()-1;
         int verified = 0;
-        boolean checked[] = new boolean[validators.size()];
+        boolean[] checked = new boolean[validators.size()];
         for (VoteItem item : voteItems) {
             var w = c.newWriter();
             w.writeListHeader(6);

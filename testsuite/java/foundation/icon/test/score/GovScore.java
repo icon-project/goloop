@@ -37,7 +37,7 @@ import java.util.Map;
 
 public class GovScore extends Score {
     public static final String INSTALL_PATH = "./data/genesisStorage/" + "governance";
-    public static final String UPDATE_PATH = Constants.SCORE_ROOT + "governance";
+    public static final String UPDATE_PATH = getFilePath("governance");
 
     private final Wallet governorWallet;
     private final ChainScore chainScore;

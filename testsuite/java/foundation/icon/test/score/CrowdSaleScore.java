@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 ICON Foundation
+ * Copyright 2018 ICON Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package foundation.icon.test.score;
 import example.SampleCrowdsale;
 import foundation.icon.icx.Wallet;
 import foundation.icon.icx.data.Address;
-import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.IconAmount;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
@@ -28,17 +27,13 @@ import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.TransactionFailureException;
 import foundation.icon.test.common.TransactionHandler;
-import foundation.icon.test.common.Utils;
 
 import java.io.IOException;
 import java.math.BigInteger;
 
 import static foundation.icon.test.common.Env.LOG;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class CrowdSaleScore extends Score {
-    public static final String CROWDSALE_PATH = Constants.SCORE_ROOT + "crowdsale";
-
     public static CrowdSaleScore mustDeploy(TransactionHandler txHandler, Wallet owner,
                                             Address tokenAddress, BigInteger fundingGoalInIcx, String contentType)
             throws ResultTimeoutException, TransactionFailureException, IOException {
@@ -50,7 +45,7 @@ public class CrowdSaleScore extends Score {
                 .build();
         Score score;
         if (contentType.equals(Constants.CONTENT_TYPE_PYTHON)) {
-            score = txHandler.deploy(owner, CROWDSALE_PATH, params);
+            score = txHandler.deploy(owner, getFilePath("crowdsale"), params);
         } else if (contentType.equals(Constants.CONTENT_TYPE_JAVA)) {
             score = txHandler.deploy(owner, SampleCrowdsale.class, params);
         } else {
@@ -81,7 +76,7 @@ public class CrowdSaleScore extends Score {
             if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
                 throw new IOException("Failed to execute checkGoalReached.");
             }
-            TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, getAddress(), "GoalReached(Address,int)");
+            TransactionResult.EventLog event = findEventLog(result, getAddress(), "GoalReached(Address,int)");
             if (event != null) {
                 break;
             }
@@ -90,17 +85,30 @@ public class CrowdSaleScore extends Score {
         }
     }
 
-    public void ensureFundingGoal(Bytes txHash, BigInteger fundingGoalInIcx)
-            throws IOException, ResultTimeoutException {
-        TransactionResult result = getResult(txHash);
-        assertEquals(Constants.STATUS_SUCCESS, result.getStatus());
-        TransactionResult.EventLog event = Utils.findEventLogWithFuncSig(result, getAddress(), "CrowdsaleStarted(int,int)");
+    public void ensureFundingGoal(TransactionResult result, BigInteger fundingGoalInIcx)
+            throws IOException {
+        TransactionResult.EventLog event = findEventLog(result, getAddress(), "CrowdsaleStarted(int,int)");
         if (event != null) {
             BigInteger fundingGoalInLoop = IconAmount.of(fundingGoalInIcx, IconAmount.Unit.ICX).toLoop();
             BigInteger fundingGoalFromScore = event.getData().get(0).asInteger();
-            assertEquals(fundingGoalInLoop, fundingGoalFromScore);
-        } else {
-            throw new IOException("ensureFundingGoal failed.");
+            if (fundingGoalInLoop.equals(fundingGoalFromScore)) {
+                return; // ensured
+            }
         }
+        throw new IOException("ensureFundingGoal failed.");
+    }
+
+    public void ensureFundTransfer(TransactionResult result, Address backer, BigInteger amount)
+            throws IOException {
+        TransactionResult.EventLog event = findEventLog(result, getAddress(), "FundTransfer(Address,int,bool)");
+        if (event != null) {
+            Address _backer = event.getIndexed().get(1).asAddress();
+            BigInteger _amount = event.getIndexed().get(2).asInteger();
+            Boolean isContribution = event.getIndexed().get(3).asBoolean();
+            if (backer.equals(_backer) && amount.equals(_amount) && !isContribution) {
+                return; // ensured
+            }
+        }
+        throw new IOException("ensureFundTransfer failed.");
     }
 }

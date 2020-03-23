@@ -22,7 +22,6 @@ import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
-import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.TransactionFailureException;
 import foundation.icon.test.common.TransactionHandler;
@@ -31,8 +30,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 
 public class StepCounterScore extends Score {
-    private static final String SCORE_STEP_COUNTER_PATH = Constants.SCORE_ROOT + "step_counter";
-    protected final static BigInteger STEPS = BigInteger.valueOf(3).multiply(BigInteger.TEN.pow(6));
+    private static final BigInteger STEPS = BigInteger.valueOf(200000);
 
     public StepCounterScore(Score other) {
         super(other);
@@ -41,7 +39,7 @@ public class StepCounterScore extends Score {
     public static StepCounterScore mustDeploy(TransactionHandler txHandler, Wallet wallet)
             throws IOException, TransactionFailureException, ResultTimeoutException {
         return new StepCounterScore(
-                txHandler.deploy(wallet, SCORE_STEP_COUNTER_PATH, null)
+                txHandler.deploy(wallet, getFilePath("step_counter"), null)
         );
     }
 

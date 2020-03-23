@@ -59,6 +59,10 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 @Tag(Constants.TAG_PY_GOV)
 public class ChainScoreTest extends TestBase {
+    private static final String SCORE_STATUS_PENDING = "pending";
+    private static final String SCORE_STATUS_ACTIVE = "active";
+    private static final String SCORE_STATUS_REJECTED = "rejected";
+
     private static TransactionHandler txHandler;
     private static ChainScore chainScore;
     private static GovScore govScore;
@@ -193,9 +197,9 @@ public class ChainScoreTest extends TestBase {
         KeyWallet caller = testWallets[1];
         String[] expectedStatus;
         if (score.addr == Constants.GOV_ADDRESS) {
-            expectedStatus = new String[]{Constants.SCORE_STATUS_PENDING, Constants.SCORE_STATUS_ACTIVE};
+            expectedStatus = new String[]{SCORE_STATUS_PENDING, SCORE_STATUS_ACTIVE};
         } else {
-            expectedStatus = new String[]{Constants.SCORE_STATUS_PENDING, Constants.SCORE_STATUS_PENDING};
+            expectedStatus = new String[]{SCORE_STATUS_PENDING, SCORE_STATUS_PENDING};
         }
         String expectedItem = "next";
         for (String expected : expectedStatus) {
@@ -206,17 +210,17 @@ public class ChainScoreTest extends TestBase {
             LOG.infoEntering("invoke", "hello");
             try {
                 result = helloWorld.invokeHello(caller);
-                if (expected.equals(Constants.SCORE_STATUS_ACTIVE)) {
+                if (expected.equals(SCORE_STATUS_ACTIVE)) {
                     assertSuccess(result);
                 } else {
                     assertFailure(result);
                 }
             } catch (ResultTimeoutException ex) {
-                assertEquals(Constants.SCORE_STATUS_PENDING, expected);
+                assertEquals(SCORE_STATUS_PENDING, expected);
                 LOG.info("Expected exception: " + ex.getMessage());
             }
             LOG.infoExiting();
-            if (expected.equals(Constants.SCORE_STATUS_PENDING)) {
+            if (expected.equals(SCORE_STATUS_PENDING)) {
                 LOG.infoEntering("invoke", "acceptScore");
                 params = new RpcObject.Builder()
                         .put("txHash", new RpcValue(txHash))
@@ -251,9 +255,9 @@ public class ChainScoreTest extends TestBase {
         KeyWallet caller = testWallets[1];
         String[] expectedStatus;
         if (score.addr == Constants.GOV_ADDRESS) {
-            expectedStatus = new String[]{Constants.SCORE_STATUS_PENDING, Constants.SCORE_STATUS_REJECTED};
+            expectedStatus = new String[]{SCORE_STATUS_PENDING, SCORE_STATUS_REJECTED};
         } else {
-            expectedStatus = new String[]{Constants.SCORE_STATUS_PENDING, Constants.SCORE_STATUS_PENDING};
+            expectedStatus = new String[]{SCORE_STATUS_PENDING, SCORE_STATUS_PENDING};
         }
         for (String expected : expectedStatus) {
             RpcObject status = chainScore.getScoreStatus(scoreAddr);
@@ -269,7 +273,7 @@ public class ChainScoreTest extends TestBase {
                 //success
             }
             LOG.infoExiting();
-            if (expected.equals(Constants.SCORE_STATUS_PENDING)) {
+            if (expected.equals(SCORE_STATUS_PENDING)) {
                 LOG.infoEntering("invoke", "rejectScore");
                 params = new RpcObject.Builder()
                         .put("txHash", new RpcValue(txHash))

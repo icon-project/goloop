@@ -31,23 +31,19 @@ import java.io.IOException;
 import java.math.BigInteger;
 
 public class EventGen extends Score {
-    private static final String INSTALL_PATH = Constants.SCORE_ROOT + "event_gen";
-
     public EventGen(Score other) {
         super(other);
     }
 
     // install with default stepLimit and default parameter
     public static EventGen install(TransactionHandler txHandler, Wallet wallet)
-            throws TransactionFailureException, ResultTimeoutException, IOException
-    {
+            throws TransactionFailureException, ResultTimeoutException, IOException {
         return install(txHandler, wallet, Constants.DEFAULT_STEP_LIMIT);
     }
 
     // install with default parameter
     public static EventGen install(TransactionHandler txHandler, Wallet wallet, long stepLimit)
-            throws TransactionFailureException, ResultTimeoutException, IOException
-    {
+            throws TransactionFailureException, ResultTimeoutException, IOException {
         RpcObject params = new RpcObject.Builder()
                 .put("name", new RpcValue("EventGen"))
                 .build();
@@ -57,12 +53,11 @@ public class EventGen extends Score {
     // install with passed parameter
     public static EventGen install(TransactionHandler txHandler,
                                    Wallet wallet, RpcObject params, long stepLimit)
-            throws TransactionFailureException, ResultTimeoutException, IOException
-    {
-        return new EventGen(txHandler.deploy(wallet, INSTALL_PATH, params, BigInteger.valueOf(stepLimit)));
+            throws TransactionFailureException, ResultTimeoutException, IOException {
+        return new EventGen(txHandler.deploy(wallet, getFilePath("event_gen"), params, BigInteger.valueOf(stepLimit)));
     }
 
-    public Bytes invokeGenerate(Wallet from, Address addr, BigInteger i, byte[] bytes) throws IOException{
+    public Bytes invokeGenerate(Wallet from, Address addr, BigInteger i, byte[] bytes) throws IOException {
         RpcObject params = new RpcObject.Builder()
                 .put("_addr", new RpcValue(addr))
                 .put("_int", new RpcValue(i))
@@ -72,7 +67,8 @@ public class EventGen extends Score {
                 BigInteger.valueOf(0), BigInteger.valueOf(100));
     }
 
-    public TransactionResult invokeGenerateAndWait(Wallet from, Address addr, BigInteger i, byte[] bytes) throws ResultTimeoutException, IOException{
+    public TransactionResult invokeGenerateAndWait(Wallet from, Address addr, BigInteger i, byte[] bytes)
+            throws ResultTimeoutException, IOException {
         RpcObject params = new RpcObject.Builder()
                 .put("_addr", new RpcValue(addr))
                 .put("_int", new RpcValue(i))

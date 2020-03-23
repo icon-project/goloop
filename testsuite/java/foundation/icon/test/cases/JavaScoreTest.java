@@ -20,8 +20,6 @@ import foundation.icon.ee.util.Crypto;
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
 import foundation.icon.icx.SignedTransaction;
-import foundation.icon.icx.Wallet;
-import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Base64;
 import foundation.icon.icx.data.Block;
 import foundation.icon.icx.data.Bytes;
@@ -35,7 +33,6 @@ import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.TestBase;
 import foundation.icon.test.common.TransactionHandler;
-import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.SampleTokenScore;
 import foundation.icon.test.score.Score;
 import org.junit.jupiter.api.BeforeAll;
@@ -68,7 +65,7 @@ class JavaScoreTest extends TestBase {
         txHandler = new TransactionHandler(iconService, chain);
 
         ownerWallet = KeyWallet.create();
-        transferAndCheckResult(txHandler, ownerWallet.getAddress(), BigInteger.TEN.pow(20));
+        transferAndCheckResult(txHandler, ownerWallet.getAddress(), ICX.multiply(BigInteger.valueOf(100)));
     }
 
     @Test
@@ -85,25 +82,30 @@ class JavaScoreTest extends TestBase {
         LOG.infoEntering("balanceOf", "owner (initial)");
         BigInteger oneToken = BigInteger.TEN.pow(decimals.intValue());
         BigInteger totalSupply = oneToken.multiply(initialSupply);
-        BigInteger bal = callBalanceOf(tokenScore, ownerWallet.getAddress()).asInteger();
+        BigInteger bal = tokenScore.balanceOf(ownerWallet.getAddress());
         LOG.info("expected (" + totalSupply + "), got (" + bal + ")");
         assertEquals(totalSupply, bal);
         LOG.infoExiting();
 
         // 3. transfer #1
         LOG.infoEntering("transfer", "#1");
-        assertSuccess(invokeTransfer(tokenScore, ownerWallet, calleeWallet.getAddress(), oneToken, true));
+        TransactionResult result = tokenScore.transfer(ownerWallet, calleeWallet.getAddress(), oneToken);
+        tokenScore.ensureTransfer(result, ownerWallet.getAddress(), calleeWallet.getAddress(), oneToken, null);
         LOG.infoExiting();
 
         // 3.1 transfer #2
         LOG.infoEntering("transfer", "#2");
-        assertSuccess(invokeTransfer(tokenScore, ownerWallet, calleeWallet.getAddress(), oneToken, false));
+        BigInteger two = oneToken.add(oneToken);
+        byte[] data = "Hello".getBytes();
+        result = tokenScore.transfer(ownerWallet, calleeWallet.getAddress(), two, data);
+        assertSuccess(result);
+        tokenScore.ensureTransfer(result, ownerWallet.getAddress(), calleeWallet.getAddress(), two, data);
         LOG.infoExiting();
 
         // 4. check balance of callee
         LOG.infoEntering("balanceOf", "callee");
-        BigInteger expected = oneToken.add(oneToken);
-        bal = callBalanceOf(tokenScore, calleeWallet.getAddress()).asInteger();
+        BigInteger expected = oneToken.add(two);
+        bal = tokenScore.balanceOf(calleeWallet.getAddress());
         LOG.info("expected (" + expected + "), got (" + bal + ")");
         assertEquals(expected, bal);
         LOG.infoExiting();
@@ -111,28 +113,10 @@ class JavaScoreTest extends TestBase {
         // 5. check balance of owner
         LOG.infoEntering("balanceOf", "owner");
         expected = totalSupply.subtract(expected);
-        bal = callBalanceOf(tokenScore, ownerWallet.getAddress()).asInteger();
+        bal = tokenScore.balanceOf(ownerWallet.getAddress());
         LOG.info("expected (" + expected + "), got (" + bal + ")");
         assertEquals(expected, bal);
         LOG.infoExiting();
-    }
-
-    private RpcItem callBalanceOf(Score score, Address addr) throws Exception {
-        RpcObject params = new RpcObject.Builder()
-                .put("_owner", new RpcValue(addr.toString()))
-                .build();
-        return score.call("balanceOf", params);
-    }
-
-    private TransactionResult invokeTransfer(Score score, Wallet from, Address to, BigInteger value,
-                                             boolean includeData) throws Exception {
-        RpcObject.Builder builder = new RpcObject.Builder()
-                .put("_to", new RpcValue(to))
-                .put("_value", new RpcValue(value));
-        if (includeData) {
-            builder.put("_data", new RpcValue("Hello".getBytes()));
-        }
-        return score.invokeAndWaitResult(from, "transfer", builder.build());
     }
 
     private Score deployAPITest() throws Exception {
@@ -374,17 +358,17 @@ class JavaScoreTest extends TestBase {
 
         // getValue
         LOG.infoEntering("getValue", "invoke");
-        BigInteger coin = BigInteger.TEN.pow(18);
+        BigInteger ownerBalance = txHandler.getBalance(ownerWallet.getAddress());
         BigInteger stepLimit = BigInteger.valueOf(100000);
-        tr = apiScore.invokeAndWaitResult(ownerWallet, "getValue", null, coin, stepLimit);
+        tr = apiScore.invokeAndWaitResult(ownerWallet, "getValue", null, ICX, stepLimit);
         assertEquals(Constants.STATUS_SUCCESS, tr.getStatus());
         for (TransactionResult.EventLog e : tr.getEventLogs()) {
             result = e.getData().get(0);
         }
-        LOG.info("expected (" + coin + "), got (" + result.asInteger() + ")");
-        assertEquals(coin, result.asInteger());
-        Utils.ensureIcxBalance(txHandler, ownerWallet.getAddress(), 100, 99);
-        Utils.ensureIcxBalance(txHandler, apiScore.getAddress(), 0, 1);
+        LOG.info("expected (" + ICX + "), got (" + result.asInteger() + ")");
+        assertEquals(ICX, result.asInteger());
+        ensureIcxBalance(txHandler, ownerWallet.getAddress(), ownerBalance, ownerBalance.subtract(ICX));
+        ensureIcxBalance(txHandler, apiScore.getAddress(), BigInteger.ZERO, ICX);
         LOG.infoExiting();
 
         LOG.infoEntering("getValue", "query");
@@ -395,7 +379,7 @@ class JavaScoreTest extends TestBase {
 
         // getBalance
         LOG.infoEntering("getBalance", "check owner balance");
-        BigInteger ownerBalance = txHandler.getBalance(ownerWallet.getAddress());
+        ownerBalance = txHandler.getBalance(ownerWallet.getAddress());
         RpcObject params = new RpcObject.Builder()
                 .put("address", new RpcValue(ownerWallet.getAddress()))
                 .build();
@@ -420,14 +404,14 @@ class JavaScoreTest extends TestBase {
         for (TransactionResult.EventLog e : tr.getEventLogs()) {
             result = e.getData().get(0);
         }
-        LOG.info("expected (" + coin + "), got (" + result.asInteger() + ")");
-        assertEquals(coin, result.asInteger());
+        LOG.info("expected (" + ICX + "), got (" + result.asInteger() + ")");
+        assertEquals(ICX, result.asInteger());
         LOG.infoExiting();
 
         LOG.infoEntering("getBalance", "query");
         result = apiScore.call("getBalanceQuery", null);
-        LOG.info("expected (" + coin + "), got (" + result.asInteger() + ")");
-        assertEquals(coin, result.asInteger());
+        LOG.info("expected (" + ICX + "), got (" + result.asInteger() + ")");
+        assertEquals(ICX, result.asInteger());
         LOG.infoExiting();
     }
 

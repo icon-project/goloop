@@ -347,15 +347,14 @@ public class DeployTest extends TestBase {
     }
 
     @Test
-    public void invalidContentTooBig() throws Exception {
+    public void invalidContentTooBig() {
         LOG.infoEntering("invalidContentTooBig");
-        final String SCORE_TOO_BIG_PATH = Constants.SCORE_ROOT + "too_big";
         KeyWallet owner = testWallets[0];
         try {
             RpcObject params = new RpcObject.Builder()
                     .put("name", new RpcValue("HelloWorld"))
                     .build();
-            txHandler.deploy(owner, SCORE_TOO_BIG_PATH, params, stepsForDeploy);
+            txHandler.deploy(owner, Score.getFilePath("too_big"), params, stepsForDeploy);
             fail();
         } catch (RpcError e) {
             LOG.info("Expected RpcError: code=" + e.getCode() + ", msg=" + e.getMessage());
@@ -367,12 +366,11 @@ public class DeployTest extends TestBase {
     }
 
     @Test
-    public void invalidScoreNoOnInstallMethod() throws Exception {
+    public void invalidScoreNoOnInstallMethod() {
         LOG.infoEntering("invalidScoreNoOnInstallMethod");
-        final String SCORE_NO_INSTALL_PATH = Constants.SCORE_ROOT + "no_install_method";
         KeyWallet owner = testWallets[0];
         try {
-            deployHello(owner, SCORE_NO_INSTALL_PATH, null, stepsForDeploy);
+            deployHello(owner, Score.getFilePath("no_install_method"), null, stepsForDeploy);
             fail();
         } catch (TransactionFailureException e) {
             LOG.info("Expected exception: code=" + e.getCode() + " msg=" + e.getMessage());
@@ -386,7 +384,6 @@ public class DeployTest extends TestBase {
     @Test
     public void invalidScoreNoOnUpdateMethod() throws Exception {
         LOG.infoEntering("invalidScoreNoOnUpdateMethod");
-        final String SCORE_NO_UPDATE_PATH = Constants.SCORE_ROOT + "no_update_method";
         KeyWallet owner = testWallets[0];
         Score helloScore = deployHello(owner, null, null, stepsForDeploy);
 
@@ -396,7 +393,7 @@ public class DeployTest extends TestBase {
 
         LOG.infoEntering("update", "without on_update method");
         try {
-            updateHello(helloScore.getAddress(), owner, SCORE_NO_UPDATE_PATH, null);
+            updateHello(helloScore.getAddress(), owner, Score.getFilePath("no_update_method"), null);
             fail();
         } catch (TransactionFailureException e) {
             LOG.info("Expected exception: code=" + e.getCode() + " msg=" + e.getMessage());

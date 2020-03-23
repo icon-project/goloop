@@ -47,7 +47,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Tag(Constants.TAG_PY_SCORE)
 class ReceiptTest extends TestBase {
-    private static final String SCORE_RECEIPT_PATH = Constants.SCORE_ROOT + "receipt";
+    private static final String SCORE_RECEIPT_PATH = Score.getFilePath("receipt");
     private static TransactionHandler txHandler;
     private static KeyWallet callerWallet;
     private static Score testScore;

@@ -31,6 +31,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
 public class TestBase {
+    protected static final BigInteger ICX = BigInteger.TEN.pow(18);
+
     protected static void assertSuccess(TransactionResult result) {
         assertStatus(Constants.STATUS_SUCCESS, result);
     }
@@ -52,7 +54,7 @@ public class TestBase {
     protected static void transferAndCheckResult(TransactionHandler txHandler, Address to, BigInteger amount)
             throws IOException, ResultTimeoutException {
         Bytes txHash = txHandler.transfer(to, amount);
-        assertSuccess(txHandler.getResult(txHash, Constants.DEFAULT_WAITING_TIME));
+        assertSuccess(txHandler.getResult(txHash));
     }
 
     protected static void transferAndCheckResult(TransactionHandler txHandler, Address[] addresses, BigInteger amount)
@@ -62,7 +64,34 @@ public class TestBase {
             hashes.add(txHandler.transfer(to, amount));
         }
         for (Bytes hash : hashes) {
-            assertSuccess(txHandler.getResult(hash, Constants.DEFAULT_WAITING_TIME));
+            assertSuccess(txHandler.getResult(hash));
+        }
+    }
+
+    protected static void ensureIcxBalance(TransactionHandler txHandler, Address address,
+                                           BigInteger oldVal, BigInteger newVal) throws Exception {
+        long limitTime = System.currentTimeMillis() + Constants.DEFAULT_WAITING_TIME;
+        while (true) {
+            BigInteger icxBalance = txHandler.getBalance(address);
+            String msg = "ICX balance of " + address + ": " + icxBalance;
+            if (icxBalance.equals(oldVal)) {
+                if (limitTime < System.currentTimeMillis()) {
+                    throw new ResultTimeoutException();
+                }
+                try {
+                    // wait until block confirmation
+                    LOG.debug(msg + "; Retry in 1 sec.");
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            } else if (icxBalance.equals(newVal)) {
+                LOG.info(msg);
+                break;
+            } else {
+                throw new IOException(String.format("ICX balance mismatch: expected <%s>, but was <%s>",
+                        newVal, icxBalance));
+            }
         }
     }
 }

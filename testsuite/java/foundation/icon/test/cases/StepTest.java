@@ -31,7 +31,7 @@ import foundation.icon.test.common.Env;
 import foundation.icon.test.common.TestBase;
 import foundation.icon.test.common.TransactionFailureException;
 import foundation.icon.test.common.TransactionHandler;
-import foundation.icon.test.common.Utils;
+import foundation.icon.test.common.ZipFile;
 import foundation.icon.test.score.ChainScore;
 import foundation.icon.test.score.GovScore;
 import foundation.icon.test.score.HelloWorld;
@@ -54,7 +54,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 @Tag(Constants.TAG_PY_GOV)
 public class StepTest extends TestBase {
-    private static final String SCORE_DB_STEP_PATH = Constants.SCORE_ROOT + "db_step";
+    private static final String SCORE_DB_STEP_PATH = Score.getFilePath("db_step");
 
     private static TransactionHandler txHandler;
     private static ChainScore chainScore;
@@ -270,7 +270,7 @@ public class StepTest extends TestBase {
         BigInteger deploy(KeyWallet from, Address to, String contentPath, RpcObject params) throws Exception {
             BigInteger prevTreasury = txHandler.getBalance(Constants.TREASURY_ADDRESS);
             BigInteger prevBal = txHandler.getBalance(from.getAddress());
-            byte[] content = Utils.zipContent(contentPath);
+            byte[] content = ZipFile.zipContent(contentPath);
             if (to == null) {
                 to = Constants.CHAINSCORE_ADDRESS;
             }

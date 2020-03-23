@@ -24,6 +24,7 @@ import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.ScoreApi;
 import foundation.icon.icx.data.TransactionResult;
+import foundation.icon.icx.data.TransactionResult.EventLog;
 import foundation.icon.icx.transport.jsonrpc.RpcError;
 import foundation.icon.icx.transport.jsonrpc.RpcItem;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
@@ -36,8 +37,9 @@ import java.math.BigInteger;
 import java.util.List;
 
 public class Score {
+    private static final String SCORE_ROOT = "data/scores/";
     private final TransactionHandler txHandler;
-    private Address address;
+    private final Address address;
 
     public Score(TransactionHandler txHandler, Address scoreAddress) {
         this.txHandler = txHandler;
@@ -46,6 +48,23 @@ public class Score {
 
     public Score(Score other) {
         this(other.txHandler, other.address);
+    }
+
+    public static String getFilePath(String pkgName) {
+        return SCORE_ROOT + pkgName;
+    }
+
+    protected static EventLog findEventLog(TransactionResult result, Address scoreAddress, String funcSig) {
+        List<EventLog> eventLogs = result.getEventLogs();
+        for (EventLog event : eventLogs) {
+            if (event.getScoreAddress().equals(scoreAddress.toString())) {
+                String signature = event.getIndexed().get(0).asString();
+                if (funcSig.equals(signature)) {
+                    return event;
+                }
+            }
+        }
+        return null;
     }
 
     public RpcItem call(String method, RpcObject params)
@@ -170,10 +189,6 @@ public class Score {
 
     public Address getAddress() {
         return this.address;
-    }
-
-    public void setAddress(Address addr) {
-        this.address = addr;
     }
 
     public BigInteger getNetworkId() {

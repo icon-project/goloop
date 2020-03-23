@@ -51,7 +51,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 @Tag(Constants.TAG_PY_SCORE)
 class GetAPITest {
-    private static final String SCORE_API_PATH = Constants.SCORE_ROOT + "score_api";
+    private static final String SCORE_API_PATH = Score.getFilePath("score_api");
     private static TransactionHandler txHandler;
 
     @BeforeAll

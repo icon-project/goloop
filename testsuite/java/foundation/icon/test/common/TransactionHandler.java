@@ -67,7 +67,7 @@ public class TransactionHandler {
 
     public Score deploy(Wallet owner, String scorePath, Address to, RpcObject params, BigInteger steps)
             throws IOException, ResultTimeoutException, TransactionFailureException {
-        byte[] data = Utils.zipContent(scorePath);
+        byte[] data = ZipFile.zipContent(scorePath);
         return getScore(doDeploy(owner, data, to, params, steps, Constants.CONTENT_TYPE_PYTHON));
     }
 
@@ -120,7 +120,7 @@ public class TransactionHandler {
     }
 
     public Bytes deployOnly(Wallet owner, String scorePath, RpcObject params) throws IOException {
-        byte[] data = Utils.zipContent(scorePath);
+        byte[] data = ZipFile.zipContent(scorePath);
         return doDeploy(owner, data, params, Constants.CONTENT_TYPE_PYTHON);
     }
 

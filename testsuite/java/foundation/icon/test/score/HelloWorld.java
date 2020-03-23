@@ -21,7 +21,6 @@ import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
-import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.TransactionFailureException;
 import foundation.icon.test.common.TransactionHandler;
@@ -29,8 +28,8 @@ import foundation.icon.test.common.TransactionHandler;
 import java.io.IOException;
 
 public class HelloWorld extends Score {
-    public static final String INSTALL_PATH = Constants.SCORE_ROOT + "hello_world";
-    public static final String UPDATE_PATH = Constants.SCORE_ROOT + "hello_world2";
+    public static final String INSTALL_PATH = getFilePath("hello_world");
+    public static final String UPDATE_PATH = getFilePath("hello_world2");
 
     public HelloWorld(TransactionHandler txHandler, Address address) {
         super(txHandler, address);

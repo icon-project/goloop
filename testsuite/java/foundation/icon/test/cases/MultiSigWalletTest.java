@@ -26,7 +26,6 @@ import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
 import foundation.icon.test.common.TestBase;
 import foundation.icon.test.common.TransactionHandler;
-import foundation.icon.test.common.Utils;
 import foundation.icon.test.score.HelloWorld;
 import foundation.icon.test.score.MultiSigWalletScore;
 import org.junit.jupiter.api.BeforeAll;
@@ -39,11 +38,14 @@ import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class MultiSigWalletTest extends TestBase {
+    private static final BigInteger TWO = BigInteger.valueOf(2);
+    private static final BigInteger THREE = BigInteger.valueOf(3);
+    private static final BigInteger FIVE = BigInteger.valueOf(5);
     private static TransactionHandler txHandler;
     private static KeyWallet[] wallets;
 
     @BeforeAll
-    static void setUp() throws Exception {
+    static void setup() throws Exception {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
         Env.Chain chain = channel.chain;
@@ -88,19 +90,19 @@ public class MultiSigWalletTest extends TestBase {
         LOG.info("Address of Bob:   " + bobWallet.getAddress());
         Address multiSigWalletAddress = multiSigWalletScore.getAddress();
 
-        // send 3 icx to the multiSigWallet
+        // deposit 5 icx to the multiSigWallet first
         LOG.info("transfer: 5 icx to multiSigWallet");
-        final BigInteger icx = BigInteger.TEN.pow(18);
-        transferAndCheckResult(txHandler, multiSigWalletAddress, icx.multiply(BigInteger.valueOf(5)));
-        Utils.ensureIcxBalance(txHandler, multiSigWalletAddress, 0, 5);
+        transferAndCheckResult(txHandler, multiSigWalletAddress, ICX.multiply(FIVE));
+        ensureIcxBalance(txHandler, multiSigWalletAddress, BigInteger.ZERO, ICX.multiply(FIVE));
         LOG.infoExiting();
 
         // *** 1. Send 2 icx to Bob (EOA)
         LOG.infoEntering("call", "submitIcxTransaction() - send 2 icx to Bob");
         // tx is initiated by ownerWallet first
         TransactionResult result = multiSigWalletScore.submitIcxTransaction(
-                ownerWallet, bobWallet.getAddress(), icx.multiply(BigInteger.TWO), "send 2 icx to Bob");
+                ownerWallet, bobWallet.getAddress(), ICX.multiply(TWO), "send 2 icx to Bob");
         BigInteger txId = multiSigWalletScore.getTransactionId(result);
+        BigInteger bobBalance = txHandler.getBalance(bobWallet.getAddress());
 
         // Alice confirms the tx to make it executed
         LOG.info("confirmTransaction() by Alice");
@@ -109,8 +111,8 @@ public class MultiSigWalletTest extends TestBase {
         multiSigWalletScore.ensureExecution(result, txId);
 
         // check icx balances
-        Utils.ensureIcxBalance(txHandler, multiSigWalletAddress, 5, 3);
-        Utils.ensureIcxBalance(txHandler, bobWallet.getAddress(), 0, 2);
+        ensureIcxBalance(txHandler, multiSigWalletAddress, ICX.multiply(FIVE), ICX.multiply(THREE));
+        ensureIcxBalance(txHandler, bobWallet.getAddress(), bobBalance, bobBalance.add(ICX.multiply(TWO)));
         LOG.infoExiting();
 
         // *** 2. Send 1 icx to Contract
@@ -120,7 +122,7 @@ public class MultiSigWalletTest extends TestBase {
         HelloWorld helloScore = HelloWorld.install(txHandler, ownerWallet);
         // tx is initiated by ownerWallet first
         result = multiSigWalletScore.submitIcxTransaction(
-                ownerWallet, helloScore.getAddress(), icx.multiply(BigInteger.ONE), "send 1 icx to hello");
+                ownerWallet, helloScore.getAddress(), ICX.multiply(BigInteger.ONE), "send 1 icx to hello");
         txId = multiSigWalletScore.getTransactionId(result);
 
         // Bob confirms the tx to make it executed
@@ -130,14 +132,14 @@ public class MultiSigWalletTest extends TestBase {
         multiSigWalletScore.ensureExecution(result, txId);
 
         // check icx balances
-        Utils.ensureIcxBalance(txHandler, multiSigWalletAddress, 3, 2);
-        Utils.ensureIcxBalance(txHandler, helloScore.getAddress(), 0, 1);
+        ensureIcxBalance(txHandler, multiSigWalletAddress, ICX.multiply(THREE), ICX.multiply(TWO));
+        ensureIcxBalance(txHandler, helloScore.getAddress(), BigInteger.ZERO, ICX.multiply(BigInteger.ONE));
         LOG.infoExiting();
 
         // *** 3. Send a test transaction (this will not be executed intentionally)
         LOG.infoEntering("call", "submitIcxTransaction() - pending transaction");
         result = multiSigWalletScore.submitIcxTransaction(
-                ownerWallet, aliceWallet.getAddress(), icx.multiply(BigInteger.TWO), "send 2 icx to Alice");
+                ownerWallet, aliceWallet.getAddress(), ICX.multiply(TWO), "send 2 icx to Alice");
         BigInteger pendingTx = multiSigWalletScore.getTransactionId(result);
         LOG.infoExiting();
 

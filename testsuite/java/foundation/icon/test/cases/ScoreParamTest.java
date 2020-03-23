@@ -43,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Tag(Constants.TAG_PY_SCORE)
 class ScoreParamTest extends TestBase {
-    public static final String SCORE_CHECK_PARAMS_PATH = Constants.SCORE_ROOT + "check_params";
+    public static final String SCORE_CHECK_PARAMS_PATH = Score.getFilePath("check_params");
 
     private static TransactionHandler txHandler;
     private static KeyWallet callerWallet;

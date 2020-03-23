@@ -17,7 +17,7 @@ public class ValidatorList {
             var addr = new Address(r.readByteArray());
             vl.add(addr);
         }
-        validators = vl.toArray(new Address[vl.size()]);
+        validators = vl.toArray(new Address[0]);
         r.readFooter();
     }
 

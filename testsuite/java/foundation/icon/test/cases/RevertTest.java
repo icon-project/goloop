@@ -22,6 +22,7 @@ import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.http.HttpProvider;
 import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.Env;
+import foundation.icon.test.common.TestBase;
 import foundation.icon.test.common.TransactionHandler;
 import foundation.icon.test.score.StepCounterScore;
 import org.junit.jupiter.api.BeforeAll;
@@ -34,11 +35,11 @@ import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @Tag(Constants.TAG_PY_SCORE)
-public class RevertTest {
+public class RevertTest extends TestBase {
     private static TransactionHandler txHandler;
 
     @BeforeAll
-    public static void setUp() {
+    static void setup() {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
         Env.Chain chain = channel.chain;
@@ -47,7 +48,7 @@ public class RevertTest {
     }
 
     @Test
-    public void testRevert() throws Exception {
+    public void runTest() throws Exception {
         KeyWallet ownerWallet = KeyWallet.create();
 
         LOG.infoEntering("deploy", "SCORE1");
@@ -71,16 +72,16 @@ public class RevertTest {
 
         LOG.infoEntering("call", score2 + ".setStepOf(" + score1 + "," + v + ")");
         txr = score2.setStepOf(ownerWallet, score1.getAddress(), v);
-        assertEquals(Constants.STATUS_SUCCESS, txr.getStatus());
-        LOG.infoExiting("Result:" + txr);
+        assertSuccess(txr);
+        LOG.infoExiting();
 
         v1 = score1.getStep(ownerWallet.getAddress());
         assertEquals(v, v1);
 
         LOG.infoEntering("call", score2 + ".setStepOf(" + score1 + "," + v + ")");
         txr = score2.setStepOf(ownerWallet, score1.getAddress(), v);
-        assertEquals(Constants.STATUS_FAILURE, txr.getStatus());
-        LOG.infoExiting("Result:" + txr);
+        assertFailure(txr);
+        LOG.infoExiting();
 
         LOG.infoEntering("call", score1 + ".getStep()");
         v1 = score1.getStep(ownerWallet.getAddress());
@@ -93,26 +94,17 @@ public class RevertTest {
 
         LOG.infoEntering("call", score1 + ".trySetStepWith(" + score2 + "," + v + ")");
         txr = score1.trySetStepWith(ownerWallet, score2.getAddress(), v);
-        LOG.infoExiting("Result:" + txr);
-        if (!Constants.STATUS_SUCCESS.equals(txr.getStatus())) {
-            LOG.warning("It should SUCCEED");
-            return;
-        }
+        assertSuccess(txr);
+        LOG.infoExiting();
 
         LOG.infoEntering("call", score2 + ".getStep()");
         v2new = score2.getStep(ownerWallet.getAddress());
-        if (!v2.equals(v2new)) {
-            LOG.warning(score2 + ".getValue()=>" + v2new + " expect=" + v2);
-            return;
-        }
+        assertEquals(v2, v2new);
         LOG.infoExiting(v2new.toString());
 
         LOG.infoEntering("call", score1 + ".getStep()");
         v1new = score1.getStep(ownerWallet.getAddress());
-        if (!v.equals(v1new)) {
-            LOG.warning(score1 + ".getValue()=>" + v1new + " expect=" + v);
-            return;
-        }
+        assertEquals(v, v1new);
         LOG.infoExiting(v1new.toString());
     }
 }

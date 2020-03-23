@@ -43,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 @Tag(Constants.TAG_PY_SCORE)
 public class ResultTest {
-    private static final String SCORE_RESULT_GEN_PATH = Constants.SCORE_ROOT + "result_gen";
+    private static final String SCORE_RESULT_GEN_PATH = Score.getFilePath("result_gen");
     private static KeyWallet ownerWallet;
     private static Score score1, score2;
     private static Score chainSCORE;
