@@ -54,41 +54,12 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public void commitTo(IExternalState externalState) {
-        logger.trace("[commitTo] {}", externalState);
-        throw new RuntimeException("not implemented");
-    }
-
-    @Override
-    public IExternalState newChildExternalState() {
-        logger.trace("[newChildExternalState]");
-        throw new RuntimeException("not implemented");
-    }
-
-    @Override
-    public void createAccount(Address address) {
-        logger.trace("[createAccount] {}", address);
-        throw new RuntimeException("not implemented");
-    }
-
-    @Override
-    public boolean hasAccountState(Address address) {
-        logger.trace("[hasAccountState] {}", address);
-        throw new RuntimeException("not implemented");
-    }
-
-    @Override
     public byte[] getCode(Address address) {
         logger.trace("[getCode] {}", address);
         if (codeCache == null) {
             throw new RuntimeException("code not found");
         }
         return codeCache;
-    }
-
-    @Override
-    public void putCode(Address address, byte[] code) {
-        throw new RuntimeException("should not be called");
     }
 
     @Override
@@ -162,16 +133,6 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public void removeStorage(Address address, byte[] key) {
-        logger.trace("[removeStorage] key={}", Bytes.toHexString(key));
-        try {
-            proxy.setValue(key, null);
-        } catch (IOException e) {
-            logger.debug("[removeStorage] {}", e.getMessage());
-        }
-    }
-
-    @Override
     public byte[] getStorage(Address address, byte[] key) {
         try {
             byte[] value = proxy.getValue(key);
@@ -181,12 +142,6 @@ public class ExternalState implements IExternalState {
             logger.debug("[getStorage] {}", e.getMessage());
             return null;
         }
-    }
-
-    @Override
-    public void deleteAccount(Address address) {
-        logger.trace("[deleteStorage] {}", address);
-        throw new RuntimeException("not implemented");
     }
 
     @Override
@@ -202,48 +157,6 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public void adjustBalance(Address address, BigInteger amount) {
-        logger.trace("[adjustBalance] {} amount={}", address, amount);
-        // just ignore this
-    }
-
-    @Override
-    public BigInteger getNonce(Address address) {
-        logger.trace("[getNonce] {}", address);
-        throw new RuntimeException("not implemented");
-    }
-
-    @Override
-    public void incrementNonce(Address address) {
-        logger.trace("[incrementNonce] {}", address);
-        // just ignore this
-    }
-
-    @Override
-    public void refundAccount(Address address, BigInteger refund) {
-        logger.trace("[refundAccount] {} refund={}", address, refund);
-        throw new RuntimeException("not implemented");
-    }
-
-    @Override
-    public byte[] getBlockHashByHeight(long blockHeight) {
-        logger.trace("[getBlockHashByHeight] blockHeight={}", blockHeight);
-        throw new RuntimeException("not implemented");
-    }
-
-    @Override
-    public boolean accountNonceEquals(Address address, BigInteger nonce) {
-        logger.trace("[accountNonceEquals] {} nonce={}", address, nonce);
-        return true;
-    }
-
-    @Override
-    public boolean accountBalanceIsAtLeast(Address address, BigInteger amount) {
-        logger.trace("[accountBalanceIsAtLeast] {} amount={}", address, amount);
-        return true;
-    }
-
-    @Override
     public boolean isValidEnergyLimitForCreate(long limit) {
         logger.trace("[isValidEnergyLimitForCreate] limit={}", limit);
         return true;
@@ -253,12 +166,6 @@ public class ExternalState implements IExternalState {
     public boolean isValidEnergyLimitForNonCreate(long limit) {
         logger.trace("[isValidEnergyLimitForNonCreate] limit={}", limit);
         return true;
-    }
-
-    @Override
-    public boolean destinationAddressIsSafeForThisVM(Address address) {
-        logger.trace("[destinationAddressIsSafeForThisVM] {}", address);
-        throw new RuntimeException("not implemented");
     }
 
     @Override
