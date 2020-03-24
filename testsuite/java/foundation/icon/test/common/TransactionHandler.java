@@ -52,7 +52,7 @@ public class TransactionHandler {
 
     public Score deploy(Wallet owner, String scorePath, RpcObject params)
             throws IOException, ResultTimeoutException, TransactionFailureException {
-        return deploy(owner, scorePath, params, Constants.DEFAULT_STEPS);
+        return deploy(owner, scorePath, params, Constants.DEFAULT_INSTALL_STEPS);
     }
 
     public Score deploy(Wallet owner, byte[] content, RpcObject params)
@@ -92,7 +92,7 @@ public class TransactionHandler {
 
     private Bytes doDeploy(Wallet owner, byte[] content, RpcObject params, String contentType)
             throws IOException {
-        return doDeploy(owner, content, Constants.CHAINSCORE_ADDRESS, params, Constants.DEFAULT_STEPS, contentType);
+        return doDeploy(owner, content, Constants.CHAINSCORE_ADDRESS, params, Constants.DEFAULT_INSTALL_STEPS, contentType);
     }
 
     private Bytes doDeploy(Wallet owner, byte[] content, Address to, RpcObject params, BigInteger steps, String contentType)
@@ -111,7 +111,7 @@ public class TransactionHandler {
 
     public Score getScore(Bytes txHash)
             throws IOException, ResultTimeoutException, TransactionFailureException {
-        TransactionResult result = getResult(txHash, Constants.DEFAULT_WAITING_TIME);
+        TransactionResult result = getResult(txHash);
         if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
             throw new TransactionFailureException(result.getFailure());
         }

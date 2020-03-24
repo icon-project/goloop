@@ -262,7 +262,7 @@ class ReceiptTest extends TestBase {
         LOG.infoEntering("transfer");
         Bytes txHash = txHandler.transfer(callerWallet, wallet.getAddress(), BigInteger.valueOf(2));
         LOG.infoExiting();
-        TransactionResult result = txHandler.getResult(txHash, Constants.DEFAULT_WAITING_TIME);
+        TransactionResult result = txHandler.getResult(txHash);
         checkResultParams(result, Constants.STATUS_SUCCESS, wallet.getAddress(), txHash);
         LOG.infoExiting();
     }
@@ -275,7 +275,7 @@ class ReceiptTest extends TestBase {
         LOG.infoEntering("deploy");
         Bytes txHash = txHandler.deployOnly(callerWallet, SCORE_RECEIPT_PATH, params);
         LOG.infoExiting();
-        TransactionResult result = txHandler.getResult(txHash, Constants.DEFAULT_WAITING_TIME);
+        TransactionResult result = txHandler.getResult(txHash);
         checkResultParams(result, Constants.STATUS_SUCCESS, Constants.CHAINSCORE_ADDRESS, txHash);
         assertNotNull(result.getScoreAddress());
         LOG.infoExiting();

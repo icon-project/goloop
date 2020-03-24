@@ -259,7 +259,7 @@ public class StepTest extends TestBase {
                     .build();
             this.expectedStep = calcTransactionStep(transaction);
             Bytes txHash = txHandler.invoke(from, transaction);
-            assertSuccess(txHandler.getResult(txHash, Constants.DEFAULT_WAITING_TIME));
+            assertSuccess(txHandler.getResult(txHash));
 
             BigInteger bal = txHandler.getBalance(from.getAddress());
             BigInteger treasury = txHandler.getBalance(Constants.TREASURY_ADDRESS);
@@ -284,7 +284,7 @@ public class StepTest extends TestBase {
                     .build();
             this.expectedStep = calcDeployStep(transaction, content, to != Constants.CHAINSCORE_ADDRESS);
             Bytes txHash = txHandler.invoke(from, transaction);
-            TransactionResult result = txHandler.getResult(txHash, Constants.DEFAULT_WAITING_TIME);
+            TransactionResult result = txHandler.getResult(txHash);
             assertSuccess(result);
 
             try {
@@ -322,7 +322,7 @@ public class StepTest extends TestBase {
             this.expectedStep = calcCallStep(transaction);
 
             Bytes txHash = txHandler.invoke(from, transaction);
-            TransactionResult result = txHandler.getResult(txHash, Constants.DEFAULT_WAITING_TIME);
+            TransactionResult result = txHandler.getResult(txHash);
 
             BigInteger bal = txHandler.getBalance(from.getAddress());
             BigInteger treasury = txHandler.getBalance(Constants.TREASURY_ADDRESS);

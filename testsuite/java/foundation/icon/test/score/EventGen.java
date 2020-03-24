@@ -22,7 +22,6 @@ import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.TransactionResult;
 import foundation.icon.icx.transport.jsonrpc.RpcObject;
 import foundation.icon.icx.transport.jsonrpc.RpcValue;
-import foundation.icon.test.common.Constants;
 import foundation.icon.test.common.ResultTimeoutException;
 import foundation.icon.test.common.TransactionFailureException;
 import foundation.icon.test.common.TransactionHandler;
@@ -35,26 +34,20 @@ public class EventGen extends Score {
         super(other);
     }
 
-    // install with default stepLimit and default parameter
+    // install with the default parameter
     public static EventGen install(TransactionHandler txHandler, Wallet wallet)
-            throws TransactionFailureException, ResultTimeoutException, IOException {
-        return install(txHandler, wallet, Constants.DEFAULT_STEP_LIMIT);
-    }
-
-    // install with default parameter
-    public static EventGen install(TransactionHandler txHandler, Wallet wallet, long stepLimit)
             throws TransactionFailureException, ResultTimeoutException, IOException {
         RpcObject params = new RpcObject.Builder()
                 .put("name", new RpcValue("EventGen"))
                 .build();
-        return install(txHandler, wallet, params, stepLimit);
+        return install(txHandler, wallet, params);
     }
 
-    // install with passed parameter
+    // install with the passed parameter
     public static EventGen install(TransactionHandler txHandler,
-                                   Wallet wallet, RpcObject params, long stepLimit)
+                                   Wallet wallet, RpcObject params)
             throws TransactionFailureException, ResultTimeoutException, IOException {
-        return new EventGen(txHandler.deploy(wallet, getFilePath("event_gen"), params, BigInteger.valueOf(stepLimit)));
+        return new EventGen(txHandler.deploy(wallet, getFilePath("event_gen"), params));
     }
 
     public Bytes invokeGenerate(Wallet from, Address addr, BigInteger i, byte[] bytes) throws IOException {

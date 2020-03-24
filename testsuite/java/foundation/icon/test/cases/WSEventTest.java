@@ -150,11 +150,11 @@ public class WSEventTest {
         // deploy 2 scores with same source
         EventGen[] eventGen = new EventGen[2];
         LOG.infoEntering("deploy", "event gen SCORE");
-        eventGen[0] = EventGen.install(txHandler, ownerWallet, 100);
+        eventGen[0] = EventGen.install(txHandler, ownerWallet);
         LOG.infoExiting();
 
         LOG.infoEntering("deploy", "event gen SCORE");
-        eventGen[1] = EventGen.install(txHandler, ownerWallet, 100);
+        eventGen[1] = EventGen.install(txHandler, ownerWallet);
         LOG.infoExiting();
 
         String event = "Event(Address,int,bytes)";

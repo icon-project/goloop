@@ -768,9 +768,7 @@ class ScoreParamTest extends TestBase {
             }
             RpcObject params = pb.build();
             LOG.info("case=" + i + " sending tx param=" + params.toString());
-            ids[i] = testScore.invoke(
-                    callerWallet, "call_all_default",
-                    params, 0, Constants.DEFAULT_STEP_LIMIT);
+            ids[i] = testScore.invoke(callerWallet, "call_all_default", params);
             LOG.info("txid=" + ids[i].toString());
         }
         LOG.infoExiting();
@@ -814,9 +812,7 @@ class ScoreParamTest extends TestBase {
                 .build();
 
         TransactionResult result = testScore.invokeAndWaitResult(
-                callerWallet, "inter_call_with_less_params",
-                params, 0, Constants.DEFAULT_STEP_LIMIT);
-
+                callerWallet, "inter_call_with_less_params", params);
         assertEquals(result.getStatus(), Constants.STATUS_SUCCESS);
 
         boolean checked = false;

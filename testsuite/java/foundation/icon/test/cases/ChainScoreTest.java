@@ -91,7 +91,7 @@ public class ChainScoreTest extends TestBase {
         governorWallet = chain.governorWallet;
         try {
             Bytes txHash = txHandler.transfer(chain.godWallet, governorWallet.getAddress(), Constants.DEFAULT_BALANCE);
-            assertSuccess(txHandler.getResult(txHash, Constants.DEFAULT_WAITING_TIME));
+            assertSuccess(txHandler.getResult(txHash));
 
             testWallets = new KeyWallet[testWalletNum];
             for (int i = 0; i < testWalletNum; i++) {
@@ -190,7 +190,7 @@ public class ChainScoreTest extends TestBase {
                 .put("name", new RpcValue("HelloWorld"))
                 .build();
         Bytes txHash = txHandler.deployOnly(testWallets[0], HelloWorld.INSTALL_PATH, params);
-        TransactionResult result = txHandler.getResult(txHash, Constants.DEFAULT_WAITING_TIME);
+        TransactionResult result = txHandler.getResult(txHash);
         assertSuccess(result);
         Address scoreAddr = new Address(result.getScoreAddress());
         HelloWorld helloWorld = new HelloWorld(txHandler, scoreAddr);
@@ -248,7 +248,7 @@ public class ChainScoreTest extends TestBase {
                 .put("name", new RpcValue("HelloWorld"))
                 .build();
         Bytes txHash = txHandler.deployOnly(testWallets[0], HelloWorld.INSTALL_PATH, params);
-        TransactionResult result = txHandler.getResult(txHash, Constants.DEFAULT_WAITING_TIME);
+        TransactionResult result = txHandler.getResult(txHash);
         assertSuccess(result);
         Address scoreAddr = new Address(result.getScoreAddress());
         HelloWorld helloWorld = new HelloWorld(txHandler, scoreAddr);

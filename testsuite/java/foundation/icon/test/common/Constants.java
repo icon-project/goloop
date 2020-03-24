@@ -29,13 +29,13 @@ public class Constants {
     public static final BigInteger STATUS_SUCCESS = BigInteger.ONE;
     public static final BigInteger STATUS_FAILURE = BigInteger.ZERO;
 
+    public static final BigInteger DEFAULT_STEPS = BigInteger.valueOf(200000);
+    public static final BigInteger DEFAULT_INSTALL_STEPS = new BigInteger("50000000", 16);
+    public static final BigInteger DEFAULT_BALANCE = new BigInteger("60000000", 16);
+    public static final long DEFAULT_WAITING_TIME = 7000;
+
     public static final String CONTENT_TYPE_PYTHON = "application/zip";
     public static final String CONTENT_TYPE_JAVA = "application/java";
-
-    public static final long DEFAULT_STEP_LIMIT = 9000000;
-    public static final long DEFAULT_WAITING_TIME = 7000;
-    public static final BigInteger DEFAULT_STEPS = BigInteger.valueOf(2000000);
-    public static final BigInteger DEFAULT_BALANCE = new BigInteger("100000000");
 
     public static final Address CHAINSCORE_ADDRESS
             = new Address("cx0000000000000000000000000000000000000000");

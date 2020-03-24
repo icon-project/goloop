@@ -99,9 +99,7 @@ public class ResultTest {
             RpcObject params = new RpcObject.Builder()
                     .put("index", new RpcValue(cases[i]))
                     .build();
-            txs[i] = score1.invoke(
-                    ownerWallet, "callRevertWithIndex", params,
-                    0, Constants.DEFAULT_STEP_LIMIT);
+            txs[i] = score1.invoke(ownerWallet, "callRevertWithIndex", params);
 
             LOG.info("query case" + i);
             try {
@@ -116,14 +114,10 @@ public class ResultTest {
                     .put("addr", new RpcValue(score2.getAddress()))
                     .put("index", new RpcValue(cases[i]))
                     .build();
-            icTxs[i] = score1.invoke(
-                    ownerWallet, "interCallRevertWithIndex", params,
-                    0, Constants.DEFAULT_STEP_LIMIT);
+            icTxs[i] = score1.invoke(ownerWallet, "interCallRevertWithIndex", params);
 
             LOG.info("send tx inter-call catch case" + i);
-            iccTxs[i] = score1.invoke(
-                    ownerWallet, "interCallCatchRevertWithIndex", params,
-                    0, Constants.DEFAULT_STEP_LIMIT);
+            iccTxs[i] = score1.invoke(ownerWallet, "interCallCatchRevertWithIndex", params);
         }
 
         for (int i = 0; i < cases.length; i++) {
@@ -165,8 +159,7 @@ public class ResultTest {
                     .put("addr", new RpcValue(score2.getAddress()))
                     .put("value", new RpcValue(values[i]))
                     .build();
-            txs[i] = score1.invoke(ownerWallet, "interCallReturnStr", params,
-                    0, Constants.DEFAULT_STEP_LIMIT);
+            txs[i] = score1.invoke(ownerWallet, "interCallReturnStr", params);
         }
 
         for (int i = 0; i < values.length; i++) {

@@ -73,7 +73,7 @@ public class BtpApiTest extends TestBase {
 
         LOG.infoEntering("sendTransaction");
         Bytes txHash = txHandler.transfer(wallet.getAddress(), BigInteger.ONE);
-        TransactionResult result = txHandler.getResult(txHash, Constants.DEFAULT_WAITING_TIME);
+        TransactionResult result = txHandler.getResult(txHash);
         LOG.infoExiting();
 
         BigInteger rBlkHeight = result.getBlockHeight();
@@ -117,7 +117,7 @@ public class BtpApiTest extends TestBase {
 
         LOG.infoEntering("sendTransaction");
         Bytes txHash = txHandler.transfer(wallet.getAddress(), BigInteger.ONE);
-        TransactionResult result = txHandler.getResult(txHash, Constants.DEFAULT_WAITING_TIME);
+        TransactionResult result = txHandler.getResult(txHash);
         LOG.infoExiting();
 
         BigInteger resBlkHeight = result.getBlockHeight();

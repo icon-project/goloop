@@ -59,7 +59,7 @@ class ScoreEventTest {
         RpcObject params = new RpcObject.Builder()
                 .put("name", new RpcValue("HelloWorld"))
                 .build();
-        testScore = EventGen.install(txHandler, ownerWallet, params, Constants.DEFAULT_STEP_LIMIT);
+        testScore = EventGen.install(txHandler, ownerWallet, params);
     }
 
     @Test
@@ -74,8 +74,7 @@ class ScoreEventTest {
             RpcObject params = new RpcObject.Builder()
                     .put("_idx", new RpcValue(BigInteger.valueOf(i)))
                     .build();
-            ids[i] = testScore.invoke(ownerWallet, "generateNullByIndex", params,
-                    0, Constants.DEFAULT_STEP_LIMIT);
+            ids[i] = testScore.invoke(ownerWallet, "generateNullByIndex", params);
         }
 
         String[] blooms = new String[NUM];
