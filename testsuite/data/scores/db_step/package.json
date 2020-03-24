@@ -1,5 +1,5 @@
 {
   "version": "0.0.1",
-  "main_file": "db_step",
+  "main_module": "db_step",
   "main_score": "DbStep"
 }

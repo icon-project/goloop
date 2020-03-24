@@ -1,5 +1,5 @@
 {
   "version": "0.0.1",
-  "main_file": "receipt",
+  "main_module": "receipt",
   "main_score": "Receipt"
 }

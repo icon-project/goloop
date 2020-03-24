@@ -1,5 +1,5 @@
 {
     "version": "0.0.1",
-    "main_file": "too_big",
+    "main_module": "too_big",
     "main_score": "TooBig"
 }

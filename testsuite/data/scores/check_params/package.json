@@ -1,5 +1,5 @@
 {
   "version": "0.0.1",
-  "main_file": "check_params",
+  "main_module": "check_params",
   "main_score": "CheckParams"
 }

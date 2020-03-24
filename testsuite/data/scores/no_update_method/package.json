@@ -1,5 +1,5 @@
 {
     "version": "0.0.1",
-    "main_file": "no_update_method",
+    "main_module": "no_update_method",
     "main_score": "NoUpdateMethod"
 }

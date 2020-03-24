@@ -1,5 +1,5 @@
 {
     "version": "0.0.1",
-    "main_file": "step_counter",
+    "main_module": "step_counter",
     "main_score": "StepCounter"
 }

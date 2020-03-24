@@ -1,5 +1,5 @@
 {
     "version": "0.0.1",
-    "main_file": "event_gen",
+    "main_module": "event_gen",
     "main_score": "EventGen"
 }
