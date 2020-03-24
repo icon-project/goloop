@@ -45,7 +45,7 @@ public class CrowdSaleScore extends Score {
                 .build();
         Score score;
         if (contentType.equals(Constants.CONTENT_TYPE_PYTHON)) {
-            score = txHandler.deploy(owner, getFilePath("crowdsale"), params);
+            score = txHandler.deploy(owner, getFilePath("sample_crowdsale"), params);
         } else if (contentType.equals(Constants.CONTENT_TYPE_JAVA)) {
             score = txHandler.deploy(owner, SampleCrowdsale.class, params);
         } else {
