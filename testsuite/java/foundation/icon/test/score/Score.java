@@ -143,6 +143,12 @@ public class Score {
     }
 
     public TransactionResult invokeAndWaitResult(Wallet wallet, String method, RpcObject params,
+                                                 BigInteger steps)
+            throws ResultTimeoutException, IOException {
+        return invokeAndWaitResult(wallet, method, params, null, steps);
+    }
+
+    public TransactionResult invokeAndWaitResult(Wallet wallet, String method, RpcObject params,
                                                  BigInteger value, BigInteger steps)
             throws ResultTimeoutException, IOException {
         long endTime = System.currentTimeMillis() + Constants.DEFAULT_WAITING_TIME;
