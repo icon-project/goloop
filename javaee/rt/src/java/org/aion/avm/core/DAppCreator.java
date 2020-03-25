@@ -254,7 +254,7 @@ public class DAppCreator {
                                                               runtimeSetup,
                                                               dapp,
                                                               enablePrintln);
-            FrameContextImpl fc = new FrameContextImpl(externalState, dapp, dapp.getInternedClasses(), br);
+            FrameContextImpl fc = new FrameContextImpl(externalState);
             InstrumentationHelpers.pushNewStackFrame(runtimeSetup, dapp.loader, tx.getLimit() - energyPreused, nextHashCode, dapp.getInternedClasses(), fc);
             IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(br);
 

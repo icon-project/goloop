@@ -73,7 +73,7 @@ public class DAppExecutor {
                                                           dapp.runtimeSetup,
                                                           dapp,
                                                           enablePrintln);
-        FrameContextImpl fc = new FrameContextImpl(externalState, dapp, initialClassWrappers, br);
+        FrameContextImpl fc = new FrameContextImpl(externalState);
         InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.getLimit() - energyPreused, nextHashCode, initialClassWrappers, fc);
         IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(br);
 

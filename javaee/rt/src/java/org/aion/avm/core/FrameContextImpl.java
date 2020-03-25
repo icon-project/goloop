@@ -8,15 +8,9 @@ import org.aion.avm.core.persistence.LoadedDApp;
 
 public class FrameContextImpl implements FrameContext {
     private IDBStorage dbs;
-    private IBlockchainRuntime br;
 
-    FrameContextImpl(IExternalState ctx, LoadedDApp dapp, InternedClasses icm, IBlockchainRuntime br) {
-        this.dbs = new DBStorage(ctx, dapp, icm );
-        this.br = br;
-    }
-
-    public IBlockchainRuntime getBlockchainRuntime() {
-        return br;
+    FrameContextImpl(IExternalState ctx) {
+        this.dbs = new DBStorage(ctx);
     }
 
     public IDBStorage getDBStorage() {

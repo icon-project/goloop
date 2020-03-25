@@ -2,20 +2,14 @@ package org.aion.avm.core;
 
 import i.IDBStorage;
 import i.IInstrumentation;
-import i.InternedClasses;
 import org.aion.avm.StorageFees;
-import org.aion.avm.core.persistence.LoadedDApp;
 import p.score.ValueBuffer;
 
 public class DBStorage implements IDBStorage {
     private IExternalState ctx;
-    private LoadedDApp dapp;
-    private InternedClasses icm;
 
-    public DBStorage(IExternalState ctx, LoadedDApp dapp, InternedClasses icm) {
+    public DBStorage(IExternalState ctx) {
         this.ctx = ctx;
-        this.dapp = dapp;
-        this.icm = icm;
     }
 
     public void setArrayLength(byte[] key, int l) {
