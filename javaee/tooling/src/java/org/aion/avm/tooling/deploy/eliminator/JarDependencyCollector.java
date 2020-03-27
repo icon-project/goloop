@@ -64,6 +64,9 @@ public class JarDependencyCollector {
             if (null != interfaces) {
                 for (String interfaceName : interfaces) {
                     ClassInfo interfaceInfo = classInfoMap.get(interfaceName);
+                    if (interfaceInfo==null) {
+                        throw new IllegalArgumentException("Unusable interface " + interfaceName);
+                    }
                     interfaceInfo.addToChildren(classInfo);
                     classInfo.addToParents(interfaceInfo);
                 }

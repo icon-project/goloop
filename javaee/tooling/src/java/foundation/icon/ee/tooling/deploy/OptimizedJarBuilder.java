@@ -85,7 +85,8 @@ public class OptimizedJarBuilder {
                 // Run class removal optimization again to ensure classes without any referenced methods are removed
                 optimizedDappBytes = jarOptimizer.optimize(optimizedDappBytes);
             } catch (Exception exception) {
-                System.err.println("UnreachableMethodRemover crashed, packaging code without this optimization");
+                System.err.println("UnreachableMethodRemover failed, packaging code without this optimization");
+                exception.printStackTrace(System.err);
             }
         }
         // Renaming is disabled in debug mode.
@@ -94,8 +95,8 @@ public class OptimizedJarBuilder {
             try {
                 optimizedDappBytes = Renamer.rename(optimizedDappBytes, roots);
             } catch (Exception exception) {
-                System.err.println("Renaming crashed, packaging code without this optimization");
-                exception.printStackTrace();
+                System.err.println("Renaming failed, packaging code without this optimization");
+                exception.printStackTrace(System.err);
             }
         }
         // Add API info into the Jar
@@ -103,6 +104,7 @@ public class OptimizedJarBuilder {
             optimizedDappBytes = writeApi(optimizedDappBytes);
         } catch (Exception e) {
             System.err.println("Writing API info failed.");
+            e.printStackTrace(System.err);
         }
         return optimizedDappBytes;
     }
