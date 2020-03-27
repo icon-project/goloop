@@ -3,7 +3,8 @@ package org.aion.avm.core;
 import i.IDBStorage;
 import i.IInstrumentation;
 import org.aion.avm.StorageFees;
-import p.score.ValueBuffer;
+
+import java.math.BigInteger;
 
 public class DBStorage implements IDBStorage {
     private IExternalState ctx;
@@ -20,9 +21,7 @@ public class DBStorage implements IDBStorage {
         if (l==0) {
             v = null;
         } else {
-            var vb = new ValueBuffer();
-            vb.set(l);
-            v = vb.asByteArray();
+            v = BigInteger.valueOf(l).toByteArray();
         }
         ctx.putStorage(key, v);
     }
@@ -31,9 +30,7 @@ public class DBStorage implements IDBStorage {
         var bs = ctx.getStorage(key);
         if (bs==null)
             return 0;
-        var vb = new ValueBuffer();
-        vb.set(bs);
-        return vb.asInt();
+        return new BigInteger(bs).intValue();
     }
 
     private void charge(int cost) {
