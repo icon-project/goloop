@@ -67,3 +67,7 @@ class HelloWorld(IconScoreBase):
         Logger.debug(f"intercall ({_to}) call_cnt({call_cnt})", TAG)
         score.infinite_intercall(self.address, call_cnt + 1)
 
+    @external
+    def transferICX(self, to: Address, amount: int):
+        if amount > 0:
+            self.icx.transfer(to, amount)

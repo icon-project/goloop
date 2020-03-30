@@ -366,6 +366,52 @@ public class StepTest extends TestBase {
     }
 
     @Test
+    public void transferFromScore() throws Exception {
+        LOG.infoEntering("transferFromScore");
+        LOG.infoEntering("deploy", "Scores");
+        Score fromScore = HelloWorld.install(txHandler, testWallets[1]);
+        RpcObject params = new RpcObject.Builder()
+                .put("name", new RpcValue("HelloWorld2"))
+                .build();
+        Score toScore = new HelloWorld(txHandler.deploy(testWallets[2], Score.getFilePath("hello_world2"), params));
+        LOG.infoExiting();
+        LOG.infoEntering("deposit", "initial funds");
+        transferAndCheckResult(txHandler, fromScore.getAddress(), ICX.multiply(BigInteger.TEN));
+        LOG.infoExiting();
+
+        LOG.infoEntering("transfer", "to Score");
+        StepTransaction stx = new StepTransaction();
+        // get the base fee
+        params = new RpcObject.Builder()
+                .put("to", new RpcValue(toScore.getAddress()))
+                .put("amount", new RpcValue(BigInteger.ZERO))
+                .build();
+        BigInteger baseFee = stx.call(testWallets[1], fromScore.getAddress(), "transferICX", params, Constants.DEFAULT_STEPS);
+        BigInteger expectedFee = baseFee.add(STEP_PRICE.multiply(StepType.CONTRACT_CALL.getSteps()));
+        // transfer icx and compare with the base fee
+        params = new RpcObject.Builder()
+                .put("to", new RpcValue(toScore.getAddress()))
+                .put("amount", new RpcValue(BigInteger.ONE))
+                .build();
+        BigInteger usedFee = stx.call(testWallets[1], fromScore.getAddress(), "transferICX", params, Constants.DEFAULT_STEPS);
+        assertEquals(expectedFee, usedFee);
+        assertEquals(BigInteger.ONE, txHandler.getBalance(toScore.getAddress()));
+        LOG.infoExiting();
+
+        LOG.infoEntering("transfer", "to EOA");
+        KeyWallet callee = KeyWallet.create();
+        params = new RpcObject.Builder()
+                .put("to", new RpcValue(callee.getAddress()))
+                .put("amount", new RpcValue(BigInteger.ONE))
+                .build();
+        usedFee = stx.call(testWallets[1], fromScore.getAddress(), "transferICX", params, Constants.DEFAULT_STEPS);
+        assertEquals(expectedFee, usedFee);
+        assertEquals(BigInteger.ONE, txHandler.getBalance(callee.getAddress()));
+        LOG.infoExiting();
+        LOG.infoExiting();
+    }
+
+    @Test
     public void testDeploy() throws Exception {
         LOG.infoEntering("testDeploy");
         LOG.infoEntering("deploy", "helloWorld");

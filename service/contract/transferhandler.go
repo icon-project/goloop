@@ -3,12 +3,11 @@ package contract
 import (
 	"math/big"
 
-	"github.com/icon-project/goloop/service/scoreresult"
-	"github.com/icon-project/goloop/service/txresult"
-
 	"github.com/icon-project/goloop/common/codec"
-
 	"github.com/icon-project/goloop/module"
+	"github.com/icon-project/goloop/service/scoreresult"
+	"github.com/icon-project/goloop/service/state"
+	"github.com/icon-project/goloop/service/txresult"
 )
 
 type TransferHandler struct {
@@ -37,6 +36,9 @@ func (h *TransferHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.T
 		h.from, h.to, h.value)
 
 	if h.from.IsContract() {
+		if !h.to.IsContract() && !h.ApplySteps(cc, state.StepTypeContractCall, 1) {
+			return scoreresult.ErrOutOfStep, h.StepUsed(), nil, nil
+		}
 		indexed := make([][]byte, 4, 4)
 		indexed[0] = []byte(txresult.EventLogICXTransfer)
 		indexed[1] = h.from.Bytes()
