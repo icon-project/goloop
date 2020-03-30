@@ -41,14 +41,12 @@ class HelloWorld(IconScoreBase):
     @payable
     def fallback(self):
         Logger.info('fallback is called', TAG)
-        self._balances[self.msg.sender] = self.msg.value
 
     @external
     def infiniteLoop(self):
-        loopCnt = 1
+        loop_cnt = 1
         while True:
-            loopCnt = loopCnt + 1
-            # Logger.debug(f"loopCnt={loopCnt}", TAG)
+            loop_cnt = loop_cnt + 1
 
     @external
     @payable
