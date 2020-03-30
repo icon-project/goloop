@@ -45,44 +45,29 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
 
 import static foundation.icon.test.common.Env.LOG;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Tag(Constants.TAG_PY_GOV)
 public class StepTest extends TestBase {
-    private static final String SCORE_DB_STEP_PATH = Score.getFilePath("db_step");
-
     private static TransactionHandler txHandler;
     private static ChainScore chainScore;
     private static GovScore govScore;
     private static GovScore.Fee fee;
     private static KeyWallet[] testWallets;
-    private static final int testWalletNum = 4;
 
-    private final static String STEP_DEFAULT = "default";
-    private final static String STEP_CONTRACT_CALL = "contractCall";
-    private final static String STEP_CONTRACT_CREATE = "contractCreate";
-    private final static String STEP_CONTRACT_UPDATE = "contractUpdate";
-    private final static String STEP_CONTRACT_SET = "contractSet";
-    private final static String STEP_GET = "get";
-    private final static String STEP_SET = "set";
-    private final static String STEP_REPLACE = "replace";
-    private final static String STEP_DELETE = "delete";
-    private final static String STEP_INPUT = "input";
-    private final static String STEP_EVENTLOG = "eventLog";
-    private final static String STEP_APICALL = "apiCall";
-
-    private final static int TYPE_INT = 0;
-    private final static int TYPE_STR = 1;
-    private final static int TYPE_BYTES = 2;
-    private final static int TYPE_ADDR = 3;
+    private static final BigInteger STEP_PRICE = BigInteger.valueOf(10_000_000_000L);
+    private static final int TYPE_INT = 0;
+    private static final int TYPE_STR = 1;
+    private static final int TYPE_BYTES = 2;
+    private static final int TYPE_ADDR = 3;
 
     @BeforeAll
-    public static void init() throws Exception {
+    static void setup() throws Exception {
         Env.Node node = Env.nodes[0];
         Env.Channel channel = node.channels[0];
         Env.Chain chain = channel.chain;
@@ -92,62 +77,99 @@ public class StepTest extends TestBase {
         govScore = new GovScore(txHandler);
         fee = govScore.getFee();
 
-        testWallets = new KeyWallet[testWalletNum];
-        Address[] addresses = new Address[testWalletNum];
-        for (int i = 0; i < testWalletNum; i++) {
+        testWallets = new KeyWallet[4];
+        Address[] addresses = new Address[testWallets.length + 1];
+        for (int i = 0; i < testWallets.length; i++) {
             KeyWallet wallet = KeyWallet.create();
             testWallets[i] = wallet;
             addresses[i] = wallet.getAddress();
         }
-        transferAndCheckResult(txHandler, chain.governorWallet.getAddress(), Constants.DEFAULT_BALANCE);
-        transferAndCheckResult(txHandler, addresses, Constants.DEFAULT_BALANCE);
-        initSteps();
-    }
+        addresses[testWallets.length] = chain.governorWallet.getAddress();
+        transferAndCheckResult(txHandler, addresses, ICX.multiply(BigInteger.valueOf(30)));
 
-    @AfterAll
-    public static void destroy() throws Exception {
-        govScore.setFee(fee);
-    }
-
-    public static void initSteps() throws Exception {
         LOG.infoEntering("initSteps");
-        govScore.setMaxStepLimit("invoke", new BigInteger("10000000000"));
-        govScore.setMaxStepLimit("query", new BigInteger("10000000000"));
-        govScore.setStepPrice(BigInteger.ONE);
-        Map<String, BigInteger> stepCosts = new HashMap<>();
-        stepCosts.put(STEP_DEFAULT, BigInteger.valueOf(1000));
-        stepCosts.put(STEP_CONTRACT_CALL, BigInteger.valueOf(100));
-        stepCosts.put(STEP_CONTRACT_CREATE, BigInteger.valueOf(100000));
-        stepCosts.put(STEP_CONTRACT_UPDATE, BigInteger.valueOf(160000));
-        stepCosts.put(STEP_CONTRACT_SET, BigInteger.valueOf(30));
-        stepCosts.put(STEP_GET, BigInteger.valueOf(0));
-        stepCosts.put(STEP_SET, BigInteger.valueOf(320));
-        stepCosts.put(STEP_REPLACE, BigInteger.valueOf(80));
-        stepCosts.put(STEP_DELETE, BigInteger.valueOf(-240));
-        stepCosts.put(STEP_INPUT, BigInteger.valueOf(10));
-        stepCosts.put(STEP_EVENTLOG, BigInteger.valueOf(5));
-        govScore.setStepCosts(stepCosts);
+        govScore.setMaxStepLimit("invoke", BigInteger.valueOf(2_500_000_000L));
+        govScore.setMaxStepLimit("query", BigInteger.valueOf(50_000_000L));
+        govScore.setStepPrice(STEP_PRICE);
+        govScore.setStepCosts(StepType.getStepCosts());
         LOG.infoExiting();
     }
 
-    static class StepTransaction {
-        static Map<String, BigInteger> steps;
-        static BigInteger stepPrice;
-        BigInteger expectedStep;
-        BigInteger usedCoin;
-        BigInteger treasuryFee;
-        Address scoreAddr;
+    @AfterAll
+    static void destroy() throws Exception {
+        govScore.setFee(fee);
+    }
 
-        StepTransaction() throws Exception {
-            if (steps == null) {
-                steps = govScore.getStepCosts();
-                stepPrice = chainScore.call("getStepPrice", null).asInteger();
-            }
+    private enum StepType {
+        DEFAULT("default", 100000),
+        CONTRACT_CALL("contractCall", 25000),
+        CONTRACT_CREATE("contractCreate", 1000000000),
+        CONTRACT_UPDATE("contractUpdate", 1600000000),
+        CONTRACT_SET("contractSet", 30000),
+        GET("get", 0),
+        SET("set", 320),
+        REPLACE("replace", 80),
+        DELETE("delete", -240),
+        INPUT("input", 200),
+        EVENTLOG("eventLog", 100),
+        APICALL("apiCall", 10000);
+
+        private final String name;
+        private final BigInteger steps;
+
+        StepType(String name, long steps) {
+            this.name = name;
+            this.steps = BigInteger.valueOf(steps);
+        }
+        public String getName() { return name; }
+        public BigInteger getSteps() { return steps; }
+
+        public static Map<String, BigInteger> getStepCosts() {
+            return Map.ofEntries(
+                    Map.entry(DEFAULT.getName(), DEFAULT.getSteps()),
+                    Map.entry(CONTRACT_CALL.getName(), CONTRACT_CALL.getSteps()),
+                    Map.entry(CONTRACT_CREATE.getName(), CONTRACT_CREATE.getSteps()),
+                    Map.entry(CONTRACT_UPDATE.getName(), CONTRACT_UPDATE.getSteps()),
+                    Map.entry(CONTRACT_SET.getName(), CONTRACT_SET.getSteps()),
+                    Map.entry(GET.getName(), GET.getSteps()),
+                    Map.entry(SET.getName(), SET.getSteps()),
+                    Map.entry(REPLACE.getName(), REPLACE.getSteps()),
+                    Map.entry(DELETE.getName(), DELETE.getSteps()),
+                    Map.entry(INPUT.getName(), INPUT.getSteps()),
+                    Map.entry(EVENTLOG.getName(), EVENTLOG.getSteps()),
+                    Map.entry(APICALL.getName(), APICALL.getSteps())
+            );
+        }
+    }
+
+    private static class StepTransaction {
+        private BigInteger expectedStep;
+        private BigInteger usedFee;
+        private BigInteger treasuryFee;
+        private Address scoreAddr;
+
+        BigInteger expectedStep() {
+            return expectedStep;
         }
 
-        void addOperation(String op, int type, String val) {
-            BigInteger stepUsed = steps.get(op);
-            long valSize = 0;
+        BigInteger expectedFee() {
+            return expectedStep.multiply(STEP_PRICE);
+        }
+
+        BigInteger getUsedFee() {
+            return usedFee;
+        }
+
+        BigInteger getTreasuryFee() {
+            return treasuryFee;
+        }
+
+        public Address getScoreAddress() {
+            return scoreAddr;
+        }
+
+        void addOperation(StepType stepType, int type, String val) {
+            long valSize;
             switch (type) {
                 case TYPE_INT:
                     int v = Integer.parseInt(val);
@@ -170,46 +192,43 @@ public class StepTest extends TestBase {
                     break;
             }
             LOG.info("addOperation val : " + val + ", valSize : " + valSize);
-            expectedStep = expectedStep.add(BigInteger.valueOf(valSize).multiply(stepUsed));
-        }
-
-        BigInteger estimatedCoin() {
-            return expectedStep.multiply(stepPrice);
+            expectedStep = expectedStep.add(stepType.getSteps().multiply(BigInteger.valueOf(valSize)));
         }
 
         BigInteger calcTransactionStep(Transaction tx) {
-            // default + input * data
-            BigInteger stepUsed = steps.get(STEP_DEFAULT);
-            if (tx.getDataType().equals("message")) {
-                // tx.getData() returns message with no quotes
-                long dataSize = tx.getData().asString().getBytes(StandardCharsets.UTF_8).length + 2;
-                stepUsed = stepUsed.add(BigInteger.valueOf(dataSize).multiply(steps.get(STEP_INPUT)));
-            } else {
-                int dataLen = 2; // curly brace
-                RpcObject rpcObject = tx.getData().asObject();
-                for (String key : rpcObject.keySet()) {
-                    // Quotes for key(2) + colon(1) + comma(1)
-                    dataLen += 4;
-                    dataLen += key.length();
-                    if ("params".equals(key)) {
-                        RpcObject paramObj = rpcObject.getItem(key).asObject();
-                        dataLen += 2; // curly brace
-                        for (String param : paramObj.keySet()) {
-                            dataLen += paramObj.getItem(param).asString().getBytes(StandardCharsets.UTF_8).length;
-                            dataLen += param.getBytes(StandardCharsets.UTF_8).length;
-                            // Quotes for key(2) + Quotes for value(2) + colon(1) + comma(1)
-                            dataLen += 6;
+            // default + input * dataLen
+            BigInteger stepUsed = StepType.DEFAULT.getSteps();
+            long dataLen = 0;
+            if (tx.getData() != null) {
+                if ("message".equals(tx.getDataType())) {
+                    // tx.getData() returns message with no quotes
+                    dataLen = tx.getData().asString().getBytes(StandardCharsets.UTF_8).length + 2;
+                } else {
+                    dataLen = 2; // curly brace
+                    RpcObject rpcObject = tx.getData().asObject();
+                    for (String key : rpcObject.keySet()) {
+                        // Quotes for key(2) + colon(1) + comma(1)
+                        dataLen += 4;
+                        dataLen += key.length();
+                        if ("params".equals(key)) {
+                            RpcObject paramObj = rpcObject.getItem(key).asObject();
+                            dataLen += 2; // curly brace
+                            for (String param : paramObj.keySet()) {
+                                dataLen += paramObj.getItem(param).asString().getBytes(StandardCharsets.UTF_8).length;
+                                dataLen += param.getBytes(StandardCharsets.UTF_8).length;
+                                // Quotes for key(2) + Quotes for value(2) + colon(1) + comma(1)
+                                dataLen += 6;
+                            }
+                            dataLen -= 1; // subtract last comma
+                        } else {
+                            dataLen += rpcObject.getItem(key).asString().length();
+                            dataLen += 2; // add Quotes for value
                         }
-                        dataLen -= 1; // subtract last comma
-                    } else {
-                        dataLen += rpcObject.getItem(key).asString().length();
-                        dataLen += 2; // add Quotes for value
                     }
+                    dataLen -= 1; // subtract last comma
                 }
-                dataLen -= 1; // subtract last comma
-                stepUsed = stepUsed.add(BigInteger.valueOf(dataLen).multiply(steps.get(STEP_INPUT)));
             }
-            return stepUsed;
+            return stepUsed.add(StepType.INPUT.getSteps().multiply(BigInteger.valueOf(dataLen)));
         }
 
         BigInteger calcDeployStep(Transaction tx, byte[] content, boolean update) throws IOException {
@@ -220,51 +239,46 @@ public class StepTest extends TestBase {
                 // NOTE: the following calculation can only be applied to hello_world score
                 RpcObject params = tx.getData().asObject().getItem("params").asObject();
                 String name = params.getItem("name").asString();
+                BigInteger nameLength = BigInteger.valueOf(name.length());
                 if (update) {
-                    stepUsed = stepUsed.add(steps.get(STEP_REPLACE).multiply(BigInteger.valueOf(name.length())));
+                    stepUsed = stepUsed.add(StepType.REPLACE.getSteps().multiply(nameLength));
                 } else {
-                    stepUsed = stepUsed.add(steps.get(STEP_SET).multiply(BigInteger.valueOf(name.length())));
+                    stepUsed = stepUsed.add(StepType.SET.getSteps().multiply(nameLength));
                 }
             }
             // contractCreate or contractUpdate
             // contractSet * codeLen
             BigInteger codeLen = BigInteger.valueOf(content.length);
             if (update) {
-                stepUsed = steps.get(STEP_CONTRACT_UPDATE).add(stepUsed);
+                stepUsed = StepType.CONTRACT_UPDATE.getSteps().add(stepUsed);
             } else {
-                stepUsed = steps.get(STEP_CONTRACT_CREATE).add(stepUsed);
+                stepUsed = StepType.CONTRACT_CREATE.getSteps().add(stepUsed);
             }
-            stepUsed = stepUsed.add(steps.get(STEP_CONTRACT_SET).multiply(codeLen));
-            return stepUsed;
+            return stepUsed.add(StepType.CONTRACT_SET.getSteps().multiply(codeLen));
         }
 
         BigInteger calcCallStep(Transaction tx) {
             BigInteger stepUsed = calcTransactionStep(tx);
-            // contractCall
-            stepUsed = steps.get(STEP_CONTRACT_CALL).add(stepUsed);
-            return stepUsed;
+            return StepType.CONTRACT_CALL.getSteps().add(stepUsed);
         }
 
-        // return used coin
         BigInteger transfer(KeyWallet from, Address to, BigInteger value, String msg) throws Exception {
             BigInteger prevTreasury = txHandler.getBalance(Constants.TREASURY_ADDRESS);
             BigInteger prevBal = txHandler.getBalance(from.getAddress());
-            Transaction transaction = TransactionBuilder.newBuilder()
+            TransactionBuilder.Builder builder = TransactionBuilder.newBuilder()
                     .nid(txHandler.getNetworkId())
                     .from(from.getAddress())
                     .to(to)
                     .value(value)
-                    .stepLimit(new BigInteger("100000"))
-                    .message(msg)
-                    .build();
+                    .stepLimit(Constants.DEFAULT_STEPS);
+            if (msg != null) {
+                builder.message(msg);
+            }
+            Transaction transaction = builder.build();
             this.expectedStep = calcTransactionStep(transaction);
             Bytes txHash = txHandler.invoke(from, transaction);
             assertSuccess(txHandler.getResult(txHash));
-
-            BigInteger bal = txHandler.getBalance(from.getAddress());
-            BigInteger treasury = txHandler.getBalance(Constants.TREASURY_ADDRESS);
-            treasuryFee = treasury.subtract(prevTreasury);
-            return prevBal.subtract(bal.add(value));
+            return getUsedFee(from, value, prevTreasury, prevBal);
         }
 
         BigInteger deploy(KeyWallet from, Address to, String contentPath, RpcObject params) throws Exception {
@@ -278,7 +292,7 @@ public class StepTest extends TestBase {
                     .nid(txHandler.getNetworkId())
                     .from(from.getAddress())
                     .to(to)
-                    .stepLimit(new BigInteger("10000000"))
+                    .stepLimit(new BigInteger("70000000", 16))
                     .deploy(Constants.CONTENT_TYPE_PYTHON, content)
                     .params(params)
                     .build();
@@ -286,23 +300,14 @@ public class StepTest extends TestBase {
             Bytes txHash = txHandler.invoke(from, transaction);
             TransactionResult result = txHandler.getResult(txHash);
             assertSuccess(result);
-
             try {
                 txHandler.acceptScoreIfAuditEnabled(txHash);
             } catch (TransactionFailureException ex) {
                 LOG.infoExiting();
                 throw ex;
             }
-
             this.scoreAddr = new Address(result.getScoreAddress());
-            BigInteger bal = txHandler.getBalance(from.getAddress());
-            BigInteger treasury = txHandler.getBalance(Constants.TREASURY_ADDRESS);
-            treasuryFee = treasury.subtract(prevTreasury);
-            return prevBal.subtract(bal);
-        }
-
-        BigInteger getSpentCoinByLastTx() {
-            return usedCoin;
+            return getUsedFee(from, BigInteger.ZERO, prevTreasury, prevBal);
         }
 
         BigInteger call(KeyWallet from, Address to, String method, RpcObject params, BigInteger stepLimit) throws Exception {
@@ -323,75 +328,87 @@ public class StepTest extends TestBase {
 
             Bytes txHash = txHandler.invoke(from, transaction);
             TransactionResult result = txHandler.getResult(txHash);
-
-            BigInteger bal = txHandler.getBalance(from.getAddress());
-            BigInteger treasury = txHandler.getBalance(Constants.TREASURY_ADDRESS);
-            treasuryFee = treasury.subtract(prevTreasury);
-            usedCoin = prevBal.subtract(bal);
-            if (Constants.STATUS_SUCCESS.compareTo(result.getStatus()) != 0) {
+            usedFee = getUsedFee(from, BigInteger.ZERO, prevTreasury, prevBal);
+            if (!Constants.STATUS_SUCCESS.equals(result.getStatus())) {
                 LOG.info("Expected " + result.getFailure());
                 throw new TransactionFailureException(result.getFailure());
             }
-            return usedCoin;
+            return usedFee;
+        }
+
+        private BigInteger getUsedFee(KeyWallet from, BigInteger value, BigInteger prevTreasury, BigInteger prevBal)
+                throws IOException {
+            BigInteger treasury = txHandler.getBalance(Constants.TREASURY_ADDRESS);
+            BigInteger bal = txHandler.getBalance(from.getAddress());
+            treasuryFee = treasury.subtract(prevTreasury);
+            return prevBal.subtract(bal.add(value));
         }
     }
 
     @Test
-    public void transferStep() throws Exception {
-        LOG.infoEntering("transferStep");
-        StepTransaction sTx = new StepTransaction();
-        LOG.infoEntering("transfer");
-        BigInteger usedCoin = sTx.transfer(testWallets[0], testWallets[1].getAddress(), BigInteger.valueOf(1), "HELLO");
+    public void testTransfer() throws Exception {
+        LOG.infoEntering("testTransfer");
+        StepTransaction stx = new StepTransaction();
+        LOG.infoEntering("transfer", "simple");
+        BigInteger usedFee = stx.transfer(testWallets[0], testWallets[1].getAddress(), ICX, null);
+        assertEquals(usedFee, StepType.DEFAULT.getSteps().multiply(STEP_PRICE));
+        assertEquals(stx.expectedFee(), usedFee);
+        assertEquals(stx.expectedFee(), stx.getTreasuryFee());
+        LOG.infoExiting();
+
+        LOG.infoEntering("transfer", "with message");
+        usedFee = stx.transfer(testWallets[0], testWallets[2].getAddress(), ICX.multiply(BigInteger.TWO), "Hello");
+        assertTrue(usedFee.compareTo(StepType.DEFAULT.getSteps().multiply(STEP_PRICE)) > 0);
+        assertEquals(stx.expectedFee(), usedFee);
+        assertEquals(stx.expectedFee(), stx.getTreasuryFee());
         LOG.infoExiting();
         LOG.infoExiting();
-        assertEquals(sTx.estimatedCoin(), usedCoin);
-        assertEquals(sTx.estimatedCoin(), sTx.treasuryFee);
     }
 
     @Test
-    public void deployStep() throws Exception {
-        LOG.infoEntering("deployStep");
+    public void testDeploy() throws Exception {
+        LOG.infoEntering("testDeploy");
+        LOG.infoEntering("deploy", "helloWorld");
         RpcObject params = new RpcObject.Builder()
                 .put("name", new RpcValue("HelloWorld"))
                 .build();
-        StepTransaction sTx = new StepTransaction();
-        LOG.infoEntering("deploy", "helloWorld");
-        BigInteger usedCoin = sTx.deploy(testWallets[0], null, HelloWorld.INSTALL_PATH, params);
+        StepTransaction stx = new StepTransaction();
+        BigInteger usedFee = stx.deploy(testWallets[0], null, HelloWorld.INSTALL_PATH, params);
         LOG.infoExiting();
-        assertEquals(sTx.estimatedCoin(), usedCoin);
+        assertEquals(stx.expectedFee(), usedFee);
         if (!chainScore.isAuditEnabled()) {
-            assertEquals(sTx.estimatedCoin(), sTx.treasuryFee);
+            assertEquals(stx.expectedFee(), stx.getTreasuryFee());
         }
 
-        Address scoreAddr = sTx.scoreAddr;
+        LOG.infoEntering("update", "helloWorld");
+        Address scoreAddr = stx.getScoreAddress();
         params = new RpcObject.Builder()
                 .put("name", new RpcValue("Updated HelloWorld"))
                 .build();
-        sTx = new StepTransaction();
-        LOG.infoEntering("update", "helloWorld");
-        usedCoin = sTx.deploy(testWallets[0], scoreAddr, HelloWorld.UPDATE_PATH, params);
+        stx = new StepTransaction();
+        usedFee = stx.deploy(testWallets[0], scoreAddr, HelloWorld.UPDATE_PATH, params);
         LOG.infoExiting();
-        assertEquals(sTx.estimatedCoin(), usedCoin);
+        assertEquals(stx.expectedFee(), usedFee);
         if (!chainScore.isAuditEnabled()) {
-            assertEquals(sTx.estimatedCoin(), sTx.treasuryFee);
+            assertEquals(stx.expectedFee(), stx.getTreasuryFee());
         }
         LOG.infoExiting();
     }
 
-    enum VarTest {
-        VAR_SET("setToVar", STEP_SET),
-        VAR_GET("getFromVar", STEP_GET),
-        VAR_REPLACE("setToVar", STEP_REPLACE),
-        VAR_EDGE("setToVar", STEP_REPLACE),
-        VAR_DELETE("delFromVar", STEP_DELETE);
+    private enum VarTest {
+        VAR_SET("setToVar", StepType.SET),
+        VAR_GET("getFromVar", StepType.GET),
+        VAR_REPLACE("setToVar", StepType.REPLACE),
+        VAR_EDGE("setToVar", StepType.REPLACE),
+        VAR_DELETE("delFromVar", StepType.DELETE);
 
         String[][] params;
         String method;
-        String op;
+        StepType stepType;
 
-        VarTest(String method, String op) {
+        VarTest(String method, StepType type) {
             this.method = method;
-            this.op = op;
+            this.stepType = type;
         }
 
         public RpcObject getParams(int type) {
@@ -411,65 +428,54 @@ public class StepTest extends TestBase {
     @Test
     public void testVarDB() throws Exception {
         LOG.infoEntering("testVarDB");
-        KeyWallet scoreOwner = testWallets[2];
-        KeyWallet caller = testWallets[3];
         LOG.infoEntering("deploy", "db_step");
-        Score dbScore = txHandler.deploy(scoreOwner, SCORE_DB_STEP_PATH, null);
+        Score dbScore = txHandler.deploy(testWallets[2], Score.getFilePath("db_step"), null);
         LOG.infoExiting();
 
+        KeyWallet caller = testWallets[3];
         Address scoreAddr = dbScore.getAddress();
-        StepTransaction sTx = new StepTransaction();
+        StepTransaction stx = new StepTransaction();
         String[][] params = {
                 {"v_int", "128"},
-                {"v_str", "LOOP"},
-                {"v_bytes", new Bytes("BYTES PARAM".getBytes()).toString()},
+                {"v_str", "tortoise"},
+                {"v_bytes", new Bytes("tortoise".getBytes()).toString()},
                 {"v_addr", testWallets[0].getAddress().toString()},
         };
-
-        String bp = new Bytes("BYTES PARAM".getBytes()).toString();
-        byte[] b = bp.substring("0x".length()).getBytes();
-        LOG.info("BYTES PARAM (" + new String(b) + ")");
-        LOG.info("BYTES PARAM bp (" + bp + ")");
-        LOG.info("BYTES PARAM bytearray (" + Arrays.toString("BYTES PARAM".getBytes()) + ")");
         BigInteger[] edgeLimit = new BigInteger[4];
 
         for (VarTest test : VarTest.values()) {
             if (test == VarTest.VAR_EDGE) {
-                test.params = new String[][]{
+                test.params = new String[][] {
                         {"v_int", "821"},
-                        {"v_str", "POOL"},
-                        {"v_bytes", new Bytes("PARAM BYTES".getBytes()).toString()},
+                        {"v_str", "esiotrot"},
+                        {"v_bytes", new Bytes("esiotrot".getBytes()).toString()},
                         {"v_addr", testWallets[1].getAddress().toString()},
                 };
-            }
-            else if (test != VarTest.VAR_DELETE && test != VarTest.VAR_GET) {
+            } else if (test == VarTest.VAR_SET || test == VarTest.VAR_REPLACE) {
                 test.params = params;
             }
-            for (int i = 0; i < 4; i++) {
+
+            for (int i = 0; i < params.length; i++) {
                 String val = params[i][1];
                 if (test == VarTest.VAR_EDGE) {
                     val = test.params[i][1];
                 }
                 LOG.infoEntering("invoke", "(" + test + ") method=" + test.method + ", param=" + params[i][0] + ", val=" + val);
-                BigInteger stepLimit = (test == VarTest.VAR_EDGE) ? edgeLimit[i].subtract(BigInteger.ONE) : BigInteger.valueOf(10000);
-                BigInteger usedCoin;
+                BigInteger stepLimit = (test == VarTest.VAR_EDGE) ? edgeLimit[i].subtract(BigInteger.ONE) : Constants.DEFAULT_STEPS;
+                BigInteger usedFee;
                 try {
-                    usedCoin = sTx.call(caller, scoreAddr, test.method, test.getParams(i), stepLimit);
+                    usedFee = stx.call(caller, scoreAddr, test.method, test.getParams(i), stepLimit);
                     assertNotEquals(test, VarTest.VAR_EDGE);
-                    sTx.addOperation(test.op, i, params[i][1]);
-                    // TYPE_INT, TYPE_STR, TYPE_BYTES, TYPE_ADDR
-                    assertEquals(sTx.estimatedCoin(), usedCoin);
-                    assertEquals(sTx.estimatedCoin(), sTx.treasuryFee);
+                    stx.addOperation(test.stepType, i, params[i][1]);
+                    assertEquals(stx.expectedFee(), usedFee);
+                    assertEquals(stx.expectedFee(), stx.getTreasuryFee());
                     if (test == VarTest.VAR_REPLACE) {
-                        edgeLimit[i] = sTx.estimatedCoin();
+                        edgeLimit[i] = stx.expectedStep();
                     }
-                }
-                catch (TransactionFailureException ex) {
+                } catch (TransactionFailureException ex) {
                     if (test != VarTest.VAR_EDGE) {
                         throw ex;
                     }
-                    usedCoin = sTx.getSpentCoinByLastTx();
-
                     RpcObject callParam = new RpcObject.Builder()
                             .put("type", new RpcValue(BigInteger.valueOf(i)))
                             .build();
@@ -481,9 +487,8 @@ public class StepTest extends TestBase {
                     } else if (i == 2) {
                         LOG.info("byte[] : " + Arrays.toString(dbVal.getBytes()));
                     }
-                    // TYPE_INT, TYPE_STR, TYPE_BYTES, TYPE_ADDR
-                    assertEquals(stepLimit, usedCoin);
-                    assertEquals(stepLimit, sTx.treasuryFee);
+                    assertEquals(STEP_PRICE.multiply(stepLimit), stx.getUsedFee());
+                    assertEquals(STEP_PRICE.multiply(stepLimit), stx.getTreasuryFee());
                 }
                 LOG.infoExiting();
             }
