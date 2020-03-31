@@ -103,7 +103,6 @@ public final class Context extends Object {
                                    Address targetAddress,
                                    String method,
                                    IObjectArray params) {
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_call);
         return blockchainRuntime.avm_call(value, stepLimit, targetAddress, method, params);
     }
 
