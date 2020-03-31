@@ -189,10 +189,14 @@ public class ServiceManager extends Proxy {
                     var stepLimit = new BigInteger(data.get(2).asRawValue().asByteArray());
                     String method = data.get(3).asStringValue().asString();
                     Object[] params = (Object[]) TypedObj.decodeAny(data.get(4));
+                    BigInteger stepsContractCall = BigInteger.valueOf(5000);
+                    stepLimit = stepLimit.subtract(stepsContractCall);
                     printf("RECV call to=%s value=%d stepLimit=%d method=%s params=%s%n",
                             to, value, stepLimit, method, params);
                     var res = invoke(to, value, stepLimit, method, params);
-                    sendMessage(EEProxy.MsgType.RESULT, res.getStatus(), res.getStepUsed(), TypedObj.encodeAny(res.getResult()));
+                    sendMessage(EEProxy.MsgType.RESULT, res.getStatus(),
+                            res.getStepUsed().add(stepsContractCall),
+                            TypedObj.encodeAny(res.getResult()));
                     break;
                 }
                 case EEProxy.MsgType.EVENT: {
