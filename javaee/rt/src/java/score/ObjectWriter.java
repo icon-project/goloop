@@ -16,6 +16,8 @@
 
 package score;
 
+import java.math.BigInteger;
+
 // charge per byte cost
 public interface ObjectWriter {
     void write(boolean v);
@@ -26,7 +28,7 @@ public interface ObjectWriter {
     void write(float v);
     void write(long v);
     void write(double v);
-    void write(s.java.math.BigInteger v);
+    void write(BigInteger v);
     void write(String v);
     void write(byte[] v);
     void write(Address v);
