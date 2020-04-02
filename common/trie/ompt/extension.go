@@ -97,7 +97,7 @@ func (n *extension) getChanged(keys []byte, next node) *extension {
 	return &extension{keys: keys, next: next}
 }
 
-func (n *extension) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, error) {
+func (n *extension) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, trie.Object, error) {
 	keys := nibs[depth:]
 	cnt, _ := compareKeys(keys, n.keys)
 
@@ -118,7 +118,7 @@ func (n *extension) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bo
 			idx := n.keys[0]
 			nb.children[idx] = n.getChanged(n.keys[1:], n.next)
 		}
-		return nb, true, nil
+		return nb, true, nil, nil
 	case cnt < len(n.keys):
 		br := &branch{}
 		idx := n.keys[cnt]
@@ -132,17 +132,17 @@ func (n *extension) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bo
 		} else {
 			br.children[keys[cnt]] = &leaf{keys: keys[cnt+1:], value: o}
 		}
-		return n.getChanged(n.keys[:cnt], br), true, nil
+		return n.getChanged(n.keys[:cnt], br), true, nil, nil
 	default:
-		next, dirty, err := n.next.set(m, nibs, depth+cnt, o)
+		next, dirty, old, err := n.next.set(m, nibs, depth+cnt, o)
 		if dirty {
-			return n.getChanged(n.keys, next), true, err
+			return n.getChanged(n.keys, next), true, old, err
 		} else {
 			if n.next != next {
 				n.next = next
 			}
 		}
-		return n, false, err
+		return n, false, old, err
 	}
 }
 
@@ -156,7 +156,7 @@ func (n *extension) getKeyPrepended(k []byte) *extension {
 	return n.getChanged(nk, n.next)
 }
 
-func (n *extension) delete(m *mpt, nibs []byte, depth int) (node, bool, error) {
+func (n *extension) delete(m *mpt, nibs []byte, depth int) (node, bool, trie.Object, error) {
 	keys := nibs[depth:]
 
 	n.mutex.Lock()
@@ -164,26 +164,26 @@ func (n *extension) delete(m *mpt, nibs []byte, depth int) (node, bool, error) {
 
 	cnt, _ := compareKeys(keys, n.keys)
 	if cnt < len(n.keys) {
-		return n, false, nil
+		return n, false, nil, nil
 	}
-	next, dirty, err := n.next.delete(m, nibs, depth+cnt)
+	next, dirty, old, err := n.next.delete(m, nibs, depth+cnt)
 	if dirty {
 		if next == nil {
-			return nil, true, err
+			return nil, true, old, err
 		}
 		switch nn := next.(type) {
 		case *extension:
-			return nn.getKeyPrepended(n.keys), true, err
+			return nn.getKeyPrepended(n.keys), true, old, err
 		case *leaf:
-			return nn.getKeyPrepended(n.keys), true, err
+			return nn.getKeyPrepended(n.keys), true, old, err
 		}
-		return n.getChanged(n.keys, next), true, err
+		return n.getChanged(n.keys, next), true, old, err
 	} else {
 		if n.next != next {
 			n.next = next
 		}
 	}
-	return n, false, nil
+	return n, false, nil, nil
 }
 
 func (n *extension) get(m *mpt, nibs []byte, depth int) (node, trie.Object, error) {

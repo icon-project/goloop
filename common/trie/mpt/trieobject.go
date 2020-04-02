@@ -67,6 +67,11 @@ func (m *mptForObj) Set(k []byte, v trie.Object) error {
 	return nil
 }
 
+func (m *mptForObj) Delete(k []byte) error {
+	_, err := m.mpt.Delete(k)
+	return err
+}
+
 func (m *mptForObj) GetSnapshot() trie.SnapshotForObject {
 	mptSnapshot := m.mpt.GetSnapshot()
 	mpt, ok := mptSnapshot.(*mpt)

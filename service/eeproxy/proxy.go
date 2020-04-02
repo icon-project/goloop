@@ -53,8 +53,8 @@ const (
 
 type CallContext interface {
 	GetValue(key []byte) ([]byte, error)
-	SetValue(key, value []byte) error
-	DeleteValue(key []byte) error
+	SetValue(key []byte, value []byte) ([]byte, error)
+	DeleteValue(key []byte) ([]byte, error)
 	GetInfo() *codec.TypedObj
 	GetBalance(addr module.Address) *big.Int
 	OnEvent(addr module.Address, indexed, data [][]byte)
@@ -131,9 +131,19 @@ type getValueMessage struct {
 }
 
 type setValueMessage struct {
-	Key      []byte `codec:"key"`
-	IsDelete bool
-	Value    []byte `codec:"value"`
+	Key   []byte `codec:"key"`
+	Flag  uint16
+	Value []byte `codec:"value"`
+}
+
+const (
+	flagDELETE uint16 = 1 << iota
+	flagOLDVALUE
+)
+
+type oldValueMessage struct {
+	HasOld  bool
+	OldSize int
 }
 
 type callMessage struct {
@@ -372,14 +382,28 @@ func (p *proxy) HandleMessage(c ipc.Connection, msg uint, data []byte) error {
 		if _, err := codec.MP.UnmarshalFromBytes(data, &m); err != nil {
 			return err
 		}
-		if m.IsDelete {
-			p.log.Tracef("Proxy[%p].Delete key=<%x>", p, m.Key)
-			p.log.TSystemf("DELETE key=<%x>", m.Key)
-			return p.frame.ctx.DeleteValue(m.Key)
+		var old []byte
+		var err error
+		if (m.Flag & flagDELETE) != 0 {
+			old, err = p.frame.ctx.DeleteValue(m.Key)
+			p.log.Tracef("Proxy[%p].Delete key=<%x> old=<%x>", p, m.Key, old)
+			p.log.TSystemf("DELETE start key=<%x> old=<%x>", m.Key, old)
 		} else {
-			p.log.Tracef("Proxy[%p].SetValue key=<%x> value=<%x>", p, m.Key, m.Value)
-			p.log.TSystemf("SETVALUE key=<%x> value=<%x>", m.Key, m.Value)
-			return p.frame.ctx.SetValue(m.Key, m.Value)
+			old, err = p.frame.ctx.SetValue(m.Key, m.Value)
+			p.log.Tracef("Proxy[%p].SetValue key=<%x> value=<%x> old=<%x>", p, m.Key, m.Value, old)
+			p.log.TSystemf("SETVALUE key=<%x> value=<%x> old=<%x>", m.Key, m.Value, old)
+		}
+		if err != nil {
+			return err
+		}
+		if (m.Flag & flagOLDVALUE) != 0 {
+			var ret = oldValueMessage{
+				HasOld:  old != nil,
+				OldSize: len(old),
+			}
+			return p.conn.Send(msgSETVALUE, &ret)
+		} else {
+			return nil
 		}
 
 	case msgCALL:

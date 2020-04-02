@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/icon-project/goloop/common/merkle"
 
 	"github.com/icon-project/goloop/common/db"
@@ -360,13 +362,13 @@ func TestMissingNode(t *testing.T) {
 	}
 
 	trie = manager.NewMutable(root)
-	err := trie.Set([]byte("120099"), []byte("zxcvzxcvzxcvzxcvzxcvzxcvzxcvzxcv"))
+	_, err := trie.Set([]byte("120099"), []byte("zxcvzxcvzxcvzxcvzxcvzxcvzxcvzxcv"))
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
 
 	trie = manager.NewMutable(root)
-	err = trie.Delete([]byte("123456"))
+	_, err = trie.Delete([]byte("123456"))
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -425,8 +427,8 @@ type testEntry struct {
 }
 
 type testSetter interface {
-	Set([]byte, []byte) error
-	Delete([]byte) error
+	Set([]byte, []byte) ([]byte, error)
+	Delete([]byte) ([]byte, error)
 }
 
 type testGetter interface {
@@ -438,9 +440,9 @@ func applyTestEntries(m testSetter, entries []testEntry, t *testing.T) bool {
 	for _, e := range entries {
 		var err error
 		if e.v != nil {
-			err = m.Set(e.k, e.v)
+			_, err = m.Set(e.k, e.v)
 		} else {
-			err = m.Delete(e.k)
+			_, err = m.Delete(e.k)
 		}
 		if err != nil {
 			ret = false
@@ -925,5 +927,119 @@ func TestImmutableEqual(t *testing.T) {
 	}
 	if !s1.Equal(s2, false) {
 		t.Errorf("Not same with another snapshot after no change")
+	}
+}
+
+type OldValue int
+
+const (
+	NoValue OldValue = -1
+)
+
+func OldValueOf(value []byte) OldValue {
+	if value == nil {
+		return NoValue
+	} else {
+		return OldValue(len(value))
+	}
+}
+
+func TestOldValue_MutableSetDelete(t *testing.T) {
+	type add struct {
+		key   string
+		value string
+		old   OldValue
+	}
+	type remove struct {
+		key string
+		old OldValue
+	}
+	args := []struct {
+		name    string
+		adds    []add
+		removes []remove
+	}{
+		{
+			"Case1",
+			[]add{
+				{"1", "v1", NoValue},
+				{"2", "v2", NoValue},
+				{"3", "", NoValue},
+				{"test1", "test1v1", NoValue},
+				{"test1", "test1v2", 7},
+				{"test2", "test2v1", NoValue},
+				{"test2", "test2v2", 7},
+				{"test", "value", NoValue},
+				{"test", "value1", 5},
+			},
+			[]remove{
+				{"test2", 7},
+				{"test1", 7},
+				{"test", 6},
+				{"3", 0},
+				{"4", NoValue},
+				{"1", 2},
+				{"2", 2},
+			},
+		},
+		{
+			"Case2",
+			[]add{
+				{"1", "v1", NoValue},
+				{"1", "v22", 2},
+				{"2", "v1", NoValue},
+				{"2", "v22", 2},
+				{"", "root1", NoValue},
+				{"", "root2", 5},
+			},
+			[]remove{
+				{"", 5},
+				{"1", 3},
+				{"2", 3},
+			},
+		},
+	}
+
+	for _, arg := range args {
+		t.Run(arg.name, func(t *testing.T) {
+			m := New(db.NewMapDB())
+			mutable := m.NewMutable(nil)
+			for _, item := range arg.adds {
+				ov, err := mutable.Set([]byte(item.key), []byte(item.value))
+				assert.NoError(t, err)
+				assert.Equal(t, item.old, OldValueOf(ov), item)
+
+				ov, err = mutable.Set([]byte(item.key), []byte(item.value))
+				assert.NoError(t, err)
+				assert.Equal(t, OldValueOf([]byte(item.value)), OldValueOf(ov), item)
+			}
+
+			for _, item := range arg.removes {
+				ov, err := mutable.Delete([]byte(item.key))
+				assert.NoError(t, err)
+				assert.Equal(t, item.old, OldValueOf(ov))
+			}
+
+			mutable = m.NewMutable(nil)
+			for _, item := range arg.adds {
+				ov, err := mutable.Set([]byte(item.key), []byte(item.value))
+				assert.NoError(t, err)
+				assert.Equal(t, item.old, OldValueOf(ov))
+			}
+
+			ss := mutable.GetSnapshot()
+			for _, item := range arg.removes {
+				ov, err := mutable.Delete([]byte(item.key))
+				assert.NoError(t, err)
+				assert.Equal(t, item.old, OldValueOf(ov))
+			}
+
+			mutable.Reset(ss)
+			for _, item := range arg.removes {
+				ov, err := mutable.Delete([]byte(item.key))
+				assert.NoError(t, err)
+				assert.Equal(t, item.old, OldValueOf(ov))
+			}
+		})
 	}
 }

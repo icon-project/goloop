@@ -18,12 +18,12 @@ func (s *TestStore) GetValue(k []byte) ([]byte, error) {
 	return v, err
 }
 
-func (s *TestStore) SetValue(k, v []byte) error {
+func (s *TestStore) SetValue(k []byte, v []byte) ([]byte, error) {
 	log.Printf("TestStore.SetValue(<%x>,<% x>)", k, v)
 	return s.mutable.Set(k, v)
 }
 
-func (s *TestStore) DeleteValue(k []byte) error {
+func (s *TestStore) DeleteValue(k []byte) ([]byte, error) {
 	log.Printf("TestStore.DeleteValue(<%x>)", k)
 	return s.mutable.Delete(k)
 }

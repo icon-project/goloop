@@ -98,7 +98,7 @@ func (n *leaf) getChanged(keys []byte, o trie.Object) *leaf {
 	return &leaf{keys: keys, value: o}
 }
 
-func (n *leaf) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, error) {
+func (n *leaf) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, trie.Object, error) {
 	keys := nibs[depth:]
 	cnt, match := compareKeys(keys, n.keys)
 
@@ -122,7 +122,7 @@ func (n *leaf) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, e
 			idx := n.keys[0]
 			br.children[idx] = n.getChanged(n.keys[1:], n.value)
 		}
-		return br, true, nil
+		return br, true, nil, nil
 	case cnt < len(n.keys):
 		br := &branch{}
 		ext := &extension{keys: keys[:cnt], next: br}
@@ -133,18 +133,19 @@ func (n *leaf) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, e
 		}
 		idx := n.keys[cnt]
 		br.children[idx] = n.getChanged(n.keys[cnt+1:], n.value)
-		return ext, true, nil
+		return ext, true, nil, nil
 	case cnt < len(keys):
 		br := &branch{}
 		ext := &extension{keys: n.keys, next: br}
 		br.value = n.value
 		br.children[keys[cnt]] = &leaf{keys: keys[cnt+1:], value: o}
-		return ext, true, nil
+		return ext, true, nil, nil
 	default:
+		old := n.value
 		if n.value.Equal(o) {
-			return n, false, nil
+			return n, false, old, nil
 		}
-		return n.getChanged(n.keys, o), true, nil
+		return n.getChanged(n.keys, o), true, old, nil
 	}
 }
 
@@ -158,12 +159,12 @@ func (n *leaf) getKeyPrepended(k []byte) *leaf {
 	return n.getChanged(nk, n.value)
 }
 
-func (n *leaf) delete(m *mpt, nibs []byte, depth int) (node, bool, error) {
+func (n *leaf) delete(m *mpt, nibs []byte, depth int) (node, bool, trie.Object, error) {
 	_, match := compareKeys(nibs[depth:], n.keys)
 	if match {
-		return nil, true, nil
+		return nil, true, n.value, nil
 	}
-	return n, false, nil
+	return n, false, nil, nil
 }
 
 func (n *leaf) get(m *mpt, nibs []byte, depth int) (node, trie.Object, error) {

@@ -62,8 +62,8 @@ type AccountState interface {
 	IsContract() bool
 	GetValue(k []byte) ([]byte, error)
 	SetBalance(v *big.Int)
-	SetValue(k, v []byte) error
-	DeleteValue(k []byte) error
+	SetValue(k, v []byte) ([]byte, error)
+	DeleteValue(k []byte) ([]byte, error)
 	GetSnapshot() AccountSnapshot
 	Reset(snapshot AccountSnapshot) error
 	Clear()
@@ -845,7 +845,7 @@ func (s *accountStateImpl) GetValue(k []byte) ([]byte, error) {
 	return s.store.Get(k)
 }
 
-func (s *accountStateImpl) SetValue(k, v []byte) error {
+func (s *accountStateImpl) SetValue(k, v []byte) ([]byte, error) {
 	if s.store == nil {
 		s.store = trie_manager.NewMutable(s.database, nil)
 		s.attachCacheForStore()
@@ -853,9 +853,9 @@ func (s *accountStateImpl) SetValue(k, v []byte) error {
 	return s.store.Set(k, v)
 }
 
-func (s *accountStateImpl) DeleteValue(k []byte) error {
+func (s *accountStateImpl) DeleteValue(k []byte) ([]byte, error) {
 	if s.store == nil {
-		return nil
+		return nil, nil
 	}
 	return s.store.Delete(k)
 }
@@ -932,12 +932,12 @@ func (a *accountROState) SetBalance(v *big.Int) {
 	log.Panic("accountROState().SetBalance() is invoked")
 }
 
-func (a *accountROState) SetValue(k, v []byte) error {
-	return errors.InvalidStateError.New("ReadOnlyState")
+func (a *accountROState) SetValue(k, v []byte) ([]byte, error) {
+	return nil, errors.InvalidStateError.New("ReadOnlyState")
 }
 
-func (a *accountROState) DeleteValue(k []byte) error {
-	return errors.InvalidStateError.New("ReadOnlyState")
+func (a *accountROState) DeleteValue(k []byte) ([]byte, error) {
+	return nil, errors.InvalidStateError.New("ReadOnlyState")
 }
 
 func (a *accountROState) GetSnapshot() AccountSnapshot {

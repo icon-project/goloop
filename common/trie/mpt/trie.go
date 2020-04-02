@@ -195,9 +195,9 @@ func (m *mpt) set(n node, k []byte, v trie.Object) (node, nodeState) {
 Set inserts key and value into requestPool.
 Hash, GetProof, Flush insert keys and values in requestPool into trie
 */
-func (m *mpt) Set(k, v []byte) error {
+func (m *mpt) Set(k, v []byte) ([]byte, error) {
 	if k == nil || v == nil {
-		return common.ErrIllegalArgument
+		return nil, common.ErrIllegalArgument
 	}
 	k = bytesToNibbles(k)
 	m.mutex.Lock()
@@ -208,7 +208,7 @@ func (m *mpt) Set(k, v []byte) error {
 		panic("P")
 	}
 
-	return nil
+	return nil, nil
 }
 
 func (m *mpt) Equal(immutable trie.Immutable, exact bool) bool {
@@ -241,13 +241,13 @@ func (m *mpt) Equal(immutable trie.Immutable, exact bool) bool {
 	return result
 }
 
-func (m *mpt) Delete(k []byte) error {
+func (m *mpt) Delete(k []byte) ([]byte, error) {
 	var err error
 	k = bytesToNibbles(k)
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	m.source.requestPool[string(k)] = nil
-	return err
+	return nil, err
 }
 
 func (m *mpt) GetSnapshot() trie.Snapshot {

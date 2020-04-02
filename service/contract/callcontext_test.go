@@ -205,11 +205,11 @@ func (h *asyncHandler) GetValue(key []byte) ([]byte, error) {
 	panic("implement me")
 }
 
-func (h *asyncHandler) SetValue(key, value []byte) error {
+func (h *asyncHandler) SetValue(key []byte, value []byte) ([]byte, error) {
 	panic("implement me")
 }
 
-func (h *asyncHandler) DeleteValue(key []byte) error {
+func (h *asyncHandler) DeleteValue(key []byte) ([]byte, error) {
 	panic("implement me")
 }
 

@@ -26,8 +26,8 @@ type (
 		flush(m *mpt, nibs []byte) error
 		toString() string
 		dump()
-		set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, error)
-		delete(m *mpt, nibs []byte, depth int) (node, bool, error)
+		set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, trie.Object, error)
+		delete(m *mpt, nibs []byte, depth int) (node, bool, trie.Object, error)
 		get(m *mpt, nibs []byte, depth int) (node, trie.Object, error)
 		realize(m *mpt) (node, error)
 		traverse(m *mpt, nibs string, v nodeScheduler) (string, trie.Object, error)

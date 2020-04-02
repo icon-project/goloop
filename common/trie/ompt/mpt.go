@@ -53,19 +53,19 @@ func (m *mpt) get(n node, nibs []byte, depth int) (node, trie.Object, error) {
 	return n.get(m, nibs, depth)
 }
 
-func (m *mpt) set(n node, nibs []byte, depth int, o trie.Object) (node, bool, error) {
+func (m *mpt) set(n node, nibs []byte, depth int, o trie.Object) (node, bool, trie.Object, error) {
 	if n == nil {
 		return &leaf{
 			keys:  nibs[depth:],
 			value: o,
-		}, true, nil
+		}, true, nil, nil
 	}
 	return n.set(m, nibs, depth, o)
 }
 
-func (m *mpt) delete(n node, nibs []byte, depth int) (node, bool, error) {
+func (m *mpt) delete(n node, nibs []byte, depth int) (node, bool, trie.Object, error) {
 	if n == nil {
-		return nil, false, nil
+		return nil, false, nil, nil
 	}
 	return n.delete(m, nibs, depth)
 }
@@ -194,7 +194,7 @@ func (m *mpt) GetSnapshot() trie.SnapshotForObject {
 	}
 }
 
-func (m *mpt) Set(k []byte, o trie.Object) error {
+func (m *mpt) doSet(k []byte, o trie.Object) (trie.Object, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	if debugPrint {
@@ -203,15 +203,25 @@ func (m *mpt) Set(k []byte, o trie.Object) error {
 	if logStatics {
 		atomic.AddInt32(&m.s.set, 1)
 	}
-	root, _, err := m.set(m.root, bytesToNibs(k), 0, o)
+	root, _, old, err := m.set(m.root, bytesToNibs(k), 0, o)
 	m.root = root
 	if debugDump && root != nil {
 		root.dump()
 	}
+	return old, err
+}
+
+func (m *mpt) Set(k []byte, o trie.Object) error {
+	_, err := m.doSet(k, o)
 	return err
 }
 
 func (m *mpt) Delete(k []byte) error {
+	_, err := m.doDelete(k)
+	return err
+}
+
+func (m *mpt) doDelete(k []byte) (trie.Object, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	if debugPrint {
@@ -220,7 +230,7 @@ func (m *mpt) Delete(k []byte) error {
 	if logStatics {
 		atomic.AddInt32(&m.s.set, 1)
 	}
-	root, dirty, err := m.delete(m.root, bytesToNibs(k), 0)
+	root, dirty, old, err := m.delete(m.root, bytesToNibs(k), 0)
 	if dirty {
 		m.root = root
 		if debugDump && root != nil {
@@ -231,7 +241,7 @@ func (m *mpt) Delete(k []byte) error {
 			log.Printf("mpt%p.Delete(%x) FAILs", m, k)
 		}
 	}
-	return err
+	return old, err
 }
 
 func (m *mpt) Reset(s trie.ImmutableForObject) {

@@ -21,9 +21,23 @@ func (m *mptForBytes) Get(k []byte) ([]byte, error) {
 	return obj.Bytes(), nil
 }
 
-func (m *mptForBytes) Set(k, v []byte) error {
+func (m *mptForBytes) Set(k, v []byte) ([]byte, error) {
 	obj := bytesObject(v)
-	return m.mpt.Set(k, obj)
+	old, err := m.mpt.doSet(k, obj)
+	if old == nil {
+		return nil, err
+	}
+	ob := old.(bytesObject)
+	return ob.Bytes(), err
+}
+
+func (m *mptForBytes) Delete(k []byte) ([]byte, error) {
+	old, err := m.mpt.doDelete(k)
+	if old == nil {
+		return nil, err
+	}
+	ob := old.(bytesObject)
+	return ob.Bytes(), err
 }
 
 func (m *mptForBytes) RootHash() []byte {

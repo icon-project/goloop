@@ -64,6 +64,11 @@ public class EEProxy extends Proxy {
         public static final int SETOBJGRAPH = 14;
     }
 
+    public static class SetValueFlag {
+        public static final int DELETE = 1;
+        public static final int OLDVALUE = 2;
+    }
+
     public static class Info {
         public static final String BLOCK_TIMESTAMP = "B.timestamp";
         public static final String BLOCK_HEIGHT = "B.height";
@@ -148,9 +153,9 @@ public class EEProxy extends Proxy {
 
     public void setValue(byte[] key, byte[] value) throws IOException {
         if (value == null) {
-            sendMessage(MsgType.SETVALUE, key, true, null);
+            sendMessage(MsgType.SETVALUE, key, SetValueFlag.DELETE, null);
         } else {
-            sendMessage(MsgType.SETVALUE, key, false, value);
+            sendMessage(MsgType.SETVALUE, key, 0, value);
         }
     }
 

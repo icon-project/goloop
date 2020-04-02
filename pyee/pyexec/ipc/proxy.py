@@ -20,6 +20,9 @@ from .client import Client
 
 TAG = 'Proxy'
 
+# Set this value to non-zero value for actual
+MAX_SET_VALUE_HANDLERS = 5
+
 
 # Convert python int to bytes of golang big.Int.
 def int_to_bytes(v: int) -> bytes:
@@ -95,6 +98,14 @@ class Log(object):
 class Status(object):
     SUCCESS = 0
     SYSTEM_FAILURE = 1
+
+
+class SetValueFlag(object):
+    DELETE = 1
+    OLDVALUE = 2
+
+
+SetHandler = Callable[[bool, int], None]
 
 
 class Info(object):
@@ -221,6 +232,7 @@ class ServiceManagerProxy:
         self.__codec = None
         self.__readonly_stack = []
         self.__readonly = False
+        self.__set_handlers: List[SetHandler] = []
 
     def connect(self, addr):
         self.__client.connect(addr)
@@ -258,7 +270,7 @@ class ServiceManagerProxy:
         else:
             return self.__codec.decode(tag, val)
 
-    def encode(self, o: Any) -> bytes:
+    def encode(self, o: Any) -> Union[bytes, None]:
         if o is None:
             return None
         if isinstance(o, str):
@@ -406,8 +418,28 @@ class ServiceManagerProxy:
             elif msg == Message.RESULT:
                 return data[0], self.decode(TypeTag.INT, data[1]), self.decode_any(data[2])
 
+    def handle_set_values(self):
+        self.__handle_set_values(len(self.__set_handlers))
+
+    def __handle_set_values(self, cnt: int):
+        for i in range(0, cnt):
+            handler = self.__set_handlers.pop(0)
+            msg, data = self.__client.receive()
+            if msg != Message.SETVALUE:
+                raise Exception(f'InvalidMsg({msg}) exp={Message.SETVALUE}')
+            if handler is not None:
+                if data[0]:
+                    handler(True, self.decode(TypeTag.INT, data[1]))
+                else:
+                    handler(False, 0)
+
+    def send_and_receive(self, msg: int, data: bytes) -> Tuple[int, Any]:
+        self.__client.send(msg, data)
+        self.handle_set_values()
+        return self.__client.receive()
+
     def get_value(self, key: bytes) -> Union[None, bytes]:
-        msg, value = self.__client.send_and_receive(Message.GETVALUE, key)
+        msg, value = self.send_and_receive(Message.GETVALUE, key)
         if msg != Message.GETVALUE:
             raise Exception(f'InvalidMsg({msg}) exp={Message.GETVALUE}')
         if value[0]:
@@ -415,22 +447,30 @@ class ServiceManagerProxy:
         else:
             return None
 
-    def set_value(self, key: bytes, value: Union[bytes, None]):
+    def set_value(self, key: bytes, value: Union[bytes, None], cb: Union[SetHandler, None] = None):
         if self.__readonly:
             raise Exception('NoPermissionToWrite')
+        flag = 0
+        if cb is not None:
+            flag |= SetValueFlag.OLDVALUE
         if value is None:
-            self.__client.send(Message.SETVALUE, [key, True, b''])
-        else:
-            self.__client.send(Message.SETVALUE, [key, False, value])
+            flag |= SetValueFlag.DELETE
+        self.__client.send(Message.SETVALUE, [key, flag, value])
+
+        if cb is not None:
+            self.__set_handlers.append(cb)
+            to_remove = len(self.__set_handlers) - MAX_SET_VALUE_HANDLERS
+            if len(self.__set_handlers) > MAX_SET_VALUE_HANDLERS:
+                self.__handle_set_values(len(self.__set_handlers) - MAX_SET_VALUE_HANDLERS)
 
     def get_info(self) -> Any:
-        msg, value = self.__client.send_and_receive(Message.GETINFO, b'')
+        msg, value = self.send_and_receive(Message.GETINFO, b'')
         if msg != Message.GETINFO:
             raise Exception(f'InvalidMsg({msg}) exp={Message.GETINFO}')
         return self.decode_any(value)
 
     def get_balance(self, addr: 'Address') -> int:
-        msg, value = self.__client.send_and_receive(Message.GETBALANCE, self.encode(addr))
+        msg, value = self.send_and_receive(Message.GETBALANCE, self.encode(addr))
         if msg != Message.GETBALANCE:
             raise Exception(f'InvalidMsg({msg}) exp={Message.GETBALANCE}')
         return self.decode(TypeTag.INT, value)

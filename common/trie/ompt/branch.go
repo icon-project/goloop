@@ -127,60 +127,64 @@ func (n *branch) getChangable() *branch {
 	return &branch{children: n.children, value: n.value}
 }
 
-func (n *branch) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, error) {
+func (n *branch) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, trie.Object, error) {
 	keys := nibs[depth:]
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
 
 	if len(keys) == 0 {
+		old := n.value
 		if n.value == nil || !n.value.Equal(o) {
 			br := n.getChangable()
 			br.value = o
-			return br, true, nil
+			return br, true, old, nil
 		}
-		return n, false, nil
+		return n, false, old, nil
 	}
 	idx := keys[0]
 	child := n.children[idx]
-	nchild, dirty, err := m.set(child, nibs, depth+1, o)
+	nchild, dirty, old, err := m.set(child, nibs, depth+1, o)
 	if dirty {
 		br := n.getChangable()
 		br.children[idx] = nchild
-		return br, true, err
+		return br, true, old, err
 	}
 	if child != nchild {
 		n.children[idx] = nchild
 	}
-	return n, false, err
+	return n, false, old, err
 }
 
-func (n *branch) delete(m *mpt, nibs []byte, depth int) (node, bool, error) {
+func (n *branch) delete(m *mpt, nibs []byte, depth int) (node, bool, trie.Object, error) {
 	keys := nibs[depth:]
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
 
 	var br *branch
+	var ov trie.Object
 	if len(keys) == 0 {
 		if n.value == nil {
-			return n, false, nil
+			return n, false, nil, nil
 		}
+		ov = n.value
 		br = n.getChangable()
 		br.value = nil
 	} else {
 		idx := keys[0]
 		child := n.children[idx]
 		if child == nil {
-			return n, false, nil
+			return n, false, nil, nil
 		}
-		nchild, dirty, err := child.delete(m, nibs, depth+1)
+		nchild, dirty, old, err := child.delete(m, nibs, depth+1)
 		if !dirty {
 			if nchild != child {
 				n.children[idx] = nchild
 			}
-			return n, false, err
+			return n, false, nil, err
 		}
 		br = n.getChangable()
 		br.children[idx] = nchild
+		ov = old
 	}
 
 	var idx = 16
@@ -198,28 +202,28 @@ func (n *branch) delete(m *mpt, nibs []byte, depth int) (node, bool, error) {
 			if br.value == nil {
 				log.Panicln("Value is nil")
 			}
-			return &leaf{value: br.value}, true, nil
+			return &leaf{value: br.value}, true, ov, nil
 		}
 		if br.value == nil {
 			alive := br.children[idx]
 			alive, err := alive.realize(m)
 			if err != nil {
-				return n, false, err
+				return n, false, nil, err
 			}
 			switch nn := alive.(type) {
 			case *extension:
-				return nn.getKeyPrepended([]byte{byte(idx)}), true, nil
+				return nn.getKeyPrepended([]byte{byte(idx)}), true, ov, nil
 			case *branch:
 				return &extension{
 					keys: []byte{byte(idx)},
 					next: alive,
-				}, true, nil
+				}, true, ov, nil
 			case *leaf:
-				return nn.getKeyPrepended([]byte{byte(idx)}), true, nil
+				return nn.getKeyPrepended([]byte{byte(idx)}), true, ov, nil
 			}
 		}
 	}
-	return br, true, nil
+	return br, true, ov, nil
 }
 
 func (n *branch) get(m *mpt, nibs []byte, depth int) (node, trie.Object, error) {

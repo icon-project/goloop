@@ -15,8 +15,8 @@ const (
 
 type StateStore interface {
 	GetValue(key []byte) ([]byte, error)
-	SetValue(key []byte, value []byte) error
-	DeleteValue(key []byte) error
+	SetValue(key []byte, value []byte) ([]byte, error)
+	DeleteValue(key []byte) ([]byte, error)
 }
 
 type ReadOnlyStore interface {
@@ -48,12 +48,12 @@ type readonlyStateStore struct {
 	ReadOnlyStore
 }
 
-func (*readonlyStateStore) SetValue(key []byte, value []byte) error {
-	return errors.InvalidStateError.New("SetValue() on ReadOnlyStore")
+func (*readonlyStateStore) SetValue(key []byte, value []byte) ([]byte, error) {
+	return nil, errors.InvalidStateError.New("SetValue() on ReadOnlyStore")
 }
 
-func (*readonlyStateStore) DeleteValue(key []byte) error {
-	return errors.InvalidStateError.New("DeleteValue() on ReadOnlyStore")
+func (*readonlyStateStore) DeleteValue(key []byte) ([]byte, error) {
+	return nil, errors.InvalidStateError.New("DeleteValue() on ReadOnlyStore")
 }
 
 func NewStateStoreWith(s ReadOnlyStore) StateStore {
@@ -63,6 +63,6 @@ func NewStateStoreWith(s ReadOnlyStore) StateStore {
 	return &readonlyStateStore{s}
 }
 
-func must(e error) error {
+func must(old []byte, e error) error {
 	return errors.WithCode(e, errors.CriticalIOError)
 }

@@ -192,7 +192,7 @@ func (b *partSetBuffer) PartSet() PartSet {
 		mt := trie_manager.NewMutable(db.NewNullDB(), nil)
 		for i, p := range b.ps.parts {
 			key, _ := codec.MarshalToBytes(uint16(i))
-			_ = mt.Set(key, p.data)
+			_, _ = mt.Set(key, p.data)
 		}
 		ss := mt.GetSnapshot()
 		for i, p := range b.ps.parts {

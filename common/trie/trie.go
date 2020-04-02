@@ -36,8 +36,8 @@ type (
 
 	Mutable interface {
 		Get(k []byte) ([]byte, error)
-		Set(k, v []byte) error
-		Delete(k []byte) error
+		Set(k, v []byte) ([]byte, error)
+		Delete(k []byte) ([]byte, error)
 		GetSnapshot() Snapshot
 		Reset(d Immutable) error
 		ClearCache()

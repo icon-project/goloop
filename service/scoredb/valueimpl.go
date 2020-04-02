@@ -145,7 +145,7 @@ func (e *valueImpl) Bool() bool {
 
 func (e *valueImpl) Set(v interface{}) error {
 	bs := ToBytes(v)
-	return must(e.SetBytes(bs))
+	return e.SetBytes(bs)
 }
 
 type bytesEntry []byte

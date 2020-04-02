@@ -62,12 +62,11 @@ func (a *ArrayDB) Pop() Value {
 		return nil
 	}
 	khash := a.keyHashForIndex(idx - 1)
-	bs, err := a.store.GetValue(khash)
-	if err != nil {
-		log.Panicf("Fail to get last value")
-	}
-	if err := a.store.DeleteValue(khash); err != nil {
+	var bs []byte
+	if ov, err := a.store.DeleteValue(khash); err != nil {
 		log.Panicf("Fail to delete last element")
+	} else {
+		bs = ov
 	}
 	if idx > 1 {
 		if err := a.size.Set(idx - 1); err != nil {

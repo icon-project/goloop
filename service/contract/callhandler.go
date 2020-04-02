@@ -307,20 +307,20 @@ func (h *CallHandler) GetValue(key []byte) ([]byte, error) {
 	}
 }
 
-func (h *CallHandler) SetValue(key, value []byte) error {
+func (h *CallHandler) SetValue(key []byte, value []byte) ([]byte, error) {
 	if h.as != nil {
 		return h.as.SetValue(key, value)
 	} else {
-		return errors.CriticalUnknownError.Errorf(
+		return nil, errors.CriticalUnknownError.Errorf(
 			"SetValue: No Account(%s) exists", h.to)
 	}
 }
 
-func (h *CallHandler) DeleteValue(key []byte) error {
+func (h *CallHandler) DeleteValue(key []byte) ([]byte, error) {
 	if h.as != nil {
 		return h.as.DeleteValue(key)
 	} else {
-		return errors.CriticalUnknownError.Errorf(
+		return nil, errors.CriticalUnknownError.Errorf(
 			"DeleteValue: No Account(%s) exists", h.to)
 	}
 }

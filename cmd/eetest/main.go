@@ -47,8 +47,12 @@ func (cc *callContext) GetValue(key []byte) ([]byte, error) {
 	return ret, err
 }
 
-func (cc *callContext) SetValue(key, value []byte) error {
-	err := cc.bk.Set(key, value)
+func (cc *callContext) SetValue(key []byte, value []byte) ([]byte, error) {
+	old, err := cc.bk.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	err = cc.bk.Set(key, value)
 	if err != nil {
 		fmt.Printf("CallContext.SetValue([% x],[% x]) -> %+v\n",
 			key, value, err)
@@ -56,11 +60,15 @@ func (cc *callContext) SetValue(key, value []byte) error {
 		fmt.Printf("CallContext.SetValue([% x],[% x]) -> SUCCESS\n",
 			key, value)
 	}
-	return err
+	return old, err
 }
 
-func (cc *callContext) DeleteValue(key []byte) error {
-	return cc.bk.Delete(key)
+func (cc *callContext) DeleteValue(key []byte) ([]byte, error) {
+	old, err := cc.bk.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	return old, cc.bk.Delete(key)
 }
 
 func (cc *callContext) GetBalance(addr module.Address) *big.Int {

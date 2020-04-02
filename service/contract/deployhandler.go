@@ -381,14 +381,14 @@ func (h *callGetAPIHandler) GetValue(key []byte) ([]byte, error) {
 	return nil, nil
 }
 
-func (h *callGetAPIHandler) SetValue(key, value []byte) error {
+func (h *callGetAPIHandler) SetValue(key []byte, value []byte) ([]byte, error) {
 	h.log.Panicln("Unexpected SetValue() call")
-	return nil
+	return nil, nil
 }
 
-func (h *callGetAPIHandler) DeleteValue(key []byte) error {
+func (h *callGetAPIHandler) DeleteValue(key []byte) ([]byte, error) {
 	h.log.Panicln("Unexpected DeleteValue() call")
-	return nil
+	return nil, nil
 }
 
 func (h *callGetAPIHandler) GetInfo() *codec.TypedObj {

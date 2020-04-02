@@ -62,18 +62,18 @@ func (h *hash) get(m *mpt, nibs []byte, depth int) (node, trie.Object, error) {
 	return n.get(m, nibs, depth)
 }
 
-func (h *hash) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, error) {
+func (h *hash) set(m *mpt, nibs []byte, depth int, o trie.Object) (node, bool, trie.Object, error) {
 	n, err := h.realizeWithCache(m, nibs[:depth])
 	if err != nil || n == nil {
-		return h, false, err
+		return h, false, nil, err
 	}
 	return n.set(m, nibs, depth, o)
 }
 
-func (h *hash) delete(m *mpt, nibs []byte, depth int) (node, bool, error) {
+func (h *hash) delete(m *mpt, nibs []byte, depth int) (node, bool, trie.Object, error) {
 	n, err := h.realizeWithCache(m, nibs[:depth])
 	if err != nil || n == nil {
-		return h, false, err
+		return h, false, nil, err
 	}
 	return n.delete(m, nibs, depth)
 }
