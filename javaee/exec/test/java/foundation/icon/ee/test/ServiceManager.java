@@ -171,14 +171,22 @@ public class ServiceManager extends Proxy {
                 case EEProxy.MsgType.SETVALUE: {
                     var data = msg.value.asArrayValue();
                     var key = data.get(0).asRawValue().asByteArray();
-                    var isDelete = data.get(1).asBooleanValue().getBoolean();
-                    if (isDelete) {
-                        current.storage.remove(new ByteArrayWrapper(key));
+                    var flag = data.get(1).asIntegerValue().toInt();
+                    byte[] old;
+                    if ((flag & EEProxy.SetValueFlag.DELETE) != 0) {
+                        old = current.storage.remove(new ByteArrayWrapper(key));
                         printf("RECV setValue %s isDelete=%b%n", key, true);
                     } else {
                         var value = data.get(2).asRawValue().asByteArray();
-                        current.storage.put(new ByteArrayWrapper(key), value);
+                        old = current.storage.put(new ByteArrayWrapper(key), value);
                         printf("RECV setValue %s isDelete=%b %s%n", key, false, value);
+                    }
+                    if ((flag & EEProxy.SetValueFlag.OLDVALUE) != 0) {
+                        if (old == null) {
+                            sendMessage(EEProxy.MsgType.SETVALUE, false, 0);
+                        } else {
+                            sendMessage(EEProxy.MsgType.SETVALUE, true, old.length);
+                        }
                     }
                     break;
                 }
