@@ -16,7 +16,7 @@ MAIN_CLASS=$2
 TOPDIR=$(dirname $(realpath $0))
 PARENTDIR=$TOPDIR/..
 
-CLASSPATH=$PARENTDIR/tooling/build/libs/tooling.jar:$PARENTDIR/rt/build/libs/rt.jar
+CLASSPATH=$PARENTDIR/tooling/build/libs/tooling.jar:$PARENTDIR/rt/build/libs/scoreapi.jar
 
 # Determine the Java command to use to start the JVM
 if [[ -n "$JAVA_HOME" ]] && [[ -x "$JAVA_HOME/bin/javac" ]]; then

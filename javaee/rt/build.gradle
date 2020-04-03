@@ -17,6 +17,14 @@ dependencies {
     )
 }
 
+task scoreApiJar(type: Jar) {
+    archiveBaseName = 'scoreapi'
+    from sourceSets.main.output
+    include 'score/*.class'
+    shouldRunAfter classes
+}
+check.dependsOn scoreApiJar
+
 test {
     useJUnitPlatform()
 }
