@@ -14,7 +14,6 @@ import i.IInstrumentation;
 import i.InstrumentationHelpers;
 import i.InternedClasses;
 import i.JvmError;
-import org.aion.avm.RuntimeMethodFeeSchedule;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.avm.core.util.Helpers;
@@ -106,20 +105,8 @@ public class DAppExecutor {
                 dapp.setSerializedLength(postCallGraphData.length);
             }
 
-            long refund = 0;
             long energyUsed = tx.getLimit() - threadInstrumentation.energyLeft();
-            //refund is only calculated for the external transaction
-            if (task.getTransactionStackDepth() == 0) {
-                // refund is calculated for the transaction if it set the storage value from nonzero to zero
-                long resetStorageRefund = 0L;
-
-                if (task.getResetStorageKeyCount() > 0) {
-                    resetStorageRefund = task.getResetStorageKeyCount() * RuntimeMethodFeeSchedule.BlockchainRuntime_avm_deleteStorage_refund;
-                }
-                // refund is capped at half the energy used for the whole transaction
-                refund = Math.min(energyUsed / 2, resetStorageRefund);
-            }
-            result = new Result(Status.Success, energyUsed - refund, ret);
+            result = new Result(Status.Success, energyUsed, ret);
             if (prevState != null) {
                 prevState.getSaveItems().putAll(thisState.getSaveItems());
                 prevState.getSaveItems().put(dappAddress, new ReentrantDAppStack.SaveItem(dapp, runtimeState));

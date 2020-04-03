@@ -6,12 +6,7 @@ import i.IInstrumentation;
 import i.RuntimeAssertionError;
 import org.aion.avm.core.IExternalState;
 import org.aion.avm.core.ReentrantDAppStack;
-import org.aion.avm.core.types.Pair;
-import org.aion.avm.core.util.ByteArrayWrapper;
 import org.aion.avm.core.util.Helpers;
-
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * A TransactionTask represent a complete transaction chain started from an external transaction. It represents the logical ordering of the block to be passed to the concurrent executor.
@@ -30,7 +25,6 @@ public class TransactionTask implements Comparable<TransactionTask> {
     private StringBuffer outBuffer;
     private Address origin;
     private int depth;
-    private Set<Pair<Address, ByteArrayWrapper>> resetStorageKeys;
 
     public TransactionTask(IExternalState parentKernel, Transaction tx, int index, Address origin) {
         this.parentKernel = parentKernel;
@@ -42,7 +36,6 @@ public class TransactionTask implements Comparable<TransactionTask> {
         this.outBuffer = new StringBuffer();
         this.origin = origin;
         this.depth = 0;
-        this.resetStorageKeys = new HashSet<>();
     }
 
     public void startNewTransaction() {
@@ -148,14 +141,6 @@ public class TransactionTask implements Comparable<TransactionTask> {
 
     public void decrementTransactionStackDepth() {
         depth--;
-    }
-
-    public void addResetStorageKey(Address address, byte[] key) {
-        resetStorageKeys.add(Pair.of(address, new ByteArrayWrapper(key)));
-    }
-
-    public int getResetStorageKeyCount() {
-        return resetStorageKeys.size();
     }
 
     public void outputFlush() {

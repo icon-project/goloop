@@ -1,9 +1,9 @@
 package org.aion.avm.core;
 
 import foundation.icon.ee.types.Address;
+import foundation.icon.ee.types.CodedException;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
-import foundation.icon.ee.types.CodedException;
 import foundation.icon.ee.types.Transaction;
 import i.AvmException;
 import i.CallDepthLimitExceededException;
@@ -17,7 +17,6 @@ import i.JvmError;
 import i.OutOfStackException;
 import i.PackageConstants;
 import i.RuntimeAssertionError;
-import org.aion.avm.RuntimeMethodFeeSchedule;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.arraywrapping.ArraysRequiringAnalysisClassVisitor;
 import org.aion.avm.core.arraywrapping.ArraysWithKnownTypesClassVisitor;
@@ -130,7 +129,7 @@ public class DAppCreator {
 
         for (String name : safeClasses.keySet()) {
             // Note that transformClasses requires that the input class names by the .-style names.
-            RuntimeAssertionError.assertTrue(-1 == name.indexOf("/"));
+            RuntimeAssertionError.assertTrue(!name.contains("/"));
 
             // We need to parse with EXPAND_FRAMES, since the StackWatcherClassAdapter uses a MethodNode to parse methods.
             // We also add SKIP_DEBUG since we aren't using debug data and skipping it removes extraneous labels which would otherwise
@@ -178,7 +177,6 @@ public class DAppCreator {
                     .addWriter(new TypeAwareClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS, classHierarchy, classRenamer))
                     .build()
                     .runAndGetBytecode();
-
             processedClasses.put(name, bytecode);
         }
 
@@ -186,14 +184,14 @@ public class DAppCreator {
     }
 
     public static Result create(IExternalState externalState,
-                                                     TransactionTask task,
-                                                     Address senderAddress,
-                                                     Address dappAddress,
-                                                     Transaction tx,
-                                                     long energyPreused,
-                                                     boolean preserveDebuggability,
-                                                     boolean verboseErrors,
-                                                     boolean enablePrintln) {
+                                TransactionTask task,
+                                Address senderAddress,
+                                Address dappAddress,
+                                Transaction tx,
+                                long energyPreused,
+                                boolean preserveDebuggability,
+                                boolean verboseErrors,
+                                boolean enablePrintln) {
         // We hold onto the runtimeSetup that we are pushing onto the stack in here so that we can pop it back off in the finally block.
         IRuntimeSetup runtimeSetup = null;
         Result result = null;
@@ -277,7 +275,7 @@ public class DAppCreator {
             externalState.setTransformedCode(dappAddress, immortalDappJar);
 
             // Force the classes in the dapp to initialize so that the <clinit> is run (since we already saved the version without).
-            result = runClinitAndBillSender(verboseErrors, dapp, threadInstrumentation, externalState, task, dappAddress, tx);
+            result = runClinitAndBillSender(verboseErrors, dapp, threadInstrumentation, externalState, dappAddress, tx);
         } catch (CodedException e) {
             if (verboseErrors) {
                 System.err.println("DApp deployment to REVERT due to uncaught EXCEPTION: \"" + e.getMessage() + "\"");
@@ -350,7 +348,7 @@ public class DAppCreator {
 
         for (String name : inputClasses.keySet()) {
             // Note that transformClasses requires that the input class names by the .-style names.
-            RuntimeAssertionError.assertTrue(-1 == name.indexOf("/"));
+            RuntimeAssertionError.assertTrue(!name.contains("/"));
 
             int parsingOptions = preserveDebuggability ? 0: ClassReader.SKIP_DEBUG;
             try {
@@ -417,7 +415,6 @@ public class DAppCreator {
      * @param dapp The dapp to run.
      * @param threadInstrumentation The thread instrumentation.
      * @param externalState The state of the world.
-     * @param task The transaction task.
      * @param dappAddress The address of the contract.
      * @param tx The transaction.
      * @return the result of initializing and billing the sender.
@@ -426,12 +423,8 @@ public class DAppCreator {
                                                  LoadedDApp dapp,
                                                  IInstrumentation threadInstrumentation,
                                                  IExternalState externalState,
-                                                 TransactionTask task,
                                                  Address dappAddress,
                                                  Transaction tx) throws Throwable {
-        long energyLimit = tx.getLimit();
-        Result resultToReturn;
-
         try {
             dapp.forceInitializeAllClasses();
             dapp.initMainInstance(tx.getParams());
@@ -442,31 +435,15 @@ public class DAppCreator {
             threadInstrumentation.chargeEnergy(StorageFees.WRITE_PRICE_PER_BYTE * rawGraphData.length);
             externalState.putObjectGraph(dappAddress, rawGraphData);
 
-            long refund = 0;
-            long energyUsed = energyLimit - threadInstrumentation.energyLeft();
-            if (task.getTransactionStackDepth() == 0) {
-                // refund is calculated for the transaction if it set the storage value from nonzero to zero
-                long resetStorageRefund = 0L;
-
-                if (task.getResetStorageKeyCount() > 0) {
-                    resetStorageRefund = task.getResetStorageKeyCount() * RuntimeMethodFeeSchedule.BlockchainRuntime_avm_deleteStorage_refund;
-                }
-                // refund is capped at half the energy used for the whole transaction
-                refund = Math.min(energyUsed / 2, resetStorageRefund);
-            }
-            // Return data of a CREATE transaction is the new DApp address.
-            resultToReturn = new Result(Status.Success, energyUsed - refund, null);
-
+            long energyUsed = tx.getLimit() - threadInstrumentation.energyLeft();
+            return new Result(Status.Success, energyUsed, null);
         } catch (CodedException e) {
             if (verboseErrors) {
                 System.err.println("DApp deployment failed due to stack overflow EXCEPTION: \"" + e.getMessage() + "\"");
                 e.printStackTrace(System.err);
             }
-            resultToReturn = new Result(e.getCode(),
-                    energyLimit - threadInstrumentation.energyLeft(),
-                    e.toString());
+            long energyUsed = tx.getLimit() - threadInstrumentation.energyLeft();
+            return new Result(e.getCode(), energyUsed, e.toString());
         }
-
-        return resultToReturn;
     }
 }
