@@ -8,6 +8,7 @@ package org.aion.avm.core;
 import a.ByteArray;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Status;
+import foundation.icon.ee.types.StepCost;
 import foundation.icon.ee.types.Transaction;
 import foundation.icon.ee.util.Crypto;
 import foundation.icon.ee.util.Shadower;
@@ -314,6 +315,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                 }
             }
         }
+        int len = 0;
         byte[][] bindexed = new byte[indexed.length()][];
         for (int i=0; i<bindexed.length; i++) {
             Value v = (Value)indexed.get(i);
@@ -322,6 +324,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
             } else {
                 bindexed[i] = v.avm_asByteArray().getUnderlying();
             }
+            len += bindexed[i].length;
         }
         byte[][] bdata = new byte[data.length()][];
         for (int i=0; i<bdata.length; i++) {
@@ -331,7 +334,13 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
             } else {
                 bdata[i] = v.avm_asByteArray().getUnderlying();
             }
+            len += bdata[i].length;
         }
+        IExternalState es = IInstrumentation.getCurrentFrameContext()
+                .getExternalState();
+        int evLogBase = es.getStepCost(StepCost.EVENT_LOG_BASE);
+        int evLog = es.getStepCost(StepCost.EVENT_LOG);
+        IInstrumentation.charge(evLogBase + evLog * len);
         externalState.log(bindexed, bdata);
     }
 }

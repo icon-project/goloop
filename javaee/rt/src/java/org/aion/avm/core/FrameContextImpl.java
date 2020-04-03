@@ -7,13 +7,19 @@ import i.InternedClasses;
 import org.aion.avm.core.persistence.LoadedDApp;
 
 public class FrameContextImpl implements FrameContext {
+    private IExternalState externalState;
     private IDBStorage dbs;
 
-    FrameContextImpl(IExternalState ctx) {
-        this.dbs = new DBStorage(ctx);
+    FrameContextImpl(IExternalState externalState) {
+        this.externalState = externalState;
+        this.dbs = new DBStorage(externalState);
     }
 
     public IDBStorage getDBStorage() {
         return dbs;
+    }
+
+    public IExternalState getExternalState() {
+        return externalState;
     }
 }

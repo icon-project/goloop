@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.Map;
 
 public class ExternalState implements IExternalState {
     private static final Logger logger = LoggerFactory.getLogger(ExternalState.class);
@@ -38,14 +39,16 @@ public class ExternalState implements IExternalState {
     private final Address owner;
     private byte[] codeCache;
     private ObjectGraph graphCache;
+    private Map<String, BigInteger> stepCosts;
 
-    ExternalState(EEProxy proxy, int option, byte[] codeBytes, BigInteger blockHeight, BigInteger blockTimestamp, Address owner) {
+    ExternalState(EEProxy proxy, int option, byte[] codeBytes, BigInteger blockHeight, BigInteger blockTimestamp, Address owner, Map<String, BigInteger> stepCosts) {
         this.proxy = proxy;
         this.option = option;
         this.codeCache = codeBytes;
         this.blockHeight = blockHeight.longValue();
         this.blockTimestamp = blockTimestamp.longValue();
         this.owner = owner; // owner cannot be null
+        this.stepCosts = stepCosts;
     }
 
     @Override
@@ -217,5 +220,13 @@ public class ExternalState implements IExternalState {
 
     public int getOption() {
         return option;
+    }
+
+    public boolean hasStepCost(String key) {
+        return stepCosts.containsKey(key);
+    }
+
+    public int getStepCost(String key) {
+        return stepCosts.getOrDefault(key, BigInteger.ZERO).intValue();
     }
 }

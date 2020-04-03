@@ -167,4 +167,8 @@ public interface IExternalState {
     default boolean isTrace() {
         return (getOption() & OPTION_TRACE) != 0;
     }
+
+    boolean hasStepCost(String key);
+
+    int getStepCost(String key);
 }

@@ -21,6 +21,10 @@ public interface IInstrumentation {
         return attachedThreadInstrumentation.get().energyLeft();
     }
 
+    static FrameContext getCurrentFrameContext() {
+        return attachedThreadInstrumentation.get().getFrameContext();
+    }
+
     void enterNewFrame(ClassLoader contractLoader, long energyLeft, int nextHashCode, InternedClasses classWrappers, FrameContext frameContext);
     void exitCurrentFrame();
 

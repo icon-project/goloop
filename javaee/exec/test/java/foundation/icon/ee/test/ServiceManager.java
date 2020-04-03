@@ -8,6 +8,7 @@ import foundation.icon.ee.ipc.TypedObj;
 import foundation.icon.ee.score.FileReader;
 import foundation.icon.ee.tooling.deploy.OptimizedJarBuilder;
 import foundation.icon.ee.types.Status;
+import foundation.icon.ee.types.StepCost;
 import foundation.icon.ee.util.Crypto;
 import org.aion.avm.core.util.ByteArrayWrapper;
 import org.aion.avm.utilities.JarBuilder;
@@ -42,6 +43,10 @@ public class ServiceManager extends Proxy {
         info.put(Info.TX_TIMESTAMP, BigInteger.valueOf(1000000));
         info.put(Info.TX_NONCE, BigInteger.valueOf(2));
         info.put(Info.CONTRACT_OWNER, origin);
+        Map<String, BigInteger> stepCosts = new HashMap<>();
+        stepCosts.put(StepCost.EVENT_LOG, BigInteger.valueOf(100));
+        stepCosts.put(StepCost.EVENT_LOG_BASE, BigInteger.valueOf(1000));
+        info.put(Info.STEP_COSTS, stepCosts);
         current = state.getAccount(origin);
     }
 

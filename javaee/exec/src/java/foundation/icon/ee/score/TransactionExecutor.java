@@ -140,13 +140,15 @@ public class TransactionExecutor {
         long txTimestamp = ((BigInteger) info.get(EEProxy.Info.TX_TIMESTAMP)).longValue();
         Address owner = (Address) info.get(EEProxy.Info.CONTRACT_OWNER);
         Address origin = (Address) info.get(EEProxy.Info.TX_FROM);
+        Map<String, BigInteger> stepCosts = (Map<String, BigInteger>) info.get(EEProxy.Info.STEP_COSTS);
 
         byte[] codeBytes = fileReader.readFile(code);
         int option = 0;
         if (isQuery) {
             option |= IExternalState.OPTION_QUERY;
         }
-        ExternalState kernel = new ExternalState(proxy, option, codeBytes, blockHeight, blockTimestamp, owner);
+        ExternalState kernel = new ExternalState(proxy, option, codeBytes,
+                blockHeight, blockTimestamp, owner, stepCosts);
         Transaction tx = new Transaction(from, to, value, nonce, limit.longValue(), method, params,
                                          txHash, txIndex, txTimestamp, isInstall);
         BigInteger stepUsed = BigInteger.ZERO;

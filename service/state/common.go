@@ -24,6 +24,7 @@ const (
 	StepTypeInput            = "input"
 	StepTypeEventLog         = "eventLog"
 	StepTypeApiCall          = "apiCall"
+	StepTypeEventLogBase     = "eventLogBase"
 )
 
 const (
@@ -50,4 +51,5 @@ var AllStepTypes = []string{
 	StepTypeInput,
 	StepTypeEventLog,
 	StepTypeApiCall,
+	StepTypeEventLogBase,
 }
