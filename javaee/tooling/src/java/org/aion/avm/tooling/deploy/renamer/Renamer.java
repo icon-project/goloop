@@ -52,7 +52,7 @@ public class Renamer {
         byte[] mainClassBytes = classNameByteCodeMap.get(newMainClassName);
         classNameByteCodeMap.remove(newMainClassName, mainClassBytes);
 
-        return JarBuilder.buildJarForExplicitClassNamesAndBytecode(Utilities.internalNameToFulllyQualifiedName(newMainClassName), mainClassBytes, classNameByteCodeMap);
+        return JarBuilder.buildJarForExplicitClassNamesAndBytecode(Utilities.internalNameToFullyQualifiedName(newMainClassName), mainClassBytes, classNameByteCodeMap);
     }
 
     public static Map<String, ClassNode> sortBasedOnInnerClassLevel(Map<String, ClassNode> classMap) {

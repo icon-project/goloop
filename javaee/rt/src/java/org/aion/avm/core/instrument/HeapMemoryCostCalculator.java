@@ -205,7 +205,7 @@ public class HeapMemoryCostCalculator {
         for (Node<String, ClassInfo> rootClass : rootClasses) {
             // 'rootClassObjectSizes' map already has the root class object size.
             // copy rootClass size to classHeapSizeMap
-            final String slashName = Utilities.fulllyQualifiedNameToInternalName(rootClass.getId());
+            final String slashName = Utilities.fullyQualifiedNameToInternalName(rootClass.getId());
             rootHeapSizeMap.put(slashName, rootClassObjectSizes.get(slashName));
         }
         final var visitor = new Forest.Visitor<String, ClassInfo>() {

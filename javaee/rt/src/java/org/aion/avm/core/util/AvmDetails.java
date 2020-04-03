@@ -55,7 +55,7 @@ public class AvmDetails {
         jclClassNames.replaceAll(s -> PackageConstants.kShadowSlashPrefix + s);
 
         for (String className : jclClassNames) {
-            shadowClasses.add(NodeEnvironment.singleton.loadSharedClass(Utilities.internalNameToFulllyQualifiedName(className)));
+            shadowClasses.add(NodeEnvironment.singleton.loadSharedClass(Utilities.internalNameToFullyQualifiedName(className)));
         }
 
         return shadowClasses;
@@ -65,7 +65,7 @@ public class AvmDetails {
         if (isShadowClass(className)) {
             return className.substring(PackageConstants.kShadowDotPrefix.length());
         } else if (isArrayWrapperClass(className)) {
-            return ArrayClassNameMapper.getOriginalNameFromWrapper(Utilities.fulllyQualifiedNameToInternalName(className));
+            return ArrayClassNameMapper.getOriginalNameFromWrapper(Utilities.fullyQualifiedNameToInternalName(className));
         } else if (isSupportedInternalType(className)) {
             return "java.lang.Object";
         } else {

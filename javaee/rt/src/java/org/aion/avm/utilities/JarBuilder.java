@@ -187,7 +187,7 @@ public class JarBuilder {
     private void loadClassAndAnonymous(Class<?> clazz) throws IOException {
         // Start with the fully-qualified class name, since we use that for addressing it.
         String className = clazz.getName();
-        byte[] bytes = Utilities.loadRequiredResourceAsBytes(Utilities.fulllyQualifiedNameToInternalName(className) + ".class");
+        byte[] bytes = Utilities.loadRequiredResourceAsBytes(Utilities.fullyQualifiedNameToInternalName(className) + ".class");
         if (null == bytes) {
             throw new AssertionError("Class bytes could not be found");
         }
@@ -196,19 +196,19 @@ public class JarBuilder {
         // Load any inner classes which might exist (these are just decimal suffixes, starting at 1.
         int i = 1;
         String innerName = className + "$" + Integer.toString(i);
-        byte[] innerBytes = Utilities.loadRequiredResourceAsBytes(Utilities.fulllyQualifiedNameToInternalName(innerName) + ".class");
+        byte[] innerBytes = Utilities.loadRequiredResourceAsBytes(Utilities.fullyQualifiedNameToInternalName(innerName) + ".class");
         while (null != innerBytes) {
             saveClassToStream(innerName, innerBytes);
 
             i += 1;
             innerName = className + "$" + Integer.toString(i);
-            innerBytes = Utilities.loadRequiredResourceAsBytes(Utilities.fulllyQualifiedNameToInternalName(innerName) + ".class");
+            innerBytes = Utilities.loadRequiredResourceAsBytes(Utilities.fullyQualifiedNameToInternalName(innerName) + ".class");
         }
     }
 
     private void saveClassToStream(String qualifiedClassName, byte[] bytes) throws IOException {
         // Convert this fully-qualified name into an internal name, since that is the serialized name it needs.
-        String internalName = Utilities.fulllyQualifiedNameToInternalName(qualifiedClassName);
+        String internalName = Utilities.fullyQualifiedNameToInternalName(qualifiedClassName);
         if (this.entriesInJar.contains(internalName)) {
             // This is a static usage error.
             throw new AssertionError("Added class to JAR twice");

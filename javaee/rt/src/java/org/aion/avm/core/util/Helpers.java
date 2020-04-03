@@ -117,7 +117,7 @@ public class Helpers {
 
     public static byte[] loadDefaultHelperBytecode() {
         String helperName = Helper.class.getName();
-        String helperResourcePath = Utilities.fulllyQualifiedNameToInternalName(helperName) + ".class";
+        String helperResourcePath = Utilities.fullyQualifiedNameToInternalName(helperName) + ".class";
         return Utilities.loadRequiredResourceAsBytes(helperResourcePath);
     }
 

@@ -18,21 +18,15 @@ public class Utilities {
 
     /**
      * Converts a fully qualified class name into it's JVM internal form.
-     *
-     * @param fullyQualifiedName
-     * @return
      */
-    public static String fulllyQualifiedNameToInternalName(String fullyQualifiedName) {
+    public static String fullyQualifiedNameToInternalName(String fullyQualifiedName) {
         return fullyQualifiedName.replaceAll("\\.", "/");
     }
 
     /**
      * Converts a JVM internal class name into a fully qualified name.
-     *
-     * @param internalName
-     * @return
      */
-    public static String internalNameToFulllyQualifiedName(String internalName) {
+    public static String internalNameToFullyQualifiedName(String internalName) {
         return internalName.replaceAll("/", ".");
     }
 
@@ -72,7 +66,7 @@ public class Utilities {
 
                 String internalClassName = name.replaceAll(".class$", "");
                 if (nameStyle.equals(NameStyle.DOT_NAME)) {
-                    internalClassName = Utilities.internalNameToFulllyQualifiedName(internalClassName);
+                    internalClassName = Utilities.internalNameToFullyQualifiedName(internalClassName);
                 }
                 int readSize = jarReader.readNBytes(tempReadingBuffer, 0, tempReadingBuffer.length);
 
@@ -93,7 +87,7 @@ public class Utilities {
         if (null != manifest && manifest.getMainAttributes() != null) {
             String mainClassName = manifest.getMainAttributes().getValue(Attributes.Name.MAIN_CLASS);
             if (nameStyle.equals(NameStyle.SLASH_NAME)) {
-                mainClassName = Utilities.fulllyQualifiedNameToInternalName(mainClassName);
+                mainClassName = Utilities.fullyQualifiedNameToInternalName(mainClassName);
             }
             return mainClassName;
         } else {

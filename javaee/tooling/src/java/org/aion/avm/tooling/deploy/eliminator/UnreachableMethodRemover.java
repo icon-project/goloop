@@ -32,11 +32,11 @@ public class UnreachableMethodRemover {
             ClassUnreachabilityVisitor classVisitor = new ClassUnreachabilityVisitor(classWriter,
                 classInfoMap.get(entry.getKey()).getMethodMap());
             reader.accept(classVisitor, 0);
-            outputClassMap.put(Utilities.internalNameToFulllyQualifiedName(entry.getKey()), classWriter.toByteArray());
+            outputClassMap.put(Utilities.internalNameToFullyQualifiedName(entry.getKey()), classWriter.toByteArray());
         }
 
-        byte[] mainClassBytes = outputClassMap.remove(Utilities.internalNameToFulllyQualifiedName(mainClassName));
-        return JarBuilder.buildJarForExplicitClassNamesAndBytecode(Utilities.internalNameToFulllyQualifiedName(mainClassName), mainClassBytes, outputClassMap);
+        byte[] mainClassBytes = outputClassMap.remove(Utilities.internalNameToFullyQualifiedName(mainClassName));
+        return JarBuilder.buildJarForExplicitClassNamesAndBytecode(Utilities.internalNameToFullyQualifiedName(mainClassName), mainClassBytes, outputClassMap);
     }
 
 }

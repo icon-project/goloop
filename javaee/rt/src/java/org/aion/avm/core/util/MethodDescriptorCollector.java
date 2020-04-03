@@ -35,7 +35,7 @@ public class MethodDescriptorCollector {
         jclClassList.replaceAll(s -> PackageConstants.kShadowSlashPrefix + s);
 
         for (String className : jclClassList) {
-            Class<?> c = classLoader.loadClass(Utilities.internalNameToFulllyQualifiedName(className), true);
+            Class<?> c = classLoader.loadClass(Utilities.internalNameToFullyQualifiedName(className), true);
 
             // constructor methods
             // note that private constructors are not rejected at this level
@@ -136,7 +136,7 @@ public class MethodDescriptorCollector {
         } else if (!clazz.isPrimitive()) {
             String className = clazz.getName();
             if (className.startsWith(PackageConstants.kArrayWrapperDotPrefix)) {
-                builder.append(ArrayNameMapper.getOriginalNameOf(Utilities.fulllyQualifiedNameToInternalName(className)));
+                builder.append(ArrayNameMapper.getOriginalNameOf(Utilities.fullyQualifiedNameToInternalName(className)));
             } else if ((PackageConstants.kInternalDotPrefix + "IObject").equals(className)) {
                 // Explicitly map IObject to shadow Object, since this method is only building the descriptor for shadow class method parameter types.
                 builder.append(DescriptorParser.OBJECT_START);
@@ -144,7 +144,7 @@ public class MethodDescriptorCollector {
                 builder.append(DescriptorParser.OBJECT_END);
             } else {
                 builder.append(DescriptorParser.OBJECT_START);
-                builder.append(Utilities.fulllyQualifiedNameToInternalName(className));
+                builder.append(Utilities.fullyQualifiedNameToInternalName(className));
                 builder.append(DescriptorParser.OBJECT_END);
             }
         } else if (Byte.TYPE == clazz) {

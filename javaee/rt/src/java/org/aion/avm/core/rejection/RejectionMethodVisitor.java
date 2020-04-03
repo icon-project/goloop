@@ -185,7 +185,7 @@ public class RejectionMethodVisitor extends MethodVisitor {
     private boolean checkJclMethodExists(String owner, String name, String descriptor) {
         boolean didMatch = false;
         // Map the owner, name, and descriptor into the shadow space, look up the corresponding class, reflect, and see if this method exists.
-        String mappedOwnerSlashName = Utilities.internalNameToFulllyQualifiedName(this.namespaceMapper.mapType(owner, this.preserveDebuggability));
+        String mappedOwnerSlashName = Utilities.internalNameToFullyQualifiedName(this.namespaceMapper.mapType(owner, this.preserveDebuggability));
         String mappedMethodName = NamespaceMapper.mapMethodName(name);
         String mappedDescriptor = this.namespaceMapper.mapDescriptor(descriptor, this.preserveDebuggability);
 

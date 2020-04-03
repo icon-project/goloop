@@ -72,7 +72,7 @@ public class ConstantClassBuilder {
         String signature = null;
         // We implement no interfaces.
         String[] interfaces = new String[0];
-        out.visit(classVersion, classAccess, className, signature, Utilities.fulllyQualifiedNameToInternalName(Object.class.getName()), interfaces);
+        out.visit(classVersion, classAccess, className, signature, Utilities.fullyQualifiedNameToInternalName(Object.class.getName()), interfaces);
         
         // Generate the static fields - not final since we need to load these from storage.
         int fieldAccess = Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC;

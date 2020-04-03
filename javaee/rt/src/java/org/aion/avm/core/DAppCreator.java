@@ -71,7 +71,6 @@ public class DAppCreator {
      *
      * @param classHierarchy     the class hierarchy
      * @return The look-up map of the sizes of user objects
-     * Class name is in the JVM internal name format, see {@link org.aion.avm.core.util.Helpers#fulllyQualifiedNameToInternalName(String)}
      */
     public static Map<String, Integer> computeUserObjectSizes(Forest<String, ClassInfo> classHierarchy)
     {
@@ -120,7 +119,7 @@ public class DAppCreator {
         // We also want to expose this type to the class writer so it can compute common superclasses.
         GeneratedClassConsumer generatedClassesSink = (superClassSlashName, classSlashName, bytecode) -> {
             // Note that the processed classes are expected to use .-style names.
-            String classDotName = Utilities.internalNameToFulllyQualifiedName(classSlashName);
+            String classDotName = Utilities.internalNameToFullyQualifiedName(classSlashName);
             processedClasses.put(classDotName, bytecode);
         };
         Map<String, Integer> postRenameObjectSizes = computeAllPostRenameObjectSizes(oldPreRenameForest, preserveDebuggability);

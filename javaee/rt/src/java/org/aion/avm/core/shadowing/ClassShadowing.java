@@ -50,7 +50,7 @@ public class ClassShadowing extends ClassToolchain.ToolChainClassVisitor {
         Stream<String> replacedInterfaces = Stream.of(interfaces).map((oldName) -> replacer.replaceType(oldName, true));
         // If this is an interface, we need to add our "root interface" so that we have a unification point between the interface and our shadow Object.
         if (isInterface) {
-            String rootInterfaceName = Utilities.fulllyQualifiedNameToInternalName(IObject.class.getName());
+            String rootInterfaceName = Utilities.fullyQualifiedNameToInternalName(IObject.class.getName());
             replacedInterfaces = Stream.concat(replacedInterfaces, Stream.of(rootInterfaceName));
         }
 

@@ -22,7 +22,7 @@ import org.objectweb.asm.Opcodes;
  * methods, but this is a later consideration.
  */
 public class LazyLoadingMethodVisitor extends MethodVisitor {
-    private static final String SHADOW_OBJECT_NAME = Utilities.fulllyQualifiedNameToInternalName(s.java.lang.Object.class.getName());
+    private static final String SHADOW_OBJECT_NAME = Utilities.fullyQualifiedNameToInternalName(s.java.lang.Object.class.getName());
     private static final String LAZY_LOAD_NAME = "lazyLoad";
     private static final String LAZY_LOAD_DESCRIPTOR = "()V";
 

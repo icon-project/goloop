@@ -69,8 +69,8 @@ public class PreRenameClassAccessRules {
 
 
     public PreRenameClassAccessRules(Set<String> preRenameUserDefinedDotClassesOnly, Set<String> preRenameUserDefinedDotClassesAndInterfaces) {
-        this.userDefinedSlashClassesOnly = preRenameUserDefinedDotClassesOnly.stream().map((dotStyle) -> Utilities.fulllyQualifiedNameToInternalName(dotStyle)).collect(Collectors.toSet());
-        this.userDefinedSlashClassesAndInterfaces = preRenameUserDefinedDotClassesAndInterfaces.stream().map((dotStyle) -> Utilities.fulllyQualifiedNameToInternalName(dotStyle)).collect(Collectors.toSet());
+        this.userDefinedSlashClassesOnly = preRenameUserDefinedDotClassesOnly.stream().map((dotStyle) -> Utilities.fullyQualifiedNameToInternalName(dotStyle)).collect(Collectors.toSet());
+        this.userDefinedSlashClassesAndInterfaces = preRenameUserDefinedDotClassesAndInterfaces.stream().map((dotStyle) -> Utilities.fullyQualifiedNameToInternalName(dotStyle)).collect(Collectors.toSet());
     }
 
     // This is the hard-coded list of classes, from the JCL, which we allow the user code to subclass.
@@ -80,7 +80,7 @@ public class PreRenameClassAccessRules {
             , Object.class.getName()
             , RuntimeException.class.getName()
             , Throwable.class.getName()
-    ).stream().map((dotStyle) -> Utilities.fulllyQualifiedNameToInternalName(dotStyle)).collect(Collectors.toSet());
+    ).stream().map((dotStyle) -> Utilities.fullyQualifiedNameToInternalName(dotStyle)).collect(Collectors.toSet());
 
     private final Set<String> userDefinedSlashClassesOnly;
     private final Set<String> userDefinedSlashClassesAndInterfaces;

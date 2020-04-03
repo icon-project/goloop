@@ -31,15 +31,15 @@ public class ClassInfoVisitor extends ClassVisitor {
 
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
-        String parentQualifiedName = (superName == null) ? null : Utilities.internalNameToFulllyQualifiedName(superName);
+        String parentQualifiedName = (superName == null) ? null : Utilities.internalNameToFullyQualifiedName(superName);
         String[] interfaceQualifiedNames = toQualifiedNames(interfaces);
         boolean isInterface = Opcodes.ACC_INTERFACE == (access & Opcodes.ACC_INTERFACE);
 
         // Mark the class info correctly depending on whether or not this is renamed.
         if (this.isRenamed) {
-            this.classInfo = ClassInformation.postRenameInfoFor(isInterface, Utilities.internalNameToFulllyQualifiedName(name), parentQualifiedName, interfaceQualifiedNames);
+            this.classInfo = ClassInformation.postRenameInfoFor(isInterface, Utilities.internalNameToFullyQualifiedName(name), parentQualifiedName, interfaceQualifiedNames);
         } else {
-            this.classInfo = ClassInformation.preRenameInfoFor(isInterface, Utilities.internalNameToFulllyQualifiedName(name), parentQualifiedName, interfaceQualifiedNames);
+            this.classInfo = ClassInformation.preRenameInfoFor(isInterface, Utilities.internalNameToFullyQualifiedName(name), parentQualifiedName, interfaceQualifiedNames);
         }
     }
 
@@ -71,7 +71,7 @@ public class ClassInfoVisitor extends ClassVisitor {
 
         String[] qualifiedNames = new String[classNames.length];
         for (int i = 0; i < classNames.length; i++) {
-            qualifiedNames[i] = Utilities.internalNameToFulllyQualifiedName(classNames[i]);
+            qualifiedNames[i] = Utilities.internalNameToFullyQualifiedName(classNames[i]);
         }
         return qualifiedNames;
     }
