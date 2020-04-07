@@ -51,14 +51,6 @@ public class TestInstrumentation implements IInstrumentation {
         return 1;
     }
     @Override
-    public void setAbortState() {
-        throw RuntimeAssertionError.unreachable("Not expected in this test");
-    }
-    @Override
-    public void clearAbortState() {
-        throw RuntimeAssertionError.unreachable("Not expected in this test");
-    }
-    @Override
     public int getCurStackSize() {
         throw RuntimeAssertionError.unreachable("Not expected in this test");
     }

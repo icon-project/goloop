@@ -125,7 +125,7 @@ public class AvmExecutor {
         if (tx.isCreate()) {
             logger.trace("=== DAppCreator ===");
             result = DAppCreator.create(kernel, task,
-                    senderAddress, recipient, tx, 0,
+                    senderAddress, recipient, tx,
                     this.preserveDebuggability, this.enableVerboseContractErrors, this.enableContextPrintln);
         } else {
             LoadedDApp dapp;
@@ -144,7 +144,7 @@ public class AvmExecutor {
             }
             logger.trace("=== DAppExecutor ===");
             result = DAppExecutor.call(kernel, dapp, stateToResume, task,
-                    senderAddress, recipient, tx, 0,
+                    senderAddress, recipient, tx,
                     this.enableVerboseContractErrors, this.enableContextPrintln);
         }
 

@@ -7,7 +7,6 @@ import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.Transaction;
 import i.AvmException;
 import i.CallDepthLimitExceededException;
-import i.EarlyAbortException;
 import i.GenericCodedException;
 import i.IBlockchainRuntime;
 import i.IInstrumentation;
@@ -51,7 +50,6 @@ import org.aion.avm.core.types.ImmortalDappModule;
 import org.aion.avm.core.types.RawDappModule;
 import org.aion.avm.core.types.TransformedDappModule;
 import org.aion.avm.core.util.DebugNameResolver;
-import org.aion.avm.core.util.Helpers;
 import org.aion.avm.core.verification.Verifier;
 import org.aion.avm.utilities.JarBuilder;
 import org.aion.avm.utilities.Utilities;
@@ -188,7 +186,6 @@ public class DAppCreator {
                                 Address senderAddress,
                                 Address dappAddress,
                                 Transaction tx,
-                                long energyPreused,
                                 boolean preserveDebuggability,
                                 boolean verboseErrors,
                                 boolean enablePrintln) {
@@ -252,7 +249,7 @@ public class DAppCreator {
                                                               dapp,
                                                               enablePrintln);
             FrameContextImpl fc = new FrameContextImpl(externalState);
-            InstrumentationHelpers.pushNewStackFrame(runtimeSetup, dapp.loader, tx.getLimit() - energyPreused, nextHashCode, dapp.getInternedClasses(), fc);
+            InstrumentationHelpers.pushNewStackFrame(runtimeSetup, dapp.loader, tx.getLimit(), nextHashCode, dapp.getInternedClasses(), fc);
             IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(br);
 
             // We have just created this dApp, there should be no previous runtime associated with it.
@@ -281,16 +278,8 @@ public class DAppCreator {
                 System.err.println("DApp deployment to REVERT due to uncaught EXCEPTION: \"" + e.getMessage() + "\"");
                 e.printStackTrace(System.err);
             }
-            result = new Result(e.getCode(),
-                    tx.getLimit() - IInstrumentation.getEnergyLeft(),
-                    e.toString());
-
-        } catch (EarlyAbortException e) {
-            if (verboseErrors) {
-                System.err.println("FYI - concurrent abort (will retry) in transaction \"" + Helpers.bytesToHexString(tx.copyOfTransactionHash()) + "\"");
-            }
-            assert false : "unexpected abort";
-
+            long stepUsed = (runtimeSetup != null) ? (tx.getLimit() - IInstrumentation.getEnergyLeft()) : 0;
+            result = new Result(e.getCode(), stepUsed, e.toString());
         } catch (AvmException e) {
             // We handle the generic AvmException as some failure within the contract.
             if (verboseErrors) {

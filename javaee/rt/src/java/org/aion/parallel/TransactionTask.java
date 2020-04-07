@@ -18,7 +18,6 @@ import org.aion.avm.core.util.Helpers;
 public class TransactionTask implements Comparable<TransactionTask> {
     private final IExternalState parentKernel;
     private Transaction externalTransaction;
-    private volatile boolean abortState;
     private IInstrumentation threadOwningTask;
     private ReentrantDAppStack reentrantDAppStack;
     private int index;
@@ -30,7 +29,6 @@ public class TransactionTask implements Comparable<TransactionTask> {
         this.parentKernel = parentKernel;
         this.externalTransaction = tx;
         this.index = index;
-        this.abortState = false;
         this.threadOwningTask = null;
         this.reentrantDAppStack = new ReentrantDAppStack();
         this.outBuffer = new StringBuffer();
@@ -39,7 +37,6 @@ public class TransactionTask implements Comparable<TransactionTask> {
     }
 
     public void startNewTransaction() {
-        this.abortState = false;
         this.threadOwningTask = null;
         this.reentrantDAppStack = new ReentrantDAppStack();
         this.outBuffer = new StringBuffer();
@@ -53,34 +50,11 @@ public class TransactionTask implements Comparable<TransactionTask> {
         RuntimeAssertionError.assertTrue(null == this.threadOwningTask);
         this.threadOwningTask = IInstrumentation.attachedThreadInstrumentation.get();
         RuntimeAssertionError.assertTrue(null != this.threadOwningTask);
-        if (this.abortState){
-            threadOwningTask.setAbortState();
-        }
     }
 
     public void detachInstrumentationForThread() {
         RuntimeAssertionError.assertTrue(IInstrumentation.attachedThreadInstrumentation.get() == this.threadOwningTask);
         this.threadOwningTask = null;
-    }
-
-    /**
-     * Set the current task state to require abort.
-     * If a helper is already attached to this task, set the helper abort state as well.
-     */
-    public void setAbortState() {
-        this.abortState = true;
-        if (null != this.threadOwningTask){
-            this.threadOwningTask.setAbortState();
-        }
-    }
-
-    /**
-     * Check if the current task requires abort.
-     *
-     * @return The abort state of the current task.
-     */
-    public boolean inAbortState(){
-        return abortState;
     }
 
     /**

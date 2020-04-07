@@ -12,12 +12,8 @@ public class CommonInstrumentation implements IInstrumentation {
     private FrameState currentFrame;
     private final Stack<FrameState> callerFrames;
 
-    // State which applies to the entire stack.
-    private boolean abortState;
-
     public CommonInstrumentation() {
         this.callerFrames = new Stack<>();
-        this.abortState = false;
     }
 
     public void enterNewFrame(ClassLoader contractLoader, long energyLeft, int nextHashCode, InternedClasses classWrappers, FrameContext frameContext) {
@@ -60,12 +56,11 @@ public class CommonInstrumentation implements IInstrumentation {
         this.currentFrame = returningFrame;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public <T> s.java.lang.Class<T> wrapAsClass(Class<T> input) {
         s.java.lang.Class<T> wrapper = null;
         if (null != input) {
-            wrapper = (s.java.lang.Class<T>) this.currentFrame.internedClassWrappers.get(input);
+            wrapper = this.currentFrame.internedClassWrappers.get(input);
         }
         return wrapper;
     }
@@ -166,13 +161,6 @@ public class CommonInstrumentation implements IInstrumentation {
             this.currentFrame.forceExitState = error;
             throw error;
         }
-
-        // Check if we are in abort state.
-        if (abortState){
-            EarlyAbortException error = new EarlyAbortException();
-            this.currentFrame.forceExitState = error;
-            throw error;
-        }
     }
 
     @Override
@@ -184,16 +172,6 @@ public class CommonInstrumentation implements IInstrumentation {
     public int getNextHashCodeAndIncrement() {
         // NOTE:  In the case of a Class object, this value is swapped out, temporarily.
         return this.currentFrame.nextHashCode++;
-    }
-
-    @Override
-    public void setAbortState() {
-        abortState = true;
-    }
-
-    @Override
-    public void clearAbortState() {
-        abortState = false;
     }
 
     @Override

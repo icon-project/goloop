@@ -1,25 +1,42 @@
 package org.aion.avm.core;
 
+import i.ConstantsHolder;
+import i.FrameContext;
+import i.IInstrumentation;
+import i.InstrumentationHelpers;
+import i.InternedClasses;
+import i.OutOfEnergyException;
+import i.PackageConstants;
+import i.RuntimeAssertionError;
 import org.aion.avm.core.classgeneration.CommonGenerators;
 import org.aion.avm.core.classloading.AvmClassLoader;
 import org.aion.avm.core.classloading.AvmSharedClassLoader;
 import org.aion.avm.core.dappreading.LoadedJar;
 import org.aion.avm.core.instrument.JCLAndAPIHeapInstanceSize;
-import org.aion.avm.core.types.*;
+import org.aion.avm.core.types.ClassHierarchy;
+import org.aion.avm.core.types.ClassHierarchyBuilder;
+import org.aion.avm.core.types.ClassInformation;
+import org.aion.avm.core.types.ClassInformationFactory;
 import org.aion.avm.core.util.MethodDescriptorCollector;
 import org.aion.avm.utilities.Utilities;
-import i.*;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import p.score.Address;
 import p.score.Context;
 import p.score.Result;
 import p.score.Value;
 import p.score.ValueBuffer;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Represents the long-lived global state of a specific "node" instance.
@@ -62,7 +79,7 @@ public class NodeEnvironment {
                 Value.class,
             };
 
-            Class<?>[] arraywrapperClasses = new Class<?>[]{
+            Class<?>[] arrayWrapperClasses = new Class<?>[]{
                     a.IArray.class
                     , a.Array.class
                     , a.ArrayElement.class
@@ -77,7 +94,7 @@ public class NodeEnvironment {
                     , a.ShortArray.class
             };
 
-            Class<?>[] exceptionwrapperClasses = new Class<?>[]{
+            Class<?>[] exceptionWrapperClasses = new Class<?>[]{
                     e.s.java.lang.Throwable.class
             };
 
@@ -161,12 +178,12 @@ public class NodeEnvironment {
             // Finish the initialization of shared class loader
 
             // Inject pre generated wrapper class into shared classloader enable more optimization opportunities for us
-            this.sharedClassLoader.putIntoDynamicCache(arraywrapperClasses);
+            this.sharedClassLoader.putIntoDynamicCache(arrayWrapperClasses);
 
             // Inject shadow and api class into shared classloader so we can build a static cache
             this.sharedClassLoader.putIntoStaticCache(this.shadowClasses);
             this.sharedClassLoader.putIntoStaticCache(this.shadowApiClasses);
-            this.sharedClassLoader.putIntoStaticCache(exceptionwrapperClasses);
+            this.sharedClassLoader.putIntoStaticCache(exceptionWrapperClasses);
             this.sharedClassLoader.finishInitialization();
 
         } catch (ClassNotFoundException e) {
@@ -232,17 +249,13 @@ public class NodeEnvironment {
 
     /**
      * Returns whether the class is from our custom JCL.
-     *
-     * @param classNameSlash
-     * @return
      */
     public boolean isClassFromJCL(String classNameSlash) {
         return this.jclClassNames.contains(classNameSlash);
     }
 
     public List<String> getJclSlashClassNames() {
-        List<String> jclClassNamesCopy = new ArrayList<>(this.jclClassNames);
-        return jclClassNamesCopy;
+        return new ArrayList<>(this.jclClassNames);
     }
 
     /**
@@ -277,14 +290,6 @@ public class NodeEnvironment {
             @Override
             public void bootstrapOnly() {
                 // This is ok since we are the bootstrapping helper.
-            }
-            @Override
-            public void setAbortState() {
-                throw RuntimeAssertionError.unreachable("Nobody should be calling this");
-            }
-            @Override
-            public void clearAbortState() {
-                throw RuntimeAssertionError.unreachable("Nobody should be calling this");
             }
             @Override
             public s.java.lang.String wrapAsString(String input) {
@@ -388,8 +393,6 @@ public class NodeEnvironment {
      * Computes the object size of shadow java.base classes
      *
      * @return a mapping between class name and object size
-     * <p>
-     * Class name is in the JVM internal name format, see {@link org.aion.avm.core.util.Helpers#fulllyQualifiedNameToInternalName(String)}
      */
     private Map<String, Integer> computeRuntimeObjectSizes() {
         List<String> classNames = new ArrayList<>();
@@ -443,5 +446,4 @@ public class NodeEnvironment {
             throw RuntimeAssertionError.unexpected(e);
         }
     }
-
 }

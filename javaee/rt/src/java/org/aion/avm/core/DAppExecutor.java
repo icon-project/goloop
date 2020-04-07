@@ -8,7 +8,6 @@ import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.Transaction;
 import i.AvmException;
-import i.EarlyAbortException;
 import i.IBlockchainRuntime;
 import i.IInstrumentation;
 import i.InstrumentationHelpers;
@@ -16,7 +15,6 @@ import i.InternedClasses;
 import i.JvmError;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
-import org.aion.avm.core.util.Helpers;
 import org.aion.parallel.TransactionTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +29,6 @@ public class DAppExecutor {
                               Address senderAddress,
                               Address dappAddress,
                               Transaction tx,
-                              long energyPreused,
                               boolean verboseErrors,
                               boolean enablePrintln) {
         Result result = null;
@@ -73,7 +70,7 @@ public class DAppExecutor {
                                                           dapp,
                                                           enablePrintln);
         FrameContextImpl fc = new FrameContextImpl(externalState);
-        InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.getLimit() - energyPreused, nextHashCode, initialClassWrappers, fc);
+        InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.getLimit(), nextHashCode, initialClassWrappers, fc);
         IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(br);
 
         try {
@@ -119,13 +116,6 @@ public class DAppExecutor {
             result = new Result(e.getCode(),
                     tx.getLimit() - threadInstrumentation.energyLeft(),
                     e.toString());
-
-        } catch (EarlyAbortException e) {
-            if (verboseErrors) {
-                System.err.println("FYI - concurrent abort (will retry) in transaction \"" + Helpers.bytesToHexString(tx.copyOfTransactionHash()) + "\"");
-            }
-            assert false : "unexpected abort";
-
         } catch (AvmException e) {
             // We handle the generic AvmException as some failure within the contract.
             if (verboseErrors) {

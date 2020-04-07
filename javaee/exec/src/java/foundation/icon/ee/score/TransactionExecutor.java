@@ -151,7 +151,6 @@ public class TransactionExecutor {
                 blockHeight, blockTimestamp, owner, stepCosts);
         Transaction tx = new Transaction(from, to, value, nonce, limit.longValue(), method, params,
                                          txHash, txIndex, txTimestamp, isInstall);
-        BigInteger stepUsed = BigInteger.ZERO;
         try {
             Result result = avmExecutor.run(kernel, tx, origin);
             return new InvokeResult(result);
@@ -161,7 +160,7 @@ public class TransactionExecutor {
                 errMsg = e.getClass().getName() + " occurred";
             }
             logger.warn("Execution failure", e);
-            return new InvokeResult(Status.UnknownFailure, stepUsed, TypedObj.encodeAny(errMsg));
+            return new InvokeResult(Status.UnknownFailure, BigInteger.ZERO, TypedObj.encodeAny(errMsg));
         }
     }
 

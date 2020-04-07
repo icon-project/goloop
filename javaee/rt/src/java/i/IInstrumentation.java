@@ -40,9 +40,7 @@ public interface IInstrumentation {
      * @return The next hash code, prior to the increment.
      */
     int getNextHashCodeAndIncrement();
-    void setAbortState();
-    public void clearAbortState();
-    
+
     int getCurStackSize();
     int getCurStackDepth();
     void enterMethod(int frameSize);
