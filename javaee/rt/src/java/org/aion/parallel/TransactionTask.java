@@ -6,32 +6,23 @@ import i.IInstrumentation;
 import i.RuntimeAssertionError;
 import org.aion.avm.core.IExternalState;
 import org.aion.avm.core.ReentrantDAppStack;
-import org.aion.avm.core.util.Helpers;
 
 /**
- * A TransactionTask represent a complete transaction chain started from an external transaction. It represents the logical ordering of the block to be passed to the concurrent executor.
- * The purpose of this class is to support asynchronous task abort to achieve concurrency.
- * TransactionTask will be associated with an IInstrumentation to set its abort state, if either the transaction sender or target Address have been acquired
- * If both addresses can be acquired, the TransactionTask will be the owner of both Address resources,
- * preventing other transactions with the same address to be processed while this task is being executed
+ * A TransactionTask represent a complete transaction chain started from an external transaction.
  */
-public class TransactionTask implements Comparable<TransactionTask> {
+public class TransactionTask {
     private final IExternalState parentKernel;
     private Transaction externalTransaction;
     private IInstrumentation threadOwningTask;
     private ReentrantDAppStack reentrantDAppStack;
-    private int index;
-    private StringBuffer outBuffer;
     private Address origin;
     private int depth;
 
-    public TransactionTask(IExternalState parentKernel, Transaction tx, int index, Address origin) {
+    public TransactionTask(IExternalState parentKernel, Transaction tx, Address origin) {
         this.parentKernel = parentKernel;
         this.externalTransaction = tx;
-        this.index = index;
         this.threadOwningTask = null;
         this.reentrantDAppStack = new ReentrantDAppStack();
-        this.outBuffer = new StringBuffer();
         this.origin = origin;
         this.depth = 0;
     }
@@ -39,7 +30,6 @@ public class TransactionTask implements Comparable<TransactionTask> {
     public void startNewTransaction() {
         this.threadOwningTask = null;
         this.reentrantDAppStack = new ReentrantDAppStack();
-        this.outBuffer = new StringBuffer();
     }
 
     /**
@@ -55,15 +45,6 @@ public class TransactionTask implements Comparable<TransactionTask> {
     public void detachInstrumentationForThread() {
         RuntimeAssertionError.assertTrue(IInstrumentation.attachedThreadInstrumentation.get() == this.threadOwningTask);
         this.threadOwningTask = null;
-    }
-
-    /**
-     * Get the index of the current task.
-     *
-     * @return The index of the task.
-     */
-    public int getIndex() {
-        return index;
     }
 
     /**
@@ -93,14 +74,6 @@ public class TransactionTask implements Comparable<TransactionTask> {
         return parentKernel;
     }
 
-    public void outputPrint(String toPrint){
-        this.outBuffer.append(toPrint);
-    }
-
-    public void outputPrintln(String toPrint){
-        this.outBuffer.append(toPrint).append("\n");
-    }
-
     public Address getOriginAddress() {
         return origin;
     }
@@ -115,39 +88,5 @@ public class TransactionTask implements Comparable<TransactionTask> {
 
     public void decrementTransactionStackDepth() {
         depth--;
-    }
-
-    public void outputFlush() {
-        if (this.outBuffer.length() > 0) {
-            System.out.println("Output from transaction " + Helpers.bytesToHexString(externalTransaction.copyOfTransactionHash()));
-            System.out.println(this.outBuffer);
-            System.out.flush();
-        }
-    }
-
-    /**
-     * Compare to another task in term of transaction index.
-     *
-     * The purpose of this method is to support {@link java.util.PriorityQueue}.
-     * The lower the index, the higher the priority.
-     *
-     * @param other Another transaction task.
-     * @return The result of the comparision.
-     */
-    @Override
-    public int compareTo(TransactionTask other) {
-        int x = this.index;
-        int y = other.index;
-        return (x < y) ? -1 : ((x == y) ? 0 : 1);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        boolean isEqual = this == obj;
-        if (!isEqual && (obj instanceof TransactionTask)) {
-            TransactionTask other = (TransactionTask) obj;
-            isEqual = this.index == other.index;
-        }
-        return isEqual;
     }
 }

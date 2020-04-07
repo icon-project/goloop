@@ -14,11 +14,6 @@ public interface IExternalState {
     int OPTION_TRACE = 2;
 
     /**
-     * Commits the state changes in this IExternalState to its parent IExternalState.
-     */
-    void commit();
-
-    /**
      * Returns the pre-transformed code associated with the specified address.
      *
      * Returns {@code null} if the address has no pre-transformed code.
@@ -95,28 +90,6 @@ public interface IExternalState {
      * @return the account balance.
      */
     BigInteger getBalance(Address address);
-
-    /**
-     * Returns {@code true} only if the specified energy limit is a valid energy limit that can be
-     * used by a contract create transaction.
-     *
-     * Returns {@code false} otherwise.
-     *
-     * @param limit The energy limit to test.
-     * @return whether the energy limit is valid for a transaction create.
-     */
-    boolean isValidEnergyLimitForCreate(long limit);
-
-    /**
-     * Returns {@code true} only if the specified energy limit is a valid energy limit that can be
-     * used by a contract call transaction.
-     *
-     * Returns {@code false} otherwise.
-     *
-     * @param limit The energy limit to test.
-     * @return whether the energy limit is valid for a transaction call.
-     */
-    boolean isValidEnergyLimitForNonCreate(long limit);
 
     /**
      * Returns the block height of the current block.

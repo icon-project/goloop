@@ -52,11 +52,6 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public void commit() {
-        logger.trace("[commit]");
-    }
-
-    @Override
     public byte[] getCode(Address address) {
         logger.trace("[getCode] {}", address);
         if (codeCache == null) {
@@ -157,18 +152,6 @@ public class ExternalState implements IExternalState {
             logger.debug("[getBalance] {}", e.getMessage());
             return BigInteger.ZERO;
         }
-    }
-
-    @Override
-    public boolean isValidEnergyLimitForCreate(long limit) {
-        logger.trace("[isValidEnergyLimitForCreate] limit={}", limit);
-        return true;
-    }
-
-    @Override
-    public boolean isValidEnergyLimitForNonCreate(long limit) {
-        logger.trace("[isValidEnergyLimitForNonCreate] limit={}", limit);
-        return true;
     }
 
     @Override

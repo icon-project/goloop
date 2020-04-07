@@ -71,11 +71,8 @@ public class AvmExecutor {
 
     private Result runExternal(IExternalState kernel, Transaction transaction, Address origin) {
         // Get the first task
-        task = new TransactionTask(kernel, transaction, 0, origin);
+        task = new TransactionTask(kernel, transaction, origin);
 
-        // Attach the IInstrumentation helper to the task to support asynchronous abort
-        // Instrumentation helper will abort the execution of the transaction by throwing an exception during chargeEnergy call
-        // Aborted transaction will be retried later
         task.startNewTransaction();
         task.attachInstrumentationForThread();
         Result result = processTransaction();
@@ -98,41 +95,22 @@ public class AvmExecutor {
         if (value.compareTo(BigInteger.ZERO) < 0) {
             return new Result(Status.InvalidParameter, BigInteger.ZERO, "bad value");
         }
-
-        if (tx.isCreate()) {
-            if (!task.getThisTransactionalKernel().isValidEnergyLimitForCreate(tx.getLimit())) {
-                return new Result(Status.InvalidParameter, tx.getLimit(), "bad step limit for create");
-            }
-        } else {
-            if (!task.getThisTransactionalKernel().isValidEnergyLimitForNonCreate(tx.getLimit())) {
-                return new Result(Status.InvalidParameter, tx.getLimit(), "bad step limit for call");
-            }
-        }
         return runCommon(task.getThisTransactionalKernel(), tx);
     }
 
     private Result runCommon(IExternalState kernel, Transaction tx) {
-        /*
-         * Run the common logic with the parent kernel as the top-level one.
-         * After this point, no rejection should occur.
-         */
-        // start with the successful result
-        Result result;
-
         Address senderAddress = tx.getSender();
         Address recipient = tx.getDestination();
 
         if (tx.isCreate()) {
             logger.trace("=== DAppCreator ===");
-            result = DAppCreator.create(kernel, task,
+            return DAppCreator.create(kernel, task,
                     senderAddress, recipient, tx,
                     this.preserveDebuggability, this.enableVerboseContractErrors, this.enableContextPrintln);
         } else {
             LoadedDApp dapp;
-
             // See if this call is trying to reenter one already on this call-stack.
             ReentrantDAppStack.ReentrantState stateToResume = task.getReentrantDAppStack().tryShareState(recipient);
-
             if (null != stateToResume) {
                 dapp = stateToResume.dApp;
             } else {
@@ -143,17 +121,10 @@ public class AvmExecutor {
                 }
             }
             logger.trace("=== DAppExecutor ===");
-            result = DAppExecutor.call(kernel, dapp, stateToResume, task,
+            return DAppExecutor.call(kernel, dapp, stateToResume, task,
                     senderAddress, recipient, tx,
                     this.enableVerboseContractErrors, this.enableContextPrintln);
         }
-
-        if (result.getStatus()==Status.Success) {
-            kernel.commit();
-        }
-
-        task.outputFlush();
-        return result;
     }
 
     public void shutdown() {
