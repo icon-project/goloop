@@ -139,7 +139,7 @@ public class SampleCrowdsale
                 BigInteger amount = safeGetBalance(_from);
                 if (amount.compareTo(BigInteger.ZERO) > 0) {
                     // transfer the icx back to them
-                    Context.call(amount, _from, "fallback");
+                    Context.transfer(_from, amount);
                     // emit eventlog
                     FundTransfer(_from, amount, false);
                     // set their balance to ZERO
@@ -152,7 +152,7 @@ public class SampleCrowdsale
                 BigInteger amountRaised = safeGetAmountRaised();
                 if (amountRaised.compareTo(BigInteger.ZERO) > 0) {
                     // transfer the funds to beneficiary
-                    Context.call(amountRaised, this.beneficiary, "fallback");
+                    Context.transfer(this.beneficiary, amountRaised);
                     // emit eventlog
                     FundTransfer(this.beneficiary, amountRaised, false);
                     // reset amountRaised

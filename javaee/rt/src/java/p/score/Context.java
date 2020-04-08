@@ -106,6 +106,10 @@ public final class Context extends Object {
         return blockchainRuntime.avm_call(value, stepLimit, targetAddress, method, params);
     }
 
+    public static void avm_transfer(Address targetAddress, BigInteger value) {
+        avm_call(value, null, targetAddress, null, null);
+    }
+
     public static void avm_revert(int code, String message) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_revert);
         blockchainRuntime.avm_revert(code, message);

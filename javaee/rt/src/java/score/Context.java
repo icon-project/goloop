@@ -176,9 +176,15 @@ public final class Context {
     }
 
     /**
-     * Stop the current execution and roll back all state changes.
-     * <p>
-     * the remaining energy will be refunded.
+     * Transfers the value to the given target address from this SCORE's account.
+     *
+     * @throws IllegalArgumentException when the arguments are invalid, e.g. insufficient balance, NULL address
+     */
+    public static void transfer(Address targetAddress, BigInteger value) {
+    }
+
+    /**
+     * Stops the current execution and rolls back all state changes.
      */
     public static void revert(int code, String message) {
     }
