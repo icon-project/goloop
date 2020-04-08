@@ -222,13 +222,13 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                 || s == Status.MethodNotPayable
                 || s == Status.InvalidParameter
                 || s == Status.OutOfBalance) {
-            throw new IllegalArgumentException();
+            throw new IllegalArgumentException(Status.getMessage(s));
         } else if (s == Status.OutOfStep
                 || s == Status.StackOverflow) {
             throw new GenericCodedException(s, String.format("address=%s method=%s status=%d %s", targetAddress, method, s, res.getRet()));
         } else if (s < Status.UserReversionStart) {
             RuntimeAssertionError.unreachable("bad result status " + s);
-        } else if (s < Status.UserReversionEnd){
+        } else if (s < Status.UserReversionEnd) {
             throw new ScoreRevertException(s - Status.UserReversionStart);
         }
         throw new RevertException();
