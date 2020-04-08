@@ -142,15 +142,36 @@ public class Transaction {
     }
 
     private Object convertParam(String type, String value) {
-        if (type.equals("Address")) {
-            return Address.fromString(value);
-        } else if (type.equals("int")) {
-            if (value.startsWith("0x")) {
-                return new BigInteger(value.substring(2), 16);
-            }
-            return new BigInteger(value);
+        switch (type) {
+            case "Address":
+                return Address.fromString(value);
+            case "str":
+                return value;
+            case "int":
+                if (value.startsWith("0x")) {
+                    return new BigInteger(value.substring(2), 16);
+                }
+                return new BigInteger(value);
+            case "bool":
+                if (value.equals("0x0") || value.equals("false")) {
+                    return Boolean.FALSE;
+                } else if (value.equals("0x1") || value.equals("true")) {
+                    return Boolean.TRUE;
+                }
+                break;
+            case "bytes":
+                if (value.startsWith("0x") && (value.length() % 2 == 0)) {
+                    String hex = value.substring(2);
+                    int len = hex.length() / 2;
+                    byte[] bytes = new byte[len];
+                    for (int i = 0; i < len; i++) {
+                        int j = i * 2;
+                        bytes[i] = (byte) Integer.parseInt(hex.substring(j, j + 2), 16);
+                    }
+                    return bytes;
+                }
         }
-        return null;
+        throw new IllegalArgumentException();
     }
 
     @Override
