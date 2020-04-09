@@ -124,7 +124,7 @@ func (g *genesisV3) PreValidate(wc state.WorldContext, update bool) error {
 	return nil
 }
 
-func (g *genesisV3) GetHandler(contract.ContractManager) (TransactionHandler, error) {
+func (g *genesisV3) GetHandler(contract.ContractManager) (Handler, error) {
 	return g, nil
 }
 
@@ -156,7 +156,7 @@ func (g *genesisV3) Prepare(ctx contract.Context) (state.WorldContext, error) {
 
 func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
 	r := txresult.NewReceipt(common.NewContractAddress(state.SystemID))
-	cc := contract.NewCallContext(ctx, r, false)
+	cc := contract.NewCallContext(ctx, ctx.GetStepLimit(LimitTypeInvoke), false)
 	defer cc.Dispose()
 	cc.SetTransactionInfo(&state.TransactionInfo{
 		Group:     module.TransactionGroupNormal,
@@ -196,6 +196,7 @@ func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
 		ctx.Logger().Warnf("Fail to install scores err=%+v\n", err)
 		return nil, err
 	}
+	cc.GetEventLogs(r)
 	r.SetResult(module.StatusSuccess, big.NewInt(0), big.NewInt(0), nil)
 	return r, nil
 }
@@ -223,7 +224,7 @@ func (g *genesisV3) installContracts(cc contract.CallContext) error {
 			data, _ := hex.DecodeString(score.Content)
 			handler := contract.NewDeployHandlerForPreInstall(score.Owner,
 				&acc.Address, score.ContentType, data, score.Params, cc.Logger())
-			status, _, _, _ := cc.Call(handler)
+			status, _, _, _ := cc.Call(handler, cc.StepAvailable())
 			if status != nil {
 				return InvalidGenesisError.Wrapf(status,
 					"FAIL to install pre-installed score addr=%s", acc.Address)
@@ -238,7 +239,7 @@ func (g *genesisV3) installContracts(cc contract.CallContext) error {
 				}
 				handler := contract.NewDeployHandlerForPreInstall(score.Owner,
 					&acc.Address, score.ContentType, content, score.Params, cc.Logger())
-				status, _, _, _ := cc.Call(handler)
+				status, _, _, _ := cc.Call(handler, cc.StepAvailable())
 				if status != nil {
 					return InvalidGenesisError.Wrapf(status,
 						"FAIL to install pre-installed score. addr=%s", acc.Address)

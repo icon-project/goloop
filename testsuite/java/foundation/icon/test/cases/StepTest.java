@@ -195,6 +195,10 @@ public class StepTest extends TestBase {
             expectedStep = expectedStep.add(stepType.getSteps().multiply(BigInteger.valueOf(valSize)));
         }
 
+        void addOperation(StepType stepType, int cnt) {
+            expectedStep = expectedStep.add(stepType.getSteps().multiply(BigInteger.valueOf(cnt)));
+        }
+
         BigInteger calcTransactionStep(Transaction tx) {
             // default + input * dataLen
             BigInteger stepUsed = StepType.DEFAULT.getSteps();
@@ -257,6 +261,18 @@ public class StepTest extends TestBase {
             return stepUsed.add(StepType.CONTRACT_SET.getSteps().multiply(codeLen));
         }
 
+        BigInteger calcAcceptStep(Transaction tx, RpcObject params, boolean update) throws IOException {
+            BigInteger stepUsed = calcCallStep(tx);
+            String name = params.getItem("name").asString();
+            BigInteger nameLength = BigInteger.valueOf(name.length());
+            if (update) {
+                stepUsed = stepUsed.add(StepType.REPLACE.getSteps().multiply(nameLength));
+            } else {
+                stepUsed = stepUsed.add(StepType.SET.getSteps().multiply(nameLength));
+            }
+            return stepUsed;
+        }
+
         BigInteger calcCallStep(Transaction tx) {
             BigInteger stepUsed = calcTransactionStep(tx);
             return StepType.CONTRACT_CALL.getSteps().add(stepUsed);
@@ -300,11 +316,26 @@ public class StepTest extends TestBase {
             Bytes txHash = txHandler.invoke(from, transaction);
             TransactionResult result = txHandler.getResult(txHash);
             assertSuccess(result);
-            try {
-                txHandler.acceptScoreIfAuditEnabled(txHash);
-            } catch (TransactionFailureException ex) {
-                LOG.infoExiting();
-                throw ex;
+
+            if (govScore.isAuditEnabledOnly()) {
+                var governor = txHandler.getChain().governorWallet;
+                RpcObject acceptParams = new RpcObject.Builder()
+                        .put("txHash", new RpcValue(txHash))
+                        .build();
+                Transaction acceptTX = TransactionBuilder.newBuilder()
+                        .nid(txHandler.getNetworkId())
+                        .from(governor.getAddress())
+                        .to(Constants.GOV_ADDRESS)
+                        .stepLimit(new BigInteger("70000000", 16))
+                        .call("acceptScore")
+                        .params(acceptParams)
+                        .build();
+                var acceptSteps = calcAcceptStep(acceptTX, params, to != Constants.CHAINSCORE_ADDRESS);
+                Bytes acceptHash = txHandler.invoke(governor, acceptTX);
+                TransactionResult acceptResult = txHandler.getResult(acceptHash);
+
+                assertSuccess(acceptResult);
+                assertEquals(acceptSteps, acceptResult.getStepUsed());
             }
             this.scoreAddr = new Address(result.getScoreAddress());
             return getUsedFee(from, BigInteger.ZERO, prevTreasury, prevBal);
@@ -539,6 +570,28 @@ public class StepTest extends TestBase {
                 LOG.infoExiting();
             }
         }
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void testInterChainScoreCall() throws Exception {
+        LOG.infoEntering("testChainSCORECall");
+
+        LOG.infoEntering("deploy hello_world");
+        RpcObject params = new RpcObject.Builder()
+                .put("name", new RpcValue("HelloWorld"))
+                .build();
+        Score score = txHandler.deploy(testWallets[1], Score.getFilePath("hello_world"), params);
+        LOG.infoExiting();
+
+        LOG.infoEntering("invoke HelloWorld.checkRevision() -> ChainSCORE.getRevision()");
+        StepTransaction stx = new StepTransaction();
+        var usedFee = stx.call(testWallets[1], score.getAddress(),
+                "checkRevision", null, Constants.DEFAULT_STEPS);
+        stx.addOperation(StepType.CONTRACT_CALL,1);
+        assertEquals(usedFee, stx.expectedFee());
+        LOG.infoExiting();
+
         LOG.infoExiting();
     }
 }

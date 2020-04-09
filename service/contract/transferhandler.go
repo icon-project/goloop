@@ -1,8 +1,6 @@
 package contract
 
 import (
-	"math/big"
-
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreresult"
@@ -18,11 +16,11 @@ func newTransferHandler(ch *CommonHandler) *TransferHandler {
 	return &TransferHandler{ch}
 }
 
-func (h *TransferHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.TypedObj, module.Address) {
+func (h *TransferHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, module.Address) {
 	as1 := cc.GetAccountState(h.from.ID())
 	bal1 := as1.GetBalance()
 	if bal1.Cmp(h.value) < 0 {
-		return scoreresult.ErrOutOfBalance, h.StepUsed(), nil, nil
+		return scoreresult.ErrOutOfBalance, nil, nil
 	}
 	bal1.Sub(bal1, h.value)
 	as1.SetBalance(bal1)
@@ -36,8 +34,8 @@ func (h *TransferHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.T
 		h.from, h.to, h.value)
 
 	if h.from.IsContract() {
-		if !h.to.IsContract() && !h.ApplySteps(cc, state.StepTypeContractCall, 1) {
-			return scoreresult.ErrOutOfStep, h.StepUsed(), nil, nil
+		if !h.to.IsContract() && !cc.ApplySteps(state.StepTypeContractCall, 1) {
+			return scoreresult.ErrOutOfStep, nil, nil
 		}
 		indexed := make([][]byte, 4, 4)
 		indexed[0] = []byte(txresult.EventLogICXTransfer)
@@ -47,7 +45,7 @@ func (h *TransferHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.T
 		cc.OnEvent(h.from, indexed, make([][]byte, 0))
 	}
 
-	return nil, h.StepUsed(), nil, nil
+	return nil, nil, nil
 }
 
 type TransferAndMessageHandler struct {

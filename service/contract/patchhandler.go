@@ -2,7 +2,6 @@ package contract
 
 import (
 	"encoding/json"
-	"math/big"
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
@@ -78,18 +77,18 @@ func (h *patchHandler) handleSkipTransaction(cc CallContext) error {
 	return nil
 }
 
-func (h *patchHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.TypedObj, module.Address) {
+func (h *patchHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, module.Address) {
 	vs := cc.GetValidatorState()
 	if idx := vs.IndexOf(h.from); idx < 0 {
 		h.log.Warnf("PatchHandler: %s isn't validator", h.from)
-		return scoreresult.AccessDeniedError.Errorf("InvalidProposer(%s)", h.from), big.NewInt(0), nil, nil
+		return scoreresult.AccessDeniedError.Errorf("InvalidProposer(%s)", h.from), nil, nil
 	}
 	switch h.data.Type {
 	case module.PatchTypeSkipTransaction:
 		s := h.handleSkipTransaction(cc)
-		return s, big.NewInt(0), nil, nil
+		return s, nil, nil
 	default:
-		return scoreresult.InvalidParameterError.Errorf("InvalidDataType(%s)", h.data.Type), big.NewInt(0), nil, nil
+		return scoreresult.InvalidParameterError.Errorf("InvalidDataType(%s)", h.data.Type), nil, nil
 	}
 }
 

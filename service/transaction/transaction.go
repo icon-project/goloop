@@ -29,7 +29,7 @@ var AllLimitTypes = []string{
 type Transaction interface {
 	module.Transaction
 	PreValidate(wc state.WorldContext, update bool) error
-	GetHandler(cm contract.ContractManager) (TransactionHandler, error)
+	GetHandler(cm contract.ContractManager) (Handler, error)
 	Timestamp() int64
 	Nonce() *big.Int
 }

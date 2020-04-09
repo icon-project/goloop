@@ -28,10 +28,8 @@ type (
 	cStatus int
 
 	ContractManager interface {
-		GetHandler(from, to module.Address,
-			value, stepLimit *big.Int, ctype int, data []byte) ContractHandler
-		GetCallHandler(from, to module.Address,
-			value, stepLimit *big.Int, method string, paramObj *codec.TypedObj) ContractHandler
+		GetHandler(from, to module.Address, value *big.Int, ctype int, data []byte) ContractHandler
+		GetCallHandler(from, to module.Address, value *big.Int, method string, paramObj *codec.TypedObj) ContractHandler
 		PrepareContractStore(ws state.WorldState, contract state.Contract) (ContractStore, error)
 	}
 
@@ -117,11 +115,9 @@ func (cs *contractStoreImpl) notify(err error) {
 	cs.ch <- err
 }
 
-func (cm *contractManager) GetHandler(from, to module.Address, value,
-	stepLimit *big.Int, ctype int, data []byte,
-) ContractHandler {
+func (cm *contractManager) GetHandler(from, to module.Address, value *big.Int, ctype int, data []byte) ContractHandler {
 	var handler ContractHandler
-	ch := newCommonHandler(from, to, value, stepLimit, cm.log)
+	ch := newCommonHandler(from, to, value, cm.log)
 	switch ctype {
 	case CTypeTransfer:
 		handler = newTransferHandler(ch)
@@ -141,10 +137,10 @@ func (cm *contractManager) GetHandler(from, to module.Address, value,
 }
 
 func (cm *contractManager) GetCallHandler(from, to module.Address,
-	value, stepLimit *big.Int, method string, paramObj *codec.TypedObj,
+	value *big.Int, method string, paramObj *codec.TypedObj,
 ) ContractHandler {
 	if value != nil && value.Sign() == 1 { //value > 0
-		ch := newCommonHandler(from, to, value, stepLimit, cm.log)
+		ch := newCommonHandler(from, to, value, cm.log)
 		th := newTransferHandler(ch)
 		if to.IsContract() {
 			return &TransferAndCallHandler{
@@ -156,7 +152,7 @@ func (cm *contractManager) GetCallHandler(from, to module.Address,
 		}
 	} else {
 		return newCallHandlerFromTypedObj(
-			newCommonHandler(from, to, value, stepLimit, cm.log),
+			newCommonHandler(from, to, value, cm.log),
 			method, paramObj, false)
 	}
 }

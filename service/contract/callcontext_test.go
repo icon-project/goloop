@@ -64,23 +64,22 @@ func TestCallContext_Call(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			defer func() {
-				err := recover()
-				if err != nil {
-					if test.result != "error" {
-						t.Errorf("Error occurred")
-					}
-				} else {
-					if test.result != "error" && test.result != tcc.trail {
-						t.Errorf("trail(must:%s,cur:%s)\n", test.result, tcc.trail)
-					} else if test.result == "error" {
+				if test.result == "error" {
+					err := recover()
+					if err == nil {
 						t.Errorf("It must be failed")
 					}
+					wg.Done()
+					return
+				}
+				if test.result != tcc.trail {
+					t.Errorf("trail(must:%s,cur:%s)\n", test.result, tcc.trail)
 				}
 				wg.Done()
 			}()
 
 			tcc.Reset()
-			tcc.Call(test.call)
+			tcc.Call(test.call, nil)
 		})
 	}
 	wg.Wait()
@@ -93,7 +92,10 @@ func newHandlerWithNoCall(sync bool, cc *testCallContext) ContractHandler {
 func newHandler(sync bool, callSync bool, targetCall ContractHandler, cc *testCallContext) ContractHandler {
 	ch := &commonHandler{subcall: targetCall, callSync: callSync}
 	if sync {
-		return &syncHandler{commonHandler: ch, cc: cc}
+		var handler SyncContractHandler
+		handler = &syncHandler{commonHandler: ch, cc: cc}
+		return handler
+		// return &syncHandler{commonHandler: ch, cc: cc}
 	} else {
 		return &asyncHandler{commonHandler: ch, cc: cc}
 	}
@@ -174,10 +176,10 @@ func (h *asyncHandler) ExecuteAsync(cc CallContext) error {
 	h.cc.trail += "a"
 	if h.subcall != nil {
 		if h.callSync {
-			cc.Call(h.subcall)
+			cc.Call(h.subcall, nil)
 			h.cc.trail += "a"
 		} else {
-			cc.OnCall(h.subcall)
+			cc.OnCall(h.subcall, nil)
 			return nil
 		}
 	}
@@ -254,18 +256,18 @@ type syncHandler struct {
 	cc *testCallContext
 }
 
-func (h *syncHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.TypedObj, module.Address) {
+func (h *syncHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, module.Address) {
 	h.cc.trail += "s"
 	if h.subcall != nil {
 		if h.callSync {
-			cc.Call(h.subcall)
+			cc.Call(h.subcall, nil)
 			h.cc.trail += "s"
 		} else {
 			// Actually it's not supported
-			cc.OnCall(h.subcall)
+			cc.OnCall(h.subcall, nil)
 		}
 	}
-	return nil, big.NewInt(0), nil, nil
+	return nil, nil, nil
 }
 
 type blockInfo struct {

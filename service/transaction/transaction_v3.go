@@ -8,7 +8,6 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
-	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/jsonrpc"
@@ -231,7 +230,7 @@ func (tx *transactionV3) ValidateNetwork(nid int) bool {
 
 func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 	// stepLimit >= default step + input steps
-	cnt, err := measureBytesOfData(wc.Revision(), tx.Data)
+	cnt, err := MeasureBytesOfData(wc.Revision(), tx.Data)
 	if err != nil {
 		return err
 	}
@@ -270,14 +269,14 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 	return nil
 }
 
-func (tx *transactionV3) GetHandler(cm contract.ContractManager) (TransactionHandler, error) {
+func (tx *transactionV3) GetHandler(cm contract.ContractManager) (Handler, error) {
 	var value *big.Int
 	if tx.Value != nil {
 		value = &tx.Value.Int
 	} else {
 		value = big.NewInt(0)
 	}
-	return NewTransactionHandler(cm,
+	return NewHandler(cm,
 		tx.From(),
 		&tx.To,
 		value,
@@ -383,67 +382,5 @@ func newTransactionV3FromBytes(bs []byte) (Transaction, error) {
 		return nil, err
 	} else {
 		return tx, nil
-	}
-}
-
-func measureBytesOfData(rev int, data []byte) (int, error) {
-	if data == nil {
-		return 0, nil
-	}
-
-	if rev >= module.Revision3 {
-		return countBytesOfData(data)
-	} else {
-		var idata interface{}
-		if err := json.Unmarshal(data, &idata); err != nil {
-			return 0, scoreresult.InvalidParameterError.Wrap(err, "InvalidDataField")
-		} else {
-			return countBytesOfDataValue(idata), nil
-		}
-	}
-}
-
-func countBytesOfData(data []byte) (int, error) {
-	if data == nil {
-		return 0, nil
-	}
-	b := bytes.NewBuffer(nil)
-	if err := json.Compact(b, data); err != nil {
-		return 0, scoreresult.InvalidParameterError.Wrap(err, "InvalidDataField")
-	}
-	return b.Len(), nil
-}
-
-func countBytesOfDataValue(v interface{}) int {
-	switch o := v.(type) {
-	case string:
-		if len(o) > 2 && o[:2] == "0x" {
-			o = o[2:]
-		}
-		bs := []byte(o)
-		for _, b := range bs {
-			if (b < '0' || b > '9') && (b < 'a' || b > 'f') {
-				return len(bs)
-			}
-		}
-		return (len(bs) + 1) / 2
-	case []interface{}:
-		var count int
-		for _, i := range o {
-			count += countBytesOfDataValue(i)
-		}
-		return count
-	case map[string]interface{}:
-		var count int
-		for _, i := range o {
-			count += countBytesOfDataValue(i)
-		}
-		return count
-	case bool:
-		return 1
-	case float64:
-		return len(intconv.Int64ToBytes(int64(o)))
-	default:
-		return 0
 	}
 }

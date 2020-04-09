@@ -135,6 +135,9 @@ func (h *CallHandler) Prepare(ctx Context) (state.WorldContext, error) {
 }
 
 func (h *CallHandler) contract(as state.AccountState) state.Contract {
+	if as == nil || !as.IsContract() {
+		return nil
+	}
 	if !h.forDeploy {
 		return as.ActiveContract()
 	} else {
@@ -142,39 +145,44 @@ func (h *CallHandler) contract(as state.AccountState) state.Contract {
 	}
 }
 
-func (h *CallHandler) ExecuteAsync(cc CallContext) error {
+func (h *CallHandler) ExecuteAsync(cc CallContext) (err error) {
 	h.log = trace.LoggerOf(cc.Logger())
 	h.cc = cc
 	h.cm = cc.ContractManager()
 
 	h.log.TSystemf("INVOKE start score=%s method=%s", h.to, h.method)
 
-	// Calculate steps
-	if !h.forDeploy {
-		if !h.ApplySteps(cc, state.StepTypeContractCall, 1) {
-			status := scoreresult.OutOfStepError.New("FailToApplyContractCall")
-			h.cc.OnResult(status, h.StepUsed(), nil, nil)
-			return nil
+	callCharged := false
+	defer func() {
+		if err != nil && !callCharged {
+			if !cc.ApplySteps(state.StepTypeContractCall, 1) {
+				err = scoreresult.OutOfStepError.New("FailToApplyContractCall")
+			}
 		}
-	}
+	}()
 
 	// Prepare
 	h.as = cc.GetAccountState(h.to.ID())
-	if !h.as.IsContract() {
+	c := h.contract(h.as)
+	if c == nil {
 		return scoreresult.New(module.StatusContractNotFound, "NotAContractAccount")
 	}
 	cc.SetContractInfo(&state.ContractInfo{Owner: h.as.ContractOwner()})
 
-	c := h.contract(h.as)
-	if c == nil {
-		return scoreresult.New(module.StatusContractNotFound, "NotActiveContract")
+	// Calculate steps
+	isSystem := strings.Compare(c.ContentType(), state.CTAppSystem) == 0
+	if !h.forDeploy && !isSystem {
+		callCharged = true
+		if !cc.ApplySteps(state.StepTypeContractCall, 1) {
+			return scoreresult.OutOfStepError.New("FailToApplyContractCall")
+		}
 	}
 
 	if err := h.ensureParamObj(); err != nil {
 		return err
 	}
 
-	if strings.Compare(c.ContentType(), state.CTAppSystem) == 0 {
+	if isSystem {
 		return h.invokeSystemMethod(cc, c)
 	}
 	return h.invokeEEMethod(cc, c)
@@ -201,8 +209,8 @@ func (h *CallHandler) invokeEEMethod(cc CallContext, c state.Contract) error {
 	// Execute
 	h.lock.Lock()
 	if !h.disposed {
-		err = h.conn.Invoke(h, path, h.cc.QueryMode(), h.from, h.to,
-			h.value, h.StepAvail(), h.method, h.paramObj)
+		err = h.conn.Invoke(h, path, cc.QueryMode(), h.from, h.to,
+			h.value, cc.StepAvailable(), h.method, h.paramObj)
 	}
 	h.lock.Unlock()
 
@@ -273,8 +281,7 @@ func (h *CallHandler) SendResult(status error, steps *big.Int, result *codec.Typ
 		}
 		return h.conn.SendResult(h, status, steps, result)
 	} else {
-		h.DeductSteps(steps)
-		h.cc.OnResult(status, h.StepUsed(), result, nil)
+		h.cc.OnResult(status, steps, result, nil)
 		return nil
 	}
 }
@@ -344,7 +351,6 @@ func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) {
 }
 
 func (h *CallHandler) OnResult(status error, steps *big.Int, result *codec.TypedObj) {
-	h.DeductSteps(steps)
 	if h.log.IsTrace() {
 		if status != nil {
 			s, _ := scoreresult.StatusOf(status)
@@ -355,7 +361,7 @@ func (h *CallHandler) OnResult(status error, steps *big.Int, result *codec.Typed
 				module.StatusSuccess, steps, trace.ToJSON(obj))
 		}
 	}
-	h.cc.OnResult(status, h.StepUsed(), result, nil)
+	h.cc.OnResult(status, steps, result, nil)
 }
 
 func (h *CallHandler) OnCall(from, to module.Address, value,
@@ -366,7 +372,7 @@ func (h *CallHandler) OnCall(from, to module.Address, value,
 		h.log.TSystemf("INVOKE call from=%v to=%v value=%v steplimit=%v method=%s params=%s",
 			from, to, value, limit, method, trace.ToJSON(po))
 	}
-	h.cc.OnCall(h.cm.GetCallHandler(from, to, value, limit, method, params))
+	h.cc.OnCall(h.cm.GetCallHandler(from, to, value, method, params), limit)
 }
 
 func (h *CallHandler) OnAPI(status error, info *scoreapi.Info) {
@@ -419,12 +425,12 @@ func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) error {
 		}
 	}
 
-	status, stepUsed, result, addr := h.th.ExecuteSync(cc)
+	status, result, addr := h.th.ExecuteSync(cc)
 	if status == nil {
 		return h.CallHandler.ExecuteAsync(cc)
 	}
 	go func() {
-		cc.OnResult(status, stepUsed, result, addr)
+		cc.OnResult(status, cc.StepUsed(), result, addr)
 	}()
 	return nil
 }

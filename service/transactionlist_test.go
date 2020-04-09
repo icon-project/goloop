@@ -54,7 +54,7 @@ func (*mockTransaction) PreValidate(wc state.WorldContext, update bool) error {
 	panic("implement me")
 }
 
-func (*mockTransaction) GetHandler(cm contract.ContractManager) (transaction.TransactionHandler, error) {
+func (*mockTransaction) GetHandler(cm contract.ContractManager) (transaction.Handler, error) {
 	panic("implement me")
 }
 

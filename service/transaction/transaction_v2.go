@@ -98,7 +98,7 @@ func (tx *transactionV2) PreValidate(wc state.WorldContext, update bool) error {
 	return nil
 }
 
-func (tx *transactionV2) GetHandler(cm contract.ContractManager) (TransactionHandler, error) {
+func (tx *transactionV2) GetHandler(cm contract.ContractManager) (Handler, error) {
 	return tx, nil
 }
 

@@ -9,6 +9,12 @@ class InterCallInterface(InterfaceScore):
         pass
 
 
+class ChainSCORE(InterfaceScore):
+    @interface
+    def getRevision(self) -> int:
+        pass
+
+
 class HelloWorld(IconScoreBase):
     _NAME = 'name'
     _BALANCES = 'balances'
@@ -69,3 +75,11 @@ class HelloWorld(IconScoreBase):
     def transferICX(self, to: Address, amount: int):
         if amount > 0:
             self.icx.transfer(to, amount)
+
+    @external
+    def checkRevision(self):
+        score = self.create_interface_score(
+            Address.from_string("cx0000000000000000000000000000000000000000"),
+            ChainSCORE)
+        rev = score.getRevision()
+        Logger.debug(f"Revision({rev})")

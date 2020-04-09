@@ -64,9 +64,7 @@ func NewDeployHandlerForPreInstall(owner, scoreAddr module.Address, contentType 
 		p = *params
 	}
 	return &DeployHandler{
-		CommonHandler: newCommonHandler(owner,
-			common.NewContractAddress(state.SystemID),
-			&zero, &zero, log),
+		CommonHandler:  newCommonHandler(owner, common.NewContractAddress(state.SystemID), &zero, log),
 		content:        content,
 		contentType:    contentType,
 		preDefinedAddr: scoreAddr,
@@ -115,7 +113,7 @@ func (h *DeployHandler) Prepare(ctx Context) (state.WorldContext, error) {
 	return ctx.GetFuture(lq), nil
 }
 
-func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.TypedObj, module.Address) {
+func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, module.Address) {
 	h.log = trace.LoggerOf(cc.Logger())
 	sysAs := cc.GetAccountState(state.SystemID)
 
@@ -124,7 +122,7 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.Typ
 	update := false
 	info := cc.GetInfo()
 	if info == nil {
-		return errors.CriticalUnknownError.New("APIInfoIsEmpty"), h.StepUsed(), nil, nil
+		return errors.CriticalUnknownError.New("APIInfoIsEmpty"), nil, nil
 	} else {
 		h.txHash = info[state.InfoTxHash].([]byte)
 	}
@@ -157,31 +155,31 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.Typ
 		st = state.StepTypeContractCreate
 	}
 	codeLen := len(h.content)
-	if !h.ApplySteps(cc, st, 1) ||
-		!h.ApplySteps(cc, state.StepTypeContractSet, codeLen) {
-		return scoreresult.ErrOutOfStep, h.StepUsed(), nil, nil
+	if !cc.ApplySteps(st, 1) ||
+		!cc.ApplySteps(state.StepTypeContractSet, codeLen) {
+		return scoreresult.ErrOutOfStep, nil, nil
 	}
 
 	if cc.DeployerWhiteListEnabled() == true && !cc.IsDeployer(h.from.String()) {
-		return scoreresult.ErrAccessDenied, h.StepUsed(), nil, nil
+		return scoreresult.ErrAccessDenied, nil, nil
 	}
 
 	if update == false {
 		if as.InitContractAccount(h.from) == false {
-			return errors.ErrExecutionFail, h.StepUsed(), nil, nil
+			return errors.ErrExecutionFail, nil, nil
 		}
 	} else {
 		if as.IsContract() == false {
-			return scoreresult.ErrContractNotFound, h.StepUsed(), nil, nil
+			return scoreresult.ErrContractNotFound, nil, nil
 		}
 		if as.IsContractOwner(h.from) == false {
-			return scoreresult.ErrAccessDenied, h.StepUsed(), nil, nil
+			return scoreresult.ErrAccessDenied, nil, nil
 		}
 	}
 	scoreAddr := common.NewContractAddress(contractID)
 	oldTx, err := as.DeployContract(h.content, h.eeType, h.contentType, h.params, h.txHash)
 	if err != nil {
-		return err, h.StepUsed(), nil, nil
+		return err, nil, nil
 	}
 
 	h2a := scoredb.NewDictDB(sysAs, state.VarTxHashToAddress, 1)
@@ -192,16 +190,16 @@ func (h *DeployHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.Typ
 
 	if cc.AuditEnabled() == false ||
 		cc.IsDeployer(h.from.String()) || h.preDefinedAddr != nil {
-		ah := newAcceptHandler(newCommonHandler(h.from, h.to, nil, h.StepAvail(), h.log), h.txHash, h.txHash)
-		status, acceptStepUsed, _, _ := ah.ExecuteSync(cc)
-		h.DeductSteps(acceptStepUsed)
+		ah := newAcceptHandler(newCommonHandler(h.from, h.to, big.NewInt(0), h.log), h.txHash, h.txHash)
+		status, acceptStepUsed, _, _ := cc.Call(ah, cc.StepAvailable())
+		cc.DeductSteps(acceptStepUsed)
 		if status != nil {
-			return status, h.StepUsed(), nil, nil
+			return status, nil, nil
 		}
 	}
-	h.log.TSystemf("DEPLOY done steps=%s score=%s", h.StepUsed(), scoreAddr)
+	h.log.TSystemf("DEPLOY done score=%s", scoreAddr)
 
-	return nil, h.StepUsed(), nil, scoreAddr
+	return nil, nil, scoreAddr
 }
 
 type AcceptHandler struct {
@@ -226,7 +224,7 @@ const (
 	deployUpdate = "on_update"
 )
 
-func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.TypedObj, module.Address) {
+func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, module.Address) {
 	h.log = trace.LoggerOf(cc.Logger())
 
 	h.log.TSystemf("ACCEPT start txhash=0x%x audit=0x%x", h.txHash, h.auditTxHash)
@@ -237,7 +235,7 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.Typ
 	value := h2a.Get(h.txHash)
 	if value == nil {
 		err := scoreresult.ContractNotFoundError.New("NoSCOREForTx")
-		return err, h.StepUsed(), nil, nil
+		return err, nil, nil
 	}
 	scoreAddr := value.Address()
 	h2a.Delete(h.txHash)
@@ -250,17 +248,17 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.Typ
 		methodStr = deployUpdate
 	}
 	// GET API
-	cgah := newCallGetAPIHandler(newCommonHandler(h.from, scoreAddr, nil, h.StepAvail(), h.log))
+	cgah := newCallGetAPIHandler(newCommonHandler(h.from, scoreAddr, nil, h.log))
 	// It ignores stepUsed intentionally because it's not proper to charge step for GetAPI().
-	status, _, _, _ := cc.Call(cgah)
+	status, _, _, _ := cc.Call(cgah, cc.StepAvailable())
 	if status != nil {
-		return status, h.StepUsed(), nil, nil
+		return status, nil, nil
 	}
 	apiInfo := scoreAs.APIInfo()
 	typedObj, err := apiInfo.ConvertParamsToTypedObj(
 		methodStr, scoreAs.NextContract().Params())
 	if err != nil {
-		return err, h.StepUsed(), nil, nil
+		return err, nil, nil
 	}
 
 	// 2. call on_install or on_update of the contract
@@ -270,21 +268,21 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *big.Int, *codec.Typ
 	handler := newCallHandlerFromTypedObj(
 		// NOTE : on_install or on_update should be invoked by score owner.
 		// 	self.msg.sender should be deployer(score owner) when on_install or on_update is invoked in SCORE
-		newCommonHandler(scoreAs.ContractOwner(), scoreAddr, big.NewInt(0), h.StepAvail(), h.log),
+		newCommonHandler(scoreAs.ContractOwner(), scoreAddr, big.NewInt(0), h.log),
 		methodStr, typedObj, true)
 
 	// state -> active if failed to on_install, set inactive
 	// on_install or on_update
-	status, stepUsed2, _, _ := cc.Call(handler)
-	h.DeductSteps(stepUsed2)
+	status, stepUsed2, _, _ := cc.Call(handler, cc.StepAvailable())
+	cc.DeductSteps(stepUsed2)
 	if status != nil {
-		return status, h.StepUsed(), nil, nil
+		return status, nil, nil
 	}
 	h.log.TSystemf("ACCEPT done score=%s", scoreAddr)
 	if err = scoreAs.AcceptContract(h.txHash, h.auditTxHash); err != nil {
-		return err, h.StepUsed(), nil, nil
+		return err, nil, nil
 	}
-	return nil, h.StepUsed(), nil, nil
+	return nil, nil, nil
 }
 
 type callGetAPIHandler struct {

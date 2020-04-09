@@ -7,12 +7,15 @@ import (
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoreresult"
+	"github.com/icon-project/goloop/service/state"
 	"github.com/icon-project/goloop/service/transaction"
 )
 
 type QueryHandler struct {
 	to   module.Address
 	data []byte
+
+	contractHandler contract.ContractHandler
 }
 
 func (qh *QueryHandler) Query(ctx contract.Context) (interface{}, error) {
@@ -38,12 +41,19 @@ func (qh *QueryHandler) Query(ctx contract.Context) (interface{}, error) {
 		}
 	}
 
-	// Set up
-	cc := contract.NewCallContext(ctx, nil, true)
-	handler := ctx.ContractManager().GetHandler(nil, qh.to, big.NewInt(0), ctx.GetStepLimit(transaction.LimitTypeCall), contract.CTypeCall, qh.data)
+	limit := ctx.GetStepLimit(transaction.LimitTypeCall)
+	cc := contract.NewCallContext(ctx, limit, true)
+
+	if !cc.ApplySteps(state.StepTypeDefault, 1) {
+		return nil, scoreresult.OutOfStepError.New("NotEnoughSteps(Default)")
+	}
+	cnt, err := transaction.MeasureBytesOfData(ctx.Revision(), qh.data)
+	if !cc.ApplySteps(state.StepTypeInput, cnt) {
+		return nil, scoreresult.OutOfStepError.New("NotEnoughSteps(Input)")
+	}
 
 	// Execute
-	status, _, result, _ := cc.Call(handler)
+	status, _, result, _ := cc.Call(qh.contractHandler, cc.StepAvailable())
 	cc.Dispose()
 	if status != nil {
 		return nil, scoreresult.Validate(status)
@@ -59,5 +69,7 @@ func NewQueryHandler(cm contract.ContractManager, to module.Address, data []byte
 	return &QueryHandler{
 		to:   to,
 		data: data,
+
+		contractHandler: cm.GetHandler(nil, to, big.NewInt(0), contract.CTypeCall, data),
 	}
 }

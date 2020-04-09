@@ -1,9 +1,7 @@
 package contract
 
 import (
-	"container/list"
 	"math/big"
-	"reflect"
 	"sync"
 	"time"
 
@@ -23,14 +21,20 @@ type (
 	CallContext interface {
 		Context
 		QueryMode() bool
-		Call(ContractHandler) (error, *big.Int, *codec.TypedObj, module.Address)
+		Call(handler ContractHandler, limit *big.Int) (error, *big.Int, *codec.TypedObj, module.Address)
 		OnResult(status error, stepUsed *big.Int, result *codec.TypedObj, addr module.Address)
-		OnCall(ContractHandler)
+		OnCall(handler ContractHandler, limit *big.Int)
 		OnEvent(addr module.Address, indexed, data [][]byte)
 		GetBalance(module.Address) *big.Int
 		ReserveExecutor() error
 		GetProxy(eeType state.EEType) eeproxy.Proxy
 		Dispose()
+		StepUsed() *big.Int
+		StepAvailable() *big.Int
+		ApplySteps(t state.StepType, n int) bool
+		DeductSteps(s *big.Int) bool
+		ResetStepLimit(s *big.Int)
+		GetEventLogs(r txresult.Receipt)
 	}
 	callResultMessage struct {
 		status   error
@@ -40,25 +44,25 @@ type (
 	}
 
 	callRequestMessage struct {
-		handler ContractHandler
+		handler   ContractHandler
+		stepLimit *big.Int
 	}
 )
 
 type callContext struct {
 	Context
-	receipt  txresult.Receipt
 	isQuery  bool
 	executor *eeproxy.Executor
 
 	timer  <-chan time.Time
 	lock   sync.Mutex
-	stack  list.List
+	frame  *callFrame
 	waiter chan interface{}
 
 	log *trace.Logger
 }
 
-func NewCallContext(ctx Context, receipt txresult.Receipt, isQuery bool) CallContext {
+func NewCallContext(ctx Context, limit *big.Int, isQuery bool) CallContext {
 	logger := trace.LoggerOf(ctx.Logger())
 	ti := ctx.TraceInfo()
 	if ti != nil {
@@ -72,10 +76,9 @@ func NewCallContext(ctx Context, receipt txresult.Receipt, isQuery bool) CallCon
 
 	return &callContext{
 		Context: ctx,
-		receipt: receipt,
 		isQuery: isQuery,
-		// 0-buffered channel is fine, but it sets some number just in case of
-		// EE unexpectedly sends messages up to 8.
+		frame:   NewFrame(nil, nil, limit),
+
 		waiter: make(chan interface{}, 8),
 		log:    logger,
 	}
@@ -89,114 +92,43 @@ func (cc *callContext) Logger() log.Logger {
 	return cc.log
 }
 
-type eventLog struct {
-	Addr    common.Address
-	Indexed [][]byte
-	Data    [][]byte
-}
-
-type callFrame struct {
-	handler   ContractHandler
-	byOnCall  bool
-	snapshot  state.WorldSnapshot
-	eventLogs *list.List
-}
-
-func (f *callFrame) AddLog(addr module.Address, indexed, data [][]byte) {
-	e := new(eventLog)
-	e.Addr.SetBytes(addr.Bytes())
-	e.Indexed = indexed
-	e.Data = data
-	f.eventLogs.PushBack(e)
-}
-
-func (f *callFrame) ReturnToFrame(f2 *callFrame) {
-	f2.eventLogs.PushBackList(f.eventLogs)
-}
-
-func (f *callFrame) ReturnToReceipt(r txresult.Receipt) {
-	for i := f.eventLogs.Front(); i != nil; i = i.Next() {
-		e := i.Value.(*eventLog)
-		r.AddLog(&e.Addr, e.Indexed, e.Data)
-	}
-}
-
-func (cc *callContext) pushFrame(h ContractHandler, byOnCall bool) *list.Element {
+func (cc *callContext) pushFrame(handler ContractHandler, limit *big.Int) *callFrame {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
-
-	frame := &callFrame{
-		handler:   h,
-		byOnCall:  byOnCall,
-		eventLogs: list.New(),
-	}
+	handler.ResetLogger(cc.Logger())
+	frame := NewFrame(cc.frame, handler, limit)
 	if !cc.isQuery {
 		frame.snapshot = cc.GetSnapshot()
 	}
-	return cc.stack.PushBack(frame)
+	cc.frame = frame
+	return frame
 }
 
-func (cc *callContext) popFrame(e *list.Element, revert bool) (*callFrame, *callFrame) {
+func (cc *callContext) popFrame(success bool) *callFrame {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
 
-	current := cc.stack.Back()
-	if current == nil {
-		if e != nil {
-			cc.log.Error("Fail to pop frame")
-		}
-		return nil, nil
-	}
-	if e != nil && e != current {
-		cc.log.Error("Fail on onPostExecute")
-	}
-	cc.stack.Remove(current)
-
-	frame := current.Value.(*callFrame)
-	last := cc.stack.Back()
-
-	if cc.isQuery {
-		if last != nil {
-			return frame, last.Value.(*callFrame)
-		}
-		return frame, nil
-	}
-
-	if !revert {
-		if last != nil {
-			lastFrame := last.Value.(*callFrame)
-			frame.ReturnToFrame(lastFrame)
-			return frame, lastFrame
+	frame := cc.frame
+	if !cc.isQuery {
+		if success {
+			frame.parent.pushBackEventLogsOf(frame)
 		} else {
-			frame.ReturnToReceipt(cc.receipt)
-			return frame, nil
+			cc.Reset(frame.snapshot)
 		}
-	} else {
-		if err := cc.Reset(frame.snapshot); err != nil {
-			cc.log.Errorf("Fail to revert err=%+v", err)
-		}
-		if last != nil {
-			return frame, last.Value.(*callFrame)
-		}
-		return frame, nil
 	}
+	cc.frame = frame.parent
+	return frame
 }
 
 func (cc *callContext) isInAsyncFrame() bool {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
 
-	e := cc.stack.Back()
-	if e == nil {
-		return false
-	}
-
-	frame := e.Value.(*callFrame)
-	_, ok := frame.handler.(AsyncContractHandler)
+	_, ok := cc.frame.handler.(AsyncContractHandler)
 	return ok
 }
 
-func (cc *callContext) addLogToFrame(address module.Address, indexed [][]byte, data [][]byte) error {
+func (cc *callContext) addLogToFrame(addr module.Address, indexed [][]byte, data [][]byte) error {
 	if cc.isQuery {
 		return nil
 	}
@@ -204,12 +136,7 @@ func (cc *callContext) addLogToFrame(address module.Address, indexed [][]byte, d
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
 
-	e := cc.stack.Back()
-	if e == nil {
-		return errors.InvalidStateError.New("Frame is Empty")
-	}
-	frame := e.Value.(*callFrame)
-	frame.AddLog(address, indexed, data)
+	cc.frame.addLog(addr, indexed, data)
 	return nil
 }
 
@@ -223,36 +150,36 @@ func (cc *callContext) validateStatus(status error) error {
 	return status
 }
 
-func (cc *callContext) Call(handler ContractHandler) (error, *big.Int, *codec.TypedObj, module.Address) {
-	handler.ResetLogger(cc.Logger())
+func (cc *callContext) Call(handler ContractHandler, limit *big.Int) (error, *big.Int, *codec.TypedObj, module.Address) {
+	frame := cc.pushFrame(handler, limit)
+	done, status, result, addr := cc.runFrame(frame)
+	if done {
+		cc.handleResult(frame, status, result, addr)
+	} else {
+		status, result, addr = cc.waitResult(frame)
+	}
+	return status, frame.getStepUsed(), result, addr
+}
 
-	switch handler := handler.(type) {
+func (cc *callContext) runFrame(frame *callFrame) (bool, error, *codec.TypedObj, module.Address) {
+	switch handler := frame.handler.(type) {
 	case SyncContractHandler:
-		e := cc.pushFrame(handler, false)
-
-		status, stepUsed, result, scoreAddr := handler.ExecuteSync(cc)
-		status = cc.validateStatus(status)
-
-		cc.popFrame(e, status != nil)
-		return status, stepUsed, result, scoreAddr
+		status, result, addr := handler.ExecuteSync(cc)
+		return true, cc.validateStatus(status), result, addr
 	case AsyncContractHandler:
-		e := cc.pushFrame(handler, false)
-
-		if err := handler.ExecuteAsync(cc); err != nil {
-			cc.popFrame(e, true)
-			handler.Dispose()
-			err = cc.validateStatus(err)
-			return err, handler.StepLimit(), nil, nil
+		if status := handler.ExecuteAsync(cc); status != nil {
+			return true, cc.validateStatus(status), nil, nil
 		}
-		return cc.waitResult(handler.StepLimit())
+		return false, nil, nil, nil
 	default:
-		cc.log.Panicln("Unknown handler type:", reflect.TypeOf(handler))
-		return nil, nil, nil, nil
+		cc.log.Panicf("UnsupportedHandler(handler=%T)", frame.handler)
+		return true,
+			scoreresult.UnknownFailureError.Errorf("UnsupportedHandler(handler=%T)", frame.handler),
+			nil, nil
 	}
 }
 
-func (cc *callContext) waitResult(stepLimit *big.Int) (error, *big.Int, *codec.TypedObj, module.Address) {
-	// It checks transaction timeout after the first call to EE
+func (cc *callContext) waitResult(target *callFrame) (error, *codec.TypedObj, module.Address) {
 	if cc.timer == nil {
 		cc.timer = time.After(transactionTimeLimit)
 	}
@@ -260,40 +187,24 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (error, *big.Int, *codec.T
 	for {
 		select {
 		case <-cc.timer:
-			cc.cleanUpFrames(scoreresult.ErrTimeout)
-			return scoreresult.ErrTimeout, stepLimit, nil, nil
+			cc.cleanUpFrames(target, scoreresult.ErrTimeout)
+			return scoreresult.ErrTimeout, nil, nil
 		case msg := <-cc.waiter:
 			switch msg := msg.(type) {
 			case *callResultMessage:
 				status := cc.validateStatus(msg.status)
-				if cc.handleResult(status, msg.stepUsed,
-					msg.result, msg.addr) {
+				cc.DeductSteps(msg.stepUsed)
+				if cc.handleResult(target, status, msg.result, msg.addr) {
 					continue
 				}
-				return status, msg.stepUsed, msg.result, msg.addr
+				return status, msg.result, msg.addr
 			case *callRequestMessage:
-				msg.handler.ResetLogger(cc.log)
-
-				switch handler := msg.handler.(type) {
-				case SyncContractHandler:
-					cc.pushFrame(handler, true)
-					status, used, result, addr := handler.ExecuteSync(cc)
-					status = cc.validateStatus(status)
-					if cc.handleResult(status, used, result, addr) {
+				frame := cc.pushFrame(msg.handler, msg.stepLimit)
+				if done, status, result, addr := cc.runFrame(frame); done {
+					if cc.handleResult(target, status, result, addr) {
 						continue
 					}
-					return status, used, result, addr
-				case AsyncContractHandler:
-					cc.pushFrame(handler, true)
-					if err := handler.ExecuteAsync(cc); err != nil {
-						err = cc.validateStatus(err)
-						if cc.handleResult(err, handler.StepLimit(), nil, nil) {
-							continue
-						}
-						return err, handler.StepLimit(), nil, nil
-					} else {
-						continue
-					}
+					return status, result, addr
 				}
 			default:
 				cc.log.Panicf("Invalid message=%[1]T %+[1]v", msg)
@@ -302,22 +213,25 @@ func (cc *callContext) waitResult(stepLimit *big.Int) (error, *big.Int, *codec.T
 	}
 }
 
-func (cc *callContext) cleanUpFrames(err error) {
+func (cc *callContext) cleanUpFrames(target *callFrame, err error) {
 	cc.log.Warnf("cleanUpFrames() TX=<%#x> err=%+v", cc.GetInfo()[state.InfoTxHash], err)
 	l := common.Lock(&cc.lock)
-	var frame *callFrame
-	achs := make([]AsyncContractHandler, 0, cc.stack.Len())
-	for e := cc.stack.Back(); e != nil; e = cc.stack.Back() {
-		frame = e.Value.(*callFrame)
-		if h, ok := frame.handler.(AsyncContractHandler); ok {
-			achs = append(achs, h)
+	defer l.Unlock()
+	achs := make([]AsyncContractHandler, 0, 16)
+	for cc.frame != nil && cc.frame.handler != nil {
+		frame := cc.frame
+		cc.frame = frame.parent
+		if ach, ok := frame.handler.(AsyncContractHandler); ok {
+			achs = append(achs, ach)
 		}
-		cc.stack.Remove(e)
+		if frame == target {
+			break
+		}
 	}
 	l.Unlock()
 
-	if frame != nil {
-		cc.Reset(frame.snapshot)
+	if !cc.isQuery {
+		cc.Reset(target.snapshot)
 	}
 	for _, h := range achs {
 		h.Dispose()
@@ -329,30 +243,35 @@ func (cc *callContext) cleanUpFrames(err error) {
 	}
 }
 
-func (cc *callContext) handleResult(status error, stepUsed *big.Int, result *codec.TypedObj, addr module.Address) bool {
+func (cc *callContext) handleResult(target *callFrame, status error, result *codec.TypedObj, addr module.Address) bool {
 	if code := errors.CodeOf(status); code == scoreresult.TimeoutError ||
 		code == errors.ExecutionFailError || errors.IsCriticalCode(code) {
-		cc.cleanUpFrames(status)
+		cc.cleanUpFrames(target, status)
 		return false
 	}
 
-	currentFrame, lastFrame := cc.popFrame(nil, status != nil)
-	if currentFrame == nil {
-		cc.log.Error("Fail to pop frame")
+	current := cc.popFrame(status == nil)
+	if current == nil {
+		return false
 	}
 
-	if ach, ok := currentFrame.handler.(AsyncContractHandler); ok {
+	if ach, ok := current.handler.(AsyncContractHandler); ok {
 		ach.Dispose()
 	}
-	if lastFrame == nil {
+
+	if current == target {
 		return false
 	}
 
-	if currentFrame.byOnCall {
-		// SyncContractHandler can't be queued by OnCall(), so don't consider it.
-		h := lastFrame.handler.(AsyncContractHandler)
-		if err := h.SendResult(status, stepUsed, result); err != nil {
-			cc.OnResult(err, h.StepUsed(), nil, nil)
+	parent := current.parent
+	if parent == nil || parent.handler == nil {
+		cc.log.Panicf("ROOT frame shouldn't be reached or popped parent=%v", parent)
+		return false
+	}
+	if ach, ok := parent.handler.(AsyncContractHandler); ok {
+		err := ach.SendResult(status, current.getStepUsed(), result)
+		if err != nil {
+			cc.OnResult(err, parent.getStepAvailable(), nil, nil)
 		}
 		return true
 	} else {
@@ -369,8 +288,8 @@ func (cc *callContext) OnResult(status error, stepUsed *big.Int, result *codec.T
 	})
 }
 
-func (cc *callContext) OnCall(handler ContractHandler) {
-	cc.sendMessage(&callRequestMessage{handler})
+func (cc *callContext) OnCall(handler ContractHandler, limit *big.Int) {
+	cc.sendMessage(&callRequestMessage{handler, limit})
 }
 
 func (cc *callContext) sendMessage(msg interface{}) error {
@@ -410,13 +329,6 @@ func (cc *callContext) ReserveExecutor() error {
 	return nil
 }
 
-func (cc *callContext) KillExecutor() {
-	if cc.executor != nil {
-		cc.executor.Kill()
-		cc.executor = nil
-	}
-}
-
 func (cc *callContext) GetProxy(eeType state.EEType) eeproxy.Proxy {
 	cc.ReserveExecutor()
 	return cc.executor.Get(string(eeType))
@@ -426,4 +338,48 @@ func (cc *callContext) Dispose() {
 	if cc.executor != nil {
 		cc.executor.Release()
 	}
+}
+
+func (cc *callContext) StepUsed() *big.Int {
+	cc.lock.Lock()
+	defer cc.lock.Unlock()
+	return cc.frame.getStepUsed()
+}
+
+func (cc *callContext) ResetStepLimit(limit *big.Int) {
+	cc.lock.Lock()
+	defer cc.lock.Unlock()
+
+	cc.frame.stepLimit = limit
+	cc.frame.stepUsed.SetInt64(0)
+}
+
+func (cc *callContext) StepAvailable() *big.Int {
+	cc.lock.Lock()
+	defer cc.lock.Unlock()
+	steps := cc.frame.getStepAvailable()
+	return steps
+}
+
+func (cc *callContext) ApplySteps(t state.StepType, n int) bool {
+	cc.lock.Lock()
+	defer cc.lock.Unlock()
+	steps := big.NewInt(cc.StepsFor(t, n))
+	ok := cc.frame.deductSteps(steps)
+	cc.log.TSystemf("STEP apply type=%s count=%d cost=%s total=%s", t, n, steps, &cc.frame.stepUsed)
+	return ok
+}
+
+func (cc *callContext) DeductSteps(s *big.Int) bool {
+	cc.lock.Lock()
+	defer cc.lock.Unlock()
+	ok := cc.frame.deductSteps(s)
+	cc.log.TSystemf("STEP apply cost=%s total=%d", s, &cc.frame.stepUsed)
+	return ok
+}
+
+func (cc *callContext) GetEventLogs(r txresult.Receipt) {
+	cc.lock.Lock()
+	defer cc.lock.Unlock()
+	cc.frame.getEventLogs(r)
 }
