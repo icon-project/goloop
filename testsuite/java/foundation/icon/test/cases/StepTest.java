@@ -235,47 +235,40 @@ public class StepTest extends TestBase {
             return stepUsed.add(StepType.INPUT.getSteps().multiply(BigInteger.valueOf(dataLen)));
         }
 
-        BigInteger calcDeployStep(Transaction tx, byte[] content, boolean update) throws IOException {
+        BigInteger calcDeployStep(Transaction tx, byte[] content, boolean update) {
             // get the default transaction steps first
             BigInteger stepUsed = calcTransactionStep(tx);
-            if (!chainScore.isAuditEnabled()) {
-                // if Audit is disabled, the sender must pay steps for executing on_install() or on_update()
-                // NOTE: the following calculation can only be applied to hello_world score
-                RpcObject params = tx.getData().asObject().getItem("params").asObject();
-                String name = params.getItem("name").asString();
-                BigInteger nameLength = BigInteger.valueOf(name.length());
-                if (update) {
-                    stepUsed = stepUsed.add(StepType.REPLACE.getSteps().multiply(nameLength));
-                } else {
-                    stepUsed = stepUsed.add(StepType.SET.getSteps().multiply(nameLength));
-                }
-            }
             // contractCreate or contractUpdate
-            // contractSet * codeLen
-            BigInteger codeLen = BigInteger.valueOf(content.length);
             if (update) {
                 stepUsed = StepType.CONTRACT_UPDATE.getSteps().add(stepUsed);
             } else {
                 stepUsed = StepType.CONTRACT_CREATE.getSteps().add(stepUsed);
             }
+            // contractSet * codeLen
+            BigInteger codeLen = BigInteger.valueOf(content.length);
             return stepUsed.add(StepType.CONTRACT_SET.getSteps().multiply(codeLen));
-        }
-
-        BigInteger calcAcceptStep(Transaction tx, RpcObject params, boolean update) throws IOException {
-            BigInteger stepUsed = calcCallStep(tx);
-            String name = params.getItem("name").asString();
-            BigInteger nameLength = BigInteger.valueOf(name.length());
-            if (update) {
-                stepUsed = stepUsed.add(StepType.REPLACE.getSteps().multiply(nameLength));
-            } else {
-                stepUsed = stepUsed.add(StepType.SET.getSteps().multiply(nameLength));
-            }
-            return stepUsed;
         }
 
         BigInteger calcCallStep(Transaction tx) {
             BigInteger stepUsed = calcTransactionStep(tx);
             return StepType.CONTRACT_CALL.getSteps().add(stepUsed);
+        }
+
+        BigInteger calcAcceptStep(Transaction tx, RpcObject params, boolean update) {
+            BigInteger callSteps = calcCallStep(tx);
+            BigInteger initSteps = calcInitStep(params, update);
+            return callSteps.add(initSteps);
+        }
+
+        BigInteger calcInitStep(RpcObject params, boolean update) {
+            // NOTE: the following calculation can only be applied to hello_world score
+            String name = params.getItem("name").asString();
+            BigInteger nameLength = BigInteger.valueOf(name.length());
+            if (update) {
+                return StepType.REPLACE.getSteps().multiply(nameLength);
+            } else {
+                return StepType.SET.getSteps().multiply(nameLength);
+            }
         }
 
         BigInteger transfer(KeyWallet from, Address to, BigInteger value, String msg) throws Exception {
@@ -326,7 +319,7 @@ public class StepTest extends TestBase {
                         .nid(txHandler.getNetworkId())
                         .from(governor.getAddress())
                         .to(Constants.GOV_ADDRESS)
-                        .stepLimit(new BigInteger("70000000", 16))
+                        .stepLimit(Constants.DEFAULT_STEPS)
                         .call("acceptScore")
                         .params(acceptParams)
                         .build();
@@ -336,6 +329,10 @@ public class StepTest extends TestBase {
 
                 assertSuccess(acceptResult);
                 assertEquals(acceptSteps, acceptResult.getStepUsed());
+            } else {
+                // if Audit is disabled, the sender must pay steps for executing on_install() or on_update()
+                var initSteps = calcInitStep(params, to != Constants.CHAINSCORE_ADDRESS);
+                expectedStep = expectedStep.add(initSteps);
             }
             this.scoreAddr = new Address(result.getScoreAddress());
             return getUsedFee(from, BigInteger.ZERO, prevTreasury, prevBal);
@@ -574,21 +571,21 @@ public class StepTest extends TestBase {
     }
 
     @Test
-    public void testInterChainScoreCall() throws Exception {
-        LOG.infoEntering("testChainSCORECall");
+    public void testChainScoreCall() throws Exception {
+        LOG.infoEntering("testChainScoreCall");
 
-        LOG.infoEntering("deploy hello_world");
+        LOG.infoEntering("deploy", "hello_world");
         RpcObject params = new RpcObject.Builder()
                 .put("name", new RpcValue("HelloWorld"))
                 .build();
         Score score = txHandler.deploy(testWallets[1], Score.getFilePath("hello_world"), params);
         LOG.infoExiting();
 
-        LOG.infoEntering("invoke HelloWorld.checkRevision() -> ChainSCORE.getRevision()");
+        LOG.infoEntering("invoke", "HelloWorld.checkRevision() -> ChainSCORE.getRevision()");
         StepTransaction stx = new StepTransaction();
         var usedFee = stx.call(testWallets[1], score.getAddress(),
                 "checkRevision", null, Constants.DEFAULT_STEPS);
-        stx.addOperation(StepType.CONTRACT_CALL,1);
+        stx.addOperation(StepType.CONTRACT_CALL, 1);
         assertEquals(usedFee, stx.expectedFee());
         LOG.infoExiting();
 
