@@ -92,13 +92,13 @@ public class Method {
         }
     }
 
-    private int type;
-    private String name;
-    private int flags;
-    private int indexed;
-    private Parameter[] inputs;
-    private int output;
-    private String outputDescriptor;
+    private final int type;
+    private final String name;
+    private final int flags;
+    private final int indexed;
+    private final Parameter[] inputs;
+    private final int output;
+    private final String outputDescriptor;
 
     private Method(int type, String name, int flags, int indexed, Parameter[] inputs, int output, String outputDescriptor) {
         this.type = type;

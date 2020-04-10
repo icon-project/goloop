@@ -41,7 +41,7 @@ public class ExternalState implements IExternalState {
     private final Address owner;
     private byte[] codeCache;
     private ObjectGraph graphCache;
-    private StepCost stepCost;
+    private final StepCost stepCost;
 
     ExternalState(EEProxy proxy, int option, byte[] codeBytes, BigInteger blockHeight, BigInteger blockTimestamp, Address owner, Map<String, BigInteger> stepCosts) {
         this.proxy = proxy;

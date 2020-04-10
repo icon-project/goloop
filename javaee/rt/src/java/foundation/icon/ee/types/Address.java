@@ -20,8 +20,8 @@ import java.util.Arrays;
 
 public class Address {
     public static final int LENGTH = 21;
-    private byte prefix;
-    private byte[] body;
+    private final byte prefix;
+    private final byte[] body;
 
     public Address(byte[] input) {
         if (input == null) {

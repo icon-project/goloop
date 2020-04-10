@@ -137,11 +137,6 @@ public interface IExternalState {
 
     /**
      * Calls external method of target contract.
-     *
-     * @param method
-     * @param params
-     * @return
-     * @throws IllegalArgumentException
      */
     Result call(Address address,
                        String method,

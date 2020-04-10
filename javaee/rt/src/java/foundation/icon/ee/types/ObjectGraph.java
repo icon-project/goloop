@@ -22,9 +22,9 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 public class ObjectGraph {
-    private int nextHash;
-    private byte[] graphHash;
-    private byte[] graphData;
+    private final int nextHash;
+    private final byte[] graphHash;
+    private final byte[] graphData;
 
     public ObjectGraph(int nextHash, byte[] graphHash, byte[] graphData) {
         this.nextHash = nextHash;

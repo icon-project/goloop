@@ -35,7 +35,7 @@ import java.util.function.IntConsumer;
 
 public class EEProxy extends Proxy {
     private static final Logger logger = LoggerFactory.getLogger(EEProxy.class);
-    private static ThreadLocal<EEProxy> threadLocal = new ThreadLocal<>();
+    private static final ThreadLocal<EEProxy> threadLocal = new ThreadLocal<>();
 
     public static final int LOG_PANIC = 0;
     public static final int LOG_FATAL = 1;
@@ -47,7 +47,7 @@ public class EEProxy extends Proxy {
 
     private OnGetApiListener mOnGetApiListener;
     private OnInvokeListener mOnInvokeListener;
-    private ArrayList<IntConsumer> mPrevSizeCBs = new ArrayList<>();
+    private final ArrayList<IntConsumer> mPrevSizeCBs = new ArrayList<>();
 
     public static class MsgType {
         public static final int VERSION = 0;
