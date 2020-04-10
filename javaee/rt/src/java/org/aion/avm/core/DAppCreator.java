@@ -423,6 +423,7 @@ public class DAppCreator {
             // Bill for writing this size.
             threadInstrumentation.chargeEnergy(StorageFees.WRITE_PRICE_PER_BYTE * rawGraphData.length);
             externalState.putObjectGraph(dappAddress, rawGraphData);
+            externalState.waitForCallbacks();
 
             long energyUsed = tx.getLimit() - threadInstrumentation.energyLeft();
             return new Result(Status.Success, energyUsed, null);

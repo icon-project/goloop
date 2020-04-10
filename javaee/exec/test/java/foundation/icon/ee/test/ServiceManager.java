@@ -43,9 +43,16 @@ public class ServiceManager extends Proxy {
         info.put(Info.TX_TIMESTAMP, BigInteger.valueOf(1000000));
         info.put(Info.TX_NONCE, BigInteger.valueOf(2));
         info.put(Info.CONTRACT_OWNER, origin);
-        Map<String, BigInteger> stepCosts = new HashMap<>();
-        stepCosts.put(StepCost.EVENT_LOG, BigInteger.valueOf(100));
-        stepCosts.put(StepCost.EVENT_LOG_BASE, BigInteger.valueOf(1000));
+        Map<String, BigInteger> stepCosts = new HashMap<>(Map.of(
+                StepCost.GET, BigInteger.valueOf(40),
+                StepCost.REPLACE, BigInteger.valueOf(80),
+                StepCost.EVENT_LOG, BigInteger.valueOf(100),
+                StepCost.DEFAULT_GET, BigInteger.valueOf(2000),
+                StepCost.DEFAULT_SET, BigInteger.valueOf(20000),
+                StepCost.REPLACE_BASE, BigInteger.valueOf(64),
+                StepCost.DEFAULT_DELETE, BigInteger.valueOf(-10000),
+                StepCost.EVENT_LOG_BASE, BigInteger.valueOf(64)
+        ));
         info.put(Info.STEP_COSTS, stepCosts);
         current = state.getAccount(origin);
     }

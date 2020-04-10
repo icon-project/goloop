@@ -2,8 +2,10 @@ package org.aion.avm.core;
 
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Result;
+import foundation.icon.ee.types.StepCost;
 
 import java.math.BigInteger;
+import java.util.function.IntConsumer;
 
 /**
  * An interface into some external component that maintains and can answer state queries pertaining
@@ -67,8 +69,24 @@ public interface IExternalState {
      *
      * @param key The key.
      * @param value The value.
+     * @param prevSizeCB Previous size callback. Negative value is passed if
+     *                   there is no previous value.
      */
-    void putStorage(byte[] key, byte[] value);
+    void putStorage(byte[] key, byte[] value, IntConsumer prevSizeCB);
+
+    /**
+     * Waits for a pending callback.
+     *
+     * Immediately returns false if there is no callback to wait.
+     *
+     * @return false if there is no callback to wait.
+     */
+    boolean waitForCallback();
+
+    /**
+     * Waits for all pending callbacks.
+     */
+    void waitForCallbacks();
 
     /**
      * Returns the value in the key-value pairing to the specified key for the given address if any
@@ -141,7 +159,5 @@ public interface IExternalState {
         return (getOption() & OPTION_TRACE) != 0;
     }
 
-    boolean hasStepCost(String key);
-
-    int getStepCost(String key);
+    StepCost getStepCost();
 }

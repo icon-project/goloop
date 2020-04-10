@@ -186,6 +186,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
             // a current depth of 9 means we're about to go up to 10, so we fail
             throw new CallDepthLimitExceededException("Internal call depth cannot be more than 10");
         }
+        externalState.waitForCallbacks();
         var hash = IInstrumentation.attachedThreadInstrumentation.get().peekNextHashCode();
         int stepLeft = (int)IInstrumentation.attachedThreadInstrumentation.get().energyLeft();
         var rs = dApp.saveRuntimeState(hash, StorageFees.MAX_GRAPH_SIZE);
@@ -315,7 +316,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                 }
             }
         }
-        int len = 0;
+        int len = Address.LENGTH;
         byte[][] bindexed = new byte[indexed.length()][];
         for (int i=0; i<bindexed.length; i++) {
             Value v = (Value)indexed.get(i);
@@ -336,11 +337,10 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
             }
             len += bdata[i].length;
         }
-        IExternalState es = IInstrumentation.getCurrentFrameContext()
-                .getExternalState();
-        int evLogBase = es.getStepCost(StepCost.EVENT_LOG_BASE);
-        int evLog = es.getStepCost(StepCost.EVENT_LOG);
-        IInstrumentation.charge(evLogBase + evLog * len);
+        var stepCost = externalState.getStepCost();
+        int evLogBase = stepCost.eventLogBase();
+        int evLog = stepCost.eventLog();
+        IInstrumentation.charge(Math.max(evLogBase, len) * evLog);
         externalState.log(bindexed, bdata);
     }
 }

@@ -101,6 +101,7 @@ public class DAppExecutor {
                 dapp.setHashCode(newHashCode);
                 dapp.setSerializedLength(postCallGraphData.length);
             }
+            externalState.waitForCallbacks();
 
             long energyUsed = tx.getLimit() - threadInstrumentation.energyLeft();
             result = new Result(Status.Success, energyUsed, ret);

@@ -35,6 +35,10 @@ public interface IInstrumentation {
     void chargeEnergy(int cost) throws OutOfEnergyException;
     long energyLeft();
 
+    default void chargeEnergyImmediately(int cost) throws OutOfEnergyException {
+        chargeEnergy(cost);
+    }
+
     /**
      * Used to get the next hash code and then increment it.
      * @return The next hash code, prior to the increment.

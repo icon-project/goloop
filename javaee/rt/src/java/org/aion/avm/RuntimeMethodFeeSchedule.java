@@ -331,19 +331,7 @@ public class RuntimeMethodFeeSchedule {
     public static final int BlockchainRuntime_avm_newArrayDB = RT_METHOD_FEE_LEVEL_1;
     public static final int BlockchainRuntime_avm_newVarDB = RT_METHOD_FEE_LEVEL_1;
 
-    public static final int DictDB_avm_putValue = 20000;
-    public static final int DictDB_avm_get = RT_METHOD_FEE_LEVEL_1;
-    public static final int DictDB_avm_getValue = 200;
-
-    public static final int ArrayDB_avm_addValue = 40100;
-    public static final int ArrayDB_avm_setValue = 20100;
-    public static final int ArrayDB_avm_removeLast = 40100;
-    public static final int ArrayDB_avm_getValue = 300;
-    public static final int ArrayDB_avm_size = 100;
-    public static final int ArrayDB_avm_popValue = 40300;
-
-    public static final int VarDB_avm_putValue = 20000;
-    public static final int VarDB_avm_getValue = 200;
+    public static final int DictDB_avm_at = RT_METHOD_FEE_LEVEL_1;
 
     public static final int ShortArray_avm_clone = RT_METHOD_FEE_LEVEL_3; // totalCost - 462; // byte code cost - 362; invoked methods cost - 100;
     public static final int ShortArray_avm_constructor = RT_METHOD_FEE_LEVEL_1; // totalCost - 176;

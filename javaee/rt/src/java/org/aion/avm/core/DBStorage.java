@@ -2,7 +2,6 @@ package org.aion.avm.core;
 
 import i.IDBStorage;
 import i.IInstrumentation;
-import org.aion.avm.StorageFees;
 
 import java.math.BigInteger;
 
@@ -14,20 +13,17 @@ public class DBStorage implements IDBStorage {
     }
 
     public void setArrayLength(byte[] key, int l) {
-        if (ctx.isQuery()) {
-            throw new IllegalStateException();
-        }
         byte[] v;
         if (l==0) {
             v = null;
         } else {
             v = BigInteger.valueOf(l).toByteArray();
         }
-        ctx.putStorage(key, v);
+        setBytes(key, v);
     }
 
     public int getArrayLength(byte[] key) {
-        var bs = ctx.getStorage(key);
+        var bs = getBytes(key);
         if (bs==null)
             return 0;
         return new BigInteger(bs).intValue();
@@ -37,19 +33,41 @@ public class DBStorage implements IDBStorage {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(cost);
     }
 
-    public void setBytes(byte[] key, byte[] value) {
+    private void chargeImmediately(int cost) {
+        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergyImmediately(cost);
+    }
+
+    public void setBytes(byte[] k, byte[] v) {
         if (ctx.isQuery()) {
             throw new IllegalStateException();
         }
-        if (value != null)
-            charge(value.length * StorageFees.WRITE_PRICE_PER_BYTE);
-        ctx.putStorage(key, value);
+        var stepCost = ctx.getStepCost();
+        if (v==null) {
+            charge(stepCost.replaceBase());
+            ctx.putStorage(k, v, prevSize -> {
+                if (prevSize>=0) {
+                    chargeImmediately(stepCost.defaultDelete());
+                }
+            });
+        } else {
+            var e = Math.max(stepCost.replaceBase(),
+                    v.length) * stepCost.replace();
+            charge(e + stepCost.defaultSet());
+            ctx.putStorage(k, v, prevSize -> {
+                if (prevSize<0) {
+                    chargeImmediately(-stepCost.defaultSet());
+                }
+            });
+        }
     }
 
     public byte[] getBytes(byte[] key) {
         var value = ctx.getStorage(key);
+        var stepCost = ctx.getStepCost();
+        int len = 0;
         if (value != null)
-            charge(value.length * StorageFees.READ_PRICE_PER_BYTE);
+            len = value.length;
+        charge(stepCost.defaultGet() + len * stepCost.get());
         return value;
     }
 

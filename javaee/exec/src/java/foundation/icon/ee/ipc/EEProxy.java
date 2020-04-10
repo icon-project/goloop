@@ -29,7 +29,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Map;
+import java.util.function.IntConsumer;
 
 public class EEProxy extends Proxy {
     private static final Logger logger = LoggerFactory.getLogger(EEProxy.class);
@@ -45,6 +47,7 @@ public class EEProxy extends Proxy {
 
     private OnGetApiListener mOnGetApiListener;
     private OnInvokeListener mOnInvokeListener;
+    private ArrayList<IntConsumer> mPrevSizeCBs = new ArrayList<>();
 
     public static class MsgType {
         public static final int VERSION = 0;
@@ -128,6 +131,7 @@ public class EEProxy extends Proxy {
 
     public BigInteger getBalance(Address addr) throws IOException {
         sendMessage(MsgType.GETBALANCE, addr);
+        waitForCallbacks();
         Message msg = getNextMessage();
         if (msg.type != MsgType.GETBALANCE) {
             throw new IOException("Invalid message: GETBALANCE expected.");
@@ -139,6 +143,7 @@ public class EEProxy extends Proxy {
 
     public byte[] getValue(byte[] key) throws IOException {
         sendMessage(MsgType.GETVALUE, (Object) key);
+        waitForCallbacks();
         Message msg = getNextMessage();
         if (msg.type != MsgType.GETVALUE) {
             throw new IOException("Invalid message: GETVALUE expected.");
@@ -151,12 +156,34 @@ public class EEProxy extends Proxy {
         }
     }
 
-    public void setValue(byte[] key, byte[] value) throws IOException {
+    public void setValue(byte[] key, byte[] value, IntConsumer prevSizeCB) throws IOException {
+        int flag = 0;
         if (value == null) {
-            sendMessage(MsgType.SETVALUE, key, SetValueFlag.DELETE, null);
-        } else {
-            sendMessage(MsgType.SETVALUE, key, 0, value);
+            flag |= SetValueFlag.DELETE;
         }
+        if (prevSizeCB != null) {
+            flag |= SetValueFlag.OLDVALUE;
+            mPrevSizeCBs.add(prevSizeCB);
+        }
+        sendMessage(MsgType.SETVALUE, key, flag, value);
+    }
+
+    public boolean waitForCallback() throws IOException {
+        if (mPrevSizeCBs.isEmpty()) {
+            return false;
+        }
+        Message msg = getNextMessage();
+        if (msg.type != MsgType.SETVALUE) {
+            throw new IOException("Invalid message: SETVALUE expected.");
+        }
+        logger.trace("[SETVALUE]");
+        handleSetValue(msg.value);
+        return true;
+    }
+
+    @SuppressWarnings("StatementWithEmptyBody")
+    public void waitForCallbacks() throws IOException {
+        while(waitForCallback());
     }
 
     public void setCode(byte[] code) throws IOException {
@@ -165,6 +192,7 @@ public class EEProxy extends Proxy {
 
     public ObjectGraph getObjGraph(boolean flag) throws IOException {
         sendMessage(MsgType.GETOBJGRAPH, flag ? 1 : 0);
+        waitForCallbacks();
         Message msg = getNextMessage();
         if (msg.type != MsgType.GETOBJGRAPH) {
             throw new IOException("Invalid message: GETOBJGRAPH expected.");
@@ -273,5 +301,23 @@ public class EEProxy extends Proxy {
         BigInteger stepUsed = new BigInteger(getValueAsByteArray(data.get(1)));
         Object res = TypedObj.decodeAny(data.get(2));
         return new Result(status, stepUsed, res);
+    }
+
+    private void handleSetValue(Value raw) throws IOException {
+        try {
+            ArrayValue data = raw.asArrayValue();
+            boolean hasOld = data.get(0).asBooleanValue().getBoolean();
+            int prevSize = data.get(1).asIntegerValue().asInt();
+            var cb = mPrevSizeCBs.remove(0);
+            if (!hasOld) {
+                cb.accept(-1);
+            } else {
+                cb.accept(prevSize);
+            }
+        } catch (MessageTypeCastException e) {
+            String errMsg = "MessagePack casting error";
+            logger.warn(errMsg, e);
+            throw new IOException("no invoke handler");
+        }
     }
 }

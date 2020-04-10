@@ -21,6 +21,7 @@ import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Bytes;
 import foundation.icon.ee.types.ObjectGraph;
 import foundation.icon.ee.types.Result;
+import foundation.icon.ee.types.StepCost;
 import org.aion.avm.core.IExternalState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.Map;
+import java.util.function.IntConsumer;
 
 public class ExternalState implements IExternalState {
     private static final Logger logger = LoggerFactory.getLogger(ExternalState.class);
@@ -39,7 +41,7 @@ public class ExternalState implements IExternalState {
     private final Address owner;
     private byte[] codeCache;
     private ObjectGraph graphCache;
-    private Map<String, BigInteger> stepCosts;
+    private StepCost stepCost;
 
     ExternalState(EEProxy proxy, int option, byte[] codeBytes, BigInteger blockHeight, BigInteger blockTimestamp, Address owner, Map<String, BigInteger> stepCosts) {
         this.proxy = proxy;
@@ -48,7 +50,7 @@ public class ExternalState implements IExternalState {
         this.blockHeight = blockHeight.longValue();
         this.blockTimestamp = blockTimestamp.longValue();
         this.owner = owner; // owner cannot be null
-        this.stepCosts = stepCosts;
+        this.stepCost = new StepCost(stepCosts);
     }
 
     @Override
@@ -121,12 +123,31 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public void putStorage(byte[] key, byte[] value) {
+    public void putStorage(byte[] key, byte[] value, IntConsumer prevSizeCB) {
         logger.trace("[putStorage] key={} value={}", Bytes.toHexString(key), Bytes.toHexString(value));
         try {
-            proxy.setValue(key, value);
+            proxy.setValue(key, value, prevSizeCB);
         } catch (IOException e) {
             logger.debug("[putStorage] {}", e.getMessage());
+        }
+    }
+
+    @Override
+    public boolean waitForCallback() {
+        try {
+            return proxy.waitForCallback();
+        } catch (IOException e) {
+            logger.debug("[waitForCallback] {}", e.getMessage());
+            return true;
+        }
+    }
+
+    @Override
+    public void waitForCallbacks() {
+        try {
+            proxy.waitForCallbacks();
+        } catch (IOException e) {
+            logger.debug("[waitForCallback] {}", e.getMessage());
         }
     }
 
@@ -206,11 +227,8 @@ public class ExternalState implements IExternalState {
         return option;
     }
 
-    public boolean hasStepCost(String key) {
-        return stepCosts.containsKey(key);
-    }
-
-    public int getStepCost(String key) {
-        return stepCosts.getOrDefault(key, BigInteger.ZERO).intValue();
+    @Override
+    public StepCost getStepCost() {
+        return stepCost;
     }
 }

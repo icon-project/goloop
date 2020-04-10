@@ -145,22 +145,33 @@ public class CommonInstrumentation implements IInstrumentation {
 
     @Override
     public void chargeEnergy(int cost) throws OutOfEnergyException {
+        charge(cost, false);
+    }
+
+    @Override
+    public void chargeEnergyImmediately(int cost) throws OutOfEnergyException {
+        charge(cost, true);
+    }
+
+    private void charge(int cost, boolean immediate) throws OutOfEnergyException {
         // This is called at the beginning of a block so see if we are being asked to exit.
         if (null != this.currentFrame.forceExitState) {
             throw this.currentFrame.forceExitState;
         }
 
-        RuntimeAssertionError.assertTrue(cost >= 0);
         RuntimeAssertionError.assertTrue(cost < Math.pow(2, 30));
+
+        while (this.currentFrame.energyLeft < cost) {
+            if (immediate || !this.currentFrame.frameContext.waitForRefund()) {
+                this.currentFrame.energyLeft = 0;
+                OutOfEnergyException error = new OutOfEnergyException();
+                this.currentFrame.forceExitState = error;
+                throw error;
+            }
+        }
 
         // Bill for the block.
         this.currentFrame.energyLeft -= cost;
-        if (this.currentFrame.energyLeft < 0) {
-            // Note that this is a reason to force the exit so set this.
-            OutOfEnergyException error = new OutOfEnergyException();
-            this.currentFrame.forceExitState = error;
-            throw error;
-        }
     }
 
     @Override
