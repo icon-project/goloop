@@ -26,7 +26,7 @@ type StaticConfig struct {
 	EESocket      string `json:"ee_socket"`
 	Engines       string `json:"engines"`
 
-	AuthSkipIfEmptyUsers    bool    `json:"auth_skip_if_empty_users,omitempty"`
+	AuthSkipIfEmptyUsers bool `json:"auth_skip_if_empty_users,omitempty"`
 
 	BaseDir  string `json:"node_dir"`
 	FilePath string `json:"-"` // absolute path

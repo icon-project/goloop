@@ -86,8 +86,9 @@ gorun-% : godeps-image
 	    -v $(BUILD_ROOT):$(GOLOOP_WORK_DIR) \
 	    -w $(GOLOOP_WORK_DIR) \
 	    -e "GOBUILD_TAGS=$(GOBUILD_TAGS)" \
+	    -e "GL_VERSION=$(GL_VERSION)" \
 	    $(GODEPS_IMAGE) \
-	    make "GL_VERSION=$(GL_VERSION)" $(patsubst gorun-%,%,$@)
+	    make $(patsubst gorun-%,%,$@)
 
 pydeps-image:
 	@ \
@@ -99,8 +100,9 @@ pyrun-% : pydeps-image
 	docker run -it --rm \
 	    -v $(BUILD_ROOT):$(GOLOOP_WORK_DIR) \
 	    -w $(GOLOOP_WORK_DIR) \
+	    -e "GL_VERSION=$(GL_VERSION)" \
 	    $(PYDEPS_IMAGE) \
-	    make "GL_VERSION=$(GL_VERSION)" $(patsubst pyrun-%,%,$@)
+	    make $(patsubst pyrun-%,%,$@)
 
 pyexec:
 	@ \

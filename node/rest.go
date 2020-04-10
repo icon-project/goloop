@@ -32,8 +32,8 @@ const (
 	UrlChain    = "/chain"
 	ParamNID    = "nid"
 	UrlChainRes = "/:" + ParamNID
-	ParamID    = "id"
-	UrlUserRes = "/:" + ParamID
+	ParamID     = "id"
+	UrlUserRes  = "/:" + ParamID
 )
 
 type Rest struct {
@@ -44,7 +44,7 @@ type Rest struct {
 type SystemView struct {
 	BuildVersion string `json:"buildVersion"`
 	BuildTags    string `json:"buildTags"`
-	Setting      struct {
+	Setting struct {
 		Address       string `json:"address"`
 		P2PAddr       string `json:"p2p"`
 		P2PListenAddr string `json:"p2pListen"`
