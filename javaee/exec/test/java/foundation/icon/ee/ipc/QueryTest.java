@@ -24,8 +24,8 @@ public class QueryTest extends GoldenTest {
         }
 
         @External(readonly=true)
-        public int setNestingDictDB() {
-            BranchDB<String, DictDB<String , String>> ddb
+        public int setBranchDB() {
+            BranchDB<String, DictDB<String, String>> ddb
                     = Context.newBranchDB("ddb", String.class);
             try {
                 ddb.at("key").set("key", "value");
@@ -65,7 +65,7 @@ public class QueryTest extends GoldenTest {
     void testSetDB() {
         var score = sm.deploy(Score.class);
         score.query("setDictDB");
-        score.query("setNestingDictDB");
+        score.query("setBranchDB");
         score.query("setArrayDB");
         score.query("setVarDB");
     }
