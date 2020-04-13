@@ -18,9 +18,9 @@ package example;
 
 import score.Address;
 import score.ArrayDB;
+import score.BranchDB;
 import score.Context;
 import score.DictDB;
-import score.BranchDB;
 import score.VarDB;
 import foundation.icon.ee.tooling.abi.EventLog;
 import foundation.icon.ee.tooling.abi.External;
@@ -35,11 +35,11 @@ public class MultiSigWallet
 {
     private static final int MAX_OWNER_COUNT = 50;
 
-    private ArrayDB<Address> owners = Context.newArrayDB("owners", Address.class);
-    private VarDB<BigInteger> required = Context.newVarDB("required", BigInteger.class);
-    private DictDB<BigInteger, Transaction> transactions = Context.newDictDB("transactions", Transaction.class);
-    private VarDB<BigInteger> transactionCount = Context.newVarDB("transactionCount", BigInteger.class);
-    private BranchDB<BigInteger, DictDB<Address, Boolean>>
+    private final ArrayDB<Address> owners = Context.newArrayDB("owners", Address.class);
+    private final VarDB<BigInteger> required = Context.newVarDB("required", BigInteger.class);
+    private final DictDB<BigInteger, Transaction> transactions = Context.newDictDB("transactions", Transaction.class);
+    private final VarDB<BigInteger> transactionCount = Context.newVarDB("transactionCount", BigInteger.class);
+    private final BranchDB<BigInteger, DictDB<Address, Boolean>>
             confirmations = Context.newBranchDB("confirmations", Boolean.class);
 
     /**
