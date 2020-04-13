@@ -20,7 +20,7 @@ import score.Address;
 import score.ArrayDB;
 import score.Context;
 import score.DictDB;
-import score.NestingDictDB;
+import score.BranchDB;
 import score.VarDB;
 import foundation.icon.ee.tooling.abi.EventLog;
 import foundation.icon.ee.tooling.abi.External;
@@ -39,8 +39,8 @@ public class MultiSigWallet
     private VarDB<BigInteger> required = Context.newVarDB("required", BigInteger.class);
     private DictDB<BigInteger, Transaction> transactions = Context.newDictDB("transactions", Transaction.class);
     private VarDB<BigInteger> transactionCount = Context.newVarDB("transactionCount", BigInteger.class);
-    private NestingDictDB<BigInteger, DictDB<Address, Boolean>>
-            confirmations = Context.newNestingDictDB("confirmations", Boolean.class);
+    private BranchDB<BigInteger, DictDB<Address, Boolean>>
+            confirmations = Context.newBranchDB("confirmations", Boolean.class);
 
     /**
      * Contract constructor sets initial owners and required number of confirmations.

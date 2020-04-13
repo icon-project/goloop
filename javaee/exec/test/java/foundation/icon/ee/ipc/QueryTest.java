@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import score.ArrayDB;
 import score.Context;
 import score.DictDB;
-import score.NestingDictDB;
+import score.BranchDB;
 import score.VarDB;
 
 public class QueryTest extends GoldenTest {
@@ -25,8 +25,8 @@ public class QueryTest extends GoldenTest {
 
         @External(readonly=true)
         public int setNestingDictDB() {
-            NestingDictDB<String, DictDB<String , String>> ddb
-                    = Context.newNestingDictDB("ddb", String.class);
+            BranchDB<String, DictDB<String , String>> ddb
+                    = Context.newBranchDB("ddb", String.class);
             try {
                 ddb.at("key").set("key", "value");
                 Context.println("unexpected");

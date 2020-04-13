@@ -155,7 +155,7 @@ public final class Context extends Object {
         return blockchainRuntime.avm_getAddressFromKey(publicKey);
     }
 
-    public static NestingDictDB avm_newNestingDictDB(String id, Class<?> vc) {
+    public static BranchDB avm_newBranchDB(String id, Class<?> vc) {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(RuntimeMethodFeeSchedule.BlockchainRuntime_avm_newDictDB);
         return blockchainRuntime.avm_newCollectionDB(DBImplBase.TYPE_DICT_DB, id, vc);
     }

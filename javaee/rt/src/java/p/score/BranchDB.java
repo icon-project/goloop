@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 
-package score;
+package p.score;
 
-public interface NestingDictDB<K, V> {
+import i.IObject;
+
+public interface BranchDB {
     /**
      * Returns Collection for the key. This method shall be called only if
      * type of V is DictDB or ArrayDB.
@@ -24,5 +26,5 @@ public interface NestingDictDB<K, V> {
      * @param key
      * @return
      */
-    V at(K key);
+    IObject avm_at(IObject key);
 }

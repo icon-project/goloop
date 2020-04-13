@@ -251,7 +251,7 @@ public final class Context {
     // Collection DB
     //===================
 
-    public static<K, V> NestingDictDB<K, V> newNestingDictDB(String id, Class<?> leafValueClass) {
+    public static<K, V> BranchDB<K, V> newBranchDB(String id, Class<?> leafValueClass) {
         return null;
     }
 

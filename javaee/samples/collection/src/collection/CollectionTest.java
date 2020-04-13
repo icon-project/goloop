@@ -21,7 +21,7 @@ import score.Address;
 import score.ArrayDB;
 import score.Context;
 import score.DictDB;
-import score.NestingDictDB;
+import score.BranchDB;
 import score.VarDB;
 
 import java.math.BigInteger;
@@ -92,7 +92,7 @@ public class CollectionTest
         expectEquals(s, "0");
         expectEquals(adb.size(), 0);
 
-        NestingDictDB<Integer, DictDB<Integer, String>> dddb = Context.newNestingDictDB("dddb", String.class);
+        BranchDB<Integer, DictDB<Integer, String>> dddb = Context.newBranchDB("dddb", String.class);
         dddb.at(0).set(1, "0, 1");
         dddb.at(1).set(2, "1, 2");
         s = dddb.at(0).get(1);
@@ -100,7 +100,7 @@ public class CollectionTest
         s = dddb.at(1).get(2);
         expectEquals(s, "1, 2");
 
-        NestingDictDB<Integer, ArrayDB<String>> dadb = Context.newNestingDictDB("dadb", String.class);
+        BranchDB<Integer, ArrayDB<String>> dadb = Context.newBranchDB("dadb", String.class);
         dadb.at(0).add("a0");
         dadb.at(0).add("a1");
         s = dadb.at(0).get(0);
