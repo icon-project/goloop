@@ -16,13 +16,16 @@
 
 package score;
 
+/**
+ * @param <K> Key type.
+ * @param <V> Value type. V shall be a DictDB, ArrayDB or BranchDB
+ */
 public interface BranchDB<K, V> {
     /**
-     * Returns Collection for the key. This method shall be called only if
-     * type of V is DictDB or ArrayDB.
+     * Returns sub-DB for the key.
      *
-     * @param key
-     * @return
+     * @param key key for sub-DB.
+     * @return sub-DB.
      */
     V at(K key);
 }
