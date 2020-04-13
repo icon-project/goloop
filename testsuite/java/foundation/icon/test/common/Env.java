@@ -73,7 +73,7 @@ public class Env {
         }
 
         public String getProperty(String key, String def) {
-            return this.props.getProperty(key, def);
+            return this.props.getProperty(prefix+key, def);
         }
 
         private void makeChannels() {
