@@ -8,7 +8,6 @@ package org.aion.avm.core;
 import a.ByteArray;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Status;
-import foundation.icon.ee.types.StepCost;
 import foundation.icon.ee.types.Transaction;
 import foundation.icon.ee.util.Crypto;
 import foundation.icon.ee.util.Shadower;
@@ -48,7 +47,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
     private final Address transactionDestination;
     private final Transaction tx;
     private final IRuntimeSetup thisDAppSetup;
-    private LoadedDApp dApp;
+    private final LoadedDApp dApp;
     private final boolean enablePrintln;
 
     private p.score.Address addressCache;
