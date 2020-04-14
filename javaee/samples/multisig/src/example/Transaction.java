@@ -32,6 +32,9 @@ public class Transaction {
     private boolean executed;
 
     public Transaction(Address destination, String method, String params, BigInteger value, String description) {
+        if (destination == null) {
+            throw new IllegalArgumentException();
+        }
         this.destination = destination;
         this.method = method;
         this.params = params;
@@ -40,8 +43,8 @@ public class Transaction {
     }
 
     public static void writeObject(ObjectWriter w, Transaction t) {
+        w.write(t.destination);
         w.writeNullable(
-                t.destination,
                 t.method,
                 t.params,
                 t.value,
