@@ -60,7 +60,7 @@ public class CollectionDBImpl extends DBImplBase implements CollectionDB {
         if (sz <= 0) {
             throw new IllegalArgumentException();
         }
-        s.setBytes(getStorageKey(sz), null);
+        s.setBytes(getStorageKey(sz - 1), null);
         s.setArrayLength(getStorageKey(), sz - 1);
     }
 
@@ -71,6 +71,7 @@ public class CollectionDBImpl extends DBImplBase implements CollectionDB {
             throw new IllegalArgumentException();
         }
         var o = decode(s.getBytes(getStorageKey(sz - 1)));
+        s.setBytes(getStorageKey(sz - 1), null);
         s.setArrayLength(getStorageKey(), sz - 1);
         return o;
     }
