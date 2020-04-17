@@ -117,10 +117,16 @@ public class HttpProvider implements Provider {
         okhttp3.WebSocket ws;
         final Object condVar = new Object();
         RpcConverter<T> rpcConverter;
+        ObjectMapper mapper;
 
         HttpMonitor(MonitorSpec spec, RpcConverter<T> converter) {
             this.spec = spec;
             this.rpcConverter = converter;
+
+            mapper = new ObjectMapper();
+            SimpleModule module = new SimpleModule();
+            module.addDeserializer(RpcItem.class, new RpcItemDeserializer());
+            mapper.registerModule(module);
         }
 
         private class WebSocketListenerImpl extends WebSocketListener {
@@ -142,7 +148,6 @@ public class HttpProvider implements Provider {
             public void onMessage(okhttp3.WebSocket webSocket, String message) {
                 super.onMessage(webSocket, message);
                 synchronized (condVar) {
-                    ObjectMapper mapper = new ObjectMapper();
                     switch(state) {
                         case WS_CONNECT:
                             try {
@@ -161,13 +166,8 @@ public class HttpProvider implements Provider {
                             break;
                         case WS_START:
                             try {
-                                TypeReference<Map<String, String>> typeRef = new TypeReference<Map<String, String>>(){};
-                                Map<String, String> map = mapper.readValue(message, typeRef);
-                                RpcObject.Builder builder = new RpcObject.Builder();
-                                for (String key : map.keySet()) {
-                                    builder.put(key, new RpcValue(map.get(key)));
-                                }
-                                T obj = rpcConverter.convertTo(builder.build());
+                                RpcItem rpcItem = mapper.readValue(message, RpcItem.class);
+                                T obj = rpcConverter.convertTo(rpcItem.asObject());
                                 listener.onEvent(obj);
                             }
                             catch (IOException ex) {

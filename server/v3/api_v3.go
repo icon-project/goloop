@@ -45,6 +45,7 @@ func MethodRepository() *jsonrpc.MethodRepository {
 	mr.RegisterMethod("icx_getBlockHeaderByHeight", getBlockHeaderByHeight)
 	mr.RegisterMethod("icx_getVotesByHeight", getVotesByHeight)
 	mr.RegisterMethod("icx_getProofForResult", getProofForResult)
+	mr.RegisterMethod("icx_getProofForEvents", getProofForEvents)
 
 	return mr
 }
@@ -536,6 +537,73 @@ func getProofForResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 
+	return proofs, nil
+}
+
+func getProofForEvents(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, error) {
+	debug := ctx.IncludeDebug()
+
+	var param ProofEventsParam
+	if err := params.Convert(&param); err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	}
+	var idx int
+	if v64, err := param.Index.ParseInt(int(unsafe.Sizeof(idx)) * 8); err != nil {
+		return nil, jsonrpc.ErrorCodeInvalidParams.Wrap(err, debug)
+	} else {
+		idx = int(v64)
+	}
+
+	chain, err := ctx.Chain()
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeServer.Wrap(err, debug)
+	}
+
+	bm := chain.BlockManager()
+	sm := chain.ServiceManager()
+
+	block, err := bm.GetBlock(param.BlockHash.Bytes())
+	if errors.NotFoundError.Equals(err) {
+		err = errors.NotFoundError.Wrapf(err,
+			"fail to get a block for hash=%#x", param.BlockHash.Bytes())
+		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	} else if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+
+	blockResult := block.Result()
+	receiptList, err := sm.ReceiptListFromResult(blockResult, module.TransactionGroupNormal)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+
+	receipt, err := receiptList.Get(idx)
+	if err != nil {
+		err = errors.NotFoundError.Wrapf(err,
+			"fail to get a receipt for index=%d", idx)
+		if errors.NotFoundError.Equals(err) {
+			return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+		}
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	proofs := [][][]byte{}
+	rProof, err := receiptList.GetProof(idx)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
+	}
+	proofs = append(proofs, rProof)
+	for _, idx := range param.Events {
+		proof, err := receipt.GetProofOfEvent(int(idx.Value()))
+		if errors.InvalidStateError.Equals(err) {
+			break
+		}
+		if errors.NotFoundError.Equals(err) {
+			err = errors.NotFoundError.Wrapf(err,
+				"fail to get a proof for event index=%d", idx.Value())
+			return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+		}
+		proofs = append(proofs, proof)
+	}
 	return proofs, nil
 }
 

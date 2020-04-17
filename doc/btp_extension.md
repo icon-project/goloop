@@ -93,6 +93,11 @@ Summarize the document to following items.
     [
       "0x0"
     ]
+  ],
+  "events": [
+    [
+      ["0x0"]
+    ]
   ]
 }
 ```
@@ -103,7 +108,8 @@ Summarize the document to following items.
 |:--------|:-------|:---------|:-----------------------------------------------------------------------------------------------------------------------------|
 | hash    | T_HASH | true     | The hash of the new block                                                                                                    |
 | height  | T_INT  | true     | The height of the new block                                                                                                  |
-| indexes | Array  | false    | Array of IndexList(Array type, list of [index](#eventsindex) which is filtered events in the block), same ordered as EventFilter of Request. |
+| indexes | Array  | false    | Array of array of [index](#resultindex)es of the results of filtered events in the block ordered by EventFilter and index    |
+| events  | Array  | false    | Array of array of [events](#eventlist), the array of event indexes in the result, ordered by EventFilter and index           |
 
 
 ### Events
@@ -170,7 +176,8 @@ Summarize the document to following items.
 {
   "hash": "0xdbc...",
   "height": "0x11",
-  "index":  "0x0"
+  "index": "0x0",
+  "events": [ "0x0" ]
 }
 ```
 
@@ -180,11 +187,13 @@ Summarize the document to following items.
 |:------------------------------|:-------|:---------|:------------------------------------------------------|
 | hash                          | T_HASH | true     | Hash of the block including the events                |
 | height                        | T_INT  | true     | Height of the block including the events              |
-| <a id="eventsindex">index</a> | T_INT  | true     | Index of the result including the events in the block |
+| <a id="resultindex">index</a> | T_INT  | true     | Index of the result including the events in the block |
+| <a id="eventlist">events</a>  | Array  | true     | List of indexes of the event in the result            |
 
 
 You may use `hash` and `index` to get proof of the result including
 the events(`icx_getProofForResult`).
+You may use `hash`, `index` and `events` to get proofs of the result and the events(`icx_getProofForEvents`).
 
 
 ## Extended JSON-RPC Methods
@@ -418,6 +427,73 @@ Currently, Core2 uses Merkle Patricia Trie to store receipt, so the last leaf no
 | default | Default | JSON-RPC Error | Error Response                                     |
 
 
+### icx_getProofForEvents
+
+Get proof for the receipt and the events in it. The proof may include the data itself.
+
+Currently, Core2 uses Merkle Patricia Trie to store the receipt and the events, so the last leaf node includes the data. Key for the data must be the binary representation of the unsigned integer, the index of the data.
+
+
+> Request
+
+```json
+{
+  "id": 1001,
+  "jsonrpc": "2.0",
+  "method": "icx_getProofForEvents",
+  "params": {
+      "hash": "0xc7fae616bd1d377a92c48a35e33e7a072e5e2be155c000088dbdd42a3e31bb74",
+      "index": "0x0",
+      "events": [ "0x0", "0x2" ]
+  }
+}
+```
+#### Parameters
+
+| Name   | Type   | Required | Description                                              |
+|:-------|:-------|:---------|:---------------------------------------------------------|
+| hash   | T_HASH | true     | The hash value of the block including the result.        |
+| index  | T_INT  | true     | Index of the receipt in the block.<br/> 0 for the first.    |
+| events | Array  | false    | List of indexes of the events in the receipt.            |
+
+> Example responses
+```json
+{
+  "id": 1001,
+  "jsonrpc": "2.0",
+  "result": [
+    [
+      "4hCgFOFiPi6RyndLHtrYmLXDDRtgcu6qaC/qJwyoqBc0sT0=",
+      "+HGgdzCygOSkliUIwU6RfeYGyP31o0QgJbVPs+1dDk2zezGgD7yIQcAXHMULT5HPmuhhvHiADRaVv57VTbMRO6LcYoGgr2WmucHrUlsFKF9YSb6GiUnbIW0sebGhJPS2IcU8HkuAgICAgICAgICAgICAgA==",
+      "+QE4ILkBNPkBMQCVATdyMP+0paHzA7SIxHGmw8UT/ZonAAAAuPAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAACAAIAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKAAAAAAQAAAAACAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAD4APgAoMGo6EhTChqu29BsnvJLcJy3AgvxZt0ciwJEQNFqU6/H"
+    ],
+    [
+      "+FCCIAC4S/hJlQE3cjD/tKWh8wO0iMRxpsPFE/2aJ/GYRXZlbnQoQWRkcmVzcyxpbnQsYnl0ZXMplQAxnEr0c2+ow+/Vmv51ZKQ/yTGoPGQBwA=="
+    ]
+  ]
+} 
+```
+
+> Failure Response
+```json
+{
+  "id": 1001,
+  "jsonrpc": "2.0",
+  "error": {
+    "code": -32000,
+    "message": "Something went wrong."
+  }
+}
+```
+
+#### Responses
+
+| Status  | Meaning | Description    | Schema                                                                    |
+|:--------|:--------|:---------------|:--------------------------------------------------------------------------|
+| 200     | OK      | Success        | List of List of base64 encoded proof including the receipt and the events |
+| default | Default | JSON-RPC Error | Error Response                                                            |
+
+
 ## Binary format
 
 Core2 uses MsgPack and RLP for binary encoding and decoding.
@@ -484,7 +560,7 @@ Core2 uses MsgPack and RLP for binary encoding and decoding.
 | MPT Node        || MPT Leaf<br/>MPT Extension<br/>MPT Branch | If the number of elements is 17, then it’s MPT Branch.<br/>It differentiates MPT Leaf from MPT Extension with a prefix in a header. |
 | MPT Leaf        || RLP List of followings                                                                                                                                                         ||
 |      | Header    | RLP Bytes                                 | N bytes ( Prefix + Nibbles )                                                                                                        |
-|      | Value     | RLP Bytes                                 | N bytes ( Receipt )                                                                                                                 |
+|      | Value     | RLP Bytes                                 | N bytes ( Receipt or EventLog )                                                                                                     |
 | MPT Extension   || RLP List of followings                                                                                                                                                         ||
 |      | Header    | RLP Bytes                                 | N bytes ( Prefix + Nibbles )                                                                                                        |
 |      | Link      | RLP Bytes<br/>MPT Node                    | If encoded MPT Node is shorter than 32, then it’s embedded.<br/>Otherwise, it uses RLP Bytes for sha3sum256 value                   |
@@ -505,6 +581,7 @@ Core2 uses MsgPack and RLP for binary encoding and decoding.
 |      | LogsBloom          | Integer                       | 2048 bits without padding zeros<br/>So, if there is no bit, then it would be a byte with zero.                                    |
 |      | EventLogs          | MsgPack List of EventLog                                                                                                                                         ||
 |      | SCOREAddress       | Address                                                                                                                                                          ||
+|      | EventListRoot      | Msgpack Bytes                 | (from Revision7) Root hash of merkle list of event logs                                                                          ||
 | EventLog                 || MsgPack List of followings                                                                                                                                       ||
 |      | Addr               | Address                       | SCORE producing this event log                                                                                                    |
 |      | Indexed            | MsgPack List of MsgPack Bytes | Indexed data.                                                                                                                     |

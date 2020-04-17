@@ -30,9 +30,10 @@ type EventFilter struct {
 }
 
 type EventNotification struct {
-	Hash   common.HexBytes `json:"hash"`
-	Height common.HexInt64 `json:"height"`
-	Index  common.HexInt32 `json:"index"`
+	Hash   common.HexBytes   `json:"hash"`
+	Height common.HexInt64   `json:"height"`
+	Index  common.HexInt32   `json:"index"`
+	Events []common.HexInt32 `json:"events"`
 }
 
 func (wm *wsSessionManager) RunEventSession(ctx echo.Context) error {
@@ -81,11 +82,12 @@ loop:
 				if err != nil {
 					break loop
 				}
-				if er.match(r) {
+				if es, ok := er.match(r); ok {
 					var en EventNotification
 					en.Height.Value = h
 					en.Hash = blk.ID()
 					en.Index.Value = index
+					en.Events = es
 					if err := wss.WriteJSON(&en); err != nil {
 						wm.logger.Infof("fail to write json EventNotification err:%+v\n", err)
 						break loop
@@ -151,10 +153,11 @@ func bytesEqual(b1 []byte, b2 []byte) bool {
 	return bytes.Equal(b1, b2)
 }
 
-func (f *EventFilter) match(r module.Receipt) bool {
+func (f *EventFilter) match(r module.Receipt) ([]common.HexInt32, bool) {
+	eventIndexes := make([]common.HexInt32, 0)
 	if r.LogsBloom().Contain(f.lb) {
 	loop:
-		for it := r.EventLogIterator(); it.Has(); it.Next() {
+		for it, idx := r.EventLogIterator(), int32(0); it.Has(); _, idx = it.Next(), idx+1 {
 			if el, err := it.Get(); err == nil {
 				if bytes.Equal([]byte(f.Signature), el.Indexed()[0]) {
 					if f.Addr != nil && !el.Address().Equal(f.Addr) {
@@ -176,10 +179,11 @@ func (f *EventFilter) match(r module.Receipt) bool {
 							}
 						}
 					}
-					return true
+					eventIndexes = append(eventIndexes, common.HexInt32{Value: idx})
 				}
 			}
 		}
+		return eventIndexes, len(eventIndexes) > 0
 	}
-	return false
+	return eventIndexes, false
 }

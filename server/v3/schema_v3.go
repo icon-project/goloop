@@ -53,3 +53,9 @@ type ProofResultParam struct {
 	BlockHash jsonrpc.HexBytes `json:"hash" validate:"required,t_hash"`
 	Index     jsonrpc.HexInt   `json:"index" validate:"required,t_int"`
 }
+
+type ProofEventsParam struct {
+	BlockHash jsonrpc.HexBytes `json:"hash" validate:"required,t_hash"`
+	Index     jsonrpc.HexInt   `json:"index" validate:"required,t_int"`
+	Events    []jsonrpc.HexInt `json:"events" validate:"gt=0,dive,t_int"`
+}

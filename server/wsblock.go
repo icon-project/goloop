@@ -17,9 +17,10 @@ type BlockRequest struct {
 }
 
 type BlockNotification struct {
-	Hash    common.HexBytes     `json:"hash"`
-	Height  common.HexInt64     `json:"height"`
-	Indexes [][]common.HexInt32 `json:"indexes,omitempty"`
+	Hash    common.HexBytes       `json:"hash"`
+	Height  common.HexInt64       `json:"height"`
+	Indexes [][]common.HexInt32   `json:"indexes,omitempty"`
+	Events  [][][]common.HexInt32 `json:"events,omitempty"`
 }
 
 func (wm *wsSessionManager) RunBlockSession(ctx echo.Context) error {
@@ -44,8 +45,10 @@ func (wm *wsSessionManager) RunBlockSession(ctx echo.Context) error {
 	bm := wss.chain.BlockManager()
 	sm := wss.chain.ServiceManager()
 	indexes := make([][]common.HexInt32, len(br.EventFilters))
+	events := make([][][]common.HexInt32, len(br.EventFilters))
 	for i := range br.EventFilters {
 		indexes[i] = make([]common.HexInt32, 0)
+		events[i] = make([][]common.HexInt32, 0)
 	}
 	var rl module.ReceiptList
 loop:
@@ -65,8 +68,12 @@ loop:
 			}
 			if len(br.bn.Indexes) > 0 {
 				br.bn.Indexes = indexes[:0]
+				br.bn.Events = events[:0]
 				for i := range indexes {
 					indexes[i] = indexes[i][:0]
+				}
+				for i := range events {
+					events[i] = events[i][:0]
 				}
 			}
 			lb := blk.LogsBloom()
@@ -84,11 +91,13 @@ loop:
 						if err != nil {
 							break loop
 						}
-						if f.match(r) {
+						if es, ok := f.match(r); ok {
 							if len(br.bn.Indexes) < 1 {
 								br.bn.Indexes = indexes[:]
+								br.bn.Events = events[:]
 							}
 							br.bn.Indexes[i] = append(br.bn.Indexes[i], common.HexInt32{Value: index})
+							br.bn.Events[i] = append(br.bn.Events[i], es)
 						}
 						index++
 					}
@@ -113,4 +122,3 @@ func (r *BlockRequest) compile() error {
 	}
 	return nil
 }
-
