@@ -24,6 +24,10 @@ const (
 	StepTypeInput            = "input"
 	StepTypeEventLog         = "eventLog"
 	StepTypeApiCall          = "apiCall"
+	StepTypeDefaultGet       = "defaultGet"
+	StepTypeDefaultSet       = "defaultSet"
+	StepTypeReplaceBase      = "replaceBase"
+	StepTypeDefaultDelete    = "defaultDelete"
 	StepTypeEventLogBase     = "eventLogBase"
 )
 
@@ -51,5 +55,9 @@ var AllStepTypes = []string{
 	StepTypeInput,
 	StepTypeEventLog,
 	StepTypeApiCall,
+	StepTypeDefaultGet,
+	StepTypeDefaultSet,
+	StepTypeReplaceBase,
+	StepTypeDefaultDelete,
 	StepTypeEventLogBase,
 }
