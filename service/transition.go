@@ -581,6 +581,7 @@ func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, 
 	if l == nil {
 		return nil
 	}
+	rev := ctx.Revision()
 	if ctx.SkipTransactionEnabled() {
 		fakeBuf := make([]txresult.Receipt, len(rctBuf))
 		wss := ctx.GetSnapshot()
@@ -593,7 +594,7 @@ func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, 
 		// TODO dump result for survey
 		ctx.Reset(wss)
 		for idx := 0; idx < len(rctBuf); idx++ {
-			rct := txresult.NewReceipt(fakeBuf[idx].To())
+			rct := txresult.NewReceipt(t.db, rev, fakeBuf[idx].To())
 			zero := big.NewInt(0)
 			rct.SetResult(module.StatusSkipTransaction, zero, zero, nil)
 			rct.SetCumulativeStepUsed(zero)

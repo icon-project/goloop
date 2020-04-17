@@ -155,14 +155,14 @@ func (g *genesisV3) Prepare(ctx contract.Context) (state.WorldContext, error) {
 }
 
 func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
-	r := txresult.NewReceipt(common.NewContractAddress(state.SystemID))
 	cc := contract.NewCallContext(ctx, ctx.GetStepLimit(LimitTypeInvoke), false)
 	defer cc.Dispose()
+	systemAddr := common.NewContractAddress(state.SystemID)
 	cc.SetTransactionInfo(&state.TransactionInfo{
 		Group:     module.TransactionGroupNormal,
 		Index:     0,
 		Hash:      g.Hash(),
-		From:      common.NewContractAddress(state.SystemID),
+		From:      systemAddr,
 		Timestamp: 0,
 		Nonce:     nil,
 	})
@@ -192,6 +192,13 @@ func (g *genesisV3) Execute(ctx contract.Context) (txresult.Receipt, error) {
 		return nil, err
 	}
 
+	if err := contract.InstallChainSCORE(state.SystemID,
+		contract.CID_CHAIN, systemAddr, g.Chain, cc, g.Hash()); err != nil {
+		return nil, InvalidGenesisError.Wrapf(err, "FAIL to deploy ChainScore")
+	}
+
+	cc.UpdateSystemInfo()
+	r := txresult.NewReceipt(cc.Database(), cc.Revision(), systemAddr)
 	if err := g.installContracts(cc); err != nil {
 		ctx.Logger().Warnf("Fail to install scores err=%+v\n", err)
 		return nil, err
@@ -207,11 +214,6 @@ const (
 )
 
 func (g *genesisV3) installContracts(cc contract.CallContext) error {
-	from := common.NewContractAddress(state.SystemID)
-	if err := contract.InstallChainSCORE(state.SystemID,
-		contract.CID_CHAIN, from, g.Chain, cc, g.Hash()); err != nil {
-		return InvalidGenesisError.Wrapf(err, "FAIL to deploy ChainScore")
-	}
 	for _, acc := range g.Accounts {
 		if acc.Score == nil {
 			continue

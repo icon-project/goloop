@@ -36,7 +36,6 @@ type transactionHandler struct {
 	data      []byte
 
 	chandler contract.ContractHandler
-	receipt  txresult.Receipt
 
 	// Assigned at Execute()
 	cc contract.CallContext
@@ -82,7 +81,6 @@ func NewHandler(cm contract.ContractManager, from, to module.Address,
 		}
 	}
 
-	th.receipt = txresult.NewReceipt(to)
 	th.chandler = cm.GetHandler(from, to, value, ctype, data)
 	if th.chandler == nil {
 		return nil, errors.InvalidStateError.New("NoSuitableHandler")
@@ -108,6 +106,7 @@ func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, e
 	th.cc = cc
 	logger := trace.LoggerOf(cc.Logger())
 	th.chandler.ResetLogger(logger)
+	receipt := txresult.NewReceipt(ctx.Database(), ctx.Revision(), th.to)
 
 	logger.TSystemf("TRANSACTION start to=%s from=%s", th.to, th.from)
 
@@ -164,13 +163,13 @@ func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, e
 	// Make a receipt
 	s, _ := scoreresult.StatusOf(status)
 	if status == nil {
-		cc.GetEventLogs(th.receipt)
+		cc.GetEventLogs(receipt)
 	}
-	th.receipt.SetResult(s, stepUsed, stepPrice, addr)
+	receipt.SetResult(s, stepUsed, stepPrice, addr)
 
 	logger.TSystemf("TRANSACTION done status=%s steps=%s price=%s", s, stepUsed, stepPrice)
 
-	return th.receipt, nil
+	return receipt, nil
 }
 
 func (th *transactionHandler) Dispose() {

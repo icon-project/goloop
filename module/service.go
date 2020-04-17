@@ -173,6 +173,7 @@ type Receipt interface {
 	ToJSON(int) (interface{}, error)
 	LogsBloom() LogsBloom
 	EventLogIterator() EventLogIterator
+	GetProofOfEvent(int) ([][]byte, error)
 }
 
 type ReceiptIterator interface {

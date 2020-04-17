@@ -2,6 +2,7 @@ package txresult
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"math/big"
 	"testing"
@@ -12,13 +13,22 @@ import (
 )
 
 func TestReceiptList(t *testing.T) {
+	for rev := module.DefaultRevision; rev <= module.MaxRevision; rev++ {
+		t.Run(fmt.Sprint("Revision:", rev), func(t *testing.T) {
+			testReceiptListByRev(t, rev)
+		})
+	}
+}
+
+func testReceiptListByRev(t *testing.T, rev int) {
+	mdb := db.NewMapDB()
 	rslice := make([]Receipt, 0)
 
 	var used, price big.Int
 
 	addr1 := common.NewAddressFromString("hx8888888888888888888888888888888888888888")
 	for i := 0; i < 5; i++ {
-		r1 := NewReceipt(addr1)
+		r1 := NewReceipt(mdb, rev, addr1)
 		used.SetInt64(int64(i * 100))
 		price.SetInt64(int64(i * 10))
 		r1.SetResult(module.StatusOutOfBalance, &used, &price, nil)
@@ -26,14 +36,12 @@ func TestReceiptList(t *testing.T) {
 	}
 	addr2 := common.NewAddressFromString("cx0003737589788888888888888888888888888888")
 	for i := 0; i < 5; i++ {
-		r2 := NewReceipt(addr2)
+		r2 := NewReceipt(mdb, rev, addr2)
 		used.SetInt64(int64(i * 100))
 		price.SetInt64(int64(i * 10))
 		r2.SetResult(module.StatusOutOfBalance, &used, &price, nil)
 		rslice = append(rslice, r2)
 	}
-
-	mdb := db.NewMapDB()
 
 	rl1 := NewReceiptListFromSlice(mdb, rslice)
 	hash := rl1.Hash()

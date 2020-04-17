@@ -22,6 +22,7 @@ type WorldSnapshot interface {
 	GetValidatorSnapshot() ValidatorSnapshot
 	Flush() error
 	StateHash() []byte
+	Database() db.Database
 }
 
 // WorldState represents world state.
@@ -35,6 +36,7 @@ type WorldState interface {
 	ClearCache()
 	EnableNodeCache()
 	NodeCacheEnabled() bool
+	Database() db.Database
 }
 
 type worldSnapshotImpl struct {
@@ -58,6 +60,10 @@ func (ws *worldSnapshotImpl) Flush() error {
 		}
 	}
 	return ws.validators.Flush()
+}
+
+func (ws *worldSnapshotImpl) Database() db.Database {
+	return ws.database
 }
 
 func (ws *worldSnapshotImpl) GetAccountSnapshot(id []byte) AccountSnapshot {
@@ -184,6 +190,10 @@ func (ws *worldStateImpl) EnableNodeCache() {
 
 func (ws *worldStateImpl) NodeCacheEnabled() bool {
 	return ws.nodeCacheEnabled
+}
+
+func (ws *worldStateImpl) Database() db.Database {
+	return ws.database
 }
 
 func (ws *worldStateImpl) GetAccountSnapshot(id []byte) AccountSnapshot {

@@ -111,7 +111,7 @@ func (tx *transactionV2) Prepare(ctx contract.Context) (state.WorldContext, erro
 }
 
 func (tx *transactionV2) Execute(ctx contract.Context) (txresult.Receipt, error) {
-	r := txresult.NewReceipt(&tx.To)
+	r := txresult.NewReceipt(ctx.Database(), ctx.Revision(), &tx.To)
 	var trans big.Int
 
 	trans.Add(&tx.Value.Int, version2FixedFee)

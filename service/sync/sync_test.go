@@ -3,6 +3,7 @@ package sync
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -248,6 +249,14 @@ func TestSync_AccountSync(t *testing.T) {
 }
 
 func TestSync_ReceiptsSync(t *testing.T) {
+	for rev := module.DefaultRevision; rev <= module.MaxRevision; rev++ {
+		t.Run(fmt.Sprint("Revision:", rev), func(t *testing.T) {
+			testReceiptSyncByRev(t, rev)
+		})
+	}
+}
+
+func testReceiptSyncByRev(t *testing.T, rev int) {
 	db1 := db.NewMapDB()
 	db2 := db.NewMapDB()
 
@@ -265,7 +274,7 @@ func TestSync_ReceiptsSync(t *testing.T) {
 	for j, re := range [][]txresult.Receipt{patchReceipts, normalReceipts} {
 		for i := 0; i < receiptsNum; i++ {
 			addr := common.NewAddressFromString("cx0000000000000000000000000000000000000001")
-			r := txresult.NewReceipt(addr)
+			r := txresult.NewReceipt(db1, rev, addr)
 			r.SetResult(module.StatusSuccess, big.NewInt(100*int64(i+j)), big.NewInt(1000), nil)
 			r.SetCumulativeStepUsed(big.NewInt(100 * int64(i)))
 			jso, err := r.ToJSON(jsonrpc.APIVersionLast)
@@ -276,7 +285,7 @@ func TestSync_ReceiptsSync(t *testing.T) {
 
 			//fmt.Printf("JSON: %s\n", jb)
 
-			r2, err := txresult.NewReceiptFromJSON(jb, jsonrpc.APIVersionLast)
+			r2, err := txresult.NewReceiptFromJSON(db1, rev, jb, jsonrpc.APIVersionLast)
 			if err != nil {
 				t.Errorf("Fail on Making Receipt from JSON err=%+v", err)
 				return

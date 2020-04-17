@@ -3,6 +3,7 @@ package txresult
 import (
 	"encoding/hex"
 	"encoding/json"
+	"io"
 	"math/big"
 	"reflect"
 	"regexp"
@@ -18,6 +19,7 @@ import (
 	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/common/rlp"
 	"github.com/icon-project/goloop/common/trie"
+	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/server/jsonrpc"
 	"github.com/icon-project/goloop/service/scoreapi"
@@ -41,6 +43,36 @@ type eventLogData struct {
 
 type eventLog struct {
 	eventLogData
+}
+
+func (log *eventLog) Bytes() []byte {
+	return codec.BC.MustMarshalToBytes(log)
+}
+
+func (log *eventLog) Reset(s db.Database, k []byte) error {
+	_, err := codec.BC.UnmarshalFromBytes(k, log)
+	return err
+}
+
+func (log *eventLog) Flush() error {
+	// do nothing
+	return nil
+}
+
+func (log *eventLog) Equal(obj trie.Object) bool {
+	if l2, ok := obj.(*eventLog); ok {
+		return reflect.DeepEqual(&log.eventLogData, &l2.eventLogData)
+	}
+	return false
+}
+
+func (log *eventLog) Resolve(builder merkle.Builder) error {
+	// nothing to do
+	return nil
+}
+
+func (log *eventLog) ClearCache() {
+	return
 }
 
 func (log *eventLog) Address() module.Address {
@@ -87,6 +119,18 @@ func (log *eventLog) ToJSON(v int) (*eventLogJSON, error) {
 	return eljson, nil
 }
 
+type Version int
+
+const (
+	Version1 Version = iota
+	Version2
+	LastVersion = Version2
+)
+const (
+	listItemsForVersion1 = 8
+	listItemsForVersion2 = 9
+)
+
 type receiptData struct {
 	Status             module.Status
 	To                 common.Address
@@ -110,7 +154,10 @@ func (r *receiptData) Equal(r2 *receiptData) bool {
 }
 
 type receipt struct {
-	data receiptData
+	version   Version
+	db        db.Database
+	data      receiptData
+	eventLogs trie.ImmutableForObject
 }
 
 func (r *receipt) SCOREAddress() module.Address {
@@ -122,7 +169,7 @@ func (r *receipt) To() module.Address {
 }
 
 func (r *receipt) Bytes() []byte {
-	bs, err := codec.MarshalToBytes(&r.data)
+	bs, err := codec.BC.MarshalToBytes(r)
 	if err != nil {
 		log.Errorf("Fail to marshal object err=%+v\ndata=%+v\n", err, r.data)
 	}
@@ -130,11 +177,17 @@ func (r *receipt) Bytes() []byte {
 }
 
 func (r *receipt) Reset(s db.Database, k []byte) error {
-	_, err := codec.UnmarshalFromBytes(k, &r.data)
+	r.db = s
+	_, err := codec.BC.UnmarshalFromBytes(k, r)
 	return err
 }
 
 func (r *receipt) Flush() error {
+	if r.version == Version2 {
+		if ss, ok := r.eventLogs.(trie.SnapshotForObject); ok {
+			return ss.Flush()
+		}
+	}
 	return nil
 }
 
@@ -148,26 +201,127 @@ func (r *receipt) Equal(o trie.Object) bool {
 }
 
 func (r *receipt) ClearCache() {
-	// nothing to do
+	if r.version == Version2 {
+		r.eventLogs.ClearCache()
+	}
 }
 
 func (r *receipt) EncodeMsgpack(e *msgpack.Encoder) error {
-	return e.Encode(&r.data)
+	if r.version == Version1 {
+		return e.Encode(&r.data)
+	} else {
+		if err := e.EncodeArrayLen(listItemsForVersion2); err != nil {
+			return err
+		}
+		hash := r.eventLogs.Hash()
+		return e.EncodeMulti(
+			r.data.Status,
+			&r.data.To,
+			&r.data.CumulativeStepUsed,
+			&r.data.StepUsed,
+			&r.data.StepPrice,
+			&r.data.LogsBloom,
+			r.data.EventLogs,
+			&r.data.SCOREAddress,
+			hash)
+	}
 }
 
 func (r *receipt) DecodeMsgpack(d *msgpack.Decoder) error {
-	return d.Decode(&r.data)
+	l, err := d.DecodeArrayLen()
+	if err != nil {
+		return err
+	}
+	if l == listItemsForVersion1 {
+		r.version = Version1
+		if err := d.DecodeMulti(
+			&r.data.Status,
+			&r.data.To,
+			&r.data.CumulativeStepUsed,
+			&r.data.StepUsed,
+			&r.data.StepPrice,
+			&r.data.LogsBloom,
+			&r.data.EventLogs,
+			&r.data.SCOREAddress); err != nil {
+			return err
+		}
+	} else if l == listItemsForVersion2 {
+		r.version = Version2
+		var hash []byte
+		if err := d.DecodeMulti(
+			&r.data.Status,
+			&r.data.To,
+			&r.data.CumulativeStepUsed,
+			&r.data.StepUsed,
+			&r.data.StepPrice,
+			&r.data.LogsBloom,
+			&r.data.EventLogs,
+			&r.data.SCOREAddress,
+			&hash); err != nil {
+			return err
+		}
+		r.eventLogs = trie_manager.NewImmutableForObject(r.db, hash,
+			reflect.TypeOf((*eventLog)(nil)))
+	} else {
+		return errors.New("Invalid data count")
+	}
+	return nil
 }
 
 func (r *receipt) RLPEncodeSelf(e rlp.Encoder) error {
-	return e.Encode(&r.data)
+	if r.version == Version1 {
+		return e.Encode(&r.data)
+	} else {
+		hash := r.eventLogs.Hash()
+		return e.EncodeListOf(
+			r.data.Status,
+			&r.data.To,
+			&r.data.CumulativeStepUsed,
+			&r.data.StepUsed,
+			&r.data.StepPrice,
+			&r.data.LogsBloom,
+			r.data.EventLogs,
+			r.data.SCOREAddress,
+			hash)
+	}
 }
 
 func (r *receipt) RLPDecodeSelf(d rlp.Decoder) error {
-	return d.Decode(&r.data)
+	d2, _, err := d.DecodeList()
+	if err != nil {
+		return err
+	}
+	var hash []byte
+	if cnt, err := d2.DecodeMulti(
+		&r.data.Status,
+		&r.data.To,
+		&r.data.CumulativeStepUsed,
+		&r.data.StepUsed,
+		&r.data.StepPrice,
+		&r.data.LogsBloom,
+		&r.data.EventLogs,
+		&r.data.SCOREAddress,
+		&hash); err == nil || err == io.EOF {
+		if cnt == listItemsForVersion1 {
+			r.version = Version1
+			r.eventLogs = nil
+		} else if cnt == listItemsForVersion2 {
+			r.version = Version2
+			r.eventLogs = trie_manager.NewImmutableForObject(r.db, hash,
+				reflect.TypeOf((*eventLog)(nil)))
+		} else {
+			return rlp.ErrInvalidFormat
+		}
+	} else {
+		return err
+	}
+	return nil
 }
 
 func (r *receipt) Resolve(bd merkle.Builder) error {
+	if r.version == Version2 {
+		r.eventLogs.Resolve(bd)
+	}
 	return nil
 }
 
@@ -176,7 +330,34 @@ func (r *receipt) LogsBloom() module.LogsBloom {
 }
 
 func (r *receipt) EventLogIterator() module.EventLogIterator {
+	if r.version == Version2 {
+		return &eventLogIteratorV2{r.eventLogs.Iterator()}
+	}
 	return &eventLogIterator{r.data.EventLogs, 0}
+}
+
+func (r *receipt) GetProofOfEvent(i int) ([][]byte, error) {
+	if r.version != Version2 {
+		return nil, errors.ErrInvalidState
+	}
+	k := codec.BC.MustMarshalToBytes(uint(i))
+	proof := r.eventLogs.GetProof(k)
+	if proof == nil {
+		return nil, errors.NotFoundError.Errorf("EventNotFound(idx=%d)", i)
+	}
+	return proof, nil
+}
+
+type eventLogIteratorV2 struct {
+	trie.IteratorForObject
+}
+
+func (i *eventLogIteratorV2) Get() (module.EventLog, error) {
+	obj, _, err := i.IteratorForObject.Get()
+	if err != nil {
+		return nil, err
+	}
+	return obj.(module.EventLog), nil
 }
 
 type eventLogIterator struct {
@@ -250,12 +431,16 @@ func (r *receipt) ToJSON(version int) (interface{}, error) {
 		rjo.CumulativeStepUsed.Set(&r.data.CumulativeStepUsed.Int)
 		rjo.StepUsed.Set(&r.data.StepUsed.Int)
 		rjo.StepPrice.Set(&r.data.StepPrice.Int)
-		logs := make([]*eventLogJSON, len(r.data.EventLogs))
-		for i, log := range r.data.EventLogs {
-			if logjson, err := log.ToJSON(version); err != nil {
+		logs := make([]*eventLogJSON, 0, len(r.data.EventLogs))
+		for itr := r.EventLogIterator(); itr.Has(); itr.Next() {
+			item, err := itr.Get()
+			if err != nil {
+				return nil, err
+			}
+			if jso, err := item.(*eventLog).ToJSON(version); err != nil {
 				return nil, err
 			} else {
-				logs[i] = logjson
+				logs = append(logs, jso)
 			}
 		}
 		rjo.EventLogs = logs
@@ -323,6 +508,9 @@ func (r *receipt) UnmarshalJSON(bs []byte) error {
 		}
 	}
 	data.LogsBloom.SetBytes(rjson.LogsBloom.Bytes())
+	if r.version >= Version2 {
+		r.buildMerkleListOfLogs()
+	}
 	return nil
 }
 
@@ -340,6 +528,19 @@ func (r *receipt) SetCumulativeStepUsed(cumulativeUsed *big.Int) {
 	r.data.CumulativeStepUsed.Set(cumulativeUsed)
 }
 
+func (r *receipt) buildMerkleListOfLogs() {
+	mt := trie_manager.NewMutableForObject(r.db, nil, reflect.TypeOf((*eventLog)(nil)))
+	for idx, item := range r.data.EventLogs {
+		k, _ := codec.BC.MarshalToBytes(uint(idx))
+		err := mt.Set(k, item)
+		if err != nil {
+			log.Panicf("Fail to add event log to the list err=%+v", err)
+		}
+	}
+	r.eventLogs = mt.GetSnapshot()
+	r.data.EventLogs = nil
+}
+
 func (r *receipt) SetResult(status module.Status, used, price *big.Int, addr module.Address) {
 	r.data.Status = status
 	if status == module.StatusSuccess && addr != nil {
@@ -347,6 +548,9 @@ func (r *receipt) SetResult(status module.Status, used, price *big.Int, addr mod
 	}
 	r.data.StepUsed.Set(used)
 	r.data.StepPrice.Set(price)
+	if r.version == Version2 {
+		r.buildMerkleListOfLogs()
+	}
 }
 
 func (r *receipt) CumulativeStepUsed() *big.Int {
@@ -379,19 +583,43 @@ func (r *receipt) Check(r2 module.Receipt) error {
 	if !r.data.Equal(&rct2.data) {
 		return errors.InvalidStateError.New("DataIsn'tEqual")
 	}
+	if r.version != rct2.version {
+		return errors.InvalidStateError.New("VersionMismatch")
+	}
+	if r.version == Version2 {
+		if !r.eventLogs.Equal(rct2.eventLogs, true) {
+			return errors.InvalidStateError.New("DifferentEventLogs")
+		}
+	} else {
+		if r.eventLogs != nil || rct2.eventLogs != nil {
+			return errors.InvalidStateError.New("InvalidEventLogHash")
+		}
+	}
 	return nil
 }
 
-func NewReceiptFromJSON(bs []byte, version int) (Receipt, error) {
+func versionForRevision(revision int) Version {
+	if revision >= module.Revision7 {
+		return Version2
+	} else {
+		return Version1
+	}
+}
+
+func NewReceiptFromJSON(database db.Database, revision int, bs []byte, rpcVersion int) (Receipt, error) {
 	r := new(receipt)
+	r.version = versionForRevision(revision)
+	r.db = database
 	if err := json.Unmarshal(bs, r); err != nil {
 		return nil, err
 	}
 	return r, nil
 }
 
-func NewReceipt(to module.Address) Receipt {
+func NewReceipt(database db.Database, revision int, to module.Address) Receipt {
 	r := new(receipt)
+	r.db = database
+	r.version = versionForRevision(revision)
 	r.data.To.SetBytes(to.Bytes())
 	return r
 }

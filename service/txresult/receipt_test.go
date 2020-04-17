@@ -18,8 +18,17 @@ import (
 )
 
 func TestReceipt_JSON(t *testing.T) {
+	for rev := module.DefaultRevision; rev <= module.MaxRevision; rev++ {
+		t.Run(fmt.Sprint("Revision", rev), func(t *testing.T) {
+			testReceiptJSONByRev(t, rev)
+		})
+	}
+}
+
+func testReceiptJSONByRev(t *testing.T, rev int) {
+	database := db.NewMapDB()
 	addr := common.NewAddressFromString("cx0000000000000000000000000000000000000001")
-	r := NewReceipt(addr)
+	r := NewReceipt(database, rev, addr)
 	r.SetResult(module.StatusSuccess, big.NewInt(100), big.NewInt(1000), nil)
 	r.SetCumulativeStepUsed(big.NewInt(100))
 	jso, err := r.ToJSON(jsonrpc.APIVersionLast)
@@ -30,7 +39,7 @@ func TestReceipt_JSON(t *testing.T) {
 
 	fmt.Printf("JSON: %s\n", jb)
 
-	r2, err := NewReceiptFromJSON(jb, jsonrpc.APIVersionLast)
+	r2, err := NewReceiptFromJSON(database, rev, jb, jsonrpc.APIVersionLast)
 	if err != nil {
 		t.Errorf("Fail on Making Receipt from JSON err=%+v", err)
 		return

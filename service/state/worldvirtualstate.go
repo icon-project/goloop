@@ -1,6 +1,7 @@
 package state
 
 import (
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"sort"
@@ -429,6 +430,10 @@ func (wvs *worldVirtualState) NodeCacheEnabled() bool {
 	return wvs.nodeCacheEnabled
 }
 
+func (wvs *worldVirtualState) Database() db.Database {
+	return wvs.base.Database()
+}
+
 func (wvs *worldVirtualState) Ensure() {
 	wvs.mutex.Lock()
 	defer wvs.mutex.Unlock()
@@ -514,6 +519,10 @@ func (wvss *worldVirtualSnapshot) StateHash() []byte {
 		return nil
 	}
 	return wvss.base.StateHash()
+}
+
+func (wvss *worldVirtualSnapshot) Database() db.Database {
+	return wvss.base.Database()
 }
 
 func (wvss *worldVirtualSnapshot) GetValidatorSnapshot() ValidatorSnapshot {

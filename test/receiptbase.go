@@ -52,3 +52,7 @@ func (_r *ReceiptBase) LogsBloom() module.LogsBloom {
 func (_r *ReceiptBase) EventLogIterator() module.EventLogIterator {
 	panic("not implemented")
 }
+
+func (_r *ReceiptBase) GetProofOfEvent(int) ([][]byte, error) {
+	panic("not implemented")
+}
