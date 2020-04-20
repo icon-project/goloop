@@ -92,6 +92,9 @@ var eeSocket string
 var modLevels map[string]string
 var lfCfg log.ForwarderConfig
 var lwCfg log.WriterConfig
+var importMode bool
+var importMaxHeight int64
+var importDataSource string
 
 func main() {
 	cmd := &cobra.Command{
@@ -145,6 +148,10 @@ func main() {
 	flag.IntVar(&lwCfg.MaxBackups, "log_writer_maxbackups", 0, "Log file max backups")
 	flag.BoolVar(&lwCfg.LocalTime, "log_writer_localtime", false, "Uses localtime for rotated filename")
 	flag.BoolVar(&lwCfg.Compress, "log_writer_compress", false, "Uses gzip for rotated file")
+	flag.BoolVar(&importMode, "import", false, "Run in import mode")
+	flag.Int64Var(&importMaxHeight, "import_max_height", 0, "Import max height")
+	flag.StringVar(&importDataSource, "import_data_source", "datasource/", "Import data source")
+
 
 	cmd.Run = Execute
 	cmd.Execute()
@@ -451,9 +458,16 @@ func Execute(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Panicf("FAIL to initialize Chain err=%+v", err)
 	}
-	err = c.Start(true)
-	if err != nil {
-		log.Panicf("FAIL to start Chain err=%+v", err)
+	if importMode {
+		err = c.Import(importDataSource, importMaxHeight, true)
+		if err != nil {
+			log.Panicf("FAIL to import Chain err=%+v", err)
+		}
+	} else {
+		err = c.Start(true)
+		if err != nil {
+			log.Panicf("FAIL to start Chain err=%+v", err)
+		}
 	}
 
 	// main loop
