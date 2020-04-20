@@ -49,7 +49,7 @@ public class BtpApiTest extends TestBase {
         Env.Chain chain = channel.chain;
         iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
         txHandler = new TransactionHandler(iconService, chain);
-        var cname = chain.getProperty("codec", "messagePack");
+        var cname = chain.getProperty("codec", "rlp");
         if (cname.equals("rlp")) {
             codec = Codec.rlp;
         } else {

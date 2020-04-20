@@ -1,4 +1,4 @@
-// +build !rlp
+// +build msgpack
 
 package codec
 
