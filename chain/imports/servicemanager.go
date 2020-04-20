@@ -323,6 +323,10 @@ func (t *transitionForImport) OnExecute(tr module.Transition, e error) {
 	t.errCh <- nil
 }
 
+func (t *transitionForImport) Equal(transition module.Transition) bool {
+	return t.Transition.Equal(unwrap(transition))
+}
+
 func (t *transitionForImport) Execute(cb module.TransitionCallback) (canceler func() bool, err error) {
 	t.cb = cb
 	c, e := t.Transition.Execute(t)
