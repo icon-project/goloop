@@ -14,68 +14,18 @@
 
 from enum import IntFlag, unique, IntEnum
 
-ICON_SERVICE_LOG_TAG = 'IconService'
-ICON_EXCEPTION_LOG_TAG = f'{ICON_SERVICE_LOG_TAG}_Exception'
-ICON_DEPLOY_LOG_TAG = f'{ICON_SERVICE_LOG_TAG}_Deploy'
-ICON_LOADER_LOG_TAG = f'{ICON_SERVICE_LOG_TAG}_Loader'
-ICX_LOG_TAG = f'{ICON_SERVICE_LOG_TAG}_Icx'
-ICON_DB_LOG_TAG = f'{ICON_SERVICE_LOG_TAG}_DB'
-ICON_INNER_LOG_TAG = f'IconInnerService'
-
-JSONRPC_VERSION = '2.0'
 CHARSET_ENCODING = 'utf-8'
 
 # 32bytes == 256bit
 DEFAULT_BYTE_SIZE = 32
 DATA_BYTE_ORDER = 'big'  # big endian
-# Fixed fee is 0.01 icx.
-FIXED_FEE = 10 ** 16
-# Max data field size
-MAX_DATA_SIZE = 512 * 1024
 
-# Max external call count(1 is default SCORE call, 1024 is external call in the SCORE)
-MAX_EXTERNAL_CALL_COUNT = 1 + 1024
-
-# Max call stack size
-MAX_CALL_STACK_SIZE = 64
-
-ICON_DEX_DB_NAME = 'icon_dex'
-
+# Reserved EventLog
 ICX_TRANSFER_EVENT_LOG = 'ICXTransfer(Address,Address,int)'
 
-ICON_SCORE_QUEUE_NAME_FORMAT = "IconScore.{channel_name}.{amqp_key}"
-ICON_SERVICE_PROCTITLE_FORMAT = "icon_service." \
-                                "{scoreRootPath}." \
-                                "{stateDbRootPath}." \
-                                "{channel}.{amqpKey}." \
-                                "{amqpTarget}"
-
-BUILTIN_SCORE_ADDRESS_MAPPER = {'governance': "cx0000000000000000000000000000000000000001"}
-
+# Revisions
 REVISION_2 = 2
 REVISION_3 = 3
-
-
-class ConfigKey:
-    BUILTIN_SCORE_OWNER = 'builtinScoreOwner'
-    SERVICE = 'service'
-    SERVICE_FEE = 'fee'
-    SERVICE_AUDIT = 'audit'
-    SERVICE_DEPLOYER_WHITE_LIST = 'deployerWhiteList'
-    SERVICE_SCORE_PACKAGE_VALIDATOR = 'scorePackageValidator'
-    SCORE_ROOT_PATH = 'scoreRootPath'
-    STATE_DB_ROOT_PATH = 'stateDbRootPath'
-    CHANNEL = 'channel'
-    AMQP_KEY = 'amqpKey'
-    AMQP_TARGET = 'amqpTarget'
-    CONFIG = 'config'
-    TBEARS_MODE = 'tbearsMode'
-
-
-class EnableThreadFlag(IntFlag):
-    INVOKE = 1
-    QUERY = 2
-    VALIDATE = 4
 
 
 class IconServiceFlag(IntFlag):
@@ -103,9 +53,6 @@ class IconScoreFuncType(IntEnum):
     READONLY = 0
     # Writable function
     WRITABLE = 1
-
-
-ENABLE_THREAD_FLAG = EnableThreadFlag.INVOKE | EnableThreadFlag.QUERY | EnableThreadFlag.VALIDATE
 
 
 class Status(IntEnum):

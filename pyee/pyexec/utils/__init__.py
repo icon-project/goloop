@@ -21,8 +21,6 @@ import hashlib
 import re
 from typing import Union
 
-from ..icon_constant import BUILTIN_SCORE_ADDRESS_MAPPER
-
 
 def int_to_bytes(v: int) -> bytes:
     n_bytes = byte_length_of_int(v)
@@ -78,7 +76,3 @@ def get_main_type_from_annotations_type(annotations_type: type) -> type:
     else:
         main_type = annotations_type
     return main_type
-
-
-def is_builtin_score(score_address: str) -> bool:
-    return score_address in BUILTIN_SCORE_ADDRESS_MAPPER.values()
