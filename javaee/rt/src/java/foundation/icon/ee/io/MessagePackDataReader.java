@@ -208,7 +208,7 @@ public class MessagePackDataReader implements DataReader {
         topFrame.current++;
     }
 
-    public boolean tryReadNull() {
+    private boolean tryReadNull() {
         try {
             MessageFormat fmt = unpacker.getNextFormat();
             if (fmt == MessageFormat.NIL) {

@@ -15,10 +15,8 @@ public interface DataReader {
     String readString();
     byte[] readByteArray();
     boolean readNullity();
-    boolean tryReadNull();
     void skip(int count);
 
-    // returns length of list or -1 if unknown
     void readListHeader();
     void readMapHeader();
     boolean hasNext();

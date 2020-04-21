@@ -15,7 +15,6 @@ public interface DataWriter {
     void write(String v);
     void write(byte[] v);
     void writeNullity(boolean nullity);
-    void writeNull();
 
     void writeListHeader(int l);
     void writeMapHeader(int l);

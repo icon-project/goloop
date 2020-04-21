@@ -43,14 +43,11 @@ public interface ObjectReader {
 
     // returns length of list or -1 if unknown
     void avm_beginList();
-    void avm_beginNullableList();
-    boolean avm_tryBeginNullableList();
+    boolean avm_beginNullableList();
     void avm_beginMap();
-    void avm_beginNullableMap();
-    boolean avm_tryBeginNullableMap();
+    boolean avm_beginNullableMap();
     boolean avm_hasNext();
     void avm_end();
-    boolean avm_tryReadNull();
 
     void avm_skip();
     void avm_skip(int count);

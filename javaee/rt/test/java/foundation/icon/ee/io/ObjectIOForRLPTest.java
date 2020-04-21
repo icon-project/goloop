@@ -73,7 +73,7 @@ public class ObjectIOForRLPTest {
         var w = new ObjectWriterImpl(new RLPDataWriter());
         var r = new ObjectReaderImpl(new RLPDataReader(enc));
         w.avm_write(data);
-        IObject adata = r.read(data.getClass());
+        IObject adata = r._read(data.getClass());
         var aenc = w.toByteArray();
         System.out.format("enc:%s => %s dec:%s => %s %n", data.avm_toString(), hex(aenc), hex(enc), adata.avm_toString());
         assertArrayEquals(enc, aenc);
@@ -95,7 +95,7 @@ public class ObjectIOForRLPTest {
         r.avm_beginList();
         int i = 0;
         while (r.avm_hasNext()) {
-            adata[i] = r.read(data[0].getClass());
+            adata[i] = r._read(data[0].getClass());
             assertAvmObjectEquals(data[i], adata[i]);
             i++;
         }

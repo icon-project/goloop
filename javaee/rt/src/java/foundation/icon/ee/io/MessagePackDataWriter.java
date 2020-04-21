@@ -104,6 +104,9 @@ public class MessagePackDataWriter implements DataWriter {
     }
 
     public void writeNullity(boolean nullity) {
+        if (nullity) {
+            writeNull();
+        }
     }
 
     public void writeListHeader(int l) {
@@ -125,7 +128,7 @@ public class MessagePackDataWriter implements DataWriter {
     public void writeFooter() {
     }
 
-    public void writeNull() {
+    private void writeNull() {
         try {
             packer.packNil();
         } catch (IOException e) {

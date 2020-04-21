@@ -18,7 +18,26 @@ package score;
 
 import java.math.BigInteger;
 
-// charge per byte cost
+/**
+ *  Interface for object write.
+ *
+ *  <p>You can write objects of custom class if the class has to following
+ *  method.
+ *
+ *  <p><code>
+ *      public static void writeObject(ObjectWriter w, UserClass obj)
+ *  </code>
+ *
+ *  <p>When you write custom class object, {@code readObject} method is called.
+ *  If the writeObject method throws {@link java.lang.RuntimeException}, the
+ *  exception is rethrown. If the method throws other
+ *  {@link java.lang.Throwable}, the exception is consumed and
+ *  {@link java.lang.UnsupportedOperationException} is thrown instead.
+ *
+ *  <p>If an error occurs during any write call, the write becomes invalidated.
+ *
+ *  @see ObjectReader
+ */
 public interface ObjectWriter {
     void write(boolean v);
     void write(byte v);

@@ -11,9 +11,9 @@ public class RLPDataReader implements DataReader {
         int endPos;
     }
 
-    private ByteBuffer bb;
-    private byte[] arr;
-    private ArrayList<ListFrame> frames = new ArrayList<>();
+    private final ByteBuffer bb;
+    private final byte[] arr;
+    private final ArrayList<ListFrame> frames = new ArrayList<>();
     private ListFrame topFrame;
     private int o; // offset from position
     private int l;
@@ -220,12 +220,12 @@ public class RLPDataReader implements DataReader {
         _readRLPListFooter();
     }
 
-    public boolean tryReadNull() {
+    private boolean tryReadNull() {
         var b = peek();
         if (!peekRLPNull(b)) {
             return false;
         }
-        bb.position(o+l);
+        bb.position(o + l);
         return true;
     }
 }
