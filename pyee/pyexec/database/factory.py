@@ -37,8 +37,7 @@ class ContextDatabaseFactory(object):
     def get_shared_db(cls) -> ContextDatabase:
         if cls._shared_context_db is None:
             key_value_db = ProxyDatabase(cls._proxy)
-            cls._shared_context_db = ContextDatabase(key_value_db,
-                                                     is_shared=True)
+            cls._shared_context_db = ContextDatabase(key_value_db)
         return cls._shared_context_db
 
     @classmethod

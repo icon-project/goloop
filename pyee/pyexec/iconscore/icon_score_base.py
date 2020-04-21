@@ -22,8 +22,8 @@ from ..base.address import Address
 from ..base.exception import *
 from ..base.message import Message
 from ..base.transaction import Transaction
-from ..database.db import IconScoreDatabase, DatabaseObserver
-from ..icon_constant import ICX_TRANSFER_EVENT_LOG, IconScoreContextType
+from ..database.db import IconScoreDatabase
+from ..icon_constant import ICX_TRANSFER_EVENT_LOG
 from ..utils import get_main_type_from_annotations_type
 
 from .icon_score_base2 import InterfaceScore, revert, Block, Icx
@@ -31,9 +31,8 @@ from .icon_score_constant import CONST_INDEXED_ARGS_COUNT, CONST_BIT_FLAG, Const
     FORMAT_IS_NOT_FUNCTION_OBJECT, FORMAT_IS_NOT_DERIVED_OF_OBJECT, FORMAT_DECORATOR_DUPLICATED, \
     STR_FALLBACK, STR_ON_INSTALL, STR_ON_UPDATE, \
     CONST_CLASS_EXTERNALS, CONST_CLASS_PAYABLES, CONST_CLASS_API, T, BaseType
-from .icon_score_context import ContextGetter, IconScoreContext
+from .icon_score_context import ContextGetter
 from .icon_score_eventlog import EventLogEmitter
-from .icon_score_step import StepType
 from .internal_call import InternalCall
 from .score_api_generator import ScoreApiGenerator
 
@@ -364,8 +363,6 @@ class IconScoreBase(IconScoreObject, ContextGetter,
         if not self.__get_attr_dict(CONST_CLASS_EXTERNALS):
             raise InvalidExternalException('There is no external method in the SCORE')
 
-        self.__db.set_observer(self.__create_db_observer())
-
     def fallback(self) -> None:
         """
         fallback function can not be decorated with `@external`. (i.e., fallback function is not allowed to be called by external contract or user.)
@@ -391,10 +388,6 @@ class IconScoreBase(IconScoreObject, ContextGetter,
     @classmethod
     def __get_attr_dict(cls, attr: str) -> dict:
         return getattr(cls, attr, {})
-
-    def __create_db_observer(self) -> 'DatabaseObserver':
-        return DatabaseObserver(
-            self.__on_db_get, self.__on_db_put, self.__on_db_delete)
 
     def __call(self,
                func_name: str,
@@ -438,72 +431,6 @@ class IconScoreBase(IconScoreObject, ContextGetter,
             func = getattr(self, func_name)
             return bool(getattr(func, CONST_BIT_FLAG, 0) & ConstBitFlag.ReadOnly)
         return False
-
-    @staticmethod
-    def __on_db_get(context: 'IconScoreContext',
-                    key: bytes,
-                    value: bytes):
-        """Invoked when `get` is called in `ContextDatabase`.
-
-        # All steps are managed in the score
-        # Don't move to another codes
-
-        :param context: SCORE context
-        :param key: key
-        :param value: value
-        """
-
-        if context and context.step_counter and \
-                context.type != IconScoreContextType.DIRECT:
-            length = 1
-            if value:
-                length = len(value)
-            context.step_counter.apply_step(StepType.GET, length)
-
-    @staticmethod
-    def __on_db_put(context: 'IconScoreContext',
-                    key: bytes,
-                    old_value: bytes,
-                    new_value: bytes):
-        """Invoked when `put` is called in `ContextDatabase`.
-
-        # All steps are managed in the score
-        # Don't move to another codes
-
-        :param context: SCORE context
-        :param key: key
-        :param old_value: old value
-        :param new_value: new value
-        """
-
-        if context and context.step_counter and \
-                context.type == IconScoreContextType.INVOKE:
-            if old_value:
-                # modifying a value
-                context.step_counter.apply_step(
-                    StepType.REPLACE, len(new_value))
-            else:
-                # newly storing a value
-                context.step_counter.apply_step(
-                    StepType.SET, len(new_value))
-
-    @staticmethod
-    def __on_db_delete(context: 'IconScoreContext',
-                       key: bytes,
-                       old_value: bytes):
-        """Invoked when `delete` is called in `ContextDatabase`.
-
-        # All steps are managed in the score
-        # Don't move to another codes
-        :param context: SCORE context
-        :param key: key
-        :param old_value: old value
-        """
-
-        if context and context.step_counter and \
-                context.type == IconScoreContextType.INVOKE:
-            context.step_counter.apply_step(
-                StepType.DELETE, len(old_value))
 
     @property
     def msg(self) -> 'Message':
