@@ -22,12 +22,12 @@ public class BlockHeader {
         height = r.readLong();
         timestamp = r.readLong();
         proposer = new Address(r.readByteArray());
-        if (r.tryReadNull()) {
+        if (r.readNullity()) {
             prevID = null;
         } else {
             prevID = r.readByteArray();
         }
-        if (r.tryReadNull()) {
+        if (r.readNullity()) {
             votesHash = null;
         } else {
             votesHash = r.readByteArray();
@@ -38,7 +38,7 @@ public class BlockHeader {
         var rr = codec.newReader(r.readByteArray());
         rr.readListHeader();
         rr.skip(2); // StateHash, PatchReceiptsHash
-        if (!rr.tryReadNull()) {
+        if (!rr.readNullity()) {
             normalReceiptHash = rr.readByteArray();
         } else {
             normalReceiptHash = null;
