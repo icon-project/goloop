@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from logging import Handler
-from typing import Tuple, Any, Union, List
+from typing import Tuple, Any, List, Optional
 
 from .base.address import Address
 from .base.block import Block
@@ -21,7 +21,7 @@ from .base.message import Message
 from .base.transaction import Transaction
 from .icon_constant import IconScoreContextType, Status
 from .iconscore.icon_score_step import IconScoreStepCounter
-from .ipc.proxy import ServiceManagerProxy, Codec, TypeTag, APIInfo, APIType, DataType, Info, Log
+from .ipc.proxy import ServiceManagerProxy, Codec, TypeTag, APIInfo, APIType, DataType, Info, Log, SetHandler
 from .logger import Logger
 from .service_engine import ServiceEngine, IconScoreContext
 
@@ -176,14 +176,14 @@ class PyExecEngine(object):
              method: str, params: Any) -> Tuple[int, int, Any]:
         return self.__proxy.call(to, value, limit, method, params)
 
-    def get_value(self, k: bytes) -> Union[bytes, None]:
+    def get_value(self, k: bytes) -> Optional[bytes]:
         ret = self.__proxy.get_value(k)
         Logger.debug(f"get_value({repr(k)}) -> {repr(ret)}", TAG)
         return ret
 
-    def set_value(self, k: bytes, v: Union[bytes, None]):
+    def set_value(self, k: bytes, v: Optional[bytes], cb: Optional[SetHandler] = None):
         Logger.debug(f"set_value({repr(k)},{repr(v)})", TAG)
-        self.__proxy.set_value(k, v)
+        self.__proxy.set_value(k, v, cb)
 
     def get_balance(self, addr: Address) -> int:
         ret = self.__proxy.get_balance(addr)

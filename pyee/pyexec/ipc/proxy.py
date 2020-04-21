@@ -14,7 +14,7 @@
 
 import traceback
 from abc import ABCMeta, abstractmethod
-from typing import Any, Tuple, List, Union, Callable
+from typing import Any, Tuple, List, Union, Callable, Optional
 
 from .client import Client
 
@@ -270,7 +270,7 @@ class ServiceManagerProxy:
         else:
             return self.__codec.decode(tag, val)
 
-    def encode(self, o: Any) -> Union[bytes, None]:
+    def encode(self, o: Any) -> Optional[bytes]:
         if o is None:
             return None
         if isinstance(o, str):
@@ -438,7 +438,7 @@ class ServiceManagerProxy:
         self.handle_set_values()
         return self.__client.receive()
 
-    def get_value(self, key: bytes) -> Union[None, bytes]:
+    def get_value(self, key: bytes) -> Optional[bytes]:
         msg, value = self.send_and_receive(Message.GETVALUE, key)
         if msg != Message.GETVALUE:
             raise Exception(f'InvalidMsg({msg}) exp={Message.GETVALUE}')
@@ -447,7 +447,7 @@ class ServiceManagerProxy:
         else:
             return None
 
-    def set_value(self, key: bytes, value: Union[bytes, None], cb: Union[SetHandler, None] = None):
+    def set_value(self, key: bytes, value: Optional[bytes], cb: Optional[SetHandler]):
         if self.__readonly:
             raise Exception('NoPermissionToWrite')
         flag = 0
