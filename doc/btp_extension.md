@@ -496,61 +496,71 @@ Currently, Core2 uses Merkle Patricia Trie to store the receipt and the events, 
 
 ## Binary format
 
-Core2 uses MsgPack and RLP for binary encoding and decoding.
+Core2 uses MsgPack and RLP with Null(RLPn) for binary encoding and decoding.
 
 * [MsgPack](https://msgpack.org)
-* [RLP](https://github.com/ethereum/wiki/wiki/RLP)
+* RLPn is [RLP](https://github.com/ethereum/wiki/wiki/RLP) with Null ( `[ 0xF8 0x00]` )
+
+| Type      | Msgpack | RLPn     | Description                                                                                                                       |
+|:----------|:--------|:---------|:----------------------------------------------------------------------------------------------------------------------------------|
+| B_LIST    | List    | List     | List of items                                                                                                                     |
+| B_BYTES   | Bytes   | Bytes    | Raw bytes                                                                                                                         |
+| B_BIGINT  | Bytes   | Bytes    | N bytes of integer representation.<br/>ex)<br/>0x00 → [ 0x00 ]<br/>0x80 → [ 0x00 0x80 ]<br/>-0x01 → [ 0xff ]<br/>-0x80 → [ 0x80 ] |
+| B_INT     | Integer | B_BIGINT | 64bits signed integer                                                                                                             |
+| B_ADDRESS | Bytes   | Bytes    | 1 byte<br/>- 0x00 ← EOA<br/>- 0x01 ← SCORE<br/>20 bytes : Identifier                                                              |
+| B_NULL    | Null    | Null     | B_BYTES(N), B_ADDRESS(N) or B_LIST(N) can be Null                                                                                 |
+
+Suffixed `(N)` means a nullable value.
 
 ### Block Header
 
-| Name | Field                  | Type          | Description                                                                                      |
-|:-----|:-----------------------|:--------------|:-------------------------------------------------------------------------------------------------|
-| BlockHeader                  || MsgPack List of followings                                                                                      ||
-|      | Version                | MsgPack Int   | 1 ← Version 1 (legacy)<br/>2 ← Version 2 (core2 beta)                                            |
-|      | Height                 | MsgPack Int   | Height of the block.<br/>0 means genesis block.                                                  |
-|      | Timestamp              | MsgPack Int   | Micro-seconds after EPOCH.                                                                       |
-|      | Proposer               | Address       | Height of the block.<br/>0 means genesis block.                                                  |
-|      | PrevID                 | MsgPack Bytes | 32 bytes hash value                                                                              |
-|      | VotesHash              | MsgPack Bytes | 32 bytes hash value                                                                              |
-|      | NextValidatorsHash     | MsgPack Bytes | 32 bytes hash value                                                                              |
-|      | PatchTransactionsHash  | MsgPack Bytes | 32 bytes hash value                                                                              |
-|      | NormalTransactionsHash | MsgPack Bytes | 32 bytes hash value                                                                              |
-|      | LogsBloom              | MsgPack Bytes | N(1~256) bytes bloom log value                                                                   |
-|      | Result                 | MsgPack Bytes | Result.Encode()<br/>After decoding BlockHeader, it should decode it again for NormalReceiptHash. |
-| Result                       || MsgPack List of followings                                                                                      ||
-|      | StateHash              | MsgPack Bytes | Hash of world state (account information)                                                        |
-|      | PatchReceiptHash       | MsgPack Bytes | Root Hash of patch receipts                                                                      |
-|      | NormalReceiptHash      | MsgPack Bytes | Root Hash of normal receipts                                                                     |
+| Name | Field                  | Type         | Description                                          |
+|:-----|:-----------------------|:-------------|:-----------------------------------------------------|
+| BlockHeader                  || B_LIST of followings                                               ||
+|      | Version                | B_INT        | 1 ← Version 1 (legacy)<br/>N ← Version N (for Core2) |
+|      | Height                 | B_INT        | Height of the block, <br/>0 means genesis block.     |
+|      | Timestamp              | B_INT        | Micro-seconds after EPOCH                            |
+|      | Proposer               | B_ADDRESS(N) | Proposer of the block                                |
+|      | PrevID                 | B_BYTES(N)   | 32 bytes hash value                                  |
+|      | VotesHash              | B_BYTES(N)   | 32 bytes hash value                                  |
+|      | NextValidatorsHash     | B_BYTES(N)   | 32 bytes hash value                                  |
+|      | PatchTransactionsHash  | B_BYTES(N)   | 32 bytes hash value                                  |
+|      | NormalTransactionsHash | B_BYTES(N)   | 32 bytes hash value                                  |
+|      | LogsBloom              | B_BYTES      | N(1~256) bytes bloom log value                       |
+|      | Result                 | B_BYTES(N)   | Encoded bytes of the Result                          |
+| Result                       || B_LIST of followings                                               ||
+|      | StateHash              | B_BYTES(N)   | Hash of world state (account information)            |
+|      | PatchReceiptHash       | B_BYTES(N)   | Root Hash of patch receipts                          |
+|      | NormalReceiptHash      | B_BYTES(N)   | Root Hash of normal receipts                         |
 
 ### Validators
 
-| Name | Field | Type          | Description                                             |
-|:-----|:------|:--------------|:--------------------------------------------------------|
-| Validators  || MsgPack List of Vadidator                                              ||
-| Validator   || MsgPack Bytes | 21 bytes → same as Address<br/>Other bytes → public key |
+| Name | Field | Type    | Description                                             |
+|:-----|:------|:--------|:--------------------------------------------------------|
+| Validators  || B_LIST of Validators                                             ||
+| Validator   || B_BYTES | 21 bytes → same as Address<br/>Other bytes → public key |
 
 ### Votes
 
-| Name | Field          | Type                 | Description                                                                |
-|:-----|:---------------|:---------------------|:---------------------------------------------------------------------------|
-| Votes                || MsgPack List of followings                                                                       ||
-|      | Round          | MsgPack Int          | Round for votes.<br/>If consensus doesn’t use round, it should be 0(zero). |
-|      | BlockPartSetID | PartSetID            | If it doesn’t use PartSetID, it should be empty list.                      |
-|      | Items          | MsgPack List of VoteItem                                                                         ||
-| VoteItem             || MsgPack List of followings                                                                       ||
-|      | Timestamp      | MsgPack Int          | Voted time in micro-seconds                                                |
-|      | Signature      | Signature                                                                                        ||
-| PartSetID            || MsgPack List of followings                                                                       ||
-|      | Count          | MsgPack Unsigned Int | Number of block parts                                                      |
-|      | Hash           | MsgPack Bytes        | Hash of block parts                                                        |
-| Signature            || MsgPack Bytes        | RSV format signature for VoteMessage                                       |
-| VoteMessage          || MsgPack List of followings                                                                       ||
-|      | Height         | MsgPack Int          | BlockHeader.Height                                                         |
-|      | Round          | MsgPack Int          | Votes.Round                                                                |
-|      | Type           | MsgPack Int          | 0 ← PreVote ( only for consensus )<br/>1 ← PreCommit ( for vote check )    |
-|      | BlockID        | MsgPack Bytes        | SHA3Sum256(BlockHeader)                                                    |
-|      | BlockPartSetID | PartSetID            | Votes.BlockPartSetID.                                                      |
-|      | Timestamp      | MsgPack Int          | VoteItem.Timestamp                                                         |
+| Name | Field          | Type       | Description                                                                |
+|:-----|:---------------|:-----------|:---------------------------------------------------------------------------|
+| Votes                || B_LIST of followings                                                                   ||
+|      | Round          | B_INT      | Round for votes.<br/>If consensus doesn’t use round, it should be 0(zero). |
+|      | BlockPartSetID | PartSetID  | PartSetID of the proposed block                                            |
+|      | Items          | B_LIST of VoteItem                                                                     ||
+| VoteItem             || B_LIST of followings                                                                   ||
+|      | Timestamp      | B_INT      | Voted time in micro-seconds                                                |
+|      | Signature      | B_BYTES    | RSV format signature for VoteMessage by a validator                        |
+| VoteMessage          || B_LIST of followings                                                                   ||
+|      | Height         | B_INT      | BlockHeader.Height                                                         |
+|      | Round          | B_INT      | Votes.Round                                                                |
+|      | Type           | B_INT      | 0 ← PreVote ( only for consensus )<br/>1 ← PreCommit ( for vote check )    |
+|      | BlockID        | B_BYTES(N) | SHA3Sum256(BlockHeader)                                                    |
+|      | BlockPartSetID | PartSetID  | Votes.BlockPartSetID.                                                      |
+|      | Timestamp      | B_INT      | VoteItem.Timestamp                                                         |
+| PartSetID            || B_LIST of followings                                                                   ||
+|      | Count          | B_INT      | Number of block parts                                                      |
+|      | Hash           | B_BYTES(N) | Hash of block parts                                                        |
 
 ### Proof
 
@@ -570,22 +580,20 @@ Core2 uses MsgPack and RLP for binary encoding and decoding.
 
 ### Receipt
 
-| Name | Field              | Type                          | Description                                                                                                                       |
-|:-----|:-------------------|:------------------------------|:----------------------------------------------------------------------------------------------------------------------------------|
-| Receipt                  || MsgPack List of followings                                                                                                                                       ||
-|      | Status             | MsgPack Int                   | Result status<br/>0 ← SUCCESS<br/>N ← FAILURE ( N is failure code )                                                               |
-|      | To                 | Address                       | The target address of the transaction                                                                                             |
-|      | CumulativeStepUsed | Integer                       | Cumulative step used                                                                                                              |
-|      | StepUsed           | Integer                       | Step used                                                                                                                         |
-|      | StepPrice          | Integer                       | Step price in LOOP                                                                                                                |
-|      | LogsBloom          | Integer                       | 2048 bits without padding zeros<br/>So, if there is no bit, then it would be a byte with zero.                                    |
-|      | EventLogs          | MsgPack List of EventLog                                                                                                                                         ||
-|      | SCOREAddress       | Address                                                                                                                                                          ||
-|      | EventListRoot      | Msgpack Bytes                 | (from Revision7) Root hash of merkle list of event logs                                                                          ||
-| EventLog                 || MsgPack List of followings                                                                                                                                       ||
-|      | Addr               | Address                       | SCORE producing this event log                                                                                                    |
-|      | Indexed            | MsgPack List of MsgPack Bytes | Indexed data.                                                                                                                     |
-|      | Data               | MsgPack List of MsgPack Bytes | Remaining data.                                                                                                                   |
-| Address                  || MsgPack Bytes                 | 1 byte<br/>- 0x00 ← EOA<br/>- 0x01 ← SCORE<br/>20 bytes : Identifier                                                              |
-| Integer                  || MsgPack Bytes                 | N bytes of integer representation.<br/>ex)<br/>0x00 → [ 0x00 ]<br/>0x80 → [ 0x00 0x80 ]<br/>-0x01 → [ 0xff ]<br/>-0x80 → [ 0x80 ] |
+| Name | Field              | Type                  | Description                                                                                    |
+|:-----|:-------------------|:----------------------|:-----------------------------------------------------------------------------------------------|
+| Receipt                  || B_LIST of followings                                                                                                  ||
+|      | Status             | B_INT                 | Result status<br/>0 ← SUCCESS<br/>N ← FAILURE ( N is failure code )                            |
+|      | To                 | B_ADDRESS             | The target address of the transaction                                                          |
+|      | CumulativeStepUsed | B_BIGINT              | Cumulative step used                                                                           |
+|      | StepUsed           | B_BIGINT              | Step used                                                                                      |
+|      | StepPrice          | B_BIGINT              | Step price in LOOP                                                                             |
+|      | LogsBloom          | B_BIGINT              | 2048 bits without padding zeros<br/>So, if there is no bit, then it would be a byte with zero. |
+|      | EventLogs          | B_LIST(N) of EventLog | A list of event logs (empty if there is EventLogHash)                                          |
+|      | SCOREAddress       | B_ADDRESS(N)          | The address of deployed smart contract                                                         |
+|      | EventLogHash       | B_BYTES(O)            | (from Revision7) Root hash of merkle list of event logs                                        |
+| EventLog                 || B_LIST of followings                                                                                                  ||
+|      | Addr               | B_ADDRESS             | SCORE producing this event log                                                                 |
+|      | Indexed            | B_LIST of B_BYTES(N)  | Indexed data.                                                                                  |
+|      | Data               | B_LIST of B_BYTES(N)  | Remaining data.                                                                                |
 
