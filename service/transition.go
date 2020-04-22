@@ -563,6 +563,9 @@ func (t *transition) validateTxs(l module.TransactionList, wc state.WorldContext
 		}
 		tx := txi.(transaction.Transaction)
 
+		if !tx.ValidateNetwork(t.chain.NID()) {
+			return 0, errors.InvalidNetworkError.New("InvalidNetworkID")
+		}
 		if err := tx.Verify(); err != nil {
 			return 0, err
 		}
