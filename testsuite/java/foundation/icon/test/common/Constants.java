@@ -42,5 +42,5 @@ public class Constants {
     public static final Address GOV_ADDRESS
             = new Address("cx0000000000000000000000000000000000000001");
     public static final Address TREASURY_ADDRESS
-            = new Address("cx1000000000000000000000000000000000000000");
+            = new Address("hx1000000000000000000000000000000000000000");
 }
