@@ -43,16 +43,16 @@ def _is_db_writable_on_context(context: 'IconScoreContext'):
 
 class DummyDatabase(object):
     def get(self, key: bytes) -> bytes:
-        return b'\x00'
+        raise DatabaseException('No permission')
 
     def put(self, key: bytes, value: bytes) -> None:
-        pass
+        raise DatabaseException('No permission')
 
     def delete(self, key: bytes) -> None:
-        pass
+        raise DatabaseException('No permission')
 
     def close(self) -> None:
-        pass
+        raise DatabaseException('No permission')
 
 
 class ProxyDatabase(object):
