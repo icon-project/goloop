@@ -85,6 +85,8 @@ public class DAppExecutor {
             } catch (Throwable t) {
                 logger.debug("Exception at method: {}", tx.getMethod());
                 throw t;
+            } finally {
+                externalState.waitForCallbacks();
             }
 
             var runtimeState = dapp.saveRuntimeState();
@@ -101,7 +103,6 @@ public class DAppExecutor {
                 dapp.setHashCode(newHashCode);
                 dapp.setSerializedLength(postCallGraphData.length);
             }
-            externalState.waitForCallbacks();
 
             long energyUsed = tx.getLimit() - threadInstrumentation.energyLeft();
             result = new Result(Status.Success, energyUsed, ret);

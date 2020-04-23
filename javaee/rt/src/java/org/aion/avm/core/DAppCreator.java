@@ -415,15 +415,18 @@ public class DAppCreator {
                                                  Address dappAddress,
                                                  Transaction tx) throws Throwable {
         try {
-            dapp.forceInitializeAllClasses();
-            dapp.initMainInstance(tx.getParams());
+            try {
+                dapp.forceInitializeAllClasses();
+                dapp.initMainInstance(tx.getParams());
+            } finally {
+                externalState.waitForCallbacks();
+            }
 
             // Save back the state before we return.
             byte[] rawGraphData = dapp.saveEntireGraph(threadInstrumentation.peekNextHashCode(), StorageFees.MAX_GRAPH_SIZE);
             // Bill for writing this size.
             threadInstrumentation.chargeEnergy(StorageFees.WRITE_PRICE_PER_BYTE * rawGraphData.length);
             externalState.putObjectGraph(dappAddress, rawGraphData);
-            externalState.waitForCallbacks();
 
             long energyUsed = tx.getLimit() - threadInstrumentation.energyLeft();
             return new Result(Status.Success, energyUsed, null);
