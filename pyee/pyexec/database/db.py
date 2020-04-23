@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Optional
 
 from ..base.exception import DatabaseException, InvalidParamsException
 from ..icon_constant import IconScoreContextType, IconScoreFuncType
-from ..iconscore.icon_score_context import ContextGetter
+from ..iconscore.icon_score_context import ContextGetter, ContextContainer
 from ..iconscore.icon_score_step import StepType
 from ..utils import sha3_256
 
@@ -68,20 +68,22 @@ class ProxyDatabase(object):
         """
         return self._proxy.get_value(key)
 
-    def put(self, key: bytes, value: bytes) -> None:
+    def put(self, key: bytes, value: bytes, cb: callable) -> None:
         """Set a value for the specified key.
 
         :param key: (bytes): key to set
         :param value: (bytes): data to be stored
+        :param cb: handler for old value
         """
-        self._proxy.set_value(key, value)
+        self._proxy.set_value(key, value, cb)
 
-    def delete(self, key: bytes) -> None:
+    def delete(self, key: bytes, cb: callable) -> None:
         """Delete the key/value pair for the specified key.
 
         :param key: key to delete
+        :param cb: handler for old value
         """
-        self._proxy.set_value(key, None)
+        self._proxy.set_value(key, None, cb)
 
     def close(self) -> None:
         """Close the database.
@@ -109,7 +111,8 @@ class ContextDatabase(object):
         :return: value
         """
         value = self._db.get(key)
-        self.__on_db_get(context, key, value)
+        if value is not None:
+            self._charge_step_get(context, value)
         return value
 
     def put(self, context: Optional['IconScoreContext'], key: bytes, value: Optional[bytes]) -> None:
@@ -122,13 +125,12 @@ class ContextDatabase(object):
         if not _is_db_writable_on_context(context):
             raise DatabaseException('No permission to write')
 
-        old_value = self._db.get(key)
-        if value:
-            self.__on_db_put(context, key, old_value, value)
-        elif old_value:
-            # If new value is None, then deletes the field
-            self.__on_db_delete(context, key, old_value)
-        self._db.put(key, value)
+        if value is None:
+            self._db.delete(key, self.__delete_handler)
+        else:
+            # apply steps for set first
+            self._charge_step_set(context, value)
+            self._db.put(key, value, self.__refund_handler)
 
     def delete(self, context: Optional['IconScoreContext'], key: bytes):
         """Delete the entry for the specified key
@@ -139,11 +141,7 @@ class ContextDatabase(object):
         if not _is_db_writable_on_context(context):
             raise DatabaseException('No permission to delete')
 
-        old_value = self._db.get(key)
-        # If old value is None, won't fire the callback
-        if old_value:
-            self.__on_db_delete(context, key, old_value)
-        self._db.delete(key)
+        self._db.delete(key, self.__delete_handler)
 
     def close(self, context: 'IconScoreContext') -> None:
         """close db
@@ -154,59 +152,41 @@ class ContextDatabase(object):
             raise DatabaseException('No permission to close')
 
     @staticmethod
-    def __on_db_get(context: 'IconScoreContext',
-                    key: bytes,
-                    value: bytes):
-        """Invoked when `get` is called in `ContextDatabase`.
+    def __delete_handler(has_old: bool, size: int) -> None:
+        """ callback for delete
+        """
+        context = ContextContainer._get_context()
+        if context and context.step_counter and \
+                context.type == IconScoreContextType.INVOKE:
+            if has_old:
+                context.step_counter.apply_step(StepType.DELETE, size)
 
-        :param context: SCORE context
-        :param key: key
-        :param value: value
+    @staticmethod
+    def __refund_handler(has_old: bool, size: int) -> None:
+        """ callback for refund in case of replace
+        """
+        context = ContextContainer._get_context()
+        if context and context.step_counter and \
+                context.type == IconScoreContextType.INVOKE:
+            if has_old:
+                context.step_counter.refund_step(size)
+
+    @staticmethod
+    def _charge_step_get(context: 'IconScoreContext', value: bytes):
+        """ charge steps for get
         """
         if context and context.step_counter and \
                 context.type != IconScoreContextType.DIRECT:
-            length = 1
-            if value:
-                length = len(value)
-            context.step_counter.apply_step(StepType.GET, length)
+            context.step_counter.apply_step(StepType.GET, len(value))
 
     @staticmethod
-    def __on_db_put(context: 'IconScoreContext',
-                    key: bytes,
-                    old_value: bytes,
-                    new_value: bytes):
-        """Invoked when `put` is called in `ContextDatabase`.
-
-        :param context: SCORE context
-        :param key: key
-        :param old_value: old value
-        :param new_value: new value
+    def _charge_step_set(context: 'IconScoreContext', value: bytes):
+        """ charge steps for set
         """
         if context and context.step_counter and \
                 context.type == IconScoreContextType.INVOKE:
-            if old_value:
-                # modifying a value
-                context.step_counter.apply_step(
-                    StepType.REPLACE, len(new_value))
-            else:
-                # newly storing a value
-                context.step_counter.apply_step(
-                    StepType.SET, len(new_value))
-
-    @staticmethod
-    def __on_db_delete(context: 'IconScoreContext',
-                       key: bytes,
-                       old_value: bytes):
-        """Invoked when `delete` is called in `ContextDatabase`.
-
-        :param context: SCORE context
-        :param key: key
-        :param old_value: old value
-        """
-        if context and context.step_counter and \
-                context.type == IconScoreContextType.INVOKE:
-            context.step_counter.apply_step(
-                StepType.DELETE, len(old_value))
+            # charge for the new value
+            context.step_counter.apply_step(StepType.SET, len(value))
 
 
 class IconScoreDatabase(ContextGetter):

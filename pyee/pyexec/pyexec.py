@@ -20,10 +20,11 @@ from .base.block import Block
 from .base.message import Message
 from .base.transaction import Transaction
 from .icon_constant import IconScoreContextType, Status
+from .iconscore.icon_score_context import IconScoreContext
 from .iconscore.icon_score_step import IconScoreStepCounter
 from .ipc.proxy import ServiceManagerProxy, Codec, TypeTag, APIInfo, APIType, DataType, Info, Log, SetHandler
 from .logger import Logger
-from .service_engine import ServiceEngine, IconScoreContext
+from .service_engine import ServiceEngine
 
 TAG = 'PyExec'
 version_number = 1
@@ -132,8 +133,8 @@ class PyExecEngine(object):
                               info.get(Info.BLOCK_TIMESTAMP))
         context.msg = Message(sender=_from, value=value)
         context.owner = info.get(Info.CONTRACT_OWNER)
-        context.step_counter = IconScoreStepCounter(info.get(Info.STEP_COSTS),
-                                                    limit)
+        context.step_counter = IconScoreStepCounter(info.get(Info.STEP_COSTS), limit,
+                                                    self.handle_set_values)
         context.revision = info.get(Info.REVISION)
         if Logger.isDebugEnabled():
             Logger.debug(f'[Transaction] {context.tx}', TAG)
@@ -184,6 +185,9 @@ class PyExecEngine(object):
     def set_value(self, k: bytes, v: Optional[bytes], cb: Optional[SetHandler] = None):
         Logger.debug(f"set_value({repr(k)},{repr(v)})", TAG)
         self.__proxy.set_value(k, v, cb)
+
+    def handle_set_values(self) -> bool:
+        return self.__proxy.handle_set_values()
 
     def get_balance(self, addr: Address) -> int:
         ret = self.__proxy.get_balance(addr)

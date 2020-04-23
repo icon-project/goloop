@@ -98,7 +98,8 @@ class IconScoreStepCounter(object):
 
     def __init__(self,
                  step_costs: dict,
-                 step_limit: int) -> None:
+                 step_limit: int,
+                 refund_handler: callable) -> None:
         """Constructor
 
         :param step_costs: a dict of base step costs
@@ -114,6 +115,13 @@ class IconScoreStepCounter(object):
         self._step_costs: dict = converted_step_costs
         self._step_limit: int = step_limit
         self._step_used: int = 0
+        self._refund_handler = refund_handler
+
+        # cache the refund cost
+        # assuming cost_set is greater than cost_replace
+        cost_set: int = self.get_step_cost(StepType.SET)
+        cost_replace: int = self.get_step_cost(StepType.REPLACE)
+        self._refund_cost = cost_replace - cost_set
 
     @property
     def step_limit(self) -> int:
@@ -135,6 +143,7 @@ class IconScoreStepCounter(object):
         """ Check if remained steps are sufficient for executing step_type,
             and returns the remained steps
         """
+        self._refund_handler()
         required = self._step_costs.get(step_type, 0)
         remained = self._step_limit - self._step_used
         if required > remained:
@@ -146,24 +155,32 @@ class IconScoreStepCounter(object):
         """ Increases steps for given step cost
         """
         step: int = self._step_costs.get(step_type, 0) * count
+        if step == 0:
+            return self._step_used
         return self.consume_step(step_type, step)
 
     def consume_step(self, step_type: StepType, step: int) -> int:
         step_used: int = self._step_used + step
 
-        if step_used > self._step_limit:
-            step_used = self._step_used
-            self._step_used = self._step_limit
-            raise OutOfStepException(
-                self._step_limit, step_used, step, step_type)
+        while step_used > self._step_limit:
+            if self._refund_handler():
+                step_used = self._step_used + step
+            else:
+                step_used = self._step_used
+                self._step_used = self._step_limit
+                raise OutOfStepException(
+                    self._step_limit, step_used, step, step_type)
 
         self._step_used = step_used
         return step_used
 
-    def add_step(self, amount: int) -> int:
+    def refund_step(self, count: int) -> None:
+        steps: int = self._refund_cost * count
+        self.add_step(steps)
+
+    def add_step(self, amount: int) -> None:
         # Assuming amount is always less than the current limit
         self._step_used += amount
-        return self._step_used
 
     def get_step_cost(self, step_type: StepType) -> int:
         return self._step_costs.get(step_type, 0)

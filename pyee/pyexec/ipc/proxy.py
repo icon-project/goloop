@@ -232,7 +232,7 @@ class ServiceManagerProxy:
         self.__codec = None
         self.__readonly_stack = []
         self.__readonly = False
-        self.__set_handlers: List[SetHandler] = []
+        self.__set_handlers: List[Tuple[SetHandler, int]] = []
 
     def connect(self, addr):
         self.__client.connect(addr)
@@ -418,18 +418,25 @@ class ServiceManagerProxy:
             elif msg == Message.RESULT:
                 return data[0], self.decode(TypeTag.INT, data[1]), self.decode_any(data[2])
 
-    def handle_set_values(self):
-        self.__handle_set_values(len(self.__set_handlers))
+    def handle_set_values(self) -> bool:
+        count: int = len(self.__set_handlers)
+        if count > 0:
+            self.__handle_set_values(count)
+            return True
+        return False
 
     def __handle_set_values(self, cnt: int):
         for i in range(0, cnt):
-            handler = self.__set_handlers.pop(0)
+            handler, size = self.__set_handlers.pop(0)
             msg, data = self.__client.receive()
             if msg != Message.SETVALUE:
                 raise Exception(f'InvalidMsg({msg}) exp={Message.SETVALUE}')
             if handler is not None:
                 if data[0]:
-                    handler(True, self.decode(TypeTag.INT, data[1]))
+                    if size > 0:
+                        handler(True, size)  # pass the size of new value
+                    else:
+                        handler(True, data[1])
                 else:
                     handler(False, 0)
 
@@ -458,8 +465,8 @@ class ServiceManagerProxy:
         self.__client.send(Message.SETVALUE, [key, flag, value])
 
         if cb is not None:
-            self.__set_handlers.append(cb)
-            to_remove = len(self.__set_handlers) - MAX_SET_VALUE_HANDLERS
+            size = 0 if value is None else len(value)
+            self.__set_handlers.append((cb, size))
             if len(self.__set_handlers) > MAX_SET_VALUE_HANDLERS:
                 self.__handle_set_values(len(self.__set_handlers) - MAX_SET_VALUE_HANDLERS)
 

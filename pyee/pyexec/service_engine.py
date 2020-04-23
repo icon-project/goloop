@@ -47,10 +47,12 @@ def decode_params(values: dict) -> dict:
 class ServiceEngine(ContextContainer):
 
     _score_mapper = None
+    _proxy = None
 
     @classmethod
     def open(cls, proxy):
         cls._score_mapper = IconScoreMapper()
+        cls._proxy = proxy
         ContextDatabaseFactory.open(proxy, ContextDatabaseFactory.Mode.SINGLE_DB)
         EventLogEmitter.open(proxy)
         InternalCall.open(proxy)
@@ -89,6 +91,7 @@ class ServiceEngine(ContextContainer):
         except BaseException as e:
             status, ret = cls._get_status_from_exception(e)
         finally:
+            cls._proxy.handle_set_values()
             step_used = context.step_counter.step_used
 
         return status, step_used, ret
@@ -137,7 +140,7 @@ class ServiceEngine(ContextContainer):
             code = e.code
             message = e.message
         else:
-            SystemLogger.exception(e, 'SystemError')
+            SystemLogger.exception(repr(e), 'SystemError')
 
             code = ExceptionCode.SYSTEM_ERROR
             message = str(e)
