@@ -82,10 +82,14 @@ class TestIconScoreApi(unittest.TestCase):
 
     def _create_context(self):
         context = IconScoreContext(IconScoreContextType.INVOKE)
-        step_counter = IconScoreStepCounter(self.step_costs, self.step_limit)
+        step_counter = IconScoreStepCounter(self.step_costs, self.step_limit,
+                                            self._dummy_refund_handler)
         context.step_counter = step_counter
         context.revision = REVISION_3
         return context
+
+    def _dummy_refund_handler(self):
+        pass
 
     def _calc_step_cost(self, ratio: ScoreApiStepRatio) -> int:
         step_cost: int = self.step_costs[StepType.API_CALL] * ratio // ScoreApiStepRatio.SHA3_256
