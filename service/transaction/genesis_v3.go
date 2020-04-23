@@ -65,6 +65,7 @@ type genesisV3 struct {
 	*genesisV3JSON
 	hash []byte
 	nid  int
+	cid  int
 }
 
 func (g *genesisV3) From() module.Address {
@@ -128,19 +129,26 @@ func (g *genesisV3) GetHandler(contract.ContractManager) (Handler, error) {
 	return g, nil
 }
 
-func NIDForGenesisID(txid []byte) int {
+func CIDForGenesisTransactionID(txid []byte) int {
 	return int(txid[2]) | int(txid[1])<<8 | int(txid[0])<<16
 }
 
 func (g *genesisV3) NID() int {
 	if g.nid == 0 {
 		if g.genesisV3JSON.NID == nil {
-			g.nid = NIDForGenesisID(g.ID())
+			g.nid = g.CID()
 		} else {
 			g.nid = int(g.genesisV3JSON.NID.Value)
 		}
 	}
 	return g.nid
+}
+
+func (g *genesisV3) CID() int {
+	if g.cid == 0 {
+		g.cid = CIDForGenesisTransactionID(g.ID())
+	}
+	return g.cid
 }
 
 func (g *genesisV3) ValidateNetwork(nid int) bool {

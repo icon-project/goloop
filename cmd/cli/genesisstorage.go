@@ -40,6 +40,7 @@ func newGStorageInfoCmd(c string) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	nidOnly := flags.BoolP("nid_only", "n", false, "Showing network ID only")
+	cidOnly := flags.BoolP("cid_only", "c", false, "Showing chain ID only")
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		for _, arg := range args {
 			f, err := os.OpenFile(arg, os.O_RDONLY, 0)
@@ -47,7 +48,13 @@ func newGStorageInfoCmd(c string) *cobra.Command {
 				log.Panicf("Fail to open file=%s err=%+v", arg, err)
 			}
 			gs, err := gs.NewFromFile(f)
-			if *nidOnly {
+			if *cidOnly {
+				cid, err := gs.CID()
+				if err != nil {
+					log.Panic(err)
+				}
+				fmt.Printf("%#x\n", cid)
+			} else if *nidOnly {
 				nid, err := gs.NID()
 				if err != nil {
 					log.Panic(err)
@@ -64,8 +71,12 @@ func newGStorageInfoCmd(c string) *cobra.Command {
 				if err != nil {
 					log.Panicf("Fail to get NID for file=%s err=%+v", arg, err)
 				}
-				fmt.Printf("File       : %s\nNetwork ID : %#x (%[2]d)\nGenesis TX\n%s\n",
-					arg, nid, buf.Bytes())
+				cid, err := gs.CID()
+				if err != nil {
+					log.Panicf("Fail to get CID for file=%s err=%+v", arg, err)
+				}
+				fmt.Printf("File       : %s\nNetwork ID : %#x (%[2]d)\nChain   ID : %#x (%[3]d)\nGenesis TX\n%s\n",
+					arg, nid, cid, buf.Bytes())
 			}
 		}
 	}

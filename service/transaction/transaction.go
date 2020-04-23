@@ -36,6 +36,7 @@ type Transaction interface {
 
 type GenesisTransaction interface {
 	Transaction
+	CID() int
 	NID() int
 }
 
@@ -99,6 +100,10 @@ func (t *transaction) Resolve(builder merkle.Builder) error {
 
 func (t *transaction) NID() int {
 	return t.Transaction.(GenesisTransaction).NID()
+}
+
+func (t *transaction) CID() int {
+	return t.Transaction.(GenesisTransaction).CID()
 }
 
 func (t *transaction) ClearCache() {

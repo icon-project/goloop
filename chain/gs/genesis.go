@@ -23,39 +23,56 @@ const (
 )
 
 type GenesisStorage interface {
+	GID() (int, error)
 	NID() (int, error)
 	Genesis() []byte
 	Get(key []byte) ([]byte, error)
 }
 
+type genesisStorageImpl interface {
+	Genesis() []byte
+	Get(key []byte) ([]byte, error)
+}
+
+type genesisStorage struct {
+	genesisStorageImpl
+	gid, nid int
+}
+
+func (gs *genesisStorage) ensureIDs() error {
+	if gs.gid == 0 {
+		gtx, err := transaction.NewGenesisTransaction(gs.Genesis())
+		if err != nil {
+			return err
+		}
+		gs.gid = gtx.GID()
+		gs.nid = gtx.NID()
+	}
+	return nil
+}
+
+func (gs *genesisStorage) GID() (int, error) {
+	if err := gs.ensureIDs(); err != nil {
+		return 0, err
+	}
+	return gs.gid, nil
+}
+
+func (gs *genesisStorage) NID() (int, error) {
+	if err := gs.ensureIDs(); err != nil {
+		return 0, err
+	}
+	return gs.nid, nil
+}
+
 type genesisStorageWithDataDir struct {
 	genesis  []byte
-	nid      int
 	dataPath string
 	dataMap  map[string]string
 }
 
-func getNIDForGenesis(g []byte) (int, error) {
-	gtx, err := transaction.NewGenesisTransaction(g)
-	if err != nil {
-		return 0, err
-	}
-	return gtx.NID(), nil
-}
-
 func (gs *genesisStorageWithDataDir) Genesis() []byte {
 	return gs.genesis
-}
-
-func (gs *genesisStorageWithDataDir) NID() (int, error) {
-	if gs.nid == 0 {
-		if nid, err := getNIDForGenesis(gs.Genesis()); err != nil {
-			return 0, err
-		} else {
-			gs.nid = nid
-		}
-	}
-	return gs.nid, nil
 }
 
 func (gs *genesisStorageWithDataDir) Get(key []byte) ([]byte, error) {
@@ -86,23 +103,11 @@ const (
 
 type genesisStorageWithZip struct {
 	genesis []byte
-	nid     int
 	fileMap map[string]*zip.File
 }
 
 func (gs *genesisStorageWithZip) Genesis() []byte {
 	return gs.genesis
-}
-
-func (gs *genesisStorageWithZip) NID() (int, error) {
-	if gs.nid == 0 {
-		if nid, err := getNIDForGenesis(gs.Genesis()); err != nil {
-			return 0, err
-		} else {
-			gs.nid = nid
-		}
-	}
-	return gs.nid, nil
 }
 
 func readAllOfZipFile(f *zip.File) ([]byte, error) {
@@ -347,10 +352,12 @@ func WriteFromPath(w io.Writer, p string) error {
 }
 
 func NewFromTx(tx []byte) GenesisStorage {
-	return &genesisStorageWithDataDir{
-		genesis:  tx,
-		dataMap:  nil,
-		dataPath: "",
+	return &genesisStorage{
+		genesisStorageImpl: &genesisStorageWithDataDir{
+			genesis:  tx,
+			dataMap:  nil,
+			dataPath: "",
+		},
 	}
 }
 
@@ -391,8 +398,10 @@ func newGenesisStorage(readerAt io.ReaderAt, size int64) (GenesisStorage, error)
 	if genesis == nil {
 		return nil, errors.New("IllegalFormatNoGenesis")
 	}
-	return &genesisStorageWithZip{
-		genesis: genesis,
-		fileMap: m,
+	return &genesisStorage{
+		genesisStorageImpl: &genesisStorageWithZip{
+			genesis: genesis,
+			fileMap: m,
+		},
 	}, nil
 }
