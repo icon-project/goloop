@@ -622,11 +622,11 @@ SHA3Sum256([VoteMessage](#votemessage)).
 
 > B_LIST of followings
 
-| Name | Field   | Type                 | Description                    |
-|:-----|:--------|:---------------------|:-------------------------------|
-|      | Addr    | B_ADDRESS            | SCORE producing this event log |
-|      | Indexed | B_LIST of B_BYTES(N) | Indexed data.                  |
-|      | Data    | B_LIST of B_BYTES(N) | Remaining data.                |
+| Field   | Type                 | Description                    |
+|:--------|:---------------------|:-------------------------------|
+| Addr    | B_ADDRESS            | SCORE producing this event log |
+| Indexed | B_LIST of B_BYTES(N) | Indexed data.                  |
+| Data    | B_LIST of B_BYTES(N) | Remaining data.                |
 
 
 ### Merkle Patricia Trie
