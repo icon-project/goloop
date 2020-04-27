@@ -334,6 +334,9 @@ type ServiceManager interface {
 	// GetNetworkID returns network ID of the state
 	GetNetworkID(result []byte) (int64, error)
 
+	// GetChainID returns chain ID of the state
+	GetChainID(result []byte) (int64, error)
+
 	// GetAPIInfo returns API info of the contract
 	GetAPIInfo(result []byte, addr Address) (APIInfo, error)
 

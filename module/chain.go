@@ -18,6 +18,8 @@ type Chain interface {
 	Database() db.Database
 	Wallet() Wallet
 	NID() int
+	CID() int
+	NetID() int
 	Channel() string
 	ConcurrencyLevel() int
 	NormalTxPoolSize() int

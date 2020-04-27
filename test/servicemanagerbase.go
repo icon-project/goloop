@@ -97,6 +97,10 @@ func (_r *ServiceManagerBase) GetNetworkID(result []byte) (int64, error) {
 	panic("not implemented")
 }
 
+func (_r *ServiceManagerBase) GetChainID(result []byte) (int64, error) {
+	panic("not implemented")
+}
+
 func (_r *ServiceManagerBase) GetAPIInfo(result []byte, addr module.Address) (module.APIInfo, error) {
 	panic("not implemented")
 }

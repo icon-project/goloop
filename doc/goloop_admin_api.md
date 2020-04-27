@@ -9,7 +9,7 @@ headingLevel: 2
 
 ---
 
-<h1 id="node-management-api">Node Management API v0.0.1</h1>
+<h1 id="node-management-api">Node Management API v0.1.0</h1>
 
 > Scroll down for example requests and responses.
 
@@ -83,12 +83,6 @@ This operation does not require authentication
 
 Return system configuration.
 
-<h3 id="view-system-configuration-parameters">Parameters</h3>
-
-|Name|In|Type|Required|Description|
-|---|---|---|---|---|
-|nid|path|string("0x" + lowercase HEX string)|true|network-id of chain|
-
 > Example responses
 
 > 200 Response
@@ -135,7 +129,6 @@ Configure system, configurable properties refer to [SystemConfig](#schemasystemc
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|nid|path|string("0x" + lowercase HEX string)|true|network-id of chain|
 |body|body|[ConfigureParam](#schemaconfigureparam)|true|key-value to configure|
 
 <h3 id="configure-system-responses">Responses</h3>
@@ -170,6 +163,7 @@ Returns a list of chains
 ```json
 [
   {
+    "cid": "0x782b03",
     "nid": "0x000000",
     "channel": "000000",
     "state": "started",
@@ -195,6 +189,7 @@ Status Code **200**
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
 |*anonymous*|[[Chain](#schemachain)]|false|none|array of chains|
+|» cid|string("0x" + lowercase HEX string)|false|none|chain-id of chain|
 |» nid|string("0x" + lowercase HEX string)|false|none|network-id of chain|
 |» channel|string|false|none|chain-alias of node|
 |» height|integer(int64)|false|none|block height of chain|
@@ -295,7 +290,7 @@ Runtime-Configurable
 
 |Status|Meaning|Description|Schema|
 |---|---|---|---|
-|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Success|[NetworkID](#schemanetworkid)|
+|200|[OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)|Success|[ChainID](#schemachainid)|
 |409|[Conflict](https://tools.ietf.org/html/rfc7231#section-6.5.8)|Conflict|None|
 |500|[Internal Server Error](https://tools.ietf.org/html/rfc7231#section-6.6.1)|Internal Server Error|None|
 
@@ -309,7 +304,7 @@ This operation does not require authentication
 
 > Code samples
 
-`GET /chain/{nid}`
+`GET /chain/{cid}`
 
 Return low-level information about a chain.
 
@@ -317,7 +312,7 @@ Return low-level information about a chain.
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|nid|path|string("0x" + lowercase HEX string)|true|network-id of chain|
+|cid|path|string("0x" + lowercase HEX string)|true|chain-id of chain|
 |format|query|string|false|Format the output using the given Go template|
 |informal|query|boolean|false|Inspect with informal data|
 
@@ -327,6 +322,7 @@ Return low-level information about a chain.
 
 ```json
 {
+  "cid": "0x782b03",
   "nid": "0x000000",
   "channel": "000000",
   "state": "started",
@@ -373,7 +369,7 @@ This operation does not require authentication
 
 > Code samples
 
-`DELETE /chain/{nid}`
+`DELETE /chain/{cid}`
 
 Leave Chain.
 
@@ -381,7 +377,7 @@ Leave Chain.
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|nid|path|string("0x" + lowercase HEX string)|true|network-id of chain|
+|cid|path|string("0x" + lowercase HEX string)|true|chain-id of chain|
 
 <h3 id="leave-chain-responses">Responses</h3>
 
@@ -401,7 +397,7 @@ This operation does not require authentication
 
 > Code samples
 
-`POST /chain/{nid}/start`
+`POST /chain/{cid}/start`
 
 Start Chain.
 
@@ -409,7 +405,7 @@ Start Chain.
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|nid|path|string("0x" + lowercase HEX string)|true|network-id of chain|
+|cid|path|string("0x" + lowercase HEX string)|true|chain-id of chain|
 
 <h3 id="start-chain-responses">Responses</h3>
 
@@ -429,7 +425,7 @@ This operation does not require authentication
 
 > Code samples
 
-`POST /chain/{nid}/stop`
+`POST /chain/{cid}/stop`
 
 Stop Chain.
 
@@ -437,7 +433,7 @@ Stop Chain.
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|nid|path|string("0x" + lowercase HEX string)|true|network-id of chain|
+|cid|path|string("0x" + lowercase HEX string)|true|chain-id of chain|
 
 <h3 id="stop-chain-responses">Responses</h3>
 
@@ -457,7 +453,7 @@ This operation does not require authentication
 
 > Code samples
 
-`POST /chain/{nid}/reset`
+`POST /chain/{cid}/reset`
 
 Reset Chain.
 
@@ -465,7 +461,7 @@ Reset Chain.
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|nid|path|string("0x" + lowercase HEX string)|true|network-id of chain|
+|cid|path|string("0x" + lowercase HEX string)|true|chain-id of chain|
 
 <h3 id="reset-chain-responses">Responses</h3>
 
@@ -485,7 +481,7 @@ This operation does not require authentication
 
 > Code samples
 
-`POST /chain/{nid}/import`
+`POST /chain/{cid}/import`
 
 Import a chain from legacy database.
 
@@ -502,7 +498,7 @@ Import a chain from legacy database.
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|nid|path|string("0x" + lowercase HEX string)|true|network-id of chain|
+|cid|path|string("0x" + lowercase HEX string)|true|chain-id of chain|
 |body|body|[ChainImportParam](#schemachainimportparam)|true|none|
 
 <h3 id="import-chain-responses">Responses</h3>
@@ -523,7 +519,7 @@ This operation does not require authentication
 
 > Code samples
 
-`GET /chain/{nid}/genesis`
+`GET /chain/{cid}/genesis`
 
 Download Genesis-Storage zip file
 
@@ -531,7 +527,7 @@ Download Genesis-Storage zip file
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|nid|path|string("0x" + lowercase HEX string)|true|network-id of chain|
+|cid|path|string("0x" + lowercase HEX string)|true|chain-id of chain|
 
 > Example responses
 
@@ -555,7 +551,7 @@ This operation does not require authentication
 
 > Code samples
 
-`GET /chain/{nid}/configure`
+`GET /chain/{cid}/configure`
 
 Return chain configuration.
 
@@ -563,7 +559,7 @@ Return chain configuration.
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|nid|path|string("0x" + lowercase HEX string)|true|network-id of chain|
+|cid|path|string("0x" + lowercase HEX string)|true|chain-id of chain|
 
 > Example responses
 
@@ -605,7 +601,7 @@ This operation does not require authentication
 
 > Code samples
 
-`POST /chain/{nid}/configure`
+`POST /chain/{cid}/configure`
 
 Configure chain, configurable properties refer to [ChainConfig](#schemachainconfig)
 
@@ -622,7 +618,7 @@ Configure chain, configurable properties refer to [ChainConfig](#schemachainconf
 
 |Name|In|Type|Required|Description|
 |---|---|---|---|---|
-|nid|path|string("0x" + lowercase HEX string)|true|network-id of chain|
+|cid|path|string("0x" + lowercase HEX string)|true|chain-id of chain|
 |body|body|[ConfigureParam](#schemaconfigureparam)|true|key-value to configure|
 
 <h3 id="configure-chain-responses">Responses</h3>
@@ -639,22 +635,22 @@ This operation does not require authentication
 
 # Schemas
 
-<h2 id="tocSnetworkid">NetworkID</h2>
+<h2 id="tocSchainid">ChainID</h2>
 
-<a id="schemanetworkid"></a>
+<a id="schemachainid"></a>
 
 ```json
-"0x000000"
+"0x782b03"
 
 ```
 
-*network-id of chain, "0x" + lowercase HEX string*
+*chain-id of chain, "0x" + lowercase HEX string*
 
 ### Properties
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
-|*anonymous*|string|false|none|network-id of chain, "0x" + lowercase HEX string|
+|*anonymous*|string|false|none|chain-id of chain, "0x" + lowercase HEX string|
 
 <h2 id="tocSchain">Chain</h2>
 
@@ -662,6 +658,7 @@ This operation does not require authentication
 
 ```json
 {
+  "cid": "0x782b03",
   "nid": "0x000000",
   "channel": "000000",
   "state": "started",
@@ -675,6 +672,7 @@ This operation does not require authentication
 
 |Name|Type|Required|Restrictions|Description|
 |---|---|---|---|---|
+|cid|string("0x" + lowercase HEX string)|false|none|chain-id of chain|
 |nid|string("0x" + lowercase HEX string)|false|none|network-id of chain|
 |channel|string|false|none|chain-alias of node|
 |height|integer(int64)|false|none|block height of chain|
@@ -687,6 +685,7 @@ This operation does not require authentication
 
 ```json
 {
+  "cid": "0x782b03",
   "nid": "0x000000",
   "channel": "000000",
   "state": "started",

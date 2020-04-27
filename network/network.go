@@ -33,12 +33,13 @@ type manager struct {
 	mtr *metric.NetworkMetric
 }
 
-func NewManager(c module.Chain, nt module.NetworkTransport, trustSeeds string, roles ...module.Role) module.NetworkManager {
+func NewManager(c module.Chain, nt module.NetworkTransport, trustSeeds string, useNID bool, roles ...module.Role) module.NetworkManager {
 	t := nt.(*transport)
 	self := &Peer{id: t.PeerID(), netAddress: NetAddress(t.Address())}
-	channel := strconv.FormatInt(int64(c.NID()), 16)
+	channel := strconv.FormatInt(int64(c.NetID()), 16)
 	mtr := metric.NewNetworkMetric(c.MetricContext())
 	networkLogger := c.Logger().WithFields(log.Fields{log.FieldKeyModule: "NM"})
+	networkLogger.Infof("NetworkManager use channel=%s for cid=%#x nid=%#x", channel, c.CID(), c.NID())
 	m := &manager{
 		channel:          channel,
 		p2p:              newPeerToPeer(channel, self, t.GetDialer(channel), mtr, networkLogger),
@@ -103,7 +104,7 @@ func (m *manager) Start() error {
 		return nil
 	}
 	if !m.pd.registerPeerToPeer(m.p2p) {
-		log.Panicf("already registered p2p %s", m.channel)
+		return errors.InvalidNetworkError.Errorf("P2PChannelConflict(channel=%s)", m.channel)
 	}
 	m.p2p.Start()
 	return nil
@@ -298,7 +299,7 @@ func (m *manager) getRoleByDest(dest byte) module.Role {
 
 func (m *manager) SetTrustSeeds(seeds string) {
 	ss := strings.Split(seeds, ",")
-	nas := make([]NetAddress,0)
+	nas := make([]NetAddress, 0)
 	for _, s := range ss {
 		if s != "" {
 			na := NetAddress(s)

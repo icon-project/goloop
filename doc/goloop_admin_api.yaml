@@ -2,7 +2,7 @@ openapi: 3.0.2
 info:
   title: Node Management API
   description: goloop management
-  version: 0.0.1
+  version: 0.1.0
 servers:
   - url: http://localhost:9080/admin
 tags:
@@ -15,11 +15,11 @@ x-tagGroups:
     tags:
       - chain
       - node
-x-pathParameters:nid: &path__nid
-  - name: nid
+x-pathParameters:cid: &path__cid
+  - name: cid
     in: path
     required: true
-    description: "network-id of chain"
+    description: "chain-id of chain"
     schema:
       type: string
       format: "\"0x\" + lowercase HEX string"
@@ -75,19 +75,24 @@ paths:
               required:
                 - json
                 - genesisZip
+            encoding:
+              json:
+                contentType: application/json
+              genesisZip:
+                contentType: application/octet-stream
       responses:
         "200":
           description: Success
           content:
             text/plain:
               schema:
-                $ref: "#/components/schemas/NetworkID"
+                $ref: "#/components/schemas/ChainID"
         "409":
           description: Conflict
         "500":
           description: Internal Server Error
 
-  /chain/{nid}:
+  /chain/{cid}:
     get:
       operationId: getChain
       tags:
@@ -95,7 +100,7 @@ paths:
       summary: Inspect Chain
       description: Return low-level information about a chain.
       parameters:
-        - <<: *path__nid
+        - <<: *path__cid
         - <<: *query__format
         - name: informal
           in: query
@@ -120,7 +125,7 @@ paths:
       summary: Leave Chain
       description: Leave Chain.
       parameters:
-        - <<: *path__nid
+        - <<: *path__cid
       responses:
         "200":
           description: Success
@@ -128,7 +133,7 @@ paths:
           description: Not Found
         "500":
           description: Internal Server Error
-  /chain/{nid}/start:
+  /chain/{cid}/start:
     post:
       operationId: startChain
       tags:
@@ -136,7 +141,7 @@ paths:
       summary: Start Chain
       description: Start Chain.
       parameters:
-        - <<: *path__nid
+        - <<: *path__cid
       responses:
         "200":
           description: Success
@@ -144,7 +149,7 @@ paths:
           description: Not Found
         "500":
           description: Internal Server Error
-  /chain/{nid}/stop:
+  /chain/{cid}/stop:
     post:
       operationId: stopChain
       tags:
@@ -152,7 +157,7 @@ paths:
       summary: Stop Chain
       description: Stop Chain.
       parameters:
-        - <<: *path__nid
+        - <<: *path__cid
       responses:
         "200":
           description: Success
@@ -160,7 +165,7 @@ paths:
           description: Not Found
         "500":
           description: Internal Server Error
-  /chain/{nid}/reset:
+  /chain/{cid}/reset:
     post:
       operationId: resetChain
       tags:
@@ -168,7 +173,7 @@ paths:
       summary: Reset Chain
       description: Reset Chain.
       parameters:
-        - <<: *path__nid
+        - <<: *path__cid
       responses:
         "200":
           description: Success
@@ -176,7 +181,7 @@ paths:
           description: Not Found
         "500":
           description: Internal Server Error
-  #   /chain/{nid}/verify:
+  #   /chain/{cid}/verify:
   #     post:
   #       operationId: verifyChain
   #       tags:
@@ -184,7 +189,7 @@ paths:
   #       summary: Verify Chain
   #       description: Verify Chain.
   #       parameters:
-  #         - <<: *path__nid
+  #         - <<: *path__cid
   #       responses:
   #         "200":
   #           description: Success
@@ -192,7 +197,7 @@ paths:
   #           description: Not Found
   #         "500":
   #           description: Internal Server Error
-  /chain/{nid}/import:
+  /chain/{cid}/import:
     post:
       operationId:  importChain
       tags:
@@ -200,7 +205,7 @@ paths:
       summary: Import Chain
       description: Import a chain from legacy database.
       parameters:
-        - <<: *path__nid
+        - <<: *path__cid
       requestBody:
         required: true
         content:
@@ -214,7 +219,7 @@ paths:
           description: Not Found
         "500":
           description: Internal Server Error
-  /chain/{nid}/genesis:
+  /chain/{cid}/genesis:
     get:
       operationId: getChainGenesis
       tags:
@@ -222,12 +227,12 @@ paths:
       summary: Download Genesis-Storage
       description: Download Genesis-Storage zip file
       parameters:
-        - <<: *path__nid
+        - <<: *path__cid
       responses:
         "200":
           description: Success
           content:
-            'application/zip':
+            application/zip:
               schema:
                 type: string
                 format: binary
@@ -236,7 +241,7 @@ paths:
           description: Not Found
         "500":
           description: Internal Server Error
-  /chain/{nid}/configure:
+  /chain/{cid}/configure:
     get:
       operationId: getChainConfiguration
       tags:
@@ -244,7 +249,7 @@ paths:
       summary: View chain configuration
       description: Return chain configuration.
       parameters:
-        - <<: *path__nid
+        - <<: *path__cid
       responses:
         "200":
           description: Success
@@ -263,7 +268,7 @@ paths:
       summary: Configure chain
       description: Configure chain, configurable properties refer to [ChainConfig](#schemachainconfig)
       parameters:
-        - <<: *path__nid
+        - <<: *path__cid
       requestBody:
         required: true
         description: key-value to configure
@@ -305,8 +310,6 @@ paths:
         - node
       summary: View system configuration
       description: Return system configuration.
-      parameters:
-        - <<: *path__nid
       responses:
         "200":
           description: Success
@@ -322,8 +325,6 @@ paths:
         - node
       summary: Configure system
       description: Configure system, configurable properties refer to [SystemConfig](#schemasystemconfig)
-      parameters:
-        - <<: *path__nid
       requestBody:
         required: true
         description: key-value to configure
@@ -338,13 +339,17 @@ paths:
           description: Internal Server Error
 components:
   schemas:
-    NetworkID:
+    ChainID:
       type: string
-      description: "network-id of chain, \"0x\" + lowercase HEX string"
-      example: "0x000000"
+      description: "chain-id of chain, \"0x\" + lowercase HEX string"
+      example: "0x782b03"
     Chain:
       type: object
       properties:
+        cid:
+          type: string
+          format: "\"0x\" + lowercase HEX string"
+          description: "chain-id of chain"
         nid:
           type: string
           format: "\"0x\" + lowercase HEX string"
@@ -363,6 +368,7 @@ components:
           type: string
           description: "last error of chain"
       example:
+        cid: "0x782b03"
         nid: "0x000000"
         channel: "000000"
         state: "started"

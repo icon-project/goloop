@@ -27,6 +27,7 @@ type StaticConfig struct {
 	Engines       string `json:"engines"`
 
 	AuthSkipIfEmptyUsers bool `json:"auth_skip_if_empty_users,omitempty"`
+	NIDForP2P            bool `json:"nid_for_p2p,omitempty"`
 
 	BaseDir  string `json:"node_dir"`
 	FilePath string `json:"-"` // absolute path

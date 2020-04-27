@@ -678,6 +678,7 @@ func (s *ChainScore) Install(param []byte) error {
 				"All Validators must be included in the members")
 		}
 	}
+	s.handleRevisionChange(as, module.Revision1, revision)
 	return nil
 }
 
@@ -748,6 +749,18 @@ func (s *ChainScore) fromGovernance() bool {
 	return s.cc.Governance().Equal(s.from)
 }
 
+func (s *ChainScore) handleRevisionChange(as state.AccountState, r1, r2 int) error {
+	if r1 >= r2 {
+		return nil
+	}
+	if r2 >= module.Revision7 {
+		if err := scoredb.NewVarDB(as, state.VarChainID).Set(s.cc.ChainID()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Governance functions : Functions which can be called by governance SCORE.
 func (s *ChainScore) Ex_setRevision(code *common.HexInt) error {
 	if err := s.checkGovernance(true); err != nil {
@@ -767,6 +780,9 @@ func (s *ChainScore) Ex_setRevision(code *common.HexInt) error {
 
 	if err := scoredb.NewVarDB(as, state.VarRevision).Set(code); err != nil {
 		return err
+	}
+	if err := s.handleRevisionChange(as, int(r), int(code.Int64())); err != nil {
+		return nil
 	}
 	as.SetAPIInfo(s.GetAPI())
 	return nil

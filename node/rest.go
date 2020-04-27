@@ -30,8 +30,8 @@ const (
 	UrlUser     = "/user"
 	UrlStats    = "/stats"
 	UrlChain    = "/chain"
-	ParamNID    = "nid"
-	UrlChainRes = "/:" + ParamNID
+	ParamCID    = "cid"
+	UrlChainRes = "/:" + ParamCID
 	ParamID     = "id"
 	UrlUserRes  = "/:" + ParamID
 )
@@ -60,6 +60,7 @@ type StatsView struct {
 }
 
 type ChainView struct {
+	CID       common.HexInt32 `json:"cid"`
 	NID       common.HexInt32 `json:"nid"`
 	Channel   string          `json:"channel"`
 	State     string          `json:"state"`
@@ -108,6 +109,7 @@ type LastErrorReportor interface {
 
 func NewChainView(c *Chain) *ChainView {
 	v := &ChainView{
+		CID:     common.HexInt32{Value: int32(c.CID())},
 		NID:     common.HexInt32{Value: int32(c.NID())},
 		Channel: c.Channel(),
 		State:   c.State(),
@@ -208,9 +210,9 @@ func (r *Rest) RegisterChainHandlers(g *echo.Group) {
 func (r *Rest) ChainInjector(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(ctx echo.Context) error {
 		var c *Chain
-		p := ctx.Param(ParamNID)
-		if nid, err := strconv.ParseInt(p, 0, 32); err == nil {
-			c = r.n.GetChain(int(nid))
+		p := ctx.Param(ParamCID)
+		if cid, err := strconv.ParseInt(p, 0, 32); err == nil {
+			c = r.n.GetChain(int(cid))
 		}
 		if c == nil {
 			c = r.n.GetChainByChannel(p)
@@ -218,7 +220,7 @@ func (r *Rest) ChainInjector(next echo.HandlerFunc) echo.HandlerFunc {
 
 		if c == nil {
 			return ctx.String(http.StatusNotFound,
-				fmt.Sprintf("Chain(%s: nid or channel) not found", p))
+				fmt.Sprintf("Chain(%s: cid or channel) not found", p))
 		}
 		ctx.Set("chain", c)
 		return next(ctx)
@@ -282,7 +284,7 @@ func (r *Rest) JoinChain(ctx echo.Context) error {
 		}
 		return errors.Wrap(err, "fail to join")
 	}
-	return ctx.String(http.StatusOK, fmt.Sprintf("%#x", c.NID()))
+	return ctx.String(http.StatusOK, fmt.Sprintf("%#x", c.CID()))
 }
 
 var (
@@ -309,7 +311,7 @@ func (r *Rest) GetChain(ctx echo.Context) error {
 
 func (r *Rest) LeaveChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(*Chain)
-	if err := r.n.LeaveChain(c.NID()); err != nil {
+	if err := r.n.LeaveChain(c.CID()); err != nil {
 		return err
 	}
 	return ctx.String(http.StatusOK, "OK")
@@ -317,7 +319,7 @@ func (r *Rest) LeaveChain(ctx echo.Context) error {
 
 func (r *Rest) StartChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(*Chain)
-	if err := r.n.StartChain(c.NID()); err != nil {
+	if err := r.n.StartChain(c.CID()); err != nil {
 		return err
 	}
 	return ctx.String(http.StatusOK, "OK")
@@ -325,7 +327,7 @@ func (r *Rest) StartChain(ctx echo.Context) error {
 
 func (r *Rest) StopChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(*Chain)
-	if err := r.n.StopChain(c.NID()); err != nil {
+	if err := r.n.StopChain(c.CID()); err != nil {
 		return err
 	}
 	return ctx.String(http.StatusOK, "OK")
@@ -333,7 +335,7 @@ func (r *Rest) StopChain(ctx echo.Context) error {
 
 func (r *Rest) ResetChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(*Chain)
-	if err := r.n.ResetChain(c.NID()); err != nil {
+	if err := r.n.ResetChain(c.CID()); err != nil {
 		return err
 	}
 	return ctx.String(http.StatusOK, "OK")
@@ -341,7 +343,7 @@ func (r *Rest) ResetChain(ctx echo.Context) error {
 
 func (r *Rest) VerifyChain(ctx echo.Context) error {
 	c := ctx.Get("chain").(*Chain)
-	if err := r.n.VerifyChain(c.NID()); err != nil {
+	if err := r.n.VerifyChain(c.CID()); err != nil {
 		return err
 	}
 	return ctx.String(http.StatusOK, "OK")
@@ -353,7 +355,7 @@ func (r *Rest) ImportChain(ctx echo.Context) error {
 	if err := ctx.Bind(param); err != nil {
 		return echo.ErrBadRequest
 	}
-	if err := r.n.ImportChain(c.NID(), param.DBPath, param.Height); err != nil {
+	if err := r.n.ImportChain(c.CID(), param.DBPath, param.Height); err != nil {
 		return err
 	}
 	return ctx.String(http.StatusOK, "OK")
@@ -361,8 +363,7 @@ func (r *Rest) ImportChain(ctx echo.Context) error {
 
 func (r *Rest) GetChainGenesis(ctx echo.Context) error {
 	c := ctx.Get("chain").(*Chain)
-	chainDir := r.n.ChainDir(c.NID())
-	gsFile := path.Join(chainDir, ChainGenesisZipFileName)
+	gsFile := path.Join(c.cfg.AbsBaseDir(), ChainGenesisZipFileName)
 	return ctx.Attachment(gsFile, fmt.Sprintf("%s_%s", c.Channel(), ChainGenesisZipFileName))
 }
 
@@ -377,7 +378,7 @@ func (r *Rest) ConfigureChain(ctx echo.Context) error {
 	if err := ctx.Bind(p); err != nil {
 		return err
 	}
-	if err := r.n.ConfigureChain(c.NID(), p.Key, p.Value); err != nil {
+	if err := r.n.ConfigureChain(c.CID(), p.Key, p.Value); err != nil {
 		return err
 	}
 	return ctx.String(http.StatusOK, "OK")
@@ -512,6 +513,7 @@ func (r *Rest) ResponseStatsView(resp *echo.Response) error {
 	for _, c := range r.n.GetChains() {
 		m := metric.Inspect(c, false)
 		if c.State() != chain.StateStopped.String() {
+			m["cid"] = common.HexInt32{Value: int32(c.CID())}
 			m["nid"] = common.HexInt32{Value: int32(c.NID())}
 			m["channel"] = c.Channel()
 			v.Chains = append(v.Chains, m)

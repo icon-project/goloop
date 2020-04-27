@@ -98,7 +98,7 @@ func DefaultMetricContext() context.Context {
 	return defaultMetricCtx
 }
 
-func GetMetricContextByNID(nid int) context.Context {
+func GetMetricContextByCID(nid int) context.Context {
 	chainMetricMtx.Lock()
 	defer chainMetricMtx.Unlock()
 
@@ -168,7 +168,7 @@ func ParseMetricData(r *view.Row, prev interface{}, cnt int) interface{} {
 		return data.Value
 	case *view.LastValueData:
 		if prev != nil {
-			return (prev.(float64)*float64(cnt-1)+data.Value)/float64(cnt)
+			return (prev.(float64)*float64(cnt-1) + data.Value) / float64(cnt)
 		}
 		return data.Value
 	}

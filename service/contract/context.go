@@ -18,6 +18,7 @@ type Context interface {
 	Logger() log.Logger
 	PatchDecoder() module.PatchDecoder
 	TraceInfo() *module.TraceInfo
+	ChainID() int
 }
 
 type context struct {
@@ -61,4 +62,8 @@ func (c *context) Logger() log.Logger {
 
 func (c *context) TraceInfo() *module.TraceInfo {
 	return c.ti
+}
+
+func (c *context) ChainID() int {
+	return c.chain.CID()
 }

@@ -24,6 +24,14 @@ func (_r *ChainBase) NID() int {
 	panic("not implemented")
 }
 
+func (_r *ChainBase) CID() int {
+	panic("not implemented")
+}
+
+func (_r *ChainBase) NetID() int {
+	panic("not implemented")
+}
+
 func (_r *ChainBase) Channel() string {
 	panic("not implemented")
 }

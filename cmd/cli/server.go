@@ -224,8 +224,10 @@ func NewServerCmd(parentCmd *cobra.Command, parentVc *viper.Viper, version, buil
 	startFlags.String("cpuprofile", "", "CPU Profiling data file")
 	startFlags.String("memprofile", "", "Memory Profiling data file")
 	startFlags.Bool("auth_skip_if_empty_users", false, "Skip admin API authentication if empty users")
+	startFlags.Bool("nid_for_p2p", false, "Use NID instead of CID for p2p network")
 	startFlags.MarkHidden("mod_level")
 	startFlags.MarkHidden("auth_skip_if_empty_users")
+	startFlags.MarkHidden("nid_for_p2p")
 
 	BindPFlags(vc, startFlags)
 

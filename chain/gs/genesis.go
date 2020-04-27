@@ -23,7 +23,7 @@ const (
 )
 
 type GenesisStorage interface {
-	GID() (int, error)
+	CID() (int, error)
 	NID() (int, error)
 	Genesis() []byte
 	Get(key []byte) ([]byte, error)
@@ -36,26 +36,26 @@ type genesisStorageImpl interface {
 
 type genesisStorage struct {
 	genesisStorageImpl
-	gid, nid int
+	cid, nid int
 }
 
 func (gs *genesisStorage) ensureIDs() error {
-	if gs.gid == 0 {
+	if gs.cid == 0 {
 		gtx, err := transaction.NewGenesisTransaction(gs.Genesis())
 		if err != nil {
 			return err
 		}
-		gs.gid = gtx.GID()
+		gs.cid = gtx.CID()
 		gs.nid = gtx.NID()
 	}
 	return nil
 }
 
-func (gs *genesisStorage) GID() (int, error) {
+func (gs *genesisStorage) CID() (int, error) {
 	if err := gs.ensureIDs(); err != nil {
 		return 0, err
 	}
-	return gs.gid, nil
+	return gs.cid, nil
 }
 
 func (gs *genesisStorage) NID() (int, error) {

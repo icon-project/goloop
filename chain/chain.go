@@ -2,11 +2,9 @@ package chain
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path"
-	"path/filepath"
 	"strconv"
 	"sync"
 	"time"
@@ -28,70 +26,6 @@ import (
 	"github.com/icon-project/goloop/service/eeproxy"
 )
 
-const (
-	ConfigDefaultNormalTxPoolSize = 5000
-	ConfigDefaultPatchTxPoolSize  = 1000
-	ConfigDefaultMaxBlockTxBytes  = 1024 * 1024
-)
-
-const (
-	NodeCacheNone    = "none"
-	NodeCacheSmall   = "small"
-	NodeCacheLarge   = "large"
-	NodeCacheDefault = NodeCacheNone
-)
-
-var NodeCacheOptions = [...]string{
-	NodeCacheNone, NodeCacheSmall, NodeCacheLarge,
-}
-
-type Config struct {
-	//fixed
-	NID    int    `json:"nid"`
-	DBType string `json:"db_type"`
-
-	//static
-	SeedAddr         string `json:"seed_addr"`
-	Role             uint   `json:"role"`
-	ConcurrencyLevel int    `json:"concurrency_level,omitempty"`
-	NormalTxPoolSize int    `json:"normal_tx_pool,omitempty"`
-	PatchTxPoolSize  int    `json:"patch_tx_pool,omitempty"`
-	MaxBlockTxBytes  int    `json:"max_block_tx_bytes,omitempty"`
-	NodeCache        string `json:"node_cache,omitempty"`
-
-	//runtime
-	Channel        string `json:"channel"`
-	SecureSuites   string `json:"secureSuites"`
-	SecureAeads    string `json:"secureAeads"`
-	DefWaitTimeout int64  `json:"waitTimeout"`
-	MaxWaitTimeout int64  `json:"maxTimeout"`
-
-	GenesisStorage gs.GenesisStorage `json:"-"`
-	Genesis        json.RawMessage   `json:"genesis"`
-
-	BaseDir  string `json:"chain_dir"`
-	FilePath string `json:"-"` //absolute path
-}
-
-func (c *Config) ResolveAbsolute(targetPath string) string {
-	if filepath.IsAbs(targetPath) {
-		return targetPath
-	}
-	if c.FilePath == "" {
-		r, _ := filepath.Abs(targetPath)
-		return r
-	}
-	return filepath.Clean(path.Join(filepath.Dir(c.FilePath), targetPath))
-}
-
-func (c *Config) ResolveRelative(targetPath string) string {
-	absPath, _ := filepath.Abs(targetPath)
-	base := filepath.Dir(c.FilePath)
-	base, _ = filepath.Abs(base)
-	r, _ := filepath.Rel(base, absPath)
-	return r
-}
-
 type singleChain struct {
 	wallet module.Wallet
 
@@ -105,6 +39,7 @@ type singleChain struct {
 	nt       module.NetworkTransport
 	nm       module.NetworkManager
 
+	cid int
 	cfg Config
 	pm  eeproxy.Manager
 
@@ -207,6 +142,18 @@ func (c *singleChain) Wallet() module.Wallet {
 
 func (c *singleChain) NID() int {
 	return c.cfg.NID
+}
+
+func (c *singleChain) CID() int {
+	return c.cid
+}
+
+func (c *singleChain) NetID() int {
+	if c.cfg.NIDForP2P {
+		return c.NID()
+	} else {
+		return c.CID()
+	}
 }
 
 func (c *singleChain) Channel() string {
@@ -403,7 +350,7 @@ func (c *singleChain) _init() error {
 		c.cfg.GenesisStorage = gs.NewFromTx(c.cfg.Genesis)
 	}
 
-	chainDir := c.cfg.ResolveAbsolute(c.cfg.BaseDir)
+	chainDir := c.cfg.AbsBaseDir()
 	log.Println("ConfigFilepath", c.cfg.FilePath, "BaseDir", c.cfg.BaseDir, "ChainDir", chainDir)
 
 	if err := c._openDatabase(chainDir); err != nil {
@@ -412,15 +359,15 @@ func (c *singleChain) _init() error {
 
 	c.vld = consensus.NewCommitVoteSetFromBytes
 	c.pd = consensus.DecodePatch
-	c.metricCtx = metric.GetMetricContextByNID(c.NID())
+	c.metricCtx = metric.GetMetricContextByCID(c.CID())
 	return nil
 }
 
 func (c *singleChain) _prepare() error {
 	pr := network.PeerRoleFlag(c.cfg.Role)
-	c.nm = network.NewManager(c, c.nt, c.cfg.SeedAddr, pr.ToRoles()...)
+	c.nm = network.NewManager(c, c.nt, c.cfg.SeedAddr, false, pr.ToRoles()...)
 	//TODO [TBD] is service/contract.ContractManager owner of ContractDir ?
-	chainDir := c.cfg.ResolveAbsolute(c.cfg.BaseDir)
+	chainDir := c.cfg.AbsBaseDir()
 	ContractDir := path.Join(chainDir, DefaultContractDir)
 	var err error
 	var ts module.Timestamper
@@ -507,9 +454,9 @@ func (ic *importCallback) OnEnd(errCh <-chan error) {
 
 func (c *singleChain) _import(src string, height int64) error {
 	pr := network.PeerRoleFlag(c.cfg.Role)
-	c.nm = network.NewManager(c, c.nt, c.cfg.SeedAddr, pr.ToRoles()...)
+	c.nm = network.NewManager(c, c.nt, c.cfg.SeedAddr, false, pr.ToRoles()...)
 	//TODO [TBD] is service/contract.ContractManager owner of ContractDir ?
-	chainDir := c.cfg.ResolveAbsolute(c.cfg.BaseDir)
+	chainDir := c.cfg.AbsBaseDir()
 	ContractDir := path.Join(chainDir, DefaultContractDir)
 	var err error
 	var ts module.Timestamper
@@ -592,7 +539,7 @@ func (c *singleChain) Start(sync bool) error {
 }
 
 func (c *singleChain) Stop(sync bool) error {
-	if err := c._transit(StateStopping, StateStarted, StateImportStarted); err != nil {
+	if err := c._transit(StateStopping, StateStarted, StateStartFailed, StateImportStarted); err != nil {
 		return err
 	}
 	f := func() {
@@ -666,7 +613,7 @@ func (c *singleChain) _reset() error {
 		return err
 	}
 	c.database = nil
-	chainDir := c.cfg.ResolveAbsolute(c.cfg.BaseDir)
+	chainDir := c.cfg.AbsBaseDir()
 	DBDir := path.Join(chainDir, DefaultDBDir)
 	if err := os.RemoveAll(DBDir); err != nil {
 		return err
@@ -723,18 +670,20 @@ func NewChain(
 	logger log.Logger,
 	cfg *Config,
 ) *singleChain {
+	cid := cfg.CID()
 	chainLogger := logger.WithFields(log.Fields{
-		log.FieldKeyNID: strconv.FormatInt(int64(cfg.NID), 16),
+		log.FieldKeyCID: strconv.FormatInt(int64(cid), 16),
 	})
 	c := &singleChain{
 		wallet:    wallet,
 		nt:        transport,
 		srv:       srv,
+		cid:       cid,
 		cfg:       *cfg,
 		pm:        pm,
 		logger:    chainLogger,
 		regulator: NewRegulator(chainLogger),
-		metricCtx: metric.GetMetricContextByNID(cfg.NID),
+		metricCtx: metric.GetMetricContextByCID(cid),
 	}
 	return c
 }

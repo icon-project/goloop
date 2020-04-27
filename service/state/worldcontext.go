@@ -16,6 +16,7 @@ const (
 	VarTreasury   = "treasury"
 	VarGovernance = "governance"
 	VarNetwork    = "network"
+	VarChainID    = "chain_id"
 
 	VarStepLimitTypes = "step_limit_types"
 	VarStepLimit      = "step_limit"

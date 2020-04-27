@@ -19,6 +19,7 @@ Goloop CLI
 | [goloop server](#goloop-server) |  Server management |
 | [goloop stats](#goloop-stats) |  Display a live streams of chains metric-statistics |
 | [goloop system](#goloop-system) |  System info |
+| [goloop user](#goloop-user) |  User management |
 | [goloop version](#goloop-version) |  Print goloop version |
 
 ## goloop chain
@@ -68,6 +69,7 @@ Manage chains
 | [goloop server](#goloop-server) |  Server management |
 | [goloop stats](#goloop-stats) |  Display a live streams of chains metric-statistics |
 | [goloop system](#goloop-system) |  System info |
+| [goloop user](#goloop-user) |  User management |
 | [goloop version](#goloop-version) |  Print goloop version |
 
 ## goloop chain config
@@ -76,7 +78,7 @@ Manage chains
 Configure chain
 
 ### Usage
-` goloop chain config NID KEY VALUE `
+` goloop chain config CID KEY VALUE `
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Default | Description|
@@ -112,7 +114,7 @@ Configure chain
 Download chain genesis file
 
 ### Usage
-` goloop chain genesis NID FILE `
+` goloop chain genesis CID FILE `
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Default | Description|
@@ -148,7 +150,7 @@ Download chain genesis file
 Start to import legacy database
 
 ### Usage
-` goloop chain import NID [flags] `
+` goloop chain import CID [flags] `
 
 ### Options
 |Name,shorthand | Environment Variable | Default | Description|
@@ -190,7 +192,7 @@ Start to import legacy database
 Inspect chain
 
 ### Usage
-` goloop chain inspect NID [flags] `
+` goloop chain inspect CID [flags] `
 
 ### Options
 |Name,shorthand | Environment Variable | Default | Description|
@@ -287,7 +289,7 @@ Join chain
 Leave chain
 
 ### Usage
-` goloop chain leave NID `
+` goloop chain leave CID `
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Default | Description|
@@ -359,7 +361,7 @@ List chains
 Chain data reset
 
 ### Usage
-` goloop chain reset NID `
+` goloop chain reset CID `
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Default | Description|
@@ -395,7 +397,7 @@ Chain data reset
 Chain start
 
 ### Usage
-` goloop chain start NID `
+` goloop chain start CID `
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Default | Description|
@@ -431,7 +433,7 @@ Chain start
 Chain stop
 
 ### Usage
-` goloop chain stop NID `
+` goloop chain stop CID `
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Default | Description|
@@ -467,7 +469,7 @@ Chain stop
 Chain data verify
 
 ### Usage
-` goloop chain verify NID `
+` goloop chain verify CID `
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Default | Description|
@@ -527,6 +529,7 @@ Genesis transaction manipulation
 | [goloop server](#goloop-server) |  Server management |
 | [goloop stats](#goloop-stats) |  Display a live streams of chains metric-statistics |
 | [goloop system](#goloop-system) |  System info |
+| [goloop user](#goloop-user) |  User management |
 | [goloop version](#goloop-version) |  Print goloop version |
 
 ## goloop gn edit
@@ -612,6 +615,7 @@ Genesis storage manipulation
 | [goloop server](#goloop-server) |  Server management |
 | [goloop stats](#goloop-stats) |  Display a live streams of chains metric-statistics |
 | [goloop system](#goloop-system) |  System info |
+| [goloop user](#goloop-user) |  User management |
 | [goloop version](#goloop-version) |  Print goloop version |
 
 ## goloop gs gen
@@ -650,6 +654,7 @@ Show genesis storage information
 ### Options
 |Name,shorthand | Environment Variable | Default | Description|
 |---|---|---|---|
+| --cid_only, -c |  | false | Showing chain ID only |
 | --nid_only, -n |  | false | Showing network ID only |
 
 ### Parent command
@@ -692,6 +697,7 @@ Keystore manipulation
 | [goloop server](#goloop-server) |  Server management |
 | [goloop stats](#goloop-stats) |  Display a live streams of chains metric-statistics |
 | [goloop system](#goloop-system) |  System info |
+| [goloop user](#goloop-user) |  User management |
 | [goloop version](#goloop-version) |  Print goloop version |
 
 ## goloop ks gen
@@ -768,6 +774,7 @@ JSON-RPC API
 | [goloop server](#goloop-server) |  Server management |
 | [goloop stats](#goloop-stats) |  Display a live streams of chains metric-statistics |
 | [goloop system](#goloop-system) |  System info |
+| [goloop user](#goloop-user) |  User management |
 | [goloop version](#goloop-version) |  Print goloop version |
 
 ## goloop rpc balance
@@ -1718,6 +1725,7 @@ Server management
 | [goloop server](#goloop-server) |  Server management |
 | [goloop stats](#goloop-stats) |  Display a live streams of chains metric-statistics |
 | [goloop system](#goloop-system) |  System info |
+| [goloop user](#goloop-user) |  User management |
 | [goloop version](#goloop-version) |  Print goloop version |
 
 ## goloop server save
@@ -1784,9 +1792,11 @@ Start server
 ### Options
 |Name,shorthand | Environment Variable | Default | Description|
 |---|---|---|---|
+| --auth_skip_if_empty_users |  | false | Skip admin API authentication if empty users |
 | --cpuprofile |  |  | CPU Profiling data file |
 | --memprofile |  |  | Memory Profiling data file |
 | --mod_level |  | [] | Set console log level for specific module ('mod'='level',...) |
+| --nid_for_p2p |  | false | Use NID instead of CID for p2p network |
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Default | Description|
@@ -1862,6 +1872,7 @@ Display a live streams of chains metric-statistics
 | [goloop server](#goloop-server) |  Server management |
 | [goloop stats](#goloop-stats) |  Display a live streams of chains metric-statistics |
 | [goloop system](#goloop-system) |  System info |
+| [goloop user](#goloop-user) |  User management |
 | [goloop version](#goloop-version) |  Print goloop version |
 
 ## goloop system
@@ -1902,6 +1913,7 @@ System info
 | [goloop server](#goloop-server) |  Server management |
 | [goloop stats](#goloop-stats) |  Display a live streams of chains metric-statistics |
 | [goloop system](#goloop-system) |  System info |
+| [goloop user](#goloop-user) |  User management |
 | [goloop version](#goloop-version) |  Print goloop version |
 
 ## goloop system config
@@ -1963,6 +1975,132 @@ Get system information
 | [goloop system config](#goloop-system-config) |  Configure system |
 | [goloop system info](#goloop-system-info) |  Get system information |
 
+## goloop user
+
+### Description
+User management
+
+### Usage
+` goloop user `
+
+### Options
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+
+### Child commands
+|Command | Description|
+|---|---|
+| [goloop user add](#goloop-user-add) |  Add user |
+| [goloop user ls](#goloop-user-ls) |  List users |
+| [goloop user rm](#goloop-user-rm) |  Remove user |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop](#goloop) |  Goloop CLI |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop chain](#goloop-chain) |  Manage chains |
+| [goloop gn](#goloop-gn) |  Genesis transaction manipulation |
+| [goloop gs](#goloop-gs) |  Genesis storage manipulation |
+| [goloop ks](#goloop-ks) |  Keystore manipulation |
+| [goloop rpc](#goloop-rpc) |  JSON-RPC API |
+| [goloop server](#goloop-server) |  Server management |
+| [goloop stats](#goloop-stats) |  Display a live streams of chains metric-statistics |
+| [goloop system](#goloop-system) |  System info |
+| [goloop user](#goloop-user) |  User management |
+| [goloop version](#goloop-version) |  Print goloop version |
+
+## goloop user add
+
+### Description
+Add user
+
+### Usage
+` goloop user add `
+
+### Inherited Options
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop user](#goloop-user) |  User management |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop user add](#goloop-user-add) |  Add user |
+| [goloop user ls](#goloop-user-ls) |  List users |
+| [goloop user rm](#goloop-user-rm) |  Remove user |
+
+## goloop user ls
+
+### Description
+List users
+
+### Usage
+` goloop user ls `
+
+### Inherited Options
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop user](#goloop-user) |  User management |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop user add](#goloop-user-add) |  Add user |
+| [goloop user ls](#goloop-user-ls) |  List users |
+| [goloop user rm](#goloop-user-rm) |  Remove user |
+
+## goloop user rm
+
+### Description
+Remove user
+
+### Usage
+` goloop user rm `
+
+### Inherited Options
+|Name,shorthand | Environment Variable | Default | Description|
+|---|---|---|---|
+| --config, -c | GOLOOP_CONFIG |  | Parsing configuration file |
+| --key_store | GOLOOP_KEY_STORE |  | KeyStore file for wallet |
+| --node_dir | GOLOOP_NODE_DIR |  | Node data directory(default:[configuration file path]/.chain/[ADDRESS]) |
+| --node_sock, -s | GOLOOP_NODE_SOCK |  | Node Command Line Interface socket path(default:[node_dir]/cli.sock) |
+
+### Parent command
+|Command | Description|
+|---|---|
+| [goloop user](#goloop-user) |  User management |
+
+### Related commands
+|Command | Description|
+|---|---|
+| [goloop user add](#goloop-user-add) |  Add user |
+| [goloop user ls](#goloop-user-ls) |  List users |
+| [goloop user rm](#goloop-user-rm) |  Remove user |
+
 ## goloop version
 
 ### Description
@@ -1987,5 +2125,6 @@ Print goloop version
 | [goloop server](#goloop-server) |  Server management |
 | [goloop stats](#goloop-stats) |  Display a live streams of chains metric-statistics |
 | [goloop system](#goloop-system) |  System info |
+| [goloop user](#goloop-user) |  User management |
 | [goloop version](#goloop-version) |  Print goloop version |
 

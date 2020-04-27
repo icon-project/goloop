@@ -167,7 +167,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	joinFlags.Int64("max_wait_timeout", 0, "Max wait timeout in milli-second (0: uses same value of default_wait_timeout)")
 
 	leaveCmd := &cobra.Command{
-		Use:   "leave NID",
+		Use:   "leave CID",
 		Short: "Leave chain",
 		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -184,7 +184,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	rootCmd.AddCommand(leaveCmd)
 
 	inspectCmd := &cobra.Command{
-		Use:   "inspect NID",
+		Use:   "inspect CID",
 		Short: "Inspect chain",
 		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -235,32 +235,32 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	}
 	rootCmd.AddCommand(
 		&cobra.Command{
-			Use:   "start NID",
+			Use:   "start CID",
 			Short: "Chain start",
 			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 			RunE:  opFunc("start"),
 		},
 		&cobra.Command{
-			Use:   "stop NID",
+			Use:   "stop CID",
 			Short: "Chain stop",
 			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 			RunE:  opFunc("stop"),
 		},
 		&cobra.Command{
-			Use:   "reset NID",
+			Use:   "reset CID",
 			Short: "Chain data reset",
 			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 			RunE:  opFunc("reset"),
 		},
 		&cobra.Command{
-			Use:   "verify NID",
+			Use:   "verify CID",
 			Short: "Chain data verify",
 			Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 			RunE:  opFunc("verify"),
 		})
 
 	importCmd := &cobra.Command{
-		Use:   "import NID",
+		Use:   "import CID",
 		Short: "Start to import legacy database",
 		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -286,7 +286,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	MarkAnnotationRequired(importFlags, "db_path", "height")
 
 	genesisCmd := &cobra.Command{
-		Use:   "genesis NID FILE",
+		Use:   "genesis CID FILE",
 		Short: "Download chain genesis file",
 		Args:  ArgsWithDefaultErrorFunc(OrArgs(cobra.ExactArgs(1), cobra.ExactArgs(2))),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -313,7 +313,7 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	rootCmd.AddCommand(genesisCmd)
 
 	configCmd := &cobra.Command{
-		Use:   "config NID KEY VALUE",
+		Use:   "config CID KEY VALUE",
 		Short: "Configure chain",
 		Args:  ArgsWithDefaultErrorFunc(OrArgs(cobra.ExactArgs(1), cobra.ExactArgs(3))),
 		RunE: func(cmd *cobra.Command, args []string) error {

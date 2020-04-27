@@ -152,7 +152,6 @@ func main() {
 	flag.Int64Var(&importMaxHeight, "import_max_height", 0, "Import max height")
 	flag.StringVar(&importDataSource, "import_data_source", "datasource/", "Import data source")
 
-
 	cmd.Run = Execute
 	cmd.Execute()
 }
@@ -389,7 +388,7 @@ func Execute(cmd *cobra.Command, args []string) {
 
 	if cfg.BaseDir == "" {
 		cfg.BaseDir = cfg.ResolveRelative(path.Join(".chain",
-			wallet.Address().String(), strconv.FormatInt(int64(cfg.NID), 16)))
+			wallet.Address().String(), strconv.FormatInt(int64(cfg.CID()), 16)))
 	}
 
 	if eeSocket != "" {

@@ -9,6 +9,7 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/service"
+	"github.com/icon-project/goloop/service/transaction"
 	"github.com/icon-project/goloop/service/txresult"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -554,6 +555,31 @@ func NewManager(chain module.Chain, timestamper module.Timestamper) (module.Bloc
 		return nil, errors.InvalidNetworkError.Errorf(
 			"InvalidNetworkID Database.NID=%#x Chain.NID=%#x", nid, m.chain.NID())
 	}
+
+	var cid int
+	if gBlock, err := m.getBlockByHeight(0); err == nil {
+		if tx, err := gBlock.NormalTransactions().Get(0); err == nil {
+			if gtx, ok := tx.(transaction.GenesisTransaction); ok {
+				cid = gtx.CID()
+			} else {
+				return nil, errors.InvalidStateError.New("InvalidGenesisTransaction")
+			}
+		} else {
+			return nil, errors.InvalidStateError.New("NoGenesisTransaction")
+		}
+	} else {
+		if id, err := m.sm.GetChainID(lastFinalized.Result()); err != nil {
+			return nil, err
+		} else {
+			cid = int(id)
+		}
+	}
+	if cid != m.chain.CID() {
+		return nil, errors.InvalidNetworkError.Errorf(
+			"InvalidChainID Database.CID=%#x Chain.CID=%#x",
+			cid, m.chain.CID())
+	}
+
 	mtr, _ := m.sm.CreateInitialTransition(lastFinalized.Result(), lastFinalized.NextValidators())
 	if mtr == nil {
 		return nil, err

@@ -483,6 +483,20 @@ func (m *manager) GetNetworkID(result []byte) (int64, error) {
 	return nidVar.Int64(), nil
 }
 
+func (m *manager) GetChainID(result []byte) (int64, error) {
+	wss, err := m.trc.GetWorldSnapshot(result, nil)
+	if err != nil {
+		return 0, err
+	}
+	ass := wss.GetAccountSnapshot(state.SystemID)
+	as := scoredb.NewStateStoreWith(ass)
+	nidVar := scoredb.NewVarDB(as, state.VarChainID)
+	if nidVar.Bytes() == nil {
+		return 0, errors.ErrNotFound
+	}
+	return nidVar.Int64(), nil
+}
+
 func (m *manager) GetAPIInfo(result []byte, addr module.Address) (module.APIInfo, error) {
 	if !addr.IsContract() {
 		return nil, NotContractAddressError.Errorf("Given Address(%s) isn't contract", addr)
