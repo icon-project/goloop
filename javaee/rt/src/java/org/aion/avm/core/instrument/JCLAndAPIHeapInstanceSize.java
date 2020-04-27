@@ -13,7 +13,6 @@ public class JCLAndAPIHeapInstanceSize {
 
     private static final Map<String, Integer> POST_RENAME_INSTANCE_SIZE = Stream.of(new Object[][]{
             {Utilities.fullyQualifiedNameToInternalName(p.score.Address.class.getName()), 24}, // Object + byte[]
-            {Utilities.fullyQualifiedNameToInternalName(p.score.Result.class.getName()), 25}, //Object + boolean + byte[]
             {Utilities.fullyQualifiedNameToInternalName(p.score.ValueBuffer.class.getName()), 24}, // Object + byte[]
             {Utilities.fullyQualifiedNameToInternalName(s.java.lang.Class.class.getName()), 32}, // Object + Object + Object
             {Utilities.fullyQualifiedNameToInternalName(s.java.lang.Enum.class.getName()), 28}, // Object + String + int

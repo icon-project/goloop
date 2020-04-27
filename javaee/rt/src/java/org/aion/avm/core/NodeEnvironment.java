@@ -21,7 +21,6 @@ import org.aion.avm.core.util.MethodDescriptorCollector;
 import org.aion.avm.utilities.Utilities;
 import p.score.Address;
 import p.score.Context;
-import p.score.Result;
 import p.score.Value;
 import p.score.ValueBuffer;
 
@@ -74,7 +73,6 @@ public class NodeEnvironment {
             this.shadowApiClasses = new Class<?>[] {
                 Address.class,
                 Context.class,
-                Result.class,
                 ValueBuffer.class,
                 Value.class,
             };
@@ -198,7 +196,7 @@ public class NodeEnvironment {
         // create the object size look-up maps
         Map<String, Integer> rtObjectSizeMap = computeRuntimeObjectSizes();
         // This is to ensure the JCLAndAPIHeapInstanceSize is updated with the correct instance size of a newly added JCL or API class
-        RuntimeAssertionError.assertTrue(rtObjectSizeMap.size() == 99);
+        RuntimeAssertionError.assertTrue(rtObjectSizeMap.size() == 98);
 
         Map<String, Integer> shadowObjectSizeMap = new HashMap<>(); // pre-rename; shadow objects and exceptions
         Map<String, Integer> apiObjectSizeMap = new HashMap<>(); // post-rename; API objects
