@@ -18,11 +18,11 @@ public class Address {
     private final byte[] raw = new byte[LENGTH];
 
     /**
-     * Create an Address with the contents of the given raw byte array.
+     * Creates an address with the contents of the given raw byte array.
      *
      * @param raw a byte array
-     * @throws NullPointerException when the input byte array is null.
-     * @throws IllegalArgumentException when the input byte array length is invalid.
+     * @throws NullPointerException if the input byte array is null
+     * @throws IllegalArgumentException if the input byte array length is invalid
      */
     public Address(byte[] raw) throws IllegalArgumentException {
         if (raw == null) {
@@ -35,9 +35,11 @@ public class Address {
     }
 
     /**
-     * Create an Address from the hex string format
+     * Creates an address from the hex string format.
      *
      * @param str a hex string that represents an Address
+     * @throws NullPointerException if the input string is null
+     * @throws IllegalArgumentException if the input string format or length is invalid
      */
     public static Address fromString(String str) {
         if (str == null) {
@@ -59,14 +61,19 @@ public class Address {
         }
     }
 
+    /**
+     * Returns true if and only if this address represents a contract address.
+     *
+     * @return true if this address represents a contract address, false otherwise
+     */
     public boolean isContract() {
         return this.raw[0] == 0x1;
     }
 
     /**
-     * Converts the receiver to a new byte array.
+     * Converts this address to a new byte array.
      *
-     * @return a byte array containing a copy of the receiver.
+     * @return a newly allocated byte array that represents this address
      */
     public byte[] toByteArray() {
         byte[] copy = new byte[LENGTH];
@@ -74,16 +81,26 @@ public class Address {
         return copy;
     }
 
+    /**
+     * Returns a hash code for this address.
+     *
+     * @return a hash code value for this object
+     */
     @Override
     public int hashCode() {
-        // Just a really basic implementation.
         int code = 0;
-        for (byte elt : this.raw) {
-            code += (int) elt;
+        for (byte b : this.raw) {
+            code += b;
         }
         return code;
     }
 
+    /**
+     * Compares this address to the specified object.
+     *
+     * @param obj the object to compare this address against
+     * @return true if the given object represents an {@code Address} equivalent to this address, false otherwise
+     */
     @Override
     public boolean equals(Object obj) {
         boolean isEqual = this == obj;
@@ -97,6 +114,11 @@ public class Address {
         return isEqual;
     }
 
+    /**
+     * Returns a string representation of this address.
+     *
+     * @return a string representation of this object
+     */
     @Override
     public String toString() {
         byte prefix = this.raw[0];
