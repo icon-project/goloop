@@ -102,10 +102,10 @@ function join(){
 }
 
 function start(){
-    local GENESIS_NID=$(${GSTOOL} gs info -n ${GOLOOP_GENESIS_STORAGE})
+    local GENESIS_CID=$(${GSTOOL} gs info -c ${GOLOOP_GENESIS_STORAGE})
 
     for i in $(seq 0 $((${GOLOOP_DOCKER_REPLICAS}-1)));do
-        docker exec ${GOLOOP_DOCKER_PREFIX}-${i} goloop chain start ${GENESIS_NID}
+        docker exec ${GOLOOP_DOCKER_PREFIX}-${i} goloop chain start ${GENESIS_CID}
     done
 }
 
