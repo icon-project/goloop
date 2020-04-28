@@ -132,7 +132,8 @@ func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, e
 				cc.DeductSteps(used)
 
 				// If it fails for system failure, then it needs to re-run this.
-				if code := errors.CodeOf(status); code == errors.ExecutionFailError || errors.IsCriticalCode(code) {
+				if code := errors.CodeOf(status); code == errors.ExecutionFailError ||
+					code == scoreresult.TimeoutError || errors.IsCriticalCode(code) {
 					return nil, status
 				}
 			}
