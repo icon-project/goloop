@@ -32,6 +32,7 @@ type Transaction interface {
 	GetHandler(cm contract.ContractManager) (Handler, error)
 	Timestamp() int64
 	Nonce() *big.Int
+	To() module.Address
 }
 
 type GenesisTransaction interface {

@@ -50,8 +50,8 @@ func (tx *transactionV2) Verify() error {
 	}
 
 	// check if it's EOA
-	if tx.To.IsContract() {
-		return InvalidTxValue.Errorf("NotEOA(%s)", tx.To.String())
+	if tx.To().IsContract() {
+		return InvalidTxValue.Errorf("NotEOA(%s)", tx.To().String())
 	}
 
 	// signature verification
@@ -88,7 +88,7 @@ func (tx *transactionV2) PreValidate(wc state.WorldContext, update bool) error {
 
 	// for cumulative balance check
 	if update {
-		as2 := wc.GetAccountState(tx.To.ID())
+		as2 := wc.GetAccountState(tx.To().ID())
 		balance2 := as2.GetBalance()
 		balance2.Add(balance2, &tx.Value.Int)
 		balance1.Sub(balance1, trans)
@@ -105,13 +105,13 @@ func (tx *transactionV2) GetHandler(cm contract.ContractManager) (Handler, error
 func (tx *transactionV2) Prepare(ctx contract.Context) (state.WorldContext, error) {
 	lq := []state.LockRequest{
 		{string(tx.From().ID()), state.AccountWriteLock},
-		{string(tx.To.ID()), state.AccountWriteLock},
+		{string(tx.To().ID()), state.AccountWriteLock},
 	}
 	return ctx.GetFuture(lq), nil
 }
 
 func (tx *transactionV2) Execute(ctx contract.Context) (txresult.Receipt, error) {
-	r := txresult.NewReceipt(ctx.Database(), ctx.Revision(), &tx.To)
+	r := txresult.NewReceipt(ctx.Database(), ctx.Revision(), tx.To())
 	var trans big.Int
 
 	trans.Add(&tx.Value.Int, version2FixedFee)
@@ -131,7 +131,7 @@ func (tx *transactionV2) Execute(ctx contract.Context) (txresult.Receipt, error)
 	bal1.Sub(bal1, &trans)
 	as1.SetBalance(bal1)
 
-	as2 := ctx.GetAccountState(tx.To.ID())
+	as2 := ctx.GetAccountState(tx.To().ID())
 	bal2 := as2.GetBalance()
 	bal2.Add(bal2, &tx.Value.Int)
 	as2.SetBalance(bal2)
@@ -168,6 +168,10 @@ func (tx *transactionV2) Nonce() *big.Int {
 		return &nonce.Int
 	}
 	return nil
+}
+
+func (tx *transactionV2) To() module.Address {
+	return &tx.transactionV3Data.To
 }
 
 func (tx *transactionV2) ToJSON(version int) (interface{}, error) {

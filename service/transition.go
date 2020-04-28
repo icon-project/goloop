@@ -586,19 +586,11 @@ func (t *transition) executeTxs(l module.TransactionList, ctx contract.Context, 
 	}
 	rev := ctx.Revision()
 	if ctx.SkipTransactionEnabled() {
-		fakeBuf := make([]txresult.Receipt, len(rctBuf))
-		wss := ctx.GetSnapshot()
-		err := t.executeTxsSequential(l, ctx, fakeBuf)
-		if err != nil {
-			t.log.Warnf("It fails to execute transactions err=%v", err)
-			t.log.Debugf("Failed reason err=%+v", err)
-			return err
-		}
-		// TODO dump result for survey
-		ctx.Reset(wss)
-		for idx := 0; idx < len(rctBuf); idx++ {
-			rct := txresult.NewReceipt(t.db, rev, fakeBuf[idx].To())
-			zero := big.NewInt(0)
+		zero := big.NewInt(0)
+		for itr, idx := l.Iterator(), 0; itr.Has(); idx, _ = idx+1, itr.Next() {
+			txi, _, _ := itr.Get()
+			txo := txi.(transaction.Transaction)
+			rct := txresult.NewReceipt(t.db, rev, txo.To())
 			rct.SetResult(module.StatusSkipTransaction, zero, zero, nil)
 			rct.SetCumulativeStepUsed(zero)
 			rctBuf[idx] = rct

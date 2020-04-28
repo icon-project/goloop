@@ -286,6 +286,10 @@ func (g *genesisV3) Nonce() *big.Int {
 	return nil
 }
 
+func (g *genesisV3) To() module.Address {
+	return common.NewContractAddress(state.SystemID)
+}
+
 func newGenesisV3(js []byte) (Transaction, error) {
 	genjs := new(genesisV3JSON)
 	if err := json.Unmarshal(js, genjs); err != nil {

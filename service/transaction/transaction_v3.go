@@ -257,7 +257,7 @@ func (tx *transactionV3) PreValidate(wc state.WorldContext, update bool) error {
 
 	// for cumulative balance check
 	if update {
-		as2 := wc.GetAccountState(tx.To.ID())
+		as2 := wc.GetAccountState(tx.To().ID())
 		balance2 := as2.GetBalance()
 		if tx.Value != nil {
 			balance2.Add(balance2, &tx.Value.Int)
@@ -278,7 +278,7 @@ func (tx *transactionV3) GetHandler(cm contract.ContractManager) (Handler, error
 	}
 	return NewHandler(cm,
 		tx.From(),
-		&tx.To,
+		tx.To(),
 		value,
 		&tx.StepLimit.Int,
 		tx.DataType,
@@ -327,6 +327,10 @@ func (tx *transactionV3) Nonce() *big.Int {
 		return &nonce.Int
 	}
 	return nil
+}
+
+func (tx *transactionV3) To() module.Address {
+	return &tx.transactionV3Data.To
 }
 
 func (tx *transactionV3) ToJSON(version int) (interface{}, error) {
