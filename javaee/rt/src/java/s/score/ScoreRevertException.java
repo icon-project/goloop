@@ -71,7 +71,7 @@ public class ScoreRevertException extends RevertException {
         statusCode = code;
     }
 
-    public int getCode() {
+    public int avm_getCode() {
         return statusCode;
     }
 }
