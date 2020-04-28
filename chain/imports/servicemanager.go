@@ -119,7 +119,7 @@ func (m *managerForImport) ProposeTransition(parent module.Transition, bi module
 		Transition: otr,
 		m:          m,
 		bi:         bi,
-		errCh:      make(chan error),
+		errCh:      make(chan error, 1),
 	}, nil
 }
 
@@ -131,7 +131,7 @@ func (m *managerForImport) CreateInitialTransition(result []byte, nextValidators
 	return &transitionForImport{
 		Transition: otr,
 		m:          m,
-		errCh:      make(chan error),
+		errCh:      make(chan error, 1),
 	}, nil
 }
 
@@ -144,7 +144,7 @@ func (m *managerForImport) CreateTransition(parent module.Transition, txs module
 		Transition: otr,
 		m:          m,
 		bi:         bi,
-		errCh:      make(chan error),
+		errCh:      make(chan error, 1),
 	}, nil
 }
 
