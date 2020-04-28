@@ -450,10 +450,6 @@ func FlagToMarkdown(buf *bytes.Buffer, vcs ...*viper.Viper) func(f *pflag.Flag) 
 	}
 }
 
-func isSymlink(fi os.FileInfo) bool {
-	return fi.Mode()&os.ModeSymlink != 0
-}
-
 func addDirectoryToZip(zipWriter *zip.Writer, base, uri string, excludes []*regexp.Regexp) error {
 	p := path.Join(base, uri)
 	entries, err := ioutil.ReadDir(p)
@@ -465,7 +461,7 @@ Loop:
 		name := entry.Name()
 		for _, exclude := range excludes {
 			if exclude.MatchString(name) {
-				fmt.Println("exclude", p, name)
+				log.Printf("Exclude %s/%s", p, name)
 				continue Loop
 			}
 		}
