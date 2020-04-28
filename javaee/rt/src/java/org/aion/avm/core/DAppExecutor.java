@@ -111,13 +111,14 @@ public class DAppExecutor {
                 prevState.getSaveItems().put(dappAddress, new ReentrantDAppStack.SaveItem(dapp, runtimeState));
             }
         } catch (CodedException e) {
+            String msg = e.getMessage() != null ? e.getMessage() : Status.getMessage(e.getCode());
+            logger.debug("TX Reverted: \"{}\"", msg);
             if (verboseErrors) {
-                System.err.println("DApp execution failed due to : \"" + e.getMessage() + "\"");
                 e.printStackTrace(System.err);
             }
             result = new Result(e.getCode(),
                     tx.getLimit() - threadInstrumentation.energyLeft(),
-                    e.toString());
+                    msg);
         } catch (AvmException e) {
             // We handle the generic AvmException as some failure within the contract.
             if (verboseErrors) {

@@ -229,7 +229,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         } else if (s < Status.UserReversionStart) {
             RuntimeAssertionError.unreachable("bad result status " + s);
         } else if (s < Status.UserReversionEnd) {
-            throw new ScoreRevertException(s - Status.UserReversionStart);
+            throw new ScoreRevertException(s - Status.UserReversionStart, res.getRet().toString());
         }
         throw new RevertException();
     }
