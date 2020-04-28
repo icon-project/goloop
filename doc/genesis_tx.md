@@ -93,6 +93,11 @@ This document specifies the genesis file format.
       * `input` (T_INT)
       * `eventLog` (T_INT)
       * `apiCall` (T_INT)
+      * `defaultGet` (T_INT)
+      * `defaultSet` (T_INT)
+      * `replaceBase` (T_INT)
+      * `defaultDelete` (T_INT)
+      * `eventLogBase` (T_INT)
       
   * `validatorList` (T_ARRAY, default=`[ ]`) <br>
      the list of addresses participating in the consensus.
