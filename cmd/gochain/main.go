@@ -25,7 +25,6 @@ import (
 	"github.com/icon-project/goloop/server"
 	"github.com/icon-project/goloop/server/metric"
 	"github.com/icon-project/goloop/service/eeproxy"
-	"github.com/icon-project/goloop/service/transaction"
 )
 
 const (
@@ -262,9 +261,16 @@ func Execute(cmd *cobra.Command, args []string) {
 		cfg.Genesis, _ = json.Marshal(genesis)
 	}
 
+	if cfg.GenesisStorage == nil && cfg.Genesis != nil {
+		cfg.GenesisStorage = gs.NewFromTx(cfg.Genesis)
+	}
+
 	if cfg.NID == 0 {
-		gtx, _ := transaction.NewGenesisTransaction(cfg.Genesis)
-		cfg.NID = gtx.NID()
+		var err error
+		cfg.NID, err = cfg.GenesisStorage.NID()
+		if err != nil {
+			log.Panic("Fail to get NID from genesis transaction err=%+v", err)
+		}
 	}
 
 	if len(saveKeyStore) > 0 {
