@@ -1,5 +1,7 @@
 package i;
 
+import score.ScoreRevertException;
+
 import java.util.*;
 
 /**
@@ -91,11 +93,13 @@ public class CommonInstrumentation implements IInstrumentation {
                 if (t instanceof VirtualMachineError) {
                     // This is a fatal node error:
                     // -create our fatal exception
-                    JvmError error = new JvmError((VirtualMachineError)t);
+                    JvmError error = new JvmError((VirtualMachineError) t);
                     // -store it in forceExitState
                     this.currentFrame.forceExitState = error;
                     // -throw it
                     exceptionToRethrow = error;
+                } else if (t instanceof ScoreRevertException) {
+                    shadow = convertScoreRevertException((ScoreRevertException)t);
                 } else {
                     // This is VM-generated - we will have to instantiate a shadow, directly.
                     shadow = convertVmGeneratedException(t);
@@ -255,6 +259,26 @@ public class CommonInstrumentation implements IInstrumentation {
     public boolean isLoadedByCurrentClassLoader(Class<?> userClass) {
         // If this is the same classloader, they will both be obviously the same instance.
         return (userClass.getClassLoader() == this.currentFrame.lateLoader);
+    }
+
+    // Private helpers used internally.
+    private s.java.lang.Throwable convertScoreRevertException(ScoreRevertException t) throws Exception {
+        int code = t.getCode();
+        // First step is to convert the message and cause into shadow objects, as well.
+        String originalMessage = t.getMessage();
+        s.java.lang.String message = (null != originalMessage)
+                ? new s.java.lang.String(originalMessage)
+                : null;
+        // (note that converting the cause is recusrive on the causal chain)
+        Throwable originalCause = t.getCause();
+        s.java.lang.Throwable cause = (null != originalCause)
+                ? convertVmGeneratedException(originalCause)
+                : null;
+
+        // Then, use reflection to find the appropriate wrapper.
+        String throwableName = t.getClass().getName();
+        Class<?> shadowClass = this.currentFrame.lateLoader.loadClass(PackageConstants.kShadowDotPrefix + throwableName);
+        return (s.java.lang.Throwable)shadowClass.getConstructor(int.class, s.java.lang.String.class, s.java.lang.Throwable.class).newInstance(code, message, cause);
     }
 
     // Private helpers used internally.

@@ -28,7 +28,11 @@ public class ExceptionTest extends GoldenTest {
             try {
                 Context.call(addrGood,"run");
             } catch (RevertException e) {
-                Context.println("OK");
+                if (e instanceof ScoreRevertException) {
+                    Context.println("OK code=" + ((ScoreRevertException)e).getCode());
+                } else {
+                    Context.println("NOT OK");
+                }
             }
 
             try {
