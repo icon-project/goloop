@@ -38,6 +38,7 @@ public class Address {
      * Creates an address from the hex string format.
      *
      * @param str a hex string that represents an Address
+     * @return the resulting address
      * @throws NullPointerException if the input string is null
      * @throws IllegalArgumentException if the input string format or length is invalid
      */

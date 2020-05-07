@@ -9,7 +9,7 @@ import java.math.BigInteger;
 
 /**
  * Every SCORE has an associated <code>Context</code> which allows the application to interface
- * with the environment the app is running.
+ * with the environment the SCORE is running.
  * <p>
  * Typically, it includes the transaction and block context, and other blockchain functionality.
  */
@@ -91,7 +91,7 @@ public final class Context {
     }
 
     /**
-     * Returns the address of the account who deployed the contract.
+     * Returns the address of the account who initially deployed the contract.
      *
      * @return an address
      */
@@ -115,7 +115,7 @@ public final class Context {
     /**
      * Returns the block timestamp.
      *
-     * @return a timestamp indicates when the block is forged.
+     * @return the timestamp of the current block in microseconds
      */
     public static long getBlockTimestamp() {
         return 0L;
@@ -137,9 +137,9 @@ public final class Context {
     /**
      * Returns the balance of an account.
      *
-     * @param address the account address.
+     * @param address the account address
      * @return the account balance, or 0 if the account does not exist
-     * @throws IllegalArgumentException when the arguments are invalid, e.g. NULL address.
+     * @throws IllegalArgumentException if the address is invalid, e.g. NULL address
      */
     public static BigInteger getBalance(Address address) throws IllegalArgumentException {
         return BigInteger.ZERO;
@@ -150,67 +150,113 @@ public final class Context {
     //===================
 
     /**
-     * Calls another account, whether it's normal account or SCORE.
+     * Calls the method of the given account address with the value and stepLimit.
      *
-     * @param value         the value to transfer
+     * @param value         the value in loop to transfer
      * @param stepLimit     step limit
      * @param targetAddress the account address
      * @param method        method
      * @param params        parameters
      * @return the invocation result.
-     * @throws IllegalArgumentException when the arguments are invalid, e.g. insufficient balance, NULL address
-     * @throws ScoreRevertException when call target reverts the newly created frame
+     * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
+     * @throws ScoreRevertException if call target reverts the newly created frame
      */
     public static Object call(BigInteger value, BigInteger stepLimit,
                               Address targetAddress, String method, Object... params) {
         return null;
     }
 
+    /**
+     * Calls the method of the given account address with the value.
+     *
+     * @param value         the value in loop to transfer
+     * @param targetAddress the account address
+     * @param method        method
+     * @param params        parameters
+     * @return the invocation result
+     * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
+     * @throws ScoreRevertException if call target reverts the newly created frame
+     */
     public static Object call(BigInteger value,
                               Address targetAddress, String method, Object... params) {
-        return null;
+        return call(value, null, targetAddress, method, params);
     }
 
+    /**
+     * Calls the method of the account designated by the targetAddress.
+     *
+     * @param targetAddress the account address
+     * @param method        method
+     * @param params        parameters
+     * @return the invocation result
+     * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
+     * @throws ScoreRevertException if call target reverts the newly created frame
+     */
     public static Object call(Address targetAddress, String method, Object... params) {
-        return null;
+        return call(null, null, targetAddress, method, params);
     }
 
     /**
      * Transfers the value to the given target address from this SCORE's account.
      *
-     * @throws IllegalArgumentException when the arguments are invalid, e.g. insufficient balance, NULL address
+     * @param targetAddress the account address
+     * @param value         the value in loop to transfer
+     * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
      */
     public static void transfer(Address targetAddress, BigInteger value) {
     }
 
     /**
      * Stops the current execution and rolls back all state changes.
+     * In case of cross-calls, {@code ScoreRevertException} would be raised to the caller
+     * with the given code and message data.
+     *
+     * @param code an arbitrary user-defined code
+     * @param message a message to be delivered to the caller
      */
     public static void revert(int code, String message) {
     }
 
+    /**
+     * Stops the current execution and rolls back all state changes.
+     *
+     * @param code an arbitrary user-defined code
+     * @see #revert(int, String)
+     */
     public static void revert(int code) {
     }
 
+    /**
+     * Stops the current execution and rolls back all state changes.
+     *
+     * @param message a message
+     * @see #revert(int, String)
+     */
     public static void revert(String message) {
     }
 
+    /**
+     * Stops the current execution and rolls back all state changes.
+     * This is equivalent to {@code revert(0)}.
+     *
+     * @see #revert(int)
+     */
     public static void revert() {
     }
 
     /**
      * Checks that the provided condition is true and if it is false, triggers a revert.
      * <p>
-     * In other words, if {@code condition == true} this method does nothing, otherwise it is
-     * equivalent to calling {@link Context#revert()}.
+     * In other words, if {@code condition == true}, this method does nothing,
+     * otherwise it is equivalent to calling {@link Context#revert()}.
      *
-     * @param condition The condition that is required to be {@code true}.
+     * @param condition the condition that is required to be {@code true}.
      */
     public static void require(boolean condition) {
     }
 
     /**
-     * Prints a message, for debugging purpose
+     * Prints a message, for debugging purpose.
      *
      * @param message the message to print
      */
@@ -218,14 +264,17 @@ public final class Context {
     }
 
     /**
-     * Computes the SHA3-256 hash using the input data
+     * Computes the SHA3-256 hash using the input data.
+     *
+     * @param data the input data to be hashed
+     * @return the hashed data in bytes
      */
     public static byte[] sha3_256(byte[] data) throws IllegalArgumentException {
         return null;
     }
 
     /**
-     * Recovers the public key from the message hash and the recoverable signature
+     * Recovers the public key from the message hash and the recoverable signature.
      *
      * @param msgHash the 32 bytes hash data
      * @param signature signature_data(64) + recovery_id(1)
@@ -238,9 +287,9 @@ public final class Context {
     }
 
     /**
-     * Returns the address that is associated with the given public key
+     * Returns the address that is associated with the given public key.
      *
-     * @param publicKey the public key
+     * @param publicKey a byte array that represents the public key
      * @return the address that is associated with the public key
      */
     public static Address getAddressFromKey(byte[] publicKey) {
@@ -268,7 +317,7 @@ public final class Context {
     }
 
     /**
-     * Records a log on blockchain.
+     * Records a log on the blockchain.
      *
      * @param indexed indexed data
      * @param data extra data
