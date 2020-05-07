@@ -142,6 +142,9 @@ public class ObjectWriterImpl
             }
             try {
                 mh.invoke(this, v);
+            } catch (RuntimeException e) {
+                e.printStackTrace();
+                throw e;
             } catch (Throwable t) {
                 t.printStackTrace();
                 throw new IllegalArgumentException(t);

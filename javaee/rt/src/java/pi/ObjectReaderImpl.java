@@ -271,7 +271,7 @@ public class ObjectReaderImpl
                 throw e;
             } catch (Throwable t) {
                 t.printStackTrace();
-                throw new UnsupportedOperationException();
+                throw new IllegalArgumentException(t);
             }
         }
     }

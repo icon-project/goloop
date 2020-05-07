@@ -257,7 +257,8 @@ public interface ObjectReader {
      *          reader.
      * @throws IllegalArgumentException If the object is not a simple object
      *          and correct {@code readObject} method is not available or
-     *          the method threw an exception.
+     *          the method threw {@link Throwable} which is not an
+     *          {@link RuntimeException}.
      * @throws UnsupportedOperationException If this reader cannot read an
      *          object because the object is too long (for example, 2^32 bytes
      *          or longer byte array).
@@ -275,7 +276,8 @@ public interface ObjectReader {
      *          or invalidated reader.
      * @throws IllegalArgumentException If the object is not a simple object
      *          and correct {@code readObject} method is not available or
-     *          the method threw an exception.
+     *          the method threw {@link Throwable} which is not an
+     *          {@link RuntimeException}.
      * @throws UnsupportedOperationException If this reader cannot read an
      *          object because the object is too long (for example, 2^32 bytes
      *          or longer byte array).
@@ -295,7 +297,8 @@ public interface ObjectReader {
      *          reader.
      * @throws IllegalArgumentException If the object is not a simple object
      *          and correct {@code readObject} method is not available or
-     *          the method threw an exception.
+     *          the method threw {@link Throwable} which is not an
+     *          {@link RuntimeException}.
      * @throws UnsupportedOperationException If this reader cannot read an
      *          object because the object is too long (for example, 2^32 bytes
      *          or longer byte array).
@@ -316,7 +319,8 @@ public interface ObjectReader {
      *          or invalidated reader.
      * @throws IllegalArgumentException If the object is not a simple object
      *          and correct {@code readObject} method is not available or
-     *          the method threw an exception.
+     *          the method threw {@link Throwable} which is not an
+     *          {@link RuntimeException}.
      * @throws UnsupportedOperationException If this reader cannot read an
      *          object because the object is too long (for example, 2^32 bytes
      *          or longer byte array).

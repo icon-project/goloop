@@ -70,7 +70,7 @@ import java.math.BigInteger;
  * <blockquote><pre>
  *  public static void writeObject(ObjectWriter w, UserClass obj)
  * </pre></blockquote>
- * When you pass a custom object in write methods of this class, the
+ * When you write a custom object, the
  * {@code writeObject} method is called. In the method, you must
  * write one equivalent builtin object. It is error to write no object or
  * two or more objects. The method may write one list with multiple elements.
@@ -244,7 +244,8 @@ public interface ObjectWriter {
      * @throws IllegalStateException if this writer is invalidated one.
      * @throws IllegalArgumentException If the object is not a simple object
      *          and correct {@code writeObject} method is not available or
-     *          the method threw an exception.
+     *          the method threw {@link Throwable} which is not an
+     *          {@link RuntimeException}.
      * @throws NullPointerException If {@code v} is {@code null}.
      */
     void write(Object v);
@@ -256,7 +257,8 @@ public interface ObjectWriter {
      * @throws IllegalStateException if this writer is invalidated one.
      * @throws IllegalArgumentException If the object is not a simple object
      *          and correct {@code writeObject} method is not available or
-     *          the method threw an exception.
+     *          the method threw {@link Throwable} which is not an
+     *          {@link RuntimeException}.
      * @see #write(Object)
      */
     void writeNullable(Object v);
@@ -268,7 +270,8 @@ public interface ObjectWriter {
      * @throws IllegalStateException if this writer is invalidated one.
      * @throws IllegalArgumentException If the object is not a simple object
      *          and correct {@code writeObject} method is not available or
-     *          the method threw an exception.
+     *          the method threw {@link Throwable} which is not an
+     *          {@link RuntimeException}.
      * @throws NullPointerException If {@code v} is {@code null}.
      * @see #write(Object)
      */
@@ -281,7 +284,8 @@ public interface ObjectWriter {
      * @throws IllegalStateException if this writer is invalidated one.
      * @throws IllegalArgumentException If the object is not a simple object
      *          and correct {@code writeObject} method is not available or
-     *          the method threw an exception.
+     *          the method threw {@link Throwable} which is not an
+     *          {@link RuntimeException}.
      * @see #write(Object)
      */
     void writeNullable(Object... v);
@@ -325,7 +329,8 @@ public interface ObjectWriter {
      * @throws IllegalStateException if this writer is invalidated one.
      * @throws IllegalArgumentException If the object is not a simple object
      *          and correct {@code writeObject} method is not available or
-     *          the method threw an exception.
+     *          the method threw {@link Throwable} which is not an
+     *          {@link RuntimeException}.
      * @see ObjectWriter
      */
     void writeListOf(Object... v);
@@ -338,7 +343,8 @@ public interface ObjectWriter {
      * @throws IllegalStateException if this writer is invalidated one.
      * @throws IllegalArgumentException If the object is not a simple object
      *          and correct {@code writeObject} method is not available or
-     *          the method threw an exception.
+     *          the method threw {@link Throwable} which is not an
+     *          {@link RuntimeException}.
      * @see ObjectWriter
      */
     void writeListOfNullable(Object... v);
