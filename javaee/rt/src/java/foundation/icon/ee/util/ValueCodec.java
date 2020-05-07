@@ -1,8 +1,8 @@
 package foundation.icon.ee.util;
 
 import a.ByteArray;
-import foundation.icon.ee.io.MessagePackDataReader;
-import foundation.icon.ee.io.MessagePackDataWriter;
+import foundation.icon.ee.io.RLPDataReader;
+import foundation.icon.ee.io.RLPDataWriter;
 import i.IObject;
 import p.score.Address;
 import pi.ObjectReaderImpl;
@@ -43,7 +43,7 @@ public class ValueCodec {
         } else if (o instanceof ByteArray) {
             return ((ByteArray) o).getUnderlying().clone();
         } else {
-            try (var owi = new ObjectWriterImpl(new MessagePackDataWriter())) {
+            try (var owi = new ObjectWriterImpl(new RLPDataWriter())) {
                 owi.avm_write(o);
                 return owi.toByteArray();
             }
@@ -75,7 +75,7 @@ public class ValueCodec {
         } else if (c == ByteArray.class) {
             return ByteArray.newWithCharge(raw.clone());
         } else {
-            try (var ori = new ObjectReaderImpl(new MessagePackDataReader(raw))) {
+            try (var ori = new ObjectReaderImpl(new RLPDataReader(raw))) {
                 return ori.avm_read((Class<? extends IObject>)cls);
             }
         }
