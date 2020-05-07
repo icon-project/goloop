@@ -19,6 +19,7 @@ public class ObjectReaderImpl
     private static final MethodHandles.Lookup lookup = MethodHandles.lookup();
 
     private DataReader reader;
+    private int level = 0;
 
     public ObjectReaderImpl(DataReader reader) {
         this.reader = reader;
@@ -156,11 +157,17 @@ public class ObjectReaderImpl
     }
 
     public void avm_beginList() {
-        wrapVoidRead(() -> reader.readListHeader());
+        wrapVoidRead(() -> {
+            ++level;
+            reader.readListHeader();
+        });
     }
 
     public void avm_beginMap() {
-        wrapVoidRead(() -> reader.readMapHeader());
+        wrapVoidRead(() -> {
+            ++level;
+            reader.readMapHeader();
+        });
     }
 
     public boolean avm_beginNullableList() {
@@ -168,6 +175,7 @@ public class ObjectReaderImpl
             if (reader.readNullity()) {
                 return false;
             }
+            ++level;
             reader.readListHeader();
             return true;
         });
@@ -178,6 +186,7 @@ public class ObjectReaderImpl
             if (reader.readNullity()) {
                 return false;
             }
+            ++level;
             reader.readMapHeader();
             return true;
         });
@@ -200,10 +209,14 @@ public class ObjectReaderImpl
             if (reader == null) {
                 throw new IllegalStateException();
             }
+            if (level == 0) {
+                throw new IllegalStateException();
+            }
             while (reader.hasNext()) {
                 reader.skip(1);
             }
             reader.readFooter();
+            --level;
         } catch (Exception e) {
             reader = null;
             throw e;

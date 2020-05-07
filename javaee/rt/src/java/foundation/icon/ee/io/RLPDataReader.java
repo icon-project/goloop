@@ -27,7 +27,7 @@ public class RLPDataReader implements DataReader {
         this.arr = bb.array();
         this.topFrame = new ListFrame();
         this.frames.add(topFrame);
-        this.topFrame.endPos = Integer.MAX_VALUE;
+        this.topFrame.endPos = bb.limit();
     }
 
     private void readRLPString() {

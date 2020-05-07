@@ -12,6 +12,7 @@ import p.score.ObjectWriter;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.util.Objects;
 
 public class ObjectWriterImpl
         extends s.java.lang.Object
@@ -19,6 +20,7 @@ public class ObjectWriterImpl
     private static final MethodHandles.Lookup lookup = MethodHandles.lookup();
 
     private DataWriter writer;
+    private int level = 0;
 
     public ObjectWriterImpl(DataWriter writer) {
         this.writer = writer;
@@ -69,23 +71,38 @@ public class ObjectWriterImpl
     }
 
     public void avm_write(s.java.math.BigInteger v) {
-        wrapWrite(() -> writer.write(v.getUnderlying()));
+        wrapWrite(() -> {
+            Objects.requireNonNull(v);
+            writer.write(v.getUnderlying());
+        });
     }
 
     public void avm_write(s.java.lang.String v) {
-        wrapWrite(() -> writer.write(v.getUnderlying()));
+        wrapWrite(() -> {
+            Objects.requireNonNull(v);
+            writer.write(v.getUnderlying());
+        });
     }
 
     public void avm_write(ByteArray v) {
-        wrapWrite(() -> writer.write(v.getUnderlying()));
+        wrapWrite(() -> {
+            Objects.requireNonNull(v);
+            writer.write(v.getUnderlying());
+        });
     }
 
     public void avm_write(Address v) {
-        wrapWrite(() -> writer.write(v.toByteArray()));
+        wrapWrite(() -> {
+            Objects.requireNonNull(v);
+            writer.write(v.toByteArray());
+        });
     }
 
     public void avm_write(IObject v) {
-        wrapWrite(() -> write(v));
+        wrapWrite(() -> {
+            Objects.requireNonNull(v);
+            write(v);
+        });
     }
 
     private void write(IObject v) {
@@ -125,25 +142,23 @@ public class ObjectWriterImpl
             }
             try {
                 mh.invoke(this, v);
-            } catch (RuntimeException e) {
-                e.printStackTrace();
-                throw e;
             } catch (Throwable t) {
                 t.printStackTrace();
-                throw new UnsupportedOperationException();
+                throw new IllegalArgumentException(t);
             }
         }
     }
 
 
     private void writeNullable(IObject v) {
-        if (v==null) {
+        if (v == null) {
             writer.writeNullity(true);
         } else {
             writer.writeNullity(false);
             write(v);
         }
     }
+
     public void avm_writeNullable(IObject v) {
         wrapWrite(() -> writeNullable(v));
     }
@@ -169,14 +184,28 @@ public class ObjectWriterImpl
     }
 
     public void avm_beginList(int l) {
-        wrapWrite(() -> writer.writeListHeader(l));
+        wrapWrite(() -> {
+            ++level;
+            writer.writeListHeader(l);
+        });
     }
 
     public void avm_writeListOf(IObjectArray v) {
         wrapWrite(() -> {
             writer.writeListHeader(v.length());
             for (int i = 0; i < v.length(); i++) {
+                Objects.requireNonNull(v.get(i));
                 write((IObject) v.get(i));
+            }
+            writer.writeFooter();
+        });
+    }
+
+    public void avm_writeListOfNullable(IObjectArray v) {
+        wrapWrite(() -> {
+            writer.writeListHeader(v.length());
+            for (int i = 0; i < v.length(); i++) {
+                writeNullable((IObject) v.get(i));
             }
             writer.writeFooter();
         });
@@ -184,24 +213,35 @@ public class ObjectWriterImpl
 
     public void avm_beginNullableList(int l) {
         wrapWrite(() -> {
+            ++level;
             writer.writeNullity(false);
             writer.writeListHeader(l);
         });
     }
 
     public void avm_beginMap(int l) {
-        wrapWrite(() -> writer.writeMapHeader(l));
+        wrapWrite(() -> {
+            ++level;
+            writer.writeMapHeader(l);
+        });
     }
 
     public void avm_beginNullableMap(int l) {
         wrapWrite(() -> {
+            ++level;
             writer.writeNullity(false);
             writer.writeMapHeader(l);
         });
     }
 
     public void avm_end() {
-        wrapWrite(() -> writer.writeFooter());
+        wrapWrite(() -> {
+            if (level == 0) {
+                throw new IllegalStateException();
+            }
+            writer.writeFooter();
+            --level;
+        });
     }
 
     public void flush() {
@@ -209,7 +249,6 @@ public class ObjectWriterImpl
     }
 
     public byte[] toByteArray() {
-
         wrapWrite(() -> writer.flush());
         return writer.toByteArray();
     }

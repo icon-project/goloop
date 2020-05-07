@@ -7,6 +7,7 @@ import org.msgpack.core.MessageTypeException;
 import org.msgpack.core.MessageUnpacker;
 import org.msgpack.value.ValueType;
 
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
 
@@ -199,6 +200,13 @@ public class MessagePackDataReader implements DataReader {
     }
 
     public boolean hasNext() {
+        if (frames.size() == 1) {
+            try {
+                return unpacker.hasNext();
+            } catch (IOException e) {
+                throw convert(e);
+            }
+        }
         return topFrame.current < topFrame.length;
     }
 

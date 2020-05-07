@@ -43,6 +43,7 @@ public class Transaction {
     }
 
     public static void writeObject(ObjectWriter w, Transaction t) {
+        w.beginList(6);
         w.write(t.destination);
         w.writeNullable(
                 t.method,
@@ -51,9 +52,11 @@ public class Transaction {
                 t.description
         );
         w.write(t.executed);
+        w.end();
     }
 
     public static Transaction readObject(ObjectReader r) {
+        r.beginList();
         Transaction t = new Transaction(
                 r.readAddress(),
                 r.readNullable(String.class),
@@ -61,6 +64,7 @@ public class Transaction {
                 r.readNullable(BigInteger.class),
                 r.readNullable(String.class));
         t.setExecuted(r.readBoolean());
+        r.end();
         return t;
     }
 

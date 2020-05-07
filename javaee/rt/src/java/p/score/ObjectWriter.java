@@ -42,6 +42,7 @@ public interface ObjectWriter {
     void avm_beginList(int l);
     void avm_beginNullableList(int l);
     void avm_writeListOf(IObjectArray v);
+    void avm_writeListOfNullable(IObjectArray v);
     void avm_beginMap(int l);
     void avm_beginNullableMap(int l);
     void avm_end();
