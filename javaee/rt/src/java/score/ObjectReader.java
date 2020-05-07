@@ -21,6 +21,10 @@ import java.math.BigInteger;
 /**
  * Interface for object read.
  *
+ * <p>Common specification for object reader and object writer is specified in
+ * {@link ObjectWriter}. It is recommended to read object writer documentation
+ * first before you read this documentation.
+ *
  * <p>An object is readable if the object is a builtin object or its class
  * has the following method.
  * <blockquote><pre>
@@ -33,9 +37,6 @@ import java.math.BigInteger;
  *      str = objectReader.readString();
  *      i = objectReader.readInt();
  * </pre></blockquote>
- *
- * <p>If an exception is thrown during any read call, the reader becomes
- * invalidated. An invalidated reader fails any read operation.
  *
  * <p>A list is read by a {@link #beginList} call followed by calls for reading
  * zero or more its elements followed by a {@link #end} call.
