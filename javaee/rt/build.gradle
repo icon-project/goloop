@@ -25,6 +25,15 @@ task scoreApiJar(type: Jar) {
 }
 check.dependsOn scoreApiJar
 
+task scoreJavadoc(type: Javadoc) {
+    source = sourceSets.main.allJava
+    classpath = sourceSets.main.output
+    include 'score/*.java'
+    destinationDir = file("${buildDir}/javadoc")
+    shouldRunAfter classes
+}
+check.dependsOn scoreJavadoc
+
 test {
     useJUnitPlatform()
 }
