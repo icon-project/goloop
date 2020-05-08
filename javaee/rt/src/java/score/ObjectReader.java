@@ -243,6 +243,7 @@ public interface ObjectReader {
     /**
      * Reads an object of the class {@code c}.
      *
+     * @param <T> type of object to be read
      * @param c   Class of object to be read. It shall be one of
      *          {@link Boolean}, {@link Byte}, {@link Short}, {@link Character},
      *          {@link Integer}, {@link Float}, {@link Long}, {@link Double},
@@ -269,6 +270,7 @@ public interface ObjectReader {
     /**
      * Reads an object or returns default object if there is no next object.
      *
+     * @param <T> type of object to be read
      * @param c   class of object to be read.
      * @param def the default object.
      * @return the object read or default object.
@@ -290,6 +292,7 @@ public interface ObjectReader {
     /**
      * Reads a nullable object.
      *
+     * @param <T> type of object to be read
      * @param c   class of object to be read.
      * @return read object or null.
      * @throws IllegalStateException If this reader cannot read the
@@ -311,6 +314,7 @@ public interface ObjectReader {
      * Reads a nullable object or returns default object if there is no next
      * object.
      *
+     * @param <T> type of object to be read
      * @param c   class of object to be read.
      * @param def the default object.
      * @return read object or null if an object or null is read. Default object

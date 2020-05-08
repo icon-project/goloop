@@ -36,7 +36,7 @@ public interface VarDB<E> {
     /**
      * Returns the current value or {@code defaultValue} if the current value
      * is {@code null}.
-     * @param defaultValue
+     * @param defaultValue default value
      * @return the current value or {@code defaultValue} if the current value
      * is {@code null}.
      */
