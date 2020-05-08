@@ -104,11 +104,12 @@ build:java:
   stage: build
   script:
     - cd javaee
-    - ./gradlew app:execman:distZip
+    - ./gradlew rt:scoreJavadoc app:execman:distZip
   artifacts:
     expire_in: 1 day
     paths:
       - javaee/app/execman/build/distributions/
+      - javaee/rt/build/javadoc/
   tags:
     - docker
 
@@ -332,6 +333,12 @@ pages:doc:
     - mv README.md documentation.md
     - cat .vuepress/hometags ../README.md > README.md && sed -i "s/doc\///g" README.md
     - ./node_modules/.bin/vuepress build --dest dist ./
+
+pages:javadoc:
+  <<: *pages
+  variables:
+    PAGES_PUBLIC: "${CI_PROJECT_PATH}/${CI_COMMIT_REF_SLUG}/javadoc"
+    PAGES_SOURCE: "javaee/rt/build/javadoc"
 
 pages:IT:goloop:pyscore:
   <<: *pages
