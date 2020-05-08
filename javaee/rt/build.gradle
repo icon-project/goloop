@@ -29,6 +29,8 @@ task scoreJavadoc(type: Javadoc) {
     source = sourceSets.main.allJava
     classpath = sourceSets.main.output
     include 'score/*.java'
+    exclude 'score/Value.java'
+    exclude 'score/ValueBuffer.java'
     destinationDir = file("${buildDir}/javadoc")
     shouldRunAfter classes
 }
