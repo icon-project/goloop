@@ -16,8 +16,29 @@
 
 package score;
 
+/**
+ * A variable DB holds one value.
+ * @param <E> variable type
+ */
 public interface VarDB<E> {
+    /**
+     * Sets value.
+     * @param value new value
+     */
     void set(E value);
+
+    /**
+     * Returns the current value.
+     * @return current value
+     */
     E get();
+
+    /**
+     * Returns the current value or {@code defaultValue} if the current value
+     * is {@code null}.
+     * @param defaultValue
+     * @return the current value or {@code defaultValue} if the current value
+     * is {@code null}.
+     */
     E getOrDefault(E defaultValue);
 }

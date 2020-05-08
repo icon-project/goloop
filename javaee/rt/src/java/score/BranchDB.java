@@ -17,8 +17,9 @@
 package score;
 
 /**
+ * A branch DB is a hash from keys to sub-DBs.
  * @param <K> Key type.
- * @param <V> Value type. V shall be a DictDB, ArrayDB or BranchDB
+ * @param <V> Value type. V shall be a DictDB, ArrayDB or BranchDB.
  */
 public interface BranchDB<K, V> {
     /**

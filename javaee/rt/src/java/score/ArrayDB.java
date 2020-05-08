@@ -16,11 +16,49 @@
 
 package score;
 
+/**
+ * An array DB holds a sequence of values.
+ * @param <E> element type
+ */
 public interface ArrayDB<E> {
+    /**
+     * Adds a value at the end of the array DB.
+     * @param value new value
+     */
     void add(E value);
+
+    /**
+     * Sets value of the specified index.
+     * @param index index
+     * @param value new value
+     * @throws IllegalArgumentException if index is out of range.
+     */
     void set(int index, E value);
+
+    /**
+     * Removes last element of the array DB.
+     * @throws IllegalStateException if array DB has zero elements.
+     */
     void removeLast();
+
+    /**
+     * Returns the element at the specified position in the array DB.
+     * @param index index of element
+     * @return the element at the specified position in the array DB.
+     * @throws IllegalArgumentException if index is out of range.
+     */
     E get(int index);
+
+    /**
+     * Returns number of elements in this array DB.
+     * @return number of elements in this array DB.
+     */
     int size();
+
+    /**
+     * Pops last element of the array DB.
+     * @return last element of array DB
+     * @throws IllegalStateException if array DB has zero elements.
+     */
     E pop();
 }

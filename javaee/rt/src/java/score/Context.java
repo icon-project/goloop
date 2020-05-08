@@ -300,18 +300,58 @@ public final class Context {
     // Collection DB
     //===================
 
+    /**
+     * Returns a new branch DB.
+     *
+     * @param id DB ID
+     * @param leafValueClass class of leaf value. For example, a branch DB of
+     *          type {@code BranchDB<BigInteger, DictDB<Address, Boolean>>} has
+     *          Boolean.class as its leaf value class.
+     * @param <K> key type
+     * @param <V> sub-DB type
+     * @return new branch DB
+     * @see BranchDB
+     */
     public static<K, V> BranchDB<K, V> newBranchDB(String id, Class<?> leafValueClass) {
         return null;
     }
 
+    /**
+     * Returns a new dictionary DB.
+     *
+     * @param id DB ID
+     * @param valueClass class of {@code V}
+     * @param <K> key type
+     * @param <V> value type
+     * @return new dictionary DB
+     * @see DictDB
+     */
     public static<K, V> DictDB<K, V> newDictDB(String id, Class<V> valueClass) {
         return null;
     }
 
+    /**
+     * Returns a new array DB.
+     *
+     * @param id DB ID
+     * @param valueClass class of {@code E}
+     * @param <E> element type
+     * @return new array DB
+     * @see ArrayDB
+     */
     public static<E> ArrayDB<E> newArrayDB(String id, Class<E> valueClass) {
         return null;
     }
 
+    /**
+     * Returns a new variable DB.
+     *
+     * @param id DB ID
+     * @param valueClass class of {@code E}
+     * @param <E> variable type
+     * @return new variable DB
+     * @see ArrayDB
+     */
     public static<E> VarDB<E> newVarDB(String id, Class<E> valueClass) {
         return null;
     }

@@ -16,8 +16,35 @@
 
 package score;
 
+/**
+ * A dictionary DB is a hash from key to value.
+ * Only values of the dictionary DB is recorded in the DB.
+ * Keys are not recorded.
+ * @param <K> key type
+ * @param <V> value type
+ */
 public interface DictDB<K, V> {
+    /**
+     * Sets a value for a key
+     * @param key key
+     * @param value value for the key
+     */
     void set(K key, V value);
+
+    /**
+     * Returns the value for a key
+     * @param key key
+     * @return the value for a key
+     */
     V get(K key);
+
+    /**
+     * Returns the value for a key or {@code defaultValue} if the value is
+     * {@code null}.
+     * @param key key
+     * @param defaultValue default value
+     * @return the value for a key or {@code defaultValue} if the value is
+     * {@code null}.
+     */
     V getOrDefault(K key, V defaultValue);
 }
