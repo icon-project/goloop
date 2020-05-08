@@ -18,23 +18,42 @@ package score;
 
 import foundation.icon.ee.types.Status;
 
+/**
+ * Signals a manual reversion from a score.
+ */
 public class ScoreRevertException extends RevertException {
     private static final int End = Status.UserReversionEnd - Status.UserReversionStart;
 
     private int statusCode;
 
+    /**
+     * Constructs a new exception
+     */
     public ScoreRevertException() {
         super();
     }
 
+    /**
+     * Constructs a new exception
+     * @param message message
+     */
     public ScoreRevertException(String message) {
         super(message);
     }
 
+    /**
+     * Constructs a new exception
+     * @param message message
+     * @param cause cause
+     */
     public ScoreRevertException(String message, Throwable cause) {
         super(message, cause);
     }
 
+    /**
+     * Constructs a new exception
+     * @param cause cause
+     */
     public ScoreRevertException(Throwable cause) {
         super(cause);
     }
@@ -45,30 +64,54 @@ public class ScoreRevertException extends RevertException {
         }
     }
 
+    /**
+     * Constructs a new exception
+     * @param code reversion code defined by score
+     */
     public ScoreRevertException(int code) {
         super();
         assumeValidCode(code);
         statusCode = code;
     }
 
+    /**
+     * Constructs a new exception
+     * @param code reversion code defined by score
+     * @param message message
+     */
     public ScoreRevertException(int code, String message) {
         super(message);
         assumeValidCode(code);
         statusCode = code;
     }
 
+    /**
+     * Constructs a new exception
+     * @param code reversion code defined by score
+     * @param message message
+     * @param cause cause
+     */
     public ScoreRevertException(int code, String message, Throwable cause) {
         super(message, cause);
         assumeValidCode(code);
         statusCode = code;
     }
 
+    /**
+     * Constructs a new exception
+     * @param code reversion code defined by score
+     * @param cause cause
+     */
     public ScoreRevertException(int code, Throwable cause) {
         super(cause);
         assumeValidCode(code);
         statusCode = code;
     }
 
+    /**
+     * Returns reversion code.
+     * @return reversion code.
+     */
     public int getCode() {
         return statusCode;
     }

@@ -16,19 +16,38 @@
 
 package score;
 
+/**
+ * Signals a failure of an inter-contract call.
+ */
 public class RevertException extends RuntimeException {
+    /**
+     * Constructs a new exception.
+     */
     public RevertException() {
         super();
     }
 
+    /**
+     * Constructs a new exception.
+     * @param message message
+     */
     public RevertException(String message) {
         super(message);
     }
 
+    /**
+     * Constructs a new exception.
+     * @param message message
+     * @param cause cause
+     */
     public RevertException(String message, Throwable cause) {
         super(message, cause);
     }
 
+    /**
+     * Constructs a new exception.
+     * @param cause cause
+     */
     public RevertException(Throwable cause) {
         super(cause);
     }
