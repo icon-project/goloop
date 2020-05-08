@@ -24,7 +24,7 @@ type Decoder interface {
 	Decode(o interface{}) error
 	DecodeMulti(objs ...interface{}) (int, error)
 	DecodeBytes() ([]byte, error)
-	DecodeList() (Decoder, int64, error)
+	DecodeList() (Decoder, error)
 	DecodeListOf(objs ...interface{}) error
 }
 
@@ -445,43 +445,43 @@ func (d *rlpDecoder) readBytes() ([]byte, error) {
 	}
 }
 
-func (d *rlpDecoder) readList() (io.Reader, int64, error) {
+func (d *rlpDecoder) readList() (io.Reader, error) {
 	reader := d.reader
 
 	var header [9]byte
 	if _, err := io.ReadFull(reader, header[0:1]); err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	tag := int(header[0])
 	switch {
 	case tag < 0xC0:
-		return nil, 0, cerrors.Wrap(ErrInvalidFormat, "InvalidFormat(RLPBytes)")
+		return nil, cerrors.Wrap(ErrInvalidFormat, "InvalidFormat(RLPBytes)")
 	case tag <= 0xF7:
 		size := int64(tag - 0xC0)
-		return io.LimitReader(reader, size), size, nil
+		return io.LimitReader(reader, size), nil
 	default:
 		sz := tag - 0xF7
 		if _, err := io.ReadFull(reader, header[1:1+sz]); err != nil {
 			if err == io.EOF {
-				return nil, 0, cerrors.Wrapf(ErrInvalidFormat, "InvalidFormat(sz=%d)", sz)
+				return nil, cerrors.Wrapf(ErrInvalidFormat, "InvalidFormat(sz=%d)", sz)
 			}
-			return nil, 0, cerrors.WithStack(err)
+			return nil, cerrors.WithStack(err)
 		}
 		if sz == 1 && header[1] == 0 {
-			return nil, 0, ErrNilValue
+			return nil, ErrNilValue
 		}
 		blen := bytesToSize(header[1 : 1+sz])
-		return io.LimitReader(d.reader, int64(blen)), int64(blen), nil
+		return io.LimitReader(d.reader, int64(blen)), nil
 	}
 }
 
-func (d *rlpDecoder) decodeList() (*rlpDecoder, int64, error) {
-	reader, size, err := d.readList()
+func (d *rlpDecoder) decodeList() (*rlpDecoder, error) {
+	reader, err := d.readList()
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	d.containerReader = reader
-	return &rlpDecoder{reader: reader}, size, nil
+	return &rlpDecoder{reader: reader}, nil
 }
 
 func (d *rlpDecoder) flush() error {
@@ -508,12 +508,12 @@ func (d *rlpDecoder) DecodeBytes() ([]byte, error) {
 	return d.readBytes()
 }
 
-func (d *rlpDecoder) DecodeList() (Decoder, int64, error) {
+func (d *rlpDecoder) DecodeList() (Decoder, error) {
 	if err := d.flush(); err != nil {
-		return nil, 0, err
+		return nil, err
 	}
-	d2, size, err := d.decodeList()
-	return d2, size, err
+	d2, err := d.decodeList()
+	return d2, err
 }
 
 func (d *rlpDecoder) DecodeMulti(objs ...interface{}) (int, error) {
@@ -532,7 +532,7 @@ func (d *rlpDecoder) DecodeListOf(objs ...interface{}) error {
 	if err := d.flush(); err != nil {
 		return err
 	}
-	d2, _, err := d.decodeList()
+	d2, err := d.decodeList()
 	if err != nil {
 		return err
 	}
@@ -650,7 +650,7 @@ func (d *rlpDecoder) decodeValue(v reflect.Value) error {
 			return nil
 
 		default:
-			d2, _, err := d.decodeList()
+			d2, err := d.decodeList()
 			if err != nil {
 				return err
 			}
@@ -676,7 +676,7 @@ func (d *rlpDecoder) decodeValue(v reflect.Value) error {
 			elem.SetBytes(bs)
 			return nil
 		default:
-			d2, _, err := d.decodeList()
+			d2, err := d.decodeList()
 			if err != nil {
 				return err
 			}
@@ -717,7 +717,7 @@ func (d *rlpDecoder) decodeValue(v reflect.Value) error {
 		return nil
 
 	case reflect.Struct:
-		d2, _, err := d.decodeList()
+		d2, err := d.decodeList()
 		if err != nil {
 			return err
 		}
@@ -727,7 +727,7 @@ func (d *rlpDecoder) decodeValue(v reflect.Value) error {
 		return d.flush()
 
 	case reflect.Map:
-		d2, _, err := d.decodeList()
+		d2, err := d.decodeList()
 		if err != nil {
 			return err
 		}

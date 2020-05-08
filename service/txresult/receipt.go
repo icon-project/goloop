@@ -287,7 +287,7 @@ func (r *receipt) RLPEncodeSelf(e rlp.Encoder) error {
 }
 
 func (r *receipt) RLPDecodeSelf(d rlp.Decoder) error {
-	d2, _, err := d.DecodeList()
+	d2, err := d.DecodeList()
 	if err != nil {
 		return err
 	}

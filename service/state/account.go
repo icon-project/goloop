@@ -443,7 +443,7 @@ func (s *accountSnapshotImpl) RLPEncodeSelf(e rlp.Encoder) error {
 }
 
 func (s *accountSnapshotImpl) RLPDecodeSelf(d rlp.Decoder) error {
-	d2, _, err := d.DecodeList()
+	d2, err := d.DecodeList()
 	if err != nil {
 		return err
 	}
