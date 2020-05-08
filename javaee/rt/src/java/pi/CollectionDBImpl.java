@@ -48,7 +48,7 @@ public class CollectionDBImpl extends DBImplBase implements CollectionDB {
     public void avm_set(int index, IObject value) {
         IDBStorage s = getDBStorage();
         int sz = s.getArrayLength(getStorageKey());
-        if (index >= sz) {
+        if (index >= sz || index < 0) {
             throw new IllegalArgumentException();
         }
         s.setBytes(getStorageKey(index), encode(value));
@@ -58,7 +58,7 @@ public class CollectionDBImpl extends DBImplBase implements CollectionDB {
         IDBStorage s = getDBStorage();
         int sz = s.getArrayLength(getStorageKey());
         if (sz <= 0) {
-            throw new IllegalArgumentException();
+            throw new IllegalStateException();
         }
         s.setBytes(getStorageKey(sz - 1), null);
         s.setArrayLength(getStorageKey(), sz - 1);
@@ -68,7 +68,7 @@ public class CollectionDBImpl extends DBImplBase implements CollectionDB {
         IDBStorage s = getDBStorage();
         int sz = s.getArrayLength(getStorageKey());
         if (sz <= 0) {
-            throw new IllegalArgumentException();
+            throw new IllegalStateException();
         }
         var o = decode(s.getBytes(getStorageKey(sz - 1)));
         s.setBytes(getStorageKey(sz - 1), null);
