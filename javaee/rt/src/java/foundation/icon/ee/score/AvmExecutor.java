@@ -106,7 +106,9 @@ public class AvmExecutor {
             logger.trace("=== DAppCreator ===");
             return DAppCreator.create(kernel, task,
                     senderAddress, recipient, tx,
-                    this.preserveDebuggability, this.enableVerboseContractErrors, this.enableContextPrintln);
+                    this.preserveDebuggability,
+                    this.enableVerboseContractErrors,
+                    this.enableContextPrintln);
         } else {
             LoadedDApp dapp;
             // See if this call is trying to reenter one already on this call-stack.
