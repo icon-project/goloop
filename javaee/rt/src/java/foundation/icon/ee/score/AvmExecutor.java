@@ -75,7 +75,7 @@ public class AvmExecutor {
 
         task.startNewTransaction();
         task.attachInstrumentationForThread();
-        Result result = processTransaction();
+        Result result = runCommon(task.getThisTransactionalKernel(), transaction);
         task.detachInstrumentationForThread();
 
         logger.trace("{}", result);
@@ -85,17 +85,6 @@ public class AvmExecutor {
 
     private Result runInternal(IExternalState kernel, Transaction transaction) {
         return runCommon(kernel, transaction);
-    }
-
-    private Result processTransaction() {
-        Transaction tx = task.getTransaction();
-        RuntimeAssertionError.assertTrue(tx != null);
-
-        BigInteger value = tx.getValue();
-        if (value.compareTo(BigInteger.ZERO) < 0) {
-            return new Result(Status.InvalidParameter, BigInteger.ZERO, "bad value");
-        }
-        return runCommon(task.getThisTransactionalKernel(), tx);
     }
 
     private Result runCommon(IExternalState kernel, Transaction tx) {
