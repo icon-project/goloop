@@ -16,6 +16,7 @@ import (
 
 	"github.com/icon-project/goloop/chain"
 	"github.com/icon-project/goloop/chain/gs"
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/node"
 )
@@ -445,7 +446,7 @@ func NewUserCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command
 			return nil
 		},
 	}, &cobra.Command{
-		Use:   "add",
+		Use:   "add ADDRESS",
 		Short: "Add user",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -453,6 +454,10 @@ func NewUserCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command
 			param := &struct {
 				Id string `json:"id"`
 			}{Id: args[0]}
+			addr := &common.Address{}
+			if err := addr.SetString(param.Id); err != nil {
+				return errors.Wrap(err,"invalid Address format")
+			}
 			var v string
 			if _, err := adminClient.PostWithJson(reqUrl, param, &v); err != nil {
 				return err
@@ -461,7 +466,7 @@ func NewUserCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command
 			return nil
 		},
 	}, &cobra.Command{
-		Use:   "rm",
+		Use:   "rm ADDRESS",
 		Short: "Remove user",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

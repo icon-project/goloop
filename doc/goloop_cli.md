@@ -2023,7 +2023,7 @@ User management
 Add user
 
 ### Usage
-` goloop user add `
+` goloop user add ADDRESS `
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Default | Description|
@@ -2079,7 +2079,7 @@ List users
 Remove user
 
 ### Usage
-` goloop user rm `
+` goloop user rm ADDRESS `
 
 ### Inherited Options
 |Name,shorthand | Environment Variable | Default | Description|
