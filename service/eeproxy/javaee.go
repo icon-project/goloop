@@ -219,6 +219,8 @@ func (e *javaExecutionEngine) OnClose(conn ipc.Connection) bool {
 func (e *javaExecutionEngine) newCmd(stdout, stderr io.WriteCloser) *exec.Cmd {
 	args := append(e.args, e.addr)
 	cmd := exec.Command(e.java, args...)
+	logLevel := "JAVAEE_LOG_LEVEL=" + e.logger.GetLevel().String()
+	cmd.Env = append([]string{logLevel}, os.Environ()...)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	return cmd
@@ -227,10 +229,7 @@ func (e *javaExecutionEngine) newCmd(stdout, stderr io.WriteCloser) *exec.Cmd {
 func NewJavaEE(logger log.Logger) (Engine, error) {
 	var e javaExecutionEngine
 	e.instances = make(map[string]*javaInstance)
-	// TODO change java & args
 	e.java = "/bin/sh"
-	// TODO add VM param for log level
-	//logParam := "-Dfoundation.icon.ee.logger.defaultLogLevel=" + logger.GetLevel().String()
 	e.args = []string{os.ExpandEnv("$JAVAEE_BIN")}
 	e.logger = logger.WithFields(log.Fields{log.FieldKeyModule: JavaEE})
 	return &e, nil

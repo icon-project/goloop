@@ -13,8 +13,9 @@ ADD dist/execman.zip /goloop/
 RUN unzip -q /goloop/execman.zip -d /goloop/ && \
     rm -f /goloop/execman.zip
 RUN unzip -q /goloop/execman/lib/exec.jar libclient.so -d /goloop/execman/lib && \
-    sed -i 's/java.library.path=[a-zA-Z0-9\/\-]*/java.library.path=\/goloop\/execman\/lib/' \
-    /goloop/execman/bin/execman
+    sed -i -e 's/java.library.path=[a-zA-Z0-9\/\-]*/java.library.path=\/goloop\/execman\/lib/' \
+        -e 's/defaultLogLevel=[a-zA-Z]*/defaultLogLevel=$JAVAEE_LOG_LEVEL/' \
+        /goloop/execman/bin/execman
 ENV JAVAEE_BIN /goloop/execman/bin/execman
 
 # install goloop and other stuff
