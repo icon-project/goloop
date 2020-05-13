@@ -1,4 +1,4 @@
-package server
+package node
 
 import (
 	"encoding/hex"
@@ -27,6 +27,7 @@ const (
 type Auth struct {
 	skips map[string]map[string]bool
 	users map[string]int64
+	addrs map[string]string
 	filePath string
 	prefix string
 	SkipIfEmptyUsers bool
@@ -136,42 +137,70 @@ func (a *Auth) validator(s string, ctx echo.Context) (b bool, err error) {
 	if pubKey, err = sig.RecoverPublicKey(crypto.SHA3Sum256([]byte(serialized))); err != nil {
 		return
 	}
-	id := common.NewAccountAddressFromPublicKey(pubKey).String()
-	log.Traceln("id:",id,"serialized:", serialized)
+	addr := common.NewAccountAddressFromPublicKey(pubKey).String()
+	log.Traceln("addr:",addr,"serialized:", serialized)
 
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
-	if ts, ok := a.users[id]; ok && ts < timestamp {
-		a.users[id] = timestamp
-		log.Traceln("valid signature", ts, timestamp)
-		return true, nil
+	if id, ok := a.addrs[addr]; ok {
+		if ts := a.users[id]; ts < timestamp {
+			a.users[id] = timestamp
+			log.Traceln("valid signature", ts, timestamp)
+			return true, nil
+		}
+		log.Traceln("old signature", a.users[id], timestamp)
+		return false, nil
 	}
-	log.Traceln("old signature", a.users[id], timestamp)
+	log.Traceln("not found user", addr)
 	return false, nil
 }
 
-func (a *Auth) AddUser(id string) {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
-
-	if _, ok := a.users[id]; !ok {
-		a.users[id] = time.Now().Unix()
-		if err := a._export(); err != nil {
-			panic(err)
-		}
-	}
-}
-
-func (a *Auth) RemoveUser(id string) {
+func (a *Auth) AddUser(id string) error {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
 	if _, ok := a.users[id]; ok {
-		delete(a.users, id)
-		if err := a._export(); err != nil {
-			panic(err)
+		return errors.Wrapf(ErrAlreadyExists, "User(id=%s) already exists", id)
+	}
+
+	addr := &common.Address{}
+	if err := addr.SetString(id); err != nil {
+		return errors.Wrap(err, "invalid address format")
+	}
+
+	if _, ok := a.addrs[addr.String()]; ok {
+		return errors.Wrapf(ErrAlreadyExists, "User(addr=%s) already exists", addr.String())
+	}
+
+	a.users[id] = time.Now().Unix()
+	a.addrs[addr.String()] = id
+	if err := a._export(); err != nil {
+		panic(err)
+	}
+	return nil
+}
+
+func (a *Auth) RemoveUser(id string) error {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
+	if _, ok := a.users[id]; !ok {
+		return errors.Wrapf(ErrNotExists, "User(id=%s) not exists", id)
+	}
+
+	delete(a.users, id)
+	var addr string
+	for k, v := range a.addrs {
+		if v == id {
+			addr = k
+			break
 		}
 	}
+	delete(a.addrs, addr)
+	if err := a._export(); err != nil {
+		panic(err)
+	}
+	return nil
 }
 
 func (a *Auth) _users() []string {
@@ -213,6 +242,7 @@ func NewAuth(filePath, prefix string) *Auth {
 	a := &Auth{
 		skips: make(map[string]map[string]bool),
 		users: make(map[string]int64),
+		addrs: make(map[string]string),
 		filePath: filePath,
 		prefix: prefix,
 	}
@@ -232,7 +262,9 @@ func NewAuth(filePath, prefix string) *Auth {
 				panic(err)
 			}
 			for _, user := range users {
-				a.AddUser(user)
+				if err = a.AddUser(user); err != nil {
+					panic(err)
+				}
 			}
 		}
 	}

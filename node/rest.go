@@ -38,7 +38,7 @@ const (
 
 type Rest struct {
 	n *Node
-	a *server.Auth
+	a *Auth
 }
 
 type SystemView struct {
@@ -171,7 +171,7 @@ func RegisterInspectFunc(name string, f InspectFunc) error {
 func RegisterRest(n *Node) {
 	r := Rest{
 		n: n,
-		a: server.NewAuth(path.Join(n.cfg.ResolveAbsolute(n.cfg.BaseDir), "auth.json"), server.UrlAdmin),
+		a: NewAuth(path.Join(n.cfg.ResolveAbsolute(n.cfg.BaseDir), "auth.json"), server.UrlAdmin),
 	}
 	r.a.SkipIfEmptyUsers = n.cfg.AuthSkipIfEmptyUsers
 	ag := n.srv.AdminEchoGroup(r.a.MiddlewareFunc())
@@ -442,13 +442,29 @@ func (r *Rest) AddUser(ctx echo.Context) error {
 	if err := ctx.Bind(&param); err != nil {
 		return echo.ErrBadRequest
 	}
-	r.a.AddUser(param.Id)
+	if err := r.a.AddUser(param.Id); err != nil {
+		if we, ok := err.(errors.Unwrapper); ok {
+			switch we.Unwrap() {
+			case ErrAlreadyExists:
+				return ctx.String(http.StatusConflict, err.Error())
+			}
+		}
+		return err
+	}
 	return ctx.String(http.StatusOK, "OK")
 }
 
 func (r *Rest) RemoveUser(ctx echo.Context) error {
 	p := ctx.Param(ParamID)
-	r.a.RemoveUser(p)
+	if err := r.a.RemoveUser(p); err != nil {
+		if we, ok := err.(errors.Unwrapper); ok {
+			switch we.Unwrap() {
+			case ErrNotExists:
+				return ctx.String(http.StatusNotFound, err.Error())
+			}
+		}
+		return err
+	}
 	return ctx.String(http.StatusOK, "OK")
 }
 
