@@ -18,7 +18,6 @@ package foundation.icon.ee.score;
 
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Result;
-import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.Transaction;
 import i.IInstrumentation;
 import i.IInstrumentationFactory;
@@ -35,7 +34,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.math.BigInteger;
 
 public class AvmExecutor {
     private static final Logger logger = LoggerFactory.getLogger(AvmExecutor.class);
@@ -44,7 +42,7 @@ public class AvmExecutor {
     private final boolean preserveDebuggability;
     private final boolean enableVerboseContractErrors;
     private final boolean enableContextPrintln;
-    private Loader loader;
+    private final Loader loader;
     private IInstrumentation instrumentation;
     private TransactionTask task;
 

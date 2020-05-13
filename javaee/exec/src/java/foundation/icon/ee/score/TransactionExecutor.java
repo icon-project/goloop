@@ -50,6 +50,7 @@ public class TransactionExecutor {
     static {
         if (logger.isTraceEnabled()) {
             avmConfig.enableVerboseContractErrors = true;
+            avmConfig.enableContextPrintln = true;
         }
     }
 

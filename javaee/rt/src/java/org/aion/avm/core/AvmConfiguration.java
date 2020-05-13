@@ -7,15 +7,9 @@ package org.aion.avm.core;
  */
 public class AvmConfiguration {
     /**
-     * The number of threads to start for running the incoming transactions.
-     * A lower number will reduce maximum throughput but a higher number will increase the number of aborts experienced as a result
-     * of data hazards.  The transaction restarts caused by these aborts may reduce throughput on such highly connected blocks.
-     */
-    public int threadCount;
-    /**
      * Decides if debug data and names need to be preserved during deployment transformation.
-     * Note that this must be set to false as a requirement of the security model but that prohibits local debugging.  Hence, it
-     * should only be enabled for embedded use-cases during development, never in actual deployment in a node.
+     * Note that this must be set to false as a requirement of the security model but that prohibits local debugging.
+     * Hence, it should only be enabled for embedded use-cases during development, never in actual deployment in a node.
      * Some security violations will change into fatal assertion errors, instead of being rejected, if this is enabled.
      */
     public boolean preserveDebuggability;
@@ -25,25 +19,15 @@ public class AvmConfiguration {
      */
     public boolean enableVerboseContractErrors;
     /**
-     * If set to true, will log more information about the state of the concurrent executor.
-     * Enabling this is only really useful when actively modifying the concurrent executor.
-     */
-    public boolean enableVerboseConcurrentExecutor;
-    /**
      * If set to true, will pass calls to Context.println to the underlying stdout console.
      * If false, this call is still legal but will have no effect.
      */
     public boolean enableContextPrintln;
 
     public AvmConfiguration() {
-        // 4 threads is generally a safe, yet useful, number.
-        this.threadCount = 4;
-        // By default, we MUST reparent user code and discard debug data!  This is part of the security model so it should only be enabled to enable local contract debugging.
-        this.preserveDebuggability = false;
         // By default, none of our verbose options are enabled.
+        this.preserveDebuggability = false;
         this.enableVerboseContractErrors = false;
-        this.enableVerboseConcurrentExecutor = false;
-        // While the system is still relatively new, we enable the Context.println output, by default.
-        this.enableContextPrintln = true;
+        this.enableContextPrintln = false;
     }
 }
