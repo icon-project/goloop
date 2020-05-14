@@ -17,7 +17,7 @@ import org.objectweb.asm.TypePath;
  */
 public class RejectionFieldVisitor extends FieldVisitor {
     public RejectionFieldVisitor(FieldVisitor visitor) {
-        super(Opcodes.ASM6, visitor);
+        super(Opcodes.ASM7, visitor);
     }
 
     @Override

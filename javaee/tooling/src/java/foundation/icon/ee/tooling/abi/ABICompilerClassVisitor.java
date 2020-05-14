@@ -23,7 +23,7 @@ public class ABICompilerClassVisitor extends ClassVisitor {
     private boolean stripLineNumber;
 
     public ABICompilerClassVisitor(ClassWriter cw, boolean stripLineNumber) {
-        super(Opcodes.ASM6, cw);
+        super(Opcodes.ASM7, cw);
         this.stripLineNumber = stripLineNumber;
     }
 

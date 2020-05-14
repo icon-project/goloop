@@ -26,7 +26,7 @@ public class ConstructorThisInterpreter extends Interpreter<ConstructorThisInter
     private boolean isNextThis;
 
     public ConstructorThisInterpreter() {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
         this.underlying = new BasicInterpreter();
         // NOTE:  This is based on the assumption that a non-static method's first newValue() call is for "this".
         this.isNextThis = true;

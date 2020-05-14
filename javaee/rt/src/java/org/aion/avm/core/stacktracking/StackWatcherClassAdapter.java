@@ -13,7 +13,7 @@ import org.objectweb.asm.tree.MethodNode;
  */
 public class StackWatcherClassAdapter extends ClassToolchain.ToolChainClassVisitor {
     public StackWatcherClassAdapter() {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
     }
 
     @Override
@@ -25,7 +25,7 @@ public class StackWatcherClassAdapter extends ClassToolchain.ToolChainClassVisit
         StackWatcherMethodAdapter ma = new StackWatcherMethodAdapter(ga, access, name, desc);
 
         // Wrap the method adapter into a method node to access method information.
-        return new MethodNode(Opcodes.ASM6, access, name, desc, signature, exceptions)
+        return new MethodNode(Opcodes.ASM7, access, name, desc, signature, exceptions)
         {
             @Override
             public void visitEnd() {

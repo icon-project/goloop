@@ -29,7 +29,7 @@ public class RejectionMethodVisitor extends MethodVisitor {
     private final boolean preserveDebuggability;
 
     public RejectionMethodVisitor(MethodVisitor visitor, PreRenameClassAccessRules classAccessRules, NamespaceMapper namespaceMapper, boolean preserveDebuggability) {
-        super(Opcodes.ASM6, visitor);
+        super(Opcodes.ASM7, visitor);
         this.classAccessRules = classAccessRules;
         this.namespaceMapper = namespaceMapper;
         this.preserveDebuggability = preserveDebuggability;

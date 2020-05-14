@@ -19,14 +19,14 @@ public class StringConstantCollectorVisitor extends ClassToolchain.ToolChainClas
     private final Set<String> stringConstants;
 
     public StringConstantCollectorVisitor() {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
         this.stringConstants = new HashSet<>();
     }
 
     @Override
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
         MethodVisitor visitor = super.visitMethod(access, name, descriptor, signature, exceptions);
-        return new MethodVisitor(Opcodes.ASM6, visitor) {
+        return new MethodVisitor(Opcodes.ASM7, visitor) {
             @Override
             public void visitLdcInsn(Object value) {
                 if (value instanceof String) {

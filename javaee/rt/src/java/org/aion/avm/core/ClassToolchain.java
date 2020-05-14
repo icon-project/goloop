@@ -95,7 +95,7 @@ public final class ClassToolchain {
         private Printer p;
 
         public TraceToolChainClassVisitor(Printer p, OutputStream os) {
-            super(Opcodes.ASM6);
+            super(Opcodes.ASM7);
             this.p = p;
             this.pw = new PrintWriter(os);
         }

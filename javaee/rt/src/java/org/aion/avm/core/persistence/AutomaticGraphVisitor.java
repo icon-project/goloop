@@ -34,7 +34,7 @@ public class AutomaticGraphVisitor extends ClassToolchain.ToolChainClassVisitor 
     private String superClassName;
 
     public AutomaticGraphVisitor() {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
     }
 
     @Override
@@ -67,7 +67,7 @@ public class AutomaticGraphVisitor extends ClassToolchain.ToolChainClassVisitor 
             visitor = downstream;
         } else if (INIT_NAME.equals(name)) {
             // 2) If this is an <init> we need to ensure that we don't lazyLoad() the "this" pointer due to outer class references (issue-156).
-            visitor = new MethodNode(Opcodes.ASM6, access, name, descriptor, signature, exceptions) {
+            visitor = new MethodNode(Opcodes.ASM7, access, name, descriptor, signature, exceptions) {
                 @Override
                 public void visitEnd() {
                     super.visitEnd();

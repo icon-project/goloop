@@ -51,7 +51,7 @@ class ArraysRequiringAnalysisMethodNode extends MethodNode {
                                              String className,
                                              ClassHierarchy hierarchy)
     {
-        super(Opcodes.ASM6, access, name, descriptor, signature, exceptions);
+        super(Opcodes.ASM7, access, name, descriptor, signature, exceptions);
         this.className = className;
         this.mv = mv;
         this.hierarchy = hierarchy;

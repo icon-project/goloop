@@ -87,7 +87,7 @@ public final class ClassHierarchyForest extends Forest<String, ClassInfo> {
         private boolean isInterface;
 
         private CodeVisitor() {
-            super(Opcodes.ASM6);
+            super(Opcodes.ASM7);
         }
 
         @Override

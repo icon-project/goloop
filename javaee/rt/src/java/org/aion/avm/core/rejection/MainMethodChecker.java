@@ -36,7 +36,7 @@ public class MainMethodChecker extends ClassToolchain.ToolChainClassVisitor {
     private boolean didFindMain;
 
     private MainMethodChecker() {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
     }
 
     @Override

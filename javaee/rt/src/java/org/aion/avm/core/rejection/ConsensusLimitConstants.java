@@ -1,14 +1,13 @@
 package org.aion.avm.core.rejection;
 
-
 /**
  * Contains the constants used to impose limits on what the AVM is allowed to accept.
  */
 public class ConsensusLimitConstants {
     /*
-     * This will probably change, in the future, but we currently will only parse Java10 (version 54) classes.
+     * We currently only parses Java 11 (version 55) classes.
      */
-    public static final int SUPPORTED_CLASS_VERSION = 54;
+    public static final int SUPPORTED_CLASS_VERSION = 55;
     /*
      * This limit could probably be larger, since it really just needs to account for a type name length in 1 byte:
      * -probably 255 - 1 (for "L" prefix) - 3 (maximum array dimensions)

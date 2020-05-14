@@ -20,7 +20,7 @@ public class ArrayWrappingInterpreter extends BasicInterpreter{
     private final ClassHierarchy hierarchy;
 
     ArrayWrappingInterpreter(ClassHierarchy hierarchy) {
-      super(Opcodes.ASM6);
+      super(Opcodes.ASM7);
       this.hierarchy = hierarchy;
     }
 

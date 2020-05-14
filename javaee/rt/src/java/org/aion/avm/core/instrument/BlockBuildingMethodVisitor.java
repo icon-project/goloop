@@ -23,7 +23,7 @@ public class BlockBuildingMethodVisitor extends MethodVisitor {
     private List<String> currentAllocationList;
 
     public BlockBuildingMethodVisitor() {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
         this.buildingList = new ArrayList<>();
         
         // We need to enter our initial state in the constructor since this method may be abstract and have no code.

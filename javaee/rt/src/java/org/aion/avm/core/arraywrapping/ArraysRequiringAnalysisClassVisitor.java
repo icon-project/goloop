@@ -15,7 +15,7 @@ public class ArraysRequiringAnalysisClassVisitor extends ClassToolchain.ToolChai
     public String className;
 
     public ArraysRequiringAnalysisClassVisitor(ClassHierarchy hierarchy) {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
         this.hierarchy = hierarchy;
     }
 

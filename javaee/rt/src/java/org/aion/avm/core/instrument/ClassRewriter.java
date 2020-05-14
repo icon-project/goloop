@@ -41,7 +41,7 @@ public class ClassRewriter  {
         private final IMethodReplacer replacer;
 
         public FullClassVisitor(ClassVisitor cv, String methodName, IMethodReplacer replacer) {
-            super(Opcodes.ASM6, cv);
+            super(Opcodes.ASM7, cv);
             this.methodName = methodName;
             this.replacer = replacer;
         }
@@ -78,7 +78,7 @@ public class ClassRewriter  {
         private final IMethodReplacer replacer;
 
         public ReplacedMethodVisitor(MethodVisitor target, IMethodReplacer replacer) {
-            super(Opcodes.ASM6, null);
+            super(Opcodes.ASM7, null);
             this.target = target;
             this.replacer = replacer;
         }

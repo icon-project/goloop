@@ -11,7 +11,7 @@ public class SignatureDependencyVisitor extends SignatureVisitor {
 
     private String mainClassName;
     public SignatureDependencyVisitor(DependencyCollector dependencyCollector) {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
         this.dependencyCollector = dependencyCollector;
     }
 

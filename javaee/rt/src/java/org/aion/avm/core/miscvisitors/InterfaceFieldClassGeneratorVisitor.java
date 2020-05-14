@@ -49,7 +49,7 @@ public class InterfaceFieldClassGeneratorVisitor extends ClassToolchain.ToolChai
      * @param javaLangObjectSlashName  The java/lang/Object class className, either pre-rename or post-rename
      */
     public InterfaceFieldClassGeneratorVisitor(GeneratedClassConsumer consumer, Map<String, String> interfaceFieldClassNames, String javaLangObjectSlashName) {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
         this.consumer = consumer;
         this.interfaceFieldClassNames = interfaceFieldClassNames;
         this.javaLangObject = javaLangObjectSlashName;
@@ -74,7 +74,7 @@ public class InterfaceFieldClassGeneratorVisitor extends ClassToolchain.ToolChai
             // If this is a clinit, capture it into the MethodNode, to write it to the generated class at the end.
             // Clinit will be removed from the interface in InterfaceFieldNameMappingVisitor
             this.clinit = new MethodNode(access, name, descriptor, signature, exceptions);
-            mv = new MethodVisitor(Opcodes.ASM6, this.clinit) {
+            mv = new MethodVisitor(Opcodes.ASM7, this.clinit) {
                 // update the clinit field owners to the generated class name.
                 public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
                     if (className.equals(owner)) {

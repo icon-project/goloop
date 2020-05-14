@@ -24,7 +24,7 @@ public class InterfaceFieldNameMappingVisitor extends ClassToolchain.ToolChainCl
      * @param interfaceFieldClassNames HashMap containing the mapping between class name and generated FIELDS class
      */
     public InterfaceFieldNameMappingVisitor(Map<String, String> interfaceFieldClassNames) {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
         this.interfaceFieldClassNames = interfaceFieldClassNames;
 
     }
@@ -46,7 +46,7 @@ public class InterfaceFieldNameMappingVisitor extends ClassToolchain.ToolChainCl
         } else {
             mv = super.visitMethod(access, name, descriptor, signature, exceptions);
             // update the owner of all interface fields
-            return new MethodVisitor(Opcodes.ASM6, mv) {
+            return new MethodVisitor(Opcodes.ASM7, mv) {
                 public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
                     if (interfaceFieldClassNames.keySet().contains(owner)) {
                         owner = interfaceFieldClassNames.get(owner);

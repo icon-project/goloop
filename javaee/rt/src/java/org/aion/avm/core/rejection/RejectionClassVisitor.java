@@ -31,7 +31,7 @@ public class RejectionClassVisitor extends ClassToolchain.ToolChainClassVisitor 
     private final boolean preserveDebuggability;
 
     public RejectionClassVisitor(PreRenameClassAccessRules preRenameClassAccessRules, NamespaceMapper namespaceMapper, boolean preserveDebuggability) {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
         this.preRenameClassAccessRules = preRenameClassAccessRules;
         this.namespaceMapper = namespaceMapper;
         this.preserveDebuggability = preserveDebuggability;

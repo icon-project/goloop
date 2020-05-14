@@ -20,7 +20,7 @@ public class ClassDependencyVisitor extends ClassVisitor {
     private boolean isAbstract;
 
     public ClassDependencyVisitor(String classSlashName) {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
         this.classSlashName = classSlashName;
     }
 

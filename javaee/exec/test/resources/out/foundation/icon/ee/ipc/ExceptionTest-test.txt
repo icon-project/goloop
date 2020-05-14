@@ -1,15 +1,15 @@
 Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
 Method{type=0, name='run', flags=2, indexed=2, inputs=[Parameter{name='addrGood', descriptor=Lscore/Address;, type=5, optional=false}, Parameter{name='addrBad', descriptor=Lscore/Address;, type=5, optional=false}], output=0, outputDescriptor=V}
 SEND invoke code=010001/optimized isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[]
-RECV setCode hash=622479d70328d190ac1b2182518ba6124ea2e4f1559718499b91ed417a6de493 len=2029
+RECV setCode hash=5c496a76e5126147a3bb64de6dd2b4c2aded40300c8c4c46b6fa084d09d00f64 len=2053
 RECV setObjGraph flag=1 next=6 hash=f96d1326be27596d0520f0452fade043419b3aecb4d4e7683df3889731e20f0e graphLen=187 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04*foundation.icon.ee.ipc.ExceptionTest$Score\x00\x00\x00\x05\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x06NOT OK\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x02OK\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03run\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x04test
-RECV result status=0 stepUsed=202995 ret=<null>
+RECV result status=0 stepUsed=203014 ret=<null>
 Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
 Method{type=0, name='run', flags=2, indexed=0, inputs=[], output=0, outputDescriptor=V}
 SEND invoke code=010002/optimized isQuery=false from=000001... to=010002... value=0 stepLimit=1000000000 method=<init> params=[]
-RECV setCode hash=143e94f6526c737609de07b3b6fb6d3775425ca2495856d6075c13cf7546b619 len=1258
+RECV setCode hash=b7373f20adcc9561d727f891a5fa52ac1053f95dde20a56fcd0e8faa891c7352 len=1285
 RECV setObjGraph flag=1 next=3 hash=72686e52185190dc5d12d8eb3adcd058e82e1a7819a13e506e9900a4968b73a5 graphLen=99 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x010foundation.icon.ee.ipc.ExceptionTest$RevertScore\x00\x00\x00\x02\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x0buser revert
-RECV result status=0 stepUsed=202230 ret=<null>
+RECV result status=0 stepUsed=202250 ret=<null>
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=run params=[010002... 010003...]
 RECV getObjGraph flag=1 => next=6 hash=f96d1326be27596d0520f0452fade043419b3aecb4d4e7683df3889731e20f0e graphLen=187 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04*foundation.icon.ee.ipc.ExceptionTest$Score\x00\x00\x00\x05\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x06NOT OK\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x02OK\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03run\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x04test
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| OK

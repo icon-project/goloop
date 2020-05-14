@@ -46,7 +46,7 @@ public class ConstantVisitor extends ClassToolchain.ToolChainClassVisitor {
     private MethodNode cachedClinit;
 
     public ConstantVisitor(String constantClassName, Map<String, String> constantToFieldMap) {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
         this.constantClassName = constantClassName;
         this.constantToFieldMap = constantToFieldMap;
         
@@ -89,7 +89,7 @@ public class ConstantVisitor extends ClassToolchain.ToolChainClassVisitor {
             visitor = super.visitMethod(access, name, descriptor, signature, exceptions);
         }
 
-        return new MethodVisitor(Opcodes.ASM6, visitor) {
+        return new MethodVisitor(Opcodes.ASM7, visitor) {
             @Override
             public void visitLdcInsn(Object value) {
                 if (value instanceof Type && ((Type) value).getSort() == Type.OBJECT) {

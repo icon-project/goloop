@@ -64,7 +64,7 @@ class ArraysWithKnownTypesAdapter extends AdviceAdapter {
 
     ArraysWithKnownTypesAdapter(final MethodVisitor mv, final int access, final String name, final String desc)
     {
-        super(Opcodes.ASM6, mv, access, name, desc);
+        super(Opcodes.ASM7, mv, access, name, desc);
     }
 
     @Override

@@ -18,7 +18,7 @@ import org.objectweb.asm.Opcodes;
  */
 public class StrictFPVisitor extends ClassToolchain.ToolChainClassVisitor {
     public StrictFPVisitor() {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
     }
 
     @Override

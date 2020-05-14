@@ -11,7 +11,7 @@ public class ClassUnreachabilityVisitor extends ClassVisitor {
     private Map<String, MethodInfo> methodInfoMap;
 
     public ClassUnreachabilityVisitor(ClassWriter cw, Map<String, MethodInfo> methodInfoMap) {
-        super(Opcodes.ASM6, cw);
+        super(Opcodes.ASM7, cw);
         this.methodInfoMap = methodInfoMap;
     }
 

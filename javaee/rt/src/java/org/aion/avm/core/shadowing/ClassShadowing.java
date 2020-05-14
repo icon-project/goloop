@@ -25,7 +25,7 @@ public class ClassShadowing extends ClassToolchain.ToolChainClassVisitor {
     private final String postRenameJavaLangObject;
 
     public ClassShadowing(String shadowPackage) {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
         this.replacer = new IObjectReplacer(shadowPackage);
         this.classWhiteList = new ClassWhiteList();
         this.postRenameJavaLangObject = shadowPackage + JAVA_LANG_OBJECT;
@@ -73,7 +73,7 @@ public class ClassShadowing extends ClassToolchain.ToolChainClassVisitor {
         // Just pass in a null signature, instead of updating it (JVM spec 4.3.4: "This kind of type information is needed to support reflection and debugging, and by a Java compiler").
         MethodVisitor mv = super.visitMethod(access, name, replacer.replaceMethodDescriptor(descriptor), null, exceptions);
 
-        return new MethodVisitor(Opcodes.ASM6, mv) {
+        return new MethodVisitor(Opcodes.ASM7, mv) {
             @Override
             public void visitMethodInsn(
                     final int opcode,

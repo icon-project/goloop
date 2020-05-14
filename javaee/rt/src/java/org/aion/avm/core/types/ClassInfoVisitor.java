@@ -13,7 +13,7 @@ import org.objectweb.asm.Opcodes;
  */
 public class ClassInfoVisitor extends ClassVisitor {
     private ClassInformation classInfo;
-    private boolean isRenamed;
+    private final boolean isRenamed;
 
     /**
      * Constructs a new class visitor.
@@ -25,7 +25,7 @@ public class ClassInfoVisitor extends ClassVisitor {
      * rename class info objects accordingly.
      */
     public ClassInfoVisitor(boolean isRenamed) {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
         this.isRenamed = isRenamed;
     }
 

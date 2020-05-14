@@ -26,7 +26,7 @@ public class UserClassMappingVisitor extends ClassToolchain.ToolChainClassVisito
     private final boolean preserveDebuggability;
 
     public UserClassMappingVisitor(NamespaceMapper mapper, boolean preserveDebuggability) {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
         
         this.mapper = mapper;
         this.preserveDebuggability = preserveDebuggability;
@@ -52,7 +52,7 @@ public class UserClassMappingVisitor extends ClassToolchain.ToolChainClassVisito
         // Just pass in a null signature, instead of updating it (JVM spec 4.3.4: "This kind of type information is needed to support reflection and debugging, and by a Java compiler").
         MethodVisitor mv = super.visitMethod(access, newName, newDescriptor, null, newExceptions);
         
-        return new MethodVisitor(Opcodes.ASM6, mv) {
+        return new MethodVisitor(Opcodes.ASM7, mv) {
             @Override
             public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
                 String newOwner = UserClassMappingVisitor.this.mapper.mapType(owner, UserClassMappingVisitor.this.preserveDebuggability);

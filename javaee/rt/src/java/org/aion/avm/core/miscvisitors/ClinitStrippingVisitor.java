@@ -16,7 +16,7 @@ public class ClinitStrippingVisitor extends ClassToolchain.ToolChainClassVisitor
     private static final String kClinitName = "<clinit>";
 
     public ClinitStrippingVisitor() {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
     }
 
     @Override

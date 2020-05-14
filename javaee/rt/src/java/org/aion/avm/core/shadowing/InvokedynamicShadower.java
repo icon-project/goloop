@@ -31,7 +31,7 @@ public class InvokedynamicShadower extends ClassToolchain.ToolChainClassVisitor 
     private static final String FUNCTION_DESCRIPTOR = "()L" + Utilities.fullyQualifiedNameToInternalName(s.java.util.function.Function.class.getName()) + ";";
 
     public InvokedynamicShadower(String shadowPackage) {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
         replacer = new IObjectReplacer(shadowPackage);
         postRenameStringConcatFactory = shadowPackage + "java/lang/invoke/StringConcatFactory";
         postRenameLambdaFactory = shadowPackage + "java/lang/invoke/LambdaMetafactory";
@@ -49,7 +49,7 @@ public class InvokedynamicShadower extends ClassToolchain.ToolChainClassVisitor 
 
     private final class IndyMethodVisitor extends MethodVisitor {
         private IndyMethodVisitor(MethodVisitor methodVisitor) {
-            super(Opcodes.ASM6, methodVisitor);
+            super(Opcodes.ASM7, methodVisitor);
         }
 
         @Override

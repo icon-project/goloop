@@ -5,7 +5,7 @@ dependencies {
     implementation project(':exec')
 
     runtimeOnly project(':logger')
-    runtimeOnly 'org.ow2.asm:asm-analysis:6.2.1'
+    runtimeOnly 'org.ow2.asm:asm-analysis:7.0'
 }
 
 application {

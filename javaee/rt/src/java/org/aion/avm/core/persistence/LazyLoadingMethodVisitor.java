@@ -32,7 +32,7 @@ public class LazyLoadingMethodVisitor extends MethodVisitor {
     private int frameOffset;
 
     public LazyLoadingMethodVisitor(MethodVisitor visitor, StackThisTracker tracker) {
-        super(Opcodes.ASM6, visitor);
+        super(Opcodes.ASM7, visitor);
         this.tracker = tracker;
     }
 

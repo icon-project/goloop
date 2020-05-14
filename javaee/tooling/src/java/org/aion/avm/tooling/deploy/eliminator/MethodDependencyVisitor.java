@@ -14,7 +14,7 @@ public class MethodDependencyVisitor extends MethodVisitor {
 
     public MethodDependencyVisitor(String methodName, String methodDescriptor, int access,
         MethodVisitor mv) {
-        super(Opcodes.ASM6, mv);
+        super(Opcodes.ASM7, mv);
         // the concatenation of name + descriptor is a unique identifier for every method in a class
         this.methodIdentifier = methodName + methodDescriptor;
         this.isStatic = (access & Opcodes.ACC_STATIC) != 0;

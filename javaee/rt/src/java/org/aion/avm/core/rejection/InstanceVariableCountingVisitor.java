@@ -16,7 +16,7 @@ public class InstanceVariableCountingVisitor extends ClassToolchain.ToolChainCla
     private int instanceVariableCount;
 
     public InstanceVariableCountingVisitor(InstanceVariableCountManager manager) {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
         this.manager = manager;
     }
 

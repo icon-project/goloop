@@ -9,7 +9,7 @@ import org.objectweb.asm.Opcodes;
  */
 public class RejectionAnnotationVisitor extends AnnotationVisitor {
     public RejectionAnnotationVisitor() {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
     }
 
     @Override

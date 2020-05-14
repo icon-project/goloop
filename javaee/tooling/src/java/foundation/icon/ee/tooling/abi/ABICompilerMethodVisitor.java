@@ -101,7 +101,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
     }
 
     public ABICompilerMethodVisitor(int access, String methodName, String methodDescriptor, MethodVisitor mv, boolean stripLineNumber) {
-        super(Opcodes.ASM6, mv);
+        super(Opcodes.ASM7, mv);
         this.access = access;
         this.methodName = methodName;
         this.methodDescriptor = methodDescriptor;
@@ -139,7 +139,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
             checkArgumentsAndReturnType();
             flags |= Method.Flags.EXTERNAL;
             // to process readonly element
-            return new AnnotationVisitor(Opcodes.ASM6) {
+            return new AnnotationVisitor(Opcodes.ASM7) {
                 @Override
                 public void visit(String name, Object value) {
                     if ("readonly".equals(name) && Boolean.TRUE.equals(value)) {
@@ -171,7 +171,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
                 }
             }
             isEventLog = true;
-            return new AnnotationVisitor(Opcodes.ASM6) {
+            return new AnnotationVisitor(Opcodes.ASM7) {
                 @Override
                 public void visit(String name, Object value) {
                     if ("indexed".equals(name) && (value instanceof Integer)) {
@@ -348,7 +348,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
             final boolean TRACE = false;
             MethodNode node;
             if (TRACE) {
-                node = new MethodNode(Opcodes.ASM6);
+                node = new MethodNode(Opcodes.ASM7);
                 pmv = mv;
                 mv = node;
             }

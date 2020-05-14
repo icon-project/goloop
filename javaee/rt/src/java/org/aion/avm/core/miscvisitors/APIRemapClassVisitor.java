@@ -7,13 +7,13 @@ import org.objectweb.asm.Opcodes;
 public class APIRemapClassVisitor extends ClassToolchain.ToolChainClassVisitor {
 
     public APIRemapClassVisitor() {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
     }
 
     @Override
     public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
         MethodVisitor mv = super.visitMethod(access, name, desc, signature, exceptions);
-        return new MethodVisitor(Opcodes.ASM6, mv) {
+        return new MethodVisitor(Opcodes.ASM7, mv) {
             @Override
             public void visitMethodInsn(
                     int opcode,

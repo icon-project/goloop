@@ -16,9 +16,8 @@ import java.util.jar.JarInputStream;
 
 public class JarOptimizer {
 
-    private static boolean loggingEnabled = false;
-
-    private boolean preserveDebugInfo;
+    private static final boolean loggingEnabled = false;
+    private final boolean preserveDebugInfo;
 
     public static void main(String[] args) {
         if (args.length != 1) {
@@ -115,7 +114,7 @@ public class JarOptimizer {
             ClassReader reader = new ClassReader(classMap.get(className));
             ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES | ClassWriter.COMPUTE_MAXS);
 
-            ClassVisitor classVisitor = new ClassVisitor(Opcodes.ASM6, writer) {
+            ClassVisitor classVisitor = new ClassVisitor(Opcodes.ASM7, writer) {
                 @Override
                 public void visitInnerClass(String name, String outerName, String innerName, int access) {
                     if (visitedClasses.contains(name)) {
@@ -153,4 +152,3 @@ public class JarOptimizer {
         }
     }
 }
-

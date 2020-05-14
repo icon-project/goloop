@@ -12,7 +12,7 @@ import org.objectweb.asm.Opcodes;
 public class ArraysWithKnownTypesClassVisitor extends ClassToolchain.ToolChainClassVisitor {
 
     public ArraysWithKnownTypesClassVisitor() {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
     }
 
     @Override

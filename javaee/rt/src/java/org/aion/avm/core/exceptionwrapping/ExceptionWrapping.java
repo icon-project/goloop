@@ -34,7 +34,7 @@ public class ExceptionWrapping extends ClassToolchain.ToolChainClassVisitor {
     private final Set<String> jclExceptionsSlashStyle;
 
     public ExceptionWrapping(GeneratedClassConsumer generatedClassesSink, ClassHierarchy classHierarchy) {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
         this.generatedClassesSink = generatedClassesSink;
         this.classHierarchy = classHierarchy;
         this.jclExceptionsSlashStyle = fetchAllJavaLangExceptionsSlashStyle();
@@ -68,7 +68,7 @@ public class ExceptionWrapping extends ClassToolchain.ToolChainClassVisitor {
 
         MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
 
-        return new MethodVisitor(Opcodes.ASM6, mv) {
+        return new MethodVisitor(Opcodes.ASM7, mv) {
             // We are going to collect the target labels of the exception handlers, so we can inject our instrumentation.
             private final Set<Label> catchTargets = new HashSet<>();
             // When we match a label as a target, we set this flag to inject our call-out before the first bytecode.

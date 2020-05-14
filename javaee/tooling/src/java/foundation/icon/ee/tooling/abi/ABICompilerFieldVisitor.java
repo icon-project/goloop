@@ -16,7 +16,7 @@ public class ABICompilerFieldVisitor extends FieldVisitor {
     private String fieldDescriptor;
 
     public ABICompilerFieldVisitor(int access, String fieldName, String fieldDescriptor, FieldVisitor fv) {
-        super(Opcodes.ASM6, fv);
+        super(Opcodes.ASM7, fv);
         this.access = access;
         this.fieldName = fieldName;
         this.fieldDescriptor = fieldDescriptor;

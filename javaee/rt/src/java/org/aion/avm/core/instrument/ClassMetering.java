@@ -21,7 +21,7 @@ public class ClassMetering extends ClassToolchain.ToolChainClassVisitor {
     private final BytecodeFeeScheduler bytecodeFeeScheduler;
 
     public ClassMetering(Map<String, Integer> objectSizes) {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
 
         this.objectSizes = objectSizes;
         
@@ -41,7 +41,7 @@ public class ClassMetering extends ClassToolchain.ToolChainClassVisitor {
         
         // We use a MethodNode since we want to capture the bytecode to walk it twice.
         // The actual final write is done on the realVisitor.
-        return new MethodNode(Opcodes.ASM6, access, name, descriptor, signature, exceptions) {
+        return new MethodNode(Opcodes.ASM7, access, name, descriptor, signature, exceptions) {
             @Override
             public void visitEnd() {
                 // Let the superclass do what it wants to finish this.

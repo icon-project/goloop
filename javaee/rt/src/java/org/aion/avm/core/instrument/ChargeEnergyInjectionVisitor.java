@@ -27,7 +27,7 @@ public class ChargeEnergyInjectionVisitor extends MethodVisitor {
     private int nextBlockIndexToWrite;
 
     public ChargeEnergyInjectionVisitor(MethodVisitor target, List<BasicBlock> blocks) {
-        super(Opcodes.ASM6, target);
+        super(Opcodes.ASM7, target);
         this.blocks = blocks;
     }
 

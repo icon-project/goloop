@@ -12,7 +12,7 @@ public class ClassDependencyVisitor extends ClassVisitor {
     private boolean preserveDebugInfo;
 
     public ClassDependencyVisitor(SignatureVisitor signatureVisitor, DependencyCollector dependencyCollector, ClassWriter writer, boolean preserveDebugInfo) {
-        super(Opcodes.ASM6, writer);
+        super(Opcodes.ASM7, writer);
         this.dependencyCollector = dependencyCollector;
         this.signatureVisitor = signatureVisitor;
         this.preserveDebugInfo = preserveDebugInfo;

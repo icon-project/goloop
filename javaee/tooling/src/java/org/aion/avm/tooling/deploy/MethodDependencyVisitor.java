@@ -11,7 +11,7 @@ public class MethodDependencyVisitor extends MethodVisitor {
     private boolean preserveDebugInfo;
 
     public MethodDependencyVisitor(MethodVisitor mv, SignatureVisitor signatureVisitor, DependencyCollector dependencyCollector, boolean preserveDebugInfo) {
-        super(Opcodes.ASM6, mv);
+        super(Opcodes.ASM7, mv);
         this.dependencyCollector = dependencyCollector;
         this.signatureVisitor = signatureVisitor;
         this.preserveDebugInfo = preserveDebugInfo;

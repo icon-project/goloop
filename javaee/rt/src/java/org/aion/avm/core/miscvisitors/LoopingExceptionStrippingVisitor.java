@@ -20,7 +20,7 @@ import org.objectweb.asm.Opcodes;
  */
 public class LoopingExceptionStrippingVisitor extends ClassToolchain.ToolChainClassVisitor {
     public LoopingExceptionStrippingVisitor() {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
     }
 
     @Override
@@ -35,7 +35,7 @@ public class LoopingExceptionStrippingVisitor extends ClassToolchain.ToolChainCl
         private final List<TryCatchBlock> labels;
         
         public ExceptionMethodVisitor(MethodVisitor methodVisitor) {
-            super(Opcodes.ASM6, methodVisitor);
+            super(Opcodes.ASM7, methodVisitor);
             this.labels = new ArrayList<>();
         }
         

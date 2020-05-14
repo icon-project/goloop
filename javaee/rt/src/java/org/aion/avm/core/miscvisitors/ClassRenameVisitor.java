@@ -19,7 +19,7 @@ public class ClassRenameVisitor extends ClassToolchain.ToolChainClassVisitor {
     private String originalSlashName;
 
     public ClassRenameVisitor(String targetSlashName) {
-        super(Opcodes.ASM6);
+        super(Opcodes.ASM7);
         this.targetSlashName = targetSlashName;
     }
 
@@ -39,7 +39,7 @@ public class ClassRenameVisitor extends ClassToolchain.ToolChainClassVisitor {
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
         MethodVisitor visitor = super.visitMethod(access, name, mapDescriptor(descriptor), null, exceptions);
         
-        return new MethodVisitor(Opcodes.ASM6, visitor) {
+        return new MethodVisitor(Opcodes.ASM7, visitor) {
             @Override
             public void visitTypeInsn(int opcode, String type) {
                 super.visitTypeInsn(opcode, mapName(type));

@@ -26,7 +26,7 @@ else
     JAVAC="javac"
     JAR="jar"
 fi
-JAVAC_OPTIONS='-parameters --release 10'
+JAVAC_OPTIONS='-parameters --release 11'
 
 # cd to project and clean the previous build
 cd $TOPDIR/$PROJECT || die "Could not change directory to $PROJECT"
