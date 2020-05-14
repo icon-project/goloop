@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"go.opencensus.io/exporter/prometheus"
+	"contrib.go.opencensus.io/exporter/prometheus"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
@@ -94,21 +94,43 @@ func GetMetricContext(p context.Context, mk *tag.Key, v string) context.Context 
 	return ctx
 }
 
+func RemoveMetricContext(mk *tag.Key, v string) {
+	defer mTagMtx.Unlock()
+	mTagMtx.Lock()
+
+	if m, ok := mTags[mk]; ok {
+		if _, ok := m[v]; ok {
+			delete(m, v)
+		}
+	}
+}
+
 func DefaultMetricContext() context.Context {
 	return defaultMetricCtx
 }
 
-func GetMetricContextByCID(nid int) context.Context {
+func GetMetricContextByCID(cid int) context.Context {
 	chainMetricMtx.Lock()
 	defer chainMetricMtx.Unlock()
 
-	chainID := strconv.FormatInt(int64(nid), 16)
+	chainID := strconv.FormatInt(int64(cid), 16)
 	ctx, ok := chainMetricCtxs[chainID]
 	if !ok {
 		ctx = GetMetricContext(rootMetricCtx, &MetricKeyChain, chainID)
 		chainMetricCtxs[chainID] = ctx
 	}
 	return ctx
+}
+
+func RemoveMetricContextByCID(cid int) {
+	chainMetricMtx.Lock()
+	defer chainMetricMtx.Unlock()
+
+	chainID := strconv.FormatInt(int64(cid), 16)
+	if _, ok := chainMetricCtxs[chainID]; ok {
+		delete(chainMetricCtxs, chainID)
+		RemoveMetricContext(&MetricKeyChain, chainID)
+	}
 }
 
 func _resolveHostname(w module.Wallet) string {

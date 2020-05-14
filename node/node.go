@@ -134,6 +134,7 @@ func (n *Node) _remove(c module.Chain) error {
 
 	delete(n.chains, n.channels[c.CID()])
 	delete(n.channels, c.CID())
+	metric.RemoveMetricContextByCID(c.CID())
 	metric.ResetMetricViews()
 	return nil
 }
