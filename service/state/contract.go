@@ -6,10 +6,9 @@ import (
 
 	"golang.org/x/crypto/sha3"
 
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
-	"github.com/icon-project/goloop/common/rlp"
-	"gopkg.in/vmihailenco/msgpack.v4"
 
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
@@ -162,44 +161,7 @@ const (
 	contractSnapshotImplEntries = 7
 )
 
-func (c *contractSnapshotImpl) EncodeMsgpack(e *msgpack.Encoder) error {
-	if err := e.EncodeArrayLen(contractSnapshotImplEntries); err != nil {
-		return err
-	}
-	return e.EncodeMulti(
-		c.state,
-		c.contentType,
-		c.eeType,
-		c.deployTxHash,
-		c.auditTxHash,
-		c.codeHash,
-		c.params,
-	)
-}
-
-func (c *contractSnapshotImpl) DecodeMsgpack(d *msgpack.Decoder) error {
-	if n, err := d.DecodeArrayLen(); err != nil {
-		return err
-	} else {
-		if n != contractSnapshotImplEntries {
-			return errors.IllegalArgumentError.Errorf(
-				"contractSnapshotImpl: entries(%d) != %d",
-				n, contractSnapshotImplEntries)
-		}
-	}
-
-	return d.DecodeMulti(
-		&c.state,
-		&c.contentType,
-		&c.eeType,
-		&c.deployTxHash,
-		&c.auditTxHash,
-		&c.codeHash,
-		&c.params,
-	)
-}
-
-func (c *contractSnapshotImpl) RLPEncodeSelf(e rlp.Encoder) error {
+func (c *contractSnapshotImpl) RLPEncodeSelf(e codec.Encoder) error {
 	return e.EncodeListOf(
 		c.state,
 		c.contentType,
@@ -211,7 +173,7 @@ func (c *contractSnapshotImpl) RLPEncodeSelf(e rlp.Encoder) error {
 	)
 }
 
-func (c *contractSnapshotImpl) RLPDecodeSelf(d rlp.Decoder) error {
+func (c *contractSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
 	return d.DecodeListOf(
 		&c.state,
 		&c.contentType,

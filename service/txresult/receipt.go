@@ -9,15 +9,12 @@ import (
 	"regexp"
 	"strings"
 
-	"gopkg.in/vmihailenco/msgpack.v4"
-
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
-	"github.com/icon-project/goloop/common/rlp"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/module"
@@ -206,69 +203,7 @@ func (r *receipt) ClearCache() {
 	}
 }
 
-func (r *receipt) EncodeMsgpack(e *msgpack.Encoder) error {
-	if r.version == Version1 {
-		return e.Encode(&r.data)
-	} else {
-		if err := e.EncodeArrayLen(listItemsForVersion2); err != nil {
-			return err
-		}
-		hash := r.eventLogs.Hash()
-		return e.EncodeMulti(
-			r.data.Status,
-			&r.data.To,
-			&r.data.CumulativeStepUsed,
-			&r.data.StepUsed,
-			&r.data.StepPrice,
-			&r.data.LogsBloom,
-			r.data.EventLogs,
-			&r.data.SCOREAddress,
-			hash)
-	}
-}
-
-func (r *receipt) DecodeMsgpack(d *msgpack.Decoder) error {
-	l, err := d.DecodeArrayLen()
-	if err != nil {
-		return err
-	}
-	if l == listItemsForVersion1 {
-		r.version = Version1
-		if err := d.DecodeMulti(
-			&r.data.Status,
-			&r.data.To,
-			&r.data.CumulativeStepUsed,
-			&r.data.StepUsed,
-			&r.data.StepPrice,
-			&r.data.LogsBloom,
-			&r.data.EventLogs,
-			&r.data.SCOREAddress); err != nil {
-			return err
-		}
-	} else if l == listItemsForVersion2 {
-		r.version = Version2
-		var hash []byte
-		if err := d.DecodeMulti(
-			&r.data.Status,
-			&r.data.To,
-			&r.data.CumulativeStepUsed,
-			&r.data.StepUsed,
-			&r.data.StepPrice,
-			&r.data.LogsBloom,
-			&r.data.EventLogs,
-			&r.data.SCOREAddress,
-			&hash); err != nil {
-			return err
-		}
-		r.eventLogs = trie_manager.NewImmutableForObject(r.db, hash,
-			reflect.TypeOf((*eventLog)(nil)))
-	} else {
-		return errors.New("Invalid data count")
-	}
-	return nil
-}
-
-func (r *receipt) RLPEncodeSelf(e rlp.Encoder) error {
+func (r *receipt) RLPEncodeSelf(e codec.Encoder) error {
 	if r.version == Version1 {
 		return e.Encode(&r.data)
 	} else {
@@ -286,7 +221,7 @@ func (r *receipt) RLPEncodeSelf(e rlp.Encoder) error {
 	}
 }
 
-func (r *receipt) RLPDecodeSelf(d rlp.Decoder) error {
+func (r *receipt) RLPDecodeSelf(d codec.Decoder) error {
 	d2, err := d.DecodeList()
 	if err != nil {
 		return err
@@ -310,7 +245,7 @@ func (r *receipt) RLPDecodeSelf(d rlp.Decoder) error {
 			r.eventLogs = trie_manager.NewImmutableForObject(r.db, hash,
 				reflect.TypeOf((*eventLog)(nil)))
 		} else {
-			return rlp.ErrInvalidFormat
+			return codec.ErrInvalidFormat
 		}
 	} else {
 		return err

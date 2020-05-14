@@ -8,11 +8,10 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/common/rlp"
 	"github.com/icon-project/goloop/module"
-	"gopkg.in/vmihailenco/msgpack.v4"
 )
 
 const (
@@ -63,24 +62,11 @@ func (lb *LogsBloom) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (lb *LogsBloom) EncodeMsgpack(e *msgpack.Encoder) error {
-	return e.EncodeBytes(lb.Bytes())
-}
-
-func (lb *LogsBloom) DecodeMsgpack(d *msgpack.Decoder) error {
-	if b, err := d.DecodeBytes(); err != nil {
-		return err
-	} else {
-		lb.SetBytes(b)
-		return nil
-	}
-}
-
-func (lb *LogsBloom) RLPEncodeSelf(e rlp.Encoder) error {
+func (lb *LogsBloom) RLPEncodeSelf(e codec.Encoder) error {
 	return e.Encode(lb.Bytes())
 }
 
-func (lb *LogsBloom) RLPDecodeSelf(d rlp.Decoder) error {
+func (lb *LogsBloom) RLPDecodeSelf(d codec.Decoder) error {
 	var bs []byte
 	if err := d.Decode(&bs); err != nil {
 		return err

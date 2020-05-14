@@ -6,11 +6,10 @@ import (
 	"encoding/json"
 	"reflect"
 
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/log"
-	"github.com/icon-project/goloop/common/rlp"
 	"github.com/icon-project/goloop/module"
-	"gopkg.in/vmihailenco/msgpack.v4"
 )
 
 const (
@@ -159,23 +158,11 @@ func (a *Address) Equal(a2 module.Address) bool {
 	return bytes.Equal(a[:], a2.Bytes())
 }
 
-func (a Address) EncodeMsgpack(e *msgpack.Encoder) error {
-	return e.EncodeBytes([]byte(a[:]))
-}
-
-func (a *Address) DecodeMsgpack(d *msgpack.Decoder) error {
-	if bs, err := d.DecodeBytes(); err != nil {
-		return err
-	} else {
-		return a.SetBytes(bs)
-	}
-}
-
-func (a *Address) RLPEncodeSelf(e rlp.Encoder) error {
+func (a *Address) RLPEncodeSelf(e codec.Encoder) error {
 	return e.Encode([]byte(a[:]))
 }
 
-func (a *Address) RLPDecodeSelf(d rlp.Decoder) error {
+func (a *Address) RLPDecodeSelf(d codec.Decoder) error {
 	if bs, err := d.DecodeBytes(); err != nil {
 		return err
 	} else {

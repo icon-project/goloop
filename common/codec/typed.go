@@ -4,9 +4,6 @@ import (
 	"bytes"
 
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/common/rlp"
-
-	"gopkg.in/vmihailenco/msgpack.v4"
 )
 
 const (
@@ -44,70 +41,11 @@ var Nil = &TypedObj{
 	},
 }
 
-func (o *TypedObj) EncodeMsgpack(e *msgpack.Encoder) error {
+func (o *TypedObj) RLPEncodeSelf(e Encoder) error {
 	return e.Encode(o.typedObjBase)
 }
 
-func (o *TypedObj) DecodeMsgpack(d *msgpack.Decoder) error {
-	if n, err := d.DecodeArrayLen(); err != nil {
-		return nil
-	} else {
-		if n != 2 {
-			return errors.IllegalArgumentError.Errorf("TypedObj(length:%d != 2)", n)
-		}
-	}
-
-	t, err := d.DecodeUint8()
-	if err != nil {
-		return err
-	}
-	o.Type = t
-	switch t {
-	case TypeNil:
-		d.Skip()
-	case TypeDict:
-		var m map[string]*TypedObj
-		err = d.Decode(&m)
-		if err != nil {
-			return err
-		}
-		o.Object = m
-	case TypeList:
-		var l []*TypedObj
-		err = d.Decode(&l)
-		if err != nil {
-			return err
-		}
-		o.Object = l
-	case TypeString:
-		s, err := d.DecodeString()
-		if err != nil {
-			return err
-		}
-		o.Object = s
-	case TypeBool:
-		var bs []byte
-		bs, err := d.DecodeBytes()
-		if err != nil {
-			return err
-		}
-		o.Object = bs
-	default:
-		var bs []byte
-		bs, err := d.DecodeBytes()
-		if err != nil {
-			return err
-		}
-		o.Object = bs
-	}
-	return nil
-}
-
-func (o *TypedObj) RLPEncodeSelf(e rlp.Encoder) error {
-	return e.Encode(o.typedObjBase)
-}
-
-func (o *TypedObj) RLPDecodeSelf(d rlp.Decoder) error {
+func (o *TypedObj) RLPDecodeSelf(d Decoder) error {
 	d2, err := d.DecodeList()
 	if err != nil {
 		return err

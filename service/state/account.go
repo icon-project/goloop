@@ -6,7 +6,6 @@ import (
 	"math/big"
 
 	"golang.org/x/crypto/sha3"
-	"gopkg.in/vmihailenco/msgpack.v4"
 
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
@@ -14,7 +13,6 @@ import (
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/common/merkle"
-	"github.com/icon-project/goloop/common/rlp"
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/cache"
 	"github.com/icon-project/goloop/common/trie/ompt"
@@ -321,94 +319,7 @@ const (
 	accountSnapshotIncludeObjGraph = 11 // include object graph
 )
 
-func (s *accountSnapshotImpl) EncodeMsgpack(e *msgpack.Encoder) (err error) {
-	var entryNum int
-	if s.objGraph == nil {
-		entryNum = accountSnapshotImplEntries
-	} else {
-		entryNum = accountSnapshotIncludeObjGraph
-	}
-	if err := e.EncodeArrayLen(entryNum); err != nil {
-		return err
-	}
-
-	var storeHash []byte
-	if s.store != nil {
-		storeHash = s.store.Hash()
-	}
-
-	err = e.EncodeMulti(
-		s.version,
-		&s.balance,
-		s.fIsContract,
-		storeHash,
-		s.state,
-		s.contractOwner,
-		s.apiInfo,
-		s.curContract,
-		s.nextContract,
-	)
-	if err == nil && s.objGraph != nil {
-		err = e.EncodeMulti(s.objGraph.nextHash, s.objGraph.graphHash)
-	}
-	return err
-}
-
-func (s *accountSnapshotImpl) DecodeMsgpack(d *msgpack.Decoder) error {
-	var storeHash []byte
-	if n, err := d.DecodeArrayLen(); err != nil {
-		return err
-	} else {
-		if n == accountSnapshotImplEntries {
-			if err := d.DecodeMulti(
-				&s.version,
-				&s.balance,
-				&s.fIsContract,
-				&storeHash,
-				&s.state,
-				&s.contractOwner,
-				&s.apiInfo,
-				&s.curContract,
-				&s.nextContract,
-			); err != nil {
-				return err
-			}
-		} else if n == accountSnapshotIncludeObjGraph {
-			var objGraph objectGraph
-			s.objGraph = &objGraph
-			if err := d.DecodeMulti(
-				&s.version,
-				&s.balance,
-				&s.fIsContract,
-				&storeHash,
-				&s.state,
-				&s.contractOwner,
-				&s.apiInfo,
-				&s.curContract,
-				&s.nextContract,
-				&s.objGraph.nextHash,
-				&s.objGraph.graphHash,
-			); err != nil {
-				return err
-			}
-		} else {
-			return errors.IllegalArgumentError.Errorf("Unknown length")
-		}
-	}
-
-	if len(storeHash) > 0 {
-		s.store = trie_manager.NewImmutable(s.database, storeHash)
-	}
-	if s.curContract != nil {
-		s.curContract.bk, _ = s.database.GetBucket(db.BytesByHash)
-	}
-	if s.nextContract != nil {
-		s.nextContract.bk, _ = s.database.GetBucket(db.BytesByHash)
-	}
-	return nil
-}
-
-func (s *accountSnapshotImpl) RLPEncodeSelf(e rlp.Encoder) error {
+func (s *accountSnapshotImpl) RLPEncodeSelf(e codec.Encoder) error {
 	var storeHash []byte
 	if s.store != nil {
 		storeHash = s.store.Hash()
@@ -442,7 +353,7 @@ func (s *accountSnapshotImpl) RLPEncodeSelf(e rlp.Encoder) error {
 	return nil
 }
 
-func (s *accountSnapshotImpl) RLPDecodeSelf(d rlp.Decoder) error {
+func (s *accountSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
 	d2, err := d.DecodeList()
 	if err != nil {
 		return err
@@ -468,7 +379,7 @@ func (s *accountSnapshotImpl) RLPDecodeSelf(d rlp.Decoder) error {
 		} else if n == accountSnapshotImplEntries {
 			s.objGraph = nil
 		} else {
-			return rlp.ErrInvalidFormat
+			return codec.ErrInvalidFormat
 		}
 	} else {
 		return err

@@ -4,10 +4,8 @@ import (
 	"encoding/json"
 	"math/big"
 
-	"gopkg.in/vmihailenco/msgpack.v4"
-
+	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/intconv"
-	"github.com/icon-project/goloop/common/rlp"
 )
 
 type HexInt struct {
@@ -32,19 +30,6 @@ func (i *HexInt) UnmarshalJSON(b []byte) error {
 		return err
 	} else {
 		return intconv.ParseBigInt(&i.Int, s)
-	}
-}
-
-func (i *HexInt) EncodeMsgpack(e *msgpack.Encoder) error {
-	return e.EncodeBytes(i.Bytes())
-}
-
-func (i *HexInt) DecodeMsgpack(d *msgpack.Decoder) error {
-	if v, err := d.DecodeBytes(); err != nil {
-		return err
-	} else {
-		i.SetBytes(v)
-		return nil
 	}
 }
 
@@ -102,19 +87,11 @@ func (i *HexInt16) UnmarshalJSON(b []byte) error {
 	}
 }
 
-func (i *HexInt16) EncodeMsgpack(e *msgpack.Encoder) error {
-	return e.EncodeInt(int64(i.Value))
-}
-
-func (i *HexInt16) DecodeMsgpack(d *msgpack.Decoder) error {
-	return d.Decode(&i.Value)
-}
-
-func (i *HexInt16) RLPEncodeSelf(e rlp.Encoder) error {
+func (i *HexInt16) RLPEncodeSelf(e codec.Encoder) error {
 	return e.Encode(int64(i.Value))
 }
 
-func (i *HexInt16) RLPDecodeSelf(d rlp.Decoder) error {
+func (i *HexInt16) RLPDecodeSelf(d codec.Decoder) error {
 	return d.Decode(&i.Value)
 }
 
@@ -147,19 +124,11 @@ func (i *HexUint16) UnmarshalJSON(b []byte) error {
 	}
 }
 
-func (i *HexUint16) EncodeMsgpack(e *msgpack.Encoder) error {
-	return e.EncodeUint(uint64(i.Value))
-}
-
-func (i *HexUint16) DecodeMsgpack(d *msgpack.Decoder) error {
-	return d.Decode(&i.Value)
-}
-
-func (i *HexUint16) RLPEncodeSelf(e rlp.Encoder) error {
+func (i *HexUint16) RLPEncodeSelf(e codec.Encoder) error {
 	return e.Encode(int64(i.Value))
 }
 
-func (i *HexUint16) RLPDecodeSelf(d rlp.Decoder) error {
+func (i *HexUint16) RLPDecodeSelf(d codec.Decoder) error {
 	return d.Decode(&i.Value)
 }
 
@@ -192,19 +161,11 @@ func (i *HexInt32) UnmarshalJSON(b []byte) error {
 	}
 }
 
-func (i *HexInt32) EncodeMsgpack(e *msgpack.Encoder) error {
-	return e.EncodeInt(int64(i.Value))
-}
-
-func (i *HexInt32) DecodeMsgpack(d *msgpack.Decoder) error {
-	return d.Decode(&i.Value)
-}
-
-func (i *HexInt32) RLPEncodeSelf(e rlp.Encoder) error {
+func (i *HexInt32) RLPEncodeSelf(e codec.Encoder) error {
 	return e.Encode(int64(i.Value))
 }
 
-func (i *HexInt32) RLPDecodeSelf(d rlp.Decoder) error {
+func (i *HexInt32) RLPDecodeSelf(d codec.Decoder) error {
 	return d.Decode(&i.Value)
 }
 
@@ -233,19 +194,11 @@ func (i *HexUint32) UnmarshalJSON(b []byte) error {
 	}
 }
 
-func (i *HexUint32) EncodeMsgpack(e *msgpack.Encoder) error {
-	return e.EncodeUint(uint64(i.Value))
-}
-
-func (i *HexUint32) DecodeMsgpack(d *msgpack.Decoder) error {
-	return d.Decode(&i.Value)
-}
-
-func (i *HexUint32) RLPEncodeSelf(e rlp.Encoder) error {
+func (i *HexUint32) RLPEncodeSelf(e codec.Encoder) error {
 	return e.Encode(int64(i.Value))
 }
 
-func (i *HexUint32) RLPDecodeSelf(d rlp.Decoder) error {
+func (i *HexUint32) RLPDecodeSelf(d codec.Decoder) error {
 	return d.Decode(&i.Value)
 }
 
@@ -274,19 +227,11 @@ func (i *HexInt64) UnmarshalJSON(b []byte) error {
 	}
 }
 
-func (i *HexInt64) EncodeMsgpack(e *msgpack.Encoder) error {
-	return e.EncodeInt(int64(i.Value))
-}
-
-func (i *HexInt64) DecodeMsgpack(d *msgpack.Decoder) error {
-	return d.Decode(&i.Value)
-}
-
-func (i *HexInt64) RLPEncodeSelf(e rlp.Encoder) error {
+func (i *HexInt64) RLPEncodeSelf(e codec.Encoder) error {
 	return e.Encode(int64(i.Value))
 }
 
-func (i *HexInt64) RLPDecodeSelf(d rlp.Decoder) error {
+func (i *HexInt64) RLPDecodeSelf(d codec.Decoder) error {
 	return d.Decode(&i.Value)
 }
 
@@ -315,18 +260,10 @@ func (i *HexUint64) UnmarshalJSON(b []byte) error {
 	}
 }
 
-func (i *HexUint64) EncodeMsgpack(e *msgpack.Encoder) error {
-	return e.EncodeUint(i.Value)
-}
-
-func (i *HexUint64) DecodeMsgpack(d *msgpack.Decoder) error {
-	return d.Decode(&i.Value)
-}
-
-func (i *HexUint64) RLPEncodeSelf(e rlp.Encoder) error {
+func (i *HexUint64) RLPEncodeSelf(e codec.Encoder) error {
 	return e.Encode(i.Value)
 }
 
-func (i *HexUint64) RLPDecodeSelf(d rlp.Decoder) error {
+func (i *HexUint64) RLPDecodeSelf(d codec.Decoder) error {
 	return d.Decode(&i.Value)
 }

@@ -11,10 +11,10 @@ var JSON = bytesWrapper{&jsonCodecObject}
 type jsonCodec struct {
 }
 
-func (c *jsonCodec) NewEncoder(w io.Writer) Encoder {
+func (c *jsonCodec) NewEncoder(w io.Writer) SimpleEncoder {
 	return json.NewEncoder(w)
 }
 
-func (c *jsonCodec) NewDecoder(r io.Reader) Decoder {
+func (c *jsonCodec) NewDecoder(r io.Reader) SimpleDecoder {
 	return json.NewDecoder(r)
 }

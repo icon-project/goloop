@@ -4,11 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 
-	"gopkg.in/vmihailenco/msgpack.v4"
-
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
-	"github.com/icon-project/goloop/common/rlp"
 	"github.com/icon-project/goloop/service/scoreresult"
 )
 
@@ -17,23 +14,11 @@ type Info struct {
 	methodMap map[string]*Method
 }
 
-func (info *Info) EncodeMsgpack(e *msgpack.Encoder) error {
+func (info *Info) RLPEncodeSelf(e codec.Encoder) error {
 	return e.Encode(info.methods)
 }
 
-func (info *Info) DecodeMsgpack(d *msgpack.Decoder) error {
-	if err := d.Decode(&info.methods); err != nil {
-		return err
-	}
-	info.buildMethodMap()
-	return nil
-}
-
-func (info *Info) RLPEncodeSelf(e rlp.Encoder) error {
-	return e.Encode(info.methods)
-}
-
-func (info *Info) RLPDecodeSelf(d rlp.Decoder) error {
+func (info *Info) RLPDecodeSelf(d codec.Decoder) error {
 	if err := d.Decode(&info.methods); err != nil {
 		return err
 	}

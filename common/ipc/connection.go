@@ -62,7 +62,7 @@ func (c *connection) Send(msg uint, data interface{}) error {
 
 type rawMessage []byte
 
-func (m *rawMessage) UnmarshalMsgpack(bs []byte) error {
+func (m *rawMessage) UnmarshalRLP(bs []byte) error {
 	n := make([]byte, len(bs))
 	copy(n, bs)
 	*m = n

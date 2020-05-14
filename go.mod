@@ -3,6 +3,7 @@ module github.com/icon-project/goloop
 require (
 	contrib.go.opencensus.io/exporter/prometheus v0.1.0
 	github.com/AndreasBriese/bbloom v0.0.0-20190306092124-e2d15f34fcf9 // indirect
+	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/bshuster-repo/logrus-logstash-hook v0.4.1
 	github.com/dgraph-io/badger v1.5.4
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
@@ -32,7 +33,7 @@ require (
 	github.com/stretchr/testify v1.4.0
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/tinylib/msgp v1.1.0 // indirect
-	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
+	github.com/vmihailenco/msgpack/v4 v4.3.11
 	go.etcd.io/bbolt v1.3.2
 	go.opencensus.io v0.22.3
 	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
@@ -40,7 +41,6 @@ require (
 	gopkg.in/go-playground/assert.v1 v1.2.1 // indirect
 	gopkg.in/go-playground/validator.v9 v9.28.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
-	gopkg.in/vmihailenco/msgpack.v4 v4.0.4
 )
 
 go 1.13
