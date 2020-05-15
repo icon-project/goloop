@@ -138,12 +138,12 @@ public class SampleCrowdsale
             if (!this.fundingGoalReached) {
                 BigInteger amount = safeGetBalance(_from);
                 if (amount.compareTo(BigInteger.ZERO) > 0) {
+                    // set their balance to ZERO first before transferring the amount to prevent reentrancy attack
+                    this.balances.set(_from, BigInteger.ZERO);
                     // transfer the icx back to them
                     Context.transfer(_from, amount);
                     // emit eventlog
                     FundTransfer(_from, amount, false);
-                    // set their balance to ZERO
-                    this.balances.set(_from, BigInteger.ZERO);
                 }
             }
 
