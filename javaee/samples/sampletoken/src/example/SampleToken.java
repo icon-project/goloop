@@ -31,7 +31,7 @@ public class SampleToken
     private final String symbol;
     private final int decimals;
     private final BigInteger totalSupply;
-    private DictDB<Address, BigInteger> balances;
+    private final DictDB<Address, BigInteger> balances;
 
     public SampleToken(String _name, String _symbol, BigInteger _decimals, BigInteger _initialSupply) {
         this.name = _name;

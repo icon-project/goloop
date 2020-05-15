@@ -29,14 +29,14 @@ import java.math.BigInteger;
 public class SampleCrowdsale
 {
     private static final BigInteger ONE_ICX = new BigInteger("1000000000000000000");
-    private Address beneficiary;
-    private Address tokenScore;
-    private BigInteger fundingGoal;
-    private long deadline;
+    private final Address beneficiary;
+    private final Address tokenScore;
+    private final BigInteger fundingGoal;
+    private final long deadline;
     private boolean fundingGoalReached;
     private boolean crowdsaleClosed;
-    private DictDB<Address, BigInteger> balances;
-    private VarDB<BigInteger> amountRaised;
+    private final DictDB<Address, BigInteger> balances;
+    private final VarDB<BigInteger> amountRaised;
 
     public SampleCrowdsale(BigInteger _fundingGoalInIcx, Address _tokenScore, BigInteger _durationInBlocks) {
         // some basic requirements
