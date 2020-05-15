@@ -83,5 +83,5 @@ RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Return add
 RECV result status=0 stepUsed=64165 ret=<null>
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Expect [OK] expected sVar=bf
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| Exit by Return addr=1
-RECV setObjGraph flag=1 next=140 hash=924ae995ecc4d94db62f52def8a907a97d65c1f37450d4d35e746ca05b309c39 graphLen=121 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x04\x01\x02)foundation.icon.ee.ipc.ScenarioTest$Score\x00\x00\x00\x02\x03\x00\x00\x00\x02\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x03run\x10java.lang.String\x00\x00\x00t\x00\x00\x00\x02bf
+RECV setObjGraph flag=1 next=151 hash=da91b6b9495021eb1e1555e265bacf5b6dba3814ae87611c61342160bbeb1eb2 graphLen=121 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x04\x01\x02)foundation.icon.ee.ipc.ScenarioTest$Score\x00\x00\x00\x02\x03\x00\x00\x00\x02\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x03run\x10java.lang.String\x00\x00\x00\x7f\x00\x00\x00\x02bf
 RECV result status=0 stepUsed=442433 ret=<null>

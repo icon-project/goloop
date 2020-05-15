@@ -64,7 +64,7 @@ public class ReentrantDAppStack {
 
     public SaveItem getSaveItem(Address addr) {
         RuntimeAssertionError.assertTrue(null != addr);
-        for (var iter = stack.descendingIterator(); iter.hasNext(); ) {
+        for (var iter = stack.iterator(); iter.hasNext(); ) {
             var rs = iter.next();
             var saveItem = rs.getSaveItems().get(addr);
             if (saveItem != null) {
