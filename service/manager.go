@@ -509,7 +509,10 @@ func (m *manager) GetAPIInfo(result []byte, addr module.Address) (module.APIInfo
 	if ass == nil {
 		return nil, NoActiveContractError.Errorf("No account for %s", addr)
 	}
-	info := ass.APIInfo()
+	info, err := ass.APIInfo()
+	if err != nil {
+		return nil, err
+	}
 	if info == nil {
 		return nil, NoActiveContractError.Errorf("Account(%s) doesn't have active contract", addr)
 	}

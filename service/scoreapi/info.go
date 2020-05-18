@@ -102,6 +102,9 @@ func (info *Info) ToJSON(v int) (interface{}, error) {
 }
 
 func (info *Info) String() string {
+	if info == nil {
+		return "nil"
+	}
 	jso, _ := info.ToJSON(3)
 	bs, _ := json.Marshal(jso)
 	return string(bs)

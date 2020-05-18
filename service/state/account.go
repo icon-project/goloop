@@ -24,7 +24,8 @@ import (
 
 const (
 	AccountVersion1 = iota + 1
-	AccountVersion  = AccountVersion1
+	AccountVersion2
+	AccountVersion = AccountVersion1
 )
 
 // AccountSnapshot represents immutable account state
@@ -39,7 +40,7 @@ type AccountSnapshot interface {
 	StorageChangedAfter(snapshot AccountSnapshot) bool
 
 	IsContractOwner(owner module.Address) bool
-	APIInfo() *scoreapi.Info
+	APIInfo() (*scoreapi.Info, error)
 	Contract() ContractSnapshot
 	ActiveContract() ContractSnapshot
 	NextContract() ContractSnapshot
@@ -56,6 +57,7 @@ type AccountSnapshot interface {
 // Of course, it also can be changed by WorldState.
 type AccountState interface {
 	Version() int
+	MigrateForRevision(v int) error
 	GetBalance() *big.Int
 	IsContract() bool
 	GetValue(k []byte) ([]byte, error)
@@ -69,7 +71,7 @@ type AccountState interface {
 	IsContractOwner(owner module.Address) bool
 	InitContractAccount(address module.Address) bool
 	DeployContract(code []byte, eeType EEType, contentType string, params []byte, txHash []byte) ([]byte, error)
-	APIInfo() *scoreapi.Info
+	APIInfo() (*scoreapi.Info, error)
 	SetAPIInfo(*scoreapi.Info)
 	AcceptContract(txHash []byte, auditTxHash []byte) error
 	RejectContract(txHash []byte, auditTxHash []byte) error
@@ -95,7 +97,7 @@ type accountSnapshotImpl struct {
 
 	state         int
 	contractOwner *common.Address
-	apiInfo       *scoreapi.Info
+	apiInfo       apiInfoStore
 	curContract   *contractSnapshotImpl
 	nextContract  *contractSnapshotImpl
 
@@ -181,6 +183,9 @@ func (s *accountSnapshotImpl) Reset(database db.Database, data []byte) error {
 }
 
 func (s *accountSnapshotImpl) Flush() error {
+	if err := s.apiInfo.Flush(); err != nil {
+		return err
+	}
 	if s.curContract != nil {
 		if err := s.curContract.flush(); err != nil {
 			return err
@@ -210,6 +215,9 @@ func (s *accountSnapshotImpl) Equal(object trie.Object) bool {
 		if s == nil || s2 == nil {
 			return false
 		}
+		if s.version != s2.version {
+			return false
+		}
 		if s.fIsContract != s2.fIsContract ||
 			s.balance.Cmp(&s2.balance.Int) != 0 || s.state != s2.state {
 			return false
@@ -223,7 +231,7 @@ func (s *accountSnapshotImpl) Equal(object trie.Object) bool {
 		if s.nextContract.Equal(s2.nextContract) == false {
 			return false
 		}
-		if s.apiInfo.Equal(s2.apiInfo) == false {
+		if s.apiInfo.Equal(&s2.apiInfo) == false {
 			return false
 		}
 		if s.objGraph.Equal(s2.objGraph) == false {
@@ -243,6 +251,9 @@ func (s *accountSnapshotImpl) Equal(object trie.Object) bool {
 }
 
 func (s *accountSnapshotImpl) Resolve(bd merkle.Builder) error {
+	if err := s.apiInfo.Resolve(bd); err != nil {
+		return err
+	}
 	if s.store != nil {
 		s.store.Resolve(bd)
 	}
@@ -281,8 +292,8 @@ func (s *accountSnapshotImpl) IsContractOwner(owner module.Address) bool {
 	return s.contractOwner.Equal(owner)
 }
 
-func (s *accountSnapshotImpl) APIInfo() *scoreapi.Info {
-	return s.apiInfo
+func (s *accountSnapshotImpl) APIInfo() (*scoreapi.Info, error) {
+	return s.apiInfo.Get()
 }
 
 func (s *accountSnapshotImpl) GetObjGraph(flags bool) (int, []byte, []byte, error) {
@@ -314,11 +325,6 @@ func (s *accountSnapshotImpl) GetObjGraph(flags bool) (int, []byte, []byte, erro
 	return obj.nextHash, obj.graphHash, obj.graphData, nil
 }
 
-const (
-	accountSnapshotImplEntries     = 9
-	accountSnapshotIncludeObjGraph = 11 // include object graph
-)
-
 func (s *accountSnapshotImpl) RLPEncodeSelf(e codec.Encoder) error {
 	var storeHash []byte
 	if s.store != nil {
@@ -336,7 +342,7 @@ func (s *accountSnapshotImpl) RLPEncodeSelf(e codec.Encoder) error {
 		storeHash,
 		s.state,
 		s.contractOwner,
-		s.apiInfo,
+		&s.apiInfo,
 		s.curContract,
 		s.nextContract,
 	); err != nil {
@@ -361,8 +367,15 @@ func (s *accountSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
 
 	var storeHash []byte
 	var objGraph objectGraph
-	if n, err := d2.DecodeMulti(
-		&s.version,
+	if err := d2.Decode(&s.version); err != nil {
+		return err
+	}
+	if s.version >= AccountVersion2 {
+		if err := s.apiInfo.InitBucket(s.database); err != nil {
+			return err
+		}
+	}
+	if _, err := d2.DecodeMulti(
 		&s.balance,
 		&s.fIsContract,
 		&storeHash,
@@ -371,18 +384,23 @@ func (s *accountSnapshotImpl) RLPDecodeSelf(d codec.Decoder) error {
 		&s.apiInfo,
 		&s.curContract,
 		&s.nextContract,
+	); err != nil {
+		return errors.Wrap(err, "Fail to decode accountSnapshot")
+	}
+
+	if n, err := d2.DecodeMulti(
 		&objGraph.nextHash,
 		&objGraph.graphHash,
 	); err == nil || err == io.EOF {
-		if n == accountSnapshotIncludeObjGraph {
+		if n == 2 {
 			s.objGraph = &objGraph
-		} else if n == accountSnapshotImplEntries {
+		} else if n == 0 {
 			s.objGraph = nil
 		} else {
-			return codec.ErrInvalidFormat
+			return errors.Wrap(codec.ErrInvalidFormat, "Fail to decode accountSnapshot")
 		}
 	} else {
-		return err
+		return errors.Wrap(err, "Fail to decode accountSnapshot")
 	}
 	if len(storeHash) > 0 {
 		s.store = trie_manager.NewImmutable(s.database, storeHash)
@@ -412,7 +430,7 @@ type accountStateImpl struct {
 
 	state         int
 	contractOwner module.Address
-	apiInfo       *scoreapi.Info
+	apiInfo       apiInfoStore
 	curContract   *contractImpl
 	nextContract  *contractImpl
 	store         trie.Mutable
@@ -630,12 +648,25 @@ func (s *accountStateImpl) RejectContract(
 	return nil
 }
 
-func (s *accountStateImpl) APIInfo() *scoreapi.Info {
-	return s.apiInfo
+func (s *accountStateImpl) APIInfo() (*scoreapi.Info, error) {
+	return s.apiInfo.Get()
+}
+
+func (s *accountStateImpl) MigrateForRevision(rev int) error {
+	v := accountVersionForRevision(rev)
+	if v > s.version {
+		if v >= AccountVersion2 {
+			if err := s.apiInfo.InitBucket(s.database); err != nil {
+				return err
+			}
+		}
+		s.version = v
+	}
+	return nil
 }
 
 func (s *accountStateImpl) SetAPIInfo(apiInfo *scoreapi.Info) {
-	s.apiInfo = apiInfo
+	s.apiInfo.Set(apiInfo)
 }
 
 func (s *accountStateImpl) GetBalance() *big.Int {
@@ -742,7 +773,7 @@ func (s *accountStateImpl) Clear() {
 	s.balance.SetInt64(0)
 	s.isContract = false
 	s.version = AccountVersion
-	s.apiInfo = nil
+	s.apiInfo = apiInfoStore{}
 	s.contractOwner = nil
 	s.curContract = nil
 	s.nextContract = nil
@@ -859,6 +890,10 @@ func (a *accountROState) Reset(snapshot AccountSnapshot) error {
 	return errors.InvalidStateError.New("ReadOnlyState")
 }
 
+func (a *accountROState) MigrateForRevision(v int) error {
+	return errors.InvalidStateError.New("ReadOnlyState")
+}
+
 func (a *accountROState) SetAPIInfo(*scoreapi.Info) {
 	log.Panic("accountROState().SetApiInfo() is invoked")
 }
@@ -898,4 +933,13 @@ func newAccountROState(snapshot AccountSnapshot) AccountState {
 	return &accountROState{snapshot,
 		newContractROState(snapshot.Contract()),
 		newContractROState(snapshot.NextContract())}
+}
+
+func accountVersionForRevision(rev int) int {
+	switch {
+	case rev < module.Revision8:
+		return AccountVersion1
+	default:
+		return AccountVersion2
+	}
 }

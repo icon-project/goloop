@@ -254,7 +254,10 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 	if status != nil {
 		return status, nil, nil
 	}
-	apiInfo := scoreAs.APIInfo()
+	apiInfo, err := scoreAs.APIInfo()
+	if err != nil {
+		return err, nil, nil
+	}
 	typedObj, err := apiInfo.ConvertParamsToTypedObj(
 		methodStr, scoreAs.NextContract().Params())
 	if err != nil {
@@ -414,7 +417,11 @@ func (h *callGetAPIHandler) OnCall(from, to module.Address, value, limit *big.In
 func (h *callGetAPIHandler) OnAPI(status error, info *scoreapi.Info) {
 	if status == nil {
 		h.log.TSystemf("GETAPI done status=%s info=%v", module.StatusSuccess, info)
-		h.as.SetAPIInfo(info)
+		if err := h.as.MigrateForRevision(h.cc.Revision()); err != nil {
+			status = err
+		} else {
+			h.as.SetAPIInfo(info)
+		}
 	} else {
 		s, _ := scoreresult.StatusOf(status)
 		h.log.TSystemf("GETAPI done status=%s msg=%s", s, status.Error())

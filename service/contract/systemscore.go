@@ -231,6 +231,7 @@ func InstallChainSCORE(addr []byte, cid string, from module.Address, param []byt
 	if err := CheckMethod(sysScore); err != nil {
 		return err
 	}
+	sas.MigrateForRevision(cc.Revision())
 	sas.SetAPIInfo(sysScore.GetAPI())
 	return nil
 }

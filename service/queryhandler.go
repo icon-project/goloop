@@ -28,7 +28,10 @@ func (qh *QueryHandler) Query(ctx contract.Context) (interface{}, error) {
 	if as == nil {
 		return nil, scoreresult.ErrContractNotFound
 	}
-	apiInfo := as.APIInfo()
+	apiInfo, err := as.APIInfo()
+	if err != nil {
+		return nil, err
+	}
 	if apiInfo == nil {
 		return nil, scoreresult.ErrContractNotFound
 	} else {

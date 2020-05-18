@@ -243,8 +243,11 @@ func getScoreApi(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, err
 	}
 	sm := chain.ServiceManager()
 	info, err := sm.GetAPIInfo(b.Result(), param.Address.Address())
-	if err != nil {
+	if service.NoActiveContractError.Equals(err) {
 		return nil, jsonrpc.ErrorCodeNotFound.Wrap(err, debug)
+	}
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 	if jso, err := info.ToJSON(jsonRpcApiVersion); err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)

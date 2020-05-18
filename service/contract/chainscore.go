@@ -784,6 +784,7 @@ func (s *ChainScore) Ex_setRevision(code *common.HexInt) error {
 	if err := s.handleRevisionChange(as, int(r), int(code.Int64())); err != nil {
 		return nil
 	}
+	as.MigrateForRevision(int(code.Int64()))
 	as.SetAPIInfo(s.GetAPI())
 	return nil
 }

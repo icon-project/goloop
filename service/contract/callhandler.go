@@ -41,6 +41,7 @@ type CallHandler struct {
 	// set in ExecuteAsync()
 	cc        CallContext
 	as        state.AccountState
+	api       *scoreapi.Info
 	cm        ContractManager
 	conn      eeproxy.Proxy
 	cs        ContractStore
@@ -91,8 +92,8 @@ func (h *CallHandler) prepareWorldContextAndAccount(ctx Context) (state.WorldCon
 
 	as := wc.GetAccountState(h.to.ID())
 
-	info := as.APIInfo()
-	if info == nil {
+	info, err := as.APIInfo()
+	if err != nil || info == nil {
 		return wc, as
 	}
 
@@ -243,11 +244,15 @@ func (h *CallHandler) invokeSystemMethod(cc CallContext, c state.Contract) error
 }
 
 func (h *CallHandler) ensureParamObj() error {
-	info := h.as.APIInfo()
+	info, err := h.as.APIInfo()
+	if err != nil {
+		return nil
+	}
 	if info == nil {
 		return scoreresult.New(module.StatusContractNotFound, "APIInfo() is null")
 	}
 
+	h.api = info
 	if h.paramObj != nil {
 		if params, err := info.EnsureParamsSequential(h.method, h.paramObj); err != nil {
 			return err
@@ -257,7 +262,6 @@ func (h *CallHandler) ensureParamObj() error {
 		}
 	}
 
-	var err error
 	h.paramObj, err = info.ConvertParamsToTypedObj(h.method, h.params)
 	return err
 }
@@ -341,8 +345,7 @@ func (h *CallHandler) GetBalance(addr module.Address) *big.Int {
 }
 
 func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) {
-	err := h.as.APIInfo().CheckEventData(indexed, data)
-	if err != nil {
+	if err := h.api.CheckEventData(indexed, data); err != nil {
 		h.log.Warnf("DROP InvalidEventData(%s,%+v,%+v) err=%+v",
 			addr, indexed, data, err)
 		return
@@ -411,7 +414,10 @@ func (h *TransferAndCallHandler) Prepare(ctx Context) (state.WorldContext, error
 func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) error {
 	if h.to.IsContract() {
 		as := cc.GetAccountState(h.to.ID())
-		apiInfo := as.APIInfo()
+		apiInfo, err := as.APIInfo()
+		if err != nil {
+			return err
+		}
 		if apiInfo == nil {
 			return scoreresult.New(module.StatusContractNotFound, "APIInfo() is null")
 		} else {

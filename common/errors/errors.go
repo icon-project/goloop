@@ -48,6 +48,7 @@ var (
 const (
 	CriticalUnknownError = CodeCritical + iota
 	CriticalIOError
+	CriticalFormatError
 )
 
 func IsCriticalCode(c Code) bool {
