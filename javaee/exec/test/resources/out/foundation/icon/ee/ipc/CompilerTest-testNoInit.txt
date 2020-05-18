@@ -2,4 +2,4 @@ Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDes
 SEND invoke code=010001/optimized isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[]
 RECV setCode hash=111d5a01657856ed92f2b6c5997d025f6805cd01e26cb603d301ced91386b18f len=1151
 RECV setObjGraph flag=1 next=2 hash=c949146ec6410192cab725483b851be0dac12daacf8d12a5786df513f65eb714 graphLen=62 graph=\x03\x00\x00\x00\x004foundation.icon.ee.ipc.CompilerTest$ScoreWithoutInit\x00\x00\x00\x01
-RECV result status=0 stepUsed=202073 ret=<null>
+RECV result status=0 stepUsed=247 ret=<null>

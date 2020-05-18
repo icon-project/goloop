@@ -255,13 +255,6 @@ public class DAppCreator {
             // We have just created this dApp, there should be no previous runtime associated with it.
             RuntimeAssertionError.assertTrue(previousRuntime == null);
 
-            IInstrumentation threadInstrumentation = IInstrumentation.attachedThreadInstrumentation.get();
-            long deploymentFee = BillingRules.getDeploymentFee(rawDapp.numberOfClasses, rawDapp.bytecodeSize);
-            // Deployment fee must be a positive integer.
-            RuntimeAssertionError.assertTrue(deploymentFee > 0L);
-            RuntimeAssertionError.assertTrue(deploymentFee <= (long)Integer.MAX_VALUE);
-            threadInstrumentation.chargeEnergy((int)deploymentFee);
-
             // Create the immortal version of the transformed DApp code by stripping the <clinit>.
             Map<String, byte[]> immortalClasses = stripClinitFromClasses(transformedClasses);
 
@@ -272,6 +265,7 @@ public class DAppCreator {
             externalState.setTransformedCode(dappAddress, immortalDappJar);
 
             // Force the classes in the dapp to initialize so that the <clinit> is run (since we already saved the version without).
+            IInstrumentation threadInstrumentation = IInstrumentation.attachedThreadInstrumentation.get();
             result = runClinitAndBillSender(verboseErrors, dapp, threadInstrumentation, externalState, dappAddress, tx);
         } catch (CodedException e) {
             if (verboseErrors) {
