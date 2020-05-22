@@ -172,6 +172,13 @@ public class InvokeTest extends TestBase {
                 .build();
         assertFailure(helloScore.invokeAndWaitResult(callerWallet, "testMaxBufferSize", params));
         LOG.infoExiting();
+
+        LOG.infoEntering("cleanup");
+        params = new RpcObject.Builder()
+                .put("size", new RpcValue(BigInteger.ONE))
+                .build();
+        assertFailure(helloScore.invokeAndWaitResult(callerWallet, "testMaxBufferSize", params));
+        LOG.infoExiting();
         LOG.infoExiting();
     }
 
