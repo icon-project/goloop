@@ -158,11 +158,20 @@ public class InvokeTest extends TestBase {
 
     @Test
     public void testMaxBufferSize() throws Exception {
-        LOG.infoEntering("invoke", "testMaxBufferSize");
+        LOG.infoEntering("testMaxBufferSize");
+        LOG.infoEntering("invoke", "success case");
         RpcObject params = new RpcObject.Builder()
                 .put("size", new RpcValue(BigInteger.valueOf(600)))
                 .build();
         assertSuccess(helloScore.invokeAndWaitResult(callerWallet, "testMaxBufferSize", params));
+        LOG.infoExiting();
+
+        LOG.infoEntering("invoke", "failure case");
+        params = new RpcObject.Builder()
+                .put("size", new RpcValue(BigInteger.valueOf(1000)))
+                .build();
+        assertFailure(helloScore.invokeAndWaitResult(callerWallet, "testMaxBufferSize", params));
+        LOG.infoExiting();
         LOG.infoExiting();
     }
 
