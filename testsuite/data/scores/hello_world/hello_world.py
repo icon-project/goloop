@@ -83,3 +83,16 @@ class HelloWorld(IconScoreBase):
             ChainSCORE)
         rev = score.getRevision()
         Logger.debug(f"Revision({rev})")
+
+    @external
+    def testMaxBufferSize(self, size: int):
+        _prev_name = self._name.get()
+        # begin test
+        _list = []
+        for i in range(1024*size):
+            _list.append(f'index{i}')
+        self._name.set(json_dumps(_list))
+        _value = self._name.get()
+        Logger.info(f"value len={len(_value)}", TAG)
+        # end test
+        self._name.set(_prev_name)

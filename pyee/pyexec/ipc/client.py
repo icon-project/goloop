@@ -36,7 +36,7 @@ class Client:
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         sock.connect(address)
         self.conn = sock
-        self.unpacker = msgpack.Unpacker(self)
+        self.unpacker = msgpack.Unpacker(self, max_buffer_size=10*1024*1024)
 
     def write(self, b: bytes) -> None:
         self.conn.sendall(b)

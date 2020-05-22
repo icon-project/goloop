@@ -157,6 +157,16 @@ public class InvokeTest extends TestBase {
     }
 
     @Test
+    public void testMaxBufferSize() throws Exception {
+        LOG.infoEntering("invoke", "testMaxBufferSize");
+        RpcObject params = new RpcObject.Builder()
+                .put("size", new RpcValue(BigInteger.valueOf(600)))
+                .build();
+        assertSuccess(helloScore.invokeAndWaitResult(callerWallet, "testMaxBufferSize", params));
+        LOG.infoExiting();
+    }
+
+    @Test
     public void invalidSignature() throws Exception {
         LOG.infoEntering("invalidSignature");
         LOG.infoEntering("setup", "test wallets");
