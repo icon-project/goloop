@@ -179,11 +179,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         require(targetAddress != null, "Destination can't be NULL");
         require(underlyingValue.compareTo(java.math.BigInteger.ZERO) >= 0 , "Value can't be negative");
 
-        if (task.getTransactionStackDepth() == 9) {
-            // since we increase depth in the upcoming call to runInternalCall(),
-            // a current depth of 9 means we're about to go up to 10, so we fail
-            throw new CallDepthLimitExceededException("Internal call depth cannot be more than 10");
-        }
         externalState.waitForCallbacks();
         var hash = IInstrumentation.attachedThreadInstrumentation.get().peekNextHashCode();
         int stepLeft = (int)IInstrumentation.attachedThreadInstrumentation.get().energyLeft();
@@ -191,7 +186,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         var saveItem = new ReentrantDAppStack.SaveItem(dApp, rs);
         var callerAddr = new Address(avm_getAddress().toByteArray());
         task.getReentrantDAppStack().getTop().getSaveItems().put(callerAddr, saveItem);
-        task.incrementTransactionStackDepth();
         InstrumentationHelpers.temporarilyExitFrame(this.thisDAppSetup);
         Object[] params = new Object[sparams.length()];
         for (int i=0; i<params.length; i++) {
@@ -204,7 +198,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                 value.getUnderlying(),
                 stepLeft);
         InstrumentationHelpers.returnToExecutingFrame(this.thisDAppSetup);
-        task.decrementTransactionStackDepth();
         var saveItems = task.getReentrantDAppStack().getTop().getSaveItems();
         var saveItemFinal = saveItems.remove(callerAddr);
         assert saveItemFinal!=null;
