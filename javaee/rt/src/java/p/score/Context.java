@@ -88,26 +88,19 @@ public final class Context extends Object {
     public static IObject avm_call(Address targetAddress,
                                    String method,
                                    IObjectArray params) {
-        return avm_call(null, null, targetAddress, method, params);
+        return avm_call(null, targetAddress, method, params);
     }
 
     public static IObject avm_call(BigInteger value,
                                    Address targetAddress,
                                    String method,
                                    IObjectArray params) {
-        return avm_call(value, null, targetAddress, method, params);
-    }
-
-    public static IObject avm_call(BigInteger value,
-                                   BigInteger stepLimit,
-                                   Address targetAddress,
-                                   String method,
-                                   IObjectArray params) {
-        return blockchainRuntime.avm_call(value, stepLimit, targetAddress, method, params);
+        return blockchainRuntime.avm_call(value, targetAddress,
+                method, params);
     }
 
     public static void avm_transfer(Address targetAddress, BigInteger value) {
-        avm_call(value, null, targetAddress, null, null);
+        avm_call(value, targetAddress, null, null);
     }
 
     public static void avm_revert(int code, String message) {

@@ -163,7 +163,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
     @Override
     public IObject avm_call(s.java.math.BigInteger value,
-                            s.java.math.BigInteger stepLimit,
                             p.score.Address targetAddress,
                             s.java.lang.String method,
                             IObjectArray sparams) {

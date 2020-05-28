@@ -99,14 +99,13 @@ public interface IBlockchainRuntime {
      * Calls the contract denoted by the targetAddress.  Returns the response of the contract.
      *
      * @param value         The value to transfer
-     * @param stepLimit     The step limit
      * @param targetAddress The address of the contract to call.
      * @param method        method
      * @param params        parameters
      * @return The response of executing the contract.
      */
-    IObject avm_call(BigInteger value, BigInteger stepLimit,
-                     Address targetAddress, String method, IObjectArray params);
+    IObject avm_call(BigInteger value, Address targetAddress, String method,
+                     IObjectArray params);
 
     /**
      * Stop the current execution, rollback any state changes, and refund the remaining energy to caller.

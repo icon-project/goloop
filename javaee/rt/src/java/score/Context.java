@@ -150,23 +150,6 @@ public final class Context {
     //===================
 
     /**
-     * Calls the method of the given account address with the value and stepLimit.
-     *
-     * @param value         the value in loop to transfer
-     * @param stepLimit     step limit
-     * @param targetAddress the account address
-     * @param method        method
-     * @param params        parameters
-     * @return the invocation result.
-     * @throws IllegalArgumentException if the arguments are invalid, e.g. insufficient balance, NULL address
-     * @throws ScoreRevertException if call target reverts the newly created frame
-     */
-    public static Object call(BigInteger value, BigInteger stepLimit,
-                              Address targetAddress, String method, Object... params) {
-        return null;
-    }
-
-    /**
      * Calls the method of the given account address with the value.
      *
      * @param value         the value in loop to transfer
@@ -179,7 +162,7 @@ public final class Context {
      */
     public static Object call(BigInteger value,
                               Address targetAddress, String method, Object... params) {
-        return call(value, null, targetAddress, method, params);
+        return null;
     }
 
     /**
@@ -193,7 +176,7 @@ public final class Context {
      * @throws ScoreRevertException if call target reverts the newly created frame
      */
     public static Object call(Address targetAddress, String method, Object... params) {
-        return call(null, null, targetAddress, method, params);
+        return null;
     }
 
     /**
