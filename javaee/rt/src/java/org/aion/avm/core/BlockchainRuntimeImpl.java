@@ -12,7 +12,6 @@ import foundation.icon.ee.types.Transaction;
 import foundation.icon.ee.util.Crypto;
 import foundation.icon.ee.util.Shadower;
 import foundation.icon.ee.util.Unshadower;
-import i.CallDepthLimitExceededException;
 import i.GenericCodedException;
 import i.IBlockchainRuntime;
 import i.IInstrumentation;

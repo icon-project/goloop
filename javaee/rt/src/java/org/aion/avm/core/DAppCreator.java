@@ -6,7 +6,6 @@ import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.Transaction;
 import i.AvmException;
-import i.CallDepthLimitExceededException;
 import i.GenericCodedException;
 import i.IBlockchainRuntime;
 import i.IInstrumentation;
@@ -392,7 +391,7 @@ public class DAppCreator {
      * This method handles the following exceptions and ensures that if any of them are thrown
      * that they will be represented by the returned result (any other exceptions thrown here will
      * not be handled):
-     * {@link OutOfStackException}, {@link CallDepthLimitExceededException}, and {@link GenericCodedException}.
+     * {@link OutOfStackException}, and {@link GenericCodedException}.
      *
      * @param verboseErrors Whether or not to report errors to stderr.
      * @param dapp The dapp to run.
