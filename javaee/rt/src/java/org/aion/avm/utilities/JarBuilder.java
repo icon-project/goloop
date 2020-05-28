@@ -22,9 +22,8 @@ import java.util.zip.ZipEntry;
  * would be complicated to communicate (streams are closed when reading the bytes, for example).
  */
 public class JarBuilder {
-    // AKI-135: We define this value as our fixed timestamp for tests (this number is similar to what we were using when the tests
-    // were written and some of them assume compressed size).
-    private static long FIXED_TIMESTAMP = 1_000_000_000_000L;
+    // Defines a fixed timestamp for producing reproducible archives.
+    private static final long FIXED_TIMESTAMP = 315532800000L; // Tue Jan 1 00:00:00 UTC 1980
 
     // The API Info file name
     private static final String APIS_NAME = "META-INF/APIS";
