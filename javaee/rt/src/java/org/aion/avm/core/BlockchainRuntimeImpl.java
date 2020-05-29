@@ -215,7 +215,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
             throw new IllegalArgumentException(Status.getMessage(s));
         } else if (s == Status.OutOfStep
                 || s == Status.StackOverflow) {
-            throw new GenericCodedException(s, String.format("address=%s method=%s status=%d %s", targetAddress, method, s, res.getRet()));
+            throw new GenericCodedException(s, Status.getMessage(s));
         } else if (s < Status.UserReversionStart) {
             RuntimeAssertionError.unreachable("bad result status " + s);
         } else if (s < Status.UserReversionEnd) {
