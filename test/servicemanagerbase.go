@@ -4,6 +4,7 @@ package test
 import (
 	"math/big"
 
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -126,5 +127,13 @@ func (_r *ServiceManagerBase) SendTransactionAndWait(tx interface{}) ([]byte, <-
 }
 
 func (_r *ServiceManagerBase) WaitTransactionResult(id []byte) (<-chan interface{}, error) {
+	panic("not implemented")
+}
+
+func (_r *ServiceManagerBase) ExportResult(result []byte, vh []byte, dst db.Database) error {
+	panic("not implemented")
+}
+
+func (_r *ServiceManagerBase) ImportResult(result []byte, vh []byte, src db.Database) error {
 	panic("not implemented")
 }

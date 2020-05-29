@@ -53,7 +53,7 @@ func (c *context) GetPreInstalledScore(id string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return c.chain.GetGenesisData(hash)
+	return c.chain.GenesisStorage().Get(hash)
 }
 
 func (c *context) Logger() log.Logger {

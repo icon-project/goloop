@@ -3,11 +3,14 @@ package block
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 
+	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/service"
 	"github.com/icon-project/goloop/service/transaction"
 	"github.com/icon-project/goloop/service/txresult"
@@ -92,6 +95,17 @@ const (
 	validatingOut
 	validatedOut
 	stopped
+)
+
+const (
+	exportBlock = 0x1 << iota
+	exportValidator
+	exportResult
+	exportTransaction
+	exportIndex
+	exportReserved
+	exportHashable = exportBlock | exportValidator | exportResult | exportTransaction
+	exportAll      = exportReserved - 1
 )
 
 type task struct {
@@ -538,7 +552,7 @@ func NewManager(chain module.Chain, timestamper module.Timestamper) (module.Bloc
 	var height int64
 	err = chainPropBucket.get(raw(keyLastBlockHeight), &height)
 	if errors.NotFoundError.Equals(err) || (err == nil && height == 0) {
-		if _, err := m.finalizeGenesisBlock(nil, 0, chain.CommitVoteSetDecoder()(nil)); err != nil {
+		if err := m.finalizeGenesis(); err != nil {
 			return nil, err
 		}
 		return m, nil
@@ -695,6 +709,142 @@ func (cb *channelingCB) onValidate(err error) {
 
 func (cb *channelingCB) onExecute(err error) {
 	cb.ch <- err
+}
+
+func (m *manager) finalizeGenesis() error {
+	gs := m.chain.GenesisStorage()
+	gt, err := gs.Type()
+	if err != nil {
+		return transaction.InvalidGenesisError.Wrap(err, "UnknownGenesisType")
+	}
+	switch gt {
+	case module.GenesisNormal:
+		_, err := m.finalizeGenesisBlock(nil, 0,
+			m.chain.CommitVoteSetDecoder()(nil))
+		return err
+	case module.GenesisPruned:
+		return m.finalizePrunedBlock()
+	}
+	return errors.InvalidStateError.Errorf("InvalidGenesisType(type=%d)", gt)
+}
+
+func (m *manager) _importBlockByID(src db.Database, id []byte) (module.Block, error) {
+	ctx := merkle.NewCopyContext(src, m.db())
+	blk := newBlockWithBuilder(ctx.Builder(), m.chain.CommitVoteSetDecoder(), id)
+	if err := ctx.Run(); err != nil {
+		return nil, err
+	}
+
+	if err := m.sm.ImportResult(blk.Result(), blk.NextValidatorsHash(), ctx.SourceDB()); err != nil {
+		return nil, transaction.InvalidGenesisError.Wrap(err, "ImportResultFailure")
+	}
+
+	hb, err := m.bucketFor(db.BlockHeaderHashByHeight)
+	if err != nil {
+		return nil, errors.CriticalUnknownError.Wrap(err, "UnknownBucketError")
+	}
+	if err := hb.set(blk.Height(), raw(blk.ID())); err != nil {
+		return nil, errors.CriticalUnknownError.Wrap(err, "FailOnBlockIndex")
+	}
+
+	lb, err := m.bucketFor(db.TransactionLocatorByHash)
+	if err != nil {
+		return nil, err
+	}
+	for it := blk.PatchTransactions().Iterator(); it.Has(); it.Next() {
+		tr, i, err := it.Get()
+		if err != nil {
+			return nil, errors.CriticalUnknownError.Wrap(err, "FailOnGetTX")
+		}
+		trLoc := transactionLocator{
+			BlockHeight:      blk.Height(),
+			TransactionGroup: module.TransactionGroupPatch,
+			IndexInGroup:     i,
+		}
+		if err = lb.set(raw(tr.ID()), trLoc); err != nil {
+			return nil, errors.CriticalUnknownError.Wrap(err, "FailOnSetLocation")
+		}
+	}
+	for it := blk.NormalTransactions().Iterator(); it.Has(); it.Next() {
+		tr, i, err := it.Get()
+		if err != nil {
+			return nil, errors.CriticalUnknownError.Wrap(err, "FailOnGetTX")
+		}
+		trLoc := transactionLocator{
+			BlockHeight:      blk.Height(),
+			TransactionGroup: module.TransactionGroupNormal,
+			IndexInGroup:     i,
+		}
+		if err = lb.set(raw(tr.ID()), trLoc); err != nil {
+			return nil, errors.CriticalUnknownError.Wrap(err, "FailOnSetLocation")
+		}
+	}
+	return blk, nil
+}
+
+func (m *manager) finalizePrunedBlock() error {
+	s := m.chain.GenesisStorage()
+	g := new(gs.PrunedGenesis)
+	if err := json.Unmarshal(s.Genesis(), g); err != nil {
+		return transaction.InvalidGenesisError.Wrap(err, "InvalidGenesis")
+	}
+	d := gs.NewDatabaseWithStorage(s)
+
+	blk, err := m._importBlockByID(d, g.Block)
+	if err != nil {
+		return err
+	}
+
+	if _, err = m._importBlockByID(d, blk.PrevID()); err != nil {
+		return err
+	}
+
+	cid, err := m.sm.GetChainID(blk.Result())
+	if err != nil {
+		return transaction.InvalidGenesisError.Wrap(err, "FailOnGetChainID")
+	}
+	if cid != int64(g.CID.Value) {
+		return transaction.InvalidGenesisError.Errorf("InvalidChainID(cid=%d,state_cid=%d)",
+			g.CID.Value, cid)
+	}
+
+	nid, err := m.sm.GetNetworkID(blk.Result())
+	if err != nil {
+		return transaction.InvalidGenesisError.Wrap(err, "FailOnGetChainID")
+	}
+	if nid != int64(g.NID.Value) {
+		return transaction.InvalidGenesisError.Errorf("InvalidNetworkID(nid=%d,state_nid=%d)",
+			g.NID.Value, nid)
+	}
+
+	if bk, err := m.bucketFor(db.ChainProperty); err != nil {
+		return errors.InvalidStateError.Wrap(err, "BucketForChainProperty")
+	} else {
+		if err := bk.set(raw(keyLastBlockHeight), blk.Height()); err != nil {
+			return errors.CriticalUnknownError.Wrap(err, "FailOnSetLast")
+		}
+	}
+
+	mtr, _ := m.sm.CreateInitialTransition(blk.Result(), blk.NextValidators())
+	if mtr == nil {
+		return err
+	}
+	tr := newInitialTransition(mtr, m.chainContext)
+	bn := &bnode{
+		block: blk,
+		in:    tr,
+	}
+	bn.preexe, err = tr.transit(blk.NormalTransactions(), blk, nil)
+	if err != nil {
+		return err
+	}
+	m.finalized = bn
+	bn.nRef++
+	if configTraceBnode {
+		m.bntr.TraceNew(bn)
+	}
+	m.nmap[string(blk.ID())] = bn
+	return nil
 }
 
 func (m *manager) finalizeGenesisBlock(
@@ -1323,4 +1473,164 @@ func (m *manager) DisposeBlockCandidate(bc *blockCandidate) {
 		return
 	}
 	m.unrefNode(bn)
+}
+
+func hasBits(v int, bits int) bool {
+	return (v & bits) == bits
+}
+
+func (m *manager) ExportGenesis(blk module.Block, gsw module.GenesisStorageWriter) error {
+	height := blk.Height()
+
+	var votes module.CommitVoteSet
+	if nblk, err := m.GetBlockByHeight(height + 1); err != nil {
+		return errors.Wrapf(err, "fail to get next block(height=%d) for votes", height+1)
+	} else {
+		votes = nblk.Votes()
+	}
+
+	cid, err := m.sm.GetChainID(blk.Result())
+	if err != nil {
+		return errors.Wrap(err, "fail to get CID")
+	}
+
+	nid, err := m.sm.GetNetworkID(blk.Result())
+	if err != nil {
+		return errors.Wrap(err, "fail to get NID")
+	}
+
+	pg := &gs.PrunedGenesis{
+		CID:    common.HexInt32{Value: int32(cid)},
+		NID:    common.HexInt32{Value: int32(nid)},
+		Height: common.HexInt64{Value: height},
+		Block:  blk.ID(),
+		Votes:  votes.Hash(),
+	}
+	g, err := json.Marshal(pg)
+	if err != nil {
+		return errors.Wrapf(err, "fail to marshal genesis=%+v", pg)
+	}
+
+	if err := gsw.WriteGenesis(g); err != nil {
+		return errors.Wrap(err, "fail to write genesis")
+	}
+	defer gsw.Close()
+	if _, err := gsw.WriteData(votes.Bytes()); err != nil {
+		return errors.Wrap(err, "fail to write votes")
+	}
+	return m._exportBlocks(height, height, gs.NewDatabaseWithWriter(gsw), exportHashable)
+}
+
+func (m *manager) ExportBlocks(from, to int64, dst db.Database) error {
+	return m._exportBlocks(from, to, dst, exportAll)
+}
+
+func (m *manager) _exportBlocks(from, to int64, dst db.Database, flag int) error {
+	ctx := merkle.NewCopyContext(m.db(), dst)
+	if hasBits(flag, exportValidator) && from > 0 {
+		blk, err := m.getBlockByHeight(from - 1)
+		if err != nil {
+			return errors.Wrapf(err, "fail to get previous block height=%d", from-1)
+		}
+		if err := m._export(blk, ctx, flag); err != nil {
+			return errors.Wrapf(err, "fail to export block height=%d", blk.Height())
+		}
+	}
+	for h := from; h <= to; h++ {
+		blk, err := m.GetBlockByHeight(h)
+		if err != nil {
+			return errors.Wrapf(err, "fail to get a block height=%d", h)
+		}
+		if err := m._export(blk, ctx, flag); err != nil {
+			return errors.Wrapf(err, "fail to export block height=%d", blk.Height())
+		}
+	}
+	return nil
+}
+
+func (m *manager) _export(blk module.Block, ctx *merkle.CopyContext, flag int) error {
+	if hasBits(flag, exportResult) {
+		if err := m.sm.ExportResult(blk.Result(), blk.NextValidatorsHash(), ctx.TargetDB()); err != nil {
+			return err
+		}
+	}
+	if hasBits(flag, exportTransaction) {
+		transaction.NewTransactionListWithBuilder(ctx.Builder(), blk.PatchTransactions().Hash())
+		transaction.NewTransactionListWithBuilder(ctx.Builder(), blk.NormalTransactions().Hash())
+		if err := ctx.Run(); err != nil {
+			return err
+		}
+	}
+	if hasBits(flag, exportBlock) {
+		buf := bytes.NewBuffer(nil)
+		if err := blk.MarshalHeader(buf); err != nil {
+			return err
+		}
+		if err := ctx.Set(db.BytesByHash, blk.ID(), buf.Bytes()); err != nil {
+			return err
+		}
+		if err := ctx.Copy(db.BytesByHash, blk.Votes().Hash()); err != nil {
+			return err
+		}
+		if err := ctx.Copy(db.BytesByHash, blk.NextValidatorsHash()); err != nil {
+			return err
+		}
+	}
+	if hasBits(flag, exportIndex|exportBlock) {
+		hb := codec.BC.MustMarshalToBytes(blk.Height())
+		if err := ctx.Copy(db.BlockHeaderHashByHeight, hb); err != nil {
+			return err
+		}
+		if err := ctx.Set(db.ChainProperty, []byte(keyLastBlockHeight), hb); err != nil {
+			return err
+		}
+	}
+	if hasBits(flag, exportIndex|exportTransaction) {
+		txs := blk.NormalTransactions()
+		for itr := txs.Iterator(); itr.Has(); itr.Next() {
+			tx, _, err := itr.Get()
+			if err != nil {
+				return err
+			}
+			if err := ctx.Copy(db.TransactionLocatorByHash, tx.ID()); err != nil {
+				return err
+			}
+		}
+		txs = blk.PatchTransactions()
+		for itr := txs.Iterator(); itr.Has(); itr.Next() {
+			tx, _, err := itr.Get()
+			if err != nil {
+				return err
+			}
+			if err := ctx.Copy(db.TransactionLocatorByHash, tx.ID()); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (m *manager) GetGenesisData() (module.Block, module.CommitVoteSet, error) {
+	storage := m.chain.GenesisStorage()
+	if genesisType, err := storage.Type(); err != nil {
+		return nil, nil, err
+	} else {
+		if genesisType != module.GenesisPruned {
+			return nil, nil, nil
+		}
+	}
+	genesis := new(gs.PrunedGenesis)
+	if err := json.Unmarshal(storage.Genesis(), genesis); err != nil {
+		return nil, nil, transaction.InvalidGenesisError.Wrap(err, "invalid genesis")
+	}
+	bs, err := storage.Get(genesis.Votes)
+	if err != nil {
+		return nil, nil, transaction.InvalidGenesisError.Wrapf(err, "fail to get votes for hash=%x", genesis.Votes)
+	}
+	voteSetDecoder := m.chain.CommitVoteSetDecoder()
+	block, err := m.GetBlock(genesis.Block)
+	if err != nil {
+		return nil, nil, transaction.InvalidGenesisError.Wrapf(err, "fail to get block for id=%x", genesis.Block)
+	}
+	return block, voteSetDecoder(bs), nil
 }

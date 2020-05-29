@@ -15,19 +15,13 @@ import (
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/log"
+	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/transaction"
 )
 
 const (
 	GenesisFileName = "genesis.json"
 )
-
-type GenesisStorage interface {
-	CID() (int, error)
-	NID() (int, error)
-	Genesis() []byte
-	Get(key []byte) ([]byte, error)
-}
 
 type genesisStorageImpl interface {
 	Genesis() []byte
@@ -37,29 +31,44 @@ type genesisStorageImpl interface {
 type genesisStorage struct {
 	genesisStorageImpl
 	cid, nid int
+	gType    module.GenesisType
 }
 
-func (gs *genesisStorage) ensureIDs() error {
+func (gs *genesisStorage) ensureTypeAndIDs() error {
 	if gs.cid == 0 {
+		if pg, err := newPrunedGenesis(gs.Genesis()); err == nil {
+			gs.cid = int(pg.CID.Value)
+			gs.nid = int(pg.NID.Value)
+			gs.gType = module.GenesisPruned
+			return nil
+		}
 		gtx, err := transaction.NewGenesisTransaction(gs.Genesis())
 		if err != nil {
 			return err
 		}
 		gs.cid = gtx.CID()
 		gs.nid = gtx.NID()
+		gs.gType = module.GenesisNormal
 	}
 	return nil
 }
 
+func (gs *genesisStorage) Type() (module.GenesisType, error) {
+	if err := gs.ensureTypeAndIDs(); err != nil {
+		return module.GenesisUnknown, err
+	}
+	return gs.gType, nil
+}
+
 func (gs *genesisStorage) CID() (int, error) {
-	if err := gs.ensureIDs(); err != nil {
+	if err := gs.ensureTypeAndIDs(); err != nil {
 		return 0, err
 	}
 	return gs.cid, nil
 }
 
 func (gs *genesisStorage) NID() (int, error) {
-	if err := gs.ensureIDs(); err != nil {
+	if err := gs.ensureTypeAndIDs(); err != nil {
 		return 0, err
 	}
 	return gs.nid, nil
@@ -144,19 +153,15 @@ func (gs *genesisStorageWithZip) Get(key []byte) ([]byte, error) {
 
 type templateContext struct {
 	path   string
-	writer *zip.Writer
+	writer module.GenesisStorageWriter
 }
 
 func (c *templateContext) AddData(data []byte) (string, error) {
-	hash := hex.EncodeToString(crypto.SHA3Sum256(data))
-	f, err := c.writer.Create(hash)
+	key, err := c.writer.WriteData(data)
 	if err != nil {
 		return "", err
 	}
-	if _, err := f.Write(data); err != nil {
-		return "", err
-	}
-	return hash, nil
+	return hex.EncodeToString(key), nil
 }
 
 func writeToZip(writer *zip.Writer, p, n string) error {
@@ -312,8 +317,8 @@ func WriteFromPath(w io.Writer, p string) error {
 		genesisTemplate = p
 	}
 
-	zw := zip.NewWriter(w)
-	defer zw.Close()
+	gsw := NewGenesisStorageWriter(w)
+	defer gsw.Close()
 
 	// load and decode genesis
 	genesis, err := ioutil.ReadFile(genesisTemplate)
@@ -330,28 +335,23 @@ func WriteFromPath(w io.Writer, p string) error {
 
 	// process genesis template
 	_, err = processContent(&templateContext{
-		writer: zw,
+		writer: gsw,
 		path:   genesisDir,
 	}, genesisObj)
 
 	// write genesis data at last
-	f, err := zw.Create(GenesisFileName)
-	if err != nil {
-		return errors.Wrapf(err, "Fail to create %s", GenesisFileName)
-	}
+
 	genesis, err = json.Marshal(genesisObj)
 	if err != nil {
 		return errors.Wrap(err, "Fail to marshal JSON")
 	}
-	_, err = f.Write(genesis)
-	if err != nil {
+	if err := gsw.WriteGenesis(genesis); err != nil {
 		return errors.Wrap(err, "Fail to write genesis")
 	}
-	_ = zw.Flush()
 	return nil
 }
 
-func NewFromTx(tx []byte) GenesisStorage {
+func NewFromTx(tx []byte) module.GenesisStorage {
 	return &genesisStorage{
 		genesisStorageImpl: &genesisStorageWithDataDir{
 			genesis:  tx,
@@ -361,7 +361,7 @@ func NewFromTx(tx []byte) GenesisStorage {
 	}
 }
 
-func NewFromFile(fd *os.File) (GenesisStorage, error) {
+func NewFromFile(fd *os.File) (module.GenesisStorage, error) {
 	fi, err := fd.Stat()
 	if err != nil {
 		return nil, err
@@ -369,11 +369,11 @@ func NewFromFile(fd *os.File) (GenesisStorage, error) {
 	return newGenesisStorage(fd, fi.Size())
 }
 
-func New(data []byte) (GenesisStorage, error) {
+func New(data []byte) (module.GenesisStorage, error) {
 	return newGenesisStorage(bytes.NewReader(data), int64(len(data)))
 }
 
-func newGenesisStorage(readerAt io.ReaderAt, size int64) (GenesisStorage, error) {
+func newGenesisStorage(readerAt io.ReaderAt, size int64) (module.GenesisStorage, error) {
 	reader, err := zip.NewReader(readerAt, size)
 	if err != nil {
 		return nil, err

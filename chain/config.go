@@ -5,8 +5,8 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/icon-project/goloop/chain/gs"
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/module"
 )
 
 const (
@@ -47,8 +47,8 @@ type Config struct {
 	DefWaitTimeout int64  `json:"waitTimeout"`
 	MaxWaitTimeout int64  `json:"maxTimeout"`
 
-	GenesisStorage gs.GenesisStorage `json:"-"`
-	Genesis        json.RawMessage   `json:"genesis"`
+	GenesisStorage module.GenesisStorage `json:"-"`
+	Genesis        json.RawMessage       `json:"genesis"`
 
 	BaseDir  string `json:"chain_dir"`
 	FilePath string `json:"-"` // absolute path

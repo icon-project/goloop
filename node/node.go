@@ -375,6 +375,19 @@ func (n *Node) ImportChain(cid int, s string, height int64) error {
 	return c.Import(s, height, true)
 }
 
+func (n *Node) PruneChain(cid int, dbt string, height int64) error {
+	defer n.mtx.RUnlock()
+	n.mtx.RLock()
+
+	c, err := n._get(cid)
+	if err != nil {
+		return err
+	}
+	chainDir := c.cfg.AbsBaseDir()
+	gs := path.Join(chainDir, ChainGenesisZipFileName)
+	return c.Prune(gs, dbt, height, false)
+}
+
 func (n *Node) ConfigureChain(cid int, key string, value string) error {
 	defer n.mtx.RUnlock()
 	n.mtx.RLock()

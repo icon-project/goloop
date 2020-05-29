@@ -64,7 +64,7 @@ func (_r *ChainBase) Genesis() []byte {
 	panic("not implemented")
 }
 
-func (_r *ChainBase) GetGenesisData(key []byte) ([]byte, error) {
+func (_r *ChainBase) GenesisStorage() module.GenesisStorage {
 	panic("not implemented")
 }
 
@@ -109,6 +109,10 @@ func (_r *ChainBase) Stop(sync bool) error {
 }
 
 func (_r *ChainBase) Import(src string, height int64, sync bool) error {
+	panic("not implemented")
+}
+
+func (_r *ChainBase) Prune(gs string, dbt string, height int64, sync bool) error {
 	panic("not implemented")
 }
 

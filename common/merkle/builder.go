@@ -2,9 +2,10 @@ package merkle
 
 import (
 	"container/list"
+
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/db"
-	"github.com/pkg/errors"
+	"github.com/icon-project/goloop/common/errors"
 )
 
 type DataRequester interface {
@@ -14,6 +15,7 @@ type DataRequester interface {
 type RequestIterator interface {
 	Next() bool
 	Key() []byte
+	BucketIDs() []db.BucketID
 }
 
 type Builder interface {
@@ -21,7 +23,7 @@ type Builder interface {
 	UnresolvedCount() int
 	Requests() RequestIterator
 	RequestData(id db.BucketID, key []byte, requester DataRequester)
-	Database() db.LayerDB
+	Database() db.Database
 	Flush(write bool) error
 }
 
@@ -32,7 +34,7 @@ type request struct {
 }
 
 type merkleBuilder struct {
-	layer      db.LayerDB
+	store      db.Database
 	requests   *list.List
 	requestMap map[string]*list.Element
 }
@@ -50,6 +52,13 @@ func (i *requestIterator) Next() bool {
 		i.element = i.element.Next()
 		return true
 	}
+}
+
+func (i *requestIterator) BucketIDs() []db.BucketID {
+	if i.request != nil {
+		return i.request.bucketIDs
+	}
+	return nil
 }
 
 func (i *requestIterator) Key() []byte {
@@ -72,7 +81,7 @@ func (b *merkleBuilder) OnData(value []byte) error {
 		req := e.Value.(*request)
 		for i, requester := range req.requesters {
 			bkID := req.bucketIDs[i]
-			bk, err := b.layer.GetBucket(bkID)
+			bk, err := b.store.GetBucket(bkID)
 			if err != nil {
 				return err
 			}
@@ -91,6 +100,9 @@ func (b *merkleBuilder) OnData(value []byte) error {
 }
 
 func (b *merkleBuilder) RequestData(id db.BucketID, key []byte, requester DataRequester) {
+	if key == nil {
+		return
+	}
 	reqID := string(key)
 	if e, ok := b.requestMap[reqID]; ok {
 		req := e.Value.(*request)
@@ -112,17 +124,24 @@ func (b *merkleBuilder) UnresolvedCount() int {
 }
 
 func (b *merkleBuilder) Flush(write bool) error {
-	return b.layer.Flush(write)
+	if ldb, ok := b.store.(db.LayerDB); ok {
+		return ldb.Flush(write)
+	}
+	return nil
 }
 
-func (b *merkleBuilder) Database() db.LayerDB {
-	return b.layer
+func (b *merkleBuilder) Database() db.Database {
+	return b.store
 }
 
 func NewBuilder(dbase db.Database) Builder {
 	ldb := db.NewLayerDB(dbase)
+	return NewBuilderWithRawDatabase(ldb)
+}
+
+func NewBuilderWithRawDatabase(dbase db.Database) Builder {
 	builder := &merkleBuilder{
-		layer:      ldb,
+		store:      dbase,
 		requests:   list.New(),
 		requestMap: make(map[string]*list.Element),
 	}

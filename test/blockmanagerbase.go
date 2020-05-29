@@ -4,6 +4,7 @@ package test
 import (
 	"io"
 
+	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
 )
 
@@ -66,5 +67,17 @@ func (_r *BlockManagerBase) SendTransactionAndWait(txi interface{}) (tid []byte,
 }
 
 func (_r *BlockManagerBase) WaitTransactionResult(id []byte) (rc <-chan interface{}, err error) {
+	panic("not implemented")
+}
+
+func (_r *BlockManagerBase) ExportBlocks(from int64, to int64, dst db.Database) error {
+	panic("not implemented")
+}
+
+func (_r *BlockManagerBase) ExportGenesis(blk module.Block, writer module.GenesisStorageWriter) error {
+	panic("not implemented")
+}
+
+func (_r *BlockManagerBase) GetGenesisData() (module.Block, module.CommitVoteSet, error) {
 	panic("not implemented")
 }

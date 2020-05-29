@@ -97,6 +97,11 @@ type ChainImportParam struct {
 	Height int64  `json:"height"`
 }
 
+type ChainPruneParam struct {
+	DBType string `json:"dbType,omitempty"`
+	Height int64  `json:"height"`
+}
+
 type ConfigureParam struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
@@ -199,6 +204,7 @@ func (r *Rest) RegisterChainHandlers(g *echo.Group) {
 	g.POST(UrlChainRes+"/reset", r.ResetChain, r.ChainInjector)
 	g.POST(UrlChainRes+"/verify", r.VerifyChain, r.ChainInjector)
 	g.POST(UrlChainRes+"/import", r.ImportChain, r.ChainInjector)
+	g.POST(UrlChainRes+"/prune", r.PruneChain, r.ChainInjector)
 	route := g.GET(UrlChainRes+"/genesis", r.GetChainGenesis, r.ChainInjector)
 	if r.a != nil {
 		r.a.SetSkip(route, false)
@@ -356,6 +362,21 @@ func (r *Rest) ImportChain(ctx echo.Context) error {
 		return echo.ErrBadRequest
 	}
 	if err := r.n.ImportChain(c.CID(), param.DBPath, param.Height); err != nil {
+		return err
+	}
+	return ctx.String(http.StatusOK, "OK")
+}
+
+func (r *Rest) PruneChain(ctx echo.Context) error {
+	c := ctx.Get("chain").(*Chain)
+	param := &ChainPruneParam{}
+	if err := ctx.Bind(param); err != nil {
+		return echo.ErrBadRequest
+	}
+	if param.Height < 1 {
+		return echo.ErrBadRequest
+	}
+	if err := r.n.PruneChain(c.CID(), param.DBType, param.Height); err != nil {
 		return err
 	}
 	return ctx.String(http.StatusOK, "OK")

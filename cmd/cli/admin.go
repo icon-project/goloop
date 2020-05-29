@@ -286,6 +286,32 @@ func NewChainCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Comman
 	importFlags.Int64("height", 0, "Block Height")
 	MarkAnnotationRequired(importFlags, "db_path", "height")
 
+	pruneCmd := &cobra.Command{
+		Use:   "prune CID",
+		Short: "Start to prune the database based on the height",
+		Args:  ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			fs := cmd.Flags()
+			param := &node.ChainPruneParam{}
+			param.DBType, _ = fs.GetString("db_type")
+			param.Height, _ = fs.GetInt64("height")
+
+			var v string
+			reqUrl := node.UrlChain + "/" + args[0] + "/prune"
+			_, err := adminClient.PostWithJson(reqUrl, param, &v)
+			if err != nil {
+				return err
+			}
+			fmt.Println(v)
+			return nil
+		},
+	}
+	rootCmd.AddCommand(pruneCmd)
+	pruneFlags := pruneCmd.Flags()
+	pruneFlags.String("db_type", "", "Database type(default:original database type)")
+	pruneFlags.Int64("height", 0, "Block Height")
+	MarkAnnotationRequired(pruneFlags, "height")
+
 	genesisCmd := &cobra.Command{
 		Use:   "genesis CID FILE",
 		Short: "Download chain genesis file",
@@ -456,7 +482,7 @@ func NewUserCmd(parentCmd *cobra.Command, parentVc *viper.Viper) (*cobra.Command
 			}{Id: args[0]}
 			addr := &common.Address{}
 			if err := addr.SetString(param.Id); err != nil {
-				return errors.Wrap(err,"invalid Address format")
+				return errors.Wrap(err, "invalid Address format")
 			}
 			var v string
 			if _, err := adminClient.PostWithJson(reqUrl, param, &v); err != nil {

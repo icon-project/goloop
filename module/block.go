@@ -2,6 +2,8 @@ package module
 
 import (
 	"io"
+
+	"github.com/icon-project/goloop/common/db"
 )
 
 const (
@@ -97,6 +99,16 @@ type BlockManager interface {
 	// WaitTransactionResult check whether it knows about the transaction
 	// and wait for the result.
 	WaitTransactionResult(id []byte) (rc <-chan interface{}, err error)
+
+	// ExportBlock exports blocks assuring specified block ranges.
+	ExportBlocks(from, to int64, dst db.Database) error
+
+	// ExportGenesis exports genesis to the writer based on the block.
+	ExportGenesis(blk Block, writer GenesisStorageWriter) error
+
+	// GetGenesisVotes returns available votes from genesis storage.
+	// They are available only when it starts from genesis.
+	GetGenesisData() (Block, CommitVoteSet, error)
 }
 
 type TransactionInfo interface {

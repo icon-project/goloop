@@ -28,7 +28,7 @@ type Chain interface {
 	DefaultWaitTimeout() time.Duration
 	MaxWaitTimeout() time.Duration
 	Genesis() []byte
-	GetGenesisData(key []byte) ([]byte, error)
+	GenesisStorage() GenesisStorage
 	CommitVoteSetDecoder() CommitVoteSetDecoder
 	PatchDecoder() PatchDecoder
 
@@ -42,6 +42,7 @@ type Chain interface {
 	Start(sync bool) error
 	Stop(sync bool) error
 	Import(src string, height int64, sync bool) error
+	Prune(gs string, dbt string, height int64, sync bool) error
 	Term(sync bool) error
 	State() string
 
@@ -59,4 +60,26 @@ type Regulator interface {
 	MinCommitTimeout() time.Duration
 	OnTxExecution(count int, ed time.Duration, fd time.Duration)
 	SetBlockInterval(i time.Duration, d time.Duration)
+}
+
+type GenesisType int
+
+const (
+	GenesisUnknown GenesisType = iota
+	GenesisNormal
+	GenesisPruned
+)
+
+type GenesisStorage interface {
+	CID() (int, error)
+	NID() (int, error)
+	Type() (GenesisType, error)
+	Genesis() []byte
+	Get(key []byte) ([]byte, error)
+}
+
+type GenesisStorageWriter interface {
+	WriteGenesis(gtx []byte) error
+	WriteData(value []byte) ([]byte, error)
+	Close() error
 }

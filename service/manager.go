@@ -6,8 +6,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/icon-project/goloop/common/merkle"
 	"github.com/icon-project/goloop/network"
 	ssync "github.com/icon-project/goloop/service/sync"
+	"github.com/icon-project/goloop/service/txresult"
 
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/server/metric"
@@ -569,6 +571,30 @@ func (m *manager) WaitForTransaction(
 	wc := state.NewWorldContext(ws, bi)
 
 	return m.tm.Wait(wc, cb)
+}
+
+func (m *manager) ExportResult(result []byte, vh []byte, d db.Database) error {
+	r, err := newTransitionResultFromBytes(result)
+	if err != nil {
+		return err
+	}
+	e := merkle.NewCopyContext(m.db, d)
+	txresult.NewReceiptListWithBuilder(e.Builder(), r.NormalReceiptHash)
+	txresult.NewReceiptListWithBuilder(e.Builder(), r.PatchReceiptHash)
+	state.NewWorldSnapshotWithBuilder(e.Builder(), r.StateHash, vh)
+	return e.Run()
+}
+
+func (m *manager) ImportResult(result []byte, vh []byte, src db.Database) error {
+	r, err := newTransitionResultFromBytes(result)
+	if err != nil {
+		return err
+	}
+	e := merkle.NewCopyContext(src, m.db)
+	txresult.NewReceiptListWithBuilder(e.Builder(), r.NormalReceiptHash)
+	txresult.NewReceiptListWithBuilder(e.Builder(), r.PatchReceiptHash)
+	state.NewWorldSnapshotWithBuilder(e.Builder(), r.StateHash, vh)
+	return e.Run()
 }
 
 type blockInfo struct {

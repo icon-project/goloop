@@ -3,6 +3,8 @@ package module
 import (
 	"fmt"
 	"math/big"
+
+	"github.com/icon-project/goloop/common/db"
 )
 
 // TransitionCallback provides transition change notifications. All functions
@@ -358,6 +360,14 @@ type ServiceManager interface {
 
 	// WaitTransactionResult return channel for result.
 	WaitTransactionResult(id []byte) (<-chan interface{}, error)
+
+	// ExportResult exports all related entries related with the result
+	// should be exported to the database
+	ExportResult(result []byte, vh []byte, dst db.Database) error
+
+	// ImportResult imports all related entries related with the result
+	// should be imported from the database
+	ImportResult(result []byte, vh []byte, src db.Database) error
 }
 
 type TraceInfo struct {

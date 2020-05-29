@@ -61,6 +61,7 @@ const (
 	DefaultWALDir      = "wal"
 	DefaultContractDir = "contract"
 	DefaultCacheDir    = "cache"
+	DefaultTmpDBDir    = "tmp"
 )
 
 const (
@@ -83,6 +84,10 @@ const (
 	StateImportFailed
 	StateResetting
 	StateResetFailed
+	StatePruneStarting
+	StatePruneStarted
+	StatePruneStopping
+	StatePruneFailed
 )
 
 type State int
@@ -127,8 +132,16 @@ func (s State) String() string {
 		return "resetting"
 	case StateResetFailed:
 		return "reset failed"
+	case StatePruneStarting:
+		return "prune starting"
+	case StatePruneStarted:
+		return "prune started"
+	case StatePruneFailed:
+		return "prune failed"
+	case StatePruneStopping:
+		return "prune stopping"
 	default:
-		return "unknown"
+		return fmt.Sprintf("unknown %d", s)
 	}
 }
 
@@ -164,8 +177,8 @@ func (c *singleChain) Genesis() []byte {
 	return c.cfg.GenesisStorage.Genesis()
 }
 
-func (c *singleChain) GetGenesisData(key []byte) ([]byte, error) {
-	return c.cfg.GenesisStorage.Get(key)
+func (c *singleChain) GenesisStorage() module.GenesisStorage {
+	return c.cfg.GenesisStorage
 }
 
 func (c *singleChain) CommitVoteSetDecoder() module.CommitVoteSetDecoder {
@@ -273,6 +286,32 @@ func (c *singleChain) _setState(s State, err error) {
 	c.lastErr = err
 }
 
+func (c *singleChain) _setStateIf(to State, err error, froms ...State) (State, bool) {
+	defer c.mtx.Unlock()
+	c.mtx.Lock()
+
+	invalid := true
+	if len(froms) < 1 {
+		if c.state != to {
+			invalid = false
+		}
+	} else {
+		for _, f := range froms {
+			if f == c.state {
+				invalid = false
+				break
+			}
+		}
+	}
+	if invalid {
+		return c.state, false
+	}
+	prev := c.state
+	c.state = to
+	c.lastErr = err
+	return prev, true
+}
+
 func (c *singleChain) _transit(to State, froms ...State) error {
 	defer c.mtx.Unlock()
 	c.mtx.Lock()
@@ -297,41 +336,48 @@ func (c *singleChain) _transit(to State, froms ...State) error {
 	return nil
 }
 
-func (c *singleChain) _openDatabase(chainDir string) error {
-	DBDir := path.Join(chainDir, DefaultDBDir)
-	if c.cfg.DBType != "mapdb" {
-		c.logger.Infof("prepare a directory %s for database", DBDir)
-		if err := os.MkdirAll(DBDir, 0700); err != nil {
-			return errors.Wrapf(err, "fail to make directory dir=%s", DBDir)
+func (c *singleChain) _openDatabase(dbDir, dbType string) (db.Database, error) {
+	if dbType != "mapdb" {
+		c.logger.Infof("prepare a directory %s for database", dbDir)
+		if err := os.MkdirAll(dbDir, 0700); err != nil {
+			return nil, errors.Wrapf(err, "fail to make directory dir=%s", dbDir)
 		}
 	}
 	DBName := strconv.FormatInt(int64(c.cfg.NID), 16)
-	if cdb, err := db.Open(DBDir, c.cfg.DBType, DBName); err != nil {
-		return errors.Wrapf(err,
-			"fail to open database dir=%s type=%s name=%s", DBDir, c.cfg.DBType, DBName)
+	if cdb, err := db.Open(dbDir, dbType, DBName); err != nil {
+		return nil, errors.Wrapf(err,
+			"fail to open database dir=%s type=%s name=%s", dbDir, c.cfg.DBType, DBName)
 	} else {
-		if len(c.cfg.NodeCache) == 0 {
-			c.cfg.NodeCache = NodeCacheDefault
-		}
+		return cdb, nil
+	}
+}
 
-		var mLevel, fLevel int
-		switch c.cfg.NodeCache {
-		case NodeCacheNone:
-		case NodeCacheSmall:
-			mLevel = 5
-		case NodeCacheLarge:
-			mLevel = 5
-			fLevel = 1
-		default:
-			cdb.Close()
-			return errors.Errorf("Unknown cache strategy:%s", c.cfg.NodeCache)
-		}
-		if mLevel > 0 || fLevel > 0 {
-			cacheDir := path.Join(chainDir, DefaultCacheDir)
-			c.database = cache.AttachManager(cdb, cacheDir, mLevel, fLevel)
-		} else {
-			c.database = cdb
-		}
+func (c *singleChain) _prepareDatabase(chainDir string) error {
+	DBDir := path.Join(chainDir, DefaultDBDir)
+	cdb, err := c._openDatabase(DBDir, c.cfg.DBType)
+	if err != nil {
+		return err
+	}
+	if len(c.cfg.NodeCache) == 0 {
+		c.cfg.NodeCache = NodeCacheDefault
+	}
+	var mLevel, fLevel int
+	switch c.cfg.NodeCache {
+	case NodeCacheNone:
+	case NodeCacheSmall:
+		mLevel = 5
+	case NodeCacheLarge:
+		mLevel = 5
+		fLevel = 1
+	default:
+		cdb.Close()
+		return errors.Errorf("Unknown cache strategy:%s", c.cfg.NodeCache)
+	}
+	if mLevel > 0 || fLevel > 0 {
+		cacheDir := path.Join(chainDir, DefaultCacheDir)
+		c.database = cache.AttachManager(cdb, cacheDir, mLevel, fLevel)
+	} else {
+		c.database = cdb
 	}
 	return nil
 }
@@ -353,7 +399,7 @@ func (c *singleChain) _init() error {
 	chainDir := c.cfg.AbsBaseDir()
 	log.Println("ConfigFilepath", c.cfg.FilePath, "BaseDir", c.cfg.BaseDir, "ChainDir", chainDir)
 
-	if err := c._openDatabase(chainDir); err != nil {
+	if err := c._prepareDatabase(chainDir); err != nil {
 		return err
 	}
 
@@ -569,6 +615,187 @@ func (c *singleChain) Import(src string, height int64, sync bool) error {
 	return c._execute(sync, f)
 }
 
+func (c *singleChain) _exportGenesis(blk module.Block, votes module.CommitVoteSet, gsfile string) (rerr error) {
+	os.RemoveAll(gsfile)
+	fd, err := os.OpenFile(gsfile, os.O_CREATE|os.O_WRONLY|os.O_EXCL|os.O_TRUNC, 0700)
+	if err != nil {
+		return err
+	}
+	gsw := gs.NewGenesisStorageWriter(fd)
+	defer func() {
+		gsw.Close()
+		fd.Close()
+		if rerr != nil {
+			os.Remove(gsfile)
+		}
+	}()
+	if err := c.bm.ExportGenesis(blk, gsw); err != nil {
+		return errors.Wrap(err, "fail on exporting genesis storage")
+	}
+	return nil
+}
+
+func (c *singleChain) _copyDatabase(dbpath, dbtype string, from, to int64) (rerr error) {
+	os.RemoveAll(dbpath)
+	dbase, err := c._openDatabase(dbpath, dbtype)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		dbase.Close()
+		if rerr != nil {
+			os.RemoveAll(dbpath)
+		}
+	}()
+	return c.bm.ExportBlocks(from, to, dbase)
+}
+
+func (c *singleChain) _prune(gsfile, dbtype string, height int64) (rerr error) {
+	chainDir := c.cfg.ResolveAbsolute(c.cfg.BaseDir)
+	dbpath := path.Join(chainDir, DefaultTmpDBDir)
+	gsTmp := gsfile + ".tmp"
+
+	blk, err := c.bm.GetBlockByHeight(height)
+	if err != nil {
+		return err
+	}
+
+	if cid, err := c.sm.GetChainID(blk.Result()); err != nil {
+		return errors.InvalidStateError.New("No ChainID is recorded (require Revision 8)")
+	} else {
+		if cid != int64(c.CID()) {
+			return errors.InvalidStateError.Errorf("Invalid chain ID real=%d exp=%d", cid, c.CID())
+		}
+	}
+
+	nblk, err := c.bm.GetBlockByHeight(height + 1)
+	if err != nil {
+		return errors.InvalidStateError.Errorf("No next block height=%d", height)
+	}
+
+	c.logger.Infof("Export Genesis to=%s from=%d", gsTmp, height)
+	if err := c._exportGenesis(blk, nblk.Votes(), gsTmp); err != nil {
+		return err
+	}
+	defer func() {
+		if rerr != nil {
+			os.Remove(gsTmp)
+		}
+	}()
+
+	lb, err := c.bm.GetLastBlock()
+	if err != nil {
+		return err
+	}
+	targetHeight := lb.Height()
+	c.logger.Infof("Copy Database path=%s type=%s from=%d to=%d",
+		dbpath, dbtype, height, targetHeight)
+	err = c._copyDatabase(dbpath, dbtype, height, targetHeight)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if rerr != nil {
+			os.RemoveAll(dbpath)
+		}
+	}()
+
+	c._stop()
+	target := path.Join(chainDir, DefaultDBDir)
+	c.database.Close()
+	c.database = nil
+
+	dbbk := target + ".bk"
+	gsbk := gsfile + ".bk"
+
+	c.logger.Infof("Replace DB %s -> %s", dbpath, target)
+	os.RemoveAll(dbbk)
+	if err := os.Rename(target, dbbk); err != nil {
+		return errors.UnknownError.Errorf("file on backup %s to %s",
+			target, dbbk)
+	}
+	defer func() {
+		if rerr != nil {
+			os.RemoveAll(target)
+			os.Rename(dbbk, target)
+		} else {
+			os.RemoveAll(dbbk)
+		}
+	}()
+	if err := os.Rename(dbpath, target); err != nil {
+		return errors.UnknownError.Errorf("fail on rename %s to %s",
+			dbpath, target)
+	}
+
+	c.logger.Infof("Replace GS %s -> %s", gsTmp, gsfile)
+	os.RemoveAll(gsbk)
+	if err := os.Rename(gsfile, gsbk); err != nil {
+		return errors.UnknownError.Errorf("fail on backup %s to %s",
+			gsfile, gsbk)
+	}
+	defer func() {
+		if rerr != nil {
+			os.RemoveAll(gsfile)
+			os.Rename(gsbk, gsfile)
+		} else {
+			os.RemoveAll(gsbk)
+		}
+	}()
+	if err := os.Rename(gsTmp, gsfile); err != nil {
+		return errors.UnknownError.Errorf("fail to rename %s to %s",
+			gsTmp, gsfile)
+	}
+
+	// replace genesis
+	fd, err := os.Open(gsfile)
+	if err != nil {
+		return errors.UnknownError.Wrapf(err, "fail to open file=%s", gsfile)
+	}
+	g, err := gs.NewFromFile(fd)
+	if err != nil {
+		return errors.UnknownError.Wrapf(err, "fail to parse gs=%s", gsfile)
+	}
+
+	c.logger.Infof("Reopen DB %s", chainDir)
+	c.cfg.DBType = dbtype
+	if err := c._prepareDatabase(chainDir); err != nil {
+		c.logger.Panicf("_prepareDatabase() fails err=%+v", err)
+	}
+
+	c.cfg.GenesisStorage = g
+	c.cfg.Genesis = g.Genesis()
+	if err := c._prepare(); err != nil {
+		c.logger.Panicf("_prepare() fails err=%+v", err)
+	}
+
+	return nil
+}
+
+func (c *singleChain) Prune(gsfile, dbtype string, height int64, sync bool) error {
+	if s, ok := c._setStateIf(StatePruneStarting, nil, StateStopped); !ok {
+		return errors.InvalidStateError.Errorf("InvalidState(state=%s)", s)
+	}
+	if dbtype == "" {
+		dbtype = c.cfg.DBType
+	}
+	log.Infof("Prune gsfile=%s dbtype=%s height:%d",
+		gsfile, dbtype, height)
+	f := func() {
+		c._setState(StatePruneStarted, nil)
+		err := c._prune(gsfile, dbtype, height)
+		if err != nil {
+			if _, ok := c._setStateIf(StatePruneFailed, err, StatePruneStarted); ok {
+				log.Errorf("Prune failed err=%+v", err)
+			} else {
+				c._setStateIf(StateStopped, nil, StatePruneStopping)
+			}
+		} else {
+			c._setState(StateStopped, nil)
+		}
+	}
+	return c._execute(sync, f)
+}
+
 func (c *singleChain) Term(sync bool) error {
 	err := c._transit(StateTerminating)
 	if err != nil {
@@ -623,7 +850,7 @@ func (c *singleChain) _reset() error {
 		return err
 	}
 
-	if err := c._openDatabase(chainDir); err != nil {
+	if err := c._prepareDatabase(chainDir); err != nil {
 		return err
 	}
 

@@ -30,6 +30,7 @@ type testChain struct {
 	wallet   module.Wallet
 	database db.Database
 	gtx      *testTransaction
+	gs       *testGenesisStorage
 	vld      module.CommitVoteSetDecoder
 	sm       *testServiceManager
 }
@@ -52,6 +53,10 @@ func (c *testChain) Wallet() module.Wallet {
 
 func (c *testChain) Genesis() []byte {
 	return c.gtx.Bytes()
+}
+
+func (c *testChain) GenesisStorage() module.GenesisStorage {
+	return c.gs
 }
 
 func (c *testChain) NID() int {
@@ -821,6 +826,34 @@ func newGenesisTX(n int) *testTransaction {
 	return tx
 }
 
+type testGenesisStorage struct {
+	gtx *testTransaction
+}
+
+func (t testGenesisStorage) CID() (int, error) {
+	return 1, nil
+}
+
+func (t testGenesisStorage) NID() (int, error) {
+	return 1, nil
+}
+
+func (t testGenesisStorage) Type() (module.GenesisType, error) {
+	return module.GenesisNormal, nil
+}
+
+func (t testGenesisStorage) Genesis() []byte {
+	return t.gtx.Bytes()
+}
+
+func (t testGenesisStorage) Get(key []byte) ([]byte, error) {
+	return nil, nil
+}
+
+func newTestGenesisStorage(gtx *testTransaction) *testGenesisStorage {
+	return &testGenesisStorage{gtx: gtx}
+}
+
 func newTestChain(database db.Database, gtx *testTransaction) *testChain {
 	if database == nil {
 		database = newMapDB()
@@ -832,6 +865,7 @@ func newTestChain(database db.Database, gtx *testTransaction) *testChain {
 		wallet:   wallet.New(),
 		database: database,
 		gtx:      gtx,
+		gs:       newTestGenesisStorage(gtx),
 		vld:      newCommitVoteSetFromBytes,
 	}
 	c.sm = newServiceManager(c)
