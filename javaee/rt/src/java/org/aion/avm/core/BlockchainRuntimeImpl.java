@@ -177,8 +177,9 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         require(targetAddress != null, "Destination can't be NULL");
 
         externalState.waitForCallbacks();
-        var hash = IInstrumentation.attachedThreadInstrumentation.get().peekNextHashCode();
-        int stepLeft = (int)IInstrumentation.attachedThreadInstrumentation.get().energyLeft();
+        IInstrumentation inst = IInstrumentation.attachedThreadInstrumentation.get();
+        var hash = inst.peekNextHashCode();
+        int stepLeft = (int)inst.energyLeft();
         var rs = dApp.saveRuntimeState(hash, StorageFees.MAX_GRAPH_SIZE);
         var saveItem = new ReentrantDAppStack.SaveItem(dApp, rs);
         var callerAddr = new Address(avm_getAddress().toByteArray());
@@ -199,8 +200,8 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         var saveItemFinal = saveItems.remove(callerAddr);
         assert saveItemFinal!=null;
         dApp.loadRuntimeState(saveItemFinal.getRuntimeState());
-        IInstrumentation.attachedThreadInstrumentation.get().forceNextHashCode(saveItemFinal.getRuntimeState().getGraph().getNextHash());
-        IInstrumentation.attachedThreadInstrumentation.get().chargeEnergy(res.getStepUsed().intValue());
+        inst.forceNextHashCode(saveItemFinal.getRuntimeState().getGraph().getNextHash());
+        inst.chargeEnergy(res.getStepUsed().intValue());
         int s = res.getStatus();
         if (s == Status.Success) {
             return Shadower.shadow(res.getRet());
@@ -218,7 +219,8 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         } else if (s < Status.UserReversionStart) {
             RuntimeAssertionError.unreachable("bad result status " + s);
         } else if (s < Status.UserReversionEnd) {
-            throw new ScoreRevertException(s - Status.UserReversionStart, res.getRet().toString());
+            throw new ScoreRevertException(s - Status.UserReversionStart,
+                    res.getRet().toString());
         }
         throw new RevertException();
     }
