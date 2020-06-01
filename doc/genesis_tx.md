@@ -61,6 +61,9 @@ This document specifies the genesis file format.
         
 * `chain` (T_DICT, default=`null`)
 
+  * `revision` (T_INT, default=`"0x4"`) <br>
+    Initial revision
+
   * `auditEnabled` (T_BOOLEAN, default=`"0x0"`) <br>
     determines whether audit is required. Default is false.
     
