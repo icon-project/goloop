@@ -1474,6 +1474,40 @@ func (vl *emptyAddressIndexer) Len() int {
 	return 0
 }
 
+func (cs *consensus) applyGenesis(prevValidators addressIndexer) error {
+	// apply genesis commit vote set in the same way as commit WAL
+	blk, cvs, err := cs.c.BlockManager().GetGenesisData()
+	if err != nil {
+		return err
+	}
+	if blk == nil {
+		return nil
+	}
+	if blk.Height() != cs.lastBlock.Height() {
+		return nil
+	}
+	cvl, ok := cvs.(*commitVoteList)
+	if !ok {
+		return errors.ErrInvalidState
+	}
+	vl := cvl.voteList(blk.Height(), blk.ID())
+	vs := newVoteSet(prevValidators.Len())
+	for i := 0; i < vl.Len(); i++ {
+		msg := vl.Get(i)
+		cs.logger.Tracef("Genesis: round vote %v\n", msg)
+		index := prevValidators.IndexOf(msg.address())
+		if index < 0 {
+			return errors.Errorf("bad voter %v", msg.address())
+		}
+		_ = vs.add(index, msg)
+	}
+	psid, ok := vs.getOverTwoThirdsPartSetID()
+	if ok && psid != nil {
+		cs.lastVotes = vs.voteSetForOverTwoThird()
+	}
+	return nil
+}
+
 func (cs *consensus) Start() error {
 	cs.mutex.Lock()
 	defer cs.mutex.Unlock()
@@ -1501,6 +1535,9 @@ func (cs *consensus) Start() error {
 	cs.resetForNewHeight(lastBlock, newVoteSet(0))
 	cs.prevValidators = validators
 	if err := cs.applyWAL(validators); err != nil {
+		return err
+	}
+	if err := cs.applyGenesis(validators); err != nil {
 		return err
 	}
 
