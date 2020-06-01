@@ -188,7 +188,6 @@ public class DAppCreator {
                                 boolean preserveDebuggability,
                                 boolean verboseErrors,
                                 boolean enablePrintln) {
-        // We hold onto the runtimeSetup that we are pushing onto the stack in here so that we can pop it back off in the finally block.
         IRuntimeSetup runtimeSetup = null;
         Result result = null;
         try {
