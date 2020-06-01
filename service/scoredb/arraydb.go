@@ -12,8 +12,8 @@ type ArrayDB struct {
 	store StateStore
 }
 
-func NewArrayDB(store StateStore, name interface{}) *ArrayDB {
-	kbytes := ToKey(ArrayDBPrefix, name)
+func NewArrayDB(store StateStore, keys ...interface{}) *ArrayDB {
+	kbytes := ToKey(ArrayDBPrefix, keys...)
 
 	return &ArrayDB{
 		key:   kbytes,
