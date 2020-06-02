@@ -1,4 +1,6 @@
 dependencies {
+    implementation project(':api')
+
     implementation 'org.bouncycastle:bcprov-jdk15on:1.60'
     implementation 'org.msgpack:msgpack-core:0.8.17'
     implementation 'org.slf4j:slf4j-api:1.7.26'
@@ -16,25 +18,6 @@ dependencies {
         'org.junit.vintage:junit-vintage-engine:5.4.2'
     )
 }
-
-task scoreApiJar(type: Jar) {
-    archiveBaseName = 'scoreapi'
-    from sourceSets.main.output
-    include 'score/*.class'
-    shouldRunAfter classes
-}
-check.dependsOn scoreApiJar
-
-task scoreJavadoc(type: Javadoc) {
-    source = sourceSets.main.allJava
-    classpath = sourceSets.main.output
-    include 'score/*.java'
-    exclude 'score/Value.java'
-    exclude 'score/ValueBuffer.java'
-    destinationDir = file("${buildDir}/javadoc")
-    shouldRunAfter classes
-}
-check.dependsOn scoreJavadoc
 
 test {
     useJUnitPlatform()

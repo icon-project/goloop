@@ -1,6 +1,7 @@
 rootProject.name = 'goloop-testsuite'
-include(':sdk', ':rt', ':tooling', ':samples')
+include(':sdk', ':api', ':rt', ':tooling', ':samples')
 project(':sdk').projectDir = new File(settingsDir, '../sdk/java/library')
+project(':api').projectDir = new File(settingsDir, '../javaee/api')
 project(':rt').projectDir = new File(settingsDir, '../javaee/rt')
 project(':tooling').projectDir = new File(settingsDir, '../javaee/tooling')
 project(':samples').projectDir = new File(settingsDir, '../javaee/samples')

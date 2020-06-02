@@ -30,6 +30,7 @@ dependencies {
     implementation "org.java-websocket:Java-WebSocket:1.4.0"
     implementation "com.squareup.okhttp3:okhttp:3.11.0"
     implementation project(':sdk')
+    implementation project(':api')
     implementation project(':rt')
     implementation project(':tooling')
     implementation project(':samples')

@@ -16,13 +16,13 @@
 
 package score;
 
-import foundation.icon.ee.types.Status;
-
 /**
  * Signals a manual reversion from a score.
  */
 public class ScoreRevertException extends RevertException {
-    private static final int End = Status.UserReversionEnd - Status.UserReversionStart;
+    // NOTE: the following codes should be matched with {@code foundation.icon.ee.types.Status}
+    private static final int Start = 32;
+    private static final int End = 1000 - Start;
 
     private int statusCode;
 

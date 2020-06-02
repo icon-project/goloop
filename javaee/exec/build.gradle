@@ -1,19 +1,19 @@
 dependencies {
+    implementation project(':api')
+    implementation project(':rt')
+    implementation project(':tooling')
+
     implementation 'org.msgpack:msgpack-core:0.8.17'
     implementation 'org.slf4j:slf4j-api:1.7.26'
 
-    implementation project(':tooling')
-    implementation project(':rt')
-
     testImplementation(
-            'org.junit.jupiter:junit-jupiter-api:5.4.2',
-            project(':samples'),
+        'org.junit.jupiter:junit-jupiter-api:5.4.2',
+        project(':samples'),
     )
     testRuntime(
-            'org.junit.jupiter:junit-jupiter-engine:5.4.2',
+        'org.junit.jupiter:junit-jupiter-engine:5.4.2',
     )
     testRuntimeOnly project(':logger')
-
 }
 
 task compileNative(type: Exec) {

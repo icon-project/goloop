@@ -1,5 +1,5 @@
 dependencies {
-    implementation project(':rt')
+    implementation project(':api')
     implementation project(':tooling')
 }
 
