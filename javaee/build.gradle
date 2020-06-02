@@ -1,11 +1,10 @@
-allprojects {
+subprojects {
     repositories {
         jcenter()
     }
-}
 
-subprojects {
     apply plugin: 'java'
+    apply plugin: 'maven-publish'
 
     java {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -15,5 +14,33 @@ subprojects {
     sourceSets {
         main.java.srcDirs = ['src/java']
         test.java.srcDirs = ['test/java']
+    }
+
+    def snapshotSuffix = rootProject.hasProperty('release') ? '' : '-SNAPSHOT'
+    group = GROUP
+    version = VERSION + snapshotSuffix
+
+    publishing {
+        repositories {
+            maven {
+                def releasesUrl = "http://ci.arch.iconloop.com/nexus/repository/maven-releases"
+                def snapshotsUrl = "http://ci.arch.iconloop.com/nexus/repository/maven-snapshots"
+                url = version.endsWith('SNAPSHOT') ? snapshotsUrl : releasesUrl
+                credentials {
+                    username = "$nexusUsername"
+                    password = "$nexusPassword"
+                }
+            }
+        }
+        afterEvaluate {
+            if (plugins.hasPlugin("java-library")) {
+                publications {
+                    mavenJava(MavenPublication) {
+                        artifactId = 'javaee-' + project.name
+                        from components.java
+                    }
+                }
+            }
+        }
     }
 }

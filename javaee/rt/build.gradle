@@ -1,3 +1,5 @@
+apply plugin: 'java-library'
+
 dependencies {
     implementation project(':api')
 
