@@ -160,6 +160,9 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) (err error) {
 				err = scoreresult.OutOfStepError.New("FailToApplyContractCall")
 			}
 		}
+		if err != nil {
+			h.log.TSystemf("INVOKE done status=%s msg=%v", err.Error(), err)
+		}
 	}()
 
 	// Prepare
