@@ -104,7 +104,7 @@ build:java:
   stage: build
   script:
     - cd javaee
-    - ./gradlew api:build app:execman:distZip
+    - ./gradlew -Prelease api:build app:execman:distZip
   artifacts:
     expire_in: 1 day
     paths:
