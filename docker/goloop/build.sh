@@ -23,14 +23,16 @@ PRE_GOLOOP_VERSION=$(docker image inspect ${REPO_GOLOOP} -f "{{.Config.Labels.GO
 if [ "${GOLOOP_VERSION}" != "${PRE_GOLOOP_VERSION}" ]
 then
   echo "Build image ${REPO_GOLOOP} using ${REPO_PY_DEPS} with TAG_PY_DEPS:${TAG_PY_DEPS}"
+  JAVAEE_VERSION=$(grep "^VERSION=" ../../javaee/gradle.properties | cut -d= -f2)
   mkdir -p dist/pyee dist/bin
   cp ../../pyee/dist/* ./dist/pyee/
   cp ../../bin/* ./dist/bin/
-  cp ../../javaee/app/execman/build/distributions/execman.zip ./dist/
+  cp ../../javaee/app/execman/build/distributions/execman-*.zip ./dist/
   docker build \
     --build-arg REPO_PY_DEPS=${REPO_PY_DEPS} \
     ${BUILD_ARG_TAG_PY_DEPS} \
     --build-arg GOLOOP_VERSION=${GOLOOP_VERSION} \
+    --build-arg JAVAEE_VERSION=${JAVAEE_VERSION} \
     --tag ${REPO_GOLOOP} .
   rm -rf dist
 else

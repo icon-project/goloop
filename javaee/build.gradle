@@ -27,8 +27,8 @@ subprojects {
                 def snapshotsUrl = "http://ci.arch.iconloop.com/nexus/repository/maven-snapshots"
                 url = version.endsWith('SNAPSHOT') ? snapshotsUrl : releasesUrl
                 credentials {
-                    username = "$nexusUsername"
-                    password = "$nexusPassword"
+                    username = rootProject.hasProperty('nexusUsername') ? "$nexusUsername" : ''
+                    password = rootProject.hasProperty('nexusPassword') ? "$nexusPassword" : ''
                 }
             }
         }

@@ -22,6 +22,7 @@ GOTEST_FLAGS = -test.short
 GL_VERSION ?= $(shell git describe --always --tags --dirty)
 GL_TAG ?= latest
 BUILD_INFO = $(shell go env GOOS)/$(shell go env GOARCH) tags($(GOBUILD_TAGS))-$(shell date '+%Y-%m-%d-%H:%M:%S')
+JAVAEE_VERSION = $(shell grep "^VERSION=" $(BUILD_ROOT)/javaee/gradle.properties | cut -d= -f2)
 
 #
 # Build scripts for command binaries.
@@ -134,10 +135,11 @@ goloop-image: pyrun-pyexec gorun-goloop-linux javarun-javaexec
 	@ cp $(BUILD_ROOT)/docker/goloop/* $(GOLOOP_DOCKER_DIR)
 	@ cp $(PYEE_DIST_DIR)/*.whl $(GOLOOP_DOCKER_DIR)/dist/pyee
 	@ cp $(LINUX_BIN_DIR)/goloop $(GOLOOP_DOCKER_DIR)/dist/bin
-	@ cp $(BUILD_ROOT)/javaee/app/execman/build/distributions/execman.zip $(GOLOOP_DOCKER_DIR)/dist
+	@ cp $(BUILD_ROOT)/javaee/app/execman/build/distributions/*.zip $(GOLOOP_DOCKER_DIR)/dist
 	@ docker build -t $(GOLOOP_IMAGE) \
 	    --build-arg TAG_PY_DEPS=$(GL_TAG) \
 	    --build-arg GOLOOP_VERSION=$(GL_VERSION) \
+	    --build-arg JAVAEE_VERSION=$(JAVAEE_VERSION) \
 	    $(GOLOOP_DOCKER_DIR)
 
 gochain-image: pyrun-pyexec gorun-gochain-linux javarun-javaexec
@@ -147,10 +149,11 @@ gochain-image: pyrun-pyexec gorun-gochain-linux javarun-javaexec
 	@ cp $(BUILD_ROOT)/docker/gochain/* $(GOCHAIN_DOCKER_DIR)
 	@ cp $(PYEE_DIST_DIR)/*.whl $(GOCHAIN_DOCKER_DIR)/dist
 	@ cp $(LINUX_BIN_DIR)/gochain $(GOCHAIN_DOCKER_DIR)/dist
-	@ cp $(BUILD_ROOT)/javaee/app/execman/build/distributions/execman.zip $(GOCHAIN_DOCKER_DIR)/dist
+	@ cp $(BUILD_ROOT)/javaee/app/execman/build/distributions/*.zip $(GOCHAIN_DOCKER_DIR)/dist
 	@ docker build -t $(GOCHAIN_IMAGE) \
 	    --build-arg TAG_PY_DEPS=$(GL_TAG) \
 	    --build-arg GOCHAIN_VERSION=$(GL_VERSION) \
+	    --build-arg JAVAEE_VERSION=$(JAVAEE_VERSION) \
 	    $(GOCHAIN_DOCKER_DIR)
 
 .PHONY: test

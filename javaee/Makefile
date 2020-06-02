@@ -4,7 +4,7 @@ javaexec:
 	@ \
 	echo "[#] Building Java executor" ; \
 	export GRADLE_USER_HOME=.gradle ; \
-	$(GRADLE) app:execman:distZip
+	$(GRADLE) -Prelease app:execman:distZip
 
 test:
 	@ \

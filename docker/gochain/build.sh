@@ -23,14 +23,16 @@ PRE_GOCHAIN_VERSION=$(docker image inspect ${REPO_GOCHAIN} -f "{{.Config.Labels.
 if [ "${GOCHAIN_VERSION}" != "${PRE_GOCHAIN_VERSION}" ]
 then
   echo "Build image ${REPO_GOCHAIN} using ${REPO_PY_DEPS} with TAG_PY_DEPS:${TAG_PY_DEPS}"
+  JAVAEE_VERSION=$(grep "^VERSION=" ../../javaee/gradle.properties | cut -d= -f2)
   mkdir dist
   cp ../../pyee/dist/pyexec-*.whl ./dist/
   cp ../../bin/gochain ./dist/
-  cp ../../javaee/app/execman/build/distributions/execman.zip ./dist/
+  cp ../../javaee/app/execman/build/distributions/execman-*.zip ./dist/
   docker build \
     --build-arg REPO_PY_DEPS=${REPO_PY_DEPS} \
     ${BUILD_ARG_TAG_PY_DEPS} \
     --build-arg GOCHAIN_VERSION=${GOCHAIN_VERSION} \
+    --build-arg JAVAEE_VERSION=${JAVAEE_VERSION} \
     --tag ${REPO_GOCHAIN} .
   rm -rf dist
 else

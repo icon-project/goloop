@@ -11,11 +11,13 @@ PRE_GOLOOP_VERSION=$(docker image inspect ${REPO_GOLOOP_JAVA} -f "{{.Config.Labe
 if [ "${GOLOOP_VERSION}" != "${PRE_GOLOOP_VERSION}" ]
 then
   echo "Build image ${REPO_GOLOOP_JAVA} for ${GOLOOP_VERSION}"
+  JAVAEE_VERSION=$(grep "^VERSION=" ../../javaee/gradle.properties | cut -d= -f2)
   mkdir -p dist/bin
   cp ../../bin/* ./dist/bin/
-  cp ../../javaee/app/execman/build/distributions/execman.zip ./dist/
+  cp ../../javaee/app/execman/build/distributions/execman-*.zip ./dist/
   docker build \
     --build-arg GOLOOP_VERSION=${GOLOOP_VERSION} \
+    --build-arg JAVAEE_VERSION=${JAVAEE_VERSION} \
     --tag ${REPO_GOLOOP_JAVA} .
   rm -rf dist
 else
