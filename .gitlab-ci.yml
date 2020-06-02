@@ -104,12 +104,12 @@ build:java:
   stage: build
   script:
     - cd javaee
-    - ./gradlew rt:scoreJavadoc app:execman:distZip
+    - ./gradlew api:build app:execman:distZip
   artifacts:
     expire_in: 1 day
     paths:
       - javaee/app/execman/build/distributions/
-      - javaee/rt/build/javadoc/
+      - javaee/api/build/javadoc/
   tags:
     - docker
 
@@ -338,7 +338,7 @@ pages:javadoc:
   <<: *pages
   variables:
     PAGES_PUBLIC: "${CI_PROJECT_PATH}/${CI_COMMIT_REF_SLUG}/javadoc"
-    PAGES_SOURCE: "javaee/rt/build/javadoc"
+    PAGES_SOURCE: "javaee/api/build/javadoc"
 
 pages:IT:goloop:pyscore:
   <<: *pages
