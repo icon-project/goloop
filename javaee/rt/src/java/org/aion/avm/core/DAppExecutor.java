@@ -7,6 +7,7 @@ import foundation.icon.ee.types.ObjectGraph;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.Transaction;
+import i.AvmError;
 import i.AvmException;
 import i.IBlockchainRuntime;
 import i.IInstrumentation;
@@ -30,7 +31,7 @@ public class DAppExecutor {
                               Address dappAddress,
                               Transaction tx,
                               boolean verboseErrors,
-                              boolean enablePrintln) {
+                              boolean enablePrintln) throws AvmError {
         Result result = null;
 
         // Note that the instrumentation is just a per-thread access to the state stack - we can grab it at any time as it never changes for this thread.
@@ -82,9 +83,6 @@ public class DAppExecutor {
             Object ret;
             try {
                 ret = dapp.callMethod(tx.getMethod(), tx.getParams());
-            } catch (Throwable t) {
-                logger.debug("Exception at method: {}", tx.getMethod());
-                throw t;
             } finally {
                 externalState.waitForCallbacks();
             }
@@ -101,7 +99,6 @@ public class DAppExecutor {
                 externalState.putObjectGraph(dappAddress, postCallGraphData);
                 // Update LoadedDApp state at the end of execution
                 dapp.setHashCode(newHashCode);
-                dapp.setSerializedLength(postCallGraphData.length);
             }
 
             long energyUsed = tx.getLimit() - threadInstrumentation.energyLeft();
@@ -110,36 +107,22 @@ public class DAppExecutor {
                 prevState.getSaveItems().putAll(thisState.getSaveItems());
                 prevState.getSaveItems().put(dappAddress, new ReentrantDAppStack.SaveItem(dapp, runtimeState));
             }
-        } catch (CodedException e) {
-            String msg = e.getMessage() != null ? e.getMessage() : Status.getMessage(e.getCode());
-            logger.debug("TX Reverted: \"{}\"", msg);
-            if (verboseErrors) {
-                e.printStackTrace(System.err);
-            }
-            result = new Result(e.getCode(),
-                    tx.getLimit() - threadInstrumentation.energyLeft(),
-                    msg);
         } catch (AvmException e) {
-            // We handle the generic AvmException as some failure within the contract.
             if (verboseErrors) {
-                System.err.println("DApp execution failed due to AvmException: \"" + e.getMessage() + "\"");
-                e.printStackTrace(System.err);
+                System.err.println("DApp invocation failed : " + e.getMessage());
+                e.printStackTrace();
             }
-            result = new Result(Status.UnknownFailure, tx.getLimit(), e.toString());
-        } catch (JvmError e) {
-            // These are cases which we know we can't handle and have decided to handle by safely stopping the AVM instance so
-            // re-throw this as the AvmImpl top-level loop will commute it into an asynchronous shutdown.
-            if (verboseErrors) {
-                System.err.println("FATAL JvmError: \"" + e.getMessage() + "\"");
-                e.printStackTrace(System.err);
+            int code = Status.UnknownFailure;
+            String msg = null;
+            if (e instanceof CodedException) {
+                code = ((CodedException) e).getCode();
+                msg = e.getMessage();
             }
-            throw e;
-        } catch (Throwable e) {
-            // We don't know what went wrong in this case, but it is beyond our ability to handle it here.
-            // We ship it off to the ExceptionHandler, which kills the transaction as a failure for unknown reasons.
-            System.err.println("Exception at method: " + tx.getMethod());
-            e.printStackTrace(System.err);
-            result = new Result(Status.UnknownFailure, tx.getLimit(), e.toString());
+            if (msg == null) {
+                msg = Status.getMessage(code);
+            }
+            long stepUsed = tx.getLimit() - threadInstrumentation.energyLeft();
+            return new Result(code, stepUsed, msg);
         } finally {
             // Once we are done running this, no matter how it ended, we want to detach our thread from the DApp.
             InstrumentationHelpers.popExistingStackFrame(dapp.runtimeSetup);

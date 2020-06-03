@@ -17,7 +17,9 @@ import java.util.Map;
 import java.util.Set;
 
 import foundation.icon.ee.types.DAppRuntimeState;
+import foundation.icon.ee.types.IllegalFormatException;
 import foundation.icon.ee.types.ObjectGraph;
+import foundation.icon.ee.types.UnknownFailureException;
 import foundation.icon.ee.util.MethodUnpacker;
 import foundation.icon.ee.util.Unshadower;
 import i.AvmThrowable;
@@ -28,7 +30,6 @@ import i.IObjectDeserializer;
 import i.IObjectSerializer;
 import i.IRuntimeSetup;
 import i.InternedClasses;
-import i.MethodAccessException;
 import i.PackageConstants;
 import i.RuntimeAssertionError;
 import i.UncaughtException;
@@ -91,7 +92,7 @@ public class LoadedDApp {
     private Field runtimeBlockchainRuntimeField;
 
     // Note that we track the interned classes here since they have the same lifecycle as the LoadedDApp (including for reentrant calls).
-    private InternedClasses internedClasses;
+    private final InternedClasses internedClasses;
 
     private final ClassRenamer classRenamer;
     private final boolean preserveDebuggability;
@@ -161,27 +162,52 @@ public class LoadedDApp {
         }
     }
 
-    private Method getExternalMethod(foundation.icon.ee.types.Method m) throws ReflectiveOperationException  {
+    private Method getExternalMethod(foundation.icon.ee.types.Method m)
+            throws  ClassNotFoundException, NoSuchMethodException {
         var paramClasses = m.getParameterClasses();
         Class<?> clazz = loadMainClass();
-        return clazz.getMethod(METHOD_PREFIX + m.getName(), paramClasses);
+        try {
+            return clazz.getMethod(METHOD_PREFIX + m.getName(), paramClasses);
+        } catch (SecurityException e) {
+            throw RuntimeAssertionError.unexpected(e);
+        }
     }
 
-    private Constructor<?> getConstructor(foundation.icon.ee.types.Method m) throws ReflectiveOperationException {
+    private Constructor<?> getConstructor(foundation.icon.ee.types.Method m)
+            throws  ClassNotFoundException, NoSuchMethodException {
         var paramClasses = m.getParameterClasses();
         Class<?> clazz = loadMainClass();
-        return clazz.getConstructor(paramClasses);
+        try {
+            return clazz.getConstructor(paramClasses);
+        } catch (SecurityException e) {
+            throw RuntimeAssertionError.unexpected(e);
+        }
     }
 
-    public void verifyExternalMethods() throws ReflectiveOperationException {
-        for (var m : nameToMethod.entrySet()) {
-            if (m.getValue().getType() != foundation.icon.ee.types.Method.MethodType.EVENT
-                    && !m.getValue().getName().equals("<init>")) {
-                Method method = getExternalMethod(m.getValue());
-                if (Modifier.isStatic(method.getModifiers())) {
-                    throw new NoSuchMethodException(String.format("method %s is static", m.getKey()));
+    public void verifyMethods() throws IllegalFormatException {
+        var m = nameToMethod.get("<init>");
+        if (m == null) {
+            throw new IllegalFormatException("no constructor in APIS");
+        }
+        try {
+            var c = getConstructor(m);
+            int mod = c.getModifiers();
+            if (!Modifier.isPublic(mod)) {
+                throw new IllegalFormatException("bad constructor");
+            }
+            for (var e : nameToMethod.entrySet()) {
+                if (e.getValue().getType() != foundation.icon.ee.types.Method.MethodType.EVENT
+                        && !e.getValue().getName().equals("<init>")) {
+                    Method method = getExternalMethod(e.getValue());
+                    mod = method.getModifiers();
+                    if (Modifier.isStatic(mod) && !Modifier.isPublic(mod)) {
+                        throw new IllegalFormatException(
+                                String.format("bad method %s", e.getKey()));
+                    }
                 }
             }
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalFormatException("Cannot access method or constructor", e);
         }
     }
 
@@ -277,35 +303,32 @@ public class LoadedDApp {
         }
     }
 
-    public void initMainInstance(Object []params) throws Throwable {
+    public void initMainInstance(Object []params) throws AvmThrowable {
+        var m = nameToMethod.get("<init>");
+        if (m == null) {
+            throw RuntimeAssertionError.unreachable("no construct in APIS");
+        }
         try {
-            var m = nameToMethod.get("<init>");
-            if (m==null) {
-                throw new NoSuchMethodException("method <init> is not in APIS");
-            }
             Constructor<?> ctor = getConstructor(m);
             mainInstance = ctor.newInstance(m.convertParameters(params));
-        } catch (ClassNotFoundException | SecurityException | ExceptionInInitializerError e) {
-            // should have been handled during CREATE.
-            RuntimeAssertionError.unexpected(e);
-        } catch (NoSuchMethodException | IllegalAccessException e) {
-            throw new MethodAccessException(e);
         } catch (InvocationTargetException e) {
-            // handle the real exception
-            if (e.getTargetException() instanceof UncaughtException) {
-                handleUncaughtException(e.getTargetException().getCause());
-            } else {
-                handleUncaughtException(e.getTargetException());
-            }
+            handleUncaughtException(e.getTargetException());
+        } catch (ExceptionInInitializerError e) {
+            handleUncaughtException(e.getException());
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalFormatException("cannot call constructor", e);
+        } catch (IllegalArgumentException e) {
+            RuntimeAssertionError.unexpected(e);
         }
     }
 
-    public Object callMethod(String methodName, Object[] params) throws Throwable {
+    public Object callMethod(String methodName, Object[] params) throws AvmThrowable {
+        var m = nameToMethod.get(methodName);
+        if (m == null) {
+            throw RuntimeAssertionError.unreachable(
+                    String.format("method %s is not in APIS", methodName));
+        }
         try {
-            var m = nameToMethod.get(methodName);
-            if (m==null) {
-                throw new NoSuchMethodException(String.format("method %s is not in APIS", methodName));
-            }
             Method method = getExternalMethod(m);
             Object sres = method.invoke(mainInstance, m.convertParameters(params));
             Object res;
@@ -315,22 +338,16 @@ public class LoadedDApp {
                 try {
                     res = Unshadower.unshadow((s.java.lang.Object)sres);
                 } catch (IllegalArgumentException e) {
-                    throw new ClassCastException("bad return value");
+                    throw new UnknownFailureException("invalid return value");
                 }
             }
             return res;
-        } catch (ClassNotFoundException | SecurityException | ExceptionInInitializerError e) {
-            // should have been handled during CREATE.
-            RuntimeAssertionError.unexpected(e);
-        } catch (NoSuchMethodException | IllegalAccessException e) {
-            throw new MethodAccessException(e);
         } catch (InvocationTargetException e) {
-            // handle the real exception
-            if (e.getTargetException() instanceof UncaughtException) {
-                handleUncaughtException(e.getTargetException().getCause());
-            } else {
-                handleUncaughtException(e.getTargetException());
-            }
+            handleUncaughtException(e.getTargetException());
+        } catch (ExceptionInInitializerError e) {
+            handleUncaughtException(e.getException());
+        } catch (ReflectiveOperationException | IllegalArgumentException e) {
+            throw RuntimeAssertionError.unexpected(e);
         }
         return null;
     }
@@ -340,28 +357,24 @@ public class LoadedDApp {
      * This is called during the create action to force the DApp initialization code to be run before it is stripped off for
      * long-term storage.
      */
-    public void forceInitializeAllClasses() throws Throwable {
+    public void forceInitializeAllClasses() throws AvmThrowable {
         forceInitializeOneClass(this.constantClass);
         for (Class<?> clazz : this.sortedUserClasses) {
             forceInitializeOneClass(clazz);
         }
     }
 
-    private void forceInitializeOneClass(Class<?> clazz) throws Throwable {
+    private void forceInitializeOneClass(Class<?> clazz) throws AvmThrowable {
         try {
             Class<?> initialized = Class.forName(clazz.getName(), true, this.loader);
-            // These must be the same instances we started with and they must have been loaded by this loader.
             RuntimeAssertionError.assertTrue(clazz == initialized);
             RuntimeAssertionError.assertTrue(initialized.getClassLoader() == this.loader);
-        } catch (ClassNotFoundException | SecurityException e) {
-            // a static error occurred in the implementation or the shadowing was not working properly.
-            RuntimeAssertionError.unexpected(e);
         } catch (ExceptionInInitializerError e) {
-            // handle the real exception
             handleUncaughtException(e.getException());
-        } catch (Throwable t) {
-            // Some other exceptions can float out from the user clinit, not always wrapped in ExceptionInInitializerError.
-            handleUncaughtException(t);
+        } catch (ClassNotFoundException | LinkageError e) {
+            throw new UnknownFailureException(e);
+        } catch (SecurityException e) {
+            throw RuntimeAssertionError.unexpected(e);
         }
     }
 
@@ -369,10 +382,10 @@ public class LoadedDApp {
      * The exception could be any {@link i.AvmThrowable}, any {@link java.lang.RuntimeException},
      * or a {@link e.s.java.lang.Throwable}.
      */
-    private void handleUncaughtException(Throwable cause) throws Throwable {
+    private void handleUncaughtException(Throwable cause) throws AvmThrowable {
         // thrown by us
         if (cause instanceof AvmThrowable) {
-            throw cause;
+            throw (AvmThrowable)cause;
         }
         // thrown by runtime, but is never handled
         else if ((cause instanceof RuntimeException) || (cause instanceof Error)) {
@@ -422,11 +435,7 @@ public class LoadedDApp {
 
     public void setHashCode(int hashCode) { this.hashCode = hashCode; }
 
-    public void setSerializedLength(int serializedLength) { this.serializedLength = serializedLength; }
-
     public int getHashCode() { return hashCode; }
-
-    public int getSerializedLength() { return serializedLength; }
 
     private Set<String> fetchPreRenameSlashStyleJclExceptions() {
         Set<String> jclExceptions = new HashSet<>();

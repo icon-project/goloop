@@ -2,16 +2,18 @@ package org.aion.avm.core;
 
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.CodedException;
+import foundation.icon.ee.types.IllegalFormatException;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.Transaction;
+import i.AvmError;
 import i.AvmException;
+import i.AvmThrowable;
 import i.GenericCodedException;
 import i.IBlockchainRuntime;
 import i.IInstrumentation;
 import i.IRuntimeSetup;
 import i.InstrumentationHelpers;
-import i.JvmError;
 import i.OutOfStackException;
 import i.PackageConstants;
 import i.RuntimeAssertionError;
@@ -57,6 +59,7 @@ import org.aion.parallel.TransactionTask;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -187,34 +190,24 @@ public class DAppCreator {
                                 Transaction tx,
                                 boolean preserveDebuggability,
                                 boolean verboseErrors,
-                                boolean enablePrintln) {
+                                boolean enablePrintln) throws AvmError {
         IRuntimeSetup runtimeSetup = null;
         Result result = null;
         try {
             final byte[] codeBytes = externalState.getCode(dappAddress);
             byte[] apisBytes = JarBuilder.getAPIsBytesFromJAR(codeBytes);
             if (apisBytes == null) {
-                if (verboseErrors) {
-                    System.err.println("DApp deployment failed due to bad external methods info");
-                }
-                return new Result(Status.IllegalFormat, tx.getLimit(), "bad external method info");
+                throw new IllegalFormatException("bad APIS");
             }
 
             RawDappModule rawDapp = RawDappModule.readFromJar(codeBytes, preserveDebuggability, verboseErrors);
             if (rawDapp == null) {
-                if (verboseErrors) {
-                    System.err.println("DApp deployment failed due to corrupt JAR data");
-                }
-                return new Result(Status.IllegalFormat, tx.getLimit(), "bad jar data");
+                throw new IllegalFormatException("bad jar");
             }
 
             // Verify that the DApp contains the main class they listed and that it has a "public static byte[] main()" method.
             if (!rawDapp.classes.containsKey(rawDapp.mainClass)) {
-                if (verboseErrors) {
-                    String explanation = "missing Main class";
-                    System.err.println("DApp deployment failed due to " + explanation);
-                }
-                return new Result(Status.IllegalFormat, tx.getLimit(), "missing Main class");
+                throw new IllegalFormatException("no main class");
             }
             ClassHierarchyForest dappClassesForest = rawDapp.classHierarchyForest;
 
@@ -223,16 +216,7 @@ public class DAppCreator {
             TransformedDappModule transformedDapp = TransformedDappModule.fromTransformedClasses(transformedClasses, rawDapp.mainClass);
 
             LoadedDApp dapp = DAppLoader.fromTransformed(transformedDapp, apisBytes, preserveDebuggability);
-            try {
-                dapp.verifyExternalMethods();
-            } catch (Exception e) {
-                if (verboseErrors) {
-                    String explanation = "missing External methods";
-                    System.err.println("DApp deployment failed due to " + explanation + " exception:" + e);
-                    e.printStackTrace();
-                }
-                return new Result(Status.IllegalFormat, tx.getLimit(), e.toString());
-            }
+            dapp.verifyMethods();
             runtimeSetup = dapp.runtimeSetup;
 
             // We start the nextHashCode at 1.
@@ -265,32 +249,23 @@ public class DAppCreator {
             // Force the classes in the dapp to initialize so that the <clinit> is run (since we already saved the version without).
             IInstrumentation threadInstrumentation = IInstrumentation.attachedThreadInstrumentation.get();
             result = runClinitAndBillSender(verboseErrors, dapp, threadInstrumentation, externalState, dappAddress, tx);
-        } catch (CodedException e) {
+        } catch (AvmException | IOException e) {
             if (verboseErrors) {
-                System.err.println("DApp deployment to REVERT due to uncaught EXCEPTION: \"" + e.getMessage() + "\"");
-                e.printStackTrace(System.err);
+                System.err.println("DApp deployment failed : " + e.getMessage());
+                e.printStackTrace();
             }
-            long stepUsed = (runtimeSetup != null) ? (tx.getLimit() - IInstrumentation.getEnergyLeft()) : 0;
-            result = new Result(e.getCode(), stepUsed, e.toString());
-        } catch (AvmException e) {
-            // We handle the generic AvmException as some failure within the contract.
-            if (verboseErrors) {
-                System.err.println("DApp deployment failed due to AvmException: \"" + e.getMessage() + "\"");
-                e.printStackTrace(System.err);
+            int code = Status.UnknownFailure;
+            String msg = null;
+            if (e instanceof CodedException) {
+                code = ((CodedException) e).getCode();
+                msg = e.getMessage();
             }
-            result = new Result(Status.UnknownFailure, tx.getLimit(), e.toString());
-        } catch (JvmError e) {
-            // These are cases which we know we can't handle and have decided to handle by safely stopping the AVM instance so
-            // re-throw this as the AvmImpl top-level loop will commute it into an asynchronous shutdown.
-            if (verboseErrors) {
-                System.err.println("FATAL JvmError: \"" + e.getMessage() + "\"");
-                e.printStackTrace(System.err);
+            if (msg == null) {
+                msg = Status.getMessage(code);
             }
-            throw e;
-        } catch (Throwable e) {
-            // We don't know what went wrong in this case, but it is beyond our ability to handle it here.
-            // We ship it off to the ExceptionHandler, which kills the transaction as a failure for unknown reasons.
-            result = new Result(Status.UnknownFailure, tx.getLimit(), e.toString());
+            long stepUsed = (runtimeSetup != null) ?
+                    (tx.getLimit() - IInstrumentation.getEnergyLeft()) : 0;
+            return new Result(code, stepUsed, msg);
         } finally {
             // Once we are done running this, no matter how it ended, we want to detach our thread from the DApp.
             if (null != runtimeSetup) {
@@ -405,30 +380,21 @@ public class DAppCreator {
                                                  IInstrumentation threadInstrumentation,
                                                  IExternalState externalState,
                                                  Address dappAddress,
-                                                 Transaction tx) throws Throwable {
+                                                 Transaction tx) throws AvmThrowable {
         try {
-            try {
-                dapp.forceInitializeAllClasses();
-                dapp.initMainInstance(tx.getParams());
-            } finally {
-                externalState.waitForCallbacks();
-            }
-
-            // Save back the state before we return.
-            byte[] rawGraphData = dapp.saveEntireGraph(threadInstrumentation.peekNextHashCode(), StorageFees.MAX_GRAPH_SIZE);
-            // Bill for writing this size.
-            threadInstrumentation.chargeEnergy(StorageFees.WRITE_PRICE_PER_BYTE * rawGraphData.length);
-            externalState.putObjectGraph(dappAddress, rawGraphData);
-
-            long energyUsed = tx.getLimit() - threadInstrumentation.energyLeft();
-            return new Result(Status.Success, energyUsed, null);
-        } catch (CodedException e) {
-            if (verboseErrors) {
-                System.err.println("DApp deployment failed due to stack overflow EXCEPTION: \"" + e.getMessage() + "\"");
-                e.printStackTrace(System.err);
-            }
-            long energyUsed = tx.getLimit() - threadInstrumentation.energyLeft();
-            return new Result(e.getCode(), energyUsed, e.toString());
+            dapp.forceInitializeAllClasses();
+            dapp.initMainInstance(tx.getParams());
+        } finally {
+            externalState.waitForCallbacks();
         }
+
+        // Save back the state before we return.
+        byte[] rawGraphData = dapp.saveEntireGraph(threadInstrumentation.peekNextHashCode(), StorageFees.MAX_GRAPH_SIZE);
+        // Bill for writing this size.
+        threadInstrumentation.chargeEnergy(StorageFees.WRITE_PRICE_PER_BYTE * rawGraphData.length);
+        externalState.putObjectGraph(dappAddress, rawGraphData);
+
+        long energyUsed = tx.getLimit() - threadInstrumentation.energyLeft();
+        return new Result(Status.Success, energyUsed, null);
     }
 }
