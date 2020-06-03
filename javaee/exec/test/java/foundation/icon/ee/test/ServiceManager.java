@@ -142,7 +142,7 @@ public class ServiceManager extends Proxy {
     }
 
     public FileReader getFileReader() {
-        return state;
+        return (path) -> state.readFile(path);
     }
 
     public void close() {

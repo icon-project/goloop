@@ -10,7 +10,7 @@ import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 
-public class State implements FileReader {
+public class State {
     private static byte[] defaultHash = Crypto.sha3_256(new byte[0]);
 
     static class Account {
