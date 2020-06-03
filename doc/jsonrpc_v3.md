@@ -795,7 +795,7 @@ This function causes state transition.
 #### <a id ="sendtxparameterdata">Parameters - data</a>
 `data` contains the following data in various formats depending on the dataType.
 
-#### dataType == call
+##### dataType == call
 
 It is used when calling a function in SCORE, and `data` has dictionary value as follows.
 
