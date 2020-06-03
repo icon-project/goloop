@@ -1,0 +1,17 @@
+Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
+SEND invoke code=010001/optimized isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[]
+RECV setCode hash=433d25cd9941b9178b06b278b0fa6ebcf9a94c22d0c7ac9188dc277cb62a25e2 len=1132
+RECV setObjGraph flag=1 next=2 hash=0b696b4d139e57d00bddd61ba6761abadad0c6e3b8de7f3328e14eaa3ba8e81c graphLen=57 graph=\x03\x00\x00\x00\x00/foundation.icon.ee.ipc.DeployTest$NoConstructor\x00\x00\x00\x01
+RECV result status=0 stepUsed=232 ret=<null>
+SEND invoke code=010002/optimized isQuery=false from=000001... to=010002... value=0 stepLimit=1000000000 method=<init> params=[]
+RECV result status=5 stepUsed=0 ret=no constructor in APIS
+SEND invoke code=010003/optimized isQuery=false from=000001... to=010003... value=0 stepLimit=1000000000 method=<init> params=[]
+RECV result status=5 stepUsed=0 ret=no constructor in APIS
+SEND invoke code=010004/optimized isQuery=false from=000001... to=010004... value=0 stepLimit=1000000000 method=<init> params=[]
+RECV result status=5 stepUsed=0 ret=no constructor in APIS
+Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
+SEND invoke code=010005/optimized isQuery=false from=000001... to=010005... value=0 stepLimit=1000000000 method=<init> params=[]
+RECV setCode hash=c6f49fd4b84ded4e17c06dd10182c8a045808e146a9ece408bd736ebe42e8773 len=1115
+RECV result status=5 stepUsed=0 ret=cannot call constructor
+SEND invoke code=010006/optimized isQuery=false from=000001... to=010006... value=0 stepLimit=1000000000 method=<init> params=[]
+RECV result status=5 stepUsed=0 ret=no constructor in APIS
