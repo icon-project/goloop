@@ -146,6 +146,13 @@ func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, e
 	// Try to charge fee
 	stepPrice := ctx.StepPrice()
 	stepUsed := cc.StepUsed()
+	minSteps := big.NewInt(cc.StepsFor(state.StepTypeDefault, 1))
+	if stepUsed.Cmp(minSteps) == -1 {
+		old := stepUsed
+		stepUsed = minSteps
+		logger.TSystemf("STEP reset value=%d old=%d msg=%q",
+			minSteps, old, "sustain minimum")
+	}
 	fee := big.NewInt(0).Mul(stepUsed, stepPrice)
 
 	as := ctx.GetAccountState(th.from.ID())
