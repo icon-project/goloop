@@ -17,10 +17,6 @@ import (
 	"github.com/icon-project/goloop/service/trace"
 )
 
-const (
-	MethodFallback = "fallback"
-)
-
 type DataCallJSON struct {
 	Method string          `json:"method"`
 	Params json.RawMessage `json:"params"`

@@ -9,6 +9,10 @@ import (
 	"github.com/icon-project/goloop/service/scoreresult"
 )
 
+const (
+	FallbackMethodName = ""
+)
+
 type Info struct {
 	methods   []*Method
 	methodMap map[string]*Method
@@ -36,7 +40,11 @@ func (info *Info) buildMethodMap() {
 		if method.IsEvent() {
 			m[method.Signature()] = method
 		} else {
-			m[method.Name] = method
+			if method.IsFallback() {
+				m[FallbackMethodName] = method
+			} else if method.Name != FallbackMethodName {
+				m[method.Name] = method
+			}
 		}
 	}
 	info.methodMap = m

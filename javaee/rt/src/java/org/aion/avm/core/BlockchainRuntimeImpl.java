@@ -169,7 +169,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
             value = s.java.math.BigInteger.avm_ZERO;
         }
         if (method == null) {
-            method = new s.java.lang.String("fallback");
+            method = new s.java.lang.String("");
         }
         if (sparams == null) {
             sparams = new a.ObjectArray(0);

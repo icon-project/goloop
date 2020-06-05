@@ -94,7 +94,7 @@ class Icx(object):
         :param addr_to: receiver address
         :param amount: the amount of icx to transfer
         """
-        InternalCall.message_call(self._context, self._address, addr_to, amount, STR_FALLBACK)
+        InternalCall.message_call(self._context, self._address, addr_to, amount, None)
 
     def send(self, addr_to: 'Address', amount: int) -> bool:
         """

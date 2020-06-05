@@ -18,6 +18,7 @@ from ..base.address import Address
 from ..base.exception import ExceptionCode, IconServiceBaseException
 from ..iconscore.icon_score_constant import STR_FALLBACK
 from ..iconscore.icon_score_step import StepType
+from ..ipc import MethodName
 from ..logger import Logger
 
 if TYPE_CHECKING:
@@ -46,8 +47,8 @@ class InternalCall(object):
                      func_name: str,
                      arg_params: Optional[tuple] = None,
                      kw_params: Optional[dict] = None) -> Any:
-        if func_name is None:
-            func_name = STR_FALLBACK
+        if func_name is None or func_name == STR_FALLBACK:
+            func_name = MethodName.FALLBACK
         new_limit = context.step_counter.check_step_remained(StepType.CONTRACT_CALL)
         if arg_params is not None:
             params = arg_params

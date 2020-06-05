@@ -167,6 +167,10 @@ class DataType(object):
     DICT = 7
 
 
+class MethodName(object):
+    FALLBACK = ""
+
+
 class APIInfo(object):
     def __init__(self, proxy: 'ServiceManagerProxy'):
         self.__values = []
