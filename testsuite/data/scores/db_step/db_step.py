@@ -74,14 +74,17 @@ class DbStep(IconScoreBase):
     @external(readonly=True)
     def readFromVar(self, type: int) -> str:
         if type == 0:
-            val = self._var_int.get()
+            val: int = self._var_int.get()
+            return hex(val)
         elif type == 1:
-            val = self._var_str.get()
+            val: str = self._var_str.get()
+            return val
         elif type == 2:
-            val = self._var_bytes.get().decode()
+            val: bytes = self._var_bytes.get()
+            return "0x"+val.hex()
         else:
-            val = self._var_addr.get()
-        return val
+            addr: Address = self._var_addr.get()
+            return str(addr)
 
     # type : 0 for int, 1 for str, 2 for bytes, 3 for addr
     @external

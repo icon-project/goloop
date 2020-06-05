@@ -363,8 +363,14 @@ func (h *CallHandler) OnResult(status error, steps *big.Int, result *codec.Typed
 			h.log.TSystemf("INVOKE done status=%s msg=%v steps=%s", s, status, steps)
 		} else {
 			obj, _ := common.DecodeAnyForJSON(result)
-			h.log.TSystemf("INVOKE done status=%s steps=%s result=%s",
-				module.StatusSuccess, steps, trace.ToJSON(obj))
+			method := h.api.GetMethod(h.method)
+			if err := method.EnsureResult(result); err != nil {
+				h.log.TSystemf("INVOKE done status=%s steps=%s result=%s warning=%s",
+					module.StatusSuccess, steps, trace.ToJSON(obj), err)
+			} else {
+				h.log.TSystemf("INVOKE done status=%s steps=%s result=%s",
+					module.StatusSuccess, steps, trace.ToJSON(obj))
+			}
 		}
 	}
 	h.cc.OnResult(status, steps, result, nil)

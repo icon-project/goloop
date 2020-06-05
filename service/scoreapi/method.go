@@ -165,7 +165,7 @@ func (t DataType) ValidateBytes(bs []byte) error {
 	return nil
 }
 
-var typeTagMap = map[DataType]uint8{
+var inputTypeTag = map[DataType]uint8{
 	Integer: common.TypeInt,
 	String:  codec.TypeString,
 	Bytes:   codec.TypeBytes,
@@ -173,8 +173,21 @@ var typeTagMap = map[DataType]uint8{
 	Address: common.TypeAddress,
 }
 
-func (t DataType) ValidateTypeObj(obj *codec.TypedObj, nullable bool) error {
-	if typeTag, ok := typeTagMap[t]; !ok {
+var outputTypeTag = map[DataType]struct {
+	tag      uint8
+	nullable bool
+}{
+	Integer: {common.TypeInt, false},
+	String:  {codec.TypeString, false},
+	Bytes:   {codec.TypeBytes, true},
+	Bool:    {codec.TypeBool, false},
+	Address: {common.TypeAddress, true},
+	List:    {codec.TypeList, true},
+	Dict:    {codec.TypeDict, true},
+}
+
+func (t DataType) ValidateInput(obj *codec.TypedObj, nullable bool) error {
+	if typeTag, ok := inputTypeTag[t]; !ok {
 		return errors.IllegalArgumentError.Errorf("UnknownType(%d)", t)
 	} else {
 		if typeTag == obj.Type {
@@ -185,6 +198,24 @@ func (t DataType) ValidateTypeObj(obj *codec.TypedObj, nullable bool) error {
 		}
 		return errors.IllegalArgumentError.Errorf(
 			"InvalidType(exp=%s,type=%d)", t, typeTag)
+	}
+}
+
+func (t DataType) ValidateOutput(obj *codec.TypedObj) error {
+	if obj == nil {
+		obj = codec.Nil
+	}
+	if typeTag, ok := outputTypeTag[t]; !ok {
+		return errors.IllegalArgumentError.Errorf("UnknownType(%d)", t)
+	} else {
+		if typeTag.tag == obj.Type {
+			return nil
+		}
+		if obj.Type == codec.TypeNil && typeTag.nullable {
+			return nil
+		}
+		return errors.IllegalArgumentError.Errorf(
+			"InvalidType(exp=%d,type=%d)", typeTag.tag, obj.Type)
 	}
 }
 
@@ -318,7 +349,7 @@ func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedO
 			if i < len(tol) {
 				to := tol[i]
 				nullable := (i >= a.Indexed) && input.Default == nil
-				if err := inputType.ValidateTypeObj(to, nullable); err != nil {
+				if err := inputType.ValidateInput(to, nullable); err != nil {
 					return nil, err
 				}
 			} else {
@@ -342,7 +373,7 @@ func (a *Method) EnsureParamsSequential(paramObj *codec.TypedObj) (*codec.TypedO
 	for i, input := range a.Inputs {
 		if obj, ok := params[input.Name]; ok {
 			nullable := (i >= a.Indexed) && input.Default == nil
-			if err := input.Type.ValidateTypeObj(obj, nullable); err != nil {
+			if err := input.Type.ValidateInput(obj, nullable); err != nil {
 				return nil, scoreresult.InvalidParameterError.Wrapf(err,
 					"InvalidParameter(exp=%s, value=%T)", input.Type, obj)
 			}
@@ -467,4 +498,54 @@ func (a *Method) ConvertParamsToTypedObj(bs []byte) (*codec.TypedObj, error) {
 	} else {
 		return to, nil
 	}
+}
+
+func (a *Method) EnsureResult(result *codec.TypedObj) error {
+	if a == nil {
+		return scoreresult.MethodNotFoundError.New("NoMethod")
+	}
+	if result == nil {
+		result = codec.Nil
+	}
+	if len(a.Outputs) == 0 {
+		if result.Type == codec.TypeNil {
+			return nil
+		}
+		if !a.IsReadOnly() {
+			// Some of execution environment returns empty
+			// outputs for writable functions with outputs.
+			// To support old versions, it ignores
+			// empty outputs.
+			return nil
+		}
+		return scoreresult.UnknownFailureError.Errorf(
+			"InvalidReturn(exp=None,real=%d)", result.Type)
+	}
+	var results []*codec.TypedObj
+	if len(a.Outputs) == 1 {
+		results = []*codec.TypedObj{result}
+	} else {
+		if result.Type != codec.TypeList {
+			return scoreresult.UnknownFailureError.Errorf(
+				"InvalidReturnType(type=%d)", result.Type)
+		}
+		if rs, ok := result.Object.([]*codec.TypedObj); !ok {
+			return scoreresult.UnknownFailureError.Errorf(
+				"InvalidReturnType(type=%T)", result.Object)
+		} else {
+			results = rs
+		}
+	}
+	if len(a.Outputs) != len(results) {
+		return scoreresult.UnknownFailureError.Errorf(
+			"InvalidReturnLength(exp=%d,real=%d)",
+			len(a.Outputs), len(results))
+	}
+	for i, o := range results {
+		if err := a.Outputs[i].ValidateOutput(o); err != nil {
+			return scoreresult.UnknownFailureError.Wrapf(err,
+				"InvalidReturnType(idx=%d)", i)
+		}
+	}
+	return nil
 }

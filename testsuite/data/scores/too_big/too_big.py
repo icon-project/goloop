@@ -48,6 +48,6 @@ class TooBig(IconScoreBase):
 
 
     @external(readonly=True)
-    def balanceOf(self, _owner: Address) -> str:
+    def balanceOf(self, _owner: Address) -> int:
         Logger.info(f"balanceOf : {self._balances[_owner]}", TAG)
         return self._balances[_owner]
