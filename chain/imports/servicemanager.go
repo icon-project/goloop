@@ -38,7 +38,8 @@ func NewServiceManagerForImport(chain module.Chain, nm module.NetworkManager,
 	}
 	blk, err := bdb.GetLastBlock()
 	if err != nil || blk.Height() < height {
-		return nil, nil, err
+		return nil, nil, errors.Wrapf(err, "last height in data source : %d",
+				blk.Height());
 	}
 	m := &managerForImport{
 		ServiceManager: manager,
