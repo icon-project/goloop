@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/icon-project/goloop/service/scoreapi"
 	"github.com/icon-project/goloop/service/scoreresult"
 
 	"github.com/icon-project/goloop/common/codec"
@@ -28,7 +29,7 @@ type (
 	cStatus int
 
 	ContractManager interface {
-		GetHandler(from, to module.Address, value *big.Int, ctype int, data []byte) ContractHandler
+		GetHandler(from, to module.Address, value *big.Int, ctype int, data []byte) (ContractHandler, error)
 		GetCallHandler(from, to module.Address, value *big.Int, method string, paramObj *codec.TypedObj) ContractHandler
 		PrepareContractStore(ws state.WorldState, contract state.Contract) (ContractStore, error)
 	}
@@ -115,45 +116,45 @@ func (cs *contractStoreImpl) notify(err error) {
 	cs.ch <- err
 }
 
-func (cm *contractManager) GetHandler(from, to module.Address, value *big.Int, ctype int, data []byte) ContractHandler {
+func (cm *contractManager) GetHandler(from, to module.Address, value *big.Int, ctype int, data []byte) (ContractHandler, error) {
 	var handler ContractHandler
 	ch := newCommonHandler(from, to, value, cm.log)
 	switch ctype {
 	case CTypeTransfer:
-		handler = newTransferHandler(ch)
-	case CTypeCall:
-		handler = newCallHandler(ch, data, false)
-	case CTypeDeploy:
-		handler = newDeployHandler(ch, data)
-	case CTypePatch:
-		handler = newPatchHandler(ch, data)
-	case CTypeTransferAndCall:
-		handler = &TransferAndCallHandler{
-			th:          newTransferHandler(ch),
-			CallHandler: newCallHandler(ch, data, false),
+		if to.IsContract() {
+			call := newCallHandlerWithTypedObj(ch, scoreapi.FallbackMethodName, nil, false)
+			return newTransferAndCallHandler(ch, call), nil
+		} else {
+			return newTransferHandler(ch), nil
 		}
+	case CTypeCall:
+		call, err := newCallHandlerWithData(ch, data)
+		if err != nil {
+			return nil, err
+		}
+		if value != nil && value.Sign() == 1 {
+			return newTransferAndCallHandler(ch, call), nil
+		}
+		return call, nil
+	case CTypeDeploy:
+		return newDeployHandler(ch, data)
+	case CTypePatch:
+		return newPatchHandler(ch, data)
 	}
-	return handler
+	return handler, nil
 }
 
-func (cm *contractManager) GetCallHandler(from, to module.Address,
-	value *big.Int, method string, paramObj *codec.TypedObj,
-) ContractHandler {
-	if value != nil && value.Sign() == 1 { //value > 0
-		ch := newCommonHandler(from, to, value, cm.log)
-		th := newTransferHandler(ch)
-		if to.IsContract() {
-			return &TransferAndCallHandler{
-				th:          th,
-				CallHandler: newCallHandlerFromTypedObj(ch, method, paramObj, false),
-			}
+func (cm *contractManager) GetCallHandler(from, to module.Address, value *big.Int, method string, paramObj *codec.TypedObj) ContractHandler {
+	ch := newCommonHandler(from, to, value, cm.log)
+	if to.IsContract() {
+		call := newCallHandlerWithTypedObj(ch, method, paramObj, false)
+		if value != nil && value.Sign() == 1 { //value > 0
+			return newTransferAndCallHandler(ch, call)
 		} else {
-			return th
+			return call
 		}
 	} else {
-		return newCallHandlerFromTypedObj(
-			newCommonHandler(from, to, value, cm.log),
-			method, paramObj, false)
+		return newTransferHandler(ch)
 	}
 }
 

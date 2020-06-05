@@ -53,27 +53,15 @@ func NewHandler(cm contract.ContractManager, from, to module.Address,
 	}
 	ctype := contract.CTypeNone // invalid contract type
 	if dataType == nil {
-		if th.to.IsContract() {
-			ctype = contract.CTypeTransferAndCall
-		} else {
-			ctype = contract.CTypeTransfer
-		}
+		ctype = contract.CTypeTransfer
 	} else {
 		switch *dataType {
 		case DataTypeMessage:
-			if th.to.IsContract() {
-				ctype = contract.CTypeTransferAndCall
-			} else {
-				ctype = contract.CTypeTransfer
-			}
+			ctype = contract.CTypeTransfer
 		case DataTypeDeploy:
 			ctype = contract.CTypeDeploy
 		case DataTypeCall:
-			if value != nil && value.Sign() == 1 { // value > 0
-				ctype = contract.CTypeTransferAndCall
-			} else {
-				ctype = contract.CTypeCall
-			}
+			ctype = contract.CTypeCall
 		case DataTypePatch:
 			ctype = contract.CTypePatch
 		default:
@@ -81,9 +69,10 @@ func NewHandler(cm contract.ContractManager, from, to module.Address,
 		}
 	}
 
-	th.chandler = cm.GetHandler(from, to, value, ctype, data)
-	if th.chandler == nil {
-		return nil, errors.InvalidStateError.New("NoSuitableHandler")
+	if handler, err := cm.GetHandler(from, to, value, ctype, data); err != nil {
+		return nil, errors.InvalidStateError.Wrap(err, "NoSuitableHandler")
+	} else {
+		th.chandler = handler
 	}
 	return th, nil
 }
@@ -187,15 +176,6 @@ func (th *transactionHandler) Dispose() {
 	// Actually it is called after calling Execute(), so cc can't be nil.
 	if th.cc != nil {
 		th.cc.Dispose()
-	}
-}
-
-func ParseCallData(data []byte) (*contract.DataCallJSON, error) {
-	var jso contract.DataCallJSON
-	if json.Unmarshal(data, &jso) != nil || jso.Method == "" {
-		return nil, InvalidTxValue.Errorf("NoSpecifiedMethod(%s)", string(data))
-	} else {
-		return &jso, nil
 	}
 }
 

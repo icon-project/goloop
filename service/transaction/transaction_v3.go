@@ -178,7 +178,7 @@ func (tx *transactionV3) Verify() error {
 			if tx.Data == nil {
 				return InvalidTxValue.Errorf("TxData for call is NIL")
 			}
-			if _, err := ParseCallData(tx.Data); err != nil {
+			if _, err := contract.ParseCallData(tx.Data); err != nil {
 				return err
 			}
 		case DataTypeDeploy:

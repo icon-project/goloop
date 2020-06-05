@@ -34,15 +34,15 @@ type DeployHandler struct {
 func newDeployHandler(
 	ch *CommonHandler,
 	data []byte,
-) *DeployHandler {
+) (*DeployHandler, error) {
 	var dataJSON struct {
 		ContentType string          `json:"contentType"`
 		Content     common.HexBytes `json:"content"`
 		Params      json.RawMessage `json:"params"`
 	}
 	if err := json.Unmarshal(data, &dataJSON); err != nil {
-		ch.log.Debugf("FAIL to parse 'data' of transaction, err=%v\ndata(%s)\n", err, data)
-		return nil
+		return nil, scoreresult.InvalidParameterError.Wrap(err,
+			"InvalidDeployData")
 	}
 	return &DeployHandler{
 		CommonHandler: ch,
@@ -50,7 +50,7 @@ func newDeployHandler(
 		contentType:   dataJSON.ContentType,
 		eeType:        state.EETypeFromContentType(dataJSON.ContentType),
 		params:        dataJSON.Params,
-	}
+	}, nil
 }
 
 func NewDeployHandlerForPreInstall(owner, scoreAddr module.Address, contentType string,
@@ -245,7 +245,7 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 	if scoreAs.Contract() == nil {
 		methodStr = scoreAs.NextContract().EEType().InstallMethod()
 	} else {
-		methodStr = deployUpdate
+		methodStr = scoreAs.NextContract().EEType().UpdateMethod()
 	}
 	// GET API
 	cgah := newCallGetAPIHandler(newCommonHandler(h.from, scoreAddr, nil, h.log))
@@ -268,7 +268,7 @@ func (h *AcceptHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, mod
 	if cur := scoreAs.Contract(); cur != nil {
 		cur.SetStatus(state.CSInactive)
 	}
-	handler := newCallHandlerFromTypedObj(
+	handler := newCallHandlerWithTypedObj(
 		// NOTE : on_install or on_update should be invoked by score owner.
 		// 	self.msg.sender should be deployer(score owner) when on_install or on_update is invoked in SCORE
 		newCommonHandler(scoreAs.ContractOwner(), scoreAddr, big.NewInt(0), h.log),

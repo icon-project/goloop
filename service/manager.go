@@ -435,7 +435,10 @@ func (m *manager) Call(resultHash []byte,
 		return nil, err
 	}
 
-	qh := NewQueryHandler(m.cm, &jso.To, jso.Data)
+	qh, err := NewQueryHandler(m.cm, &jso.To, jso.Data)
+	if err != nil {
+		return nil, err
+	}
 	return qh.Query(contract.NewContext(wc, m.cm, m.eem, m.chain, m.log, nil))
 }
 

@@ -92,13 +92,14 @@ func (h *patchHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, modu
 	}
 }
 
-func newPatchHandler(ch *CommonHandler, data []byte) ContractHandler {
+func newPatchHandler(ch *CommonHandler, data []byte) (ContractHandler, error) {
 	handler := &patchHandler{
 		CommonHandler: ch,
 	}
 	err := json.Unmarshal(data, &handler.data)
 	if err != nil {
-		return nil
+		return nil, scoreresult.InvalidParameterError.Wrap(err,
+			"InvalidPatchData")
 	}
-	return handler
+	return handler, nil
 }

@@ -120,8 +120,14 @@ public class TransactionHandler {
     }
 
     public Bytes deployOnly(Wallet owner, String scorePath, RpcObject params) throws IOException {
+        return deployOnly(owner, Constants.CHAINSCORE_ADDRESS, scorePath, params);
+    }
+
+    public Bytes deployOnly(Wallet owner, Address to, String scorePath, RpcObject params) throws IOException {
         byte[] data = ZipFile.zipContent(scorePath);
-        return doDeploy(owner, data, params, Constants.CONTENT_TYPE_PYTHON);
+        return doDeploy(owner, data, to, params,
+                Constants.DEFAULT_INSTALL_STEPS,
+                Constants.CONTENT_TYPE_PYTHON);
     }
 
     public Env.Chain getChain() {
@@ -202,7 +208,7 @@ public class TransactionHandler {
         return iconService.sendTransaction(signedTransaction).execute();
     }
 
-    public void acceptScoreIfAuditEnabled(Bytes txHash)
+    public TransactionResult acceptScoreIfAuditEnabled(Bytes txHash)
             throws TransactionFailureException, IOException, ResultTimeoutException {
         GovScore govScore = new GovScore(this);
         if (govScore.isAuditEnabledOnly()) {
@@ -213,7 +219,9 @@ public class TransactionHandler {
                 throw new TransactionFailureException(result.getFailure());
             }
             LOG.infoExiting();
+            return result;
         }
+        return null;
     }
 
     public ConfirmedTransaction getTransaction(Bytes txHash) throws IOException {

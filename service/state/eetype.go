@@ -12,15 +12,47 @@ const (
 	SystemEE EEType = "system"
 )
 
+var (
+	installMethods = map[EEType]string{
+		PythonEE: "on_install",
+		JavaEE:   "<init>",
+		SystemEE: "<Install>",
+	}
+	updateMethods = map[EEType]string{
+		PythonEE: "on_update",
+		JavaEE:   "",
+		SystemEE: "",
+	}
+)
+
 func (e EEType) InstallMethod() string {
-	switch e {
-	case PythonEE:
-		return "on_install"
-	case JavaEE:
-		return "<init>"
+	if method, ok := installMethods[e]; ok {
+		return method
 	}
 	log.Errorf("UnexpectedEEType(%s)\n", e)
 	return ""
+}
+
+func (e EEType) UpdateMethod() string {
+	if method, ok := updateMethods[e]; ok {
+		return method
+	}
+	log.Errorf("UnexpectedEEType(%s)\n", e)
+	return ""
+}
+
+func (e EEType) IsInternalMethod(s string) bool {
+	if method, ok := installMethods[e]; ok {
+		if method == s {
+			return true
+		}
+	}
+	if method, ok := updateMethods[e]; ok {
+		if method == s {
+			return true
+		}
+	}
+	return false
 }
 
 func (e EEType) String() string {

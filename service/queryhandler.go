@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/icon-project/goloop/common"
+	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoreresult"
@@ -20,9 +21,10 @@ type QueryHandler struct {
 
 func (qh *QueryHandler) Query(ctx contract.Context) (interface{}, error) {
 	// check if function is read-only
-	jso, err := transaction.ParseCallData(qh.data)
+	jso, err := contract.ParseCallData(qh.data)
 	if err != nil {
-		return nil, scoreresult.ErrMethodNotFound
+		return nil, scoreresult.InvalidParameterError.Wrap(err,
+			"InvalidCallData")
 	}
 	as := ctx.GetAccountSnapshot(qh.to.ID())
 	if as == nil {
@@ -68,11 +70,15 @@ func (qh *QueryHandler) Query(ctx contract.Context) (interface{}, error) {
 	return value, nil
 }
 
-func NewQueryHandler(cm contract.ContractManager, to module.Address, data []byte) *QueryHandler {
+func NewQueryHandler(cm contract.ContractManager, to module.Address, data []byte) (*QueryHandler, error) {
+	handler, err := cm.GetHandler(nil, to, big.NewInt(0), contract.CTypeCall, data)
+	if err != nil {
+		return nil, errors.InvalidStateError.Wrap(err, "NoSuitableHandler")
+	}
 	return &QueryHandler{
 		to:   to,
 		data: data,
 
-		contractHandler: cm.GetHandler(nil, to, big.NewInt(0), contract.CTypeCall, data),
-	}
+		contractHandler: handler,
+	}, nil
 }

@@ -18,6 +18,7 @@ package foundation.icon.test.cases;
 
 import foundation.icon.icx.IconService;
 import foundation.icon.icx.KeyWallet;
+import foundation.icon.icx.Wallet;
 import foundation.icon.icx.data.Address;
 import foundation.icon.icx.data.Bytes;
 import foundation.icon.icx.data.Converters;
@@ -39,6 +40,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +55,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 class GetAPITest {
     private static final String SCORE_API_PATH = Score.getFilePath("score_api");
     private static TransactionHandler txHandler;
+    private static Wallet owner;
 
     @BeforeAll
     static void init() {
@@ -61,6 +64,7 @@ class GetAPITest {
         Env.Chain chain = channel.chain;
         IconService iconService = new IconService(new HttpProvider(channel.getAPIUrl(Env.testApiVer)));
         txHandler = new TransactionHandler(iconService, chain);
+        owner = chain.godWallet;
     }
 
     private static final String TYPE_FUNCTION = "function";
@@ -445,6 +449,32 @@ class GetAPITest {
             }
             LOG.infoExiting();
         }
+        LOG.infoExiting();
+    }
+
+    @Test
+    public void callInternals() throws Exception {
+        LOG.infoEntering("callInternals");
+
+        LOG.infoEntering("deployScore", "ScoreApi");
+        Score testScore = txHandler.deploy(owner, SCORE_API_PATH, null);
+        LOG.infoExiting();
+
+        LOG.infoEntering("send transactions");
+        var txs = new ArrayList<Bytes>();
+        txs.add(testScore.invoke(owner, "on_install", null));
+        txs.add(testScore.invoke(owner, "on_update", null));
+        txs.add(testScore.invoke(owner, "fallback", null));
+        txs.add(testScore.invoke(owner, "fallback", null, 100, 1000));
+        LOG.infoExiting();
+
+        LOG.infoEntering("check results");
+        for (var tx : txs) {
+            var result = txHandler.waitResult(tx);
+            assertEquals(result.getStatus(), Constants.STATUS_FAILURE);
+        }
+        LOG.infoExiting();
+
         LOG.infoExiting();
     }
 }

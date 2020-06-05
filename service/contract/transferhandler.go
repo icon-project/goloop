@@ -18,6 +18,10 @@ func newTransferHandler(ch *CommonHandler) *TransferHandler {
 
 func (h *TransferHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, module.Address) {
 	as1 := cc.GetAccountState(h.from.ID())
+	if as1.IsContract() != h.from.IsContract() {
+		return scoreresult.InvalidParameterError.Errorf(
+			"InvalidAddress(%s)", h.from.String()), nil, nil
+	}
 	bal1 := as1.GetBalance()
 	if bal1.Cmp(h.value) < 0 {
 		return scoreresult.ErrOutOfBalance, nil, nil
@@ -26,6 +30,10 @@ func (h *TransferHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, m
 	as1.SetBalance(bal1)
 
 	as2 := cc.GetAccountState(h.to.ID())
+	if as2.IsContract() != h.to.IsContract() {
+		return scoreresult.InvalidParameterError.Errorf(
+			"InvalidAddress(%s)", h.to.String()), nil, nil
+	}
 	bal2 := as2.GetBalance()
 	bal2.Add(bal2, h.value)
 	as2.SetBalance(bal2)

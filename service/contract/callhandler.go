@@ -29,53 +29,49 @@ type DataCallJSON struct {
 type CallHandler struct {
 	*CommonHandler
 
-	method string
+	name   string
 	params []byte
 	// nil paramObj means it needs to convert params to *codec.TypedObj.
 	paramObj *codec.TypedObj
 
 	forDeploy bool
+	external  bool
 	disposed  bool
 	lock      sync.Mutex
 
 	// set in ExecuteAsync()
 	cc        CallContext
 	as        state.AccountState
-	api       *scoreapi.Info
+	info      *scoreapi.Info
+	method    *scoreapi.Method
 	cm        ContractManager
 	conn      eeproxy.Proxy
 	cs        ContractStore
 	isSysCall bool
 }
 
-func newCallHandler(ch *CommonHandler, data []byte, forDeploy bool) *CallHandler {
-	h := &CallHandler{
+func newCallHandlerWithData(ch *CommonHandler, data []byte) (*CallHandler, error) {
+	jso, err := ParseCallData(data)
+	if err != nil {
+		return nil, scoreresult.InvalidParameterError.Wrap(err,
+			"CallDataInvalid")
+	}
+	return &CallHandler{
 		CommonHandler: ch,
-		forDeploy:     forDeploy,
 		disposed:      false,
 		isSysCall:     false,
-	}
-	if data != nil {
-		var jso DataCallJSON
-		if err := json.Unmarshal(data, &jso); err != nil {
-			ch.log.Debugf("FAIL to parse 'data' of transaction err(%+v)\ndata(%s)\n", err, data)
-			return nil
-		}
-		h.method = jso.Method
-		h.params = jso.Params
-	} else if ch.to.IsContract() {
-		h.method = MethodFallback
-		h.params = []byte("{}")
-	}
-	return h
+		external:      true,
+		name:          jso.Method,
+		params:        jso.Params,
+	}, nil
 }
 
-func newCallHandlerFromTypedObj(ch *CommonHandler, method string,
+func newCallHandlerWithTypedObj(ch *CommonHandler, method string,
 	paramObj *codec.TypedObj, forDeploy bool,
 ) *CallHandler {
 	return &CallHandler{
 		CommonHandler: ch,
-		method:        method,
+		name:          method,
 		paramObj:      paramObj,
 		forDeploy:     forDeploy,
 		isSysCall:     false,
@@ -97,7 +93,7 @@ func (h *CallHandler) prepareWorldContextAndAccount(ctx Context) (state.WorldCon
 		return wc, as
 	}
 
-	method := info.GetMethod(h.method)
+	method := info.GetMethod(h.name)
 	if method == nil || method.IsIsolated() {
 		return wc, as
 	}
@@ -151,7 +147,7 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) (err error) {
 	h.cc = cc
 	h.cm = cc.ContractManager()
 
-	h.log.TSystemf("INVOKE start score=%s method=%s", h.to, h.method)
+	h.log.TSystemf("INVOKE start score=%s method=%s", h.to, h.name)
 
 	callCharged := false
 	defer func() {
@@ -182,7 +178,7 @@ func (h *CallHandler) ExecuteAsync(cc CallContext) (err error) {
 		}
 	}
 
-	if err := h.ensureParamObj(); err != nil {
+	if err := h.ensureMethodAndParams(c.EEType()); err != nil {
 		return err
 	}
 
@@ -214,7 +210,7 @@ func (h *CallHandler) invokeEEMethod(cc CallContext, c state.Contract) error {
 	h.lock.Lock()
 	if !h.disposed {
 		err = h.conn.Invoke(h, path, cc.QueryMode(), h.from, h.to,
-			h.value, cc.StepAvailable(), h.method, h.paramObj)
+			h.value, cc.StepAvailable(), h.method.Name, h.paramObj)
 	}
 	h.lock.Unlock()
 
@@ -238,7 +234,7 @@ func (h *CallHandler) invokeSystemMethod(cc CallContext, c state.Contract) error
 		return err
 	}
 
-	status, result, step := Invoke(score, h.method, h.paramObj)
+	status, result, step := Invoke(score, h.method.Name, h.paramObj)
 	go func() {
 		h.OnResult(status, step, result)
 	}()
@@ -246,7 +242,7 @@ func (h *CallHandler) invokeSystemMethod(cc CallContext, c state.Contract) error
 	return nil
 }
 
-func (h *CallHandler) ensureParamObj() error {
+func (h *CallHandler) ensureMethodAndParams(eeType state.EEType) error {
 	info, err := h.as.APIInfo()
 	if err != nil {
 		return nil
@@ -255,9 +251,32 @@ func (h *CallHandler) ensureParamObj() error {
 		return scoreresult.New(module.StatusContractNotFound, "APIInfo() is null")
 	}
 
-	h.api = info
+	method := info.GetMethod(h.name)
+	if method == nil || !method.IsCallable() {
+		return scoreresult.MethodNotFoundError.Errorf("Method(%s)NotFound", h.name)
+	}
+	if !h.forDeploy {
+		if method.IsFallback() {
+			if h.external {
+				return scoreresult.MethodNotFoundError.New(
+					"IllegalAccessToFallback")
+			}
+		} else {
+			if eeType.IsInternalMethod(h.name) {
+				return scoreresult.MethodNotFoundError.Errorf(
+					"InvalidAccessToInternalMethod(%s)", h.name)
+			}
+			if !method.IsExternal() {
+				return scoreresult.MethodNotFoundError.Errorf(
+					"InvalidAccessTo(%s)", h.name)
+			}
+		}
+	}
+
+	h.method = method
+	h.info = info
 	if h.paramObj != nil {
-		if params, err := info.EnsureParamsSequential(h.method, h.paramObj); err != nil {
+		if params, err := method.EnsureParamsSequential(h.paramObj); err != nil {
 			return err
 		} else {
 			h.paramObj = params
@@ -265,7 +284,7 @@ func (h *CallHandler) ensureParamObj() error {
 		}
 	}
 
-	h.paramObj, err = info.ConvertParamsToTypedObj(h.method, h.params)
+	h.paramObj, err = method.ConvertParamsToTypedObj(h.params)
 	return err
 }
 
@@ -348,7 +367,7 @@ func (h *CallHandler) GetBalance(addr module.Address) *big.Int {
 }
 
 func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) {
-	if err := h.api.CheckEventData(indexed, data); err != nil {
+	if err := h.info.CheckEventData(indexed, data); err != nil {
 		h.log.Warnf("DROP InvalidEventData(%s,%+v,%+v) err=%+v",
 			addr, indexed, data, err)
 		return
@@ -363,8 +382,7 @@ func (h *CallHandler) OnResult(status error, steps *big.Int, result *codec.Typed
 			h.log.TSystemf("INVOKE done status=%s msg=%v steps=%s", s, status, steps)
 		} else {
 			obj, _ := common.DecodeAnyForJSON(result)
-			method := h.api.GetMethod(h.method)
-			if err := method.EnsureResult(result); err != nil {
+			if err := h.method.EnsureResult(result); err != nil {
 				h.log.TSystemf("INVOKE done status=%s steps=%s result=%s warning=%s",
 					module.StatusSuccess, steps, trace.ToJSON(obj), err)
 			} else {
@@ -421,22 +439,20 @@ func (h *TransferAndCallHandler) Prepare(ctx Context) (state.WorldContext, error
 }
 
 func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) error {
-	if h.to.IsContract() {
-		as := cc.GetAccountState(h.to.ID())
-		apiInfo, err := as.APIInfo()
-		if err != nil {
-			return err
+	as := cc.GetAccountState(h.to.ID())
+	apiInfo, err := as.APIInfo()
+	if err != nil {
+		return err
+	}
+	if apiInfo == nil {
+		return scoreresult.New(module.StatusContractNotFound, "APIInfo() is null")
+	} else {
+		m := apiInfo.GetMethod(h.name)
+		if m == nil {
+			return scoreresult.ErrMethodNotFound
 		}
-		if apiInfo == nil {
-			return scoreresult.New(module.StatusContractNotFound, "APIInfo() is null")
-		} else {
-			m := apiInfo.GetMethod(h.method)
-			if m == nil {
-				return scoreresult.ErrMethodNotFound
-			}
-			if m == nil || !m.IsPayable() {
-				return scoreresult.ErrMethodNotPayable
-			}
+		if !m.IsPayable() {
+			return scoreresult.ErrMethodNotPayable
 		}
 	}
 
@@ -448,4 +464,24 @@ func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) error {
 		cc.OnResult(status, cc.StepUsed(), result, addr)
 	}()
 	return nil
+}
+
+func newTransferAndCallHandler(ch *CommonHandler, call *CallHandler) *TransferAndCallHandler {
+	return &TransferAndCallHandler{
+		th:          newTransferHandler(ch),
+		CallHandler: call,
+	}
+}
+
+func ParseCallData(data []byte) (*DataCallJSON, error) {
+	jso := new(DataCallJSON)
+	if err := json.Unmarshal(data, jso); err != nil {
+		return nil, scoreresult.InvalidParameterError.Wrapf(err,
+			"InvalidJSON(json=%s)", data)
+	}
+	if jso.Method == "" {
+		return nil, scoreresult.InvalidParameterError.Errorf(
+			"NoMethod(json=%s)", data)
+	}
+	return jso, nil
 }

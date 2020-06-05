@@ -16,12 +16,11 @@ const (
 	transactionTimeLimit     = time.Duration(5 * time.Second)
 	scoreDecompressTimeLimit = time.Duration(5 * time.Second)
 
-	CTypeTransfer = 0x100
-	CTypeNone     = iota
+	CTypeNone = iota
+	CTypeTransfer
 	CTypeDeploy
 	CTypeCall
 	CTypePatch
-	CTypeTransferAndCall = CTypeTransfer | CTypeCall
 )
 
 type (
