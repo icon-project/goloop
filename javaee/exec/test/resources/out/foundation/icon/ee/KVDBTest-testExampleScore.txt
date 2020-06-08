@@ -1,0 +1,29 @@
+Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
+Method{type=0, name='run', flags=2, indexed=0, inputs=[], output=0, outputDescriptor=V}
+SEND invoke code=010001/optimized isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[]
+RECV setCode hash=f54d83a4126c489e19b3dcb74bee60921ac77a9c3501e3d801e23a526831dd4f len=3549
+RECV setObjGraph flag=1 next=7 hash=c8b4767a933484ab9ea228b113cf203f947ae889c8bc27918141026fec3f7173 graphLen=241 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05!foundation.icon.ee.KVDBTest$Score\x00\x00\x00\x06\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x08addrList\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x08balances\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x0dconfirmations\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x07counter\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x0ctransactions
+RECV result status=0 stepUsed=784 ret=<null>
+SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=run params=[]
+RECV getObjGraph flag=1 => next=7 hash=c8b4767a933484ab9ea228b113cf203f947ae889c8bc27918141026fec3f7173 graphLen=241 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05!foundation.icon.ee.KVDBTest$Score\x00\x00\x00\x06\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x08addrList\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x08balances\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x0dconfirmations\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x07counter\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x0ctransactions
+RECV setValue 71d1a00136bc5b2c95bce9a798a1d096be5fcd0f4cf8e5f547bdde3f6e10f9f4 isDelete=false 00
+RECV getValue 71d1a00136bc5b2c95bce9a798a1d096be5fcd0f4cf8e5f547bdde3f6e10f9f4 => 00
+RECV setValue 71d1a00136bc5b2c95bce9a798a1d096be5fcd0f4cf8e5f547bdde3f6e10f9f4 isDelete=false 01
+RECV getValue 7ba3b12e180d861a6988752644ea025b6aaed2ffee3030d8fb3283a986c6a8cb => <null>
+RECV setValue 442b9825465a53e753bb0fa8c7080bc336dbb57bcef0cf67fcd62753601b4cbe isDelete=false 010001000000000000000000000000000000000000
+RECV setValue 7ba3b12e180d861a6988752644ea025b6aaed2ffee3030d8fb3283a986c6a8cb isDelete=false 01
+RECV getValue 7ba3b12e180d861a6988752644ea025b6aaed2ffee3030d8fb3283a986c6a8cb => 01
+RECV getValue 7ba3b12e180d861a6988752644ea025b6aaed2ffee3030d8fb3283a986c6a8cb => 01
+RECV getValue 442b9825465a53e753bb0fa8c7080bc336dbb57bcef0cf67fcd62753601b4cbe => 010001000000000000000000000000000000000000
+RECV getValue 7ba3b12e180d861a6988752644ea025b6aaed2ffee3030d8fb3283a986c6a8cb => 01
+RECV setValue 442b9825465a53e753bb0fa8c7080bc336dbb57bcef0cf67fcd62753601b4cbe isDelete=false 000001000000000000000000000000000000000000
+RECV getValue 7ba3b12e180d861a6988752644ea025b6aaed2ffee3030d8fb3283a986c6a8cb => 01
+RECV getValue 442b9825465a53e753bb0fa8c7080bc336dbb57bcef0cf67fcd62753601b4cbe => 000001000000000000000000000000000000000000
+RECV setValue ce196dc8d4096a201744d6ca3b682b85877d1949291a2948b9885102f0789a70 isDelete=false 0f4240
+RECV getValue ce196dc8d4096a201744d6ca3b682b85877d1949291a2948b9885102f0789a70 => 0f4240
+RECV setValue 9638280a18e3a5f8291e26899c3461c6f59fd4bb3c37284e508a1a7d8babc5f7 isDelete=false 01
+RECV getValue 9638280a18e3a5f8291e26899c3461c6f59fd4bb3c37284e508a1a7d8babc5f7 => 01
+RECV setValue ec7fae01ed85788dff032408c7bae85b713522d0cd57d05ef6ee740b8bd18d45 isDelete=false ef95000001000000000000000000000000000000000000950000010000000000000000000000000000000000008203e8
+RECV getValue ec7fae01ed85788dff032408c7bae85b713522d0cd57d05ef6ee740b8bd18d45 => ef95000001000000000000000000000000000000000000950000010000000000000000000000000000000000008203e8
+RECV setObjGraph flag=0 next=35
+RECV result status=0 stepUsed=122427 ret=<null>

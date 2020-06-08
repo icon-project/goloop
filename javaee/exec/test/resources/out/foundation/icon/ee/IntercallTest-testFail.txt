@@ -1,0 +1,35 @@
+Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
+Method{type=0, name='method', flags=2, indexed=1, inputs=[Parameter{name='addr', descriptor=Lscore/Address;, type=5, optional=false}], output=0, outputDescriptor=V}
+SEND invoke code=010001/optimized isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[]
+RECV setCode hash=7cc901332b9273cf70a274b50c4d881f50803a43e8a6ce34d2e8037f5c58a614 len=1828
+RECV setObjGraph flag=1 next=5 hash=d03ee11ce4f073a9f92ba4f63fc2ff5ce5afc398004fa6b17ea5c60f4738e144 graphLen=167 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03'foundation.icon.ee.IntercallTest$ScoreA\x00\x00\x00\x04\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x08getValue\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x08setValue\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x0csetValueFail
+RECV result status=0 stepUsed=562 ret=<null>
+Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
+Method{type=0, name='setValue', flags=2, indexed=1, inputs=[Parameter{name='v', descriptor=I, type=1, optional=false}], output=0, outputDescriptor=V}
+Method{type=0, name='setValueFail', flags=2, indexed=1, inputs=[Parameter{name='v', descriptor=I, type=1, optional=false}], output=0, outputDescriptor=V}
+Method{type=0, name='getValue', flags=2, indexed=0, inputs=[], output=1, outputDescriptor=I}
+SEND invoke code=010002/optimized isQuery=false from=000001... to=010002... value=0 stepLimit=1000000000 method=<init> params=[]
+RECV setCode hash=197d80dfb69606f1614470ccaae155553229c0533edef35f4e381678fb24be44 len=1337
+RECV setObjGraph flag=1 next=2 hash=79c5678dcb7e9592703f9a6162a35863203154a4e31794cfd4a767975987dd29 graphLen=56 graph=\x03\x00\x00\x00\x00*foundation.icon.ee.IntercallTest$ScoreFail\x00\x00\x00\x01\x00\x00\x00\x00
+RECV result status=0 stepUsed=243 ret=<null>
+SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=method params=[010002...]
+RECV getObjGraph flag=1 => next=5 hash=d03ee11ce4f073a9f92ba4f63fc2ff5ce5afc398004fa6b17ea5c60f4738e144 graphLen=167 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03'foundation.icon.ee.IntercallTest$ScoreA\x00\x00\x00\x04\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x08getValue\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x08setValue\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x0csetValueFail
+RECV call to=010002... value=0 stepLimit=999994340 method=setValue params=[1]
+SEND invoke code=010002/transformed isQuery=false from=010001... to=010002... value=0 stepLimit=999994340 method=setValue params=[1]
+RECV getObjGraph flag=1 => next=2 hash=79c5678dcb7e9592703f9a6162a35863203154a4e31794cfd4a767975987dd29 graphLen=56 graph=\x03\x00\x00\x00\x00*foundation.icon.ee.IntercallTest$ScoreFail\x00\x00\x00\x01\x00\x00\x00\x00
+RECV setObjGraph flag=1 next=2 hash=261dc55ca77ca80a8bf0762cdf64af1200f864c918c0d6950e01c68a6da8834b graphLen=56 graph=\x03\x00\x00\x00\x00*foundation.icon.ee.IntercallTest$ScoreFail\x00\x00\x00\x01\x00\x00\x00\x01
+RECV result status=0 stepUsed=277 ret=<null>
+RECV call to=010002... value=0 stepLimit=999988963 method=getValue params=[]
+SEND invoke code=010002/transformed isQuery=false from=010001... to=010002... value=0 stepLimit=999988963 method=getValue params=[]
+RECV setObjGraph flag=1 next=2 hash=261dc55ca77ca80a8bf0762cdf64af1200f864c918c0d6950e01c68a6da8834b graphLen=56 graph=\x03\x00\x00\x00\x00*foundation.icon.ee.IntercallTest$ScoreFail\x00\x00\x00\x01\x00\x00\x00\x01
+RECV result status=0 stepUsed=274 ret=1
+RECV call to=010002... value=0 stepLimit=999982898 method=setValueFail params=[2]
+SEND invoke code=010002/transformed isQuery=false from=010001... to=010002... value=0 stepLimit=999982898 method=setValueFail params=[2]
+RECV result status=32 stepUsed=220 ret=Reverted(0)
+RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| score.ScoreRevertException: Reverted(0)
+RECV call to=010002... value=0 stepLimit=999976968 method=getValue params=[]
+SEND invoke code=010002/transformed isQuery=false from=010001... to=010002... value=0 stepLimit=999976968 method=getValue params=[]
+RECV setObjGraph flag=1 next=2 hash=261dc55ca77ca80a8bf0762cdf64af1200f864c918c0d6950e01c68a6da8834b graphLen=56 graph=\x03\x00\x00\x00\x00*foundation.icon.ee.IntercallTest$ScoreFail\x00\x00\x00\x01\x00\x00\x00\x01
+RECV result status=0 stepUsed=274 ret=1
+RECV setObjGraph flag=0 next=18
+RECV result status=0 stepUsed=24290 ret=<null>
