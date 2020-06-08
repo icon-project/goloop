@@ -22,7 +22,9 @@ import java.nio.charset.StandardCharsets;
 public class ValueCodec {
 
     public static byte[] encode(IObject o) {
-        if (o instanceof Byte) {
+        if (o == null) {
+            return null;
+        } else if (o instanceof Byte) {
             return BigInteger.valueOf(((Byte) o).getUnderlying()).toByteArray();
         } else if (o instanceof Short) {
             return BigInteger.valueOf(((Short) o).getUnderlying()).toByteArray();
