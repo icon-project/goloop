@@ -44,6 +44,7 @@ type CallHandler struct {
 	conn      eeproxy.Proxy
 	cs        ContractStore
 	isSysCall bool
+	isQuery   bool
 }
 
 func newCallHandlerWithData(ch *CommonHandler, data []byte) (*CallHandler, error) {
@@ -267,9 +268,18 @@ func (h *CallHandler) ensureMethodAndParams(eeType state.EEType) error {
 					"InvalidAccessTo(%s)", h.name)
 			}
 		}
+		if method.IsReadOnly() != h.cc.QueryMode() {
+			if method.IsReadOnly() {
+				h.cc.EnterQueryMode()
+			} else {
+				return scoreresult.AccessDeniedError.Errorf(
+					"AccessingWritableFromReadOnly(%s)", h.name)
+			}
+		}
 	}
 
 	h.method = method
+	h.isQuery = method.IsReadOnly()
 	h.info = info
 	if h.paramObj != nil {
 		if params, err := method.EnsureParamsSequential(h.paramObj); err != nil {
@@ -337,6 +347,10 @@ func (h *CallHandler) GetValue(key []byte) ([]byte, error) {
 }
 
 func (h *CallHandler) SetValue(key []byte, value []byte) ([]byte, error) {
+	if h.isQuery {
+		return nil, scoreresult.AccessDeniedError.New(
+			"DeleteValueInQuery")
+	}
 	if h.as != nil {
 		return h.as.SetValue(key, value)
 	} else {
@@ -346,6 +360,10 @@ func (h *CallHandler) SetValue(key []byte, value []byte) ([]byte, error) {
 }
 
 func (h *CallHandler) DeleteValue(key []byte) ([]byte, error) {
+	if h.isQuery {
+		return nil, scoreresult.AccessDeniedError.New(
+			"DeleteValueInQuery")
+	}
 	if h.as != nil {
 		return h.as.DeleteValue(key)
 	} else {
@@ -363,6 +381,10 @@ func (h *CallHandler) GetBalance(addr module.Address) *big.Int {
 }
 
 func (h *CallHandler) OnEvent(addr module.Address, indexed, data [][]byte) {
+	if h.isQuery {
+		h.log.Panic("EventLog arrives in query mode")
+		return
+	}
 	if err := h.info.CheckEventData(indexed, data); err != nil {
 		h.log.Warnf("DROP InvalidEventData(%s,%+v,%+v) err=%+v",
 			addr, indexed, data, err)
@@ -418,6 +440,9 @@ func (h *CallHandler) GetObjGraph(flags bool) (int, []byte, []byte, error) {
 }
 
 func (h *CallHandler) SetObjGraph(flags bool, nextHash int, objGraph []byte) error {
+	if h.isQuery {
+		return nil
+	}
 	return h.as.SetObjGraph(flags, nextHash, objGraph)
 }
 
@@ -449,6 +474,9 @@ func (h *TransferAndCallHandler) ExecuteAsync(cc CallContext) error {
 		}
 		if !m.IsPayable() {
 			return scoreresult.ErrMethodNotPayable
+		}
+		if m.IsReadOnly() {
+			return scoreresult.ErrAccessDenied
 		}
 	}
 

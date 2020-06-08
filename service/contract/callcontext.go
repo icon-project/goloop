@@ -35,6 +35,7 @@ type (
 		DeductSteps(s *big.Int) bool
 		ResetStepLimit(s *big.Int)
 		GetEventLogs(r txresult.Receipt)
+		EnterQueryMode()
 	}
 	callResultMessage struct {
 		status   error
@@ -77,7 +78,7 @@ func NewCallContext(ctx Context, limit *big.Int, isQuery bool) CallContext {
 	return &callContext{
 		Context: ctx,
 		isQuery: isQuery,
-		frame:   NewFrame(nil, nil, limit),
+		frame:   NewFrame(nil, nil, limit, isQuery),
 
 		waiter: make(chan interface{}, 8),
 		log:    logger,
@@ -85,7 +86,9 @@ func NewCallContext(ctx Context, limit *big.Int, isQuery bool) CallContext {
 }
 
 func (cc *callContext) QueryMode() bool {
-	return cc.isQuery
+	cc.lock.Lock()
+	defer cc.lock.Unlock()
+	return cc.frame.isQuery
 }
 
 func (cc *callContext) Logger() log.Logger {
@@ -96,8 +99,8 @@ func (cc *callContext) pushFrame(handler ContractHandler, limit *big.Int) *callF
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
 	handler.ResetLogger(cc.Logger())
-	frame := NewFrame(cc.frame, handler, limit)
-	if !cc.isQuery {
+	frame := NewFrame(cc.frame, handler, limit, false)
+	if !frame.isQuery {
 		frame.snapshot = cc.GetSnapshot()
 	}
 	cc.frame = frame
@@ -109,7 +112,7 @@ func (cc *callContext) popFrame(success bool) *callFrame {
 	defer cc.lock.Unlock()
 
 	frame := cc.frame
-	if !cc.isQuery {
+	if !frame.isQuery {
 		if success {
 			frame.parent.pushBackEventLogsOf(frame)
 		} else {
@@ -118,6 +121,13 @@ func (cc *callContext) popFrame(success bool) *callFrame {
 	}
 	cc.frame = frame.parent
 	return frame
+}
+
+func (cc *callContext) enterQueryMode() {
+	cc.lock.Lock()
+	defer cc.lock.Unlock()
+
+	cc.frame.enterQueryMode(cc)
 }
 
 func (cc *callContext) isInAsyncFrame() bool {
@@ -129,10 +139,6 @@ func (cc *callContext) isInAsyncFrame() bool {
 }
 
 func (cc *callContext) addLogToFrame(addr module.Address, indexed [][]byte, data [][]byte) error {
-	if cc.isQuery {
-		return nil
-	}
-
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
 
@@ -230,7 +236,7 @@ func (cc *callContext) cleanUpFrames(target *callFrame, err error) {
 	}
 	l.Unlock()
 
-	if !cc.isQuery {
+	if !target.isQuery {
 		cc.Reset(target.snapshot)
 	}
 	for _, h := range achs {
@@ -382,4 +388,11 @@ func (cc *callContext) GetEventLogs(r txresult.Receipt) {
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
 	cc.frame.getEventLogs(r)
+}
+
+func (cc *callContext) EnterQueryMode() {
+	cc.lock.Lock()
+	defer cc.lock.Unlock()
+
+	cc.frame.enterQueryMode(cc)
 }

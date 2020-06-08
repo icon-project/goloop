@@ -42,7 +42,7 @@ func (qh *QueryHandler) Query(ctx contract.Context) (interface{}, error) {
 			return nil, scoreresult.ErrMethodNotFound
 		}
 		if !m.IsReadOnly() {
-			return nil, scoreresult.ErrMethodNotFound
+			return nil, scoreresult.ErrAccessDenied
 		}
 	}
 

@@ -17,6 +17,14 @@ func newTransferHandler(ch *CommonHandler) *TransferHandler {
 }
 
 func (h *TransferHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, module.Address) {
+	if cc.QueryMode() {
+		if !cc.ApplySteps(state.StepTypeContractCall, 1) {
+			return scoreresult.ErrOutOfStep, nil, nil
+		}
+		h.log.TSystemf("TRANSFER denied from=%s to=%s value=%s",
+			h.from, h.to, h.value)
+		return scoreresult.AccessDeniedError.New("TransferIsNotAllowed"), nil, nil
+	}
 	as1 := cc.GetAccountState(h.from.ID())
 	if as1.IsContract() != h.from.IsContract() {
 		return scoreresult.InvalidParameterError.Errorf(

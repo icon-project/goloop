@@ -16,6 +16,22 @@ class IMethodCaller(InterfaceScore):
     def readonlyReturnInt(self) -> int:
         pass
 
+    @interface
+    def readonlyTransfer(self, addr: Address) -> int:
+        pass
+
+    @interface
+    def readonlyCallReadonlyReturnInt(self, addr: Address) -> int:
+        pass
+
+    @interface
+    def readonlyCallExternalDummy(self, addr: Address) -> int:
+        pass
+
+    @interface
+    def fallback(self):
+        pass
+
 
 class MethodCaller(IconScoreBase):
 
@@ -35,17 +51,22 @@ class MethodCaller(IconScoreBase):
     def fallback(self) -> None:
         self.Called("fallback", 0)
 
+    @external
+    def callFallback(self, addr: Address):
+        score = self.create_interface_score(addr, IMethodCaller)
+        score.fallback()
+
     @eventlog(indexed=2)
     def Called(self, method: str, seq: int):
         pass
 
     @external
-    def externalDummy(self) -> None:
+    @payable
+    def payableDummy(self) -> None:
         pass
 
     @external
-    @payable
-    def payableDummy(self) -> None:
+    def externalDummy(self) -> None:
         pass
 
     @external
@@ -61,27 +82,49 @@ class MethodCaller(IconScoreBase):
         self.Called("externalReturnInt", 0)
         return self._var_int.get()
 
-    @external(readonly=True)
-    def readonlyWriteInt(self, _value: int) -> int:
-        self._var_int.set(_value)
-        return _value
+    @external
+    def externalCallReadonlyCallReadonlyReturnInt(self, addr: Address) -> int:
+        Logger.debug("externalCallReadonlyReturnInt#1", TAG)
+        score = self.create_interface_score(addr, IMethodCaller)
+        Logger.debug("externalCallReadonlyReturnInt#2", TAG)
+        value = score.readonlyCallReadonlyReturnInt(self.address)
+        Logger.debug("externalCallReadonlyReturnInt#3", TAG)
+        return value
+
+    @external
+    def externalCallReadonlyCallExternalDummy(self, addr: Address):
+        Logger.debug("externalCallReadonlyCallExternalDummy#1", TAG)
+        score = self.create_interface_score(addr, IMethodCaller)
+        Logger.debug("externalCallReadonlyCallExternalDummy#2", TAG)
+        score.readonlyCallExternalDummy(self.address)
+        Logger.debug("externalCallReadonlyCallExternalDummy#3", TAG)
+
+    @external
+    def externalCallReadonlyTransfer(self, addr: Address):
+        Logger.debug("externalCallReadonlyTransfer#1", TAG)
+        score = self.create_interface_score(addr, IMethodCaller)
+        Logger.debug("externalCallReadonlyTransfer#2", TAG)
+        score.readonlyTransfer(self.address)
+        Logger.debug("externalCallReadonlyTransfer#3", TAG)
 
     @external(readonly=True)
     def readonlyReturnInt(self) -> int:
         return self._var_int.get()
 
     @external(readonly=True)
+    def readonlyWriteInt(self, _value: int) -> int:
+        self._var_int.set(_value)
+        return _value
+
+    @external(readonly=True)
     def readonlyEventLog(self) -> int:
         self.Called("readonlyEventLog", 0)
         return self._var_int.get()
 
-    @external
-    def externalCallReadonlyReturnInt(self, addr: Address) -> int:
-        self.Called('externalCallReadonlyReturnInt', 0)
-        score = self.create_interface_score(addr, IMethodCaller)
-        value = score.readonlyReturnInt()
-        self.Called('externalCallReadonlyReturnInt', 1)
-        return value
+    @external(readonly=True)
+    def readonlyTransfer(self, addr: Address) -> int:
+        self.icx.transfer(addr, 1)
+        return 0
 
     @external(readonly=True)
     def readonlyCallReadonlyReturnInt(self, addr: Address) -> int:
@@ -92,9 +135,18 @@ class MethodCaller(IconScoreBase):
         return value
 
     @external(readonly=True)
-    def readonlyCallExternalDummy(self, addr: Address) -> int:
-        self.Called('readonlyCallExternalDummy', 0)
+    def readonlyCallReadonlyTransfer(self, addr: Address) -> int:
+        Logger.debug("readonlyCallReadonlyReturnInt#1", TAG)
         score = self.create_interface_score(addr, IMethodCaller)
-        value = score.readonlyReturnInt()
-        self.Called('readonlyCallExternalDummy', 2)
+        value = score.readonlyTransfer(self.tx.origin)
+        Logger.debug("readonlyCallReadonlyReturnInt#2", TAG)
         return value
+
+    @external(readonly=True)
+    def readonlyCallExternalDummy(self, addr: Address) -> int:
+        Logger.debug('readonlyCallExternalDummy#1')
+        score = self.create_interface_score(addr, IMethodCaller)
+        Logger.debug('readonlyCallExternalDummy#2')
+        score.externalDummy()
+        Logger.debug('readonlyCallExternalDummy#3')
+        return 0

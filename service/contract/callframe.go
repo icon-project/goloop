@@ -18,6 +18,7 @@ type eventLog struct {
 
 type callFrame struct {
 	parent    *callFrame
+	isQuery   bool
 	snapshot  state.WorldSnapshot
 	handler   ContractHandler
 	stepUsed  big.Int
@@ -25,9 +26,10 @@ type callFrame struct {
 	eventLogs list.List
 }
 
-func NewFrame(p *callFrame, h ContractHandler, l *big.Int) *callFrame {
+func NewFrame(p *callFrame, h ContractHandler, l *big.Int, q bool) *callFrame {
 	frame := &callFrame{
 		parent:    p,
+		isQuery:   (p != nil && p.isQuery) || q,
 		handler:   h,
 		stepLimit: l,
 	}
@@ -66,6 +68,9 @@ func (f *callFrame) getStepLimit() *big.Int {
 }
 
 func (f *callFrame) addLog(addr module.Address, indexed, data [][]byte) {
+	if f.isQuery {
+		return
+	}
 	e := new(eventLog)
 	e.Addr.SetBytes(addr.Bytes())
 	e.Indexed = indexed
@@ -83,5 +88,14 @@ func (f *callFrame) getEventLogs(r txresult.Receipt) {
 	for i := f.eventLogs.Front(); i != nil; i = i.Next() {
 		e := i.Value.(*eventLog)
 		r.AddLog(&e.Addr, e.Indexed, e.Data)
+	}
+}
+
+func (f *callFrame) enterQueryMode(cc *callContext) {
+	if !f.isQuery {
+		cc.Reset(f.snapshot)
+		f.snapshot = nil
+		f.eventLogs.Init()
+		f.isQuery = true
 	}
 }
