@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Optional
 from ..base.exception import DatabaseException, InvalidParamsException
 from ..icon_constant import IconScoreContextType, IconScoreFuncType
 from ..iconscore.icon_score_context import ContextGetter, ContextContainer
-from ..iconscore.icon_score_step import StepType
+from ..iconscore.icon_score_step import StepType, OutOfStepException
 from ..utils import sha3_256
 
 if TYPE_CHECKING:
@@ -125,12 +125,23 @@ class ContextDatabase(object):
         if not _is_db_writable_on_context(context):
             raise DatabaseException('No permission to write')
 
-        if value is None:
-            self._db.delete(key, self.__delete_handler)
+        if value:
+            try:
+                # apply steps for set first
+                self._charge_step_set(context, value)
+                self._db.put(key, value, self.__refund_handler)
+            except OutOfStepException as e:
+                # restore to the previous state
+                context.step_counter.add_step(e.step_used - e.step_limit)
+                # do fallback handling
+                has_old = self._db.get(key)
+                if has_old:
+                    context.step_counter.apply_step(StepType.REPLACE, len(value))
+                else:
+                    context.step_counter.apply_step(StepType.SET, len(value))
+                self._db.put(key, value, None)
         else:
-            # apply steps for set first
-            self._charge_step_set(context, value)
-            self._db.put(key, value, self.__refund_handler)
+            self._db.delete(key, self.__delete_handler)
 
     def delete(self, context: Optional['IconScoreContext'], key: bytes):
         """Delete the entry for the specified key

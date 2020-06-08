@@ -473,6 +473,7 @@ public class StepTest extends TestBase {
         VAR_SET("setToVar", StepType.SET),
         VAR_GET("getFromVar", StepType.GET),
         VAR_REPLACE("setToVar", StepType.REPLACE),
+        VAR_EXACT("setToVar", StepType.REPLACE),
         VAR_EDGE("setToVar", StepType.REPLACE),
         VAR_DELETE("delFromVar", StepType.DELETE);
 
@@ -509,38 +510,41 @@ public class StepTest extends TestBase {
         KeyWallet caller = testWallets[3];
         Address scoreAddr = dbScore.getAddress();
         StepTransaction stx = new StepTransaction();
-        String[][] params = {
+        String[][] initialParams = {
                 {"v_int", "128"},
                 {"v_str", "tortoise"},
                 {"v_bytes", new Bytes("tortoise".getBytes()).toString()},
                 {"v_addr", testWallets[0].getAddress().toString()},
         };
+        String[][] updatedParams = {
+                {"v_int", "821"},
+                {"v_str", "esiotrot"},
+                {"v_bytes", new Bytes("esiotrot".getBytes()).toString()},
+                {"v_addr", testWallets[1].getAddress().toString()},
+        };
         BigInteger[] edgeLimit = new BigInteger[4];
 
         for (VarTest test : VarTest.values()) {
-            if (test == VarTest.VAR_EDGE) {
-                test.params = new String[][] {
-                        {"v_int", "821"},
-                        {"v_str", "esiotrot"},
-                        {"v_bytes", new Bytes("esiotrot".getBytes()).toString()},
-                        {"v_addr", testWallets[1].getAddress().toString()},
-                };
-            } else if (test == VarTest.VAR_SET || test == VarTest.VAR_REPLACE) {
-                test.params = params;
+            if (test == VarTest.VAR_SET || test == VarTest.VAR_REPLACE || test == VarTest.VAR_EDGE) {
+                test.params = initialParams;
+            } else if (test == VarTest.VAR_EXACT) {
+                test.params = updatedParams;
             }
-
-            for (int i = 0; i < params.length; i++) {
-                String val = params[i][1];
-                if (test == VarTest.VAR_EDGE) {
+            for (int i = 0; i < initialParams.length; i++) {
+                String param = initialParams[i][0];
+                String val = initialParams[i][1];
+                if (test == VarTest.VAR_EXACT) {
                     val = test.params[i][1];
                 }
-                LOG.infoEntering("invoke", "(" + test + ") method=" + test.method + ", param=" + params[i][0] + ", val=" + val);
-                BigInteger stepLimit = (test == VarTest.VAR_EDGE) ? edgeLimit[i].subtract(BigInteger.ONE) : Constants.DEFAULT_STEPS;
-                BigInteger usedFee;
+                BigInteger stepLimit = (test == VarTest.VAR_EXACT) ? edgeLimit[i]
+                        : (test == VarTest.VAR_EDGE) ? edgeLimit[i].subtract(BigInteger.ONE)
+                        : Constants.DEFAULT_STEPS;
+                LOG.infoEntering("invoke", "(" + test + ") method=" + test.method + ", param=" + param +
+                        ", val=" + val + ", limit=" + stepLimit);
                 try {
-                    usedFee = stx.call(caller, scoreAddr, test.method, test.getParams(i), stepLimit);
+                    BigInteger usedFee = stx.call(caller, scoreAddr, test.method, test.getParams(i), stepLimit);
                     assertNotEquals(test, VarTest.VAR_EDGE);
-                    stx.addOperation(test.stepType, i, params[i][1]);
+                    stx.addOperation(test.stepType, i, val);
                     assertEquals(stx.expectedFee(), usedFee);
                     assertEquals(stx.expectedFee(), stx.getTreasuryFee());
                     if (test == VarTest.VAR_REPLACE) {
@@ -554,13 +558,11 @@ public class StepTest extends TestBase {
                             .put("type", new RpcValue(BigInteger.valueOf(i)))
                             .build();
                     String dbVal = dbScore.call("readFromVar", callParam).asString();
-                    LOG.info("dbVal[" + i + "] : " + dbVal);
                     if (i == 0) {
-                        BigInteger v = new BigInteger(dbVal.substring("0x".length()), 16);
-                        LOG.info("v = " + v);
-                    } else if (i == 2) {
-                        LOG.info("byte[] : " + Arrays.toString(dbVal.getBytes()));
+                        dbVal = new BigInteger(dbVal.substring("0x".length()), 16).toString();
                     }
+                    LOG.info("dbVal[" + i + "] : " + dbVal);
+                    assertEquals(updatedParams[i][1], dbVal);
                     assertEquals(STEP_PRICE.multiply(stepLimit), stx.getUsedFee());
                     assertEquals(STEP_PRICE.multiply(stepLimit), stx.getTreasuryFee());
                 }
