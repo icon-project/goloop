@@ -9,7 +9,7 @@ package i;
  */
 public interface IInstrumentation {
     // The instrumentation instance associated with the given thread and also installed into the Helper of the currently-running DApp.
-    public static final ThreadLocal<IInstrumentation> attachedThreadInstrumentation = new ThreadLocal<>();
+    ThreadLocal<IInstrumentation> attachedThreadInstrumentation = new ThreadLocal<>();
 
     static IInstrumentation charge(int cost) throws OutOfEnergyException {
         IInstrumentation ins = attachedThreadInstrumentation.get();
@@ -33,6 +33,7 @@ public interface IInstrumentation {
     s.java.lang.Object unwrapThrowable(Throwable t);
     Throwable wrapAsThrowable(s.java.lang.Object arg);
     void chargeEnergy(int cost) throws OutOfEnergyException;
+    boolean tryChargeEnergy(int cost);
     long energyLeft();
 
     default void chargeEnergyImmediately(int cost) throws OutOfEnergyException {

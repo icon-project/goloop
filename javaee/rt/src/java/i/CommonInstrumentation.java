@@ -157,6 +157,24 @@ public class CommonInstrumentation implements IInstrumentation {
         charge(cost, true);
     }
 
+    public boolean tryChargeEnergy(int cost) {
+        if (null != this.currentFrame.forceExitState) {
+            throw this.currentFrame.forceExitState;
+        }
+
+        RuntimeAssertionError.assertTrue(cost < Math.pow(2, 30));
+
+        while (this.currentFrame.energyLeft < cost) {
+            if (!this.currentFrame.frameContext.waitForRefund()) {
+                return false;
+            }
+        }
+
+        // Bill for the block.
+        this.currentFrame.energyLeft -= cost;
+        return true;
+    }
+
     private void charge(int cost, boolean immediate) throws OutOfEnergyException {
         // This is called at the beginning of a block so see if we are being asked to exit.
         if (null != this.currentFrame.forceExitState) {

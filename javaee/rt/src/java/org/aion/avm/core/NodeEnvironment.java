@@ -271,6 +271,12 @@ public class NodeEnvironment {
                 // Shadow enum class will create array wrapper with <clinit>
                 // Ignore the charge energy request in this case
             }
+
+            @Override
+            public boolean tryChargeEnergy(int cost) {
+                throw RuntimeAssertionError.unreachable("Nobody should be calling this");
+            }
+
             @Override
             public long energyLeft() {
                 throw RuntimeAssertionError.unreachable("Nobody should be calling this");

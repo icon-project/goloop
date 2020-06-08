@@ -30,7 +30,7 @@ public class DBStorage implements IDBStorage {
 
     public void setArrayLength(byte[] key, int l) {
         byte[] v;
-        if (l==0) {
+        if (l == 0) {
             v = null;
         } else {
             v = BigInteger.valueOf(l).toByteArray();
@@ -40,7 +40,7 @@ public class DBStorage implements IDBStorage {
 
     public int getArrayLength(byte[] key) {
         var bs = getBytes(key);
-        if (bs==null)
+        if (bs == null)
             return 0;
         return new BigInteger(bs).intValue();
     }
@@ -53,27 +53,50 @@ public class DBStorage implements IDBStorage {
         IInstrumentation.attachedThreadInstrumentation.get().chargeEnergyImmediately(cost);
     }
 
+    private boolean tryCharge(int cost) {
+        return IInstrumentation.attachedThreadInstrumentation.get().tryChargeEnergy(cost);
+    }
+
     public void setBytes(byte[] k, byte[] v) {
         if (ctx.isQuery()) {
             throw new IllegalStateException();
         }
         var stepCost = ctx.getStepCost();
-        if (v==null) {
-            charge(stepCost.replaceBase());
-            ctx.putStorage(k, null, prevSize -> {
-                if (prevSize>=0) {
+        if (v == null) {
+            var r = stepCost.replaceBase() * stepCost.replace();
+            if (tryCharge(r)) {
+                ctx.putStorage(k, null, prevSize -> {
+                    if (prevSize >= 0) {
+                        chargeImmediately(-r + stepCost.defaultDelete());
+                    }
+                });
+            } else {
+                var prev = ctx.getStorage(k);
+                if (prev != null) {
                     chargeImmediately(stepCost.defaultDelete());
+                } else {
+                    chargeImmediately(r);
                 }
-            });
+                ctx.putStorage(k, null, null);
+            }
         } else {
-            var e = Math.max(stepCost.replaceBase(),
+            var r = Math.max(stepCost.replaceBase(),
                     v.length) * stepCost.replace();
-            charge(e + stepCost.defaultSet());
-            ctx.putStorage(k, v, prevSize -> {
-                if (prevSize<0) {
-                    chargeImmediately(-stepCost.defaultSet());
+            if (tryCharge(r + stepCost.defaultSet())) {
+                ctx.putStorage(k, v, prevSize -> {
+                    if (prevSize >= 0) {
+                        chargeImmediately(-stepCost.defaultSet());
+                    }
+                });
+            } else {
+                var prev = ctx.getStorage(k);
+                if (prev != null) {
+                    chargeImmediately(r);
+                } else {
+                    chargeImmediately(r + stepCost.defaultSet());
                 }
-            });
+                ctx.putStorage(k, v, null);
+            }
         }
     }
 
