@@ -1,6 +1,5 @@
 package foundation.icon.ee.test;
 
-import foundation.icon.ee.score.TransactionExecutor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
@@ -8,7 +7,6 @@ import org.junit.jupiter.api.TestInfo;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.nio.file.Files;
@@ -20,9 +18,8 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class GoldenTest {
+public class GoldenTest extends SimpleTest {
     static final String logLevelKey = "foundation.icon.ee.logger.defaultLogLevel";
-    protected ServiceManager sm;
     private ByteArrayOutputStream outContent;
     private PrintStream prevOut;
     private String prevLogLevel;
@@ -46,21 +43,7 @@ public class GoldenTest {
         System.setOut(new PrintStream(outContent));
 
         prevLogLevel = System.setProperty(logLevelKey, "trace");
-
-        var pipes = Pipe.createPair();
-        sm = new ServiceManager(pipes[0]);
-        Thread th = new Thread(() -> {
-            try {
-                var te = TransactionExecutor.newInstance(pipes[1],
-                        "",
-                        null,
-                        sm.getFileReader());
-                te.connectAndRunLoop();
-            } catch (IOException e) {
-                System.out.println(e);
-            }
-        });
-        th.start();
+        super.setUp();
     }
 
     private void mkdirs(Path path) {
@@ -69,7 +52,7 @@ public class GoldenTest {
 
     @AfterEach
     public void tearDown(TestInfo testInfo) {
-        sm.close();
+        super.tearDown(testInfo);
         System.out.flush();
         System.setOut(prevOut);
         if (prevLogLevel!=null) {
