@@ -8,9 +8,9 @@ import org.junit.jupiter.api.Test;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 
-public class SimpleTest extends GoldenTest {
+public class SampleTest extends GoldenTest {
     @Test
-    public void testSimple() {
+    public void testSample() {
         var owner = sm.getOrigin();
         var app = sm.deploy(SampleToken.class, "MySampleToken", "MST", 18, 1000);
         app.invoke("balanceOf", owner);
