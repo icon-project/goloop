@@ -31,25 +31,26 @@ type DeployHandler struct {
 	preDefinedAddr module.Address
 }
 
+type DeployData struct {
+	ContentType string          `json:"contentType"`
+	Content     common.HexBytes `json:"content"`
+	Params      json.RawMessage `json:"params"`
+}
+
 func newDeployHandler(
 	ch *CommonHandler,
 	data []byte,
 ) (*DeployHandler, error) {
-	var dataJSON struct {
-		ContentType string          `json:"contentType"`
-		Content     common.HexBytes `json:"content"`
-		Params      json.RawMessage `json:"params"`
-	}
-	if err := json.Unmarshal(data, &dataJSON); err != nil {
-		return nil, scoreresult.InvalidParameterError.Wrap(err,
-			"InvalidDeployData")
+	deploy, err := ParseDeployData(data)
+	if err != nil {
+		return nil, err
 	}
 	return &DeployHandler{
 		CommonHandler: ch,
-		content:       dataJSON.Content,
-		contentType:   dataJSON.ContentType,
-		eeType:        state.EETypeFromContentType(dataJSON.ContentType),
-		params:        dataJSON.Params,
+		content:       deploy.Content,
+		contentType:   deploy.ContentType,
+		eeType:        state.EETypeFromContentType(deploy.ContentType),
+		params:        deploy.Params,
 	}, nil
 }
 
@@ -442,4 +443,13 @@ func (h *callGetAPIHandler) GetObjGraph(flags bool) (int, []byte, []byte, error)
 func (h *callGetAPIHandler) SetObjGraph(flags bool, nextHash int, objGraph []byte) error {
 	h.log.Errorf("Unexpected call SetObjGraph() from GetAPI()")
 	return nil
+}
+
+func ParseDeployData(data []byte) (*DeployData, error) {
+	deploy := new(DeployData)
+	if err := json.Unmarshal(data, deploy); err != nil {
+		return nil, scoreresult.InvalidParameterError.Wrapf(err,
+			"InvalidJSON(json=%s)", data)
+	}
+	return deploy, nil
 }

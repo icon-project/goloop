@@ -3,6 +3,7 @@ package contract
 import (
 	"encoding/json"
 
+	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
@@ -17,7 +18,7 @@ type Patch struct {
 
 type patchHandler struct {
 	*CommonHandler
-	data Patch
+	patch *Patch
 }
 
 func (h *patchHandler) Prepare(ctx Context) (state.WorldContext, error) {
@@ -57,7 +58,7 @@ func (h *patchHandler) handleSkipTransaction(cc CallContext) error {
 		h.log.Warn("PatchHandler: patch decoder isn't set")
 		return scoreresult.InvalidParameterError.New("PatchDecoderIsNil")
 	}
-	pd, err := decode(h.data.Type, h.data.Data)
+	pd, err := decode(h.patch.Type, h.patch.Data)
 	if err != nil {
 		h.log.Warnf("PatchHandler: decode fail err=%+v", err)
 		return scoreresult.InvalidParameterError.Wrap(err, "DecodeFail")
@@ -83,23 +84,45 @@ func (h *patchHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, modu
 		h.log.Warnf("PatchHandler: %s isn't validator", h.from)
 		return scoreresult.AccessDeniedError.Errorf("InvalidProposer(%s)", h.from), nil, nil
 	}
-	switch h.data.Type {
+	if h.value != nil && h.value.Sign() == 1 {
+		return scoreresult.InvalidParameterError.New("ValueMustBeZero"), nil, nil
+	}
+	if !h.to.Equal(common.NewContractAddress(state.SystemID)) {
+		return scoreresult.InvalidParameterError.Errorf("TargetInNotSystem(target=%s)", h.to.String()), nil, nil
+	}
+	switch h.patch.Type {
 	case module.PatchTypeSkipTransaction:
 		s := h.handleSkipTransaction(cc)
 		return s, nil, nil
 	default:
-		return scoreresult.InvalidParameterError.Errorf("InvalidDataType(%s)", h.data.Type), nil, nil
+		return scoreresult.InvalidParameterError.Errorf("InvalidDataType(%s)", h.patch.Type), nil, nil
 	}
 }
 
 func newPatchHandler(ch *CommonHandler, data []byte) (ContractHandler, error) {
+	patch, err := ParsePatchData(data)
+	if err != nil {
+		return nil, err
+	}
 	handler := &patchHandler{
 		CommonHandler: ch,
-	}
-	err := json.Unmarshal(data, &handler.data)
-	if err != nil {
-		return nil, scoreresult.InvalidParameterError.Wrap(err,
-			"InvalidPatchData")
+		patch:         patch,
 	}
 	return handler, nil
+}
+
+func ParsePatchData(data []byte) (*Patch, error) {
+	p := new(Patch)
+	if err := json.Unmarshal(data, p); err != nil {
+		return nil, scoreresult.InvalidParameterError.Wrapf(err,
+			"InvalidJSON(json=%s)", data)
+	}
+	switch p.Type {
+	case module.PatchTypeSkipTransaction:
+		// do nothing
+	default:
+		return nil, scoreresult.InvalidParameterError.Errorf(
+			"UnknownPatchType(%s)", p.Type)
+	}
+	return p, nil
 }

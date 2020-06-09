@@ -186,19 +186,9 @@ func (tx *transactionV3) Verify() error {
 			if tx.Data == nil {
 				return InvalidTxValue.New("TxData for deploy is NIL")
 			}
-			type dataDeployJSON struct {
-				ContentType string          `json:"contentType"`
-				Content     common.HexBytes `json:"content"`
-				Params      json.RawMessage `json:"params"`
+			if _, err := contract.ParseDeployData(tx.Data); err != nil {
+				return InvalidTxValue.Wrap(err, "TxData is invalid")
 			}
-			var jso dataDeployJSON
-			if json.Unmarshal(tx.Data, &jso) != nil ||
-				tx.isDeployType(jso.ContentType) == false ||
-				jso.Content == nil {
-				return InvalidTxValue.Errorf("InvalidDeployData(%s)", string(tx.Data))
-			}
-
-			// value == 0
 			if tx.Value != nil && tx.Value.Sign() != 0 {
 				return InvalidTxValue.Errorf("InvalidTxValue(%s)", tx.Value.String())
 			}
@@ -206,8 +196,7 @@ func (tx *transactionV3) Verify() error {
 			if tx.Data == nil {
 				return InvalidTxValue.New("TxData for patch is NIL")
 			}
-			var data contract.Patch
-			if err := json.Unmarshal(tx.Data, &data); err != nil {
+			if _, err := contract.ParsePatchData(tx.Data); err != nil {
 				return InvalidTxValue.Wrap(err, "TxData is invalid")
 			}
 		}
