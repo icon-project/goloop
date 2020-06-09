@@ -298,11 +298,11 @@ func (h *CallHandler) SendResult(status error, steps *big.Int, result *codec.Typ
 	if h.log.IsTrace() {
 		if status == nil {
 			po, _ := common.DecodeAnyForJSON(result)
-			h.log.TSystemf("INVOKE return status=%s steps=%v result=%s",
+			h.log.TSystemf("CALL done status=%s steps=%v result=%s",
 				module.StatusSuccess, steps, trace.ToJSON(po))
 		} else {
 			s, _ := scoreresult.StatusOf(status)
-			h.log.TSystemf("INVOKE return status=%s steps=%v msg=%s",
+			h.log.TSystemf("CALL done status=%s steps=%v msg=%s",
 				s, steps, status.Error())
 		}
 	}
@@ -417,7 +417,7 @@ func (h *CallHandler) OnCall(from, to module.Address, value,
 ) {
 	if h.log.IsTrace() {
 		po, _ := common.DecodeAnyForJSON(params)
-		h.log.TSystemf("INVOKE call from=%v to=%v value=%v steplimit=%v method=%s params=%s",
+		h.log.TSystemf("CALL start from=%v to=%v value=%v steplimit=%v method=%s params=%s",
 			from, to, value, limit, method, trace.ToJSON(po))
 	}
 	h.cc.OnCall(h.cm.GetCallHandler(from, to, value, method, params), limit)
