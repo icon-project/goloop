@@ -3,7 +3,6 @@ package contract
 import (
 	"encoding/json"
 
-	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoredb"
@@ -87,7 +86,7 @@ func (h *patchHandler) ExecuteSync(cc CallContext) (error, *codec.TypedObj, modu
 	if h.value != nil && h.value.Sign() == 1 {
 		return scoreresult.InvalidParameterError.New("ValueMustBeZero"), nil, nil
 	}
-	if !h.to.Equal(common.NewContractAddress(state.SystemID)) {
+	if !h.to.Equal(state.SystemAddress) {
 		return scoreresult.InvalidParameterError.Errorf("TargetInNotSystem(target=%s)", h.to.String()), nil, nil
 	}
 	switch h.patch.Type {

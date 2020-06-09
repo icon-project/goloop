@@ -66,7 +66,8 @@ const (
 )
 
 var (
-	SystemID = []byte(SystemIDStr)
+	SystemID      = []byte(SystemIDStr)
+	SystemAddress = common.NewContractAddress(SystemID)
 )
 
 type WorldContext interface {

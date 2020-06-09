@@ -65,7 +65,7 @@ func NewDeployHandlerForPreInstall(owner, scoreAddr module.Address, contentType 
 		p = *params
 	}
 	return &DeployHandler{
-		CommonHandler:  newCommonHandler(owner, common.NewContractAddress(state.SystemID), &zero, log),
+		CommonHandler:  newCommonHandler(owner, state.SystemAddress, &zero, log),
 		content:        content,
 		contentType:    contentType,
 		preDefinedAddr: scoreAddr,
