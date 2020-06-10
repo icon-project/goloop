@@ -16,6 +16,8 @@
 
 package foundation.icon.ee.types;
 
+import i.RuntimeAssertionError;
+
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Map;
@@ -199,42 +201,82 @@ public class Method {
     }
 
     public Object[] convertParameters(Object[] params) {
-        assert params.length == inputs.length : String.format("bad param length=%d input length=%d", params.length, inputs.length);
+        RuntimeAssertionError.assertTrue(
+            params.length == inputs.length,
+            String.format(
+                    "bad param length=%d input length=%d",
+                    params.length,
+                    inputs.length
+            )
+        );
 
         Object[] out = new Object[inputs.length];
         for (int i=0; i<inputs.length; i++) {
+            if (params[i] == null) {
+                out[i] = null;
+                continue;
+            }
             var d = inputs[i].getDescriptor();
-            if (d.equals("Z")) {
-                out[i] = params[i];
-            } else if (d.equals("C")) {
-                BigInteger p = (BigInteger) params[i];
-                out[i] = (char)p.intValue();
-            } else if (d.equals("B")) {
-                BigInteger p = (BigInteger) params[i];
-                out[i] = p.byteValue();
-            } else if (d.equals("S")) {
-                BigInteger p = (BigInteger) params[i];
-                out[i] = p.shortValue();
-            } else if (d.equals("I")) {
-                BigInteger p = (BigInteger) params[i];
-                out[i] = p.intValue();
-            } else if (d.equals("J")) {
-                BigInteger p = (BigInteger) params[i];
-                out[i] = p.longValue();
-            } else if (d.equals("Ljava/math/BigInteger;")) {
-                BigInteger p = (BigInteger) params[i];
-                out[i] = (p != null) ? new s.java.math.BigInteger(p) : null;
-            } else if (d.equals("Ljava/lang/String;")) {
-                String p = (String) params[i];
-                out[i] = (p != null) ? new s.java.lang.String(p) : null;
-            } else if (d.equals("[B")) {
-                byte[] p = (byte[]) params[i];
-                out[i] = (p != null) ? new a.ByteArray(p) : null;
-            } else if (d.equals("Lscore/Address;")) {
-                Address p = (Address) params[i];
-                out[i] = (p != null) ? new p.score.Address(p.toByteArray()) : null;
-            } else {
-                assert false : String.format("bad %d-th param type %s", i, params[i].getClass().getName());
+            switch (d) {
+                case "Z":
+                    out[i] = params[i];
+                    break;
+                case "C": {
+                    BigInteger p = (BigInteger) params[i];
+                    out[i] = (char) p.intValue();
+                    break;
+                }
+                case "B": {
+                    BigInteger p = (BigInteger) params[i];
+                    out[i] = p.byteValue();
+                    break;
+                }
+                case "S": {
+                    BigInteger p = (BigInteger) params[i];
+                    out[i] = p.shortValue();
+                    break;
+                }
+                case "I": {
+                    BigInteger p = (BigInteger) params[i];
+                    out[i] = p.intValue();
+                    break;
+                }
+                case "J": {
+                    BigInteger p = (BigInteger) params[i];
+                    out[i] = p.longValue();
+                    break;
+                }
+                case "Ljava/math/BigInteger;": {
+                    BigInteger p = (BigInteger) params[i];
+                    out[i] = (p != null) ?
+                            s.java.math.BigInteger.newWithCharge(p) :
+                            null;
+                    break;
+                }
+                case "Ljava/lang/String;": {
+                    String p = (String) params[i];
+                    out[i] = (p != null) ?
+                            s.java.lang.String.newWithCharge(p) : null;
+                    break;
+                }
+                case "[B": {
+                    byte[] p = (byte[]) params[i];
+                    out[i] = (p != null) ? a.ByteArray.newWithCharge(p) : null;
+                    break;
+                }
+                case "Lscore/Address;":
+                    Address pa = (Address) params[i];
+                    out[i] = (pa != null) ?
+                            p.score.Address.newWithCharge(pa.toByteArray()) :
+                            null;
+                    break;
+                default:
+                    RuntimeAssertionError.unreachable(String.format(
+                            "bad %d-th param type %s",
+                            i,
+                            params[i].getClass().getName())
+                    );
+                    break;
             }
         }
         return out;
