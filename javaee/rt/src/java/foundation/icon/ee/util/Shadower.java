@@ -14,15 +14,15 @@ public class Shadower {
         if (obj==null) {
             return null;
         } else if (obj instanceof Boolean) {
-            return s.java.lang.Boolean.valueOf((Boolean) obj);
+            return s.java.lang.Boolean.avm_valueOf((Boolean) obj);
         } else if (obj instanceof BigInteger) {
-            return new s.java.math.BigInteger((BigInteger)obj);
+            return s.java.math.BigInteger.newWithCharge((BigInteger)obj);
         } else if (obj instanceof String) {
-            return new s.java.lang.String((String)obj);
+            return s.java.lang.String.newWithCharge((String)obj);
         } else if (obj instanceof byte[]) {
-            return new a.ByteArray((byte[])obj);
+            return a.ByteArray.newWithCharge((byte[])obj);
         } else if (obj instanceof Address) {
-            return new p.score.Address(((Address)obj).toByteArray());
+            return p.score.Address.newWithCharge(((Address)obj).toByteArray());
         } else if (obj instanceof Object[]) {
             var o = (Object[]) obj;
             var sa = new IObject[o.length];
