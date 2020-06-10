@@ -23,6 +23,12 @@ public class RuntimeAssertionError extends AvmError {
         }
     }
 
+    public static void assertTrue(boolean expr, String msg) {
+        if (!expr) {
+            throw new RuntimeAssertionError(msg);
+        }
+    }
+
     /**
      * Called when a throwable is encountered at a point where it should have been handled earlier, such that the catch point
      * can only treat it as a fatal exception
