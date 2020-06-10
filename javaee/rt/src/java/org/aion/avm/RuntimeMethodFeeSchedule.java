@@ -693,4 +693,6 @@ public class RuntimeMethodFeeSchedule {
     public static final int ValueBuffer_avm_constructor = RT_METHOD_FEE_LEVEL_1;
     public static final int ValueBuffer_avm_set = RT_METHOD_FEE_LEVEL_1;
     public static final int ValueBuffer_avm_get = RT_METHOD_FEE_LEVEL_1;
+
+    public static final int UnmodifiableArrayContainer_constructor = RT_METHOD_FEE_LEVEL_1;
 }

@@ -1,15 +1,24 @@
 package pi;
 
 import foundation.icon.ee.util.IObjects;
+import i.IInstrumentation;
 import i.IObject;
 import i.IObjectDeserializer;
 import i.IObjectSerializer;
+import org.aion.avm.EnergyCalculator;
+import org.aion.avm.RuntimeMethodFeeSchedule;
 import s.java.lang.Object;
 
 public abstract class UnmodifiableArrayContainer extends Object {
     IObject[] data;
 
     UnmodifiableArrayContainer(IObject[] data) {
+        IInstrumentation.charge(
+            EnergyCalculator.multiplyLinearValueByMethodFeeLevel1AndAddBase(
+                RuntimeMethodFeeSchedule.UnmodifiableArrayContainer_constructor,
+                data.length
+            )
+        );
         this.data = data;
     }
 
