@@ -165,7 +165,7 @@ public class TransactionExecutor {
         }
     }
 
-    private static FileReader defaultFileReader = p -> {
+    private static final FileReader defaultFileReader = p -> {
         Path path = Paths.get(p, CODE_JAR);
         byte[] jarBytes;
         try {

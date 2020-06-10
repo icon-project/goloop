@@ -13,7 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class KVDBStepTest extends SimpleTest {
     public static class Score {
-        private final VarDB<byte[]> varDB = Context.newVarDB("varDB", byte[].class);
+        private final VarDB<byte[]> varDB = Context.newVarDB("varDB",
+                byte[].class);
 
         @External
         public void set(byte[] v) {

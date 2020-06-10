@@ -30,7 +30,7 @@ public class ServiceManager extends Proxy {
     private BigInteger stepLimit = BigInteger.valueOf(1_000_000_000);
     private State.Account current;
     private Address origin;
-    private Map<String, Object> info = new HashMap<>();
+    private final Map<String, Object> info = new HashMap<>();
 
     public ServiceManager(Connection conn) {
         super(conn);
