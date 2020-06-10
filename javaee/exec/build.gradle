@@ -6,14 +6,15 @@ dependencies {
     implementation 'org.msgpack:msgpack-core:0.8.17'
     implementation 'org.slf4j:slf4j-api:1.7.26'
 
-    testImplementation(
+    testCompile(
         'org.junit.jupiter:junit-jupiter-api:5.4.2',
-        project(':samples'),
     )
-    testRuntime(
+
+    testImplementation(
         'org.junit.jupiter:junit-jupiter-engine:5.4.2',
+        project(':samples'),
+        project(':logger'),
     )
-    testRuntimeOnly project(':logger')
 }
 
 task compileNative(type: Exec) {
