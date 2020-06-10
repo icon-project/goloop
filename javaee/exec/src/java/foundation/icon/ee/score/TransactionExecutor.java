@@ -152,17 +152,8 @@ public class TransactionExecutor {
                 blockHeight, blockTimestamp, owner, stepCosts);
         Transaction tx = new Transaction(from, to, value, nonce, limit.longValue(), method, params,
                                          txHash, txIndex, txTimestamp, isInstall);
-        try {
-            Result result = avmExecutor.run(kernel, tx, origin);
-            return new InvokeResult(result);
-        } catch (Exception e) {
-            String errMsg = e.getMessage();
-            if (errMsg == null) {
-                errMsg = e.getClass().getName() + " occurred";
-            }
-            logger.warn("Execution failure", e);
-            return new InvokeResult(Status.UnknownFailure, BigInteger.ZERO, TypedObj.encodeAny(errMsg));
-        }
+        Result result = avmExecutor.run(kernel, tx, origin);
+        return new InvokeResult(result);
     }
 
     private static final FileReader defaultFileReader = p -> {
