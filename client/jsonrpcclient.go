@@ -11,9 +11,16 @@ import (
 )
 
 type JsonRpcClient struct {
-	hc       *http.Client
-	Endpoint string
+	hc           *http.Client
+	Endpoint     string
 	CustomHeader map[string]string
+}
+
+type Response struct {
+	Version string          `json:"jsonrpc"`
+	Result  json.RawMessage `json:"result"`
+	Error   *jsonrpc.Error  `json:"error,omitempty"`
+	ID      interface{}     `json:"id"`
 }
 
 func NewJsonRpcClient(hc *http.Client, endpoint string) *JsonRpcClient {
@@ -32,9 +39,9 @@ func (c *JsonRpcClient) _do(req *http.Request) (resp *http.Response, err error) 
 	return
 }
 
-func (c *JsonRpcClient) Do(method string, reqPtr, respPtr interface{}) (jrResp *jsonrpc.Response, err error) {
+func (c *JsonRpcClient) Do(method string, reqPtr, respPtr interface{}) (jrResp *Response, err error) {
 	jrReq := &jsonrpc.Request{
-		ID: time.Now().UnixNano() / int64(time.Millisecond),
+		ID:      time.Now().UnixNano() / int64(time.Millisecond),
 		Version: jsonrpc.Version,
 		Method:  method,
 	}
@@ -85,12 +92,7 @@ func (c *JsonRpcClient) Do(method string, reqPtr, respPtr interface{}) (jrResp *
 		return
 	}
 	if respPtr != nil {
-		rb, mErr := json.Marshal(jrResp.Result)
-		if mErr != nil {
-			err = mErr
-			return
-		}
-		err = json.Unmarshal(rb, respPtr)
+		err = json.Unmarshal(jrResp.Result, respPtr)
 		if err != nil {
 			return
 		}
@@ -112,7 +114,7 @@ func (c *JsonRpcClient) Raw(reqB []byte) (resp *http.Response, err error) {
 	return c._do(req)
 }
 
-func decodeResponseBody(resp *http.Response) (jrResp *jsonrpc.Response, err error) {
+func decodeResponseBody(resp *http.Response) (jrResp *Response, err error) {
 	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&jrResp)
 	return

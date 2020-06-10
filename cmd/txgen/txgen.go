@@ -49,9 +49,9 @@ func (c *Client) SendTx(tx interface{}) (string, error) {
 			}
 			return "", err
 		}
-		txHash, ok := r.Result.(string)
-		if !ok {
-			return "", errors.Errorf("Fail on parsing txHash")
+		var txHash string
+		if err := json.Unmarshal(r.Result, &txHash); err != nil {
+			return "", err
 		}
 		return txHash, nil
 	}
@@ -248,7 +248,7 @@ func (ctx *Context) Run(urls []string) error {
 		time.Duration(ctx.tps)
 
 	headers := map[string]string{}
-	timeoutOption := int64(ctx.timeout/time.Millisecond)
+	timeoutOption := int64(ctx.timeout / time.Millisecond)
 	if timeoutOption > 200 {
 		iconOpts := jsonrpc.IconOptions{}
 		iconOpts.SetInt(jsonrpc.IconOptionsTimeout, timeoutOption)
