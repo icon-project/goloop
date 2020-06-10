@@ -246,8 +246,7 @@ class CheckParams(IconScoreBase):
 
     @external
     def inter_call_with_default_param(self, _to: Address, p_bool: bool = True,
-                                      p_addr: Address = Address.from_string(
-                                          "cx0000000000000000000000000000000000000000"),
+                                      p_addr: Address = ZERO_SCORE_ADDRESS,
                                       p_int: int = 0, p_str: str = "", p_bytes: bytes = bytes([0])):
         recipient_score = self.create_interface_score(_to, InterCallInterface)
         recipient_score.call_bool(p_bool)

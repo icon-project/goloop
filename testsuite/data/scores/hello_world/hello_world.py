@@ -78,9 +78,7 @@ class HelloWorld(IconScoreBase):
 
     @external
     def checkRevision(self):
-        score = self.create_interface_score(
-            Address.from_string("cx0000000000000000000000000000000000000000"),
-            ChainSCORE)
+        score = self.create_interface_score(ZERO_SCORE_ADDRESS, ChainSCORE)
         rev = score.getRevision()
         Logger.debug(f"Revision({rev})")
 
