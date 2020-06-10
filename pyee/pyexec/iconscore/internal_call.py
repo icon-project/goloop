@@ -49,7 +49,7 @@ class InternalCall(object):
                      kw_params: Optional[dict] = None) -> Any:
         if func_name is None or func_name == STR_FALLBACK:
             func_name = MethodName.FALLBACK
-        new_limit = context.step_counter.check_step_remained(StepType.CONTRACT_CALL)
+        new_limit = context.step_counter.step_remained
         if arg_params is not None:
             params = arg_params
         elif kw_params is not None:

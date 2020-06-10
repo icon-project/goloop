@@ -44,7 +44,6 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Map;
 
 import static foundation.icon.test.common.Env.LOG;
@@ -584,9 +583,21 @@ public class StepTest extends TestBase {
         LOG.infoExiting();
 
         LOG.infoEntering("invoke", "HelloWorld.checkRevision() -> ChainSCORE.getRevision()");
+        params = new RpcObject.Builder()
+                .put("code", new RpcValue(BigInteger.valueOf(5)))
+                .build();
         StepTransaction stx = new StepTransaction();
         var usedFee = stx.call(testWallets[1], score.getAddress(),
-                "checkRevision", null, Constants.DEFAULT_STEPS);
+                "checkRevision", params, Constants.DEFAULT_STEPS);
+        stx.addOperation(StepType.CONTRACT_CALL, 1);
+        assertEquals(usedFee, stx.expectedFee());
+        var expectedStep = stx.expectedStep();
+        LOG.infoExiting();
+
+        LOG.infoEntering("invoke", "HelloWorld.setRevision() -> Governance -> ChainSCORE.setRevision()");
+        stx = new StepTransaction();
+        usedFee = stx.call(testWallets[1], score.getAddress(),
+                "setRevision", params, expectedStep);
         stx.addOperation(StepType.CONTRACT_CALL, 1);
         assertEquals(usedFee, stx.expectedFee());
         LOG.infoExiting();

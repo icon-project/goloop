@@ -139,17 +139,12 @@ class IconScoreStepCounter(object):
         """
         return self._step_used
 
-    def check_step_remained(self, step_type: StepType) -> int:
-        """ Check if remained steps are sufficient for executing step_type,
-            and returns the remained steps
+    @property
+    def step_remained(self) -> int:
+        """ Returns the remained steps
         """
         self._refund_handler()
-        required = self._step_costs.get(step_type, 0)
-        remained = self._step_limit - self._step_used
-        if required > remained:
-            # raise OutOfStepException
-            self.apply_step(step_type, 1)
-        return remained
+        return self._step_limit - self._step_used
 
     def apply_step(self, step_type: StepType, count: int) -> int:
         """ Increases steps for given step cost

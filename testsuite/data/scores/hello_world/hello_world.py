@@ -1,6 +1,7 @@
 from iconservice import *
 
 TAG = 'HelloWorld'
+GOV_SCORE_ADDRESS = Address.from_prefix_and_int(AddressPrefix.CONTRACT, 1)
 
 
 class InterCallInterface(InterfaceScore):
@@ -12,6 +13,12 @@ class InterCallInterface(InterfaceScore):
 class ChainSCORE(InterfaceScore):
     @interface
     def getRevision(self) -> int:
+        pass
+
+
+class Governance(InterfaceScore):
+    @interface
+    def setRevision(self, code: int):
         pass
 
 
@@ -77,10 +84,15 @@ class HelloWorld(IconScoreBase):
             self.icx.transfer(to, amount)
 
     @external
-    def checkRevision(self):
+    def checkRevision(self, code: int):
         score = self.create_interface_score(ZERO_SCORE_ADDRESS, ChainSCORE)
         rev = score.getRevision()
         Logger.debug(f"Revision({rev})")
+
+    @external
+    def setRevision(self, code: int):
+        score = self.create_interface_score(GOV_SCORE_ADDRESS, Governance)
+        score.setRevision(code)
 
     @external
     def testMaxBufferSize(self, size: int):
