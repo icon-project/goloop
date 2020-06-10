@@ -41,19 +41,19 @@ RECV result status=0 stepUsed=214 ret=0
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mBigInteger params=[0]
 RECV getObjGraph flag=1 => next=2 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
 RECV setObjGraph flag=0 next=3
-RECV result status=0 stepUsed=214 ret=0
+RECV result status=0 stepUsed=814 ret=0
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mString params=[string]
 RECV getObjGraph flag=1 => next=3 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
 RECV setObjGraph flag=0 next=4
-RECV result status=0 stepUsed=214 ret=string
+RECV result status=0 stepUsed=514 ret=string
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mByteArray params=[000102]
 RECV getObjGraph flag=1 => next=4 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
 RECV setObjGraph flag=0 next=5
-RECV result status=0 stepUsed=214 ret=000102
+RECV result status=0 stepUsed=314 ret=000102
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mAddress params=[000002...]
 RECV getObjGraph flag=1 => next=5 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
 RECV setObjGraph flag=0 next=6
-RECV result status=0 stepUsed=214 ret=hx0002000000000000000000000000000000000000
+RECV result status=0 stepUsed=514 ret=hx0002000000000000000000000000000000000000
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=mBigInteger params=[<null>]
 RECV getObjGraph flag=1 => next=6 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
 RECV setObjGraph flag=0 next=6
