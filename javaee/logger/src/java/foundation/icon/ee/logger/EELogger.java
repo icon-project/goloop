@@ -97,8 +97,10 @@ public class EELogger extends MarkerIgnoringBase {
         return (logLevel >= currentLogLevel);
     }
 
-    public static void setLogLevel(int logLevel) {
+    public static int setLogLevel(int logLevel) {
+        var res = currentLogLevel;
         currentLogLevel = logLevel;
+        return res;
     }
 
     public EELogger(String name) {

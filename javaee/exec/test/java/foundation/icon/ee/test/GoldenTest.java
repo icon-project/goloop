@@ -1,5 +1,6 @@
 package foundation.icon.ee.test;
 
+import foundation.icon.ee.logger.EELogger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
@@ -22,7 +23,7 @@ public class GoldenTest extends SimpleTest {
     static final String logLevelKey = "foundation.icon.ee.logger.defaultLogLevel";
     private ByteArrayOutputStream outContent;
     private PrintStream prevOut;
-    private String prevLogLevel;
+    private int prevLogLevel;
 
     protected Path getGoldenFilePath(TestInfo testInfo) {
         String cls = this.getClass().getName().replace('.', '/');
@@ -42,7 +43,7 @@ public class GoldenTest extends SimpleTest {
         prevOut = System.out;
         System.setOut(new PrintStream(outContent));
 
-        prevLogLevel = System.setProperty(logLevelKey, "trace");
+        prevLogLevel = EELogger.setLogLevel(0);
         super.setUp();
     }
 
@@ -55,11 +56,7 @@ public class GoldenTest extends SimpleTest {
         super.tearDown(testInfo);
         System.out.flush();
         System.setOut(prevOut);
-        if (prevLogLevel!=null) {
-            System.setProperty(logLevelKey, prevLogLevel);
-        } else {
-            System.clearProperty(logLevelKey);
-        }
+        EELogger.setLogLevel(prevLogLevel);
         var bis = new ByteArrayInputStream(outContent.toByteArray());
         var r = new BufferedReader(new InputStreamReader(bis));
         var path = getGoldenFilePath(testInfo);
