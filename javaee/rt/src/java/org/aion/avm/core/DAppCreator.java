@@ -1,5 +1,6 @@
 package org.aion.avm.core;
 
+import foundation.icon.ee.Agent;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.CodedException;
 import foundation.icon.ee.types.IllegalFormatException;
@@ -135,9 +136,14 @@ public class DAppCreator {
             // We also add SKIP_DEBUG since we aren't using debug data and skipping it removes extraneous labels which would otherwise
             // cause the BlockBuildingMethodVisitor to build lots of small blocks instead of a few big ones (each block incurs a Helper
             // static call, which is somewhat expensive - this is how we bill for energy).
-            byte[] bytecode = new ClassToolchain.Builder(safeClasses.get(name), parsingOptions)
-                    .addNextVisitor(new ClassMetering(postRenameObjectSizes))
-                    .addNextVisitor(new ConstantVisitor(PackageConstants.kConstantClassName, constantClass.constantToFieldMap))
+            var builder = new ClassToolchain.Builder(safeClasses.get(name),
+                    parsingOptions);
+            Agent agent = Agent.get();
+            if (agent == null || agent.isClassMeteringEnabled()) {
+                builder.addNextVisitor(new ClassMetering(postRenameObjectSizes));
+            }
+
+            byte[] bytecode = builder.addNextVisitor(new ConstantVisitor(PackageConstants.kConstantClassName, constantClass.constantToFieldMap))
                     .addNextVisitor(new InvokedynamicShadower(PackageConstants.kShadowSlashPrefix))
                     .addNextVisitor(new ClassShadowing(PackageConstants.kShadowSlashPrefix))
                     .addNextVisitor(new StackWatcherClassAdapter())

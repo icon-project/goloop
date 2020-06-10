@@ -20,7 +20,7 @@ public class SimpleTest {
                         "",
                         null,
                         sm.getFileReader());
-                te.connectAndRunLoop();
+                te.connectAndRunLoop(sm);
             } catch (IOException e) {
                 System.out.println(e);
             }

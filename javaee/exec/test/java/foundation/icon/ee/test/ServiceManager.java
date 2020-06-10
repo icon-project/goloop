@@ -1,5 +1,6 @@
 package foundation.icon.ee.test;
 
+import foundation.icon.ee.Agent;
 import score.Address;
 import foundation.icon.ee.ipc.Connection;
 import foundation.icon.ee.ipc.EEProxy;
@@ -22,7 +23,7 @@ import java.util.Map;
 
 import static foundation.icon.ee.ipc.EEProxy.Info;
 
-public class ServiceManager extends Proxy {
+public class ServiceManager extends Proxy implements Agent {
     private State state = new State();
     private int nextScoreAddr = 1;
     private int nextExtAddr = 1;
@@ -31,6 +32,9 @@ public class ServiceManager extends Proxy {
     private State.Account current;
     private Address origin;
     private final Map<String, Object> info = new HashMap<>();
+    private final StepCost stepCost;
+
+    private boolean isClassMeteringEnabled = true;
 
     public ServiceManager(Connection conn) {
         super(conn);
@@ -54,6 +58,7 @@ public class ServiceManager extends Proxy {
                 StepCost.EVENT_LOG_BASE, BigInteger.valueOf(64)
         ));
         info.put(Info.STEP_COSTS, stepCosts);
+        stepCost = new StepCost(stepCosts);
         current = state.getAccount(origin);
     }
 
@@ -416,5 +421,17 @@ public class ServiceManager extends Proxy {
             outObjs[i] = beautify(inObjs[i]);
         }
         System.out.printf(fmt, outObjs);
+    }
+
+    public StepCost getStepCost() {
+        return stepCost;
+    }
+
+    public boolean isClassMeteringEnabled() {
+        return isClassMeteringEnabled;
+    }
+
+    public void enableClassMetering(boolean e) {
+        isClassMeteringEnabled = e;
     }
 }

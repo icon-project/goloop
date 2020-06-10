@@ -16,6 +16,7 @@
 
 package foundation.icon.ee.score;
 
+import foundation.icon.ee.Agent;
 import foundation.icon.ee.ipc.Connection;
 import foundation.icon.ee.ipc.EEProxy;
 import foundation.icon.ee.ipc.InvokeResult;
@@ -93,6 +94,11 @@ public class TransactionExecutor {
     }
 
     public void connectAndRunLoop() throws IOException {
+        connectAndRunLoop(null);
+    }
+
+    public void connectAndRunLoop(Agent agent) throws IOException {
+        Agent.agent.set(agent);
         avmExecutor.start();
         try {
             proxy.connect(uuid);
