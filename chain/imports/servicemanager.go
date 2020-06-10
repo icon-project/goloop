@@ -1,8 +1,8 @@
 package imports
 
 import (
-	"bytes"
 	"encoding/json"
+	"reflect"
 
 	"github.com/icon-project/goloop/common/errors"
 	"github.com/icon-project/goloop/common/legacy"
@@ -307,13 +307,17 @@ func (t *transitionForImport) OnExecute(tr module.Transition, e error) {
 		rjsn, _ := rct.ToJSON(3)
 		mrjsn := rjsn.(map[string]interface{})
 		delete(mrjsn, "failure")
-		rjbs, _ := json.Marshal(mrjsn)
 
 		nrjsn, _ := nrct.ToJSON(3)
 		mnrjsn := nrjsn.(map[string]interface{})
 		delete(mnrjsn, "failure")
-		nrjbs, _ := json.Marshal(mnrjsn)
-		if !bytes.Equal(rjbs, nrjbs) {
+		if !reflect.DeepEqual(mrjsn, mnrjsn) {
+			rjsn, _ := rct.ToJSON(3)
+			mrjsn := rjsn.(map[string]interface{})
+			rjbs, _ := json.Marshal(mrjsn)
+			nrjsn, _ := nrct.ToJSON(3)
+			mnrjsn := nrjsn.(map[string]interface{})
+			nrjbs, _ := json.Marshal(mnrjsn)
 			err = errors.Errorf("cannot agree with receipt lc:%s gc:%s tx:%x", rjbs, nrjbs, tx.ID())
 			t.m.cb.OnError(err)
 			t.cb.OnExecute(t, err)
