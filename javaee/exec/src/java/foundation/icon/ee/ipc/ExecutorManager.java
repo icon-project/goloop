@@ -72,6 +72,7 @@ public class ExecutorManager {
                 exec.connectAndRunLoop();
             } catch (Exception e) {
                 System.err.println("Executor terminated: " + e);
+                e.printStackTrace();
             } finally {
                 if (execMap.remove(uuid) != null) {
                     try {
