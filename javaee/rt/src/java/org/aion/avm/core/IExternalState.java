@@ -12,7 +12,7 @@ import java.util.function.IntConsumer;
  * to the blockchain.
  */
 public interface IExternalState {
-    int OPTION_QUERY = 1;
+    int OPTION_READ_ONLY = 1;
     int OPTION_TRACE = 2;
 
     /**
@@ -146,8 +146,8 @@ public interface IExternalState {
 
     int getOption();
 
-    default boolean isQuery() {
-        return (getOption() & OPTION_QUERY) != 0;
+    default boolean isReadOnly() {
+        return (getOption() & OPTION_READ_ONLY) != 0;
     }
 
     default boolean isTrace() {

@@ -58,7 +58,7 @@ public class DBStorage implements IDBStorage {
     }
 
     public void setBytes(byte[] k, byte[] v) {
-        if (ctx.isQuery()) {
+        if (ctx.isReadOnly()) {
             throw new IllegalStateException();
         }
         var stepCost = ctx.getStepCost();

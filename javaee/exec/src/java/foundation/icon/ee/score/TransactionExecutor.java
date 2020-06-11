@@ -150,7 +150,7 @@ public class TransactionExecutor {
         byte[] codeBytes = fileReader.readFile(code);
         int option = 0;
         if (isQuery) {
-            option |= IExternalState.OPTION_QUERY;
+            option |= IExternalState.OPTION_READ_ONLY;
         }
         ExternalState kernel = new ExternalState(proxy, option, codeBytes,
                 blockHeight, blockTimestamp, owner, stepCosts);
