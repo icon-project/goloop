@@ -291,6 +291,9 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
     @Override
     public void avm_log(IObjectArray indexed, IObjectArray data) {
+        if (externalState.isReadOnly()) {
+            throw new IllegalStateException();
+        }
         if (logger.isTraceEnabled()) {
             logger.trace("Context.log indexed.len={} data.len={}", indexed.length(), data.length());
             for (int i=0; i<indexed.length(); i++) {
