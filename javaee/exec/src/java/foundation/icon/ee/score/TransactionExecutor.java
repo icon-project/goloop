@@ -85,7 +85,6 @@ public class TransactionExecutor {
         if (conf == null) {
             conf = new AvmConfiguration();
             if (logger.isTraceEnabled()) {
-                conf.enableVerboseContractErrors = true;
                 conf.enableContextPrintln = true;
             }
         }
