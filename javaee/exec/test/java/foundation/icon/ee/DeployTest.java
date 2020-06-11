@@ -38,18 +38,18 @@ public class DeployTest extends GoldenTest {
         sm.deploy(NoConstructor.class);
         var e = assertThrows(TransactionException.class,
                 () -> sm.deploy(PackagePrivateConstructor.class));
-        assertEquals(e.getResult().getStatus(), Status.IllegalFormat);
+        assertEquals(Status.IllegalFormat, e.getResult().getStatus());
         e = assertThrows(TransactionException.class,
                 () -> sm.deploy(ProtectedConstructor.class));
-        assertEquals(e.getResult().getStatus(), Status.IllegalFormat);
+        assertEquals(Status.IllegalFormat, e.getResult().getStatus());
         e = assertThrows(TransactionException.class,
                 () -> sm.deploy(PrivateConstructor.class));
-        assertEquals(e.getResult().getStatus(), Status.IllegalFormat);
+        assertEquals(Status.IllegalFormat, e.getResult().getStatus());
         e = assertThrows(TransactionException.class,
                 () -> sm.deploy(Abstract.class));
-        assertEquals(e.getResult().getStatus(), Status.IllegalFormat);
+        assertEquals(Status.IllegalFormat, e.getResult().getStatus());
         e = assertThrows(TransactionException.class,
                 () -> sm.deploy(Interface.class));
-        assertEquals(e.getResult().getStatus(), Status.IllegalFormat);
+        assertEquals(Status.IllegalFormat, e.getResult().getStatus());
     }
 }
