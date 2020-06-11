@@ -67,6 +67,7 @@ public class ExecutorManager {
                         connector.connect(execSockAddr),
                         uuid,
                         loader,
+                        null,
                         null);
                 execMap.put(uuid, exec);
                 exec.connectAndRunLoop();

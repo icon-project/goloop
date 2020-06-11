@@ -1,6 +1,7 @@
 package foundation.icon.ee.test;
 
 import foundation.icon.ee.score.TransactionExecutor;
+import org.aion.avm.core.AvmConfiguration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
@@ -16,10 +17,14 @@ public class SimpleTest {
         sm = new ServiceManager(pipes[0]);
         Thread th = new Thread(() -> {
             try {
+                var conf = new AvmConfiguration();
+                conf.enableContextPrintln = true;
+                conf.enableVerboseContractErrors = true;
                 var te = TransactionExecutor.newInstance(pipes[1],
                         "",
                         null,
-                        sm.getFileReader());
+                        sm.getFileReader(),
+                        conf);
                 te.connectAndRunLoop(sm);
             } catch (IOException e) {
                 System.out.println(e);

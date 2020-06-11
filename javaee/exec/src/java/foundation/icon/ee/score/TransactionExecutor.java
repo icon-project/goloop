@@ -20,12 +20,10 @@ import foundation.icon.ee.Agent;
 import foundation.icon.ee.ipc.Connection;
 import foundation.icon.ee.ipc.EEProxy;
 import foundation.icon.ee.ipc.InvokeResult;
-import foundation.icon.ee.ipc.TypedObj;
 import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Bytes;
 import foundation.icon.ee.types.Method;
 import foundation.icon.ee.types.Result;
-import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.Transaction;
 import foundation.icon.ee.util.MethodUnpacker;
 import org.aion.avm.core.AvmConfiguration;
@@ -46,14 +44,6 @@ public class TransactionExecutor {
     private static final Logger logger = LoggerFactory.getLogger(TransactionExecutor.class);
     private static final String CODE_JAR = "code.jar";
     private static final String CMD_INSTALL = "<init>";
-    private static final AvmConfiguration avmConfig = new AvmConfiguration();
-
-    static {
-        if (logger.isTraceEnabled()) {
-            avmConfig.enableVerboseContractErrors = true;
-            avmConfig.enableContextPrintln = true;
-        }
-    }
 
     private final EEProxy proxy;
     private final String uuid;
@@ -63,13 +53,14 @@ public class TransactionExecutor {
     private TransactionExecutor(Connection conn,
                                 String uuid,
                                 Loader loader,
-                                FileReader fileReader) {
+                                FileReader fileReader,
+                                AvmConfiguration conf) {
         this.proxy = new EEProxy(conn);
         this.uuid = uuid;
 
         proxy.setOnGetApiListener(this::handleGetApi);
         proxy.setOnInvokeListener(this::handleInvoke);
-        avmExecutor = CommonAvmFactory.createAvmExecutor(avmConfig, loader);
+        avmExecutor = CommonAvmFactory.createAvmExecutor(conf, loader);
 
         this.fileReader = fileReader;
     }
@@ -77,20 +68,28 @@ public class TransactionExecutor {
     // TODO : remove me later
     public static TransactionExecutor newInstance(Connection c,
                                                   String uuid) {
-        return newInstance(c, uuid, null, null);
+        return newInstance(c, uuid, null, null, null);
     }
 
     public static TransactionExecutor newInstance(Connection c,
                                                   String uuid,
                                                   Loader loader,
-                                                  FileReader r) {
+                                                  FileReader r,
+                                                  AvmConfiguration conf) {
         if (loader == null) {
             loader = new Loader();
         }
         if (r == null) {
             r = defaultFileReader;
         }
-        return new TransactionExecutor(c, uuid, loader, r);
+        if (conf == null) {
+            conf = new AvmConfiguration();
+            if (logger.isTraceEnabled()) {
+                conf.enableVerboseContractErrors = true;
+                conf.enableContextPrintln = true;
+            }
+        }
+        return new TransactionExecutor(c, uuid, loader, r, conf);
     }
 
     public void connectAndRunLoop() throws IOException {
