@@ -34,4 +34,20 @@ public class DAppRuntimeState {
     public ObjectGraph getGraph() {
         return graph;
     }
+
+    public boolean isAcceptableChangeInReadOnly(DAppRuntimeState newRS) {
+        if (objects != null) {
+            if (objects.size() != newRS.objects.size()) {
+                return false;
+            }
+            var it = objects.listIterator();
+            var it2 = newRS.objects.listIterator();
+            while (it.hasNext()) {
+                if (it.next() != it2.next()) {
+                    return false;
+                }
+            }
+        }
+        return graph.compareTo(newRS.graph);
+    }
 }

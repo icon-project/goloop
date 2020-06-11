@@ -9,6 +9,7 @@ import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.Transaction;
 import i.AvmError;
 import i.AvmException;
+import i.GenericCodedException;
 import i.IBlockchainRuntime;
 import i.IInstrumentation;
 import i.InstrumentationHelpers;
@@ -40,18 +41,18 @@ public class DAppExecutor {
         InternedClasses initialClassWrappers = dapp.getInternedClasses();
 
         var saveItem = task.getReentrantDAppStack().getSaveItem(dappAddress);
-        DAppRuntimeState rs;
+        DAppRuntimeState prevRS;
         if (saveItem == null) {
             var raw = externalState.getObjectGraph(dappAddress);
             var graph = ObjectGraph.getInstance(raw);
-            rs = new DAppRuntimeState(null, graph);
+            prevRS = new DAppRuntimeState(null, graph);
         } else {
-            rs = saveItem.getRuntimeState();
+            prevRS = saveItem.getRuntimeState();
         }
-        var nextHashCode = dapp.loadRuntimeState(rs);
+        var nextHashCode = dapp.loadRuntimeState(prevRS);
 
         // Used for deserialization billing
-        int rawGraphDataLength = rs.getGraph().getGraphData().length + 4;
+        int rawGraphDataLength = prevRS.getGraph().getGraphData().length + 4;
 
         // Note that we need to store the state of this invocation on the reentrant stack in case there is another call into the same app.
         // This is required so that the call() mechanism can access it to save/reload its ContractEnvironmentState and so that the underlying
@@ -86,13 +87,17 @@ public class DAppExecutor {
                 externalState.waitForCallbacks();
             }
 
-            var runtimeState = dapp.saveRuntimeState();
+            var newRS = dapp.saveRuntimeState();
+
+            if (externalState.isReadOnly() && !prevRS.isAcceptableChangeInReadOnly(newRS)) {
+                throw new GenericCodedException(Status.AccessDenied);
+            }
 
             // Save back the state before we return.
             if (null == stateToResume) {
                 // We are at the "top" so write this back to disk.
                 int newHashCode = threadInstrumentation.peekNextHashCode();
-                byte[] postCallGraphData = runtimeState.getGraph().getRawData();
+                byte[] postCallGraphData = newRS.getGraph().getRawData();
                 // Bill for writing this size.
                 threadInstrumentation.chargeEnergy(StorageFees.WRITE_PRICE_PER_BYTE * postCallGraphData.length);
                 externalState.putObjectGraph(dappAddress, postCallGraphData);
@@ -104,7 +109,7 @@ public class DAppExecutor {
             result = new Result(Status.Success, energyUsed, ret);
             if (prevState != null) {
                 prevState.getSaveItems().putAll(thisState.getSaveItems());
-                prevState.getSaveItems().put(dappAddress, new ReentrantDAppStack.SaveItem(dapp, runtimeState));
+                prevState.getSaveItems().put(dappAddress, new ReentrantDAppStack.SaveItem(dapp, newRS));
             }
         } catch (AvmException e) {
             if (conf.enableVerboseContractErrors) {

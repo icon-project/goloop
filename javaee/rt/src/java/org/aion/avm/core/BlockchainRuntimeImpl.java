@@ -217,7 +217,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                 || s == Status.StackOverflow) {
             throw new GenericCodedException(s, Status.getMessage(s));
         } else if (s < Status.UserReversionStart) {
-            RuntimeAssertionError.unreachable("bad result status " + s);
+            throw new RevertException();
         } else if (s < Status.UserReversionEnd) {
             throw new ScoreRevertException(s - Status.UserReversionStart,
                     res.getRet().toString());
