@@ -22,6 +22,7 @@ public class State {
         public Map<ByteArrayWrapper, byte[]> storage = new HashMap<>();
         public byte[] optimized = null;
         public byte[] transformed = null;
+        public Contract contract = null;
 
         Account(byte[] addr) {
             address = new Address(addr);
@@ -36,6 +37,7 @@ public class State {
             storage.putAll(src.storage);
             optimized = src.optimized;
             transformed = src.transformed;
+            contract = src.contract;
         }
     }
 

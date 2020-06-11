@@ -1,6 +1,8 @@
 package foundation.icon.ee.test;
 
 import foundation.icon.ee.Agent;
+import foundation.icon.ee.types.Method;
+import foundation.icon.ee.util.MethodUnpacker;
 import score.Address;
 import foundation.icon.ee.ipc.Connection;
 import foundation.icon.ee.ipc.EEProxy;
@@ -33,6 +35,7 @@ public class ServiceManager extends Proxy implements Agent {
     private Address origin;
     private final Map<String, Object> info = new HashMap<>();
     private final StepCost stepCost;
+    private boolean isReadOnly = false;
 
     private boolean isClassMeteringEnabled = true;
 
@@ -114,6 +117,8 @@ public class ServiceManager extends Proxy implements Agent {
             var prev = current;
             var prevState = new State(state);
             state.writeFile(path, jar);
+            var apisBytes = JarBuilder.getAPIsBytesFromJAR(jar);
+            Method[] methods = MethodUnpacker.readFrom(apisBytes);
             current = state.getAccount(scoreAddr);
             info.put(Info.CONTRACT_OWNER, origin);
             var res = invoke(path, false, origin, scoreAddr, value, stepLimit, "<init>", params);
@@ -122,8 +127,10 @@ public class ServiceManager extends Proxy implements Agent {
                 current = state.getAccount(prev.address);
                 throw new TransactionException(res);
             }
+            var contract = new Contract(this, scoreAddr, methods);
+            current.contract = contract;
             current = prev;
-            return new Contract(this, scoreAddr);
+            return contract;
         } catch (IOException e) {
             throw new AssertionError(e);
         }
@@ -311,24 +318,37 @@ public class ServiceManager extends Proxy implements Agent {
         return res;
     }
 
-    public Result invoke(String code, boolean isQuery, Address from,
+    private Result invoke(String code, boolean isQuery, Address from,
                      Address to, BigInteger value, BigInteger stepLimit,
                      String method, Object[] params) throws IOException {
-        printf("SEND invoke code=%s isQuery=%b from=%s to=%s value=%d stepLimit=%d method=%s params=%s%n",
-                code, isQuery, from, to, value, stepLimit, method,
-                params);
-        sendMessage(EEProxy.MsgType.INVOKE, code, isQuery, from, to, value, stepLimit,
-                method, TypedObj.encodeAny(params), TypedObj.encodeAny(info));
-        var msg = waitFor(EEProxy.MsgType.RESULT);
-        if (msg.type!= EEProxy.MsgType.RESULT) {
-            throw new AssertionError(String.format("unexpected message type %d", msg.type));
+        boolean readOnlyMethod = false;
+        if (!method.equals("<init>")) {
+            var m = state.getAccount(to).contract.getMethod(method);
+            readOnlyMethod = (m.getFlags()&Method.Flags.READONLY) != 0;
         }
-        var data = msg.value.asArrayValue();
-        var status = data.get(0).asIntegerValue().asInt();
-        var stepUsed = new BigInteger(data.get(1).asRawValue().asByteArray());
-        var result = TypedObj.decodeAny(data.get(2));
-        printf("RECV result status=%d stepUsed=%d ret=%s%n", status, stepUsed, result);
-        return new Result(status, stepUsed, result);
+        var prevIsReadOnly = isReadOnly;
+        if (isQuery || isReadOnly || readOnlyMethod) {
+            isReadOnly = true;
+        }
+        try {
+            printf("SEND invoke code=%s isQuery=%b from=%s to=%s value=%d stepLimit=%d method=%s params=%s%n",
+                    code, isReadOnly, from, to, value, stepLimit, method,
+                    params);
+            sendMessage(EEProxy.MsgType.INVOKE, code, isReadOnly, from, to, value, stepLimit,
+                    method, TypedObj.encodeAny(params), TypedObj.encodeAny(info));
+            var msg = waitFor(EEProxy.MsgType.RESULT);
+            if (msg.type != EEProxy.MsgType.RESULT) {
+                throw new AssertionError(String.format("unexpected message type %d", msg.type));
+            }
+            var data = msg.value.asArrayValue();
+            var status = data.get(0).asIntegerValue().asInt();
+            var stepUsed = new BigInteger(data.get(1).asRawValue().asByteArray());
+            var result = TypedObj.decodeAny(data.get(2));
+            printf("RECV result status=%d stepUsed=%d ret=%s%n", status, stepUsed, result);
+            return new Result(status, stepUsed, result);
+        } finally {
+            isReadOnly = prevIsReadOnly;
+        }
     }
 
     private static boolean isPrint(int ch) {
