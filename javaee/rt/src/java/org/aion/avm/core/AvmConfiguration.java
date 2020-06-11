@@ -30,4 +30,10 @@ public class AvmConfiguration {
         this.enableVerboseContractErrors = false;
         this.enableContextPrintln = false;
     }
+
+    public AvmConfiguration(AvmConfiguration conf) {
+        this.preserveDebuggability = conf.preserveDebuggability;
+        this.enableVerboseContractErrors = conf.enableVerboseContractErrors;
+        this.enableContextPrintln = conf.enableContextPrintln;
+    }
 }

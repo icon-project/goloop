@@ -30,8 +30,7 @@ public class DAppExecutor {
                               Address senderAddress,
                               Address dappAddress,
                               Transaction tx,
-                              boolean verboseErrors,
-                              boolean enablePrintln) throws AvmError {
+                              AvmConfiguration conf) throws AvmError {
         Result result = null;
 
         // Note that the instrumentation is just a per-thread access to the state stack - we can grab it at any time as it never changes for this thread.
@@ -69,7 +68,7 @@ public class DAppExecutor {
                                                           tx,
                                                           dapp.runtimeSetup,
                                                           dapp,
-                                                          enablePrintln);
+                                                          conf.enableContextPrintln);
         FrameContextImpl fc = new FrameContextImpl(externalState);
         InstrumentationHelpers.pushNewStackFrame(dapp.runtimeSetup, dapp.loader, tx.getLimit(), nextHashCode, initialClassWrappers, fc);
         IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(br);
@@ -108,7 +107,7 @@ public class DAppExecutor {
                 prevState.getSaveItems().put(dappAddress, new ReentrantDAppStack.SaveItem(dapp, runtimeState));
             }
         } catch (AvmException e) {
-            if (verboseErrors) {
+            if (conf.enableVerboseContractErrors) {
                 System.err.println("DApp invocation failed : " + e.getMessage());
                 e.printStackTrace();
             }

@@ -194,9 +194,7 @@ public class DAppCreator {
                                 Address senderAddress,
                                 Address dappAddress,
                                 Transaction tx,
-                                boolean preserveDebuggability,
-                                boolean verboseErrors,
-                                boolean enablePrintln) throws AvmError {
+                                AvmConfiguration conf) throws AvmError {
         IRuntimeSetup runtimeSetup = null;
         Result result = null;
         try {
@@ -206,7 +204,9 @@ public class DAppCreator {
                 throw new IllegalFormatException("bad APIS");
             }
 
-            RawDappModule rawDapp = RawDappModule.readFromJar(codeBytes, preserveDebuggability, verboseErrors);
+            RawDappModule rawDapp = RawDappModule.readFromJar(codeBytes,
+                    conf.preserveDebuggability,
+                    conf.enableVerboseContractErrors);
             if (rawDapp == null) {
                 throw new IllegalFormatException("bad jar");
             }
@@ -218,10 +218,13 @@ public class DAppCreator {
             ClassHierarchyForest dappClassesForest = rawDapp.classHierarchyForest;
 
             // transform
-            Map<String, byte[]> transformedClasses = transformClasses(rawDapp.classes, dappClassesForest, rawDapp.classHierarchy, rawDapp.classRenamer, preserveDebuggability);
+            Map<String, byte[]> transformedClasses = transformClasses(
+                    rawDapp.classes, dappClassesForest, rawDapp.classHierarchy,
+                    rawDapp.classRenamer, conf.preserveDebuggability);
             TransformedDappModule transformedDapp = TransformedDappModule.fromTransformedClasses(transformedClasses, rawDapp.mainClass);
 
-            LoadedDApp dapp = DAppLoader.fromTransformed(transformedDapp, apisBytes, preserveDebuggability);
+            LoadedDApp dapp = DAppLoader.fromTransformed(transformedDapp,
+                    apisBytes, conf.preserveDebuggability);
             dapp.verifyMethods();
             runtimeSetup = dapp.runtimeSetup;
 
@@ -235,7 +238,7 @@ public class DAppCreator {
                                                               tx,
                                                               runtimeSetup,
                                                               dapp,
-                                                              enablePrintln);
+                                                              conf.enableContextPrintln);
             FrameContextImpl fc = new FrameContextImpl(externalState);
             InstrumentationHelpers.pushNewStackFrame(runtimeSetup, dapp.loader, tx.getLimit(), nextHashCode, dapp.getInternedClasses(), fc);
             IBlockchainRuntime previousRuntime = dapp.attachBlockchainRuntime(br);
@@ -254,9 +257,10 @@ public class DAppCreator {
 
             // Force the classes in the dapp to initialize so that the <clinit> is run (since we already saved the version without).
             IInstrumentation threadInstrumentation = IInstrumentation.attachedThreadInstrumentation.get();
-            result = runClinitAndBillSender(verboseErrors, dapp, threadInstrumentation, externalState, dappAddress, tx);
+            result = runClinitAndBillSender(conf.enableVerboseContractErrors,
+                    dapp, threadInstrumentation, externalState, dappAddress, tx);
         } catch (AvmException | IOException e) {
-            if (verboseErrors) {
+            if (conf.enableVerboseContractErrors) {
                 System.err.println("DApp deployment failed : " + e.getMessage());
                 e.printStackTrace();
             }

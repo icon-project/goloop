@@ -39,18 +39,14 @@ public class AvmExecutor {
     private static final Logger logger = LoggerFactory.getLogger(AvmExecutor.class);
 
     private final IInstrumentationFactory instrumentationFactory;
-    private final boolean preserveDebuggability;
-    private final boolean enableVerboseContractErrors;
-    private final boolean enableContextPrintln;
+    private final AvmConfiguration conf;
     private final Loader loader;
     private IInstrumentation instrumentation;
     private TransactionTask task;
 
-    public AvmExecutor(IInstrumentationFactory factory, AvmConfiguration config, Loader loader) {
+    public AvmExecutor(IInstrumentationFactory factory, AvmConfiguration conf, Loader loader) {
         this.instrumentationFactory = factory;
-        this.preserveDebuggability = config.preserveDebuggability;
-        this.enableVerboseContractErrors = config.enableVerboseContractErrors;
-        this.enableContextPrintln = config.enableContextPrintln;
+        this.conf = new AvmConfiguration(conf);
         this.loader = loader;
     }
 
@@ -91,11 +87,8 @@ public class AvmExecutor {
 
         if (tx.isCreate()) {
             logger.trace("=== DAppCreator ===");
-            return DAppCreator.create(kernel, task,
-                    senderAddress, recipient, tx,
-                    this.preserveDebuggability,
-                    this.enableVerboseContractErrors,
-                    this.enableContextPrintln);
+            return DAppCreator.create(kernel, task, senderAddress, recipient,
+                    tx, conf);
         } else {
             LoadedDApp dapp;
             // See if this call is trying to reenter one already on this call-stack.
@@ -104,15 +97,14 @@ public class AvmExecutor {
                 dapp = stateToResume.dApp;
             } else {
                 try {
-                    dapp = loader.load(recipient, kernel, preserveDebuggability);
+                    dapp = loader.load(recipient, kernel, conf.preserveDebuggability);
                 } catch (IOException e) {
                     throw RuntimeAssertionError.unexpected(e);
                 }
             }
             logger.trace("=== DAppExecutor ===");
             return DAppExecutor.call(kernel, dapp, stateToResume, task,
-                    senderAddress, recipient, tx,
-                    this.enableVerboseContractErrors, this.enableContextPrintln);
+                    senderAddress, recipient, tx, conf);
         }
     }
 
