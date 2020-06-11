@@ -41,7 +41,7 @@ public class GoldenTest extends SimpleTest {
     public void setUp() {
         outContent = new ByteArrayOutputStream();
         prevOut = System.out;
-        System.setOut(new PrintStream(outContent));
+        System.setOut(new PrintStream(new TeeOutputStream(prevOut, outContent)));
 
         prevLogLevel = EELogger.setLogLevel(0);
         super.setUp();
