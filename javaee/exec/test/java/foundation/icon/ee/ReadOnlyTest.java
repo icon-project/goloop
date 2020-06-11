@@ -1,0 +1,158 @@
+package foundation.icon.ee;
+
+import foundation.icon.ee.test.Contract;
+import foundation.icon.ee.test.SimpleTest;
+import foundation.icon.ee.test.TransactionException;
+import foundation.icon.ee.tooling.abi.EventLog;
+import foundation.icon.ee.tooling.abi.External;
+import foundation.icon.ee.types.Status;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import score.Address;
+import score.Context;
+
+import java.math.BigInteger;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+public class ReadOnlyTest extends SimpleTest {
+    public static class Score {
+        private int intVal;
+        private String sVal = "string";
+
+        @External(readonly=true)
+        public int setDB() {
+            var db = Context.newVarDB("varDB", String.class);
+            db.set(sVal);
+            return 0;
+        }
+
+        @External(readonly=true)
+        public int logEvent() {
+            Log();
+            return 0;
+        }
+
+        @EventLog
+        private void Log() {
+        }
+
+        @External(readonly=true)
+        public int changeIntVal() {
+            intVal = 10;
+            return 0;
+        }
+
+        @External(readonly=true)
+        public int changeSVal() {
+            sVal = "string2";
+            return 0;
+        }
+    }
+
+    public static class ProxyScore {
+        Address real;
+
+        public ProxyScore(Address real) {
+            this.real = real;
+        }
+
+        @External
+        public int setDB() {
+            return ((BigInteger) Context.call(real, "setDB")).intValue();
+        }
+
+        @External
+        public int logEvent() {
+            return ((BigInteger) Context.call(real, "logEvent")).intValue();
+        }
+
+        @External
+        public int changeIntVal() {
+            return ((BigInteger) Context.call(real, "changeIntVal")).intValue();
+        }
+
+        @External
+        public int changeSVal() {
+            return ((BigInteger) Context.call(real, "changeSVal")).intValue();
+        }
+    }
+
+    private Contract score;
+    private TransactionException e;
+
+    @Nested
+    class Direct {
+        @BeforeEach
+        void setUp() {
+            score = sm.deploy(Score.class);
+        }
+
+        @Test
+        void setFailsInReadOnly() {
+            e = assertThrows(TransactionException.class,
+                    () -> score.query("setDB"));
+            assertEquals(Status.UnknownFailure, e.getResult().getStatus());
+        }
+
+        @Test
+        void logEventFailsInReadOnly() {
+            e = assertThrows(TransactionException.class,
+                    () -> score.query("logEvent"));
+            assertEquals(Status.UnknownFailure, e.getResult().getStatus());
+        }
+
+        @Test
+        void changeIntValFailsInReadOnly() {
+            e = assertThrows(TransactionException.class,
+                    () -> score.query("changeIntVal"));
+            assertEquals(Status.AccessDenied, e.getResult().getStatus());
+        }
+
+        @Test
+        void changeSValFailsInReadOnly() {
+            e = assertThrows(TransactionException.class,
+                    () -> score.query("changeSVal"));
+            assertEquals(Status.AccessDenied, e.getResult().getStatus());
+        }
+    }
+
+    @Nested
+    class Indirect {
+        @BeforeEach
+        void setUp() {
+            var real = sm.deploy(Score.class);
+            score = sm.deploy(ProxyScore.class, real.getAddress());
+        }
+
+        @Test
+        void setFailsInReadOnly() {
+            e = assertThrows(TransactionException.class,
+                    () -> score.invoke("setDB"));
+            assertEquals(Status.UnknownFailure, e.getResult().getStatus());
+        }
+
+        @Test
+        void logEventFailsInReadOnly() {
+            e = assertThrows(TransactionException.class,
+                    () -> score.invoke("logEvent"));
+            assertEquals(Status.UnknownFailure, e.getResult().getStatus());
+        }
+
+        @Test
+        void changeIntValFailsInReadOnly() {
+            e = assertThrows(TransactionException.class,
+                    () -> score.invoke("changeIntVal"));
+            assertEquals(Status.UnknownFailure, e.getResult().getStatus());
+        }
+
+        @Test
+        void changeSValFailsInReadOnly() {
+            e = assertThrows(TransactionException.class,
+                    () -> score.invoke("changeSVal"));
+            assertEquals(Status.UnknownFailure, e.getResult().getStatus());
+        }
+    }
+}
