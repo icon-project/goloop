@@ -1,13 +1,13 @@
 Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
 Method{type=0, name='run', flags=2, indexed=2, inputs=[Parameter{name='addrGood', descriptor=Lscore/Address;, type=5, optional=false}, Parameter{name='addrBad', descriptor=Lscore/Address;, type=5, optional=false}], output=0, outputDescriptor=V}
 SEND invoke code=010001/optimized isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[]
-RECV setCode hash=a66a70272d811cae85071beaf75ddc231be7deab45eda43d92d96097488daea0 len=2037
+RECV setCode hash=cbb70e384d9e894b239ebb092d835422d7a77814deed8bf6c3743073581c72fa len=2037
 RECV setObjGraph flag=1 next=6 hash=8a368807a52b155e0b6b82dc5ee9e87a85ea51b970d554749e7cf0ab4affb667 graphLen=183 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04&foundation.icon.ee.ExceptionTest$Score\x00\x00\x00\x05\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x06NOT OK\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x02OK\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x03run\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x04test
 RECV result status=0 stepUsed=610 ret=<null>
 Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
 Method{type=0, name='run', flags=2, indexed=0, inputs=[], output=0, outputDescriptor=V}
 SEND invoke code=010002/optimized isQuery=false from=000001... to=010002... value=0 stepLimit=1000000000 method=<init> params=[]
-RECV setCode hash=a735f79652fd1e72ca841b4312c5f3e551b43b799638d1dd611be0d7554af686 len=1266
+RECV setCode hash=ebb89a93bb5814ec02649d69fa0f872767385b3e723bf563f06456768a2b75af len=1266
 RECV setObjGraph flag=1 next=3 hash=4e076305b75dbf31ebcfe784177f225a58506abaedf890b6d597111d60589c20 graphLen=95 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01,foundation.icon.ee.ExceptionTest$RevertScore\x00\x00\x00\x02\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x0buser revert
 RECV result status=0 stepUsed=346 ret=<null>
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=run params=[010002... 010003...]

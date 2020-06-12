@@ -7,7 +7,7 @@ Method{type=0, name='balanceOf', flags=3, indexed=1, inputs=[Parameter{name='_ow
 Method{type=0, name='transfer', flags=2, indexed=2, inputs=[Parameter{name='_to', descriptor=Lscore/Address;, type=5, optional=false}, Parameter{name='_value', descriptor=Ljava/math/BigInteger;, type=1, optional=false}, Parameter{name='_data', descriptor=[B, type=3, optional=true}], output=0, outputDescriptor=V}
 Method{type=2, name='Transfer', flags=0, indexed=3, inputs=[Parameter{name='_from', descriptor=Lscore/Address;, type=5, optional=false}, Parameter{name='_to', descriptor=Lscore/Address;, type=5, optional=false}, Parameter{name='_value', descriptor=Ljava/math/BigInteger;, type=1, optional=false}, Parameter{name='_data', descriptor=[B, type=3, optional=false}], output=0, outputDescriptor=V}
 SEND invoke code=010001/optimized isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[MySampleToken MST 18 1000]
-RECV setCode hash=acf5142887fd16861d02263fcf52180e7977813bd4805a24181e6877b4c14e41 len=2894
+RECV setCode hash=13f2cfe9fc177f645323e1bd3e55e57b50799078ca09111b8e086b3c2934dd96 len=2894
 RECV setValue ce196dc8d4096a201744d6ca3b682b85877d1949291a2948b9885102f0789a70 isDelete=false 3635c9adc5dea00000
 RECV setObjGraph flag=1 next=30 hash=251cb97186f53c105434eab95354b2a6817efa1d943114131bfa0171fa06d388 graphLen=363 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x13example.SampleToken\x00\x00\x00\x08\x03\x00\x00\x00\x04\x00\x00\x00\x12\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06\x03\x00\x00\x00\x07\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00#Transfer(Address,Address,int,bytes)\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x08balances\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x0dtokenFallback\x13pi.CollectionDBImpl\x00\x00\x00\x1c\x00\x00\x00\x0a\x01\x88balances\x01\x14java.math.BigInteger\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x0dMySampleToken\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x03MST\x14java.math.BigInteger\x00\x00\x00\x1b\x00\x00\x00\x0965\xc9\xad\xc5\xde\xa0\x00\x00
 RECV result status=0 stepUsed=60472 ret=<null>
@@ -53,7 +53,7 @@ Method{type=0, name='getInt', flags=2, indexed=0, inputs=[], output=1, outputDes
 Method{type=0, name='totalSupply2', flags=2, indexed=1, inputs=[Parameter{name='sc', descriptor=Lscore/Address;, type=5, optional=false}], output=1, outputDescriptor=Ljava/math/BigInteger;}
 Method{type=0, name='balanceOf2', flags=2, indexed=2, inputs=[Parameter{name='sc', descriptor=Lscore/Address;, type=5, optional=false}, Parameter{name='_owner', descriptor=Lscore/Address;, type=5, optional=false}], output=1, outputDescriptor=Ljava/math/BigInteger;}
 SEND invoke code=010002/optimized isQuery=false from=000001... to=010002... value=0 stepLimit=1000000000 method=<init> params=[]
-RECV setCode hash=7184bc55249ae1602beb33004bcbbb4023196478525c403d5cc31c690a9074c3 len=2801
+RECV setCode hash=b048cadab3705e9595529a2af6f98d1d96245a78abf54d466e93e18e997ec075 len=2801
 RECV setValue 65f77d026d2fe9fb23feb652e1bc585b1069530cab723622e71baffbd7b42fe9 isDelete=false 74657374
 RECV getValue 65f77d026d2fe9fb23feb652e1bc585b1069530cab723622e71baffbd7b42fe9 => 74657374
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| OK: observed:test

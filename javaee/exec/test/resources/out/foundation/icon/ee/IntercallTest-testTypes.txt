@@ -11,7 +11,7 @@ Method{type=0, name='mByteArray', flags=2, indexed=0, inputs=[Parameter{name='v'
 Method{type=0, name='mAddress', flags=2, indexed=0, inputs=[Parameter{name='v', descriptor=Lscore/Address;, type=5, optional=true}], output=5, outputDescriptor=Lscore/Address;}
 Method{type=0, name='mvoid', flags=2, indexed=0, inputs=[], output=0, outputDescriptor=V}
 SEND invoke code=010001/optimized isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[]
-RECV setCode hash=371ade025a19970ed46e5f409c271f6b910b4fff094b19a04857199cff1e4afa len=1583
+RECV setCode hash=1e8adbb9c69650cfdfbd2ac799f22f9aac3ad36522f844b8ba68cb92f89a4eed len=1583
 RECV setObjGraph flag=1 next=2 hash=56e9d51712daec9f58b7fd5d2ba84873fb6db9c6f0eac8118ee05832f969d616 graphLen=43 graph=\x03\x00\x00\x00\x00!foundation.icon.ee.TypeTest$Score\x00\x00\x00\x01
 RECV result status=0 stepUsed=190 ret=<null>
 Method{type=0, name='<init>', flags=0, indexed=1, inputs=[Parameter{name='addr', descriptor=Lscore/Address;, type=5, optional=false}], output=0, outputDescriptor=V}
@@ -27,7 +27,7 @@ Method{type=0, name='mByteArray', flags=2, indexed=0, inputs=[Parameter{name='v'
 Method{type=0, name='mAddress', flags=2, indexed=0, inputs=[Parameter{name='v', descriptor=Lscore/Address;, type=5, optional=true}], output=5, outputDescriptor=Lscore/Address;}
 Method{type=0, name='mvoid', flags=2, indexed=0, inputs=[], output=0, outputDescriptor=V}
 SEND invoke code=010002/optimized isQuery=false from=000001... to=010002... value=0 stepLimit=1000000000 method=<init> params=[010001...]
-RECV setCode hash=5b3669db3bf340a37c9685498ee21ba1aeab0c8ca240981940901180d8cc484c len=2414
+RECV setCode hash=36698f35d72149879d1a3be9db0675bb36979b683ab62dbc3c6875eef789cccb len=2414
 RECV setObjGraph flag=1 next=14 hash=48c35af6373f127112c56223199c83fbb09a06b943b4b09b894283de2dfafacd graphLen=501 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x00\x00\x02\x03\x00\x00\x00\x03\x03\x00\x00\x00\x04\x03\x00\x00\x00\x05\x03\x00\x00\x00\x06\x03\x00\x00\x00\x07\x03\x00\x00\x00\x08\x03\x00\x00\x00\x09\x03\x00\x00\x00\x0a\x03\x00\x00\x00\x0b+foundation.icon.ee.IntercallTest$ProxyScore\x00\x00\x00\x0d\x03\x00\x00\x00\x0c\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x08mAddress\x10java.lang.String\x00\x00\x00\x02\x00\x00\x00\x0bmBigInteger\x10java.lang.String\x00\x00\x00\x0b\x00\x00\x00\x05mvoid\x10java.lang.String\x00\x00\x00\x03\x00\x00\x00\x0amByteArray\x10java.lang.String\x00\x00\x00\x04\x00\x00\x00\x07mString\x10java.lang.String\x00\x00\x00\x05\x00\x00\x00\x08mboolean\x10java.lang.String\x00\x00\x00\x06\x00\x00\x00\x05mbyte\x10java.lang.String\x00\x00\x00\x07\x00\x00\x00\x05mchar\x10java.lang.String\x00\x00\x00\x08\x00\x00\x00\x04mint\x10java.lang.String\x00\x00\x00\x09\x00\x00\x00\x05mlong\x10java.lang.String\x00\x00\x00\x0a\x00\x00\x00\x06mshort\x0dscore.Address\x00\x00\x00\x0c\x01\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00
 RECV result status=0 stepUsed=1878 ret=<null>
 SEND invoke code=010002/transformed isQuery=false from=000001... to=010002... value=0 stepLimit=1000000000 method=mbyte params=[0]

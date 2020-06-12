@@ -1,6 +1,6 @@
 Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
 SEND invoke code=010001/optimized isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[]
-RECV setCode hash=2611bc5d21186714e4a1dfa017f10065fdfa44391592694c57737d94a91e3af2 len=1118
+RECV setCode hash=0fa5a7793554accaf9667f4e0329d34bd458bd79de1ce5f4765c5795db9a2406 len=1118
 RECV setObjGraph flag=1 next=2 hash=40517cd6d137289076d104c522b9a96927bc93781afdcb825140ffe893010cca graphLen=53 graph=\x03\x00\x00\x00\x00+foundation.icon.ee.DeployTest$NoConstructor\x00\x00\x00\x01
 RECV result status=0 stepUsed=220 ret=<null>
 SEND invoke code=010002/optimized isQuery=false from=000001... to=010002... value=0 stepLimit=1000000000 method=<init> params=[]
@@ -11,7 +11,7 @@ SEND invoke code=010004/optimized isQuery=false from=000001... to=010004... valu
 RECV result status=5 stepUsed=0 ret=no constructor in APIS
 Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
 SEND invoke code=010005/optimized isQuery=false from=000001... to=010005... value=0 stepLimit=1000000000 method=<init> params=[]
-RECV setCode hash=51317238dd891be749ec9baa45fd7b7ab61a6423e391b4c01378b2d75ca29b19 len=1099
+RECV setCode hash=03d74ba7f5a1b62d8d7fb5749b8993b220faa7127aaa5c30f1ad9d5609f93ca1 len=1099
 RECV result status=5 stepUsed=0 ret=cannot call constructor
 SEND invoke code=010006/optimized isQuery=false from=000001... to=010006... value=0 stepLimit=1000000000 method=<init> params=[]
 RECV result status=5 stepUsed=0 ret=no constructor in APIS

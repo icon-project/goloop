@@ -1,19 +1,19 @@
 Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
 Method{type=0, name='run', flags=2, indexed=1, inputs=[Parameter{name='code', descriptor=[B, type=3, optional=false}], output=0, outputDescriptor=V}
 SEND invoke code=010001/optimized isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[]
-RECV setCode hash=9de75f225162d7915aa0a95913b8d71a81be4a5d61f15554c01f4a5c7e8e8b05 len=2823
+RECV setCode hash=fe747b8e506dbc09aaf6577e7ccf4f62ff45650419f4ea427ba3171d7ec8a95b len=2823
 RECV setObjGraph flag=1 next=3 hash=05b3e5a421cc3da0fd389817842ec3f5d79f58c6e43affcc79ddd0dba9f7761e graphLen=86 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x04\x01\x02%foundation.icon.ee.ScenarioTest$Score\x00\x00\x00\x02\x00\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x03run
 RECV result status=0 stepUsed=319 ret=<null>
 Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
 Method{type=0, name='run', flags=2, indexed=1, inputs=[Parameter{name='code', descriptor=[B, type=3, optional=false}], output=0, outputDescriptor=V}
 SEND invoke code=010002/optimized isQuery=false from=000001... to=010002... value=0 stepLimit=1000000000 method=<init> params=[]
-RECV setCode hash=9de75f225162d7915aa0a95913b8d71a81be4a5d61f15554c01f4a5c7e8e8b05 len=2823
+RECV setCode hash=fe747b8e506dbc09aaf6577e7ccf4f62ff45650419f4ea427ba3171d7ec8a95b len=2823
 RECV setObjGraph flag=1 next=3 hash=05b3e5a421cc3da0fd389817842ec3f5d79f58c6e43affcc79ddd0dba9f7761e graphLen=86 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x04\x01\x02%foundation.icon.ee.ScenarioTest$Score\x00\x00\x00\x02\x00\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x03run
 RECV result status=0 stepUsed=319 ret=<null>
 Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
 Method{type=0, name='run', flags=2, indexed=1, inputs=[Parameter{name='code', descriptor=[B, type=3, optional=false}], output=0, outputDescriptor=V}
 SEND invoke code=010003/optimized isQuery=false from=000001... to=010003... value=0 stepLimit=1000000000 method=<init> params=[]
-RECV setCode hash=9de75f225162d7915aa0a95913b8d71a81be4a5d61f15554c01f4a5c7e8e8b05 len=2823
+RECV setCode hash=fe747b8e506dbc09aaf6577e7ccf4f62ff45650419f4ea427ba3171d7ec8a95b len=2823
 RECV setObjGraph flag=1 next=3 hash=05b3e5a421cc3da0fd389817842ec3f5d79f58c6e43affcc79ddd0dba9f7761e graphLen=86 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x03\x00\x04\x01\x02%foundation.icon.ee.ScenarioTest$Score\x00\x00\x00\x02\x00\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x03run
 RECV result status=0 stepUsed=319 ret=<null>
 SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=run params=[0000020003020000000002000503000161010000020004030001620000030010000002000a0300016304000262630101000003000a00000200040300016401000003000a00000200050300016501000003000900000200040300016600000200050400026266]
