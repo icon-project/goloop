@@ -20,10 +20,8 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class GoldenTest extends SimpleTest {
-    static final String logLevelKey = "foundation.icon.ee.logger.defaultLogLevel";
     private ByteArrayOutputStream outContent;
     private PrintStream prevOut;
-    private int prevLogLevel;
 
     protected Path getGoldenFilePath(TestInfo testInfo) {
         String cls = this.getClass().getName().replace('.', '/');
@@ -43,7 +41,6 @@ public class GoldenTest extends SimpleTest {
         prevOut = System.out;
         System.setOut(new PrintStream(new TeeOutputStream(prevOut, outContent)));
 
-        prevLogLevel = EELogger.setLogLevel(0);
         super.setUp();
     }
 
@@ -56,7 +53,6 @@ public class GoldenTest extends SimpleTest {
         super.tearDown(testInfo);
         System.out.flush();
         System.setOut(prevOut);
-        EELogger.setLogLevel(prevLogLevel);
         var bis = new ByteArrayInputStream(outContent.toByteArray());
         var r = new BufferedReader(new InputStreamReader(bis));
         var path = getGoldenFilePath(testInfo);

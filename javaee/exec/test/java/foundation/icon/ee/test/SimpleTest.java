@@ -1,8 +1,11 @@
 package foundation.icon.ee.test;
 
+import foundation.icon.ee.logger.EELogger;
 import foundation.icon.ee.score.TransactionExecutor;
 import org.aion.avm.core.AvmConfiguration;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
 
@@ -10,6 +13,13 @@ import java.io.IOException;
 
 public class SimpleTest {
     protected ServiceManager sm;
+
+    private static int prevLogLevel;
+
+    @BeforeAll
+    public static void beforeAll() {
+        prevLogLevel = EELogger.setLogLevel(0);
+    }
 
     @BeforeEach
     public void setUp() {
@@ -36,5 +46,10 @@ public class SimpleTest {
     @AfterEach
     public void tearDown(TestInfo testInfo) {
         sm.close();
+    }
+
+    @AfterAll
+    public static void afterAll() {
+        EELogger.setLogLevel(prevLogLevel);
     }
 }
