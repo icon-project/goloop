@@ -1,7 +1,8 @@
 package org.aion.avm.core.classgeneration;
 
-import org.aion.avm.core.miscvisitors.NamespaceMapper;
 import i.PackageConstants;
+import org.aion.avm.core.miscvisitors.NamespaceMapper;
+import org.aion.avm.core.rejection.ConsensusLimitConstants;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
@@ -22,7 +23,7 @@ import org.objectweb.asm.Opcodes;
  * Note that class names here are always in the slash style:  "java/lang/Object".
  */
 public class StubGenerator {
-    private static final int CLASS_VERSION = 54;
+    private static final int CLASS_VERSION = ConsensusLimitConstants.SUPPORTED_CLASS_VERSION;
     private static final String INIT_NAME = "<init>";
     private static final String ONE_ARG_DESCRIPTOR = "(Ljava/lang/Object;)V";
     

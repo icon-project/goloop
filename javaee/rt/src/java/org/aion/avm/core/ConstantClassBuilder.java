@@ -1,17 +1,20 @@
 package org.aion.avm.core;
 
-import org.aion.avm.core.miscvisitors.StringConstantCollectorVisitor;
-import org.aion.avm.utilities.Utilities;
-
 import i.Helper;
 import i.PackageConstants;
+import org.aion.avm.core.miscvisitors.StringConstantCollectorVisitor;
+import org.aion.avm.core.rejection.ConsensusLimitConstants;
+import org.aion.avm.utilities.Utilities;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
-import java.util.*;
-
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * A helper class used to construct the bytecode for the constant class we will inject into the user's DApp.
@@ -65,7 +68,7 @@ public class ConstantClassBuilder {
         Map<String, String> constantToFieldMap = new HashMap<>();
         ClassWriter out = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
         
-        int classVersion = 54;
+        int classVersion = ConsensusLimitConstants.SUPPORTED_CLASS_VERSION;
         // (note that this class doesn't deal with floats, but we add the STRICT option so some general tests are happy).
         int classAccess = Opcodes.ACC_PUBLIC | Opcodes.ACC_SUPER | Opcodes.ACC_STRICT;
         // We ignore generics, so null signature.
