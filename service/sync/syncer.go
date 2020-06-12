@@ -558,7 +558,7 @@ func newSyncer(database db.Database, c *client, p *peerPool,
 		prh:      pReceiptsHash,
 		nrh:      nReceiptsHash,
 		vlh:      validatorListHash,
-		finishCh: make(chan syncType, 1),
+		finishCh: make(chan syncType, 3),
 		log:      log,
 		cb:       cb,
 	}
