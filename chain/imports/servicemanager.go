@@ -249,6 +249,38 @@ func (t *transitionForImport) OnValidate(tr module.Transition, e error) {
 	}
 }
 
+func preprocess(r module.Receipt) (map[string]interface{}, error) {
+	j, err := r.ToJSON(3)
+	if err != nil {
+		return nil, err
+	}
+	jm := j.(map[string]interface{})
+	delete(jm, "failure")
+	delete(jm, "logsBloom")
+	jbs, err := json.Marshal(jm)
+	if err != nil {
+		return nil, err
+	}
+	var jm2 map[string]interface{}
+	err = json.Unmarshal(jbs, &jm2)
+	if err != nil {
+		return nil, err
+	}
+	return jm2, nil
+}
+
+func isAcceptableDiff(gc module.Receipt, lc module.Receipt) (bool, error) {
+	gm, err := preprocess(gc)
+	if err != nil {
+		return false, err
+	}
+	lm, err := preprocess(lc)
+	if err != nil {
+		return false, err
+	}
+	return reflect.DeepEqual(gm, lm), nil
+}
+
 func (t *transitionForImport) OnExecute(tr module.Transition, e error) {
 	if t.bi.Height() == 0 {
 		t.cb.OnExecute(t, e)
@@ -304,14 +336,15 @@ func (t *transitionForImport) OnExecute(tr module.Transition, e error) {
 			t.canceler()
 			return
 		}
-		rjsn, _ := rct.ToJSON(3)
-		mrjsn := rjsn.(map[string]interface{})
-		delete(mrjsn, "failure")
-
-		nrjsn, _ := nrct.ToJSON(3)
-		mnrjsn := nrjsn.(map[string]interface{})
-		delete(mnrjsn, "failure")
-		if !reflect.DeepEqual(mrjsn, mnrjsn) {
+		res, err := isAcceptableDiff(rct, nrct)
+		if err != nil {
+			t.m.cb.OnError(err)
+			t.cb.OnExecute(t, err)
+			t.errCh <- err
+			t.canceler()
+			return
+		}
+		if !res {
 			rjsn, _ := rct.ToJSON(3)
 			mrjsn := rjsn.(map[string]interface{})
 			rjbs, _ := json.Marshal(mrjsn)
