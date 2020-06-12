@@ -182,7 +182,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         int stepLeft = (int)inst.energyLeft();
         var rs = dApp.saveRuntimeState(hash, StorageFees.MAX_GRAPH_SIZE);
         var saveItem = new ReentrantDAppStack.SaveItem(dApp, rs);
-        var callerAddr = new Address(avm_getAddress().toByteArray());
+        var callerAddr = this.transactionDestination;
         task.getReentrantDAppStack().getTop().getSaveItems().put(callerAddr, saveItem);
         InstrumentationHelpers.temporarilyExitFrame(this.thisDAppSetup);
         Object[] params = new Object[sparams.length()];
