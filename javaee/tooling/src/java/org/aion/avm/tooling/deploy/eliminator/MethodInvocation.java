@@ -20,13 +20,13 @@ public class MethodInvocation {
 
     @Override
     public boolean equals(Object obj) {
-        if (null == obj || !(obj instanceof MethodInvocation)) {
+        if (!(obj instanceof MethodInvocation)) {
             return false;
         } else {
             MethodInvocation invocation = (MethodInvocation) obj;
             return invocation.methodIdentifier.equals(methodIdentifier)
-                && invocation.className.equals(className)
-                && invocation.invocationOpcode == invocationOpcode;
+                    && invocation.className.equals(className)
+                    && invocation.invocationOpcode == invocationOpcode;
         }
     }
 }

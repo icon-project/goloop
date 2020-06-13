@@ -1,15 +1,18 @@
 package org.aion.avm.tooling.deploy.eliminator;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class ClassInfo {
 
     private final String className;
-
     private final Map<String, MethodInfo> methodMap;
 
     // These are methods that we want to always flag as reachable for some reason, usually because they are very fundamental
-    // Examples include overriden implementations of Object.hashcode() and equals()
+    // Examples include overridden implementations of Object.hashcode() and equals()
     private final List<MethodInfo> alwaysReachables;
 
     private final Set<ClassInfo> parents = new HashSet<>();
@@ -20,7 +23,8 @@ public class ClassInfo {
     private final boolean isInterface;
     private final boolean isAbstract;
 
-    public ClassInfo(String className, boolean isInterface, boolean isAbstract, Map<String, MethodInfo> methodMap, List<MethodInfo> alwaysReachables) {
+    public ClassInfo(String className, boolean isInterface, boolean isAbstract,
+                     Map<String, MethodInfo> methodMap, List<MethodInfo> alwaysReachables) {
         this.className = className;
         this.isInterface = isInterface;
         this.isAbstract = isAbstract;

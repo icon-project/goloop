@@ -24,11 +24,11 @@ import java.util.jar.JarInputStream;
 
 public class OptimizedJarBuilder {
 
-    private boolean debugModeEnabled;
+    private final boolean debugModeEnabled;
     private boolean unreachableMethodRemoverEnabled;
     private boolean classAndFieldRenamerEnabled;
-    private byte[] dappBytes;
-    private List<Method> callables;
+    private final byte[] dappBytes;
+    private final List<Method> callables;
 
     /**
      * Initializes a new instance of OptimizedJarBuilder, which allows desired optimization steps to be enabled and performed

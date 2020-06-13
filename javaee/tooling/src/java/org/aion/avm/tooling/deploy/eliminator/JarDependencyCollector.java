@@ -1,10 +1,11 @@
 package org.aion.avm.tooling.deploy.eliminator;
 
+import org.objectweb.asm.ClassReader;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.objectweb.asm.ClassReader;
 
 public class JarDependencyCollector {
 
@@ -18,19 +19,15 @@ public class JarDependencyCollector {
     }
 
     private JarDependencyCollector(Map<String, byte[]> classMap) {
-
         classInfoMap = WhitelistPopulator.getWhitelistedClassInfos();
-
-        for (Entry<String, byte[]> entry: classMap.entrySet()) {
+        for (Entry<String, byte[]> entry : classMap.entrySet()) {
             visitClass(entry.getKey(), entry.getValue());
         }
-
         setParentsAndChildren();
     }
 
     // Should only be called once per class
     private void visitClass(String classSlashName, byte[] classBytes) {
-
         ClassReader reader = new ClassReader(classBytes);
 
         ClassDependencyVisitor classVisitor = new ClassDependencyVisitor(classSlashName);
@@ -39,7 +36,7 @@ public class JarDependencyCollector {
 
         // We put in an "incomplete" ClassInfo object at this stage. Information about the type hierarchy happens in the next step.
         ClassInfo classInfo = new ClassInfo(classSlashName, classVisitor.isInterface(),
-            classVisitor.isAbstract(), classVisitor.getMethodMap(), classVisitor.getAlwaysReachables());
+                classVisitor.isAbstract(), classVisitor.getMethodMap(), classVisitor.getAlwaysReachables());
         classInfoMap.put(classSlashName, classInfo);
     }
 
@@ -51,7 +48,7 @@ public class JarDependencyCollector {
             ClassInfo classInfo = classInfoMap.get(classSlashName);
 
             if (null == superSlashName && !classSlashName.equals("java/lang/Object")) {
-                throw new RuntimeException("All classses except Object must have a superclass");
+                throw new RuntimeException("All classes except Object must have a superclass");
             } else {
                 ClassInfo superInfo = classInfoMap.get(superSlashName);
                 classInfo.setSuperclass(superInfo);
@@ -64,7 +61,7 @@ public class JarDependencyCollector {
             if (null != interfaces) {
                 for (String interfaceName : interfaces) {
                     ClassInfo interfaceInfo = classInfoMap.get(interfaceName);
-                    if (interfaceInfo==null) {
+                    if (interfaceInfo == null) {
                         throw new IllegalArgumentException("Unusable interface " + interfaceName);
                     }
                     interfaceInfo.addToChildren(classInfo);

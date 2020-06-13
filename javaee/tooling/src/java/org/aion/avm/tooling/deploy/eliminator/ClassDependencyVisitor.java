@@ -1,12 +1,13 @@
 package org.aion.avm.tooling.deploy.eliminator;
 
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
 
 public class ClassDependencyVisitor extends ClassVisitor {
 
@@ -26,7 +27,7 @@ public class ClassDependencyVisitor extends ClassVisitor {
 
     @Override
     public void visit(int version, int access, String name, String signature, String superName,
-        String[] interfaces) {
+                      String[] interfaces) {
         this.superSlashName = superName;
         this.interfaces = interfaces;
         this.isInterface = (access & Opcodes.ACC_INTERFACE) != 0;
@@ -35,19 +36,19 @@ public class ClassDependencyVisitor extends ClassVisitor {
 
     @Override
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature,
-        String[] exceptions) {
+                                     String[] exceptions) {
         MethodDependencyVisitor mv = new MethodDependencyVisitor(name, descriptor, access,
-            super.visitMethod(access, name, descriptor, signature, exceptions));
+                super.visitMethod(access, name, descriptor, signature, exceptions));
         methodVisitors.add(mv);
         return mv;
-
     }
 
     // We populate our map after having visited all the methods
     @Override
     public void visitEnd() {
         for (MethodDependencyVisitor methodVisitor : methodVisitors) {
-            MethodInfo methodInfo = new MethodInfo(methodVisitor.getMethodIdentifier(), methodVisitor.isStatic(), methodVisitor.getMethodsCalled());
+            MethodInfo methodInfo = new MethodInfo(methodVisitor.getMethodIdentifier(),
+                    methodVisitor.isStatic(), methodVisitor.getMethodsCalled());
             methodMap.put(methodVisitor.getMethodIdentifier(), methodInfo);
             if (isAlwaysReachable(methodInfo.methodIdentifier) || isIOMethod(methodInfo)) {
                 methodInfo.isReachable = true;
@@ -61,18 +62,18 @@ public class ClassDependencyVisitor extends ClassVisitor {
         var name = info.methodIdentifier;
         if (!info.isStatic)
             return false;
-        return (name.equals("readObject(Lscore/ObjectReader;)L"+classSlashName+";")
-            || name.equals("writeObject(Lscore/ObjectWriter;L"+classSlashName+";)V"));
+        return (name.equals("readObject(Lscore/ObjectReader;)L" + classSlashName + ";")
+                || name.equals("writeObject(Lscore/ObjectWriter;L" + classSlashName + ";)V"));
     }
 
     // These are the methods we flag as "Always Reachable" because we believe they are the only ones that can be called
-    // when userclasses escape out of usercode as "Object".
+    // when user classes escape out of user code as "Object".
     // It might be safer to mark all methods in Object as always reachable.
     private boolean isAlwaysReachable(String name) {
         return name.equals("<clinit>()V")
-            || name.equals("hashCode()I")
-            || name.equals("toString()Ljava/lang/String;")
-            || name.equals("equals(Ljava/lang/Object;)Z");
+                || name.equals("hashCode()I")
+                || name.equals("toString()Ljava/lang/String;")
+                || name.equals("equals(Ljava/lang/Object;)Z");
     }
 
     public String getClassSlashName() {

@@ -1,22 +1,20 @@
 package org.aion.avm.tooling.deploy.eliminator;
 
-import java.io.ByteArrayInputStream;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.jar.JarInputStream;
-
 import org.aion.avm.utilities.JarBuilder;
 import org.aion.avm.utilities.Utilities;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 
+import java.io.ByteArrayInputStream;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.jar.JarInputStream;
+
 public class UnreachableMethodRemover {
 
     public static byte[] optimize(byte[] jarBytes, String[] roots) throws Exception {
-
         Map<String, byte[]> inputClassMap;
         Map<String, byte[]> outputClassMap = new HashMap<>();
-
         JarInputStream jarReader;
 
         jarReader = new JarInputStream(new ByteArrayInputStream(jarBytes), true);
@@ -30,14 +28,13 @@ public class UnreachableMethodRemover {
             ClassReader reader = new ClassReader(entry.getValue());
             ClassWriter classWriter = new ClassWriter(ClassWriter.COMPUTE_MAXS);
             ClassUnreachabilityVisitor classVisitor = new ClassUnreachabilityVisitor(classWriter,
-                classInfoMap.get(entry.getKey()).getMethodMap());
+                    classInfoMap.get(entry.getKey()).getMethodMap());
             reader.accept(classVisitor, 0);
             outputClassMap.put(Utilities.internalNameToFullyQualifiedName(entry.getKey()), classWriter.toByteArray());
         }
 
         byte[] mainClassBytes = outputClassMap.remove(Utilities.internalNameToFullyQualifiedName(mainClassName));
-        return JarBuilder.buildJarForExplicitClassNamesAndBytecode(Utilities.internalNameToFullyQualifiedName(mainClassName), mainClassBytes, outputClassMap);
+        return JarBuilder.buildJarForExplicitClassNamesAndBytecode(
+                Utilities.internalNameToFullyQualifiedName(mainClassName), mainClassBytes, outputClassMap);
     }
-
 }
-

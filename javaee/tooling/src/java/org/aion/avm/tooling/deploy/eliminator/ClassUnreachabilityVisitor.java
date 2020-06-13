@@ -1,14 +1,15 @@
 package org.aion.avm.tooling.deploy.eliminator;
 
-import java.util.Map;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
+import java.util.Map;
+
 public class ClassUnreachabilityVisitor extends ClassVisitor {
 
-    private Map<String, MethodInfo> methodInfoMap;
+    private final Map<String, MethodInfo> methodInfoMap;
 
     public ClassUnreachabilityVisitor(ClassWriter cw, Map<String, MethodInfo> methodInfoMap) {
         super(Opcodes.ASM7, cw);
@@ -17,9 +18,9 @@ public class ClassUnreachabilityVisitor extends ClassVisitor {
 
     @Override
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature,
-        String[] exceptions) {
+                                     String[] exceptions) {
         MethodInfo methodInfo = methodInfoMap.get(name + descriptor);
-        if(null == methodInfo) {
+        if (null == methodInfo) {
             throw new RuntimeException("No method info found for this method");
         } else {
             if (methodInfo.isReachable) {

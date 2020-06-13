@@ -1,10 +1,10 @@
 package org.aion.avm.tooling.deploy.eliminator;
 
+import org.objectweb.asm.Opcodes;
+
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
-
-import org.objectweb.asm.Opcodes;
 
 public class MethodReachabilityDetector {
 
@@ -12,16 +12,14 @@ public class MethodReachabilityDetector {
     private final Queue<MethodInfo> methodQueue;
 
     public static Map<String, ClassInfo> getClassInfoMap(String mainClassName, Map<String, byte[]> classMap, String[] roots)
-        throws Exception {
+            throws Exception {
         MethodReachabilityDetector detector = new MethodReachabilityDetector(mainClassName, classMap, roots);
         return detector.getClassInfoMap();
     }
 
     private MethodReachabilityDetector(String mainClassName, Map<String, byte[]> classMap, String[] roots)
-        throws Exception {
-
+            throws Exception {
         // Use the JarDependencyCollector to build the classInfos we need
-
         classInfoMap = JarDependencyCollector.getClassInfoMap(classMap);
 
         // Starting with Main::main(), assess reachability
@@ -47,8 +45,7 @@ public class MethodReachabilityDetector {
         traverse();
     }
 
-    private void traverse()
-        throws Exception {
+    private void traverse() throws Exception {
 
         while (!methodQueue.isEmpty()) {
             MethodInfo methodInfo = methodQueue.remove();
@@ -59,8 +56,7 @@ public class MethodReachabilityDetector {
                 ClassInfo ownerClass = classInfoMap.get(invocation.className);
                 // if this class isn't in the classInfoMap, it's not part of usercode, so just proceed
                 if (null != ownerClass) {
-                    MethodInfo calledMethod = ownerClass.getMethodMap()
-                        .get(invocation.methodIdentifier);
+                    MethodInfo calledMethod = ownerClass.getMethodMap().get(invocation.methodIdentifier);
                     switch (invocation.invocationOpcode) {
                         case Opcodes.INVOKESPECIAL:
                             // this is the easy case: we just mark the methodInfo as reachable and enqueue it
@@ -123,8 +119,7 @@ public class MethodReachabilityDetector {
                 // if not, we need to mark the concrete implementation as reachable if
                 // - we are currently examining an interface
                 // - the child we are examining is a non-abstract class
-                else if (classInfo.isInterface() && !childClassInfo.isInterface() && !childClassInfo
-                    .isAbstract()) {
+                else if (classInfo.isInterface() && !childClassInfo.isInterface() && !childClassInfo.isAbstract()) {
                     MethodInfo concreteImplInfo = childClassInfo.getConcreteImplementation(methodId);
                     if (null == concreteImplInfo) {
                         throw new IllegalArgumentException("No implementation found for " + methodId + ", corrupt jar suspected");
@@ -146,4 +141,3 @@ public class MethodReachabilityDetector {
         return classInfoMap;
     }
 }
-
