@@ -43,7 +43,7 @@ public class DAppExecutor {
         var saveItem = task.getReentrantDAppStack().getSaveItem(dappAddress);
         DAppRuntimeState oldRS;
         if (saveItem == null) {
-            var raw = externalState.getObjectGraph(dappAddress);
+            var raw = externalState.getObjectGraph();
             var graph = ObjectGraph.getInstance(raw);
             oldRS = new DAppRuntimeState(null, graph);
         } else {
@@ -101,7 +101,7 @@ public class DAppExecutor {
                 threadInstrumentation.chargeEnergy(StorageFees.WRITE_PRICE_PER_BYTE * postCallGraphData.length);
                 if (null == stateToResume) {
                     // Save back the state before we return.
-                    externalState.putObjectGraph(dappAddress, postCallGraphData);
+                    externalState.putObjectGraph(postCallGraphData);
                 }
             }
 

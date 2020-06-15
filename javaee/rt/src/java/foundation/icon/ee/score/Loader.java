@@ -30,7 +30,7 @@ public class Loader {
         var dapp = (dappSR != null) ? dappSR.get() : null;
         if (dapp == null) {
             if (es != null) {
-                var code = es.getTransformedCode(addr);
+                var code = es.getTransformedCode();
                 dapp = DAppLoader.loadFromGraph(code, preserveDebuggability);
                 if (dapp != null) {
                     dappCache.put(addr, new SoftReference<>(dapp));

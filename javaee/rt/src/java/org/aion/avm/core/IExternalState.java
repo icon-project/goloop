@@ -16,50 +16,45 @@ public interface IExternalState {
     int OPTION_TRACE = 2;
 
     /**
-     * Returns the pre-transformed code associated with the specified address.
+     * Returns the pre-transformed code associated with current score.
      *
-     * Returns {@code null} if the address has no pre-transformed code.
+     * Returns {@code null} if the context has no pre-transformed code.
      *
-     * @param address The address whose code is to be returned.
      * @return the pre-transformed code or null.
      */
-    byte[] getCode(Address address);
+    byte[] getCode();
 
     /**
-     * Returns the transformed code associated with the specified address.
+     * Returns the transformed code associated with current score.
      *
-     * Returns {@code null} if the address has no transformed code.
+     * Returns {@code null} if the context has no transformed code.
      *
-     * @param address The address whose code is to be returned.
      * @return the transformed code or null.
      */
-    byte[] getTransformedCode(Address address);
+    byte[] getTransformedCode();
 
     /**
-     * Saves the specified transformed code associated with the given address.
+     * Saves the specified transformed code associated with current score.
      *
-     * @param address The contract address.
      * @param code The code corresponding to the address.
      */
-    void setTransformedCode(Address address, byte[] code);
+    void setTransformedCode(byte[] code);
 
     /**
-     * Saves the specified serialized bytes of the object graph to the given address.
+     * Saves the specified serialized bytes of the object graph to current score.
      *
-     * @param address The contract address.
      * @param objectGraph The bytes of the object graph.
      */
-    void putObjectGraph(Address address, byte[] objectGraph);
+    void putObjectGraph(byte[] objectGraph);
 
     /**
-     * Returns the serialized bytes of the object graph associated with the given address.
+     * Returns the serialized bytes of the object graph associated with current score.
      *
      * Returns {@code null} if the address has no object graph.
      *
-     * @param address The address whose object graph is to be returned.
      * @return the serialized bytes of the object graph or null.
      */
-    byte[] getObjectGraph(Address address);
+    byte[] getObjectGraph();
 
     /**
      * Saves the specified key-value pairing to the given address.

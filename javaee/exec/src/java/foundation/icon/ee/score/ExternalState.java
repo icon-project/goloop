@@ -54,8 +54,8 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public byte[] getCode(Address address) {
-        logger.trace("[getCode] {}", address);
+    public byte[] getCode() {
+        logger.trace("[getCode]");
         if (codeCache == null) {
             throw new RuntimeException("code not found");
         }
@@ -63,8 +63,8 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public byte[] getTransformedCode(Address address) {
-        logger.trace("[getTransformedCode] {}", address);
+    public byte[] getTransformedCode() {
+        logger.trace("[getTransformedCode]");
         if (codeCache == null) {
             throw new RuntimeException("transformed code not found");
         }
@@ -72,8 +72,8 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public void setTransformedCode(Address address, byte[] code) {
-        logger.trace("[setTransformedCode] {} len={}", address, code.length);
+    public void setTransformedCode(byte[] code) {
+        logger.trace("[setTransformedCode] len={}", code.length);
         try {
             proxy.setCode(code);
             codeCache = code;
@@ -83,7 +83,7 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public byte[] getObjectGraph(Address address) {
+    public byte[] getObjectGraph() {
         try {
             ObjectGraph objGraph = null;
             boolean requestFull = true;
@@ -107,7 +107,7 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public void putObjectGraph(Address address, byte[] data) {
+    public void putObjectGraph(byte[] data) {
         logger.trace("[putObjectGraph] len={}", data.length);
         try {
             boolean includeGraph = true;

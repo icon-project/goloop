@@ -198,7 +198,7 @@ public class DAppCreator {
         IRuntimeSetup runtimeSetup = null;
         Result result = null;
         try {
-            final byte[] codeBytes = externalState.getCode(dappAddress);
+            final byte[] codeBytes = externalState.getCode();
             byte[] apisBytes = JarBuilder.getAPIsBytesFromJAR(codeBytes);
             if (apisBytes == null) {
                 throw new IllegalFormatException("bad APIS");
@@ -253,7 +253,7 @@ public class DAppCreator {
 
             // store transformed dapp
             byte[] immortalDappJar = immortalDapp.createJar(externalState.getBlockTimestamp());
-            externalState.setTransformedCode(dappAddress, immortalDappJar);
+            externalState.setTransformedCode(immortalDappJar);
 
             // Force the classes in the dapp to initialize so that the <clinit> is run (since we already saved the version without).
             IInstrumentation threadInstrumentation = IInstrumentation.attachedThreadInstrumentation.get();
@@ -402,7 +402,7 @@ public class DAppCreator {
         byte[] rawGraphData = dapp.saveEntireGraph(threadInstrumentation.peekNextHashCode(), StorageFees.MAX_GRAPH_SIZE);
         // Bill for writing this size.
         threadInstrumentation.chargeEnergy(StorageFees.WRITE_PRICE_PER_BYTE * rawGraphData.length);
-        externalState.putObjectGraph(dappAddress, rawGraphData);
+        externalState.putObjectGraph(rawGraphData);
 
         long energyUsed = tx.getLimit() - threadInstrumentation.energyLeft();
         return new Result(Status.Success, energyUsed, null);
