@@ -32,6 +32,10 @@ public class ObjectGraph {
         this.graphData = graphData;
     }
 
+    public ObjectGraph(ObjectGraph base, int newNextHash) {
+        this(newNextHash, base.graphHash, base.getGraphData());
+    }
+
     public static ObjectGraph getInstance(byte[] rawData) {
         ByteBuffer buffer = ByteBuffer.wrap(rawData);
         int nextHash = buffer.getInt();
@@ -59,7 +63,7 @@ public class ObjectGraph {
         return graphData;
     }
 
-    public boolean compareTo(ObjectGraph objGraph) {
+    public boolean equalGraphData(ObjectGraph objGraph) {
         if (this.graphHash != null && objGraph.graphHash != null) {
             return Arrays.equals(this.graphHash, objGraph.graphHash);
         }

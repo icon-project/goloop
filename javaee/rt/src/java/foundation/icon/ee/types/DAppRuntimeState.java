@@ -27,6 +27,10 @@ public class DAppRuntimeState {
         this.graph = graph;
     }
 
+    public DAppRuntimeState(DAppRuntimeState base, int newNextHash) {
+        this(base.objects, new ObjectGraph(base.graph, newNextHash));
+    }
+
     public List<Object> getObjects() {
         return objects;
     }
@@ -48,6 +52,6 @@ public class DAppRuntimeState {
                 }
             }
         }
-        return graph.compareTo(newRS.graph);
+        return graph.equalGraphData(newRS.graph);
     }
 }

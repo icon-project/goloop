@@ -41,18 +41,18 @@ public class DAppExecutor {
         InternedClasses initialClassWrappers = dapp.getInternedClasses();
 
         var saveItem = task.getReentrantDAppStack().getSaveItem(dappAddress);
-        DAppRuntimeState prevRS;
+        DAppRuntimeState oldRS;
         if (saveItem == null) {
             var raw = externalState.getObjectGraph(dappAddress);
             var graph = ObjectGraph.getInstance(raw);
-            prevRS = new DAppRuntimeState(null, graph);
+            oldRS = new DAppRuntimeState(null, graph);
         } else {
-            prevRS = saveItem.getRuntimeState();
+            oldRS = saveItem.getRuntimeState();
         }
-        var nextHashCode = dapp.loadRuntimeState(prevRS);
+        var nextHashCode = dapp.loadRuntimeState(oldRS);
 
         // Used for deserialization billing
-        int rawGraphDataLength = prevRS.getGraph().getGraphData().length + 4;
+        int rawGraphDataLength = oldRS.getGraph().getGraphData().length + 4;
 
         // Note that we need to store the state of this invocation on the reentrant stack in case there is another call into the same app.
         // This is required so that the call() mechanism can access it to save/reload its ContractEnvironmentState and so that the underlying
@@ -89,16 +89,20 @@ public class DAppExecutor {
 
             var newRS = dapp.saveRuntimeState();
 
-            if (externalState.isReadOnly() && !prevRS.isAcceptableChangeInReadOnly(newRS)) {
+            if (externalState.isReadOnly() && !oldRS.isAcceptableChangeInReadOnly(newRS)) {
                 throw new GenericCodedException(Status.AccessDenied);
             }
 
-            // Save back the state before we return.
-            if (null == stateToResume) {
+            if (newRS.getGraph().equalGraphData(oldRS.getGraph())) {
+                newRS = new DAppRuntimeState(newRS, oldRS.getGraph().getNextHash());
+            } else {
                 byte[] postCallGraphData = newRS.getGraph().getRawData();
                 // Bill for writing this size.
                 threadInstrumentation.chargeEnergy(StorageFees.WRITE_PRICE_PER_BYTE * postCallGraphData.length);
-                externalState.putObjectGraph(dappAddress, postCallGraphData);
+                if (null == stateToResume) {
+                    // Save back the state before we return.
+                    externalState.putObjectGraph(dappAddress, postCallGraphData);
+                }
             }
 
             long energyUsed = tx.getLimit() - threadInstrumentation.energyLeft();

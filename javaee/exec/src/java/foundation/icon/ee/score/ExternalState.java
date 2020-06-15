@@ -89,7 +89,7 @@ public class ExternalState implements IExternalState {
             boolean requestFull = true;
             if (graphCache != null) {
                 objGraph = proxy.getObjGraph(false);
-                if (graphCache.compareTo(objGraph)) {
+                if (graphCache.equalGraphData(objGraph)) {
                     objGraph = graphCache;
                     requestFull = false;
                 }
@@ -112,7 +112,7 @@ public class ExternalState implements IExternalState {
         try {
             boolean includeGraph = true;
             ObjectGraph objGraph = ObjectGraph.getInstance(data);
-            if (graphCache != null && graphCache.compareTo(objGraph)) {
+            if (graphCache != null && graphCache.equalGraphData(objGraph)) {
                 includeGraph = false;
             }
             proxy.setObjGraph(includeGraph, objGraph);
