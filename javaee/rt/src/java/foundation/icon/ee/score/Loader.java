@@ -1,6 +1,7 @@
 package foundation.icon.ee.score;
 
 import foundation.icon.ee.types.Address;
+import org.aion.avm.core.AvmConfiguration;
 import org.aion.avm.core.DAppLoader;
 import org.aion.avm.core.IExternalState;
 import org.aion.avm.core.persistence.LoadedDApp;
@@ -25,13 +26,21 @@ public class Loader {
                 }
             });
 
-    public LoadedDApp load(Address addr, IExternalState es, boolean preserveDebuggability) throws IOException {
+    public LoadedDApp load(Address addr, IExternalState es, AvmConfiguration conf) throws IOException {
         var dappSR = dappCache.get(addr);
         var dapp = (dappSR != null) ? dappSR.get() : null;
         if (dapp == null) {
             if (es != null) {
-                var code = es.getTransformedCode();
-                dapp = DAppLoader.loadFromGraph(code, preserveDebuggability);
+                byte[] code;
+                try {
+                    code = es.getTransformedCode();
+                } catch (IOException e) {
+                    var transformer = new Transformer(es, conf);
+                    transformer.transform();
+                    code = transformer.getTransformedCodeBytes();
+                    es.setTransformedCode(code);
+                }
+                dapp = DAppLoader.loadFromGraph(code, conf.preserveDebuggability);
                 if (dapp != null) {
                     dappCache.put(addr, new SoftReference<>(dapp));
                 }

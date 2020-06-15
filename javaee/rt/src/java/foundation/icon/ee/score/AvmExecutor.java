@@ -97,7 +97,7 @@ public class AvmExecutor {
                 dapp = stateToResume.dApp;
             } else {
                 try {
-                    dapp = loader.load(recipient, kernel, conf.preserveDebuggability);
+                    dapp = loader.load(recipient, kernel, conf);
                 } catch (IOException e) {
                     throw RuntimeAssertionError.unexpected(e);
                 }
