@@ -25,4 +25,8 @@ public class TransactionException extends RuntimeException {
     public Result getResult() {
         return result;
     }
+
+    public String toString() {
+        return String.format("TransactionException{result:{%s}}", result);
+    }
 }

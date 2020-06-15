@@ -24,4 +24,9 @@ public class Result {
     public Object getResult() {
         return result;
     }
+
+    public String toString() {
+        return String.format("Result{status:%d stepUsed:%s result:%s}",
+                status, stepUsed, result);
+    }
 }
