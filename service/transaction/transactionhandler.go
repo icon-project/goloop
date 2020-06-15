@@ -95,7 +95,6 @@ func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, e
 	th.cc = cc
 	logger := trace.LoggerOf(cc.Logger())
 	th.chandler.ResetLogger(logger)
-	receipt := txresult.NewReceipt(ctx.Database(), ctx.Revision(), th.to)
 
 	logger.TSystemf("TRANSACTION start to=%s from=%s", th.to, th.from)
 
@@ -161,6 +160,7 @@ func (th *transactionHandler) Execute(ctx contract.Context) (txresult.Receipt, e
 	as.SetBalance(bal)
 
 	// Make a receipt
+	receipt := txresult.NewReceipt(ctx.Database(), ctx.Revision(), th.to)
 	s, _ := scoreresult.StatusOf(status)
 	if status == nil {
 		cc.GetEventLogs(receipt)
