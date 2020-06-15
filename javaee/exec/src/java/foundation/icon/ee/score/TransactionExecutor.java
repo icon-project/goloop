@@ -147,13 +147,12 @@ public class TransactionExecutor {
         Address origin = (Address) info.get(EEProxy.Info.TX_FROM);
         Map<String, BigInteger> stepCosts = (Map<String, BigInteger>) info.get(EEProxy.Info.STEP_COSTS);
 
-        byte[] codeBytes = fileReader.readFile(code);
         int option = 0;
         if (isQuery) {
             option |= IExternalState.OPTION_READ_ONLY;
         }
-        ExternalState kernel = new ExternalState(proxy, option, codeBytes,
-                blockHeight, blockTimestamp, owner, stepCosts);
+        ExternalState kernel = new ExternalState(proxy, option, code,
+                fileReader, blockHeight, blockTimestamp, owner, stepCosts);
         Transaction tx = new Transaction(from, to, value, nonce, limit.longValue(), method, params,
                                          txHash, txIndex, txTimestamp, isInstall);
         Result result = avmExecutor.run(kernel, tx, origin);

@@ -39,14 +39,18 @@ public class ExternalState implements IExternalState {
     private final long blockHeight;
     private final long blockTimestamp;
     private final Address owner;
-    private byte[] codeCache;
+    private final String code;
+    private final FileReader fileReader;
     private ObjectGraph graphCache;
     private final StepCost stepCost;
 
-    ExternalState(EEProxy proxy, int option, byte[] codeBytes, BigInteger blockHeight, BigInteger blockTimestamp, Address owner, Map<String, BigInteger> stepCosts) {
+    ExternalState(EEProxy proxy, int option, String code, FileReader fileReader,
+                  BigInteger blockHeight, BigInteger blockTimestamp,
+                  Address owner, Map<String, BigInteger> stepCosts) {
         this.proxy = proxy;
         this.option = option;
-        this.codeCache = codeBytes;
+        this.code = code;
+        this.fileReader = fileReader;
         this.blockHeight = blockHeight.longValue();
         this.blockTimestamp = blockTimestamp.longValue();
         this.owner = owner; // owner cannot be null
@@ -54,21 +58,15 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public byte[] getCode() {
+    public byte[] getCode() throws IOException {
         logger.trace("[getCode]");
-        if (codeCache == null) {
-            throw new RuntimeException("code not found");
-        }
-        return codeCache;
+        return fileReader.readFile(code);
     }
 
     @Override
-    public byte[] getTransformedCode() {
+    public byte[] getTransformedCode() throws IOException {
         logger.trace("[getTransformedCode]");
-        if (codeCache == null) {
-            throw new RuntimeException("transformed code not found");
-        }
-        return codeCache;
+        return fileReader.readFile(code);
     }
 
     @Override
@@ -76,7 +74,6 @@ public class ExternalState implements IExternalState {
         logger.trace("[setTransformedCode] len={}", code.length);
         try {
             proxy.setCode(code);
-            codeCache = code;
         } catch (IOException e) {
             logger.debug("[setTransformedCode] {}", e.getMessage());
         }

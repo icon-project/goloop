@@ -4,6 +4,7 @@ import foundation.icon.ee.types.Address;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.StepCost;
 
+import java.io.IOException;
 import java.math.BigInteger;
 import java.util.function.IntConsumer;
 
@@ -22,7 +23,7 @@ public interface IExternalState {
      *
      * @return the pre-transformed code or null.
      */
-    byte[] getCode();
+    byte[] getCode() throws IOException;
 
     /**
      * Returns the transformed code associated with current score.
@@ -31,7 +32,7 @@ public interface IExternalState {
      *
      * @return the transformed code or null.
      */
-    byte[] getTransformedCode();
+    byte[] getTransformedCode() throws IOException;
 
     /**
      * Saves the specified transformed code associated with current score.
