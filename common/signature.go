@@ -5,10 +5,18 @@ import (
 	"encoding/json"
 
 	"github.com/icon-project/goloop/common/crypto"
+	"github.com/icon-project/goloop/common/errors"
 )
 
 type Signature struct {
 	*crypto.Signature
+}
+
+func (sig Signature) RecoverPublicKey(hash []byte) (*crypto.PublicKey, error) {
+	if sig.Signature == nil {
+		return nil, errors.InvalidStateError.New("NoSignature")
+	}
+	return sig.Signature.RecoverPublicKey(hash)
 }
 
 func (sig Signature) MarshalJSON() ([]byte, error) {
