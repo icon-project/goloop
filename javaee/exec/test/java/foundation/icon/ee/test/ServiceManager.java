@@ -8,7 +8,7 @@ import foundation.icon.ee.ipc.Connection;
 import foundation.icon.ee.ipc.EEProxy;
 import foundation.icon.ee.ipc.Proxy;
 import foundation.icon.ee.ipc.TypedObj;
-import foundation.icon.ee.score.FileReader;
+import foundation.icon.ee.score.FileIO;
 import foundation.icon.ee.tooling.deploy.OptimizedJarBuilder;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.StepCost;
@@ -112,11 +112,11 @@ public class ServiceManager extends Proxy implements Agent {
 
     private Contract doDeploy(byte[] jar, Object ... params) {
         Address scoreAddr = newScoreAddress();
-        String path = getHexPrefix(scoreAddr) + "/optimized";
+        String path = getHexPrefix(scoreAddr);
         try {
             var prev = current;
             var prevState = new State(state);
-            state.writeFile(path, jar);
+            state.writeFile(path + "/code.jar", jar);
             var apisBytes = JarBuilder.getAPIsBytesFromJAR(jar);
             Method[] methods = MethodUnpacker.readFrom(apisBytes);
             current = state.getAccount(scoreAddr);
@@ -148,8 +148,16 @@ public class ServiceManager extends Proxy implements Agent {
         stepLimit = sl;
     }
 
-    public FileReader getFileReader() {
-        return (path) -> state.readFile(path);
+    public FileIO getFileIO() {
+        return new FileIO() {
+            public byte[] readFile(String path) {
+                return state.readFile(path);
+            }
+
+            public void writeFile(String path, byte[] bytes) {
+                state.writeFile(path, bytes);
+            }
+        };
     }
 
     public void close() {
@@ -252,7 +260,7 @@ public class ServiceManager extends Proxy implements Agent {
                 }
                 case EEProxy.MsgType.SETCODE:{
                     var code = msg.value.asRawValue().asByteArray();
-                    state.writeFile(getHexPrefix(current.address) + "/transformed", code);
+                    state.writeFile(getHexPrefix(current.address) + "/transformed.jar", code);
                     printf("RECV setCode hash=%s len=%d%n", Crypto.sha3_256(code), code.length);
                     break;
                 }
@@ -301,14 +309,14 @@ public class ServiceManager extends Proxy implements Agent {
         var from = current.address;
         current = state.getAccount(to);
         info.put(Info.CONTRACT_OWNER, from);
-        var code = getHexPrefix(to) + "/transformed";
+        var code = getHexPrefix(to) + "/transformed.jar";
         if (state.readFile(code) == null) {
             return new Result(
                     Status.ContractNotFound,
                     BigInteger.ZERO,
                     "Contract not found");
         }
-        var res = invoke(code, query, from, to, value, stepLimit, method, params);
+        var res = invoke(getHexPrefix(to), query, from, to, value, stepLimit, method, params);
         if (res.getStatus()!=0) {
             state = prevState;
             current = state.getAccount(prev.address);

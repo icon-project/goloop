@@ -33,7 +33,7 @@ public class SimpleTest {
                 var te = TransactionExecutor.newInstance(pipes[1],
                         "",
                         null,
-                        sm.getFileReader(),
+                        sm.getFileIO(),
                         conf);
                 te.connectAndRunLoop(sm);
             } catch (IOException e) {

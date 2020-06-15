@@ -1,20 +1,19 @@
 Method{type=0, name='<init>', flags=0, indexed=0, inputs=[], output=0, outputDescriptor=V}
 Method{type=0, name='reenter', flags=2, indexed=0, inputs=[], output=0, outputDescriptor=V}
-SEND invoke code=010001/optimized isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[]
-RECV setCode hash=e1d50120e4bbeee392983abfcc2d1810fd1b12c04680b9f44396b1fa67192ef3 len=1645
+SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=<init> params=[]
 RECV setObjGraph flag=1 next=4 hash=3639a66dcdaa3613ea0a58c9a216ca9f822db9b7f149985308216f8be2b54c6a graphLen=135 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x00\x00\x00\x03$foundation.icon.ee.ReenterTest$Score\x00\x00\x00\x02\x00\x00\x00\x00\x03\x00\x00\x00\x02\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x07reenter\x0dscore.Address\x00\x00\x00\x03\x01\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00
 RECV result status=0 stepUsed=614 ret=<null>
-SEND invoke code=010001/transformed isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=reenter params=[]
+SEND invoke code=010001 isQuery=false from=000001... to=010001... value=0 stepLimit=1000000000 method=reenter params=[]
 RECV getObjGraph flag=1 => next=4 hash=3639a66dcdaa3613ea0a58c9a216ca9f822db9b7f149985308216f8be2b54c6a graphLen=135 graph=\x03\x00\x00\x00\x00\x03\x00\x00\x00\x01\x00\x00\x00\x03$foundation.icon.ee.ReenterTest$Score\x00\x00\x00\x02\x00\x00\x00\x00\x03\x00\x00\x00\x02\x10java.lang.String\x00\x00\x00\x01\x00\x00\x00\x07reenter\x0dscore.Address\x00\x00\x00\x03\x01\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| counter=0
 RECV call to=010001... value=0 stepLimit=999990675 method=reenter params=[]
-SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999990675 method=reenter params=[]
+SEND invoke code=010001 isQuery=false from=010001... to=010001... value=0 stepLimit=999990675 method=reenter params=[]
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| counter=1
 RECV call to=010001... value=0 stepLimit=999981350 method=reenter params=[]
-SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999981350 method=reenter params=[]
+SEND invoke code=010001 isQuery=false from=010001... to=010001... value=0 stepLimit=999981350 method=reenter params=[]
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| counter=2
 RECV call to=010001... value=0 stepLimit=999972025 method=reenter params=[]
-SEND invoke code=010001/transformed isQuery=false from=010001... to=010001... value=0 stepLimit=999972025 method=reenter params=[]
+SEND invoke code=010001 isQuery=false from=010001... to=010001... value=0 stepLimit=999972025 method=reenter params=[]
 RECV log level=6 org.aion.avm.core.BlockchainRuntimeImpl PRT| counter=3
 RECV result status=0 stepUsed=4133 ret=<null>
 RECV result status=0 stepUsed=13898 ret=<null>

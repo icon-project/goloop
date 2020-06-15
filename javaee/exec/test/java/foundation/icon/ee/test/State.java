@@ -1,7 +1,6 @@
 package foundation.icon.ee.test;
 
 import score.Address;
-import foundation.icon.ee.score.FileReader;
 import foundation.icon.ee.util.Crypto;
 import org.aion.avm.core.util.ByteArrayWrapper;
 
@@ -69,7 +68,7 @@ public class State {
         files.put(path, data.clone());
     }
 
-    public byte[] readFile(String path) throws IOException {
+    public byte[] readFile(String path) {
         var data = files.get(path);
         if (data!=null) {
             data = data.clone();

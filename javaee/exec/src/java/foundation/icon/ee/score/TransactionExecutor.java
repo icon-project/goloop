@@ -42,18 +42,17 @@ import java.util.Map;
 
 public class TransactionExecutor {
     private static final Logger logger = LoggerFactory.getLogger(TransactionExecutor.class);
-    private static final String CODE_JAR = "code.jar";
     private static final String CMD_INSTALL = "<init>";
 
     private final EEProxy proxy;
     private final String uuid;
     private final AvmExecutor avmExecutor;
-    private final FileReader fileReader;
+    private final FileIO fileIO;
 
     private TransactionExecutor(Connection conn,
                                 String uuid,
                                 Loader loader,
-                                FileReader fileReader,
+                                FileIO fileIO,
                                 AvmConfiguration conf) {
         this.proxy = new EEProxy(conn);
         this.uuid = uuid;
@@ -62,7 +61,7 @@ public class TransactionExecutor {
         proxy.setOnInvokeListener(this::handleInvoke);
         avmExecutor = CommonAvmFactory.createAvmExecutor(conf, loader);
 
-        this.fileReader = fileReader;
+        this.fileIO = fileIO;
     }
 
     // TODO : remove me later
@@ -74,13 +73,13 @@ public class TransactionExecutor {
     public static TransactionExecutor newInstance(Connection c,
                                                   String uuid,
                                                   Loader loader,
-                                                  FileReader r,
+                                                  FileIO r,
                                                   AvmConfiguration conf) {
         if (loader == null) {
             loader = new Loader();
         }
         if (r == null) {
-            r = defaultFileReader;
+            r = DEFAULT_FILE_IO;
         }
         if (conf == null) {
             conf = new AvmConfiguration();
@@ -113,7 +112,8 @@ public class TransactionExecutor {
 
     private Method[] handleGetApi(String path) throws IOException {
         logger.trace(">>> path={}", path);
-        byte[] jarBytes = fileReader.readFile(path);
+        byte[] jarBytes = fileIO.readFile(
+                Path.of(path, ExternalState.CODE_JAR).toString());
         byte[] apis = JarBuilder.getAPIsBytesFromJAR(jarBytes);
         if (null != apis) {
             Method[] methods = MethodUnpacker.readFrom(apis);
@@ -152,22 +152,22 @@ public class TransactionExecutor {
             option |= IExternalState.OPTION_READ_ONLY;
         }
         ExternalState kernel = new ExternalState(proxy, option, code,
-                fileReader, blockHeight, blockTimestamp, owner, stepCosts);
-        Transaction tx = new Transaction(from, to, value, nonce, limit.longValue(), method, params,
-                                         txHash, txIndex, txTimestamp, isInstall);
+                fileIO, blockHeight, blockTimestamp, owner, stepCosts);
+        Transaction tx = new Transaction(from, to, value, nonce,
+                limit.longValue(), method, params, txHash, txIndex, txTimestamp,
+                isInstall);
         Result result = avmExecutor.run(kernel, tx, origin);
         return new InvokeResult(result);
     }
 
-    private static final FileReader defaultFileReader = p -> {
-        Path path = Paths.get(p, CODE_JAR);
-        byte[] jarBytes;
-        try {
-            jarBytes = Files.readAllBytes(path);
-        } catch (IOException e) {
-            throw new IOException("JAR read error: " + e.getMessage());
+    private static final FileIO DEFAULT_FILE_IO = new FileIO() {
+        public byte[] readFile(String p) throws IOException {
+            return Files.readAllBytes(Paths.get(p));
         }
-        return jarBytes;
+
+        public void writeFile(String p, byte[] bytes) throws IOException {
+            Files.write(Paths.get(p), bytes);
+        }
     };
 
     private void printInvokeParams(String code, boolean isQuery, Address from, Address to, BigInteger value,

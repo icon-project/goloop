@@ -39,7 +39,7 @@ public interface IExternalState {
      *
      * @param code The code corresponding to the address.
      */
-    void setTransformedCode(byte[] code);
+    void setTransformedCode(byte[] code) throws IOException;
 
     /**
      * Saves the specified serialized bytes of the object graph to current score.

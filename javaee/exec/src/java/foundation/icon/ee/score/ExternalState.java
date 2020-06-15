@@ -28,29 +28,33 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.file.Path;
 import java.util.Map;
 import java.util.function.IntConsumer;
 
 public class ExternalState implements IExternalState {
     private static final Logger logger = LoggerFactory.getLogger(ExternalState.class);
+    public static final String CODE_JAR = "code.jar";
+    public static final String TRANSFORMED_JAR = "transformed.jar";
 
     private final EEProxy proxy;
     private final int option;
     private final long blockHeight;
     private final long blockTimestamp;
     private final Address owner;
-    private final String code;
-    private final FileReader fileReader;
+    private final String codePath;
+    private final FileIO fileIO;
     private ObjectGraph graphCache;
     private final StepCost stepCost;
 
-    ExternalState(EEProxy proxy, int option, String code, FileReader fileReader,
-                  BigInteger blockHeight, BigInteger blockTimestamp,
-                  Address owner, Map<String, BigInteger> stepCosts) {
+    ExternalState(EEProxy proxy, int option, String codePath,
+                  FileIO fileIO, BigInteger blockHeight,
+                  BigInteger blockTimestamp, Address owner,
+                  Map<String, BigInteger> stepCosts) {
         this.proxy = proxy;
         this.option = option;
-        this.code = code;
-        this.fileReader = fileReader;
+        this.codePath = codePath;
+        this.fileIO = fileIO;
         this.blockHeight = blockHeight.longValue();
         this.blockTimestamp = blockTimestamp.longValue();
         this.owner = owner; // owner cannot be null
@@ -60,23 +64,20 @@ public class ExternalState implements IExternalState {
     @Override
     public byte[] getCode() throws IOException {
         logger.trace("[getCode]");
-        return fileReader.readFile(code);
+        return fileIO.readFile(Path.of(codePath, CODE_JAR).toString());
     }
 
     @Override
     public byte[] getTransformedCode() throws IOException {
         logger.trace("[getTransformedCode]");
-        return fileReader.readFile(code);
+        return fileIO.readFile(Path.of(codePath, TRANSFORMED_JAR).toString());
     }
 
     @Override
-    public void setTransformedCode(byte[] code) {
+    public void setTransformedCode(byte[] code) throws IOException {
         logger.trace("[setTransformedCode] len={}", code.length);
-        try {
-            proxy.setCode(code);
-        } catch (IOException e) {
-            logger.debug("[setTransformedCode] {}", e.getMessage());
-        }
+        fileIO.writeFile(Path.of(codePath, TRANSFORMED_JAR).toString(),
+                code);
     }
 
     @Override
