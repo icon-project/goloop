@@ -43,7 +43,7 @@ public class RejectedClassException extends PredefinedException {
         throw new RejectedClassException("Class name is too long: " + className);
     }
     public static void unsupportedPackageName(String className) {
-        throw new RejectedClassException("avm package name is restricted: " + className);
+        throw new RejectedClassException("score package name is restricted: " + className);
     }
 
     public static void arrayDimensionTooBig(String desc) {
@@ -51,19 +51,19 @@ public class RejectedClassException extends PredefinedException {
     }
 
     public static RejectedClassException invokeDynamicBootstrapMethodArguments(String methodDescriptor) {
-        throw new RejectedClassException("Unsupported invokedymanic: bootstrap method cannot take additional arguments: \"" + methodDescriptor + "\"");
+        throw new RejectedClassException("Unsupported invokedynamic: bootstrap method cannot take additional arguments: \"" + methodDescriptor + "\"");
     }
 
     public static RejectedClassException invokeDynamicUnsupportedMethodOwner(String origMethodName, String methodOwner) {
-        throw new RejectedClassException("Unsupported invokedymanic: boostrap:" + origMethodName + " owner:" + methodOwner);
+        throw new RejectedClassException("Unsupported invokedynamic: bootstrap:" + origMethodName + " owner:" + methodOwner);
     }
 
     public static RejectedClassException invokeDynamicLambdaType(String methodDescriptor) {
-        throw new RejectedClassException("Unsupported invokedymanic lambda type: \"" + methodDescriptor + "\"");
+        throw new RejectedClassException("Unsupported invokedynamic lambda type: \"" + methodDescriptor + "\"");
     }
 
     public static RejectedClassException invokeDynamicHandleType(int handleKind, String methodDescriptor) {
-        throw new RejectedClassException("Unsupported invokedymanic method handle: method descriptor: " + methodDescriptor +", reference kind: " + handleKind);
+        throw new RejectedClassException("Unsupported invokedynamic method handle: method descriptor: " + methodDescriptor +", reference kind: " + handleKind);
     }
 
     public static RejectedClassException tooManyInstanceVariables(String className) {
