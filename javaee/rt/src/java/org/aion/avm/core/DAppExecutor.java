@@ -95,14 +95,10 @@ public class DAppExecutor {
 
             // Save back the state before we return.
             if (null == stateToResume) {
-                // We are at the "top" so write this back to disk.
-                int newHashCode = threadInstrumentation.peekNextHashCode();
                 byte[] postCallGraphData = newRS.getGraph().getRawData();
                 // Bill for writing this size.
                 threadInstrumentation.chargeEnergy(StorageFees.WRITE_PRICE_PER_BYTE * postCallGraphData.length);
                 externalState.putObjectGraph(dappAddress, postCallGraphData);
-                // Update LoadedDApp state at the end of execution
-                dapp.setHashCode(newHashCode);
             }
 
             long energyUsed = tx.getLimit() - threadInstrumentation.energyLeft();

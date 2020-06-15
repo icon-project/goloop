@@ -97,10 +97,6 @@ public class LoadedDApp {
     private final ClassRenamer classRenamer;
     private final boolean preserveDebuggability;
 
-    // Next hashcode which can be used to resume the state or serialize the DApp
-    private int hashCode;
-    // Used for billing
-    private int serializedLength;
     private Object mainInstance;
 
     /**
@@ -432,10 +428,6 @@ public class LoadedDApp {
         }
         return runtimeBlockchainRuntimeField;
     }
-
-    public void setHashCode(int hashCode) { this.hashCode = hashCode; }
-
-    public int getHashCode() { return hashCode; }
 
     private Set<String> fetchPreRenameSlashStyleJclExceptions() {
         Set<String> jclExceptions = new HashSet<>();
