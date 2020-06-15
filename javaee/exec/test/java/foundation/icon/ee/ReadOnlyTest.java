@@ -50,6 +50,12 @@ public class ReadOnlyTest extends SimpleTest {
             sVal = "string2";
             return 0;
         }
+
+        @External(readonly=true)
+        public int createTempObject() {
+            Object obj = new Object();
+            return obj.hashCode();
+        }
     }
 
     public static class ProxyScore {
@@ -77,6 +83,11 @@ public class ReadOnlyTest extends SimpleTest {
         @External
         public int changeSVal() {
             return ((BigInteger) Context.call(real, "changeSVal")).intValue();
+        }
+
+        @External
+        public int createTempObject() {
+            return ((BigInteger) Context.call(real, "createTempObject")).intValue();
         }
     }
 
@@ -117,6 +128,12 @@ public class ReadOnlyTest extends SimpleTest {
                     () -> score.query("changeSVal"));
             assertEquals(Status.AccessDenied, e.getResult().getStatus());
         }
+
+        @Test
+        void creatingTempObjectSucceeds() {
+            score.invoke("createTempObject");
+            score.query("createTempObject");
+        }
     }
 
     @Nested
@@ -153,6 +170,11 @@ public class ReadOnlyTest extends SimpleTest {
             e = assertThrows(TransactionException.class,
                     () -> score.invoke("changeSVal"));
             assertEquals(Status.UnknownFailure, e.getResult().getStatus());
+        }
+
+        @Test
+        void creatingTempObjectSucceeds() {
+            score.invoke("createTempObject");
         }
     }
 }
