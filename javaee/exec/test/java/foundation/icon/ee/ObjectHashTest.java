@@ -137,7 +137,6 @@ public class ObjectHashTest extends SimpleTest {
                 BigInteger.valueOf(A.TEMP_OBJS)
         );
         assertEquals(expected, res2.getResult());
-        score.invoke("callChangeGraph");
     }
 
     @Test
