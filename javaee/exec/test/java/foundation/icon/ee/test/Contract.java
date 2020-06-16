@@ -1,6 +1,7 @@
 package foundation.icon.ee.test;
 
 import foundation.icon.ee.types.Method;
+import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
 import score.Address;
 

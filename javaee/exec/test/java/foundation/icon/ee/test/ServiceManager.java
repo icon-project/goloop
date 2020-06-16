@@ -2,6 +2,7 @@ package foundation.icon.ee.test;
 
 import foundation.icon.ee.Agent;
 import foundation.icon.ee.types.Method;
+import foundation.icon.ee.types.Result;
 import foundation.icon.ee.util.MethodUnpacker;
 import score.Address;
 import foundation.icon.ee.ipc.Connection;
@@ -231,7 +232,7 @@ public class ServiceManager extends Proxy implements Agent {
                     var res = invoke(to, value, stepLimit, method, params);
                     sendMessage(EEProxy.MsgType.RESULT, res.getStatus(),
                             res.getStepUsed().add(stepsContractCall),
-                            TypedObj.encodeAny(res.getResult()));
+                            TypedObj.encodeAny(res.getRet()));
                     break;
                 }
                 case EEProxy.MsgType.EVENT: {

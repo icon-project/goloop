@@ -1,5 +1,7 @@
 package foundation.icon.ee.test;
 
+import foundation.icon.ee.types.Result;
+
 public class TransactionException extends RuntimeException {
     private final Result result;
 

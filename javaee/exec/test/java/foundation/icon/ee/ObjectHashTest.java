@@ -112,7 +112,7 @@ public class ObjectHashTest extends SimpleTest {
     void getNextHashDoesNotChangeNextHash() {
         var res = score.invoke("getNextHash");
         var res2 = score.invoke("getNextHash");
-        assertEquals(res.getResult(), res2.getResult());
+        assertEquals(res.getRet(), res2.getRet());
     }
 
     @Test
@@ -120,7 +120,7 @@ public class ObjectHashTest extends SimpleTest {
         var res = score.invoke("getNextHash");
         score.invoke("doNotChangeGraph");
         var res2 = score.invoke("getNextHash");
-        assertEquals(res.getResult(), res2.getResult());
+        assertEquals(res.getRet(), res2.getRet());
     }
 
     @Test
@@ -133,10 +133,10 @@ public class ObjectHashTest extends SimpleTest {
         var res = score.invoke("getNextHash");
         score.invoke("changeGraph");
         var res2 = score.invoke("getNextHash");
-        var expected = ((BigInteger)res.getResult()).add(
+        var expected = ((BigInteger)res.getRet()).add(
                 BigInteger.valueOf(A.TEMP_OBJS)
         );
-        assertEquals(expected, res2.getResult());
+        assertEquals(expected, res2.getRet());
     }
 
     @Test
@@ -150,7 +150,7 @@ public class ObjectHashTest extends SimpleTest {
         var r = score.tryInvoke("changeGraphAndFail");
         assertEquals(Status.UserReversionStart, r.getStatus());
         var res2 = score.invoke("getNextHash");
-        assertEquals(res.getResult(), res2.getResult());
+        assertEquals(res.getRet(), res2.getRet());
     }
 
     @Test
