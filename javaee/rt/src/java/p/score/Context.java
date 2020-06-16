@@ -168,11 +168,6 @@ public final class Context extends Object {
         return blockchainRuntime.avm_newVarDB(id, vc);
     }
 
-    public static void avm_log(IObjectArray indexed, IObjectArray data) {
-        // Charge steps in BlockchainRuntime
-        blockchainRuntime.avm_log(indexed, data);
-    }
-
     public static void avm_logEvent(IObjectArray indexed, IObjectArray data) {
         // Charge steps in BlockchainRuntime
         blockchainRuntime.avm_logEvent(indexed, data);

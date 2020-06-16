@@ -152,6 +152,5 @@ public interface IBlockchainRuntime {
     /**
      * Emits event logs
      */
-    void avm_log(IObjectArray indexed, IObjectArray data);
     void avm_logEvent(IObjectArray indexed, IObjectArray data);
 }

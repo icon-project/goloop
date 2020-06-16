@@ -20,15 +20,12 @@ import i.IObject;
 import i.IObjectArray;
 import i.IRuntimeSetup;
 import i.InstrumentationHelpers;
-import i.RuntimeAssertionError;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.parallel.TransactionTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import p.score.CollectionDB;
-import p.score.Value;
-import p.score.ValueBuffer;
 import p.score.VarDB;
 import pi.CollectionDBImpl;
 import pi.VarDBImpl;
@@ -290,54 +287,6 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
         return new VarDBImpl(id, vc);
     }
 
-    @Override
-    public void avm_log(IObjectArray indexed, IObjectArray data) {
-        if (externalState.isReadOnly()) {
-            throw new IllegalStateException();
-        }
-        if (logger.isTraceEnabled()) {
-            logger.trace("Context.log indexed.len={} data.len={}", indexed.length(), data.length());
-            for (int i=0; i<indexed.length(); i++) {
-                var v = indexed.get(i);
-                if (v instanceof ValueBuffer) {
-                    logger.trace("indexed[{}]={}", i, ((ValueBuffer)v).asByteArray());
-                }
-            }
-            for (int i=0; i<data.length(); i++) {
-                var v = data.get(i);
-                if (v instanceof ValueBuffer) {
-                    logger.trace("data[{}]={}", i, ((ValueBuffer)v).asByteArray());
-                }
-            }
-        }
-        int len = Address.LENGTH;
-        byte[][] bindexed = new byte[indexed.length()][];
-        for (int i=0; i<bindexed.length; i++) {
-            Value v = (Value)indexed.get(i);
-            if (v instanceof ValueBuffer) {
-                bindexed[i] = ((ValueBuffer)v).asByteArray();
-            } else {
-                bindexed[i] = v.avm_asByteArray().getUnderlying();
-            }
-            len += bindexed[i].length;
-        }
-        byte[][] bdata = new byte[data.length()][];
-        for (int i=0; i<bdata.length; i++) {
-            Value v = (Value)data.get(i);
-            if (v instanceof ValueBuffer) {
-                bdata[i] = ((ValueBuffer)v).asByteArray();
-            } else {
-                bdata[i] = v.avm_asByteArray().getUnderlying();
-            }
-            len += bdata[i].length;
-        }
-        var stepCost = externalState.getStepCost();
-        int evLogBase = stepCost.eventLogBase();
-        int evLog = stepCost.eventLog();
-        IInstrumentation.charge(Math.max(evLogBase, len) * evLog);
-        externalState.log(bindexed, bdata);
-    }
-
     private static boolean isValidEventValue(IObject obj) {
         return (obj instanceof s.java.math.BigInteger ||
                 obj instanceof s.java.lang.Boolean ||
@@ -352,19 +301,8 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
             throw new IllegalStateException();
         }
         if (logger.isTraceEnabled()) {
-            logger.trace("Context.log indexed.len={} data.len={}", indexed.length(), data.length());
-            for (int i=0; i<indexed.length(); i++) {
-                var v = indexed.get(i);
-                if (v instanceof ValueBuffer) {
-                    logger.trace("indexed[{}]={}", i, ((ValueBuffer)v).asByteArray());
-                }
-            }
-            for (int i=0; i<data.length(); i++) {
-                var v = data.get(i);
-                if (v instanceof ValueBuffer) {
-                    logger.trace("data[{}]={}", i, ((ValueBuffer)v).asByteArray());
-                }
-            }
+            logger.trace("Context.logEvent indexed.len={} data.len={}",
+                    indexed.length(), data.length());
         }
         int len = Address.LENGTH;
         byte[][] bindexed = new byte[indexed.length()][];
@@ -374,6 +312,9 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                 throw new IllegalArgumentException();
             bindexed[i] = ValueCodec.encode(v);
             len += bindexed[i].length;
+            if (logger.isTraceEnabled()) {
+                logger.trace("indexed[{}]={}", i, bindexed[i]);
+            }
         }
         byte[][] bdata = new byte[data.length()][];
         for (int i=0; i<bdata.length; i++) {
@@ -382,6 +323,9 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
                 throw new IllegalArgumentException();
             bdata[i] = ValueCodec.encode(v);
             len += bdata[i].length;
+            if (logger.isTraceEnabled()) {
+                logger.trace("data[{}]={}", i, bdata[i]);
+            }
         }
         var stepCost = externalState.getStepCost();
         int evLogBase = stepCost.eventLogBase();

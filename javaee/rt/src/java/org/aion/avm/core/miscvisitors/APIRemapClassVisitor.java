@@ -22,12 +22,6 @@ public class APIRemapClassVisitor extends ClassToolchain.ToolChainClassVisitor {
                     String descriptor,
                     boolean isInterface) {
                 if (opcode==Opcodes.INVOKESTATIC &&
-                        owner.equals("p/score/Context") &&
-                        name.equals("avm_log") &&
-                        descriptor.equals("(Lw/_Lp/score/Value;Lw/_Lp/score/Value;)V") &&
-                        !isInterface) {
-                    descriptor = "(Li/IObjectArray;Li/IObjectArray;)V";
-                } else if (opcode==Opcodes.INVOKESTATIC &&
                         owner.equals("s/java/util/Map") &&
                         name.equals("avm_ofEntries") &&
                         descriptor.equals("(Lw/_Ls/java/util/Map$Entry;)Ls/java/util/Map;") &&
