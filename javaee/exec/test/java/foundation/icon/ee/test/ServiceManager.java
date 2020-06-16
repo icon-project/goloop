@@ -238,7 +238,7 @@ public class ServiceManager extends Proxy implements Agent {
                 case EEProxy.MsgType.EVENT: {
                     var data = msg.value.asArrayValue();
                     var indexed = unpackByteArrayArray(data.get(0).asArrayValue());
-                    var nonIndexed = unpackByteArrayArray(data.get(0).asArrayValue());
+                    var nonIndexed = unpackByteArrayArray(data.get(1).asArrayValue());
                     printf("RECV event indxed=%s data=%s%n", indexed, nonIndexed);
                     break;
                 }
