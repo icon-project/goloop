@@ -347,4 +347,13 @@ public final class Context {
      */
     public static void log(Value[] indexed, Value[] data) {
     }
+
+    /**
+     * Records a log on the blockchain.
+     *
+     * @param indexed indexed data
+     * @param data extra data
+     */
+    public static void logEvent(Object[] indexed, Object[] data) {
+    }
 }

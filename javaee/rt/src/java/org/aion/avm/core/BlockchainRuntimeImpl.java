@@ -12,6 +12,7 @@ import foundation.icon.ee.types.Transaction;
 import foundation.icon.ee.util.Crypto;
 import foundation.icon.ee.util.Shadower;
 import foundation.icon.ee.util.Unshadower;
+import foundation.icon.ee.util.ValueCodec;
 import i.GenericCodedException;
 import i.IBlockchainRuntime;
 import i.IInstrumentation;
@@ -328,6 +329,58 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
             } else {
                 bdata[i] = v.avm_asByteArray().getUnderlying();
             }
+            len += bdata[i].length;
+        }
+        var stepCost = externalState.getStepCost();
+        int evLogBase = stepCost.eventLogBase();
+        int evLog = stepCost.eventLog();
+        IInstrumentation.charge(Math.max(evLogBase, len) * evLog);
+        externalState.log(bindexed, bdata);
+    }
+
+    private static boolean isValidEventValue(IObject obj) {
+        return (obj instanceof s.java.math.BigInteger ||
+                obj instanceof s.java.lang.Boolean ||
+                obj instanceof s.java.lang.String ||
+                obj instanceof a.ByteArray ||
+                obj instanceof p.score.Address);
+    }
+
+    @Override
+    public void avm_logEvent(IObjectArray indexed, IObjectArray data) {
+        if (externalState.isReadOnly()) {
+            throw new IllegalStateException();
+        }
+        if (logger.isTraceEnabled()) {
+            logger.trace("Context.log indexed.len={} data.len={}", indexed.length(), data.length());
+            for (int i=0; i<indexed.length(); i++) {
+                var v = indexed.get(i);
+                if (v instanceof ValueBuffer) {
+                    logger.trace("indexed[{}]={}", i, ((ValueBuffer)v).asByteArray());
+                }
+            }
+            for (int i=0; i<data.length(); i++) {
+                var v = data.get(i);
+                if (v instanceof ValueBuffer) {
+                    logger.trace("data[{}]={}", i, ((ValueBuffer)v).asByteArray());
+                }
+            }
+        }
+        int len = Address.LENGTH;
+        byte[][] bindexed = new byte[indexed.length()][];
+        for (int i=0; i<bindexed.length; i++) {
+            IObject v = (IObject)indexed.get(i);
+            if (!isValidEventValue(v))
+                throw new IllegalArgumentException();
+            bindexed[i] = ValueCodec.encode(v);
+            len += bindexed[i].length;
+        }
+        byte[][] bdata = new byte[data.length()][];
+        for (int i=0; i<bdata.length; i++) {
+            IObject v = (IObject)data.get(i);
+            if (!isValidEventValue(v))
+                throw new IllegalArgumentException();
+            bdata[i] = ValueCodec.encode(v);
             len += bdata[i].length;
         }
         var stepCost = externalState.getStepCost();

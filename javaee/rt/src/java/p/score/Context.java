@@ -172,4 +172,9 @@ public final class Context extends Object {
         // Charge steps in BlockchainRuntime
         blockchainRuntime.avm_log(indexed, data);
     }
+
+    public static void avm_logEvent(IObjectArray indexed, IObjectArray data) {
+        // Charge steps in BlockchainRuntime
+        blockchainRuntime.avm_logEvent(indexed, data);
+    }
 }

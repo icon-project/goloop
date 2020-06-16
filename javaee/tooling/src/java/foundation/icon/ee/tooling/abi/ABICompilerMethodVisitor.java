@@ -212,10 +212,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
         } else {
             super.visitIntInsn(Opcodes.BIPUSH, index);
         }
-        super.visitTypeInsn(Opcodes.NEW, "score/ValueBuffer");
-        super.visitInsn(Opcodes.DUP);
         super.visitLdcInsn(value);
-        super.visitMethodInsn(Opcodes.INVOKESPECIAL, "score/ValueBuffer", "<init>", "(Ljava/lang/String;)V", false);
         super.visitInsn(Opcodes.AASTORE);
     }
 
@@ -226,8 +223,6 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
         } else {
             super.visitIntInsn(Opcodes.BIPUSH, index);
         }
-        super.visitTypeInsn(Opcodes.NEW, "score/ValueBuffer");
-        super.visitInsn(Opcodes.DUP);
         switch (argType.getSort()) {
         case Type.BYTE:
         case Type.SHORT:
@@ -235,9 +230,16 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
         case Type.CHAR:
         case Type.BOOLEAN:
             super.visitVarInsn(Opcodes.ILOAD, argPos);
+            super.visitInsn(Opcodes.I2L);
+            super.visitMethodInsn(Opcodes.INVOKESTATIC,
+                    "java/math/BigInteger", "valueOf",
+                    "(J)Ljava/math/BigInteger;", false);
             break;
         case Type.LONG:
             super.visitVarInsn(Opcodes.LLOAD, argPos);
+            super.visitMethodInsn(Opcodes.INVOKESTATIC,
+                    "java/math/BigInteger", "valueOf",
+                    "(J)Ljava/math/BigInteger;", false);
             break;
         case Type.ARRAY:
         case Type.OBJECT:
@@ -246,7 +248,6 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
         default:
             assert false : "bad param type "+argType+" for @EventLog";
         }
-        super.visitMethodInsn(Opcodes.INVOKESPECIAL, "score/ValueBuffer", "<init>", "("+argType.getDescriptor()+")V", false);
         super.visitInsn(Opcodes.AASTORE);
     }
 
@@ -294,23 +295,23 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
 
     private void emitEventLogBody(Type[] args, int argsSize) {
         int argPos = 1;
-        // Value[] indexedArr = new Value[${indexed+1}];
+        // Object[] indexedArr = new Object[${indexed+1}];
         super.visitIntInsn(Opcodes.BIPUSH, indexed+1);
-        super.visitTypeInsn(Opcodes.ANEWARRAY, "score/Value");
+        super.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/Object");
         // indexedArr[0] = ${event signature};
         emitSetValueArrayElementString(0, getEventSignature(args));
         for (int i=0; i<indexed; i++) {
-            // indexedArr[${i+1}] = ValueBuffer.of(${args[i]});
+            // indexedArr[${i+1}] = ${args[i]};
             emitSetValueArrayElementByArg(i+1, args[i], argPos);
             argPos += args[i].getSize();
         }
         super.visitVarInsn(Opcodes.ASTORE, argsSize+1);
 
-        // Value[] dataArr = new Value[${args.len-indexed}];
+        // Object[] dataArr = new Object[${args.len-indexed}];
         super.visitIntInsn(Opcodes.BIPUSH, args.length-indexed);
-        super.visitTypeInsn(Opcodes.ANEWARRAY, "score/Value");
+        super.visitTypeInsn(Opcodes.ANEWARRAY, "java/lang/Object");
         for (int i=0; i<args.length-indexed; i++) {
-            // dataArr[$i] = ValueBuffer.of(${args[indexed+i]});
+            // dataArr[$i] = ${args[indexed+i]};
             emitSetValueArrayElementByArg(i, args[indexed+i], argPos);
             argPos += args[indexed+i].getSize();
         }
@@ -319,7 +320,7 @@ public class ABICompilerMethodVisitor extends MethodVisitor {
         // Context.log(indexedArr, dataArr);
         super.visitVarInsn(Opcodes.ALOAD, argsSize+1);
         super.visitVarInsn(Opcodes.ALOAD, argsSize+2);
-        super.visitMethodInsn(Opcodes.INVOKESTATIC, "score/Context", "log", "([Lscore/Value;[Lscore/Value;)V", false);
+        super.visitMethodInsn(Opcodes.INVOKESTATIC, "score/Context", "logEvent", "([Ljava/lang/Object;[Ljava/lang/Object;)V", false);
         super.visitInsn(Opcodes.RETURN);
         super.visitMaxs(0, 0);
     }
