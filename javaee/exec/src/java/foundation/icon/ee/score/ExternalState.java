@@ -22,6 +22,7 @@ import foundation.icon.ee.types.Bytes;
 import foundation.icon.ee.types.ObjectGraph;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.StepCost;
+import i.RuntimeAssertionError;
 import org.aion.avm.core.IExternalState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,9 +63,14 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public byte[] getCode() throws IOException {
+    public byte[] getCode() {
         logger.trace("[getCode]");
-        return fileIO.readFile(Path.of(codePath, CODE_JAR).toString());
+        try {
+            return fileIO.readFile(Path.of(codePath, CODE_JAR).toString());
+        } catch (IOException e) {
+            logger.debug("[getCode] {}", e.getMessage());
+            throw RuntimeAssertionError.unexpected(e);
+        }
     }
 
     @Override
@@ -74,10 +80,15 @@ public class ExternalState implements IExternalState {
     }
 
     @Override
-    public void setTransformedCode(byte[] code) throws IOException {
+    public void setTransformedCode(byte[] code) {
         logger.trace("[setTransformedCode] len={}", code.length);
-        fileIO.writeFile(Path.of(codePath, TRANSFORMED_JAR).toString(),
-                code);
+        try {
+            fileIO.writeFile(Path.of(codePath, TRANSFORMED_JAR).toString(),
+                    code);
+        } catch (IOException e) {
+            logger.debug("[setTransformedCode] {}", e.getMessage());
+            RuntimeAssertionError.unexpected(e);
+        }
     }
 
     @Override
@@ -117,6 +128,7 @@ public class ExternalState implements IExternalState {
             graphCache = objGraph;
         } catch (IOException e) {
             logger.debug("[putObjectGraph] {}", e.getMessage());
+            RuntimeAssertionError.unexpected(e);
         }
     }
 
@@ -127,6 +139,7 @@ public class ExternalState implements IExternalState {
             proxy.setValue(key, value, prevSizeCB);
         } catch (IOException e) {
             logger.debug("[putStorage] {}", e.getMessage());
+            RuntimeAssertionError.unexpected(e);
         }
     }
 
@@ -136,7 +149,7 @@ public class ExternalState implements IExternalState {
             return proxy.waitForCallback();
         } catch (IOException e) {
             logger.debug("[waitForCallback] {}", e.getMessage());
-            return true;
+            throw RuntimeAssertionError.unexpected(e);
         }
     }
 
@@ -146,6 +159,7 @@ public class ExternalState implements IExternalState {
             proxy.waitForCallbacks();
         } catch (IOException e) {
             logger.debug("[waitForCallback] {}", e.getMessage());
+            RuntimeAssertionError.unexpected(e);
         }
     }
 
@@ -157,7 +171,7 @@ public class ExternalState implements IExternalState {
             return value;
         } catch (IOException e) {
             logger.debug("[getStorage] {}", e.getMessage());
-            return null;
+            throw RuntimeAssertionError.unexpected(e);
         }
     }
 
@@ -169,7 +183,7 @@ public class ExternalState implements IExternalState {
             return balance;
         } catch (IOException e) {
             logger.debug("[getBalance] {}", e.getMessage());
-            return BigInteger.ZERO;
+            throw RuntimeAssertionError.unexpected(e);
         }
     }
 
@@ -198,6 +212,7 @@ public class ExternalState implements IExternalState {
             logger.trace("[logEvent] {} {}", indexed, data);
         } catch (IOException e) {
             logger.debug("[logEvent] {}", e.getMessage());
+            RuntimeAssertionError.unexpected(e);
         }
     }
 
@@ -216,8 +231,8 @@ public class ExternalState implements IExternalState {
             return res;
         } catch (IOException e) {
             logger.debug("[call] {}", e.getMessage());
+            throw RuntimeAssertionError.unexpected(e);
         }
-        return null;
     }
 
     @Override

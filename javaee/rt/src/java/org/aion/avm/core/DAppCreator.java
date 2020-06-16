@@ -21,8 +21,6 @@ import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.avm.core.types.TransformedDappModule;
 import org.aion.parallel.TransactionTask;
 
-import java.io.IOException;
-
 public class DAppCreator {
     public static Result create(IExternalState externalState,
                                 TransactionTask task,
@@ -31,7 +29,7 @@ public class DAppCreator {
                                 Transaction tx,
                                 AvmConfiguration conf) throws AvmError {
         IRuntimeSetup runtimeSetup = null;
-        Result result = null;
+        Result result;
         try {
             Transformer transformer = new Transformer(
                     externalState,
@@ -69,7 +67,7 @@ public class DAppCreator {
             IInstrumentation threadInstrumentation = IInstrumentation.attachedThreadInstrumentation.get();
             result = runClinitAndBillSender(conf.enableVerboseContractErrors,
                     dapp, threadInstrumentation, externalState, dappAddress, tx);
-        } catch (AvmException | IOException e) {
+        } catch (AvmException e) {
             if (conf.enableVerboseContractErrors) {
                 System.err.println("DApp deployment failed : " + e.getMessage());
                 e.printStackTrace();
@@ -85,7 +83,7 @@ public class DAppCreator {
             }
             long stepUsed = (runtimeSetup != null) ?
                     (tx.getLimit() - IInstrumentation.getEnergyLeft()) : 0;
-            return new Result(code, stepUsed, msg);
+            result = new Result(code, stepUsed, msg);
         } finally {
             // Once we are done running this, no matter how it ended, we want to detach our thread from the DApp.
             if (null != runtimeSetup) {

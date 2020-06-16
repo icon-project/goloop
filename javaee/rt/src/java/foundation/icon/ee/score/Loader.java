@@ -1,6 +1,7 @@
 package foundation.icon.ee.score;
 
 import foundation.icon.ee.types.Address;
+import i.RuntimeAssertionError;
 import org.aion.avm.core.AvmConfiguration;
 import org.aion.avm.core.DAppLoader;
 import org.aion.avm.core.IExternalState;
@@ -26,7 +27,7 @@ public class Loader {
                 }
             });
 
-    public LoadedDApp load(Address addr, IExternalState es, AvmConfiguration conf) throws IOException {
+    public LoadedDApp load(Address addr, IExternalState es, AvmConfiguration conf) {
         var dappSR = dappCache.get(addr);
         var dapp = (dappSR != null) ? dappSR.get() : null;
         if (dapp == null) {
@@ -40,7 +41,11 @@ public class Loader {
                     code = transformer.getTransformedCodeBytes();
                     es.setTransformedCode(code);
                 }
-                dapp = DAppLoader.loadFromGraph(code, conf.preserveDebuggability);
+                try {
+                    dapp = DAppLoader.loadFromGraph(code, conf.preserveDebuggability);
+                } catch (IOException e) {
+                    RuntimeAssertionError.unexpected(e);
+                }
                 if (dapp != null) {
                     dappCache.put(addr, new SoftReference<>(dapp));
                 }

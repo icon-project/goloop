@@ -274,7 +274,15 @@ public class Transformer {
         this.conf = conf;
     }
 
-    public void transform() throws IOException {
+    public void transform() {
+        try {
+            transformImpl();
+        } catch (IOException e) {
+            RuntimeAssertionError.unexpected(e);
+        }
+    }
+
+    private void transformImpl() throws IOException {
         byte[] codeBytes = es.getCode();
         apisBytes = JarBuilder.getAPIsBytesFromJAR(codeBytes);
         if (apisBytes == null) {

@@ -96,11 +96,7 @@ public class AvmExecutor {
             if (null != stateToResume) {
                 dapp = stateToResume.dApp;
             } else {
-                try {
-                    dapp = loader.load(recipient, kernel, conf);
-                } catch (IOException e) {
-                    throw RuntimeAssertionError.unexpected(e);
-                }
+                dapp = loader.load(recipient, kernel, conf);
             }
             logger.trace("=== DAppExecutor ===");
             return DAppExecutor.call(kernel, dapp, stateToResume, task,
