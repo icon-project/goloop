@@ -6,8 +6,8 @@ public class NameGenerator {
     private static final char[] CHARACTERS = new char[26];
 
     static {
-        for (int i = 97; i <= 122; i++) {
-            CHARACTERS[i - 97] = ((char) i);
+        for (int i = 'a'; i <= 'z'; i++) {
+            CHARACTERS[i - 'a'] = ((char) i);
         }
     }
 
@@ -15,12 +15,8 @@ public class NameGenerator {
     private int currentInstructionIndex;
 
     public NameGenerator() {
-        currentClassIndex = 1;
-    }
-
-    // main class will always be mapped to A
-    public static String getNewMainClassName() {
-        return String.valueOf(CHARACTERS[0]).toUpperCase();
+        currentClassIndex = 0;
+        currentInstructionIndex = 0;
     }
 
     private static String nextString(int i) {
@@ -28,7 +24,7 @@ public class NameGenerator {
     }
 
     public String getNextClassName() {
-        String className = nextString(currentClassIndex).toUpperCase();
+        String className = nextString(currentClassIndex);
         currentClassIndex++;
         return className.toUpperCase();
     }
