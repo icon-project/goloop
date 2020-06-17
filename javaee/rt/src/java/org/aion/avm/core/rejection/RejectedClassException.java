@@ -1,14 +1,14 @@
 package org.aion.avm.core.rejection;
 
 import foundation.icon.ee.types.Status;
-import foundation.icon.ee.types.CodedException;
+import foundation.icon.ee.types.PredefinedException;
 
 
 /**
  * Throw by RejectionVisitor when it detects a violation of one of its rules.
  * This is a RuntimeException since it is thrown from deep within the visitor machinery and we want to catch it at the top-level.
  */
-public class RejectedClassException extends CodedException {
+public class RejectedClassException extends PredefinedException {
     private static final long serialVersionUID = 1L;
 
     public static void unsupportedClassVersion(int version) {

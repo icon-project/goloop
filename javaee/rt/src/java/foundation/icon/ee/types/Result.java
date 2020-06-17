@@ -16,6 +16,8 @@
 
 package foundation.icon.ee.types;
 
+import i.AvmException;
+
 import java.math.BigInteger;
 
 public class Result {

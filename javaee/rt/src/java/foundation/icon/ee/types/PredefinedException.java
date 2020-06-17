@@ -18,22 +18,24 @@ package foundation.icon.ee.types;
 
 import i.AvmException;
 
-public abstract class CodedException extends AvmException {
-    public CodedException() {
+public abstract class PredefinedException extends AvmException {
+    public PredefinedException() {
         super();
     }
 
-    public CodedException(String message) {
+    public PredefinedException(String message) {
         super(message);
     }
 
-    public CodedException(String message, Throwable cause) {
+    public PredefinedException(String message, Throwable cause) {
         super(message, cause);
     }
 
-    public CodedException(Throwable cause) {
+    public PredefinedException(Throwable cause) {
         super(cause);
     }
 
-    public abstract int getCode();
+    public String getResultMessage() {
+        return Status.getMessage(getCode());
+    }
 }

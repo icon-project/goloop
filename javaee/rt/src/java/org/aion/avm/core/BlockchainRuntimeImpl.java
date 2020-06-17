@@ -7,13 +7,14 @@ package org.aion.avm.core;
 
 import a.ByteArray;
 import foundation.icon.ee.types.Address;
+import foundation.icon.ee.types.ManualRevertException;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.Transaction;
 import foundation.icon.ee.util.Crypto;
 import foundation.icon.ee.util.Shadower;
 import foundation.icon.ee.util.Unshadower;
 import foundation.icon.ee.util.ValueCodec;
-import i.GenericCodedException;
+import i.GenericPredefinedException;
 import i.IBlockchainRuntime;
 import i.IInstrumentation;
 import i.IObject;
@@ -213,7 +214,7 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
             throw new IllegalArgumentException(Status.getMessage(s));
         } else if (s == Status.OutOfStep
                 || s == Status.StackOverflow) {
-            throw new GenericCodedException(s, Status.getMessage(s));
+            throw new GenericPredefinedException(s, Status.getMessage(s));
         } else if (s < Status.UserReversionStart) {
             throw new RevertException();
         } else if (s < Status.UserReversionEnd) {
@@ -231,18 +232,18 @@ public class BlockchainRuntimeImpl implements IBlockchainRuntime {
 
     @Override
     public void avm_revert(int code, s.java.lang.String message) {
-        throw new GenericCodedException(code + Status.UserReversionStart, message.getUnderlying());
+        throw new ManualRevertException(code + Status.UserReversionStart, message.getUnderlying());
     }
 
     @Override
     public void avm_revert(int code) {
-        throw new GenericCodedException(code + Status.UserReversionStart);
+        throw new ManualRevertException(code + Status.UserReversionStart);
     }
 
     @Override
     public void avm_require(boolean condition) {
         if (!condition) {
-            throw new GenericCodedException(Status.UserReversionStart);
+            throw new ManualRevertException(Status.UserReversionStart);
         }
     }
 

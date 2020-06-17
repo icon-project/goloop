@@ -1,6 +1,6 @@
 package foundation.icon.ee.types;
 
-public class UnknownFailureException extends CodedException {
+public class UnknownFailureException extends PredefinedException {
     public UnknownFailureException() {
         super();
     }

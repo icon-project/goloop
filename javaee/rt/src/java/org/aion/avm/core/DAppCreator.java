@@ -2,14 +2,13 @@ package org.aion.avm.core;
 
 import foundation.icon.ee.score.Transformer;
 import foundation.icon.ee.types.Address;
-import foundation.icon.ee.types.CodedException;
 import foundation.icon.ee.types.Result;
 import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.Transaction;
 import i.AvmError;
 import i.AvmException;
 import i.AvmThrowable;
-import i.GenericCodedException;
+import i.GenericPredefinedException;
 import i.IBlockchainRuntime;
 import i.IInstrumentation;
 import i.IRuntimeSetup;
@@ -72,18 +71,9 @@ public class DAppCreator {
                 System.err.println("DApp deployment failed : " + e.getMessage());
                 e.printStackTrace();
             }
-            int code = Status.UnknownFailure;
-            String msg = null;
-            if (e instanceof CodedException) {
-                code = ((CodedException) e).getCode();
-                msg = e.getMessage();
-            }
-            if (msg == null) {
-                msg = Status.getMessage(code);
-            }
             long stepUsed = (runtimeSetup != null) ?
                     (tx.getLimit() - IInstrumentation.getEnergyLeft()) : 0;
-            result = new Result(code, stepUsed, msg);
+            result = new Result(e.getCode(), stepUsed, e.getResultMessage());
         } finally {
             // Once we are done running this, no matter how it ended, we want to detach our thread from the DApp.
             if (null != runtimeSetup) {
@@ -100,7 +90,7 @@ public class DAppCreator {
      * This method handles the following exceptions and ensures that if any of them are thrown
      * that they will be represented by the returned result (any other exceptions thrown here will
      * not be handled):
-     * {@link OutOfStackException}, and {@link GenericCodedException}.
+     * {@link OutOfStackException}, and {@link GenericPredefinedException}.
      *
      * @param verboseErrors Whether or not to report errors to stderr.
      * @param dapp The dapp to run.

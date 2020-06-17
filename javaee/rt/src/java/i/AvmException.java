@@ -1,6 +1,8 @@
 package i;
 
 
+import foundation.icon.ee.types.Status;
+
 /**
  * Indicates an internal runtime unexpected condition, especially for AVM execution rule violation.
  *
@@ -28,4 +30,8 @@ public abstract class AvmException extends AvmThrowable {
     protected AvmException(Throwable cause) {
         super(cause);
     }
+
+    public abstract int getCode();
+
+    public abstract String getResultMessage();
 }

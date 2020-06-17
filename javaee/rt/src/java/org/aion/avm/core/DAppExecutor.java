@@ -1,7 +1,6 @@
 package org.aion.avm.core;
 
 import foundation.icon.ee.types.Address;
-import foundation.icon.ee.types.CodedException;
 import foundation.icon.ee.types.DAppRuntimeState;
 import foundation.icon.ee.types.ObjectGraph;
 import foundation.icon.ee.types.Result;
@@ -9,12 +8,11 @@ import foundation.icon.ee.types.Status;
 import foundation.icon.ee.types.Transaction;
 import i.AvmError;
 import i.AvmException;
-import i.GenericCodedException;
+import i.GenericPredefinedException;
 import i.IBlockchainRuntime;
 import i.IInstrumentation;
 import i.InstrumentationHelpers;
 import i.InternedClasses;
-import i.JvmError;
 import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.parallel.TransactionTask;
@@ -90,7 +88,7 @@ public class DAppExecutor {
             var newRS = dapp.saveRuntimeState();
 
             if (externalState.isReadOnly() && !oldRS.isAcceptableChangeInReadOnly(newRS)) {
-                throw new GenericCodedException(Status.AccessDenied);
+                throw new GenericPredefinedException(Status.AccessDenied);
             }
 
             if (newRS.getGraph().equalGraphData(oldRS.getGraph())) {
@@ -116,17 +114,8 @@ public class DAppExecutor {
                 System.err.println("DApp invocation failed : " + e.getMessage());
                 e.printStackTrace();
             }
-            int code = Status.UnknownFailure;
-            String msg = null;
-            if (e instanceof CodedException) {
-                code = ((CodedException) e).getCode();
-                msg = e.getMessage();
-            }
-            if (msg == null) {
-                msg = Status.getMessage(code);
-            }
             long stepUsed = tx.getLimit() - threadInstrumentation.energyLeft();
-            return new Result(code, stepUsed, msg);
+            result = new Result(e.getCode(), stepUsed, e.getResultMessage());
         } finally {
             // Once we are done running this, no matter how it ended, we want to detach our thread from the DApp.
             InstrumentationHelpers.popExistingStackFrame(dapp.runtimeSetup);

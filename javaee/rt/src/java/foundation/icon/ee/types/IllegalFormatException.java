@@ -1,6 +1,6 @@
 package foundation.icon.ee.types;
 
-public class IllegalFormatException extends CodedException {
+public class IllegalFormatException extends PredefinedException {
     public IllegalFormatException() {
         this(Status.getMessage(Status.IllegalFormat));
     }
