@@ -10,7 +10,11 @@ import org.objectweb.asm.commons.ClassRemapper;
 import org.objectweb.asm.commons.SimpleRemapper;
 import org.objectweb.asm.tree.ClassNode;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.DataOutputStream;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -52,7 +56,8 @@ public class Renamer {
         byte[] mainClassBytes = classNameByteCodeMap.get(newMainClassName);
         classNameByteCodeMap.remove(newMainClassName, mainClassBytes);
 
-        return JarBuilder.buildJarForExplicitClassNamesAndBytecode(Utilities.internalNameToFullyQualifiedName(newMainClassName), mainClassBytes, classNameByteCodeMap);
+        return JarBuilder.buildJarForExplicitClassNamesAndBytecode(
+                Utilities.internalNameToFullyQualifiedName(newMainClassName), mainClassBytes, classNameByteCodeMap);
     }
 
     public static Map<String, ClassNode> sortBasedOnInnerClassLevel(Map<String, ClassNode> classMap) {
@@ -64,21 +69,22 @@ public class Renamer {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
     }
 
-    private static Map<String, ClassNode> renameClassNodes(Map<String, ClassNode> sortedClassMap, String mainClassName, String[] roots, String[] out_newMainName) throws Exception {
-        //rename classes
+    private static Map<String, ClassNode> renameClassNodes(Map<String, ClassNode> sortedClassMap, String mainClassName,
+                                                           String[] roots, String[] out_newMainName) throws Exception {
+        // rename classes
         Map<String, String> mappedNames = ClassRenamer.renameClasses(sortedClassMap, mainClassName);
-        if (out_newMainName!=null && out_newMainName.length>0) {
+        if (out_newMainName != null && out_newMainName.length > 0) {
             out_newMainName[0] = mappedNames.get(mainClassName);
         }
         Map<String, ClassNode> newClassNameMap = applyMapping(sortedClassMap, mappedNames);
 
-        //rename methods
+        // rename methods
         String newMainClassName = mappedNames.get(mainClassName);
         Map<String, ClassInfo> classInfoMap = MethodReachabilityDetector.getClassInfoMap(newMainClassName, getClassBytes(newClassNameMap), roots);
         mappedNames = MethodRenamer.renameMethods(newClassNameMap, classInfoMap, newMainClassName, roots);
         Map<String, ClassNode> newMethodNameMap = applyMapping(newClassNameMap, mappedNames);
 
-        //rename fields
+        // rename fields
         mappedNames = FieldRenamer.renameFields(newMethodNameMap, classInfoMap);
         return applyMapping(newMethodNameMap, mappedNames);
     }
@@ -125,7 +131,6 @@ public class Renamer {
         } catch (IOException e) {
             e.printStackTrace();
         }
-
         System.out.println("Successfully created jar. \n" + jarName);
     }
 }

@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 public class FieldRenamer {
-    private static boolean printEnabled = false;
+    private static final boolean printEnabled = false;
 
     public static Map<String, String> renameFields(Map<String, ClassNode> classMap, Map<String, ClassInfo> classInfoMap) {
         Map<String, String> newFieldsMappingsForRemapper = new HashMap<>();
