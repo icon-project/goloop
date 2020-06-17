@@ -1,7 +1,7 @@
 package org.aion.avm.tooling.deploy.renamer;
 
 import org.aion.avm.tooling.deploy.eliminator.ClassInfo;
-import org.aion.avm.tooling.deploy.eliminator.WhitelistPopulator;
+import org.aion.avm.tooling.deploy.eliminator.AllowlistPopulator;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodNode;
 
@@ -70,7 +70,7 @@ public class MethodRenamer {
     }
 
     private static Set<String> getUsedJclMethodList(Map<String, ClassInfo> classInfoMap) {
-        Map<String, ClassInfo> jclClassInfo = WhitelistPopulator.getWhitelistedClassInfos();
+        Map<String, ClassInfo> jclClassInfo = AllowlistPopulator.getClassInfoMap();
         Set<String> jclMethods = new HashSet<>();
 
         for (ClassInfo classInfo : classInfoMap.values()) {

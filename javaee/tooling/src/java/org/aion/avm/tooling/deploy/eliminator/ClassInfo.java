@@ -1,5 +1,6 @@
 package org.aion.avm.tooling.deploy.eliminator;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -12,7 +13,7 @@ public class ClassInfo {
     private final Map<String, MethodInfo> methodMap;
 
     // These are methods that we want to always flag as reachable for some reason, usually because they are very fundamental
-    // Examples include overridden implementations of Object.hashcode() and equals()
+    // Examples include overridden implementations of Object.hashCode() and equals()
     private final List<MethodInfo> alwaysReachables;
 
     private final Set<ClassInfo> parents = new HashSet<>();
@@ -22,6 +23,7 @@ public class ClassInfo {
 
     private final boolean isInterface;
     private final boolean isAbstract;
+    private final boolean isSystemClass;
 
     public ClassInfo(String className, boolean isInterface, boolean isAbstract,
                      Map<String, MethodInfo> methodMap, List<MethodInfo> alwaysReachables) {
@@ -30,6 +32,16 @@ public class ClassInfo {
         this.isAbstract = isAbstract;
         this.methodMap = methodMap;
         this.alwaysReachables = alwaysReachables;
+        this.isSystemClass = false;
+    }
+
+    public ClassInfo(String className, Map<String, MethodInfo> methodMap) {
+        this.className = className;
+        this.methodMap = methodMap;
+        this.isInterface = false;
+        this.isAbstract = false;
+        this.alwaysReachables = new ArrayList<>();
+        this.isSystemClass = true;
     }
 
     public void setSuperclass(ClassInfo superInfo) {
@@ -112,6 +124,10 @@ public class ClassInfo {
 
     public boolean isAbstract() {
         return isAbstract;
+    }
+
+    public boolean isSystemClass() {
+        return isSystemClass;
     }
 
     public Set<ClassInfo> getParents() {

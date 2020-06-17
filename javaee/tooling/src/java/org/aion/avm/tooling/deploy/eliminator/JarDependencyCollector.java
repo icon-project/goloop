@@ -19,7 +19,7 @@ public class JarDependencyCollector {
     }
 
     private JarDependencyCollector(Map<String, byte[]> classMap) {
-        classInfoMap = WhitelistPopulator.getWhitelistedClassInfos();
+        classInfoMap = AllowlistPopulator.getClassInfoMap();
         for (Entry<String, byte[]> entry : classMap.entrySet()) {
             visitClass(entry.getKey(), entry.getValue());
         }

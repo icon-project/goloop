@@ -84,6 +84,8 @@ public class OptimizedJarBuilder {
 
                 // Run class removal optimization again to ensure classes without any referenced methods are removed
                 optimizedDappBytes = jarOptimizer.optimize(optimizedDappBytes);
+            } catch (UnsupportedOperationException ex) {
+                throw ex;
             } catch (Exception exception) {
                 System.err.println("UnreachableMethodRemover failed, packaging code without this optimization");
                 exception.printStackTrace(System.err);
