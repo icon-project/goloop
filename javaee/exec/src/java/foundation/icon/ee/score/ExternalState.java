@@ -111,7 +111,7 @@ public class ExternalState implements IExternalState {
             return objGraph.getRawData();
         } catch (IOException e) {
             logger.debug("[getObjectGraph] {}", e.getMessage());
-            return null;
+            throw RuntimeAssertionError.unexpected(e);
         }
     }
 
