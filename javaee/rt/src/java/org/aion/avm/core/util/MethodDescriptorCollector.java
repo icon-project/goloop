@@ -10,14 +10,18 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class MethodDescriptorCollector {
-
     // this classes are omitted since no one can reference them
-    private static List<String> omittedClassNames = new ArrayList<>(Arrays.asList(
+    private static final List<String> omittedClassNames = new ArrayList<>(Arrays.asList(
             "java/lang/invoke/MethodHandles",
             "java/lang/invoke/MethodHandle",
             "java/lang/invoke/MethodType",
@@ -26,12 +30,15 @@ public class MethodDescriptorCollector {
             "java/lang/invoke/LambdaMetafactory",
             "java/lang/invoke/StringConcatFactory"));
 
+    public static List<String> getOmittedClassNames() {
+        return omittedClassNames;
+    }
 
     public static Map<String, List<String>> getClassNameMethodDescriptorMap(List<String> jclClassList, AvmSharedClassLoader classLoader) throws ClassNotFoundException {
         Map<String, List<String>> whitelistClassMethodMap = new HashMap<>();
         jclClassList.removeAll(omittedClassNames);
 
-        //only expecting shadow classes
+        // only expecting shadow classes
         jclClassList.replaceAll(s -> PackageConstants.kShadowSlashPrefix + s);
 
         for (String className : jclClassList) {
@@ -97,7 +104,9 @@ public class MethodDescriptorCollector {
                     !isPrimitive(c) &&
                     !isSupportedInternalType(c.getName())) {
                 if (method instanceof Method) {
-                    throw RuntimeAssertionError.unreachable("Transformed method " + method.getDeclaringClass() + "." + method.getName() + " should not have an unsupported parameter type: " + c.getName());
+                    throw RuntimeAssertionError.unreachable(
+                            "Transformed method " + method.getDeclaringClass() + "." + method.getName()
+                            + " should not have an unsupported parameter type: " + c.getName());
                 }
                 return false;
             }
