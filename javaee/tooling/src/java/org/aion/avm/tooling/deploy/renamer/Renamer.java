@@ -72,7 +72,7 @@ public class Renamer {
     private static Map<String, ClassNode> renameClassNodes(Map<String, ClassNode> sortedClassMap, String mainClassName,
                                                            String[] roots, String[] out_newMainName) throws Exception {
         // rename classes
-        Map<String, String> mappedNames = ClassRenamer.renameClasses(sortedClassMap, mainClassName);
+        Map<String, String> mappedNames = ClassRenamer.renameClasses(sortedClassMap);
         if (out_newMainName != null && out_newMainName.length > 0) {
             out_newMainName[0] = mappedNames.get(mainClassName);
         }

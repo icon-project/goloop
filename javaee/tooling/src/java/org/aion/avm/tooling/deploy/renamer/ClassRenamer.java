@@ -9,7 +9,7 @@ public class ClassRenamer {
     private static final boolean printEnabled = false;
 
     // NOTE package name is removed
-    public static Map<String, String> renameClasses(Map<String, ClassNode> classMap, String mainClassName) {
+    public static Map<String, String> renameClasses(Map<String, ClassNode> classMap) {
 
         // Key should be class name (slash format)
         Map<String, String> classNameMap = new HashMap<>();

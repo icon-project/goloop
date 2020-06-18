@@ -1,6 +1,5 @@
 package org.aion.avm.tooling.deploy.renamer;
 
-import org.aion.avm.tooling.deploy.eliminator.AllowlistPopulator;
 import org.aion.avm.tooling.deploy.eliminator.ClassInfo;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodNode;
@@ -14,14 +13,17 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class MethodRenamer {
-
     private static final boolean printEnabled = false;
-    // this set contains the method names that should be changed, either because they are from the Object class or are the entry points
-    // note that the descriptor for main is not checked and all main method names will be kept
-    private static final Set<String> restrictions = Set.of(new String[]{"main", "hashcode", "equals", "<init>", "<clinit>", "toString"});
+
+    // this set contains the method names that should not be changed
+    private static final Set<String> restrictions = Set.of(new String[]{
+            "hashCode", "equals", "<init>", "<clinit>", "toString",
+            "readObject", "writeObject"
+    });
     private static Set<String> jclMethods;
 
-    public static Map<String, String> renameMethods(Map<String, ClassNode> classMap, Map<String, ClassInfo> classInfoMap, String mainClass, String[] externalMethods) {
+    public static Map<String, String> renameMethods(Map<String, ClassNode> classMap, Map<String, ClassInfo> classInfoMap,
+                                                    String mainClass, String[] externalMethods) {
         // populate a list of all the method names in non-final jcl classes that are used in the jar
         jclMethods = getUsedJclMethodList(classInfoMap);
 
@@ -61,7 +63,6 @@ public class MethodRenamer {
                         newMethodMappingsForRemapper.put(makeMethodFullName(c.getClassName(), m), newName);
                         printInfo(c.getClassName(), m.name, newName);
                     }
-
                 } else {
                     printInfo(e.getKey(), m.name, newMethodMappingsForRemapper.get(makeMethodFullName(className, m)));
                 }
@@ -75,14 +76,17 @@ public class MethodRenamer {
     }
 
     private static Set<String> getUsedJclMethodList(Map<String, ClassInfo> classInfoMap) {
-        Map<String, ClassInfo> jclClassInfo = AllowlistPopulator.getClassInfoMap();
         Set<String> jclMethods = new HashSet<>();
 
         for (ClassInfo classInfo : classInfoMap.values()) {
+            if (classInfo.isSystemClass()) {
+                continue;
+            }
             List<String> parents = classInfo.getParents().stream().map(ClassInfo::getClassName).collect(Collectors.toList());
             for (String p : parents) {
-                if (jclClassInfo.containsKey(p)) {
-                    jclMethods.addAll(jclClassInfo.get(p).getMethodMap().keySet().stream().map(m -> m.substring(0, m.indexOf("("))).collect(Collectors.toSet()));
+                if (classInfoMap.containsKey(p)) {
+                    jclMethods.addAll(classInfoMap.get(p).getMethodMap().keySet().stream()
+                            .map(m -> m.substring(0, m.indexOf("("))).collect(Collectors.toSet()));
                 }
             }
         }
