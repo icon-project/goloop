@@ -21,8 +21,8 @@ const (
 )
 
 var (
-	ProtoTestTransportRequest  = protocolInfo(0xF300)
-	ProtoTestTransportResponse = protocolInfo(0xF400)
+	ProtoTestTransportRequest  = module.ProtocolInfo(0xF300)
+	ProtoTestTransportResponse = module.ProtocolInfo(0xF400)
 )
 
 type testPeerHandler struct {

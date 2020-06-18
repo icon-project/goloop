@@ -298,7 +298,7 @@ func (ph *peerHandler) setSelfPeerID(id module.PeerID) {
 	ph.self = id
 }
 
-func (ph *peerHandler) sendMessage(pi protocolInfo, m interface{}, p *Peer) {
+func (ph *peerHandler) sendMessage(pi module.ProtocolInfo, m interface{}, p *Peer) {
 	pkt := newPacket(pi, ph.encode(m), ph.self)
 	err := p.sendDirect(pkt)
 	if err != nil {

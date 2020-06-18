@@ -35,7 +35,7 @@ func newClientTestSetUp(t *testing.T, n int) *clientTestSetUp {
 			s.nms[0].Join(s.nms[i])
 			s.reactors[i] = newTReactor()
 			var err error
-			s.phs[i], err = s.nms[i].RegisterReactorForStreams("fastsync", s.reactors[i], protocols, configFastSyncPriority)
+			s.phs[i], err = s.nms[i].RegisterReactorForStreams("fastsync", 0, s.reactors[i], protocols, configFastSyncPriority)
 			assert.Nil(t, err)
 		}
 	}

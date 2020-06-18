@@ -8,12 +8,13 @@ import (
 	"github.com/icon-project/goloop/common"
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/module"
 )
 
 var msgCodec = codec.BC
 
 const (
-	protoProposal protocolInfo = iota << 8
+	protoProposal module.ProtocolInfo = iota << 8
 	protoBlockPart
 	protoVote
 	protoRoundState
@@ -21,7 +22,7 @@ const (
 )
 
 type protocolConstructor struct {
-	proto       protocolInfo
+	proto       module.ProtocolInfo
 	constructor func() message
 }
 

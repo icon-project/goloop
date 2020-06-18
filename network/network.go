@@ -1,7 +1,6 @@
 package network
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -21,7 +20,7 @@ type manager struct {
 	roleByDest map[byte]module.Role
 	//
 	protocolHandlers map[string]*protocolHandler
-	priority         map[protocolInfo]uint8
+	priority         map[module.ProtocolInfo]uint8
 
 	mtx sync.RWMutex
 
@@ -47,7 +46,7 @@ func NewManager(c module.Chain, nt module.NetworkTransport, trustSeeds string, u
 		destByRole:       make(map[module.Role]byte),
 		roleByDest:       make(map[byte]module.Role),
 		protocolHandlers: make(map[string]*protocolHandler),
-		priority:         make(map[protocolInfo]uint8),
+		priority:         make(map[module.ProtocolInfo]uint8),
 		pd:               t.pd,
 		logger:           networkLogger,
 		mtr:              mtr,
@@ -128,7 +127,7 @@ func (m *manager) Stop() error {
 	return m._stop()
 }
 
-func (m *manager) RegisterReactor(name string, r module.Reactor, spiList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
+func (m *manager) RegisterReactor(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
 	defer m.mtx.Unlock()
 	m.mtx.Lock()
 
@@ -140,9 +139,11 @@ func (m *manager) RegisterReactor(name string, r module.Reactor, spiList []modul
 		return nil, ErrAlreadyRegisteredReactor
 	}
 
-	//TODO protocolInfo management
-	pi := newProtocolInfo(byte(len(m.protocolHandlers))+1, 0)
-	ph := newProtocolHandler(m, pi, spiList, r, name, priority, m.logger)
+	if _, ok := m.priority[pi]; ok {
+		return nil, ErrAlreadyRegisteredReactor
+	}
+
+	ph := newProtocolHandler(m, pi, piList, reactor, name, priority, m.logger)
 	m.p2p.setCbFunc(pi, ph.onPacket, ph.onFailure, ph.onEvent, p2pEventJoin, p2pEventLeave, p2pEventDuplicate)
 
 	m.protocolHandlers[name] = ph
@@ -166,21 +167,21 @@ func (m *manager) UnregisterReactor(reactor module.Reactor) error {
 	return ErrNotRegisteredReactor
 }
 
-func (m *manager) hasProtocolHandler(pi protocolInfo) bool {
+func (m *manager) hasProtocolHandler(pi module.ProtocolInfo) bool {
 	defer m.mtx.RUnlock()
 	m.mtx.RLock()
 	_, ok := m.priority[pi]
 	return ok
 }
 
-func (m *manager) SetWeight(pi protocolInfo, weight int) error {
+func (m *manager) SetWeight(pi module.ProtocolInfo, weight int) error {
 	if !m.hasProtocolHandler(pi) {
 		return ErrNotRegisteredReactor
 	}
 	return m.p2p.sendQueue.SetWeight(int(pi.ID()), weight)
 }
 
-func (m *manager) unicast(pi protocolInfo, spi protocolInfo, bytes []byte, id module.PeerID) error {
+func (m *manager) unicast(pi module.ProtocolInfo, spi module.ProtocolInfo, bytes []byte, id module.PeerID) error {
 	if !m.hasProtocolHandler(pi) {
 		return ErrNotRegisteredReactor
 	}
@@ -199,7 +200,7 @@ func (m *manager) unicast(pi protocolInfo, spi protocolInfo, bytes []byte, id mo
 	return p.sendPacket(pkt)
 }
 
-func (m *manager) multicast(pi protocolInfo, spi protocolInfo, bytes []byte, role module.Role) error {
+func (m *manager) multicast(pi module.ProtocolInfo, spi module.ProtocolInfo, bytes []byte, role module.Role) error {
 	if !m.hasProtocolHandler(pi) {
 		return ErrNotRegisteredReactor
 	}
@@ -216,7 +217,7 @@ func (m *manager) multicast(pi protocolInfo, spi protocolInfo, bytes []byte, rol
 	return m.p2p.Send(pkt)
 }
 
-func (m *manager) broadcast(pi protocolInfo, spi protocolInfo, bytes []byte, bt module.BroadcastType) error {
+func (m *manager) broadcast(pi module.ProtocolInfo, spi module.ProtocolInfo, bytes []byte, bt module.BroadcastType) error {
 	if !m.hasProtocolHandler(pi) {
 		return ErrNotRegisteredReactor
 	}
@@ -324,27 +325,6 @@ func (m *manager) SetInitialRoles(roles ...module.Role) {
 		}
 	}
 	m.p2p.setRole(role)
-}
-
-type protocolInfo uint16
-
-func NewProtocolInfo(v uint16) module.ProtocolInfo {
-	return protocolInfo(v)
-}
-func newProtocolInfo(id byte, version byte) protocolInfo {
-	return protocolInfo(int(id)<<8 | int(version))
-}
-func (pi protocolInfo) ID() byte {
-	return byte(pi >> 8)
-}
-func (pi protocolInfo) Version() byte {
-	return byte(pi)
-}
-func (pi protocolInfo) String() string {
-	return fmt.Sprintf("{%#04x}", pi.Uint16())
-}
-func (pi protocolInfo) Uint16() uint16 {
-	return uint16(pi)
 }
 
 type Error struct {

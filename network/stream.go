@@ -311,12 +311,12 @@ func (s *stream) setPeerSeqByForce(seq uint16) {
 	s.peerSeq = seq
 }
 
-func registerReactorForStreams(nm module.NetworkManager, name string, ureactor module.Reactor, piList []module.ProtocolInfo, priority uint8, clock common.Clock) (module.ProtocolHandler, error) {
+func registerReactorForStreams(nm module.NetworkManager, name string, pi module.ProtocolInfo, ureactor module.Reactor, piList []module.ProtocolInfo, priority uint8, clock common.Clock) (module.ProtocolHandler, error) {
 	r := newReactor(clock, ureactor, piList[0])
 	r.Lock()
 	defer r.Unlock()
 
-	ph, err := nm.RegisterReactor(name, r, piList, priority)
+	ph, err := nm.RegisterReactor(name, pi, r, piList, priority)
 	if err != nil {
 		return nil, err
 	}
@@ -327,6 +327,6 @@ func registerReactorForStreams(nm module.NetworkManager, name string, ureactor m
 	return r, err
 }
 
-func (m *manager) RegisterReactorForStreams(name string, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
-	return registerReactorForStreams(m, name, reactor, piList, priority, &common.GoTimeClock{})
+func (m *manager) RegisterReactorForStreams(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
+	return registerReactorForStreams(m, name, pi, reactor, piList, priority, &common.GoTimeClock{})
 }

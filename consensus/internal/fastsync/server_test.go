@@ -41,7 +41,7 @@ func newServerTestSetUp(t *testing.T) *serverTestSetUp {
 	s.nm.Join(s.nm2)
 	s.r2 = newTReactor()
 	var err error
-	s.ph2, err = s.nm2.RegisterReactorForStreams("fastsync", s.r2, protocols, configFastSyncPriority)
+	s.ph2, err = s.nm2.RegisterReactorForStreams("fastsync", module.ProtoFastSync, s.r2, protocols, configFastSyncPriority)
 	assert.Nil(t, err)
 	s.m, err = NewManager(s.nm, s.bm, log.New())
 	assert.Nil(t, err)

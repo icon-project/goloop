@@ -10,8 +10,8 @@ import (
 
 type protocolHandler struct {
 	m            *manager
-	protocol     protocolInfo
-	subProtocols map[protocolInfo]module.ProtocolInfo
+	protocol     module.ProtocolInfo
+	subProtocols map[module.ProtocolInfo]module.ProtocolInfo
 	reactor      module.Reactor
 	name         string
 	priority     uint8
@@ -27,7 +27,7 @@ type protocolHandler struct {
 
 func newProtocolHandler(
 	m *manager,
-	pi protocolInfo,
+	pi module.ProtocolInfo,
 	spiList []module.ProtocolInfo,
 	r module.Reactor,
 	name string,
@@ -37,21 +37,20 @@ func newProtocolHandler(
 	ph := &protocolHandler{
 		m:            m,
 		protocol:     pi,
-		subProtocols: make(map[protocolInfo]module.ProtocolInfo),
+		subProtocols: make(map[module.ProtocolInfo]module.ProtocolInfo),
 		reactor:      r,
 		name:         name,
 		priority:     priority,
 		receiveQueue: NewQueue(DefaultReceiveQueueSize),
 		eventQueue:   NewQueue(DefaultEventQueueSize),
 		failureQueue: NewQueue(DefaultFailureQueueSize),
-		logger: phLogger,
+		logger:       phLogger,
 	}
 	for _, sp := range spiList {
-		k := protocolInfo(sp.Uint16())
-		if _, ok := ph.subProtocols[k]; ok {
+		if _, ok := ph.subProtocols[sp]; ok {
 			ph.logger.Infoln("newProtocolHandler", "already registered protocol", ph.name, ph.protocol, sp)
 		}
-		ph.subProtocols[k] = sp
+		ph.subProtocols[sp] = sp
 	}
 
 	ph.run = make(chan bool)
@@ -82,7 +81,7 @@ func (ph *protocolHandler) Term() {
 }
 
 func (ph *protocolHandler) receiveRoutine() {
-	Loop:
+Loop:
 	for {
 		select {
 		case <-ph.run:
@@ -95,8 +94,7 @@ func (ph *protocolHandler) receiveRoutine() {
 				}
 				pkt := ctx.Value(p2pContextKeyPacket).(*Packet)
 				p := ctx.Value(p2pContextKeyPeer).(*Peer)
-				pi := ph.subProtocols[pkt.subProtocol]
-				r, err := ph.reactor.OnReceive(pi, pkt.payload, p.ID())
+				r, err := ph.reactor.OnReceive(pkt.subProtocol, pkt.payload, p.ID())
 				if err != nil {
 					//ph.logger.Debugln("receiveRoutine", err)
 				}
@@ -191,7 +189,7 @@ func (ph *protocolHandler) onFailure(err error, pkt *Packet, c *Counter) {
 }
 
 func (ph *protocolHandler) eventRoutine() {
-	Loop:
+Loop:
 	for {
 		select {
 		case <-ph.run:
@@ -233,7 +231,7 @@ func (ph *protocolHandler) Unicast(pi module.ProtocolInfo, b []byte, id module.P
 	if !ph.IsRun() {
 		return NewUnicastError(ErrAlreadyClosed, id)
 	}
-	spi := protocolInfo(pi.Uint16())
+	spi := module.ProtocolInfo(pi.Uint16())
 	if _, ok := ph.subProtocols[spi]; !ok {
 		return NewUnicastError(ErrNotRegisteredProtocol, id)
 	}
@@ -250,7 +248,7 @@ func (ph *protocolHandler) Multicast(pi module.ProtocolInfo, b []byte, role modu
 	if !ph.IsRun() {
 		return NewMulticastError(ErrAlreadyClosed, role)
 	}
-	spi := protocolInfo(pi.Uint16())
+	spi := module.ProtocolInfo(pi.Uint16())
 	if _, ok := ph.subProtocols[spi]; !ok {
 		return NewMulticastError(ErrNotRegisteredProtocol, role)
 	}
@@ -267,7 +265,7 @@ func (ph *protocolHandler) Broadcast(pi module.ProtocolInfo, b []byte, bt module
 	if !ph.IsRun() {
 		return NewBroadcastError(ErrAlreadyClosed, bt)
 	}
-	spi := protocolInfo(pi.Uint16())
+	spi := module.ProtocolInfo(pi.Uint16())
 	if _, ok := ph.subProtocols[spi]; !ok {
 		return NewBroadcastError(ErrNotRegisteredProtocol, bt)
 	}

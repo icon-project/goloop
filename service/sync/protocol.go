@@ -8,7 +8,7 @@ import (
 
 // protocol message codes
 const (
-	protoHasNode protocolInfo = iota
+	protoHasNode module.ProtocolInfo = iota
 	protoResult
 	protoRequestNodeData
 	protoNodeData

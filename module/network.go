@@ -1,13 +1,15 @@
 package module
 
+import "fmt"
+
 type NetworkManager interface {
 	Start() error
 	Term()
 
 	GetPeers() []PeerID
 
-	RegisterReactor(name string, reactor Reactor, piList []ProtocolInfo, priority uint8) (ProtocolHandler, error)
-	RegisterReactorForStreams(name string, reactor Reactor, piList []ProtocolInfo, priority uint8) (ProtocolHandler, error)
+	RegisterReactor(name string, pi ProtocolInfo, reactor Reactor, piList []ProtocolInfo, priority uint8) (ProtocolHandler, error)
+	RegisterReactorForStreams(name string, pi ProtocolInfo, reactor Reactor, piList []ProtocolInfo, priority uint8) (ProtocolHandler, error)
 	UnregisterReactor(reactor Reactor) error
 
 	SetRole(version int64, role Role, peers ...PeerID)
@@ -17,7 +19,7 @@ type NetworkManager interface {
 	HasRole(role Role, id PeerID) bool
 	Roles(id PeerID) []Role
 
-    SetTrustSeeds(seeds string)
+	SetTrustSeeds(seeds string)
 	SetInitialRoles(roles ...Role)
 }
 
@@ -39,11 +41,11 @@ type BroadcastType byte
 type Role string
 
 const (
-	BROADCAST_ALL       BroadcastType = 0
-	BROADCAST_NEIGHBOR  BroadcastType = 1
-	ROLE_VALIDATOR      Role          = "validator"
-	ROLE_SEED           Role          = "seed"
-	ROLE_NORMAL         Role          = "normal"
+	BROADCAST_ALL      BroadcastType = 0
+	BROADCAST_NEIGHBOR BroadcastType = 1
+	ROLE_VALIDATOR     Role          = "validator"
+	ROLE_SEED          Role          = "seed"
+	ROLE_NORMAL        Role          = "normal"
 )
 
 type PeerID interface {
@@ -52,12 +54,31 @@ type PeerID interface {
 	String() string
 }
 
-//TODO remove interface and using uint16
-type ProtocolInfo interface {
-	ID() byte
-	Version() byte
-	String() string
-	Uint16() uint16
+const (
+	ProtoUnknown ProtocolInfo = iota << 8
+	ProtoStateSync
+	ProtoTransaction
+	ProtoConsensus
+	ProtoFastSync
+	ProtoConsensusSync
+)
+
+type ProtocolInfo uint16
+
+func NewProtocolInfo(id byte, version byte) ProtocolInfo {
+	return ProtocolInfo(int(id)<<8 | int(version))
+}
+func (pi ProtocolInfo) ID() byte {
+	return byte(pi >> 8)
+}
+func (pi ProtocolInfo) Version() byte {
+	return byte(pi)
+}
+func (pi ProtocolInfo) String() string {
+	return fmt.Sprintf("{%#04x}", pi.Uint16())
+}
+func (pi ProtocolInfo) Uint16() uint16 {
+	return uint16(pi)
 }
 
 type NetworkTransport interface {

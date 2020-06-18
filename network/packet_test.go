@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/module"
 )
 
 func generatePacket(b []byte, len int) *Packet {
@@ -23,7 +25,7 @@ func generatePacket(b []byte, len int) *Packet {
 			b = b[:len]
 		}
 	}
-	return newPacket(protocolInfo(0x0000), b, nil)
+	return newPacket(module.ProtocolInfo(0x0000), b, nil)
 }
 
 func Test_packet_PacketReader(t *testing.T) {
@@ -54,7 +56,7 @@ func Test_packet_PacketReader(t *testing.T) {
 
 func Test_packet_PacketReadWriter(t *testing.T) {
 	prw := NewPacketReadWriter()
-	pkt := newPacket(protocolInfo(0), []byte("test"), generatePeerID())
+	pkt := newPacket(module.ProtocolInfo(0), []byte("test"), generatePeerID())
 	pkt.forceSend = false
 	pkt.timestamp = time.Now()
 	assert.NoError(t, prw.WritePacket(pkt), "WritePacket fail")
@@ -65,7 +67,7 @@ func Test_packet_PacketReadWriter(t *testing.T) {
 	rpkt, err = prw.ReadPacket()
 	assert.NoError(t, err, "ReadPacket fail")
 	assert.Equal(t, pkt, rpkt, "ReadPacket")
-	prw.Reset(prw.b,prw.b)
+	prw.Reset(prw.b, prw.b)
 	rpkt, err = prw.ReadPacket()
 	assert.Error(t, err, "ReadPacket must fail(io.EOF) after Reset")
 

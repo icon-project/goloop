@@ -77,12 +77,12 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 	e := p.engine
 	if p.peerRoundState == nil {
 		p.logger.Tracef("nil peer round state\n")
-		return nil, nil
+		return 0, nil
 	}
 
 	if !p.peerRoundState.Sync {
 		p.logger.Tracef("peer round state: no sync\n")
-		return nil, nil
+		return 0, nil
 	}
 
 	if p.Height < e.Height() || (p.Height == e.Height() && e.Step() >= stepCommit) {
@@ -101,7 +101,7 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 		idx := mask.PickRandom()
 		if idx < 0 {
 			p.logger.Tracef("no bp to send: %v/%v\n", p.BlockPartsMask, partSet.GetMask())
-			return nil, nil
+			return 0, nil
 		}
 		part := partSet.GetPart(idx)
 		msg := newBlockPartMessage()
@@ -116,7 +116,7 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 		if p.Height > e.Height()+configFastSyncThreshold && p.syncer.fetchCanceler == nil {
 			p.syncer.fetchCanceler, _ = p.syncer.fsm.FetchBlocks(e.Height(), -1, p.syncer)
 		}
-		return nil, nil
+		return 0, nil
 	}
 
 	if p.Round < e.Round() && e.Step() >= stepPrecommitWait {
@@ -151,7 +151,7 @@ func (p *peer) doSync() (module.ProtocolInfo, message) {
 	}
 
 	p.logger.Tracef("nothing to send\n")
-	return nil, nil
+	return 0, nil
 }
 
 func (p *peer) sync() {
@@ -264,7 +264,7 @@ func newSyncer(e Engine, logger log.Logger, nm module.NetworkManager, bm module.
 
 func (s *syncer) Start() error {
 	var err error
-	s.ph, err = s.nm.RegisterReactor("consensus.sync", s, syncerProtocols, configSyncerPriority)
+	s.ph, err = s.nm.RegisterReactor("consensus.sync", module.ProtoConsensusSync, s, syncerProtocols, configSyncerPriority)
 	if err != nil {
 		return err
 	}

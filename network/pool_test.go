@@ -8,13 +8,15 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/icon-project/goloop/module"
 )
 
 func Test_pool_PacketPool(t *testing.T) {
 	p := NewPacketPool(2, 2)
 	pkts := make([]*Packet, 5)
 	for i := 0; i < 5; i++ {
-		pkt := newPacket(protocolInfo(i), []byte(fmt.Sprintf("test_%d", i)), nil)
+		pkt := newPacket(module.ProtocolInfo(i), []byte(fmt.Sprintf("test_%d", i)), nil)
 		pkt.hashOfPacket = uint64(i)
 		pkts[i] = pkt
 	}

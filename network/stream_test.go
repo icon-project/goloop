@@ -53,7 +53,7 @@ func (nm *tNetworkManager) GetPeers() []module.PeerID {
 	return res
 }
 
-func (nm *tNetworkManager) RegisterReactor(name string, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
+func (nm *tNetworkManager) RegisterReactor(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
 	r := &tReactorItem{
 		name:     name,
 		reactor:  reactor,
@@ -64,8 +64,8 @@ func (nm *tNetworkManager) RegisterReactor(name string, reactor module.Reactor, 
 	return &tProtocolHandler{nm, r}, nil
 }
 
-func (nm *tNetworkManager) RegisterReactorForStreams(name string, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
-	return registerReactorForStreams(nm, name, reactor, piList, priority, &common.GoTimeClock{})
+func (nm *tNetworkManager) RegisterReactorForStreams(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
+	return registerReactorForStreams(nm, name, pi, reactor, piList, priority, &common.GoTimeClock{})
 }
 
 func (nm *tNetworkManager) join(nm2 *tNetworkManager) {
@@ -177,7 +177,7 @@ func (r *tReactor) OnLeave(id module.PeerID) {
 }
 
 const (
-	pi0 protocolInfo = iota
+	pi0 module.ProtocolInfo = iota
 	pi1
 )
 
@@ -206,10 +206,10 @@ func newStreamTestSetUp(t *testing.T) *streamTestSetUp {
 	s.nm.join(s.nm2)
 	s.r = newTReactor()
 	var err error
-	s.ph, err = registerReactorForStreams(s.nm, "reactorA", s.r, pis, 1, s.clock)
+	s.ph, err = registerReactorForStreams(s.nm, "reactorA", 0, s.r, pis, 1, s.clock)
 	assert.Nil(t, err)
 	s.r2 = newTReactor()
-	s.ph2, err = s.nm2.RegisterReactor("reactorA", s.r2, pis, 1)
+	s.ph2, err = s.nm2.RegisterReactor("reactorA", 0, s.r2, pis, 1)
 	assert.Nil(t, err)
 	s.r2.useStreamMessageEvent = true
 
@@ -262,10 +262,10 @@ func TestStream_SendAndReceive(t *testing.T) {
 	nm := newTNetworkManager(createAPeerID())
 	nm2 := newTNetworkManager(createAPeerID())
 	nm.join(nm2)
-	ph, err := nm.RegisterReactorForStreams("reactorA", newTReactor(), pis, 1)
+	ph, err := nm.RegisterReactorForStreams("reactorA", 0, newTReactor(), pis, 1)
 	assert.Nil(t, err)
 	r := newTReactor()
-	_, err = nm2.RegisterReactorForStreams("reactorA", r, pis, 1)
+	_, err = nm2.RegisterReactorForStreams("reactorA", 0, r, pis, 1)
 	assert.Nil(t, err)
 	payload := []byte{0, 1}
 	ph.Unicast(pi0, payload, nm2.id)
@@ -279,10 +279,10 @@ func TestStream_SendAndReceiveComplex(t *testing.T) {
 	nm := newTNetworkManager(createAPeerID())
 	nm2 := newTNetworkManager(createAPeerID())
 	nm.join(nm2)
-	ph, err := registerReactorForStreams(nm, "reactorA", newTReactor(), pis, 1, clock)
+	ph, err := registerReactorForStreams(nm, "reactorA", 0, newTReactor(), pis, 1, clock)
 	assert.Nil(t, err)
 	r := newTReactor()
-	_, err = registerReactorForStreams(nm2, "reactorA", r, pis, 1, clock)
+	_, err = registerReactorForStreams(nm2, "reactorA", 0, r, pis, 1, clock)
 	assert.Nil(t, err)
 
 	const ITER = 100000

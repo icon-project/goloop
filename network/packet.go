@@ -22,9 +22,9 @@ const (
 //srcPeerId, castType, destInfo, TTL(0:unlimited)
 type Packet struct {
 	//header
-	protocol        protocolInfo  //2byte
-	subProtocol     protocolInfo  //2byte
-	src             module.PeerID //20byte
+	protocol        module.ProtocolInfo //2byte
+	subProtocol     module.ProtocolInfo //2byte
+	src             module.PeerID       //20byte
 	dest            byte
 	ttl             byte
 	lengthOfPayload uint32 //4byte
@@ -94,7 +94,7 @@ func (i packetExtendInfo) String() string {
 	return fmt.Sprintf("{hint:%d,len:%d}", i.hint(), i.len())
 }
 
-func NewPacket(pi protocolInfo, spi protocolInfo, payload []byte) *Packet {
+func NewPacket(pi module.ProtocolInfo, spi module.ProtocolInfo, payload []byte) *Packet {
 	lengthOfPayload := len(payload)
 	if lengthOfPayload > DefaultPacketPayloadMax {
 		lengthOfPayload = DefaultPacketPayloadMax
@@ -108,7 +108,7 @@ func NewPacket(pi protocolInfo, spi protocolInfo, payload []byte) *Packet {
 	}
 }
 
-func newPacket(spi protocolInfo, payload []byte, src module.PeerID) *Packet {
+func newPacket(spi module.ProtocolInfo, payload []byte, src module.PeerID) *Packet {
 	pkt := NewPacket(PROTO_CONTOL, spi, payload)
 	pkt.dest = p2pDestPeer
 	pkt.ttl = 1
@@ -290,9 +290,9 @@ func (p *Packet) setHeader(b []byte) ([]byte, error) {
 	}
 	p.header = b[:packetHeaderSize]
 	tb := p.header[:]
-	p.protocol = protocolInfo(binary.BigEndian.Uint16(tb[:2]))
+	p.protocol = module.ProtocolInfo(binary.BigEndian.Uint16(tb[:2]))
 	tb = tb[2:]
-	p.subProtocol = protocolInfo(binary.BigEndian.Uint16(tb[:2]))
+	p.subProtocol = module.ProtocolInfo(binary.BigEndian.Uint16(tb[:2]))
 	tb = tb[2:]
 	p.src = NewPeerID(tb[:peerIDSize])
 	tb = tb[peerIDSize:]

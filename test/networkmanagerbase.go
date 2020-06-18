@@ -17,11 +17,11 @@ func (_r *NetworkManagerBase) GetPeers() []module.PeerID {
 	panic("not implemented")
 }
 
-func (_r *NetworkManagerBase) RegisterReactor(name string, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
+func (_r *NetworkManagerBase) RegisterReactor(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
 	panic("not implemented")
 }
 
-func (_r *NetworkManagerBase) RegisterReactorForStreams(name string, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
+func (_r *NetworkManagerBase) RegisterReactorForStreams(name string, pi module.ProtocolInfo, reactor module.Reactor, piList []module.ProtocolInfo, priority uint8) (module.ProtocolHandler, error) {
 	panic("not implemented")
 }
 

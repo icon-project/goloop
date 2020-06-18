@@ -4,7 +4,7 @@ import "github.com/icon-project/goloop/module"
 
 // TODO: close message
 const (
-	protoBlockRequest protocolInfo = iota << 8
+	protoBlockRequest module.ProtocolInfo = iota << 8
 	protoBlockMetadata
 	protoBlockData
 	protoCancelAllBlockRequests

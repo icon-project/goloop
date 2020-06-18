@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/module"
 )
 
 const (
@@ -80,22 +81,22 @@ const (
 )
 
 var (
-	PROTO_CONTOL = protocolInfo(0x0000)
+	PROTO_CONTOL = module.ProtocolInfo(0x0000)
 )
 
 var (
-	PROTO_AUTH_KEY_REQ     = protocolInfo(0x0100)
-	PROTO_AUTH_KEY_RESP    = protocolInfo(0x0200)
-	PROTO_AUTH_SIGN_REQ    = protocolInfo(0x0300)
-	PROTO_AUTH_SIGN_RESP   = protocolInfo(0x0400)
-	PROTO_CHAN_JOIN_REQ    = protocolInfo(0x0500)
-	PROTO_CHAN_JOIN_RESP   = protocolInfo(0x0600)
-	PROTO_P2P_QUERY        = protocolInfo(0x0700)
-	PROTO_P2P_QUERY_RESULT = protocolInfo(0x0800)
-	PROTO_P2P_CONN_REQ     = protocolInfo(0x0900)
-	PROTO_P2P_CONN_RESP    = protocolInfo(0x0A00)
-	PROTO_P2P_RTT_REQ      = protocolInfo(0x0B00)
-	PROTO_P2P_RTT_RESP     = protocolInfo(0x0C00)
+	PROTO_AUTH_KEY_REQ     = module.ProtocolInfo(0x0100)
+	PROTO_AUTH_KEY_RESP    = module.ProtocolInfo(0x0200)
+	PROTO_AUTH_SIGN_REQ    = module.ProtocolInfo(0x0300)
+	PROTO_AUTH_SIGN_RESP   = module.ProtocolInfo(0x0400)
+	PROTO_CHAN_JOIN_REQ    = module.ProtocolInfo(0x0500)
+	PROTO_CHAN_JOIN_RESP   = module.ProtocolInfo(0x0600)
+	PROTO_P2P_QUERY        = module.ProtocolInfo(0x0700)
+	PROTO_P2P_QUERY_RESULT = module.ProtocolInfo(0x0800)
+	PROTO_P2P_CONN_REQ     = module.ProtocolInfo(0x0900)
+	PROTO_P2P_CONN_RESP    = module.ProtocolInfo(0x0A00)
+	PROTO_P2P_RTT_REQ      = module.ProtocolInfo(0x0B00)
+	PROTO_P2P_RTT_RESP     = module.ProtocolInfo(0x0C00)
 )
 
 var (

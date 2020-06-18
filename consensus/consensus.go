@@ -1527,7 +1527,7 @@ func (cs *consensus) Start() error {
 		validators = &emptyAddressIndexer{}
 	}
 
-	cs.ph, err = cs.c.NetworkManager().RegisterReactor("consensus", cs, csProtocols, configEnginePriority)
+	cs.ph, err = cs.c.NetworkManager().RegisterReactor("consensus", module.ProtoConsensus, cs, csProtocols, configEnginePriority)
 	if err != nil {
 		return err
 	}

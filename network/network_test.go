@@ -26,11 +26,11 @@ const (
 )
 
 var (
-	ProtoTestNetworkBroadcast module.ProtocolInfo = protocolInfo(0x0100)
-	ProtoTestNetworkMulticast module.ProtocolInfo = protocolInfo(0x0200)
-	ProtoTestNetworkRequest   module.ProtocolInfo = protocolInfo(0x0300)
-	ProtoTestNetworkResponse  module.ProtocolInfo = protocolInfo(0x0400)
-	ProtoTestNetworkNeighbor  module.ProtocolInfo = protocolInfo(0x0500)
+	ProtoTestNetworkBroadcast module.ProtocolInfo = module.ProtocolInfo(0x0100)
+	ProtoTestNetworkMulticast module.ProtocolInfo = module.ProtocolInfo(0x0200)
+	ProtoTestNetworkRequest   module.ProtocolInfo = module.ProtocolInfo(0x0300)
+	ProtoTestNetworkResponse  module.ProtocolInfo = module.ProtocolInfo(0x0400)
+	ProtoTestNetworkNeighbor  module.ProtocolInfo = module.ProtocolInfo(0x0500)
 )
 
 var (
@@ -55,10 +55,10 @@ type testReactor struct {
 	responseFunc func(r *testReactor, rm *testNetworkRequest, id module.PeerID) error
 }
 
-func newTestReactor(name string, nm module.NetworkManager, t *testing.T) *testReactor {
+func newTestReactor(name string, nm module.NetworkManager, pi module.ProtocolInfo, t *testing.T) *testReactor {
 	logger := nm.(*manager).logger.WithFields(log.Fields{"TestReactor": name})
 	r := &testReactor{name: name, nm: nm, logger: logger, t: t}
-	ph, err := nm.RegisterReactor(name, r, testSubProtocols, testProtoPriority)
+	ph, err := nm.RegisterReactor(name, pi, r, testSubProtocols, testProtoPriority)
 	assert.NoError(t, err, "RegisterReactor")
 	r.ph = ph
 	r.p2p = nm.(*manager).p2p
@@ -283,7 +283,7 @@ func generateNetwork(name string, port int, n int, t *testing.T, roles ...module
 		chainLogger := nodeLogger.WithFields(log.Fields{log.FieldKeyCID: "1"})
 		c := &dummyChain{nid: 1, metricCtx: context.Background(), logger: chainLogger}
 		nm := NewManager(c, nt, "", false, roles...)
-		r := newTestReactor(fmt.Sprintf("%s_%d", name, i), nm, t)
+		r := newTestReactor(fmt.Sprintf("%s_%d", name, i), nm, 0, t)
 		r.nt = nt
 		if err := r.nt.Listen(); err != nil {
 			t.Fatal(err)

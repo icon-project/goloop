@@ -117,7 +117,7 @@ func NewSyncManager(db db.Database, nm module.NetworkManager, logger log.Logger)
 	logger.Debugln("NewSyncManager")
 	m := new(Manager)
 	ph, err := nm.RegisterReactorForStreams(
-		"statesync", m, protocol, configSyncPriority)
+		"statesync", module.ProtoStateSync, m, protocol, configSyncPriority)
 	if err != nil {
 		log.Panicf("Failed to register reactor for stateSync\n")
 		return nil
