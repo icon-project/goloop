@@ -6,6 +6,7 @@ import (
 
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/errors"
+	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/scoreresult"
 )
 
@@ -94,7 +95,7 @@ func (info *Info) CheckEventData(indexed [][]byte, data [][]byte) error {
 	return m.CheckEventData(indexed, data)
 }
 
-func (info *Info) ToJSON(v int) (interface{}, error) {
+func (info *Info) ToJSON(v module.JSONVersion) (interface{}, error) {
 	jso := make([]interface{}, 0, len(info.methods))
 	for _, method := range info.methods {
 		if !method.IsExternal() && !method.IsEvent() && !method.IsFallback() {

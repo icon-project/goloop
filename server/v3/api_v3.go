@@ -19,8 +19,6 @@ import (
 	"github.com/icon-project/goloop/service/scoreresult"
 )
 
-const jsonRpcApiVersion = jsonrpc.APIVersion3
-
 const (
 	ConfigShowPatchTransaction = false
 )
@@ -50,11 +48,11 @@ func MethodRepository() *jsonrpc.MethodRepository {
 	return mr
 }
 
-func fillTransactions(blockJson interface{}, b module.Block) error {
+func fillTransactions(blockJson interface{}, b module.Block, v module.JSONVersion) error {
 	result := blockJson.(map[string]interface{})
 
 	if ConfigShowPatchTransaction {
-		if txs, err := convertTransactionList(b.PatchTransactions()); err != nil {
+		if txs, err := convertTransactionList(b.PatchTransactions(), v); err != nil {
 			return err
 		} else {
 			if len(txs) > 0 {
@@ -63,7 +61,7 @@ func fillTransactions(blockJson interface{}, b module.Block) error {
 		}
 	}
 
-	if txs, err := convertTransactionList(b.NormalTransactions()); err != nil {
+	if txs, err := convertTransactionList(b.NormalTransactions(), v); err != nil {
 		return err
 	} else {
 		result["confirmed_transaction_list"] = txs
@@ -86,12 +84,12 @@ func getLastBlock(ctx *jsonrpc.Context, _ *jsonrpc.Params) (interface{}, error) 
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 
-	blockJson, err := block.ToJSON(jsonRpcApiVersion)
+	blockJson, err := block.ToJSON(module.JSONVersion3)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 
-	if err := fillTransactions(blockJson, block); err != nil {
+	if err := fillTransactions(blockJson, block, module.JSONVersion3); err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 	return blockJson, nil
@@ -123,12 +121,12 @@ func getBlockByHeight(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 
-	blockJson, err := block.ToJSON(jsonRpcApiVersion)
+	blockJson, err := block.ToJSON(module.JSONVersion3)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 
-	if err := fillTransactions(blockJson, block); err != nil {
+	if err := fillTransactions(blockJson, block, module.JSONVersion3); err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 	return blockJson, nil
@@ -156,12 +154,12 @@ func getBlockByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, 
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 
-	blockJson, err := block.ToJSON(jsonRpcApiVersion)
+	blockJson, err := block.ToJSON(module.JSONVersion3)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 
-	if err := fillTransactions(blockJson, block); err != nil {
+	if err := fillTransactions(blockJson, block, module.JSONVersion3); err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 	return blockJson, nil
@@ -249,7 +247,7 @@ func getScoreApi(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{}, err
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
-	if jso, err := info.ToJSON(jsonRpcApiVersion); err != nil {
+	if jso, err := info.ToJSON(module.JSONVersion3); err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	} else {
 		return jso, nil
@@ -312,7 +310,7 @@ func getTransactionResult(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 	} else if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
-	res, err := receipt.ToJSON(jsonRpcApiVersion)
+	res, err := receipt.ToJSON(module.JSONVersion3)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
@@ -349,22 +347,9 @@ func getTransactionByHash(ctx *jsonrpc.Context, params *jsonrpc.Params) (interfa
 	}
 
 	tx := txInfo.Transaction()
-
-	var res interface{}
-	switch tx.Version() {
-	case module.TransactionVersion2:
-		res, err = tx.ToJSON(jsonrpc.APIVersion2)
-		if err != nil {
-			return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
-		}
-	case module.TransactionVersion3:
-		res, err = tx.ToJSON(jsonrpc.APIVersion3)
-		if err != nil {
-			return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
-		}
-	default:
-		return nil, jsonrpc.ErrorCodeSystem.Errorf(
-			"Unknown transaction version=%d", tx.Version())
+	res, err := tx.ToJSON(module.JSONVersion3)
+	if err != nil {
+		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}
 
 	blk := txInfo.Block()
@@ -611,7 +596,7 @@ func getProofForEvents(ctx *jsonrpc.Context, params *jsonrpc.Params) (interface{
 }
 
 // convert TransactionList to []Transaction
-func convertTransactionList(txs module.TransactionList) ([]interface{}, error) {
+func convertTransactionList(txs module.TransactionList, version module.JSONVersion) ([]interface{}, error) {
 	list := []interface{}{}
 
 	for it := txs.Iterator(); it.Has(); it.Next() {
@@ -619,20 +604,12 @@ func convertTransactionList(txs module.TransactionList) ([]interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		switch tx.Version() {
-		case module.TransactionVersion2:
-			res, err := tx.ToJSON(jsonrpc.APIVersion2)
-			list = append(list, res)
-			if err != nil {
-				return nil, err
-			}
-		case module.TransactionVersion3:
-			res, err := tx.ToJSON(jsonrpc.APIVersion3)
-			list = append(list, res)
-			if err != nil {
-				return nil, err
-			}
+
+		res, err := tx.ToJSON(version)
+		if err != nil {
+			return nil, err
 		}
+		list = append(list, res)
 	}
 	return list, nil
 }
@@ -765,7 +742,7 @@ func waitTransactionResultOnChannel(ctx *jsonrpc.Context, bm module.BlockManager
 		return nil, nil
 	}
 
-	res, err := receipt.ToJSON(jsonRpcApiVersion)
+	res, err := receipt.ToJSON(module.JSONVersion3)
 	if err != nil {
 		return nil, jsonrpc.ErrorCodeSystem.Wrap(err, debug)
 	}

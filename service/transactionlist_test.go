@@ -46,7 +46,7 @@ func (*mockTransaction) Version() int {
 	panic("implement me")
 }
 
-func (*mockTransaction) ToJSON(version int) (interface{}, error) {
+func (*mockTransaction) ToJSON(version module.JSONVersion) (interface{}, error) {
 	panic("implement me")
 }
 

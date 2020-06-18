@@ -78,3 +78,12 @@ const (
 	TransactionVersion2 = 2
 	TransactionVersion3 = 3
 )
+
+type JSONVersion int
+
+const (
+	JSONVersion2 JSONVersion = iota
+	JSONVersion3
+	JSONVersion3Raw
+	JSONVersionLast = JSONVersion3Raw
+)

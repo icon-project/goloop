@@ -1,7 +1,16 @@
 package v3
 
 import (
+	"github.com/icon-project/goloop/common/intconv"
 	"github.com/icon-project/goloop/server/jsonrpc"
+)
+
+const (
+	Version = 3
+)
+
+var (
+	VersionValue = jsonrpc.HexInt(intconv.FormatInt(Version))
 )
 
 type BlockHeightParam struct {

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/icon-project/goloop/common/log"
-	"github.com/icon-project/goloop/server/jsonrpc"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"math/big"
 
@@ -174,16 +173,12 @@ func (tx *transactionV2) To() module.Address {
 	return &tx.transactionV3Data.To
 }
 
-func (tx *transactionV2) ToJSON(version int) (interface{}, error) {
-	if version == jsonrpc.APIVersion2 {
-		var jso map[string]interface{}
-		if err := json.Unmarshal(tx.raw, &jso); err != nil {
-			return nil, InvalidFormat.Errorf("Unmarshal FAILs(%s)", string(tx.raw))
-		}
-		return jso, nil
-	} else {
-		return nil, InvalidVersion.Errorf("Version(%d)", version)
+func (tx *transactionV2) ToJSON(version module.JSONVersion) (interface{}, error) {
+	var jso map[string]interface{}
+	if err := json.Unmarshal(tx.raw, &jso); err != nil {
+		return nil, InvalidFormat.Errorf("Unmarshal FAILs(%s)", string(tx.raw))
 	}
+	return jso, nil
 }
 
 func (tx *transactionV2) MarshalJSON() ([]byte, error) {

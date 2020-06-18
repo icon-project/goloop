@@ -290,7 +290,7 @@ func (a *Method) IsFallback() bool {
 func (a *Method) IsEvent() bool {
 	return a.Type == Event
 }
-func (a *Method) ToJSON(version int) (interface{}, error) {
+func (a *Method) ToJSON(version module.JSONVersion) (interface{}, error) {
 	m := make(map[string]interface{})
 	m["type"] = a.Type.String()
 	m["name"] = a.Name

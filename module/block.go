@@ -30,7 +30,7 @@ type BlockData interface {
 	MarshalBody(w io.Writer) error
 	Marshal(w io.Writer) error
 
-	ToJSON(rcpVersion int) (interface{}, error)
+	ToJSON(version JSONVersion) (interface{}, error)
 }
 
 type Block interface {

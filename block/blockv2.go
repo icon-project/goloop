@@ -156,7 +156,7 @@ func (b *blockV2) _headerFormat() *blockV2HeaderFormat {
 	}
 }
 
-func (b *blockV2) ToJSON(rpcVersion int) (interface{}, error) {
+func (b *blockV2) ToJSON(version module.JSONVersion) (interface{}, error) {
 	res := make(map[string]interface{})
 	res["version"] = blockV2String
 	res["prev_block_hash"] = hex.EncodeToString(b.PrevID())

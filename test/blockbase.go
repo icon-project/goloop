@@ -69,7 +69,7 @@ func (_r *BlockBase) Marshal(w io.Writer) error {
 	panic("not implemented")
 }
 
-func (_r *BlockBase) ToJSON(rcpVersion int) (interface{}, error) {
+func (_r *BlockBase) ToJSON(version module.JSONVersion) (interface{}, error) {
 	panic("not implemented")
 }
 

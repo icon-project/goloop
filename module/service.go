@@ -41,7 +41,7 @@ type Transaction interface {
 	Hash() []byte
 	Verify() error
 	Version() int
-	ToJSON(version int) (interface{}, error)
+	ToJSON(version JSONVersion) (interface{}, error)
 	ValidateNetwork(nid int) bool
 
 	// Version() int
@@ -173,7 +173,7 @@ type Receipt interface {
 	Status() Status
 	SCOREAddress() Address
 	Check(r Receipt) error
-	ToJSON(int) (interface{}, error)
+	ToJSON(version JSONVersion) (interface{}, error)
 	LogsBloom() LogsBloom
 	EventLogIterator() EventLogIterator
 	GetProofOfEvent(int) ([][]byte, error)
@@ -233,7 +233,7 @@ type Transition interface {
 }
 
 type APIInfo interface {
-	ToJSON(int) (interface{}, error)
+	ToJSON(JSONVersion) (interface{}, error)
 }
 
 // Options for finalize

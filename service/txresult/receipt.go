@@ -18,7 +18,6 @@ import (
 	"github.com/icon-project/goloop/common/trie"
 	"github.com/icon-project/goloop/common/trie/trie_manager"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/server/jsonrpc"
 	"github.com/icon-project/goloop/service/scoreapi"
 )
 
@@ -84,7 +83,7 @@ func (log *eventLog) Data() [][]byte {
 	return log.eventLogData.Data
 }
 
-func (log *eventLog) ToJSON(v int) (*eventLogJSON, error) {
+func (log *eventLog) ToJSON(module.JSONVersion) (*eventLogJSON, error) {
 	_, pts := DecomposeEventSignature(string(log.eventLogData.Indexed[0]))
 	if len(pts)+1 != len(log.eventLogData.Indexed)+len(log.eventLogData.Data) {
 		return nil, errors.InvalidStateError.New("NumberOfParametersAreNotSameAsData")
@@ -358,58 +357,43 @@ type receiptJSON struct {
 	Status             common.HexUint16 `json:"status"`
 }
 
-func (r *receipt) ToJSON(version int) (interface{}, error) {
-	switch version {
-	case jsonrpc.APIVersion2, jsonrpc.APIVersion3:
-		var rjo receiptJSON
-		rjo.To = r.data.To
-		rjo.CumulativeStepUsed.Set(&r.data.CumulativeStepUsed.Int)
-		rjo.StepUsed.Set(&r.data.StepUsed.Int)
-		rjo.StepPrice.Set(&r.data.StepPrice.Int)
-		logs := make([]*eventLogJSON, 0, len(r.data.EventLogs))
-		for itr := r.EventLogIterator(); itr.Has(); itr.Next() {
-			item, err := itr.Get()
-			if err != nil {
-				return nil, err
-			}
-			if jso, err := item.(*eventLog).ToJSON(version); err != nil {
-				return nil, err
-			} else {
-				logs = append(logs, jso)
-			}
-		}
-		rjo.EventLogs = logs
-		rjo.LogsBloom.SetBytes(r.data.LogsBloom.Bytes())
-		if r.data.Status == module.StatusSuccess {
-			rjo.Status.Value = 1
-			rjo.SCOREAddress = r.data.SCOREAddress
-		} else {
-			rjo.Status.Value = 0
-			rjo.Failure = failureReasonByCode(r.data.Status)
-		}
-
-		rjson := make(map[string]interface{})
-		rjson["to"] = &rjo.To
-		rjson["cumulativeStepUsed"] = &rjo.CumulativeStepUsed
-		rjson["stepUsed"] = &rjo.StepUsed
-		rjson["stepPrice"] = &rjo.StepPrice
-		rjson["eventLogs"] = rjo.EventLogs
-		rjson["logsBloom"] = &rjo.LogsBloom
-		rjson["status"] = &rjo.Status
-		if rjo.Failure != nil {
-			rjson["failure"] = rjo.Failure
-		}
-		if rjo.SCOREAddress != nil {
-			rjson["scoreAddress"] = rjo.SCOREAddress
-		}
-		return rjson, nil
-	default:
-		return nil, errors.ErrIllegalArgument
+func (r *receipt) ToJSON(version module.JSONVersion) (interface{}, error) {
+	jso := map[string]interface{}{
+		"to":                 &r.data.To,
+		"cumulativeStepUsed": &r.data.CumulativeStepUsed,
+		"stepUsed":           &r.data.StepUsed,
+		"stepPrice":          &r.data.StepPrice,
+		"logsBloom":          &r.data.LogsBloom,
 	}
+
+	logs := make([]*eventLogJSON, 0, len(r.data.EventLogs))
+	for itr := r.EventLogIterator(); itr.Has(); itr.Next() {
+		item, err := itr.Get()
+		if err != nil {
+			return nil, err
+		}
+		if jso, err := item.(*eventLog).ToJSON(version); err != nil {
+			return nil, err
+		} else {
+			logs = append(logs, jso)
+		}
+	}
+	jso["eventLogs"] = logs
+
+	if r.data.Status == module.StatusSuccess {
+		jso["status"] = "0x1"
+		if r.data.SCOREAddress != nil {
+			jso["scoreAddress"] = r.data.SCOREAddress
+		}
+	} else {
+		jso["status"] = "0x0"
+		jso["failure"] = failureReasonByCode(r.data.Status)
+	}
+	return jso, nil
 }
 
 func (r *receipt) MarshalJSON() ([]byte, error) {
-	obj, err := r.ToJSON(jsonrpc.APIVersionLast)
+	obj, err := r.ToJSON(module.JSONVersionLast)
 	if err != nil {
 		return nil, err
 	}
@@ -541,7 +525,7 @@ func versionForRevision(revision int) Version {
 	}
 }
 
-func NewReceiptFromJSON(database db.Database, revision int, bs []byte, rpcVersion int) (Receipt, error) {
+func NewReceiptFromJSON(database db.Database, revision int, bs []byte) (Receipt, error) {
 	r := new(receipt)
 	r.version = versionForRevision(revision)
 	r.db = database

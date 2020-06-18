@@ -14,7 +14,6 @@ import (
 	"github.com/icon-project/goloop/common/codec"
 	"github.com/icon-project/goloop/common/db"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/server/jsonrpc"
 )
 
 func TestReceipt_JSON(t *testing.T) {
@@ -31,7 +30,7 @@ func testReceiptJSONByRev(t *testing.T, rev int) {
 	r := NewReceipt(database, rev, addr)
 	r.SetResult(module.StatusSuccess, big.NewInt(100), big.NewInt(1000), nil)
 	r.SetCumulativeStepUsed(big.NewInt(100))
-	jso, err := r.ToJSON(jsonrpc.APIVersionLast)
+	jso, err := r.ToJSON(module.JSONVersionLast)
 	if err != nil {
 		t.Errorf("Fail on ToJSON err=%+v", err)
 	}
@@ -39,7 +38,7 @@ func testReceiptJSONByRev(t *testing.T, rev int) {
 
 	fmt.Printf("JSON: %s\n", jb)
 
-	r2, err := NewReceiptFromJSON(database, rev, jb, jsonrpc.APIVersionLast)
+	r2, err := NewReceiptFromJSON(database, rev, jb)
 	if err != nil {
 		t.Errorf("Fail on Making Receipt from JSON err=%+v", err)
 		return
@@ -66,7 +65,7 @@ func Test_EventLog_BytesEncoding(t *testing.T) {
 	}
 	ev.eventLogData.Data = nil
 
-	evj, err := ev.ToJSON(jsonrpc.APIVersion3)
+	evj, err := ev.ToJSON(module.JSONVersion3)
 	assert.NoError(t, err)
 	evs, err := json.Marshal(evj)
 	t.Logf("JSON:%s", evs)
@@ -80,7 +79,7 @@ func Test_EventLog_BytesEncoding(t *testing.T) {
 	_, err = codec.UnmarshalFromBytes(bs, &ev2)
 	assert.NoError(t, err)
 
-	evj, err = ev2.ToJSON(jsonrpc.APIVersion3)
+	evj, err = ev2.ToJSON(module.JSONVersion3)
 	assert.NoError(t, err)
 	evs2, err := json.Marshal(evj)
 	t.Logf("JSON:%s", evs2)

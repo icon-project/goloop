@@ -96,7 +96,7 @@ func (g *genesisV3) ID() []byte {
 	return g.txHash
 }
 
-func (g *genesisV3) ToJSON(version int) (interface{}, error) {
+func (g *genesisV3) ToJSON(version module.JSONVersion) (interface{}, error) {
 	var jso map[string]interface{}
 	if err := json.Unmarshal(g.raw, &jso); err != nil {
 		return nil, err

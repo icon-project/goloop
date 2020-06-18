@@ -173,7 +173,7 @@ func (b *blockV1) Marshal(w io.Writer) error {
 	return nil
 }
 
-func (b *blockV1) ToJSON(rcpVersion int) (interface{}, error) {
+func (b *blockV1) ToJSON(version module.JSONVersion) (interface{}, error) {
 	return nil, nil
 }
 

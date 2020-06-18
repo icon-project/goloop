@@ -424,7 +424,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 				return err
 			}
 			if param.Version == "" {
-				param.Version = jsonrpc.HexInt(intconv.FormatInt(jsonrpc.APIVersion3))
+				param.Version = v3.VersionValue
 			}
 			if param.FromAddress == "" {
 				param.FromAddress = jsonrpc.Address(rpcWallet.Address().String())
@@ -470,7 +470,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 				return err
 			}
 			param := &v3.TransactionParam{
-				Version:     jsonrpc.HexInt(intconv.FormatInt(jsonrpc.APIVersion3)),
+				Version:     v3.VersionValue,
 				FromAddress: jsonrpc.Address(rpcWallet.Address().String()),
 				ToAddress:   jsonrpc.Address(cmd.Flag("to").Value.String()),
 				Value:       jsonrpc.HexInt(value.String()),
@@ -514,7 +514,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 			}
 
 			param := &v3.TransactionParam{
-				Version:     jsonrpc.HexInt(intconv.FormatInt(jsonrpc.APIVersion3)),
+				Version:     v3.VersionValue,
 				FromAddress: jsonrpc.Address(rpcWallet.Address().String()),
 				ToAddress:   jsonrpc.Address(cmd.Flag("to").Value.String()),
 				StepLimit:   jsonrpc.HexInt(intconv.FormatInt(stepLimit)),
@@ -577,7 +577,7 @@ func NewSendTxCmd(parentCmd *cobra.Command, parentVc *viper.Viper) *cobra.Comman
 				return err
 			}
 			param := &v3.TransactionParam{
-				Version:     jsonrpc.HexInt(intconv.FormatInt(jsonrpc.APIVersion3)),
+				Version:     v3.VersionValue,
 				FromAddress: jsonrpc.Address(rpcWallet.Address().String()),
 				ToAddress:   jsonrpc.Address(cmd.Flag("to").Value.String()),
 				StepLimit:   jsonrpc.HexInt(intconv.FormatInt(stepLimit)),

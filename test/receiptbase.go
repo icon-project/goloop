@@ -41,7 +41,7 @@ func (_r *ReceiptBase) Check(r module.Receipt) error {
 	panic("not implemented")
 }
 
-func (_r *ReceiptBase) ToJSON(int) (interface{}, error) {
+func (_r *ReceiptBase) ToJSON(version module.JSONVersion) (interface{}, error) {
 	panic("not implemented")
 }
 

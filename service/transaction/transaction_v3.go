@@ -10,7 +10,6 @@ import (
 	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/common/log"
 	"github.com/icon-project/goloop/module"
-	"github.com/icon-project/goloop/server/jsonrpc"
 	"github.com/icon-project/goloop/service/contract"
 	"github.com/icon-project/goloop/service/scoreresult"
 	"github.com/icon-project/goloop/service/state"
@@ -322,41 +321,38 @@ func (tx *transactionV3) To() module.Address {
 	return &tx.transactionV3Data.To
 }
 
-func (tx *transactionV3) ToJSON(version int) (interface{}, error) {
-	if version == jsonrpc.APIVersion3 {
-		jso := map[string]interface{}{
-			"version":   &tx.transactionV3Data.Version,
-			"from":      &tx.transactionV3Data.From,
-			"to":        &tx.transactionV3Data.To,
-			"stepLimit": &tx.transactionV3Data.StepLimit,
-			"timestamp": &tx.transactionV3Data.TimeStamp,
-			"signature": &tx.transactionV3Data.Signature,
-		}
-		if tx.transactionV3Data.Value != nil {
-			jso["value"] = tx.transactionV3Data.Value
-		}
-		if tx.transactionV3Data.NID != nil {
-			jso["nid"] = tx.transactionV3Data.NID
-		}
-		if tx.transactionV3Data.Nonce != nil {
-			jso["nonce"] = tx.transactionV3Data.Nonce
-		}
-		if tx.transactionV3Data.DataType != nil {
-			jso["dataType"] = *tx.transactionV3Data.DataType
-		}
-		if tx.transactionV3Data.Data != nil {
-			jso["data"] = json.RawMessage(tx.transactionV3Data.Data)
-		}
-		jso["txHash"] = common.HexBytes(tx.ID())
-
-		return jso, nil
-	} else {
-		return nil, InvalidVersion.Errorf("Version(%d)", version)
+func (tx *transactionV3) ToJSON(version module.JSONVersion) (interface{}, error) {
+	jso := map[string]interface{}{
+		"version":   &tx.transactionV3Data.Version,
+		"from":      &tx.transactionV3Data.From,
+		"to":        &tx.transactionV3Data.To,
+		"stepLimit": &tx.transactionV3Data.StepLimit,
+		"timestamp": &tx.transactionV3Data.TimeStamp,
+		"signature": &tx.transactionV3Data.Signature,
 	}
+	if tx.transactionV3Data.Value != nil {
+		jso["value"] = tx.transactionV3Data.Value
+	}
+	if tx.transactionV3Data.NID != nil {
+		jso["nid"] = tx.transactionV3Data.NID
+	}
+	if tx.transactionV3Data.Nonce != nil {
+		jso["nonce"] = tx.transactionV3Data.Nonce
+	}
+	if tx.transactionV3Data.DataType != nil {
+		jso["dataType"] = *tx.transactionV3Data.DataType
+	}
+	if tx.transactionV3Data.Data != nil {
+		jso["data"] = json.RawMessage(tx.transactionV3Data.Data)
+	}
+	jso["txHash"] = common.HexBytes(tx.ID())
+
+	return jso, nil
+
 }
 
 func (tx *transactionV3) MarshalJSON() ([]byte, error) {
-	if obj, err := tx.ToJSON(jsonrpc.APIVersionLast); err != nil {
+	if obj, err := tx.ToJSON(module.JSONVersionLast); err != nil {
 		return nil, scoreresult.WithStatus(err, module.StatusIllegalFormat)
 	} else {
 		return json.Marshal(obj)

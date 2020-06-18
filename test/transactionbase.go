@@ -33,7 +33,7 @@ func (_r *TransactionBase) Version() int {
 	panic("not implemented")
 }
 
-func (_r *TransactionBase) ToJSON(version int) (interface{}, error) {
+func (_r *TransactionBase) ToJSON(version module.JSONVersion) (interface{}, error) {
 	panic("not implemented")
 }
 
