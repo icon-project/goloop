@@ -10,6 +10,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -30,7 +31,7 @@ public class AllowlistProvider {
             String associatedJclName = mapClassName(c.getName());
             Class<?> jclClass = Class.forName(associatedJclName);
 
-            List<MethodDescriptor> declaredMethodList = Stream.of(c.getDeclaredMethods(), c.getDeclaredConstructors())
+            List<MethodDescriptor> declaredMethodList = Stream.of(c.getMethods(), c.getDeclaredConstructors())
                     .flatMap(Stream::of)
                     .filter(method -> isSupportedExecutable(method) && hasValidParamTypes(method))
                     .map(AllowlistProvider::generateMethodDescriptor)
@@ -48,6 +49,10 @@ public class AllowlistProvider {
 
         List<String> jclClassNames = NodeEnvironment.singleton.getJclSlashClassNames();
         jclClassNames.removeAll(MethodDescriptorCollector.getOmittedClassNames());
+        jclClassNames.removeAll(Arrays.asList(
+                "score/RevertException",
+                "score/ScoreRevertException"
+        ));
         jclClassNames.replaceAll(s -> PackageConstants.kShadowSlashPrefix + s);
 
         for (String className : jclClassNames) {
@@ -135,31 +140,36 @@ public class AllowlistProvider {
         StringBuilder builder = new StringBuilder();
         builder.append(DescriptorParser.ARGS_START);
         for (Class<?> param : parameterTypes) {
-            writeClass(builder, param);
+            writeClass(builder, param, method);
         }
         builder.append(DescriptorParser.ARGS_END);
         if (method instanceof Method) {
-            writeClass(builder, ((Method) method).getReturnType());
+            writeClass(builder, ((Method) method).getReturnType(), method);
         } else {
             builder.append("V");
         }
         return builder.toString();
     }
 
-    private static void writeClass(StringBuilder builder, Class<?> clazz) {
+    private static void writeClass(StringBuilder builder, Class<?> clazz, Executable method) {
         if (clazz.isArray()) {
             builder.append(DescriptorParser.ARRAY);
-            writeClass(builder, clazz.getComponentType());
+            writeClass(builder, clazz.getComponentType(), method);
         } else if (!clazz.isPrimitive()) {
             String className = clazz.getName();
             if (isArrayWrapperClass(className)) {
                 builder.append(ArrayClassNameMapper.getOriginalNameFromWrapper(Utilities.fullyQualifiedNameToInternalName(className)));
             } else {
+                String mappedClassName = mapClassName(className);
                 if ((PackageConstants.kInternalDotPrefix + "IObjectArray").equals(className)) {
                     builder.append(DescriptorParser.ARRAY);
+                    if ("s.java.util.Map".equals(method.getDeclaringClass().getName())
+                            && "avm_ofEntries".equals(method.getName())) {
+                        mappedClassName = "java.util.Map$Entry";
+                    }
                 }
                 builder.append(DescriptorParser.OBJECT_START);
-                builder.append(Utilities.fullyQualifiedNameToInternalName(mapClassName(className)));
+                builder.append(Utilities.fullyQualifiedNameToInternalName(mappedClassName));
                 builder.append(DescriptorParser.OBJECT_END);
             }
         } else if (Byte.TYPE == clazz) {
