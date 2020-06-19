@@ -64,8 +64,7 @@ public class DAppCreator {
 
             // Force the classes in the dapp to initialize so that the <clinit> is run (since we already saved the version without).
             IInstrumentation threadInstrumentation = IInstrumentation.attachedThreadInstrumentation.get();
-            result = runClinitAndBillSender(conf.enableVerboseContractErrors,
-                    dapp, threadInstrumentation, externalState, dappAddress, tx);
+            result = runClinitAndCreateMainInstance(dapp, threadInstrumentation, externalState, tx);
         } catch (AvmException e) {
             if (conf.enableVerboseContractErrors) {
                 System.err.println("DApp deployment failed : " + e.getMessage());
@@ -84,28 +83,23 @@ public class DAppCreator {
     }
 
     /**
-     * Initializes all of the classes in the dapp by running their clinit code and then bills the
-     * sender for writing the create data to the blockchain and refunds them accordingly.
+     * Initializes all of the classes in the dapp by running their clinit code.
      *
      * This method handles the following exceptions and ensures that if any of them are thrown
      * that they will be represented by the returned result (any other exceptions thrown here will
      * not be handled):
      * {@link OutOfStackException}, and {@link GenericPredefinedException}.
      *
-     * @param verboseErrors Whether or not to report errors to stderr.
      * @param dapp The dapp to run.
      * @param threadInstrumentation The thread instrumentation.
      * @param externalState The state of the world.
-     * @param dappAddress The address of the contract.
      * @param tx The transaction.
      * @return the result of initializing and billing the sender.
      */
-    private static Result runClinitAndBillSender(boolean verboseErrors,
-                                                 LoadedDApp dapp,
-                                                 IInstrumentation threadInstrumentation,
-                                                 IExternalState externalState,
-                                                 Address dappAddress,
-                                                 Transaction tx) throws AvmThrowable {
+    private static Result runClinitAndCreateMainInstance(LoadedDApp dapp,
+                                                         IInstrumentation threadInstrumentation,
+                                                         IExternalState externalState,
+                                                         Transaction tx) throws AvmThrowable {
         try {
             dapp.forceInitializeAllClasses();
             dapp.initMainInstance(tx.getParams());
