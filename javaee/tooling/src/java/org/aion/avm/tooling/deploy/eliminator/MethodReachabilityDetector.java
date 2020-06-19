@@ -54,16 +54,14 @@ public class MethodReachabilityDetector {
             }
             for (MethodInvocation invocation : methodInfo.methodInvocations) {
                 ClassInfo ownerClass = classInfoMap.get(invocation.className);
-                if (null == ownerClass) {
-                    continue;
-                }
-                MethodInfo calledMethod = ownerClass.getMethodMap().get(invocation.methodIdentifier);
-                if (ownerClass.isSystemClass()) {
-                    if (null == calledMethod) {
-                        throw new UnsupportedOperationException(
-                                "Unsupported JCL method detected: " + invocation.className + "#" + invocation.methodIdentifier);
+                if (null != ownerClass) {
+                    MethodInfo calledMethod = ownerClass.getMethodMap().get(invocation.methodIdentifier);
+                    if (ownerClass.isSystemClass()) {
+                        if (null == calledMethod) {
+                            throw new UnsupportedOperationException(
+                                    "Unsupported JCL method detected: " + invocation.className + "#" + invocation.methodIdentifier);
+                        }
                     }
-                } else {
                     switch (invocation.invocationOpcode) {
                         case Opcodes.INVOKESPECIAL:
                             // this is the easy case: we just mark the methodInfo as reachable and enqueue it

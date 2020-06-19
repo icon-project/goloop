@@ -1,6 +1,7 @@
 package org.aion.avm.tooling.deploy.eliminator;
 
 import org.aion.avm.core.util.AllowlistProvider;
+import org.aion.avm.utilities.Utilities;
 
 import java.util.HashMap;
 import java.util.List;
@@ -12,14 +13,15 @@ public class AllowlistPopulator {
         Map<String, ClassInfo> classInfoMap = new HashMap<>();
 
         try {
-            Map<String, List<AllowlistProvider.MethodDescriptor>> allowlist = AllowlistProvider.getClassLibraryMap();
-            allowlist.forEach((className, methodDescriptors) -> {
+            Map<Class<?>, List<AllowlistProvider.MethodDescriptor>> allowlist = AllowlistProvider.getClassLibraryMap();
+            allowlist.forEach((clazz, methodDescriptors) -> {
                 Map<String, MethodInfo> methodMap = new HashMap<>();
                 methodDescriptors.forEach(md -> {
                     String methodName = md.name + md.parameters;
                     methodMap.put(methodName, new MethodInfo(methodName, md.isStatic));
                 });
-                ClassInfo ci = new ClassInfo(className, methodMap);
+                String className = Utilities.fullyQualifiedNameToInternalName(clazz.getName());
+                ClassInfo ci = new ClassInfo(className, methodMap, clazz.getModifiers());
                 classInfoMap.put(className, ci);
             });
         } catch (ClassNotFoundException e) {

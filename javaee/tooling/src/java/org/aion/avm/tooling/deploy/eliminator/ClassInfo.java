@@ -1,5 +1,6 @@
 package org.aion.avm.tooling.deploy.eliminator;
 
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -35,11 +36,11 @@ public class ClassInfo {
         this.isSystemClass = false;
     }
 
-    public ClassInfo(String className, Map<String, MethodInfo> methodMap) {
+    public ClassInfo(String className, Map<String, MethodInfo> methodMap, int modifiers) {
         this.className = className;
         this.methodMap = methodMap;
-        this.isInterface = false;
-        this.isAbstract = false;
+        this.isInterface = Modifier.isInterface(modifiers);
+        this.isAbstract = Modifier.isAbstract(modifiers) && !isInterface;
         this.alwaysReachables = new ArrayList<>();
         this.isSystemClass = true;
     }

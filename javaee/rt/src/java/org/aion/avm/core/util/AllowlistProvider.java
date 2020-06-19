@@ -23,8 +23,8 @@ public class AllowlistProvider {
     /**
      * @return Map of supported Class objects to a list of supported methods.
      */
-    public static Map<String, List<MethodDescriptor>> getClassLibraryMap() throws ClassNotFoundException {
-        Map<String, List<MethodDescriptor>> classDeclaredMethodMap = new HashMap<>();
+    public static Map<Class<?>, List<MethodDescriptor>> getClassLibraryMap() throws ClassNotFoundException {
+        Map<Class<?>, List<MethodDescriptor>> classDeclaredMethodMap = new HashMap<>();
         List<Class<?>> shadowClasses = getCallableShadowClasses();
 
         for (Class<?> c : shadowClasses) {
@@ -37,9 +37,7 @@ public class AllowlistProvider {
                     .map(AllowlistProvider::generateMethodDescriptor)
                     .sorted(Comparator.comparing(m -> m.parameters))
                     .collect(Collectors.toList());
-            classDeclaredMethodMap.put(
-                    Utilities.fullyQualifiedNameToInternalName(jclClass.getName()),
-                    declaredMethodList);
+            classDeclaredMethodMap.put(jclClass, declaredMethodList);
         }
         return classDeclaredMethodMap;
     }
