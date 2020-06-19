@@ -19,8 +19,12 @@ import org.aion.avm.StorageFees;
 import org.aion.avm.core.persistence.LoadedDApp;
 import org.aion.avm.core.types.TransformedDappModule;
 import org.aion.parallel.TransactionTask;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DAppCreator {
+    private static final Logger logger = LoggerFactory.getLogger(DAppCreator.class);
+
     public static Result create(IExternalState externalState,
                                 TransactionTask task,
                                 Address senderAddress,
@@ -66,8 +70,8 @@ public class DAppCreator {
             IInstrumentation threadInstrumentation = IInstrumentation.attachedThreadInstrumentation.get();
             result = runClinitAndCreateMainInstance(dapp, threadInstrumentation, externalState, tx);
         } catch (AvmException e) {
+            logger.trace("DApp deployment failed: {}", e.getMessage());
             if (conf.enableVerboseContractErrors) {
-                System.err.println("DApp deployment failed : " + e.getMessage());
                 e.printStackTrace();
             }
             long stepUsed = (runtimeSetup != null) ?

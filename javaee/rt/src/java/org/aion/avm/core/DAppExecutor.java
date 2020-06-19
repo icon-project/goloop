@@ -110,8 +110,8 @@ public class DAppExecutor {
                 prevState.getSaveItems().put(dappAddress, new ReentrantDAppStack.SaveItem(dapp, newRS));
             }
         } catch (AvmException e) {
+            logger.trace("DApp invocation failed: {}", e.getMessage());
             if (conf.enableVerboseContractErrors) {
-                System.err.println("DApp invocation failed : " + e.getMessage());
                 e.printStackTrace();
             }
             long stepUsed = tx.getLimit() - threadInstrumentation.energyLeft();
@@ -121,7 +121,6 @@ public class DAppExecutor {
             InstrumentationHelpers.popExistingStackFrame(dapp.runtimeSetup);
             // This state was only here while we were running, in case someone else needed to change it so now we can pop it.
             task.getReentrantDAppStack().popState();
-
             // Re-attach the previously detached IBlockchainRuntime instance.
             dapp.attachBlockchainRuntime(previousRuntime);
         }
