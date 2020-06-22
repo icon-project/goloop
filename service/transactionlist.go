@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/icon-project/goloop/common/crypto"
 	"github.com/icon-project/goloop/module"
 	"github.com/icon-project/goloop/service/transaction"
 )
@@ -84,6 +85,9 @@ func (t *txElement) GetBloom() (uint, *big.Int) {
 func BloomContains(bits uint, value *big.Int, id []byte) bool {
 	var filter big.Int
 	var result big.Int
+	if len(id) < crypto.HashLen {
+		id = crypto.SHA3Sum256(id)
+	}
 	mask := (1 << bits) - 1
 	idx1 := int(binary.BigEndian.Uint16(id[:])) & mask
 	idx2 := int(binary.BigEndian.Uint16(id[2:])) & mask
@@ -115,6 +119,9 @@ func (b *txBloom) Add(id []byte) *txBloom {
 			ptr = ptr.next
 		}
 		return new(txBloom).Add(id)
+	}
+	if len(id) < crypto.HashLen {
+		id = crypto.SHA3Sum256(id)
 	}
 	idx1 := int(binary.BigEndian.Uint16(id[:])) & (txBloomSize - 1)
 	idx2 := int(binary.BigEndian.Uint16(id[2:])) & (txBloomSize - 1)
