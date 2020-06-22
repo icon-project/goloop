@@ -106,7 +106,7 @@ func NewManager(chain module.Chain, nm module.NetworkManager,
 
 func (m *manager) Start() {
 	if m.txReactor != nil {
-		m.txReactor.Start()
+		m.txReactor.Start(m.chain.Wallet())
 	}
 }
 
@@ -376,7 +376,7 @@ func (m *manager) SendTransactionAndWait(txi interface{}) ([]byte, <-chan interf
 	}
 	chn, err := m.tm.AddAndWait(newTx)
 	if err == nil {
-		if err := m.txReactor.PropagateTransaction(ProtocolPropagateTransaction, newTx); err != nil {
+		if err := m.txReactor.PropagateTransaction(newTx); err != nil {
 			if !network.NotAvailableError.Equals(err) {
 				m.log.Tracef("FAIL to propagate tx err=%+v", err)
 			}
@@ -402,7 +402,7 @@ func (m *manager) SendTransaction(txi interface{}) ([]byte, error) {
 		return nil, err
 	}
 
-	if err := m.txReactor.PropagateTransaction(ProtocolPropagateTransaction, newTx); err != nil {
+	if err := m.txReactor.PropagateTransaction(newTx); err != nil {
 		if !network.NotAvailableError.Equals(err) {
 			m.log.Tracef("FAIL to propagate tx err=%+v", err)
 		}

@@ -1,6 +1,8 @@
 package service
 
 import (
+	"encoding/binary"
+	"math/big"
 	"time"
 
 	"github.com/icon-project/goloop/module"
@@ -8,7 +10,10 @@ import (
 )
 
 const (
-	txBucketCount = 256
+	txBucketCount   = 256
+	txBloomBits     = 12
+	txBloomSize     = 2 << txBloomBits
+	txCountForBloom = 256
 )
 
 func indexAndBucketKeyFromKey(k string) (int, string) {
@@ -32,6 +37,8 @@ type txElement struct {
 	list               *transactionList
 	listNext, listPrev *txElement
 	srcNext, srcPrev   *txElement
+
+	bloom *txBloom
 }
 
 func (t *txElement) Next() *txElement {
@@ -55,6 +62,76 @@ func (t *txElement) TimeStamp() int64 {
 
 func (t *txElement) Value() transaction.Transaction {
 	return t.value
+}
+
+func (t *txElement) updateBloom() {
+	if t.bloom != nil {
+		return
+	}
+	var bloom *txBloom
+	if t.listPrev != nil {
+		bloom = t.listPrev.bloom
+	} else {
+		bloom = new(txBloom)
+	}
+	t.bloom = bloom.Add(t.value.ID())
+}
+
+func (t *txElement) GetBloom() (uint, *big.Int) {
+	return t.bloom.GetBloom()
+}
+
+func BloomContains(bits uint, value *big.Int, id []byte) bool {
+	var filter big.Int
+	var result big.Int
+	mask := (1 << bits) - 1
+	idx1 := int(binary.BigEndian.Uint16(id[:])) & mask
+	idx2 := int(binary.BigEndian.Uint16(id[2:])) & mask
+	idx3 := int(binary.BigEndian.Uint16(id[4:])) & mask
+	filter.SetBit(&filter, idx1, 1)
+	filter.SetBit(&filter, idx2, 1)
+	filter.SetBit(&filter, idx3, 1)
+	result.And(&filter, value)
+	return result.Cmp(&filter) == 0
+}
+
+func (t *txElement) Contained(bits uint, value *big.Int) bool {
+	return BloomContains(bits, value, t.value.ID())
+}
+
+type txBloom struct {
+	count int
+	value big.Int
+	next  *txBloom
+}
+
+func (b *txBloom) Add(id []byte) *txBloom {
+	if b.count >= txCountForBloom {
+		ptr := b.next
+		for ptr != nil {
+			if ptr.count < txCountForBloom {
+				return ptr.Add(id)
+			}
+			ptr = ptr.next
+		}
+		return new(txBloom).Add(id)
+	}
+	idx1 := int(binary.BigEndian.Uint16(id[:])) & (txBloomSize - 1)
+	idx2 := int(binary.BigEndian.Uint16(id[2:])) & (txBloomSize - 1)
+	idx3 := int(binary.BigEndian.Uint16(id[4:])) & (txBloomSize - 1)
+	b.value.SetBit(&b.value, idx1, 1)
+	b.value.SetBit(&b.value, idx2, 1)
+	b.value.SetBit(&b.value, idx3, 1)
+	b.count += 1
+	return b
+}
+
+func (b *txBloom) GetBloom() (uint, *big.Int) {
+	value := new(big.Int)
+	for ptr := b; ptr != nil; ptr = ptr.next {
+		value.Or(value, &ptr.value)
+	}
+	return txBloomBits, value
 }
 
 func (l *transactionList) Add(tx transaction.Transaction, ts bool) error {
@@ -119,6 +196,7 @@ func (l *transactionList) Add(tx transaction.Transaction, ts bool) error {
 		}
 		l.listBack = e
 	}
+	e.updateBloom()
 	l.size += 1
 	return nil
 }
@@ -189,6 +267,13 @@ func (l *transactionList) HasTx(id []byte) bool {
 	tidBk, tidSlot := indexAndBucketKeyFromKey(string(id))
 	_, ok := l.idMap[tidBk][tidSlot]
 	return ok
+}
+
+func (l *transactionList) GetBloom() (uint, *big.Int) {
+	if l.listFront == nil {
+		return 0, new(big.Int)
+	}
+	return l.listFront.GetBloom()
 }
 
 func newTransactionList() *transactionList {

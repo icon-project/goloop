@@ -1,6 +1,7 @@
 package service
 
 import (
+	"math/big"
 	"sync"
 	"sync/atomic"
 
@@ -34,16 +35,12 @@ type TransactionManager struct {
 	txWaiters map[hashValue][]chan<- interface{}
 }
 
-func (m *TransactionManager) OnDrop(id []byte, err error) {
+func (m *TransactionManager) OnTxDrop(id []byte, err error) {
 	if err == nil {
-		m.log.Panic("No reason to drop the tx=<%#x>", id)
+		m.log.Panic("no reason to drop the tx=<%#x>", id)
 		return
 	}
 	m.notifyFailure(id, err)
-}
-
-func (m *TransactionManager) OnCommit(id []byte) {
-	// do nothing
 }
 
 func (m *TransactionManager) getTxPool(g module.TransactionGroup) *TransactionPool {
@@ -230,6 +227,25 @@ func (m *TransactionManager) Wait(wc state.WorldContext, cb func()) bool {
 	}
 	m.callback = cb
 	return true
+}
+
+func (m *TransactionManager) GetBloomOf(g module.TransactionGroup) (uint, *big.Int) {
+	pool := m.getTxPool(g)
+	return pool.GetBloom()
+}
+
+func (m *TransactionManager) FilterTransactions(g module.TransactionGroup, bits uint, value *big.Int, max int) []module.Transaction {
+	pool := m.getTxPool(g)
+	return pool.FilterTransactions(bits, value, max)
+}
+
+func (m *TransactionManager) Logger() log.Logger {
+	return m.log
+}
+
+func (m *TransactionManager) SetPoolCapacityMonitor(pcm PoolCapacityMonitor) {
+	m.patchTxPool.SetPoolCapacityMonitor(pcm)
+	m.normalTxPool.SetPoolCapacityMonitor(pcm)
 }
 
 func NewTransactionManager(nid int, tsc *TxTimestampChecker, ptp *TransactionPool, ntp *TransactionPool, bk db.Bucket, logger log.Logger) *TransactionManager {

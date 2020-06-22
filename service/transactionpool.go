@@ -1,6 +1,7 @@
 package service
 
 import (
+	"math/big"
 	"sync"
 	"time"
 
@@ -25,19 +26,23 @@ type Monitor interface {
 	OnCommit(id []byte, ts time.Time, d time.Duration)
 }
 
-type TxManager interface {
-	OnDrop(id []byte, err error)
-	OnCommit(id []byte)
+type TxWaiterManager interface {
+	OnTxDrop(id []byte, err error)
 }
 
-type dummyTxManager struct {
-}
+type dummyTxWaiterManager struct{}
 
-func (d dummyTxManager) OnDrop(id []byte, err error) {
+func (d dummyTxWaiterManager) OnTxDrop(id []byte, err error) {
 	// do nothing
 }
 
-func (d dummyTxManager) OnCommit(id []byte) {
+type PoolCapacityMonitor interface {
+	OnPoolCapacityUpdated(group module.TransactionGroup, size, used int)
+}
+
+type dummyPoolCapacityMonitor struct{}
+
+func (m dummyPoolCapacityMonitor) OnPoolCapacityUpdated(group module.TransactionGroup, size, used int) {
 	// do nothing
 }
 
@@ -51,8 +56,9 @@ type TransactionPool struct {
 
 	mutex sync.Mutex
 
-	txm     TxManager
+	txm     TxWaiterManager
 	monitor Monitor
+	pcm     PoolCapacityMonitor
 	log     log.Logger
 }
 
@@ -62,8 +68,9 @@ func NewTransactionPool(group module.TransactionGroup, size int, txdb db.Bucket,
 		size:    size,
 		txdb:    txdb,
 		list:    newTransactionList(),
-		txm:     dummyTxManager{},
+		txm:     dummyTxWaiterManager{},
 		monitor: m,
+		pcm:     dummyPoolCapacityMonitor{},
 		log:     log,
 	}
 	return pool
@@ -85,11 +92,13 @@ func (tp *TransactionPool) RemoveOldTXs(bts int64) {
 					"ExpiredTransaction(diff=%s)", TimestampToDuration(bts-tx.Timestamp()))
 			}
 			tp.log.Debugf("DROP TX: id=0x%x reason=%v", tx.ID(), iter.err)
-			tp.txm.OnDrop(tx.ID(), iter.err)
+			tp.txm.OnTxDrop(tx.ID(), iter.err)
 			tp.monitor.OnDropTx(len(tx.Bytes()), direct)
 		}
 		iter = next
 	}
+
+	tp.pcm.OnPoolCapacityUpdated(tp.group, tp.size, tp.list.Len())
 }
 
 // It returns all candidates for a negative integer n.
@@ -188,7 +197,7 @@ func (tp *TransactionPool) Candidate(wc state.WorldContext, maxBytes int, maxCou
 						tp.log.Panicf("No reason to drop the tx=<%#x>", tx.ID())
 					}
 					tp.log.Debugf("DROP TX: id=0x%x reason=%v", tx.ID(), e.err)
-					tp.txm.OnDrop(tx.ID(), e.err)
+					tp.txm.OnTxDrop(tx.ID(), e.err)
 					tp.monitor.OnDropTx(len(tx.Bytes()), direct)
 				}
 			}
@@ -237,6 +246,7 @@ func (tp *TransactionPool) Add(tx transaction.Transaction, direct bool) error {
 	err := tp.list.Add(tx, direct)
 	if err == nil {
 		tp.monitor.OnAddTx(len(tx.Bytes()), direct)
+		tp.pcm.OnPoolCapacityUpdated(tp.group, tp.size, tp.list.Len())
 	}
 	return err
 }
@@ -270,6 +280,7 @@ func (tp *TransactionPool) RemoveList(txs module.TransactionList) {
 	}
 
 	if count > 0 {
+		tp.pcm.OnPoolCapacityUpdated(tp.group, tp.size, tp.list.Len())
 		tp.monitor.OnCommit(txs.Hash(), now, duration/time.Duration(count))
 	}
 }
@@ -292,9 +303,38 @@ func (tp *TransactionPool) Used() int {
 	return tp.list.Len()
 }
 
-func (tp *TransactionPool) SetTxManager(tm *TransactionManager) {
+func (tp *TransactionPool) SetTxManager(txm TxWaiterManager) {
 	tp.mutex.Lock()
 	defer tp.mutex.Unlock()
 
-	tp.txm = tm
+	tp.txm = txm
+}
+
+func (tp *TransactionPool) SetPoolCapacityMonitor(pcm PoolCapacityMonitor) {
+	tp.mutex.Lock()
+	defer tp.mutex.Unlock()
+
+	tp.pcm = pcm
+	go tp.pcm.OnPoolCapacityUpdated(tp.group, tp.size, tp.list.Len())
+}
+
+func (tp *TransactionPool) GetBloom() (uint, *big.Int) {
+	tp.mutex.Lock()
+	defer tp.mutex.Unlock()
+
+	return tp.list.GetBloom()
+}
+
+func (tp *TransactionPool) FilterTransactions(bits uint, value *big.Int, max int) []module.Transaction {
+	txs := make([]module.Transaction, 0, max)
+
+	lock := common.Lock(&tp.mutex)
+	defer lock.Unlock()
+
+	for e := tp.list.Front(); e != nil && len(txs) < max; e = e.Next() {
+		if !e.Contained(bits, value) {
+			txs = append(txs, e.Value())
+		}
+	}
+	return txs
 }

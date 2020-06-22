@@ -6,29 +6,39 @@ import (
 	"github.com/icon-project/goloop/service/transaction"
 )
 
+const (
+	ReactorName     = "transaction"
+	ReactorPriority = 4
+)
+
+const (
+	protoPropagateTransaction = module.ProtocolInfo(0x1001)
+	protoRequestTransaction   = module.ProtocolInfo(0x1100)
+)
+
+var (
+	subProtocols = []module.ProtocolInfo{
+		protoPropagateTransaction,
+		protoRequestTransaction,
+	}
+)
+
 type TransactionReactor struct {
 	nm         module.NetworkManager
 	membership module.ProtocolHandler
 	tm         *TransactionManager
 	tsc        *TxTimestampChecker
+	log        log.Logger
+	ts         *TransactionShare
 }
-
-const (
-	ReactorName                  = "transaction"
-	ProtocolPropagateTransaction = module.ProtocolInfo(0x1001)
-	ReactorPriority              = 4
-)
-
-var (
-	subProtocols = []module.ProtocolInfo{ProtocolPropagateTransaction}
-)
 
 func (r *TransactionReactor) OnReceive(subProtocol module.ProtocolInfo, buf []byte, peerId module.PeerID) (bool, error) {
 	switch subProtocol {
-	case ProtocolPropagateTransaction:
+	case protoPropagateTransaction:
 		tx, err := transaction.NewTransaction(buf)
 		if err != nil {
-			log.Tracef("Failed to unmarshal transaction. buf=%x, err=%+v\n", buf, err)
+			r.log.Warn("InvalidPacket(PropagateTransaction)")
+			r.log.Debugf("Failed to unmarshal transaction. buf=%x, err=%+v\n", buf, err)
 			return false, err
 		}
 
@@ -36,13 +46,15 @@ func (r *TransactionReactor) OnReceive(subProtocol module.ProtocolInfo, buf []by
 			return false, err
 		}
 		return true, nil
+	case protoRequestTransaction:
+		return r.ts.HandleRequestTransaction(buf, peerId)
 	}
 	return false, nil
 }
 
-func (r *TransactionReactor) PropagateTransaction(pi module.ProtocolInfo, tx transaction.Transaction) error {
+func (r *TransactionReactor) PropagateTransaction(tx transaction.Transaction) error {
 	if r != nil && r.membership != nil {
-		return r.membership.Multicast(ProtocolPropagateTransaction, tx.Bytes(), module.ROLE_VALIDATOR)
+		return r.membership.Multicast(protoPropagateTransaction, tx.Bytes(), module.ROLE_VALIDATOR)
 	}
 	return nil
 }
@@ -56,21 +68,26 @@ func (r *TransactionReactor) OnJoin(id module.PeerID) {
 }
 
 func (r *TransactionReactor) OnLeave(id module.PeerID) {
-	// Nothing to do now.
+	r.ts.HandleLeave(id)
 }
 
-func (r *TransactionReactor) Start() {
+func (r *TransactionReactor) Start(wallet module.Wallet) {
 	r.membership, _ = r.nm.RegisterReactor(ReactorName, module.ProtoTransaction, r, subProtocols, ReactorPriority)
+	r.ts.Start(r.membership, wallet)
+	r.tm.SetPoolCapacityMonitor(r.ts)
 }
 
 func (r *TransactionReactor) Stop() {
+	r.ts.Stop()
 	_ = r.nm.UnregisterReactor(r)
 }
 
 func NewTransactionReactor(nm module.NetworkManager, tm *TransactionManager) *TransactionReactor {
 	ra := &TransactionReactor{
-		tm: tm,
-		nm: nm,
+		tm:  tm,
+		nm:  nm,
+		log: tm.Logger(),
+		ts:  NewTransactionShare(tm),
 	}
 	return ra
 }
