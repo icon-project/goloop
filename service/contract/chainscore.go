@@ -455,6 +455,22 @@ var chainMethods = []*chainMethod{
 			scoreapi.Integer,
 		},
 	}, module.Revision5, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "setMinimizeBlockGen",
+		scoreapi.FlagExternal, 1,
+		[]scoreapi.Parameter{
+			{"yn", scoreapi.Bool, nil},
+		},
+		nil,
+	}, module.Revision8, 0},
+	{scoreapi.Method{
+		scoreapi.Function, "getMinimizeBlockGen",
+		scoreapi.FlagReadOnly | scoreapi.FlagExternal, 0,
+		nil,
+		[]scoreapi.DataType{
+			scoreapi.Bool,
+		},
+	}, module.Revision8, 0},
 }
 
 func (s *ChainScore) GetAPI() *scoreapi.Info {
@@ -1299,4 +1315,22 @@ func (s *ChainScore) Ex_setRoundLimitFactor(f *common.HexInt) error {
 	as := s.cc.GetAccountState(state.SystemID)
 	factor := scoredb.NewVarDB(as, state.VarRoundLimitFactor)
 	return factor.Set(f)
+}
+
+func (s *ChainScore) Ex_getMinimizeBlockGen() (bool, error) {
+	if err := s.tryChargeCall(); err != nil {
+		return false, err
+	}
+	as := s.cc.GetAccountState(state.SystemID)
+	mbg := scoredb.NewVarDB(as, state.VarMinimizeBlockGen)
+	return mbg.Bool(), nil
+}
+
+func (s *ChainScore) Ex_setMinimizeBlockGen(b bool) error {
+	if err := s.checkGovernance(true); err != nil {
+		return err
+	}
+	as := s.cc.GetAccountState(state.SystemID)
+	mbg := scoredb.NewVarDB(as, state.VarMinimizeBlockGen)
+	return mbg.Set(b)
 }

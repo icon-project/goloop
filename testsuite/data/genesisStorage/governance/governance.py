@@ -80,6 +80,10 @@ class SystemInterface(InterfaceScore):
     def setDeployerWhiteListEnabled(self, yn: bool):
         pass
 
+    @interface
+    def setMinimizeBlockGen(self, yn: bool):
+        pass
+
 
 class Governance(IconScoreBase):
 
@@ -177,6 +181,10 @@ class Governance(IconScoreBase):
     @external
     def setDeployerWhiteListEnabled(self, yn: bool):
         self.system_score.setDeployerWhiteListEnabled(yn)
+
+    @external
+    def setMinimizeBlockGen(self, yn: bool):
+        self.system_score.setMinimizeBlockGen(yn)
 
     @external(readonly=True)
     def updated(self) -> bool:
